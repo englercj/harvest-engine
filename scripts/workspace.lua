@@ -1,3 +1,5 @@
+-- Copyright Chad Engler
+
 function he_workspace(name)
     workspace(name)
 

@@ -1,3 +1,5 @@
+-- Copyright Chad Engler
+
 function get_generated_dir(project_name)
     return path.join(gen_dir, project_name)
 end

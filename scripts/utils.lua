@@ -1,3 +1,5 @@
+-- Copyright Chad Engler
+
 local function _genOrderedIndex(t)
     local orderedIndex = {}
     for key in pairs(t) do

@@ -1,3 +1,5 @@
+-- Copyright Chad Engler
+
 local emscripten = premake.modules.emscripten
 
 emscripten.emcc = {}

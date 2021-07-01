@@ -1,6 +1,4 @@
---
--- Create an emscripten namespace to isolate the additions
---
+-- Copyright Chad Engler
 
 local p = premake
 

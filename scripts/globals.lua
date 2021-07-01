@@ -1,3 +1,5 @@
+-- Copyright Chad Engler
+
 root_dir = path.getabsolute(path.join(_SCRIPT_DIR, ".."))
 
 newoption {

@@ -29,13 +29,13 @@ Then run `bootstrap.sh` from within the cloned folder.
 - :waning_gibbous_moon: Feature complete, ready for testing
 - :heavy_check_mark: Ready for production
 
-|     Platform     | Support Level |  Minimum SDK  |
-| ---------------- | ------------- | ------------- |
-| Linux            | :new_moon:    | ?             |
-| Windows          | :new_moon:    | 10.0.18362.0  |
-| Xbox Series X|S  | :new_moon:    | ?             |
-| PlayStation 5    | :new_moon:    | ?             |
-| Nintendo Switch  | :new_moon:    | ?             |
-| macOS            | :x:           | n/a           |
-| Android          | :x:           | n/a           |
-| iOS              | :x:           | n/a           |
+|     Platform     |    Status    |  Minimum SDK  |
+| ---------------- | ------------ | ------------- |
+| Linux            | :new_moon:   | ?             |
+| Windows          | :new_moon:   | 10.0.18362.0  |
+| Xbox Series X\|S | :new_moon:   | ?             |
+| PlayStation 5    | :new_moon:   | ?             |
+| Nintendo Switch  | :new_moon:   | ?             |
+| macOS            | :x:          | n/a           |
+| Android          | :x:          | n/a           |
+| iOS              | :x:          | n/a           |

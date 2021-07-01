@@ -1,3 +1,5 @@
+-- Copyright Chad Engler
+
 local sysId = (os.ishost("windows") and "windows") or (os.ishost("linux") and "linux")
 local last_download_progress = 0
 

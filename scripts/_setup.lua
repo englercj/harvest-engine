@@ -1,3 +1,5 @@
+-- Copyright Chad Engler
+
 include "globals.lua"
 include "modules.lua"
 include "tools.lua"

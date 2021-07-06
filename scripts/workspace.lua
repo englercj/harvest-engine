@@ -8,17 +8,18 @@ function he_workspace(name)
     cppdialect          "C++20"
     cdialect            "C11"
     editandcontinue     "On"
-    exceptionhandling   "On" -- TODO: Disable, g3log seems to require it for now.
+    exceptionhandling   "Off"
     flags               { "FatalWarnings", "MultiProcessorCompile" }
     floatingpoint       "Fast"
     location            (build_dir)
     rtti                "Off"
-    vectorextensions    "Default"
+    vectorextensions    "SSE4.1"
     warnings            "Extra"
 
-    -- Platform setup
+    -- System setup
     filter { "system:emscripten" }
         platforms { "emscripten" }
+        flags { "EmSSE" }
 
     filter { "system:linux" }
         platforms { "x86_64" }
@@ -35,6 +36,11 @@ function he_workspace(name)
             "WINVER=0x0A00",
             "_WIN32_WINNT=0x0A00",
         }
+
+    -- Platform setup
+    filter { "system:windows", "architecture:ARM64" }
+        editandcontinue "Off"
+        vectorextensions "NEON"
 
     -- Compiler setup
     filter { "toolset:msc-*", "language:C++" }

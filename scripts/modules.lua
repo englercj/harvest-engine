@@ -37,6 +37,14 @@ local path_value_keys = {
     libdirs = true,
 }
 
+local function _run_module_func(mod, func_name)
+    local oldcwd = os.getcwd()
+    os.chdir(mod.install_dir)
+    mod[func_name](mod)
+    filter { }
+    os.chdir(oldcwd)
+end
+
 local function _download_progress(total, current)
     local ratio = current / total;
     ratio = math.min(math.max(ratio, 0), 1);
@@ -168,11 +176,11 @@ local function _install_from_bitbucket(mod)
 end
 
 local function _install_module(mod)
-    if type(mod.install_from_github) == "string" then
+    if type(mod.github) == "string" then
         _install_from_github(mod)
-    elseif type(mod.install_from_bitbucket) == "string" then
+    elseif type(mod.bitbucket) == "string" then
         _install_from_bitbucket(mod)
-    elseif type(mod.install_from_archive) == "string" then
+    elseif type(mod.archive) == "string" then
         mod.install_dir = _install_from_archive(mod.name, mod.archive)
         if type(mod.basepath) == "string" then
             mod.install_dir = path.join(mod.install_dir, mod.basepath)
@@ -189,8 +197,7 @@ function import_modules(modules)
 
     local imported = {}
 
-    for name, mod_path in pairs(modules) do
-        assert(imported_modules[name] == nil, "Module already imported: " .. name)
+    for _, mod_path in ipairs(modules) do
         local mod_file = mod_path
 
         if not path.hasextension(mod_file, ".lua") then
@@ -201,7 +208,7 @@ function import_modules(modules)
 
         local mod = dofile(mod_file)
 
-        assert(name == mod.name, "Module name mismatch. Imported as '" .. name .. "', but module declares name as '" .. mod.name .. "'.")
+        assert(imported_modules[mod.name] == nil, "Module already imported: " .. mod.name)
 
         mod._mod_file = mod_file
         mod._mod_dir = path.getdirectory(mod_file)
@@ -209,15 +216,14 @@ function import_modules(modules)
 
         _install_module(mod)
 
-        imported_modules[name] = mod
+        imported_modules[mod.name] = mod
 
         table.insert(imported, mod);
     end
 
     for _, mod in ipairs(imported) do
         module(mod.name, mod.kind)
-        mod.module_project(mod)
-        filter { }
+        _run_module_func(mod, "module_project")
     end
 end
 
@@ -226,8 +232,7 @@ function import_all_module_tests()
         if mod.test_project ~= nil then
             mod.test_project_name = mod.name .. "__tests"
             module(mod.test_project_name, mod.kind)
-            mod.test_project(mod)
-            filter { }
+            _run_module_func(mod, "test_project")
         end
     end
 end
@@ -291,8 +296,7 @@ function include_modules(dep_table)
     for _, name in ipairs(dep_table) do
         local mod = get_module(name)
         if mod.when_linked ~= nil then
-            mod.when_included(mod)
-            filter { }
+            _run_module_func(mod, "when_included")
         end
     end
 end
@@ -303,8 +307,7 @@ function link_modules(dep_table)
     for _, name in ipairs(dep_table) do
         local mod = get_module(name)
         if mod.when_linked ~= nil then
-            mod.when_linked(mod)
-            filter { }
+            _run_module_func(mod, "when_linked")
         end
     end
 end

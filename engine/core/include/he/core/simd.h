@@ -43,7 +43,7 @@
 
     #undef HE_SIMD_SSE4_2
     #define HE_SIMD_SSE4_2          1
-#elif HE_CPU_X86 && (defined(__SSE2__) || HE_CPU_64_BIT || defined(_M_IX86_FP))
+#elif HE_CPU_X86 && (HE_CPU_X86_64 || defined(__SSE2__) || defined(_M_IX86_FP))
     #include <immintrin.h>
 
     #undef HE_SIMD_SSE2
@@ -68,7 +68,7 @@
         #undef HE_SIMD_FMA3
         #define HE_SIMD_FMA3        1
     #endif
-#elif HE_CPU_ARM && (defined(__ARM_NEON__) || defined(__ARM_NEON))
+#elif HE_CPU_ARM && (HE_COMPILER_MSVC || defined(__ARM_NEON__) || defined(__ARM_NEON))
     #if HE_CPU_ARM_64 && HE_COMPILER_MSVC
         #include <arm64_neon.h>
     #else

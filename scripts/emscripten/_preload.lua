@@ -24,6 +24,7 @@ api.addAllowed("flags", {
     "EmThreadProfiler",
     "EmIgnoreDynamicLinking",
     "EmSIMD",
+    "EmSSE",
 })
 
 local osoption = p.option.get("os")

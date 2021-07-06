@@ -12,7 +12,8 @@ local config = premake.config
 
 emcc.shared = {
     flags = {
-        EmSIMD = '-msimd128',
+        EmSIMD = "-msimd128",
+        EmSSE = "-msse",
     },
 }
 
@@ -48,7 +49,7 @@ function emcc.getcflags(cfg)
     local flags = table.join(clang_flags, shared)
 
     for _, opt in ipairs(cfg.em_options) do
-        table.insert(flags, '-s ' .. opt)
+        table.insert(flags, "-s " .. opt)
     end
 
     return flags
@@ -71,7 +72,7 @@ function emcc.getcxxflags(cfg)
     local flags = table.join(clang_flags, shared)
 
     for _, opt in ipairs(cfg.em_options) do
-        table.insert(flags, '-s ' .. opt)
+        table.insert(flags, "-s " .. opt)
     end
 
     return flags
@@ -145,16 +146,16 @@ emcc.getrunpathdirs = clang.getrunpathdirs
 
 emcc.ldflags = {
     flags = {
-        EmCpuProfiler = '--cpuprofiler',
-        EmMemoryProfiler = '--memoryprofiler',
-        EmThreadProfiler = '--threadprofiler',
-        EmIgnoreDynamicLinking = '--ignore-dynamic-linking',
+        EmCpuProfiler = "--cpuprofiler",
+        EmMemoryProfiler = "--memoryprofiler",
+        EmThreadProfiler = "--threadprofiler",
+        EmIgnoreDynamicLinking = "--ignore-dynamic-linking",
     },
     em_linkeroptimize = {
-        Off = '--llvm-lto 0',
-        Simple = '--llvm-lto 1',
-        On = '--llvm-lto 2',
-        Unsafe = '--llvm-lto 3'
+        Off = "--llvm-lto 0",
+        Simple = "--llvm-lto 1",
+        On = "--llvm-lto 2",
+        Unsafe = "--llvm-lto 3",
     },
 }
 
@@ -163,31 +164,31 @@ function emcc.getldflags(cfg)
 
     local function addValueFlag(value, flag)
         if value then
-            table.insert(flags, flag .. ' "' .. value .. '"')
+            table.insert(flags, flag .. " \"" .. value .. "\"")
         end
     end
 
-    addValueFlag(cfg.em_library, '--js-library')
-    addValueFlag(cfg.em_prepend, '--pre-js')
-    addValueFlag(cfg.em_append, '--post-js')
-    addValueFlag(cfg.em_sourcemapbase, '--source-map-base')
-    addValueFlag(cfg.em_embedfile, '--embed-file')
-    addValueFlag(cfg.em_preloadfile, '--preload-file')
-    addValueFlag(cfg.em_htmlshell, '--shell-file')
+    addValueFlag(cfg.em_library, "--js-library")
+    addValueFlag(cfg.em_prepend, "--pre-js")
+    addValueFlag(cfg.em_append, "--post-js")
+    addValueFlag(cfg.em_sourcemapbase, "--source-map-base")
+    addValueFlag(cfg.em_embedfile, "--embed-file")
+    addValueFlag(cfg.em_preloadfile, "--preload-file")
+    addValueFlag(cfg.em_htmlshell, "--shell-file")
 
     for _, opt in ipairs(cfg.em_options) do
-        table.insert(flags, '-s ' .. opt)
+        table.insert(flags, "-s " .. opt)
     end
 
     if next(cfg.em_exportedfunctions) ~= nil then
-        local export = '-s "EXPORTED_FUNCTIONS=['
+        local export = "-s \"EXPORTED_FUNCTIONS=["
         for _, funcname in ipairs(cfg.em_exportedfunctions) do
             if _ > 0 then
-                export = export .. ', '
+                export = export .. ", "
             end
-            export = export .. '\'' .. funcname .. '\''
+            export = export .. "'" .. funcname .. "'"
         end
-        export = export .. ']"'
+        export = export .. "]\""
         table.insert(flags, export)
     end
 
@@ -251,21 +252,21 @@ end
 -- @param cfg
 --    The configuration to query.
 -- @param tool
---    The tool to fetch, one of 'cc' for the C compiler, 'cxx' for
---    the C++ compiler, or 'ar' for the static linker.
+--    The tool to fetch, one of "cc" for the C compiler, "cxx" for
+--    the C++ compiler, or "ar" for the static linker.
 -- @return
---    The executable command name for a tool, or nil if the system's
+--    The executable command name for a tool, or nil if the system"s
 --    default value should be used.
 --
 
 emcc.tools = {
-    cc = 'emcc',
-    cxx = 'em++',
-    ar = 'emar'
+    cc = "emcc",
+    cxx = "em++",
+    ar = "emar",
 }
 
 function emcc.gettoolname(cfg, tool)
-    if _ACTION == 'gmake' or _ACTION == 'gmake2' then
+    if _ACTION == "gmake" or _ACTION == "gmake2" then
         if cfg.emccpath ~= nil then
             return path.join(cfg.emccpath, emcc.tools[tool])
         end

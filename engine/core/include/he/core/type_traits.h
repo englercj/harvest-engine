@@ -29,10 +29,11 @@ namespace he
     using EnableIf = typename EnableIf_<Test, T>::Type;
 
     // --------------------------------------------------------------------------------------------
-    // Trivially Copyable
+    // Triviality
 
-    template <typename T>
-    inline constexpr bool IsTriviallyCopyable = __is_trivially_copyable(T);
+    template <typename T, typename... Args> inline constexpr bool IsTriviallyConstructible = __is_trivially_constructible(T, Args...);
+    template <typename T> inline constexpr bool IsTriviallyDestructible = __is_trivially_destructible(T);
+    template <typename T> inline constexpr bool IsTriviallyCopyable = __is_trivially_copyable(T);
 
     // --------------------------------------------------------------------------------------------
     // Remove Reference

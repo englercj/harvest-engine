@@ -1,0 +1,38 @@
+name: Build & test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  linux:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        config: [debug, release]
+        arch: [x64]
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+    - name: Bootstrap
+      run: ./bootstrap.sh
+    - name: Build
+      run: cd build && make -j$(nproc) config=${{ matrix.config }}_${{ matrix.arch }} all
+  windows:
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        config: [debug, release]
+        arch: [x64, arm64]
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+    - name: Setup MSBuild
+      uses: microsoft/setup-msbuild@v1.0.2
+    - name: Bootstrap
+      run: ./bootstrap.sh
+      shell: bash
+    - name: Build
+      run: MSBuild.exe build/harvest-engine.sln /m /p:Configuration="${{ matrix.config }}" /p:Platform="${{ matrix.arch }}" /nodeReuse:false

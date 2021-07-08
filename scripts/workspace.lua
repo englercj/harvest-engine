@@ -22,11 +22,11 @@ function he_workspace(name)
         flags { "EmSSE" }
 
     filter { "system:linux" }
-        platforms { "x86_64" }
+        platforms { "x64" }
         buildoptions { "-mcx16", "-fvisibility=hidden", "-fvisibility-inlines-hidden" }
 
     filter { "system:windows" }
-        platforms { "x86_64", "ARM64" }
+        platforms { "x64", "ARM64" }
         systemversion(_OPTIONS.windows_systemversion)
 
     -- Language setup

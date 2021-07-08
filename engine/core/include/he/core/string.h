@@ -87,20 +87,104 @@ namespace he
         ///     If this string is greater than `x`, a positive value is returned.
         static int32_t CompareNI(const char* a, const char* b, uint32_t len);
 
+        /// Compares the null terminated strings and returns true if they are equal.
+        ///
+        /// \param a The left-hand side of the comparison operation.
+        /// \param b The right-hand side of the comparison operation.
+        /// \return True if the strings are equal, false otherwise.
         static bool Equal(const char* a, const char* b) { return Compare(a, b) == 0; }
+
+        /// Compares the null terminated strings, up to `len`, and returns true if they are equal.
+        ///
+        /// \param a The left-hand side of the comparison operation.
+        /// \param b The right-hand side of the comparison operation.
+        /// \return True if the strings are equal, false otherwise.
         static bool EqualN(const char* a, const char* b, uint32_t len) { return CompareN(a, b, len) == 0; }
 
+        /// Compares the null terminated strings in a case-insensative manner and
+        /// returns true if they are equal.
+        ///
+        /// \param a The left-hand side of the comparison operation.
+        /// \param b The right-hand side of the comparison operation.
+        /// \return True if the strings are equal, false otherwise.
         static bool EqualI(const char* a, const char* b) { return CompareI(a, b) == 0; }
+
+        /// Compares the null terminated strings, up to `len`, in a case-insensative manner and
+        /// returns true if they are equal.
+        ///
+        /// \param a The left-hand side of the comparison operation.
+        /// \param b The right-hand side of the comparison operation.
+        /// \return True if the strings are equal, false otherwise.
         static bool EqualNI(const char* a, const char* b, uint32_t len) { return CompareNI(a, b, len) == 0; }
 
+        /// Compares the null terminated strings and returns true if `a` is less than `b`.
+        ///
+        /// \param a The left-hand side of the comparison operation.
+        /// \param b The right-hand side of the comparison operation.
+        /// \return True if `a` is less than `b`, false otherwise.
         static bool Less(const char* a, const char* b) { return Compare(a, b) < 0; }
+
+        /// Compares the null terminated strings, up to `len`, and returns true if `a` is less than `b`.
+        ///
+        /// \param a The left-hand side of the comparison operation.
+        /// \param b The right-hand side of the comparison operation.
+        /// \return True if `a` is less than `b`, false otherwise.
         static bool LessN(const char* a, const char* b, uint32_t len) { return CompareN(a, b, len) < 0; }
 
+        /// Copies the source string into the destination buffer, including the null terminator.
+        /// The destination buffer is garuanteed to be null terminated if `dstLen > 0`.
+        ///
+        /// \param dst The destination buffer to copy into.
+        /// \param dstLen The size of the destination buffer.
+        /// \param src The string to copy from.
+        /// \return The length of the `src` string.
         static uint32_t Copy(char* dst, uint32_t dstLen, const char* src);
+
+        /// \copydoc Copy(char*, uint32_t, const char*)
+        template <uint32_t N>
+        static uint32_t Copy(char (&dst)[N], const char* src) { return Copy(dst, N, src); }
+
+        /// Copies up to `srcLen` characters from the source string into the destination buffer,
+        /// including the null terminator. The destination buffer is garuanteed to be null
+        /// terminated if `dstLen > 0`.
+        ///
+        /// \param dst The destination buffer to copy into.
+        /// \param dstLen The size of the destination buffer.
+        /// \param src The string to copy from.
+        /// \param srcLen The maximum number of characters to copy.
+        /// \return The length of the `src` string.
         static uint32_t CopyN(char* dst, uint32_t dstLen, const char* src, uint32_t srcLen);
 
+        /// \copydoc CopyN(char*, uint32_t, const char*, uint32_t)
+        template <uint32_t N>
+        static uint32_t CopyN(char (&dst)[N], const char* src, uint32_t srcLen) { return CopyN(dst, N, src, srcLen); }
+
+        /// Copies the source string to the end of the destination string.
+        /// The destination buffer is garuanteed to be null terminated if `dstLen > 0`.
+        ///
+        /// \param dst The destination buffer to copy into.
+        /// \param dstLen The size of the destination buffer.
+        /// \param src The string to copy from.
+        /// \return The length of the `dst` string after the concatenation completes.
         static uint32_t Cat(char* dst, uint32_t dstLen, const char* src);
+
+        /// \copydoc Cat(char*, uint32_t, const char*)
+        template <uint32_t N>
+        static uint32_t Cat(char (&dst)[N], const char* src) { return Cat(dst, N, src); }
+
+        /// Copies up to `srcLen` characters from the source string to the end of the destination
+        /// string. The destination buffer is garuanteed to be null terminated if `dstLen > 0`.
+        ///
+        /// \param dst The destination buffer to copy into.
+        /// \param dstLen The size of the destination buffer.
+        /// \param src The string to copy from.
+        /// \param srcLen The maximum number of characters to copy.
+        /// \return The length of the `dst` string after the concatenation completes.
         static uint32_t CatN(char* dst, uint32_t dstLen, const char* src, uint32_t srcLen);
+
+        /// \copydoc CatN(char*, uint32_t, const char*, uint32_t)
+        template <uint32_t N>
+        static uint32_t CatN(char (&dst)[N], const char* src, uint32_t srcLen) { return CatN(dst, N, src, srcLen); }
 
     public:
         // ----------------------------------------------------------------------------------------

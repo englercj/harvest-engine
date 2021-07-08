@@ -7,7 +7,7 @@
 
 #if HE_API_POSIX
 
-#include <malloc.h>
+#include <stdlib.h>
 #include <cstring>
 
 namespace he

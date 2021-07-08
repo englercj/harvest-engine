@@ -87,6 +87,26 @@ namespace he
         return n + CopyN(dst + n, dstLen, src, srcLen);
     }
 
+    const char* Find(const char* str, char search)
+    {
+        return strchr(str, search);
+    }
+
+    char* Find(char* str, char search)
+    {
+        return strchr(str, search);
+    }
+
+    const char* Find(const char* str, const char* search)
+    {
+        return strstr(str, search);
+    }
+
+    char* Find(char* str, const char* search)
+    {
+        return strstr(str, search);
+    }
+
     String::String(Allocator& allocator)
         : m_allocator(allocator)
     {

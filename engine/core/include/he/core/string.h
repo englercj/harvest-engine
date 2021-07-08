@@ -186,6 +186,36 @@ namespace he
         template <uint32_t N>
         static uint32_t CatN(char (&dst)[N], const char* src, uint32_t srcLen) { return CatN(dst, N, src, srcLen); }
 
+        /// Searching the null terminated string for a character.
+        ///
+        /// \param str The string to search within.
+        /// \param search The character to search for.
+        /// \return A pointer to the found character in `str`, or a null pointer if not found.
+        static const char* Find(const char* str, char search);
+
+        /// Searching the null terminated string for a character.
+        ///
+        /// \param str The string to search within.
+        /// \param search The character to search for.
+        /// \return A pointer to the found character in `str`, or a null pointer if not found.
+        static char* Find(char* str, char search);
+
+        /// Searching the null terminated string for a substring.
+        ///
+        /// \param str The string to search within.
+        /// \param search The string to search for.
+        /// \return A pointer to the start of the found substring in `str`, or a null pointer if
+        /// not found. If `str` is empty, then `search` is returned.
+        static const char* Find(const char* str, const char* search);
+
+        /// Searching the null terminated string for a substring.
+        ///
+        /// \param str The string to search within.
+        /// \param search The string to search for.
+        /// \return A pointer to the start of the found substring in `str`, or a null pointer if
+        /// not found. If `str` is empty, then `search` is returned.
+        static char* Find(char* str, const char* search);
+
     public:
         // ----------------------------------------------------------------------------------------
         // Construction

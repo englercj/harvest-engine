@@ -94,4 +94,13 @@ namespace he
     {
         return static_cast<RemoveReference<T>&&>(x);
     }
+
+    /// Exchange the value of `obj` with `newVal` and returns the original value of `obj`.
+    template <typename T, class U = T>
+    constexpr T Exchange(T& a, U&& b) noexcept
+    {
+        T old = Move(a);
+        a = Forward<U>(b);
+        return old;
+    }
 }

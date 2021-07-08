@@ -8,7 +8,7 @@
 ///
 /// \param len The number of bytes to allocate.
 #if HE_COMPILER_MSVC
-    extern "C" void* __cdecl _alloca(size_t _Size);
+    extern "C" void* __cdecl _alloca(size_t);
     #pragma intrinsic(_alloca)
 
     #define HE_ALLOCA_RAW(len) _alloca(len)

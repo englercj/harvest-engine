@@ -534,7 +534,7 @@ namespace he
         void MoveFrom(String&& x);
 
     private:
-        static constexpr char HeapFlag = 0xff;
+        static constexpr char HeapFlag = char(-1);
         static constexpr uint32_t EmbedSize = 64;
 
         // Structure for tracking the string when it lives on the heap.

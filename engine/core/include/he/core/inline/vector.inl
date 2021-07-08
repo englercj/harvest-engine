@@ -106,12 +106,61 @@ namespace he
     {}
 
     template <typename T>
+    Vector<T>::Vector(Allocator& allocator, const Vector& x)
+        : Vector(allocator)
+    {
+        CopyFrom(x);
+    }
+
+    template <typename T>
+    Vector<T>::Vector(Allocator& allocator, Vector&& x)
+        : Vector(allocator)
+    {
+        MoveFrom(Move(x));
+    }
+
+    template <typename T>
+    Vector<T>::Vector(const Vector& x)
+        : Vector(x.m_allocator)
+    {
+        CopyFrom(x);
+    }
+
+    template <typename T>
+    Vector<T>::Vector(Vector&& x)
+        : Vector(x.m_allocator)
+    {
+        MoveFrom(Move(x));
+    }
+
+    template <typename T>
     Vector<T>::~Vector()
     {
         if (m_data)
         {
             m_allocator.Free(m_data);
         }
+    }
+
+    template <typename T>
+    Vector<T>& Vector<T>::operator=(const Vector& x)
+    {
+        CopyFrom(x);
+        return *this;
+    }
+
+    template <typename T>
+    Vector<T>& Vector<T>::operator=(Vector&& x)
+    {
+        MoveFrom(Move(x));
+        return *this;
+    }
+
+    template <typename T>
+    T& Vector<T>::operator[](uint32_t index)
+    {
+        HE_ASSERT(index < m_size);
+        return m_data[index];
     }
 
     template <typename T>
@@ -182,13 +231,6 @@ namespace he
     T* Vector<T>::Data()
     {
         return m_data;
-    }
-
-    template <typename T>
-    T& Vector<T>::operator[](uint32_t index)
-    {
-        HE_ASSERT(index < m_size);
-        return m_data[index];
     }
 
     template <typename T>

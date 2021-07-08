@@ -7,6 +7,8 @@
 #include "he/core/types.h"
 #include "he/core/utils.h"
 
+#include <new>
+
 namespace he
 {
     /// A dynamically sized array of contiguous elements.
@@ -60,13 +62,13 @@ namespace he
         /// Copy the vector `x` into this vector.
         ///
         /// \param x The vector to copy from.
-        String& operator=(const String& x);
+        Vector& operator=(const Vector& x);
 
         /// Move the vector `x` into this vector.
         /// If the allocators do not match then a copy operation will be performed.
         ///
         /// \param x The vector to move from.
-        String& operator=(String&& x);
+        Vector& operator=(Vector&& x);
 
         /// Gets a reference to the element at `index`. Asserts if `index` is not less than
         /// \see Size().
@@ -76,7 +78,7 @@ namespace he
         T& operator[](uint32_t index);
 
         /// \copydoc operator[](uint32_t)
-        const T& operator[](uint32_t index) const { return const_cast<const T&>(const_cast<Vector<T>&>(*this)[index]); }
+        const T& operator[](uint32_t index) const { return const_cast<const T&>(const_cast<Vector&>(*this)[index]); }
 
         // ----------------------------------------------------------------------------------------
         // Capacity
@@ -137,7 +139,7 @@ namespace he
         T* Data();
 
         /// \copydoc Data()
-        const T* Data() const { return const_cast<const T*>(const_cast<Vector<T>*>(this)->Data()); }
+        const T* Data() const { return const_cast<const T*>(const_cast<Vector*>(this)->Data()); }
 
         // ----------------------------------------------------------------------------------------
         // Iterators
@@ -148,7 +150,7 @@ namespace he
         T* Begin();
 
         /// \copydoc Begin()
-        const T* Begin() const { return const_cast<const T*>(const_cast<Vector<T>*>(this)->Begin()); }
+        const T* Begin() const { return const_cast<const T*>(const_cast<Vector*>(this)->Begin()); }
 
         /// Gets a pointer to one past the last element in the vector.
         ///
@@ -156,7 +158,7 @@ namespace he
         T* End();
 
         /// \copydoc End()
-        const T* End() const { return const_cast<const T*>(const_cast<Vector<T>*>(this)->End()); }
+        const T* End() const { return const_cast<const T*>(const_cast<Vector*>(this)->End()); }
 
         /// \copydoc Begin()
         char* begin() { return Begin(); }

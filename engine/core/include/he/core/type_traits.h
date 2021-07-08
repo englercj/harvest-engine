@@ -129,7 +129,7 @@ namespace he
     template <template <typename...> typename Template, typename... Types>
     struct _IsSpecialization<Template<Types...>, Template> : TrueType {};
 
-    template <typename T, typename Template> inline constexpr bool IsSpecialization = _IsSpecialization<T, Template>::Value;
+    template <typename T, template <typename...> typename Template> inline constexpr bool IsSpecialization = _IsSpecialization<T, Template>::Value;
 
     // --------------------------------------------------------------------------------------------
     // declval

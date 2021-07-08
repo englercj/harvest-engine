@@ -5,6 +5,8 @@
 #include "he/core/compiler.h"
 #include "he/core/utils.h"
 
+#include <new>
+
 namespace he
 {
     CrtAllocator& CrtAllocator::Get()

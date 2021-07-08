@@ -13,11 +13,10 @@ he_workspace(sln_name)
     group "engine"
         import_modules {
             "engine/core",
-            "engine/math",
         }
 
     group "tests"
         import_all_module_tests()
-        -- import_modules {
-        --     "engine/test_runner",
-        -- }
+        import_modules {
+            "engine/test_runner",
+        }

@@ -18,6 +18,11 @@ namespace he
         return (value & (alignment - 1)) == 0;
     }
 
+    [[nodiscard]] inline bool IsAligned(void* ptr, size_t alignment) noexcept
+    {
+        return IsAligned(reinterpret_cast<uintptr_t>(ptr), alignment);
+    }
+
     /// Returns the smaller value between `a` and `b`.
     ///
     /// \param a The first value to compare.

@@ -15,7 +15,8 @@ namespace he
 
     static void Print(const char* msg)
     {
-        OutputToDebugger(msg);
+        if (IsDebuggerAttached())
+            OutputToDebugger(msg);
         fputs(msg, stdout);
     }
 

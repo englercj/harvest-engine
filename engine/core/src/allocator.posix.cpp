@@ -2,13 +2,15 @@
 
 #include "he/core/allocator.h"
 
+#include "he/core/assert.h"
 #include "he/core/platform.h"
 #include "he/core/utils.h"
 
 #if HE_API_POSIX
 
-#include <stdlib.h>
 #include <cstring>
+#include <malloc.h>
+#include <stdlib.h>
 
 namespace he
 {

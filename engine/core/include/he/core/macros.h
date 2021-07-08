@@ -11,8 +11,8 @@ template <typename...Ts> void _heUnused(Ts&&...) { }
 /// Returns the length of a fixed array.
 ///
 /// Results are garuanteed to be constexpr.
-#define HE_LENGTH_OF(...) static_cast<uint32_t>(sizeof(_heLengthOf(__VA_ARGS__)))
-template <typename T, size_t N> char (&_heLengthOf(const T (&)[N]))[N];
+#define HE_LENGTH_OF(...) static_cast<unsigned int>(sizeof(_heLengthOf(__VA_ARGS__)))
+template <typename T, unsigned int N> char (&_heLengthOf(const T (&)[N]))[N];
 
 /// \def HE_STRINGIFY
 /// Performs preprocessor token stringization.

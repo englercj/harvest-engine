@@ -24,7 +24,7 @@ namespace he
 
     bool DefaultErrorHandler(ErrorType type, const char* file, const uint32_t line, const char* funcName, const char* expression, const char* msg)
     {
-        const LogSource source{ he::LogLevel::Error, line, file, funcName };
+        const LogSource source{ he::LogLevel::Error, line, file, funcName, "app_error" };
         const LogKV kvs[] =
         {
             HE_KV(type, type),

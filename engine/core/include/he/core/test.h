@@ -179,7 +179,7 @@ namespace he
         void TestBody() override; \
     }; \
     const he::TestInfo HE_TEST_CLASS_NAME_(module, suite, name)::TestInfo{ #module, #suite, #name, __FILE__, __LINE__ }; \
-    HE_TEST_CLASS_NAME_(module, suite, name) HE_TEST_VARIABLE_NAME_(module, suite, name){}; \
+    static HE_TEST_CLASS_NAME_(module, suite, name) HE_TEST_VARIABLE_NAME_(module, suite, name){}; \
     void HE_TEST_CLASS_NAME_(module, suite, name)::TestBody()
 
 // Internal macro that generates the name of a test case class.

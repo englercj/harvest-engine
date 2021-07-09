@@ -39,4 +39,5 @@ jobs:
     - name: Build
       run: MSBuild.exe build/harvest-engine.sln /m /p:Configuration="${{ matrix.config }}" /p:Platform="${{ matrix.arch }}" /nodeReuse:false
     - name: Test
+      if: ${{ matrix.arch != 'arm64' }}
       run: ./build/bin/windows-${{ matrix.config }}_${{ matrix.arch }}/he_test_runner.exe

@@ -1,4 +1,4 @@
-name: Build & test
+name: Build & Test
 
 on:
   push:
@@ -14,17 +14,12 @@ jobs:
         config: [debug, release]
         arch: [x64]
     steps:
-    - name: Versions
-      run: |
-        clang --version;
-        ls -al /usr/bin/llvm*;
-        ls -al /usr/lib/llvm*;
     - name: Checkout
       uses: actions/checkout@v2
     - name: Bootstrap
       run: ./bootstrap.sh
     - name: Build
-      run: cd build && make -j$(nproc) config=${{ matrix.config }}_${{ matrix.arch }} all
+      run: cd build && PATH="/usr/lib/llvm-12/bin:$PATH" make -j$(nproc) config=${{ matrix.config }}_${{ matrix.arch }} all
   windows:
     runs-on: windows-latest
     strategy:

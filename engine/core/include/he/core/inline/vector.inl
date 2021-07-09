@@ -96,7 +96,7 @@ namespace he
         {
             new(mem + i) T(Move(*(p + i)));
         }
-        m_allocator.Free(p);
+        allocator.Free(p);
         return mem;
     }
 

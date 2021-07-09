@@ -3,6 +3,7 @@
 #pragma once
 
 #include "he/core/allocator.h"
+#include "he/core/assert.h"
 #include "he/core/macros.h"
 #include "he/core/types.h"
 #include "he/core/utils.h"

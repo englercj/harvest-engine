@@ -2,6 +2,8 @@
 
 #pragma once
 
+#include "he/core/types.h"
+
 namespace he
 {
     template <class... T> using Void = void;

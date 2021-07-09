@@ -15,7 +15,6 @@
     __VA_ARGS__ constexpr T& operator|=(T& a, T b) { using U = EnumType<T>; return a = T(U(a) | U(b)); } \
     __VA_ARGS__ constexpr T& operator&=(T& a, T b) { using U = EnumType<T>; return a = T(U(a) & U(b)); } \
     __VA_ARGS__ constexpr T& operator^=(T& a, T b) { using U = EnumType<T>; return a = T(U(a) ^ U(b)); } \
-    __VA_ARGS__ constexpr bool operator!(T a) { return a == T{}; } \
     HE_POP_WARNINGS()
 
 namespace he
@@ -42,5 +41,5 @@ namespace he
     /// \param search The flags to search for.
     /// \return True if `value` has the flags `search`.
     template <typename T>
-    constexpr bool HasAnyFlags(T value, T search) { return (value & search) != 0; }
+    constexpr bool HasAnyFlags(T value, T search) { return static_cast<EnumType<T>>(value & search) != 0; }
 }

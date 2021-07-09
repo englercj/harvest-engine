@@ -1,3 +1,5 @@
+// Copyright Chad Engler
+
 #include "he/core/ascii.h"
 
 #include "he/core/string.h"

@@ -20,6 +20,8 @@ jobs:
       run: ./bootstrap.sh
     - name: Build
       run: cd build && PATH="/usr/lib/llvm-12/bin:$PATH" make -j$(nproc) config=${{ matrix.config }}_${{ matrix.arch }} all
+    - name: Test
+      run: ./build/bin/linux-${{ matrix.config }}_${{ matrix.arch }}/he_test_runner
   windows:
     runs-on: windows-latest
     strategy:
@@ -36,3 +38,5 @@ jobs:
       shell: bash
     - name: Build
       run: MSBuild.exe build/harvest-engine.sln /m /p:Configuration="${{ matrix.config }}" /p:Platform="${{ matrix.arch }}" /nodeReuse:false
+    - name: Test
+      run: ./build/bin/windows-${{ matrix.config }}_${{ matrix.arch }}/he_test_runner.exe

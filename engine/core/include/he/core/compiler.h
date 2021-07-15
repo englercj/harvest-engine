@@ -60,9 +60,9 @@
     #undef  HE_COMPILER_MSVC
     #define HE_COMPILER_MSVC                (_MSC_VER)
 
-    // Visual Studio 2019 >= 16.5 required
-    #if HE_COMPILER_MSVC < 1925
-        #error "MSVC 14.25 (VS2019 v16.5) is required."
+    // Visual Studio 2019 >= 16.9 required
+    #if HE_COMPILER_MSVC < 1929
+        #error "MSVC 14.29 (VS2019 v16.9) is required."
     #endif
 
     #define HE_ALIGNED(N)                   __declspec(align(N))

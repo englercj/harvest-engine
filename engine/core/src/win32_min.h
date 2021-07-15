@@ -1,3 +1,5 @@
+// Copyright Chad Engler
+
 #pragma once
 
 #ifndef WIN32_LEAN_AND_MEAN

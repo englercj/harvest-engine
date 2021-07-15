@@ -101,6 +101,10 @@ namespace he
     }
 
     /// Exchange the value of `obj` with `newVal` and returns the original value of `obj`.
+    ///
+    /// \param a The object to assign the new value to.
+    /// \param b The new value to assign to `a`.
+    /// \return The value previously held in `a`.
     template <typename T, class U = T>
     constexpr T Exchange(T& a, U&& b) noexcept
     {

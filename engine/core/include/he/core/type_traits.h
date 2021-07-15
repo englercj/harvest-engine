@@ -100,27 +100,27 @@ namespace he
     // --------------------------------------------------------------------------------------------
     // Range Providers
 
-    template <typename T, typename El>
+    template <typename T, typename E>
     struct _ProvidesStdContiguousRange
     {
-        template <typename U, class E = RemovePointer<decltype(DeclVal<U&>().data())>, class S = decltype(DeclVal<U&>().size())>
-        static TrueType Test(EnableIf<IsConvertible<E(*)[], El(*)[]> && IsConvertible<S, size_t>, U*>);
+        template <typename U, class D = RemovePointer<decltype(DeclVal<U&>().data())>, class S = decltype(DeclVal<U&>().size())>
+        static TrueType Test(EnableIf<IsConvertible<D(*)[], E(*)[]> && IsConvertible<S, size_t>, U*>);
 
         template <typename U>
         static FalseType Test(...);
     };
-    template <typename T, typename El> inline constexpr bool ProvidesStdContiguousRange = decltype(_ProvidesStdContiguousRange<T, El>::template Test<T>(nullptr))::Value;
+    template <typename T, typename E> inline constexpr bool ProvidesStdContiguousRange = decltype(_ProvidesStdContiguousRange<T, E>::template Test<T>(nullptr))::Value;
 
-    template <typename T, class El>
+    template <typename T, class E>
     struct _ProvidesContiguousRange
     {
-        template <typename U, class E = RemovePointer<decltype(DeclVal<U&>().Data())>, class S = decltype(DeclVal<U&>().Size())>
-        static TrueType Test(EnableIf<IsConvertible<E(*)[], El(*)[]> && IsConvertible<S, size_t>, U*>);
+        template <typename U, class D = RemovePointer<decltype(DeclVal<U&>().Data())>, class S = decltype(DeclVal<U&>().Size())>
+        static TrueType Test(EnableIf<IsConvertible<D(*)[], E(*)[]> && IsConvertible<S, uint32_t>, U*>);
 
         template <typename U>
         static FalseType Test(...);
     };
-    template <typename T, typename El> inline constexpr bool ProvidesContiguousRange = decltype(_ProvidesContiguousRange<T, El>::template Test<T>(nullptr))::Value;
+    template <typename T, typename E> inline constexpr bool ProvidesContiguousRange = decltype(_ProvidesContiguousRange<T, E>::template Test<T>(nullptr))::Value;
 
     // --------------------------------------------------------------------------------------------
     // Is Specialization

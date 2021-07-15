@@ -44,7 +44,7 @@ function he_workspace(name)
 
     -- Compiler setup
     filter { "toolset:msc-*", "language:C++" }
-        buildoptions { "/permissive-" }
+        buildoptions { "/permissive-", "/utf-8" }
 
     -- Configuration setup
     filter { "configurations:Debug" }

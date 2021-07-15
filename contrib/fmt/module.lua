@@ -2,7 +2,7 @@
 
 return {
     name = "fmt",
-    github = "fmtlib/fmt#7.1.3",
+    github = "fmtlib/fmt#8.0.1",
 
     when_included = function ()
         includedirs { "include" }
@@ -16,8 +16,11 @@ return {
         include_modules { "fmt" }
 
         files {
-            path.join("include/**"),
-            path.join("src/**"),
+            path.join("include/core.h"),
+            path.join("include/compile.h"),
+            path.join("include/format.h"),
+            path.join("include/xchar.h"),
+            path.join("src/format.cc"),
         }
     end,
 }

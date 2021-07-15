@@ -10,8 +10,14 @@ namespace he
     class String final
     {
     public:
-        /// The maximum number of characters that can be stored.
-        static constexpr uint32_t MaxCharacters = 0xfffffffe;
+        /// The type of elements in the string.
+        using ElementType = char;
+
+        /// The maximum number of characters that can be stored inline in the object.
+        static constexpr uint32_t MaxEmbedCharacters = 63;
+
+        /// The maximum number of characters that can be stored on the heap.
+        static constexpr uint32_t MaxHeapCharacters = 0xfffffffe;
 
         // ----------------------------------------------------------------------------------------
         // Raw String Algorithms
@@ -22,7 +28,7 @@ namespace he
         /// \return True when `s` is null or empty.
         static constexpr bool IsEmpty(const char* s);
 
-        /// Gets the length of a null terminated string using a constexpr algorithm. This will be
+        /// Gets the length of a null terminated string using a constexpr algorithm. This may be
         /// slower than \see Length(const char*) for cases that are not calculated at compile time.
         ///
         /// \param s The string to get the length of.
@@ -137,7 +143,7 @@ namespace he
         /// \param dst The destination buffer to copy into.
         /// \param dstLen The size of the destination buffer.
         /// \param src The string to copy from.
-        /// \return The length of the `src` string.
+        /// \return The number of characters copied into `dst`, excluding the null terminator.
         static uint32_t Copy(char* dst, uint32_t dstLen, const char* src);
 
         /// \copydoc Copy(char*, uint32_t, const char*)
@@ -152,7 +158,7 @@ namespace he
         /// \param dstLen The size of the destination buffer.
         /// \param src The string to copy from.
         /// \param srcLen The maximum number of characters to copy.
-        /// \return The length of the `src` string.
+        /// \return The number of characters copied into `dst`, excluding the null terminator.
         static uint32_t CopyN(char* dst, uint32_t dstLen, const char* src, uint32_t srcLen);
 
         /// \copydoc CopyN(char*, uint32_t, const char*, uint32_t)
@@ -223,7 +229,7 @@ namespace he
         /// Construct an empty string.
         ///
         /// \param allocator The allocator to use for any allocations.
-        String(Allocator& allocator);
+        explicit String(Allocator& allocator);
 
         /// Construct a string by copying from the null terminated string `str`.
         ///
@@ -292,48 +298,53 @@ namespace he
         /// Appends the string object to the end of this string.
         ///
         /// \param str The string to append.
-        String& operator+=(const String& str);
+        String& operator+=(const String& str) { Insert(Size(), str.Data(), str.Size()); return *this; }
 
         /// Appends the null terminated string to the end of this string.
         ///
         /// \param str The string to append.
-        String& operator+=(const char* str);
+        String& operator+=(const char* str) { Insert(Size(), str, Length(str)); return *this; }
+
+        /// Appends the character to the end of this string.
+        ///
+        /// \param c The character to append.
+        String& operator+=(char c) { Insert(Size(), &c, 1); return *this; }
 
         /// Checks if this string is equal to `x`.
         ///
         /// \param x The string to check against.
         /// \return True if the strings are equal, false otherwise.
-        bool operator==(const String& x);
+        bool operator==(const String& x) const { return CompareTo(x) == 0; }
 
         /// Checks if this string is not equal to `x`.
         ///
         /// \param x The string to check against.
         /// \return True if the strings are not equal, false otherwise.
-        bool operator!=(const String& x);
+        bool operator!=(const String& x) const { return CompareTo(x) != 0; }
 
         /// Checks if this string is less than `x`.
         ///
         /// \param x The string to check against.
         /// \return True if this string is less than `x`, false otherwise.
-        bool operator<(const String& x);
+        bool operator<(const String& x) const { return CompareTo(x) < 0; }
 
         /// Checks if this string is less than or equal to `x`.
         ///
         /// \param x The string to check against.
         /// \return True if this string is less than or equal to `x`, false otherwise.
-        bool operator<=(const String& x);
+        bool operator<=(const String& x) const { return CompareTo(x) <= 0; }
 
         /// Checks if this string is greater than `x`.
         ///
         /// \param x The string to check against.
         /// \return True if this string is greater than `x`, false otherwise.
-        bool operator>(const String& x);
+        bool operator>(const String& x) const { return CompareTo(x) > 0; }
 
         /// Checks if this string is greater than or equal to `x`.
         ///
         /// \param x The string to check against.
         /// \return True if this string is greater than or equal to `x`, false otherwise.
-        bool operator>=(const String& x);
+        bool operator>=(const String& x) const { return CompareTo(x) >= 0; }
 
         // ----------------------------------------------------------------------------------------
         // Capacity
@@ -341,7 +352,7 @@ namespace he
         /// Checks if this string is using embedded storage for the string data.
         ///
         /// \return Returns true if no heap allocation is being used.
-        bool IsEmbedded() const;
+        bool IsEmbedded() const { return m_embed[EmbedSize - 1] != HeapFlag; }
 
         /// Checks if this string is empty.
         ///
@@ -354,12 +365,12 @@ namespace he
         /// characters the string can hold before having to reallocate.
         ///
         /// \return Number of total chracters this string can store.
-        uint32_t Capacity() const;
+        uint32_t Capacity() const { return (IsEmbedded() ? EmbedSize : m_heap.capacity) - 1; }
 
         /// The length of the string that is currently stored.
         ///
         /// \return Number of characters in the string, not including the null terminator.
-        uint32_t Size() const;
+        uint32_t Size() const { return IsEmbedded() ? GetSizeEmbed() : m_heap.size; }
 
         /// Reserves capacity for `len` characters. \see Capacity() is garuanteed to return
         /// at least `len` after this operation.
@@ -391,10 +402,15 @@ namespace he
         /// Gets a pointer to the string's character buffer.
         ///
         /// \return A pointer to the character buffer.
-        char* Data();
+        char* Data() { return IsEmbedded() ? m_embed : m_heap.data; }
 
         /// \copydoc Data()
         const char* Data() const { return const_cast<const char*>(const_cast<String*>(this)->Data()); }
+
+        /// Returns a reference to the allocator object used by the string.
+        ///
+        /// \return The allocator object this string uses.
+        Allocator& GetAllocator() const { return m_allocator; }
 
         // ----------------------------------------------------------------------------------------
         // Comparison
@@ -406,19 +422,7 @@ namespace he
         ///     If the values are equal, zero is returned.
         ///     If this string is less than `x`, a negative value is returned.
         ///     If this string is greater than `x`, a positive value is returned.
-        int32_t CompareTo(const String& x);
-
-        /// Compares this string to another and returns true if they are equal.
-        ///
-        /// \param x The string to compare against.
-        /// \return True if the strings are equal, false otherwise.
-        bool EqualTo(const String& x);
-
-        /// Compares this string to another and returns true if this string is less than `x`.
-        ///
-        /// \param x The string to compare against.
-        /// \return True if this string is less than `x`, false otherwise.
-        bool LessThan(const String& x);
+        int32_t CompareTo(const String& x) const;
 
         // ----------------------------------------------------------------------------------------
         // Iterators
@@ -426,7 +430,7 @@ namespace he
         /// Gets a pointer to the first character in the string.
         ///
         /// \return A pointer to the first character.
-        char* Begin();
+        char* Begin() { return Data(); }
 
         /// \copydoc Begin()
         const char* Begin() const { return const_cast<const char*>(const_cast<String*>(this)->Begin()); }
@@ -435,7 +439,7 @@ namespace he
         /// This always points to the null terminator.
         ///
         /// \return A pointer to one past the last character.
-        char* End();
+        char* End() { return Data() + Size(); }
 
         /// \copydoc End()
         const char* End() const { return const_cast<const char*>(const_cast<String*>(this)->End()); }
@@ -456,21 +460,21 @@ namespace he
         // Mutators
 
         /// Sets the size of the string to zero. Does not affect memory allocation.
-        void Clear();
+        void Clear() { SetSize(0); }
 
         /// Inserts the character into the string at index.
         /// Asserts if `index` is out of range.
         ///
         /// \param index The index in the string to insert at.
         /// \param c The character to insert.
-        void Insert(uint32_t index, char c);
+        void Insert(uint32_t index, char c) { Insert(index, &c, 1); }
 
         /// Inserts the null terminated string into the string at index.
         /// Asserts if `index` is out of range.
         ///
         /// \param index The index in the string to insert at.
         /// \param str The string to insert.
-        void Insert(uint32_t index, const char* str);
+        void Insert(uint32_t index, const char* str) { Insert(index, str, Length(str)); }
 
         /// Inserts `len` characters of a string into the string at index.
         /// Asserts if `index` is out of range.
@@ -490,33 +494,38 @@ namespace he
         /// Appends the character `c` to the end of the string.
         ///
         /// \param c The character to append to the string.
-        void PushBack(char c);
+        void PushBack(char c) { Insert(Size(), &c, 1); }
 
         /// Removes the last character from the end of the string.
-        void PopBack();
+        char PopBack();
 
-        /// Appends the string object to the end of this string.
+        /// Appends the character to the end of this string.
         ///
-        /// \param str The string to append.
-        void Append(const String& str);
+        /// \param c The character to append.
+        void Append(char c) { Insert(Size(), &c, 1); }
 
         /// Appends the null terminated string to the end of this string.
         ///
         /// \param str The string to append.
-        void Append(const char* str);
+        void Append(const char* str) { Insert(Size(), str, Length(str)); }
 
         /// Appends `len` characters of the string to the end of this string.
         ///
         /// \param str The string to append.
         /// \param len The number of characters to copy into the string.
-        void Append(const char* str, uint32_t len);
+        void Append(const char* str, uint32_t len) { Insert(Size(), str, len); }
+
+        /// Appends the string object to the end of this string.
+        ///
+        /// \param str The string to append.
+        void Append(const String& str) { Insert(Size(), str.Data(), str.Size()); }
 
     private:
         // Grows the internal capacity to make space for `n` elements.
         void GrowBy(uint32_t n);
 
         // Calculate geometric growth that will be necessary to include `n` additional elements.
-        uint32_t CalculateGrowth(uint32_t n);
+        uint32_t CalculateGrowth(uint32_t n) const;
 
         // Sets the size of the string object, and writes the null terminator.
         void SetSize(uint32_t size);
@@ -527,6 +536,9 @@ namespace he
         // Sets the size of the heap allocated string, and writes the null terminator.
         void SetSizeHeap(uint32_t size);
 
+        // Gets the size of the embedded string.
+        uint32_t GetSizeEmbed() const { return (EmbedSize - 1) - (static_cast<uint32_t>(m_embed[EmbedSize - 1])); }
+
         // Copy the given string.
         void CopyFrom(const String& x);
 
@@ -534,8 +546,10 @@ namespace he
         void MoveFrom(String&& x);
 
     private:
+        friend class StringTestAttorney;
+
         static constexpr char HeapFlag = char(-1);
-        static constexpr uint32_t EmbedSize = 64;
+        static constexpr uint32_t EmbedSize = MaxEmbedCharacters + 1; // +1 for remaining count & heap flag
 
         // Structure for tracking the string when it lives on the heap.
         struct Heap

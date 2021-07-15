@@ -21,12 +21,12 @@ template <typename T, unsigned int N> char (&_heLengthOf(const T (&)[N]))[N];
 #define HE_STRINGIFY_(x) #x
 #define HE_STRINGIFY(x) HE_STRINGIFY_(x)
 
-/// \def HE_CONCAT
-/// Concatenate two different tokens together.
+/// \def HE_PP_JOIN
+/// Join two different preprocessor tokens together.
 ///
 /// This handles the preprocessor indirection necessary to evaluate macro parameters.
-#define HE_CONCAT_(a, b) a ## b
-#define HE_CONCAT(a, b) HE_CONCAT_(a, b)
+#define HE_PP_JOIN_(a, b) a ## b
+#define HE_PP_JOIN(a, b) HE_PP_JOIN_(a, b)
 
 /// Indirection so the preprocessor expands the argument
 #define HE_PP_EXPAND(x) x

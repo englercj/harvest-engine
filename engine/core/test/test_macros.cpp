@@ -37,9 +37,9 @@ HE_TEST(core, macros, STRINGIFY)
 }
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST(core, macros, CONCAT)
+HE_TEST(core, macros, PP_JOIN)
 {
-    int HE_CONCAT(foo, bar) = 0;
+    int HE_PP_JOIN(foo, bar) = 0;
     HE_EXPECT_EQ(foobar, 0);
 }
 

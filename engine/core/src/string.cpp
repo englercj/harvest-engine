@@ -49,28 +49,34 @@ namespace he
 
     uint32_t String::Copy(char* dst, uint32_t dstLen, const char* src)
     {
-        uint32_t srcLen = Length(src);
-        if (dstLen > 0)
-        {
-            --dstLen;
-            uint32_t len = srcLen < dstLen ? srcLen : dstLen;
-            MemCopy(dst, src, len);
-            dst[len] = '\0';
-        }
-        return srcLen;
+        if (dstLen == 0)
+            return 0;
+
+        --dstLen;
+
+        const uint32_t srcLen = Length(src);
+        const uint32_t len = srcLen < dstLen ? srcLen : dstLen;
+
+        MemCopy(dst, src, len);
+        dst[len] = '\0';
+
+        return len;
     }
 
     uint32_t String::CopyN(char* dst, uint32_t dstLen, const char* src, uint32_t srcLen)
     {
+        if (dstLen == 0)
+            return 0;
+
+        --dstLen;
+
         srcLen = LengthN(src, srcLen);
-        if (dstLen > 0)
-        {
-            --dstLen;
-            uint32_t len = srcLen < dstLen ? srcLen : dstLen;
-            MemCopy(dst, src, len);
-            dst[len] = '\0';
-        }
-        return srcLen;
+        const uint32_t len = srcLen < dstLen ? srcLen : dstLen;
+
+        MemCopy(dst, src, len);
+        dst[len] = '\0';
+
+        return len;
     }
 
     uint32_t String::Cat(char* dst, uint32_t dstLen, const char* src)
@@ -87,22 +93,22 @@ namespace he
         return n + CopyN(dst + n, dstLen, src, srcLen);
     }
 
-    const char* Find(const char* str, char search)
+    const char* String::Find(const char* str, char search)
     {
         return strchr(str, search);
     }
 
-    char* Find(char* str, char search)
+    char* String::Find(char* str, char search)
     {
         return strchr(str, search);
     }
 
-    const char* Find(const char* str, const char* search)
+    const char* String::Find(const char* str, const char* search)
     {
         return strstr(str, search);
     }
 
-    char* Find(char* str, const char* search)
+    char* String::Find(char* str, const char* search)
     {
         return strstr(str, search);
     }
@@ -175,69 +181,6 @@ namespace he
         return Data()[index];
     }
 
-    String& String::operator+=(const String& str)
-    {
-        Insert(Size(), str.Data(), str.Size());
-        return *this;
-    }
-
-    String& String::operator+=(const char* str)
-    {
-        Insert(Size(), str, Length(str));
-        return *this;
-    }
-
-    bool String::operator==(const String& x)
-    {
-        return CompareTo(x) == 0;
-    }
-
-    bool String::operator!=(const String& x)
-    {
-        return CompareTo(x) != 0;
-    }
-
-    bool String::operator<(const String& x)
-    {
-        return CompareTo(x) < 0;
-    }
-
-    bool String::operator<=(const String& x)
-    {
-        return CompareTo(x) <= 0;
-    }
-
-    bool String::operator>(const String& x)
-    {
-        return CompareTo(x) > 0;
-    }
-
-    bool String::operator>=(const String& x)
-    {
-        return CompareTo(x) >= 0;
-    }
-
-    bool String::IsEmbedded() const
-    {
-        return m_embed[EmbedSize - 1] == HeapFlag;
-    }
-
-    uint32_t String::Capacity() const
-    {
-        return (IsEmbedded() ? EmbedSize : m_heap.capacity) - 1;
-    }
-
-    uint32_t String::Size() const
-    {
-        if (IsEmbedded())
-        {
-            const uint32_t avail = static_cast<uint32_t>(m_embed[EmbedSize - 1]);
-            return (EmbedSize - 1) - avail;
-        }
-
-        return m_heap.size;
-    }
-
     void String::Reserve(uint32_t len)
     {
         // Handle our embedded data moving to the heap
@@ -254,6 +197,7 @@ namespace he
 
             m_heap.data = static_cast<char*>(mem);
             m_heap.capacity = len + 1;
+            SetSizeHeap(size);
             return;
         }
 
@@ -308,58 +252,22 @@ namespace he
         SetSizeHeap(size);
     }
 
-    char* String::Data()
+    int32_t String::CompareTo(const String& x) const
     {
-        if (IsEmbedded())
-            return m_embed;
+        const uint32_t s0 = Size();
+        const uint32_t s1 = x.Size();
+        const int32_t result = MemCmp(Data(), x.Data(), Min(s0, s1));
 
-        return m_heap.data;
-    }
+        if (result != 0)
+            return result;
 
-    int32_t String::CompareTo(const String& x)
-    {
-        const uint32_t size = Min(Size(), x.Size());
-        const int32_t cmp = MemCmp(Data(), x.Data(), size);
+        if (s0 < s1)
+            return -1;
 
-        if (cmp == 0)
-            return Size() - x.Size();
+        if (s0 > s1)
+            return 1;
 
-        return cmp;
-    }
-
-    bool String::EqualTo(const String& x)
-    {
-        return CompareTo(x) == 0;
-    }
-
-    bool String::LessThan(const String& x)
-    {
-        return CompareTo(x) < 0;
-    }
-
-    char* String::Begin()
-    {
-        return Data();
-    }
-
-    char* String::End()
-    {
-        return Data() + Size();
-    }
-
-    void String::Clear()
-    {
-        SetSize(0);
-    }
-
-    void String::Insert(uint32_t index, char c)
-    {
-        Insert(index, &c, 1);
-    }
-
-    void String::Insert(uint32_t index, const char* str)
-    {
-        Insert(index, str, Length(str));
+        return 0;
     }
 
     void String::Insert(uint32_t index, const char* str, uint32_t len)
@@ -369,11 +277,11 @@ namespace he
         if (len == 0)
             return;
 
-        const uint32_t size = Size();
+        uint32_t size = Size();
 
         HE_ASSERT(index <= size);
 
-        Reserve(size + len);
+        GrowBy(len);
 
         char* data = Data();
 
@@ -404,52 +312,34 @@ namespace he
         SetSize(size - count);
     }
 
-    void String::PushBack(char c)
-    {
-        Insert(Size(), &c, 1);
-    }
-
-    void String::PopBack()
+    char String::PopBack()
     {
         const uint32_t size = Size();
 
-        if (size > 0)
-        {
-            SetSize(size - 1);
-        }
-    }
+        HE_ASSERT(size > 0);
 
-    void String::Append(const String& str)
-    {
-        Insert(Size(), str.Data(), str.Size());
-    }
+        const char back = Data()[size - 1];
+        SetSize(size - 1);
 
-    void String::Append(const char* str)
-    {
-        Insert(Size(), str, Length(str));
-    }
-
-    void String::Append(const char* str, uint32_t len)
-    {
-        Insert(Size(), str, len);
+        return back;
     }
 
     void String::GrowBy(uint32_t n)
     {
-        if (n <= Capacity())
+        if ((n + Size()) <= Capacity())
             return;
 
         Reserve(CalculateGrowth(n));
     }
 
-    uint32_t String::CalculateGrowth(uint32_t n)
+    uint32_t String::CalculateGrowth(uint32_t n) const
     {
         const uint32_t size = Size();
         const uint32_t capacity = Capacity();
 
         // If our growth would overflow just assume max elements
-        if (capacity >= (MaxCharacters - (capacity / 2)))
-            return MaxCharacters;
+        if (capacity >= (MaxHeapCharacters - (capacity / 2)))
+            return MaxHeapCharacters;
 
         const uint32_t newCapacity = capacity + (capacity / 2);
 
@@ -513,5 +403,7 @@ namespace he
         m_heap.size = Exchange(x.m_heap.size, 0);
         m_heap.capacity = Exchange(x.m_heap.capacity, 0);
         SetSizeHeap(m_heap.size);
+
+        x.SetSizeEmbed(0);
     }
 }

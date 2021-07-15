@@ -1,8 +1,11 @@
+// Copyright Chad Engler
+
 #pragma once
 
 #include "he/core/compiler.h"
 #include "he/core/config.h"
 #include "he/core/cpu.h"
+#include "he/core/macros.h"
 #include "he/core/platform.h"
 #include "he/core/utils.h"
 
@@ -44,7 +47,15 @@
     #endif
 
     #define HE_FILE __FILE__
-    #define HE_LINE __LINE__
+
+    #if HE_COMPILER_MSVC
+        // MSVC has a "feature" that treats __LINE__ like a variable for Edit-and-continue
+        // since we definitely want a literal value we append 'U' to it to force it to be a
+        // numeric literal.
+        #define HE_LINE HE_PP_JOIN(__LINE__, U)
+    #else
+        #define HE_LINE __LINE__
+    #endif
 #else
     #define HE_DEBUG_BREAK()
     #define HE_FILE ""
@@ -67,7 +78,7 @@ namespace he
     void OutputToDebugger(const char* fmt, Args&&... args)
     {
         fmt::memory_buffer buf;
-        fmt::format_to(buf, fmt, Forward<Args>(args)...);
+        fmt::format_to(fmt::appender(buf), fmt, Forward<Args>(args)...);
         buf.push_back('\0');
         return OutputToDebugger(buf.data());
     }

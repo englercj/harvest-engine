@@ -3,11 +3,11 @@
 #pragma once
 
 #include "he/core/span.h"
+#include "he/core/string.h"
+#include "he/core/type_traits.h"
 
 namespace he
 {
-    class String;
-
     /// A string view wraps access to a constant contiguous range of characters.
     /// StringView is much like a Span<>, but with string-specific semantics.
     class StringView final
@@ -19,15 +19,12 @@ namespace he
         /// Construct an empty string view.
         constexpr StringView() = default;
 
-        /// Construct a string view from a string object.
-        ///
-        /// \param str The string to refer to.
-        StringView(const String& str);
-
         /// Construct a string view from a null terminated string.
         ///
         /// \param str The string to refer to.
-        StringView(const char* str);
+        constexpr StringView(const char* str)
+            : m_span(str, String::LengthConst(str))
+        {}
 
         /// Construct a string view from the range `[begin, end)`.
         ///
@@ -43,6 +40,14 @@ namespace he
         /// \param len The number of characters to refer to.
         constexpr StringView(const char* str, uint32_t len)
             : m_span(str, len)
+        {}
+
+        /// Construct a string view from a string range provider, such as he::String or std::string.
+        ///
+        /// \param str The string to refer to.
+        template <typename T, HE_REQUIRES(!IsSame<RemoveCV<T>, StringView> && (ProvidesStdContiguousRange<T, const char> || ProvidesContiguousRange<T, const char>))>
+        constexpr StringView(const T& str)
+            : m_span(str)
         {}
 
         /// Construct a span from another span object.
@@ -66,37 +71,37 @@ namespace he
         ///
         /// \param x The string to check against.
         /// \return True if the strings are equal, false otherwise.
-        bool operator==(const String& x);
+        constexpr bool operator==(const StringView& x) const { return Size() == x.Size() && CompareKnownLength(Data(), x.Data(), Size()) == 0; }
 
         /// Checks if this string is not equal to `x`.
         ///
         /// \param x The string to check against.
         /// \return True if the strings are not equal, false otherwise.
-        bool operator!=(const String& x);
+        constexpr bool operator!=(const StringView& x) const { return !this->operator==(x); }
 
         /// Checks if this string is less than `x`.
         ///
         /// \param x The string to check against.
         /// \return True if this string is less than `x`, false otherwise.
-        bool operator<(const String& x);
+        constexpr bool operator<(const StringView& x) const { return CompareTo(x) < 0; }
 
         /// Checks if this string is less than or equal to `x`.
         ///
         /// \param x The string to check against.
         /// \return True if this string is less than or equal to `x`, false otherwise.
-        bool operator<=(const String& x);
+        constexpr bool operator<=(const StringView& x) const { return CompareTo(x) <= 0; }
 
         /// Checks if this string is greater than `x`.
         ///
         /// \param x The string to check against.
         /// \return True if this string is greater than `x`, false otherwise.
-        bool operator>(const String& x);
+        constexpr bool operator>(const StringView& x) const { return CompareTo(x) > 0; }
 
         /// Checks if this string is greater than or equal to `x`.
         ///
         /// \param x The string to check against.
         /// \return True if this string is greater than or equal to `x`, false otherwise.
-        bool operator>=(const String& x);
+        constexpr bool operator>=(const StringView& x) const { return CompareTo(x) >= 0; }
 
         // ----------------------------------------------------------------------------------------
         // Capacity
@@ -139,19 +144,23 @@ namespace he
         ///     If the values are equal, zero is returned.
         ///     If this string is less than `x`, a negative value is returned.
         ///     If this string is greater than `x`, a positive value is returned.
-        int32_t CompareTo(const StringView& x);
+        constexpr int32_t CompareTo(const StringView& x) const
+        {
+            const uint32_t s0 = Size();
+            const uint32_t s1 = x.Size();
+            const int32_t result = CompareKnownLength(Data(), x.Data(), Min(s0, s1));
 
-        /// Compares this string view to another and returns true if they are equal.
-        ///
-        /// \param x The string to compare against.
-        /// \return True if the strings are equal, false otherwise.
-        bool EqualTo(const StringView& x);
+            if (result != 0)
+                return result;
 
-        /// Compares this string view to another and returns true if this string is less than `x`.
-        ///
-        /// \param x The string to compare against.
-        /// \return True if this string is less than `x`, false otherwise.
-        bool LessThan(const StringView& x);
+            if (s0 < s1)
+                return -1;
+
+            if (s0 > s1)
+                return 1;
+
+            return 0;
+        }
 
         // ----------------------------------------------------------------------------------------
         // Iterators
@@ -173,6 +182,21 @@ namespace he
         constexpr const char* end() const { return m_span.end(); }
 
     private:
+        /// Compares two strings of known length.
+        constexpr int32_t CompareKnownLength(const char* a, const char* b, uint32_t len) const
+        {
+            for (; len > 0; --len, ++a, ++b)
+            {
+                if (*a != *b)
+                    return *a < *b ? -1 : 1;
+            }
+
+            return 0;
+        }
+
+    private:
+        friend class StringViewTestAttorney;
+
         Span<const char> m_span;
     };
 }

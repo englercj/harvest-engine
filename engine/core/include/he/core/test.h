@@ -3,6 +3,7 @@
 #pragma once
 
 #include "he/core/debug.h"
+#include "he/core/enum_fmt.h"
 #include "he/core/error.h"
 #include "he/core/macros.h"
 #include "he/core/memory_ops.h"
@@ -20,15 +21,14 @@
         HE_DISABLE_MSVC_WARNING(4127) \
         if (!(expr)) { \
             if constexpr (HE_PP_COUNT_ARGS(__VA_ARGS__) > 0) { \
-                fmt::memory_buffer buf; \
+                fmt::memory_buffer _testParamFormatBuffer; \
                 HE_PP_FOREACH(HE_EXPECT_PARAM_FORMATTER_, (__VA_ARGS__)) \
-                buf.push_back('\0'); \
-                HandleTestFailure(__FILE__, __LINE__, #expr, buf.data()); \
+                _testParamFormatBuffer.push_back('\0'); \
+                he::internal::HandleTestFailure(__FILE__, __LINE__, #expr, _testParamFormatBuffer.data()); \
             } else { \
-                HandleTestFailure(__FILE__, __LINE__, #expr, ""); \
+                he::internal::HandleTestFailure(__FILE__, __LINE__, #expr, ""); \
             } \
             HE_DEBUG_BREAK(); \
-            return; \
         } \
         HE_POP_WARNINGS() \
     } while(0)
@@ -89,6 +89,12 @@
 /// Check the expectation that the memory `a` is not equal to the memory `b`.
 #define HE_EXPECT_NE_MEM(a, b, len) HE_EXPECT(!MemEqual((a), (b), len))
 
+/// Check the expectation that the pointer `a` points to the same memory as `b`.
+#define HE_EXPECT_EQ_PTR(a, b) HE_EXPECT((a) == (b), fmt::ptr(a), fmt::ptr(b))
+
+/// Check the expectation that the pointer `a` does not point to the same memory as `b`.
+#define HE_EXPECT_NE_PTR(a, b) HE_EXPECT((a) != (b), fmt::ptr(a), fmt::ptr(b))
+
 /// Defines a test case for `module` in `suite` called `name`.
 #define HE_TEST(module, suite, name) HE_TEST_(module, suite, name, he::TestFixture)
 
@@ -101,11 +107,11 @@ namespace he
     /// General information about a test case.
     struct TestInfo
     {
-        const char* mname;  /// name of the module this test belongs to.
-        const char* suite;  /// Name of the suite this test is in.
-        const char* name;   /// Name of the test case.
-        const char* file;   /// File the test case is defined in.
-        uint32_t line;      /// Line the test case is defined on.
+        const char* moduleName; /// name of the module this test belongs to.
+        const char* suiteName;  /// Name of the suite this test is in.
+        const char* testName;   /// Name of the test case.
+        const char* file;       /// File the test case is defined in.
+        uint32_t line;          /// Line the test case is defined on.
     };
 
     /// Base fixture class that drives a test case. You can create custom fixtures by
@@ -133,11 +139,6 @@ namespace he
         /// This is used internally to run the test.
         void Run();
 
-        /// Handler for a failed test.
-        ///
-        /// This is used internally and is not meant to be called directly.
-        void HandleTestFailure(const char* file, uint32_t line, const char* expr, const char* params);
-
         /// Returns the metadata about this test case.
         ///
         /// There is no need to implement this function manually because the
@@ -150,11 +151,6 @@ namespace he
         /// This is used inernally to run the test.
         virtual void TestBody() = 0;
 
-        /// Next entry in the test list.
-        ///
-        /// This is used internally. Do not modify.
-        TestFixture* const m_next{ nullptr };
-
     private:
         static const TestInfo EmptyTestInfo;
     };
@@ -163,6 +159,14 @@ namespace he
     ///
     /// \return Zero if all tests pass, or a non-zero value if there was a failure.
     int32_t RunAllTests();
+
+namespace internal
+{
+    /// Handler for a failed test.
+    ///
+    /// This is used internally and is not meant to be called directly.
+    void HandleTestFailure(const char* file, uint32_t line, const char* expr, const char* params);
+}
 }
 
 // Internal macro that generates the code for a test case.
@@ -178,7 +182,7 @@ namespace he
         const he::TestInfo& GetTestInfo() const override { return TestInfo; } \
         void TestBody() override; \
     }; \
-    const he::TestInfo HE_TEST_CLASS_NAME_(module, suite, name)::TestInfo{ #module, #suite, #name, __FILE__, __LINE__ }; \
+    const he::TestInfo HE_TEST_CLASS_NAME_(module, suite, name)::TestInfo{ HE_STRINGIFY(module), HE_STRINGIFY(suite), HE_STRINGIFY(name), __FILE__, __LINE__ }; \
     static HE_TEST_CLASS_NAME_(module, suite, name) HE_TEST_VARIABLE_NAME_(module, suite, name){}; \
     void HE_TEST_CLASS_NAME_(module, suite, name)::TestBody()
 
@@ -199,4 +203,4 @@ namespace he
     Class& operator=(Class&&) = delete
 
 // Internal macro used in the format loop for HE_EXPECT params
-#define HE_EXPECT_PARAM_FORMATTER_(x) fmt::format_to(buf, #x " = {}\n", (x));
+#define HE_EXPECT_PARAM_FORMATTER_(x) fmt::format_to(fmt::appender(_testParamFormatBuffer), #x " = {}\n", (x));

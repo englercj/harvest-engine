@@ -58,8 +58,10 @@ namespace he
         template <typename R, HE_REQUIRES(!IsSpecialization<RemoveCV<R>, Span> && ProvidesStdContiguousRange<R, T>)>
         constexpr Span(R& rangeProvider)
             : m_ptr(rangeProvider.data())
-            , m_size(rangeProvider.size())
-        {}
+            , m_size(static_cast<uint32_t>(rangeProvider.size()))
+        {
+            HE_ASSERT(rangeProvider.size() <= 0xffffffff);
+        }
 
         /// Construct a span from an object that provides a STL-style contiguous range. That is,
         /// it has `.Data()` and `.Size()` members.
@@ -143,6 +145,8 @@ namespace he
     private:
         template <typename U>
         friend class Span;
+
+        friend class SpanTestAttorney;
 
         T* m_ptr = nullptr;
         uint32_t m_size = 0;

@@ -11,7 +11,7 @@ namespace he
     {
         // As of C++17 MSVC also has __builtin_strlen, but in my tests this loop performed the
         // same in Release and much better in Debug. The opposite was true for clang/gcc where
-        // __builtin_strlen was far faster than the loop.
+        // __builtin_strlen was far faster than the loop in all cases.
     #if HE_COMPILER_MSVC
         const char* p = s;
         while (*p != '\0')

@@ -5,6 +5,7 @@
 #include "he/core/allocator.h"
 #include "he/core/assert.h"
 #include "he/core/macros.h"
+#include "he/core/memory_ops.h"
 #include "he/core/types.h"
 #include "he/core/utils.h"
 
@@ -14,9 +15,12 @@ namespace he
 {
     /// A dynamically sized array of contiguous elements.
     template <typename T>
-    class Vector
+    class Vector final
     {
     public:
+        /// The type of elements in the vector.
+        using ElementType = T;
+
         /// The minimum number of elements to allocate when the vector resizes.
         static constexpr uint32_t MinElements = 8;
 
@@ -29,7 +33,7 @@ namespace he
         /// Construct an empty vector.
         ///
         /// \param allocator The allocator to use for any allocations.
-        Vector(Allocator& allocator);
+        explicit Vector(Allocator& allocator);
 
         /// Construct a vector by copying `x`, and using `allocator` for this vector's allocations.
         ///
@@ -142,6 +146,11 @@ namespace he
         /// \copydoc Data()
         const T* Data() const { return const_cast<const T*>(const_cast<Vector*>(this)->Data()); }
 
+        /// Returns a reference to the allocator object used by the string.
+        ///
+        /// \return The allocator object this string uses.
+        Allocator& GetAllocator() const { return m_allocator; }
+
         // ----------------------------------------------------------------------------------------
         // Iterators
 
@@ -162,16 +171,16 @@ namespace he
         const T* End() const { return const_cast<const T*>(const_cast<Vector*>(this)->End()); }
 
         /// \copydoc Begin()
-        char* begin() { return Begin(); }
+        T* begin() { return Begin(); }
 
         /// \copydoc Begin()
-        const char* begin() const { return Begin(); }
+        const T* begin() const { return Begin(); }
 
         /// \copydoc End()
-        char* end() { return End(); }
+        T* end() { return End(); }
 
         /// \copydoc End()
-        const char* end() const { return End(); }
+        const T* end() const { return End(); }
 
         // ----------------------------------------------------------------------------------------
         // Mutators

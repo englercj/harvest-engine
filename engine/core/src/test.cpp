@@ -2,16 +2,25 @@
 
 #include "he/core/test.h"
 
+#include "he/core/string.h"
+
+#include <algorithm>
 #include <atomic>
 #include <cstdio>
 #include <cstdarg>
+#include <vector>
 
 namespace he
 {
     const TestInfo TestFixture::EmptyTestInfo{};
 
-    static TestFixture* s_root{ nullptr };
-    static std::atomic<int32_t> s_testFailures{ 0 };
+    struct _TestRunner
+    {
+        static _TestRunner& Get() { static _TestRunner s_runner; return s_runner; }
+
+        std::vector<TestFixture*> tests{};
+        std::atomic<int32_t> failureCount{ 0 };
+    };
 
     static void Print(const char* msg)
     {
@@ -21,9 +30,8 @@ namespace he
     }
 
     TestFixture::TestFixture()
-        : m_next(s_root)
     {
-        s_root = this;
+        _TestRunner::Get().tests.push_back(this);
     }
 
     void TestFixture::Run()
@@ -31,16 +39,64 @@ namespace he
         TestBody();
     }
 
-    void TestFixture::HandleTestFailure(const char* file, uint32_t line, const char* expr, const char* params)
+    void SortTests()
     {
-        ++s_testFailures;
+        _TestRunner& runner = _TestRunner::Get();
+
+        std::sort(runner.tests.begin(), runner.tests.end(), [](const TestFixture* a, const TestFixture* b)
+        {
+            const TestInfo& infoA = a->GetTestInfo();
+            const TestInfo& infoB = b->GetTestInfo();
+
+            const int32_t moduleNameCmp = String::CompareI(infoA.moduleName, infoB.moduleName);
+            if (moduleNameCmp != 0)
+                return moduleNameCmp < 0;
+
+            const int32_t suiteNameCmp = String::CompareI(infoA.suiteName, infoB.suiteName);
+            if (suiteNameCmp != 0)
+                return suiteNameCmp < 0;
+
+            const int32_t testNameCmp = String::CompareI(infoA.testName, infoB.testName);
+            if (testNameCmp != 0)
+                return testNameCmp < 0;
+
+            return false;
+        });
+    }
+
+    int32_t RunAllTests()
+    {
+        SortTests();
+
+        _TestRunner& runner = _TestRunner::Get();
+        runner.failureCount = 0;
+
+        for (TestFixture* fixture : runner.tests)
+        {
+            {
+                const TestInfo& info = fixture->GetTestInfo();
+                fmt::memory_buffer buf;
+                fmt::format_to(fmt::appender(buf), "{}:{}:{}\n", info.moduleName, info.suiteName, info.testName);
+                buf.push_back('\0');
+                Print(buf.data());
+            }
+
+            fixture->Run();
+        }
+
+        return runner.failureCount;
+    }
+
+    void internal::HandleTestFailure(const char* file, uint32_t line, const char* expr, const char* params)
+    {
+        ++_TestRunner::Get().failureCount;
 
         fmt::memory_buffer buf;
-        fmt::format_to(buf, "{}({}): Expectation failed: {}\n", file, line, expr);
+        fmt::format_to(fmt::appender(buf), "{}({}): Expectation failed: {}\n", file, line, expr);
 
         if (!String::IsEmpty(params))
         {
-            fmt::format_to(buf, "{}", params);
+            fmt::format_to(fmt::appender(buf), "{}", params);
         }
 
         buf.push_back('\0');
@@ -48,27 +104,5 @@ namespace he
 
         // TODO:
         // he::HandleError(he::ErrorType::Expect, file, line, "", expr, buf.data());
-    }
-
-    int32_t RunAllTests()
-    {
-        s_testFailures = 0;
-
-        TestFixture* fixture = s_root;
-        while (fixture)
-        {
-            {
-                const TestInfo& info = fixture->GetTestInfo();
-                fmt::memory_buffer buf;
-                fmt::format_to(buf, "{}:{}:{}\n", info.mname, info.suite, info.name);
-                buf.push_back('\0');
-                Print(buf.data());
-            }
-
-            fixture->Run();
-            fixture = fixture->m_next;
-        }
-
-        return s_testFailures;
     }
 }

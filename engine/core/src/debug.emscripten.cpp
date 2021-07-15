@@ -1,3 +1,5 @@
+// Copyright Chad Engler
+
 #include "he/core/debug.h"
 
 #include "he/core/platform.h"

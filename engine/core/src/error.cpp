@@ -1,3 +1,5 @@
+// Copyright Chad Engler
+
 #include "he/core/error.h"
 
 #include "he/core/debug.h"
@@ -5,9 +7,11 @@
 
 #include "fmt/format.h"
 
+#include <cstdlib>
+
 namespace he
 {
-    static ErrorHandlerFunc g_errorHandler = nullptr;
+    static ErrorHandlerFunc s_errorHandler = nullptr;
 
     const char* AsString(ErrorType x)
     {
@@ -29,24 +33,37 @@ namespace he
         {
             HE_KV(type, type),
             HE_KV(expr, expression),
-            HE_MSG(msg),
+            HE_MSG(msg ? msg : ""),
         };
         he::Log(source, kvs, HE_LENGTH_OF(kvs));
 
         // TODO: Platform-specific handlers (popup for win32)
+        switch (type)
+        {
+            case ErrorType::Assert:
+            case ErrorType::Except: //exit(-1); break;
+            case ErrorType::Verify:
+            case ErrorType::Expect: break;
+        }
+
 
         return true;
     }
 
     void SetErrorHandler(ErrorHandlerFunc handler)
     {
-        g_errorHandler = handler;
+        s_errorHandler = handler;
+    }
+
+    ErrorHandlerFunc GetErrorHandler()
+    {
+        return s_errorHandler ? s_errorHandler : DefaultErrorHandler;
     }
 
     bool HandleError(ErrorType type, const char* file, const uint32_t line, const char* funcName, const char* expression, const char* msg)
     {
-        if (g_errorHandler)
-            return g_errorHandler(type, file, line, funcName, expression, msg);
+        if (s_errorHandler)
+            return s_errorHandler(type, file, line, funcName, expression, msg);
 
         return DefaultErrorHandler(type, file, line, funcName, expression, msg);
     }

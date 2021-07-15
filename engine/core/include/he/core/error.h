@@ -22,8 +22,9 @@ namespace he
     const char* AsString(ErrorType x);
 
     /// A pointer to a function that is to handle application errors.
+    ///
     /// \return True if the application should break in debugger, or false otherwise.
-    using ErrorHandlerFunc = bool(*)(ErrorType type, const char* file, const int line, const char* funcName, const char* expression, const char* msg);
+    using ErrorHandlerFunc = bool(*)(ErrorType type, const char* file, const uint32_t line, const char* funcName, const char* expression, const char* msg);
 
     /// Default handler for application errors. This function is used unless SetErrorHandler is
     /// called with a different function. The default handling is platform-specific.
@@ -31,6 +32,9 @@ namespace he
 
     /// Stores the handler to be called when an application error occurs.
     void SetErrorHandler(ErrorHandlerFunc handler);
+
+    /// Gets the current handler to be called when an application error occurs.
+    ErrorHandlerFunc GetErrorHandler();
 
     /// Called to handle an application error. Not meant to be called directly.
     bool HandleError(ErrorType type, const char* file, const uint32_t line, const char* funcName, const char* expression, const char* msg);
@@ -50,7 +54,7 @@ namespace he
             if (fmt)
             {
                 fmt::memory_buffer buf;
-                fmt::format_to(buf, fmt, Forward<Args>(args)...);
+                fmt::format_to(fmt::appender(buf), fmt, Forward<Args>(args)...);
                 buf.push_back('\0');
                 return HandleError(type, file, line, funcName, expression, buf.data());
             }

@@ -3,12 +3,12 @@
 #include "he/core/test.h"
 
 #include "he/core/string.h"
+#include "he/core/vector.h"
 
 #include <algorithm>
 #include <atomic>
 #include <cstdio>
 #include <cstdarg>
-#include <vector>
 
 namespace he
 {
@@ -16,9 +16,13 @@ namespace he
 
     struct _TestRunner
     {
-        static _TestRunner& Get() { static _TestRunner s_runner; return s_runner; }
+        static _TestRunner& Get()
+        {
+            static _TestRunner s_runner{};
+            return s_runner;
+        }
 
-        std::vector<TestFixture*> tests{};
+        Vector<TestFixture*> tests{ CrtAllocator::Get() };
         std::atomic<int32_t> failureCount{ 0 };
     };
 
@@ -31,7 +35,7 @@ namespace he
 
     TestFixture::TestFixture()
     {
-        _TestRunner::Get().tests.push_back(this);
+        _TestRunner::Get().tests.PushBack(this);
     }
 
     void TestFixture::Run()

@@ -9,9 +9,15 @@ namespace he
         MemZero(p, n * sizeof(T));
     }
 
-    // Performs default initialization of trivially constructible elements.
-    template <typename T, HE_REQUIRES(IsTriviallyConstructible<T>)>
-    void _VectorConstruct(T*, uint32_t, DefaultInitTag) {}
+    // Performs value initialization of trivially constructible elements.
+    template <typename T, typename... Args, HE_REQUIRES(IsTriviallyConstructible<T>)>
+    void _VectorConstruct(T* p, uint32_t n, Args&&... args)
+    {
+        for (uint32_t i = 0; i < n; ++i)
+        {
+            new(p + i) T(Forward<Args>(args)...);
+        }
+    }
 
     // Performs construction non-trivially constructible elements.
     template <typename T, typename... Args, HE_REQUIRES(!IsTriviallyConstructible<T>)>
@@ -23,9 +29,13 @@ namespace he
         }
     }
 
+    // Performs default initialization of trivially constructible elements.
+    template <typename T, HE_REQUIRES(IsTriviallyConstructible<T>)>
+    void _VectorConstructDefault(T*, uint32_t) {}
+
     // Performs construction non-trivially constructible elements.
     template <typename T, HE_REQUIRES(!IsTriviallyConstructible<T>)>
-    void _VectorConstruct(T* p, uint32_t n, DefaultInitTag)
+    void _VectorConstructDefault(T* p, uint32_t n)
     {
         for (uint32_t i = 0; i < n; ++i)
         {
@@ -66,14 +76,14 @@ namespace he
 
     // Performs a move of trivially copyable elements.
     template <typename T, HE_REQUIRES(IsTriviallyCopyable<T>)>
-    void _VectorMove(T* dst, const T* src, uint32_t n)
+    void _VectorMove(T* dst, T* src, uint32_t n)
     {
         MemCopy(dst, src, n * sizeof(T));
     }
 
     // Performs a move of non-trivially copyable elements.
-    template <typename T, HE_REQUIRES(!IsTriviallyCopyable<T>)>
-    void _VectorMove(T* dst, const T* src, uint32_t n)
+    template <typename T, HE_REQUIRES(!IsTriviallyCopyable<T> && IsMoveConstructible<T>)>
+    void _VectorMove(T* dst, T* src, uint32_t n)
     {
         for (uint32_t i = 0; i < n; ++i)
         {
@@ -81,6 +91,18 @@ namespace he
         }
     }
 
+    // Performs a copy of non-trivially copyable nor movable elements.
+    template <typename T, HE_REQUIRES(!IsTriviallyCopyable<T> && !IsMoveConstructible<T>)>
+    void _VectorMove(T* dst, T* src, uint32_t n)
+    {
+        for (uint32_t i = 0; i < n; ++i)
+        {
+            new(dst + i) T(*(src + i));
+        }
+    }
+
+    // Reallocates vector memory for trivially copyable types by letting the allocator handle it.
+    // This can result in better performing resizes since we may not copy at all.
     template <typename T, HE_REQUIRES(IsTriviallyCopyable<T>)>
     T* _VectorRealloc(Allocator& allocator, T* p, uint32_t size, uint32_t newSize)
     {
@@ -88,13 +110,27 @@ namespace he
         return static_cast<T*>(allocator.Realloc(p, newSize * sizeof(T)));
     }
 
-    template <typename T, HE_REQUIRES(!IsTriviallyCopyable<T>)>
+    // Performs an allocate and move operation for movable elements.
+    template <typename T, HE_REQUIRES(!IsTriviallyCopyable<T> && IsMoveConstructible<T>)>
     T* _VectorRealloc(Allocator& allocator, T* p, uint32_t size, uint32_t newSize)
     {
         T* mem = static_cast<T*>(allocator.Malloc(newSize * sizeof(T)));
         for (uint32_t i = 0; i < size; ++i)
         {
             new(mem + i) T(Move(*(p + i)));
+        }
+        allocator.Free(p);
+        return mem;
+    }
+
+    // Performs an allocate and copy operation for copyable elements.
+    template <typename T, HE_REQUIRES(!IsTriviallyCopyable<T> && !IsMoveConstructible<T>)>
+    T* _VectorRealloc(Allocator& allocator, T* p, uint32_t size, uint32_t newSize)
+    {
+        T* mem = static_cast<T*>(allocator.Malloc(newSize * sizeof(T)));
+        for (uint32_t i = 0; i < size; ++i)
+        {
+            new(mem + i) T(*(p + i));
         }
         allocator.Free(p);
         return mem;
@@ -181,6 +217,8 @@ namespace he
         if (len <= m_capacity)
             return;
 
+        len = Max(MinElements, len);
+
         m_data = _VectorRealloc(m_allocator, m_data, m_size, len);
         m_capacity = len;
     }
@@ -192,7 +230,7 @@ namespace he
 
         if (len > m_size)
         {
-            _VectorConstruct(m_data + m_size, len - m_size, DefaultInit);
+            _VectorConstructDefault(m_data + m_size, len - m_size);
         }
         else if (len < m_size)
         {
@@ -277,7 +315,7 @@ namespace he
     {
         HE_ASSERT(begin && end);
 
-        const uint32_t len = end - begin;
+        const uint32_t len = static_cast<uint32_t>(end - begin);
 
         GrowBy(len);
 
@@ -336,7 +374,7 @@ namespace he
     T& Vector<T>::EmplaceBack(DefaultInitTag)
     {
         GrowBy(1);
-        _VectorConstruct(m_data + m_size, 1, DefaultInit);
+        _VectorConstructDefault(m_data + m_size, 1);
         return m_data[m_size++];
     }
 
@@ -352,7 +390,7 @@ namespace he
     template <typename T>
     void Vector<T>::GrowBy(uint32_t n)
     {
-        if (n <= m_capacity)
+        if ((m_size + n) <= m_capacity)
             return;
 
         Reserve(CalculateGrowth(n));
@@ -387,17 +425,21 @@ namespace he
     template <typename T>
     void Vector<T>::MoveFrom(Vector&& x)
     {
-        // If there are different allocators or the other object is embedded, we just have to copy.
+        Clear();
+
+        // If there are different allocators we have to make our own allocation and move everything over.
         if (&m_allocator != &x.m_allocator)
         {
-            CopyFrom(x);
+            Reserve(x.m_size);
+            _VectorMove(m_data, x.m_data, x.m_size);
+            m_size = x.m_size;
+            x.Clear();
             return;
         }
 
-        Clear();
-
-        Reserve(x.m_size);
-        _VectorMove(m_data, x.m_data, x.m_size);
-        m_size = x.m_size;
+        // If the allocators match we can steal the allocation from the other object.
+        m_data = Exchange(x.m_data, nullptr);
+        m_size = Exchange(x.m_size, 0);
+        m_capacity = Exchange(x.m_capacity, 0);
     }
 }

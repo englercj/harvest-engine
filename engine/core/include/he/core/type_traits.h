@@ -134,6 +134,13 @@ namespace he
     template <typename T, template <typename...> typename Template> inline constexpr bool IsSpecialization = _IsSpecialization<T, Template>::Value;
 
     // --------------------------------------------------------------------------------------------
+    // Is Constructible
+
+    template <typename T> inline constexpr bool IsDefaultConstructible = __is_constructible(T);
+    template <typename T> inline constexpr bool IsCopyConstructible = __is_constructible(T, AddReference<const T>);
+    template <typename T> inline constexpr bool IsMoveConstructible = __is_constructible(T, T);
+
+    // --------------------------------------------------------------------------------------------
     // declval
 
     template <typename T> AddRValueReference<T> DeclVal() noexcept;

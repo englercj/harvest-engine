@@ -1,5 +1,7 @@
 // Copyright Chad Engler
 
+#include "fixtures.h"
+
 #include "he/core/type_traits.h"
 
 #include "he/core/string.h"
@@ -124,10 +126,15 @@ HE_TEST(core, type_traits, IsTriviallyCopyable)
         D(int x): m(x+1) {}
     };
 
+    struct E { E(E&&) = default; };
+    struct F { F(F&&) {} };
+
     static_assert(IsTriviallyCopyable<A>);
     static_assert(!IsTriviallyCopyable<B>);
     static_assert(!IsTriviallyCopyable<C>);
     static_assert(IsTriviallyCopyable<D>);
+    static_assert(IsTriviallyCopyable<E>);
+    static_assert(!IsTriviallyCopyable<F>);
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -224,6 +231,39 @@ HE_TEST(core, type_traits, IsSpecialization)
     static_assert(IsSpecialization<std::vector<int>, std::vector>);
     static_assert(IsSpecialization<Vector<int>, Vector>);
     static_assert(!IsSpecialization<Vector<int>, std::vector>);
+}
+
+// ------------------------------------------------------------------------------------------------
+HE_TEST(core, type_traits, IsDefaultConstructible)
+{
+    static_assert(IsDefaultConstructible<std::vector<int>>);
+    static_assert(IsDefaultConstructible<Trivial>);
+    static_assert(IsDefaultConstructible<NonTrivial>);
+    static_assert(IsDefaultConstructible<CopyOnly>);
+    static_assert(IsDefaultConstructible<MoveOnly>);
+    static_assert(!IsDefaultConstructible<Vector<int>>);
+}
+
+// ------------------------------------------------------------------------------------------------
+HE_TEST(core, type_traits, IsCopyConstructible)
+{
+    static_assert(IsCopyConstructible<std::vector<int>>);
+    static_assert(IsCopyConstructible<Trivial>);
+    static_assert(IsCopyConstructible<NonTrivial>);
+    static_assert(IsCopyConstructible<CopyOnly>);
+    static_assert(IsCopyConstructible<Vector<int>>);
+    static_assert(!IsCopyConstructible<MoveOnly>);
+}
+
+// ------------------------------------------------------------------------------------------------
+HE_TEST(core, type_traits, IsMoveConstructible)
+{
+    static_assert(IsMoveConstructible<std::vector<int>>);
+    static_assert(IsMoveConstructible<Trivial>);
+    static_assert(IsMoveConstructible<NonTrivial>);
+    static_assert(IsMoveConstructible<MoveOnly>);
+    static_assert(IsMoveConstructible<Vector<int>>);
+    static_assert(!IsMoveConstructible<CopyOnly>);
 }
 
 // ------------------------------------------------------------------------------------------------

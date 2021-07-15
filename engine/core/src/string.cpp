@@ -326,7 +326,7 @@ namespace he
 
     void String::GrowBy(uint32_t n)
     {
-        if ((n + Size()) <= Capacity())
+        if ((Size() + n) <= Capacity())
             return;
 
         Reserve(CalculateGrowth(n));

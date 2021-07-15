@@ -7,6 +7,7 @@
 #include "he/core/string_view.h"
 #include "he/core/test.h"
 #include "he/core/types.h"
+#include "he/core/vector.h"
 
 namespace he
 {
@@ -21,6 +22,30 @@ namespace he
     };
 
     struct VirtualDestructor { virtual ~VirtualDestructor() {} };
+
+    struct CopyOnly
+    {
+        CopyOnly() = default;
+        CopyOnly(const CopyOnly&) { copyConstructed = true; }
+        CopyOnly& operator=(const CopyOnly&) { copyAssigned = true; return *this; }
+        CopyOnly(CopyOnly&&) = delete;
+        CopyOnly& operator=(CopyOnly&&) = delete;
+
+        bool copyConstructed{ false };
+        bool copyAssigned{ false };
+    };
+
+    struct MoveOnly
+    {
+        MoveOnly() = default;
+        MoveOnly(const MoveOnly&) = delete;
+        MoveOnly& operator=(const MoveOnly&) = delete;
+        MoveOnly(MoveOnly&&) { moveConstructed = true; }
+        MoveOnly& operator=(MoveOnly&&) { moveAssigned = true; return *this; }
+
+        bool moveConstructed{ false };
+        bool moveAssigned{ false };
+    };
 
     // --------------------------------------------------------------------------------------------
     class AnotherAllocator : public Allocator
@@ -61,5 +86,13 @@ namespace he
 
         static char* GetEmbed(String& s) { return s.m_embed; }
         static Heap& GetHeap(String& s) { return s.m_heap; }
+    };
+
+    // --------------------------------------------------------------------------------------------
+    class VectorTestAttorney
+    {
+    public:
+        template <typename T>
+        static T* GetPtr(Vector<T>& v) { return v.m_data; }
     };
 }

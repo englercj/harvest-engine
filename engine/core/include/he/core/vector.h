@@ -7,6 +7,7 @@
 #include "he/core/macros.h"
 #include "he/core/memory_ops.h"
 #include "he/core/types.h"
+#include "he/core/type_traits.h"
 #include "he/core/utils.h"
 
 #include <new>
@@ -260,6 +261,8 @@ namespace he
         void MoveFrom(Vector&& x);
 
     private:
+        friend class VectorTestAttorney;
+
         Allocator& m_allocator;
 
         T* m_data{ nullptr };

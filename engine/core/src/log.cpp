@@ -4,16 +4,15 @@
 
 #include "he/core/assert.h"
 #include "he/core/debug.h"
+#include "he/core/vector.h"
 
 #include "fmt/format.h"
 
-#include <vector>
-
 namespace he
 {
-    static std::vector<LogSinkFunc>& GetSinks()
+    static Vector<LogSinkFunc>& GetSinks()
     {
-        static std::vector<LogSinkFunc> s_sinks{};
+        static Vector<LogSinkFunc> s_sinks{ CrtAllocator::Get() };
         return s_sinks;
     }
 
@@ -63,18 +62,18 @@ namespace he
 
     void AddLogSink(LogSinkFunc sink)
     {
-        GetSinks().push_back(sink);
+        GetSinks().PushBack(sink);
     }
 
     void RemoveLogSink(LogSinkFunc sink)
     {
-        std::vector<LogSinkFunc>& sinks = GetSinks();
+        Vector<LogSinkFunc>& sinks = GetSinks();
 
-        for (uint32_t i = 0; i < sinks.size(); ++i)
+        for (uint32_t i = 0; i < sinks.Size(); ++i)
         {
             if (sinks[i] == sink)
             {
-                sinks.erase(sinks.begin() + i, sinks.begin() + i + 1);
+                sinks.Erase(i, 1);
                 return;
             }
         }
@@ -85,11 +84,11 @@ namespace he
         fmt::memory_buffer buf;
         fmt::format_to(fmt::appender(buf), "{}({}): [{}]({}) ", source.file, source.line, AsString(source.level), source.category);
 
+        constexpr auto ValueFmt = FMT_STRING("{} = {}");
+
         for (uint32_t i = 0; i < count; ++i)
         {
             const LogKV& kv = kvs[i];
-
-            constexpr auto ValueFmt = FMT_STRING("{} = {}, ");
 
             switch (kv.type)
             {
@@ -98,6 +97,12 @@ namespace he
                 case LogKV::ValueType::Uint: fmt::format_to(fmt::appender(buf), ValueFmt, kv.key, kv.value.u); break;
                 case LogKV::ValueType::Double: fmt::format_to(fmt::appender(buf), ValueFmt, kv.key, kv.value.d); break;
                 case LogKV::ValueType::String: fmt::format_to(fmt::appender(buf), ValueFmt, kv.key, kv.value.s.data()); break;
+            }
+
+            if (i != (count - 1))
+            {
+                buf.push_back(',');
+                buf.push_back(' ');
             }
         }
 
@@ -108,7 +113,7 @@ namespace he
 
     void Log(const LogSource& source, const LogKV* kvs, uint32_t count)
     {
-        std::vector<LogSinkFunc>& sinks = GetSinks();
+        Vector<LogSinkFunc>& sinks = GetSinks();
 
         for (LogSinkFunc sink : sinks)
         {

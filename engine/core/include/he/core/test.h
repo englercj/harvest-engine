@@ -203,4 +203,10 @@ namespace internal
     Class& operator=(Class&&) = delete
 
 // Internal macro used in the format loop for HE_EXPECT params
-#define HE_EXPECT_PARAM_FORMATTER_(x) fmt::format_to(fmt::appender(_testParamFormatBuffer), #x " = {}\n", (x));
+#define HE_EXPECT_PARAM_FORMATTER_(x) \
+    do { \
+        constexpr char _exprString[] = #x " = "; \
+        constexpr uint32_t _exprStringLen = HE_LENGTH_OF(_exprString) - 1; \
+        _testParamFormatBuffer.append(_exprString, _exprString + _exprStringLen); \
+        fmt::format_to(fmt::appender(_testParamFormatBuffer), "{}\n", (x)); \
+    } while (0);

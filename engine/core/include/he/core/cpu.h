@@ -2,8 +2,6 @@
 
 #pragma once
 
-#include "he/core/types.h"
-
 #define HE_CPU_ARM                  0
 #define HE_CPU_WASM                 0
 #define HE_CPU_X86                  0

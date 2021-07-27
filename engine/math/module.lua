@@ -1,5 +1,6 @@
 return {
     name = "he_math",
+    kind = "StaticLib",
 
     when_included = function ()
         includedirs { "include" }

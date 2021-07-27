@@ -192,6 +192,24 @@ local function _install_module(mod)
     end
 end
 
+local function _module_project(name, kindname)
+    assert(kindname ~= nil, "Module '" .. name .. "' does not specify 'kind' in module.lua. Valid values: ConsoleApp, WindowedApp, StaticLib, and SharedLib")
+    assert(target_dir_table[kindname] ~= nil, "Unknown 'kind' specified in module.lua for module '" .. name .. "'.")
+
+    project(name)
+    kind(kindname)
+    objdir(obj_dir)
+
+    language "C++"
+
+    local target_dir = target_dir_table[kindname]
+
+    if target_dir ~= nil then
+        targetdir(target_dir)
+    end
+end
+
+
 function import_modules(modules)
     assert(type(modules) == "table", "import_modules expects a table")
 
@@ -222,7 +240,7 @@ function import_modules(modules)
     end
 
     for _, mod in ipairs(imported) do
-        module(mod.name, mod.kind)
+        _module_project(mod.name, mod.kind)
         _run_module_func(mod, "module_project")
     end
 end
@@ -231,7 +249,7 @@ function import_all_module_tests()
     for name, mod in pairs(imported_modules) do
         if mod.test_project ~= nil then
             mod.test_project_name = mod.name .. "__tests"
-            module(mod.test_project_name, mod.kind)
+            _module_project(mod.test_project_name, mod.kind)
             _run_module_func(mod, "test_project")
         end
     end
@@ -309,22 +327,6 @@ function link_modules(dep_table)
         if mod.when_linked ~= nil then
             _run_module_func(mod, "when_linked")
         end
-    end
-end
-
-function module(name, kindname)
-    if kindname == nil then kindname = "StaticLib" end
-
-    project(name)
-    kind(kindname)
-    objdir(obj_dir)
-
-    language "C++"
-
-    local target_dir = target_dir_table[kindname]
-
-    if target_dir ~= nil then
-        targetdir(target_dir)
     end
 end
 

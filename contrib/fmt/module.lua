@@ -2,6 +2,7 @@
 
 return {
     name = "fmt",
+    kind = "StaticLib",
     github = "fmtlib/fmt#8.0.1",
 
     when_included = function ()

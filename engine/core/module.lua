@@ -2,6 +2,7 @@
 
 return {
     name = "he_core",
+    kind = "StaticLib",
 
     when_included = function ()
         includedirs { "include" }

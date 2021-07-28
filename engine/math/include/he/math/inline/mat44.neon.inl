@@ -62,8 +62,15 @@ namespace he
 
     inline Mat44 Inverse(const Mat44& m)
     {
-        float det = Determinant(m);
-        return Mul(Adjoint(m), 1.0f / det);
+        const float rdet = 1.0f / Determinant(m);
+        const Mat44 adj = Adjoint(m);
+        return
+        {
+            Mul(adj.cx, rdet),
+            Mul(adj.cy, rdet),
+            Mul(adj.cz, rdet),
+            Mul(adj.cw, rdet),
+        };
     }
 
     inline Mat44 InverseTransform(const Mat44& m)

@@ -238,7 +238,7 @@ namespace he
 
     inline bool IsNan(const Vec4a& v)
     {
-        return Ne(v, v);
+        return Any(Ne(v, v));
     }
 
     inline bool IsNan3(const Vec4a& v)

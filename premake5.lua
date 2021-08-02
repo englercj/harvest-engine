@@ -6,18 +6,16 @@ he_workspace(sln_name)
     startproject "editor"
 
     group "contrib"
-        import_modules {
+        import_plugins {
             "contrib/fmt",
         }
 
     group "engine"
-        import_modules {
+        import_plugins {
             "engine/core",
             "engine/math",
         }
 
     group "tests"
-        import_all_module_tests()
-        import_modules {
-            "engine/test_runner",
-        }
+        create_all_module_test_projects()
+        import_plugins { "engine/test_runner" }

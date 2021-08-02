@@ -1,0 +1,28 @@
+{
+    "id": "he.core",
+    "name": "Harvest Core",
+    "description": "Provides core utilities used throughout the engine.",
+    "version": "1.0.0",
+
+    "author": "Chad Engler <englercj@live.com>",
+    "license": "",
+    "tags": [],
+
+    "modules": [
+        {
+            "name": "he_core",
+            "type": "static",
+            "files": ["include/**", "src/**"],
+            "public_dependson": ["fmt"],
+            "public_includedirs": ["include"],
+            "private_includedirs": ["src"]
+        },
+        {
+            "name": "he_core_tests",
+            "type": "test",
+            "files": ["test/**"],
+            "private_dependson": ["he_core"],
+            "private_includedirs": ["src"]
+        }
+    ]
+}

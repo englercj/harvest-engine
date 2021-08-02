@@ -1,0 +1,80 @@
+# Plugin JSON Spec
+
+All keys are optional unless otherwise specified.
+
+All paths can contain globs and are relative to the json file, or the install directory if the plugin is installed from a remote source. That is, if you use "source_github", "source_bitbucket", or "source_archive" to install the plugin then paths are relative to the extracted files location.
+
+## Root Keys
+
+|      Key      |   Value Type  | Description |
+| ------------- | ------------- | ----------- |
+| id            | String        | Required. Globally unique identifier for the plugin. |
+| name          | String        | Friendly name of the plugin meant for humans. |
+| description   | String        | Short description fo the plugin meant for humans. |
+| version       | String        | An arbitrary version string identifying the version of the plugin. |
+| author        | String        | The plugin's author name and email, in the format "Name <email>". |
+| license       | String        | An SPDX license identifier (https://spdx.org/licenses/). If this is not specified it is treated as unlicensed. |
+| tags          | Array<String> | An array of string identifiers used as search tags. |
+| modules       | Array<Module> | An array of modules that this plugin provides. See the Module Keys section. |
+
+## Module Keys
+
+|            Key            |     Value Type    | Description |
+| ------------------------- | ----------------- | ----------- |
+| name                      | String            | Required. Globally unique name of the module. Also used as the project name. |
+| type                      | String            | See the Module Types section for valid values. |
+| files                     | Array<String>     | File paths to include in the module project. |
+| dependson_runtime         | Array<String>     | Module names this module will use at runtime. See the Module Dependencies section for more details. |
+| variants                  | Array<Variant>    | Variations of the module's properties activated by a filter. See the Variant Keys section. |
+
+### Prefixed Keys
+
+The following keys must be prefixed with "public" or "private". The former means to propagate that value to any modules depending on this module, and the later means it only affects this module's project. For example, "public_defines" and "private_defines".
+
+| *_defines           | Array<String>     | Symbols to define. Use the syntax "SYMBOL=X" to define the symbol with a value. |
+| *_dependson         | Array<String>     | Module names this module requires to build. See the Module Dependencies section for more details. |
+| *_dependson_include | Array<String>     | Module names this module requires include-only access to. See the Module Dependencies section for more details. |
+| *_includedirs       | Array<String>     | Include paths required for this module to build. |
+
+## Variant Keys
+
+Variants can include any Module Key which will only be applied when that variant is active (based on the "filter"). The only exceptions are "name" and "type" which cannot be overridden by a variant. Any keys that are specified both in the module and a variant are treated as additive. If you wish to remove something when a variant is active add a "remove_" prefix to the module key name which will active as subtractive.
+
+|            Key            |     Value Type    | Description |
+| ------------------------- | ----------------- | ----------- |
+| filters                   | Array<String>     | Premake filter strings that are combined with an AND operation (https://premake.github.io/docs/filter). |
+
+## Module Types
+
+| Type | Description |
+| ---- | ----------- |
+| default | The default module type. Built as a hot-reloadable shared library during dynamic (internal) builds and as a static library during static (shipping) builds. |
+| static | Always built as a static library. |
+| header | Header-only module that does not generate any symbols to be linked. |
+| test | A test module that is built as a static library and linked into the test_runner executable. All symbols are exported so they can be discovered by the test runner and are not stripped by the linker. |
+| console_app | A console application |
+| windowed_app | A windowed application |
+
+## Module Dependencies
+
+When depending on a module the actual effect of that dependency on the generated project depends on a few factors:
+
+- The type of the build being generated (dynamic or static)
+- The type of the module that has the dependency
+- The type of the module that is being depended on
+
+For example, a "default" module depending on a "static" module in a dynamic build will link the static library and inhrit the public include paths. During a static build it will only inherit the public include paths and mark the dependency so any application using the module links both.
+
+The "public_dependson" and "public_dependson_include" keys will propagate those values through the module dependency tree so that other modules inherit those values when their projects are generated. The "private_dependson" and "private_dependson_include" keys do not propagate and are used only in that module's project generation.
+
+### Dependency Prefixes
+
+When a dependency is specified with no prefix, for example "he_core" it is assumed the value refers to a module. However, there are also a few supported prefixes that change how the dependency name is interpretted:
+
+| Prefix | Description |
+| ------ | ----------- |
+| module: | The name refers to a module. This is the default, and is not required. |
+| system: | The name refers to a system library. Do not include any prefix or file extension, the system will deduce those based on the target system. |
+| file: | The name refers to a file path to a library. The path is used exactly as-is so you will need to include any prefix or file extension information. |
+
+Example: `"public_dependson": ["he_core", "module:he_platform", "system:user32", "file:mylib.lib"]`

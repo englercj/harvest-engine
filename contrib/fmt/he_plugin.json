@@ -1,0 +1,27 @@
+{
+    "id": "fmtlib.fmt",
+    "name": "{fmt}",
+    "description": "An open-source formatting library providing a fast and safe alternative to C stdio and C++ iostreams.",
+    "version": "8.0.1",
+
+    "author": "Victor Zverovich",
+    "license": "MIT",
+    "tags": [],
+
+    "source_github": "fmtlib/fmt#8.0.1",
+
+    "modules": [
+        {
+            "name": "fmt",
+            "type": "static",
+            "files": [
+                "include/fmt/core.h",
+                "include/fmt/compile.h",
+                "include/fmt/format.h",
+                "include/fmt/xchar.h",
+                "src/format.cc"
+            ],
+            "public_includedirs": ["include"]
+        }
+    ]
+}

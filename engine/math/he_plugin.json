@@ -1,0 +1,26 @@
+{
+    "id": "he.math",
+    "name": "Harvest Math",
+    "description": "Provides math utilities used throughout the engine.",
+    "version": "1.0.0",
+
+    "author": "Chad Engler <englercj@live.com>",
+    "license": "",
+    "tags": [],
+
+    "modules": [
+        {
+            "name": "he_math",
+            "type": "header",
+            "files": ["include/**", "src/**"],
+            "public_dependson": ["he_core"],
+            "public_includedirs": ["include"]
+        },
+        {
+            "name": "he_math_tests",
+            "type": "test",
+            "files": ["test/**"],
+            "private_dependson": ["he_math"]
+        }
+    ]
+}

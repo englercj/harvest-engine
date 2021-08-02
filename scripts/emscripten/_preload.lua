@@ -153,7 +153,6 @@ add_module_keys("include", {
 })
 add_module_keys("link", {
     "em_linkeroptimize",
-    "em_options",
     "em_library",
     "em_prepend",
     "em_append",

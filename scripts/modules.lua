@@ -1,336 +1,165 @@
 -- Copyright Chad Engler
 
-local sysId = (os.ishost("windows") and "windows") or (os.ishost("linux") and "linux")
-local last_download_progress = 0
+local install_plugin = dofile("install_plugin.lua")
+local build_type = "dynamic" -- TODO: Switch based on dynamic or static build of modules
 
-local target_dir_table = {
+local target_dir_by_kind = {
     ConsoleApp = bin_dir,
     WindowedApp = bin_dir,
     SharedLib = bin_dir,
     StaticLib = lib_dir,
 }
 
+local kind_by_module_type = {
+    default = (build_type == "dynamic" and "SharedLib" or "StaticLib"),
+    static = "StaticLib",
+    header = "StaticLib",
+    test = "StaticLib",
+    console_app = "ConsoleApp",
+    windowed_app = "WindowedApp",
+}
+
+local module_dependency_include_keys = {
+    -- { handler key, value key }
+    { "public_defines", "public_defines" },
+    { "public_dependson_include", "public_dependson" }, -- Treat dependson like it is an include dependency
+    { "public_dependson_include", "public_dependson_include" },
+    { "public_includedirs", "public_includedirs" },
+}
+
+local module_dependency_link_keys = {
+    -- { handler key, value key }
+    { "public_dependson", "public_dependson" },
+}
+
 local imported_modules = {}
+local imported_modules_count = 0
+local key_handlers = {}
 
-local valid_include_keys = {
-    "defines",
-    "flags",
-    "includedirs",
-    "include_modules",
-    "resincludedirs",
-    "sysincludedirs",
-}
-
-local valid_link_keys = {
-    "libdirs",
-    "link_modules",
-    "links",
-    "linkoptions",
-}
-
-local valid_use_keys = {}
-for i,v in ipairs(valid_include_keys) do table.insert(valid_use_keys, v) end
-for i,v in ipairs(valid_link_keys) do table.insert(valid_use_keys, v) end
-
-local path_value_keys = {
-    includedirs = true,
-    libdirs = true,
-}
-
-local function _run_module_func(mod, func_name)
-    local oldcwd = os.getcwd()
-    os.chdir(mod.install_dir)
-    mod[func_name](mod)
-    filter { }
-    os.chdir(oldcwd)
-end
-
-local function _download_progress(total, current)
-    local ratio = current / total;
-    ratio = math.min(math.max(ratio, 0), 1);
-    local percent = math.floor(ratio * 100);
-
-    if percent > last_download_progress and percent % 2 == 0 then
-        local diff = percent - last_download_progress;
-        last_download_progress = percent
-        io.write(string.rep(".", diff / 2));
-    end
-end
-
-local function _download_file(url, fpath)
-    last_download_progress = 0
-    local result_str, response_code = http.download(url, fpath, {
-        sslverifypeer = 0,
-        progress = _download_progress,
-    })
-
-    print(result_str, response_code)
-    return result_str, response_code
-end
-
-local function _download_archive(name, source, dir)
-    os.mkdir(dir)
-
-    local url = source
-
-    if type(source) == "table" then
-        url = source[sysId]
-    end
-
-    assert(type(url) == "string" and url ~= "", "Bad url when installing archive of " .. name .. " for " .. sysId)
-
-    printf("Downloading archive: %s (%s)", name, url)
-
-    local fname = url:match("([^/]+)$");
-    local fpath = path.join(dir, fname)
-
-    local result_str, response_code = _download_file(url, fpath)
-
-    if result_str == "OK" then
-        printf("Extracting %s...", fname)
-
-        if fname:find(".zip") ~= nil then
-            zip.extract(fpath, dir)
-        elseif fname:find(".tar") ~= nil then
-            -- TODO: This doesn"t work on windows (MINGW)
-            os.executef("tar xf "%s" -C "%s"", fpath, dir)
-        else
-            printf("FAILED to extract %s, unrecognized extension.", fname)
-            return false
-        end
-
-        return true
-    end
-
-    return false
-end
-
-local function _install_from_archive(name, source)
-    local dir = path.join(dep_dir, name)
-    local digest = string.sha1(name .. source)
-
-    local vfile = path.join(dir, ".dependency_digest")
-    local installed_version = io.readfile(vfile);
-
-    if installed_version ~= digest then
-        if _download_archive(name, source, dir) == false then
-            premake.error("FAILED to install archive " .. name)
-            return
-        end
-
-        io.writefile(vfile, digest)
-    end
-
-    return dir
-end
-
-local function _install_from_github(mod)
-    local org
-    local repo
-    local version = "master"
-
-    -- Tokenize the string
-    local t = 0
-    for s in string.gmatch(mod.github, "[^/#]+") do
-        if t == 0 then org = s
-        elseif t == 1 then repo = s
-        elseif t == 2 then version = s
-        end
-        t = t + 1
-    end
-
-    local trimmed_version = version
-
-    if version:sub(1, 1) == "v" then
-        trimmed_version = version:sub(2)
-    end
-
-    local url = "https://github.com/" .. org .. "/" .. repo .. "/archive/" .. version .. ".zip"
-    local install_dir = _install_from_archive(mod.name, url)
-
-    mod.install_dir = path.join(install_dir, repo .. "-" .. trimmed_version)
-end
-
-local function _install_from_bitbucket(mod)
-    local org
-    local repo
-    local version = "master"
-
-    -- Tokenize the string
-    local t = 0
-    for s in string.gmatch(mod.bitbucket, "[^/#]+") do
-        if t == 0 then org = s
-        elseif t == 1 then repo = s
-        elseif t == 2 then version = s
-        end
-        t = t + 1
-    end
-
-    local url = "https://bitbucket.org/" .. org .. "/" .. repo .. "/get/" .. version .. ".zip"
-    local install_dir = _install_from_archive(mod.name, url)
-
-    local dirs = os.matchdirs(path.join(install_dir, org .. "-" .. repo .. "-*"))
-    assert(type(dirs[1]) == "string", "Failed to find install directory for bitbucket install of: " .. name)
-
-    mod.install_dir = dirs[1]
-end
-
-local function _install_module(mod)
-    if type(mod.github) == "string" then
-        _install_from_github(mod)
-    elseif type(mod.bitbucket) == "string" then
-        _install_from_bitbucket(mod)
-    elseif type(mod.archive) == "string" then
-        mod.install_dir = _install_from_archive(mod.name, mod.archive)
-        if type(mod.basepath) == "string" then
-            mod.install_dir = path.join(mod.install_dir, mod.basepath)
-        end
-    elseif type(mod.source) == "string" then
-        mod.install_dir = path.join(mod._mod_dir, mod.source)
-    elseif type(mod.install) == "function" then
-        mod.install(mod)
-    end
-end
-
-local function _module_project(name, kindname)
-    assert(kindname ~= nil, "Module '" .. name .. "' does not specify 'kind' in module.lua. Valid values: ConsoleApp, WindowedApp, StaticLib, and SharedLib")
-    assert(target_dir_table[kindname] ~= nil, "Unknown 'kind' specified in module.lua for module '" .. name .. "'.")
-
-    project(name)
-    kind(kindname)
-    objdir(obj_dir)
-
-    language "C++"
-
-    local target_dir = target_dir_table[kindname]
-
-    if target_dir ~= nil then
-        targetdir(target_dir)
-    end
-end
-
-
-function import_modules(modules)
-    assert(type(modules) == "table", "import_modules expects a table")
-
-    local imported = {}
-
-    for _, mod_path in ipairs(modules) do
-        local mod_file = mod_path
-
-        if not path.hasextension(mod_file, ".lua") then
-            mod_file = path.join(mod_file, "module.lua")
-        end
-
-        mod_file = path.join(path.getabsolute(_SCRIPT_DIR), mod_file);
-
-        local mod = dofile(mod_file)
-
-        assert(imported_modules[mod.name] == nil, "Module already imported: " .. mod.name)
-
-        mod._mod_file = mod_file
-        mod._mod_dir = path.getdirectory(mod_file)
-        mod.install_dir = mod._mod_dir
-
-        _install_module(mod)
-
-        imported_modules[mod.name] = mod
-
-        table.insert(imported, mod);
-    end
-
-    for _, mod in ipairs(imported) do
-        _module_project(mod.name, mod.kind)
-        _run_module_func(mod, "module_project")
-    end
-end
-
-function import_all_module_tests()
-    for name, mod in pairs(imported_modules) do
-        if mod.test_project ~= nil then
-            mod.test_project_name = mod.name .. "__tests"
-            _module_project(mod.test_project_name, mod.kind)
-            _run_module_func(mod, "test_project")
-        end
-    end
-end
-
-function use_all_module_tests()
-    for name, mod in orderedPairs(imported_modules) do
-        if mod.test_project_name ~= nil then
-            use_modules { mod.name }
-            links { mod.test_project_name }
-
-            filter { "toolset:msc-*", "language:C++" }
-                linkoptions { "/WHOLEARCHIVE:" .. mod.test_project_name }
-            filter { "toolset:gcc or clang" }
-                linkoptions { "-Wl,--whole-archive %{lib_base_dir}/" .. mod.test_project_name .. "/lib" .. mod.test_project_name .. ".a -Wl,--no-whole-archive" }
-            filter {}
-        end
-    end
-end
-
-function add_module_keys(scope, keys)
-    assert(type(keys) == "table", "add_module_keys expects a table of keys")
-
-    local dst = nil
-    if scope == "include" then
-        dst = valid_include_keys
-    elseif scope == "link" then
-        dst = valid_link_keys
-    else
-        premake.error("Cannot add module key ('" .. key .. "') to unknown scope: '" .. scope .. "'")
+local function _try_handle_key(ctx, key, value)
+    if key == nil or value == nil then
         return
     end
 
-    for _, key in ipairs(keys) do
-        table.insert(dst, key)
-        table.insert(valid_use_keys, key)
+    local handler = key_handlers[key]
+    if handler ~= nil then
+        handler(ctx, value)
     end
 end
 
-function get_all_modules()
-    return imported_modules
+key_handlers.files = function (ctx, values)
+    files(values)
 end
 
-function get_module(name)
-    if name == nil then name = prj.name end
+key_handlers.public_defines = function (ctx, values)
+    defines(values)
+end
+key_handlers.private_defines = key_handlers.public_defines
 
-    local mod = imported_modules[name]
+key_handlers.public_includedirs = function (ctx, values)
+    includedirs(values)
+end
+key_handlers.private_includedirs = key_handlers.public_includedirs
 
-    assert(mod ~= nil, "Module '" .. name .. "' was referenced but not imported.")
-    return mod
+key_handlers.public_dependson = function (ctx, values)
+    for _, mod_name in ipairs(values) do
+        if string.starts_with(mod_name, "system:") then
+            links { string.sub(mod_name, 8) }
+            return
+        end
+
+        if string.starts_with(mod_name, "file:") then
+            links { string.sub(mod_name, 6) }
+            return
+        end
+
+        if string.starts_with(mod_name, "module:") then
+            mod_name = string.sub(mod_name, 8)
+        end
+
+        local mod = imported_modules[mod_name]
+        assert(mod ~= nil, "Module '" .. ctx.name .. "' has a dependency on '" .. mod_name .. "', but no such module has been imported.")
+
+        if ctx.type == "console_app" or ctx.type == "windowed_app" or (ctx.type == "default" and build_type == "dynamic") then
+            if mod.type == "static" or mod.type == "test" then
+                links { mod.name }
+            end
+        end
+
+        local oldcwd = os.getcwd()
+        os.chdir(mod._plugin._install_dir)
+
+        for _, keys in ipairs(module_dependency_include_keys) do
+            _try_handle_key(ctx, keys[1], mod[keys[2]])
+        end
+
+        for _, keys in ipairs(module_dependency_link_keys) do
+            _try_handle_key(ctx, keys[1], mod[keys[2]])
+        end
+
+        os.chdir(oldcwd)
+    end
+end
+key_handlers.private_dependson = key_handlers.public_dependson
+
+key_handlers.public_dependson_include = function (ctx, values)
+    for _, mod_name in ipairs(values) do
+        local mod = imported_modules[mod_name]
+        assert(mod ~= nil, "Module '" .. ctx.name .. "' has an include dependency on '" .. mod_name .. "', but no such module has been imported.")
+
+        if string.starts_with(mod_name, "system:") or string.starts_with(mod_name, "file:") then
+            return
+        end
+
+        if string.starts_with(mod_name, "module:") then
+            mod_name = string.sub(mod_name, 8)
+        end
+
+        local oldcwd = os.getcwd()
+        os.chdir(mod._plugin._install_dir)
+
+        for _, keys in ipairs(module_dependency_include_keys) do
+            _try_handle_key(ctx, keys[1], mod[keys[2]])
+        end
+
+        os.chdir(oldcwd)
+    end
+end
+key_handlers.private_dependson_include = key_handlers.public_dependson_include
+
+key_handlers.variants = function (ctx, values)
+    for _, variant in ipairs(values) do
+        if variant.filters ~= nil then
+            filter(variant.filters)
+        end
+
+        for key, value in orderedPairs(variant) do
+            _try_handle_key(mod, key, value)
+        end
+    end
+
+    filter { }
 end
 
-function use_modules(dep_table)
-    assert(type(dep_table) == "table", "use_module expects a table")
-    include_modules(dep_table)
-    link_modules(dep_table)
-end
+key_handlers.link_all_module_tests = function (ctx, value)
+    if value ~= true then
+        return
+    end
 
-function include_modules(dep_table)
-    assert(type(dep_table) == "table", "include_module expects a table")
+    for name, mod in orderedPairs(imported_modules) do
+        if mod.type == "test" then
+            key_handlers.public_dependson(ctx, { mod.name })
 
-    for _, name in ipairs(dep_table) do
-        local mod = get_module(name)
-        if mod.when_linked ~= nil then
-            _run_module_func(mod, "when_included")
+            filter { "toolset:msc-*", "language:C++" }
+                linkoptions { "/WHOLEARCHIVE:" .. mod.name }
+            filter { "toolset:gcc or clang" }
+                linkoptions { "-Wl,--whole-archive %{lib_base_dir}/" .. mod.name .. "/lib" .. mod.name .. ".a -Wl,--no-whole-archive" }
+            filter { }
         end
     end
 end
 
-function link_modules(dep_table)
-    assert(type(dep_table) == "table", "link_module expects a table")
-
-    for _, name in ipairs(dep_table) do
-        local mod = get_module(name)
-        if mod.when_linked ~= nil then
-            _run_module_func(mod, "when_linked")
-        end
-    end
-end
-
-function platform_excludes()
+local function _platform_file_excludes()
     filter { "files:**.emscripten.*" }  flags { "ExcludeFromBuild" }
     filter { "files:**.linux.*" }       flags { "ExcludeFromBuild" }
     filter { "files:**.posix.*" }       flags { "ExcludeFromBuild" }
@@ -353,4 +182,114 @@ function platform_excludes()
         removeflags { "ExcludeFromBuild" }
 
     filter { }
+end
+
+
+local function _module_project(mod)
+    local oldcwd = os.getcwd()
+    os.chdir(mod._plugin._install_dir)
+
+    if type(mod.type) ~= "string" or mod.type == "" then
+        mod.type = "default"
+    end
+
+    local kindname = kind_by_module_type[mod.type]
+    assert(kindname, "Unknown module type: '" .. mod.type .. "'.")
+
+    local target_dir = target_dir_by_kind[kindname]
+    assert(target_dir, "No target_dir known for kind: '" .. kindname .. "'.")
+
+    project(mod.name)
+        language "C++"
+        kind(kindname)
+        objdir(obj_dir)
+        targetdir(target_dir)
+
+        for key, value in orderedPairs(mod) do
+            _try_handle_key(mod, key, value)
+        end
+
+        _platform_file_excludes()
+
+    os.chdir(oldcwd)
+end
+
+function import_plugins(plugins)
+    assert(type(plugins) == "table", "import_plugins expects a table")
+
+    local imported = {}
+
+    for _, plugin_path in ipairs(plugins) do
+        local plugin_file = plugin_path
+
+        if not path.hasextension(plugin_file, ".json") then
+            plugin_file = path.join(plugin_file, "he_plugin.json")
+        end
+
+        plugin_file = path.join(path.getabsolute(_SCRIPT_DIR), plugin_file);
+
+        local plugin = json.decode(io.readfile(plugin_file))
+
+        if plugin.modules == nil then
+            return
+        end
+
+        plugin._file_path = plugin_file
+        install_plugin(plugin)
+
+        for _, mod in ipairs(plugin.modules) do
+            mod._plugin = plugin
+
+            local existing = imported_modules[mod.name]
+            assert(existing == nil, "Module '" .. mod.name .. "' was already provided by plugin '" .. (existing and existing._plugin.id or "") .. "', but plugin '" .. plugin.id .. "' also provides it.")
+
+            -- TODO: Resolve "remove_*" keys in variants at this point.
+
+            imported_modules[mod.name] = mod
+            imported_modules_count = imported_modules_count + 1
+
+            table.insert(imported, mod);
+        end
+    end
+
+    for _, mod in ipairs(imported) do
+        if mod.type ~= "test" then
+            _module_project(mod)
+        end
+    end
+end
+
+function create_all_module_test_projects()
+    for name, mod in orderedPairs(imported_modules) do
+        if mod.type == "test" then
+            _module_project(mod)
+        end
+    end
+end
+
+function add_module_keys(scope, keys)
+    assert(type(keys) == "table", "add_module_keys expects a table of keys")
+
+    local dst = nil
+    if scope == "include" then
+        dst = module_dependency_include_keys
+    elseif scope == "link" then
+        dst = module_dependency_link_keys
+    else
+        premake.error("Cannot add module keys to unknown scope: '" .. scope .. "'")
+        return
+    end
+
+    for _, key in ipairs(keys) do
+        local public_key = "public_" .. key
+        local private_key = "private_" .. key
+
+        table.insert(dst, { public_key, public_key })
+
+        local handler = function (ctx, value)
+            _G[key](value)
+        end
+        key_handlers[public_key] = handler
+        key_handlers[private_key] = handler
+    end
 end

@@ -17,17 +17,17 @@ function he_workspace(name)
 
     -- System setup
     filter { "system:emscripten" }
-        defines { "HE_PLATFORM_EMSCRIPTEN", "HE_API_POSIX" }
+        defines { "HE_PLATFORM_EMSCRIPTEN", "HE_PLATFORM_API_POSIX" }
         platforms { "emscripten" }
         flags { "EmSSE" }
 
     filter { "system:linux" }
-        defines { "HE_PLATFORM_LINUX", "HE_API_POSIX" }
+        defines { "HE_PLATFORM_LINUX", "HE_PLATFORM_API_POSIX" }
         platforms { "x64" }
         buildoptions { "-mcx16", "-fvisibility=hidden", "-fvisibility-inlines-hidden" }
 
     filter { "system:windows" }
-        defines { "HE_PLATFORM_WINDOWS", "HE_API_WIN32" }
+        defines { "HE_PLATFORM_WINDOWS", "HE_PLATFORM_API_WIN32" }
         platforms { "x64", "ARM64" }
         systemversion(_OPTIONS.windows_systemversion)
 

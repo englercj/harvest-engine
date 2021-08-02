@@ -4,7 +4,7 @@
 
 #include "he/core/wstr.h"
 
-#if defined(HE_API_WIN32)
+#if defined(HE_PLATFORM_API_WIN32)
 
 #include "he/core/win32_min.h"
 

@@ -4,7 +4,7 @@
 #include "he/core/assert.h"
 #include "he/core/compiler.h"
 
-#if HE_COMPILER_MSVC && defined(HE_API_WIN32)
+#if defined(HE_PLATFORM_API_WIN32)
 
 #include "he/core/win32_min.h"
 

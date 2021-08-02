@@ -8,7 +8,7 @@
 
 namespace he
 {
-#if !defined(HE_API_WIN32)
+#if !defined(HE_PLATFORM_API_WIN32)
     uint32_t MBToWCStr(wchar_t* dst, uint32_t dstLen, const char* src)
     {
         HE_ASSERT(src);

@@ -4,7 +4,7 @@
 
 namespace he { int AppMain(int argc, char* argv[]); }
 
-#if HE_COMPILER_MSVC && defined(HE_API_WIN32)
+#if defined(HE_PLATFORM_API_WIN32)
 
 namespace he { int _Win32AppMain(); }
 

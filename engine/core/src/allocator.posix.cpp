@@ -5,7 +5,7 @@
 #include "he/core/assert.h"
 #include "he/core/utils.h"
 
-#if defined(HE_API_POSIX)
+#if defined(HE_PLATFORM_API_POSIX)
 
 #include <cstring>
 #include <malloc.h>

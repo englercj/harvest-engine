@@ -4,6 +4,7 @@
 
 #include "he/core/assert.h"
 #include "he/core/memory_ops.h"
+#include "he/core/utils.h"
 
 #include <cstring>
 

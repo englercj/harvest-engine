@@ -2,22 +2,26 @@
 
 #pragma once
 
-#if defined(_DEBUG)
-    #define HE_DEBUG                    1
-    #define HE_RELEASE                  0
-#else
-    #define HE_DEBUG                    0
-    #define HE_RELEASE                  1
+#if !defined(HE_INTERNAL_BUILD)
+    #if defined(HE_CFG_SHIPPING)
+        #define HE_INTERNAL_BUILD       0
+    #else
+        #define HE_INTERNAL_BUILD       1
+    #endif
 #endif
 
-#ifndef HE_INTERNAL_BUILD
-    #define HE_INTERNAL_BUILD           HE_DEBUG
+#if !defined(HE_ENABLE_ASSERTIONS)
+    #define HE_ENABLE_ASSERTIONS        HE_INTERNAL_BUILD
 #endif
 
-#ifndef HE_ASSERTIONS_ENABLED
-    #define HE_ASSERTIONS_ENABLED       HE_INTERNAL_BUILD
-#endif
-
-#ifndef HE_ENABLE_MEMORY_TRACKING
+#if !defined(HE_ENABLE_MEMORY_TRACKING)
     #define HE_ENABLE_MEMORY_TRACKING   HE_INTERNAL_BUILD
+#endif
+
+#if !defined(HE_ENABLE_MODULE_RELOAD)
+    #define HE_ENABLE_MODULE_RELOAD     HE_INTERNAL_BUILD
+#endif
+
+#if !defined(HE_ENABLE_SIMD)
+    #define HE_ENABLE_SIMD              1
 #endif

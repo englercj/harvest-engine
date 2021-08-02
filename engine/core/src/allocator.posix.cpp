@@ -3,10 +3,9 @@
 #include "he/core/allocator.h"
 
 #include "he/core/assert.h"
-#include "he/core/platform.h"
 #include "he/core/utils.h"
 
-#if HE_API_POSIX
+#if defined(HE_API_POSIX)
 
 #include <cstring>
 #include <malloc.h>

@@ -3,6 +3,7 @@
 #pragma once
 
 #include "he/core/allocator.h"
+#include "he/core/compiler.h"
 #include "he/core/types.h"
 
 namespace he

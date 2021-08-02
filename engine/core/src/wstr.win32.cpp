@@ -3,11 +3,10 @@
 #include "he/core/wstr.h"
 
 #include "he/core/assert.h"
-#include "he/core/platform.h"
 
-#if HE_API_WIN32
+#if defined(HE_API_WIN32)
 
-#include "win32_min.h"
+#include "he/core/win32_min.h"
 
 namespace he
 {

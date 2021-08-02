@@ -1,21 +1,19 @@
 // Copyright Chad Engler
 
-#include "he/core/debug.h"
+#include "debugger_impl.h"
 
-#include "he/core/platform.h"
-
-#if HE_PLATFORM_EMSCRIPTEN
+#if defined(HE_PLATFORM_EMSCRIPTEN)
 
 #include <emscripten/emscripten.h>
 
 namespace he
 {
-    void OutputToDebugger(const char* s)
+    void DebuggerImpl::Print(const char* s) const
     {
         emscripten_log(EM_LOG_CONSOLE, s);
     }
 
-    bool IsDebuggerAttached()
+    bool DebuggerImpl::IsAttached() const
     {
         return false;
     }

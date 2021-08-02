@@ -12,6 +12,11 @@
 
 namespace he
 {
+namespace internal
+{
+    std::atomic<uint32_t> g_totalExpectations;
+}
+
     const TestInfo TestFixture::EmptyTestInfo{};
 
     struct _TestRunner
@@ -28,8 +33,6 @@ namespace he
 
     static void Print(const char* msg)
     {
-        if (IsDebuggerAttached())
-            OutputToDebugger(msg);
         fputs(msg, stdout);
     }
 
@@ -87,6 +90,12 @@ namespace he
 
             fixture->Run();
         }
+
+        fmt::memory_buffer buf;
+        fmt::format_to(fmt::appender(buf), "\nRan {} tests with {} assertions.\n{} tests failed\n",
+            runner.tests.Size(), internal::g_totalExpectations.load(), runner.failureCount);
+        buf.push_back('\0');
+        Print(buf.data());
 
         return runner.failureCount;
     }

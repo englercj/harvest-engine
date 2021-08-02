@@ -12,6 +12,8 @@
 
 #include "fmt/format.h"
 
+#include <atomic>
+
 /// Checks the expectation that `expr` evaluates to true.
 ///
 /// Any additional parameters are logged as context.
@@ -19,6 +21,7 @@
     do { \
         HE_PUSH_WARNINGS() \
         HE_DISABLE_MSVC_WARNING(4127) \
+        ++he::internal::g_totalExpectations; \
         if (!(expr)) { \
             if constexpr (HE_PP_COUNT_ARGS(__VA_ARGS__) > 0) { \
                 fmt::memory_buffer _testParamFormatBuffer; \
@@ -162,6 +165,8 @@ namespace he
 
 namespace internal
 {
+    extern std::atomic<uint32_t> g_totalExpectations;
+
     /// Handler for a failed test.
     ///
     /// This is used internally and is not meant to be called directly.

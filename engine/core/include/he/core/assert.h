@@ -12,7 +12,7 @@
     // Prevent code analysis from reporting errors already checked by assertions
     #define HE_ASSERT(expr, ...) __assume(expr)
     #define HE_VERIFY(expr, ...) (!!(expr))
-#elif HE_ASSERTIONS_ENABLED
+#elif HE_ENABLE_ASSERTIONS
     #define HE_ASSERT(expr, ...) (void)(HE_LIKELY(!!(expr)) || (he::HandleError(he::ErrorType::Assert, HE_FILE, HE_LINE, __FUNCTION__, #expr, ##__VA_ARGS__) && HE_DEBUG_BREAK()))
     #define HE_VERIFY(expr, ...) (HE_LIKELY(!!(expr)) || (he::HandleError(he::ErrorType::Verify, HE_FILE, HE_LINE, __FUNCTION__, #expr, ##__VA_ARGS__) && HE_DEBUG_BREAK()))
 #else

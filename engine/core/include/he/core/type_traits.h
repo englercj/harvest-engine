@@ -21,6 +21,19 @@ namespace he
     using FalseType = BoolConst<false>;
 
     // --------------------------------------------------------------------------------------------
+    // Is Same
+
+    template <typename, typename> inline constexpr bool IsSame = false;
+    template <typename T> inline constexpr bool IsSame<T, T> = true;
+
+    // --------------------------------------------------------------------------------------------
+    // Numeric
+
+    template <typename T> inline constexpr bool IsIntegral = IsSame<T, bool> || IsSame<T, char> || IsSame<T, signed char> || IsSame<T, unsigned char> || IsSame<T, wchar_t> || IsSame<T, char16_t> || IsSame<T, char32_t> || IsSame<T, short> || IsSame<T, unsigned short> || IsSame<T, int> || IsSame<T, unsigned int> || IsSame<T, long> || IsSame<T, unsigned long> || IsSame<T, long long> || IsSame<T, unsigned long long>;
+    template <typename T> inline constexpr bool IsFloatingPoint = IsSame<T, float> || IsSame<T, double> || IsSame<T, long double>;
+    template <typename T> inline constexpr bool IsArithmetic = IsIntegral<T> || IsFloatingPoint<T>;
+
+    // --------------------------------------------------------------------------------------------
     // Enable If
 
     template <bool Test, typename T = void>
@@ -90,12 +103,6 @@ namespace he
     // Is Convertible
 
     template <typename From, typename To> inline constexpr bool IsConvertible = __is_convertible_to(From, To);
-
-    // --------------------------------------------------------------------------------------------
-    // Is Same
-
-    template <typename, typename> inline constexpr bool IsSame = false;
-    template <typename T> inline constexpr bool IsSame<T, T> = true;
 
     // --------------------------------------------------------------------------------------------
     // Range Providers

@@ -28,6 +28,7 @@
     #define HE_NO_INLINE                    __attribute__((noinline))
     #define HE_LIKELY(x)                    __builtin_expect(!!(x), 1)
     #define HE_UNLIKELY(x)                  __builtin_expect(!!(x), 0)
+    #define HE_DLL_EXPORT                   __attribute__((visibility("default")))
 
     #define HE_PUSH_WARNINGS()              _Pragma("clang diagnostic push")
     #define HE_POP_WARNINGS()               _Pragma("clang diagnostic pop")
@@ -49,6 +50,7 @@
     #define HE_NO_INLINE                    __attribute__((noinline))
     #define HE_LIKELY(x)                    __builtin_expect(!!(x), 1)
     #define HE_UNLIKELY(x)                  __builtin_expect(!!(x), 0)
+    #define HE_DLL_EXPORT                   __attribute__((visibility("default")))
 
     #define HE_PUSH_WARNINGS()              _Pragma("GCC diagnostic push")
     #define HE_POP_WARNINGS()               _Pragma("GCC diagnostic pop")
@@ -71,6 +73,7 @@
     #define HE_NO_INLINE                    __declspec(noinline)
     #define HE_LIKELY(x)                    (x)
     #define HE_UNLIKELY(x)                  (x)
+    #define HE_DLL_EXPORT                   __declspec(dllexport)
 
     #define HE_PUSH_WARNINGS()              __pragma(warning(push))
     #define HE_POP_WARNINGS()               __pragma(warning(pop))

@@ -1,14 +1,10 @@
 // Copyright Chad Engler
 
-#pragma once
-
 #include "he/core/compiler.h"
-#include "he/core/platform.h"
-#include "he/core/types.h"
 
 namespace he { int AppMain(int argc, char* argv[]); }
 
-#if HE_COMPILER_MSVC && HE_API_WIN32
+#if HE_COMPILER_MSVC && defined(HE_API_WIN32)
 
 namespace he { int _Win32AppMain(); }
 

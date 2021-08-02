@@ -75,7 +75,7 @@ namespace he
         return _IsCharTest<IsAlphaNum>(str);
     }
 
-    constexpr bool IsIntegral(const char* str)
+    constexpr bool IsInteger(const char* str)
     {
         if (*str == '-')
             str++;
@@ -83,7 +83,7 @@ namespace he
         return IsNumeric(str);
     }
 
-    constexpr bool IsFloatingPoint(const char* str)
+    constexpr bool IsFloat(const char* str)
     {
         if (*str == '-')
             str++;

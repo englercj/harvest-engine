@@ -65,7 +65,7 @@ namespace he
 
     constexpr float RcpSafe(float x)
     {
-        return IsZeroSafe(x) ? 1.0f / x : 0.0f;
+        return IsZeroSafe(x) ? (1.0f / x) : 0.0f;
     }
 
     // TODO: Do SSE/NEON implementations of some of these trig functions.

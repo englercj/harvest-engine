@@ -3,6 +3,7 @@
 #pragma once
 
 #include "he/core/types.h"
+#include "he/core/utils.h"
 
 #include "fmt/format.h"
 

@@ -5,6 +5,9 @@
 #include "he/core/span.h"
 #include "he/core/string.h"
 #include "he/core/type_traits.h"
+#include "he/core/utils.h"
+
+#include <string_view>
 
 namespace he
 {

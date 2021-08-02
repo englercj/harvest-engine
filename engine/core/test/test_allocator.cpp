@@ -3,6 +3,7 @@
 #include "he/core/allocator.h"
 
 #include "he/core/test.h"
+#include "he/core/utils.h"
 
 using namespace he;
 

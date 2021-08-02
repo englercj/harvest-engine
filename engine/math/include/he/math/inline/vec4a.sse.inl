@@ -396,7 +396,7 @@ namespace he
     {
     #if HE_SIMD_SSE3
         __m128 add0 = _mm_hadd_ps(v, v);
-        __m128 add1 _mm_hadd_ps(add0, add0);
+        __m128 add1 = _mm_hadd_ps(add0, add0);
         return _mm_cvtss_f32(add1);
     #else
         __m128 swp0 = _mm_shuffle_ps(v, v, _MM_SHUFFLE(2, 3, 0, 1));

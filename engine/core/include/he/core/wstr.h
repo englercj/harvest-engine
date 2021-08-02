@@ -13,7 +13,7 @@
 /// The destination wide character string is allocated on the stack using HE_ALLOCA,
 /// so no free operation is necessary.
 ///
-/// \param Str The multibyte character string to convert.
+/// \param STR The multibyte character string to convert.
 /// \return The wide character version of the string.
 #define HE_TO_WSTR(STR) ([](wchar_t* dst, const char* src) { \
     (void)MBToWCStr(dst, 0x3fffffff, src); \

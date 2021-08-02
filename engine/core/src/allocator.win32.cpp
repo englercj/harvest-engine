@@ -2,9 +2,7 @@
 
 #include "he/core/allocator.h"
 
-#include "he/core/platform.h"
-
-#if HE_API_WIN32
+#if defined(HE_API_WIN32)
 
 #include <malloc.h>
 

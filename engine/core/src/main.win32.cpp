@@ -3,11 +3,10 @@
 #include "he/core/alloca.h"
 #include "he/core/assert.h"
 #include "he/core/compiler.h"
-#include "he/core/platform.h"
 
-#if HE_COMPILER_MSVC && HE_API_WIN32
+#if HE_COMPILER_MSVC && defined(HE_API_WIN32)
 
-#include "win32_min.h"
+#include "he/core/win32_min.h"
 
 #include <stdlib.h>
 

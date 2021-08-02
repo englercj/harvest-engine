@@ -1,11 +1,8 @@
 // Copyright Chad Engler
 
-#include "he/core/debug.h"
+#include "debugger_impl.h"
 
-#include "he/core/platform.h"
-#include "he/core/string.h"
-
-#if HE_PLATFORM_LINUX
+#if defined(HE_PLATFORM_LINUX)
 
 #include <cstdio>
 #include <fcntl.h>
@@ -16,12 +13,12 @@
 
 namespace he
 {
-    void OutputToDebugger(const char* s)
+    void DebuggerImpl::Print(const char* s) const
     {
         fputs(s, stderr);
     }
 
-    bool IsDebuggerAttached()
+    bool DebuggerImpl::IsAttached() const
     {
         return false;
     }

@@ -2,12 +2,9 @@
 
 #pragma once
 
+#include "he/core/config.h"
 #include "he/core/compiler.h"
 #include "he/core/cpu.h"
-
-#ifndef HE_SIMD_ENABLE
-    #define HE_SIMD_ENABLE 1
-#endif
 
 #define HE_SIMD_AVX                 0
 #define HE_SIMD_AVX2                0
@@ -18,7 +15,7 @@
 #define HE_SIMD_SSE4_2              0
 #define HE_SIMD_FMA3                0
 
-#if HE_SIMD_ENABLE
+#if HE_ENABLE_SIMD
 
 #if HE_CPU_X86 && (defined(__AVX__) || defined(__AVX2__))
     #include <immintrin.h>

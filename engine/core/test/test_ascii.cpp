@@ -180,51 +180,51 @@ HE_TEST(core, ascii, IsAlphaNum)
 }
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST(core, ascii, IsIntegral)
+HE_TEST(core, ascii, IsInteger)
 {
-    HE_EXPECT(IsIntegral("0"));
-    HE_EXPECT(IsIntegral("5"));
-    HE_EXPECT(IsIntegral("9"));
-    HE_EXPECT(IsIntegral("12345"));
-    HE_EXPECT(IsIntegral("8451856398232113568"));
+    HE_EXPECT(IsInteger("0"));
+    HE_EXPECT(IsInteger("5"));
+    HE_EXPECT(IsInteger("9"));
+    HE_EXPECT(IsInteger("12345"));
+    HE_EXPECT(IsInteger("8451856398232113568"));
 
-    HE_EXPECT(IsIntegral("-0"));
-    HE_EXPECT(IsIntegral("-5"));
-    HE_EXPECT(IsIntegral("-9"));
-    HE_EXPECT(IsIntegral("-12345"));
-    HE_EXPECT(IsIntegral("-8451856398232113568"));
+    HE_EXPECT(IsInteger("-0"));
+    HE_EXPECT(IsInteger("-5"));
+    HE_EXPECT(IsInteger("-9"));
+    HE_EXPECT(IsInteger("-12345"));
+    HE_EXPECT(IsInteger("-8451856398232113568"));
 
-    HE_EXPECT(!IsIntegral("0."));
-    HE_EXPECT(!IsIntegral("5-"));
-    HE_EXPECT(!IsIntegral("9="));
-    HE_EXPECT(!IsIntegral("12!345"));
-    HE_EXPECT(!IsIntegral("84[5185]6398}{2321_13568"));
-    HE_EXPECT(!IsIntegral("~"));
-    HE_EXPECT(!IsIntegral("    "));
+    HE_EXPECT(!IsInteger("0."));
+    HE_EXPECT(!IsInteger("5-"));
+    HE_EXPECT(!IsInteger("9="));
+    HE_EXPECT(!IsInteger("12!345"));
+    HE_EXPECT(!IsInteger("84[5185]6398}{2321_13568"));
+    HE_EXPECT(!IsInteger("~"));
+    HE_EXPECT(!IsInteger("    "));
 }
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST(core, ascii, IsFloatingPoint)
+HE_TEST(core, ascii, IsFloat)
 {
-    HE_EXPECT(IsFloatingPoint("0."));
-    HE_EXPECT(IsFloatingPoint("0.0"));
-    HE_EXPECT(IsFloatingPoint("5.5"));
-    HE_EXPECT(IsFloatingPoint("9.2"));
-    HE_EXPECT(IsFloatingPoint("12345.54321"));
-    HE_EXPECT(IsFloatingPoint("8451856398232113568.987654321"));
+    HE_EXPECT(IsFloat("0."));
+    HE_EXPECT(IsFloat("0.0"));
+    HE_EXPECT(IsFloat("5.5"));
+    HE_EXPECT(IsFloat("9.2"));
+    HE_EXPECT(IsFloat("12345.54321"));
+    HE_EXPECT(IsFloat("8451856398232113568.987654321"));
 
-    HE_EXPECT(IsFloatingPoint("-0.0"));
-    HE_EXPECT(IsFloatingPoint("-5.5"));
-    HE_EXPECT(IsFloatingPoint("-9.2"));
-    HE_EXPECT(IsFloatingPoint("-12345.54321"));
-    HE_EXPECT(IsFloatingPoint("-8451856398232113568.987654321"));
+    HE_EXPECT(IsFloat("-0.0"));
+    HE_EXPECT(IsFloat("-5.5"));
+    HE_EXPECT(IsFloat("-9.2"));
+    HE_EXPECT(IsFloat("-12345.54321"));
+    HE_EXPECT(IsFloat("-8451856398232113568.987654321"));
 
-    HE_EXPECT(!IsFloatingPoint("5-"));
-    HE_EXPECT(!IsFloatingPoint("9="));
-    HE_EXPECT(!IsFloatingPoint("12!345"));
-    HE_EXPECT(!IsFloatingPoint("84[5185]6398}{2321_13568"));
-    HE_EXPECT(!IsFloatingPoint("~"));
-    HE_EXPECT(!IsFloatingPoint("    "));
+    HE_EXPECT(!IsFloat("5-"));
+    HE_EXPECT(!IsFloat("9="));
+    HE_EXPECT(!IsFloat("12!345"));
+    HE_EXPECT(!IsFloat("84[5185]6398}{2321_13568"));
+    HE_EXPECT(!IsFloat("~"));
+    HE_EXPECT(!IsFloat("    "));
 }
 
 // ------------------------------------------------------------------------------------------------

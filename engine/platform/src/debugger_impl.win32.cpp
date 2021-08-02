@@ -1,24 +1,22 @@
 // Copyright Chad Engler
 
-#include "he/core/debug.h"
+#include "debugger_impl.h"
 
-#include "he/core/platform.h"
-#include "he/core/string.h"
 #include "he/core/wstr.h"
 
-#if HE_API_WIN32
+#if defined(HE_API_WIN32)
 
-#include "win32_min.h"
+#include "he/core/win32_min.h"
 
 namespace he
 {
-    void OutputToDebugger(const char* s)
+    void DebuggerImpl::Print(const char* s) const
     {
         wchar_t* wideStr = HE_TO_WSTR(s);
         OutputDebugStringW(wideStr);
     }
 
-    bool IsDebuggerAttached()
+    bool DebuggerImpl::IsAttached() const
     {
         return !!IsDebuggerPresent();
     }

@@ -82,13 +82,13 @@ namespace he
     ///
     /// \param str The string to check.
     /// \return True if the string contains only characters in the range `[0,9]`, and an optional leading `-`.
-    constexpr bool IsIntegral(const char* str);
+    constexpr bool IsInteger(const char* str);
 
     /// Checks if the null terminated string contains only numeric digits, a single period, and optional leading dash.
     ///
     /// \param str The string to check.
     /// \return True if the string contains only characters in the range `[0,9]`, a single `.`, and an optional leading `-`.
-    constexpr bool IsFloatingPoint(const char* str);
+    constexpr bool IsFloat(const char* str);
 
     /// Checks if the character is a hexadecimal digit.
     ///

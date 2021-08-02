@@ -22,19 +22,9 @@ namespace he
         I* GetAPI();
     };
 
-    struct ModuleInfo
-    {
-        const char* name;       ///< Friendly name of the module
-        const char* desc;       ///< Description of the module
-        const char* version;    ///< Version string of the module
-    };
-
     class Module
     {
     public:
-        /// Returns information about this module.
-        virtual const ModuleInfo& GetInfo() const = 0;
-
         /// Called to allow the module to contribute all the APIs it plans to register.
         virtual bool Register(ModuleRegistry& registry) const = 0;
 

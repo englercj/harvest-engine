@@ -148,8 +148,8 @@ namespace he
 
         friend class SpanTestAttorney;
 
-        T* m_ptr = nullptr;
-        uint32_t m_size = 0;
+        T* m_ptr{ nullptr };
+        uint32_t m_size{ 0 };
     };
 
     /// Helper to create a span from deduced types based on the parameters.

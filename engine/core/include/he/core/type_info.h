@@ -13,7 +13,7 @@ namespace he
     {
         constexpr TypeId(const StringView& name)
             : name(name)
-            , hash(FNV64::HashData(name.Data(), name.Size()))
+            , hash(FNV64::HashStringN(name.Data(), name.Size()))
         {}
 
         constexpr bool operator==(const TypeId& x) const { return hash == x.hash; }
@@ -38,12 +38,15 @@ namespace he
             constexpr char FuncSigSuffix[] = ">(void)";
         #endif
 
-        constexpr const char FuncSig[] = HE_FUNC_SIG;
-        constexpr uint32_t FuncSigLen = HE_LENGTH_OF(FuncSig) - 1;
+        constexpr uint32_t FuncSigLen = HE_LENGTH_OF(HE_FUNC_SIG) - 1;
         constexpr uint32_t FuncSigPrefixLen = HE_LENGTH_OF(FuncSigPrefix) - 1;
         constexpr uint32_t FuncSigSuffixLen = HE_LENGTH_OF(FuncSigSuffix) - 1;
 
-        return { FuncSig + FuncSigPrefixLen, FuncSig + (FuncSigLen - FuncSigSuffixLen) };
+        constexpr const char* FuncSig = HE_FUNC_SIG;
+        constexpr const char* NameStart = FuncSig + FuncSigPrefixLen;
+        constexpr const char* NameEnd = FuncSig + (FuncSigLen - FuncSigSuffixLen);
+
+        return { NameStart, NameEnd };
     }
 
     template <typename T>
@@ -62,5 +65,5 @@ namespace std
         {
             return static_cast<size_t>(id.hash);
         }
-    }
+    };
 }

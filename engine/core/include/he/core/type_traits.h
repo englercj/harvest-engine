@@ -4,6 +4,8 @@
 
 #include "he/core/types.h"
 
+#include <type_traits>
+
 namespace he
 {
     template <class... T> using Void = void;
@@ -25,6 +27,11 @@ namespace he
 
     template <typename, typename> inline constexpr bool IsSame = false;
     template <typename T> inline constexpr bool IsSame<T, T> = true;
+
+    // --------------------------------------------------------------------------------------------
+    // Is Base Of
+
+    template <typename Base, typename Derived> inline constexpr bool IsBaseOf = __is_base_of(Base, Derived);
 
     // --------------------------------------------------------------------------------------------
     // Numeric

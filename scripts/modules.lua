@@ -205,6 +205,14 @@ local function _module_project(mod)
         objdir(obj_dir)
         targetdir(target_dir)
 
+        defines { "HE_CFG_MODULE_NAME=\"" .. mod.name .. "\"" }
+
+        if mod.type == "default" and build_type == "dynamic" then
+            defines { "HE_CFG_MODULE_DYNAMIC=1" }
+        elseif mod.type == "default" or mod.type == "static" then
+            defines { "HE_CFG_MODULE_STATIC=1" }
+        end
+
         for key, value in orderedPairs(mod) do
             _try_handle_key(mod, key, value)
         end

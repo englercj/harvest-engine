@@ -13,6 +13,8 @@ namespace he
     class Debugger
     {
     public:
+        virtual ~Debugger() {}
+
         /// Outputs `s` to the debugger output. On MSVC this will output to the debug channel
         /// even when the debugger is not attached. You can see such messages using DebugView.
         ///

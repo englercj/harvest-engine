@@ -25,7 +25,7 @@ namespace he
         HE_ASSERT((dst && dstLen) || (!dst && !dstLen));
 
         std::mbstate_t state{};
-        size_t result = std::mbsrtowcs(dst, &src, dst ? dstLen : 0, &state);
+        size_t result = std::wcsrtombs(dst, &src, dst ? dstLen : 0, &state);
         return static_cast<uint32_t>(result) + 1; // +1 for null
     }
 #endif

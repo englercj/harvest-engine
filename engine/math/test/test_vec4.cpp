@@ -344,8 +344,8 @@ HE_TEST(math, vec4, Operators)
         v = { 2, 4, 6, 8 };
         v /= { 1, 2, 2, 4 };
         HE_EXPECT_EQ(v, (Vec4f{ 2, 2, 3, 2 }));
-        HE_EXPECT_EQ((Vec4f{ 2, 4, 6, 8 } / 2.0f), (Vec4f{ 1, 2, 3, 4 }));
-        HE_EXPECT_EQ((Vec4f{ 4, 4, 0, 32 } / Vec4f{ 2, 4, 6, 8 }), (Vec4f{ 2, 1, 0, 4 }));
+        HE_EXPECT_EQ_ULP((Vec4f{ 2, 4, 6, 8 } / 2.0f), (Vec4f{ 1, 2, 3, 4 }), 1);
+        HE_EXPECT_EQ_ULP((Vec4f{ 4, 4, 0, 32 } / Vec4f{ 2, 4, 6, 8 }), (Vec4f{ 2, 1, 0, 4 }), 1);
 
         HE_EXPECT_LT((Vec4f{ 1, 1, 1, 1 }), (Vec4f{ 2, 0, 0, 0 }));
         HE_EXPECT_LT((Vec4f{ 1, 1, 1, 1 }), (Vec4f{ 1, 2, 0, 0 }));

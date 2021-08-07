@@ -21,7 +21,7 @@ HE_TEST(math, quat, MakeQuat)
     Vec3f axis;
     float angle;
     ToAxisAngle(axis, angle, aa);
-    HE_EXPECT_EQ(axis, Vec3f_X);
+    HE_EXPECT_EQ_ULP(axis, Vec3f_X, 1);
     HE_EXPECT_EQ(angle, Float_PiHalf);
 
     // Rotation matrix

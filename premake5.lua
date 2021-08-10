@@ -14,7 +14,6 @@ he_workspace(sln_name)
         import_plugins {
             "engine/core",
             "engine/math",
-            "engine/platform",
         }
 
     group "tests"

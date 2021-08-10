@@ -277,13 +277,6 @@ namespace he
     /// \param sink The log sink to remove.
     void RemoveLogSink(LogSinkFunc sink);
 
-    /// Log sink that logs to the debugger.
-    ///
-    /// \param source The source information for this log entry.
-    /// \param kvs An array of key-value pairs.
-    /// \param count The size of the `kvs` array.
-    void DebugOutputSink(const LogSource& source, const LogKV* kvs, uint32_t count);
-
     /// Entry point for handling a log entry.
     ///
     /// \note
@@ -293,4 +286,11 @@ namespace he
     /// \param kvs An array of key-value pairs.
     /// \param count The size of the `kvs` array.
     void Log(const LogSource& source, const LogKV* kvs, uint32_t count);
+
+    /// Log sink that logs to the debugger.
+    ///
+    /// \param source The source information for this log entry.
+    /// \param kvs An array of key-value pairs.
+    /// \param count The size of the `kvs` array.
+    void DebuggerSink(const LogSource& source, const LogKV* kvs, uint32_t count);
 }

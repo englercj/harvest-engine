@@ -6,6 +6,9 @@
 #include "he/core/config.h"
 #include "he/core/cpu.h"
 #include "he/core/macros.h"
+#include "he/core/utils.h"
+
+#include "fmt/format.h"
 
 /// \def HE_DEBUG_BREAK()
 /// Causes a breakpoint in the code, where the user will be prompted to run the debugger.
@@ -57,3 +60,32 @@
     #define HE_FILE ""
     #define HE_LINE 0
 #endif
+
+namespace he
+{
+    /// Outputs `s` to the debugger output. On Windows this will output to the debug channel
+    /// even when the debugger is not attached. You can see such messages using DebugView.
+    ///
+    /// \param s The string to print.
+    void PrintToDebugger(const char* s);
+
+    /// Outputs the formatted string to the debugger output.
+    ///
+    /// \param fmt The format string.
+    /// \param args The arguments for the format string.
+    template <typename... Args>
+    void PrintToDebugger(const char* fmt, Args&&... args)
+    {
+        fmt::memory_buffer buf;
+        fmt::format_to(fmt::appender(buf), fmt, Forward<Args>(args)...);
+        buf.push_back('\0');
+        return Print(buf.data());
+    }
+
+    /// Checks if the debugger is currently attached to this program and returns the result.
+    ///
+    /// \note Not all platforms support checking this value, in which case false is returned.
+    ///
+    /// \return True if the debugger is currently attached.
+    bool IsDebuggerAttached();
+}

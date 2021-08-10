@@ -76,7 +76,7 @@ function he_workspace(name)
         inlining "Auto"
         optimize "Speed"
         runtime "Release"
-        symbols "Off"
+        symbols "On"
 
     filter { "configurations:Shipping" }
         defines { "NDEBUG", "HE_CFG_SHIPPING" }

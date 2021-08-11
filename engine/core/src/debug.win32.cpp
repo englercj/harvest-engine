@@ -1,6 +1,6 @@
 // Copyright Chad Engler
 
-#include "debugger_impl.h"
+#include "he/core/debug.h"
 
 #include "he/core/wstr.h"
 
@@ -10,13 +10,13 @@
 
 namespace he
 {
-    void DebuggerImpl::Print(const char* s) const
+    void PrintToDebugger(const char* s)
     {
         wchar_t* wideStr = HE_TO_WSTR(s);
         OutputDebugStringW(wideStr);
     }
 
-    bool DebuggerImpl::IsAttached() const
+    bool IsDebuggerAttached()
     {
         return !!IsDebuggerPresent();
     }

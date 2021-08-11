@@ -1,6 +1,6 @@
 // Copyright Chad Engler
 
-#include "debugger_impl.h"
+#include "he/core/debug.h"
 
 #if defined(HE_PLATFORM_EMSCRIPTEN)
 
@@ -8,12 +8,12 @@
 
 namespace he
 {
-    void DebuggerImpl::Print(const char* s) const
+    void PrintToDebugger(const char* s) const
     {
         emscripten_log(EM_LOG_CONSOLE, s);
     }
 
-    bool DebuggerImpl::IsAttached() const
+    bool IsDebuggerAttached() const
     {
         return false;
     }

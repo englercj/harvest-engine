@@ -2,7 +2,7 @@
 
 include "scripts/_setup.lua"
 
-he_workspace(sln_name)
+he_workspace()
     startproject "editor"
 
     import_plugins {

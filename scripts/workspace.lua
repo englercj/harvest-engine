@@ -1,7 +1,7 @@
 -- Copyright Chad Engler
 
-function he_workspace(name)
-    workspace(name)
+function he_workspace()
+    workspace(sln_name)
 
     -- Shared project setup
     configurations      { "Debug", "Release", "Shipping" }

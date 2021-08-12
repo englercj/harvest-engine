@@ -3,6 +3,7 @@
 #pragma once
 
 #include "he/core/types.h"
+#include "he/core/type_traits.h"
 
 namespace he
 {
@@ -34,6 +35,39 @@ namespace he
         ///
         /// \param ptr The pointer returned from Malloc or Realloc.
         virtual void Free(void* ptr) = 0;
+
+        /// Allocates and constructs a new `T`.
+        ///
+        /// \tparam The type to allocate and construct.
+        /// \param args optional arguments for the constructor.
+        template <typename T, class... Args>
+        T* New(Args&&... args)
+        {
+            void* p = Malloc(sizeof(T), alignof(T));
+            return new(p) T(static_cast<Args&&>(args)...);
+        }
+
+        /// Deletes `p` which must have been allocated with New.
+        ///
+        /// \param p The pointer to destruct and deallocate.
+        template <typename T, HE_REQUIRES(IsTriviallyDestructible<T>)>
+        void Delete(const T* p)
+        {
+            Free(p);
+        }
+
+        /// Deletes `p` which must have been allocated with New.
+        ///
+        /// \param p The pointer to destruct and deallocate.
+        template <typename T, HE_REQUIRES(!IsTriviallyDestructible<T>)>
+        void Delete(const T* p)
+        {
+            if (p)
+            {
+                p->~T();
+                Free(const_cast<T*>(p));
+            }
+        }
     };
 
     /// Allocator that forwards memory requests to the CRT.

@@ -1,5 +1,6 @@
 -- Copyright Chad Engler
 
+local p = premake
 local install_plugin = dofile("install_plugin.lua")
 local build_type = "dynamic" -- TODO: Switch based on dynamic or static build of modules
 
@@ -63,17 +64,17 @@ key_handlers.private_includedirs = key_handlers.public_includedirs
 
 key_handlers.public_dependson = function (ctx, values)
     for _, mod_name in ipairs(values) do
-        if string.starts_with(mod_name, "system:") then
+        if string.startswith(mod_name, "system:") then
             links { string.sub(mod_name, 8) }
             return
         end
 
-        if string.starts_with(mod_name, "file:") then
+        if string.startswith(mod_name, "file:") then
             links { string.sub(mod_name, 6) }
             return
         end
 
-        if string.starts_with(mod_name, "module:") then
+        if string.startswith(mod_name, "module:") then
             mod_name = string.sub(mod_name, 8)
         end
 
@@ -107,11 +108,11 @@ key_handlers.public_dependson_include = function (ctx, values)
         local mod = imported_modules[mod_name]
         assert(mod ~= nil, "Module '" .. ctx.name .. "' has an include dependency on '" .. mod_name .. "', but no such module has been imported.")
 
-        if string.starts_with(mod_name, "system:") or string.starts_with(mod_name, "file:") then
+        if string.startswith(mod_name, "system:") or string.startswith(mod_name, "file:") then
             return
         end
 
-        if string.starts_with(mod_name, "module:") then
+        if string.startswith(mod_name, "module:") then
             mod_name = string.sub(mod_name, 8)
         end
 
@@ -174,6 +175,8 @@ end
 
 
 local function _module_project(mod)
+    verbosef("Generating project for module '%s' in group '%s'", mod.name, mod.group)
+
     local oldcwd = os.getcwd()
     os.chdir(mod._plugin._install_dir)
 
@@ -241,10 +244,17 @@ function import_plugins(plugins, options)
 
         plugin_file = path.join(path.getabsolute(_SCRIPT_DIR), plugin_file);
 
+        verbosef("Loading plugin imported as '%s' from file '%s'", plugin_path, plugin_file)
         local plugin = json.decode(io.readfile(plugin_file))
 
-        if plugin.modules == nil then
-            return
+        if plugin == nil then
+            p.error("Failed to import plugin from '" .. plugin_path .. "', does it exist?", 0)
+            break
+        end
+
+        if plugin.modules == nil or table.isempty(plugin.modules) then
+            p.warn("Plugin '" .. plugin.name .. "' imported from '" .. plugin_path .. "' contains no modules to import.")
+            goto continue
         end
 
         plugin._file_path = plugin_file
@@ -265,6 +275,8 @@ function import_plugins(plugins, options)
                 table.insert(imported, mod);
             end
         end
+
+        ::continue::
     end
 
     for _, mod in ipairs(imported) do

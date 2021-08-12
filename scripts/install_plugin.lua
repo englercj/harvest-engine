@@ -1,5 +1,6 @@
 -- Copyright Chad Engler
 
+local p = premake
 local targetSysId = (os.istarget("windows") and "windows") or (os.istarget("linux") and "linux")
 local last_download_progress = 0
 
@@ -53,7 +54,7 @@ local function _download_archive(name, source, dir)
             -- TODO: This doesn"t work on windows (MINGW)
             os.executef("tar xf "%s" -C "%s"", fpath, dir)
         else
-            printf("FAILED to extract %s, unrecognized extension.", fname)
+            p.error("Failed to extract %s, unrecognized extension.", fname)
             return false
         end
 
@@ -72,7 +73,7 @@ local function _install_from_archive(name, source)
 
     if installed_version ~= digest then
         if _download_archive(name, source, dir) == false then
-            premake.error("FAILED to install archive " .. name)
+            p.error("Failed to install archive " .. name)
             return
         end
 
@@ -86,6 +87,8 @@ local function _install_from_github(name, source)
     local org
     local repo
     local version = "master"
+
+    verbosef("Installing plugin '%s' from github '%s'", name, source)
 
     -- Tokenize the string
     local t = 0
@@ -113,6 +116,8 @@ local function _install_from_bitbucket(name, source)
     local org
     local repo
     local version = "master"
+
+    verbosef("Installing plugin '%s' from bitbucket '%s'", name, source)
 
     -- Tokenize the string
     local t = 0

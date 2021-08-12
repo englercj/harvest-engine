@@ -40,7 +40,3 @@ function orderedPairs(t)
     -- Equivalent of the pairs() function on tables. Allows to iterate in order
     return _orderedNext, t, nil
 end
-
-function string.starts_with(str, search)
-    return string.sub(str, 1, string.len(search)) == search
-end

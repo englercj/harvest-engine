@@ -23,6 +23,7 @@ All paths can contain globs and are relative to the json file, or the install di
 | ------------------------- | ----------------- | ----------- |
 | name                      | String            | Required. Globally unique name of the module. Also used as the project name. |
 | type                      | String            | See the Module Types section for valid values. |
+| group                     | String            | Name of the group this module belongs to. This will be a virtual folder in the solution tree. |
 | files                     | Array<String>     | File paths to include in the module project. |
 | dependson_runtime         | Array<String>     | Module names this module will use at runtime. See the Module Dependencies section for more details. |
 | variants                  | Array<Variant>    | Variations of the module's properties activated by a filter. See the Variant Keys section. |

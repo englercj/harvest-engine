@@ -141,22 +141,10 @@ key_handlers.variants = function (ctx, values)
     filter { }
 end
 
-key_handlers.link_all_module_tests = function (ctx, value)
-    if value ~= true then
-        return
-    end
+key_handlers.exec = function (ctx, value)
+    local func = dofile(value)
 
-    for name, mod in orderedPairs(imported_modules) do
-        if mod.type == "test" then
-            key_handlers.public_dependson(ctx, { mod.name })
-
-            filter { "toolset:msc-*", "language:C++" }
-                linkoptions { "/WHOLEARCHIVE:" .. mod.name }
-            filter { "toolset:gcc or clang" }
-                linkoptions { "-Wl,--whole-archive %{lib_base_dir}/" .. mod.name .. "/lib" .. mod.name .. ".a -Wl,--no-whole-archive" }
-            filter { }
-        end
-    end
+    func(ctx)
 end
 
 local function _platform_file_excludes()
@@ -199,6 +187,7 @@ local function _module_project(mod)
     local target_dir = target_dir_by_kind[kindname]
     assert(target_dir, "No target_dir known for kind: '" .. kindname .. "'.")
 
+    group(mod.group)
     project(mod.name)
         language "C++"
         kind(kindname)
@@ -222,8 +211,24 @@ local function _module_project(mod)
     os.chdir(oldcwd)
 end
 
-function import_plugins(plugins)
+local function _should_include_module(mod, options)
+    if options.exclude_groups and table.contains(options.exclude_groups, mod.group) then
+        return false
+    end
+
+    if options.include_groups and not table.contains(options.include_groups, mod.group) then
+        return false
+    end
+
+    return true
+end
+
+function import_plugins(plugins, options)
     assert(type(plugins) == "table", "import_plugins expects a table")
+
+    if options == nil then
+        options = {}
+    end
 
     local imported = {}
 
@@ -251,27 +256,19 @@ function import_plugins(plugins)
             local existing = imported_modules[mod.name]
             assert(existing == nil, "Module '" .. mod.name .. "' was already provided by plugin '" .. (existing and existing._plugin.id or "") .. "', but plugin '" .. plugin.id .. "' also provides it.")
 
-            -- TODO: Resolve "remove_*" keys in variants at this point.
+            if _should_include_module(mod, options) then
+                -- TODO: Resolve "remove_*" keys in variants at this point.
 
-            imported_modules[mod.name] = mod
-            imported_modules_count = imported_modules_count + 1
+                imported_modules[mod.name] = mod
+                imported_modules_count = imported_modules_count + 1
 
-            table.insert(imported, mod);
+                table.insert(imported, mod);
+            end
         end
     end
 
     for _, mod in ipairs(imported) do
-        if mod.type ~= "test" then
-            _module_project(mod)
-        end
-    end
-end
-
-function create_all_module_test_projects()
-    for name, mod in orderedPairs(imported_modules) do
-        if mod.type == "test" then
-            _module_project(mod)
-        end
+        _module_project(mod)
     end
 end
 
@@ -300,4 +297,16 @@ function add_module_keys(scope, keys)
         key_handlers[public_key] = handler
         key_handlers[private_key] = handler
     end
+end
+
+function get_module(name)
+    return imported_modules[name]
+end
+
+function get_all_modules()
+    return imported_modules
+end
+
+function handle_module_key(mod, key, value)
+    _try_handle_key(mod, key, value)
 end

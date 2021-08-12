@@ -12,9 +12,10 @@
         {
             "name": "he_test_runner",
             "type": "console_app",
+            "group": "tests",
             "files": ["main.cpp"],
             "public_dependson": ["he_core"],
-            "link_all_module_tests": true
+            "exec": "link_test_projects.lua"
         }
     ]
 }

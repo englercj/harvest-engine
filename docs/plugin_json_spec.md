@@ -26,6 +26,7 @@ All paths can contain globs and are relative to the json file, or the install di
 | files                     | Array<String>     | File paths to include in the module project. |
 | dependson_runtime         | Array<String>     | Module names this module will use at runtime. See the Module Dependencies section for more details. |
 | variants                  | Array<Variant>    | Variations of the module's properties activated by a filter. See the Variant Keys section. |
+| exec                      | String            | Path to a lua file that returns an arbitrary function for execution in the context of the module's project. Use as a last resort for advanced functionality. |
 
 ### Prefixed Keys
 
@@ -51,7 +52,6 @@ Variants can include any Module Key which will only be applied when that variant
 | default | The default module type. Built as a hot-reloadable shared library during dynamic (internal) builds and as a static library during static (shipping) builds. |
 | static | Always built as a static library. |
 | header | Header-only module that does not generate any symbols to be linked. |
-| test | A test module that is built as a static library and linked into the test_runner executable. All symbols are exported so they can be discovered by the test runner and are not stripped by the linker. |
 | console_app | A console application |
 | windowed_app | A windowed application |
 

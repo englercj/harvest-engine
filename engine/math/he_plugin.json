@@ -12,13 +12,15 @@
         {
             "name": "he_math",
             "type": "header",
+            "group": "engine",
             "files": ["include/**", "src/**"],
             "public_dependson": ["he_core"],
             "public_includedirs": ["include"]
         },
         {
             "name": "he_math_tests",
-            "type": "test",
+            "type": "static",
+            "group": "tests",
             "files": ["test/**"],
             "private_dependson": ["he_math"]
         }

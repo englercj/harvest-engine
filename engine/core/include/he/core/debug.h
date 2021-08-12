@@ -79,7 +79,7 @@ namespace he
         fmt::memory_buffer buf;
         fmt::format_to(fmt::appender(buf), fmt, Forward<Args>(args)...);
         buf.push_back('\0');
-        return Print(buf.data());
+        return PrintToDebugger(buf.data());
     }
 
     /// Checks if the debugger is currently attached to this program and returns the result.

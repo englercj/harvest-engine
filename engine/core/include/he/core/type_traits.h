@@ -4,8 +4,6 @@
 
 #include "he/core/types.h"
 
-#include <type_traits>
-
 namespace he
 {
     template <class... T> using Void = void;

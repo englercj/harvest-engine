@@ -183,14 +183,16 @@ namespace he
         };
 
         LogKV(const char* k, bool v) : key(k), type(ValueType::Bool), value{ .b = v } {}
-        LogKV(const char* k, int8_t v) : key(k), type(ValueType::Int), value{ .i = v } {}
-        LogKV(const char* k, int16_t v) : key(k), type(ValueType::Int), value{ .i = v } {}
-        LogKV(const char* k, int32_t v) : key(k), type(ValueType::Int), value{ .i = v } {}
-        LogKV(const char* k, int64_t v) : key(k), type(ValueType::Int), value{ .i = v } {}
-        LogKV(const char* k, uint8_t v) : key(k), type(ValueType::Uint), value{ .u = v } {}
-        LogKV(const char* k, uint16_t v) : key(k), type(ValueType::Uint), value{ .u = v } {}
-        LogKV(const char* k, uint32_t v) : key(k), type(ValueType::Uint), value{ .u = v } {}
-        LogKV(const char* k, uint64_t v) : key(k), type(ValueType::Uint), value{ .u = v } {}
+        LogKV(const char* k, signed char v) : key(k), type(ValueType::Int), value{ .i = v } {}
+        LogKV(const char* k, signed short v) : key(k), type(ValueType::Int), value{ .i = v } {}
+        LogKV(const char* k, signed int v) : key(k), type(ValueType::Int), value{ .i = v } {}
+        LogKV(const char* k, signed long v) : key(k), type(ValueType::Int), value{ .i = v } {}
+        LogKV(const char* k, signed long long v) : key(k), type(ValueType::Int), value{ .i = v } {}
+        LogKV(const char* k, unsigned char v) : key(k), type(ValueType::Uint), value{ .u = v } {}
+        LogKV(const char* k, unsigned short v) : key(k), type(ValueType::Uint), value{ .u = v } {}
+        LogKV(const char* k, unsigned int v) : key(k), type(ValueType::Uint), value{ .u = v } {}
+        LogKV(const char* k, unsigned long v) : key(k), type(ValueType::Uint), value{ .u = v } {}
+        LogKV(const char* k, unsigned long long v) : key(k), type(ValueType::Uint), value{ .u = v } {}
         LogKV(const char* k, float v) : key(k), type(ValueType::Double), value{ .d = v } {}
         LogKV(const char* k, double v) : key(k), type(ValueType::Double), value{ .d = v } {}
 

@@ -25,6 +25,14 @@
             "files": ["test/**"],
             "private_dependson": ["he_core"],
             "private_includedirs": ["src"]
+        },
+        {
+            "name": "he_test_runner",
+            "type": "console_app",
+            "group": "tests",
+            "files": ["test_runner/main.cpp"],
+            "public_dependson": ["he_core"],
+            "exec": "test_runner/link_test_projects.lua"
         }
     ]
 }

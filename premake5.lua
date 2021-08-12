@@ -9,6 +9,5 @@ he_workspace()
         "contrib/fmt",
         "engine/core",
         "engine/math",
-        "engine/test_runner",
         "engine/window",
     }

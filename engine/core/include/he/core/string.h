@@ -138,6 +138,22 @@ namespace he
         /// \return True if `a` is less than `b`, false otherwise.
         static bool LessN(const char* a, const char* b, uint32_t len) { return CompareN(a, b, len) < 0; }
 
+        /// Compares the null terminated strings in a case-insensative manner and
+        /// returns true if `a` is less than `b`.
+        ///
+        /// \param a The left-hand side of the comparison operation.
+        /// \param b The right-hand side of the comparison operation.
+        /// \return True if `a` is less than `b`, false otherwise.
+        static bool LessI(const char* a, const char* b) { return CompareI(a, b) < 0; }
+
+        /// Compares the null terminated strings, up to `len`, in a case-insensative manner and
+        /// returns true if `a` is less than `b`.
+        ///
+        /// \param a The left-hand side of the comparison operation.
+        /// \param b The right-hand side of the comparison operation.
+        /// \return True if `a` is less than `b`, false otherwise.
+        static bool LessNI(const char* a, const char* b, uint32_t len) { return CompareNI(a, b, len) < 0; }
+
         /// Copies the source string into the destination buffer, including the null terminator.
         /// The destination buffer is garuanteed to be null terminated if `dstLen > 0`.
         ///
@@ -222,6 +238,33 @@ namespace he
         /// \return A pointer to the start of the found substring in `str`, or a null pointer if
         /// not found. If `str` is empty, then `search` is returned.
         static char* Find(char* str, const char* search);
+
+        /// Parses the string into a integral value.
+        /// If successful, an integer value corresponding to the contents of str is returned.
+        /// If the converted value falls out of range of corresponding return type, a range error
+        /// occurs (setting errno to ERANGE) and LONG_MAX, LONG_MIN, LLONG_MAX or LLONG_MIN is
+        /// returned. If no conversion can be performed, zero is returned.
+        ///
+        /// \param[in] str The string to parse.
+        /// \param[in] end Optional. A pointer to the end of the string to stop parsing. If
+        ///     nullptr (default) the string is parsed until a null terminator is reached.
+        /// \param[in] base Optional. The numerical base of the value being parsed.
+        /// \return The parsed number.
+        template <typename T>
+        static T ToInteger(const char* str, const char** end = nullptr, int32_t base = 10);
+
+        /// Parses the string into a floating point value.
+        /// If successful, a floating point value corresponding to the contents of str is returned.
+        /// If the converted value falls out of range of corresponding return type, a range error
+        /// occurs (setting errno to ERANGE) and LONG_MAX, LONG_MIN, LLONG_MAX or LLONG_MIN is
+        /// returned. If no conversion can be performed, zero is returned.
+        ///
+        /// \param[in] str The string to parse.
+        /// \param[in] end Optional. A pointer to the end of the string to stop parsing. If
+        ///     nullptr (default) the string is parsed until a null terminator is reached.
+        /// \return The parsed number.
+        template <typename T>
+        static T ToFloat(const char* str, const char** end = nullptr);
 
     public:
         // ----------------------------------------------------------------------------------------
@@ -520,6 +563,11 @@ namespace he
         ///
         /// \param str The string to append.
         void Append(const String& str) { Insert(Size(), str.Data(), str.Size()); }
+
+        /// Replaces the contents of this string with a copy of the null terminated `str`.
+        ///
+        /// \param str The string source to copy from.
+        void Assign(const char* str) { Clear(); Append(str); }
 
     private:
         // Grows the internal capacity to make space for `n` elements.

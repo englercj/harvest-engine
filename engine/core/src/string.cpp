@@ -6,6 +6,7 @@
 #include "he/core/memory_ops.h"
 #include "he/core/utils.h"
 
+#include <cstdlib>
 #include <cstring>
 
 namespace he
@@ -407,4 +408,30 @@ namespace he
 
         x.SetSizeEmbed(0);
     }
+
+#define HE_FROMSTR_INT_IMPL(T, fn) \
+    template <> T String::ToInteger<T>(const char* str, const char** end, int32_t base) { return static_cast<T>(std::fn(str, const_cast<char**>(end), base)); }
+
+    HE_FROMSTR_INT_IMPL(signed char, strtol)
+    HE_FROMSTR_INT_IMPL(char, strtol)
+    HE_FROMSTR_INT_IMPL(short, strtol)
+    HE_FROMSTR_INT_IMPL(int, strtol)
+    HE_FROMSTR_INT_IMPL(long, strtol)
+    HE_FROMSTR_INT_IMPL(long long, strtoll)
+
+    HE_FROMSTR_INT_IMPL(unsigned char, strtoul)
+    HE_FROMSTR_INT_IMPL(unsigned short, strtoul)
+    HE_FROMSTR_INT_IMPL(unsigned int, strtoul)
+    HE_FROMSTR_INT_IMPL(unsigned long, strtoul)
+    HE_FROMSTR_INT_IMPL(unsigned long long, strtoull)
+
+#undef HE_FROMSTR_INT_IMPL
+
+#define HE_FROMSTR_FLT_IMPL(T, fn) \
+    template <> T String::ToFloat<T>(const char* str, const char** end) { return std::fn(str, const_cast<char**>(end)); }
+
+    HE_FROMSTR_FLT_IMPL(float, strtof)
+    HE_FROMSTR_FLT_IMPL(double, strtod)
+
+#undef HE_FROMSTR_FLT_IMPL
 }

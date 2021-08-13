@@ -280,7 +280,7 @@ HE_TEST(core, String, Static_Find)
 HE_TEST(core, String, Constants)
 {
     // Changing these are potentially breaking so checking them here so a change is made with thoughtfulness.
-    static_assert(IsSame<String::ElementType, char>);
+    static_assert(std::is_same_v<String::ElementType, char>);
     static_assert(String::MaxEmbedCharacters == 63);
     static_assert(String::MaxHeapCharacters == 0xfffffffe);
 }

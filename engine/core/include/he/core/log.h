@@ -5,7 +5,6 @@
 #include "he/core/config.h"
 #include "he/core/debug.h"
 #include "he/core/string.h"
-#include "he/core/type_traits.h"
 #include "he/core/types.h"
 #include "he/core/utils.h"
 

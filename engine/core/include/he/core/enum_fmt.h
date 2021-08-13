@@ -9,7 +9,7 @@
 namespace fmt
 {
     template <typename T>
-    struct formatter<T, he::EnableIf<he::IsEnum<T>>>
+    struct formatter<T, std::enable_if_t<he::IsEnum<T>>>
     {
         constexpr auto parse(format_parse_context& ctx) const -> decltype(ctx.begin())
         {

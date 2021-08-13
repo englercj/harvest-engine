@@ -74,7 +74,7 @@ namespace he
     /// \tparam U The type to cast from, usually this is just deduced from the parameter.
     /// \param src The value to cast to another type.
     /// \return The same bits as a different type.
-    template <typename T, class U, HE_REQUIRES(sizeof(T) == sizeof(U) && IsTriviallyCopyable<T> && IsTriviallyCopyable<U>)>
+    template <typename T, class U, HE_REQUIRES(sizeof(T) == sizeof(U) && std::is_trivially_copyable_v<T> && std::is_trivially_copyable_v<U>)>
     [[nodiscard]] constexpr T BitCast(const U& src) noexcept
     {
         return __builtin_bit_cast(T, src);
@@ -85,7 +85,7 @@ namespace he
     /// \param x The object to be forwarded.
     /// \return Cast of the object to an lvalue or rvalue reference.
     template <typename T>
-    [[nodiscard]] constexpr T&& Forward(RemoveReference<T>& x) noexcept
+    [[nodiscard]] constexpr T&& Forward(std::remove_reference_t<T>& x) noexcept
     {
         return static_cast<T&&>(x);
     }
@@ -95,9 +95,9 @@ namespace he
     /// \param x The object to be moved.
     /// \return Cast of the object to an rvalue reference.
     template <typename T>
-    [[nodiscard]] constexpr RemoveReference<T>&& Move(T&& x) noexcept
+    [[nodiscard]] constexpr std::remove_reference_t<T>&& Move(T&& x) noexcept
     {
-        return static_cast<RemoveReference<T>&&>(x);
+        return static_cast<std::remove_reference_t<T>&&>(x);
     }
 
     /// Exchange the value of `obj` with `newVal` and returns the original value of `obj`.

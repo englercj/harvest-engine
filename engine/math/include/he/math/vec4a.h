@@ -5,7 +5,6 @@
 #include "he/core/assert.h"
 #include "he/core/compiler.h"
 #include "he/core/cpu.h"
-#include "he/core/type_traits.h"
 #include "he/core/utils.h"
 #include "he/math/constants.h"
 #include "he/math/float.h"

@@ -23,7 +23,7 @@ HE_TEST(core, log, LogLevel)
     static_assert(static_cast<uint8_t>(LogLevel::Warn) == HE_LOG_LEVEL_WARN);
     static_assert(static_cast<uint8_t>(LogLevel::Error) == HE_LOG_LEVEL_ERROR);
 
-    static_assert(IsSame<EnumType<LogLevel>, uint8_t>);
+    static_assert(std::is_same_v<EnumType<LogLevel>, uint8_t>);
 }
 
 template <typename T, typename V = void> struct TypeToLogKVType;
@@ -40,7 +40,7 @@ template <> struct TypeToLogKVType<float> { static constexpr auto ValueType = Lo
 template <> struct TypeToLogKVType<double> { static constexpr auto ValueType = LogKV::ValueType::Double; };
 template <> struct TypeToLogKVType<const char*> { static constexpr auto ValueType = LogKV::ValueType::String; };
 
-template <typename T> struct TypeToLogKVType<T, EnableIf<IsEnum<T>>>
+template <typename T> struct TypeToLogKVType<T, std::enable_if_t<IsEnum<T>>>
 {
     static constexpr auto ValueType = TypeToLogKVType<EnumType<T>>::ValueType;
 };

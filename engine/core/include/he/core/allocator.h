@@ -50,7 +50,7 @@ namespace he
         /// Deletes `p` which must have been allocated with New.
         ///
         /// \param p The pointer to destruct and deallocate.
-        template <typename T, HE_REQUIRES(IsTriviallyDestructible<T>)>
+        template <typename T, HE_REQUIRES(std::is_trivially_destructible_v<T>)>
         void Delete(const T* p)
         {
             Free(p);
@@ -59,7 +59,7 @@ namespace he
         /// Deletes `p` which must have been allocated with New.
         ///
         /// \param p The pointer to destruct and deallocate.
-        template <typename T, HE_REQUIRES(!IsTriviallyDestructible<T>)>
+        template <typename T, HE_REQUIRES(!std::is_trivially_destructible_v<T>)>
         void Delete(const T* p)
         {
             if (p)

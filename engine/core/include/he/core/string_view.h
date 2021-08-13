@@ -48,7 +48,7 @@ namespace he
         /// Construct a string view from a string range provider, such as he::String or std::string.
         ///
         /// \param str The string to refer to.
-        template <typename T, HE_REQUIRES(!IsSame<RemoveCV<T>, StringView> && (ProvidesStdContiguousRange<T, const char> || ProvidesContiguousRange<T, const char>))>
+        template <typename T, HE_REQUIRES(!std::is_same_v<std::remove_cv_t<T>, StringView> && (ProvidesStdContiguousRange<T, const char> || ProvidesContiguousRange<T, const char>))>
         constexpr StringView(const T& str)
             : m_span(str)
         {}

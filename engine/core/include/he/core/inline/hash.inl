@@ -36,7 +36,7 @@ namespace he
         return h;
     }
 
-    template <typename T, HE_REQUIRED(IsArithmetic<T>)>
+    template <typename T, HE_REQUIRED(std::is_arithmetic_v<T>)>
     inline FNV32::ValueType FNV32::HashScalar(const T& obj, ValueType h)
     {
         const uint8_t* s = reinterpret_cast<const uint8_t*>(&obj);
@@ -50,7 +50,7 @@ namespace he
         Reset(seed);
     }
 
-    template <typename T, HE_REQUIRED(IsArithmetic<T>)>
+    template <typename T, HE_REQUIRED(std::is_arithmetic_v<T>)>
     inline FNV32& FNV32::Scalar(const T& obj)
     {
         m_state = HashScalar(obj, m_state);
@@ -114,7 +114,7 @@ namespace he
         return h;
     }
 
-    template <typename T, HE_REQUIRED(IsArithmetic<T>)>
+    template <typename T, HE_REQUIRED(std::is_arithmetic_v<T>)>
     inline FNV64::ValueType FNV64::HashScalar(const T& obj, ValueType h)
     {
         const uint8_t* s = reinterpret_cast<const uint8_t*>(&obj);
@@ -128,7 +128,7 @@ namespace he
         Reset(seed);
     }
 
-    template <typename T, HE_REQUIRED(IsArithmetic<T>)>
+    template <typename T, HE_REQUIRED(std::is_arithmetic_v<T>)>
     inline FNV64& FNV64::Scalar(const T& obj)
     {
         m_state = HashScalar(obj, m_state);

@@ -12,8 +12,8 @@ using namespace he;
 HE_TEST(core, Vector, Constants)
 {
     // Changing these are potentially breaking so checking them here so a change is made with thoughtfulness.
-    static_assert(IsSame<Vector<int>::ElementType, int>);
-    static_assert(IsSame<Vector<NonTrivial>::ElementType, NonTrivial>);
+    static_assert(std::is_same_v<Vector<int>::ElementType, int>);
+    static_assert(std::is_same_v<Vector<NonTrivial>::ElementType, NonTrivial>);
     static_assert(Vector<int>::MinElements == 8);
     static_assert(Vector<int>::MaxElements == 0xffffffff);
 }

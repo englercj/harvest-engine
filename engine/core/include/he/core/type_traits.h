@@ -14,7 +14,7 @@ namespace he
     template <typename T, typename E>
     struct _ProvidesStdContiguousRange
     {
-        template <typename U, class D = RemovePointer<decltype(DeclVal<U&>().data())>, class S = decltype(DeclVal<U&>().size())>
+        template <typename U, class D = std::remove_pointer_t<decltype(std::declval<U&>().data())>, class S = decltype(std::declval<U&>().size())>
         static std::true_type Test(std::enable_if_t<std::is_convertible_v<D(*)[], E(*)[]> && std::is_convertible_v<S, size_t>, U*>);
 
         template <typename U>
@@ -25,7 +25,7 @@ namespace he
     template <typename T, class E>
     struct _ProvidesContiguousRange
     {
-        template <typename U, class D = RemovePointer<decltype(DeclVal<U&>().Data())>, class S = decltype(DeclVal<U&>().Size())>
+        template <typename U, class D = std::remove_pointer_t<decltype(std::declval<U&>().Data())>, class S = decltype(std::declval<U&>().Size())>
         static std::true_type Test(std::enable_if_t<std::is_convertible_v<D(*)[], E(*)[]> && std::is_convertible_v<S, uint32_t>, U*>);
 
         template <typename U>

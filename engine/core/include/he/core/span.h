@@ -36,7 +36,7 @@ namespace he
         ///
         /// \param begin The pointer to the start of the range.
         /// \param end the pointer to one past the last element of the range.
-        template <typename P, HE_REQUIRES(IsConvertible<P, T*>)>
+        template <typename P, HE_REQUIRES(std::is_convertible_v<P, T*>)>
         constexpr Span(T* begin, P end)
             : m_ptr(begin)
             , m_size(static_cast<uint32_t>(static_cast<T*>(end) - begin))
@@ -55,7 +55,7 @@ namespace he
         /// it has `.data()` and `.size()` members.
         ///
         /// \param rangeProvider The object that provides the range.
-        template <typename R, HE_REQUIRES(!IsSpecialization<RemoveCV<R>, Span> && ProvidesStdContiguousRange<R, T>)>
+        template <typename R, HE_REQUIRES(!IsSpecialization<std::remove_cv_t<R>, Span> && ProvidesStdContiguousRange<R, T>)>
         constexpr Span(R& rangeProvider)
             : m_ptr(rangeProvider.data())
             , m_size(static_cast<uint32_t>(rangeProvider.size()))
@@ -67,7 +67,7 @@ namespace he
         /// it has `.Data()` and `.Size()` members.
         ///
         /// \param rangeProvider The object that provides the range.
-        template <typename R, HE_REQUIRES(!IsSpecialization<RemoveCV<R>, Span> && !ProvidesStdContiguousRange<R, T> && ProvidesContiguousRange<R, T>)>
+        template <typename R, HE_REQUIRES(!IsSpecialization<std::remove_cv_t<R>, Span> && !ProvidesStdContiguousRange<R, T> && ProvidesContiguousRange<R, T>)>
         constexpr Span(R& rangeProvider)
             : m_ptr(rangeProvider.Data())
             , m_size(rangeProvider.Size())
@@ -76,7 +76,7 @@ namespace he
         /// Construct a span from another span object.
         ///
         /// \param s The span to construct from.
-        template <typename U, HE_REQUIRES(IsConvertible<U(*)[], T(*)[]>)>
+        template <typename U, HE_REQUIRES(std::is_convertible_v<U(*)[], T(*)[]>)>
         constexpr Span(const Span<U>& s)
             : m_ptr(s.m_ptr)
             , m_size(s.m_size)

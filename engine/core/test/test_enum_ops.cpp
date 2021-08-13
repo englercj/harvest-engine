@@ -10,9 +10,9 @@ using namespace he;
 enum class Flags : uint32_t
 {
     None = 0,
-    A = (1 << 0),
-    B = (1 << 1),
-    C = (1 << 2),
+    A = 1 << 0,
+    B = 1 << 1,
+    C = 1 << 2,
 };
 HE_ENUM_FLAGS(Flags);
 

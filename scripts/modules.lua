@@ -135,7 +135,7 @@ key_handlers.variants = function (ctx, values)
         end
 
         for key, value in orderedPairs(variant) do
-            _try_handle_key(mod, key, value)
+            _try_handle_key(ctx, key, value)
         end
     end
 

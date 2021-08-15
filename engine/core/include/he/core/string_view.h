@@ -160,7 +160,7 @@ namespace he
         T ToInteger(int32_t base = 10)
         {
             const char* end = m_span.End();
-            return String::ToInteger<T>(m_span.Begin(), &end);
+            return String::ToInteger<T>(m_span.Begin(), &end, base);
         }
 
         /// Parses the string into a floating point value.

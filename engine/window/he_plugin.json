@@ -14,7 +14,7 @@
             "type": "static",
             "group": "engine",
             "files": ["include/**", "src/**"],
-            "public_dependson": ["he_core", "he_math"],
+            "public_dependson": ["he_core", "he_math", "system:dl"],
             "public_includedirs": ["include"],
             "private_includedirs": ["src"]
         },

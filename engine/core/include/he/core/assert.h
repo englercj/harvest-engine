@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include "he/core/compiler.h"
 #include "he/core/config.h"
 #include "he/core/debug.h"
 #include "he/core/error.h"

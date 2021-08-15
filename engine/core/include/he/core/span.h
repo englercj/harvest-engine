@@ -85,6 +85,12 @@ namespace he
         // ----------------------------------------------------------------------------------------
         // Operators
 
+        /// Copy the pointer and size of span `x`.
+        ///
+        /// \param x The span to copy from.
+        template <typename U, HE_REQUIRES(std::is_convertible_v<U(*)[], T(*)[]>)>
+        constexpr Span<T>& operator=(const Span<U>& x) { m_ptr = x.m_ptr; m_size = x.m_size; return *this; }
+
         /// Gets a reference to the element at `index`. Asserts if `index` is not less
         /// than \see Size().
         ///

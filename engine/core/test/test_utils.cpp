@@ -92,11 +92,11 @@ HE_TEST(core, utils, BitCast)
 {
     static_assert(BitCast<uint32_t>(0x3f800000u) == 0x3f800000);
     static_assert(BitCast<uint32_t>(1.0f) == 0x3f800000);
-    static_assert(BitCast<uint32_t>(-1l) == 0xffffffff);
+    static_assert(BitCast<uint64_t>(-1ll) == 0xffffffffffffffff);
 
     HE_EXPECT_EQ(BitCast<uint32_t>(0x3f800000u), 0x3f800000);
     HE_EXPECT_EQ(BitCast<uint32_t>(1.0f), 0x3f800000);
-    HE_EXPECT_EQ(BitCast<uint32_t>(-1l), 0xffffffff);
+    HE_EXPECT_EQ(BitCast<uint64_t>(-1ll), 0xffffffffffffffff);
 }
 
 // ------------------------------------------------------------------------------------------------

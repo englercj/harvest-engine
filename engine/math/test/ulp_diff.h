@@ -40,8 +40,8 @@ namespace he
     template <typename T>
     inline bool EqualUlp(const T& a, const T& b, int32_t maxUlpDiff)
     {
-        const T::Type* fa = GetPointer(a);
-        const T::Type* fb = GetPointer(b);
+        const typename T::Type* fa = GetPointer(a);
+        const typename T::Type* fb = GetPointer(b);
 
         for (uint32_t i = 0; i < T::Size; ++i)
         {

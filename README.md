@@ -17,8 +17,10 @@ Then run `bootstrap.sh` from within the cloned folder.
 | Compiler | Minimum Version |
 | -------- | --------------- |
 | MSVC     | 14.25 (VS2019 v16.5) |
-| GCC      | 8.3.0 |
-| Clang    | 13.0.0 |
+| GCC      | 10.1.0 |
+| Clang    | 11.0.0 |
+
+Tested against glibc 2.31
 
 ## Supported Platforms
 

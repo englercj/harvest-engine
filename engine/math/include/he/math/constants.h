@@ -4,6 +4,8 @@
 
 #include "he/math/types.h"
 
+#include <math.h>
+
 namespace he
 {
     inline constexpr float Float_Pi = 3.141592654f;
@@ -17,7 +19,7 @@ namespace he
     inline constexpr float Float_Max = 3.402823466e+38f;
     inline constexpr float Float_AllBits = -__builtin_nanf("0x3FFFFF");
     inline constexpr float Float_Infinity = __builtin_huge_valf();
-    inline constexpr float Float_Nan = Float_Infinity * 0.0f;
+    inline constexpr float Float_Nan = __builtin_nanf("");
     inline constexpr float Float_ZeroSafe = 1000.0f * Float_Min;
 
     inline constexpr Vec4a Vec4a_Infinity{ Float_Infinity, Float_Infinity, Float_Infinity, Float_Infinity };

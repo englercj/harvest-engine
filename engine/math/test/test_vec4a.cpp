@@ -685,9 +685,6 @@ HE_TEST(math, vec4a, Operators)
     v = Vec4a{ 4, 4, 0, 32 } / Vec4a{ 2, 4, 6, 8 };
     HE_EXPECT_EQ_ULP(v, (Vec4a{ 2, 1, 0, 4 }), 1);
 
-    Vec4a a = Vec4a{ 1, 2, 3, 1 };
-    Vec4a b = Vec4a{ 2, 2, 2, 2 };
-
     HE_EXPECT_LT((Vec4a{ 1, 1, 1, 1 }), (Vec4a{ 2, 0, 0, 0 }));
     HE_EXPECT_LT((Vec4a{ 1, 1, 1, 1 }), (Vec4a{ 1, 2, 0, 0 }));
     HE_EXPECT_LT((Vec4a{ 1, 1, 1, 1 }), (Vec4a{ 1, 1, 2, 0 }));

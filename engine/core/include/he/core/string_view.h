@@ -63,6 +63,11 @@ namespace he
         // ----------------------------------------------------------------------------------------
         // Operators
 
+        /// Copy the pointer and size of string view `x`.
+        ///
+        /// \param x The string view to copy from.
+        constexpr StringView& operator=(const StringView& x) { m_span = x.m_span; return *this; }
+
         /// Gets a reference to the character at `index`. Asserts if `index` is not less
         /// than \see Size().
         ///

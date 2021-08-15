@@ -27,7 +27,6 @@ HE_TEST(core, type_info, GetTypeName)
     }
 }
 
-
 // ------------------------------------------------------------------------------------------------
 HE_TEST(core, type_info, GetTypeId)
 {

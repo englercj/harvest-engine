@@ -11,6 +11,7 @@
 #include "he/window/mouse.h"
 #include "he/window/view.h"
 
+#include "he/core/assert.h"
 #include "he/core/macros.h"
 #include "he/core/log.h"
 #include "he/math/vec2.h"
@@ -19,6 +20,7 @@
 #include <array>
 #include <climits>
 #include <cstdint>
+#include <dlfcn.h>
 
 // xlib headers define None, so we can't use ::None in this file after including
 // those headers. This hacks around that by giving us another symbol to use.
@@ -148,7 +150,7 @@ namespace he::window::Linux
         Vec2f ViewToScreen(const Vec2f& pos) const override;
         Vec2f ScreenToView(const Vec2f& pos) const override;
 
-        void TrackCapture(const MouseButtonEvent& ev);
+        void TrackCapture(const Event& ev);
 
         void CaptureMouse();
         void ReleaseMouse();
@@ -496,10 +498,10 @@ namespace he::window::Linux
 
             ViewHints hints{};
             hints.flags = (1L << 1); // MWM_HINTS_DECORATIONS
-            if (HasFlag(view->m_flags, ViewFlag::Decorated))
-                hints.decorations = (1L << 0); // MWM_DECOR_ALL
-            else
+            if (HasFlag(m_flags, ViewFlag::Borderless))
                 hints.decorations = 0;
+            else
+                hints.decorations = (1L << 0); // MWM_DECOR_ALL
 
             m_device->m_XChangeProperty(
                 display,
@@ -518,7 +520,7 @@ namespace he::window::Linux
             Atom states[3];
             int count = 0;
 
-            if (HasFlag(view->m_flags, ViewFlag::StartMaximized)
+            if (HasFlag(m_flags, ViewFlag::StartMaximized)
                 && m_device->m_atomNetWMStateMaximizedHorz != None
                 && m_device->m_atomNetWMStateMaximizedVert != None)
             {
@@ -527,7 +529,7 @@ namespace he::window::Linux
                 m_maximized = true;
             }
 
-            if (HasFlag(view->m_flags, ViewFlag::TopMost) && m_device->m_atomNetWMStateAbove != None)
+            if (HasFlag(m_flags, ViewFlag::TopMost) && m_device->m_atomNetWMStateAbove != None)
             {
                 states[count++] = m_device->m_atomNetWMStateAbove;
             }
@@ -791,8 +793,10 @@ namespace he::window::Linux
         return { static_cast<float>(dstX), static_cast<float>(dstY) };
     }
 
-    void ViewImpl::TrackCapture(const MouseButtonEvent& ev)
+    void ViewImpl::TrackCapture(const Event& ev)
     {
+        HE_ASSERT(ev.type == EventType::MouseDown || ev.type == EventType::MouseUp);
+
         if (ev.type == EventType::MouseDown)
         {
             if (m_captureCount++ == 0)
@@ -873,7 +877,7 @@ namespace he::window::Linux
         m_xlib = dlopen("libX11.so.6", RTLD_LAZY | RTLD_LOCAL);
         if (!m_xlib)
         {
-            HE_LOG_ERROR(window, "Failed to load Xlib.");
+            HE_LOG_ERROR(window, HE_MSG("Failed to load Xlib."));
             return false;
         }
 
@@ -938,14 +942,14 @@ namespace he::window::Linux
         // This function returns a nonzero status if initialization was successful; otherwise, it returns zero
         if (m_XInitThreads() == 0)
         {
-            HE_LOG_ERROR(window, "XInitThreads failed.");
+            HE_LOG_ERROR(window, HE_MSG("XInitThreads failed."));
             return false;
         }
 
         m_display = m_XOpenDisplay(nullptr);
         if (m_display == nullptr)
         {
-            HE_LOG_ERROR(window, "XOpenDisplay failed.");
+            HE_LOG_ERROR(window, HE_MSG("XOpenDisplay failed."));
             return false;
         }
 
@@ -982,7 +986,7 @@ namespace he::window::Linux
         m_im = m_XOpenIM(m_display, nullptr, nullptr, nullptr);
         if (m_im == nullptr)
         {
-            HE_LOG_ERROR(window, "XOpenIM failed.");
+            HE_LOG_ERROR(window, HE_MSG("XOpenIM failed."));
             return false;
         }
 
@@ -1113,13 +1117,13 @@ namespace he::window::Linux
 
     View* DeviceImpl::CreateView(const ViewDesc& desc)
     {
-        ViewImpl* view = HE_NEW(m_allocator, ViewImpl, this, desc);
+        ViewImpl* view = m_allocator.New<ViewImpl>(this, desc);
         return view;
     }
 
     void DeviceImpl::DestroyView(View* view)
     {
-        HE_DELETE(m_allocator, static_cast<ViewImpl*>(view));
+        m_allocator.Delete(view);
     }
 
     View* DeviceImpl::GetFocusedView() const
@@ -1250,7 +1254,7 @@ namespace he::window::Linux
         if (!view)
             return;
 
-        const Vec2f pos = ToVec2<float>(view->GetSize()) / 2.0f;
+        const Vec2f pos = MakeVec2<float>(view->GetSize()) / 2.0f;
         SetCursorPos(view, pos);
     }
 
@@ -1583,7 +1587,7 @@ namespace he::window
 {
     Device* _CreateDevice(Allocator& allocator)
     {
-        return HE_NEW(allocator, Linux::DeviceImpl, allocator);
+        return allocator.New<Linux::DeviceImpl>(allocator);
     }
 }
 

@@ -105,9 +105,6 @@ key_handlers.private_dependson = key_handlers.public_dependson
 
 key_handlers.public_dependson_include = function (ctx, values)
     for _, mod_name in ipairs(values) do
-        local mod = imported_modules[mod_name]
-        assert(mod ~= nil, "Module '" .. ctx.name .. "' has an include dependency on '" .. mod_name .. "', but no such module has been imported.")
-
         if string.startswith(mod_name, "system:") or string.startswith(mod_name, "file:") then
             return
         end
@@ -115,6 +112,9 @@ key_handlers.public_dependson_include = function (ctx, values)
         if string.startswith(mod_name, "module:") then
             mod_name = string.sub(mod_name, 8)
         end
+
+        local mod = imported_modules[mod_name]
+        assert(mod ~= nil, "Module '" .. ctx.name .. "' has an include dependency on '" .. mod_name .. "', but no such module has been imported.")
 
         local oldcwd = os.getcwd()
         os.chdir(mod._plugin._install_dir)

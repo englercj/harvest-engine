@@ -19,7 +19,7 @@ jobs:
     - name: Bootstrap
       run: ./bootstrap.sh
     - name: Install Dependencies
-      run: sudo apt-get install libc++-dev libc++abi-dev
+      run: sudo apt update && sudo apt install -y gcc-10 g++-10 clang-12
     - name: Build
       run: cd build && PATH="/usr/lib/llvm-12/bin:$PATH" make -j$(nproc) config=${{ matrix.config }}_${{ matrix.arch }} all
     - name: Test

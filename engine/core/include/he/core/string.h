@@ -438,7 +438,7 @@ namespace he
         /// Gets a reference to the string's first character. The string must not be empty.
         ///
         /// \return A reference to the first character.
-        const char& Front() const { HE_ASSERT(!IsEmpty()); return Data()[0]; }
+        const char& Front() const;
 
         /// \copydoc Front()
         char& Front() { return const_cast<char&>(const_cast<const String*>(this)->Front()); }
@@ -446,7 +446,7 @@ namespace he
         /// Gets a reference to the string's last character. The string must not be empty.
         ///
         /// \return A reference to the last character.
-        const char& Back() const { HE_ASSERT(!IsEmpty()); return Data()[Size() - 1]; }
+        const char& Back() const;
 
         /// \copydoc Back()
         char& Back() { return const_cast<char&>(const_cast<const String*>(this)->Back()); }

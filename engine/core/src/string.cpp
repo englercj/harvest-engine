@@ -254,6 +254,18 @@ namespace he
         SetSizeHeap(size);
     }
 
+    const char& String::Front() const
+    {
+        HE_ASSERT(!IsEmpty());
+        return Data()[0];
+    }
+
+    const char& String::Back() const
+    {
+        HE_ASSERT(!IsEmpty());
+        return Data()[Size() - 1];
+    }
+
     int32_t String::CompareTo(const String& x) const
     {
         const uint32_t s0 = Size();

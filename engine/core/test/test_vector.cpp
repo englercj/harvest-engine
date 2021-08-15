@@ -806,8 +806,8 @@ HE_TEST(core, Vector, Front_Back)
     v.PushBack(1);
     v.PushBack(2);
     v.PushBack(3);
-    HE_EXPECT_EQ(s.Front(), 1);
-    HE_EXPECT_EQ(s.Back(), 3);
+    HE_EXPECT_EQ(v.Front(), 1);
+    HE_EXPECT_EQ(v.Back(), 3);
 }
 
 // ------------------------------------------------------------------------------------------------

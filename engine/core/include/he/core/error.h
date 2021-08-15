@@ -44,25 +44,9 @@ namespace he
     template <typename... Args>
     bool HandleError(ErrorType type, const char* file, const uint32_t line, const char* funcName, const char* expression, fmt::format_string<Args...> fmt = nullptr, Args&&... args)
     {
-        // Short circut for the case of no args to format
-        constexpr size_t ArgCount = sizeof...(Args);
-        if constexpr (ArgCount == 0)
-        {
-            return HandleError(type, file, line, funcName, expression, fmt);
-        }
-        else
-        {
-            if (fmt)
-            {
-                fmt::memory_buffer buf;
-                fmt::format_to(fmt::appender(buf), fmt, Forward<Args>(args)...);
-                buf.push_back('\0');
-                return HandleError(type, file, line, funcName, expression, buf.data());
-            }
-            else
-            {
-                return HandleError(type, file, line, funcName, expression, "");
-            }
-        }
+        fmt::memory_buffer buf;
+        fmt::format_to(fmt::appender(buf), fmt, Forward<Args>(args)...);
+        buf.push_back('\0');
+        return HandleError(type, file, line, funcName, expression, buf.data());
     }
 }

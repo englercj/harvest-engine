@@ -207,7 +207,7 @@ namespace he
         }
 
         template <typename... Args>
-        LogKV(const char* k, const char* fmt, Args&&... args)
+        LogKV(const char* k, fmt::format_string<Args...> fmt, Args&&... args)
             : key(k)
             , type(ValueType::String)
         {

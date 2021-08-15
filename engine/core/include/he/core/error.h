@@ -42,7 +42,7 @@ namespace he
 
     /// Called to handle an application error. Not meant to be called directly.
     template <typename... Args>
-    bool HandleError(ErrorType type, const char* file, const uint32_t line, const char* funcName, const char* expression, const char* fmt = nullptr, Args&&... args)
+    bool HandleError(ErrorType type, const char* file, const uint32_t line, const char* funcName, const char* expression, fmt::format_string<Args...> fmt = nullptr, Args&&... args)
     {
         // Short circut for the case of no args to format
         constexpr size_t ArgCount = sizeof...(Args);

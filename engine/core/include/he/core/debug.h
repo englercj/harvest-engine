@@ -74,7 +74,7 @@ namespace he
     /// \param fmt The format string.
     /// \param args The arguments for the format string.
     template <typename... Args>
-    void PrintToDebugger(const char* fmt, Args&&... args)
+    void PrintToDebugger(fmt::format_string<Args...> fmt, Args&&... args)
     {
         fmt::memory_buffer buf;
         fmt::format_to(fmt::appender(buf), fmt, Forward<Args>(args)...);

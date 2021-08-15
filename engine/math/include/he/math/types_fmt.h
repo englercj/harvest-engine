@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include "he/core/type_traits.h"
 #include "he/math/types.h"
 #include "he/math/vec4a.h"
 
@@ -18,7 +19,8 @@ namespace he
         }
 
         template <typename FormatContext>
-        auto format(const T& vec, FormatContext& ctx) const -> decltype(ctx.out())
+        auto format(const T& vec, FormatContext& ctx) const
+            -> std::enable_if_t<std::is_floating_point_v<typename T::Type>, decltype(ctx.out())>
         {
             static_assert(T::Size > 0 && T::Size < 5);
 
@@ -30,6 +32,22 @@ namespace he
                 return fmt::format_to(ctx.out(), "({:.1f}, {:.1f})", vec.x, vec.y);
             else
                 return fmt::format_to(ctx.out(), "({:.1f})", vec.x);
+        }
+
+        template <typename FormatContext>
+        auto format(const T& vec, FormatContext& ctx) const
+            -> std::enable_if_t<std::is_integral_v<typename T::Type>, decltype(ctx.out())>
+        {
+            static_assert(T::Size > 0 && T::Size < 5);
+
+            if constexpr (T::Size == 4)
+                return fmt::format_to(ctx.out(), "({}, {}, {}, {})", vec.x, vec.y, vec.z, vec.w);
+            else if constexpr (T::Size == 3)
+                return fmt::format_to(ctx.out(), "({}, {}, {})", vec.x, vec.y, vec.z);
+            else if constexpr (T::Size == 2)
+                return fmt::format_to(ctx.out(), "({}, {})", vec.x, vec.y);
+            else
+                return fmt::format_to(ctx.out(), "({})", vec.x);
         }
     };
 }

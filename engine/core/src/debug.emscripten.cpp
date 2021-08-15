@@ -8,12 +8,12 @@
 
 namespace he
 {
-    void PrintToDebugger(const char* s) const
+    void PrintToDebugger(const char* s)
     {
         emscripten_log(EM_LOG_CONSOLE, s);
     }
 
-    bool IsDebuggerAttached() const
+    bool IsDebuggerAttached()
     {
         return false;
     }

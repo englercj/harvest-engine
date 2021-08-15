@@ -13,12 +13,12 @@
 
 namespace he
 {
-    void PrintToDebugger(const char* s) const
+    void PrintToDebugger(const char* s)
     {
         fputs(s, stderr);
     }
 
-    bool IsDebuggerAttached() const
+    bool IsDebuggerAttached()
     {
         return false;
     }

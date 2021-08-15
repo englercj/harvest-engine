@@ -38,11 +38,11 @@ namespace he
     ErrorHandlerFunc GetErrorHandler();
 
     /// Called to handle an application error. Not meant to be called directly.
-    bool HandleError(ErrorType type, const char* file, const uint32_t line, const char* funcName, const char* expression, const char* msg);
+    bool HandleError(ErrorType type, const char* file, const uint32_t line, const char* funcName, const char* expression, const char* msg = "");
 
     /// Called to handle an application error. Not meant to be called directly.
     template <typename... Args>
-    bool HandleError(ErrorType type, const char* file, const uint32_t line, const char* funcName, const char* expression, fmt::format_string<Args...> fmt = nullptr, Args&&... args)
+    bool HandleError(ErrorType type, const char* file, const uint32_t line, const char* funcName, const char* expression, fmt::format_string<Args...> fmt, Args&&... args)
     {
         fmt::memory_buffer buf;
         fmt::format_to(fmt::appender(buf), fmt, Forward<Args>(args)...);

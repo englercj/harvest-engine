@@ -18,8 +18,6 @@ jobs:
       uses: actions/checkout@v2
     - name: Bootstrap
       run: ./bootstrap.sh
-    - name: Install Dependencies
-      run: sudo apt update && sudo apt install -y libc6
     - name: Build
       run: cd build && PATH="/usr/lib/llvm-12/bin:$PATH" make -j$(nproc) config=${{ matrix.config }}_${{ matrix.arch }} all
     - name: Test

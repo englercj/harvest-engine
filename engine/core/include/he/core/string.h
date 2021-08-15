@@ -138,22 +138,6 @@ namespace he
         /// \return True if `a` is less than `b`, false otherwise.
         static bool LessN(const char* a, const char* b, uint32_t len) { return CompareN(a, b, len) < 0; }
 
-        /// Compares the null terminated strings in a case-insensative manner and
-        /// returns true if `a` is less than `b`.
-        ///
-        /// \param a The left-hand side of the comparison operation.
-        /// \param b The right-hand side of the comparison operation.
-        /// \return True if `a` is less than `b`, false otherwise.
-        static bool LessI(const char* a, const char* b) { return CompareI(a, b) < 0; }
-
-        /// Compares the null terminated strings, up to `len`, in a case-insensative manner and
-        /// returns true if `a` is less than `b`.
-        ///
-        /// \param a The left-hand side of the comparison operation.
-        /// \param b The right-hand side of the comparison operation.
-        /// \return True if `a` is less than `b`, false otherwise.
-        static bool LessNI(const char* a, const char* b, uint32_t len) { return CompareNI(a, b, len) < 0; }
-
         /// Copies the source string into the destination buffer, including the null terminator.
         /// The destination buffer is garuanteed to be null terminated if `dstLen > 0`.
         ///
@@ -302,12 +286,12 @@ namespace he
         /// \param x The string to move from.
         String(Allocator& allocator, String&& x);
 
-        /// Construct a string by copying `x`, using the allocator from x.
+        /// Construct a string by copying `x`, using the allocator from `x`.
         ///
         /// \param x The string to copy from.
         String(const String& x);
 
-        /// Construct a string by moving `x`, using the allocator from x.
+        /// Construct a string by moving `x`, using the allocator from `x`.
         ///
         /// \param x The string to move from.
         String(String&& x);
@@ -334,10 +318,10 @@ namespace he
         ///
         /// \param index The index of the character to return.
         /// \return A reference to the character at `index`.
-        char& operator[](uint32_t index);
+        const char& operator[](uint32_t index) const;
 
         /// \copydoc operator[](uint32_t)
-        const char& operator[](uint32_t index) const { return const_cast<const char&>(const_cast<String&>(*this)[index]); }
+        char& operator[](uint32_t index) { return const_cast<char&>(const_cast<const String&>(*this)[index]); }
 
         /// Appends the string object to the end of this string.
         ///
@@ -446,10 +430,26 @@ namespace he
         /// Gets a pointer to the string's character buffer.
         ///
         /// \return A pointer to the character buffer.
-        char* Data() { return IsEmbedded() ? m_embed : m_heap.data; }
+        const char* Data() const { return IsEmbedded() ? m_embed : m_heap.data; }
 
         /// \copydoc Data()
-        const char* Data() const { return const_cast<const char*>(const_cast<String*>(this)->Data()); }
+        char* Data() { return IsEmbedded() ? m_embed : m_heap.data; }
+
+        /// Gets a reference to the string's first character. The string must not be empty.
+        ///
+        /// \return A reference to the first character.
+        const char& Front() const { HE_ASSERT(!IsEmpty()); return Data()[0]; }
+
+        /// \copydoc Front()
+        char& Front() { return const_cast<char&>(const_cast<const String*>(this)->Front()); }
+
+        /// Gets a reference to the string's last character. The string must not be empty.
+        ///
+        /// \return A reference to the last character.
+        const char& Back() const { HE_ASSERT(!IsEmpty()); return Data()[Size() - 1]; }
+
+        /// \copydoc Back()
+        char& Back() { return const_cast<char&>(const_cast<const String*>(this)->Back()); }
 
         /// Returns a reference to the allocator object used by the string.
         ///
@@ -474,31 +474,31 @@ namespace he
         /// Gets a pointer to the first character in the string.
         ///
         /// \return A pointer to the first character.
-        char* Begin() { return Data(); }
+        const char* Begin() const { return Data(); }
 
         /// \copydoc Begin()
-        const char* Begin() const { return const_cast<const char*>(const_cast<String*>(this)->Begin()); }
+        char* Begin() { return Data(); }
 
         /// Gets a pointer to one past the last character in the string.
         /// This always points to the null terminator.
         ///
         /// \return A pointer to one past the last character.
-        char* End() { return Data() + Size(); }
+        const char* End() const { return Data() + Size(); }
 
         /// \copydoc End()
-        const char* End() const { return const_cast<const char*>(const_cast<String*>(this)->End()); }
-
-        /// \copydoc Begin()
-        char* begin() { return Begin(); }
+        char* End() { return Data() + Size(); }
 
         /// \copydoc Begin()
         const char* begin() const { return Begin(); }
 
-        /// \copydoc End()
-        char* end() { return End(); }
+        /// \copydoc Begin()
+        char* begin() { return Begin(); }
 
         /// \copydoc End()
         const char* end() const { return End(); }
+
+        /// \copydoc End()
+        char* end() { return End(); }
 
         // ----------------------------------------------------------------------------------------
         // Mutators
@@ -569,12 +569,22 @@ namespace he
         /// \param str The string source to copy from.
         void Assign(const char* str) { Clear(); Append(str); }
 
-    private:
-        // Grows the internal capacity to make space for `n` elements.
-        void GrowBy(uint32_t n);
+        /// Replaces the contents of this string with a copy of `len` characters of the string `str`.
+        ///
+        /// \param str The string source to copy from.
+        void Assign(const char* str, uint32_t len) { Clear(); Append(str, len); }
 
-        // Calculate geometric growth that will be necessary to include `n` additional elements.
-        uint32_t CalculateGrowth(uint32_t n) const;
+        /// Replaces the contents of this string with `str`.
+        ///
+        /// \param str The string source to copy from.
+        void Assign(const String& str) { Clear(); Append(str); }
+
+    private:
+        // Grows the internal capacity to make space for `len` elements.
+        void GrowBy(uint32_t len);
+
+        // Calculate geometric growth that will be necessary to include `len` additional elements.
+        uint32_t CalculateGrowth(uint32_t len, uint32_t size, uint32_t capacity) const;
 
         // Sets the size of the string object, and writes the null terminator.
         void SetSize(uint32_t size);

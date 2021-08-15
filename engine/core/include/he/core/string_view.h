@@ -143,6 +143,44 @@ namespace he
         constexpr const char& Back() const { return m_span.Back(); }
 
         // ----------------------------------------------------------------------------------------
+        // Converters
+
+        /// Parses the string into a integral value.
+        /// If successful, an integer value corresponding to the contents of str is returned.
+        /// If the converted value falls out of range of corresponding return type, a range error
+        /// occurs (setting errno to ERANGE) and LONG_MAX, LONG_MIN, LLONG_MAX or LLONG_MIN is
+        /// returned. If no conversion can be performed, zero is returned.
+        ///
+        /// \param[in] str The string to parse.
+        /// \param[in] end Optional. A pointer to the end of the string to stop parsing. If
+        ///     nullptr (default) the string is parsed until a null terminator is reached.
+        /// \param[in] base Optional. The numerical base of the value being parsed.
+        /// \return The parsed number.
+        template <typename T>
+        T ToInteger(int32_t base = 10)
+        {
+            const char* end = m_span.End();
+            return String::ToInteger<T>(m_span.Begin(), &end);
+        }
+
+        /// Parses the string into a floating point value.
+        /// If successful, a floating point value corresponding to the contents of str is returned.
+        /// If the converted value falls out of range of corresponding return type, a range error
+        /// occurs (setting errno to ERANGE) and LONG_MAX, LONG_MIN, LLONG_MAX or LLONG_MIN is
+        /// returned. If no conversion can be performed, zero is returned.
+        ///
+        /// \param[in] str The string to parse.
+        /// \param[in] end Optional. A pointer to the end of the string to stop parsing. If
+        ///     nullptr (default) the string is parsed until a null terminator is reached.
+        /// \return The parsed number.
+        template <typename T>
+        T ToFloat()
+        {
+            const char* end = m_span.End();
+            return String::ToFloat<T>(m_span.Begin(), &end);
+        }
+
+        // ----------------------------------------------------------------------------------------
         // Comparison
 
         /// Compares this string view to another and returns the result of the comparison.

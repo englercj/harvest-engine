@@ -49,12 +49,12 @@ namespace he
         /// \param x The vector to move from.
         Vector(Allocator& allocator, Vector&& x);
 
-        /// Construct a vector by copying `x`, using the allocator from x.
+        /// Construct a vector by copying `x`, using the allocator from `x`.
         ///
         /// \param x The vector to copy from.
         Vector(const Vector& x);
 
-        /// Construct a vector by moving `x`, using the allocator from x.
+        /// Construct a vector by moving `x`, using the allocator from `x`.
         ///
         /// \param x The vector to move from.
         Vector(Vector&& x);
@@ -81,10 +81,10 @@ namespace he
         ///
         /// \param index The index of the element to return.
         /// \return A reference to the element at `index`.
-        T& operator[](uint32_t index);
+        const T& operator[](uint32_t index) const;
 
         /// \copydoc operator[](uint32_t)
-        const T& operator[](uint32_t index) const { return const_cast<const T&>(const_cast<Vector&>(*this)[index]); }
+        T& operator[](uint32_t index) { return const_cast<T&>(const_cast<const Vector&>(*this)[index]); }
 
         // ----------------------------------------------------------------------------------------
         // Capacity
@@ -142,14 +142,30 @@ namespace he
         /// Gets a pointer to the vector's buffer.
         ///
         /// \return A pointer to the data buffer.
-        T* Data();
+        const T* Data() const;
 
         /// \copydoc Data()
-        const T* Data() const { return const_cast<const T*>(const_cast<Vector*>(this)->Data()); }
+        T* Data() { return const_cast<T*>(const_cast<const Vector*>(this)->Data()); }
 
-        /// Returns a reference to the allocator object used by the string.
+        /// Gets a reference to the vector's first element. The vector must not be empty.
         ///
-        /// \return The allocator object this string uses.
+        /// \return A reference to the first element.
+        const T& Front() const { HE_ASSERT(!IsEmpty()); return m_data[0]; }
+
+        /// \copydoc Front()
+        T& Front() { return const_cast<T&>(const_cast<const Vector*>(this)->Front()); }
+
+        /// Gets a reference to the vector's last element. The vector must not be empty.
+        ///
+        /// \return A reference to the last element.
+        const T& Back() const { HE_ASSERT(!IsEmpty()); return m_data[m_size - 1]; }
+
+        /// \copydoc Back()
+        T& Back() { return const_cast<T&>(const_cast<const Vector*>(this)->Back()); }
+
+        /// Returns a reference to the allocator object used by the vector.
+        ///
+        /// \return The allocator object this vector uses.
         Allocator& GetAllocator() const { return m_allocator; }
 
         // ----------------------------------------------------------------------------------------
@@ -158,30 +174,30 @@ namespace he
         /// Gets a pointer to the first element in the vector.
         ///
         /// \return A pointer to the first element.
-        T* Begin();
+        const T* Begin() const;
 
         /// \copydoc Begin()
-        const T* Begin() const { return const_cast<const T*>(const_cast<Vector*>(this)->Begin()); }
+        T* Begin() { return const_cast<T*>(const_cast<const Vector*>(this)->Begin()); }
 
         /// Gets a pointer to one past the last element in the vector.
         ///
         /// \return A pointer to one past the last element.
-        T* End();
+        const T* End() const;
 
         /// \copydoc End()
-        const T* End() const { return const_cast<const T*>(const_cast<Vector*>(this)->End()); }
-
-        /// \copydoc Begin()
-        T* begin() { return Begin(); }
+        T* End() { return const_cast<T*>(const_cast<const Vector*>(this)->End()); }
 
         /// \copydoc Begin()
         const T* begin() const { return Begin(); }
 
-        /// \copydoc End()
-        T* end() { return End(); }
+        /// \copydoc Begin()
+        T* begin() { return Begin(); }
 
         /// \copydoc End()
         const T* end() const { return End(); }
+
+        /// \copydoc End()
+        T* end() { return End(); }
 
         // ----------------------------------------------------------------------------------------
         // Mutators
@@ -248,16 +264,16 @@ namespace he
         T& EmplaceBack(Args&&... args);
 
     private:
-        // Grows the internal capacity to make space for `n` elements.
-        void GrowBy(uint32_t n);
+        // Grows the internal capacity to make space for `len` elements.
+        void GrowBy(uint32_t len);
 
-        // Calculate geometric growth that will be necessary to include `n` additional elements.
-        uint32_t CalculateGrowth(uint32_t n);
+        // Calculate geometric growth that will be necessary to include `len` additional elements.
+        uint32_t CalculateGrowth(uint32_t len) const;
 
-        // Copy the given string.
+        // Copy the given vector.
         void CopyFrom(const Vector& x);
 
-        // Move from the given string into this object.
+        // Move from the given vector into this object.
         void MoveFrom(Vector&& x);
 
     private:

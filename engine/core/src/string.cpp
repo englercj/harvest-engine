@@ -177,7 +177,7 @@ namespace he
         return *this;
     }
 
-    char& String::operator[](uint32_t index)
+    const char& String::operator[](uint32_t index) const
     {
         HE_ASSERT(index < Size());
         return Data()[index];
@@ -326,19 +326,21 @@ namespace he
         return back;
     }
 
-    void String::GrowBy(uint32_t n)
-    {
-        if ((Size() + n) <= Capacity())
-            return;
-
-        Reserve(CalculateGrowth(n));
-    }
-
-    uint32_t String::CalculateGrowth(uint32_t n) const
+    void String::GrowBy(uint32_t len)
     {
         const uint32_t size = Size();
         const uint32_t capacity = Capacity();
 
+        HE_ASSERT(len < MaxHeapCharacters && capacity <= (MaxHeapCharacters - len));
+
+        if ((size + len) <= capacity)
+            return;
+
+        Reserve(CalculateGrowth(len, size, capacity));
+    }
+
+    uint32_t String::CalculateGrowth(uint32_t len, uint32_t size, uint32_t capacity) const
+    {
         // If our growth would overflow just assume max elements
         if (capacity >= (MaxHeapCharacters - (capacity / 2)))
             return MaxHeapCharacters;
@@ -346,8 +348,8 @@ namespace he
         const uint32_t newCapacity = capacity + (capacity / 2);
 
         // If normal growth wouldn't be enough, just use the new size
-        if (newCapacity < (size + n))
-            return size + n;
+        if (newCapacity < (size + len))
+            return size + len;
 
         return newCapacity;
     }

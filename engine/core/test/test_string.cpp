@@ -277,6 +277,57 @@ HE_TEST(core, String, Static_Find)
 }
 
 // ------------------------------------------------------------------------------------------------
+HE_TEST(core, String, Static_ToInteger)
+{
+    HE_EXPECT_EQ(String::ToInteger<char>(""), 0);
+    HE_EXPECT_EQ(String::ToInteger<short>(""), 0);
+    HE_EXPECT_EQ(String::ToInteger<int>(""), 0);
+    HE_EXPECT_EQ(String::ToInteger<long>(""), 0);
+    HE_EXPECT_EQ(String::ToInteger<long long>(""), 0);
+
+    HE_EXPECT_EQ(String::ToInteger<unsigned char>(""), 0);
+    HE_EXPECT_EQ(String::ToInteger<unsigned short>(""), 0);
+    HE_EXPECT_EQ(String::ToInteger<unsigned int>(""), 0);
+    HE_EXPECT_EQ(String::ToInteger<unsigned long>(""), 0);
+    HE_EXPECT_EQ(String::ToInteger<unsigned long long>(""), 0);
+
+    HE_EXPECT_EQ(String::ToInteger<char>("123"), 123);
+    HE_EXPECT_EQ(String::ToInteger<short>("-12345"), -12345);
+    HE_EXPECT_EQ(String::ToInteger<int>("12345678"), 12345678);
+    HE_EXPECT_EQ(String::ToInteger<long>("-12345678"), -12345678l);
+    HE_EXPECT_EQ(String::ToInteger<long long>("1234567890123456789"), 1234567890123456789ll);
+
+    HE_EXPECT_EQ(String::ToInteger<unsigned char>("123"), 123);
+    HE_EXPECT_EQ(String::ToInteger<unsigned short>("12345"), 12345);
+    HE_EXPECT_EQ(String::ToInteger<unsigned int>("12345678"), 12345678);
+    HE_EXPECT_EQ(String::ToInteger<unsigned long>("1234567890"), 1234567890ul);
+    HE_EXPECT_EQ(String::ToInteger<unsigned long long>("12345678901234567890"), 12345678901234567890ull);
+
+    HE_EXPECT_EQ(String::ToInteger<char>("0x12", nullptr, 16), 0x12);
+    HE_EXPECT_EQ(String::ToInteger<short>("-0x1234", nullptr, 16), -0x1234);
+    HE_EXPECT_EQ(String::ToInteger<int>("12345678", nullptr, 16), 0x12345678);
+    HE_EXPECT_EQ(String::ToInteger<long>("-12345678", nullptr, 16), -0x12345678l);
+    HE_EXPECT_EQ(String::ToInteger<long long>("1234567890123456", nullptr, 16), 0x1234567890123456ll);
+
+    HE_EXPECT_EQ(String::ToInteger<unsigned char>("0x12", nullptr, 16), 0x12);
+    HE_EXPECT_EQ(String::ToInteger<unsigned short>("0x1234", nullptr, 16), 0x1234);
+    HE_EXPECT_EQ(String::ToInteger<unsigned int>("12345678", nullptr, 16), 0x12345678);
+    HE_EXPECT_EQ(String::ToInteger<unsigned long>("12345678", nullptr, 16), 0x12345678ul);
+    HE_EXPECT_EQ(String::ToInteger<unsigned long long>("1234567890123456", nullptr, 16), 0x1234567890123456ull);
+
+}
+
+// ------------------------------------------------------------------------------------------------
+HE_TEST(core, String, Static_ToFloat)
+{
+    HE_EXPECT_EQ(String::ToFloat<float>(""), 0.0f);
+    HE_EXPECT_EQ(String::ToFloat<double>(""), 0.0);
+
+    HE_EXPECT_EQ(String::ToFloat<float>("123.45"), 123.45f);
+    HE_EXPECT_EQ(String::ToFloat<double>("12345.6789"), 12345.6789);
+}
+
+// ------------------------------------------------------------------------------------------------
 HE_TEST(core, String, Constants)
 {
     // Changing these are potentially breaking so checking them here so a change is made with thoughtfulness.
@@ -1105,6 +1156,24 @@ HE_TEST(core, String, Data)
 }
 
 // ------------------------------------------------------------------------------------------------
+HE_TEST(core, String, Front_Back)
+{
+    Allocator& a = CrtAllocator::Get();
+
+    {
+        String s(a, "test");
+        HE_EXPECT_EQ(s.Front(), 't');
+        HE_EXPECT_EQ(s.Back(), 't');
+    }
+
+    {
+        String s(a, "This is a really long string that should cause the string to allocate the necessary storage on the heap.");
+        HE_EXPECT_EQ(s.Front(), 'T');
+        HE_EXPECT_EQ(s.Back(), '.');
+    }
+}
+
+// ------------------------------------------------------------------------------------------------
 HE_TEST(core, String, CompareTo)
 {
     Allocator& alloc = CrtAllocator::Get();
@@ -1315,4 +1384,26 @@ HE_TEST(core, String, Append)
     s.Append(s2);
     HE_EXPECT_EQ(s.Size(), 10);
     HE_EXPECT_EQ_STR(s.Data(), "abc12hello");
+}
+
+
+// ------------------------------------------------------------------------------------------------
+HE_TEST(core, String, Assign)
+{
+    Allocator& a = CrtAllocator::Get();
+
+    String s(a, "Hello, world!");
+
+    s.Assign("Test");
+    HE_EXPECT_EQ(s.Size(), 4);
+    HE_EXPECT_EQ_STR(s.Data(), "Test");
+
+    s.Assign("bc");
+    HE_EXPECT_EQ(s.Size(), 2);
+    HE_EXPECT_EQ_STR(s.Data(), "bc");
+
+    String s2(a, "hello");
+    s.Assign(s2);
+    HE_EXPECT_EQ(s.Size(), 5);
+    HE_EXPECT_EQ_STR(s.Data(), "hello");
 }

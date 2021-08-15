@@ -193,7 +193,7 @@ namespace he
     }
 
     template <typename T>
-    T& Vector<T>::operator[](uint32_t index)
+    const T& Vector<T>::operator[](uint32_t index) const
     {
         HE_ASSERT(index < m_size);
         return m_data[index];
@@ -266,19 +266,19 @@ namespace he
     }
 
     template <typename T>
-    T* Vector<T>::Data()
+    const T* Vector<T>::Data() const
     {
         return m_data;
     }
 
     template <typename T>
-    T* Vector<T>::Begin()
+    const T* Vector<T>::Begin() const
     {
         return m_data;
     }
 
     template <typename T>
-    T* Vector<T>::End()
+    const T* Vector<T>::End() const
     {
         return m_data + m_size;
     }
@@ -388,16 +388,18 @@ namespace he
     }
 
     template <typename T>
-    void Vector<T>::GrowBy(uint32_t n)
+    void Vector<T>::GrowBy(uint32_t len)
     {
-        if ((m_size + n) <= m_capacity)
+        HE_ASSERT(len < MaxElements && m_capacity <= (MaxElements - len));
+
+        if ((m_size + len) <= m_capacity)
             return;
 
-        Reserve(CalculateGrowth(n));
+        Reserve(CalculateGrowth(len));
     }
 
     template <typename T>
-    uint32_t Vector<T>::CalculateGrowth(uint32_t n)
+    uint32_t Vector<T>::CalculateGrowth(uint32_t len) const
     {
         // If our growth would overflow just assume max elements
         if (m_capacity > (MaxElements - (m_capacity / 2)))
@@ -406,8 +408,8 @@ namespace he
         const uint32_t newCapacity = m_capacity + (m_capacity / 2);
 
         // If normal growth wouldn't be enough, just use the new size
-        if (newCapacity < (m_size + n))
-            return m_size + n;
+        if (newCapacity < (m_size + len))
+            return m_size + len;
 
         return newCapacity;
     }
@@ -437,7 +439,11 @@ namespace he
             return;
         }
 
-        // If the allocators match we can steal the allocation from the other object.
+        if (m_data)
+        {
+            m_allocator.Free(m_data);
+        }
+
         m_data = Exchange(x.m_data, nullptr);
         m_size = Exchange(x.m_size, 0);
         m_capacity = Exchange(x.m_capacity, 0);

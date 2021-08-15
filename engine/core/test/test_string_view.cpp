@@ -14,7 +14,7 @@
 using namespace he;
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST(core, string_view, Construct)
+HE_TEST(core, StringView, Construct)
 {
     constexpr char TestString[] = "Hello, world!";
     constexpr uint32_t TestStringLen = HE_LENGTH_OF(TestString) - 1;
@@ -82,7 +82,7 @@ HE_TEST(core, string_view, Construct)
 }
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST(core, string_view, operator_index)
+HE_TEST(core, StringView, operator_index)
 {
     static const char TestString[] = "Hello, world!";
 
@@ -95,7 +95,7 @@ HE_TEST(core, string_view, operator_index)
 }
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST(core, string_view, operator_eq)
+HE_TEST(core, StringView, operator_eq)
 {
     const StringView a("Hello, world!");
     const StringView b("Hello, world!");
@@ -115,7 +115,7 @@ HE_TEST(core, string_view, operator_eq)
 }
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST(core, string_view, operator_ne)
+HE_TEST(core, StringView, operator_ne)
 {
     const StringView a("Hello, world!");
     const StringView b("Hello, world!");
@@ -135,7 +135,7 @@ HE_TEST(core, string_view, operator_ne)
 }
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST(core, string_view, operator_lt)
+HE_TEST(core, StringView, operator_lt)
 {
     const StringView a("Hello, world!");
     const StringView b("Hello, world!");
@@ -155,7 +155,7 @@ HE_TEST(core, string_view, operator_lt)
 }
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST(core, string_view, operator_le)
+HE_TEST(core, StringView, operator_le)
 {
     const StringView a("Hello, world!");
     const StringView b("Hello, world!");
@@ -175,7 +175,7 @@ HE_TEST(core, string_view, operator_le)
 }
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST(core, string_view, operator_gt)
+HE_TEST(core, StringView, operator_gt)
 {
     const StringView a("Hello, world!");
     const StringView b("Hello, world!");
@@ -195,7 +195,7 @@ HE_TEST(core, string_view, operator_gt)
 }
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST(core, string_view, operator_ge)
+HE_TEST(core, StringView, operator_ge)
 {
     const StringView a("Hello, world!");
     const StringView b("Hello, world!");
@@ -215,7 +215,7 @@ HE_TEST(core, string_view, operator_ge)
 }
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST(core, string_view, IsEmpty)
+HE_TEST(core, StringView, IsEmpty)
 {
     {
         StringView s;
@@ -235,7 +235,7 @@ HE_TEST(core, string_view, IsEmpty)
 }
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST(core, string_view, Size)
+HE_TEST(core, StringView, Size)
 {
     {
         StringView s;
@@ -255,7 +255,7 @@ HE_TEST(core, string_view, Size)
 }
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST(core, string_view, Data)
+HE_TEST(core, StringView, Data)
 {
     {
         StringView s;
@@ -275,7 +275,7 @@ HE_TEST(core, string_view, Data)
 }
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST(core, string_view, Front)
+HE_TEST(core, StringView, Front)
 {
     static const char TestString[] = "Hello, world!";
 
@@ -286,7 +286,7 @@ HE_TEST(core, string_view, Front)
 }
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST(core, string_view, Back)
+HE_TEST(core, StringView, Back)
 {
     static const char TestString[] = "Hello, world!";
 
@@ -297,7 +297,19 @@ HE_TEST(core, string_view, Back)
 }
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST(core, string_view, CompareTo)
+HE_TEST(core, StringView, ToInteger)
+{
+    // TODO
+}
+
+// ------------------------------------------------------------------------------------------------
+HE_TEST(core, StringView, ToFloat)
+{
+    // TODO
+}
+
+// ------------------------------------------------------------------------------------------------
+HE_TEST(core, StringView, CompareTo)
 {
     const StringView a("Hello, world!");
     const StringView b("Hello, world!");
@@ -317,7 +329,7 @@ HE_TEST(core, string_view, CompareTo)
 }
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST(core, string_view, Begin)
+HE_TEST(core, StringView, Begin)
 {
     {
         StringView s;
@@ -337,7 +349,7 @@ HE_TEST(core, string_view, Begin)
 }
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST(core, string_view, End)
+HE_TEST(core, StringView, End)
 {
     {
         StringView s;

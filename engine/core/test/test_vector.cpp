@@ -798,6 +798,19 @@ HE_TEST(core, Vector, Data)
 }
 
 // ------------------------------------------------------------------------------------------------
+HE_TEST(core, Vector, Front_Back)
+{
+    Allocator& a = CrtAllocator::Get();
+
+    Vector<int> v(a);
+    v.PushBack(1);
+    v.PushBack(2);
+    v.PushBack(3);
+    HE_EXPECT_EQ(s.Front(), 1);
+    HE_EXPECT_EQ(s.Back(), 3);
+}
+
+// ------------------------------------------------------------------------------------------------
 HE_TEST(core, Vector, Begin)
 {
     Allocator& a = CrtAllocator::Get();

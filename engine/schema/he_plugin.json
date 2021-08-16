@@ -1,0 +1,30 @@
+{
+    "id": "he.schema",
+    "name": "Harvest Schema",
+    "description": "Provides the Harvest Schema language parsing, code generation, and tooling.",
+    "version": "1.0.0",
+
+    "author": "Chad Engler <englercj@live.com>",
+    "license": "",
+    "tags": [],
+
+    "modules": [
+        {
+            "name": "he_schema",
+            "type": "static",
+            "group": "engine",
+            "files": ["include/**", "src/**"],
+            "public_dependson": ["he_core"],
+            "public_includedirs": ["include"],
+            "private_includedirs": ["src"]
+        },
+        {
+            "name": "he_schema_tests",
+            "type": "static",
+            "group": "tests",
+            "files": ["test/**"],
+            "public_dependson": ["he_schema"],
+            "private_includedirs": ["src"]
+        }
+    ]
+}

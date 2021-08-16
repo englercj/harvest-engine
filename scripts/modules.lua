@@ -20,6 +20,13 @@ local kind_by_module_type = {
     windowed_app = "WindowedApp",
 }
 
+local variant_keys_disallow = {
+    "name",
+    "type",
+    "variants",
+    "condition",
+}
+
 local module_dependency_include_keys = {
     -- { handler key, value key }
     { "public_defines", "public_defines" },
@@ -64,8 +71,8 @@ key_handlers.private_includedirs = key_handlers.public_includedirs
 
 key_handlers.public_dependson = function (ctx, values)
     for _, mod_name in ipairs(values) do
-        if string.startswith(mod_name, "system:") then
-            links { string.sub(mod_name, 8) }
+        if string.startswith(mod_name, "sys:") then
+            links { string.sub(mod_name, 5) }
             return
         end
 
@@ -105,7 +112,7 @@ key_handlers.private_dependson = key_handlers.public_dependson
 
 key_handlers.public_dependson_include = function (ctx, values)
     for _, mod_name in ipairs(values) do
-        if string.startswith(mod_name, "system:") or string.startswith(mod_name, "file:") then
+        if string.startswith(mod_name, "sys:") or string.startswith(mod_name, "file:") then
             return
         end
 
@@ -128,24 +135,11 @@ key_handlers.public_dependson_include = function (ctx, values)
 end
 key_handlers.private_dependson_include = key_handlers.public_dependson_include
 
-key_handlers.variants = function (ctx, values)
-    for _, variant in ipairs(values) do
-        if variant.filters ~= nil then
-            filter(variant.filters)
-        end
-
-        for key, value in orderedPairs(variant) do
-            _try_handle_key(ctx, key, value)
-        end
+key_handlers.exec = function (ctx, values)
+    for _, file_path in ipairs(values) do
+        local func = dofile(file_path)
+        func(ctx)
     end
-
-    filter { }
-end
-
-key_handlers.exec = function (ctx, value)
-    local func = dofile(value)
-
-    func(ctx)
 end
 
 local function _platform_file_excludes()
@@ -226,6 +220,48 @@ local function _should_include_module(mod, options)
     return true
 end
 
+local function _is_variant_active(condition)
+    if condition == nil then
+        return true
+    end
+
+    -- Check `system`
+    if condition.system ~= nil then
+        local sysTags = os.getSystemTags(os.target())
+        if not table.contains(sysTags, condition.system) then
+            return false
+        end
+    end
+
+    return true
+end
+
+local function _process_variants(mod)
+    if mod.variants == nil then
+        return
+    end
+
+    for _, variant in ipairs(mod.variants) do
+        if _is_variant_active(variant.condition) then
+            for key, value in orderedPairs(variant) do
+                if not table.contains(variant_keys_disallow, key) then
+                    local t = type(mod[key])
+
+                    assert(t == "nil" or t == type(value), "Mismatched types for variant key '" .. key .. "' in module '" .. mod.name .. "'.")
+
+                    -- TODO: "remove_*" keys that subtract from the module
+
+                    if t == "table" then
+                        mod[key] = table.join(mod[key], value)
+                    else
+                        mod[key] = value
+                    end
+                end
+            end
+        end
+    end
+end
+
 function import_plugins(plugins, options)
     assert(type(plugins) == "table", "import_plugins expects a table")
 
@@ -267,7 +303,7 @@ function import_plugins(plugins, options)
             assert(existing == nil, "Module '" .. mod.name .. "' was already provided by plugin '" .. (existing and existing._plugin.id or "") .. "', but plugin '" .. plugin.id .. "' also provides it.")
 
             if _should_include_module(mod, options) then
-                -- TODO: Resolve "remove_*" keys in variants at this point.
+                _process_variants(mod)
 
                 imported_modules[mod.name] = mod
                 imported_modules_count = imported_modules_count + 1

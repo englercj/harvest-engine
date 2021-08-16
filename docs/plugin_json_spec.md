@@ -27,7 +27,7 @@ All paths can contain globs and are relative to the json file, or the install di
 | files                     | Array<String>     | File paths to include in the module project. |
 | dependson_runtime         | Array<String>     | Module names this module will use at runtime. See the Module Dependencies section for more details. |
 | variants                  | Array<Variant>    | Variations of the module's properties activated by a filter. See the Variant Keys section. |
-| exec                      | String            | Path to a lua file that returns an arbitrary function for execution in the context of the module's project. Use as a last resort for advanced functionality. |
+| exec                      | Array<String>     | Path to a lua file that returns an arbitrary function for execution in the context of the module's project. Use as a last resort for advanced functionality. |
 
 ### Prefixed Keys
 
@@ -38,13 +38,21 @@ The following keys must be prefixed with "public" or "private". The former means
 | *_dependson_include | Array<String>     | Module names this module requires include-only access to. See the Module Dependencies section for more details. |
 | *_includedirs       | Array<String>     | Include paths required for this module to build. |
 
-## Variant Keys
+### Variant Keys
 
-Variants can include any Module Key which will only be applied when that variant is active (based on the "filter"). The only exceptions are "name" and "type" which cannot be overridden by a variant. Any keys that are specified both in the module and a variant are treated as additive. If you wish to remove something when a variant is active add a "remove_" prefix to the module key name which will active as subtractive.
+Variants can include any Module Key which will only be applied when that variant is active (based on the "condition"). The only exceptions are "name", "type", and "variants" which cannot be overridden by a variant. Any keys that are specified both in the module and a variant are treated as additive. If you wish to remove something when a variant is active add a "remove_" prefix to the module key name which will active as subtractive.
 
-|            Key            |     Value Type    | Description |
-| ------------------------- | ----------------- | ----------- |
-| filters                   | Array<String>     | Premake filter strings that are combined with an AND operation (https://premake.github.io/docs/filter). |
+|      Key      |     Value Type    | Description |
+| ------------- | ----------------- | ----------- |
+| condition     | VariantCondition  | Condition that must be true for the variant to be active. |
+
+### Variant Condition Keys
+
+Variant conditions represent the necessary state for the variant to be active. Each key of a variant condition is treated as an AND operation. That is, all keys in the variant must evaluate to true for the variant to be active.
+
+|        Key        |   Value Type  | Description |
+| ----------------- | ------------- | ----------- |
+| system            | String        | System tag that must be active to activate the variant. |
 
 ## Module Types
 
@@ -75,7 +83,7 @@ When a dependency is specified with no prefix, for example "he_core" it is assum
 | Prefix | Description |
 | ------ | ----------- |
 | module: | The name refers to a module. This is the default, and is not required. |
-| system: | The name refers to a system library. Do not include any prefix or file extension, the system will deduce those based on the target system. |
+| sys: | The name refers to a system library. Do not include any prefix or file extension, the system will deduce those based on the target system. |
 | file: | The name refers to a file path to a library. The path is used exactly as-is so you will need to include any prefix or file extension information. |
 
-Example: `"public_dependson": ["he_core", "module:he_platform", "system:user32", "file:mylib.lib"]`
+Example: `"public_dependson": ["he_core", "module:he_platform", "sys:user32", "file:mylib.lib"]`

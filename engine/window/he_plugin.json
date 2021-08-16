@@ -19,8 +19,8 @@
             "private_includedirs": ["src"],
             "variants": [
                 {
-                    "filters": ["system:linux"],
-                    "public_dependson": ["system:dl"]
+                    "condition": { "system": "linux" },
+                    "public_dependson": ["sys:dl"]
                 }
             ]
         },

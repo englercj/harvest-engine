@@ -32,7 +32,7 @@
             "group": "tests",
             "files": ["test_runner/main.cpp"],
             "public_dependson": ["he_core"],
-            "exec": "test_runner/link_test_projects.lua"
+            "exec": ["test_runner/link_test_projects.lua"]
         }
     ]
 }

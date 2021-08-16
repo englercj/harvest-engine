@@ -63,7 +63,6 @@ function he_workspace()
     -- Configuration setup
     filter { "configurations:Debug" }
         defines { "_DEBUG", "DEBUG", "HE_CFG_DEBUG" }
-        tags { "debug", "internal" }
         inlining "Explicit"
         optimize "Off"
         runtime "Debug"
@@ -71,7 +70,6 @@ function he_workspace()
 
     filter { "configurations:Release" }
         defines { "NDEBUG", "HE_CFG_RELEASE" }
-        tags { "release", "internal" }
         flags { "LinkTimeOptimization" }
         inlining "Auto"
         optimize "Speed"
@@ -80,7 +78,6 @@ function he_workspace()
 
     filter { "configurations:Shipping" }
         defines { "NDEBUG", "HE_CFG_SHIPPING" }
-        tags { "release" }
         flags { "LinkTimeOptimization" }
         inlining "Auto"
         optimize "Speed"

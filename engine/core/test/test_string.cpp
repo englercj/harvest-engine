@@ -648,6 +648,28 @@ HE_TEST(core, String, operator_assign_copy)
 }
 
 // ------------------------------------------------------------------------------------------------
+HE_TEST(core, String, operator_assign)
+{
+    Allocator& a = CrtAllocator::Get();
+
+    String s(a, "Hello, world!");
+
+    s = "Test";
+    HE_EXPECT_EQ(s.Size(), 4);
+    HE_EXPECT_EQ_STR(s.Data(), "Test");
+
+    s = "bc";
+    HE_EXPECT_EQ(s.Size(), 2);
+    HE_EXPECT_EQ_STR(s.Data(), "bc");
+
+    String s2(a, "hello");
+    s = s2;
+    HE_EXPECT_EQ(s.Size(), 5);
+    HE_EXPECT_EQ_STR(s.Data(), "hello");
+}
+
+
+// ------------------------------------------------------------------------------------------------
 HE_TEST(core, String, operator_assign_move)
 {
     Allocator& a = CrtAllocator::Get();
@@ -784,6 +806,17 @@ HE_TEST(core, String, operator_eq)
 }
 
 // ------------------------------------------------------------------------------------------------
+HE_TEST(core, String, operator_eq_str)
+{
+    Allocator& alloc = CrtAllocator::Get();
+
+    const String a(alloc, "Hello, world!");
+
+    HE_EXPECT((a == "Hello, world!"), a);
+    HE_EXPECT(!(a == "Goodbye, world!"), a);
+}
+
+// ------------------------------------------------------------------------------------------------
 HE_TEST(core, String, operator_ne)
 {
     Allocator& alloc = CrtAllocator::Get();
@@ -803,6 +836,17 @@ HE_TEST(core, String, operator_ne)
     HE_EXPECT((c != a), c, a);
     HE_EXPECT((c != b), c, b);
     HE_EXPECT(!(c != c), c, c);
+}
+
+// ------------------------------------------------------------------------------------------------
+HE_TEST(core, String, operator_ne_str)
+{
+    Allocator& alloc = CrtAllocator::Get();
+
+    const String a(alloc, "Hello, world!");
+
+    HE_EXPECT(!(a != "Hello, world!"), a);
+    HE_EXPECT((a != "Goodbye, world!"), a);
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -1385,7 +1429,6 @@ HE_TEST(core, String, Append)
     HE_EXPECT_EQ(s.Size(), 10);
     HE_EXPECT_EQ_STR(s.Data(), "abc12hello");
 }
-
 
 // ------------------------------------------------------------------------------------------------
 HE_TEST(core, String, Assign)

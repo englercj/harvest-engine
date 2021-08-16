@@ -313,6 +313,11 @@ namespace he
         /// \param x The string to move from.
         String& operator=(String&& x);
 
+        /// Replaces the contents of this string with a copy of the null terminated `str`.
+        ///
+        /// \param str The string source to copy from.
+        String& operator=(const char* str) { Assign(str); return *this; }
+
         /// Gets a reference to the character at `index`. Asserts if `index` is not less
         /// than \see Size().
         ///
@@ -344,11 +349,23 @@ namespace he
         /// \return True if the strings are equal, false otherwise.
         bool operator==(const String& x) const { return CompareTo(x) == 0; }
 
+        /// Checks if this string is equal to the null terminated string `x`.
+        ///
+        /// \param x The string to check against.
+        /// \return True if the strings are equal, false otherwise.
+        bool operator==(const char* x) const { return String::Compare(Data(), x) == 0; }
+
         /// Checks if this string is not equal to `x`.
         ///
         /// \param x The string to check against.
         /// \return True if the strings are not equal, false otherwise.
         bool operator!=(const String& x) const { return CompareTo(x) != 0; }
+
+        /// Checks if this string is not equal to the null terminated string `x`.
+        ///
+        /// \param x The string to check against.
+        /// \return True if the strings are not equal, false otherwise.
+        bool operator!=(const char* x) const { return String::Compare(Data(), x) != 0; }
 
         /// Checks if this string is less than `x`.
         ///

@@ -4,8 +4,6 @@
 
 #include "he/math/types.h"
 
-#include <math.h>
-
 namespace he
 {
     inline constexpr float Float_Pi = 3.141592654f;

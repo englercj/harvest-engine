@@ -13,6 +13,12 @@ int __stdcall wWinMain(struct HINSTANCE__*, struct HINSTANCE__*, wchar_t*, int) 
 
 #else
 
-int main(int argc, char* argv[]) { return he::AppMain(argc, argv); }
+#include <clocale>
+
+int main(int argc, char* argv[])
+{
+    std::setlocale(LC_ALL, "C.UTF-8");
+    return he::AppMain(argc, argv);
+}
 
 #endif

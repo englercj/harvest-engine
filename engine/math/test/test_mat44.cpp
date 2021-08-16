@@ -317,8 +317,8 @@ HE_TEST(math, mat44, Inverse)
     Mat44 m0 = Inverse(MakeTranslateMat44(Vec3f{ 1, 0, 0 }));
     Mat44 m1 = Inverse(MakeScaleMat44(0.5f));
 
-    HE_EXPECT_EQ(TransformPoint(m0, Vec3f{ 0, 0, 0 }), (Vec3f{ -1, 0, 0 }));
-    HE_EXPECT_EQ(TransformPoint(m1, Vec3f{ 1, 1, 1 }), (Vec3f{ 2, 2, 2 }));
+    HE_EXPECT_EQ_ULP(TransformPoint(m0, Vec3f{ 0, 0, 0 }), (Vec3f{ -1, 0, 0 }), 1);
+    HE_EXPECT_EQ_ULP(TransformPoint(m1, Vec3f{ 1, 1, 1 }), (Vec3f{ 2, 2, 2 }), 1);
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -327,8 +327,8 @@ HE_TEST(math, mat44, InverseTransform)
     Mat44 m0 = InverseTransform(MakeTranslateMat44(Vec3f{ 1, 0, 0 }));
     Mat44 m1 = InverseTransform(MakeScaleMat44(0.5f));
 
-    HE_EXPECT_EQ(TransformPoint(m0, Vec3f{ 0, 0, 0 }), (Vec3f{ -1, 0, 0 }));
-    HE_EXPECT_EQ(TransformPoint(m1, Vec3f{ 1, 1, 1 }), (Vec3f{ 2, 2, 2 }));
+    HE_EXPECT_EQ_ULP(TransformPoint(m0, Vec3f{ 0, 0, 0 }), (Vec3f{ -1, 0, 0 }), 1);
+    HE_EXPECT_EQ_ULP(TransformPoint(m1, Vec3f{ 1, 1, 1 }), (Vec3f{ 2, 2, 2 }), 1);
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -368,7 +368,7 @@ HE_TEST(math, mat44, ViewLH)
 
     Vec4a expect{ 1, 2, 3, 1 };
     Vec4a actual = TransformVector(lh0, Vec4a{ 1, 2, 3, 1 });
-    HE_EXPECT_EQ(actual, expect);
+    HE_EXPECT_EQ_ULP(actual, expect, 2);
 
     Mat44 lh1 = ViewLH(Vec3f{ 0, 0, 0 }, Vec3f{ 0, 0, 1 }, Vec3f{ 0, 1, 0 });
     HE_EXPECT_EQ(lh0, lh1);
@@ -381,7 +381,7 @@ HE_TEST(math, mat44, ViewRH)
 
     Vec4a expect{ -1, 2, 3, 1 };
     Vec4a actual = TransformVector(rh0, Vec4a{ 1, 2, 3, 1 });
-    HE_EXPECT_EQ(actual, expect);
+    HE_EXPECT_EQ_ULP(actual, expect, 2);
 
     Mat44 rh1 = ViewRH(Vec3f{ 0, 0, 0 }, Vec3f{ 0, 0, 1 }, Vec3f{ 0, 1, 0 });
     HE_EXPECT_EQ(rh0, rh1);

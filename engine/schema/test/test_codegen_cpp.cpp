@@ -19,6 +19,11 @@ HE_TEST(schema, GenerateCpp, test)
 
     SchemaDef def(a);
     def.namespaceName = "testing";
+    def.enums.EmplaceBack(a);
+    def.enums[0].name = "Values";
+    def.enums[0].base = BaseType::Int32;
+    def.enums[0].values.EmplaceBack(a);
+    def.enums[0].values[0].name = "Foo";
     def.structs.EmplaceBack(a);
     def.structs[0].name = "Test";
     def.structs[0].fields.EmplaceBack(a);
@@ -37,18 +42,26 @@ HE_TEST(schema, GenerateCpp, test)
 
 #pragma once
 
-#include "he/core/string.h"
 #include "he/core/types.h"
-#include "he/core/vector.h"
-
-#include <array>
-#include <list>
-#include <unordered_map>
-#include <unordered_set>
 
 namespace testing
 {
     struct Test;
+
+    enum class Values : int32_t
+    {
+        Foo = 0,
+    };
+
+    inline const char* AsString(Values value)
+    {
+        switch (value)
+        {
+            case Values::Foo: return "Foo";
+        }
+        return "<unknown>";
+    }
+
     struct Test
     {
         static constexpr uint32_t TypeId = 0x652d741b;

@@ -33,6 +33,7 @@ namespace he::schema
         Map,
         Set,
         String,
+        Vector,
 
         // User-defined types
         Enum,
@@ -114,7 +115,7 @@ namespace he::schema
             : str(allocator)
         {}
 
-        BasicValue basic{ 0 };
+        BasicValue basic{ .u64 = 0 };
         String str;
     };
 
@@ -148,7 +149,6 @@ namespace he::schema
         BaseType base{ BaseType::Unknown };
 
         // Size of a fixed array when `base` is `Array`.
-        // If this value is zero, then the array is dynamically sized.
         uint16_t fixedSize{ 0 };
 
         // Name of the InterfaceDef when `base` is `Interface`.
@@ -157,10 +157,10 @@ namespace he::schema
         // Name of the constant used as the fixed size when `base` is `Array`.
         String name;
 
-        // Array, list, set, and map element type if `base` is `Array`, `List`, `Set`, or `Map`.
+        // Element type if `base` is `Array`, `List`, `Set`, `Map`, or `Vector`.
         Type* element{ nullptr };
 
-        // Map key type, if `base` is `Map`.
+        // Key type, if `base` is `Map`.
         Type* key{ nullptr };
 
         // Parameters passed in angle brackets for generics
@@ -199,11 +199,12 @@ namespace he::schema
     {
         EnumValueDef(Allocator& allocator)
             : name(allocator)
+            , value(allocator)
             , attributes(allocator)
         {}
 
         String name;
-        int32_t value{ 0 };
+        Value value;
         Vector<Attribute> attributes;
     };
 
@@ -344,6 +345,18 @@ namespace he::schema
             , structs(allocator)
         {}
 
+        void MarkTypeUsed(BaseType t)
+        {
+            const uint64_t shift = static_cast<uint64_t>(t);
+            usedTypes |= (1ull << shift);
+        }
+
+        bool IsTypeUsed(BaseType t) const
+        {
+            const uint64_t shift = static_cast<uint64_t>(t);
+            return (usedTypes & (1ull << shift)) != 0;
+        }
+
         String namespaceName;
 
         Vector<String> imports;
@@ -354,5 +367,7 @@ namespace he::schema
         Vector<EnumDef> enums;
         Vector<InterfaceDef> interfaces;
         Vector<StructDef> structs;
+
+        uint64_t usedTypes{ 0 };
     };
 }

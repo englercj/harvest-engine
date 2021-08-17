@@ -25,6 +25,13 @@
             "files": ["test/**"],
             "public_dependson": ["he_schema"],
             "private_includedirs": ["src"]
+        },
+        {
+            "name": "he_schema_compiler",
+            "type": "console_app",
+            "group": "engine/tools",
+            "files": ["compiler/main.cpp"],
+            "private_dependson": ["he_core", "he_schema"]
         }
     ]
 }

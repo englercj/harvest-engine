@@ -89,7 +89,7 @@ namespace he::schema
 
         bool ParseEnum(EnumDef& def);
         bool ParseEnumBlock(EnumDef& def);
-        bool ParseEnumStatement(EnumValueDef& def, EnumValueDef* lastDef);
+        bool ParseEnumStatement(const EnumDef& enumDef, EnumValueDef& def, EnumValueDef* lastDef);
 
         bool ParseInterface(InterfaceDef& def);
         bool ParseInterfaceBlock(InterfaceDef& def);
@@ -136,6 +136,5 @@ namespace he::schema
         BaseTypeMap m_builtinTypes{};
 
         Lexer::Token m_token{};
-
     };
 }

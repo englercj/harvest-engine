@@ -467,6 +467,7 @@ namespace he::schema
         // list<T>
         if (TryConsumeKeyword(KW_List))
         {
+            m_schema.MarkTypeUsed(BaseType::List);
             type.base = BaseType::List;
             type.element = m_allocator.New<Type>(m_allocator);
 
@@ -485,6 +486,7 @@ namespace he::schema
         // set<T>
         if (TryConsumeKeyword(KW_Set))
         {
+            m_schema.MarkTypeUsed(BaseType::Set);
             type.base = BaseType::Set;
             type.element = m_allocator.New<Type>(m_allocator);
 
@@ -503,6 +505,7 @@ namespace he::schema
         // map<K, T>
         if (TryConsumeKeyword(KW_Map))
         {
+            m_schema.MarkTypeUsed(BaseType::Map);
             type.base = BaseType::Map;
             type.key = m_allocator.New<Type>(m_allocator);
             type.element = m_allocator.New<Type>(m_allocator);
@@ -531,6 +534,7 @@ namespace he::schema
             auto it = m_builtinTypes.find(m_token.text);
             if (it != m_builtinTypes.end())
             {
+                m_schema.MarkTypeUsed(it->second);
                 type.base = it->second;
                 NextDecl();
                 return true;
@@ -597,24 +601,28 @@ namespace he::schema
             Type* element = m_allocator.New<Type>(m_allocator);
             *element = Move(type);
 
-            type.base = BaseType::Array;
+            type.base = BaseType::Vector;
             type.fixedSize = 0;
             type.name.Clear();
             type.element = element;
 
             if (m_token.type == Lexer::TokenType::Integer)
             {
+                type.base = BaseType::Array;
                 if (!ConsumeInteger(type.fixedSize))
                     return false;
             }
             else if (m_token.type == Lexer::TokenType::Identifier || m_token.type == Lexer::TokenType::Dot)
             {
+                type.base = BaseType::Array;
                 if (!ConsumeDottedIdentifier(type.name))
                     return false;
             }
 
             if (!Consume(Lexer::TokenType::CloseSquareBracket))
                 return false;
+
+            m_schema.MarkTypeUsed(type.base);
         }
 
         return true;
@@ -995,14 +1003,14 @@ namespace he::schema
             }
 
             EnumValueDef* lastValueDef = def.values.IsEmpty() ? nullptr : &def.values.Back();
-            if (!ParseEnumStatement(def.values.EmplaceBack(m_allocator), lastValueDef))
+            if (!ParseEnumStatement(def, def.values.EmplaceBack(m_allocator), lastValueDef))
                 SkipStatement();
         }
 
         return true;
     }
 
-    bool Parser::ParseEnumStatement(EnumValueDef& def, EnumValueDef* lastDef)
+    bool Parser::ParseEnumStatement(const EnumDef& enumDef, EnumValueDef& def, EnumValueDef* lastDef)
     {
         if (!ConsumeAttributes(def.attributes))
             return false;
@@ -1012,12 +1020,29 @@ namespace he::schema
 
         if (TryConsume(Lexer::TokenType::Equals))
         {
-            if (!ConsumeInteger(def.value))
+            if (!ConsumeValue(enumDef.base, def.value))
                 return false;
+        }
+        else if (lastDef == nullptr)
+        {
+            def.value.basic.u64 = 0;
         }
         else
         {
-            def.value = lastDef ? (lastDef->value + 1) : 0;
+            switch (enumDef.base)
+            {
+                case BaseType::Int8: def.value.basic.i8 = lastDef->value.basic.i8 + 1; break;
+                case BaseType::Int16: def.value.basic.i16 = lastDef->value.basic.i16 + 1; break;
+                case BaseType::Int32: def.value.basic.i32 = lastDef->value.basic.i32 + 1; break;
+                case BaseType::Int64: def.value.basic.i64 = lastDef->value.basic.i64 + 1; break;
+                case BaseType::Uint8: def.value.basic.u8 = lastDef->value.basic.u8 + 1; break;
+                case BaseType::Uint16: def.value.basic.u16 = lastDef->value.basic.u16 + 1; break;
+                case BaseType::Uint32: def.value.basic.u32 = lastDef->value.basic.u32 + 1; break;
+                case BaseType::Uint64: def.value.basic.u64 = lastDef->value.basic.u64 + 1; break;
+                default:
+                    AddError("Enum definition has invalid base type, only integral types are supported.");
+                    return false;
+            }
         }
 
         return Consume(Lexer::TokenType::Comma);

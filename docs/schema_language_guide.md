@@ -43,7 +43,7 @@ import "some/path/another.schema";
 
 ## Built-in Types
 
-The following types are defiend as part of the language.
+The following types are defined as part of the language.
 
 ### Basic Types
 
@@ -65,16 +65,16 @@ The following types are defiend as part of the language.
 
 |    Schema    |             C++             |         C#         |     Notes     |
 | ------------ | --------------------------- | ------------------ | ------------- |
-| `T[]`        | `std::vector<T>`            | `List<T>`          | Dynamic array of elements `T` |
-| `T[N]`       | `std::array<T, N>`          | `T[N]`             | Fixed array of elements `T` of size `N` |
-| `string`     | `std::string`               | `String`           | Dynamic string which may only hold UTF-8 or 7-bit ASCII |
+| `T[]`        | `he::Vector<T>`             | `List<T>`          | Dynamic array of elements `T` |
+| `T[N]`       | `T[N]`                      | `T[N]`             | Fixed array of elements `T` of size `N` |
+| `string`     | `he::String`                | `String`           | Dynamic string which may only hold UTF-8 or 7-bit ASCII |
 | `list<T>`    | `std::list<T>`              | `LinkedList<T>`    | Doubly linked list of elements `T` |
-| `set<T>`     | `std::unordered_set<T>`     | `HashSet<T>`       | Set of unique elements `T` |
+| `set<T>`     | `std::unordered_set<T>`     | `HashSet<T>`       | Unordered set of unique elements `T` |
 | `map<K, T>`  | `std::unordered_map<K, T>`  | `Dictionary<K, T>` | Unordered hash map which associates keys `K` to elements `T` |
 
 ## Structs
 
-A collection of named and typed fields.
+A collection of named and typed fields. Cannot contain methods. Can extend a single struct, which inherits the fields.
 
 ```c
 struct Base {}
@@ -119,7 +119,7 @@ struct List
 
 ## Enums
 
-A type for listing symbolic values. Follows the same rules as C for determining the numeric value.
+A type for listing symbolic values.
 
 ```c
 enum Something
@@ -127,6 +127,29 @@ enum Something
     Foo,
     Bar,
     Baz,
+}
+```
+
+The default underlying type of an enum is `int32`, but you can specify any integral type you wish.
+
+```c
+enum Something : uint16
+{
+    Foo,
+    Bar,
+    Baz,
+}
+```
+
+Enumerant values are always the previous value plus one, with the first item defaulting to a value of zero. You can also specify the values manually if you wish.
+
+```c
+enum Something : uint16
+{
+    Foo,        // Defaults to 0 as the first element
+    Bar,        // Has a value of 1 (Foo + 1)
+    Baz = 6,    // Has a value of 6
+    Qux,        // Has a value of 7 (Baz + 1)
 }
 ```
 
@@ -141,7 +164,7 @@ const Bar: Vec3 = { 0, 1, 2 };
 
 ## Interfaces
 
-A collection of named and typed methods.
+A collection of named and typed methods. Cannot contain fields. Can implement multiple interfaces, which inherits the method definitions.
 
 ```c
 interface Metal
@@ -162,30 +185,28 @@ interface Car implements Metal, Fuel
 
 ## Generics
 
-Structs and interfaces can be parameterized with one or more type paramters.
+Structs, interfaces, and type aliases can be parameterized with one or more type paramters. When instantiating a generic struct all type parameters must be concrete types.
 
 ```c
+struct Simple
+{
+    b: bool;
+}
+
 struct Example<T, U> extends T
 {
     field: U;
 }
-```
 
-The usage of a type parameter within a generic struct definition may implicitly constrain what type(s) can be used to instantiate the generic struct:
-
-```c
-struct Example<T>
+struct Usage
 {
-    // The default value of 10 implicitly constrains T to numeric types
-    x: T = 10;
+    example: Example<Simple, int32>;
 }
 ```
 
-You can also explicitly constrain the type parameter
-
 ## Type aliases
 
-C++-style type aliases
+A type alias is basically an alternative name for a type. Type aliases can have generic type parameters.
 
 ```c
 using Vec3<T> = T[3];

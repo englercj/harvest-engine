@@ -57,7 +57,7 @@ namespace he
 
         Code code;
         String msg;
-        Vector<const char*> values;
+        Vector<StringView> values;
 
         explicit ArgResult(Allocator& a) : code(Success), msg(a), values(a) {}
         explicit ArgResult(Allocator& a, Code c) : code(c), msg(a), values(a) {}

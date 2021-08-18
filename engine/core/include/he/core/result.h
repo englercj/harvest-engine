@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include "he/core/allocator.h"
 #include "he/core/assert.h"
 #include "he/core/config.h"
 #include "he/core/debug.h"
@@ -110,7 +111,7 @@ namespace he
     /// \return Returns true if the debugger should break at the erroneous line.
     inline bool ExpectResultFailed(ErrorType type, const char* file, const int line, const char* funcName, const char* expression, Result result)
     {
-        String msg = result.ToString();
+        String msg = result.ToString(CrtAllocator::Get());
         return HandleError(type, file, line, funcName, expression, msg.Data());
     }
 }

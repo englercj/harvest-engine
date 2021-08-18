@@ -52,10 +52,10 @@ namespace he
         if (srcLen >= 3 && src[srcLen - 3] == '.')
             src[srcLen -= 3] = 0;
 
-        const size_t requiredLen = ::WideCharToMultiByte(CP_UTF8, 0, src, -1, nullptr, 0, nullptr, nullptr);
+        const int32_t requiredLen = ::WideCharToMultiByte(CP_UTF8, 0, src, -1, nullptr, 0, nullptr, nullptr);
 
         ret.Resize(requiredLen + 1);
-        const size_t len = ::WideCharToMultiByte(CP_UTF8, 0, src, -1, ret.Data(), static_cast<int>(ret.Size()), nullptr, nullptr);
+        const int32_t len = ::WideCharToMultiByte(CP_UTF8, 0, src, -1, ret.Data(), static_cast<int>(ret.Size()), nullptr, nullptr);
 
         ret.Resize(len ? len - 1 : 0);
 

@@ -50,7 +50,7 @@ namespace he
     /// \param dst The character buffer to write the result to.
     /// \param dstLen The length of the destination buffer in characters.
     /// \param src The source wide string to convert.
-    /// \return The number of bytes written to the destination buffe, including the null
+    /// \return The number of bytes written to the destination buffer, including the null
     /// terminator. If `dst` is null and `dstLen` is zero then the number of characters
     /// that would be written assuming an infinite buffer are returned, including the null
     /// terminator.

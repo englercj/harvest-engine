@@ -1,3 +1,5 @@
+// Copyright Chad Engler
+
 #include "he/core/path.h"
 
 #include "he/core/allocator.h"

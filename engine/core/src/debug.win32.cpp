@@ -13,12 +13,12 @@ namespace he
     void PrintToDebugger(const char* s)
     {
         wchar_t* wideStr = HE_TO_WSTR(s);
-        OutputDebugStringW(wideStr);
+        ::OutputDebugStringW(wideStr);
     }
 
     bool IsDebuggerAttached()
     {
-        return !!IsDebuggerPresent();
+        return !!::IsDebuggerPresent();
     }
 }
 

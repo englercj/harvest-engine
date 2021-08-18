@@ -23,11 +23,11 @@ namespace he
 
         for (int i = 0; i < argc; ++i)
         {
-            int len = WideCharToMultiByte(CP_UTF8, 0, wargv[i], -1, nullptr, 0, nullptr, nullptr);
+            int len = ::WideCharToMultiByte(CP_UTF8, 0, wargv[i], -1, nullptr, 0, nullptr, nullptr);
 
             argv[i] = new char[len];
 
-            int copied = WideCharToMultiByte(CP_UTF8, 0, wargv[i], -1, argv[i], len, nullptr, nullptr);
+            int copied = ::WideCharToMultiByte(CP_UTF8, 0, wargv[i], -1, argv[i], len, nullptr, nullptr);
 
             HE_ASSERT(len == copied);
             HE_UNUSED(copied);

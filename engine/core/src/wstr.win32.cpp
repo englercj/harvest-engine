@@ -15,7 +15,7 @@ namespace he
         HE_ASSERT(src);
         HE_ASSERT((dst && dstLen) || (!dst && !dstLen));
 
-        int32_t result = MultiByteToWideChar(CP_UTF8, 0, src, -1, dst, static_cast<int32_t>(dstLen));
+        int32_t result = ::MultiByteToWideChar(CP_UTF8, 0, src, -1, dst, static_cast<int32_t>(dstLen));
         return static_cast<uint32_t>(result);
     }
 
@@ -24,7 +24,7 @@ namespace he
         HE_ASSERT(src);
         HE_ASSERT((dst && dstLen) || (!dst && !dstLen));
 
-        int32_t result = WideCharToMultiByte(CP_UTF8, 0, src, -1, dst, static_cast<int32_t>(dstLen), nullptr, nullptr);
+        int32_t result = ::WideCharToMultiByte(CP_UTF8, 0, src, -1, dst, static_cast<int32_t>(dstLen), nullptr, nullptr);
         return static_cast<uint32_t>(result);
     }
 }

@@ -46,7 +46,6 @@ namespace he
             case ErrorType::Expect: break;
         }
 
-
         return true;
     }
 

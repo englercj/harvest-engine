@@ -21,6 +21,9 @@ template <typename T, unsigned int N> char (&_heLengthOf(const T (&)[N]))[N];
 #define HE_STRINGIFY_(x) #x
 #define HE_STRINGIFY(x) HE_STRINGIFY_(x)
 
+/// Generates a unique symbol name
+#define HE_UNIQUE_NAME(x) HE_PP_JOIN(x, __COUNTER__)
+
 /// \def HE_PP_JOIN
 /// Join two different preprocessor tokens together.
 ///

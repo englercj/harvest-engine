@@ -8,14 +8,32 @@
 
 namespace he
 {
+    bool IsAbsolutePath(const char* path)
+    {
+        if (String::IsEmpty(path))
+            return false;
+
+        // Leading slash is an absolute path
+        if (path[0] == '/' || path[0] == '\\')
+            return true;
+
+        // Leading drive letter is an absolute path
+        if (path[0] && path[1] == ':' && (path[2] == '/' || path[2] == '\\'))
+            return true;
+
+        return false;
+    }
+
     bool IsAbsolutePath(const StringView& path)
     {
         if (path.IsEmpty())
             return false;
 
+        // Leading slash is an absolute path
         if (path[0] == '/' || path[0] == '\\')
             return true;
 
+        // Leading drive letter is an absolute path
         if (path.Size() > 2 && path[1] == ':' && (path[2] == '/' || path[2] == '\\'))
             return true;
 

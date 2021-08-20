@@ -14,6 +14,14 @@ namespace he
     /// Checks if the path is absolute. That is, is it relative to a filesystem root.
     /// For example, "/home/human/file" and "C:\\Users\\human\\file" are absolute paths.
     ///
+    /// \note This `const char*` overload avoids an unnecessary strlen.
+    ///
+    /// \param[in] path The path to check.
+    bool IsAbsolutePath(const char* path);
+
+    /// Checks if the path is absolute. That is, is it relative to a filesystem root.
+    /// For example, "/home/human/file" and "C:\\Users\\human\\file" are absolute paths.
+    ///
     /// \param[in] path The path to check.
     bool IsAbsolutePath(const StringView& path);
 

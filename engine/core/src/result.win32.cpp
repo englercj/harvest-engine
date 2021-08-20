@@ -4,6 +4,7 @@
 
 #include "he/core/alloca.h"
 #include "he/core/string.h"
+#include "he/core/wstr.h"
 
 #include "fmt/format.h"
 
@@ -26,7 +27,7 @@ namespace he
 
     String Result::ToString(Allocator& allocator) const
     {
-        String ret(allocator);
+        String dst(allocator);
 
         wchar_t* src = nullptr;
         DWORD srcLen = ::FormatMessageW(
@@ -44,20 +45,15 @@ namespace he
 
             fmt::memory_buffer buf;
             fmt::format_to(fmt::appender(buf), "Unknown error: {}", m_code);
-            ret.Assign(buf.data(), static_cast<uint32_t>(buf.size()));
-            return ret;
+            dst.Assign(buf.data(), static_cast<uint32_t>(buf.size()));
+            return dst;
         }
 
         // Remove a trailing period & \r\n for consistency with posix messages.
         if (srcLen >= 3 && src[srcLen - 3] == '.')
             src[srcLen -= 3] = 0;
 
-        const int32_t requiredLen = ::WideCharToMultiByte(CP_UTF8, 0, src, -1, nullptr, 0, nullptr, nullptr);
-
-        ret.Resize(requiredLen + 1);
-        const int32_t len = ::WideCharToMultiByte(CP_UTF8, 0, src, -1, ret.Data(), static_cast<int>(ret.Size()), nullptr, nullptr);
-
-        ret.Resize(len ? len - 1 : 0);
+        WCToMBStr(dst, src);
 
         ::LocalFree(src);
         return ret;

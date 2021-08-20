@@ -420,14 +420,7 @@ namespace he
         if (widePathLen == 0 || widePathLen > wideRequiredLen)
             return Result::FromLastError();
 
-        const uint32_t requiredLen = WCToMBStr(nullptr, 0, buf);
-        path.Resize(requiredLen);
-
-        const uint32_t len = WCToMBStr(path.Data(), requiredLen, buf);
-        if (len == 0)
-            return Result::InvalidParameter;
-
-        path.Resize(len - 1);
+        WCToMBStr(path, buf);
 
         return Result::Success;
     }

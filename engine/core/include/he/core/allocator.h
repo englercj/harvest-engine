@@ -53,7 +53,7 @@ namespace he
         template <typename T, HE_REQUIRES(std::is_trivially_destructible_v<T>)>
         void Delete(const T* p)
         {
-            Free(p);
+            Free(const_cast<T*>(p));
         }
 
         /// Deletes `p` which must have been allocated with New.

@@ -15,7 +15,7 @@ HE_TEST(core, result, Success)
     HE_EXPECT(r);
 
     String msg = r.ToString(CrtAllocator::Get());
-    HE_EXPECT_EQ(msg, "success");
+    HE_EXPECT(!msg.IsEmpty());
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -25,7 +25,7 @@ HE_TEST(core, result, InvalidArgument)
     HE_EXPECT(!r);
 
     String msg = r.ToString(CrtAllocator::Get());
-    HE_EXPECT_EQ(msg, "invalid argument");
+    HE_EXPECT(!msg.IsEmpty());
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -35,5 +35,5 @@ HE_TEST(core, result, NotSupported)
     HE_EXPECT(!r);
 
     String msg = r.ToString(CrtAllocator::Get());
-    HE_EXPECT_EQ(msg, "not supported");
+    HE_EXPECT(!msg.IsEmpty());
 }

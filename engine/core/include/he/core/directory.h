@@ -13,17 +13,10 @@ namespace he::Directory
     /// A selection of special file system directories that are useful for applications to query.
     enum class SpecialId
     {
+        Documents,      ///< Windows: `%UserProfile%/Documents`. Linux: `$XDG_DOCUMENTS_DIR` > `$HOME/Documents`
         LocalAppData,   ///< Windows: `%LocalAppData%`. Linux: `$XDG_DATA_HOME` > `$HOME/.local/share`
         SharedAppData,  ///< Windows: `%AppData%`. Linux: `$XDG_DATA_DIRS` > `/usr/local/share/` > `/usr/share/`
-        Documents,      ///< Windows: `%UserProfile%/Documents`. Linux: `$XDG_DOCUMENTS_DIR` > `$HOME/Documents`
         Temp,           ///< Windows: System temp directory. Linux: `$TMPDIR` > `/tmp`
-    };
-
-    /// A directory entry. Can be a file or a subdirectory.
-    struct Entry
-    {
-        const char* name;
-        bool isDirectory;
     };
 
     /// Helper utility for recursively iterating through the contents of a directory.

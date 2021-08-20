@@ -98,8 +98,8 @@ namespace he::Directory
                     HE_ASSERT(::GetLastError() == ERROR_NO_MORE_FILES);
                     return false;
                 }
-                impl->first = false;
             }
+            impl->first = false;
 
             const wchar_t* fname = impl->findData.cFileName;
 

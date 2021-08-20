@@ -18,7 +18,7 @@ namespace he
 {
     Result Result::Success{ 0 };
     Result Result::InvalidParameter{ ERROR_INVALID_PARAMETER };
-    Result Result::NotSupported{ ERROR_INVALID_FUNCTION };
+    Result Result::NotSupported{ ERROR_NOT_SUPPORTED };
 
     Result Result::FromLastError()
     {

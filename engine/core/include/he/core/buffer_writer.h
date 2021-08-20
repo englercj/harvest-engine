@@ -18,6 +18,12 @@ namespace he
             Fixed,      ///< Grows by a fixed amount when resizing
         };
 
+        /// The minimum number of bytes to allocate when the buffer resizes.
+        static constexpr uint32_t MinBytes = 1024;
+
+        /// The maximum number of bytes that can be allocated.
+        static constexpr uint32_t MaxBytes = 0xffffffff;
+
     public:
         // ----------------------------------------------------------------------------------------
         // Construction
@@ -166,12 +172,15 @@ namespace he
         template <typename T, HE_REQUIRES(std::is_trivially_copyable_v<T>)>
         void Write(const T& value) { Write(&value, sizeof(T)); }
 
-    private:
-        // The minimum number of bytes to allocate when the buffer resizes.
-        static constexpr uint32_t MinBytes = 8;
+        /// Writes a byte repeatedly to the buffer. This is equivalent to growing the buffer
+        /// and then calling memset. This is much faster than calling Write() repeatedly.
+        ///
+        /// \param[in] byte The byte to write repeatedly to the buffer.
+        /// \param[in] count The number of times the byte should be written.
+        void WriteRepeat(uint8_t byte, uint32_t count);
 
-        // The maximum number of bytes that can be allocated.
-        static constexpr uint32_t MaxBytes = 0xffffffff;
+    private:
+        friend class BufferWriterTestAttorney;
 
         // Grows the internal capacity to make space for `len` byes.
         void GrowBy(uint32_t len);

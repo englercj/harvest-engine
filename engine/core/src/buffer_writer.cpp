@@ -132,6 +132,13 @@ namespace he
         Write(str, len);
     }
 
+    void BufferWriter::WriteRepeat(uint8_t byte, uint32_t count)
+    {
+        GrowBy(count);
+        MemSet(m_data + m_size, byte, count);
+        m_size += count;
+    }
+
     void BufferWriter::GrowBy(uint32_t len)
     {
         HE_ASSERT(len < MaxBytes && m_capacity <= (MaxBytes - len));

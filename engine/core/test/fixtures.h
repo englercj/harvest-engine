@@ -3,6 +3,7 @@
 #pragma once
 
 #include "he/core/allocator.h"
+#include "he/core/buffer_writer.h"
 #include "he/core/span.h"
 #include "he/core/string_view.h"
 #include "he/core/test.h"
@@ -54,6 +55,15 @@ namespace he
         void* Malloc(size_t size, size_t alignment = DefaultAlignment) override { return CrtAllocator::Get().Malloc(size, alignment); }
         void* Realloc(void* ptr, size_t newSize, size_t alignment = DefaultAlignment) override { return CrtAllocator::Get().Realloc(ptr, newSize, alignment); }
         void Free(void* ptr) override { CrtAllocator::Get().Free(ptr); }
+    };
+
+    // --------------------------------------------------------------------------------------------
+    class BufferWriterTestAttorney
+    {
+    public:
+        static uint8_t* GetPtr(BufferWriter& b) { return b.m_data; }
+        static BufferWriter::GrowthStrategy GetStrategy(const BufferWriter& b) { return b.m_strategy; }
+        static float GetGrowth(const BufferWriter& b) { return b.m_growth; }
     };
 
     // --------------------------------------------------------------------------------------------

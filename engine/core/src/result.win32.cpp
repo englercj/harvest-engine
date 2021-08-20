@@ -56,7 +56,7 @@ namespace he
         WCToMBStr(dst, src);
 
         ::LocalFree(src);
-        return ret;
+        return dst;
     }
 }
 

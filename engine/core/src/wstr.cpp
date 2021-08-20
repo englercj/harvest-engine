@@ -28,6 +28,29 @@ namespace he
         size_t result = std::wcsrtombs(dst, &src, dst ? dstLen : 0, &state);
         return static_cast<uint32_t>(result) + 1; // +1 for null
     }
+
+    void WCToMBStr(String& dst, const wchar_t* src)
+    {
+        HE_ASSERT(src);
+
+        std::mbstate_t state{};
+        const size_t requiredLen = std::wcsrtombs(nullptr, &src, 0, &state);
+
+        if (requiredLen == 0)
+        {
+            dst.Clear();
+            return;
+        }
+
+        dst.Resize(static_cast<uint32_t>(requiredLen));
+
+        const size_t len = std::wcsrtombs(dst.Data(), &src, dst.Size(), &state);
+
+        if (len > 0)
+            dst.Resize(len);
+        else
+            dst.Clear();
+    }
 #endif
 
     int32_t WCStrCmp(const wchar_t* a, const wchar_t* b)

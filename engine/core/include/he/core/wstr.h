@@ -3,6 +3,7 @@
 #pragma once
 
 #include "he/core/alloca.h"
+#include "he/core/string.h"
 
 // Due to how the TO_WSTR macro is setup it isn't easy to pass along the size of the wstr buffer
 // that gets allocated. So instead we specify a huge size as our buffer size for MultiByteToWideChar.
@@ -24,8 +25,7 @@ namespace he
 {
     /// Converts a null terminated multibyte UTF-8 string to a wide character string.
     ///
-    /// \note
-    /// Behavior is undefined if any of the following are true:
+    /// \note Behavior is undefined if any of the following are true:
     /// - `src` is null
     /// - `dst` is non-null and `dstLen` is zero
     /// - `dst` is null and `dstLen` is non-zero.
@@ -41,8 +41,7 @@ namespace he
 
     /// Converts a null terminated wide character UTF-8 string to a multibyte string.
     ///
-    /// \note
-    /// Behavior is undefined if any of the following are true:
+    /// \note Behavior is undefined if any of the following are true:
     /// - `src` is null
     /// - `dst` is non-null and `dstLen` is zero
     /// - `dst` is null and `dstLen` is non-zero.
@@ -55,6 +54,14 @@ namespace he
     /// that would be written assuming an infinite buffer are returned, including the null
     /// terminator.
     uint32_t WCToMBStr(char* dst, uint32_t dstLen, const wchar_t* src);
+
+    /// Converts a null terminated wide character UTF-8 string to a multibyte string.
+    ///
+    /// \note Behavior is undefined if `src` is nullptr.
+    ///
+    /// \param dst The string to write the result to, empty if the source couldn't be converted.
+    /// \param src The source wide string to convert.
+    void WCToMBStr(String& dst, const wchar_t* src);
 
     /// Compares the null terminated wide character strings and returns the result of the comparison.
     ///

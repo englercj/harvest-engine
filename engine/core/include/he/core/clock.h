@@ -13,7 +13,6 @@ namespace he
     template <typename Tag> struct Clock
     {
         using Time = he::Time<Tag>;
-
         static Time Now();
     };
 
@@ -33,8 +32,8 @@ namespace he
     struct Duration { int64_t ns; };
 
     constexpr Duration Duration_Zero{ 0 };
-    constexpr Duration Duration_Max{ INT64_MAX };
     constexpr Duration Duration_Min{ INT64_MIN };
+    constexpr Duration Duration_Max{ INT64_MAX };
 
     // Duration periods
     template <int64_t N> struct DurationPeriod { static constexpr int64_t Ratio = N; };
@@ -52,7 +51,7 @@ namespace he
     constexpr float ToFloatPeriod(Duration d) { return static_cast<float>(d.ns / static_cast<double>(T::Ratio)); }
 
     template <typename T, typename U>
-    constexpr Duration FromPeriod(U p) { return { p * T::Ratio }; }
+    constexpr Duration FromPeriod(U p) { return { static_cast<int64_t>(p * T::Ratio) }; }
 
     // Time & Duration operators
     template <typename Tag> inline Time<Tag>& operator+=(Time<Tag>& x, Duration y) { x.ns += y.ns; return x; }

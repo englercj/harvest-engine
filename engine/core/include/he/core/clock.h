@@ -8,11 +8,16 @@ struct timespec;
 
 namespace he
 {
-    template <typename Tag> struct Time { uint64_t ns; };
-
-    template <typename Tag> struct Clock
+    template <typename Tag>
+    struct Time
     {
-        using Time = he::Time<Tag>;
+        uint64_t ns;
+    };
+
+    template <typename Tag>
+    struct Clock
+    {
+        using Time = Time<Tag>;
         static Time Now();
     };
 

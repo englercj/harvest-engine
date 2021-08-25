@@ -66,7 +66,7 @@ namespace he
     struct FileAttributes
     {
         /// The attribute flags for this file.
-        FileAttributeFlag attributes;
+        FileAttributeFlag flags;
 
         /// The size of the file; always `0` for directories.
         uint64_t size;

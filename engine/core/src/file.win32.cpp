@@ -71,21 +71,21 @@ namespace he
         if (!::GetFileAttributesExW(HE_TO_WSTR(path), GetFileExInfoStandard, &attrData))
             return Result::FromLastError();
 
-        outAttributes.attributes = FileAttributeFlag::None;
+        outAttributes.flags = FileAttributeFlag::None;
 
         if ((attrData.dwFileAttributes & FILE_ATTRIBUTE_HIDDEN) == FILE_ATTRIBUTE_HIDDEN)
         {
-            outAttributes.attributes |= FileAttributeFlag::Hidden;
+            outAttributes.flags |= FileAttributeFlag::Hidden;
         }
 
         if ((attrData.dwFileAttributes & FILE_ATTRIBUTE_READONLY) == FILE_ATTRIBUTE_READONLY)
         {
-            outAttributes.attributes |= FileAttributeFlag::ReadOnly;
+            outAttributes.flags |= FileAttributeFlag::ReadOnly;
         }
 
         if ((attrData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) == FILE_ATTRIBUTE_DIRECTORY)
         {
-            outAttributes.attributes |= FileAttributeFlag::Directory;
+            outAttributes.flags |= FileAttributeFlag::Directory;
             outAttributes.size = 0;
         }
         else
@@ -374,21 +374,21 @@ namespace he
         if (!::GetFileInformationByHandleEx(handle, FileStandardInfo, &standardInfo, sizeof(FILE_STANDARD_INFO)))
             return Result::FromLastError();
 
-        outAttributes.attributes = FileAttributeFlag::None;
+        outAttributes.flags = FileAttributeFlag::None;
 
         if ((basicInfo.FileAttributes & FILE_ATTRIBUTE_HIDDEN) == FILE_ATTRIBUTE_HIDDEN)
         {
-            outAttributes.attributes |= FileAttributeFlag::Hidden;
+            outAttributes.flags |= FileAttributeFlag::Hidden;
         }
 
         if ((basicInfo.FileAttributes & FILE_ATTRIBUTE_READONLY) == FILE_ATTRIBUTE_READONLY)
         {
-            outAttributes.attributes |= FileAttributeFlag::ReadOnly;
+            outAttributes.flags |= FileAttributeFlag::ReadOnly;
         }
 
         if (standardInfo.Directory == TRUE)
         {
-            outAttributes.attributes |= FileAttributeFlag::Directory;
+            outAttributes.flags |= FileAttributeFlag::Directory;
             outAttributes.size = 0;
         }
         else

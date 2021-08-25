@@ -25,13 +25,13 @@ namespace he
 {
     static void GatherFileAttributes(const struct stat& sb, const char* path, FileAttributes& attribs)
     {
-        attribs.attributes = FileAttributeFlag::None;
+        attribs.flags = FileAttributeFlag::None;
 
         if (path != nullptr)
         {
             const char* baseName = GetBaseName(path);
             if (baseName[0] == '.')
-                attribs.attributes |= FileAttributeFlag::Hidden;
+                attribs.flags |= FileAttributeFlag::Hidden;
         }
 
         mode_t test = S_IWOTH;
@@ -42,11 +42,11 @@ namespace he
             test = S_IXGRP;
 
         if ((sb.st_mode & test) == 0)
-            attribs.attributes |= FileAttributeFlag::ReadOnly;
+            attribs.flags |= FileAttributeFlag::ReadOnly;
 
         if (S_ISDIR(sb.st_mode))
         {
-            attribs.attributes |= FileAttributeFlag::Directory;
+            attribs.flags |= FileAttributeFlag::Directory;
             attribs.size = 0;
         }
         else

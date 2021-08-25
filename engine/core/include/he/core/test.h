@@ -7,7 +7,9 @@
 #include "he/core/error.h"
 #include "he/core/macros.h"
 #include "he/core/memory_ops.h"
+#include "he/core/result.h"
 #include "he/core/string.h"
+#include "he/core/string_fmt.h"
 #include "he/core/types.h"
 
 #include "fmt/format.h"

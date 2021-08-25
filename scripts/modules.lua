@@ -194,8 +194,8 @@ local function _module_project(mod)
 
         defines { "HE_CFG_MODULE_NAME=\"" .. mod.name .. "\"" }
 
-        if mod.type == "default" and build_type == "dynamic" then
-            defines { "HE_CFG_MODULE_DYNAMIC=1" }
+        if (mod.type == "default" and build_type == "dynamic") or mod.type == "shared" then
+            defines { "HE_CFG_MODULE_SHARED=1" }
         elseif mod.type == "default" or mod.type == "static" then
             defines { "HE_CFG_MODULE_STATIC=1" }
         end

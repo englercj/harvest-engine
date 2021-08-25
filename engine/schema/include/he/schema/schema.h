@@ -94,6 +94,24 @@ namespace he::schema
         return IsIntegral(t) || IsFloat(t);
     }
 
+    constexpr bool IsObject(BaseType t)
+    {
+        switch (t)
+        {
+            case BaseType::Array:
+            case BaseType::List:
+            case BaseType::Map:
+            case BaseType::Set:
+            case BaseType::String:
+            case BaseType::Vector:
+            case BaseType::Interface:
+            case BaseType::Struct:
+                return true;
+            default:
+                return false;
+        }
+    }
+
     union BasicValue
     {
         bool b;

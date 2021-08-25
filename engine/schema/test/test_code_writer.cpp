@@ -11,5 +11,5 @@ using namespace he::schema;
 // ------------------------------------------------------------------------------------------------
 HE_TEST(schema, CodeWriter, test)
 {
-    CodeWriter writer(CrtAllocator::Get());
+    // TODO
 }

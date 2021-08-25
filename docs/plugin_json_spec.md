@@ -60,6 +60,7 @@ Variant conditions represent the necessary state for the variant to be active. E
 | ---- | ----------- |
 | default | The default module type. Built as a hot-reloadable shared library during dynamic (internal) builds and as a static library during static (shipping) builds. |
 | static | Always built as a static library. |
+| shared | Always built as a shared library (dll/so). |
 | header | Header-only module that does not generate any symbols to be linked. |
 | console_app | A console application |
 | windowed_app | A windowed application |

@@ -14,6 +14,7 @@ local target_dir_by_kind = {
 local kind_by_module_type = {
     default = (build_type == "dynamic" and "SharedLib" or "StaticLib"),
     static = "StaticLib",
+    shared = "SharedLib",
     header = "StaticLib",
     test = "StaticLib",
     console_app = "ConsoleApp",

@@ -5,10 +5,10 @@ local install_plugin = dofile("install_plugin.lua")
 local build_type = "dynamic" -- TODO: Switch based on dynamic or static build of modules
 
 local target_dir_by_kind = {
-    ConsoleApp = bin_dir,
-    WindowedApp = bin_dir,
-    SharedLib = bin_dir,
-    StaticLib = lib_dir,
+    ConsoleApp = target_bin_dir,
+    WindowedApp = target_bin_dir,
+    SharedLib = target_bin_dir,
+    StaticLib = target_lib_dir,
 }
 
 local kind_by_module_type = {
@@ -182,15 +182,16 @@ local function _module_project(mod)
     local kindname = kind_by_module_type[mod.type]
     assert(kindname, "Unknown module type: '" .. mod.type .. "'.")
 
-    local target_dir = target_dir_by_kind[kindname]
-    assert(target_dir, "No target_dir known for kind: '" .. kindname .. "'.")
+    local kind_target_dir = target_dir_by_kind[kindname]
+    assert(kind_target_dir, "No target_dir known for kind: '" .. kindname .. "'.")
 
     group(mod.group)
     project(mod.name)
         language "C++"
         kind(kindname)
-        objdir(obj_dir)
-        targetdir(target_dir)
+        objdir(target_obj_dir)
+        targetdir(kind_target_dir)
+        location(projects_dir)
 
         defines { "HE_CFG_MODULE_NAME=\"" .. mod.name .. "\"" }
 

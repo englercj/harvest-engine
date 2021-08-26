@@ -1,7 +1,7 @@
 -- Copyright Chad Engler
 
 function get_generated_dir(project_name)
-    return path.join(gen_dir, project_name)
+    return path.join(target_gen_dir, project_name)
 end
 
 local _gen_out_dir = "%{get_generated_dir(prj.name)}/%{path.getrelative(getpackage(prj.name)._pkg_dir, path.getdirectory(file.abspath))}"
@@ -27,7 +27,7 @@ function bin2c_compile(glob, options)
         compilebuildoutputs "on"
         buildmessage "Encoding file %{file.abspath}"
         buildcommands {
-            bin_dir .. "/bin2c " .. opt .. "-n c_%{file.name:gsub('[%.-]', '_')} -f %{file.abspath} -o " .. _gen_out_dir .. "/%{file.name}.h",
+            target_bin_dir .. "/bin2c " .. opt .. "-n c_%{file.name:gsub('[%.-]', '_')} -f %{file.abspath} -o " .. _gen_out_dir .. "/%{file.name}.h",
         }
         buildoutputs {
             _gen_out_dir .. "/%{file.name}.h",

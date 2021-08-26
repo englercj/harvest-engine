@@ -65,10 +65,10 @@ local function _download_archive(name, source, dir)
 end
 
 local function _install_from_archive(name, source)
-    local dir = path.join(dep_dir, name)
+    local dir = path.join(plugin_install_dir, name)
     local digest = string.sha1(name .. source)
 
-    local vfile = path.join(dir, ".dependency_digest")
+    local vfile = path.join(dir, ".plugin_digest")
     local installed_version = io.readfile(vfile);
 
     if installed_version ~= digest then

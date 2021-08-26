@@ -10,7 +10,7 @@ return function (ctx)
             filter { "toolset:msc-*", "language:C++" }
                 linkoptions { "/WHOLEARCHIVE:" .. mod.name }
             filter { "toolset:gcc or clang" }
-                linkoptions { "-Wl,--whole-archive %{lib_base_dir}/" .. mod.name .. "/lib" .. mod.name .. ".a -Wl,--no-whole-archive" }
+                linkoptions { "-Wl,--whole-archive %{path.getdirectory(target_lib_dir)}/" .. mod.name .. "/lib" .. mod.name .. ".a -Wl,--no-whole-archive" }
             filter { }
         end
     end

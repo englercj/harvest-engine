@@ -13,17 +13,15 @@ newoption { trigger = "windows_systemversion", default = "latest", description =
 sln_name = _OPTIONS["slnfilename"]
 
 if #sln_name == 0 then
-    sln_name = path.getbasename(root_dir)
+    sln_name = path.getbasename(root_dir) .. "_" .. os.target()
 end
 
-build_dir   = path.join(root_dir, "build")
-bin_dir     = path.join(build_dir, "bin/%{os.target()}-%{cfg.shortname}")
-temp_dir    = path.join(build_dir, "temp")
-dep_dir     = path.join(build_dir, "dependencies")
-lib_base_dir= path.join(build_dir, "lib/%{os.target()}-%{cfg.shortname}")
-lib_dir     = path.join(lib_base_dir, "%{lib_base_dir}/%{prj.name}")
-obj_dir     = path.join(build_dir, "obj/%{os.target()}-%{cfg.shortname}/%{prj.name}")
-project_dir = path.join(build_dir, "projects")
-gen_dir     = path.join(build_dir, "generated")
+build_dir           = path.join(root_dir, "build")
+plugin_install_dir  = path.join(build_dir, "plugins")
+projects_dir        = path.join(build_dir, "projects/%{os.target()}")
 
--- Helpers for ordered key iteration
+target_build_dir    = path.join(build_dir, "%{os.target()}-%{cfg.architecture}-%{cfg.buildcfg:lower()}")
+target_bin_dir      = path.join(target_build_dir, "bin")
+target_lib_dir      = path.join(target_build_dir, "lib/%{prj.name}")
+target_obj_dir      = path.join(target_build_dir, "obj/%{prj.name}")
+target_gen_dir      = path.join(target_build_dir, "generated")

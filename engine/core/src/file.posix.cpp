@@ -29,7 +29,7 @@ namespace he
 
         if (path != nullptr)
         {
-            const char* baseName = GetBaseName(path);
+            const StringView baseName = GetBaseName(path);
             if (baseName[0] == '.')
                 attribs.flags |= FileAttributeFlag::Hidden;
         }
@@ -403,7 +403,7 @@ namespace he
     {
         fmt::memory_buffer buf;
         fmt::format_to(fmt::appender(buf), "/proc/self/fd/{}", static_cast<int>(m_fd));
-        buf.append('\0');
+        buf.push_back('\0');
 
         struct stat sb;
         Result r = ReadLink(buf.data(), sb, path);

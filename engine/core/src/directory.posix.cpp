@@ -61,10 +61,12 @@ namespace he::Directory
             if (!entry)
                 return false;
 
+            const char* fname = entry->d_name;
+
             if (fname[0] == '.' && (fname[1] == '\0' || (fname[1] == '.' && fname[2] == '\0')))
                 continue;
 
-            outName = entry->d_name;
+            outName = fname;
 
             if (outIsDirectory)
                 *outIsDirectory = !!(entry->d_type & DT_DIR);
@@ -111,7 +113,7 @@ namespace he::Directory
                     const char* end = String::Find(start, ':');
 
                     if (end)
-                        dst.Assign(start, end);
+                        dst.Assign(start, (end - start));
                     else
                         dst = start;
 
@@ -125,7 +127,7 @@ namespace he::Directory
                 const char* end = String::Find(xdgDataDirs, ':');
 
                 if (end)
-                    dst.Assign(start, end);
+                    dst.Assign(start, (end - start));
                 else
                     dst = xdgDataDirs;
 
@@ -195,7 +197,7 @@ namespace he::Directory
         return !stat(path, &sb) && S_ISDIR(sb.st_mode);
     }
 
-    Result Create(const char* path, bool parents = false)
+    Result Create(const char* path, bool parents)
     {
         if (parents)
         {
@@ -209,7 +211,7 @@ namespace he::Directory
                     // Truncate the path at the separator, create the parent directory, then restore the separator
                     char sep = *p;
                     *p = '\0';
-                    if (mkdir(_path, 0777) && errno != EEXIST)
+                    if (mkdir(parentDirs, 0777) && errno != EEXIST)
                         return Result::FromLastError();
                     *p = sep;
                 }

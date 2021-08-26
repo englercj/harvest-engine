@@ -8,6 +8,7 @@
 
 namespace he
 {
+    template <>
     SystemTime SystemClock::Now()
     {
         struct timespec ts;
@@ -15,6 +16,7 @@ namespace he
         return PosixTimeToSystemTime(ts);
     }
 
+    template <>
     MonotonicTime MonotonicClock::Now()
     {
         struct timespec ts;

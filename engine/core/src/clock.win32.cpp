@@ -8,6 +8,7 @@
 
 namespace he
 {
+    template <>
     SystemTime SystemClock::Now()
     {
         FILETIME ft;
@@ -20,6 +21,7 @@ namespace he
         return Win32FileTimeToSystemTime(i.QuadPart);
     }
 
+    template <>
     MonotonicTime MonotonicClock::Now()
     {
         LARGE_INTEGER x;

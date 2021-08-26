@@ -104,7 +104,7 @@ namespace he::Directory
             const wchar_t* fname = impl->findData.cFileName;
 
             // If its "." or ".." then skip it
-            if (fname[0] == '.' && (fname[1] == '\0' || (fname[1] == '.' && fname[2] == '\0')))
+            if (fname[0] == L'.' && (fname[1] == L'\0' || (fname[1] == L'.' && fname[2] == L'\0')))
                 continue;
 
             WCToMBStr(outName, fname);

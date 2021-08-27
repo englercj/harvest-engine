@@ -1,0 +1,6 @@
+{
+    "import_plugins": [
+        "contrib/*",
+        "plugins/*"
+    ]
+}

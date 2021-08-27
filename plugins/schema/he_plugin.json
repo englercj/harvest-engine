@@ -12,7 +12,7 @@
         {
             "name": "he_schema",
             "type": "static",
-            "group": "engine",
+            "group": "engine/libs",
             "files": ["include/**", "src/**"],
             "public_dependson": ["he_core"],
             "public_includedirs": ["include"],
@@ -21,7 +21,7 @@
         {
             "name": "he_schema_tests",
             "type": "static",
-            "group": "tests",
+            "group": "engine/tests",
             "files": ["test/**"],
             "public_dependson": ["he_schema"],
             "private_includedirs": ["src"]

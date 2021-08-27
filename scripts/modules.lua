@@ -195,9 +195,9 @@ local function _module_project(mod)
 
         defines { "HE_CFG_MODULE_NAME=\"" .. mod.name .. "\"" }
 
-        if (mod.type == "default" and build_type == "dynamic") or mod.type == "shared" then
+        if kindname == "SharedLib" then
             defines { "HE_CFG_MODULE_SHARED=1" }
-        elseif mod.type == "default" or mod.type == "static" then
+        elseif kindname == "StaticLib" then
             defines { "HE_CFG_MODULE_STATIC=1" }
         end
 
@@ -264,8 +264,73 @@ local function _process_variants(mod)
     end
 end
 
+local function _import_plugin(plugin_path, options)
+    local plugin_file = plugin_path
+
+    if not path.hasextension(plugin_file, ".json") then
+        plugin_file = path.join(plugin_file, "he_plugin.json")
+    end
+
+    plugin_file = path.getabsolute(plugin_file);
+
+    verbosef("Loading plugin imported as '%s' from file '%s'", plugin_path, plugin_file)
+    local plugin = json.decode(io.readfile(plugin_file))
+
+    if plugin == nil then
+        return nil
+    end
+
+    local warn_about_no_modules = true
+
+    if plugin.import_plugins ~= nil then
+        warn_about_no_modules = false
+        assert(type(plugin.import_plugins) == "table", "Plugin at '" .. plugin_path .. "' incorrectly specifies the 'import_plugins' key. It must be an array of string paths.")
+
+        local oldcwd = os.getcwd()
+        os.chdir(path.getdirectory(plugin_file))
+
+        import_plugins(plugin.import_plugins, options)
+
+        os.chdir(oldcwd)
+    end
+
+    if plugin.modules == nil or table.isempty(plugin.modules) then
+        if warn_about_no_modules then
+            p.warn("Plugin '" .. plugin.name .. "' imported from '" .. plugin_path .. "' contains no modules.")
+        end
+        return {}
+    end
+
+    plugin._file_path = plugin_file
+    install_plugin(plugin)
+
+    local imported = {}
+
+    for _, mod in ipairs(plugin.modules) do
+        mod._plugin = plugin
+
+        local existing = imported_modules[mod.name]
+        assert(existing == nil, "Module '" .. mod.name .. "' was already provided by plugin '" .. (existing and existing._plugin.id or "") .. "', but plugin '" .. plugin.id .. "' also provides it.")
+
+        if _should_include_module(mod, options) then
+            _process_variants(mod)
+
+            imported_modules[mod.name] = mod
+            imported_modules_count = imported_modules_count + 1
+
+            table.insert(imported, mod);
+        end
+    end
+
+    return imported
+end
+
 function import_plugins(plugins, options)
-    assert(type(plugins) == "table", "import_plugins expects a table")
+    if type(plugins) == "string" then
+        plugins = { plugins }
+    end
+
+    assert(type(plugins) == "table", "import_plugins expects a string or a table of strings")
 
     if options == nil then
         options = {}
@@ -274,47 +339,28 @@ function import_plugins(plugins, options)
     local imported = {}
 
     for _, plugin_path in ipairs(plugins) do
-        local plugin_file = plugin_path
+        local dirs = os.matchdirs(plugin_path)
+        local import_count = 0
 
-        if not path.hasextension(plugin_file, ".json") then
-            plugin_file = path.join(plugin_file, "he_plugin.json")
+        if table.isempty(dirs) then
+            dirs = { plugin_path }
         end
 
-        plugin_file = path.join(path.getabsolute(_SCRIPT_DIR), plugin_file);
+        for _, plugin_dir in ipairs(dirs) do
+            local imported_mods = _import_plugin(plugin_dir, options)
 
-        verbosef("Loading plugin imported as '%s' from file '%s'", plugin_path, plugin_file)
-        local plugin = json.decode(io.readfile(plugin_file))
+            if imported_mods ~= nil then
+                import_count = import_count + 1
 
-        if plugin == nil then
-            p.error("Failed to import plugin from '" .. plugin_path .. "', does it exist?", 0)
-            break
-        end
-
-        if plugin.modules == nil or table.isempty(plugin.modules) then
-            p.warn("Plugin '" .. plugin.name .. "' imported from '" .. plugin_path .. "' contains no modules to import.")
-            goto continue
-        end
-
-        plugin._file_path = plugin_file
-        install_plugin(plugin)
-
-        for _, mod in ipairs(plugin.modules) do
-            mod._plugin = plugin
-
-            local existing = imported_modules[mod.name]
-            assert(existing == nil, "Module '" .. mod.name .. "' was already provided by plugin '" .. (existing and existing._plugin.id or "") .. "', but plugin '" .. plugin.id .. "' also provides it.")
-
-            if _should_include_module(mod, options) then
-                _process_variants(mod)
-
-                imported_modules[mod.name] = mod
-                imported_modules_count = imported_modules_count + 1
-
-                table.insert(imported, mod);
+                for _, mod in ipairs(imported_mods) do
+                    table.insert(imported, mod);
+                end
             end
         end
 
-        ::continue::
+        if import_count == 0 then
+            p.warn("No plugins found to import using path '" .. plugin_path .. "'.")
+        end
     end
 
     for _, mod in ipairs(imported) do
@@ -331,7 +377,7 @@ function add_module_keys(scope, keys)
     elseif scope == "link" then
         dst = module_dependency_link_keys
     else
-        premake.error("Cannot add module keys to unknown scope: '" .. scope .. "'")
+        p.error("Cannot add module keys to unknown scope: '" .. scope .. "'")
         return
     end
 

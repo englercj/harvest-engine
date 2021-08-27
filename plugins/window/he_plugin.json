@@ -12,7 +12,7 @@
         {
             "name": "he_window",
             "type": "static",
-            "group": "engine",
+            "group": "engine/libs",
             "files": ["include/**", "src/**"],
             "public_dependson": ["he_core", "he_math"],
             "public_includedirs": ["include"],
@@ -27,7 +27,7 @@
         {
             "name": "he_window_test_app",
             "type": "windowed_app",
-            "group": "tests",
+            "group": "engine/tests",
             "files": ["test_app/**"],
             "private_dependson": ["he_core", "he_window"]
         }

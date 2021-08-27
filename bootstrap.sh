@@ -8,7 +8,7 @@ case $OS_NAME in
     Linux*)
         PREMAKE_OS="linux"
         PREMAKE_EXT=".tar.gz"
-        PREMAKE_ACTION="gmake --cc=clang"
+        PREMAKE_ACTION="gmake2 --cc=clang"
         PREMAKE_EXE="premake5"
         EXTRACT_CMD="tar -xzf"
         EXTRACT_FLAG="-C"

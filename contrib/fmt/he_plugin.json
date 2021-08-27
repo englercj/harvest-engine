@@ -14,7 +14,7 @@
         {
             "name": "fmt",
             "type": "static",
-            "group": "contrib",
+            "group": "engine/contrib",
             "files": [
                 "include/fmt/core.h",
                 "include/fmt/compile.h",

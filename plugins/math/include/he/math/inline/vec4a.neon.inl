@@ -41,35 +41,35 @@ namespace he
         return high;
     }
 
-    template <> inline Vec4a MakeVec4a(const Vec2T<float>& v)
+    template <> inline Vec4a MakeVec4a(const Vec2<float>& v)
     {
         int64x2_t zero = vdupq_n_s64(0);
         int64x2_t result = vld1q_lane_s64(reinterpret_cast<const int64_t*>(&v), zero, 0);
         return vreinterpretq_f32_s64(result);
     }
 
-    template <> inline Vec4a MakeVec4a(const Vec2T<int32_t>& v)
+    template <> inline Vec4a MakeVec4a(const Vec2<int32_t>& v)
     {
         int64x2_t zero = vdupq_n_s64(0);
         int64x2_t result = vld1q_lane_s64(reinterpret_cast<const int64_t*>(&v), zero, 0);
         return vcvtq_f32_s32(vreinterpretq_s32_s64(result));
     }
 
-    template <> inline Vec4a MakeVec4a(const Vec2T<uint32_t>& v)
+    template <> inline Vec4a MakeVec4a(const Vec2<uint32_t>& v)
     {
         uint64x2_t zero = vdupq_n_u64(0);
         uint64x2_t result = vld1q_lane_u64(reinterpret_cast<const uint64_t*>(&v), zero, 0);
         return vcvtq_f32_u32(vreinterpretq_u32_u64(result));
     }
 
-    template <> inline Vec4a MakeVec4a(const Vec3T<float>& v)
+    template <> inline Vec4a MakeVec4a(const Vec3<float>& v)
     {
         int64x2_t zero = vdupq_n_s64(0);
         int64x2_t low = vld1q_lane_s64(reinterpret_cast<const int64_t*>(&v), zero, 0);
         return vsetq_lane_f32(v.z, vreinterpretq_f32_s64(low), 2);
     }
 
-    template <> inline Vec4a MakeVec4a(const Vec3T<int32_t>& v)
+    template <> inline Vec4a MakeVec4a(const Vec3<int32_t>& v)
     {
         int64x2_t zero = vdupq_n_s64(0);
         int64x2_t low = vld1q_lane_s64(reinterpret_cast<const int64_t*>(&v), zero, 0);
@@ -77,7 +77,7 @@ namespace he
         return vcvtq_f32_s32(loaded);
     }
 
-    template <> inline Vec4a MakeVec4a(const Vec3T<uint32_t>& v)
+    template <> inline Vec4a MakeVec4a(const Vec3<uint32_t>& v)
     {
         uint64x2_t zero = vdupq_n_u64(0);
         uint64x2_t low = vld1q_lane_u64(reinterpret_cast<const uint64_t*>(&v), zero, 0);
@@ -85,18 +85,18 @@ namespace he
         return vcvtq_f32_u32(loaded);
     }
 
-    template <> inline Vec4a MakeVec4a(const Vec4T<float>& v)
+    template <> inline Vec4a MakeVec4a(const Vec4<float>& v)
     {
         return vld1q_f32(&v.x);
     }
 
-    template <> inline Vec4a MakeVec4a(const Vec4T<int32_t>& v)
+    template <> inline Vec4a MakeVec4a(const Vec4<int32_t>& v)
     {
         int32x4_t loaded = vld1q_s32(reinterpret_cast<const int*>(&v));
         return vcvtq_f32_s32(loaded);
     }
 
-    template <> inline Vec4a MakeVec4a(const Vec4T<uint32_t>& v)
+    template <> inline Vec4a MakeVec4a(const Vec4<uint32_t>& v)
     {
         uint32x4_t loaded = vld1q_u32(reinterpret_cast<const uint32_t*>(&v));
         return vcvtq_f32_u32(loaded);

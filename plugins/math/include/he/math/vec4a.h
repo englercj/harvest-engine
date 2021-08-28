@@ -19,13 +19,13 @@ namespace he
     Vec4a MakeVec4a(const Vec4a& x, const Vec4a& y, const Vec4a& z);
     Vec4a MakeVec4a(const Vec4a& x, const Vec4a& y, const Vec4a& z, const Vec4a& w);
 
-    template <typename T> Vec4a MakeVec4a(const Vec2T<T>& vec);
-    template <typename T> Vec4a MakeVec4a(const Vec3T<T>& vec);
-    template <typename T> Vec4a MakeVec4a(const Vec4T<T>& vec);
+    template <typename T> Vec4a MakeVec4a(const Vec2<T>& vec);
+    template <typename T> Vec4a MakeVec4a(const Vec3<T>& vec);
+    template <typename T> Vec4a MakeVec4a(const Vec4<T>& vec);
 
-    template <typename T> Vec2T<T> MakeVec2(const Vec4a& v);
-    template <typename T> Vec3T<T> MakeVec3(const Vec4a& v);
-    template <typename T> Vec4T<T> MakeVec4(const Vec4a& v);
+    template <typename T> Vec2<T> MakeVec2(const Vec4a& v);
+    template <typename T> Vec3<T> MakeVec3(const Vec4a& v);
+    template <typename T> Vec4<T> MakeVec4(const Vec4a& v);
 
     // Returns a vector with all elements set to zero.
     Vec4a SplatZero();

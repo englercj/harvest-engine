@@ -5,21 +5,21 @@ namespace he
     // --------------------------------------------------------------------------------------------
     // Conversion
 
-    template <typename T> inline Vec2T<T> MakeVec2(const Vec4a& v)
+    template <typename T> inline Vec2<T> MakeVec2(const Vec4a& v)
     {
         HE_ALIGNED(16) float r[4];
         Store(r, v);
         return { static_cast<T>(r[0]), static_cast<T>(r[1]) };
     }
 
-    template <typename T> inline Vec3T<T> MakeVec3(const Vec4a& v)
+    template <typename T> inline Vec3<T> MakeVec3(const Vec4a& v)
     {
         HE_ALIGNED(16) float r[4];
         Store(r, v);
         return { static_cast<T>(r[0]), static_cast<T>(r[1]), static_cast<T>(r[2]) };
     }
 
-    template <typename T> inline Vec4T<T> MakeVec4(const Vec4a& v)
+    template <typename T> inline Vec4<T> MakeVec4(const Vec4a& v)
     {
         HE_ALIGNED(16) float r[4];
         Store(r, v);

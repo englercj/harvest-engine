@@ -12,21 +12,21 @@ namespace he
     // --------------------------------------------------------------------------------------------
     // Vector Types
 
-    template <typename T> struct Vec2T { using Type = T; static constexpr uint32_t Size = 2; T x, y; };
-    template <typename T> struct Vec3T { using Type = T; static constexpr uint32_t Size = 3; T x, y, z; };
-    template <typename T> struct Vec4T { using Type = T; static constexpr uint32_t Size = 4; T x, y, z, w; };
+    template <typename T> struct Vec2 { using Type = T; static constexpr uint32_t Size = 2; T x, y; };
+    template <typename T> struct Vec3 { using Type = T; static constexpr uint32_t Size = 3; T x, y, z; };
+    template <typename T> struct Vec4 { using Type = T; static constexpr uint32_t Size = 4; T x, y, z, w; };
 
-    using Vec2f = Vec2T<float>;
-    using Vec3f = Vec3T<float>;
-    using Vec4f = Vec4T<float>;
+    using Vec2f = Vec2<float>;
+    using Vec3f = Vec3<float>;
+    using Vec4f = Vec4<float>;
 
-    using Vec2i = Vec2T<int32_t>;
-    using Vec3i = Vec3T<int32_t>;
-    using Vec4i = Vec4T<int32_t>;
+    using Vec2i = Vec2<int32_t>;
+    using Vec3i = Vec3<int32_t>;
+    using Vec4i = Vec4<int32_t>;
 
-    using Vec2u = Vec2T<uint32_t>;
-    using Vec3u = Vec3T<uint32_t>;
-    using Vec4u = Vec4T<uint32_t>;
+    using Vec2u = Vec2<uint32_t>;
+    using Vec3u = Vec3<uint32_t>;
+    using Vec4u = Vec4<uint32_t>;
 
     struct Vec4a
     {

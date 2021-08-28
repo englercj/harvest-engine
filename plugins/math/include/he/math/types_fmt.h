@@ -54,9 +54,9 @@ namespace he
 
 namespace fmt
 {
-    template <typename T> struct formatter<he::Vec2T<T>> : he::_VecTFormatter<he::Vec2T<T>> {};
-    template <typename T> struct formatter<he::Vec3T<T>> : he::_VecTFormatter<he::Vec3T<T>> {};
-    template <typename T> struct formatter<he::Vec4T<T>> : he::_VecTFormatter<he::Vec4T<T>> {};
+    template <typename T> struct formatter<he::Vec2<T>> : he::_VecTFormatter<he::Vec2<T>> {};
+    template <typename T> struct formatter<he::Vec3<T>> : he::_VecTFormatter<he::Vec3<T>> {};
+    template <typename T> struct formatter<he::Vec4<T>> : he::_VecTFormatter<he::Vec4<T>> {};
 
     template <>
     struct formatter<he::Vec4a>

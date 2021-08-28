@@ -20,17 +20,17 @@ namespace he
         return { { x.v.x, y.v.x, z.v.x, w.v.x } };
     }
 
-    template <typename T> inline Vec4a MakeVec4a(const Vec2T<T>& v)
+    template <typename T> inline Vec4a MakeVec4a(const Vec2<T>& v)
     {
         return { { static_cast<float>(v.x), static_cast<float>(v.y), 0.0f, 0.0f } };
     }
 
-    template <typename T> inline Vec4a MakeVec4a(const Vec3T<T>& v)
+    template <typename T> inline Vec4a MakeVec4a(const Vec3<T>& v)
     {
         return { { static_cast<float>(v.x), static_cast<float>(v.y), static_cast<float>(v.z), 0.0f } };
     }
 
-    template <typename T> inline Vec4a MakeVec4a(const Vec4T<T>& v)
+    template <typename T> inline Vec4a MakeVec4a(const Vec4<T>& v)
     {
         return { { static_cast<float>(v.x), static_cast<float>(v.y), static_cast<float>(v.z), static_cast<float>(v.w) } };
     }

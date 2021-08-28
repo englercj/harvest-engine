@@ -28,34 +28,34 @@ namespace he
         return _mm_movelh_ps(a, b);
     }
 
-    template <> inline Vec4a MakeVec4a(const Vec2T<float>& v)
+    template <> inline Vec4a MakeVec4a(const Vec2<float>& v)
     {
         __m128d loaded = _mm_load_sd(reinterpret_cast<const double*>(&v));
         return _mm_castpd_ps(loaded);
     }
 
-    template <> inline Vec4a MakeVec4a(const Vec2T<int32_t>& v)
+    template <> inline Vec4a MakeVec4a(const Vec2<int32_t>& v)
     {
         __m128d loaded = _mm_load_sd(reinterpret_cast<const double*>(&v));
         __m128i cast = _mm_castpd_si128(loaded);
         return _mm_cvtepi32_ps(cast);
     }
 
-    template <> inline Vec4a MakeVec4a(const Vec2T<uint32_t>& v)
+    template <> inline Vec4a MakeVec4a(const Vec2<uint32_t>& v)
     {
         __m128d loaded = _mm_load_sd(reinterpret_cast<const double*>(&v));
         __m128i cast = _mm_castpd_si128(loaded);
         return _mm_cvtepi32_ps(cast);
     }
 
-    template <> inline Vec4a MakeVec4a(const Vec3T<float>& v)
+    template <> inline Vec4a MakeVec4a(const Vec3<float>& v)
     {
         __m128 low = _mm_castpd_ps(_mm_load_sd(reinterpret_cast<const double*>(&v)));
         __m128 high = _mm_load_ss(&v.z);
         return _mm_movelh_ps(low, high);
     }
 
-    template <> inline Vec4a MakeVec4a(const Vec3T<int32_t>& v)
+    template <> inline Vec4a MakeVec4a(const Vec3<int32_t>& v)
     {
         __m128d low = _mm_load_sd(reinterpret_cast<const double*>(&v));
         __m128i high = _mm_cvtsi32_si128(v.z);
@@ -63,7 +63,7 @@ namespace he
         return _mm_cvtepi32_ps(combined);
     }
 
-    template <> inline Vec4a MakeVec4a(const Vec3T<uint32_t>& v)
+    template <> inline Vec4a MakeVec4a(const Vec3<uint32_t>& v)
     {
         __m128d low = _mm_load_sd(reinterpret_cast<const double*>(&v));
         __m128i high = _mm_cvtsi32_si128(v.z);
@@ -71,18 +71,18 @@ namespace he
         return _mm_cvtepi32_ps(combined);
     }
 
-    template <> inline Vec4a MakeVec4a(const Vec4T<float>& v)
+    template <> inline Vec4a MakeVec4a(const Vec4<float>& v)
     {
         return _mm_loadu_ps(&v.x);
     }
 
-    template <> inline Vec4a MakeVec4a(const Vec4T<int32_t>& v)
+    template <> inline Vec4a MakeVec4a(const Vec4<int32_t>& v)
     {
         __m128i loaded = _mm_loadu_si128(reinterpret_cast<const __m128i*>(&v));
         return _mm_cvtepi32_ps(loaded);
     }
 
-    template <> inline Vec4a MakeVec4a(const Vec4T<uint32_t>& v)
+    template <> inline Vec4a MakeVec4a(const Vec4<uint32_t>& v)
     {
         __m128i loaded = _mm_loadu_si128(reinterpret_cast<const __m128i*>(&v));
         return _mm_cvtepi32_ps(loaded);

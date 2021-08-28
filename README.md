@@ -20,8 +20,6 @@ Then run `bootstrap.sh` from within the cloned folder.
 | GCC      | 10.1.0 |
 | Clang    | 11.0.0 |
 
-Tested against glibc 2.31
-
 ## Supported Platforms
 
 - :x: No support planned
@@ -31,13 +29,13 @@ Tested against glibc 2.31
 - :waning_gibbous_moon: Feature complete, ready for testing
 - :heavy_check_mark: Ready for production
 
-|     Platform     |    Status    |  Minimum SDK  |
-| ---------------- | ------------ | ------------- |
-| Linux            | :new_moon:   | ?             |
-| Windows          | :new_moon:   | 10.0.18362.0  |
-| Xbox Series X\|S | :new_moon:   | ?             |
-| PlayStation 5    | :new_moon:   | ?             |
-| Nintendo Switch  | :new_moon:   | ?             |
-| macOS            | :x:          | n/a           |
-| Android          | :x:          | n/a           |
-| iOS              | :x:          | n/a           |
+|     Platform     |         Status         |  Minimum SDK  |
+| ---------------- | ---------------------- | ------------- |
+| Linux            | :waning_crescent_moon: | glibc 2.30    |
+| Windows          | :last_quarter_moon:    | 10.0.18362.0  |
+| Xbox Series X\|S | :new_moon:             | ?             |
+| PlayStation 5    | :new_moon:             | ?             |
+| Nintendo Switch  | :new_moon:             | ?             |
+| macOS            | :x:                    | n/a           |
+| Android          | :x:                    | n/a           |
+| iOS              | :x:                    | n/a           |

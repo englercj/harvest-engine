@@ -4,9 +4,9 @@
 
 namespace he
 {
-    const char* AsString(FileResult v)
+    const char* AsString(FileResult x)
     {
-        switch (v)
+        switch (x)
         {
             case FileResult::Success: return "Success";
             case FileResult::Failure: return "Failure";

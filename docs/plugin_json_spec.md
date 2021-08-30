@@ -4,7 +4,7 @@ All keys are optional unless otherwise specified.
 
 All paths can contain globs and are relative to the json file, or the install directory if the plugin is installed from a remote source. That is, if you use "source_github", "source_bitbucket", or "source_archive" to install the plugin then paths are relative to the extracted files location.
 
-## Root Keys
+## Plugin Keys
 
 |      Key      |   Value Type  | Description |
 | ------------- | ------------- | ----------- |
@@ -16,6 +16,7 @@ All paths can contain globs and are relative to the json file, or the install di
 | license       | String        | An SPDX license identifier (https://spdx.org/licenses/). If this is not specified it is treated as unlicensed. |
 | tags          | Array<String> | An array of string identifiers used as search tags. |
 | modules       | Array<Module> | An array of modules that this plugin provides. See the Module Keys section. |
+| exec          | Array<String> | Paths to lua files that returns a function for execution when the plugin is imported. Use as an entry point for build system extension. |
 
 ## Module Keys
 
@@ -27,9 +28,9 @@ All paths can contain globs and are relative to the json file, or the install di
 | files                     | Array<String>     | File paths to include in the module project. |
 | dependson_runtime         | Array<String>     | Module names this module will use at runtime. See the Module Dependencies section for more details. |
 | variants                  | Array<Variant>    | Variations of the module's properties activated by a filter. See the Variant Keys section. |
-| exec                      | Array<String>     | Path to a lua file that returns an arbitrary function for execution in the context of the module's project. Use as a last resort for advanced functionality. |
+| exec                      | Array<String>     | Paths to lua files that return a function for execution in the context of the module's project. Use as a last resort for advanced module project functionality. |
 
-### Prefixed Keys
+### Prefixed Module Keys
 
 The following keys must be prefixed with "public" or "private". The former means to propagate that value to any modules depending on this module, and the later means it only affects this module's project. For example, "public_defines" and "private_defines".
 
@@ -38,7 +39,7 @@ The following keys must be prefixed with "public" or "private". The former means
 | *_dependson_include | Array<String>     | Module names this module requires include-only access to. See the Module Dependencies section for more details. |
 | *_includedirs       | Array<String>     | Include paths required for this module to build. |
 
-### Variant Keys
+### Module Variant Keys
 
 Variants can include any Module Key which will only be applied when that variant is active (based on the "condition"). The only exceptions are "name", "type", and "variants" which cannot be overridden by a variant. Any keys that are specified both in the module and a variant are treated as additive. If you wish to remove something when a variant is active add a "remove_" prefix to the module key name which will active as subtractive.
 
@@ -46,7 +47,7 @@ Variants can include any Module Key which will only be applied when that variant
 | ------------- | ----------------- | ----------- |
 | condition     | VariantCondition  | Condition that must be true for the variant to be active. |
 
-### Variant Condition Keys
+### Module Variant Condition Keys
 
 Variant conditions represent the necessary state for the variant to be active. Each key of a variant condition is treated as an AND operation. That is, all keys in the variant must evaluate to true for the variant to be active.
 
@@ -88,3 +89,42 @@ When a dependency is specified with no prefix, for example "he_core" it is assum
 | file: | The name refers to a file path to a library. The path is used exactly as-is so you will need to include any prefix or file extension information. |
 
 Example: `"public_dependson": ["he_core", "module:he_platform", "sys:user32", "file:mylib.lib"]`
+
+## Module Keys Extension
+
+You can extend the supported keys by calling the `add_module_keys` function in a lua function specified in your plugin's `exec` key.
+
+For example:
+
+`game/tools/plugin/he_plugin.json`
+```json
+{
+    "id": "game.tools.plugin",
+    "name": "My Tool Plugin",
+    "exec": ["my_tool.lua"]
+}
+```
+
+`game/tools/plugin/my_tool.lua`
+```lua
+return function ()
+    local handler = function (ctx, value)
+        -- ctx = the module that used the "mytool" key
+        -- value = the value of the "mytool" key in the module
+
+        -- The project for the module that used the "mytool" key is currently in scope
+        -- Paths are relative to the plugin json file that contained the module.
+        files { "**.tool" }
+        dependson { "mytool" }
+        filter { "files:**.tool" }
+            buildmessage "Running mytool on file %{file.abspath}"
+            buildcommands { target_bin_dir .. "/mytool %{file.abspath} -o " .. target_file_gen_dir }
+            buildoutputs { target_file_gen_dir .. "/%{file.name}.h" }
+        filter { }
+    end
+
+    add_module_keys("private", { "mytool", handler })
+end
+```
+
+Now another module can use the new `mytool` key and it will execute the `handler` function.

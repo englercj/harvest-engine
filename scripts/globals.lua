@@ -25,3 +25,9 @@ target_bin_dir      = path.join(target_build_dir, "bin")
 target_lib_dir      = path.join(target_build_dir, "lib/%{prj.name}")
 target_obj_dir      = path.join(target_build_dir, "obj/%{prj.name}")
 target_gen_dir      = path.join(target_build_dir, "generated")
+
+target_file_gen_dir = "%{get_generated_dir(prj.name)}/%{path.getrelative(get_module(prj.name)._plugin._install_dir, path.getdirectory(file.abspath))}"
+
+function get_generated_dir(project_name)
+    return path.join(target_gen_dir, project_name)
+end

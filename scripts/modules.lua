@@ -368,6 +368,24 @@ function import_plugins(plugins, options)
     end
 end
 
+local function _register_module_key(key, handler, dstScope)
+    if dstScope == nil then
+        assert(key_handlers[key] == nil, "There is already a handler registered for: " .. key)
+        key_handlers[key] = handler
+    else
+        local public_key = "public_" .. key
+        local private_key = "private_" .. key
+
+        assert(key_handlers[public_key] == nil, "There is already a handler registered for: " .. public_key)
+        assert(key_handlers[private_key] == nil, "There is already a handler registered for: " .. private_key)
+
+        table.insert(dstScope, { public_key, public_key })
+
+        key_handlers[public_key] = handler
+        key_handlers[private_key] = handler
+    end
+end
+
 function add_module_keys(scope, keys)
     assert(type(keys) == "table", "add_module_keys expects a table of keys")
 
@@ -376,22 +394,29 @@ function add_module_keys(scope, keys)
         dst = module_dependency_include_keys
     elseif scope == "link" then
         dst = module_dependency_link_keys
+    elseif scope == "private" then
+        -- Private doesn't propagate the values anywhere
     else
         p.error("Cannot add module keys to unknown scope: '" .. scope .. "'")
         return
     end
 
-    for _, key in ipairs(keys) do
-        local public_key = "public_" .. key
-        local private_key = "private_" .. key
+    for _, k in ipairs(keys) do
+        if type(k) == "string" then
+            -- Handle the simple string input where we will call a global function of the same name
+            local handler = function (ctx, value)
+                _G[key](value)
+            end
 
-        table.insert(dst, { public_key, public_key })
+            _register_module_key(k, handler, dst);
+        else
+            -- Handle the object input where the handler is explicit
+            local key = k[1]
+            local handler = k[2]
 
-        local handler = function (ctx, value)
-            _G[key](value)
+            assert(type(key) == "string" and type(handler) == "function", "Elements of a module key extension are expected to be an array where the first element is the string key and the second is the handler. E.g.: { \"key\", handler }")
+            _register_module_key(k, handler, dst);
         end
-        key_handlers[public_key] = handler
-        key_handlers[private_key] = handler
     end
 end
 

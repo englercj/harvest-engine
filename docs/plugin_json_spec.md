@@ -2,7 +2,7 @@
 
 All keys are optional unless otherwise specified.
 
-All paths can contain globs and are relative to the json file, or the install directory if the plugin is installed from a remote source. That is, if you use "source_github", "source_bitbucket", or "source_archive" to install the plugin then paths are relative to the extracted files location.
+All paths can contain globs and are relative to the json file, or the install directory if the plugin is installed from a remote source. That is, if you use "source_github", "source_bitbucket", "source_nuget", or "source_archive" to install the plugin then paths are relative to the extracted files location.
 
 ## Plugin Keys
 
@@ -13,7 +13,7 @@ All paths can contain globs and are relative to the json file, or the install di
 | description   | String        | Short description fo the plugin meant for humans. |
 | version       | String        | An arbitrary version string identifying the version of the plugin. |
 | author        | String        | The plugin's author name and email, in the format "Name <email>". |
-| license       | String        | An SPDX license identifier (https://spdx.org/licenses/). If this is not specified it is treated as unlicensed. |
+| license       | String        | An SPDX license identifier (https://spdx.org/licenses/) without "LicenseRef", or "UNLICENSED", or "SEE LICENSE IN <filename>". If this is not specified it is treated as "UNLICENSED". |
 | tags          | Array<String> | An array of string identifiers used as search tags. |
 | modules       | Array<Module> | An array of modules that this plugin provides. See the Module Keys section. |
 | exec          | Array<String> | Paths to lua files that returns a function for execution when the plugin is imported. Use as an entry point for build system extension. |
@@ -26,7 +26,9 @@ All paths can contain globs and are relative to the json file, or the install di
 | type                      | String            | See the Module Types section for valid values. |
 | group                     | String            | Name of the group this module belongs to. This will be a virtual folder in the solution tree. |
 | files                     | Array<String>     | File paths to include in the module project. |
-| dependson_runtime         | Array<String>     | Module names this module will use at runtime. See the Module Dependencies section for more details. |
+| post_build_commands       | Array<String>     | Commands to run after the module is built. |
+| pre_build_commands        | Array<String>     | Commands to run before the module is built. |
+| dependson_runtime         | Array<String>     | Module names this module will use at runtime, but are not required to build. See the Module Dependencies section for more details. |
 | variants                  | Array<Variant>    | Variations of the module's properties activated by a filter. See the Variant Keys section. |
 | exec                      | Array<String>     | Paths to lua files that return a function for execution in the context of the module's project. Use as a last resort for advanced module project functionality. |
 
@@ -41,19 +43,13 @@ The following keys must be prefixed with "public" or "private". The former means
 
 ### Module Variant Keys
 
-Variants can include any Module Key which will only be applied when that variant is active (based on the "condition"). The only exceptions are "name", "type", and "variants" which cannot be overridden by a variant. Any keys that are specified both in the module and a variant are treated as additive. If you wish to remove something when a variant is active add a "remove_" prefix to the module key name which will active as subtractive.
+Variants can include any Module Key which will only be applied when that variant is active (based on the "condition"). The only exceptions are "name", "type", and "variants" which cannot be overridden by a variant.
+
+Variants are treated as additive and will have the effect of adding new keys to the module when they are active.
 
 |      Key      |     Value Type    | Description |
 | ------------- | ----------------- | ----------- |
-| condition     | VariantCondition  | Condition that must be true for the variant to be active. |
-
-### Module Variant Condition Keys
-
-Variant conditions represent the necessary state for the variant to be active. Each key of a variant condition is treated as an AND operation. That is, all keys in the variant must evaluate to true for the variant to be active.
-
-|        Key        |   Value Type  | Description |
-| ----------------- | ------------- | ----------- |
-| system            | String        | System tag that must be active to activate the variant. |
+| conditions    | Array<String>     | Conditions that must be true for the variant to be active. The values here are passed directly to premake's [filter](https://premake.github.io/docs/filter). |
 
 ## Module Types
 

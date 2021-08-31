@@ -21,11 +21,22 @@ local kind_by_module_type = {
     windowed_app = "WindowedApp",
 }
 
+-- We want to treat these keys as valid, but ignore them when applying module keys.
+-- Most of these are handled explicitly, or are private, so we don't want to warn
+-- about missing handlers for them.
+local module_keys_ignore = {
+    "_plugin",
+    "conditions",
+    "name",
+    "type",
+    "group",
+}
+
+-- Variants are not allowed to override these keys.
 local variant_keys_disallow = {
     "name",
     "type",
     "variants",
-    "condition",
 }
 
 local module_dependency_include_keys = {
@@ -41,8 +52,12 @@ local module_dependency_link_keys = {
     { "public_dependson", "public_dependson" },
 }
 
+local imported_plugins = {}
+local imported_plugins_count = 0
+
 local imported_modules = {}
 local imported_modules_count = 0
+
 local key_handlers = {}
 
 local function _try_handle_key(ctx, key, value)
@@ -50,14 +65,28 @@ local function _try_handle_key(ctx, key, value)
         return
     end
 
+    if table.contains(module_keys_ignore, key) then
+        return
+    end
+
     local handler = key_handlers[key]
-    if handler ~= nil then
+    if handler == nil then
+        p.warn("Module '" .. ctx.name .. "' contains unknown key '" .. key .. "'.")
+    else
         handler(ctx, value)
     end
 end
 
 key_handlers.files = function (ctx, values)
     files(values)
+end
+
+key_handlers.post_build_commands = function (ctx, values)
+    postbuildcommands(values)
+end
+
+key_handlers.pre_build_commands = function (ctx, values)
+    prebuildcommands(values)
 end
 
 key_handlers.public_defines = function (ctx, values)
@@ -143,6 +172,26 @@ key_handlers.exec = function (ctx, values)
     end
 end
 
+key_handlers.variants = function (ctx, values)
+    for _, variant in ipairs(values) do
+        if variant.conditions == nil then
+            filter { }
+        else
+            filter(variant.conditions)
+        end
+
+        for key, value in orderedPairs(variant) do
+            if table.contains(variant_keys_disallow, key) then
+                p.warn("Module '" .. ctx.name .. "' has a variant (index " .. _ .. ") that tries to override a disallowed key '" .. key .. "'.")
+            else
+                _try_handle_key(ctx, key, value)
+            end
+        end
+
+        filter { }
+    end
+end
+
 local function _platform_file_excludes()
     filter { "files:**.emscripten.*" }  flags { "ExcludeFromBuild" }
     filter { "files:**.linux.*" }       flags { "ExcludeFromBuild" }
@@ -222,48 +271,6 @@ local function _should_include_module(mod, options)
     return true
 end
 
-local function _is_variant_active(condition)
-    if condition == nil then
-        return true
-    end
-
-    -- Check `system`
-    if condition.system ~= nil then
-        local sysTags = os.getSystemTags(os.target())
-        if not table.contains(sysTags, condition.system) then
-            return false
-        end
-    end
-
-    return true
-end
-
-local function _process_variants(mod)
-    if mod.variants == nil then
-        return
-    end
-
-    for _, variant in ipairs(mod.variants) do
-        if _is_variant_active(variant.condition) then
-            for key, value in orderedPairs(variant) do
-                if not table.contains(variant_keys_disallow, key) then
-                    local t = type(mod[key])
-
-                    assert(t == "nil" or t == type(value), "Mismatched types for variant key '" .. key .. "' in module '" .. mod.name .. "'.")
-
-                    -- TODO: "remove_*" keys that subtract from the module
-
-                    if t == "table" then
-                        mod[key] = table.join(mod[key], value)
-                    else
-                        mod[key] = value
-                    end
-                end
-            end
-        end
-    end
-end
-
 local function _import_plugin(plugin_path, options)
     local plugin_file = plugin_path
 
@@ -301,6 +308,10 @@ local function _import_plugin(plugin_path, options)
         return {}
     end
 
+    assert(type(plugin.id) == "string", "Plugins that provide modules must specify an 'id' key.")
+    imported_plugins[plugin.id] = plugin
+    imported_plugins_count = imported_plugins_count + 1
+
     plugin._file_path = plugin_file
     install_plugin(plugin)
 
@@ -313,8 +324,6 @@ local function _import_plugin(plugin_path, options)
         assert(existing == nil, "Module '" .. mod.name .. "' was already provided by plugin '" .. (existing and existing._plugin.id or "") .. "', but plugin '" .. plugin.id .. "' also provides it.")
 
         if _should_include_module(mod, options) then
-            _process_variants(mod)
-
             imported_modules[mod.name] = mod
             imported_modules_count = imported_modules_count + 1
 
@@ -426,6 +435,14 @@ end
 
 function get_all_modules()
     return imported_modules
+end
+
+function get_plugin(id)
+    return imported_plugins[id]
+end
+
+function get_all_plugins()
+    return imported_plugins
 end
 
 function handle_module_key(mod, key, value)

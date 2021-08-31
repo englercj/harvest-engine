@@ -1,7 +1,6 @@
 -- Copyright Chad Engler
 
 local p = premake
-local targetSysId = (os.istarget("windows") and "windows") or (os.istarget("linux") and "linux")
 local last_download_progress = 0
 
 local function _download_progress(total, current)
@@ -27,60 +26,65 @@ local function _download_file(url, fpath)
     return result_str, response_code
 end
 
-local function _download_archive(name, source, dir)
+local function _download_archive(name, source, dir, archiveName)
     os.mkdir(dir)
 
+    local target = os.target()
     local url = source
 
     if type(source) == "table" then
-        url = source[targetSysId]
+        url = source[target]
     end
 
-    assert(type(url) == "string" and url ~= "", "Bad url when installing archive of " .. name .. " for " .. targetSysId)
+    assert(type(url) == "string" and url ~= "", "Bad url when installing archive of '" .. name .. "' for '" .. target .. "'.")
 
     printf("Downloading archive: %s (%s)", name, url)
 
-    local fname = url:match("([^/]+)$");
-    local fpath = path.join(dir, fname)
+    local fpath = path.join(dir, archiveName)
 
     local result_str, response_code = _download_file(url, fpath)
-
-    if result_str == "OK" then
-        printf("Extracting %s...", fname)
-
-        if fname:find(".zip") ~= nil then
-            zip.extract(fpath, dir)
-        elseif fname:find(".tar") ~= nil then
-            -- TODO: This doesn"t work on windows (MINGW)
-            os.executef("tar xf "%s" -C "%s"", fpath, dir)
-        else
-            p.error("Failed to extract %s, unrecognized extension.", fname)
-            return false
-        end
-
-        return true
-    end
-
-    return false
+    return result_str == "OK"
 end
 
-local function _install_from_archive(name, source)
-    local dir = path.join(plugin_install_dir, name)
+local function _install_from_archive(name, source, archiveName, extractDirName)
     local digest = string.sha1(name .. source)
+    local archiveDir = path.join(plugin_install_dir, name)
 
-    local vfile = path.join(dir, ".plugin_digest")
+    local vfile = path.join(archiveDir, ".plugin_digest")
     local installed_version = io.readfile(vfile);
 
     if installed_version ~= digest then
-        if _download_archive(name, source, dir) == false then
+        if _download_archive(name, source, archiveDir, archiveName) == false then
             p.error("Failed to install archive " .. name)
             return
+        end
+
+        printf("Extracting %s...", archiveName)
+
+        local extractDir = ""
+        if extractDirName == nil then
+            extractDir = archiveDir
+        else
+            extractDir = path.join(archiveDir, extractDirName)
+        end
+
+        os.mkdir(extractDir)
+
+        local fpath = path.join(archiveDir, archiveName)
+
+        if archiveName:find(".zip") ~= nil then
+            zip.extract(fpath, extractDir)
+        elseif archiveName:find(".tar") ~= nil then
+            os.executef("tar xf \"%s\" -C \"%s\"", fpath, extractDir)
+        else
+            p.error("Failed to extract %s, unrecognized extension.", archiveName)
+            return false
         end
 
         io.writefile(vfile, digest)
     end
 
-    return dir
+    return archiveDir
 end
 
 local function _install_from_github(name, source)
@@ -107,7 +111,8 @@ local function _install_from_github(name, source)
     end
 
     local url = "https://github.com/" .. org .. "/" .. repo .. "/archive/" .. version .. ".zip"
-    local install_dir = _install_from_archive(name, url)
+    local archiveName = org .. "_" .. repo .. "_" .. version .. ".zip"
+    local install_dir = _install_from_archive(name, url, archiveName)
 
     return path.join(install_dir, repo .. "-" .. trimmed_version)
 end
@@ -130,7 +135,8 @@ local function _install_from_bitbucket(name, source)
     end
 
     local url = "https://bitbucket.org/" .. org .. "/" .. repo .. "/get/" .. version .. ".zip"
-    local install_dir = _install_from_archive(name, url)
+    local archiveName = org .. "_" .. repo .. "_" .. version .. ".zip"
+    local install_dir = _install_from_archive(name, url, archiveName)
 
     local dirs = os.matchdirs(path.join(install_dir, org .. "-" .. repo .. "-*"))
     assert(type(dirs[1]) == "string", "Failed to find install directory for bitbucket install of: " .. name)
@@ -138,20 +144,49 @@ local function _install_from_bitbucket(name, source)
     return dirs[1]
 end
 
-return function (plugin)
-    if type(plugin.source_github) == "string" then
-        plugin._install_dir = _install_from_github(plugin.id, plugin.source_github)
-    elseif type(plugin.source_bitbucket) == "string" then
-        plugin._install_dir = _install_from_bitbucket(plugin.id, plugin.source_bitbucket)
-    elseif type(plugin.source_archive) == "string" then
-        plugin._install_dir = _install_from_archive(plugin.id, plugin.source_archive)
-    elseif type(plugin.source) == "string" then
-        plugin._install_dir = path.join(path.getdirectory(plugin._file_path), plugin.source)
-    else
-        plugin._install_dir = path.getdirectory(plugin._file_path)
+local function _install_from_nuget(name, source)
+    -- https://www.nuget.org/api/v2/package/WinPixEventRuntime/1.0.210818001
+    local package_name
+    local version
+
+    -- Tokenize the string
+    local t = 0
+    for s in string.gmatch(source, "[^#]+") do
+        if t == 0 then package_name = s
+        elseif t == 1 then version = s
+        end
+        t = t + 1
     end
 
-    if type(plugin.source_basepath) == "string" then
-        plugin._install_dir = path.join(plugin._install_dir, plugin.source_basepath)
+    local url = "https://www.nuget.org/api/v2/package/" .. package_name .. "/" .. version
+    local archiveName = package_name .. "_" .. version .. ".zip"
+    local extractDirName = package_name .. "-" .. version
+    local install_dir = _install_from_archive(name, url, archiveName, extractDirName)
+
+    return path.join(install_dir, extractDirName)
+end
+
+return function (plugin)
+    local i = plugin.install
+
+    if i == nil then
+        plugin._install_dir = path.getdirectory(plugin._file_path)
+    elseif i.github ~= nil then
+        plugin._install_dir = _install_from_github(plugin.id, i.github)
+    elseif i.bitbucket ~= nil then
+        plugin._install_dir = _install_from_bitbucket(plugin.id, i.bitbucket)
+    elseif i.nuget ~= nil then
+        plugin._install_dir = _install_from_nuget(plugin.id, i.nuget)
+    elseif i.archive ~= nil then
+        plugin._install_dir = _install_from_archive(plugin.id, i.archive)
+    elseif i.source ~= nil then
+        plugin._install_dir = path.join(path.getdirectory(plugin._file_path), i.source)
+    else
+        p.error("Plugin '" .. plugin.id .. "' has an install key, but no recognized source is specified.")
+        return
+    end
+
+    if i ~= nil and i.basepath ~= nil then
+        plugin._install_dir = path.join(plugin._install_dir, i.basepath)
     end
 end

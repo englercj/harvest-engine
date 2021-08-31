@@ -5,7 +5,7 @@
     "version": "1.0.0",
 
     "author": "Chad Engler <englercj@live.com>",
-    "license": "",
+    "license": "UNLICENSED",
     "tags": [],
 
     "modules": [
@@ -19,7 +19,7 @@
             "private_includedirs": ["src"],
             "variants": [
                 {
-                    "condition": { "system": "linux" },
+                    "conditions": ["system:linux"],
                     "public_dependson": ["sys:dl"]
                 }
             ]

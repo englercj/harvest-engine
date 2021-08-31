@@ -8,7 +8,7 @@
     "license": "MIT",
     "tags": [],
 
-    "source_github": "fmtlib/fmt#8.0.1",
+    "install": { "github": "fmtlib/fmt#8.0.1" },
 
     "modules": [
         {

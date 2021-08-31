@@ -2,14 +2,6 @@
 
 root_dir = path.getabsolute(path.join(_SCRIPT_DIR, ".."))
 
-newoption {
-    trigger     = "slnfilename",
-    description = "Set the generated solution name",
-    default     = "",
-}
-
-newoption { trigger = "windows_systemversion", default = "latest", description = "systemversion" }
-
 sln_name = _OPTIONS["slnfilename"]
 
 if #sln_name == 0 then

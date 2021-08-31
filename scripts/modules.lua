@@ -165,11 +165,9 @@ key_handlers.public_dependson_include = function (ctx, values)
 end
 key_handlers.private_dependson_include = key_handlers.public_dependson_include
 
-key_handlers.exec = function (ctx, values)
-    for _, file_path in ipairs(values) do
-        local func = dofile(file_path)
-        func(ctx)
-    end
+key_handlers.exec = function (ctx, value)
+    local func = dofile(file_path)
+    func(ctx)
 end
 
 key_handlers.variants = function (ctx, values)
@@ -272,6 +270,7 @@ local function _should_include_module(mod, options)
 end
 
 local function _import_plugin(plugin_path, options)
+    -- Search for the plugin json file
     local plugin_file = plugin_path
 
     if not path.hasextension(plugin_file, ".json") then
@@ -280,6 +279,7 @@ local function _import_plugin(plugin_path, options)
 
     plugin_file = path.getabsolute(plugin_file);
 
+    -- Load the plugin file
     verbosef("Loading plugin imported as '%s' from file '%s'", plugin_path, plugin_file)
     local plugin = json.decode(io.readfile(plugin_file))
 
@@ -287,33 +287,37 @@ local function _import_plugin(plugin_path, options)
         return nil
     end
 
-    local warn_about_no_modules = true
+    local oldcwd = os.getcwd()
+    os.chdir(path.getdirectory(plugin_file))
 
-    if plugin.import_plugins ~= nil then
-        warn_about_no_modules = false
-        assert(type(plugin.import_plugins) == "table", "Plugin at '" .. plugin_path .. "' incorrectly specifies the 'import_plugins' key. It must be an array of string paths.")
-
-        local oldcwd = os.getcwd()
-        os.chdir(path.getdirectory(plugin_file))
-
-        import_plugins(plugin.import_plugins, options)
-
-        os.chdir(oldcwd)
-    end
-
-    if plugin.modules == nil or table.isempty(plugin.modules) then
-        if warn_about_no_modules then
-            p.warn("Plugin '" .. plugin.name .. "' imported from '" .. plugin_path .. "' contains no modules.")
-        end
-        return {}
-    end
-
+    -- Mark the plugin as imported and install
     assert(type(plugin.id) == "string", "Plugins that provide modules must specify an 'id' key.")
+
     imported_plugins[plugin.id] = plugin
     imported_plugins_count = imported_plugins_count + 1
 
     plugin._file_path = plugin_file
-    install_plugin(plugin)
+
+    if install_plugin(plugin) == false then
+        return {}
+    end
+
+    -- Check if the plugin imports additional plugins, and if so import them first
+    local imports_other_plugins = false
+
+    if plugin.import_plugins ~= nil then
+        imports_other_plugins = true
+        assert(type(plugin.import_plugins) == "table", "Plugin at '" .. plugin_path .. "' incorrectly specifies the 'import_plugins' key. It must be an array of string paths.")
+        import_plugins(plugin.import_plugins, options)
+    end
+
+    -- Check if the plugin provides any modules, and warn if it doesn't.
+    if plugin.modules == nil or table.isempty(plugin.modules) then
+        if not imports_other_plugins then
+            p.warn("Plugin '" .. plugin.name .. "' imported from '" .. plugin_path .. "' contains no modules, and imports no plugins.")
+        end
+        return {}
+    end
 
     local imported = {}
 
@@ -330,6 +334,8 @@ local function _import_plugin(plugin_path, options)
             table.insert(imported, mod);
         end
     end
+
+    os.chdir(oldcwd)
 
     return imported
 end

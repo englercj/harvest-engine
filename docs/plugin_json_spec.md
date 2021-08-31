@@ -16,7 +16,20 @@ All paths can contain globs and are relative to the json file, or the install di
 | license       | String        | An SPDX license identifier (https://spdx.org/licenses/) without "LicenseRef", or "UNLICENSED", or "SEE LICENSE IN <filename>". If this is not specified it is treated as "UNLICENSED". |
 | tags          | Array<String> | An array of string identifiers used as search tags. |
 | modules       | Array<Module> | An array of modules that this plugin provides. See the Module Keys section. |
-| exec          | Array<String> | Paths to lua files that returns a function for execution when the plugin is imported. Use as an entry point for build system extension. |
+| install       | Install       | Description of how to install the plugin. |
+
+## Install Keys
+
+|      Key      |   Value Type  | Description |
+| ------------- | ------------- | ----------- |
+| exec          | String        | Path to a lua file that returns a function for execution when the plugin is imported. Use as an entry point for build system extension. |
+| valid_systems | Array<String> | List of systems this plugin is valid to be installed on. |
+| archive       | mixed         | Either a string URL of the archive to download, or an object where the key is a system name and the value is a string URL of the archive to download for that system. |
+| source        | String        | Path relative to the install directory to the plugin. This is useful if the plugin's contents are in a different location than the plugin json file. |
+| github        | String        | A string repository specifier in the form "<user>/<repo>#<commit-ish>" |
+| bitbucket     | String        | A string repository specifier in the form "<user>/<repo>#<commit-ish>" |
+| nuget         | String        | A string with the package name and version in the form "<package>#<version>" |
+| basepath      | String        | A path relative to the install directory to append to the install path returned by any of the other install sources. |
 
 ## Module Keys
 
@@ -30,7 +43,7 @@ All paths can contain globs and are relative to the json file, or the install di
 | pre_build_commands        | Array<String>     | Commands to run before the module is built. |
 | dependson_runtime         | Array<String>     | Module names this module will use at runtime, but are not required to build. See the Module Dependencies section for more details. |
 | variants                  | Array<Variant>    | Variations of the module's properties activated by a filter. See the Variant Keys section. |
-| exec                      | Array<String>     | Paths to lua files that return a function for execution in the context of the module's project. Use as a last resort for advanced module project functionality. |
+| exec                      | String            | Path to a lua file that return a function for execution in the context of the module's project. Use as a last resort for advanced module project functionality. |
 
 ### Prefixed Module Keys
 
@@ -88,7 +101,7 @@ Example: `"public_dependson": ["he_core", "module:he_platform", "sys:user32", "f
 
 ## Module Keys Extension
 
-You can extend the supported keys by calling the `add_module_keys` function in a lua function specified in your plugin's `exec` key.
+You can extend the supported keys by calling the `add_module_keys` function in a lua function specified in your plugin's `install/exec` key.
 
 For example:
 
@@ -97,13 +110,17 @@ For example:
 {
     "id": "game.tools.plugin",
     "name": "My Tool Plugin",
-    "exec": ["my_tool.lua"]
+    "install": {
+        "exec": "my_tool.lua"
+    }
 }
 ```
 
 `game/tools/plugin/my_tool.lua`
 ```lua
-return function ()
+return function (plugin)
+    -- plugin = the parsed plugin json
+
     local handler = function (ctx, value)
         -- ctx = the module that used the "mytool" key
         -- value = the value of the "mytool" key in the module

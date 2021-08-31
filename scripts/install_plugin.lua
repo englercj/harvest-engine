@@ -169,9 +169,35 @@ end
 return function (plugin)
     local i = plugin.install
 
+    -- If the plugin doesn't specify an install block then use the plugin json file's path as
+    -- the install path and return that it is enabled.
     if i == nil then
         plugin._install_dir = path.getdirectory(plugin._file_path)
-    elseif i.github ~= nil then
+        return true
+    end
+
+    -- Check if the target system is valid for this plugin to be imported on, by default plugins
+    -- are assumed to work on all systems
+    local is_valid_system = false
+    if i.valid_systems == nil then
+        is_valid_system = true
+    else
+        local sysTags = os.getSystemTags(os.target())
+        for _, system in ipairs(i.valid_systems) do
+            if table.contains(sysTags, system) then
+                is_valid_system = true
+                break
+            end
+        end
+    end
+
+    if is_valid_system == false then
+        verbosef("Skipping import of plugin '%s', current system is not listed in its 'valid_systems' key.", plugin.id)
+        return false
+    end
+
+    -- Check for install sources and perform the install
+    if i.github ~= nil then
         plugin._install_dir = _install_from_github(plugin.id, i.github)
     elseif i.bitbucket ~= nil then
         plugin._install_dir = _install_from_bitbucket(plugin.id, i.bitbucket)
@@ -182,11 +208,18 @@ return function (plugin)
     elseif i.source ~= nil then
         plugin._install_dir = path.join(path.getdirectory(plugin._file_path), i.source)
     else
-        p.error("Plugin '" .. plugin.id .. "' has an install key, but no recognized source is specified.")
-        return
+        plugin._install_dir = path.getdirectory(plugin._file_path)
     end
 
-    if i ~= nil and i.basepath ~= nil then
+    if i.basepath ~= nil then
         plugin._install_dir = path.join(plugin._install_dir, i.basepath)
     end
+
+    -- Run the install scripts if specified
+    if i.exec ~= nil then
+        local func = dofile(i.exec)
+        func(ctx)
+    end
+
+    return true
 end

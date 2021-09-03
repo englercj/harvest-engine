@@ -165,6 +165,7 @@ HE_TEST(core, log, AddLogSink)
     AddLogSink(sink);
 
     HE_LOG_INFO(log_test, HE_MSG("testing"));
+    HE_LOGF_INFO(log_test, "testing2");
 
     RemoveLogSink(sink);
 }

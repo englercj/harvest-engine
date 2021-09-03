@@ -54,7 +54,7 @@
 /// level-specific logging macros.
 ///
 /// \param lvl The level of the log.
-/// \param cat The unquoted name of the category.
+/// \param cat The quoted string name of the category.
 /// \param ... A series of \see HE_KV(k, v, ...) or \see HE_MSG(fmt, ...) calls.
 #define HE_LOG(lvl, catStr, ...) \
     do { \
@@ -71,11 +71,11 @@
 /// This macro is equivalent to calling \see HE_LOG with a single \see HE_MSG item.
 ///
 /// \param lvl The level of the log.
-/// \param cat The unquoted name of the log category.
+/// \param cat The quoted string name of the log category.
 /// \param fmt The format string for the message.
 /// \param ... The format arguments.
-#define HE_LOGF(lvl, cat, fmt, ...) \
-    HE_LOG(lvl, cat, HE_KV_MSG((fmt), ##__VA_ARGS__))
+#define HE_LOGF(lvl, catStr, fmt, ...) \
+    HE_LOG(lvl, catStr, HE_MSG(fmt, ##__VA_ARGS__))
 
 /// Logs a set of key-value pairs at the Trace log level.
 ///

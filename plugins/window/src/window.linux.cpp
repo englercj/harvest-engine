@@ -877,7 +877,7 @@ namespace he::window::Linux
         m_xlib = dlopen("libX11.so.6", RTLD_LAZY | RTLD_LOCAL);
         if (!m_xlib)
         {
-            HE_LOG_ERROR(window, HE_MSG("Failed to load Xlib."));
+            HE_LOGF_ERROR(window, "Failed to load Xlib.");
             return false;
         }
 
@@ -942,14 +942,14 @@ namespace he::window::Linux
         // This function returns a nonzero status if initialization was successful; otherwise, it returns zero
         if (m_XInitThreads() == 0)
         {
-            HE_LOG_ERROR(window, HE_MSG("XInitThreads failed."));
+            HE_LOGF_ERROR(window, "XInitThreads failed.");
             return false;
         }
 
         m_display = m_XOpenDisplay(nullptr);
         if (m_display == nullptr)
         {
-            HE_LOG_ERROR(window, HE_MSG("XOpenDisplay failed."));
+            HE_LOGF_ERROR(window, "XOpenDisplay failed.");
             return false;
         }
 
@@ -986,7 +986,7 @@ namespace he::window::Linux
         m_im = m_XOpenIM(m_display, nullptr, nullptr, nullptr);
         if (m_im == nullptr)
         {
-            HE_LOG_ERROR(window, HE_MSG("XOpenIM failed."));
+            HE_LOGF_ERROR(window, "XOpenIM failed.");
             return false;
         }
 

@@ -166,7 +166,7 @@ end
 key_handlers.private_dependson_include = key_handlers.public_dependson_include
 
 key_handlers.exec = function (ctx, value)
-    local func = dofile(file_path)
+    local func = dofile(value)
     func(ctx)
 end
 
@@ -259,10 +259,12 @@ end
 
 local function _should_include_module(mod, options)
     if options.exclude_groups and table.contains(options.exclude_groups, mod.group) then
+        verbosef("Skipping module '%s' because the group '%s' is excluded.", mod.name, mod.group)
         return false
     end
 
     if options.include_groups and not table.contains(options.include_groups, mod.group) then
+        verbosef("Skipping module '%s' because the group '%s' is not included.", mod.name, mod.group)
         return false
     end
 
@@ -279,11 +281,17 @@ local function _import_plugin(plugin_path, options)
 
     plugin_file = path.getabsolute(plugin_file);
 
+    if not os.isfile(plugin_file) then
+        verbosef("Skipping import of plugin '%s', no file exists at: %s", plugin_path, plugin_file)
+        return nil
+    end
+
     -- Load the plugin file
-    verbosef("Loading plugin imported as '%s' from file '%s'", plugin_path, plugin_file)
+    verbosef("Loading plugin imported as '%s' from file: %s", plugin_path, plugin_file)
     local plugin = json.decode(io.readfile(plugin_file))
 
     if plugin == nil then
+        p.error("Load of plugin file failed. Is the JSON valid? " .. plugin_file)
         return nil
     end
 
@@ -313,6 +321,7 @@ local function _import_plugin(plugin_path, options)
 
     -- Check if the plugin provides any modules, and warn if it doesn't.
     if plugin.modules == nil or table.isempty(plugin.modules) then
+        verbosef("No modules listed in plugin '%s'", plugin.id)
         if not imports_other_plugins then
             p.warn("Plugin '" .. plugin.name .. "' imported from '" .. plugin_path .. "' contains no modules, and imports no plugins.")
         end
@@ -322,6 +331,7 @@ local function _import_plugin(plugin_path, options)
     local imported = {}
 
     for _, mod in ipairs(plugin.modules) do
+        verbosef("Examining plugin module '%s'...", mod.name)
         mod._plugin = plugin
 
         local existing = imported_modules[mod.name]

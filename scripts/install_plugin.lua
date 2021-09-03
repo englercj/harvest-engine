@@ -16,6 +16,7 @@ local function _download_progress(total, current)
 end
 
 local function _download_file(url, fpath)
+    verbosef("Downloading archive to path %s", fpath)
     last_download_progress = 0
     local result_str, response_code = http.download(url, fpath, {
         sslverifypeer = 0,
@@ -26,19 +27,10 @@ local function _download_file(url, fpath)
     return result_str, response_code
 end
 
-local function _download_archive(name, source, dir, archiveName)
+local function _download_archive(name, url, dir, archiveName)
     os.mkdir(dir)
 
-    local target = os.target()
-    local url = source
-
-    if type(source) == "table" then
-        url = source[target]
-    end
-
-    assert(type(url) == "string" and url ~= "", "Bad url when installing archive of '" .. name .. "' for '" .. target .. "'.")
-
-    printf("Downloading archive: %s (%s)", name, url)
+    printf("Downloading archive for %s (%s)", name, url)
 
     local fpath = path.join(dir, archiveName)
 
@@ -46,16 +38,20 @@ local function _download_archive(name, source, dir, archiveName)
     return result_str == "OK"
 end
 
-local function _install_from_archive(name, source, archiveName, extractDirName)
-    local digest = string.sha1(name .. source)
+local function _install_from_archive(name, url, archiveName, extractDirName)
+    local digest = string.sha1(name .. url)
     local archiveDir = path.join(plugin_install_dir, name)
 
     local vfile = path.join(archiveDir, ".plugin_digest")
     local installed_version = io.readfile(vfile);
 
-    if installed_version ~= digest then
-        if _download_archive(name, source, archiveDir, archiveName) == false then
-            p.error("Failed to install archive " .. name)
+    if installed_version == digest then
+        verbosef("Plugin '%s' matches local digest, skipping.", name)
+    else
+        verbosef("Installing plugin '%s' from archive '%s'", name, url)
+
+        if _download_archive(name, url, archiveDir, archiveName) == false then
+            p.error("Failed to install archive for " .. name .. " from " .. url)
             return
         end
 
@@ -149,6 +145,8 @@ local function _install_from_nuget(name, source)
     local package_name
     local version
 
+    verbosef("Installing plugin '%s' from nuget '%s'", name, source)
+
     -- Tokenize the string
     local t = 0
     for s in string.gmatch(source, "[^#]+") do
@@ -204,7 +202,14 @@ return function (plugin)
     elseif i.nuget ~= nil then
         plugin._install_dir = _install_from_nuget(plugin.id, i.nuget)
     elseif i.archive ~= nil then
-        plugin._install_dir = _install_from_archive(plugin.id, i.archive)
+        local target = os.target()
+        local url = i.archive
+        if type(url) == "table" then
+            url = url[target]
+        end
+        assert(type(url) == "string" and url ~= "", "Bad source when installing archive of '" .. plugin.id .. "' for '" .. target .. "'.")
+
+        plugin._install_dir = _install_from_archive(plugin.id, url, path.getname(url), path.getbasename(url))
     elseif i.source ~= nil then
         plugin._install_dir = path.join(path.getdirectory(plugin._file_path), i.source)
     else
@@ -218,7 +223,7 @@ return function (plugin)
     -- Run the install scripts if specified
     if i.exec ~= nil then
         local func = dofile(i.exec)
-        func(ctx)
+        func(plugin)
     end
 
     return true

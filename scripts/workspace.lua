@@ -50,7 +50,6 @@ function he_workspace()
     -- Compiler setup
     filter { "toolset:msc-*" }
         buildoptions {
-            "/we4668",      -- A symbol that was not defined was used with a preprocessor directive.
             "/permissive-", -- Enable standards-conforming compiler behavior.
             "/utf-8",       -- Specifies both the source character set and the execution character set as UTF-8.
         }

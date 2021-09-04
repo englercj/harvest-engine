@@ -14,6 +14,7 @@ All paths can contain globs and are relative to the json file, or the install di
 | version       | String        | An arbitrary version string identifying the version of the plugin. |
 | author        | String        | The plugin's author name and email, in the format "Name <email>". |
 | license       | String        | An SPDX license identifier (https://spdx.org/licenses/) without "LicenseRef", or "UNLICENSED", or "SEE LICENSE IN <filename>". If this is not specified it is treated as "UNLICENSED". |
+| warnings      | String        | Desired level of warning: "Off", "Default", or "Extra". The default is "Extra" |
 | tags          | Array<String> | An array of string identifiers used as search tags. |
 | modules       | Array<Module> | An array of modules that this plugin provides. See the Module Keys section. |
 | install       | Install       | Description of how to install the plugin. |
@@ -121,7 +122,7 @@ For example:
 return function (plugin)
     -- plugin = the parsed plugin json
 
-    local handler = function (ctx, value)
+    add_module_key("private", "mytool", function (ctx, value)
         -- ctx = the module that used the "mytool" key
         -- value = the value of the "mytool" key in the module
 
@@ -131,12 +132,10 @@ return function (plugin)
         dependson { "mytool" }
         filter { "files:**.tool" }
             buildmessage "Running mytool on file %{file.abspath}"
-            buildcommands { target_bin_dir .. "/mytool %{file.abspath} -o " .. target_file_gen_dir }
-            buildoutputs { target_file_gen_dir .. "/%{file.name}.h" }
+            buildcommands { target_bin_dir .. "/mytool %{file.abspath} -o " .. file_gen_dir }
+            buildoutputs { file_gen_dir .. "/%{file.name}.h" }
         filter { }
-    end
-
-    add_module_keys("private", { "mytool", handler })
+    end)
 end
 ```
 

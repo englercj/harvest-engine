@@ -209,7 +209,8 @@ return function (plugin)
         end
         assert(type(url) == "string" and url ~= "", "Bad source when installing archive of '" .. plugin.id .. "' for '" .. target .. "'.")
 
-        plugin._install_dir = _install_from_archive(plugin.id, url, path.getname(url), path.getbasename(url))
+        local extract_dir = i.basepath == nil and path.getbasename(url) or ""
+        plugin._install_dir = _install_from_archive(plugin.id, url, path.getname(url), extract_dir)
     elseif i.source ~= nil then
         plugin._install_dir = path.join(path.getdirectory(plugin._file_path), i.source)
     else

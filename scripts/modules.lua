@@ -81,6 +81,10 @@ key_handlers.files = function (ctx, values)
     files(values)
 end
 
+key_handlers.warnings = function (ctx, value)
+    warnings(value)
+end
+
 key_handlers.post_build_commands = function (ctx, values)
     postbuildcommands(values)
 end
@@ -252,6 +256,13 @@ local function _module_project(mod)
             _try_handle_key(mod, key, value)
         end
 
+        if mod.warnings == nil or mod.warnings == "Extra" then
+            filter { "toolset:msc-*" }
+                buildoptions {
+                    "/we4668", -- A symbol that was not defined was used with a preprocessor directive.
+                }
+        end
+
         _platform_file_excludes()
 
     os.chdir(oldcwd)
@@ -393,8 +404,8 @@ function import_plugins(plugins, options)
     end
 end
 
-local function _register_module_key(key, handler, dstScope)
-    if dstScope == nil then
+local function _register_module_key(dst, key, handler)
+    if dst == nil then
         assert(key_handlers[key] == nil, "There is already a handler registered for: " .. key)
         key_handlers[key] = handler
     else
@@ -404,43 +415,44 @@ local function _register_module_key(key, handler, dstScope)
         assert(key_handlers[public_key] == nil, "There is already a handler registered for: " .. public_key)
         assert(key_handlers[private_key] == nil, "There is already a handler registered for: " .. private_key)
 
-        table.insert(dstScope, { public_key, public_key })
+        table.insert(dst, { public_key, public_key })
 
         key_handlers[public_key] = handler
         key_handlers[private_key] = handler
     end
 end
 
+local function _get_scope_table(scope)
+    if scope == "include" then
+        return module_dependency_include_keys
+    elseif scope == "link" then
+        return module_dependency_link_keys
+    elseif scope == "private" then
+        return nil
+    end
+
+    p.error("Cannot add module keys to unknown scope: '" .. scope .. "'")
+end
+
+function add_module_key(scope, key, handler)
+    if handler == nil then
+        handler = function (ctx, value)
+            _G[k](value)
+        end
+    end
+
+    local dst = _get_scope_table(scope)
+    _register_module_key(dst, key, handler);
+end
+
 function add_module_keys(scope, keys)
     assert(type(keys) == "table", "add_module_keys expects a table of keys")
 
-    local dst = nil
-    if scope == "include" then
-        dst = module_dependency_include_keys
-    elseif scope == "link" then
-        dst = module_dependency_link_keys
-    elseif scope == "private" then
-        -- Private doesn't propagate the values anywhere
-    else
-        p.error("Cannot add module keys to unknown scope: '" .. scope .. "'")
-        return
-    end
-
     for _, k in ipairs(keys) do
         if type(k) == "string" then
-            -- Handle the simple string input where we will call a global function of the same name
-            local handler = function (ctx, value)
-                _G[key](value)
-            end
-
-            _register_module_key(k, handler, dst);
+            add_module_key(scope, k)
         else
-            -- Handle the object input where the handler is explicit
-            local key = k[1]
-            local handler = k[2]
-
-            assert(type(key) == "string" and type(handler) == "function", "Elements of a module key extension are expected to be an array where the first element is the string key and the second is the handler. E.g.: { \"key\", handler }")
-            _register_module_key(k, handler, dst);
+            add_module_key(scope, k[1], k[2])
         end
     end
 end

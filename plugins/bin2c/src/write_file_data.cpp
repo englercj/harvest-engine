@@ -1,0 +1,90 @@
+// Copyright Chad Engler
+
+#include "write_file_data.h"
+
+#include "he/core/ascii.h"
+#include "he/core/memory_ops.h"
+#include "he/core/string_view_fmt.h"
+#include "he/core/utils.h"
+#include "fmt/format.h"
+
+void WriteFileData(he::File& file, he::StringView name, const uint8_t* data, size_t size, bool asText)
+{
+    constexpr size_t HexBytesPerLine = 16;
+    constexpr size_t HexByteStrLen = HE_LENGTH_OF("0x00, ") - 1;
+    constexpr size_t HexLineStrLen = HexBytesPerLine * HexByteStrLen;
+    constexpr size_t MemoryBufferSize = (1024 * 8);
+
+    constexpr auto HexByteFmt = FMT_STRING("{:#04x}, ");
+    constexpr auto HexLineFmt = FMT_STRING("    {}// {}\n");
+
+    fmt::memory_buffer buf;
+    buf.reserve(MemoryBufferSize + 256); // little extra to prevent regrowth if a line goes over a bit
+
+    fmt::detail::buffer_appender<char> bufItr{ buf };
+    uint32_t bytesWritten = 0;
+
+    if (asText)
+        fmt::format_to(fmt::appender(buf), "static const char {}[{}] =\n{{\n", name, size);
+    else
+        fmt::format_to(fmt::appender(buf), "static const unsigned char {}[{}] =\n{{\n", name, size);
+
+    if (data != nullptr)
+    {
+        char hex[HexLineStrLen + 1];
+        char ascii[HexBytesPerLine + 1];
+        size_t hexPos = 0;
+        size_t asciiPos = 0;
+
+        for (size_t i = 0; i < size; ++i)
+        {
+            auto fmtResult = fmt::format_to_n(&hex[hexPos], sizeof(hex) - hexPos, HexByteFmt, data[asciiPos]);
+            *fmtResult.out = '\0';
+            HE_ASSERT(fmtResult.size == 6);
+            hexPos += fmtResult.size;
+
+            ascii[asciiPos] = he::IsPrint(data[asciiPos]) && data[asciiPos] != '\\' ? data[asciiPos] : '.';
+            asciiPos++;
+
+            if (asciiPos == (HE_LENGTH_OF(ascii) - 1))
+            {
+                ascii[asciiPos] = '\0';
+                fmt::format_to(fmt::appender(buf), HexLineFmt, hex, ascii);
+
+                if (buf.size() >= MemoryBufferSize)
+                {
+                    he::Result r = file.Write(buf.data(), static_cast<uint32_t>(buf.size()), &bytesWritten);
+                    if (!HE_VERIFY_RESULT(r))
+                        return;
+                    buf.clear();
+                }
+
+                data += asciiPos;
+                hexPos = 0;
+                asciiPos = 0;
+            }
+        }
+
+        if (asciiPos != 0)
+        {
+            // padd for ascii alignment
+            if (hexPos < HexLineStrLen)
+            {
+                he::MemSet(hex + hexPos, ' ', HexLineStrLen - hexPos);
+                hex[HexLineStrLen] = '\0';
+            }
+
+            ascii[asciiPos] = '\0';
+            fmt::format_to(fmt::appender(buf), HexLineFmt, hex, ascii);
+        }
+    }
+
+    buf.append(fmt::string_view("};\n"));
+
+    he::Result r = file.Write(buf.data(), static_cast<uint32_t>(buf.size()), &bytesWritten);
+    if (!HE_VERIFY_RESULT(r))
+        return;
+
+#undef HEX_DUMP_SPACE_WIDTH
+#undef HEX_DUMP_FORMAT
+}

@@ -78,7 +78,7 @@ namespace he
     template <typename T, HE_REQUIRES(std::is_trivially_copyable_v<T>)>
     void _VectorMove(T* dst, T* src, uint32_t n)
     {
-        MemCopy(dst, src, n * sizeof(T));
+        MemMove(dst, src, n * sizeof(T));
     }
 
     // Performs a move of non-trivially copyable elements.
@@ -98,6 +98,35 @@ namespace he
         for (uint32_t i = 0; i < n; ++i)
         {
             new(dst + i) T(*(src + i));
+        }
+    }
+
+    // Performs a move of trivially copyable elements.
+    template <typename T, HE_REQUIRES(std::is_trivially_copyable_v<T>)>
+    void _VectorReverseMove(T* dst, T* src, uint32_t n)
+    {
+        MemMove(dst, src, n * sizeof(T));
+    }
+
+    // Performs a move of non-trivially copyable elements. Starting from the last and iterating to the first.
+    template <typename T, HE_REQUIRES(!std::is_trivially_copyable_v<T>&& std::is_move_constructible_v<T>)>
+    void _VectorReverseMove(T* dst, T* src, uint32_t n)
+    {
+        for (uint32_t i = 0; i < n; ++i)
+        {
+            const uint32_t index = (n - 1) - i;
+            new(dst + index) T(Move(*(src + index)));
+        }
+    }
+
+    // Performs a copy of non-trivially copyable nor movable elements. Starting from the last and iterating to the first.
+    template <typename T, HE_REQUIRES(!std::is_trivially_copyable_v<T> && !std::is_move_constructible_v<T>)>
+    void _VectorReverseMove(T* dst, T* src, uint32_t n)
+    {
+        for (uint32_t i = 0; i < n; ++i)
+        {
+            const uint32_t index = (n - 1) - i;
+            new(dst + index) T(*(src + index));
         }
     }
 
@@ -303,7 +332,7 @@ namespace he
 
         if (m_size > index)
         {
-            _VectorMove(m_data + index + 1, m_data + index, (m_size - index));
+            _VectorReverseMove(m_data + index + 1, m_data + index, (m_size - index));
         }
 
         _VectorMove(m_data + index, &element, 1);
@@ -321,7 +350,7 @@ namespace he
 
         if (m_size > index)
         {
-            _VectorMove(m_data + index + len, m_data + index, (m_size - index));
+            _VectorReverseMove(m_data + index + len, m_data + index, (m_size - index));
         }
 
         _VectorCopy(m_data + index, begin, len);
@@ -363,11 +392,38 @@ namespace he
     }
 
     template <typename T>
+    T& Vector<T>::PushFront(const T& element)
+    {
+        GrowBy(1);
+        _VectorReverseMove(m_data + 1, m_data, m_size);
+        _VectorCopy(m_data, &element, 1);
+        return m_data[m_size++];
+    }
+
+    template <typename T>
+    T& Vector<T>::PushFront(T&& element)
+    {
+        GrowBy(1);
+        _VectorReverseMove(m_data + 1, m_data, m_size);
+        _VectorMove(m_data, &element, 1);
+        return m_data[m_size++];
+    }
+
+    template <typename T>
     void Vector<T>::PopBack()
     {
         HE_ASSERT(m_size > 0);
         --m_size;
         _VectorDestruct(m_data + m_size, 1);
+    }
+
+    template <typename T>
+    void Vector<T>::PopFront()
+    {
+        HE_ASSERT(m_size > 0);
+        --m_size;
+        _VectorDestruct(m_data, 1);
+        _VectorMove(m_data, m_data + 1, m_size);
     }
 
     template <typename T>

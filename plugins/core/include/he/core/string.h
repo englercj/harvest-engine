@@ -557,8 +557,16 @@ namespace he
         /// \param c The character to append to the string.
         void PushBack(char c) { Insert(Size(), &c, 1); }
 
+        /// Prepends the character `c` to the start of the string.
+        ///
+        /// \param c The character to prepend to the string.
+        void PushFront(char c) { Insert(0, &c, 1); }
+
         /// Removes the last character from the end of the string.
         char PopBack();
+
+        /// Removes the first character from the end of the string.
+        char PopFront();
 
         /// Appends the character to the end of this string.
         ///

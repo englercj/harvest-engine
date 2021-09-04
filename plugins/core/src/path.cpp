@@ -67,7 +67,7 @@ namespace he
         return {};
     }
 
-    StringView GetDirName(const StringView& path)
+    StringView GetDirectory(const StringView& path)
     {
         if (path.IsEmpty())
             return {};

@@ -67,7 +67,7 @@ HE_TEST(core, path, GetExtension)
 }
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST(core, path, GetDirName)
+HE_TEST(core, path, GetDirectory)
 {
     struct TestCase
     {
@@ -88,7 +88,7 @@ HE_TEST(core, path, GetDirName)
 
     for (TestCase tc : tests)
     {
-        const StringView dir = GetDirName(tc.s);
+        const StringView dir = GetDirectory(tc.s);
         HE_EXPECT_EQ(dir, tc.exp);
     }
 }

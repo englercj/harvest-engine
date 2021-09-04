@@ -31,11 +31,11 @@ namespace he
     /// \param[in] path The path to search.
     StringView GetExtension(const StringView& path);
 
-    /// Finds and returns the directory name of the path excluding the trailing slash.
-    /// For example, the dir name of "/home/human/file.cpp" is "/home/human".
+    /// Finds and returns the directory of the path excluding the trailing slash.
+    /// For example, the directory of "/home/human/file.cpp" is "/home/human".
     ///
     /// \param[in] path The path to search.
-    StringView GetDirName(const StringView& path);
+    StringView GetDirectory(const StringView& path);
 
     /// Finds and returns the final component of the path.
     /// For example, the base name of "/home/human/file.cpp" is "file.cpp".

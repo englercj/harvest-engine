@@ -247,8 +247,23 @@ namespace he
         /// \return The newly constructed element.
         T& PushBack(T&& element);
 
+        /// Copies the element into the front of the vector.
+        ///
+        /// \param element The element to copy.
+        /// \return The newly constructed element.
+        T& PushFront(const T& element);
+
+        /// Moves the element into the front of the vector.
+        ///
+        /// \param element The element to move.
+        /// \return The newly constructed element.
+        T& PushFront(T&& element);
+
         /// Removes the last element from the end of the vector and destructs it.
         void PopBack();
+
+        /// Removes the first element from the start of the vector and destructs it.
+        void PopFront();
 
         /// Creates a new element at the end of the vector and returns a reference to it.
         /// The element is default initialized.

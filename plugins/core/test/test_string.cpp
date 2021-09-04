@@ -1384,6 +1384,24 @@ HE_TEST(core, String, PushBack)
 }
 
 // ------------------------------------------------------------------------------------------------
+HE_TEST(core, String, PushFront)
+{
+    Allocator& a = CrtAllocator::Get();
+
+    String s(a);
+    HE_EXPECT_EQ(s.Size(), 0);
+    HE_EXPECT_EQ_STR(s.Data(), "");
+
+    s.PushFront('a');
+    HE_EXPECT_EQ(s.Size(), 1);
+    HE_EXPECT_EQ_STR(s.Data(), "a");
+
+    s.PushFront('b');
+    HE_EXPECT_EQ(s.Size(), 2);
+    HE_EXPECT_EQ_STR(s.Data(), "ba");
+}
+
+// ------------------------------------------------------------------------------------------------
 HE_TEST(core, String, PopBack)
 {
     Allocator& a = CrtAllocator::Get();
@@ -1399,6 +1417,26 @@ HE_TEST(core, String, PopBack)
 
     const char c1 = s.PopBack();
     HE_EXPECT_EQ(c1, 'a');
+    HE_EXPECT_EQ(s.Size(), 0);
+    HE_EXPECT_EQ_STR(s.Data(), "");
+}
+
+// ------------------------------------------------------------------------------------------------
+HE_TEST(core, String, PopFront)
+{
+    Allocator& a = CrtAllocator::Get();
+
+    String s(a, "ab");
+    HE_EXPECT_EQ(s.Size(), 2);
+    HE_EXPECT_EQ_STR(s.Data(), "ab");
+
+    const char c0 = s.PopFront();
+    HE_EXPECT_EQ(c0, 'a');
+    HE_EXPECT_EQ(s.Size(), 1);
+    HE_EXPECT_EQ_STR(s.Data(), "b");
+
+    const char c1 = s.PopFront();
+    HE_EXPECT_EQ(c1, 'b');
     HE_EXPECT_EQ(s.Size(), 0);
     HE_EXPECT_EQ_STR(s.Data(), "");
 }

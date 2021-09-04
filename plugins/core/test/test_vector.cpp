@@ -965,6 +965,22 @@ HE_TEST(core, Vector, PushBack)
 }
 
 // ------------------------------------------------------------------------------------------------
+HE_TEST(core, Vector, PushFront)
+{
+    Allocator& a = CrtAllocator::Get();
+
+    Vector<int> v(a);
+    HE_EXPECT_EQ(v.Size(), 0);
+
+    v.PushFront(25);
+    HE_EXPECT_EQ(v.Size(), 1);
+    HE_EXPECT_EQ(*v.Data(), 25);
+
+    v.PushFront(50);
+    HE_EXPECT_EQ(v.Size(), 2);
+}
+
+// ------------------------------------------------------------------------------------------------
 HE_TEST(core, Vector, PopBack)
 {
     Allocator& a = CrtAllocator::Get();
@@ -978,8 +994,29 @@ HE_TEST(core, Vector, PopBack)
 
     v.PopBack();
     HE_EXPECT_EQ(v.Size(), 1);
+    HE_EXPECT_EQ(v[0], 10);
 
     v.PopBack();
+    HE_EXPECT_EQ(v.Size(), 0);
+}
+
+// ------------------------------------------------------------------------------------------------
+HE_TEST(core, Vector, PopFront)
+{
+    Allocator& a = CrtAllocator::Get();
+
+    Vector<int> v(a);
+    v.PushBack(10);
+    v.PushBack(20);
+    HE_EXPECT_EQ(v.Size(), 2);
+    HE_EXPECT_EQ(v[0], 10);
+    HE_EXPECT_EQ(v[1], 20);
+
+    v.PopFront();
+    HE_EXPECT_EQ(v.Size(), 1);
+    HE_EXPECT_EQ(v[0], 20);
+
+    v.PopFront();
     HE_EXPECT_EQ(v.Size(), 0);
 }
 

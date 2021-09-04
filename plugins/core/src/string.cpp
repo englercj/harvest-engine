@@ -338,6 +338,21 @@ namespace he
         return back;
     }
 
+    char String::PopFront()
+    {
+        const uint32_t size = Size();
+
+        HE_ASSERT(size > 0);
+
+        char* data = Data();
+        const char front = data[0];
+
+        MemMove(data, data + 1, size - 1);
+        SetSize(size - 1);
+
+        return front;
+    }
+
     void String::GrowBy(uint32_t len)
     {
         const uint32_t size = Size();

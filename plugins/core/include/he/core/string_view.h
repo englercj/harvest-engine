@@ -7,8 +7,6 @@
 #include "he/core/type_traits.h"
 #include "he/core/utils.h"
 
-#include <string_view>
-
 namespace he
 {
     /// A string view wraps access to a constant contiguous range of characters.

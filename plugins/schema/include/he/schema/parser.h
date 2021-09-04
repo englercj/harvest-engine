@@ -3,8 +3,11 @@
 #pragma once
 
 #include "he/core/allocator.h"
+#include "he/core/file.h"
 #include "he/core/hash.h"
+#include "he/core/span.h"
 #include "he/core/string.h"
+#include "he/core/string_view.h"
 #include "he/core/type_traits.h"
 #include "he/core/vector.h"
 #include "he/schema/lexer.h"
@@ -16,6 +19,7 @@
 
 namespace he::schema
 {
+    /// The parser takes a schema text blob as input and processes it into a schema object.
     class Parser
     {
     public:
@@ -31,7 +35,8 @@ namespace he::schema
     public:
         Parser(Allocator& allocator);
 
-        bool Parse(const char* src, const char** includePaths);
+        bool ParseFile(const char* path, Span<StringView> includeDirs);
+        bool Parse(const char* src, Span<StringView> includeDirs);
 
         bool HasErrors() const { return !m_errors.IsEmpty(); }
         Span<const ErrorInfo> GetErrors() const { return m_errors; }
@@ -39,6 +44,23 @@ namespace he::schema
         const SchemaDef& GetSchema() const { return m_schema; }
 
     private:
+        bool ParseFileInternal(const char* path, Span<StringView> includeDirs);
+        bool OpenFile(File& file, const char* path);
+        bool LoadFile(String& dst, const char* path, Span<StringView> includeDirs);
+        bool ReadFile(String& dst, File& file, const char* path);
+
+        template <typename T, typename U>
+        const T* FindDef(const U& schema, StringView name) const;
+
+        template <typename T>
+        const T* FindDef(StringView name) const;
+
+        const AttributeDef* FindAttributeDef(StringView name) const;
+        const AliasDef* FindAliasDef(StringView name) const;
+        const EnumDef* FindEnumDef(StringView name) const;
+        const InterfaceDef* FindInterfaceDef(StringView name) const;
+        const StructDef* FindStructDef(StringView name) const;
+
         bool Expect(Lexer::TokenType expected);
 
         void Next();
@@ -70,12 +92,12 @@ namespace he::schema
         template <typename T, HE_REQUIRES(std::is_floating_point_v<T>)>
         bool ConsumeFloat(T& out);
         bool ConsumeString(String& out);
-        bool ConsumeTypeNoArray(Type& type);
+        bool ConsumeTypeRaw(Type& type);
         bool ConsumeTypeParams(Vector<String>& params);
         bool ConsumeType(Type& type);
         bool ConsumeValue(BaseType type, Value& value);
 
-        bool ParseImports();
+        bool ParseImports(Span<StringView> includeDirs);
         bool ParseNamespace();
         bool ParseTopLevelStatement();
 
@@ -110,7 +132,7 @@ namespace he::schema
         bool DecodeString();
 
     private:
-        struct TypeKeyHasher
+        struct StringViewHasher
         {
             size_t operator()(const StringView& s) const
             {
@@ -122,19 +144,34 @@ namespace he::schema
             }
         };
 
-        using BaseTypeMap = std::unordered_map<StringView, BaseType, TypeKeyHasher>;
+        struct Import
+        {
+            Import(Allocator& allocator)
+                : importPath(allocator)
+                , schema(allocator)
+            {}
+
+            bool directImport{ false };
+            String importPath;
+            SchemaDef schema;
+        };
+
+        using BaseTypeMap = std::unordered_map<StringView, BaseType, StringViewHasher>;
+        using ImportMap = std::unordered_map<StringView, Vector<Import>, StringViewHasher>;
 
     private:
         Allocator& m_allocator;
 
         SchemaDef m_schema;
+        ImportMap m_imports;
+        uint32_t m_importDepth{ 0 };
+
         Lexer m_lexer;
+        Lexer::Token m_token{};
 
         Vector<ErrorInfo> m_errors;
         String m_decodedString;
 
         BaseTypeMap m_builtinTypes{};
-
-        Lexer::Token m_token{};
     };
 }

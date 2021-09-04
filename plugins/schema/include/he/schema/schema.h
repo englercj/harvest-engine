@@ -36,6 +36,7 @@ namespace he::schema
         Vector,
 
         // User-defined types
+        Alias,
         Enum,
         Interface,
         Struct,
@@ -140,11 +141,12 @@ namespace he::schema
     struct Attribute
     {
         Attribute(Allocator& allocator)
-            : parameters(allocator)
+            : name(allocator)
+            , parameters(allocator)
         {}
 
-        // Index of the attribute in the schema's attributes array
-        uint16_t index{ 0 };
+        // Name of the attribute
+        String name;
 
         // Value of the attribute
         Vector<Value> parameters;
@@ -166,12 +168,16 @@ namespace he::schema
         // The base type of this item.
         BaseType base{ BaseType::Unknown };
 
+        // When true the type is a pointer.
+        bool pointer{ false };
+
         // Size of a fixed array when `base` is `Array`.
         uint16_t fixedSize{ 0 };
 
+        // Name of the AliasDef when `base` is `Alias`.
+        // Name of the EnumDef when `base` is `Enum`.
         // Name of the InterfaceDef when `base` is `Interface`.
         // Name of the StructDef when `base` is `Struct`.
-        // Name of the EnumDef when `base` is `Enum`.
         // Name of the constant used as the fixed size when `base` is `Array`.
         String name;
 
@@ -288,8 +294,8 @@ namespace he::schema
         Type extends;
 
         Vector<Attribute> attributes;
-        Vector<String> typeParams;
         Vector<FieldDef> fields;
+        Vector<String> typeParams;
 
         Vector<AliasDef> aliases;
         Vector<ConstDef> consts;
@@ -338,16 +344,16 @@ namespace he::schema
         {}
 
         String name;
+        Vector<Type> implements;
 
         Vector<Attribute> attributes;
         Vector<MethodDef> methods;
-        Vector<Type> implements;
         Vector<String> typeParams;
 
+        Vector<AliasDef> aliases;
         Vector<ConstDef> consts;
         Vector<EnumDef> enums;
         Vector<StructDef> structs;
-        Vector<AliasDef> aliases;
     };
 
     struct SchemaDef

@@ -1,6 +1,6 @@
 # Harvest Schema - Language Guide
 
-TODO: Pointers vs inline? Does it default to inline and support `field: Node*;`? Or does it default to pointer and support `[CppInline] field: Node;`?
+TODO Doc: pointers
 
 ## Basic Example
 
@@ -40,6 +40,21 @@ Other schema files can be imported using the `import` declaration.
 import "other.schema";
 import "some/path/another.schema";
 ```
+
+Imports must be the first non-comment statements in the file.
+
+## Namespace
+
+A schema file may specify a namespace:
+
+```c
+namespace he.schema.example;
+
+// has a FQN of `he.schema.example.A`
+struct A {}
+```
+
+A namespace, if specified, must be the first statement after imports in the file. A schema file may only specify a single namespace per file.
 
 ## Built-in Types
 
@@ -114,6 +129,20 @@ struct List
     }
 
     first: Node;
+}
+```
+
+Structures do not have to be defined before they are used, but they have to be defined at some point in the file:
+
+```c
+struct User
+{
+    UserId id;
+}
+
+struct UserId
+{
+    bytes: uint8[16];
 }
 ```
 

@@ -125,12 +125,9 @@ namespace he::schema
 
                 hasUserInclude = true;
 
-                const StringView ext = GetExtension(import);
-                const StringView path(import.Begin(), ext.IsEmpty() ? import.End() : ext.Begin());
-
                 m_writer.Write("#include \"");
-                m_writer.Write(path);
-                m_writer.Write(".h\"\n");
+                m_writer.Write(import);
+                m_writer.Write("_generated.h\"\n");
             }
 
             if (hasUserInclude)

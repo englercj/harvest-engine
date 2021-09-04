@@ -22,18 +22,18 @@ namespace he::schema
         : m_error(allocator)
     {}
 
-    bool Lexer::Reset(const char* src)
+    bool Lexer::Reset(StringView src)
     {
-        if (!src || !*src)
+        if (src.IsEmpty())
         {
-            m_error = "input schema is empty";
+            m_error = "Input schema is empty";
             return false;
         }
 
-        m_cursor = src;
-        m_nextTokenStart = src;
-        m_lineStart = src;
-        m_nextLineStart = src;
+        m_cursor = src.Data();
+        m_nextTokenStart = src.Data();
+        m_lineStart = src.Data();
+        m_nextLineStart = src.Data();
         m_nextToken = TokenType::None;
         m_error.Clear();
 
@@ -43,7 +43,7 @@ namespace he::schema
         // hydrate the first token
         if (GetNextToken().type == TokenType::Eof)
         {
-            m_error = "input schema is empty";
+            m_error = "Input schema is empty";
             return false;
         }
 
@@ -124,6 +124,8 @@ namespace he::schema
                     return TokenType::Arrow;
                 }
                 return TokenType::Minus;
+            case '*':
+                return TokenType::Asterisk;
             case '"':
                 return LexString();
             case '{':
@@ -165,7 +167,7 @@ namespace he::schema
                 if (IsIdentifierStart(c))
                     return LexIdentifier();
 
-                m_error = "encountered unexpected token";
+                m_error = "Encountered unexpected token";
                 return TokenType::Error;
         }
     }
@@ -203,7 +205,7 @@ namespace he::schema
                 // When true there are multiple dots which is not valid
                 if (hasDot)
                 {
-                    m_error = "invalid number literal";
+                    m_error = "Invalid number literal";
                     return TokenType::Error;
                 }
 
@@ -240,7 +242,7 @@ namespace he::schema
 
             if (c < ' ' && static_cast<signed char>(c) >= 0)
             {
-                m_error = "illegal character in string literal";
+                m_error = "Illegal character in string literal";
                 return TokenType::Error;
             }
 
@@ -273,14 +275,14 @@ namespace he::schema
         ++m_cursor;
         if (static_cast<uint8_t>(*m_cursor) != 0xbb)
         {
-            m_error = "invalid utf-8 byte order mark";
+            m_error = "Invalid utf-8 byte order mark";
             return false;
         }
 
         ++m_cursor;
         if (static_cast<uint8_t>(*m_cursor) != 0xbf)
         {
-            m_error = "invalid utf-8 byte order mark";
+            m_error = "Invalid utf-8 byte order mark";
             return false;
         }
 
@@ -294,6 +296,7 @@ namespace he::schema
         {
             case Lexer::TokenType::None: return "None";
             case Lexer::TokenType::Arrow: return "Arrow";
+            case Lexer::TokenType::Asterisk: return "Asterisk";
             case Lexer::TokenType::Colon: return "Colon";
             case Lexer::TokenType::Comma: return "Comma";
             case Lexer::TokenType::Comment: return "Comment";

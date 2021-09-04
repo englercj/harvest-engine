@@ -9,6 +9,7 @@
 
 namespace he::schema
 {
+    /// The lexer takes a schema text blob as input and processes it into a token stream.
     class Lexer
     {
     public:
@@ -17,6 +18,7 @@ namespace he::schema
             None,
 
             Arrow,
+            Asterisk,
             Colon,
             Comma,
             Comment,
@@ -56,7 +58,7 @@ namespace he::schema
     public:
         Lexer(Allocator& allocator);
 
-        bool Reset(const char* src);
+        bool Reset(StringView src);
 
         Token PeekNextToken();
         Token GetNextToken();

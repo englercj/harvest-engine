@@ -15,7 +15,7 @@ struct AppArgs
 
     bool help{ false };
     bool grpc{ false };
-    he::StringView outDir{ nullptr };
+    he::StringView outDir{};
     he::Vector<he::StringView> includeDirs;
 };
 
@@ -43,31 +43,23 @@ int he::AppMain(int argc, char* argv[])
         return -1;
     }
 
-    String fileName(alloc);
+    String fullPath(alloc);
+
+    bool first = true;
 
     for (const StringView& paramValue : result.values)
     {
-        fileName.Assign(paramValue.Data(), paramValue.Size());
+        fullPath.Assign(paramValue.Data(), paramValue.Size());
 
-        Vector<char> input(alloc);
-        {
-            File f;
-            if (!f.Open(fileName.Data(), FileOpenMode::ReadExisting))
-                return 2;
+        if (!first)
+            args.includeDirs.PopFront();
 
-            const uint32_t size = static_cast<uint32_t>(f.GetSize()) + 1;
-            input.Resize(size);
+        first = false;
 
-            if (!f.Read(input.Data(), input.Size()))
-                return 3;
-
-            input.Back() = '\0';
-
-            f.Close();
-        }
+        args.includeDirs.PushFront(GetDirectory(fullPath));
 
         schema::Parser parser(alloc);
-        if (!parser.Parse(input.Data(), nullptr))
+        if (!parser.ParseFile(fullPath.Data(), args.includeDirs))
         {
             for (const auto& info : parser.GetErrors())
             {
@@ -85,12 +77,15 @@ int he::AppMain(int argc, char* argv[])
             return 1;
         }
 
-        RemoveExtension(fileName);
-        fileName += "_generated.h";
+        StringView fname = GetBaseName(paramValue);
+
+        fullPath.Assign(args.outDir.Data(), args.outDir.Size());
+        ConcatPath(fullPath, fname);
+        fullPath += "_generated.h";
 
         {
             File f;
-            if (!f.Open(fileName.Data(), FileOpenMode::WriteTruncate))
+            if (!f.Open(fullPath.Data(), FileOpenMode::WriteTruncate))
                 return 2;
 
             const StringView out = output.Str();

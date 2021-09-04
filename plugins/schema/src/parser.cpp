@@ -6,6 +6,11 @@
 
 #include "he/core/ascii.h"
 #include "he/core/assert.h"
+#include "he/core/file.h"
+#include "he/core/path.h"
+#include "he/core/result.h"
+#include "he/core/result_fmt.h"
+#include "he/core/scope_guard.h"
 #include "he/core/span.h"
 #include "he/core/string.h"
 #include "he/core/string_fmt.h"
@@ -44,6 +49,7 @@ namespace he::schema
     Parser::Parser(Allocator& allocator)
         : m_allocator(allocator)
         , m_schema(allocator)
+        , m_imports()
         , m_lexer(allocator)
         , m_errors(allocator)
         , m_decodedString(allocator)
@@ -62,10 +68,13 @@ namespace he::schema
         m_builtinTypes["string"] = BaseType::String;
     }
 
-    bool Parser::Parse(const char* src, const char** includePaths)
+    bool Parser::ParseFile(const char* path, Span<StringView> includeDirs)
     {
-        HE_UNUSED(includePaths);
+        return ParseFileInternal(path, includeDirs);
+    }
 
+    bool Parser::Parse(const char* src, Span<StringView> includeDirs)
+    {
         if (!m_lexer.Reset(src))
         {
             AddError(m_lexer.GetErrorText());
@@ -74,7 +83,7 @@ namespace he::schema
 
         NextDecl();
 
-        if (!ParseImports())
+        if (!ParseImports(includeDirs))
             return false;
 
         if (!ParseNamespace())
@@ -91,24 +100,298 @@ namespace he::schema
                     AddError("Unmatched curly bracket ('}')");
                 }
             }
+
+            // Too many errors, just bail
+            if (m_errors.Size() > 32)
+            {
+                return false;
+            }
         }
 
         if (m_lexer.HasError())
         {
             AddError(m_lexer.GetErrorText());
+        }
+
+        if (HasErrors())
+            return false;
+
+        // TODO: Check for any defined = false structs
+
+
+        return true;
+    }
+
+    bool Parser::ParseFileInternal(const char* path, Span<StringView> includeDirs)
+    {
+        String contents(m_allocator);
+
+        if (!LoadFile(contents, path, includeDirs))
+            return false;
+
+        return Parse(contents.Data(), includeDirs);
+    }
+
+    bool Parser::OpenFile(File& file, const char* path)
+    {
+        Result r = file.Open(path, FileOpenMode::ReadExisting, FileOpenFlag::SequentialScan);
+
+        if (!r && GetFileResult(r) != FileResult::NotFound)
+        {
+            AddError("Failed to open file: {} Error {}", path, r);
             return false;
         }
 
-        // TODO: Resolve Unknown types and validate schema.
+        return true;
+    }
 
-        return !HasErrors();
+    bool Parser::LoadFile(String& dst, const char* path, Span<StringView> includeDirs)
+    {
+        File file;
+
+        if (IsAbsolutePath(path))
+        {
+            if (!OpenFile(file, path))
+                return false;
+
+            if (file.IsOpen())
+                return ReadFile(dst, file, path);
+
+            AddError("No file found at: {}", path);
+            return false;
+        }
+
+        String fullPath(m_allocator);
+        for (const StringView& dir : includeDirs)
+        {
+            fullPath.Assign(dir.Data(), dir.Size());
+            ConcatPath(fullPath, path);
+            NormalizePath(fullPath);
+
+            if (!OpenFile(file, fullPath.Data()))
+                return false;
+
+            if (file.IsOpen())
+                return ReadFile(dst, file, fullPath.Data());
+        }
+
+        AddError("Failed to find file: {}", fullPath);
+        return false;
+    }
+
+    bool Parser::ReadFile(String& dst, File& file, const char* path)
+    {
+        uint64_t fileSize = file.GetSize();
+
+        if (fileSize > String::MaxHeapCharacters)
+        {
+            AddError("File size is too large ({}) when reading: {}", fileSize, path);
+            return false;
+        }
+
+        dst.Resize(static_cast<uint32_t>(fileSize));
+
+        uint32_t bytesRead = 0;
+        Result r = file.Read(dst.Data(), dst.Size(), &bytesRead);
+
+        if (r)
+            return true;
+
+        AddError("Failed to read file: {} Error {}", path, r);
+        return false;
+    }
+
+    template <typename T, typename U> struct _ContainerPointer {};
+    template <typename U> struct _ContainerPointer<AttributeDef, U> { static constexpr auto P = &U::attributes; };
+    template <typename U> struct _ContainerPointer<AliasDef, U> { static constexpr auto P = &U::aliases; };
+    template <typename U> struct _ContainerPointer<EnumDef, U> { static constexpr auto P = &U::enums; };
+    template <typename U> struct _ContainerPointer<InterfaceDef, U> { static constexpr auto P = &U::interfaces; };
+    template <typename U> struct _ContainerPointer<StructDef, U> { static constexpr auto P = &U::structs; };
+
+    template <typename T, typename U> inline constexpr bool _CanEmbedType = false;
+    template <> inline constexpr bool _CanEmbedType<AliasDef, StructDef> = true;
+    template <> inline constexpr bool _CanEmbedType<ConstDef, StructDef> = true;
+    template <> inline constexpr bool _CanEmbedType<EnumDef, StructDef> = true;
+    template <> inline constexpr bool _CanEmbedType<StructDef, StructDef> = true;
+    template <> inline constexpr bool _CanEmbedType<AliasDef, InterfaceDef> = true;
+    template <> inline constexpr bool _CanEmbedType<ConstDef, InterfaceDef> = true;
+    template <> inline constexpr bool _CanEmbedType<EnumDef, InterfaceDef> = true;
+    template <> inline constexpr bool _CanEmbedType<StructDef, InterfaceDef> = true;
+
+    template <typename T, typename U>
+    const T* Parser::FindDef(const U& schema, StringView name) const
+    {
+        constexpr auto Container = _ContainerPointer<T, U>::P;
+
+        const char* begin = name.Begin();
+        const char* end = name.End();
+
+        const char* last = &name.Back();
+        while (last < end && *last != '.')
+            ++last;
+
+        // No dot found, just search for the symbol name
+        if (last == end)
+        {
+            for (uint32_t i = 0; i < (schema.*Container).Size(); ++i)
+            {
+                const T& entry = (schema.*Container)[i];
+                if (entry.name == name)
+                {
+                    return &entry;
+                }
+            }
+
+            return nullptr;
+        }
+
+        // Dot found, this is potentially an embedded type. Let's get the first name and search
+        // for that as a struct or interface. If we find it, we'll recurse for the rest.
+
+        // Search within our structs.
+        if constexpr (_CanEmbedType<T, StructDef> && _CanEmbedType<StructDef, U>)
+        {
+            StringView parentName(begin, last);
+
+            const StructDef* parent = nullptr;
+            for (uint32_t i = 0; i < schema.structs.Size(); ++i)
+            {
+                const StructDef& entry = schema.structs[i];
+                if (entry.name == parentName)
+                {
+                    parent = &entry;
+                    break;
+                }
+            }
+
+            if (parent)
+            {
+                return FindDef<T, StructDef>(*parent, StringView(parentName.End(), name.End()));
+            }
+        }
+
+        // Search within our interfaces.
+        if constexpr (_CanEmbedType<T, InterfaceDef> && _CanEmbedType<InterfaceDef, U>)
+        {
+            StringView parentName(begin, last);
+
+            const InterfaceDef* parent = nullptr;
+            for (uint32_t i = 0; i < schema.interfaces.Size(); ++i)
+            {
+                const InterfaceDef& entry = schema.interfaces[i];
+                if (entry.name == parentName)
+                {
+                    parent = &entry;
+                    break;
+                }
+            }
+
+            if (parent)
+            {
+                return FindDef<T, InterfaceDef>(*parent, StringView(parentName.End(), name.End()));
+            }
+        }
+
+        return nullptr;
+    }
+
+    template <typename T>
+    const T* Parser::FindDef(StringView name) const
+    {
+        // FQN, perform a forward search treating each part of the name as a namespace
+        // until we find a matching definition.
+        if (name[0] == '.')
+        {
+            const char* begin = name.Begin() + 1; // +1 to get past the dot
+            const char* end = name.End();
+            StringView searchNamespace(begin, begin);
+            StringView searchName(begin, end);
+
+            while (searchNamespace.Size() < (name.Size() - 1))
+            {
+                auto it = m_imports.find(searchNamespace);
+                if (it != m_imports.end())
+                {
+                    for (const Import& im : it->second)
+                    {
+                        const T* entry = FindDef<T, SchemaDef>(im.schema, searchName);
+                        if (entry)
+                            return entry;
+                    }
+                }
+
+                const char* last = &searchNamespace.Back();
+                while (last < end && *last != '.')
+                    ++last;
+
+                searchNamespace = StringView(begin, last);
+                searchName = StringView(searchNamespace.End(), end);
+            }
+
+            return nullptr;
+        }
+
+        // Relative name, search first in our schema.
+        const T* localEntry = FindDef<T, SchemaDef>(m_schema, name);
+        if (localEntry)
+            return localEntry;
+
+        // Walk up the parts of our namespace and search each of them for the definition.
+        StringView searchNamespace = m_schema.namespaceName;
+        while (!searchNamespace.IsEmpty())
+        {
+            auto it = m_imports.find(searchNamespace);
+            if (it != m_imports.end())
+            {
+                for (const Import& im : it->second)
+                {
+                    const T* entry = FindDef<T, SchemaDef>(im.schema, name);
+                    if (entry)
+                        return entry;
+                }
+            }
+
+            const char* begin = searchNamespace.Begin();
+            const char* last = &searchNamespace.Back();
+            while (last > begin && *last != '.')
+                --last;
+
+            searchNamespace = StringView(begin, last);
+        }
+
+        return nullptr;
+    }
+
+    const AttributeDef* Parser::FindAttributeDef(StringView name) const
+    {
+        return FindDef<AttributeDef>(name);
+    }
+
+    const AliasDef* Parser::FindAliasDef(StringView name) const
+    {
+        return FindDef<AliasDef>(name);
+    }
+
+    const EnumDef* Parser::FindEnumDef(StringView name) const
+    {
+        return FindDef<EnumDef>(name);
+    }
+
+    const InterfaceDef* Parser::FindInterfaceDef(StringView name) const
+    {
+        return FindDef<InterfaceDef>(name);
+    }
+
+    const StructDef* Parser::FindStructDef(StringView name) const
+    {
+        return FindDef<StructDef>(name);
     }
 
     bool Parser::Expect(Lexer::TokenType expected)
     {
         if (!At(expected))
         {
-            AddError("unexpected token {}, expected {}", AsString(m_token.type), AsString(expected));
+            AddError("Unexpected token {}, expected {}", AsString(m_token.type), AsString(expected));
             return false;
         }
 
@@ -152,9 +435,9 @@ namespace he::schema
 
     void Parser::SkipStatement()
     {
-        while (AtEnd())
+        while (!AtEnd())
         {
-            if (At(Lexer::TokenType::Semicolon) || At(Lexer::TokenType::Comma))
+            if (At(Lexer::TokenType::Semicolon))
             {
                 NextDecl();
                 return;
@@ -220,24 +503,13 @@ namespace he::schema
 
     bool Parser::ConsumeAttribute(Attribute& attribute)
     {
-        String attrName(m_allocator);
-        if (!ConsumeDottedIdentifier(attrName))
+        if (!ConsumeDottedIdentifier(attribute.name))
             return false;
 
-        const AttributeDef* def = nullptr;
-        for (uint32_t i = 0; i < m_schema.attributes.Size(); ++i)
-        {
-            if (m_schema.attributes[i].name == attrName)
-            {
-                attribute.index = static_cast<uint16_t>(i);
-                def = &m_schema.attributes[i];
-                break;
-            }
-        }
-
+        const AttributeDef* def = FindAttributeDef(attribute.name);
         if (!def)
         {
-            AddError("Unknown attribute \"{}\", was it declared?", attrName);
+            AddError("Unknown attribute \"{}\", was it declared?", attribute.name);
             return false;
         }
 
@@ -331,7 +603,7 @@ namespace he::schema
             return true;
         }
 
-        AddError("expected true or false for boolean value");
+        AddError("Expected true or false for boolean value");
         return false;
     }
 
@@ -383,7 +655,7 @@ namespace he::schema
 
         if (value > std::numeric_limits<T>::max() || value < std::numeric_limits<T>::min())
         {
-            AddError("integer value out of range");
+            AddError("Integer value out of range");
             return false;
         }
 
@@ -405,7 +677,7 @@ namespace he::schema
                 }
                 else
                 {
-                    AddError("illegal negative value assigned to unsigned integer type");
+                    AddError("Illegal negative value assigned to unsigned integer type");
                     return false;
                 }
             }
@@ -436,7 +708,7 @@ namespace he::schema
 
         if (value > std::numeric_limits<T>::max() || value < std::numeric_limits<T>::min())
         {
-            AddError("float value out of range");
+            AddError("Float value out of range");
             return false;
         }
 
@@ -462,8 +734,21 @@ namespace he::schema
         return true;
     }
 
-    bool Parser::ConsumeTypeNoArray(Type& type)
+    bool Parser::ConsumeTypeRaw(Type& type)
     {
+        // Built-in type
+        if (At(Lexer::TokenType::Identifier))
+        {
+            auto it = m_builtinTypes.find(m_token.text);
+            if (it != m_builtinTypes.end())
+            {
+                m_schema.MarkTypeUsed(it->second);
+                type.base = it->second;
+                NextDecl();
+                return true;
+            }
+        }
+
         // list<T>
         if (TryConsumeKeyword(KW_List))
         {
@@ -528,30 +813,37 @@ namespace he::schema
             return true;
         }
 
-        // Built-in type
-        if (At(Lexer::TokenType::Identifier))
-        {
-            auto it = m_builtinTypes.find(m_token.text);
-            if (it != m_builtinTypes.end())
-            {
-                m_schema.MarkTypeUsed(it->second);
-                type.base = it->second;
-                NextDecl();
-                return true;
-            }
-        }
-
         // User defined type
         type.base = BaseType::Unknown;
 
         if (!ConsumeDottedIdentifier(type.name))
             return false;
 
+        // These checks are ordered based on likelyhood. For example a type lookup is more likely
+        // to be a struct than an interface, simply because there are often more structs than
+        // anything else.
+        if (FindStructDef(type.name) != nullptr)
+            type.base = BaseType::Struct;
+        else if (FindEnumDef(type.name) != nullptr)
+            type.base = BaseType::Enum;
+        if (FindAliasDef(type.name) != nullptr)
+            type.base = BaseType::Alias;
+        else if (FindInterfaceDef(type.name) != nullptr)
+            type.base = BaseType::Interface;
+
+        if (type.base == BaseType::Unknown)
+        {
+            AddError("Encountered unknown type name {}", type.name);
+            return false;
+        }
+
+        m_schema.MarkTypeUsed(type.base);
+
         if (TryConsume(Lexer::TokenType::OpenAngleBracket))
         {
-            if (type.base != BaseType::Interface && type.base != BaseType::Struct)
+            if (type.base != BaseType::Alias && type.base != BaseType::Interface && type.base != BaseType::Struct)
             {
-                AddError("only interfaces and structs can have generic parameters");
+                AddError("Only interface and struct types can have generic parameters");
                 return false;
             }
 
@@ -593,8 +885,13 @@ namespace he::schema
 
     bool Parser::ConsumeType(Type& type)
     {
-        if (!ConsumeTypeNoArray(type))
+        if (!ConsumeTypeRaw(type))
             return false;
+
+        if (TryConsume(Lexer::TokenType::Asterisk))
+        {
+            type.pointer = true;
+        }
 
         while (TryConsume(Lexer::TokenType::OpenSquareBracket))
         {
@@ -623,6 +920,11 @@ namespace he::schema
                 return false;
 
             m_schema.MarkTypeUsed(type.base);
+
+            if (TryConsume(Lexer::TokenType::Asterisk))
+            {
+                type.pointer = true;
+            }
         }
 
         return true;
@@ -658,36 +960,80 @@ namespace he::schema
                 value.str.Clear();
                 return ConsumeString(value.str);
             case BaseType::Interface:
-                AddError("interface types cannot have a default value");
+                AddError("Interface types cannot have a default value");
                 return false;
-            case BaseType::Unknown:
-                // Structs and enums may come in as "Unknown" because we don't yet know when
-                // parsing default values and constant values if the type is user-defined.
+            case BaseType::Alias:
+                // TODO: Resolve alias type and recurse?
+                AddError("Type aliases cannot have a default value, yet.");
+                return false;
             case BaseType::Array:
             case BaseType::List:
             case BaseType::Map:
             case BaseType::Set:
+            case BaseType::Vector:
             case BaseType::Enum:
             case BaseType::Struct:
                 value.str.Clear();
                 while (m_token.type != Lexer::TokenType::Semicolon)
                     value.str.Append(m_token.text.Data(), m_token.text.Size());
                 return true;
+            case BaseType::Unknown:
+                HE_ASSERT(type != BaseType::Unknown);
+                AddError("Tried to consume a value for an unknown type, this should never happen");
+                return false;
         }
 
-        AddError("unknown base type to consume value for");
+        HE_ASSERT(false, "Type is not a known enum value");
+        AddError("Tried to consume a value for an invalid type, this should never happen");
         return false;
     }
 
-    bool Parser::ParseImports()
+    bool Parser::ParseImports(Span<StringView> includeDirs)
     {
+        ++m_importDepth;
+        HE_AT_SCOPE_EXIT([&]() { --m_importDepth; });
+
+        if (m_importDepth > 256)
+        {
+            AddError("Import depth too deep, do you have an import cycle?");
+            return false;
+        }
+
+        Vector<String> directImports(m_allocator);
+
+        String importPath(m_allocator);
         while (TryConsumeKeyword(KW_Import))
         {
-            if (!ConsumeString(m_schema.imports.EmplaceBack(m_allocator)))
+            if (!ConsumeString(importPath))
                 return false;
 
             if (!Consume(Lexer::TokenType::Semicolon))
                 return false;
+
+            Lexer tempLexer(Move(m_lexer));
+            Lexer::Token tempToken(Move(m_token));
+
+            if (!ParseFileInternal(importPath.Data(), includeDirs))
+                return false;
+
+            m_lexer = Move(tempLexer);
+            m_token = Move(tempToken);
+
+            // Move the parsed schema into the imports list
+            auto result = m_imports.try_emplace(m_schema.namespaceName, m_allocator);
+            Vector<Import>& imports = result.first->second;
+            Import& im = imports.EmplaceBack(m_allocator);
+            im.directImport = m_importDepth == 1;
+            im.importPath = Move(importPath);
+            im.schema = Move(m_schema);
+
+            if (im.directImport)
+                directImports.PushBack(im.importPath);
+        }
+
+        if (m_importDepth == 1)
+        {
+            m_schema.imports = Move(directImports);
         }
 
         return true;
@@ -699,6 +1045,15 @@ namespace he::schema
         {
             if (!ConsumeDottedIdentifier(m_schema.namespaceName))
                 return false;
+
+            if (m_schema.namespaceName[0] == '.')
+                m_schema.namespaceName.PopFront();
+
+            if (m_schema.namespaceName.IsEmpty())
+            {
+                AddError("Namespace identifier cannot be empty");
+                return false;
+            }
 
             if (!Consume(Lexer::TokenType::Semicolon))
                 return false;
@@ -728,7 +1083,7 @@ namespace he::schema
         {
             if (!attributes.IsEmpty())
             {
-                AddError("attributes cannot be tagged with attributes");
+                AddError("Attributes cannot be tagged with attributes");
                 // we can continue to parse, but we'll ignore these attributes.
             }
 
@@ -766,17 +1121,17 @@ namespace he::schema
 
         if (AtIdentifier(KW_Import))
         {
-            AddError("imports must be the first statements in a file");
+            AddError("Imports must be the first statements in a file");
             return false;
         }
 
         if (AtIdentifier(KW_Namespace))
         {
-            AddError("there can only be a single namespace statement, just after the imports, in a file");
+            AddError("There can only be a single namespace statement, just after the imports, in a file");
             return false;
         }
 
-        AddError("expected top level statement (const, enum, interface, struct, using)");
+        AddError("Expected top level statement (const, enum, interface, struct, using)");
         return false;
     }
 
@@ -809,7 +1164,7 @@ namespace he::schema
         {
             if (AtEnd())
             {
-                AddError("reached end of input in struct definition (missing '}')");
+                AddError("Reached end of input in struct definition (missing '}')");
                 return false;
             }
 
@@ -954,7 +1309,7 @@ namespace he::schema
             def.targets |= AttributeTarget::Struct;
         else
         {
-            AddError("expected a valid attribute target: const, enum, enumerator, field, file, interface, method, parameter, or struct");
+            AddError("Expected a valid attribute target: const, enum, enumerator, field, file, interface, method, parameter, or struct");
             return false;
         }
 
@@ -979,7 +1334,7 @@ namespace he::schema
 
             if (!IsIntegral(enumType.base))
             {
-                AddError("expected integral type for enum");
+                AddError("Expected integral type for enum");
                 return false;
             }
 
@@ -998,7 +1353,7 @@ namespace he::schema
         {
             if (AtEnd())
             {
-                AddError("reached end of input in enum definition (missing '}')");
+                AddError("Reached end of input in enum definition (missing '}')");
                 return false;
             }
 
@@ -1080,7 +1435,7 @@ namespace he::schema
         {
             if (AtEnd())
             {
-                AddError("reached end of input in struct definition (missing '}')");
+                AddError("Reached end of input in struct definition (missing '}')");
                 return false;
             }
 
@@ -1216,7 +1571,7 @@ namespace he::schema
 
         if (!IsArithmetic(constType.base) && constType.base != BaseType::String)
         {
-            AddError("expected basic type for constant: integral, float, or string");
+            AddError("Expected basic type for constant: integral, float, or string");
             return false;
         }
 
@@ -1249,6 +1604,8 @@ namespace he::schema
     template <typename... Args>
     void Parser::AddError(fmt::format_string<Args...> fmt, Args&&... args)
     {
+        HE_DEBUG_BREAK();
+
         ErrorInfo& entry = m_errors.EmplaceBack(m_allocator);
         entry.line = m_token.line;
         entry.column = m_token.column;
@@ -1273,13 +1630,16 @@ namespace he::schema
 
             switch (c)
             {
+                case '\"':
+                    // Ignore surrounding double quotes.
+                    break;
                 case '\\':
                     decodedIsTrivial = false;
                     s++;
 
                     if (unicodeHighSurrogate != -1 && *s != 'u')
                     {
-                        AddError("illegal Unicode sequence (unpaired high surrogate)");
+                        AddError("Illegal Unicode sequence (unpaired high surrogate)");
                         return false;
                     }
 
@@ -1328,7 +1688,7 @@ namespace he::schema
                             char nibbles[]{ *s++, *s++ };
                             if (!IsHex(nibbles[0]) || !IsHex(nibbles[1]))
                             {
-                                AddError("escape code must be followed 2 hex digits in string literal");
+                                AddError("Escape code must be followed 2 hex digits in string literal");
                                 return false;
                             }
                             uint8_t value = HexPairToByte(nibbles[0], nibbles[1]);
@@ -1342,7 +1702,7 @@ namespace he::schema
                             char nibbles[]{ *s++, *s++, *s++, *s++ };
                             if (!IsHex(nibbles[0]) || !IsHex(nibbles[1]) || !IsHex(nibbles[2]) || !IsHex(nibbles[3]))
                             {
-                                AddError("escape code must be followed 4 hex digits in string literal");
+                                AddError("Escape code must be followed 4 hex digits in string literal");
                                 return false;
                             }
                             uint16_t high = HexPairToByte(nibbles[0], nibbles[1]);
@@ -1353,7 +1713,7 @@ namespace he::schema
                             {
                                 if (unicodeHighSurrogate != -1)
                                 {
-                                    AddError("illegal Unicode sequence (multiple high surrogates) in string literal");
+                                    AddError("Illegal Unicode sequence (multiple high surrogates) in string literal");
                                     return false;
                                 }
                                 else
@@ -1365,7 +1725,7 @@ namespace he::schema
                             {
                                 if (unicodeHighSurrogate == -1)
                                 {
-                                    AddError("illegal Unicode sequence (unpaired low surrogate) in string literal");
+                                    AddError("Illegal Unicode sequence (unpaired low surrogate) in string literal");
                                     return false;
                                 }
 
@@ -1377,21 +1737,21 @@ namespace he::schema
                             {
                                 if (unicodeHighSurrogate == -1)
                                 {
-                                    AddError("illegal Unicode sequence (unpaired high surrogate) in string literal");
+                                    AddError("Illegal Unicode sequence (unpaired high surrogate) in string literal");
                                     return false;
                                 }
                                 ToUTF8(m_decodedString, value);
                             }
                         }
                         default:
-                            AddError("unknown escape sequence: \\{}", *s);
+                            AddError("Unknown escape sequence: \\{}", *s);
                             return false;
                     }
                     break;
                 default:
                     if (unicodeHighSurrogate != -1)
                     {
-                        AddError("illegal Unicode sequence (unpaired high surrogate)");
+                        AddError("Illegal Unicode sequence (unpaired high surrogate)");
                         return false;
                     }
 
@@ -1404,13 +1764,13 @@ namespace he::schema
 
         if (unicodeHighSurrogate != -1)
         {
-            AddError("illegal Unicode sequence (unpaired high surrogate)");
+            AddError("Illegal Unicode sequence (unpaired high surrogate)");
             return false;
         }
 
         if (!decodedIsTrivial && !ValidateUTF8(m_decodedString.Data()))
         {
-            AddError("illegal UTF-8 sequence");
+            AddError("Illegal UTF-8 sequence");
             return false;
         }
 

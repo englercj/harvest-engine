@@ -8,6 +8,8 @@
     "license": "UNLICENSED",
     "tags": [],
 
+    "install": { "exec": "schemac.lua" },
+
     "modules": [
         {
             "name": "he_schema",
@@ -19,19 +21,19 @@
             "private_includedirs": ["src"]
         },
         {
+            "name": "he_schemac",
+            "type": "console_app",
+            "group": "engine/tools",
+            "files": ["compiler/**"],
+            "private_dependson": ["he_core", "he_schema"]
+        },
+        {
             "name": "he_schema_tests",
             "type": "static",
             "group": "engine/tests",
             "files": ["test/**"],
             "public_dependson": ["he_schema"],
             "private_includedirs": ["src"]
-        },
-        {
-            "name": "he_schema_compiler",
-            "type": "console_app",
-            "group": "engine/tools",
-            "files": ["compiler/main.cpp"],
-            "private_dependson": ["he_core", "he_schema"]
         }
     ]
 }

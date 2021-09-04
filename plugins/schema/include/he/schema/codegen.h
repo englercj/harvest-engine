@@ -8,6 +8,11 @@
 
 namespace he::schema
 {
+    enum class CodegenLang
+    {
+        Cpp,
+    };
+
     struct CodeGenOptions
     {
     };

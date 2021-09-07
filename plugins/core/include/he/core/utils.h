@@ -10,17 +10,51 @@ namespace he
     ///
     /// Expects that `alignment` is a power of two.
     ///
-    /// \param value The value to check for alignment
+    /// \param value The value to check for alignment.
     /// \param alignment The alignment to check value for. Must be a power of two.
+    /// \return True if the value is aligned, false otherwise.
     template <typename T>
     [[nodiscard]] constexpr bool IsAligned(T value, T alignment) noexcept
     {
         return (value & (alignment - 1)) == 0;
     }
 
+    /// Returns true if `ptr` is aligned to `alignment`.
+    ///
+    /// Expects that `alignment` is a power of two.
+    ///
+    /// \param ptr The pointer to check for alignment.
+    /// \param alignment The alignment to check value for. Must be a power of two.
+    /// \return True if the pointer is aligned, false otherwise.
     [[nodiscard]] inline bool IsAligned(void* ptr, size_t alignment) noexcept
     {
         return IsAligned(reinterpret_cast<uintptr_t>(ptr), alignment);
+    }
+
+    /// Returns the aligned value of `value` rounded down based on `alignment`.
+    ///
+    /// Expects that `alignment` is a power of two.
+    ///
+    /// \param value The value to be aligned down.
+    /// \param alignment The alignment to match.
+    /// \return The aligned value.
+    template <typename T>
+    [[nodiscard]] constexpr T AlignDown(T value, T alignment)
+    {
+        return value & ~(alignment - 1);
+    }
+
+    /// Returns the aligned value of `value` rounded up based on `alignment`.
+    ///
+    /// Expects that `alignment` is a power of two.
+    ///
+    /// \param value The value to be aligned up.
+    /// \param alignment The alignment to match.
+    /// \return The aligned value.
+    template <typename T>
+    constexpr inline T AlignUp(T value, T alignment)
+    {
+        return (value + (alignment - 1)) & ~(alignment - 1);
     }
 
     /// Returns the smaller value between `a` and `b`.

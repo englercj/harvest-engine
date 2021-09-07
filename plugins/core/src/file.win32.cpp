@@ -410,7 +410,7 @@ namespace he
         if (wideRequiredLen == 0)
             return Result::FromLastError();
 
-        wchar_t* buf = static_cast<wchar_t*>(path.GetAllocator().Malloc(wideRequiredLen * sizeof(wchar_t)));
+        wchar_t* buf = path.GetAllocator().Malloc<wchar_t>(wideRequiredLen);
         HE_AT_SCOPE_EXIT([&]()
         {
             path.GetAllocator().Free(buf);

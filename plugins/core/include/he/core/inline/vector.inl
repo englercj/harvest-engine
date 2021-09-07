@@ -143,7 +143,7 @@ namespace he
     template <typename T, HE_REQUIRES(!std::is_trivially_copyable_v<T> && std::is_move_constructible_v<T>)>
     T* _VectorRealloc(Allocator& allocator, T* p, uint32_t size, uint32_t newSize)
     {
-        T* mem = static_cast<T*>(allocator.Malloc(newSize * sizeof(T)));
+        T* mem = allocator.Malloc<T>(newSize);
         for (uint32_t i = 0; i < size; ++i)
         {
             new(mem + i) T(Move(*(p + i)));
@@ -156,7 +156,7 @@ namespace he
     template <typename T, HE_REQUIRES(!std::is_trivially_copyable_v<T> && !std::is_move_constructible_v<T>)>
     T* _VectorRealloc(Allocator& allocator, T* p, uint32_t size, uint32_t newSize)
     {
-        T* mem = static_cast<T*>(allocator.Malloc(newSize * sizeof(T)));
+        T* mem = allocator.Malloc<T>(newSize);
         for (uint32_t i = 0; i < size; ++i)
         {
             new(mem + i) T(*(p + i));

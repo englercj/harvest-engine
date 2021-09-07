@@ -52,7 +52,7 @@ namespace he::Directory
             return Result::FromLastError();
 
         requiredLen += HE_LENGTH_OF(PatternSuffix);
-        wchar_t* pattern = static_cast<wchar_t*>(m_allocator.Malloc(sizeof(wchar_t) * requiredLen));
+        wchar_t* pattern = m_allocator.Malloc<wchar_t>(requiredLen);
         HE_AT_SCOPE_EXIT([&]()
         {
             m_allocator.Free(pattern);

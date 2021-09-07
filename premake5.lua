@@ -3,6 +3,6 @@
 include "scripts/_setup.lua"
 
 he.workspace()
-    startproject "editor"
+    startproject "he_editor"
 
     he.import_plugins { "." }

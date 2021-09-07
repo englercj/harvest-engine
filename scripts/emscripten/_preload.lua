@@ -145,23 +145,88 @@ filter { "system:emscripten", "kind:WindowedApp" }
 filter {}
 
 --
--- Update the package scrips to know how to propagate emscripten keys
+-- Register emscripten module keys so they can be used in module json descriptors.
 --
 
-add_module_keys("include", {
-    "em_options",
-})
-add_module_keys("link", {
-    "em_linkeroptimize",
-    "em_library",
-    "em_prepend",
-    "em_append",
-    "em_sourcemapbase",
-    "em_embedfile",
-    "em_preloadfile",
-    "em_htmlshell",
-    "em_exportedfunctions",
-})
+he.add_module_key {
+    key = "em_options",
+    scope = "include",
+    type = "table",
+    desc = "",
+    handler = function (ctx, values) em_options(values) end,
+}
+
+he.add_module_key {
+    key = "em_linkeroptimize",
+    scope = "link",
+    type = "string",
+    desc = "",
+    handler = function (ctx, value) em_linkeroptimize(value) end,
+}
+
+he.add_module_key {
+    key = "em_library",
+    scope = "link",
+    type = "string",
+    desc = "",
+    handler = function (ctx, value) em_library(value) end,
+}
+
+he.add_module_key {
+    key = "em_prepend",
+    scope = "link",
+    type = "string",
+    desc = "",
+    handler = function (ctx, value) em_prepend(value) end,
+}
+
+he.add_module_key {
+    key = "em_append",
+    scope = "link",
+    type = "string",
+    desc = "",
+    handler = function (ctx, value) em_append(value) end,
+}
+
+he.add_module_key {
+    key = "em_sourcemapbase",
+    scope = "link",
+    type = "string",
+    desc = "",
+    handler = function (ctx, value) em_sourcemapbase(value) end,
+}
+
+he.add_module_key {
+    key = "em_embedfile",
+    scope = "link",
+    type = "string",
+    desc = "",
+    handler = function (ctx, value) em_embedfile(value) end,
+}
+
+he.add_module_key {
+    key = "em_preloadfile",
+    scope = "link",
+    type = "string",
+    desc = "",
+    handler = function (ctx, value) em_preloadfile(value) end,
+}
+
+he.add_module_key {
+    key = "em_htmlshell",
+    scope = "link",
+    type = "string",
+    desc = "",
+    handler = function (ctx, value) em_htmlshell(value) end,
+}
+
+he.add_module_key {
+    key = "em_exportedfunctions",
+    scope = "link",
+    type = "table",
+    desc = "",
+    handler = function (ctx, values) em_exportedfunctions(values) end,
+}
 
 --
 -- Decide when the full module should be loaded.

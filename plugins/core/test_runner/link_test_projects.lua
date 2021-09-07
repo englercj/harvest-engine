@@ -1,7 +1,5 @@
 return function (ctx)
-    local imported_modules = get_all_modules()
-
-    for name, mod in orderedPairs(imported_modules) do
+    for name, mod in orderedPairs(he.imported_modules) do
         if mod.group == "tests" and mod.type == "static" then
             handle_module_key(ctx, "public_dependson", { mod.name })
 
@@ -10,7 +8,7 @@ return function (ctx)
             filter { "toolset:msc-*", "language:C++" }
                 linkoptions { "/WHOLEARCHIVE:" .. mod.name }
             filter { "toolset:gcc or clang" }
-                linkoptions { "-Wl,--whole-archive %{path.getdirectory(target_lib_dir)}/" .. mod.name .. "/lib" .. mod.name .. ".a -Wl,--no-whole-archive" }
+                linkoptions { "-Wl,--whole-archive %{path.getdirectory(he.target_lib_dir)}/" .. mod.name .. "/lib" .. mod.name .. ".a -Wl,--no-whole-archive" }
             filter { }
         end
     end

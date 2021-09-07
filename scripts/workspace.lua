@@ -1,7 +1,7 @@
 -- Copyright Chad Engler
 
-function he_workspace()
-    workspace(sln_name)
+he.workspace = function ()
+    workspace(he.sln_name)
 
     -- Shared project setup
     configurations      { "Debug", "Release", "Shipping" }
@@ -11,7 +11,7 @@ function he_workspace()
     exceptionhandling   "Off"
     flags               { "FatalWarnings", "MultiProcessorCompile" }
     floatingpoint       "Fast"
-    location            (build_dir)
+    location            (he.build_dir)
     rtti                "Off"
     warnings            "Extra"
 

@@ -1,37 +1,50 @@
 -- Copyright Chad Engler
 
--- TODO: This will be incorrect for a project importing the engine. Need to rethink this.
 -- Root directory of the project
-root_dir = path.getabsolute(path.join(_SCRIPT_DIR, ".."))
+he.root_dir = path.getabsolute(_MAIN_SCRIPT_DIR)
 
 -- Name of the solution file (and workspace)
-sln_name = _OPTIONS["slnfilename"]
+he.sln_name = _OPTIONS.slnfilename
 
-if #sln_name == 0 then
-    sln_name = path.getbasename(root_dir) .. "_" .. os.target()
+if #he.sln_name == 0 then
+    he.sln_name = path.getbasename(he.root_dir) .. "_" .. os.target()
+end
+
+-- Detect the build type
+he.is_static_only = false
+
+if _OPTIONS.static ~= nil then
+    he.is_static_only = true
+end
+
+-- Detect the build dir
+local to_dir = "build"
+
+if _OPTIONS.to ~= nil and #_OPTIONS.to > 0 then
+    to_dir = _OPTIONS.to
 end
 
 -- Build directories
-build_dir           = path.join(root_dir, "build")
-plugin_install_dir  = path.join(build_dir, "plugins")
-projects_dir        = path.join(build_dir, "projects/%{os.target()}")
-gen_dir             = path.join(build_dir, "generated")
+he.build_dir            = path.join(he.root_dir, to_dir)
+he.plugin_install_dir   = path.join(he.build_dir, "plugins")
+he.projects_dir         = path.join(he.build_dir, "projects/%{os.target()}")
+he.gen_dir              = path.join(he.build_dir, "generated")
 
 -- Build directories based on target & configuration
-target_build_dir    = path.join(build_dir, "%{os.target()}-%{cfg.architecture}-%{cfg.buildcfg:lower()}")
-target_bin_dir      = path.join(target_build_dir, "bin")
-target_lib_dir      = path.join(target_build_dir, "lib/%{prj.name}")
-target_obj_dir      = path.join(target_build_dir, "obj/%{prj.name}")
-target_gen_dir      = path.join(target_build_dir, "generated")
+he.target_build_dir     = path.join(he.build_dir, "%{os.target()}-%{cfg.architecture}-%{cfg.buildcfg:lower()}")
+he.target_bin_dir       = path.join(he.target_build_dir, "bin")
+he.target_lib_dir       = path.join(he.target_build_dir, "lib/%{prj.name}")
+he.target_obj_dir       = path.join(he.target_build_dir, "obj/%{prj.name}")
+he.target_gen_dir       = path.join(he.target_build_dir, "generated")
 
 -- Generated file paths
-file_gen_dir = "%{get_generated_dir(prj.name)}/%{path.getrelative(get_module(prj.name)._plugin._install_dir, path.getdirectory(file.abspath))}"
-function get_generated_dir(project_name)
-    return path.join(gen_dir, project_name)
+he.file_gen_dir = "%{he.get_generated_dir(prj.name)}/%{path.getrelative(he.get_module(prj.name)._plugin._install_dir, path.getdirectory(file.abspath))}"
+he.get_generated_dir = function (project_name)
+    return path.join(he.gen_dir, project_name)
 end
 
 -- Generated file paths based on target & configuration
-target_file_gen_dir = "%{get_target_generated_dir(prj.name)}/%{path.getrelative(get_module(prj.name)._plugin._install_dir, path.getdirectory(file.abspath))}"
-function get_target_generated_dir(project_name)
-    return path.join(target_gen_dir, project_name)
+he.target_file_gen_dir = "%{he.get_target_generated_dir(prj.name)}/%{path.getrelative(he.get_module(prj.name)._plugin._install_dir, path.getdirectory(file.abspath))}"
+he.get_target_generated_dir = function (project_name)
+    return path.join(he.target_gen_dir, project_name)
 end

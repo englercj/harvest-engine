@@ -2,17 +2,16 @@
 
 local p = premake
 local install_plugin = dofile("install_plugin.lua")
-local build_type = "dynamic" -- TODO: Switch based on dynamic or static build of modules
 
 local target_dir_by_kind = {
-    ConsoleApp = target_bin_dir,
-    WindowedApp = target_bin_dir,
-    SharedLib = target_bin_dir,
-    StaticLib = target_lib_dir,
+    ConsoleApp = he.target_bin_dir,
+    WindowedApp = he.target_bin_dir,
+    SharedLib = he.target_bin_dir,
+    StaticLib = he.target_lib_dir,
 }
 
 local kind_by_module_type = {
-    default = (build_type == "dynamic" and "SharedLib" or "StaticLib"),
+    default = (he.is_static_only and "StaticLib" or "SharedLib"),
     static = "StaticLib",
     shared = "SharedLib",
     header = "StaticLib",
@@ -24,7 +23,7 @@ local kind_by_module_type = {
 -- We want to treat these keys as valid, but ignore them when applying module keys.
 -- Most of these are handled explicitly, or are private, so we don't want to warn
 -- about missing handlers for them.
-local module_keys_ignore = {
+local module_ignore_keys = {
     "_plugin",
     "conditions",
     "name",
@@ -33,164 +32,38 @@ local module_keys_ignore = {
 }
 
 -- Variants are not allowed to override these keys.
-local variant_keys_disallow = {
+he.variant_disallow_keys = {
     "name",
     "type",
     "variants",
 }
 
-local module_dependency_include_keys = {
-    -- { handler key, value key }
-    { "public_defines", "public_defines" },
-    { "public_dependson_include", "public_dependson" }, -- Treat dependson like it is an include dependency
-    { "public_dependson_include", "public_dependson_include" },
-    { "public_includedirs", "public_includedirs" },
-}
+he.module_dependency_include_keys = {}
+he.module_dependency_link_keys = {}
 
-local module_dependency_link_keys = {
-    -- { handler key, value key }
-    { "public_dependson", "public_dependson" },
-}
+he.imported_plugins = {}
+he.imported_plugins_count = 0
 
-local imported_plugins = {}
-local imported_plugins_count = 0
+he.imported_modules = {}
+he.imported_modules_count = 0
 
-local imported_modules = {}
-local imported_modules_count = 0
-
-local key_handlers = {}
+he.module_key_infos = {}
 
 local function _try_handle_key(ctx, key, value)
     if key == nil or value == nil then
         return
     end
 
-    if table.contains(module_keys_ignore, key) then
+    if table.contains(module_ignore_keys, key) then
         return
     end
 
-    local handler = key_handlers[key]
-    if handler == nil then
+    local info = he.module_key_infos[key]
+    if info == nil then
         p.warn("Module '" .. ctx.name .. "' contains unknown key '" .. key .. "'.")
     else
-        handler(ctx, value)
-    end
-end
-
-key_handlers.files = function (ctx, values)
-    files(values)
-end
-
-key_handlers.warnings = function (ctx, value)
-    warnings(value)
-end
-
-key_handlers.post_build_commands = function (ctx, values)
-    postbuildcommands(values)
-end
-
-key_handlers.pre_build_commands = function (ctx, values)
-    prebuildcommands(values)
-end
-
-key_handlers.public_defines = function (ctx, values)
-    defines(values)
-end
-key_handlers.private_defines = key_handlers.public_defines
-
-key_handlers.public_includedirs = function (ctx, values)
-    includedirs(values)
-end
-key_handlers.private_includedirs = key_handlers.public_includedirs
-
-key_handlers.public_dependson = function (ctx, values)
-    for _, mod_name in ipairs(values) do
-        if string.startswith(mod_name, "sys:") then
-            links { string.sub(mod_name, 5) }
-            return
-        end
-
-        if string.startswith(mod_name, "file:") then
-            links { string.sub(mod_name, 6) }
-            return
-        end
-
-        if string.startswith(mod_name, "module:") then
-            mod_name = string.sub(mod_name, 8)
-        end
-
-        local mod = imported_modules[mod_name]
-        assert(mod ~= nil, "Module '" .. ctx.name .. "' has a dependency on '" .. mod_name .. "', but no such module has been imported.")
-
-        if ctx.type == "console_app" or ctx.type == "windowed_app" or (ctx.type == "default" and build_type == "dynamic") then
-            if mod.type == "static" or mod.type == "test" then
-                links { mod.name }
-            end
-        end
-
-        local oldcwd = os.getcwd()
-        os.chdir(mod._plugin._install_dir)
-
-        for _, keys in ipairs(module_dependency_include_keys) do
-            _try_handle_key(ctx, keys[1], mod[keys[2]])
-        end
-
-        for _, keys in ipairs(module_dependency_link_keys) do
-            _try_handle_key(ctx, keys[1], mod[keys[2]])
-        end
-
-        os.chdir(oldcwd)
-    end
-end
-key_handlers.private_dependson = key_handlers.public_dependson
-
-key_handlers.public_dependson_include = function (ctx, values)
-    for _, mod_name in ipairs(values) do
-        if string.startswith(mod_name, "sys:") or string.startswith(mod_name, "file:") then
-            return
-        end
-
-        if string.startswith(mod_name, "module:") then
-            mod_name = string.sub(mod_name, 8)
-        end
-
-        local mod = imported_modules[mod_name]
-        assert(mod ~= nil, "Module '" .. ctx.name .. "' has an include dependency on '" .. mod_name .. "', but no such module has been imported.")
-
-        local oldcwd = os.getcwd()
-        os.chdir(mod._plugin._install_dir)
-
-        for _, keys in ipairs(module_dependency_include_keys) do
-            _try_handle_key(ctx, keys[1], mod[keys[2]])
-        end
-
-        os.chdir(oldcwd)
-    end
-end
-key_handlers.private_dependson_include = key_handlers.public_dependson_include
-
-key_handlers.exec = function (ctx, value)
-    local func = dofile(value)
-    func(ctx)
-end
-
-key_handlers.variants = function (ctx, values)
-    for _, variant in ipairs(values) do
-        if variant.conditions == nil then
-            filter { }
-        else
-            filter(variant.conditions)
-        end
-
-        for key, value in orderedPairs(variant) do
-            if table.contains(variant_keys_disallow, key) then
-                p.warn("Module '" .. ctx.name .. "' has a variant (index " .. _ .. ") that tries to override a disallowed key '" .. key .. "'.")
-            else
-                _try_handle_key(ctx, key, value)
-            end
-        end
-
-        filter { }
+        assert(type(value) == info.type, "Unexpected type for '" .. key .. "' in module '" .. ctx.name .. "', expected " .. info.desc)
+        info.handler(ctx, value)
     end
 end
 
@@ -242,7 +115,7 @@ local function _module_project(mod)
         kind(kindname)
         objdir(target_obj_dir)
         targetdir(kind_target_dir)
-        location(projects_dir)
+        location(he.projects_dir)
 
         defines { "HE_CFG_MODULE_NAME=\"" .. mod.name .. "\"" }
 
@@ -312,8 +185,8 @@ local function _import_plugin(plugin_path, options)
     -- Mark the plugin as imported and install
     assert(type(plugin.id) == "string", "Plugins that provide modules must specify an 'id' key.")
 
-    imported_plugins[plugin.id] = plugin
-    imported_plugins_count = imported_plugins_count + 1
+    he.imported_plugins[plugin.id] = plugin
+    he.imported_plugins_count = he.imported_plugins_count + 1
 
     plugin._file_path = plugin_file
 
@@ -327,7 +200,7 @@ local function _import_plugin(plugin_path, options)
     if plugin.import_plugins ~= nil then
         imports_other_plugins = true
         assert(type(plugin.import_plugins) == "table", "Plugin at '" .. plugin_path .. "' incorrectly specifies the 'import_plugins' key. It must be an array of string paths.")
-        import_plugins(plugin.import_plugins, options)
+        he.import_plugins(plugin.import_plugins, options)
     end
 
     -- Check if the plugin provides any modules, and warn if it doesn't.
@@ -345,12 +218,12 @@ local function _import_plugin(plugin_path, options)
         verbosef("Examining plugin module '%s'...", mod.name)
         mod._plugin = plugin
 
-        local existing = imported_modules[mod.name]
+        local existing = he.imported_modules[mod.name]
         assert(existing == nil, "Module '" .. mod.name .. "' was already provided by plugin '" .. (existing and existing._plugin.id or "") .. "', but plugin '" .. plugin.id .. "' also provides it.")
 
         if _should_include_module(mod, options) then
-            imported_modules[mod.name] = mod
-            imported_modules_count = imported_modules_count + 1
+            he.imported_modules[mod.name] = mod
+            he.imported_modules_count = he.imported_modules_count + 1
 
             table.insert(imported, mod);
         end
@@ -361,7 +234,19 @@ local function _import_plugin(plugin_path, options)
     return imported
 end
 
-function import_plugins(plugins, options)
+local function _get_scope_table(scope)
+    if scope == "include" then
+        return he.module_dependency_include_keys
+    elseif scope == "link" then
+        return he.module_dependency_link_keys
+    elseif scope == "private" then
+        return nil
+    end
+
+    p.error("Cannot add module keys to unknown scope: '" .. scope .. "'")
+end
+
+he.import_plugins = function (plugins, options)
     if type(plugins) == "string" then
         plugins = { plugins }
     end
@@ -404,75 +289,38 @@ function import_plugins(plugins, options)
     end
 end
 
-local function _register_module_key(dst, key, handler)
+he.add_module_key = function (info)
+    local dst = _get_scope_table(info.scope)
+
     if dst == nil then
-        assert(key_handlers[key] == nil, "There is already a handler registered for: " .. key)
-        key_handlers[key] = handler
+        assert(he.module_key_infos[info.key] == nil, "There is already a module key registered with the name: " .. info.key)
+        he.module_key_infos[info.key] = info
+
+        if info.allow_variants == false then
+            table.insert(he.variant_disallow_keys, info.key)
+        end
     else
-        local public_key = "public_" .. key
-        local private_key = "private_" .. key
+        local public_key = "public_" .. info.key
+        local private_key = "private_" .. info.key
 
-        assert(key_handlers[public_key] == nil, "There is already a handler registered for: " .. public_key)
-        assert(key_handlers[private_key] == nil, "There is already a handler registered for: " .. private_key)
+        assert(he.module_key_infos[public_key] == nil, "There is already a module key registered with the name: " .. public_key)
+        assert(he.module_key_infos[private_key] == nil, "There is already a module key registered with the name: " .. private_key)
 
-        table.insert(dst, { public_key, public_key })
+        table.insert(dst, public_key)
 
-        key_handlers[public_key] = handler
-        key_handlers[private_key] = handler
+        he.module_key_infos[public_key] = info
+        he.module_key_infos[private_key] = info
     end
 end
 
-local function _get_scope_table(scope)
-    if scope == "include" then
-        return module_dependency_include_keys
-    elseif scope == "link" then
-        return module_dependency_link_keys
-    elseif scope == "private" then
-        return nil
-    end
-
-    p.error("Cannot add module keys to unknown scope: '" .. scope .. "'")
+he.get_module = function (name)
+    return he.imported_modules[name]
 end
 
-function add_module_key(scope, key, handler)
-    if handler == nil then
-        handler = function (ctx, value)
-            _G[k](value)
-        end
-    end
-
-    local dst = _get_scope_table(scope)
-    _register_module_key(dst, key, handler);
+he.get_plugin = function (id)
+    return he.imported_plugins[id]
 end
 
-function add_module_keys(scope, keys)
-    assert(type(keys) == "table", "add_module_keys expects a table of keys")
-
-    for _, k in ipairs(keys) do
-        if type(k) == "string" then
-            add_module_key(scope, k)
-        else
-            add_module_key(scope, k[1], k[2])
-        end
-    end
-end
-
-function get_module(name)
-    return imported_modules[name]
-end
-
-function get_all_modules()
-    return imported_modules
-end
-
-function get_plugin(id)
-    return imported_plugins[id]
-end
-
-function get_all_plugins()
-    return imported_plugins
-end
-
-function handle_module_key(mod, key, value)
+he.try_handle_module_key = function (mod, key, value)
     _try_handle_key(mod, key, value)
 end

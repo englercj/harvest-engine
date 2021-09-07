@@ -1,0 +1,170 @@
+-- Copyright Chad Engler
+
+local p = premake
+
+he.add_module_key {
+    key = "defines",
+    scope = "include",
+    type = "table",
+    desc = "an array of strings",
+    handler = function (ctx, values) defines(values) end,
+}
+
+he.add_module_key {
+    key = "includedirs",
+    scope = "include",
+    type = "table",
+    desc = "an array of strings",
+    handler = function (ctx, values) includedirs(values) end,
+}
+
+he.add_module_key {
+    key = "dependson_include",
+    scope = "include",
+    type = "table",
+    desc = "an array of module names",
+    handler = function (ctx, values)
+        for _, mod_name in ipairs(values) do
+            if string.startswith(mod_name, "sys:") or string.startswith(mod_name, "file:") then
+                return
+            end
+
+            if string.startswith(mod_name, "module:") then
+                mod_name = string.sub(mod_name, 8)
+            end
+
+            local mod = he.imported_modules[mod_name]
+            assert(mod ~= nil, "Module '" .. ctx.name .. "' has an include dependency on '" .. mod_name .. "', but no such module has been imported.")
+
+            local oldcwd = os.getcwd()
+            os.chdir(mod._plugin._install_dir)
+
+            for _, key in ipairs(he.module_dependency_include_keys) do
+                he.try_handle_module_key(ctx, key, mod[key])
+            end
+
+            -- Propagate the `public_dependson` key as if it was the include variant
+            he.try_handle_module_key(ctx, "public_dependson_include", mod.public_dependson)
+
+            os.chdir(oldcwd)
+        end
+    end,
+}
+
+he.add_module_key {
+    key = "dependson",
+    scope = "link",
+    type = "table",
+    desc = "an array of module names, system libraries ('sys:X'), or files ('file:X')",
+    handler = function (ctx, values)
+        for _, mod_name in ipairs(values) do
+            if string.startswith(mod_name, "sys:") then
+                links { string.sub(mod_name, 5) }
+                return
+            end
+
+            if string.startswith(mod_name, "file:") then
+                links { string.sub(mod_name, 6) }
+                return
+            end
+
+            if string.startswith(mod_name, "module:") then
+                mod_name = string.sub(mod_name, 8)
+            end
+
+            local mod = he.imported_modules[mod_name]
+            assert(mod ~= nil, "Module '" .. ctx.name .. "' has a dependency on '" .. mod_name .. "', but no such module has been imported.")
+
+            if ctx.type == "console_app" or ctx.type == "windowed_app" or (ctx.type == "default" and build_type == "dynamic") then
+                if mod.type == "static" or mod.type == "test" then
+                    links { mod.name }
+                end
+            end
+
+            local oldcwd = os.getcwd()
+            os.chdir(mod._plugin._install_dir)
+
+            for _, key in ipairs(he.module_dependency_include_keys) do
+                he.try_handle_module_key(ctx, key, mod[key])
+            end
+
+            -- Propagate the `public_dependson` key as if it was the include variant
+            he.try_handle_module_key(ctx, "public_dependson_include", mod.public_dependson)
+
+            for _, key in ipairs(he.module_dependency_link_keys) do
+                he.try_handle_module_key(ctx, key, mod[key])
+            end
+
+            os.chdir(oldcwd)
+        end
+    end,
+}
+
+he.add_module_key {
+    key = "files",
+    scope = "private",
+    type = "table",
+    desc = "a table of strings",
+    handler = function (ctx, values) files(values) end,
+}
+
+he.add_module_key {
+    key = "warnings",
+    scope = "private",
+    type = "string",
+    desc = "one of: 'off', 'default', or 'extra'",
+    handler = function (ctx, value) warnings(value) end,
+}
+
+he.add_module_key {
+    key = "post_build_commands",
+    scope = "private",
+    type = "table",
+    desc = "an array of strings",
+    handler = function (ctx, values) postbuildcommands(values) end,
+}
+
+he.add_module_key {
+    key = "pre_build_commands",
+    scope = "private",
+    type = "table",
+    desc = "an array of strings",
+    handler = function (ctx, values) prebuildcommands(values) end,
+}
+
+he.add_module_key {
+    key = "exec",
+    scope = "private",
+    type = "string",
+    desc = "a string file path",
+    handler = function (ctx, value)
+        local func = dofile(value)
+        func(ctx)
+    end,
+}
+
+he.add_module_key {
+    key = "variants",
+    scope = "private",
+    type = "table",
+    desc = "an array of variant objects",
+    handler = function (ctx, values)
+        for _, variant in ipairs(values) do
+            if variant.conditions == nil then
+                filter { }
+            else
+                filter(variant.conditions)
+            end
+
+            for key, value in orderedPairs(variant) do
+                if table.contains(he.variant_disallow_keys, key) then
+                    p.warn("Module '" .. ctx.name .. "' has a variant (index " .. _ .. ") that tries to override a disallowed key '" .. key .. "'.")
+                else
+                    he.try_handle_module_key(ctx, key, value)
+                end
+            end
+
+            filter { }
+        end
+    end,
+}

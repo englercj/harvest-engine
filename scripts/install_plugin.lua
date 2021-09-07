@@ -40,10 +40,17 @@ end
 
 local function _install_from_archive(name, url, archiveName, extractDirName)
     local digest = string.sha1(name .. url)
-    local archiveDir = path.join(plugin_install_dir, name)
+    local archiveDir = path.join(he.plugin_install_dir, name)
 
     local vfile = path.join(archiveDir, ".plugin_digest")
     local installed_version = io.readfile(vfile);
+
+    local extractDir = ""
+    if extractDirName == nil then
+        extractDir = archiveDir
+    else
+        extractDir = path.join(archiveDir, extractDirName)
+    end
 
     if installed_version == digest then
         verbosef("Plugin '%s' matches local digest, skipping.", name)
@@ -56,13 +63,6 @@ local function _install_from_archive(name, url, archiveName, extractDirName)
         end
 
         printf("Extracting %s...", archiveName)
-
-        local extractDir = ""
-        if extractDirName == nil then
-            extractDir = archiveDir
-        else
-            extractDir = path.join(archiveDir, extractDirName)
-        end
 
         os.mkdir(extractDir)
 
@@ -80,7 +80,7 @@ local function _install_from_archive(name, url, archiveName, extractDirName)
         io.writefile(vfile, digest)
     end
 
-    return archiveDir
+    return extractDir
 end
 
 local function _install_from_github(name, source)
@@ -161,7 +161,7 @@ local function _install_from_nuget(name, source)
     local extractDirName = package_name .. "-" .. version
     local install_dir = _install_from_archive(name, url, archiveName, extractDirName)
 
-    return path.join(install_dir, extractDirName)
+    return install_dir
 end
 
 return function (plugin)

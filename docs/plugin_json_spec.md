@@ -102,7 +102,7 @@ Example: `"public_dependson": ["he_core", "module:he_platform", "sys:user32", "f
 
 ## Module Keys Extension
 
-You can extend the supported keys by calling the `add_module_keys` function in a lua function specified in your plugin's `install/exec` key.
+You can extend the supported keys by calling the `he.add_module_key` function in a lua function specified in your plugin's `install/exec` key.
 
 For example:
 
@@ -122,20 +122,26 @@ For example:
 return function (plugin)
     -- plugin = the parsed plugin json
 
-    add_module_key("private", "mytool", function (ctx, value)
-        -- ctx = the module that used the "mytool" key
-        -- value = the value of the "mytool" key in the module
+    he.add_module_key {
+        key = "mytool",
+        scope = "private",
+        type = "string",
+        desc = "a string path to the files to run mytool on, globs are allowed",
+        handler = function (ctx, value)
+            -- ctx = the module that used the "mytool" key
+            -- value = the value of the "mytool" key in the module
 
-        -- The project for the module that used the "mytool" key is currently in scope
-        -- Paths are relative to the plugin json file that contained the module.
-        files { "**.tool" }
-        dependson { "mytool" }
-        filter { "files:**.tool" }
-            buildmessage "Running mytool on file %{file.abspath}"
-            buildcommands { target_bin_dir .. "/mytool %{file.abspath} -o " .. file_gen_dir }
-            buildoutputs { file_gen_dir .. "/%{file.name}.h" }
-        filter { }
-    end)
+            -- The project for the module that used the "mytool" key is currently in scope
+            -- Paths are relative to the plugin json file that contained the module.
+            files { value }
+            dependson { "mytool" }
+            filter { "files:" .. value }
+                buildmessage "Running mytool on file %{file.abspath}"
+                buildcommands { he.target_bin_dir .. "/mytool %{file.abspath} -o " .. he.file_gen_dir }
+                buildoutputs { he.file_gen_dir .. "/%{file.name}.h" }
+            filter { }
+        end,
+    }
 end
 ```
 

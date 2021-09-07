@@ -7,7 +7,12 @@ newoption {
 }
 
 newoption {
+    trigger = "static",
+    description = "Statically link all modules, and disable hot reload functionality"
+}
+
+newoption {
     trigger = "windows_systemversion",
     default = "latest",
-    description = "systemversion",
+    description = "Set the windows SDK version to build against",
 }

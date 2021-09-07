@@ -25,11 +25,12 @@ namespace he::schema
     public:
         struct ErrorInfo
         {
-            ErrorInfo(Allocator& allocator) : message(allocator) {}
+            ErrorInfo(Allocator& allocator) : message(allocator), file(allocator) {}
 
+            String message;
+            String file;
             uint32_t line;
             uint32_t column;
-            String message;
         };
 
     public:
@@ -168,6 +169,7 @@ namespace he::schema
 
         Lexer m_lexer;
         Lexer::Token m_token{};
+        StringView m_fileName{ "schemac" };
 
         Vector<ErrorInfo> m_errors;
         String m_decodedString;

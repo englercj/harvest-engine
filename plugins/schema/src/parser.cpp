@@ -125,6 +125,7 @@ namespace he::schema
     bool Parser::ParseFileInternal(const char* path, Span<StringView> includeDirs)
     {
         String contents(m_allocator);
+        m_fileName = path;
 
         if (!LoadFile(contents, path, includeDirs))
             return false;
@@ -138,7 +139,7 @@ namespace he::schema
 
         if (!r && GetFileResult(r) != FileResult::NotFound)
         {
-            AddError("Failed to open file: {} Error {}", path, r);
+            AddError("Failed to open file: '{}'. Error: {}", path, r);
             return false;
         }
 
@@ -197,7 +198,7 @@ namespace he::schema
         if (r)
             return true;
 
-        AddError("Failed to read file: {} Error {}", path, r);
+        AddError("Failed to read file: '{}'. Error: {}", path, r);
         return false;
     }
 
@@ -515,6 +516,12 @@ namespace he::schema
 
         if (TryConsume(Lexer::TokenType::OpenParens))
         {
+            if (def->type.base == BaseType::Unknown)
+            {
+                AddError("Cannot pass a parameter to an attribute with no type specified.");
+                return false;
+            }
+
             if (!ConsumeValue(def->type.base, attribute.parameters.EmplaceBack(m_allocator)))
                 return false;
 
@@ -890,6 +897,12 @@ namespace he::schema
 
         if (TryConsume(Lexer::TokenType::Asterisk))
         {
+            if (type.base != BaseType::Array)
+            {
+                AddError("Pointers to arrays are not allowed");
+                return false;
+            }
+
             type.pointer = true;
         }
 
@@ -978,8 +991,7 @@ namespace he::schema
                     value.str.Append(m_token.text.Data(), m_token.text.Size());
                 return true;
             case BaseType::Unknown:
-                HE_ASSERT(type != BaseType::Unknown);
-                AddError("Tried to consume a value for an unknown type, this should never happen");
+                AddError("Value specified for an undefined type.");
                 return false;
         }
 
@@ -1012,12 +1024,14 @@ namespace he::schema
 
             Lexer tempLexer(Move(m_lexer));
             Lexer::Token tempToken(Move(m_token));
+            StringView tempFileName = m_fileName;
 
             if (!ParseFileInternal(importPath.Data(), includeDirs))
                 return false;
 
             m_lexer = Move(tempLexer);
             m_token = Move(tempToken);
+            m_fileName = tempFileName;
 
             // Move the parsed schema into the imports list
             auto result = m_imports.try_emplace(m_schema.namespaceName, m_allocator);
@@ -1029,6 +1043,9 @@ namespace he::schema
 
             if (im.directImport)
                 directImports.PushBack(im.importPath);
+
+            // reset the local schema
+            m_schema = SchemaDef(m_allocator);
         }
 
         if (m_importDepth == 1)
@@ -1150,6 +1167,12 @@ namespace he::schema
         {
             if (!ConsumeType(def.extends))
                 return false;
+
+            if (def.extends.base != BaseType::Struct)
+            {
+                AddError("Expected struct name for extends value, but got {}", def.extends.base);
+                return false;
+            }
         }
 
         return ParseStructBlock(def);
@@ -1420,6 +1443,12 @@ namespace he::schema
             {
                 if (!ConsumeType(def.implements.EmplaceBack(m_allocator)))
                     return false;
+
+                if (def.implements.Back().base != BaseType::Interface)
+                {
+                    AddError("Expected interface name for implements value, but got {}", def.implements.Back().base);
+                    return false;
+                }
             } while (TryConsume(Lexer::TokenType::Comma));
         }
 
@@ -1604,9 +1633,8 @@ namespace he::schema
     template <typename... Args>
     void Parser::AddError(fmt::format_string<Args...> fmt, Args&&... args)
     {
-        HE_DEBUG_BREAK();
-
         ErrorInfo& entry = m_errors.EmplaceBack(m_allocator);
+        entry.file.Assign(m_fileName.Data(), m_fileName.Size());
         entry.line = m_token.line;
         entry.column = m_token.column;
 

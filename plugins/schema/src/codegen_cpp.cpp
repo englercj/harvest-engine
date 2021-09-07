@@ -203,6 +203,7 @@ namespace he::schema
             m_writer.Write(def.name);
             m_writer.Write(" = ");
             WriteType(def.type);
+            WriteArraySize(def.type);
             m_writer.Write(";\n");
         }
 
@@ -333,6 +334,7 @@ namespace he::schema
                 WriteType(field.type);
                 m_writer.Write(' ');
                 m_writer.Write(field.name);
+                WriteArraySize(field.type);
                 m_writer.Write("{ ");
                 WriteValue(field.type.base, field.defaultValue);
                 m_writer.Write(" };\n");
@@ -557,6 +559,20 @@ namespace he::schema
             }
         }
 
+        void WriteArraySize(const Type& t)
+        {
+            if (t.base != BaseType::Array)
+                return;
+
+            m_writer.Write('[');
+            if (t.fixedSize != 0)
+                m_writer.Write("{}", t.fixedSize);
+            else
+                WriteWithReplace(t.name, '.', "::");
+            m_writer.Write(']');
+        }
+
+
         void WriteType(const Type& t)
         {
             switch (t.base)
@@ -579,12 +595,6 @@ namespace he::schema
                 {
                     HE_ASSERT(t.element);
                     WriteType(*t.element);
-                    m_writer.Write('[');
-                    if (t.fixedSize != 0)
-                        m_writer.Write("{}", t.fixedSize);
-                    else
-                        WriteWithReplace(t.name, '.', "::");
-                    m_writer.Write(']');
                     break;
                 }
                 case BaseType::List:
@@ -592,6 +602,7 @@ namespace he::schema
                     HE_ASSERT(t.element);
                     m_writer.Write("std::list<");
                     WriteType(*t.element);
+                    WriteArraySize(*t.element);
                     m_writer.Write('>');
                     break;
                 }
@@ -600,8 +611,10 @@ namespace he::schema
                     HE_ASSERT(t.key && t.element);
                     m_writer.Write("std::unordered_map<");
                     WriteType(*t.key);
+                    WriteArraySize(*t.element);
                     m_writer.Write(", ");
                     WriteType(*t.element);
+                    WriteArraySize(*t.element);
                     m_writer.Write('>');
                     break;
                 }
@@ -610,6 +623,7 @@ namespace he::schema
                     HE_ASSERT(t.element);
                     m_writer.Write("std::unordered_set<");
                     WriteType(*t.element);
+                    WriteArraySize(*t.element);
                     m_writer.Write('>');
                     break;
                 }
@@ -618,6 +632,7 @@ namespace he::schema
                     HE_ASSERT(t.element);
                     m_writer.Write("Vector<");
                     WriteType(*t.element);
+                    WriteArraySize(*t.element);
                     m_writer.Write('>');
                 }
                 case BaseType::Enum:
@@ -642,6 +657,9 @@ namespace he::schema
                     HE_ASSERT(false, "Encountered an unknown type!");
                     break;
             }
+
+            if (t.pointer)
+                m_writer.Write('*');
         }
 
         void WriteValue(BaseType t, const Value& v)

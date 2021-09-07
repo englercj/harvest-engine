@@ -77,24 +77,28 @@ namespace he::window
         View* view;
     };
 
-    /// \copydoc EventType::MouseDown
-    struct MouseDownEvent : public ViewEvent
+    /// Base structure for MouseUp and MouseDown events.
+    struct MouseButtonEvent : public ViewEvent
     {
-        MouseDownEvent(View* v, MouseButton b)
-            : ViewEvent(EventType::MouseDown, v), button(b) {}
+        MouseButtonEvent(EventType t, View* v, MouseButton b)
+            : ViewEvent(t, v), button(b) {}
 
-        /// The button that was pressed.
+        /// The button that was pressed or released.
         MouseButton button;
     };
 
+    /// \copydoc EventType::MouseDown
+    struct MouseDownEvent : public MouseButtonEvent
+    {
+        MouseDownEvent(View* v, MouseButton b)
+            : MouseButtonEvent(EventType::MouseDown, v, b) {}
+    };
+
     /// \copydoc EventType::MouseUp
-    struct MouseUpEvent : public ViewEvent
+    struct MouseUpEvent : public MouseButtonEvent
     {
         MouseUpEvent(View* v, MouseButton b)
-            : ViewEvent(EventType::MouseUp, v), button(b) {}
-
-        /// The button that was released.
-        MouseButton button;
+            : MouseButtonEvent(EventType::MouseUp, v, b) {}
     };
 
     /// \copydoc EventType::MouseWheel
@@ -124,24 +128,28 @@ namespace he::window
         bool raw;
     };
 
-    /// \copydoc EventType::KeyDown
-    struct KeyDownEvent : public ViewEvent
+    /// Base structure for KeyUp and KeyDown events.
+    struct KeyEvent : public ViewEvent
     {
-        KeyDownEvent(View* v, Key k)
-            : ViewEvent(EventType::KeyDown, v), key(k) {}
+        KeyEvent(EventType t, View* v, Key k)
+            : ViewEvent(t, v), key(k) {}
 
-        /// The key that was pressed.
+        /// The key that was pressed or released.
         Key key;
     };
 
+    /// \copydoc EventType::KeyDown
+    struct KeyDownEvent : public KeyEvent
+    {
+        KeyDownEvent(View* v, Key k)
+            : KeyEvent(EventType::KeyDown, v, k) {}
+    };
+
     /// \copydoc EventType::KeyUp
-    struct KeyUpEvent : public ViewEvent
+    struct KeyUpEvent : public KeyEvent
     {
         KeyUpEvent(View* v, Key k)
-            : ViewEvent(EventType::KeyUp, v), key(k) {}
-
-        /// The key that was released.
-        Key key;
+            : KeyEvent(EventType::KeyUp, v, k) {}
     };
 
     /// \copydoc EventType::Text

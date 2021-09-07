@@ -296,7 +296,7 @@ he.add_module_key = function (info)
         assert(he.module_key_infos[info.key] == nil, "There is already a module key registered with the name: " .. info.key)
         he.module_key_infos[info.key] = info
 
-        if info.allow_variants == false then
+        if info.allow_in_variants == false then
             table.insert(he.variant_disallow_keys, info.key)
         end
     else

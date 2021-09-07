@@ -1,6 +1,45 @@
 -- Copyright Chad Engler
 
 local p = premake
+local variant_filter_stack = {}
+
+local function _handle_variant_key(ctx, key, value)
+    if table.contains(he.variant_disallow_keys, key) then
+        p.warn("Module '" .. ctx.name .. "' has a variant (index " .. _ .. ") that tries to override a disallowed key '" .. key .. "'.")
+    else
+        he.try_handle_module_key(ctx, key, value)
+    end
+end
+
+local function _handle_variants(ctx, values, key_list)
+    for _, variant in ipairs(values) do
+        if variant.conditions == nil then
+            filter { }
+        else
+            filter(variant.conditions)
+        end
+        table.insert(variant_filter_stack, variant.conditions)
+
+        if key_list == nil then
+            for key, value in orderedPairs(variant) do
+                _handle_variant_key(ctx, key, value)
+            end
+        else
+            for _, key in ipairs(key_list) do
+                _handle_variant_key(ctx, key, variant[key])
+            end
+        end
+
+        -- Pop off our own filter, and restore the next filter on the stack
+        table.remove(variant_filter_stack)
+        local prev_filter = variant_filter_stack[#variant_filter_stack]
+        if prev_filter == nil then
+            filter { }
+        else
+            filter(prev_filter)
+        end
+    end
+end
 
 he.add_module_key {
     key = "defines",
@@ -46,6 +85,10 @@ he.add_module_key {
             -- Propagate the `public_dependson` key as if it was the include variant
             he.try_handle_module_key(ctx, "public_dependson_include", mod.public_dependson)
 
+            if mod.variants ~= nil then
+                _handle_variants(ctx, mod.variants, he.module_dependency_include_keys)
+            end
+
             os.chdir(oldcwd)
         end
     end,
@@ -59,12 +102,16 @@ he.add_module_key {
     handler = function (ctx, values)
         for _, mod_name in ipairs(values) do
             if string.startswith(mod_name, "sys:") then
-                links { string.sub(mod_name, 5) }
+                if ctx.type == "console_app" or ctx.type == "windowed_app" or (ctx.type == "default" and not he.is_static_only) then
+                    links { string.sub(mod_name, 5) }
+                end
                 return
             end
 
             if string.startswith(mod_name, "file:") then
-                links { string.sub(mod_name, 6) }
+                if ctx.type == "console_app" or ctx.type == "windowed_app" or (ctx.type == "default" and not he.is_static_only) then
+                    links { string.sub(mod_name, 6) }
+                end
                 return
             end
 
@@ -75,7 +122,7 @@ he.add_module_key {
             local mod = he.imported_modules[mod_name]
             assert(mod ~= nil, "Module '" .. ctx.name .. "' has a dependency on '" .. mod_name .. "', but no such module has been imported.")
 
-            if ctx.type == "console_app" or ctx.type == "windowed_app" or (ctx.type == "default" and build_type == "dynamic") then
+            if ctx.type == "console_app" or ctx.type == "windowed_app" or (ctx.type == "default" and not he.is_static_only) then
                 if mod.type == "static" or mod.type == "test" then
                     links { mod.name }
                 end
@@ -93,6 +140,11 @@ he.add_module_key {
 
             for _, key in ipairs(he.module_dependency_link_keys) do
                 he.try_handle_module_key(ctx, key, mod[key])
+            end
+
+            if mod.variants ~= nil then
+                _handle_variants(ctx, mod.variants, he.module_dependency_include_keys)
+                _handle_variants(ctx, mod.variants, he.module_dependency_link_keys)
             end
 
             os.chdir(oldcwd)
@@ -148,23 +200,5 @@ he.add_module_key {
     scope = "private",
     type = "table",
     desc = "an array of variant objects",
-    handler = function (ctx, values)
-        for _, variant in ipairs(values) do
-            if variant.conditions == nil then
-                filter { }
-            else
-                filter(variant.conditions)
-            end
-
-            for key, value in orderedPairs(variant) do
-                if table.contains(he.variant_disallow_keys, key) then
-                    p.warn("Module '" .. ctx.name .. "' has a variant (index " .. _ .. ") that tries to override a disallowed key '" .. key .. "'.")
-                else
-                    he.try_handle_module_key(ctx, key, value)
-                end
-            end
-
-            filter { }
-        end
-    end,
+    handler = function (ctx, values) _handle_variants(ctx, values) end,
 }

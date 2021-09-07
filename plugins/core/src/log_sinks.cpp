@@ -76,7 +76,7 @@ namespace he
 
         std::time_t time = std::chrono::system_clock::to_time_t(timePoint);
 
-        fmt::format_to(StringAppender(m_buf), "_{:%Y-%m-%d_%H-%M-%S}.log", prefix, fmt::localtime(time));
+        fmt::format_to(StringAppender(m_buf), "_{:%Y-%m-%d_%H-%M-%S}.log", fmt::localtime(time));
 
         return m_file.Open(m_buf.Data(), FileOpenMode::WriteTruncate);
     }

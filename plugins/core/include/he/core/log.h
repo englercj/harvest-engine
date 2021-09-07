@@ -151,7 +151,7 @@ namespace he
 
     /// Returns a log level as a string.
     ///
-    /// \param x The log level to get the string representation of.
+    /// \param[in] x The log level to get the string representation of.
     /// \return A string representing the log level.
     const char* AsString(LogLevel x);
 
@@ -263,35 +263,51 @@ namespace he
     /// live beyond the function body. However, you don't have to copy the strings in the
     /// LogSource, just the pointers since they point to static memory.
     ///
-    /// \param source The source information for this log entry.
-    /// \param kvs An array of key-value pairs.
-    /// \param count The size of the `kvs` array.
-    using LogSinkFunc = void(*)(const LogSource& source, const LogKV* kvs, uint32_t count);
+    /// \param[in] source The source information for this log entry.
+    /// \param[in] kvs An array of key-value pairs.
+    /// \param[in] count The size of the `kvs` array.
+    using LogSinkFunc = void(*)(void* userData, const LogSource& source, const LogKV* kvs, uint32_t count);
 
     /// Stores the sink to be called when a log entry is dispatched.
     ///
-    /// \param sink The log sink to store and send logs to.
-    void AddLogSink(LogSinkFunc sink);
+    /// \param[in] sink The log sink to store and send logs to.
+    /// \param[in] userData Pointer to opaque data that will be passed to the sink funciton as the
+    ///     first parameter.
+    void AddLogSink(LogSinkFunc sink, void* userData = nullptr);
+
+    /// Stores the sink to be called when a log entry is dispatched. The sink object must have a
+    /// lifetime that extends beyond its time added as a log sink. That is, you should not destroy
+    /// the sink until you have called \ref RemoveLogSink.
+    ///
+    /// \note This overload is a helper for a common pattern of a class witha static Handler
+    /// function that expects the instance as the first parameter.
+    ///
+    /// \param[in] sink The log sink to add.
+    template <typename T>
+    void AddLogSink(T& sink) { AddLogSink(&T::LogHandler, &sink); }
 
     /// Removes the stored sink so it is no longer invoked when a log entry is dispatched.
     ///
-    /// \param sink The log sink to remove.
-    void RemoveLogSink(LogSinkFunc sink);
+    /// \param[in] sink The log sink to remove.
+    /// \param[in] userData The user data pointer that was originally passed into AddLogSink.
+    void RemoveLogSink(LogSinkFunc sink, void* userData = nullptr);
+
+    /// Removes the stored sink so it is no longer invoked when a log entry is dispatched.
+    ///
+    /// \note This overload is a helper for a common pattern of a class witha static Handler
+    /// function that expects the instance as the first parameter.
+    ///
+    /// \param[in] sink The log sink to remove.
+    template <typename T>
+    void RemoveLogSink(T& sink) { RemoveLogSink(&T::LogHandler, &sink); }
 
     /// Entry point for handling a log entry.
     ///
     /// \note
     /// Prefer the use of the logging macros instead of calling this function directly.
     ///
-    /// \param source The source information for this log entry.
-    /// \param kvs An array of key-value pairs.
-    /// \param count The size of the `kvs` array.
+    /// \param[in] source The source information for this log entry.
+    /// \param[in] kvs An array of key-value pairs.
+    /// \param[in] count The size of the `kvs` array.
     void Log(const LogSource& source, const LogKV* kvs, uint32_t count);
-
-    /// Log sink that logs to the debugger.
-    ///
-    /// \param source The source information for this log entry.
-    /// \param kvs An array of key-value pairs.
-    /// \param count The size of the `kvs` array.
-    void DebuggerSink(const LogSource& source, const LogKV* kvs, uint32_t count);
 }

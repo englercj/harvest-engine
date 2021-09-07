@@ -1,6 +1,7 @@
 #include "test_app.h"
 
 #include "he/core/log.h"
+#include "he/core/log_sinks.h"
 #include "he/core/macros.h"
 #include "he/window/device.h"
 
@@ -10,11 +11,13 @@ int he::AppMain(int argc, char* argv[])
 {
     HE_UNUSED(argc, argv);
 
-    he::AddLogSink(he::DebuggerSink);
+    CrtAllocator& alloc = CrtAllocator::Get();
 
-    CrtAllocator& allocator = CrtAllocator::Get();
+    he::DebuggerSink debugSink(alloc);
+    he::AddLogSink(debugSink);
 
-    window::Device* device = window::CreateDevice(allocator);
+
+    window::Device* device = window::CreateDevice(alloc);
     if (!device)
         return -1;
 
@@ -25,6 +28,8 @@ int he::AppMain(int argc, char* argv[])
     int rc = device->Run(app, desc);
 
     window::DestroyDevice(device);
+
+    he::RemoveLogSink(debugSink);
 
     return rc;
 }

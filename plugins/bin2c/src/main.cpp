@@ -67,8 +67,6 @@ int he::AppMain(int argc, char* argv[])
     he::File file;
     if (file.Open(fileNameBuf.Data(), he::FileOpenMode::ReadExisting))
     {
-        he::CrtAllocator& alloc = he::CrtAllocator::Get();
-
         size = static_cast<uint32_t>(file.GetSize());
         void* data = alloc.Malloc(size + 4);
         HE_AT_SCOPE_EXIT([&]() { alloc.Free(data); });

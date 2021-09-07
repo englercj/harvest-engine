@@ -151,7 +151,7 @@ HE_TEST(core, log, LogKV)
 // ------------------------------------------------------------------------------------------------
 HE_TEST(core, log, AddLogSink)
 {
-    auto sink = [](const LogSource& source, const LogKV* kvs, uint32_t count)
+    auto sink = [](void*, const LogSource& source, const LogKV* kvs, uint32_t count)
     {
         HE_EXPECT_EQ(source.level, LogLevel::Info);
         HE_EXPECT_EQ(source.line, 167);
@@ -162,10 +162,10 @@ HE_TEST(core, log, AddLogSink)
         HE_EXPECT_EQ_STR(kvs[0].GetString(), "testing");
     };
 
-    AddLogSink(sink);
+    AddLogSink(sink, nullptr);
 
     HE_LOG_INFO(log_test, HE_MSG("testing"));
     HE_LOGF_INFO(log_test, "testing2");
 
-    RemoveLogSink(sink);
+    RemoveLogSink(sink, nullptr);
 }

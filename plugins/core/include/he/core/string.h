@@ -656,6 +656,37 @@ namespace he
             Heap m_heap;
         };
     };
+
+    /// An output iterator that appends to a string. Useful for formatting to a String object
+    /// using fmt::format_to().
+    class StringAppender
+    {
+    public:
+        //using iterator_category = std::output_iterator_tag;
+        using value_type        = void;
+        using pointer           = void;
+        using reference         = void;
+        using container_type    = String;
+        using difference_type   = ptrdiff_t;
+        using _Unchecked_type   = StringAppender; // Mark iterator as checked.
+
+        constexpr StringAppender() noexcept = default;
+
+        explicit StringAppender(String& str) noexcept
+            : m_str(&str) {}
+
+        StringAppender& operator=(char c) { m_str->PushBack(c); return *this; }
+        [[nodiscard]] constexpr StringAppender& operator*() noexcept { return *this; }
+
+        constexpr StringAppender& operator++() noexcept { return *this; }
+        constexpr StringAppender operator++(int) noexcept { return *this; }
+
+        // template <typename T>
+        // friend String& get_buffer(StringAppender out) { return *out.m_str; }
+
+    private:
+        String* m_str{ nullptr };
+    };
 }
 
 #include "he/core/inline/string.inl"

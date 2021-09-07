@@ -10,9 +10,15 @@
 
 namespace he
 {
-    static Vector<LogSinkFunc>& GetSinks()
+    struct LogSinkStorage
     {
-        static Vector<LogSinkFunc> s_sinks{ CrtAllocator::Get() };
+        LogSinkFunc func;
+        void* userData;
+    };
+
+    static Vector<LogSinkStorage>& GetSinks()
+    {
+        static Vector<LogSinkStorage> s_sinks{ CrtAllocator::Get() };
         return s_sinks;
     }
 
@@ -60,18 +66,18 @@ namespace he
         return value.s.data();
     }
 
-    void AddLogSink(LogSinkFunc sink)
+    void AddLogSink(LogSinkFunc sink, void* userData)
     {
-        GetSinks().PushBack(sink);
+        GetSinks().PushBack({ sink, userData });
     }
 
-    void RemoveLogSink(LogSinkFunc sink)
+    void RemoveLogSink(LogSinkFunc sink, void* userData)
     {
-        Vector<LogSinkFunc>& sinks = GetSinks();
+        Vector<LogSinkStorage>& sinks = GetSinks();
 
         for (uint32_t i = 0; i < sinks.Size(); ++i)
         {
-            if (sinks[i] == sink)
+            if (sinks[i].func == sink && sinks[i].userData == userData)
             {
                 sinks.Erase(i, 1);
                 return;
@@ -81,44 +87,11 @@ namespace he
 
     void Log(const LogSource& source, const LogKV* kvs, uint32_t count)
     {
-        Vector<LogSinkFunc>& sinks = GetSinks();
+        Vector<LogSinkStorage>& sinks = GetSinks();
 
-        for (LogSinkFunc sink : sinks)
+        for (const LogSinkStorage& sink : sinks)
         {
-            sink(source, kvs, count);
+            sink.func(sink.userData, source, kvs, count);
         }
-    }
-
-    void DebuggerSink(const LogSource& source, const LogKV* kvs, uint32_t count)
-    {
-        fmt::memory_buffer buf;
-        fmt::format_to(fmt::appender(buf), "{}({}): [{}]({}) ", source.file, source.line, AsString(source.level), source.category);
-
-        constexpr auto ValueFmt = FMT_STRING("{} = {}");
-
-        for (uint32_t i = 0; i < count; ++i)
-        {
-            const LogKV& kv = kvs[i];
-
-            switch (kv.type)
-            {
-                case LogKV::ValueType::Bool: fmt::format_to(fmt::appender(buf), ValueFmt, kv.key, kv.value.b); break;
-                case LogKV::ValueType::Int: fmt::format_to(fmt::appender(buf), ValueFmt, kv.key, kv.value.i); break;
-                case LogKV::ValueType::Uint: fmt::format_to(fmt::appender(buf), ValueFmt, kv.key, kv.value.u); break;
-                case LogKV::ValueType::Double: fmt::format_to(fmt::appender(buf), ValueFmt, kv.key, kv.value.d); break;
-                case LogKV::ValueType::String: fmt::format_to(fmt::appender(buf), ValueFmt, kv.key, kv.value.s.data()); break;
-            }
-
-            if (i != (count - 1))
-            {
-                buf.push_back(',');
-                buf.push_back(' ');
-            }
-        }
-
-        buf.push_back('\n');
-        buf.push_back('\0');
-
-        PrintToDebugger(buf.data());
     }
 }

@@ -2,46 +2,29 @@
 
 #include "console_sink.h"
 
+#include "he/core/allocator.h"
+#include "he/core/log_sinks.h"
+#include "he/core/string.h"
+
 #include "fmt/format.h"
 
 #include <iostream>
 
-void ConsoleSink(const he::LogSource& source, const he::LogKV* kvs, uint32_t count)
+void ConsoleSink(void* userData, const he::LogSource& source, const he::LogKV* kvs, uint32_t count)
 {
-    fmt::memory_buffer buf;
-    fmt::format_to(fmt::appender(buf), "{}({}): [{}]({}) ", source.file, source.line, AsString(source.level), source.category);
+    HE_UNUSED(userData);
 
-    constexpr auto ValueFmt = FMT_STRING("{} = {}");
-
-    for (uint32_t i = 0; i < count; ++i)
-    {
-        const he::LogKV& kv = kvs[i];
-
-        switch (kv.type)
-        {
-            case he::LogKV::ValueType::Bool: fmt::format_to(fmt::appender(buf), ValueFmt, kv.key, kv.value.b); break;
-            case he::LogKV::ValueType::Int: fmt::format_to(fmt::appender(buf), ValueFmt, kv.key, kv.value.i); break;
-            case he::LogKV::ValueType::Uint: fmt::format_to(fmt::appender(buf), ValueFmt, kv.key, kv.value.u); break;
-            case he::LogKV::ValueType::Double: fmt::format_to(fmt::appender(buf), ValueFmt, kv.key, kv.value.d); break;
-            case he::LogKV::ValueType::String: fmt::format_to(fmt::appender(buf), ValueFmt, kv.key, kv.value.s.data()); break;
-        }
-
-        if (i != (count - 1))
-        {
-            buf.push_back(',');
-            buf.push_back(' ');
-        }
-    }
-
-    buf.push_back('\n');
-    buf.push_back('\0');
+    he::String msg(he::CrtAllocator::Get());
+    fmt::format_to(he::StringAppender(msg), "{}({}): [{}]({}) ", source.file, source.line, AsString(source.level), source.category);
+    he::FormatKVsTo(msg, kvs, count);
+    msg.PushBack('\n');
 
     if (source.level >= he::LogLevel::Warn)
     {
-        std::cerr << buf.data() << std::endl;
+        std::cerr << msg.Data() << std::endl;
     }
     else
     {
-        std::cout << buf.data() << std::endl;
+        std::cout << msg.Data() << std::endl;
     }
 }

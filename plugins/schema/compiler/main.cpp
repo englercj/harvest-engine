@@ -59,14 +59,15 @@ int he::AppMain(int argc, char* argv[])
         args.includeDirs.PushFront(GetDirectory(fullPath));
 
         schema::Parser parser(alloc);
+
         if (!parser.ParseFile(fullPath.Data(), args.includeDirs))
         {
             for (const auto& info : parser.GetErrors())
             {
-                std::cerr << '(' << info.line << ", " << info.column << "): " << info.message.Data() << std::endl;
+                std::cerr << info.file.Data() << '(' << info.line << ',' << info.column << "): error 0:" << info.message.Data() << std::endl;
             }
 
-            return 1;
+            return -1;
         }
 
         schema::CodeWriter output(alloc);
@@ -74,7 +75,7 @@ int he::AppMain(int argc, char* argv[])
         if (!schema::GenerateCpp(parser.GetSchema(), options, output))
         {
             std::cerr << "Failed to generate C++ code." << std::endl;
-            return 1;
+            return -1;
         }
 
         StringView fname = GetBaseName(paramValue);
@@ -86,11 +87,11 @@ int he::AppMain(int argc, char* argv[])
         {
             File f;
             if (!f.Open(fullPath.Data(), FileOpenMode::WriteTruncate))
-                return 2;
+                return -1;
 
             const StringView out = output.Str();
             if (!f.Write(out.Data(), out.Size()))
-                return 3;
+                return -1;
 
             f.Close();
         }

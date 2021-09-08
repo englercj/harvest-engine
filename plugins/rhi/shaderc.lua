@@ -10,6 +10,22 @@ return function (plugin)
             for _, options in ipairs(values) do
                 local opt = ""
 
+                if options.optimize then
+                    opt = opt .. "-O " .. options.optimize .. " "
+                end
+
+                if options.defines then
+                    for _, def in ipairs(options.defines) do
+                        opt = opt .. "-D " .. def .. " "
+                    end
+                end
+
+                if options.includeDirs then
+                    for _, dir in ipairs(options.includeDirs) do
+                        opt = opt .. "-I " .. dir .. " "
+                    end
+                end
+
                 if options.targets then
                     for _, target in ipairs(options.targets) do
                         opt = opt .. "-t " .. target .. " "

@@ -10,8 +10,15 @@ return function (plugin)
             for _, options in ipairs(values) do
                 local opt = ""
 
-                -- TODO: Includedirs
-                -- TODO: grpc
+                if options.rpc then
+                    opt = opt .. "--grpc "
+                end
+
+                if options.includeDirs then
+                    for _, dir in ipairs(options.includeDirs) do
+                        opt = opt .. "-I " .. dir .. " "
+                    end
+                end
 
                 dependson { "he_schemac" }
 

@@ -8,6 +8,8 @@
     "license": "UNLICENSED",
     "tags": [],
 
+    "install": { "exec": "shaderc.lua" },
+
     "modules": [
         {
             "name": "he_rhi",
@@ -23,6 +25,14 @@
                     "public_dependson": ["WinPixEventRuntime"]
                 }
             ]
+        },
+        {
+            "name": "he_shaderc",
+            "type": "console_app",
+            "group": "engine/tools",
+            "files": ["compiler/**"],
+            "private_dependson": ["he_core", "slang"],
+            "private_dependson_include": ["he_rhi"]
         }
     ]
 }

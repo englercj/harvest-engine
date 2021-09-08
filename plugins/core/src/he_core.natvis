@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<AutoVisualizer xmlns="http://schemas.microsoft.com/vstudio/debugger/natvis/2010">
+    <Type Name="he::Vector&lt;*&gt;">
+        <DisplayString>{{Size={m_size} Capacity={m_capacity}}}</DisplayString>
+        <Expand>
+            <Item Name="[size]">m_size</Item>
+            <Item Name="[capacity]">m_capacity</Item>
+            <ArrayItems>
+                <Size>m_size</Size>
+                <ValuePointer>m_data</ValuePointer>
+            </ArrayItems>
+        </Expand>
+    </Type>
+    <Type Name="he::Span&lt;*&gt;">
+        <DisplayString>{{Size={m_size}}}</DisplayString>
+        <Expand>
+            <Item Name="[size]">m_size</Item>
+            <ArrayItems>
+                <Size>m_size</Size>
+                <ValuePointer>m_ptr</ValuePointer>
+            </ArrayItems>
+        </Expand>
+    </Type>
+    <Type Name="he::String">
+        <DisplayString Condition="m_embed[EmbedSize - 1] != HeapFlag">{m_embed,s}</DisplayString>
+        <DisplayString Condition="m_embed[EmbedSize - 1] == HeapFlag">{m_heap.data,s}</DisplayString>
+        <StringView Condition="m_embed[EmbedSize - 1] != HeapFlag">m_embed,s</StringView>
+        <StringView Condition="m_embed[EmbedSize - 1] == HeapFlag">m_heap.data,s</StringView>
+        <Expand>
+            <Item Name="[embedded]">m_embed[EmbedSize - 1] != HeapFlag</Item>
+            <Item Condition="m_embed[EmbedSize - 1] != HeapFlag" Name="[size]">(EmbedSize - 1) - (unsigned int)(m_embed[EmbedSize - 1])</Item>
+            <Item Condition="m_embed[EmbedSize - 1] != HeapFlag" Name="[capacity]">EmbedSize</Item>
+            <Item Condition="m_embed[EmbedSize - 1] == HeapFlag" Name="[size]">m_heap.size</Item>
+            <Item Condition="m_embed[EmbedSize - 1] == HeapFlag" Name="[capacity]">m_heap.capacity</Item>
+        </Expand>
+    </Type>
+    <Type Name="he::StringView">
+        <DisplayString>{m_span.m_ptr,[m_span.m_size]s}</DisplayString>
+        <StringView>m_span.m_ptr,[m_span.m_size]s</StringView>
+    </Type>
+</AutoVisualizer>

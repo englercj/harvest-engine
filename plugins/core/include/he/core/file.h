@@ -7,6 +7,7 @@
 #include "he/core/result.h"
 #include "he/core/string.h"
 #include "he/core/types.h"
+#include "he/core/vector.h"
 
 namespace he
 {

@@ -68,12 +68,12 @@ namespace he::schema
         m_builtinTypes["string"] = BaseType::String;
     }
 
-    bool Parser::ParseFile(const char* path, Span<StringView> includeDirs)
+    bool Parser::ParseFile(const char* path, Span<const char*> includeDirs)
     {
         return ParseFileInternal(path, includeDirs);
     }
 
-    bool Parser::Parse(const char* src, Span<StringView> includeDirs)
+    bool Parser::Parse(const char* src, Span<const char*> includeDirs)
     {
         if (!m_lexer.Reset(src))
         {
@@ -122,7 +122,7 @@ namespace he::schema
         return true;
     }
 
-    bool Parser::ParseFileInternal(const char* path, Span<StringView> includeDirs)
+    bool Parser::ParseFileInternal(const char* path, Span<const char*> includeDirs)
     {
         String contents(m_allocator);
         m_fileName = path;
@@ -146,7 +146,7 @@ namespace he::schema
         return true;
     }
 
-    bool Parser::LoadFile(String& dst, const char* path, Span<StringView> includeDirs)
+    bool Parser::LoadFile(String& dst, const char* path, Span<const char*> includeDirs)
     {
         File file;
 
@@ -163,9 +163,9 @@ namespace he::schema
         }
 
         String fullPath(m_allocator);
-        for (const StringView& dir : includeDirs)
+        for (const char* dir : includeDirs)
         {
-            fullPath.Assign(dir.Data(), dir.Size());
+            fullPath = dir;
             ConcatPath(fullPath, path);
             NormalizePath(fullPath);
 
@@ -572,7 +572,7 @@ namespace he::schema
         if (!Expect(Lexer::TokenType::Identifier))
             return false;
 
-        out.Append(m_token.text.Data(), m_token.text.Size());
+        out += m_token.text;
 
         NextDecl();
         return true;
@@ -988,7 +988,7 @@ namespace he::schema
             case BaseType::Struct:
                 value.str.Clear();
                 while (m_token.type != Lexer::TokenType::Semicolon)
-                    value.str.Append(m_token.text.Data(), m_token.text.Size());
+                    value.str += m_token.text;
                 return true;
             case BaseType::Unknown:
                 AddError("Value specified for an undefined type.");
@@ -1000,7 +1000,7 @@ namespace he::schema
         return false;
     }
 
-    bool Parser::ParseImports(Span<StringView> includeDirs)
+    bool Parser::ParseImports(Span<const char*> includeDirs)
     {
         ++m_importDepth;
         HE_AT_SCOPE_EXIT([&]() { --m_importDepth; });

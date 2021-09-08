@@ -338,8 +338,8 @@ namespace he
             }
             case ArgType::String:
             {
-                HE_ASSERT(desc.size == sizeof(StringView));
-                SetOrPushValue(desc.buffer, isVector, StringView(value));
+                HE_ASSERT(desc.size == sizeof(const char*));
+                SetOrPushValue(desc.buffer, isVector, value);
                 desc.hasValue = true;
                 break;
             }

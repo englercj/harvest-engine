@@ -5,10 +5,12 @@
 #include "he/core/type_traits.h"
 
 #include "he/core/string.h"
+#include "he/core/string_view.h"
 #include "he/core/test.h"
 #include "he/core/vector.h"
 
 #include <string>
+#include <string_view>
 #include <vector>
 
 using namespace he;
@@ -16,10 +18,12 @@ using namespace he;
 // ------------------------------------------------------------------------------------------------
 HE_TEST(core, type_traits, ProvidesStdContiguousRange)
 {
-    static_assert(ProvidesStdContiguousRange<std::string, char>);
+    static_assert(ProvidesStdContiguousRange<std::string, const char>);
+    static_assert(ProvidesStdContiguousRange<std::string_view, const char>);
     static_assert(ProvidesStdContiguousRange<std::vector<int>, int>);
 
     static_assert(!ProvidesStdContiguousRange<std::string, int>);
+    static_assert(!ProvidesStdContiguousRange<std::string_view, char>);
     static_assert(!ProvidesStdContiguousRange<std::vector<int>, char>);
 }
 
@@ -27,9 +31,11 @@ HE_TEST(core, type_traits, ProvidesStdContiguousRange)
 HE_TEST(core, type_traits, ProvidesContiguousRange)
 {
     static_assert(ProvidesContiguousRange<String, char>);
+    static_assert(ProvidesContiguousRange<StringView, const char>);
     static_assert(ProvidesContiguousRange<Vector<int>, int>);
 
     static_assert(!ProvidesContiguousRange<String, int>);
+    static_assert(!ProvidesContiguousRange<StringView, char>);
     static_assert(!ProvidesContiguousRange<Vector<int>, char>);
 }
 

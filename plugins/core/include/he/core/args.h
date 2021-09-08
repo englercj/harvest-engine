@@ -5,7 +5,6 @@
 #include "he/core/enum_ops.h"
 #include "he/core/span.h"
 #include "he/core/string.h"
-#include "he/core/string_view.h"
 #include "he/core/types.h"
 #include "he/core/type_traits.h"
 #include "he/core/utils.h"
@@ -36,7 +35,7 @@ namespace he
     // Gives the ArgType value based on T.
     template <typename T, typename U = decltype(nullptr)> struct ArgTypeOf;
     template <> struct ArgTypeOf<bool> { static constexpr ArgType value = ArgType::Boolean; };
-    template <> struct ArgTypeOf<StringView> { static constexpr ArgType value = ArgType::String; };
+    template <> struct ArgTypeOf<const char*> { static constexpr ArgType value = ArgType::String; };
     template <typename T> struct ArgTypeOf<T, HE_REQUIRED(std::is_integral_v<T>)> { static constexpr ArgType value = ArgType::Integer; };
     template <typename T> struct ArgTypeOf<T, HE_REQUIRED(std::is_floating_point_v<T>)> { static constexpr ArgType value = ArgType::Float; };
 
@@ -57,7 +56,7 @@ namespace he
 
         Code code;
         String msg;
-        Vector<StringView> values;
+        Vector<const char*> values;
 
         explicit ArgResult(Allocator& a) : code(Success), msg(a), values(a) {}
         explicit ArgResult(Allocator& a, Code c) : code(c), msg(a), values(a) {}

@@ -36,8 +36,8 @@ namespace he::schema
     public:
         Parser(Allocator& allocator);
 
-        bool ParseFile(const char* path, Span<StringView> includeDirs);
-        bool Parse(const char* src, Span<StringView> includeDirs);
+        bool ParseFile(const char* path, Span<const char*> includeDirs);
+        bool Parse(const char* src, Span<const char*> includeDirs);
 
         bool HasErrors() const { return !m_errors.IsEmpty(); }
         Span<const ErrorInfo> GetErrors() const { return m_errors; }
@@ -45,9 +45,9 @@ namespace he::schema
         const SchemaDef& GetSchema() const { return m_schema; }
 
     private:
-        bool ParseFileInternal(const char* path, Span<StringView> includeDirs);
+        bool ParseFileInternal(const char* path, Span<const char*> includeDirs);
         bool OpenFile(File& file, const char* path);
-        bool LoadFile(String& dst, const char* path, Span<StringView> includeDirs);
+        bool LoadFile(String& dst, const char* path, Span<const char*> includeDirs);
         bool ReadFile(String& dst, File& file, const char* path);
 
         template <typename T, typename U>
@@ -98,7 +98,7 @@ namespace he::schema
         bool ConsumeType(Type& type);
         bool ConsumeValue(BaseType type, Value& value);
 
-        bool ParseImports(Span<StringView> includeDirs);
+        bool ParseImports(Span<const char*> includeDirs);
         bool ParseNamespace();
         bool ParseTopLevelStatement();
 

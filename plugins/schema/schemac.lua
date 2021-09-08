@@ -5,7 +5,7 @@ return function (plugin)
         key = "schema_compile",
         scope = "private",
         type = "table",
-        desc = "an array of string path globs to compile",
+        desc = "an array of compilation target configuration objects",
         handler = function (ctx, values)
             for _, options in ipairs(values) do
                 local opt = ""

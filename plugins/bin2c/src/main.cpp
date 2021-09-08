@@ -24,9 +24,9 @@ struct AppArgs
     bool help{ false };
     bool text{ false };
     bool compress{ false };
-    he::StringView input{};
-    he::StringView output{};
-    he::StringView name{};
+    const char* input{};
+    const char* output{};
+    const char* name{};
 };
 
 #include "he/core/main.inl"
@@ -49,20 +49,20 @@ int he::AppMain(int argc, char* argv[])
 
     ArgResult result = ParseArgs(alloc, ArgDescriptors, argc, argv);
 
-    if (!result || args.help || args.input.IsEmpty() || args.output.IsEmpty())
+    if (!result || args.help || String::IsEmpty(args.input) || String::IsEmpty(args.output))
     {
         String help = MakeHelpString(alloc, ArgDescriptors, argv[0], &result);
         std::cerr << help.Data() << std::endl;
         return -1;
     }
 
-    if (args.name.IsEmpty())
+    if (String::IsEmpty(args.name))
         args.name = "c_data";
 
     uint32_t size = 0;
 
     String fileNameBuf(alloc);
-    fileNameBuf.Assign(args.input.Data(), args.input.Size());
+    fileNameBuf = args.input;
 
     he::File file;
     if (file.Open(fileNameBuf.Data(), he::FileOpenMode::ReadExisting))
@@ -94,7 +94,7 @@ int he::AppMain(int argc, char* argv[])
             he::MemZero(static_cast<uint8_t*>(output) + outputSize, maxLen - outputSize);
         }
 
-        fileNameBuf.Assign(args.output.Data(), args.output.Size());
+        fileNameBuf = args.output;
         he::File outFile;
         if (outFile.Open(fileNameBuf.Data(), he::FileOpenMode::WriteTruncate))
         {

@@ -15,8 +15,8 @@ struct AppArgs
 
     bool help{ false };
     bool grpc{ false };
-    he::StringView outDir{};
-    he::Vector<he::StringView> includeDirs;
+    const char* outDir{};
+    he::Vector<const char*> includeDirs;
 };
 
 #include "he/core/main.inl"
@@ -47,16 +47,18 @@ int he::AppMain(int argc, char* argv[])
 
     bool first = true;
 
-    for (const StringView& paramValue : result.values)
+    for (const char* param : result.values)
     {
-        fullPath.Assign(paramValue.Data(), paramValue.Size());
+        fullPath = param;
 
         if (!first)
             args.includeDirs.PopFront();
 
         first = false;
 
-        args.includeDirs.PushFront(GetDirectory(fullPath));
+        const StringView dirView = GetDirectory(fullPath);
+        const String dir(alloc, dirView.Data(), dirView.Size());
+        args.includeDirs.PushFront(dir.Data());
 
         schema::Parser parser(alloc);
 
@@ -78,9 +80,9 @@ int he::AppMain(int argc, char* argv[])
             return -1;
         }
 
-        StringView fname = GetBaseName(paramValue);
+        StringView fname = GetBaseName(param);
 
-        fullPath.Assign(args.outDir.Data(), args.outDir.Size());
+        fullPath = args.outDir;
         ConcatPath(fullPath, fname);
         fullPath += "_generated.h";
 

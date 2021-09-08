@@ -28,8 +28,8 @@ struct TestArgs
     bool b0{ false };
     bool b1{ false };
 
-    StringView str{};
-    Vector<StringView> vec{ CrtAllocator::Get() };
+    const char* str{};
+    Vector<const char*> vec{ CrtAllocator::Get() };
 };
 
 template <int32_t N>
@@ -447,7 +447,7 @@ HE_TEST(core, args, mixed)
     HE_EXPECT(args.b1);
     HE_EXPECT_EQ(args.str, str0);
     HE_EXPECT_EQ(args.vec.Size(), 3);
-    HE_EXPECT_EQ(args.vec[0], "123");
-    HE_EXPECT_EQ(args.vec[1], "456");
-    HE_EXPECT_EQ(args.vec[2], "789");
+    HE_EXPECT_EQ_STR(args.vec[0], "123");
+    HE_EXPECT_EQ_STR(args.vec[1], "456");
+    HE_EXPECT_EQ_STR(args.vec[2], "789");
 }

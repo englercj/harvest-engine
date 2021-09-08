@@ -128,11 +128,11 @@ HE_TEST(schema, SchemaDef, MarkTypeUsed)
     HE_EXPECT(!schema.IsTypeUsed(BaseType::String));
 
     schema.MarkTypeUsed(BaseType::String);
-    HE_EXPECT_EQ(schema.usedTypes, static_cast<uint64_t>(BaseType::String));
+    HE_EXPECT_EQ(schema.usedTypes, (1 << static_cast<uint64_t>(BaseType::String)));
     HE_EXPECT(schema.IsTypeUsed(BaseType::String));
 
     schema.MarkTypeUsed(BaseType::Int64);
-    HE_EXPECT_EQ(schema.usedTypes, static_cast<uint64_t>(BaseType::String) | static_cast<uint64_t>(BaseType::Int64));
+    HE_EXPECT_EQ(schema.usedTypes, (1 << static_cast<uint64_t>(BaseType::String)) | (1 << static_cast<uint64_t>(BaseType::Int64)));
     HE_EXPECT(schema.IsTypeUsed(BaseType::String));
     HE_EXPECT(schema.IsTypeUsed(BaseType::Int64));
 }

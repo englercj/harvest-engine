@@ -185,7 +185,7 @@ int he::AppMain(int argc, char* argv[])
             constName += constBaseName;
             for (char& c : constName)
             {
-                if (c == '-')
+                if (c == '-' || c == '.')
                     c = '_';
             }
 

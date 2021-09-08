@@ -218,7 +218,7 @@ namespace he
         if (!path.IsEmpty() && path.Back() != '/' && path.Back() != '\\')
             path.PushBack('/');
 
-        path.Append(components.Data(), components.Size());
+        path += components;
     }
 
     void RemoveExtension(String& path)

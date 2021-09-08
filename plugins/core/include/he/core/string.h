@@ -5,6 +5,7 @@
 #include "he/core/allocator.h"
 #include "he/core/compiler.h"
 #include "he/core/types.h"
+#include "he/core/type_traits.h"
 
 namespace he
 {
@@ -93,6 +94,25 @@ namespace he
         ///     If this string is less than `x`, a negative value is returned.
         ///     If this string is greater than `x`, a positive value is returned.
         static int32_t CompareNI(const char* a, const char* b, uint32_t len);
+
+        /// Duplicate the null terminated source string using the provided allocator. The
+        /// resulting string must be freed by calling \ref Allocator::Free with the same
+        /// allocator used here.
+        ///
+        /// \param[in] allocator The allocator to use for creating the new string.
+        /// \param[in] src The source string to duplicate.
+        /// \return The newly allocated string.
+        static char* Duplicate(Allocator& allocator, const char* src);
+
+        /// Duplicate `len` characters of the source string using the provided allocator. The
+        /// resulting string must be freed by calling \ref Allocator::Free with the same
+        /// allocator used here.
+        ///
+        /// \param[in] allocator The allocator to use for creating the new string.
+        /// \param[in] src The source string to duplicate.
+        /// \param[in] len The length of the source string to duplicate.
+        /// \return The newly allocated string.
+        static char* DuplicateN(Allocator& allocator, const char* src, uint32_t len);
 
         /// Compares the null terminated strings and returns true if they are equal.
         ///
@@ -273,6 +293,28 @@ namespace he
         /// \param len The number of characters to copy.
         String(Allocator& allocator, const char* str, uint32_t len);
 
+        /// Construct a string from an object that provides a STL-style contiguous range. That is,
+        /// it has `.data()` and `.size()` members.
+        ///
+        /// \param allocator The allocator to use for any allocations.
+        /// \param rangeProvider The object that provides the range.
+        template <typename R, HE_REQUIRES(!std::is_same_v<R, String> && ProvidesStdContiguousRange<R, const char>)>
+        String(Allocator& allocator, const R& rangeProvider)
+            : String(allocator, rangeProvider.data(), static_cast<uint32_t>(rangeProvider.size()))
+        {
+            HE_ASSERT(rangeProvider.size() <= MaxHeapCharacters);
+        }
+
+        /// Construct a string from an object that provides a Harvest-style contiguous range. That is,
+        /// it has `.Data()` and `.Size()` members.
+        ///
+        /// \param allocator The allocator to use for any allocations.
+        /// \param rangeProvider The object that provides the range.
+        template <typename R, HE_REQUIRES(!std::is_same_v<R, String> && !ProvidesStdContiguousRange<R, const char> && ProvidesContiguousRange<R, const char>)>
+        String(Allocator& allocator, const R& rangeProvider)
+            : String(allocator, rangeProvider.Data(), rangeProvider.Size())
+        {}
+
         /// Construct a string by copying `x`, and using `allocator` for this string's allocations.
         ///
         /// \param allocator The allocator to use for any allocations.
@@ -328,11 +370,6 @@ namespace he
         /// \copydoc operator[](uint32_t)
         char& operator[](uint32_t index) { return const_cast<char&>(const_cast<const String&>(*this)[index]); }
 
-        /// Appends the string object to the end of this string.
-        ///
-        /// \param str The string to append.
-        String& operator+=(const String& str) { Insert(Size(), str.Data(), str.Size()); return *this; }
-
         /// Appends the null terminated string to the end of this string.
         ///
         /// \param str The string to append.
@@ -342,6 +379,29 @@ namespace he
         ///
         /// \param c The character to append.
         String& operator+=(char c) { Insert(Size(), &c, 1); return *this; }
+
+        /// Appends a series of characters from an object that provides a STL-style contiguous range.
+        /// That is, it has `.data()` and `.size()` members.
+        ///
+        /// \param rangeProvider The object that provides the range.
+        template <typename R, HE_REQUIRES(ProvidesStdContiguousRange<R, const char>)>
+        String& operator+=(const R& rangeProvider)
+        {
+            Insert(Size(), rangeProvider.data(), static_cast<uint32_t>(rangeProvider.size()));
+            return *this;
+        }
+
+        /// Construct a string from an object that provides a Harvest-style contiguous range. That is,
+        /// it has `.Data()` and `.Size()` members.
+        ///
+        /// \param allocator The allocator to use for any allocations.
+        /// \param rangeProvider The object that provides the range.
+        template <typename R, HE_REQUIRES(!ProvidesStdContiguousRange<R, const char> && ProvidesContiguousRange<R, const char>)>
+        String& operator+=(const R& rangeProvider)
+        {
+            Insert(Size(), rangeProvider.Data(), rangeProvider.Size());
+            return *this;
+        }
 
         /// Checks if this string is equal to `x`.
         ///

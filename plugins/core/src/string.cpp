@@ -49,6 +49,20 @@ namespace he
     #endif
     }
 
+    char* String::Duplicate(Allocator& allocator, const char* src)
+    {
+        uint32_t len = String::Length(src);
+        return DuplicateN(allocator, src, len);
+    }
+
+    char* String::DuplicateN(Allocator& allocator, const char* src, uint32_t len)
+    {
+        char* dst = allocator.Malloc<char>(len + 1);
+        MemCopy(dst, src, len);
+        dst[len] = '\0';
+        return dst;
+    }
+
     uint32_t String::Copy(char* dst, uint32_t dstLen, const char* src)
     {
         if (dstLen == 0)

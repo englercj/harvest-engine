@@ -63,7 +63,7 @@ namespace he
             HE_ASSERT(rangeProvider.size() <= 0xffffffff);
         }
 
-        /// Construct a span from an object that provides a STL-style contiguous range. That is,
+        /// Construct a span from an object that provides a Harvest-style contiguous range. That is,
         /// it has `.Data()` and `.Size()` members.
         ///
         /// \param rangeProvider The object that provides the range.

@@ -7,6 +7,7 @@
 #include "he/core/allocator.h"
 #include "he/core/memory_ops.h"
 #include "he/core/string_fmt.h"
+#include "he/core/string_view.h"
 #include "he/core/test.h"
 #include "he/core/type_traits.h"
 #include "he/core/utils.h"
@@ -781,6 +782,12 @@ HE_TEST(core, String, operator_plus_equal)
     HE_EXPECT_GE(s.Capacity(), 111);
     HE_EXPECT_EQ(s.Size(), 111);
     HE_EXPECT_EQ_STR(s.Data(), "Hello, world! This is really long to force reallocation onto the heap space of the string object we're testing.");
+
+    StringView v = "Testing view!";
+    s += v;
+    HE_EXPECT_GE(s.Capacity(), 124);
+    HE_EXPECT_EQ(s.Size(), 124);
+    HE_EXPECT_EQ_STR(s.Data(), "Hello, world! This is really long to force reallocation onto the heap space of the string object we're testing.Testing view!");
 }
 
 // ------------------------------------------------------------------------------------------------

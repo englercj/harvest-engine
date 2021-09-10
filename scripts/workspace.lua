@@ -7,7 +7,7 @@ he.workspace = function ()
     configurations      { "Debug", "Release", "Shipping" }
     cppdialect          "C++20"
     cdialect            "C11"
-    editandcontinue     "Off"
+    editandcontinue     "On"
     exceptionhandling   "Off"
     flags               { "FatalWarnings", "MultiProcessorCompile" }
     floatingpoint       "Fast"

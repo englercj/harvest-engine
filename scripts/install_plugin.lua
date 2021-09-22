@@ -166,12 +166,12 @@ end
 
 return function (plugin)
     local i = plugin.install
+    local install_dir = path.getdirectory(plugin._file_path)
 
     -- If the plugin doesn't specify an install block then use the plugin json file's path as
     -- the install path and return that it is enabled.
     if i == nil then
-        plugin._install_dir = path.getdirectory(plugin._file_path)
-        return true
+        return true, install_dir
     end
 
     -- Check if the target system is valid for this plugin to be imported on, by default plugins
@@ -191,16 +191,16 @@ return function (plugin)
 
     if is_valid_system == false then
         verbosef("Skipping import of plugin '%s', current system is not listed in its 'valid_systems' key.", plugin.id)
-        return false
+        return false, install_dir
     end
 
     -- Check for install sources and perform the install
     if i.github ~= nil then
-        plugin._install_dir = _install_from_github(plugin.id, i.github)
+        install_dir = _install_from_github(plugin.id, i.github)
     elseif i.bitbucket ~= nil then
-        plugin._install_dir = _install_from_bitbucket(plugin.id, i.bitbucket)
+        install_dir = _install_from_bitbucket(plugin.id, i.bitbucket)
     elseif i.nuget ~= nil then
-        plugin._install_dir = _install_from_nuget(plugin.id, i.nuget)
+        install_dir = _install_from_nuget(plugin.id, i.nuget)
     elseif i.archive ~= nil then
         local target = os.target()
         local url = i.archive
@@ -210,15 +210,13 @@ return function (plugin)
         assert(type(url) == "string" and url ~= "", "Bad source when installing archive of '" .. plugin.id .. "' for '" .. target .. "'.")
 
         local extract_dir = i.basepath == nil and path.getbasename(url) or ""
-        plugin._install_dir = _install_from_archive(plugin.id, url, path.getname(url), extract_dir)
+        install_dir = _install_from_archive(plugin.id, url, path.getname(url), extract_dir)
     elseif i.source ~= nil then
-        plugin._install_dir = path.join(path.getdirectory(plugin._file_path), i.source)
-    else
-        plugin._install_dir = path.getdirectory(plugin._file_path)
+        install_dir = path.join(install_dir, i.source)
     end
 
     if i.basepath ~= nil then
-        plugin._install_dir = path.join(plugin._install_dir, i.basepath)
+        install_dir = path.join(install_dir, i.basepath)
     end
 
     -- Run the install scripts if specified
@@ -227,5 +225,5 @@ return function (plugin)
         func(plugin)
     end
 
-    return true
+    return true, install_dir
 end

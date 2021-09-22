@@ -94,6 +94,11 @@ end
 
 
 local function _module_project(mod)
+    if mod._plugin._install_valid == false then
+        verbosef("Skipping project for module '%s' in group '%s', not installed.", mod.name, mod.group)
+	return
+    end
+
     verbosef("Generating project for module '%s' in group '%s'", mod.name, mod.group)
 
     local oldcwd = os.getcwd()
@@ -189,10 +194,7 @@ local function _import_plugin(plugin_path, options)
     he.imported_plugins_count = he.imported_plugins_count + 1
 
     plugin._file_path = plugin_file
-
-    if install_plugin(plugin) == false then
-        return {}
-    end
+    plugin._install_valid, plugin._install_dir = install_plugin(plugin)
 
     -- Check if the plugin imports additional plugins, and if so import them first
     local imports_other_plugins = false
@@ -209,6 +211,7 @@ local function _import_plugin(plugin_path, options)
         if not imports_other_plugins then
             p.warn("Plugin '" .. plugin.name .. "' imported from '" .. plugin_path .. "' contains no modules, and imports no plugins.")
         end
+        os.chdir(oldcwd)
         return {}
     end
 
@@ -230,7 +233,6 @@ local function _import_plugin(plugin_path, options)
     end
 
     os.chdir(oldcwd)
-
     return imported
 end
 

@@ -121,6 +121,32 @@ HE_TEST(core, path, GetBaseName)
 }
 
 // ------------------------------------------------------------------------------------------------
+HE_TEST(core, path, GetPathWithoutExtension)
+{
+    struct TestCase
+    {
+        const char* s;
+        const char* exp;
+    } tests[] =
+    {
+        { "", "" },
+        { "a", "a" },
+        { "a.b", "a" },
+        { "a.b.c", "a.b" },
+        { "/a.c", "/a" },
+        { "a/b.c", "a/b" },
+        { "a/b", "a/b" },
+        { "a/b/", "a/b/" },
+    };
+
+    for (TestCase tc : tests)
+    {
+        const StringView path = GetPathWithoutExtension(tc.s);
+        HE_EXPECT_EQ(path, tc.exp);
+    }
+}
+
+// ------------------------------------------------------------------------------------------------
 HE_TEST(core, path, NormalizePath)
 {
     struct TestCase
@@ -231,6 +257,10 @@ HE_TEST(core, path, RemoveExtension)
         { "a", "a" },
         { "a.b", "a" },
         { "a.b.c", "a.b" },
+        { "/a.c", "/a" },
+        { "a/b.c", "a/b" },
+        { "a/b", "a/b" },
+        { "a/b/", "a/b/" },
     };
 
     String buf(CrtAllocator::Get());

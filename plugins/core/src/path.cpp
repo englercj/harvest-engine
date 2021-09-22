@@ -24,7 +24,7 @@ namespace he
         return false;
     }
 
-    bool IsAbsolutePath(const StringView& path)
+    bool IsAbsolutePath(StringView path)
     {
         if (path.IsEmpty())
             return false;
@@ -40,7 +40,7 @@ namespace he
         return false;
     }
 
-    StringView GetExtension(const StringView& path)
+    StringView GetExtension(StringView path)
     {
         if (path.IsEmpty())
             return {};
@@ -67,7 +67,7 @@ namespace he
         return {};
     }
 
-    StringView GetDirectory(const StringView& path)
+    StringView GetDirectory(StringView path)
     {
         if (path.IsEmpty())
             return {};
@@ -86,7 +86,7 @@ namespace he
         return {};
     }
 
-    StringView GetBaseName(const StringView& path)
+    StringView GetBaseName(StringView path)
     {
         if (path.IsEmpty())
             return {};
@@ -103,6 +103,25 @@ namespace he
         }
 
         return path;
+    }
+
+    StringView GetPathWithoutExtension(StringView path)
+    {
+        if (path.IsEmpty())
+            return path;
+
+        const StringView ext = GetExtension(path);
+
+        if (ext.IsEmpty())
+            return path;
+
+        HE_ASSERT(ext.Data() >= path.Data());
+
+        const uint32_t len = static_cast<uint32_t>(ext.Data() - path.Data());
+
+        HE_ASSERT(len <= path.Size());
+
+        return { path.Data(), len };
     }
 
     void NormalizePath(String& path)
@@ -207,7 +226,7 @@ namespace he
         }
     }
 
-    void ConcatPath(String& path, const StringView& components)
+    void ConcatPath(String& path, StringView components)
     {
         if (IsAbsolutePath(components))
         {
@@ -223,17 +242,9 @@ namespace he
 
     void RemoveExtension(String& path)
     {
-        const StringView ext = GetExtension(path);
-
-        if (ext.IsEmpty())
-            return;
-
-        HE_ASSERT(ext.Data() >= path.Data());
-
-        const uint32_t len = static_cast<uint32_t>(ext.Data() - path.Data());
-
-        HE_ASSERT(len <= path.Size());
-
-        return path.Resize(len);
+        const StringView withoutExt = GetPathWithoutExtension(path);
+        HE_ASSERT(withoutExt.Data() == path.Data());
+        HE_ASSERT(withoutExt.Size() <= path.Size());
+        path.Resize(withoutExt.Size());
     }
 }

@@ -23,25 +23,31 @@ namespace he
     /// For example, "/home/human/file" and "C:\\Users\\human\\file" are absolute paths.
     ///
     /// \param[in] path The path to check.
-    bool IsAbsolutePath(const StringView& path);
+    bool IsAbsolutePath(StringView path);
 
     /// Finds and returns the extension of the path including the leading dot.
     /// For example, the extension of "/home/human/file.cpp" is ".cpp".
     ///
     /// \param[in] path The path to search.
-    StringView GetExtension(const StringView& path);
+    StringView GetExtension(StringView path);
 
     /// Finds and returns the directory of the path excluding the trailing slash.
     /// For example, the directory of "/home/human/file.cpp" is "/home/human".
     ///
     /// \param[in] path The path to search.
-    StringView GetDirectory(const StringView& path);
+    StringView GetDirectory(StringView path);
 
     /// Finds and returns the final component of the path.
     /// For example, the base name of "/home/human/file.cpp" is "file.cpp".
     ///
     /// \param[in] path The path to search.
-    StringView GetBaseName(const StringView& path);
+    StringView GetBaseName(StringView path);
+
+    /// Gets a path without the extension.
+    /// For example, the path without extension of "/home/human/file.cpp" is "/home/human/file".
+    ///
+    /// \param[in] path The path from which to get the path without the extension.
+    StringView GetPathWithoutExtension(StringView path);
 
     // --------------------------------------------------------------------------------------------
     // Path Modifiers
@@ -58,7 +64,7 @@ namespace he
     ///
     /// \param[in] path The path to concatenate to.
     /// \param[in] components The new path components to concatenate onto `root`.
-    void ConcatPath(String& path, const StringView& components);
+    void ConcatPath(String& path, StringView components);
 
     /// Removes the extension from the end of the path.
     /// For example, removing the extension of "/home/human/file.cpp" results in "/home/human/file".

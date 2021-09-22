@@ -15,6 +15,8 @@ namespace he::schema
 
     struct CodeGenOptions
     {
+        const char* fileName{ nullptr };
+        const char* outDir{ nullptr };
     };
 
     bool GenerateCpp(const SchemaDef& def, const CodeGenOptions& options, CodeWriter& writer);

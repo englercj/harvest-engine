@@ -21,6 +21,10 @@ namespace he::schema
             : m_buffer(allocator)
         {}
 
+        /// Sets the size of the buffer to zero.
+        /// Does not affect memory allocation.
+        void Clear() { m_buffer.Clear(); }
+
         /// Reserves capacity for `len` bytes.
         ///
         /// \param len The number of bytes to reserve capacity for.
@@ -40,7 +44,7 @@ namespace he::schema
         /// Copies the string view into the buffer.
         ///
         /// \param[in] str The string view to copy.
-        void Write(const StringView& str) { m_buffer.Write(str.Data(), str.Size()); }
+        void Write(StringView str) { m_buffer.Write(str.Data(), str.Size()); }
 
         /// Increases the indent level of the writer.
         void IncreaseIndent() { ++m_indentDepth; }

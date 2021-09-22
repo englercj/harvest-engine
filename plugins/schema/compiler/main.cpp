@@ -56,8 +56,7 @@ int he::AppMain(int argc, char* argv[])
 
         first = false;
 
-        const StringView dirView = GetDirectory(fullPath);
-        const String dir(alloc, dirView.Data(), dirView.Size());
+        const String dir(alloc, GetDirectory(fullPath));
         args.includeDirs.PushFront(dir.Data());
 
         schema::Parser parser(alloc);
@@ -72,30 +71,16 @@ int he::AppMain(int argc, char* argv[])
             return -1;
         }
 
+        const StringView fname = GetBaseName(param);
+
         schema::CodeWriter output(alloc);
         schema::CodeGenOptions options{};
+        options.fileName = fname.Data();
+        options.outDir = args.outDir;
         if (!schema::GenerateCpp(parser.GetSchema(), options, output))
         {
             std::cerr << "Failed to generate C++ code." << std::endl;
             return -1;
-        }
-
-        StringView fname = GetBaseName(param);
-
-        fullPath = args.outDir;
-        ConcatPath(fullPath, fname);
-        fullPath += "_generated.h";
-
-        {
-            File f;
-            if (!f.Open(fullPath.Data(), FileOpenMode::WriteTruncate))
-                return -1;
-
-            const StringView out = output.Str();
-            if (!f.Write(out.Data(), out.Size()))
-                return -1;
-
-            f.Close();
         }
     }
 

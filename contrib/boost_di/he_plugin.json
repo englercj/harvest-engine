@@ -1,0 +1,22 @@
+{
+    "id": "boost-ext.di",
+    "name": "[Boost::ext].DI",
+    "description": "Header only Dependency Injection library with no dependencies.",
+    "version": "52e6eaeb8d8ec4110e804d55252ce192c6bd55ae",
+
+    "author": "Kris Jusiak <krzysztof@jusiak.net>",
+    "license": "BSL-1.0",
+    "tags": [],
+
+    "install": { "github": "boost-ext/di#52e6eaeb8d8ec4110e804d55252ce192c6bd55ae" },
+
+    "modules": [
+        {
+            "name": "boost_di",
+            "type": "header",
+            "group": "engine/contrib",
+            "files": ["include/**"],
+            "public_includedirs": ["include", "extension/include"]
+        }
+    ]
+}

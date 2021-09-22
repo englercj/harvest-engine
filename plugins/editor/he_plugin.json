@@ -1,0 +1,52 @@
+{
+    "id": "he.editor",
+    "name": "Harvest Editor",
+    "description": "Harvest editor application.",
+    "version": "1.0.0",
+
+    "author": "Chad Engler <englercj@live.com>",
+    "license": "UNLICENSED",
+    "tags": [],
+
+    "modules": [
+        {
+            "name": "he_editor",
+            "type": "windowed_app",
+            "group": "engine/tools",
+            "files": ["src/**"],
+            "bin2c_compile": [
+                {
+                    "glob": "src/fonts/**.ttf",
+                    "compress": true
+                },
+                {
+                    "glob": "src/fonts/**.otf",
+                    "compress": true
+                }
+            ],
+            "schema_compile": [
+                {
+                    "glob": "src/schema/*.schema"
+                }
+            ],
+            "shader_compile": [
+                {
+                    "glob": "src/shaders/*.hlsl",
+                    "targets": ["sm_5_1", "glsl_450"]
+                }
+            ],
+            "private_includedirs": ["src", "%{he.get_generated_dir(prj.name)}/src"],
+            "private_dependson": [
+                "he_core",
+                "he_rhi",
+                "he_schema",
+                "he_window",
+
+                "boost_di",
+                "imgui",
+                "rapidjson",
+                "sqlite3"
+            ]
+        }
+    ]
+}

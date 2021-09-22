@@ -1,0 +1,73 @@
+// Copyright Chad Engler
+
+#include "dialog_service.h"
+
+#include "widgets/menu.h"
+
+#include "imgui.h"
+#include "imgui_internal.h"
+
+namespace he::editor
+{
+    DialogService::DialogService(Allocator& allocator)
+        : m_dialogs(allocator)
+    {}
+
+    void DialogService::DestroyClosedDialogs()
+    {
+        for (uint32_t i = 0; i < m_dialogs.Size();)
+        {
+            std::unique_ptr<Dialog>& dialog = m_dialogs[i];
+
+            if (dialog->IsCloseRequested())
+            {
+                m_dialogs.Erase(i, 1);
+            }
+            else
+            {
+                ++i;
+            }
+        }
+    }
+
+    void DialogService::ShowDialogs()
+    {
+        const float dpiScale = ImGui::GetWindowDpiScale();
+
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 1.0f * dpiScale);
+        ImGui::PushStyleColor(ImGuiCol_TitleBgActive, ImGui::GetStyle().Colors[ImGuiCol_Header]);
+
+        for (std::unique_ptr<Dialog>& dialog : m_dialogs)
+        {
+            const char* label = dialog->GetLabel();
+            const ImGuiID id = ImGui::GetID(label);
+
+            if (!ImGui::IsPopupOpen(id, ImGuiPopupFlags_None))
+            {
+                ImGui::OpenPopup(id);
+            }
+
+            ImGui::SetNextWindowPos(ImGui::GetWindowViewport()->GetCenter(), ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
+
+            if (ImGui::BeginPopupModal(label, nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+            {
+                dialog->ShowContent();
+
+                ImGui::NewLine();
+                if (ImGui::BeginChild("##button_well", ImVec2(0, ImGui::GetFrameHeightWithSpacing())))
+                {
+                    dialog->ShowButtons();
+                }
+                ImGui::EndChild();
+
+                if (dialog->IsCloseRequested())
+                    ImGui::CloseCurrentPopup();
+
+                ImGui::EndPopup();
+            }
+        }
+
+        ImGui::PopStyleColor();
+        ImGui::PopStyleVar();
+    }
+}

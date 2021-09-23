@@ -29,8 +29,16 @@
                     "post_build_commands": [
                         "{COPYFILE} %{he.get_plugin('nvidia.slang')._install_dir}/bin/windows-x64/release/gfx.dll %{cfg.targetdir}",
                         "{COPYFILE} %{he.get_plugin('nvidia.slang')._install_dir}/bin/windows-x64/release/slang.dll %{cfg.targetdir}",
-                        "{COPYFILE} %{he.get_plugin('nvidia.slang')._install_dir}/bin/windows-x64/release/slang-glslang.dll %{cfg.targetdir}",
-                        "{COPYFILE} %{he.get_plugin('nvidia.slang')._install_dir}/bin/windows-x64/release/gfx.dll %{cfg.targetdir}"
+                        "{COPYFILE} %{he.get_plugin('nvidia.slang')._install_dir}/bin/windows-x64/release/slang-glslang.dll %{cfg.targetdir}"
+                    ]
+                },
+                {
+                    "conditions": ["system:linux", "architecture:x86_64"],
+                    "public_dependson": ["file:bin/linux-x64/release/libslang.so"],
+                    "post_build_commands": [
+                        "{COPYFILE} %{he.get_plugin('nvidia.slang')._install_dir}/bin/linux-x64/release/libgfx.so %{cfg.targetdir}",
+                        "{COPYFILE} %{he.get_plugin('nvidia.slang')._install_dir}/bin/linux-x64/release/libslang.so %{cfg.targetdir}",
+                        "{COPYFILE} %{he.get_plugin('nvidia.slang')._install_dir}/bin/linux-x64/release/libslang-glslang.so %{cfg.targetdir}"
                     ]
                 }
             ]

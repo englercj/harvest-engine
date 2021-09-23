@@ -185,6 +185,8 @@ namespace he::rhi
     class RenderCmdList : public ComputeCmdList
     {
     public:
+        using ComputeCmdList::Clear;
+
         /// Clears the contents of the render target view.
         ///
         /// \param[in] rtv The render target view to clear.

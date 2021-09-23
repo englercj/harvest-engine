@@ -27,6 +27,7 @@ namespace he::rhi
     {
         switch (x)
         {
+            case ApiBackend::Unknown: return "Unknown";
             case ApiBackend::Null: return "NULL";
             case ApiBackend::D3D12: return "D3D12";
             case ApiBackend::Vulkan: return "Vulkan";

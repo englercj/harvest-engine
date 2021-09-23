@@ -156,7 +156,7 @@ namespace he
             }
 
             // Free the memory
-            Free(ptr);
+            Free(const_cast<char*>(ptr));
         }
     };
 

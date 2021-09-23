@@ -67,26 +67,33 @@ namespace he
     #endif
     }
 
-    static Result ReadLink(const char* linkPath, struct stat& sb, String& path)
+    static Result ReadLink(const char* linkPath, String& path)
     {
-        if (lstat(linkPath, &sb) == -1)
-            return Result::FromLastError();
+        // POSIX says we should be able to read the size of the link here
+        // but linux isn't POSIX compliant in the /proc filesystem.
+        // if (lstat(linkPath, &sb) == -1)
+        //     return Result::FromLastError();
 
-        path.Resize(sb.st_size);
+        // path.Resize(sb.st_size + 1);
 
-        ssize_t r = readlink(linkPath, path.Data(), sb.st_size + 1);
-        if (r < 0)
-            return Result::FromLastError();
+        path.Resize(String::MaxEmbedCharacters);
 
-        if (r <= sb.st_size)
+        do
         {
-            // resize to properly null terminate in case there was a link name change
-            // between lstat and readlink that resulted in a shorter string.
-            path.Resize(r);
-            return Result::Success;
-        }
+            ssize_t r = readlink(linkPath, path.Data(), path.Size());
+            if (r < 0)
+                return Result::FromLastError();
 
-        // Name size changed to a larger value so we have to fail.
+            if (r < path.Size())
+            {
+                // resize to properly null terminate
+                path.Resize(r);
+                return Result::Success;
+            }
+
+            path.Resize((path.Size() + 1024) * 2);
+        } while (true);
+
         return PosixResult(ENAMETOOLONG);
     }
 
@@ -401,18 +408,17 @@ namespace he
 
     Result File::GetPath(String& path) const
     {
-        fmt::memory_buffer buf;
-        fmt::format_to(fmt::appender(buf), "/proc/self/fd/{}", static_cast<int>(m_fd));
-        buf.push_back('\0');
+        char buf[64];
+        auto res = fmt::format_to_n(buf, HE_LENGTH_OF(buf), "/proc/self/fd/{}", static_cast<int>(m_fd));
+        buf[res.size] = '\0';
 
-        struct stat sb;
-        Result r = ReadLink(buf.data(), sb, path);
+        Result r = ReadLink(buf, path);
 
         // Size of link name changed between lstate and readlink, and it got larger. Try reading
         // it one more time before giving up.
         if (!r)
         {
-            r = ReadLink(buf.data(), sb, path);
+            r = ReadLink(buf, path);
         }
 
         return r;

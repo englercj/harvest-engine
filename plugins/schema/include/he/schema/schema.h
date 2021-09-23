@@ -282,8 +282,8 @@ namespace he::schema
             : name(allocator)
             , extends(allocator)
             , attributes(allocator)
-            , typeParams(allocator)
             , fields(allocator)
+            , typeParams(allocator)
             , aliases(allocator)
             , consts(allocator)
             , enums(allocator)
@@ -333,14 +333,14 @@ namespace he::schema
     {
         InterfaceDef(Allocator& allocator)
             : name(allocator)
+            , implements(allocator)
             , attributes(allocator)
             , methods(allocator)
-            , implements(allocator)
             , typeParams(allocator)
+            , aliases(allocator)
             , consts(allocator)
             , enums(allocator)
             , structs(allocator)
-            , aliases(allocator)
         {}
 
         String name;

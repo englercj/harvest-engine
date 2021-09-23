@@ -304,6 +304,7 @@ namespace he::schema
             case Lexer::TokenType::CloseCurlyBracket: return "CloseCurlyBracket";
             case Lexer::TokenType::CloseParens: return "CloseParens";
             case Lexer::TokenType::CloseSquareBracket: return "CloseSquareBracket";
+            case Lexer::TokenType::Dot: return "Dot";
             case Lexer::TokenType::Eof: return "Eof";
             case Lexer::TokenType::Equals: return "Equals";
             case Lexer::TokenType::Error: return "Error";

@@ -9,6 +9,7 @@
 #include "he/core/type_traits.h"
 #include "he/core/vector.h"
 #include "he/schema/codegen.h"
+#include "he/schema/code_writer.h"
 #include "he/schema/schema.h"
 
 #include "fmt/format.h"
@@ -155,8 +156,9 @@ namespace he::schema
 
                     for (const Attribute& attr : def.attributes)
                     {
+                        HE_UNUSED(attr);
                         m_writer.WriteIndent();
-                        m_writer.Write("{ ")
+                        m_writer.Write("{ ");
                     }
 
                     m_writer.DecreaseIndent();
@@ -673,6 +675,7 @@ namespace he::schema
                 case BaseType::Map:
                 case BaseType::Set:
                 case BaseType::Vector:
+                case BaseType::Alias:
                 case BaseType::Interface:
                 case BaseType::Struct:
                     m_writer.Write("const ");
@@ -783,6 +786,7 @@ namespace he::schema
                     WriteArraySize(*t.element);
                     m_writer.Write('>');
                 }
+                case BaseType::Alias:
                 case BaseType::Enum:
                     m_writer.Write(t.name);
                     break;
@@ -839,6 +843,7 @@ namespace he::schema
                 case BaseType::Struct:
                     m_writer.Write(v.str);
                     break;
+                case BaseType::Alias:
                 case BaseType::Enum:
                     WriteWithReplace(v.str, '.', "::");
                     break;

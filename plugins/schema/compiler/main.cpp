@@ -73,11 +73,10 @@ int he::AppMain(int argc, char* argv[])
 
         const StringView fname = GetBaseName(param);
 
-        schema::CodeWriter output(alloc);
         schema::CodeGenOptions options{};
         options.fileName = fname.Data();
         options.outDir = args.outDir;
-        if (!schema::GenerateCpp(parser.GetSchema(), options, output))
+        if (!schema::GenerateCpp(parser.GetSchema(), options))
         {
             std::cerr << "Failed to generate C++ code." << std::endl;
             return -1;

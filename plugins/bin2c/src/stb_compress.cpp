@@ -129,7 +129,7 @@ void stb_compress_hashsize(unsigned int y)
 static stb_uint32 stb__running_adler;
 
 
-static int stb_compress_chunk(stb_uchar *history,
+static int stb_compress_chunk(stb_uchar */*history*/,
     stb_uchar *start,
     stb_uchar *end,
     int length,

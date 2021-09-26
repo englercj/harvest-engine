@@ -9,8 +9,9 @@
 #include "he/core/string_fmt.h"
 #include "he/core/string_view.h"
 #include "he/core/test.h"
-#include "he/core/type_traits.h"
 #include "he/core/utils.h"
+
+#include <type_traits>
 
 using namespace he;
 

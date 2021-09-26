@@ -2,11 +2,12 @@
 
 #pragma once
 
-#include "he/core/type_traits.h"
 #include "he/math/types.h"
 #include "he/math/vec4a.h"
 
 #include "fmt/format.h"
+
+#include <type_traits>
 
 namespace he
 {

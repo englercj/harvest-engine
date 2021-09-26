@@ -5,6 +5,7 @@
 #include "he/core/config.h"
 #include "he/core/debug.h"
 #include "he/core/string.h"
+#include "he/core/type_traits.h"
 #include "he/core/types.h"
 #include "he/core/utils.h"
 
@@ -195,7 +196,7 @@ namespace he
         LogKV(const char* k, float v) : key(k), type(ValueType::Double), value{ .d = v } {}
         LogKV(const char* k, double v) : key(k), type(ValueType::Double), value{ .d = v } {}
 
-        template <typename T, HE_REQUIRES(IsEnum<T>)>
+        template <Enum T>
         constexpr LogKV(const char* k, T v) : LogKV(k, EnumType<T>(v)) {}
 
         LogKV(const char* k, const char* v)
@@ -255,6 +256,7 @@ namespace he
             fmt::basic_memory_buffer<char, 128> s{};
         } value;
     };
+    const char* AsString(LogKV::ValueType x);
 
     /// A pointer to a function that handles processing log entries.
     ///

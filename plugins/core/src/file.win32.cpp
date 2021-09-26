@@ -9,7 +9,6 @@
 #include "he/core/memory_ops.h"
 #include "he/core/scope_guard.h"
 #include "he/core/string.h"
-#include "he/core/type_traits.h"
 #include "he/core/wstr.h"
 
 #if defined(HE_PLATFORM_API_WIN32)

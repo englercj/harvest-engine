@@ -2,7 +2,7 @@
 
 #pragma once
 
-#include "he/core/type_traits.h"
+#include <type_traits>
 
 namespace he
 {
@@ -108,7 +108,7 @@ namespace he
     /// \tparam U The type to cast from, usually this is just deduced from the parameter.
     /// \param src The value to cast to another type.
     /// \return The same bits as a different type.
-    template <typename T, class U, HE_REQUIRES(sizeof(T) == sizeof(U) && std::is_trivially_copyable_v<T> && std::is_trivially_copyable_v<U>)>
+    template <typename T, class U> requires(sizeof(T) == sizeof(U) && std::is_trivially_copyable_v<T> && std::is_trivially_copyable_v<U>)
     [[nodiscard]] constexpr T BitCast(const U& src) noexcept
     {
         return __builtin_bit_cast(T, src);

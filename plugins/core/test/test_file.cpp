@@ -144,7 +144,7 @@ HE_TEST(core, file, Static_GetAttributes)
     TouchTestFile(TestPath, TestPath, HE_LENGTH_OF(TestPath));
     r = File::GetAttributes(TestPath, attributes);
     HE_EXPECT(r, r);
-    HE_EXPECT_EQ(attributes.flags, FileAttributeFlag::None);
+    HE_EXPECT(attributes.flags == FileAttributeFlag::None);
     HE_EXPECT_EQ(attributes.size, HE_LENGTH_OF(TestPath));
     HE_EXPECT_LE(attributes.createTime, SystemClock::Now());
     HE_EXPECT_LE(attributes.accessTime, SystemClock::Now());
@@ -372,7 +372,7 @@ HE_TEST(core, file, GetAttributes)
 
     r = f.GetAttributes(attributes);
     HE_EXPECT(r, r);
-    HE_EXPECT_EQ(attributes.flags, FileAttributeFlag::None);
+    HE_EXPECT(attributes.flags == FileAttributeFlag::None);
     HE_EXPECT_EQ(attributes.size, HE_LENGTH_OF(TestPath));
     HE_EXPECT_LE(attributes.createTime, SystemClock::Now());
     HE_EXPECT_LE(attributes.accessTime, SystemClock::Now());

@@ -6,9 +6,10 @@
 #include "he/core/span.h"
 #include "he/core/string.h"
 #include "he/core/types.h"
-#include "he/core/type_traits.h"
 #include "he/core/utils.h"
 #include "he/core/vector.h"
+
+#include <type_traits>
 
 namespace he
 {
@@ -36,8 +37,8 @@ namespace he
     template <typename T, typename U = decltype(nullptr)> struct ArgTypeOf;
     template <> struct ArgTypeOf<bool> { static constexpr ArgType value = ArgType::Boolean; };
     template <> struct ArgTypeOf<const char*> { static constexpr ArgType value = ArgType::String; };
-    template <typename T> struct ArgTypeOf<T, HE_REQUIRED(std::is_integral_v<T>)> { static constexpr ArgType value = ArgType::Integer; };
-    template <typename T> struct ArgTypeOf<T, HE_REQUIRED(std::is_floating_point_v<T>)> { static constexpr ArgType value = ArgType::Float; };
+    template <std::integral T> struct ArgTypeOf<T> { static constexpr ArgType value = ArgType::Integer; };
+    template <std::floating_point T> struct ArgTypeOf<T> { static constexpr ArgType value = ArgType::Float; };
 
     // Gives the signed flag if T is signed.
     template <typename T> struct ArgSignedFlag { static constexpr ArgFlag value = (std::is_signed_v<T> ? InternalSignedFlag : ArgFlag::None); };

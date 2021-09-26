@@ -66,6 +66,20 @@ namespace he
         return value.s.data();
     }
 
+    const char* AsString(LogKV::ValueType x)
+    {
+        switch (x)
+        {
+            case LogKV::ValueType::Bool: return "Bool";
+            case LogKV::ValueType::Int: return "Int";
+            case LogKV::ValueType::Uint: return "Uint";
+            case LogKV::ValueType::Double: return "Double";
+            case LogKV::ValueType::String: return "String";
+        }
+
+        return "<unknown>";
+    }
+
     void AddLogSink(LogSinkFunc sink, void* userData)
     {
         GetSinks().PushBack({ sink, userData });

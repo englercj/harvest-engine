@@ -6,10 +6,15 @@
 
 #include "fmt/format.h"
 
+namespace he
+{
+    template <he::Enum T> const char* AsString(T x);
+}
+
 namespace fmt
 {
-    template <typename T>
-    struct formatter<T, std::enable_if_t<he::IsEnum<T>>>
+    template <he::Enum T>
+    struct formatter<T>
     {
         constexpr auto parse(format_parse_context& ctx) const -> decltype(ctx.begin())
         {
@@ -19,7 +24,7 @@ namespace fmt
         template <typename FormatContext>
         auto format(T s, FormatContext& ctx) const -> decltype(ctx.out())
         {
-            return format_to(ctx.out(), AsString(s));
+            return format_to(ctx.out(), he::AsString(s));
         }
     };
 }

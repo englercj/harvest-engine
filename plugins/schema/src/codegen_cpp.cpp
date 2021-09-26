@@ -6,7 +6,6 @@
 #include "he/core/memory_ops.h"
 #include "he/core/path.h"
 #include "he/core/string.h"
-#include "he/core/type_traits.h"
 #include "he/core/vector.h"
 #include "he/schema/codegen.h"
 #include "he/schema/code_writer.h"
@@ -15,6 +14,7 @@
 #include "fmt/format.h"
 
 #include <concepts>
+#include <type_traits>
 
 namespace he::schema
 {

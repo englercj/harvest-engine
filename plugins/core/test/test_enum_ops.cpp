@@ -19,42 +19,42 @@ HE_ENUM_FLAGS(Flags);
 // ------------------------------------------------------------------------------------------------
 HE_TEST(core, enum_ops, Flags)
 {
-    HE_EXPECT_EQ(~Flags::A, Flags(~1u));
+    HE_EXPECT((~Flags::A) == Flags(~1u));
 
-    HE_EXPECT_EQ(Flags::A | Flags::A, Flags(1));
-    HE_EXPECT_EQ(Flags::A | Flags::B, Flags(3));
-    HE_EXPECT_EQ(Flags::B | Flags::C, Flags(6));
+    HE_EXPECT((Flags::A | Flags::A) == Flags(1));
+    HE_EXPECT((Flags::A | Flags::B) == Flags(3));
+    HE_EXPECT((Flags::B | Flags::C) == Flags(6));
 
-    HE_EXPECT_EQ(Flags::A & Flags::A, Flags(1));
-    HE_EXPECT_EQ(Flags::A & Flags::B, Flags(0));
-    HE_EXPECT_EQ(Flags::B & Flags::C, Flags(0));
+    HE_EXPECT((Flags::A & Flags::A) == Flags(1));
+    HE_EXPECT((Flags::A & Flags::B) == Flags(0));
+    HE_EXPECT((Flags::B & Flags::C) == Flags(0));
 
-    HE_EXPECT_EQ(Flags::A ^ Flags::A, Flags(0));
-    HE_EXPECT_EQ(Flags::A ^ Flags::B, Flags(3));
-    HE_EXPECT_EQ(Flags::B ^ Flags::C, Flags(6));
+    HE_EXPECT((Flags::A ^ Flags::A) == Flags(0));
+    HE_EXPECT((Flags::A ^ Flags::B) == Flags(3));
+    HE_EXPECT((Flags::B ^ Flags::C) == Flags(6));
 
     Flags f;
 
     f = Flags::None;
-    HE_EXPECT_EQ(f |= Flags::A, Flags(1));
-    HE_EXPECT_EQ(f |= Flags::B, Flags(3));
-    HE_EXPECT_EQ(f |= Flags::C, Flags(7));
+    HE_EXPECT((f |= Flags::A) == Flags(1));
+    HE_EXPECT((f |= Flags::B) == Flags(3));
+    HE_EXPECT((f |= Flags::C) == Flags(7));
 
     f = Flags::None;
-    HE_EXPECT_EQ(f &= Flags::A, Flags(0));
-    HE_EXPECT_EQ(f &= Flags::B, Flags(0));
-    HE_EXPECT_EQ(f &= Flags::C, Flags(0));
+    HE_EXPECT((f &= Flags::A) == Flags(0));
+    HE_EXPECT((f &= Flags::B) == Flags(0));
+    HE_EXPECT((f &= Flags::C) == Flags(0));
 
     f = Flags::A;
-    HE_EXPECT_EQ(f &= Flags::A, Flags(1));
-    HE_EXPECT_EQ(f &= Flags::B, Flags(0));
-    HE_EXPECT_EQ(f &= Flags::C, Flags(0));
+    HE_EXPECT((f &= Flags::A) == Flags(1));
+    HE_EXPECT((f &= Flags::B) == Flags(0));
+    HE_EXPECT((f &= Flags::C) == Flags(0));
 
     f = Flags::None;
-    HE_EXPECT_EQ(f ^= Flags::A, Flags(1));
-    HE_EXPECT_EQ(f ^= Flags::B, Flags(3));
-    HE_EXPECT_EQ(f ^= Flags::C, Flags(7));
-    HE_EXPECT_EQ(f ^= Flags::A, Flags(6));
+    HE_EXPECT((f ^= Flags::A) == Flags(1));
+    HE_EXPECT((f ^= Flags::B) == Flags(3));
+    HE_EXPECT((f ^= Flags::C) == Flags(7));
+    HE_EXPECT((f ^= Flags::A) == Flags(6));
 }
 
 // ------------------------------------------------------------------------------------------------

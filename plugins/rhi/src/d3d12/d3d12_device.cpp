@@ -10,9 +10,10 @@
 #include "he/core/macros.h"
 #include "he/core/memory_ops.h"
 #include "he/core/scope_guard.h"
-#include "he/core/type_traits.h"
 #include "he/math/vec4.h"
 #include "he/rhi/utils.h"
+
+#include <type_traits>
 
 #if HE_RHI_ENABLE_D3D12
 

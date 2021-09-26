@@ -19,7 +19,7 @@ namespace he
 
         static ValueType HashData(const void* data, uint32_t len, ValueType seed = Seed);
 
-        template <typename T, HE_REQUIRES(std::is_arithmetic_v<T>)>
+        template <Arithmetic T>
         static ValueType HashScalar(const T& obj, ValueType seed = Seed);
 
     public:
@@ -28,7 +28,7 @@ namespace he
         FNV32& String(const char* str);
         FNV32& Data(const void* data, uint32_t len);
 
-        template <typename T, HE_REQUIRES(std::is_arithmetic_v<T>)>
+        template <Arithmetic T>
         FNV32& Scalar(const T& obj);
 
         FNV32& Reset(ValueType seed = Seed);
@@ -51,7 +51,7 @@ namespace he
 
         static ValueType HashData(const void* data, uint32_t len, ValueType seed = Seed);
 
-        template <typename T, HE_REQUIRES(std::is_arithmetic_v<T>)>
+        template <Arithmetic T>
         static ValueType HashScalar(const T& obj, ValueType seed = Seed);
 
     public:
@@ -60,7 +60,7 @@ namespace he
         FNV64& String(const char* str);
         FNV64& Data(const void* data, uint32_t len);
 
-        template <typename T, HE_REQUIRES(std::is_arithmetic_v<T>)>
+        template <Arithmetic T>
         FNV64& Scalar(const T& obj);
 
         FNV64& Reset(ValueType seed = Seed);

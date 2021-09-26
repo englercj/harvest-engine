@@ -4,35 +4,11 @@
 
 #include "he/core/types.h"
 
+#include <concepts>
 #include <type_traits>
 
 namespace he
 {
-    // --------------------------------------------------------------------------------------------
-    // Range Providers
-
-    template <typename T, typename E>
-    struct _ProvidesStdContiguousRange
-    {
-        template <typename U, class D = std::remove_pointer_t<decltype(std::declval<U&>().data())>, class S = decltype(std::declval<U&>().size())>
-        static std::true_type Test(std::enable_if_t<std::is_convertible_v<D(*)[], E(*)[]> && std::is_convertible_v<S, size_t>, U*>);
-
-        template <typename U>
-        static std::false_type Test(...);
-    };
-    template <typename T, typename E> inline constexpr bool ProvidesStdContiguousRange = decltype(_ProvidesStdContiguousRange<T, E>::template Test<T>(nullptr))::value;
-
-    template <typename T, class E>
-    struct _ProvidesContiguousRange
-    {
-        template <typename U, class D = std::remove_pointer_t<decltype(std::declval<U&>().Data())>, class S = decltype(std::declval<U&>().Size())>
-        static std::true_type Test(std::enable_if_t<std::is_convertible_v<D(*)[], E(*)[]> && std::is_convertible_v<S, uint32_t>, U*>);
-
-        template <typename U>
-        static std::false_type Test(...);
-    };
-    template <typename T, typename E> inline constexpr bool ProvidesContiguousRange = decltype(_ProvidesContiguousRange<T, E>::template Test<T>(nullptr))::value;
-
     // --------------------------------------------------------------------------------------------
     // Is Specialization
 
@@ -49,7 +25,25 @@ namespace he
 
     template <typename T> inline constexpr bool IsEnum = __is_enum(T);
     template <typename T> using EnumType = __underlying_type(T);
-}
 
-#define HE_REQUIRED(...) std::enable_if_t<(__VA_ARGS__), decltype(nullptr)>
-#define HE_REQUIRES(...) HE_REQUIRED(__VA_ARGS__) = nullptr
+    // --------------------------------------------------------------------------------------------
+    // Concepts
+
+    template <typename T, typename E>
+    concept ContiguousRange = requires(T& t) {
+        { t.Data() } -> std::convertible_to<std::add_pointer_t<E>>;
+        { t.Size() } -> std::convertible_to<uint32_t>;
+    };
+
+    template <typename T, typename E>
+    concept StdContiguousRange = requires(T& t) {
+        { t.data() } -> std::convertible_to<std::add_pointer_t<E>>;
+        { t.size() } -> std::convertible_to<size_t>;
+    };
+
+    template <typename T>
+    concept Arithmetic = std::is_arithmetic_v<T>;
+
+    template <typename T>
+    concept Enum = IsEnum<T>;
+}

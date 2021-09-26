@@ -205,4 +205,15 @@ namespace he
         m_strategy = x.m_strategy;
         m_growth = x.m_growth;
     }
+
+    const char* AsString(BufferWriter::GrowthStrategy x)
+    {
+        switch (x)
+        {
+            case BufferWriter::GrowthStrategy::Factor: return "Factor";
+            case BufferWriter::GrowthStrategy::Fixed: return "Fixed";
+        }
+
+        return "<unknown>";
+    }
 }

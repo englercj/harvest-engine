@@ -3,7 +3,8 @@
 #pragma once
 
 #include "he/core/allocator.h"
-#include "he/core/type_traits.h"
+
+#include <type_traits>
 
 namespace he
 {
@@ -169,7 +170,7 @@ namespace he
         /// Copies a trivially copyable type into the buffer.
         ///
         /// \param[in] value The value to copy.
-        template <typename T, HE_REQUIRES(std::is_trivially_copyable_v<T>)>
+        template <typename T> requires(std::is_trivially_copyable_v<T>)
         void Write(const T& value) { Write(&value, sizeof(T)); }
 
         /// Writes a byte repeatedly to the buffer. This is equivalent to growing the buffer
@@ -204,4 +205,10 @@ namespace he
         GrowthStrategy m_strategy{ GrowthStrategy::Factor };
         float m_growth{ 0.5f };
     };
+
+    /// Returns the enum as a string.
+    ///
+    /// \param[in] x The value to get the string representation of.
+    /// \return The string representation of the enum value.
+    const char* AsString(BufferWriter::GrowthStrategy x);
 }

@@ -3,7 +3,8 @@
 #pragma once
 
 #include "he/core/compiler.h"
-#include "he/core/type_traits.h"
+
+#include <type_traits>
 
 /// \def HE_ALLOCA_RAW(len)
 /// Allocate `len` bytes on the stack of the current function scope.

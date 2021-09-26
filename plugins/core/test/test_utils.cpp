@@ -7,7 +7,8 @@
 #include "he/core/alloca.h"
 #include "he/core/macros.h"
 #include "he/core/test.h"
-#include "he/core/type_traits.h"
+
+#include <type_traits>
 
 using namespace he;
 

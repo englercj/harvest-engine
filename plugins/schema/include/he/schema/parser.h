@@ -8,7 +8,6 @@
 #include "he/core/span.h"
 #include "he/core/string.h"
 #include "he/core/string_view.h"
-#include "he/core/type_traits.h"
 #include "he/core/vector.h"
 #include "he/schema/lexer.h"
 #include "he/schema/schema.h"

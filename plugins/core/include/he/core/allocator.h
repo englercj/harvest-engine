@@ -3,8 +3,9 @@
 #pragma once
 
 #include "he/core/types.h"
-#include "he/core/type_traits.h"
 #include "he/core/utils.h"
+
+#include <type_traits>
 
 namespace he
 {
@@ -66,7 +67,7 @@ namespace he
         /// \tparam The type to allocate and construct.
         /// \param count The number of array elements to allocate and construct.
         /// \param args optional arguments for the constructor.
-        template <typename T, HE_REQUIRES(std::is_trivially_constructible_v<T> && std::is_trivially_destructible_v<T>)>
+        template <typename T> requires(std::is_trivially_constructible_v<T> && std::is_trivially_destructible_v<T>)
         T* NewArray(uint32_t count)
         {
             return Malloc<T>(count);
@@ -105,7 +106,7 @@ namespace he
         /// Deletes `p` which must have been allocated with New.
         ///
         /// \param p The pointer to destruct and deallocate.
-        template <typename T, HE_REQUIRES(std::is_trivially_destructible_v<T>)>
+        template <typename T> requires(std::is_trivially_destructible_v<T>)
         void Delete(const T* p)
         {
             Free(const_cast<T*>(p));
@@ -114,7 +115,7 @@ namespace he
         /// Deletes `p` which must have been allocated with New.
         ///
         /// \param p The pointer to destruct and deallocate.
-        template <typename T, HE_REQUIRES(!std::is_trivially_destructible_v<T>)>
+        template <typename T> requires(!std::is_trivially_destructible_v<T>)
         void Delete(const T* p)
         {
             if (p)
@@ -127,7 +128,7 @@ namespace he
         /// Deletes `p` which must have been allocated with NewArray.
         ///
         /// \param p The pointer to destruct and deallocate.
-        template <typename T, HE_REQUIRES(std::is_trivially_destructible_v<T>)>
+        template <typename T> requires(std::is_trivially_destructible_v<T>)
         void DeleteArray(const T* p)
         {
             Free(const_cast<T*>(p));
@@ -136,7 +137,7 @@ namespace he
         /// Deletes `p` which must have been allocated with NewArray.
         ///
         /// \param p The pointer to destruct and deallocate.
-        template <typename T, HE_REQUIRES(!std::is_trivially_destructible_v<T>)>
+        template <typename T> requires(!std::is_trivially_destructible_v<T>)
         void DeleteArray(const T* p)
         {
             if (!p)

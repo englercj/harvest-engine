@@ -36,8 +36,8 @@ namespace he
         ///
         /// \param begin The pointer to the start of the range.
         /// \param end the pointer to one past the last element of the range.
-        template <typename P, HE_REQUIRES(std::is_convertible_v<P, T*>)>
-        constexpr Span(T* begin, P end)
+        template <typename P>
+        constexpr Span(T* begin, P end) requires(std::convertible_to<P, T*>)
             : m_ptr(begin)
             , m_size(static_cast<uint32_t>(static_cast<T*>(end) - begin))
         {}
@@ -55,7 +55,7 @@ namespace he
         /// it has `.data()` and `.size()` members.
         ///
         /// \param rangeProvider The object that provides the range.
-        template <typename R, HE_REQUIRES(!IsSpecialization<std::remove_cv_t<R>, Span> && ProvidesStdContiguousRange<R, T>)>
+        template <typename R> requires(!IsSpecialization<std::remove_cv_t<R>, Span> && StdContiguousRange<R, T>)
         constexpr Span(R& rangeProvider)
             : m_ptr(rangeProvider.data())
             , m_size(static_cast<uint32_t>(rangeProvider.size()))
@@ -67,7 +67,7 @@ namespace he
         /// it has `.Data()` and `.Size()` members.
         ///
         /// \param rangeProvider The object that provides the range.
-        template <typename R, HE_REQUIRES(!IsSpecialization<std::remove_cv_t<R>, Span> && !ProvidesStdContiguousRange<R, T> && ProvidesContiguousRange<R, T>)>
+        template <typename R> requires(!IsSpecialization<std::remove_cv_t<R>, Span> && ContiguousRange<R, T>)
         constexpr Span(R& rangeProvider)
             : m_ptr(rangeProvider.Data())
             , m_size(rangeProvider.Size())
@@ -76,7 +76,7 @@ namespace he
         /// Construct a span from another span object.
         ///
         /// \param s The span to construct from.
-        template <typename U, HE_REQUIRES(std::is_convertible_v<U(*)[], T(*)[]>)>
+        template <typename U> requires(std::is_convertible_v<U(*)[], T(*)[]>)
         constexpr Span(const Span<U>& s)
             : m_ptr(s.m_ptr)
             , m_size(s.m_size)
@@ -88,8 +88,13 @@ namespace he
         /// Copy the pointer and size of span `x`.
         ///
         /// \param x The span to copy from.
-        template <typename U, HE_REQUIRES(std::is_convertible_v<U(*)[], T(*)[]>)>
-        constexpr Span<T>& operator=(const Span<U>& x) { m_ptr = x.m_ptr; m_size = x.m_size; return *this; }
+        template <typename U> requires(std::is_convertible_v<U(*)[], T(*)[]>)
+        constexpr Span<T>& operator=(const Span<U>& x)
+        {
+            m_ptr = x.m_ptr;
+            m_size = x.m_size;
+            return *this;
+        }
 
         /// Gets a reference to the element at `index`. Asserts if `index` is not less
         /// than \see Size().

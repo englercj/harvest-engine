@@ -4,7 +4,8 @@
 
 #include "he/core/clock_fmt.h"
 #include "he/core/test.h"
-#include "he/core/type_traits.h"
+
+#include <type_traits>
 
 using namespace he;
 

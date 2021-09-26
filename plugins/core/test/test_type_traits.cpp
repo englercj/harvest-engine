@@ -16,27 +16,27 @@
 using namespace he;
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST(core, type_traits, ProvidesStdContiguousRange)
+HE_TEST(core, type_traits, StdContiguousRange)
 {
-    static_assert(ProvidesStdContiguousRange<std::string, const char>);
-    static_assert(ProvidesStdContiguousRange<std::string_view, const char>);
-    static_assert(ProvidesStdContiguousRange<std::vector<int>, int>);
+    static_assert(StdContiguousRange<std::string, const char>);
+    static_assert(StdContiguousRange<std::string_view, const char>);
+    static_assert(StdContiguousRange<std::vector<int>, int>);
 
-    static_assert(!ProvidesStdContiguousRange<std::string, int>);
-    static_assert(!ProvidesStdContiguousRange<std::string_view, char>);
-    static_assert(!ProvidesStdContiguousRange<std::vector<int>, char>);
+    static_assert(!StdContiguousRange<std::string, int>);
+    static_assert(!StdContiguousRange<std::string_view, char>);
+    static_assert(!StdContiguousRange<std::vector<int>, char>);
 }
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST(core, type_traits, ProvidesContiguousRange)
+HE_TEST(core, type_traits, ContiguousRange)
 {
-    static_assert(ProvidesContiguousRange<String, char>);
-    static_assert(ProvidesContiguousRange<StringView, const char>);
-    static_assert(ProvidesContiguousRange<Vector<int>, int>);
+    static_assert(ContiguousRange<String, char>);
+    static_assert(ContiguousRange<StringView, const char>);
+    static_assert(ContiguousRange<Vector<int>, int>);
 
-    static_assert(!ProvidesContiguousRange<String, int>);
-    static_assert(!ProvidesContiguousRange<StringView, char>);
-    static_assert(!ProvidesContiguousRange<Vector<int>, char>);
+    static_assert(!ContiguousRange<String, int>);
+    static_assert(!ContiguousRange<StringView, char>);
+    static_assert(!ContiguousRange<Vector<int>, char>);
 }
 
 // ------------------------------------------------------------------------------------------------

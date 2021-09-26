@@ -298,7 +298,7 @@ namespace he
         ///
         /// \param allocator The allocator to use for any allocations.
         /// \param rangeProvider The object that provides the range.
-        template <typename R, HE_REQUIRES(!std::is_same_v<R, String> && ProvidesStdContiguousRange<R, const char>)>
+        template <typename R> requires(!std::is_same_v<R, String> && StdContiguousRange<R, const char>)
         String(Allocator& allocator, const R& rangeProvider)
             : String(allocator, rangeProvider.data(), static_cast<uint32_t>(rangeProvider.size()))
         {
@@ -310,7 +310,7 @@ namespace he
         ///
         /// \param allocator The allocator to use for any allocations.
         /// \param rangeProvider The object that provides the range.
-        template <typename R, HE_REQUIRES(!std::is_same_v<R, String> && !ProvidesStdContiguousRange<R, const char> && ProvidesContiguousRange<R, const char>)>
+        template <typename R> requires(!std::is_same_v<R, String> && ContiguousRange<R, const char>)
         String(Allocator& allocator, const R& rangeProvider)
             : String(allocator, rangeProvider.Data(), rangeProvider.Size())
         {}
@@ -384,10 +384,10 @@ namespace he
         /// That is, it has `.data()` and `.size()` members.
         ///
         /// \param rangeProvider The object that provides the range.
-        template <typename R, HE_REQUIRES(ProvidesStdContiguousRange<R, const char>)>
-        String& operator+=(const R& rangeProvider)
+        template <typename R> requires(StdContiguousRange<R, const char>)
+        String& operator+=(const R& range)
         {
-            Insert(Size(), rangeProvider.data(), static_cast<uint32_t>(rangeProvider.size()));
+            Insert(Size(), range.data(), static_cast<uint32_t>(range.size()));
             return *this;
         }
 
@@ -396,10 +396,10 @@ namespace he
         ///
         /// \param allocator The allocator to use for any allocations.
         /// \param rangeProvider The object that provides the range.
-        template <typename R, HE_REQUIRES(!ProvidesStdContiguousRange<R, const char> && ProvidesContiguousRange<R, const char>)>
-        String& operator+=(const R& rangeProvider)
+        template <typename R> requires(ContiguousRange<R, const char>)
+        String& operator+=(const R& range)
         {
-            Insert(Size(), rangeProvider.Data(), rangeProvider.Size());
+            Insert(Size(), range.Data(), range.Size());
             return *this;
         }
 

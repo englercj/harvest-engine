@@ -5,11 +5,11 @@
 #include "di.h"
 #include "dialogs/dialog.h"
 
-#include "he/core/type_traits.h"
 #include "he/core/utils.h"
 #include "he/core/vector.h"
 
 #include <memory>
+#include <type_traits>
 
 namespace he::editor
 {
@@ -22,10 +22,9 @@ namespace he::editor
 
         void ShowDialogs();
 
-        template <typename T>
+        template <typename T> requires(std::is_base_of_v<Dialog, T>)
         T& Open()
         {
-            static_assert(std::is_base_of_v<Dialog, T>, "Dialog Service can only open Dialog objects.");
             m_dialogs.PushBack(DICreateUnique<T>());
             return *static_cast<T*>(m_dialogs.Back().get());
         }

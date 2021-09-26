@@ -3,8 +3,9 @@
 #pragma once
 
 #include "he/core/macros.h"
-#include "he/core/type_traits.h"
 #include "he/core/utils.h"
+
+#include <type_traits>
 
 namespace he
 {
@@ -58,9 +59,9 @@ namespace he
     };
 
     template <typename T>
-    inline ScopeGuard<typename std::decay<T>::type> MakeScopeGuard(T&& func)
+    inline ScopeGuard<typename std::decay_t<T>> MakeScopeGuard(T&& func)
     {
-        return ScopeGuard<typename std::decay<T>::type>(Forward<T>(func));
+        return ScopeGuard<typename std::decay_t<T>>(Forward<T>(func));
     }
 }
 

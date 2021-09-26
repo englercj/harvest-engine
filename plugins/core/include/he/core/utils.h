@@ -2,6 +2,8 @@
 
 #pragma once
 
+#include "he/core/types.h"
+
 #include <type_traits>
 
 namespace he

@@ -614,7 +614,7 @@ namespace he::schema
         return false;
     }
 
-    template <typename T, HE_REQUIRED(std::is_integral_v<T>)>
+    template <std::integral T>
     bool Parser::ConsumeIntegerRaw(T& out)
     {
         if (!Expect(Lexer::TokenType::Integer))
@@ -651,7 +651,7 @@ namespace he::schema
         return true;
     }
 
-    template <typename T, HE_REQUIRED(std::is_integral_v<T>)>
+    template <std::integral T>
     bool Parser::ConsumeInteger(T& out)
     {
         bool isSigned = TryConsume(Lexer::TokenType::Minus);
@@ -704,7 +704,7 @@ namespace he::schema
         return true;
     }
 
-    template <typename T, HE_REQUIRED(std::is_floating_point_v<T>)>
+    template <std::floating_point T>
     bool Parser::ConsumeFloat(T& out)
     {
         bool isSigned = TryConsume(Lexer::TokenType::Minus);
@@ -854,12 +854,12 @@ namespace he::schema
                 return false;
             }
 
-            if (!ConsumeType(type.typeParams.EmplaceBack(m_allocator)))
+            if (!ConsumeType(type.AddTypeParam()))
                 return false;
 
             while (TryConsume(Lexer::TokenType::Comma))
             {
-                if (!ConsumeType(type.typeParams.EmplaceBack(m_allocator)))
+                if (!ConsumeType(type.AddTypeParam()))
                     return false;
             }
 

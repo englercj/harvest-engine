@@ -11,9 +11,9 @@ using namespace he;
 // ------------------------------------------------------------------------------------------------
 HE_TEST(core, Vector, Constants)
 {
-    // Changing these are potentially breaking so checking them here so a change is made with thoughtfulness.
+    // Changing these are potentially breaking so checking them here so any changes are made with thoughtfulness.
     static_assert(std::is_same_v<Vector<int>::ElementType, int>);
-    static_assert(std::is_same_v<Vector<NonTrivial>::ElementType, NonTrivial>);
+    static_assert(std::is_same_v<Vector<CopyAndMove>::ElementType, CopyAndMove>);
     static_assert(Vector<int>::MinElements == 8);
     static_assert(Vector<int>::MaxElements == 0xffffffff);
 }
@@ -28,7 +28,7 @@ HE_TEST(core, Vector, Construct)
     }
 
     {
-        Vector<NonTrivial> v(a);
+        Vector<CopyAndMove> v(a);
         HE_EXPECT_EQ(v.Size(), 0);
     }
 }
@@ -73,37 +73,57 @@ HE_TEST(core, Vector, Construct_Copy)
         HE_EXPECT_EQ_PTR(&copy.GetAllocator(), &v.GetAllocator());
     }
 
-    Vector<NonTrivial> v2(a);
+    Vector<CopyAndMove> v2(a);
     v2.Resize(ExpectedSize);
     HE_EXPECT_EQ(v2.Size(), ExpectedSize);
 
     {
-        Vector<NonTrivial> copy(a, v2);
+        Vector<CopyAndMove> copy(a, v2);
         HE_EXPECT_EQ(copy.Size(), ExpectedSize);
-        HE_EXPECT_EQ_MEM(copy.Data(), v2.Data(), v2.Size() * sizeof(int));
         HE_EXPECT_EQ_PTR(&copy.GetAllocator(), &a);
+
+        for (uint32_t i = 0; i < ExpectedSize; ++i)
+        {
+            HE_EXPECT(copy[i].copyConstructed);
+            HE_EXPECT(!copy[i].copyAssigned);
+        }
     }
 
     {
         AnotherAllocator a2;
-        Vector<NonTrivial> copy(a2, v2);
+        Vector<CopyAndMove> copy(a2, v2);
         HE_EXPECT_EQ(copy.Size(), ExpectedSize);
-        HE_EXPECT_EQ_MEM(copy.Data(), v2.Data(), v2.Size() * sizeof(int));
         HE_EXPECT_EQ_PTR(&copy.GetAllocator(), &a2);
+
+        for (uint32_t i = 0; i < ExpectedSize; ++i)
+        {
+            HE_EXPECT(copy[i].copyConstructed);
+            HE_EXPECT(!copy[i].copyAssigned);
+        }
     }
 
     {
-        Vector<NonTrivial> copy(v2);
+        Vector<CopyAndMove> copy(v2);
         HE_EXPECT_EQ(copy.Size(), ExpectedSize);
-        HE_EXPECT_EQ_MEM(copy.Data(), v2.Data(), v2.Size() * sizeof(int));
         HE_EXPECT_EQ_PTR(&copy.GetAllocator(), &v2.GetAllocator());
+
+        for (uint32_t i = 0; i < ExpectedSize; ++i)
+        {
+            HE_EXPECT(copy[i].copyConstructed);
+            HE_EXPECT(!copy[i].copyAssigned);
+        }
     }
 
     {
-        Vector<NonTrivial> copy = v2;
+        Vector<CopyAndMove> copy = v2;
         HE_EXPECT_EQ(copy.Size(), ExpectedSize);
-        HE_EXPECT_EQ_MEM(copy.Data(), v2.Data(), v2.Size() * sizeof(int));
         HE_EXPECT_EQ_PTR(&copy.GetAllocator(), &v2.GetAllocator());
+
+        for (uint32_t i = 0; i < ExpectedSize; ++i)
+        {
+            HE_EXPECT(copy[i].copyConstructed);
+            HE_EXPECT(!copy[i].copyAssigned);
+        }
     }
 
     Vector<CopyOnly> v3(a);
@@ -221,11 +241,11 @@ HE_TEST(core, Vector, Construct_Move)
     }
 
     {
-        Vector<NonTrivial> v2(a);
+        Vector<CopyAndMove> v2(a);
         v2.Resize(ExpectedSize);
         HE_EXPECT_EQ(v2.Size(), ExpectedSize);
 
-        Vector<NonTrivial> moved(a, Move(v2));
+        Vector<CopyAndMove> moved(a, Move(v2));
         HE_EXPECT_EQ(moved.Size(), ExpectedSize);
         HE_EXPECT(moved.Data());
         HE_EXPECT_EQ_PTR(&moved.GetAllocator(), &a);
@@ -234,12 +254,12 @@ HE_TEST(core, Vector, Construct_Move)
     }
 
     {
-        Vector<NonTrivial> v2(a);
+        Vector<CopyAndMove> v2(a);
         v2.Resize(ExpectedSize);
         HE_EXPECT_EQ(v2.Size(), ExpectedSize);
 
         AnotherAllocator a2;
-        Vector<NonTrivial> moved(a2, Move(v2));
+        Vector<CopyAndMove> moved(a2, Move(v2));
         HE_EXPECT_EQ(moved.Size(), ExpectedSize);
         HE_EXPECT(moved.Data());
         HE_EXPECT_EQ_PTR(&moved.GetAllocator(), &a2);
@@ -248,11 +268,11 @@ HE_TEST(core, Vector, Construct_Move)
     }
 
     {
-        Vector<NonTrivial> v2(a);
+        Vector<CopyAndMove> v2(a);
         v2.Resize(ExpectedSize);
         HE_EXPECT_EQ(v2.Size(), ExpectedSize);
 
-        Vector<NonTrivial> moved(Move(v2));
+        Vector<CopyAndMove> moved(Move(v2));
         HE_EXPECT_EQ(moved.Size(), ExpectedSize);
         HE_EXPECT(moved.Data());
         HE_EXPECT_EQ_PTR(&moved.GetAllocator(), &a);
@@ -261,11 +281,11 @@ HE_TEST(core, Vector, Construct_Move)
     }
 
     {
-        Vector<NonTrivial> v2(a);
+        Vector<CopyAndMove> v2(a);
         v2.Resize(ExpectedSize);
         HE_EXPECT_EQ(v2.Size(), ExpectedSize);
 
-        Vector<NonTrivial> moved = Move(v2);
+        Vector<CopyAndMove> moved = Move(v2);
         HE_EXPECT_EQ(moved.Size(), ExpectedSize);
         HE_EXPECT(moved.Data());
         HE_EXPECT_EQ_PTR(&moved.GetAllocator(), &a);
@@ -448,25 +468,35 @@ HE_TEST(core, Vector, operator_assign_copy)
         HE_EXPECT_EQ_PTR(&copy.GetAllocator(), &a2);
     }
 
-    Vector<NonTrivial> v2(a);
+    Vector<CopyAndMove> v2(a);
     v2.Resize(ExpectedSize);
     HE_EXPECT_EQ(v2.Size(), ExpectedSize);
 
     {
-        Vector<NonTrivial> copy(a);
+        Vector<CopyAndMove> copy(a);
         copy = v2;
         HE_EXPECT_EQ(copy.Size(), ExpectedSize);
-        HE_EXPECT_EQ_MEM(copy.Data(), v2.Data(), v2.Size() * sizeof(int));
         HE_EXPECT_EQ_PTR(&copy.GetAllocator(), &a);
+
+        for (uint32_t i = 0; i < ExpectedSize; ++i)
+        {
+            HE_EXPECT(copy[i].copyConstructed);
+            HE_EXPECT(!copy[i].copyAssigned);
+        }
     }
 
     {
         AnotherAllocator a2;
-        Vector<NonTrivial> copy(a2);
+        Vector<CopyAndMove> copy(a2);
         copy = v2;
         HE_EXPECT_EQ(copy.Size(), ExpectedSize);
-        HE_EXPECT_EQ_MEM(copy.Data(), v2.Data(), v2.Size() * sizeof(int));
         HE_EXPECT_EQ_PTR(&copy.GetAllocator(), &a2);
+
+        for (uint32_t i = 0; i < ExpectedSize; ++i)
+        {
+            HE_EXPECT(copy[i].copyConstructed);
+            HE_EXPECT(!copy[i].copyAssigned);
+        }
     }
 
     Vector<CopyOnly> v3(a);
@@ -538,11 +568,11 @@ HE_TEST(core, Vector, operator_assign_move)
     }
 
     {
-        Vector<NonTrivial> v2(a);
+        Vector<CopyAndMove> v2(a);
         v2.Resize(ExpectedSize);
         HE_EXPECT_EQ(v2.Size(), ExpectedSize);
 
-        Vector<NonTrivial> moved(a);
+        Vector<CopyAndMove> moved(a);
         moved = Move(v2);
         HE_EXPECT_EQ(moved.Size(), ExpectedSize);
         HE_EXPECT(moved.Data());
@@ -552,12 +582,12 @@ HE_TEST(core, Vector, operator_assign_move)
     }
 
     {
-        Vector<NonTrivial> v2(a);
+        Vector<CopyAndMove> v2(a);
         v2.Resize(ExpectedSize);
         HE_EXPECT_EQ(v2.Size(), ExpectedSize);
 
         AnotherAllocator a2;
-        Vector<NonTrivial> moved(a2);
+        Vector<CopyAndMove> moved(a2);
         moved = Move(v2);
         HE_EXPECT_EQ(moved.Size(), ExpectedSize);
         HE_EXPECT(moved.Data());

@@ -7,10 +7,11 @@
 #include "he/core/macros.h"
 #include "he/core/memory_ops.h"
 #include "he/core/types.h"
-#include "he/core/type_traits.h"
 #include "he/core/utils.h"
 
 #include <new>
+#include <concepts>
+#include <type_traits>
 
 namespace he
 {
@@ -268,13 +269,20 @@ namespace he
         /// Creates a new element at the end of the vector and returns a reference to it.
         /// The element is default initialized.
         ///
-        /// \return The newly created element.
+        /// \return A reference to the newly created element.
         T& EmplaceBack(DefaultInitTag);
+
+        /// Creates a new element at the end of the vector and returns a reference to it.
+        /// The element is default constructed.
+        ///
+        /// \return A reference to the newly created element.
+        T& EmplaceBack();
 
         /// Creates a new element at the end of the vector and returns a reference to it.
         /// Any arguments passed are forwarded to the new element's constructor.
         ///
-        /// \return The newly created element.
+        /// \param args The arguments to pass to the constructor.
+        /// \return A reference to the newly created element.
         template <typename... Args>
         T& EmplaceBack(Args&&... args);
 

@@ -14,6 +14,8 @@
 
 #include "fmt/format.h"
 
+#include <concepts>
+
 namespace he::schema
 {
     class CodeGenCpp
@@ -633,7 +635,7 @@ namespace he::schema
             }
         }
 
-        template <typename T, HE_REQUIRES(std::is_integral_v<T>)>
+        template <std::integral T>
         void WriteAsHex(T value)
         {
             m_writer.Write("{:#0{}x}", value, 2 + (sizeof(T) * 2));
@@ -798,7 +800,7 @@ namespace he::schema
                         m_writer.Write('<');
                         for (uint32_t i = 0; i < t.typeParams.Size(); ++i)
                         {
-                            WriteType(t.typeParams[i]);
+                            WriteType(*t.typeParams[i]);
                             if (i < (t.typeParams.Size() - 1))
                                 m_writer.Write(", ");
                         }

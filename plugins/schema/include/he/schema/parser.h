@@ -15,6 +15,7 @@
 
 #include "fmt/core.h"
 
+#include <concepts>
 #include <unordered_map>
 
 namespace he::schema
@@ -85,12 +86,12 @@ namespace he::schema
         bool ConsumeIdentifier(String& out);
         bool ConsumeDottedIdentifier(String& out);
         bool ConsumeBool(bool& out);
-        template <typename T, HE_REQUIRES(std::is_integral_v<T>)>
+        template <std::integral T>
         bool ConsumeIntegerRaw(T& out);
-        template <typename T, HE_REQUIRES(std::is_integral_v<T>)>
+        template <std::integral T>
         bool ConsumeInteger(T& out);
         bool ConsumeFloatRaw(double& out);
-        template <typename T, HE_REQUIRES(std::is_floating_point_v<T>)>
+        template <std::floating_point T>
         bool ConsumeFloat(T& out);
         bool ConsumeString(String& out);
         bool ConsumeTypeRaw(Type& type);

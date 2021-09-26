@@ -161,8 +161,26 @@ namespace he::schema
 
         ~Type()
         {
-            if (element) typeParams.GetAllocator().Delete(element);
-            if (key) typeParams.GetAllocator().Delete(key);
+            Allocator& alloc = typeParams.GetAllocator();
+
+            if (element)
+                alloc.Delete(element);
+
+            if (key)
+                alloc.Delete(key);
+
+            for (Type* t : typeParams)
+            {
+                alloc.Delete(t);
+            }
+        }
+
+        Type& AddTypeParam()
+        {
+            Allocator& alloc = typeParams.GetAllocator();
+            Type* t = alloc.New<Type>(alloc);
+            typeParams.PushBack(t);
+            return *t;
         }
 
         // The base type of this item.
@@ -188,7 +206,7 @@ namespace he::schema
         Type* key{ nullptr };
 
         // Parameters passed in angle brackets for generics
-        Vector<Type> typeParams;
+        Vector<Type*> typeParams;
     };
 
     struct AttributeDef

@@ -20,6 +20,12 @@ namespace he
         int* p;
         NonTrivial() { p = new int; }
         ~NonTrivial() { delete p; }
+
+        NonTrivial(const NonTrivial&) { p = new int; }
+        NonTrivial& operator=(const NonTrivial&) { delete p; p = new int; return *this; }
+
+        NonTrivial(NonTrivial&& x) { p = x.p; x.p = nullptr; }
+        NonTrivial& operator=(NonTrivial&& x) { delete p; p = x.p; x.p = nullptr; return *this; }
     };
 
     struct VirtualDestructor { virtual ~VirtualDestructor() {} };
@@ -44,6 +50,20 @@ namespace he
         MoveOnly(MoveOnly&&) { moveConstructed = true; }
         MoveOnly& operator=(MoveOnly&&) { moveAssigned = true; return *this; }
 
+        bool moveConstructed{ false };
+        bool moveAssigned{ false };
+    };
+
+    struct CopyAndMove
+    {
+        CopyAndMove() = default;
+        CopyAndMove(const CopyAndMove&) { copyConstructed = true; }
+        CopyAndMove& operator=(const CopyAndMove&) { copyAssigned = true; return *this; }
+        CopyAndMove(CopyAndMove&&) { moveConstructed = true; }
+        CopyAndMove& operator=(CopyAndMove&&) { moveAssigned = true; return *this; }
+
+        bool copyConstructed{ false };
+        bool copyAssigned{ false };
         bool moveConstructed{ false };
         bool moveAssigned{ false };
     };

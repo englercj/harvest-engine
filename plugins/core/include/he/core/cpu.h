@@ -50,6 +50,6 @@
     #define HE_CPU_64_BIT           0
 #endif
 
-#if defined(__BIG_ENDIAN__)
+#if defined(__BIG_ENDIAN__) || defined(__ARMEB__)
     #error "Big endian systems are not supported."
 #endif

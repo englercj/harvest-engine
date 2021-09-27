@@ -2,6 +2,8 @@
 
 #include "he/core/allocator.h"
 
+#include "he/core/utils.h"
+
 #if defined(HE_PLATFORM_API_WIN32)
 
 #include <malloc.h>
@@ -10,6 +12,7 @@ namespace he
 {
     void* CrtAllocator::Malloc(size_t size, size_t alignment)
     {
+        alignment = AlignUp(alignment, sizeof(void*));
         return _aligned_malloc(size, alignment);
     }
 
@@ -24,6 +27,7 @@ namespace he
             return nullptr;
         }
 
+        alignment = AlignUp(alignment, sizeof(void*));
         return _aligned_realloc(ptr, newSize, alignment);
     }
 

@@ -15,6 +15,8 @@ namespace he
 {
     void* CrtAllocator::Malloc(size_t size, size_t alignment)
     {
+        alignment = AlignUp(alignment, sizeof(void*));
+
         void* p;
         int rc = posix_memalign(&p, alignment, size);
         return rc ? nullptr : p;
@@ -30,6 +32,8 @@ namespace he
             free(ptr);
             return nullptr;
         }
+
+        alignment = AlignUp(alignment, sizeof(void*));
 
         // The POSIX spec doesn't say we can pass posix_memalign allocated pointers to realloc,
         // so what follows is not portable. That said, looking at glibc it seems like this

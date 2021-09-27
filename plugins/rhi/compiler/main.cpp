@@ -129,7 +129,9 @@ int he::AppMain(int argc, char* argv[])
         }
 
         int32_t index = request->addCodeGenTarget(codegenTarget);
-        request->setTargetFlags(index, SLANG_TARGET_FLAG_GENERATE_SPIRV_DIRECTLY);
+
+        // TODO: Enable this when it gets more robust.
+        //request->setTargetFlags(index, SLANG_TARGET_FLAG_GENERATE_SPIRV_DIRECTLY);
 
         SlangProfileID profileId = globalSession->findProfile(target);
         if (profileId == SLANG_PROFILE_UNKNOWN)

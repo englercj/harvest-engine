@@ -7,7 +7,7 @@ he.workspace = function ()
     configurations      { "Debug", "Release", "Shipping" }
     cppdialect          "C++20"
     cdialect            "C11"
-    editandcontinue     "On"
+    editandcontinue     "Off"
     exceptionhandling   "Off"
     flags               { "FatalWarnings", "MultiProcessorCompile" }
     floatingpoint       "Fast"
@@ -38,7 +38,7 @@ he.workspace = function ()
     filter { "platforms:ARM64" }
         vectorextensions "NEON"
 
-    -- Language setup
+    -- System setup
     filter { "system:windows" }
         defines {
             -- require minimum of windows 10
@@ -46,6 +46,9 @@ he.workspace = function ()
             "_WIN32_WINNT=0x0A00",
             "_ITERATOR_DEBUG_LEVEL=0", -- Improve debug performance
         }
+
+    filter { "system:windows", "platforms:x64" }
+        editandcontinue "On"
 
     -- Compiler setup
     filter { "toolset:msc-*" }

@@ -21,7 +21,7 @@ jobs:
     - name: Bootstrap
       run: ./bootstrap.sh
     - name: Build
-      run: cd build && PATH="/usr/lib/llvm-12/bin:$PATH" make -j$(nproc) config=${{ matrix.config }}_${{ matrix.arch }} all
+      run: cd build && make -j$(nproc) config=${{ matrix.config }}_${{ matrix.arch }}
     - name: Test
       run: ./build/bin/linux-${{ matrix.config }}_${{ matrix.arch }}/he_test_runner
   windows:

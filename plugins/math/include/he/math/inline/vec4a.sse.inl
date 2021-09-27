@@ -215,12 +215,12 @@ namespace he
 
     inline bool IsNan(const Vec4a& v)
     {
-        return _mm_movemask_ps(_mm_cmpunord_ps(v, v)) != 0x00;
+        return _mm_movemask_ps(_mm_cmpneq_ps(v, v)) != 0x00;
     }
 
     inline bool IsNan3(const Vec4a& v)
     {
-        return (_mm_movemask_ps(_mm_cmpunord_ps(v, v)) & 0x07) != 0x00;
+        return (_mm_movemask_ps(_mm_cmpneq_ps(v, v)) & 0x07) != 0x00;
     }
 
     inline bool IsFinite(const Vec4a& v)

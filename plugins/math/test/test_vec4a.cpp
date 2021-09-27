@@ -360,9 +360,9 @@ HE_TEST(math, vec4a, Lerp)
 HE_TEST(math, vec4a, SmoothStep)
 {
     HE_EXPECT_EQ(SmoothStep(Splat(100.0f), Splat(200.0f), Vec4a{ 150.0f, 200.0f, 300.0f, 100.0f }), (Vec4a{ 0.5f, 1.0f, 1.0f, 0.0f }));
-    HE_EXPECT_EQ(SmoothStep(Splat(10.0f), Splat(20.0f), Vec4a{ 9.0f, 15.0f, 20.0f, 10.0f }), (Vec4a{ 0.0f, 0.5f, 1.0f, 0.0f }));
+    HE_EXPECT_EQ_ULP(SmoothStep(Splat(10.0f), Splat(20.0f), Vec4a{ 9.0f, 15.0f, 20.0f, 10.0f }), (Vec4a{ 0.0f, 0.5f, 1.0f, 0.0f }), 2);
     HE_EXPECT_EQ(SmoothStep(Splat(10.0f), Splat(20.0f), Vec4a{ 30.0f, 50.0f, 100.0f, 10.0f }), (Vec4a{ 1.0f, 1.0f, 1.0f, 0.0f }));
-    HE_EXPECT_EQ(SmoothStep(Splat(0.0f), Splat(1.0f), Vec4a{ 0.6f, 0.3f, 0.0f, 1.0f }), (Vec4a{ 0.648000002f, 0.216000021f, 0.0f, 1.0f }));
+    HE_EXPECT_EQ_ULP(SmoothStep(Splat(0.0f), Splat(1.0f), Vec4a{ 0.6f, 0.3f, 0.0f, 1.0f }), (Vec4a{ 0.648f, 0.216f, 0.0f, 1.0f }), 2);
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -390,7 +390,7 @@ HE_TEST(math, vec4a, RcpSafe)
 // ------------------------------------------------------------------------------------------------
 HE_TEST(math, vec4a, Sqrt)
 {
-    HE_EXPECT_EQ(Sqrt(Vec4a{ 1, 4, 16, 64 }), (Vec4a{ 1, 2, 4, 8 }));
+    HE_EXPECT_EQ_ULP(Sqrt(Vec4a{ 1, 4, 16, 64 }), (Vec4a{ 1, 2, 4, 8 }), 1);
 }
 
 // ------------------------------------------------------------------------------------------------

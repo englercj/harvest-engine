@@ -29,7 +29,8 @@ jobs:
     strategy:
       matrix:
         config: [debug, release]
-        arch: [x64, arm64]
+        arch: [x64]
+        # arch: [x64, arm64]
     steps:
     - name: Checkout
       uses: actions/checkout@v2

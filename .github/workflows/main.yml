@@ -20,6 +20,8 @@ jobs:
         sudo apt install -y libc++-dev libc++abi-dev libx11-dev libxi-dev
         sudo update-alternatives --install /usr/bin/clang clang /usr/bin/clang-12 100
         sudo update-alternatives --install /usr/bin/clang++ clang++ /usr/bin/clang++-12 100
+        which clang
+        sudo ls -al /etc/alternatives/clang*
     - name: Checkout
       uses: actions/checkout@v2
     - name: Bootstrap

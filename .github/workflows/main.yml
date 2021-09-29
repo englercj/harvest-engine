@@ -15,7 +15,9 @@ jobs:
         arch: [x64]
     steps:
     - name: Install Dependencies
-      run: sudo apt install -y libx11-dev libxi-dev gcc-10
+      run: |
+        sudo apt update
+        sudo apt install -y libx11-dev libxi-dev libc6
     - name: Checkout
       uses: actions/checkout@v2
     - name: Bootstrap

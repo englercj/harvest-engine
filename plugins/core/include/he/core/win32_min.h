@@ -10,6 +10,7 @@
     #define NOMINMAX
 #endif
 
+// X is not defined as a preprocessor macro, replacing with '0' for '#if/#elif'
 #pragma warning(push)
 #pragma warning(disable : 4668)
 

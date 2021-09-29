@@ -14,7 +14,13 @@
 #if HE_RHI_ENABLE_D3D12
 
 #if HE_RHI_ENABLE_PIX
+    // X is not defined as a preprocessor macro, replacing with '0' for '#if/#elif'
+    #pragma warning(push)
+    #pragma warning(disable : 4668)
+
     #include <pix3.h>
+
+    #pragma warning(pop)
 #endif
 
 namespace he::rhi::d3d12

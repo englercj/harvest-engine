@@ -77,7 +77,7 @@ he.add_module_key {
 
             if mod._plugin._install_valid == false then
                 verbosef("Module '%s' has an include dependency on '%s' but it was not installed, ignoring.", ctx.name, mod_name)
-		return
+                return
             end
 
             local oldcwd = os.getcwd()
@@ -129,12 +129,14 @@ he.add_module_key {
 
             if mod._plugin._install_valid == false then
                 verbosef("Module '%s' has a dependency on '%s' but it was not installed, ignoring.", ctx.name, mod_name)
-		return
+                return
             end
 
             if ctx.type == "console_app" or ctx.type == "windowed_app" or (ctx.type == "default" and not he.is_static_only) then
-                if mod.type == "static" or mod.type == "test" then
+                if mod.type == "default" or mod.type == "static" or mod.type == "shared" then
                     links { mod.name }
+                elseif mod.type == "custom" then
+                    dependson { mod.name }
                 end
             end
 

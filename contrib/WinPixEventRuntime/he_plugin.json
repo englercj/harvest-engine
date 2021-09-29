@@ -22,13 +22,17 @@
             "variants": [
                 {
                     "conditions": ["system:windows", "architecture:x86_64"],
-                    "public_dependson": ["file:bin/x64/WinPixEventRuntime.lib"],
-                    "post_build_commands": ["{COPYFILE} %{he.get_plugin('WinPixEventRuntime')._install_dir}/bin/x64/WinPixEventRuntime.dll %{cfg.targetdir}"]
+                    "post_build_commands": [
+                        "{COPYFILE} %{he.get_plugin('WinPixEventRuntime')._install_dir}/bin/x64/WinPixEventRuntime.dll %{cfg.targetdir}",
+                        "{COPYFILE} %{he.get_plugin('WinPixEventRuntime')._install_dir}/bin/x64/WinPixEventRuntime.lib %{cfg.targetdir}"
+                    ]
                 },
                 {
                     "conditions": ["system:windows", "architecture:ARM64"],
-                    "public_dependson": ["file:bin/ARM64/WinPixEventRuntime.lib"],
-                    "post_build_commands": ["{COPYFILE} %{he.get_plugin('WinPixEventRuntime')._install_dir}/bin/ARM64/WinPixEventRuntime.dll %{cfg.targetdir}"]
+                    "post_build_commands": [
+                        "{COPYFILE} %{he.get_plugin('WinPixEventRuntime')._install_dir}/bin/ARM64/WinPixEventRuntime.dll %{cfg.targetdir}",
+                        "{COPYFILE} %{he.get_plugin('WinPixEventRuntime')._install_dir}/bin/ARM64/WinPixEventRuntime.lib %{cfg.targetdir}"
+                    ]
                 }
             ]
         }

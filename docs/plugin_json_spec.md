@@ -72,6 +72,7 @@ Variants are treated as additive and will have the effect of adding new keys to 
 | default | The default module type. Built as a hot-reloadable shared library during dynamic (internal) builds and as a static library during static (shipping) builds. |
 | static | Always built as a static library. |
 | shared | Always built as a shared library (dll/so). |
+| custom | Custom build steps like copying prebuilt binaries. Depending on a module of this type doesn't generate any link commands. |
 | header | Header-only module that does not generate any symbols to be linked. |
 | console_app | A console application |
 | windowed_app | A windowed application |

@@ -29,12 +29,6 @@
                     "glob": "src/schema/*.schema"
                 }
             ],
-            "shader_compile": [
-                {
-                    "glob": "src/shaders/*.hlsl",
-                    "targets": ["sm_5_1", "glsl_450"]
-                }
-            ],
             "private_includedirs": ["src", "%{he.get_generated_dir(prj.name)}/src"],
             "private_dependson": [
                 "he_core",
@@ -46,6 +40,26 @@
                 "imgui",
                 "rapidjson",
                 "sqlite3"
+            ],
+            "variants": [
+                {
+                    "conditions": ["system:windows"],
+                    "shader_compile": [
+                        {
+                            "glob": "src/shaders/*.hlsl",
+                            "targets": ["sm_5_1"]
+                        }
+                    ]
+                },
+                {
+                    "conditions": ["system:linux"],
+                    "shader_compile": [
+                        {
+                            "glob": "src/shaders/*.hlsl",
+                            "targets": ["glsl_450"]
+                        }
+                    ]
+                }
             ]
         }
     ]

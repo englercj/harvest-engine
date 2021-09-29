@@ -30,7 +30,6 @@ jobs:
       matrix:
         config: [debug, release]
         arch: [x64]
-        # arch: [x64, arm64]
     steps:
     - name: Checkout
       uses: actions/checkout@v2
@@ -42,5 +41,5 @@ jobs:
     - name: Build
       run: MSBuild.exe build/harvest-engine_windows.sln /m /p:Configuration="${{ matrix.config }}" /p:Platform="${{ matrix.arch }}" /nodeReuse:false
     - name: Test
-      if: ${{ matrix.arch != 'arm64' }}
-      run: ./build/bin/windows-${{ matrix.config }}_${{ matrix.arch }}/he_test_runner.exe
+      if: ${{ matrix.arch == 'x64' }}
+      run: ./build/windows-x86_64-${{ matrix.config }}/bin/he_test_runner.exe

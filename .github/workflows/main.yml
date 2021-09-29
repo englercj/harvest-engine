@@ -17,7 +17,9 @@ jobs:
     - name: Install Dependencies
       run: |
         sudo apt update
-        sudo apt install -y libx11-dev libxi-dev libc6
+        sudo apt install -y libx11-dev libxi-dev
+        sudo ls -al /usr/bin/clang*
+        sudo ls -al /usr/bin/llvm-*
     - name: Checkout
       uses: actions/checkout@v2
     - name: Bootstrap

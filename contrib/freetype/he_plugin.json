@@ -64,12 +64,15 @@
             "public_includedirs": ["include"],
             "variants": [
                 {
-                    "conditions": ["system:not windows", "tags:debug"],
+                    "conditions": ["system:not windows"],
                     "files": ["src/base/ftdebug.c"]
                 },
                 {
-                    "conditions": ["system:windows", "tags:debug"],
-                    "files": ["builds/windows/ftdebug.c", "src/winfonts/winfnt.c"]
+                    "conditions": ["system:windows"],
+                    "files": [
+                        "builds/windows/ftdebug.c",
+                        "src/winfonts/winfnt.c"
+                    ]
                 }
             ]
         }

@@ -111,6 +111,15 @@ int he::AppMain(int argc, char* argv[])
         return -1;
     }
 
+    const he::StringView fileDirView = GetDirectory(fileName);
+    const he::String fileDir(alloc, fileDirView);
+    request->addSearchPath(fileDir.Data());
+
+    for (const char* includeDir : args.includeDirs)
+    {
+        request->addSearchPath(includeDir);
+    }
+
     for (const char* target : args.targets)
     {
         SlangCompileTarget codegenTarget;

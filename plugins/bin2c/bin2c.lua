@@ -19,7 +19,7 @@ return function (plugin)
 
                 dependson { "he_bin2c" }
 
-                filter { "files:" .. options.glob }
+                he.filter_push_combine { "files:" .. options.glob }
                     compilebuildoutputs "on"
                     buildmessage "Creating C header for file %{file.abspath}"
                     buildcommands {
@@ -29,7 +29,7 @@ return function (plugin)
                         he.file_gen_dir .. "/%{file.name}.h",
                     }
 
-                filter { }
+                he.filter_pop()
             end
         end
     }

@@ -34,7 +34,7 @@ return function (plugin)
 
                 dependson { "he_shaderc" }
 
-                filter { "files:" .. options.glob }
+                he.filter_push_combine { "files:" .. options.glob }
                     compilebuildoutputs "off"
                     buildmessage "Compiling shader file %{file.abspath}"
                     buildcommands {
@@ -44,7 +44,7 @@ return function (plugin)
                         he.file_gen_dir .. "/%{file.name}_generated.h",
                     }
 
-                filter { }
+                he.filter_pop()
             end
         end
     }

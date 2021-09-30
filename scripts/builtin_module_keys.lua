@@ -1,7 +1,6 @@
 -- Copyright Chad Engler
 
 local p = premake
-local variant_filter_stack = {}
 
 local function _handle_variant_key(ctx, key, value)
     if table.contains(he.variant_disallow_keys, key) then
@@ -13,12 +12,7 @@ end
 
 local function _handle_variants(ctx, values, key_list)
     for _, variant in ipairs(values) do
-        if variant.conditions == nil then
-            filter { }
-        else
-            filter(variant.conditions)
-        end
-        table.insert(variant_filter_stack, variant.conditions)
+        he.filter_push(variant.conditions)
 
         if key_list == nil then
             for key, value in he.ordered_pairs(variant) do
@@ -30,14 +24,7 @@ local function _handle_variants(ctx, values, key_list)
             end
         end
 
-        -- Pop off our own filter, and restore the next filter on the stack
-        table.remove(variant_filter_stack)
-        local prev_filter = variant_filter_stack[#variant_filter_stack]
-        if prev_filter == nil then
-            filter { }
-        else
-            filter(prev_filter)
-        end
+        he.filter_pop()
     end
 end
 

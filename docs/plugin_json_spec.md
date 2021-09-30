@@ -136,11 +136,15 @@ return function (plugin)
             -- Paths are relative to the plugin json file that contained the module.
             files { value }
             dependson { "mytool" }
-            filter { "files:" .. value }
+
+            -- It is important to use filter_push_combine as that will push a filter on the stack
+            -- that combines the files filter with the current active filter. Not doing this will
+            -- have incorrect results when your tool is used in a variant.
+            he.filter_push_combine { "files:" .. value }
                 buildmessage "Running mytool on file %{file.abspath}"
                 buildcommands { he.target_bin_dir .. "/mytool %{file.abspath} -o " .. he.file_gen_dir }
                 buildoutputs { he.file_gen_dir .. "/%{file.name}.h" }
-            filter { }
+            he.filter_pop()
         end,
     }
 end

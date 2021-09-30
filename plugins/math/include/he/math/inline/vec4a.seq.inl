@@ -161,14 +161,14 @@ namespace he
         return IsNan(v.v.x) || IsNan(v.v.y) || IsNan(v.v.z);
     }
 
-    inline bool IsFinite(const Vec4a& v)
+    inline bool IsInfinite(const Vec4a& v)
     {
-        return IsFinite(v.x) && IsFinite(v.y) && IsFinite(v.z) && IsFinite(v.w);
+        return IsInfinite(v.x) && IsInfinite(v.y) && IsInfinite(v.z) && IsInfinite(v.w);
     }
 
-    inline bool IsFinite3(const Vec4a& v)
+    inline bool IsInfinite3(const Vec4a& v)
     {
-        return IsFinite(v.x) && IsFinite(v.y) && IsFinite(v.z);
+        return IsInfinite(v.x) && IsInfinite(v.y) && IsInfinite(v.z);
     }
 
     // --------------------------------------------------------------------------------------------

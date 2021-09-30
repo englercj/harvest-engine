@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include "he/core/utils.h"
 #include "he/math/types.h"
 
 namespace he
@@ -15,11 +16,13 @@ namespace he
     inline constexpr float Float_Epsilon = 1.192092896e-7f;
     inline constexpr float Float_Min = 1.175494351e-38f;
     inline constexpr float Float_Max = 3.402823466e+38f;
-    inline constexpr float Float_AllBits = -__builtin_nanf("0x3FFFFF");
-    inline constexpr float Float_Infinity = __builtin_huge_valf();
-    inline constexpr float Float_Nan = __builtin_nanf("");
+    inline constexpr float Float_AbsMask = BitCast<float>(0x7fffffff);
+    inline constexpr float Float_AllBits = BitCast<float>(0xffffffff);
+    inline constexpr float Float_Infinity = BitCast<float>(0x7f800000);
+    inline constexpr float Float_Nan = BitCast<float>(0x7fc00000);
     inline constexpr float Float_ZeroSafe = 1000.0f * Float_Min;
 
+    inline constexpr Vec4a Vec4a_AbsMask{ Float_AbsMask, Float_AbsMask, Float_AbsMask, Float_AbsMask };
     inline constexpr Vec4a Vec4a_Infinity{ Float_Infinity, Float_Infinity, Float_Infinity, Float_Infinity };
     inline constexpr Vec4a Vec4a_Zero{ 0.0f, 0.0f, 0.0f, 0.0f };
     inline constexpr Vec4a Vec4a_One{ 1.0f, 1.0f, 1.0f, 1.0f };

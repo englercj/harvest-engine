@@ -29,16 +29,6 @@ namespace he
     // --------------------------------------------------------------------------------------------
     // Classification
 
-    inline bool IsInfinite(const Vec4a& v)
-    {
-        return !IsNan(v) && !IsFinite(v);
-    }
-
-    inline bool IsInfinite3(const Vec4a& v)
-    {
-        return !IsNan3(v) && !IsFinite3(v);
-    }
-
     inline bool IsZeroSafe(const Vec4a& v)
     {
         const float d = Dot(v, v);
@@ -49,6 +39,16 @@ namespace he
     {
         const float d = Dot3(v, v);
         return d > Float_ZeroSafe;
+    }
+
+    inline bool IsFinite(const Vec4a& v)
+    {
+        return !IsInfinite(v);
+    }
+
+    inline bool IsFinite3(const Vec4a& v)
+    {
+        return !IsInfinite3(v);
     }
 
     // --------------------------------------------------------------------------------------------

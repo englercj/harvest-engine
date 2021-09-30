@@ -257,31 +257,32 @@ namespace he
     #endif
     }
 
-    inline bool IsFinite(const Vec4a& v)
+    inline bool IsInfinite(const Vec4a& v)
     {
-        uint32x4_t a = vandq_u32(v, Vec4a_Infinity);
-        uint32x4_t cmp0 = vceqq_u32(a, Vec4a_Infinity);
+        uint32x4_t a = vandq_u32(vreinterpretq_u32_f32(v), Vec4a_AbsMask);
+        uint32x4_t cmp0 = vreinterpretq_f32_u32(vceqq_f32(vreinterpretq_f32_u32(a), Vec4a_Infinity));
+
     #if HE_CPU_ARM_64
-        return vmaxvq_u32(cmp0) == 0;
+        return vmaxvq_u32(cmp0) != 0;
     #else
         uint32x2_t cmp1 = vpmax_u32(vget_low_u32(cmp0), vget_high_u32(cmp0));
         uint32_t r = vgetq_lane_u32(vpmax_u32(cmp1, cmp1), 0);
-        return r == 0;
+        return r != 0;
     #endif
     }
 
-    inline bool IsFinite3(const Vec4a& v)
+    inline bool IsInfinite3(const Vec4a& v)
     {
-        uint32x4_t a = vandq_u32(v, Vec4a_Infinity);
-        uint32x4_t cmp0 = vceqq_u32(a, Vec4a_Infinity);
+        uint32x4_t a = vandq_u32(vreinterpretq_u32_f32(v), Vec4a_AbsMask);
+        float32x4_t cmp0 = vceqq_f32(vreinterpretq_f32_u32(a), Vec4a_Infinity);
         uint32x4_t cmp1 = vsetq_lane_u32(0, cmp0, 3);
 
     #if HE_CPU_ARM_64
-        return vmaxvq_u32(cmp1) == 0;
+        return vmaxvq_u32(cmp1) != 0;
     #else
         uint32x2_t cmp2 = vpmax_u32(vget_low_u32(cmp1), vget_high_u32(cmp1));
         uint32_t r = vgetq_lane_u32(vpmax_u32(cmp2, cmp2), 0);
-        return r == 0;
+        return r != 0;
     #endif
     }
 

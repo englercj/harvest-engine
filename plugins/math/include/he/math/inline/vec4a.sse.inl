@@ -215,26 +215,30 @@ namespace he
 
     inline bool IsNan(const Vec4a& v)
     {
-        return _mm_movemask_ps(_mm_cmpneq_ps(v, v)) != 0x00;
+        __m128 cmp = _mm_cmpunord_ps(v, v);
+        //__m128 cmp = _mm_cmpneq_ps(v, v);
+        return _mm_movemask_ps(cmp) != 0;
     }
 
     inline bool IsNan3(const Vec4a& v)
     {
-        return (_mm_movemask_ps(_mm_cmpneq_ps(v, v)) & 0x07) != 0x00;
+        __m128 cmp = _mm_cmpunord_ps(v, v);
+        //__m128 cmp = _mm_cmpneq_ps(v, v);
+        return (_mm_movemask_ps(cmp) & 7) != 0;
     }
 
-    inline bool IsFinite(const Vec4a& v)
+    inline bool IsInfinite(const Vec4a& v)
     {
-        __m128 a = _mm_and_ps(v, Vec4a_Infinity);
+        __m128 a = _mm_and_ps(v, Vec4a_AbsMask);
         __m128 b = _mm_cmpeq_ps(a, Vec4a_Infinity);
-        return _mm_movemask_ps(b) == 0;
+        return _mm_movemask_ps(b) != 0;
     }
 
-    inline bool IsFinite3(const Vec4a& v)
+    inline bool IsInfinite3(const Vec4a& v)
     {
-        __m128 a = _mm_and_ps(v, Vec4a_Infinity);
+        __m128 a = _mm_and_ps(v, Vec4a_AbsMask);
         __m128 b = _mm_cmpeq_ps(a, Vec4a_Infinity);
-        return (_mm_movemask_ps(b) & 0x07) == 0;
+        return (_mm_movemask_ps(b) & 7) != 0;
     }
 
     // --------------------------------------------------------------------------------------------
@@ -522,12 +526,12 @@ namespace he
 
     inline bool Any(const Vec4a& cmp)
     {
-        return _mm_movemask_ps(cmp) != 0x00;
+        return _mm_movemask_ps(cmp) != 0;
     }
 
     inline bool Any3(const Vec4a& cmp)
     {
-        return (_mm_movemask_ps(cmp) & 0x07) != 0x00;
+        return (_mm_movemask_ps(cmp) & 7) != 0;
     }
 
     inline bool All(const Vec4a& cmp)
@@ -537,6 +541,6 @@ namespace he
 
     inline bool All3(const Vec4a& cmp)
     {
-        return (_mm_movemask_ps(cmp) & 0x07) == 0x07;
+        return (_mm_movemask_ps(cmp) & 7) == 7;
     }
 }

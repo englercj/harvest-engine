@@ -106,8 +106,8 @@ HE_TEST(core, clock, ToFloatPeriod)
 
     HE_EXPECT_EQ(ToFloatPeriod<Nanoseconds>(Duration{ 2000 }), 2000.0f);
     HE_EXPECT_EQ(ToFloatPeriod<Microseconds>(Duration{ 2000 }), 2.0f);
-    HE_EXPECT_EQ(ToFloatPeriod<Milliseconds>(Duration{ 2000 }), 0.002f);
-    HE_EXPECT_EQ(ToFloatPeriod<Seconds>(Duration{ 2000 }), 0.000002f);
+    HE_EXPECT_EQ_ULP(ToFloatPeriod<Milliseconds>(Duration{ 2000 }), 0.002f, 1);
+    HE_EXPECT_EQ_ULP(ToFloatPeriod<Seconds>(Duration{ 2000 }), 0.000002f, 1);
 }
 
 // ------------------------------------------------------------------------------------------------

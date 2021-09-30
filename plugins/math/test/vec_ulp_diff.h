@@ -1,5 +1,6 @@
 #pragma once
 
+#include "he/core/test.h"
 #include "he/core/types.h"
 #include "he/core/utils.h"
 #include "he/math/quat.h"
@@ -9,34 +10,10 @@
 #include "he/math/vec4.h"
 #include "he/math/vec4a.h"
 
-#define HE_EXPECT_EQ_ULP(a, b, diff) HE_EXPECT(he::EqualUlp(a, b, diff), a, b)
 #define HE_EXPECT_EQ_ULP3(a, b, diff) HE_EXPECT(he::EqualUlp3(a, b, diff), a, b)
 
 namespace he
 {
-    constexpr bool EqualUlp(float a, float b, int32_t maxUlpDiff)
-    {
-        // Based on: https://www.gamasutra.com/view/news/162368/Indepth_Comparing_floating_point_numbers_2012_edition.php
-
-        // Treat -0 and +0 as equal
-        if (a == b)
-            return true;
-
-        const int32_t ai = BitCast<int32_t>(a);
-        const int32_t bi = BitCast<int32_t>(b);
-
-        const bool asigned = (ai >> 31) != 0;
-        const bool bsigned = (bi >> 31) != 0;
-
-        // Different signs mean they do not match
-        if (asigned != bsigned)
-            return false;
-
-        const int32_t ulpDiff = ai > bi ? ai - bi : bi - ai;
-
-        return ulpDiff <= maxUlpDiff;
-    }
-
     template <typename T>
     inline bool EqualUlp(const T& a, const T& b, int32_t maxUlpDiff)
     {

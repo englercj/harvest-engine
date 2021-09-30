@@ -11,6 +11,7 @@
 #include "he/core/string.h"
 #include "he/core/string_fmt.h"
 #include "he/core/types.h"
+#include "he/core/utils.h"
 
 #include "fmt/format.h"
 
@@ -100,6 +101,9 @@
 /// Check the expectation that the pointer `a` does not point to the same memory as `b`.
 #define HE_EXPECT_NE_PTR(a, b) HE_EXPECT((a) != (b), fmt::ptr(a), fmt::ptr(b))
 
+/// Check the expectation that the value `a` and the value `b` are within `diff` floating point steps from eachother.
+#define HE_EXPECT_EQ_ULP(a, b, diff) HE_EXPECT(he::EqualUlp(a, b, diff), a, b)
+
 /// Defines a test case for `module` in `suite` called `name`.
 #define HE_TEST(module, suite, name) HE_TEST_(module, suite, name, he::TestFixture)
 
@@ -164,6 +168,36 @@ namespace he
     ///
     /// \return Zero if all tests pass, or a non-zero value if there was a failure.
     int32_t RunAllTests();
+
+    /// Checks if two floating point values are within `maxUlpDiff` floating point steps of eachother.
+    ///
+    /// Based on: https://www.gamasutra.com/view/news/162368/Indepth_Comparing_floating_point_numbers_2012_edition.php
+    ///
+    /// \param[in] a The first floating point value to compare.
+    /// \param[in] b The second floating point value to compare.
+    /// \param[in] maxUlpDiff The maximum tolerance for floating point ULP diff.
+    /// \return True if the values are within tolerance, false otherwise.
+    constexpr bool EqualUlp(float a, float b, int32_t maxUlpDiff)
+    {
+
+        // Treat -0 and +0 as equal
+        if (a == b)
+            return true;
+
+        const int32_t ai = BitCast<int32_t>(a);
+        const int32_t bi = BitCast<int32_t>(b);
+
+        const bool asigned = (ai >> 31) != 0;
+        const bool bsigned = (bi >> 31) != 0;
+
+        // Different signs mean they do not match
+        if (asigned != bsigned)
+            return false;
+
+        const int32_t ulpDiff = ai > bi ? ai - bi : bi - ai;
+
+        return ulpDiff <= maxUlpDiff;
+    }
 
 namespace internal
 {

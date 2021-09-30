@@ -21,7 +21,7 @@ local function _handle_variants(ctx, values, key_list)
         table.insert(variant_filter_stack, variant.conditions)
 
         if key_list == nil then
-            for key, value in orderedPairs(variant) do
+            for key, value in he.ordered_pairs(variant) do
                 _handle_variant_key(ctx, key, value)
             end
         else

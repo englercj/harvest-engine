@@ -1,5 +1,5 @@
 return function (ctx)
-    for name, mod in orderedPairs(he.imported_modules) do
+    for name, mod in he.ordered_pairs(he.imported_modules) do
         if mod.group == "engine/tests" and mod.type == "static" then
             he.try_handle_module_key(ctx, "public_dependson", { mod.name })
 

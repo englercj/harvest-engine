@@ -130,7 +130,7 @@ local function _module_project(mod)
             defines { "HE_CFG_MODULE_STATIC=1" }
         end
 
-        for key, value in orderedPairs(mod) do
+        for key, value in he.ordered_pairs(mod) do
             _try_handle_key(mod, key, value)
         end
 

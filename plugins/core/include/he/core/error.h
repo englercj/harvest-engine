@@ -2,6 +2,9 @@
 
 #pragma once
 
+#include "he/core/allocator.h"
+#include "he/core/appender.h"
+#include "he/core/string.h"
 #include "he/core/types.h"
 #include "he/core/utils.h"
 
@@ -18,12 +21,6 @@ namespace he
         Verify, ///< Non-fatal verification, there is a bug but the program can continue.
         Expect, ///< Non-fatal expectation, there is a failure in the tests.
     };
-
-    /// Returns an error type as a string.
-    ///
-    /// \param x The error type to get the string representation of.
-    /// \return A string representing the error type.
-    const char* AsString(ErrorType x);
 
     /// A pointer to a function that is to handle application errors.
     ///
@@ -87,9 +84,8 @@ namespace he
     template <typename... Args>
     bool HandleError(ErrorType type, const char* file, const uint32_t line, const char* funcName, const char* expression, fmt::format_string<Args...> fmt, Args&&... args)
     {
-        fmt::memory_buffer buf;
-        fmt::format_to(fmt::appender(buf), fmt, Forward<Args>(args)...);
-        buf.push_back('\0');
-        return HandleError(type, file, line, funcName, expression, buf.data());
+        String buf(Allocator::GetTemp());
+        fmt::format_to(Appender(buf), fmt, Forward<Args>(args)...);
+        return HandleError(type, file, line, funcName, expression, buf.Data());
     }
 }

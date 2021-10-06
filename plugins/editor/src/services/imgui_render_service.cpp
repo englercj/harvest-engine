@@ -34,10 +34,8 @@ namespace he::editor
     //    return Vec4f{ SRGBToLinear(value.x), SRGBToLinear(value.y), SRGBToLinear(value.z), value.w };
     //}
 
-    ImGuiRenderService::ImGuiRenderService(Allocator& allocator, RenderService& renderService)
-        : m_allocator(allocator)
-        , m_renderService(renderService)
-        , m_fontResources(allocator)
+    ImGuiRenderService::ImGuiRenderService(RenderService& renderService)
+        : m_renderService(renderService)
     {}
 
     bool ImGuiRenderService::Initialize(rhi::SwapChainFormat swapChainFormat)
@@ -144,7 +142,7 @@ namespace he::editor
         ImGuiRenderService* service = static_cast<ImGuiRenderService*>(ImGui::GetIO().BackendRendererUserData);
         rhi::Device* device = service->m_renderService.GetDevice();
 
-        ViewportData* data = service->m_allocator.New<ViewportData>();
+        ViewportData* data = Allocator::GetDefault().New<ViewportData>();
 
         viewport->RendererUserData = data;
 
@@ -223,7 +221,7 @@ namespace he::editor
             device->SafeDestroy(frame.buffers.vertexBuffer);
         }
 
-        service->m_allocator.Delete(data);
+        Allocator::GetDefault().Delete(data);
         viewport->RendererUserData = nullptr;
     }
 

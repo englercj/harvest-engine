@@ -7,7 +7,7 @@
 
 namespace he::Directory
 {
-    Result RemoveContents(Allocator& allocator, const char* path)
+    Result RemoveContents(const char* path, Allocator& allocator)
     {
         if (!Exists(path))
             return Result::Success;
@@ -31,7 +31,7 @@ namespace he::Directory
 
             if (isDirectory)
             {
-                result = RemoveContents(fullPath.Data());
+                result = RemoveContents(fullPath.Data(), allocator);
                 if (!result)
                     return result;
 

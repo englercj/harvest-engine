@@ -18,18 +18,12 @@
 
 struct AppArgs
 {
-    AppArgs(he::Allocator& allocator)
-        : defines(allocator)
-        , includeDirs(allocator)
-        , targets(allocator)
-    {}
-
     bool help{ false };
     int32_t optLevel{ 1 };
     const char* outDir{ nullptr };
-    he::Vector<const char*> defines;
-    he::Vector<const char*> includeDirs;
-    he::Vector<const char*> targets;
+    he::Vector<const char*> defines{};
+    he::Vector<const char*> includeDirs{};
+    he::Vector<const char*> targets{};
 };
 
 static void SlanDiagHandler(const char* msg, void*)
@@ -42,8 +36,7 @@ void WriteFileData(he::File& file, he::StringView name, const uint8_t* data, siz
 #include "he/core/main.inl"
 int he::AppMain(int argc, char* argv[])
 {
-    Allocator& alloc = CrtAllocator::Get();
-    AppArgs args(alloc);
+    AppArgs args;
 
     ArgDesc ArgDescriptors[] =
     {
@@ -55,11 +48,11 @@ int he::AppMain(int argc, char* argv[])
         { args.targets,     't', "target",      "Target profile to generate for" },
     };
 
-    ArgResult result = ParseArgs(alloc, ArgDescriptors, argc, argv);
+    ArgResult result = ParseArgs(ArgDescriptors, argc, argv);
 
     if (!result || args.help || result.values.Size() != 1 || args.optLevel < 0 || args.optLevel > 3)
     {
-        String help = MakeHelpString(alloc, ArgDescriptors, argv[0], &result);
+        String help = MakeHelpString(ArgDescriptors, argv[0], &result);
         std::cerr << help.Data() << std::endl;
         return -1;
     }
@@ -86,14 +79,14 @@ int he::AppMain(int argc, char* argv[])
     request->setOptimizationLevel(args.optLevel);
     request->setOutputContainerFormat(SLANG_CONTAINER_FORMAT_NONE);
 
-    Vector<String> defineNamesStorage(alloc);
+    Vector<String> defineNamesStorage;
     defineNamesStorage.Reserve(args.defines.Size());
     for (const char* d : args.defines)
     {
         const char* valueStart = String::Find(d, '=');
         const uint32_t nameLen = valueStart ? static_cast<uint32_t>(valueStart - d) : String::Length(d);
 
-        String& name = defineNamesStorage.EmplaceBack(alloc);
+        String& name = defineNamesStorage.EmplaceBack();
         name.Assign(d, nameLen);
 
         request->addPreprocessorDefine(name.Data(), valueStart ? valueStart + 1 : "1");
@@ -111,8 +104,7 @@ int he::AppMain(int argc, char* argv[])
         return -1;
     }
 
-    const he::StringView fileDirView = GetDirectory(fileName);
-    const he::String fileDir(alloc, fileDirView);
+    const he::String fileDir = GetDirectory(fileName);
     request->addSearchPath(fileDir.Data());
 
     for (const char* includeDir : args.includeDirs)
@@ -161,24 +153,22 @@ int he::AppMain(int argc, char* argv[])
     slang::ShaderReflection* reflection = slang::ShaderReflection::get(request);
     const uint64_t entryCount = reflection->getEntryPointCount();
 
-    String constBaseName(alloc);
-    constBaseName += GetBaseName(fileName);
+    String constBaseName = GetBaseName(fileName);
     RemoveExtension(constBaseName);
 
-    String outPath(alloc);
-    outPath = args.outDir;
+    String outPath = args.outDir;
     ConcatPath(outPath, GetBaseName(fileName));
     outPath += "_generated.h";
 
     File f;
     f.Open(outPath.Data(), FileOpenMode::WriteTruncate);
 
-    String constName(alloc);
+    String constName;
     for (uint32_t entryIndex = 0; entryIndex < entryCount; ++entryIndex)
     {
         // A bit awkward of an interface, but if I don't add the entry point here we will fail to
         // get it inside the target loop. Seems like there is a disconnect between what the
-        // reflection knows to exist in the file and what the code getter thinks is there.
+        // reflection knows to exist in the file and what the request thinks is there.
         slang::EntryPointReflection* entry = reflection->getEntryPointByIndex(entryIndex);
         request->addEntryPoint(0, entry->getName(), entry->getStage());
 
@@ -249,16 +239,15 @@ void WriteFileData(he::File& file, he::StringView name, const uint8_t* data, siz
     constexpr auto HexByteFmt = FMT_STRING("{:#04x}, ");
     constexpr auto HexLineFmt = FMT_STRING("    {}// {}\n");
 
-    fmt::memory_buffer buf;
-    buf.reserve(MemoryBufferSize + 256); // little extra to prevent regrowth if a line goes over a bit
+    he::String buf;
+    buf.Reserve(MemoryBufferSize + 256); // little extra to prevent regrowth if a line goes over a bit
 
-    fmt::detail::buffer_appender<char> bufItr{ buf };
     uint32_t bytesWritten = 0;
 
     if (asText)
-        fmt::format_to(fmt::appender(buf), "static const char {}[{}] =\n{{\n", name, size);
+        fmt::format_to(he::Appender(buf), "static const char {}[{}] =\n{{\n", name, size);
     else
-        fmt::format_to(fmt::appender(buf), "static const unsigned char {}[{}] =\n{{\n", name, size);
+        fmt::format_to(he::Appender(buf), "static const unsigned char {}[{}] =\n{{\n", name, size);
 
     if (data != nullptr)
     {
@@ -280,14 +269,14 @@ void WriteFileData(he::File& file, he::StringView name, const uint8_t* data, siz
             if (asciiPos == (HE_LENGTH_OF(ascii) - 1))
             {
                 ascii[asciiPos] = '\0';
-                fmt::format_to(fmt::appender(buf), HexLineFmt, hex, ascii);
+                fmt::format_to(he::Appender(buf), HexLineFmt, hex, ascii);
 
-                if (buf.size() >= MemoryBufferSize)
+                if (buf.Size() >= MemoryBufferSize)
                 {
-                    he::Result r = file.Write(buf.data(), static_cast<uint32_t>(buf.size()), &bytesWritten);
+                    he::Result r = file.Write(buf.Data(), buf.Size(), &bytesWritten);
                     if (!HE_VERIFY_RESULT(r))
                         return;
-                    buf.clear();
+                    buf.Clear();
                 }
 
                 data += asciiPos;
@@ -306,13 +295,13 @@ void WriteFileData(he::File& file, he::StringView name, const uint8_t* data, siz
             }
 
             ascii[asciiPos] = '\0';
-            fmt::format_to(fmt::appender(buf), HexLineFmt, hex, ascii);
+            fmt::format_to(he::Appender(buf), HexLineFmt, hex, ascii);
         }
     }
 
-    buf.append(fmt::string_view("};\n"));
+    buf += "};\n";
 
-    he::Result r = file.Write(buf.data(), static_cast<uint32_t>(buf.size()), &bytesWritten);
+    he::Result r = file.Write(buf.Data(), buf.Size(), &bytesWritten);
     if (!HE_VERIFY_RESULT(r))
         return;
 

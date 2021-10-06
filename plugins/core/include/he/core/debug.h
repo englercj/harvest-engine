@@ -2,10 +2,13 @@
 
 #pragma once
 
+#include "he/core/allocator.h"
+#include "he/core/appender.h"
 #include "he/core/compiler.h"
 #include "he/core/config.h"
 #include "he/core/cpu.h"
 #include "he/core/macros.h"
+#include "he/core/string.h"
 #include "he/core/utils.h"
 
 #include "fmt/format.h"
@@ -76,10 +79,9 @@ namespace he
     template <typename... Args>
     void PrintToDebugger(fmt::format_string<Args...> fmt, Args&&... args)
     {
-        fmt::memory_buffer buf;
-        fmt::format_to(fmt::appender(buf), fmt, Forward<Args>(args)...);
-        buf.push_back('\0');
-        return PrintToDebugger(buf.data());
+        String buf(Allocator::GetTemp());
+        fmt::format_to(Appender(buf), fmt, Forward<Args>(args)...);
+        return PrintToDebugger(buf.Data());
     }
 
     /// Checks if the debugger is currently attached to this program and returns the result.

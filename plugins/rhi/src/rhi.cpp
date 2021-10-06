@@ -2,6 +2,7 @@
 
 #include "rhi_internal.h"
 
+#include "he/core/enum_ops.h"
 #include "he/core/log.h"
 #include "he/rhi/instance.h"
 #include "he/rhi/types.h"
@@ -9,37 +10,9 @@
 
 namespace he::rhi
 {
-    const char* AsString(ApiResult x)
-    {
-        switch (x)
-        {
-            case ApiResult::Success: return "Success";
-            case ApiResult::Failure: return "Failure";
-            case ApiResult::DeviceLost: return "DeviceLost";
-            case ApiResult::OutOfMemory: return "OutOfMemory";
-            case ApiResult::NotFound: return "NotFound";
-        }
-
-        return "<unknown>";
-    }
-
-    const char* AsString(ApiBackend x)
-    {
-        switch (x)
-        {
-            case ApiBackend::Unknown: return "Unknown";
-            case ApiBackend::Null: return "NULL";
-            case ApiBackend::D3D12: return "D3D12";
-            case ApiBackend::Vulkan: return "Vulkan";
-            case ApiBackend::WebGPU: return "WebGPU";
-        }
-
-        return "<unknown>";
-    }
-
     Result CreateInstance(const InstanceDesc& desc, Instance*& instance)
     {
-        Allocator& allocator = desc.allocator ? *desc.allocator : CrtAllocator::Get();
+        Allocator& allocator = desc.allocator ? *desc.allocator : Allocator::GetDefault();
 
         instance = nullptr;
 
@@ -95,5 +68,38 @@ namespace he::rhi
         {
             instance->GetAllocator().Delete(instance);
         }
+    }
+}
+
+namespace he
+{
+    template <>
+    const char* AsString(rhi::ApiResult x)
+    {
+        switch (x)
+        {
+            case rhi::ApiResult::Success: return "Success";
+            case rhi::ApiResult::Failure: return "Failure";
+            case rhi::ApiResult::DeviceLost: return "DeviceLost";
+            case rhi::ApiResult::OutOfMemory: return "OutOfMemory";
+            case rhi::ApiResult::NotFound: return "NotFound";
+        }
+
+        return "<unknown>";
+    }
+
+    template <>
+    const char* AsString(rhi::ApiBackend x)
+    {
+        switch (x)
+        {
+            case rhi::ApiBackend::Unknown: return "Unknown";
+            case rhi::ApiBackend::Null: return "NULL";
+            case rhi::ApiBackend::D3D12: return "D3D12";
+            case rhi::ApiBackend::Vulkan: return "Vulkan";
+            case rhi::ApiBackend::WebGPU: return "WebGPU";
+        }
+
+        return "<unknown>";
     }
 }

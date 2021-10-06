@@ -24,3 +24,10 @@
 #if !defined(HE_ENABLE_SIMD)
     #define HE_ENABLE_SIMD              1
 #endif
+
+/// \def HE_ENABLE_CUSTOM_ALLOCATORS
+/// Controls if the user is responsible for defining the \ref Allocator::GetDefault and
+/// \ref Allocator::GetTemp functions.
+#if !defined(HE_ENABLE_CUSTOM_ALLOCATORS)
+    #define HE_ENABLE_CUSTOM_ALLOCATORS 0
+#endif

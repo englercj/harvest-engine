@@ -2,8 +2,11 @@
 
 #include "he/core/file.h"
 
+#include "he/core/enum_ops.h"
+
 namespace he
 {
+    template <>
     const char* AsString(FileResult x)
     {
         switch (x)

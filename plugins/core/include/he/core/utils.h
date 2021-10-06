@@ -141,7 +141,7 @@ namespace he
     /// \param a The object to assign the new value to.
     /// \param b The new value to assign to `a`.
     /// \return The value previously held in `a`.
-    template <typename T, class U = T>
+    template <typename T, typename U = T>
     constexpr T Exchange(T& a, U&& b) noexcept
     {
         T old = Move(a);

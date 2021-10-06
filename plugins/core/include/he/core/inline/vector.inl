@@ -223,14 +223,14 @@ namespace he
     {}
 
     template <typename T>
-    Vector<T>::Vector(Allocator& allocator, const Vector& x)
+    Vector<T>::Vector(const Vector& x, Allocator& allocator)
         : Vector(allocator)
     {
         CopyFrom(x);
     }
 
     template <typename T>
-    Vector<T>::Vector(Allocator& allocator, Vector&& x)
+    Vector<T>::Vector(Vector&& x, Allocator& allocator)
         : Vector(allocator)
     {
         MoveFrom(Move(x));

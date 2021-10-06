@@ -24,12 +24,6 @@ namespace he
         NoData,
     };
 
-    /// Returns the enum as a string.
-    ///
-    /// \param[in] x The value to get the string representation of.
-    /// \return The string representation of the enum value.
-    const char* AsString(FileResult x);
-
     /// Possible modes a file can be opened in.
     enum class FileOpenMode : uint32_t
     {

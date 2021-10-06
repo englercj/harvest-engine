@@ -49,13 +49,13 @@ namespace he
     #endif
     }
 
-    char* String::Duplicate(Allocator& allocator, const char* src)
+    char* String::Duplicate(const char* src, Allocator& allocator)
     {
         uint32_t len = String::Length(src);
-        return DuplicateN(allocator, src, len);
+        return DuplicateN(src, len, allocator);
     }
 
-    char* String::DuplicateN(Allocator& allocator, const char* src, uint32_t len)
+    char* String::DuplicateN(const char* src, uint32_t len, Allocator& allocator)
     {
         char* dst = allocator.Malloc<char>(len + 1);
         MemCopy(dst, src, len);
@@ -135,25 +135,25 @@ namespace he
         SetSizeEmbed(0);
     }
 
-    String::String(Allocator& allocator, const char* str)
+    String::String(const char* str, Allocator& allocator)
         : String(allocator)
     {
         Append(str);
     }
 
-    String::String(Allocator& allocator, const char* str, uint32_t len)
+    String::String(const char* str, uint32_t len, Allocator& allocator)
         : String(allocator)
     {
         Append(str, len);
     }
 
-    String::String(Allocator& allocator, const String& x)
+    String::String(const String& x, Allocator& allocator)
         : String(allocator)
     {
         CopyFrom(x);
     }
 
-    String::String(Allocator& allocator, String&& x)
+    String::String(String&& x, Allocator& allocator)
         : String(allocator)
     {
         MoveFrom(Move(x));
@@ -280,11 +280,11 @@ namespace he
         return Data()[Size() - 1];
     }
 
-    int32_t String::CompareTo(const String& x) const
+    int32_t String::CompareTo(const char* str, uint32_t len) const
     {
         const uint32_t s0 = Size();
-        const uint32_t s1 = x.Size();
-        const int32_t result = MemCmp(Data(), x.Data(), Min(s0, s1));
+        const uint32_t s1 = len;
+        const int32_t result = MemCmp(Data(), str, Min(s0, s1));
 
         if (result != 0)
             return result;
@@ -297,6 +297,7 @@ namespace he
 
         return 0;
     }
+
 
     void String::Insert(uint32_t index, const char* str, uint32_t len)
     {

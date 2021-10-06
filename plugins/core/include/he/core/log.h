@@ -2,9 +2,12 @@
 
 #pragma once
 
+#include "he/core/allocator.h"
+#include "he/core/appender.h"
 #include "he/core/config.h"
 #include "he/core/debug.h"
 #include "he/core/string.h"
+#include "he/core/string_view.h"
 #include "he/core/type_traits.h"
 #include "he/core/types.h"
 #include "he/core/utils.h"
@@ -150,12 +153,6 @@ namespace he
         Error   = HE_LOG_LEVEL_ERROR,   ///< \copydoc HE_LOG_LEVEL_ERROR
     };
 
-    /// Returns a log level as a string.
-    ///
-    /// \param[in] x The log level to get the string representation of.
-    /// \return A string representing the log level.
-    const char* AsString(LogLevel x);
-
     /// Source of a log entry.
     /// This structure is not meant to be created directly. Use the logging macros instead.
     struct LogSource
@@ -203,8 +200,14 @@ namespace he
             : key(k)
             , type(ValueType::String)
         {
-            const uint32_t len = String::Length(v);
-            value.s.append(v, v + len + 1); // +1 to include null terminator
+            value.s = v;
+        }
+
+        LogKV(const char* k, StringView v)
+            : key(k)
+            , type(ValueType::String)
+        {
+            value.s = v;
         }
 
         template <typename... Args>
@@ -212,8 +215,15 @@ namespace he
             : key(k)
             , type(ValueType::String)
         {
-            fmt::format_to(fmt::appender(value.s), fmt, Forward<Args>(args)...);
-            value.s.push_back('\0');
+            fmt::format_to(Appender(value.s), fmt, Forward<Args>(args)...);
+        }
+
+        template <typename T>
+        LogKV(const char* k, const T& v)
+            : key(k)
+            , type(ValueType::String)
+        {
+            fmt::format_to(Appender(value.s), "{}", v);
         }
 
         LogKV(const LogKV&) = delete;
@@ -253,10 +263,9 @@ namespace he
                 uint64_t u;
                 double d;
             };
-            fmt::basic_memory_buffer<char, 128> s{};
+            String s{ Allocator::GetTemp() };
         } value;
     };
-    const char* AsString(LogKV::ValueType x);
 
     /// A pointer to a function that handles processing log entries.
     ///

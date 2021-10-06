@@ -3,6 +3,7 @@
 #include "he/core/error.h"
 
 #include "he/core/debug.h"
+#include "he/core/enum_ops.h"
 #include "he/core/log.h"
 
 #include "fmt/format.h"
@@ -12,19 +13,6 @@
 namespace he
 {
     static ErrorHandlerFunc s_errorHandler = nullptr;
-
-    const char* AsString(ErrorType x)
-    {
-        switch (x)
-        {
-            case ErrorType::Assert: return "Assertion";
-            case ErrorType::Except: return "Exception";
-            case ErrorType::Verify: return "Verify";
-            case ErrorType::Expect: return "Expectation";
-        }
-
-        return "<unknown>";
-    }
 
     bool DefaultErrorHandler(ErrorType type, const char* file, const uint32_t line, const char* funcName, const char* expression, const char* msg)
     {
@@ -65,5 +53,19 @@ namespace he
             return s_errorHandler(type, file, line, funcName, expression, msg);
 
         return DefaultErrorHandler(type, file, line, funcName, expression, msg);
+    }
+
+    template <>
+    const char* AsString(ErrorType x)
+    {
+        switch (x)
+        {
+            case ErrorType::Assert: return "Assertion";
+            case ErrorType::Except: return "Exception";
+            case ErrorType::Verify: return "Verify";
+            case ErrorType::Expect: return "Expectation";
+        }
+
+        return "<unknown>";
     }
 }

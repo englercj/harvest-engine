@@ -56,7 +56,7 @@ namespace he::schema
         };
 
     public:
-        Lexer(Allocator& allocator);
+        Lexer(Allocator& allocator = Allocator::GetDefault());
 
         bool Reset(StringView src);
 
@@ -93,6 +93,4 @@ namespace he::schema
 
         String m_error;
     };
-
-    const char* AsString(Lexer::TokenType type);
 }

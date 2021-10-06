@@ -87,7 +87,7 @@ template <> struct TestLogKVType<LogKV::ValueType::String>
 {
     static void Test(const LogKV& kv, const char* value)
     {
-        HE_EXPECT_EQ_STR(kv.value.s.data(), value);
+        HE_EXPECT_EQ_STR(kv.value.s.Data(), value);
         HE_EXPECT_EQ_STR(kv.GetString(), value);
     }
 };
@@ -144,7 +144,7 @@ HE_TEST(core, log, LogKV)
     LogKV fmtKv("key16", "testing {}", 5);
     HE_EXPECT_EQ_STR(fmtKv.key, "key16");
     HE_EXPECT_EQ(fmtKv.type, LogKV::ValueType::String);
-    HE_EXPECT_EQ_STR(fmtKv.value.s.data(), "testing 5");
+    HE_EXPECT_EQ_STR(fmtKv.value.s.Data(), "testing 5");
     HE_EXPECT_EQ_STR(fmtKv.GetString(), "testing 5");
 }
 

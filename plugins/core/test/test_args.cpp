@@ -35,7 +35,7 @@ struct TestArgs
 template <int32_t N>
 ArgResult ParseTestArgs(Span<ArgDesc> argDescs, const char* (&argv)[N])
 {
-    return ParseArgs(CrtAllocator::Get(), argDescs, N, argv);
+    return ParseArgs(argDescs, N, argv);
 }
 
 // ------------------------------------------------------------------------------------------------

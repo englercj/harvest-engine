@@ -1,6 +1,7 @@
 #include "test_app.h"
 
 #include "he/core/debug.h"
+#include "he/core/enum_fmt.h"
 #include "he/window/event.h"
 
 namespace he
@@ -11,7 +12,7 @@ namespace he
 
     void TestApp::OnEvent(const window::Event& ev)
     {
-        const char* typeName = window::AsString(ev.type);
+        const char* typeName = AsString(ev.type);
         PrintToDebugger(typeName);
         PrintToDebugger(": ");
 
@@ -20,13 +21,13 @@ namespace he
             case window::EventType::MouseDown:
             {
                 const auto& evt = static_cast<const window::MouseDownEvent&>(ev);
-                PrintToDebugger("{{ button={} }}", window::AsString(evt.button));
+                PrintToDebugger("{{ button={} }}", evt.button);
                 break;
             }
             case window::EventType::MouseUp:
             {
                 const auto& evt = static_cast<const window::MouseUpEvent&>(ev);
-                PrintToDebugger("{{ button={} }}", window::AsString(evt.button));
+                PrintToDebugger("{{ button={} }}", evt.button);
                 break;
             }
             case window::EventType::MouseWheel:
@@ -44,13 +45,13 @@ namespace he
             case window::EventType::KeyDown:
             {
                 const auto& evt = static_cast<const window::KeyDownEvent&>(ev);
-                PrintToDebugger("{{ key={} }}", window::AsString(evt.key));
+                PrintToDebugger("{{ key={} }}", evt.key);
                 break;
             }
             case window::EventType::KeyUp:
             {
                 const auto& evt = static_cast<const window::KeyDownEvent&>(ev);
-                PrintToDebugger("{{ key={} }}", window::AsString(evt.key));
+                PrintToDebugger("{{ key={} }}", evt.key);
                 break;
             }
             case window::EventType::Text:
@@ -62,19 +63,19 @@ namespace he
             case window::EventType::GamepadAxis:
             {
                 const auto& evt = static_cast<const window::GamepadAxisEvent&>(ev);
-                PrintToDebugger("{{ index={}, axis={}, value={} }}", evt.index, window::AsString(evt.axis), evt.value);
+                PrintToDebugger("{{ index={}, axis={}, value={} }}", evt.index, evt.axis, evt.value);
                 break;
             }
             case window::EventType::GamepadButtonDown:
             {
                 const auto& evt = static_cast<const window::GamepadButtonDownEvent&>(ev);
-                PrintToDebugger("{{ index={}, button={} }}", evt.index, window::AsString(evt.button));
+                PrintToDebugger("{{ index={}, button={} }}", evt.index, evt.button);
                 break;
             }
             case window::EventType::GamepadButtonUp:
             {
                 const auto& evt = static_cast<const window::GamepadButtonUpEvent&>(ev);
-                PrintToDebugger("{{ index={}, button={} }}", evt.index, window::AsString(evt.button));
+                PrintToDebugger("{{ index={}, button={} }}", evt.index, evt.button);
                 break;
             }
             case window::EventType::GamepadConnected:

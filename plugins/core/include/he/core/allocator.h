@@ -15,6 +15,25 @@ namespace he
         /// The default alignment value that all allocations will use.
         static constexpr size_t DefaultAlignment = alignof(max_align_t);
 
+        /// Gets an allocator used for general allocations throughout the engine.
+        /// Most places in the engine that allocate also take an allocator parameter, which
+        /// if not specified uses this allocator instead.
+        ///
+        /// If you wish to override the allocator used here you can define the symbol
+        /// `HE_ENABLE_CUSTOM_ALLOCATORS`, and then define this function's body in your code.
+        ///
+        /// \return The default allocator.
+        static Allocator& GetDefault();
+
+        /// Gets an allocator used for temporary allocations throughout the engine.
+        ///
+        /// If you wish to override the allocator used here you can define the symbol
+        /// `HE_ENABLE_CUSTOM_ALLOCATORS`, and then define this function's body in your code.
+        ///
+        /// \return The default allocator.
+        static Allocator& GetTemp();
+
+    public:
         virtual ~Allocator() = default;
 
         /// Allocates a new memory block on the heap, which can be over aligned.

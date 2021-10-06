@@ -2,6 +2,8 @@
 
 #include "he/core/test.h"
 
+#include "he/core/allocator.h"
+#include "he/core/appender.h"
 #include "he/core/string.h"
 #include "he/core/vector.h"
 
@@ -78,24 +80,23 @@ namespace internal
         _TestRunner& runner = _TestRunner::Get();
         runner.failureCount = 0;
 
+        String buf;
+
         for (TestFixture* fixture : runner.tests)
         {
-            {
-                const TestInfo& info = fixture->GetTestInfo();
-                fmt::memory_buffer buf;
-                fmt::format_to(fmt::appender(buf), "{}:{}:{}\n", info.moduleName, info.suiteName, info.testName);
-                buf.push_back('\0');
-                Print(buf.data());
-            }
+            buf.Clear();
+
+            const TestInfo& info = fixture->GetTestInfo();
+            fmt::format_to(Appender(buf), "{}:{}:{}\n", info.moduleName, info.suiteName, info.testName);
+            Print(buf.Data());
 
             fixture->Run();
         }
 
-        fmt::memory_buffer buf;
-        fmt::format_to(fmt::appender(buf), "\nRan {} tests with {} assertions.\n{} tests failed\n",
+        buf.Clear();
+        fmt::format_to(Appender(buf), "\nRan {} tests with {} assertions.\n{} tests failed\n",
             runner.tests.Size(), internal::g_totalExpectations.load(), runner.failureCount);
-        buf.push_back('\0');
-        Print(buf.data());
+        Print(buf.Data());
 
         return runner.failureCount;
     }
@@ -104,16 +105,15 @@ namespace internal
     {
         ++_TestRunner::Get().failureCount;
 
-        fmt::memory_buffer buf;
-        fmt::format_to(fmt::appender(buf), "{}({}): Expectation failed: {}\n", file, line, expr);
+        String buf;
+        fmt::format_to(Appender(buf), "{}({}): Expectation failed: {}\n", file, line, expr);
 
         if (!String::IsEmpty(params))
         {
-            fmt::format_to(fmt::appender(buf), "{}", params);
+            fmt::format_to(Appender(buf), "{}", params);
         }
 
-        buf.push_back('\0');
-        Print(buf.data());
+        Print(buf.Data());
 
         // TODO:
         // he::HandleError(he::ErrorType::Expect, file, line, "", expr, buf.data());

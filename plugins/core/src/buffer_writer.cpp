@@ -3,38 +3,45 @@
 #include "he/core/buffer_writer.h"
 
 #include "he/core/assert.h"
+#include "he/core/enum_ops.h"
 #include "he/core/memory_ops.h"
 #include "he/core/string.h"
 #include "he/core/utils.h"
 
 namespace he
 {
-    BufferWriter::BufferWriter(Allocator& allocator, GrowthStrategy strategy, float growth)
+    BufferWriter::BufferWriter(Allocator& allocator)
+        : m_allocator(allocator)
+        , m_strategy(GrowthStrategy::Factor)
+        , m_growth(0.5f)
+    {}
+
+    BufferWriter::BufferWriter(GrowthStrategy strategy, float growth, Allocator& allocator)
         : m_allocator(allocator)
         , m_strategy(strategy)
         , m_growth(growth)
     {}
 
-    BufferWriter::BufferWriter(Allocator& allocator, const BufferWriter& x)
-        : BufferWriter(allocator)
+    BufferWriter::BufferWriter(const BufferWriter& x, Allocator& allocator)
+        : m_allocator(allocator)
     {
         CopyFrom(x);
     }
 
-    BufferWriter::BufferWriter(Allocator& allocator, BufferWriter&& x)
-        : BufferWriter(allocator)
+    BufferWriter::BufferWriter(BufferWriter&& x, Allocator& allocator)
+        : m_allocator(allocator)
     {
         MoveFrom(Move(x));
     }
 
     BufferWriter::BufferWriter(const BufferWriter& x)
-        : BufferWriter(x.m_allocator)
+        : m_allocator(x.m_allocator)
     {
         CopyFrom(x);
     }
 
     BufferWriter::BufferWriter(BufferWriter&& x)
-        : BufferWriter(x.m_allocator)
+        : m_allocator(x.m_allocator)
     {
         MoveFrom(Move(x));
     }
@@ -206,6 +213,7 @@ namespace he
         m_growth = x.m_growth;
     }
 
+    template <>
     const char* AsString(BufferWriter::GrowthStrategy x)
     {
         switch (x)

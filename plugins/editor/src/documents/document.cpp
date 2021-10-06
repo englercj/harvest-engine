@@ -5,10 +5,12 @@
 #include "fonts/IconsFontAwesome5Pro.h"
 #include "widgets/menu.h"
 
+#include "he/core/appender.h"
+#include "he/core/string.h"
+#include "he/core/string_fmt.h"
+
 #include "imgui.h"
 #include "fmt/format.h"
-
-#include <cstdarg>
 
 namespace he::editor
 {
@@ -17,10 +19,10 @@ namespace he::editor
     const char* Document::GetLabel() const
     {
         // TODO: We can cache this with some API changes if it is too slow.
-        static std::string s_label;
-        s_label.clear();
-        fmt::format_to(std::back_inserter(s_label), "{} ##doc-id-{}", m_title.c_str(), m_counter);
-        return s_label.c_str();
+        static String s_label;
+        s_label.Clear();
+        fmt::format_to(Appender(s_label), "{} ##doc-id-{}", m_title, m_counter);
+        return s_label.Data();
     }
 
     void Document::ShowContextMenu()

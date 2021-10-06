@@ -20,6 +20,14 @@ return function (plugin)
                     end
                 end
 
+                if options.json then
+                    opt = opt .. "--json "
+                end
+
+                if options.buffer then
+                    opt = opt .. "--buffer "
+                end
+
                 dependson { "he_schemac" }
 
                 he.filter_push_combine { "files:" .. options.glob }
@@ -29,7 +37,8 @@ return function (plugin)
                         he.target_bin_dir .. "/he_schemac -o " .. he.file_gen_dir .. " %{file.abspath}",
                     }
                     buildoutputs {
-                        he.file_gen_dir .. "/%{file.name}_generated.h",
+                        he.file_gen_dir .. "/%{file.basename}.generated.h",
+                        he.file_gen_dir .. "/%{file.basename}.generated.cpp",
                     }
 
                 he.filter_pop()

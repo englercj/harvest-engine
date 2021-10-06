@@ -2,9 +2,13 @@
 
 #include "welcome_document.h"
 
+#include "dialogs/create_project_dialog.h"
 #include "fonts/IconsFontAwesome5Pro.h"
 #include "widgets/menu.h"
 #include "widgets/buttons.h"
+
+#include "he/core/string.h"
+#include "he/core/vector.h"
 
 #include "imgui.h"
 
@@ -13,10 +17,14 @@ namespace he::editor
     WelcomeDocument::WelcomeDocument(
         DialogService& dialogService,
         ImGuiService& imguiService,
-        PlatformService& platformService)
+        PlatformService& platformService,
+        ProjectService& projectService,
+        SettingsService& settingsService)
         : m_dialogService(dialogService)
         , m_imguiService(imguiService)
         , m_platformService(platformService)
+        , m_projectService(projectService)
+        , m_settingsService(settingsService)
     {
         m_title = "Welcome";
     }
@@ -57,12 +65,25 @@ namespace he::editor
 
         if (ImGui::Button(ICON_FA_FOLDER_OPEN " Open Project"))
         {
+            FileDialogConfig config{};
+            config.filters = ProjectFilters;
+            config.filterCount = HE_LENGTH_OF(ProjectFilters);
+
+            Vector<String> paths;
+            if (m_platformService.OpenFileDialog(config, paths))
+            {
+                if (m_projectService.Open(paths[0].Data()))
+                {
+                    RequestClose();
+                }
+            }
         }
 
         ImGui::SameLine();
 
         if (ImGui::Button(ICON_FA_PLUS " Create New Project"))
         {
+            m_dialogService.Open<CreateProjectDialog>();
             RequestClose();
         }
     }
@@ -74,6 +95,20 @@ namespace he::editor
         m_imguiService.PopFont();
         ImGui::NewLine();
 
-        ImGui::TextUnformatted("No recently opened projects.");
+        Settings& settings = m_settingsService.GetSettings();
+
+        if (settings.recentProjects.IsEmpty())
+        {
+            ImGui::TextUnformatted("No recently opened projects.");
+            return;
+        }
+
+        for (const schema::RecentProject& recent : settings.recentProjects)
+        {
+            if (LinkButton(recent.path.Data()))
+            {
+                m_projectService.Open(recent.path.Data());
+            }
+        }
     }
 }

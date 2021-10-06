@@ -26,10 +26,12 @@
             ],
             "schema_compile": [
                 {
-                    "glob": "src/schema/*.schema"
+                    "glob": "src/schema/*.he_schema",
+                    "json": true
                 }
             ],
             "private_includedirs": ["src", "%{he.get_generated_dir(prj.name)}/src"],
+            "private_defines": ["GOOGLE_PROTOBUF_INTERNAL_DONATE_STEAL_INLINE=0"],
             "private_dependson": [
                 "he_core",
                 "he_rhi",
@@ -38,7 +40,6 @@
 
                 "boost_di",
                 "imgui",
-                "rapidjson",
                 "sqlite3"
             ],
             "variants": [
@@ -49,7 +50,8 @@
                             "glob": "src/shaders/*.hlsl",
                             "targets": ["sm_5_1"]
                         }
-                    ]
+                    ],
+                    "disablewarnings": ["4127", "5054"]
                 },
                 {
                     "conditions": ["system:linux"],

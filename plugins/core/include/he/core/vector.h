@@ -34,21 +34,21 @@ namespace he
 
         /// Construct an empty vector.
         ///
-        /// \param allocator The allocator to use for any allocations.
-        explicit Vector(Allocator& allocator);
+        /// \param allocator Optional. The allocator to use.
+        explicit Vector(Allocator& allocator = Allocator::GetDefault());
 
         /// Construct a vector by copying `x`, and using `allocator` for this vector's allocations.
         ///
-        /// \param allocator The allocator to use for any allocations.
         /// \param x The vector to copy from.
-        Vector(Allocator& allocator, const Vector& x);
+        /// \param allocator The allocator to use.
+        Vector(const Vector& x, Allocator& allocator);
 
         /// Construct a vector by moving `x`, and using `allocator` for this vector's allocations.
         /// If the allocators do not match then a copy operation will be performed.
         ///
-        /// \param allocator The allocator to use for any allocations.
         /// \param x The vector to move from.
-        Vector(Allocator& allocator, Vector&& x);
+        /// \param allocator The allocator to use.
+        Vector(Vector&& x, Allocator& allocator);
 
         /// Construct a vector by copying `x`, using the allocator from `x`.
         ///

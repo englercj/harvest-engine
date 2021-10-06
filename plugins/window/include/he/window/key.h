@@ -125,10 +125,4 @@ namespace he::window
         RightBracket,
         Apostrophe,
     };
-
-    /// Returns the enum as a string.
-    ///
-    /// \param[in] v The value to get the string representation of.
-    /// \return The string representation of the enum value.
-    const char* AsString(Key v);
 }

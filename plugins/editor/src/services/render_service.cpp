@@ -15,10 +15,6 @@
 
 namespace he::editor
 {
-    RenderService::RenderService(Allocator& allocator)
-        : m_allocator(allocator)
-    {}
-
     bool RenderService::Initialize(window::View* view)
     {
         m_view = view;
@@ -26,7 +22,6 @@ namespace he::editor
         // Create instance
         {
             rhi::InstanceDesc desc{};
-            desc.allocator = &m_allocator;
             desc.enableDebugCpu = true;
             desc.enableDebugGpu = true;
             desc.enableDebugBreakOnError = true;
@@ -185,8 +180,8 @@ namespace he::editor
         HE_ASSERT_RESULT(r);
         HE_ASSERT(count > 0);
 
-        rhi::SwapChainFormat* formats = m_allocator.Malloc<rhi::SwapChainFormat>(count);
-        HE_AT_SCOPE_EXIT([&]() { m_allocator.Free(formats); });
+        rhi::SwapChainFormat* formats = Allocator::GetTemp().Malloc<rhi::SwapChainFormat>(count);
+        HE_AT_SCOPE_EXIT([&]() { Allocator::GetTemp().Free(formats); });
 
         r = m_device->GetSwapChainFormats(m_view->GetNativeHandle(), count, formats);
         HE_ASSERT_RESULT(r);

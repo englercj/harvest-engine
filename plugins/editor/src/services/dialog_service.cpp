@@ -9,10 +9,6 @@
 
 namespace he::editor
 {
-    DialogService::DialogService(Allocator& allocator)
-        : m_dialogs(allocator)
-    {}
-
     void DialogService::DestroyClosedDialogs()
     {
         for (uint32_t i = 0; i < m_dialogs.Size();)

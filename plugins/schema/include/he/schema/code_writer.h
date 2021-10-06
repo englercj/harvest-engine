@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include "he/core/appender.h"
 #include "he/core/buffer_writer.h"
 #include "he/core/string_view.h"
 
@@ -47,10 +48,10 @@ namespace he::schema
         void Write(StringView str) { m_buffer.Write(str.Data(), str.Size()); }
 
         /// Increases the indent level of the writer.
-        void IncreaseIndent() { ++m_indentDepth; }
+        void IncreaseIndent() { HE_ASSERT(m_indentDepth < 0xffffffff); ++m_indentDepth; }
 
         /// Decreases the indent level of the writer.
-        void DecreaseIndent() { --m_indentDepth; }
+        void DecreaseIndent() { HE_ASSERT(m_indentDepth > 0); --m_indentDepth; }
 
         /// Writes indentation to the code buffer.
         void WriteIndent()
@@ -69,9 +70,7 @@ namespace he::schema
         template <typename... Args>
         void Write(fmt::format_string<Args...> fmt, Args&&... args)
         {
-            fmt::memory_buffer buf;
-            fmt::format_to(fmt::appender(buf), fmt, Forward<Args>(args)...);
-            m_buffer.Write(buf.data(), static_cast<uint32_t>(buf.size()));
+            fmt::format_to(he::Appender(m_buffer), fmt, Forward<Args>(args)...);
         }
 
         /// Returns a string view pointing to code buffer.

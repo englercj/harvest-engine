@@ -21,12 +21,6 @@ namespace he::window
         RTrigger,       ///< Right analog trigger
     };
 
-    /// Returns the enum as a string.
-    ///
-    /// \param[in] v The value to get the string representation of.
-    /// \return The string representation of the enum value.
-    const char* AsString(GamepadAxis v);
-
     /// Enumeration of the various supported gamepad buttons.
     enum class GamepadButton : int32_t
     {
@@ -46,10 +40,4 @@ namespace he::window
         Action3,        ///< Left action button: X on xbox, ◻ on playstation, Y on nintendo
         Action4,        ///< Top action button: Y on xbox, △ on playstation, X on nintendo
     };
-
-    /// Returns the enum as a string.
-    ///
-    /// \param[in] v The value to get the string representation of.
-    /// \return The string representation of the enum value.
-    const char* AsString(GamepadButton v);
 }

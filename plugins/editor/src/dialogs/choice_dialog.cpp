@@ -4,7 +4,30 @@
 
 #include "widgets/buttons.h"
 
+#include "he/core/enum_ops.h"
+
 #include "imgui.h"
+
+namespace he
+{
+    template <>
+    const char* AsString(editor::ChoiceDialog::Choice x)
+    {
+        switch (x)
+        {
+            case editor::ChoiceDialog::Choice::Yes: return "Yes";
+            case editor::ChoiceDialog::Choice::No: return "No";
+            case editor::ChoiceDialog::Choice::YesAll: return "Yes All";
+            case editor::ChoiceDialog::Choice::NoAll: return "No All";
+            case editor::ChoiceDialog::Choice::OK: return "OK";
+            case editor::ChoiceDialog::Choice::Cancel: return "Cancel";
+            case editor::ChoiceDialog::Choice::Retry: return "Retry";
+            case editor::ChoiceDialog::Choice::Continue: return "Continue";
+        }
+
+        return "<unknown>";
+    }
+}
 
 namespace he::editor
 {
@@ -17,7 +40,7 @@ namespace he::editor
 
     void ChoiceDialog::ShowContent()
     {
-        ImGui::TextUnformatted(m_message.c_str());
+        ImGui::TextUnformatted(m_message.Data());
     }
 
     void ChoiceDialog::ShowButtons()
@@ -42,22 +65,5 @@ namespace he::editor
                 RequestClose();
             }
         }
-    }
-
-    const char* AsString(ChoiceDialog::Choice choice)
-    {
-        switch (choice)
-        {
-            case ChoiceDialog::Choice::Yes: return "Yes";
-            case ChoiceDialog::Choice::No: return "No";
-            case ChoiceDialog::Choice::YesAll: return "Yes All";
-            case ChoiceDialog::Choice::NoAll: return "No All";
-            case ChoiceDialog::Choice::OK: return "OK";
-            case ChoiceDialog::Choice::Cancel: return "Cancel";
-            case ChoiceDialog::Choice::Retry: return "Retry";
-            case ChoiceDialog::Choice::Continue: return "Continue";
-        }
-
-        return "<Unknown Choice>";
     }
 }

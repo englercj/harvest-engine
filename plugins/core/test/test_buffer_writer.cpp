@@ -28,13 +28,13 @@ HE_TEST(core, BufferWriter, Construct_Copy)
 
     constexpr uint8_t Datas[]{ 0x12, 0x23, 0x45, 0x67, 0x89 };
 
-    BufferWriter buf(a, BufferWriter::GrowthStrategy::Fixed, 20.5f);
+    BufferWriter buf(BufferWriter::GrowthStrategy::Fixed, 20.5f, a);
     buf.Write(Datas);
     HE_EXPECT_EQ(buf.Size(), HE_LENGTH_OF(Datas));
     HE_EXPECT_EQ_MEM(buf.Data(), Datas, buf.Size());
 
     {
-        BufferWriter copy(a, buf);
+        BufferWriter copy(buf, a);
         HE_EXPECT_EQ(copy.Size(), buf.Size());
         HE_EXPECT_EQ_MEM(copy.Data(), buf.Data(), buf.Size());
         HE_EXPECT_EQ_PTR(&copy.GetAllocator(), &a);
@@ -44,7 +44,7 @@ HE_TEST(core, BufferWriter, Construct_Copy)
 
     {
         AnotherAllocator a2;
-        BufferWriter copy(a2, buf);
+        BufferWriter copy(buf, a2);
         HE_EXPECT_EQ(copy.Size(), buf.Size());
         HE_EXPECT_EQ_MEM(copy.Data(), buf.Data(), buf.Size());
         HE_EXPECT_EQ_PTR(&copy.GetAllocator(), &a2);
@@ -85,7 +85,7 @@ HE_TEST(core, BufferWriter, Construct_Move)
         HE_EXPECT_EQ_MEM(buf.Data(), Datas, buf.Size());
         const uint8_t* ptr = buf.Data();
 
-        BufferWriter moved(a, Move(buf));
+        BufferWriter moved(Move(buf), a);
         HE_EXPECT_EQ(moved.Size(), HE_LENGTH_OF(Datas));
         HE_EXPECT_EQ_PTR(moved.Data(), ptr);
         HE_EXPECT_EQ_MEM(moved.Data(), Datas, moved.Size());
@@ -105,7 +105,7 @@ HE_TEST(core, BufferWriter, Construct_Move)
         const uint8_t* ptr = buf.Data();
 
         AnotherAllocator a2;
-        BufferWriter moved(a2, Move(buf));
+        BufferWriter moved(Move(buf), a2);
         HE_EXPECT_EQ(moved.Size(), HE_LENGTH_OF(Datas));
         HE_EXPECT_NE_PTR(moved.Data(), ptr);
         HE_EXPECT_EQ_MEM(moved.Data(), Datas, moved.Size());
@@ -163,7 +163,7 @@ HE_TEST(core, BufferWriter, operator_assign_copy)
 
     constexpr uint8_t Datas[]{ 0x12, 0x23, 0x45, 0x67, 0x89 };
 
-    BufferWriter buf(a, BufferWriter::GrowthStrategy::Fixed, 20.5f);
+    BufferWriter buf(BufferWriter::GrowthStrategy::Fixed, 20.5f, a);
     buf.Write(Datas);
     HE_EXPECT_EQ(buf.Size(), HE_LENGTH_OF(Datas));
     HE_EXPECT_EQ_MEM(buf.Data(), Datas, buf.Size());

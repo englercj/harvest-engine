@@ -13,8 +13,6 @@ namespace he::editor
     class RenderService
     {
     public:
-        RenderService(Allocator& allocator);
-
         bool Initialize(window::View* view);
         void Terminate();
 
@@ -42,8 +40,6 @@ namespace he::editor
         };
 
     private:
-        Allocator& m_allocator;
-
         rhi::Instance* m_rhi{ nullptr };
         rhi::Device* m_device{ nullptr };
         rhi::SwapChain* m_swapChain{ nullptr };

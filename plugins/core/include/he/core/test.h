@@ -2,6 +2,8 @@
 
 #pragma once
 
+#include "he/core/allocator.h"
+#include "he/core/appender.h"
 #include "he/core/debug.h"
 #include "he/core/enum_fmt.h"
 #include "he/core/error.h"
@@ -27,10 +29,9 @@
         ++he::internal::g_totalExpectations; \
         if (!(expr)) { \
             if constexpr (HE_PP_COUNT_ARGS(__VA_ARGS__) > 0) { \
-                fmt::memory_buffer _testParamFormatBuffer; \
+                he::String _testParamFormatBuffer(Allocator::GetTemp()); \
                 HE_PP_FOREACH(HE_EXPECT_PARAM_FORMATTER_, (__VA_ARGS__)) \
-                _testParamFormatBuffer.push_back('\0'); \
-                he::internal::HandleTestFailure(__FILE__, __LINE__, #expr, _testParamFormatBuffer.data()); \
+                he::internal::HandleTestFailure(__FILE__, __LINE__, #expr, _testParamFormatBuffer.Data()); \
             } else { \
                 he::internal::HandleTestFailure(__FILE__, __LINE__, #expr, ""); \
             } \
@@ -248,6 +249,6 @@ namespace internal
     do { \
         constexpr char _exprString[] = #x " = "; \
         constexpr uint32_t _exprStringLen = HE_LENGTH_OF(_exprString) - 1; \
-        _testParamFormatBuffer.append(_exprString, _exprString + _exprStringLen); \
-        fmt::format_to(fmt::appender(_testParamFormatBuffer), "{}\n", (x)); \
+        _testParamFormatBuffer.Append(_exprString, _exprStringLen); \
+        fmt::format_to(he::Appender(_testParamFormatBuffer), "{}\n", (x)); \
     } while (0);

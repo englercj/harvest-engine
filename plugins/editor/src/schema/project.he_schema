@@ -1,0 +1,11 @@
+// Copyright Chad Engler
+
+namespace he.editor.schema;
+
+struct Project
+{
+    id: uint8[16];
+    name: string;
+    assetRoot: string;
+    test: uint8*;
+}

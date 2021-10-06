@@ -3,12 +3,25 @@
 #include "he/core/allocator.h"
 
 #include "he/core/compiler.h"
+#include "he/core/config.h"
 #include "he/core/utils.h"
 
 #include <new>
 
 namespace he
 {
+#if !HE_ENABLE_CUSTOM_ALLOCATORS
+    Allocator& Allocator::GetDefault()
+    {
+        return CrtAllocator::Get();
+    }
+
+    Allocator& Allocator::GetTemp()
+    {
+        return CrtAllocator::Get();
+    }
+#endif
+
     CrtAllocator& CrtAllocator::Get()
     {
         // Hack to ensure the allocator is never actually destructed so it lives the entire

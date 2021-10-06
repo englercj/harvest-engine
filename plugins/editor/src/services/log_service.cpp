@@ -2,6 +2,8 @@
 
 #include "log_service.h"
 
+#include "he/core/appender.h"
+#include "he/core/enum_fmt.h"
 #include "he/core/log.h"
 #include "he/core/memory_ops.h"
 #include "he/core/path.h"
@@ -10,10 +12,8 @@
 
 namespace he::editor
 {
-    LogService::LogService(Allocator& allocator, DirectoryService& directoryService)
-        : m_allocator(allocator)
-        , m_directoryService(directoryService)
-        , m_fileSink(allocator)
+    LogService::LogService(DirectoryService& directoryService)
+        : m_directoryService(directoryService)
     {}
 
     bool LogService::Initialize()
@@ -47,11 +47,11 @@ namespace he::editor
         if (service.m_entries.size() == MaxEntries)
             service.m_entries.pop_front();
 
-        LogEntry& entry = service.m_entries.emplace_back(service.m_allocator, source);
+        LogEntry& entry = service.m_entries.emplace_back(source);
 
         // TODO: Maybe just copy the KVs and display them later in a formatted UI? Treat a couple like "message" special at display time?
 
-        fmt::format_to(StringAppender(entry.msg), "[{}]({}) ", AsString(source.level), source.category);
+        fmt::format_to(Appender(entry.msg), "[{}]({}) ", source.level, source.category);
         FormatKVsTo(entry.msg, kvs, count);
         entry.msg.PushBack('\n');
     }

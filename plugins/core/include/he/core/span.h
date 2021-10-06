@@ -54,23 +54,23 @@ namespace he
         /// Construct a span from an object that provides a STL-style contiguous range. That is,
         /// it has `.data()` and `.size()` members.
         ///
-        /// \param rangeProvider The object that provides the range.
+        /// \param range The object that provides the range.
         template <typename R> requires(!IsSpecialization<std::remove_cv_t<R>, Span> && StdContiguousRange<R, T>)
-        constexpr Span(R& rangeProvider)
-            : m_ptr(rangeProvider.data())
-            , m_size(static_cast<uint32_t>(rangeProvider.size()))
+        constexpr Span(R& range)
+            : m_ptr(range.data())
+            , m_size(static_cast<uint32_t>(range.size()))
         {
-            HE_ASSERT(rangeProvider.size() <= 0xffffffff);
+            HE_ASSERT(range.size() <= 0xffffffff);
         }
 
         /// Construct a span from an object that provides a Harvest-style contiguous range. That is,
         /// it has `.Data()` and `.Size()` members.
         ///
-        /// \param rangeProvider The object that provides the range.
+        /// \param range The object that provides the range.
         template <typename R> requires(!IsSpecialization<std::remove_cv_t<R>, Span> && ContiguousRange<R, T>)
-        constexpr Span(R& rangeProvider)
-            : m_ptr(rangeProvider.Data())
-            , m_size(rangeProvider.Size())
+        constexpr Span(R& range)
+            : m_ptr(range.Data())
+            , m_size(range.Size())
         {}
 
         /// Construct a span from another span object.
@@ -134,6 +134,12 @@ namespace he
         /// \return A reference to the last element in the span's range.
         constexpr T& Back() const { HE_ASSERT(m_size > 0); return m_ptr[m_size - 1]; }
 
+        /// Creates a span that refers to the bytes of this span.
+        Span<const uint8_t> AsBytes() const
+        {
+            return Span<const uint8_t>(reinterpret_cast<const uint8_t*>(m_ptr), m_size * sizeof(T));
+        }
+
         // ----------------------------------------------------------------------------------------
         // Iterators
 
@@ -190,14 +196,5 @@ namespace he
     constexpr Span<T> MakeSpan(T (&arr)[N])
     {
         return { arr };
-    }
-
-    /// Creates a span that refers to the bytes of another span.
-    ///
-    /// \param span The span to get the bytes of.
-    template <typename T>
-    Span<const uint8_t> AsBytes(const Span<T>& span)
-    {
-        return Span<const uint8_t>(reinterpret_cast<const uint8_t*>(span.Data()), span.Size() * sizeof(T));
     }
 }

@@ -39,8 +39,6 @@ namespace he::editor
     class PlatformService
     {
     public:
-        PlatformService(Allocator& allocator) : m_allocator(allocator) {}
-
         /// Opens a native file dialog for selecting files or folders to be opened.
         ///
         /// @param config Configuration for the dialog
@@ -61,8 +59,5 @@ namespace he::editor
         /// @param selectItem Optional. A file or directory name to select that exists in `directory`.
         /// @return Returns true if the file explorer was opened, or false others.
         bool OpenInFileExplorer(const char* directory, const char* selectItem = nullptr);
-
-    private:
-        Allocator& m_allocator;
     };
 }

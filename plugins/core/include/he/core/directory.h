@@ -26,7 +26,7 @@ namespace he::Directory
         /// Construct a new scanner.
         ///
         /// \param[in] allocator The allocator to use.
-        Scanner(Allocator& allocator);
+        Scanner(Allocator& allocator = Allocator::GetTemp());
 
         /// Destructs a scanner.
         ~Scanner();
@@ -73,5 +73,5 @@ namespace he::Directory
 
     Result Remove(const char* path);
 
-    Result RemoveContents(const char* path);
+    Result RemoveContents(const char* path, Allocator& allocator = Allocator::GetTemp());
 }

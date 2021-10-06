@@ -2,7 +2,9 @@
 
 #include "he/core/log_sinks.h"
 
+#include "he/core/appender.h"
 #include "he/core/clock.h"
+#include "he/core/enum_fmt.h"
 #include "he/core/path.h"
 
 #include "fmt/format.h"
@@ -22,11 +24,11 @@ namespace he
 
             switch (kv.type)
             {
-            case LogKV::ValueType::Bool: fmt::format_to(StringAppender(dst), ValueFmt, kv.key, kv.value.b); break;
-            case LogKV::ValueType::Int: fmt::format_to(StringAppender(dst), ValueFmt, kv.key, kv.value.i); break;
-            case LogKV::ValueType::Uint: fmt::format_to(StringAppender(dst), ValueFmt, kv.key, kv.value.u); break;
-            case LogKV::ValueType::Double: fmt::format_to(StringAppender(dst), ValueFmt, kv.key, kv.value.d); break;
-            case LogKV::ValueType::String: fmt::format_to(StringAppender(dst), ValueFmt, kv.key, kv.value.s.data()); break;
+                case LogKV::ValueType::Bool: fmt::format_to(Appender(dst), ValueFmt, kv.key, kv.value.b); break;
+                case LogKV::ValueType::Int: fmt::format_to(Appender(dst), ValueFmt, kv.key, kv.value.i); break;
+                case LogKV::ValueType::Uint: fmt::format_to(Appender(dst), ValueFmt, kv.key, kv.value.u); break;
+                case LogKV::ValueType::Double: fmt::format_to(Appender(dst), ValueFmt, kv.key, kv.value.d); break;
+                case LogKV::ValueType::String: fmt::format_to(Appender(dst), ValueFmt, kv.key, kv.value.s.Data()); break;
             }
 
             if (i != (count - 1))
@@ -48,7 +50,7 @@ namespace he
         std::lock_guard<std::mutex> lock(sink.m_mutex);
 
         sink.m_buf.Clear();
-        fmt::format_to(StringAppender(sink.m_buf), "{}({}): [{}]({}) ", source.file, source.line, AsString(source.level), source.category);
+        fmt::format_to(Appender(sink.m_buf), "{}({}): [{}]({}) ", source.file, source.line, source.level, source.category);
         FormatKVsTo(sink.m_buf, kvs, count);
         sink.m_buf.PushBack('\n');
 
@@ -76,7 +78,7 @@ namespace he
 
         std::time_t time = std::chrono::system_clock::to_time_t(timePoint);
 
-        fmt::format_to(StringAppender(m_buf), "_{:%Y-%m-%d_%H-%M-%S}.log", fmt::localtime(time));
+        fmt::format_to(Appender(m_buf), "_{:%Y-%m-%d_%H-%M-%S}.log", fmt::localtime(time));
 
         return m_file.Open(m_buf.Data(), FileOpenMode::WriteTruncate);
     }
@@ -91,7 +93,7 @@ namespace he
             return;
 
         sink.m_buf.Clear();
-        fmt::format_to(StringAppender(sink.m_buf), "[{}]({}) ", AsString(source.level), source.category);
+        fmt::format_to(Appender(sink.m_buf), "[{}]({}) ", source.level, source.category);
         FormatKVsTo(sink.m_buf, kvs, count);
         sink.m_buf.PushBack('\n');
 

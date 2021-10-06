@@ -4,6 +4,7 @@
 
 #include "he/core/assert.h"
 #include "he/core/debug.h"
+#include "he/core/enum_ops.h"
 #include "he/core/vector.h"
 
 #include "fmt/format.h"
@@ -20,20 +21,6 @@ namespace he
     {
         static Vector<LogSinkStorage> s_sinks{ CrtAllocator::Get() };
         return s_sinks;
-    }
-
-    const char* AsString(LogLevel x)
-    {
-        switch (x)
-        {
-            case LogLevel::Trace: return "Trace";
-            case LogLevel::Debug: return "Debug";
-            case LogLevel::Info: return "Info";
-            case LogLevel::Warn: return "Warn";
-            case LogLevel::Error: return "Error";
-        }
-
-        return "<unknown>";
     }
 
     bool LogKV::GetBool() const
@@ -63,21 +50,7 @@ namespace he
     const char* LogKV::GetString() const
     {
         HE_ASSERT(type == ValueType::String);
-        return value.s.data();
-    }
-
-    const char* AsString(LogKV::ValueType x)
-    {
-        switch (x)
-        {
-            case LogKV::ValueType::Bool: return "Bool";
-            case LogKV::ValueType::Int: return "Int";
-            case LogKV::ValueType::Uint: return "Uint";
-            case LogKV::ValueType::Double: return "Double";
-            case LogKV::ValueType::String: return "String";
-        }
-
-        return "<unknown>";
+        return value.s.Data();
     }
 
     void AddLogSink(LogSinkFunc sink, void* userData)
@@ -107,5 +80,35 @@ namespace he
         {
             sink.func(sink.userData, source, kvs, count);
         }
+    }
+
+    template <>
+    const char* AsString(LogLevel x)
+    {
+        switch (x)
+        {
+            case LogLevel::Trace: return "Trace";
+            case LogLevel::Debug: return "Debug";
+            case LogLevel::Info: return "Info";
+            case LogLevel::Warn: return "Warn";
+            case LogLevel::Error: return "Error";
+        }
+
+        return "<unknown>";
+    }
+
+    template <>
+    const char* AsString(LogKV::ValueType x)
+    {
+        switch (x)
+        {
+            case LogKV::ValueType::Bool: return "Bool";
+            case LogKV::ValueType::Int: return "Int";
+            case LogKV::ValueType::Uint: return "Uint";
+            case LogKV::ValueType::Double: return "Double";
+            case LogKV::ValueType::String: return "String";
+        }
+
+        return "<unknown>";
     }
 }

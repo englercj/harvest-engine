@@ -25,12 +25,10 @@ int he::AppMain(int argc, char* argv[])
     const auto injector = editor::MakeAppInjector();
     editor::g_appInjector = &injector;
 
-    Allocator& allocator = injector.create<Allocator&>();
-
     editor::EditorData& data = injector.create<editor::EditorData&>();
     data.argc = argc;
     data.argv = argv;
-    data.device = window::CreateDevice(allocator);
+    data.device = window::CreateDevice();
     if (!data.device)
         return -1;
 

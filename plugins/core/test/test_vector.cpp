@@ -45,7 +45,7 @@ HE_TEST(core, Vector, Construct_Copy)
     HE_EXPECT_EQ(v.Size(), ExpectedSize);
 
     {
-        Vector<int> copy(a, v);
+        Vector<int> copy(v, a);
         HE_EXPECT_EQ(copy.Size(), ExpectedSize);
         HE_EXPECT_EQ_MEM(copy.Data(), v.Data(), v.Size() * sizeof(int));
         HE_EXPECT_EQ_PTR(&copy.GetAllocator(), &a);
@@ -53,7 +53,7 @@ HE_TEST(core, Vector, Construct_Copy)
 
     {
         AnotherAllocator a2;
-        Vector<int> copy(a2, v);
+        Vector<int> copy(v, a2);
         HE_EXPECT_EQ(copy.Size(), ExpectedSize);
         HE_EXPECT_EQ_MEM(copy.Data(), v.Data(), v.Size() * sizeof(int));
         HE_EXPECT_EQ_PTR(&copy.GetAllocator(), &a2);
@@ -78,7 +78,7 @@ HE_TEST(core, Vector, Construct_Copy)
     HE_EXPECT_EQ(v2.Size(), ExpectedSize);
 
     {
-        Vector<CopyAndMove> copy(a, v2);
+        Vector<CopyAndMove> copy(v2, a);
         HE_EXPECT_EQ(copy.Size(), ExpectedSize);
         HE_EXPECT_EQ_PTR(&copy.GetAllocator(), &a);
 
@@ -91,7 +91,7 @@ HE_TEST(core, Vector, Construct_Copy)
 
     {
         AnotherAllocator a2;
-        Vector<CopyAndMove> copy(a2, v2);
+        Vector<CopyAndMove> copy(v2, a2);
         HE_EXPECT_EQ(copy.Size(), ExpectedSize);
         HE_EXPECT_EQ_PTR(&copy.GetAllocator(), &a2);
 
@@ -131,7 +131,7 @@ HE_TEST(core, Vector, Construct_Copy)
     HE_EXPECT_EQ(v3.Size(), ExpectedSize);
 
     {
-        Vector<CopyOnly> copy(a, v3);
+        Vector<CopyOnly> copy(v3, a);
         HE_EXPECT_EQ(copy.Size(), ExpectedSize);
         HE_EXPECT_EQ_PTR(&copy.GetAllocator(), &a);
 
@@ -144,7 +144,7 @@ HE_TEST(core, Vector, Construct_Copy)
 
     {
         AnotherAllocator a2;
-        Vector<CopyOnly> copy(a2, v3);
+        Vector<CopyOnly> copy(v3, a2);
         HE_EXPECT_EQ(copy.Size(), ExpectedSize);
         HE_EXPECT_EQ_PTR(&copy.GetAllocator(), &a2);
 
@@ -192,7 +192,7 @@ HE_TEST(core, Vector, Construct_Move)
         v.Resize(ExpectedSize, 12345);
         HE_EXPECT_EQ(v.Size(), ExpectedSize);
 
-        Vector<int> moved(a, Move(v));
+        Vector<int> moved(Move(v), a);
         HE_EXPECT_EQ(moved.Size(), ExpectedSize);
         HE_EXPECT(moved.Data());
         HE_EXPECT_EQ_PTR(&moved.GetAllocator(), &a);
@@ -206,7 +206,7 @@ HE_TEST(core, Vector, Construct_Move)
         HE_EXPECT_EQ(v.Size(), ExpectedSize);
 
         AnotherAllocator a2;
-        Vector<int> moved(a2, Move(v));
+        Vector<int> moved(Move(v), a2);
         HE_EXPECT_EQ(moved.Size(), ExpectedSize);
         HE_EXPECT(moved.Data());
         HE_EXPECT_EQ_PTR(&moved.GetAllocator(), &a2);
@@ -245,7 +245,7 @@ HE_TEST(core, Vector, Construct_Move)
         v2.Resize(ExpectedSize);
         HE_EXPECT_EQ(v2.Size(), ExpectedSize);
 
-        Vector<CopyAndMove> moved(a, Move(v2));
+        Vector<CopyAndMove> moved(Move(v2), a);
         HE_EXPECT_EQ(moved.Size(), ExpectedSize);
         HE_EXPECT(moved.Data());
         HE_EXPECT_EQ_PTR(&moved.GetAllocator(), &a);
@@ -259,7 +259,7 @@ HE_TEST(core, Vector, Construct_Move)
         HE_EXPECT_EQ(v2.Size(), ExpectedSize);
 
         AnotherAllocator a2;
-        Vector<CopyAndMove> moved(a2, Move(v2));
+        Vector<CopyAndMove> moved(Move(v2), a2);
         HE_EXPECT_EQ(moved.Size(), ExpectedSize);
         HE_EXPECT(moved.Data());
         HE_EXPECT_EQ_PTR(&moved.GetAllocator(), &a2);
@@ -298,7 +298,7 @@ HE_TEST(core, Vector, Construct_Move)
         v3.Resize(ExpectedSize);
         HE_EXPECT_EQ(v3.Size(), ExpectedSize);
 
-        Vector<CopyOnly> moved(a, Move(v3));
+        Vector<CopyOnly> moved(Move(v3), a);
         HE_EXPECT_EQ(moved.Size(), ExpectedSize);
         HE_EXPECT_EQ_PTR(&moved.GetAllocator(), &a);
         HE_EXPECT(!v3.Data());
@@ -317,7 +317,7 @@ HE_TEST(core, Vector, Construct_Move)
         HE_EXPECT_EQ(v3.Size(), ExpectedSize);
 
         AnotherAllocator a2;
-        Vector<CopyOnly> moved(a2, Move(v3));
+        Vector<CopyOnly> moved(Move(v3), a2);
         HE_EXPECT_EQ(moved.Size(), ExpectedSize);
         HE_EXPECT_EQ_PTR(&moved.GetAllocator(), &a2);
         HE_EXPECT(v3.Data());
@@ -371,7 +371,7 @@ HE_TEST(core, Vector, Construct_Move)
         v4.Resize(ExpectedSize);
         HE_EXPECT_EQ(v4.Size(), ExpectedSize);
 
-        Vector<MoveOnly> moved(a, Move(v4));
+        Vector<MoveOnly> moved(Move(v4), a);
         HE_EXPECT_EQ(moved.Size(), ExpectedSize);
         HE_EXPECT_EQ_PTR(&moved.GetAllocator(), &a);
         HE_EXPECT(!v4.Data());
@@ -390,7 +390,7 @@ HE_TEST(core, Vector, Construct_Move)
         HE_EXPECT_EQ(v4.Size(), ExpectedSize);
 
         AnotherAllocator a2;
-        Vector<MoveOnly> moved(a2, Move(v4));
+        Vector<MoveOnly> moved(Move(v4), a2);
         HE_EXPECT_EQ(moved.Size(), ExpectedSize);
         HE_EXPECT_EQ_PTR(&moved.GetAllocator(), &a2);
         HE_EXPECT(v4.Data());

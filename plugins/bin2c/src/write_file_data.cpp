@@ -2,6 +2,8 @@
 
 #include "write_file_data.h"
 
+#include "he/core/allocator.h"
+#include "he/core/appender.h"
 #include "he/core/ascii.h"
 #include "he/core/memory_ops.h"
 #include "he/core/string_view_fmt.h"
@@ -18,16 +20,15 @@ void WriteFileData(he::File& file, he::StringView name, const uint8_t* data, siz
     constexpr auto HexByteFmt = FMT_STRING("{:#04x}, ");
     constexpr auto HexLineFmt = FMT_STRING("    {}// {}\n");
 
-    fmt::memory_buffer buf;
-    buf.reserve(MemoryBufferSize + 256); // little extra to prevent regrowth if a line goes over a bit
+    he::String buf(he::Allocator::GetTemp());
+    buf.Reserve(MemoryBufferSize + 256); // little extra to prevent regrowth if a line goes over a bit
 
-    fmt::detail::buffer_appender<char> bufItr{ buf };
     uint32_t bytesWritten = 0;
 
     if (asText)
-        fmt::format_to(fmt::appender(buf), "static const char {}[{}] =\n{{\n", name, size);
+        fmt::format_to(he::Appender(buf), "static const char {}[{}] =\n{{\n", name, size);
     else
-        fmt::format_to(fmt::appender(buf), "static const unsigned char {}[{}] =\n{{\n", name, size);
+        fmt::format_to(he::Appender(buf), "static const unsigned char {}[{}] =\n{{\n", name, size);
 
     if (data != nullptr)
     {
@@ -49,14 +50,14 @@ void WriteFileData(he::File& file, he::StringView name, const uint8_t* data, siz
             if (asciiPos == (HE_LENGTH_OF(ascii) - 1))
             {
                 ascii[asciiPos] = '\0';
-                fmt::format_to(fmt::appender(buf), HexLineFmt, hex, ascii);
+                fmt::format_to(he::Appender(buf), HexLineFmt, hex, ascii);
 
-                if (buf.size() >= MemoryBufferSize)
+                if (buf.Size() >= MemoryBufferSize)
                 {
-                    he::Result r = file.Write(buf.data(), static_cast<uint32_t>(buf.size()), &bytesWritten);
+                    he::Result r = file.Write(buf.Data(), buf.Size(), &bytesWritten);
                     if (!HE_VERIFY_RESULT(r))
                         return;
-                    buf.clear();
+                    buf.Clear();
                 }
 
                 data += asciiPos;
@@ -75,13 +76,13 @@ void WriteFileData(he::File& file, he::StringView name, const uint8_t* data, siz
             }
 
             ascii[asciiPos] = '\0';
-            fmt::format_to(fmt::appender(buf), HexLineFmt, hex, ascii);
+            fmt::format_to(he::Appender(buf), HexLineFmt, hex, ascii);
         }
     }
 
-    buf.append(fmt::string_view("};\n"));
+    buf += "};\n";
 
-    he::Result r = file.Write(buf.data(), static_cast<uint32_t>(buf.size()), &bytesWritten);
+    he::Result r = file.Write(buf.Data(), buf.Size(), &bytesWritten);
     if (!HE_VERIFY_RESULT(r))
         return;
 

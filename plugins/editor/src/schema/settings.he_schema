@@ -1,0 +1,19 @@
+// Copyright Chad Engler
+
+import "editor_options.he_schema";
+
+namespace he.editor.schema;
+
+struct RecentProject
+{
+    name: string;
+    path: string;
+    openTime: uint64;
+    recentAssets: uint8[16][];
+}
+
+struct Settings
+{
+    [EditorHidden]
+    recentProjects: RecentProject[];
+}

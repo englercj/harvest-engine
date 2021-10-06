@@ -28,7 +28,7 @@ namespace he
         None        = 0,
         Required    = 1 << 0,
     };
-    HE_ENUM_FLAGS(ArgFlag)
+    HE_ENUM_FLAGS(ArgFlag);
 
     constexpr ArgFlag InternalSignedFlag = ArgFlag(static_cast<uint32_t>(1) << 31);
     constexpr ArgFlag InternalVectorFlag = ArgFlag(static_cast<uint32_t>(1) << 30);
@@ -56,13 +56,13 @@ namespace he
         };
 
         Code code;
-        String msg;
-        Vector<const char*> values;
+        String msg{};
+        Vector<const char*> values{};
 
-        explicit ArgResult(Allocator& a) : code(Success), msg(a), values(a) {}
-        explicit ArgResult(Allocator& a, Code c) : code(c), msg(a), values(a) {}
-        explicit ArgResult(Allocator& a, Code c, const char* msg) : code(c), msg(a, msg), values(a) {}
-        explicit ArgResult(Allocator& a, Code c, String&& msg) : code(c), msg(a, Move(msg)), values(a) {}
+        explicit ArgResult() : code(Success) {}
+        explicit ArgResult(Code c) : code(c) {}
+        explicit ArgResult(Code c, const char* msg) : code(c), msg(msg) {}
+        explicit ArgResult(Code c, String&& msg) : code(c), msg(Move(msg)) {}
 
         operator bool() const { return code == Success; }
     };
@@ -108,6 +108,6 @@ namespace he
         { }
     };
 
-    ArgResult ParseArgs(Allocator& allocator, Span<ArgDesc> descs, int32_t argc, const char* const* argv);
-    String MakeHelpString(Allocator& allocator, Span<ArgDesc> descs, const char* arg0, const ArgResult* result = nullptr);
+    ArgResult ParseArgs(Span<ArgDesc> descs, int32_t argc, const char* const* argv);
+    String MakeHelpString(Span<ArgDesc> descs, const char* arg0, const ArgResult* result = nullptr);
 }

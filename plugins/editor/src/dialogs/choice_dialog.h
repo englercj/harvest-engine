@@ -5,8 +5,7 @@
 #include "dialog.h"
 
 #include "he/core/enum_ops.h"
-
-#include <string>
+#include "he/core/string.h"
 
 namespace he::editor
 {
@@ -48,12 +47,10 @@ namespace he::editor
         void TryShowButton(Button button, Choice choice);
 
     private:
-        std::string m_message{};
+        String m_message{};
         Button m_buttons{ Button::OK };
         Choice m_result{ Choice::Cancel };
     };
 
     HE_ENUM_FLAGS(ChoiceDialog::Button);
-
-    const char* AsString(ChoiceDialog::Choice);
 }

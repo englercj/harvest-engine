@@ -20,10 +20,6 @@ namespace he::editor
     };
     static_assert(HE_LENGTH_OF(DirectoryNames) == static_cast<uint32_t>(DirectoryService::DirType::_Count), "");
 
-    DirectoryService::DirectoryService(Allocator& allocator)
-        : m_appDataRoot(allocator)
-    {}
-
     String DirectoryService::GetAppDirectory(DirType type)
     {
         if (m_appDataRoot.IsEmpty())

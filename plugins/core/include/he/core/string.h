@@ -102,7 +102,7 @@ namespace he
         /// \param[in] allocator The allocator to use for creating the new string.
         /// \param[in] src The source string to duplicate.
         /// \return The newly allocated string.
-        static char* Duplicate(Allocator& allocator, const char* src);
+        static char* Duplicate(const char* src, Allocator& allocator = Allocator::GetTemp());
 
         /// Duplicate `len` characters of the source string using the provided allocator. The
         /// resulting string must be freed by calling \ref Allocator::Free with the same
@@ -112,7 +112,7 @@ namespace he
         /// \param[in] src The source string to duplicate.
         /// \param[in] len The length of the source string to duplicate.
         /// \return The newly allocated string.
-        static char* DuplicateN(Allocator& allocator, const char* src, uint32_t len);
+        static char* DuplicateN(const char* src, uint32_t len, Allocator& allocator = Allocator::GetTemp());
 
         /// Compares the null terminated strings and returns true if they are equal.
         ///
@@ -276,57 +276,57 @@ namespace he
 
         /// Construct an empty string.
         ///
-        /// \param allocator The allocator to use for any allocations.
-        explicit String(Allocator& allocator);
+        /// \param allocator Optional. The allocator to use.
+        explicit String(Allocator& allocator = Allocator::GetDefault());
 
         /// Construct a string by copying from the null terminated string `str`.
         ///
-        /// \param allocator The allocator to use for any allocations.
         /// \param str The string to copy from.
-        String(Allocator& allocator, const char* str);
+        /// \param allocator Optional. The allocator to use.
+        String(const char* str, Allocator& allocator = Allocator::GetDefault());
 
         /// Construct a string by copying `len` characters from the string `str`.
         /// This does not stop early if it encounters a null terminator before `len` characters.
         ///
-        /// \param allocator The allocator to use for any allocations.
         /// \param str The string to copy from.
         /// \param len The number of characters to copy.
-        String(Allocator& allocator, const char* str, uint32_t len);
+        /// \param allocator Optional. The allocator to use.
+        String(const char* str, uint32_t len, Allocator& allocator = Allocator::GetDefault());
 
         /// Construct a string from an object that provides a STL-style contiguous range. That is,
         /// it has `.data()` and `.size()` members.
         ///
-        /// \param allocator The allocator to use for any allocations.
-        /// \param rangeProvider The object that provides the range.
+        /// \param range The object that provides the range.
+        /// \param allocator Optional. The allocator to use.
         template <typename R> requires(!std::is_same_v<R, String> && StdContiguousRange<R, const char>)
-        String(Allocator& allocator, const R& rangeProvider)
-            : String(allocator, rangeProvider.data(), static_cast<uint32_t>(rangeProvider.size()))
+        String(const R& range, Allocator& allocator = Allocator::GetDefault())
+            : String(range.data(), static_cast<uint32_t>(range.size()), allocator)
         {
-            HE_ASSERT(rangeProvider.size() <= MaxHeapCharacters);
+            HE_ASSERT(range.size() <= MaxHeapCharacters);
         }
 
         /// Construct a string from an object that provides a Harvest-style contiguous range. That is,
         /// it has `.Data()` and `.Size()` members.
         ///
-        /// \param allocator The allocator to use for any allocations.
-        /// \param rangeProvider The object that provides the range.
+        /// \param range The object that provides the range.
+        /// \param allocator Optional. The allocator to use.
         template <typename R> requires(!std::is_same_v<R, String> && ContiguousRange<R, const char>)
-        String(Allocator& allocator, const R& rangeProvider)
-            : String(allocator, rangeProvider.Data(), rangeProvider.Size())
+        String(const R& range, Allocator& allocator = Allocator::GetDefault())
+            : String(range.Data(), range.Size(), allocator)
         {}
 
         /// Construct a string by copying `x`, and using `allocator` for this string's allocations.
         ///
-        /// \param allocator The allocator to use for any allocations.
         /// \param x The string to copy from.
-        String(Allocator& allocator, const String& x);
+        /// \param allocator The allocator to use for any allocations.
+        String(const String& x, Allocator& allocator);
 
         /// Construct a string by moving `x`, and using `allocator` for this string's allocations.
         /// If the allocators do not match then a copy operation will be performed.
         ///
-        /// \param allocator The allocator to use for any allocations.
         /// \param x The string to move from.
-        String(Allocator& allocator, String&& x);
+        /// \param allocator The allocator to use for any allocations.
+        String(String&& x, Allocator& allocator);
 
         /// Construct a string by copying `x`, using the allocator from `x`.
         ///
@@ -360,6 +360,18 @@ namespace he
         /// \param str The string source to copy from.
         String& operator=(const char* str) { Assign(str); return *this; }
 
+        /// Replaces the contents of this string with a copy of the characters in `range`.
+        ///
+        /// \param str The string source to copy from.
+        template <typename R> requires(!std::is_same_v<R, String> && StdContiguousRange<R, const char>)
+        String& operator=(const R& range) { Assign(range.data(), range.size()); return *this; }
+
+        /// Replaces the contents of this string with a copy of the characters in `range`.
+        ///
+        /// \param str The string source to copy from.
+        template <typename R> requires(!std::is_same_v<R, String> && ContiguousRange<R, const char>)
+        String& operator=(const R& range) { Assign(range.Data(), range.Size()); return *this; }
+
         /// Gets a reference to the character at `index`. Asserts if `index` is not less
         /// than \see Size().
         ///
@@ -383,7 +395,7 @@ namespace he
         /// Appends a series of characters from an object that provides a STL-style contiguous range.
         /// That is, it has `.data()` and `.size()` members.
         ///
-        /// \param rangeProvider The object that provides the range.
+        /// \param range The object that provides the range.
         template <typename R> requires(StdContiguousRange<R, const char>)
         String& operator+=(const R& range)
         {
@@ -394,8 +406,7 @@ namespace he
         /// Construct a string from an object that provides a Harvest-style contiguous range. That is,
         /// it has `.Data()` and `.Size()` members.
         ///
-        /// \param allocator The allocator to use for any allocations.
-        /// \param rangeProvider The object that provides the range.
+        /// \param range The object that provides the range.
         template <typename R> requires(ContiguousRange<R, const char>)
         String& operator+=(const R& range)
         {
@@ -403,53 +414,83 @@ namespace he
             return *this;
         }
 
-        /// Checks if this string is equal to `x`.
-        ///
-        /// \param x The string to check against.
-        /// \return True if the strings are equal, false otherwise.
-        bool operator==(const String& x) const { return CompareTo(x) == 0; }
-
         /// Checks if this string is equal to the null terminated string `x`.
         ///
         /// \param x The string to check against.
         /// \return True if the strings are equal, false otherwise.
-        bool operator==(const char* x) const { return String::Compare(Data(), x) == 0; }
+        bool operator==(const char* x) const { return CompareTo(x) == 0; }
 
-        /// Checks if this string is not equal to `x`.
+        /// Checks if this string is equal to a character range.
         ///
-        /// \param x The string to check against.
-        /// \return True if the strings are not equal, false otherwise.
-        bool operator!=(const String& x) const { return CompareTo(x) != 0; }
+        /// \param range The characters to check against.
+        /// \return True if the strings are equal, false otherwise.
+        template <typename R> requires(StdContiguousRange<R, const char> || ContiguousRange<R, const char>)
+        bool operator==(const R& range) const { return CompareTo(range) == 0; }
 
         /// Checks if this string is not equal to the null terminated string `x`.
         ///
         /// \param x The string to check against.
         /// \return True if the strings are not equal, false otherwise.
-        bool operator!=(const char* x) const { return String::Compare(Data(), x) != 0; }
+        bool operator!=(const char* x) const { return CompareTo(x) != 0; }
 
-        /// Checks if this string is less than `x`.
+        /// Checks if this string is equal to a character range.
+        ///
+        /// \param range The characters to check against.
+        /// \return True if the string is not equal to `range`, false otherwise.
+        template <typename R> requires(StdContiguousRange<R, const char> || ContiguousRange<R, const char>)
+        bool operator!=(const R& range) const { return CompareTo(range) != 0; }
+
+        /// Checks if this string is less than the null terminated string `x`.
         ///
         /// \param x The string to check against.
         /// \return True if this string is less than `x`, false otherwise.
-        bool operator<(const String& x) const { return CompareTo(x) < 0; }
+        bool operator<(const char* x) const { return CompareTo(x) < 0; }
 
-        /// Checks if this string is less than or equal to `x`.
+        /// Checks if this string is less than a character range.
+        ///
+        /// \param range The characters to check against.
+        /// \return True if the string is less than `range`, false otherwise.
+        template <typename R> requires(StdContiguousRange<R, const char> || ContiguousRange<R, const char>)
+        bool operator<(const R& range) const { return CompareTo(range) < 0; }
+
+        /// Checks if this string is less than or equal to the null terminated string `x`.
         ///
         /// \param x The string to check against.
         /// \return True if this string is less than or equal to `x`, false otherwise.
-        bool operator<=(const String& x) const { return CompareTo(x) <= 0; }
+        bool operator<=(const char* x) const { return CompareTo(x) <= 0; }
 
-        /// Checks if this string is greater than `x`.
+        /// Checks if this string is less than or equal to a character range.
+        ///
+        /// \param range The characters to check against.
+        /// \return True if the string is less than or equal to `range`, false otherwise.
+        template <typename R> requires(StdContiguousRange<R, const char> || ContiguousRange<R, const char>)
+        bool operator<=(const R& range) const { return CompareTo(range) <= 0; }
+
+        /// Checks if this string is greater than the null terminated string `x`.
         ///
         /// \param x The string to check against.
         /// \return True if this string is greater than `x`, false otherwise.
-        bool operator>(const String& x) const { return CompareTo(x) > 0; }
+        bool operator>(const char* x) const { return CompareTo(x) > 0; }
 
-        /// Checks if this string is greater than or equal to `x`.
+        /// Checks if this string is greater than a character range.
+        ///
+        /// \param range The characters to check against.
+        /// \return True if the string is greater than `range`, false otherwise.
+        template <typename R> requires(StdContiguousRange<R, const char> || ContiguousRange<R, const char>)
+        bool operator>(const R& range) const { return CompareTo(range) > 0; }
+
+        /// Checks if this string is greater than or equal to the null terminated string `x`.
         ///
         /// \param x The string to check against.
         /// \return True if this string is greater than or equal to `x`, false otherwise.
-        bool operator>=(const String& x) const { return CompareTo(x) >= 0; }
+        bool operator>=(const char* x) const { return CompareTo(x) >= 0; }
+
+        /// Checks if this string is greater than or equal to a character range.
+        ///
+        /// \param range The characters to check against.
+        /// \return True if the string is greater than or equal to `range`, false otherwise.
+        template <typename R> requires(StdContiguousRange<R, const char> || ContiguousRange<R, const char>)
+        bool operator>=(const R& range) const { return CompareTo(range) >= 0; }
 
         // ----------------------------------------------------------------------------------------
         // Capacity
@@ -536,14 +577,45 @@ namespace he
         // ----------------------------------------------------------------------------------------
         // Comparison
 
-        /// Compares this string to another and returns the result of the comparison.
+        /// Compares this string to `len` characters of `str` and returns the result of the comparison.
         ///
-        /// \param x The string to compare against.
+        /// \param str The string to compare against.
+        /// \param len The maximum number of characters to compare. Must be less than or equal to
+        ///     the string length of `str`.
         /// \return The result of the comparison.
         ///     If the values are equal, zero is returned.
         ///     If this string is less than `x`, a negative value is returned.
         ///     If this string is greater than `x`, a positive value is returned.
-        int32_t CompareTo(const String& x) const;
+        int32_t CompareTo(const char* str, uint32_t len) const;
+
+        /// Compares this string to the null terminated string `str` and returns the result of the comparison.
+        ///
+        /// \param str The string to compare against.
+        /// \return The result of the comparison.
+        ///     If the values are equal, zero is returned.
+        ///     If this string is less than `x`, a negative value is returned.
+        ///     If this string is greater than `x`, a positive value is returned.
+        int32_t CompareTo(const char* str) const { return CompareTo(str, String::Length(str)); }
+
+        /// Compares this string to a range of characters.
+        ///
+        /// \param range The range of characters to compare against.
+        /// \return The result of the comparison.
+        ///     If the values are equal, zero is returned.
+        ///     If this string is less than `x`, a negative value is returned.
+        ///     If this string is greater than `x`, a positive value is returned.
+        template <typename R> requires(StdContiguousRange<R, const char>)
+        int32_t CompareTo(const R& range) const { return CompareTo(range.data(), range.size()); }
+
+        /// Compares this string to a range of characters.
+        ///
+        /// \param range The range of characters to compare against.
+        /// \return The result of the comparison.
+        ///     If the values are equal, zero is returned.
+        ///     If this string is less than `x`, a negative value is returned.
+        ///     If this string is greater than `x`, a positive value is returned.
+        template <typename R> requires(ContiguousRange<R, const char>)
+        int32_t CompareTo(const R& range) const { return CompareTo(range.Data(), range.Size()); }
 
         // ----------------------------------------------------------------------------------------
         // Iterators
@@ -715,37 +787,6 @@ namespace he
             char m_embed[EmbedSize];
             Heap m_heap;
         };
-    };
-
-    /// An output iterator that appends to a string. Useful for formatting to a String object
-    /// using fmt::format_to().
-    class StringAppender
-    {
-    public:
-        //using iterator_category = std::output_iterator_tag;
-        using value_type        = void;
-        using pointer           = void;
-        using reference         = void;
-        using container_type    = String;
-        using difference_type   = ptrdiff_t;
-        using _Unchecked_type   = StringAppender; // Mark iterator as checked.
-
-        constexpr StringAppender() noexcept = default;
-
-        explicit StringAppender(String& str) noexcept
-            : m_str(&str) {}
-
-        StringAppender& operator=(char c) { m_str->PushBack(c); return *this; }
-        [[nodiscard]] constexpr StringAppender& operator*() noexcept { return *this; }
-
-        constexpr StringAppender& operator++() noexcept { return *this; }
-        constexpr StringAppender operator++(int) noexcept { return *this; }
-
-        // template <typename T>
-        // friend String& get_buffer(StringAppender out) { return *out.m_str; }
-
-    private:
-        String* m_str{ nullptr };
     };
 }
 

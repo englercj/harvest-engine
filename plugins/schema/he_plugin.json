@@ -16,7 +16,7 @@
             "type": "static",
             "group": "engine/libs",
             "files": ["include/**", "src/**"],
-            "public_dependson": ["he_core"],
+            "public_dependson": ["he_core", "rapidjson"],
             "public_includedirs": ["include"],
             "private_includedirs": ["src"]
         },
@@ -31,7 +31,7 @@
             "name": "he_schema_tests",
             "type": "static",
             "group": "engine/tests",
-            "files": ["test/**"],
+            "files": ["test/**", "include/he/schema/*.he_schema"],
             "public_dependson": ["he_schema"],
             "private_includedirs": ["src"]
         }

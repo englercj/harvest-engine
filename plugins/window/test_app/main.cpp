@@ -11,13 +11,10 @@ int he::AppMain(int argc, char* argv[])
 {
     HE_UNUSED(argc, argv);
 
-    CrtAllocator& alloc = CrtAllocator::Get();
-
-    he::DebuggerSink debugSink(alloc);
+    he::DebuggerSink debugSink;
     he::AddLogSink(debugSink);
 
-
-    window::Device* device = window::CreateDevice(alloc);
+    window::Device* device = window::CreateDevice();
     if (!device)
         return -1;
 

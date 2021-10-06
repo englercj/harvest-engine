@@ -9,10 +9,6 @@
 
 namespace he::editor
 {
-    DocumentService::DocumentService(Allocator& allocator)
-        : m_documents(allocator)
-    {}
-
     void DocumentService::DestroyClosedDocuments()
     {
         for (uint32_t i = 0; i < m_documents.Size();)

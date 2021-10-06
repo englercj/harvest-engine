@@ -20,13 +20,11 @@ namespace he::editor
         };
 
     public:
-        DirectoryService(Allocator& allocator);
-
         String GetAppDirectory(DirType type);
 
         bool CreateAll();
 
     private:
-        String m_appDataRoot;
+        String m_appDataRoot{};
     };
 }

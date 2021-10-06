@@ -34,7 +34,6 @@ int he::AppMain(int argc, char* argv[])
 {
     AddLogSink(ConsoleSink);
 
-    Allocator& alloc = CrtAllocator::Get();
     AppArgs args;
 
     ArgDesc ArgDescriptors[] =
@@ -47,11 +46,11 @@ int he::AppMain(int argc, char* argv[])
         { args.name,        'n', "name",        "Name of the constant in the output file." },
     };
 
-    ArgResult result = ParseArgs(alloc, ArgDescriptors, argc, argv);
+    ArgResult result = ParseArgs(ArgDescriptors, argc, argv);
 
     if (!result || args.help || String::IsEmpty(args.input) || String::IsEmpty(args.output))
     {
-        String help = MakeHelpString(alloc, ArgDescriptors, argv[0], &result);
+        String help = MakeHelpString(ArgDescriptors, argv[0], &result);
         std::cerr << help.Data() << std::endl;
         return -1;
     }
@@ -61,15 +60,14 @@ int he::AppMain(int argc, char* argv[])
 
     uint32_t size = 0;
 
-    String fileNameBuf(alloc);
-    fileNameBuf = args.input;
+    String fileNameBuf = args.input;
 
     he::File file;
     if (file.Open(fileNameBuf.Data(), he::FileOpenMode::ReadExisting))
     {
         size = static_cast<uint32_t>(file.GetSize());
-        void* data = alloc.Malloc(size + 4);
-        HE_AT_SCOPE_EXIT([&]() { alloc.Free(data); });
+        void* data = Allocator::GetTemp().Malloc(size + 4);
+        HE_AT_SCOPE_EXIT([&]() { Allocator::GetTemp().Free(data); });
 
         uint32_t bytesRead = 0;
         he::Result r = file.Read(data, size, &bytesRead);
@@ -89,7 +87,7 @@ int he::AppMain(int argc, char* argv[])
         {
             // maxLen guess from stb_compress_intofile in stb.h
             uint32_t maxLen = size + 512 + (size >> 2) + sizeof(int); // just guessing
-            output = alloc.Malloc(maxLen);
+            output = Allocator::GetTemp().Malloc(maxLen);
             outputSize = stb_compress(static_cast<stb_uchar*>(output), static_cast<stb_uchar*>(data), size);
             he::MemZero(static_cast<uint8_t*>(output) + outputSize, maxLen - outputSize);
         }
@@ -104,7 +102,7 @@ int he::AppMain(int argc, char* argv[])
 
         if (args.compress)
         {
-            alloc.Free(output);
+            Allocator::GetTemp().Free(output);
         }
     }
 

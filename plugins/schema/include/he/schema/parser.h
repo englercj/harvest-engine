@@ -34,7 +34,7 @@ namespace he::schema
         };
 
     public:
-        Parser(Allocator& allocator);
+        Parser(Allocator& allocator = Allocator::GetDefault());
 
         bool ParseFile(const char* path, Span<const char*> includeDirs);
         bool Parse(const char* src, Span<const char*> includeDirs);
@@ -111,8 +111,8 @@ namespace he::schema
         bool ParseAttributeTarget(AttributeDef& def);
 
         bool ParseEnum(EnumDef& def);
-        bool ParseEnumBlock(EnumDef& def);
-        bool ParseEnumStatement(const EnumDef& enumDef, EnumValueDef& def, EnumValueDef* lastDef);
+        bool ParseEnumBlock(EnumDef& def, bool isFlags);
+        bool ParseEnumStatement(const EnumDef& enumDef, bool isFlags, EnumValueDef& def, EnumValueDef* lastDef);
 
         bool ParseInterface(InterfaceDef& def);
         bool ParseInterfaceBlock(InterfaceDef& def);
@@ -157,6 +157,7 @@ namespace he::schema
             SchemaDef schema;
         };
 
+        using AttributeDefMap = std::unordered_map<StringView, AttributeDef, StringViewHasher>;
         using BaseTypeMap = std::unordered_map<StringView, BaseType, StringViewHasher>;
         using ImportMap = std::unordered_map<StringView, Vector<Import>, StringViewHasher>;
 
@@ -174,6 +175,7 @@ namespace he::schema
         Vector<ErrorInfo> m_errors;
         String m_decodedString;
 
+        AttributeDefMap m_builtinAttributes{};
         BaseTypeMap m_builtinTypes{};
     };
 }

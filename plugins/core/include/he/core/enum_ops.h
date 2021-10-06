@@ -42,4 +42,11 @@ namespace he
     /// \return True if `value` has the flags `search`.
     template <typename T>
     constexpr bool HasAnyFlags(T value, T search) { return static_cast<EnumType<T>>(value & search) != 0; }
+
+    /// Returns the enum as a string.
+    ///
+    /// \param[in] x The value to get the string representation of.
+    /// \return The string representation of the enum value.
+    template <he::Enum T>
+    const char* AsString(T x);
 }

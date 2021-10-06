@@ -30,7 +30,7 @@ HE_TEST(core, StringView, Construct)
     }
 
     {
-        String str(CrtAllocator::Get(), TestString);
+        String str(TestString);
 
         StringView s(str);
         StringViewTestAttorney::Test(s, str.Data(), str.Size());

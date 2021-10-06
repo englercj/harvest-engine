@@ -61,12 +61,14 @@ namespace he::editor
         return dst;
     }
 
-    static void AddFiltersToDialog(Allocator& allocator, IFileDialog* dialog, const FileDialogFilter* filters, uint32_t filterCount)
+    static void AddFiltersToDialog(IFileDialog* dialog, const FileDialogFilter* filters, uint32_t filterCount)
     {
         constexpr wchar_t Wildcard[] = L"*.*";
 
         if (filters == nullptr || filterCount == 0)
             return;
+
+        Allocator& allocator = Allocator::GetTemp();
 
         // Add one for the wildcard we plan to add at the end
         COMDLG_FILTERSPEC* filterSpecs = allocator.Malloc<COMDLG_FILTERSPEC>(filterCount);
@@ -175,7 +177,7 @@ namespace he::editor
 
         HE_AT_SCOPE_EXIT([&]() { dialog->Release(); });
 
-        AddFiltersToDialog(m_allocator, dialog, config.filters, config.filterCount);
+        AddFiltersToDialog(dialog, config.filters, config.filterCount);
         SetDefaultPath(dialog, config.defaultPath);
 
         DWORD options = 0;
@@ -229,7 +231,7 @@ namespace he::editor
             }
 
             uint32_t pathsSize = paths.Size();
-            paths.Resize(pathsSize + itemCount, m_allocator);
+            paths.Resize(pathsSize + itemCount);
             for (DWORD i = 0; i < itemCount; ++i)
             {
                 IShellItem* shellItem = nullptr;
@@ -273,7 +275,7 @@ namespace he::editor
 
             HE_AT_SCOPE_EXIT([&]() { shellItem->Release(); });
 
-            String& path = paths.EmplaceBack(m_allocator);
+            String& path = paths.EmplaceBack();
             return CopyShellItemName(shellItem, path);
         }
     }
@@ -299,7 +301,7 @@ namespace he::editor
 
         HE_AT_SCOPE_EXIT([&]() { dialog->Release(); });
 
-        AddFiltersToDialog(m_allocator, dialog, config.filters, config.filterCount);
+        AddFiltersToDialog(dialog, config.filters, config.filterCount);
         SetDefaultPath(dialog, config.defaultPath);
 
         result = dialog->Show(nullptr);
@@ -363,7 +365,7 @@ namespace he::editor
         if (String::IsEmpty(selectItem))
             return ShowInExplorer(pidl, nullptr, 0);
 
-        String path(m_allocator);
+        String path(Allocator::GetTemp());
         path = directory;
         ConcatPath(path, selectItem);
 

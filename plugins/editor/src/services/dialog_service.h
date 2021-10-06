@@ -16,8 +16,6 @@ namespace he::editor
     class DialogService
     {
     public:
-        DialogService(Allocator& allocator);
-
         void DestroyClosedDialogs();
 
         void ShowDialogs();
@@ -30,6 +28,6 @@ namespace he::editor
         }
 
     private:
-        Vector<std::unique_ptr<Dialog>> m_dialogs;
+        Vector<std::unique_ptr<Dialog>> m_dialogs{};
     };
 }

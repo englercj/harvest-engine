@@ -31,26 +31,31 @@ namespace he
 
         /// Constructs a new buffer.
         ///
-        /// \param[in] allocator The allocator to use.
+        /// \param[in] allocator Optional. The allocator to use.
+        explicit BufferWriter(Allocator& allocator = Allocator::GetDefault());
+
+        /// Constructs a new buffer.
+        ///
         /// \param[in] strategy Optional. The strategy for growth when resizing is required.
         /// \param[in] growth Optional. The amount of growth during a resize. This is either a
         ///     fixed amount, or a factor of the size depending on `strategy`.
-        explicit BufferWriter(Allocator& allocator, GrowthStrategy strategy = GrowthStrategy::Factor, float growth = 0.5f);
+        /// \param[in] allocator Optional. The allocator to use.
+        BufferWriter(GrowthStrategy strategy, float growth, Allocator& allocator = Allocator::GetDefault());
 
         /// Construct a buffer by copying `x`, and using `allocator` for this
         /// buffer's allocations.
         ///
-        /// \param allocator The allocator to use for any allocations.
         /// \param x The buffer to copy from.
-        BufferWriter(Allocator& allocator, const BufferWriter& x);
+        /// \param allocator The allocator to use for any allocations.
+        BufferWriter(const BufferWriter& x, Allocator& allocator);
 
         /// Construct a buffer by moving `x`, and using `allocator` for this buffer
         /// writer's allocations. If the allocators do not match then a copy operation will
         /// be performed.
         ///
-        /// \param allocator The allocator to use for any allocations.
         /// \param x The buffer to move from.
-        BufferWriter(Allocator& allocator, BufferWriter&& x);
+        /// \param allocator The allocator to use for any allocations.
+        BufferWriter(BufferWriter&& x, Allocator& allocator);
 
         /// Construct a buffer by copying `x`, using the allocator from `x`.
         ///
@@ -180,6 +185,15 @@ namespace he
         /// \param[in] count The number of times the byte should be written.
         void WriteRepeat(uint8_t byte, uint32_t count);
 
+        /// Copies a trivially copyable type into the buffer.
+        ///
+        /// \note This is the same as \ref Write(const T&), this alias exists for generic
+        /// programming that expects the interface of a container.
+        ///
+        /// \param[in] value The value to copy.
+        template <typename T> requires(std::is_trivially_copyable_v<T>)
+        void PushBack(const T& value) { Write(&value, sizeof(T)); }
+
     private:
         friend class BufferWriterTestAttorney;
 
@@ -205,10 +219,4 @@ namespace he
         GrowthStrategy m_strategy{ GrowthStrategy::Factor };
         float m_growth{ 0.5f };
     };
-
-    /// Returns the enum as a string.
-    ///
-    /// \param[in] x The value to get the string representation of.
-    /// \return The string representation of the enum value.
-    const char* AsString(BufferWriter::GrowthStrategy x);
 }

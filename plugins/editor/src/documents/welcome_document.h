@@ -7,6 +7,8 @@
 #include "services/dialog_service.h"
 #include "services/imgui_service.h"
 #include "services/platform_service.h"
+#include "services/project_service.h"
+#include "services/settings_service.h"
 
 namespace he::editor
 {
@@ -16,7 +18,9 @@ namespace he::editor
         WelcomeDocument(
             DialogService& dialogService,
             ImGuiService& imguiService,
-            PlatformService& platformService);
+            PlatformService& platformService,
+            ProjectService& projectService,
+            SettingsService& settingsService);
 
         void Show() override;
 
@@ -28,5 +32,7 @@ namespace he::editor
         DialogService& m_dialogService;
         ImGuiService& m_imguiService;
         PlatformService& m_platformService;
+        ProjectService& m_projectService;
+        SettingsService& m_settingsService;
     };
 }

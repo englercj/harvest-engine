@@ -126,7 +126,7 @@ namespace he::window
     ///
     /// \param[in] allocator The allocator to use for all window objects created by this device.
     /// \return The newly created device, or nullptr if there was an error.
-    Device* CreateDevice(Allocator& allocator);
+    Device* CreateDevice(Allocator& allocator = Allocator::GetDefault());
 
     /// Destroys a device that was created with \ref CreateDevice.
     ///

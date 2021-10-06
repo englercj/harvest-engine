@@ -5,7 +5,7 @@ TODO Doc: pointers
 ## Basic Example
 
 ```c
-import "file.schema";
+import "file.he_schema";
 
 namespace he.editor.schema;
 
@@ -37,8 +37,8 @@ C-style single line comments are allowed:
 Other schema files can be imported using the `import` declaration.
 
 ```c
-import "other.schema";
-import "some/path/another.schema";
+import "other.he_schema";
+import "some/path/another.he_schema";
 ```
 
 Imports must be the first non-comment statements in the file.
@@ -89,7 +89,7 @@ The following types are defined as part of the language.
 
 ## Structs
 
-A collection of named and typed fields. Cannot contain methods. Can extend a single struct, which inherits the fields.
+A collection of named and typed fields. Can extend a single struct, which inherits the fields. Structs must be defined before they are used as a type. Fields are defined in the format `name: type = default;`:
 
 ```c
 struct Base {}
@@ -98,11 +98,7 @@ struct Child extends Base
 {
     fieldName: uint32 = 15;
 }
-```
 
-Default values can also initialize structures:
-
-```c
 struct Vec3
 {
     x: float;
@@ -114,35 +110,6 @@ struct Transform
 {
     pos: Vec3 = { 0, 1, 2 };
     rot: float[3] = { 0, 1, 2 };
-}
-```
-
-Struct can also be nested:
-
-```c
-struct List
-{
-    struct Node
-    {
-        next: Node;
-        prev: Node;
-    }
-
-    first: Node;
-}
-```
-
-Structures do not have to be defined before they are used, but they have to be defined at some point in the file:
-
-```c
-struct User
-{
-    UserId id;
-}
-
-struct UserId
-{
-    bytes: uint8[16];
 }
 ```
 
@@ -170,7 +137,7 @@ enum Something : uint16
 }
 ```
 
-Enumerant values are always the previous value plus one, with the first item defaulting to a value of zero. You can also specify the values manually if you wish.
+When the value of an enumerant is not specified explicitly it uses the previous value plus one. The first enumerant defaults to a value of zero.
 
 ```c
 enum Something : uint16
@@ -179,6 +146,19 @@ enum Something : uint16
     Bar,        // Has a value of 1 (Foo + 1)
     Baz = 6,    // Has a value of 6
     Qux,        // Has a value of 7 (Baz + 1)
+}
+```
+
+You can also specify the `[Flags]` atttribute to make the values use unique bits, and generate the code necessary to use them as flags. This will also generate special values of "None" and "All".
+
+```c
+[Flags]
+enum Something : uint16
+{
+    Foo,    // 0x01
+    Bar,    // 0x02
+    Baz,    // 0x04
+    Qux,    // 0x08
 }
 ```
 
@@ -203,7 +183,7 @@ interface Metal
 
 interface Fuel
 {
-    SetFuelType(fuel: uint32) -> fuel;
+    SetFuelType(fuel: uint32) -> Fuel*;
 }
 
 interface Car implements Metal, Fuel
@@ -238,8 +218,8 @@ struct Usage
 A type alias is basically an alternative name for a type. Type aliases can have generic type parameters.
 
 ```c
-using Vec3<T> = T[3];
-using Vec3f = Vec3<float>;
+alias Vec3<T> = T[3];
+alias Vec3f = Vec3<float>;
 ```
 
 ## Services
@@ -268,7 +248,11 @@ service ApiGateway<T>
 
 ## Attributes
 
-Custom attributes:
+There are a few built-in attributes that can affect codegen:
+
+- `[Flags]` Marks an enum as a series of flags.
+
+Custom attributes can also be declared:
 
 ```c
 // Declare an attribute that applies to struct fields and stores a string value.
@@ -298,12 +282,12 @@ struct MyStruct
 
 Valid values for the attribute target are:
 
-- file
-- struct
-- field
-- enum
-- enumerator
-- interface
-- method
-- parameter
-- const
+- `alias`
+- `const`
+- `enum`
+- `enumerator`
+- `field`
+- `interface`
+- `method`
+- `parameter`
+- `struct`

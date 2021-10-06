@@ -16,8 +16,6 @@ namespace he::editor
     class DocumentService
     {
     public:
-        DocumentService(Allocator& allocator);
-
         void DestroyClosedDocuments();
 
         void ShowDocuments();
@@ -31,6 +29,6 @@ namespace he::editor
 
     private:
         Document* m_activeDocument{ nullptr };
-        Vector<std::unique_ptr<Document>> m_documents;
+        Vector<std::unique_ptr<Document>> m_documents{};
     };
 }

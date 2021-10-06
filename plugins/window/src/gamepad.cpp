@@ -2,44 +2,47 @@
 
 #include "he/window/gamepad.h"
 
-namespace he::window
+#include "he/core/enum_ops.h"
+
+namespace he
 {
-    const char* AsString(GamepadAxis v)
+    template <>
+    const char* AsString(window::GamepadAxis x)
     {
-        switch (v)
+        switch (x)
         {
-            case GamepadAxis::None: return "None";
-            case GamepadAxis::LThumbX: return "LThumbX";
-            case GamepadAxis::LThumbY: return "LThumbY";
-            case GamepadAxis::RThumbX: return "RThumbX";
-            case GamepadAxis::RThumbY: return "RThumbY";
-            case GamepadAxis::LTrigger: return "LTrigger";
-            case GamepadAxis::RTrigger: return "RTrigger";
+            case window::GamepadAxis::None: return "None";
+            case window::GamepadAxis::LThumbX: return "LThumbX";
+            case window::GamepadAxis::LThumbY: return "LThumbY";
+            case window::GamepadAxis::RThumbX: return "RThumbX";
+            case window::GamepadAxis::RThumbY: return "RThumbY";
+            case window::GamepadAxis::LTrigger: return "LTrigger";
+            case window::GamepadAxis::RTrigger: return "RTrigger";
         }
 
         return "<unknown>";
     }
 
-    const char* AsString(GamepadButton v)
+    template <>
+    const char* AsString(window::GamepadButton x)
     {
-
-        switch (v)
+        switch (x)
         {
-            case GamepadButton::None: return "None";
-            case GamepadButton::DPad_Up: return "DPad_Up";
-            case GamepadButton::DPad_Down: return "DPad_Down";
-            case GamepadButton::DPad_Left: return "DPad_Left";
-            case GamepadButton::DPad_Right: return "DPad_Right";
-            case GamepadButton::Start: return "Start";
-            case GamepadButton::Back: return "Back";
-            case GamepadButton::LThumb: return "LThumb";
-            case GamepadButton::RThumb: return "RThumb";
-            case GamepadButton::LShoulder: return "LShoulder";
-            case GamepadButton::RShoulder: return "RShoulder";
-            case GamepadButton::Action1: return "Action1";
-            case GamepadButton::Action2: return "Action2";
-            case GamepadButton::Action3: return "Action3";
-            case GamepadButton::Action4: return "Action4";
+            case window::GamepadButton::None: return "None";
+            case window::GamepadButton::DPad_Up: return "DPad_Up";
+            case window::GamepadButton::DPad_Down: return "DPad_Down";
+            case window::GamepadButton::DPad_Left: return "DPad_Left";
+            case window::GamepadButton::DPad_Right: return "DPad_Right";
+            case window::GamepadButton::Start: return "Start";
+            case window::GamepadButton::Back: return "Back";
+            case window::GamepadButton::LThumb: return "LThumb";
+            case window::GamepadButton::RThumb: return "RThumb";
+            case window::GamepadButton::LShoulder: return "LShoulder";
+            case window::GamepadButton::RShoulder: return "RShoulder";
+            case window::GamepadButton::Action1: return "Action1";
+            case window::GamepadButton::Action2: return "Action2";
+            case window::GamepadButton::Action3: return "Action3";
+            case window::GamepadButton::Action4: return "Action4";
         }
 
         return "<unknown>";

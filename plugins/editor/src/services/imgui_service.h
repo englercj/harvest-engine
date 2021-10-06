@@ -28,7 +28,6 @@ namespace he::editor
     {
     public:
         ImGuiService(
-            Allocator& allocator,
             EditorData& editorData,
             ImGuiPlatformService& imguiPlatformService,
             ImGuiRenderService& imguiRenderService,
@@ -55,7 +54,6 @@ namespace he::editor
         static void MergeFontAwesome(ImFontAtlas& atlas, float scaledFontSize);
 
     private:
-        Allocator& m_allocator;
         EditorData& m_editorData;
         ImGuiPlatformService& m_imguiPlatformService;
         ImGuiRenderService& m_imguiRenderService;

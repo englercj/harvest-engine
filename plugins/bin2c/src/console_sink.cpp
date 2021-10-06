@@ -2,7 +2,9 @@
 
 #include "console_sink.h"
 
+#include "he/core/appender.h"
 #include "he/core/allocator.h"
+#include "he/core/enum_fmt.h"
 #include "he/core/log_sinks.h"
 #include "he/core/string.h"
 
@@ -15,7 +17,7 @@ void ConsoleSink(void* userData, const he::LogSource& source, const he::LogKV* k
     HE_UNUSED(userData);
 
     he::String msg(he::CrtAllocator::Get());
-    fmt::format_to(he::StringAppender(msg), "{}({}): [{}]({}) ", source.file, source.line, AsString(source.level), source.category);
+    fmt::format_to(he::Appender(msg), "{}({}): [{}]({}) ", source.file, source.line, source.level, source.category);
     he::FormatKVsTo(msg, kvs, count);
     msg.PushBack('\n');
 

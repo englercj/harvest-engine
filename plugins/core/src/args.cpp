@@ -3,6 +3,7 @@
 #include "he/core/args.h"
 
 #include "he/core/alloca.h"
+#include "he/core/allocator.h"
 #include "he/core/ascii.h"
 #include "he/core/assert.h"
 #include "he/core/enum_ops.h"
@@ -69,7 +70,7 @@ namespace he
             ss += ']';
     }
 
-    static void WriteUsageString(Allocator& allocator, String& ss, Span<ArgDesc> descs, const char* arg0, const ArgResult* result)
+    static void WriteUsageString(String& ss, Span<ArgDesc> descs, const char* arg0, const ArgResult* result)
     {
         constexpr const char UsageMsg[] = "Usage: ";
 
@@ -89,7 +90,7 @@ namespace he
         ss += arg0;
         ss += ' ';
 
-        Vector<const ArgDesc*> sortedDescs(allocator);
+        Vector<const ArgDesc*> sortedDescs(Allocator::GetTemp());
         sortedDescs.Reserve(descs.Size());
 
         for (const ArgDesc& d : descs)
@@ -190,7 +191,7 @@ namespace he
             *static_cast<T*>(dst) = value;
     }
 
-    static ArgResult ReadIntValue(Allocator& allocator, ArgDesc& desc, const char* value)
+    static ArgResult ReadIntValue(ArgDesc& desc, const char* value)
     {
         const bool isSigned = HasFlag(desc.flags, InternalSignedFlag);
         const bool isVector = HasFlag(desc.flags, InternalVectorFlag);
@@ -207,7 +208,7 @@ namespace he
 
         if ((b == 16 && !IsHex(value)) || (b != 16 && !IsInteger(value)))
         {
-            ArgResult result(allocator, ArgResult::InvalidValue, "Failed to parse value as integer: ");
+            ArgResult result(ArgResult::InvalidValue, "Failed to parse value as integer: ");
             result.msg += originalValue;
             return result;
         }
@@ -271,14 +272,14 @@ namespace he
                 HE_UNREACHABLE();
         }
 
-        return ArgResult(allocator, ArgResult::Success);
+        return ArgResult(ArgResult::Success);
     }
 
-    static ArgResult ReadFloatValue(Allocator& allocator, ArgDesc& desc, const char* value)
+    static ArgResult ReadFloatValue(ArgDesc& desc, const char* value)
     {
         if (!IsFloat(value))
         {
-            ArgResult result(allocator, ArgResult::InvalidValue, "Failed to parse value as float: ");
+            ArgResult result(ArgResult::InvalidValue, "Failed to parse value as float: ");
             result.msg += value;
             return result;
         }
@@ -305,13 +306,13 @@ namespace he
                 HE_UNREACHABLE();
         }
 
-        return ArgResult(allocator, ArgResult::Success);
+        return ArgResult(ArgResult::Success);
     }
 
-    static ArgResult ReadValue(Allocator& allocator, ArgDesc& desc, const char* value)
+    static ArgResult ReadValue(ArgDesc& desc, const char* value)
     {
         if (!HE_VERIFY(desc.buffer))
-            return ArgResult(allocator, ArgResult::Success);
+            return ArgResult(ArgResult::Success);
 
         const bool isVector = HasFlag(desc.flags, InternalVectorFlag);
 
@@ -326,13 +327,13 @@ namespace he
             }
             case ArgType::Integer:
             {
-                const ArgResult r = ReadIntValue(allocator, desc, value);
+                const ArgResult r = ReadIntValue(desc, value);
                 if (!r) return r;
                 break;
             }
             case ArgType::Float:
             {
-                const ArgResult r = ReadFloatValue(allocator, desc, value);
+                const ArgResult r = ReadFloatValue(desc, value);
                 if (!r) return r;
                 break;
             }
@@ -345,13 +346,13 @@ namespace he
             }
         }
 
-        return ArgResult(allocator, ArgResult::Success);
+        return ArgResult(ArgResult::Success);
     }
 
-    static ArgResult ReadFlag(Allocator& allocator, Span<ArgDesc>& descs, const char* arg, ArgDesc*& desc)
+    static ArgResult ReadFlag(Span<ArgDesc>& descs, const char* arg, ArgDesc*& desc)
     {
         if (!HE_VERIFY(*arg == '-'))
-            return ArgResult(allocator, ArgResult::InvalidFormat, "Flag did not start with a dash ('-').");
+            return ArgResult(ArgResult::InvalidFormat, "Flag did not start with a dash ('-').");
 
         const char* originalArg = arg;
 
@@ -368,14 +369,14 @@ namespace he
 
             if (!desc)
             {
-                ArgResult result(allocator, ArgResult::UnknownArg, "Unknown option: ");
+                ArgResult result(ArgResult::UnknownArg, "Unknown option: ");
                 result.msg += originalArg;
                 return result;
             }
 
             if (desc->type == ArgType::Boolean)
             {
-                const ArgResult r = ReadValue(allocator, *desc, nullptr);
+                const ArgResult r = ReadValue(*desc, nullptr);
                 if (!r) return r;
                 desc = nullptr;
 
@@ -393,7 +394,7 @@ namespace he
                     arg++;
                     if (*arg != '\0')
                     {
-                        const ArgResult r = ReadValue(allocator, *desc, arg);
+                        const ArgResult r = ReadValue(*desc, arg);
                         if (!r) return r;
                         desc = nullptr;
                     }
@@ -403,12 +404,12 @@ namespace he
             }
         }
 
-        return ArgResult(allocator, ArgResult::Success);
+        return ArgResult(ArgResult::Success);
     }
 
-    ArgResult ParseArgs(Allocator& allocator, Span<ArgDesc> descs, int32_t argc, const char* const* argv)
+    ArgResult ParseArgs(Span<ArgDesc> descs, int32_t argc, const char* const* argv)
     {
-        ArgResult result(allocator);
+        ArgResult result;
         ArgDesc* flagDesc = nullptr;
 
         for (int32_t i = 1; i < argc; ++i)
@@ -417,14 +418,14 @@ namespace he
 
             if (flagDesc)
             {
-                ArgResult r = ReadValue(allocator, *flagDesc, arg);
+                ArgResult r = ReadValue(*flagDesc, arg);
                 if (!r)
                     return r;
                 flagDesc = nullptr;
             }
             else if (*arg == '-')
             {
-                ArgResult r = ReadFlag(allocator, descs, arg, flagDesc);
+                ArgResult r = ReadFlag(descs, arg, flagDesc);
                 if (!r)
                     return r;
             }
@@ -438,12 +439,9 @@ namespace he
         {
             if (!desc.hasValue && HasFlags(desc.flags, ArgFlag::Required))
             {
-                String buf(allocator);
-                WriteArgHelpName(buf, desc, ArgHelpFormat::Usage);
-
                 result.code = ArgResult::MissingRequiredArg;
                 result.msg = "Required argument missing: ";
-                result.msg += buf;
+                WriteArgHelpName(result.msg, desc, ArgHelpFormat::Usage);
                 return result;
             }
         }
@@ -451,16 +449,16 @@ namespace he
         return result;
     }
 
-    String MakeHelpString(Allocator& allocator, Span<ArgDesc> descs, const char* arg0, const ArgResult* result)
+    String MakeHelpString(Span<ArgDesc> descs, const char* arg0, const ArgResult* result)
     {
-        String ss(allocator);
+        String ss(Allocator::GetTemp());
         ss.Reserve(1024);
 
-        WriteUsageString(allocator, ss, descs, arg0, result);
+        WriteUsageString(ss, descs, arg0, result);
 
         uint32_t longestHelpLen = 0;
         {
-            String buf(allocator);
+            String buf(Allocator::GetTemp());
 
             for (const ArgDesc& desc : descs)
             {

@@ -11,39 +11,41 @@
 
 struct AppArgs
 {
-    AppArgs(he::Allocator& allocator) : includeDirs(allocator) {}
-
     bool help{ false };
     bool grpc{ false };
-    const char* outDir{};
-    he::Vector<const char*> includeDirs;
+    bool json{ false };
+    bool buffer{ false };
+    const char* outDir{ nullptr };
+    const char* lang{ nullptr };
+    he::Vector<const char*> includeDirs{};
 };
 
 #include "he/core/main.inl"
 int he::AppMain(int argc, char* argv[])
 {
-    Allocator& alloc = CrtAllocator::Get();
-    AppArgs args(alloc);
+    AppArgs args;
 
     ArgDesc ArgDescriptors[] =
     {
         { args.help,        'h', "help",    "Output this help text" },
         { args.outDir,      'o', "out",     "Output directory to write generated files" },
-        { args.grpc,             "grpc",    "Generate GRPC interfaces" },
+        { args.lang,        'g', "gen",     "Language to generate definitions for" },
         { args.includeDirs, 'I', "include", "Path to search for import declarations" },
-        // { ..., 'g', "gen", "Language to generate definitions for" },
+        { args.grpc,             "grpc",    "Generate GRPC interfaces" },
+        { args.json,        'j', "json",    "Enable code generation for JSON serialization" },
+        { args.buffer,      'b', "buffer",  "Enable code generation for zero-copy buffers" },
     };
 
-    ArgResult result = ParseArgs(alloc, ArgDescriptors, argc, argv);
+    ArgResult result = ParseArgs(ArgDescriptors, argc, argv);
 
     if (!result || args.help)
     {
-        String help = MakeHelpString(alloc, ArgDescriptors, argv[0], &result);
+        String help = MakeHelpString(ArgDescriptors, argv[0], &result);
         std::cerr << help.Data() << std::endl;
         return -1;
     }
 
-    String fullPath(alloc);
+    String fullPath;
 
     bool first = true;
 
@@ -56,10 +58,10 @@ int he::AppMain(int argc, char* argv[])
 
         first = false;
 
-        const String dir(alloc, GetDirectory(fullPath));
+        const String dir(GetDirectory(fullPath));
         args.includeDirs.PushFront(dir.Data());
 
-        schema::Parser parser(alloc);
+        schema::Parser parser;
 
         if (!parser.ParseFile(fullPath.Data(), args.includeDirs))
         {
@@ -76,6 +78,8 @@ int he::AppMain(int argc, char* argv[])
         schema::CodeGenOptions options{};
         options.fileName = fname.Data();
         options.outDir = args.outDir;
+        options.json = args.json;
+        options.buffer = args.buffer;
         if (!schema::GenerateCpp(parser.GetSchema(), options))
         {
             std::cerr << "Failed to generate C++ code." << std::endl;

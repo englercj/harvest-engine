@@ -3,7 +3,9 @@
 #pragma once
 
 #include "he/core/enum_ops.h"
+#include "he/core/span.h"
 #include "he/core/string.h"
+#include "he/core/string_view.h"
 #include "he/core/vector.h"
 
 namespace he::schema
@@ -31,6 +33,7 @@ namespace he::schema
         Array,
         List,
         Map,
+        Pointer,
         Set,
         String,
         Vector,
@@ -63,11 +66,24 @@ namespace he::schema
     {
         switch (t)
         {
-            case BaseType::Bool:
             case BaseType::Int8:
             case BaseType::Int16:
             case BaseType::Int32:
             case BaseType::Int64:
+            case BaseType::Uint8:
+            case BaseType::Uint16:
+            case BaseType::Uint32:
+            case BaseType::Uint64:
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    constexpr bool IsUnsignedIntegral(BaseType t)
+    {
+        switch (t)
+        {
             case BaseType::Uint8:
             case BaseType::Uint16:
             case BaseType::Uint32:
@@ -159,6 +175,29 @@ namespace he::schema
             , typeParams(allocator)
         {}
 
+        Type(const Type&) = delete;
+        Type& operator=(const Type&) = delete;
+
+        Type(Type&& x)
+            : base(Exchange(x.base, BaseType::Unknown))
+            , fixedSize(Exchange(x.fixedSize, uint16_t(0)))
+            , name(Move(x.name))
+            , element(Exchange(x.element, nullptr))
+            , key(Exchange(x.key, nullptr))
+            , typeParams(Move(x.typeParams))
+        {}
+
+        Type& operator=(Type&& x)
+        {
+            base = Exchange(x.base, BaseType::Unknown);
+            fixedSize = Exchange(x.fixedSize, uint16_t(0));
+            name = Move(x.name);
+            element = Exchange(x.element, nullptr);
+            key = Exchange(x.key, nullptr);
+            typeParams = Move(x.typeParams);
+            return *this;
+        }
+
         ~Type()
         {
             Allocator& alloc = typeParams.GetAllocator();
@@ -186,9 +225,6 @@ namespace he::schema
         // The base type of this item.
         BaseType base{ BaseType::Unknown };
 
-        // When true the type is a pointer.
-        bool pointer{ false };
-
         // Size of a fixed array when `base` is `Array`.
         uint16_t fixedSize{ 0 };
 
@@ -199,7 +235,7 @@ namespace he::schema
         // Name of the constant used as the fixed size when `base` is `Array`.
         String name;
 
-        // Element type if `base` is `Array`, `List`, `Set`, `Map`, or `Vector`.
+        // Element type if `base` is `Array`, `List`, `Map`, `Pointer`, `Set`, or `Vector`.
         Type* element{ nullptr };
 
         // Key type, if `base` is `Map`.
@@ -326,10 +362,12 @@ namespace he::schema
         MethodParamDef(Allocator& allocator)
             : type(allocator)
             , name(allocator)
+            , attributes(allocator)
         {}
 
         Type type;
         String name;
+        Vector<Attribute> attributes;
     };
 
     struct MethodDef
@@ -412,4 +450,21 @@ namespace he::schema
 
         uint64_t usedTypes{ 0 };
     };
+
+    // Helper to linearly search for an attribute
+    inline const Attribute* FindAttribute(StringView name, Span<const Attribute> attributes)
+    {
+        for (const Attribute& a : attributes)
+        {
+            if (a.name == name)
+                return &a;
+        }
+
+        return nullptr;
+    }
+
+    inline bool HasAttribute(StringView name, Span<const Attribute> attributes)
+    {
+        return FindAttribute(name, attributes) != nullptr;
+    }
 }

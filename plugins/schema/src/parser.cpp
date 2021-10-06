@@ -4,8 +4,10 @@
 
 #include "utf8_helpers.h"
 
+#include "he/core/appender.h"
 #include "he/core/ascii.h"
 #include "he/core/assert.h"
+#include "he/core/enum_fmt.h"
 #include "he/core/file.h"
 #include "he/core/path.h"
 #include "he/core/result.h"
@@ -34,7 +36,7 @@ namespace he::schema
     constexpr char KW_Implements[] = "implements";
     constexpr char KW_Const[] = "const";
     constexpr char KW_Interface[] = "interface";
-    constexpr char KW_Using[] = "using";
+    constexpr char KW_Alias[] = "alias";
     constexpr char KW_List[] = "list";
     constexpr char KW_Map[] = "map";
     constexpr char KW_Set[] = "set";
@@ -46,6 +48,32 @@ namespace he::schema
     constexpr char KW_Method[] = "method";
     constexpr char KW_Parameter[] = "parameter";
 
+    // Builtin Types
+    struct BuiltinType { const StringView name; const BaseType base; };
+    constexpr BuiltinType BuiltinTypes[] =
+    {
+        { "bool", BaseType::Bool },
+        { "int8", BaseType::Int8 },
+        { "int16", BaseType::Int16 },
+        { "int32", BaseType::Int32 },
+        { "int64", BaseType::Int64 },
+        { "uint8", BaseType::Uint8 },
+        { "uint16", BaseType::Uint16 },
+        { "uint32", BaseType::Uint32 },
+        { "uint64", BaseType::Uint64 },
+        { "float", BaseType::Float32 },
+        { "double", BaseType::Float64 },
+        { "string", BaseType::String },
+    };
+
+    // Builtin Attributes
+    struct BuiltinAttribute { const StringView name; const AttributeTarget targets; const BaseType param; };
+    constexpr BuiltinAttribute BuiltinAttributes[] =
+    {
+        { "Flags", AttributeTarget::Enum, BaseType::Unknown },
+        { "Service", AttributeTarget::Interface, BaseType::Unknown },
+    };
+
     Parser::Parser(Allocator& allocator)
         : m_allocator(allocator)
         , m_schema(allocator)
@@ -54,18 +82,21 @@ namespace he::schema
         , m_errors(allocator)
         , m_decodedString(allocator)
     {
-        m_builtinTypes["bool"] = BaseType::Bool;
-        m_builtinTypes["int8"] = BaseType::Int8;
-        m_builtinTypes["int16"] = BaseType::Int16;
-        m_builtinTypes["int32"] = BaseType::Int32;
-        m_builtinTypes["int64"] = BaseType::Int64;
-        m_builtinTypes["uint8"] = BaseType::Uint8;
-        m_builtinTypes["uint16"] = BaseType::Uint16;
-        m_builtinTypes["uint32"] = BaseType::Uint32;
-        m_builtinTypes["uint64"] = BaseType::Uint64;
-        m_builtinTypes["float"] = BaseType::Float32;
-        m_builtinTypes["double"] = BaseType::Float64;
-        m_builtinTypes["string"] = BaseType::String;
+        // build maps of builtins for faster lookups
+
+        for (const BuiltinAttribute& a : BuiltinAttributes)
+        {
+            auto result = m_builtinAttributes.emplace(a.name, allocator);
+            AttributeDef& def = result.first->second;
+            def.name = a.name;
+            def.targets = a.targets;
+            def.type.base = a.param;
+        }
+
+        for (const BuiltinType& t : BuiltinTypes)
+        {
+            m_builtinTypes[t.name] = t.base;
+        }
     }
 
     bool Parser::ParseFile(const char* path, Span<const char*> includeDirs)
@@ -365,6 +396,12 @@ namespace he::schema
 
     const AttributeDef* Parser::FindAttributeDef(StringView name) const
     {
+        auto it = m_builtinAttributes.find(name);
+        if (it != m_builtinAttributes.end())
+        {
+            return &it->second;
+        }
+
         return FindDef<AttributeDef>(name);
     }
 
@@ -392,7 +429,7 @@ namespace he::schema
     {
         if (!At(expected))
         {
-            AddError("Unexpected token {}, expected {}", AsString(m_token.type), AsString(expected));
+            AddError("Unexpected token {}, expected {}", m_token.type, expected);
             return false;
         }
 
@@ -808,6 +845,19 @@ namespace he::schema
             if (!ConsumeType(*type.key))
                 return false;
 
+            BaseType b = type.key->base;
+            while (b == BaseType::Alias)
+            {
+                const AliasDef* alias = FindAliasDef(type.key->name);
+                HE_ASSERT(alias);
+                b = alias->type.base;
+            }
+            if (IsObject(b) || b == BaseType::Pointer)
+            {
+                AddError("Invalid key for map, cannot be an object or pointer type.");
+                return false;
+            }
+
             if (!Consume(Lexer::TokenType::Comma))
                 return false;
 
@@ -897,13 +947,15 @@ namespace he::schema
 
         if (TryConsume(Lexer::TokenType::Asterisk))
         {
-            if (type.base != BaseType::Array)
-            {
-                AddError("Pointers to arrays are not allowed");
-                return false;
-            }
+            Type* element = m_allocator.New<Type>(m_allocator);
+            *element = Move(type);
 
-            type.pointer = true;
+            type.base = BaseType::Pointer;
+            type.fixedSize = 0;
+            type.name.Clear();
+            type.element = element;
+
+            m_schema.MarkTypeUsed(type.base);
         }
 
         while (TryConsume(Lexer::TokenType::OpenSquareBracket))
@@ -936,7 +988,15 @@ namespace he::schema
 
             if (TryConsume(Lexer::TokenType::Asterisk))
             {
-                type.pointer = true;
+                Type* pointerElement = m_allocator.New<Type>(m_allocator);
+                *pointerElement = Move(type);
+
+                type.base = BaseType::Pointer;
+                type.fixedSize = 0;
+                type.name.Clear();
+                type.element = pointerElement;
+
+                m_schema.MarkTypeUsed(type.base);
             }
         }
 
@@ -988,7 +1048,10 @@ namespace he::schema
             case BaseType::Struct:
                 value.str.Clear();
                 while (m_token.type != Lexer::TokenType::Semicolon)
+                {
                     value.str += m_token.text;
+                    Next();
+                }
                 return true;
             case BaseType::Unknown:
                 AddError("Value specified for an undefined type.");
@@ -1082,7 +1145,7 @@ namespace he::schema
     bool Parser::ParseTopLevelStatement()
     {
         // empty statement, ignore it
-        if (At(Lexer::TokenType::Semicolon))
+        if (TryConsume(Lexer::TokenType::Semicolon))
             return true;
 
         Vector<Attribute> attributes(m_allocator);
@@ -1122,7 +1185,7 @@ namespace he::schema
             return ParseInterface(def);
         }
 
-        if (AtIdentifier(KW_Using))
+        if (AtIdentifier(KW_Alias))
         {
             AliasDef& def = m_schema.aliases.EmplaceBack(m_allocator);
             def.attributes = Move(attributes);
@@ -1148,7 +1211,7 @@ namespace he::schema
             return false;
         }
 
-        AddError("Expected top level statement (const, enum, interface, struct, using)");
+        AddError("Expected top level statement (alias, attribute, const, enum, interface, struct)");
         return false;
     }
 
@@ -1231,7 +1294,7 @@ namespace he::schema
             return ParseStruct(d);
         }
 
-        if (AtIdentifier(KW_Using))
+        if (AtIdentifier(KW_Alias))
         {
             AliasDef& d = def.aliases.EmplaceBack(m_allocator);
             d.attributes = Move(attributes);
@@ -1341,13 +1404,15 @@ namespace he::schema
 
     bool Parser::ParseEnum(EnumDef& def)
     {
+        const bool isFlags = HasAttribute("Flags", def.attributes);
+
         if (!ConsumeKeyword(KW_Enum))
             return false;
 
         if (!ConsumeIdentifier(def.name))
             return false;
 
-        def.base = BaseType::Int32;
+        def.base = isFlags ? BaseType::Uint32 : BaseType::Int32;
 
         if (TryConsume(Lexer::TokenType::Colon))
         {
@@ -1355,7 +1420,12 @@ namespace he::schema
             if (!ConsumeType(enumType))
                 return false;
 
-            if (!IsIntegral(enumType.base))
+            if (isFlags && !IsUnsignedIntegral(enumType.base))
+            {
+                AddError("Expected unsigned integral type for enum flags");
+                return false;
+            }
+            else if (!IsIntegral(enumType.base))
             {
                 AddError("Expected integral type for enum");
                 return false;
@@ -1364,10 +1434,10 @@ namespace he::schema
             def.base = enumType.base;
         }
 
-        return ParseEnumBlock(def);
+        return ParseEnumBlock(def, isFlags);
     }
 
-    bool Parser::ParseEnumBlock(EnumDef& def)
+    bool Parser::ParseEnumBlock(EnumDef& def, bool isFlags)
     {
         if (!Consume(Lexer::TokenType::OpenCurlyBracket))
             return false;
@@ -1380,15 +1450,16 @@ namespace he::schema
                 return false;
             }
 
-            EnumValueDef* lastValueDef = def.values.IsEmpty() ? nullptr : &def.values.Back();
-            if (!ParseEnumStatement(def, def.values.EmplaceBack(m_allocator), lastValueDef))
+            EnumValueDef& newValueDef = def.values.EmplaceBack(m_allocator);
+            EnumValueDef* lastValueDef = def.values.Size() > 1 ? &def.values[def.values.Size() - 2] : nullptr;
+            if (!ParseEnumStatement(def, isFlags, newValueDef, lastValueDef))
                 SkipStatement();
         }
 
         return true;
     }
 
-    bool Parser::ParseEnumStatement(const EnumDef& enumDef, EnumValueDef& def, EnumValueDef* lastDef)
+    bool Parser::ParseEnumStatement(const EnumDef& enumDef, bool isFlags, EnumValueDef& def, EnumValueDef* lastDef)
     {
         if (!ConsumeAttributes(def.attributes))
             return false;
@@ -1403,24 +1474,19 @@ namespace he::schema
         }
         else if (lastDef == nullptr)
         {
-            def.value.basic.u64 = 0;
+            def.value.basic.u64 = isFlags ? 1 : 0;
+        }
+        else if (isFlags)
+        {
+            def.value.basic.u64 = lastDef->value.basic.u64 * 2;
+        }
+        else if (IsUnsignedIntegral(enumDef.base))
+        {
+            def.value.basic.u64 = lastDef->value.basic.u64 + 1;
         }
         else
         {
-            switch (enumDef.base)
-            {
-                case BaseType::Int8: def.value.basic.i8 = lastDef->value.basic.i8 + 1; break;
-                case BaseType::Int16: def.value.basic.i16 = lastDef->value.basic.i16 + 1; break;
-                case BaseType::Int32: def.value.basic.i32 = lastDef->value.basic.i32 + 1; break;
-                case BaseType::Int64: def.value.basic.i64 = lastDef->value.basic.i64 + 1; break;
-                case BaseType::Uint8: def.value.basic.u8 = lastDef->value.basic.u8 + 1; break;
-                case BaseType::Uint16: def.value.basic.u16 = lastDef->value.basic.u16 + 1; break;
-                case BaseType::Uint32: def.value.basic.u32 = lastDef->value.basic.u32 + 1; break;
-                case BaseType::Uint64: def.value.basic.u64 = lastDef->value.basic.u64 + 1; break;
-                default:
-                    AddError("Enum definition has invalid base type, only integral types are supported.");
-                    return false;
-            }
+            def.value.basic.i64 = lastDef->value.basic.i64 + 1;
         }
 
         return Consume(Lexer::TokenType::Comma);
@@ -1508,7 +1574,7 @@ namespace he::schema
             return ParseStruct(d);
         }
 
-        if (AtIdentifier(KW_Using))
+        if (AtIdentifier(KW_Alias))
         {
             AliasDef& d = def.aliases.EmplaceBack(m_allocator);
             d.attributes = Move(attributes);
@@ -1554,6 +1620,9 @@ namespace he::schema
 
     bool Parser::ParseInterfaceMethodParam(MethodParamDef& def)
     {
+        if (!ConsumeAttributes(def.attributes))
+            return false;
+
         if (!ConsumeIdentifier(def.name))
             return false;
 
@@ -1565,7 +1634,7 @@ namespace he::schema
 
     bool Parser::ParseAlias(AliasDef& def)
     {
-        if (!ConsumeKeyword(KW_Using))
+        if (!ConsumeKeyword(KW_Alias))
             return false;
 
         if (!ConsumeIdentifier(def.name))
@@ -1637,10 +1706,9 @@ namespace he::schema
         entry.file.Assign(m_fileName.Data(), m_fileName.Size());
         entry.line = m_token.line;
         entry.column = m_token.column;
+        entry.message.Clear();
 
-        fmt::memory_buffer buf;
-        fmt::format_to(fmt::appender(buf), fmt, Forward<Args>(args)...);
-        entry.message.Assign(buf.data(), static_cast<uint32_t>(buf.size()));
+        fmt::format_to(Appender(entry.message), fmt, Forward<Args>(args)...);
     }
 
     bool Parser::DecodeString()

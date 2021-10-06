@@ -1,0 +1,10 @@
+// Copyright Chad Engler
+
+namespace he.editor.schema;
+
+// Hides the field from editor views so that it cannot be changed by the user. The data is
+// still persisted and available to code.
+attribute EditorHidden;
+
+// When serializing a field as JSON use a hex string rather than the default array.
+attribute JsonAsHex;

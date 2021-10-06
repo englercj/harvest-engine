@@ -17,12 +17,6 @@ namespace he::window
         Extra2,         ///< An additional mouse button, sometimes called "mouse 5"
     };
 
-    /// Returns the enum as a string.
-    ///
-    /// \param[in] v The value to get the string representation of.
-    /// \return The string representation of the enum value.
-    const char* AsString(MouseButton v);
-
     /// Enumeration of the various supported cursor display modes.
     enum class MouseCursor : int32_t
     {
@@ -42,10 +36,4 @@ namespace he::window
 
         _Count,
     };
-
-    /// Returns the enum as a string.
-    ///
-    /// \param[in] v The value to get the string representation of.
-    /// \return The string representation of the enum value.
-    const char* AsString(MouseCursor v);
 }

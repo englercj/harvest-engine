@@ -3,6 +3,7 @@
 #include "he/core/result.h"
 
 #include "he/core/alloca.h"
+#include "he/core/appender.h"
 #include "he/core/string.h"
 #include "he/core/wstr.h"
 
@@ -43,9 +44,7 @@ namespace he
         {
             ::LocalFree(src);
 
-            fmt::memory_buffer buf;
-            fmt::format_to(fmt::appender(buf), "Unknown error: {}", m_code);
-            dst.Assign(buf.data(), static_cast<uint32_t>(buf.size()));
+            fmt::format_to(Appender(dst), "Unknown error: {}", m_code);
             return dst;
         }
 

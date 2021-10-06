@@ -18,7 +18,7 @@ namespace he::editor
     class LogService
     {
     public:
-        LogService(Allocator& allocator, DirectoryService& directoryService);
+        LogService(DirectoryService& directoryService);
 
         bool Initialize();
         void Terminate();
@@ -31,21 +31,20 @@ namespace he::editor
     private:
         struct LogEntry
         {
-            LogEntry(Allocator& allocator, const LogSource& src) : source(src), msg(allocator) {}
+            LogEntry(const LogSource& src) : source(src) {}
 
             const LogSource& source;
-            String msg;
-
+            String msg{};
             SystemTime timestamp{ SystemClock::Now() };
         };
 
     private:
-        Allocator& m_allocator;
+        static constexpr size_t MaxEntries = 256;
+
+    private:
         DirectoryService& m_directoryService;
 
-        FileSink m_fileSink;
-
-        static constexpr size_t MaxEntries = 256;
+        FileSink m_fileSink{};
 
         std::mutex m_mutex{};
         std::deque<LogEntry> m_entries{};

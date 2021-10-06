@@ -37,6 +37,14 @@ he.add_module_key {
 }
 
 he.add_module_key {
+    key = "disablewarnings",
+    scope = "private",
+    type = "table",
+    desc = "an array of warning specified to be disabled",
+    handler = function (ctx, values) disablewarnings(values) end,
+}
+
+he.add_module_key {
     key = "includedirs",
     scope = "include",
     type = "table",

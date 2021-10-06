@@ -3,8 +3,7 @@
 #pragma once
 
 #include "he/core/compiler.h"
-
-#include <string>
+#include "he/core/string.h"
 
 namespace he::editor
 {
@@ -22,7 +21,7 @@ namespace he::editor
         void RequestClose() { m_wantsClose = true; }
 
     protected:
-        std::string m_title{};
+        String m_title{};
 
     private:
         static uint32_t s_nextCounter;

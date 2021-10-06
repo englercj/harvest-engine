@@ -25,7 +25,7 @@ namespace he
         /// Constructs a new debugger sink.
         ///
         /// \param[in] allocator The allocator to use.
-        DebuggerSink(Allocator& allocator);
+        DebuggerSink(Allocator& allocator = Allocator::GetDefault());
 
         /// Handler function that can be added a sink. Make sure to pass the DebuggerSink instance
         /// as the userData parameter when calling \ref AddLogSink.
@@ -48,7 +48,7 @@ namespace he
         /// Constructs a new file sink.
         ///
         /// \param[in] allocator The allocator to use.
-        FileSink(Allocator& allocator);
+        FileSink(Allocator& allocator = Allocator::GetDefault());
 
         /// Configures a new file sink.
         ///

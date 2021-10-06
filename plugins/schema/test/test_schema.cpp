@@ -19,7 +19,7 @@ HE_TEST(schema, BaseType, Constants)
 HE_TEST(schema, BaseType, IsIntegral)
 {
     HE_EXPECT(!IsIntegral(BaseType::Unknown));
-    HE_EXPECT(IsIntegral(BaseType::Bool));
+    HE_EXPECT(!IsIntegral(BaseType::Bool));
     HE_EXPECT(IsIntegral(BaseType::Int8));
     HE_EXPECT(IsIntegral(BaseType::Int16));
     HE_EXPECT(IsIntegral(BaseType::Int32));
@@ -71,7 +71,7 @@ HE_TEST(schema, BaseType, IsFloat)
 HE_TEST(schema, BaseType, IsArithmetic)
 {
     HE_EXPECT(!IsArithmetic(BaseType::Unknown));
-    HE_EXPECT(IsArithmetic(BaseType::Bool));
+    HE_EXPECT(!IsArithmetic(BaseType::Bool));
     HE_EXPECT(IsArithmetic(BaseType::Int8));
     HE_EXPECT(IsArithmetic(BaseType::Int16));
     HE_EXPECT(IsArithmetic(BaseType::Int32));

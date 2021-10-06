@@ -2,41 +2,45 @@
 
 #include "he/window/mouse.h"
 
-namespace he::window
+#include "he/core/enum_ops.h"
+
+namespace he
 {
-    const char* AsString(MouseButton v)
+    template <>
+    const char* AsString(window::MouseButton x)
     {
-        switch (v)
+        switch (x)
         {
-            case MouseButton::None: return "None";
-            case MouseButton::Left: return "Left";
-            case MouseButton::Right: return "Right";
-            case MouseButton::Middle: return "Middle";
-            case MouseButton::Extra1: return "Extra1";
-            case MouseButton::Extra2: return "Extra2";
+            case window::MouseButton::None: return "None";
+            case window::MouseButton::Left: return "Left";
+            case window::MouseButton::Right: return "Right";
+            case window::MouseButton::Middle: return "Middle";
+            case window::MouseButton::Extra1: return "Extra1";
+            case window::MouseButton::Extra2: return "Extra2";
         }
 
         return "<unknown>";
     }
 
-    const char* AsString(MouseCursor v)
+    template <>
+    const char* AsString(window::MouseCursor x)
     {
-        switch (v)
+        switch (x)
         {
-            case MouseCursor::None: return "None";
-            case MouseCursor::Arrow: return "Arrow";
-            case MouseCursor::Hand: return "Hand";
-            case MouseCursor::NotAllowed: return "NotAllowed";
-            case MouseCursor::TextInput: return "TextInput";
-            case MouseCursor::ResizeAll: return "ResizeAll";
-            case MouseCursor::ResizeTopLeft: return "ResizeTopLeft";
-            case MouseCursor::ResizeTopRight: return "ResizeTopRight";
-            case MouseCursor::ResizeBottomLeft: return "ResizeBottomLeft";
-            case MouseCursor::ResizeBottomRight: return "ResizeBottomRight";
-            case MouseCursor::ResizeHorizontal: return "ResizeHorizontal";
-            case MouseCursor::ResizeVertical: return "ResizeVertical";
-            case MouseCursor::Wait: return "Wait";
-            case MouseCursor::_Count: return "_Count";
+            case window::MouseCursor::None: return "None";
+            case window::MouseCursor::Arrow: return "Arrow";
+            case window::MouseCursor::Hand: return "Hand";
+            case window::MouseCursor::NotAllowed: return "NotAllowed";
+            case window::MouseCursor::TextInput: return "TextInput";
+            case window::MouseCursor::ResizeAll: return "ResizeAll";
+            case window::MouseCursor::ResizeTopLeft: return "ResizeTopLeft";
+            case window::MouseCursor::ResizeTopRight: return "ResizeTopRight";
+            case window::MouseCursor::ResizeBottomLeft: return "ResizeBottomLeft";
+            case window::MouseCursor::ResizeBottomRight: return "ResizeBottomRight";
+            case window::MouseCursor::ResizeHorizontal: return "ResizeHorizontal";
+            case window::MouseCursor::ResizeVertical: return "ResizeVertical";
+            case window::MouseCursor::Wait: return "Wait";
+            case window::MouseCursor::_Count: return "_Count";
         }
 
         return "<unknown>";

@@ -17,13 +17,11 @@
 namespace he::editor
 {
     ImGuiService::ImGuiService(
-        Allocator& allocator,
         EditorData& editorData,
         ImGuiPlatformService& imguiPlatformService,
         ImGuiRenderService& imguiRenderService,
         RenderService& renderService)
-        : m_allocator(allocator)
-        , m_editorData(editorData)
+        : m_editorData(editorData)
         , m_imguiPlatformService(imguiPlatformService)
         , m_imguiRenderService(imguiRenderService)
         , m_renderService(renderService)
@@ -31,7 +29,7 @@ namespace he::editor
         ImGui::SetAllocatorFunctions(
             [](size_t size, void* alloc) -> void* { return static_cast<Allocator*>(alloc)->Malloc(size); },
             [](void* ptr, void* alloc) { static_cast<Allocator*>(alloc)->Free(ptr); },
-            &m_allocator);
+            &Allocator::GetDefault());
     }
 
     bool ImGuiService::Initialize(window::View* view)

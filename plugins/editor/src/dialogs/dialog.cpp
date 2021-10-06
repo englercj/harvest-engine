@@ -2,11 +2,12 @@
 
 #include "dialog.h"
 
-#include "fmt/format.h"
+#include "he/core/appender.h"
+#include "he/core/string.h"
+#include "he/core/string_fmt.h"
 
 #include "imgui.h"
-
-#include <cstdarg>
+#include "fmt/format.h"
 
 namespace he::editor
 {
@@ -15,9 +16,9 @@ namespace he::editor
     const char* Dialog::GetLabel() const
     {
         // TODO: We can cache this with some API changes if it is too slow.
-        static std::string s_label;
-        s_label.clear();
-        fmt::format_to(std::back_inserter(s_label), "{} ##dialog-id-{}", m_title.c_str(), m_counter);
-        return s_label.c_str();
+        static String s_label;
+        s_label.Clear();
+        fmt::format_to(Appender(s_label), "{} ##dialog-id-{}", m_title, m_counter);
+        return s_label.Data();
     }
 }

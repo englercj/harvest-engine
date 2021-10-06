@@ -51,12 +51,6 @@ namespace he::window
         DisplayChanged,         ///< A display has changed, usually because of the resolution being changed
     };
 
-    /// Returns the enum as a string.
-    ///
-    /// \param[in] v The value to get the string representation of.
-    /// \return The string representation of the enum value.
-    const char* AsString(EventType v);
-
     /// Base structure for an event.
     struct Event
     {
@@ -270,7 +264,7 @@ namespace he::window
     struct ViewDropFileEvent : public ViewEvent
     {
         ViewDropFileEvent(View* v, const char* p)
-            : ViewEvent(EventType::ViewDropFile, v), filePath(CrtAllocator::Get(), p) {}
+            : ViewEvent(EventType::ViewDropFile, v), filePath(p) {}
 
         /// The file path that was dropped.
         String filePath;

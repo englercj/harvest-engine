@@ -15,7 +15,7 @@ namespace he::editor
     class ImGuiRenderService
     {
     public:
-        ImGuiRenderService(Allocator& allocator, RenderService& renderService);
+        ImGuiRenderService(RenderService& renderService);
 
         bool Initialize(rhi::SwapChainFormat swapChainFormat);
         void Terminate();
@@ -75,7 +75,6 @@ namespace he::editor
         void DestroyAllFontResources();
 
     private:
-        Allocator& m_allocator;
         RenderService& m_renderService;
 
         rhi::SwapChainFormat m_swapChainFormat{};
@@ -84,7 +83,7 @@ namespace he::editor
         rhi::VertexBufferFormat* m_vbf{ nullptr };
         rhi::RenderPipeline* m_pipeline{ nullptr };
 
-        Vector<FontResources> m_fontResources;
+        Vector<FontResources> m_fontResources{};
 
         // main viewport rendering
         uint32_t m_frameIndex{ 0 };

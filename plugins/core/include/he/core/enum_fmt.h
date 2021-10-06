@@ -2,14 +2,10 @@
 
 #pragma once
 
+#include "he/core/enum_ops.h"
 #include "he/core/type_traits.h"
 
 #include "fmt/format.h"
-
-namespace he
-{
-    template <he::Enum T> const char* AsString(T x);
-}
 
 namespace fmt
 {
@@ -24,7 +20,7 @@ namespace fmt
         template <typename FormatContext>
         auto format(T s, FormatContext& ctx) const -> decltype(ctx.out())
         {
-            return format_to(ctx.out(), he::AsString(s));
+            return format_to(ctx.out(), "{}", he::AsString(s));
         }
     };
 }

@@ -298,10 +298,11 @@ namespace he::rhi::null
     class InstanceImpl final : public Instance
     {
     public:
+        InstanceImpl(Allocator& allocator) : m_allocator(allocator) {}
+
         Result Initialize(const InstanceDesc& desc) override
         {
-            HE_ASSERT(desc.allocator);
-            m_allocator = desc.allocator;
+            HE_ASSERT(desc.allocator == nullptr || desc.allocator == &m_allocator);
             return Result::Success;
         }
 
@@ -333,7 +334,7 @@ namespace he::rhi
     template <> Result _CreateInstance<ApiBackend::Null>(Allocator& allocator, Instance*& instance)
     {
         HE_LOGF_INFO(rhi, "Initializing NULL RHI backend.");
-        instance = allocator.New<null::InstanceImpl>();
+        instance = allocator.New<null::InstanceImpl>(allocator);
         return Result::Success;
     }
 }

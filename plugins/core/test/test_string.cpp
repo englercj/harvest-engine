@@ -350,19 +350,19 @@ HE_TEST(core, String, Construct)
     }
 
     {
-        String s(a, "");
+        String s("", a);
         HE_EXPECT(s.IsEmbedded());
         HE_EXPECT_EQ(s.Size(), 0);
     }
 
     {
-        String s(a, "testing");
+        String s("testing", a);
         HE_EXPECT(s.IsEmbedded());
         HE_EXPECT_EQ(s.Size(), 7);
     }
 
     {
-        String s(a, "testing", 2);
+        String s("testing", 2, a);
         HE_EXPECT(s.IsEmbedded());
         HE_EXPECT_EQ(s.Size(), 2);
     }
@@ -376,13 +376,13 @@ HE_TEST(core, String, Construct_Copy)
     constexpr char SmallString[] = "testing";
     constexpr uint32_t SmallStringLen = HE_LENGTH_OF(SmallString) - 1;
 
-    String small(a, SmallString);
+    String small(SmallString, a);
     HE_EXPECT(small.IsEmbedded());
     HE_EXPECT_EQ(small.Size(), SmallStringLen);
     HE_EXPECT_EQ_STR(small.Data(), SmallString);
 
     {
-        String copy(a, small);
+        String copy(small, a);
         HE_EXPECT(copy.IsEmbedded());
         HE_EXPECT_EQ(copy.Size(), SmallStringLen);
         HE_EXPECT_EQ_STR(copy.Data(), small.Data());
@@ -392,7 +392,7 @@ HE_TEST(core, String, Construct_Copy)
 
     {
         AnotherAllocator a2;
-        String copy(a2, small);
+        String copy(small, a2);
         HE_EXPECT(copy.IsEmbedded());
         HE_EXPECT_EQ(copy.Size(), SmallStringLen);
         HE_EXPECT_EQ_STR(copy.Data(), small.Data());
@@ -421,13 +421,13 @@ HE_TEST(core, String, Construct_Copy)
     constexpr char LargeString[] = "this is a really long string that will certainly go into heap storage, because it is so long.";
     constexpr uint32_t LargeStringLen = HE_LENGTH_OF(LargeString) - 1;
 
-    String large(a, LargeString);
+    String large(LargeString, a);
     HE_EXPECT(!large.IsEmbedded());
     HE_EXPECT_EQ(large.Size(), LargeStringLen);
     HE_EXPECT_EQ_STR(large.Data(), LargeString);
 
     {
-        String copy(a, large);
+        String copy(large, a);
         HE_EXPECT(!copy.IsEmbedded());
         HE_EXPECT_EQ(copy.Size(), LargeStringLen);
         HE_EXPECT_EQ_STR(copy.Data(), large.Data());
@@ -437,7 +437,7 @@ HE_TEST(core, String, Construct_Copy)
 
     {
         AnotherAllocator a2;
-        String copy(a2, large);
+        String copy(large, a2);
         HE_EXPECT(!copy.IsEmbedded());
         HE_EXPECT_EQ(copy.Size(), LargeStringLen);
         HE_EXPECT_EQ_STR(copy.Data(), large.Data());
@@ -472,13 +472,13 @@ HE_TEST(core, String, Construct_Move)
     constexpr char SmallString[] = "testing";
     constexpr uint32_t SmallStringLen = HE_LENGTH_OF(SmallString) - 1;
 
-    String small(a, SmallString);
+    String small(SmallString, a);
     HE_EXPECT(small.IsEmbedded());
     HE_EXPECT_EQ(small.Size(), SmallStringLen);
     HE_EXPECT_EQ_STR(small.Data(), SmallString);
 
     {
-        String moved(a, Move(small));
+        String moved(Move(small), a);
         HE_EXPECT(moved.IsEmbedded());
         HE_EXPECT_EQ(moved.Size(), SmallStringLen);
         HE_EXPECT_EQ_STR(moved.Data(), small.Data());
@@ -488,7 +488,7 @@ HE_TEST(core, String, Construct_Move)
 
     {
         AnotherAllocator a2;
-        String moved(a2, Move(small));
+        String moved(Move(small), a2);
         HE_EXPECT(moved.IsEmbedded());
         HE_EXPECT_EQ(moved.Size(), SmallStringLen);
         HE_EXPECT_EQ_STR(moved.Data(), small.Data());
@@ -518,12 +518,12 @@ HE_TEST(core, String, Construct_Move)
     constexpr uint32_t LargeStringLen = HE_LENGTH_OF(LargeString) - 1;
 
     {
-        String large(a, LargeString);
+        String large(LargeString, a);
         HE_EXPECT(!large.IsEmbedded());
         HE_EXPECT_EQ(large.Size(), LargeStringLen);
         HE_EXPECT_EQ_STR(large.Data(), LargeString);
 
-        String moved(a, Move(large));
+        String moved(Move(large), a);
         HE_EXPECT(!moved.IsEmbedded());
         HE_EXPECT_EQ(moved.Size(), LargeStringLen);
         HE_EXPECT_EQ_STR(moved.Data(), LargeString);
@@ -534,13 +534,13 @@ HE_TEST(core, String, Construct_Move)
     }
 
     {
-        String large(a, LargeString);
+        String large(LargeString, a);
         HE_EXPECT(!large.IsEmbedded());
         HE_EXPECT_EQ(large.Size(), LargeStringLen);
         HE_EXPECT_EQ_STR(large.Data(), LargeString);
 
         AnotherAllocator a2;
-        String moved(a2, Move(large));
+        String moved(Move(large), a2);
         HE_EXPECT(!moved.IsEmbedded());
         HE_EXPECT_EQ(moved.Size(), LargeStringLen);
         HE_EXPECT_EQ_STR(moved.Data(), LargeString);
@@ -551,7 +551,7 @@ HE_TEST(core, String, Construct_Move)
     }
 
     {
-        String large(a, LargeString);
+        String large(LargeString, a);
         HE_EXPECT(!large.IsEmbedded());
         HE_EXPECT_EQ(large.Size(), LargeStringLen);
         HE_EXPECT_EQ_STR(large.Data(), LargeString);
@@ -567,7 +567,7 @@ HE_TEST(core, String, Construct_Move)
     }
 
     {
-        String large(a, LargeString);
+        String large(LargeString, a);
         HE_EXPECT(!large.IsEmbedded());
         HE_EXPECT_EQ(large.Size(), LargeStringLen);
         HE_EXPECT_EQ_STR(large.Data(), LargeString);
@@ -591,7 +591,7 @@ HE_TEST(core, String, operator_assign_copy)
     constexpr char SmallString[] = "testing";
     constexpr uint32_t SmallStringLen = HE_LENGTH_OF(SmallString) - 1;
 
-    String small(a, SmallString);
+    String small(SmallString, a);
     HE_EXPECT(small.IsEmbedded());
     HE_EXPECT_EQ(small.Size(), SmallStringLen);
     HE_EXPECT_EQ_STR(small.Data(), SmallString);
@@ -621,7 +621,7 @@ HE_TEST(core, String, operator_assign_copy)
     constexpr char LargeString[] = "this is a really long string that will certainly go into heap storage, because it is so long.";
     constexpr uint32_t LargeStringLen = HE_LENGTH_OF(LargeString) - 1;
 
-    String large(a, LargeString);
+    String large(LargeString, a);
     HE_EXPECT(!large.IsEmbedded());
     HE_EXPECT_EQ(large.Size(), LargeStringLen);
     HE_EXPECT_EQ_STR(large.Data(), LargeString);
@@ -654,7 +654,7 @@ HE_TEST(core, String, operator_assign)
 {
     Allocator& a = CrtAllocator::Get();
 
-    String s(a, "Hello, world!");
+    String s("Hello, world!", a);
 
     s = "Test";
     HE_EXPECT_EQ(s.Size(), 4);
@@ -664,7 +664,7 @@ HE_TEST(core, String, operator_assign)
     HE_EXPECT_EQ(s.Size(), 2);
     HE_EXPECT_EQ_STR(s.Data(), "bc");
 
-    String s2(a, "hello");
+    String s2("hello", a);
     s = s2;
     HE_EXPECT_EQ(s.Size(), 5);
     HE_EXPECT_EQ_STR(s.Data(), "hello");
@@ -679,7 +679,7 @@ HE_TEST(core, String, operator_assign_move)
     constexpr char SmallString[] = "testing";
     constexpr uint32_t SmallStringLen = HE_LENGTH_OF(SmallString) - 1;
 
-    String small(a, SmallString);
+    String small(SmallString, a);
     HE_EXPECT(small.IsEmbedded());
     HE_EXPECT_EQ(small.Size(), SmallStringLen);
     HE_EXPECT_EQ_STR(small.Data(), SmallString);
@@ -709,7 +709,7 @@ HE_TEST(core, String, operator_assign_move)
     constexpr uint32_t LargeStringLen = HE_LENGTH_OF(LargeString) - 1;
 
     {
-        String large(a, LargeString);
+        String large(LargeString, a);
         HE_EXPECT(!large.IsEmbedded());
         HE_EXPECT_EQ(large.Size(), LargeStringLen);
         HE_EXPECT_EQ_STR(large.Data(), LargeString);
@@ -726,7 +726,7 @@ HE_TEST(core, String, operator_assign_move)
     }
 
     {
-        String large(a, LargeString);
+        String large(LargeString, a);
         HE_EXPECT(!large.IsEmbedded());
         HE_EXPECT_EQ(large.Size(), LargeStringLen);
         HE_EXPECT_EQ_STR(large.Data(), LargeString);
@@ -749,7 +749,7 @@ HE_TEST(core, String, operator_index)
 {
     Allocator& a = CrtAllocator::Get();
 
-    String s(a, "test");
+    String s("test", a);
     HE_EXPECT_EQ(s[0], 't');
     HE_EXPECT_EQ(s[3], 't');
 }
@@ -796,13 +796,13 @@ HE_TEST(core, String, operator_eq)
 {
     Allocator& alloc = CrtAllocator::Get();
 
-    const String a(alloc, "Hello, world!");
-    const String b(alloc, "Hello, world!");
-    const String c(alloc, "Goodbye, world!");
+    const String a("Hello, world!", alloc);
+    const String b("Hello, world!", alloc);
+    const String c("Goodbye, world!", alloc);
 
     HE_EXPECT((a == a), a, a);
-    HE_EXPECT((a == b), a, b);
-    HE_EXPECT(!(a == c), a, c);
+    HE_EXPECT((a == b), b, a);
+    HE_EXPECT(!(a == c), c, a);
 
     HE_EXPECT((b == a), b, a);
     HE_EXPECT((b == b), b, b);
@@ -818,7 +818,7 @@ HE_TEST(core, String, operator_eq_str)
 {
     Allocator& alloc = CrtAllocator::Get();
 
-    const String a(alloc, "Hello, world!");
+    const String a("Hello, world!", alloc);
 
     HE_EXPECT((a == "Hello, world!"), a);
     HE_EXPECT(!(a == "Goodbye, world!"), a);
@@ -829,13 +829,13 @@ HE_TEST(core, String, operator_ne)
 {
     Allocator& alloc = CrtAllocator::Get();
 
-    const String a(alloc, "Hello, world!");
-    const String b(alloc, "Hello, world!");
-    const String c(alloc, "Goodbye, world!");
+    const String a("Hello, world!", alloc);
+    const String b("Hello, world!", alloc);
+    const String c("Goodbye, world!", alloc);
 
     HE_EXPECT(!(a != a), a, a);
-    HE_EXPECT(!(a != b), a, b);
-    HE_EXPECT((a != c), a, c);
+    HE_EXPECT(!(a != b), b, a);
+    HE_EXPECT((a != c), c, a);
 
     HE_EXPECT(!(b != a), b, a);
     HE_EXPECT(!(b != b), b, b);
@@ -851,7 +851,7 @@ HE_TEST(core, String, operator_ne_str)
 {
     Allocator& alloc = CrtAllocator::Get();
 
-    const String a(alloc, "Hello, world!");
+    const String a("Hello, world!", alloc);
 
     HE_EXPECT(!(a != "Hello, world!"), a);
     HE_EXPECT((a != "Goodbye, world!"), a);
@@ -862,13 +862,13 @@ HE_TEST(core, String, operator_lt)
 {
     Allocator& alloc = CrtAllocator::Get();
 
-    const String a(alloc, "Hello, world!");
-    const String b(alloc, "Hello, world!");
-    const String c(alloc, "Goodbye, world!");
+    const String a("Hello, world!", alloc);
+    const String b("Hello, world!", alloc);
+    const String c("Goodbye, world!", alloc);
 
     HE_EXPECT(!(a < a), a, a);
-    HE_EXPECT(!(a < b), a, b);
-    HE_EXPECT(!(a < c), a, c);
+    HE_EXPECT(!(a < b), b, a);
+    HE_EXPECT(!(a < c), c, a);
 
     HE_EXPECT(!(b < a), b, a);
     HE_EXPECT(!(b < b), b, b);
@@ -884,13 +884,13 @@ HE_TEST(core, String, operator_le)
 {
     Allocator& alloc = CrtAllocator::Get();
 
-    const String a(alloc, "Hello, world!");
-    const String b(alloc, "Hello, world!");
-    const String c(alloc, "Goodbye, world!");
+    const String a("Hello, world!", alloc);
+    const String b("Hello, world!", alloc);
+    const String c("Goodbye, world!", alloc);
 
     HE_EXPECT((a <= a), a, a);
-    HE_EXPECT((a <= b), a, b);
-    HE_EXPECT(!(a <= c), a, c);
+    HE_EXPECT((a <= b), b, a);
+    HE_EXPECT(!(a <= c), c, a);
 
     HE_EXPECT((b <= a), b, a);
     HE_EXPECT((b <= b), b, b);
@@ -906,13 +906,13 @@ HE_TEST(core, String, operator_gt)
 {
     Allocator& alloc = CrtAllocator::Get();
 
-    const String a(alloc, "Hello, world!");
-    const String b(alloc, "Hello, world!");
-    const String c(alloc, "Goodbye, world!");
+    const String a("Hello, world!", alloc);
+    const String b("Hello, world!", alloc);
+    const String c("Goodbye, world!", alloc);
 
     HE_EXPECT(!(a > a), a, a);
-    HE_EXPECT(!(a > b), a, b);
-    HE_EXPECT((a > c), a, c);
+    HE_EXPECT(!(a > b), b, a);
+    HE_EXPECT((a > c), c, a);
 
     HE_EXPECT(!(b > a), b, a);
     HE_EXPECT(!(b > b), b, b);
@@ -928,13 +928,13 @@ HE_TEST(core, String, operator_ge)
 {
     Allocator& alloc = CrtAllocator::Get();
 
-    const String a(alloc, "Hello, world!");
-    const String b(alloc, "Hello, world!");
-    const String c(alloc, "Goodbye, world!");
+    const String a("Hello, world!", alloc);
+    const String b("Hello, world!", alloc);
+    const String c("Goodbye, world!", alloc);
 
     HE_EXPECT((a >= a), a, a);
-    HE_EXPECT((a >= b), a, b);
-    HE_EXPECT((a >= c), a, c);
+    HE_EXPECT((a >= b), b, a);
+    HE_EXPECT((a >= c), c, a);
 
     HE_EXPECT((b >= a), b, a);
     HE_EXPECT((b >= b), b, b);
@@ -1213,13 +1213,13 @@ HE_TEST(core, String, Front_Back)
     Allocator& a = CrtAllocator::Get();
 
     {
-        String s(a, "test");
+        String s("test", a);
         HE_EXPECT_EQ(s.Front(), 't');
         HE_EXPECT_EQ(s.Back(), 't');
     }
 
     {
-        String s(a, "This is a really long string that should cause the string to allocate the necessary storage on the heap.");
+        String s("This is a really long string that should cause the string to allocate the necessary storage on the heap.", a);
         HE_EXPECT_EQ(s.Front(), 'T');
         HE_EXPECT_EQ(s.Back(), '.');
     }
@@ -1230,9 +1230,9 @@ HE_TEST(core, String, CompareTo)
 {
     Allocator& alloc = CrtAllocator::Get();
 
-    const String a(alloc, "Hello, world!");
-    const String b(alloc, "Hello, world!");
-    const String c(alloc, "Goodbye, world!");
+    const String a("Hello, world!", alloc);
+    const String b("Hello, world!", alloc);
+    const String c("Goodbye, world!", alloc);
 
     HE_EXPECT_EQ(a.CompareTo(a), 0);
     HE_EXPECT_EQ(a.CompareTo(b), 0);
@@ -1258,7 +1258,7 @@ HE_TEST(core, String, Begin)
     }
 
     {
-        String s(a, "Hello, world!");
+        String s("Hello, world!", a);
         HE_EXPECT_EQ_PTR(s.Begin(), StringTestAttorney::GetEmbed(s));
     }
 }
@@ -1274,7 +1274,7 @@ HE_TEST(core, String, End)
     }
 
     {
-        String s(a, "Hello, world!");
+        String s("Hello, world!", a);
         HE_EXPECT_EQ_PTR(s.End(), (StringTestAttorney::GetEmbed(s) + s.Size()));
     }
 }
@@ -1352,7 +1352,7 @@ HE_TEST(core, String, Erase)
 {
     Allocator& a = CrtAllocator::Get();
 
-    String s(a, "abcdefg");
+    String s("abcdefg", a);
     HE_EXPECT_EQ(s.Size(), 7);
     HE_EXPECT_EQ_STR(s.Data(), "abcdefg");
 
@@ -1414,7 +1414,7 @@ HE_TEST(core, String, PopBack)
 {
     Allocator& a = CrtAllocator::Get();
 
-    String s(a, "ab");
+    String s("ab", a);
     HE_EXPECT_EQ(s.Size(), 2);
     HE_EXPECT_EQ_STR(s.Data(), "ab");
 
@@ -1434,7 +1434,7 @@ HE_TEST(core, String, PopFront)
 {
     Allocator& a = CrtAllocator::Get();
 
-    String s(a, "ab");
+    String s("ab", a);
     HE_EXPECT_EQ(s.Size(), 2);
     HE_EXPECT_EQ_STR(s.Data(), "ab");
 
@@ -1470,7 +1470,7 @@ HE_TEST(core, String, Append)
     HE_EXPECT_EQ(s.Size(), 5);
     HE_EXPECT_EQ_STR(s.Data(), "abc12");
 
-    String s2(a, "hello");
+    String s2("hello", a);
     s.Append(s2);
     HE_EXPECT_EQ(s.Size(), 10);
     HE_EXPECT_EQ_STR(s.Data(), "abc12hello");
@@ -1481,7 +1481,7 @@ HE_TEST(core, String, Assign)
 {
     Allocator& a = CrtAllocator::Get();
 
-    String s(a, "Hello, world!");
+    String s("Hello, world!", a);
 
     s.Assign("Test");
     HE_EXPECT_EQ(s.Size(), 4);
@@ -1491,7 +1491,7 @@ HE_TEST(core, String, Assign)
     HE_EXPECT_EQ(s.Size(), 2);
     HE_EXPECT_EQ_STR(s.Data(), "bc");
 
-    String s2(a, "hello");
+    String s2("hello", a);
     s.Assign(s2);
     HE_EXPECT_EQ(s.Size(), 5);
     HE_EXPECT_EQ_STR(s.Data(), "hello");

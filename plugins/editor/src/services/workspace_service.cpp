@@ -33,8 +33,6 @@ namespace he::editor
 
     void WorkspaceService::Show()
     {
-        static std::string scratch;
-
         m_documentService.DestroyClosedDocuments();
         m_dialogService.DestroyClosedDialogs();
 

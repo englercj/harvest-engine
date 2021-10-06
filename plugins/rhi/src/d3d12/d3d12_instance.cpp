@@ -54,8 +54,7 @@ namespace he::rhi::d3d12
 
     Result InstanceImpl::Initialize(const InstanceDesc& desc)
     {
-        HE_ASSERT(desc.allocator);
-        HE_ASSERT(&m_allocator == desc.allocator);
+        HE_ASSERT(desc.allocator == nullptr || desc.allocator == &m_allocator);
 
         // Load dxgi.dll and pointers
         m_dxgiLib = LoadLibraryW(L"dxgi.dll");

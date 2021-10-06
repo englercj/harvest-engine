@@ -20,8 +20,8 @@ return function (plugin)
                     end
                 end
 
-                if options.includeDirs then
-                    for _, dir in ipairs(options.includeDirs) do
+                if options.include_dirs then
+                    for _, dir in ipairs(options.include_dirs) do
                         opt = opt .. "-I " .. dir .. " "
                     end
                 end

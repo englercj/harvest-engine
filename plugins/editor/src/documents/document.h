@@ -3,8 +3,7 @@
 #pragma once
 
 #include "he/core/compiler.h"
-
-#include <string>
+#include "he/core/string.h"
 
 namespace he::editor
 {
@@ -26,7 +25,7 @@ namespace he::editor
         bool IsDirty() const { return m_dirty; }
 
     protected:
-        std::string m_title{};
+        String m_title{};
 
     private:
         static uint32_t s_nextCounter;

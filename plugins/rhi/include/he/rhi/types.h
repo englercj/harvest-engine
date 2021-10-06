@@ -189,12 +189,6 @@ namespace he::rhi
         NotFound,       ///< The device was not found.
     };
 
-    /// Returns the enum as a string.
-    ///
-    /// \param[in] x The value to get the string representation of.
-    /// \return The string representation of the enum value.
-    const char* AsString(ApiResult x);
-
     /// Type of graphics API that can back the harvest rendering system.
     enum class ApiBackend : uint8_t
     {
@@ -204,12 +198,6 @@ namespace he::rhi
         Vulkan,
         WebGPU,
     };
-
-    /// Returns the enum as a string.
-    ///
-    /// \param[in] x The value to get the string representation of.
-    /// \return The string representation of the enum value.
-    const char* AsString(ApiBackend x);
 
     // --------------------------------------------------------------------------------------------
     // Instance Types
@@ -340,7 +328,7 @@ namespace he::rhi
         /// Alias for a series of common copy source operations.
         Upload = Indices | Vertices | Constants | CopySrc,
     };
-    HE_ENUM_FLAGS(BufferUsage)
+    HE_ENUM_FLAGS(BufferUsage);
 
     /// Type of a buffer view.
     enum class BufferViewType : uint8_t
@@ -492,7 +480,7 @@ namespace he::rhi
         CopySrc             = (1 << 4),     ///< Can be the source of a copy operation.
         All                 = (1 << 5) - 1, ///< Sets all the usage flags.
     };
-    HE_ENUM_FLAGS(TextureUsage)
+    HE_ENUM_FLAGS(TextureUsage);
 
     /// Flags defining which parts of a render target view are cleared.
     enum class ClearFlag : uint32_t
@@ -502,7 +490,7 @@ namespace he::rhi
         Stencil = (1 << 1),     ///< Clear the stencil plane.
         All     = (1 << 2) - 1, ///< Clear everything.
     };
-    HE_ENUM_FLAGS(ClearFlag)
+    HE_ENUM_FLAGS(ClearFlag);
 
     /// Enumeration of supported sample counts for textures. Defines the number of samples
     /// per pixel.
@@ -956,7 +944,7 @@ namespace he::rhi
         Alpha       = (1 << 3),
         All         = Red | Green | Blue | Alpha
     };
-    HE_ENUM_FLAGS(ColorWriteMask)
+    HE_ENUM_FLAGS(ColorWriteMask);
 
     /// Specifies triangles facing a particular direction are not drawn.
     enum class CullMode : uint8_t

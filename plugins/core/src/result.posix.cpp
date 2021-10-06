@@ -2,6 +2,7 @@
 
 #include "he/core/result.h"
 
+#include "he/core/appender.h"
 #include "he/core/string.h"
 #include "he/core/utils.h"
 
@@ -31,7 +32,7 @@ namespace he
         // strings cap out at like 50 chracters, so they should all fit in the embedded buffer.
         // If we can't fit in the embedded buffer then we jump to 512 characters and grow from
         // there as needed. The jump in size is to make it very likely we only ever allocate once.
-        ret.Resize(String::MaxEmbedCharacters);
+        ret.Resize(String::MaxEmbedCharacters, DefaultInit);
 
         int e = 0;
 
@@ -65,9 +66,7 @@ namespace he
 
         if (e == EINVAL)
         {
-            fmt::memory_buffer buf;
-            fmt::format_to(fmt::appender(buf), "Unknown error: {}", m_code);
-            ret.Assign(buf.data(), static_cast<uint32_t>(buf.size()));
+            fmt::format_to(Appender(ret), "Unknown error: {}", m_code);
         }
         else
         {

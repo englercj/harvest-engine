@@ -4,6 +4,7 @@
 
 #include "he/core/ascii.h"
 #include "he/core/assert.h"
+#include "he/core/enum_ops.h"
 #include "he/core/types.h"
 
 namespace he::schema
@@ -289,39 +290,43 @@ namespace he::schema
         ++m_cursor;
         return true;
     }
+}
 
-    const char* AsString(Lexer::TokenType type)
+namespace he
+{
+    template <>
+    const char* AsString(schema::Lexer::TokenType type)
     {
         switch (type)
         {
-            case Lexer::TokenType::None: return "None";
-            case Lexer::TokenType::Arrow: return "Arrow";
-            case Lexer::TokenType::Asterisk: return "Asterisk";
-            case Lexer::TokenType::Colon: return "Colon";
-            case Lexer::TokenType::Comma: return "Comma";
-            case Lexer::TokenType::Comment: return "Comment";
-            case Lexer::TokenType::CloseAngleBracket: return "CloseAngleBracket";
-            case Lexer::TokenType::CloseCurlyBracket: return "CloseCurlyBracket";
-            case Lexer::TokenType::CloseParens: return "CloseParens";
-            case Lexer::TokenType::CloseSquareBracket: return "CloseSquareBracket";
-            case Lexer::TokenType::Dot: return "Dot";
-            case Lexer::TokenType::Eof: return "Eof";
-            case Lexer::TokenType::Equals: return "Equals";
-            case Lexer::TokenType::Error: return "Error";
-            case Lexer::TokenType::Float: return "Float";
-            case Lexer::TokenType::Identifier: return "Identifier";
-            case Lexer::TokenType::Integer: return "Integer";
-            case Lexer::TokenType::Minus: return "Minus";
-            case Lexer::TokenType::Newline: return "Newline";
-            case Lexer::TokenType::OpenAngleBracket: return "OpenAngleBracket";
-            case Lexer::TokenType::OpenCurlyBracket: return "OpenCurlyBracket";
-            case Lexer::TokenType::OpenParens: return "OpenParens";
-            case Lexer::TokenType::OpenSquareBracket: return "OpenSquareBracket";
-            case Lexer::TokenType::Plus: return "Plus";
-            case Lexer::TokenType::Semicolon: return "Semicolon";
-            case Lexer::TokenType::String: return "String";
-            case Lexer::TokenType::Whitespace: return "Whitespace";
-            case Lexer::TokenType::_Count: return "_Count";
+            case schema::Lexer::TokenType::None: return "None";
+            case schema::Lexer::TokenType::Arrow: return "Arrow";
+            case schema::Lexer::TokenType::Asterisk: return "Asterisk";
+            case schema::Lexer::TokenType::Colon: return "Colon";
+            case schema::Lexer::TokenType::Comma: return "Comma";
+            case schema::Lexer::TokenType::Comment: return "Comment";
+            case schema::Lexer::TokenType::CloseAngleBracket: return "CloseAngleBracket";
+            case schema::Lexer::TokenType::CloseCurlyBracket: return "CloseCurlyBracket";
+            case schema::Lexer::TokenType::CloseParens: return "CloseParens";
+            case schema::Lexer::TokenType::CloseSquareBracket: return "CloseSquareBracket";
+            case schema::Lexer::TokenType::Dot: return "Dot";
+            case schema::Lexer::TokenType::Eof: return "Eof";
+            case schema::Lexer::TokenType::Equals: return "Equals";
+            case schema::Lexer::TokenType::Error: return "Error";
+            case schema::Lexer::TokenType::Float: return "Float";
+            case schema::Lexer::TokenType::Identifier: return "Identifier";
+            case schema::Lexer::TokenType::Integer: return "Integer";
+            case schema::Lexer::TokenType::Minus: return "Minus";
+            case schema::Lexer::TokenType::Newline: return "Newline";
+            case schema::Lexer::TokenType::OpenAngleBracket: return "OpenAngleBracket";
+            case schema::Lexer::TokenType::OpenCurlyBracket: return "OpenCurlyBracket";
+            case schema::Lexer::TokenType::OpenParens: return "OpenParens";
+            case schema::Lexer::TokenType::OpenSquareBracket: return "OpenSquareBracket";
+            case schema::Lexer::TokenType::Plus: return "Plus";
+            case schema::Lexer::TokenType::Semicolon: return "Semicolon";
+            case schema::Lexer::TokenType::String: return "String";
+            case schema::Lexer::TokenType::Whitespace: return "Whitespace";
+            case schema::Lexer::TokenType::_Count: return "_Count";
         }
 
         return "<unknown>";

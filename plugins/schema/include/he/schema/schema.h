@@ -16,7 +16,7 @@ namespace he::schema
     {
         Unknown,
 
-        // Basic types
+        // Arithmetic types
         Bool,
         Int8,
         Int16,
@@ -33,7 +33,6 @@ namespace he::schema
         Array,
         List,
         Map,
-        Pointer,
         Set,
         String,
         Vector,
@@ -43,6 +42,7 @@ namespace he::schema
         Enum,
         Interface,
         Struct,
+        Union,
     };
 
     enum class AttributeTarget : uint32_t
@@ -57,6 +57,7 @@ namespace he::schema
         Method      = 1 << 6,
         Parameter   = 1 << 7,
         Struct      = 1 << 8,
+        Union       = 1 << 9,
 
         All         = 0xffffffff,
     };
@@ -66,6 +67,7 @@ namespace he::schema
     {
         switch (t)
         {
+            case BaseType::Bool:
             case BaseType::Int8:
             case BaseType::Int16:
             case BaseType::Int32:
@@ -84,6 +86,7 @@ namespace he::schema
     {
         switch (t)
         {
+            case BaseType::Bool:
             case BaseType::Uint8:
             case BaseType::Uint16:
             case BaseType::Uint32:
@@ -123,6 +126,7 @@ namespace he::schema
             case BaseType::Vector:
             case BaseType::Interface:
             case BaseType::Struct:
+            case BaseType::Union:
                 return true;
             default:
                 return false;
@@ -142,6 +146,23 @@ namespace he::schema
         uint64_t u64;
         float f32;
         double f64;
+    };
+
+    struct ObjectDef
+    {
+        enum class Type
+        {
+            Alias,
+            Attribute,
+            Const,
+            Enum,
+            Interface,
+            Struct,
+            Union,
+        };
+
+        Type type;
+        uint32_t index;
     };
 
     struct Value
@@ -235,7 +256,7 @@ namespace he::schema
         // Name of the constant used as the fixed size when `base` is `Array`.
         String name;
 
-        // Element type if `base` is `Array`, `List`, `Map`, `Pointer`, `Set`, or `Vector`.
+        // Element type if `base` is `Array`, `List`, `Map`, `Set`, or `Vector`.
         Type* element{ nullptr };
 
         // Key type, if `base` is `Map`.
@@ -266,8 +287,9 @@ namespace he::schema
             , defaultValue(allocator)
         {}
 
-        Type type;
+        uint32_t id{ 0 };
         String name;
+        Type type;
         Vector<Attribute> attributes;
 
         Value defaultValue;
@@ -330,6 +352,19 @@ namespace he::schema
         Value value;
     };
 
+    struct UnionDef
+    {
+        UnionDef(Allocator& allocator)
+            : name(allocator)
+        {}
+
+        uint32_t id{ 0 };
+        String name;
+
+        Vector<Attribute> attributes;
+        Vector<FieldDef> fields;
+    };
+
     struct StructDef
     {
         StructDef(Allocator& allocator)
@@ -342,8 +377,10 @@ namespace he::schema
             , consts(allocator)
             , enums(allocator)
             , structs(allocator)
+            , unions(allocator)
         {}
 
+        uint32_t id{ 0 };
         String name;
         Type extends;
 
@@ -351,10 +388,13 @@ namespace he::schema
         Vector<FieldDef> fields;
         Vector<String> typeParams;
 
+        Vector<ObjectDef> objects;
+
         Vector<AliasDef> aliases;
         Vector<ConstDef> consts;
         Vector<EnumDef> enums;
         Vector<StructDef> structs;
+        Vector<UnionDef> unions;
     };
 
     struct MethodParamDef
@@ -379,6 +419,7 @@ namespace he::schema
             , returnType(allocator)
         {}
 
+        uint32_t id{ 0 };
         String name;
         Vector<Attribute> attributes;
         Vector<MethodParamDef> parameters;
@@ -399,6 +440,7 @@ namespace he::schema
             , structs(allocator)
         {}
 
+        uint32_t id{ 0 };
         String name;
         Vector<Type> implements;
 
@@ -406,10 +448,13 @@ namespace he::schema
         Vector<MethodDef> methods;
         Vector<String> typeParams;
 
+        Vector<ObjectDef> objects;
+
         Vector<AliasDef> aliases;
         Vector<ConstDef> consts;
         Vector<EnumDef> enums;
         Vector<StructDef> structs;
+        Vector<UnionDef> unions;
     };
 
     struct SchemaDef
@@ -437,9 +482,11 @@ namespace he::schema
             return (usedTypes & (1ull << shift)) != 0;
         }
 
+        uint32_t namespaceId{ 0x811c9dc5 };
         String namespaceName;
 
         Vector<String> imports;
+        Vector<ObjectDef> objects;
 
         Vector<AliasDef> aliases;
         Vector<AttributeDef> attributes;
@@ -447,6 +494,7 @@ namespace he::schema
         Vector<EnumDef> enums;
         Vector<InterfaceDef> interfaces;
         Vector<StructDef> structs;
+        Vector<UnionDef> unions;
 
         uint64_t usedTypes{ 0 };
     };

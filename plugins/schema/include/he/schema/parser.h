@@ -61,6 +61,9 @@ namespace he::schema
         const EnumDef* FindEnumDef(StringView name) const;
         const InterfaceDef* FindInterfaceDef(StringView name) const;
         const StructDef* FindStructDef(StringView name) const;
+        const UnionDef* FindUnionDef(StringView name) const;
+
+        const Type& ResolveType(const Type& type) const;
 
         bool Expect(Lexer::TokenType expected);
 
@@ -102,10 +105,15 @@ namespace he::schema
         bool ParseNamespace();
         bool ParseTopLevelStatement();
 
-        bool ParseStruct(StructDef& def);
+        bool ParseStruct(StructDef& def, uint32_t parentId);
         bool ParseStructBlock(StructDef& def);
         bool ParseStructStatement(StructDef& def);
-        bool ParseStructField(FieldDef& def);
+
+        bool ParseUnion(UnionDef& def, uint32_t parentId);
+        bool ParseUnionBlock(UnionDef& def);
+        bool ParseUnionStatement(UnionDef& def);
+
+        bool ParseField(FieldDef& def);
 
         bool ParseAttribute(AttributeDef& def);
         bool ParseAttributeTarget(AttributeDef& def);
@@ -133,18 +141,6 @@ namespace he::schema
         bool DecodeString();
 
     private:
-        struct StringViewHasher
-        {
-            size_t operator()(const StringView& s) const
-            {
-            #if HE_CPU_64_BIT
-                return FNV64::HashData(s.Data(), s.Size());
-            #else
-                return FNV32::HashData(s.Data(), s.Size());
-            #endif
-            }
-        };
-
         struct Import
         {
             Import(Allocator& allocator)
@@ -157,15 +153,15 @@ namespace he::schema
             SchemaDef schema;
         };
 
-        using AttributeDefMap = std::unordered_map<StringView, AttributeDef, StringViewHasher>;
-        using BaseTypeMap = std::unordered_map<StringView, BaseType, StringViewHasher>;
-        using ImportMap = std::unordered_map<StringView, Vector<Import>, StringViewHasher>;
+        using AttributeDefMap = std::unordered_map<StringView, AttributeDef>;
+        using BaseTypeMap = std::unordered_map<StringView, BaseType>;
+        using ImportMap = std::unordered_map<StringView, Vector<Import>>;
 
     private:
         Allocator& m_allocator;
 
         SchemaDef m_schema;
-        ImportMap m_imports;
+        ImportMap m_imports{};
         uint32_t m_importDepth{ 0 };
 
         Lexer m_lexer;

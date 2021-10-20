@@ -24,11 +24,11 @@ namespace he
 
     CrtAllocator& CrtAllocator::Get()
     {
-        // Hack to ensure the allocator is never actually destructed so it lives the entire
-        // lifetime of the application.
+        // Since we don't know static destruciton order this ensures the allocator never actually
+        // destructs and therefore will always outlive any static allocations.
         constexpr size_t Alignment = Max<size_t>(alignof(CrtAllocator), 8);
         static HE_ALIGNED(Alignment) char s_mem[sizeof(CrtAllocator)];
-        static CrtAllocator* allocator = new(s_mem) CrtAllocator();
-        return *allocator;
+        static CrtAllocator* s_allocator = new(s_mem) CrtAllocator();
+        return *s_allocator;
     }
 }

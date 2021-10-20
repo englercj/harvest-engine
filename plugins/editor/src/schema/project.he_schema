@@ -2,10 +2,18 @@
 
 namespace he.editor.schema;
 
+const ProjectFileId: string = "HPRJ";
+
 struct Project
 {
     id: uint8[16];
     name: string;
     assetRoot: string;
-    test: uint8*;
+    stuff: uint8;
+}
+
+union Test
+{
+    a: uint32;
+    c: int8;
 }

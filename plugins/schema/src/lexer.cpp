@@ -125,8 +125,6 @@ namespace he::schema
                     return TokenType::Arrow;
                 }
                 return TokenType::Minus;
-            case '*':
-                return TokenType::Asterisk;
             case '"':
                 return LexString();
             case '{':
@@ -301,7 +299,6 @@ namespace he
         {
             case schema::Lexer::TokenType::None: return "None";
             case schema::Lexer::TokenType::Arrow: return "Arrow";
-            case schema::Lexer::TokenType::Asterisk: return "Asterisk";
             case schema::Lexer::TokenType::Colon: return "Colon";
             case schema::Lexer::TokenType::Comma: return "Comma";
             case schema::Lexer::TokenType::Comment: return "Comment";

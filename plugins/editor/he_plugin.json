@@ -27,6 +27,7 @@
             "schema_compile": [
                 {
                     "glob": "src/schema/*.he_schema",
+                    "targets": ["cpp"],
                     "json": true
                 }
             ],

@@ -1,6 +1,7 @@
 # Harvest Schema - Language Guide
 
-TODO Doc: pointers
+TODO: What is this? Why does it exist? Comparison with other options (protobuf, flatbuffers, bond, cap'n'proto, etc).
+TODO: Document name resolution rules. Names are local to the namespace, not the object. Searching starts at namespace and walks up namespace levels if nothing is found. Searches in your file localy first, then imports with the same namespace. Then imports with a "higher" namespace.
 
 ## Basic Example
 
@@ -60,7 +61,7 @@ A namespace, if specified, must be the first statement after imports in the file
 
 The following types are defined as part of the language.
 
-### Basic Types
+### Scalars
 
 |   Schema   |      C++      |    C#    | Size (bytes) |
 | ---------- | ------------- | -------- | -----------: |

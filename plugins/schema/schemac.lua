@@ -14,6 +14,12 @@ return function (plugin)
                     opt = opt .. "--grpc "
                 end
 
+                if options.targets then
+                    for _, target in ipairs(options.targets) do
+                        opt = opt .. "-t " .. target .. " "
+                    end
+                end
+
                 if options.includeDirs then
                     for _, dir in ipairs(options.includeDirs) do
                         opt = opt .. "-I " .. dir .. " "
@@ -21,11 +27,15 @@ return function (plugin)
                 end
 
                 if options.json then
-                    opt = opt .. "--json "
+                    opt = opt .. "-j "
                 end
 
                 if options.buffer then
-                    opt = opt .. "--buffer "
+                    opt = opt .. "-b "
+                end
+
+                if options.zero_copy then
+                    opt = opt .. "-z "
                 end
 
                 dependson { "he_schemac" }
@@ -34,7 +44,7 @@ return function (plugin)
                     compilebuildoutputs "on"
                     buildmessage "Compiling schema file %{file.abspath}"
                     buildcommands {
-                        he.target_bin_dir .. "/he_schemac -o " .. he.file_gen_dir .. " %{file.abspath}",
+                        he.target_bin_dir .. "/he_schemac " .. opt .. "-o " .. he.file_gen_dir .. " %{file.abspath}",
                     }
                     buildoutputs {
                         he.file_gen_dir .. "/%{file.basename}.generated.h",

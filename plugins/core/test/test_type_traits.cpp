@@ -46,25 +46,3 @@ HE_TEST(core, type_traits, IsSpecialization)
     static_assert(IsSpecialization<Vector<int>, Vector>);
     static_assert(!IsSpecialization<Vector<int>, std::vector>);
 }
-
-// ------------------------------------------------------------------------------------------------
-HE_TEST(core, type_traits, IsEnum)
-{
-    enum TestEnum { A };
-    static_assert(IsEnum<TestEnum>);
-    static_assert(!IsEnum<int>);
-    static_assert(!IsEnum<Vector<int>>);
-}
-
-// ------------------------------------------------------------------------------------------------
-HE_TEST(core, type_traits, EnumType)
-{
-    enum class TestEnumInt { A };
-    enum class TestEnumUint : uint32_t { A };
-
-    static_assert(std::is_same<EnumType<TestEnumInt>, int32_t>::value);
-    static_assert(std::is_same<EnumType<TestEnumUint>, uint32_t>::value);
-
-    static_assert(!std::is_same<EnumType<TestEnumInt>, bool>::value);
-    static_assert(!std::is_same<EnumType<TestEnumUint>, int8_t>::value);
-}

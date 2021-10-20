@@ -27,26 +27,27 @@
 namespace he::schema
 {
     // Keywords
-    constexpr char KW_Attribute[] = "attribute";
-    constexpr char KW_Import[] = "import";
-    constexpr char KW_Namespace[] = "namespace";
-    constexpr char KW_Enum[] = "enum";
-    constexpr char KW_Struct[] = "struct";
-    constexpr char KW_Extends[] = "extends";
-    constexpr char KW_Implements[] = "implements";
-    constexpr char KW_Const[] = "const";
-    constexpr char KW_Interface[] = "interface";
     constexpr char KW_Alias[] = "alias";
-    constexpr char KW_List[] = "list";
-    constexpr char KW_Map[] = "map";
-    constexpr char KW_Set[] = "set";
-    constexpr char KW_True[] = "true";
-    constexpr char KW_False[] = "false";
+    constexpr char KW_Attribute[] = "attribute";
+    constexpr char KW_Const[] = "const";
+    constexpr char KW_Enum[] = "enum";
     constexpr char KW_Enumerator[] = "enumerator";
+    constexpr char KW_Extends[] = "extends";
+    constexpr char KW_False[] = "false";
     constexpr char KW_Field[] = "field";
     constexpr char KW_File[] = "file";
+    constexpr char KW_Implements[] = "implements";
+    constexpr char KW_Import[] = "import";
+    constexpr char KW_Interface[] = "interface";
+    constexpr char KW_List[] = "list";
+    constexpr char KW_Map[] = "map";
     constexpr char KW_Method[] = "method";
+    constexpr char KW_Namespace[] = "namespace";
     constexpr char KW_Parameter[] = "parameter";
+    constexpr char KW_Set[] = "set";
+    constexpr char KW_Struct[] = "struct";
+    constexpr char KW_True[] = "true";
+    constexpr char KW_Union[] = "union";
 
     // Builtin Types
     struct BuiltinType { const StringView name; const BaseType base; };
@@ -77,13 +78,11 @@ namespace he::schema
     Parser::Parser(Allocator& allocator)
         : m_allocator(allocator)
         , m_schema(allocator)
-        , m_imports()
         , m_lexer(allocator)
         , m_errors(allocator)
         , m_decodedString(allocator)
     {
         // build maps of builtins for faster lookups
-
         for (const BuiltinAttribute& a : BuiltinAttributes)
         {
             auto result = m_builtinAttributes.emplace(a.name, allocator);
@@ -128,7 +127,7 @@ namespace he::schema
 
                 if (At(Lexer::TokenType::Semicolon))
                 {
-                    AddError("Unmatched curly bracket ('}')");
+                    AddError("Unmatched curly bracket ('}}')");
                 }
             }
 
@@ -146,9 +145,6 @@ namespace he::schema
 
         if (HasErrors())
             return false;
-
-        // TODO: Check for any defined = false structs
-
 
         return true;
     }
@@ -239,16 +235,26 @@ namespace he::schema
     template <typename U> struct _ContainerPointer<EnumDef, U> { static constexpr auto P = &U::enums; };
     template <typename U> struct _ContainerPointer<InterfaceDef, U> { static constexpr auto P = &U::interfaces; };
     template <typename U> struct _ContainerPointer<StructDef, U> { static constexpr auto P = &U::structs; };
+    template <typename U> struct _ContainerPointer<UnionDef, U> { static constexpr auto P = &U::unions; };
 
     template <typename T, typename U> inline constexpr bool _CanEmbedType = false;
-    template <> inline constexpr bool _CanEmbedType<AliasDef, StructDef> = true;
-    template <> inline constexpr bool _CanEmbedType<ConstDef, StructDef> = true;
-    template <> inline constexpr bool _CanEmbedType<EnumDef, StructDef> = true;
+    template <> inline constexpr bool _CanEmbedType<StructDef, AliasDef> = true;
+    template <> inline constexpr bool _CanEmbedType<StructDef, ConstDef> = true;
+    template <> inline constexpr bool _CanEmbedType<StructDef, EnumDef> = true;
     template <> inline constexpr bool _CanEmbedType<StructDef, StructDef> = true;
-    template <> inline constexpr bool _CanEmbedType<AliasDef, InterfaceDef> = true;
-    template <> inline constexpr bool _CanEmbedType<ConstDef, InterfaceDef> = true;
-    template <> inline constexpr bool _CanEmbedType<EnumDef, InterfaceDef> = true;
-    template <> inline constexpr bool _CanEmbedType<StructDef, InterfaceDef> = true;
+    template <> inline constexpr bool _CanEmbedType<StructDef, UnionDef> = true;
+    template <> inline constexpr bool _CanEmbedType<InterfaceDef, AliasDef> = true;
+    template <> inline constexpr bool _CanEmbedType<InterfaceDef, ConstDef> = true;
+    template <> inline constexpr bool _CanEmbedType<InterfaceDef, EnumDef> = true;
+    template <> inline constexpr bool _CanEmbedType<InterfaceDef, StructDef> = true;
+    template <> inline constexpr bool _CanEmbedType<InterfaceDef, UnionDef> = true;
+    template <> inline constexpr bool _CanEmbedType<SchemaDef, AliasDef> = true;
+    template <> inline constexpr bool _CanEmbedType<SchemaDef, AttributeDef> = true;
+    template <> inline constexpr bool _CanEmbedType<SchemaDef, ConstDef> = true;
+    template <> inline constexpr bool _CanEmbedType<SchemaDef, EnumDef> = true;
+    template <> inline constexpr bool _CanEmbedType<SchemaDef, InterfaceDef> = true;
+    template <> inline constexpr bool _CanEmbedType<SchemaDef, StructDef> = true;
+    template <> inline constexpr bool _CanEmbedType<SchemaDef, UnionDef> = true;
 
     template <typename T, typename U>
     const T* Parser::FindDef(const U& schema, StringView name) const
@@ -256,14 +262,12 @@ namespace he::schema
         constexpr auto Container = _ContainerPointer<T, U>::P;
 
         const char* begin = name.Begin();
-        const char* end = name.End();
-
-        const char* last = &name.Back();
-        while (last < end && *last != '.')
-            ++last;
+        const char* dot = &name.Back();
+        while (dot > begin && *dot != '.')
+            --dot;
 
         // No dot found, just search for the symbol name
-        if (last == end)
+        if (dot == begin)
         {
             for (uint32_t i = 0; i < (schema.*Container).Size(); ++i)
             {
@@ -281,9 +285,9 @@ namespace he::schema
         // for that as a struct or interface. If we find it, we'll recurse for the rest.
 
         // Search within our structs.
-        if constexpr (_CanEmbedType<T, StructDef> && _CanEmbedType<StructDef, U>)
+        if constexpr (_CanEmbedType<U, StructDef> && _CanEmbedType<StructDef, T>)
         {
-            StringView parentName(begin, last);
+            StringView parentName(begin, dot);
 
             const StructDef* parent = nullptr;
             for (uint32_t i = 0; i < schema.structs.Size(); ++i)
@@ -298,14 +302,14 @@ namespace he::schema
 
             if (parent)
             {
-                return FindDef<T, StructDef>(*parent, StringView(parentName.End(), name.End()));
+                return FindDef<T, StructDef>(*parent, StringView(parentName.End() + 1, name.End()));
             }
         }
 
         // Search within our interfaces.
-        if constexpr (_CanEmbedType<T, InterfaceDef> && _CanEmbedType<InterfaceDef, U>)
+        if constexpr (_CanEmbedType<U, InterfaceDef> && _CanEmbedType<InterfaceDef, T>)
         {
-            StringView parentName(begin, last);
+            StringView parentName(begin, dot);
 
             const InterfaceDef* parent = nullptr;
             for (uint32_t i = 0; i < schema.interfaces.Size(); ++i)
@@ -320,7 +324,7 @@ namespace he::schema
 
             if (parent)
             {
-                return FindDef<T, InterfaceDef>(*parent, StringView(parentName.End(), name.End()));
+                return FindDef<T, InterfaceDef>(*parent, StringView(parentName.End() + 1, name.End()));
             }
         }
 
@@ -423,6 +427,24 @@ namespace he::schema
     const StructDef* Parser::FindStructDef(StringView name) const
     {
         return FindDef<StructDef>(name);
+    }
+
+    const UnionDef* Parser::FindUnionDef(StringView name) const
+    {
+        return FindDef<UnionDef>(name);
+    }
+
+    const Type& Parser::ResolveType(const Type& type) const
+    {
+        const Type* result = &type;
+        while (result->base == BaseType::Alias)
+        {
+            const AliasDef* alias = FindAliasDef(type.key->name);
+            HE_ASSERT(alias);
+            result = &alias->type;
+        }
+
+        return *result;
     }
 
     bool Parser::Expect(Lexer::TokenType expected)
@@ -559,12 +581,14 @@ namespace he::schema
                 return false;
             }
 
-            if (!ConsumeValue(def->type.base, attribute.parameters.EmplaceBack(m_allocator)))
+            const Type& resolved = ResolveType(def->type);
+
+            if (!ConsumeValue(resolved.base, attribute.parameters.EmplaceBack(m_allocator)))
                 return false;
 
             while (TryConsume(Lexer::TokenType::Comma))
             {
-                if (!ConsumeValue(def->type.base, attribute.parameters.EmplaceBack(m_allocator)))
+                if (!ConsumeValue(resolved.base, attribute.parameters.EmplaceBack(m_allocator)))
                     return false;
             }
 
@@ -845,16 +869,10 @@ namespace he::schema
             if (!ConsumeType(*type.key))
                 return false;
 
-            BaseType b = type.key->base;
-            while (b == BaseType::Alias)
+            const Type& keyType = ResolveType(*type.key);
+            if (IsArithmetic(keyType.base))
             {
-                const AliasDef* alias = FindAliasDef(type.key->name);
-                HE_ASSERT(alias);
-                b = alias->type.base;
-            }
-            if (IsObject(b) || b == BaseType::Pointer)
-            {
-                AddError("Invalid key for map, cannot be an object or pointer type.");
+                AddError("Invalid key for map, must be an arithmetic type.");
                 return false;
             }
 
@@ -883,10 +901,12 @@ namespace he::schema
             type.base = BaseType::Struct;
         else if (FindEnumDef(type.name) != nullptr)
             type.base = BaseType::Enum;
-        if (FindAliasDef(type.name) != nullptr)
+        else if (FindAliasDef(type.name) != nullptr)
             type.base = BaseType::Alias;
         else if (FindInterfaceDef(type.name) != nullptr)
             type.base = BaseType::Interface;
+        else if (FindUnionDef(type.name) != nullptr)
+            type.base = BaseType::Union;
 
         if (type.base == BaseType::Unknown)
         {
@@ -900,7 +920,7 @@ namespace he::schema
         {
             if (type.base != BaseType::Alias && type.base != BaseType::Interface && type.base != BaseType::Struct)
             {
-                AddError("Only interface and struct types can have generic parameters");
+                AddError("Only alias, interface, and struct types can have generic parameters");
                 return false;
             }
 
@@ -945,19 +965,6 @@ namespace he::schema
         if (!ConsumeTypeRaw(type))
             return false;
 
-        if (TryConsume(Lexer::TokenType::Asterisk))
-        {
-            Type* element = m_allocator.New<Type>(m_allocator);
-            *element = Move(type);
-
-            type.base = BaseType::Pointer;
-            type.fixedSize = 0;
-            type.name.Clear();
-            type.element = element;
-
-            m_schema.MarkTypeUsed(type.base);
-        }
-
         while (TryConsume(Lexer::TokenType::OpenSquareBracket))
         {
             Type* element = m_allocator.New<Type>(m_allocator);
@@ -985,19 +992,6 @@ namespace he::schema
                 return false;
 
             m_schema.MarkTypeUsed(type.base);
-
-            if (TryConsume(Lexer::TokenType::Asterisk))
-            {
-                Type* pointerElement = m_allocator.New<Type>(m_allocator);
-                *pointerElement = Move(type);
-
-                type.base = BaseType::Pointer;
-                type.fixedSize = 0;
-                type.name.Clear();
-                type.element = pointerElement;
-
-                m_schema.MarkTypeUsed(type.base);
-            }
         }
 
         return true;
@@ -1036,8 +1030,7 @@ namespace he::schema
                 AddError("Interface types cannot have a default value");
                 return false;
             case BaseType::Alias:
-                // TODO: Resolve alias type and recurse?
-                AddError("Type aliases cannot have a default value, yet.");
+                AddError("Type alias should've been resolved before consuming value. This is a he_schema bug.");
                 return false;
             case BaseType::Array:
             case BaseType::List:
@@ -1126,12 +1119,22 @@ namespace he::schema
             if (!ConsumeDottedIdentifier(m_schema.namespaceName))
                 return false;
 
-            if (m_schema.namespaceName[0] == '.')
-                m_schema.namespaceName.PopFront();
-
             if (m_schema.namespaceName.IsEmpty())
             {
                 AddError("Namespace identifier cannot be empty");
+                return false;
+            }
+
+            if (m_schema.namespaceName[0] == '.')
+            {
+                AddError("Namespace identifier cannot start with a dot");
+                return false;
+            }
+
+            m_schema.namespaceId = FNV32::HashString(m_schema.namespaceName.Data());
+            if (m_schema.namespaceId == 0)
+            {
+                AddError("Namespace '{}' hashes to zero (0), which is reserved; try a different name", m_schema.namespaceName);
                 return false;
             }
 
@@ -1154,9 +1157,10 @@ namespace he::schema
 
         if (AtIdentifier(KW_Struct))
         {
+            m_schema.objects.PushBack({ ObjectDef::Type::Struct, m_schema.structs.Size() });
             StructDef& def = m_schema.structs.EmplaceBack(m_allocator);
             def.attributes = Move(attributes);
-            return ParseStruct(def);
+            return ParseStruct(def, m_schema.namespaceId);
         }
 
         if (AtIdentifier(KW_Attribute))
@@ -1167,12 +1171,14 @@ namespace he::schema
                 // we can continue to parse, but we'll ignore these attributes.
             }
 
+            m_schema.objects.PushBack({ ObjectDef::Type::Attribute, m_schema.attributes.Size() });
             AttributeDef& def = m_schema.attributes.EmplaceBack(m_allocator);
             return ParseAttribute(def);
         }
 
         if (AtIdentifier(KW_Enum))
         {
+            m_schema.objects.PushBack({ ObjectDef::Type::Enum, m_schema.enums.Size() });
             EnumDef& def = m_schema.enums.EmplaceBack(m_allocator);
             def.attributes = Move(attributes);
             return ParseEnum(def);
@@ -1180,6 +1186,7 @@ namespace he::schema
 
         if (AtIdentifier(KW_Interface))
         {
+            m_schema.objects.PushBack({ ObjectDef::Type::Interface, m_schema.interfaces.Size() });
             InterfaceDef& def = m_schema.interfaces.EmplaceBack(m_allocator);
             def.attributes = Move(attributes);
             return ParseInterface(def);
@@ -1187,6 +1194,7 @@ namespace he::schema
 
         if (AtIdentifier(KW_Alias))
         {
+            m_schema.objects.PushBack({ ObjectDef::Type::Alias, m_schema.aliases.Size() });
             AliasDef& def = m_schema.aliases.EmplaceBack(m_allocator);
             def.attributes = Move(attributes);
             return ParseAlias(def);
@@ -1194,9 +1202,18 @@ namespace he::schema
 
         if (AtIdentifier(KW_Const))
         {
+            m_schema.objects.PushBack({ ObjectDef::Type::Const, m_schema.consts.Size() });
             ConstDef& def = m_schema.consts.EmplaceBack(m_allocator);
             def.attributes = Move(attributes);
             return ParseConst(def);
+        }
+
+        if (AtIdentifier(KW_Union))
+        {
+            m_schema.objects.PushBack({ ObjectDef::Type::Union, m_schema.unions.Size() });
+            UnionDef& def = m_schema.unions.EmplaceBack(m_allocator);
+            def.attributes = Move(attributes);
+            return ParseUnion(def, m_schema.namespaceId);
         }
 
         if (AtIdentifier(KW_Import))
@@ -1215,13 +1232,20 @@ namespace he::schema
         return false;
     }
 
-    bool Parser::ParseStruct(StructDef& def)
+    bool Parser::ParseStruct(StructDef& def, uint32_t parentId)
     {
         if (!ConsumeKeyword(KW_Struct))
             return false;
 
         if (!ConsumeIdentifier(def.name))
             return false;
+
+        def.id = FNV32::HashString(def.name.Data(), parentId);
+        if (def.id == 0)
+        {
+            AddError("Struct '{}' has a fully qualified name that hashes to zero (0), which is reserved; try a different name", def.name);
+            return false;
+        }
 
         if (!ConsumeTypeParams(def.typeParams))
             return false;
@@ -1231,9 +1255,10 @@ namespace he::schema
             if (!ConsumeType(def.extends))
                 return false;
 
-            if (def.extends.base != BaseType::Struct)
+            const Type& extends = ResolveType(def.extends);
+            if (extends.base != BaseType::Struct)
             {
-                AddError("Expected struct name for extends value, but got {}", def.extends.base);
+                AddError("Expected struct name for extends value, but got {}", extends.base);
                 return false;
             }
         }
@@ -1250,13 +1275,31 @@ namespace he::schema
         {
             if (AtEnd())
             {
-                AddError("Reached end of input in struct definition (missing '}')");
+                AddError("Reached end of input in struct definition (missing '}}')");
                 return false;
             }
 
             if (!ParseStructStatement(def))
             {
                 SkipStatement();
+            }
+        }
+
+        // Check for hash collision in struct field names.
+        const uint32_t size = def.fields.Size();
+        for (uint32_t i = 0; i < size; ++i)
+        {
+            for (uint32_t j = i + 1; j < size; ++j)
+            {
+                if (def.fields[i].id == def.fields[j].id)
+                {
+                    if (def.fields[i].name == def.fields[j].name)
+                        AddError("Two fields in struct '{}' have the name '{}'", def.name, def.fields[i].name);
+                    else
+                        AddError("Fields '{}' and '{}' in struct '{}' have names that generate a hash collision. Try renaming one of them.",
+                            def.fields[i].name, def.fields[j].name, def.name);
+                    return false;
+                }
             }
         }
 
@@ -1273,8 +1316,17 @@ namespace he::schema
         if (!ConsumeAttributes(attributes))
             return false;
 
+        if (AtIdentifier(KW_Alias))
+        {
+            def.objects.PushBack({ ObjectDef::Type::Alias, def.aliases.Size() });
+            AliasDef& d = def.aliases.EmplaceBack(m_allocator);
+            d.attributes = Move(attributes);
+            return ParseAlias(d);
+        }
+
         if (AtIdentifier(KW_Const))
         {
+            def.objects.PushBack({ ObjectDef::Type::Const, def.consts.Size() });
             ConstDef& d = def.consts.EmplaceBack(m_allocator);
             d.attributes = Move(attributes);
             return ParseConst(d);
@@ -1282,6 +1334,7 @@ namespace he::schema
 
         if (AtIdentifier(KW_Enum))
         {
+            def.objects.PushBack({ ObjectDef::Type::Enum, def.enums.Size() });
             EnumDef& d = def.enums.EmplaceBack(m_allocator);
             d.attributes = Move(attributes);
             return ParseEnum(d);
@@ -1289,27 +1342,119 @@ namespace he::schema
 
         if (AtIdentifier(KW_Struct))
         {
+            def.objects.PushBack({ ObjectDef::Type::Struct, def.structs.Size() });
             StructDef& d = def.structs.EmplaceBack(m_allocator);
             d.attributes = Move(attributes);
-            return ParseStruct(d);
+            return ParseStruct(d, def.id);
         }
 
-        if (AtIdentifier(KW_Alias))
+        if (AtIdentifier(KW_Union))
         {
-            AliasDef& d = def.aliases.EmplaceBack(m_allocator);
+            def.objects.PushBack({ ObjectDef::Type::Union, def.unions.Size() });
+            UnionDef& d = def.unions.EmplaceBack(m_allocator);
             d.attributes = Move(attributes);
-            return ParseAlias(d);
+            return ParseUnion(d, def.id);
         }
 
         FieldDef& d = def.fields.EmplaceBack(m_allocator);
         d.attributes = Move(attributes);
-        return ParseStructField(d);
+        return ParseField(d);
     }
 
-    bool Parser::ParseStructField(FieldDef& def)
+    bool Parser::ParseUnion(UnionDef& def, uint32_t parentId)
+    {
+        if (!ConsumeKeyword(KW_Union))
+            return false;
+
+        if (!ConsumeIdentifier(def.name))
+            return false;
+
+        def.id = FNV32::HashString(def.name.Data(), parentId);
+        if (def.id == 0)
+        {
+            AddError("Struct '{}' has a fully qualified name that hashes to zero (0), which is reserved; try a different name", def.name);
+            return false;
+        }
+
+        return ParseUnionBlock(def);
+    }
+
+    bool Parser::ParseUnionBlock(UnionDef& def)
+    {
+        if (!Consume(Lexer::TokenType::OpenCurlyBracket))
+            return false;
+
+        while (!TryConsume(Lexer::TokenType::CloseCurlyBracket))
+        {
+            if (AtEnd())
+            {
+                AddError("Reached end of input in union definition (missing '}}')");
+                return false;
+            }
+
+            if (!ParseUnionStatement(def))
+            {
+                SkipStatement();
+            }
+        }
+
+        // Check for hash collision in union field names.
+        const uint32_t size = def.fields.Size();
+        for (uint32_t i = 0; i < size; ++i)
+        {
+            for (uint32_t j = i + 1; j < size; ++j)
+            {
+                if (def.fields[i].id == def.fields[j].id)
+                {
+                    if (def.fields[i].name == def.fields[j].name)
+                        AddError("Two fields in union '{}' have the name '{}'", def.name, def.fields[i].name);
+                    else
+                        AddError("Fields '{}' and '{}' in union '{}' have names that generate a hash collision; try renaming one of them",
+                            def.fields[i].name, def.fields[j].name, def.name);
+                    return false;
+                }
+            }
+        }
+
+        return true;
+    }
+
+    bool Parser::ParseUnionStatement(UnionDef& def)
+    {
+        // ignore empty statements
+        if (TryConsume(Lexer::TokenType::Semicolon))
+            return true;
+
+        Vector<Attribute> attributes(m_allocator);
+        if (!ConsumeAttributes(attributes))
+            return false;
+
+        FieldDef& d = def.fields.EmplaceBack(m_allocator);
+        d.attributes = Move(attributes);
+        if (!ParseField(d))
+            return false;
+
+        const Type& resolved = ResolveType(d.type);
+        if (!IsArithmetic(resolved.base))
+        {
+            AddError("Field '{}' in union '{}' has a non-arithmetic type", d.name, def.name);
+            return false;
+        }
+
+        return true;
+    }
+
+    bool Parser::ParseField(FieldDef& def)
     {
         if (!ConsumeIdentifier(def.name))
             return false;
+
+        def.id = FNV32::HashString(def.name.Data());
+        if (def.id == 0)
+        {
+            AddError("Field '{}' in struct '{}' has a name that hashes to zero (0), which is reserved; try a different name", def.name);
+            return false;
+        }
 
         if (!Consume(Lexer::TokenType::Colon))
             return false;
@@ -1317,9 +1462,17 @@ namespace he::schema
         if (!ConsumeType(def.type))
             return false;
 
+        const Type& resolved = ResolveType(def.type);
+
+        if (resolved.base == BaseType::Interface)
+        {
+            AddError("Fields cannot use interfaces as a type", def.name);
+            return false;
+        }
+
         if (TryConsume(Lexer::TokenType::Equals))
         {
-            if (ConsumeValue(def.type.base, def.defaultValue))
+            if (ConsumeValue(resolved.base, def.defaultValue))
                 return false;
         }
 
@@ -1420,18 +1573,20 @@ namespace he::schema
             if (!ConsumeType(enumType))
                 return false;
 
-            if (isFlags && !IsUnsignedIntegral(enumType.base))
+            const Type& resolved = ResolveType(enumType);
+
+            if (isFlags && (resolved.base == BaseType::Bool || !IsUnsignedIntegral(resolved.base)))
             {
                 AddError("Expected unsigned integral type for enum flags");
                 return false;
             }
-            else if (!IsIntegral(enumType.base))
+            else if (resolved.base == BaseType::Bool || !IsIntegral(resolved.base))
             {
                 AddError("Expected integral type for enum");
                 return false;
             }
 
-            def.base = enumType.base;
+            def.base = resolved.base;
         }
 
         return ParseEnumBlock(def, isFlags);
@@ -1446,7 +1601,7 @@ namespace he::schema
         {
             if (AtEnd())
             {
-                AddError("Reached end of input in enum definition (missing '}')");
+                AddError("Reached end of input in enum definition (missing '}}')");
                 return false;
             }
 
@@ -1500,6 +1655,13 @@ namespace he::schema
         if (!ConsumeIdentifier(def.name))
             return false;
 
+        def.id = FNV32::HashString(def.name.Data(), m_schema.namespaceId);
+        if (def.id == 0)
+        {
+            AddError("Interface '{}' has a fully qualified name that hashes to zero (0), which is reserved; try a different name", def.name);
+            return false;
+        }
+
         if (!ConsumeTypeParams(def.typeParams))
             return false;
 
@@ -1510,9 +1672,11 @@ namespace he::schema
                 if (!ConsumeType(def.implements.EmplaceBack(m_allocator)))
                     return false;
 
-                if (def.implements.Back().base != BaseType::Interface)
+                const Type& resolved = ResolveType(def.implements.Back());
+
+                if (resolved.base != BaseType::Interface)
                 {
-                    AddError("Expected interface name for implements value, but got {}", def.implements.Back().base);
+                    AddError("Expected interface name for implements value, but got {}", resolved.base);
                     return false;
                 }
             } while (TryConsume(Lexer::TokenType::Comma));
@@ -1530,13 +1694,31 @@ namespace he::schema
         {
             if (AtEnd())
             {
-                AddError("Reached end of input in struct definition (missing '}')");
+                AddError("Reached end of input in struct definition (missing '}}')");
                 return false;
             }
 
             if (!ParseInterfaceStatement(def))
             {
                 SkipStatement();
+            }
+        }
+
+        // Check for hash collision in interface method names.
+        const uint32_t size = def.methods.Size();
+        for (uint32_t i = 0; i < size; ++i)
+        {
+            for (uint32_t j = i + 1; j < size; ++j)
+            {
+                if (def.methods[i].id == def.methods[j].id)
+                {
+                    if (def.methods[i].name == def.methods[j].name)
+                        AddError("Two methods in interface '{}' have the name '{}'", def.name, def.methods[i].name);
+                    else
+                        AddError("Methods '{}' and '{}' in interface '{}' have names that generate a hash collision. Try renaming one of them.",
+                            def.methods[i].name, def.methods[j].name, def.name);
+                    return false;
+                }
             }
         }
 
@@ -1553,8 +1735,17 @@ namespace he::schema
         if (!ConsumeAttributes(attributes))
             return false;
 
+        if (AtIdentifier(KW_Alias))
+        {
+            def.objects.PushBack({ ObjectDef::Type::Alias, def.aliases.Size() });
+            AliasDef& d = def.aliases.EmplaceBack(m_allocator);
+            d.attributes = Move(attributes);
+            return ParseAlias(d);
+        }
+
         if (AtIdentifier(KW_Const))
         {
+            def.objects.PushBack({ ObjectDef::Type::Const, def.consts.Size() });
             ConstDef& d = def.consts.EmplaceBack(m_allocator);
             d.attributes = Move(attributes);
             return ParseConst(d);
@@ -1562,6 +1753,7 @@ namespace he::schema
 
         if (AtIdentifier(KW_Enum))
         {
+            def.objects.PushBack({ ObjectDef::Type::Enum, def.enums.Size() });
             EnumDef& d = def.enums.EmplaceBack(m_allocator);
             d.attributes = Move(attributes);
             return ParseEnum(d);
@@ -1569,16 +1761,18 @@ namespace he::schema
 
         if (AtIdentifier(KW_Struct))
         {
+            def.objects.PushBack({ ObjectDef::Type::Struct, def.structs.Size() });
             StructDef& d = def.structs.EmplaceBack(m_allocator);
             d.attributes = Move(attributes);
-            return ParseStruct(d);
+            return ParseStruct(d, def.id);
         }
 
-        if (AtIdentifier(KW_Alias))
+        if (AtIdentifier(KW_Union))
         {
-            AliasDef& d = def.aliases.EmplaceBack(m_allocator);
+            def.objects.PushBack({ ObjectDef::Type::Union, def.unions.Size() });
+            UnionDef& d = def.unions.EmplaceBack(m_allocator);
             d.attributes = Move(attributes);
-            return ParseAlias(d);
+            return ParseUnion(d, def.id);
         }
 
         MethodDef& d = def.methods.EmplaceBack(m_allocator);
@@ -1590,6 +1784,13 @@ namespace he::schema
     {
         if (!ConsumeIdentifier(def.name))
             return false;
+
+        def.id = FNV32::HashString(def.name.Data());
+        if (def.id == 0)
+        {
+            AddError("Method '{}' in interface '{}' has a name that hashes to zero (0), which is reserved; try a different name", def.name);
+            return false;
+        }
 
         if (!Consume(Lexer::TokenType::OpenParens))
             return false;
@@ -1667,13 +1868,15 @@ namespace he::schema
         if (!ConsumeType(constType))
             return false;
 
-        if (!IsArithmetic(constType.base) && constType.base != BaseType::String)
+        const Type& resolved = ResolveType(constType);
+
+        if (!IsArithmetic(resolved.base) && resolved.base != BaseType::String)
         {
             AddError("Expected basic type for constant: integral, float, or string");
             return false;
         }
 
-        def.base = constType.base;
+        def.base = resolved.base;
 
         if (!Consume(Lexer::TokenType::Equals))
             return false;

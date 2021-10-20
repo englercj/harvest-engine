@@ -8,13 +8,13 @@
 #define HE_ENUM_FLAGS(T, ...) \
     HE_PUSH_WARNINGS() \
     HE_DISABLE_GCC_CLANG_WARNING("-Wunused-function") \
-    __VA_ARGS__ constexpr T operator~(T a) { using U = EnumType<T>; return T(~U(a)); } \
-    __VA_ARGS__ constexpr T operator|(T a, T b) { using U = EnumType<T>; return T(U(a) | U(b)); } \
-    __VA_ARGS__ constexpr T operator&(T a, T b) { using U = EnumType<T>; return T(U(a) & U(b)); } \
-    __VA_ARGS__ constexpr T operator^(T a, T b) { using U = EnumType<T>; return T(U(a) ^ U(b)); } \
-    __VA_ARGS__ constexpr T& operator|=(T& a, T b) { using U = EnumType<T>; return a = T(U(a) | U(b)); } \
-    __VA_ARGS__ constexpr T& operator&=(T& a, T b) { using U = EnumType<T>; return a = T(U(a) & U(b)); } \
-    __VA_ARGS__ constexpr T& operator^=(T& a, T b) { using U = EnumType<T>; return a = T(U(a) ^ U(b)); } \
+    __VA_ARGS__ constexpr T operator~(T a) { using U = std::underlying_type_t<T>; return T(~U(a)); } \
+    __VA_ARGS__ constexpr T operator|(T a, T b) { using U = std::underlying_type_t<T>; return T(U(a) | U(b)); } \
+    __VA_ARGS__ constexpr T operator&(T a, T b) { using U = std::underlying_type_t<T>; return T(U(a) & U(b)); } \
+    __VA_ARGS__ constexpr T operator^(T a, T b) { using U = std::underlying_type_t<T>; return T(U(a) ^ U(b)); } \
+    __VA_ARGS__ constexpr T& operator|=(T& a, T b) { using U = std::underlying_type_t<T>; return a = T(U(a) | U(b)); } \
+    __VA_ARGS__ constexpr T& operator&=(T& a, T b) { using U = std::underlying_type_t<T>; return a = T(U(a) & U(b)); } \
+    __VA_ARGS__ constexpr T& operator^=(T& a, T b) { using U = std::underlying_type_t<T>; return a = T(U(a) ^ U(b)); } \
     HE_POP_WARNINGS()
 
 namespace he
@@ -41,7 +41,7 @@ namespace he
     /// \param search The flags to search for.
     /// \return True if `value` has the flags `search`.
     template <typename T>
-    constexpr bool HasAnyFlags(T value, T search) { return static_cast<EnumType<T>>(value & search) != 0; }
+    constexpr bool HasAnyFlags(T value, T search) { return static_cast<std::underlying_type_t<T>>(value & search) != 0; }
 
     /// Returns the enum as a string.
     ///

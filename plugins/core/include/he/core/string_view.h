@@ -245,3 +245,15 @@ namespace he
         Span<const char> m_span;
     };
 }
+
+// Hash overloads
+namespace std
+{
+    template <typename> struct hash;
+
+    template <>
+    struct hash<he::StringView>
+    {
+        size_t operator()(const he::StringView& value) const;
+    };
+}

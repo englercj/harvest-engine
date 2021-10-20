@@ -12,7 +12,7 @@ namespace he
     {
     public:
         using ValueType = uint32_t;
-        static constexpr ValueType Seed{ 0x811c9dc5ul };
+        static constexpr ValueType Seed{ 0x811c9dc5 };
 
         static constexpr ValueType HashString(const char* str, ValueType seed = Seed);
         static constexpr ValueType HashStringN(const char* str, uint32_t len, ValueType seed = Seed);
@@ -44,7 +44,7 @@ namespace he
     {
     public:
         using ValueType = uint64_t;
-        static constexpr ValueType Seed{ 0xcbf29ce484222325ull };
+        static constexpr ValueType Seed{ 0xcbf29ce484222325 };
 
         static constexpr ValueType HashString(const char* str, ValueType seed = Seed);
         static constexpr ValueType HashStringN(const char* str, uint32_t len, ValueType seed = Seed);

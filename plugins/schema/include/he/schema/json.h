@@ -92,7 +92,7 @@ namespace he::schema
     template <typename T, typename U>
     rapidjson::Value ToJsonValue(rapidjson::Document& doc, const std::unordered_map<T, U>& value)
     {
-        String buf;
+        he::String buf;
         rapidjson::Value obj(rapidjson::kObjectType);
         obj.MemberReserve(value.size(), doc.GetAllocator());
         for (auto&& it : value)
@@ -321,7 +321,7 @@ namespace he::schema
 
     // Deserialization of strings.
     template <>
-    inline bool FromJsonValue(const rapidjson::Value& value, String& out)
+    inline bool FromJsonValue(const rapidjson::Value& value, he::String& out)
     {
         if (!value.IsString())
             return false;

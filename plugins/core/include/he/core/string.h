@@ -791,3 +791,15 @@ namespace he
 }
 
 #include "he/core/inline/string.inl"
+
+// Hash overloads
+namespace std
+{
+    template <typename> struct hash;
+
+    template <>
+    struct hash<he::String>
+    {
+        size_t operator()(const he::String& value) const;
+    };
+}

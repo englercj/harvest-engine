@@ -15,8 +15,9 @@ struct AppArgs
     bool grpc{ false };
     bool json{ false };
     bool buffer{ false };
+    bool zeroCopy{ false };
     const char* outDir{ nullptr };
-    const char* lang{ nullptr };
+    he::Vector<const char*> targets{};
     he::Vector<const char*> includeDirs{};
 };
 
@@ -27,13 +28,14 @@ int he::AppMain(int argc, char* argv[])
 
     ArgDesc ArgDescriptors[] =
     {
-        { args.help,        'h', "help",    "Output this help text" },
-        { args.outDir,      'o', "out",     "Output directory to write generated files" },
-        { args.lang,        'g', "gen",     "Language to generate definitions for" },
-        { args.includeDirs, 'I', "include", "Path to search for import declarations" },
-        { args.grpc,             "grpc",    "Generate GRPC interfaces" },
-        { args.json,        'j', "json",    "Enable code generation for JSON serialization" },
-        { args.buffer,      'b', "buffer",  "Enable code generation for zero-copy buffers" },
+        { args.help,        'h', "help",        "Output this help text" },
+        { args.outDir,      'o', "out",         "Output directory to write generated files" },
+        { args.targets,     't', "target",      "Target language to generate definitions for" },
+        { args.includeDirs, 'I', "include",     "Path to search for import declarations" },
+        { args.grpc,             "grpc",        "Generate GRPC interfaces" },
+        { args.json,        'j', "json",        "Enable code generation for JSON serialization" },
+        { args.buffer,      'b', "buffer",      "Enable code generation for Buffer serialization" },
+        { args.zeroCopy,    'z', "zero-copy",   "Enable code generation for zero-copy buffers only (no native)" },
     };
 
     ArgResult result = ParseArgs(ArgDescriptors, argc, argv);
@@ -46,6 +48,7 @@ int he::AppMain(int argc, char* argv[])
     }
 
     String fullPath;
+    String dirStorage;
 
     bool first = true;
 
@@ -58,8 +61,13 @@ int he::AppMain(int argc, char* argv[])
 
         first = false;
 
-        const String dir(GetDirectory(fullPath));
-        args.includeDirs.PushFront(dir.Data());
+        const StringView dir = GetDirectory(fullPath);
+        if (!dir.IsEmpty())
+        {
+            dirStorage = dir;
+            args.includeDirs.PushFront(dirStorage.Data());
+            fullPath = GetBaseName(fullPath);
+        }
 
         schema::Parser parser;
 
@@ -67,7 +75,7 @@ int he::AppMain(int argc, char* argv[])
         {
             for (const auto& info : parser.GetErrors())
             {
-                std::cerr << info.file.Data() << '(' << info.line << ',' << info.column << "): error 0:" << info.message.Data() << std::endl;
+                std::cerr << info.file.Data() << '(' << info.line << ',' << info.column << "): error 0: " << info.message.Data() << std::endl;
             }
 
             return -1;
@@ -78,12 +86,21 @@ int he::AppMain(int argc, char* argv[])
         schema::CodeGenOptions options{};
         options.fileName = fname.Data();
         options.outDir = args.outDir;
+        options.grpc = args.grpc;
         options.json = args.json;
         options.buffer = args.buffer;
-        if (!schema::GenerateCpp(parser.GetSchema(), options))
+        options.zeroCopy = args.zeroCopy;
+
+        for (const char* target : args.targets)
         {
-            std::cerr << "Failed to generate C++ code." << std::endl;
-            return -1;
+            if (String::Equal(target, "cpp") || String::Equal(target, "c++"))
+            {
+                if (!schema::GenerateCpp(parser.GetSchema(), options))
+                {
+                    std::cerr << "Failed to generate C++ code." << std::endl;
+                    return -1;
+                }
+            }
         }
     }
 

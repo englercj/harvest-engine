@@ -21,12 +21,6 @@ namespace he
     template <typename T, template <typename...> typename Template> inline constexpr bool IsSpecialization = _IsSpecialization<T, Template>::value;
 
     // --------------------------------------------------------------------------------------------
-    // Enums
-
-    template <typename T> inline constexpr bool IsEnum = __is_enum(T);
-    template <typename T> using EnumType = __underlying_type(T);
-
-    // --------------------------------------------------------------------------------------------
     // Concepts
 
     template <typename T, typename E>
@@ -45,5 +39,5 @@ namespace he
     concept Arithmetic = std::is_arithmetic_v<T>;
 
     template <typename T>
-    concept Enum = IsEnum<T>;
+    concept Enum = std::is_enum_v<T>;
 }

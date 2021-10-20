@@ -3,6 +3,7 @@
 #include "he/core/string.h"
 
 #include "he/core/assert.h"
+#include "he/core/hash.h"
 #include "he/core/memory_ops.h"
 #include "he/core/utils.h"
 
@@ -422,6 +423,9 @@ namespace he
 
     void String::CopyFrom(const String& x)
     {
+        if (this == &x)
+            return;
+
         const uint32_t xSize = x.Size();
 
         Reserve(xSize);
@@ -431,6 +435,9 @@ namespace he
 
     void String::MoveFrom(String&& x)
     {
+        if (this == &x)
+            return;
+
         // If there are different allocators or the other object is embedded, we just have to copy.
         if (&m_allocator != &x.m_allocator || x.IsEmbedded())
         {
@@ -478,4 +485,16 @@ namespace he
     HE_FROMSTR_FLT_IMPL(double, strtod)
 
 #undef HE_FROMSTR_FLT_IMPL
+}
+
+namespace std
+{
+    size_t hash<he::String>::operator()(const he::String& value) const
+    {
+    #if HE_CPU_64_BIT
+        return he::FNV64::HashString(value.Data());
+    #else
+        return he::FNV32::HashString(value.Data());
+    #endif
+    }
 }

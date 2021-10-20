@@ -133,10 +133,22 @@ namespace he
         m_size += len;
     }
 
+    void BufferWriter::WriteAt(uint32_t offset, const void* data, uint32_t len)
+    {
+        HE_ASSERT(len < m_size && offset < (m_size - len));
+        MemCopy(m_data + offset, data, len);
+    }
+
     void BufferWriter::Write(const char* str)
     {
         const uint32_t len = String::Length(str);
         Write(str, len);
+    }
+
+    void BufferWriter::WriteAt(uint32_t offset, const char* str)
+    {
+        const uint32_t len = String::Length(str);
+        WriteAt(offset, str, len);
     }
 
     void BufferWriter::WriteRepeat(uint8_t byte, uint32_t count)
@@ -144,6 +156,12 @@ namespace he
         GrowBy(count);
         MemSet(m_data + m_size, byte, count);
         m_size += count;
+    }
+
+    void BufferWriter::WriteRepeatAt(uint32_t offset, uint8_t byte, uint32_t count)
+    {
+        HE_ASSERT(count < m_size && offset < (m_size - count));
+        MemSet(m_data + offset, byte, count);
     }
 
     void BufferWriter::GrowBy(uint32_t len)

@@ -26,7 +26,6 @@ namespace he
             case schema::BaseType::Array: return "Array";
             case schema::BaseType::List: return "List";
             case schema::BaseType::Map: return "Map";
-            case schema::BaseType::Pointer: return "Pointer";
             case schema::BaseType::Set: return "Set";
             case schema::BaseType::String: return "String";
             case schema::BaseType::Vector: return "Vector";

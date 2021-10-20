@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include "he/core/memory_ops.h"
 #include "he/core/types.h"
 #include "he/core/utils.h"
 
@@ -89,7 +90,9 @@ namespace he
         template <typename T> requires(std::is_trivially_constructible_v<T> && std::is_trivially_destructible_v<T>)
         T* NewArray(uint32_t count)
         {
-            return Malloc<T>(count);
+            T* mem = Malloc<T>(count);
+            MemZero(mem, count * sizeof(T));
+            return mem;
         }
 
         /// Allocates and constructs a new array of `T`.

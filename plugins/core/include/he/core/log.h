@@ -194,7 +194,7 @@ namespace he
         LogKV(const char* k, double v) : key(k), type(ValueType::Double), value{ .d = v } {}
 
         template <Enum T>
-        constexpr LogKV(const char* k, T v) : LogKV(k, EnumType<T>(v)) {}
+        constexpr LogKV(const char* k, T v) : LogKV(k, std::underlying_type_t<T>(v)) {}
 
         LogKV(const char* k, const char* v)
             : key(k)

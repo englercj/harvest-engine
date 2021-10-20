@@ -23,7 +23,7 @@ HE_TEST(core, log, LogLevel)
     static_assert(static_cast<uint8_t>(LogLevel::Warn) == HE_LOG_LEVEL_WARN);
     static_assert(static_cast<uint8_t>(LogLevel::Error) == HE_LOG_LEVEL_ERROR);
 
-    static_assert(std::is_same_v<EnumType<LogLevel>, uint8_t>);
+    static_assert(std::is_same_v<std::underlying_type_t<LogLevel>, uint8_t>);
 }
 
 template <typename T, typename V = void> struct TypeToLogKVType;
@@ -40,9 +40,9 @@ template <> struct TypeToLogKVType<float> { static constexpr auto ValueType = Lo
 template <> struct TypeToLogKVType<double> { static constexpr auto ValueType = LogKV::ValueType::Double; };
 template <> struct TypeToLogKVType<const char*> { static constexpr auto ValueType = LogKV::ValueType::String; };
 
-template <typename T> struct TypeToLogKVType<T, std::enable_if_t<IsEnum<T>>>
+template <typename T> struct TypeToLogKVType<T, std::enable_if_t<std::is_enum_v<T>>>
 {
-    static constexpr auto ValueType = TypeToLogKVType<EnumType<T>>::ValueType;
+    static constexpr auto ValueType = TypeToLogKVType<std::underlying_type_t<T>>::ValueType;
 };
 
 template <LogKV::ValueType V> struct TestLogKVType;
@@ -102,9 +102,9 @@ static LogKV TestLogKVCtor(const char* key, T value)
     HE_EXPECT_EQ(kv.key, key);
     HE_EXPECT_EQ(kv.type, ExpectedValueType);
 
-    if constexpr (IsEnum<T>)
+    if constexpr (std::is_enum_v<T>)
     {
-        TestLogKVType<ExpectedValueType>::Test(kv, static_cast<EnumType<T>>(value));
+        TestLogKVType<ExpectedValueType>::Test(kv, static_cast<std::underlying_type_t<T>>(value));
     }
     else
     {

@@ -19,7 +19,7 @@ HE_TEST(schema, BaseType, Constants)
 HE_TEST(schema, BaseType, IsIntegral)
 {
     HE_EXPECT(!IsIntegral(BaseType::Unknown));
-    HE_EXPECT(!IsIntegral(BaseType::Bool));
+    HE_EXPECT(IsIntegral(BaseType::Bool));
     HE_EXPECT(IsIntegral(BaseType::Int8));
     HE_EXPECT(IsIntegral(BaseType::Int16));
     HE_EXPECT(IsIntegral(BaseType::Int32));
@@ -33,12 +33,42 @@ HE_TEST(schema, BaseType, IsIntegral)
     HE_EXPECT(!IsIntegral(BaseType::Array));
     HE_EXPECT(!IsIntegral(BaseType::List));
     HE_EXPECT(!IsIntegral(BaseType::Map));
+    HE_EXPECT(!IsIntegral(BaseType::Pointer));
     HE_EXPECT(!IsIntegral(BaseType::Set));
     HE_EXPECT(!IsIntegral(BaseType::String));
     HE_EXPECT(!IsIntegral(BaseType::Vector));
+    HE_EXPECT(!IsIntegral(BaseType::Alias));
     HE_EXPECT(!IsIntegral(BaseType::Enum));
     HE_EXPECT(!IsIntegral(BaseType::Interface));
     HE_EXPECT(!IsIntegral(BaseType::Struct));
+}
+
+// ------------------------------------------------------------------------------------------------
+HE_TEST(schema, BaseType, IsUnsignedIntegral)
+{
+    HE_EXPECT(!IsUnsignedIntegral(BaseType::Unknown));
+    HE_EXPECT(!IsUnsignedIntegral(BaseType::Bool));
+    HE_EXPECT(!IsUnsignedIntegral(BaseType::Int8));
+    HE_EXPECT(!IsUnsignedIntegral(BaseType::Int16));
+    HE_EXPECT(!IsUnsignedIntegral(BaseType::Int32));
+    HE_EXPECT(!IsUnsignedIntegral(BaseType::Int64));
+    HE_EXPECT(IsUnsignedIntegral(BaseType::Uint8));
+    HE_EXPECT(IsUnsignedIntegral(BaseType::Uint16));
+    HE_EXPECT(IsUnsignedIntegral(BaseType::Uint32));
+    HE_EXPECT(IsUnsignedIntegral(BaseType::Uint64));
+    HE_EXPECT(!IsUnsignedIntegral(BaseType::Float32));
+    HE_EXPECT(!IsUnsignedIntegral(BaseType::Float64));
+    HE_EXPECT(!IsUnsignedIntegral(BaseType::Array));
+    HE_EXPECT(!IsUnsignedIntegral(BaseType::List));
+    HE_EXPECT(!IsUnsignedIntegral(BaseType::Map));
+    HE_EXPECT(!IsUnsignedIntegral(BaseType::Pointer));
+    HE_EXPECT(!IsUnsignedIntegral(BaseType::Set));
+    HE_EXPECT(!IsUnsignedIntegral(BaseType::String));
+    HE_EXPECT(!IsUnsignedIntegral(BaseType::Vector));
+    HE_EXPECT(!IsUnsignedIntegral(BaseType::Alias));
+    HE_EXPECT(!IsUnsignedIntegral(BaseType::Enum));
+    HE_EXPECT(!IsUnsignedIntegral(BaseType::Interface));
+    HE_EXPECT(!IsUnsignedIntegral(BaseType::Struct));
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -59,9 +89,11 @@ HE_TEST(schema, BaseType, IsFloat)
     HE_EXPECT(!IsFloat(BaseType::Array));
     HE_EXPECT(!IsFloat(BaseType::List));
     HE_EXPECT(!IsFloat(BaseType::Map));
+    HE_EXPECT(!IsFloat(BaseType::Pointer));
     HE_EXPECT(!IsFloat(BaseType::Set));
     HE_EXPECT(!IsFloat(BaseType::String));
     HE_EXPECT(!IsFloat(BaseType::Vector));
+    HE_EXPECT(!IsFloat(BaseType::Alias));
     HE_EXPECT(!IsFloat(BaseType::Enum));
     HE_EXPECT(!IsFloat(BaseType::Interface));
     HE_EXPECT(!IsFloat(BaseType::Struct));
@@ -71,7 +103,7 @@ HE_TEST(schema, BaseType, IsFloat)
 HE_TEST(schema, BaseType, IsArithmetic)
 {
     HE_EXPECT(!IsArithmetic(BaseType::Unknown));
-    HE_EXPECT(!IsArithmetic(BaseType::Bool));
+    HE_EXPECT(IsArithmetic(BaseType::Bool));
     HE_EXPECT(IsArithmetic(BaseType::Int8));
     HE_EXPECT(IsArithmetic(BaseType::Int16));
     HE_EXPECT(IsArithmetic(BaseType::Int32));
@@ -85,9 +117,11 @@ HE_TEST(schema, BaseType, IsArithmetic)
     HE_EXPECT(!IsArithmetic(BaseType::Array));
     HE_EXPECT(!IsArithmetic(BaseType::List));
     HE_EXPECT(!IsArithmetic(BaseType::Map));
+    HE_EXPECT(!IsArithmetic(BaseType::Pointer));
     HE_EXPECT(!IsArithmetic(BaseType::Set));
     HE_EXPECT(!IsArithmetic(BaseType::String));
     HE_EXPECT(!IsArithmetic(BaseType::Vector));
+    HE_EXPECT(!IsArithmetic(BaseType::Alias));
     HE_EXPECT(!IsArithmetic(BaseType::Enum));
     HE_EXPECT(!IsArithmetic(BaseType::Interface));
     HE_EXPECT(!IsArithmetic(BaseType::Struct));
@@ -111,9 +145,11 @@ HE_TEST(schema, BaseType, IsObject)
     HE_EXPECT(IsObject(BaseType::Array));
     HE_EXPECT(IsObject(BaseType::List));
     HE_EXPECT(IsObject(BaseType::Map));
+    HE_EXPECT(!IsObject(BaseType::Pointer));
     HE_EXPECT(IsObject(BaseType::Set));
     HE_EXPECT(IsObject(BaseType::String));
     HE_EXPECT(IsObject(BaseType::Vector));
+    HE_EXPECT(!IsObject(BaseType::Alias));
     HE_EXPECT(!IsObject(BaseType::Enum));
     HE_EXPECT(IsObject(BaseType::Interface));
     HE_EXPECT(IsObject(BaseType::Struct));

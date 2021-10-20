@@ -18,7 +18,6 @@ namespace he::schema
             None,
 
             Arrow,
-            Asterisk,
             Colon,
             Comma,
             Comment,

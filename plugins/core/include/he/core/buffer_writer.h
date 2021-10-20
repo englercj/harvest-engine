@@ -160,31 +160,6 @@ namespace he
         /// Does not affect memory allocation.
         void Clear();
 
-        /// Copies `len` bytes from `data` into the buffer.
-        ///
-        /// \param[in] data The buffer to copy from.
-        /// \param[in] len The number of bytes to copy.
-        void Write(const void* data, uint32_t len);
-
-        /// Copies the null terminated string into the buffer. This will not copy the null
-        /// terminator into the buffer.
-        ///
-        /// \param[in] str The null terminated string to copy.
-        void Write(const char* str);
-
-        /// Copies a trivially copyable type into the buffer.
-        ///
-        /// \param[in] value The value to copy.
-        template <typename T> requires(std::is_trivially_copyable_v<T>)
-        void Write(const T& value) { Write(&value, sizeof(T)); }
-
-        /// Writes a byte repeatedly to the buffer. This is equivalent to growing the buffer
-        /// and then calling memset. This is much faster than calling Write() repeatedly.
-        ///
-        /// \param[in] byte The byte to write repeatedly to the buffer.
-        /// \param[in] count The number of times the byte should be written.
-        void WriteRepeat(uint8_t byte, uint32_t count);
-
         /// Copies a trivially copyable type into the buffer.
         ///
         /// \note This is the same as \ref Write(const T&), this alias exists for generic
@@ -193,6 +168,68 @@ namespace he
         /// \param[in] value The value to copy.
         template <typename T> requires(std::is_trivially_copyable_v<T>)
         void PushBack(const T& value) { Write(&value, sizeof(T)); }
+
+        /// Copies `len` bytes from `data` into the buffer.
+        ///
+        /// \param[in] data The buffer to copy from.
+        /// \param[in] len The number of bytes to copy.
+        void Write(const void* data, uint32_t len);
+
+        /// Copies `len` bytes from `data` into the buffer at a previously allocated offset.
+        ///
+        /// \note The buffer size and capacity are not affected by this function.
+        ///
+        /// \param[in] offset The offset within the buffer to write to. Must fit within Size().
+        /// \param[in] data The buffer to copy from.
+        /// \param[in] len The number of bytes to copy.
+        void WriteAt(uint32_t offset, const void* data, uint32_t len);
+
+        /// Copies the null terminated string into the buffer. This will not copy the null
+        /// terminator into the buffer.
+        ///
+        /// \param[in] str The null terminated string to copy.
+        void Write(const char* str);
+
+        /// Copies the null terminated string into the buffer at a previously allocated offset.
+        /// This will not copy the null terminator into the buffer.
+        ///
+        /// \note The buffer size and capacity are not affected by this function.
+        ///
+        /// \param[in] offset The offset within the buffer to write to. Must fit within Size().
+        /// \param[in] str The null terminated string to copy.
+        void WriteAt(uint32_t offset, const char* str);
+
+        /// Copies a trivially copyable type into the buffer.
+        ///
+        /// \param[in] value The value to copy.
+        template <typename T> requires(std::is_trivially_copyable_v<T>)
+        void Write(const T& value) { Write(&value, sizeof(T)); }
+
+        /// Copies a trivially copyable type into the buffer at a previously allocated offset.
+        ///
+        /// \note The buffer size and capacity are not affected by this function.
+        ///
+        /// \param[in] offset The offset within the buffer to write to. Must fit within Size().
+        /// \param[in] value The value to copy.
+        template <typename T> requires(std::is_trivially_copyable_v<T>)
+        void WriteAt(uint32_t offset, const T& value) { WriteAt(offset, &value, sizeof(T)); }
+
+        /// Writes a byte repeatedly to the buffer. This is equivalent to growing the buffer
+        /// and then calling memset. This can be faster than calling Write() repeatedly.
+        ///
+        /// \param[in] byte The byte to write repeatedly to the buffer.
+        /// \param[in] count The number of times the byte should be written.
+        void WriteRepeat(uint8_t byte, uint32_t count);
+
+        /// Writes a byte repeatedly to the buffer at a previously allocated offset. This is
+        /// equivalent to calling memset. This can be faster than calling Write() repeatedly.
+        ///
+        /// \note The buffer size and capacity are not affected by this function.
+        ///
+        /// \param[in] offset The offset within the buffer to write to. Must fit within Size().
+        /// \param[in] byte The byte to write repeatedly to the buffer.
+        /// \param[in] count The number of times the byte should be written.
+        void WriteRepeatAt(uint32_t offset, uint8_t byte, uint32_t count);
 
     private:
         friend class BufferWriterTestAttorney;

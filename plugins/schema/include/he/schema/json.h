@@ -7,6 +7,7 @@
 #include "he/core/enum_ops.h"
 #include "he/core/string.h"
 #include "he/core/type_traits.h"
+#include "he/core/unique_ptr.h"
 #include "he/core/vector.h"
 
 #include "fmt/format.h"
@@ -14,7 +15,6 @@
 
 #include <concepts>
 #include <list>
-#include <memory>
 #include <unordered_map>
 #include <unordered_set>
 
@@ -49,7 +49,7 @@ namespace he::schema
 
     // Serialization of vectors.
     template <typename T>
-    rapidjson::Value ToJsonValue(rapidjson::Document& doc, const Vector<T>& value)
+    rapidjson::Value ToJsonValue(rapidjson::Document& doc, const he::Vector<T>& value)
     {
         rapidjson::Value v(rapidjson::kArrayType);
         v.Reserve(value.Size(), doc.GetAllocator());
@@ -123,7 +123,7 @@ namespace he::schema
 
     // Serialization of pointers.
     template <typename T>
-    rapidjson::Value ToJsonValue(rapidjson::Document& doc, const std::unique_ptr<T>& value)
+    rapidjson::Value ToJsonValue(rapidjson::Document& doc, const UniquePtr<T>& value)
     {
         if (!value)
             return rapidjson::Value(rapidjson::kNullType);
@@ -133,7 +133,7 @@ namespace he::schema
 
     // Serialization of strings.
     template <>
-    inline rapidjson::Value ToJsonValue(rapidjson::Document&, const String& value)
+    inline rapidjson::Value ToJsonValue(rapidjson::Document&, const he::String& value)
     {
         return rapidjson::Value(rapidjson::StringRef(value.Data(), value.Size()));
     }
@@ -208,7 +208,7 @@ namespace he::schema
 
     // Deserialization of vectors.
     template <typename T>
-    bool FromJsonValue(const rapidjson::Value& value, Vector<T>& out)
+    bool FromJsonValue(const rapidjson::Value& value, he::Vector<T>& out)
     {
         if (!value.IsArray())
             return false;
@@ -307,15 +307,15 @@ namespace he::schema
 
     // Deserialization of pointers.
     template <typename T>
-    bool FromJsonValue(const rapidjson::Value& value, std::unique_ptr<T>& out)
+    bool FromJsonValue(const rapidjson::Value& value, he::UniquePtr<T>& out)
     {
         if (value.IsNull())
         {
-            out.reset();
+            out.Reset();
             return true;
         }
 
-        out = std::make_unique<T>();
+        out = MakeUnique<T>();
         return FromJsonValue(value, *out);
     }
 

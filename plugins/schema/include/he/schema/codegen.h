@@ -29,6 +29,9 @@ namespace he::schema
         /// When true generates code to serialize structures into binary Buffers.
         bool buffer{ false };
 
+        /// When true generates additional code for reflection and dynamic data access.
+        bool reflection{ false };
+
         /// When true generates zero-copy buffer operations only. This means there is no native
         /// structure, only a buffer reader and builder.
         bool zeroCopy{ false };

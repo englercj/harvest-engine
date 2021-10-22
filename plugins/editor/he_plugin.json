@@ -28,7 +28,8 @@
                 {
                     "glob": "src/schema/*.he_schema",
                     "targets": ["cpp"],
-                    "json": true
+                    "json": true,
+                    "reflection": true
                 }
             ],
             "private_includedirs": ["src", "%{he.get_generated_dir(prj.name)}/src"],

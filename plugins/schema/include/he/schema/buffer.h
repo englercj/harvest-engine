@@ -7,12 +7,17 @@
 #include "he/core/compiler.h"
 #include "he/core/config.h"
 #include "he/core/memory_ops.h"
+#include "he/core/string.h"
 #include "he/core/string_view.h"
 #include "he/core/type_traits.h"
 #include "he/core/types.h"
+#include "he/core/unique_ptr.h"
+#include "he/core/vector.h"
 
 #include <concepts>
-#include <type_traits>
+#include <list>
+#include <unordered_map>
+#include <unordered_set>
 
 namespace he::schema
 {
@@ -106,8 +111,8 @@ namespace he::schema
     class Union
     {
     public:
-        uint32_t GetFieldId() const { return *reinterpret_cast<const uint32_t*>(m_data); }
-        bool IsUnset() const { return GetFieldId() == 0; }
+        uint32_t GetTagId() const { return *reinterpret_cast<const uint32_t*>(m_data); }
+        bool IsUnset() const { return GetTagId() == 0; }
 
         template <typename T>
         const T* Get() const
@@ -210,6 +215,9 @@ namespace he::schema
     };
 
     // --------------------------------------------------------------------------------------------
+    template <typename T>
+    concept InlineBufferType = std::is_arithmetic_v<T> || std::is_enum_v<T> || IsSpecialization<T, Offset>;
+
     class BufferBuilder
     {
     public:
@@ -239,7 +247,7 @@ namespace he::schema
         Offset<String> WriteString(const char* str);
         Offset<String> WriteString(StringView str);
 
-        template <typename T>
+        template <InlineBufferType T>
         void AddSequenceElement(T value)
         {
             HE_ASSERT(m_sequenceStartOffset > 0);
@@ -247,7 +255,7 @@ namespace he::schema
             ++m_sequenceElementCount;
         }
 
-        template <typename K, typename V>
+        template <InlineBufferType K, InlineBufferType V>
         void AddSequenceElement(K key, V value)
         {
             HE_ASSERT(m_sequenceStartOffset > 0);
@@ -292,4 +300,172 @@ namespace he::schema
         uint32_t m_sequenceStartOffset{ 0 };
         uint32_t m_sequenceElementCount{ 0 };
     };
+
+    // --------------------------------------------------------------------------------------------
+    // TODO: Move to a Reflection header?
+
+    struct FieldInfo
+    {
+        uint32_t id;
+        uint32_t size;
+        uint32_t offset;
+    };
+
+    template <typename T>
+    inline bool IsDefault(const T& v)
+    {
+        return v == T{ 0 };
+    }
+
+    // --------------------------------------------------------------------------------------------
+    // Serialization to a Buffer
+
+    template <typename T, typename U>
+    Offset<T> ToBuffer(BufferBuilder& builder, const U& value);
+
+    // Serialization of arithmetic, enum, and offset types.
+    template <InlineBufferType T>
+    Offset<T> ToBuffer(BufferBuilder& builder, const T& value)
+    {
+        return builder.WriteValue(value);
+    }
+
+    // Serialization of vectors of inline values.
+    template <InlineBufferType T>
+    Offset<Vector<T>> ToBuffer(BufferBuilder& builder, const he::Vector<T>& value)
+    {
+        return builder.WriteSequence(value.Data(), value.Size(), sizeof(T)).Cast<Vector<T>>();
+    }
+
+    // Serialization of vectors of object values.
+    template <typename T>
+    Offset<Vector<T>> ToBuffer(BufferBuilder& builder, const he::Vector<T>& value)
+    {
+        he::Vector<Offset<void>> offsets(Allocator::GetTemp());
+        offsets.Reserve(value.Size());
+        for (const T& item : value)
+        {
+            offsets.PushBack(ToBuffer(builder, item));
+        }
+        return ToBuffer(builder, offsets);
+    }
+
+    // Serialization of fixed size arrays of inline values.
+    template <typename T> requires(std::is_array_v<T> && InlineBufferType<ArrayElementType<T>>)
+    Offset<Array<T>> ToBuffer(BufferBuilder& builder, const T& value)
+    {
+        constexpr uint32_t N = HE_LENGTH_OF(value);
+        return builder.WriteSequence(value, N, sizeof(T)).Cast<Array<T>>();
+    }
+
+    // Serialization of fixed size arrays of object values.
+    template <typename T> requires(std::is_array_v<T>)
+    Offset<Array<T>> ToBuffer(BufferBuilder& builder, const T& value)
+    {
+        constexpr uint32_t N = HE_LENGTH_OF(value);
+        Offset<void> offsets[N];
+        for (uint32_t i = 0; i < N; ++i)
+        {
+            offsets[i] = ToBuffer(builder, value[i]);
+        }
+        return ToBuffer(builder, offsets);
+    }
+
+    // Serialization of lists of inline values.
+    template <InlineBufferType T>
+    Offset<List<T>> ToBuffer(BufferBuilder& builder, const std::list<T>& value)
+    {
+        builder.StartSequence();
+        for (const T& item : value)
+        {
+            builder.AddSequenceElement(item);
+        }
+        return builder.EndSequence().Cast<List<T>>();
+    }
+
+    // Serialization of lists of object values.
+    template <typename T>
+    Offset<List<T>> ToBuffer(BufferBuilder& builder, const std::list<T>& value)
+    {
+        he::Vector<Offset<void>> offsets(Allocator::GetTemp());
+        offsets.Reserve(value.size());
+        for (const T& item : value)
+        {
+            offsets.PushBack(ToBuffer(builder, item));
+        }
+        return ToBuffer(builder, offsets);
+    }
+
+    // Serialization of maps of inline values.
+    template <InlineBufferType K, InlineBufferType V>
+    Offset<Map<K, V>> ToBuffer(BufferBuilder& builder, const std::unordered_map<K, V>& value)
+    {
+        builder.StartSequence();
+        for (auto&& it : value)
+        {
+            builder.AddSequenceElement(it.first, it.second);
+        }
+        return builder.EndSequence().Cast<Map<K, V>>();
+    }
+
+    // Serialization of maps of object values.
+    template <InlineBufferType K, typename V>
+    Offset<Map<K, V>> ToBuffer(BufferBuilder& builder, const std::unordered_map<K, V>& value)
+    {
+        he::Vector<Offset<void>> offsets(Allocator::GetTemp());
+        offsets.Reserve(value.size());
+        for (auto&& it : value)
+        {
+            offsets.PushBack(ToBuffer(builder, it.second));
+        }
+
+        uint32_t i = 0;
+        builder.StartSequence();
+        for (auto&& it : value)
+        {
+            builder.AddSequenceElement(it.first, offsets[i++]);
+        }
+        return builder.EndSequence().Cast<Map<K, V>>();
+    }
+
+    // Serialization of sets of inline values.
+    template <InlineBufferType T>
+    Offset<Set<T>> ToBuffer(BufferBuilder& builder, const std::unordered_set<T>& value)
+    {
+        builder.StartSequence();
+        for (const T& item : value)
+        {
+            builder.AddSequenceElement(item);
+        }
+        return builder.EndSequence().Cast<Set<T>>();
+    }
+
+    // Serialization of sets of object values.
+    template <typename T>
+    Offset<Set<T>> ToBuffer(BufferBuilder& builder, const std::unordered_set<T>& value)
+    {
+        he::Vector<Offset<void>> offsets(Allocator::GetTemp());
+        offsets.Reserve(value.size());
+        for (const T& item : value)
+        {
+            offsets.PushBack(ToBuffer(builder, item));
+        }
+        return ToBuffer(builder, offsets);
+    }
+
+    // Serialization of pointers.
+    template <typename T>
+    Offset<T> ToBuffer(BufferBuilder& builder, const UniquePtr<T>& value)
+    {
+        if (!value)
+            return Offset<T>{ 0 };
+        return ToBuffer<T>(builder, *value);
+    }
+
+    // Serialization of strings.
+    template <>
+    inline Offset<String> ToBuffer(BufferBuilder& builder, const he::String& value)
+    {
+        return builder.WriteString(value);
+    }
 }

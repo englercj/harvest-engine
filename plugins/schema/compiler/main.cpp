@@ -15,6 +15,7 @@ struct AppArgs
     bool grpc{ false };
     bool json{ false };
     bool buffer{ false };
+    bool reflection{ false };
     bool zeroCopy{ false };
     const char* outDir{ nullptr };
     he::Vector<const char*> targets{};
@@ -33,6 +34,7 @@ int he::AppMain(int argc, char* argv[])
         { args.targets,     't', "target",      "Target language to generate definitions for" },
         { args.includeDirs, 'I', "include",     "Path to search for import declarations" },
         { args.grpc,             "grpc",        "Generate GRPC interfaces" },
+        { args.reflection,  'r', "reflection",  "Enable code generation for native reflection information, disabled if zero-copy is set" },
         { args.json,        'j', "json",        "Enable code generation for JSON serialization" },
         { args.buffer,      'b', "buffer",      "Enable code generation for Buffer serialization" },
         { args.zeroCopy,    'z', "zero-copy",   "Enable code generation for zero-copy buffers only (no native)" },
@@ -89,6 +91,7 @@ int he::AppMain(int argc, char* argv[])
         options.grpc = args.grpc;
         options.json = args.json;
         options.buffer = args.buffer;
+        options.reflection = args.reflection;
         options.zeroCopy = args.zeroCopy;
 
         for (const char* target : args.targets)

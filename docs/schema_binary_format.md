@@ -133,17 +133,15 @@ Maps are stored as a sequence of key-value pairs. Scalar keys and values are sto
 
 #### Union
 
-Unions are stored as a field ID of which value is set, followed by the value itself. The value is stored according to the rules of that type.
-
-TODO: Currently non-scalar values are stored as an offset, but they can be stored inline and remove the indirect. Need to figure out what the API should look like to build a union that way.
+Unions are stored as a tag ID of which field value is set, followed by the value itself. The value is stored according to the rules of that type.
 
 ```
-/----------+-------\
-| field id | value |
-\----------+-------/
+/--------+-------\
+| tag id | value |
+\--------+-------/
 ```
 
 | Element   | Size (bytes)  | Description |
 | --------- | ------------: | ----------- |
-| field id  | 4             | FNV1a hash of the field's name. (uint32) |
+| tag id    | 4             | FNV1a hash of the name of the field that is stored. (uint32) |
 | value     | variable      | The value encoded inline. |

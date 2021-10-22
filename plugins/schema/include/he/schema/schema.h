@@ -33,6 +33,7 @@ namespace he::schema
         Array,
         List,
         Map,
+        Pointer,
         Set,
         String,
         Vector,
@@ -121,6 +122,7 @@ namespace he::schema
             case BaseType::Array:
             case BaseType::List:
             case BaseType::Map:
+            case BaseType::Pointer:
             case BaseType::Set:
             case BaseType::String:
             case BaseType::Vector:
@@ -256,7 +258,7 @@ namespace he::schema
         // Name of the constant used as the fixed size when `base` is `Array`.
         String name;
 
-        // Element type if `base` is `Array`, `List`, `Map`, `Set`, or `Vector`.
+        // Element type if `base` is `Array`, `List`, `Map`, `Pointer`, `Set`, or `Vector`.
         Type* element{ nullptr };
 
         // Key type, if `base` is `Map`.

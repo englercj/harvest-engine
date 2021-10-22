@@ -21,6 +21,18 @@ namespace he
     template <typename T, template <typename...> typename Template> inline constexpr bool IsSpecialization = _IsSpecialization<T, Template>::value;
 
     // --------------------------------------------------------------------------------------------
+    // Array Element
+
+    template <typename T>
+    struct _ArrayTraits {};
+
+    template <typename T, size_t N>
+    struct _ArrayTraits<T[N]> { using ElementType = T; };
+
+    template <typename T>
+    using ArrayElementType = typename _ArrayTraits<T>::ElementType;
+
+    // --------------------------------------------------------------------------------------------
     // Concepts
 
     template <typename T, typename E>

@@ -27,7 +27,7 @@ namespace he
         ~UniquePtr() { Reset(); }
 
         [[nodiscard]] T* Get() const { return m_ptr; }
-        T* Release() const { T* p = m_ptr; m_ptr = nullptr; return p; }
+        T* Release() { T* p = m_ptr; m_ptr = nullptr; return p; }
         void Reset(T* p = nullptr) { Allocator::GetDefault().Delete(p); m_ptr = p; }
 
         [[nodiscard]] T* operator->() const { return m_ptr; }

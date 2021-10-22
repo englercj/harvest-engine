@@ -34,6 +34,10 @@ return function (plugin)
                     opt = opt .. "-b "
                 end
 
+                if options.reflection then
+                    opt = opt .. "-r "
+                end
+
                 if options.zero_copy then
                     opt = opt .. "-z "
                 end

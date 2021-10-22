@@ -58,6 +58,11 @@ namespace he::schema
     {
         HE_ASSERT(m_vtableStartOffset > 0);
         HE_ASSERT(offset.val < m_vtableStartOffset);
+
+        // A zero offset is invalid and means the field is not set. Just skip it in the vtable.
+        if (offset.val == 0)
+            return;
+
         m_writer.Write(fieldId);
         m_writer.Write(m_writer.Size() - offset.val);
         ++m_vtableFieldCount;

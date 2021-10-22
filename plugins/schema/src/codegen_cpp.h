@@ -40,23 +40,24 @@ namespace he::schema
         void GenSrc_Enums();
         void GenSrc_Structs();
 
+        void GenSrc_StructBuffer(const StructDef& def);
+        void GenSrc_UnionBuffer(const UnionDef& def);
+
         void GenSrc_StructJson(const StructDef& def);
+        void GenSrc_UnionJson(const UnionDef& def);
+
+        void GenSrc_StructReflection(const StructDef& def);
+        void GenSrc_UnionReflection(const UnionDef& def);
 
     protected:
         void WriteFieldToJson(const FieldDef& field);
         void WriteFieldFromJson(const FieldDef& field);
 
     private:
-        void WriteBufferType(const Type& t);
-        void WriteBufferWrappedType(const Type& t);
+        void WriteBufferReadType(const Type& t);
+        void WriteBufferWrappedReadType(const Type& t);
 
-        void WriteBufferParamType(const Type& t);
-
-        void WriteBufferStructBuildPrototype(const StructDef& def, bool prefixed);
-        void WriteBufferStructBuildImpl(const StructDef& def);
-
-        void WriteBufferUnionBuildPrototype(const UnionDef& def, const FieldDef& field, bool prefixed);
-        void WriteBufferUnionBuildImpl(const UnionDef& def, const FieldDef& field);
+        void WriteBufferWriteType(const Type& t);
 
     protected:
         bool FlushToFile(const char* suffix);

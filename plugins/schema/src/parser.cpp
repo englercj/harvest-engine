@@ -49,32 +49,6 @@ namespace he::schema
     constexpr char KW_True[] = "true";
     constexpr char KW_Union[] = "union";
 
-    struct BuiltinKeyword { const StringView name; };
-    constexpr BuiltinKeyword BuiltinKeywords[] =
-    {
-        { KW_Alias },
-        { KW_Attribute },
-        { KW_Const },
-        { KW_Enum },
-        { KW_Enumerator },
-        { KW_Extends },
-        { KW_False },
-        { KW_Field },
-        { KW_File },
-        { KW_Implements },
-        { KW_Import },
-        { KW_Interface },
-        { KW_List },
-        { KW_Map },
-        { KW_Method },
-        { KW_Namespace },
-        { KW_Parameter },
-        { KW_Set },
-        { KW_Struct },
-        { KW_True },
-        { KW_Union },
-    };
-
     // Builtin Types
     struct BuiltinType { const StringView name; const BaseType base; };
     constexpr BuiltinType BuiltinTypes[] =
@@ -121,11 +95,6 @@ namespace he::schema
         for (const BuiltinType& t : BuiltinTypes)
         {
             m_builtinTypes[t.name] = t.base;
-        }
-
-        for (const BuiltinKeyword& k : BuiltinKeywords)
-        {
-            m_builtinKeywords.insert(k.name);
         }
     }
 
@@ -667,20 +636,6 @@ namespace he::schema
         out += m_token.text;
 
         NextDecl();
-        return true;
-    }
-
-    bool Parser::ConsumeName(String& out)
-    {
-        if (!ConsumeIdentifier(out))
-            return false;
-
-        if (m_builtinTypes.contains(out) || m_builtinKeywords.contains(out))
-        {
-            AddError("The token '{}' is a reserved name; try a different name.", out);
-            return false;
-        }
-
         return true;
     }
 
@@ -1308,7 +1263,7 @@ namespace he::schema
         if (!ConsumeKeyword(KW_Struct))
             return false;
 
-        if (!ConsumeName(def.name))
+        if (!ConsumeIdentifier(def.name))
             return false;
 
         if (m_builtinTypes.find(def.name) != m_builtinTypes.end())
@@ -1443,7 +1398,7 @@ namespace he::schema
         if (!ConsumeKeyword(KW_Union))
             return false;
 
-        if (!ConsumeName(def.name))
+        if (!ConsumeIdentifier(def.name))
             return false;
 
         def.id = FNV32::HashString(def.name.Data(), parentId);
@@ -1523,7 +1478,7 @@ namespace he::schema
 
     bool Parser::ParseField(FieldDef& def)
     {
-        if (!ConsumeName(def.name))
+        if (!ConsumeIdentifier(def.name))
             return false;
 
         def.id = FNV32::HashString(def.name.Data());
@@ -1561,7 +1516,7 @@ namespace he::schema
         if (!ConsumeKeyword(KW_Attribute))
             return false;
 
-        if (!ConsumeName(def.name))
+        if (!ConsumeIdentifier(def.name))
             return false;
 
         if (TryConsume(Lexer::TokenType::OpenParens))
@@ -1639,7 +1594,7 @@ namespace he::schema
         if (!ConsumeKeyword(KW_Enum))
             return false;
 
-        if (!ConsumeName(def.name))
+        if (!ConsumeIdentifier(def.name))
             return false;
 
         def.base = isFlags ? BaseType::Uint32 : BaseType::Int32;
@@ -1696,7 +1651,7 @@ namespace he::schema
         if (!ConsumeAttributes(def.attributes))
             return false;
 
-        if (!ConsumeName(def.name))
+        if (!ConsumeIdentifier(def.name))
             return false;
 
         if (TryConsume(Lexer::TokenType::Equals))
@@ -1729,7 +1684,7 @@ namespace he::schema
         if (!ConsumeKeyword(KW_Interface))
             return false;
 
-        if (!ConsumeName(def.name))
+        if (!ConsumeIdentifier(def.name))
             return false;
 
         def.id = FNV32::HashString(def.name.Data(), m_schema.namespaceId);
@@ -1859,7 +1814,7 @@ namespace he::schema
 
     bool Parser::ParseInterfaceMethod(MethodDef& def)
     {
-        if (!ConsumeName(def.name))
+        if (!ConsumeIdentifier(def.name))
             return false;
 
         def.id = FNV32::HashString(def.name.Data());
@@ -1901,7 +1856,7 @@ namespace he::schema
         if (!ConsumeAttributes(def.attributes))
             return false;
 
-        if (!ConsumeName(def.name))
+        if (!ConsumeIdentifier(def.name))
             return false;
 
         if (!Consume(Lexer::TokenType::Colon))
@@ -1915,7 +1870,7 @@ namespace he::schema
         if (!ConsumeKeyword(KW_Alias))
             return false;
 
-        if (!ConsumeName(def.name))
+        if (!ConsumeIdentifier(def.name))
             return false;
 
         if (!ConsumeTypeParams(def.typeParams))
@@ -1935,7 +1890,7 @@ namespace he::schema
         if (!ConsumeKeyword(KW_Const))
             return false;
 
-        if (!ConsumeName(def.name))
+        if (!ConsumeIdentifier(def.name))
             return false;
 
         if (!Consume(Lexer::TokenType::Colon))

@@ -8,8 +8,6 @@
 #include "he/schema/code_writer.h"
 #include "he/schema/schema.h"
 
-#include <concepts>
-
 namespace he::schema
 {
     class CodeGenCpp
@@ -70,14 +68,9 @@ namespace he::schema
         void WriteNativeType(const Type& t);
         void WriteNativeValue(BaseType t, const Value& v);
         void WriteParamType(const Type& t);
-        void WriteScalarType(BaseType t);
         void WriteUnsignedAsHex(BaseType t, const Value& v);
 
-        template <std::integral T>
-        void WriteAsHex(T value)
-        {
-            m_writer.Write("{:#0{}x}", value, 2 + (sizeof(T) * 2));
-        }
+        const char* GetScalarType(BaseType t);
 
     protected:
         const SchemaDef& m_schema;

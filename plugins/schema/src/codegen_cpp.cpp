@@ -13,6 +13,9 @@
 
 namespace he::schema
 {
+    #define HE_HEX_FMT "{:#0{}x}"
+    #define HE_HEX_VAL(x) x, (2 + (sizeof(x) * 2))
+
     constexpr uint32_t UnionFieldId_tag = FNV32::HashString("tag");
     constexpr uint32_t UnionFieldId_value = FNV32::HashString("value");
 
@@ -46,8 +49,7 @@ namespace he::schema
             m_writer.Write("namespace ");
             WriteWithReplace(m_schema.namespaceName, '.', "::");
             m_writer.Write('\n');
-            m_writer.WriteIndent();
-            m_writer.Write("{\n");
+            m_writer.WriteLine("{");
             m_writer.IncreaseIndent();
         }
 
@@ -83,8 +85,7 @@ namespace he::schema
         if (!m_schema.namespaceName.IsEmpty())
         {
             m_writer.DecreaseIndent();
-            m_writer.WriteIndent();
-            m_writer.Write('}');
+            m_writer.WriteLine("}");
         }
         m_writer.Write('\n');
     }
@@ -170,9 +171,7 @@ namespace he::schema
     {
         WriteGenericDecl(def.typeParams);
         m_writer.WriteIndent();
-        m_writer.Write("using ");
-        m_writer.Write(def.name);
-        m_writer.Write(" = ");
+        m_writer.Write("using {} = ", def.name);
         WriteNativeType(def.type);
         WriteArraySize(def.type);
         m_writer.Write(";\n");
@@ -186,22 +185,10 @@ namespace he::schema
     void CodeGenCpp::GenHdr_Const(const ConstDef& def)
     {
         m_writer.WriteIndent();
-        m_writer.Write("constexpr ");
-        if (def.base == BaseType::String)
-        {
-            m_writer.Write("char ");
-        }
-        else
-        {
-            WriteScalarType(def.base);
-            m_writer.Write(' ');
-        }
-        m_writer.Write(def.name);
-        if (def.base == BaseType::String)
-        {
-            m_writer.Write("[] ");
-        }
-        m_writer.Write(" = ");
+        m_writer.Write("constexpr {1} {0}{2} = ",
+            def.name,
+            def.base == BaseType::String ? "char" : GetScalarType(def.base),
+            def.base == BaseType::String ? "[] " : "");
         WriteNativeValue(def.base, def.value);
         m_writer.Write(";\n");
     }
@@ -210,14 +197,8 @@ namespace he::schema
     {
         const bool isFlags = HasAttribute("Flags", def.attributes);
 
-        m_writer.WriteIndent();
-        m_writer.Write("enum class ");
-        m_writer.Write(def.name);
-        m_writer.Write(" : ");
-        WriteScalarType(def.base);
-        m_writer.Write('\n');
-        m_writer.WriteIndent();
-        m_writer.Write("{\n");
+        m_writer.WriteLine("enum class {} : {}", def.name, GetScalarType(def.base));
+        m_writer.WriteLine("{");
         m_writer.IncreaseIndent();
 
         for (const EnumValueDef& val : def.values)
@@ -235,34 +216,27 @@ namespace he::schema
         m_writer.Write('\n');
         if (isFlags)
         {
-            m_writer.WriteIndent();
-            m_writer.Write("None = 0,\n");
+            m_writer.WriteLine("None = 0,");
 
-            m_writer.WriteIndent();
             switch (def.base)
             {
-                case BaseType::Uint8: m_writer.Write("All = 0xff,\n"); break;
-                case BaseType::Uint16: m_writer.Write("All = 0xffff,\n"); break;
-                case BaseType::Uint32: m_writer.Write("All = 0xffffffff,\n"); break;
-                case BaseType::Uint64: m_writer.Write("All = 0xffffffffffffffff,\n"); break;
+                case BaseType::Uint8: m_writer.WriteLine("All = 0xff,"); break;
+                case BaseType::Uint16: m_writer.WriteLine("All = 0xffff,"); break;
+                case BaseType::Uint32: m_writer.WriteLine("All = 0xffffffff,"); break;
+                case BaseType::Uint64: m_writer.WriteLine("All = 0xffffffffffffffff,"); break;
             }
         }
         else
         {
-            m_writer.WriteIndent();
-            m_writer.Write("_Count,\n");
+            m_writer.WriteLine("_Count,");
         }
 
         m_writer.DecreaseIndent();
-        m_writer.WriteIndent();
-        m_writer.Write("};\n");
+        m_writer.WriteLine("};");
 
         if (isFlags)
         {
-            m_writer.WriteIndent();
-            m_writer.Write("HE_ENUM_FLAGS(");
-            m_writer.Write(def.name);
-            m_writer.Write(");\n\n");
+            m_writer.WriteLine("HE_ENUM_FLAGS({});\n\n", def.name);
         }
     }
 
@@ -284,32 +258,19 @@ namespace he::schema
             }
         }
         m_writer.Write('\n');
-        m_writer.WriteIndent();
-        m_writer.Write("{\n");
-        m_writer.WriteIndent();
-        m_writer.Write("public:\n");
+        m_writer.WriteLine("{");
+        m_writer.WriteLine("public:");
         m_writer.IncreaseIndent();
 
-        m_writer.WriteIndent();
-        m_writer.Write("static constexpr uint32_t TypeId = ");
-        WriteAsHex(def.id);
-        m_writer.Write(";\n");
+        m_writer.WriteLine("static constexpr uint32_t TypeId = " HE_HEX_FMT ";", HE_HEX_VAL(def.id));
 
         for (const MethodDef& method : def.methods)
         {
-            m_writer.WriteIndent();
-            m_writer.Write("static constexpr uint32_t MethodId_");
-            m_writer.Write(method.name);
-            m_writer.Write(" = ");
-            WriteAsHex(method.id);
-            m_writer.Write(";\n");
+            m_writer.Write("static constexpr uint32_t MethodId_{} = " HE_HEX_FMT ";", method.name, HE_HEX_VAL(method.id));
         }
         m_writer.Write('\n');
 
-        m_writer.WriteIndent();
-        m_writer.Write("virtual ~");
-        m_writer.Write(def.name);
-        m_writer.Write("() {}\n");
+        m_writer.WriteLine("virtual ~{}() {{}}", def.name);
 
         for (const ObjectDef& obj : def.objects)
         {
@@ -361,8 +322,7 @@ namespace he::schema
         }
 
         m_writer.DecreaseIndent();
-        m_writer.WriteIndent();
-        m_writer.Write("};\n");
+        m_writer.WriteLine("};");
     }
 
     void CodeGenCpp::GenHdr_Struct(const StructDef& def)
@@ -377,33 +337,23 @@ namespace he::schema
             WriteNativeType(def.extends);
         }
         m_writer.Write('\n');
-        m_writer.WriteIndent();
-        m_writer.Write("{\n");
+        m_writer.WriteLine("{");
         m_writer.IncreaseIndent();
 
-        m_writer.WriteIndent();
-        m_writer.Write("static constexpr uint32_t TypeId = ");
-        WriteAsHex(def.id);
-        m_writer.Write(";\n\n");
+        m_writer.WriteLine("static constexpr uint32_t TypeId = " HE_HEX_FMT ";\n", HE_HEX_VAL(def.id));
 
         for (const FieldDef& field : def.fields)
         {
-            m_writer.WriteIndent();
-            m_writer.Write("static constexpr uint32_t FieldId_");
-            m_writer.Write(field.name);
-            m_writer.Write(" = ");
-            WriteAsHex(field.id);
-            m_writer.Write(";\n");
+            m_writer.WriteLine("static constexpr uint32_t FieldId_{} = " HE_HEX_FMT ";", field.name, HE_HEX_VAL(field.id));
         }
-        m_writer.Write('\n');
+        if (!def.fields.IsEmpty())
+            m_writer.Write('\n');
 
-        m_writer.WriteIndent();
-        m_writer.Write("static constexpr uint32_t FieldCount = {};\n\n", def.fields.Size());
+        m_writer.WriteLine("static constexpr uint32_t FieldCount = {};\n", def.fields.Size());
 
         if (m_options.reflection && !m_options.zeroCopy && !def.fields.IsEmpty())
         {
-            m_writer.WriteIndent();
-            m_writer.Write("static const he::schema::FieldInfo Fields[FieldCount];\n\n");
+            m_writer.WriteLine("static const he::schema::FieldInfo Fields[FieldCount];\n");
         }
 
         for (const ObjectDef& obj : def.objects)
@@ -450,28 +400,21 @@ namespace he::schema
                 m_writer.Write("private he::schema::Structure");
             }
             m_writer.Write('\n');
-            m_writer.WriteIndent();
-            m_writer.Write("{\n");
-            m_writer.WriteIndent();
-            m_writer.Write("public:\n");
+            m_writer.WriteLine("{");
+            m_writer.WriteLine("public:");
             m_writer.IncreaseIndent();
 
             for (const FieldDef& field : def.fields)
             {
                 m_writer.WriteIndent();
-                m_writer.Write("const auto* ");
-                m_writer.Write(ToUpper(field.name[0]));
-                m_writer.Write(field.name.Data() + 1);
-                m_writer.Write("() const { return GetFieldPointer<");
+                m_writer.Write("const auto* {}{}() const {{ return GetFieldPointer<",
+                    ToUpper(field.name[0]), field.name.Data() + 1);
                 WriteBufferReadType(field.type);
-                m_writer.Write(">(FieldId_");
-                m_writer.Write(field.name);
-                m_writer.Write("); }\n");
+                m_writer.Write(">(FieldId_{}); }}\n", field.name);
             }
 
             m_writer.DecreaseIndent();
-            m_writer.WriteIndent();
-            m_writer.Write("};\n\n");
+            m_writer.WriteLine("};\n");
         }
 
         if (!m_options.zeroCopy)
@@ -489,98 +432,61 @@ namespace he::schema
         }
 
         m_writer.DecreaseIndent();
-        m_writer.WriteIndent();
-        m_writer.Write("};\n\n");
+        m_writer.WriteLine("};\n");
     }
 
     void CodeGenCpp::GenHdr_Union(const UnionDef& def)
     {
-        m_writer.WriteIndent();
-        m_writer.Write("struct ");
-        m_writer.Write(def.name);
-        m_writer.Write('\n');
-        m_writer.WriteIndent();
-        m_writer.Write("{\n");
+        m_writer.WriteLine("struct {}", def.name);
+        m_writer.WriteLine("{");
         m_writer.IncreaseIndent();
 
-        m_writer.WriteIndent();
-        m_writer.Write("static constexpr uint32_t TypeId = ");
-        WriteAsHex(def.id);
-        m_writer.Write(";\n\n");
+        m_writer.WriteLine("static constexpr uint32_t TypeId = " HE_HEX_FMT ";\n", HE_HEX_VAL(def.id));
 
         for (const FieldDef& field : def.fields)
         {
-            m_writer.WriteIndent();
-            m_writer.Write("static constexpr uint32_t TagId_");
-            m_writer.Write(field.name);
-            m_writer.Write(" = ");
-            WriteAsHex(field.id);
-            m_writer.Write(";\n");
+            m_writer.WriteLine("static constexpr uint32_t TagId_{} = " HE_HEX_FMT ";", field.name, HE_HEX_VAL(field.id));
         }
-        m_writer.Write('\n');
+        if (!def.fields.IsEmpty())
+            m_writer.Write('\n');
 
-        m_writer.WriteIndent();
-        m_writer.Write("static constexpr uint32_t FieldId_tag = ");
-        WriteAsHex(UnionFieldId_tag);
-        m_writer.Write(";\n");
-
-        m_writer.WriteIndent();
-        m_writer.Write("static constexpr uint32_t FieldId_value = ");
-        WriteAsHex(UnionFieldId_value);
-        m_writer.Write(";\n\n");
-
-        m_writer.WriteIndent();
-        m_writer.Write("static constexpr uint32_t FieldCount = 2;\n\n");
+        m_writer.WriteLine("static constexpr uint32_t FieldId_tag = " HE_HEX_FMT ";", HE_HEX_VAL(UnionFieldId_tag));
+        m_writer.WriteLine("static constexpr uint32_t FieldId_value = " HE_HEX_FMT ";\n", HE_HEX_VAL(UnionFieldId_value));
+        m_writer.WriteLine("static constexpr uint32_t FieldCount = 2;\n");
 
         if (m_options.reflection && !m_options.zeroCopy)
         {
-            m_writer.WriteIndent();
-            m_writer.Write("static const he::schema::FieldInfo Fields[FieldCount];\n\n");
+            m_writer.WriteLine("static const he::schema::FieldInfo Fields[FieldCount];\n");
         }
 
         if (m_options.buffer)
         {
-            m_writer.WriteIndent();
-            m_writer.Write("class BufferReader : private he::schema::Union\n");
-            m_writer.WriteIndent();
-            m_writer.Write("{\n");
-            m_writer.WriteIndent();
-            m_writer.Write("public:\n");
+            m_writer.WriteLine("class BufferReader : private he::schema::Union");
+            m_writer.WriteLine("{");
+            m_writer.WriteLine("public:");
             m_writer.IncreaseIndent();
 
-            m_writer.WriteIndent();
-            m_writer.Write("using he::schema::Union::GetTagId;\n");
-            m_writer.WriteIndent();
-            m_writer.Write("using he::schema::Union::IsUnset;\n\n");
+            m_writer.WriteLine("using he::schema::Union::GetTagId;");
+            m_writer.WriteLine("using he::schema::Union::IsUnset;\n");
 
             for (const FieldDef& field : def.fields)
             {
                 m_writer.WriteIndent();
-                m_writer.Write("const auto* ");
-                m_writer.Write(ToUpper(field.name[0]));
-                m_writer.Write(field.name.Data() + 1);
-                m_writer.Write("() const { return GetTagId() == TagId_");
-                m_writer.Write(field.name);
-                m_writer.Write(" ? Get<");
+                m_writer.Write("const auto* {}{}() const {{ return GetTagId() == TagId_{} ? Get<",
+                    ToUpper(field.name[0]), field.name.Data() + 1, field.name);
                 WriteBufferReadType(field.type);
                 m_writer.Write(">() : nullptr; }\n");
             }
 
             m_writer.DecreaseIndent();
-            m_writer.WriteIndent();
-            m_writer.Write("};\n\n");
+            m_writer.WriteLine("};\n");
         }
 
         if (!m_options.zeroCopy)
         {
-            m_writer.WriteIndent();
-            m_writer.Write("uint32_t tag;\n");
-
-            m_writer.WriteIndent();
-            m_writer.Write("union\n");
-
-            m_writer.WriteIndent();
-            m_writer.Write("{\n");
+            m_writer.WriteLine("uint32_t tag;");
+            m_writer.WriteLine("union");
+            m_writer.WriteLine("{");
             m_writer.IncreaseIndent();
 
             for (const FieldDef& field : def.fields)
@@ -594,13 +500,11 @@ namespace he::schema
             }
 
             m_writer.DecreaseIndent();
-            m_writer.WriteIndent();
-            m_writer.Write("} value;\n");
+            m_writer.WriteLine("} value;");
         }
 
         m_writer.DecreaseIndent();
-        m_writer.WriteIndent();
-        m_writer.Write("};\n\n");
+        m_writer.WriteLine("};\n");
     }
 
     void CodeGenCpp::GenSrc_Enums()
@@ -608,12 +512,9 @@ namespace he::schema
         if (m_schema.enums.IsEmpty())
             return;
 
-        m_writer.WriteIndent();
-        m_writer.Write("// Enum Stringification\n");
-        m_writer.WriteIndent();
-        m_writer.Write("namespace he\n");
-        m_writer.WriteIndent();
-        m_writer.Write("{\n");
+        m_writer.WriteLine("// Enum Stringification");
+        m_writer.WriteLine("namespace he");
+        m_writer.WriteLine("{");
         m_writer.IncreaseIndent();
 
         for (const EnumDef& def : m_schema.enums)
@@ -625,15 +526,11 @@ namespace he::schema
             m_writer.Write("template <> const char* AsString(");
             WriteNamespacePrefixed(def.name);
             m_writer.Write(" x)\n");
-            m_writer.WriteIndent();
-            m_writer.Write("{\n");
+            m_writer.WriteLine("{");
             m_writer.IncreaseIndent();
 
-            m_writer.WriteIndent();
-            m_writer.Write("switch (x)\n");
-
-            m_writer.WriteIndent();
-            m_writer.Write("{\n");
+            m_writer.WriteLine("switch (x)");
+            m_writer.WriteLine("{");
             m_writer.IncreaseIndent();
 
             for (const EnumValueDef& val : def.values)
@@ -654,32 +551,24 @@ namespace he::schema
             m_writer.Write("::_Count: return \"_Count\";\n");
 
             m_writer.DecreaseIndent();
-            m_writer.WriteIndent();
-            m_writer.Write("}\n");
-
-            m_writer.WriteIndent();
-            m_writer.Write("return \"<unknown>\";\n");
+            m_writer.WriteLine("}");
+            m_writer.WriteLine("return \"<unknown>\";");
 
             m_writer.DecreaseIndent();
-            m_writer.WriteIndent();
-            m_writer.Write("}\n\n");
+            m_writer.WriteLine("}\n");
         }
 
         m_writer.DecreaseIndent();
-        m_writer.WriteIndent();
-        m_writer.Write("}\n");
+        m_writer.WriteLine("}");
     }
 
     void CodeGenCpp::GenSrc_Structs()
     {
         if (m_options.buffer)
         {
-            m_writer.WriteIndent();
-            m_writer.Write("// Buffer Implementation\n");
-            m_writer.WriteIndent();
-            m_writer.Write("namespace he::schema\n");
-            m_writer.WriteIndent();
-            m_writer.Write("{\n");
+            m_writer.WriteLine("// Buffer Implementation");
+            m_writer.WriteLine("namespace he::schema");
+            m_writer.WriteLine("{");
             m_writer.IncreaseIndent();
 
             for (const ObjectDef& def : m_schema.objects)
@@ -696,22 +585,19 @@ namespace he::schema
             }
 
             m_writer.DecreaseIndent();
-            m_writer.WriteIndent();
-            m_writer.Write("}\n");
+            m_writer.WriteLine("}");
         }
 
         if (m_options.reflection && !m_options.zeroCopy)
         {
-            m_writer.WriteIndent();
-            m_writer.Write("// Reflection Implementation\n");
+            m_writer.WriteLine("// Reflection Implementation");
             if (!m_schema.namespaceName.IsEmpty())
             {
                 m_writer.WriteIndent();
                 m_writer.Write("namespace ");
                 WriteWithReplace(m_schema.namespaceName, '.', "::");
                 m_writer.Write('\n');
-                m_writer.WriteIndent();
-                m_writer.Write("{\n");
+                m_writer.WriteLine("{");
                 m_writer.IncreaseIndent();
             }
 
@@ -731,20 +617,16 @@ namespace he::schema
             if (!m_schema.namespaceName.IsEmpty())
             {
                 m_writer.DecreaseIndent();
-                m_writer.WriteIndent();
-                m_writer.Write('}');
+                m_writer.WriteLine("}");
             }
             m_writer.Write('\n');
         }
 
         if (m_options.json)
         {
-            m_writer.WriteIndent();
-            m_writer.Write("// JSON Serialization\n");
-            m_writer.WriteIndent();
-            m_writer.Write("namespace he::schema\n");
-            m_writer.WriteIndent();
-            m_writer.Write("{\n");
+            m_writer.WriteLine("// JSON Serialization");
+            m_writer.WriteLine("namespace he::schema");
+            m_writer.WriteLine("{");
             m_writer.IncreaseIndent();
 
             for (const ObjectDef& def : m_schema.objects)
@@ -761,8 +643,7 @@ namespace he::schema
             }
 
             m_writer.DecreaseIndent();
-            m_writer.WriteIndent();
-            m_writer.Write("}\n");
+            m_writer.WriteLine("}");
         }
     }
 
@@ -775,8 +656,7 @@ namespace he::schema
         WriteNamespacePrefixed(def.name);
         m_writer.Write("& value)\n");
 
-        m_writer.WriteIndent();
-        m_writer.Write("{\n");
+        m_writer.WriteLine("{");
         m_writer.IncreaseIndent();
 
         for (const FieldDef& field : def.fields)
@@ -787,8 +667,7 @@ namespace he::schema
             m_writer.Write(">(builder, value.{});\n", field.name);
         }
 
-        m_writer.WriteIndent();
-        m_writer.Write("builder.StartVTable();\n");
+        m_writer.WriteLine("builder.StartVTable();");
 
         for (const FieldDef& field : def.fields)
         {
@@ -796,21 +675,13 @@ namespace he::schema
             m_writer.WriteIndent();
             m_writer.Write("builder.AddVTableField(");
             WriteNamespacePrefixed(def.name);
-            m_writer.Write("::FieldId_");
-            m_writer.Write(field.name);
-            m_writer.Write(", fieldOffset_");
-            m_writer.Write(field.name);
-            m_writer.Write("_);\n");
+            m_writer.Write("::FieldId_{0}, fieldOffset_{0}_);\n", field.name);
         }
 
-        m_writer.WriteIndent();
-        m_writer.Write("return builder.EndVTable().Cast<");
-        m_writer.Write(def.name);
-        m_writer.Write(">();\n");
+        m_writer.WriteLine("return builder.EndVTable().Cast<{}>();", def.name);
 
         m_writer.DecreaseIndent();
-        m_writer.WriteIndent();
-        m_writer.Write("}\n");
+        m_writer.WriteLine("}");
     }
 
     void CodeGenCpp::GenSrc_UnionBuffer(const UnionDef& def)
@@ -822,16 +693,12 @@ namespace he::schema
         WriteNamespacePrefixed(def.name);
         m_writer.Write("& value)\n");
 
-        m_writer.WriteIndent();
-        m_writer.Write("{\n");
+        m_writer.WriteLine("{");
         m_writer.IncreaseIndent();
 
-        m_writer.WriteIndent();
-        m_writer.Write("const auto offset = builder.WriteValue(value.tag);\n");
-        m_writer.WriteIndent();
-        m_writer.Write("switch (value.tag)\n");
-        m_writer.WriteIndent();
-        m_writer.Write("{\n");
+        m_writer.WriteLine("const auto offset = builder.WriteValue(value.tag);");
+        m_writer.WriteLine("switch (value.tag)");
+        m_writer.WriteLine("{");
         m_writer.IncreaseIndent();
 
         for (const FieldDef& field : def.fields)
@@ -847,8 +714,7 @@ namespace he::schema
         }
 
         m_writer.DecreaseIndent();
-        m_writer.WriteIndent();
-        m_writer.Write("}\n");
+        m_writer.WriteLine("}");
 
         m_writer.WriteIndent();
         m_writer.Write("return offset.Cast<");
@@ -856,8 +722,7 @@ namespace he::schema
         m_writer.Write(">();\n");
 
         m_writer.DecreaseIndent();
-        m_writer.WriteIndent();
-        m_writer.Write("}\n");
+        m_writer.WriteLine("}");
     }
 
     void CodeGenCpp::GenSrc_StructJson(const StructDef& def)
@@ -868,29 +733,21 @@ namespace he::schema
         WriteNamespacePrefixed(def.name);
         m_writer.Write("& value)\n");
 
-        m_writer.WriteIndent();
-        m_writer.Write("{\n");
+        m_writer.WriteLine("{");
         m_writer.IncreaseIndent();
 
-        m_writer.WriteIndent();
-        m_writer.Write("rapidjson::Value v(rapidjson::kObjectType);\n");
-
-        m_writer.WriteIndent();
-        m_writer.Write("v.MemberReserve(");
-        m_writer.Write("{}", def.fields.Size());
-        m_writer.Write(", doc.GetAllocator());\n");
+        m_writer.WriteLine("rapidjson::Value v(rapidjson::kObjectType);");
+        m_writer.WriteLine("v.MemberReserve({}, doc.GetAllocator());", def.fields.Size());
 
         for (const FieldDef& field : def.fields)
         {
             WriteFieldToJson(field);
         }
 
-        m_writer.WriteIndent();
-        m_writer.Write("return v;\n");
+        m_writer.WriteLine("return v;");
 
         m_writer.DecreaseIndent();
-        m_writer.WriteIndent();
-        m_writer.Write("}\n");
+        m_writer.WriteLine("}");
 
         // FromJsonValue
         m_writer.WriteIndent();
@@ -898,8 +755,7 @@ namespace he::schema
         WriteNamespacePrefixed(def.name);
         m_writer.Write("& out)\n");
 
-        m_writer.WriteIndent();
-        m_writer.Write("{\n");
+        m_writer.WriteLine("{");
         m_writer.IncreaseIndent();
 
         for (const FieldDef& field : def.fields)
@@ -907,12 +763,10 @@ namespace he::schema
             WriteFieldFromJson(field);
         }
 
-        m_writer.WriteIndent();
-        m_writer.Write("return true;\n");
+        m_writer.WriteLine("return true;");
 
         m_writer.DecreaseIndent();
-        m_writer.WriteIndent();
-        m_writer.Write("}\n");
+        m_writer.WriteLine("}");
     }
 
     void CodeGenCpp::GenSrc_UnionJson(const UnionDef& def)
@@ -925,76 +779,37 @@ namespace he::schema
         if (def.fields.IsEmpty())
             return;
 
-        m_writer.WriteIndent();
-        m_writer.Write("const he::schema::FieldInfo ");
-        m_writer.Write(def.name);
-        m_writer.Write("::Fields[FieldCount] = \n");
-
-        m_writer.WriteIndent();
-        m_writer.Write("{\n");
+        m_writer.WriteLine("const he::schema::FieldInfo {}::Fields[FieldCount] = ", def.name);
+        m_writer.WriteLine("{");
         m_writer.IncreaseIndent();
 
         for (const FieldDef& field : def.fields)
         {
-            m_writer.WriteIndent();
-            m_writer.Write("{ FieldId_");
-            m_writer.Write(field.name);
-            m_writer.Write(", sizeof(");
-            m_writer.Write(def.name);
-            m_writer.Write("::");
-            m_writer.Write(field.name);
-            m_writer.Write("), offsetof(");
-            m_writer.Write(def.name);
-            m_writer.Write(", ");
-            m_writer.Write(field.name);
-            m_writer.Write(") },\n");
+            m_writer.WriteLine("{{ FieldId_{0}, sizeof({1}::{0}), offsetof({1}, {0}) }},", field.name, def.name);
         }
 
         m_writer.DecreaseIndent();
-        m_writer.WriteIndent();
-        m_writer.Write("};\n");
+        m_writer.WriteLine("};");
     }
 
     void CodeGenCpp::GenSrc_UnionReflection(const UnionDef& def)
     {
-        m_writer.WriteIndent();
-        m_writer.Write("const he::schema::FieldInfo ");
-        m_writer.Write(def.name);
-        m_writer.Write("::Fields[FieldCount] = \n");
-
-        m_writer.WriteIndent();
-        m_writer.Write("{\n");
+        m_writer.WriteLine("const he::schema::FieldInfo {}::Fields[FieldCount] = ", def.name);
+        m_writer.WriteLine("{");
         m_writer.IncreaseIndent();
 
-        m_writer.WriteIndent();
-        m_writer.Write("{ FieldId_tag, sizeof(");
-        m_writer.Write(def.name);
-        m_writer.Write("::tag), offsetof(");
-        m_writer.Write(def.name);
-        m_writer.Write(", tag) },\n");
-
-        m_writer.WriteIndent();
-        m_writer.Write("{ FieldId_value, sizeof(");
-        m_writer.Write(def.name);
-        m_writer.Write("::value), offsetof(");
-        m_writer.Write(def.name);
-        m_writer.Write(", value) },\n");
+        m_writer.WriteLine("{{ FieldId_tag, sizeof({0}::tag), offsetof({0}, tag) }},", def.name);
+        m_writer.WriteLine("{{ FieldId_value, sizeof({0}::value), offsetof({0}, value) }},", def.name);
 
         m_writer.DecreaseIndent();
-        m_writer.WriteIndent();
-        m_writer.Write("};\n");
+        m_writer.WriteLine("};");
     }
 
     void CodeGenCpp::WriteFieldToJson(const FieldDef& field)
     {
         if (!m_options.zeroCopy)
         {
-            m_writer.WriteIndent();
-            m_writer.Write("v.AddMember(\"");
-            m_writer.Write(field.name);
-            m_writer.Write("\", he::schema::ToJsonValue(doc, value.");
-            m_writer.Write(field.name);
-            m_writer.Write(").Move(), doc.GetAllocator());\n");
+            m_writer.WriteLine("v.AddMember(\"{0}\", he::schema::ToJsonValue(doc, value.{0}).Move(), doc.GetAllocator());", field.name);
         }
     }
 
@@ -1002,16 +817,10 @@ namespace he::schema
     {
         if (!m_options.zeroCopy)
         {
-            m_writer.WriteIndent();
-            m_writer.Write("if (!he::schema::FromJsonMember(value, \"");
-            m_writer.Write(field.name);
-            m_writer.Write("\", out.");
-            m_writer.Write(field.name);
-            m_writer.Write("))\n");
+            m_writer.WriteLine("if (!he::schema::FromJsonMember(value, \"{0}\", out.{0}))", field.name);
             m_writer.IncreaseIndent();
 
-            m_writer.WriteIndent();
-            m_writer.Write("return false;\n");
+            m_writer.WriteLine("return false;");
             m_writer.DecreaseIndent();
         }
     }
@@ -1135,9 +944,7 @@ namespace he::schema
             case BaseType::Interface:
             case BaseType::Struct:
             case BaseType::Union:
-                m_writer.Write("he::schema::RelPointer<");
-                m_writer.Write(t.name);
-                m_writer.Write("::BufferReader>");
+                m_writer.Write("he::schema::RelPointer<{}::BufferReader>", t.name);
                 break;
             case BaseType::Unknown:
                 HE_ASSERT(false, "Encountered an unknown type!");
@@ -1337,7 +1144,7 @@ namespace he::schema
             case BaseType::Uint64:
             case BaseType::Float32:
             case BaseType::Float64:
-                WriteScalarType(t.base);
+                m_writer.Write(GetScalarType(t.base));
                 break;
             case BaseType::String:
                 m_writer.Write("he::String");
@@ -1506,39 +1313,41 @@ namespace he::schema
         }
     }
 
-    void CodeGenCpp::WriteScalarType(BaseType t)
-    {
-        switch (t)
-        {
-            case BaseType::Bool: m_writer.Write("bool"); break;
-            case BaseType::Int8: m_writer.Write("int8_t"); break;
-            case BaseType::Int16: m_writer.Write("int16_t"); break;
-            case BaseType::Int32: m_writer.Write("int32_t"); break;
-            case BaseType::Int64: m_writer.Write("int64_t"); break;
-            case BaseType::Uint8: m_writer.Write("uint8_t"); break;
-            case BaseType::Uint16: m_writer.Write("uint16_t"); break;
-            case BaseType::Uint32: m_writer.Write("uint32_t"); break;
-            case BaseType::Uint64: m_writer.Write("uint64_t"); break;
-            case BaseType::Float32: m_writer.Write("float"); break;
-            case BaseType::Float64: m_writer.Write("double"); break;
-            default:
-                HE_ASSERT(false, "Invalid base type encountered in WriteSimpleType!");
-                break;
-        }
-    }
-
     void CodeGenCpp::WriteUnsignedAsHex(BaseType t, const Value& v)
     {
         switch (t)
         {
-            case BaseType::Uint8: WriteAsHex(v.basic.u8); break;
-            case BaseType::Uint16: WriteAsHex(v.basic.u16); break;
-            case BaseType::Uint32: WriteAsHex(v.basic.u32); break;
-            case BaseType::Uint64: WriteAsHex(v.basic.u64); break;
+            case BaseType::Uint8: m_writer.Write(HE_HEX_FMT, HE_HEX_VAL(v.basic.u8)); break;
+            case BaseType::Uint16: m_writer.Write(HE_HEX_FMT, HE_HEX_VAL(v.basic.u16)); break;
+            case BaseType::Uint32: m_writer.Write(HE_HEX_FMT, HE_HEX_VAL(v.basic.u32)); break;
+            case BaseType::Uint64: m_writer.Write(HE_HEX_FMT, HE_HEX_VAL(v.basic.u64)); break;
             default:
                 HE_ASSERT(false, "Can only write unsigned integer values as hex.");
                 break;
         }
+    }
+
+    const char* CodeGenCpp::GetScalarType(BaseType t)
+    {
+        switch (t)
+        {
+            case BaseType::Bool: return "bool";
+            case BaseType::Int8: return "int8_t";
+            case BaseType::Int16: return "int16_t";
+            case BaseType::Int32: return "int32_t";
+            case BaseType::Int64: return "int64_t";
+            case BaseType::Uint8: return "uint8_t";
+            case BaseType::Uint16: return "uint16_t";
+            case BaseType::Uint32: return "uint32_t";
+            case BaseType::Uint64: return "uint64_t";
+            case BaseType::Float32: return "float";
+            case BaseType::Float64: return "double";
+            default:
+                HE_ASSERT(false, "Invalid base type encountered in WriteSimpleType!");
+                break;
+        }
+
+        return "";
     }
 
     bool GenerateCpp(const SchemaDef& def, const CodeGenOptions& options)

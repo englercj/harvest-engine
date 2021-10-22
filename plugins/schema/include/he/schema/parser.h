@@ -16,7 +16,6 @@
 
 #include <concepts>
 #include <unordered_map>
-#include <unordered_set>
 
 namespace he::schema
 {
@@ -87,7 +86,6 @@ namespace he::schema
         bool ConsumeAttributes(Vector<Attribute>& attributes);
         bool ConsumeKeyword(StringView expected);
         bool ConsumeIdentifier(String& out);
-        bool ConsumeName(String& out);
         bool ConsumeDottedIdentifier(String& out);
         bool ConsumeBool(bool& out);
         template <std::integral T>
@@ -157,7 +155,6 @@ namespace he::schema
 
         using AttributeDefMap = std::unordered_map<StringView, AttributeDef>;
         using BaseTypeMap = std::unordered_map<StringView, BaseType>;
-        using KeywordSet = std::unordered_set<StringView>;
         using ImportMap = std::unordered_map<StringView, Vector<Import>>;
 
     private:
@@ -176,6 +173,5 @@ namespace he::schema
 
         AttributeDefMap m_builtinAttributes{};
         BaseTypeMap m_builtinTypes{};
-        KeywordSet m_builtinKeywords{};
     };
 }

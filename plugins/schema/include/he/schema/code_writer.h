@@ -42,6 +42,17 @@ namespace he::schema
         /// \param[in] str The null terminated string to copy.
         void Write(const char* str) { m_buffer.Write(str); }
 
+        /// Copies the null terminated string into the buffer. This will not copy the null
+        /// terminator into the buffer.
+        ///
+        /// \param[in] str The null terminated string to copy.
+        void WriteLine(const char* str)
+        {
+            WriteIndent();
+            m_buffer.Write(str);
+            m_buffer.Write('\n');
+        }
+
         /// Copies the string view into the buffer.
         ///
         /// \param[in] str The string view to copy.
@@ -71,6 +82,18 @@ namespace he::schema
         void Write(fmt::format_string<Args...> fmt, Args&&... args)
         {
             fmt::format_to(he::Appender(m_buffer), fmt, Forward<Args>(args)...);
+        }
+
+        /// Formats the string and copies the result into the buffer.
+        ///
+        /// \param[in] fmt The string format specifier.
+        /// \param[in] args The arguments to use in formatting.
+        template <typename... Args>
+        void WriteLine(fmt::format_string<Args...> fmt, Args&&... args)
+        {
+            WriteIndent();
+            fmt::format_to(he::Appender(m_buffer), fmt, Forward<Args>(args)...);
+            m_buffer.Write('\n');
         }
 
         /// Returns a string view pointing to code buffer.

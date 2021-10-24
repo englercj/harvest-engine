@@ -17,4 +17,4 @@ else
     exit -1
 fi
 
-$EXE -j -b -t cpp -o ./include/he/schema ./include/he/schema/reflection.he_schema
+$EXE -jbr -t cpp -o ./include/he/schema ./include/he/schema/reflection.he_schema

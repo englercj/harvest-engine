@@ -1,0 +1,253 @@
+// Copyright Chad Engler
+
+namespace he.schema;
+
+const InvalidSchemaIndex: uint16 = 0xffff;
+
+enum BaseType : uint8
+{
+    Unknown,
+
+    // Arithmetic types
+    Bool,
+    Int8,
+    Int16,
+    Int32,
+    Int64,
+    Uint8,
+    Uint16,
+    Uint32,
+    Uint64,
+    Float32,
+    Float64,
+
+    // Containers
+    Array,
+    List,
+    Map,
+    Pointer,
+    Set,
+    String,
+    Vector,
+
+    // User-defined types
+    Alias,
+    Enum,
+    Interface,
+    Struct,
+    Union,
+};
+
+[Flags]
+enum AttributeTarget : uint32
+{
+    Alias,
+    Const,
+    Enum,
+    EnumValue,
+    Field,
+    File,
+    Interface,
+    Method,
+    Parameter,
+    Struct,
+    Union,
+};
+
+union BasicValue
+{
+    b: bool;
+    i8: int8;
+    i16: int16;
+    i32: int32;
+    i64: int64;
+    u8: uint8;
+    u16: uint16;
+    u32: uint32;
+    u64: uint64;
+    f32: float;
+    f64: double;
+};
+
+struct ObjectDef
+{
+    enum Type
+    {
+        Alias,
+        Attribute,
+        Const,
+        Enum,
+        Interface,
+        Struct,
+        Union,
+    }
+
+    type: ObjectDef.Type;
+    index: uint32;
+}
+
+struct Value
+{
+    basic: BasicValue;
+    str: string;
+};
+
+struct Attribute
+{
+    name: string;
+    parameters: Value[];
+};
+
+struct Type
+{
+    // The base type of this item.
+    base: BaseType = BaseType.Unknown;
+
+    // Size of a fixed array when `base` is `Array`.
+    fixedSize: uint16 = 0;
+
+    // Name of the AliasDef when `base` is `Alias`.
+    // Name of the EnumDef when `base` is `Enum`.
+    // Name of the InterfaceDef when `base` is `Interface`.
+    // Name of the StructDef when `base` is `Struct`.
+    // Name of the constant used as the fixed size when `base` is `Array`.
+    name: string;
+
+    // Element type if `base` is `Array`, `List`, `Map`, `Set`, or `Vector`.
+    element: Type*;
+
+    // Key type, if `base` is `Map`.
+    key: Type*;
+
+    // Parameters passed in angle brackets for generics
+    typeParams: Type[];
+};
+
+struct AttributeDef
+{
+    name: string;
+    type: Type;
+    targets: AttributeTarget = AttributeTarget.None;
+};
+
+struct FieldDef
+{
+    id: uint32;
+    name: string;
+    type: Type;
+    attributes: Attribute[];
+    defaultValue: Value;
+};
+
+struct EnumValueDef
+{
+    name: string;
+    value: Value;
+    attributes: Attribute[];
+};
+
+struct EnumDef
+{
+    base: BaseType = BaseType.Unknown;
+    name: string;
+    attributes: Attribute[];
+    values: EnumValueDef[];
+};
+
+struct AliasDef
+{
+    name: string;
+    type: Type;
+    attributes: Attribute[];
+    typeParams: string[];
+};
+
+struct ConstDef
+{
+    base: BaseType = BaseType.Unknown;
+    name: string;
+    attributes: Attribute[];
+    value: Value;
+};
+
+struct UnionDef
+{
+    id: uint32;
+    name: string;
+
+    attributes: Attribute[];
+    fields:FieldDef[];
+};
+
+struct StructDef
+{
+    id: uint32;
+    name: string;
+    extends: Type;
+
+    attributes: Attribute[];
+    fields: FieldDef[];
+    typeParams: string[];
+
+    objects: ObjectDef[];
+
+    aliases: AliasDef[];
+    consts: ConstDef[];
+    enums: EnumDef[];
+    structs: StructDef[];
+    unions: UnionDef[];
+};
+
+struct MethodParamDef
+{
+    name: string;
+    type: Type;
+    attributes: Attribute[];
+};
+
+struct MethodDef
+{
+    id: uint32;
+    name: string;
+    attributes: Attribute[];
+    parameters: MethodParamDef[];
+    returnType: Type;
+};
+
+struct InterfaceDef
+{
+    id: uint32;
+    name: string;
+    implements: Type[];
+
+    attributes: Attribute[];
+    methods: MethodDef[];
+    typeParams: string[];
+
+    objects: ObjectDef[];
+
+    aliases: AliasDef[];
+    consts: ConstDef[];
+    enums: EnumDef[];
+    structs: StructDef[];
+    unions: UnionDef[];
+};
+
+struct SchemaDef
+{
+    namespaceId: uint32 = 0x811c9dc5;
+    namespaceName: string;
+
+    imports: string[];
+    objects: ObjectDef[];
+
+    aliases: AliasDef[];
+    attributes: AttributeDef[];
+    consts: ConstDef[];
+    enums: EnumDef[];
+    interfaces: InterfaceDef[];
+    structs: StructDef[];
+    unions: UnionDef[];
+
+    usedTypesMask: uint64 = 0;
+};

@@ -578,17 +578,16 @@ namespace he::schema
                 return false;
             }
 
-            //const Type& resolved = ResolveType(def->type);
+            const Type& resolved = ResolveType(def->type);
 
-            // TODO!
-            // if (!ConsumeValue(resolved.base, attribute.parameters.EmplaceBack(m_allocator)))
-            //     return false;
+            if (!ConsumeValue(resolved.base, attribute.parameters.EmplaceBack()))
+                return false;
 
-            // while (TryConsume(Lexer::TokenType::Comma))
-            // {
-            //     if (!ConsumeValue(resolved.base, attribute.parameters.EmplaceBack(m_allocator)))
-            //         return false;
-            // }
+            while (TryConsume(Lexer::TokenType::Comma))
+            {
+                if (!ConsumeValue(resolved.base, attribute.parameters.EmplaceBack()))
+                    return false;
+            }
 
             if (!Consume(Lexer::TokenType::CloseParens))
                 return false;
@@ -1575,13 +1574,12 @@ namespace he::schema
             def.targets |= AttributeTarget::Const;
         else if (target == KW_Enum)
             def.targets |= AttributeTarget::Enum;
-        // TODO: UNLEASH
-        // else if (target == KW_Enumerator)
-        //     def.targets |= AttributeTarget::EnumValue;
+        else if (target == KW_Enumerator)
+            def.targets |= AttributeTarget::EnumValue;
         else if (target == KW_Field)
             def.targets |= AttributeTarget::Field;
-        // else if (target == KW_File)
-        //     def.targets |= AttributeTarget::File;
+        else if (target == KW_File)
+            def.targets |= AttributeTarget::File;
         else if (target == KW_Interface)
             def.targets |= AttributeTarget::Interface;
         else if (target == KW_Method)
@@ -1811,14 +1809,13 @@ namespace he::schema
             return ParseStruct(d, def.id);
         }
 
-        // TODO: UNLEASH
-        // if (AtIdentifier(KW_Union))
-        // {
-        //     def.objects.PushBack({ ObjectDef::Type::Union, def.unions.Size() });
-        //     UnionDef& d = def.unions.EmplaceBack();
-        //     d.attributes = Move(attributes);
-        //     return ParseUnion(d, def.id);
-        // }
+        if (AtIdentifier(KW_Union))
+        {
+            def.objects.PushBack({ ObjectDef::Type::Union, def.unions.Size() });
+            UnionDef& d = def.unions.EmplaceBack();
+            d.attributes = Move(attributes);
+            return ParseUnion(d, def.id);
+        }
 
         MethodDef& d = def.methods.EmplaceBack();
         d.attributes = Move(attributes);

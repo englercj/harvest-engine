@@ -282,7 +282,7 @@ namespace he::schema
                     GenHdr_Struct(def.structs[obj.index]);
                     break;
                 case ObjectDef::Type::Union:
-                    // GenHdr_Union(def.unions[obj.index]); // TODO: UNCOMMENT
+                     GenHdr_Union(def.unions[obj.index]);
                     break;
             }
         }

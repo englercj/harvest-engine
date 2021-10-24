@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include "he/core/string.h"
 #include "he/core/string_view.h"
 #include "he/core/types.h"
 #include "he/schema/codegen.h"
@@ -21,9 +22,8 @@ namespace he::schema
 
         bool Generate();
 
-    protected:
+    private:
         void GenHeader();
-        void GenSource();
 
         void GenHdr_Includes();
 
@@ -35,40 +35,66 @@ namespace he::schema
         void GenHdr_Struct(const StructDef& def);
         void GenHdr_Union(const UnionDef& def);
 
-        void GenSrc_Enums();
-        void GenSrc_Structs();
+    private:
+        void GenSource();
 
-        void GenSrc_StructBuffer(const StructDef& def);
-        void GenSrc_UnionBuffer(const UnionDef& def);
+        void GenSrc_BufferImpl();
+        void GenSrc_BufferImplRecursive(
+            StringView prefix,
+            Span<const ObjectDef> objects,
+            Span<const EnumDef> enums,
+            Span<const InterfaceDef> interfaces,
+            Span<const StructDef> structs,
+            Span<const UnionDef> unions);
+        void GenSrc_StructBuffer(StringView prefix, const StructDef& def);
+        void GenSrc_UnionBuffer(StringView prefix, const UnionDef& def);
 
-        void GenSrc_StructJson(const StructDef& def);
-        void GenSrc_UnionJson(const UnionDef& def);
+        void GenSrc_JsonImpl();
+        void GenSrc_JsonImplRecursive(
+            StringView prefix,
+            Span<const ObjectDef> objects,
+            Span<const EnumDef> enums,
+            Span<const InterfaceDef> interfaces,
+            Span<const StructDef> structs,
+            Span<const UnionDef> unions);
+        void GenSrc_EnumJson(StringView prefix, const EnumDef& def);
+        void GenSrc_StructJson(StringView prefix, const StructDef& def);
+        void GenSrc_UnionJson(StringView prefix, const UnionDef& def);
 
-        void GenSrc_StructReflection(const StructDef& def);
-        void GenSrc_UnionReflection(const UnionDef& def);
+        void GenSrc_ReflectionImpl();
+        void GenSrc_ReflectionImplRecursive(
+            StringView prefix,
+            Span<const ObjectDef> objects,
+            Span<const EnumDef> enums,
+            Span<const InterfaceDef> interfaces,
+            Span<const StructDef> structs,
+            Span<const UnionDef> unions);
+        void GenSrc_StructReflection(StringView prefix, const StructDef& def);
+        void GenSrc_UnionReflection(StringView prefix, const UnionDef& def);
 
-    protected:
-        void WriteFieldToJson(const FieldDef& field);
-        void WriteFieldFromJson(const FieldDef& field);
+        void GenSrc_StringImpl();
+        void GenSrc_StringImplRecursive(
+            StringView prefix,
+            Span<const ObjectDef> objects,
+            Span<const EnumDef> enums,
+            Span<const InterfaceDef> interfaces,
+            Span<const StructDef> structs,
+            Span<const UnionDef> unions);
+        void GenSrc_EnumAsString(StringView prefix, const EnumDef& def);
 
     private:
-        void WriteBufferReadType(const Type& t);
-        void WriteBufferWrappedReadType(const Type& t);
-
-        void WriteBufferWriteType(const Type& t);
-
-    protected:
         bool FlushToFile(const char* suffix);
 
         void WriteArraySize(const Type& t);
-        void WriteGenericDecl(const Vector<String>& typeParams);
-        void WriteNamespacePrefixed(StringView name);
-        void WriteWithReplace(StringView input, char what, StringView with);
+        void WriteBufferType(const Type& t);
+        void WriteBufferWrappedType(const Type& t);
         void WriteEscaped(StringView input);
+        void WriteGenericDecl(const Vector<String>& typeParams);
         void WriteNativeType(const Type& t);
         void WriteNativeValue(BaseType t, const Value& v);
         void WriteParamType(const Type& t);
         void WriteUnsignedAsHex(BaseType t, const Value& v);
+        void WriteWithReplace(StringView input, char what, StringView with);
 
         const char* GetScalarType(BaseType t);
 
@@ -77,5 +103,6 @@ namespace he::schema
         const CodeGenOptions& m_options;
 
         CodeWriter m_writer;
+        String m_namespacePrefix;
     };
 }

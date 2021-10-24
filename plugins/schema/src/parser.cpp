@@ -76,17 +76,14 @@ namespace he::schema
     };
 
     Parser::Parser(Allocator& allocator)
-        : m_allocator(allocator)
-        , m_schema(allocator)
-        , m_lexer(allocator)
+        : m_lexer(allocator)
         , m_errors(allocator)
         , m_decodedString(allocator)
     {
         // build maps of builtins for faster lookups
         for (const BuiltinAttribute& a : BuiltinAttributes)
         {
-            auto result = m_builtinAttributes.emplace(a.name, allocator);
-            AttributeDef& def = result.first->second;
+            AttributeDef& def = m_builtinAttributes[a.name];
             def.name = a.name;
             def.targets = a.targets;
             def.type.base = a.param;
@@ -151,7 +148,7 @@ namespace he::schema
 
     bool Parser::ParseFileInternal(const char* path, Span<const char*> includeDirs)
     {
-        String contents(m_allocator);
+        String contents(Allocator::GetTemp());
         m_fileName = path;
 
         if (!LoadFile(contents, path, includeDirs))
@@ -189,7 +186,7 @@ namespace he::schema
             return false;
         }
 
-        String fullPath(m_allocator);
+        String fullPath(Allocator::GetTemp());
         for (const char* dir : includeDirs)
         {
             fullPath = dir;
@@ -247,7 +244,7 @@ namespace he::schema
     template <> inline constexpr bool _CanEmbedType<InterfaceDef, ConstDef> = true;
     template <> inline constexpr bool _CanEmbedType<InterfaceDef, EnumDef> = true;
     template <> inline constexpr bool _CanEmbedType<InterfaceDef, StructDef> = true;
-    template <> inline constexpr bool _CanEmbedType<InterfaceDef, UnionDef> = true;
+    //template <> inline constexpr bool _CanEmbedType<InterfaceDef, UnionDef> = true;
     template <> inline constexpr bool _CanEmbedType<SchemaDef, AliasDef> = true;
     template <> inline constexpr bool _CanEmbedType<SchemaDef, AttributeDef> = true;
     template <> inline constexpr bool _CanEmbedType<SchemaDef, ConstDef> = true;
@@ -581,16 +578,17 @@ namespace he::schema
                 return false;
             }
 
-            const Type& resolved = ResolveType(def->type);
+            //const Type& resolved = ResolveType(def->type);
 
-            if (!ConsumeValue(resolved.base, attribute.parameters.EmplaceBack(m_allocator)))
-                return false;
+            // TODO!
+            // if (!ConsumeValue(resolved.base, attribute.parameters.EmplaceBack(m_allocator)))
+            //     return false;
 
-            while (TryConsume(Lexer::TokenType::Comma))
-            {
-                if (!ConsumeValue(resolved.base, attribute.parameters.EmplaceBack(m_allocator)))
-                    return false;
-            }
+            // while (TryConsume(Lexer::TokenType::Comma))
+            // {
+            //     if (!ConsumeValue(resolved.base, attribute.parameters.EmplaceBack(m_allocator)))
+            //         return false;
+            // }
 
             if (!Consume(Lexer::TokenType::CloseParens))
                 return false;
@@ -603,7 +601,7 @@ namespace he::schema
     {
         while (TryConsume(Lexer::TokenType::OpenSquareBracket))
         {
-            if (!ConsumeAttribute(attributes.EmplaceBack(m_allocator)))
+            if (!ConsumeAttribute(attributes.EmplaceBack()))
                 return false;
 
             if (!Consume(Lexer::TokenType::CloseSquareBracket))
@@ -810,7 +808,7 @@ namespace he::schema
             auto it = m_builtinTypes.find(m_token.text);
             if (it != m_builtinTypes.end())
             {
-                m_schema.MarkTypeUsed(it->second);
+                MarkTypeUsed(m_schema, it->second);
                 type.base = it->second;
                 NextDecl();
                 return true;
@@ -820,9 +818,9 @@ namespace he::schema
         // list<T>
         if (TryConsumeKeyword(KW_List))
         {
-            m_schema.MarkTypeUsed(BaseType::List);
+            MarkTypeUsed(m_schema, BaseType::List);
             type.base = BaseType::List;
-            type.element = m_allocator.New<Type>(m_allocator);
+            type.element = MakeUnique<Type>();
 
             if (!Consume(Lexer::TokenType::OpenAngleBracket))
                 return false;
@@ -839,9 +837,9 @@ namespace he::schema
         // set<T>
         if (TryConsumeKeyword(KW_Set))
         {
-            m_schema.MarkTypeUsed(BaseType::Set);
+            MarkTypeUsed(m_schema, BaseType::Set);
             type.base = BaseType::Set;
-            type.element = m_allocator.New<Type>(m_allocator);
+            type.element = MakeUnique<Type>();
 
             if (!Consume(Lexer::TokenType::OpenAngleBracket))
                 return false;
@@ -858,10 +856,10 @@ namespace he::schema
         // map<K, T>
         if (TryConsumeKeyword(KW_Map))
         {
-            m_schema.MarkTypeUsed(BaseType::Map);
+            MarkTypeUsed(m_schema, BaseType::Map);
             type.base = BaseType::Map;
-            type.key = m_allocator.New<Type>(m_allocator);
-            type.element = m_allocator.New<Type>(m_allocator);
+            type.key = MakeUnique<Type>();
+            type.element = MakeUnique<Type>();
 
             if (!Consume(Lexer::TokenType::OpenAngleBracket))
                 return false;
@@ -914,7 +912,7 @@ namespace he::schema
             return false;
         }
 
-        m_schema.MarkTypeUsed(type.base);
+        MarkTypeUsed(m_schema, type.base);
 
         if (TryConsume(Lexer::TokenType::OpenAngleBracket))
         {
@@ -924,12 +922,12 @@ namespace he::schema
                 return false;
             }
 
-            if (!ConsumeType(type.AddTypeParam()))
+            if (!ConsumeType(type.typeParams.EmplaceBack()))
                 return false;
 
             while (TryConsume(Lexer::TokenType::Comma))
             {
-                if (!ConsumeType(type.AddTypeParam()))
+                if (!ConsumeType(type.typeParams.EmplaceBack()))
                     return false;
             }
 
@@ -944,12 +942,12 @@ namespace he::schema
     {
         if (TryConsume(Lexer::TokenType::OpenAngleBracket))
         {
-            if (!ConsumeIdentifier(params.EmplaceBack(m_allocator)))
+            if (!ConsumeIdentifier(params.EmplaceBack()))
                 return false;
 
             while (TryConsume(Lexer::TokenType::Comma))
             {
-                if (!ConsumeIdentifier(params.EmplaceBack(m_allocator)))
+                if (!ConsumeIdentifier(params.EmplaceBack()))
                     return false;
             }
 
@@ -967,26 +965,26 @@ namespace he::schema
 
         if (TryConsume(Lexer::TokenType::Asterisk))
         {
-            Type* element = m_allocator.New<Type>(m_allocator);
+            UniquePtr<Type> element = MakeUnique<Type>();
             *element = Move(type);
 
             type.base = BaseType::Pointer;
             type.fixedSize = 0;
             type.name.Clear();
-            type.element = element;
+            type.element = Move(element);
 
-            m_schema.MarkTypeUsed(type.base);
+            MarkTypeUsed(m_schema, type.base);
         }
 
         while (TryConsume(Lexer::TokenType::OpenSquareBracket))
         {
-            Type* element = m_allocator.New<Type>(m_allocator);
+            UniquePtr<Type> element = MakeUnique<Type>();
             *element = Move(type);
 
             type.base = BaseType::Vector;
             type.fixedSize = 0;
             type.name.Clear();
-            type.element = element;
+            type.element = Move(element);
 
             if (m_token.type == Lexer::TokenType::Integer)
             {
@@ -1004,19 +1002,19 @@ namespace he::schema
             if (!Consume(Lexer::TokenType::CloseSquareBracket))
                 return false;
 
-            m_schema.MarkTypeUsed(type.base);
+            MarkTypeUsed(m_schema, type.base);
 
             if (TryConsume(Lexer::TokenType::Asterisk))
             {
-                Type* pointerElement = m_allocator.New<Type>(m_allocator);
+                UniquePtr<Type> pointerElement = MakeUnique<Type>();
                 *pointerElement = Move(type);
 
                 type.base = BaseType::Pointer;
                 type.fixedSize = 0;
                 type.name.Clear();
-                type.element = pointerElement;
+                type.element = Move(pointerElement);
 
-                m_schema.MarkTypeUsed(type.base);
+                MarkTypeUsed(m_schema, type.base);
             }
         }
 
@@ -1028,28 +1026,40 @@ namespace he::schema
         switch (type)
         {
             case BaseType::Bool:
-                return ConsumeBool(value.basic.b);
+                value.basic.tag = BasicValue::TagId_b;
+                return ConsumeBool(value.basic.value.b);
             case BaseType::Int8:
-                return ConsumeInteger(value.basic.i8);
+                value.basic.tag = BasicValue::TagId_i8;
+                return ConsumeInteger(value.basic.value.i8);
             case BaseType::Int16:
-                return ConsumeInteger(value.basic.i16);
+                value.basic.tag = BasicValue::TagId_i16;
+                return ConsumeInteger(value.basic.value.i16);
             case BaseType::Int32:
-                return ConsumeInteger(value.basic.i32);
+                value.basic.tag = BasicValue::TagId_i32;
+                return ConsumeInteger(value.basic.value.i32);
             case BaseType::Int64:
-                return ConsumeInteger(value.basic.i64);
+                value.basic.tag = BasicValue::TagId_i64;
+                return ConsumeInteger(value.basic.value.i64);
             case BaseType::Uint8:
-                return ConsumeInteger(value.basic.u8);
+                value.basic.tag = BasicValue::TagId_u8;
+                return ConsumeInteger(value.basic.value.u8);
             case BaseType::Uint16:
-                return ConsumeInteger(value.basic.u16);
+                value.basic.tag = BasicValue::TagId_u16;
+                return ConsumeInteger(value.basic.value.u16);
             case BaseType::Uint32:
-                return ConsumeInteger(value.basic.u32);
+                value.basic.tag = BasicValue::TagId_u32;
+                return ConsumeInteger(value.basic.value.u32);
             case BaseType::Uint64:
-                return ConsumeInteger(value.basic.u64);
+                value.basic.tag = BasicValue::TagId_u64;
+                return ConsumeInteger(value.basic.value.u64);
             case BaseType::Float32:
-                return ConsumeFloat(value.basic.f32);
+                value.basic.tag = BasicValue::TagId_f32;
+                return ConsumeFloat(value.basic.value.f32);
             case BaseType::Float64:
-                return ConsumeFloat(value.basic.f64);
+                value.basic.tag = BasicValue::TagId_f64;
+                return ConsumeFloat(value.basic.value.f64);
             case BaseType::String:
+                value.basic.tag = 0;
                 value.str.Clear();
                 return ConsumeString(value.str);
             case BaseType::Interface:
@@ -1065,6 +1075,7 @@ namespace he::schema
             case BaseType::Vector:
             case BaseType::Enum:
             case BaseType::Struct:
+                value.basic.tag = 0;
                 value.str.Clear();
                 while (m_token.type != Lexer::TokenType::Semicolon)
                 {
@@ -1093,9 +1104,9 @@ namespace he::schema
             return false;
         }
 
-        Vector<String> directImports(m_allocator);
+        Vector<String> directImports;
 
-        String importPath(m_allocator);
+        String importPath;
         while (TryConsumeKeyword(KW_Import))
         {
             if (!ConsumeString(importPath))
@@ -1116,9 +1127,9 @@ namespace he::schema
             m_fileName = tempFileName;
 
             // Move the parsed schema into the imports list
-            auto result = m_imports.try_emplace(m_schema.namespaceName, m_allocator);
+            auto result = m_imports.try_emplace(m_schema.namespaceName);
             Vector<Import>& imports = result.first->second;
-            Import& im = imports.EmplaceBack(m_allocator);
+            Import& im = imports.EmplaceBack();
             im.directImport = m_importDepth == 1;
             im.importPath = Move(importPath);
             im.schema = Move(m_schema);
@@ -1127,7 +1138,7 @@ namespace he::schema
                 directImports.PushBack(im.importPath);
 
             // reset the local schema
-            m_schema = SchemaDef(m_allocator);
+            m_schema = SchemaDef{};
         }
 
         if (m_importDepth == 1)
@@ -1177,14 +1188,14 @@ namespace he::schema
         if (TryConsume(Lexer::TokenType::Semicolon))
             return true;
 
-        Vector<Attribute> attributes(m_allocator);
+        Vector<Attribute> attributes;
         if (!ConsumeAttributes(attributes))
             return false;
 
         if (AtIdentifier(KW_Struct))
         {
             m_schema.objects.PushBack({ ObjectDef::Type::Struct, m_schema.structs.Size() });
-            StructDef& def = m_schema.structs.EmplaceBack(m_allocator);
+            StructDef& def = m_schema.structs.EmplaceBack();
             def.attributes = Move(attributes);
             return ParseStruct(def, m_schema.namespaceId);
         }
@@ -1198,14 +1209,14 @@ namespace he::schema
             }
 
             m_schema.objects.PushBack({ ObjectDef::Type::Attribute, m_schema.attributes.Size() });
-            AttributeDef& def = m_schema.attributes.EmplaceBack(m_allocator);
+            AttributeDef& def = m_schema.attributes.EmplaceBack();
             return ParseAttribute(def);
         }
 
         if (AtIdentifier(KW_Enum))
         {
             m_schema.objects.PushBack({ ObjectDef::Type::Enum, m_schema.enums.Size() });
-            EnumDef& def = m_schema.enums.EmplaceBack(m_allocator);
+            EnumDef& def = m_schema.enums.EmplaceBack();
             def.attributes = Move(attributes);
             return ParseEnum(def);
         }
@@ -1213,7 +1224,7 @@ namespace he::schema
         if (AtIdentifier(KW_Interface))
         {
             m_schema.objects.PushBack({ ObjectDef::Type::Interface, m_schema.interfaces.Size() });
-            InterfaceDef& def = m_schema.interfaces.EmplaceBack(m_allocator);
+            InterfaceDef& def = m_schema.interfaces.EmplaceBack();
             def.attributes = Move(attributes);
             return ParseInterface(def);
         }
@@ -1221,7 +1232,7 @@ namespace he::schema
         if (AtIdentifier(KW_Alias))
         {
             m_schema.objects.PushBack({ ObjectDef::Type::Alias, m_schema.aliases.Size() });
-            AliasDef& def = m_schema.aliases.EmplaceBack(m_allocator);
+            AliasDef& def = m_schema.aliases.EmplaceBack();
             def.attributes = Move(attributes);
             return ParseAlias(def);
         }
@@ -1229,7 +1240,7 @@ namespace he::schema
         if (AtIdentifier(KW_Const))
         {
             m_schema.objects.PushBack({ ObjectDef::Type::Const, m_schema.consts.Size() });
-            ConstDef& def = m_schema.consts.EmplaceBack(m_allocator);
+            ConstDef& def = m_schema.consts.EmplaceBack();
             def.attributes = Move(attributes);
             return ParseConst(def);
         }
@@ -1237,7 +1248,7 @@ namespace he::schema
         if (AtIdentifier(KW_Union))
         {
             m_schema.objects.PushBack({ ObjectDef::Type::Union, m_schema.unions.Size() });
-            UnionDef& def = m_schema.unions.EmplaceBack(m_allocator);
+            UnionDef& def = m_schema.unions.EmplaceBack();
             def.attributes = Move(attributes);
             return ParseUnion(def, m_schema.namespaceId);
         }
@@ -1344,14 +1355,14 @@ namespace he::schema
         if (TryConsume(Lexer::TokenType::Semicolon))
             return true;
 
-        Vector<Attribute> attributes(m_allocator);
+        Vector<Attribute> attributes;
         if (!ConsumeAttributes(attributes))
             return false;
 
         if (AtIdentifier(KW_Alias))
         {
             def.objects.PushBack({ ObjectDef::Type::Alias, def.aliases.Size() });
-            AliasDef& d = def.aliases.EmplaceBack(m_allocator);
+            AliasDef& d = def.aliases.EmplaceBack();
             d.attributes = Move(attributes);
             return ParseAlias(d);
         }
@@ -1359,7 +1370,7 @@ namespace he::schema
         if (AtIdentifier(KW_Const))
         {
             def.objects.PushBack({ ObjectDef::Type::Const, def.consts.Size() });
-            ConstDef& d = def.consts.EmplaceBack(m_allocator);
+            ConstDef& d = def.consts.EmplaceBack();
             d.attributes = Move(attributes);
             return ParseConst(d);
         }
@@ -1367,7 +1378,7 @@ namespace he::schema
         if (AtIdentifier(KW_Enum))
         {
             def.objects.PushBack({ ObjectDef::Type::Enum, def.enums.Size() });
-            EnumDef& d = def.enums.EmplaceBack(m_allocator);
+            EnumDef& d = def.enums.EmplaceBack();
             d.attributes = Move(attributes);
             return ParseEnum(d);
         }
@@ -1375,7 +1386,7 @@ namespace he::schema
         if (AtIdentifier(KW_Struct))
         {
             def.objects.PushBack({ ObjectDef::Type::Struct, def.structs.Size() });
-            StructDef& d = def.structs.EmplaceBack(m_allocator);
+            StructDef& d = def.structs.EmplaceBack();
             d.attributes = Move(attributes);
             return ParseStruct(d, def.id);
         }
@@ -1383,12 +1394,12 @@ namespace he::schema
         if (AtIdentifier(KW_Union))
         {
             def.objects.PushBack({ ObjectDef::Type::Union, def.unions.Size() });
-            UnionDef& d = def.unions.EmplaceBack(m_allocator);
+            UnionDef& d = def.unions.EmplaceBack();
             d.attributes = Move(attributes);
             return ParseUnion(d, def.id);
         }
 
-        FieldDef& d = def.fields.EmplaceBack(m_allocator);
+        FieldDef& d = def.fields.EmplaceBack();
         d.attributes = Move(attributes);
         return ParseField(d);
     }
@@ -1457,11 +1468,11 @@ namespace he::schema
         if (TryConsume(Lexer::TokenType::Semicolon))
             return true;
 
-        Vector<Attribute> attributes(m_allocator);
+        Vector<Attribute> attributes;
         if (!ConsumeAttributes(attributes))
             return false;
 
-        FieldDef& d = def.fields.EmplaceBack(m_allocator);
+        FieldDef& d = def.fields.EmplaceBack();
         d.attributes = Move(attributes);
         if (!ParseField(d))
             return false;
@@ -1556,7 +1567,7 @@ namespace he::schema
 
     bool Parser::ParseAttributeTarget(AttributeDef& def)
     {
-        String target(m_allocator);
+        String target(Allocator::GetTemp());
         if (!ConsumeIdentifier(target))
             return false;
 
@@ -1564,12 +1575,13 @@ namespace he::schema
             def.targets |= AttributeTarget::Const;
         else if (target == KW_Enum)
             def.targets |= AttributeTarget::Enum;
-        else if (target == KW_Enumerator)
-            def.targets |= AttributeTarget::EnumValue;
+        // TODO: UNLEASH
+        // else if (target == KW_Enumerator)
+        //     def.targets |= AttributeTarget::EnumValue;
         else if (target == KW_Field)
             def.targets |= AttributeTarget::Field;
-        else if (target == KW_File)
-            def.targets |= AttributeTarget::File;
+        // else if (target == KW_File)
+        //     def.targets |= AttributeTarget::File;
         else if (target == KW_Interface)
             def.targets |= AttributeTarget::Interface;
         else if (target == KW_Method)
@@ -1601,7 +1613,7 @@ namespace he::schema
 
         if (TryConsume(Lexer::TokenType::Colon))
         {
-            Type enumType(m_allocator);
+            Type enumType;
             if (!ConsumeType(enumType))
                 return false;
 
@@ -1637,7 +1649,7 @@ namespace he::schema
                 return false;
             }
 
-            EnumValueDef& newValueDef = def.values.EmplaceBack(m_allocator);
+            EnumValueDef& newValueDef = def.values.EmplaceBack();
             EnumValueDef* lastValueDef = def.values.Size() > 1 ? &def.values[def.values.Size() - 2] : nullptr;
             if (!ParseEnumStatement(def, isFlags, newValueDef, lastValueDef))
                 SkipStatement();
@@ -1661,19 +1673,19 @@ namespace he::schema
         }
         else if (lastDef == nullptr)
         {
-            def.value.basic.u64 = isFlags ? 1 : 0;
+            def.value.basic.value.u64 = isFlags ? 1 : 0;
         }
         else if (isFlags)
         {
-            def.value.basic.u64 = lastDef->value.basic.u64 * 2;
+            def.value.basic.value.u64 = lastDef->value.basic.value.u64 * 2;
         }
         else if (IsUnsignedIntegral(enumDef.base))
         {
-            def.value.basic.u64 = lastDef->value.basic.u64 + 1;
+            def.value.basic.value.u64 = lastDef->value.basic.value.u64 + 1;
         }
         else
         {
-            def.value.basic.i64 = lastDef->value.basic.i64 + 1;
+            def.value.basic.value.i64 = lastDef->value.basic.value.i64 + 1;
         }
 
         return Consume(Lexer::TokenType::Comma);
@@ -1701,7 +1713,7 @@ namespace he::schema
         {
             do
             {
-                if (!ConsumeType(def.implements.EmplaceBack(m_allocator)))
+                if (!ConsumeType(def.implements.EmplaceBack()))
                     return false;
 
                 const Type& resolved = ResolveType(def.implements.Back());
@@ -1763,14 +1775,14 @@ namespace he::schema
         if (TryConsume(Lexer::TokenType::Semicolon))
             return true;
 
-        Vector<Attribute> attributes(m_allocator);
+        Vector<Attribute> attributes;
         if (!ConsumeAttributes(attributes))
             return false;
 
         if (AtIdentifier(KW_Alias))
         {
             def.objects.PushBack({ ObjectDef::Type::Alias, def.aliases.Size() });
-            AliasDef& d = def.aliases.EmplaceBack(m_allocator);
+            AliasDef& d = def.aliases.EmplaceBack();
             d.attributes = Move(attributes);
             return ParseAlias(d);
         }
@@ -1778,7 +1790,7 @@ namespace he::schema
         if (AtIdentifier(KW_Const))
         {
             def.objects.PushBack({ ObjectDef::Type::Const, def.consts.Size() });
-            ConstDef& d = def.consts.EmplaceBack(m_allocator);
+            ConstDef& d = def.consts.EmplaceBack();
             d.attributes = Move(attributes);
             return ParseConst(d);
         }
@@ -1786,7 +1798,7 @@ namespace he::schema
         if (AtIdentifier(KW_Enum))
         {
             def.objects.PushBack({ ObjectDef::Type::Enum, def.enums.Size() });
-            EnumDef& d = def.enums.EmplaceBack(m_allocator);
+            EnumDef& d = def.enums.EmplaceBack();
             d.attributes = Move(attributes);
             return ParseEnum(d);
         }
@@ -1794,20 +1806,21 @@ namespace he::schema
         if (AtIdentifier(KW_Struct))
         {
             def.objects.PushBack({ ObjectDef::Type::Struct, def.structs.Size() });
-            StructDef& d = def.structs.EmplaceBack(m_allocator);
+            StructDef& d = def.structs.EmplaceBack();
             d.attributes = Move(attributes);
             return ParseStruct(d, def.id);
         }
 
-        if (AtIdentifier(KW_Union))
-        {
-            def.objects.PushBack({ ObjectDef::Type::Union, def.unions.Size() });
-            UnionDef& d = def.unions.EmplaceBack(m_allocator);
-            d.attributes = Move(attributes);
-            return ParseUnion(d, def.id);
-        }
+        // TODO: UNLEASH
+        // if (AtIdentifier(KW_Union))
+        // {
+        //     def.objects.PushBack({ ObjectDef::Type::Union, def.unions.Size() });
+        //     UnionDef& d = def.unions.EmplaceBack();
+        //     d.attributes = Move(attributes);
+        //     return ParseUnion(d, def.id);
+        // }
 
-        MethodDef& d = def.methods.EmplaceBack(m_allocator);
+        MethodDef& d = def.methods.EmplaceBack();
         d.attributes = Move(attributes);
         return ParseInterfaceMethod(d);
     }
@@ -1829,12 +1842,12 @@ namespace he::schema
 
         if (!TryConsume(Lexer::TokenType::CloseParens))
         {
-            if (!ParseInterfaceMethodParam(def.parameters.EmplaceBack(m_allocator)))
+            if (!ParseInterfaceMethodParam(def.parameters.EmplaceBack()))
                 return false;
 
             while (TryConsume(Lexer::TokenType::Comma))
             {
-                if (!ParseInterfaceMethodParam(def.parameters.EmplaceBack(m_allocator)))
+                if (!ParseInterfaceMethodParam(def.parameters.EmplaceBack()))
                     return false;
             }
 
@@ -1896,7 +1909,7 @@ namespace he::schema
         if (!Consume(Lexer::TokenType::Colon))
             return false;
 
-        Type constType(m_allocator);
+        Type constType;
         if (!ConsumeType(constType))
             return false;
 
@@ -1937,7 +1950,7 @@ namespace he::schema
     template <typename... Args>
     void Parser::AddError(fmt::format_string<Args...> fmt, Args&&... args)
     {
-        ErrorInfo& entry = m_errors.EmplaceBack(m_allocator);
+        ErrorInfo& entry = m_errors.EmplaceBack();
         entry.file.Assign(m_fileName.Data(), m_fileName.Size());
         entry.line = m_token.line;
         entry.column = m_token.column;

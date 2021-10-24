@@ -54,7 +54,7 @@ namespace he::schema
         m_writer.Write(uint32_t(0)); // Placeholder for the v-table field count
     }
 
-    void BufferBuilder::AddVTableField(uint32_t fieldId, Offset<void> offset)
+    void BufferBuilder::AddVTableField(uint32_t fieldId, BufferOffset offset)
     {
         HE_ASSERT(m_vtableStartOffset > 0);
         HE_ASSERT(offset.val < m_vtableStartOffset);
@@ -68,7 +68,7 @@ namespace he::schema
         ++m_vtableFieldCount;
     }
 
-    Offset<void> BufferBuilder::EndVTable()
+    BufferOffset BufferBuilder::EndVTable()
     {
         HE_ASSERT(m_vtableStartOffset > 0);
 
@@ -81,10 +81,10 @@ namespace he::schema
         return { offset };
     }
 
-    Offset<void> BufferBuilder::WriteSequence(const void* data, uint32_t len, uint32_t elementSize)
+    BufferOffset BufferBuilder::WriteSequence(const void* data, uint32_t len, uint32_t elementSize)
     {
         HE_ASSERT(m_vtableStartOffset == 0);
-        const Offset<void> ret{ m_writer.Size() };
+        const BufferOffset ret{ m_writer.Size() };
         m_writer.Write(len);
         m_writer.Write(data, len * elementSize);
         return ret;
@@ -105,7 +105,7 @@ namespace he::schema
         ++m_sequenceElementCount;
     }
 
-    Offset<void> BufferBuilder::EndSequence()
+    BufferOffset BufferBuilder::EndSequence()
     {
         HE_ASSERT(m_sequenceStartOffset > 0);
 
@@ -118,18 +118,18 @@ namespace he::schema
         return { offset };
     }
 
-    Offset<String> BufferBuilder::WriteString(const char* str)
+    BufferOffset BufferBuilder::WriteString(const char* str)
     {
         const uint32_t len = he::String::Length(str);
-        const Offset<void> ret = WriteSequence(str, len, 1);
+        const BufferOffset ret = WriteSequence(str, len, 1);
         m_writer.Write('\0');
-        return ret.Cast<String>();
+        return ret;
     }
 
-    Offset<String> BufferBuilder::WriteString(StringView str)
+    BufferOffset BufferBuilder::WriteString(StringView str)
     {
-        const Offset<void> ret = WriteSequence(str.Data(), str.Size(), 1);
+        const BufferOffset ret = WriteSequence(str.Data(), str.Size(), 1);
         m_writer.Write('\0');
-        return ret.Cast<String>();
+        return ret;
     }
 }

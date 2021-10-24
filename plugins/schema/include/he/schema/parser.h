@@ -25,8 +25,6 @@ namespace he::schema
     public:
         struct ErrorInfo
         {
-            ErrorInfo(Allocator& allocator) : message(allocator), file(allocator) {}
-
             String message;
             String file;
             uint32_t line;
@@ -143,11 +141,6 @@ namespace he::schema
     private:
         struct Import
         {
-            Import(Allocator& allocator)
-                : importPath(allocator)
-                , schema(allocator)
-            {}
-
             bool directImport{ false };
             String importPath;
             SchemaDef schema;
@@ -158,8 +151,6 @@ namespace he::schema
         using ImportMap = std::unordered_map<StringView, Vector<Import>>;
 
     private:
-        Allocator& m_allocator;
-
         SchemaDef m_schema;
         ImportMap m_imports{};
         uint32_t m_importDepth{ 0 };

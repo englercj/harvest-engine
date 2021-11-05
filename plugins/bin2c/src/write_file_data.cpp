@@ -85,7 +85,4 @@ void WriteFileData(he::File& file, he::StringView name, const uint8_t* data, siz
     he::Result r = file.Write(buf.Data(), buf.Size(), &bytesWritten);
     if (!HE_VERIFY_RESULT(r))
         return;
-
-#undef HEX_DUMP_SPACE_WIDTH
-#undef HEX_DUMP_FORMAT
 }

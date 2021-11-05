@@ -1,5 +1,7 @@
 // Copyright Chad Engler
 
+// The buffer utilites assume LE architecture and efficient unaligned memory access.
+
 #pragma once
 
 #include "he/core/assert.h"
@@ -215,13 +217,8 @@ namespace he::schema
     class BufferBuilder
     {
     public:
-        explicit BufferBuilder(BufferWriter& writer);
+        explicit BufferBuilder(BufferWriter& writer, const char signature[4] = nullptr);
 
-        void Reserve(uint32_t len) { m_writer.Reserve(len); }
-
-        void WriteHeader(const char (&signature)[4]);
-
-        template <std::derived_from<StructureReader> T>
         void SetRoot(BufferOffset root)
         {
             HE_ASSERT(root.val >= BufferHeaderSize);
@@ -293,22 +290,6 @@ namespace he::schema
         uint32_t m_sequenceStartOffset{ 0 };
         uint32_t m_sequenceElementCount{ 0 };
     };
-
-    // --------------------------------------------------------------------------------------------
-    // TODO: Move to a Reflection header?
-
-    struct FieldInfo
-    {
-        uint32_t id;
-        uint32_t size;
-        uint32_t offset;
-    };
-
-    template <typename T>
-    inline bool IsDefault(const T& v)
-    {
-        return v == T{ 0 };
-    }
 
     // --------------------------------------------------------------------------------------------
     // Serialization to a Buffer

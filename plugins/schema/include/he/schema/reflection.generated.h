@@ -6,14 +6,15 @@
 #include "he/core/enum_ops.h"
 #include "he/core/string.h"
 #include "he/core/unique_ptr.h"
-
 #include "he/core/vector.h"
 #include "he/schema/buffer.h"
-
+#include "he/schema/reflection.h"
 
 namespace he::schema
 {
-    constexpr uint16_t InvalidSchemaIndex = 65535;
+    extern const uint8_t Schema_Reflection[25606];
+
+    static constexpr uint16_t InvalidSchemaIndex = 65535;
     enum class BaseType : uint8_t
     {
         Unknown = 0,
@@ -43,6 +44,7 @@ namespace he::schema
 
         _Count,
     };
+
     enum class AttributeTarget : uint32_t
     {
         Alias = 0x00000001,
@@ -61,7 +63,6 @@ namespace he::schema
         All = 0xffffffff,
     };
     HE_ENUM_FLAGS(AttributeTarget);
-
 
     struct BasicValue
     {
@@ -133,7 +134,7 @@ namespace he::schema
 
         static const he::schema::FieldInfo Fields[FieldCount];
 
-        enum class Type : int32_t
+        enum class Type : uint8_t
         {
             Alias = 0,
             Attribute = 1,
@@ -145,6 +146,7 @@ namespace he::schema
 
             _Count,
         };
+
 
         class BufferReader : private he::schema::StructureReader
         {
@@ -247,6 +249,8 @@ namespace he::schema
 
         static const he::schema::FieldInfo Fields[FieldCount];
 
+        static constexpr ObjectDef::Type ObjectType = ObjectDef::Type::Attribute;
+
         class BufferReader : private he::schema::StructureReader
         {
         public:
@@ -329,6 +333,8 @@ namespace he::schema
 
         static const he::schema::FieldInfo Fields[FieldCount];
 
+        static constexpr ObjectDef::Type ObjectType = ObjectDef::Type::Enum;
+
         class BufferReader : private he::schema::StructureReader
         {
         public:
@@ -357,6 +363,8 @@ namespace he::schema
 
         static const he::schema::FieldInfo Fields[FieldCount];
 
+        static constexpr ObjectDef::Type ObjectType = ObjectDef::Type::Alias;
+
         class BufferReader : private he::schema::StructureReader
         {
         public:
@@ -376,8 +384,8 @@ namespace he::schema
     {
         static constexpr uint32_t TypeId = 0x56433fc5;
 
-        static constexpr uint32_t FieldId_base = 0x3ddc94d8;
         static constexpr uint32_t FieldId_name = 0x8d39bde6;
+        static constexpr uint32_t FieldId_type = 0x5127f14d;
         static constexpr uint32_t FieldId_attributes = 0xe1ffdb94;
         static constexpr uint32_t FieldId_value = 0x425ed3ca;
 
@@ -385,17 +393,19 @@ namespace he::schema
 
         static const he::schema::FieldInfo Fields[FieldCount];
 
+        static constexpr ObjectDef::Type ObjectType = ObjectDef::Type::Const;
+
         class BufferReader : private he::schema::StructureReader
         {
         public:
-            const auto* Base() const { return GetFieldPointer<BaseType>(FieldId_base); }
             const auto* Name() const { return GetFieldPointer<he::schema::StringReader>(FieldId_name); }
+            const auto* Type() const { return GetFieldPointer<Type::BufferReader>(FieldId_type); }
             const auto* Attributes() const { return GetFieldPointer<he::schema::VectorReader<he::schema::RelPointer<Attribute::BufferReader>>>(FieldId_attributes); }
             const auto* Value() const { return GetFieldPointer<Value::BufferReader>(FieldId_value); }
         };
 
-        BaseType base{};
         he::String name{};
+        Type type{};
         he::Vector<Attribute> attributes{};
         Value value{};
     };
@@ -412,6 +422,8 @@ namespace he::schema
         static constexpr uint32_t FieldCount = 4;
 
         static const he::schema::FieldInfo Fields[FieldCount];
+
+        static constexpr ObjectDef::Type ObjectType = ObjectDef::Type::Union;
 
         class BufferReader : private he::schema::StructureReader
         {
@@ -448,6 +460,8 @@ namespace he::schema
         static constexpr uint32_t FieldCount = 12;
 
         static const he::schema::FieldInfo Fields[FieldCount];
+
+        static constexpr ObjectDef::Type ObjectType = ObjectDef::Type::Struct;
 
         class BufferReader : private he::schema::StructureReader
         {
@@ -556,6 +570,8 @@ namespace he::schema
         static constexpr uint32_t FieldCount = 12;
 
         static const he::schema::FieldInfo Fields[FieldCount];
+
+        static constexpr ObjectDef::Type ObjectType = ObjectDef::Type::Interface;
 
         class BufferReader : private he::schema::StructureReader
         {

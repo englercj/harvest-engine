@@ -33,14 +33,14 @@ namespace he::schema
         return true;
     }
 
-    BufferBuilder::BufferBuilder(BufferWriter& writer)
+    BufferBuilder::BufferBuilder(BufferWriter& writer, const char signature[4])
         : m_writer(writer)
-    {}
-
-    void BufferBuilder::WriteHeader(const char (&signature)[4])
     {
-        HE_ASSERT(m_writer.Size() == 0);
-        m_writer.Write(signature, 4);
+        if (signature)
+            m_writer.Write(signature, 4);
+        else
+            m_writer.Write("HESC", 4);
+
         m_writer.Write(uint16_t(1));
         m_writer.Write(uint16_t(0));
         m_writer.Write(uint32_t(0));

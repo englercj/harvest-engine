@@ -69,6 +69,7 @@ namespace he::schema
             Span<const InterfaceDef> interfaces,
             Span<const StructDef> structs,
             Span<const UnionDef> unions);
+        void GenSrc_SchemaReflection();
         void GenSrc_StructReflection(StringView prefix, const StructDef& def);
         void GenSrc_UnionReflection(StringView prefix, const UnionDef& def);
 
@@ -95,6 +96,7 @@ namespace he::schema
         void WriteParamType(const Type& t);
         void WriteUnsignedAsHex(BaseType t, const Value& v);
         void WriteWithReplace(StringView input, char what, StringView with);
+        void WriteSchemaVarName();
 
         const char* GetScalarType(BaseType t);
 
@@ -103,6 +105,7 @@ namespace he::schema
         const CodeGenOptions& m_options;
 
         CodeWriter m_writer;
+        BufferWriter m_schemaBuffer;
         String m_namespacePrefix;
     };
 }

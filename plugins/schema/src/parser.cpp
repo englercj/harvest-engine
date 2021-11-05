@@ -1906,24 +1906,21 @@ namespace he::schema
         if (!Consume(Lexer::TokenType::Colon))
             return false;
 
-        Type constType;
-        if (!ConsumeType(constType))
+        if (!ConsumeType(def.type))
             return false;
 
-        const Type& resolved = ResolveType(constType);
+        const Type& resolved = ResolveType(def.type);
 
-        if (!IsArithmetic(resolved.base) && resolved.base != BaseType::String)
+        if (!IsArithmetic(resolved.base) && resolved.base != BaseType::String && resolved.base != BaseType::Enum)
         {
             AddError("Expected basic type for constant: integral, float, or string");
             return false;
         }
 
-        def.base = resolved.base;
-
         if (!Consume(Lexer::TokenType::Equals))
             return false;
 
-        if (!ConsumeValue(def.base, def.value))
+        if (!ConsumeValue(def.type.base, def.value))
             return false;
 
         return Consume(Lexer::TokenType::Semicolon);

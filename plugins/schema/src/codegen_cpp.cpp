@@ -34,6 +34,11 @@ namespace he::schema
 
         m_writer.Reserve(8192);
 
+        m_schemaBuffer.Reserve(4096);
+        BufferBuilder builder(m_schemaBuffer, "HRFL");
+        BufferOffset root = ToBuffer(builder, m_schema);
+        builder.SetRoot(root);
+
         GenHeader();
         if (!FlushToFile(".generated.h"))
             return false;
@@ -62,6 +67,14 @@ namespace he::schema
             m_writer.Write('\n');
             m_writer.WriteLine("{");
             m_writer.IncreaseIndent();
+        }
+
+        if (m_options.reflection)
+        {
+            m_writer.WriteIndent();
+            m_writer.Write("extern ");
+            WriteSchemaVarName();
+            m_writer.Write(";\n\n");
         }
 
         for (const ObjectDef& obj : m_schema.objects)
@@ -111,9 +124,9 @@ namespace he::schema
         if (!m_options.zeroCopy)
         {
             if (IsTypeUsed(m_schema, BaseType::String))
-                m_writer.Write("#include \"he/core/string.h\"\n");
+                m_writer.WriteLine("#include \"he/core/string.h\"");
             if (IsTypeUsed(m_schema, BaseType::Pointer))
-                m_writer.WriteLine("#include \"he/core/unique_ptr.h\"\n");
+                m_writer.WriteLine("#include \"he/core/unique_ptr.h\"");
             if (IsTypeUsed(m_schema, BaseType::Vector))
                 m_writer.WriteLine("#include \"he/core/vector.h\"");
         }
@@ -121,6 +134,11 @@ namespace he::schema
         if (m_options.buffer)
         {
             m_writer.WriteLine("#include \"he/schema/buffer.h\"");
+        }
+
+        if (m_options.reflection)
+        {
+            m_writer.WriteLine("#include \"he/schema/reflection.h\"");
         }
 
         m_writer.Write('\n');
@@ -150,7 +168,8 @@ namespace he::schema
                 m_writer.WriteLine("#include <unordered_map>");
             if (IsTypeUsed(m_schema, BaseType::Set))
                 m_writer.WriteLine("#include <unordered_set>");
-            m_writer.Write('\n');
+            if (IsTypeUsed(m_schema, BaseType::List) || IsTypeUsed(m_schema, BaseType::Map) || IsTypeUsed(m_schema, BaseType::Set))
+                m_writer.Write('\n');
         }
     }
 
@@ -172,11 +191,23 @@ namespace he::schema
     void CodeGenCpp::GenHdr_Const(const ConstDef& def)
     {
         m_writer.WriteIndent();
-        m_writer.Write("constexpr {1} {0}{2} = ",
-            def.name,
-            def.base == BaseType::String ? "char" : GetScalarType(def.base),
-            def.base == BaseType::String ? "[] " : "");
-        WriteNativeValue(def.base, def.value);
+        m_writer.Write("static constexpr ");
+
+        if (def.type.base == BaseType::String)
+            m_writer.Write("char");
+        else
+            WriteNativeType(def.type);
+
+        m_writer.Write(' ');
+        m_writer.Write(def.name);
+
+        if (def.type.base == BaseType::Array)
+            WriteArraySize(def.type);
+        else if (def.type.base == BaseType::String)
+            m_writer.Write("[]");
+
+        m_writer.Write(" = ");
+        WriteNativeValue(def.type.base, def.value);
         m_writer.Write(";\n");
     }
 
@@ -222,9 +253,9 @@ namespace he::schema
         m_writer.WriteLine("};");
 
         if (isFlags)
-        {
-            m_writer.WriteLine("HE_ENUM_FLAGS({});\n\n", def.name);
-        }
+            m_writer.WriteLine("HE_ENUM_FLAGS({});\n", def.name);
+        else
+            m_writer.Write('\n');
     }
 
     void CodeGenCpp::GenHdr_Interface(const InterfaceDef& def)
@@ -518,10 +549,9 @@ namespace he::schema
         m_writer.Write('\n');
 
         GenSrc_StringImpl();
-        GenSrc_ReflectionImpl();
-
         GenSrc_BufferImpl();
         GenSrc_JsonImpl();
+        GenSrc_ReflectionImpl();
     }
 
     void CodeGenCpp::GenSrc_BufferImpl()
@@ -872,7 +902,7 @@ namespace he::schema
 
     void CodeGenCpp::GenSrc_ReflectionImpl()
     {
-        if (m_options.reflection && !m_options.zeroCopy)
+        if (m_options.reflection)
         {
             m_writer.WriteLine("// Reflection Implementation");
             if (!m_schema.namespaceName.IsEmpty())
@@ -885,13 +915,18 @@ namespace he::schema
                 m_writer.IncreaseIndent();
             }
 
-            GenSrc_ReflectionImplRecursive(
-                m_namespacePrefix,
-                m_schema.objects,
-                m_schema.enums,
-                m_schema.interfaces,
-                m_schema.structs,
-                m_schema.unions);
+            if (!m_options.zeroCopy)
+            {
+                GenSrc_ReflectionImplRecursive(
+                    m_namespacePrefix,
+                    m_schema.objects,
+                    m_schema.enums,
+                    m_schema.interfaces,
+                    m_schema.structs,
+                    m_schema.unions);
+            }
+
+            GenSrc_SchemaReflection();
 
             if (!m_schema.namespaceName.IsEmpty())
             {
@@ -901,6 +936,7 @@ namespace he::schema
             m_writer.Write('\n');
         }
     }
+
     void CodeGenCpp::GenSrc_ReflectionImplRecursive(
         StringView prefix,
         Span<const ObjectDef> objects,
@@ -938,6 +974,37 @@ namespace he::schema
                     break;
             }
         }
+    }
+
+    void CodeGenCpp::GenSrc_SchemaReflection()
+    {
+        m_writer.WriteIndent();
+        WriteSchemaVarName();
+        m_writer.Write(" =\n");
+        m_writer.WriteLine("{");
+        m_writer.IncreaseIndent();
+
+        const uint8_t* data = m_schemaBuffer.Data();
+        const uint32_t size = m_schemaBuffer.Size();
+        for (uint32_t i = 0; i < size; ++i)
+        {
+            if ((i % 32) == 0)
+            {
+                if (i > 0)
+                    m_writer.Write('\n');
+                m_writer.WriteIndent();
+            }
+            else
+            {
+                m_writer.Write(' ');
+            }
+
+            m_writer.Write("{:#04x},", data[i]);
+        }
+
+        m_writer.Write('\n');
+        m_writer.DecreaseIndent();
+        m_writer.WriteLine("};");
     }
 
     void CodeGenCpp::GenSrc_StructReflection(StringView prefix, const StructDef& def)
@@ -1486,6 +1553,31 @@ namespace he::schema
                 m_writer.Write(ch);
             }
         }
+    }
+
+    void CodeGenCpp::WriteSchemaVarName()
+    {
+        m_writer.Write("const uint8_t Schema_");
+        const StringView name = GetPathWithoutExtension(m_options.fileName);
+        bool upper = true;
+        for (char c : name)
+        {
+            if (c == '_')
+            {
+                upper = true;
+                continue;
+            }
+
+            if (upper)
+            {
+                m_writer.Write(ToUpper(c));
+                upper = false;
+                continue;
+            }
+
+            m_writer.Write(c);
+        }
+        m_writer.Write("[{}]", m_schemaBuffer.Size());
     }
 
     const char* CodeGenCpp::GetScalarType(BaseType t)

@@ -48,6 +48,20 @@ namespace he
 
     HE_POP_WARNINGS()
 
+    uint64_t Uuid::GetLow() const
+    {
+        uint64_t v;
+        MemCopy(&v, m_bytes, sizeof(v));
+        return v;
+    }
+
+    uint64_t Uuid::GetHigh() const
+    {
+        uint64_t v;
+        MemCopy(&v, m_bytes + sizeof(v), sizeof(v));
+        return v;
+    }
+
     String Uuid::ToString(Allocator& allocator) const
     {
         String out(allocator);
@@ -65,17 +79,17 @@ namespace he
         return out;
     }
 
-    bool Uuid::operator==(const Uuid& x)
+    bool Uuid::operator==(const Uuid& x) const
     {
         return MemEqual(this, &x, sizeof(x));
     }
 
-    bool Uuid::operator!=(const Uuid& x)
+    bool Uuid::operator!=(const Uuid& x) const
     {
         return !MemEqual(this, &x, sizeof(x));
     }
 
-    bool Uuid::operator<(const Uuid& x)
+    bool Uuid::operator<(const Uuid& x) const
     {
         return MemLess(this, &x, sizeof(x));
     }

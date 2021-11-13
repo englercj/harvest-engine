@@ -22,7 +22,8 @@ namespace he::rhi::d3d12
         m_heapType = d3dHeapDesc.Type;
         m_stride = d3dDevice->GetDescriptorHandleIncrementSize(d3dHeapDesc.Type);
         m_cpuStart = m_heap->GetCPUDescriptorHandleForHeapStart();
-        m_gpuStart = m_heap->GetGPUDescriptorHandleForHeapStart();
+        if (HasFlag(d3dHeapDesc.Flags, D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE))
+            m_gpuStart = m_heap->GetGPUDescriptorHandleForHeapStart();
         m_bitAlloc.Create(allocator, d3dHeapDesc.NumDescriptors);
 
         return S_OK;

@@ -3,7 +3,9 @@
 #pragma once
 
 #include "directory_service.h"
-#include "schema/settings.generated.h"
+#include "schema/settings.capnp.h"
+
+#include "capnp/message.h"
 
 namespace he::editor
 {
@@ -17,11 +19,12 @@ namespace he::editor
         bool Reload();
         bool Save();
 
-        Settings& GetSettings() { return m_settings; }
+        Settings::Builder& GetSettings() { return m_settings; }
 
     private:
         DirectoryService& m_directoryService;
 
-        Settings m_settings{};
+        capnp::MallocMessageBuilder m_builder{};
+        Settings::Builder m_settings{ nullptr };
     };
 }

@@ -2,6 +2,8 @@
 
 #include "project_service.h"
 
+#include "schema/kj_file_stream.h"
+
 #include "he/core/appender.h"
 #include "he/core/assert.h"
 #include "he/core/file.h"
@@ -14,12 +16,9 @@
 #include "he/core/string_fmt.h"
 #include "he/core/uuid.h"
 #include "he/core/vector.h"
-#include "he/schema/json.h"
 
-#include "rapidjson/document.h"
-#include "rapidjson/prettywriter.h"
-#include "rapidjson/stringbuffer.h"
-#include "rapidjson/error/en.h"
+#include "capnp/serialize.h"
+#include "capnp/compat/json.h"
 
 namespace he::editor
 {
@@ -31,12 +30,15 @@ namespace he::editor
     {
         HE_ASSERT(!IsOpen());
 
-        Uuid id = Uuid::CreateV4();
+        m_project = m_builder.getRoot<schema::Project>();
+        m_project.setName(name);
+        m_project.setAssetRoot("");
 
-        static_assert(sizeof(m_project.id) == sizeof(id.m_bytes));
-        MemCopy(m_project.id, id.m_bytes, sizeof(id.m_bytes));
-        m_project.name = name;
-        m_project.assetRoot.Clear();
+        // Set ID
+        const Uuid projId = Uuid::CreateV4();
+        schema::ProjectId::Builder idBuilder = m_project.getId();
+        idBuilder.setX0(projId.GetLow());
+        idBuilder.setX1(projId.GetHigh());
 
         m_projectPath = path;
 
@@ -108,23 +110,9 @@ namespace he::editor
 
         file.Close();
 
-        rapidjson::Document doc;
-        doc.ParseInsitu(fileBuf.Data());
-
-        if (doc.HasParseError())
-        {
-            HE_LOG_ERROR(editor, HE_MSG("Failed to parse project file. The JSON document is invalid."),
-                HE_KV(path, m_projectPath),
-                HE_KV(error, rapidjson::GetParseError_En(doc.GetParseError())));
-            return false;
-        }
-
-        if (!he::schema::FromJson(doc, m_project))
-        {
-            HE_LOG_ERROR(editor, HE_MSG("Failed to parse project file. The JSON doesn't match the Project schema."),
-                HE_KV(path, m_projectPath));
-            return false;
-        }
+        m_project = m_builder.getRoot<Project>();
+        capnp::JsonCodec json;
+        json.decode({ fileBuf.Data(), fileBuf.Size() }, m_project);
 
         return true;
     }
@@ -132,12 +120,6 @@ namespace he::editor
     bool ProjectService::Save()
     {
         HE_ASSERT(IsOpen());
-
-        rapidjson::Document doc = he::schema::ToJson(m_project);
-
-        rapidjson::StringBuffer buf(0, 4096);
-        rapidjson::PrettyWriter writer(buf);
-        doc.Accept(writer);
 
         File file;
 
@@ -150,7 +132,10 @@ namespace he::editor
             return false;
         }
 
-        r = file.Write(buf.GetString(), static_cast<uint32_t>(buf.GetSize()));
+        capnp::JsonCodec json;
+        kj::String data = json.encode(m_project);
+
+        r = file.Write(data.cStr(), static_cast<uint32_t>(data.size()));
         if (!r)
         {
             HE_LOG_ERROR(editor, HE_MSG("Failed to write project file."),
@@ -169,8 +154,13 @@ namespace he::editor
         String appDir = m_directoryService.GetAppDirectory(DirectoryService::DirType::Resources);
         appDir += '/';
 
-        Span<const uint8_t> id{ m_project.id };
-        fmt::format_to(Appender(appDir), "{}", id);
+        const schema::ProjectId::Reader projId = m_project.asReader().getId();
+        const kj::ArrayPtr<const kj::byte> bytes = capnp::AnyStruct::Reader(projId).getDataSection();
+        const Span<const uint8_t> span(bytes.begin(), bytes.end());
+
+        HE_ASSERT(span.Size() == sizeof(Uuid));
+
+        fmt::format_to(Appender(appDir), "{}", span);
 
         return appDir;
     }

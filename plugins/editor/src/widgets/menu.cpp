@@ -231,9 +231,9 @@ namespace he::editor
             RenderText(text_pos, label);
             if (icon_w > 0.0f)
                 RenderText(pos + ImVec2(offsets->OffsetIcon, 0.0f), icon);
-            const float arrow_w = ImGui::CalcTextSize(ICON_FA_CHEVRON_RIGHT).x;
-            ImGui::RenderText(pos + ImVec2((offsets->OffsetMark + extra_w + g.FontSize * 0.30f)- (style.ItemSpacing.x * 0.5f), 0.0f), ICON_FA_CHEVRON_RIGHT, nullptr, false);
+            //const float arrow_w = ImGui::CalcTextSize(ICON_FA_CHEVRON_RIGHT).x;
             //RenderArrow(window->DrawList, pos + ImVec2(offsets->OffsetMark + extra_w + g.FontSize * 0.30f, 0.0f), GetColorU32(ImGuiCol_Text), ImGuiDir_Right);
+            ImGui::RenderText(pos + ImVec2((offsets->OffsetMark + extra_w + g.FontSize * 0.30f)- (style.ItemSpacing.x * 0.5f), 0.0f), ICON_FA_CHEVRON_RIGHT, nullptr, false);
         }
         if (!enabled)
             EndDisabled();

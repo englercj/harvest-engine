@@ -1846,8 +1846,6 @@ namespace he::rhi::d3d12
     {
         count = 0;
 
-        constexpr D3D12_FORMAT_SUPPORT1 SwapChainSupport = D3D12_FORMAT_SUPPORT1_DISPLAY | D3D12_FORMAT_SUPPORT1_RENDER_TARGET;
-
         // Based on HDR support check in D3D12 examples from MS
         // https://github.com/microsoft/DirectX-Graphics-Samples/blob/05c6b6454378cb3501a39528f4417bb30307f146/Samples/UWP/D3D12HDR/src/D3D12HDR.cpp#L1010
 

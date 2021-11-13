@@ -134,13 +134,6 @@ local function _module_project(mod)
             _try_handle_key(mod, key, value)
         end
 
-        if mod.warnings == nil or mod.warnings == "Extra" then
-            filter { "toolset:msc-*" }
-                buildoptions {
-                    "/we4668", -- A symbol that was not defined was used with a preprocessor directive.
-                }
-        end
-
         _platform_file_excludes()
 
     os.chdir(oldcwd)
@@ -249,11 +242,7 @@ local function _get_scope_table(scope)
 end
 
 he.import_plugins = function (plugins, options)
-    if type(plugins) == "string" then
-        plugins = { plugins }
-    end
-
-    assert(type(plugins) == "table", "import_plugins expects a string or a table of strings")
+    assert(type(plugins) == "table", "import_plugins expects a table of plugins to import")
 
     if options == nil then
         options = {}

@@ -95,19 +95,22 @@ namespace he::editor
         m_imguiService.PopFont();
         ImGui::NewLine();
 
-        Settings& settings = m_settingsService.GetSettings();
+        Settings::Builder& settings = m_settingsService.GetSettings();
 
-        if (settings.recentProjects.IsEmpty())
+        const auto recentProjects = settings.getRecentProjects();
+
+        if (recentProjects.size() == 0)
         {
             ImGui::TextUnformatted("No recently opened projects.");
             return;
         }
 
-        for (const schema::RecentProject& recent : settings.recentProjects)
+        for (auto&& recent : recentProjects.asReader())
         {
-            if (LinkButton(recent.path.Data()))
+            const char* path = recent.getPath().cStr();
+            if (LinkButton(path))
             {
-                m_projectService.Open(recent.path.Data());
+                m_projectService.Open(path);
             }
         }
     }

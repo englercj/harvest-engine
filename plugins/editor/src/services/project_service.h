@@ -4,9 +4,11 @@
 
 #include "directory_service.h"
 #include "platform_service.h"
-#include "schema/project.generated.h"
+#include "schema/project.capnp.h"
 
 #include "he/core/string.h"
+
+#include "capnp/message.h"
 
 namespace he::editor
 {
@@ -32,14 +34,15 @@ namespace he::editor
 
         bool IsOpen() const { return !m_projectPath.IsEmpty(); }
 
-        Project& GetProject() { return m_project; }
+        Project::Builder& GetProject() { return m_project; }
 
         String GetResourceDir() const;
 
     private:
         DirectoryService& m_directoryService;
 
-        Project m_project{};
+        capnp::MallocMessageBuilder m_builder{};
+        Project::Builder m_project{ nullptr };
         String m_projectPath{};
     };
 }

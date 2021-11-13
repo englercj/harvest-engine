@@ -52,6 +52,18 @@ namespace he
         /// \return The version number of the UUID.
         constexpr uint8_t GetVersion() const { return (m_bytes[6] & 0xf0) >> 4; }
 
+        /// Gets the first 8 bytes of a Uuid as a uint64.
+        /// This can be useful for interop with third-party systems.
+        ///
+        /// \return The first 8 bytes of the Uuid as a uint64.
+        uint64_t GetLow() const;
+
+        /// Gets the last 8 bytes of a Uuid as a uint64.
+        /// This can be useful for interop with third-party systems.
+        ///
+        /// \return The last 8 bytes of the Uuid as a uint64.
+        uint64_t GetHigh() const;
+
         /// Creates a cannonical string representation of the UUID.
         ///
         /// \param[in] allocator The allocator to use to construct the string.
@@ -61,18 +73,18 @@ namespace he
         /// Checks if two UUIDs are the same.
         ///
         /// \return True if the UUIDs are the same, false otherwise.
-        bool operator==(const Uuid& x);
+        bool operator==(const Uuid& x) const;
 
         /// Checks if two UUIDs are different.
         ///
         /// \return True if the UUIDs are different, false otherwise.
-        bool operator!=(const Uuid& x);
+        bool operator!=(const Uuid& x) const;
 
         /// Checks if the UUID `x` is less than `y`.Not semantically useful but can be functionally
         /// useful for storing UUIDs in ordered containers (such as map/set).
         ///
         /// \return True if `x` is stricly less than `y`.
-        bool operator<(const Uuid& x);
+        bool operator<(const Uuid& x) const;
 
     public:
         uint8_t m_bytes[16];

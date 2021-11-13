@@ -12,8 +12,13 @@ he.workspace = function ()
     flags               { "FatalWarnings", "MultiProcessorCompile" }
     floatingpoint       "Fast"
     location            (he.build_dir)
-    rtti                "Off"
+    rtti                "On" -- TODO: Disable once I remove the need for it from capnp
     warnings            "Extra"
+
+    externalanglebrackets   "On"
+    externalwarnings        "Off"
+
+    preferredtoolarchitecture "x86_64"
 
     -- System setup
     filter { "system:emscripten" }
@@ -53,13 +58,16 @@ he.workspace = function ()
     -- Compiler setup
     filter { "toolset:msc-*" }
         buildoptions {
+            -- "/external:anglebrackets", -- Treat files included with angle brackets as "external"
+            -- "/external:W0", -- Disable warnings for "external" headers. TODO: Fix when premake/premake-core#1692 merges
             "/permissive-", -- Enable standards-conforming compiler behavior.
             "/utf-8",       -- Specifies both the source character set and the execution character set as UTF-8.
+            "/w44668",      -- A symbol that was not defined was used with a preprocessor directive.
         }
 
     filter { "toolset:gcc or clang" }
         buildoptions {
-            "-Wundef", -- A symbol that was not defined was used with a preprocessor directive.
+            "-Wundef",      -- A symbol that was not defined was used with a preprocessor directive.
         }
 
     -- Configuration setup

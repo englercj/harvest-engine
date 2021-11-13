@@ -35,7 +35,6 @@ he.add_module_key {
     desc = "an array of strings",
     handler = function (ctx, values) defines(values) end,
 }
-
 he.add_module_key {
     key = "disablewarnings",
     scope = "private",
@@ -48,8 +47,24 @@ he.add_module_key {
     key = "includedirs",
     scope = "include",
     type = "table",
-    desc = "an array of strings",
+    desc = "an array of string include paths (relative to the plugin json)",
     handler = function (ctx, values) includedirs(values) end,
+}
+
+he.add_module_key {
+    key = "external_includedirs",
+    scope = "include",
+    type = "table",
+    desc = "an array of string include paths (relative to the plugin json)",
+    handler = function (ctx, values) externalincludedirs(values) end,
+}
+
+he.add_module_key {
+    key = "buildoptions",
+    scope = "include",
+    type = "table",
+    desc = "an array of string build options",
+    handler = function (ctx, values) buildoptions(values) end,
 }
 
 he.add_module_key {
@@ -157,6 +172,14 @@ he.add_module_key {
             os.chdir(oldcwd)
         end
     end,
+}
+
+he.add_module_key {
+    key = "targetname",
+    scope = "private",
+    type = "string",
+    desc = "string name of the output file (without the extension)",
+    handler = function (ctx, value) targetname(value) end,
 }
 
 he.add_module_key {

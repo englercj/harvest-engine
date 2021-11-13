@@ -24,12 +24,10 @@
                     "compress": true
                 }
             ],
-            "schema_compile": [
+            "capnp_compile": [
                 {
-                    "glob": "src/schema/*.he_schema",
-                    "targets": ["cpp"],
-                    "json": true,
-                    "reflection": true
+                    "glob": "src/schema/*.capnp",
+                    "targets": ["c++"]
                 }
             ],
             "private_includedirs": ["src", "%{he.get_generated_dir(prj.name)}/src"],
@@ -37,10 +35,11 @@
             "private_dependson": [
                 "he_core",
                 "he_rhi",
-                "he_schema",
                 "he_window",
 
                 "boost_di",
+                "capnp",
+                "capnp_json",
                 "imgui",
                 "sqlite3"
             ],

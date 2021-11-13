@@ -2,18 +2,18 @@
 
 #include "settings_service.h"
 
+#include "schema/kj_file_stream.h"
+
 #include "he/core/file.h"
 #include "he/core/log.h"
 #include "he/core/path.h"
 #include "he/core/result_fmt.h"
 #include "he/core/string.h"
 #include "he/core/string_fmt.h"
-#include "he/schema/json.h"
+#include "he/core/types.h"
 
-#include "rapidjson/document.h"
-#include "rapidjson/prettywriter.h"
-#include "rapidjson/stringbuffer.h"
-#include "rapidjson/error/en.h"
+#include "capnp/serialize.h"
+#include "capnp/compat/json.h"
 
 namespace he::editor
 {
@@ -33,7 +33,7 @@ namespace he::editor
         Result r = file.Open(path.Data(), FileOpenMode::ReadExisting, FileOpenFlag::SequentialScan);
         if (!r)
         {
-            HE_LOG_ERROR(editor, HE_MSG("Failed to open project file for reading."),
+            HE_LOG_ERROR(editor, HE_MSG("Failed to open settings file for reading."),
                 HE_KV(path, path),
                 HE_KV(error, r));
             return false;
@@ -46,7 +46,7 @@ namespace he::editor
         r = file.Read(fileBuf.Data(), fileBuf.Size(), &bytesRead);
         if (!r)
         {
-            HE_LOG_ERROR(editor, HE_MSG("Failed to read project file."),
+            HE_LOG_ERROR(editor, HE_MSG("Failed to read settings file."),
                 HE_KV(path, path),
                 HE_KV(error, r));
             return false;
@@ -54,7 +54,7 @@ namespace he::editor
 
         if (bytesRead != fileBuf.Size())
         {
-            HE_LOG_ERROR(editor, HE_MSG("Got a short read from project file."),
+            HE_LOG_ERROR(editor, HE_MSG("Got a short read from settings file."),
                 HE_KV(path, path),
                 HE_KV(expected_bytes, fileBuf.Size()),
                 HE_KV(actual_bytes, bytesRead));
@@ -63,23 +63,9 @@ namespace he::editor
 
         file.Close();
 
-        rapidjson::Document doc;
-        doc.ParseInsitu(fileBuf.Data());
-
-        if (doc.HasParseError())
-        {
-            HE_LOG_ERROR(editor, HE_MSG("Failed to parse settings file. The JSON document is invalid."),
-                HE_KV(path, path),
-                HE_KV(error, rapidjson::GetParseError_En(doc.GetParseError())));
-            return false;
-        }
-
-        if (!he::schema::FromJson(doc, m_settings))
-        {
-            HE_LOG_ERROR(editor, HE_MSG("Failed to parse settings file. The JSON doesn't match the Settings schema."),
-                HE_KV(path, path));
-            return false;
-        }
+        m_settings = m_builder.getRoot<Settings>();
+        capnp::JsonCodec json;
+        json.decode({ fileBuf.Data(), fileBuf.Size() }, m_settings);
 
         return true;
     }
@@ -88,12 +74,6 @@ namespace he::editor
     {
         String path = m_directoryService.GetAppDirectory(DirectoryService::DirType::Settings);
         ConcatPath(path, SettingsFileName);
-
-        rapidjson::Document doc = he::schema::ToJson(m_settings);
-
-        rapidjson::StringBuffer buf(0, 4096);
-        rapidjson::PrettyWriter writer(buf);
-        doc.Accept(writer);
 
         File file;
 
@@ -106,7 +86,10 @@ namespace he::editor
             return false;
         }
 
-        r = file.Write(buf.GetString(), static_cast<uint32_t>(buf.GetSize()));
+        capnp::JsonCodec json;
+        kj::String data = json.encode(m_settings);
+
+        r = file.Write(data.cStr(), static_cast<uint32_t>(data.size()));
         if (!r)
         {
             HE_LOG_ERROR(editor, HE_MSG("Failed to write settings file."),

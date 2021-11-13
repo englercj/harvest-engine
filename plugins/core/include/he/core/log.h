@@ -63,9 +63,9 @@
 #define HE_LOG(lvl, catStr, ...) \
     do { \
         if constexpr (static_cast<int>(he::LogLevel::lvl) >= HE_LOG_LEVEL_ENABLED) { \
-            static constexpr he::LogSource LogMsgSource_{ he::LogLevel::lvl, HE_LINE, HE_FILE, __FUNCTION__, catStr }; \
+            constexpr he::LogSource LogEntrySource_{ he::LogLevel::lvl, HE_LINE, HE_FILE, __FUNCTION__, catStr }; \
             const he::LogKV kvLogList_[]{ __VA_ARGS__ }; \
-            he::Log(LogMsgSource_, kvLogList_, HE_LENGTH_OF(kvLogList_)); \
+            he::Log(LogEntrySource_, kvLogList_, HE_LENGTH_OF(kvLogList_)); \
         } \
     } while(0)
 

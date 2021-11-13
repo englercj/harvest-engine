@@ -1,0 +1,30 @@
+id = "WinPixEventRuntime"
+name = "WinPixEventRuntime"
+description = "Allows applications to be instrumented with marker events, for use with Microsoft PIX."
+version = "1.0.210818001"
+author = "Microsoft"
+license = "SEE LICENSE IN license.txt"
+
+[install]
+    nuget = "WinPixEventRuntime#1.0.210818001"
+    valid_systems = ["windows"]
+
+[[modules]]
+    name = "WinPixEventRuntime"
+    type = "shared"
+    group = "engine/contrib"
+    public_includedirs = ["Include/WinPixEventRuntime"]
+
+    [[modules.variants]]
+        conditions = ["system:windows", "architecture:x86_64"]
+        post_build_commands = [
+            "{COPYFILE} %{he.get_plugin('WinPixEventRuntime')._install_dir}/bin/x64/WinPixEventRuntime.dll %{cfg.targetdir}",
+            "{COPYFILE} %{he.get_plugin('WinPixEventRuntime')._install_dir}/bin/x64/WinPixEventRuntime.lib %{cfg.targetdir}",
+        ]
+
+    [[modules.variants]]
+        conditions = ["system:windows", "architecture:ARM64"]
+        post_build_commands = [
+            "{COPYFILE} %{he.get_plugin('WinPixEventRuntime')._install_dir}/bin/ARM64/WinPixEventRuntime.dll %{cfg.targetdir}",
+            "{COPYFILE} %{he.get_plugin('WinPixEventRuntime')._install_dir}/bin/ARM64/WinPixEventRuntime.lib %{cfg.targetdir}",
+        ]

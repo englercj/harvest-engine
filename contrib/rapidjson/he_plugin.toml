@@ -1,0 +1,16 @@
+id = "tencent.rapidjson"
+name = "RapidJSON"
+description = "RapidJSON is a JSON parser and generator for C++."
+version = "b557259f8813bed2d79e83bd2f92eb673579a82c"
+author = "Milo Yip <miloyip@gmail.com>"
+license = "MIT"
+
+[install]
+    github = "Tencent/rapidjson#b557259f8813bed2d79e83bd2f92eb673579a82c"
+
+[[modules]]
+    name = "rapidjson"
+    type = "header"
+    group = "engine/contrib"
+    files = ["include/rapidjson/**"]
+    public_includedirs = ["include"]

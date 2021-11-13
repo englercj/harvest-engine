@@ -145,7 +145,7 @@ filter { "system:emscripten", "kind:WindowedApp" }
 filter {}
 
 --
--- Register emscripten module keys so they can be used in module json descriptors.
+-- Register emscripten module keys so they can be used in module descriptors.
 --
 
 he.add_module_key {

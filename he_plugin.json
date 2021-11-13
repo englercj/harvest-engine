@@ -1,7 +1,0 @@
-{
-    "id": "he.engine-root",
-    "import_plugins": [
-        "contrib/*",
-        "plugins/*"
-    ]
-}

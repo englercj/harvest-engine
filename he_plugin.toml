@@ -1,0 +1,7 @@
+# Copyright Chad Engler
+
+# Harvest Engine root import plugin
+# This plugin acts as an easy way to import the entire engine.
+
+id = "he.engine-root"
+import_plugins = ["contrib/*", "plugins/*"]

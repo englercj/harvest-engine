@@ -1,0 +1,52 @@
+id = "he.editor"
+name = "Harvest Editor"
+description = "Harvest editor application."
+version = "1.0.0"
+author = "Chad Engler <englercj@live.com>"
+license = "UNLICENSED"
+
+[[modules]]
+    name = "he_editor"
+    type = "windowed_app"
+    group = "engine/tools"
+    files = ["src/**"]
+    private_includedirs = ["src", "%{he.get_generated_dir(prj.name)}/src"]
+    private_defines = ["GOOGLE_PROTOBUF_INTERNAL_DONATE_STEAL_INLINE=0"]
+    private_dependson = [
+        "he_core",
+        "he_rhi",
+        "he_window",
+
+        "boost_di",
+        "capnp",
+        "capnp_json",
+        "imgui",
+        "sqlite3",
+    ]
+
+    [[modules.bin2c_compile]]
+        glob = "src/fonts/**.ttf"
+        compress = true
+
+    [[modules.bin2c_compile]]
+        glob = "src/fonts/**.otf"
+        compress = true
+
+    [[modules.capnp_compile]]
+        glob = "src/schema/*.capnp"
+        targets = ["c++"]
+
+    [[modules.variants]]
+        conditions = ["system:windows"]
+        disablewarnings = ["4127", "5054"]
+
+        [[modules.variants.shader_compile]]
+            glob = "src/shaders/*.hlsl"
+            targets = ["sm_5_1"]
+
+    [[modules.variants]]
+        conditions = ["system:linux"]
+
+        [[modules.variants.shader_compile]]
+            glob = "src/shaders/*.hlsl"
+            targets = ["glsl_450"]

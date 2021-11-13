@@ -1,6 +1,7 @@
 -- Copyright Chad Engler
 
 local p = premake
+local TOML = dofile("toml.lua")
 local install_plugin = dofile("install_plugin.lua")
 
 local target_dir_by_kind = {
@@ -154,11 +155,11 @@ local function _should_include_module(mod, options)
 end
 
 local function _import_plugin(plugin_path, options)
-    -- Search for the plugin json file
+    -- Search for the plugin toml file
     local plugin_file = plugin_path
 
-    if not path.hasextension(plugin_file, ".json") then
-        plugin_file = path.join(plugin_file, "he_plugin.json")
+    if not path.hasextension(plugin_file, ".toml") then
+        plugin_file = path.join(plugin_file, "he_plugin.toml")
     end
 
     plugin_file = path.getabsolute(plugin_file);
@@ -170,10 +171,10 @@ local function _import_plugin(plugin_path, options)
 
     -- Load the plugin file
     verbosef("Loading plugin imported as '%s' from file: %s", plugin_path, plugin_file)
-    local plugin = json.decode(io.readfile(plugin_file))
+    local plugin, error = TOML.parse(io.readfile(plugin_file))
 
     if plugin == nil then
-        p.error("Load of plugin file failed. Is the JSON valid? " .. plugin_file)
+        p.error("Load of plugin file failed " .. plugin_file .. "\n" .. error)
         return nil
     end
 

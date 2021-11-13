@@ -47,7 +47,7 @@ he.add_module_key {
     key = "includedirs",
     scope = "include",
     type = "table",
-    desc = "an array of string include paths (relative to the plugin json)",
+    desc = "an array of string include paths (relative to the he_plugin file)",
     handler = function (ctx, values) includedirs(values) end,
 }
 
@@ -55,7 +55,7 @@ he.add_module_key {
     key = "external_includedirs",
     scope = "include",
     type = "table",
-    desc = "an array of string include paths (relative to the plugin json)",
+    desc = "an array of string include paths (relative to the he_plugin file)",
     handler = function (ctx, values) externalincludedirs(values) end,
 }
 

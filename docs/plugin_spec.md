@@ -1,8 +1,8 @@
-# Plugin JSON Spec
+# Plugin File Spec
 
 All keys are optional unless otherwise specified.
 
-All paths can contain globs and are relative to the json file, or the install directory if the plugin is installed from a remote source. That is, if you use "source_github", "source_bitbucket", "source_nuget", or "source_archive" to install the plugin then paths are relative to the extracted files location.
+All paths can contain globs and are relative to the he_plugin file, or the install directory if the plugin is installed from a remote source. That is, if you use "install.github", "install.bitbucket", "install.nuget", or "install.archive" to install the plugin then paths are relative to the extracted files location.
 
 ## Plugin Keys
 
@@ -26,7 +26,7 @@ All paths can contain globs and are relative to the json file, or the install di
 | exec          | String        | Path to a lua file that returns a function for execution when the plugin is imported. Use as an entry point for build system extension. |
 | valid_systems | Array<String> | List of systems this plugin is valid to be installed on. |
 | archive       | mixed         | Either a string URL of the archive to download, or an object where the key is a system name and the value is a string URL of the archive to download for that system. |
-| source        | String        | Path relative to the install directory to the plugin. This is useful if the plugin's contents are in a different location than the plugin json file. |
+| source        | String        | Path relative to the install directory to the plugin. This is useful if the plugin's contents are in a different location than the he_plugin file. |
 | github        | String        | A string repository specifier in the form "<user>/<repo>#<commit-ish>" |
 | bitbucket     | String        | A string repository specifier in the form "<user>/<repo>#<commit-ish>" |
 | nuget         | String        | A string with the package name and version in the form "<package>#<version>" |
@@ -107,21 +107,19 @@ You can extend the supported keys by calling the `he.add_module_key` function in
 
 For example:
 
-`game/tools/plugin/he_plugin.json`
-```json
-{
-    "id": "game.tools.plugin",
-    "name": "My Tool Plugin",
-    "install": {
-        "exec": "my_tool.lua"
-    }
-}
+`game/tools/plugin/he_plugin.toml`
+```toml
+id = "game.tools.plugin"
+name = "My Tool Plugin"
+
+[install]
+    exec = "my_tool.lua"
 ```
 
 `game/tools/plugin/my_tool.lua`
 ```lua
 return function (plugin)
-    -- plugin = the parsed plugin json
+    -- plugin = the parsed he_plugin file
 
     he.add_module_key {
         key = "mytool",
@@ -133,7 +131,7 @@ return function (plugin)
             -- value = the value of the "mytool" key in the module
 
             -- The project for the module that used the "mytool" key is currently in scope
-            -- Paths are relative to the plugin json file that contained the module.
+            -- Paths are relative to the he_plugin file that contained the module.
             files { value }
             dependson { "mytool" }
 

@@ -168,7 +168,7 @@ return function (plugin)
     local i = plugin.install
     local install_dir = path.getdirectory(plugin._file_path)
 
-    -- If the plugin doesn't specify an install block then use the plugin json file's path as
+    -- If the plugin doesn't specify an install block then use the he_plugin file's path as
     -- the install path and return that it is enabled.
     if i == nil then
         return true, install_dir

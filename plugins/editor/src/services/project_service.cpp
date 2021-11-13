@@ -32,7 +32,7 @@ namespace he::editor
 
         m_project = m_builder.getRoot<schema::Project>();
         m_project.setName(name);
-        m_project.setAssetRoot("");
+        m_project.disownAssetRoot();
 
         // Set ID
         const Uuid projId = Uuid::CreateV4();
@@ -133,6 +133,7 @@ namespace he::editor
         }
 
         capnp::JsonCodec json;
+        json.setHasMode(capnp::HasMode::NON_DEFAULT);
         kj::String data = json.encode(m_project);
 
         r = file.Write(data.cStr(), static_cast<uint32_t>(data.size()));

@@ -21,7 +21,9 @@ namespace he::editor
 
     SettingsService::SettingsService(DirectoryService& directoryService)
         : m_directoryService(directoryService)
-    {}
+    {
+        m_settings = m_builder.getRoot<Settings>();
+    }
 
     bool SettingsService::Reload()
     {
@@ -33,6 +35,9 @@ namespace he::editor
         Result r = file.Open(path.Data(), FileOpenMode::ReadExisting, FileOpenFlag::SequentialScan);
         if (!r)
         {
+            if (GetFileResult(r) == FileResult::NotFound)
+                return true;
+
             HE_LOG_ERROR(editor, HE_MSG("Failed to open settings file for reading."),
                 HE_KV(path, path),
                 HE_KV(error, r));
@@ -63,7 +68,6 @@ namespace he::editor
 
         file.Close();
 
-        m_settings = m_builder.getRoot<Settings>();
         capnp::JsonCodec json;
         json.decode({ fileBuf.Data(), fileBuf.Size() }, m_settings);
 
@@ -87,6 +91,7 @@ namespace he::editor
         }
 
         capnp::JsonCodec json;
+        json.setHasMode(capnp::HasMode::NON_DEFAULT);
         kj::String data = json.encode(m_settings);
 
         r = file.Write(data.cStr(), static_cast<uint32_t>(data.size()));

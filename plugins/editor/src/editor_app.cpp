@@ -10,16 +10,16 @@ namespace he::editor
         LogService& logService,
         MainWindowService& mainWindowService,
         RenderService& renderService,
+        SettingsService& settingsService,
         WorkspaceService& workspaceService)
         : m_directoryService(directoryService)
         , m_imguiService(imguiService)
         , m_logService(logService)
         , m_mainWindowService(mainWindowService)
         , m_renderService(renderService)
+        , m_settingsService(settingsService)
         , m_workspaceService(workspaceService)
-    {
-        // Init path service
-    }
+    {}
 
     void EditorApp::OnEvent(const window::Event& ev)
     {
@@ -31,7 +31,8 @@ namespace he::editor
             case window::EventType::Initialized:
             {
                 const auto& evt = static_cast<const window::InitializedEvent&>(ev);
-                OnViewInitialized(evt.view);
+                if (!OnViewInitialized(evt.view))
+                    m_mainWindowService.Quit(1);
                 break;
             }
             case window::EventType::ViewRequestClose:
@@ -93,6 +94,9 @@ namespace he::editor
         if (!m_logService.Initialize())
             return false;
 
+        if (!m_settingsService.Reload())
+            return false;
+
         if (!m_renderService.Initialize(view))
             return false;
 
@@ -116,6 +120,8 @@ namespace he::editor
             return;
 
         m_initialized = false;
+
+        m_settingsService.Save();
 
         m_imguiService.Terminate();
         m_renderService.Terminate();

@@ -57,6 +57,22 @@ namespace he
     };
     HE_ENUM_FLAGS(FileAttributeFlag);
 
+    /// Flags for behavior of locking an open file.
+    enum class FileLockFlag : uint32_t
+    {
+        None            = 0,
+        Exclusive       = 1 << 0, ///< Lock the file for exclusive access by this process.
+        NonBlocking     = 1 << 1, ///< Do not block until the lock is aquired.
+    };
+    HE_ENUM_FLAGS(FileLockFlag);
+
+    /// Flags for behavior of a memory mapped file once opened.
+    enum class MemoryMapMode : uint8_t
+    {
+        Read,   ///< Map the file into read-only memory.
+        Write,  ///< Map the file into read-write memory.
+    };
+
     /// Structure that represents the attributes of a file.
     struct FileAttributes
     {
@@ -159,6 +175,12 @@ namespace he
         // Flushes the buffers from the given file.
         Result Flush();
 
+        // Locks the file for exclusive or shared access by the calling process.
+        Result Lock(uint64_t offset, uint64_t size, FileLockFlag flags = FileLockFlag::None);
+
+        // Unlocks the file access held by this process.
+        Result Unlock(uint64_t offset, uint64_t size);
+
         // Fills `attributes` with the attributes of the file at `path`. If this returns a
         // non-successful result then `attributes` will not contain valid values.
         Result GetAttributes(FileAttributes& attributes) const;
@@ -173,5 +195,38 @@ namespace he
 
     public:
         intptr_t m_fd;
+    };
+
+    class MemoryMap
+    {
+    public:
+        MemoryMap();
+        MemoryMap(const MemoryMap&) = delete;
+        MemoryMap(MemoryMap&& x);
+        ~MemoryMap();
+
+        MemoryMap& operator=(const MemoryMap&) = delete;
+        MemoryMap& operator=(MemoryMap&& x);
+
+        // Memory maps a file.
+        Result Open(File& file, MemoryMapMode mode, uint64_t offset, uint32_t size);
+
+        // Unmaps a file from memory.
+        void Close();
+
+        // Flushes the memory mapped data to the underlying file.
+        Result Flush(uint64_t offset, uint32_t size, bool async);
+
+        // Flushes an entire memory mapped region of a file to the underlying file.
+        Result Flush(bool async) { return Flush(0, m_size, async); }
+
+    public:
+        void* m_data;
+        uint32_t m_size;
+
+    #if defined(HE_PLATFORM_API_WIN32)
+        void* m_handle;
+        void* m_fileHandle;
+    #endif
     };
 }

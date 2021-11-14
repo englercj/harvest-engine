@@ -50,10 +50,12 @@ namespace he::Directory
         }
     }
 
-    bool Scanner::NextEntry(String& outName, bool* outIsDirectory)
+    bool Scanner::NextEntry(Entry& outEntry)
     {
         DIR* dir = static_cast<DIR*>(m_impl);
         HE_ASSERT(dir);
+
+        outEntry.name.Clear();
 
         while (true)
         {
@@ -63,13 +65,12 @@ namespace he::Directory
 
             const char* fname = entry->d_name;
 
+            // If its "." or ".." then skip it
             if (fname[0] == '.' && (fname[1] == '\0' || (fname[1] == '.' && fname[2] == '\0')))
                 continue;
 
-            outName = fname;
-
-            if (outIsDirectory)
-                *outIsDirectory = !!(entry->d_type & DT_DIR);
+            outEntry.name = fname;
+            outEntry.isDirectory = HasFlag(entry->d_type, DT_DIR);
 
             return true;
         }

@@ -180,7 +180,6 @@ namespace he
     /// \return True if the values are within tolerance, false otherwise.
     constexpr bool EqualUlp(float a, float b, int32_t maxUlpDiff)
     {
-
         // Treat -0 and +0 as equal
         if (a == b)
             return true;

@@ -4,6 +4,7 @@
 
 #include "he/core/allocator.h"
 #include "he/core/assert.h"
+#include "he/core/enum_ops.h"
 #include "he/core/macros.h"
 #include "he/core/path.h"
 #include "he/core/scope_guard.h"
@@ -11,15 +12,17 @@
 
 #include "fmt/format.h"
 
+#include <limits>
+
 #if defined(HE_PLATFORM_API_POSIX) && !defined(HE_PLATFORM_EMSCRIPTEN)
 
-#include <sys/types.h>
-#include <sys/stat.h>
+#include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
-#include <errno.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 
 namespace he
 {
@@ -208,8 +211,7 @@ namespace he
 
     File& File::operator=(File&& x)
     {
-        if (m_fd != -1)
-            Close();
+        Close();
         m_fd = Exchange(x.m_fd, -1);
         return *this;
     }
@@ -390,6 +392,38 @@ namespace he
         return Result::Success;
     }
 
+    Result File::Lock(uint64_t offset, uint64_t size, FileLockFlag flags)
+    {
+        short type = F_RDLCK;
+        if (HasFlag(flags, FileLockFlag::Exclusive))
+            type = F_WRLCK;
+
+        int cmd = F_SETLKW;
+        if (HasFlag(flags, FileLockFlag::NonBlocking))
+            cmd = F_SETLK;
+
+        flock l;
+        l.l_type = type;
+        l.l_whence = SEEK_SET;
+        l.l_start = offset;
+        l.l_len = size;
+
+        const int rc = fcntl(file.fd, cmd, &l);
+        return rc ? PosixResult(rc) : Result::Success;
+    }
+
+    Result File::Unlock(uint64_t offset, uint64_t size)
+    {
+        flock l;
+        l.l_type = F_UNLCK;
+        l.l_whence = SEEK_SET;
+        l.l_start = offset;
+        l.l_len = size;
+
+        const int rc = fcntl(file.fd, F_SETLKW, &l);
+        return rc ? PosixResult(rc) : Result::Success;
+    }
+
     Result File::GetAttributes(FileAttributes& outAttributes) const
     {
         struct stat sb;
@@ -438,6 +472,89 @@ namespace he
             return Result::FromLastError();
 
         return Result::Success;
+    }
+
+    MemoryMap::MemoryMap()
+        : m_data(nullptr)
+        , m_size(0)
+    {}
+
+    MemoryMap::MemoryMap(MemoryMap&& x)
+        : m_data(Exchange(x.m_data, nullptr))
+        , m_size(Exchange(x.m_size, 0))
+    {}
+
+    MemoryMap::~MemoryMap()
+    {
+        Close();
+    }
+
+    MemoryMap& MemoryMap::operator=(MemoryMap&& x)
+    {
+        Close();
+        m_data = Exchange(x.m_data, nullptr);
+        m_size = Exchange(x.m_size, 0);
+        return *this;
+    }
+
+    Result MemoryMap::Open(File& file, MemoryMapMode mode, uint64_t offset, uint32_t size)
+    {
+        HE_ASSERT(m_data == nullptr);
+        HE_ASSERT(IsAligned(offset, sysconf(_SC_PAGE_SIZE)));
+
+        if (size == 0)
+        {
+            const uint64_t fileSize = file.GetSize();
+            HE_ASSERT(fileSize <= std::numeric_limits<uint32_t>::max());
+            size = static_cast<uint32_t>(file.GetSize());
+        }
+
+        int prot = PROT_READ;
+
+        if (mode == MemoryMapMode::Write)
+            prot |= PROT_WRITE;
+
+        int flags = MAP_SHARED | MAP_FILE;
+
+        m_data = mmap(nullptr, size, prot, flags, file.fd, offset);
+
+        if (m_data == MAP_FAILED)
+        {
+            Result r = Result::FromLastError();
+            Close();
+            return r;
+        }
+        m_size = size;
+
+    #ifdef MADV_DONTFORK
+        if (madvise(m_data, m_size, MADV_DONTFORK) != 0)
+            return Result::FromLastError();
+    #endif
+
+    #ifdef MADV_NOHUGEPAGE
+        madvise(m_data, m_size, MADV_NOHUGEPAGE);
+    #endif
+
+        return Result::Success;
+    }
+
+    void MemoryMap::Close()
+    {
+        if (m_data != nullptr && m_data != MAP_FAILED)
+            munmap(m_data, m_size);
+
+        m_data = nullptr;
+        m_size = 0;
+    }
+
+    Result MemoryMap::Flush(uint64_t offset, uint32_t size, bool async)
+    {
+        HE_ASSERT(m_data != nullptr && m_data != MAP_FAILED);
+
+        uint8_t* ptr = static_cast<uint8_t*>(m_data) + offset;
+        const int flags = async ? MS_ASYNC : MS_SYNC;
+        const int rc = msync(ptr, size, flags);
+        return rc ? Result::FromLastError() : Result::Success;
     }
 }
 

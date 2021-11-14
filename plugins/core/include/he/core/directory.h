@@ -23,6 +23,15 @@ namespace he::Directory
     class Scanner
     {
     public:
+        struct Entry
+        {
+            Entry(Allocator& allocator = Allocator::GetTemp()) : name(allocator) {}
+
+            String name;
+            bool isDirectory{ false };
+        };
+
+    public:
         /// Construct a new scanner.
         ///
         /// \param[in] allocator The allocator to use.
@@ -48,7 +57,7 @@ namespace he::Directory
         /// \param[out] isDirectory Optional. If non-null set to true if the entry is a directory
         ///     and false when it isn't.
         /// \return Returns true when an entry is found, or false if the scan has completed.
-        bool NextEntry(String& outName, bool* outIsDirectory = nullptr);
+        bool NextEntry(Entry& outEntry);
 
     public:
         Allocator& m_allocator;

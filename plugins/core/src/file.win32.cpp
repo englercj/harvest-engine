@@ -5,6 +5,7 @@
 #include "he/core/allocator.h"
 #include "he/core/assert.h"
 #include "he/core/clock.h"
+#include "he/core/enum_ops.h"
 #include "he/core/macros.h"
 #include "he/core/memory_ops.h"
 #include "he/core/scope_guard.h"
@@ -127,8 +128,7 @@ namespace he
 
     File& File::operator=(File&& x)
     {
-        if (m_fd != InvalidFd)
-            Close();
+        Close();
         m_fd = Exchange(x.m_fd, InvalidFd);
         return *this;
     }
@@ -213,7 +213,8 @@ namespace he
     {
         if (m_fd != InvalidFd)
         {
-            ::CloseHandle(reinterpret_cast<HANDLE>(m_fd));
+            const HANDLE handle = reinterpret_cast<HANDLE>(m_fd);
+            ::CloseHandle(handle);
             m_fd = InvalidFd;
         }
     }
@@ -225,8 +226,10 @@ namespace he
 
     uint64_t File::GetSize() const
     {
+        const HANDLE handle = reinterpret_cast<HANDLE>(m_fd);
+
         LARGE_INTEGER fileSize;
-        if (!::GetFileSizeEx(reinterpret_cast<HANDLE>(m_fd), &fileSize))
+        if (!::GetFileSizeEx(handle, &fileSize))
             return 0;
         return fileSize.QuadPart;
     }
@@ -245,7 +248,7 @@ namespace he
         if (!SetPos(size))
             return Result::FromLastError();
 
-        HANDLE handle = reinterpret_cast<HANDLE>(m_fd);
+        const HANDLE handle = reinterpret_cast<HANDLE>(m_fd);
 
         if (!::SetEndOfFile(handle))
             return Result::FromLastError();
@@ -265,26 +268,32 @@ namespace he
 
     uint64_t File::GetPos() const
     {
+        const HANDLE handle = reinterpret_cast<HANDLE>(m_fd);
+
         LARGE_INTEGER liDistanceToMove;
         LARGE_INTEGER liResult;
         liDistanceToMove.QuadPart = 0;
-        ::SetFilePointerEx(reinterpret_cast<HANDLE>(m_fd), liDistanceToMove, &liResult, FILE_CURRENT);
+        ::SetFilePointerEx(handle, liDistanceToMove, &liResult, FILE_CURRENT);
         return liResult.QuadPart;
     }
 
     Result File::SetPos(uint64_t offset)
     {
+        const HANDLE handle = reinterpret_cast<HANDLE>(m_fd);
+
         LARGE_INTEGER liDistanceToMove;
         liDistanceToMove.QuadPart = offset;
-        if (!::SetFilePointerEx(reinterpret_cast<HANDLE>(m_fd), liDistanceToMove, nullptr, FILE_BEGIN))
+        if (!::SetFilePointerEx(handle, liDistanceToMove, nullptr, FILE_BEGIN))
             return Result::FromLastError();
         return Result::Success;
     }
 
     Result File::Read(void* dst, uint32_t bytesToRead, uint32_t* bytesRead)
     {
+        const HANDLE handle = reinterpret_cast<HANDLE>(m_fd);
+
         DWORD dwBytesRead;
-        if (!::ReadFile(reinterpret_cast<HANDLE>(m_fd), dst, bytesToRead, &dwBytesRead, nullptr))
+        if (!::ReadFile(handle, dst, bytesToRead, &dwBytesRead, nullptr))
         {
             if (bytesRead)
                 *bytesRead = 0;
@@ -299,12 +308,14 @@ namespace he
 
     Result File::ReadAt(void* dst, uint32_t bytesToRead, uint64_t offset, uint32_t* bytesRead)
     {
+        const HANDLE handle = reinterpret_cast<HANDLE>(m_fd);
+
         OVERLAPPED o{};
         o.Offset = (DWORD)offset;
         o.OffsetHigh = (DWORD)(offset >> 32);
 
         DWORD dwBytesRead;
-        if (!::ReadFile(reinterpret_cast<HANDLE>(m_fd), dst, bytesToRead, &dwBytesRead, &o))
+        if (!::ReadFile(handle, dst, bytesToRead, &dwBytesRead, &o))
         {
             if (::GetLastError() != ERROR_HANDLE_EOF)
             {
@@ -321,8 +332,10 @@ namespace he
 
     Result File::Write(const void* src, uint32_t bytesToWrite, uint32_t* bytesWritten)
     {
+        const HANDLE handle = reinterpret_cast<HANDLE>(m_fd);
+
         DWORD dwBytesWritten;
-        if (!::WriteFile(reinterpret_cast<HANDLE>(m_fd), src, bytesToWrite, &dwBytesWritten, nullptr))
+        if (!::WriteFile(handle, src, bytesToWrite, &dwBytesWritten, nullptr))
         {
             if (bytesWritten)
                 *bytesWritten = 0;
@@ -336,12 +349,14 @@ namespace he
 
     Result File::WriteAt(const void* src, uint32_t bytesToWrite, uint64_t offset, uint32_t* bytesWritten)
     {
+        const HANDLE handle = reinterpret_cast<HANDLE>(m_fd);
+
         OVERLAPPED o{};
         o.Offset = (DWORD)offset;
         o.OffsetHigh = (DWORD)(offset >> 32);
 
         DWORD dwBytesWritten;
-        if (!::WriteFile(reinterpret_cast<HANDLE>(m_fd), src, bytesToWrite, &dwBytesWritten, &o))
+        if (!::WriteFile(handle, src, bytesToWrite, &dwBytesWritten, &o))
         {
             if (bytesWritten)
                 *bytesWritten = 0;
@@ -355,15 +370,57 @@ namespace he
 
     Result File::Flush()
     {
-        if (!::FlushFileBuffers(reinterpret_cast<HANDLE>(m_fd)))
+        const HANDLE handle = reinterpret_cast<HANDLE>(m_fd);
+
+        if (!::FlushFileBuffers(handle))
             return Result::FromLastError();
 
         return Result::Success;
     }
 
+    Result File::Lock(uint64_t offset, uint64_t size, FileLockFlag flags)
+    {
+        const HANDLE handle = reinterpret_cast<HANDLE>(m_fd);
+
+        DWORD dwFlags = 0;
+
+        if (HasFlag(flags, FileLockFlag::Exclusive))
+            dwFlags |= LOCKFILE_EXCLUSIVE_LOCK;
+
+        if (HasFlag(flags, FileLockFlag::NonBlocking))
+            dwFlags |= LOCKFILE_FAIL_IMMEDIATELY;
+
+        OVERLAPPED o;
+        MemZero(&o, sizeof(o));
+        o.Offset = (DWORD)offset;
+        o.OffsetHigh = (DWORD)(offset >> 32);
+
+        const DWORD sizeLow = (DWORD)size;
+        const DWORD sizeHigh = (DWORD)(size >> 32);
+
+        const BOOL rc = ::LockFileEx(handle, dwFlags, 0, sizeLow, sizeHigh, &o);
+
+        return rc ? Result::Success : Result::FromLastError();
+    }
+
+    Result File::Unlock(uint64_t offset, uint64_t size)
+    {
+        const HANDLE handle = reinterpret_cast<HANDLE>(m_fd);
+
+        const DWORD offsetLow = (DWORD)offset;
+        const DWORD offsetHigh = (DWORD)(offset >> 32);
+
+        const DWORD sizeLow = (DWORD)size;
+        const DWORD sizeHigh = (DWORD)(size >> 32);
+
+        const BOOL rc = ::UnlockFile(handle, offsetLow, offsetHigh, sizeLow, sizeHigh);
+
+        return rc ? Result::Success : Result::FromLastError();
+    }
+
     Result File::GetAttributes(FileAttributes& outAttributes) const
     {
-        HANDLE handle = reinterpret_cast<HANDLE>(m_fd);
+        const HANDLE handle = reinterpret_cast<HANDLE>(m_fd);
 
         FILE_BASIC_INFO basicInfo{};
         if (!::GetFileInformationByHandleEx(handle, FileBasicInfo, &basicInfo, sizeof(FILE_BASIC_INFO)))
@@ -404,7 +461,8 @@ namespace he
 
     Result File::GetPath(String& path) const
     {
-        HANDLE handle = reinterpret_cast<HANDLE>(m_fd);
+        const HANDLE handle = reinterpret_cast<HANDLE>(m_fd);
+
         DWORD wideRequiredLen = ::GetFinalPathNameByHandleW(handle, nullptr, 0, FILE_NAME_OPENED);
         if (wideRequiredLen == 0)
             return Result::FromLastError();
@@ -445,6 +503,97 @@ namespace he
             return Result::FromLastError();
 
         return Result::Success;
+    }
+
+    MemoryMap::MemoryMap()
+        : m_data(nullptr)
+        , m_size(0)
+        , m_handle(nullptr)
+        , m_fileHandle(INVALID_HANDLE_VALUE)
+    {}
+
+    MemoryMap::MemoryMap(MemoryMap&& x)
+        : m_data(Exchange(x.m_data, nullptr))
+        , m_size(Exchange(x.m_size, 0))
+        , m_handle(Exchange(x.m_handle, nullptr))
+        , m_fileHandle(Exchange(x.m_fileHandle, INVALID_HANDLE_VALUE))
+    {}
+
+    MemoryMap::~MemoryMap()
+    {
+        Close();
+    }
+
+    MemoryMap& MemoryMap::operator=(MemoryMap&& x)
+    {
+        Close();
+        m_data = Exchange(x.m_data, nullptr);
+        m_size = Exchange(x.m_size, 0);
+        m_handle = Exchange(x.m_handle, nullptr);
+        m_fileHandle = Exchange(x.m_fileHandle, INVALID_HANDLE_VALUE);
+        return *this;
+    }
+
+    Result MemoryMap::Open(File& file, MemoryMapMode mode, uint64_t offset, uint32_t size)
+    {
+        HE_ASSERT(m_handle == nullptr && m_fileHandle == INVALID_HANDLE_VALUE);
+        // TODO: Validate offset is multiple of allocation granularity
+
+        const HANDLE fileHandle = reinterpret_cast<HANDLE>(file.m_fd);
+
+        DWORD prot = mode == MemoryMapMode::Read ? PAGE_READONLY : PAGE_READWRITE;
+
+        m_handle = ::CreateFileMappingW(fileHandle, nullptr, prot, 0, (DWORD)size, nullptr);
+
+        if (m_handle == nullptr)
+            return Result::FromLastError();
+
+        DWORD access = mode == MemoryMapMode::Read ? FILE_MAP_READ : FILE_MAP_WRITE;
+
+        m_data = ::MapViewOfFile(m_handle, access, (DWORD)(offset >> 32), (DWORD)offset, size);
+
+        if (m_data == nullptr)
+        {
+            Result r = Result::FromLastError();
+            Close();
+            return r;
+        }
+
+        m_size = size;
+
+        // Allows the memory map to keep the file 'open'
+        ::DuplicateHandle(::GetCurrentProcess(), fileHandle, ::GetCurrentProcess(), &m_fileHandle, 0, FALSE, DUPLICATE_SAME_ACCESS);
+
+        return Result::Success;
+    }
+
+    void MemoryMap::Close()
+    {
+        if (m_data != nullptr)
+            ::UnmapViewOfFile(m_data);
+
+        if (m_handle != nullptr)
+            ::CloseHandle(m_handle);
+
+        if (m_fileHandle != INVALID_HANDLE_VALUE)
+            ::CloseHandle(m_fileHandle);
+
+        m_data = nullptr;
+        m_size = 0;
+        m_handle = nullptr;
+        m_fileHandle = INVALID_HANDLE_VALUE;
+    }
+
+    Result MemoryMap::Flush(uint64_t offset, uint32_t size, bool async)
+    {
+        HE_ASSERT(m_handle != nullptr && m_fileHandle != INVALID_HANDLE_VALUE);
+
+        uint8_t* ptr = static_cast<uint8_t*>(m_data) + offset;
+
+        if (::FlushViewOfFile(ptr, size) && (async || ::FlushFileBuffers(m_fileHandle)))
+            return Result::Success;
+
+        return Result::FromLastError();
     }
 }
 

@@ -4,6 +4,7 @@
 
 #include "he/core/alloca.h"
 #include "he/core/assert.h"
+#include "he/core/enum_ops.h"
 #include "he/core/memory_ops.h"
 #include "he/core/path.h"
 #include "he/core/scope_guard.h"
@@ -84,10 +85,12 @@ namespace he::Directory
         }
     }
 
-    bool Scanner::NextEntry(String& outName, bool* outIsDirectory)
+    bool Scanner::NextEntry(Entry& outEntry)
     {
         ScannerImpl* impl = static_cast<ScannerImpl*>(m_impl);
         HE_ASSERT(impl);
+
+        outEntry.name.Clear();
 
         while (true)
         {
@@ -107,10 +110,8 @@ namespace he::Directory
             if (fname[0] == L'.' && (fname[1] == L'\0' || (fname[1] == L'.' && fname[2] == L'\0')))
                 continue;
 
-            WCToMBStr(outName, fname);
-
-            if (outIsDirectory)
-                *outIsDirectory = !!(impl->findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY);
+            WCToMBStr(outEntry.name, fname);
+            outEntry.isDirectory = HasFlag(impl->findData.dwFileAttributes, FILE_ATTRIBUTE_DIRECTORY);
 
             return true;
         }
@@ -184,7 +185,7 @@ namespace he::Directory
     bool Exists(const char* path)
     {
         const DWORD attr = GetFileAttributesW(HE_TO_WSTR(path));
-        return attr != INVALID_FILE_ATTRIBUTES && !!(attr & FILE_ATTRIBUTE_DIRECTORY);
+        return attr != INVALID_FILE_ATTRIBUTES && HasFlag(attr, FILE_ATTRIBUTE_DIRECTORY);
     }
 
     Result Create(const char* path, bool parents)

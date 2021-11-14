@@ -22,14 +22,13 @@ namespace he::Directory
         const uint32_t pathLen = String::Length(path);
         String fullPath(allocator);
 
-        bool isDirectory = false;
-        String entry(allocator);
-        while (scanner.NextEntry(entry, &isDirectory))
+        Scanner::Entry entry(allocator);
+        while (scanner.NextEntry(entry))
         {
             fullPath.Assign(path, pathLen);
-            fullPath += entry;
+            ConcatPath(fullPath, entry.name);
 
-            if (isDirectory)
+            if (entry.isDirectory)
             {
                 result = RemoveContents(fullPath.Data(), allocator);
                 if (!result)

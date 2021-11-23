@@ -339,9 +339,9 @@ namespace he
         return Result::Success;
     }
 
-    Result File::ReadAt(void* dst, uint32_t bytesToRead, uint64_t offset, uint32_t* bytesRead)
+    Result File::ReadAt(void* dst, uint64_t offset, uint32_t size, uint32_t* bytesRead)
     {
-        ssize_t n = pread(static_cast<int>(m_fd), dst, bytesToRead, offset);
+        ssize_t n = pread(static_cast<int>(m_fd), dst, size, offset);
         if (n < 0)
         {
             if (bytesRead)
@@ -354,9 +354,9 @@ namespace he
         return Result::Success;
     }
 
-    Result File::Write(const void* src, uint32_t bytesToWrite, uint32_t* bytesWritten)
+    Result File::Write(const void* src, uint32_t size, uint32_t* bytesWritten)
     {
-        ssize_t n = write(static_cast<int>(m_fd), src, bytesToWrite);
+        ssize_t n = write(static_cast<int>(m_fd), src, size);
         if (n < 0)
         {
             if (bytesWritten)
@@ -369,9 +369,9 @@ namespace he
         return Result::Success;
     }
 
-    Result File::WriteAt(const void* src, uint32_t bytesToWrite, uint64_t offset, uint32_t* bytesWritten)
+    Result File::WriteAt(const void* src, uint64_t offset, uint32_t size, uint32_t* bytesWritten)
     {
-        ssize_t n = pwrite(static_cast<int>(m_fd), src, bytesToWrite, offset);
+        ssize_t n = pwrite(static_cast<int>(m_fd), src, size, offset);
         if (n < 0)
         {
             if (bytesWritten)

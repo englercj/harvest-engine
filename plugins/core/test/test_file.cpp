@@ -320,11 +320,11 @@ HE_TEST(core, file, ReadAt_WriteAt)
     HE_EXPECT(r, r);
 
     uint32_t value0 = 250;
-    r = f.WriteAt(&value0, sizeof(value0), 4);
+    r = f.WriteAt(&value0, 4, sizeof(value0));
     HE_EXPECT(r, r);
 
     uint32_t value1 = 0;
-    r = f.ReadAt(&value1, sizeof(value1), 4);
+    r = f.ReadAt(&value1, 4, sizeof(value1));
     HE_EXPECT(r, r);
     HE_EXPECT_EQ(value1, value0);
 
@@ -345,7 +345,7 @@ HE_TEST(core, file, Flush)
     HE_EXPECT(r, r);
 
     uint32_t value0 = 250;
-    r = f.WriteAt(&value0, sizeof(value0), 4);
+    r = f.WriteAt(&value0, 4, sizeof(value0));
     HE_EXPECT(r, r);
 
     r = f.Flush();

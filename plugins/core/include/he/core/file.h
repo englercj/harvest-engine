@@ -157,20 +157,20 @@ namespace he
         // Sets the file pointer to the `offset` position in the specified file.
         Result SetPos(uint64_t offset);
 
-        // Reads `bytesToRead` bytes from the file into `dst` and stores the count of `bytesRead`.
-        Result Read(void* dst, uint32_t bytesToRead, uint32_t* bytesRead = nullptr);
+        // Reads `size` bytes from the file into `dst` and stores the count of `bytesRead`.
+        Result Read(void* dst, uint32_t size, uint32_t* bytesRead = nullptr);
 
-        // Reads `bytesToRead` bytes from the file at `offset` into `dst` and stores the count of
+        // Reads `size` bytes from the file at `offset` into `dst` and stores the count of
         // `bytesRead`.
         // Note: The position of the file handle after calling this function is undefined.
-        Result ReadAt(void* dst, uint32_t bytesToRead, uint64_t offset, uint32_t* bytesRead = nullptr);
+        Result ReadAt(void* dst, uint64_t offset, uint32_t size, uint32_t* bytesRead = nullptr);
 
-        // Writes the `bytesToWrite` bytes from `src` to the given file and stores the `bytesWritten`.
-        Result Write(const void* src, uint32_t bytesToWrite, uint32_t* bytesWritten = nullptr);
+        // Writes the `size` bytes from `src` to the given file and stores the `bytesWritten`.
+        Result Write(const void* src, uint32_t size, uint32_t* bytesWritten = nullptr);
 
-        // Writes `bytesToWrite` bytes from `src` at `offset` and stores the count of `bytesWritten`.
+        // Writes `size` bytes from `src` at `offset` and stores the count of `bytesWritten`.
         // Note: The position of the file handle after calling this function is undefined.
-        Result WriteAt(const void* src, uint32_t bytesToWrite, uint64_t offset, uint32_t* bytesWritten = nullptr);
+        Result WriteAt(const void* src, uint64_t offset, uint32_t size, uint32_t* bytesWritten = nullptr);
 
         // Flushes the buffers from the given file.
         Result Flush();

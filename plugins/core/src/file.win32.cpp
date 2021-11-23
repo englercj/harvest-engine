@@ -260,7 +260,7 @@ namespace he
             // but makes the behavior of this file consistent with the posix ftruncate impl.
             // See: https://devblogs.microsoft.com/oldnewthing/20110922-00/?p=9573
             BYTE b = 0;
-            return WriteAt(&b, 1, size - 1);
+            return WriteAt(&b, size - 1, 1);
         }
 
         return Result::Success;
@@ -306,7 +306,7 @@ namespace he
         return Result::Success;
     }
 
-    Result File::ReadAt(void* dst, uint32_t bytesToRead, uint64_t offset, uint32_t* bytesRead)
+    Result File::ReadAt(void* dst, uint64_t offset, uint32_t size, uint32_t* bytesRead)
     {
         const HANDLE handle = reinterpret_cast<HANDLE>(m_fd);
 
@@ -315,7 +315,7 @@ namespace he
         o.OffsetHigh = (DWORD)(offset >> 32);
 
         DWORD dwBytesRead;
-        if (!::ReadFile(handle, dst, bytesToRead, &dwBytesRead, &o))
+        if (!::ReadFile(handle, dst, size, &dwBytesRead, &o))
         {
             if (::GetLastError() != ERROR_HANDLE_EOF)
             {
@@ -347,7 +347,7 @@ namespace he
         return Result::Success;
     }
 
-    Result File::WriteAt(const void* src, uint32_t bytesToWrite, uint64_t offset, uint32_t* bytesWritten)
+    Result File::WriteAt(const void* src, uint64_t offset, uint32_t size, uint32_t* bytesWritten)
     {
         const HANDLE handle = reinterpret_cast<HANDLE>(m_fd);
 
@@ -356,7 +356,7 @@ namespace he
         o.OffsetHigh = (DWORD)(offset >> 32);
 
         DWORD dwBytesWritten;
-        if (!::WriteFile(handle, src, bytesToWrite, &dwBytesWritten, &o))
+        if (!::WriteFile(handle, src, size, &dwBytesWritten, &o))
         {
             if (bytesWritten)
                 *bytesWritten = 0;

@@ -1,0 +1,23 @@
+id = "he.sqlite"
+name = "Harvest SQLite Wrapper"
+description = "Provides utilities for utilizing sqlite easily and safely."
+version = "1.0.0"
+author = "Chad Engler <englercj@live.com>"
+license = "UNLICENSED"
+
+[[modules]]
+    name = "he_sqlite"
+    type = "static"
+    group = "engine/libs"
+    files = ["include/**", "src/**"]
+    public_dependson = ["he_core"]
+    public_includedirs = ["include"]
+    private_includedirs = ["src"]
+
+[[modules]]
+    name = "he_sqlite_tests"
+    type = "static"
+    group = "engine/tests"
+    files = ["test/**"]
+    public_dependson = ["he_sqlite"]
+    private_includedirs = ["src"]

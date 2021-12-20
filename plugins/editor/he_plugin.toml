@@ -15,6 +15,7 @@ license = "UNLICENSED"
     private_dependson = [
         "he_core",
         "he_rhi",
+        "he_schema",
         "he_window",
 
         "boost_di",
@@ -31,6 +32,10 @@ license = "UNLICENSED"
     [[modules.bin2c_compile]]
         glob = "src/fonts/**.otf"
         compress = true
+
+    [[modules.schema_compile]]
+        glob = "src/schema/*.hsc"
+        targets = ["c++"]
 
     [[modules.capnp_compile]]
         glob = "src/schema/*.capnp"

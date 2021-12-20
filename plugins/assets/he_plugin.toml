@@ -1,0 +1,27 @@
+id = "he.assets"
+name = "Harvest Asset System"
+description = "Provides utilities for managing assets in the engine."
+version = "1.0.0"
+author = "Chad Engler <englercj@live.com>"
+license = "UNLICENSED"
+
+[[modules]]
+    name = "he_assets"
+    type = "static"
+    group = "engine/libs"
+    files = ["include/**", "src/**"]
+    public_dependson = ["he_core", "he_schema", "he_sqlite", "capnp"]
+    public_includedirs = ["include", "%{he.get_generated_dir(prj.name)}/include"]
+    private_includedirs = ["src", "%{he.get_generated_dir(prj.name)}/src"]
+
+    [[modules.bin2c_compile]]
+        glob = "**.sql"
+        text = true
+
+    [[modules.schema_compile]]
+        glob = "**.hsc"
+        targets = ["c++"]
+
+    [[modules.capnp_compile]]
+        glob = "**.capnp"
+        targets = ["c++"]

@@ -77,7 +77,7 @@ license = "MIT"
         "c++/src/kj/parse/char.h",
         "c++/src/kj/std/iostream.h",
     ]
-    public_external_includedirs = ["c++/src"]
+    public_externalincludedirs = ["c++/src"]
     warnings = "Off"
 
     [[modules.variants]]
@@ -113,7 +113,7 @@ license = "MIT"
         "c++/src/kj/async-queue.h",
         "c++/src/kj/timer.h",
     ]
-    public_external_includedirs = ["c++/src"]
+    public_externalincludedirs = ["c++/src"]
     public_dependson = ["kj"]
     warnings = "Off"
 
@@ -135,7 +135,7 @@ license = "MIT"
         "c++/src/kj/compat/url.h",
         "c++/src/kj/compat/http.h",
     ]
-    public_external_includedirs = ["c++/src"]
+    public_externalincludedirs = ["c++/src"]
     public_dependson = ["kj", "kj_async"]
     warnings = "Off"
 
@@ -153,7 +153,7 @@ license = "MIT"
         "c++/src/kj/compat/readiness-io.h",
         "c++/src/kj/compat/tls.h",
     ]
-    public_external_includedirs = ["c++/src"]
+    public_externalincludedirs = ["c++/src"]
     public_dependson = ["kj", "kj_async"]
     warnings = "Off"
 
@@ -170,7 +170,7 @@ license = "MIT"
         "c++/src/kj/compat/gzip.h",
     ]
     private_defines = ["KJ_HAS_ZLIB=1"]
-    public_external_includedirs = ["c++/src"]
+    public_externalincludedirs = ["c++/src"]
     public_dependson = ["kj", "kj_async", "zlib"]
     warnings = "Off"
 
@@ -233,7 +233,7 @@ license = "MIT"
         "c++/src/capnp/schema.capnp",
         "c++/src/capnp/stream.capnp",
     ]
-    public_external_includedirs = ["c++/src"]
+    public_externalincludedirs = ["c++/src"]
     public_dependson = ["kj"]
     warnings = "Off"
 
@@ -269,7 +269,7 @@ license = "MIT"
         "c++/src/capnp/rpc-twoparty.capnp",
         "c++/src/capnp/persistent.capnp",
     ]
-    public_external_includedirs = ["c++/src"]
+    public_externalincludedirs = ["c++/src"]
     public_dependson = ["kj", "kj_async", "capnp"]
     warnings = "Off"
 
@@ -290,7 +290,7 @@ license = "MIT"
         # schemas
         "c++/src/capnp/compat/json.capnp",
     ]
-    public_external_includedirs = ["c++/src"]
+    public_externalincludedirs = ["c++/src"]
     public_dependson = ["kj", "kj_async", "capnp"]
     warnings = "Off"
 
@@ -306,7 +306,7 @@ license = "MIT"
         # headers
         "c++/src/capnp/compat/websocket-rpc.h",
     ]
-    public_external_includedirs = ["c++/src"]
+    public_externalincludedirs = ["c++/src"]
     public_dependson = ["kj", "kj_async", "kj_http", "capnp"]
     warnings = "Off"
 
@@ -328,7 +328,7 @@ license = "MIT"
         "c++/src/capnp/schema-parser.c++",
         "c++/src/capnp/serialize-text.c++",
     ]
-    public_external_includedirs = ["c++/src"]
+    public_externalincludedirs = ["c++/src"]
     public_dependson = ["kj", "capnp"]
     warnings = "Off"
 

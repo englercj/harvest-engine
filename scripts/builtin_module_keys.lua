@@ -52,7 +52,7 @@ he.add_module_key {
 }
 
 he.add_module_key {
-    key = "external_includedirs",
+    key = "externalincludedirs",
     scope = "include",
     type = "table",
     desc = "an array of string include paths (relative to the he_plugin file)",

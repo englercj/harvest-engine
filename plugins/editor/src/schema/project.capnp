@@ -3,20 +3,31 @@
 @0x9d7f21020ee32dce;
 
 using Cxx = import "/capnp/c++.capnp";
+using Json = import "/capnp/compat/json.capnp";
 
 $Cxx.namespace("he::editor::schema");
 
-struct ProjectId {
-    # A 16-byte UUID for a project
-
-    x0 @0 :UInt64;
-    x1 @1 :UInt64;
+struct Tester
+{
+    a @0 :Int8 = 1;
 }
 
-struct Project {
-    # A project file that can be opened by the editor
+# A project file that can be opened by the editor
+struct Project
+{
+    id0 @0 :Int64;  # unique identifier for the project
+    id1 @1 :Int64;  # unique identifier for the project
+    name @2 :Text;          # Human-friendly name
+    assetRoot @3 :Text;     # Relative path to the root of the project's asset data
+    derp @4 :Int8 = 2;
+    herp @5 :Void;
+    lerp @6 :Tester = (a = 2);
 
-    id @0 :ProjectId;   # UUID
-    name @1 :Text;      # Human-friendly name
-    assetRoot @2 :Text; # Relative path to the root of the project's asset data
+    test :union
+    {
+        a @7 :Int64;
+        b @8 :Text;
+        c @9 :List(UInt8);
+        d @10 :UInt32;
+    }
 }

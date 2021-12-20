@@ -3,8 +3,7 @@
 #pragma once
 
 #include "he/core/compiler.h"
-
-#include <type_traits>
+#include "he/core/type_traits.h"
 
 #define HE_ENUM_FLAGS(T, ...) \
     HE_PUSH_WARNINGS() \

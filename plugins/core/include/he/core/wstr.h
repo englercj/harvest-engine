@@ -17,9 +17,9 @@
 /// \param STR The multibyte character string to convert.
 /// \return The wide character version of the string.
 #define HE_TO_WSTR(STR) ([](wchar_t* dst, const char* src) { \
-    (void)MBToWCStr(dst, 0x3fffffff, src); \
+    (void)he::MBToWCStr(dst, 0x3fffffff, src); \
     return dst; \
-}(HE_ALLOCA(wchar_t, MBToWCStr(nullptr, 0, STR)), STR))
+}(HE_ALLOCA(wchar_t, he::MBToWCStr(nullptr, 0, STR)), STR))
 
 namespace he
 {

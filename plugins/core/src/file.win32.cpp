@@ -14,14 +14,14 @@
 
 #if defined(HE_PLATFORM_API_WIN32)
 
+#include "file_helpers.win32.h"
+
 #include "he/core/win32_min.h"
 
 #include <fileapi.h>
 
 namespace he
 {
-    constexpr intptr_t InvalidFd = reinterpret_cast<intptr_t>(INVALID_HANDLE_VALUE);
-
     FileResult GetFileResult(Result result)
     {
         switch (result.GetCode())
@@ -114,11 +114,11 @@ namespace he
     }
 
     File::File()
-        : m_fd(InvalidFd)
+        : m_fd(Win32InvalidFd)
     {}
 
     File::File(File&& x)
-        : m_fd(Exchange(x.m_fd, InvalidFd))
+        : m_fd(Exchange(x.m_fd, Win32InvalidFd))
     {}
 
     File::~File()
@@ -129,74 +129,14 @@ namespace he
     File& File::operator=(File&& x)
     {
         Close();
-        m_fd = Exchange(x.m_fd, InvalidFd);
+        m_fd = Exchange(x.m_fd, Win32InvalidFd);
         return *this;
     }
 
     Result File::Open(const char* path, FileOpenMode mode, FileOpenFlag flags)
     {
-        HE_ASSERT(m_fd == InvalidFd);
-
-        DWORD dwDesiredAccess = 0;
-        DWORD dwShareMode = FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE;
-        DWORD dwCreationDisposition = 0;
-
-        switch (mode)
-        {
-            case FileOpenMode::Write:
-                dwDesiredAccess = GENERIC_WRITE;
-                dwCreationDisposition = OPEN_ALWAYS;
-                break;
-            case FileOpenMode::ReadWrite:
-                dwDesiredAccess = GENERIC_READ | GENERIC_WRITE;
-                dwCreationDisposition = OPEN_ALWAYS;
-                break;
-            case FileOpenMode::ReadExisting:
-                dwDesiredAccess = GENERIC_READ;
-                dwCreationDisposition = OPEN_EXISTING;
-                break;
-            case FileOpenMode::ReadWriteExisting:
-                dwDesiredAccess = GENERIC_READ | GENERIC_WRITE;
-                dwCreationDisposition = OPEN_EXISTING;
-                break;
-            case FileOpenMode::WriteTruncate:
-                dwDesiredAccess = GENERIC_WRITE;
-                dwCreationDisposition = CREATE_ALWAYS;
-                break;
-            case FileOpenMode::ReadWriteTruncate:
-                dwDesiredAccess = GENERIC_READ | GENERIC_WRITE;
-                dwCreationDisposition = CREATE_ALWAYS;
-                break;
-            case FileOpenMode::WriteAppend:
-                dwDesiredAccess = GENERIC_WRITE;
-                dwCreationDisposition = OPEN_ALWAYS;
-                break;
-            case FileOpenMode::ReadWriteAppend:
-                dwDesiredAccess = GENERIC_READ | GENERIC_WRITE;
-                dwCreationDisposition = OPEN_ALWAYS;
-                break;
-            default:
-                return Result::InvalidParameter;
-        }
-
-        DWORD dwFlagsAndAttributes = FILE_ATTRIBUTE_NORMAL;
-
-        if (HasFlags(flags, FileOpenFlag::NoBuffering))
-            dwFlagsAndAttributes |= FILE_FLAG_NO_BUFFERING;
-
-        if (HasFlags(flags, FileOpenFlag::RandomAccess))
-            dwFlagsAndAttributes |= FILE_FLAG_RANDOM_ACCESS;
-        else if (HasFlags(flags, FileOpenFlag::SequentialScan))
-            dwFlagsAndAttributes |= FILE_FLAG_SEQUENTIAL_SCAN;
-
-        HANDLE handle = ::CreateFileW(
-            HE_TO_WSTR(path),
-            dwDesiredAccess,
-            dwShareMode,
-            nullptr,
-            dwCreationDisposition,
-            dwFlagsAndAttributes,
-            nullptr);
+        HE_ASSERT(m_fd == Win32InvalidFd);
+        HANDLE handle = Win32FileOpen(path, mode, flags, 0);
 
         if (handle == INVALID_HANDLE_VALUE)
             return Result::FromLastError();
@@ -211,17 +151,17 @@ namespace he
 
     void File::Close()
     {
-        if (m_fd != InvalidFd)
+        if (m_fd != Win32InvalidFd)
         {
             const HANDLE handle = reinterpret_cast<HANDLE>(m_fd);
             ::CloseHandle(handle);
-            m_fd = InvalidFd;
+            m_fd = Win32InvalidFd;
         }
     }
 
     bool File::IsOpen() const
     {
-        return m_fd != InvalidFd;
+        return m_fd != Win32InvalidFd;
     }
 
     uint64_t File::GetSize() const
@@ -270,20 +210,20 @@ namespace he
     {
         const HANDLE handle = reinterpret_cast<HANDLE>(m_fd);
 
-        LARGE_INTEGER liDistanceToMove;
-        LARGE_INTEGER liResult;
-        liDistanceToMove.QuadPart = 0;
-        ::SetFilePointerEx(handle, liDistanceToMove, &liResult, FILE_CURRENT);
-        return liResult.QuadPart;
+        LARGE_INTEGER distanceToMove;
+        LARGE_INTEGER result;
+        distanceToMove.QuadPart = 0;
+        ::SetFilePointerEx(handle, distanceToMove, &result, FILE_CURRENT);
+        return result.QuadPart;
     }
 
     Result File::SetPos(uint64_t offset)
     {
         const HANDLE handle = reinterpret_cast<HANDLE>(m_fd);
 
-        LARGE_INTEGER liDistanceToMove;
-        liDistanceToMove.QuadPart = offset;
-        if (!::SetFilePointerEx(handle, liDistanceToMove, nullptr, FILE_BEGIN))
+        LARGE_INTEGER distanceToMove;
+        distanceToMove.QuadPart = offset;
+        if (!::SetFilePointerEx(handle, distanceToMove, nullptr, FILE_BEGIN))
             return Result::FromLastError();
         return Result::Success;
     }

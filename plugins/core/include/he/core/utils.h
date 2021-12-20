@@ -28,7 +28,7 @@ namespace he
     /// \param ptr The pointer to check for alignment.
     /// \param alignment The alignment to check value for. Must be a power of two.
     /// \return True if the pointer is aligned, false otherwise.
-    [[nodiscard]] inline bool IsAligned(void* ptr, size_t alignment) noexcept
+    [[nodiscard]] inline bool IsAligned(const void* ptr, size_t alignment) noexcept
     {
         return IsAligned(reinterpret_cast<uintptr_t>(ptr), alignment);
     }

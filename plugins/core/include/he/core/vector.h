@@ -134,6 +134,32 @@ namespace he
         template <typename... Args>
         void Resize(uint32_t len, Args&&... args);
 
+        /// Resizes the vector to be `len` elements larger. The new elements are default
+        /// initialized.
+        ///
+        /// \note This is different than `Resize(Size() + len)` in that it will use normal growth
+        /// rules to expand the storage. There will likely be slack in the capacity after calling
+        /// `Expand(len)`, a property that `Resize(Size() + len)` does not have.
+        ///
+        /// \param len The number of elements to expand the vector size by.
+        void Expand(uint32_t len, DefaultInitTag);
+
+        /// Resizes the vector to be `len` elements larger. The new elements are constructed with
+        /// `args`.
+        ///
+        /// \note This is different than `Resize(Size() + len)` in that it will use normal growth
+        /// rules to expand the storage. There will likely be slack in the capacity after calling
+        /// `Expand(len)`, a property that `Resize(Size() + len)` does not have.
+        ///
+        /// \note Moving any arguments into this function will likely yield undesired results,
+        /// since they will be moved into the first new element and then be in an unspecified
+        /// state for the others.
+        ///
+        /// \param len The number of elements to expand the vector size by.
+        /// \param args The arguments to pass to the constructor of new elements.
+        template <typename... Args>
+        void Expand(uint32_t len, Args&&... args);
+
         /// Shrinks the memory allocation to fit the current size of the vector.
         void ShrinkToFit();
 
@@ -147,6 +173,16 @@ namespace he
 
         /// \copydoc Data()
         T* Data() { return const_cast<T*>(const_cast<const Vector*>(this)->Data()); }
+
+        /// Releases control of the vector's allocated memory and returns ownership to the caller.
+        /// The returned memory must be freed by calling \see Allocator::Free using the same
+        /// allocator that the vector was constructed with.
+        ///
+        /// After calling this method the vector is reset to a valid empty state and can be
+        /// used again, which creates a new allocation of memory.
+        ///
+        /// \return The vectors's allocated memory.
+        T* Release();
 
         /// Gets a reference to the vector's first element. The vector must not be empty.
         ///

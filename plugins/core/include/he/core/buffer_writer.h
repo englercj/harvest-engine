@@ -143,7 +143,7 @@ namespace he
         /// allocator that the buffer was constructed with.
         ///
         /// After calling this method the buffer is reset to a valid empty state and can be
-        /// used again, which create a new allocation of memory.
+        /// used again, which creates a new allocation of memory.
         ///
         /// \return The buffer's allocated memory.
         uint8_t* Release();

@@ -186,7 +186,7 @@ namespace he
     T* _VectorRealloc(Allocator& allocator, T* p, uint32_t size, uint32_t newSize)
     {
         HE_UNUSED(size);
-        return static_cast<T*>(allocator.Realloc(p, newSize * sizeof(T)));
+        return static_cast<T*>(allocator.Realloc(p, newSize * sizeof(T), alignof(T)));
     }
 
     // Performs an allocate and move operation for non-trivially copyable elements.
@@ -196,7 +196,7 @@ namespace he
         T* mem = allocator.Malloc<T>(newSize);
         for (uint32_t i = 0; i < size; ++i)
         {
-            new(mem + i) T(Move(p[i]));
+            ::new(mem + i) T(Move(p[i]));
             p[i].~T();
         }
         allocator.Free(p);
@@ -210,7 +210,7 @@ namespace he
         T* mem = allocator.Malloc<T>(newSize);
         for (uint32_t i = 0; i < size; ++i)
         {
-            new(mem + i) T(p[i]);
+            ::new(mem + i) T(p[i]);
             p[i].~T();
         }
         allocator.Free(p);
@@ -341,6 +341,23 @@ namespace he
     }
 
     template <typename T>
+    void Vector<T>::Expand(uint32_t len, DefaultInitTag)
+    {
+        GrowBy(len);
+        _VectorConstruct_DefaultInit(m_data + m_size, len);
+        m_size += len;
+    }
+
+    template <typename T>
+    template <typename... Args>
+    void Vector<T>::Expand(uint32_t len, Args&&... args)
+    {
+        GrowBy(len);
+        _VectorConstruct(m_data + m_size, len, Forward<Args>(args)...);
+        m_size += len;
+    }
+
+    template <typename T>
     void Vector<T>::ShrinkToFit()
     {
         m_data = _VectorRealloc(m_allocator, m_data, m_size, m_size);
@@ -351,6 +368,14 @@ namespace he
     const T* Vector<T>::Data() const
     {
         return m_data;
+    }
+
+    template <typename T>
+    T* Vector<T>::Release()
+    {
+        m_size = 0;
+        m_capacity = 0;
+        return Exchange(m_data, nullptr);
     }
 
     template <typename T>

@@ -14,6 +14,10 @@ license = "UNLICENSED"
     public_includedirs = ["include"]
     private_includedirs = ["src"]
 
+    [[modules.variants]]
+        conditions = ["system:posix"]
+        public_dependson = ["sys:pthread"]
+
 [[modules]]
     name = "he_core_tests"
     type = "static"

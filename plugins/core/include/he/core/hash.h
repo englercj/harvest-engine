@@ -8,6 +8,7 @@
 namespace he
 {
     // --------------------------------------------------------------------------------------------
+    // Fowler–Noll–Vo (FNV-1a) 32-bit non-cryptographic hash
     class FNV32
     {
     public:
@@ -40,6 +41,7 @@ namespace he
     };
 
     // --------------------------------------------------------------------------------------------
+    // Fowler–Noll–Vo (FNV-1a) 64-bit non-cryptographic hash
     class FNV64
     {
     public:

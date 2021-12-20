@@ -41,9 +41,21 @@ namespace he
     enum class FileOpenFlag : uint32_t
     {
         None            = 0,
-        NoBuffering     = 1 << 1, ///< The file or device is being opened with no system caching for data reads and writes.
-        RandomAccess    = 1 << 2, ///< Access is intended to be random. The system can use this as a hint to optimize file caching. Mutually exclusive with `SequentialScan`.
-        SequentialScan  = 1 << 3, ///< Access is intended to be sequential from beginning to end. The system can use this as a hint to optimize file caching. Mutually exclusive with `RandomAccess`.
+
+        /// The file is being opened with no system caching for data reads and writes. When this
+        /// flag is set there are a number of restrictions that must be followed:
+        /// - Read/write offsets much be aligned to 4096 bytes
+        /// - Read/write sizes much be aligned to 4096 bytes
+        /// - Read/write buffers must have an address that is aligned to 4096 bytes
+        NoBuffering     = 1 << 1,
+
+        /// Access is intended to be random. The system may use this as a hint to optimize file
+        /// caching. Mutually exclusive with `SequentialScan`.
+        RandomAccess    = 1 << 2,
+
+        /// Access is intended to be sequential from beginning to end. The system may use this as
+        /// a hint to optimize file caching. Mutually exclusive with `RandomAccess`.
+        SequentialScan  = 1 << 3,
     };
     HE_ENUM_FLAGS(FileOpenFlag);
 

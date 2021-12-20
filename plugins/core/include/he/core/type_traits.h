@@ -33,6 +33,14 @@ namespace he
     using ArrayElementType = typename _ArrayTraits<T>::ElementType;
 
     // --------------------------------------------------------------------------------------------
+    // Remove R-Value Reference
+
+    template<typename T> struct _RemoveRValueReference { using Type = T; };
+    template<typename T> struct _RemoveRValueReference<T&&> { using Type = T; };
+
+    template<typename T> using RemoveRValueReference = typename _RemoveRValueReference<T>::Type;
+
+    // --------------------------------------------------------------------------------------------
     // Concepts
 
     template <typename T, typename E>

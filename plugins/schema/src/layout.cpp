@@ -17,7 +17,7 @@ namespace he::schema
     };
     static_assert(HE_LENGTH_OF(BitsPerElementSize) == static_cast<uint32_t>(ElementSize::_Count));
 
-    void WriteStructPointer(Word* ptr, const StructBuilder& value)
+    static void WriteStructPointer(Word* ptr, const StructBuilder& value)
     {
         if ((value.DataWordSize() + value.PointerCount()) == 0)
         {
@@ -35,7 +35,7 @@ namespace he::schema
         p[3] = value.PointerCount();
     }
 
-    void WriteListPointer(Word* ptr, const ListBuilder& value)
+    static void WriteListPointer(Word* ptr, const ListBuilder& value)
     {
         uint32_t* p = reinterpret_cast<uint32_t*>(ptr);
 
@@ -94,7 +94,7 @@ namespace he::schema
             // }
 
             return ListReader(
-                tag.m_data + BytesPerWord,
+                tag.m_data + 1,
                 size,
                 wordsPerElement * BitsPerWord,
                 tag.StructDataWordSize(),
@@ -162,6 +162,11 @@ namespace he::schema
             elementSize);
     }
 
+    void Builder::SetRoot(const StructBuilder& root)
+    {
+        WriteStructPointer(m_data.Data(), root);
+    }
+
     ListBuilder Builder::AddList(ElementSize elementSize, uint32_t elementCount)
     {
         HE_ASSERT(elementSize < ElementSize::_Count);
@@ -189,5 +194,31 @@ namespace he::schema
         const uint32_t wordOffset = m_data.Size();
         m_data.Expand(wordSize);
         return StructBuilder(*this, wordOffset, dataFieldCount, dataWordSize, pointerCount);
+    }
+
+    ListBuilder PointerBuilder::TryGetList(ElementSize expectedElementSize, const Word* defaultValue) const
+    {
+        ListReader reader = AsReader().TryGetList(expectedElementSize, defaultValue);
+        const uint32_t wordOffset = 0; // TODO: What if the default value is used? Is that even safe? If they set a value on it...explode!
+        return ListBuilder(m_builder, wordOffset, reader.Size(), reader.StepSize(), reader.StructDataWordSize(), reader.StructPointerCount(), reader.ElementSize());
+    }
+
+    StructBuilder PointerBuilder::TryGetStruct(const Word* defaultValue) const
+    {
+        // TODO: implement
+    }
+
+    void StructBuilder::SetPointerField(uint16_t index, const StructBuilder& value)
+    {
+        HE_ASSERT(&value.Builder() == &m_builder);
+        Word* ptr = PointerSection() + index;
+        WriteStructPointer(ptr, value);
+    }
+
+    void StructBuilder::SetPointerField(uint16_t index, const ListBuilder& value)
+    {
+        HE_ASSERT(&value.Builder() == &m_builder);
+        Word* ptr = PointerSection() + index;
+        WriteListPointer(ptr, value);
     }
 }

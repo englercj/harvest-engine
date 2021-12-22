@@ -76,6 +76,9 @@ namespace he::schema
         if (hasUserInclude)
             m_writer.Write('\n');
 
+        WriteDeclInfo(m_request.schema.root);
+        m_writer.Write('\n');
+
         if (!m_request.schema.root.name.IsEmpty())
         {
             m_writer.WriteLine("namespace {}", m_namespaceName);
@@ -95,8 +98,6 @@ namespace he::schema
             m_writer.WriteLine("}");
         }
         m_writer.Write('\n');
-
-        WriteDeclInfo(m_request.schema.root);
     }
 
     void CodeGenCpp::WriteDecl(const Declaration& decl, const Declaration& scope)

@@ -14,10 +14,10 @@
 namespace he::schema
 {
     // --------------------------------------------------------------------------------------------
+    class Builder;
     class ListBuilder;
     class PointerBuilder;
     class StructBuilder;
-    class Builder;
 
     class ListReader;
     class PointerReader;
@@ -25,13 +25,18 @@ namespace he::schema
 
     struct String { class Reader; class Builder; };
     template <typename T> struct List { using ElementType = T; class Reader; class Builder; };
-    //template <typename T> struct PointerHelper;
 
     // --------------------------------------------------------------------------------------------
     using Word = uint64_t;
     constexpr uint32_t BytesPerWord = sizeof(Word);
     constexpr uint32_t BitsPerByte = 8;
     constexpr uint32_t BitsPerWord = BytesPerWord * BitsPerByte;
+
+    // --------------------------------------------------------------------------------------------
+    template <typename T> concept DataType = std::is_arithmetic_v<T> || std::is_enum_v<T> || std::is_same_v<T, Void>;
+
+    template <typename T> struct TypeHelper { using Reader = typename T::Reader; using Builder = typename T::Builder; };
+    template <DataType T> struct TypeHelper<T> { using Reader = T; using Builder = T&; };
 
     // --------------------------------------------------------------------------------------------
     template <size_t S> struct ElementSizeForByteSize;
@@ -41,33 +46,34 @@ namespace he::schema
     template <> struct ElementSizeForByteSize<8> { static constexpr ElementSize Value = ElementSize::EightBytes; };
 
     // --------------------------------------------------------------------------------------------
-    template <typename T> struct ListElementSize { static constexpr ElementSize Value = ElementSize::Pointer; };
-    template <> struct ListElementSize<Void> { static constexpr ElementSize Value = ElementSize::Void; };
-    template <> struct ListElementSize<bool> { static constexpr ElementSize Value = ElementSize::Bit; };
+    template <typename T> struct ElementSizeOfType { static constexpr ElementSize Value = ElementSize::Pointer; };
+    template <> struct ElementSizeOfType<Void> { static constexpr ElementSize Value = ElementSize::Void; };
+    template <> struct ElementSizeOfType<bool> { static constexpr ElementSize Value = ElementSize::Bit; };
 
-    template <typename T> requires(std::is_arithmetic_v<T> && !std::is_same_v<T, bool>)
-    struct ListElementSize<T> { static constexpr ElementSize Value = ElementSizeForByteSize<sizeof(T)>::Value; };
+    template <Arithmetic T> requires(!std::is_same_v<T, bool>)
+    struct ElementSizeOfType<T> { static constexpr ElementSize Value = ElementSizeForByteSize<sizeof(T)>::Value; };
 
-    template <typename T> requires(std::is_enum_v<T>)
-    struct ListElementSize<T> { static constexpr ElementSize Value = ElementSize::TwoBytes; };
+    template <Enum T>
+    struct ElementSizeOfType<T> { static constexpr ElementSize Value = ElementSize::TwoBytes; };
 
     template <typename T> requires(T::DeclInfo::Kind == DeclKind::Struct)
-    struct ListElementSize<T> { static constexpr ElementSize Value = ElementSize::Composite; };
+    struct ElementSizeOfType<T> { static constexpr ElementSize Value = ElementSize::Composite; };
 
     // --------------------------------------------------------------------------------------------
     class PointerReader
     {
     public:
         PointerReader() = default;
-        explicit PointerReader(const Word* data) : m_data(data) { HE_ASSERT(IsAligned(data, BytesPerWord)); }
+        explicit PointerReader(const Word* data) : m_data(data) {}
 
         // Common
 
         bool IsNull() const { return Value() == 0; }
+        bool IsZeroStruct() const { return Value() == 0xfffffffc; }
         PointerKind Kind() const { return static_cast<PointerKind>(Value() & 0x03); }
         int32_t Offset() const { return BitCast<int32_t>(static_cast<uint32_t>(Value())) >> 2; }
-        const Word* Target() const { return m_data + BytesPerWord + Offset(); }
-        
+        const Word* Target() const { return m_data + 1 + Offset(); }
+
         // Lists
 
         ListReader TryGetList(ElementSize expectedElementSize, const Word* defaultValue = nullptr) const;
@@ -93,10 +99,10 @@ namespace he::schema
             return typename T::Reader(TryGetStruct(defaultValue));
         }
 
-    protected:
+    private:
         uint64_t Value() const { return m_data ? *m_data : 0; }
 
-    protected:
+    private:
         const Word* m_data{ nullptr };
     };
 
@@ -105,7 +111,6 @@ namespace he::schema
     {
     public:
         ListReader() = default;
-
         ListReader(
             const Word* data,
             uint32_t size,
@@ -125,6 +130,9 @@ namespace he::schema
 
         const Word* Data() const { return m_data; }
         uint32_t Size() const { return m_size; }
+        uint32_t StepSize() const { return m_step; }
+        uint16_t StructDataWordSize() const { return m_structDataWordSize; }
+        uint16_t StructPointerCount() const { return m_structPointerCount; }
         ElementSize ElementSize() const { return m_elementSize; }
 
         template <typename T> T GetDataElement(uint32_t index) const
@@ -144,7 +152,7 @@ namespace he::schema
 
         PointerReader GetPointerElement(uint32_t index) const { return PointerReader(m_data + index); }
 
-    protected:
+    private:
         const Word* m_data{ nullptr };
         const uint32_t m_size{ 0 };
         const uint32_t m_step{ 0 };
@@ -158,7 +166,6 @@ namespace he::schema
     {
     public:
         StructReader() = default;
-        StructReader(const StructReader& x) : StructReader(x.m_data, x.m_dataWordSize, x.m_pointerCount) {}
         StructReader(const Word* data, uint16_t dataWordSize, uint16_t pointerCount)
             : m_data(data)
             , m_dataWordSize(dataWordSize)
@@ -211,7 +218,7 @@ namespace he::schema
 
         template <typename T> T TryGetDataField(uint16_t index, uint32_t dataOffset, T defaultValue = static_cast<T>(0)) const
         {
-            return HasDataField(index) ? GetDataField(dataOffset) : defaultValue;
+            return HasDataField(index) ? GetDataField(dataOffset, defaultValue) : defaultValue;
         }
 
         // Pointer Fields
@@ -235,9 +242,16 @@ namespace he::schema
         Span<const T> TryGetDataArrayField(uint16_t index, uint32_t dataOffset, uint16_t elementCount, Span<const T> defaultValue = {}) const
         {
             HE_ASSERT(defaultValue.IsEmpty() || defaultValue.Size() == elementCount);
+
+            if (!HasDataField(index))
+                return defaultValue;
+
             constexpr uint64_t BitsInType = sizeof(T) * BitsPerByte;
             if (((dataOffset + elementCount) * BitsInType) <= (m_dataWordSize * BitsPerWord)) [[likely]]
-                return { reinterpret_cast<const T*>(DataFields())[dataOffset], elementCount };
+            {
+                const T* data = reinterpret_cast<const T*>(DataFields()) + dataOffset;
+                return { data, elementCount };
+            }
 
             return defaultValue;
         }
@@ -255,13 +269,13 @@ namespace he::schema
         template <typename T>
         typename List<T>::Reader TryGetPointerArrayField(uint16_t index, uint16_t elementCount, const Word* defaultValue = nullptr) const
         {
-            constexpr ElementSize ESize = ListElementSize<T>::Value;
+            constexpr ElementSize ESize = ElementSizeOfType<T>::Value;
             constexpr uint16_t DataWordSize = ESize == ElementSize::Composite ? T::DeclInfo::DataWordSize : 0;
             constexpr uint16_t PointerCount = ESize == ElementSize::Composite ? T::DeclInfo::PointerCount : 0;
             return List<T>::Reader(TryGetPointerArrayField(index, ESize, elementCount, DataWordSize, PointerCount, defaultValue));
         }
 
-    protected:
+    private:
         uint32_t MetadataWordSize() const
         {
             const uint16_t dataFieldCount = *reinterpret_cast<const uint16_t*>(m_data);
@@ -271,26 +285,15 @@ namespace he::schema
             return ((dataFieldCount - 32) + (BitsPerWord - 1)) / BitsPerWord;
         }
 
-        const Word* DataFields() const
-        {
-            return m_data + MetadataWordSize();
-        }
+        const Word* DataFields() const { return m_data + MetadataWordSize(); }
+        const Word* PointerFields() const { return m_data + m_dataWordSize; }
 
-        const Word* PointerFields() const
-        {
-            return m_data + m_dataWordSize;
-        }
-
-    protected:
+    private:
         const Word* m_data{ nullptr };
 
         const uint16_t m_dataWordSize{ 0 };
         const uint16_t m_pointerCount{ 0 };
     };
-
-    // --------------------------------------------------------------------------------------------
-    void WriteStructPointer(Word* ptr, const StructBuilder& value);
-    void WriteListPointer(Word* ptr, const ListBuilder& value);
 
     // --------------------------------------------------------------------------------------------
     class Builder
@@ -311,7 +314,7 @@ namespace he::schema
 
         void Reserve(uint32_t words) { m_data.Reserve(words); }
 
-        void SetRoot(const StructBuilder& root) { WriteStructPointer(m_data.Data(), root); }
+        void SetRoot(const StructBuilder& root);
 
         StructBuilder AddStruct(uint16_t dataFieldCount, uint16_t dataWordSize, uint16_t pointerCount);
         ListBuilder AddList(ElementSize elementSize, uint32_t elementCount);
@@ -329,7 +332,7 @@ namespace he::schema
         template <typename T>
         List<T>::Builder AddList(uint32_t elementCount)
         {
-            if constexpr (ListElementSize<T>::Value == ElementSize::Composite)
+            if constexpr (ElementSizeOfType<T>::Value == ElementSize::Composite)
             {
                 constexpr uint16_t DataWordSize = T::DeclInfo::DataWordSize;
                 constexpr uint16_t PointerCount = T::DeclInfo::PointerCount;
@@ -337,7 +340,7 @@ namespace he::schema
             }
             else
             {
-                return List<T>::Builder(AddList(ListElementSize<T>::Value, elementCount));
+                return List<T>::Builder(AddList(ElementSizeOfType<T>::Value, elementCount));
             }
         }
 
@@ -346,11 +349,79 @@ namespace he::schema
     };
 
     // --------------------------------------------------------------------------------------------
+    class PointerBuilder
+    {
+    public:
+        explicit PointerBuilder(Builder& builder) : m_builder(builder) {}
+        PointerBuilder(Builder& builder, uint32_t wordOffset)
+            : m_builder(builder)
+            , m_wordOffset(wordOffset)
+        {}
+
+        // Common
+
+        PointerReader AsReader() const { return PointerReader(Location()); }
+
+        Word* Location() { return m_builder.Data() + m_wordOffset; }
+        const Word* Location() const { return m_builder.Data() + m_wordOffset; }
+
+        bool IsNull() const { return Value() == 0; }
+        void SetNull() { SetOffsetAndKind(0, Kind()); }
+
+        bool IsZeroStruct() const { return Value() == 0xfffffffc; }
+        void SetZeroStruct() { Value() = 0xfffffffc; }
+
+        PointerKind Kind() const { return static_cast<PointerKind>(Value() & 0x03); }
+        void SetKind(PointerKind kind) { SetOffsetAndKind(Offset(), kind); }
+
+        int32_t Offset() const { return BitCast<int32_t>(static_cast<uint32_t>(Value())) >> 2; }
+        void SetOffset(int32_t offset) { SetOffsetAndKind(offset, Kind()); }
+
+        const Word* Target() const { return Location() + 1 + Offset(); }
+        void SetTarget(const Word* target) { SetTargetAndKind(target, Kind()); }
+
+        void SetOffsetAndKind(int32_t offset, PointerKind kind) { Value() = (static_cast<uint32_t>(offset) << 2) | (static_cast<uint16_t>(kind) & 0x03); }
+        void SetTargetAndKind(const Word* target, PointerKind kind) { SetOffsetAndKind(static_cast<int32_t>(target - Location() - 1), kind); }
+
+        // Lists
+
+        ListBuilder TryGetList(ElementSize expectedElementSize, const Word* defaultValue = nullptr) const;
+
+        ElementSize ListElementSize() const { return static_cast<ElementSize>((Value() >> 32) & 0x07); }
+        uint32_t ListSize() const { return static_cast<uint32_t>(Value() >> 35); }
+        uint32_t ListCompositeSize() const { return static_cast<uint32_t>(Value()) >> 2; }
+
+        template <typename T> typename List<T>::Builder TryGetList(const Word* defaultValue = nullptr) const;
+        String::Builder TryGetString(const Word* defaultValue = nullptr) const;
+
+        // Structs
+
+        StructBuilder TryGetStruct(const Word* defaultValue = nullptr) const;
+
+        uint16_t StructDataWordSize() const { return static_cast<uint16_t>(Value() >> 32); }
+        uint16_t StructPointerCount() const { return static_cast<uint16_t>(Value() >> 48); }
+        uint32_t StructWordSize() const { return static_cast<uint32_t>(StructDataWordSize()) + StructPointerCount(); }
+
+        template <typename T>
+        typename T::Builder TryGetStruct(const Word* defaultValue = nullptr) const
+        {
+            return typename T::Builder(TryGetStruct(defaultValue));
+        }
+
+    private:
+        uint64_t Value() const { return *Location(); }
+        uint64_t& Value() { return *Location(); }
+
+    private:
+        schema::Builder& m_builder;
+        const uint32_t m_wordOffset{ 0 };
+    };
+
+    // --------------------------------------------------------------------------------------------
     class ListBuilder
     {
     public:
-        ListBuilder() = default;
-        ListBuilder(const ListBuilder& x) : ListBuilder(x.m_builder, x.m_wordOffset, x.m_size, x.m_step, x.m_structDataWordSize, x.m_structPointerCount, x.m_elementSize) {}
+        explicit ListBuilder(Builder& builder) : m_builder(builder) {}
         ListBuilder(
             Builder& builder,
             uint32_t wordOffset,
@@ -370,6 +441,11 @@ namespace he::schema
             HE_ASSERT((structDataWordSize == 0 && structPointerCount == 0) || elementSize == ElementSize::Composite);
         }
 
+        ListReader AsReader() const { return ListReader(Data(), m_size, m_step, m_structDataWordSize, m_structPointerCount, m_elementSize); }
+
+        Word* Data() { return Location(); }
+        const Word* Data() const { return Location(); }
+
         Builder& Builder() { return m_builder; }
         const schema::Builder& Builder() const { return m_builder; }
 
@@ -377,24 +453,43 @@ namespace he::schema
         const Word* Location() const { return m_builder.Data() + m_wordOffset; }
 
         uint32_t Size() const { return m_size; }
+        uint32_t StepSize() const { return m_step; }
+        uint16_t StructDataWordSize() const { return m_structDataWordSize; }
+        uint16_t StructPointerCount() const { return m_structPointerCount; }
         ElementSize ElementSize() const { return m_elementSize; }
 
-    protected:
+        template <typename T> T GetDataElement(uint32_t index) const
+        {
+            const uint8_t* b = reinterpret_cast<const uint8_t*>(Data()) + (static_cast<uint64_t>(index) * m_step / BitsPerByte);
+            return *reinterpret_cast<const T*>(b);
+        }
+
+        template <> bool GetDataElement<bool>(uint32_t index) const
+        {
+            const uint8_t* b = reinterpret_cast<const uint8_t*>(Data()) + (index / BitsPerByte);
+            const uint32_t shift = index % BitsPerByte;
+            return (*b & (1 << shift)) != 0;
+        }
+
+        template <> Void GetDataElement<Void>(uint32_t) const { return {}; }
+
+        PointerBuilder GetPointerElement(uint32_t index) const { return PointerBuilder(m_builder, m_wordOffset + index); }
+
+    private:
         schema::Builder& m_builder;
-        const uint32_t m_wordOffset{ 0 };
-        const uint32_t m_size{ 0 };
-        const uint32_t m_step{ 0 };
-        const uint16_t m_structDataWordSize{ 0 };
-        const uint16_t m_structPointerCount{ 0 };
-        const schema::ElementSize m_elementSize{ ElementSize::Void };
+        uint32_t m_wordOffset{ 0 };
+        uint32_t m_size{ 0 };
+        uint32_t m_step{ 0 };
+        uint16_t m_structDataWordSize{ 0 };
+        uint16_t m_structPointerCount{ 0 };
+        schema::ElementSize m_elementSize{ ElementSize::Void };
     };
 
     // --------------------------------------------------------------------------------------------
     class StructBuilder
     {
     public:
-        StructBuilder() = default;
-        StructBuilder(const StructBuilder& x) : StructBuilder(x.m_builder, x.m_wordOffset, x.m_dataFieldCount, x.m_dataWordSize, x.m_pointerCount) {}
+        explicit StructBuilder(Builder& builder) : m_builder(builder) {}
         StructBuilder(Builder& builder, uint32_t wordOffset, uint16_t dataFieldCount, uint16_t dataWordSize, uint16_t pointerCount)
             : m_builder(builder)
             , m_wordOffset(wordOffset)
@@ -447,21 +542,10 @@ namespace he::schema
         template <>
         void SetDataField<Void>(uint16_t, uint32_t, Void) {}
 
-        void SetPointerField(uint16_t index, const StructBuilder& value)
-        {
-            HE_ASSERT(&value.Builder() == &m_builder);
-            Word* ptr = PointerSection() + index;
-            WriteStructPointer(ptr, value);
-        }
+        void SetPointerField(uint16_t index, const StructBuilder& value);
+        void SetPointerField(uint16_t index, const ListBuilder& value);
 
-        void SetPointerField(uint16_t index, const ListBuilder& value)
-        {
-            HE_ASSERT(&value.Builder() == &m_builder);
-            Word* ptr = PointerSection() + index;
-            WriteListPointer(ptr, value);
-        }
-
-    protected:
+    private:
         Word* DataSection() { return m_builder.Data() + m_wordOffset; }
         const Word* DataSection() const { return m_builder.Data() + m_wordOffset; }
 
@@ -498,7 +582,7 @@ namespace he::schema
             }
         }
 
-    protected:
+    private:
         schema::Builder& m_builder;
         uint32_t m_wordOffset{ 0 };
         uint16_t m_dataFieldCount{ 0 };
@@ -507,113 +591,89 @@ namespace he::schema
     };
 
     // --------------------------------------------------------------------------------------------
-    //struct String
-    //{
-        class String::Reader : public ListReader
+    class String::Reader : public ListReader
+    {
+    public:
+        explicit Reader(ListReader reader) : ListReader(reader) {}
+
+        const char* Data() const { return reinterpret_cast<const char*>(ListReader::Data()); }
+        uint32_t Size() const { return ListReader::Size() - 1; }
+    };
+
+    class String::Builder : public ListBuilder
+    {
+    public:
+        explicit Builder(ListBuilder builder) : ListBuilder(builder) {}
+
+        char* Data() { return reinterpret_cast<char*>(Location()); }
+        const char* Data() const { return reinterpret_cast<const char*>(Location()); }
+
+        uint32_t Size() const { return ListBuilder::Size() - 1; }
+
+        char& operator[](uint32_t index)
         {
-        public:
-            Reader(ListReader reader) : ListReader(reader) {}
-
-            const char* Data() const { return reinterpret_cast<const char*>(ListReader::Data()); }
-            uint32_t Size() const { return ListReader::Size() - 1; }
-        };
-
-        class String::Builder : public ListBuilder
-        {
-        public:
-            Builder(ListBuilder builder) : ListBuilder(builder) {}
-
-            char* Data() { return reinterpret_cast<char*>(ListBuilder::Location()); }
-            const char* Data() const { return reinterpret_cast<const char*>(ListBuilder::Location()); }
-
-            uint32_t Size() const { return ListBuilder::Size() - 1; }
-
-            char& operator[](uint32_t index)
-            {
-                HE_ASSERT(index < Size());
-                return Data()[index];
-            }
-        };
-    //};
+            HE_ASSERT(index < Size());
+            return Data()[index];
+        }
+    };
 
     // --------------------------------------------------------------------------------------------
-    //template <typename T>
-    //struct List
-    //{
-        //using ElementType = T;
+    template <typename T>
+    class List<T>::Reader : public ListReader
+    {
+    public:
+        explicit Reader(ListReader reader) : ListReader(reader) {}
 
-        template <typename T>
-        class List<T>::Reader : public ListReader
+        const T* Data() const requires(DataType<T>) { return reinterpret_cast<const T*>(m_data); }
+
+        typename TypeHelper<T>::Reader operator[](uint32_t index) const
         {
-        public:
-            explicit Reader(ListReader reader) : ListReader(reader) {}
+            HE_ASSERT(index < Size());
+            if constexpr (DataType<T>)
+                return GetDataElement<T>(index);
+            else if constexpr (std::is_same_v<T, String>)
+                return GetPointerElement(index).TryGetString();
+            else if constexpr (IsSpecialization<T, List>)
+                return GetPointerElement(index).TryGetList<T::ElementType>();
+            else
+                return GetPointerElement(index).TryGetStruct<T>();
+        }
+    };
 
-            typename T::Reader operator[](uint32_t index) const
-            {
-                HE_ASSERT(index < Size());
-                if constexpr (std::is_arithmetic_v<T> || std::is_enum_v<T> || std::is_same_v<T, Void>)
-                    return ListReader::GetDataElement<T>(index);
-                else
-                    return PointerHelper<T>::Get(ListReader::GetPointerElement(index));
-            }
-        };
+    template <typename T>
+    class List<T>::Builder : public ListBuilder
+    {
+    public:
+        explicit Builder(ListBuilder builder) : ListBuilder(builder) {}
 
-        template <typename T>
-        class List<T>::Builder : public ListBuilder
+        T* Data() requires(DataType<T>) { return reinterpret_cast<T*>(Data()); }
+        const T* Data() const requires(DataType<T>) { return reinterpret_cast<const T*>(Data()); }
+
+        typename TypeHelper<T>::Builder operator[](uint32_t index) const
         {
-        public:
-            Builder(ListBuilder builder) : ListBuilder(builder) {}
+            HE_ASSERT(index < Size());
+            if constexpr (DataType<T>)
+                return ListReader::GetDataElement<T>(index);
+            else if constexpr (std::is_same_v<T, String>)
+                return GetPointerElement(index).TryGetString();
+            else if constexpr (IsSpecialization<T, List>)
+                return GetPointerElement(index).TryGetList<T::ElementType>();
+            else
+                return GetPointerElement(index).TryGetStruct<T>();
+        }
 
-            // TODO!
-            //typename T::Builder operator[](uint32_t index) const
-            //{
-            //    HE_ASSERT(index < Size());
-            //    return PointerHelper<T>::Get(ListBuilder::GetPointerElement(index));
-            //}
-        };
-    //};
+        // TODO: It is awkward to have to call Set, and not be able to use the operator[]...
+        void Set(uint32_t index, const typename TypeHelper<T>::Reader& reader)
+        {
 
-    //template <typename T> requires(std::is_arithmetic_v<T> || std::is_enum_v<T> || std::is_same_v<T, Void>)
-    //struct List<T>
-    //{
-    //    using ElementType = T;
-
-        //template <typename T> requires()
-        //class List<T>::Reader : public ListReader
-        //{
-        //public:
-        //    explicit Reader(ListReader reader) : ListReader(reader) {}
-
-        //    const T* Data() const { return reinterpret_cast<const T*>(m_data); }
-
-        //    T operator[](uint32_t index) const
-        //    {
-        //        HE_ASSERT(index < Size());
-        //        return ListReader::GetDataElement<T>(index);
-        //    }
-        //};
-
-        //template <typename T> requires(std::is_arithmetic_v<T> || std::is_enum_v<T> || std::is_same_v<T, Void>)
-        //class List<T>::Builder : public ListBuilder
-        //{
-        //public:
-        //    Builder(ListBuilder builder) : ListBuilder(builder) {}
-
-        //    // TODO!
-        //    //T& operator[](uint32_t index)
-        //    //{
-        //    //    HE_ASSERT(index < Size());
-        //    //    return ListBuilder::GetDataElement<T>(index);
-        //    //}
-        //};
-    //};
+        }
+    };
 
     // --------------------------------------------------------------------------------------------
-
     template <typename T>
     typename List<T>::Reader PointerReader::TryGetList(const Word* defaultValue) const
     {
-        return typename List<T>::Reader(TryGetList(ListElementSize<T>::Value, defaultValue));
+        return typename List<T>::Reader(TryGetList(ElementSizeOfType<T>::Value, defaultValue));
     }
 
     String::Reader PointerReader::TryGetString(const Word* defaultValue) const
@@ -621,30 +681,15 @@ namespace he::schema
         return String::Reader(TryGetList(ElementSize::Byte, defaultValue));
     }
 
-    //template <typename T>
-    //struct PointerHelper
-    //{
-    //    static typename T::Reader TryGet(PointerReader reader, const Word* defaultValue = nullptr)
-    //    {
-    //        return typename T::Reader(reader.GetStruct(defaultValue));
-    //    }
-    //};
+    // --------------------------------------------------------------------------------------------
+    template <typename T>
+    typename List<T>::Builder PointerBuilder::TryGetList(const Word* defaultValue) const
+    {
+        return typename List<T>::Builder(TryGetList(ElementSizeOfType<T>::Value, defaultValue));
+    }
 
-    //template <typename T>
-    //struct PointerHelper<List<T>>
-    //{
-    //    static typename List<T>::Reader TryGet(PointerReader reader, const Word* defaultValue = nullptr)
-    //    {
-    //        return typename List<T>::Reader(reader.GetList(ListElementSize<T>::Value, defaultValue));
-    //    }
-    //};
-
-    //template <>
-    //struct PointerHelper<String>
-    //{
-    //    static String::Reader TryGet(PointerReader reader, const Word* defaultValue = nullptr)
-    //    {
-    //        return String::Reader(reader.GetList(ElementSize::Byte, defaultValue));
-    //    }
-    //};
+    String::Builder PointerBuilder::TryGetString(const Word* defaultValue) const
+    {
+        return String::Builder(TryGetList(ElementSize::Byte, defaultValue));
+    }
 }

@@ -1,9 +1,12 @@
+# Copyright Chad Engler
+
 id = "boost-ext.di"
 name = "[Boost::ext].DI"
 description = "Header only Dependency Injection library with no dependencies."
 version = "52e6eaeb8d8ec4110e804d55252ce192c6bd55ae"
 author = "Kris Jusiak <krzysztof@jusiak.net>"
 license = "BSL-1.0"
+homepage = "https://github.com/boost-ext/di"
 
 [install]
     github = "boost-ext/di#52e6eaeb8d8ec4110e804d55252ce192c6bd55ae"

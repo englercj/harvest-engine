@@ -1,9 +1,12 @@
+# Copyright Chad Engler
+
 id = "he.rhi"
 name = "Harvest RHI"
 description = "Provides abstractions for low level rendering APIs."
 version = "1.0.0"
 author = "Chad Engler <englercj@live.com>"
 license = "UNLICENSED"
+homepage = ""
 
 [install]
     exec = "shaderc.lua"

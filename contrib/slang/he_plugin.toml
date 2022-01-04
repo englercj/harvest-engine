@@ -1,9 +1,12 @@
+# Copyright Chad Engler
+
 id = "nvidia.slang"
 name = "slang"
 description = "Slang is a shading language that makes it easier to build and maintain large shader codebases in a modular and extensible fashion."
 version = "0.19.6"
 author = "Carnegie Mellon University and NVIDIA Corporation"
 license = "MIT"
+homepage = "https://github.com/shader-slang/slang"
 
 [install]
     valid_systems = ["linux", "windows"]

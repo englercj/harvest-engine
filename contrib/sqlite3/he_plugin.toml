@@ -1,9 +1,12 @@
+# Copyright Chad Engler
+
 id = "sqlite3"
 name = "SQLite"
 description = "SQLite is a C-language library that implements a small, fast, self-contained, high-reliability, full-featured, SQL database engine."
 version = "3.36.0"
 author = "Dwayne Hipp"
 license = "blessing"
+homepage = "https://www.sqlite.org/index.html"
 
 [install]
     archive = "https://www.sqlite.org/2021/sqlite-amalgamation-3360000.zip"

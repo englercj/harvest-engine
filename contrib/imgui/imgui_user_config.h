@@ -1,3 +1,5 @@
+// Copyright Chad Engler
+
 #pragma once
 
 #include "he/core/assert.h"

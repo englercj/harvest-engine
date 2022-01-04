@@ -1,9 +1,12 @@
+# Copyright Chad Engler
+
 id = "he.sqlite"
 name = "Harvest SQLite Wrapper"
 description = "Provides utilities for utilizing sqlite easily and safely."
 version = "1.0.0"
 author = "Chad Engler <englercj@live.com>"
 license = "UNLICENSED"
+homepage = ""
 
 [[modules]]
     name = "he_sqlite"

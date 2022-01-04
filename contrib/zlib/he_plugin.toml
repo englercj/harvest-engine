@@ -1,9 +1,12 @@
+# Copyright Chad Engler
+
 id = "madler.zlib"
 name = "Zlib Data Compression Library"
 description = "Zlib is a general purpose data compression library."
 version = "1.2.11"
 author = "Mark Adler <madler@alumni.caltech.edu>"
 license = "Zlib"
+homepage = "https://zlib.net/"
 
 [install]
     github = "madler/zlib#v1.2.11"

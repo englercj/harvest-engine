@@ -1,9 +1,12 @@
+# Copyright Chad Engler
+
 id = "ocornut.imgui"
 name = "Dear ImGUI"
 description = "Dear ImGui is a bloat-free graphical user interface library for C++."
 version = "docking"
 author = "Omar Cornut <contact@dearimgui.com>"
 license = "MIT"
+homepage = "https://github.com/ocornut/imgui"
 
 [install]
     github = "ocornut/imgui#docking"

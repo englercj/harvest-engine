@@ -1,9 +1,12 @@
+# Copyright Chad Engler
+
 id = "he.assets"
 name = "Harvest Asset System"
 description = "Provides utilities for managing assets in the engine."
 version = "1.0.0"
 author = "Chad Engler <englercj@live.com>"
 license = "UNLICENSED"
+homepage = ""
 
 [[modules]]
     name = "he_assets"

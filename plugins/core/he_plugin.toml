@@ -1,9 +1,12 @@
+# Copyright Chad Engler
+
 id = "he.core"
 name = "Harvest Core"
 description = "Provides core utilities used throughout the engine."
 version = "1.0.0"
 author = "Chad Engler <englercj@live.com>"
 license = "UNLICENSED"
+homepage = ""
 
 [[modules]]
     name = "he_core"

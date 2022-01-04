@@ -1,9 +1,12 @@
+# Copyright Chad Engler
+
 id = "capnproto.capnproto"
 name = "Cap'n Proto"
 description = "Cap'n Proto is an insanely fast data interchange format and capability-based RPC system."
 version = "a3bb240667686a007f3dd0649a093b7326e130cf"
 author = "Kenton Varda <kenton@cloudflare.com>"
 license = "MIT"
+homepage = "https://capnproto.org/"
 
 [install]
     exec = "capnp_tool.lua"

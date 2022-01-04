@@ -1,9 +1,12 @@
+# Copyright Chad Engler
+
 id = "he.math"
 name = "Harvest Math"
 description = "Provides math utilities used throughout the engine."
 version = "1.0.0"
 author = "Chad Engler <englercj@live.com>"
 license = "UNLICENSED"
+homepage = ""
 
 [[modules]]
     name = "he_math"

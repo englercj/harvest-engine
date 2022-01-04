@@ -1,9 +1,12 @@
+# Copyright Chad Engler
+
 id = "fmtlib.fmt"
 name = "{fmt}"
 description = "An open-source formatting library providing a fast and safe alternative to C stdio and C++ iostreams."
 version = "8.0.1"
 author = "Victor Zverovich"
 license = "MIT"
+homepage = "https://fmt.dev/"
 
 [install]
     github = "fmtlib/fmt#8.0.1"

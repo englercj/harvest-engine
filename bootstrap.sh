@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Copyright Chad Engler
 
 BUILD_DIR="build"
 PREMAKE_VERSION="nightly"

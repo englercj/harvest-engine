@@ -1,9 +1,12 @@
+# Copyright Chad Engler
+
 id = "freetype"
 name = "Freetype"
 description = "Dear ImGui is a bloat-free graphical user interface library for C++."
 version = "2.11.0"
 author = "Werner Lemberg <wl@gnu.org>"
 license = "FTL"
+homepage = "https://freetype.org/"
 
 [install]
     github = "freetype/freetype#VER-2-10-4"

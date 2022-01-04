@@ -1,9 +1,12 @@
+# Copyright Chad Engler
+
 id = "he.editor"
 name = "Harvest Editor"
 description = "Harvest editor application."
 version = "1.0.0"
 author = "Chad Engler <englercj@live.com>"
 license = "UNLICENSED"
+homepage = ""
 
 [[modules]]
     name = "he_editor"

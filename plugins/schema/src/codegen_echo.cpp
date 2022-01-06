@@ -197,23 +197,9 @@ namespace he::schema
 
     void CodeGenEcho::WriteStructDecl(const Declaration& decl, const Declaration& scope)
     {
-        m_writer.WriteIndent();
-
-        if (decl.struct_.isGroup)
+        if (!decl.struct_.isGroup && !decl.struct_.isUnion)
         {
-            m_writer.Write("{} :group", decl.name);
-            WriteAttributes(decl.attributes, scope);
-        }
-        else if (decl.struct_.isUnion)
-        {
-            const uint32_t tagSize = 16;
-            const uint32_t begin = decl.struct_.unionTagOffset * tagSize;
-            const uint32_t end = begin + tagSize;
-            m_writer.Write("{} :union // tag bits[{}, {})", decl.name, begin, end);
-            WriteAttributes(decl.attributes, scope);
-        }
-        else
-        {
+            m_writer.WriteIndent();
             m_writer.Write("struct {}", decl.name);
             WriteTypeParams(decl.typeParams);
             m_writer.Write(" " HE_ID_FMT, decl.id);
@@ -238,6 +224,27 @@ namespace he::schema
             if (field.isGroup || field.isUnion)
             {
                 const Declaration& group = m_request.GetDecl(field.typeId);
+                m_writer.WriteIndent();
+                if (group.struct_.isGroup)
+                {
+                    m_writer.Write("{} :group", field.name);
+                    if (decl.struct_.isUnion)
+                    {
+                        m_writer.Write(" // union tag = {}", field.unionTag);
+                    }
+                }
+                else if (group.struct_.isUnion)
+                {
+                    const uint32_t tagSize = 16;
+                    const uint32_t begin = decl.struct_.unionTagOffset * tagSize;
+                    const uint32_t end = begin + tagSize;
+                    m_writer.Write("{} :union // tag bits[{}, {})", field.name, begin, end);
+                    if (decl.struct_.isUnion)
+                    {
+                        m_writer.Write(", union tag = {}", field.unionTag);
+                    }
+                }
+                WriteAttributes(group.attributes, scope);
                 WriteStructDecl(group, decl);
                 continue;
             }
@@ -309,7 +316,7 @@ namespace he::schema
 
     void CodeGenEcho::WriteName(const Declaration& decl, const Declaration& scope, const Brand& brand)
     {
-        if (decl.parentId != scope.id && decl.parentId != scope.parentId)
+        if (decl.parentId != scope.id && decl.parentId != scope.parentId && decl.parentId != m_request.schema.root.id)
         {
             const Declaration& parent = m_request.GetDecl(decl.parentId);
             WriteName(parent, scope, brand);

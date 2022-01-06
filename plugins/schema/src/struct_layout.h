@@ -34,6 +34,8 @@ namespace he::schema
     private:
         Declaration& m_decl;
         Vector<FieldRef> m_sortedFields{};
+        Vector<FieldRef> m_sortedParentFields{};
+        const Declaration* m_activeParent{ nullptr };
 
         uint16_t m_dataFieldCount{ 0 };
         uint32_t m_dataOffset{ 0 };

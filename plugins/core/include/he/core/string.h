@@ -424,21 +424,28 @@ namespace he
         ///
         /// \param range The characters to check against.
         /// \return True if the strings are equal, false otherwise.
-        template <typename R> requires(StdContiguousRange<R, const char> || ContiguousRange<R, const char>)
-        bool operator==(const R& range) const { return CompareTo(range) == 0; }
+        template <typename R> requires(StdContiguousRange<R, const char>)
+        bool operator==(const R& range) const { return range.size() == Size() && CompareTo(range) == 0; }
+
+        /// Checks if this string is equal to a character range.
+        ///
+        /// \param range The characters to check against.
+        /// \return True if the strings are equal, false otherwise.
+        template <typename R> requires(ContiguousRange<R, const char>)
+        bool operator==(const R& range) const { return range.Size() == Size() && CompareTo(range) == 0; }
 
         /// Checks if this string is not equal to the null terminated string `x`.
         ///
         /// \param x The string to check against.
         /// \return True if the strings are not equal, false otherwise.
-        bool operator!=(const char* x) const { return CompareTo(x) != 0; }
+        bool operator!=(const char* x) const { return !this->operator==(x); }
 
         /// Checks if this string is equal to a character range.
         ///
         /// \param range The characters to check against.
         /// \return True if the string is not equal to `range`, false otherwise.
         template <typename R> requires(StdContiguousRange<R, const char> || ContiguousRange<R, const char>)
-        bool operator!=(const R& range) const { return CompareTo(range) != 0; }
+        bool operator!=(const R& range) const { return !this->operator==(range); }
 
         /// Checks if this string is less than the null terminated string `x`.
         ///

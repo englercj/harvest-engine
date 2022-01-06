@@ -16,6 +16,7 @@
 
 #include <concepts>
 #include <unordered_map>
+#include <unordered_set>
 
 namespace he::schema
 {
@@ -89,11 +90,11 @@ namespace he::schema
 
         bool ConsumeDeclName(Declaration& decl);
 
-        bool ConsumeAttributeDecl(Declaration& decl);
-        bool ConsumeConstDecl(Declaration& decl);
-        bool ConsumeEnumDecl(Declaration& decl);
-        bool ConsumeInterfaceDecl(Declaration& decl);
-        bool ConsumeStructDecl(Declaration& decl);
+        bool ConsumeAttributeDecl(Declaration& parent);
+        bool ConsumeConstDecl(Declaration& parent);
+        bool ConsumeEnumDecl(Declaration& parent);
+        bool ConsumeInterfaceDecl(Declaration& parent);
+        bool ConsumeStructDecl(Declaration& parent);
         bool ConsumeStructBlock(Declaration& decl);
 
         bool ConsumeField(Field& field, const Declaration& scope, bool requireOrdinal);
@@ -101,6 +102,8 @@ namespace he::schema
 
         template <typename... Args>
         void AddError(fmt::format_string<Args...> fmt, Args&&... args);
+        template <typename... Args>
+        void AddDeclError(const Declaration& decl, fmt::format_string<Args...> fmt, Args&&... args);
         void AddLexerError();
 
         bool DecodeString();
@@ -113,13 +116,20 @@ namespace he::schema
         };
         TypeParamRef FindTypeParam(StringView name, const Declaration& scope);
 
-        const Declaration* FindDecl(StringView name);
-        const Declaration* FindDecl(StringView name, Span<const Declaration> decls);
-        const Declaration* FindDecl(TypeId id, const SchemaFile* schema = nullptr);
-        const Declaration* FindDecl(TypeId id, Span<const Declaration> decls);
+        const Declaration* FindDecl(StringView name) const;
+        const Declaration* FindDecl(StringView name, const Declaration& scope) const;
+        const Declaration* FindDecl(TypeId id, const SchemaFile* schema = nullptr) const;
+        const Declaration* FindDecl(TypeId id, const Declaration& scope) const;
+
+        const Declaration* FindForwardDecl(StringView name) const;
+        const Declaration* FindForwardDecl(StringView name, const Declaration& scope) const;
+        const Declaration* FindForwardDecl(TypeId id, const SchemaFile* schema = nullptr) const;
+        const Declaration* FindForwardDecl(TypeId id, const Declaration& scope) const;
+
         bool StoreDeclId(Declaration& decl);
 
         bool ValidateAndLayoutStruct(Declaration& decl);
+        bool ValidateStructFieldNames(const Declaration& decl);
 
     private:
         // schema ids are already hashes, just use it as-is
@@ -143,6 +153,8 @@ namespace he::schema
 
         Vector<ErrorInfo> m_errors;
         String m_scratchString;
+
+        std::unordered_set<TypeId> m_forwardIds;
 
         NameMap m_nameMap;
         BuiltinTypeMap m_builtinTypeMap;

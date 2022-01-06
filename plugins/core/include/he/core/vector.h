@@ -9,8 +9,9 @@
 #include "he/core/types.h"
 #include "he/core/utils.h"
 
-#include <new>
+#include <algorithm>
 #include <concepts>
+#include <new>
 #include <type_traits>
 
 namespace he
@@ -86,6 +87,20 @@ namespace he
 
         /// \copydoc operator[](uint32_t)
         T& operator[](uint32_t index) { return const_cast<T&>(const_cast<const Vector&>(*this)[index]); }
+
+        /// Checks if this vector is equal to another vector.
+        ///
+        /// \param x The vector to check against.
+        /// \return True if the vectors are equal, false otherwise.
+        template <typename U> requires(std::is_convertible_v<U(*)[], T(*)[]>)
+        bool operator==(const Vector<U>& x) const { return x.Size() == Size() && std::equal(x.Begin(), x.End(), Begin(), End()); }
+
+        /// Checks if this vector is not equal to another vector.
+        ///
+        /// \param x The vector to check against.
+        /// \return True if the vectors are not equal, false otherwise.
+        template <typename U> requires(std::is_convertible_v<U(*)[], T(*)[]>)
+        bool operator!=(const Vector<U>& x) const { return !this->operator==(x); }
 
         // ----------------------------------------------------------------------------------------
         // Capacity

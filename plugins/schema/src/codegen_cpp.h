@@ -30,6 +30,9 @@ namespace he::schema
         void WriteInterfaceDecl(const Declaration& decl, const Declaration& scope);
         void WriteStructDecl(const Declaration& decl, const Declaration& scope);
 
+        void WriteFieldGetDecl(const Field& field, const Declaration& decl, bool isReader);
+        void WriteFieldSetDecl(const Field& field, const Declaration& decl);
+
     // Source Generation
     private:
         void GenSource();

@@ -63,7 +63,6 @@ namespace he::schema
     // - Because the top bit is always set IDs can always be printed as 32 hex digits without
     //  any leading zeroes.
     constexpr TypeId TypeIdFlag = (1ull << 63);
-    constexpr TypeId InvalidTypeId = 0 | TypeIdFlag;
 
     enum class ElementSize : uint16_t
     {
@@ -111,7 +110,7 @@ namespace he::schema
         {
             ~Scope();
 
-            TypeId scopeId{ InvalidTypeId };
+            TypeId scopeId{ 0 };
             Vector<Type*> params{};
         };
 
@@ -120,7 +119,13 @@ namespace he::schema
 
     struct Type
     {
+        Type() = default;
+        Type(Type&) = delete;
+        Type(Type&& x);
         ~Type();
+
+        Type& operator=(Type&) = delete;
+        Type& operator=(Type&& x);
 
         TypeKind kind{ TypeKind::Void };
 
@@ -128,7 +133,7 @@ namespace he::schema
         // {
             struct
             {
-                TypeId paramScopeId{ InvalidTypeId };
+                TypeId paramScopeId{ 0 };
                 uint16_t paramIndex{ 0 }; // Index of the type param in the scope's typeParams list
             } any_;
 
@@ -145,19 +150,19 @@ namespace he::schema
 
             struct
             {
-                TypeId id{ InvalidTypeId };
+                TypeId id{ 0 };
                 Brand brand{};
             } enum_;
 
             struct
             {
-                TypeId id{ InvalidTypeId };
+                TypeId id{ 0 };
                 Brand brand{};
             } interface_;
 
             struct
             {
-                TypeId id{ InvalidTypeId };
+                TypeId id{ 0 };
                 Brand brand{};
             } struct_;
         // };
@@ -209,7 +214,7 @@ namespace he::schema
 
     struct Attribute
     {
-        TypeId id{ InvalidTypeId };
+        TypeId id{ 0 };
         Value value{};
     };
 
@@ -225,7 +230,7 @@ namespace he::schema
         Vector<Attribute> attributes{};
 
         // For group/union fields
-        TypeId typeId{ InvalidTypeId };
+        TypeId typeId{ 0 };
 
         // For normal fields, not groups/unions
         uint16_t ordinal{ 0 };  // explicit ordinal value specified using @
@@ -256,24 +261,35 @@ namespace he::schema
         uint16_t declOrder{ 0 }; // implicit based on order it was written in the schema file
         uint16_t ordinal{ 0 };   // explicit ordinal value specified using @
 
-        TypeId paramStruct{ InvalidTypeId };
-        TypeId resultStruct{ InvalidTypeId };
+        TypeId paramStruct{ 0 };
+        TypeId resultStruct{ 0 };
 
         Vector<Attribute> attributes{};
         Vector<String> typeParams{};
+    };
+
+    struct SourceInfo
+    {
+        String docComment{};
+        String file{};
+        uint32_t line{ 0 };
+        uint32_t column{ 0 };
     };
 
     struct Declaration
     {
         DeclKind kind{ DeclKind::None };
 
-        TypeId id{ InvalidTypeId };
-        TypeId parentId{ InvalidTypeId };
+        TypeId id{ 0 };
+        TypeId parentId{ 0 };
         String name{};
 
         Vector<Attribute> attributes{};
         Vector<String> typeParams{};
         Vector<Declaration> children{};
+        Vector<Declaration> forwards{};
+
+        SourceInfo source{};
 
         // union
         // {

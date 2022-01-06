@@ -14,8 +14,42 @@ namespace he::schema
 
     Type::~Type()
     {
-        if (kind ==  TypeKind::List)
-            Allocator::GetDefault().Delete(list_.elementType);
+        switch (kind)
+        {
+            case TypeKind::Array:
+                HE_ASSERT(list_.elementType == nullptr);
+                Allocator::GetDefault().Delete(array_.elementType);
+                break;
+            case TypeKind::List:
+                HE_ASSERT(array_.elementType == nullptr);
+                Allocator::GetDefault().Delete(list_.elementType);
+                break;
+        }
+    }
+
+    Type::Type(Type&& x)
+    {
+        *this = Move(x);
+    }
+
+    Type& Type::operator=(Type&& x)
+    {
+        if (this != &x)
+        {
+            kind = Exchange(x.kind, TypeKind::Void);
+            any_.paramScopeId = Exchange(x.any_.paramScopeId, 0);
+            any_.paramIndex = Exchange(x.any_.paramIndex, uint16_t(0));
+            array_.size = Exchange(x.array_.size, uint16_t(0));
+            array_.elementType = Exchange(x.array_.elementType, nullptr);
+            list_.elementType = Exchange(x.list_.elementType, nullptr);
+            enum_.id = Exchange(x.enum_.id, 0);
+            enum_.brand = Move(x.enum_.brand);
+            interface_.id = Exchange(x.interface_.id, 0);
+            interface_.brand = Move(x.interface_.brand);
+            struct_.id = Exchange(x.struct_.id, 0);
+            struct_.brand = Move(x.struct_.brand);
+        }
+        return *this;
     }
 
     Value::~Value()

@@ -1,5 +1,7 @@
 // Copyright Chad Engler
 
+// TODO: source info, forward declarations
+
 #include "he/schema/parser.h"
 
 #include "struct_layout.h"
@@ -28,6 +30,8 @@
 
 namespace he::schema
 {
+
+    struct FieldPtrOrdinalSort { bool operator()(const Field* a, const Field* b) const { return a->ordinal < b->ordinal; } };
     struct MethodDeclOrderSort { bool operator()(const Method& a, const Method& b) const { return a.declOrder < b.declOrder; } };
     struct MethodOrdinalSort { bool operator()(const Method& a, const Method& b) const { return a.ordinal < b.ordinal; } };
 
@@ -66,8 +70,8 @@ namespace he::schema
         { "uint16", TypeKind::Uint16 },
         { "uint32", TypeKind::Uint32 },
         { "uint64", TypeKind::Uint64 },
-        { "float", TypeKind::Float32 },
-        { "double", TypeKind::Float64 },
+        { "float32", TypeKind::Float32 },
+        { "float64", TypeKind::Float64 },
         { "Blob", TypeKind::Blob },
         { "String", TypeKind::String },
         { "AnyPointer", TypeKind::AnyPointer },
@@ -129,10 +133,7 @@ namespace he::schema
             }
         }
 
-        if (HasErrors())
-            return false;
-
-        return true;
+        return !HasErrors();
     }
 
     bool Parser::ParseFileInternal(const char* path, Span<const char*> includeDirs)
@@ -350,7 +351,7 @@ namespace he::schema
 
         if (!HasFlag(out, TypeIdFlag))
         {
-            AddError("Invalid unique ID. Generate one with `he_schemac id`.");
+            AddError("Invalid unique ID. Generate one with `he_schemac id`");
             return false;
         }
 
@@ -371,7 +372,7 @@ namespace he::schema
     {
         if (!At(Lexer::TokenType::Ordinal))
         {
-            AddError("Unexpected token {}, expected file unique ID.", m_token.type);
+            AddError("Unexpected token {}, expected file unique ID", m_token.type);
             return false;
         }
 
@@ -443,7 +444,7 @@ namespace he::schema
     {
         if (!m_schema.root.name.IsEmpty())
         {
-            AddError("There can only be one namespace declaration per file.");
+            AddError("There can only be one namespace declaration per file");
             return false;
         }
 
@@ -499,27 +500,24 @@ namespace he::schema
         if (name == KW_Namespace)
             return ConsumeNamespace();
 
-        Declaration& decl = m_schema.root.children.EmplaceBack();
-        decl.parentId = m_schema.root.id;
-
         if (name == KW_Attribute)
-            return ConsumeAttributeDecl(decl);
+            return ConsumeAttributeDecl(m_schema.root);
 
         if (name == KW_Const)
-            return ConsumeConstDecl(decl);
+            return ConsumeConstDecl(m_schema.root);
 
         if (name == KW_Enum)
-            return ConsumeEnumDecl(decl);
+            return ConsumeEnumDecl(m_schema.root);
 
         if (name == KW_Interface)
-            return ConsumeInterfaceDecl(decl);
+            return ConsumeInterfaceDecl(m_schema.root);
 
         if (name == KW_Struct)
-            return ConsumeStructDecl(decl);
+            return ConsumeStructDecl(m_schema.root);
 
         if (name == KW_Import)
         {
-            AddError("Imports must be the first non-comment statements after the file's unique ID.");
+            AddError("Imports must be the first non-comment statements after the file's unique ID");
             return false;
         }
 
@@ -544,7 +542,7 @@ namespace he::schema
             }
             else if (decl->kind != DeclKind::Attribute)
             {
-                AddError("The symbol '{}' is not an attribute.", m_scratchString);
+                AddError("The symbol '{}' is not an attribute", m_scratchString);
                 return false;
             }
 
@@ -555,7 +553,7 @@ namespace he::schema
             {
                 if (!At(Lexer::TokenType::CloseParens) && decl->attribute_.type.kind == TypeKind::Void)
                 {
-                    AddError("Cannot pass parameters to an attribute with a type of 'void'.");
+                    AddError("Cannot pass parameters to an attribute with a type of 'void'");
                     return false;
                 }
 
@@ -598,7 +596,7 @@ namespace he::schema
             const Declaration* constDecl = FindDecl(m_scratchString);
             if (!constDecl || constDecl->kind != DeclKind::Const || !IsIntegral(constDecl->const_.type.kind))
             {
-                AddError("Only integral constants or literals can be used for array sizes.");
+                AddError("Only integral constants or literals can be used for array sizes");
                 return false;
             }
 
@@ -662,7 +660,7 @@ namespace he::schema
                 }
                 default:
                     HE_ASSERT(false, "Invalid const value type.");
-                    AddError("Encountered invalid const value type. This is a Schema parser bug.");
+                    AddError("Encountered invalid const value type. This is a Schema parser bug");
                     return false;
             }
         }
@@ -724,12 +722,22 @@ namespace he::schema
             return ConsumeArraySize(type);
         }
 
-        // User-defined pointer type
+        // User-defined type
         const Declaration* decl = FindDecl(m_scratchString);
 
         if (decl == nullptr && scope != nullptr)
         {
-            decl = FindDecl(m_scratchString, scope->children);
+            decl = FindDecl(m_scratchString, *scope);
+        }
+
+        if (decl == nullptr)
+        {
+            decl = FindForwardDecl(m_scratchString);
+        }
+
+        if (decl == nullptr && scope != nullptr)
+        {
+            decl = FindForwardDecl(m_scratchString, *scope);
         }
 
         if (decl == nullptr)
@@ -741,13 +749,13 @@ namespace he::schema
         switch (decl->kind)
         {
             case DeclKind::None:
-                AddError("Unknown type '{}', declaration kind was None.", m_scratchString);
+                AddError("Unknown type '{}', declaration kind was None", m_scratchString);
                 return false;
             case DeclKind::Attribute:
-                AddError("Attributes cannot be used as types.");
+                AddError("Attributes cannot be used as types");
                 return false;
             case DeclKind::Const:
-                AddError("Constants cannot be used as types.");
+                AddError("Constants cannot be used as types");
                 return false;
             case DeclKind::Enum:
                 type.kind = TypeKind::Enum;
@@ -772,13 +780,13 @@ namespace he::schema
         {
             if (type.kind != TypeKind::Interface && type.kind != TypeKind::Struct)
             {
-                AddError("Only interface and struct types can have generic parameters.");
+                AddError("Only interface and struct types can have generic parameters");
                 return false;
             }
 
             if (decl->typeParams.IsEmpty())
             {
-                AddError("The type '{}' is not generic.", decl->name);
+                AddError("The type '{}' is not generic", decl->name);
                 return false;
             }
 
@@ -796,7 +804,7 @@ namespace he::schema
 
                 if (!IsPointer(*param))
                 {
-                    AddError("Only pointer types can be used as type parameters.");
+                    AddError("Only pointer types can be used as type parameters");
                     return false;
                 }
             } while (TryConsume(Lexer::TokenType::Comma));
@@ -806,7 +814,7 @@ namespace he::schema
         }
         else if (!decl->typeParams.IsEmpty())
         {
-            AddError("The type '{}' is generic, you must specify type parameters.", decl->name);
+            AddError("The type '{}' is generic, you must specify type parameters", decl->name);
             return false;
         }
 
@@ -823,7 +831,7 @@ namespace he::schema
         switch (type.kind)
         {
             case TypeKind::Void:
-                AddError("Void types cannot specify a value.");
+                AddError("Void types cannot specify a value");
                 return false;
             case TypeKind::Bool:
                 return ConsumeBool(value.b);
@@ -863,7 +871,7 @@ namespace he::schema
 
                 if (value.array.Size() != type.array_.size)
                 {
-                    AddError("A value for an array must specify a value for each array element.");
+                    AddError("A value for an array must specify a value for each array element");
                     return false;
                 }
 
@@ -904,6 +912,13 @@ namespace he::schema
                 StringView shortName{ dot, last };
 
                 const Declaration* decl = FindDecl(type.enum_.id);
+                if (!decl)
+                {
+                    HE_ASSERT(FindForwardDecl(type.enum_.id));
+                    AddError("Cannot specify a default value for an enum that has only been forward declared");
+                    return false;
+                }
+
                 HE_ASSERT(decl && decl->kind == DeclKind::Enum);
                 for (const Enumerator& e : decl->enum_.enumerators)
                 {
@@ -914,7 +929,7 @@ namespace he::schema
                     }
                 }
 
-                AddError("Unknown value '{}' in enum '{}'.", shortName, decl->name);
+                AddError("Unknown value '{}' in enum '{}'", shortName, decl->name);
                 return false;
             }
             case TypeKind::Struct:
@@ -923,8 +938,14 @@ namespace he::schema
                     return false;
 
                 const Declaration* decl = FindDecl(type.struct_.id);
-                HE_ASSERT(decl && decl->kind == DeclKind::Struct);
+                if (!decl)
+                {
+                    HE_ASSERT(FindForwardDecl(type.struct_.id));
+                    AddError("Cannot specify a default value for a struct that has only been forward declared");
+                    return false;
+                }
 
+                HE_ASSERT(decl && decl->kind == DeclKind::Struct);
                 do
                 {
                     Value::StructValue& v = value.struct_.EmplaceBack();
@@ -945,7 +966,7 @@ namespace he::schema
 
                     if (fieldType == nullptr)
                     {
-                        AddError("Unknown field '{}' in struct value specifier.", v.fieldName);
+                        AddError("Unknown field '{}' in struct value specifier", v.fieldName);
                         return false;
                     }
 
@@ -962,10 +983,10 @@ namespace he::schema
                 return true;
             }
             case TypeKind::Interface:
-                AddError("Interface types cannot specify a value.");
+                AddError("Interface types cannot specify a value");
                 return false;
             case TypeKind::AnyPointer:
-                AddError("AnyPointer types cannot specify a value.");
+                AddError("AnyPointer types cannot specify a value");
                 return false;
         }
 
@@ -1050,7 +1071,7 @@ namespace he::schema
 
         if (first != 0)
         {
-            AddError("Invalid blob byte string, there are trailing nibbles.");
+            AddError("Invalid blob byte string, there are trailing nibbles");
             return false;
         }
 
@@ -1156,25 +1177,32 @@ namespace he::schema
 
     bool Parser::ConsumeDeclName(Declaration& decl)
     {
+        decl.source.docComment = ""; // TODO
+        decl.source.file = m_fileName;
+        decl.source.line = m_token.line;
+        decl.source.column = m_token.column;
+
         if (!ConsumeIdentifier(decl.name))
             return false;
 
         if (!IsUpper(decl.name[0]))
         {
-            AddError("Declaration names should start with an uppercase character.");
+            AddError("Declaration names should start with an uppercase character");
             // return false; // No need to return we can continue parsing.
         }
 
         if (At(Lexer::TokenType::Ordinal) && !TryConsumeId(decl.id))
             return false;
         else
-            decl.id = InvalidTypeId;
+            decl.id = 0;
 
         return StoreDeclId(decl);
     }
 
-    bool Parser::ConsumeAttributeDecl(Declaration& decl)
+    bool Parser::ConsumeAttributeDecl(Declaration& parent)
     {
+        Declaration& decl = parent.children.EmplaceBack();
+        decl.parentId = parent.id;
         decl.kind = DeclKind::Attribute;
 
         if (!ConsumeDeclName(decl))
@@ -1248,8 +1276,10 @@ namespace he::schema
         return Consume(Lexer::TokenType::Semicolon);
     }
 
-    bool Parser::ConsumeConstDecl(Declaration& decl)
+    bool Parser::ConsumeConstDecl(Declaration& parent)
     {
+        Declaration& decl = parent.children.EmplaceBack();
+        decl.parentId = parent.id;
         decl.kind = DeclKind::Const;
 
         if (!ConsumeDeclName(decl))
@@ -1263,7 +1293,7 @@ namespace he::schema
 
         if (decl.const_.type.kind == TypeKind::Void)
         {
-            AddError("Constant values cannot have a void type.");
+            AddError("Constant values cannot have a void type");
             return false;
         }
 
@@ -1276,12 +1306,51 @@ namespace he::schema
         return Consume(Lexer::TokenType::Semicolon);
     }
 
-    bool Parser::ConsumeEnumDecl(Declaration& decl)
+    bool Parser::ConsumeEnumDecl(Declaration& parent)
     {
-        decl.kind = DeclKind::Enum;
+        Declaration candidate;
+        candidate.parentId = parent.id;
+        candidate.kind = DeclKind::Enum;
 
-        if (!ConsumeDeclName(decl))
+        if (!ConsumeDeclName(candidate))
             return false;
+
+        const Declaration* forward = FindForwardDecl(candidate.id);
+        if (forward)
+        {
+            if (forward->kind != candidate.kind)
+            {
+                AddError("Enum was previously declared as a {}", forward->kind);
+                AddDeclError(*forward, "See previous declaration here");
+                return false;
+            }
+
+            if (forward->name != candidate.name)
+            {
+                AddError("Enum was previously declared with a different name: {}", candidate.name);
+                AddDeclError(*forward, "See previous declaration here");
+                return false;
+            }
+
+            if (forward->parentId != candidate.parentId)
+            {
+                const Declaration* forwardParent = FindDecl(forward->parentId);
+                HE_ASSERT(forwardParent);
+                AddError("Enum was previously declared within a different parent object: {}", forwardParent->name);
+                AddDeclError(*forward, "See previous declaration here");
+                return false;
+            }
+        }
+
+        if (At(Lexer::TokenType::Semicolon))
+        {
+            m_nameMap.erase(candidate.id);
+            m_forwardIds.emplace(candidate.id);
+            parent.forwards.PushBack(Move(candidate));
+            return true;
+        }
+
+        Declaration& decl = parent.children.PushBack(Move(candidate));
 
         if (!ConsumeAttributes(decl.attributes))
             return false;
@@ -1305,7 +1374,7 @@ namespace he::schema
 
             if (!IsUpper(member.name[0]))
             {
-                AddError("Enumerator names must start with an uppercase letter.");
+                AddError("Enumerator names must start with an uppercase letter");
                 // return false; // No need to return we can continue parsing.
             }
 
@@ -1345,15 +1414,61 @@ namespace he::schema
         return true;
     }
 
-    bool Parser::ConsumeInterfaceDecl(Declaration& decl)
+    bool Parser::ConsumeInterfaceDecl(Declaration& parent)
     {
-        decl.kind = DeclKind::Interface;
+        Declaration candidate;
+        candidate.parentId = parent.id;
+        candidate.kind = DeclKind::Interface;
 
-        if (!ConsumeDeclName(decl))
+        if (!ConsumeDeclName(candidate))
             return false;
 
-        if (!ConsumeTypeParams(decl.typeParams))
+        if (!ConsumeTypeParams(candidate.typeParams))
             return false;
+
+        const Declaration* forward = FindForwardDecl(candidate.id);
+        if (forward)
+        {
+            if (forward->kind != candidate.kind)
+            {
+                AddError("Interface was previously declared as a {}", forward->kind);
+                AddDeclError(*forward, "See previous declaration here");
+                return false;
+            }
+
+            if (forward->name != candidate.name)
+            {
+                AddError("Interface was previously declared with a different name: {}", candidate.name);
+                AddDeclError(*forward, "See previous declaration here");
+                return false;
+            }
+
+            if (forward->parentId != candidate.parentId)
+            {
+                const Declaration* forwardParent = FindDecl(forward->parentId);
+                HE_ASSERT(forwardParent);
+                AddError("Interface was previously declared within a different parent object: {}", forwardParent->name);
+                AddDeclError(*forward, "See previous declaration here");
+                return false;
+            }
+
+            if (forward->typeParams != candidate.typeParams)
+            {
+                AddError("Interface was previously declared with different type parameters");
+                AddDeclError(*forward, "See previous declaration here");
+                return false;
+            }
+        }
+
+        if (At(Lexer::TokenType::Semicolon))
+        {
+            m_nameMap.erase(candidate.id);
+            m_forwardIds.emplace(candidate.id);
+            parent.forwards.PushBack(Move(candidate));
+            return true;
+        }
+
+        Declaration& decl = parent.children.PushBack(Move(candidate));
 
         if (TryConsumeKeyword(KW_Extends))
         {
@@ -1362,7 +1477,7 @@ namespace he::schema
 
             if (decl.interface_.super.kind != TypeKind::Interface)
             {
-                AddError("Interfaces can only extend other interfaces.");
+                AddError("Interfaces can only extend other interfaces");
                 return false;
             }
         }
@@ -1393,34 +1508,28 @@ namespace he::schema
 
             if (name == KW_Const)
             {
-                Declaration& child = decl.children.EmplaceBack();
-                child.parentId = decl.id;
-                if (!ConsumeConstDecl(child))
+                if (!ConsumeConstDecl(decl))
                     return false;
                 continue;
             }
 
             if (name == KW_Enum)
             {
-                Declaration& child = decl.children.EmplaceBack();
-                child.parentId = decl.id;
-                if (!ConsumeEnumDecl(child))
+                if (!ConsumeEnumDecl(decl))
                     return false;
                 continue;
             }
 
             if (name == KW_Struct)
             {
-                Declaration& child = decl.children.EmplaceBack();
-                child.parentId = decl.id;
-                if (!ConsumeStructDecl(child))
+                if (!ConsumeStructDecl(decl))
                     return false;
                 continue;
             }
 
             if (!IsUpper(name[0]))
             {
-                AddError("Interface method names must start with an uppercase letter.");
+                AddError("Interface method names must start with an uppercase letter");
                 // return false; // No need to return we can continue parsing.
             }
 
@@ -1441,7 +1550,8 @@ namespace he::schema
             paramStruct.name = method.name;
             paramStruct.name += "_ParamStruct";
             paramStruct.name[0] = ToUpper(paramStruct.name[0]);
-            StoreDeclId(paramStruct);
+            if (!StoreDeclId(paramStruct))
+                return false;
             method.paramStruct = paramStruct.id;
 
             if (!ConsumeTupleStruct(paramStruct))
@@ -1459,7 +1569,8 @@ namespace he::schema
                 resultStruct.name = method.name;
                 resultStruct.name += "_ResultStruct";
                 resultStruct.name[0] = ToUpper(resultStruct.name[0]);
-                StoreDeclId(resultStruct);
+                if (!StoreDeclId(resultStruct))
+                    return false;
                 method.resultStruct = resultStruct.id;
 
                 if (!ConsumeTupleStruct(resultStruct))
@@ -1479,7 +1590,7 @@ namespace he::schema
 
         if (decl.interface_.methods[0].ordinal != 0)
         {
-            AddError("Methods in interface '{}' skipped ordinal @0. Ordinals must be sequential, without any gaps, starting at zero.", decl.name);
+            AddError("Methods in interface '{}' skipped ordinal @0. Ordinals must be sequential, without any gaps, starting at zero", decl.name);
             return false;
         }
 
@@ -1501,7 +1612,7 @@ namespace he::schema
 
                 if (diff > 1)
                 {
-                    AddError("Methods in interface '{}' skipped ordinal @{}. Ordinals must be sequential, without any gaps, starting at zero.", decl.name, a.ordinal + 1);
+                    AddError("Methods in interface '{}' skipped ordinal @{}. Ordinals must be sequential, without any gaps, starting at zero", decl.name, a.ordinal + 1);
                     return false;
                 }
             }
@@ -1522,15 +1633,61 @@ namespace he::schema
         return true;
     }
 
-    bool Parser::ConsumeStructDecl(Declaration& decl)
+    bool Parser::ConsumeStructDecl(Declaration& parent)
     {
-        decl.kind = DeclKind::Struct;
+        Declaration candidate;
+        candidate.parentId = parent.id;
+        candidate.kind = DeclKind::Struct;
 
-        if (!ConsumeDeclName(decl))
+        if (!ConsumeDeclName(candidate))
             return false;
 
-        if (!ConsumeTypeParams(decl.typeParams))
+        if (!ConsumeTypeParams(candidate.typeParams))
             return false;
+
+        const Declaration* forward = FindForwardDecl(candidate.id);
+        if (forward)
+        {
+            if (forward->kind != candidate.kind)
+            {
+                AddError("Structure was previously declared as a {}", forward->kind);
+                AddDeclError(*forward, "See previous declaration here");
+                return false;
+            }
+
+            if (forward->name != candidate.name)
+            {
+                AddError("Structure was previously declared with a different name: {}", candidate.name);
+                AddDeclError(*forward, "See previous declaration here");
+                return false;
+            }
+
+            if (forward->parentId != candidate.parentId)
+            {
+                const Declaration* forwardParent = FindDecl(forward->parentId);
+                HE_ASSERT(forwardParent);
+                AddError("Structure was previously declared within a different parent object: {}", forwardParent->name);
+                AddDeclError(*forward, "See previous declaration here");
+                return false;
+            }
+
+            if (forward->typeParams != candidate.typeParams)
+            {
+                AddError("Structure was previously declared with different type parameters");
+                AddDeclError(*forward, "See previous declaration here");
+                return false;
+            }
+        }
+
+        if (At(Lexer::TokenType::Semicolon))
+        {
+            m_nameMap.erase(candidate.id);
+            m_forwardIds.emplace(candidate.id);
+            parent.forwards.PushBack(Move(candidate));
+            return true;
+        }
+
+        Declaration& decl = parent.children.PushBack(Move(candidate));
 
         if (!ConsumeAttributes(decl.attributes))
             return false;
@@ -1572,7 +1729,7 @@ namespace he::schema
             {
                 if (!IsLower(name[0]))
                 {
-                    AddError("Field names must start with a lowercase character.");
+                    AddError("Field names must start with a lowercase character");
                     // return false; // No need to return we can continue parsing.
                 }
 
@@ -1591,7 +1748,7 @@ namespace he::schema
             {
                 if (!IsLower(name[0]))
                 {
-                    AddError("Field names must start with a lowercase character.");
+                    AddError("Field names must start with a lowercase character");
                     // return false; // No need to return we can continue parsing.
                 }
 
@@ -1604,7 +1761,7 @@ namespace he::schema
 
                 if (!isGroup && !isUnion)
                 {
-                    AddError("Only groups, unions, and type declarations can specify a name without an ordinal.");
+                    AddError("Only groups, unions, and type declarations can specify a name without an ordinal");
                     return false;
                 }
 
@@ -1616,21 +1773,31 @@ namespace he::schema
                 group.struct_.isAutoGenerated = true;
                 group.struct_.isGroup = isGroup;
                 group.struct_.isUnion = isUnion;
-                StoreDeclId(group);
+                if (!StoreDeclId(group))
+                    return false;
 
                 if (!ConsumeStructBlock(group))
                     return false;
 
-                for (uint32_t i = 0; i < group.struct_.fields.Size(); ++i)
+                Vector<Field*> sortedFields(Allocator::GetTemp());
+                for (Field& field : group.struct_.fields)
                 {
-                    group.struct_.fields[i].unionTag = static_cast<uint16_t>(i);
+                    sortedFields.PushBack(&field);
+                }
+
+                std::sort(sortedFields.begin(), sortedFields.end(), FieldPtrOrdinalSort{});
+                for (uint32_t i = 0; i < sortedFields.Size(); ++i)
+                {
+                    sortedFields[i]->unionTag = static_cast<uint16_t>(i);
                 }
 
                 Field& field = decl.struct_.fields.EmplaceBack();
                 field.declOrder = static_cast<uint16_t>(decl.struct_.fields.Size() - 1);
                 field.name = name;
+                field.ordinal = sortedFields[0]->ordinal;
+                field.type.kind = TypeKind::Struct;
                 field.isGroup = isGroup;
-                field.isGroup = isUnion;
+                field.isUnion = isUnion;
                 field.typeId = group.id;
             }
             // Nested declaration (const, enum, or struct)
@@ -1638,33 +1805,27 @@ namespace he::schema
             {
                 if (decl.struct_.isGroup || decl.struct_.isUnion)
                 {
-                    AddError("Only fields, groups, and unions are allowed in group and union blocks.");
+                    AddError("Only fields, groups, and unions are allowed in group and union blocks");
                     return false;
                 }
 
                 if (name == KW_Const)
                 {
-                    Declaration& child = decl.children.EmplaceBack();
-                    child.parentId = decl.id;
-                    if (!ConsumeConstDecl(child))
+                    if (!ConsumeConstDecl(decl))
                         return false;
                     continue;
                 }
 
                 if (name == KW_Enum)
                 {
-                    Declaration& child = decl.children.EmplaceBack();
-                    child.parentId = decl.id;
-                    if (!ConsumeEnumDecl(child))
+                    if (!ConsumeEnumDecl(decl))
                         return false;
                     continue;
                 }
 
                 if (name == KW_Struct)
                 {
-                    Declaration& child = decl.children.EmplaceBack();
-                    child.parentId = decl.id;
-                    if (!ConsumeStructDecl(child))
+                    if (!ConsumeStructDecl(decl))
                         return false;
                     continue;
                 }
@@ -1743,6 +1904,18 @@ namespace he::schema
         entry.file = m_fileName;
         entry.line = m_token.line;
         entry.column = m_token.column;
+        entry.message.Clear();
+
+        fmt::format_to(Appender(entry.message), fmt, Forward<Args>(args)...);
+    }
+
+    template <typename... Args>
+    void Parser::AddDeclError(const Declaration& decl, fmt::format_string<Args...> fmt, Args&&... args)
+    {
+        ErrorInfo& entry = m_errors.EmplaceBack();
+        entry.file = decl.source.file;
+        entry.line = decl.source.line;
+        entry.column = decl.source.column;
         entry.message.Clear();
 
         fmt::format_to(Appender(entry.message), fmt, Forward<Args>(args)...);
@@ -1979,7 +2152,7 @@ namespace he::schema
         return {};
     }
 
-    const Declaration* Parser::FindDecl(StringView name)
+    const Declaration* Parser::FindDecl(StringView name) const
     {
         // FQN, perform a forward search treating each part of the name as a namespace
         // until we find a matching definition.
@@ -1997,7 +2170,7 @@ namespace he::schema
                 {
                     for (const SchemaFile* schema : it->second)
                     {
-                        const Declaration* entry = FindDecl(searchName, schema->root.children);
+                        const Declaration* entry = FindDecl(searchName, schema->root);
                         if (entry)
                             return entry;
                     }
@@ -2015,7 +2188,7 @@ namespace he::schema
         }
 
         // Relative name, search first in our schema.
-        const Declaration* localEntry = FindDecl(name, m_schema.root.children);
+        const Declaration* localEntry = FindDecl(name, m_schema.root);
         if (localEntry)
             return localEntry;
 
@@ -2028,7 +2201,7 @@ namespace he::schema
             {
                 for (const SchemaFile* schema : it->second)
                 {
-                    const Declaration* entry = FindDecl(name, schema->root.children);
+                    const Declaration* entry = FindDecl(name, schema->root);
                     if (entry)
                         return entry;
                 }
@@ -2045,7 +2218,7 @@ namespace he::schema
         return nullptr;
     }
 
-    const Declaration* Parser::FindDecl(StringView name, Span<const Declaration> decls)
+    const Declaration* Parser::FindDecl(StringView name, const Declaration& scope) const
     {
         const char* begin = name.Begin();
         const char* dot = &name.Back();
@@ -2055,7 +2228,7 @@ namespace he::schema
         // No dot found, just search for the symbol name
         if (dot == begin)
         {
-            for (const Declaration& decl : decls)
+            for (const Declaration& decl : scope.children)
             {
                 if (decl.name == name)
                 {
@@ -2071,7 +2244,7 @@ namespace he::schema
         StringView parentName(begin, dot);
 
         const Declaration* parent = nullptr;
-        for (const Declaration& decl : decls)
+        for (const Declaration& decl : scope.children)
         {
             if (decl.name == parentName)
             {
@@ -2081,17 +2254,23 @@ namespace he::schema
         }
 
         if (parent)
-            return FindDecl(StringView(parentName.End() + 1, name.End()), parent->children);
+            return FindDecl(StringView(parentName.End() + 1, name.End()), *parent);
 
         return nullptr;
     }
 
-    const Declaration* Parser::FindDecl(TypeId id, const SchemaFile* schema)
+    const Declaration* Parser::FindDecl(TypeId id, const SchemaFile* schema) const
     {
         if (schema == nullptr)
-            schema = &m_schema;
+        {
+            // Fast check for a non-existant ID
+            if (!m_nameMap.contains(id))
+                return nullptr;
 
-        const Declaration* decl = FindDecl(id, schema->root.children);
+            schema = &m_schema;
+        }
+
+        const Declaration* decl = FindDecl(id, schema->root);
         if (decl)
             return decl;
 
@@ -2105,14 +2284,162 @@ namespace he::schema
         return nullptr;
     }
 
-    const Declaration* Parser::FindDecl(TypeId id, Span<const Declaration> decls)
+    const Declaration* Parser::FindDecl(TypeId id, const Declaration& scope) const
     {
-        for (const Declaration& decl : decls)
+        for (const Declaration& decl : scope.children)
         {
             if (decl.id == id)
                 return &decl;
 
-            const Declaration* child = FindDecl(id, decl.children);
+            const Declaration* child = FindDecl(id, decl);
+            if (child)
+                return child;
+        }
+
+        return nullptr;
+    }
+
+
+    const Declaration* Parser::FindForwardDecl(StringView name) const
+    {
+        // FQN, perform a forward search treating each part of the name as a namespace
+        // until we find a matching definition.
+        if (name[0] == '.')
+        {
+            const char* begin = name.Begin() + 1; // +1 to get past the dot
+            const char* end = name.End();
+            StringView searchNamespace(begin, begin);
+            StringView searchName(begin, end);
+
+            while (searchNamespace.Size() < (name.Size() - 1))
+            {
+                auto it = m_importsByNamespace.find(searchNamespace);
+                if (it != m_importsByNamespace.end())
+                {
+                    for (const SchemaFile* schema : it->second)
+                    {
+                        const Declaration* entry = FindForwardDecl(searchName, schema->root);
+                        if (entry)
+                            return entry;
+                    }
+                }
+
+                const char* last = &searchNamespace.Back();
+                while (last < end && *last != '.')
+                    ++last;
+
+                searchNamespace = StringView(begin, last);
+                searchName = StringView(searchNamespace.End(), end);
+            }
+
+            return nullptr;
+        }
+
+        // Relative name, search first in our schema.
+        const Declaration* localEntry = FindForwardDecl(name, m_schema.root);
+        if (localEntry)
+            return localEntry;
+
+        // Walk up the parts of our namespace and search each of them for the definition.
+        StringView searchNamespace = m_schema.root.name;
+        while (!searchNamespace.IsEmpty())
+        {
+            auto it = m_importsByNamespace.find(searchNamespace);
+            if (it != m_importsByNamespace.end())
+            {
+                for (const SchemaFile* schema : it->second)
+                {
+                    const Declaration* entry = FindForwardDecl(name, schema->root);
+                    if (entry)
+                        return entry;
+                }
+            }
+
+            const char* begin = searchNamespace.Begin();
+            const char* last = &searchNamespace.Back();
+            while (last > begin && *last != '.')
+                --last;
+
+            searchNamespace = StringView(begin, last);
+        }
+
+        return nullptr;
+    }
+
+    const Declaration* Parser::FindForwardDecl(StringView name, const Declaration& scope) const
+    {
+        const char* begin = name.Begin();
+        const char* dot = &name.Back();
+        while (dot > begin && *dot != '.')
+            --dot;
+
+        // No dot found, just search for the symbol name
+        if (dot == begin)
+        {
+            for (const Declaration& decl : scope.forwards)
+            {
+                if (decl.name == name)
+                {
+                    return &decl;
+                }
+            }
+
+            return nullptr;
+        }
+
+        // Dot found, this is potentially an embedded type. Let's get the first name and search
+        // for that as a struct or interface. If we find it, we'll recurse for the rest.
+        StringView parentName(begin, dot);
+
+        const Declaration* parent = nullptr;
+        for (const Declaration& decl : scope.forwards)
+        {
+            if (decl.name == parentName)
+            {
+                parent = &decl;
+                break;
+            }
+        }
+
+        if (parent)
+            return FindForwardDecl(StringView(parentName.End() + 1, name.End()), *parent);
+
+        return nullptr;
+    }
+
+    const Declaration* Parser::FindForwardDecl(TypeId id, const SchemaFile* schema) const
+    {
+        if (schema == nullptr)
+        {
+            // Fast check for a non-existant ID
+            if (!m_forwardIds.contains(id))
+                return nullptr;
+
+            schema = &m_schema;
+        }
+
+        const Declaration* decl = FindForwardDecl(id, schema->root);
+        if (decl)
+            return decl;
+
+        for (const Import& im : schema->imports)
+        {
+            decl = FindForwardDecl(id, im.schema);
+            if (decl)
+                return decl;
+        }
+
+        return nullptr;
+    }
+
+    const Declaration* Parser::FindForwardDecl(TypeId id, const Declaration& scope) const
+    {
+        for (const Declaration& decl : scope.forwards)
+        {
+            if (decl.id == id)
+                return &decl;
+
+            const Declaration* child = FindForwardDecl(id, decl);
             if (child)
                 return child;
         }
@@ -2122,15 +2449,13 @@ namespace he::schema
 
     bool Parser::StoreDeclId(Declaration& decl)
     {
-        HE_ASSERT(decl.id != 0);
-
-        if (decl.id == InvalidTypeId)
+        if (decl.id == 0)
         {
             decl.id = FNV64::HashStringN(decl.name.Data(), decl.name.Size(), decl.parentId);
 
-            if (decl.id == InvalidTypeId)
+            if (decl.id == 0)
             {
-                AddError("Declaration has a fully qualified name that hashes to the invalid type id value ({:#16x}), which is reserved; try a different name", InvalidTypeId);
+                AddError("Declaration has a fully qualified name that hashes to the invalid type id value (0), which is reserved; try a different name");
                 return false;
             }
 
@@ -2140,7 +2465,7 @@ namespace he::schema
         const auto result = m_nameMap.emplace(decl.id, decl.name);
         if (!result.second)
         {
-            AddError("Declaration ID collides with another declaration '{}'.", result.first->second);
+            AddError("Declaration '{}' has an ID that collides with another declaration '{}'.", decl.name, result.first->second);
             return false;
         }
 
@@ -2149,6 +2474,8 @@ namespace he::schema
 
     bool Parser::ValidateAndLayoutStruct(Declaration& decl)
     {
+        HE_ASSERT(decl.kind == DeclKind::Struct);
+
         // No layout required
         if (decl.struct_.fields.IsEmpty())
             return true;
@@ -2163,48 +2490,65 @@ namespace he::schema
             return false;
         }
 
+        // Check for duplicate or gapped ordinal values
         const uint32_t size = sortedFields.Size();
         for (uint32_t i = 0; i < size; ++i)
         {
             const StructLayout::FieldRef& a = sortedFields[i];
 
-            // Check for duplicate or gapped ordinal values
-            if (i < (size - 1) && !a.field->isGroup && !a.field->isUnion)
+            if (i < (size - 1))
             {
                 const StructLayout::FieldRef& b = sortedFields[i + 1];
+                const uint32_t diff = b.field->ordinal - a.field->ordinal;
 
-                if (!b.field->isGroup && !b.field->isUnion)
+                if (diff == 0)
                 {
-                    const uint32_t diff = b.field->ordinal - a.field->ordinal;
-
-                    if (diff == 0)
-                    {
-                        AddError("Multiple fields in struct '{}' have the ordinal @{}", decl.name, a.field->ordinal);
-                        return false;
-                    }
-
-                    if (diff > 1)
-                    {
-                        AddError("Fields in struct '{}' skipped ordinal @{}. Ordinals must be sequential, without any gaps, starting at zero.", decl.name, a.field->ordinal + 1);
-                        return false;
-                    }
+                    AddError("Multiple fields in struct '{}' have the ordinal @{}", decl.name, a.field->ordinal);
+                    return false;
                 }
-            }
 
-            // Check for duplicate names
-            for (uint32_t j = i + 1; j < size; ++j)
-            {
-                const StructLayout::FieldRef& b = sortedFields[j];
-
-                if (a.field->name == b.field->name)
+                if (diff > 1)
                 {
-                    AddError("Multiple fields in struct '{}' have the name '{}'", decl.name, a.field->name);
+                    AddError("Fields in struct '{}' skipped ordinal @{}. Ordinals must be sequential, without any gaps, starting at zero.", decl.name, a.field->ordinal + 1);
                     return false;
                 }
             }
         }
 
+        if (!ValidateStructFieldNames(decl))
+            return false;
+
         layout.CalculateLayout();
+        return true;
+    }
+
+    bool Parser::ValidateStructFieldNames(const Declaration& decl)
+    {
+        // Check for duplicate names
+        const uint32_t size = decl.struct_.fields.Size();
+        for (uint32_t i = 0; i < size; ++i)
+        {
+            const Field& a = decl.struct_.fields[i];
+            for (uint32_t j = i + 1; j < size; ++j)
+            {
+                const Field& b = decl.struct_.fields[j];
+
+                if (a.name == b.name)
+                {
+                    AddError("Multiple fields in struct '{}' have the name '{}'", decl.name, a.name);
+                    return false;
+                }
+            }
+
+            if (a.isGroup || a.isUnion)
+            {
+                const Declaration* group = FindDecl(a.typeId, decl);
+                HE_ASSERT(group && group->kind == DeclKind::Struct);
+                if (!ValidateStructFieldNames(*group))
+                    return false;
+            }
+        }
+
         return true;
     }
 }

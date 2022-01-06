@@ -17,8 +17,14 @@ namespace he::schema
     };
     static_assert(HE_LENGTH_OF(BitsPerElementSize) == static_cast<uint32_t>(ElementSize::_Count));
 
-    static void WriteStructPointer(Word* ptr, const StructBuilder& value)
+    static void WriteStructPointer(Word* ptr, const StructReader& value)
     {
+        if (!value.IsValid())
+        {
+            *ptr = 0;
+            return;
+        }
+
         if ((value.DataWordSize() + value.PointerCount()) == 0)
         {
             // Zero sized pointer which is -1 offset with 0 for the kind
@@ -26,7 +32,7 @@ namespace he::schema
         }
         else
         {
-            const Word* target = value.Location();
+            const Word* target = value.Data();
             *ptr = (static_cast<uint32_t>(target - ptr - 1) << 2) | static_cast<uint32_t>(PointerKind::Struct);
         }
 
@@ -35,11 +41,17 @@ namespace he::schema
         p[3] = value.PointerCount();
     }
 
-    static void WriteListPointer(Word* ptr, const ListBuilder& value)
+    static void WriteListPointer(Word* ptr, const ListReader& value)
     {
+        if (!value.IsValid())
+        {
+            *ptr = 0;
+            return;
+        }
+
         uint32_t* p = reinterpret_cast<uint32_t*>(ptr);
 
-        const Word* target = value.Location();
+        const Word* target = value.Data();
         p[0] = (static_cast<uint32_t>(target - ptr - 1) << 2) | static_cast<uint32_t>(PointerKind::List);
 
         HE_ASSERT(value.Size() <= 0x8fffffff);
@@ -147,6 +159,8 @@ namespace he::schema
         uint16_t structPointerCount,
         const Word* defaultValue) const
     {
+        HE_ASSERT(elementCount > 0);
+
         if ((index + elementCount) > m_pointerCount) [[unlikely]]
             return PointerReader().TryGetList(elementSize, defaultValue);
 
@@ -176,7 +190,7 @@ namespace he::schema
         const uint32_t wordSize =  static_cast<uint32_t>((bitSize + (BitsPerWord - 1)) / BitsPerWord);
         const uint32_t wordOffset = m_data.Size();
         m_data.Expand(wordSize);
-        return ListBuilder(*this, wordOffset, elementCount, elementBitSize, 0, 0, elementSize);
+        return ListBuilder(this, wordOffset, elementCount, elementBitSize, 0, 0, elementSize);
     }
 
     ListBuilder Builder::AddStructList(uint32_t elementCount, uint16_t dataWordSize, uint16_t pointerCount)
@@ -185,7 +199,7 @@ namespace he::schema
         const uint32_t wordSize = structWordSize * elementCount;
         const uint32_t wordOffset = m_data.Size();
         m_data.Expand(wordSize);
-        return ListBuilder(*this, wordOffset, elementCount, structWordSize * BitsPerWord, dataWordSize, pointerCount, ElementSize::Composite);
+        return ListBuilder(this, wordOffset, elementCount, structWordSize * BitsPerWord, dataWordSize, pointerCount, ElementSize::Composite);
     }
 
     StructBuilder Builder::AddStruct(uint16_t dataFieldCount, uint16_t dataWordSize, uint16_t pointerCount)
@@ -193,32 +207,82 @@ namespace he::schema
         const uint32_t wordSize = static_cast<uint32_t>(dataWordSize) + pointerCount;
         const uint32_t wordOffset = m_data.Size();
         m_data.Expand(wordSize);
-        return StructBuilder(*this, wordOffset, dataFieldCount, dataWordSize, pointerCount);
+        return StructBuilder(this, wordOffset, dataFieldCount, dataWordSize, pointerCount);
     }
 
-    ListBuilder PointerBuilder::TryGetList(ElementSize expectedElementSize, const Word* defaultValue) const
+    void PointerBuilder::Set(const StructReader& value)
     {
-        ListReader reader = AsReader().TryGetList(expectedElementSize, defaultValue);
-        const uint32_t wordOffset = 0; // TODO: What if the default value is used? Is that even safe? If they set a value on it...explode!
+        HE_ASSERT(!value.IsValid() || (value.Data() >= m_builder->Data() && value.Data() < m_builder->Data() + m_builder->Size()));
+        WriteStructPointer(Location(), value);
+    }
+
+    void PointerBuilder::Set(const ListReader& value)
+    {
+        HE_ASSERT(!value.IsValid() || (value.Data() >= m_builder->Data() && value.Data() < m_builder->Data() + m_builder->Size()));
+        WriteListPointer(Location(), value);
+    }
+
+    ListBuilder PointerBuilder::TryGetList(ElementSize expectedElementSize) const
+    {
+        ListReader reader = AsReader().TryGetList(expectedElementSize);
+        if (!reader.IsValid())
+            return ListBuilder();
+
+        HE_ASSERT(reader.Data() >= m_builder->Data() && reader.Data() < m_builder->Data() + m_builder->Size());
+        const uint32_t wordOffset = static_cast<uint32_t>(reader.Data() - m_builder->Data());
         return ListBuilder(m_builder, wordOffset, reader.Size(), reader.StepSize(), reader.StructDataWordSize(), reader.StructPointerCount(), reader.ElementSize());
     }
 
-    StructBuilder PointerBuilder::TryGetStruct(const Word* defaultValue) const
+    StructBuilder PointerBuilder::TryGetStruct() const
     {
-        // TODO: implement
+        StructReader reader = AsReader().TryGetStruct();
+        if (!reader.IsValid())
+            return StructBuilder();
+
+        HE_ASSERT(reader.Data() >= m_builder->Data() && reader.Data() < m_builder->Data() + m_builder->Size());
+        const uint32_t wordOffset = static_cast<uint32_t>(reader.Data() - m_builder->Data());
+        return StructBuilder(m_builder, wordOffset, reader.DataFieldCount(), reader.DataWordSize(), reader.PointerCount());
     }
 
-    void StructBuilder::SetPointerField(uint16_t index, const StructBuilder& value)
+    PointerBuilder ListBuilder::GetPointerElement(uint32_t index) const
     {
-        HE_ASSERT(&value.Builder() == &m_builder);
-        Word* ptr = PointerSection() + index;
+        HE_ASSERT(m_builder);
+        return PointerBuilder(m_builder, m_wordOffset + index);
+    }
+
+    void ListBuilder::SetPointerElement(uint32_t index, const StructBuilder& value)
+    {
+        HE_ASSERT(value.Builder() == m_builder);
+        Word* ptr = Data() + index;
         WriteStructPointer(ptr, value);
     }
 
-    void StructBuilder::SetPointerField(uint16_t index, const ListBuilder& value)
+    void ListBuilder::SetPointerElement(uint32_t index, const ListBuilder& value)
     {
-        HE_ASSERT(&value.Builder() == &m_builder);
-        Word* ptr = PointerSection() + index;
+        HE_ASSERT(value.Builder() == m_builder);
+        Word* ptr = Data() + index;
         WriteListPointer(ptr, value);
+    }
+
+    PointerBuilder StructBuilder::GetPointerField(uint16_t index) const
+    {
+        HE_ASSERT(index < m_pointerCount);
+        return PointerBuilder(m_builder, m_wordOffset + m_dataWordSize + index);
+    }
+
+    ListBuilder StructBuilder::TryGetPointerArrayField(
+        uint16_t index,
+        ElementSize elementSize,
+        uint16_t elementCount,
+        uint16_t structDataWordSize,
+        uint16_t structPointerCount) const
+    {
+        ListReader reader = AsReader().TryGetPointerArrayField(index, elementSize, elementCount, structDataWordSize, structPointerCount);
+        if (!reader.IsValid())
+            return ListBuilder();
+
+        HE_ASSERT(reader.Data() >= m_builder->Data() && reader.Data() < m_builder->Data() + m_builder->Size());
+        const uint32_t wordOffset = static_cast<uint32_t>(reader.Data() - m_builder->Data());
+        return ListBuilder(m_builder, wordOffset, reader.Size(), reader.StepSize(), reader.StructDataWordSize(), reader.StructPointerCount(), reader.ElementSize());
     }
 }

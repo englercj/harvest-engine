@@ -268,123 +268,10 @@ namespace he::schema
             m_writer.WriteLine("Tag GetTag() const {{ return Super::GetDataField<Tag>({}); }}\n", decl.struct_.unionTagOffset);
         }
 
-        String upperCamelName(Allocator::GetTemp());
         for (const Field& field : decl.struct_.fields)
         {
-            upperCamelName = field.name;
-            upperCamelName[0] = ToUpper(upperCamelName[0]);
-
-            if (decl.struct_.isUnion)
-            {
-                m_writer.WriteLine("bool Is{0}() const {{ return GetTag() == Tag::{0}; }}", upperCamelName);
-            }
-
-            if (field.isUnion || field.isGroup)
-            {
-                m_writer.WriteLine("{0}::Reader Get{0}() const {{ return {0}::Reader(*this); }}\n", upperCamelName);
-            }
-            else if (field.type.kind == TypeKind::Void)
-            {
-                m_writer.WriteLine("bool Has{}() const {{ return false; }}", upperCamelName, field.index);
-                if (decl.struct_.isUnion)
-                    m_writer.WriteLine("::he::schema::Void Get{0}() const {{ HE_ASSERT(Is{0}()); return {{}}; }}\n", upperCamelName);
-                else
-                    m_writer.WriteLine("::he::schema::Void Get{}() const {{ return {{}}; }}\n", upperCamelName);
-            }
-            else if (IsPointer(field.type))
-            {
-                if (decl.struct_.isUnion)
-                    m_writer.WriteLine("bool Has{0}() const {{ return Is{0}() && Super::HasPointerField({1}); }}", upperCamelName, field.index);
-                else
-                    m_writer.WriteLine("bool Has{}() const {{ return Super::HasPointerField({}); }}", upperCamelName, field.index);
-
-                m_writer.WriteIndent();
-                WriteType(field.type, decl, ReaderSuffix);
-                m_writer.Write(" Get{}() const {{ ", upperCamelName);
-
-                if (decl.struct_.isUnion)
-                    m_writer.Write("HE_ASSERT(Is{}()); ", upperCamelName);
-
-                const bool isArray = field.type.kind == TypeKind::Array;
-                const bool hasDefault = field.defaultValue.kind != TypeKind::Void;
-
-                if (isArray)
-                {
-                    m_writer.Write("return Super::TryGetPointerArrayField<");
-                    WriteType(*field.type.array_.elementType, decl, nullptr);
-                    m_writer.Write(">({}, {}", field.index, field.type.array_.size);
-                    if (hasDefault)
-                        m_writer.Write(", ");
-                }
-                else
-                {
-                    m_writer.Write("return Super::GetPointerField({}).TryGet{}", field.index, field.type.kind);
-                    if (field.type.kind != TypeKind::String)
-                    {
-                        const Type& t = field.type.kind == TypeKind::List ? *field.type.list_.elementType : field.type;
-                        m_writer.Write('<');
-                        WriteType(t, decl, nullptr);
-                        m_writer.Write('>');
-                    }
-                    m_writer.Write('(');
-                }
-                if (hasDefault)
-                {
-                    m_writer.Write("::he::schema::DeclInfo<" HE_ID_FMT ">::DefaultValue + {}", decl.id, 0);
-                }
-                m_writer.Write("); }\n\n");
-            }
-            else
-            {
-                if (decl.struct_.isUnion)
-                    m_writer.WriteLine("bool Has{0}() const {{ return Is{0}() && Super::HasDataField({1}); }}", upperCamelName, field.index);
-                else
-                    m_writer.WriteLine("bool Has{}() const {{ return Super::HasDataField({}); }}", upperCamelName, field.index);
-
-                m_writer.WriteIndent();
-                WriteType(field.type, decl, ReaderSuffix);
-                m_writer.Write(" Get{}() const {{ ", upperCamelName);
-
-                if (decl.struct_.isUnion)
-                    m_writer.Write("HE_ASSERT(Is{}()); ", upperCamelName);
-
-                const bool isArray = field.type.kind == TypeKind::Array;
-                const bool hasDefault = field.defaultValue.kind != TypeKind::Void;
-
-                if (isArray)
-                {
-                    if (hasDefault)
-                    {
-                        m_writer.Write("static const ");
-                        WriteType(*field.type.array_.elementType, decl, nullptr);
-                        m_writer.Write("{}_DefaultValue[] = ", upperCamelName);
-                        WriteValue(field.type, decl, field.defaultValue);
-                        m_writer.Write("; ");
-                    }
-                    m_writer.Write("return Super::TryGetDataArrayField<");
-                    WriteType(*field.type.array_.elementType, decl, nullptr);
-                }
-                else
-                {
-                    m_writer.Write("return Super::TryGetDataField<");
-                    WriteType(field.type, decl, nullptr);
-                }
-                m_writer.Write(">({}, {}", field.index, field.dataOffset);
-                if (isArray)
-                {
-                    m_writer.Write(", {}", field.type.array_.size);
-                    if (hasDefault)
-                    {
-                        m_writer.Write(", {}_DefaultValue", upperCamelName);
-                    }
-                }
-                else if (hasDefault)
-                {
-                    m_writer.Write(", ");
-                    WriteValue(field.type, decl, field.defaultValue);
-                }
-                m_writer.Write("); }\n\n");
-            }
+            WriteFieldGetDecl(field, decl, true);
+            m_writer.Write('\n');
         }
 
         m_writer.DecreaseIndent();
@@ -397,35 +284,19 @@ namespace he::schema
 
         m_writer.WriteLine("using StructType = {};", decl.name);
         m_writer.WriteLine("using Super = ::he::schema::StructBuilder;\n");
+        m_writer.WriteLine("Reader AsReader() const { return Reader(Super::AsReader()); }");
+        m_writer.WriteLine("operator Reader() const { return AsReader(); }\n");
+
+        if (decl.struct_.isUnion)
+        {
+            m_writer.WriteLine("Tag GetTag() const {{ return Super::GetDataField<Tag>({}); }}\n", decl.struct_.unionTagOffset);
+        }
 
         for (const Field& field : decl.struct_.fields)
         {
-            upperCamelName = field.name;
-            upperCamelName[0] = ToUpper(upperCamelName[0]);
-
-            const bool fieldIsPointer = IsPointer(field.type);
-
-            m_writer.WriteIndent();
-            m_writer.Write("void Set{}(", upperCamelName);
-            if (fieldIsPointer)
-                m_writer.Write("const ");
-            WriteType(field.type, decl, BuilderSuffix);
-            if (fieldIsPointer)
-                m_writer.Write("&");
-            m_writer.Write(" value) { ");
-            if (decl.struct_.isUnion)
-                m_writer.Write("Super::SetDataField<Tag>({}, Tag::{}); ", decl.struct_.unionTagOffset, upperCamelName);
-            if (fieldIsPointer)
-            {
-                m_writer.Write("Super::SetPointerField({}, value);", field.index);
-            }
-            else
-            {
-                m_writer.Write("Super::SetDataField<");
-                WriteType(field.type, decl, BuilderSuffix);
-                m_writer.Write(">({}, {}, value);", field.index, field.dataOffset);
-            }
-            m_writer.Write(" }\n");
+            WriteFieldGetDecl(field, decl, false);
+            WriteFieldSetDecl(field, decl);
+            m_writer.Write('\n');
         }
 
         m_writer.DecreaseIndent();
@@ -433,6 +304,169 @@ namespace he::schema
 
         m_writer.DecreaseIndent();
         m_writer.WriteLine("};");
+    }
+
+    void CodeGenCpp::WriteFieldGetDecl(const Field& field, const Declaration& decl, bool isReader)
+    {
+        HE_ASSERT(decl.kind == DeclKind::Struct);
+
+        String upperCamelName(field.name, Allocator::GetTemp());
+        upperCamelName[0] = ToUpper(upperCamelName[0]);
+
+        if (decl.struct_.isUnion)
+        {
+            m_writer.WriteLine("bool Is{0}() const {{ return GetTag() == Tag::{0}; }}", upperCamelName);
+        }
+
+        if (field.isUnion || field.isGroup)
+        {
+            m_writer.WriteLine("{0}::Reader Get{0}() const {{ return {0}::Reader(*this); }}", upperCamelName);
+        }
+        else if (field.type.kind == TypeKind::Void)
+        {
+            m_writer.WriteLine("bool Has{}() const {{ return false; }}", upperCamelName, field.index);
+            if (decl.struct_.isUnion)
+                m_writer.WriteLine("::he::schema::Void Get{0}() const {{ HE_ASSERT(Is{0}()); return {{}}; }}", upperCamelName);
+            else
+                m_writer.WriteLine("::he::schema::Void Get{}() const {{ return {{}}; }}", upperCamelName);
+        }
+        else if (IsPointer(field.type))
+        {
+            if (decl.struct_.isUnion)
+                m_writer.WriteLine("bool Has{0}() const {{ return Is{0}() && Super::HasPointerField({1}); }}", upperCamelName, field.index);
+            else
+                m_writer.WriteLine("bool Has{}() const {{ return Super::HasPointerField({}); }}", upperCamelName, field.index);
+
+            m_writer.WriteIndent();
+            WriteType(field.type, decl, isReader ? ReaderSuffix : BuilderSuffix);
+            m_writer.Write(" Get{}() const {{ ", upperCamelName);
+
+            if (decl.struct_.isUnion)
+                m_writer.Write("HE_ASSERT(Is{}()); ", upperCamelName);
+
+            const bool isArray = field.type.kind == TypeKind::Array;
+            const bool hasDefault = isReader && field.defaultValue.kind != TypeKind::Void;
+
+            if (isArray)
+            {
+                m_writer.Write("return Super::TryGetPointerArrayField<");
+                WriteType(*field.type.array_.elementType, decl, nullptr);
+                m_writer.Write(">({}, {}", field.index, field.type.array_.size);
+                if (hasDefault)
+                    m_writer.Write(", ");
+            }
+            else
+            {
+                m_writer.Write("return Super::GetPointerField({}).TryGet{}", field.index, field.type.kind);
+                if (field.type.kind != TypeKind::String)
+                {
+                    const Type& t = field.type.kind == TypeKind::List ? *field.type.list_.elementType : field.type;
+                    m_writer.Write('<');
+                    WriteType(t, decl, nullptr);
+                    m_writer.Write('>');
+                }
+                m_writer.Write('(');
+            }
+            if (hasDefault)
+            {
+                m_writer.Write("::he::schema::DeclInfo<" HE_ID_FMT ">::DefaultValue + {}", decl.id, 0);
+            }
+            m_writer.Write("); }\n");
+        }
+        else
+        {
+            if (decl.struct_.isUnion)
+                m_writer.WriteLine("bool Has{0}() const {{ return Is{0}() && Super::HasDataField({1}); }}", upperCamelName, field.index);
+            else
+                m_writer.WriteLine("bool Has{}() const {{ return Super::HasDataField({}); }}", upperCamelName, field.index);
+
+            const bool isArray = field.type.kind == TypeKind::Array;
+            const bool hasDefault = (isReader || !isArray) && field.defaultValue.kind != TypeKind::Void;
+
+            m_writer.WriteIndent();
+            if (isArray)
+            {
+                m_writer.Write("::he::Span<");
+                if (isReader)
+                    m_writer.Write("const ");
+                WriteType(*field.type.array_.elementType, decl, nullptr);
+                m_writer.Write(">");
+            }
+            else
+            {
+                WriteType(field.type, decl, nullptr);
+            }
+            m_writer.Write(" Get{}() const {{ ", upperCamelName);
+
+            if (decl.struct_.isUnion)
+                m_writer.Write("HE_ASSERT(Is{}()); ", upperCamelName);
+
+            if (isArray)
+            {
+                if (hasDefault)
+                {
+                    m_writer.Write("static const ");
+                    WriteType(*field.type.array_.elementType, decl, nullptr);
+                    m_writer.Write(" {}_DefaultValue[]", upperCamelName);
+                    WriteValue(field.type, decl, field.defaultValue);
+                    m_writer.Write("; ");
+                }
+                m_writer.Write("return Super::TryGetDataArrayField<");
+                WriteType(*field.type.array_.elementType, decl, nullptr);
+            }
+            else
+            {
+                m_writer.Write("return Super::TryGetDataField<");
+                WriteType(field.type, decl, nullptr);
+            }
+            m_writer.Write(">({}, {}", field.index, field.dataOffset);
+            if (isArray)
+            {
+                m_writer.Write(", {}", field.type.array_.size);
+                if (hasDefault)
+                {
+                    m_writer.Write(", {}_DefaultValue", upperCamelName);
+                }
+            }
+            else if (hasDefault)
+            {
+                m_writer.Write(", ");
+                WriteValue(field.type, decl, field.defaultValue);
+            }
+            m_writer.Write("); }\n");
+        }
+    }
+
+    void CodeGenCpp::WriteFieldSetDecl(const Field& field, const Declaration& decl)
+    {
+        HE_ASSERT(decl.kind == DeclKind::Struct);
+
+        String upperCamelName(field.name, Allocator::GetTemp());
+        upperCamelName[0] = ToUpper(upperCamelName[0]);
+
+        const bool fieldIsPointer = IsPointer(field.type);
+
+        m_writer.WriteIndent();
+        m_writer.Write("void Set{}(", upperCamelName);
+        if (fieldIsPointer)
+            m_writer.Write("const ");
+        WriteType(field.type, decl, ReaderSuffix);
+        if (fieldIsPointer)
+            m_writer.Write("&");
+        m_writer.Write(" value) { ");
+        if (decl.struct_.isUnion)
+            m_writer.Write("Super::SetDataField<Tag>({}, Tag::{}); ", decl.struct_.unionTagOffset, upperCamelName);
+        if (fieldIsPointer)
+        {
+            m_writer.Write("Super::GetPointerField({}).Set(value);", field.index);
+        }
+        else
+        {
+            m_writer.Write("Super::SetDataField<");
+            WriteType(field.type, decl, nullptr);
+            m_writer.Write(">({}, {}, value);", field.index, field.dataOffset);
+        }
+        m_writer.Write(" }\n");
     }
 
     void CodeGenCpp::GenSource()
@@ -479,7 +513,7 @@ namespace he::schema
 
     void CodeGenCpp::WriteName(const Declaration& decl, const Declaration& scope, const Brand& brand, const char* pointerSuffix)
     {
-        if (decl.parentId != scope.id && decl.parentId != scope.parentId)
+        if (decl.parentId != scope.id && decl.parentId != scope.parentId && decl.parentId != m_request.schema.root.id)
         {
             const Declaration& parent = m_request.GetDecl(decl.parentId);
             WriteName(parent, scope, brand, pointerSuffix);

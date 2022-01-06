@@ -627,6 +627,9 @@ namespace he
     template <typename T>
     void Vector<T>::MoveFrom(Vector&& x)
     {
+        if (this == &x)
+            return;
+
         Clear();
 
         // If there are different allocators we have to make our own allocation and move everything over.

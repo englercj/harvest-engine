@@ -24,7 +24,12 @@ namespace he::schema
         out.Reserve(out.Size() + decl.struct_.fields.Size());
 
         for (Field& field : decl.struct_.fields)
+        {
+            if (field.isGroup || field.isUnion)
+                continue;
+
             out.PushBack({ &field, &decl });
+        }
 
         for (Declaration& child : decl.children)
         {
@@ -64,6 +69,14 @@ namespace he::schema
     {
         Field* field = ref.field;
 
+        // For void we store nothing so it always has a zero offset
+        if (field->type.kind == TypeKind::Void)
+        {
+            field->index = 0;
+            field->dataOffset = 0;
+            return;
+        }
+
         // For data fields we use the size of the field to try and optimally pack it in.
         // Generally speaking the field's size and alignment are the same, with the one
         // exception being array types. Their size is (element size * array size) and the
@@ -95,14 +108,6 @@ namespace he::schema
             return;
         }
 
-        // For void we store nothing so it always has a zero offset
-        if (field->type.kind == TypeKind::Void)
-        {
-            field->index = 0;
-            field->dataOffset = 0;
-            return;
-        }
-
         field->index = m_dataFieldCount++;
         field->dataOffset = PlaceDataField(fieldSize, fieldAlign);
     }
@@ -120,21 +125,28 @@ namespace he::schema
             ref.parent->struct_.unionTagOffset = PlaceDataField(16, 16);
         }
 
-        const Field* f = ref.parent->struct_.fields.Data();
+        if (m_activeParent != ref.parent)
+        {
+            CollectSortedFields(*ref.parent, m_sortedParentFields);
+            m_activeParent = ref.parent;
+        }
 
         // Try to overlap a pointer field.
         if (fieldIsPointer)
         {
-            // Note: This loop relies on the fact that fields are ordinal-sorted
-            for (; f < field; ++f)
+            for (const FieldRef& f : m_sortedParentFields)
             {
-                HE_ASSERT(f->ordinal < field->ordinal);
-
-                // Can only overlap if they are both pointer fields
-                if (!IsPointer(f->type))
+                if (f.field->isGroup || f.field->isUnion)
                     continue;
 
-                field->index = f->index;
+                if (f.field->ordinal >= field->ordinal)
+                    break;
+
+                // Can only overlap if they are both pointer fields
+                if (!IsPointer(f.field->type))
+                    continue;
+
+                field->index = f.field->index;
                 return true;
             }
 
@@ -142,15 +154,18 @@ namespace he::schema
         }
 
         // Try to overlap a data field.
-        // Note: This loop relies on the fact that fields are ordinal-sorted
-        for (; f < field; ++f)
+        for (const FieldRef& f : m_sortedParentFields)
         {
-            HE_ASSERT(f->ordinal < field->ordinal);
+            if (f.field->isGroup || f.field->isUnion)
+                continue;
+
+            if (f.field->ordinal >= field->ordinal)
+                break;
 
             // Can only overlap if they are both data fields, and the offset is aligned
-            const uint32_t prevFieldSize = GetTypeSize(f->type);
-            const uint32_t offset = f->dataOffset * prevFieldSize;
-            if (IsPointer(f->type) || !IsAligned(offset, fieldAlign))
+            const uint32_t prevFieldSize = GetTypeSize(f.field->type);
+            const uint32_t offset = f.field->dataOffset * prevFieldSize;
+            if (IsPointer(f.field->type) || !IsAligned(offset, fieldAlign))
                 continue;
 
             // If this field is smaller then trivially it can fit.

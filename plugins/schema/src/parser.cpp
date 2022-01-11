@@ -1308,49 +1308,12 @@ namespace he::schema
 
     bool Parser::ConsumeEnumDecl(Declaration& parent)
     {
-        Declaration candidate;
-        candidate.parentId = parent.id;
-        candidate.kind = DeclKind::Enum;
+        Declaration& decl = parent.children.EmplaceBack();
+        decl.parentId = parent.id;
+        decl.kind = DeclKind::Enum;
 
-        if (!ConsumeDeclName(candidate))
+        if (!ConsumeDeclName(decl))
             return false;
-
-        const Declaration* forward = FindForwardDecl(candidate.id);
-        if (forward)
-        {
-            if (forward->kind != candidate.kind)
-            {
-                AddError("Enum was previously declared as a {}", forward->kind);
-                AddDeclError(*forward, "See previous declaration here");
-                return false;
-            }
-
-            if (forward->name != candidate.name)
-            {
-                AddError("Enum was previously declared with a different name: {}", candidate.name);
-                AddDeclError(*forward, "See previous declaration here");
-                return false;
-            }
-
-            if (forward->parentId != candidate.parentId)
-            {
-                const Declaration* forwardParent = FindDecl(forward->parentId);
-                HE_ASSERT(forwardParent);
-                AddError("Enum was previously declared within a different parent object: {}", forwardParent->name);
-                AddDeclError(*forward, "See previous declaration here");
-                return false;
-            }
-        }
-
-        if (At(Lexer::TokenType::Semicolon))
-        {
-            m_nameMap.erase(candidate.id);
-            m_forwardIds.emplace(candidate.id);
-            parent.forwards.PushBack(Move(candidate));
-            return true;
-        }
-
-        Declaration& decl = parent.children.PushBack(Move(candidate));
 
         if (!ConsumeAttributes(decl.attributes))
             return false;
@@ -1796,9 +1759,9 @@ namespace he::schema
                 field.name = name;
                 field.ordinal = sortedFields[0]->ordinal;
                 field.type.kind = TypeKind::Struct;
+                field.type.struct_.id = group.id;
                 field.isGroup = isGroup;
                 field.isUnion = isUnion;
-                field.typeId = group.id;
             }
             // Nested declaration (const, enum, or struct)
             else if (At(Lexer::TokenType::Identifier))
@@ -2542,7 +2505,8 @@ namespace he::schema
 
             if (a.isGroup || a.isUnion)
             {
-                const Declaration* group = FindDecl(a.typeId, decl);
+                HE_ASSERT(a.type.kind == TypeKind::Struct);
+                const Declaration* group = FindDecl(a.type.struct_.id, decl);
                 HE_ASSERT(group && group->kind == DeclKind::Struct);
                 if (!ValidateStructFieldNames(*group))
                     return false;

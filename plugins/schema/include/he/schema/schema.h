@@ -229,21 +229,18 @@ namespace he::schema
 
         Vector<Attribute> attributes{};
 
-        // For group/union fields
-        TypeId typeId{ 0 };
+        Type type{};
 
         // For normal fields, not groups/unions
         uint16_t ordinal{ 0 };  // explicit ordinal value specified using @
         uint16_t index{ 0 };    // implicit index of the field in its section
+        Value defaultValue{};
 
         // For data fields this is the offset in units of the field size from the beginning of
         // the data section (after the metadata). For example, for a uint32 field multiply this
         // by 4 to get the byte offset.
         // Always zero for pointer fields.
         uint32_t dataOffset{ 0 };
-
-        Type type{};
-        Value defaultValue{};
     };
 
     struct Enumerator

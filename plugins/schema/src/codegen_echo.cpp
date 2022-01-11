@@ -9,7 +9,7 @@
 
 namespace he::schema
 {
-    #define HE_ID_FMT "@{:#16x}"
+    #define HE_ID_FMT "@{:#018x}"
 
     CodeGenEcho::CodeGenEcho(const CodeGenRequest& request)
         : m_request(request)
@@ -223,7 +223,8 @@ namespace he::schema
         {
             if (field.isGroup || field.isUnion)
             {
-                const Declaration& group = m_request.GetDecl(field.typeId);
+                HE_ASSERT(field.type.kind == TypeKind::Struct);
+                const Declaration& group = m_request.GetDecl(field.type.struct_.id);
                 m_writer.WriteIndent();
                 if (group.struct_.isGroup)
                 {

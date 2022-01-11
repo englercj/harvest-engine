@@ -30,8 +30,15 @@ namespace he::schema
         void WriteInterfaceDecl(const Declaration& decl, const Declaration& scope);
         void WriteStructDecl(const Declaration& decl, const Declaration& scope);
 
+        void WriteImpl(const Declaration& decl, const Declaration& scope);
+        void WriteInterfaceImpl(const Declaration& decl, const Declaration& scope);
+        void WriteStructImpl(const Declaration& decl, const Declaration& scope);
+        void WriteFieldImpl(const Declaration& decl, const Declaration& scope);
+
         void WriteFieldGetDecl(const Field& field, const Declaration& decl, bool isReader);
+        void WriteFieldGetImpl(const Field& field, const Declaration& decl, const Declaration& scope, bool isReader);
         void WriteFieldSetDecl(const Field& field, const Declaration& decl);
+        void WriteFieldSetImpl(const Field& field, const Declaration& decl, const Declaration& scope);
 
     // Source Generation
     private:

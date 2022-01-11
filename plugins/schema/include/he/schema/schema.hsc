@@ -153,24 +153,25 @@ struct Field
     attributes @3 :List<Attribute>;
 
     type @4 :Type;
-    defaultValue @5 :Value;
 
     meta :union
     {
         group :group
         {
-            typeId @6 :uint64; // Id of the type that defines the group's structure
+            typeId @5 :uint64; // Id of the type that defines the group's structure
         }
 
         union :group
         {
-            typeId @7 :uint64; // Id of the type that defines the union's structure
+            typeId @6 :uint64; // Id of the type that defines the union's structure
         }
 
         normal :group
         {
-            ordinal @8 :uint16; // explicit ordinal value specified using @
-            index @9 :uint16;   // implicit index of the field in its section
+            ordinal @7 :uint16; // explicit ordinal value specified using @
+            index @8 :uint16;   // implicit index of the field in its section
+
+            defaultValue @9 :Value;
 
             // For data fields this is the offset in units of the field size from the beginning of
             // the data section (after the metadata). For example, for a uint32 field multiply this

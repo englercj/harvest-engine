@@ -12,11 +12,6 @@
 struct AppArgs
 {
     bool help{ false };
-    bool grpc{ false };
-    bool json{ false };
-    bool buffer{ false };
-    bool reflection{ false };
-    bool zeroCopy{ false };
     const char* outDir{ nullptr };
     he::Vector<const char*> targets{};
     he::Vector<const char*> includeDirs{};
@@ -33,11 +28,6 @@ int he::AppMain(int argc, char* argv[])
         { args.outDir,      'o', "out",         "Output directory to write generated files" },
         { args.targets,     't', "target",      "Target language to generate definitions for" },
         { args.includeDirs, 'I', "include",     "Path to search for import declarations" },
-        { args.grpc,             "grpc",        "Generate GRPC interfaces" },
-        { args.reflection,  'r', "reflection",  "Enable code generation for native reflection information, disabled if zero-copy is set" },
-        { args.json,        'j', "json",        "Enable code generation for JSON serialization" },
-        { args.buffer,      'b', "buffer",      "Enable code generation for Buffer serialization" },
-        { args.zeroCopy,    'z', "zero-copy",   "Enable code generation for zero-copy buffers only (no native)" },
     };
 
     ArgResult result = ParseArgs(ArgDescriptors, argc, argv);

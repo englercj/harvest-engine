@@ -5,10 +5,11 @@
 #include "he/core/assert.h"
 #include "he/core/log.h"
 
-#define HE_SQLITE_ERROR(r, msg) \
-    HE_LOG_ERROR(HE_MSG(msg), \
+#define HE_SQLITE_ERROR(r, msg, ...) \
+    HE_LOG_ERROR(he_sqlite, \
+        HE_MSG(msg, __VA_ARGS__), \
         HE_KV(error, r), \
-        HE_KV(error_str, sqlite3_errstr(r), \
+        HE_KV(error_str, sqlite3_errstr(r)), \
         HE_KV(error_msg, sqlite3_errmsg(m_db)))
 
 #define HE_SQLITE_CHECK(result, ...) { \

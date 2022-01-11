@@ -88,4 +88,22 @@ namespace he
         fmt::format_to(Appender(buf), fmt, Forward<Args>(args)...);
         return HandleError(type, file, line, funcName, expression, buf.Data());
     }
+
+    class ScopedErrorHandler
+    {
+    public:
+        ScopedErrorHandler(ErrorHandlerFunc handler)
+        {
+            m_old = GetErrorHandler();
+            SetErrorHandler(handler);
+        }
+
+        ~ScopedErrorHandler()
+        {
+            SetErrorHandler(m_old);
+        }
+
+    private:
+        ErrorHandlerFunc m_old;
+    };
 }

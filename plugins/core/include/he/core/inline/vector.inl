@@ -253,11 +253,7 @@ namespace he
     template <typename T>
     Vector<T>::~Vector()
     {
-        Clear();
-        if (m_data)
-        {
-            m_allocator.Free(m_data);
-        }
+        Destroy();
     }
 
     template <typename T>
@@ -368,6 +364,15 @@ namespace he
     const T* Vector<T>::Data() const
     {
         return m_data;
+    }
+
+    template <typename T>
+    void Vector<T>::Adopt(T* data, uint32_t size, uint32_t capacity)
+    {
+        Destroy();
+        m_data = data;
+        m_size = size;
+        m_capacity = capacity;
     }
 
     template <typename T>
@@ -650,5 +655,15 @@ namespace he
         m_data = Exchange(x.m_data, nullptr);
         m_size = Exchange(x.m_size, 0);
         m_capacity = Exchange(x.m_capacity, 0);
+    }
+
+    template <typename T>
+    void Vector<T>::Destroy()
+    {
+        if (m_data)
+        {
+            Clear();
+            m_allocator.Free(m_data);
+        }
     }
 }

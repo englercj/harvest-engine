@@ -190,3 +190,19 @@ namespace he::sqlite
         return { m_stmt, index };
     }
 }
+
+namespace he
+{
+    template <>
+    const char* AsString(sqlite::StepResult x)
+    {
+        switch (x)
+        {
+            case sqlite::StepResult::Done: return "Done";
+            case sqlite::StepResult::Row: return "Row";
+            case sqlite::StepResult::Error: return "Error";
+        }
+
+        return "<unknown>";
+    }
+}

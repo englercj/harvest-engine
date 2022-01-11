@@ -828,6 +828,58 @@ HE_TEST(core, Vector, Data)
 }
 
 // ------------------------------------------------------------------------------------------------
+HE_TEST(core, Vector, Adopt_Release)
+{
+    Allocator& a = CrtAllocator::Get();
+
+    static int s_destructed = 0;
+
+    struct TestObj { ~TestObj() { ++s_destructed; } };
+
+    constexpr TestObj* Null = nullptr;
+
+    {
+        Vector<TestObj> v(a);
+        v.EmplaceBack();
+
+        const TestObj* data = v.Data();
+        const uint32_t size = v.Size();
+        const uint32_t cap = v.Capacity();
+
+        HE_EXPECT_NE_PTR(data, Null);
+        HE_EXPECT_EQ(size, 1);
+        HE_EXPECT_EQ(cap, Vector<TestObj>::MinElements);
+        HE_EXPECT_EQ(s_destructed, 0);
+
+        TestObj* p = v.Release();
+
+        HE_EXPECT_EQ_PTR(data, p);
+        HE_EXPECT_EQ_PTR(v.Data(), Null);
+        HE_EXPECT_EQ(v.Size(), 0);
+        HE_EXPECT_EQ(v.Capacity(), 0);
+        HE_EXPECT_EQ(s_destructed, 0);
+
+        v.EmplaceBack();
+
+        HE_EXPECT_NE_PTR(v.Data(), Null);
+        HE_EXPECT_NE_PTR(v.Data(), p);
+        HE_EXPECT_EQ(v.Size(), 1);
+        HE_EXPECT_EQ(v.Capacity(), Vector<TestObj>::MinElements);
+        HE_EXPECT_EQ(s_destructed, 0);
+
+        v.Adopt(p, size, cap);
+
+        HE_EXPECT_NE_PTR(v.Data(), Null);
+        HE_EXPECT_EQ_PTR(v.Data(), p);
+        HE_EXPECT_EQ(v.Size(), size);
+        HE_EXPECT_EQ(v.Capacity(), cap);
+        HE_EXPECT_EQ(s_destructed, 1);
+    }
+
+    HE_EXPECT_EQ(s_destructed, 2);
+}
+
+// ------------------------------------------------------------------------------------------------
 HE_TEST(core, Vector, Front_Back)
 {
     Allocator& a = CrtAllocator::Get();

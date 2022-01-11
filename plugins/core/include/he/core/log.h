@@ -6,6 +6,7 @@
 #include "he/core/appender.h"
 #include "he/core/config.h"
 #include "he/core/debug.h"
+#include "he/core/macros.h"
 #include "he/core/string.h"
 #include "he/core/string_view.h"
 #include "he/core/type_traits.h"
@@ -45,14 +46,14 @@
 /// \param k The unquoted name of the key
 /// \param v The value of the pair, which can be integral, floating point, or a string.
 /// \param ... The format arguments if `v` is a format string specifier.
-#define HE_KV(k, v, ...) (he::LogKV{ #k, (v), ##__VA_ARGS__ })
+#define HE_KV(k, v, ...) (::he::LogKV{ #k, (v), ##__VA_ARGS__ })
 
 /// Shortcut macro for creating a key-value pair that represents the string message of the log.
 /// This generates a key-value pair using the expansion of \see HE_LOG_MESSAGE_KEY as the key.
 ///
 /// \param fmt The format string to log.
 /// \param ... The format arguments.
-#define HE_MSG(fmt, ...) (he::LogKV{ HE_LOG_MESSAGE_KEY, (fmt), ##__VA_ARGS__ })
+#define HE_MSG(fmt, ...) (::he::LogKV{ HE_LOG_MESSAGE_KEY, (fmt), ##__VA_ARGS__ })
 
 /// Base logging macro. Most users should not call this directly, but instead use the
 /// level-specific logging macros.
@@ -62,10 +63,10 @@
 /// \param ... A series of \see HE_KV(k, v, ...) or \see HE_MSG(fmt, ...) calls.
 #define HE_LOG(lvl, catStr, ...) \
     do { \
-        if constexpr (static_cast<int>(he::LogLevel::lvl) >= HE_LOG_LEVEL_ENABLED) { \
-            constexpr he::LogSource LogEntrySource_{ he::LogLevel::lvl, HE_LINE, HE_FILE, __FUNCTION__, catStr }; \
-            const he::LogKV kvLogList_[]{ __VA_ARGS__ }; \
-            he::Log(LogEntrySource_, kvLogList_, HE_LENGTH_OF(kvLogList_)); \
+        if constexpr (static_cast<int>(::he::LogLevel::lvl) >= HE_LOG_LEVEL_ENABLED) { \
+            constexpr ::he::LogSource LogEntrySource_{ ::he::LogLevel::lvl, HE_LINE, HE_FILE, __FUNCTION__, catStr }; \
+            const ::he::LogKV kvLogList_[]{ __VA_ARGS__ }; \
+            ::he::Log(LogEntrySource_, kvLogList_, HE_LENGTH_OF(kvLogList_)); \
         } \
     } while(0)
 

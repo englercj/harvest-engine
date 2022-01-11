@@ -141,16 +141,16 @@ namespace he::sqlite
         for (int32_t i = latestVersion; i < size; ++i)
         {
             const SchemaMigration& migration = migrations[i];
-            const HighResolutionTime start = ReadHighResolutionClock();
+            const MonotonicTime start = MonotonicClock::Now();
             const bool success = Execute(migration.sql);
-            const Duration time = ReadHighResolutionClock() - start;
+            const Duration time = MonotonicClock::Now() - start;
 
             stmt.Reset();
             stmt.Bind(1, i);
             stmt.Bind(2, migration.description);
-            stmt.Bind(3, int64_t(ReadSystemClock().ns));
+            stmt.Bind(3, int64_t(SystemClock::Now().ns));
             stmt.Bind(4, time.ns);
-            stmt.Bind(5, int64_t(FnvHashString32(migration.sql)));
+            stmt.Bind(5, int64_t(FNV32::HashString(migration.sql)));
             stmt.Bind(6, success ? 1 : 0);
 
             if (!HE_VERIFY(stmt.Step() == StepResult::Done))

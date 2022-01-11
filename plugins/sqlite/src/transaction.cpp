@@ -2,9 +2,11 @@
 
 #include "he/sqlite/transaction.h"
 
+#include "he/core/ascii.h"
 #include "he/core/assert.h"
 #include "he/core/memory_ops.h"
 #include "he/core/span.h"
+#include "he/core/span_fmt.h"
 #include "he/core/string.h"
 #include "he/core/utils.h"
 #include "he/core/uuid.h"
@@ -20,10 +22,12 @@ namespace he::sqlite
         : m_db(db)
     {
         Uuid id = Uuid::CreateV4();
-        static_assert(LengthOf(id.m_bytes) * 2 == HE_LENGTH_OF(m_id), "");
+        static_assert(HE_LENGTH_OF(id.m_bytes) * 2 >= HE_LENGTH_OF(m_id), "");
 
         fmt::format_to_n(m_id, HE_LENGTH_OF(m_id) - 1, "{}", Span<const uint8_t>(id.m_bytes));
-        m_id[14] = ToHexChar(id.m_bytes[7] & 0xf);
+
+        m_id[0] = '_'; // must start with a non-numeric character
+        m_id[14] = ToHex(id.m_bytes[7] & 0xf);
         m_id[15] = '\0';
 
         HE_VERIFY(Execute("SAVEPOINT"));

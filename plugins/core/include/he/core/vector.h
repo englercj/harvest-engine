@@ -189,6 +189,17 @@ namespace he
         /// \copydoc Data()
         T* Data() { return const_cast<T*>(const_cast<const Vector*>(this)->Data()); }
 
+        /// Adopts the preallocated memory and takes ownership of its lifetime. The adopted
+        /// memory must have been allocated by the same allocator this vector was constructed
+        /// with.
+        ///
+        /// Any memory already allocated by the vector is destroyed when calling this function.
+        ///
+        /// \param data A pointer to the memory to adopt.
+        /// \param size Number of valid elements in the adopted memory.
+        /// \param capcity Number of allocated elements in the adopted memory.
+        void Adopt(T* data, uint32_t size, uint32_t capacity);
+
         /// Releases control of the vector's allocated memory and returns ownership to the caller.
         /// The returned memory must be freed by calling \see Allocator::Free using the same
         /// allocator that the vector was constructed with.
@@ -349,6 +360,9 @@ namespace he
 
         // Move from the given vector into this object.
         void MoveFrom(Vector&& x);
+
+        // Destroys the vector and frees any associated memory.
+        void Destroy();
 
     private:
         friend class VectorTestAttorney;

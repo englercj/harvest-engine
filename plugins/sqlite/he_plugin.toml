@@ -13,7 +13,7 @@ homepage = ""
     type = "static"
     group = "engine/libs"
     files = ["include/**", "src/**"]
-    public_dependson = ["he_core"]
+    public_dependson = ["he_core", "sqlite3"]
     public_includedirs = ["include"]
     private_includedirs = ["src"]
 

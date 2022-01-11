@@ -15,13 +15,13 @@ HE_TEST(core, directory, Scanner)
     Allocator& alloc = CrtAllocator::Get();
 
     Directory::Scanner scanner(alloc);
-    String entry(alloc);
+    Directory::Scanner::Entry entry(alloc);
 
     HE_EXPECT(scanner.Open("."));
     while (scanner.NextEntry(entry))
     {
-        HE_EXPECT_NE(entry, ".");
-        HE_EXPECT_NE(entry, "..");
+        HE_EXPECT_NE(entry.name, ".");
+        HE_EXPECT_NE(entry.name, "..");
     }
 }
 

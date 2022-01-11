@@ -42,10 +42,10 @@ HE_TEST(sqlite, Column, Basic)
         HE_EXPECT_EQ(s.GetColumn(0).GetInt64(), 10);
         HE_EXPECT_EQ(s.GetColumn(1).GetDouble(), 1.25);
         HE_EXPECT_EQ_STR(s.GetColumn(2).GetText().Data(), "This is text");
-        HE_EXPECT_EQ(s.GetColumn(2).GetText().Size(), String::Length("This is text"));
+        HE_EXPECT_EQ(s.GetColumn(2).GetText().Size(), he::String::Length("This is text"));
         uint8_t bytes[] = { 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89 };
         HE_EXPECT_EQ(s.GetColumn(3).GetBlob().Size(), HE_LENGTH_OF(bytes));
-        HE_EXPECT(MemEqual(s.GetColumn(3).GetBlob().Data(), bytes, HE_LENGTH_OF(bytes)));
+        HE_EXPECT(he::MemEqual(s.GetColumn(3).GetBlob().Data(), bytes, HE_LENGTH_OF(bytes)));
 
         HE_EXPECT_EQ(s.Step(), StepResult::Row);
         HE_EXPECT(!s.GetColumn(0).IsNull());

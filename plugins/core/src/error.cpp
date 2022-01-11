@@ -19,7 +19,7 @@ namespace he
         const LogSource source{ he::LogLevel::Error, line, file, funcName, "app_error" };
         const LogKV kvs[] =
         {
-            HE_KV(type, type),
+            HE_KV(type, "{}", type),
             HE_KV(expr, expression),
             HE_MSG(msg ? msg : ""),
         };

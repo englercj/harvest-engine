@@ -26,14 +26,14 @@
     do { \
         HE_PUSH_WARNINGS() \
         HE_DISABLE_MSVC_WARNING(4127) \
-        ++he::internal::g_totalExpectations; \
+        ++::he::internal::g_totalExpectations; \
         if (!(expr)) { \
             if constexpr (HE_PP_COUNT_ARGS(__VA_ARGS__) > 0) { \
-                he::String _testParamFormatBuffer(Allocator::GetTemp()); \
+                ::he::String _testParamFormatBuffer(::he::Allocator::GetTemp()); \
                 HE_PP_FOREACH(HE_EXPECT_PARAM_FORMATTER_, (__VA_ARGS__)) \
-                he::internal::HandleTestFailure(__FILE__, __LINE__, #expr, _testParamFormatBuffer.Data()); \
+                ::he::internal::HandleTestFailure(__FILE__, __LINE__, #expr, _testParamFormatBuffer.Data()); \
             } else { \
-                he::internal::HandleTestFailure(__FILE__, __LINE__, #expr, ""); \
+                ::he::internal::HandleTestFailure(__FILE__, __LINE__, #expr, ""); \
             } \
             HE_DEBUG_BREAK(); \
         } \
@@ -81,32 +81,32 @@
 ///
 /// Automatically passes `a` and `b` as context to be logged. Be careful, this macro may cause
 /// the expressions to be evaluated more than once.
-#define HE_EXPECT_EQ_STR(a, b) HE_EXPECT(String::Equal((a), (b)), a, b)
+#define HE_EXPECT_EQ_STR(a, b) HE_EXPECT(::he::String::Equal((a), (b)), a, b)
 
 /// Check the expectation that the null terminated string `a` is not equal to the null terminated
 /// string `b`.
 ///
 /// Automatically passes `a` and `b` as context to be logged. Be careful, this macro may cause
 /// the expressions to be evaluated more than once.
-#define HE_EXPECT_NE_STR(a, b) HE_EXPECT(!String::Equal((a), (b)), a, b)
+#define HE_EXPECT_NE_STR(a, b) HE_EXPECT(!::he::String::Equal((a), (b)), a, b)
 
 /// Check the expectation that the memory `a` is equal to the memory `b`.
-#define HE_EXPECT_EQ_MEM(a, b, len) HE_EXPECT(MemEqual((a), (b), len))
+#define HE_EXPECT_EQ_MEM(a, b, len) HE_EXPECT(::he::MemEqual((a), (b), len))
 
 /// Check the expectation that the memory `a` is not equal to the memory `b`.
-#define HE_EXPECT_NE_MEM(a, b, len) HE_EXPECT(!MemEqual((a), (b), len))
+#define HE_EXPECT_NE_MEM(a, b, len) HE_EXPECT(!::he::MemEqual((a), (b), len))
 
 /// Check the expectation that the pointer `a` points to the same memory as `b`.
-#define HE_EXPECT_EQ_PTR(a, b) HE_EXPECT((a) == (b), fmt::ptr(a), fmt::ptr(b))
+#define HE_EXPECT_EQ_PTR(a, b) HE_EXPECT((a) == (b), ::fmt::ptr(a), ::fmt::ptr(b))
 
 /// Check the expectation that the pointer `a` does not point to the same memory as `b`.
-#define HE_EXPECT_NE_PTR(a, b) HE_EXPECT((a) != (b), fmt::ptr(a), fmt::ptr(b))
+#define HE_EXPECT_NE_PTR(a, b) HE_EXPECT((a) != (b), ::fmt::ptr(a), ::fmt::ptr(b))
 
 /// Check the expectation that the value `a` and the value `b` are within `diff` floating point steps from eachother.
-#define HE_EXPECT_EQ_ULP(a, b, diff) HE_EXPECT(he::EqualUlp(a, b, diff), a, b)
+#define HE_EXPECT_EQ_ULP(a, b, diff) HE_EXPECT(::he::EqualUlp(a, b, diff), a, b)
 
 /// Defines a test case for `module` in `suite` called `name`.
-#define HE_TEST(module, suite, name) HE_TEST_(module, suite, name, he::TestFixture)
+#define HE_TEST(module, suite, name) HE_TEST_(module, suite, name, ::he::TestFixture)
 
 /// Defines a test case for `module` using `fixture` called `name`. The name of the `fixture`
 /// class is also used as the suite name.
@@ -219,11 +219,11 @@ namespace internal
     public: \
         HE_TEST_CLASS_BODY_(HE_TEST_CLASS_NAME_(module, suite, name)); \
     private: \
-        static const he::TestInfo TestInfo; \
-        const he::TestInfo& GetTestInfo() const override { return TestInfo; } \
+        static const ::he::TestInfo TestInfo; \
+        const ::he::TestInfo& GetTestInfo() const override { return TestInfo; } \
         void TestBody() override; \
     }; \
-    const he::TestInfo HE_TEST_CLASS_NAME_(module, suite, name)::TestInfo{ HE_STRINGIFY(module), HE_STRINGIFY(suite), HE_STRINGIFY(name), __FILE__, __LINE__ }; \
+    const ::he::TestInfo HE_TEST_CLASS_NAME_(module, suite, name)::TestInfo{ HE_STRINGIFY(module), HE_STRINGIFY(suite), HE_STRINGIFY(name), __FILE__, __LINE__ }; \
     static HE_TEST_CLASS_NAME_(module, suite, name) HE_TEST_VARIABLE_NAME_(module, suite, name){}; \
     void HE_TEST_CLASS_NAME_(module, suite, name)::TestBody()
 
@@ -249,5 +249,5 @@ namespace internal
         constexpr char _exprString[] = #x " = "; \
         constexpr uint32_t _exprStringLen = HE_LENGTH_OF(_exprString) - 1; \
         _testParamFormatBuffer.Append(_exprString, _exprStringLen); \
-        fmt::format_to(he::Appender(_testParamFormatBuffer), "{}\n", (x)); \
+        fmt::format_to(::he::Appender(_testParamFormatBuffer), "{}\n", (x)); \
     } while (0);

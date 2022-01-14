@@ -413,12 +413,12 @@ namespace he::schema
 
         if (field.isUnion || field.isGroup)
         {
-            m_writer.WriteLine("{0}{1} Get{0}() const;", upperCamelName, suffix);
+            m_writer.WriteLine("{0}{1} {0}() const;", upperCamelName, suffix);
         }
         else if (field.type.kind == TypeKind::Void)
         {
             m_writer.WriteLine("bool Has{}() const;", upperCamelName, field.index);
-            m_writer.WriteLine("::he::schema::Void Get{}() const;", upperCamelName);
+            m_writer.WriteLine("::he::schema::Void {}() const;", upperCamelName);
         }
         else if (IsPointer(field.type))
         {
@@ -426,7 +426,7 @@ namespace he::schema
 
             m_writer.WriteIndent();
             WriteType(field.type, decl, suffix);
-            m_writer.Write(" Get{}() const;\n", upperCamelName);
+            m_writer.Write(" {}() const;\n", upperCamelName);
         }
         else
         {
@@ -447,7 +447,7 @@ namespace he::schema
             {
                 WriteType(field.type, decl, nullptr);
             }
-            m_writer.Write(" Get{}() const;\n", upperCamelName);
+            m_writer.Write(" {}() const;\n", upperCamelName);
         }
     }
 
@@ -475,7 +475,7 @@ namespace he::schema
             WriteType(field.type, scope, suffix);
             m_writer.Write(' ');
             WriteName(decl, scope, {}, suffix);
-            m_writer.Write("{0}::Get{1}() const {{ return {1}{2}(*this); }}\n", suffix, upperCamelName, suffix);
+            m_writer.Write("{0}::{1}() const {{ return {1}{2}(*this); }}\n", suffix, upperCamelName, suffix);
         }
         else if (field.type.kind == TypeKind::Void)
         {
@@ -487,9 +487,9 @@ namespace he::schema
             m_writer.WriteIndent();
             m_writer.Write("inline ::he::schema::Void ");
             WriteName(decl, scope, {}, suffix);
-            m_writer.Write("{}::Get{}() const {{ ", suffix, upperCamelName);
+            m_writer.Write("{}::{}() const {{ ", suffix, upperCamelName);
             if (decl.struct_.isUnion)
-                m_writer.WriteLine("HE_ASSERT(Is{}()); ", upperCamelName);
+                m_writer.Write("HE_ASSERT(Is{}()); ", upperCamelName);
             m_writer.Write("return {}; }\n");
         }
         else if (IsPointer(field.type))
@@ -507,7 +507,7 @@ namespace he::schema
             WriteType(field.type, scope, suffix);
             m_writer.Write(' ');
             WriteName(decl, scope, {}, suffix);
-            m_writer.Write("{}::Get{}() const {{ ", suffix, upperCamelName);
+            m_writer.Write("{}::{}() const {{ ", suffix, upperCamelName);
 
             if (decl.struct_.isUnion)
                 m_writer.Write("HE_ASSERT(Is{}()); ", upperCamelName);
@@ -534,7 +534,7 @@ namespace he::schema
                 else if (field.type.kind != TypeKind::String)
                 {
                     const Type& t = field.type.kind == TypeKind::List ? *field.type.list_.elementType : field.type;
-                    m_writer.Write('<');
+                    m_writer.Write("<struct ");
                     WriteType(t, scope, nullptr);
                     m_writer.Write('>');
                 }
@@ -575,7 +575,7 @@ namespace he::schema
                 m_writer.Write(' ');
             }
             WriteName(decl, scope, {}, suffix);
-            m_writer.Write("{}::Get{}() const {{ ", suffix, upperCamelName);
+            m_writer.Write("{}::{}() const {{ ", suffix, upperCamelName);
 
             if (decl.struct_.isUnion)
                 m_writer.Write("HE_ASSERT(Is{}()); ", upperCamelName);

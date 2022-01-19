@@ -5,6 +5,7 @@
 #include "he/core/assert.h"
 #include "he/core/memory_ops.h"
 #include "he/core/span.h"
+#include "he/core/string_view.h"
 #include "he/core/types.h"
 #include "he/core/type_traits.h"
 #include "he/core/utils.h"
@@ -334,6 +335,8 @@ namespace he::schema
         ListBuilder AddList(ElementSize elementSize, uint32_t elementCount);
         ListBuilder AddStructList(uint32_t elementCount, uint16_t dataWordSize, uint16_t pointerCount);
 
+        String::Builder AddString(StringView str);
+
         template <typename T>
         T::Builder AddStruct()
         {
@@ -425,11 +428,11 @@ namespace he::schema
         template <typename T>
         typename T::Builder TryGetStruct() const { return typename T::Builder(TryGetStruct()); }
 
-    private:
+    protected:
         uint64_t Value() const { return *Location(); }
         uint64_t& Value() { return *Location(); }
 
-    private:
+    protected:
         schema::Builder* m_builder{ nullptr };
         uint32_t m_wordOffset{ 0 };
     };
@@ -513,7 +516,7 @@ namespace he::schema
         void SetPointerElement(uint32_t index, const StructBuilder& value);
         void SetPointerElement(uint32_t index, const ListBuilder& value);
 
-    private:
+    protected:
         schema::Builder* m_builder{ nullptr };
         uint32_t m_wordOffset{ 0 };
         uint32_t m_size{ 0 };
@@ -528,7 +531,12 @@ namespace he::schema
     {
     public:
         StructBuilder() = default;
-        StructBuilder(Builder* builder, uint32_t wordOffset, uint16_t dataFieldCount, uint16_t dataWordSize, uint16_t pointerCount)
+        StructBuilder(
+            Builder* builder,
+            uint32_t wordOffset,
+            uint16_t dataFieldCount,
+            uint16_t dataWordSize,
+            uint16_t pointerCount)
             : m_builder(builder)
             , m_wordOffset(wordOffset)
             , m_dataFieldCount(dataFieldCount)
@@ -637,7 +645,7 @@ namespace he::schema
             return typename List<T>::Builder(TryGetPointerArrayField(index, ESize, elementCount, DataWordSize, PointerCount, defaultValue));
         }
 
-    private:
+    protected:
         Word* DataSection() { return Location(); }
         const Word* DataSection() const { return Location(); }
 
@@ -674,7 +682,7 @@ namespace he::schema
             }
         }
 
-    private:
+    protected:
         schema::Builder* m_builder{ nullptr };
         uint32_t m_wordOffset{ 0 };
         uint16_t m_dataFieldCount{ 0 };

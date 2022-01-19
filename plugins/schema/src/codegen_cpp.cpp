@@ -57,6 +57,7 @@ namespace he::schema
         m_writer.Write("#pragma once\n\n");
 
         m_writer.WriteLine("#include \"he/core/assert.h\"");
+        m_writer.WriteLine("#include \"he/core/string_view.h\"");
         m_writer.WriteLine("#include \"he/core/types.h\"");
         m_writer.WriteLine("#include \"he/schema/layout.h\"");
         m_writer.WriteLine("#include \"he/schema/schema.h\"\n");
@@ -534,7 +535,10 @@ namespace he::schema
                 else if (field.type.kind != TypeKind::String)
                 {
                     const Type& t = field.type.kind == TypeKind::List ? *field.type.list_.elementType : field.type;
-                    m_writer.Write("<struct ");
+                    if (IsPointer(t))
+                        m_writer.Write("<struct ");
+                    else
+                        m_writer.Write("<");
                     WriteType(t, scope, nullptr);
                     m_writer.Write('>');
                 }
@@ -633,6 +637,21 @@ namespace he::schema
         if (fieldIsPointer)
             m_writer.Write("&");
         m_writer.Write(" value);\n");
+
+        if (fieldIsPointer)
+        {
+            const bool fieldIsString = field.type.kind == TypeKind::String;
+            const bool fieldIsList = field.type.kind == TypeKind::List || field.type.kind == TypeKind::Blob;
+
+            m_writer.WriteIndent();
+            WriteType(field.type, decl, BuilderSuffix);
+            m_writer.Write(" {}{}(", fieldIsString ? "Set" : "Init", upperCamelName);
+            if (fieldIsList)
+                m_writer.Write("uint32_t size");
+            else if (fieldIsString)
+                m_writer.Write("::he::StringView str");
+            m_writer.Write(");\n");
+        }
     }
 
     void CodeGenCpp::WriteFieldSetImpl(const Field& field, const Declaration& decl, const Declaration& scope)
@@ -658,15 +677,57 @@ namespace he::schema
             m_writer.Write("Super::SetDataField<Tag>({}, Tag::{}); ", decl.struct_.unionTagOffset, upperCamelName);
         if (fieldIsPointer)
         {
-            m_writer.Write("Super::GetPointerField({}).Set(value);", field.index);
+            m_writer.Write("Super::GetPointerField({}).Set(value); }}\n", field.index);
         }
         else
         {
             m_writer.Write("Super::SetDataField<");
             WriteType(field.type, scope, nullptr);
-            m_writer.Write(">({}, {}, value);", field.index, field.dataOffset);
+            m_writer.Write(">({}, {}, value); }}\n", field.index, field.dataOffset);
         }
-        m_writer.Write(" }\n");
+
+        if (fieldIsPointer)
+        {
+            const bool fieldIsString = field.type.kind == TypeKind::String;
+            const bool fieldIsList = field.type.kind == TypeKind::List || field.type.kind == TypeKind::Blob;
+
+            m_writer.WriteIndent();
+            m_writer.Write("inline ");
+            WriteType(field.type, scope, BuilderSuffix);
+            m_writer.Write(' ');
+            WriteName(decl, scope, {}, BuilderSuffix);
+            m_writer.Write("::Builder::{}{}(", fieldIsString ? "Set" : "Init", upperCamelName);
+            if (fieldIsList)
+                m_writer.Write("uint32_t size");
+            else if (fieldIsString)
+                m_writer.Write("::he::StringView str");
+            m_writer.Write(") { ");
+            if (decl.struct_.isUnion)
+                m_writer.Write("Super::SetDataField<Tag>({}, Tag::{}); ", decl.struct_.unionTagOffset, upperCamelName);
+
+            const TypeKind getterKind = field.type.kind == TypeKind::Blob ? TypeKind::List : field.type.kind;
+            m_writer.Write("auto v = m_builder->Add{}", getterKind);
+            if (field.type.kind == TypeKind::Blob)
+            {
+                m_writer.Write("<uint8_t>");
+            }
+            else if (field.type.kind != TypeKind::String)
+            {
+                const Type& t = field.type.kind == TypeKind::List ? *field.type.list_.elementType : field.type;
+                if (IsPointer(t))
+                    m_writer.Write("<struct ");
+                else
+                    m_writer.Write("<");
+                WriteType(t, scope, nullptr);
+                m_writer.Write('>');
+            }
+            m_writer.Write('(');
+            if (fieldIsList)
+                m_writer.Write("size");
+            else if (fieldIsString)
+                m_writer.Write("str");
+            m_writer.Write("); Super::GetPointerField({}).Set(v); return v; }}\n", field.index);
+        }
     }
 
     void CodeGenCpp::GenSource()

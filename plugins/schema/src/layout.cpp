@@ -202,6 +202,13 @@ namespace he::schema
         return ListBuilder(this, wordOffset, elementCount, structWordSize * BitsPerWord, dataWordSize, pointerCount, ElementSize::Composite);
     }
 
+    String::Builder Builder::AddString(StringView str)
+    {
+        ListBuilder list = AddList(ElementSize::Byte, str.Size() + 1);
+        MemCopy(list.Data(), str.Data(), str.Size() + 1);
+        return String::Builder(list);
+    }
+
     StructBuilder Builder::AddStruct(uint16_t dataFieldCount, uint16_t dataWordSize, uint16_t pointerCount)
     {
         const uint32_t wordSize = static_cast<uint32_t>(dataWordSize) + pointerCount;

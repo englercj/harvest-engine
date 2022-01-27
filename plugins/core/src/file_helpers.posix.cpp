@@ -2,6 +2,7 @@
 
 #include "file_helpers.win32.h"
 
+#include "he/core/enum_ops.h"
 #include "he/core/wstr.h"
 
 #if defined(HE_PLATFORM_API_POSIX) && !defined(HE_PLATFORM_EMSCRIPTEN)

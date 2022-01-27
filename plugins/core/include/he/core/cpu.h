@@ -10,6 +10,7 @@
 #define HE_CPU_ARM_64               0
 
 #define HE_CPU_WASM_32              0
+#define HE_CPU_WASM_64              0
 
 #define HE_CPU_X86_32               0
 #define HE_CPU_X86_64               0
@@ -20,9 +21,12 @@
 #elif defined(_M_ARM64) || defined(__aarch64__)
     #undef  HE_CPU_ARM_64
     #define HE_CPU_ARM_64           1
-#elif defined(__EMSCRIPTEN__)
+#elif defined(__wasm32)
     #undef  HE_CPU_WASM_32
     #define HE_CPU_WASM_32          1
+#elif defined(__wasm64)
+    #undef  HE_CPU_WASM_64
+    #define HE_CPU_WASM_64          1
 #elif defined(_M_IX86) || defined(__i386__)
     #undef  HE_CPU_X86_32
     #define HE_CPU_X86_32           1
@@ -34,7 +38,7 @@
 #if HE_CPU_ARM_32 || HE_CPU_ARM_64
     #undef  HE_CPU_ARM
     #define HE_CPU_ARM              1
-#elif HE_CPU_WASM_32
+#elif HE_CPU_WASM_32 || HE_CPU_WASM_64
     #undef  HE_CPU_WASM
     #define HE_CPU_WASM             1
 #elif HE_CPU_X86_32 || HE_CPU_X86_64

@@ -14,6 +14,9 @@
         _VCRTIMP void* __cdecl memmove(void*, const void*, size_t);
         _VCRTIMP const void* __cdecl memchr(const void*, int, size_t);
     }
+#pragma intrinsic(memcpy)
+#pragma intrinsic(memcmp)
+#pragma intrinsic(memset)
 #endif
 
 namespace he

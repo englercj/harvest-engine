@@ -59,7 +59,7 @@
         #define HE_LINE __LINE__
     #endif
 #else
-    #define HE_DEBUG_BREAK()
+    #define HE_DEBUG_BREAK() (false)
     #define HE_FILE ""
     #define HE_LINE 0
 #endif

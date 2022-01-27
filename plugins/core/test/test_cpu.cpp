@@ -17,6 +17,7 @@ HE_TEST(core, cpu, Report)
 
     std::cout << "    HE_CPU_WASM = " << HE_CPU_WASM << std::endl;
     std::cout << "    HE_CPU_WASM_32 = " << HE_CPU_WASM_32 << std::endl;
+    std::cout << "    HE_CPU_WASM_64 = " << HE_CPU_WASM_64 << std::endl;
 
     std::cout << "    HE_CPU_X86 = " << HE_CPU_X86 << std::endl;
     std::cout << "    HE_CPU_X86_32 = " << HE_CPU_X86_32 << std::endl;

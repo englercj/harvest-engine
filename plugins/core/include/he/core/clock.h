@@ -2,7 +2,13 @@
 
 #pragma once
 
+#include "he/core/compiler.h"
+#include "he/core/cpu.h"
 #include "he/core/types.h"
+
+#if defined(HE_PLATFORM_EMSCRIPTEN)
+    #include <emscripten.h>
+#endif
 
 struct timespec;
 
@@ -28,10 +34,16 @@ namespace he
     using SystemTime = SystemClock::Time;
 
     // Nanoseconds that have passed since an OS-defined epoch (usually boot time).
-    // This clock is garuanteed to be monotonic.
+    // This clock is guaranteed to be monotonic.
     struct MonotonicClockTag;
     using MonotonicClock = Clock<MonotonicClockTag>;
     using MonotonicTime = MonotonicClock::Time;
+
+    // Number of cycles since the last CPU reset.
+    // This clock is not guaranteed to be monotonic.
+    struct CycleClockTag;
+    using CycleClock = Clock<CycleClockTag>;
+    using CycleCount = CycleClock::Time;
 
     // A span of time in nanoseconds
     struct Duration { int64_t ns; };
@@ -94,4 +106,55 @@ namespace he
     // Converts to and from posix times
     SystemTime PosixTimeToSystemTime(timespec posixTime);
     timespec PosixTimeFromSystemTime(SystemTime systemTime);
+
+    inline HE_FORCE_INLINE CycleCount CycleClock::Now()
+    {
+    #if defined(HE_PLATFORM_EMSCRIPTEN)
+        return static_cast<CycleCount>(emscripten_get_now() * 1000000);
+    #elif HE_CPU_X86_32
+        int64_t ret;
+        __asm__ volatile("rdtsc" : "=A"(ret));
+        return static_cast<CycleCount>(ret);
+    #elif HE_CPU_X86_64
+        uint64_t low;
+        uint64_t high;
+        __asm__ volatile("rdtsc" : "=a"(low), "=d"(high));
+        return static_cast<CycleCount>((high << 32) | low);
+    #elif HE_COMPILER_MSVC && HE_CPU_ARM
+        return static_cast<CycleCount>(_ReadStatusReg(ARM64_CNTVCT));
+    #elif HE_CPU_ARM_64
+        int64_t vct;
+        asm volatile("mrs %0, cntvct_el0" : "=r"(vct));
+        return static_cast<CycleCount>(vct);
+    #elif HE_CPU_ARM
+        static_assert(__ARM_ARCH >= 6, "ARMv6 is required for reading cycle counter.");
+
+        uint32_t pmccntr;
+        uint32_t pmuseren;
+        uint32_t pmcntenset;
+
+        // Read the user mode perf monitor counter access permissions.
+        asm volatile("mrc p15, 0, %0, c9, c14, 0" : "=r"(pmuseren));
+
+        // Allows reading perfmon counters for user mode code.
+        if (pmuseren & 1)
+        {
+            asm volatile("mrc p15, 0, %0, c9, c12, 1" : "=r"(pmcntenset));
+
+            // Is it counting?
+            if (pmcntenset & 0x80000000ul)
+            {
+                asm volatile("mrc p15, 0, %0, c9, c13, 0" : "=r"(pmccntr));
+
+                // The counter is set up to count every 64th cycle
+                return static_cast<CycleCount>(pmccntr) * 64;
+            }
+        }
+
+        // Fallback for ARM CPUs that don't let us read the cycle counter.
+        return MonotonicClock::Now();
+    #else
+        #error "No CycleClock implementation for this architecture"
+    #endif
+    }
 }

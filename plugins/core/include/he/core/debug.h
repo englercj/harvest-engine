@@ -36,11 +36,11 @@
         __attribute__((always_inline, artificial)) inline void _he_debugtrap()
         {
         #if HE_CPU_X86
-            __asm__ volatile("int $3" ::: "memory");
+            asm volatile("int $3" ::: "memory");
         #elif HE_CPU_ARM_32
-            __asm__ volatile(".inst 0xe7f001f0" ::: "memory");
+            asm volatile(".inst 0xe7f001f0" ::: "memory");
         #elif HE_CPU_ARM_64
-            __asm__ volatile(".inst 0xd4200000" ::: "memory");
+            asm volatile(".inst 0xd4200000" ::: "memory");
         #endif
         }
         #define HE_DEBUG_BREAK() (_he_debugtrap(), false)

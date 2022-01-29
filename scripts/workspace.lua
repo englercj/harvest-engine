@@ -58,16 +58,16 @@ he.workspace = function ()
     -- Compiler setup
     filter { "toolset:msc-*" }
         buildoptions {
-            -- "/external:anglebrackets", -- Treat files included with angle brackets as "external"
-            -- "/external:W0", -- Disable warnings for "external" headers. TODO: Fix when premake/premake-core#1692 merges
             "/permissive-", -- Enable standards-conforming compiler behavior.
             "/utf-8",       -- Specifies both the source character set and the execution character set as UTF-8.
             "/w44668",      -- A symbol that was not defined was used with a preprocessor directive.
+            "/w44062",      -- An enumerator has no associated case handler in a switch statement, and there's no default label that can catch it.
         }
 
     filter { "toolset:gcc or clang" }
         buildoptions {
             "-Wundef",      -- A symbol that was not defined was used with a preprocessor directive.
+            "-Wswitch",     -- An enumerator has no associated case handler in a switch statement, and there's no default label that can catch it.
         }
 
     -- Configuration setup

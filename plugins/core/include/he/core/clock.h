@@ -6,8 +6,9 @@
 #include "he/core/cpu.h"
 #include "he/core/types.h"
 
-#if defined(HE_PLATFORM_EMSCRIPTEN)
-    #include <emscripten.h>
+#if HE_COMPILER_MSVC && HE_CPU_X86
+    extern "C" uint64_t __rdtsc();
+    #pragma intrinsic(__rdtsc)
 #endif
 
 struct timespec;
@@ -107,25 +108,28 @@ namespace he
     SystemTime PosixTimeToSystemTime(timespec posixTime);
     timespec PosixTimeFromSystemTime(SystemTime systemTime);
 
-    inline HE_FORCE_INLINE CycleCount CycleClock::Now()
+    template <>
+    HE_FORCE_INLINE CycleCount CycleClock::Now()
     {
     #if defined(HE_PLATFORM_EMSCRIPTEN)
-        return static_cast<CycleCount>(emscripten_get_now() * 1000000);
+        return MonotonicClock::Now();
+    #elif HE_COMPILER_MSVC && HE_CPU_X86
+        return { __rdtsc() };
+    #elif HE_COMPILER_MSVC && HE_CPU_ARM
+        return { _ReadStatusReg(ARM64_CNTVCT) };
     #elif HE_CPU_X86_32
         int64_t ret;
-        __asm__ volatile("rdtsc" : "=A"(ret));
-        return static_cast<CycleCount>(ret);
+        asm volatile("rdtsc" : "=A"(ret));
+        return { ret };
     #elif HE_CPU_X86_64
         uint64_t low;
         uint64_t high;
-        __asm__ volatile("rdtsc" : "=a"(low), "=d"(high));
-        return static_cast<CycleCount>((high << 32) | low);
-    #elif HE_COMPILER_MSVC && HE_CPU_ARM
-        return static_cast<CycleCount>(_ReadStatusReg(ARM64_CNTVCT));
+        asm volatile("rdtsc" : "=a"(low), "=d"(high));
+        return { (high << 32) | low) };
     #elif HE_CPU_ARM_64
         int64_t vct;
-        asm volatile("mrs %0, cntvct_el0" : "=r"(vct));
-        return static_cast<CycleCount>(vct);
+        asm volatile("mrs %0, CNTVCT_EL0" : "=r"(vct));
+        return { vct };
     #elif HE_CPU_ARM
         static_assert(__ARM_ARCH >= 6, "ARMv6 is required for reading cycle counter.");
 

@@ -9,7 +9,7 @@
 #include "he/core/span_fmt.h"
 #include "he/core/string.h"
 #include "he/core/utils.h"
-#include "he/core/uuid.h"
+#include "he/core/random.h"
 #include "he/sqlite/database.h"
 #include "he/sqlite/statement.h"
 
@@ -21,13 +21,15 @@ namespace he::sqlite
     Transaction::Transaction(sqlite3* db)
         : m_db(db)
     {
-        Uuid id = Uuid::CreateV4();
-        static_assert(HE_LENGTH_OF(id.m_bytes) * 2 >= HE_LENGTH_OF(m_id));
+        uint8_t idBytes[HE_LENGTH_OF(m_id) / 2];
+        const bool idResult = GetSecureRandomBytes(idBytes);
+        HE_ASSERT(idResult);
+        HE_UNUSED(idResult);
 
-        fmt::format_to_n(m_id, HE_LENGTH_OF(m_id) - 1, "{}", Span<const uint8_t>(id.m_bytes));
+        fmt::format_to_n(m_id, HE_LENGTH_OF(m_id) - 1, "{}", Span<const uint8_t>(idBytes));
 
         m_id[0] = '_'; // must start with a non-numeric character
-        m_id[14] = ToHex(id.m_bytes[7] & 0xf);
+        m_id[14] = ToHex(idBytes[7] & 0xf);
         m_id[15] = '\0';
 
         HE_VERIFY(Execute("SAVEPOINT"));

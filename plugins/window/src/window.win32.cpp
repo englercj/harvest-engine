@@ -598,7 +598,7 @@ namespace he::window::Win32
                 RECT* const prcNewWindow = (RECT*)lParam;
                 ::SetWindowPos(
                     hWnd,
-                    NULL,
+                    nullptr,
                     prcNewWindow->left,
                     prcNewWindow->top,
                     prcNewWindow->right - prcNewWindow->left,
@@ -935,10 +935,10 @@ namespace he::window::Win32
 
     DeviceImpl::~DeviceImpl()
     {
-        UnregisterClassW(WindowClassName, m_hInstance);
-        FreeLibrary(m_userLib);
-        FreeLibrary(m_shcoreLib);
-        FreeLibrary(m_xinputLib);
+        ::UnregisterClassW(WindowClassName, m_hInstance);
+        ::FreeLibrary(m_userLib);
+        ::FreeLibrary(m_shcoreLib);
+        ::FreeLibrary(m_xinputLib);
     }
 
     bool DeviceImpl::Initialize()
@@ -985,8 +985,8 @@ namespace he::window::Win32
         wcex.hInstance = m_hInstance;
         wcex.hbrBackground = reinterpret_cast<HBRUSH>(COLOR_BACKGROUND + 1);
         wcex.lpszClassName = WindowClassName;
-        // wcex.hIcon = desc.iconResourceId ? LoadIconW(m_hInstance, MAKEINTRESOURCEW(desc.iconResourceId)) : NULL;
-        // wcex.hIconSm = desc.iconSmResourceId ? LoadIconW(m_hInstance, MAKEINTRESOURCEW(desc.iconSmResourceId)) : NULL;
+        // wcex.hIcon = desc.iconResourceId ? ::LoadIconW(m_hInstance, MAKEINTRESOURCEW(desc.iconResourceId)) : nullptr;
+        // wcex.hIconSm = desc.iconSmResourceId ? ::LoadIconW(m_hInstance, MAKEINTRESOURCEW(desc.iconSmResourceId)) : nullptr;
         ::RegisterClassExW(&wcex);
 
         // Enable raw mouse input
@@ -1042,7 +1042,7 @@ namespace he::window::Win32
             }
             else if (m_viewClipped && m_cursorRelativeMode == false)
             {
-                ::ClipCursor(NULL);
+                ::ClipCursor(nullptr);
                 m_viewClipped = false;
             }
 
@@ -1168,7 +1168,7 @@ namespace he::window::Win32
     uint32_t DeviceImpl::GetMonitorCount() const
     {
         uint32_t count = 0;
-        ::EnumDisplayMonitors(NULL, NULL, CountMonitorsCallback, reinterpret_cast<LPARAM>(&count));
+        ::EnumDisplayMonitors(nullptr, nullptr, CountMonitorsCallback, reinterpret_cast<LPARAM>(&count));
         return count;
     }
 
@@ -1219,7 +1219,7 @@ namespace he::window::Win32
         data.monitors = monitors;
         data.index = 0;
         data.maxCount = maxCount;
-        ::EnumDisplayMonitors(NULL, NULL, VisitMonitorsCallback, reinterpret_cast<LPARAM>(&data));
+        ::EnumDisplayMonitors(nullptr, nullptr, VisitMonitorsCallback, reinterpret_cast<LPARAM>(&data));
         return data.index;
     }
 

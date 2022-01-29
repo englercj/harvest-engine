@@ -22,7 +22,7 @@ namespace he::sqlite
         : m_db(db)
     {
         Uuid id = Uuid::CreateV4();
-        static_assert(HE_LENGTH_OF(id.m_bytes) * 2 >= HE_LENGTH_OF(m_id), "");
+        static_assert(HE_LENGTH_OF(id.m_bytes) * 2 >= HE_LENGTH_OF(m_id));
 
         fmt::format_to_n(m_id, HE_LENGTH_OF(m_id) - 1, "{}", Span<const uint8_t>(id.m_bytes));
 

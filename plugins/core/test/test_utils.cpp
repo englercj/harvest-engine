@@ -15,21 +15,21 @@ using namespace he;
 // ------------------------------------------------------------------------------------------------
 HE_TEST(core, utils, IsAligned)
 {
-    static_assert(IsAligned(0, 8));
-    static_assert(IsAligned(8, 8));
-    static_assert(IsAligned(16, 8));
-    static_assert(IsAligned(480, 8));
-    static_assert(!IsAligned(9, 8));
-    static_assert(!IsAligned(17, 8));
-    static_assert(!IsAligned(479, 8));
+    static_assert(IsAligned(0u, 8));
+    static_assert(IsAligned(8u, 8));
+    static_assert(IsAligned(16u, 8));
+    static_assert(IsAligned(480u, 8));
+    static_assert(!IsAligned(9u, 8));
+    static_assert(!IsAligned(17u, 8));
+    static_assert(!IsAligned(479u, 8));
 
-    HE_EXPECT(IsAligned(0, 8));
-    HE_EXPECT(IsAligned(8, 8));
-    HE_EXPECT(IsAligned(16, 8));
-    HE_EXPECT(IsAligned(480, 8));
-    HE_EXPECT(!IsAligned(9, 8));
-    HE_EXPECT(!IsAligned(17, 8));
-    HE_EXPECT(!IsAligned(479, 8));
+    HE_EXPECT(IsAligned(0u, 8));
+    HE_EXPECT(IsAligned(8u, 8));
+    HE_EXPECT(IsAligned(16u, 8));
+    HE_EXPECT(IsAligned(480u, 8));
+    HE_EXPECT(!IsAligned(9u, 8));
+    HE_EXPECT(!IsAligned(17u, 8));
+    HE_EXPECT(!IsAligned(479u, 8));
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -40,6 +40,74 @@ HE_TEST(core, utils, IsAligned_pointer)
 
     NonTrivial* nt = new NonTrivial();
     HE_EXPECT(IsAligned(nt, 8));
+
+    delete nt;
+}
+
+// ------------------------------------------------------------------------------------------------
+HE_TEST(core, utils, AlignDown)
+{
+    static_assert(AlignDown(0u, 8) == 0);
+    static_assert(AlignDown(8u, 8) == 8);
+    static_assert(AlignDown(16u, 8) == 16);
+    static_assert(AlignDown(480u, 8) == 480);
+    static_assert(AlignDown(9u, 8) == 8);
+    static_assert(AlignDown(17u, 8) == 16);
+    static_assert(AlignDown(479u, 8) == 472);
+
+    HE_EXPECT_EQ(AlignDown(0u, 8), 0);
+    HE_EXPECT_EQ(AlignDown(8u, 8), 8);
+    HE_EXPECT_EQ(AlignDown(16u, 8), 16);
+    HE_EXPECT_EQ(AlignDown(480u, 8), 480);
+    HE_EXPECT_EQ(AlignDown(9u, 8), 8);
+    HE_EXPECT_EQ(AlignDown(17u, 8), 16);
+    HE_EXPECT_EQ(AlignDown(479u, 8), 472);
+}
+
+// ------------------------------------------------------------------------------------------------
+HE_TEST(core, utils, AlignDown_pointer)
+{
+    char* a = HE_ALLOCA(char, 22);
+    char* a2 = AlignDown(a, 128);
+    HE_EXPECT(IsAligned(a2, 128));
+
+    NonTrivial* nt = new NonTrivial();
+    NonTrivial* nt2 = AlignDown(nt, 128);
+    HE_EXPECT(IsAligned(nt2, 128));
+
+    delete nt;
+}
+
+// ------------------------------------------------------------------------------------------------
+HE_TEST(core, utils, AlignUp)
+{
+    static_assert(AlignUp(0u, 8) == 0);
+    static_assert(AlignUp(8u, 8) == 8);
+    static_assert(AlignUp(16u, 8) == 16);
+    static_assert(AlignUp(480u, 8) == 480);
+    static_assert(AlignUp(9u, 8) == 16);
+    static_assert(AlignUp(17u, 8) == 24);
+    static_assert(AlignUp(479u, 8) == 480);
+
+    HE_EXPECT_EQ(AlignUp(0u, 8), 0);
+    HE_EXPECT_EQ(AlignUp(8u, 8), 8);
+    HE_EXPECT_EQ(AlignUp(16u, 8), 16);
+    HE_EXPECT_EQ(AlignUp(480u, 8), 480);
+    HE_EXPECT_EQ(AlignUp(9u, 8), 16);
+    HE_EXPECT_EQ(AlignUp(17u, 8), 24);
+    HE_EXPECT_EQ(AlignUp(479u, 8), 480);
+}
+
+// ------------------------------------------------------------------------------------------------
+HE_TEST(core, utils, AlignUp_pointer)
+{
+    char* a = HE_ALLOCA(char, 22);
+    char* a2 = AlignUp(a, 128);
+    HE_EXPECT(IsAligned(a2, 128));
+
+    NonTrivial* nt = new NonTrivial();
+    NonTrivial* nt2 = AlignUp(nt, 128);
+    HE_EXPECT(IsAligned(nt2, 128));
 
     delete nt;
 }

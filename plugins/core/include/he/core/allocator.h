@@ -194,4 +194,40 @@ namespace he
         void* Realloc(void* ptr, size_t newSize, size_t alignment = DefaultAlignment) override;
         void Free(void* ptr) override;
     };
+
+    /// Allocator that allocates pages of space and expects them all to be freed at the end of use.
+    class LinearPageAllocator : public Allocator
+    {
+    public:
+        explicit LinearPageAllocator(size_t pageSize, Allocator& allocator = Allocator::GetDefault());
+        ~LinearPageAllocator();
+
+        void* Malloc(size_t size, size_t alignment = DefaultAlignment) override;
+        void* Realloc(void* ptr, size_t newSize, size_t alignment = DefaultAlignment) override;
+        void Free(void*) override {}
+
+        /// Invalidates all issued pointers and resets the state for reuse. Previously allocated
+        /// pages are kept for reuse.
+        void Clear();
+
+        /// Invalidates all issued pointers, frees all page memory, and resets state for reuse.
+        void Reset();
+
+    private:
+        struct PageHeader
+        {
+            PageHeader* next;
+            PageHeader* previous;
+        };
+
+        bool CanFit(size_t size, size_t alignment) const;
+        void AllocPage();
+
+    private:
+        Allocator& m_allocator;
+        PageHeader* m_currentPage{ nullptr };
+        PageHeader* m_lastPage{ nullptr };
+        size_t m_pageOffset{ 0 };
+        const size_t m_pageSize{ 0 };
+    };
 }

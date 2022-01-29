@@ -4,59 +4,96 @@
 
 #include "he/core/types.h"
 
+#include <concepts>
 #include <type_traits>
 
 namespace he
 {
     /// Returns true if `value` is aligned to `alignment`.
     ///
-    /// Expects that `alignment` is a power of two.
+    /// Assumes that `alignment` is a power of two.
     ///
     /// \param value The value to check for alignment.
     /// \param alignment The alignment to check value for. Must be a power of two.
     /// \return True if the value is aligned, false otherwise.
-    template <typename T>
-    [[nodiscard]] constexpr bool IsAligned(T value, T alignment) noexcept
+    template <std::unsigned_integral T>
+    [[nodiscard]] constexpr bool IsAligned(T value, size_t alignment) noexcept
     {
         return (value & (alignment - 1)) == 0;
     }
 
     /// Returns true if `ptr` is aligned to `alignment`.
     ///
-    /// Expects that `alignment` is a power of two.
+    /// Assumes that `alignment` is a power of two.
     ///
     /// \param ptr The pointer to check for alignment.
     /// \param alignment The alignment to check value for. Must be a power of two.
     /// \return True if the pointer is aligned, false otherwise.
-    [[nodiscard]] inline bool IsAligned(const void* ptr, size_t alignment) noexcept
+    [[nodiscard]] constexpr bool IsAligned(const void* ptr, size_t alignment) noexcept
     {
         return IsAligned(reinterpret_cast<uintptr_t>(ptr), alignment);
     }
 
-    /// Returns the aligned value of `value` rounded down based on `alignment`.
+    /// Aligns `value` down to the nearest `alignment` increment.
     ///
-    /// Expects that `alignment` is a power of two.
+    /// Assumes that `alignment` is a power of two.
     ///
     /// \param value The value to be aligned down.
     /// \param alignment The alignment to match.
     /// \return The aligned value.
-    template <typename T>
-    [[nodiscard]] constexpr T AlignDown(T value, T alignment)
+    template <std::unsigned_integral T>
+    [[nodiscard]] constexpr T AlignDown(T value, size_t alignment)
     {
-        return value & ~(alignment - 1);
+        return static_cast<T>(value & ~(alignment - 1));
     }
 
-    /// Returns the aligned value of `value` rounded up based on `alignment`.
+    /// Aligns `ptr` down to the nearest `alignment` increment.
     ///
-    /// Expects that `alignment` is a power of two.
+    /// Assumes that `alignment` is a power of two.
+    ///
+    /// \param ptr The pointer to be aligned down.
+    /// \param alignment The alignment to match.
+    /// \return The aligned value.
+    template <typename T>
+    [[nodiscard]] inline T* AlignDown(T* value, size_t alignment)
+    {
+        return reinterpret_cast<T*>(AlignDown(reinterpret_cast<uintptr_t>(value), alignment));
+    }
+
+    /// Aligns `value` up to the nearest `alignment` increment.
+    ///
+    /// Assumes that `alignment` is a power of two.
     ///
     /// \param value The value to be aligned up.
     /// \param alignment The alignment to match.
     /// \return The aligned value.
-    template <typename T>
-    constexpr inline T AlignUp(T value, T alignment)
+    template <std::unsigned_integral T>
+    [[nodiscard]] constexpr inline T AlignUp(T value, size_t alignment)
     {
-        return (value + (alignment - 1)) & ~(alignment - 1);
+        return static_cast<T>((value + (alignment - 1)) & ~(alignment - 1));
+    }
+
+    /// Aligns `ptr` up to the nearest `alignment` increment.
+    ///
+    /// Assumes that `alignment` is a power of two.
+    ///
+    /// \param ptr The pointer to be aligned up.
+    /// \param alignment The alignment to match.
+    /// \return The aligned value.
+    template <typename T>
+    [[nodiscard]] inline T* AlignUp(T* value, size_t alignment)
+    {
+        return reinterpret_cast<T*>(AlignUp(reinterpret_cast<uintptr_t>(value), alignment));
+    }
+
+    /// Returns true if `value` is a power of two.
+    ///
+    /// \param value The value to check.
+    /// \return True if the value is a power of two, false otherwise.
+    template <std::unsigned_integral T>
+    [[nodiscard]] constexpr inline bool IsPowerOf2(T value)
+    {
+        return value > 0 && (value & (value - 1)) == 0;
     }
 
     /// Returns the smaller value between `a` and `b`.

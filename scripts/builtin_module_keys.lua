@@ -28,6 +28,101 @@ local function _handle_variants(ctx, values, key_list)
     end
 end
 
+local function _handle_dependson_include(ctx, values)
+    for _, mod_name in ipairs(values) do
+        if string.startswith(mod_name, "sys:") or string.startswith(mod_name, "file:") then
+            return
+        end
+
+        if string.startswith(mod_name, "module:") then
+            mod_name = string.sub(mod_name, 8)
+        end
+
+        local mod = he.imported_modules[mod_name]
+        assert(mod ~= nil, "Module '" .. ctx.name .. "' has an include dependency on '" .. mod_name .. "', but no such module has been imported.")
+
+        if mod._plugin._install_valid == false then
+            verbosef("Module '%s' has an include dependency on '%s' but it was not installed, ignoring.", ctx.name, mod_name)
+            return
+        end
+
+        local oldcwd = os.getcwd()
+        os.chdir(mod._plugin._install_dir)
+
+        for _, key in ipairs(he.module_dependency_include_keys) do
+            he.try_handle_module_key(ctx, key, mod[key])
+        end
+
+        -- Propagate the `public_dependson` key as if it was the include variant
+        he.try_handle_module_key(ctx, "public_dependson_include", mod.public_dependson)
+
+        if mod.variants ~= nil then
+            _handle_variants(ctx, mod.variants, he.module_dependency_include_keys)
+        end
+
+        os.chdir(oldcwd)
+    end
+end
+
+local function _handle_dependson(ctx, values)
+    for _, mod_name in ipairs(values) do
+        if string.startswith(mod_name, "sys:") then
+            if ctx.type == "console_app" or ctx.type == "windowed_app" or (ctx.type == "default" and not he.is_static_only) then
+                links { string.sub(mod_name, 5) }
+            end
+            return
+        end
+
+        if string.startswith(mod_name, "file:") then
+            if ctx.type == "console_app" or ctx.type == "windowed_app" or (ctx.type == "default" and not he.is_static_only) then
+                links { string.sub(mod_name, 6) }
+            end
+            return
+        end
+
+        if string.startswith(mod_name, "module:") then
+            mod_name = string.sub(mod_name, 8)
+        end
+
+        local mod = he.imported_modules[mod_name]
+        assert(mod ~= nil, "Module '" .. ctx.name .. "' has a dependency on '" .. mod_name .. "', but no such module has been imported.")
+
+        if mod._plugin._install_valid == false then
+            verbosef("Module '%s' has a dependency on '%s' but it was not installed, ignoring.", ctx.name, mod_name)
+            return
+        end
+
+        if ctx.type == "console_app" or ctx.type == "windowed_app" or (ctx.type == "default" and not he.is_static_only) then
+            if mod.type == "default" or mod.type == "static" or mod.type == "shared" then
+                links { mod.name }
+            elseif mod.type == "custom" then
+                dependson { mod.name }
+            end
+        end
+
+        local oldcwd = os.getcwd()
+        os.chdir(mod._plugin._install_dir)
+
+        for _, key in ipairs(he.module_dependency_include_keys) do
+            he.try_handle_module_key(ctx, key, mod[key])
+        end
+
+        -- Propagate the `public_dependson` key as if it was the include variant
+        he.try_handle_module_key(ctx, "public_dependson_include", mod.public_dependson)
+
+        for _, key in ipairs(he.module_dependency_link_keys) do
+            he.try_handle_module_key(ctx, key, mod[key])
+        end
+
+        if mod.variants ~= nil then
+            _handle_variants(ctx, mod.variants, he.module_dependency_include_keys)
+            _handle_variants(ctx, mod.variants, he.module_dependency_link_keys)
+        end
+
+        os.chdir(oldcwd)
+    end
+end
+
 he.add_module_key {
     key = "defines",
     scope = "include",
@@ -72,41 +167,7 @@ he.add_module_key {
     scope = "include",
     type = "table",
     desc = "an array of module names",
-    handler = function (ctx, values)
-        for _, mod_name in ipairs(values) do
-            if string.startswith(mod_name, "sys:") or string.startswith(mod_name, "file:") then
-                return
-            end
-
-            if string.startswith(mod_name, "module:") then
-                mod_name = string.sub(mod_name, 8)
-            end
-
-            local mod = he.imported_modules[mod_name]
-            assert(mod ~= nil, "Module '" .. ctx.name .. "' has an include dependency on '" .. mod_name .. "', but no such module has been imported.")
-
-            if mod._plugin._install_valid == false then
-                verbosef("Module '%s' has an include dependency on '%s' but it was not installed, ignoring.", ctx.name, mod_name)
-                return
-            end
-
-            local oldcwd = os.getcwd()
-            os.chdir(mod._plugin._install_dir)
-
-            for _, key in ipairs(he.module_dependency_include_keys) do
-                he.try_handle_module_key(ctx, key, mod[key])
-            end
-
-            -- Propagate the `public_dependson` key as if it was the include variant
-            he.try_handle_module_key(ctx, "public_dependson_include", mod.public_dependson)
-
-            if mod.variants ~= nil then
-                _handle_variants(ctx, mod.variants, he.module_dependency_include_keys)
-            end
-
-            os.chdir(oldcwd)
-        end
-    end,
+    handler = function (ctx, values) _handle_dependson_include(ctx, values) end,
 }
 
 he.add_module_key {
@@ -114,64 +175,7 @@ he.add_module_key {
     scope = "link",
     type = "table",
     desc = "an array of module names, system libraries ('sys:X'), or files ('file:X')",
-    handler = function (ctx, values)
-        for _, mod_name in ipairs(values) do
-            if string.startswith(mod_name, "sys:") then
-                if ctx.type == "console_app" or ctx.type == "windowed_app" or (ctx.type == "default" and not he.is_static_only) then
-                    links { string.sub(mod_name, 5) }
-                end
-                return
-            end
-
-            if string.startswith(mod_name, "file:") then
-                if ctx.type == "console_app" or ctx.type == "windowed_app" or (ctx.type == "default" and not he.is_static_only) then
-                    links { string.sub(mod_name, 6) }
-                end
-                return
-            end
-
-            if string.startswith(mod_name, "module:") then
-                mod_name = string.sub(mod_name, 8)
-            end
-
-            local mod = he.imported_modules[mod_name]
-            assert(mod ~= nil, "Module '" .. ctx.name .. "' has a dependency on '" .. mod_name .. "', but no such module has been imported.")
-
-            if mod._plugin._install_valid == false then
-                verbosef("Module '%s' has a dependency on '%s' but it was not installed, ignoring.", ctx.name, mod_name)
-                return
-            end
-
-            if ctx.type == "console_app" or ctx.type == "windowed_app" or (ctx.type == "default" and not he.is_static_only) then
-                if mod.type == "default" or mod.type == "static" or mod.type == "shared" then
-                    links { mod.name }
-                elseif mod.type == "custom" then
-                    dependson { mod.name }
-                end
-            end
-
-            local oldcwd = os.getcwd()
-            os.chdir(mod._plugin._install_dir)
-
-            for _, key in ipairs(he.module_dependency_include_keys) do
-                he.try_handle_module_key(ctx, key, mod[key])
-            end
-
-            -- Propagate the `public_dependson` key as if it was the include variant
-            he.try_handle_module_key(ctx, "public_dependson_include", mod.public_dependson)
-
-            for _, key in ipairs(he.module_dependency_link_keys) do
-                he.try_handle_module_key(ctx, key, mod[key])
-            end
-
-            if mod.variants ~= nil then
-                _handle_variants(ctx, mod.variants, he.module_dependency_include_keys)
-                _handle_variants(ctx, mod.variants, he.module_dependency_link_keys)
-            end
-
-            os.chdir(oldcwd)
-        end
-    end,
+    handler = function (ctx, values) _handle_dependson(ctx, values) end,
 }
 
 he.add_module_key {

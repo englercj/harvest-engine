@@ -8,7 +8,7 @@
 #include "he/core/log.h"
 #include "he/core/log_sinks.h"
 
-#include "fmt/format.h"
+#include "fmt/core.h"
 
 #include <deque>
 #include <mutex>

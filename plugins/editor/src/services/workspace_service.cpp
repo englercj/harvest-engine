@@ -14,7 +14,7 @@
 #define IMGUI_DEFINE_MATH_OPERATORS
 #include "imgui.h"
 #include "imgui_internal.h"
-#include "fmt/format.h"
+#include "fmt/core.h"
 
 namespace he::editor
 {

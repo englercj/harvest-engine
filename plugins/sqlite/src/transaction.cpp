@@ -14,7 +14,7 @@
 #include "he/sqlite/statement.h"
 
 #include "sqlite3.h"
-#include "fmt/format.h"
+#include "fmt/core.h"
 
 namespace he::sqlite
 {

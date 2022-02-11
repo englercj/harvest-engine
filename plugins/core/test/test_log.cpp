@@ -138,14 +138,14 @@ HE_TEST(core, log, LogKV)
 {
     TestLogKVCtor("key0", true);
     TestLogKVCtor("key1", false);
-    TestLogKVCtor("key2", int8_t(0));
-    TestLogKVCtor("key3", int16_t(0));
-    TestLogKVCtor("key4", int32_t(0));
-    TestLogKVCtor("key5", int64_t(0));
-    TestLogKVCtor("key6", uint8_t(0));
-    TestLogKVCtor("key7", uint16_t(0));
-    TestLogKVCtor("key8", uint32_t(0));
-    TestLogKVCtor("key9", uint64_t(0));
+    TestLogKVCtor("key2", static_cast<int8_t>(0));
+    TestLogKVCtor("key3", static_cast<int16_t>(0));
+    TestLogKVCtor("key4", static_cast<int32_t>(0));
+    TestLogKVCtor("key5", static_cast<int64_t>(0));
+    TestLogKVCtor("key6", static_cast<uint8_t>(0));
+    TestLogKVCtor("key7", static_cast<uint16_t>(0));
+    TestLogKVCtor("key8", static_cast<uint32_t>(0));
+    TestLogKVCtor("key9", static_cast<uint64_t>(0));
     TestLogKVCtor("key10", 0.0f);
     TestLogKVCtor("key11", 0.0);
     TestLogKVCtor("key15", "testing");

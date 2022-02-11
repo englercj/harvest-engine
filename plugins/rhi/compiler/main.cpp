@@ -12,7 +12,7 @@
 
 #include "slang.h"
 #include "slang-com-ptr.h"
-#include "fmt/format.h"
+#include "fmt/core.h"
 
 #include <iostream>
 

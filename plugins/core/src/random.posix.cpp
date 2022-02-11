@@ -11,7 +11,7 @@ namespace he
 {
     struct _SystemRandomState
     {
-        _SystemRandomState() { handle = open("/dev/urandom", O_RDONLY, mode_t(0)); }
+        _SystemRandomState() { handle = open("/dev/urandom", O_RDONLY, static_cast<mode_t>(0)); }
         ~_SystemRandomState() { close(handle); }
         int32_t handle;
     };
@@ -28,7 +28,7 @@ namespace he
 
         while (count > ChunkSize)
         {
-            if (size_t(read(state.handle, dst, ChunkSize)) != ChunkSize)
+            if (static_cast<size_t>(read(state.handle, dst, ChunkSize)) != ChunkSize)
                 return false;
 
             dst += ChunkSize;
@@ -36,7 +36,7 @@ namespace he
         }
 
         if (count > 0)
-            return size_t(read(state.handle, dst, count)) == count;
+            return static_cast<size_t>(read(state.handle, dst, count)) == count;
 
         return true;
     }

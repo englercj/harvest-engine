@@ -8,7 +8,7 @@
 #include "he/core/memory_ops.h"
 #include "he/core/string_view_fmt.h"
 #include "he/core/utils.h"
-#include "fmt/format.h"
+#include "fmt/core.h"
 
 void WriteFileData(he::File& file, he::StringView name, const uint8_t* data, size_t size, bool asText)
 {

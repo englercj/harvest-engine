@@ -27,7 +27,7 @@ namespace he::assets
 
     bool AssetFileScanner::ScanDirectory(const char* dir)
     {
-        Directory::Scanner scanner;
+        DirectoryScanner scanner;
 
         if (!scanner.Open(dir))
             return false;
@@ -35,7 +35,7 @@ namespace he::assets
         const uint32_t dirLen = String::Length(dir);
         String fullPath(Allocator::GetTemp());
 
-        Directory::Scanner::Entry entry;
+        DirectoryScanner::Entry entry;
         while (scanner.NextEntry(entry))
         {
             ProcessPending(0, false);

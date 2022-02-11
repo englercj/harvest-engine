@@ -24,7 +24,7 @@ namespace he::editor
     {
         if (m_appDataRoot.IsEmpty())
         {
-            Result r = Directory::GetSpecial(m_appDataRoot, Directory::SpecialId::LocalAppData);
+            Result r = Directory::GetSpecial(m_appDataRoot, SpecialDirectory::LocalAppData);
             if (!HE_VERIFY(r))
             {
                 m_appDataRoot.Clear();

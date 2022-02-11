@@ -5,7 +5,7 @@
 #include "he/math/types.h"
 #include "he/math/vec4a.h"
 
-#include "fmt/format.h"
+#include "fmt/core.h"
 
 #include <type_traits>
 

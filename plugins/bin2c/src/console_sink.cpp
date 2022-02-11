@@ -8,7 +8,7 @@
 #include "he/core/log_sinks.h"
 #include "he/core/string.h"
 
-#include "fmt/format.h"
+#include "fmt/core.h"
 
 #include <iostream>
 

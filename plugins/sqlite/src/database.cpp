@@ -137,7 +137,7 @@ namespace he::sqlite
         if (!HE_VERIFY(stmt.Prepare(m_db, InsertSchemaVersionSql, PrepareFlags::Temporary)))
             return false;
 
-        const int32_t size = int32_t(migrations.Size());
+        const int32_t size = static_cast<int32_t>(migrations.Size());
         for (int32_t i = latestVersion; i < size; ++i)
         {
             const SchemaMigration& migration = migrations[i];
@@ -148,9 +148,9 @@ namespace he::sqlite
             stmt.Reset();
             stmt.Bind(1, i);
             stmt.Bind(2, migration.description);
-            stmt.Bind(3, int64_t(SystemClock::Now().ns));
-            stmt.Bind(4, time.ns);
-            stmt.Bind(5, int64_t(FNV32::HashString(migration.sql)));
+            stmt.Bind(3, static_cast<int64_t>(SystemClock::Now().val));
+            stmt.Bind(4, time.val);
+            stmt.Bind(5, static_cast<int64_t>(FNV32::HashString(migration.sql)));
             stmt.Bind(6, success ? 1 : 0);
 
             if (!HE_VERIFY(stmt.Step() == StepResult::Done))

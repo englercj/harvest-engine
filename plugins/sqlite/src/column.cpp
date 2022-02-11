@@ -52,7 +52,7 @@ namespace he::sqlite
 
     uint32_t Column::GetUint() const
     {
-        return uint32_t(GetInt64());
+        return static_cast<uint32_t>(GetInt64());
     }
 
     Span<const uint8_t> Column::GetBlob() const
@@ -64,7 +64,7 @@ namespace he::sqlite
         const void* p = sqlite3_column_blob(m_stmt, m_index);
         const int32_t s = sqlite3_column_bytes(m_stmt, m_index);
 
-        return { static_cast<const uint8_t*>(p), uint32_t(s) };
+        return { static_cast<const uint8_t*>(p), static_cast<uint32_t>(s) };
     }
 
     Span<const char> Column::GetText() const
@@ -76,7 +76,7 @@ namespace he::sqlite
         const uint8_t* p = sqlite3_column_text(m_stmt, m_index);
         const int32_t s = sqlite3_column_bytes(m_stmt, m_index);
 
-        return { reinterpret_cast<const char*>(p), uint32_t(s) };
+        return { reinterpret_cast<const char*>(p), static_cast<uint32_t>(s) };
     }
 
     void Column::ReadBlob(Span<uint8_t> blob) const

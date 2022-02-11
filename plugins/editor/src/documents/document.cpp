@@ -10,7 +10,7 @@
 #include "he/core/string_fmt.h"
 
 #include "imgui.h"
-#include "fmt/format.h"
+#include "fmt/core.h"
 
 namespace he::editor
 {

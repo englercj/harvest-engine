@@ -19,7 +19,7 @@ namespace he::assets
         if (!stmt.Bind(2, model.path.Data()))
             return false;
 
-        if (!stmt.Bind(3, int64_t(model.lastModifiedTime.ns)))
+        if (!stmt.Bind(3, static_cast<int64_t>(model.lastModifiedTime.val)))
             return false;
 
         if (!stmt.Bind(4, model.lastFileSize))
@@ -28,7 +28,7 @@ namespace he::assets
         if (!stmt.Bind(5, model.lastSessionToken))
             return false;
 
-        if (!stmt.Bind(6, int64_t(model.source.lastModifiedTime.ns)))
+        if (!stmt.Bind(6, static_cast<int64_t>(model.source.lastModifiedTime.val)))
             return false;
 
         if (!stmt.Bind(7, model.source.lastFileSize))
@@ -41,10 +41,10 @@ namespace he::assets
     {
         stmt.GetColumn(0).ReadBlob(model.id.val.m_bytes);
         model.path = stmt.GetColumn(1).GetText().Data();
-        model.lastModifiedTime.ns = uint64_t(stmt.GetColumn(2).GetInt64());
+        model.lastModifiedTime.val = static_cast<uint64_t>(stmt.GetColumn(2).GetInt64());
         model.lastFileSize = stmt.GetColumn(3).GetUint();
         model.lastSessionToken = stmt.GetColumn(4).GetUint();
-        model.source.lastModifiedTime.ns = uint64_t(stmt.GetColumn(5).GetInt64());
+        model.source.lastModifiedTime.val = static_cast<uint64_t>(stmt.GetColumn(5).GetInt64());
         model.source.lastFileSize = stmt.GetColumn(6).GetUint();
     }
 
@@ -62,7 +62,7 @@ namespace he::assets
         if (!stmt.Bind(4, model.name.Data()))
             return false;
 
-        if (!stmt.Bind(5, uint32_t(model.state)))
+        if (!stmt.Bind(5, static_cast<uint32_t>(model.state)))
             return false;
 
         if (!stmt.Bind(6, model.dataHash))
@@ -137,14 +137,14 @@ namespace he::assets
         // the upsert query later.
         if (count > 0)
         {
-            size_t i = size_t(-1);
+            size_t i = static_cast<size_t>(-1);
 
             if (ids[0].val == fileId)
                 i = 0;
             else if (count > 1 && ids[1].val == fileId)
                 i = 1;
 
-            if (i != size_t(-1))
+            if (i != static_cast<size_t>(-1))
             {
                 if (!AssetFileModel::RemoveOne(db, ids[i]))
                     return false;
@@ -303,7 +303,7 @@ namespace he::assets
         if (!stmt->Bind(4, asset.getName().cStr()))
             return false;
 
-        if (!stmt->Bind(5, uint16_t(AssetState::UNKNOWN)))
+        if (!stmt->Bind(5, static_cast<uint16_t>(AssetState::UNKNOWN)))
             return false;
 
         if (!stmt->Bind(6, FnvHash32(asset.data()->data(), asset.data()->size())))

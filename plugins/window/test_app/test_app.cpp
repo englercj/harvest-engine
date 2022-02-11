@@ -1,6 +1,6 @@
 #include "test_app.h"
 
-#include "he/core/debug.h"
+#include "he/core/debugger.h"
 #include "he/core/enum_fmt.h"
 #include "he/window/event.h"
 
@@ -57,7 +57,7 @@ namespace he
             case window::EventType::Text:
             {
                 const auto& evt = static_cast<const window::TextEvent&>(ev);
-                PrintToDebugger("{{ ch={} }}", wchar_t(evt.ch));
+                PrintToDebugger("{{ ch={} }}", static_cast<wchar_t>(evt.ch));
                 break;
             }
             case window::EventType::GamepadAxis:

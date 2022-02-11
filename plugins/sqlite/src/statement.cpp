@@ -86,18 +86,18 @@ namespace he::sqlite
 
     bool Statement::Bind(int32_t index, uint32_t value) const
     {
-        return Bind(index, int64_t(value));
+        return Bind(index, static_cast<int64_t>(value));
     }
 
     bool Statement::Bind(int32_t index, Span<const uint8_t> value) const
     {
-        HE_SQLITE_OK(sqlite3_bind_blob(m_stmt, index, value.Data(), int32_t(value.Size()), nullptr));
+        HE_SQLITE_OK(sqlite3_bind_blob(m_stmt, index, value.Data(), static_cast<int32_t>(value.Size()), nullptr));
         return true;
     }
 
     bool Statement::Bind(int32_t index, Span<const char> value) const
     {
-        HE_SQLITE_OK(sqlite3_bind_text(m_stmt, index, value.Data(), int32_t(value.Size()), nullptr));
+        HE_SQLITE_OK(sqlite3_bind_text(m_stmt, index, value.Data(), static_cast<int32_t>(value.Size()), nullptr));
         return true;
     }
 
@@ -138,7 +138,7 @@ namespace he::sqlite
 
     bool Statement::Bind(const char* paramName, uint32_t value) const
     {
-        return Bind(paramName, int64_t(value));
+        return Bind(paramName, static_cast<int64_t>(value));
     }
 
     bool Statement::Bind(const char* paramName, Span<const uint8_t> value) const

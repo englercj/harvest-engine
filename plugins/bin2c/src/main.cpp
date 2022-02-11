@@ -15,7 +15,6 @@
 #include "he/core/scope_guard.h"
 #include "he/core/string.h"
 #include "he/core/log.h"
-#include "fmt/format.h"
 
 #include <iostream>
 

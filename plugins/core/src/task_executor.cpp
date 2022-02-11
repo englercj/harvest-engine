@@ -2,26 +2,32 @@
 
 #include "he/core/task_executor.h"
 
+#include "he/core/cpu.h"
 #include "he/core/thread.h"
 #include "he/core/utils.h"
 
 namespace he
 {
-    Result ThreadPoolExecutor::Startup(uint32_t threadCount, const char* name)
+    Result ThreadPoolExecutor::Startup(const Config& config)
     {
         m_running = true;
-        m_threadName = name ? name : "Thread Pool Executor";
+        m_threadName = config.name ? config.name : "Thread Pool Executor";
+        uint32_t count = config.count;
 
-        if (threadCount == 0)
-        {
-            const uint32_t totalThreads = std::thread::hardware_concurrency();
-            threadCount = Clamp<uint32_t>(totalThreads, 2, 16) - 1;
-        }
+        if (count == 0)
+            count = GetCpuInfo().threadCount;
 
-        m_threads.Reserve(threadCount);
-        for (uint32_t i = 0; i < threadCount; ++i)
+        m_threads.Reserve(count);
+        for (uint32_t i = 0; i < count; ++i)
         {
             m_threads.PushBack(std::thread(PumpThread, this));
+            ThreadHandle handle = reinterpret_cast<ThreadHandle>(m_threads.Back().native_handle());
+            Result r = SetThreadAffinity(handle, config.affinity);
+            if (!r)
+            {
+                Shutdown();
+                return r;
+            }
         }
 
         return Result::Success;

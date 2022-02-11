@@ -5,7 +5,7 @@
 #include "he/core/ascii.h"
 #include "he/core/span.h"
 
-#include "fmt/format.h"
+#include "fmt/core.h"
 
 namespace fmt
 {
@@ -23,8 +23,8 @@ namespace fmt
             auto out = ctx.out();
             for (uint32_t i = 0; i < s.Size(); ++i)
             {
-                *(out++) = he::ToHex((s[i] & 0xF0) >> 4);
-                *(out++) = he::ToHex(s[i] & 0x0F);
+                *out++ = he::ToHex((s[i] & 0xF0) >> 4);
+                *out++ = he::ToHex(s[i] & 0x0F);
             }
             return out;
         }

@@ -14,7 +14,7 @@
 using namespace he;
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST(core, StringView, Construct)
+HE_TEST(core, string_view, Construct)
 {
     constexpr char TestString[] = "Hello, world!";
     constexpr uint32_t TestStringLen = HE_LENGTH_OF(TestString) - 1;
@@ -74,7 +74,7 @@ HE_TEST(core, StringView, Construct)
     }
 
     {
-        static const char TestStringWithNull[] = "Hello\0world!";
+        constexpr char TestStringWithNull[] = "Hello\0world!";
         StringView s(TestStringWithNull);
         StringViewTestAttorney::Test(s, TestStringWithNull, 5);
         HE_EXPECT_EQ_STR(s.Data(), "Hello");
@@ -82,9 +82,9 @@ HE_TEST(core, StringView, Construct)
 }
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST(core, StringView, operator_index)
+HE_TEST(core, string_view, operator_index)
 {
-    static const char TestString[] = "Hello, world!";
+    constexpr char TestString[] = "Hello, world!";
 
     StringView s(TestString);
     StringViewTestAttorney::Test(s, TestString, HE_LENGTH_OF(TestString) - 1);
@@ -95,7 +95,7 @@ HE_TEST(core, StringView, operator_index)
 }
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST(core, StringView, operator_eq)
+HE_TEST(core, string_view, operator_eq)
 {
     const StringView a("Hello, world!");
     const StringView b("Hello, world!");
@@ -115,7 +115,7 @@ HE_TEST(core, StringView, operator_eq)
 }
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST(core, StringView, operator_ne)
+HE_TEST(core, string_view, operator_ne)
 {
     const StringView a("Hello, world!");
     const StringView b("Hello, world!");
@@ -135,7 +135,7 @@ HE_TEST(core, StringView, operator_ne)
 }
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST(core, StringView, operator_lt)
+HE_TEST(core, string_view, operator_lt)
 {
     const StringView a("Hello, world!");
     const StringView b("Hello, world!");
@@ -155,7 +155,7 @@ HE_TEST(core, StringView, operator_lt)
 }
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST(core, StringView, operator_le)
+HE_TEST(core, string_view, operator_le)
 {
     const StringView a("Hello, world!");
     const StringView b("Hello, world!");
@@ -175,7 +175,7 @@ HE_TEST(core, StringView, operator_le)
 }
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST(core, StringView, operator_gt)
+HE_TEST(core, string_view, operator_gt)
 {
     const StringView a("Hello, world!");
     const StringView b("Hello, world!");
@@ -195,7 +195,7 @@ HE_TEST(core, StringView, operator_gt)
 }
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST(core, StringView, operator_ge)
+HE_TEST(core, string_view, operator_ge)
 {
     const StringView a("Hello, world!");
     const StringView b("Hello, world!");
@@ -215,7 +215,7 @@ HE_TEST(core, StringView, operator_ge)
 }
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST(core, StringView, IsEmpty)
+HE_TEST(core, string_view, IsEmpty)
 {
     {
         StringView s;
@@ -225,7 +225,7 @@ HE_TEST(core, StringView, IsEmpty)
     }
 
     {
-        static const char TestString[] = "Hello, world!";
+        constexpr char TestString[] = "Hello, world!";
 
         StringView s(TestString);
         StringViewTestAttorney::Test(s, TestString, HE_LENGTH_OF(TestString) - 1);
@@ -235,7 +235,7 @@ HE_TEST(core, StringView, IsEmpty)
 }
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST(core, StringView, Size)
+HE_TEST(core, string_view, Size)
 {
     {
         StringView s;
@@ -245,7 +245,7 @@ HE_TEST(core, StringView, Size)
     }
 
     {
-        static const char TestString[] = "Hello, world!";
+        constexpr char TestString[] = "Hello, world!";
 
         StringView s(TestString);
         StringViewTestAttorney::Test(s, TestString, HE_LENGTH_OF(TestString) - 1);
@@ -255,7 +255,7 @@ HE_TEST(core, StringView, Size)
 }
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST(core, StringView, Data)
+HE_TEST(core, string_view, Data)
 {
     {
         StringView s;
@@ -265,7 +265,7 @@ HE_TEST(core, StringView, Data)
     }
 
     {
-        static const char TestString[] = "Hello, world!";
+        constexpr char TestString[] = "Hello, world!";
 
         StringView s(TestString);
         StringViewTestAttorney::Test(s, TestString, HE_LENGTH_OF(TestString) - 1);
@@ -275,9 +275,9 @@ HE_TEST(core, StringView, Data)
 }
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST(core, StringView, Front)
+HE_TEST(core, string_view, Front)
 {
-    static const char TestString[] = "Hello, world!";
+    constexpr char TestString[] = "Hello, world!";
 
     StringView s(TestString);
     StringViewTestAttorney::Test(s, TestString, HE_LENGTH_OF(TestString) - 1);
@@ -286,9 +286,9 @@ HE_TEST(core, StringView, Front)
 }
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST(core, StringView, Back)
+HE_TEST(core, string_view, Back)
 {
-    static const char TestString[] = "Hello, world!";
+    constexpr char TestString[] = "Hello, world!";
 
     StringView s(TestString);
     StringViewTestAttorney::Test(s, TestString, HE_LENGTH_OF(TestString) - 1);
@@ -297,19 +297,31 @@ HE_TEST(core, StringView, Back)
 }
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST(core, StringView, ToInteger)
+HE_TEST(core, string_view, ToInteger)
 {
-    // TODO
+    // Decimal
+    HE_EXPECT_EQ(StringView("1").ToInteger<int32_t>(), 1);
+    HE_EXPECT_EQ(StringView("-1").ToInteger<int32_t>(), -1);
+    HE_EXPECT_EQ(StringView("1").ToInteger<uint32_t>(), 1);
+    HE_EXPECT_EQ(StringView("-1").ToInteger<uint32_t>(), 0xffffffff);
+
+    // Hex
+    HE_EXPECT_EQ(StringView("abc").ToInteger<uint32_t>(16), 0xabc);
+    HE_EXPECT_EQ(StringView("0xffffffff").ToInteger<uint32_t>(16), 0xffffffff);
+
+    // Binary
+    HE_EXPECT_EQ(StringView("0101001").ToInteger<uint32_t>(2), 0b0101001);
 }
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST(core, StringView, ToFloat)
+HE_TEST(core, string_view, ToFloat)
 {
-    // TODO
+    HE_EXPECT_EQ(StringView("3.141592654").ToFloat(), 3.141592654f);
+    HE_EXPECT_EQ(StringView("3.141592653589793238462643383279502884").ToFloat<double>(), 3.141592653589793238462643383279502884);
 }
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST(core, StringView, CompareTo)
+HE_TEST(core, string_view, CompareTo)
 {
     const StringView a("Hello, world!");
     const StringView b("Hello, world!");
@@ -329,7 +341,7 @@ HE_TEST(core, StringView, CompareTo)
 }
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST(core, StringView, Begin)
+HE_TEST(core, string_view, Begin)
 {
     {
         StringView s;
@@ -339,7 +351,7 @@ HE_TEST(core, StringView, Begin)
     }
 
     {
-        static const char TestString[] = "Hello, world!";
+        constexpr char TestString[] = "Hello, world!";
 
         StringView s(TestString);
         StringViewTestAttorney::Test(s, TestString, HE_LENGTH_OF(TestString) - 1);
@@ -349,7 +361,7 @@ HE_TEST(core, StringView, Begin)
 }
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST(core, StringView, End)
+HE_TEST(core, string_view, End)
 {
     {
         StringView s;
@@ -359,11 +371,26 @@ HE_TEST(core, StringView, End)
     }
 
     {
-        static const char TestString[] = "Hello, world!";
+        constexpr char TestString[] = "Hello, world!";
 
         StringView s(TestString);
         StringViewTestAttorney::Test(s, TestString, HE_LENGTH_OF(TestString) - 1);
 
         HE_EXPECT(s.End() == (TestString + HE_LENGTH_OF(TestString) - 1));
     }
+}
+
+// ------------------------------------------------------------------------------------------------
+HE_TEST(core, string_view, RangeBasedFor)
+{
+    constexpr char TestString[] = "Hello, world!";
+
+    StringView s(TestString);
+
+    uint32_t i = 0;
+    for (char c : s)
+    {
+        HE_EXPECT_EQ(c, TestString[i++]);
+    }
+    HE_EXPECT_EQ(i, HE_LENGTH_OF(TestString) - 1);
 }

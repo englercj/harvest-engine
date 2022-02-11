@@ -38,6 +38,14 @@ namespace he
         , m_pageSize(pageSize)
     {}
 
+    LinearPageAllocator::LinearPageAllocator(LinearPageAllocator&& x)
+        : m_allocator(x.m_allocator)
+        , m_currentPage(Exchange(x.m_currentPage, nullptr))
+        , m_lastPage(Exchange(x.m_lastPage, nullptr))
+        , m_pageOffset(Exchange(x.m_pageOffset, 0))
+        , m_pageSize(x.m_pageSize)
+    {}
+
     LinearPageAllocator::~LinearPageAllocator()
     {
         Reset();
@@ -60,19 +68,12 @@ namespace he
         return static_cast<void*>(allocStart);
     }
 
-    void* LinearPageAllocator::Realloc(void* ptr, size_t newSize, size_t alignment)
+    void* LinearPageAllocator::Realloc(void*, size_t newSize, size_t alignment)
     {
-        if (ptr == nullptr)
-            return _aligned_malloc(newSize, alignment);
-
         if (newSize == 0)
-        {
-            _aligned_free(ptr);
             return nullptr;
-        }
 
-        alignment = AlignUp(alignment, sizeof(void*));
-        return _aligned_realloc(ptr, newSize, alignment);
+        return Malloc(newSize, alignment);
     }
 
     void LinearPageAllocator::Clear()

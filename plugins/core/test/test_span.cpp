@@ -9,12 +9,7 @@
 using namespace he;
 
 // ------------------------------------------------------------------------------------------------
-namespace he
-{
-}
-
-// ------------------------------------------------------------------------------------------------
-HE_TEST(core, Span, Construct)
+HE_TEST(core, span, Construct)
 {
     static uint32_t s_data[]{ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 };
 
@@ -109,7 +104,7 @@ HE_TEST(core, Span, Construct)
 }
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST(core, Span, operator_index)
+HE_TEST(core, span, operator_index)
 {
     static uint32_t s_data[]{ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 };
 
@@ -122,7 +117,7 @@ HE_TEST(core, Span, operator_index)
 }
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST(core, Span, IsEmpty)
+HE_TEST(core, span, IsEmpty)
 {
     {
         Span<uint32_t> s;
@@ -142,7 +137,7 @@ HE_TEST(core, Span, IsEmpty)
 }
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST(core, Span, Size)
+HE_TEST(core, span, Size)
 {
     {
         Span<uint32_t> s;
@@ -162,7 +157,7 @@ HE_TEST(core, Span, Size)
 }
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST(core, Span, Data)
+HE_TEST(core, span, Data)
 {
     {
         Span<uint32_t> s;
@@ -182,7 +177,7 @@ HE_TEST(core, Span, Data)
 }
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST(core, Span, Front)
+HE_TEST(core, span, Front)
 {
     static uint32_t s_data[]{ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 };
 
@@ -193,7 +188,7 @@ HE_TEST(core, Span, Front)
 }
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST(core, Span, Back)
+HE_TEST(core, span, Back)
 {
     static uint32_t s_data[]{ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 };
 
@@ -204,7 +199,19 @@ HE_TEST(core, Span, Back)
 }
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST(core, Span, Begin)
+HE_TEST(core, span, AsBytes)
+{
+    static uint32_t s_data[]{ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 };
+
+    Span<uint32_t> s(s_data);
+    Span<const uint8_t> b = s.AsBytes();
+
+    HE_EXPECT_EQ(s.Size() * sizeof(uint32_t), b.Size());
+    HE_EXPECT_EQ_MEM(s.Data(), b.Data(), b.Size());
+}
+
+// ------------------------------------------------------------------------------------------------
+HE_TEST(core, span, Begin)
 {
     {
         Span<uint32_t> s;
@@ -224,7 +231,7 @@ HE_TEST(core, Span, Begin)
 }
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST(core, Span, End)
+HE_TEST(core, span, End)
 {
     {
         Span<uint32_t> s;
@@ -241,4 +248,19 @@ HE_TEST(core, Span, End)
 
         HE_EXPECT(s.End() == (s_data + HE_LENGTH_OF(s_data)));
     }
+}
+
+// ------------------------------------------------------------------------------------------------
+HE_TEST(core, span, RangeBasedFor)
+{
+    static uint32_t s_data[]{ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 };
+
+    Span<uint32_t> s(s_data);
+
+    uint32_t i = 0;
+    for (uint32_t v : s)
+    {
+        HE_EXPECT_EQ(v, s_data[i++]);
+    }
+    HE_EXPECT_EQ(i, HE_LENGTH_OF(s_data));
 }

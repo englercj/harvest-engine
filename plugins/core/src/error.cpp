@@ -6,7 +6,7 @@
 #include "he/core/enum_ops.h"
 #include "he/core/log.h"
 
-#include "fmt/format.h"
+#include "fmt/core.h"
 
 #include <cstdlib>
 

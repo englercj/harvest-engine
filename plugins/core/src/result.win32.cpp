@@ -7,7 +7,7 @@
 #include "he/core/string.h"
 #include "he/core/wstr.h"
 
-#include "fmt/format.h"
+#include "fmt/core.h"
 
 #if defined(HE_PLATFORM_API_WIN32)
 

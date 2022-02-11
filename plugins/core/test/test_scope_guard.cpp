@@ -11,7 +11,7 @@ static int s_count;
 static void OnScopeExit() { ++s_count; }
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST(core, scope_guard, macro)
+HE_TEST(core, scope_guard, AT_SCOPE_EXIT)
 {
     s_count = 0;
 

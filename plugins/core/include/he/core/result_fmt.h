@@ -7,7 +7,7 @@
 #include "he/core/string.h"
 #include "he/core/string_fmt.h"
 
-#include "fmt/format.h"
+#include "fmt/core.h"
 
 namespace fmt
 {

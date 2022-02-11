@@ -150,9 +150,6 @@ namespace he
         /// occurs (setting errno to ERANGE) and LONG_MAX, LONG_MIN, LLONG_MAX or LLONG_MIN is
         /// returned. If no conversion can be performed, zero is returned.
         ///
-        /// \param[in] str The string to parse.
-        /// \param[in] end Optional. A pointer to the end of the string to stop parsing. If
-        ///     nullptr (default) the string is parsed until a null terminator is reached.
         /// \param[in] base Optional. The numerical base of the value being parsed.
         /// \return The parsed number.
         template <typename T>
@@ -168,11 +165,8 @@ namespace he
         /// occurs (setting errno to ERANGE) and LONG_MAX, LONG_MIN, LLONG_MAX or LLONG_MIN is
         /// returned. If no conversion can be performed, zero is returned.
         ///
-        /// \param[in] str The string to parse.
-        /// \param[in] end Optional. A pointer to the end of the string to stop parsing. If
-        ///     nullptr (default) the string is parsed until a null terminator is reached.
         /// \return The parsed number.
-        template <typename T>
+        template <typename T = float>
         T ToFloat()
         {
             const char* end = m_span.End();

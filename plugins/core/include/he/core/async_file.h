@@ -10,30 +10,54 @@
 
 namespace he
 {
-    // Configuration for the async file IO system.
+    /// Configuration for the async file IO system.
     struct AsyncFileIOConfig
     {
         /// Used by the Posix backend to schedule IO operations. Work executed on this executor
         /// will primarily be blocking waits on system IO functions.
         TaskExecutor* executor{ nullptr };
 
-        // TODO: Thread priority and affinity
+        /// Configuration for the thread pool executor which is used on posix systems.
+        /// If `executor` is set, that object is used, and these values are ignored.
+        struct
+        {
+            uint32_t threadCount{ 0 }; ///< A value of zero will choose a number of threads between 4 and 16 based on hardware.
+            uint64_t threadAffinity{ 0xffffffffffffffff };
+        } pool;
+
+        /// Configuration for the IOCP backend used on win32 systems.
+        struct
+        {
+            uint64_t threadAffinity{ 0xffffffffffffffff };
+        } iocp;
     };
 
+    /// Result of an asynchronous file operation.
     struct AsyncFileResult
     {
+        /// The result of the operation. When this represents a failure, `bytesTransferred`
+        /// may contain an invalid value.
         Result result;
+
+        /// Number of bytes read from or written to the file.
         uint32_t bytesTransferred;
     };
 
-    // Must be called before performing any asynchronous file operations.
+    /// Starts up the asynchronous file handling for the platform. Must be called before performing
+    /// any asynchronous file operations. This should only be called once, and not called again
+    /// until after \ref ShutdownAsyncFileIO is called.
+    ///
+    /// \param config The configuration to use for starting up the async backend.
+    /// \return The result of the startup operation.
     Result StartupAsyncFileIO(const AsyncFileIOConfig& config);
 
-    // Shuts down the asynchronous file operation system. Safe to call while pending file
-    // operations are in progress, but will cause a stall until all of them complete.
+    /// Shuts down the asynchronous file operation system. Safe to call while pending file
+    /// operations are in progress, but will cause a stall until all of them complete.
+    /// This should only be called once after calling \ref StartupAsyncFileIO, and not called
+    /// again unless \ref StartupAsyncFileIO is called again.
     void ShutdownAsyncFileIO();
 
-    // Represents a file that is used for asynchronous read/write operations.
+    /// Represents a file on disk that can be read from or written to asynchronously.
     class AsyncFile
     {
     public:
@@ -45,26 +69,40 @@ namespace he
         AsyncFile& operator=(const AsyncFile&) = delete;
         AsyncFile& operator=(AsyncFile&& x);
 
-        // Opens the file from the `path` in the given `mode`.
+        /// Opens the file at `path` in the given `mode` using behavior defined by `flags`.
+        ///
+        /// \param[in] path The filesystem path to open.
+        /// \param[in] mode The mode to open the file in.
+        /// \param[in] flags The behavior flags for operations on this file.
+        /// \return The result of the operation.
         Result Open(const char* path, FileOpenMode mode, FileOpenFlag flags = FileOpenFlag::None);
 
-        // Closes the file.
+        /// Closes the file.
         void Close();
 
-        // Returns true if the file is currently open.
+        /// Checks if the file is currently open.
+        ///
+        /// \return True if the file is open, false otherwise.
         bool IsOpen() const;
 
-        // Returns the size of the file.
+        /// Reads the size of the file.
+        ///
+        /// \return The size of the file in bytes.
         uint64_t GetSize() const;
 
-        // Reads `size` bytes from the file at `offset` into `dst` and stores the count of
-        // `bytesRead`.
-        // Note: It is safe to close a file while there is a pending read operation in progress.
+        /// Reads `size` bytes from the file at `offset` into `dst`.
+        ///
+        /// \note It is safe to close a file while there is a pending read operation in progress.
+        ///
+        /// \return A future representing the asynchronous read operation.
         std::future<AsyncFileResult> ReadAsync(void* dst, uint64_t offset, uint32_t size);
 
-        // Writes `size` bytes from `src` at `offset` and stores the count of `bytesWritten`.
-        // Note: It is safe to close a file while there is a pending write operation in progress.
-        std::future<AsyncFileResult> WriteAsync(void* src, uint64_t offset, uint32_t size);
+        /// Writes `size` bytes from `src` into the file at `offset`.
+        ///
+        /// \note It is safe to close a file while there is a pending write operation in progress.
+        ///
+        /// \return A future representing the asynchronous write operation.
+        std::future<AsyncFileResult> WriteAsync(const void* src, uint64_t offset, uint32_t size);
 
     public:
         intptr_t m_fd;

@@ -2,7 +2,7 @@
 
 #include "he/core/string_view.h"
 
-#include "fmt/format.h"
+#include "fmt/core.h"
 
 namespace fmt
 {
@@ -19,7 +19,7 @@ namespace fmt
         {
             auto out = ctx.out();
             for (const char c : s)
-                *(out++) = c;
+                *out++ = c;
             return out;
         }
     };

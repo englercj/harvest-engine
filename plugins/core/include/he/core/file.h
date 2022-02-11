@@ -116,7 +116,7 @@ namespace he
     /// \return The file result representing the OS result.
     FileResult GetFileResult(Result result);
 
-    /// Class that is used to represent a file on disk.
+    /// Represents a file on disk that can be read from or written to.
     class File
     {
     public:
@@ -126,7 +126,10 @@ namespace he
         /// \return True if the path exists and is a regular file, false otherwise.
         static bool Exists(const char* path);
 
-        // Removes the file at `path`.
+        /// Removes the file at `path`.
+        ///
+        /// \param[in] path The filesystem path to remove.
+        /// \return The result of the remove operation.
         static Result Remove(const char* path);
 
         // Renames a file, moving it from `oldPath` to `newPath`.
@@ -139,6 +142,17 @@ namespace he
         // non-successful result then `outAttributes` will not contain valid values.
         static Result GetAttributes(const char* path, FileAttributes& outAttributes);
 
+        /// Read a file's contents into a vector buffer. The vector will be resized to hold the
+        /// read data. In the case of a short read the resized vector size can be used to determine
+        /// the number of bytes read.
+        ///
+        /// \param[out] dst The destination vector to write data into.
+        /// \param[in] path The path to the file to read.
+        /// \param[in] offset Optional. The offset into the file to read. Clamped to (size - 1). Default is the start of the file.
+        /// \param[in] size Optional. The number of bytes to read from the file. Clamped to file size. Default is the entire file.
+        template <typename T>
+        static Result Read(Vector<T>& dst, const char* path, uint64_t offset = 0, uint32_t size = 0);
+
     public:
         File();
         File(const File&) = delete;
@@ -148,25 +162,46 @@ namespace he
         File& operator=(const File&) = delete;
         File& operator=(File&& x);
 
-        // Opens the file from the `path` in the given `mode`.
+        /// Opens the file at `path` in the given `mode` using behavior defined by `flags`.
+        ///
+        /// \param[in] path The filesystem path to open.
+        /// \param[in] mode The mode to open the file in.
+        /// \param[in] flags The behavior flags for operations on this file.
+        /// \return The result of the operation.
         Result Open(const char* path, FileOpenMode mode, FileOpenFlag flags = FileOpenFlag::None);
 
-        // Closes the file.
+        /// Closes the file.
         void Close();
 
-        // Returns true if the file is currently open.
+        /// Checks if the file is currently open.
+        ///
+        /// \return True if the file is open, false otherwise.
         bool IsOpen() const;
 
-        // Returns the size of the file.
+        /// Reads the size of the file.
+        ///
+        /// \return The size of the file in bytes.
         uint64_t GetSize() const;
 
-        // Set the size of the file to the given `size`.
+        /// Set the size of the file to `size`.
+        ///
+        /// \param[in] size The size in bytes to set the file to.
+        /// \return The result of the operation.
         Result SetSize(uint64_t size);
 
-        // Returns the position of the file pointer in the specified file.
+        /// Reads the position of the file pointer.
+        ///
+        /// \note After using \ref ReadAt or \ref WriteAt the position of the file pointer is
+        /// undefined. You'll need to reset it with \ref SetPos for this function to return
+        /// valid result again.
+        ///
+        /// \return The current position of the file pointer.
         uint64_t GetPos() const;
 
-        // Sets the file pointer to the `offset` position in the specified file.
+        /// Sets the file pointer to the `offset` position.
+        ///
+        /// \param[in] offset The offset in the file to move the pointer to.
+        /// \return The result of the operation.
         Result SetPos(uint64_t offset);
 
         // Reads `size` bytes from the file into `dst` and stores the count of `bytesRead`.
@@ -209,6 +244,7 @@ namespace he
         intptr_t m_fd;
     };
 
+    /// Represents a memory-mapped file.
     class MemoryMap
     {
     public:
@@ -221,16 +257,21 @@ namespace he
         MemoryMap& operator=(MemoryMap&& x);
 
         // Memory maps a file.
-        Result Open(File& file, MemoryMapMode mode, uint64_t offset, uint32_t size);
+        Result Map(File& file, MemoryMapMode mode, uint64_t offset = 0, uint32_t size = 0);
 
-        // Unmaps a file from memory.
-        void Close();
+        /// Checks if a file is currently memory mapped.
+        ///
+        /// \return True if a file is memory mapped, false otherwise.
+        bool IsMapped() const;
+
+        // Unmaps the file from memory.
+        void Unmap();
 
         // Flushes the memory mapped data to the underlying file.
-        Result Flush(uint64_t offset, uint32_t size, bool async);
+        Result Flush(uint64_t offset, uint32_t size, bool async = false);
 
         // Flushes an entire memory mapped region of a file to the underlying file.
-        Result Flush(bool async) { return Flush(0, m_size, async); }
+        Result Flush(bool async = false) { return Flush(0, m_size, async); }
 
     public:
         void* m_data;
@@ -241,4 +282,34 @@ namespace he
         void* m_fileHandle;
     #endif
     };
+
+    template <typename T>
+    inline Result File::Read(Vector<T>& dst, const char* path, uint64_t offset, uint32_t size)
+    {
+        File f;
+        Result r = f.Open(path, FileOpenMode::ReadExisting);
+        if (!r)
+            return r;
+
+        if (size == 0)
+            size = static_cast<uint32_t>(f.GetSize());
+
+        offset = Min<uint64_t>(offset, size - 1);
+
+        const uint32_t vectorSize = sizeof(T) == 1 ? size : (size + (sizeof(T) - 1)) / sizeof(T);
+        dst.Resize(vectorSize, he::DefaultInit);
+
+        uint32_t bytesRead = 0;
+        r = f.ReadAt(dst.Data(), offset, size, &bytesRead);
+        if (!r)
+            return r;
+
+        if (bytesRead < size)
+        {
+            const uint32_t vectorReadSize = sizeof(T) == 1 ? bytesRead : (bytesRead + (sizeof(T) - 1)) / sizeof(T);
+            dst.Resize(vectorReadSize);
+        }
+
+        return Result::Success;
+    }
 }

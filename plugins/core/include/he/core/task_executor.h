@@ -28,9 +28,17 @@ namespace he
     class ThreadPoolExecutor : public TaskExecutor
     {
     public:
+        struct Config
+        {
+            uint32_t count{ 0 };
+            uint64_t affinity{ 0xffffffffffffffff };
+            const char* name{ nullptr };
+        };
+
+    public:
         ~ThreadPoolExecutor() { Shutdown(); }
 
-        Result Startup(uint32_t threadCount = 0, const char* name = nullptr);
+        Result Startup(const Config& config);
         void Shutdown();
 
         void Add(TaskFunc func, void* taskData) override;

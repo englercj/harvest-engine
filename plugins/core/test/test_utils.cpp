@@ -113,6 +113,25 @@ HE_TEST(core, utils, AlignUp_pointer)
 }
 
 // ------------------------------------------------------------------------------------------------
+HE_TEST(core, utils, IsPowerOf2)
+{
+    static_assert(IsPowerOf2(1u));
+    static_assert(IsPowerOf2(2u));
+    static_assert(IsPowerOf2(4u));
+    static_assert(IsPowerOf2(8u));
+    static_assert(IsPowerOf2(16u));
+    static_assert(IsPowerOf2(256u));
+    static_assert(IsPowerOf2(65536u));
+    static_assert(IsPowerOf2(536870912u));
+
+    static_assert(!IsPowerOf2(0u));
+    static_assert(!IsPowerOf2(3u));
+    static_assert(!IsPowerOf2(7u));
+    static_assert(!IsPowerOf2(65534u));
+    static_assert(!IsPowerOf2(536870911u));
+}
+
+// ------------------------------------------------------------------------------------------------
 HE_TEST(core, utils, Min)
 {
     static_assert(Min(1, 2) == 1, "");

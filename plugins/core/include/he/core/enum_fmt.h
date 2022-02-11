@@ -5,7 +5,7 @@
 #include "he/core/enum_ops.h"
 #include "he/core/type_traits.h"
 
-#include "fmt/format.h"
+#include "fmt/core.h"
 
 namespace fmt
 {

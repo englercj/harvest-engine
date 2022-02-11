@@ -146,9 +146,52 @@ HE_TEST(core, file, Static_GetAttributes)
     HE_EXPECT(r, r);
     HE_EXPECT(attributes.flags == FileAttributeFlag::None);
     HE_EXPECT_EQ(attributes.size, HE_LENGTH_OF(TestPath));
-    HE_EXPECT_LE(attributes.createTime, SystemClock::Now());
-    HE_EXPECT_LE(attributes.accessTime, SystemClock::Now());
-    HE_EXPECT_LE(attributes.writeTime, SystemClock::Now());
+    HE_EXPECT_LE(attributes.createTime.val, SystemClock::Now().val);
+    HE_EXPECT_LE(attributes.accessTime.val, SystemClock::Now().val);
+    HE_EXPECT_LE(attributes.writeTime.val, SystemClock::Now().val);
+
+    File::Remove(TestPath);
+}
+
+// ------------------------------------------------------------------------------------------------
+HE_TEST(core, file, Static_Read)
+{
+    constexpr const char TestPath[] = "ff4dcc9d-cc22-4853-be2c-a7733026bf07";
+    constexpr uint32_t TestPathLen = HE_LENGTH_OF(TestPath) - 1;
+    TouchTestFile(TestPath, TestPath, TestPathLen);
+
+
+    // single-byte-sized buffer type
+    {
+        Vector<char> value;
+        Result r = File::Read(value, TestPath);
+        HE_EXPECT(r, r);
+        HE_EXPECT_EQ(value.Size(), TestPathLen);
+        HE_EXPECT_EQ_MEM(value.Data(), TestPath, TestPathLen);
+    }
+
+    // multi-byte-sized buffer type that divides evenly
+    {
+        static_assert((TestPathLen % sizeof(int32_t)) == 0);
+
+        Vector<int32_t> value;
+        Result r = File::Read(value, TestPath);
+        HE_EXPECT(r, r);
+        HE_EXPECT_EQ(value.Size(), TestPathLen / sizeof(int32_t));
+        HE_EXPECT_EQ_MEM(value.Data(), TestPath, TestPathLen);
+    }
+
+    // multi-byte-sized buffer type that doesn't divide evenly
+    {
+        static_assert((TestPathLen % sizeof(int64_t)) != 0);
+        constexpr uint32_t ExpectedVectorLen = (TestPathLen / sizeof(int64_t)) + 1;
+
+        Vector<int64_t> value;
+        Result r = File::Read(value, TestPath);
+        HE_EXPECT(r, r);
+        HE_EXPECT_EQ(value.Size(), ExpectedVectorLen);
+        HE_EXPECT_EQ_MEM(value.Data(), TestPath, TestPathLen);
+    }
 
     File::Remove(TestPath);
 }
@@ -353,7 +396,32 @@ HE_TEST(core, file, Flush)
 
     f.Close();
     File::Remove(TestPath);
+}
 
+// ------------------------------------------------------------------------------------------------
+HE_TEST(core, file, Lock_Unlock)
+{
+    constexpr const char TestPath[] = "56d64cc3-b70e-405a-b89a-c02b8715d9a6";
+
+    File f;
+    Result r = f.Open(TestPath, FileOpenMode::WriteTruncate);
+    HE_EXPECT(r, r);
+
+    r = f.SetSize(128);
+    HE_EXPECT(r, r);
+
+    r = f.Lock(0, 128, FileLockFlag::Exclusive);
+    HE_EXPECT(r, r);
+
+    uint32_t value0 = 250;
+    r = f.Write(&value0, sizeof(value0));
+    HE_EXPECT(r, r);
+
+    r = f.Unlock(0, 128);
+    HE_EXPECT(r, r);
+
+    f.Close();
+    File::Remove(TestPath);
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -374,9 +442,9 @@ HE_TEST(core, file, GetAttributes)
     HE_EXPECT(r, r);
     HE_EXPECT(attributes.flags == FileAttributeFlag::None);
     HE_EXPECT_EQ(attributes.size, HE_LENGTH_OF(TestPath));
-    HE_EXPECT_LE(attributes.createTime, SystemClock::Now());
-    HE_EXPECT_LE(attributes.accessTime, SystemClock::Now());
-    HE_EXPECT_LE(attributes.writeTime, SystemClock::Now());
+    HE_EXPECT_LE(attributes.createTime.val, SystemClock::Now().val);
+    HE_EXPECT_LE(attributes.accessTime.val, SystemClock::Now().val);
+    HE_EXPECT_LE(attributes.writeTime.val, SystemClock::Now().val);
 
     File::Remove(TestPath);
 }
@@ -416,6 +484,47 @@ HE_TEST(core, file, SetTimes)
     r = f.GetAttributes(attributes);
     HE_EXPECT(r, r);
 
-    HE_EXPECT_EQ(attributes.accessTime, c);
-    HE_EXPECT_EQ(attributes.writeTime, c);
+    HE_EXPECT_EQ(attributes.accessTime.val, c.val);
+    HE_EXPECT_EQ(attributes.writeTime.val, c.val);
+}
+
+// ------------------------------------------------------------------------------------------------
+HE_TEST(core, file, MemoryMap)
+{
+    constexpr const char TestPath[] = "a3ac923d-6eb3-497f-ad88-772e9b4b9bdb";
+    File::Remove(TestPath);
+
+    HE_EXPECT(!File::Exists(TestPath));
+    TouchTestFile(TestPath, TestPath, HE_LENGTH_OF(TestPath));
+
+    File f;
+    Result r = f.Open(TestPath, FileOpenMode::ReadWriteExisting);
+    HE_EXPECT(r, r);
+    HE_EXPECT(f.IsOpen());
+
+    {
+        MemoryMap mm;
+        r = mm.Map(f, MemoryMapMode::Write);
+        HE_EXPECT(r, r);
+        HE_EXPECT(mm.IsMapped());
+
+        MemSet(mm.m_data, 0x55, 4);
+
+        r = mm.Flush();
+        HE_EXPECT(r, r);
+
+        mm.Unmap();
+        HE_EXPECT(!mm.IsMapped());
+    }
+
+    uint32_t val = 0;
+    r = f.Read(&val, 4);
+    HE_EXPECT(r, r);
+    HE_EXPECT_EQ(val, 0x55555555);
+
+    f.Close();
+    HE_EXPECT(!f.IsOpen());
+
+    File::Remove(TestPath);
+
 }

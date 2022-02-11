@@ -461,12 +461,12 @@ namespace he
 
     MemoryMap::~MemoryMap()
     {
-        Close();
+        Unmap();
     }
 
     MemoryMap& MemoryMap::operator=(MemoryMap&& x)
     {
-        Close();
+        Unmap();
         m_data = Exchange(x.m_data, nullptr);
         m_size = Exchange(x.m_size, 0);
         m_handle = Exchange(x.m_handle, nullptr);
@@ -474,7 +474,7 @@ namespace he
         return *this;
     }
 
-    Result MemoryMap::Open(File& file, MemoryMapMode mode, uint64_t offset, uint32_t size)
+    Result MemoryMap::Map(File& file, MemoryMapMode mode, uint64_t offset, uint32_t size)
     {
         HE_ASSERT(m_handle == nullptr && m_fileHandle == INVALID_HANDLE_VALUE);
         // TODO: Validate offset is multiple of allocation granularity
@@ -495,7 +495,7 @@ namespace he
         if (m_data == nullptr)
         {
             Result r = Result::FromLastError();
-            Close();
+            Unmap();
             return r;
         }
 
@@ -507,7 +507,12 @@ namespace he
         return Result::Success;
     }
 
-    void MemoryMap::Close()
+    bool MemoryMap::IsMapped() const
+    {
+        return m_data != nullptr;
+    }
+
+    void MemoryMap::Unmap()
     {
         if (m_data != nullptr)
             ::UnmapViewOfFile(m_data);

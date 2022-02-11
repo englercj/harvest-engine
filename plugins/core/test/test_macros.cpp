@@ -11,7 +11,8 @@ using namespace he;
 // ------------------------------------------------------------------------------------------------
 HE_TEST(core, macros, UNUSED)
 {
-    // TODO
+    uint32_t unusedVar;
+    HE_UNUSED(unusedVar);
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -37,6 +38,20 @@ HE_TEST(core, macros, STRINGIFY)
 }
 
 // ------------------------------------------------------------------------------------------------
+HE_TEST(core, macros, UNIQUE_NAME)
+{
+    HE_PUSH_WARNINGS();
+    HE_DISABLE_MSVC_WARNING(4101); // unused variable
+
+    int HE_UNIQUE_NAME(a);
+    int HE_UNIQUE_NAME(a);
+    int HE_UNIQUE_NAME(a);
+    int HE_UNIQUE_NAME(a);
+
+    HE_POP_WARNINGS();
+}
+
+// ------------------------------------------------------------------------------------------------
 HE_TEST(core, macros, PP_JOIN)
 {
     int HE_PP_JOIN(foo, bar) = 0;
@@ -46,7 +61,8 @@ HE_TEST(core, macros, PP_JOIN)
 // ------------------------------------------------------------------------------------------------
 HE_TEST(core, macros, PP_EXPAND)
 {
-    // TODO
+    int HE_PP_EXPAND(HE_PP_JOIN(foo, bar)) = 0;
+    HE_EXPECT_EQ(foobar, 0);
 }
 
 // ------------------------------------------------------------------------------------------------

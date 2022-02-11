@@ -1,0 +1,113 @@
+// Copyright Chad Engler
+
+#include "he/core/async_file.h"
+
+#include "he/core/result.h"
+#include "he/core/result_fmt.h"
+#include "he/core/test.h"
+
+using namespace he;
+
+// ------------------------------------------------------------------------------------------------
+class AsyncFileFixture : public TestFixture
+{
+public:
+    static void TouchTestFile(const char* path, const void* data = nullptr, uint32_t len = 0)
+    {
+        File f;
+        Result r = f.Open(path, FileOpenMode::WriteTruncate);
+        HE_EXPECT(r, r);
+
+        if (data && len > 0)
+        {
+            r = f.Write(data, len);
+            HE_EXPECT(r, r);
+        }
+
+        f.Close();
+    }
+
+    void Before() override
+    {
+        AsyncFileIOConfig config;
+        StartupAsyncFileIO(config);
+    }
+
+    void After() override
+    {
+        ShutdownAsyncFileIO();
+    }
+};
+
+// ------------------------------------------------------------------------------------------------
+HE_TEST_F(core, AsyncFileFixture, Open_Close)
+{
+    constexpr const char TestPath[] = "0219db88-7616-48ed-b274-404cbeff336f";
+
+    AsyncFile f;
+    Result r = f.Open(TestPath, FileOpenMode::WriteTruncate);
+    HE_EXPECT(r, r);
+    HE_EXPECT(f.IsOpen());
+
+    f.Close();
+    HE_EXPECT(!f.IsOpen());
+
+    File::Remove(TestPath);
+}
+
+// ------------------------------------------------------------------------------------------------
+HE_TEST_F(core, AsyncFileFixture, GetSize)
+{
+    constexpr const char TestPath[] = "b33d1c82-af5d-493d-876f-781d5d3ecadb";
+
+    AsyncFile f;
+    Result r = f.Open(TestPath, FileOpenMode::WriteTruncate);
+    HE_EXPECT(r, r);
+
+    uint64_t fsize = f.GetSize();
+    HE_EXPECT_EQ(fsize, 0);
+
+    TouchTestFile(TestPath, TestPath, HE_LENGTH_OF(TestPath));
+
+    fsize = f.GetSize();
+    HE_EXPECT_EQ(fsize, HE_LENGTH_OF(TestPath));
+
+    f.Close();
+    File::Remove(TestPath);
+}
+
+// ------------------------------------------------------------------------------------------------
+HE_TEST_F(core, AsyncFileFixture, Read_Write)
+{
+    constexpr const char TestPath[] = "777738a7-1db4-4644-a04f-2f2667843dd2";
+
+    AsyncFile f;
+    Result openResult = f.Open(TestPath, FileOpenMode::ReadWriteTruncate);
+    HE_EXPECT(openResult, openResult);
+
+    {
+        const uint32_t value = 250;
+        std::future<AsyncFileResult> future = f.WriteAsync(&value, 0, sizeof(value));
+        HE_EXPECT(future.valid());
+        future.wait();
+
+        AsyncFileResult r = future.get();
+        HE_EXPECT(r.result, r.result);
+        HE_EXPECT_EQ(r.bytesTransferred, sizeof(value));
+    }
+
+    {
+        uint32_t value = 0;
+        std::future<AsyncFileResult> future = f.ReadAsync(&value, 0, sizeof(value));
+        HE_EXPECT(future.valid());
+        future.wait();
+
+        AsyncFileResult r = future.get();
+        HE_EXPECT(r.result, r.result);
+        HE_EXPECT_EQ(r.bytesTransferred, sizeof(value));
+        HE_EXPECT_EQ(value, 250);
+    }
+
+    f.Close();
+    File::Remove(TestPath);
+}

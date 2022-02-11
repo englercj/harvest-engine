@@ -9,35 +9,55 @@
 using namespace he;
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST(core, BufferWriter, Construct)
+HE_TEST(core, buffer_writer, Construct)
 {
-    Allocator& a = CrtAllocator::Get();
+    {
+        BufferWriter b;
+        HE_EXPECT(b.IsEmpty());
+        HE_EXPECT_EQ(b.Capacity(), 0);
+        HE_EXPECT(!b.Data());
+        HE_EXPECT_EQ_PTR(&b.GetAllocator(), &Allocator::GetDefault());
+        HE_EXPECT_EQ(BufferWriterTestAttorney::GetStrategy(b), BufferWriter::GrowthStrategy::Factor);
+        HE_EXPECT_EQ(BufferWriterTestAttorney::GetGrowth(b), 0.5f);
+    }
 
     {
+        Allocator& a = CrtAllocator::Get();
         BufferWriter b(a);
         HE_EXPECT(b.IsEmpty());
         HE_EXPECT_EQ(b.Capacity(), 0);
         HE_EXPECT(!b.Data());
+        HE_EXPECT_EQ_PTR(&b.GetAllocator(), &a);
+        HE_EXPECT_EQ(BufferWriterTestAttorney::GetStrategy(b), BufferWriter::GrowthStrategy::Factor);
+        HE_EXPECT_EQ(BufferWriterTestAttorney::GetGrowth(b), 0.5f);
+    }
+
+    {
+        BufferWriter b(BufferWriter::GrowthStrategy::Fixed, 128);
+        HE_EXPECT(b.IsEmpty());
+        HE_EXPECT_EQ(b.Capacity(), 0);
+        HE_EXPECT(!b.Data());
+        HE_EXPECT_EQ_PTR(&b.GetAllocator(), &Allocator::GetDefault());
+        HE_EXPECT_EQ(BufferWriterTestAttorney::GetStrategy(b), BufferWriter::GrowthStrategy::Fixed);
+        HE_EXPECT_EQ(BufferWriterTestAttorney::GetGrowth(b), 128);
     }
 }
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST(core, BufferWriter, Construct_Copy)
+HE_TEST(core, buffer_writer, Construct_Copy)
 {
-    Allocator& a = CrtAllocator::Get();
-
     constexpr uint8_t Datas[]{ 0x12, 0x23, 0x45, 0x67, 0x89 };
 
-    BufferWriter buf(BufferWriter::GrowthStrategy::Fixed, 20.5f, a);
+    BufferWriter buf(BufferWriter::GrowthStrategy::Fixed, 20.5f);
     buf.Write(Datas);
     HE_EXPECT_EQ(buf.Size(), HE_LENGTH_OF(Datas));
     HE_EXPECT_EQ_MEM(buf.Data(), Datas, buf.Size());
 
     {
-        BufferWriter copy(buf, a);
+        BufferWriter copy(buf);
         HE_EXPECT_EQ(copy.Size(), buf.Size());
         HE_EXPECT_EQ_MEM(copy.Data(), buf.Data(), buf.Size());
-        HE_EXPECT_EQ_PTR(&copy.GetAllocator(), &a);
+        HE_EXPECT_EQ_PTR(&copy.GetAllocator(), &Allocator::GetDefault());
         HE_EXPECT_EQ(BufferWriterTestAttorney::GetGrowth(copy), BufferWriterTestAttorney::GetGrowth(buf));
         HE_EXPECT_EQ(BufferWriterTestAttorney::GetStrategy(copy), BufferWriterTestAttorney::GetStrategy(buf));
     }
@@ -72,24 +92,22 @@ HE_TEST(core, BufferWriter, Construct_Copy)
 }
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST(core, BufferWriter, Construct_Move)
+HE_TEST(core, buffer_writer, Construct_Move)
 {
-    Allocator& a = CrtAllocator::Get();
-
     constexpr uint8_t Datas[]{ 0x12, 0x23, 0x45, 0x67, 0x89 };
 
     {
-        BufferWriter buf(a);
+        BufferWriter buf;
         buf.Write(Datas);
         HE_EXPECT_EQ(buf.Size(), HE_LENGTH_OF(Datas));
         HE_EXPECT_EQ_MEM(buf.Data(), Datas, buf.Size());
         const uint8_t* ptr = buf.Data();
 
-        BufferWriter moved(Move(buf), a);
+        BufferWriter moved(Move(buf));
         HE_EXPECT_EQ(moved.Size(), HE_LENGTH_OF(Datas));
         HE_EXPECT_EQ_PTR(moved.Data(), ptr);
         HE_EXPECT_EQ_MEM(moved.Data(), Datas, moved.Size());
-        HE_EXPECT_EQ_PTR(&moved.GetAllocator(), &a);
+        HE_EXPECT_EQ_PTR(&moved.GetAllocator(), &Allocator::GetDefault());
         HE_EXPECT_EQ(BufferWriterTestAttorney::GetGrowth(moved), BufferWriterTestAttorney::GetGrowth(buf));
         HE_EXPECT_EQ(BufferWriterTestAttorney::GetStrategy(moved), BufferWriterTestAttorney::GetStrategy(buf));
 
@@ -98,7 +116,7 @@ HE_TEST(core, BufferWriter, Construct_Move)
     }
 
     {
-        BufferWriter buf(a);
+        BufferWriter buf;
         buf.Write(Datas);
         HE_EXPECT_EQ(buf.Size(), HE_LENGTH_OF(Datas));
         HE_EXPECT_EQ_MEM(buf.Data(), Datas, buf.Size());
@@ -118,7 +136,7 @@ HE_TEST(core, BufferWriter, Construct_Move)
     }
 
     {
-        BufferWriter buf(a);
+        BufferWriter buf;
         buf.Write(Datas);
         HE_EXPECT_EQ(buf.Size(), HE_LENGTH_OF(Datas));
         HE_EXPECT_EQ_MEM(buf.Data(), Datas, buf.Size());
@@ -137,7 +155,7 @@ HE_TEST(core, BufferWriter, Construct_Move)
     }
 
     {
-        BufferWriter buf(a);
+        BufferWriter buf;
         buf.Write(Datas);
         HE_EXPECT_EQ(buf.Size(), HE_LENGTH_OF(Datas));
         HE_EXPECT_EQ_MEM(buf.Data(), Datas, buf.Size());
@@ -157,23 +175,21 @@ HE_TEST(core, BufferWriter, Construct_Move)
 }
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST(core, BufferWriter, operator_assign_copy)
+HE_TEST(core, buffer_writer, operator_assign_copy)
 {
-    Allocator& a = CrtAllocator::Get();
-
     constexpr uint8_t Datas[]{ 0x12, 0x23, 0x45, 0x67, 0x89 };
 
-    BufferWriter buf(BufferWriter::GrowthStrategy::Fixed, 20.5f, a);
+    BufferWriter buf(BufferWriter::GrowthStrategy::Fixed, 20.5f);
     buf.Write(Datas);
     HE_EXPECT_EQ(buf.Size(), HE_LENGTH_OF(Datas));
     HE_EXPECT_EQ_MEM(buf.Data(), Datas, buf.Size());
 
     {
-        BufferWriter copy(a);
+        BufferWriter copy;
         copy = buf;
         HE_EXPECT_EQ(copy.Size(), buf.Size());
         HE_EXPECT_EQ_MEM(copy.Data(), buf.Data(), buf.Size());
-        HE_EXPECT_EQ_PTR(&copy.GetAllocator(), &a);
+        HE_EXPECT_EQ_PTR(&copy.GetAllocator(), &Allocator::GetDefault());
         HE_EXPECT_EQ(BufferWriterTestAttorney::GetGrowth(copy), BufferWriterTestAttorney::GetGrowth(buf));
         HE_EXPECT_EQ(BufferWriterTestAttorney::GetStrategy(copy), BufferWriterTestAttorney::GetStrategy(buf));
     }
@@ -191,25 +207,23 @@ HE_TEST(core, BufferWriter, operator_assign_copy)
 }
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST(core, BufferWriter, operator_assign_move)
+HE_TEST(core, buffer_writer, operator_assign_move)
 {
-    Allocator& a = CrtAllocator::Get();
-
     constexpr uint8_t Datas[]{ 0x12, 0x23, 0x45, 0x67, 0x89 };
 
     {
-        BufferWriter buf(a);
+        BufferWriter buf;
         buf.Write(Datas);
         HE_EXPECT_EQ(buf.Size(), HE_LENGTH_OF(Datas));
         HE_EXPECT_EQ_MEM(buf.Data(), Datas, buf.Size());
         const uint8_t* ptr = buf.Data();
 
-        BufferWriter moved(a);
+        BufferWriter moved;
         moved = Move(buf);
         HE_EXPECT_EQ(moved.Size(), HE_LENGTH_OF(Datas));
         HE_EXPECT_EQ_PTR(moved.Data(), ptr);
         HE_EXPECT_EQ_MEM(moved.Data(), Datas, moved.Size());
-        HE_EXPECT_EQ_PTR(&moved.GetAllocator(), &a);
+        HE_EXPECT_EQ_PTR(&moved.GetAllocator(), &Allocator::GetDefault());
         HE_EXPECT_EQ(BufferWriterTestAttorney::GetGrowth(moved), BufferWriterTestAttorney::GetGrowth(buf));
         HE_EXPECT_EQ(BufferWriterTestAttorney::GetStrategy(moved), BufferWriterTestAttorney::GetStrategy(buf));
 
@@ -218,7 +232,7 @@ HE_TEST(core, BufferWriter, operator_assign_move)
     }
 
     {
-        BufferWriter buf(a);
+        BufferWriter buf;
         buf.Write(Datas);
         HE_EXPECT_EQ(buf.Size(), HE_LENGTH_OF(Datas));
         HE_EXPECT_EQ_MEM(buf.Data(), Datas, buf.Size());
@@ -240,13 +254,11 @@ HE_TEST(core, BufferWriter, operator_assign_move)
 }
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST(core, BufferWriter, operator_index)
+HE_TEST(core, buffer_writer, operator_index)
 {
-    Allocator& a = CrtAllocator::Get();
-
     constexpr uint8_t Datas[]{ 0x12, 0x23, 0x45, 0x67, 0x89 };
 
-    BufferWriter buf(a);
+    BufferWriter buf;
     buf.Write(Datas);
     HE_EXPECT_EQ(buf.Size(), HE_LENGTH_OF(Datas));
 
@@ -257,11 +269,9 @@ HE_TEST(core, BufferWriter, operator_index)
 }
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST(core, BufferWriter, IsEmpty)
+HE_TEST(core, buffer_writer, IsEmpty)
 {
-    Allocator& a = CrtAllocator::Get();
-
-    BufferWriter buf(a);
+    BufferWriter buf;
     HE_EXPECT(buf.IsEmpty());
 
     buf.Write(1);
@@ -272,11 +282,9 @@ HE_TEST(core, BufferWriter, IsEmpty)
 }
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST(core, BufferWriter, Capacity)
+HE_TEST(core, buffer_writer, Capacity)
 {
-    Allocator& a = CrtAllocator::Get();
-
-    BufferWriter buf(a);
+    BufferWriter buf;
     HE_EXPECT_EQ(buf.Capacity(), 0);
 
     buf.Resize(1);
@@ -287,11 +295,9 @@ HE_TEST(core, BufferWriter, Capacity)
 }
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST(core, BufferWriter, Size)
+HE_TEST(core, buffer_writer, Size)
 {
-    Allocator& a = CrtAllocator::Get();
-
-    BufferWriter buf(a);
+    BufferWriter buf;
     HE_EXPECT_EQ(buf.Size(), 0);
 
     buf.Resize(1);
@@ -302,11 +308,9 @@ HE_TEST(core, BufferWriter, Size)
 }
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST(core, BufferWriter, Reserve)
+HE_TEST(core, buffer_writer, Reserve)
 {
-    Allocator& a = CrtAllocator::Get();
-
-    BufferWriter buf(a);
+    BufferWriter buf;
     HE_EXPECT_EQ(buf.Capacity(), 0);
 
     buf.Reserve(1);
@@ -317,23 +321,17 @@ HE_TEST(core, BufferWriter, Reserve)
 }
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST(core, BufferWriter, Resize)
+HE_TEST(core, buffer_writer, Resize)
 {
-    Allocator& a = CrtAllocator::Get();
-
-    {
-        BufferWriter buf(a);
-        buf.Resize(16);
-        HE_EXPECT_EQ(buf.Size(), 16);
-    }
+    BufferWriter buf;
+    buf.Resize(16);
+    HE_EXPECT_EQ(buf.Size(), 16);
 }
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST(core, BufferWriter, ShrinkToFit)
+HE_TEST(core, buffer_writer, ShrinkToFit)
 {
-    Allocator& a = CrtAllocator::Get();
-
-    BufferWriter buf(a);
+    BufferWriter buf;
     HE_EXPECT_EQ(buf.Size(), 0);
     HE_EXPECT_EQ(buf.Capacity(), 0);
 
@@ -363,11 +361,9 @@ HE_TEST(core, BufferWriter, ShrinkToFit)
 }
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST(core, BufferWriter, Data)
+HE_TEST(core, buffer_writer, Data)
 {
-    Allocator& a = CrtAllocator::Get();
-
-    BufferWriter buf(a);
+    BufferWriter buf;
     HE_EXPECT(!buf.Data());
 
     buf.Resize(16);
@@ -381,11 +377,9 @@ HE_TEST(core, BufferWriter, Data)
 }
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST(core, BufferWriter, Release)
+HE_TEST(core, buffer_writer, Release)
 {
-    Allocator& a = CrtAllocator::Get();
-
-    BufferWriter buf(a);
+    BufferWriter buf;
     HE_EXPECT(!buf.Data());
 
     buf.Resize(16);
@@ -397,7 +391,7 @@ HE_TEST(core, BufferWriter, Release)
     HE_EXPECT_EQ(buf.Capacity(), 0);
     HE_EXPECT(!buf.Data());
 
-    a.Free(mem);
+    buf.GetAllocator().Free(mem);
 
     // Call a few functions to ensure it continues to work after release
     buf.Resize(128);
@@ -414,19 +408,16 @@ HE_TEST(core, BufferWriter, Release)
 }
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST(core, BufferWriter, GetAllocator)
+HE_TEST(core, buffer_writer, GetAllocator)
 {
-    Allocator& a = CrtAllocator::Get();
-    BufferWriter b(a);
-    HE_EXPECT_EQ_PTR(&b.GetAllocator(), &a);
+    BufferWriter b;
+    HE_EXPECT_EQ_PTR(&b.GetAllocator(), &Allocator::GetDefault());
 }
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST(core, BufferWriter, Clear)
+HE_TEST(core, buffer_writer, Clear)
 {
-    Allocator& a = CrtAllocator::Get();
-
-    BufferWriter buf(a);
+    BufferWriter buf;
     HE_EXPECT(buf.IsEmpty());
 
     buf.Clear();
@@ -443,11 +434,22 @@ HE_TEST(core, BufferWriter, Clear)
 }
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST(core, BufferWriter, Write)
+HE_TEST(core, buffer_writer, PushBack)
 {
-    Allocator& a = CrtAllocator::Get();
+    BufferWriter buf;
 
-    BufferWriter buf(a);
+    struct ObjData { int a = 66; float b = 1.5f; };
+    constexpr ObjData ObjDatas{};
+    buf.Clear();
+    buf.PushBack(ObjDatas);
+    HE_EXPECT_EQ(buf.Size(), sizeof(ObjDatas));
+    HE_EXPECT_EQ_MEM(buf.Data(), &ObjDatas, buf.Size());
+}
+
+// ------------------------------------------------------------------------------------------------
+HE_TEST(core, buffer_writer, Write)
+{
+    BufferWriter buf;
 
     // memory
     constexpr uint8_t Datas[]{ 0x12, 0x23, 0x45, 0x67, 0x89 };
@@ -473,26 +475,77 @@ HE_TEST(core, BufferWriter, Write)
 }
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST(core, BufferWriter, WriteRepeat)
+HE_TEST(core, buffer_writer, WriteAt)
 {
-    Allocator& a = CrtAllocator::Get();
+    BufferWriter buf;
+    buf.Resize(64);
 
+    // memory
+    constexpr uint8_t Datas[]{ 0x12, 0x23, 0x45, 0x67, 0x89 };
+    buf.WriteAt(8, Datas, HE_LENGTH_OF(Datas));
+    HE_EXPECT_EQ(buf.Size(), 64);
+    HE_EXPECT_EQ_MEM(buf.Data() + 8, Datas, HE_LENGTH_OF(Datas));
+
+    // string
+    constexpr const char StrDatas[] = "testing";
+    buf.WriteAt(8, StrDatas);
+    HE_EXPECT_EQ(buf.Size(), 64);
+    HE_EXPECT_EQ_MEM(buf.Data() + 8, StrDatas, HE_LENGTH_OF(Datas) - 1);
+
+    // object
+    struct ObjData { int a = 66; float b = 1.5f; };
+    constexpr ObjData ObjDatas{};
+    buf.WriteAt(8, ObjDatas);
+    HE_EXPECT_EQ(buf.Size(), 64);
+    HE_EXPECT_EQ_MEM(buf.Data() + 8, &ObjDatas, sizeof(ObjData));
+}
+
+// ------------------------------------------------------------------------------------------------
+HE_TEST(core, buffer_writer, WriteRepeat)
+{
     {
-        uint8_t zeroes[32]{};
+        uint8_t zeroes[32];
+        MemZero(zeroes, sizeof(zeroes));
 
-        BufferWriter buf(a);
-        buf.WriteRepeat(0, HE_LENGTH_OF(zeroes));
-        HE_EXPECT_EQ(buf.Size(), HE_LENGTH_OF(zeroes));
+        BufferWriter buf;
+        buf.WriteRepeat(0, sizeof(zeroes));
+        HE_EXPECT_EQ(buf.Size(), sizeof(zeroes));
         HE_EXPECT_EQ_MEM(buf.Data(), zeroes, buf.Size());
     }
 
     {
-        uint8_t fives[64]{};
-        MemSet(fives, 0x55, HE_LENGTH_OF(fives));
+        uint8_t fives[64];
+        MemSet(fives, 0x55, sizeof(fives));
 
-        BufferWriter buf(a);
-        buf.WriteRepeat(0x55, HE_LENGTH_OF(fives));
-        HE_EXPECT_EQ(buf.Size(), HE_LENGTH_OF(fives));
+        BufferWriter buf;
+        buf.WriteRepeat(0x55, sizeof(fives));
+        HE_EXPECT_EQ(buf.Size(), sizeof(fives));
         HE_EXPECT_EQ_MEM(buf.Data(), fives, buf.Size());
+    }
+}
+
+// ------------------------------------------------------------------------------------------------
+HE_TEST(core, buffer_writer, WriteRepeatAt)
+{
+    {
+        uint8_t zeroes[32];
+        MemZero(zeroes, sizeof(zeroes));
+
+        BufferWriter buf;
+        buf.Resize(64);
+        buf.WriteRepeatAt(8, 0, sizeof(zeroes));
+        HE_EXPECT_EQ(buf.Size(), 64);
+        HE_EXPECT_EQ_MEM(buf.Data() + 8, zeroes, sizeof(zeroes));
+    }
+
+    {
+        uint8_t fives[64];
+        MemSet(fives, 0x55, sizeof(fives));
+
+        BufferWriter buf;
+        buf.Resize(128);
+        buf.WriteRepeatAt(8, 0x55, sizeof(fives));
+        HE_EXPECT_EQ(buf.Size(), 128);
+        HE_EXPECT_EQ_MEM(buf.Data() + 8, fives, sizeof(fives));
     }
 }

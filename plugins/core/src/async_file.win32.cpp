@@ -7,6 +7,7 @@
 #include "he/core/result.h"
 #include "he/core/result_fmt.h"
 #include "he/core/scope_guard.h"
+#include "he/core/thread.h"
 
 #include <atomic>
 #include <future>
@@ -37,7 +38,7 @@ namespace he
     static void HandleCompletedOverlap(AsyncOp* op);
     static DWORD IOCompletionThread(LPVOID);
 
-    Result StartupAsyncFileIO(const AsyncFileIOConfig&)
+    Result StartupAsyncFileIO(const AsyncFileIOConfig& config)
     {
         // Create the completion port
         s_ioPort = ::CreateIoCompletionPort(INVALID_HANDLE_VALUE, nullptr, 0, 1);
@@ -53,6 +54,10 @@ namespace he
 
         if (s_ioThread == nullptr)
             return Result::FromLastError();
+
+        Result affinityResult = SetThreadAffinity(reinterpret_cast<uintptr_t>(s_ioThread), config.iocp.threadAffinity);
+        if (!affinityResult)
+            return affinityResult;
 
         portGuard.Dismiss();
         return Result::Success;
@@ -101,6 +106,8 @@ namespace he
 
         if (handle == INVALID_HANDLE_VALUE)
             return Result::FromLastError();
+
+        ::CreateIoCompletionPort(handle, s_ioPort, 0, 0);
 
         m_fd = reinterpret_cast<intptr_t>(handle);
 
@@ -153,7 +160,7 @@ namespace he
         return f;
     }
 
-    std::future<AsyncFileResult> AsyncFile::WriteAsync(void* src, uint64_t offset, uint32_t size)
+    std::future<AsyncFileResult> AsyncFile::WriteAsync(const void* src, uint64_t offset, uint32_t size)
     {
         const HANDLE handle = reinterpret_cast<HANDLE>(m_fd);
 

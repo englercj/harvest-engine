@@ -15,7 +15,7 @@ namespace he
 
     uint64_t Win32FileTimeFromSystemTime(SystemTime systemTime)
     {
-        return (systemTime.ns / 100) + Win32FileTimeEpochOffset;
+        return (systemTime.val / 100) + Win32FileTimeEpochOffset;
     }
 
     SystemTime PosixTimeToSystemTime(timespec posixTime)
@@ -26,8 +26,8 @@ namespace he
     timespec PosixTimeFromSystemTime(SystemTime systemTime)
     {
         timespec ts{};
-        ts.tv_nsec = systemTime.ns % 1000000000;
-        ts.tv_sec = static_cast<time_t>(systemTime.ns / 1000000000);
+        ts.tv_nsec = systemTime.val % 1000000000;
+        ts.tv_sec = static_cast<time_t>(systemTime.val / 1000000000);
         return ts;
     }
 }

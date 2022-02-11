@@ -4,18 +4,17 @@
 
 #include "he/core/test.h"
 
+#include <iostream>
+#include <type_traits>
+
 using namespace he;
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST(core, debug, PrintToDebugger)
+HE_TEST(core, debug, File_Line)
 {
-    PrintToDebugger("Debug print test.");
-    PrintToDebugger("Debug print test: {}, {}.", 1, false);
-}
+    static_assert(std::is_convertible_v<decltype(HE_FILE), const char*>);
+    static_assert(std::is_same_v<decltype(HE_LINE), uint32_t>);
 
-// ------------------------------------------------------------------------------------------------
-HE_TEST(core, debug, IsDebuggerAttached)
-{
-    const bool attached = IsDebuggerAttached();
-    HE_UNUSED(attached);
+    std::cout << "    HE_FILE = " << HE_FILE << std::endl;
+    std::cout << "    HE_LINE = " << HE_LINE << std::endl;
 }

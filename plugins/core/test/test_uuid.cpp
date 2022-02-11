@@ -27,58 +27,7 @@ constexpr Uuid Uuid_NamespaceOID{ { 0x6b, 0xa7, 0xb8, 0x12, 0x9d, 0xad, 0x11, 0x
 constexpr Uuid Uuid_NamespaceX500{ { 0x6b, 0xa7, 0xb8, 0x14, 0x9d, 0xad, 0x11, 0xd1, 0x80, 0xb4, 0x00, 0xc0, 0x4f, 0xd4, 0x30, 0xc8 } };
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST(core, Uuid, Uuid_Zero)
-{
-    static_assert(Uuid_Zero.GetVersion() == 0);
-
-    uint8_t zero[16]{};
-    HE_EXPECT_EQ_MEM(Uuid_Zero.m_bytes, zero, 16);
-}
-
-// ------------------------------------------------------------------------------------------------
-HE_TEST(core, Uuid, Operators)
-{
-    constexpr Uuid UuidOne{ { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 } };
-
-    HE_EXPECT(Uuid_Zero == Uuid_Zero);
-    HE_EXPECT(UuidOne == UuidOne);
-    HE_EXPECT(!(UuidOne == Uuid_Zero));
-    HE_EXPECT(!(Uuid_Zero == UuidOne));
-
-    HE_EXPECT(UuidOne != Uuid_Zero);
-    HE_EXPECT(Uuid_Zero != UuidOne);
-    HE_EXPECT(!(Uuid_Zero != Uuid_Zero));
-    HE_EXPECT(!(UuidOne != UuidOne));
-
-    HE_EXPECT(Uuid_Zero < UuidOne);
-    HE_EXPECT(!(UuidOne < Uuid_Zero));
-    HE_EXPECT(!(Uuid_Zero < Uuid_Zero));
-    HE_EXPECT(!(UuidOne < UuidOne));
-}
-
-// ------------------------------------------------------------------------------------------------
-HE_TEST(core, Uuid, ToString)
-{
-    String str(CrtAllocator::Get());
-
-    str = Uuid_Zero.ToString(CrtAllocator::Get());
-    HE_EXPECT_EQ(str, "00000000-0000-0000-0000-000000000000");
-
-    str = Uuid_NamespaceDNS.ToString(CrtAllocator::Get());
-    HE_EXPECT_EQ(str, "6ba7b810-9dad-11d1-80b4-00c04fd430c8");
-
-    str = Uuid_NamespaceURL.ToString(CrtAllocator::Get());
-    HE_EXPECT_EQ(str, "6ba7b811-9dad-11d1-80b4-00c04fd430c8");
-
-    str = Uuid_NamespaceOID.ToString(CrtAllocator::Get());
-    HE_EXPECT_EQ(str, "6ba7b812-9dad-11d1-80b4-00c04fd430c8");
-
-    str = Uuid_NamespaceX500.ToString(CrtAllocator::Get());
-    HE_EXPECT_EQ(str, "6ba7b814-9dad-11d1-80b4-00c04fd430c8");
-}
-
-// ------------------------------------------------------------------------------------------------
-HE_TEST(core, Uuid, FromString)
+HE_TEST(core, uuid, FromString)
 {
     // Dashed format, lower-case
     HE_EXPECT_EQ(Uuid::FromString("00000000-0000-0000-0000-000000000000"), Uuid_Zero);
@@ -120,17 +69,7 @@ HE_TEST(core, Uuid, FromString)
 }
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST(core, Uuid, GetVersion)
-{
-    HE_EXPECT_EQ(Uuid_Zero.GetVersion(), 0);
-    HE_EXPECT_EQ(Uuid_NamespaceDNS.GetVersion(), 1);
-    HE_EXPECT_EQ(Uuid_NamespaceURL.GetVersion(), 1);
-    HE_EXPECT_EQ(Uuid_NamespaceOID.GetVersion(), 1);
-    HE_EXPECT_EQ(Uuid_NamespaceX500.GetVersion(), 1);
-}
-
-// ------------------------------------------------------------------------------------------------
-HE_TEST(core, Uuid, CreateUuidV4)
+HE_TEST(core, uuid, CreateUuidV4)
 {
     Uuid uuid = Uuid::CreateV4();
 
@@ -139,7 +78,102 @@ HE_TEST(core, Uuid, CreateUuidV4)
 }
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST(core, Uuid, Uuid_String_Roundtrip)
+HE_TEST(core, uuid, GetVersion)
+{
+    HE_EXPECT_EQ(Uuid_Zero.GetVersion(), 0);
+    HE_EXPECT_EQ(Uuid_NamespaceDNS.GetVersion(), 1);
+    HE_EXPECT_EQ(Uuid_NamespaceURL.GetVersion(), 1);
+    HE_EXPECT_EQ(Uuid_NamespaceOID.GetVersion(), 1);
+    HE_EXPECT_EQ(Uuid_NamespaceX500.GetVersion(), 1);
+
+    for (uint32_t i = 0; i < 32; ++i)
+    {
+        const Uuid id = Uuid::CreateV4();
+        HE_EXPECT_EQ(id.GetVersion(), 4);
+    }
+}
+
+// ------------------------------------------------------------------------------------------------
+HE_TEST(core, uuid, GetLow)
+{
+    HE_EXPECT_EQ(Uuid_Zero.GetLow(), 0);
+    HE_EXPECT_EQ(Uuid_NamespaceDNS.GetLow(), 0xd111ad9d10b8a76b);
+    HE_EXPECT_EQ(Uuid_NamespaceURL.GetLow(), 0xd111ad9d11b8a76b);
+    HE_EXPECT_EQ(Uuid_NamespaceOID.GetLow(), 0xd111ad9d12b8a76b);
+    HE_EXPECT_EQ(Uuid_NamespaceX500.GetLow(),  0xd111ad9d14b8a76b);
+
+    const Uuid id = Uuid::CreateV4();
+    const uint64_t low = id.GetLow();
+    HE_EXPECT_EQ_MEM(&low, id.m_bytes, 8);
+}
+
+// ------------------------------------------------------------------------------------------------
+HE_TEST(core, uuid, GetHigh)
+{
+    HE_EXPECT_EQ(Uuid_Zero.GetHigh(), 0);
+    HE_EXPECT_EQ(Uuid_NamespaceDNS.GetHigh(), 0xc830d44fc000b480);
+    HE_EXPECT_EQ(Uuid_NamespaceURL.GetHigh(), 0xc830d44fc000b480);
+    HE_EXPECT_EQ(Uuid_NamespaceOID.GetHigh(), 0xc830d44fc000b480);
+    HE_EXPECT_EQ(Uuid_NamespaceX500.GetHigh(),  0xc830d44fc000b480);
+
+    const Uuid id = Uuid::CreateV4();
+    const uint64_t high = id.GetHigh();
+    HE_EXPECT_EQ_MEM(&high, id.m_bytes + 8, 8);
+}
+
+// ------------------------------------------------------------------------------------------------
+HE_TEST(core, uuid, ToString)
+{
+    String str(CrtAllocator::Get());
+
+    str = Uuid_Zero.ToString(CrtAllocator::Get());
+    HE_EXPECT_EQ(str, "00000000-0000-0000-0000-000000000000");
+
+    str = Uuid_NamespaceDNS.ToString(CrtAllocator::Get());
+    HE_EXPECT_EQ(str, "6ba7b810-9dad-11d1-80b4-00c04fd430c8");
+
+    str = Uuid_NamespaceURL.ToString(CrtAllocator::Get());
+    HE_EXPECT_EQ(str, "6ba7b811-9dad-11d1-80b4-00c04fd430c8");
+
+    str = Uuid_NamespaceOID.ToString(CrtAllocator::Get());
+    HE_EXPECT_EQ(str, "6ba7b812-9dad-11d1-80b4-00c04fd430c8");
+
+    str = Uuid_NamespaceX500.ToString(CrtAllocator::Get());
+    HE_EXPECT_EQ(str, "6ba7b814-9dad-11d1-80b4-00c04fd430c8");
+}
+
+// ------------------------------------------------------------------------------------------------
+HE_TEST(core, uuid, Operators)
+{
+    constexpr Uuid UuidOne{ { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 } };
+
+    HE_EXPECT(Uuid_Zero == Uuid_Zero);
+    HE_EXPECT(UuidOne == UuidOne);
+    HE_EXPECT(!(UuidOne == Uuid_Zero));
+    HE_EXPECT(!(Uuid_Zero == UuidOne));
+
+    HE_EXPECT(UuidOne != Uuid_Zero);
+    HE_EXPECT(Uuid_Zero != UuidOne);
+    HE_EXPECT(!(Uuid_Zero != Uuid_Zero));
+    HE_EXPECT(!(UuidOne != UuidOne));
+
+    HE_EXPECT(Uuid_Zero < UuidOne);
+    HE_EXPECT(!(UuidOne < Uuid_Zero));
+    HE_EXPECT(!(Uuid_Zero < Uuid_Zero));
+    HE_EXPECT(!(UuidOne < UuidOne));
+}
+
+// ------------------------------------------------------------------------------------------------
+HE_TEST(core, uuid, Uuid_Zero)
+{
+    static_assert(Uuid_Zero.GetVersion() == 0);
+
+    uint8_t zero[16]{};
+    HE_EXPECT_EQ_MEM(Uuid_Zero.m_bytes, zero, 16);
+}
+
+// ------------------------------------------------------------------------------------------------
+HE_TEST(core, uuid, Uuid_String_Roundtrip)
 {
     Uuid uuid = Uuid::CreateV4();
 
@@ -153,7 +187,7 @@ HE_TEST(core, Uuid, Uuid_String_Roundtrip)
 }
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST(core, Uuid, Hash)
+HE_TEST(core, uuid, Hash)
 {
     HE_EXPECT_EQ(std::hash<Uuid>()(Uuid_Zero), 0x00000000);
 

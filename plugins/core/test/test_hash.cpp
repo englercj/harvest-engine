@@ -114,6 +114,10 @@ HE_TEST(core, hash, FNV32)
     static_assert(FNV32::HashString("foobarabcdefghiglmnop") == 0xaec8b08c, "");
     static_assert(FNV32::HashString("\200") == 0x850b939f, "");
     static_assert(FNV32::HashStringN("apple", 1) == 0xe40c292c, "");
+
+    uint32_t h = FNV32::HashString("abc");
+    h = FNV32::HashString("def", h);
+    HE_EXPECT_EQ(h, FNV32::HashString("abcdef"));
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -133,4 +137,8 @@ HE_TEST(core, hash, FNV64)
     static_assert(FNV64::HashString("foobarabcdefghiglmnop") == 0x9c6beb459f40f26c, "");
     static_assert(FNV64::HashString("\200") == 0xaf643d4c8602915f, "");
     static_assert(FNV64::HashStringN("apple", 1) == 0xaf63dc4c8601ec8c, "");
+
+    uint64_t h = FNV64::HashString("abc");
+    h = FNV64::HashString("def", h);
+    HE_EXPECT_EQ(h, FNV64::HashString("abcdef"));
 }

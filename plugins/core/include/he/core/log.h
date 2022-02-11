@@ -13,7 +13,7 @@
 #include "he/core/types.h"
 #include "he/core/utils.h"
 
-#include "fmt/format.h"
+#include "fmt/core.h"
 
 #define HE_LOG_LEVEL_TRACE  0   ///< Detailed tracing for a system, usually disbaled unless tracking a bug.
 #define HE_LOG_LEVEL_DEBUG  1   ///< Debug information useful for developers, usually disabled in non-internal builds.
@@ -171,7 +171,7 @@ namespace he
     /// \note Prefer using the HE_KV and HE_MSG macros rather than creating this structure directly.
     struct LogKV
     {
-        enum class ValueType
+        enum class Kind
         {
             Bool,
             Int,
@@ -180,33 +180,33 @@ namespace he
             String,
         };
 
-        LogKV(const char* k, bool v) : key(k), type(ValueType::Bool), value{ .b = v } {}
-        LogKV(const char* k, signed char v) : key(k), type(ValueType::Int), value{ .i = v } {}
-        LogKV(const char* k, signed short v) : key(k), type(ValueType::Int), value{ .i = v } {}
-        LogKV(const char* k, signed int v) : key(k), type(ValueType::Int), value{ .i = v } {}
-        LogKV(const char* k, signed long v) : key(k), type(ValueType::Int), value{ .i = v } {}
-        LogKV(const char* k, signed long long v) : key(k), type(ValueType::Int), value{ .i = v } {}
-        LogKV(const char* k, unsigned char v) : key(k), type(ValueType::Uint), value{ .u = v } {}
-        LogKV(const char* k, unsigned short v) : key(k), type(ValueType::Uint), value{ .u = v } {}
-        LogKV(const char* k, unsigned int v) : key(k), type(ValueType::Uint), value{ .u = v } {}
-        LogKV(const char* k, unsigned long v) : key(k), type(ValueType::Uint), value{ .u = v } {}
-        LogKV(const char* k, unsigned long long v) : key(k), type(ValueType::Uint), value{ .u = v } {}
-        LogKV(const char* k, float v) : key(k), type(ValueType::Double), value{ .d = v } {}
-        LogKV(const char* k, double v) : key(k), type(ValueType::Double), value{ .d = v } {}
+        LogKV(const char* k, bool v) : key(k), kind(Kind::Bool), value{ .b = v } {}
+        LogKV(const char* k, signed char v) : key(k), kind(Kind::Int), value{ .i = v } {}
+        LogKV(const char* k, signed short v) : key(k), kind(Kind::Int), value{ .i = v } {}
+        LogKV(const char* k, signed int v) : key(k), kind(Kind::Int), value{ .i = v } {}
+        LogKV(const char* k, signed long v) : key(k), kind(Kind::Int), value{ .i = v } {}
+        LogKV(const char* k, signed long long v) : key(k), kind(Kind::Int), value{ .i = v } {}
+        LogKV(const char* k, unsigned char v) : key(k), kind(Kind::Uint), value{ .u = v } {}
+        LogKV(const char* k, unsigned short v) : key(k), kind(Kind::Uint), value{ .u = v } {}
+        LogKV(const char* k, unsigned int v) : key(k), kind(Kind::Uint), value{ .u = v } {}
+        LogKV(const char* k, unsigned long v) : key(k), kind(Kind::Uint), value{ .u = v } {}
+        LogKV(const char* k, unsigned long long v) : key(k), kind(Kind::Uint), value{ .u = v } {}
+        LogKV(const char* k, float v) : key(k), kind(Kind::Double), value{ .d = v } {}
+        LogKV(const char* k, double v) : key(k), kind(Kind::Double), value{ .d = v } {}
 
         template <Enum T>
         constexpr LogKV(const char* k, T v) : LogKV(k, std::underlying_type_t<T>(v)) {}
 
         LogKV(const char* k, const char* v)
             : key(k)
-            , type(ValueType::String)
+            , kind(Kind::String)
         {
             value.s = v;
         }
 
         LogKV(const char* k, StringView v)
             : key(k)
-            , type(ValueType::String)
+            , kind(Kind::String)
         {
             value.s = v;
         }
@@ -214,7 +214,7 @@ namespace he
         template <typename... Args>
         LogKV(const char* k, fmt::format_string<Args...> fmt, Args&&... args)
             : key(k)
-            , type(ValueType::String)
+            , kind(Kind::String)
         {
             fmt::format_to(Appender(value.s), fmt, Forward<Args>(args)...);
         }
@@ -222,7 +222,7 @@ namespace he
         template <typename T>
         LogKV(const char* k, const T& v)
             : key(k)
-            , type(ValueType::String)
+            , kind(Kind::String)
         {
             fmt::format_to(Appender(value.s), "{}", v);
         }
@@ -234,14 +234,14 @@ namespace he
         LogKV& operator=(LogKV&& x)
         {
             key = x.key;
-            type = x.type;
-            switch (type)
+            kind = x.kind;
+            switch (kind)
             {
-                case ValueType::Bool: value.b = x.value.b; break;
-                case ValueType::Int: value.i = x.value.i; break;
-                case ValueType::Uint: value.u = x.value.u; break;
-                case ValueType::Double: value.d = x.value.d; break;
-                case ValueType::String: value.s = Move(x.value.s); break;
+                case Kind::Bool: value.b = x.value.b; break;
+                case Kind::Int: value.i = x.value.i; break;
+                case Kind::Uint: value.u = x.value.u; break;
+                case Kind::Double: value.d = x.value.d; break;
+                case Kind::String: value.s = Move(x.value.s); break;
             }
             return *this;
         }
@@ -253,7 +253,7 @@ namespace he
         const char* GetString() const;
 
         const char* key;
-        ValueType type;
+        Kind kind;
 
         struct
         {

@@ -15,10 +15,13 @@ struct timespec;
 
 namespace he
 {
+    // --------------------------------------------------------------------------------------------
+    // Base types
+
     template <typename Tag>
     struct Time
     {
-        uint64_t ns;
+        uint64_t val;
     };
 
     template <typename Tag>
@@ -27,6 +30,9 @@ namespace he
         using Time = Time<Tag>;
         static Time Now();
     };
+
+    // --------------------------------------------------------------------------------------------
+    // Implementations
 
     // Nanoseconds that have passed since the Unix epoch (Jan 1 1970 00:00:00).
     // These values are pulled from the system's clock which is not monotonic.
@@ -46,14 +52,19 @@ namespace he
     using CycleClock = Clock<CycleClockTag>;
     using CycleCount = CycleClock::Time;
 
+    // --------------------------------------------------------------------------------------------
+    // Durations
+
     // A span of time in nanoseconds
-    struct Duration { int64_t ns; };
+    struct Duration { int64_t val; };
 
     constexpr Duration Duration_Zero{ 0 };
     constexpr Duration Duration_Min{ INT64_MIN };
     constexpr Duration Duration_Max{ INT64_MAX };
 
+    // --------------------------------------------------------------------------------------------
     // Duration periods
+
     template <int64_t N> struct DurationPeriod { static constexpr int64_t Ratio = N; };
     using Nanoseconds = DurationPeriod<1>;
     using Microseconds = DurationPeriod<1000>;
@@ -61,44 +72,48 @@ namespace he
     using Seconds = DurationPeriod<1000000000>;
     using Minutes = DurationPeriod<60000000000>;
     using Hours = DurationPeriod<3600000000000>;
+    using Days = DurationPeriod<86400000000000>;
+    using Weeks = DurationPeriod<604800000000000>;
 
-    template <typename T>
-    constexpr int64_t ToPeriod(Duration d) { return d.ns / T::Ratio; }
-
-    template <typename T>
-    constexpr float ToFloatPeriod(Duration d) { return static_cast<float>(d.ns / static_cast<double>(T::Ratio)); }
+    template <typename T, typename U = int64_t>
+    constexpr U ToPeriod(Duration d) { return static_cast<U>(d.val / static_cast<double>(T::Ratio)); }
 
     template <typename T, typename U>
     constexpr Duration FromPeriod(U p) { return { static_cast<int64_t>(p * T::Ratio) }; }
 
+    // --------------------------------------------------------------------------------------------
     // Time & Duration operators
-    template <typename Tag> inline Time<Tag>& operator+=(Time<Tag>& x, Duration y) { x.ns += y.ns; return x; }
-    template <typename Tag> constexpr Time<Tag> operator+(Time<Tag> x, Duration y) { return { x.ns + y.ns }; }
-    template <typename Tag> constexpr Time<Tag> operator+(Duration x, Time<Tag> y) { return { x.ns + y.ns }; }
 
-    inline Duration& operator+=(Duration& x, Duration y) { x.ns += y.ns; return x; }
-    constexpr Duration operator+(Duration x, Duration y) { return { x.ns + y.ns }; }
+    template <typename Tag> inline Time<Tag>& operator+=(Time<Tag>& x, Duration y) { x.val += y.val; return x; }
+    template <typename Tag> constexpr Time<Tag> operator+(Time<Tag> x, Duration y) { return { x.val + y.val }; }
+    template <typename Tag> constexpr Time<Tag> operator+(Duration x, Time<Tag> y) { return { x.val + y.val }; }
 
-    template <typename Tag> inline Time<Tag>& operator-=(Time<Tag>& x, Duration y) { x.ns -= y.ns; return x; }
-    template <typename Tag> constexpr Duration operator-(Time<Tag> x, Time<Tag> y) { return { static_cast<int64_t>(x.ns - y.ns) }; }
-    template <typename Tag> constexpr Time<Tag> operator-(Time<Tag> x, Duration y) { return { x.ns - y.ns }; }
+    inline Duration& operator+=(Duration& x, Duration y) { x.val += y.val; return x; }
+    constexpr Duration operator+(Duration x, Duration y) { return { x.val + y.val }; }
 
-    inline Duration& operator-=(Duration& x, Duration y) { x.ns -= y.ns; return x; }
-    constexpr Duration operator-(Duration x, Duration y) { return { x.ns - y.ns }; }
+    template <typename Tag> inline Time<Tag>& operator-=(Time<Tag>& x, Duration y) { x.val -= y.val; return x; }
+    template <typename Tag> constexpr Duration operator-(Time<Tag> x, Time<Tag> y) { return { static_cast<int64_t>(x.val - y.val) }; }
+    template <typename Tag> constexpr Time<Tag> operator-(Time<Tag> x, Duration y) { return { x.val - y.val }; }
 
-    template <typename Tag> constexpr bool operator==(Time<Tag> x, Time<Tag> y) { return x.ns == y.ns; }
-    template <typename Tag> constexpr bool operator!=(Time<Tag> x, Time<Tag> y) { return x.ns != y.ns; }
-    template <typename Tag> constexpr bool operator<(Time<Tag> x, Time<Tag> y)  { return x.ns <  y.ns; }
-    template <typename Tag> constexpr bool operator<=(Time<Tag> x, Time<Tag> y) { return x.ns <= y.ns; }
-    template <typename Tag> constexpr bool operator>(Time<Tag> x, Time<Tag> y)  { return x.ns >  y.ns; }
-    template <typename Tag> constexpr bool operator>=(Time<Tag> x, Time<Tag> y) { return x.ns >= y.ns; }
+    inline Duration& operator-=(Duration& x, Duration y) { x.val -= y.val; return x; }
+    constexpr Duration operator-(Duration x, Duration y) { return { x.val - y.val }; }
 
-    constexpr bool operator==(Duration x, Duration y)   { return x.ns == y.ns; }
-    constexpr bool operator!=(Duration x, Duration y)   { return x.ns != y.ns; }
-    constexpr bool operator<(Duration x, Duration y)    { return x.ns <  y.ns; }
-    constexpr bool operator<=(Duration x, Duration y)   { return x.ns <= y.ns; }
-    constexpr bool operator>(Duration x, Duration y)    { return x.ns >  y.ns; }
-    constexpr bool operator>=(Duration x, Duration y)   { return x.ns >= y.ns; }
+    template <typename Tag> constexpr bool operator==(Time<Tag> x, Time<Tag> y) { return x.val == y.val; }
+    template <typename Tag> constexpr bool operator!=(Time<Tag> x, Time<Tag> y) { return x.val != y.val; }
+    template <typename Tag> constexpr bool operator<(Time<Tag> x, Time<Tag> y)  { return x.val <  y.val; }
+    template <typename Tag> constexpr bool operator<=(Time<Tag> x, Time<Tag> y) { return x.val <= y.val; }
+    template <typename Tag> constexpr bool operator>(Time<Tag> x, Time<Tag> y)  { return x.val >  y.val; }
+    template <typename Tag> constexpr bool operator>=(Time<Tag> x, Time<Tag> y) { return x.val >= y.val; }
+
+    constexpr bool operator==(Duration x, Duration y)   { return x.val == y.val; }
+    constexpr bool operator!=(Duration x, Duration y)   { return x.val != y.val; }
+    constexpr bool operator<(Duration x, Duration y)    { return x.val <  y.val; }
+    constexpr bool operator<=(Duration x, Duration y)   { return x.val <= y.val; }
+    constexpr bool operator>(Duration x, Duration y)    { return x.val >  y.val; }
+    constexpr bool operator>=(Duration x, Duration y)   { return x.val >= y.val; }
+
+    // --------------------------------------------------------------------------------------------
+    // System time converters
 
     // Converts to and from a windows file times
     SystemTime Win32FileTimeToSystemTime(uint64_t fileTime);
@@ -107,6 +122,9 @@ namespace he
     // Converts to and from posix times
     SystemTime PosixTimeToSystemTime(timespec posixTime);
     timespec PosixTimeFromSystemTime(SystemTime systemTime);
+
+    // --------------------------------------------------------------------------------------------
+    // CycleClock inline implementation
 
     template <>
     HE_FORCE_INLINE CycleCount CycleClock::Now()

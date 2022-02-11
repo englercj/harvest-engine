@@ -2,7 +2,6 @@
 
 #include "he/core/path.h"
 
-#include "he/core/allocator.h"
 #include "he/core/string.h"
 #include "he/core/string_view_fmt.h"
 #include "he/core/test.h"
@@ -204,7 +203,7 @@ HE_TEST(core, path, NormalizePath)
         { "\\\\\\", "//" },
     };
 
-    String buf(CrtAllocator::Get());
+    String buf;
     for (TestCase tc : tests)
     {
         buf = tc.s;
@@ -235,7 +234,7 @@ HE_TEST(core, path, ConcatPath)
         { "a/b", "/c", "/c" },
     };
 
-    String buf(CrtAllocator::Get());
+    String buf;
     for (TestCase tc : tests)
     {
         buf = tc.a;
@@ -263,7 +262,7 @@ HE_TEST(core, path, RemoveExtension)
         { "a/b/", "a/b/" },
     };
 
-    String buf(CrtAllocator::Get());
+    String buf;
     for (TestCase tc : tests)
     {
         buf = tc.s;

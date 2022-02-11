@@ -10,7 +10,7 @@
 #include "he/core/scope_guard.h"
 #include "he/core/string.h"
 
-#include "fmt/format.h"
+#include "fmt/core.h"
 
 #include <limits>
 
@@ -432,18 +432,18 @@ namespace he
 
     MemoryMap::~MemoryMap()
     {
-        Close();
+        Unmap();
     }
 
     MemoryMap& MemoryMap::operator=(MemoryMap&& x)
     {
-        Close();
+        Unmap();
         m_data = Exchange(x.m_data, nullptr);
         m_size = Exchange(x.m_size, 0);
         return *this;
     }
 
-    Result MemoryMap::Open(File& file, MemoryMapMode mode, uint64_t offset, uint32_t size)
+    Result MemoryMap::Map(File& file, MemoryMapMode mode, uint64_t offset, uint32_t size)
     {
         HE_ASSERT(m_data == nullptr);
         HE_ASSERT(IsAligned(offset, sysconf(_SC_PAGE_SIZE)));
@@ -467,7 +467,7 @@ namespace he
         if (m_data == MAP_FAILED)
         {
             Result r = Result::FromLastError();
-            Close();
+            Unmap();
             return r;
         }
         m_size = size;
@@ -484,9 +484,14 @@ namespace he
         return Result::Success;
     }
 
-    void MemoryMap::Close()
+    bool MemoryMap::IsMapped() const
     {
-        if (m_data != nullptr && m_data != MAP_FAILED)
+        return m_data != nullptr && m_data != MAP_FAILED;
+    }
+
+    void MemoryMap::Unmap()
+    {
+        if (IsMapped())
             munmap(m_data, m_size);
 
         m_data = nullptr;
@@ -495,7 +500,7 @@ namespace he
 
     Result MemoryMap::Flush(uint64_t offset, uint32_t size, bool async)
     {
-        HE_ASSERT(m_data != nullptr && m_data != MAP_FAILED);
+        HE_ASSERT(IsMapped());
 
         uint8_t* ptr = static_cast<uint8_t*>(m_data) + offset;
         const int flags = async ? MS_ASYNC : MS_SYNC;

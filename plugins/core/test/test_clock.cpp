@@ -14,7 +14,7 @@ HE_TEST(core, clock, SystemClock)
 {
     static_assert(std::is_same_v<SystemClock::Time, SystemTime>);
     SystemTime t = SystemClock::Now();
-    HE_EXPECT_GT(t.ns, 0);
+    HE_EXPECT_GT(t.val, 0);
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -22,21 +22,29 @@ HE_TEST(core, clock, MonotonicClock)
 {
     static_assert(std::is_same_v<MonotonicClock::Time, MonotonicTime>);
     MonotonicTime t = MonotonicClock::Now();
-    HE_EXPECT_GT(t.ns, 0);
+    HE_EXPECT_GT(t.val, 0);
+}
+
+// ------------------------------------------------------------------------------------------------
+HE_TEST(core, clock, CycleClock)
+{
+    static_assert(std::is_same_v<CycleClock::Time, CycleCount>);
+    CycleCount t = CycleClock::Now();
+    HE_EXPECT_GT(t.val, 0);
 }
 
 // ------------------------------------------------------------------------------------------------
 HE_TEST(core, clock, Duration)
 {
-    static_assert(Duration_Zero.ns == 0);
-    static_assert(Duration_Max.ns == INT64_MAX);
-    static_assert(Duration_Min.ns == INT64_MIN);
+    static_assert(Duration_Zero.val == 0);
+    static_assert(Duration_Max.val == INT64_MAX);
+    static_assert(Duration_Min.val == INT64_MIN);
 
-    HE_EXPECT_EQ(Duration_Zero.ns, 0);
-    HE_EXPECT_EQ(Duration_Max.ns, INT64_MAX);
-    HE_EXPECT_EQ(Duration_Min.ns, INT64_MIN);
+    HE_EXPECT_EQ(Duration_Zero.val, 0);
+    HE_EXPECT_EQ(Duration_Max.val, INT64_MAX);
+    HE_EXPECT_EQ(Duration_Min.val, INT64_MIN);
 
-    HE_EXPECT_EQ(Duration{ 15 }.ns, 15);
+    HE_EXPECT_EQ(Duration{ 15 }.val, 15);
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -48,17 +56,23 @@ HE_TEST(core, clock, DurationPeriod)
     static_assert(Seconds::Ratio == 1000000000);
     static_assert(Minutes::Ratio == 60000000000);
     static_assert(Hours::Ratio == 3600000000000);
+    static_assert(Days::Ratio == 86400000000000);
+    static_assert(Weeks::Ratio == 604800000000000);
 }
 
 // ------------------------------------------------------------------------------------------------
 HE_TEST(core, clock, ToPeriod)
 {
+    // As int64_t (default)
+
     static_assert(ToPeriod<Nanoseconds>(Duration_Zero) == 0);
     static_assert(ToPeriod<Microseconds>(Duration_Zero) == 0);
     static_assert(ToPeriod<Milliseconds>(Duration_Zero) == 0);
     static_assert(ToPeriod<Seconds>(Duration_Zero) == 0);
     static_assert(ToPeriod<Minutes>(Duration_Zero) == 0);
     static_assert(ToPeriod<Hours>(Duration_Zero) == 0);
+    static_assert(ToPeriod<Days>(Duration_Zero) == 0);
+    static_assert(ToPeriod<Weeks>(Duration_Zero) == 0);
 
     static_assert(ToPeriod<Nanoseconds>(Duration{ 2000 }) == 2000);
     static_assert(ToPeriod<Microseconds>(Duration{ 2000 }) == 2);
@@ -66,6 +80,8 @@ HE_TEST(core, clock, ToPeriod)
     static_assert(ToPeriod<Seconds>(Duration{ 2000 }) == 0);
     static_assert(ToPeriod<Minutes>(Duration{ 2000 }) == 0);
     static_assert(ToPeriod<Hours>(Duration{ 2000 }) == 0);
+    static_assert(ToPeriod<Days>(Duration{ 2000 }) == 0);
+    static_assert(ToPeriod<Weeks>(Duration{ 2000 }) == 0);
 
     HE_EXPECT_EQ(ToPeriod<Nanoseconds>(Duration_Zero), 0);
     HE_EXPECT_EQ(ToPeriod<Microseconds>(Duration_Zero), 0);
@@ -73,6 +89,8 @@ HE_TEST(core, clock, ToPeriod)
     HE_EXPECT_EQ(ToPeriod<Seconds>(Duration_Zero), 0);
     HE_EXPECT_EQ(ToPeriod<Minutes>(Duration_Zero), 0);
     HE_EXPECT_EQ(ToPeriod<Hours>(Duration_Zero), 0);
+    HE_EXPECT_EQ(ToPeriod<Days>(Duration_Zero), 0);
+    HE_EXPECT_EQ(ToPeriod<Weeks>(Duration_Zero), 0);
 
     HE_EXPECT_EQ(ToPeriod<Nanoseconds>(Duration{ 2000 }), 2000);
     HE_EXPECT_EQ(ToPeriod<Microseconds>(Duration{ 2000 }), 2);
@@ -80,34 +98,68 @@ HE_TEST(core, clock, ToPeriod)
     HE_EXPECT_EQ(ToPeriod<Seconds>(Duration{ 2000 }), 0);
     HE_EXPECT_EQ(ToPeriod<Minutes>(Duration{ 2000 }), 0);
     HE_EXPECT_EQ(ToPeriod<Hours>(Duration{ 2000 }), 0);
-}
+    HE_EXPECT_EQ(ToPeriod<Days>(Duration{ 2000 }), 0);
+    HE_EXPECT_EQ(ToPeriod<Weeks>(Duration{ 2000 }), 0);
 
-// ------------------------------------------------------------------------------------------------
-HE_TEST(core, clock, ToFloatPeriod)
-{
-    static_assert(ToFloatPeriod<Nanoseconds>(Duration_Zero) == 0);
-    static_assert(ToFloatPeriod<Microseconds>(Duration_Zero) == 0);
-    static_assert(ToFloatPeriod<Milliseconds>(Duration_Zero) == 0);
-    static_assert(ToFloatPeriod<Seconds>(Duration_Zero) == 0);
-    static_assert(ToFloatPeriod<Minutes>(Duration_Zero) == 0);
-    static_assert(ToFloatPeriod<Hours>(Duration_Zero) == 0);
+    // As double
 
-    static_assert(ToFloatPeriod<Nanoseconds>(Duration{ 2000 }) == 2000.0f);
-    static_assert(ToFloatPeriod<Microseconds>(Duration{ 2000 }) == 2.0f);
-    //static_assert(ToFloatPeriod<Milliseconds>(Duration{ 2000 }) == 0.002f);
-    //static_assert(ToFloatPeriod<Seconds>(Duration{ 2000 }) == 0.000002f);
+    static_assert(ToPeriod<Nanoseconds, double>(Duration_Zero) == 0.0);
+    static_assert(ToPeriod<Microseconds, double>(Duration_Zero) == 0.0);
+    static_assert(ToPeriod<Milliseconds, double>(Duration_Zero) == 0.0);
+    static_assert(ToPeriod<Seconds, double>(Duration_Zero) == 0.0);
+    static_assert(ToPeriod<Minutes, double>(Duration_Zero) == 0.0);
+    static_assert(ToPeriod<Hours, double>(Duration_Zero) == 0.0);
+    static_assert(ToPeriod<Days, double>(Duration_Zero) == 0.0);
+    static_assert(ToPeriod<Weeks, double>(Duration_Zero) == 0.0);
 
-    HE_EXPECT_EQ(ToFloatPeriod<Nanoseconds>(Duration_Zero), 0);
-    HE_EXPECT_EQ(ToFloatPeriod<Microseconds>(Duration_Zero), 0);
-    HE_EXPECT_EQ(ToFloatPeriod<Milliseconds>(Duration_Zero), 0);
-    HE_EXPECT_EQ(ToFloatPeriod<Seconds>(Duration_Zero), 0);
-    HE_EXPECT_EQ(ToFloatPeriod<Minutes>(Duration_Zero), 0);
-    HE_EXPECT_EQ(ToFloatPeriod<Hours>(Duration_Zero), 0);
+    static_assert(ToPeriod<Nanoseconds, double>(Duration{ 2000 }) == 2000.0);
+    static_assert(ToPeriod<Microseconds, double>(Duration{ 2000 }) == 2.0);
+    static_assert(EqualUlp(ToPeriod<Milliseconds, double>(Duration{ 2000 }), 0.002, 1));
+    static_assert(EqualUlp(ToPeriod<Seconds, double>(Duration{ 2000 }), 0.000002, 1));
 
-    HE_EXPECT_EQ(ToFloatPeriod<Nanoseconds>(Duration{ 2000 }), 2000.0f);
-    HE_EXPECT_EQ(ToFloatPeriod<Microseconds>(Duration{ 2000 }), 2.0f);
-    HE_EXPECT_EQ_ULP(ToFloatPeriod<Milliseconds>(Duration{ 2000 }), 0.002f, 1);
-    HE_EXPECT_EQ_ULP(ToFloatPeriod<Seconds>(Duration{ 2000 }), 0.000002f, 1);
+    HE_EXPECT_EQ((ToPeriod<Nanoseconds, double>(Duration_Zero)), 0.0);
+    HE_EXPECT_EQ((ToPeriod<Microseconds, double>(Duration_Zero)), 0.0);
+    HE_EXPECT_EQ((ToPeriod<Milliseconds, double>(Duration_Zero)), 0.0);
+    HE_EXPECT_EQ((ToPeriod<Seconds, double>(Duration_Zero)), 0.0);
+    HE_EXPECT_EQ((ToPeriod<Minutes, double>(Duration_Zero)), 0.0);
+    HE_EXPECT_EQ((ToPeriod<Hours, double>(Duration_Zero)), 0.0);
+    HE_EXPECT_EQ((ToPeriod<Days, double>(Duration_Zero)), 0.0);
+    HE_EXPECT_EQ((ToPeriod<Weeks, double>(Duration_Zero)), 0.0);
+
+    HE_EXPECT_EQ((ToPeriod<Nanoseconds, double>(Duration{ 2000 })), 2000.0);
+    HE_EXPECT_EQ((ToPeriod<Microseconds, double>(Duration{ 2000 })), 2.0);
+    HE_EXPECT_EQ_ULP((ToPeriod<Milliseconds, double>(Duration{ 2000 })), 0.002, 1);
+    HE_EXPECT_EQ_ULP((ToPeriod<Seconds, double>(Duration{ 2000 })), 0.000002, 1);
+
+    // As float
+
+    static_assert(ToPeriod<Nanoseconds, float>(Duration_Zero) == 0.0f);
+    static_assert(ToPeriod<Microseconds, float>(Duration_Zero) == 0.0f);
+    static_assert(ToPeriod<Milliseconds, float>(Duration_Zero) == 0.0f);
+    static_assert(ToPeriod<Seconds, float>(Duration_Zero) == 0.0f);
+    static_assert(ToPeriod<Minutes, float>(Duration_Zero) == 0.0f);
+    static_assert(ToPeriod<Hours, float>(Duration_Zero) == 0.0f);
+    static_assert(ToPeriod<Days, float>(Duration_Zero) == 0.0f);
+    static_assert(ToPeriod<Weeks, float>(Duration_Zero) == 0.0f);
+
+    static_assert(ToPeriod<Nanoseconds, float>(Duration{ 2000 }) == 2000.0f);
+    static_assert(ToPeriod<Microseconds, float>(Duration{ 2000 }) == 2.0f);
+    static_assert(EqualUlp(ToPeriod<Milliseconds, float>(Duration{ 2000 }), 0.002f, 1));
+    static_assert(EqualUlp(ToPeriod<Seconds, float>(Duration{ 2000 }), 0.000002f, 1));
+
+    HE_EXPECT_EQ((ToPeriod<Nanoseconds, float>(Duration_Zero)), 0.0f);
+    HE_EXPECT_EQ((ToPeriod<Microseconds, float>(Duration_Zero)), 0.0f);
+    HE_EXPECT_EQ((ToPeriod<Milliseconds, float>(Duration_Zero)), 0.0f);
+    HE_EXPECT_EQ((ToPeriod<Seconds, float>(Duration_Zero)), 0.0f);
+    HE_EXPECT_EQ((ToPeriod<Minutes, float>(Duration_Zero)), 0.0f);
+    HE_EXPECT_EQ((ToPeriod<Hours, float>(Duration_Zero)), 0.0f);
+    HE_EXPECT_EQ((ToPeriod<Days, float>(Duration_Zero)), 0.0f);
+    HE_EXPECT_EQ((ToPeriod<Weeks, float>(Duration_Zero)), 0.0f);
+
+    HE_EXPECT_EQ((ToPeriod<Nanoseconds, float>(Duration{ 2000 })), 2000.0f);
+    HE_EXPECT_EQ((ToPeriod<Microseconds, float>(Duration{ 2000 })), 2.0f);
+    HE_EXPECT_EQ_ULP((ToPeriod<Milliseconds, float>(Duration{ 2000 })), 0.002f, 1);
+    HE_EXPECT_EQ_ULP((ToPeriod<Seconds, float>(Duration{ 2000 })), 0.000002f, 1);
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -152,13 +204,13 @@ HE_TEST(core, clock, operators_Arithmatic)
     // T += D
     T a = t0;
     a += d0;
-    HE_EXPECT_EQ(a, T{ 690 });
+    HE_EXPECT_EQ(a.val, 690);
 
     // T + D
-    HE_EXPECT_EQ((t1 + d0), T{ 690 });
+    HE_EXPECT_EQ((t1 + d0).val, 690);
 
     // D + T
-    HE_EXPECT_EQ((d0 + t1), T{ 690 });
+    HE_EXPECT_EQ((d0 + t1).val, 690);
 
     // D += D
     Duration b = d0;
@@ -171,13 +223,13 @@ HE_TEST(core, clock, operators_Arithmatic)
     // T -= D
     T c = t0;
     c -= d0;
-    HE_EXPECT_EQ(c, T{ 444 });
+    HE_EXPECT_EQ(c.val, 444);
 
     // T - T
     HE_EXPECT_EQ((t1 - t0), Duration{ 0 });
 
     // T - D
-    HE_EXPECT_EQ((t0 - d0), T{ 444 });
+    HE_EXPECT_EQ((t0 - d0).val, 444);
 
     // D -= D
     Duration d = d0;
@@ -223,7 +275,7 @@ HE_TEST(core, clock, operators_Comparison)
 HE_TEST(core, clock, Win32FileTimeToSystemTime)
 {
     uint64_t t = 116444736000000000;
-    HE_EXPECT_EQ(Win32FileTimeToSystemTime(t).ns, 0);
+    HE_EXPECT_EQ(Win32FileTimeToSystemTime(t).val, 0);
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -239,7 +291,7 @@ HE_TEST(core, clock, PosixTimeToSystemTime)
     timespec posixTime;
     posixTime.tv_nsec = 987654321;
     posixTime.tv_sec = 123456789;
-    HE_EXPECT_EQ(PosixTimeToSystemTime(posixTime).ns, 123456789987654321);
+    HE_EXPECT_EQ(PosixTimeToSystemTime(posixTime).val, 123456789987654321);
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -249,4 +301,10 @@ HE_TEST(core, clock, PosixTimeFromSystemTime)
     auto test = PosixTimeFromSystemTime(systemTime);
     HE_EXPECT_EQ(test.tv_nsec, 987654321);
     HE_EXPECT_EQ(test.tv_sec, 123456789);
+}
+
+// ------------------------------------------------------------------------------------------------
+HE_TEST(core, clock, Formatting)
+{
+    // TODO
 }

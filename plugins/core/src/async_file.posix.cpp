@@ -3,6 +3,7 @@
 #include "he/core/allocator.h"
 
 #include "he/core/assert.h"
+#include "he/core/cpu.h"
 #include "he/core/task_executor.h"
 #include "he/core/utils.h"
 
@@ -41,8 +42,15 @@ namespace he
 
         if (!s_executor)
         {
+            const uint32_t defaultThreadCount = Clamp<uint32_t>(GetCpuInfo().threadCount, 4, 16);
+
+            ThreadPoolExecutor::Config poolConfig;
+            poolConfig.count = config.pool.threadCount ? config.pool.threadCount : defaultThreadCount;
+            poolConfig.affinity = config.default
+            poolConfig.name = "Async IO Thread";
+
             s_executor = &s_threadPool;
-            Result r = s_threadPool.Startup(0, "Async IO Thread");
+            Result r = s_threadPool.Startup(poolConfig);
             if (!r)
                 return r;
         }
@@ -122,13 +130,13 @@ namespace he
         return f;
     }
 
-    std::future<AsyncFileResult> AsyncFile::WriteAsync(void* src, uint64_t offset, uint32_t size)
+    std::future<AsyncFileResult> AsyncFile::WriteAsync(const void* src, uint64_t offset, uint32_t size)
     {
         AsyncOp* op = Allocator::GetTemp().New<AsyncOp>();
         op->fd = dup(m_fd);
         op->offset = offset;
         op->size = size;
-        op->buffer = dst;
+        op->buffer = const_cast<void*>(src);
 
         auto f = op->promise.get_future();
 

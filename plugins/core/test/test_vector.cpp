@@ -20,15 +20,13 @@ HE_TEST(core, Vector, Constants)
 // ------------------------------------------------------------------------------------------------
 HE_TEST(core, Vector, Construct)
 {
-    Allocator& a = CrtAllocator::Get();
-
     {
-        Vector<int> v(a);
+        Vector<int> v;
         HE_EXPECT_EQ(v.Size(), 0);
     }
 
     {
-        Vector<CopyAndMove> v(a);
+        Vector<CopyAndMove> v;
         HE_EXPECT_EQ(v.Size(), 0);
     }
 }
@@ -36,19 +34,17 @@ HE_TEST(core, Vector, Construct)
 // ------------------------------------------------------------------------------------------------
 HE_TEST(core, Vector, Construct_Copy)
 {
-    Allocator& a = CrtAllocator::Get();
-
     constexpr uint32_t ExpectedSize = 10;
 
-    Vector<int> v(a);
+    Vector<int> v;
     v.Resize(ExpectedSize, 12345);
     HE_EXPECT_EQ(v.Size(), ExpectedSize);
 
     {
-        Vector<int> copy(v, a);
+        Vector<int> copy(v);
         HE_EXPECT_EQ(copy.Size(), ExpectedSize);
         HE_EXPECT_EQ_MEM(copy.Data(), v.Data(), v.Size() * sizeof(int));
-        HE_EXPECT_EQ_PTR(&copy.GetAllocator(), &a);
+        HE_EXPECT_EQ_PTR(&copy.GetAllocator(), &Allocator::GetDefault());
     }
 
     {
@@ -73,14 +69,14 @@ HE_TEST(core, Vector, Construct_Copy)
         HE_EXPECT_EQ_PTR(&copy.GetAllocator(), &v.GetAllocator());
     }
 
-    Vector<CopyAndMove> v2(a);
+    Vector<CopyAndMove> v2;
     v2.Resize(ExpectedSize);
     HE_EXPECT_EQ(v2.Size(), ExpectedSize);
 
     {
-        Vector<CopyAndMove> copy(v2, a);
+        Vector<CopyAndMove> copy(v2);
         HE_EXPECT_EQ(copy.Size(), ExpectedSize);
-        HE_EXPECT_EQ_PTR(&copy.GetAllocator(), &a);
+        HE_EXPECT_EQ_PTR(&copy.GetAllocator(), &Allocator::GetDefault());
 
         for (uint32_t i = 0; i < ExpectedSize; ++i)
         {
@@ -126,14 +122,14 @@ HE_TEST(core, Vector, Construct_Copy)
         }
     }
 
-    Vector<CopyOnly> v3(a);
+    Vector<CopyOnly> v3;
     v3.Resize(ExpectedSize);
     HE_EXPECT_EQ(v3.Size(), ExpectedSize);
 
     {
-        Vector<CopyOnly> copy(v3, a);
+        Vector<CopyOnly> copy(v3);
         HE_EXPECT_EQ(copy.Size(), ExpectedSize);
-        HE_EXPECT_EQ_PTR(&copy.GetAllocator(), &a);
+        HE_EXPECT_EQ_PTR(&copy.GetAllocator(), &Allocator::GetDefault());
 
         for (uint32_t i = 0; i < ExpectedSize; ++i)
         {
@@ -183,25 +179,23 @@ HE_TEST(core, Vector, Construct_Copy)
 // ------------------------------------------------------------------------------------------------
 HE_TEST(core, Vector, Construct_Move)
 {
-    Allocator& a = CrtAllocator::Get();
-
     constexpr uint32_t ExpectedSize = 10;
 
     {
-        Vector<int> v(a);
+        Vector<int> v;
         v.Resize(ExpectedSize, 12345);
         HE_EXPECT_EQ(v.Size(), ExpectedSize);
 
-        Vector<int> moved(Move(v), a);
+        Vector<int> moved(Move(v));
         HE_EXPECT_EQ(moved.Size(), ExpectedSize);
         HE_EXPECT(moved.Data());
-        HE_EXPECT_EQ_PTR(&moved.GetAllocator(), &a);
+        HE_EXPECT_EQ_PTR(&moved.GetAllocator(), &Allocator::GetDefault());
         HE_EXPECT(!v.Data());
         HE_EXPECT_EQ(v.Size(), 0);
     }
 
     {
-        Vector<int> v(a);
+        Vector<int> v;
         v.Resize(ExpectedSize, 12345);
         HE_EXPECT_EQ(v.Size(), ExpectedSize);
 
@@ -215,46 +209,46 @@ HE_TEST(core, Vector, Construct_Move)
     }
 
     {
-        Vector<int> v(a);
+        Vector<int> v;
         v.Resize(ExpectedSize, 12345);
         HE_EXPECT_EQ(v.Size(), ExpectedSize);
 
         Vector<int> moved(Move(v));
         HE_EXPECT_EQ(moved.Size(), ExpectedSize);
         HE_EXPECT(moved.Data());
-        HE_EXPECT_EQ_PTR(&moved.GetAllocator(), &a);
+        HE_EXPECT_EQ_PTR(&moved.GetAllocator(), &Allocator::GetDefault());
         HE_EXPECT(!v.Data());
         HE_EXPECT_EQ(v.Size(), 0);
     }
 
     {
-        Vector<int> v(a);
+        Vector<int> v;
         v.Resize(ExpectedSize, 12345);
         HE_EXPECT_EQ(v.Size(), ExpectedSize);
 
         Vector<int> moved = Move(v);
         HE_EXPECT_EQ(moved.Size(), ExpectedSize);
         HE_EXPECT(moved.Data());
-        HE_EXPECT_EQ_PTR(&moved.GetAllocator(), &a);
+        HE_EXPECT_EQ_PTR(&moved.GetAllocator(), &Allocator::GetDefault());
         HE_EXPECT(!v.Data());
         HE_EXPECT_EQ(v.Size(), 0);
     }
 
     {
-        Vector<CopyAndMove> v2(a);
+        Vector<CopyAndMove> v2;
         v2.Resize(ExpectedSize);
         HE_EXPECT_EQ(v2.Size(), ExpectedSize);
 
-        Vector<CopyAndMove> moved(Move(v2), a);
+        Vector<CopyAndMove> moved(Move(v2));
         HE_EXPECT_EQ(moved.Size(), ExpectedSize);
         HE_EXPECT(moved.Data());
-        HE_EXPECT_EQ_PTR(&moved.GetAllocator(), &a);
+        HE_EXPECT_EQ_PTR(&moved.GetAllocator(), &Allocator::GetDefault());
         HE_EXPECT(!v2.Data());
         HE_EXPECT_EQ(v2.Size(), 0);
     }
 
     {
-        Vector<CopyAndMove> v2(a);
+        Vector<CopyAndMove> v2;
         v2.Resize(ExpectedSize);
         HE_EXPECT_EQ(v2.Size(), ExpectedSize);
 
@@ -268,39 +262,39 @@ HE_TEST(core, Vector, Construct_Move)
     }
 
     {
-        Vector<CopyAndMove> v2(a);
+        Vector<CopyAndMove> v2;
         v2.Resize(ExpectedSize);
         HE_EXPECT_EQ(v2.Size(), ExpectedSize);
 
         Vector<CopyAndMove> moved(Move(v2));
         HE_EXPECT_EQ(moved.Size(), ExpectedSize);
         HE_EXPECT(moved.Data());
-        HE_EXPECT_EQ_PTR(&moved.GetAllocator(), &a);
+        HE_EXPECT_EQ_PTR(&moved.GetAllocator(), &Allocator::GetDefault());
         HE_EXPECT(!v2.Data());
         HE_EXPECT_EQ(v2.Size(), 0);
     }
 
     {
-        Vector<CopyAndMove> v2(a);
+        Vector<CopyAndMove> v2;
         v2.Resize(ExpectedSize);
         HE_EXPECT_EQ(v2.Size(), ExpectedSize);
 
         Vector<CopyAndMove> moved = Move(v2);
         HE_EXPECT_EQ(moved.Size(), ExpectedSize);
         HE_EXPECT(moved.Data());
-        HE_EXPECT_EQ_PTR(&moved.GetAllocator(), &a);
+        HE_EXPECT_EQ_PTR(&moved.GetAllocator(), &Allocator::GetDefault());
         HE_EXPECT(!v2.Data());
         HE_EXPECT_EQ(v2.Size(), 0);
     }
 
     {
-        Vector<CopyOnly> v3(a);
+        Vector<CopyOnly> v3;
         v3.Resize(ExpectedSize);
         HE_EXPECT_EQ(v3.Size(), ExpectedSize);
 
-        Vector<CopyOnly> moved(Move(v3), a);
+        Vector<CopyOnly> moved(Move(v3));
         HE_EXPECT_EQ(moved.Size(), ExpectedSize);
-        HE_EXPECT_EQ_PTR(&moved.GetAllocator(), &a);
+        HE_EXPECT_EQ_PTR(&moved.GetAllocator(), &Allocator::GetDefault());
         HE_EXPECT(!v3.Data());
         HE_EXPECT_EQ(v3.Size(), 0);
 
@@ -312,7 +306,7 @@ HE_TEST(core, Vector, Construct_Move)
     }
 
     {
-        Vector<CopyOnly> v3(a);
+        Vector<CopyOnly> v3;
         v3.Resize(ExpectedSize);
         HE_EXPECT_EQ(v3.Size(), ExpectedSize);
 
@@ -331,7 +325,7 @@ HE_TEST(core, Vector, Construct_Move)
     }
 
     {
-        Vector<CopyOnly> v3(a);
+        Vector<CopyOnly> v3;
         v3.Resize(ExpectedSize);
         HE_EXPECT_EQ(v3.Size(), ExpectedSize);
 
@@ -349,7 +343,7 @@ HE_TEST(core, Vector, Construct_Move)
     }
 
     {
-        Vector<CopyOnly> v3(a);
+        Vector<CopyOnly> v3;
         v3.Resize(ExpectedSize);
         HE_EXPECT_EQ(v3.Size(), ExpectedSize);
 
@@ -367,13 +361,13 @@ HE_TEST(core, Vector, Construct_Move)
     }
 
     {
-        Vector<MoveOnly> v4(a);
+        Vector<MoveOnly> v4;
         v4.Resize(ExpectedSize);
         HE_EXPECT_EQ(v4.Size(), ExpectedSize);
 
-        Vector<MoveOnly> moved(Move(v4), a);
+        Vector<MoveOnly> moved(Move(v4));
         HE_EXPECT_EQ(moved.Size(), ExpectedSize);
-        HE_EXPECT_EQ_PTR(&moved.GetAllocator(), &a);
+        HE_EXPECT_EQ_PTR(&moved.GetAllocator(), &Allocator::GetDefault());
         HE_EXPECT(!v4.Data());
         HE_EXPECT_EQ(v4.Size(), 0);
 
@@ -385,7 +379,7 @@ HE_TEST(core, Vector, Construct_Move)
     }
 
     {
-        Vector<MoveOnly> v4(a);
+        Vector<MoveOnly> v4;
         v4.Resize(ExpectedSize);
         HE_EXPECT_EQ(v4.Size(), ExpectedSize);
 
@@ -404,7 +398,7 @@ HE_TEST(core, Vector, Construct_Move)
     }
 
     {
-        Vector<MoveOnly> v4(a);
+        Vector<MoveOnly> v4;
         v4.Resize(ExpectedSize);
         HE_EXPECT_EQ(v4.Size(), ExpectedSize);
 
@@ -422,7 +416,7 @@ HE_TEST(core, Vector, Construct_Move)
     }
 
     {
-        Vector<MoveOnly> v4(a);
+        Vector<MoveOnly> v4;
         v4.Resize(ExpectedSize);
         HE_EXPECT_EQ(v4.Size(), ExpectedSize);
 
@@ -443,20 +437,18 @@ HE_TEST(core, Vector, Construct_Move)
 // ------------------------------------------------------------------------------------------------
 HE_TEST(core, Vector, operator_assign_copy)
 {
-    Allocator& a = CrtAllocator::Get();
-
     constexpr uint32_t ExpectedSize = 10;
 
-    Vector<int> v(a);
+    Vector<int> v;
     v.Resize(ExpectedSize, 12345);
     HE_EXPECT_EQ(v.Size(), ExpectedSize);
 
     {
-        Vector<int> copy(a);
+        Vector<int> copy;
         copy = v;
         HE_EXPECT_EQ(copy.Size(), ExpectedSize);
         HE_EXPECT_EQ_MEM(copy.Data(), v.Data(), v.Size() * sizeof(int));
-        HE_EXPECT_EQ_PTR(&copy.GetAllocator(), &a);
+        HE_EXPECT_EQ_PTR(&copy.GetAllocator(), &Allocator::GetDefault());
     }
 
     {
@@ -468,15 +460,15 @@ HE_TEST(core, Vector, operator_assign_copy)
         HE_EXPECT_EQ_PTR(&copy.GetAllocator(), &a2);
     }
 
-    Vector<CopyAndMove> v2(a);
+    Vector<CopyAndMove> v2;
     v2.Resize(ExpectedSize);
     HE_EXPECT_EQ(v2.Size(), ExpectedSize);
 
     {
-        Vector<CopyAndMove> copy(a);
+        Vector<CopyAndMove> copy;
         copy = v2;
         HE_EXPECT_EQ(copy.Size(), ExpectedSize);
-        HE_EXPECT_EQ_PTR(&copy.GetAllocator(), &a);
+        HE_EXPECT_EQ_PTR(&copy.GetAllocator(), &Allocator::GetDefault());
 
         for (uint32_t i = 0; i < ExpectedSize; ++i)
         {
@@ -499,15 +491,15 @@ HE_TEST(core, Vector, operator_assign_copy)
         }
     }
 
-    Vector<CopyOnly> v3(a);
+    Vector<CopyOnly> v3;
     v3.Resize(ExpectedSize);
     HE_EXPECT_EQ(v3.Size(), ExpectedSize);
 
     {
-        Vector<CopyOnly> copy(a);
+        Vector<CopyOnly> copy;
         copy = v3;
         HE_EXPECT_EQ(copy.Size(), ExpectedSize);
-        HE_EXPECT_EQ_PTR(&copy.GetAllocator(), &a);
+        HE_EXPECT_EQ_PTR(&copy.GetAllocator(), &Allocator::GetDefault());
 
         for (uint32_t i = 0; i < ExpectedSize; ++i)
         {
@@ -534,26 +526,24 @@ HE_TEST(core, Vector, operator_assign_copy)
 // ------------------------------------------------------------------------------------------------
 HE_TEST(core, Vector, operator_assign_move)
 {
-    Allocator& a = CrtAllocator::Get();
-
     constexpr uint32_t ExpectedSize = 10;
 
     {
-        Vector<int> v(a);
+        Vector<int> v;
         v.Resize(ExpectedSize, 12345);
         HE_EXPECT_EQ(v.Size(), ExpectedSize);
 
-        Vector<int> moved(a);
+        Vector<int> moved;
         moved = Move(v);
         HE_EXPECT_EQ(moved.Size(), ExpectedSize);
         HE_EXPECT(moved.Data());
-        HE_EXPECT_EQ_PTR(&moved.GetAllocator(), &a);
+        HE_EXPECT_EQ_PTR(&moved.GetAllocator(), &Allocator::GetDefault());
         HE_EXPECT(!v.Data());
         HE_EXPECT_EQ(v.Size(), 0);
     }
 
     {
-        Vector<int> v(a);
+        Vector<int> v;
         v.Resize(ExpectedSize, 12345);
         HE_EXPECT_EQ(v.Size(), ExpectedSize);
 
@@ -568,21 +558,21 @@ HE_TEST(core, Vector, operator_assign_move)
     }
 
     {
-        Vector<CopyAndMove> v2(a);
+        Vector<CopyAndMove> v2;
         v2.Resize(ExpectedSize);
         HE_EXPECT_EQ(v2.Size(), ExpectedSize);
 
-        Vector<CopyAndMove> moved(a);
+        Vector<CopyAndMove> moved;
         moved = Move(v2);
         HE_EXPECT_EQ(moved.Size(), ExpectedSize);
         HE_EXPECT(moved.Data());
-        HE_EXPECT_EQ_PTR(&moved.GetAllocator(), &a);
+        HE_EXPECT_EQ_PTR(&moved.GetAllocator(), &Allocator::GetDefault());
         HE_EXPECT(!v2.Data());
         HE_EXPECT_EQ(v2.Size(), 0);
     }
 
     {
-        Vector<CopyAndMove> v2(a);
+        Vector<CopyAndMove> v2;
         v2.Resize(ExpectedSize);
         HE_EXPECT_EQ(v2.Size(), ExpectedSize);
 
@@ -597,14 +587,14 @@ HE_TEST(core, Vector, operator_assign_move)
     }
 
     {
-        Vector<CopyOnly> v3(a);
+        Vector<CopyOnly> v3;
         v3.Resize(ExpectedSize);
         HE_EXPECT_EQ(v3.Size(), ExpectedSize);
 
-        Vector<CopyOnly> moved(a);
+        Vector<CopyOnly> moved;
         moved = Move(v3);
         HE_EXPECT_EQ(moved.Size(), ExpectedSize);
-        HE_EXPECT_EQ_PTR(&moved.GetAllocator(), &a);
+        HE_EXPECT_EQ_PTR(&moved.GetAllocator(), &Allocator::GetDefault());
         HE_EXPECT(!v3.Data());
         HE_EXPECT_EQ(v3.Size(), 0);
 
@@ -616,7 +606,7 @@ HE_TEST(core, Vector, operator_assign_move)
     }
 
     {
-        Vector<CopyOnly> v3(a);
+        Vector<CopyOnly> v3;
         v3.Resize(ExpectedSize);
         HE_EXPECT_EQ(v3.Size(), ExpectedSize);
 
@@ -636,14 +626,14 @@ HE_TEST(core, Vector, operator_assign_move)
     }
 
     {
-        Vector<MoveOnly> v4(a);
+        Vector<MoveOnly> v4;
         v4.Resize(ExpectedSize);
         HE_EXPECT_EQ(v4.Size(), ExpectedSize);
 
-        Vector<MoveOnly> moved(a);
+        Vector<MoveOnly> moved;
         moved = Move(v4);
         HE_EXPECT_EQ(moved.Size(), ExpectedSize);
-        HE_EXPECT_EQ_PTR(&moved.GetAllocator(), &a);
+        HE_EXPECT_EQ_PTR(&moved.GetAllocator(), &Allocator::GetDefault());
         HE_EXPECT(!v4.Data());
         HE_EXPECT_EQ(v4.Size(), 0);
 
@@ -655,7 +645,7 @@ HE_TEST(core, Vector, operator_assign_move)
     }
 
     {
-        Vector<MoveOnly> v4(a);
+        Vector<MoveOnly> v4;
         v4.Resize(ExpectedSize);
         HE_EXPECT_EQ(v4.Size(), ExpectedSize);
 
@@ -678,20 +668,40 @@ HE_TEST(core, Vector, operator_assign_move)
 // ------------------------------------------------------------------------------------------------
 HE_TEST(core, Vector, operator_index)
 {
-    Allocator& a = CrtAllocator::Get();
-
-    Vector<int> v(a);
+    Vector<int> v;
     v.Resize(10, 12345);
     HE_EXPECT_EQ(v[0], 12345);
     HE_EXPECT_EQ(v[3], 12345);
 }
 
 // ------------------------------------------------------------------------------------------------
+HE_TEST(core, Vector, operator_eq)
+{
+    Vector<int> v;
+    v.Resize(10, 12345);
+
+    Vector<int> v2;
+    v2.Resize(10, 12345);
+
+    HE_EXPECT(v == v2);
+}
+
+// ------------------------------------------------------------------------------------------------
+HE_TEST(core, Vector, operator_ne)
+{
+    Vector<int> v;
+    v.Resize(10, 12345);
+
+    Vector<int> v2;
+    v2.Resize(11, 12345);
+
+    HE_EXPECT(v != v2);
+}
+
+// ------------------------------------------------------------------------------------------------
 HE_TEST(core, Vector, IsEmpty)
 {
-    Allocator& a = CrtAllocator::Get();
-
-    Vector<int> v(a);
+    Vector<int> v;
     HE_EXPECT(v.IsEmpty());
 
     v.Resize(10);
@@ -701,9 +711,7 @@ HE_TEST(core, Vector, IsEmpty)
 // ------------------------------------------------------------------------------------------------
 HE_TEST(core, Vector, Capacity)
 {
-    Allocator& a = CrtAllocator::Get();
-
-    Vector<int> v(a);
+    Vector<int> v;
     HE_EXPECT_EQ(v.Capacity(), 0);
 
     v.Resize(1);
@@ -716,9 +724,7 @@ HE_TEST(core, Vector, Capacity)
 // ------------------------------------------------------------------------------------------------
 HE_TEST(core, Vector, Size)
 {
-    Allocator& a = CrtAllocator::Get();
-
-    Vector<int> v(a);
+    Vector<int> v;
     HE_EXPECT_EQ(v.Size(), 0);
 
     v.Resize(1);
@@ -731,9 +737,7 @@ HE_TEST(core, Vector, Size)
 // ------------------------------------------------------------------------------------------------
 HE_TEST(core, Vector, Reserve)
 {
-    Allocator& a = CrtAllocator::Get();
-
-    Vector<int> v(a);
+    Vector<int> v;
     HE_EXPECT_EQ(v.Capacity(), 0);
 
     v.Reserve(1);
@@ -746,19 +750,17 @@ HE_TEST(core, Vector, Reserve)
 // ------------------------------------------------------------------------------------------------
 HE_TEST(core, Vector, Resize)
 {
-    Allocator& a = CrtAllocator::Get();
-
     uint8_t zeroes[16]{};
 
     {
-        Vector<uint8_t> v(a);
+        Vector<uint8_t> v;
         v.Resize(HE_LENGTH_OF(zeroes));
         HE_EXPECT_EQ(v.Size(), HE_LENGTH_OF(zeroes));
         HE_EXPECT_EQ_MEM(v.Data(), zeroes, v.Size());
     }
 
     {
-        Vector<uint8_t> v(a);
+        Vector<uint8_t> v;
         v.Resize(HE_LENGTH_OF(zeroes), DefaultInit);
         HE_EXPECT_EQ(v.Size(), HE_LENGTH_OF(zeroes));
     }
@@ -768,7 +770,7 @@ HE_TEST(core, Vector, Resize)
 
         struct TestObj { TestObj() { s_constructed = true; } };
 
-        Vector<TestObj> v(a);
+        Vector<TestObj> v;
         v.Resize(1);
         HE_EXPECT(s_constructed);
         HE_EXPECT_EQ(v.Size(), 1);
@@ -776,11 +778,45 @@ HE_TEST(core, Vector, Resize)
 }
 
 // ------------------------------------------------------------------------------------------------
+HE_TEST(core, Vector, Expand)
+{
+    uint8_t zeroes[16]{};
+
+    {
+        Vector<uint8_t> v;
+        v.Expand(HE_LENGTH_OF(zeroes));
+        HE_EXPECT_EQ(v.Size(), HE_LENGTH_OF(zeroes));
+        HE_EXPECT_EQ_MEM(v.Data(), zeroes, v.Size());
+    }
+
+    {
+        Vector<uint8_t> v;
+        v.Expand(HE_LENGTH_OF(zeroes), DefaultInit);
+        HE_EXPECT_EQ(v.Size(), HE_LENGTH_OF(zeroes));
+    }
+
+    {
+        static int s_constructed = 0;
+
+        struct TestObj { TestObj() { ++s_constructed; } };
+
+        Vector<TestObj> v;
+        v.Expand(1);
+        HE_EXPECT_EQ(s_constructed, 1);
+        HE_EXPECT_EQ(v.Size(), 1);
+        v.Expand(2);
+        HE_EXPECT_EQ(s_constructed, 3);
+        HE_EXPECT_EQ(v.Size(), 3);
+        v.Expand(24);
+        HE_EXPECT_EQ(s_constructed, 27);
+        HE_EXPECT_EQ(v.Size(), 27);
+    }
+}
+
+// ------------------------------------------------------------------------------------------------
 HE_TEST(core, Vector, ShrinkToFit)
 {
-    Allocator& a = CrtAllocator::Get();
-
-    Vector<uint8_t> v(a);
+    Vector<uint8_t> v;
     HE_EXPECT_EQ(v.Size(), 0);
     HE_EXPECT_EQ(v.Capacity(), 0);
 
@@ -812,9 +848,7 @@ HE_TEST(core, Vector, ShrinkToFit)
 // ------------------------------------------------------------------------------------------------
 HE_TEST(core, Vector, Data)
 {
-    Allocator& a = CrtAllocator::Get();
-
-    Vector<int> v(a);
+    Vector<int> v;
     HE_EXPECT(!v.Data());
 
     v.Resize(16);
@@ -830,8 +864,6 @@ HE_TEST(core, Vector, Data)
 // ------------------------------------------------------------------------------------------------
 HE_TEST(core, Vector, Adopt_Release)
 {
-    Allocator& a = CrtAllocator::Get();
-
     static int s_destructed = 0;
 
     struct TestObj { ~TestObj() { ++s_destructed; } };
@@ -839,7 +871,7 @@ HE_TEST(core, Vector, Adopt_Release)
     constexpr TestObj* Null = nullptr;
 
     {
-        Vector<TestObj> v(a);
+        Vector<TestObj> v;
         v.EmplaceBack();
 
         const TestObj* data = v.Data();
@@ -882,9 +914,7 @@ HE_TEST(core, Vector, Adopt_Release)
 // ------------------------------------------------------------------------------------------------
 HE_TEST(core, Vector, Front_Back)
 {
-    Allocator& a = CrtAllocator::Get();
-
-    Vector<int> v(a);
+    Vector<int> v;
     v.PushBack(1);
     v.PushBack(2);
     v.PushBack(3);
@@ -895,9 +925,7 @@ HE_TEST(core, Vector, Front_Back)
 // ------------------------------------------------------------------------------------------------
 HE_TEST(core, Vector, Begin)
 {
-    Allocator& a = CrtAllocator::Get();
-
-    Vector<int> v(a);
+    Vector<int> v;
     HE_EXPECT(!v.Begin());
 
     v.Resize(1);
@@ -907,9 +935,7 @@ HE_TEST(core, Vector, Begin)
 // ------------------------------------------------------------------------------------------------
 HE_TEST(core, Vector, End)
 {
-    Allocator& a = CrtAllocator::Get();
-
-    Vector<int> v(a);
+    Vector<int> v;
     HE_EXPECT(!v.End());
 
     v.Resize(1);
@@ -917,12 +943,28 @@ HE_TEST(core, Vector, End)
 }
 
 // ------------------------------------------------------------------------------------------------
+HE_TEST(core, Vector, RangeBasedFor)
+{
+    uint8_t values[]{ 1, 2, 3, 4, 5, 6, 7, 8 };
+
+    Vector<uint8_t> v;
+    v.Insert(0, values, values + HE_LENGTH_OF(values));
+
+    HE_EXPECT_EQ(v.Size(), HE_LENGTH_OF(values));
+
+    uint32_t i = 0;
+    for (uint8_t b : v)
+    {
+        HE_EXPECT_EQ(b, values[i++]);
+    }
+    HE_EXPECT_EQ(i, HE_LENGTH_OF(values));
+}
+
+// ------------------------------------------------------------------------------------------------
 HE_TEST(core, Vector, Clear)
 {
-    Allocator& a = CrtAllocator::Get();
-
     {
-        Vector<int> v(a);
+        Vector<int> v;
         HE_EXPECT(v.IsEmpty());
 
         v.Clear();
@@ -943,7 +985,7 @@ HE_TEST(core, Vector, Clear)
 
         struct TestObj { ~TestObj() { s_destructed = true; } };
 
-        Vector<TestObj> v(a);
+        Vector<TestObj> v;
         v.Resize(1);
         HE_EXPECT(!s_destructed);
         HE_EXPECT_EQ(v.Size(), 1);
@@ -957,9 +999,7 @@ HE_TEST(core, Vector, Clear)
 // ------------------------------------------------------------------------------------------------
 HE_TEST(core, Vector, Insert)
 {
-    Allocator& a = CrtAllocator::Get();
-
-    Vector<uint8_t> v(a);
+    Vector<uint8_t> v;
     HE_EXPECT_EQ(v.Size(), 0);
 
     {
@@ -1007,11 +1047,9 @@ HE_TEST(core, Vector, Insert)
 // ------------------------------------------------------------------------------------------------
 HE_TEST(core, Vector, Erase)
 {
-    Allocator& a = CrtAllocator::Get();
-
     const uint8_t expected[]{ 1, 2, 60, 3 };
 
-    Vector<uint8_t> v(a);
+    Vector<uint8_t> v;
 
     v.Insert(0, expected, expected + HE_LENGTH_OF(expected));
     HE_EXPECT_EQ(v.Size(), HE_LENGTH_OF(expected));
@@ -1033,9 +1071,7 @@ HE_TEST(core, Vector, Erase)
 // ------------------------------------------------------------------------------------------------
 HE_TEST(core, Vector, PushBack)
 {
-    Allocator& a = CrtAllocator::Get();
-
-    Vector<int> v(a);
+    Vector<int> v;
     HE_EXPECT_EQ(v.Size(), 0);
 
     v.PushBack(25);
@@ -1049,9 +1085,7 @@ HE_TEST(core, Vector, PushBack)
 // ------------------------------------------------------------------------------------------------
 HE_TEST(core, Vector, PushFront)
 {
-    Allocator& a = CrtAllocator::Get();
-
-    Vector<int> v(a);
+    Vector<int> v;
     HE_EXPECT_EQ(v.Size(), 0);
 
     v.PushFront(25);
@@ -1065,9 +1099,7 @@ HE_TEST(core, Vector, PushFront)
 // ------------------------------------------------------------------------------------------------
 HE_TEST(core, Vector, PopBack)
 {
-    Allocator& a = CrtAllocator::Get();
-
-    Vector<int> v(a);
+    Vector<int> v;
     v.PushBack(10);
     v.PushBack(20);
     HE_EXPECT_EQ(v.Size(), 2);
@@ -1085,9 +1117,7 @@ HE_TEST(core, Vector, PopBack)
 // ------------------------------------------------------------------------------------------------
 HE_TEST(core, Vector, PopFront)
 {
-    Allocator& a = CrtAllocator::Get();
-
-    Vector<int> v(a);
+    Vector<int> v;
     v.PushBack(10);
     v.PushBack(20);
     HE_EXPECT_EQ(v.Size(), 2);
@@ -1105,10 +1135,8 @@ HE_TEST(core, Vector, PopFront)
 // ------------------------------------------------------------------------------------------------
 HE_TEST(core, Vector, EmplaceBack)
 {
-    Allocator& a = CrtAllocator::Get();
-
     {
-        Vector<int> v(a);
+        Vector<int> v;
 
         int value = v.EmplaceBack();
         HE_EXPECT_EQ(value, 0);
@@ -1126,7 +1154,7 @@ HE_TEST(core, Vector, EmplaceBack)
     {
         struct TestObj { TestObj(int a, int b) : a(a), b(b) {} int a, b; };
 
-        Vector<TestObj> v(a);
+        Vector<TestObj> v;
 
         TestObj& value0 = v.EmplaceBack(5, 6);
         HE_EXPECT_EQ(value0.a, 5);

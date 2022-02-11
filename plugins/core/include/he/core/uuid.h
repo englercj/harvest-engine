@@ -68,7 +68,7 @@ namespace he
         ///
         /// \param[in] allocator The allocator to use to construct the string.
         /// \return The cannonical UUID string.
-        String ToString(Allocator& allocator = Allocator::GetTemp()) const;
+        String ToString(Allocator& allocator = Allocator::GetDefault()) const;
 
         /// Checks if two UUIDs are the same.
         ///

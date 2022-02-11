@@ -17,6 +17,27 @@ enum class Flags : uint32_t
 HE_ENUM_FLAGS(Flags);
 
 // ------------------------------------------------------------------------------------------------
+enum class TestStrEnum : uint32_t
+{
+    A,
+    B,
+    C,
+};
+
+template <>
+const char* he::AsString(TestStrEnum x)
+{
+    switch (x)
+    {
+        case TestStrEnum::A: return "A";
+        case TestStrEnum::B: return "B";
+        case TestStrEnum::C: return "C";
+    }
+
+    return "<unknown>";
+}
+
+// ------------------------------------------------------------------------------------------------
 HE_TEST(core, enum_ops, Flags)
 {
     HE_EXPECT((~Flags::A) == Flags(~1u));
@@ -89,4 +110,14 @@ HE_TEST(core, enum_ops, HasAnyFlags)
     HE_EXPECT(HasAnyFlags(Flags::A | Flags::B, Flags::B | Flags::A));
     HE_EXPECT(HasAnyFlags(Flags::A | Flags::B, Flags::A | Flags::C));
     HE_EXPECT(!HasAnyFlags(Flags::A | Flags::B, Flags::C));
+}
+
+
+// ------------------------------------------------------------------------------------------------
+HE_TEST(core, enum_ops, AsString)
+{
+    HE_EXPECT_EQ_STR(AsString(TestStrEnum::A), "A");
+    HE_EXPECT_EQ_STR(AsString(TestStrEnum::B), "B");
+    HE_EXPECT_EQ_STR(AsString(TestStrEnum::C), "C");
+    HE_EXPECT_EQ_STR(AsString(static_cast<TestStrEnum>(100)), "<unknown>");
 }

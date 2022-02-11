@@ -4,15 +4,29 @@
 
 #include "he/core/macros.h"
 
+/// When the compiler is Clang this macro will hold the Clang version, otherwise is zero.
 #define HE_COMPILER_CLANG                   0
+
+/// When the compiler is GCC this macro will hold the GCC version, otherwise is zero.
 #define HE_COMPILER_GCC                     0
+
+/// When the compiler is MSVC this macro will hold the MSVC version, otherwise is zero.
 #define HE_COMPILER_MSVC                    0
+
+/// \def HE_HAS_BUILTIN
+/// Checks if a builtin exists and evaluates to one if it does, otherwise zero
+///
+/// \param[in] x The builtin to check for.
+/// \return Evaluates to 1 or 0 depending on if the builtin is available.
+
+// TODO: Document other macros in here
 
 #if defined(__has_builtin)
     #define HE_HAS_BUILTIN(x) __has_builtin(x)
 #else
     #define HE_HAS_BUILTIN(x) 0
 #endif
+
 
 #if defined(__clang__)
     #undef  HE_COMPILER_CLANG

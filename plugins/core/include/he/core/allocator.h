@@ -58,11 +58,11 @@ namespace he
         /// \param ptr The pointer returned from Malloc or Realloc.
         virtual void Free(void* ptr) = 0;
 
-        /// Allocates a new memory block that can fit `count` instance of a trivial type `T`.
+        /// Allocates a new memory block that can fit `count` instance of a type `T`.
         ///
-        /// \note No constructors are run.
+        /// \note Constructors are not called.
         ///
-        /// \tparam The type to allocate enough space for, and to use as a guide for alignment.
+        /// \tparam The type to allocate enough space for, and to use for alignment.
         /// \param count The number of elements to allocate space for.
         /// \return A pointer to the newly allocated memory.
         template <typename T>
@@ -200,7 +200,12 @@ namespace he
     {
     public:
         explicit LinearPageAllocator(size_t pageSize, Allocator& allocator = Allocator::GetDefault());
+        LinearPageAllocator(const LinearPageAllocator&) = delete;
+        LinearPageAllocator(LinearPageAllocator&& x);
         ~LinearPageAllocator();
+
+        LinearPageAllocator& operator=(const LinearPageAllocator&) = delete;
+        LinearPageAllocator& operator=(LinearPageAllocator&& x) = delete;
 
         void* Malloc(size_t size, size_t alignment = DefaultAlignment) override;
         void* Realloc(void* ptr, size_t newSize, size_t alignment = DefaultAlignment) override;

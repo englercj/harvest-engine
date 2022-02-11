@@ -36,6 +36,16 @@ static void Test_WCToMBStr(const wchar_t* src, const char (&expected)[N])
 }
 
 // ------------------------------------------------------------------------------------------------
+HE_TEST(core, wstr, TO_WSTR)
+{
+    const wchar_t ExpectedStr[] = L"zß水🍌";
+    const wchar_t* ws = HE_TO_WSTR("z\u00df\u6c34\U0001f34c");
+
+    HE_EXPECT(WCStrCmp(ws, ExpectedStr) == 0);
+    HE_EXPECT_EQ_MEM(ws, ExpectedStr, sizeof(ExpectedStr));
+}
+
+// ------------------------------------------------------------------------------------------------
 HE_TEST(core, wstr, MBToWCStr)
 {
     Test_MBToWCStr("z\u00df\u6c34\U0001f34c", L"zß水🍌");
@@ -49,6 +59,16 @@ HE_TEST(core, wstr, WCToMBStr)
     Test_WCToMBStr(L"zß水🍌", "z\u00df\u6c34\U0001f34c");
     Test_WCToMBStr(L"zß水🍌", "\x7a\xc3\x9f\xe6\xb0\xb4\xf0\x9f\x8d\x8c");
     Test_WCToMBStr(L"Ленин", "\u041B\u0435\u043D\u0438\u043D");
+
+    String s;
+    WCToMBStr(s, L"zß水🍌");
+    HE_EXPECT_EQ_STR(s.Data(), "z\u00df\u6c34\U0001f34c");
+
+    WCToMBStr(s, L"zß水🍌");
+    HE_EXPECT_EQ_STR(s.Data(), "\x7a\xc3\x9f\xe6\xb0\xb4\xf0\x9f\x8d\x8c");
+
+    WCToMBStr(s, L"Ленин");
+    HE_EXPECT_EQ_STR(s.Data(), "\u041B\u0435\u043D\u0438\u043D");
 }
 
 // ------------------------------------------------------------------------------------------------

@@ -21,7 +21,7 @@
 
 /// Checks the expectation that `expr` evaluates to true.
 ///
-/// Any additional parameters are logged as context.
+/// Any additional parameters are logged as context on a failure.
 #define HE_EXPECT(expr, ...) \
     do { \
         HE_PUSH_WARNINGS() \
@@ -195,6 +195,35 @@ namespace he
             return false;
 
         const int32_t ulpDiff = ai > bi ? ai - bi : bi - ai;
+
+        return ulpDiff <= maxUlpDiff;
+    }
+
+    /// Checks if two floating point values are within `maxUlpDiff` floating point steps of eachother.
+    ///
+    /// Based on: https://www.gamasutra.com/view/news/162368/Indepth_Comparing_floating_point_numbers_2012_edition.php
+    ///
+    /// \param[in] a The first floating point value to compare.
+    /// \param[in] b The second floating point value to compare.
+    /// \param[in] maxUlpDiff The maximum tolerance for floating point ULP diff.
+    /// \return True if the values are within tolerance, false otherwise.
+    constexpr bool EqualUlp(double a, double b, int32_t maxUlpDiff)
+    {
+        // Treat -0 and +0 as equal
+        if (a == b)
+            return true;
+
+        const int64_t ai = BitCast<int64_t>(a);
+        const int64_t bi = BitCast<int64_t>(b);
+
+        const bool asigned = (ai >> 63) != 0;
+        const bool bsigned = (bi >> 63) != 0;
+
+        // Different signs mean they do not match
+        if (asigned != bsigned)
+            return false;
+
+        const int64_t ulpDiff = ai > bi ? ai - bi : bi - ai;
 
         return ulpDiff <= maxUlpDiff;
     }

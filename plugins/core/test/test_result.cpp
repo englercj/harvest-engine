@@ -2,7 +2,6 @@
 
 #include "he/core/result.h"
 
-#include "he/core/allocator.h"
 #include "he/core/string_fmt.h"
 #include "he/core/test.h"
 
@@ -14,17 +13,17 @@ HE_TEST(core, result, Success)
     Result r;
     HE_EXPECT(r);
 
-    String msg = r.ToString(CrtAllocator::Get());
+    String msg = r.ToString();
     HE_EXPECT(!msg.IsEmpty());
 }
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST(core, result, InvalidArgument)
+HE_TEST(core, result, InvalidParameter)
 {
     Result r = Result::InvalidParameter;
     HE_EXPECT(!r);
 
-    String msg = r.ToString(CrtAllocator::Get());
+    String msg = r.ToString();
     HE_EXPECT(!msg.IsEmpty());
 }
 
@@ -34,6 +33,6 @@ HE_TEST(core, result, NotSupported)
     Result r = Result::NotSupported;
     HE_EXPECT(!r);
 
-    String msg = r.ToString(CrtAllocator::Get());
+    String msg = r.ToString();
     HE_EXPECT(!msg.IsEmpty());
 }

@@ -54,8 +54,9 @@ namespace he
         ///
         /// \param[in] directory The output directory to store the file.
         /// \param[in] prefix The prefix of the file to write to.
+        /// \param[in] utcTime Optional. When set uses UTC times instead of local times.
         /// \return The result of opening the file to write to.
-        Result Configure(const char* directory, const char* prefix);
+        Result Configure(const char* directory, const char* prefix, bool utcTime = false);
 
         /// Handler function that can be added a sink. Make sure to pass the FileSink instance
         /// as the userData parameter when calling \ref AddLogSink.
@@ -67,7 +68,8 @@ namespace he
 
     private:
         std::mutex m_mutex{};
-        String m_buf;
-        File m_file;
+        String m_buf{};
+        File m_file{};
+        bool m_utc{ false };
     };
 }

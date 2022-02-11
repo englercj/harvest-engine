@@ -2,6 +2,7 @@
 
 #include "he/core/cpu.h"
 
+#include "he/core/enum_ops.h"
 #include "he/core/test.h"
 
 #include <iostream>
@@ -27,7 +28,7 @@ HE_TEST(core, cpu, Report)
 
     const CpuInfo& info = GetCpuInfo();
 
-    std::cout << "    vendorId: " << static_cast<int32_t>(info.vendorId) << std::endl;
+    std::cout << "    vendorId: '" << AsString(info.vendorId) << "' (" << static_cast<uint32_t>(info.vendorId) << ')' << std::endl;
     std::cout << "    vendorName: '" << info.vendorName << "'" << std::endl;
     std::cout << "    core count: " << info.coreCount << std::endl;
     std::cout << "    thread count: " << info.threadCount << std::endl;
@@ -49,7 +50,7 @@ HE_TEST(core, cpu, Report)
     std::cout << "        osxsave: " << info.x86.osxsave << std::endl;
     std::cout << "        hypervisor: " << info.x86.hypervisor << std::endl;
 
-    std::cout << "    ARM:" << std::endl;
+    std::cout << "    arm:" << std::endl;
     std::cout << "        neon: " << info.arm.neon << std::endl;
     std::cout << "        rndr: " << info.arm.rndr << std::endl;
     std::cout << "        aes: " << info.arm.aes << std::endl;

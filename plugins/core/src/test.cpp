@@ -90,7 +90,9 @@ namespace internal
             fmt::format_to(Appender(buf), "{}:{}:{}\n", info.moduleName, info.suiteName, info.testName);
             Print(buf.Data());
 
+            fixture->Before();
             fixture->Run();
+            fixture->After();
         }
 
         buf.Clear();

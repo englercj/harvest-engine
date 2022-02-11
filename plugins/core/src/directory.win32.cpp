@@ -16,33 +16,33 @@
 
 #include <Shlobj.h>
 
-namespace he::Directory
+namespace he
 {
-    struct ScannerImpl
+    struct DirectoryScannerImpl
     {
         bool first{ true };
         HANDLE handle{ INVALID_HANDLE_VALUE };
         WIN32_FIND_DATAW findData;
     };
 
-    Scanner::Scanner(Allocator& allocator)
+    DirectoryScanner::DirectoryScanner(Allocator& allocator)
         : m_allocator(allocator)
-        , m_impl(allocator.New<ScannerImpl>())
+        , m_impl(allocator.New<DirectoryScannerImpl>())
     {}
 
-    Scanner::~Scanner()
+    DirectoryScanner::~DirectoryScanner()
     {
         Close();
 
         if (m_impl)
         {
-            m_allocator.Delete(static_cast<ScannerImpl*>(m_impl));
+            m_allocator.Delete(static_cast<DirectoryScannerImpl*>(m_impl));
         }
     }
 
-    Result Scanner::Open(const char* path)
+    Result DirectoryScanner::Open(const char* path)
     {
-        ScannerImpl* impl = static_cast<ScannerImpl*>(m_impl);
+        DirectoryScannerImpl* impl = static_cast<DirectoryScannerImpl*>(m_impl);
         HE_ASSERT(impl);
         HE_ASSERT(impl->handle == INVALID_HANDLE_VALUE);
 
@@ -73,9 +73,9 @@ namespace he::Directory
         return Result::Success;
     }
 
-    void Scanner::Close()
+    void DirectoryScanner::Close()
     {
-        ScannerImpl* impl = static_cast<ScannerImpl*>(m_impl);
+        DirectoryScannerImpl* impl = static_cast<DirectoryScannerImpl*>(m_impl);
         HE_ASSERT(impl);
 
         if (impl->handle != INVALID_HANDLE_VALUE)
@@ -85,9 +85,9 @@ namespace he::Directory
         }
     }
 
-    bool Scanner::NextEntry(Entry& outEntry)
+    bool DirectoryScanner::NextEntry(Entry& outEntry)
     {
-        ScannerImpl* impl = static_cast<ScannerImpl*>(m_impl);
+        DirectoryScannerImpl* impl = static_cast<DirectoryScannerImpl*>(m_impl);
         HE_ASSERT(impl);
 
         outEntry.name.Clear();
@@ -117,25 +117,25 @@ namespace he::Directory
         }
     }
 
-    Result GetSpecial(String& dst, SpecialId dir)
+    Result Directory::GetSpecial(String& dst, SpecialDirectory dir)
     {
         wchar_t* path = nullptr;
 
         switch (dir)
         {
-            case SpecialId::LocalAppData:
+            case SpecialDirectory::LocalAppData:
                 if (FAILED(SHGetKnownFolderPath(FOLDERID_LocalAppData, 0, nullptr, &path)))
                     return Result::NotSupported;
                 break;
-            case SpecialId::SharedAppData:
+            case SpecialDirectory::SharedAppData:
                 if (FAILED(SHGetKnownFolderPath(FOLDERID_ProgramData, 0, nullptr, &path)))
                     return Result::NotSupported;
                 break;
-            case SpecialId::Documents:
+            case SpecialDirectory::Documents:
                 if (FAILED(SHGetKnownFolderPath(FOLDERID_Documents, 0, nullptr, &path)))
                     return Result::NotSupported;
                 break;
-            case SpecialId::Temp:
+            case SpecialDirectory::Temp:
             {
                 // The maximum possible path size is MAX_PATH+1 (261).
                 // See: https://docs.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-gettemppathw
@@ -151,7 +151,7 @@ namespace he::Directory
         return Result::Success;
     }
 
-    Result GetCurrent(String& dst)
+    Result Directory::GetCurrent(String& dst)
     {
         const DWORD requiredLen = GetCurrentDirectoryW(0, nullptr);
         if (requiredLen == 0)
@@ -166,7 +166,7 @@ namespace he::Directory
         return Result::Success;
     }
 
-    Result SetCurrent(const char* path)
+    Result Directory::SetCurrent(const char* path)
     {
         if (!SetCurrentDirectoryW(HE_TO_WSTR(path)))
             return Result::FromLastError();
@@ -174,7 +174,7 @@ namespace he::Directory
         return Result::Success;
     }
 
-    Result Rename(const char* oldPath, const char* newPath)
+    Result Directory::Rename(const char* oldPath, const char* newPath)
     {
         if (!MoveFileW(HE_TO_WSTR(oldPath), HE_TO_WSTR(newPath)))
             return Result::FromLastError();
@@ -182,13 +182,13 @@ namespace he::Directory
         return Result::Success;
     }
 
-    bool Exists(const char* path)
+    bool Directory::Exists(const char* path)
     {
         const DWORD attr = GetFileAttributesW(HE_TO_WSTR(path));
         return attr != INVALID_FILE_ATTRIBUTES && HasFlag(attr, FILE_ATTRIBUTE_DIRECTORY);
     }
 
-    Result Create(const char* path, bool parents)
+    Result Directory::Create(const char* path, bool parents)
     {
         wchar_t* widePath = HE_TO_WSTR(path);
 
@@ -224,7 +224,7 @@ namespace he::Directory
         return Result::Success;
     }
 
-    Result Remove(const char* path)
+    Result Directory::Remove(const char* path)
     {
         if (!::RemoveDirectoryW(HE_TO_WSTR(path)))
             return Result::FromLastError();

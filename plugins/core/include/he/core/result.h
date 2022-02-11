@@ -67,7 +67,7 @@ namespace he
 
         /// Looks up the error string for the system code using platform-specific APIs. The
         /// current system locale is used for the lookup.
-        String ToString(Allocator& allocator = Allocator::GetTemp()) const;
+        String ToString(Allocator& allocator = Allocator::GetDefault()) const;
 
         /// Converts the Result to a boolean. This value is the same as \ref IsOK().
         explicit operator bool() const { return IsOk(); }

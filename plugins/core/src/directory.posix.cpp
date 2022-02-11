@@ -16,19 +16,19 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
-namespace he::Directory
+namespace he
 {
-    Scanner::Scanner(Allocator& allocator)
+    DirectoryScanner::DirectoryScanner(Allocator& allocator)
         : m_allocator(allocator)
         , m_impl(nullptr)
     {}
 
-    Scanner::~Scanner()
+    DirectoryScanner::~DirectoryScanner()
     {
         Close();
     }
 
-    Result Scanner::Open(const char* path)
+    Result DirectoryScanner::Open(const char* path)
     {
         HE_ASSERT(m_impl == nullptr);
 
@@ -40,7 +40,7 @@ namespace he::Directory
         return Result::Success;
     }
 
-    void Scanner::Close()
+    void DirectoryScanner::Close()
     {
         DIR* dir = static_cast<DIR*>(m_impl);
         if (dir)
@@ -50,7 +50,7 @@ namespace he::Directory
         }
     }
 
-    bool Scanner::NextEntry(Entry& outEntry)
+    bool DirectoryScanner::NextEntry(Entry& outEntry)
     {
         DIR* dir = static_cast<DIR*>(m_impl);
         HE_ASSERT(dir);
@@ -76,11 +76,11 @@ namespace he::Directory
         }
     }
 
-    Result GetSpecial(String& dst, SpecialId dir)
+    Result Directory::GetSpecial(String& dst, SpecialDirectory dir)
     {
         switch (dir)
         {
-            case SpecialId::LocalAppData:
+            case SpecialDirectory::LocalAppData:
             {
                 const char* xdgDataHome = getenv("XDG_DATA_HOME");
                 if (!String::IsEmpty(xdgDataHome) && IsAbsolutePath(xdgDataHome))
@@ -98,7 +98,7 @@ namespace he::Directory
                 ConcatPath(dst, ".local/share");
                 return Result::Success;
             }
-            case SpecialId::SharedAppData:
+            case SpecialDirectory::SharedAppData:
             {
                 const char* xdgDataDirs = getenv("XDG_DATA_DIR");
 
@@ -134,7 +134,7 @@ namespace he::Directory
 
                 return Result::Success;
             }
-            case SpecialId::Documents:
+            case SpecialDirectory::Documents:
             {
                 const char* xdgDocumentsDir = getenv("XDG_DOCUMENTS_DIR");
                 if (xdgDocumentsDir && IsAbsolutePath(xdgDocumentsDir))
@@ -152,7 +152,7 @@ namespace he::Directory
                 ConcatPath(dst, ".local/documents");
                 return Result::Success;
             }
-            case SpecialId::Temp:
+            case SpecialDirectory::Temp:
             {
                 constexpr const char TempDirFallback[] = "/tmp";
                 const char* src = getenv("TMPDIR");
@@ -165,7 +165,7 @@ namespace he::Directory
         return Result::NotSupported;
     }
 
-    Result GetCurrent(String& dst)
+    Result Directory::GetCurrent(String& dst)
     {
         dst.Resize(PATH_MAX);
 
@@ -176,7 +176,7 @@ namespace he::Directory
         return Result::Success;
     }
 
-    Result SetCurrent(const char* path)
+    Result Directory::SetCurrent(const char* path)
     {
         if (chdir(path))
             return Result::FromLastError();
@@ -184,7 +184,7 @@ namespace he::Directory
         return Result::Success;
     }
 
-    Result Rename(const char* oldPath, const char* newPath)
+    Result Directory::Rename(const char* oldPath, const char* newPath)
     {
         if (rename(oldPath, newPath))
             return Result::FromLastError();
@@ -192,13 +192,13 @@ namespace he::Directory
         return Result::Success;
     }
 
-    bool Exists(const char* path)
+    bool Directory::Exists(const char* path)
     {
         struct stat sb;
         return !stat(path, &sb) && S_ISDIR(sb.st_mode);
     }
 
-    Result Create(const char* path, bool parents)
+    Result Directory::Create(const char* path, bool parents)
     {
         if (parents)
         {
@@ -225,7 +225,7 @@ namespace he::Directory
         return Result::Success;
     }
 
-    Result Remove(const char* path)
+    Result Directory::Remove(const char* path)
     {
         if (rmdir(path))
             return Result::FromLastError();

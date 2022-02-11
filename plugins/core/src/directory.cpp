@@ -5,16 +5,16 @@
 #include "he/core/file.h"
 #include "he/core/path.h"
 
-namespace he::Directory
+namespace he
 {
-    Result RemoveContents(const char* path, Allocator& allocator)
+    Result Directory::RemoveContents(const char* path, Allocator& allocator)
     {
         if (!Exists(path))
             return Result::Success;
 
         Result result;
 
-        Scanner scanner(allocator);
+        DirectoryScanner scanner(allocator);
         result = scanner.Open(path);
         if (!result)
             return result;
@@ -22,7 +22,7 @@ namespace he::Directory
         const uint32_t pathLen = String::Length(path);
         String fullPath(allocator);
 
-        Scanner::Entry entry(allocator);
+        DirectoryScanner::Entry entry(allocator);
         while (scanner.NextEntry(entry))
         {
             fullPath.Assign(path, pathLen);

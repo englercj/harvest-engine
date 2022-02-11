@@ -21,3 +21,14 @@ HE_TEST(core, simd, Report)
     std::cout << "    HE_SIMD_SSE4_2 = " << HE_SIMD_SSE4_2 << std::endl;
     std::cout << "    HE_SIMD_FMA3 = " << HE_SIMD_FMA3 << std::endl;
 }
+
+// ------------------------------------------------------------------------------------------------
+HE_TEST(core, simd, MakeSimd128)
+{
+    const Simd128 v0 = MakeSimd128(1, 2, 3, 4);
+    const Simd128 v1 = MakeSimd128(1, 2, 3, 4);
+    const Simd128 v2 = MakeSimd128(4, 3, 2, 1);
+
+    HE_EXPECT_EQ_MEM(&v0, &v1, sizeof(v0));
+    HE_EXPECT_NE_MEM(&v0, &v2, sizeof(v0));
+}

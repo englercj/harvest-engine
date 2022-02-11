@@ -184,14 +184,18 @@ namespace he
         /// \param[in] len The number of bytes to copy.
         void WriteAt(uint32_t offset, const void* data, uint32_t len);
 
-        /// Copies the null terminated string into the buffer. This will not copy the null
-        /// terminator into the buffer.
+        /// Copies the null terminated string into the buffer, excluding the null terminating
+        /// character itself.
+        ///
+        /// \note This is equivalent to `Write(str, String::Length(str));`
         ///
         /// \param[in] str The null terminated string to copy.
         void Write(const char* str);
 
-        /// Copies the null terminated string into the buffer at a previously allocated offset.
-        /// This will not copy the null terminator into the buffer.
+        /// Copies the null terminated string into the buffer at a previously allocated offset,
+        /// excluding the null terminating character itself.
+        ///
+        /// \note This is equivalent to `WriteAt(offset, str, String::Length(str));`
         ///
         /// \note The buffer size and capacity are not affected by this function.
         ///

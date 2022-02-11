@@ -7,8 +7,6 @@
 #include "he/core/debug.h"
 #include "he/core/error.h"
 
-#include "fmt/format.h"
-
 #if defined(_PREFAST_)
     // Prevent code analysis from reporting errors already checked by assertions
     #define HE_ASSERT(expr, ...) __assume(expr)

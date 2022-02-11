@@ -10,12 +10,12 @@
 using namespace he;
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST(core, directory, Scanner)
+HE_TEST(core, directory, DirectoryScanner)
 {
     Allocator& alloc = CrtAllocator::Get();
 
-    Directory::Scanner scanner(alloc);
-    Directory::Scanner::Entry entry(alloc);
+    DirectoryScanner scanner(alloc);
+    DirectoryScanner::Entry entry(alloc);
 
     HE_EXPECT(scanner.Open("."));
     while (scanner.NextEntry(entry))
@@ -31,19 +31,19 @@ HE_TEST(core, directory, GetSpecial)
     Allocator& alloc = CrtAllocator::Get();
     String dir(alloc);
 
-    Result r = Directory::GetSpecial(dir, Directory::SpecialId::Documents);
+    Result r = Directory::GetSpecial(dir, SpecialDirectory::Documents);
     HE_EXPECT(r);
     HE_EXPECT(!dir.IsEmpty());
 
-    r = Directory::GetSpecial(dir, Directory::SpecialId::LocalAppData);
+    r = Directory::GetSpecial(dir, SpecialDirectory::LocalAppData);
     HE_EXPECT(r);
     HE_EXPECT(!dir.IsEmpty());
 
-    r = Directory::GetSpecial(dir, Directory::SpecialId::SharedAppData);
+    r = Directory::GetSpecial(dir, SpecialDirectory::SharedAppData);
     HE_EXPECT(r);
     HE_EXPECT(!dir.IsEmpty());
 
-    r = Directory::GetSpecial(dir, Directory::SpecialId::Temp);
+    r = Directory::GetSpecial(dir, SpecialDirectory::Temp);
     HE_EXPECT(r);
     HE_EXPECT(!dir.IsEmpty());
 }

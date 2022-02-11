@@ -7,7 +7,7 @@
 #include "he/core/enum_ops.h"
 #include "he/core/vector.h"
 
-#include "fmt/format.h"
+#include "fmt/core.h"
 
 namespace he
 {
@@ -25,31 +25,31 @@ namespace he
 
     bool LogKV::GetBool() const
     {
-        HE_ASSERT(type == ValueType::Bool);
+        HE_ASSERT(kind == Kind::Bool);
         return value.b;
     }
 
     int64_t LogKV::GetInt() const
     {
-        HE_ASSERT(type == ValueType::Int);
+        HE_ASSERT(kind == Kind::Int);
         return value.i;
     }
 
     uint64_t LogKV::GetUint() const
     {
-        HE_ASSERT(type == ValueType::Uint);
+        HE_ASSERT(kind == Kind::Uint);
         return value.u;
     }
 
     double LogKV::GetDouble() const
     {
-        HE_ASSERT(type == ValueType::Double);
+        HE_ASSERT(kind == Kind::Double);
         return value.d;
     }
 
     const char* LogKV::GetString() const
     {
-        HE_ASSERT(type == ValueType::String);
+        HE_ASSERT(kind == Kind::String);
         return value.s.Data();
     }
 
@@ -98,15 +98,15 @@ namespace he
     }
 
     template <>
-    const char* AsString(LogKV::ValueType x)
+    const char* AsString(LogKV::Kind x)
     {
         switch (x)
         {
-            case LogKV::ValueType::Bool: return "Bool";
-            case LogKV::ValueType::Int: return "Int";
-            case LogKV::ValueType::Uint: return "Uint";
-            case LogKV::ValueType::Double: return "Double";
-            case LogKV::ValueType::String: return "String";
+            case LogKV::Kind::Bool: return "Bool";
+            case LogKV::Kind::Int: return "Int";
+            case LogKV::Kind::Uint: return "Uint";
+            case LogKV::Kind::Double: return "Double";
+            case LogKV::Kind::String: return "String";
         }
 
         return "<unknown>";

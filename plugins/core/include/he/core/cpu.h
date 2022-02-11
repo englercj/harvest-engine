@@ -4,6 +4,8 @@
 
 #include "he/core/types.h"
 
+// TODO: Document these macros
+
 #define HE_CPU_ARM                  0
 #define HE_CPU_ARM_32               0
 #define HE_CPU_ARM_64               0
@@ -62,7 +64,8 @@
 
 namespace he
 {
-    enum class CpuVendorId
+    /// Normalized vendor identifier for CPU detection.
+    enum class CpuVendorId : uint32_t
     {
         Unknown,
 
@@ -94,29 +97,37 @@ namespace he
         ACRN,       ///< ACRN - hypervisor for IoT devices
 
         // ARM Vendors
-        Ampere,     // Ampere Computing
-        Arm,        // Arm Limited
-        Broadcom,   // Broadcom Corporation
-        Cavium,     // Cavium Inc.
-        DEC,        // Digital Equipment Corporation
-        Fujitsu,    // Fujitsu Ltd.
-        Infineon,   // Infineon Technologies AG
-        Motorola,   // Motorola or Freescale Semiconductor Inc.
-        Nvidia,     // NVIDIA Corporation
-        AMCC,       // Applied Micro Circuits Corporation
-        Qualcomm,   // Qualcomm Inc.
-        Marvell,    // Marvell International Ltd.
+        Ampere,     ///< Ampere Computing
+        Arm,        ///< Arm Limited
+        Broadcom,   ///< Broadcom Corporation
+        Cavium,     ///< Cavium Inc.
+        DEC,        ///< Digital Equipment Corporation
+        Fujitsu,    ///< Fujitsu Ltd.
+        Infineon,   ///< Infineon Technologies AG
+        Motorola,   ///< Motorola or Freescale Semiconductor Inc.
+        Nvidia,     ///< NVIDIA Corporation
+        AMCC,       ///< Applied Micro Circuits Corporation
+        Qualcomm,   ///< Qualcomm Inc.
+        Marvell,    ///< Marvell International Ltd.
     };
 
+    /// Information about the CPU vendor and available features.
     struct CpuInfo
     {
+        /// The normalized vendor identifier that was detected. If the vendor was not recognized
+        /// the value is \ref CpuVendorId::Unknown.
         CpuVendorId vendorId{ CpuVendorId::Unknown };
+
+        /// The name of the vendor as reported by the CPU itself.
         char vendorName[64]{};
 
+        /// Number of physical cores the system reported for the CPU.
         uint32_t coreCount{ 1 };
+
+        /// Number of logical cores the system reported for the CPU.
         uint32_t threadCount{ 1 };
 
-        // x86 instruction support
+        /// Availability of various x86 instructions
         struct
         {
             bool sse : 1{ false };
@@ -136,7 +147,7 @@ namespace he
             bool hypervisor : 1{ false };
         } x86;
 
-        // arm instruction support
+        /// Availability of various ARM instructions
         struct
         {
             bool neon : 1{ false };
@@ -150,6 +161,10 @@ namespace he
         } arm;
     };
 
+    /// Returns information about the CPU vendor and available features.
+    /// \see CpuInfo
+    ///
+    /// \return The discovered CPU information.
     const CpuInfo& GetCpuInfo();
 
     /// \ignore

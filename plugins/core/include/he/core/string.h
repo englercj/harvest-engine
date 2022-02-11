@@ -12,15 +12,6 @@ namespace he
     class String final
     {
     public:
-        /// The type of elements in the string.
-        using ElementType = char;
-
-        /// The maximum number of characters that can be stored inline in the object.
-        static constexpr uint32_t MaxEmbedCharacters = 63;
-
-        /// The maximum number of characters that can be stored on the heap.
-        static constexpr uint32_t MaxHeapCharacters = 0xfffffffe;
-
         // ----------------------------------------------------------------------------------------
         // Raw String Algorithms
 
@@ -102,7 +93,7 @@ namespace he
         /// \param[in] allocator The allocator to use for creating the new string.
         /// \param[in] src The source string to duplicate.
         /// \return The newly allocated string.
-        static char* Duplicate(const char* src, Allocator& allocator = Allocator::GetTemp());
+        static char* Duplicate(const char* src, Allocator& allocator = Allocator::GetDefault());
 
         /// Duplicate `len` characters of the source string using the provided allocator. The
         /// resulting string must be freed by calling \ref Allocator::Free with the same
@@ -112,7 +103,7 @@ namespace he
         /// \param[in] src The source string to duplicate.
         /// \param[in] len The length of the source string to duplicate.
         /// \return The newly allocated string.
-        static char* DuplicateN(const char* src, uint32_t len, Allocator& allocator = Allocator::GetTemp());
+        static char* DuplicateN(const char* src, uint32_t len, Allocator& allocator = Allocator::GetDefault());
 
         /// Compares the null terminated strings and returns true if they are equal.
         ///
@@ -267,10 +258,22 @@ namespace he
         /// \param[in] end Optional. A pointer to the end of the string to stop parsing. If
         ///     nullptr (default) the string is parsed until a null terminator is reached.
         /// \return The parsed number.
-        template <typename T>
+        template <typename T = float>
         static T ToFloat(const char* str, const char** end = nullptr);
 
     public:
+        // ----------------------------------------------------------------------------------------
+        // Constants
+
+        /// The type of elements in the string.
+        using ElementType = char;
+
+        /// The maximum number of characters that can be stored inline in the object.
+        static constexpr uint32_t MaxEmbedCharacters = 63;
+
+        /// The maximum number of characters that can be stored on the heap.
+        static constexpr uint32_t MaxHeapCharacters = 0xfffffffe;
+
         // ----------------------------------------------------------------------------------------
         // Construction
 

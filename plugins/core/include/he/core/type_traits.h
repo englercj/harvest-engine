@@ -30,6 +30,9 @@ namespace he
     struct _ArrayTraits<T[N]> { using ElementType = T; };
 
     template <typename T>
+    struct _ArrayTraits<T[]> { using ElementType = T; };
+
+    template <typename T>
     using ArrayElementType = typename _ArrayTraits<T>::ElementType;
 
     // --------------------------------------------------------------------------------------------

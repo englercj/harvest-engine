@@ -943,10 +943,10 @@ namespace he::window::Win32
 
     bool DeviceImpl::Initialize()
     {
-        m_hInstance = GetModuleHandleW(nullptr);
+        m_hInstance = ::GetModuleHandleW(nullptr);
 
         // Bind to optional Windows APIs
-        m_userLib = LoadLibraryW(L"user32.dll");
+        m_userLib = ::LoadLibraryW(L"user32.dll");
         if (m_userLib)
         {
             m_GetDpiForWindow = reinterpret_cast<Pfn_GetDpiForWindow>(::GetProcAddress(m_userLib, "GetDpiForWindow"));
@@ -954,15 +954,15 @@ namespace he::window::Win32
             m_AdjustWindowRectExForDpi = reinterpret_cast<Pfn_AdjustWindowRectExForDpi>(::GetProcAddress(m_userLib, "AdjustWindowRectExForDpi"));
         }
 
-        m_shcoreLib = LoadLibraryW(L"Shcore.dll");
+        m_shcoreLib = ::LoadLibraryW(L"Shcore.dll");
         if (m_shcoreLib)
         {
             m_GetDpiForMonitor = reinterpret_cast<Pfn_GetDpiForMonitor>(::GetProcAddress(m_shcoreLib, "GetDpiForMonitor"));
         }
 
-        m_xinputLib = LoadLibraryW(L"XInput1_4.dll");
+        m_xinputLib = ::LoadLibraryW(L"XInput1_4.dll");
         if (!m_xinputLib)
-            m_xinputLib = LoadLibraryW(L"XInput1_3.dll");
+            m_xinputLib = ::LoadLibraryW(L"XInput1_3.dll");
         if (m_xinputLib)
         {
             m_XInputGetState = reinterpret_cast<Pfn_XInputGetState>(::GetProcAddress(m_xinputLib, "XInputGetState"));

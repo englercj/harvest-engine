@@ -65,7 +65,7 @@ HE_TEST(core, log_sinks, FileSink)
         ConcatPath(path, entry.name);
 
         Vector<char> data;
-        HE_EXPECT(File::Read(data, path.Data()));
+        HE_EXPECT(File::ReadAll(data, path.Data()));
         data.PushBack('\0');
 
         std::cout << "    " << data.Data() << std::endl;

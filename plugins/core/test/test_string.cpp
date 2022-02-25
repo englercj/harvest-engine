@@ -304,6 +304,28 @@ HE_TEST(core, string, Static_Find)
 }
 
 // ------------------------------------------------------------------------------------------------
+HE_TEST(core, string, Static_FindN)
+{
+    constexpr char Haystack[] = "Hello, world!";
+    constexpr uint32_t HaystackLen = HE_LENGTH_OF(Haystack) - 1;
+
+    const char* result = String::FindN(Haystack, HaystackLen, 'z');
+    HE_EXPECT(result == nullptr);
+
+    result = String::FindN(Haystack, 5, 'o');
+    HE_EXPECT(result == (Haystack + 4));
+
+    result = String::FindN(Haystack, 7, '!');
+    HE_EXPECT(result == nullptr);
+
+    result = String::FindN(Haystack, HaystackLen, "Hello!");
+    HE_EXPECT(result == nullptr);
+
+    result = String::FindN(Haystack, HaystackLen, "world");
+    HE_EXPECT(result == (Haystack + 7));
+}
+
+// ------------------------------------------------------------------------------------------------
 HE_TEST(core, string, Static_ToInteger)
 {
     HE_EXPECT_EQ(String::ToInteger<char>(""), 0);

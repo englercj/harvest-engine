@@ -2,6 +2,9 @@
 
 #include "he/core/path.h"
 
+#include "he/core/directory.h"
+#include "he/core/file.h"
+#include "he/core/result_fmt.h"
 #include "he/core/string.h"
 #include "he/core/string_view_fmt.h"
 #include "he/core/test.h"
@@ -269,4 +272,28 @@ HE_TEST(core, path, RemoveExtension)
         RemoveExtension(buf);
         HE_EXPECT_EQ_STR(buf.Data(), tc.exp);
     }
+}
+
+// ------------------------------------------------------------------------------------------------
+HE_TEST(core, path, MakeAbsolute)
+{
+    constexpr char TestPath[] = "347ef2ad-3afe-4e11-ae99-a8ab43ce50fb";
+
+    String expectedPath;
+    Result r = Directory::GetCurrent(expectedPath);
+    HE_EXPECT(r, r);
+    ConcatPath(expectedPath, TestPath);
+    NormalizePath(expectedPath);
+
+    r = File::WriteAll(TestPath, HE_LENGTH_OF(TestPath), TestPath);
+    HE_EXPECT(r, r);
+
+    String path = TestPath;
+    r = MakeAbsolute(path);
+    HE_EXPECT(r, r);
+    NormalizePath(path);
+
+    HE_EXPECT_EQ(path, expectedPath);
+
+    File::Remove(TestPath);
 }

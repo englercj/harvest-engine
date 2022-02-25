@@ -22,7 +22,7 @@ HE_TEST(core, buffer_writer, Construct)
     }
 
     {
-        Allocator& a = CrtAllocator::Get();
+        Allocator& a = Allocator::GetDefault();
         BufferWriter b(a);
         HE_EXPECT(b.IsEmpty());
         HE_EXPECT_EQ(b.Capacity(), 0);

@@ -4,6 +4,7 @@
 
 #include "he/core/ascii.h"
 #include "he/core/assert.h"
+#include "he/core/file.h"
 #include "he/core/memory_ops.h"
 
 namespace he
@@ -18,7 +19,7 @@ namespace he
             return true;
 
         // Leading drive letter is an absolute path
-        if (path[0] && path[1] == ':' && (path[2] == '/' || path[2] == '\\'))
+        if (IsAlpha(path[0]) && path[1] == ':' && (path[2] == '/' || path[2] == '\\'))
             return true;
 
         return false;
@@ -246,5 +247,18 @@ namespace he
         HE_ASSERT(withoutExt.Data() == path.Data());
         HE_ASSERT(withoutExt.Size() <= path.Size());
         path.Resize(withoutExt.Size());
+    }
+
+    Result MakeAbsolute(String& path)
+    {
+        if (path.IsEmpty())
+            return Result::Success;
+
+        File f;
+        Result r = f.Open(path.Data(), FileOpenMode::ReadExisting);
+        if (!r)
+            return r;
+
+        return f.GetPath(path);
     }
 }

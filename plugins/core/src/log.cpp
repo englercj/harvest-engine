@@ -19,7 +19,7 @@ namespace he
 
     static Vector<LogSinkStorage>& GetSinks()
     {
-        static Vector<LogSinkStorage> s_sinks{ CrtAllocator::Get() };
+        static Vector<LogSinkStorage> s_sinks;
         return s_sinks;
     }
 

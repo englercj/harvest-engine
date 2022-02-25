@@ -6,6 +6,16 @@
 
 namespace he
 {
+    Result File::WriteAll(const void* src, uint32_t size, const char* path, uint32_t* bytesWritten)
+    {
+        File f;
+        Result r = f.Open(path, FileOpenMode::WriteTruncate);
+        if (!r)
+            return r;
+
+        return f.WriteAt(src, 0, size, bytesWritten);
+    }
+
     template <>
     const char* AsString(FileResult x)
     {

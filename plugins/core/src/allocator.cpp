@@ -58,11 +58,13 @@ namespace he
         if (!CanFit(size, alignment))
             AllocPage();
 
-        uint8_t* bufferStart = reinterpret_cast<uint8_t*>(m_lastPage) + sizeof(PageHeader) + m_pageOffset;
+        uint8_t* bufferStart = reinterpret_cast<uint8_t*>(m_currentPage) + sizeof(PageHeader) + m_pageOffset;
         uint8_t* allocStart = AlignUp(bufferStart, alignment);
         const uint8_t* allocEnd = allocStart + size;
         const intptr_t allocSize = allocEnd - bufferStart;
         const size_t newAllocSize = m_pageOffset + allocSize;
+
+        HE_ASSERT(allocEnd <= (reinterpret_cast<uint8_t*>(m_currentPage) + sizeof(PageHeader) + m_pageSize));
 
         m_pageOffset = newAllocSize;
         return static_cast<void*>(allocStart);
@@ -78,13 +80,11 @@ namespace he
 
     void LinearPageAllocator::Clear()
     {
-        PageHeader* p = m_lastPage;
-        while (p)
+        m_currentPage = m_lastPage;
+        while (m_currentPage)
         {
-            m_currentPage = p;
-            p = p->previous;
+            m_currentPage = m_currentPage->previous;
         }
-
         m_pageOffset = 0;
     }
 
@@ -135,6 +135,7 @@ namespace he
     {
         if (m_currentPage < m_lastPage)
         {
+            m_pageOffset = 0;
             m_currentPage = m_currentPage->next;
             HE_ASSERT(m_currentPage && m_currentPage <= m_lastPage);
             return;
@@ -152,5 +153,6 @@ namespace he
 
         m_currentPage = header;
         m_lastPage = header;
+        m_pageOffset = 0;
     }
 }

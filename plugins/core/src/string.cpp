@@ -115,19 +115,28 @@ namespace he
         return strchr(str, search);
     }
 
-    char* String::Find(char* str, char search)
-    {
-        return strchr(str, search);
-    }
-
     const char* String::Find(const char* str, const char* search)
     {
         return strstr(str, search);
     }
 
-    char* String::Find(char* str, const char* search)
+    const char* String::FindN(const char* str, uint32_t len, char search)
     {
-        return strstr(str, search);
+        return static_cast<const char*>(MemChr(str, search, len));
+    }
+
+    const char* String::FindN(const char* str, uint32_t len, const char* search)
+    {
+        const uint32_t searchLen = String::LengthN(search, len);
+
+        for (uint32_t i = 0; i <= (len - searchLen); ++i)
+        {
+            if (*str == *search && String::EqualN(str, search, searchLen))
+                return str;
+
+            ++str;
+        }
+        return nullptr;
     }
 
     String::String(Allocator& allocator)

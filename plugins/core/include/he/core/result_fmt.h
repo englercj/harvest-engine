@@ -22,7 +22,7 @@ namespace fmt
         template <typename FormatContext>
         auto format(const he::Result& result, FormatContext& ctx) -> decltype(ctx.out())
         {
-            const he::String msg = result.ToString(he::CrtAllocator::Get());
+            const he::String msg = result.ToString(he::Allocator::GetTemp());
             return format_to(ctx.out(), "({}) {}", result.GetCode(), msg);
         }
     };

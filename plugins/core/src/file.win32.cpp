@@ -3,6 +3,7 @@
 #include "he/core/file.h"
 
 #include "he/core/allocator.h"
+#include "he/core/ascii.h"
 #include "he/core/assert.h"
 #include "he/core/clock.h"
 #include "he/core/enum_ops.h"
@@ -10,6 +11,7 @@
 #include "he/core/memory_ops.h"
 #include "he/core/scope_guard.h"
 #include "he/core/string.h"
+#include "he/core/string_view.h"
 #include "he/core/wstr.h"
 
 #if defined(HE_PLATFORM_API_WIN32)
@@ -403,21 +405,62 @@ namespace he
     {
         const HANDLE handle = reinterpret_cast<HANDLE>(m_fd);
 
-        DWORD wideRequiredLen = ::GetFinalPathNameByHandleW(handle, nullptr, 0, FILE_NAME_OPENED);
-        if (wideRequiredLen == 0)
-            return Result::FromLastError();
+        DWORD flags = VOLUME_NAME_DOS;
 
-        wchar_t* buf = path.GetAllocator().Malloc<wchar_t>(wideRequiredLen);
-        HE_AT_SCOPE_EXIT([&]()
+        while (true)
         {
-            path.GetAllocator().Free(buf);
-        });
+            DWORD wideRequiredLen = ::GetFinalPathNameByHandleW(handle, nullptr, 0, flags);
+            if (wideRequiredLen == 0)
+            {
+                // Its possible there is no DOS name for the file, so try to get the NT path
+                if (::GetLastError() == ERROR_PATH_NOT_FOUND && flags == VOLUME_NAME_DOS)
+                {
+                    flags = VOLUME_NAME_NT;
+                    continue;
+                }
 
-        DWORD widePathLen = ::GetFinalPathNameByHandleW(handle, buf, wideRequiredLen, FILE_NAME_OPENED);
-        if (widePathLen == 0 || widePathLen > wideRequiredLen)
-            return Result::FromLastError();
+                return Result::FromLastError();
+            }
 
-        WCToMBStr(path, buf);
+            wchar_t* buf = path.GetAllocator().Malloc<wchar_t>(wideRequiredLen);
+            HE_AT_SCOPE_EXIT([&]()
+            {
+                path.GetAllocator().Free(buf);
+            });
+
+            DWORD widePathLen = ::GetFinalPathNameByHandleW(handle, buf, wideRequiredLen, flags);
+            if (widePathLen == 0 || widePathLen > wideRequiredLen)
+                return Result::FromLastError();
+
+            WCToMBStr(path, buf);
+            break;
+        }
+
+        if (flags == VOLUME_NAME_DOS)
+        {
+            constexpr StringView Prefix = "\\\\?\\";
+            constexpr StringView UNCPrefix = "\\\\?\\UNC\\";
+
+            // Check if path starts with a \\?\X: prefix, and if so remove the \\?\ prefix
+            if (path.Size() >= 6
+                && String::EqualN(path.Data(), Prefix.Data(), Prefix.Size())
+                && IsAlpha(path[4])
+                && path[5] == ':'
+                && path[6] == '\\')
+            {
+                path.Erase(0, Prefix.Size());
+            }
+            // Check if path starts with a \\?\UNC\ prefix, and if so replace it with simpler \\ prefix
+            else if (String::EqualN(path.Data(), UNCPrefix.Data(), UNCPrefix.Size()))
+            {
+                path.Erase(2, 6);
+            }
+        }
+        else
+        {
+            // result is in the NT namespace, so apply the DOS to NT namespace prefix
+            path.Insert(0, "\\\\?\\GLOBALROOT");
+        }
 
         return Result::Success;
     }

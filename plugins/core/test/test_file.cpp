@@ -4,6 +4,7 @@
 
 #include "he/core/allocator.h"
 #include "he/core/clock_fmt.h"
+#include "he/core/directory.h"
 #include "he/core/path.h"
 #include "he/core/result.h"
 #include "he/core/result_fmt.h"
@@ -154,7 +155,7 @@ HE_TEST(core, file, Static_GetAttributes)
 }
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST(core, file, Static_Read)
+HE_TEST(core, file, Static_ReadAll)
 {
     constexpr const char TestPath[] = "ff4dcc9d-cc22-4853-be2c-a7733026bf07";
     constexpr uint32_t TestPathLen = HE_LENGTH_OF(TestPath) - 1;
@@ -164,7 +165,7 @@ HE_TEST(core, file, Static_Read)
     // single-byte-sized buffer type
     {
         Vector<char> value;
-        Result r = File::Read(value, TestPath);
+        Result r = File::ReadAll(value, TestPath);
         HE_EXPECT(r, r);
         HE_EXPECT_EQ(value.Size(), TestPathLen);
         HE_EXPECT_EQ_MEM(value.Data(), TestPath, TestPathLen);
@@ -175,7 +176,7 @@ HE_TEST(core, file, Static_Read)
         static_assert((TestPathLen % sizeof(int32_t)) == 0);
 
         Vector<int32_t> value;
-        Result r = File::Read(value, TestPath);
+        Result r = File::ReadAll(value, TestPath);
         HE_EXPECT(r, r);
         HE_EXPECT_EQ(value.Size(), TestPathLen / sizeof(int32_t));
         HE_EXPECT_EQ_MEM(value.Data(), TestPath, TestPathLen);
@@ -187,11 +188,35 @@ HE_TEST(core, file, Static_Read)
         constexpr uint32_t ExpectedVectorLen = (TestPathLen / sizeof(int64_t)) + 1;
 
         Vector<int64_t> value;
-        Result r = File::Read(value, TestPath);
+        Result r = File::ReadAll(value, TestPath);
         HE_EXPECT(r, r);
         HE_EXPECT_EQ(value.Size(), ExpectedVectorLen);
         HE_EXPECT_EQ_MEM(value.Data(), TestPath, TestPathLen);
     }
+
+    File::Remove(TestPath);
+}
+
+// ------------------------------------------------------------------------------------------------
+HE_TEST(core, file, Static_WriteAll)
+{
+    constexpr const char TestPath[] = "c7e1e5f1-6813-4037-b688-cd4edc94e0ab";
+    constexpr uint32_t TestPathLen = HE_LENGTH_OF(TestPath) - 1;
+    TouchTestFile(TestPath, TestPath, TestPathLen);
+
+    uint32_t bytesWritten = 0;
+    Result r = File::WriteAll(TestPath, TestPathLen, TestPath, &bytesWritten);
+    HE_EXPECT(r, r);
+    HE_EXPECT_EQ(bytesWritten, TestPathLen);
+
+    uint32_t bytesRead = 0;
+    Vector<char> value;
+    r = File::ReadAll(value, TestPath, &bytesRead);
+    HE_EXPECT(r, r);
+    HE_EXPECT_EQ(bytesRead, bytesWritten);
+    HE_EXPECT_EQ(bytesRead, TestPathLen);
+    HE_EXPECT_EQ(value.Size(), bytesRead);
+    HE_EXPECT_EQ_MEM(value.Data(), TestPath, TestPathLen);
 
     File::Remove(TestPath);
 }
@@ -458,12 +483,20 @@ HE_TEST(core, file, GetPath)
     Result r = f.Open(TestPath, FileOpenMode::WriteTruncate);
     HE_EXPECT(r, r);
 
-    String path(CrtAllocator::Get());
+    String path;
     r = f.GetPath(path);
     HE_EXPECT(r, r);
+    HE_EXPECT(IsAbsolutePath(path));
+    NormalizePath(path);
 
-    StringView pathBase = GetBaseName(path.Data());
-    HE_EXPECT_EQ_STR(pathBase.Data(), TestPath);
+    String expectedPath;
+    r = Directory::GetCurrent(expectedPath);
+    HE_EXPECT(r, r);
+    HE_EXPECT(IsAbsolutePath(expectedPath));
+    ConcatPath(expectedPath, TestPath);
+    NormalizePath(expectedPath);
+
+    HE_EXPECT_EQ(path, expectedPath);
 }
 
 // ------------------------------------------------------------------------------------------------

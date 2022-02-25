@@ -29,7 +29,7 @@ namespace internal
             return s_runner;
         }
 
-        Vector<TestFixture*> tests{ CrtAllocator::Get() };
+        Vector<TestFixture*> tests;
         std::atomic<int32_t> failureCount{ 0 };
     };
 

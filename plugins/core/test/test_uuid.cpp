@@ -124,21 +124,21 @@ HE_TEST(core, uuid, GetHigh)
 // ------------------------------------------------------------------------------------------------
 HE_TEST(core, uuid, ToString)
 {
-    String str(CrtAllocator::Get());
+    String str;
 
-    str = Uuid_Zero.ToString(CrtAllocator::Get());
+    str = Uuid_Zero.ToString();
     HE_EXPECT_EQ(str, "00000000-0000-0000-0000-000000000000");
 
-    str = Uuid_NamespaceDNS.ToString(CrtAllocator::Get());
+    str = Uuid_NamespaceDNS.ToString();
     HE_EXPECT_EQ(str, "6ba7b810-9dad-11d1-80b4-00c04fd430c8");
 
-    str = Uuid_NamespaceURL.ToString(CrtAllocator::Get());
+    str = Uuid_NamespaceURL.ToString();
     HE_EXPECT_EQ(str, "6ba7b811-9dad-11d1-80b4-00c04fd430c8");
 
-    str = Uuid_NamespaceOID.ToString(CrtAllocator::Get());
+    str = Uuid_NamespaceOID.ToString();
     HE_EXPECT_EQ(str, "6ba7b812-9dad-11d1-80b4-00c04fd430c8");
 
-    str = Uuid_NamespaceX500.ToString(CrtAllocator::Get());
+    str = Uuid_NamespaceX500.ToString();
     HE_EXPECT_EQ(str, "6ba7b814-9dad-11d1-80b4-00c04fd430c8");
 }
 
@@ -177,12 +177,12 @@ HE_TEST(core, uuid, Uuid_String_Roundtrip)
 {
     Uuid uuid = Uuid::CreateV4();
 
-    String str = uuid.ToString(CrtAllocator::Get());
+    String str = uuid.ToString();
 
     Uuid uuid2 = Uuid::FromString(str);
     HE_EXPECT_EQ(uuid, uuid2);
 
-    String str2 = uuid2.ToString(CrtAllocator::Get());
+    String str2 = uuid2.ToString();
     HE_EXPECT_EQ(str, str2);
 }
 

@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include "he/core/result.h"
 #include "he/core/string.h"
 #include "he/core/string_view.h"
 #include "he/core/types.h"
@@ -56,20 +57,29 @@ namespace he
     /// specifiers (e.g. "../" & "./").
     /// For example, the normalized form of "/home/human/..///human//file.cpp" is "/home/human/file.cpp".
     ///
-    /// \param[in] path The path to normalize.
+    /// \param[in,out] path The path to normalize.
     void NormalizePath(String& path);
 
     /// Concatenates the components onto the path, adding directory separators as necessary.
     /// For example, concatenating "/home/human" and "file.cpp" results in "/home/human/file.cpp".
     ///
-    /// \param[in] path The path to concatenate to.
+    /// \param[in,out] path The path to concatenate to.
     /// \param[in] components The new path components to concatenate onto `root`.
     void ConcatPath(String& path, StringView components);
 
     /// Removes the extension from the end of the path.
     /// For example, removing the extension of "/home/human/file.cpp" results in "/home/human/file".
     ///
-    /// \param[in] path The path to remove the extension of.
-    // Remove the extension from `path`. Returns the new size of the path.
+    /// \param[in,out] path The path to remove the extension of.
     void RemoveExtension(String& path);
+
+    /// Makes a path into an absolute path. This will follow symlinks and resolve relative
+    /// directories using the current working directory.
+    ///
+    /// \note An error will be returned if the file doesn't exist, or the process is unable
+    /// to read it.
+    ///
+    /// \param[in,out] path The path to make into an absolute path.
+    /// \return The result of the operation.
+    Result MakeAbsolute(String& path);
 }

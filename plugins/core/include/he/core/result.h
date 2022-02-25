@@ -111,7 +111,7 @@ namespace he
     /// \return Returns true if the debugger should break at the erroneous line.
     inline bool ExpectResultFailed(ErrorType type, const char* file, const int line, const char* funcName, const char* expression, Result result)
     {
-        String msg = result.ToString(CrtAllocator::Get());
+        String msg = result.ToString(Allocator::GetTemp());
         return HandleError(type, file, line, funcName, expression, msg.Data());
     }
 }

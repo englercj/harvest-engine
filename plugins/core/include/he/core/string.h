@@ -63,7 +63,7 @@ namespace he
         ///     If this string is greater than `x`, a positive value is returned.
         static int32_t CompareN(const char* a, const char* b, uint32_t len);
 
-        /// Compares the null terminated strings in a case-insensative manner and returns the
+        /// Compares the null terminated strings in a case-insensitive manner and returns the
         /// result of the comparison.
         ///
         /// \param a The left-hand side of the comparison operation.
@@ -74,7 +74,7 @@ namespace he
         ///     If this string is greater than `x`, a positive value is returned.
         static int32_t CompareI(const char* a, const char* b);
 
-        /// Compares the null terminated strings, up to `len`, in a case-insensative manner and
+        /// Compares the null terminated strings, up to `len`, in a case-insensitive manner and
         /// returns the result of the comparison.
         ///
         /// \param a The left-hand side of the comparison operation.
@@ -119,7 +119,7 @@ namespace he
         /// \return True if the strings are equal, false otherwise.
         static bool EqualN(const char* a, const char* b, uint32_t len) { return CompareN(a, b, len) == 0; }
 
-        /// Compares the null terminated strings in a case-insensative manner and
+        /// Compares the null terminated strings in a case-insensitive manner and
         /// returns true if they are equal.
         ///
         /// \param a The left-hand side of the comparison operation.
@@ -127,7 +127,7 @@ namespace he
         /// \return True if the strings are equal, false otherwise.
         static bool EqualI(const char* a, const char* b) { return CompareI(a, b) == 0; }
 
-        /// Compares the null terminated strings, up to `len`, in a case-insensative manner and
+        /// Compares the null terminated strings, up to `len`, in a case-insensitive manner and
         /// returns true if they are equal.
         ///
         /// \param a The left-hand side of the comparison operation.
@@ -150,7 +150,7 @@ namespace he
         static bool LessN(const char* a, const char* b, uint32_t len) { return CompareN(a, b, len) < 0; }
 
         /// Copies the source string into the destination buffer, including the null terminator.
-        /// The destination buffer is garuanteed to be null terminated if `dstLen > 0`.
+        /// The destination buffer is guaranteed to be null terminated if `dstLen > 0`.
         ///
         /// \param dst The destination buffer to copy into.
         /// \param dstLen The size of the destination buffer.
@@ -163,7 +163,7 @@ namespace he
         static uint32_t Copy(char (&dst)[N], const char* src) { return Copy(dst, N, src); }
 
         /// Copies up to `srcLen` characters from the source string into the destination buffer,
-        /// including the null terminator. The destination buffer is garuanteed to be null
+        /// including the null terminator. The destination buffer is guaranteed to be null
         /// terminated if `dstLen > 0`.
         ///
         /// \param dst The destination buffer to copy into.
@@ -178,7 +178,7 @@ namespace he
         static uint32_t CopyN(char (&dst)[N], const char* src, uint32_t srcLen) { return CopyN(dst, N, src, srcLen); }
 
         /// Copies the source string to the end of the destination string.
-        /// The destination buffer is garuanteed to be null terminated if `dstLen > 0`.
+        /// The destination buffer is guaranteed to be null terminated if `dstLen > 0`.
         ///
         /// \param dst The destination buffer to copy into.
         /// \param dstLen The size of the destination buffer.
@@ -191,7 +191,7 @@ namespace he
         static uint32_t Cat(char (&dst)[N], const char* src) { return Cat(dst, N, src); }
 
         /// Copies up to `srcLen` characters from the source string to the end of the destination
-        /// string. The destination buffer is garuanteed to be null terminated if `dstLen > 0`.
+        /// string. The destination buffer is guaranteed to be null terminated if `dstLen > 0`.
         ///
         /// \param dst The destination buffer to copy into.
         /// \param dstLen The size of the destination buffer.
@@ -204,35 +204,43 @@ namespace he
         template <uint32_t N>
         static uint32_t CatN(char (&dst)[N], const char* src, uint32_t srcLen) { return CatN(dst, N, src, srcLen); }
 
-        /// Searching the null terminated string for a character.
+        /// Searches the null terminated string for a character. Behavior is undefined if `str`
+        /// is nullptr.
         ///
         /// \param str The string to search within.
         /// \param search The character to search for.
-        /// \return A pointer to the found character in `str`, or a null pointer if not found.
+        /// \return A pointer to the found character in `str`, or nullptr if not found.
         static const char* Find(const char* str, char search);
 
-        /// Searching the null terminated string for a character.
-        ///
-        /// \param str The string to search within.
-        /// \param search The character to search for.
-        /// \return A pointer to the found character in `str`, or a null pointer if not found.
-        static char* Find(char* str, char search);
-
-        /// Searching the null terminated string for a substring.
+        /// Searches the null terminated string for a substring. Behavior is undefined if `str`
+        /// or `search` are nullptr.
         ///
         /// \param str The string to search within.
         /// \param search The string to search for.
-        /// \return A pointer to the start of the found substring in `str`, or a null pointer if
+        /// \return A pointer to the start of the found substring in `str`, or nullptr if
         /// not found. If `str` is empty, then `search` is returned.
         static const char* Find(const char* str, const char* search);
 
-        /// Searching the null terminated string for a substring.
+        /// Searches up to `len` characters from the string for a character. It is assumed that
+        /// `str` is at least `len` characters long. That is, null characters are not treated
+        /// as the end of the string. Behavior is undefined if `str` is nullptr.
         ///
         /// \param str The string to search within.
+        /// \param len The maximum number of characters to check in `str`
+        /// \param search The character to search for.
+        /// \return A pointer to the found character in `str`, or nullptr if not found.
+        static const char* FindN(const char* str, uint32_t len, char search);
+
+        /// Searches up to `len` characters from the string for a substring. It is assumed that
+        /// `str` is at least `len` characters long. That is, null characters are not treated
+        /// as the end of the string. Behavior is undefined if `str` or `search` are nullptr.
+        ///
+        /// \param str The string to search within.
+        /// \param len The maximum number of characters to check in `str`
         /// \param search The string to search for.
-        /// \return A pointer to the start of the found substring in `str`, or a null pointer if
+        /// \return A pointer to the start of the found substring in `str`, or nullptr if
         /// not found. If `str` is empty, then `search` is returned.
-        static char* Find(char* str, const char* search);
+        static const char* FindN(const char* str, uint32_t len, const char* search);
 
         /// Parses the string into a integral value.
         /// If successful, an integer value corresponding to the contents of str is returned.
@@ -528,7 +536,7 @@ namespace he
         /// \return Number of characters in the string, not including the null terminator.
         uint32_t Size() const { return IsEmbedded() ? GetSizeEmbed() : m_heap.size; }
 
-        /// Reserves capacity for `len` characters. \see Capacity() is garuanteed to return
+        /// Reserves capacity for `len` characters. \see Capacity() is guaranteed to return
         /// at least `len` after this operation.
         ///
         /// \param len The length of characters to reserve capacity for.

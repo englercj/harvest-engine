@@ -12,10 +12,8 @@ using namespace he;
 // ------------------------------------------------------------------------------------------------
 HE_TEST(core, directory, DirectoryScanner)
 {
-    Allocator& alloc = CrtAllocator::Get();
-
-    DirectoryScanner scanner(alloc);
-    DirectoryScanner::Entry entry(alloc);
+    DirectoryScanner scanner;
+    DirectoryScanner::Entry entry;
 
     HE_EXPECT(scanner.Open("."));
     while (scanner.NextEntry(entry))
@@ -28,8 +26,7 @@ HE_TEST(core, directory, DirectoryScanner)
 // ------------------------------------------------------------------------------------------------
 HE_TEST(core, directory, GetSpecial)
 {
-    Allocator& alloc = CrtAllocator::Get();
-    String dir(alloc);
+    String dir;
 
     Result r = Directory::GetSpecial(dir, SpecialDirectory::Documents);
     HE_EXPECT(r);
@@ -51,8 +48,7 @@ HE_TEST(core, directory, GetSpecial)
 // ------------------------------------------------------------------------------------------------
 HE_TEST(core, directory, GetCurrent)
 {
-    Allocator& alloc = CrtAllocator::Get();
-    String dir(alloc);
+    String dir;
 
     Result r = Directory::GetCurrent(dir);
     HE_EXPECT(r);
@@ -62,8 +58,7 @@ HE_TEST(core, directory, GetCurrent)
 // ------------------------------------------------------------------------------------------------
 HE_TEST(core, directory, SetCurrent)
 {
-    Allocator& alloc = CrtAllocator::Get();
-    String dir(alloc);
+    String dir;
 
     HE_EXPECT(Directory::GetCurrent(dir));
     HE_EXPECT(!dir.IsEmpty());

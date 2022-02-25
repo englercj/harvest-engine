@@ -29,7 +29,7 @@ struct TestArgs
     bool b1{ false };
 
     const char* str{};
-    Vector<const char*> vec{ CrtAllocator::Get() };
+    Vector<const char*> vec{ Allocator::GetDefault() };
 };
 
 template <int32_t N>

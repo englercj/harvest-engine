@@ -378,7 +378,7 @@ namespace he
 
         // TODO: Hidden allocator here, necessary to avoid PATH_MAX issues but probably should
         // expose this so callers know it can allocate.
-        String path(CrtAllocator::Get());
+        String path;
         Result r = GetPath(path);
 
         GatherFileAttributes(sb, r ? path.Data() : nullptr, outAttributes);

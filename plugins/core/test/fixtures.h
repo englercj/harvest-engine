@@ -72,9 +72,9 @@ namespace he
     class AnotherAllocator : public Allocator
     {
     public:
-        void* Malloc(size_t size, size_t alignment = DefaultAlignment) override { return CrtAllocator::Get().Malloc(size, alignment); }
-        void* Realloc(void* ptr, size_t newSize, size_t alignment = DefaultAlignment) override { return CrtAllocator::Get().Realloc(ptr, newSize, alignment); }
-        void Free(void* ptr) override { CrtAllocator::Get().Free(ptr); }
+        void* Malloc(size_t size, size_t alignment = DefaultAlignment) override { return Allocator::GetDefault().Malloc(size, alignment); }
+        void* Realloc(void* ptr, size_t newSize, size_t alignment = DefaultAlignment) override { return Allocator::GetDefault().Realloc(ptr, newSize, alignment); }
+        void Free(void* ptr) override { Allocator::GetDefault().Free(ptr); }
     };
 
     // --------------------------------------------------------------------------------------------

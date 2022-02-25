@@ -143,15 +143,21 @@ namespace he
         static Result GetAttributes(const char* path, FileAttributes& outAttributes);
 
         /// Read a file's contents into a vector buffer. The vector will be resized to hold the
-        /// read data. In the case of a short read the resized vector size can be used to determine
-        /// the number of bytes read.
+        /// read data.
         ///
         /// \param[out] dst The destination vector to write data into.
-        /// \param[in] path The path to the file to read.
-        /// \param[in] offset Optional. The offset into the file to read. Clamped to (size - 1). Default is the start of the file.
-        /// \param[in] size Optional. The number of bytes to read from the file. Clamped to file size. Default is the entire file.
+        /// \param[in] path The path to the file to read. The file is expected to exist.
+        /// \param[out] bytesRead Optional. The resulting number of bytes read.
         template <typename T>
-        static Result Read(Vector<T>& dst, const char* path, uint64_t offset = 0, uint32_t size = 0);
+        static Result ReadAll(Vector<T>& dst, const char* path,  uint32_t* bytesRead = nullptr);
+
+        /// Write the contents of a buffer to a file.
+        ///
+        /// \param[in] src The buffer to write to the file.
+        /// \param[in] size The number of bytes to write to the file.
+        /// \param[in] path The path of the write to write to. Existing files will be overwritten.
+        /// \param[out] bytesWritten Optional. The resulting number of bytes written.
+        static Result WriteAll(const void* src, uint32_t size, const char* path, uint32_t* bytesWritten = nullptr);
 
     public:
         File();
@@ -284,23 +290,23 @@ namespace he
     };
 
     template <typename T>
-    inline Result File::Read(Vector<T>& dst, const char* path, uint64_t offset, uint32_t size)
+    inline Result File::ReadAll(Vector<T>& dst, const char* path, uint32_t* outBytesRead)
     {
         File f;
         Result r = f.Open(path, FileOpenMode::ReadExisting);
         if (!r)
             return r;
 
-        if (size == 0)
-            size = static_cast<uint32_t>(f.GetSize());
-
-        offset = Min<uint64_t>(offset, size - 1);
-
+        const uint32_t size = static_cast<uint32_t>(f.GetSize());
         const uint32_t vectorSize = sizeof(T) == 1 ? size : (size + (sizeof(T) - 1)) / sizeof(T);
         dst.Resize(vectorSize, he::DefaultInit);
 
         uint32_t bytesRead = 0;
-        r = f.ReadAt(dst.Data(), offset, size, &bytesRead);
+        r = f.ReadAt(dst.Data(), 0, size, &bytesRead);
+
+        if (outBytesRead)
+            *outBytesRead = bytesRead;
+
         if (!r)
             return r;
 

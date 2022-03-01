@@ -16,7 +16,7 @@ void ConsoleSink(void* userData, const he::LogSource& source, const he::LogKV* k
 {
     HE_UNUSED(userData);
 
-    he::String msg(he::CrtAllocator::Get());
+    he::String msg(he::Allocator::GetTemp());
     fmt::format_to(he::Appender(msg), "{}({}): [{}]({}) ", source.file, source.line, source.level, source.category);
     he::FormatKVsTo(msg, kvs, count);
     msg.PushBack('\n');

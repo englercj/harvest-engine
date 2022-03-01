@@ -65,7 +65,7 @@ HE_TEST(core, directory, SetCurrent)
     HE_EXPECT(Directory::SetCurrent("/"));
     HE_EXPECT(Directory::SetCurrent(dir.Data()));
 
-    String dir2(alloc);
+    String dir2;
     HE_EXPECT(Directory::GetCurrent(dir2));
     HE_EXPECT_EQ(dir, dir2);
 }

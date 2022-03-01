@@ -1,6 +1,6 @@
 # Harvest Schema - Language Guide
 
-Based on the language of [Cap'n Proto](https://capnproto.org/).
+Originally based on the language of [Cap'n Proto](https://capnproto.org/).
 
 ## Why Does Schema Exist?
 
@@ -9,20 +9,19 @@ TODO: What is this? Why does it exist? Comparison with other options (Protobuf, 
 Quickly:
 
 - Protobuf: serialize/deserialize step is expensive, std proliferation is big sad, unknown fields aren't supported for json serialization, no default values.
-- Flatbuffers: mutate and reflection APIs are weak, schema language is missing features, no unknown field support, no defaults for struct fields, fields that are unset or set to default are stored the same.
+- Flatbuffers: mutate and reflection APIs are weak, no unknown field support, no defaults for struct fields, fields that are unset or set to default are stored the same.
 - Bond: Compiler is Haskell, library relies on boost, very complex (but feature rich), no defaults for struct fields.
 - Capnp: API is very difficult to use, unknown fields aren't supported for json serialization, uses exceptions and RTTI, comes with a *lot* of libraries (including KJ), fields that are unset or set to default are stored the same, default value can never change.
 
 The goals of Harvest Schema are:
 
-- Zero-copy binary format that is used in-memory and on disk.
+- Zero-copy binary format that is used in-memory and on disk. Data can be read with `mmap`.
 - Support for unknown fields in both binary and text representations, and when serializing between them.
 - Ability to distinguish between unset fields and fields set to the default value.
 - Allow the default value of fields to change while continuing to properly load old "set" data.
 - Robust reflection and mutation APIs so the data can easily be changed at edit time.
-- Simple and straightforward code generation that matches expectations when using other Harvest code.
 
-Unfortunately while many libraries hit some of these points, none of them hit them all.
+Unfortunately while many libraries hit some of these points, none of them hit them all. It was decided that these points are too important to compromise on.
 
 ## Schema Evolution
 
@@ -140,6 +139,14 @@ struct Vec3
 
 Changing the size of a fixed-size array is not backwards-compatible for the binary format, just as changing the type of any field is not backwards-compatible. Other formats may treat these types differently, and have different restrictions about changes.
 
+### Type Aliases
+
+Aliases of types can be created using the `alias` keyword. Aliases are a language-level feature, and don't affect codegen. In fact, the schema wont even include aliases; only their resolved types are included.
+
+```c++
+alias Vec3 = float32[3];
+```
+
 ### Structs
 
 A collection of named and typed fields which are numbered consecutively starting from zero.
@@ -251,38 +258,57 @@ const Baz :SomeStruct = { id = Foo, message = Bar };
 
 ### Interfaces
 
-A collection of methods, each of which takes some parameters and returns some results. Like struct fields, methods have ordinal numbers. Interfaces also support inheritance.
+A collection of methods, each of which takes a structure as input and returns a structure as output. Like struct fields, methods have ordinal numbers. Interfaces also support inheritance.
 
 ```c++
 interface Node
 {
-    IsDirectory @0 () -> bool;
+    // Methods can use tuples to define inline structures for parameters and results. Items in a
+    // tuple are specified just as fields are, except that the ordinal value is implicit based on
+    // declaration order.
+    // If you must reorder parameters later be sure to explicitly specify the ordinal values to
+    // maintain backwards compatibility with older schemas.
+    IsDirectory @0 () -> (result: bool);
+
+    // Or if you prefer to use explicit structure types, there is an alternative syntax for that.
+    // This can be useful if there are commonly reused structures, or very large structures that
+    // can improve readability by being split out.
+    // The structures used in IsDirectory2 are equivalent to the ones generated for IsDirectory.
+    IsDirectory2 @1 :IsDirParams -> :IsDirResult;
+
+    // Or even a mix
+    IsDirectory3 @2 () -> :IsDirResult;
+
+    struct IsDirParams
+    {
+
+    }
+
+    struct IsDirResult
+    {
+        result @0 :bool;
+    }
 }
 
 interface Directory extends Node
 {
-    List @0 () -> List<Entry>;
-
-    struct Entry
-    {
-        name @0 :String;
-        node @1 :Node;
-    }
-
-    CreateFile @1 (name :String) -> File;
+    // Interfaces can be used as parameters or return values which are serialized as references to an instance of that interface in the sender.
+    CreateFile @1 (name :String) -> (file :File);
 }
 
 interface File extends Node
 {
-    GetSize @0 () -> (size :uint64);
-    Read @1 (offset :uint64 = 0, size :uint64 = 0) -> (data :Blob);
-    Write @2 (offset :uint64 = 0, data :Blob); // Can also specify "-> void" for no return
+    // Default values can be given to parameters or return values, because tuple fields are just struct fields.
+    Read @0 (offset :uint64 = 0, size :uint64 = 0) -> (data :Blob);
+
+    // You can omit the return type to indicate a fire-and-forget call which gets no response.
+    Write @1 (offset :uint64 = 0, data :Blob);
+
+    // The `stream` keyword indicates that a series of ordered values will be sent or received.
+    ReadStream @2 (offset :uint64 = 0, size :uint64 = 0) -> stream (data :Blob);
+    WriteStream @3 stream (offset :uint64 = 0, data :Blob);
 }
 ```
-
-Notice that interfaces can be used as types in structs and as parameters or return values. These values are serialized as references to an instance of that interface in the sender.
-
-Method parameters and return types are used to auto-generate struct types. As such, parameters follow the same rules as fields. The field ordinals are determined by the order of the parameters, so moving them around effectively changes the ordinal which is generally not allowed.
 
 ### Generics
 

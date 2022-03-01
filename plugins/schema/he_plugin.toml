@@ -11,26 +11,48 @@ homepage = ""
 [install]
     exec = "schemac.lua"
 
+# Schema core runtime library
 [[modules]]
     name = "he_schema"
     type = "static"
     group = "engine/libs"
-    files = ["include/**", "src/**"]
+    files = ["schema/include/**", "schema/src/**"]
     public_dependson = ["he_core", "rapidjson"]
-    public_includedirs = ["include"]
-    private_includedirs = ["src"]
+    public_includedirs = ["schema/include"]
+    private_includedirs = ["schema/src"]
 
+# Schema compiler library
+[[modules]]
+    name = "he_schema_compiler"
+    type = "static"
+    group = "engine/libs"
+    files = ["schema_compiler/include/**", "schema_compiler/src/**"]
+    public_dependson = ["he_core", "he_schema"]
+    public_includedirs = ["schema_compiler/include"]
+    private_includedirs = ["schema_compiler/src"]
+
+# Schema compiler executable
 [[modules]]
     name = "he_schemac"
     type = "console_app"
     group = "engine/tools"
-    files = ["compiler/**"]
-    private_dependson = ["he_core", "he_schema"]
+    files = ["schemac/**"]
+    private_dependson = ["he_core", "he_schema", "he_schema_compiler"]
 
+# Tests for schema core library
 [[modules]]
     name = "he_schema_tests"
     type = "static"
     group = "engine/tests"
-    files = ["test/**"]
+    files = ["schema/test/**"]
     public_dependson = ["he_schema"]
+    private_includedirs = ["src"]
+
+# Tests for schema compiler library
+[[modules]]
+    name = "he_schema_compiler_tests"
+    type = "static"
+    group = "engine/tests2"
+    files = ["schema_compiler/test/**"]
+    public_dependson = ["he_schema_compiler"]
     private_includedirs = ["src"]

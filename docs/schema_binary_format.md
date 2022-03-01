@@ -1,6 +1,6 @@
 # Harvest Schema - Binary Format Spec
 
-Based on the encoding format of [Cap'n Proto](https://capnproto.org/encoding.html).
+Originally based on the encoding format of [Cap'n Proto](https://capnproto.org/encoding.html).
 
 This serves as both the transmission and in-memory format for Harvest Schema objects.
 
@@ -31,7 +31,7 @@ Primitive types are aligned to a multiple of their size. Boolean values are bit-
 
 ### Structs
 
-A struct is encoded as a pointer to its content. The content is split into two sections: data and pointers. The pointer section is encoded directly after the data section.
+A struct is encoded as a pointer to its content. The content is split into two sections: data and pointer. The pointer section is encoded directly after the data section.
 
 A struct pointer is one word (64-bits), and has the following layout:
 
@@ -45,7 +45,7 @@ A (2 bits) = 0, to indicate that this is a struct pointer.
 B (30 bits) = Offset, in words, from the end of the pointer to the
     start of the struct's data section. Signed.
 C (16 bits) = Size of the struct's data section, in words.
-D (16 bits) = Size of the struct's pointer section, in words.
+D (16 bits) = NUmber of pointers in the struct's pointer section.
 ```
 
 Notes about the positioning of fields in the data and pointer sections:
@@ -76,7 +76,7 @@ If the number of data fields is larger than 32, then an additional word is added
 
 #### Default Values
 
-Default structs are always all-zeroes. This means the field metadata bitset is set to zero so all data fields will return default values, and all pointers are set to zero (null) so accessors for will return a pointer to a defaulted struct. This ensures allocation is fast and simple, and that any applied compression can take advantage of sequences of zero-value bytes.
+Default structs are always all-zeroes, except for the data field count in the field metadata. This means the field metadata bitset is set to zero so all data fields will return default values, and all pointers are set to zero (null) so accessors for will return a pointer to a defaulted struct. This ensures allocation is fast and simple, and that any applied compression can take advantage of sequences of zero-value bytes.
 
 #### Zero-Sized Structs
 
@@ -141,7 +141,7 @@ The elements of the list are tightly-packed. For example, `bool`s are packed bit
 
 #### Composite Elements
 
-When `C = 7`, the elements of the list are fixed-width composite values –- usually, structs. In this case, the list content is prefixed by a "tag" word that describes the elements. It has the following layout:
+When `C = 7`, the elements of the list are fixed-width composite values –- structs. In this case, the list content is prefixed by a "tag" word that describes the elements. It has the following layout:
 
 ```
 lsb                    list composite tag                     msb

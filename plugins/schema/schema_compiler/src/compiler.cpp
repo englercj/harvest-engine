@@ -6,6 +6,7 @@
 #include "utf8_helpers.h"
 
 #include "he/core/ascii.h"
+#include "he/core/enum_fmt.h"
 #include "he/core/enum_ops.h"
 #include "he/core/hash.h"
 #include "he/core/random.h"
@@ -186,7 +187,21 @@ namespace he::schema
             }
             case AstNode::Kind::Group:
             {
-                return VerifyNodes(node.children);
+                uint32_t childCount = 0;
+                for (AstNode& item : node.children)
+                {
+                    if (!VerifyNode(item))
+                        return false;
+
+                    if (item.kind == AstNode::Kind::Field || item.kind == AstNode::Kind::Group || item.kind == AstNode::Kind::Union)
+                        ++childCount;
+                }
+                if (childCount < 1)
+                {
+                    AddError(node.location, "A group must contain at least 1 field, group, or union.");
+                    return false;
+                }
+                return true;
             }
             case AstNode::Kind::Interface:
             {
@@ -223,7 +238,21 @@ namespace he::schema
             }
             case AstNode::Kind::Union:
             {
-                return VerifyNodes(node.children);
+                uint32_t childCount = 0;
+                for (AstNode& item : node.children)
+                {
+                    if (!VerifyNode(item))
+                        return false;
+
+                    if (item.kind == AstNode::Kind::Field || item.kind == AstNode::Kind::Group || item.kind == AstNode::Kind::Union)
+                       ++childCount;
+                }
+                if (childCount < 2)
+                {
+                    AddError(node.location, "A union must contain at least 2 fields, groups, or unions.");
+                    return false;
+                }
+                return true;
             }
         }
 
@@ -272,6 +301,100 @@ namespace he::schema
 
             if (!VerifyValue(attrNode->attribute.type, *attrNode->parent, astAttr.value, *node.parent))
                 return false;
+
+            switch (node.kind)
+            {
+                case AstNode::Kind::Alias:
+                    AddError(node.location, "Aliases cannot have attributes.");
+                    return false;
+                    // if (!attrNode->attribute.targetsAlias)
+                    // {
+                    //     AddError(node.location, "Attribute {} cannot be used on Aliases", attrNode->name);
+                    //     return false;
+                    // }
+                    // break;
+                case AstNode::Kind::Attribute:
+                    if (!attrNode->attribute.targetsAttribute)
+                    {
+                        AddError(node.location, "Attribute {} cannot be used on Attributes", attrNode->name);
+                        return false;
+                    }
+                    break;
+                case AstNode::Kind::Constant:
+                    if (!attrNode->attribute.targetsConstant)
+                    {
+                        AddError(node.location, "Attribute {} cannot be used on Constants", attrNode->name);
+                        return false;
+                    }
+                    break;
+                case AstNode::Kind::Enum:
+                    if (!attrNode->attribute.targetsEnum)
+                    {
+                        AddError(node.location, "Attribute {} cannot be used on Enums", attrNode->name);
+                        return false;
+                    }
+                    break;
+                case AstNode::Kind::Enumerator:
+                    if (!attrNode->attribute.targetsEnumerator)
+                    {
+                        AddError(node.location, "Attribute {} cannot be used on Enumerators", attrNode->name);
+                        return false;
+                    }
+                    break;
+                case AstNode::Kind::Field:
+                    if (!attrNode->attribute.targetsField)
+                    {
+                        AddError(node.location, "Attribute {} cannot be used on Fields", attrNode->name);
+                        return false;
+                    }
+                    break;
+                case AstNode::Kind::File:
+                    if (!attrNode->attribute.targetsFile)
+                    {
+                        AddError(node.location, "Attribute {} cannot be used on Files", attrNode->name);
+                        return false;
+                    }
+                    break;
+                case AstNode::Kind::Group:
+                    AddError(node.location, "Groups cannot have attributes.");
+                    return false;
+                    // if (!attrNode->attribute.targetsGroup)
+                    // {
+                    //     AddError(node.location, "Attribute {} cannot be used on Groups", attrNode->name);
+                    //     return false;
+                    // }
+                    // break;
+                case AstNode::Kind::Interface:
+                    if (!attrNode->attribute.targetsInterface)
+                    {
+                        AddError(node.location, "Attribute {} cannot be used on Interfaces", attrNode->name);
+                        return false;
+                    }
+                    break;
+                case AstNode::Kind::Method:
+                    if (!attrNode->attribute.targetsMethod)
+                    {
+                        AddError(node.location, "Attribute {} cannot be used on Methods", attrNode->name);
+                        return false;
+                    }
+                    break;
+                case AstNode::Kind::Struct:
+                    if (!attrNode->attribute.targetsStruct)
+                    {
+                        AddError(node.location, "Attribute {} cannot be used on Structs", attrNode->name);
+                        return false;
+                    }
+                    break;
+                case AstNode::Kind::Union:
+                    AddError(node.location, "Unions cannot have attributes.");
+                    return false;
+                    // if (!attrNode->attribute.targetsUnion)
+                    // {
+                    //     AddError(node.location, "Attribute {} cannot be used on Unions", attrNode->name);
+                    //     return false;
+                    // }
+                    // break;
+            }
         }
 
         return true;
@@ -316,7 +439,10 @@ namespace he::schema
             if (node.kind == AstNode::Kind::Struct || node.kind == AstNode::Kind::Group || node.kind == AstNode::Kind::Union)
             {
                 if (child.kind == AstNode::Kind::Group || child.kind == AstNode::Kind::Union)
-                    return VerifyMembersOf(child, kind, ordinals);
+                {
+                    if (!VerifyMembersOf(child, kind, ordinals))
+                        return false;
+                }
             }
 
             if (child.kind != kind)
@@ -331,7 +457,7 @@ namespace he::schema
             auto ordinalPair = ordinals.insert({ static_cast<uint16_t>(child.id), child.location });
             if (!ordinalPair.second)
             {
-                AddError(child.location, "Encountered duplicate ordinal value for {}", kind);
+                AddError(child.location, "Encountered duplicate ordinal value for {} '{} @{}'", kind, child.name, child.id);
                 return false;
             }
 
@@ -1035,7 +1161,7 @@ namespace he::schema
                     Declaration::Builder groupStruct = children[childIndex];
                     he::String name(Allocator::GetTemp());
                     name = child.name;
-                    name += "_Group";
+                    name[0] = ToUpper(name[0]);
                     groupStruct.InitName(name);
                     groupStruct.SetId(FNV64::HashString(name.Data(), decl.Id()));
                     groupStruct.SetParentId(decl.Id());
@@ -1059,7 +1185,7 @@ namespace he::schema
                     Declaration::Builder unionStruct = children[childIndex];
                     he::String name(Allocator::GetTemp());
                     name = child.name;
-                    name += "_Union";
+                    name[0] = ToUpper(name[0]);
                     unionStruct.InitName(name);
                     unionStruct.SetId(FNV64::HashString(name.Data(), decl.Id()));
                     unionStruct.SetParentId(decl.Id());
@@ -1082,8 +1208,11 @@ namespace he::schema
             }
         }
 
-        StructLayout layout(decl);
-        layout.CalculateLayout();
+        if (!data.IsGroup() && !data.IsUnion())
+        {
+            StructLayout layout(decl);
+            layout.CalculateLayout();
+        }
     }
 
     void Compiler::CompileField(const AstNode& node, Field::Builder field, uint16_t index)

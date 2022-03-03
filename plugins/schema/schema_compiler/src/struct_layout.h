@@ -7,42 +7,49 @@
 #include "he/core/vector.h"
 #include "he/schema/schema.h"
 
+#include <map>
+
 namespace he::schema
 {
     class StructLayout
     {
     public:
-        struct FieldRef { Field::Builder field; Declaration::Builder parent; };
-        static void CollectSortedFields(const Declaration::Builder& decl, Vector<FieldRef>& out);
-
-    public:
         StructLayout(Declaration::Builder decl);
-
-        Span<const FieldRef> GetSortedFields() const { return m_sortedFields; }
+        ~StructLayout();
 
         void CalculateLayout();
 
     private:
-        void PlaceField(const FieldRef& ref);
-        bool TryPlaceUnionField(const FieldRef& ref, uint32_t fieldSize, uint32_t fieldAlign);
-        uint32_t PlaceDataField(uint32_t fieldSize, uint32_t fieldAlign);
+        struct MemberRef
+        {
+            Field::Builder field{};
+            Declaration::Builder decl{};
+            class FieldPlacer* placer{ nullptr };
 
-        uint32_t TryClaimGap(uint32_t fieldSize);
-        uint32_t TryClaimGapIndex(uint32_t index, uint32_t fieldSize);
-        void TrackGap(uint32_t offset, uint32_t size);
+            bool isInUnion{ false };
+            uint32_t parentIndex{ ~0u };
+            uint32_t unionDataOffset{ ~0u };
+            uint32_t unionPointerCount{ ~0u };
+            uint16_t unionTagCount{ 0 };
+        };
 
+    private:
+        void CollectMembers(MemberRef& parentRef, uint32_t parentIndex);
+        void CollectUnionMembers(MemberRef& parentRef, uint32_t parentIndex);
+
+        uint16_t DataWordSize() const;
         uint32_t MetadataWordSize() const;
 
     private:
         Declaration::Builder m_decl{};
         Declaration::Data::Struct::Builder m_struct{};
 
-        Vector<FieldRef> m_sortedFields{};
-        Vector<FieldRef> m_sortedParentFields{};
-        const Declaration::Builder* m_activeParent{ nullptr };
+        Vector<MemberRef> m_members{};
+        std::map<uint16_t, uint32_t> m_fields{};
 
         uint16_t m_dataFieldCount{ 0 };
-        uint32_t m_dataOffset{ 0 };
-        uint32_t m_gaps[6]{}; // Each gap index represents an offset to a gap of size (2^index) bits.
+
+        class StructFieldPlacer* m_fieldPlacer{ nullptr };
+        Vector<class FieldPlacer*> m_placers{};
     };
 }

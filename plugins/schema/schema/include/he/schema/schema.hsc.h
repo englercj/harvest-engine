@@ -9,7 +9,7 @@
 #include "he/schema/types.h"
 
 HE_SCHEMA_DECL_INFO(0x979e892c449bc4d8, 0x0000000000000000, File, 0, 0, 0); // File
-HE_SCHEMA_DECL_INFO(0xa66eff5acba76a75, 0x979e892c449bc4d8, Struct, 0, 4, 1); // Brand
+HE_SCHEMA_DECL_INFO(0xa66eff5acba76a75, 0x979e892c449bc4d8, Struct, 0, 0, 1); // Brand
 HE_SCHEMA_DECL_INFO(0xac8f534465c8369b, 0xa66eff5acba76a75, Struct, 1, 4, 1); // Brand.Scope
 HE_SCHEMA_DECL_INFO(0xdd2b0f1a9d06a3b0, 0x979e892c449bc4d8, Struct, 6, 6, 5); // Type
 HE_SCHEMA_DECL_INFO(0xc37ce87995a2ca78, 0xdd2b0f1a9d06a3b0, Struct, 6, 6, 5); // Type.Data
@@ -20,7 +20,7 @@ HE_SCHEMA_DECL_INFO(0x8e064c19f3d729f1, 0xc37ce87995a2ca78, Struct, 6, 6, 5); //
 HE_SCHEMA_DECL_INFO(0x9c00ee98d42bb48b, 0xc37ce87995a2ca78, Struct, 6, 6, 5); // Type.Data.Interface
 HE_SCHEMA_DECL_INFO(0xb150cde6a6ba5d63, 0xc37ce87995a2ca78, Struct, 6, 6, 5); // Type.Data.AnyPointer
 HE_SCHEMA_DECL_INFO(0xa1a552dda5da9ae9, 0x979e892c449bc4d8, Struct, 12, 6, 5); // Value
-HE_SCHEMA_DECL_INFO(0xa8879514cb54a625, 0xa1a552dda5da9ae9, Struct, 0, 4, 2); // Value.StructValue
+HE_SCHEMA_DECL_INFO(0xa8879514cb54a625, 0xa1a552dda5da9ae9, Struct, 0, 0, 2); // Value.StructValue
 HE_SCHEMA_DECL_INFO(0xda924af5c1761799, 0xa1a552dda5da9ae9, Struct, 12, 6, 5); // Value.Data
 HE_SCHEMA_DECL_INFO(0xf4155b14cbf230b8, 0x979e892c449bc4d8, Struct, 1, 4, 1); // Attribute
 HE_SCHEMA_DECL_INFO(0xd7baf7c88e03fa02, 0x979e892c449bc4d8, Struct, 2, 4, 2); // Enumerator
@@ -38,8 +38,8 @@ HE_SCHEMA_DECL_INFO(0x9eaefa1605b25397, 0xc991ea09a07196a4, Struct, 19, 10, 13);
 HE_SCHEMA_DECL_INFO(0xb1105982b244c8c1, 0xc991ea09a07196a4, Struct, 19, 10, 13); // Declaration.Data.Enum
 HE_SCHEMA_DECL_INFO(0x96db68a0fd0a0577, 0xc991ea09a07196a4, Struct, 19, 10, 13); // Declaration.Data.Interface
 HE_SCHEMA_DECL_INFO(0xe4d7f374357efe15, 0xc991ea09a07196a4, Struct, 19, 10, 13); // Declaration.Data.Struct
-HE_SCHEMA_DECL_INFO(0x9f4db73ca2259085, 0x979e892c449bc4d8, Struct, 0, 4, 2); // Import
-HE_SCHEMA_DECL_INFO(0x8a8a83386362f90d, 0x979e892c449bc4d8, Struct, 0, 4, 2); // SchemaFile
+HE_SCHEMA_DECL_INFO(0x9f4db73ca2259085, 0x979e892c449bc4d8, Struct, 0, 0, 2); // Import
+HE_SCHEMA_DECL_INFO(0x8a8a83386362f90d, 0x979e892c449bc4d8, Struct, 0, 0, 2); // SchemaFile
 
 namespace he::schema
 {

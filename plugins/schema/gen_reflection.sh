@@ -17,5 +17,5 @@ else
     exit -1
 fi
 
-$EXE -t cpp -o ./include/he/schema ./include/he/schema/schema.hsc &&
-mv ./include/he/schema/schema.hsc.cpp ./src/
+$EXE -t cpp -o ./schema/include/he/schema ./schema/include/he/schema/schema.hsc &&
+mv ./schema/include/he/schema/schema.hsc.cpp ./schema/src/

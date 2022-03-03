@@ -2,13 +2,10 @@
 
 #pragma once
 
-#include "he/core/string_view.h"
 #include "he/core/types.h"
 #include "he/schema/codegen.h"
 #include "he/schema/code_writer.h"
 #include "he/schema/schema.h"
-
-#include <unordered_map>
 
 namespace he::schema
 {

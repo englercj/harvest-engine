@@ -223,7 +223,7 @@ namespace he::schema
         const Word* Data() const { return m_data; }
         uint16_t DataWordSize() const { return m_dataWordSize; }
         uint16_t PointerCount() const { return m_pointerCount; }
-        uint16_t DataFieldCount() const { HE_ASSERT(IsValid()); return *reinterpret_cast<const uint16_t*>(m_data); }
+        uint16_t DataFieldCount() const { HE_ASSERT(IsValid()); return m_dataWordSize == 0 ? 0 : *reinterpret_cast<const uint16_t*>(m_data); }
 
         // Data fields
 
@@ -231,7 +231,7 @@ namespace he::schema
         {
             HE_ASSERT(IsValid());
 
-            const uint16_t dataFieldCount = *reinterpret_cast<const uint16_t*>(m_data);
+            const uint16_t dataFieldCount = DataFieldCount();
             if (index >= dataFieldCount)
                 return false;
 
@@ -328,7 +328,7 @@ namespace he::schema
     private:
         uint16_t MetadataWordSize() const
         {
-            if (!IsValid())
+            if (!IsValid() || m_dataWordSize == 0)
                 return 0;
 
             const uint16_t dataFieldCount = *reinterpret_cast<const uint16_t*>(m_data);
@@ -664,6 +664,9 @@ namespace he::schema
             Word* data = DataSection();
             *data |= static_cast<Word>(m_dataFieldCount);
 
+            // If there are data fields then the data word size must be larger than one
+            HE_ASSERT((m_dataFieldCount == 0 && m_dataWordSize == 0) || (m_dataFieldCount > 0 && m_dataWordSize > 1));
+
             // The metadata words should always fit within the data section when we have fields
             HE_ASSERT(dataFieldCount == 0 || m_metaWordSize < m_dataWordSize,
                 "Data section is not large enough to fit fields and metadata. This is likely a codegen bug.");
@@ -785,7 +788,7 @@ namespace he::schema
     protected:
         uint16_t MetadataWordSize() const
         {
-            if (!IsValid())
+            if (!IsValid() || m_dataWordSize == 0)
                 return 0;
 
             if (m_dataFieldCount <= 32) [[likely]]

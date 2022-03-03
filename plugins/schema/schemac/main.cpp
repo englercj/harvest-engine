@@ -1,6 +1,7 @@
 // Copyright Chad Engler
 
 #include "he/core/args.h"
+#include "he/core/directory.h"
 #include "he/core/file.h"
 #include "he/core/log.h"
 #include "he/core/path.h"
@@ -71,6 +72,10 @@ static bool CompileFile(const char* path, const AppArgs& args)
         return false;
     }
 
+    // -------------------------------------------
+    // TODO: Compile imports
+    // -------------------------------------------
+
     // Generate code from the schema
     const StringView fname = GetBaseName(path);
 
@@ -78,15 +83,20 @@ static bool CompileFile(const char* path, const AppArgs& args)
     req.fileName = fname.Data();
     req.outDir = args.outDir;
 
+    if (!String::IsEmpty(args.outDir))
+    {
+        Directory::Create(args.outDir, true);
+    }
+
     for (const char* target : args.targets)
     {
         if (String::Equal(target, "cpp") || String::Equal(target, "c++"))
         {
-            //if (!schema::GenerateCpp(req))
-            //{
-            //    std::cerr << "Failed to generate C++ code." << std::endl;
-            //    return -1;
-            //}
+            if (!schema::GenerateCpp(req))
+            {
+                std::cerr << "Failed to generate C++ code." << std::endl;
+                return false;
+            }
         }
         else if (String::Equal(target, "echo"))
         {

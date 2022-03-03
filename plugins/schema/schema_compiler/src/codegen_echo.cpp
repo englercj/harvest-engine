@@ -222,7 +222,7 @@ namespace he::schema
             WriteTypeParams(decl.TypeParams());
             m_writer.Write(" " HE_ID_FMT, decl.Id());
             WriteAttributes(decl.Attributes(), scope);
-            m_writer.Write(" // {} bytes, {} pointers", structDecl.DataWordSize() * 8, structDecl.PointerCount());
+            m_writer.Write(" // {} data fields, {} data words, {} pointers", structDecl.DataFieldCount(), structDecl.DataWordSize(), structDecl.PointerCount());
         }
 
         m_writer.Write('\n');
@@ -259,7 +259,7 @@ namespace he::schema
                 else if (groupStruct.IsUnion())
                 {
                     const uint32_t tagSize = 16;
-                    const uint32_t begin = structDecl.UnionTagOffset() * tagSize;
+                    const uint32_t begin = groupStruct.UnionTagOffset() * tagSize;
                     const uint32_t end = begin + tagSize;
                     m_writer.Write("{} :union // tag bits[{}, {})", field.Name().AsView(), begin, end);
                     if (structDecl.IsUnion())
@@ -278,7 +278,14 @@ namespace he::schema
             {
                 m_writer.WriteIndent();
                 WriteField(field, decl);
-                m_writer.Write("; // ptr[{}]", fieldNorm.Index());
+                if (field.Type().Data().IsArray())
+                {
+                    m_writer.Write("; // ptrs[{}, {})", fieldNorm.Index(), fieldNorm.Index() + field.Type().Data().Array().Size());
+                }
+                else
+                {
+                    m_writer.Write("; // ptr[{}]", fieldNorm.Index());
+                }
             }
             else
             {
@@ -523,6 +530,7 @@ namespace he::schema
             }
             case Value::Data::Tag::Blob:
             {
+                HE_ASSERT(type.Data().IsBlob());
                 List<uint8_t>::Reader bytes = value.Data().Blob();
                 Span<const uint8_t> byteSpan{ bytes.Data(), bytes.Size() };
                 m_writer.Write("0x\"{}\"", byteSpan);
@@ -530,9 +538,9 @@ namespace he::schema
             }
             case Value::Data::Tag::String:
             {
+                HE_ASSERT(type.Data().IsString());
                 String::Reader str = value.Data().String();
-                StringView strView{ str };
-                m_writer.Write("\"{}\"", strView);
+                m_writer.Write("\"{}\"", str.AsView());
                 break;
             }
             case Value::Data::Tag::List:
@@ -589,7 +597,7 @@ namespace he::schema
                 for (uint32_t i = 0; i < structValue.Size(); ++i)
                 {
                     const Value::StructValue::Reader v = structValue[i];
-                    uint32_t fieldIndex = 0xffffffff;
+                    uint32_t fieldIndex = ~0u;
                     for (uint32_t j = 0; j < fields.Size(); ++j)
                     {
                         if (fields[j].Name() == v.FieldName())
@@ -598,7 +606,7 @@ namespace he::schema
                             break;
                         }
                     }
-                    HE_ASSERT(fieldIndex != 0xffffffff);
+                    HE_ASSERT(fieldIndex != ~0u);
                     m_writer.Write("{} = ", v.FieldName().AsView());
                     WriteValue(fields[fieldIndex].Type(), scope, v.Value());
 

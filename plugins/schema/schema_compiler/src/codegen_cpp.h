@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include "he/core/string.h"
 #include "he/core/string_view.h"
 #include "he/core/types.h"
 #include "he/schema/codegen.h"
@@ -23,22 +24,22 @@ namespace he::schema
     private:
         void GenHeader();
 
-        void WriteDecl(const Declaration& decl, const Declaration& scope);
-        void WriteAttributeDecl(const Declaration& decl, const Declaration& scope);
-        void WriteConstDecl(const Declaration& decl, const Declaration& scope);
-        void WriteEnumDecl(const Declaration& decl, const Declaration& scope);
-        void WriteInterfaceDecl(const Declaration& decl, const Declaration& scope);
-        void WriteStructDecl(const Declaration& decl, const Declaration& scope);
+        void WriteDecl(Declaration::Reader decl, Declaration::Reader scope);
+        void WriteAttributeDecl(Declaration::Reader decl, Declaration::Reader scope);
+        void WriteConstDecl(Declaration::Reader decl, Declaration::Reader scope);
+        void WriteEnumDecl(Declaration::Reader decl, Declaration::Reader scope);
+        void WriteInterfaceDecl(Declaration::Reader decl, Declaration::Reader scope);
+        void WriteStructDecl(Declaration::Reader decl, Declaration::Reader scope);
 
-        void WriteImpl(const Declaration& decl, const Declaration& scope);
-        void WriteInterfaceImpl(const Declaration& decl, const Declaration& scope);
-        void WriteStructImpl(const Declaration& decl, const Declaration& scope);
-        void WriteFieldImpl(const Declaration& decl, const Declaration& scope);
+        void WriteImpl(Declaration::Reader decl, Declaration::Reader scope);
+        void WriteInterfaceImpl(Declaration::Reader decl, Declaration::Reader scope);
+        void WriteStructImpl(Declaration::Reader decl, Declaration::Reader scope);
+        void WriteFieldImpl(Declaration::Reader decl, Declaration::Reader scope);
 
-        void WriteFieldGetDecl(const Field& field, const Declaration& decl, bool isReader);
-        void WriteFieldGetImpl(const Field& field, const Declaration& decl, const Declaration& scope, bool isReader);
-        void WriteFieldSetDecl(const Field& field, const Declaration& decl);
-        void WriteFieldSetImpl(const Field& field, const Declaration& decl, const Declaration& scope);
+        void WriteFieldGetDecl(Field::Reader field, Declaration::Reader decl, bool isReader);
+        void WriteFieldGetImpl(Field::Reader field, Declaration::Reader decl, Declaration::Reader scope, bool isReader);
+        void WriteFieldSetDecl(Field::Reader field, Declaration::Reader decl);
+        void WriteFieldSetImpl(Field::Reader field, Declaration::Reader decl, Declaration::Reader scope);
 
     // Source Generation
     private:
@@ -48,15 +49,16 @@ namespace he::schema
     private:
         bool FlushToFile(const char* suffix);
 
-        void WriteDeclInfo(const Declaration& decl);
-        void WriteName(const Declaration& decl, const Declaration& scope, const Brand& brand, const char* pointerSuffix);
-        void WriteTemplate(const Declaration& decl);
-        void WriteType(const Type& type, const Declaration& scope, const char* pointerSuffix);
-        void WriteValue(const Type& type, const Declaration& scope, const Value& value);
+        void WriteDeclInfo(Declaration::Reader decl);
+        void WriteName(Declaration::Reader decl, Declaration::Reader scope, Brand::Reader brand, const char* pointerSuffix);
+        void WriteTemplate(Declaration::Reader decl);
+        void WriteType(Type::Reader type, Declaration::Reader scope, const char* pointerSuffix);
+        void WriteValue(Type::Reader type, Declaration::Reader scope, Value::Reader value);
         void WriteWithReplace(StringView input, char what, StringView with);
 
     private:
         const CodeGenRequest& m_request;
+        Declaration::Reader m_root;
         CodeWriter m_writer{};
         he::String m_namespaceName{};
     };

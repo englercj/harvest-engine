@@ -229,14 +229,15 @@ struct Declaration
 
         struct :group
         {
-            dataWordSize @24 :uint16;
-            pointerCount @25 :uint16;
-            isGroup @26 :bool;
-            isUnion @27 :bool;
-            isMethodParams @28 :bool;
-            isMethodResults @29 :bool;
-            unionTagOffset @30 :uint32;   // offset to union tag, in 2-byte units, if isUnion is true.
-            fields @31 :Field[];
+            dataFieldCount @24 :uint16;
+            dataWordSize @25 :uint16;
+            pointerCount @26 :uint16;
+            isGroup @27 :bool;
+            isUnion @28 :bool;
+            isMethodParams @29 :bool;
+            isMethodResults @30 :bool;
+            unionTagOffset @31 :uint32;   // offset to union tag, in 2-byte units, if isUnion is true.
+            fields @32 :Field[];
         }
     }
 }

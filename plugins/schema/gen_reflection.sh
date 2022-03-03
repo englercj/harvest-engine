@@ -18,4 +18,5 @@ else
 fi
 
 $EXE -t cpp -o ./schema/include/he/schema ./schema/include/he/schema/schema.hsc &&
-mv ./schema/include/he/schema/schema.hsc.cpp ./schema/src/
+mv ./schema/include/he/schema/schema.hsc.cpp ./schema/src/ &&
+sed -i 's/#include \"schema.hsc.h\"/#include \"he\/schema\/schema.hsc.h\"/' ./schema/src/schema.hsc.cpp

@@ -62,7 +62,7 @@ static bool CompileFile(const char* path, const AppArgs& args)
     }
 
     // Compile the AST into a schema
-    schema::Compiler compiler(parser.Ast(), {});
+    schema::Compiler compiler(parser.Ast(), path, {});
     if (!compiler.Compile())
     {
         for (const schema::Compiler::ErrorInfo& info : compiler.Errors())

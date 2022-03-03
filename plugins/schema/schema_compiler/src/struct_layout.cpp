@@ -566,8 +566,8 @@ namespace he::schema
 
             if (member.field.Meta().IsNormal())
             {
-                const Type::Builder fieldType = member.field.Type();
                 Field::Meta::Normal::Builder norm = member.field.Meta().Normal();
+                const Type::Builder fieldType = norm.Type();
                 const uint32_t fieldSize = GetTypeSize(fieldType);
 
                 if (IsPointer(fieldType))
@@ -592,7 +592,7 @@ namespace he::schema
         }
 
         // Now that all members are done placed, set the struct size values
-        //m_struct.SetDataFieldCount(m_dataFieldCount);
+        m_struct.SetDataFieldCount(m_dataFieldCount);
         m_struct.SetDataWordSize(DataWordSize());
         m_struct.SetPointerCount(m_fieldPlacer->PointerCount());
 
@@ -610,7 +610,7 @@ namespace he::schema
                 }
                 else if (st.IsGroup())
                 {
-                    //st.SetDataFieldCount(m_struct.DataFieldCount());
+                    st.SetDataFieldCount(m_struct.DataFieldCount());
                     st.SetDataWordSize(m_struct.DataWordSize());
                     st.SetPointerCount(m_struct.PointerCount());
                 }

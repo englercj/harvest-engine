@@ -95,7 +95,7 @@ namespace he
         {
             case schema::Declaration::Data::Tag::File: return "File";
             case schema::Declaration::Data::Tag::Attribute: return "Attribute";
-            case schema::Declaration::Data::Tag::Const: return "Const";
+            case schema::Declaration::Data::Tag::Constant: return "Const";
             case schema::Declaration::Data::Tag::Enum: return "Enum";
             case schema::Declaration::Data::Tag::Interface: return "Interface";
             case schema::Declaration::Data::Tag::Struct: return "Struct";

@@ -46,8 +46,15 @@ namespace he::schema
         { KW_AnyPointer, Type::Data::Tag::AnyPointer },
     };
 
-    Compiler::Compiler(AstFile& ast, Span<const Compiler> includes)
+    static TypeId MakeTypeId(StringView name, TypeId parentId)
+    {
+        HE_ASSERT(HasFlag(parentId, TypeIdFlag));
+        return FNV64::HashData(name.Data(), name.Size(), parentId) | TypeIdFlag;
+    }
+
+    Compiler::Compiler(AstFile& ast, const char* fileName, Span<const Compiler> includes)
         : m_ast(ast)
+        , m_fileName(fileName)
         , m_includes(includes)
     {
         for (const BuiltinType& t : BuiltinTypes)
@@ -146,7 +153,7 @@ namespace he::schema
 
                     id |= TypeIdFlag;
 
-                    AddError(node.location, "Invalid file unique ID. Add this line to your file: @{:#018x};", id);
+                    AddError(node.location, "Invalid file unique ID. Add this line to the top of your file: @{:#018x};", id);
                     return false;
                 }
 
@@ -797,8 +804,7 @@ namespace he::schema
     {
         if (node.id == 0)
         {
-            node.id = FNV64::HashStringN(node.name.Data(), node.name.Size(), node.parent->id);
-            node.id |= TypeIdFlag;
+            node.id = MakeTypeId(node.name, node.parent->id);
         }
 
         if (!HasFlag(node.id, TypeIdFlag))
@@ -952,7 +958,7 @@ namespace he::schema
             decl.SetParentId(node.parent->id);
         SourceInfo::Builder source = decl.InitSource();
         source.InitDocComment(node.docComment);
-        // source.SetFile(); // TODO: do I want this?
+        source.InitFile(m_fileName);
         source.SetLine(node.location.line);
         source.SetColumn(node.location.column);
         decl.SetAttributes(CreateAttributes(node.attributes, node));
@@ -994,7 +1000,7 @@ namespace he::schema
         Declaration::Data::Attribute::Builder data = decl.Data().InitAttribute();
         data.SetType(CreateType(node.attribute.type, node));
         data.SetTargetsAttribute(node.attribute.targetsAttribute);
-        data.SetTargetsConst(node.attribute.targetsConstant);
+        data.SetTargetsConstant(node.attribute.targetsConstant);
         data.SetTargetsEnum(node.attribute.targetsEnum);
         data.SetTargetsEnumerator(node.attribute.targetsEnumerator);
         data.SetTargetsField(node.attribute.targetsField);
@@ -1007,7 +1013,7 @@ namespace he::schema
 
     void Compiler::CompileConstant(const AstNode& node, Declaration::Builder decl)
     {
-        Declaration::Data::Const::Builder data = decl.Data().InitConst();
+        Declaration::Data::Constant::Builder data = decl.Data().InitConstant();
         data.SetType(CreateType(node.constant.type, node));
         data.SetValue(CreateValue(data.Type(), node.constant.value, node));
     }
@@ -1032,7 +1038,7 @@ namespace he::schema
 
     void Compiler::CompileFile(const AstNode& node, Declaration::Builder decl)
     {
-        decl.Data().SetFile({});
+        decl.Data().SetFile();
 
         {
             he::String name(Allocator::GetTemp());
@@ -1163,7 +1169,7 @@ namespace he::schema
                     name = child.name;
                     name[0] = ToUpper(name[0]);
                     groupStruct.InitName(name);
-                    groupStruct.SetId(FNV64::HashString(name.Data(), decl.Id()));
+                    groupStruct.SetId(MakeTypeId(name, decl.Id()));
                     groupStruct.SetParentId(decl.Id());
                     CompileStruct(child, groupStruct);
 
@@ -1187,7 +1193,7 @@ namespace he::schema
                     name = child.name;
                     name[0] = ToUpper(name[0]);
                     unionStruct.InitName(name);
-                    unionStruct.SetId(FNV64::HashString(name.Data(), decl.Id()));
+                    unionStruct.SetId(MakeTypeId(name, decl.Id()));
                     unionStruct.SetParentId(decl.Id());
                     CompileStruct(child, unionStruct);
 
@@ -1222,11 +1228,11 @@ namespace he::schema
         field.SetDeclOrder(index);
         field.SetUnionTag(0); // Set during struct layout
         field.SetAttributes(CreateAttributes(node.attributes, node));
-        field.SetType(CreateType(node.field.type, *node.parent)); // TODO: Move into Normal block
         Field::Meta::Normal::Builder normal = field.Meta().InitNormal();
+        normal.SetType(CreateType(node.field.type, *node.parent));
         normal.SetOrdinal(static_cast<uint16_t>(node.id));
         normal.SetIndex(0); // Set during struct layout
-        normal.SetDefaultValue(CreateValue(field.Type(), node.field.defaultValue, node));
+        normal.SetDefaultValue(CreateValue(normal.Type(), node.field.defaultValue, node));
         normal.SetDataOffset(0); // Set during struct layout
     }
 
@@ -1247,14 +1253,13 @@ namespace he::schema
                 name = child.name;
                 name += suffix;
                 paramStruct.InitName(name);
-                paramStruct.SetId(FNV64::HashString(name.Data(), node.id));
+                paramStruct.SetId(MakeTypeId(name, node.id));
                 paramStruct.SetParentId(node.id);
                 paramStruct.SetTypeParams(CreateTypeParams(child.typeParams));
 
                 Declaration::Data::Struct::Builder paramData = paramStruct.Data().InitStruct();
-                // TODO
-                // paramData.SetIsMethodParams(true);
-                // paramData.SetIsMethodResults(true);
+                paramData.SetIsMethodParams(true);
+                paramData.SetIsMethodResults(true);
 
                 List<Field>::Builder members = paramData.InitFields(params.fields.Size());
                 uint16_t fieldIndex = 0;
@@ -1627,7 +1632,7 @@ namespace he::schema
                 // then it must have come from a valid node.
                 HE_ASSERT(structDeclNode && structDeclNode->kind == AstNode::Kind::Struct);
 
-                List<Value::StructValue>::Builder list = data.InitStruct(ast.tuple.Size()); // TODO: rename to Tuple
+                List<Value::TupleValue>::Builder list = data.InitTuple(ast.tuple.Size());
                 uint16_t i = 0;
                 for (const AstTupleParam& item : ast.tuple)
                 {
@@ -1638,8 +1643,8 @@ namespace he::schema
                             Type::Reader fieldType = CreateType(child.field.type, *structDeclNode);
                             Value::Builder itemValue = CreateValue(fieldType, item.value, scope);
 
-                            Value::StructValue::Builder v = m_builder.AddStruct<Value::StructValue>();
-                            v.InitFieldName(item.name);
+                            Value::TupleValue::Builder v = m_builder.AddStruct<Value::TupleValue>();
+                            v.InitName(item.name);
                             v.SetValue(itemValue);
                             list.Set(i++, v);
                             break;

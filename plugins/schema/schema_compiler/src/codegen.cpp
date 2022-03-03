@@ -2,6 +2,8 @@
 
 #include "he/schema/codegen.h"
 
+#include "he/core/enum_ops.h"
+
 namespace he::schema
 {
     static void CacheDeclIds(Declaration::Reader decl, DeclIdMap& map);
@@ -18,7 +20,7 @@ namespace he::schema
 
     static void CacheDeclIds(Declaration::Reader decl, DeclIdMap& map)
     {
-        HE_ASSERT(decl.Id() != 0);
+        HE_ASSERT(HasFlag(decl.Id(), TypeIdFlag));
         const auto result = map.emplace(decl.Id(), decl);
         HE_UNUSED(result);
         HE_ASSERT(result.second);

@@ -124,7 +124,7 @@ namespace he::schema
             case Declaration::Data::Tag::Attribute:
                 WriteAttributeDecl(decl, scope);
                 break;
-            case Declaration::Data::Tag::Const:
+            case Declaration::Data::Tag::Constant:
                 WriteConstDecl(decl, scope);
                 break;
             case Declaration::Data::Tag::Enum:
@@ -148,8 +148,8 @@ namespace he::schema
 
     void CodeGenCpp::WriteConstDecl(Declaration::Reader decl, Declaration::Reader scope)
     {
-        HE_ASSERT(decl.Data().IsConst());
-        Declaration::Data::Const::Reader constDecl = decl.Data().Const();
+        HE_ASSERT(decl.Data().IsConstant());
+        Declaration::Data::Constant::Reader constDecl = decl.Data().Constant();
 
         m_writer.WriteIndent();
         if (decl.ParentId() != m_root.Id())
@@ -265,7 +265,7 @@ namespace he::schema
         {
             case Declaration::Data::Tag::File:
             case Declaration::Data::Tag::Attribute:
-            case Declaration::Data::Tag::Const:
+            case Declaration::Data::Tag::Constant:
             case Declaration::Data::Tag::Enum:
                 break;
             case Declaration::Data::Tag::Interface:
@@ -448,14 +448,17 @@ namespace he::schema
             m_writer.WriteLine("bool Is{}() const;", upperCamelName);
         }
 
-        Type::Reader fieldType = field.Type();
-        Type::Data::Reader fieldTypeData = fieldType.Data();
-
         if (field.Meta().IsUnion() || field.Meta().IsGroup())
         {
             m_writer.WriteLine("{0}{1} {0}() const;", upperCamelName, suffix);
+            return;
         }
-        else if (fieldTypeData.IsVoid())
+
+        Field::Meta::Normal::Reader norm = field.Meta().Normal();
+        Type::Reader fieldType = norm.Type();
+        Type::Data::Reader fieldTypeData = fieldType.Data();
+
+        if (fieldTypeData.IsVoid())
         {
             m_writer.WriteLine("bool Has{}() const;", upperCamelName, field.Meta().Normal().Index());
             m_writer.WriteLine("::he::schema::Void {}() const;", upperCamelName);
@@ -509,32 +512,28 @@ namespace he::schema
             m_writer.Write("{0}::Is{1}() const {{ return Tag() == Tag::{1}; }}\n", suffix, upperCamelName);
         }
 
-        Type::Reader fieldType = field.Type();
-        Type::Data::Reader fieldTypeData = fieldType.Data();
-
-        if (field.Meta().IsGroup())
+        if (field.Meta().IsGroup() || field.Meta().IsUnion())
         {
-            Declaration::Reader groupType = m_request.GetDecl(field.Meta().Group().TypeId());
+            TypeId groupTypeId = field.Meta().IsGroup() ? field.Meta().Group().TypeId() : field.Meta().Union().TypeId();
+            Declaration::Reader groupType = m_request.GetDecl(groupTypeId);
             m_writer.WriteIndent();
             m_writer.Write("inline ");
             WriteName(groupType, scope, {}, suffix);
             m_writer.Write(suffix);
             m_writer.Write(' ');
             WriteName(decl, scope, {}, suffix);
-            m_writer.Write("{0}::{1}() const {{ return {1}{2}(*this); }}\n", suffix, upperCamelName, suffix);
+            m_writer.Write("{}::{}() const {{ ", suffix, upperCamelName);
+            if (structDecl.IsUnion())
+                m_writer.Write("HE_ASSERT(Is{}()); ", upperCamelName);
+            m_writer.Write("return {}{}(*this); }}\n", upperCamelName, suffix);
+            return;
         }
-        else if (field.Meta().IsUnion())
-        {
-            Declaration::Reader unionType = m_request.GetDecl(field.Meta().Union().TypeId());
-            m_writer.WriteIndent();
-            m_writer.Write("inline ");
-            WriteName(unionType, scope, {}, suffix);
-            m_writer.Write(suffix);
-            m_writer.Write(' ');
-            WriteName(decl, scope, {}, suffix);
-            m_writer.Write("{0}::{1}() const {{ return {1}{2}(*this); }}\n", suffix, upperCamelName, suffix);
-        }
-        else if (fieldTypeData.IsVoid())
+
+        Field::Meta::Normal::Reader norm = field.Meta().Normal();
+        Type::Reader fieldType = norm.Type();
+        Type::Data::Reader fieldTypeData = fieldType.Data();
+
+        if (fieldTypeData.IsVoid())
         {
             m_writer.WriteIndent();
             m_writer.Write("inline bool ");
@@ -551,7 +550,6 @@ namespace he::schema
         }
         else if (IsPointer(fieldType))
         {
-            Field::Meta::Normal::Reader norm = field.Meta().Normal();
 
             m_writer.WriteIndent();
             m_writer.Write("inline bool ");
@@ -572,7 +570,7 @@ namespace he::schema
                 m_writer.Write("HE_ASSERT(Is{}()); ", upperCamelName);
 
             const bool isArray = fieldTypeData.IsArray();
-            const bool hasDefault = isReader && norm.DefaultValue().Data().IsVoid();
+            const bool hasDefault = isReader && norm.HasDefaultValue();
 
             if (isArray)
             {
@@ -592,7 +590,7 @@ namespace he::schema
                 }
                 else if (!fieldTypeData.IsString())
                 {
-                    Type::Reader t = fieldTypeData.IsList() ? fieldTypeData.List().ElementType() : field.Type();
+                    Type::Reader t = fieldTypeData.IsList() ? fieldTypeData.List().ElementType() : norm.Type();
                     if (IsPointer(t))
                         m_writer.Write("<struct ");
                     else
@@ -610,8 +608,6 @@ namespace he::schema
         }
         else
         {
-            Field::Meta::Normal::Reader norm = field.Meta().Normal();
-
             m_writer.WriteIndent();
             m_writer.Write("inline bool ");
             WriteName(decl, scope, {}, suffix);
@@ -674,7 +670,7 @@ namespace he::schema
             else if (hasDefault)
             {
                 m_writer.Write(", ");
-                WriteValue(field.Type(), decl, norm.DefaultValue());
+                WriteValue(norm.Type(), decl, norm.DefaultValue());
             }
             m_writer.Write("); }\n");
         }
@@ -685,26 +681,36 @@ namespace he::schema
         HE_ASSERT(decl.Data().IsStruct());
         Declaration::Data::Struct::Reader structDecl = decl.Data().Struct();
 
-        if (field.Meta().IsGroup() || field.Meta().IsUnion())
-            return;
-
         he::String upperCamelName(field.Name(), Allocator::GetTemp());
         upperCamelName[0] = ToUpper(upperCamelName[0]);
 
-        Type::Reader fieldType = field.Type();
+        if (field.Meta().IsGroup() || field.Meta().IsUnion())
+        {
+            if (structDecl.IsUnion())
+            {
+                TypeId groupTypeId = field.Meta().IsGroup() ? field.Meta().Group().TypeId() : field.Meta().Union().TypeId();
+                Declaration::Reader groupType = m_request.GetDecl(groupTypeId);
+                m_writer.WriteIndent();
+                WriteName(groupType, decl, {}, BuilderSuffix);
+                m_writer.Write(BuilderSuffix);
+                m_writer.Write(' ');
+                m_writer.Write("Init{}();\n", upperCamelName);
+            }
+            return;
+        }
+
+        Field::Meta::Normal::Reader norm = field.Meta().Normal();
+        Type::Reader fieldType = norm.Type();
         Type::Data::Reader fieldTypeData = fieldType.Data();
         const bool fieldIsPointer = IsPointer(fieldType);
 
         m_writer.WriteIndent();
         m_writer.Write("void Set{}(", upperCamelName);
-        if (fieldIsPointer)
-            m_writer.Write("const ");
-        WriteType(field.Type(), decl, ReaderSuffix);
-        if (fieldIsPointer)
-            m_writer.Write("&");
-        m_writer.Write(" value");
-        if (fieldTypeData.IsVoid())
-            m_writer.Write(" = {}");
+        if (!fieldTypeData.IsVoid())
+        {
+            WriteType(fieldType, decl, ReaderSuffix);
+            m_writer.Write(" value");
+        }
         m_writer.Write(");\n");
 
         if (fieldIsPointer)
@@ -728,39 +734,59 @@ namespace he::schema
         HE_ASSERT(decl.Data().IsStruct());
         Declaration::Data::Struct::Reader structDecl = decl.Data().Struct();
 
-        if (field.Meta().IsGroup() || field.Meta().IsUnion())
-            return;
-
         he::String upperCamelName(field.Name(), Allocator::GetTemp());
         upperCamelName[0] = ToUpper(upperCamelName[0]);
 
-        Type::Reader fieldType = field.Type();
-        Type::Data::Reader fieldTypeData = fieldType.Data();
+        if (field.Meta().IsGroup() || field.Meta().IsUnion())
+        {
+            if (structDecl.IsUnion())
+            {
+                TypeId groupTypeId = field.Meta().IsGroup() ? field.Meta().Group().TypeId() : field.Meta().Union().TypeId();
+                Declaration::Reader groupType = m_request.GetDecl(groupTypeId);
+                m_writer.WriteIndent();
+                m_writer.Write("inline ");
+                WriteName(groupType, scope, {}, BuilderSuffix);
+                m_writer.Write(BuilderSuffix);
+                m_writer.Write(' ');
+                WriteName(decl, scope, {}, BuilderSuffix);
+                m_writer.Write("::Builder::Init{0}() {{ SetTag(Tag::{0}); ", upperCamelName);
+                if (field.Meta().IsGroup())
+                {
+                    m_writer.Write("/* TODO: clear group fields */ ");
+                }
+                m_writer.Write("return {}{}(*this); }}\n", upperCamelName, BuilderSuffix);
+            }
+            return;
+        }
+
         Field::Meta::Normal::Reader norm = field.Meta().Normal();
+        Type::Reader fieldType = norm.Type();
+        Type::Data::Reader fieldTypeData = fieldType.Data();
         const bool fieldIsPointer = IsPointer(fieldType);
 
         m_writer.WriteIndent();
         m_writer.Write("inline void ");
         WriteName(decl, scope, {}, BuilderSuffix);
         m_writer.Write("::Builder::Set{}(", upperCamelName);
-        if (fieldIsPointer)
-            m_writer.Write("const ");
-        WriteType(fieldType, scope, ReaderSuffix);
-        if (fieldIsPointer)
-            m_writer.Write("&");
-        m_writer.Write(" value) { ");
+        if (!fieldTypeData.IsVoid())
+        {
+            WriteType(fieldType, scope, ReaderSuffix);
+            m_writer.Write(" value");
+        }
+        m_writer.Write(") { ");
         if (structDecl.IsUnion())
             m_writer.Write("SetTag(Tag::{}); ", upperCamelName);
         if (fieldIsPointer)
         {
-            m_writer.Write("SuperType::GetPointerField({}).Set(value); }}\n", norm.Index());
+            m_writer.Write("SuperType::GetPointerField({}).Set(value); ", norm.Index());
         }
-        else
+        else if (!fieldTypeData.IsVoid())
         {
             m_writer.Write("SuperType::SetDataField<{}", fieldTypeData.IsEnum() ? "enum " : "");
             WriteType(fieldType, scope, nullptr);
-            m_writer.Write(">({}, {}, value); }}\n", norm.Index(), norm.DataOffset());
+            m_writer.Write(">({}, {}, value); ", norm.Index(), norm.DataOffset());
         }
+        m_writer.Write("}\n");
 
         if (fieldIsPointer)
         {
@@ -789,7 +815,7 @@ namespace he::schema
             }
             else if (!fieldTypeData.IsString())
             {
-                Type::Reader t = fieldTypeData.IsList() ? fieldTypeData.List().ElementType() : field.Type();
+                Type::Reader t = fieldTypeData.IsList() ? fieldTypeData.List().ElementType() : fieldType;
                 if (IsPointer(t))
                     m_writer.Write("<struct ");
                 else
@@ -833,41 +859,10 @@ namespace he::schema
         return true;
     }
 
-    static void CountDataFields(Declaration::Reader decl, const CodeGenRequest& req, uint16_t& count)
-    {
-        HE_ASSERT(decl.Data().IsStruct());
-        Declaration::Data::Struct::Reader structDecl = decl.Data().Struct();
-
-        for (Field::Reader f : structDecl.Fields())
-        {
-            if (f.Meta().IsGroup())
-            {
-                Declaration::Reader child = req.GetDecl(f.Meta().Group().TypeId());
-                CountDataFields(child, req, count);
-            }
-            else if (f.Meta().IsUnion())
-            {
-                Declaration::Reader child = req.GetDecl(f.Meta().Union().TypeId());
-                CountDataFields(child, req, count);
-            }
-            else if (!IsPointer(f.Type()))
-            {
-                ++count;
-            }
-        }
-    }
-
-    static uint16_t CountDataFields(Declaration::Reader decl, const CodeGenRequest& req)
-    {
-        uint16_t count = 0;
-        CountDataFields(decl, req, count);
-        return count;
-    }
-
     void CodeGenCpp::WriteDeclInfo(Declaration::Reader decl)
     {
         const bool isStruct = decl.Data().IsStruct();
-        const uint16_t dataFieldCount = isStruct ? CountDataFields(decl, m_request) : 0;
+        const uint16_t dataFieldCount = isStruct ? decl.Data().Struct().DataFieldCount() : 0;
         const uint16_t dataWordSize = isStruct ? decl.Data().Struct().DataWordSize() : 0;
         const uint16_t pointerCount = isStruct ? decl.Data().Struct().PointerCount() : 0;
 
@@ -1115,7 +1110,7 @@ namespace he::schema
                 }
                 break;
             }
-            case Value::Data::Tag::Struct:
+            case Value::Data::Tag::Tuple:
             {
                 HE_ASSERT(type.Data().IsStruct());
                 //const Type::Data::Struct::Reader structType = type.Data().Struct();
@@ -1125,26 +1120,29 @@ namespace he::schema
                 //const Declaration::Data::Struct::Reader structDecl = decl.Data().Struct();
                 //const List<Field>::Reader fields = structDecl.Fields();
 
-                //const List<Value::StructValue>::Reader structValue = value.Data().Struct();
+                //const List<Value::TupleValue>::Reader tupleValue = value.Data().Tuple();
 
                 //m_writer.Write("{ ");
-                //for (uint32_t i = 0; i < structValue.Size(); ++i)
+                //for (uint32_t i = 0; i < tupleValue.Size(); ++i)
                 //{
-                //    const Value::StructValue::Reader v = structValue[i];
+                //    const Value::TupleValue::Reader v = tupleValue[i];
                 //    uint32_t fieldIndex = ~0u;
                 //    for (uint32_t j = 0; j < fields.Size(); ++j)
                 //    {
-                //        if (fields[j].Name() == v.FieldName())
+                //        if (fields[j].Name() == v.Name())
                 //        {
                 //            fieldIndex = j;
                 //            break;
                 //        }
                 //    }
                 //    HE_ASSERT(fieldIndex != ~0u);
-                //    m_writer.Write("{} = ", v.FieldName().AsView());
-                //    WriteValue(fields[fieldIndex].Type(), scope, v.Value());
+                //    m_writer.Write("{} = ", v.Name().AsView());
 
-                //    if (i != (structValue.Size() - 1))
+                //    Field::Reader field = fields[fieldIndex];
+                //    Field::Meta::Normal::Reader norm = field.Meta().Normal();
+                //    WriteValue(norm.Type(), scope, v.Value());
+
+                //    if (i != (tupleValue.Size() - 1))
                 //        m_writer.Write(", ");
                 //}
                 //m_writer.Write(" }");
@@ -1181,3 +1179,4 @@ namespace he::schema
         return true;
     }
 }
+;

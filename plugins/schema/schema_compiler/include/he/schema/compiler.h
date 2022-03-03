@@ -27,7 +27,7 @@ namespace he::schema
         };
 
     public:
-        Compiler(AstFile& ast, Span<const Compiler> includes);
+        Compiler(AstFile& ast, const char* fileName, Span<const Compiler> includes);
 
         bool Compile();
 
@@ -132,6 +132,7 @@ namespace he::schema
 
     private:
         AstFile& m_ast;
+        const char* m_fileName;
         Span<const Compiler> m_includes;
 
         Builder m_builder;

@@ -33,7 +33,7 @@ namespace he::schema
 
     bool CodeGenCpp::Generate()
     {
-        m_writer.Reserve(8192);
+        m_writer.Reserve(16384); // 16 KB
 
         GenHeader();
         if (!FlushToFile(".hsc.h"))

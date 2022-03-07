@@ -9,6 +9,7 @@
 #include "he/schema/types.h"
 
 HE_SCHEMA_DECL_INFO(0x979e892c449bc4d8, 0x0000000000000000, File, 0, 0, 0); // file
+HE_SCHEMA_DECL_INFO(0xcab85c015b3a6f05, 0x979e892c449bc4d8, Attribute, 0, 0, 0); // TomlAsHex
 HE_SCHEMA_DECL_INFO(0xa66eff5acba76a75, 0x979e892c449bc4d8, Struct, 0, 0, 1); // Brand
 HE_SCHEMA_DECL_INFO(0xac8f534465c8369b, 0xa66eff5acba76a75, Struct, 1, 2, 1); // Brand::Scope
 HE_SCHEMA_DECL_INFO(0xdd2b0f1a9d06a3b0, 0x979e892c449bc4d8, Struct, 6, 3, 1); // Type
@@ -46,6 +47,7 @@ namespace he::schema
     // ---------------------------------------------------------------------------------------------
     // Type Declarations
 
+    struct TomlAsHex { using DeclInfo = ::he::schema::DeclInfo<0xcab85c015b3a6f05>; };
     struct Brand final
     {
         Brand() = delete;

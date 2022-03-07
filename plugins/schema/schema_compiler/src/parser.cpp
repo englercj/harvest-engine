@@ -620,28 +620,29 @@ namespace he::schema
                 break;
             }
 
-            if (!Expect(Lexer::TokenType::Identifier))
+            StringView kw;
+            if (!ConsumeIdentifier(kw))
                 return false;
 
-            if (m_token.text == KW_Attribute)
+            if (kw == KW_Attribute)
                 node->attribute.targetsAttribute = true;
-            else if (m_token.text == KW_Const)
+            else if (kw == KW_Const)
                 node->attribute.targetsConstant= true;
-            else if (m_token.text == KW_Enum)
+            else if (kw == KW_Enum)
                 node->attribute.targetsEnum = true;
-            else if (m_token.text == KW_Enumerator)
+            else if (kw == KW_Enumerator)
                 node->attribute.targetsEnumerator = true;
-            else if (m_token.text == KW_Field)
+            else if (kw == KW_Field)
                 node->attribute.targetsField = true;
-            else if (m_token.text == KW_File)
+            else if (kw == KW_File)
                 node->attribute.targetsFile = true;
-            else if (m_token.text == KW_Interface)
+            else if (kw == KW_Interface)
                 node->attribute.targetsInterface = true;
-            else if (m_token.text == KW_Method)
+            else if (kw == KW_Method)
                 node->attribute.targetsMethod = true;
-            else if (m_token.text == KW_Parameter)
+            else if (kw == KW_Parameter)
                 node->attribute.targetsParameter = true;
-            else if (m_token.text == KW_Struct)
+            else if (kw == KW_Struct)
                 node->attribute.targetsStruct = true;
             else
             {

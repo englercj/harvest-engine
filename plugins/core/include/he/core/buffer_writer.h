@@ -143,7 +143,7 @@ namespace he
         /// allocator that the buffer was constructed with.
         ///
         /// After calling this method the buffer is reset to a valid empty state and can be
-        /// used again, which creates a new allocation of memory.
+        /// used again, which will create a new allocation of memory.
         ///
         /// \return The buffer's allocated memory.
         uint8_t* Release();
@@ -159,15 +159,6 @@ namespace he
         /// Sets the size of the buffer to zero.
         /// Does not affect memory allocation.
         void Clear();
-
-        /// Copies a trivially copyable type into the buffer.
-        ///
-        /// \note This is the same as \ref Write(const T&), this alias exists for generic
-        /// programming that expects the interface of a container.
-        ///
-        /// \param[in] value The value to copy.
-        template <typename T> requires(std::is_trivially_copyable_v<T>)
-        void PushBack(const T& value) { Write(&value, sizeof(T)); }
 
         /// Copies `len` bytes from `data` into the buffer.
         ///

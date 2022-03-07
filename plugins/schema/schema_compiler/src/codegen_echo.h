@@ -2,14 +2,14 @@
 
 #pragma once
 
+#include "he/core/string_builder.h"
 #include "he/core/types.h"
 #include "he/schema/codegen.h"
-#include "he/schema/code_writer.h"
 #include "he/schema/schema.h"
 
 namespace he::schema
 {
-    class CodeGenEcho
+    class CodeGenEcho : private SchemaVisitor
     {
     public:
         CodeGenEcho(const CodeGenRequest& request);
@@ -17,16 +17,26 @@ namespace he::schema
         bool Generate();
 
     private:
-        void WriteDecl(Declaration::Reader decl, Declaration::Reader scope);
-        void WriteAttributeDecl(Declaration::Reader decl, Declaration::Reader scope);
-        void WriteConstDecl(Declaration::Reader decl, Declaration::Reader scope);
-        void WriteEnumDecl(Declaration::Reader decl, Declaration::Reader scope);
-        void WriteInterfaceDecl(Declaration::Reader decl, Declaration::Reader scope);
-        void WriteStructDecl(Declaration::Reader decl, Declaration::Reader scope);
+        bool VisitFile(Declaration::Reader decl) override;
+        bool VisitAttribute(Declaration::Reader decl, Declaration::Reader scope) override;
+        bool VisitConstant(Declaration::Reader decl, Declaration::Reader scope) override;
 
+        bool VisitEnum(Declaration::Reader decl, Declaration::Reader scope) override;
+        bool VisitEnumerator(Enumerator::Reader enumerator, Declaration::Reader scope) override;
+
+        bool VisitInterface(Declaration::Reader decl, Declaration::Reader scope) override;
+        bool VisitMethod(Method::Reader method, Declaration::Reader scope) override;
+
+        bool VisitStruct(Declaration::Reader decl, Declaration::Reader scope) override;
+        bool VisitNormalField(Field::Reader field, Declaration::Reader scope) override;
+        bool VisitGroupField(Field::Reader field, Declaration::Reader scope) override;
+        bool VisitUnionField(Field::Reader field, Declaration::Reader scope) override;
+
+    private:
         void WriteAttribute(Attribute::Reader attribute, Declaration::Reader scope);
         void WriteAttributes(List<Attribute>::Reader attributes, Declaration::Reader scope);
         void WriteField(Field::Reader field, Declaration::Reader scope);
+        bool WriteGroupOrUnionField(Field::Reader field, Declaration::Reader scope);
         void WriteName(Declaration::Reader decl, Declaration::Reader scope, Brand::Reader brand);
         void WriteTuple(Declaration::Reader decl);
         void WriteTypeParams(List<String>::Reader typeParams);
@@ -35,6 +45,6 @@ namespace he::schema
 
     private:
         const CodeGenRequest& m_request;
-        CodeWriter m_writer;
+        StringBuilder m_writer;
     };
 }

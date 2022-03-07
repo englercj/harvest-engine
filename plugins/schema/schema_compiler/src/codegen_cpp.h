@@ -2,11 +2,11 @@
 
 #pragma once
 
+#include "he/core/string_builder.h"
 #include "he/core/string.h"
 #include "he/core/string_view.h"
 #include "he/core/types.h"
 #include "he/schema/codegen.h"
-#include "he/schema/code_writer.h"
 #include "he/schema/schema.h"
 
 #include <unordered_map>
@@ -59,7 +59,7 @@ namespace he::schema
     private:
         const CodeGenRequest& m_request;
         Declaration::Reader m_root;
-        CodeWriter m_writer{};
+        StringBuilder m_writer{};
         he::String m_namespaceName{};
     };
 }

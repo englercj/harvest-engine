@@ -998,7 +998,7 @@ namespace he::schema
     void Compiler::CompileAttribute(const AstNode& node, Declaration::Builder decl)
     {
         Declaration::Data::Attribute::Builder data = decl.Data().InitAttribute();
-        data.SetType(CreateType(node.attribute.type, node));
+        data.SetType(CreateType(node.attribute.type, *node.parent));
         data.SetTargetsAttribute(node.attribute.targetsAttribute);
         data.SetTargetsConstant(node.attribute.targetsConstant);
         data.SetTargetsEnum(node.attribute.targetsEnum);

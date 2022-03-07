@@ -4,6 +4,8 @@
 
 namespace he.schema;
 
+attribute TomlAsHex(field) :void;
+
 struct Brand
 {
     struct Scope

@@ -16,7 +16,6 @@ namespace he
             case schema::AstExpression::Kind::Blob: return "Blob";
             case schema::AstExpression::Kind::Float: return "Float";
             case schema::AstExpression::Kind::Generic: return "Generic";
-            case schema::AstExpression::Kind::Import: return "Import";
             case schema::AstExpression::Kind::List: return "List";
             case schema::AstExpression::Kind::Identifier: return "Identifier";
             case schema::AstExpression::Kind::Namespace: return "Namespace";

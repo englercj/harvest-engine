@@ -2,12 +2,13 @@
 
 #pragma once
 
+#include "lexer.h"
+
 #include "he/core/span.h"
 #include "he/core/string.h"
 #include "he/core/string_view.h"
 #include "he/core/vector.h"
 #include "he/schema/ast.h"
-#include "he/schema/lexer.h"
 
 #include "fmt/core.h"
 
@@ -19,19 +20,7 @@ namespace he::schema
     class Parser
     {
     public:
-        struct ErrorInfo
-        {
-            he::String message;
-            uint32_t line;
-            uint32_t column;
-        };
-
-    public:
-        Parser(Lexer& lexer);
-
-        bool Parse();
-
-        Span<const ErrorInfo> Errors() const { return m_errors; }
+        bool Parse(const char* src, class CompileContext& ctx);
 
         AstFile& Ast() { return m_ast; }
         const AstFile& Ast() const { return m_ast; }
@@ -104,10 +93,10 @@ namespace he::schema
         static DeclParser TopLevelParsers[];
 
     private:
-        Lexer& m_lexer;
-        Lexer::Token m_token;
-        AstFile m_ast;
+        class CompileContext* m_context{ nullptr };
+        Lexer m_lexer{};
 
-        Vector<ErrorInfo> m_errors;
+        Lexer::Token m_token{};
+        AstFile m_ast{};
     };
 }

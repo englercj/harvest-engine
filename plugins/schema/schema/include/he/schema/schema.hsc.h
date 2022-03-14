@@ -34,13 +34,13 @@ HE_SCHEMA_DECL_INFO(0x9fc1b8877a1fdd29, 0x979e892c449bc4d8, Struct, 4, 4, 3); //
 HE_SCHEMA_DECL_INFO(0xa045f0dd3245ab5d, 0x979e892c449bc4d8, Struct, 2, 2, 2); // SourceInfo
 HE_SCHEMA_DECL_INFO(0xd6eb382ff8ab299c, 0x979e892c449bc4d8, Struct, 20, 5, 7); // Declaration
 HE_SCHEMA_DECL_INFO(0xc991ea09a07196a4, 0xd6eb382ff8ab299c, Struct, 0, 0, 0); // Declaration::Data
+HE_SCHEMA_DECL_INFO(0x9daade8d780913d2, 0xc991ea09a07196a4, Struct, 20, 5, 7); // Declaration::Data::File
 HE_SCHEMA_DECL_INFO(0xaee6bea627f2e404, 0xc991ea09a07196a4, Struct, 20, 5, 7); // Declaration::Data::Attribute
 HE_SCHEMA_DECL_INFO(0xea1ead965998efd0, 0xc991ea09a07196a4, Struct, 20, 5, 7); // Declaration::Data::Constant
 HE_SCHEMA_DECL_INFO(0xb1105982b244c8c1, 0xc991ea09a07196a4, Struct, 20, 5, 7); // Declaration::Data::Enum
 HE_SCHEMA_DECL_INFO(0x96db68a0fd0a0577, 0xc991ea09a07196a4, Struct, 20, 5, 7); // Declaration::Data::Interface
 HE_SCHEMA_DECL_INFO(0xe4d7f374357efe15, 0xc991ea09a07196a4, Struct, 20, 5, 7); // Declaration::Data::Struct
-HE_SCHEMA_DECL_INFO(0x9f4db73ca2259085, 0x979e892c449bc4d8, Struct, 0, 0, 2); // Import
-HE_SCHEMA_DECL_INFO(0x8a8a83386362f90d, 0x979e892c449bc4d8, Struct, 0, 0, 2); // SchemaFile
+HE_SCHEMA_DECL_INFO(0x8a8a83386362f90d, 0x979e892c449bc4d8, Struct, 0, 0, 1); // SchemaFile
 
 namespace he::schema
 {
@@ -306,6 +306,15 @@ namespace he::schema
             class Reader;
             class Builder;
 
+            struct File final
+            {
+                File() = delete;
+                using DeclInfo = ::he::schema::DeclInfo<0x9daade8d780913d2>;
+
+                class Reader;
+                class Builder;
+            };
+
             struct Attribute final
             {
                 Attribute() = delete;
@@ -360,14 +369,6 @@ namespace he::schema
                 Struct = 5,
             };
         };
-    };
-    struct Import final
-    {
-        Import() = delete;
-        using DeclInfo = ::he::schema::DeclInfo<0x9f4db73ca2259085>;
-
-        class Reader;
-        class Builder;
     };
     struct SchemaFile final
     {
@@ -1466,6 +1467,30 @@ namespace he::schema
         uint32_t Column() const;
         void SetColumn(uint32_t value);
     };
+    class Declaration::Data::File::Reader final : public ::he::schema::StructReader
+    {
+    public:
+        using StructType = Declaration::Data::File;
+        using SuperType = ::he::schema::StructReader;
+
+        bool HasImports() const;
+        ::he::schema::List<::he::schema::String>::Reader Imports() const;
+
+    };
+    class Declaration::Data::File::Builder final : public ::he::schema::StructBuilder
+    {
+    public:
+        using StructType = Declaration::Data::File;
+        using SuperType = ::he::schema::StructBuilder;
+
+        StructType::Reader AsReader() const { return StructType::Reader(SuperType::AsReader()); }
+        operator StructType::Reader() const { return AsReader(); }
+
+        bool HasImports() const;
+        ::he::schema::List<::he::schema::String>::Builder Imports() const;
+        void SetImports(::he::schema::List<::he::schema::String>::Reader value);
+        ::he::schema::List<::he::schema::String>::Builder InitImports(uint32_t size);
+    };
     class Declaration::Data::Attribute::Reader final : public ::he::schema::StructReader
     {
     public:
@@ -1737,8 +1762,7 @@ namespace he::schema
         Tag Tag() const { return SuperType::GetDataField<enum Tag>(8); }
 
         bool IsFile() const;
-        bool HasFile() const;
-        ::he::schema::Void File() const;
+        File::Reader File() const;
 
         bool IsAttribute() const;
         Attribute::Reader Attribute() const;
@@ -1770,9 +1794,8 @@ namespace he::schema
         void SetTag(enum Tag t) { return SuperType::SetDataField(8, t); }
 
         bool IsFile() const;
-        bool HasFile() const;
-        ::he::schema::Void File() const;
-        void SetFile();
+        File::Builder File() const;
+        File::Builder InitFile();
 
         bool IsAttribute() const;
         Attribute::Builder Attribute() const;
@@ -1868,38 +1891,6 @@ namespace he::schema
 
         Data::Builder Data() const;
     };
-    class Import::Reader final : public ::he::schema::StructReader
-    {
-    public:
-        using StructType = Import;
-        using SuperType = ::he::schema::StructReader;
-
-        bool HasPath() const;
-        ::he::schema::String::Reader Path() const;
-
-        bool HasSchema() const;
-        SchemaFile::Reader Schema() const;
-
-    };
-    class Import::Builder final : public ::he::schema::StructBuilder
-    {
-    public:
-        using StructType = Import;
-        using SuperType = ::he::schema::StructBuilder;
-
-        StructType::Reader AsReader() const { return StructType::Reader(SuperType::AsReader()); }
-        operator StructType::Reader() const { return AsReader(); }
-
-        bool HasPath() const;
-        ::he::schema::String::Builder Path() const;
-        void SetPath(::he::schema::String::Reader value);
-        ::he::schema::String::Builder InitPath(::he::StringView str);
-
-        bool HasSchema() const;
-        SchemaFile::Builder Schema() const;
-        void SetSchema(SchemaFile::Reader value);
-        SchemaFile::Builder InitSchema();
-    };
     class SchemaFile::Reader final : public ::he::schema::StructReader
     {
     public:
@@ -1908,9 +1899,6 @@ namespace he::schema
 
         bool HasRoot() const;
         Declaration::Reader Root() const;
-
-        bool HasImports() const;
-        ::he::schema::List<Import>::Reader Imports() const;
 
     };
     class SchemaFile::Builder final : public ::he::schema::StructBuilder
@@ -1926,11 +1914,6 @@ namespace he::schema
         Declaration::Builder Root() const;
         void SetRoot(Declaration::Reader value);
         Declaration::Builder InitRoot();
-
-        bool HasImports() const;
-        ::he::schema::List<Import>::Builder Imports() const;
-        void SetImports(::he::schema::List<Import>::Reader value);
-        ::he::schema::List<Import>::Builder InitImports(uint32_t size);
     };
 
     // ---------------------------------------------------------------------------------------------
@@ -2651,6 +2634,14 @@ namespace he::schema
     inline uint32_t SourceInfo::Builder::Column() const { return SuperType::TryGetDataField<uint32_t>(1, 1); }
     inline void SourceInfo::Builder::SetColumn(uint32_t value) { SuperType::SetDataField<uint32_t>(1, 1, value); }
 
+    inline bool Declaration::Data::File::Reader::HasImports() const { return SuperType::HasPointerField(5); }
+    inline ::he::schema::List<::he::schema::String>::Reader Declaration::Data::File::Reader::Imports() const { return SuperType::GetPointerField(5).TryGetList<struct ::he::schema::String>(); }
+
+    inline bool Declaration::Data::File::Builder::HasImports() const { return SuperType::HasPointerField(5); }
+    inline ::he::schema::List<::he::schema::String>::Builder Declaration::Data::File::Builder::Imports() const { return SuperType::GetPointerField(5).TryGetList<struct ::he::schema::String>(); }
+    inline void Declaration::Data::File::Builder::SetImports(::he::schema::List<::he::schema::String>::Reader value) { SuperType::GetPointerField(5).Set(value); }
+    inline ::he::schema::List<::he::schema::String>::Builder Declaration::Data::File::Builder::InitImports(uint32_t size) { auto v = m_builder->AddList<struct ::he::schema::String>(size); SuperType::GetPointerField(5).Set(v); return v; }
+
     inline bool Declaration::Data::Attribute::Reader::HasType() const { return SuperType::HasPointerField(5); }
     inline Type::Reader Declaration::Data::Attribute::Reader::Type() const { return SuperType::GetPointerField(5).TryGetStruct<struct Type>(); }
 
@@ -2834,8 +2825,7 @@ namespace he::schema
     inline ::he::schema::List<Field>::Builder Declaration::Data::Struct::Builder::InitFields(uint32_t size) { auto v = m_builder->AddList<struct Field>(size); SuperType::GetPointerField(5).Set(v); return v; }
 
     inline bool Declaration::Data::Reader::IsFile() const { return Tag() == Tag::File; }
-    inline bool Declaration::Data::Reader::HasFile() const { return false; }
-    inline ::he::schema::Void Declaration::Data::Reader::File() const { HE_ASSERT(IsFile()); return {}; }
+    inline Declaration::Data::File::Reader Declaration::Data::Reader::File() const { HE_ASSERT(IsFile()); return File::Reader(*this); }
 
     inline bool Declaration::Data::Reader::IsAttribute() const { return Tag() == Tag::Attribute; }
     inline Declaration::Data::Attribute::Reader Declaration::Data::Reader::Attribute() const { HE_ASSERT(IsAttribute()); return Attribute::Reader(*this); }
@@ -2853,9 +2843,8 @@ namespace he::schema
     inline Declaration::Data::Struct::Reader Declaration::Data::Reader::Struct() const { HE_ASSERT(IsStruct()); return Struct::Reader(*this); }
 
     inline bool Declaration::Data::Builder::IsFile() const { return Tag() == Tag::File; }
-    inline bool Declaration::Data::Builder::HasFile() const { return false; }
-    inline ::he::schema::Void Declaration::Data::Builder::File() const { HE_ASSERT(IsFile()); return {}; }
-    inline void Declaration::Data::Builder::SetFile() { SetTag(Tag::File); }
+    inline Declaration::Data::File::Builder Declaration::Data::Builder::File() const { HE_ASSERT(IsFile()); return File::Builder(*this); }
+    inline Declaration::Data::File::Builder Declaration::Data::Builder::InitFile() { SetTag(Tag::File); /* TODO: clear group fields */ return File::Builder(*this); }
 
     inline bool Declaration::Data::Builder::IsAttribute() const { return Tag() == Tag::Attribute; }
     inline Declaration::Data::Attribute::Builder Declaration::Data::Builder::Attribute() const { HE_ASSERT(IsAttribute()); return Attribute::Builder(*this); }
@@ -2935,36 +2924,12 @@ namespace he::schema
 
     inline Declaration::Data::Builder Declaration::Builder::Data() const { return Data::Builder(*this); }
 
-    inline bool Import::Reader::HasPath() const { return SuperType::HasPointerField(0); }
-    inline ::he::schema::String::Reader Import::Reader::Path() const { return SuperType::GetPointerField(0).TryGetString(); }
-
-    inline bool Import::Reader::HasSchema() const { return SuperType::HasPointerField(1); }
-    inline SchemaFile::Reader Import::Reader::Schema() const { return SuperType::GetPointerField(1).TryGetStruct<struct SchemaFile>(); }
-
-    inline bool Import::Builder::HasPath() const { return SuperType::HasPointerField(0); }
-    inline ::he::schema::String::Builder Import::Builder::Path() const { return SuperType::GetPointerField(0).TryGetString(); }
-    inline void Import::Builder::SetPath(::he::schema::String::Reader value) { SuperType::GetPointerField(0).Set(value); }
-    inline ::he::schema::String::Builder Import::Builder::InitPath(::he::StringView str) { auto v = m_builder->AddString(str); SuperType::GetPointerField(0).Set(v); return v; }
-
-    inline bool Import::Builder::HasSchema() const { return SuperType::HasPointerField(1); }
-    inline SchemaFile::Builder Import::Builder::Schema() const { return SuperType::GetPointerField(1).TryGetStruct<struct SchemaFile>(); }
-    inline void Import::Builder::SetSchema(SchemaFile::Reader value) { SuperType::GetPointerField(1).Set(value); }
-    inline SchemaFile::Builder Import::Builder::InitSchema() { auto v = m_builder->AddStruct<struct SchemaFile>(); SuperType::GetPointerField(1).Set(v); return v; }
-
     inline bool SchemaFile::Reader::HasRoot() const { return SuperType::HasPointerField(0); }
     inline Declaration::Reader SchemaFile::Reader::Root() const { return SuperType::GetPointerField(0).TryGetStruct<struct Declaration>(); }
-
-    inline bool SchemaFile::Reader::HasImports() const { return SuperType::HasPointerField(1); }
-    inline ::he::schema::List<Import>::Reader SchemaFile::Reader::Imports() const { return SuperType::GetPointerField(1).TryGetList<struct Import>(); }
 
     inline bool SchemaFile::Builder::HasRoot() const { return SuperType::HasPointerField(0); }
     inline Declaration::Builder SchemaFile::Builder::Root() const { return SuperType::GetPointerField(0).TryGetStruct<struct Declaration>(); }
     inline void SchemaFile::Builder::SetRoot(Declaration::Reader value) { SuperType::GetPointerField(0).Set(value); }
     inline Declaration::Builder SchemaFile::Builder::InitRoot() { auto v = m_builder->AddStruct<struct Declaration>(); SuperType::GetPointerField(0).Set(v); return v; }
-
-    inline bool SchemaFile::Builder::HasImports() const { return SuperType::HasPointerField(1); }
-    inline ::he::schema::List<Import>::Builder SchemaFile::Builder::Imports() const { return SuperType::GetPointerField(1).TryGetList<struct Import>(); }
-    inline void SchemaFile::Builder::SetImports(::he::schema::List<Import>::Reader value) { SuperType::GetPointerField(1).Set(value); }
-    inline ::he::schema::List<Import>::Builder SchemaFile::Builder::InitImports(uint32_t size) { auto v = m_builder->AddList<struct Import>(size); SuperType::GetPointerField(1).Set(v); return v; }
 }
 

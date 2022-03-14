@@ -1,6 +1,6 @@
 // Copyright Chad Engler
 
-#include "he/schema/lexer.h"
+#include "lexer.h"
 
 #include "he/core/ascii.h"
 #include "he/core/assert.h"

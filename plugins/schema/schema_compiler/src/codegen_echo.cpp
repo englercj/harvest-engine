@@ -20,14 +20,16 @@ namespace he::schema
     {
         m_writer.Reserve(8192); // 8 KB
 
-        Declaration::Reader root = m_request.schema.Root();
+        Declaration::Reader root = m_request.schemaFile.Root();
 
-        m_writer.WriteLine("// {}", root.Source().File().AsView());
+        if (root.HasSource())
+            m_writer.WriteLine("// {}", root.Source().File().AsView());
+
         m_writer.WriteLine(HE_ID_FMT ";", root.Id());
 
-        for (Import::Reader im : m_request.schema.Imports())
+        for (String::Reader importStr : root.Data().File().Imports())
         {
-            m_writer.WriteLine("import \"{}\";", im.Path().AsView());
+            m_writer.WriteLine("import \"{}\";", importStr.AsView());
         }
 
         Visit(root);
@@ -356,11 +358,14 @@ namespace he::schema
 
     void CodeGenEcho::WriteName(Declaration::Reader decl, Declaration::Reader scope, Brand::Reader brand)
     {
-        if (decl.ParentId() != scope.Id() && decl.ParentId() != scope.ParentId() && decl.ParentId() != m_request.schema.Root().Id())
+        if (decl.ParentId() != scope.Id() && decl.ParentId() != scope.ParentId())
         {
             Declaration::Reader parent = m_request.GetDecl(decl.ParentId());
-            WriteName(parent, scope, brand);
-            m_writer.Write('.');
+            if (!parent.Data().IsFile())
+            {
+                WriteName(parent, scope, brand);
+                m_writer.Write('.');
+            }
         }
 
         m_writer.Write(decl.Name());

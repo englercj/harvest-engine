@@ -1,11 +1,15 @@
 // Copyright Chad Engler
 
-#include "he/schema/parser.h"
+#include "parser.h"
+
+#include "compile_context.h"
+#include "keywords.h"
 
 #include "he/core/appender.h"
 #include "he/core/ascii.h"
 #include "he/core/assert.h"
 #include "he/core/enum_fmt.h"
+#include "he/core/hash.h"
 #include "he/core/path.h"
 #include "he/core/random.h"
 #include "he/core/span.h"
@@ -14,6 +18,7 @@
 #include "he/core/string_view.h"
 #include "he/core/string_view_fmt.h"
 #include "he/core/utils.h"
+#include "he/schema/schema.h"
 
 #include "fmt/core.h"
 
@@ -21,24 +26,6 @@
 
 namespace he::schema
 {
-    constexpr StringView KW_Alias = "alias";
-    constexpr StringView KW_Attribute = "attribute";
-    constexpr StringView KW_Const = "const";
-    constexpr StringView KW_Enum = "enum";
-    constexpr StringView KW_Enumerator = "enumerator";
-    constexpr StringView KW_Extends = "extends";
-    constexpr StringView KW_Field = "field";
-    constexpr StringView KW_File = "file";
-    constexpr StringView KW_Group = "group";
-    constexpr StringView KW_Import = "import";
-    constexpr StringView KW_Interface = "interface";
-    constexpr StringView KW_Method = "method";
-    constexpr StringView KW_Namespace = "namespace";
-    constexpr StringView KW_Parameter = "parameter";
-    constexpr StringView KW_Stream = "stream";
-    constexpr StringView KW_Struct = "struct";
-    constexpr StringView KW_Union = "union";
-
     Parser::DeclParser Parser::InterfaceMemberParsers[] =
     {
         { KW_Alias, &Parser::ConsumeAliasDecl },
@@ -69,12 +56,11 @@ namespace he::schema
         { KW_Struct, &Parser::ConsumeStructDecl },
     };
 
-    Parser::Parser(Lexer& lexer)
-        : m_lexer(lexer)
-    {}
-
-    bool Parser::Parse()
+    bool Parser::Parse(const char* src, CompileContext& ctx)
     {
+        m_context = &ctx;
+        m_lexer.Reset(src);
+
         if (!NextDecl())
             return false;
 
@@ -91,8 +77,7 @@ namespace he::schema
             HE_UNUSED(idResult);
 
             id |= TypeIdFlag;
-            AddError("Unexpected token {}, expected file unique ID. Add this line to your file: @{:#018x};",
-                m_token.type, id);
+            AddError("The first non-comment line of a schema file must be the file's unique ID. Add this line to the top of your file: @{:#018x};", id);
             return false;
         }
 
@@ -102,6 +87,8 @@ namespace he::schema
         if (!Consume(Lexer::TokenType::Semicolon))
             return false;
 
+        bool valid = true;
+
         // Consume top level declarations
         while (!AtEnd())
         {
@@ -109,6 +96,8 @@ namespace he::schema
 
             if (!ConsumeTopLevelDecl())
             {
+                valid = false;
+
                 if (At(Lexer::TokenType::Error))
                     break;
 
@@ -119,15 +108,9 @@ namespace he::schema
                     AddError("Unmatched curly bracket ('}}')");
                 }
             }
-
-            // Too many errors, just bail
-            if (m_errors.Size() > 32)
-            {
-                return false;
-            }
         }
 
-        return m_errors.IsEmpty();
+        return valid;
     }
 
     bool Parser::At(Lexer::TokenType expected) const
@@ -570,7 +553,12 @@ namespace he::schema
             if (!ConsumeId(node.id))
                 return false;
         }
+        else
+        {
+            node.id = MakeTypeId(node.name, node.parent->id);
+        }
 
+        HE_ASSERT(node.id != 0);
         return true;
     }
 
@@ -743,8 +731,8 @@ namespace he::schema
             return false;
 
         AstExpression* ex = AstCreate(parent.file.imports);
-        ex->kind = AstExpression::Kind::Import;
-        ex->import = m_token.text;
+        ex->kind = AstExpression::Kind::String;
+        ex->string = m_token.text;
 
         NextDecl();
         return Consume(Lexer::TokenType::Semicolon);
@@ -1038,21 +1026,13 @@ namespace he::schema
     template <typename... Args>
     void Parser::AddError(fmt::format_string<Args...> fmt, Args&&... args)
     {
-        ErrorInfo& entry = m_errors.EmplaceBack();
-        entry.line = m_token.line;
-        entry.column = m_token.column;
-        entry.message.Clear();
-
-        fmt::format_to(Appender(entry.message), fmt, Forward<Args>(args)...);
+        m_context->AddError(m_token.line, m_token.column, fmt, Forward<Args>(args)...);
     }
 
     void Parser::AddLexerError()
     {
         HE_ASSERT(m_token.type == Lexer::TokenType::Error);
-        ErrorInfo& entry = m_errors.EmplaceBack();
-        entry.line = m_token.line;
-        entry.column = m_token.column;
-        entry.message = m_token.error;
+        m_context->AddError(m_token.line, m_token.column, m_token.error);
     }
 
     template <std::integral T>
@@ -1087,7 +1067,7 @@ namespace he::schema
         }
 
         using LargestType = std::conditional_t<std::is_signed_v<T>, int64_t, uint64_t>;
-        LargestType value = String::ToInteger<T>(begin, &end, base);
+        LargestType value = he::String::ToInteger<T>(begin, &end, base);
 
         if (isSigned)
         {

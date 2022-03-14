@@ -194,7 +194,10 @@ struct Declaration
 
     data :union
     {
-        file @7 :void;
+        file :group
+        {
+            imports @7 :String[];
+        }
 
         attribute :group
         {
@@ -244,14 +247,7 @@ struct Declaration
     }
 }
 
-struct Import
-{
-    path @0 :String;
-    schema @1 :SchemaFile;
-}
-
 struct SchemaFile
 {
     root @0 :Declaration;
-    imports @1 :Import[];
 }

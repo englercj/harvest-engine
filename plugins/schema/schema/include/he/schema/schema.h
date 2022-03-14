@@ -2,6 +2,9 @@
 
 #pragma once
 
+#include "he/core/assert.h"
+#include "he/core/enum_ops.h"
+#include "he/core/hash.h"
 #include "he/core/types.h"
 #include "he/schema/types.h"
 
@@ -12,6 +15,12 @@
 
 namespace he::schema
 {
+    inline TypeId MakeTypeId(StringView name, TypeId parentId)
+    {
+        HE_ASSERT(HasFlag(parentId, TypeIdFlag));
+        return FNV64::HashData(name.Data(), name.Size(), parentId) | TypeIdFlag;
+    }
+
     constexpr bool IsSignedIntegral(Type::Data::Tag t)
     {
         switch (t)

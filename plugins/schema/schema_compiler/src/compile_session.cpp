@@ -1,0 +1,259 @@
+// Copyright Chad Engler
+
+#include "he/schema/compile_session.h"
+
+#include "compile_context.h"
+
+#include "he/core/allocator.h"
+#include "he/core/assert.h"
+#include "he/core/directory.h"
+#include "he/core/path.h"
+#include "he/core/file.h"
+#include "he/core/log.h"
+#include "he/core/path.h"
+#include "he/core/result.h"
+#include "he/core/result_fmt.h"
+#include "he/core/string.h"
+#include "he/core/vector.h"
+#include "he/schema/ast.h"
+
+namespace he::schema
+{
+    static void CacheDeclIds(Declaration::Reader decl, DeclIdMap& map);
+
+    static void CacheDeclIds(SchemaFile::Reader schemaFile, DeclIdMap& map)
+    {
+        CacheDeclIds(schemaFile.Root(), map);
+    }
+
+    static void CacheDeclIds(Declaration::Reader decl, DeclIdMap& map)
+    {
+        HE_ASSERT(HasFlag(decl.Id(), TypeIdFlag));
+        const auto result = map.emplace(decl.Id(), decl);
+        HE_UNUSED(result);
+        HE_ASSERT(result.second);
+
+        for (Declaration::Reader child : decl.Children())
+        {
+            CacheDeclIds(child, map);
+        }
+    }
+
+    CompileSession::CompileSession(const char* path, const Config& config)
+        : m_config(config)
+        , m_context(nullptr)
+    {
+        m_context = Allocator::GetDefault().New<CompileContext>(path, config, m_typeIdMap, m_typeMap);
+    }
+
+    CompileSession::~CompileSession()
+    {
+        Allocator& alloc = Allocator::GetDefault();
+
+        alloc.Delete(m_context);
+        for (auto pair : m_importMap)
+        {
+            alloc.Delete(pair.second);
+        }
+    }
+
+    bool CompileSession::Parse()
+    {
+        HE_ASSERT(m_stage == Stage::None);
+
+        if (!ParseFile(*m_context))
+            return false;
+
+        m_stage = Stage::Parsed;
+        return true;
+    }
+
+    bool CompileSession::Verify()
+    {
+        HE_ASSERT(m_stage == Stage::Parsed);
+
+        if (!VerifyAll())
+            return false;
+
+        m_stage = Stage::Verified;
+        return true;
+    }
+
+    bool CompileSession::Compile()
+    {
+        HE_ASSERT(m_stage == Stage::Verified);
+
+        if (!CompileAll())
+            return false;
+
+        m_stage = Stage::Compiled;
+        return true;
+    }
+
+    bool CompileSession::GenerateCode()
+    {
+        if (!he::String::IsEmpty(m_config.codegenOutDir))
+        {
+            Directory::Create(m_config.codegenOutDir, true);
+        }
+
+        const Builder& builder = m_context->Schema();
+
+        CodeGenRequest req;
+        req.schemaData = builder;
+        req.schemaFile = builder.Root().TryGetStruct<SchemaFile>();
+        req.fileName = GetBaseName(m_context->Path()).Data();
+        req.outDir = m_config.codegenOutDir;
+
+        CacheDeclIds(req.schemaFile, req.declsById);
+        for (auto pair : m_importMap)
+        {
+            CompileContext* ctx = pair.second;
+            CacheDeclIds(ctx->Schema().Root().TryGetStruct<SchemaFile>(), req.declsById);
+        }
+
+        if (HasFlag(m_config.codegenTargets, CodegenTarget::Echo))
+        {
+            if (!GenerateEcho(req))
+                return false;
+        }
+
+        if (HasFlag(m_config.codegenTargets, CodegenTarget::Cpp))
+        {
+            if (!GenerateCpp(req))
+                return false;
+        }
+
+        return true;
+    }
+
+    bool CompileSession::ParseFile(CompileContext& ctx)
+    {
+        // Read the input text from the file
+        if (!ctx.LoadFile())
+            return false;
+
+        // Parse the input data into an AST
+        if (!ctx.ParseFile())
+            return false;
+
+        // Parse each of the imports
+        const AstFile& ast = ctx.Ast();
+        HE_ASSERT(ast.root.kind == AstNode::Kind::File);
+        for (const AstExpression& import : ast.root.file.imports)
+        {
+            if (!ParseImport(import, ctx))
+                return false;
+        }
+
+        ctx.MarkFullyParsed();
+        return true;
+    }
+
+    bool CompileSession::ParseImport(const AstExpression& ast, CompileContext& ctx)
+    {
+        he::String path(Allocator::GetTemp());
+        if (!ctx.DecodeString(ast, path))
+            return false;
+
+        // Try to find the imported file in the cache as a path relative to our current file.
+        he::String fullPath(GetDirectory(ctx.Path()), Allocator::GetTemp());
+        ConcatPath(fullPath, path);
+        CompileContext* cached = TryFindCachedImport(fullPath);
+        if (cached)
+        {
+            if (!cached->IsFullyParsed())
+            {
+                ctx.AddError(ast.location.line, ast.location.column, "Import loop detected.");
+                return false;
+            }
+            ctx.AddImport(cached);
+            return true;
+        }
+
+        // Try to find the imported file in the cache as a path relative to an include directory.
+        for (const char* includeDir : m_config.includeDirs)
+        {
+            fullPath = includeDir;
+            ConcatPath(fullPath, path);
+
+            cached = TryFindCachedImport(fullPath);
+            if (cached)
+            {
+                if (!cached->IsFullyParsed())
+                {
+                    ctx.AddError(ast.location.line, ast.location.column, "Import loop detected.");
+                    return false;
+                }
+                ctx.AddImport(cached);
+                return true;
+            }
+        }
+
+        // Try to find the imported file relative to our current file.
+        fullPath = GetDirectory(ctx.Path());
+        ConcatPath(fullPath, path);
+        if (File::Exists(fullPath.Data()))
+        {
+            CompileContext* importCtx = Allocator::GetDefault().New<CompileContext>(fullPath.Data(), m_config, m_typeIdMap, m_typeMap);
+            m_importMap[fullPath] = importCtx;
+            ctx.AddImport(importCtx);
+            return ParseFile(*importCtx);
+        }
+
+        // Try to find the imported file relative to an include directory.
+        for (const char* includeDir : m_config.includeDirs)
+        {
+            fullPath = includeDir;
+            ConcatPath(fullPath, path);
+
+            if (File::Exists(fullPath.Data()))
+            {
+                CompileContext* importCtx = Allocator::GetDefault().New<CompileContext>(fullPath.Data(), m_config, m_typeIdMap, m_typeMap);
+                m_importMap[fullPath] = importCtx;
+                ctx.AddImport(importCtx);
+                return ParseFile(*importCtx);
+            }
+        }
+
+        ctx.AddError(ast.location.line, ast.location.column, "Unable to locate imported file '{}', are you missing an include directory?", path);
+        return false;
+    }
+
+    CompileContext* CompileSession::TryFindCachedImport(const he::String& path) const
+    {
+        auto it = m_importMap.find(path);
+        if (it != m_importMap.end())
+            return it->second;
+
+        return nullptr;
+    }
+
+    bool CompileSession::VerifyAll() const
+    {
+        if (!m_context->VerifyFile())
+            return false;
+
+        for (auto pair : m_importMap)
+        {
+            if (!pair.second->VerifyFile())
+                return false;
+        }
+
+        return true;
+    }
+
+    bool CompileSession::CompileAll()
+    {
+        if (!m_context->CompileFile())
+            return false;
+
+        for (auto pair : m_importMap)
+        {
+            if (!pair.second->CompileFile())
+                return false;
+        }
+
+        return true;
+    }
+}

@@ -90,6 +90,7 @@ namespace he::schema
 
         // Common
 
+        const Word* Data() const { return m_data; }
         bool IsValid() const { return m_data != nullptr; }
         bool IsNull() const { return m_data == nullptr || (Value().offsetAndKind == 0 && Value().upper32Bits == 0); }
         bool IsZeroStruct() const { return Value().offsetAndKind == 0xfffffffc && Value().upper32Bits == 0; }
@@ -201,9 +202,9 @@ namespace he::schema
 
     private:
         const Word* m_data{ nullptr };
-        const uint32_t m_size{ 0 };
-        const uint32_t m_step{ 0 };
-        const schema::ElementSize m_elementSize{ ElementSize::Void };
+        uint32_t m_size{ 0 };
+        uint32_t m_step{ 0 };
+        schema::ElementSize m_elementSize{ ElementSize::Void };
     };
 
     // --------------------------------------------------------------------------------------------
@@ -344,27 +345,46 @@ namespace he::schema
     private:
         const Word* m_data{ nullptr };
 
-        const uint16_t m_dataWordSize{ 0 };
-        const uint16_t m_pointerCount{ 0 };
-        const uint16_t m_metaWordSize{ 0 };
+        uint16_t m_dataWordSize{ 0 };
+        uint16_t m_pointerCount{ 0 };
+        uint16_t m_metaWordSize{ 0 };
     };
 
     // --------------------------------------------------------------------------------------------
     class Builder
     {
     public:
-        explicit Builder(Allocator& allocator = Allocator::GetDefault()) : Builder(32, allocator) {}
+        explicit Builder(Allocator& allocator = Allocator::GetDefault()) : Builder(256, allocator) {}
         explicit Builder(uint32_t initialWordSize, Allocator& allocator = Allocator::GetDefault())
             : m_data(allocator)
         {
             Reserve(initialWordSize);
-            m_data.PushBack(0); // pointer to root
+            Clear();
+        }
+
+        Builder(Builder&& x)
+            : m_data(Move(x.m_data))
+        {
+            x.Clear();
+        }
+
+        Builder& operator=(Builder&& x)
+        {
+            m_data = Move(x.m_data);
+            x.Clear();
+            return *this;
         }
 
         Word* Data() { return m_data.Data(); }
         const Word* Data() const { return m_data.Data(); }
         uint32_t Size() const { return m_data.Size(); }
         uint32_t ByteSize() const { return Size() * BytesPerWord; }
+
+        void Clear()
+        {
+            m_data.Clear();
+            m_data.PushBack(0); // pointer to root
+        }
 
         /// Releases control of the builder's allocated memory and returns ownership to the caller.
         /// The returned memory must be freed by calling @see Allocator::Free using the same
@@ -385,6 +405,9 @@ namespace he::schema
 
         void SetRoot(const StructReader& root);
         void SetRoot(const ListReader& root);
+
+        PointerBuilder Root();
+        PointerReader Root() const;
 
         StructBuilder AddStruct(uint16_t dataFieldCount, uint16_t dataWordSize, uint16_t pointerCount);
         ListBuilder AddList(ElementSize elementSize, uint32_t elementCount);

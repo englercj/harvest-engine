@@ -45,6 +45,9 @@ namespace he::schema
     private:
         void GenSource();
 
+        void WriteRawSchemaData();
+        void WriteDeclInfoSrc(Declaration::Reader decl);
+
     // Utilities
     private:
         bool FlushToFile(const char* suffix);
@@ -53,13 +56,17 @@ namespace he::schema
         void WriteName(Declaration::Reader decl, Declaration::Reader scope, Brand::Reader brand, const char* pointerSuffix);
         void WriteTemplate(Declaration::Reader decl);
         void WriteType(Type::Reader type, Declaration::Reader scope, const char* pointerSuffix);
-        void WriteValue(Type::Reader type, Declaration::Reader scope, Value::Reader value);
+        void WriteDataValue(Type::Reader type, Declaration::Reader scope, Value::Reader value);
         void WriteWithReplace(StringView input, char what, StringView with);
+
+    private:
+        ptrdiff_t GetDefaultValueOffset(Value::Reader value);
 
     private:
         const CodeGenRequest& m_request;
         Declaration::Reader m_root;
         StringBuilder m_writer{};
         he::String m_namespaceName{};
+        std::unordered_map<TypeId, Builder> m_defaultValues{};
     };
 }

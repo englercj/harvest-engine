@@ -164,6 +164,16 @@ namespace he::schema
         PointerBuilder(this, 0).Set(root);
     }
 
+    PointerBuilder Builder::Root()
+    {
+        return PointerBuilder(this, 0);
+    }
+
+    PointerReader Builder::Root() const
+    {
+        return PointerReader(m_data.Data());
+    }
+
     ListBuilder Builder::AddList(ElementSize elementSize, uint32_t elementCount)
     {
         HE_ASSERT(elementSize < ElementSize::_Count);
@@ -276,6 +286,9 @@ namespace he::schema
 
     void PointerBuilder::Copy(const PointerReader& reader)
     {
+        if (Location() == reader.Data())
+            return;
+
         if (reader.IsNull())
         {
             SetNull();
@@ -338,6 +351,9 @@ namespace he::schema
 
     void ListBuilder::Copy(const ListReader& reader)
     {
+        if (Location() == reader.Data())
+            return;
+
         HE_ASSERT(m_size == reader.Size());
         HE_ASSERT(m_step == reader.StepSize());
         HE_ASSERT(m_elementSize == reader.ElementSize());
@@ -391,6 +407,9 @@ namespace he::schema
 
     void StructBuilder::Copy(const StructReader& reader)
     {
+        if (Location() == reader.Data())
+            return;
+
         HE_ASSERT(m_dataFieldCount == reader.DataFieldCount());
         HE_ASSERT(m_dataWordSize == reader.DataWordSize());
         HE_ASSERT(m_pointerCount == reader.PointerCount());

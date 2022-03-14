@@ -92,7 +92,6 @@ namespace he::schema
             static constexpr uint16_t DataFieldCount = dataFieldCount; \
             static constexpr uint16_t DataWordSize = dataWordSize; \
             static constexpr uint16_t PointerCount = pointerCount; \
-            static const ::he::schema::Word* DefaultValue; \
             static const ::he::schema::Word* RawSchema; \
         }
 }

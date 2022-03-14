@@ -162,7 +162,6 @@ namespace he::schema
             Blob,           ///< Blob value (0x"ab cd ef")
             Float,          ///< Floating-point value
             Generic,        ///< Generic parameter name
-            Import,         ///< File import
             List,           ///< List or array value ([ 1, 2, 3 ])
             Identifier,     ///< Any identifier
             Namespace,      ///< Namespace
@@ -180,7 +179,6 @@ namespace he::schema
         {
             StringView blob;
             double floatingPoint;
-            StringView import;
             AstList<AstExpression> list;
             StringView identifier;
             int64_t signedInt;

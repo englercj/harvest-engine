@@ -40,6 +40,7 @@ namespace he::schema
         void WriteFieldGetImpl(Field::Reader field, Declaration::Reader decl, Declaration::Reader scope, bool isReader);
         void WriteFieldSetDecl(Field::Reader field, Declaration::Reader decl);
         void WriteFieldSetImpl(Field::Reader field, Declaration::Reader decl, Declaration::Reader scope);
+        void WriteGroupFieldClear(Declaration::Reader decl, Declaration::Reader scope);
 
     // Source Generation
     private:

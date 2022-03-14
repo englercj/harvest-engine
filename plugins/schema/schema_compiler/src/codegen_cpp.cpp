@@ -756,7 +756,7 @@ namespace he::schema
                 m_writer.Write("::Builder::Init{0}() {{ SetTag(Tag::{0}); ", upperCamelName);
                 if (field.Meta().IsGroup())
                 {
-                    m_writer.Write("/* TODO: clear group fields */ ");
+                    WriteGroupFieldClear(groupType, decl);
                 }
                 m_writer.Write("return {}{}(*this); }}\n", upperCamelName, BuilderSuffix);
             }
@@ -833,6 +833,40 @@ namespace he::schema
             else if (fieldIsString)
                 m_writer.Write("str");
             m_writer.Write("); SuperType::GetPointerField({}).Set(v); return v; }}\n", norm.Index());
+        }
+    }
+
+    void CodeGenCpp::WriteGroupFieldClear(Declaration::Reader decl, Declaration::Reader scope)
+    {
+        HE_ASSERT(decl.Data().IsStruct());
+        Declaration::Data::Struct::Reader structDecl = decl.Data().Struct();
+
+        for (Field::Reader field : structDecl.Fields())
+        {
+            if (field.Meta().IsGroup() || field.Meta().IsUnion())
+            {
+                TypeId groupTypeId = field.Meta().IsGroup() ? field.Meta().Group().TypeId() : field.Meta().Union().TypeId();
+                Declaration::Reader groupType = m_request.GetDecl(groupTypeId);
+                WriteGroupFieldClear(groupType, scope);
+                continue;
+            }
+
+            he::String upperCamelName(field.Name(), Allocator::GetTemp());
+            upperCamelName[0] = ToUpper(upperCamelName[0]);
+
+            Field::Meta::Normal::Reader norm = field.Meta().Normal();
+            Type::Reader fieldType = norm.Type();
+            Type::Data::Reader fieldTypeData = fieldType.Data();
+            const bool fieldIsPointer = IsPointer(fieldType);
+
+            if (fieldIsPointer)
+            {
+                m_writer.Write("SuperType::ClearPointerField({}); ", norm.Index());
+            }
+            else
+            {
+                m_writer.Write("SuperType::ClearDataField({}); ", norm.Index());
+            }
         }
     }
 

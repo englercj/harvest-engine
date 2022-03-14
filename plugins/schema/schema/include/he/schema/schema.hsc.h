@@ -2170,27 +2170,27 @@ namespace he::schema
 
     inline bool Type::Data::Builder::IsArray() const { return Tag() == Tag::Array; }
     inline Type::Data::Array::Builder Type::Data::Builder::Array() const { HE_ASSERT(IsArray()); return Array::Builder(*this); }
-    inline Type::Data::Array::Builder Type::Data::Builder::InitArray() { SetTag(Tag::Array); /* TODO: clear group fields */ return Array::Builder(*this); }
+    inline Type::Data::Array::Builder Type::Data::Builder::InitArray() { SetTag(Tag::Array); SuperType::ClearPointerField(0); SuperType::ClearDataField(0); return Array::Builder(*this); }
 
     inline bool Type::Data::Builder::IsList() const { return Tag() == Tag::List; }
     inline Type::Data::List::Builder Type::Data::Builder::List() const { HE_ASSERT(IsList()); return List::Builder(*this); }
-    inline Type::Data::List::Builder Type::Data::Builder::InitList() { SetTag(Tag::List); /* TODO: clear group fields */ return List::Builder(*this); }
+    inline Type::Data::List::Builder Type::Data::Builder::InitList() { SetTag(Tag::List); SuperType::ClearPointerField(0); return List::Builder(*this); }
 
     inline bool Type::Data::Builder::IsEnum() const { return Tag() == Tag::Enum; }
     inline Type::Data::Enum::Builder Type::Data::Builder::Enum() const { HE_ASSERT(IsEnum()); return Enum::Builder(*this); }
-    inline Type::Data::Enum::Builder Type::Data::Builder::InitEnum() { SetTag(Tag::Enum); /* TODO: clear group fields */ return Enum::Builder(*this); }
+    inline Type::Data::Enum::Builder Type::Data::Builder::InitEnum() { SetTag(Tag::Enum); SuperType::ClearDataField(1); SuperType::ClearPointerField(0); return Enum::Builder(*this); }
 
     inline bool Type::Data::Builder::IsStruct() const { return Tag() == Tag::Struct; }
     inline Type::Data::Struct::Builder Type::Data::Builder::Struct() const { HE_ASSERT(IsStruct()); return Struct::Builder(*this); }
-    inline Type::Data::Struct::Builder Type::Data::Builder::InitStruct() { SetTag(Tag::Struct); /* TODO: clear group fields */ return Struct::Builder(*this); }
+    inline Type::Data::Struct::Builder Type::Data::Builder::InitStruct() { SetTag(Tag::Struct); SuperType::ClearDataField(2); SuperType::ClearPointerField(0); return Struct::Builder(*this); }
 
     inline bool Type::Data::Builder::IsInterface() const { return Tag() == Tag::Interface; }
     inline Type::Data::Interface::Builder Type::Data::Builder::Interface() const { HE_ASSERT(IsInterface()); return Interface::Builder(*this); }
-    inline Type::Data::Interface::Builder Type::Data::Builder::InitInterface() { SetTag(Tag::Interface); /* TODO: clear group fields */ return Interface::Builder(*this); }
+    inline Type::Data::Interface::Builder Type::Data::Builder::InitInterface() { SetTag(Tag::Interface); SuperType::ClearDataField(3); SuperType::ClearPointerField(0); return Interface::Builder(*this); }
 
     inline bool Type::Data::Builder::IsAnyPointer() const { return Tag() == Tag::AnyPointer; }
     inline Type::Data::AnyPointer::Builder Type::Data::Builder::AnyPointer() const { HE_ASSERT(IsAnyPointer()); return AnyPointer::Builder(*this); }
-    inline Type::Data::AnyPointer::Builder Type::Data::Builder::InitAnyPointer() { SetTag(Tag::AnyPointer); /* TODO: clear group fields */ return AnyPointer::Builder(*this); }
+    inline Type::Data::AnyPointer::Builder Type::Data::Builder::InitAnyPointer() { SetTag(Tag::AnyPointer); SuperType::ClearDataField(4); SuperType::ClearDataField(5); return AnyPointer::Builder(*this); }
 
     inline Type::Data::Reader Type::Reader::Data() const { return Data::Reader(*this); }
 
@@ -2508,15 +2508,15 @@ namespace he::schema
 
     inline bool Field::Meta::Builder::IsNormal() const { return Tag() == Tag::Normal; }
     inline Field::Meta::Normal::Builder Field::Meta::Builder::Normal() const { HE_ASSERT(IsNormal()); return Normal::Builder(*this); }
-    inline Field::Meta::Normal::Builder Field::Meta::Builder::InitNormal() { SetTag(Tag::Normal); /* TODO: clear group fields */ return Normal::Builder(*this); }
+    inline Field::Meta::Normal::Builder Field::Meta::Builder::InitNormal() { SetTag(Tag::Normal); SuperType::ClearDataField(2); SuperType::ClearDataField(3); SuperType::ClearPointerField(2); SuperType::ClearPointerField(3); SuperType::ClearDataField(4); return Normal::Builder(*this); }
 
     inline bool Field::Meta::Builder::IsGroup() const { return Tag() == Tag::Group; }
     inline Field::Meta::Group::Builder Field::Meta::Builder::Group() const { HE_ASSERT(IsGroup()); return Group::Builder(*this); }
-    inline Field::Meta::Group::Builder Field::Meta::Builder::InitGroup() { SetTag(Tag::Group); /* TODO: clear group fields */ return Group::Builder(*this); }
+    inline Field::Meta::Group::Builder Field::Meta::Builder::InitGroup() { SetTag(Tag::Group); SuperType::ClearDataField(5); return Group::Builder(*this); }
 
     inline bool Field::Meta::Builder::IsUnion() const { return Tag() == Tag::Union; }
     inline Field::Meta::Union::Builder Field::Meta::Builder::Union() const { HE_ASSERT(IsUnion()); return Union::Builder(*this); }
-    inline Field::Meta::Union::Builder Field::Meta::Builder::InitUnion() { SetTag(Tag::Union); /* TODO: clear group fields */ return Union::Builder(*this); }
+    inline Field::Meta::Union::Builder Field::Meta::Builder::InitUnion() { SetTag(Tag::Union); SuperType::ClearDataField(6); return Union::Builder(*this); }
 
     inline bool Field::Reader::HasName() const { return SuperType::HasPointerField(0); }
     inline ::he::schema::String::Reader Field::Reader::Name() const { return SuperType::GetPointerField(0).TryGetString(); }
@@ -2844,27 +2844,27 @@ namespace he::schema
 
     inline bool Declaration::Data::Builder::IsFile() const { return Tag() == Tag::File; }
     inline Declaration::Data::File::Builder Declaration::Data::Builder::File() const { HE_ASSERT(IsFile()); return File::Builder(*this); }
-    inline Declaration::Data::File::Builder Declaration::Data::Builder::InitFile() { SetTag(Tag::File); /* TODO: clear group fields */ return File::Builder(*this); }
+    inline Declaration::Data::File::Builder Declaration::Data::Builder::InitFile() { SetTag(Tag::File); SuperType::ClearPointerField(5); return File::Builder(*this); }
 
     inline bool Declaration::Data::Builder::IsAttribute() const { return Tag() == Tag::Attribute; }
     inline Declaration::Data::Attribute::Builder Declaration::Data::Builder::Attribute() const { HE_ASSERT(IsAttribute()); return Attribute::Builder(*this); }
-    inline Declaration::Data::Attribute::Builder Declaration::Data::Builder::InitAttribute() { SetTag(Tag::Attribute); /* TODO: clear group fields */ return Attribute::Builder(*this); }
+    inline Declaration::Data::Attribute::Builder Declaration::Data::Builder::InitAttribute() { SetTag(Tag::Attribute); SuperType::ClearPointerField(5); SuperType::ClearDataField(2); SuperType::ClearDataField(3); SuperType::ClearDataField(4); SuperType::ClearDataField(5); SuperType::ClearDataField(6); SuperType::ClearDataField(7); SuperType::ClearDataField(8); SuperType::ClearDataField(9); SuperType::ClearDataField(10); SuperType::ClearDataField(11); return Attribute::Builder(*this); }
 
     inline bool Declaration::Data::Builder::IsConstant() const { return Tag() == Tag::Constant; }
     inline Declaration::Data::Constant::Builder Declaration::Data::Builder::Constant() const { HE_ASSERT(IsConstant()); return Constant::Builder(*this); }
-    inline Declaration::Data::Constant::Builder Declaration::Data::Builder::InitConstant() { SetTag(Tag::Constant); /* TODO: clear group fields */ return Constant::Builder(*this); }
+    inline Declaration::Data::Constant::Builder Declaration::Data::Builder::InitConstant() { SetTag(Tag::Constant); SuperType::ClearPointerField(5); SuperType::ClearPointerField(6); return Constant::Builder(*this); }
 
     inline bool Declaration::Data::Builder::IsEnum() const { return Tag() == Tag::Enum; }
     inline Declaration::Data::Enum::Builder Declaration::Data::Builder::Enum() const { HE_ASSERT(IsEnum()); return Enum::Builder(*this); }
-    inline Declaration::Data::Enum::Builder Declaration::Data::Builder::InitEnum() { SetTag(Tag::Enum); /* TODO: clear group fields */ return Enum::Builder(*this); }
+    inline Declaration::Data::Enum::Builder Declaration::Data::Builder::InitEnum() { SetTag(Tag::Enum); SuperType::ClearPointerField(5); return Enum::Builder(*this); }
 
     inline bool Declaration::Data::Builder::IsInterface() const { return Tag() == Tag::Interface; }
     inline Declaration::Data::Interface::Builder Declaration::Data::Builder::Interface() const { HE_ASSERT(IsInterface()); return Interface::Builder(*this); }
-    inline Declaration::Data::Interface::Builder Declaration::Data::Builder::InitInterface() { SetTag(Tag::Interface); /* TODO: clear group fields */ return Interface::Builder(*this); }
+    inline Declaration::Data::Interface::Builder Declaration::Data::Builder::InitInterface() { SetTag(Tag::Interface); SuperType::ClearPointerField(5); SuperType::ClearPointerField(6); return Interface::Builder(*this); }
 
     inline bool Declaration::Data::Builder::IsStruct() const { return Tag() == Tag::Struct; }
     inline Declaration::Data::Struct::Builder Declaration::Data::Builder::Struct() const { HE_ASSERT(IsStruct()); return Struct::Builder(*this); }
-    inline Declaration::Data::Struct::Builder Declaration::Data::Builder::InitStruct() { SetTag(Tag::Struct); /* TODO: clear group fields */ return Struct::Builder(*this); }
+    inline Declaration::Data::Struct::Builder Declaration::Data::Builder::InitStruct() { SetTag(Tag::Struct); SuperType::ClearDataField(12); SuperType::ClearDataField(13); SuperType::ClearDataField(14); SuperType::ClearDataField(15); SuperType::ClearDataField(16); SuperType::ClearDataField(17); SuperType::ClearDataField(18); SuperType::ClearDataField(19); SuperType::ClearPointerField(5); return Struct::Builder(*this); }
 
     inline bool Declaration::Reader::HasName() const { return SuperType::HasPointerField(0); }
     inline ::he::schema::String::Reader Declaration::Reader::Name() const { return SuperType::GetPointerField(0).TryGetString(); }

@@ -580,6 +580,20 @@ namespace he::schema
                 if (hasDefault)
                     m_writer.Write(", ");
             }
+            else if (fieldTypeData.IsAnyPointer())
+            {
+                if (hasDefault)
+                {
+                    const ptrdiff_t offset = GetDefaultValueOffset(norm.DefaultValue());
+                    m_writer.Write("return SuperType::HasPointerField({}) ? SuperType::GetPointerField({}); : Pointer{}(::he::schema::DeclInfo<" HE_ID_FMT ">::RawSchema + {}); ",
+                        norm.Index(), norm.Index(), isReader ? "Reader" : "Builder", m_root.Id(), offset);
+                }
+                else
+                {
+                    m_writer.Write("return SuperType::GetPointerField({}); ", norm.Index());
+                }
+                m_writer.Write(" }\n");
+            }
             else
             {
                 const Type::Data::Tag getterKind = fieldTypeData.IsBlob() ? Type::Data::Tag::List : fieldTypeData.Tag();
@@ -599,16 +613,16 @@ namespace he::schema
                     m_writer.Write('>');
                 }
                 m_writer.Write('(');
-            }
-            if (hasDefault)
-            {
-                const ptrdiff_t offset = GetDefaultValueOffset(norm.DefaultValue());
-                if (offset > 0)
+                if (hasDefault)
                 {
-                    m_writer.Write("::he::schema::DeclInfo<" HE_ID_FMT ">::RawSchema + {}", m_root.Id(), offset);
+                    const ptrdiff_t offset = GetDefaultValueOffset(norm.DefaultValue());
+                    if (offset > 0)
+                    {
+                        m_writer.Write("::he::schema::DeclInfo<" HE_ID_FMT ">::RawSchema + {}", m_root.Id(), offset);
+                    }
                 }
+                m_writer.Write("); }\n");
             }
-            m_writer.Write("); }\n");
         }
         else
         {
@@ -788,7 +802,10 @@ namespace he::schema
         {
             m_writer.Write("SuperType::SetDataField<{}", fieldTypeData.IsEnum() ? "enum " : "");
             WriteType(fieldType, scope, nullptr);
-            m_writer.Write(">({}, {}, value); ", norm.Index(), norm.DataOffset());
+            if (structDecl.IsUnion())
+                m_writer.Write(">({}, value); ", norm.DataOffset());
+            else
+                m_writer.Write(">({}, {}, value); ", norm.Index(), norm.DataOffset());
         }
         m_writer.Write("}\n");
 
@@ -812,27 +829,34 @@ namespace he::schema
                 m_writer.Write("SetTag(Tag::{}); ", upperCamelName);
 
             const Type::Data::Tag getterKind = fieldTypeData.IsBlob() ? Type::Data::Tag::List : fieldTypeData.Tag();
-            m_writer.Write("auto v = m_builder->Add{}", getterKind);
-            if (fieldTypeData.IsBlob())
+            if (fieldTypeData.IsAnyPointer())
             {
-                m_writer.Write("<uint8_t>");
+                m_writer.Write("return SuperType::GetPointerField({}); }}\n", norm.Index());
             }
-            else if (!fieldTypeData.IsString())
+            else
             {
-                Type::Reader t = fieldTypeData.IsList() ? fieldTypeData.List().ElementType() : fieldType;
-                if (IsPointer(t))
-                    m_writer.Write("<struct ");
-                else
-                    m_writer.Write("<");
-                WriteType(t, scope, nullptr);
-                m_writer.Write('>');
+                m_writer.Write("auto v = m_builder->Add{}", getterKind);
+                if (fieldTypeData.IsBlob())
+                {
+                    m_writer.Write("<uint8_t>");
+                }
+                else if (!fieldTypeData.IsString())
+                {
+                    Type::Reader t = fieldTypeData.IsList() ? fieldTypeData.List().ElementType() : fieldType;
+                    if (IsPointer(t))
+                        m_writer.Write("<struct ");
+                    else
+                        m_writer.Write("<");
+                    WriteType(t, scope, nullptr);
+                    m_writer.Write('>');
+                }
+                m_writer.Write('(');
+                if (fieldIsList)
+                    m_writer.Write("size");
+                else if (fieldIsString)
+                    m_writer.Write("str");
+                m_writer.Write("); SuperType::GetPointerField({}).Set(v); return v; }}\n", norm.Index());
             }
-            m_writer.Write('(');
-            if (fieldIsList)
-                m_writer.Write("size");
-            else if (fieldIsString)
-                m_writer.Write("str");
-            m_writer.Write("); SuperType::GetPointerField({}).Set(v); return v; }}\n", norm.Index());
         }
     }
 
@@ -1181,7 +1205,7 @@ namespace he::schema
             }
             case Value::Data::Tag::Blob:
             case Value::Data::Tag::List:
-            case Value::Data::Tag::Tuple:
+            case Value::Data::Tag::Struct:
             case Value::Data::Tag::Interface:
             case Value::Data::Tag::AnyPointer:
                 HE_ASSERT(false, "Invalid value kind. Expected a non-pointer value.");
@@ -1208,34 +1232,34 @@ namespace he::schema
     {
         // Maybe: One builder per struct named Defaults_declId and output here is "Defaults_declId + OFFSET"
         Value::Data::Reader valueData = value.Data();
-        const Word* rootPtr = static_cast<const StructReader&>(m_root).Data();
+        const Word* rootData = static_cast<const StructReader&>(m_root).Data();
 
         switch (valueData.Tag())
         {
             case Value::Data::Tag::Blob:
             {
                 ListReader list = valueData.Array();
-                return list.Data() - rootPtr;
+                return list.Data() - rootData;
             }
             case Value::Data::Tag::String:
             {
                 ListReader list = valueData.String();
-                return list.Data() - rootPtr;
+                return list.Data() - rootData;
             }
             case Value::Data::Tag::Array:
             {
                 ListReader list = valueData.Array();
-                return list.Data() - rootPtr;
+                return list.Data() - rootData;
             }
             case Value::Data::Tag::List:
             {
                 ListReader list = valueData.List();
-                return list.Data() - rootPtr;
+                return list.Data() - rootData;
             }
-            case Value::Data::Tag::Tuple:
+            case Value::Data::Tag::Struct:
             {
-                // TODO: Create the struct here? Change compiler to remove Tuple and create real structs?
-                break;
+                PointerReader ptr = valueData.Struct();
+                return ptr.Data() - rootData;
             }
             case Value::Data::Tag::Void:
             case Value::Data::Tag::Bool:

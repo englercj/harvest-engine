@@ -21,7 +21,6 @@ HE_SCHEMA_DECL_INFO(0x8e064c19f3d729f1, 0xc37ce87995a2ca78, Struct, 6, 3, 1); //
 HE_SCHEMA_DECL_INFO(0x9c00ee98d42bb48b, 0xc37ce87995a2ca78, Struct, 6, 3, 1); // Type::Data::Interface
 HE_SCHEMA_DECL_INFO(0xb150cde6a6ba5d63, 0xc37ce87995a2ca78, Struct, 6, 3, 1); // Type::Data::AnyPointer
 HE_SCHEMA_DECL_INFO(0xa1a552dda5da9ae9, 0x979e892c449bc4d8, Struct, 0, 3, 1); // Value
-HE_SCHEMA_DECL_INFO(0xbc63c2f6a4186852, 0xa1a552dda5da9ae9, Struct, 0, 0, 2); // Value::TupleValue
 HE_SCHEMA_DECL_INFO(0xda924af5c1761799, 0xa1a552dda5da9ae9, Struct, 0, 0, 0); // Value::Data
 HE_SCHEMA_DECL_INFO(0xf4155b14cbf230b8, 0x979e892c449bc4d8, Struct, 1, 2, 1); // Attribute
 HE_SCHEMA_DECL_INFO(0xd7baf7c88e03fa02, 0x979e892c449bc4d8, Struct, 2, 2, 2); // Enumerator
@@ -167,15 +166,6 @@ namespace he::schema
         class Reader;
         class Builder;
 
-        struct TupleValue final
-        {
-            TupleValue() = delete;
-            using DeclInfo = ::he::schema::DeclInfo<0xbc63c2f6a4186852>;
-
-            class Reader;
-            class Builder;
-        };
-
         struct Data final
         {
             Data() = delete;
@@ -202,7 +192,7 @@ namespace he::schema
                 Array = 14,
                 List = 15,
                 Enum = 16,
-                Tuple = 17,
+                Struct = 17,
                 Interface = 18,
                 AnyPointer = 19,
             };
@@ -825,38 +815,6 @@ namespace he::schema
 
         Data::Builder Data() const;
     };
-    class Value::TupleValue::Reader final : public ::he::schema::StructReader
-    {
-    public:
-        using StructType = Value::TupleValue;
-        using SuperType = ::he::schema::StructReader;
-
-        bool HasName() const;
-        ::he::schema::String::Reader Name() const;
-
-        bool HasValue() const;
-        Value::Reader Value() const;
-
-    };
-    class Value::TupleValue::Builder final : public ::he::schema::StructBuilder
-    {
-    public:
-        using StructType = Value::TupleValue;
-        using SuperType = ::he::schema::StructBuilder;
-
-        StructType::Reader AsReader() const { return StructType::Reader(SuperType::AsReader()); }
-        operator StructType::Reader() const { return AsReader(); }
-
-        bool HasName() const;
-        ::he::schema::String::Builder Name() const;
-        void SetName(::he::schema::String::Reader value);
-        ::he::schema::String::Builder InitName(::he::StringView str);
-
-        bool HasValue() const;
-        Value::Builder Value() const;
-        void SetValue(Value::Reader value);
-        Value::Builder InitValue();
-    };
     class Value::Data::Reader final : public ::he::schema::StructReader
     {
     public:
@@ -933,9 +891,9 @@ namespace he::schema
         bool HasEnum() const;
         uint16_t Enum() const;
 
-        bool IsTuple() const;
-        bool HasTuple() const;
-        ::he::schema::List<TupleValue>::Reader Tuple() const;
+        bool IsStruct() const;
+        bool HasStruct() const;
+        AnyPointer::Reader Struct() const;
 
         bool IsInterface() const;
         bool HasInterface() const;
@@ -1048,11 +1006,11 @@ namespace he::schema
         uint16_t Enum() const;
         void SetEnum(uint16_t value);
 
-        bool IsTuple() const;
-        bool HasTuple() const;
-        ::he::schema::List<TupleValue>::Builder Tuple() const;
-        void SetTuple(::he::schema::List<TupleValue>::Reader value);
-        ::he::schema::List<TupleValue>::Builder InitTuple(uint32_t size);
+        bool IsStruct() const;
+        bool HasStruct() const;
+        AnyPointer::Builder Struct() const;
+        void SetStruct(AnyPointer::Reader value);
+        AnyPointer::Builder InitStruct();
 
         bool IsInterface() const;
         bool HasInterface() const;
@@ -2196,22 +2154,6 @@ namespace he::schema
 
     inline Type::Data::Builder Type::Builder::Data() const { return Data::Builder(*this); }
 
-    inline bool Value::TupleValue::Reader::HasName() const { return SuperType::HasPointerField(0); }
-    inline ::he::schema::String::Reader Value::TupleValue::Reader::Name() const { return SuperType::GetPointerField(0).TryGetString(); }
-
-    inline bool Value::TupleValue::Reader::HasValue() const { return SuperType::HasPointerField(1); }
-    inline Value::Reader Value::TupleValue::Reader::Value() const { return SuperType::GetPointerField(1).TryGetStruct<struct Value>(); }
-
-    inline bool Value::TupleValue::Builder::HasName() const { return SuperType::HasPointerField(0); }
-    inline ::he::schema::String::Builder Value::TupleValue::Builder::Name() const { return SuperType::GetPointerField(0).TryGetString(); }
-    inline void Value::TupleValue::Builder::SetName(::he::schema::String::Reader value) { SuperType::GetPointerField(0).Set(value); }
-    inline ::he::schema::String::Builder Value::TupleValue::Builder::InitName(::he::StringView str) { auto v = m_builder->AddString(str); SuperType::GetPointerField(0).Set(v); return v; }
-
-    inline bool Value::TupleValue::Builder::HasValue() const { return SuperType::HasPointerField(1); }
-    inline Value::Builder Value::TupleValue::Builder::Value() const { return SuperType::GetPointerField(1).TryGetStruct<struct Value>(); }
-    inline void Value::TupleValue::Builder::SetValue(Value::Reader value) { SuperType::GetPointerField(1).Set(value); }
-    inline Value::Builder Value::TupleValue::Builder::InitValue() { auto v = m_builder->AddStruct<struct Value>(); SuperType::GetPointerField(1).Set(v); return v; }
-
     inline bool Value::Data::Reader::IsVoid() const { return Tag() == Tag::Void; }
     inline bool Value::Data::Reader::HasVoid() const { return false; }
     inline ::he::schema::Void Value::Data::Reader::Void() const { HE_ASSERT(IsVoid()); return {}; }
@@ -2280,9 +2222,9 @@ namespace he::schema
     inline bool Value::Data::Reader::HasEnum() const { return IsEnum() && SuperType::HasDataField(0); }
     inline uint16_t Value::Data::Reader::Enum() const { HE_ASSERT(IsEnum()); return SuperType::TryGetDataField<uint16_t>(0, 1); }
 
-    inline bool Value::Data::Reader::IsTuple() const { return Tag() == Tag::Tuple; }
-    inline bool Value::Data::Reader::HasTuple() const { return IsTuple() && SuperType::HasPointerField(0); }
-    inline ::he::schema::List<Value::TupleValue>::Reader Value::Data::Reader::Tuple() const { HE_ASSERT(IsTuple()); return SuperType::GetPointerField(0).TryGetList<struct Value::TupleValue>(); }
+    inline bool Value::Data::Reader::IsStruct() const { return Tag() == Tag::Struct; }
+    inline bool Value::Data::Reader::HasStruct() const { return IsStruct() && SuperType::HasPointerField(0); }
+    inline AnyPointer::Reader Value::Data::Reader::Struct() const { HE_ASSERT(IsStruct()); return SuperType::GetPointerField(0);  }
 
     inline bool Value::Data::Reader::IsInterface() const { return Tag() == Tag::Interface; }
     inline bool Value::Data::Reader::HasInterface() const { return false; }
@@ -2300,57 +2242,57 @@ namespace he::schema
     inline bool Value::Data::Builder::IsBool() const { return Tag() == Tag::Bool; }
     inline bool Value::Data::Builder::HasBool() const { return IsBool() && SuperType::HasDataField(0); }
     inline bool Value::Data::Builder::Bool() const { HE_ASSERT(IsBool()); return SuperType::TryGetDataField<bool>(0, 16); }
-    inline void Value::Data::Builder::SetBool(bool value) { SetTag(Tag::Bool); SuperType::SetDataField<bool>(0, 16, value); }
+    inline void Value::Data::Builder::SetBool(bool value) { SetTag(Tag::Bool); SuperType::SetDataField<bool>(16, value); }
 
     inline bool Value::Data::Builder::IsInt8() const { return Tag() == Tag::Int8; }
     inline bool Value::Data::Builder::HasInt8() const { return IsInt8() && SuperType::HasDataField(0); }
     inline int8_t Value::Data::Builder::Int8() const { HE_ASSERT(IsInt8()); return SuperType::TryGetDataField<int8_t>(0, 2); }
-    inline void Value::Data::Builder::SetInt8(int8_t value) { SetTag(Tag::Int8); SuperType::SetDataField<int8_t>(0, 2, value); }
+    inline void Value::Data::Builder::SetInt8(int8_t value) { SetTag(Tag::Int8); SuperType::SetDataField<int8_t>(2, value); }
 
     inline bool Value::Data::Builder::IsInt16() const { return Tag() == Tag::Int16; }
     inline bool Value::Data::Builder::HasInt16() const { return IsInt16() && SuperType::HasDataField(0); }
     inline int16_t Value::Data::Builder::Int16() const { HE_ASSERT(IsInt16()); return SuperType::TryGetDataField<int16_t>(0, 1); }
-    inline void Value::Data::Builder::SetInt16(int16_t value) { SetTag(Tag::Int16); SuperType::SetDataField<int16_t>(0, 1, value); }
+    inline void Value::Data::Builder::SetInt16(int16_t value) { SetTag(Tag::Int16); SuperType::SetDataField<int16_t>(1, value); }
 
     inline bool Value::Data::Builder::IsInt32() const { return Tag() == Tag::Int32; }
     inline bool Value::Data::Builder::HasInt32() const { return IsInt32() && SuperType::HasDataField(0); }
     inline int32_t Value::Data::Builder::Int32() const { HE_ASSERT(IsInt32()); return SuperType::TryGetDataField<int32_t>(0, 1); }
-    inline void Value::Data::Builder::SetInt32(int32_t value) { SetTag(Tag::Int32); SuperType::SetDataField<int32_t>(0, 1, value); }
+    inline void Value::Data::Builder::SetInt32(int32_t value) { SetTag(Tag::Int32); SuperType::SetDataField<int32_t>(1, value); }
 
     inline bool Value::Data::Builder::IsInt64() const { return Tag() == Tag::Int64; }
     inline bool Value::Data::Builder::HasInt64() const { return IsInt64() && SuperType::HasDataField(0); }
     inline int64_t Value::Data::Builder::Int64() const { HE_ASSERT(IsInt64()); return SuperType::TryGetDataField<int64_t>(0, 1); }
-    inline void Value::Data::Builder::SetInt64(int64_t value) { SetTag(Tag::Int64); SuperType::SetDataField<int64_t>(0, 1, value); }
+    inline void Value::Data::Builder::SetInt64(int64_t value) { SetTag(Tag::Int64); SuperType::SetDataField<int64_t>(1, value); }
 
     inline bool Value::Data::Builder::IsUint8() const { return Tag() == Tag::Uint8; }
     inline bool Value::Data::Builder::HasUint8() const { return IsUint8() && SuperType::HasDataField(0); }
     inline uint8_t Value::Data::Builder::Uint8() const { HE_ASSERT(IsUint8()); return SuperType::TryGetDataField<uint8_t>(0, 2); }
-    inline void Value::Data::Builder::SetUint8(uint8_t value) { SetTag(Tag::Uint8); SuperType::SetDataField<uint8_t>(0, 2, value); }
+    inline void Value::Data::Builder::SetUint8(uint8_t value) { SetTag(Tag::Uint8); SuperType::SetDataField<uint8_t>(2, value); }
 
     inline bool Value::Data::Builder::IsUint16() const { return Tag() == Tag::Uint16; }
     inline bool Value::Data::Builder::HasUint16() const { return IsUint16() && SuperType::HasDataField(0); }
     inline uint16_t Value::Data::Builder::Uint16() const { HE_ASSERT(IsUint16()); return SuperType::TryGetDataField<uint16_t>(0, 1); }
-    inline void Value::Data::Builder::SetUint16(uint16_t value) { SetTag(Tag::Uint16); SuperType::SetDataField<uint16_t>(0, 1, value); }
+    inline void Value::Data::Builder::SetUint16(uint16_t value) { SetTag(Tag::Uint16); SuperType::SetDataField<uint16_t>(1, value); }
 
     inline bool Value::Data::Builder::IsUint32() const { return Tag() == Tag::Uint32; }
     inline bool Value::Data::Builder::HasUint32() const { return IsUint32() && SuperType::HasDataField(0); }
     inline uint32_t Value::Data::Builder::Uint32() const { HE_ASSERT(IsUint32()); return SuperType::TryGetDataField<uint32_t>(0, 1); }
-    inline void Value::Data::Builder::SetUint32(uint32_t value) { SetTag(Tag::Uint32); SuperType::SetDataField<uint32_t>(0, 1, value); }
+    inline void Value::Data::Builder::SetUint32(uint32_t value) { SetTag(Tag::Uint32); SuperType::SetDataField<uint32_t>(1, value); }
 
     inline bool Value::Data::Builder::IsUint64() const { return Tag() == Tag::Uint64; }
     inline bool Value::Data::Builder::HasUint64() const { return IsUint64() && SuperType::HasDataField(0); }
     inline uint64_t Value::Data::Builder::Uint64() const { HE_ASSERT(IsUint64()); return SuperType::TryGetDataField<uint64_t>(0, 1); }
-    inline void Value::Data::Builder::SetUint64(uint64_t value) { SetTag(Tag::Uint64); SuperType::SetDataField<uint64_t>(0, 1, value); }
+    inline void Value::Data::Builder::SetUint64(uint64_t value) { SetTag(Tag::Uint64); SuperType::SetDataField<uint64_t>(1, value); }
 
     inline bool Value::Data::Builder::IsFloat32() const { return Tag() == Tag::Float32; }
     inline bool Value::Data::Builder::HasFloat32() const { return IsFloat32() && SuperType::HasDataField(0); }
     inline float Value::Data::Builder::Float32() const { HE_ASSERT(IsFloat32()); return SuperType::TryGetDataField<float>(0, 1); }
-    inline void Value::Data::Builder::SetFloat32(float value) { SetTag(Tag::Float32); SuperType::SetDataField<float>(0, 1, value); }
+    inline void Value::Data::Builder::SetFloat32(float value) { SetTag(Tag::Float32); SuperType::SetDataField<float>(1, value); }
 
     inline bool Value::Data::Builder::IsFloat64() const { return Tag() == Tag::Float64; }
     inline bool Value::Data::Builder::HasFloat64() const { return IsFloat64() && SuperType::HasDataField(0); }
     inline double Value::Data::Builder::Float64() const { HE_ASSERT(IsFloat64()); return SuperType::TryGetDataField<double>(0, 1); }
-    inline void Value::Data::Builder::SetFloat64(double value) { SetTag(Tag::Float64); SuperType::SetDataField<double>(0, 1, value); }
+    inline void Value::Data::Builder::SetFloat64(double value) { SetTag(Tag::Float64); SuperType::SetDataField<double>(1, value); }
 
     inline bool Value::Data::Builder::IsBlob() const { return Tag() == Tag::Blob; }
     inline bool Value::Data::Builder::HasBlob() const { return IsBlob() && SuperType::HasPointerField(0); }
@@ -2379,13 +2321,13 @@ namespace he::schema
     inline bool Value::Data::Builder::IsEnum() const { return Tag() == Tag::Enum; }
     inline bool Value::Data::Builder::HasEnum() const { return IsEnum() && SuperType::HasDataField(0); }
     inline uint16_t Value::Data::Builder::Enum() const { HE_ASSERT(IsEnum()); return SuperType::TryGetDataField<uint16_t>(0, 1); }
-    inline void Value::Data::Builder::SetEnum(uint16_t value) { SetTag(Tag::Enum); SuperType::SetDataField<uint16_t>(0, 1, value); }
+    inline void Value::Data::Builder::SetEnum(uint16_t value) { SetTag(Tag::Enum); SuperType::SetDataField<uint16_t>(1, value); }
 
-    inline bool Value::Data::Builder::IsTuple() const { return Tag() == Tag::Tuple; }
-    inline bool Value::Data::Builder::HasTuple() const { return IsTuple() && SuperType::HasPointerField(0); }
-    inline ::he::schema::List<Value::TupleValue>::Builder Value::Data::Builder::Tuple() const { HE_ASSERT(IsTuple()); return SuperType::GetPointerField(0).TryGetList<struct Value::TupleValue>(); }
-    inline void Value::Data::Builder::SetTuple(::he::schema::List<Value::TupleValue>::Reader value) { SetTag(Tag::Tuple); SuperType::GetPointerField(0).Set(value); }
-    inline ::he::schema::List<Value::TupleValue>::Builder Value::Data::Builder::InitTuple(uint32_t size) { SetTag(Tag::Tuple); auto v = m_builder->AddList<struct Value::TupleValue>(size); SuperType::GetPointerField(0).Set(v); return v; }
+    inline bool Value::Data::Builder::IsStruct() const { return Tag() == Tag::Struct; }
+    inline bool Value::Data::Builder::HasStruct() const { return IsStruct() && SuperType::HasPointerField(0); }
+    inline AnyPointer::Builder Value::Data::Builder::Struct() const { HE_ASSERT(IsStruct()); return SuperType::GetPointerField(0);  }
+    inline void Value::Data::Builder::SetStruct(AnyPointer::Reader value) { SetTag(Tag::Struct); SuperType::GetPointerField(0).Set(value); }
+    inline AnyPointer::Builder Value::Data::Builder::InitStruct() { SetTag(Tag::Struct); return SuperType::GetPointerField(0); }
 
     inline bool Value::Data::Builder::IsInterface() const { return Tag() == Tag::Interface; }
     inline bool Value::Data::Builder::HasInterface() const { return false; }

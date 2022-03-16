@@ -538,9 +538,9 @@ namespace he::schema
                 return false;
             }
 
-            if (ast.array.elementType->kind == AstExpression::Kind::Array)
+            if (ast.array.elementType->kind == AstExpression::Kind::Array && ast.array.elementType->array.size != nullptr)
             {
-                m_context->AddError(ast.location, "Nested Arrays and Lists are not supported.");
+                m_context->AddError(ast.location, "Arrays cannot be nested in lists or other arrays are not supported.");
                 return false;
             }
 
@@ -807,29 +807,57 @@ namespace he::schema
         switch (astValue.kind)
         {
             case AstExpression::Kind::Blob:
-            case AstExpression::Kind::Float:
-            case AstExpression::Kind::String:
-                if (astType.kind != astValue.kind)
+                if (astType.kind == AstExpression::Kind::QualifiedName && astType.qualified.names.Size() == 1)
                 {
-                    m_context->AddError(astValue.location, "A {} value expression is not valid for this type", astValue.kind);
-                    return false;
+                    const AstExpression* name = astType.qualified.names.Front();
+                    return name->kind == AstExpression::Kind::Identifier && name->identifier == KW_Blob;
                 }
-                return true;
+                m_context->AddError(astValue.location, "A blob value expression is not valid for this type");
+                return false;
+
+            case AstExpression::Kind::Float:
+                // TODO: Check size
+                if (astType.kind == AstExpression::Kind::QualifiedName && astType.qualified.names.Size() == 1)
+                {
+                    const AstExpression* name = astType.qualified.names.Front();
+                    return name->kind == AstExpression::Kind::Identifier && (name->identifier == KW_Float32 || name->identifier == KW_Float64);
+                }
+                m_context->AddError(astValue.location, "A float value expression is not valid for this type");
+                return false;
+
+            case AstExpression::Kind::String:
+                if (astType.kind == AstExpression::Kind::QualifiedName && astType.qualified.names.Size() == 1)
+                {
+                    const AstExpression* name = astType.qualified.names.Front();
+                    return name->kind == AstExpression::Kind::Identifier && name->identifier == KW_String;
+                }
+                m_context->AddError(astValue.location, "A string value expression is not valid for this type");
+                return false;
+
             case AstExpression::Kind::SignedInt:
             case AstExpression::Kind::UnsignedInt:
-                if (astType.kind != AstExpression::Kind::SignedInt && astType.kind != AstExpression::Kind::UnsignedInt)
+                // TODO: Check size
+                if (astType.kind == AstExpression::Kind::QualifiedName && astType.qualified.names.Size() == 1)
                 {
-                    m_context->AddError(astValue.location, "An Integer value expression is not valid for this type", astValue.kind);
-                    return false;
+                    const AstExpression* name = astType.qualified.names.Front();
+                    if (name->kind == AstExpression::Kind::Identifier)
+                    {
+                        auto it = m_builtinTypeMap.find(name->identifier);
+                        if (it != m_builtinTypeMap.end() && IsArithmetic(it->second))
+                            return true;
+                    }
                 }
-                return true;
+                m_context->AddError(astValue.location, "An integer value expression is not valid for this type");
+                return false;
+
             case AstExpression::Kind::List:
-                if (astType.kind != AstExpression::Kind::List && astType.kind != AstExpression::Kind::Array)
+                if (astType.kind != AstExpression::Kind::Array)
                 {
-                    m_context->AddError(astValue.location, "A List value expression is only valid for List and Array types");
+                    m_context->AddError(astValue.location, "A list value expression is only valid for List and Array types");
                     return false;
                 }
                 return true;
+
             case AstExpression::Kind::QualifiedName:
             {
                 const AstNode* valueNode = m_context->FindNode(astValue, scopeValue);
@@ -843,6 +871,7 @@ namespace he::schema
 
                 // We already validated the type, so if we don't find it then its a builtin.
                 // Since there are no builtins that take a qualified name value, this is an error.
+                // TODO: Bools take a value that is a qualified name (with one entry)
                 if (!typeNode)
                 {
                     m_context->AddError(astValue.location, "Invalid value expression for type");
@@ -915,6 +944,9 @@ namespace he::schema
                         m_context->AddError(param.location, "Field '{}' does not exist on type '{}'", param.name, node->name);
                         return false;
                     }
+
+                    if (!VerifyValue(field->field.type, *field->parent, param.value, scopeValue))
+                        return false;
                 }
 
                 return true;

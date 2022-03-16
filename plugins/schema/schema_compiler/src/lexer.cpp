@@ -210,7 +210,7 @@ namespace he::schema
         {
             char c = *m_cursor++;
 
-            if (!IsHex(c) && c != ' ')
+            if (!IsHex(c) && c != ' ' && c != '"')
             {
                 m_nextError = "Illegal character in blob literal";
                 return TokenType::Error;

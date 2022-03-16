@@ -135,6 +135,36 @@ namespace he::schema
         return align * count;
     }
 
+    inline ElementSize GetTypeElementSize(const Type::Reader& t)
+    {
+        switch (t.Data().Tag())
+        {
+            case Type::Data::Tag::Void: return ElementSize::Void;
+            case Type::Data::Tag::Bool: return ElementSize::Bit;
+            case Type::Data::Tag::Int8: return ElementSize::Byte;
+            case Type::Data::Tag::Int16: return ElementSize::TwoBytes;
+            case Type::Data::Tag::Int32: return ElementSize::FourBytes;
+            case Type::Data::Tag::Int64: return ElementSize::EightBytes;
+            case Type::Data::Tag::Uint8: return ElementSize::Byte;
+            case Type::Data::Tag::Uint16: return ElementSize::TwoBytes;
+            case Type::Data::Tag::Uint32: return ElementSize::FourBytes;
+            case Type::Data::Tag::Uint64: return ElementSize::EightBytes;
+            case Type::Data::Tag::Float32: return ElementSize::FourBytes;
+            case Type::Data::Tag::Float64: return ElementSize::EightBytes;
+            case Type::Data::Tag::Array: return GetTypeElementSize(t.Data().Array().ElementType());
+            case Type::Data::Tag::Blob: return ElementSize::Pointer;
+            case Type::Data::Tag::String: return ElementSize::Pointer;
+            case Type::Data::Tag::List: return ElementSize::Pointer;
+            case Type::Data::Tag::Enum: return ElementSize::TwoBytes;
+            case Type::Data::Tag::Struct: return ElementSize::Composite;
+            case Type::Data::Tag::Interface: return ElementSize::Pointer;
+            case Type::Data::Tag::AnyPointer: return ElementSize::Pointer;
+        }
+
+        HE_ASSERT(false, "Unknown type kind");
+        return ElementSize::Void;
+    }
+
     template <TypeId Id>
     inline Declaration::Reader GetSchema()
     {

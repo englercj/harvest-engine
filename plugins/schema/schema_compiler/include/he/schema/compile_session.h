@@ -43,6 +43,7 @@ namespace he::schema
 
         bool VerifyAll() const;
         bool CompileAll();
+        bool Compile(CompileContext& ctx);
 
     private:
         enum class Stage
@@ -62,6 +63,7 @@ namespace he::schema
 
         TypeIdMap m_typeIdMap;
         TypeMap m_typeMap;
+        DeclIdMap m_declIdMap;
         std::unordered_map<he::String, CompileContext*> m_importMap;
     };
 }

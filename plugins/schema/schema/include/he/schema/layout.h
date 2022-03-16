@@ -24,6 +24,7 @@ namespace he::schema
     class PointerReader;
     class StructReader;
 
+    struct AnyPointer { using Reader = PointerReader; using Builder = PointerBuilder; };
     struct String { class Reader; class Builder; };
     template <typename T> struct List { using ElementType = T; class Reader; class Builder; };
 
@@ -488,6 +489,7 @@ namespace he::schema
         void SetOffsetAndKind(int32_t wordOffset, PointerKind kind) { Value().offsetAndKind = (static_cast<uint32_t>(wordOffset) << 2) | (static_cast<uint16_t>(kind) & 0x03); }
         void SetTargetAndKind(const Word* target, PointerKind kind) { SetOffsetAndKind(static_cast<int32_t>(target - Location()) - 1, kind); }
 
+        void Set(const PointerReader& reader);
         void Set(const ListReader& value);
         void Set(const StructReader& value);
 
@@ -565,9 +567,7 @@ namespace he::schema
             , m_step(step)
             , m_structDataFieldCount(structDataFieldCount)
             , m_elementSize(ElementSize::Composite)
-        {
-            HE_ASSERT(m_structDataFieldCount > 0 || m_size == 0);
-        }
+        {}
 
         bool IsValid() const { return m_builder != nullptr; }
 
@@ -688,7 +688,7 @@ namespace he::schema
             *data |= static_cast<Word>(m_dataFieldCount);
 
             // If there are data fields then the data word size must be larger than one
-            HE_ASSERT((m_dataFieldCount == 0 && m_dataWordSize == 0) || (m_dataFieldCount > 0 && m_dataWordSize > 1));
+            HE_ASSERT(m_dataFieldCount == 0 || (m_dataFieldCount > 0 && m_dataWordSize > 1));
 
             // The metadata words should always fit within the data section when we have fields
             HE_ASSERT(dataFieldCount == 0 || m_metaWordSize < m_dataWordSize,

@@ -13,6 +13,7 @@
 #include <concepts>
 #include <optional>
 #include <set>
+#include <type_traits>
 #include <unordered_map>
 #include <unordered_set>
 
@@ -59,6 +60,17 @@ namespace he::schema
 
         template <std::integral T>
         bool SetInt(const AstFileLocation& location, T value, Type::Data::Reader type, Value::Data::Builder data);
+
+        void SetStructValues(Declaration::Data::Struct::Reader typeStructDecl, const AstList<AstTupleParam>& params, StructBuilder st, const AstNode& scope);
+
+        template <typename BuilderType>
+        void SetValue(
+            const AstExpression& ast,
+            Type::Reader type,
+            const AstNode& scope,
+            BuilderType obj,
+            uint16_t index,
+            uint32_t dataOffset);
 
     private:
         CompileContext* m_context{ nullptr };

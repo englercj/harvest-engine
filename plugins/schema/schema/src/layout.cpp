@@ -235,6 +235,14 @@ namespace he::schema
         return StructBuilder(this, wordOffset, dataFieldCount, dataWordSize, pointerCount);
     }
 
+    void PointerBuilder::Set(const PointerReader& value)
+    {
+        if (Location() == value.Data())
+            return;
+
+        MemCopy(Location(), value.Data(), sizeof(Word));
+    }
+
     void PointerBuilder::Set(const StructReader& value)
     {
         if (!value.IsValid())

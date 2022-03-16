@@ -43,7 +43,7 @@ namespace he::schema
         : m_config(config)
         , m_context(nullptr)
     {
-        m_context = Allocator::GetDefault().New<CompileContext>(path, config, m_typeIdMap, m_typeMap);
+        m_context = Allocator::GetDefault().New<CompileContext>(path, config, m_typeIdMap, m_typeMap, m_declIdMap);
     }
 
     CompileSession::~CompileSession()
@@ -104,13 +104,7 @@ namespace he::schema
         req.schemaFile = builder.Root().TryGetStruct<SchemaFile>();
         req.fileName = GetBaseName(m_context->Path()).Data();
         req.outDir = m_config.codegenOutDir;
-
-        CacheDeclIds(req.schemaFile, req.declsById);
-        for (auto pair : m_importMap)
-        {
-            CompileContext* ctx = pair.second;
-            CacheDeclIds(ctx->Schema().Root().TryGetStruct<SchemaFile>(), req.declsById);
-        }
+        req.declsById = &m_declIdMap;
 
         if (HasFlag(m_config.codegenTargets, CodegenTarget::Echo))
         {
@@ -195,7 +189,7 @@ namespace he::schema
         ConcatPath(fullPath, path);
         if (File::Exists(fullPath.Data()))
         {
-            CompileContext* importCtx = Allocator::GetDefault().New<CompileContext>(fullPath.Data(), m_config, m_typeIdMap, m_typeMap);
+            CompileContext* importCtx = Allocator::GetDefault().New<CompileContext>(fullPath.Data(), m_config, m_typeIdMap, m_typeMap, m_declIdMap);
             m_importMap[fullPath] = importCtx;
             ctx.AddImport(importCtx);
             return ParseFile(*importCtx);
@@ -209,7 +203,7 @@ namespace he::schema
 
             if (File::Exists(fullPath.Data()))
             {
-                CompileContext* importCtx = Allocator::GetDefault().New<CompileContext>(fullPath.Data(), m_config, m_typeIdMap, m_typeMap);
+                CompileContext* importCtx = Allocator::GetDefault().New<CompileContext>(fullPath.Data(), m_config, m_typeIdMap, m_typeMap, m_declIdMap);
                 m_importMap[fullPath] = importCtx;
                 ctx.AddImport(importCtx);
                 return ParseFile(*importCtx);
@@ -245,15 +239,35 @@ namespace he::schema
 
     bool CompileSession::CompileAll()
     {
-        if (!m_context->CompileFile())
-            return false;
+        return Compile(*m_context);
+        //if (!m_context->CompileFile())
+        //    return false;
 
-        for (auto pair : m_importMap)
+        //for (auto pair : m_importMap)
+        //{
+        //    if (!pair.second->CompileFile())
+        //        return false;
+        //}
+
+        //return true;
+    }
+
+    bool CompileSession::Compile(CompileContext& ctx)
+    {
+        if (ctx.IsFullyCompiled())
+            return true;
+
+        for (CompileContext* importCtx : ctx.Imports())
         {
-            if (!pair.second->CompileFile())
+            if (!Compile(*importCtx))
                 return false;
         }
 
+        if (!ctx.CompileFile())
+            return false;
+
+        ctx.MarkFullyCompiled();
+        CacheDeclIds(ctx.Schema().Root().TryGetStruct<SchemaFile>(), m_declIdMap);
         return true;
     }
 }

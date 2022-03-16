@@ -3,6 +3,7 @@
 #pragma once
 
 #include "he/core/enum_ops.h"
+#include "he/schema/compile_types.h"
 #include "he/schema/schema.h"
 
 #include <unordered_map>
@@ -10,8 +11,6 @@
 namespace he::schema
 {
     class Builder;
-
-    using DeclIdMap = std::unordered_map<TypeId, Declaration::Reader, TypeIdHasher>;
 
     enum class CodegenTarget
     {
@@ -24,7 +23,7 @@ namespace he::schema
     struct CodeGenRequest
     {
         /// Lookup a declaration by ID, assert that is is valid, and return a reference to it.
-        Declaration::Reader GetDecl(uint64_t id) const { return declsById.at(id); }
+        Declaration::Reader GetDecl(uint64_t id) const { return declsById->at(id); }
 
         /// Raw data that was built by the compiler.
         Span<const Word> schemaData;
@@ -39,7 +38,7 @@ namespace he::schema
         const char* outDir{ nullptr };
 
         /// Map of declarations in the schema by ID. Includes all declarations in imports as well.
-        DeclIdMap declsById{};
+        DeclIdMap* declsById{ nullptr };
     };
 
     bool GenerateEcho(const CodeGenRequest& request);

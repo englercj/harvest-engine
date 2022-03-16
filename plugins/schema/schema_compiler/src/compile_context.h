@@ -24,17 +24,22 @@ namespace he::schema
     class CompileContext
     {
     public:
-        CompileContext(const char* path, const CompileSession::Config& config, TypeIdMap& typeIdMap, TypeMap& typeMap)
+        CompileContext(const char* path, const CompileSession::Config& config, TypeIdMap& typeIdMap, TypeMap& typeMap, DeclIdMap& declIdMap)
             : m_path(path)
             , m_config(config)
             , m_typeIdMap(typeIdMap)
             , m_typeMap(typeMap)
+            , m_declIdMap(declIdMap)
         {}
 
         const CompileSession::Config& Config() const { return m_config; }
         StringView Path() const { return m_path; }
+
         bool IsFullyParsed() const { return m_fullyParsed; }
         void MarkFullyParsed() { m_fullyParsed = true; }
+
+        bool IsFullyCompiled() const { return m_fullyCompiled; }
+        void MarkFullyCompiled() { m_fullyCompiled = true; }
 
         const AstFile& Ast() const { return m_parser.Ast(); }
         const Builder& Schema() const { return m_compiler.Schema(); }
@@ -48,6 +53,8 @@ namespace he::schema
         const AstNode* FindNode(const AstExpression& name, const AstNode& scope) const;
         const AstNode* FindNode(StringView name, const AstNode& scope) const;
 
+        Declaration::Reader GetDecl(TypeId id) const { return m_declIdMap.at(id); }
+
         bool TrackTypeId(const AstNode& node);
         bool TrackType(const TypeKey& key, const TypeValue& value);
         const TypeValue& GetType(const TypeKey& key) const { return m_typeMap.at(key); }
@@ -55,6 +62,7 @@ namespace he::schema
         bool DecodeString(const AstExpression& ast, he::String& out);
 
         void AddImport(CompileContext* import) { m_imports.PushBack(import); }
+        Span<CompileContext*> Imports() { return m_imports; }
 
         template <typename... Args>
         void AddError(const AstFileLocation& loc, fmt::format_string<Args...> fmt, Args&&... args)
@@ -77,10 +85,12 @@ namespace he::schema
         const CompileSession::Config& m_config;
         TypeIdMap& m_typeIdMap;
         TypeMap& m_typeMap;
+        DeclIdMap& m_declIdMap;
 
         Vector<char> m_input{};
         Vector<CompileContext*> m_imports{};
         bool m_fullyParsed{ false };
+        bool m_fullyCompiled{ false };
         Parser m_parser{};
         Verifier m_verifier{};
         Compiler m_compiler{};

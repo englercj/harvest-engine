@@ -303,6 +303,9 @@ namespace he::schema
 
     bool Parser::ConsumeType(AstExpression& type)
     {
+        type.location.line = m_token.line;
+        type.location.column = m_token.column;
+
         if (!ConsumeQualifiedName(type))
             return false;
 
@@ -332,6 +335,9 @@ namespace he::schema
 
     bool Parser::ConsumeValue(AstExpression& value)
     {
+        value.location.line = m_token.line;
+        value.location.column = m_token.column;
+
         switch (m_token.type)
         {
             case Lexer::TokenType::Blob:
@@ -354,6 +360,9 @@ namespace he::schema
 
                 do
                 {
+                    if (At(Lexer::TokenType::CloseSquareBracket))
+                        break;
+
                     AstExpression* item = AstCreate(value.list);
                     if (!ConsumeValue(*item))
                         return false;
@@ -392,7 +401,7 @@ namespace he::schema
                 value.kind = AstExpression::Kind::String;
                 value.string = m_token.text;
                 NextDecl();
-                return false;
+                return true;
 
             case Lexer::TokenType::OpenCurlyBracket:
             {
@@ -402,6 +411,9 @@ namespace he::schema
 
                 do
                 {
+                    if (At(Lexer::TokenType::CloseCurlyBracket))
+                        break;
+
                     AstTupleParam* param = AstCreate(value.tuple);
                     if (!ConsumeIdentifier(param->name))
                         return false;
@@ -433,6 +445,9 @@ namespace he::schema
         {
             do
             {
+                if (At(Lexer::TokenType::CloseAngleBracket))
+                    break;
+
                 AstTypeParam* param = AstCreate(node.typeParams);
                 if (!ConsumeIdentifier(param->name))
                     return false;
@@ -465,6 +480,8 @@ namespace he::schema
     bool Parser::ConsumeQualifiedName(AstExpression& name)
     {
         name.kind = AstExpression::Kind::QualifiedName;
+        name.location.line = m_token.line;
+        name.location.column = m_token.column;
 
         // leading dot inserts an empty expression into the qualified name so we know this is a "global" name
         if (TryConsume(Lexer::TokenType::Dot))
@@ -488,6 +505,9 @@ namespace he::schema
 
                 do
                 {
+                    if (At(Lexer::TokenType::CloseAngleBracket))
+                        break;
+
                     AstExpression* param = AstCreate(child->generic.params);
                     if (!ConsumeType(*param))
                         return false;
@@ -841,6 +861,9 @@ namespace he::schema
         {
             do
             {
+                if (At(Lexer::TokenType::CloseParens))
+                    break;
+
                 if (!ConsumeStructField(parent, params.fields, false))
                     return false;
             }

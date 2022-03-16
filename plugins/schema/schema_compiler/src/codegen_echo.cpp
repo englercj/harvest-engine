@@ -559,82 +559,251 @@ namespace he::schema
                 HE_ASSERT(type.Data().IsList());
                 Type::Reader elementType = type.Data().List().ElementType();
                 List<Value>::Reader listValues = value.Data().List();
-
-                m_writer.Write('[');
-                for (uint32_t i = 0; i < listValues.Size(); ++i)
+                WriteListValue(listValues.Size(), [&](uint32_t i)
                 {
                     WriteValue(elementType, scope, listValues[i]);
-
-                    if (i != (listValues.Size() - 1))
-                        m_writer.Write(", ");
-                }
-                m_writer.Write(']');
+                });
                 break;
             }
             case Value::Data::Tag::Enum:
             {
                 HE_ASSERT(type.Data().IsEnum());
                 Type::Data::Enum::Reader enumType = type.Data().Enum();
-                Declaration::Reader decl = m_request.GetDecl(enumType.Id());
-
-                HE_ASSERT(decl.Data().IsEnum());
-                Declaration::Data::Enum::Reader enumDecl = decl.Data().Enum();
-
-                WriteName(decl, scope, enumType.Brand());
-                m_writer.Write('.');
-                for (Enumerator::Reader e : enumDecl.Enumerators())
-                {
-                    if (e.Ordinal() == value.Data().Enum())
-                    {
-                        m_writer.Write(e.Name());
-                        break;
-                    }
-                }
+                WriteEnumValue(enumType, value.Data().Enum(), scope);
                 break;
             }
-            case Value::Data::Tag::Tuple:
+            case Value::Data::Tag::Struct:
             {
                 HE_ASSERT(type.Data().IsStruct());
                 const Type::Data::Struct::Reader structType = type.Data().Struct();
-                const Declaration::Reader decl = m_request.GetDecl(structType.Id());
-
-                HE_ASSERT(decl.Data().IsStruct());
-                const Declaration::Data::Struct::Reader structDecl = decl.Data().Struct();
-                const List<Field>::Reader fields = structDecl.Fields();
-
-                const List<Value::TupleValue>::Reader tupleValue = value.Data().Tuple();
-
-                m_writer.Write("{ ");
-                for (uint32_t i = 0; i < tupleValue.Size(); ++i)
-                {
-                    const Value::TupleValue::Reader v = tupleValue[i];
-                    uint32_t fieldIndex = ~0u;
-                    for (uint32_t j = 0; j < fields.Size(); ++j)
-                    {
-                        if (fields[j].Name() == v.Name())
-                        {
-                            fieldIndex = j;
-                            break;
-                        }
-                    }
-                    HE_ASSERT(fieldIndex != ~0u);
-                    m_writer.Write("{} = ", v.Name().AsView());
-
-                    Field::Reader field = fields[fieldIndex];
-                    Field::Meta::Normal::Reader norm = field.Meta().Normal();
-                    WriteValue(norm.Type(), scope, v.Value());
-
-                    if (i != (tupleValue.Size() - 1))
-                        m_writer.Write(", ");
-                }
-                m_writer.Write(" }");
+                const StructReader structValue = value.Data().Struct().TryGetStruct();
+                WriteStructValue(structType, scope, structValue);
                 break;
             }
             case Value::Data::Tag::Interface:
-                break;
             case Value::Data::Tag::AnyPointer:
+                std::cerr << "Interface and AnyPointer types cannot have explicit values. Verifier should've caught this.";
                 break;
         }
+    }
+
+    void CodeGenEcho::WriteEnumValue(Type::Data::Enum::Reader enumType, uint16_t value, Declaration::Reader scope)
+    {
+        Declaration::Reader decl = m_request.GetDecl(enumType.Id());
+
+        HE_ASSERT(decl.Data().IsEnum());
+        Declaration::Data::Enum::Reader enumDecl = decl.Data().Enum();
+
+        WriteName(decl, scope, enumType.Brand());
+        m_writer.Write('.');
+        for (Enumerator::Reader e : enumDecl.Enumerators())
+        {
+            if (e.Ordinal() == value)
+            {
+                m_writer.Write(e.Name());
+                break;
+            }
+        }
+    }
+
+    template <typename F>
+    void CodeGenEcho::WriteListValue(uint32_t size, F&& iterator)
+    {
+        m_writer.Write('[');
+        for (uint32_t i = 0; i < size; ++i)
+        {
+            iterator(i);
+
+            if (i != (size - 1))
+                m_writer.Write(", ");
+        }
+        m_writer.Write(']');
+    }
+
+    void CodeGenEcho::WriteListElementValue(uint32_t index, Type::Reader elementType, Declaration::Reader scope, ListReader list)
+    {
+        const Type::Data::Reader elementTypeData = elementType.Data();
+
+        switch (elementTypeData.Tag())
+        {
+            case Type::Data::Tag::Void:
+                break;
+            case Type::Data::Tag::Bool: m_writer.Write("{}", list.GetDataElement<bool>(index)); break;
+            case Type::Data::Tag::Int8: m_writer.Write("{}", list.GetDataElement<int8_t>(index)); break;
+            case Type::Data::Tag::Int16: m_writer.Write("{}", list.GetDataElement<int16_t>(index)); break;
+            case Type::Data::Tag::Int32: m_writer.Write("{}", list.GetDataElement<int32_t>(index)); break;
+            case Type::Data::Tag::Int64: m_writer.Write("{}", list.GetDataElement<int64_t>(index)); break;
+            case Type::Data::Tag::Uint8: m_writer.Write("{}", list.GetDataElement<uint8_t>(index)); break;
+            case Type::Data::Tag::Uint16: m_writer.Write("{}", list.GetDataElement<uint16_t>(index)); break;
+            case Type::Data::Tag::Uint32: m_writer.Write("{}", list.GetDataElement<uint32_t>(index)); break;
+            case Type::Data::Tag::Uint64: m_writer.Write("{}", list.GetDataElement<uint64_t>(index)); break;
+            case Type::Data::Tag::Float32: m_writer.Write("{}", list.GetDataElement<float>(index)); break;
+            case Type::Data::Tag::Float64: m_writer.Write("{}", list.GetDataElement<double>(index)); break;
+            case Type::Data::Tag::Blob:
+            {
+                List<uint8_t>::Reader bytes = list.GetPointerElement(index).TryGetList<uint8_t>();
+                Span<const uint8_t> byteSpan{ bytes.Data(), bytes.Size() };
+                m_writer.Write("0x\"{}\"", byteSpan);
+                break;
+            }
+            case Type::Data::Tag::String:
+            {
+                String::Reader str = list.GetPointerElement(index).TryGetString();
+                m_writer.Write("\"{}\"", str.AsView());
+                break;
+            }
+            case Type::Data::Tag::List:
+            {
+                const Type::Data::List::Reader listType = elementTypeData.List();
+                const Type::Reader subElementType = listType.ElementType();
+                const ElementSize subElementSize = GetTypeElementSize(subElementType);
+                const ListReader subList = list.GetPointerElement(index).TryGetList(subElementSize);
+
+                WriteListValue(subList.Size(), [&](uint32_t i)
+                {
+                    WriteListElementValue(i, subElementType, scope, subList);
+                });
+                break;
+            }
+            case Type::Data::Tag::Enum:
+            {
+                const Type::Data::Enum::Reader enumType = elementTypeData.Enum();
+                const uint16_t value = list.GetDataElement<uint16_t>(index);
+                WriteEnumValue(enumType, value, scope);
+                break;
+            }
+            case Type::Data::Tag::Struct:
+            {
+                const Type::Data::Struct::Reader structType = elementTypeData.Struct();
+                const StructReader value = list.GetCompositeElement(index);
+                WriteStructValue(structType, scope, value);
+                break;
+            }
+            case Type::Data::Tag::Array:
+                std::cerr << "Arrays cannot be list elements. Verifier should've caught this.";
+                break;
+            case Type::Data::Tag::Interface:
+            case Type::Data::Tag::AnyPointer:
+                std::cerr << "Interface and AnyPointer types cannot have explicit values. Verifier should've caught this.";
+                break;
+        }
+    }
+
+    void CodeGenEcho::WriteStructValue(Type::Data::Struct::Reader structType, Declaration::Reader scope, StructReader structValue)
+    {
+        const Declaration::Reader decl = m_request.GetDecl(structType.Id());
+
+        HE_ASSERT(decl.Data().IsStruct());
+        const Declaration::Data::Struct::Reader structDecl = decl.Data().Struct();
+        const List<Field>::Reader fields = structDecl.Fields();
+
+        m_writer.Write("{ ");
+        for (uint32_t i = 0; i < fields.Size(); ++i)
+        {
+            const Field::Reader field = fields[i];
+
+            if (TryWriteStructFieldValue(field, scope, structValue))
+                m_writer.Write(", ");
+        }
+        m_writer.Write(" }");
+    }
+
+    void CodeGenEcho::WriteStructFieldValue(uint16_t index, uint32_t dataOffset, Type::Reader type, Declaration::Reader scope, StructReader structValue)
+    {
+        const Type::Data::Reader typeData = type.Data();
+
+        switch (typeData.Tag())
+        {
+            case Type::Data::Tag::Void:
+                break;
+            case Type::Data::Tag::Bool: m_writer.Write("{}", structValue.GetDataField<bool>(dataOffset)); break;
+            case Type::Data::Tag::Int8: m_writer.Write("{}", structValue.GetDataField<int8_t>(dataOffset)); break;
+            case Type::Data::Tag::Int16: m_writer.Write("{}", structValue.GetDataField<int16_t>(dataOffset)); break;
+            case Type::Data::Tag::Int32: m_writer.Write("{}", structValue.GetDataField<int32_t>(dataOffset)); break;
+            case Type::Data::Tag::Int64: m_writer.Write("{}", structValue.GetDataField<int64_t>(dataOffset)); break;
+            case Type::Data::Tag::Uint8: m_writer.Write("{}", structValue.GetDataField<uint8_t>(dataOffset)); break;
+            case Type::Data::Tag::Uint16: m_writer.Write("{}", structValue.GetDataField<uint16_t>(dataOffset)); break;
+            case Type::Data::Tag::Uint32: m_writer.Write("{}", structValue.GetDataField<uint32_t>(dataOffset)); break;
+            case Type::Data::Tag::Uint64: m_writer.Write("{}", structValue.GetDataField<uint64_t>(dataOffset)); break;
+            case Type::Data::Tag::Float32: m_writer.Write("{}", structValue.GetDataField<float>(dataOffset)); break;
+            case Type::Data::Tag::Float64: m_writer.Write("{}", structValue.GetDataField<double>(dataOffset)); break;
+            case Type::Data::Tag::Blob:
+            {
+                List<uint8_t>::Reader bytes = structValue.GetPointerField(index).TryGetList<uint8_t>();
+                Span<const uint8_t> byteSpan{ bytes.Data(), bytes.Size() };
+                m_writer.Write("0x\"{}\"", byteSpan);
+                break;
+            }
+            case Type::Data::Tag::String:
+            {
+                String::Reader str = structValue.GetPointerField(index).TryGetString();
+                m_writer.Write("\"{}\"", str.AsView());
+                break;
+            }
+            case Type::Data::Tag::Array:
+            {
+                const Type::Data::Array::Reader arrayType = typeData.Array();
+                const Type::Reader elementType = arrayType.ElementType();
+                const bool elementTypeIsPointer = IsPointer(elementType);
+
+                WriteListValue(arrayType.Size(), [&](uint32_t i)
+                {
+                    if (elementTypeIsPointer)
+                        WriteStructFieldValue(static_cast<uint16_t>(index + i), 0, elementType, scope, structValue);
+                    else
+                        WriteStructFieldValue(index, dataOffset + i, elementType, scope, structValue);
+                });
+                break;
+            }
+            case Type::Data::Tag::List:
+            {
+                const Type::Data::List::Reader arrayType = typeData.List();
+                const Type::Reader elementType = arrayType.ElementType();
+                const ElementSize elementSize = GetTypeElementSize(elementType);
+                const ListReader list = structValue.GetPointerField(index).TryGetList(elementSize);
+
+                WriteListValue(list.Size(), [&](uint32_t i)
+                {
+                    WriteListElementValue(i, elementType, scope, list);
+                });
+                break;
+            }
+            case Type::Data::Tag::Enum:
+            {
+                const Type::Data::Enum::Reader enumType = typeData.Enum();
+                const uint16_t value = structValue.GetDataField<uint16_t>(dataOffset);
+                WriteEnumValue(enumType, value, scope);
+                break;
+            }
+            case Type::Data::Tag::Struct:
+            {
+                const Type::Data::Struct::Reader structType = typeData.Struct();
+                const StructReader value = structValue.GetPointerField(index).TryGetStruct();
+                WriteStructValue(structType, scope, value);
+                break;
+            }
+            case Type::Data::Tag::Interface:
+            case Type::Data::Tag::AnyPointer:
+                std::cerr << "Interface and AnyPointer types cannot have explicit values. Verifier should've caught this.";
+                break;
+        }
+    }
+
+    bool CodeGenEcho::TryWriteStructFieldValue(Field::Reader field, Declaration::Reader scope, StructReader structValue)
+    {
+        const Field::Meta::Normal::Reader norm = field.Meta().Normal();
+        const Type::Reader fieldType = norm.Type();
+
+        const uint32_t dataOffset = norm.DataOffset();
+        const uint16_t index = norm.Index();
+        const bool hasValue = IsPointer(fieldType) ? structValue.HasPointerField(index) : structValue.HasDataField(index);
+
+        if (!hasValue)
+            return false;
+
+        m_writer.Write("{} = ", field.Name().AsView());
+        WriteStructFieldValue(index, dataOffset, fieldType, scope, structValue);
+        return true;
     }
 
     bool GenerateEcho(const CodeGenRequest& request)

@@ -3,6 +3,7 @@
 #include "he/core/error.h"
 
 #include "he/core/debug.h"
+#include "he/core/enum_fmt.h"
 #include "he/core/enum_ops.h"
 #include "he/core/log.h"
 

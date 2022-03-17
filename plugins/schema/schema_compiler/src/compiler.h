@@ -58,19 +58,8 @@ namespace he::schema
 
         uint16_t GetArraySize(const AstExpression& ast, const AstNode& scope) const;
 
-        template <std::integral T>
+        template <typename T> requires(std::is_same_v<T, uint64_t> || std::is_same_v<T, int64_t>)
         bool SetInt(const AstFileLocation& location, T value, Type::Data::Reader type, Value::Data::Builder data);
-
-        void SetStructValues(Declaration::Data::Struct::Reader typeStructDecl, const AstList<AstTupleParam>& params, StructBuilder st, const AstNode& scope);
-
-        template <typename BuilderType>
-        void SetValue(
-            const AstExpression& ast,
-            Type::Reader type,
-            const AstNode& scope,
-            BuilderType obj,
-            uint16_t index,
-            uint32_t dataOffset);
 
     private:
         CompileContext* m_context{ nullptr };

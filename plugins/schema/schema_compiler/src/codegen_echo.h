@@ -42,16 +42,7 @@ namespace he::schema
         void WriteTypeParams(List<String>::Reader typeParams);
         void WriteType(Type::Reader type, Declaration::Reader scope);
         void WriteValue(Type::Reader type, Declaration::Reader scope, Value::Reader value);
-
-        void WriteEnumValue(Type::Data::Enum::Reader enumType, uint16_t value, Declaration::Reader scope);
-
-        template <typename F>
-        void WriteListValue(uint32_t size, F&& iterator);
-        void WriteListElementValue(uint32_t index, Type::Reader elementType, Declaration::Reader scope, ListReader list);
-
-        void WriteStructValue(Type::Data::Struct::Reader structType, Declaration::Reader scope, StructReader structValue);
-        void WriteStructFieldValue(uint16_t index, uint32_t dataOffset, Type::Reader type, Declaration::Reader scope, StructReader structValue);
-        bool TryWriteStructFieldValue(Field::Reader field, Declaration::Reader scope, StructReader structValue);
+        void WriteValueList(Type::Reader elementType, Declaration::Reader scope, List<Value>::Reader values);
 
     private:
         const CodeGenRequest& m_request;

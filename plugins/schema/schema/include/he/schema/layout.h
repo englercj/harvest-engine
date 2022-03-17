@@ -471,6 +471,8 @@ namespace he::schema
         Word* Location() { return m_builder ? m_builder->Data() + m_wordOffset : nullptr; }
         const Word* Location() const { return m_builder ? m_builder->Data() + m_wordOffset : nullptr; }
 
+        uint32_t WordOffset() const { return m_wordOffset; }
+
         bool IsNull() const { return !m_builder || (Value().offsetAndKind == 0 && Value().upper32Bits == 0); }
         void SetNull() { Value().offsetAndKind = 0; Value().upper32Bits = 0; }
 
@@ -585,6 +587,8 @@ namespace he::schema
 
         Word* Location() { return m_builder ? m_builder->Data() + m_wordOffset : nullptr; }
         const Word* Location() const { return m_builder ? m_builder->Data() + m_wordOffset : nullptr; }
+
+        uint32_t WordOffset() const { return m_wordOffset; }
 
         uint32_t Size() const { return m_size; }
         uint32_t StepSize() const { return m_step; }
@@ -711,6 +715,8 @@ namespace he::schema
         Word* Location() { return m_builder ? m_builder->Data() + m_wordOffset : nullptr; }
         const Word* Location() const { return m_builder ? m_builder->Data() + m_wordOffset : nullptr; }
 
+        uint32_t WordOffset() const { return m_wordOffset; }
+
         uint16_t DataFieldCount() const { return m_dataFieldCount; }
         uint16_t DataWordSize() const { return m_dataWordSize; }
         uint16_t PointerCount() const { return m_pointerCount; }
@@ -748,7 +754,7 @@ namespace he::schema
         }
 
         template <DataType T>
-        void SetDataField(uint16_t index, uint32_t dataOffset, T value)
+        void SetAndMarkDataField(uint16_t index, uint32_t dataOffset, T value)
         {
             HE_ASSERT(IsValid());
             MarkHasDataField(index, true);
@@ -756,7 +762,7 @@ namespace he::schema
         }
 
         template <>
-        void SetDataField<bool>(uint16_t index, uint32_t dataOffset, bool value)
+        void SetAndMarkDataField<bool>(uint16_t index, uint32_t dataOffset, bool value)
         {
             HE_ASSERT(IsValid());
             MarkHasDataField(index, true);
@@ -766,7 +772,7 @@ namespace he::schema
         }
 
         template <>
-        void SetDataField<Void>(uint16_t, uint32_t, Void) {}
+        void SetAndMarkDataField<Void>(uint16_t, uint32_t, Void) {}
 
         void ClearDataField(uint16_t index) { MarkHasDataField(index, false); }
         void ClearDataFields()

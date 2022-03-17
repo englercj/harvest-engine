@@ -61,11 +61,22 @@ namespace he::schema
         void WriteWithReplace(StringView input, char what, StringView with);
 
     private:
-        ptrdiff_t GetDefaultValueOffset(Value::Reader value);
+        struct DefaultValueRef
+        {
+            bool inSchema;
+            TypeId scopeId;
+            ptrdiff_t offset;
+        };
+
+        DefaultValueRef GetOrMakeDefaultValue(Type::Reader type, Value::Reader value, Declaration::Reader scope);
+        ListBuilder MakeListDefault(Type::Reader elementType, List<Value>::Reader values, Declaration::Reader scope);
+        StructBuilder MakeStructDefault(Type::Reader type, List<Value::TupleValue>::Reader values, Declaration::Reader scope);
+        void FillStructDefault(StructBuilder dst, Declaration::Data::Struct::Reader structDecl, List<Value::TupleValue>::Reader values, Declaration::Reader scope);
+        void FillStructField(StructBuilder dst, Type::Data::Reader type, uint16_t index, uint32_t dataOffset, Value::Data::Reader value, Declaration::Reader scope);
 
     private:
         const CodeGenRequest& m_request;
-        Declaration::Reader m_root;
+        Declaration::Reader m_root{};
         StringBuilder m_writer{};
         he::String m_namespaceName{};
         std::unordered_map<TypeId, Builder> m_defaultValues{};

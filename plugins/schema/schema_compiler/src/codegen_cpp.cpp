@@ -582,17 +582,8 @@ namespace he::schema
             }
             else if (fieldTypeData.IsAnyPointer())
             {
-                if (hasDefault)
-                {
-                    const ptrdiff_t offset = GetDefaultValueOffset(norm.DefaultValue());
-                    m_writer.Write("return SuperType::HasPointerField({}) ? SuperType::GetPointerField({}); : Pointer{}(::he::schema::DeclInfo<" HE_ID_FMT ">::RawSchema + {}); ",
-                        norm.Index(), norm.Index(), isReader ? "Reader" : "Builder", m_root.Id(), offset);
-                }
-                else
-                {
-                    m_writer.Write("return SuperType::GetPointerField({}); ", norm.Index());
-                }
-                m_writer.Write(" }\n");
+                HE_ASSERT(!hasDefault);
+                m_writer.Write("return SuperType::GetPointerField({}); }}\n", norm.Index());
             }
             else
             {
@@ -615,10 +606,11 @@ namespace he::schema
                 m_writer.Write('(');
                 if (hasDefault)
                 {
-                    const ptrdiff_t offset = GetDefaultValueOffset(norm.DefaultValue());
-                    if (offset > 0)
+                    const DefaultValueRef ref = GetOrMakeDefaultValue(fieldType, norm.DefaultValue(), decl);
+                    if (ref.scopeId != 0)
                     {
-                        m_writer.Write("::he::schema::DeclInfo<" HE_ID_FMT ">::RawSchema + {}", m_root.Id(), offset);
+                        m_writer.Write("::he::schema::DeclInfo<" HE_ID_FMT ">::{} + {}",
+                            ref.scopeId, ref.inSchema ? "RawSchema" : "DefaultValues", ref.offset);
                     }
                 }
                 m_writer.Write("); }\n");
@@ -673,10 +665,15 @@ namespace he::schema
             }
             else
             {
-                m_writer.Write("return SuperType::TryGetDataField<{}", fieldTypeData.IsEnum() ? "enum " : "");
+                m_writer.Write("return SuperType::{}GetDataField<{}",
+                    structDecl.IsUnion() ? "" : "Try",
+                    fieldTypeData.IsEnum() ? "enum " : "");
                 WriteType(fieldType, scope, nullptr);
             }
-            m_writer.Write(">({}, {}", norm.Index(), norm.DataOffset());
+            if (structDecl.IsUnion() && !isArray) // TODO: Read directly for arrays too
+                m_writer.Write(">({}", norm.DataOffset());
+            else
+                m_writer.Write(">({}, {}", norm.Index(), norm.DataOffset());
             if (isArray)
             {
                 m_writer.Write(", {}", fieldTypeData.Array().Size());
@@ -800,7 +797,9 @@ namespace he::schema
         }
         else if (!fieldTypeData.IsVoid())
         {
-            m_writer.Write("SuperType::SetDataField<{}", fieldTypeData.IsEnum() ? "enum " : "");
+            m_writer.Write("SuperType::{}<{}",
+                structDecl.IsUnion() ? "SetDataField" : "SetAndMarkDataField",
+                fieldTypeData.IsEnum() ? "enum " : "");
             WriteType(fieldType, scope, nullptr);
             if (structDecl.IsUnion())
                 m_writer.Write(">({}, value); ", norm.DataOffset());
@@ -916,7 +915,7 @@ namespace he::schema
 
     void CodeGenCpp::WriteRawSchemaData()
     {
-        m_writer.WriteLine("static const Word RawFileSchema[] =");
+        m_writer.WriteLine("static const Word RawFileSchema_{:016x}[] =", m_root.Id());
         m_writer.WriteLine("{");
         m_writer.IncreaseIndent();
         m_writer.WriteIndent();
@@ -946,7 +945,44 @@ namespace he::schema
     {
         const ptrdiff_t schemaOffset = static_cast<StructReader&>(decl).Data() - m_request.schemaData.Data();
 
-        m_writer.WriteLine("const Word* DeclInfo<" HE_ID_FMT ">::RawSchema = RawFileSchema + {};", decl.Id(), schemaOffset);
+        const auto it = m_defaultValues.find(decl.Id());
+        if (it != m_defaultValues.end())
+        {
+            const Builder& builder = it->second;
+            const Word* data = builder.Data();
+            m_writer.WriteLine("static const Word DefaultValues_{:016x}[] =", decl.Id());
+            m_writer.WriteLine("{");
+            m_writer.IncreaseIndent();
+            m_writer.WriteIndent();
+            const uint32_t size = builder.Size();
+            for (uint32_t i = 0; i < size; ++i)
+            {
+                if (i > 0)
+                {
+                    if ((i % 10) == 0)
+                    {
+                        m_writer.Write('\n');
+                        m_writer.WriteIndent();
+                    }
+                    else
+                    {
+                        m_writer.Write(' ');
+                    }
+                }
+                m_writer.Write("{:#018x}ull,", data[i]);
+            }
+            m_writer.Write('\n');
+            m_writer.DecreaseIndent();
+            m_writer.WriteLine("};");
+        }
+
+        m_writer.WriteLine("const Word* DeclInfo<" HE_ID_FMT ">::RawSchema = RawFileSchema_{:016x} + {};", decl.Id(), m_root.Id(), schemaOffset);
+
+        if (it != m_defaultValues.end())
+            m_writer.WriteLine("const Word* DeclInfo<" HE_ID_FMT ">::DefaultValues = DefaultValues_{:016x};", decl.Id(), decl.Id());
+        else
+            m_writer.WriteLine("const Word* DeclInfo<" HE_ID_FMT ">::DefaultValues = nullptr;", decl.Id());
+        m_writer.Write('\n');
 
         for (Declaration::Reader child : decl.Children())
         {
@@ -1205,7 +1241,7 @@ namespace he::schema
             }
             case Value::Data::Tag::Blob:
             case Value::Data::Tag::List:
-            case Value::Data::Tag::Struct:
+            case Value::Data::Tag::Tuple:
             case Value::Data::Tag::Interface:
             case Value::Data::Tag::AnyPointer:
                 HE_ASSERT(false, "Invalid value kind. Expected a non-pointer value.");
@@ -1228,7 +1264,7 @@ namespace he::schema
         }
     }
 
-    ptrdiff_t CodeGenCpp::GetDefaultValueOffset(Value::Reader value)
+    CodeGenCpp::DefaultValueRef CodeGenCpp::GetOrMakeDefaultValue(Type::Reader type, Value::Reader value, Declaration::Reader scope)
     {
         // Maybe: One builder per struct named Defaults_declId and output here is "Defaults_declId + OFFSET"
         Value::Data::Reader valueData = value.Data();
@@ -1238,28 +1274,33 @@ namespace he::schema
         {
             case Value::Data::Tag::Blob:
             {
-                ListReader list = valueData.Array();
-                return list.Data() - rootData;
+                ListReader list = valueData.Blob();
+                return { true, m_root.Id(), list.Data() - rootData };
             }
             case Value::Data::Tag::String:
             {
                 ListReader list = valueData.String();
-                return list.Data() - rootData;
+                return { true, m_root.Id(), list.Data() - rootData };
             }
             case Value::Data::Tag::Array:
             {
-                ListReader list = valueData.Array();
-                return list.Data() - rootData;
+                const Type::Reader elementType = type.Data().Array().ElementType();
+                const List<Value>::Reader values = value.Data().Array();
+                const ListBuilder defaultValue = MakeListDefault(elementType, values, scope);
+                return { false, scope.Id(), defaultValue.WordOffset() };
             }
             case Value::Data::Tag::List:
             {
-                ListReader list = valueData.List();
-                return list.Data() - rootData;
+                const Type::Reader elementType = type.Data().List().ElementType();
+                const List<Value>::Reader values = value.Data().List();
+                const ListBuilder defaultValue = MakeListDefault(elementType, values, scope);
+                return { false, scope.Id(), defaultValue.WordOffset() };
             }
-            case Value::Data::Tag::Struct:
+            case Value::Data::Tag::Tuple:
             {
-                PointerReader ptr = valueData.Struct();
-                return ptr.Data() - rootData;
+                const List<Value::TupleValue>::Reader values = value.Data().Tuple();
+                const StructBuilder defaultValue = MakeStructDefault(type, values, scope);
+                return { false, scope.Id(), defaultValue.WordOffset() };
             }
             case Value::Data::Tag::Void:
             case Value::Data::Tag::Bool:
@@ -1286,7 +1327,221 @@ namespace he::schema
                 break;
         }
 
-        return 0;
+        return {};
+    }
+
+    ListBuilder CodeGenCpp::MakeListDefault(Type::Reader elementType, List<Value>::Reader values, Declaration::Reader scope)
+    {
+        const TypeId scopeId = scope.Id();
+        const uint32_t size = values.Size();
+        const Value::Data::Tag elementTag = values[0].Data().Tag();
+
+        ElementSize elementSize = ElementSize::Void;
+        switch (elementTag)
+        {
+            case Value::Data::Tag::Bool: elementSize = ElementSize::Bit; break;
+            case Value::Data::Tag::Int8: elementSize = ElementSize::Byte; break;
+            case Value::Data::Tag::Int16: elementSize = ElementSize::TwoBytes; break;
+            case Value::Data::Tag::Int32: elementSize = ElementSize::FourBytes; break;
+            case Value::Data::Tag::Int64: elementSize = ElementSize::EightBytes; break;
+            case Value::Data::Tag::Uint8: elementSize = ElementSize::Byte; break;
+            case Value::Data::Tag::Uint16: elementSize = ElementSize::TwoBytes; break;
+            case Value::Data::Tag::Uint32: elementSize = ElementSize::FourBytes; break;
+            case Value::Data::Tag::Uint64: elementSize = ElementSize::EightBytes; break;
+            case Value::Data::Tag::Float32: elementSize = ElementSize::FourBytes; break;
+            case Value::Data::Tag::Float64: elementSize = ElementSize::EightBytes; break;
+            case Value::Data::Tag::Blob: elementSize = ElementSize::Pointer; break;
+            case Value::Data::Tag::String: elementSize = ElementSize::Pointer; break;
+            case Value::Data::Tag::List: elementSize = ElementSize::Pointer; break;
+            case Value::Data::Tag::Enum: elementSize = ElementSize::TwoBytes; break;
+            case Value::Data::Tag::Tuple: elementSize = ElementSize::Composite; break;
+            case Value::Data::Tag::Array:
+                HE_ASSERT(false, "Arrays cannot be nested in lists or other arrays");
+                break;
+            case Value::Data::Tag::Interface:
+            case Value::Data::Tag::AnyPointer:
+            case Value::Data::Tag::Void:
+                HE_ASSERT(false, "{} cannot have a default value", elementTag);
+                break;
+        }
+
+        Builder& builder = m_defaultValues[scopeId];
+        ListBuilder list = builder.AddList(elementSize, size);
+
+        for (uint32_t i = 0; i < size; ++i)
+        {
+            Value::Data::Reader valueData = values[i].Data();
+
+            switch (elementTag)
+            {
+                case Value::Data::Tag::Bool: list.SetDataElement<bool>(i, valueData.Bool()); break;
+                case Value::Data::Tag::Int8: list.SetDataElement<int8_t>(i, valueData.Int8()); break;
+                case Value::Data::Tag::Int16: list.SetDataElement<int16_t>(i, valueData.Int16()); break;
+                case Value::Data::Tag::Int32: list.SetDataElement<int32_t>(i, valueData.Int32()); break;
+                case Value::Data::Tag::Int64: list.SetDataElement<int64_t>(i, valueData.Int64()); break;
+                case Value::Data::Tag::Uint8: list.SetDataElement<uint8_t>(i, valueData.Uint8()); break;
+                case Value::Data::Tag::Uint16: list.SetDataElement<uint16_t>(i, valueData.Uint16()); break;
+                case Value::Data::Tag::Uint32: list.SetDataElement<uint32_t>(i, valueData.Uint32()); break;
+                case Value::Data::Tag::Uint64: list.SetDataElement<uint64_t>(i, valueData.Uint64()); break;
+                case Value::Data::Tag::Float32: list.SetDataElement<float>(i, valueData.Float32()); break;
+                case Value::Data::Tag::Float64: list.SetDataElement<double>(i, valueData.Float64()); break;
+                case Value::Data::Tag::Enum: list.SetDataElement<uint16_t>(i, valueData.Enum()); break;
+                case Value::Data::Tag::Blob:
+                {
+                    const List<uint8_t>::Reader valueBytes = valueData.Blob();
+                    List<uint8_t>::Builder bytes = builder.AddList<uint8_t>(valueBytes.Size());
+                    MemCopy(bytes.Data(), valueBytes.Data(), valueBytes.Size());
+                    list.SetPointerElement(i, bytes);
+                    break;
+                }
+                case Value::Data::Tag::String:
+                {
+                    const String::Reader valueStr = valueData.String();
+                    const String::Builder str = builder.AddString(valueStr);
+                    list.SetPointerElement(i, str);
+                    break;
+                }
+                case Value::Data::Tag::List:
+                {
+                    const Type::Reader subElementType = elementType.Data().List().ElementType();
+                    ListBuilder v = MakeListDefault(subElementType, valueData.List(), scope);
+                    list.SetPointerElement(i, v);
+                    break;
+                }
+                case Value::Data::Tag::Tuple:
+                {
+                    const Declaration::Reader decl = m_request.GetDecl(elementType.Data().Struct().Id());
+                    const Declaration::Data::Struct::Reader structDecl = decl.Data().Struct();
+                    StructBuilder v = list.GetCompositeElement(i);
+                    FillStructDefault(v, structDecl, valueData.Tuple(), scope);
+                    break;
+                }
+                case Value::Data::Tag::Array:
+                    HE_ASSERT(false, "Arrays cannot be nested in lists or other arrays");
+                    break;
+                case Value::Data::Tag::Interface:
+                case Value::Data::Tag::AnyPointer:
+                case Value::Data::Tag::Void:
+                    HE_ASSERT(false, "{} types cannot have default values", elementTag);
+                    break;
+            }
+        }
+
+        return list;
+    }
+
+    StructBuilder CodeGenCpp::MakeStructDefault(Type::Reader type, List<Value::TupleValue>::Reader values, Declaration::Reader scope)
+    {
+        const TypeId scopeId = scope.Id();
+        Builder& builder = m_defaultValues[scopeId];
+
+        const Type::Data::Struct::Reader structType = type.Data().Struct();
+        const Declaration::Reader decl = m_request.GetDecl(structType.Id());
+        const Declaration::Data::Struct::Reader structDecl = decl.Data().Struct();
+
+        StructBuilder dst = builder.AddStruct(structDecl.DataFieldCount(), structDecl.DataWordSize(), structDecl.PointerCount());
+        FillStructDefault(dst, structDecl, values, scope);
+        return dst;
+    }
+
+    void CodeGenCpp::FillStructDefault(StructBuilder dst, Declaration::Data::Struct::Reader structDecl, List<Value::TupleValue>::Reader values, Declaration::Reader scope)
+    {
+        for (const Value::TupleValue::Reader pair : values)
+        {
+            for (const Field::Reader field : structDecl.Fields())
+            {
+                if (pair.Name() != field.Name())
+                    continue;
+
+                const Field::Meta::Reader fieldMeta = field.Meta();
+
+                HE_ASSERT(!fieldMeta.IsUnion(), "Union fields cannot have a default value");
+
+                if (fieldMeta.IsGroup())
+                {
+                    const Declaration::Reader groupDecl = m_request.GetDecl(fieldMeta.Group().TypeId());
+                    const Declaration::Data::Struct::Reader groupStructDecl = groupDecl.Data().Struct();
+                    FillStructDefault(dst, groupStructDecl, pair.Value().Data().Tuple(), scope);
+                }
+                else
+                {
+                    const Field::Meta::Normal::Reader norm = fieldMeta.Normal();
+                    FillStructField(dst, norm.Type().Data(), norm.Index(), norm.DataOffset(), pair.Value().Data(), scope);
+                }
+            }
+        }
+    }
+
+    void CodeGenCpp::FillStructField(StructBuilder dst, Type::Data::Reader type, uint16_t index, uint32_t dataOffset, Value::Data::Reader value, Declaration::Reader scope)
+    {
+        switch (type.Tag())
+        {
+            case Type::Data::Tag::Bool: dst.SetAndMarkDataField<bool>(index, dataOffset, value.Bool()); break;
+            case Type::Data::Tag::Int8: dst.SetAndMarkDataField<int8_t>(index, dataOffset, value.Int8()); break;
+            case Type::Data::Tag::Int16: dst.SetAndMarkDataField<int16_t>(index, dataOffset, value.Int16()); break;
+            case Type::Data::Tag::Int32: dst.SetAndMarkDataField<int32_t>(index, dataOffset, value.Int32()); break;
+            case Type::Data::Tag::Int64: dst.SetAndMarkDataField<int64_t>(index, dataOffset, value.Int64()); break;
+            case Type::Data::Tag::Uint8: dst.SetAndMarkDataField<uint8_t>(index, dataOffset, value.Uint8()); break;
+            case Type::Data::Tag::Uint16: dst.SetAndMarkDataField<uint16_t>(index, dataOffset, value.Uint16()); break;
+            case Type::Data::Tag::Uint32: dst.SetAndMarkDataField<uint32_t>(index, dataOffset, value.Uint32()); break;
+            case Type::Data::Tag::Uint64: dst.SetAndMarkDataField<uint64_t>(index, dataOffset, value.Uint64()); break;
+            case Type::Data::Tag::Float32: dst.SetAndMarkDataField<float>(index, dataOffset, value.Float32()); break;
+            case Type::Data::Tag::Float64: dst.SetAndMarkDataField<double>(index, dataOffset, value.Float64()); break;
+            case Type::Data::Tag::Enum: dst.SetAndMarkDataField<uint16_t>(index, dataOffset, value.Enum()); break;
+            case Type::Data::Tag::Blob:
+            {
+                const List<uint8_t>::Reader valueBytes = value.Blob();
+                List<uint8_t>::Builder bytes = dst.Builder()->AddList<uint8_t>(valueBytes.Size());
+                MemCopy(bytes.Data(), valueBytes.Data(), valueBytes.Size());
+                dst.GetPointerField(index).Set(bytes);
+                break;
+            }
+            case Type::Data::Tag::String:
+            {
+                const String::Reader valueStr = value.String();
+                const String::Builder str = dst.Builder()->AddString(valueStr);
+                dst.GetPointerField(index).Set(str);
+                break;
+            }
+            case Type::Data::Tag::Array:
+            {
+                const Type::Data::Array::Reader arrayType = type.Array();
+                const Type::Reader elementType = arrayType.ElementType();
+                const uint16_t size = arrayType.Size();
+                const List<Value>::Reader arrayValues = value.Array();
+                const bool elementIsPointer = IsPointer(elementType);
+
+                for (uint16_t i = 0; i < size; ++i)
+                {
+                    if (elementIsPointer)
+                        FillStructField(dst, elementType.Data(), index + i, 0, arrayValues[i].Data(), scope);
+                    else
+                        FillStructField(dst, elementType.Data(), index, dataOffset + i, arrayValues[i].Data(), scope);
+                }
+                break;
+            }
+            case Type::Data::Tag::List:
+            {
+                const Type::Reader elementType = type.List().ElementType();
+                ListBuilder list = MakeListDefault(elementType, value.List(), scope);
+                dst.GetPointerField(index).Set(list);
+                break;
+            }
+            case Type::Data::Tag::Struct:
+            {
+                const Declaration::Reader decl = m_request.GetDecl(type.Struct().Id());
+                const Declaration::Data::Struct::Reader structDecl = decl.Data().Struct();
+                StructBuilder st = dst.Builder()->AddStruct(structDecl.DataFieldCount(), structDecl.DataWordSize(), structDecl.PointerCount());
+                FillStructDefault(st, structDecl, value.Tuple(), scope);
+                dst.GetPointerField(index).Set(st);
+                break;
+            }
+            case Type::Data::Tag::Interface:
+            case Type::Data::Tag::AnyPointer:
+            case Type::Data::Tag::Void:
+                HE_ASSERT(false, "{} types cannot have default values", type.Tag());
+                break;
+        }
     }
 
     bool GenerateCpp(const CodeGenRequest& request)

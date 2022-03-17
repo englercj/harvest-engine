@@ -75,6 +75,12 @@ struct Type
 
 struct Value
 {
+    struct TupleValue
+    {
+        name @0 :String;
+        value @1 :Value;
+    }
+
     data :union
     {
         void @0 :void;
@@ -94,7 +100,7 @@ struct Value
         array @14 :Value[];
         list @15 :Value[];
         enum @16 :uint16;
-        struct @17 :AnyPointer;
+        tuple @17 :TupleValue[];
         interface @18 :void;
         anyPointer @19 :void;
     }

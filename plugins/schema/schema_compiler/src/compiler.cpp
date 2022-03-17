@@ -537,103 +537,106 @@ namespace he::schema
         return brand;
     }
 
-    template <std::integral T>
+    template <typename T> requires(std::is_same_v<T, uint64_t> || std::is_same_v<T, int64_t>)
     bool Compiler::SetInt(const AstFileLocation& location, T value, Type::Data::Reader type, Value::Data::Builder data)
     {
         if (type.IsInt8())
         {
-            if (value > std::numeric_limits<int8_t>::max() || value < std::numeric_limits<int8_t>::min())
+            const bool fitsMin = std::is_signed_v<T> ? value >= std::numeric_limits<int8_t>::min() : true;
+            if (fitsMin && value <= std::numeric_limits<int8_t>::max())
             {
-                m_context->AddError(location, "Integer value out of range for type 'int8'");
-                return false;
+                data.SetInt8(static_cast<int8_t>(value));
+                return true;
             }
 
-            data.SetInt8(static_cast<int8_t>(value));
-            return true;
+            m_context->AddError(location, "Integer value out of range for type 'int8'");
+            return false;
         }
 
         if (type.IsInt16())
         {
-            if (value > std::numeric_limits<int16_t>::max() || value < std::numeric_limits<int16_t>::min())
+            const bool fitsMin = std::is_signed_v<T> ? value >= std::numeric_limits<int16_t>::min() : true;
+            if (fitsMin && value <= std::numeric_limits<int16_t>::max())
             {
-                m_context->AddError(location, "Integer value out of range for type 'int16'");
-                return false;
+                data.SetInt16(static_cast<int16_t>(value));
+                return true;
             }
 
-            data.SetInt16(static_cast<int16_t>(value));
-            return true;
+            m_context->AddError(location, "Integer value out of range for type 'int16'");
+            return false;
         }
 
         if (type.IsInt32())
         {
-            if (value > std::numeric_limits<int32_t>::max() || value < std::numeric_limits<int32_t>::min())
+            const bool fitsMin = std::is_signed_v<T> ? value >= std::numeric_limits<int32_t>::min() : true;
+            if (fitsMin && value <= std::numeric_limits<int32_t>::max())
             {
-                m_context->AddError(location, "Integer value out of range for type 'int32'");
-                return false;
+                data.SetInt32(static_cast<int32_t>(value));
+                return true;
             }
 
-            data.SetInt32(static_cast<int32_t>(value));
-            return true;
+            m_context->AddError(location, "Integer value out of range for type 'int32'");
+            return false;
         }
 
         if (type.IsInt64())
         {
-            if (static_cast<uint64_t>(value) > static_cast<uint64_t>(std::numeric_limits<int64_t>::max()))
+            if (value <= static_cast<T>(std::numeric_limits<int64_t>::max()))
             {
-                m_context->AddError(location, "Integer value out of range for type 'int64'");
-                return false;
+                data.SetInt64(static_cast<int64_t>(value));
+                return true;
             }
 
-            data.SetInt64(static_cast<int64_t>(value));
-            return true;
+            m_context->AddError(location, "Integer value out of range for type 'int64'");
+            return false;
         }
 
         if (type.IsUint8())
         {
-            if (value != -1 && (value > std::numeric_limits<uint8_t>::max() || value < std::numeric_limits<uint8_t>::min()))
+            if (value == -1 || (value >= 0 && value <= std::numeric_limits<uint8_t>::max()))
             {
-                m_context->AddError(location, "Integer value out of range for type 'uint8'");
-                return false;
+                data.SetUint8(static_cast<int8_t>(value));
+                return true;
             }
 
-            data.SetUint8(static_cast<int8_t>(value));
-            return true;
+            m_context->AddError(location, "Integer value out of range for type 'uint8'");
+            return false;
         }
 
         if (type.IsUint16())
         {
-            if (value != -1 && (value > std::numeric_limits<uint16_t>::max() || value < std::numeric_limits<uint16_t>::min()))
+            if (value == -1 || (value >= 0 && value <= std::numeric_limits<uint16_t>::max()))
             {
-                m_context->AddError(location, "Integer value out of range for type 'uint16'");
-                return false;
+                data.SetUint16(static_cast<int16_t>(value));
+                return true;
             }
 
-            data.SetUint16(static_cast<int16_t>(value));
-            return true;
+            m_context->AddError(location, "Integer value out of range for type 'uint16'");
+            return false;
         }
 
         if (type.IsUint32())
         {
-            if (value != -1 && (value > std::numeric_limits<uint32_t>::max() || value < std::numeric_limits<uint32_t>::min()))
+            if (value == -1 || (value >= 0 && value <= std::numeric_limits<uint32_t>::max()))
             {
-                m_context->AddError(location, "Integer value out of range for type 'uint32'");
-                return false;
+                data.SetUint32(static_cast<uint32_t>(value));
+                return true;
             }
 
-            data.SetUint32(static_cast<uint32_t>(value));
-            return true;
+            m_context->AddError(location, "Integer value out of range for type 'uint32'");
+            return false;
         }
 
         if (type.IsUint64())
         {
-            if (value < 0 && static_cast<uint64_t>(value) != static_cast<uint64_t>(-1))
+            if (value == -1 || value >= 0)
             {
-                m_context->AddError(location, "Integer value out of range for type 'uint64'");
-                return false;
+                data.SetUint64(static_cast<uint64_t>(value));
+                return true;
             }
 
-            data.SetUint64(static_cast<uint64_t>(value));
-            return true;
+            m_context->AddError(location, "Integer value out of range for type 'uint64'");
+            return false;
         }
 
         m_context->AddError(location, "Expected {} value, but encountered integer expression", type.Tag());
@@ -727,13 +730,31 @@ namespace he::schema
             case AstExpression::Kind::Tuple:
             {
                 HE_ASSERT(typeData.IsStruct());
-                const Declaration::Reader typeDecl = m_context->GetDecl(typeData.Struct().Id());
-                HE_ASSERT(typeDecl.IsValid() && typeDecl.Data().IsStruct());
-                const Declaration::Data::Struct::Reader typeStructDecl = typeDecl.Data().Struct();
 
-                StructBuilder st = m_builder.AddStruct(typeStructDecl.DataFieldCount(), typeStructDecl.DataWordSize(), typeStructDecl.PointerCount());
-                SetStructValues(typeStructDecl, ast.tuple, st, scope);
-                data.InitStruct().Set(st);
+                // Shouldn't be possible to not find this because if the ID is set on typeData,
+                // then the verifier must have found a valid node.
+                const AstNode* structDeclNode = m_context->FindNode(typeData.Struct().Id());
+                HE_ASSERT(structDeclNode && structDeclNode->kind == AstNode::Kind::Struct);
+
+                List<Value::TupleValue>::Builder list = data.InitTuple(ast.tuple.Size());
+                uint16_t i = 0;
+                for (const AstTupleParam& item : ast.tuple)
+                {
+                    for (const AstNode& child : structDeclNode->children)
+                    {
+                        if (child.kind == AstNode::Kind::Field && child.name == item.name)
+                        {
+                            Type::Reader fieldType = CreateType(child.field.type, *structDeclNode);
+                            Value::Builder itemValue = CreateValue(fieldType, item.value, scope);
+
+                            Value::TupleValue::Builder v = m_builder.AddStruct<Value::TupleValue>();
+                            v.InitName(item.name);
+                            v.SetValue(itemValue);
+                            list.Set(i++, v);
+                            break;
+                        }
+                    }
+                }
                 break;
             }
             case AstExpression::Kind::UnsignedInt:
@@ -757,219 +778,6 @@ namespace he::schema
         }
 
         return value;
-    }
-
-    void Compiler::SetStructValues(Declaration::Data::Struct::Reader typeStructDecl, const AstList<AstTupleParam>& params, StructBuilder st, const AstNode& scope)
-    {
-        for (const AstTupleParam& param : params)
-        {
-            for (Field::Reader field : typeStructDecl.Fields())
-            {
-                if (param.name != field.Name())
-                    continue;
-
-                if (field.Meta().IsGroup())
-                {
-                    Declaration::Reader groupTypeDecl = m_context->GetDecl(field.Meta().Group().TypeId());
-                    HE_ASSERT(groupTypeDecl.IsValid() && groupTypeDecl.Data().IsStruct());
-                    HE_ASSERT(param.value.kind == AstExpression::Kind::Tuple);
-                    SetStructValues(groupTypeDecl.Data().Struct(), param.value.tuple, st, scope);
-                }
-                else if (field.Meta().IsUnion())
-                {
-                    // TODO.
-                    m_context->AddError(param.location, "Defaults for union members are not yet implemented.");
-                    m_valid = false;
-                    return;
-                }
-                else
-                {
-                    HE_ASSERT(field.Meta().IsNormal());
-                    Field::Meta::Normal::Reader norm = field.Meta().Normal();
-                    SetValue(param.value, norm.Type(), scope, st, norm.Index(), norm.DataOffset());
-                }
-            }
-        }
-    }
-
-    template <typename BuilderType>
-    struct ValueSetter;
-
-    template <>
-    struct ValueSetter<ListBuilder>
-    {
-        template <typename T>
-        static void SetData(ListBuilder list, uint16_t index, uint32_t, T value)
-        {
-            list.SetDataElement(index, value);
-        }
-
-        template <typename T>
-        static void SetPointer(ListBuilder list, uint16_t index, T value)
-        {
-            list.SetPointerElement(index, value);
-        }
-
-        static StructBuilder SetupStruct(Builder&, Declaration::Data::Struct::Reader, ListBuilder list, uint16_t index)
-        {
-            return list.GetCompositeElement(index);
-        }
-    };
-
-    template <>
-    struct ValueSetter<StructBuilder>
-    {
-        template <typename T>
-        static void SetData(StructBuilder st, uint16_t index, uint32_t dataOffset, T value)
-        {
-            st.SetDataField(index, dataOffset, value);
-        }
-
-        template <typename T>
-        static void SetPointer(StructBuilder st, uint16_t index, T value)
-        {
-            st.GetPointerField(index).Set(value);
-        }
-
-        static StructBuilder SetupStruct(Builder& builder, Declaration::Data::Struct::Reader typeStructDecl, StructBuilder st, uint16_t index)
-        {
-            StructBuilder value = builder.AddStruct(typeStructDecl.DataFieldCount(), typeStructDecl.DataWordSize(), typeStructDecl.PointerCount());
-            st.GetPointerField(index).Set(value);
-            return value;
-        }
-    };
-
-    template <typename BuilderType>
-    void Compiler::SetValue(
-        const AstExpression& ast,
-        Type::Reader type,
-        const AstNode& scope,
-        BuilderType obj,
-        uint16_t index,
-        uint32_t dataOffset)
-    {
-        using Setter = ValueSetter<BuilderType>;
-        Type::Data::Reader typeData = type.Data();
-
-        // Recurse for constants to resolve them
-        if (ast.kind == AstExpression::Kind::QualifiedName)
-        {
-            const AstNode* valueNode = m_context->FindNode(ast, scope);
-            if (valueNode && valueNode->kind == AstNode::Kind::Constant)
-                return SetValue(valueNode->constant.value, type, *valueNode->parent, obj, index, dataOffset);
-        }
-
-        switch (typeData.Tag())
-        {
-            case Type::Data::Tag::Bool:
-                HE_ASSERT(ast.kind == AstExpression::Kind::QualifiedName && ast.qualified.names.Size() == 1 && ast.qualified.names.Front()->kind == AstExpression::Kind::Identifier);
-                Setter::SetData(obj, index, dataOffset, ast.qualified.names.Front()->identifier == KW_True);
-                break;
-            case Type::Data::Tag::Int8:
-                HE_ASSERT(ast.kind == AstExpression::Kind::SignedInt || ast.kind == AstExpression::Kind::UnsignedInt);
-                Setter::SetData(obj, index, dataOffset, static_cast<int8_t>(ast.kind == AstExpression::Kind::SignedInt ? ast.signedInt : ast.unsignedInt));
-                break;
-            case Type::Data::Tag::Int16:
-                HE_ASSERT(ast.kind == AstExpression::Kind::SignedInt || ast.kind == AstExpression::Kind::UnsignedInt);
-                Setter::SetData(obj, index, dataOffset, static_cast<int16_t>(ast.kind == AstExpression::Kind::SignedInt ? ast.signedInt : ast.unsignedInt));
-                break;
-            case Type::Data::Tag::Int32:
-                HE_ASSERT(ast.kind == AstExpression::Kind::SignedInt || ast.kind == AstExpression::Kind::UnsignedInt);
-                Setter::SetData(obj, index, dataOffset, static_cast<int32_t>(ast.kind == AstExpression::Kind::SignedInt ? ast.signedInt : ast.unsignedInt));
-                break;
-            case Type::Data::Tag::Int64:
-                HE_ASSERT(ast.kind == AstExpression::Kind::SignedInt || ast.kind == AstExpression::Kind::UnsignedInt);
-                Setter::SetData(obj, index, dataOffset, static_cast<int64_t>(ast.kind == AstExpression::Kind::SignedInt ? ast.signedInt : ast.unsignedInt));
-                break;
-            case Type::Data::Tag::Uint8:
-                HE_ASSERT(ast.kind == AstExpression::Kind::SignedInt || ast.kind == AstExpression::Kind::UnsignedInt);
-                Setter::SetData(obj, index, dataOffset, static_cast<uint8_t>(ast.kind == AstExpression::Kind::SignedInt ? ast.signedInt : ast.unsignedInt));
-                break;
-            case Type::Data::Tag::Uint16:
-                HE_ASSERT(ast.kind == AstExpression::Kind::SignedInt || ast.kind == AstExpression::Kind::UnsignedInt);
-                Setter::SetData(obj, index, dataOffset, static_cast<uint16_t>(ast.kind == AstExpression::Kind::SignedInt ? ast.signedInt : ast.unsignedInt));
-                break;
-            case Type::Data::Tag::Uint32:
-                HE_ASSERT(ast.kind == AstExpression::Kind::SignedInt || ast.kind == AstExpression::Kind::UnsignedInt);
-                Setter::SetData(obj, index, dataOffset, static_cast<uint32_t>(ast.kind == AstExpression::Kind::SignedInt ? ast.signedInt : ast.unsignedInt));
-                break;
-            case Type::Data::Tag::Uint64:
-                HE_ASSERT(ast.kind == AstExpression::Kind::SignedInt || ast.kind == AstExpression::Kind::UnsignedInt);
-                Setter::SetData(obj, index, dataOffset, static_cast<uint64_t>(ast.kind == AstExpression::Kind::SignedInt ? ast.signedInt : ast.unsignedInt));
-                break;
-            case Type::Data::Tag::Float32:
-                HE_ASSERT(ast.kind == AstExpression::Kind::Float);
-                Setter::SetData(obj, index, dataOffset, static_cast<float>(ast.floatingPoint));
-                break;
-            case Type::Data::Tag::Float64:
-                HE_ASSERT(ast.kind == AstExpression::Kind::Float);
-                Setter::SetData(obj, index, dataOffset, static_cast<double>(ast.floatingPoint));
-                break;
-            case Type::Data::Tag::Blob:
-            {
-                Vector<uint8_t> bytes(Allocator::GetTemp());
-                if (!DecodeBlob(ast, bytes))
-                    return;
-
-                List<uint8_t>::Builder blob = m_builder.AddList<uint8_t>(bytes.Size());
-                MemCopy(blob.Data(), bytes.Data(), bytes.Size());
-                Setter::SetPointer(obj, index, blob);
-                break;
-            }
-            case Type::Data::Tag::String:
-            {
-                he::String str(Allocator::GetTemp());
-                if (!m_context->DecodeString(ast, str))
-                {
-                    m_valid = false;
-                    return;
-                }
-                String::Reader strReader = m_builder.AddString(str);
-                Setter::SetPointer(obj, index, strReader);
-                break;
-            }
-            case Type::Data::Tag::List:
-            {
-                Type::Reader elementType = typeData.List().ElementType();
-                ElementSize elementSize = GetTypeElementSize(elementType);
-                ListBuilder list = m_builder.AddList(elementSize, ast.list.Size());
-
-                uint16_t i = 0;
-                for (const AstExpression& item : ast.list)
-                {
-                    SetValue(item, elementType, scope, list, i++, 0);
-                }
-                break;
-            }
-            case Type::Data::Tag::Enum:
-            {
-                const AstNode* valueNode = m_context->FindNode(ast, scope);
-                HE_ASSERT(valueNode);
-                HE_ASSERT(valueNode->kind == AstNode::Kind::Enumerator);
-                Setter::SetData(obj, index, dataOffset, static_cast<uint16_t>(valueNode->id));
-                break;
-            }
-            case Type::Data::Tag::Struct:
-            {
-                HE_ASSERT(ast.kind == AstExpression::Kind::Tuple);
-                const Declaration::Reader typeDecl = m_context->GetDecl(typeData.Struct().Id());
-                HE_ASSERT(typeDecl.IsValid() && typeDecl.Data().IsStruct());
-                const Declaration::Data::Struct::Reader typeStructDecl = typeDecl.Data().Struct();
-                StructBuilder st = Setter::SetupStruct(m_builder, typeStructDecl, obj, index);
-                SetStructValues(typeStructDecl, ast.tuple, st, scope);
-                break;
-            }
-            case Type::Data::Tag::Void:
-                HE_ASSERT(false, "Values for lists of void is not supported. Verifier should've caught this.");
-                break;
-            case Type::Data::Tag::Array:
-                HE_ASSERT(false, "Values for lists of arrays is not supported. Verifier should've caught this.");
-                break;
-            case Type::Data::Tag::Interface:
-            case Type::Data::Tag::AnyPointer:
-                HE_ASSERT(false, "An element type of {} cannot be assigned values. Verifier should've caught this.", typeData.Tag());
-                break;
-        }
     }
 
     List<Attribute>::Builder Compiler::CreateAttributes(const AstList<AstAttribute>& ast, const AstNode& scope)

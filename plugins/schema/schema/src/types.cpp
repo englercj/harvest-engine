@@ -89,6 +89,36 @@ namespace he
     }
 
     template <>
+    const char* AsString(schema::Value::Data::Tag x)
+    {
+        switch (x)
+        {
+            case schema::Value::Data::Tag::Void: return "Void";
+            case schema::Value::Data::Tag::Bool: return "Bool";
+            case schema::Value::Data::Tag::Int8: return "Int8";
+            case schema::Value::Data::Tag::Int16: return "Int16";
+            case schema::Value::Data::Tag::Int32: return "Int32";
+            case schema::Value::Data::Tag::Int64: return "Int64";
+            case schema::Value::Data::Tag::Uint8: return "Uint8";
+            case schema::Value::Data::Tag::Uint16: return "Uint16";
+            case schema::Value::Data::Tag::Uint32: return "Uint32";
+            case schema::Value::Data::Tag::Uint64: return "Uint64";
+            case schema::Value::Data::Tag::Float32: return "Float32";
+            case schema::Value::Data::Tag::Float64: return "Float64";
+            case schema::Value::Data::Tag::Blob: return "Blob";
+            case schema::Value::Data::Tag::String: return "String";
+            case schema::Value::Data::Tag::Array: return "Array";
+            case schema::Value::Data::Tag::List: return "List";
+            case schema::Value::Data::Tag::Enum: return "Enum";
+            case schema::Value::Data::Tag::Tuple: return "Tuple";
+            case schema::Value::Data::Tag::Interface: return "Interface";
+            case schema::Value::Data::Tag::AnyPointer: return "AnyPointer";
+        }
+
+        return "<unknown>";
+    }
+
+    template <>
     const char* AsString(schema::Declaration::Data::Tag x)
     {
         switch (x)

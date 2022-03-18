@@ -4,7 +4,10 @@
 
 namespace he.schema;
 
-attribute TomlAsHex(field) :void;
+struct Toml
+{
+    attribute Hex(field) :void;
+}
 
 struct Brand
 {

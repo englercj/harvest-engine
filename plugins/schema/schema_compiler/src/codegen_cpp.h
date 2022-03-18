@@ -48,6 +48,7 @@ namespace he::schema
 
         void WriteRawSchemaData();
         void WriteDeclInfoSrc(Declaration::Reader decl);
+        void WriteEnumStrings(Declaration::Reader decl);
 
     // Utilities
     private:

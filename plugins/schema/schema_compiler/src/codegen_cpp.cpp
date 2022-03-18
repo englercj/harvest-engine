@@ -143,7 +143,15 @@ namespace he::schema
     {
         HE_UNUSED(scope);
         HE_ASSERT(decl.Data().IsAttribute());
-        m_writer.WriteLine("struct {} {{ using DeclInfo = ::he::schema::DeclInfo<" HE_ID_FMT ">; }};", decl.Name().AsView(), decl.Id());
+        m_writer.WriteLine("struct {}", decl.Name().AsView());
+        m_writer.WriteLine("{");
+        m_writer.IncreaseIndent();
+
+        m_writer.WriteLine("{}() = delete;", decl.Name().AsView());
+        m_writer.WriteLine("using DeclInfo = ::he::schema::DeclInfo<" HE_ID_FMT ">;", decl.Id());
+
+        m_writer.DecreaseIndent();
+        m_writer.WriteLine("};");
     }
 
     void CodeGenCpp::WriteConstDecl(Declaration::Reader decl, Declaration::Reader scope)
@@ -225,10 +233,14 @@ namespace he::schema
         m_writer.IncreaseIndent();
 
         m_writer.WriteLine("{}() = delete;", decl.Name().AsView());
-        m_writer.WriteLine("using DeclInfo = ::he::schema::DeclInfo<" HE_ID_FMT ">;\n", decl.Id());
+        m_writer.WriteLine("using DeclInfo = ::he::schema::DeclInfo<" HE_ID_FMT ">;", decl.Id());
 
-        m_writer.WriteLine("class Reader;");
-        m_writer.WriteLine("class Builder;");
+        if (!structDecl.Fields().IsEmpty())
+        {
+            m_writer.Write('\n');
+            m_writer.WriteLine("class Reader;");
+            m_writer.WriteLine("class Builder;");
+        }
 
         for (Declaration::Reader child : decl.Children())
         {
@@ -343,6 +355,9 @@ namespace he::schema
         {
             WriteImpl(child, scope);
         }
+
+        if (structDecl.Fields().IsEmpty())
+            return;
 
         m_writer.WriteIndent();
         m_writer.Write("class ");
@@ -900,6 +915,7 @@ namespace he::schema
         // headers
         StringView baseName = GetPathWithoutExtension(m_request.fileName);
         m_writer.WriteLine("#include \"{}.hsc.h\"\n", baseName);
+        m_writer.WriteLine("#include \"he/core/enum_ops.h\"", baseName);
         m_writer.WriteLine("#include \"he/core/types.h\"\n", baseName);
 
         m_writer.WriteLine("namespace he::schema");
@@ -908,6 +924,15 @@ namespace he::schema
 
         WriteRawSchemaData();
         WriteDeclInfoSrc(m_root);
+
+        m_writer.DecreaseIndent();
+        m_writer.WriteLine("}");
+
+        m_writer.WriteLine("namespace he");
+        m_writer.WriteLine("{");
+        m_writer.IncreaseIndent();
+
+        WriteEnumStrings(m_root);
 
         m_writer.DecreaseIndent();
         m_writer.WriteLine("}");
@@ -990,6 +1015,87 @@ namespace he::schema
         }
     }
 
+    void CodeGenCpp::WriteEnumStrings(Declaration::Reader decl)
+    {
+        if (decl.Data().IsEnum())
+        {
+            const Declaration::Data::Enum::Reader enumDecl = decl.Data().Enum();
+
+            m_writer.WriteLine("template <>");
+
+            m_writer.WriteIndent();
+            m_writer.Write("const char* AsString(");
+            WriteName(decl, {}, {}, nullptr);
+            m_writer.Write(" x)\n");
+
+            m_writer.WriteLine("{");
+            m_writer.IncreaseIndent();
+
+            m_writer.WriteLine("switch (x)");
+            m_writer.WriteLine("{");
+            m_writer.IncreaseIndent();
+
+            for (const Enumerator::Reader e : enumDecl.Enumerators())
+            {
+                m_writer.WriteIndent();
+                m_writer.Write("case ");
+                WriteName(decl, {}, {}, nullptr);
+                m_writer.Write("::{0}: return \"{0}\";\n", e.Name().AsView());
+            }
+
+            m_writer.DecreaseIndent();
+            m_writer.WriteLine("}");
+
+            m_writer.WriteLine("return \"<unknown>\";");
+
+            m_writer.DecreaseIndent();
+            m_writer.WriteLine("}");
+        }
+        else if (decl.Data().IsStruct() && decl.Data().Struct().IsUnion())
+        {
+            Declaration::Data::Struct::Reader structDecl = decl.Data().Struct();
+
+            m_writer.WriteLine("template <>");
+
+            m_writer.WriteIndent();
+            m_writer.Write("const char* AsString(");
+            WriteName(decl, {}, {}, nullptr);
+            m_writer.Write("::Tag x)\n");
+
+            m_writer.WriteLine("{");
+            m_writer.IncreaseIndent();
+
+            m_writer.WriteLine("switch (x)");
+            m_writer.WriteLine("{");
+            m_writer.IncreaseIndent();
+
+            he::String upperCamelName(Allocator::GetTemp());
+            for (const Field::Reader f : structDecl.Fields())
+            {
+                upperCamelName = f.Name();
+                upperCamelName[0] = ToUpper(upperCamelName[0]);
+
+                m_writer.WriteIndent();
+                m_writer.Write("case ");
+                WriteName(decl, {}, {}, nullptr);
+                m_writer.Write("::Tag::{0}: return \"{0}\";\n", upperCamelName);
+            }
+
+            m_writer.DecreaseIndent();
+            m_writer.WriteLine("}");
+
+            m_writer.WriteLine("return \"<unknown>\";");
+
+            m_writer.DecreaseIndent();
+            m_writer.WriteLine("}");
+        }
+
+        for (Declaration::Reader child : decl.Children())
+        {
+            WriteEnumStrings(child);
+        }
+    }
+
     bool CodeGenCpp::FlushToFile(const char* suffix)
     {
         he::String filePath(m_request.outDir, Allocator::GetTemp());
@@ -1033,13 +1139,17 @@ namespace he::schema
 
     void CodeGenCpp::WriteName(Declaration::Reader decl, Declaration::Reader scope, Brand::Reader brand, const char* pointerSuffix)
     {
-        if (decl.ParentId() != scope.Id() && decl.ParentId() != scope.ParentId())
+        if (!scope.IsValid() || (decl.ParentId() != scope.Id() && decl.ParentId() != scope.ParentId()))
         {
             Declaration::Reader parent = m_request.GetDecl(decl.ParentId());
             if (!parent.Data().IsFile())
             {
                 WriteName(parent, scope, brand, pointerSuffix);
                 m_writer.Write("::");
+            }
+            else if (!scope.IsValid())
+            {
+                m_writer.Write("::{}::", m_namespaceName);
             }
         }
 

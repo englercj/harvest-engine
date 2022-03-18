@@ -165,6 +165,23 @@ namespace he::schema
         return ElementSize::Void;
     }
 
+    inline Attribute::Reader FindAttribute(List<Attribute>::Reader attributes, TypeId id)
+    {
+        for (Attribute::Reader attribute : attributes)
+        {
+            if (attribute.Id() == id)
+                return attribute;
+        }
+
+        return {};
+    }
+
+    template <typename T>
+    inline Attribute::Reader FindAttribute(List<Attribute>::Reader attributes)
+    {
+        return FindAttribute(attributes, T::DeclInfo::Id);
+    }
+
     template <TypeId Id>
     inline Declaration::Reader GetSchema()
     {
@@ -181,23 +198,6 @@ namespace he::schema
         constexpr uint16_t DataWordSize = T::DeclInfo::DataWordSize;
         constexpr uint16_t PointerCount = T::DeclInfo::PointerCount;
         return Declaration::Reader(StructReader(RawSchema, DataWordSize, PointerCount));
-    }
-
-    inline Attribute::Reader FindAttribute(List<Attribute>::Reader attributes, TypeId id)
-    {
-        for (Attribute::Reader attribute : attributes)
-        {
-            if (attribute.Id() == id)
-                return attribute;
-        }
-
-        return {};
-    }
-
-    template <typename T>
-    inline Attribute::Reader FindAttribute(List<Attribute>::Reader attributes)
-    {
-        return FindAttribute(attributes, T::DeclInfo::Id);
     }
 
     class SchemaVisitor

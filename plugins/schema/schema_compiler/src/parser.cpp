@@ -38,6 +38,7 @@ namespace he::schema
     Parser::DeclParser Parser::StructMemberParsers[] =
     {
         { KW_Alias, &Parser::ConsumeAliasDecl },
+        { KW_Attribute, &Parser::ConsumeAttributeDecl },
         { KW_Const, &Parser::ConsumeConstantDecl },
         { KW_Enum, &Parser::ConsumeEnumDecl },
         { KW_Interface, &Parser::ConsumeInterfaceDecl },

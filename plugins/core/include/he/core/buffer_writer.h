@@ -9,7 +9,7 @@
 namespace he
 {
     /// Helper class to make building a byte buffer easier.
-    class BufferWriter
+    class BufferWriter final
     {
     public:
         /// Strategy for growing the buffer when needed.
@@ -159,6 +159,13 @@ namespace he
         /// Sets the size of the buffer to zero.
         /// Does not affect memory allocation.
         void Clear();
+
+        /// Copies a trivially copyable type into the buffer. This is the same as calling Write,
+        /// but exists to support generic programming on containers.
+        ///
+        /// \param[in] data The value to copy.
+        template <typename T> requires(std::is_trivially_copyable_v<T>)
+        void PushBack(const T& value) { Write(&value, sizeof(T)); }
 
         /// Copies `len` bytes from `data` into the buffer.
         ///

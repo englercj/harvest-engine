@@ -57,7 +57,7 @@ HE_TEST(core, buffer_writer, Construct_Copy)
         BufferWriter copy(buf);
         HE_EXPECT_EQ(copy.Size(), buf.Size());
         HE_EXPECT_EQ_MEM(copy.Data(), buf.Data(), buf.Size());
-        HE_EXPECT_EQ_PTR(&copy.GetAllocator(), &Allocator::GetDefault());
+        HE_EXPECT_EQ_PTR(&copy.GetAllocator(), &buf.GetAllocator());
         HE_EXPECT_EQ(BufferWriterTestAttorney::GetGrowth(copy), BufferWriterTestAttorney::GetGrowth(buf));
         HE_EXPECT_EQ(BufferWriterTestAttorney::GetStrategy(copy), BufferWriterTestAttorney::GetStrategy(buf));
     }
@@ -107,7 +107,7 @@ HE_TEST(core, buffer_writer, Construct_Move)
         HE_EXPECT_EQ(moved.Size(), HE_LENGTH_OF(Datas));
         HE_EXPECT_EQ_PTR(moved.Data(), ptr);
         HE_EXPECT_EQ_MEM(moved.Data(), Datas, moved.Size());
-        HE_EXPECT_EQ_PTR(&moved.GetAllocator(), &Allocator::GetDefault());
+        HE_EXPECT_EQ_PTR(&moved.GetAllocator(), &buf.GetAllocator());
         HE_EXPECT_EQ(BufferWriterTestAttorney::GetGrowth(moved), BufferWriterTestAttorney::GetGrowth(buf));
         HE_EXPECT_EQ(BufferWriterTestAttorney::GetStrategy(moved), BufferWriterTestAttorney::GetStrategy(buf));
 

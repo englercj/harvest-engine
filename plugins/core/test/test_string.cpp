@@ -849,7 +849,6 @@ HE_TEST(core, string, operator_plus_equal)
     HE_EXPECT_GE(s.Capacity(), 127);
     HE_EXPECT_EQ(s.Size(), 127);
     HE_EXPECT_EQ_STR(s.Data(), "Hello, world! This is really long to force reallocation onto the heap space of the string object we're testing.Testing view!aoc");
-
 }
 
 // ------------------------------------------------------------------------------------------------

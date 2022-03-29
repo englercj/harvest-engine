@@ -4,6 +4,7 @@
 
 #include "he/core/buffer_writer.h"
 #include "he/core/string.h"
+#include "he/core/string_builder.h"
 #include "he/core/test.h"
 #include "he/core/vector.h"
 
@@ -35,6 +36,13 @@ HE_TEST(core, appender, BufferWriter)
 HE_TEST(core, appender, String)
 {
     String s;
+    TestAppender(s);
+}
+
+// ------------------------------------------------------------------------------------------------
+HE_TEST(core, appender, StringBuilder)
+{
+    StringBuilder s;
     TestAppender(s);
 }
 

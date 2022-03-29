@@ -18,15 +18,13 @@
 ///
 /// \param[in] x The builtin to check for.
 /// \return Evaluates to 1 or 0 depending on if the builtin is available.
-
-// TODO: Document other macros in here
-
 #if defined(__has_builtin)
     #define HE_HAS_BUILTIN(x) __has_builtin(x)
 #else
     #define HE_HAS_BUILTIN(x) 0
 #endif
 
+// TODO: Document other macros in here
 
 #if defined(__clang__)
     #undef  HE_COMPILER_CLANG
@@ -51,6 +49,9 @@
     #define HE_DISABLE_GCC_WARNING(n)
     #define HE_DISABLE_GCC_CLANG_WARNING(n) HE_DISABLE_CLANG_WARNING(n)
     #define HE_DISABLE_MSVC_WARNING(n)
+
+    #define HE_DISABLE_OPTIMIZE_START()     _Pragma("clang optimize off")
+    #define HE_DISABLE_OPTIMIZE_END()       _Pragma("clang optimize on")
 #elif defined(__GNUC__)
     #undef  HE_COMPILER_GCC
     #define HE_COMPILER_GCC                 (__GNUC__ * 10000 + __GNUC_MINOR__ * 100 + __GNUC_PATCHLEVEL__)
@@ -74,6 +75,9 @@
     #define HE_DISABLE_GCC_WARNING(n)       _Pragma(HE_STRINGIFY(GCC diagnostic ignored n))
     #define HE_DISABLE_GCC_CLANG_WARNING(n) HE_DISABLE_GCC_WARNING(n)
     #define HE_DISABLE_MSVC_WARNING(n)
+
+    #define HE_DISABLE_OPTIMIZE_START()     (_Pragma("GCC push_options"), _Pragma("GCC optimize (O0)"))
+    #define HE_DISABLE_OPTIMIZE_END()       _Pragma("GCC pop_options")
 #elif defined(_MSC_VER)
     #undef  HE_COMPILER_MSVC
     #define HE_COMPILER_MSVC                (_MSC_VER)
@@ -98,6 +102,9 @@
     #define HE_DISABLE_GCC_WARNING(n)
     #define HE_DISABLE_GCC_CLANG_WARNING(n)
     #define HE_DISABLE_MSVC_WARNING(n)      __pragma(warning(disable: n))
+
+    #define HE_DISABLE_OPTIMIZE_START()     __pragma(optimize("", off))
+    #define HE_DISABLE_OPTIMIZE_END()       __pragma(optimize("", on))
 #else
     #error "Unknown compiler"
 #endif

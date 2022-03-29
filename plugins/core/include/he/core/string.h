@@ -304,8 +304,8 @@ namespace he
         /// \param allocator Optional. The allocator to use.
         String(const char* str, uint32_t len, Allocator& allocator = Allocator::GetDefault());
 
-        /// Construct a string from an object that provides a STL-style contiguous range. That is,
-        /// it has `.data()` and `.size()` members.
+        /// Construct a string from an object that provides a STL-style contiguous range of characters.
+        /// That is, it has `.data()` and `.size()` members.
         ///
         /// \param range The object that provides the range.
         /// \param allocator Optional. The allocator to use.
@@ -316,8 +316,8 @@ namespace he
             HE_ASSERT(range.size() <= MaxHeapCharacters);
         }
 
-        /// Construct a string from an object that provides a Harvest-style contiguous range. That is,
-        /// it has `.Data()` and `.Size()` members.
+        /// Construct a string from an object that provides a Harvest-style contiguous range of
+        /// characters. That is, it has `.Data()` and `.Size()` members.
         ///
         /// \param range The object that provides the range.
         /// \param allocator Optional. The allocator to use.
@@ -403,8 +403,8 @@ namespace he
         /// \param c The character to append.
         String& operator+=(char c) { Insert(Size(), &c, 1); return *this; }
 
-        /// Appends a series of characters from an object that provides a STL-style contiguous range.
-        /// That is, it has `.data()` and `.size()` members.
+        /// Appends a series of characters from an object that provides a STL-style
+        /// contiguous range. That is, it has `.data()` and `.size()` members.
         ///
         /// \param range The object that provides the range.
         template <typename R> requires(StdContiguousRange<R, const char>)
@@ -414,8 +414,8 @@ namespace he
             return *this;
         }
 
-        /// Construct a string from an object that provides a Harvest-style contiguous range. That is,
-        /// it has `.Data()` and `.Size()` members.
+        /// Appends a series of characters from an object that provides a Harvest-style
+        /// contiguous range. That is, it has `.Data()` and `.Size()` members.
         ///
         /// \param range The object that provides the range.
         template <typename R> requires(ContiguousRange<R, const char>)

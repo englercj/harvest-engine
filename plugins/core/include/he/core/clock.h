@@ -6,6 +6,8 @@
 #include "he/core/cpu.h"
 #include "he/core/types.h"
 
+#include <type_traits>
+
 #if HE_COMPILER_MSVC && HE_CPU_X86
     extern "C" uint64_t __rdtsc();
     #pragma intrinsic(__rdtsc)
@@ -75,7 +77,10 @@ namespace he
     using Days = DurationPeriod<86400000000000>;
     using Weeks = DurationPeriod<604800000000000>;
 
-    template <typename T, typename U = int64_t>
+    template <typename T, typename U = int64_t> requires(std::is_integral_v<U>)
+    constexpr U ToPeriod(Duration d) { return static_cast<U>(d.val / T::Ratio); }
+
+    template <typename T, typename U> requires(std::is_floating_point_v<U>)
     constexpr U ToPeriod(Duration d) { return static_cast<U>(d.val / static_cast<double>(T::Ratio)); }
 
     template <typename T, typename U>

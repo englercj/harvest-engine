@@ -57,7 +57,7 @@ namespace he::schema
     template <Enum T>
     struct ElementSizeOfType<T> { static constexpr ElementSize Value = ElementSize::TwoBytes; };
 
-    template <typename T> requires(T::DeclInfo::Kind == DeclKind::Struct)
+    template <typename T> requires(T::Kind == DeclKind::Struct)
     struct ElementSizeOfType<T> { static constexpr ElementSize Value = ElementSize::Composite; };
 
     // --------------------------------------------------------------------------------------------
@@ -419,9 +419,9 @@ namespace he::schema
         template <typename T>
         T::Builder AddStruct()
         {
-            constexpr uint16_t DataFieldCount = T::DeclInfo::DataFieldCount;
-            constexpr uint16_t DataWordSize = T::DeclInfo::DataWordSize;
-            constexpr uint16_t PointerCount = T::DeclInfo::PointerCount;
+            constexpr uint16_t DataFieldCount = T::DataFieldCount;
+            constexpr uint16_t DataWordSize = T::DataWordSize;
+            constexpr uint16_t PointerCount = T::PointerCount;
             return T::Builder(AddStruct(DataFieldCount, DataWordSize, PointerCount));
         }
 
@@ -430,9 +430,9 @@ namespace he::schema
         {
             if constexpr (ElementSizeOfType<T>::Value == ElementSize::Composite)
             {
-                constexpr uint16_t DataFieldCount = T::DeclInfo::DataFieldCount;
-                constexpr uint16_t DataWordSize = T::DeclInfo::DataWordSize;
-                constexpr uint16_t PointerCount = T::DeclInfo::PointerCount;
+                constexpr uint16_t DataFieldCount = T::DataFieldCount;
+                constexpr uint16_t DataWordSize = T::DataWordSize;
+                constexpr uint16_t PointerCount = T::PointerCount;
                 return List<T>::Builder(AddStructList(elementCount, DataFieldCount, DataWordSize, PointerCount));
             }
             else

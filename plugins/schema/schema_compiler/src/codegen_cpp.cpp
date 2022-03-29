@@ -73,8 +73,12 @@ namespace he::schema
         if (hasUserInclude)
             m_writer.Write('\n');
 
+        m_writer.WriteLine("namespace he::schema");
+        m_writer.WriteLine("{");
+        m_writer.IncreaseIndent();
         WriteDeclInfo(m_root);
-        m_writer.Write('\n');
+        m_writer.DecreaseIndent();
+        m_writer.WriteLine("}\n");
 
         if (!m_namespaceName.IsEmpty())
         {
@@ -148,7 +152,7 @@ namespace he::schema
         m_writer.IncreaseIndent();
 
         m_writer.WriteLine("{}() = delete;", decl.Name().AsView());
-        m_writer.WriteLine("using DeclInfo = ::he::schema::DeclInfo<" HE_ID_FMT ">;", decl.Id());
+        m_writer.WriteLine("HE_SCHEMA_DECL_ATTRIBUTE(" HE_ID_FMT ", " HE_ID_FMT ");", decl.Id(), decl.ParentId());
 
         m_writer.DecreaseIndent();
         m_writer.WriteLine("};");
@@ -218,7 +222,15 @@ namespace he::schema
         HE_UNUSED(scope);
         HE_ASSERT(decl.Data().IsInterface());
 
-        m_writer.WriteLine("class {};", decl.Name().AsView());
+        m_writer.WriteLine("class {}", decl.Name().AsView());
+        m_writer.WriteLine("{");
+        m_writer.IncreaseIndent();
+
+        m_writer.WriteLine("{}() = delete;", decl.Name().AsView());
+        m_writer.WriteLine("HE_SCHEMA_DECL_INTERFACE(" HE_ID_FMT ", " HE_ID_FMT ");", decl.Id(), decl.ParentId());
+
+        m_writer.DecreaseIndent();
+        m_writer.WriteLine("};");
     }
 
     void CodeGenCpp::WriteStructDecl(Declaration::Reader decl, Declaration::Reader scope)
@@ -233,7 +245,8 @@ namespace he::schema
         m_writer.IncreaseIndent();
 
         m_writer.WriteLine("{}() = delete;", decl.Name().AsView());
-        m_writer.WriteLine("using DeclInfo = ::he::schema::DeclInfo<" HE_ID_FMT ">;", decl.Id());
+        m_writer.WriteLine("HE_SCHEMA_DECL_STRUCT(" HE_ID_FMT ", " HE_ID_FMT ", {}, {}, {});",
+            decl.Id(), decl.ParentId(), structDecl.DataFieldCount(), structDecl.DataWordSize(), structDecl.PointerCount());
 
         if (!structDecl.Fields().IsEmpty())
         {
@@ -319,7 +332,6 @@ namespace he::schema
         m_writer.IncreaseIndent();
 
         m_writer.WriteLine("virtual ~{}() {{}}", decl.Name().AsView());
-        m_writer.WriteLine("using DeclInfo = ::he::schema::DeclInfo<" HE_ID_FMT ">;", decl.Id());
         if (superInterface.IsValid())
         {
             Declaration::Reader super = m_request.GetDecl(superInterface.Id());
@@ -624,8 +636,8 @@ namespace he::schema
                     const DefaultValueRef ref = GetOrMakeDefaultValue(fieldType, norm.DefaultValue(), decl);
                     if (ref.scopeId != 0)
                     {
-                        m_writer.Write("::he::schema::DeclInfo<" HE_ID_FMT ">::{} + {}",
-                            ref.scopeId, ref.inSchema ? "RawSchema" : "DefaultValues", ref.offset);
+                        m_writer.Write("::he::schema::DeclInfoForId<" HE_ID_FMT ">::Value.{} + {}",
+                            ref.scopeId, ref.inSchema ? "schema" : "defaultValues", ref.offset);
                     }
                 }
                 m_writer.Write("); }\n");
@@ -970,6 +982,14 @@ namespace he::schema
     {
         const ptrdiff_t schemaOffset = static_cast<StructReader&>(decl).Data() - m_request.schemaData.Data();
 
+        m_writer.WriteIndent();
+        m_writer.Write("// ");
+        if (decl.Data().IsFile())
+            m_writer.Write("file");
+        else
+            WriteName(decl, m_root, {}, nullptr);
+        m_writer.Write('\n');
+
         const auto it = m_defaultValues.find(decl.Id());
         if (it != m_defaultValues.end())
         {
@@ -1001,13 +1021,46 @@ namespace he::schema
             m_writer.WriteLine("};");
         }
 
-        m_writer.WriteLine("const Word* DeclInfo<" HE_ID_FMT ">::RawSchema = RawFileSchema_{:016x} + {};", decl.Id(), m_root.Id(), schemaOffset);
+        const bool isStruct = decl.Data().IsStruct();
+        const uint16_t dataFieldCount = isStruct ? decl.Data().Struct().DataFieldCount() : 0;
+        const uint16_t dataWordSize = isStruct ? decl.Data().Struct().DataWordSize() : 0;
+        const uint16_t pointerCount = isStruct ? decl.Data().Struct().PointerCount() : 0;
+
+        std::set<TypeId> dependencies;
+        FindAllDependencies(decl, dependencies);
+
+        if (!dependencies.empty())
+        {
+            m_writer.WriteLine("static const DeclInfo* Dependencies_{:016x}[] =", decl.Id());
+            m_writer.WriteLine("{");
+            m_writer.IncreaseIndent();
+            for (TypeId id : dependencies)
+            {
+                m_writer.WriteLine("&DeclInfoForId<" HE_ID_FMT ">::Value,", id);
+            }
+            m_writer.DecreaseIndent();
+            m_writer.WriteLine("};");
+        }
+
+        m_writer.WriteLine("const DeclInfo DeclInfoForId<" HE_ID_FMT ">::Value =", decl.Id());
+        m_writer.WriteLine("{");
+        m_writer.IncreaseIndent();
+
+        m_writer.WriteLine(HE_ID_FMT ", " HE_ID_FMT ", DeclKind::{}, {}, {}, {}, (RawFileSchema_{:016x} + {}),",
+            decl.Id(), decl.ParentId(), decl.Data().Tag(), dataFieldCount, dataWordSize, pointerCount, m_root.Id(), schemaOffset);
 
         if (it != m_defaultValues.end())
-            m_writer.WriteLine("const Word* DeclInfo<" HE_ID_FMT ">::DefaultValues = DefaultValues_{:016x};", decl.Id(), decl.Id());
+            m_writer.WriteLine("DefaultValues_{:016x}, {},", decl.Id(), it->second.Size());
         else
-            m_writer.WriteLine("const Word* DeclInfo<" HE_ID_FMT ">::DefaultValues = nullptr;", decl.Id());
-        m_writer.Write('\n');
+            m_writer.WriteLine("nullptr, 0,");
+
+        if (!dependencies.empty())
+            m_writer.WriteLine("Dependencies_{:016x}, HE_LENGTH_OF(Dependencies_{:016x}),", decl.Id(), decl.Id());
+        else
+            m_writer.WriteLine("nullptr, 0,");
+
+        m_writer.DecreaseIndent();
+        m_writer.WriteLine("};\n");
 
         for (Declaration::Reader child : decl.Children())
         {
@@ -1117,14 +1170,8 @@ namespace he::schema
 
     void CodeGenCpp::WriteDeclInfo(Declaration::Reader decl)
     {
-        const bool isStruct = decl.Data().IsStruct();
-        const uint16_t dataFieldCount = isStruct ? decl.Data().Struct().DataFieldCount() : 0;
-        const uint16_t dataWordSize = isStruct ? decl.Data().Struct().DataWordSize() : 0;
-        const uint16_t pointerCount = isStruct ? decl.Data().Struct().PointerCount() : 0;
-
         m_writer.WriteIndent();
-        m_writer.Write("HE_SCHEMA_DECL_INFO(" HE_ID_FMT ", " HE_ID_FMT ", {}, {}, {}, {}); // ",
-            decl.Id(), decl.ParentId(), decl.Data().Tag(), dataFieldCount, dataWordSize, pointerCount);
+        m_writer.Write("HE_SCHEMA_DECL_INFO_FOR_ID(" HE_ID_FMT "); // ", decl.Id());
         if (decl.Data().IsFile())
             m_writer.Write("file");
         else
@@ -1371,6 +1418,78 @@ namespace he::schema
             {
                 m_writer.Write(ch);
             }
+        }
+    }
+
+    void CodeGenCpp::FindAllDependencies(Type::Reader type, std::set<TypeId>& out)
+    {
+        switch (type.Data().Tag())
+        {
+            case Type::Data::Tag::Struct:
+                out.insert(type.Data().Struct().Id());
+                break;
+            case Type::Data::Tag::Enum:
+                out.insert(type.Data().Enum().Id());
+                break;
+            case Type::Data::Tag::Interface:
+                out.insert(type.Data().Interface().Id());
+                break;
+            case Type::Data::Tag::List:
+                FindAllDependencies(type.Data().List().ElementType(), out);
+                break;
+            case Type::Data::Tag::Array:
+                FindAllDependencies(type.Data().Array().ElementType(), out);
+                break;
+            default:
+                break;
+        }
+    }
+
+    void CodeGenCpp::FindAllDependencies(Declaration::Reader decl, std::set<TypeId>& out)
+    {
+        switch (decl.Data().Tag())
+        {
+            case Declaration::Data::Tag::Struct:
+            {
+                Declaration::Data::Struct::Reader structDecl = decl.Data().Struct();
+                for (Field::Reader field : structDecl.Fields())
+                {
+                    switch (field.Meta().Tag())
+                    {
+                        case Field::Meta::Tag::Normal:
+                            FindAllDependencies(field.Meta().Normal().Type(), out);
+                            break;
+                        case Field::Meta::Tag::Group:
+                            out.insert(field.Meta().Group().TypeId());
+                            break;
+                        case Field::Meta::Tag::Union:
+                            out.insert(field.Meta().Union().TypeId());
+                            break;
+                    }
+                }
+                break;
+            }
+            case Declaration::Data::Tag::Interface:
+            {
+                Declaration::Data::Interface::Reader interfaceDecl = decl.Data().Interface();
+
+                Type::Data::Reader superTypeData = interfaceDecl.Super().Data();
+                Type::Data::Interface::Reader superInterface = superTypeData.IsInterface() ? superTypeData.Interface() : Type::Data::Interface::Reader{};
+
+                if (superInterface.IsValid())
+                {
+                    out.insert(superInterface.Id());
+                }
+
+                for (Method::Reader method : interfaceDecl.Methods())
+                {
+                    out.insert(method.ParamStruct());
+                    out.insert(method.ResultStruct());
+                }
+                break;
+            }
+            default:
+                break;
         }
     }
 

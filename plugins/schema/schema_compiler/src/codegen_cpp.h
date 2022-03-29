@@ -9,6 +9,7 @@
 #include "he/schema/codegen.h"
 #include "he/schema/schema.h"
 
+#include <set>
 #include <unordered_map>
 
 namespace he::schema
@@ -60,6 +61,9 @@ namespace he::schema
         void WriteType(Type::Reader type, Declaration::Reader scope, const char* pointerSuffix);
         void WriteDataValue(Type::Reader type, Declaration::Reader scope, Value::Reader value);
         void WriteWithReplace(StringView input, char what, StringView with);
+
+        void FindAllDependencies(Type::Reader type, std::set<TypeId>& out);
+        void FindAllDependencies(Declaration::Reader decl, std::set<TypeId>& out);
 
     private:
         struct DefaultValueRef

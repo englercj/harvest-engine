@@ -8,40 +8,43 @@
 #include "he/schema/layout.h"
 #include "he/schema/types.h"
 
-HE_SCHEMA_DECL_INFO(0x979e892c449bc4d8, 0x0000000000000000, File, 0, 0, 0); // file
-HE_SCHEMA_DECL_INFO(0xc209341a45619228, 0x979e892c449bc4d8, Struct, 0, 0, 0); // Toml
-HE_SCHEMA_DECL_INFO(0xadd3e5b7bc72e8a5, 0xc209341a45619228, Attribute, 0, 0, 0); // Toml::Hex
-HE_SCHEMA_DECL_INFO(0xa66eff5acba76a75, 0x979e892c449bc4d8, Struct, 0, 0, 1); // Brand
-HE_SCHEMA_DECL_INFO(0xac8f534465c8369b, 0xa66eff5acba76a75, Struct, 1, 2, 1); // Brand::Scope
-HE_SCHEMA_DECL_INFO(0xdd2b0f1a9d06a3b0, 0x979e892c449bc4d8, Struct, 6, 3, 1); // Type
-HE_SCHEMA_DECL_INFO(0xc37ce87995a2ca78, 0xdd2b0f1a9d06a3b0, Struct, 0, 0, 0); // Type::Data
-HE_SCHEMA_DECL_INFO(0xc1d124ae8dd0aa95, 0xc37ce87995a2ca78, Struct, 6, 3, 1); // Type::Data::Array
-HE_SCHEMA_DECL_INFO(0xed43a001e459b840, 0xc37ce87995a2ca78, Struct, 6, 3, 1); // Type::Data::List
-HE_SCHEMA_DECL_INFO(0x857c744e5276d4b5, 0xc37ce87995a2ca78, Struct, 6, 3, 1); // Type::Data::Enum
-HE_SCHEMA_DECL_INFO(0x8e064c19f3d729f1, 0xc37ce87995a2ca78, Struct, 6, 3, 1); // Type::Data::Struct
-HE_SCHEMA_DECL_INFO(0x9c00ee98d42bb48b, 0xc37ce87995a2ca78, Struct, 6, 3, 1); // Type::Data::Interface
-HE_SCHEMA_DECL_INFO(0xb150cde6a6ba5d63, 0xc37ce87995a2ca78, Struct, 6, 3, 1); // Type::Data::AnyPointer
-HE_SCHEMA_DECL_INFO(0xa1a552dda5da9ae9, 0x979e892c449bc4d8, Struct, 0, 3, 1); // Value
-HE_SCHEMA_DECL_INFO(0xbc63c2f6a4186852, 0xa1a552dda5da9ae9, Struct, 0, 0, 2); // Value::TupleValue
-HE_SCHEMA_DECL_INFO(0xda924af5c1761799, 0xa1a552dda5da9ae9, Struct, 0, 0, 0); // Value::Data
-HE_SCHEMA_DECL_INFO(0xf4155b14cbf230b8, 0x979e892c449bc4d8, Struct, 1, 2, 1); // Attribute
-HE_SCHEMA_DECL_INFO(0xd7baf7c88e03fa02, 0x979e892c449bc4d8, Struct, 2, 2, 2); // Enumerator
-HE_SCHEMA_DECL_INFO(0xcc214d2a9c304894, 0x979e892c449bc4d8, Struct, 7, 4, 4); // Field
-HE_SCHEMA_DECL_INFO(0xcaa0cb1693b7d451, 0xcc214d2a9c304894, Struct, 0, 0, 0); // Field::Meta
-HE_SCHEMA_DECL_INFO(0xa88498c0a2ba743e, 0xcaa0cb1693b7d451, Struct, 7, 4, 4); // Field::Meta::Normal
-HE_SCHEMA_DECL_INFO(0xe63c151fb71df3a8, 0xcaa0cb1693b7d451, Struct, 7, 4, 4); // Field::Meta::Group
-HE_SCHEMA_DECL_INFO(0xa351c96f08f70cc8, 0xcaa0cb1693b7d451, Struct, 7, 4, 4); // Field::Meta::Union
-HE_SCHEMA_DECL_INFO(0x9fc1b8877a1fdd29, 0x979e892c449bc4d8, Struct, 4, 4, 3); // Method
-HE_SCHEMA_DECL_INFO(0xa045f0dd3245ab5d, 0x979e892c449bc4d8, Struct, 2, 2, 2); // SourceInfo
-HE_SCHEMA_DECL_INFO(0xd6eb382ff8ab299c, 0x979e892c449bc4d8, Struct, 20, 5, 7); // Declaration
-HE_SCHEMA_DECL_INFO(0xc991ea09a07196a4, 0xd6eb382ff8ab299c, Struct, 0, 0, 0); // Declaration::Data
-HE_SCHEMA_DECL_INFO(0x9daade8d780913d2, 0xc991ea09a07196a4, Struct, 20, 5, 7); // Declaration::Data::File
-HE_SCHEMA_DECL_INFO(0xaee6bea627f2e404, 0xc991ea09a07196a4, Struct, 20, 5, 7); // Declaration::Data::Attribute
-HE_SCHEMA_DECL_INFO(0xea1ead965998efd0, 0xc991ea09a07196a4, Struct, 20, 5, 7); // Declaration::Data::Constant
-HE_SCHEMA_DECL_INFO(0xb1105982b244c8c1, 0xc991ea09a07196a4, Struct, 20, 5, 7); // Declaration::Data::Enum
-HE_SCHEMA_DECL_INFO(0x96db68a0fd0a0577, 0xc991ea09a07196a4, Struct, 20, 5, 7); // Declaration::Data::Interface
-HE_SCHEMA_DECL_INFO(0xe4d7f374357efe15, 0xc991ea09a07196a4, Struct, 20, 5, 7); // Declaration::Data::Struct
-HE_SCHEMA_DECL_INFO(0x8a8a83386362f90d, 0x979e892c449bc4d8, Struct, 0, 0, 1); // SchemaFile
+namespace he::schema
+{
+    HE_SCHEMA_DECL_INFO_FOR_ID(0x979e892c449bc4d8); // file
+    HE_SCHEMA_DECL_INFO_FOR_ID(0xc209341a45619228); // Toml
+    HE_SCHEMA_DECL_INFO_FOR_ID(0xadd3e5b7bc72e8a5); // Toml::Hex
+    HE_SCHEMA_DECL_INFO_FOR_ID(0xa66eff5acba76a75); // Brand
+    HE_SCHEMA_DECL_INFO_FOR_ID(0xac8f534465c8369b); // Brand::Scope
+    HE_SCHEMA_DECL_INFO_FOR_ID(0xdd2b0f1a9d06a3b0); // Type
+    HE_SCHEMA_DECL_INFO_FOR_ID(0xc37ce87995a2ca78); // Type::Data
+    HE_SCHEMA_DECL_INFO_FOR_ID(0xc1d124ae8dd0aa95); // Type::Data::Array
+    HE_SCHEMA_DECL_INFO_FOR_ID(0xed43a001e459b840); // Type::Data::List
+    HE_SCHEMA_DECL_INFO_FOR_ID(0x857c744e5276d4b5); // Type::Data::Enum
+    HE_SCHEMA_DECL_INFO_FOR_ID(0x8e064c19f3d729f1); // Type::Data::Struct
+    HE_SCHEMA_DECL_INFO_FOR_ID(0x9c00ee98d42bb48b); // Type::Data::Interface
+    HE_SCHEMA_DECL_INFO_FOR_ID(0xb150cde6a6ba5d63); // Type::Data::AnyPointer
+    HE_SCHEMA_DECL_INFO_FOR_ID(0xa1a552dda5da9ae9); // Value
+    HE_SCHEMA_DECL_INFO_FOR_ID(0xbc63c2f6a4186852); // Value::TupleValue
+    HE_SCHEMA_DECL_INFO_FOR_ID(0xda924af5c1761799); // Value::Data
+    HE_SCHEMA_DECL_INFO_FOR_ID(0xf4155b14cbf230b8); // Attribute
+    HE_SCHEMA_DECL_INFO_FOR_ID(0xd7baf7c88e03fa02); // Enumerator
+    HE_SCHEMA_DECL_INFO_FOR_ID(0xcc214d2a9c304894); // Field
+    HE_SCHEMA_DECL_INFO_FOR_ID(0xcaa0cb1693b7d451); // Field::Meta
+    HE_SCHEMA_DECL_INFO_FOR_ID(0xa88498c0a2ba743e); // Field::Meta::Normal
+    HE_SCHEMA_DECL_INFO_FOR_ID(0xe63c151fb71df3a8); // Field::Meta::Group
+    HE_SCHEMA_DECL_INFO_FOR_ID(0xa351c96f08f70cc8); // Field::Meta::Union
+    HE_SCHEMA_DECL_INFO_FOR_ID(0x9fc1b8877a1fdd29); // Method
+    HE_SCHEMA_DECL_INFO_FOR_ID(0xa045f0dd3245ab5d); // SourceInfo
+    HE_SCHEMA_DECL_INFO_FOR_ID(0xd6eb382ff8ab299c); // Declaration
+    HE_SCHEMA_DECL_INFO_FOR_ID(0xc991ea09a07196a4); // Declaration::Data
+    HE_SCHEMA_DECL_INFO_FOR_ID(0x9daade8d780913d2); // Declaration::Data::File
+    HE_SCHEMA_DECL_INFO_FOR_ID(0xaee6bea627f2e404); // Declaration::Data::Attribute
+    HE_SCHEMA_DECL_INFO_FOR_ID(0xea1ead965998efd0); // Declaration::Data::Constant
+    HE_SCHEMA_DECL_INFO_FOR_ID(0xb1105982b244c8c1); // Declaration::Data::Enum
+    HE_SCHEMA_DECL_INFO_FOR_ID(0x96db68a0fd0a0577); // Declaration::Data::Interface
+    HE_SCHEMA_DECL_INFO_FOR_ID(0xe4d7f374357efe15); // Declaration::Data::Struct
+    HE_SCHEMA_DECL_INFO_FOR_ID(0x8a8a83386362f90d); // SchemaFile
+}
 
 namespace he::schema
 {
@@ -51,18 +54,18 @@ namespace he::schema
     struct Toml final
     {
         Toml() = delete;
-        using DeclInfo = ::he::schema::DeclInfo<0xc209341a45619228>;
+        HE_SCHEMA_DECL_STRUCT(0xc209341a45619228, 0x979e892c449bc4d8, 0, 0, 0);
 
         struct Hex
         {
             Hex() = delete;
-            using DeclInfo = ::he::schema::DeclInfo<0xadd3e5b7bc72e8a5>;
+            HE_SCHEMA_DECL_ATTRIBUTE(0xadd3e5b7bc72e8a5, 0xc209341a45619228);
         };
     };
     struct Brand final
     {
         Brand() = delete;
-        using DeclInfo = ::he::schema::DeclInfo<0xa66eff5acba76a75>;
+        HE_SCHEMA_DECL_STRUCT(0xa66eff5acba76a75, 0x979e892c449bc4d8, 0, 0, 1);
 
         class Reader;
         class Builder;
@@ -70,7 +73,7 @@ namespace he::schema
         struct Scope final
         {
             Scope() = delete;
-            using DeclInfo = ::he::schema::DeclInfo<0xac8f534465c8369b>;
+            HE_SCHEMA_DECL_STRUCT(0xac8f534465c8369b, 0xa66eff5acba76a75, 1, 2, 1);
 
             class Reader;
             class Builder;
@@ -79,7 +82,7 @@ namespace he::schema
     struct Type final
     {
         Type() = delete;
-        using DeclInfo = ::he::schema::DeclInfo<0xdd2b0f1a9d06a3b0>;
+        HE_SCHEMA_DECL_STRUCT(0xdd2b0f1a9d06a3b0, 0x979e892c449bc4d8, 6, 3, 1);
 
         class Reader;
         class Builder;
@@ -87,7 +90,7 @@ namespace he::schema
         struct Data final
         {
             Data() = delete;
-            using DeclInfo = ::he::schema::DeclInfo<0xc37ce87995a2ca78>;
+            HE_SCHEMA_DECL_STRUCT(0xc37ce87995a2ca78, 0xdd2b0f1a9d06a3b0, 0, 0, 0);
 
             class Reader;
             class Builder;
@@ -95,7 +98,7 @@ namespace he::schema
             struct Array final
             {
                 Array() = delete;
-                using DeclInfo = ::he::schema::DeclInfo<0xc1d124ae8dd0aa95>;
+                HE_SCHEMA_DECL_STRUCT(0xc1d124ae8dd0aa95, 0xc37ce87995a2ca78, 6, 3, 1);
 
                 class Reader;
                 class Builder;
@@ -104,7 +107,7 @@ namespace he::schema
             struct List final
             {
                 List() = delete;
-                using DeclInfo = ::he::schema::DeclInfo<0xed43a001e459b840>;
+                HE_SCHEMA_DECL_STRUCT(0xed43a001e459b840, 0xc37ce87995a2ca78, 6, 3, 1);
 
                 class Reader;
                 class Builder;
@@ -113,7 +116,7 @@ namespace he::schema
             struct Enum final
             {
                 Enum() = delete;
-                using DeclInfo = ::he::schema::DeclInfo<0x857c744e5276d4b5>;
+                HE_SCHEMA_DECL_STRUCT(0x857c744e5276d4b5, 0xc37ce87995a2ca78, 6, 3, 1);
 
                 class Reader;
                 class Builder;
@@ -122,7 +125,7 @@ namespace he::schema
             struct Struct final
             {
                 Struct() = delete;
-                using DeclInfo = ::he::schema::DeclInfo<0x8e064c19f3d729f1>;
+                HE_SCHEMA_DECL_STRUCT(0x8e064c19f3d729f1, 0xc37ce87995a2ca78, 6, 3, 1);
 
                 class Reader;
                 class Builder;
@@ -131,7 +134,7 @@ namespace he::schema
             struct Interface final
             {
                 Interface() = delete;
-                using DeclInfo = ::he::schema::DeclInfo<0x9c00ee98d42bb48b>;
+                HE_SCHEMA_DECL_STRUCT(0x9c00ee98d42bb48b, 0xc37ce87995a2ca78, 6, 3, 1);
 
                 class Reader;
                 class Builder;
@@ -140,7 +143,7 @@ namespace he::schema
             struct AnyPointer final
             {
                 AnyPointer() = delete;
-                using DeclInfo = ::he::schema::DeclInfo<0xb150cde6a6ba5d63>;
+                HE_SCHEMA_DECL_STRUCT(0xb150cde6a6ba5d63, 0xc37ce87995a2ca78, 6, 3, 1);
 
                 class Reader;
                 class Builder;
@@ -173,7 +176,7 @@ namespace he::schema
     struct Value final
     {
         Value() = delete;
-        using DeclInfo = ::he::schema::DeclInfo<0xa1a552dda5da9ae9>;
+        HE_SCHEMA_DECL_STRUCT(0xa1a552dda5da9ae9, 0x979e892c449bc4d8, 0, 3, 1);
 
         class Reader;
         class Builder;
@@ -181,7 +184,7 @@ namespace he::schema
         struct TupleValue final
         {
             TupleValue() = delete;
-            using DeclInfo = ::he::schema::DeclInfo<0xbc63c2f6a4186852>;
+            HE_SCHEMA_DECL_STRUCT(0xbc63c2f6a4186852, 0xa1a552dda5da9ae9, 0, 0, 2);
 
             class Reader;
             class Builder;
@@ -190,7 +193,7 @@ namespace he::schema
         struct Data final
         {
             Data() = delete;
-            using DeclInfo = ::he::schema::DeclInfo<0xda924af5c1761799>;
+            HE_SCHEMA_DECL_STRUCT(0xda924af5c1761799, 0xa1a552dda5da9ae9, 0, 0, 0);
 
             class Reader;
             class Builder;
@@ -222,7 +225,7 @@ namespace he::schema
     struct Attribute final
     {
         Attribute() = delete;
-        using DeclInfo = ::he::schema::DeclInfo<0xf4155b14cbf230b8>;
+        HE_SCHEMA_DECL_STRUCT(0xf4155b14cbf230b8, 0x979e892c449bc4d8, 1, 2, 1);
 
         class Reader;
         class Builder;
@@ -230,7 +233,7 @@ namespace he::schema
     struct Enumerator final
     {
         Enumerator() = delete;
-        using DeclInfo = ::he::schema::DeclInfo<0xd7baf7c88e03fa02>;
+        HE_SCHEMA_DECL_STRUCT(0xd7baf7c88e03fa02, 0x979e892c449bc4d8, 2, 2, 2);
 
         class Reader;
         class Builder;
@@ -238,7 +241,7 @@ namespace he::schema
     struct Field final
     {
         Field() = delete;
-        using DeclInfo = ::he::schema::DeclInfo<0xcc214d2a9c304894>;
+        HE_SCHEMA_DECL_STRUCT(0xcc214d2a9c304894, 0x979e892c449bc4d8, 7, 4, 4);
 
         class Reader;
         class Builder;
@@ -246,7 +249,7 @@ namespace he::schema
         struct Meta final
         {
             Meta() = delete;
-            using DeclInfo = ::he::schema::DeclInfo<0xcaa0cb1693b7d451>;
+            HE_SCHEMA_DECL_STRUCT(0xcaa0cb1693b7d451, 0xcc214d2a9c304894, 0, 0, 0);
 
             class Reader;
             class Builder;
@@ -254,7 +257,7 @@ namespace he::schema
             struct Normal final
             {
                 Normal() = delete;
-                using DeclInfo = ::he::schema::DeclInfo<0xa88498c0a2ba743e>;
+                HE_SCHEMA_DECL_STRUCT(0xa88498c0a2ba743e, 0xcaa0cb1693b7d451, 7, 4, 4);
 
                 class Reader;
                 class Builder;
@@ -263,7 +266,7 @@ namespace he::schema
             struct Group final
             {
                 Group() = delete;
-                using DeclInfo = ::he::schema::DeclInfo<0xe63c151fb71df3a8>;
+                HE_SCHEMA_DECL_STRUCT(0xe63c151fb71df3a8, 0xcaa0cb1693b7d451, 7, 4, 4);
 
                 class Reader;
                 class Builder;
@@ -272,7 +275,7 @@ namespace he::schema
             struct Union final
             {
                 Union() = delete;
-                using DeclInfo = ::he::schema::DeclInfo<0xa351c96f08f70cc8>;
+                HE_SCHEMA_DECL_STRUCT(0xa351c96f08f70cc8, 0xcaa0cb1693b7d451, 7, 4, 4);
 
                 class Reader;
                 class Builder;
@@ -288,7 +291,7 @@ namespace he::schema
     struct Method final
     {
         Method() = delete;
-        using DeclInfo = ::he::schema::DeclInfo<0x9fc1b8877a1fdd29>;
+        HE_SCHEMA_DECL_STRUCT(0x9fc1b8877a1fdd29, 0x979e892c449bc4d8, 4, 4, 3);
 
         class Reader;
         class Builder;
@@ -296,7 +299,7 @@ namespace he::schema
     struct SourceInfo final
     {
         SourceInfo() = delete;
-        using DeclInfo = ::he::schema::DeclInfo<0xa045f0dd3245ab5d>;
+        HE_SCHEMA_DECL_STRUCT(0xa045f0dd3245ab5d, 0x979e892c449bc4d8, 2, 2, 2);
 
         class Reader;
         class Builder;
@@ -304,7 +307,7 @@ namespace he::schema
     struct Declaration final
     {
         Declaration() = delete;
-        using DeclInfo = ::he::schema::DeclInfo<0xd6eb382ff8ab299c>;
+        HE_SCHEMA_DECL_STRUCT(0xd6eb382ff8ab299c, 0x979e892c449bc4d8, 20, 5, 7);
 
         class Reader;
         class Builder;
@@ -312,7 +315,7 @@ namespace he::schema
         struct Data final
         {
             Data() = delete;
-            using DeclInfo = ::he::schema::DeclInfo<0xc991ea09a07196a4>;
+            HE_SCHEMA_DECL_STRUCT(0xc991ea09a07196a4, 0xd6eb382ff8ab299c, 0, 0, 0);
 
             class Reader;
             class Builder;
@@ -320,7 +323,7 @@ namespace he::schema
             struct File final
             {
                 File() = delete;
-                using DeclInfo = ::he::schema::DeclInfo<0x9daade8d780913d2>;
+                HE_SCHEMA_DECL_STRUCT(0x9daade8d780913d2, 0xc991ea09a07196a4, 20, 5, 7);
 
                 class Reader;
                 class Builder;
@@ -329,7 +332,7 @@ namespace he::schema
             struct Attribute final
             {
                 Attribute() = delete;
-                using DeclInfo = ::he::schema::DeclInfo<0xaee6bea627f2e404>;
+                HE_SCHEMA_DECL_STRUCT(0xaee6bea627f2e404, 0xc991ea09a07196a4, 20, 5, 7);
 
                 class Reader;
                 class Builder;
@@ -338,7 +341,7 @@ namespace he::schema
             struct Constant final
             {
                 Constant() = delete;
-                using DeclInfo = ::he::schema::DeclInfo<0xea1ead965998efd0>;
+                HE_SCHEMA_DECL_STRUCT(0xea1ead965998efd0, 0xc991ea09a07196a4, 20, 5, 7);
 
                 class Reader;
                 class Builder;
@@ -347,7 +350,7 @@ namespace he::schema
             struct Enum final
             {
                 Enum() = delete;
-                using DeclInfo = ::he::schema::DeclInfo<0xb1105982b244c8c1>;
+                HE_SCHEMA_DECL_STRUCT(0xb1105982b244c8c1, 0xc991ea09a07196a4, 20, 5, 7);
 
                 class Reader;
                 class Builder;
@@ -356,7 +359,7 @@ namespace he::schema
             struct Interface final
             {
                 Interface() = delete;
-                using DeclInfo = ::he::schema::DeclInfo<0x96db68a0fd0a0577>;
+                HE_SCHEMA_DECL_STRUCT(0x96db68a0fd0a0577, 0xc991ea09a07196a4, 20, 5, 7);
 
                 class Reader;
                 class Builder;
@@ -365,7 +368,7 @@ namespace he::schema
             struct Struct final
             {
                 Struct() = delete;
-                using DeclInfo = ::he::schema::DeclInfo<0xe4d7f374357efe15>;
+                HE_SCHEMA_DECL_STRUCT(0xe4d7f374357efe15, 0xc991ea09a07196a4, 20, 5, 7);
 
                 class Reader;
                 class Builder;
@@ -384,7 +387,7 @@ namespace he::schema
     struct SchemaFile final
     {
         SchemaFile() = delete;
-        using DeclInfo = ::he::schema::DeclInfo<0x8a8a83386362f90d>;
+        HE_SCHEMA_DECL_STRUCT(0x8a8a83386362f90d, 0x979e892c449bc4d8, 0, 0, 1);
 
         class Reader;
         class Builder;

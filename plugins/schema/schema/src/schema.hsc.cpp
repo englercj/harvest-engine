@@ -238,107 +238,401 @@ namespace he::schema
         0x0000000000000000ull, 0x0001000300000008ull, 0x0000000000000000ull, 0x00000000746f6f72ull, 0x0000000400000006ull, 0x0000000000000011ull, 0xd6eb382ff8ab299cull, 0x0001000000000000ull, 0x0000000000000000ull,
     };
 
-    const Word* DeclInfo<0x979e892c449bc4d8>::RawSchema = RawFileSchema_979e892c449bc4d8 + 2;
-    const Word* DeclInfo<0x979e892c449bc4d8>::DefaultValues = nullptr;
+    // file
+    const DeclInfo DeclInfoForId<0x979e892c449bc4d8>::Value =
+    {
+        0x979e892c449bc4d8, 0x0000000000000000, DeclKind::File, 0, 0, 0, (RawFileSchema_979e892c449bc4d8 + 2),
+        nullptr, 0,
+        nullptr, 0,
+    };
 
-    const Word* DeclInfo<0xc209341a45619228>::RawSchema = RawFileSchema_979e892c449bc4d8 + 17;
-    const Word* DeclInfo<0xc209341a45619228>::DefaultValues = nullptr;
+    // Toml
+    const DeclInfo DeclInfoForId<0xc209341a45619228>::Value =
+    {
+        0xc209341a45619228, 0x979e892c449bc4d8, DeclKind::Struct, 0, 0, 0, (RawFileSchema_979e892c449bc4d8 + 17),
+        nullptr, 0,
+        nullptr, 0,
+    };
 
-    const Word* DeclInfo<0xadd3e5b7bc72e8a5>::RawSchema = RawFileSchema_979e892c449bc4d8 + 151;
-    const Word* DeclInfo<0xadd3e5b7bc72e8a5>::DefaultValues = nullptr;
+    // Toml::Hex
+    const DeclInfo DeclInfoForId<0xadd3e5b7bc72e8a5>::Value =
+    {
+        0xadd3e5b7bc72e8a5, 0xc209341a45619228, DeclKind::Attribute, 0, 0, 0, (RawFileSchema_979e892c449bc4d8 + 151),
+        nullptr, 0,
+        nullptr, 0,
+    };
 
-    const Word* DeclInfo<0xa66eff5acba76a75>::RawSchema = RawFileSchema_979e892c449bc4d8 + 29;
-    const Word* DeclInfo<0xa66eff5acba76a75>::DefaultValues = nullptr;
+    // Brand
+    static const DeclInfo* Dependencies_a66eff5acba76a75[] =
+    {
+        &DeclInfoForId<0xac8f534465c8369b>::Value,
+    };
+    const DeclInfo DeclInfoForId<0xa66eff5acba76a75>::Value =
+    {
+        0xa66eff5acba76a75, 0x979e892c449bc4d8, DeclKind::Struct, 0, 0, 1, (RawFileSchema_979e892c449bc4d8 + 29),
+        nullptr, 0,
+        Dependencies_a66eff5acba76a75, HE_LENGTH_OF(Dependencies_a66eff5acba76a75),
+    };
 
-    const Word* DeclInfo<0xac8f534465c8369b>::RawSchema = RawFileSchema_979e892c449bc4d8 + 179;
-    const Word* DeclInfo<0xac8f534465c8369b>::DefaultValues = nullptr;
+    // Brand::Scope
+    static const DeclInfo* Dependencies_ac8f534465c8369b[] =
+    {
+        &DeclInfoForId<0xdd2b0f1a9d06a3b0>::Value,
+    };
+    const DeclInfo DeclInfoForId<0xac8f534465c8369b>::Value =
+    {
+        0xac8f534465c8369b, 0xa66eff5acba76a75, DeclKind::Struct, 1, 2, 1, (RawFileSchema_979e892c449bc4d8 + 179),
+        nullptr, 0,
+        Dependencies_ac8f534465c8369b, HE_LENGTH_OF(Dependencies_ac8f534465c8369b),
+    };
 
-    const Word* DeclInfo<0xdd2b0f1a9d06a3b0>::RawSchema = RawFileSchema_979e892c449bc4d8 + 41;
-    const Word* DeclInfo<0xdd2b0f1a9d06a3b0>::DefaultValues = nullptr;
+    // Type
+    static const DeclInfo* Dependencies_dd2b0f1a9d06a3b0[] =
+    {
+        &DeclInfoForId<0xc37ce87995a2ca78>::Value,
+    };
+    const DeclInfo DeclInfoForId<0xdd2b0f1a9d06a3b0>::Value =
+    {
+        0xdd2b0f1a9d06a3b0, 0x979e892c449bc4d8, DeclKind::Struct, 6, 3, 1, (RawFileSchema_979e892c449bc4d8 + 41),
+        nullptr, 0,
+        Dependencies_dd2b0f1a9d06a3b0, HE_LENGTH_OF(Dependencies_dd2b0f1a9d06a3b0),
+    };
 
-    const Word* DeclInfo<0xc37ce87995a2ca78>::RawSchema = RawFileSchema_979e892c449bc4d8 + 245;
-    const Word* DeclInfo<0xc37ce87995a2ca78>::DefaultValues = nullptr;
+    // Type::Data
+    static const DeclInfo* Dependencies_c37ce87995a2ca78[] =
+    {
+        &DeclInfoForId<0x857c744e5276d4b5>::Value,
+        &DeclInfoForId<0x8e064c19f3d729f1>::Value,
+        &DeclInfoForId<0x9c00ee98d42bb48b>::Value,
+        &DeclInfoForId<0xb150cde6a6ba5d63>::Value,
+        &DeclInfoForId<0xc1d124ae8dd0aa95>::Value,
+        &DeclInfoForId<0xed43a001e459b840>::Value,
+    };
+    const DeclInfo DeclInfoForId<0xc37ce87995a2ca78>::Value =
+    {
+        0xc37ce87995a2ca78, 0xdd2b0f1a9d06a3b0, DeclKind::Struct, 0, 0, 0, (RawFileSchema_979e892c449bc4d8 + 245),
+        nullptr, 0,
+        Dependencies_c37ce87995a2ca78, HE_LENGTH_OF(Dependencies_c37ce87995a2ca78),
+    };
 
-    const Word* DeclInfo<0xc1d124ae8dd0aa95>::RawSchema = RawFileSchema_979e892c449bc4d8 + 421;
-    const Word* DeclInfo<0xc1d124ae8dd0aa95>::DefaultValues = nullptr;
+    // Type::Data::Array
+    static const DeclInfo* Dependencies_c1d124ae8dd0aa95[] =
+    {
+        &DeclInfoForId<0xdd2b0f1a9d06a3b0>::Value,
+    };
+    const DeclInfo DeclInfoForId<0xc1d124ae8dd0aa95>::Value =
+    {
+        0xc1d124ae8dd0aa95, 0xc37ce87995a2ca78, DeclKind::Struct, 6, 3, 1, (RawFileSchema_979e892c449bc4d8 + 421),
+        nullptr, 0,
+        Dependencies_c1d124ae8dd0aa95, HE_LENGTH_OF(Dependencies_c1d124ae8dd0aa95),
+    };
 
-    const Word* DeclInfo<0xed43a001e459b840>::RawSchema = RawFileSchema_979e892c449bc4d8 + 433;
-    const Word* DeclInfo<0xed43a001e459b840>::DefaultValues = nullptr;
+    // Type::Data::List
+    static const DeclInfo* Dependencies_ed43a001e459b840[] =
+    {
+        &DeclInfoForId<0xdd2b0f1a9d06a3b0>::Value,
+    };
+    const DeclInfo DeclInfoForId<0xed43a001e459b840>::Value =
+    {
+        0xed43a001e459b840, 0xc37ce87995a2ca78, DeclKind::Struct, 6, 3, 1, (RawFileSchema_979e892c449bc4d8 + 433),
+        nullptr, 0,
+        Dependencies_ed43a001e459b840, HE_LENGTH_OF(Dependencies_ed43a001e459b840),
+    };
 
-    const Word* DeclInfo<0x857c744e5276d4b5>::RawSchema = RawFileSchema_979e892c449bc4d8 + 445;
-    const Word* DeclInfo<0x857c744e5276d4b5>::DefaultValues = nullptr;
+    // Type::Data::Enum
+    static const DeclInfo* Dependencies_857c744e5276d4b5[] =
+    {
+        &DeclInfoForId<0xa66eff5acba76a75>::Value,
+    };
+    const DeclInfo DeclInfoForId<0x857c744e5276d4b5>::Value =
+    {
+        0x857c744e5276d4b5, 0xc37ce87995a2ca78, DeclKind::Struct, 6, 3, 1, (RawFileSchema_979e892c449bc4d8 + 445),
+        nullptr, 0,
+        Dependencies_857c744e5276d4b5, HE_LENGTH_OF(Dependencies_857c744e5276d4b5),
+    };
 
-    const Word* DeclInfo<0x8e064c19f3d729f1>::RawSchema = RawFileSchema_979e892c449bc4d8 + 457;
-    const Word* DeclInfo<0x8e064c19f3d729f1>::DefaultValues = nullptr;
+    // Type::Data::Struct
+    static const DeclInfo* Dependencies_8e064c19f3d729f1[] =
+    {
+        &DeclInfoForId<0xa66eff5acba76a75>::Value,
+    };
+    const DeclInfo DeclInfoForId<0x8e064c19f3d729f1>::Value =
+    {
+        0x8e064c19f3d729f1, 0xc37ce87995a2ca78, DeclKind::Struct, 6, 3, 1, (RawFileSchema_979e892c449bc4d8 + 457),
+        nullptr, 0,
+        Dependencies_8e064c19f3d729f1, HE_LENGTH_OF(Dependencies_8e064c19f3d729f1),
+    };
 
-    const Word* DeclInfo<0x9c00ee98d42bb48b>::RawSchema = RawFileSchema_979e892c449bc4d8 + 469;
-    const Word* DeclInfo<0x9c00ee98d42bb48b>::DefaultValues = nullptr;
+    // Type::Data::Interface
+    static const DeclInfo* Dependencies_9c00ee98d42bb48b[] =
+    {
+        &DeclInfoForId<0xa66eff5acba76a75>::Value,
+    };
+    const DeclInfo DeclInfoForId<0x9c00ee98d42bb48b>::Value =
+    {
+        0x9c00ee98d42bb48b, 0xc37ce87995a2ca78, DeclKind::Struct, 6, 3, 1, (RawFileSchema_979e892c449bc4d8 + 469),
+        nullptr, 0,
+        Dependencies_9c00ee98d42bb48b, HE_LENGTH_OF(Dependencies_9c00ee98d42bb48b),
+    };
 
-    const Word* DeclInfo<0xb150cde6a6ba5d63>::RawSchema = RawFileSchema_979e892c449bc4d8 + 481;
-    const Word* DeclInfo<0xb150cde6a6ba5d63>::DefaultValues = nullptr;
+    // Type::Data::AnyPointer
+    const DeclInfo DeclInfoForId<0xb150cde6a6ba5d63>::Value =
+    {
+        0xb150cde6a6ba5d63, 0xc37ce87995a2ca78, DeclKind::Struct, 6, 3, 1, (RawFileSchema_979e892c449bc4d8 + 481),
+        nullptr, 0,
+        nullptr, 0,
+    };
 
-    const Word* DeclInfo<0xa1a552dda5da9ae9>::RawSchema = RawFileSchema_979e892c449bc4d8 + 53;
-    const Word* DeclInfo<0xa1a552dda5da9ae9>::DefaultValues = nullptr;
+    // Value
+    static const DeclInfo* Dependencies_a1a552dda5da9ae9[] =
+    {
+        &DeclInfoForId<0xda924af5c1761799>::Value,
+    };
+    const DeclInfo DeclInfoForId<0xa1a552dda5da9ae9>::Value =
+    {
+        0xa1a552dda5da9ae9, 0x979e892c449bc4d8, DeclKind::Struct, 0, 3, 1, (RawFileSchema_979e892c449bc4d8 + 53),
+        nullptr, 0,
+        Dependencies_a1a552dda5da9ae9, HE_LENGTH_OF(Dependencies_a1a552dda5da9ae9),
+    };
 
-    const Word* DeclInfo<0xbc63c2f6a4186852>::RawSchema = RawFileSchema_979e892c449bc4d8 + 748;
-    const Word* DeclInfo<0xbc63c2f6a4186852>::DefaultValues = nullptr;
+    // Value::TupleValue
+    static const DeclInfo* Dependencies_bc63c2f6a4186852[] =
+    {
+        &DeclInfoForId<0xa1a552dda5da9ae9>::Value,
+    };
+    const DeclInfo DeclInfoForId<0xbc63c2f6a4186852>::Value =
+    {
+        0xbc63c2f6a4186852, 0xa1a552dda5da9ae9, DeclKind::Struct, 0, 0, 2, (RawFileSchema_979e892c449bc4d8 + 748),
+        nullptr, 0,
+        Dependencies_bc63c2f6a4186852, HE_LENGTH_OF(Dependencies_bc63c2f6a4186852),
+    };
 
-    const Word* DeclInfo<0xda924af5c1761799>::RawSchema = RawFileSchema_979e892c449bc4d8 + 760;
-    const Word* DeclInfo<0xda924af5c1761799>::DefaultValues = nullptr;
+    // Value::Data
+    static const DeclInfo* Dependencies_da924af5c1761799[] =
+    {
+        &DeclInfoForId<0xa1a552dda5da9ae9>::Value,
+        &DeclInfoForId<0xbc63c2f6a4186852>::Value,
+    };
+    const DeclInfo DeclInfoForId<0xda924af5c1761799>::Value =
+    {
+        0xda924af5c1761799, 0xa1a552dda5da9ae9, DeclKind::Struct, 0, 0, 0, (RawFileSchema_979e892c449bc4d8 + 760),
+        nullptr, 0,
+        Dependencies_da924af5c1761799, HE_LENGTH_OF(Dependencies_da924af5c1761799),
+    };
 
-    const Word* DeclInfo<0xf4155b14cbf230b8>::RawSchema = RawFileSchema_979e892c449bc4d8 + 65;
-    const Word* DeclInfo<0xf4155b14cbf230b8>::DefaultValues = nullptr;
+    // Attribute
+    static const DeclInfo* Dependencies_f4155b14cbf230b8[] =
+    {
+        &DeclInfoForId<0xa1a552dda5da9ae9>::Value,
+    };
+    const DeclInfo DeclInfoForId<0xf4155b14cbf230b8>::Value =
+    {
+        0xf4155b14cbf230b8, 0x979e892c449bc4d8, DeclKind::Struct, 1, 2, 1, (RawFileSchema_979e892c449bc4d8 + 65),
+        nullptr, 0,
+        Dependencies_f4155b14cbf230b8, HE_LENGTH_OF(Dependencies_f4155b14cbf230b8),
+    };
 
-    const Word* DeclInfo<0xd7baf7c88e03fa02>::RawSchema = RawFileSchema_979e892c449bc4d8 + 77;
-    const Word* DeclInfo<0xd7baf7c88e03fa02>::DefaultValues = nullptr;
+    // Enumerator
+    static const DeclInfo* Dependencies_d7baf7c88e03fa02[] =
+    {
+        &DeclInfoForId<0xf4155b14cbf230b8>::Value,
+    };
+    const DeclInfo DeclInfoForId<0xd7baf7c88e03fa02>::Value =
+    {
+        0xd7baf7c88e03fa02, 0x979e892c449bc4d8, DeclKind::Struct, 2, 2, 2, (RawFileSchema_979e892c449bc4d8 + 77),
+        nullptr, 0,
+        Dependencies_d7baf7c88e03fa02, HE_LENGTH_OF(Dependencies_d7baf7c88e03fa02),
+    };
 
-    const Word* DeclInfo<0xcc214d2a9c304894>::RawSchema = RawFileSchema_979e892c449bc4d8 + 89;
-    const Word* DeclInfo<0xcc214d2a9c304894>::DefaultValues = nullptr;
+    // Field
+    static const DeclInfo* Dependencies_cc214d2a9c304894[] =
+    {
+        &DeclInfoForId<0xcaa0cb1693b7d451>::Value,
+        &DeclInfoForId<0xf4155b14cbf230b8>::Value,
+    };
+    const DeclInfo DeclInfoForId<0xcc214d2a9c304894>::Value =
+    {
+        0xcc214d2a9c304894, 0x979e892c449bc4d8, DeclKind::Struct, 7, 4, 4, (RawFileSchema_979e892c449bc4d8 + 89),
+        nullptr, 0,
+        Dependencies_cc214d2a9c304894, HE_LENGTH_OF(Dependencies_cc214d2a9c304894),
+    };
 
-    const Word* DeclInfo<0xcaa0cb1693b7d451>::RawSchema = RawFileSchema_979e892c449bc4d8 + 1217;
-    const Word* DeclInfo<0xcaa0cb1693b7d451>::DefaultValues = nullptr;
+    // Field::Meta
+    static const DeclInfo* Dependencies_caa0cb1693b7d451[] =
+    {
+        &DeclInfoForId<0xa351c96f08f70cc8>::Value,
+        &DeclInfoForId<0xa88498c0a2ba743e>::Value,
+        &DeclInfoForId<0xe63c151fb71df3a8>::Value,
+    };
+    const DeclInfo DeclInfoForId<0xcaa0cb1693b7d451>::Value =
+    {
+        0xcaa0cb1693b7d451, 0xcc214d2a9c304894, DeclKind::Struct, 0, 0, 0, (RawFileSchema_979e892c449bc4d8 + 1217),
+        nullptr, 0,
+        Dependencies_caa0cb1693b7d451, HE_LENGTH_OF(Dependencies_caa0cb1693b7d451),
+    };
 
-    const Word* DeclInfo<0xa88498c0a2ba743e>::RawSchema = RawFileSchema_979e892c449bc4d8 + 1285;
-    const Word* DeclInfo<0xa88498c0a2ba743e>::DefaultValues = nullptr;
+    // Field::Meta::Normal
+    static const DeclInfo* Dependencies_a88498c0a2ba743e[] =
+    {
+        &DeclInfoForId<0xa1a552dda5da9ae9>::Value,
+        &DeclInfoForId<0xdd2b0f1a9d06a3b0>::Value,
+    };
+    const DeclInfo DeclInfoForId<0xa88498c0a2ba743e>::Value =
+    {
+        0xa88498c0a2ba743e, 0xcaa0cb1693b7d451, DeclKind::Struct, 7, 4, 4, (RawFileSchema_979e892c449bc4d8 + 1285),
+        nullptr, 0,
+        Dependencies_a88498c0a2ba743e, HE_LENGTH_OF(Dependencies_a88498c0a2ba743e),
+    };
 
-    const Word* DeclInfo<0xe63c151fb71df3a8>::RawSchema = RawFileSchema_979e892c449bc4d8 + 1297;
-    const Word* DeclInfo<0xe63c151fb71df3a8>::DefaultValues = nullptr;
+    // Field::Meta::Group
+    const DeclInfo DeclInfoForId<0xe63c151fb71df3a8>::Value =
+    {
+        0xe63c151fb71df3a8, 0xcaa0cb1693b7d451, DeclKind::Struct, 7, 4, 4, (RawFileSchema_979e892c449bc4d8 + 1297),
+        nullptr, 0,
+        nullptr, 0,
+    };
 
-    const Word* DeclInfo<0xa351c96f08f70cc8>::RawSchema = RawFileSchema_979e892c449bc4d8 + 1309;
-    const Word* DeclInfo<0xa351c96f08f70cc8>::DefaultValues = nullptr;
+    // Field::Meta::Union
+    const DeclInfo DeclInfoForId<0xa351c96f08f70cc8>::Value =
+    {
+        0xa351c96f08f70cc8, 0xcaa0cb1693b7d451, DeclKind::Struct, 7, 4, 4, (RawFileSchema_979e892c449bc4d8 + 1309),
+        nullptr, 0,
+        nullptr, 0,
+    };
 
-    const Word* DeclInfo<0x9fc1b8877a1fdd29>::RawSchema = RawFileSchema_979e892c449bc4d8 + 101;
-    const Word* DeclInfo<0x9fc1b8877a1fdd29>::DefaultValues = nullptr;
+    // Method
+    static const DeclInfo* Dependencies_9fc1b8877a1fdd29[] =
+    {
+        &DeclInfoForId<0xf4155b14cbf230b8>::Value,
+    };
+    const DeclInfo DeclInfoForId<0x9fc1b8877a1fdd29>::Value =
+    {
+        0x9fc1b8877a1fdd29, 0x979e892c449bc4d8, DeclKind::Struct, 4, 4, 3, (RawFileSchema_979e892c449bc4d8 + 101),
+        nullptr, 0,
+        Dependencies_9fc1b8877a1fdd29, HE_LENGTH_OF(Dependencies_9fc1b8877a1fdd29),
+    };
 
-    const Word* DeclInfo<0xa045f0dd3245ab5d>::RawSchema = RawFileSchema_979e892c449bc4d8 + 113;
-    const Word* DeclInfo<0xa045f0dd3245ab5d>::DefaultValues = nullptr;
+    // SourceInfo
+    const DeclInfo DeclInfoForId<0xa045f0dd3245ab5d>::Value =
+    {
+        0xa045f0dd3245ab5d, 0x979e892c449bc4d8, DeclKind::Struct, 2, 2, 2, (RawFileSchema_979e892c449bc4d8 + 113),
+        nullptr, 0,
+        nullptr, 0,
+    };
 
-    const Word* DeclInfo<0xd6eb382ff8ab299c>::RawSchema = RawFileSchema_979e892c449bc4d8 + 125;
-    const Word* DeclInfo<0xd6eb382ff8ab299c>::DefaultValues = nullptr;
+    // Declaration
+    static const DeclInfo* Dependencies_d6eb382ff8ab299c[] =
+    {
+        &DeclInfoForId<0xa045f0dd3245ab5d>::Value,
+        &DeclInfoForId<0xc991ea09a07196a4>::Value,
+        &DeclInfoForId<0xd6eb382ff8ab299c>::Value,
+        &DeclInfoForId<0xf4155b14cbf230b8>::Value,
+    };
+    const DeclInfo DeclInfoForId<0xd6eb382ff8ab299c>::Value =
+    {
+        0xd6eb382ff8ab299c, 0x979e892c449bc4d8, DeclKind::Struct, 20, 5, 7, (RawFileSchema_979e892c449bc4d8 + 125),
+        nullptr, 0,
+        Dependencies_d6eb382ff8ab299c, HE_LENGTH_OF(Dependencies_d6eb382ff8ab299c),
+    };
 
-    const Word* DeclInfo<0xc991ea09a07196a4>::RawSchema = RawFileSchema_979e892c449bc4d8 + 1656;
-    const Word* DeclInfo<0xc991ea09a07196a4>::DefaultValues = nullptr;
+    // Declaration::Data
+    static const DeclInfo* Dependencies_c991ea09a07196a4[] =
+    {
+        &DeclInfoForId<0x96db68a0fd0a0577>::Value,
+        &DeclInfoForId<0x9daade8d780913d2>::Value,
+        &DeclInfoForId<0xaee6bea627f2e404>::Value,
+        &DeclInfoForId<0xb1105982b244c8c1>::Value,
+        &DeclInfoForId<0xe4d7f374357efe15>::Value,
+        &DeclInfoForId<0xea1ead965998efd0>::Value,
+    };
+    const DeclInfo DeclInfoForId<0xc991ea09a07196a4>::Value =
+    {
+        0xc991ea09a07196a4, 0xd6eb382ff8ab299c, DeclKind::Struct, 0, 0, 0, (RawFileSchema_979e892c449bc4d8 + 1656),
+        nullptr, 0,
+        Dependencies_c991ea09a07196a4, HE_LENGTH_OF(Dependencies_c991ea09a07196a4),
+    };
 
-    const Word* DeclInfo<0x9daade8d780913d2>::RawSchema = RawFileSchema_979e892c449bc4d8 + 1774;
-    const Word* DeclInfo<0x9daade8d780913d2>::DefaultValues = nullptr;
+    // Declaration::Data::File
+    const DeclInfo DeclInfoForId<0x9daade8d780913d2>::Value =
+    {
+        0x9daade8d780913d2, 0xc991ea09a07196a4, DeclKind::Struct, 20, 5, 7, (RawFileSchema_979e892c449bc4d8 + 1774),
+        nullptr, 0,
+        nullptr, 0,
+    };
 
-    const Word* DeclInfo<0xaee6bea627f2e404>::RawSchema = RawFileSchema_979e892c449bc4d8 + 1786;
-    const Word* DeclInfo<0xaee6bea627f2e404>::DefaultValues = nullptr;
+    // Declaration::Data::Attribute
+    static const DeclInfo* Dependencies_aee6bea627f2e404[] =
+    {
+        &DeclInfoForId<0xdd2b0f1a9d06a3b0>::Value,
+    };
+    const DeclInfo DeclInfoForId<0xaee6bea627f2e404>::Value =
+    {
+        0xaee6bea627f2e404, 0xc991ea09a07196a4, DeclKind::Struct, 20, 5, 7, (RawFileSchema_979e892c449bc4d8 + 1786),
+        nullptr, 0,
+        Dependencies_aee6bea627f2e404, HE_LENGTH_OF(Dependencies_aee6bea627f2e404),
+    };
 
-    const Word* DeclInfo<0xea1ead965998efd0>::RawSchema = RawFileSchema_979e892c449bc4d8 + 1798;
-    const Word* DeclInfo<0xea1ead965998efd0>::DefaultValues = nullptr;
+    // Declaration::Data::Constant
+    static const DeclInfo* Dependencies_ea1ead965998efd0[] =
+    {
+        &DeclInfoForId<0xa1a552dda5da9ae9>::Value,
+        &DeclInfoForId<0xdd2b0f1a9d06a3b0>::Value,
+    };
+    const DeclInfo DeclInfoForId<0xea1ead965998efd0>::Value =
+    {
+        0xea1ead965998efd0, 0xc991ea09a07196a4, DeclKind::Struct, 20, 5, 7, (RawFileSchema_979e892c449bc4d8 + 1798),
+        nullptr, 0,
+        Dependencies_ea1ead965998efd0, HE_LENGTH_OF(Dependencies_ea1ead965998efd0),
+    };
 
-    const Word* DeclInfo<0xb1105982b244c8c1>::RawSchema = RawFileSchema_979e892c449bc4d8 + 1810;
-    const Word* DeclInfo<0xb1105982b244c8c1>::DefaultValues = nullptr;
+    // Declaration::Data::Enum
+    static const DeclInfo* Dependencies_b1105982b244c8c1[] =
+    {
+        &DeclInfoForId<0xd7baf7c88e03fa02>::Value,
+    };
+    const DeclInfo DeclInfoForId<0xb1105982b244c8c1>::Value =
+    {
+        0xb1105982b244c8c1, 0xc991ea09a07196a4, DeclKind::Struct, 20, 5, 7, (RawFileSchema_979e892c449bc4d8 + 1810),
+        nullptr, 0,
+        Dependencies_b1105982b244c8c1, HE_LENGTH_OF(Dependencies_b1105982b244c8c1),
+    };
 
-    const Word* DeclInfo<0x96db68a0fd0a0577>::RawSchema = RawFileSchema_979e892c449bc4d8 + 1822;
-    const Word* DeclInfo<0x96db68a0fd0a0577>::DefaultValues = nullptr;
+    // Declaration::Data::Interface
+    static const DeclInfo* Dependencies_96db68a0fd0a0577[] =
+    {
+        &DeclInfoForId<0x9fc1b8877a1fdd29>::Value,
+        &DeclInfoForId<0xdd2b0f1a9d06a3b0>::Value,
+    };
+    const DeclInfo DeclInfoForId<0x96db68a0fd0a0577>::Value =
+    {
+        0x96db68a0fd0a0577, 0xc991ea09a07196a4, DeclKind::Struct, 20, 5, 7, (RawFileSchema_979e892c449bc4d8 + 1822),
+        nullptr, 0,
+        Dependencies_96db68a0fd0a0577, HE_LENGTH_OF(Dependencies_96db68a0fd0a0577),
+    };
 
-    const Word* DeclInfo<0xe4d7f374357efe15>::RawSchema = RawFileSchema_979e892c449bc4d8 + 1834;
-    const Word* DeclInfo<0xe4d7f374357efe15>::DefaultValues = nullptr;
+    // Declaration::Data::Struct
+    static const DeclInfo* Dependencies_e4d7f374357efe15[] =
+    {
+        &DeclInfoForId<0xcc214d2a9c304894>::Value,
+    };
+    const DeclInfo DeclInfoForId<0xe4d7f374357efe15>::Value =
+    {
+        0xe4d7f374357efe15, 0xc991ea09a07196a4, DeclKind::Struct, 20, 5, 7, (RawFileSchema_979e892c449bc4d8 + 1834),
+        nullptr, 0,
+        Dependencies_e4d7f374357efe15, HE_LENGTH_OF(Dependencies_e4d7f374357efe15),
+    };
 
-    const Word* DeclInfo<0x8a8a83386362f90d>::RawSchema = RawFileSchema_979e892c449bc4d8 + 137;
-    const Word* DeclInfo<0x8a8a83386362f90d>::DefaultValues = nullptr;
+    // SchemaFile
+    static const DeclInfo* Dependencies_8a8a83386362f90d[] =
+    {
+        &DeclInfoForId<0xd6eb382ff8ab299c>::Value,
+    };
+    const DeclInfo DeclInfoForId<0x8a8a83386362f90d>::Value =
+    {
+        0x8a8a83386362f90d, 0x979e892c449bc4d8, DeclKind::Struct, 0, 0, 1, (RawFileSchema_979e892c449bc4d8 + 137),
+        nullptr, 0,
+        Dependencies_8a8a83386362f90d, HE_LENGTH_OF(Dependencies_8a8a83386362f90d),
+    };
 
 }
 namespace he

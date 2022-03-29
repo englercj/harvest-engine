@@ -81,18 +81,64 @@ namespace he::schema
     };
 
     /// The DeclInfo structure stores information about a schema declaration in generated code.
-    template <TypeId Id> struct DeclInfo;
+    struct DeclInfo
+    {
+        /// The unique ID of the declaration.
+        const TypeId id;
 
-    /// Declares the DeclInfo structure in generated code.
-    #define HE_SCHEMA_DECL_INFO(id, parentId, kind, dataFieldCount, dataWordSize, pointerCount) \
-        template <> struct ::he::schema::DeclInfo<id> { \
-            static constexpr ::he::schema::TypeId Id = id; \
-            static constexpr ::he::schema::TypeId ParentId = parentId; \
-            static constexpr ::he::schema::DeclKind Kind = ::he::schema::DeclKind::kind; \
-            static constexpr uint16_t DataFieldCount = dataFieldCount; \
-            static constexpr uint16_t DataWordSize = dataWordSize; \
-            static constexpr uint16_t PointerCount = pointerCount; \
-            static const ::he::schema::Word* RawSchema; \
-            static const ::he::schema::Word* DefaultValues; \
-        }
+        /// The unique ID of the parent of the declaration.
+        const TypeId parentId;
+
+        /// The kind of delcaration this is.
+        const DeclKind kind;
+
+        /// Number of data fields in the struct. Always zero when `kind != DeclKind::Struct`.
+        const uint16_t dataFieldCount;
+
+        /// Size of the struct's data section in words. Always zero when `kind != DeclKind::Struct`.
+        const uint16_t dataWordSize;
+
+        /// Number of pointers in the struct. Always zero when `kind != DeclKind::Struct`.
+        const uint16_t pointerCount;
+
+        /// Pointer to the raw schema words for this declaration.
+        const Word* const schema;
+
+        /// Pointer to the raw default value words for this declaration. If the declaration did
+        /// not need to generate a default value to point to, this is nullptr.
+        const Word* const defaultValues;
+
+        /// Number of words for the generated default values data.
+        const uint32_t defaultValuesSize;
+
+        /// Array of pointers to types that are used by this declaration, in order of their IDs.
+        const DeclInfo* const* dependencies;
+
+        /// Number of dependencies in the `dependencies` array.
+        const uint32_t dependencyCount;
+    };
+
+    template <TypeId Id>
+    struct DeclInfoForId;
+
+    #define HE_SCHEMA_DECL_INFO_FOR_ID(id) \
+        template <> struct DeclInfoForId<id> { static const DeclInfo Value; }
+
+    #define HE_SCHEMA_DECL_(id, parentId, kind) \
+        static constexpr ::he::schema::TypeId Id = id; \
+        static constexpr ::he::schema::TypeId ParentId = parentId; \
+        static constexpr ::he::schema::DeclKind Kind = ::he::schema::DeclKind::kind; \
+        static constexpr ::he::schema::DeclInfo const* DeclInfo = &::he::schema::DeclInfoForId<id>::Value
+
+    #define HE_SCHEMA_DECL_ATTRIBUTE(id, parentId) \
+        HE_SCHEMA_DECL_(id, parentId, Attribute)
+
+    #define HE_SCHEMA_DECL_INTERFACE(id, parentId) \
+        HE_SCHEMA_DECL_(id, parentId, Interface)
+
+    #define HE_SCHEMA_DECL_STRUCT(id, parentId, dataFieldCount, dataWordSize, pointerCount) \
+        HE_SCHEMA_DECL_(id, parentId, Struct); \
+        static constexpr uint16_t DataFieldCount = dataFieldCount; \
+        static constexpr uint16_t DataWordSize = dataWordSize; \
+        static constexpr uint16_t PointerCount = pointerCount
 }

@@ -180,7 +180,7 @@ namespace he::sqlite
             case SQLITE_ROW: return StepResult::Row;
             case SQLITE_DONE: return StepResult::Done;
             default:
-                HE_SQLITE_ERROR(r, "SQLite error. Step returned an unexpected result. Expected SQLITE_ROW or SQLITE_DONE.");
+                HE_SQLITE_ERROR(r, "SQLite error. Expected result: SQLITE_ROW({}) or SQLITE_DONE({})", SQLITE_ROW, SQLITE_DONE);
                 return StepResult::Error;
         }
     }

@@ -13,9 +13,9 @@
         HE_KV(error_msg, sqlite3_errmsg(m_db)))
 
 #define HE_SQLITE_CHECK(result, ...) { \
-    int r = (__VA_ARGS__); \
+    const int r = (__VA_ARGS__); \
     if (!HE_VERIFY(r == result)) { \
-        HE_SQLITE_ERROR(r, "SQLite error. Expected result " #result); \
+        HE_SQLITE_ERROR(r, "SQLite error. Expected result: " #result "({})", result); \
         return false; \
     } \
 }

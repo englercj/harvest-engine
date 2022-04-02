@@ -156,3 +156,29 @@ namespace he
         m_pageOffset = 0;
     }
 }
+
+// Override global operators new and delete to use the default allocator.
+
+[[nodiscard]] void* operator new(size_t n) { return he::Allocator::GetDefault().Malloc(static_cast<uint32_t>(n)); }
+[[nodiscard]] void* operator new[](size_t n) { return he::Allocator::GetDefault().Malloc(static_cast<uint32_t>(n)); }
+
+[[nodiscard]] void* operator new(size_t count, std::align_val_t al) { return he::Allocator::GetDefault().Malloc(static_cast<uint32_t>(count), static_cast<uint32_t>(al)); }
+[[nodiscard]] void* operator new[](size_t count, std::align_val_t al) { return he::Allocator::GetDefault().Malloc(static_cast<uint32_t>(count), static_cast<uint32_t>(al)); }
+
+[[nodiscard]] void* operator new(size_t n, const std::nothrow_t&) noexcept { return he::Allocator::GetDefault().Malloc(static_cast<uint32_t>(n)); }
+[[nodiscard]] void* operator new[](size_t n, const std::nothrow_t&) noexcept { return he::Allocator::GetDefault().Malloc(static_cast<uint32_t>(n)); }
+
+[[nodiscard]] void* operator new(size_t count, std::align_val_t al, const std::nothrow_t&) noexcept { return he::Allocator::GetDefault().Malloc(static_cast<uint32_t>(count), static_cast<uint32_t>(al)); }
+[[nodiscard]] void* operator new[](size_t count, std::align_val_t al, const std::nothrow_t&) noexcept { return he::Allocator::GetDefault().Malloc(static_cast<uint32_t>(count), static_cast<uint32_t>(al)); }
+
+void operator delete(void* ptr) noexcept { he::Allocator::GetDefault().Free(ptr); }
+void operator delete[](void* ptr) noexcept { he::Allocator::GetDefault().Free(ptr); }
+
+void operator delete(void* ptr, std::align_val_t) noexcept { he::Allocator::GetDefault().Free(ptr); }
+void operator delete[](void* ptr, std::align_val_t) noexcept { he::Allocator::GetDefault().Free(ptr); }
+
+void operator delete(void* ptr, const std::nothrow_t&) noexcept { he::Allocator::GetDefault().Free(ptr); }
+void operator delete[](void* ptr, const std::nothrow_t&) noexcept { he::Allocator::GetDefault().Free(ptr); }
+
+void operator delete(void* ptr, std::align_val_t, const std::nothrow_t&) noexcept { he::Allocator::GetDefault().Free(ptr); }
+void operator delete[](void* ptr, std::align_val_t, const std::nothrow_t&) noexcept { he::Allocator::GetDefault().Free(ptr); }

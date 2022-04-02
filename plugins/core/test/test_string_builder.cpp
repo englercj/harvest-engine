@@ -12,12 +12,12 @@
 using namespace he;
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST(schema, StringBuilder, Construct)
+HE_TEST(schema, string_builder, Construct)
 {
     {
         StringBuilder b;
         HE_EXPECT(b.IsEmpty());
-        HE_EXPECT_EQ(b.Capacity(), 0);
+        HE_EXPECT_EQ(b.Capacity(), String::MaxEmbedCharacters);
         HE_EXPECT_EQ_PTR(&b.GetAllocator(), &Allocator::GetDefault());
     }
 
@@ -25,7 +25,7 @@ HE_TEST(schema, StringBuilder, Construct)
         Allocator& a = Allocator::GetDefault();
         StringBuilder b(a);
         HE_EXPECT(b.IsEmpty());
-        HE_EXPECT_EQ(b.Capacity(), 0);
+        HE_EXPECT_EQ(b.Capacity(), String::MaxEmbedCharacters);
         HE_EXPECT_EQ_PTR(&b.GetAllocator(), &a);
     }
 }
@@ -79,12 +79,12 @@ HE_TEST(core, string_builder, Construct_Move)
 
         StringBuilder moved(Move(buf));
         HE_EXPECT_EQ(moved.Size(), TestStrLen);
-        HE_EXPECT_EQ_PTR(moved.Str().Data(), ptr);
+        HE_EXPECT_NE_PTR(moved.Str().Data(), ptr);
         HE_EXPECT_EQ(moved.Str(), TestStr);
         HE_EXPECT_EQ_PTR(&moved.GetAllocator(), &buf.GetAllocator());
 
-        HE_EXPECT(buf.IsEmpty());
-        HE_EXPECT(!buf.Str().Data());
+        HE_EXPECT(!buf.IsEmpty());
+        HE_EXPECT_EQ_PTR(buf.Str().Data(), ptr);
     }
 
     {
@@ -114,12 +114,12 @@ HE_TEST(core, string_builder, Construct_Move)
 
         StringBuilder moved = Move(buf);
         HE_EXPECT_EQ(moved.Size(), TestStrLen);
-        HE_EXPECT_EQ_PTR(moved.Str().Data(), ptr);
+        HE_EXPECT_NE_PTR(moved.Str().Data(), ptr);
         HE_EXPECT_EQ(moved.Str(), TestStr);
         HE_EXPECT_EQ_PTR(&moved.GetAllocator(), &buf.GetAllocator());
 
-        HE_EXPECT(buf.IsEmpty());
-        HE_EXPECT(!buf.Str().Data());
+        HE_EXPECT(!buf.IsEmpty());
+        HE_EXPECT_EQ_PTR(buf.Str().Data(), ptr);
     }
 }
 
@@ -168,12 +168,12 @@ HE_TEST(core, string_builder, operator_assign_move)
         StringBuilder moved;
         moved = Move(buf);
         HE_EXPECT_EQ(moved.Size(), TestStrLen);
-        HE_EXPECT_EQ_PTR(moved.Str().Data(), ptr);
+        HE_EXPECT_NE_PTR(moved.Str().Data(), ptr);
         HE_EXPECT_EQ(moved.Str(), TestStr);
         HE_EXPECT_EQ_PTR(&moved.GetAllocator(), &Allocator::GetDefault());
 
-        HE_EXPECT(buf.IsEmpty());
-        HE_EXPECT(!buf.Str().Data());
+        HE_EXPECT(!buf.IsEmpty());
+        HE_EXPECT_EQ_PTR(buf.Str().Data(), ptr);
     }
 
     {

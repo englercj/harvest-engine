@@ -790,7 +790,7 @@ namespace he::schema
         for (const AstAttribute& astAttr : ast)
         {
             const AstNode* attrDeclNode = m_context->FindNode(astAttr.name, scope);
-            HE_ASSERT(attrDeclNode && attrDeclNode->kind != AstNode::Kind::Attribute);
+            HE_ASSERT(attrDeclNode && attrDeclNode->kind == AstNode::Kind::Attribute);
 
             Type::Builder attrType = CreateType(attrDeclNode->attribute.type, *attrDeclNode->parent);
             Value::Builder attrValue = CreateValue(attrType, astAttr.value, scope);

@@ -262,7 +262,7 @@ namespace he::schema
     {
         if (node.attributes.Size() > std::numeric_limits<uint16_t>::max())
         {
-            m_context->AddError(node.location, "Enumerator ordinal is too large. Max is UINT16_MAX ({})", std::numeric_limits<uint16_t>::max());
+            m_context->AddError(node.location, "Number of applied attributes is too large. Max is UINT16_MAX ({})", std::numeric_limits<uint16_t>::max());
             return false;
         }
 
@@ -951,11 +951,22 @@ namespace he::schema
 
                 return true;
             }
+            case AstExpression::Kind::Unknown:
+            {
+                const TypeKey key{ &astType, &scopeType };
+                const TypeValue& type = m_context->GetType(key);
+                if (type.tag != Type::Data::Tag::Void)
+                {
+                    m_context->AddError(astValue.location, "A {} expression cannot be used as a value", astValue.kind);
+                    return false;
+                }
+                return true;
+            }
+
             case AstExpression::Kind::Array:
             case AstExpression::Kind::Generic:
             case AstExpression::Kind::Identifier:
             case AstExpression::Kind::Namespace:
-            case AstExpression::Kind::Unknown:
                 m_context->AddError(astValue.location, "A {} expression cannot be used as a value", astValue.kind);
                 return false;
         }

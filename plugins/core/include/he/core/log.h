@@ -43,8 +43,10 @@
 /// Macro that simplifies the construction of a key-value pair for a log.
 /// You can also specify a format string as the value followed by the format arguments.
 ///
-/// \param k The unquoted name of the key
-/// \param v The value of the pair, which can be integral, floating point, or a string.
+/// \param k The unquoted name of the key. By convention these are snake_case.
+/// \param v The value of the pair, which can any arithmetic type or anything convertable to a
+///     string via fmt. Make sure to include the "*_fmt.h" header for the type you use. You can
+///     also specify a format string followed by arguments to format.
 /// \param ... The format arguments if `v` is a format string specifier.
 #define HE_KV(k, v, ...) (::he::LogKV{ #k, (v), ##__VA_ARGS__ })
 

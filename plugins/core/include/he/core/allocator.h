@@ -42,7 +42,7 @@ namespace he
         /// \param size The size in bytes of the new memory block.
         /// \param alignment Optional. Custom alignment for the pointer.
         /// \return A pointer to the newly allocated memory.
-        virtual void* Malloc(size_t size, size_t alignment = DefaultAlignment) = 0;
+        [[nodiscard]] virtual void* Malloc(size_t size, size_t alignment = DefaultAlignment) = 0;
 
         /// Rellocates a memory block on the heap. Tries to avoid allocate and copy by extending
         /// the existing memory block if possible.
@@ -66,7 +66,7 @@ namespace he
         /// \param count The number of elements to allocate space for.
         /// \return A pointer to the newly allocated memory.
         template <typename T>
-        T* Malloc(uint32_t count)
+        [[nodiscard]] T* Malloc(uint32_t count)
         {
             return static_cast<T*>(Malloc(sizeof(T) * count, alignof(T)));
         }
@@ -76,7 +76,7 @@ namespace he
         /// \tparam The type to allocate and construct.
         /// \param args optional arguments for the constructor.
         template <typename T, class... Args>
-        T* New(Args&&... args)
+        [[nodiscard]] T* New(Args&&... args)
         {
             void* p = Malloc<T>(1);
             return new(p) T(Forward<Args>(args)...);
@@ -88,7 +88,7 @@ namespace he
         /// \param count The number of array elements to allocate and construct.
         /// \param args optional arguments for the constructor.
         template <typename T> requires(std::is_trivially_constructible_v<T> && std::is_trivially_destructible_v<T>)
-        T* NewArray(uint32_t count)
+        [[nodiscard]] T* NewArray(uint32_t count)
         {
             T* mem = Malloc<T>(count);
             MemZero(mem, count * sizeof(T));
@@ -101,7 +101,7 @@ namespace he
         /// \param count The number of array elements to allocate and construct.
         /// \param args optional arguments for the constructor.
         template <typename T, class... Args>
-        T* NewArray(uint32_t count, Args&&... args)
+        [[nodiscard]] T* NewArray(uint32_t count, Args&&... args)
         {
             constexpr size_t Align = alignof(T);
             constexpr size_t Offset = AlignUp<size_t>(sizeof(size_t), Align);
@@ -190,7 +190,7 @@ namespace he
         /// Returns the singleton instance of the CrtAllocator.
         static CrtAllocator& Get();
 
-        void* Malloc(size_t size, size_t alignment = DefaultAlignment) override;
+        [[nodiscard]] void* Malloc(size_t size, size_t alignment = DefaultAlignment) override;
         void* Realloc(void* ptr, size_t newSize, size_t alignment = DefaultAlignment) override;
         void Free(void* ptr) override;
     };
@@ -207,7 +207,7 @@ namespace he
         LinearPageAllocator& operator=(const LinearPageAllocator&) = delete;
         LinearPageAllocator& operator=(LinearPageAllocator&& x) = delete;
 
-        void* Malloc(size_t size, size_t alignment = DefaultAlignment) override;
+        [[nodiscard]] void* Malloc(size_t size, size_t alignment = DefaultAlignment) override;
         void* Realloc(void* ptr, size_t newSize, size_t alignment = DefaultAlignment) override;
         void Free(void*) override {}
 

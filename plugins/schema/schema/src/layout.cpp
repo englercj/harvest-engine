@@ -174,6 +174,21 @@ namespace he::schema
         return PointerReader(m_data.Data());
     }
 
+    PointerBuilder Builder::AddPointer()
+    {
+        const uint32_t wordOffset = m_data.Size();
+        m_data.Expand(1);
+        return PointerBuilder(this, wordOffset);
+    }
+
+    StructBuilder Builder::AddStruct(uint16_t dataFieldCount, uint16_t dataWordSize, uint16_t pointerCount)
+    {
+        const uint32_t wordSize = static_cast<uint32_t>(dataWordSize) + pointerCount;
+        const uint32_t wordOffset = m_data.Size();
+        m_data.Expand(wordSize);
+        return StructBuilder(this, wordOffset, dataFieldCount, dataWordSize, pointerCount);
+    }
+
     ListBuilder Builder::AddList(ElementSize elementSize, uint32_t elementCount)
     {
         HE_ASSERT(elementSize < ElementSize::_Count);
@@ -225,14 +240,6 @@ namespace he::schema
         ListBuilder list = AddList(ElementSize::Byte, str.Size() + 1);
         MemCopy(list.Data(), str.Data(), str.Size());
         return String::Builder(list);
-    }
-
-    StructBuilder Builder::AddStruct(uint16_t dataFieldCount, uint16_t dataWordSize, uint16_t pointerCount)
-    {
-        const uint32_t wordSize = static_cast<uint32_t>(dataWordSize) + pointerCount;
-        const uint32_t wordOffset = m_data.Size();
-        m_data.Expand(wordSize);
-        return StructBuilder(this, wordOffset, dataFieldCount, dataWordSize, pointerCount);
     }
 
     void PointerBuilder::Set(const PointerReader& value)

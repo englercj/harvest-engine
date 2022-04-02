@@ -2946,4 +2946,3 @@ namespace he::schema
     inline void SchemaFile::Builder::SetRoot(Declaration::Reader value) { SuperType::GetPointerField(0).Set(value); }
     inline Declaration::Builder SchemaFile::Builder::InitRoot() { auto v = m_builder->AddStruct<struct Declaration>(); SuperType::GetPointerField(0).Set(v); return v; }
 }
-

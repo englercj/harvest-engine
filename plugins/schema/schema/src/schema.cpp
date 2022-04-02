@@ -4,8 +4,23 @@
 
 #include "he/core/assert.h"
 
+#include <algorithm>
+
 namespace he::schema
 {
+    static bool DeclInfoComp(const DeclInfo* info, TypeId id)
+    {
+        return info->id < id;
+    }
+
+    const DeclInfo* FindDependency(const DeclInfo& info, TypeId id)
+    {
+        const DeclInfo* const* begin = info.dependencies;
+        const DeclInfo* const* end = info.dependencies + info.dependencyCount;
+        const DeclInfo* const* lower = std::lower_bound(begin, end, id, DeclInfoComp);
+        return lower && (*lower)->id == id ? *lower : nullptr;
+    }
+
     bool SchemaVisitor::VisitDecl(Declaration::Reader decl, Declaration::Reader scope)
     {
         switch (decl.Data().Tag())
@@ -44,7 +59,6 @@ namespace he::schema
     bool SchemaVisitor::VisitEnum(Declaration::Reader decl, Declaration::Reader scope)
     {
         HE_UNUSED(scope);
-        HE_ASSERT(decl.Data().IsEnum());
         Declaration::Data::Enum::Reader enumDecl = decl.Data().Enum();
 
         for (Enumerator::Reader enumerator : enumDecl.Enumerators())
@@ -59,7 +73,6 @@ namespace he::schema
     bool SchemaVisitor::VisitInterface(Declaration::Reader decl, Declaration::Reader scope)
     {
         HE_UNUSED(scope);
-        HE_ASSERT(decl.Data().IsInterface());
         Declaration::Data::Interface::Reader interfaceDecl = decl.Data().Interface();
 
         for (Declaration::Reader child : decl.Children())
@@ -85,7 +98,6 @@ namespace he::schema
     bool SchemaVisitor::VisitStruct(Declaration::Reader decl, Declaration::Reader scope)
     {
         HE_UNUSED(scope);
-        HE_ASSERT(decl.Data().IsStruct());
         Declaration::Data::Struct::Reader structDecl = decl.Data().Struct();
 
         for (Declaration::Reader child : decl.Children())

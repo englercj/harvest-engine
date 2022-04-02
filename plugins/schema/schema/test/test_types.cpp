@@ -57,15 +57,17 @@ HE_TEST(schema, types, ElementSize)
 }
 
 // ------------------------------------------------------------------------------------------------
-HE_SCHEMA_DECL_INFO(0x86387955f9f51cad, 0x2503e27f9b0730f1, Struct, 1, 2, 3);
+HE_SCHEMA_DECL_INFO_FOR_ID(0x86387955f9f51cad);
+struct TestDecl
+{
+    HE_SCHEMA_DECL_STRUCT(0x86387955f9f51cad, 0x2503e27f9b0730f1, 1, 2, 3);
+}; 
 HE_TEST(schema, types, DeclInfo)
 {
-    static_assert(DeclInfo<0x86387955f9f51cad>::Id == 0x86387955f9f51cad);
-    static_assert(DeclInfo<0x86387955f9f51cad>::ParentId == 0x2503e27f9b0730f1);
-    static_assert(DeclInfo<0x86387955f9f51cad>::Kind == DeclKind::Struct);
-    static_assert(DeclInfo<0x86387955f9f51cad>::DataFieldCount == 1);
-    static_assert(DeclInfo<0x86387955f9f51cad>::DataWordSize == 2);
-    static_assert(DeclInfo<0x86387955f9f51cad>::PointerCount == 3);
-    static_assert(std::is_same_v<decltype(DeclInfo<0x86387955f9f51cad>::DefaultValue), const Word*>);
-    static_assert(std::is_same_v<decltype(DeclInfo<0x86387955f9f51cad>::RawSchema), const Word*>);
+    static_assert(TestDecl::Id == 0x86387955f9f51cad);
+    static_assert(TestDecl::ParentId == 0x2503e27f9b0730f1);
+    static_assert(TestDecl::Kind == DeclKind::Struct);
+    static_assert(TestDecl::DataFieldCount == 1);
+    static_assert(TestDecl::DataWordSize == 2);
+    static_assert(TestDecl::PointerCount == 3);
 }

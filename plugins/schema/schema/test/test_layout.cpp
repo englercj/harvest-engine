@@ -114,7 +114,7 @@ HE_TEST(schema, layout, ElementSizeForByteSize)
 }
 
 // ------------------------------------------------------------------------------------------------
-struct DeclKindStructTest { struct DeclInfo { static constexpr DeclKind Kind = DeclKind::Struct; }; };
+struct DeclKindStructTest { static constexpr DeclKind Kind = DeclKind::Struct; };
 HE_TEST(schema, layout, ElementSizeOfType)
 {
     static_assert(ElementSizeOfType<bool>::Value == ElementSize::Bit);
@@ -499,16 +499,16 @@ HE_TEST(schema, layout, PointerBuilder)
 
         HE_EXPECT(b.Size(), 3);
 
-        PointerBuilder ptr2(&b, 0);
+        PointerBuilder ptr2 = b.AddPointer();
         ptr2.Copy(ptr);
 
         HE_EXPECT(ptr2.IsValid());
         HE_EXPECT_EQ_PTR(ptr2.Builder(), &b);
-        HE_EXPECT_EQ_PTR(ptr2.Location(), b.Data());
+        HE_EXPECT_EQ_PTR(ptr2.Location(), b.Data() + 3);
         HE_EXPECT(!ptr2.IsNull());
         HE_EXPECT(!ptr2.IsZeroStruct());
         HE_EXPECT_EQ(ptr2.Kind(), PointerKind::List);
-        HE_EXPECT_EQ(ptr2.Offset(), 2);
+        HE_EXPECT_EQ(ptr2.Offset(), 0);
         HE_EXPECT_NE_PTR(ptr2.Target(), list.Location());
 
         HE_EXPECT(b.Size(), 5);
@@ -539,16 +539,16 @@ HE_TEST(schema, layout, PointerBuilder)
 
         HE_EXPECT(b.Size(), 5);
 
-        PointerBuilder ptr2(&b, 0);
+        PointerBuilder ptr2 = b.AddPointer();
         ptr2.Copy(ptr);
 
         HE_EXPECT(ptr2.IsValid());
         HE_EXPECT_EQ_PTR(ptr2.Builder(), &b);
-        HE_EXPECT_EQ_PTR(ptr2.Location(), b.Data());
+        HE_EXPECT_EQ_PTR(ptr2.Location(), b.Data() + 5);
         HE_EXPECT(!ptr2.IsNull());
         HE_EXPECT(!ptr2.IsZeroStruct());
         HE_EXPECT_EQ(ptr2.Kind(), PointerKind::Struct);
-        HE_EXPECT_EQ(ptr2.Offset(), 4);
+        HE_EXPECT_EQ(ptr2.Offset(), 0);
         HE_EXPECT_NE_PTR(ptr2.Target(), st.Location());
 
         HE_EXPECT(b.Size(), 9);
@@ -696,10 +696,10 @@ HE_TEST(schema, layout, ListBuilder)
         {
             StructBuilder st = list.GetCompositeElement(i);
             HE_EXPECT(st.IsValid());
-            st.SetDataField<uint16_t>(0, 0, 12);
-            st.SetDataField<uint16_t>(1, 1, 34);
-            st.SetDataField<uint16_t>(2, 2, 56);
-            st.SetDataField<uint16_t>(3, 3, 78);
+            st.SetAndMarkDataField<uint16_t>(0, 0, 12);
+            st.SetAndMarkDataField<uint16_t>(1, 1, 34);
+            st.SetAndMarkDataField<uint16_t>(2, 2, 56);
+            st.SetAndMarkDataField<uint16_t>(3, 3, 78);
             st.GetPointerField(0).Set(b.AddString(TestString));
         }
         for (uint16_t i = 0; i < list.Size(); ++i)
@@ -780,9 +780,9 @@ HE_TEST(schema, layout, StructBuilder)
         Builder b;
         StructBuilder st = b.AddStruct(4, 2, 0);
         HE_EXPECT(st.IsValid());
-        st.SetDataField<uint16_t>(0, 0, 0x2301);
-        st.SetDataField<uint16_t>(2, 2, 0xab89);
-        st.SetDataField<uint16_t>(3, 3, 0xefcd);
+        st.SetAndMarkDataField<uint16_t>(0, 0, 0x2301);
+        st.SetAndMarkDataField<uint16_t>(2, 2, 0xab89);
+        st.SetAndMarkDataField<uint16_t>(3, 3, 0xefcd);
 
         b.SetRoot(st);
         HE_EXPECT_EQ(b.Size() * BytesPerWord, sizeof(SimpleStructTestBytes));
@@ -808,7 +808,7 @@ HE_TEST(schema, layout, StructBuilder)
         HE_EXPECT(!st.HasDataField(0));
         HE_EXPECT_EQ(st.TryGetDataField<uint16_t>(0, 0), 0);
         HE_EXPECT_EQ(st.TryGetDataField<uint16_t>(0, 0, 51), 51);
-        st.SetDataField<uint16_t>(0, 0, 12345);
+        st.SetAndMarkDataField<uint16_t>(0, 0, 12345);
         HE_EXPECT(st.HasDataField(0));
         HE_EXPECT_EQ(st.TryGetDataField<uint16_t>(0, 0), 12345);
         HE_EXPECT_EQ(st.TryGetDataField<uint16_t>(0, 0, 51), 12345);
@@ -816,7 +816,7 @@ HE_TEST(schema, layout, StructBuilder)
         HE_EXPECT(!st.HasDataField(1));
         HE_EXPECT_EQ(st.TryGetDataField<uint64_t>(1, 1), 0);
         HE_EXPECT_EQ(st.TryGetDataField<uint64_t>(1, 1, 51), 51);
-        st.SetDataField<uint64_t>(1, 1, 987654321);
+        st.SetAndMarkDataField<uint64_t>(1, 1, 987654321);
         HE_EXPECT(st.HasDataField(1));
         HE_EXPECT_EQ(st.TryGetDataField<uint64_t>(1, 1), 987654321);
         HE_EXPECT_EQ(st.TryGetDataField<uint64_t>(1, 1, 51), 987654321);
@@ -824,7 +824,7 @@ HE_TEST(schema, layout, StructBuilder)
         HE_EXPECT(!st.HasDataField(2));
         HE_EXPECT_EQ(st.TryGetDataField<bool>(2, 16), false);
         HE_EXPECT_EQ(st.TryGetDataField<bool>(2, 16, true), true);
-        st.SetDataField<bool>(2, 16, true);
+        st.SetAndMarkDataField<bool>(2, 16, true);
         HE_EXPECT(st.HasDataField(2));
         HE_EXPECT_EQ(st.TryGetDataField<bool>(2, 16), true);
         HE_EXPECT_EQ(st.TryGetDataField<bool>(2, 16, false), true);

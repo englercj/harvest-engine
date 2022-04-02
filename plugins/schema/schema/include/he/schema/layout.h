@@ -410,10 +410,10 @@ namespace he::schema
         PointerBuilder Root();
         PointerReader Root() const;
 
+        PointerBuilder AddPointer();
         StructBuilder AddStruct(uint16_t dataFieldCount, uint16_t dataWordSize, uint16_t pointerCount);
         ListBuilder AddList(ElementSize elementSize, uint32_t elementCount);
         ListBuilder AddStructList(uint32_t elementCount, uint16_t dataFieldCount, uint16_t dataWordSize, uint16_t pointerCount);
-
         String::Builder AddString(StringView str);
 
         template <typename T>

@@ -128,7 +128,7 @@ namespace he::schema
         static constexpr ::he::schema::TypeId Id = id; \
         static constexpr ::he::schema::TypeId ParentId = parentId; \
         static constexpr ::he::schema::DeclKind Kind = ::he::schema::DeclKind::kind; \
-        static constexpr ::he::schema::DeclInfo const* DeclInfo = &::he::schema::DeclInfoForId<id>::Value
+        static constexpr const ::he::schema::DeclInfo& DeclInfo = ::he::schema::DeclInfoForId<id>::Value
 
     #define HE_SCHEMA_DECL_ATTRIBUTE(id, parentId) \
         HE_SCHEMA_DECL_(id, parentId, Attribute)

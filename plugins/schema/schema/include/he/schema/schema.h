@@ -176,24 +176,12 @@ namespace he::schema
         return {};
     }
 
-    template <typename T>
-    inline Attribute::Reader FindAttribute(List<Attribute>::Reader attributes)
+    inline Declaration::Reader GetSchema(const DeclInfo& info)
     {
-        return FindAttribute(attributes, T::Id);
+        return Declaration::Reader(StructReader(info.schema, info.dataWordSize, info.pointerCount));
     }
 
-    template <TypeId Id>
-    inline Declaration::Reader GetSchema()
-    {
-        constexpr DeclInfo const* Info = DeclInfoForId<Id>::Value;
-        return Declaration::Reader(StructReader(Info->schema, Info->dataWordSize, Info->pointerCount));
-    }
-
-    template <typename T>
-    inline Declaration::Reader GetSchema()
-    {
-        return GetSchema<T::Id>();
-    }
+    const DeclInfo* FindDependency(const DeclInfo& info, TypeId id);
 
     class SchemaVisitor
     {

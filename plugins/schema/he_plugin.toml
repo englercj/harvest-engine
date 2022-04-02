@@ -17,7 +17,7 @@ homepage = ""
     type = "static"
     group = "engine/libs"
     files = ["schema/include/**", "schema/src/**"]
-    public_dependson = ["he_core", "rapidjson"]
+    public_dependson = ["he_core", "toml++"]
     public_includedirs = ["schema/include"]
     private_includedirs = ["schema/src"]
 

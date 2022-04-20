@@ -4,6 +4,7 @@
 
 #include "he/core/assert.h"
 #include "he/core/cpu.h"
+#include "he/core/sync.h"
 #include "he/core/task_executor.h"
 #include "he/core/utils.h"
 
@@ -23,6 +24,8 @@
 
 namespace he
 {
+    static Mutex s_ioStartupMutex{};
+    static uint32_t s_ioStartupCount{ 0 };
     static ThreadPoolExecutor s_threadPool;
     static TaskExecutor* s_executor{ nullptr };
 
@@ -73,16 +76,24 @@ namespace he
 
     Result StartupAsyncFileIO(const AsyncFileIOConfig& config)
     {
+        LockGuard lock(s_ioStartupMutex);
+
+        const uint32_t count = ++s_ioStartupCount;
+        if (count > 1)
+            return Result::Success;
+
+        auto countGuard = MakeScopeGuard([]() { --s_ioStartupCount; });
+
         s_executor = config.executor;
 
         if (!s_executor)
         {
-            const uint32_t defaultThreadCount = Clamp<uint32_t>(GetCpuInfo().threadCount, 4, 16);
+            const uint32_t defaultThreadCount = Clamp<uint32_t>(GetCpuInfo().threadCount, 4, 8);
 
             ThreadPoolExecutor::Config poolConfig;
             poolConfig.count = config.pool.threadCount ? config.pool.threadCount : defaultThreadCount;
             poolConfig.affinity = config.pool.threadAffinity;
-            poolConfig.name = "Async IO Thread";
+            poolConfig.name = "Async File IO Thread";
 
             s_executor = &s_threadPool;
             Result r = s_threadPool.Startup(poolConfig);
@@ -90,13 +101,23 @@ namespace he
                 return r;
         }
 
+        countGuard.Dismiss();
         return Result::Success;
     }
 
     void ShutdownAsyncFileIO()
     {
+        LockGuard lock(s_ioStartupMutex);
+
+        HE_ASSERT(s_ioStartupCount > 0);
+        const uint32_t count = --s_ioStartupCount;
+        if (count > 0)
+            return;
+
         if (s_executor == &s_threadPool)
-            s_threadPool.Shutdown();
+            s_threadPool->Shutdown();
+
+        s_executor = nullptr;
     }
 
     AsyncFile::AsyncFile()

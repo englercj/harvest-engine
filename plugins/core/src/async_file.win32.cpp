@@ -9,9 +9,8 @@
 #include "he/core/scope_guard.h"
 #include "he/core/thread.h"
 
-#include <atomic>
 #include <future>
-#include <thread>
+#include <mutex>
 
 #if defined(HE_PLATFORM_API_WIN32)
 
@@ -23,7 +22,8 @@
 
 namespace he
 {
-    static std::atomic<bool> s_ioThreadRunning;
+    static std::mutex s_ioStartupMutex{};
+    static uint32_t s_ioStartupCount{ 0 };
     static HANDLE s_ioThread{ nullptr };
     static HANDLE s_ioPort{ nullptr };
 
@@ -40,6 +40,14 @@ namespace he
 
     Result StartupAsyncFileIO(const AsyncFileIOConfig& config)
     {
+        std::lock_guard<std::mutex> lock(s_ioStartupMutex);
+
+        const uint32_t count = ++s_ioStartupCount;
+        if (count > 1)
+            return Result::Success;
+
+        auto countGuard = MakeScopeGuard([]() { --s_ioStartupCount; });
+
         // Create the completion port
         s_ioPort = ::CreateIoCompletionPort(INVALID_HANDLE_VALUE, nullptr, 0, 1);
 
@@ -49,7 +57,6 @@ namespace he
         auto portGuard = MakeScopeGuard([&]() { CloseHandle(s_ioPort); });
 
         // Create the thread for handling competion events
-        s_ioThreadRunning.store(true);
         s_ioThread = ::CreateThread(nullptr, 0, IOCompletionThread, s_ioPort, 0, nullptr);
 
         if (s_ioThread == nullptr)
@@ -59,24 +66,37 @@ namespace he
         if (!affinityResult)
             return affinityResult;
 
+        ::SetThreadDescription(s_ioThread, L"Async File IOCP Thread");
+
         portGuard.Dismiss();
+        countGuard.Dismiss();
         return Result::Success;
     }
 
     void ShutdownAsyncFileIO()
     {
+        std::lock_guard<std::mutex> lock(s_ioStartupMutex);
+
+        HE_ASSERT(s_ioStartupCount > 0);
+        const uint32_t count = --s_ioStartupCount;
+        if (count > 0)
+            return;
+
         if (s_ioThread)
         {
             HE_ASSERT(s_ioPort);
 
-            s_ioThreadRunning.store(false);
             ::PostQueuedCompletionStatus(s_ioPort, 0, 0, nullptr);
             ::WaitForSingleObject(s_ioThread, INFINITE);
             ::CloseHandle(s_ioThread);
+            s_ioThread = nullptr;
         }
 
         if (s_ioPort)
+        {
             ::CloseHandle(s_ioPort);
+            s_ioPort = nullptr;
+        }
     }
 
     AsyncFile::AsyncFile()
@@ -212,11 +232,10 @@ namespace he
     static DWORD IOCompletionThread(LPVOID)
     {
         HE_ASSERT(s_ioPort);
-        ::SetThreadDescription(::GetCurrentThread(), L"Async File IOCP Thread");
 
         OVERLAPPED_ENTRY entries[32];
 
-        while (s_ioThreadRunning.load())
+        while (s_ioStartupCount > 0)
         {
             // Wait for a completion notification
             ULONG count = 0;

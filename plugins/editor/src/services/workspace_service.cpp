@@ -6,7 +6,8 @@
 #include "dialogs/choice_dialog.h"
 #include "documents/document.h"
 #include "documents/stats_document.h"
-#include "documents/style_editor_document.h"
+#include "documents/imgui_stack_tool_document.h"
+#include "documents/imgui_style_editor_document.h"
 #include "documents/welcome_document.h"
 #include "fonts/IconsFontAwesome5Pro.h"
 #include "widgets/menu.h"
@@ -196,15 +197,14 @@ namespace he::editor
 
             if (BeginTopLevelMenu("Tools"))
             {
-                if (MenuItem("Style Editor"))
-                {
-                    m_documentService.Open<StyleEditorDocument>();
-                }
+                if (MenuItem("ImGui Stack Tool"))
+                    m_documentService.Open<ImGuiStackToolDocument>();
+
+                if (MenuItem("ImGui Style Editor"))
+                    m_documentService.Open<ImGuiStyleEditorDocument>();
 
                 if (MenuItem("Stats"))
-                {
                     m_documentService.Open<StatsDocument>();
-                }
 
                 EndTopLevelMenu();
             }
@@ -214,9 +214,7 @@ namespace he::editor
                 MenuSeparator("Documentation");
 
                 if (MenuItem("Welcome", ICON_FA_HOME))
-                {
                     m_documentService.Open<WelcomeDocument>();
-                }
                 MenuItem("API Reference  " ICON_FA_EXTERNAL_LINK_ALT, ICON_FA_BOOK);
                 MenuItem("Tutorials  " ICON_FA_EXTERNAL_LINK_ALT, ICON_FA_BOOK_READER);
                 MenuItem("Report Bug  " ICON_FA_EXTERNAL_LINK_ALT, ICON_FA_BUG);

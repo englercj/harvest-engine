@@ -480,7 +480,7 @@ namespace he::window::Linux
             CWBorderPixel | CWEventMask,
             &attribs);
 
-        HE_ASSERT(m_window != None, "Failed to create X window.");
+        HE_ASSERT(m_window != None, HE_MSG("Failed to create X window."));
 
         m_device->m_XSaveContext(display, m_window, m_device->m_context, reinterpret_cast<XPointer>(this));
 
@@ -558,7 +558,7 @@ namespace he::window::Linux
         }
 
         m_ic = m_device->m_XCreateIC(m_device->m_im, XNInputStyle, XIMPreeditNothing | XIMStatusNothing, XNClientWindow, m_device->m_root, nullptr);
-        HE_ASSERT(m_ic != nullptr, "XCreateIC failed.");
+        HE_ASSERT(m_ic != nullptr, HE_MSG("XCreateIC failed."));
     }
 
     ViewImpl::~ViewImpl()

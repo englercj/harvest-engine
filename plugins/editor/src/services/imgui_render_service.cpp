@@ -163,13 +163,13 @@ namespace he::editor
                 desc.type = rhi::CmdListType::Render;
                 HE_RHI_SET_NAME(desc, "ImGui Viewport Frame Command Allocator");
                 Result r = device->CreateCmdAllocator(desc, frame.cmdAlloc);
-                HE_ASSERT_RESULT(r);
+                HE_ASSERT(r, HE_KV(result, r));
             }
 
             {
                 rhi::CpuFenceDesc desc{};
                 Result r = device->CreateCpuFence(desc, frame.fence);
-                HE_ASSERT_RESULT(r);
+                HE_ASSERT(r, HE_KV(result, r));
             }
 
             cmdQueue.Signal(frame.fence);
@@ -182,7 +182,7 @@ namespace he::editor
             HE_RHI_SET_NAME(desc, "ImGui Viewport Command List");
 
             Result r = device->CreateRenderCmdList(desc, data->cmdList);
-            HE_ASSERT_RESULT(r);
+            HE_ASSERT(r, HE_KV(result, r));
         }
 
         // Create swap chain
@@ -194,7 +194,7 @@ namespace he::editor
             desc.size = { static_cast<int32_t>(viewport->Size.x), static_cast<int32_t>(viewport->Size.y) };
 
             Result r = device->CreateSwapChain(desc, data->swapChain);
-            HE_ASSERT_RESULT(r);
+            HE_ASSERT(r, HE_KV(result, r));
         }
     }
 
@@ -240,7 +240,7 @@ namespace he::editor
         desc.size = { static_cast<int32_t>(size.x), static_cast<int32_t>(size.y) };
 
         Result r = device->UpdateSwapChain(data->swapChain, desc);
-        HE_ASSERT_RESULT(r);
+        HE_ASSERT(r, HE_KV(result, r));
     }
 
     void ImGuiRenderService::RenderWindow(ImGuiViewport* viewport, void*)
@@ -318,7 +318,7 @@ namespace he::editor
             HE_RHI_SET_NAME(desc, "ImGui Frame Vertex Buffer");
 
             Result r = device->CreateBuffer(desc, buffers.vertexBuffer);
-            HE_ASSERT_RESULT(r);
+            HE_ASSERT(r, HE_KV(result, r));
         }
 
         // Create or grow index buffer if needed
@@ -335,7 +335,7 @@ namespace he::editor
             HE_RHI_SET_NAME(desc, "ImGui Frame Index Buffer");
 
             Result r = device->CreateBuffer(desc, buffers.indexBuffer);
-            HE_ASSERT_RESULT(r);
+            HE_ASSERT(r, HE_KV(result, r));
         }
 
         // Upload vertex/index data into a single contiguous GPU buffer

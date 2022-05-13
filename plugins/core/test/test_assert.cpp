@@ -10,21 +10,23 @@ using namespace he;
 // ------------------------------------------------------------------------------------------------
 HE_TEST(core, assert, ASSERT)
 {
-    auto handler = [](ErrorType type, const char* file, const uint32_t line, const char* funcName, const char* expression, const char* msg) -> bool
+    auto handler = [](void* userData, const ErrorSource& source, const LogKV* kvs, uint32_t count) -> bool
     {
-        HE_UNUSED(file, funcName);
+        HE_EXPECT_EQ(source.type, ErrorType::Assert);
+        HE_EXPECT_EQ(source.line, 27);
+        HE_EXPECT_EQ_STR(source.expression, "false");
 
-        HE_EXPECT_EQ(type, ErrorType::Assert);
-        HE_EXPECT_EQ(line, 27);
-        HE_EXPECT_EQ_STR(expression, "false");
-        HE_EXPECT_EQ_STR(msg, "testing 10");
+        HE_EXPECT_EQ(count, 1);
+        HE_EXPECT_EQ_STR(kvs[0].key, HE_LOG_MESSAGE_KEY);
+        HE_EXPECT_EQ(kvs[0].kind, LogKV::Kind::String);
+        HE_EXPECT_EQ(kvs[0].GetString(), "testing 10");
         return false;
     };
 
     ErrorHandlerFunc oldHandler = GetErrorHandler();
     SetErrorHandler(handler);
 
-    HE_ASSERT(false, "testing {}", 10);
+    HE_ASSERT(false, HE_MSG("testing {}", 10));
 
     SetErrorHandler(oldHandler);
 }
@@ -32,21 +34,23 @@ HE_TEST(core, assert, ASSERT)
 // ------------------------------------------------------------------------------------------------
 HE_TEST(core, assert, VERIFY)
 {
-    auto handler = [](ErrorType type, const char* file, const uint32_t line, const char* funcName, const char* expression, const char* msg) -> bool
+    auto handler = [](void* userData, const ErrorSource& source, const LogKV* kvs, uint32_t count) -> bool
     {
-        HE_UNUSED(file, funcName);
+        HE_EXPECT_EQ(source.type, ErrorType::Verify);
+        HE_EXPECT_EQ(source.line, 49);
+        HE_EXPECT_EQ_STR(source.expression, "false");
 
-        HE_EXPECT_EQ(type, ErrorType::Verify);
-        HE_EXPECT_EQ(line, 49);
-        HE_EXPECT_EQ_STR(expression, "false");
-        HE_EXPECT_EQ_STR(msg, "testing 20");
+        HE_EXPECT_EQ(count, 1);
+        HE_EXPECT_EQ_STR(kvs[0].key, HE_LOG_MESSAGE_KEY);
+        HE_EXPECT_EQ(kvs[0].kind, LogKV::Kind::String);
+        HE_EXPECT_EQ(kvs[0].GetString(), "testing 20");
         return false;
     };
 
     ErrorHandlerFunc oldHandler = GetErrorHandler();
     SetErrorHandler(handler);
 
-    HE_EXPECT(!HE_VERIFY(false, "testing {}", 20));
+    HE_EXPECT(!HE_VERIFY(false, HE_MSG("testing {}", 20)));
 
     SetErrorHandler(oldHandler);
 }

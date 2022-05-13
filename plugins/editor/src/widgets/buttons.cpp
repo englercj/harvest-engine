@@ -24,7 +24,7 @@ namespace he::editor
 
         ImGui::SetCursorPos(pos);
         ImGui::SetItemAllowOverlap();
-        const bool pressed = ImGui::InvisibleButton("###behavior", ImGui::GetItemRectSize());
+        const bool pressed = ImGui::InvisibleButton("##link_behavior", ImGui::GetItemRectSize());
 
         if (ImGui::IsItemHovered())
         {

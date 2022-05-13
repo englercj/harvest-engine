@@ -130,7 +130,9 @@ namespace he::assets
             if (!res)
                 return false;
         }
-        HE_ASSERT(count <= 2, "Impossible row count from asset_file query: {}", count);
+        HE_ASSERT(count <= 2,
+            HE_MSG("Impossible row count from asset_file query. Expected 2 or more."),
+            HE_KV(count, count));
 
         // If we found any then a row may exists with the same path as the file we wish to
         // insert. If that is the case, we need to remove it first. An ID conflict is handled in

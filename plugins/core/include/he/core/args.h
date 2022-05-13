@@ -53,6 +53,7 @@ namespace he
             MissingRequiredArg,
             InvalidFormat,
             InvalidValue,
+            InvalidArgDesc,
         };
 
         Code code;

@@ -268,8 +268,15 @@ namespace he
                 desc.hasValue = true;
                 break;
             default:
-                HE_ASSERT(false, "Unknown integer size: {}", desc.size);
-                HE_UNREACHABLE();
+                HE_VERIFY(false,
+                    HE_MSG("Unknown integer size for argument."),
+                    HE_KV(arg_type, desc.type),
+                    HE_KV(arg_size, desc.size),
+                    HE_KV(arg_short_name, desc.shortArg),
+                    HE_KV(arg_long_name, desc.longArg),
+                    HE_KV(arg_description, desc.description));
+
+                return ArgResult(ArgResult::InvalidArgDesc, "Argument descriptor is invalid: unknown integer size. See log for more info.");
         }
 
         return ArgResult(ArgResult::Success);
@@ -302,8 +309,15 @@ namespace he
                 break;
             }
             default:
-                HE_ASSERT(false, "Unknown floating point size: {}", desc.size);
-                HE_UNREACHABLE();
+                HE_VERIFY(false,
+                    HE_MSG("Unknown float size for argument."),
+                    HE_KV(arg_type, desc.type),
+                    HE_KV(arg_size, desc.size),
+                    HE_KV(arg_short_name, desc.shortArg),
+                    HE_KV(arg_long_name, desc.longArg),
+                    HE_KV(arg_description, desc.description));
+
+                return ArgResult(ArgResult::InvalidArgDesc, "Argument descriptor is invalid: unknown float size. See log for more info.");
         }
 
         return ArgResult(ArgResult::Success);

@@ -446,7 +446,7 @@ namespace he
     Result MemoryMap::Map(File& file, MemoryMapMode mode, uint64_t offset, uint32_t size)
     {
         HE_ASSERT(m_data == nullptr);
-        HE_ASSERT(IsAligned(offset, sysconf(_SC_PAGE_SIZE)));
+        HE_ASSERT(IsAligned(offset, sysconf(_SC_PAGE_SIZE)), HE_KV(offset, offset), HE_KV(page_size, sysconf(_SC_PAGE_SIZE)));
 
         if (size == 0)
         {

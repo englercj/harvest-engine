@@ -170,21 +170,21 @@ namespace he::editor
         desc.size = size;
 
         Result r = m_device->UpdateSwapChain(m_swapChain, desc);
-        HE_ASSERT_RESULT(r);
+        HE_ASSERT(r, HE_KV(result, r));
     }
 
     rhi::SwapChainFormat RenderService::FindPreferredSwapChainFormat()
     {
         uint32_t count = 0;
         Result r = m_device->GetSwapChainFormats(m_view->GetNativeHandle(), count, nullptr);
-        HE_ASSERT_RESULT(r);
+        HE_ASSERT(r, HE_KV(result, r));
         HE_ASSERT(count > 0);
 
         rhi::SwapChainFormat* formats = Allocator::GetTemp().Malloc<rhi::SwapChainFormat>(count);
         HE_AT_SCOPE_EXIT([&]() { Allocator::GetTemp().Free(formats); });
 
         r = m_device->GetSwapChainFormats(m_view->GetNativeHandle(), count, formats);
-        HE_ASSERT_RESULT(r);
+        HE_ASSERT(r, HE_KV(result, r));
 
         for (uint32_t i = 0; i < count; ++i)
         {

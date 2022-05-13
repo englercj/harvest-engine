@@ -25,9 +25,7 @@ namespace he::editor
         static he::editor::EditorData s_editorData{};
 
         return di::make_injector(
-            di::bind<he::Allocator>().to(he::CrtAllocator::Get()),
-            di::bind<he::editor::EditorData>().to(s_editorData)
-        );
+            di::bind<he::editor::EditorData>().to(s_editorData));
     }
 
     using AppInjectorType = decltype(MakeAppInjector());

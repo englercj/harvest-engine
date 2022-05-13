@@ -17,7 +17,7 @@ namespace he::editor
         void write(const void* buffer, size_t size) override
         {
             const Result r = m_file.Write(buffer, static_cast<uint32_t>(size));
-            HE_ASSERT_RESULT(r);
+            HE_ASSERT(r, HE_KV(result, r));
         }
 
         File& m_file;
@@ -40,7 +40,7 @@ namespace he::editor
                 uint32_t bytesRead = 0;
                 const uint32_t bytesToRead = static_cast<uint32_t>(max - pos);
                 const Result r = m_file.Read(pos, bytesToRead, &bytesRead);
-                HE_ASSERT_RESULT(r);
+                HE_ASSERT(r, HE_KV(result, r));
 
                 if (bytesToRead == bytesRead)
                     break;

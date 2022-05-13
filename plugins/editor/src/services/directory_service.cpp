@@ -28,7 +28,9 @@ namespace he::editor
             if (!HE_VERIFY(r))
             {
                 m_appDataRoot.Clear();
-                HE_LOGF_ERROR(editor, "Failed to read local app data directory. Things may not work as expected. Error: {}", r);
+                HE_LOG_ERROR(editor,
+                    HE_MSG("Failed to read local app data directory. Things may not work as expected."),
+                    HE_KV(result, r));
                 return m_appDataRoot;
             }
 
@@ -61,7 +63,10 @@ namespace he::editor
             Result r = Directory::Create(path.Data(), true);
             if (!HE_VERIFY(r))
             {
-                HE_LOGF_ERROR(editor, "Failed to create app data directory: '{}'. Things may not work as expected. Error: {}", path, r);
+                HE_LOG_ERROR(editor,
+                    HE_MSG("Failed to create app data directory. Things may not work as expected."),
+                    HE_KV(result, r),
+                    HE_KV(path, path));
                 result = false;
             }
         }

@@ -67,8 +67,8 @@
     do { \
         if constexpr (static_cast<int>(::he::LogLevel::lvl) >= HE_LOG_LEVEL_ENABLED) { \
             constexpr ::he::LogSource LogEntrySource_{ ::he::LogLevel::lvl, HE_LINE, HE_FILE, __FUNCTION__, catStr }; \
-            const ::he::LogKV kvLogList_[]{ __VA_ARGS__ }; \
-            ::he::Log(LogEntrySource_, kvLogList_, HE_LENGTH_OF(kvLogList_)); \
+            const ::he::LogKV kvLogList_[]{ {"",0}, __VA_ARGS__ }; \
+            ::he::Log(LogEntrySource_, kvLogList_ + 1, HE_LENGTH_OF(kvLogList_) - 1); \
         } \
     } while(0)
 
@@ -252,7 +252,7 @@ namespace he
         int64_t GetInt() const;
         uint64_t GetUint() const;
         double GetDouble() const;
-        const char* GetString() const;
+        const String& GetString() const;
 
         const char* key;
         Kind kind;
@@ -277,6 +277,7 @@ namespace he
     /// live beyond the function body. However, you don't have to copy the strings in the
     /// LogSource, just the pointers since they point to static memory.
     ///
+    /// \param[in] userData Pointer to arbitrary user-defined data for this sink.
     /// \param[in] source The source information for this log entry.
     /// \param[in] kvs An array of key-value pairs.
     /// \param[in] count The size of the `kvs` array.

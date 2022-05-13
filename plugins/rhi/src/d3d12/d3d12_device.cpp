@@ -19,6 +19,36 @@
 
 namespace he::rhi::d3d12
 {
+    struct ShaderModelPair { D3D_SHADER_MODEL d3dSm; ShaderModel sm; };
+    static const ShaderModelPair ShaderModelPairs[] =
+    {
+    #if defined(NTDDI_WIN10_FE) && NTDDI_VERSION >= NTDDI_WIN10_FE
+        { D3D_SHADER_MODEL_6_7, ShaderModel::Sm_6_7 },
+    #endif
+    #if defined(NTDDI_WIN10_VB) && NTDDI_VERSION >= NTDDI_WIN10_VB
+        { D3D_SHADER_MODEL_6_6, ShaderModel::Sm_6_6 },
+    #endif
+    // Windows 10 1903 "19H1"
+    #if defined(NTDDI_WIN10_19H1) && NTDDI_VERSION >= NTDDI_WIN10_19H1
+        { D3D_SHADER_MODEL_6_5, ShaderModel::Sm_6_5 },
+    #endif
+    // Windows 10 1809 "Redstone 5"
+    #if defined(NTDDI_WIN10_RS5) && NTDDI_VERSION >= NTDDI_WIN10_RS5
+        { D3D_SHADER_MODEL_6_4, ShaderModel::Sm_6_4 },
+        { D3D_SHADER_MODEL_6_3, ShaderModel::Sm_6_3 },
+    #endif
+    // Windows 10 1803 "Redstone 4"
+    #if defined(NTDDI_WIN10_RS4) && NTDDI_VERSION >= NTDDI_WIN10_RS4
+        { D3D_SHADER_MODEL_6_2, ShaderModel::Sm_6_2 },
+    #endif
+    // Windows 10 1709 "Redstone 3"
+    #if defined(NTDDI_WIN10_RS3) && NTDDI_VERSION >= NTDDI_WIN10_RS3
+        { D3D_SHADER_MODEL_6_1, ShaderModel::Sm_6_1 },
+    #endif
+        { D3D_SHADER_MODEL_6_0, ShaderModel::Sm_6_0 },
+        { D3D_SHADER_MODEL_5_1, ShaderModel::Sm_5_1 },
+    };
+
     template <typename T>
     static void FillSamplerDesc(T& d3dDesc, const SamplerDesc& desc)
     {
@@ -84,69 +114,13 @@ namespace he::rhi::d3d12
         };
 
         SupportShaderModel(ShaderModel::Sm_5_0);
-
-        static const D3D_SHADER_MODEL shaderModels[] =
-        {
-        #if defined(NTDDI_WIN10_FE) && NTDDI_VERSION >= NTDDI_WIN10_FE
-            D3D_SHADER_MODEL_6_7,
-        #endif
-        #if defined(NTDDI_WIN10_VB) && NTDDI_VERSION >= NTDDI_WIN10_VB
-            D3D_SHADER_MODEL_6_6,
-        #endif
-        // Windows 10 1903 "19H1"
-        #if defined(NTDDI_WIN10_19H1) && NTDDI_VERSION >= NTDDI_WIN10_19H1
-            D3D_SHADER_MODEL_6_5,
-        #endif
-        // Windows 10 1809 "Redstone 5"
-        #if defined(NTDDI_WIN10_RS5) && NTDDI_VERSION >= NTDDI_WIN10_RS5
-            D3D_SHADER_MODEL_6_4,
-            D3D_SHADER_MODEL_6_3,
-        #endif
-        // Windows 10 1803 "Redstone 4"
-        #if defined(NTDDI_WIN10_RS4) && NTDDI_VERSION >= NTDDI_WIN10_RS4
-            D3D_SHADER_MODEL_6_2,
-        #endif
-        // Windows 10 1709 "Redstone 3"
-        #if defined(NTDDI_WIN10_RS3) && NTDDI_VERSION >= NTDDI_WIN10_RS3
-            D3D_SHADER_MODEL_6_1,
-        #endif
-            D3D_SHADER_MODEL_6_0,
-            D3D_SHADER_MODEL_5_1
-        };
-
-        for (D3D_SHADER_MODEL shaderModel : shaderModels)
+        for (ShaderModelPair pair : ShaderModelPairs)
         {
             D3D12_FEATURE_DATA_SHADER_MODEL data;
-            data.HighestShaderModel = shaderModel;
+            data.HighestShaderModel = pair.d3dSm;
             if (SUCCEEDED(m_d3dDevice->CheckFeatureSupport(D3D12_FEATURE_SHADER_MODEL, &data, sizeof(data))))
             {
-                switch (data.HighestShaderModel)
-                {
-                    case D3D_SHADER_MODEL_5_1: SupportShaderModel(ShaderModel::Sm_5_1); break;
-                    case D3D_SHADER_MODEL_6_0: SupportShaderModel(ShaderModel::Sm_6_0); break;
-                #if defined(NTDDI_WIN10_RS3) && NTDDI_VERSION >= NTDDI_WIN10_RS3
-                    case D3D_SHADER_MODEL_6_1: SupportShaderModel(ShaderModel::Sm_6_1); break;
-                #endif
-                #if defined(NTDDI_WIN10_RS4) && NTDDI_VERSION >= NTDDI_WIN10_RS4
-                    case D3D_SHADER_MODEL_6_2: SupportShaderModel(ShaderModel::Sm_6_2); break;
-                #endif
-                #if defined(NTDDI_WIN10_RS5) && NTDDI_VERSION >= NTDDI_WIN10_RS5
-                    case D3D_SHADER_MODEL_6_3: SupportShaderModel(ShaderModel::Sm_6_3); break;
-                    case D3D_SHADER_MODEL_6_4: SupportShaderModel(ShaderModel::Sm_6_4); break;
-                #endif
-                #if defined(NTDDI_WIN10_19H1) && NTDDI_VERSION >= NTDDI_WIN10_19H1
-                    case D3D_SHADER_MODEL_6_5: SupportShaderModel(ShaderModel::Sm_6_5); break;
-                #endif
-                #if defined(NTDDI_WIN10_VB) && NTDDI_VERSION >= NTDDI_WIN10_VB
-                    case D3D_SHADER_MODEL_6_6: SupportShaderModel(ShaderModel::Sm_6_6); break;
-                #endif
-                #if defined(NTDDI_WIN10_FE) && NTDDI_VERSION >= NTDDI_WIN10_FE
-                    case D3D_SHADER_MODEL_6_7: SupportShaderModel(ShaderModel::Sm_6_7); break;
-                #endif
-                    default:
-                        HE_ASSERT(false, "Unknown Shader Model");
-                        break;
-                }
+                SupportShaderModel(pair.sm);
             }
         }
 
@@ -670,7 +644,7 @@ namespace he::rhi::d3d12
             }
         }
 
-        HE_ASSERT(generalCount == 0 || samplerCount == 0, "Sampler ranges cannot be mixed with other types. This is a D3D12 requirement.");
+        HE_ASSERT(generalCount == 0 || samplerCount == 0, HE_MSG("Sampler ranges cannot be mixed with other types. This is a D3D12 requirement."));
 
         DescriptorTableImpl* table = m_instance->m_allocator.New<DescriptorTableImpl>(m_instance->m_allocator);
         table->ranges.Clear();

@@ -318,7 +318,7 @@ namespace he::rhi::d3d12
             case DXGI_COLOR_SPACE_RGB_FULL_G10_NONE_P709: return ColorSpace::scRGB;
             case DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020: return ColorSpace::HDR10_PQ;
             default:
-                HE_ASSERT(false, "Unknown DXGI Color Space");
+                HE_ASSERT(false, HE_MSG("Unknown DXGI Color Space"));
                 HE_UNREACHABLE();
         }
     };
@@ -349,7 +349,7 @@ namespace he::rhi::d3d12
             case Format::RGBA16Float: return DXGI_FORMAT_R16G16B16A16_FLOAT;
             case Format::RGB10A2Unorm: return DXGI_FORMAT_R10G10B10A2_UNORM;
             default:
-                HE_ASSERT(false, "Invalid format for Swap Chain: {}", x);
+                HE_ASSERT(false, HE_MSG("Invalid format for Swap Chain: {}", x));
                 HE_UNREACHABLE();
         }
     }
@@ -365,7 +365,7 @@ namespace he::rhi::d3d12
             case Format::RGBA16Float: return DXGI_FORMAT_R16G16B16A16_FLOAT;
             case Format::RGB10A2Unorm: return DXGI_FORMAT_R10G10B10A2_UNORM;
             default:
-                HE_ASSERT(false, "Invalid format for Swap Chain View: {}", x);
+                HE_ASSERT(false, HE_MSG("Invalid format for Swap Chain View: {}", x));
                 HE_UNREACHABLE();
         }
     }
@@ -381,7 +381,7 @@ namespace he::rhi::d3d12
             case DXGI_FORMAT_R16G16B16A16_FLOAT: return Format::RGBA16Float;
             case DXGI_FORMAT_R10G10B10A2_UNORM: return Format::RGB10A2Unorm;
             default:
-                HE_ASSERT(false, "Invalid DXGI Swap Chain format: {}", x);
+                HE_ASSERT(false, HE_MSG("Invalid DXGI Swap Chain format: {}", x));
                 HE_UNREACHABLE();
         }
     }

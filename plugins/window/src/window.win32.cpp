@@ -13,6 +13,7 @@
 #include "he/core/compiler.h"
 #include "he/core/log.h"
 #include "he/core/memory_ops.h"
+#include "he/core/result.h"
 #include "he/core/string.h"
 #include "he/core/utils.h"
 #include "he/core/wstr.h"
@@ -468,8 +469,7 @@ namespace he::window::Win32
                             case ViewHitArea::ResizeLeft: return allowResize ? HTLEFT : HTCLIENT;
                             case ViewHitArea::SystemMenu: return HTSYSMENU;
                         }
-                        HE_ASSERT(false, "Unknown hit area.");
-                        HE_UNREACHABLE();
+                        HE_VERIFY(false, HE_MSG("Unknown hit area."));
                     }
                 }
                 break;
@@ -731,7 +731,7 @@ namespace he::window::Win32
             device->m_hInstance,
             this);
 
-        HE_ASSERT(m_window != 0, "CreateWindowEx failed.");
+        HE_ASSERT(m_window != 0, HE_MSG("CreateWindowEx failed."), HE_KV(error, Result::FromLastError()));
 
         // Inform Windows that it should redraw our frame styles
         ::SetWindowPos(m_window, nullptr, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE | SWP_FRAMECHANGED);

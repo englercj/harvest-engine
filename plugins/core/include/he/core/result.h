@@ -11,18 +11,6 @@
 #include "he/core/string.h"
 #include "he/core/types.h"
 
-#if defined(_PREFAST_)
-    // Prevent code analysis from reporting errors already checked by assertions
-    #define HE_ASSERT_RESULT(r) __assume(!!(r))
-    #define HE_VERIFY_RESULT(r) (!!(r))
-#elif HE_ENABLE_ASSERTIONS
-    #define HE_ASSERT_RESULT(r) (void)(HE_LIKELY(!!(r)) || (he::ExpectResultFailed(he::ErrorType::Assert, HE_FILE, HE_LINE, __FUNCTION__, #r, r) && HE_DEBUG_BREAK()))
-    #define HE_VERIFY_RESULT(r) (HE_LIKELY(!!(r)) || (he::ExpectResultFailed(he::ErrorType::Verify, HE_FILE, HE_LINE, __FUNCTION__, #r, r) && HE_DEBUG_BREAK()))
-#else
-    #define HE_ASSERT_RESULT(r) HE_UNUSED(r)
-    #define HE_VERIFY_RESULT(r) (!!(r))
-#endif
-
 namespace he
 {
     /// Class for dealing with system results. It stores the raw error code from the OS and
@@ -97,21 +85,4 @@ namespace he
     /// \param[in] err The posix error code.
     /// \return A Result storing the posix error code.
     inline Result PosixResult(int err) { return Result(static_cast<uint32_t>(err)); }
-
-    /// Internal function used to handle failures from the \ref HE_ASSERT_RESULT and
-    /// \ref HE_VERIFY_RESULT macros.
-    ///
-    /// \internal
-    /// \param[in] type The error type (assert or verify).
-    /// \param[in] file The name of the file where the error was generated.
-    /// \param[in] line The number of the line where the error was generated.
-    /// \param[in] funcName The simple name of the function where the error was generated.
-    /// \param[in] expression The expression that generated the error.
-    /// \param[in] result The result of the expression.
-    /// \return Returns true if the debugger should break at the erroneous line.
-    inline bool ExpectResultFailed(ErrorType type, const char* file, const int line, const char* funcName, const char* expression, Result result)
-    {
-        String msg = result.ToString(Allocator::GetTemp());
-        return HandleError(type, file, line, funcName, expression, msg.Data());
-    }
 }

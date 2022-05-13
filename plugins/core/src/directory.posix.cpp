@@ -161,7 +161,7 @@ namespace he
             }
         }
 
-        HE_ASSERT(false, "Unknown special directory type");
+        HE_VERIFY(false, HE_MSG("Unknown special directory type."), HE_KV(dir, dir));
         return Result::NotSupported;
     }
 

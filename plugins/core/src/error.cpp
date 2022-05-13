@@ -2,32 +2,36 @@
 
 #include "he/core/error.h"
 
+#include "he/core/alloca.h"
 #include "he/core/debug.h"
 #include "he/core/enum_fmt.h"
 #include "he/core/enum_ops.h"
 #include "he/core/log.h"
+#include "he/core/memory_ops.h"
 
 #include "fmt/core.h"
 
+#include <algorithm>
 #include <cstdlib>
+#include <shared_mutex>
 
 namespace he
 {
     static ErrorHandlerFunc s_errorHandler = nullptr;
+    static void* s_errorHandlerUserData = nullptr;
+    static std::shared_mutex s_errorHandlerMutex{};
 
-    bool DefaultErrorHandler(ErrorType type, const char* file, const uint32_t line, const char* funcName, const char* expression, const char* msg)
+    bool DefaultErrorHandler(void*, const ErrorSource& source, const LogKV* kvs, uint32_t count)
     {
-        const LogSource source{ he::LogLevel::Error, line, file, funcName, "app_error" };
-        const LogKV kvs[] =
-        {
-            HE_KV(type, "{}", type),
-            HE_KV(expr, expression),
-            HE_MSG(msg ? msg : ""),
-        };
-        he::Log(source, kvs, HE_LENGTH_OF(kvs));
+        const LogSource logSource{ he::LogLevel::Error, source.line, source.file, source.funcName, "app_error" };
+        LogKV* extendedKvs = HE_ALLOCA(LogKV, count + 2);
+        std::copy(kvs, kvs + count, extendedKvs);
+        extendedKvs[count + 0] = HE_KV(error_type, source.type);
+        extendedKvs[count + 1] = HE_KV(error_expr, source.expression);
+        he::Log(logSource, extendedKvs, count + 2);
 
         // TODO: Platform-specific handlers (popup for win32)
-        switch (type)
+        switch (source.type)
         {
             case ErrorType::Assert:
             case ErrorType::Except: //exit(-1); break;
@@ -38,9 +42,14 @@ namespace he
         return true;
     }
 
-    void SetErrorHandler(ErrorHandlerFunc handler)
+    void SetErrorHandler(ErrorHandlerFunc handler, void* userData = nullptr)
     {
+        s_errorHandlerMutex.lock();
+
         s_errorHandler = handler;
+        s_errorHandlerUserData = userData;
+
+        s_errorHandlerMutex.unlock();
     }
 
     ErrorHandlerFunc GetErrorHandler()
@@ -48,12 +57,19 @@ namespace he
         return s_errorHandler ? s_errorHandler : DefaultErrorHandler;
     }
 
-    bool HandleError(ErrorType type, const char* file, const uint32_t line, const char* funcName, const char* expression, const char* msg)
+    bool HandleError(const ErrorSource& source, const LogKV* kvs, uint32_t count)
     {
-        if (s_errorHandler)
-            return s_errorHandler(type, file, line, funcName, expression, msg);
+        s_errorHandlerMutex.lock_shared();
 
-        return DefaultErrorHandler(type, file, line, funcName, expression, msg);
+        ErrorHandlerFunc handler = s_errorHandler;
+        void* userData = s_errorHandlerUserData;
+
+        s_errorHandlerMutex.unlock_shared();
+
+        if (handler)
+            return handler(userData, source, kvs, count);
+
+        return DefaultErrorHandler(nullptr, source, kvs, count);
     }
 
     template <>

@@ -47,10 +47,10 @@ namespace he
         return value.d;
     }
 
-    const char* LogKV::GetString() const
+    const String& LogKV::GetString() const
     {
         HE_ASSERT(kind == Kind::String);
-        return value.s.Data();
+        return value.s;
     }
 
     void AddLogSink(LogSinkFunc sink, void* userData)

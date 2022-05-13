@@ -19,7 +19,7 @@ int he::AppMain(int argc, char* argv[])
 {
     // Initialize logging and add the debug sink as early as possible.
     // We'll add the file sync later after we prepare the directories for writing logs to.
-    DebuggerSink debugSink(CrtAllocator::Get());
+    DebuggerSink debugSink;
     he::AddLogSink(debugSink);
 
     const auto injector = editor::MakeAppInjector();

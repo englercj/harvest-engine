@@ -38,7 +38,7 @@ namespace he::rhi::d3d12
     void DescriptorPool::Alloc(uint32_t count, D3D12_CPU_DESCRIPTOR_HANDLE& cpuHandle, D3D12_GPU_DESCRIPTOR_HANDLE* gpuHandle)
     {
         uint32_t offset = m_bitAlloc.Alloc(count);
-        HE_ASSERT(offset != BitmapAllocator::InvalidOffset, "Cannot allocate {} additional descriptors, no block is available.", count);
+        HE_ASSERT(offset != BitmapAllocator::InvalidOffset, HE_MSG("Cannot allocate {} additional descriptors, no block is available.", count));
 
         cpuHandle = { m_cpuStart.ptr + (offset * m_stride) };
 

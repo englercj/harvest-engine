@@ -157,7 +157,7 @@ namespace fmt
                     case 'D': out = WritePeriod<he::Days>(out, duration); break;
                     case 'W': out = WritePeriod<he::Weeks>(out, duration); break;
                     default:
-                        HE_ASSERT(false, "Invalid format character");
+                        HE_ASSERT(false, HE_MSG("Invalid format character"), HE_KV(char, s[-1]));
                         return out;
                 }
             }

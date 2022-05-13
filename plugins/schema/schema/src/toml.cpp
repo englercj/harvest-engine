@@ -16,14 +16,340 @@
 namespace he::schema
 {
     // --------------------------------------------------------------------------------------------
-    // class TomlReader
-    // {
-    // public:
-    //     TomlReader(Builder& dst) : m_dst(dst) {}
+    // TODO: Remove toml++ usage and just parse the toml text directly. Format is simple enough and
+    // we really don't need 75% of what toml++ provides. It would also make error detection and handling
+    // much easier.
+    class TomlReader
+    {
+    public:
+        TomlReader(Builder& dst)
+            : m_dst(dst)
+        {}
 
-    // private:
-    //     Builder& m_dst;
-    // };
+        bool Read(const char* data, const DeclInfo& info)
+        {
+            const toml::parse_result& result = toml::parse(data);
+            if (!result)
+            {
+                const toml::parse_error& err = result.error();
+                HE_LOG_ERROR(he_schema,
+                    HE_MSG("Failed to parse TOML string."),
+                    HE_KV(error, err.description()),
+                    HE_KV(line, err.source().begin.line),
+                    HE_KV(column, err.source().begin.column));
+                 return false;
+            }
+
+            PushGroup(&info);
+            return SetStruct(result.table());
+        }
+
+    private:
+        bool SetStruct(const toml::table& table)
+        {
+            const Declaration::Reader decl = m_stack.Back().decl;
+            const Declaration::Data::Struct::Reader st = decl.Data().Struct();
+
+            for (auto&& [key, value] : table)
+            {
+                const Field::Reader field = FindField(key.str(), st);
+
+                if (field.IsValid())
+                {
+                    SetField(field, value);
+                }
+                else
+                {
+                    UnknownField& uf = m_unknownFields.EmplaceBack();
+                    uf.key = key.str();
+                    uf.value = value;
+                }
+            }
+
+            return true;
+        }
+
+        void SetField(Field::Reader field, const toml::node& value)
+        {
+            switch (field.Meta().Tag())
+            {
+                case Field::Meta::Tag::Normal: SetNormalField(field, value); break;
+                case Field::Meta::Tag::Group: SetGroupField(field, value); break;
+                case Field::Meta::Tag::Union: SetUnionField(field, value); break;
+            }
+        }
+
+        void SetNormalField(Field::Reader field, const toml::node& value)
+        {
+            const StructBuilder builder = m_stack.Back().builder;
+            SetValue(builder, field, value);
+        }
+
+        void SetGroupField(Field::Reader field, const toml::node& value)
+        {
+            // TODO
+        }
+
+        void SetUnionField(Field::Reader field, const toml::node& value)
+        {
+            // TODO
+        }
+
+        const char* GetNodeTypeString(toml::node_type t)
+        {
+            switch (t)
+            {
+                case toml::node_type::none: return "none";
+                case toml::node_type::table: return "table";
+                case toml::node_type::array: return "array";
+                case toml::node_type::string: return "string";
+                case toml::node_type::integer: return "integer";
+                case toml::node_type::floating_point: return "floating_point";
+                case toml::node_type::boolean: return "boolean";
+                case toml::node_type::date: return "date";
+                case toml::node_type::time: return "time";
+                case toml::node_type::date_time: return "date_time";
+            }
+
+            return "<unknown>";
+        }
+
+        bool CheckTypeMatch(const Type::Data::Tag typeDataTag, const toml::node& value)
+        {
+            switch (typeDataTag)
+            {
+                case Type::Data::Tag::Void: return false;
+                case Type::Data::Tag::Bool: return value.is_boolean();
+                case Type::Data::Tag::Int8: return value.is_integer();
+                case Type::Data::Tag::Int16: return value.is_integer();
+                case Type::Data::Tag::Int32: return value.is_integer();
+                case Type::Data::Tag::Int64: return value.is_integer();
+                case Type::Data::Tag::Uint8: return value.is_integer();
+                case Type::Data::Tag::Uint16: return value.is_integer();
+                case Type::Data::Tag::Uint32: return value.is_integer();
+                case Type::Data::Tag::Uint64: return value.is_integer();
+                case Type::Data::Tag::Float32: return value.is_floating_point();
+                case Type::Data::Tag::Float64: return value.is_floating_point();
+                case Type::Data::Tag::Array: return value.is_array();
+                case Type::Data::Tag::Blob: return value.is_string();
+                case Type::Data::Tag::String: return value.is_string();
+                case Type::Data::Tag::List: return value.is_array();
+                case Type::Data::Tag::Enum: return value.is_string();
+                case Type::Data::Tag::Struct: return value.is_table();
+                case Type::Data::Tag::Interface: return false;
+                case Type::Data::Tag::AnyPointer: return false;
+            }
+            return false;
+        }
+
+        void SetValue(StructBuilder builder, const Field::Reader field, const toml::node& value)
+        {
+            const Field::Meta::Normal::Reader norm = field.Meta().Normal();
+            const Type::Reader type = norm.Type();
+            const Type::Data::Reader typeData = type.Data();
+            const Type::Data::Tag typeDataTag = typeData.Tag();
+
+            if (!CheckTypeMatch(typeDataTag, value))
+            {
+                HE_LOG_ERROR(he_schema,
+                    HE_MSG("Mismatch between toml data and field type. Skipping deserialization of field."),
+                    HE_KV(field_name, field.Name()),
+                    HE_KV(field_type, typeDataTag),
+                    HE_KV(toml_type, GetNodeTypeString(value.type())));
+                return;
+            }
+
+            const uint32_t dataOffset = norm.DataOffset();
+            const uint32_t index = norm.Index();
+
+            switch (typeDataTag)
+            {
+                case Type::Data::Tag::Void: break;
+                case Type::Data::Tag::Bool: builder.SetAndMarkDataField(index, dataOffset, value.as_boolean()->get()); break;
+                case Type::Data::Tag::Int8: builder.SetAndMarkDataField(index, dataOffset, value.as_integer()->get()); break;
+                case Type::Data::Tag::Int16: builder.SetAndMarkDataField(index, dataOffset, value.as_integer()->get()); break;
+                case Type::Data::Tag::Int32: builder.SetAndMarkDataField(index, dataOffset, value.as_integer()->get()); break;
+                case Type::Data::Tag::Int64: builder.SetAndMarkDataField(index, dataOffset, value.as_integer()->get()); break;
+                case Type::Data::Tag::Uint8: builder.SetAndMarkDataField(index, dataOffset, value.as_integer()->get()); break;
+                case Type::Data::Tag::Uint16: builder.SetAndMarkDataField(index, dataOffset, value.as_integer()->get()); break;
+                case Type::Data::Tag::Uint32: builder.SetAndMarkDataField(index, dataOffset, value.as_integer()->get()); break;
+                case Type::Data::Tag::Uint64: builder.SetAndMarkDataField(index, dataOffset, value.as_integer()->get()); break;
+                case Type::Data::Tag::Float32: builder.SetAndMarkDataField(index, dataOffset, value.as_floating_point()->get()); break;
+                case Type::Data::Tag::Float64: builder.SetAndMarkDataField(index, dataOffset, value.as_floating_point()->get()); break;
+                case Type::Data::Tag::Array:
+                {
+                    // TODO
+                    const Type::Data::Array::Reader arrayType = type.Data().Array();
+                    const Type::Reader elementType = arrayType.ElementType();
+                    const uint32_t size = arrayType.Size();
+                    WriteArrayValue(data, name, elementType, index, dataOffset, size, asHex);
+                    break;
+                }
+                case Type::Data::Tag::Blob:
+                {
+                    const std::string& str = value.as_string()->get();
+                    // TODO: hex (or b64) str -> bytes
+                    break;
+                }
+                case Type::Data::Tag::String:
+                {
+                    const std::string& str = value.as_string()->get();
+                    String::Builder strBuilder = m_dst.AddString(str);
+                    builder.GetPointerField(norm.Index()).Set(strBuilder);
+                    break;
+                }
+                case Type::Data::Tag::List:
+                {
+                    // TODO
+                    const Type::Data::List::Reader listType = typeData.List();
+                    const Type::Reader elementType = listType.ElementType();
+                    const ElementSize elementSize = GetTypeElementSize(elementType);
+                    const ListReader list = Helper::GetPointer(data, index).TryGetList(elementSize);
+                    WriteArrayValue(list, name, elementType, 0, 0, list.Size(), asHex);
+                    break;
+                }
+                case Type::Data::Tag::Enum:
+                {
+                    const StringView enumName = value.as_string()->get();
+                    const Type::Data::Enum::Reader enumType = typeData.Enum();
+                    PushGroup(enumType.Id());
+                    Declaration::Data::Enum::Reader enumDecl = m_stack.Back().decl.Data().Enum();
+
+                    for (Enumerator::Reader e : enumDecl.Enumerators())
+                    {
+                        if (e.Name() == enumName)
+                        {
+                            builder.SetAndMarkDataField(index, dataOffset, e.Ordinal());
+                            break;
+                        }
+                    }
+
+                    PopGroup();
+
+                    if (!HE_VERIFY(builder.HasDataField(index)))
+                    {
+                        HE_LOG_ERROR(he_schema,
+                            HE_MSG("Cannot find enum value for field. No such enumerator exists by that name."),
+                            HE_KV(parent_id, m_stack.Back().decl.Id()),
+                            HE_KV(parent_name, m_stack.Back().decl.Name()),
+                            HE_KV(field_name, field.Name()),
+                            HE_KV(enum_name, enumName),
+                            HE_KV(index, index),
+                            HE_KV(data_offset, dataOffset));
+                        return;
+                    }
+
+                    break;
+                }
+                case Type::Data::Tag::Struct:
+                {
+                    const Type::Data::Struct::Reader structType = typeData.Struct();
+                    const StructReader value = Helper::GetComposite(data, index);
+
+                    if (m_arrayStack <= 1)
+                        PushGroup(structType.Id(), name);
+                    else
+                        m_writer.Write("{ ");
+
+                    if (!name.IsEmpty() && m_arrayStack == 0)
+                    {
+                        m_writer.WriteLine("[{}]", m_pathName);
+                        m_writer.IncreaseIndent();
+                    }
+
+                    WriteStruct(value);
+
+                    if (m_arrayStack <= 1)
+                        PopGroup();
+                    else
+                        m_writer.Write(" }");
+
+                    if (!name.IsEmpty() && m_arrayStack == 0)
+                        m_writer.DecreaseIndent();
+
+                    break;
+                }
+                case Type::Data::Tag::Interface:
+                {
+                    if (!HE_VERIFY(false, "Interface types cannot have values."))
+                    {
+                        HE_LOG_ERROR(he_schema,
+                            HE_MSG("Skipping Interface type when serializing."),
+                            HE_KV(parent_id, m_stack.Back().decl.Id()),
+                            HE_KV(parent_name, m_stack.Back().decl.Name().AsView()),
+                            HE_KV(interface_type_id, typeData.Interface().Id()),
+                            HE_KV(path, m_pathName),
+                            HE_KV(name, name),
+                            HE_KV(index, index),
+                            HE_KV(data_offset, dataOffset));
+                    }
+                    break;
+                }
+                case Type::Data::Tag::AnyPointer:
+                {
+                    if (!HE_VERIFY(false, "Serialization of AnyPointer types is not supported."))
+                    {
+                        HE_LOG_ERROR(he_schema,
+                            HE_MSG("Skipping AnyPointer type when serializing to TOML."),
+                            HE_KV(parent_id, m_stack.Back().decl.Id()),
+                            HE_KV(parent_name, m_stack.Back().decl.Name().AsView()),
+                            HE_KV(path, m_pathName),
+                            HE_KV(name, name),
+                            HE_KV(index, index),
+                            HE_KV(data_offset, dataOffset));
+                    }
+                    break;
+                }
+            }
+        }
+
+        void PushGroup(TypeId id)
+        {
+            const DeclInfo* parent = m_stack.Back().info;
+            const DeclInfo* info = FindDependency(*parent, id);
+            if (!HE_VERIFY(info))
+            {
+                HE_LOG_ERROR(he_schema,
+                    HE_MSG("Failed to find dependent type, unable to properly deserialize data."),
+                    HE_KV(parent_id, m_stack.Back().decl.Id()),
+                    HE_KV(parent_name, m_stack.Back().decl.Name().AsView()),
+                    HE_KV(id, id));
+            }
+            PushGroup(info);
+        }
+
+        void PushGroup(const DeclInfo* info)
+        {
+            Context& ctx = m_stack.EmplaceBack();
+            ctx.info = info;
+            ctx.decl = GetSchema(*info);
+            ctx.builder = m_dst.AddStruct(info->dataFieldCount, info->dataWordSize, info->pointerCount);
+        }
+
+        void PopGroup()
+        {
+            m_stack.PopBack();
+        }
+
+    private:
+        struct Context
+        {
+            const DeclInfo* info;
+            Declaration::Reader decl;
+            StructBuilder builder;
+        };
+
+        struct UnknownField
+        {
+            ::he::String key;
+            toml::node value;
+        };
+
+    private:
+        Builder& m_dst;
+        Vector<Context> m_stack;
+        Vector<UnknownField> m_unknownFields; // TODO: Maybe these should be in Builder?
+    };
 
     // --------------------------------------------------------------------------------------------
     class TomlWriter
@@ -49,14 +375,9 @@ namespace he::schema
             const Declaration::Reader decl = m_stack.Back().decl;
             const Declaration::Data::Struct::Reader structDecl = decl.Data().Struct();
 
-            m_writer.WriteLine("_he_type_id = {}", decl.Id());
-            m_writer.WriteLine("_he_type_name = {}", decl.Name().AsView());
             for (Field::Reader field : structDecl.Fields())
             {
                 WriteField(data, field);
-
-                if (m_arrayStack <= 1)
-                    m_writer.Write('\n');
             }
         }
 
@@ -91,6 +412,9 @@ namespace he::schema
 
             const bool asHex = FindAttribute(field.Attributes(), Toml::Hex::Id).IsValid();
             WriteValue(data, field.Name(), fieldType, norm.Index(), norm.DataOffset(), asHex);
+
+            if (m_arrayStack <= 1)
+                m_writer.Write('\n');
         }
 
         void WriteGroupField(StructReader data, Field::Reader field)
@@ -115,8 +439,10 @@ namespace he::schema
                 return;
 
             PushGroup(groupChild.Id(), field.Name());
-            m_writer.Write("[{}]\n", m_pathName);
+            m_writer.WriteLine("[{}]", m_pathName);
+            m_writer.IncreaseIndent();
             WriteStruct(data);
+            m_writer.DecreaseIndent();
             PopGroup();
         }
 
@@ -158,8 +484,12 @@ namespace he::schema
             if (!HE_VERIFY(activeField.IsValid()))
                 return;
 
-            PushGroup(unionChild.Id(), "");
+            PushGroup(unionChild.Id(), field.Name());
+            m_writer.WriteLine("[{}]", m_pathName);
+            m_writer.IncreaseIndent();
+            m_writer.WriteLine("_he_union_tag = {} # {}", tag, activeField.Name().AsView());
             WriteField(data, activeField);
+            m_writer.DecreaseIndent();
             PopGroup();
         }
 
@@ -216,7 +546,7 @@ namespace he::schema
             const bool isArrayOfStructs = elementType.Data().IsStruct();
 
             if (isArrayOfStructs)
-                PushGroup(elementType.Data().Struct().Id(), name, true);
+                PushGroup(elementType.Data().Struct().Id(), name);
             else
                 m_writer.Write('[');
 
@@ -224,8 +554,10 @@ namespace he::schema
             {
                 if (isArrayOfStructs)
                 {
-                    m_writer.Write("[[{}]]\n", m_pathName);
+                    m_writer.WriteLine("[[{}]]", m_pathName);
+                    m_writer.IncreaseIndent();
                     WriteStruct(Helper::GetComposite(data, index + i));
+                    m_writer.DecreaseIndent();
                 }
                 else
                 {
@@ -237,7 +569,7 @@ namespace he::schema
             }
 
             if (isArrayOfStructs)
-                PopGroup(true);
+                PopGroup();
             else
                 m_writer.Write(']');
         }
@@ -257,6 +589,7 @@ namespace he::schema
                 && typeDataTag != Type::Data::Tag::List
                 && typeDataTag != Type::Data::Tag::Struct)
             {
+                m_writer.WriteIndent();
                 m_writer.Write("{} = ", name);
             }
 
@@ -284,15 +617,15 @@ namespace he::schema
                 }
                 case Type::Data::Tag::Blob:
                 {
-                    const List<uint8_t>::Reader bytes = Helper::GetPointer(data, index).TryGetList<uint8_t>();
-                    const Span<const uint8_t> byteSpan{ bytes.Data(), bytes.Size() };
-                    m_writer.WriteLine("\"{}\"", byteSpan); // TODO: Base64 if attribute is set
+                    const List<uint8_t>::Reader byteList = Helper::GetPointer(data, index).TryGetList<uint8_t>();
+                    const Span<const uint8_t> bytes{ byteList.Data(), byteList.Size() };
+                    m_writer.Write("\"{}\"", bytes); // TODO: Base64 if attribute is set
                     break;
                 }
                 case Type::Data::Tag::String:
                 {
                     const String::Reader str = Helper::GetPointer(data, index).TryGetString();
-                    m_writer.WriteLine("\"{}\"", str.AsView());
+                    m_writer.Write("\"{}\"", str.AsView());
                     break;
                 }
                 case Type::Data::Tag::List:
@@ -310,16 +643,33 @@ namespace he::schema
                     PushGroup(enumType.Id(), "");
                     Declaration::Data::Enum::Reader enumDecl = m_stack.Back().decl.Data().Enum();
 
+                    bool found = false;
                     const uint16_t enumValue = Helper::template GetData<uint16_t>(data, index, dataOffset);
                     for (Enumerator::Reader e : enumDecl.Enumerators())
                     {
                         if (e.Ordinal() == enumValue)
                         {
-                            m_writer.Write(e.Name());
+                            found = true;
+                            m_writer.Write("\"{}\"", e.Name());
                             break;
                         }
                     }
                     PopGroup();
+
+                    if (!HE_VERIFY(found))
+                    {
+                        HE_LOG_ERROR(he_schema,
+                            HE_MSG("Cannot find enum value for field. No enumerator exists in the schema with that value."),
+                            HE_KV(parent_id, m_stack.Back().decl.Id()),
+                            HE_KV(parent_name, m_stack.Back().decl.Name()),
+                            HE_KV(enum_value, enumValue),
+                            HE_KV(path, m_pathName),
+                            HE_KV(name, name),
+                            HE_KV(index, index),
+                            HE_KV(data_offset, dataOffset));
+                        return;
+                    }
+
                     break;
                 }
                 case Type::Data::Tag::Struct:
@@ -333,7 +683,10 @@ namespace he::schema
                         m_writer.Write("{ ");
 
                     if (!name.IsEmpty() && m_arrayStack == 0)
-                        m_writer.Write("[{}]\n", name);
+                    {
+                        m_writer.WriteLine("[{}]", m_pathName);
+                        m_writer.IncreaseIndent();
+                    }
 
                     WriteStruct(value);
 
@@ -342,9 +695,13 @@ namespace he::schema
                     else
                         m_writer.Write(" }");
 
+                    if (!name.IsEmpty() && m_arrayStack == 0)
+                        m_writer.DecreaseIndent();
+
                     break;
                 }
                 case Type::Data::Tag::Interface:
+                {
                     if (!HE_VERIFY(false, "Interface types cannot have values."))
                     {
                         HE_LOG_ERROR(he_schema,
@@ -352,24 +709,28 @@ namespace he::schema
                             HE_KV(parent_id, m_stack.Back().decl.Id()),
                             HE_KV(parent_name, m_stack.Back().decl.Name().AsView()),
                             HE_KV(interface_type_id, typeData.Interface().Id()),
+                            HE_KV(path, m_pathName),
                             HE_KV(name, name),
                             HE_KV(index, index),
                             HE_KV(data_offset, dataOffset));
                     }
                     break;
+                }
                 case Type::Data::Tag::AnyPointer:
-                    // TODO: Should be able to serialize these though...
-                    if (!HE_VERIFY(false, "AnyPointer types cannot have values."))
+                {
+                    if (!HE_VERIFY(false, "Serialization of AnyPointer types is not supported."))
                     {
                         HE_LOG_ERROR(he_schema,
-                            HE_MSG("Skipping AnyPointer type when serializing."),
+                            HE_MSG("Skipping AnyPointer type when serializing to TOML."),
                             HE_KV(parent_id, m_stack.Back().decl.Id()),
                             HE_KV(parent_name, m_stack.Back().decl.Name().AsView()),
+                            HE_KV(path, m_pathName),
                             HE_KV(name, name),
                             HE_KV(index, index),
                             HE_KV(data_offset, dataOffset));
                     }
                     break;
+                }
             }
         }
 
@@ -383,6 +744,7 @@ namespace he::schema
                     HE_MSG("Failed to find dependent type, unable to properly serialize data."),
                     HE_KV(parent_id, m_stack.Back().decl.Id()),
                     HE_KV(parent_name, m_stack.Back().decl.Name().AsView()),
+                    HE_KV(path, m_pathName),
                     HE_KV(id, id),
                     HE_KV(name, name));
             }
@@ -399,10 +761,13 @@ namespace he::schema
             ctx.info = info;
             ctx.decl = GetSchema(*info);
 
-            if (!m_pathName.IsEmpty())
-                m_pathName.PushBack('.');
+            if (!name.IsEmpty())
+            {
+                if (!m_pathName.IsEmpty())
+                    m_pathName.PushBack('.');
 
-            m_pathName += name;
+                m_pathName += name;
+            }
         }
 
         void PopGroup(bool isArray = false)
@@ -426,7 +791,6 @@ namespace he::schema
 
     private:
         StringBuilder& m_writer;
-        const DeclInfo* m_info;
         uint32_t m_arrayStack{ 0 };
         ::he::String m_pathName;
         Vector<Context> m_stack;
@@ -439,9 +803,9 @@ namespace he::schema
        return writer.Write(data, info);
     }
 
-    // bool FromToml(Builder& dst, const DeclInfo& info)
-    // {
-    //    TomlReader reader(dst);
-    //    return reader.Visit(schema);
-    // }
+     bool FromToml(Builder& dst, const char* data, const DeclInfo& info)
+     {
+        TomlReader reader(dst);
+        return reader.Read(data, info);
+     }
 }

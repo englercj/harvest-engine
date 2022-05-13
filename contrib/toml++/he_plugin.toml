@@ -1,0 +1,33 @@
+# Copyright Chad Engler
+
+id = "toml++"
+name = "toml++"
+description = "Header-only TOML config file parser and serializer for C++17."
+version = "3.0.1"
+author = "Mark Gillard <marzer_@hotmail.com>"
+license = "MIT"
+homepage = "https://marzer.github.io/tomlplusplus/"
+
+[install]
+    github = "marzer/tomlplusplus#v3.0.1"
+
+[[modules]]
+    name = "toml++"
+    type = "static"
+    group = "engine/contrib"
+    warnings = "Off"
+    files = [
+        "include/**",
+        "%{path.getdirectory(he.get_plugin('toml++')._file_path)}/toml.cpp",
+        "%{path.getdirectory(he.get_plugin('toml++')._file_path)}/toml++_user_config.h",
+    ]
+    public_defines = ["TOML_CONFIG_HEADER=\"toml++_user_config.h\""]
+    public_dependson = ["freetype", "he_core"]
+    public_includedirs = [
+        "include",
+        "%{path.getdirectory(he.get_plugin('toml++')._file_path)}",
+    ]
+
+    [[modules.variants]]
+        conditions = ["system:linux"]
+        public_dependson = ["sys:pthread", "sys:dl"]

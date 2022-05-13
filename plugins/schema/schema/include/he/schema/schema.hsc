@@ -6,7 +6,7 @@ namespace he.schema;
 
 struct Toml
 {
-    attribute Name(field, enumerator, group, union) :String;
+    attribute Name(field, enumerator) :String;
     attribute Hex(field) :void;
     attribute Base64(field) :void;
 }
@@ -188,7 +188,7 @@ struct Declaration
 {
     name @0 :String;
     id @1 :uint64 $Toml.Hex;
-    parentId @2 :uint64;
+    parentId @2 :uint64 $Toml.Hex;
 
     source @3 :SourceInfo;
 

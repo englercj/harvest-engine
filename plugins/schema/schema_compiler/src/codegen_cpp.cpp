@@ -1401,7 +1401,7 @@ namespace he::schema
             case Value::Data::Tag::Tuple:
             case Value::Data::Tag::Interface:
             case Value::Data::Tag::AnyPointer:
-                HE_ASSERT(false, "Invalid value kind. Expected a non-pointer value.");
+                HE_ASSERT(false, HE_MSG("Invalid value kind. Expected a non-pointer value."));
                 break;
         }
     }
@@ -1544,15 +1544,15 @@ namespace he::schema
             case Value::Data::Tag::Float32:
             case Value::Data::Tag::Float64:
             case Value::Data::Tag::Enum:
-                HE_ASSERT(false, "Invalid value kind. Expected a pointer value.");
+                HE_ASSERT(false, HE_MSG("Invalid value kind. Expected a pointer value."));
                 break;
 
             case Value::Data::Tag::Interface:
-                HE_ASSERT(false, "Invalid value kind. Interface cannot have a default value.");
+                HE_ASSERT(false, HE_MSG("Invalid value kind. Interface cannot have a default value."));
                 break;
 
             case Value::Data::Tag::AnyPointer:
-                HE_ASSERT(false, "Invalid value kind. AnyPointer cannot have a default value.");
+                HE_ASSERT(false, HE_MSG("Invalid value kind. AnyPointer cannot have a default value."));
                 break;
         }
 
@@ -1585,12 +1585,12 @@ namespace he::schema
             case Value::Data::Tag::Enum: elementSize = ElementSize::TwoBytes; break;
             case Value::Data::Tag::Tuple: elementSize = ElementSize::Composite; break;
             case Value::Data::Tag::Array:
-                HE_ASSERT(false, "Arrays cannot be nested in lists or other arrays");
+                HE_ASSERT(false, HE_MSG("Arrays cannot be nested in lists or other arrays"));
                 break;
             case Value::Data::Tag::Interface:
             case Value::Data::Tag::AnyPointer:
             case Value::Data::Tag::Void:
-                HE_ASSERT(false, "{} cannot have a default value", elementTag);
+                HE_ASSERT(false, HE_MSG("{} cannot have a default value", elementTag));
                 break;
         }
 
@@ -1646,12 +1646,12 @@ namespace he::schema
                     break;
                 }
                 case Value::Data::Tag::Array:
-                    HE_ASSERT(false, "Arrays cannot be nested in lists or other arrays");
+                    HE_ASSERT(false, HE_MSG("Arrays cannot be nested in lists or other arrays"));
                     break;
                 case Value::Data::Tag::Interface:
                 case Value::Data::Tag::AnyPointer:
                 case Value::Data::Tag::Void:
-                    HE_ASSERT(false, "{} types cannot have default values", elementTag);
+                    HE_ASSERT(false, HE_MSG("{} types cannot have default values", elementTag));
                     break;
             }
         }
@@ -1684,7 +1684,7 @@ namespace he::schema
 
                 const Field::Meta::Reader fieldMeta = field.Meta();
 
-                HE_ASSERT(!fieldMeta.IsUnion(), "Union fields cannot have a default value");
+                HE_ASSERT(!fieldMeta.IsUnion(), HE_MSG("Union fields cannot have a default value"));
 
                 if (fieldMeta.IsGroup())
                 {
@@ -1768,7 +1768,7 @@ namespace he::schema
             case Type::Data::Tag::Interface:
             case Type::Data::Tag::AnyPointer:
             case Type::Data::Tag::Void:
-                HE_ASSERT(false, "{} types cannot have default values", type.Tag());
+                HE_ASSERT(false, HE_MSG("{} types cannot have default values", type.Tag()));
                 break;
         }
     }

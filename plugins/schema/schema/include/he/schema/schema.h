@@ -101,6 +101,25 @@ namespace he::schema
     }
 
     // Returns the bit alignment requirements for a type
+    inline uint32_t GetBitsInElementSize(ElementSize s)
+    {
+        switch (s)
+        {
+            case ElementSize::Void: return 0;
+            case ElementSize::Bit: return 1;
+            case ElementSize::Byte: return 8;
+            case ElementSize::TwoBytes: return 16;
+            case ElementSize::FourBytes: return 32;
+            case ElementSize::EightBytes: return 64;
+            case ElementSize::Pointer: return 64;
+            case ElementSize::Composite: return 0;
+        }
+
+        HE_ASSERT(false, HE_MSG("Unknown type kind"));
+        return 0;
+    }
+
+    // Returns the bit alignment requirements for a type
     inline uint32_t GetTypeAlign(const Type::Reader& t)
     {
         switch (t.Data().Tag())
@@ -182,7 +201,19 @@ namespace he::schema
 
     inline Declaration::Reader GetSchema(const DeclInfo& info)
     {
-        return Declaration::Reader(StructReader(info.schema, info.dataWordSize, info.pointerCount));
+        const DeclInfo& I = Declaration::DeclInfo;
+        return Declaration::Reader(StructReader(info.schema, I.dataWordSize, I.pointerCount));
+    }
+
+    inline Field::Reader FindField(StringView name, Declaration::Data::Struct::Reader st)
+    {
+        for (Field::Reader field : st.Fields())
+        {
+            if (field.Name() == name)
+                return field;
+        }
+
+        return {};
     }
 
     const DeclInfo* FindDependency(const DeclInfo& info, TypeId id);

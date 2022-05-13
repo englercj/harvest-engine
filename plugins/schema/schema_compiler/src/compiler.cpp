@@ -396,7 +396,7 @@ namespace he::schema
                 return v->id;
             }
             default:
-                HE_ASSERT(false, "Invalid method params type. Verify should've caught this.");
+                HE_ASSERT(false, HE_MSG("Invalid method params type. Verify should've caught this."));
                 return 0;
         }
     }
@@ -437,7 +437,7 @@ namespace he::schema
                     break;
                 }
                 default:
-                    HE_ASSERT(false, "Invalid type node. Verify should've checked this.");
+                    HE_ASSERT(false, HE_MSG("Invalid type node. Verify should've checked this."));
                     break;
             }
             return type;
@@ -773,7 +773,7 @@ namespace he::schema
             case AstExpression::Kind::Identifier:
             case AstExpression::Kind::Namespace:
             case AstExpression::Kind::Unknown:
-                HE_ASSERT(false, "Invalid value type. Verify should've caught this.");
+                HE_ASSERT(false, HE_MSG("Invalid value type. Verify should've caught this."));
                 return {};
         }
 
@@ -884,7 +884,7 @@ namespace he::schema
             }
 
             default:
-                HE_ASSERT(false, "Encountered invalid array size value type. This should've been verified already.");
+                HE_ASSERT(false, HE_MSG("Encountered invalid array size value type. This should've been verified already."));
                 return 0;
         }
     }

@@ -14,8 +14,8 @@ namespace he::schema
     template <typename T>
     bool ToToml(StringBuilder& dst, typename T::Reader data) { return ToToml(dst, data, T::DeclInfo); }
 
-    bool FromToml(Builder& dst, const DeclInfo& info);
+    bool FromToml(Builder& dst, const char* data, const DeclInfo& info);
 
     template <typename T>
-    bool FromToml(Builder& dst) { return FromToml(dst, T::DeclInfo); }
+    bool FromToml(Builder& dst, const char* data) { return FromToml(dst, data, T::DeclInfo); }
 }

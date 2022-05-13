@@ -12,7 +12,9 @@ namespace he::schema
 {
     HE_SCHEMA_DECL_INFO_FOR_ID(0x979e892c449bc4d8); // file
     HE_SCHEMA_DECL_INFO_FOR_ID(0xc209341a45619228); // Toml
+    HE_SCHEMA_DECL_INFO_FOR_ID(0xc5144765ef1b906b); // Toml::Name
     HE_SCHEMA_DECL_INFO_FOR_ID(0xadd3e5b7bc72e8a5); // Toml::Hex
+    HE_SCHEMA_DECL_INFO_FOR_ID(0xc2fc1f39cbc0264f); // Toml::Base64
     HE_SCHEMA_DECL_INFO_FOR_ID(0xa66eff5acba76a75); // Brand
     HE_SCHEMA_DECL_INFO_FOR_ID(0xac8f534465c8369b); // Brand::Scope
     HE_SCHEMA_DECL_INFO_FOR_ID(0xdd2b0f1a9d06a3b0); // Type
@@ -56,10 +58,22 @@ namespace he::schema
         Toml() = delete;
         HE_SCHEMA_DECL_STRUCT(0xc209341a45619228, 0x979e892c449bc4d8, 0, 0, 0);
 
+        struct Name
+        {
+            Name() = delete;
+            HE_SCHEMA_DECL_ATTRIBUTE(0xc5144765ef1b906b, 0xc209341a45619228);
+        };
+
         struct Hex
         {
             Hex() = delete;
             HE_SCHEMA_DECL_ATTRIBUTE(0xadd3e5b7bc72e8a5, 0xc209341a45619228);
+        };
+
+        struct Base64
+        {
+            Base64() = delete;
+            HE_SCHEMA_DECL_ATTRIBUTE(0xc2fc1f39cbc0264f, 0xc209341a45619228);
         };
     };
     struct Brand final
@@ -90,7 +104,7 @@ namespace he::schema
         struct Data final
         {
             Data() = delete;
-            HE_SCHEMA_DECL_STRUCT(0xc37ce87995a2ca78, 0xdd2b0f1a9d06a3b0, 0, 0, 0);
+            HE_SCHEMA_DECL_STRUCT(0xc37ce87995a2ca78, 0xdd2b0f1a9d06a3b0, 6, 3, 1);
 
             class Reader;
             class Builder;
@@ -193,7 +207,7 @@ namespace he::schema
         struct Data final
         {
             Data() = delete;
-            HE_SCHEMA_DECL_STRUCT(0xda924af5c1761799, 0xa1a552dda5da9ae9, 0, 0, 0);
+            HE_SCHEMA_DECL_STRUCT(0xda924af5c1761799, 0xa1a552dda5da9ae9, 0, 3, 1);
 
             class Reader;
             class Builder;
@@ -249,7 +263,7 @@ namespace he::schema
         struct Meta final
         {
             Meta() = delete;
-            HE_SCHEMA_DECL_STRUCT(0xcaa0cb1693b7d451, 0xcc214d2a9c304894, 0, 0, 0);
+            HE_SCHEMA_DECL_STRUCT(0xcaa0cb1693b7d451, 0xcc214d2a9c304894, 7, 4, 4);
 
             class Reader;
             class Builder;
@@ -315,7 +329,7 @@ namespace he::schema
         struct Data final
         {
             Data() = delete;
-            HE_SCHEMA_DECL_STRUCT(0xc991ea09a07196a4, 0xd6eb382ff8ab299c, 0, 0, 0);
+            HE_SCHEMA_DECL_STRUCT(0xc991ea09a07196a4, 0xd6eb382ff8ab299c, 20, 5, 7);
 
             class Reader;
             class Builder;
@@ -2946,3 +2960,4 @@ namespace he::schema
     inline void SchemaFile::Builder::SetRoot(Declaration::Reader value) { SuperType::GetPointerField(0).Set(value); }
     inline Declaration::Builder SchemaFile::Builder::InitRoot() { auto v = m_builder->AddStruct<struct Declaration>(); SuperType::GetPointerField(0).Set(v); return v; }
 }
+

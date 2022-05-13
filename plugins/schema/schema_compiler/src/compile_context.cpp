@@ -62,7 +62,7 @@ namespace he::schema
                     break;
 
                 default:
-                    HE_ASSERT(false, "Invalid expression in qualified name, though should've been verified.");
+                    HE_ASSERT(false, HE_MSG("Invalid expression in qualified name, though should've been verified."));
                     break;
             }
 

@@ -503,7 +503,7 @@ namespace he::schema
                 }
             }
 
-            HE_ASSERT(false, "Tried to expand field that was never placed.");
+            HE_ASSERT(false, HE_MSG("Tried to expand field that was never placed."));
             return false;
         }
 
@@ -608,7 +608,8 @@ namespace he::schema
                     unionPlacer->PlaceTag();
                     st.SetUnionTagOffset(unionPlacer->TagOffset());
                 }
-                else if (st.IsGroup())
+
+                if (st.IsUnion() || st.IsGroup())
                 {
                     st.SetDataFieldCount(m_struct.DataFieldCount());
                     st.SetDataWordSize(m_struct.DataWordSize());

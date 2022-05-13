@@ -46,7 +46,7 @@ namespace he::schema
         if (elementSize == ElementSize::Composite)
         {
             const uint32_t wordCount = ref.ListSize();
-            PointerReader tag = PointerReader(ref.Target());
+            const PointerReader tag = PointerReader(ref.Target());
 
             // TODO: Bounds checking
 

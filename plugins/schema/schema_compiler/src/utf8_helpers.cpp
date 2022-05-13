@@ -35,7 +35,7 @@ namespace he::schema
             }
         }
 
-        HE_ASSERT(false, "Invalid unicode code point");
+        HE_ASSERT(false, HE_MSG("Invalid unicode code point"));
         HE_UNREACHABLE();
     }
 

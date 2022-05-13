@@ -45,7 +45,7 @@ A (2 bits) = 0, to indicate that this is a struct pointer.
 B (30 bits) = Offset, in words, from the end of the pointer to the
     start of the struct's data section. Signed.
 C (16 bits) = Size of the struct's data section, in words.
-D (16 bits) = NUmber of pointers in the struct's pointer section.
+D (16 bits) = Number of pointers in the struct's pointer section.
 ```
 
 Notes about the positioning of fields in the data and pointer sections:

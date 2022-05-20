@@ -2,8 +2,6 @@
 
 #include "he/core/log.h"
 
-#include "he/core/assert.h"
-#include "he/core/debug.h"
 #include "he/core/enum_ops.h"
 #include "he/core/vector.h"
 
@@ -21,36 +19,6 @@ namespace he
     {
         static Vector<LogSinkStorage> s_sinks;
         return s_sinks;
-    }
-
-    bool LogKV::GetBool() const
-    {
-        HE_ASSERT(kind == Kind::Bool);
-        return value.b;
-    }
-
-    int64_t LogKV::GetInt() const
-    {
-        HE_ASSERT(kind == Kind::Int);
-        return value.i;
-    }
-
-    uint64_t LogKV::GetUint() const
-    {
-        HE_ASSERT(kind == Kind::Uint);
-        return value.u;
-    }
-
-    double LogKV::GetDouble() const
-    {
-        HE_ASSERT(kind == Kind::Double);
-        return value.d;
-    }
-
-    const String& LogKV::GetString() const
-    {
-        HE_ASSERT(kind == Kind::String);
-        return value.s;
     }
 
     void AddLogSink(LogSinkFunc sink, void* userData)
@@ -72,7 +40,7 @@ namespace he
         }
     }
 
-    void Log(const LogSource& source, const LogKV* kvs, uint32_t count)
+    void Log(const LogSource& source, const KeyValue* kvs, uint32_t count)
     {
         Vector<LogSinkStorage>& sinks = GetSinks();
 
@@ -92,21 +60,6 @@ namespace he
             case LogLevel::Info: return "Info";
             case LogLevel::Warn: return "Warn";
             case LogLevel::Error: return "Error";
-        }
-
-        return "<unknown>";
-    }
-
-    template <>
-    const char* AsString(LogKV::Kind x)
-    {
-        switch (x)
-        {
-            case LogKV::Kind::Bool: return "Bool";
-            case LogKV::Kind::Int: return "Int";
-            case LogKV::Kind::Uint: return "Uint";
-            case LogKV::Kind::Double: return "Double";
-            case LogKV::Kind::String: return "String";
         }
 
         return "<unknown>";

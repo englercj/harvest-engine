@@ -26,13 +26,6 @@ HE_TEST(core, compiler, Report)
 }
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST(core, compiler, ALIGNED)
-{
-    HE_ALIGNED(128) uint8_t byte;
-    HE_EXPECT(IsAligned(&byte, 128));
-}
-
-// ------------------------------------------------------------------------------------------------
 HE_TEST(core, compiler, FUNC_SIG)
 {
     HE_EXPECT_GT(HE_LENGTH_OF(HE_FUNC_SIG), 0);

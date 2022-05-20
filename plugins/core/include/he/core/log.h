@@ -2,18 +2,10 @@
 
 #pragma once
 
-#include "he/core/allocator.h"
-#include "he/core/appender.h"
 #include "he/core/config.h"
-#include "he/core/debug.h"
+#include "he/core/key_value.h"
 #include "he/core/macros.h"
-#include "he/core/string.h"
-#include "he/core/string_view.h"
-#include "he/core/type_traits.h"
 #include "he/core/types.h"
-#include "he/core/utils.h"
-
-#include "fmt/core.h"
 
 #define HE_LOG_LEVEL_TRACE  0   ///< Detailed tracing for a system, usually disbaled unless tracking a bug.
 #define HE_LOG_LEVEL_DEBUG  1   ///< Debug information useful for developers, usually disabled in non-internal builds.
@@ -33,42 +25,18 @@
     #endif
 #endif
 
-/// \def HE_LOG_MESSAGE_KEY
-/// Defines the quoted string to use as the key for the special "message" pair that is
-/// created in the HE_MSG and HE_LOGF macros. By default this is defined as "message".
-#if !defined(HE_LOG_MESSAGE_KEY)
-    #define HE_LOG_MESSAGE_KEY "message"
-#endif
-
-/// Macro that simplifies the construction of a key-value pair for a log.
-/// You can also specify a format string as the value followed by the format arguments.
-///
-/// \param k The unquoted name of the key. By convention these are snake_case.
-/// \param v The value of the pair, which can any arithmetic type or anything convertable to a
-///     string via fmt. Make sure to include the "*_fmt.h" header for the type you use. You can
-///     also specify a format string followed by arguments to format.
-/// \param ... The format arguments if `v` is a format string specifier.
-#define HE_KV(k, v, ...) (::he::LogKV{ #k, (v), ##__VA_ARGS__ })
-
-/// Shortcut macro for creating a key-value pair that represents the string message of the log.
-/// This generates a key-value pair using the expansion of \see HE_LOG_MESSAGE_KEY as the key.
-///
-/// \param fmt The format string to log.
-/// \param ... The format arguments.
-#define HE_MSG(fmt, ...) (::he::LogKV{ HE_LOG_MESSAGE_KEY, (fmt), ##__VA_ARGS__ })
-
 /// Base logging macro. Most users should not call this directly, but instead use the
 /// level-specific logging macros.
 ///
 /// \param lvl The level of the log.
-/// \param cat The quoted string name of the category.
+/// \param catStr The quoted string name of the category.
 /// \param ... A series of \see HE_KV(k, v, ...) or \see HE_MSG(fmt, ...) calls.
 #define HE_LOG(lvl, catStr, ...) \
     do { \
         if constexpr (static_cast<int>(::he::LogLevel::lvl) >= HE_LOG_LEVEL_ENABLED) { \
             constexpr ::he::LogSource LogEntrySource_{ ::he::LogLevel::lvl, HE_LINE, HE_FILE, __FUNCTION__, catStr }; \
-            const ::he::LogKV kvLogList_[]{ {"",0}, __VA_ARGS__ }; \
-            ::he::Log(LogEntrySource_, kvLogList_ + 1, HE_LENGTH_OF(kvLogList_) - 1); \
+            const ::he::KeyValue logKvList_[]{ {"",0}, __VA_ARGS__ }; \
+            ::he::Log(LogEntrySource_, logKvList_ + 1, HE_LENGTH_OF(logKvList_) - 1); \
         } \
     } while(0)
 
@@ -93,8 +61,10 @@
 /// Logs a string message at the Trace log level.
 ///
 /// \param cat The unquoted name of the log category.
-/// \param ... A series of \see HE_KV(k, v, ...) or \see HE_MSG(fmt, ...) calls.
-#define HE_LOGF_TRACE(cat, ...) HE_LOGF(Trace, #cat, __VA_ARGS__)
+/// \param fmt The format string. If there are no format arguments the string is used as-is,
+///     without formatting.
+/// \param ... The format arguments.
+#define HE_LOGF_TRACE(cat, fmt, ...) HE_LOGF(Trace, #cat, fmt, __VA_ARGS__)
 
 /// Logs a set of key-value pairs at the Debug log level.
 ///
@@ -105,8 +75,10 @@
 /// Logs a string message at the Debug log level.
 ///
 /// \param cat The unquoted name of the log category.
-/// \param ... A series of \see HE_KV(k, v, ...) or \see HE_MSG(fmt, ...) calls.
-#define HE_LOGF_DEBUG(cat, ...) HE_LOGF(Debug, #cat, __VA_ARGS__)
+/// \param fmt The format string. If there are no format arguments the string is used as-is,
+///     without formatting.
+/// \param ... The format arguments.
+#define HE_LOGF_DEBUG(cat, fmt, ...) HE_LOGF(Debug, #cat, fmt, __VA_ARGS__)
 
 /// Logs a set of key-value pairs at the Info log level.
 ///
@@ -117,8 +89,10 @@
 /// Logs a string message at the Info log level.
 ///
 /// \param cat The unquoted name of the log category.
-/// \param ... A series of \see HE_KV(k, v, ...) or \see HE_MSG(fmt, ...) calls.
-#define HE_LOGF_INFO(cat, ...)  HE_LOGF(Info, #cat, __VA_ARGS__)
+/// \param fmt The format string. If there are no format arguments the string is used as-is,
+///     without formatting.
+/// \param ... The format arguments.
+#define HE_LOGF_INFO(cat, fmt, ...)  HE_LOGF(Info, #cat, fmt, __VA_ARGS__)
 
 /// Logs a set of key-value pairs at the Warning log level.
 ///
@@ -129,8 +103,10 @@
 /// Logs a string message at the Warning log level.
 ///
 /// \param cat The unquoted name of the log category.
-/// \param ... A series of \see HE_KV(k, v, ...) or \see HE_MSG(fmt, ...) calls.
-#define HE_LOGF_WARN(cat, ...)  HE_LOGF(Warn, #cat, __VA_ARGS__)
+/// \param fmt The format string. If there are no format arguments the string is used as-is,
+///     without formatting.
+/// \param ... The format arguments.
+#define HE_LOGF_WARN(cat, fmt, ...)  HE_LOGF(Warn, #cat, fmt, __VA_ARGS__)
 
 /// Logs a set of key-value pairs at the Error log level.
 ///
@@ -141,8 +117,10 @@
 /// Logs a string message at the Error log level.
 ///
 /// \param cat The unquoted name of the log category.
-/// \param ... A series of \see HE_KV(k, v, ...) or \see HE_MSG(fmt, ...) calls.
-#define HE_LOGF_ERROR(cat, ...) HE_LOGF(Error, #cat, __VA_ARGS__)
+/// \param fmt The format string. If there are no format arguments the string is used as-is,
+///     without formatting.
+/// \param ... The format arguments.
+#define HE_LOGF_ERROR(cat, fmt, ...) HE_LOGF(Error, #cat, fmt, __VA_ARGS__)
 
 namespace he
 {
@@ -167,113 +145,10 @@ namespace he
         const char* category;   ///< The name of the category the log comes from.
     };
 
-    /// A key-value pair for a log entry. Values are stored in a union.
-    /// Keys are not copied, only the pointer is stored.
-    ///
-    /// \note Prefer using the HE_KV and HE_MSG macros rather than creating this structure directly.
-    struct LogKV
-    {
-        enum class Kind
-        {
-            Bool,
-            Int,
-            Uint,
-            Double,
-            String,
-        };
-
-        LogKV(const char* k, bool v) : key(k), kind(Kind::Bool), value{ .b = v } {}
-        LogKV(const char* k, signed char v) : key(k), kind(Kind::Int), value{ .i = v } {}
-        LogKV(const char* k, signed short v) : key(k), kind(Kind::Int), value{ .i = v } {}
-        LogKV(const char* k, signed int v) : key(k), kind(Kind::Int), value{ .i = v } {}
-        LogKV(const char* k, signed long v) : key(k), kind(Kind::Int), value{ .i = v } {}
-        LogKV(const char* k, signed long long v) : key(k), kind(Kind::Int), value{ .i = v } {}
-        LogKV(const char* k, unsigned char v) : key(k), kind(Kind::Uint), value{ .u = v } {}
-        LogKV(const char* k, unsigned short v) : key(k), kind(Kind::Uint), value{ .u = v } {}
-        LogKV(const char* k, unsigned int v) : key(k), kind(Kind::Uint), value{ .u = v } {}
-        LogKV(const char* k, unsigned long v) : key(k), kind(Kind::Uint), value{ .u = v } {}
-        LogKV(const char* k, unsigned long long v) : key(k), kind(Kind::Uint), value{ .u = v } {}
-        LogKV(const char* k, float v) : key(k), kind(Kind::Double), value{ .d = v } {}
-        LogKV(const char* k, double v) : key(k), kind(Kind::Double), value{ .d = v } {}
-
-        template <Enum T>
-        constexpr LogKV(const char* k, T v) : LogKV(k, std::underlying_type_t<T>(v)) {}
-
-        LogKV(const char* k, const char* v)
-            : key(k)
-            , kind(Kind::String)
-        {
-            value.s = v;
-        }
-
-        LogKV(const char* k, StringView v)
-            : key(k)
-            , kind(Kind::String)
-        {
-            value.s = v;
-        }
-
-        template <typename... Args>
-        LogKV(const char* k, fmt::format_string<Args...> fmt, Args&&... args)
-            : key(k)
-            , kind(Kind::String)
-        {
-            fmt::format_to(Appender(value.s), fmt, Forward<Args>(args)...);
-        }
-
-        template <typename T>
-        LogKV(const char* k, const T& v)
-            : key(k)
-            , kind(Kind::String)
-        {
-            fmt::format_to(Appender(value.s), "{}", v);
-        }
-
-        LogKV(const LogKV&) = delete;
-        LogKV& operator=(const LogKV&) = delete;
-
-        LogKV(LogKV&& x) { *this = Move(x); }
-        LogKV& operator=(LogKV&& x)
-        {
-            key = x.key;
-            kind = x.kind;
-            switch (kind)
-            {
-                case Kind::Bool: value.b = x.value.b; break;
-                case Kind::Int: value.i = x.value.i; break;
-                case Kind::Uint: value.u = x.value.u; break;
-                case Kind::Double: value.d = x.value.d; break;
-                case Kind::String: value.s = Move(x.value.s); break;
-            }
-            return *this;
-        }
-
-        bool GetBool() const;
-        int64_t GetInt() const;
-        uint64_t GetUint() const;
-        double GetDouble() const;
-        const String& GetString() const;
-
-        const char* key;
-        Kind kind;
-
-        struct
-        {
-            union
-            {
-                bool b;
-                int64_t i;
-                uint64_t u;
-                double d;
-            };
-            String s{ Allocator::GetTemp() };
-        } value;
-    };
-
     /// A pointer to a function that handles processing log entries.
     ///
     /// If your sink processes data on another thread, it must copy any parameters it
-    /// wants to process later. The structures that are passed in are not garuanteed to
+    /// wants to process later. The structures that are passed in are not guaranteed to
     /// live beyond the function body. However, you don't have to copy the strings in the
     /// LogSource, just the pointers since they point to static memory.
     ///
@@ -281,12 +156,12 @@ namespace he
     /// \param[in] source The source information for this log entry.
     /// \param[in] kvs An array of key-value pairs.
     /// \param[in] count The size of the `kvs` array.
-    using LogSinkFunc = void(*)(void* userData, const LogSource& source, const LogKV* kvs, uint32_t count);
+    using LogSinkFunc = void(*)(void* userData, const LogSource& source, const KeyValue* kvs, uint32_t count);
 
     /// Stores the sink to be called when a log entry is dispatched.
     ///
     /// \param[in] sink The log sink to store and send logs to.
-    /// \param[in] userData Pointer to opaque data that will be passed to the sink funciton as the
+    /// \param[in] userData Pointer to opaque data that will be passed to the sink function as the
     ///     first parameter.
     void AddLogSink(LogSinkFunc sink, void* userData = nullptr);
 
@@ -294,7 +169,7 @@ namespace he
     /// lifetime that extends beyond its time added as a log sink. That is, you should not destroy
     /// the sink until you have called \ref RemoveLogSink.
     ///
-    /// \note This overload is a helper for a common pattern of a class witha static Handler
+    /// \note This overload is a helper for a common pattern of a class with a static Handler
     /// function that expects the instance as the first parameter.
     ///
     /// \param[in] sink The log sink to add.
@@ -324,5 +199,5 @@ namespace he
     /// \param[in] source The source information for this log entry.
     /// \param[in] kvs An array of key-value pairs.
     /// \param[in] count The size of the `kvs` array.
-    void Log(const LogSource& source, const LogKV* kvs, uint32_t count);
+    void Log(const LogSource& source, const KeyValue* kvs, uint32_t count);
 }

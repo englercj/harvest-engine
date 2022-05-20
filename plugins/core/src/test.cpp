@@ -2,21 +2,24 @@
 
 #include "he/core/test.h"
 
-#include "he/core/allocator.h"
 #include "he/core/appender.h"
+#include "he/core/clock.h"
+#include "he/core/error.h"
 #include "he/core/string.h"
 #include "he/core/vector.h"
 
+#include "fmt/core.h"
+
 #include <algorithm>
 #include <atomic>
-#include <cstdio>
-#include <cstdarg>
 
 namespace he
 {
 namespace internal
 {
-    std::atomic<uint32_t> g_totalExpectations;
+    std::atomic<uint32_t> g_totalTestRuns{ 0 };
+    std::atomic<uint32_t> g_totalTestExpects{ 0 };
+    std::atomic<uint32_t> g_totalTestFailures{ 0 };
 }
 
     const TestInfo TestFixture::EmptyTestInfo{};
@@ -30,16 +33,11 @@ namespace internal
         }
 
         Vector<TestFixture*> tests{};
-        std::atomic<int32_t> failureCount{ 0 };
     };
-
-    static void Print(const char* msg)
-    {
-        fputs(msg, stdout);
-    }
 
     TestFixture::TestFixture()
     {
+        // TODO: Can probably make this a linked list andavoid the allocation at static construction that happens here.
         _TestRunner::Get().tests.PushBack(this);
     }
 
@@ -48,7 +46,7 @@ namespace internal
         TestBody();
     }
 
-    void SortTests()
+    static void SortTests()
     {
         _TestRunner& runner = _TestRunner::Get();
 
@@ -73,51 +71,89 @@ namespace internal
         });
     }
 
-    int32_t RunAllTests()
+    static bool TestLibErrorHandler(void*, const ErrorSource& source, const KeyValue* kvs, uint32_t count)
+    {
+        LogSource logSource;
+        logSource.level = LogLevel::Error;
+        logSource.line = source.line;
+        logSource.file = source.file;
+        logSource.funcName = source.funcName;
+        logSource.category = "he_test";
+
+        Log(logSource, kvs, count);
+
+        ErrorKind kind = kvs[0].GetEnum<ErrorKind>();
+        switch (kind)
+        {
+            case ErrorKind::Assert:
+            case ErrorKind::Except:
+                std::abort();
+                break;
+            case ErrorKind::Expect:
+            case ErrorKind::Verify:
+                break;
+        }
+
+        return true;
+    }
+
+    uint32_t RunAllTests(const char* filter)
     {
         SortTests();
 
         _TestRunner& runner = _TestRunner::Get();
-        runner.failureCount = 0;
 
-        String buf;
+        String testFqn;
 
         for (TestFixture* fixture : runner.tests)
         {
-            buf.Clear();
-
             const TestInfo& info = fixture->GetTestInfo();
-            fmt::format_to(Appender(buf), "{}:{}:{}\n", info.moduleName, info.suiteName, info.testName);
-            Print(buf.Data());
 
-            fixture->Before();
-            fixture->Run();
-            fixture->After();
+            if (!String::IsEmpty(filter))
+            {
+                testFqn.Clear();
+                fmt::format_to(Appender(testFqn), "{}:{}:{}", info.moduleName, info.suiteName, info.testName);
+                if (String::Find(testFqn.Data(), filter) == nullptr)
+                    continue;
+            }
+
+            ++internal::g_totalTestRuns;
+
+            HE_LOGF_INFO(he_test, "Running {}:{}:{}", info.moduleName, info.suiteName, info.testName);
+
+            MonotonicTime start;
+            MonotonicTime end;
+            {
+                ScopedErrorHandler errorGuard(TestLibErrorHandler);
+
+                start = MonotonicClock::Now();
+
+                fixture->Before();
+                fixture->Run();
+                fixture->After();
+
+                end = MonotonicClock::Now();
+            }
+
+            HE_LOG_INFO(he_test,
+                HE_KV(test_event_kind, TestEventKind::TestTiming),
+                HE_KV(test_time_ns, (end - start).val));
         }
 
-        buf.Clear();
-        fmt::format_to(Appender(buf), "\nRan {} tests with {} assertions.\n{} tests failed\n",
-            runner.tests.Size(), internal::g_totalExpectations.load(), runner.failureCount);
-        Print(buf.Data());
+        HE_LOGF_INFO(he_test, "Ran {} tests with {} expectations. {} tests failed.",
+            internal::g_totalTestRuns.load(), internal::g_totalTestExpects.load(), internal::g_totalTestFailures.load());
 
-        return runner.failureCount;
+        return internal::g_totalTestFailures.load();
     }
 
-    void internal::HandleTestFailure(const char* file, uint32_t line, const char* expr, const char* params)
+    template <>
+    const char* AsString(TestEventKind x)
     {
-        ++_TestRunner::Get().failureCount;
-
-        String buf;
-        fmt::format_to(Appender(buf), "{}({}): Expectation failed: {}\n", file, line, expr);
-
-        if (!String::IsEmpty(params))
+        switch (x)
         {
-            fmt::format_to(Appender(buf), "{}", params);
+            case TestEventKind::TestTiming: return "TestTiming";
         }
 
-        Print(buf.Data());
-
-        // TODO:
-        // he::HandleError(he::ErrorType::Expect, file, line, "", expr, buf.data());
+        return "<unknown>";
     }
 }

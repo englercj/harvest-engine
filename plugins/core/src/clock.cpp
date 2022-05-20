@@ -30,4 +30,12 @@ namespace he
         ts.tv_sec = static_cast<time_t>(systemTime.val / 1000000000);
         return ts;
     }
+
+    timespec PosixTimeFromDuration(Duration duration)
+    {
+        timespec ts{};
+        ts.tv_nsec = duration.val % 1000000000;
+        ts.tv_sec = static_cast<time_t>(duration.val / 1000000000);
+        return ts;
+    }
 }

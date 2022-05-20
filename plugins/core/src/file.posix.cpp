@@ -9,6 +9,7 @@
 #include "he/core/path.h"
 #include "he/core/scope_guard.h"
 #include "he/core/string.h"
+#include "he/core/utils.h"
 
 #include "fmt/core.h"
 
@@ -79,7 +80,7 @@ namespace he
 
         // path.Resize(sb.st_size + 1);
 
-        path.Resize(String::MaxEmbedCharacters);
+        path.Resize(String::MaxEmbedCharacters, he::DefaultInit);
 
         do
         {
@@ -94,7 +95,7 @@ namespace he
                 return Result::Success;
             }
 
-            path.Resize((path.Size() + 1024) * 2);
+            path.Resize(he::Max(512, path.Size() * 2));
         } while (true);
 
         return PosixResult(ENAMETOOLONG);

@@ -1,6 +1,5 @@
 // Copyright Chad Engler
 
-#include "console_sink.h"
 #include "stb_compress.h"
 #include "write_file_data.h"
 
@@ -15,6 +14,7 @@
 #include "he/core/scope_guard.h"
 #include "he/core/string.h"
 #include "he/core/log.h"
+#include "he/core/log_sinks.h"
 
 #include <iostream>
 
@@ -23,9 +23,9 @@ struct AppArgs
     bool help{ false };
     bool text{ false };
     bool compress{ false };
-    const char* input{};
-    const char* output{};
-    const char* name{};
+    const char* input{ nullptr };
+    const char* output{ nullptr };
+    const char* name{ nullptr };
 };
 
 #include "he/core/main.inl"
@@ -73,7 +73,7 @@ int he::AppMain(int argc, char* argv[])
 
         if (!HE_VERIFY(bytesRead == size))
             return -1;
-        if (!HE_VERIFY_RESULT(r))
+        if (!HE_VERIFY(r, HE_KV(result, r)))
             return -1;
 
         he::MemZero(static_cast<uint8_t*>(data) + size, 4);

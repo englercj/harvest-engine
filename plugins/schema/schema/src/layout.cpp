@@ -35,12 +35,12 @@ namespace he::schema
 
         // TODO: Cycle checks.
 
-        if (!HE_VERIFY(ref.Kind() == PointerKind::List, "Expected List pointer, but got a {} pointer.", ref.Kind()))
+        if (!HE_VERIFY(ref.Kind() == PointerKind::List, HE_MSG("Expected List pointer, but got a {} pointer.", ref.Kind())))
             goto useDefault;
 
         const ElementSize elementSize = ref.ListElementSize();
 
-        if (!HE_VERIFY(expectedElementSize == elementSize, "Expected list of {} elements, but got a list of {} elements.", expectedElementSize, elementSize))
+        if (!HE_VERIFY(expectedElementSize == elementSize, HE_MSG("Expected list of {} elements, but got a list of {} elements.", expectedElementSize, elementSize)))
             goto useDefault;
 
         if (elementSize == ElementSize::Composite)
@@ -50,13 +50,13 @@ namespace he::schema
 
             // TODO: Bounds checking
 
-            if (!HE_VERIFY(tag.Kind() == PointerKind::Struct, "Composite lists of non-struct types are not supported."))
+            if (!HE_VERIFY(tag.Kind() == PointerKind::Struct, HE_MSG("Composite lists of non-struct types are not supported.")))
                 goto useDefault;
 
             const uint32_t size = tag.ListCompositeTagSize();
             const uint32_t wordsPerElement = tag.StructWordSize();
 
-            if (!HE_VERIFY(size * wordsPerElement <= wordCount, "Composite list's elements overrun its word count."))
+            if (!HE_VERIFY(size * wordsPerElement <= wordCount, HE_MSG("Composite list's elements overrun its word count.")))
                 goto useDefault;
 
             // TODO: Check for a broken buffer that reports a huge list size with no real data
@@ -102,7 +102,7 @@ namespace he::schema
 
         // TODO: Cycle checks.
 
-        if (!HE_VERIFY(ref.Kind() == PointerKind::Struct, "Expected Struct pointer, but got a {} pointer.", ref.Kind()))
+        if (!HE_VERIFY(ref.Kind() == PointerKind::Struct, HE_MSG("Expected Struct pointer, but got a {} pointer.", ref.Kind())))
             goto useDefault;
 
         // TODO: Bounds checking
@@ -333,7 +333,7 @@ namespace he::schema
                 break;
             }
             case PointerKind::_Count:
-                HE_ASSERT(false, "Encountered invalid pointer kind");
+                HE_ASSERT(false, HE_MSG("Encountered invalid pointer kind"));
                 break;
         }
     }

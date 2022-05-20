@@ -2,59 +2,63 @@
 
 #include "he/core/log_sinks.h"
 
+#include "he/core/assert.h"
 #include "he/core/appender.h"
 #include "he/core/clock.h"
 #include "he/core/clock_fmt.h"
 #include "he/core/debugger.h"
 #include "he/core/directory.h"
 #include "he/core/enum_fmt.h"
+#include "he/core/key_value_fmt.h"
+#include "he/core/log.h"
 #include "he/core/path.h"
+#include "he/core/string_fmt.h"
 
 #include "fmt/format.h"
 
+#include <cstdio>
+
 namespace he
 {
-    void FormatKVsTo(String& dst, const LogKV* kvs, uint32_t count)
+    template <typename TimeFmt>
+    static void FormatFileLogLine(String& out, const LogSource& source, const KeyValue* kvs, uint32_t count, SystemTime now)
     {
-        constexpr auto ValueFmt = FMT_STRING("{} = {}");
+        double fractionalSeconds = now.val / static_cast<double>(he::Seconds::Ratio);
+        fractionalSeconds -= static_cast<uint64_t>(fractionalSeconds);
 
-        for (uint32_t i = 0; i < count; ++i)
+        if (count == 1 && kvs[0].Kind() == KeyValue::ValueKind::String && String::Equal(kvs[0].Key(), HE_MSG_KEY))
         {
-            const LogKV& kv = kvs[i];
-
-            switch (kv.kind)
-            {
-                case LogKV::Kind::Bool: fmt::format_to(Appender(dst), ValueFmt, kv.key, kv.value.b); break;
-                case LogKV::Kind::Int: fmt::format_to(Appender(dst), ValueFmt, kv.key, kv.value.i); break;
-                case LogKV::Kind::Uint: fmt::format_to(Appender(dst), ValueFmt, kv.key, kv.value.u); break;
-                case LogKV::Kind::Double: fmt::format_to(Appender(dst), ValueFmt, kv.key, kv.value.d); break;
-                case LogKV::Kind::String: fmt::format_to(Appender(dst), ValueFmt, kv.key, kv.value.s.Data()); break;
-            }
-
-            if (i != (count - 1))
-            {
-                dst.PushBack(',');
-                dst.PushBack(' ');
-            }
+            fmt::format_to(
+                Appender(out),
+                FMT_STRING("[{:%Y-%m-%d_%H-%M-%S}{:.04f}] [{}]({}) {}\n"),
+                TimeFmt(now),
+                fractionalSeconds,
+                source.level,
+                source.category,
+                kvs[0].GetString());
+        }
+        else
+        {
+            fmt::format_to(
+                Appender(out),
+                FMT_STRING("[{:%Y-%m-%d_%H-%M-%S}{:.04f}] [{}]({}) {}\n"),
+                TimeFmt(now),
+                fractionalSeconds,
+                source.level,
+                source.category,
+                fmt::join(kvs, kvs + count, ", "));
         }
     }
 
-    DebuggerSink::DebuggerSink(Allocator& allocator)
-        : m_buf(allocator)
-    {}
-
-    void DebuggerSink::LogHandler(void* userData, const LogSource& source, const LogKV* kvs, uint32_t count)
+    template <typename TimeFmt>
+    static void FormatFileName(String& out)
     {
-        DebuggerSink& sink = *static_cast<DebuggerSink*>(userData);
+        SystemTime now = SystemClock::Now();
 
-        std::lock_guard<std::mutex> lock(sink.m_mutex);
-
-        sink.m_buf.Clear();
-        fmt::format_to(Appender(sink.m_buf), "{}({}): [{}]({}) ", source.file, source.line, source.level, source.category);
-        FormatKVsTo(sink.m_buf, kvs, count);
-        sink.m_buf.PushBack('\n');
-
-        PrintToDebugger(sink.m_buf.Data());
+        fmt::format_to(
+            Appender(out),
+            FMT_STRING("_{:%Y-%m-%d_%H-%M-%S}.log"),
+            TimeFmt(now));
     }
 
     FileSink::FileSink(Allocator& allocator)
@@ -63,7 +67,7 @@ namespace he
 
     Result FileSink::Configure(const char* directory, const char* prefix, bool utcTime)
     {
-        std::lock_guard<std::mutex> lock(m_mutex);
+        LockGuard lock(m_mutex);
 
         m_utc = utcTime;
 
@@ -76,42 +80,86 @@ namespace he
         m_buf = directory;
         ConcatPath(m_buf, prefix);
 
-
-        constexpr auto LogFileNameFmt = FMT_STRING("_{:%Y-%m-%d_%H-%M-%S}.log");
-
-        SystemTime now = SystemClock::Now();
         if (m_utc)
-            fmt::format_to(Appender(m_buf), LogFileNameFmt, FmtUtcTime(now));
+            FormatFileName<FmtUtcTime>(m_buf);
         else
-            fmt::format_to(Appender(m_buf), LogFileNameFmt, FmtLocalTime(now));
+            FormatFileName<FmtLocalTime>(m_buf);
 
         return m_file.Open(m_buf.Data(), FileOpenMode::WriteTruncate);
     }
 
-    void FileSink::LogHandler(void* userData, const LogSource& source, const LogKV* kvs, uint32_t count)
+    void FileSink::Handler(const LogSource& source, const KeyValue* kvs, uint32_t count)
     {
         SystemTime now = SystemClock::Now();
-        double fractionalSeconds = now.val / static_cast<double>(he::Seconds::Ratio);
-        fractionalSeconds -= static_cast<uint64_t>(fractionalSeconds);
 
-        FileSink& sink = *static_cast<FileSink*>(userData);
+        LockGuard lock(m_mutex);
 
-        std::lock_guard<std::mutex> lock(sink.m_mutex);
-
-        if (!sink.m_file.IsOpen())
+        if (!m_file.IsOpen())
             return;
 
-        constexpr auto LogLineHdrFmt = FMT_STRING("[{:%Y-%m-%d_%H-%M-%S}{:.03f}][{}]({}) ");
-
-        sink.m_buf.Clear();
-        if (sink.m_utc)
-            fmt::format_to(Appender(sink.m_buf), LogLineHdrFmt, FmtUtcTime(now), fractionalSeconds, source.level, source.category);
+        m_buf.Clear();
+        if (m_utc)
+            FormatFileLogLine<FmtUtcTime>(m_buf, source, kvs, count, now);
         else
-            fmt::format_to(Appender(sink.m_buf), LogLineHdrFmt, FmtLocalTime(now), fractionalSeconds, source.level, source.category);
+            FormatFileLogLine<FmtLocalTime>(m_buf, source, kvs, count, now);
 
-        FormatKVsTo(sink.m_buf, kvs, count);
-        sink.m_buf.PushBack('\n');
+        m_file.Write(m_buf.Data(), m_buf.Size());
+    }
 
-        sink.m_file.Write(sink.m_buf.Data(), sink.m_buf.Size());
+    void DebuggerSink(void*, const LogSource& source, const KeyValue* kvs, uint32_t count)
+    {
+        String msg(Allocator::GetTemp());
+
+        if (count == 1 && kvs[0].Kind() == KeyValue::ValueKind::String && String::Equal(kvs[0].Key(), HE_MSG_KEY))
+        {
+            fmt::format_to(
+                Appender(msg),
+                "{}({}): [{}]({}) {}\n",
+                source.file,
+                source.line,
+                source.level,
+                source.category,
+                kvs[0].GetString());
+        }
+        else
+        {
+            fmt::format_to(
+                Appender(msg),
+                "{}({}): [{}]({}) {}\n",
+                source.file,
+                source.line,
+                source.level,
+                source.category,
+                fmt::join(kvs, kvs + count, ", "));
+        }
+
+        PrintToDebugger(msg.Data());
+    }
+
+    void ConsoleSink(void*, const LogSource& source, const KeyValue* kvs, uint32_t count)
+    {
+        String msg(Allocator::GetTemp());
+
+        if (count == 1 && kvs[0].Kind() == KeyValue::ValueKind::String && String::Equal(kvs[0].Key(), HE_MSG_KEY))
+        {
+            fmt::format_to(
+                Appender(msg),
+                "[{}]({}) {}\n",
+                source.level,
+                source.category,
+                kvs[0].GetString());
+        }
+        else
+        {
+            fmt::format_to(
+                Appender(msg),
+                "[{}]({}) {}\n",
+                source.level,
+                source.category,
+                fmt::join(kvs, kvs + count, ", "));
+        }
+
+        auto* stream = source.level >= LogLevel::Warn ? stderr : stdout;
+        fputs(msg.Data(), stream);
     }
 }

@@ -2,6 +2,7 @@
 
 #include "he/sqlite/database.h"
 
+#include "he/core/error.h"
 #include "he/core/test.h"
 
 using namespace he::sqlite;
@@ -23,7 +24,7 @@ HE_TEST(sqlite, Database, Negative)
 {
     Database db;
 
-    he::ScopedErrorHandler err([](he::ErrorType, const char*, const uint32_t, const char*, const char*, const char*) { return false; });
+    he::ScopedErrorHandler err([](void*, const he::ErrorSource&, const he::KeyValue*, uint32_t) { return false; });
 
     // Execute can't work without an open db
     HE_EXPECT(!db.Execute("CREATE TABLE test(col0 INTEGER);"));

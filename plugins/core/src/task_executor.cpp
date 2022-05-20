@@ -36,14 +36,14 @@ namespace he
     void ThreadPoolExecutor::Shutdown()
     {
         {
-            std::unique_lock<std::mutex> lock(m_mutex);
+            LockGuard lock(m_mutex);
             if (!m_running)
                 return;
 
             m_running = false;
         }
 
-        m_cv.notify_all();
+        m_cv.WakeAll();
 
         for (std::thread& t : m_threads)
             t.join();
@@ -56,11 +56,11 @@ namespace he
         if (!func)
             return;
 
-        m_mutex.lock();
+        m_mutex.Acquire();
         m_tasks.push_back({ func, taskData });
-        m_mutex.unlock();
+        m_mutex.Release();
 
-        m_cv.notify_one();
+        m_cv.WakeOne();
     }
 
     bool ThreadPoolExecutor::Pump()
@@ -68,9 +68,9 @@ namespace he
         ThreadTask task;
 
         {
-            std::unique_lock<std::mutex> lock(m_mutex);
+            LockGuard lock(m_mutex);
 
-            m_cv.wait(lock, [this]()
+            m_cv.Wait(lock, [this]()
             {
                 return !m_tasks.empty() || !m_running;
             });

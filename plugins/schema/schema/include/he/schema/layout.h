@@ -696,7 +696,7 @@ namespace he::schema
 
             // The metadata words should always fit within the data section when we have fields
             HE_ASSERT(dataFieldCount == 0 || m_metaWordSize < m_dataWordSize,
-                "Data section is not large enough to fit fields and metadata. This is likely a codegen bug.");
+                HE_MSG("Data section is not large enough to fit fields and metadata. This is likely a codegen bug."));
         }
 
         // Common

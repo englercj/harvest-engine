@@ -156,7 +156,7 @@ namespace he::sqlite
             if (!HE_VERIFY(stmt.Step() == StepResult::Done))
                 return false;
 
-            if (!HE_VERIFY(success, "Migration failed"))
+            if (!HE_VERIFY(success, HE_MSG("Migration failed")))
                 return false;
         }
 

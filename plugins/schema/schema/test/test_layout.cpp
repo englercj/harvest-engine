@@ -9,7 +9,7 @@
 using namespace he::schema;
 
 // ------------------------------------------------------------------------------------------------
-HE_ALIGNED(8) static const uint8_t SimpleStructTestBytes[] =
+alignas(8) static const uint8_t SimpleStructTestBytes[] =
 {
     // Struct pointer, offset = 0, dataSize = 2, pointerCount = 0
     0x00, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00,
@@ -21,7 +21,7 @@ HE_ALIGNED(8) static const uint8_t SimpleStructTestBytes[] =
 static const Word* SimpleStructTest = reinterpret_cast<const Word*>(SimpleStructTestBytes);
 
 // ------------------------------------------------------------------------------------------------
-HE_ALIGNED(8) static const uint8_t SimpleStringTestBytes[] =
+alignas(8) static const uint8_t SimpleStringTestBytes[] =
 {
     // List pointer, offset = 0, elementSize = 2 (1 byte), size of list = 8
     0x01, 0x00, 0x00, 0x00, 0x42, 0x00, 0x00, 0x00,
@@ -397,7 +397,7 @@ HE_TEST(schema, layout, PointerBuilder)
         HE_EXPECT_EQ(ptr.ListSize(), list.Size());
 
         {
-            he::ScopedErrorHandler ignore([](he::ErrorType, const char*, const uint32_t, const char*, const char*, const char*) { return false; });
+            he::ScopedErrorHandler ignore([](void*, const he::ErrorSource&, const he::KeyValue*, uint32_t) { return false; });
 
             HE_EXPECT(!ptr.TryGetStruct().IsValid());
             HE_EXPECT(!ptr.TryGetList(ElementSize::TwoBytes).IsValid());
@@ -443,7 +443,7 @@ HE_TEST(schema, layout, PointerBuilder)
         HE_EXPECT_EQ(ptr.StructPointerCount(), st.PointerCount());
 
         {
-            he::ScopedErrorHandler ignore([](he::ErrorType, const char*, const uint32_t, const char*, const char*, const char*) { return false; });
+            he::ScopedErrorHandler ignore([](void*, const he::ErrorSource&, const he::KeyValue*, uint32_t) { return false; });
 
             HE_EXPECT(!ptr.TryGetList(ElementSize::Byte).IsValid());
             HE_EXPECT(!ptr.TryGetList(ElementSize::Composite).IsValid());

@@ -868,7 +868,7 @@ HE_TEST(core, Vector, Adopt_Release)
 
     struct TestObj { ~TestObj() { ++s_destructed; } };
 
-    constexpr TestObj* Null = nullptr;
+    const TestObj* Null = nullptr;
 
     {
         Vector<TestObj> v;

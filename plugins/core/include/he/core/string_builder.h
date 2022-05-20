@@ -15,6 +15,8 @@ namespace he
     class StringBuilder final
     {
     public:
+        using ElementType = String::ElementType;
+
         // ----------------------------------------------------------------------------------------
         // Construction
 

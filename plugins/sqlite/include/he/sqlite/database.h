@@ -7,7 +7,6 @@
 #include "he/sqlite/transaction.h"
 
 #include <unordered_map>
-#include <mutex>
 
 struct sqlite3;
 

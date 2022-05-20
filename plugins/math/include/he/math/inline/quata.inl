@@ -30,7 +30,7 @@ namespace he
 
     inline Vec4a ToEuler(const Quata& q)
     {
-        HE_ALIGNED(16) float v[4];
+        alignas(16) float v[4];
         Store(v, q.v);
 
         return MakeVec4a(ToEuler(Quat{ v[0], v[1], v[2], v[3] }));

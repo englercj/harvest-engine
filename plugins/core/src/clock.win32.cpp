@@ -8,6 +8,18 @@
 
 namespace he
 {
+    struct _PerfFrequencyHelper
+    {
+        _PerfFrequencyHelper()
+        {
+            LARGE_INTEGER n;
+            ::QueryPerformanceFrequency(&n);
+            value = n.QuadPart;
+        }
+
+        uint64_t value;
+    };
+
     template <>
     SystemTime SystemClock::Now()
     {
@@ -24,20 +36,14 @@ namespace he
     template <>
     MonotonicTime MonotonicClock::Now()
     {
+        static _PerfFrequencyHelper s_freq;
+
         LARGE_INTEGER x;
         ::QueryPerformanceCounter(&x);
         uint64_t perfTicks = static_cast<uint64_t>(x.QuadPart);
 
-        static uint64_t s_freq = 0;
-        if (s_freq == 0)
-        {
-            LARGE_INTEGER n;
-            ::QueryPerformanceFrequency(&n);
-            s_freq = n.QuadPart;
-        }
-
-        const uint64_t ns = (perfTicks / s_freq) * 1000000000
-            + (perfTicks % s_freq) * 1000000000 / s_freq;
+        const uint64_t ns = (perfTicks / s_freq.value) * 1000000000
+            + (perfTicks % s_freq.value) * 1000000000 / s_freq.value;
 
         return { ns };
     }

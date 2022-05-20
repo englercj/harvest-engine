@@ -11,7 +11,6 @@
 #include "fmt/core.h"
 
 #include <deque>
-#include <mutex>
 
 namespace he::editor
 {
@@ -26,7 +25,7 @@ namespace he::editor
         auto EntriesBegin() { return m_entries.begin(); }
         auto EntriesEnd() { return m_entries.end(); }
 
-        static void LogHandler(void* userData, const LogSource& source, const LogKV* kvs, uint32_t count);
+        static void LogHandler(void* userData, const LogSource& source, const KeyValue* kvs, uint32_t count);
 
     private:
         struct LogEntry
@@ -46,7 +45,7 @@ namespace he::editor
 
         FileSink m_fileSink{};
 
-        std::mutex m_mutex{};
+        Mutex m_mutex{};
         std::deque<LogEntry> m_entries{};
     };
 }

@@ -3,6 +3,7 @@
 #pragma once
 
 #include "he/core/types.h"
+#include "he/core/utils.h"
 
 namespace he
 {
@@ -20,16 +21,17 @@ namespace he
         using difference_type   = ptrdiff_t;
         using _Unchecked_type   = Appender; // Mark iterator as checked.
 
-        explicit Appender(T& container) noexcept
+        constexpr explicit Appender(T& container) noexcept
             : m_container(&container) {}
 
-        Appender& operator=(char c) { m_container->PushBack(c); return *this; }
-        [[nodiscard]] constexpr Appender& operator*() noexcept { return *this; }
+        constexpr Appender& operator=(const typename T::ElementType& v) { m_container->PushBack(v); return *this; }
+        constexpr Appender& operator=(typename T::ElementType&& v) { m_container->PushBack(Move(v)); return *this; }
 
+        [[nodiscard]] constexpr Appender& operator*() noexcept { return *this; }
         constexpr Appender& operator++() noexcept { return *this; }
         constexpr Appender operator++(int) noexcept { return *this; }
 
-    private:
+    protected:
         T* m_container;
     };
 }

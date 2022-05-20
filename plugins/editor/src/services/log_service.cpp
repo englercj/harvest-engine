@@ -10,6 +10,8 @@
 #include "he/core/result.h"
 #include "he/core/result_fmt.h"
 
+#include "fmt/format.h"
+
 namespace he::editor
 {
     LogService::LogService(DirectoryService& directoryService)
@@ -38,11 +40,11 @@ namespace he::editor
         RemoveLogSink(m_fileSink);
     }
 
-    void LogService::LogHandler(void* userData, const LogSource& source, const LogKV* kvs, uint32_t count)
+    void LogService::LogHandler(void* userData, const LogSource& source, const KeyValue* kvs, uint32_t count)
     {
         LogService& service = *static_cast<LogService*>(userData);
 
-        std::lock_guard<std::mutex> lock(service.m_mutex);
+        LockGuard lock(service.m_mutex);
 
         if (service.m_entries.size() == MaxEntries)
             service.m_entries.pop_front();
@@ -51,8 +53,7 @@ namespace he::editor
 
         // TODO: Maybe just copy the KVs and display them later in a formatted UI? Treat a couple like "message" special at display time?
 
-        fmt::format_to(Appender(entry.msg), "[{}]({}) ", source.level, source.category);
-        FormatKVsTo(entry.msg, kvs, count);
-        entry.msg.PushBack('\n');
+        fmt::format_to(Appender(entry.msg), "[{}]({}) {}\n",
+            source.level, source.category, fmt::join(kvs, kvs + count, ", "));
     }
 }

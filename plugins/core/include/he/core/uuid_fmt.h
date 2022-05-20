@@ -23,7 +23,7 @@ namespace fmt
         auto format(const he::Uuid& uuid, FormatContext& ctx) -> decltype(ctx.out())
         {
             const he::String msg = uuid.ToString(he::Allocator::GetTemp());
-            return format_to(ctx.out(), "{}", msg);
+            return fmt::format_to(ctx.out(), "{}", msg);
         }
     };
 }

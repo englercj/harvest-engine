@@ -127,6 +127,7 @@ namespace he
     // Converts to and from posix times
     SystemTime PosixTimeToSystemTime(timespec posixTime);
     timespec PosixTimeFromSystemTime(SystemTime systemTime);
+    timespec PosixTimeFromDuration(Duration duration);
 
     // --------------------------------------------------------------------------------------------
     // CycleClock inline implementation

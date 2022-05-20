@@ -512,4 +512,18 @@ namespace he
 
         return ss;
     }
+
+    template <>
+    const char* AsString(ArgType x)
+    {
+        switch (x)
+        {
+            case ArgType::Boolean: return "Boolean";
+            case ArgType::Integer: return "Integer";
+            case ArgType::Float: return "Float";
+            case ArgType::String: return "String";
+        }
+
+        return "<unknown>";
+    }
 }

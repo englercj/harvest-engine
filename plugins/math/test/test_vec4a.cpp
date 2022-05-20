@@ -165,7 +165,7 @@ HE_TEST(math, vec4a, SetW)
 // ------------------------------------------------------------------------------------------------
 HE_TEST(math, vec4a, Load)
 {
-    HE_ALIGNED(16) float p[]{ 1, 2, 3, 4, 5 };
+    alignas(16) float p[]{ 1, 2, 3, 4, 5 };
 
     HE_EXPECT_EQ(Load(p), (Vec4a{ 1, 2, 3, 4 }));
 }
@@ -173,7 +173,7 @@ HE_TEST(math, vec4a, Load)
 // ------------------------------------------------------------------------------------------------
 HE_TEST(math, vec4a, LoadU)
 {
-    HE_ALIGNED(16) float p[]{ 1, 2, 3, 4, 5 };
+    alignas(16) float p[]{ 1, 2, 3, 4, 5 };
 
     HE_EXPECT_EQ(LoadU(p + 1), (Vec4a{ 2, 3, 4, 5 }));
 }
@@ -181,7 +181,7 @@ HE_TEST(math, vec4a, LoadU)
 // ------------------------------------------------------------------------------------------------
 HE_TEST(math, vec4a, Store)
 {
-    HE_ALIGNED(16) float p[]{ 1, 2, 3, 4, 5 };
+    alignas(16) float p[]{ 1, 2, 3, 4, 5 };
 
     Vec4a x{ 3, 1, 4, 1 };
     Store(p, x);
@@ -195,7 +195,7 @@ HE_TEST(math, vec4a, Store)
 // ------------------------------------------------------------------------------------------------
 HE_TEST(math, vec4a, StoreU)
 {
-    HE_ALIGNED(16) float p[]{ 1, 2, 3, 4, 5 };
+    alignas(16) float p[]{ 1, 2, 3, 4, 5 };
 
     Vec4a x{ 3, 1, 4, 1 };
     StoreU(p + 1, x);

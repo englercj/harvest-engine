@@ -34,7 +34,6 @@
         #error "Clang 10+ is required."
     #endif
 
-    #define HE_ALIGNED(N)                   __attribute__((aligned(N)))
     #define HE_FUNC_SIG                     __PRETTY_FUNCTION__
     #define HE_FORCE_INLINE                 __attribute__((always_inline)) inline
     #define HE_NO_INLINE                    __attribute__((noinline))
@@ -60,7 +59,6 @@
         #error "GCC 8.3.0+ is required."
     #endif
 
-    #define HE_ALIGNED(N)                   __attribute__((aligned(N)))
     #define HE_FUNC_SIG                     __PRETTY_FUNCTION__
     #define HE_FORCE_INLINE                 __attribute__((always_inline)) inline
     #define HE_NO_INLINE                    __attribute__((noinline))
@@ -87,7 +85,6 @@
         #error "MSVC 14.29 (VS2019 v16.9) is required."
     #endif
 
-    #define HE_ALIGNED(N)                   __declspec(align(N))
     #define HE_FUNC_SIG                     __FUNCSIG__
     #define HE_FORCE_INLINE                 __forceinline
     #define HE_NO_INLINE                    __declspec(noinline)

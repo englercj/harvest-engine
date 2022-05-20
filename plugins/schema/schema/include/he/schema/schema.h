@@ -123,7 +123,7 @@ namespace he::schema
             case Type::Data::Tag::AnyPointer: return 64; // pointer
         }
 
-        HE_ASSERT(false, "Unknown type kind");
+        HE_ASSERT(false, HE_MSG("Unknown type kind"));
         return 0;
     }
 
@@ -161,7 +161,7 @@ namespace he::schema
             case Type::Data::Tag::AnyPointer: return ElementSize::Pointer;
         }
 
-        HE_ASSERT(false, "Unknown type kind");
+        HE_ASSERT(false, HE_MSG("Unknown type kind"));
         return ElementSize::Void;
     }
 

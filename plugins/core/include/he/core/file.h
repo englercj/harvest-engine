@@ -12,7 +12,7 @@
 namespace he
 {
     /// Normalization of OS results for specific file system results.
-    enum class FileResult : uint32_t
+    enum class FileResult : uint8_t
     {
         Success = 0,
         Failure,
@@ -25,7 +25,7 @@ namespace he
     };
 
     /// Possible modes a file can be opened in.
-    enum class FileOpenMode : uint32_t
+    enum class FileOpenMode : uint8_t
     {
         Write,
         ReadWrite,
@@ -149,7 +149,7 @@ namespace he
         /// \param[in] path The path to the file to read. The file is expected to exist.
         /// \param[out] bytesRead Optional. The resulting number of bytes read.
         template <typename T>
-        static Result ReadAll(Vector<T>& dst, const char* path,  uint32_t* bytesRead = nullptr);
+        static Result ReadAll(T& dst, const char* path,  uint32_t* bytesRead = nullptr);
 
         /// Write the contents of a buffer to a file.
         ///
@@ -290,16 +290,18 @@ namespace he
     };
 
     template <typename T>
-    inline Result File::ReadAll(Vector<T>& dst, const char* path, uint32_t* outBytesRead)
+    inline Result File::ReadAll(T& dst, const char* path, uint32_t* outBytesRead)
     {
+        constexpr uint32_t ElementSize = sizeof(T::ElementType);
+
         File f;
         Result r = f.Open(path, FileOpenMode::ReadExisting);
         if (!r)
             return r;
 
         const uint32_t size = static_cast<uint32_t>(f.GetSize());
-        const uint32_t vectorSize = sizeof(T) == 1 ? size : (size + (sizeof(T) - 1)) / sizeof(T);
-        dst.Resize(vectorSize, he::DefaultInit);
+        const uint32_t containerSize = ElementSize == 1 ? size : (size + (ElementSize - 1)) / ElementSize;
+        dst.Resize(containerSize, he::DefaultInit);
 
         uint32_t bytesRead = 0;
         r = f.ReadAt(dst.Data(), 0, size, &bytesRead);
@@ -312,8 +314,8 @@ namespace he
 
         if (bytesRead < size)
         {
-            const uint32_t vectorReadSize = sizeof(T) == 1 ? bytesRead : (bytesRead + (sizeof(T) - 1)) / sizeof(T);
-            dst.Resize(vectorReadSize);
+            const uint32_t containerReadSize = ElementSize == 1 ? bytesRead : (bytesRead + (ElementSize - 1)) / ElementSize;
+            dst.Resize(containerReadSize);
         }
 
         return Result::Success;

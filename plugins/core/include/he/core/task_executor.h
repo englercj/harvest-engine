@@ -3,6 +3,7 @@
 #pragma once
 
 #include "he/core/result.h"
+#include "he/core/sync.h"
 #include "he/core/types.h"
 #include "he/core/vector.h"
 
@@ -60,7 +61,8 @@ namespace he
 
         bool m_running;
         std::deque<ThreadTask> m_tasks;
-        std::mutex m_mutex;
-        std::condition_variable m_cv;
+
+        Mutex m_mutex;
+        ConditionVariable m_cv;
     };
 }

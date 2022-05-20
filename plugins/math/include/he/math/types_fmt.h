@@ -70,10 +70,10 @@ namespace fmt
         template <typename FormatContext>
         auto format(const he::Vec4a& vec, FormatContext& ctx) const -> decltype(ctx.out())
         {
-            HE_ALIGNED(16) float p[]{ 0, 0, 0, 0 };
+            alignas(16) float p[]{ 0, 0, 0, 0 };
             he::Store(p, vec);
 
-            return format_to(ctx.out(), "({:.1f}, {:.1f}, {:.1f}, {:.1f})", p[0], p[1], p[2], p[3]);
+            return fmt::format_to(ctx.out(), "({:.1f}, {:.1f}, {:.1f}, {:.1f})", p[0], p[1], p[2], p[3]);
         }
     };
 
@@ -88,7 +88,7 @@ namespace fmt
         template <typename FormatContext>
         auto format(const he::Quat& q, FormatContext& ctx) const -> decltype(ctx.out())
         {
-            return format_to(ctx.out(), "({:.1f}, {:.1f}, {:.1f}, {:.1f})", q.x, q.y, q.z, q.w);
+            return fmt::format_to(ctx.out(), "({:.1f}, {:.1f}, {:.1f}, {:.1f})", q.x, q.y, q.z, q.w);
         }
     };
 
@@ -103,7 +103,7 @@ namespace fmt
         template <typename FormatContext>
         auto format(const he::Quata& q, FormatContext& ctx) const -> decltype(ctx.out())
         {
-            return format_to(ctx.out(), "{}", q.v);
+            return fmt::format_to(ctx.out(), "{}", q.v);
         }
     };
 
@@ -118,7 +118,7 @@ namespace fmt
         template <typename FormatContext>
         auto format(const he::Mat44& mat, FormatContext& ctx) const -> decltype(ctx.out())
         {
-            return format_to(ctx.out(), "(cx{}, cy{}, cz{}, cw{})", mat.cx, mat.cy, mat.cz, mat.cw);
+            return fmt::format_to(ctx.out(), "(cx{}, cy{}, cz{}, cw{})", mat.cx, mat.cy, mat.cz, mat.cw);
         }
     };
 }

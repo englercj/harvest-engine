@@ -12,6 +12,9 @@ namespace he
     class BufferWriter final
     {
     public:
+        /// The type of elements in the vector.
+        using ElementType = uint8_t;
+
         /// Strategy for growing the buffer when needed.
         enum class GrowthStrategy
         {

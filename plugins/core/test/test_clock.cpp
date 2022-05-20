@@ -1,9 +1,12 @@
 // Copyright Chad Engler
 
 #include "he/core/clock.h"
-
 #include "he/core/clock_fmt.h"
+
+#include "he/core/appender.h"
 #include "he/core/test.h"
+
+#include "fmt/format.h"
 
 #include <type_traits>
 
@@ -306,5 +309,31 @@ HE_TEST(core, clock, PosixTimeFromSystemTime)
 // ------------------------------------------------------------------------------------------------
 HE_TEST(core, clock, Formatting)
 {
-    // TODO
+    SystemTime time{ 1652973325730225600 }; // 8:15 AM, Thursday, May 19, 2022 (PDT)
+    String actual;
+
+    // Default
+    actual.Clear();
+    fmt::format_to(Appender(actual), "{}", time);
+    HE_EXPECT_EQ(actual, "2022-05-19 08:15:25");
+
+    // Local Default
+    actual.Clear();
+    fmt::format_to(Appender(actual), "{}", FmtLocalTime(time));
+    HE_EXPECT_EQ(actual, "2022-05-19 08:15:25");
+
+    // UTC Default
+    actual.Clear();
+    fmt::format_to(Appender(actual), "{}", FmtUtcTime(time));
+    HE_EXPECT_EQ(actual, "2022-05-19 15:15:25");
+
+    // Custom Format
+    actual.Clear();
+    fmt::format_to(Appender(actual), "{:%A %b %d, %y %T %p}", time);
+    HE_EXPECT_EQ(actual, "Thursday May 19, 22 08:15:25 AM");
+
+    // Custom Format 2
+    actual.Clear();
+    fmt::format_to(Appender(actual), "{:%D %F %R}", FmtUtcTime(time));
+    HE_EXPECT_EQ(actual, "05/19/22 2022-05-19 15:15");
 }

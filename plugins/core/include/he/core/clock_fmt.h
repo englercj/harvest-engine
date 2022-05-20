@@ -46,7 +46,8 @@ namespace fmt
             while (end != ctx.end() && *end != '}')
                 ++end;
 
-            spec = { it, end };
+            if (it < end)
+                spec = { it, end };
             return end;
         }
 
@@ -60,20 +61,34 @@ namespace fmt
             format.PushBack(' ');
 
             he::String buf;
+            buf.Resize(he::String::MaxEmbedCharacters, he::DefaultInit);
             while (true)
             {
-                const uint32_t size = buf.Capacity();
-                const size_t count = std::strftime(buf.Data(), size, format.Data(), &tm);
+                const size_t count = std::strftime(buf.Data(), buf.Size(), format.Data(), &tm);
                 if (count != 0)
                 {
                     buf.Resize(static_cast<uint32_t>(count));
                     break;
                 }
-                buf.Reserve(buf.Capacity() + he::Max<uint32_t>(size, 32));
+                buf.Resize(he::Max(256u, buf.Size() * 2));
             }
 
-            // The `-1` is to remove the extra space that we added to the format earlier
+            // The `-1` is to remove the extra space that we added to the end of the format earlier
             return std::copy(buf.begin(), buf.end() - 1, ctx.out());
+        }
+    };
+
+    template <>
+    struct formatter<he::SystemTime> : _TimeFormatter
+    {
+        template <typename FormatContext>
+        auto format(const he::SystemTime& t, FormatContext& ctx) const -> decltype(ctx.out())
+        {
+            const std::time_t time = t.val / he::Seconds::Ratio;
+            std::tm tm;
+            localtime_s(&tm, &time);
+
+            return _TimeFormatter::format(tm, ctx);
         }
     };
 
@@ -170,7 +185,7 @@ namespace fmt
         {
             const int64_t count = he::ToPeriod<T>(duration);
             duration.val -= he::FromPeriod<T>(count).val;
-            return format_to(out, "{}", count);
+            return fmt::format_to(out, "{}", count);
         }
     };
 }

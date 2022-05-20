@@ -7,21 +7,21 @@ namespace he
 
     template <typename T> inline Vec2<T> MakeVec2(const Vec4a& v)
     {
-        HE_ALIGNED(16) float r[4];
+        alignas(16) float r[4];
         Store(r, v);
         return { static_cast<T>(r[0]), static_cast<T>(r[1]) };
     }
 
     template <typename T> inline Vec3<T> MakeVec3(const Vec4a& v)
     {
-        HE_ALIGNED(16) float r[4];
+        alignas(16) float r[4];
         Store(r, v);
         return { static_cast<T>(r[0]), static_cast<T>(r[1]), static_cast<T>(r[2]) };
     }
 
     template <typename T> inline Vec4<T> MakeVec4(const Vec4a& v)
     {
-        HE_ALIGNED(16) float r[4];
+        alignas(16) float r[4];
         Store(r, v);
         return { static_cast<T>(r[0]), static_cast<T>(r[1]), static_cast<T>(r[2]), static_cast<T>(r[3]) };
     }
@@ -114,10 +114,10 @@ namespace he
         Vec4a ltCmp = Lt(a, b);
         Vec4a gtCmp = Gt(a, b);
 
-        HE_ALIGNED(16) uint32_t ltMask[4];
+        alignas(16) uint32_t ltMask[4];
         Store(reinterpret_cast<float*>(ltMask), ltCmp);
 
-        HE_ALIGNED(16) uint32_t gtMask[4];
+        alignas(16) uint32_t gtMask[4];
         Store(reinterpret_cast<float*>(gtMask), gtCmp);
 
         constexpr uint32_t CmpTrue = 0xffffffff;

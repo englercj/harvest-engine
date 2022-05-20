@@ -28,7 +28,7 @@ namespace he
         // Since we don't know static destruciton order this ensures the allocator never actually
         // destructs and therefore will always outlive any static allocations.
         constexpr size_t Alignment = Max<size_t>(alignof(CrtAllocator), 8);
-        static HE_ALIGNED(Alignment) char s_mem[sizeof(CrtAllocator)];
+        static alignas(Alignment) char s_mem[sizeof(CrtAllocator)];
         static CrtAllocator* s_allocator = new(s_mem) CrtAllocator();
         return *s_allocator;
     }

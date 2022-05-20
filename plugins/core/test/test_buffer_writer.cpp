@@ -256,7 +256,7 @@ HE_TEST(core, buffer_writer, operator_assign_move)
 // ------------------------------------------------------------------------------------------------
 HE_TEST(core, buffer_writer, operator_index)
 {
-    constexpr uint8_t Datas[]{ 0x12, 0x23, 0x45, 0x67, 0x89 };
+    const uint8_t Datas[]{ 0x12, 0x23, 0x45, 0x67, 0x89 };
 
     BufferWriter buf;
     buf.Write(Datas);

@@ -85,7 +85,7 @@
 #elif HE_SIMD_NEON
     using Simd128 = float32x4_t;
 #else
-    struct HE_ALIGNED(16) Simd128 { float x, y, z, w; };
+    struct alignas(16) Simd128 { float x, y, z, w; };
 #endif
 
 constexpr Simd128 MakeSimd128(float x, float y, float z, float w)

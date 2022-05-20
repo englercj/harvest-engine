@@ -543,7 +543,7 @@ namespace he
         void Reserve(uint32_t len);
 
         /// Resizes the string to be `len` characters long. If this size is longer than the
-        /// current length then the new characters are uninitialized.
+        /// current length then the new characters are default initialized.
         ///
         /// \param len The length to make the string.
         void Resize(uint32_t len, DefaultInitTag);

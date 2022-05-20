@@ -2,14 +2,13 @@
 
 #pragma once
 
-#include "he/core/allocator.h"
-#include "he/core/appender.h"
 #include "he/core/debug.h"
 #include "he/core/enum_fmt.h"
-#include "he/core/error.h"
+#include "he/core/key_value.h"
+#include "he/core/log.h"
 #include "he/core/macros.h"
 #include "he/core/memory_ops.h"
-#include "he/core/result.h"
+#include "he/core/span.h"
 #include "he/core/string.h"
 #include "he/core/string_fmt.h"
 #include "he/core/types.h"
@@ -26,16 +25,9 @@
     do { \
         HE_PUSH_WARNINGS() \
         HE_DISABLE_MSVC_WARNING(4127) \
-        ++::he::internal::g_totalExpectations; \
-        if (!(expr)) { \
-            if constexpr (HE_PP_COUNT_ARGS(__VA_ARGS__) > 0) { \
-                ::he::String _testParamFormatBuffer(::he::Allocator::GetTemp()); \
-                HE_PP_FOREACH(HE_EXPECT_PARAM_FORMATTER_, (__VA_ARGS__)) \
-                ::he::internal::HandleTestFailure(__FILE__, __LINE__, #expr, _testParamFormatBuffer.Data()); \
-            } else { \
-                ::he::internal::HandleTestFailure(__FILE__, __LINE__, #expr, ""); \
-            } \
-            HE_DEBUG_BREAK(); \
+        ++::he::internal::g_totalTestExpects; \
+        if (!HE_ERROR_IF(Expect, expr, HE_PP_FOREACH(HE_EXPECT_PARAM_FORMATTER_, (__VA_ARGS__)))) { \
+            ++::he::internal::g_totalTestFailures; \
         } \
         HE_POP_WARNINGS() \
     } while(0)
@@ -114,6 +106,12 @@
 
 namespace he
 {
+    /// Type enum passed along to test logs to indicate what type of event it is.
+    enum class TestEventKind : uint8_t
+    {
+        TestTiming,
+    };
+
     /// General information about a test case.
     struct TestInfo
     {
@@ -167,8 +165,14 @@ namespace he
 
     /// Runs all the registered tests.
     ///
+    /// \param[in] filter A string filter to limit the tests that are run. The filter string is
+    ///     tested against the "fully qualified" test name, which looks like "module:suite:test".
+    ///     If the filter string is contained anywhere within that string, it is included.
     /// \return Zero if all tests pass, or a non-zero value if there was a failure.
-    int32_t RunAllTests();
+    uint32_t RunAllTests(const char* filter = nullptr);
+
+    /// Return a span of all test fixture pointers.
+    Span<TestFixture*> GetAllTests();
 
     /// Checks if two floating point values are within `maxUlpDiff` floating point steps of eachother.
     ///
@@ -230,16 +234,14 @@ namespace he
 
 namespace internal
 {
-    extern std::atomic<uint32_t> g_totalExpectations;
-
-    /// Handler for a failed test.
-    ///
-    /// This is used internally and is not meant to be called directly.
-    void HandleTestFailure(const char* file, uint32_t line, const char* expr, const char* params);
+    extern std::atomic<uint32_t> g_totalTestRuns;
+    extern std::atomic<uint32_t> g_totalTestExpects;
+    extern std::atomic<uint32_t> g_totalTestFailures;
 }
 }
 
-// Internal macro that generates the code for a test case.
+/// Internal macro that generates the code for a test case.
+/// \internal
 #define HE_TEST_(module, suite, name, fixture) \
     static_assert(sizeof(HE_STRINGIFY(module)) > 1, "Test module name must not be empty"); \
     static_assert(sizeof(HE_STRINGIFY(suite)) > 1, "Test suite name must not be empty"); \
@@ -256,14 +258,17 @@ namespace internal
     static HE_TEST_CLASS_NAME_(module, suite, name) HE_TEST_VARIABLE_NAME_(module, suite, name){}; \
     void HE_TEST_CLASS_NAME_(module, suite, name)::TestBody()
 
-// Internal macro that generates the name of a test case class.
+/// Internal macro that generates the name of a test case class.
+/// \internal
 #define HE_TEST_CLASS_NAME_(module, suite, name) _heTestClass_ ## module ## _ ## suite ## _ ## name
 
-// Internal macro that generates the name of a test case variable.
+/// Internal macro that generates the name of a test case variable.
+/// \internal
 #define HE_TEST_VARIABLE_NAME_(module, suite, name) g_heTestInstance_ ## module ## _ ## suite ## _ ## name
 
-// Internal macro that generates the body of the test case class. Since the name is reused
-// so often, this makes it  abit more convenient.
+/// Internal macro that generates the body of the test case class. Since the name is reused
+/// so often, this makes it  abit more convenient.
+/// \internal
 #define HE_TEST_CLASS_BODY_(Class) \
     Class() = default; \
     ~Class() override = default; \
@@ -272,11 +277,6 @@ namespace internal
     Class& operator=(const Class&) = delete; \
     Class& operator=(Class&&) = delete
 
-// Internal macro used in the format loop for HE_EXPECT params
-#define HE_EXPECT_PARAM_FORMATTER_(x) \
-    do { \
-        constexpr char _exprString[] = #x " = "; \
-        constexpr uint32_t _exprStringLen = HE_LENGTH_OF(_exprString) - 1; \
-        _testParamFormatBuffer.Append(_exprString, _exprStringLen); \
-        fmt::format_to(::he::Appender(_testParamFormatBuffer), "{}\n", (x)); \
-    } while (0);
+/// Internal macro used in the format loop for HE_EXPECT params
+/// \internal
+#define HE_EXPECT_PARAM_FORMATTER_(x) HE_VAL(x),

@@ -20,7 +20,7 @@ namespace fmt
         template <typename FormatContext>
         auto format(T s, FormatContext& ctx) const -> decltype(ctx.out())
         {
-            return format_to(ctx.out(), "{}", he::AsString(s));
+            return fmt::format_to(ctx.out(), "{}", he::AsString(s));
         }
     };
 }

@@ -10,10 +10,8 @@ case $OS_NAME in
     Linux*)
         PREMAKE_OS="linux"
         PREMAKE_EXT=".tar.gz"
-        PREMAKE_ACTION="gmake2 --cc=clang"
+        PREMAKE_ACTION="gmake2"
         PREMAKE_EXE="premake5"
-        EXTRACT_CMD="tar -xzf"
-        EXTRACT_FLAG="-C"
         ;;
 
     MSYS_NT*)
@@ -25,8 +23,6 @@ case $OS_NAME in
         PREMAKE_EXT=".zip"
         PREMAKE_ACTION="vs2022"
         PREMAKE_EXE="premake5.exe"
-        EXTRACT_CMD="unzip -qq"
-        EXTRACT_FLAG="-d"
         ;;
 
     *)
@@ -38,8 +34,17 @@ if [ "$PREMAKE_VERSION" != "nightly" ]; then
     PREMAKE_DL_FILE="premake-${PREMAKE_VERSION}-${PREMAKE_OS}${PREMAKE_EXT}"
     PREMAKE_DL_URL="https://github.com/premake/premake-core/releases/download/v${PREMAKE_VERSION}/${PREMAKE_DL_FILE}"
 else
+    PREMAKE_EXT=".zip"
     PREMAKE_DL_FILE="premake-${PREMAKE_OS}-x64.zip"
     PREMAKE_DL_URL="https://nightly.link/premake/premake-core/workflows/ci-workflow/master/${PREMAKE_DL_FILE}"
+fi
+
+if [ "$PREMAKE_EXT" == ".tar.gz" ]; then
+    EXTRACT_CMD="tar -xzf"
+    EXTRACT_FLAG="-C"
+else
+    EXTRACT_CMD="unzip -qq"
+    EXTRACT_FLAG="-d"
 fi
 
 PREMAKE_DIR="$BUILD_DIR/premake/$PREMAKE_OS"

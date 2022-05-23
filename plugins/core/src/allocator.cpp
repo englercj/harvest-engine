@@ -5,6 +5,7 @@
 #include "he/core/assert.h"
 #include "he/core/compiler.h"
 #include "he/core/config.h"
+#include "he/core/types.h"
 #include "he/core/utils.h"
 
 #include <new>
@@ -28,7 +29,7 @@ namespace he
         // Since we don't know static destruciton order this ensures the allocator never actually
         // destructs and therefore will always outlive any static allocations.
         constexpr size_t Alignment = Max<size_t>(alignof(CrtAllocator), 8);
-        alignas(Alignment) static char s_mem[sizeof(CrtAllocator)];
+        alignas(Alignment) static uint8_t s_mem[sizeof(CrtAllocator)];
         static CrtAllocator* s_allocator = new(s_mem) CrtAllocator();
         return *s_allocator;
     }
@@ -159,7 +160,7 @@ namespace he
 
 // Override global operators new and delete to use the default allocator.
 
-// replaceable allocation functions 
+// replaceable allocation functions
 
 [[nodiscard]] void* operator new(size_t n) { return he::Allocator::GetDefault().Malloc(static_cast<uint32_t>(n)); }
 [[nodiscard]] void* operator new[](size_t n) { return he::Allocator::GetDefault().Malloc(static_cast<uint32_t>(n)); }

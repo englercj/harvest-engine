@@ -35,27 +35,32 @@ namespace he
 
         alignment = AlignUp(alignment, sizeof(void*));
 
-        // The POSIX spec doesn't say we can pass posix_memalign allocated pointers to realloc,
-        // so what follows is not portable. That said, looking at glibc it seems like this
-        // should be fine.
+        // The POSIX spec doesn't say we can pass posix_memalign() allocated pointers to realloc(),
+        // so what follows isn't portable. That said, glibc seems to implement realloc in such a
+        // way that it should actually be safe to do so. Posix does require free() to work with
+        // posix_memalign() results, and realloc() has the same smarts free() does in glibc.
         //
-        // Since realloc will avoid copies by extending the allocated memory block, or by
-        // reassigning virtual pages when it needs a new block we really want to use it to avoid
-        // copies of the memory bytes if we can.
+        // Since realloc may avoid copies by extending the allocated memory block, or by
+        // reassigning virtual pages when it needs a new block we want to use it to avoid copies
+        // of the memory bytes if we can.
         //
-        // In the degenerate case where realloc gives us a new block that is improperly aligned
-        // we need to perform a copy to a new allocation. This is still only one copy because
-        // realloc will actually just reassign virtual pages rather than perform a byte copy.
-
+        // In the degenerate case where realloc() gives us a new block that is improperly aligned
+        // we need to perform a copy to a new allocation. It is likely that this will be the only
+        // copy operation because realloc() may just reassign virtual pages rather than perform a
+        // copy.
+        //
+        // Sources:
+        // - https://github.com/bminor/glibc/blob/2d5ec6692f5746ccb11db60976a6481ef8e9d74f/malloc/malloc.c
+        // - https://stackoverflow.com/a/9078627/725851
         void* p = realloc(ptr, newSize);
 
         // We can return the pointer as-is if it is properly aligned.
-        if (IsAligned(p, alignment))
+        if (IsAligned(p, alignment)) [[likely]]
             return p;
 
-        // This is verifying an assumption that we can't possibly have an unaligned pointer if
-        // it hasn't been reallocated to a new block. If you hit this, it is likely the alignment
-        // value passed to Realloc did not match the value you originally sent to Malloc.
+        // This is documenting the assumption that we can't possibly have an unaligned pointer if
+        // the pointer hasn't changed. This may get tripped if `alignment` is different than what
+        // `ptr` was originally allocated with. This is not allowed.
         HE_ASSERT(p != ptr);
 
         // We got an unaligned pointer from realloc, so we need to manually do an aligned malloc

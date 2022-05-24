@@ -22,6 +22,17 @@ namespace internal
     std::atomic<uint32_t> g_totalTestFailures{ 0 };
 }
 
+    template <>
+    const char* AsString(TestEventKind x)
+    {
+        switch (x)
+        {
+            case TestEventKind::TestTiming: return "TestTiming";
+        }
+
+        return "<unknown>";
+    }
+
     const TestInfo TestFixture::EmptyTestInfo{};
 
     struct _TestRunner
@@ -144,16 +155,5 @@ namespace internal
             internal::g_totalTestRuns.load(), internal::g_totalTestExpects.load(), internal::g_totalTestFailures.load());
 
         return internal::g_totalTestFailures.load();
-    }
-
-    template <>
-    const char* AsString(TestEventKind x)
-    {
-        switch (x)
-        {
-            case TestEventKind::TestTiming: return "TestTiming";
-        }
-
-        return "<unknown>";
     }
 }

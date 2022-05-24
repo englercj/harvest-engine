@@ -93,9 +93,8 @@ namespace he
             m_value.s = v;
         }
 
-        template <typename T>
+        template <typename T> requires(!Enum<T> && (StdContiguousRange<T, const char> || ContiguousRange<T, const char>))
         KeyValue(const char* k, const T& v)
-            requires(StdContiguousRange<T, const char> || ContiguousRange<T, const char>)
             : m_key(k)
             , m_kind(ValueKind::String)
         {
@@ -110,7 +109,7 @@ namespace he
             fmt::format_to(Appender(m_value.s), fmt, Forward<Args>(args)...);
         }
 
-        template <typename T>
+        template <typename T> requires(!Enum<T> && !StdContiguousRange<T, const char> && !ContiguousRange<T, const char>)
         KeyValue(const char* k, const T& v)
             : m_key(k)
             , m_kind(ValueKind::String)

@@ -50,7 +50,6 @@ namespace he
         if (count > 0)
         {
             size_t value;
-
             if (!HE_HW_RAND(value))
                 return false;
 

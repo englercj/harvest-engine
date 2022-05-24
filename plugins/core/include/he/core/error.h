@@ -8,11 +8,11 @@
 #include "he/core/types.h"
 
 #define HE_ERROR_IF(kind, expr, ...) \
-    (HE_LIKELY(!!(expr)) || ([&](const char* errorFuncName_) { \
+    (HE_LIKELY(expr) || ([&](const char* errorFuncName_) -> bool { \
         const ::he::ErrorSource errorSource_{ HE_LINE, HE_FILE, errorFuncName_ }; \
         const ::he::KeyValue errorKvList_[]{ HE_KV(error_kind, ::he::ErrorKind::kind), HE_KV(error_expr, #expr), __VA_ARGS__ }; \
         return ::he::HandleError(errorSource_, errorKvList_, HE_LENGTH_OF(errorKvList_)); \
-    })(__FUNCTION__) && HE_DEBUG_BREAK())
+    }(__FUNCTION__) && HE_DEBUG_BREAK()))
 
 namespace he
 {

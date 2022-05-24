@@ -29,7 +29,7 @@ namespace he
     template <typename Tag>
     struct Clock
     {
-        using Time = Time<Tag>;
+        using Time = he::Time<Tag>;
         static Time Now();
     };
 
@@ -149,7 +149,7 @@ namespace he
         uint64_t low;
         uint64_t high;
         asm volatile("rdtsc" : "=a"(low), "=d"(high));
-        return { (high << 32) | low) };
+        return { ((high << 32) | low) };
     #elif HE_CPU_ARM_64
         int64_t vct;
         asm volatile("mrs %0, CNTVCT_EL0" : "=r"(vct));

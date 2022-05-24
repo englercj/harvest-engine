@@ -24,9 +24,9 @@ homepage = ""
             "HE_PLATFORM_RWLOCK_SIZE=56",
             "HE_PLATFORM_MUTEX_SIZE=40",
             "HE_PLATFORM_RECURSIVE_MUTEX_SIZE=40",
-            "HE_PLATFORM_CONDITION_VARIABLE_SIZE=8",
-            "HE_PLATFORM_SEMAPHORE_SIZE=4",
-            "HE_PLATFORM_SYNC_EVENT_SIZE=8",
+            "HE_PLATFORM_CONDITION_VARIABLE_SIZE=48",
+            "HE_PLATFORM_SEMAPHORE_SIZE=32",
+            "HE_PLATFORM_SYNC_EVENT_SIZE=12",
         ]
 
     [[modules.variants]]
@@ -36,9 +36,9 @@ homepage = ""
             "HE_PLATFORM_RWLOCK_SIZE=56",
             "HE_PLATFORM_MUTEX_SIZE=40",
             "HE_PLATFORM_RECURSIVE_MUTEX_SIZE=40",
-            "HE_PLATFORM_CONDITION_VARIABLE_SIZE=8",
-            "HE_PLATFORM_SEMAPHORE_SIZE=4",
-            "HE_PLATFORM_SYNC_EVENT_SIZE=48",
+            "HE_PLATFORM_CONDITION_VARIABLE_SIZE=48",
+            "HE_PLATFORM_SEMAPHORE_SIZE=32",
+            "HE_PLATFORM_SYNC_EVENT_SIZE=92",
         ]
 
     [[modules.variants]]

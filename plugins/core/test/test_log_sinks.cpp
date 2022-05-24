@@ -4,6 +4,7 @@
 
 #include "he/core/directory.h"
 #include "he/core/path.h"
+#include "he/core/result_fmt.h"
 #include "he/core/test.h"
 
 #include <iostream>
@@ -32,6 +33,7 @@ HE_TEST(core, log_sinks, FileSink)
     FileSink sink;
 
     Result r = sink.Configure(TestDir, "prefix");
+    HE_EXPECT(r, r);
 
     AddLogSink(sink);
 

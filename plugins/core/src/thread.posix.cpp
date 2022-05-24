@@ -12,7 +12,7 @@
 namespace he
 {
     static_assert(sizeof(ThreadHandle) >= sizeof(pthread_t));
-    static_assert(alignof(ThreadHandle) >= alignof(HANDLE));
+    static_assert(alignof(ThreadHandle) >= alignof(pthread_t));
 
     ThreadHandle GetCurrentThreadHandle()
     {

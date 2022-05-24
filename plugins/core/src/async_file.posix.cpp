@@ -1,13 +1,17 @@
 // Copyright Chad Engler
 
-#include "he/core/allocator.h"
+#include "he/core/async_file.h"
 
 #include "he/core/assert.h"
 #include "he/core/cpu.h"
 #include "he/core/task_executor.h"
 #include "he/core/utils.h"
 
+#include <future>
+
 #if defined(HE_PLATFORM_API_POSIX) && !defined(HE_PLATFORM_EMSCRIPTEN)
+
+#include "file_helpers.posix.h"
 
 #include <errno.h>
 #include <fcntl.h>
@@ -22,10 +26,6 @@ namespace he
     static ThreadPoolExecutor s_threadPool;
     static TaskExecutor* s_executor{ nullptr };
 
-    static void HandleCompletedOp(AsyncOp* op, Result result, uint32_t bytesTransferred);
-    static void ReadTask(void* data);
-    static void WriteTask(void* data);
-
     struct AsyncOp
     {
         int fd;
@@ -35,6 +35,41 @@ namespace he
 
         std::promise<AsyncFileResult> promise;
     };
+
+    static void HandleCompletedOp(AsyncOp* op, Result result, uint32_t bytesTransferred)
+    {
+        AsyncFileResult r;
+        r.result = result;
+        r.bytesTransferred = bytesTransferred;
+
+        close(op->fd);
+        op->promise.set_value(r);
+        Allocator::GetTemp().Delete(op);
+    }
+
+    static void ReadTask(void* data)
+    {
+        AsyncOp* op = static_cast<AsyncOp*>(data);
+
+        ssize_t n = pread(op->fd, op->buffer, op->size, op->offset);
+
+        if (n < 0)
+            HandleCompletedOp(op, Result::FromLastError(), 0);
+        else
+            HandleCompletedOp(op, Result::Success, static_cast<uint32_t>(n));
+    }
+
+    static void WriteTask(void* data)
+    {
+        AsyncOp* op = static_cast<AsyncOp*>(data);
+
+        ssize_t n = pwrite(op->fd, op->buffer, op->size, op->offset);
+
+        if (n < 0)
+            HandleCompletedOp(op, Result::FromLastError(), 0);
+        else
+            HandleCompletedOp(op, Result::Success, static_cast<uint32_t>(n));
+    }
 
     Result StartupAsyncFileIO(const AsyncFileIOConfig& config)
     {
@@ -46,7 +81,7 @@ namespace he
 
             ThreadPoolExecutor::Config poolConfig;
             poolConfig.count = config.pool.threadCount ? config.pool.threadCount : defaultThreadCount;
-            poolConfig.affinity = config.default
+            poolConfig.affinity = config.pool.threadAffinity;
             poolConfig.name = "Async IO Thread";
 
             s_executor = &s_threadPool;
@@ -60,7 +95,8 @@ namespace he
 
     void ShutdownAsyncFileIO()
     {
-        s_executor.Shutdown();
+        if (s_executor == &s_threadPool)
+            s_threadPool.Shutdown();
     }
 
     AsyncFile::AsyncFile()
@@ -86,7 +122,7 @@ namespace he
     Result AsyncFile::Open(const char* path, FileOpenMode mode, FileOpenFlag flags)
     {
         HE_ASSERT(m_fd == -1);
-        m_fd = PosixFileOpen(path, mode, openFlags, 0);
+        m_fd = PosixFileOpen(path, mode, flags, 0);
         return Result::Success;
     }
 
@@ -125,7 +161,7 @@ namespace he
         if (op->fd == -1)
             HandleCompletedOp(op, Result::FromLastError(), 0);
         else
-            s_executor.Add(ReadTask, op);
+            s_executor->Add(ReadTask, op);
 
         return f;
     }
@@ -143,44 +179,9 @@ namespace he
         if (op->fd == -1)
             HandleCompletedOp(op, Result::FromLastError(), 0);
         else
-            s_executor.Add(WriteTask, op);
+            s_executor->Add(WriteTask, op);
 
         return f;
-    }
-
-    static void HandleCompletedOp(AsyncOp* op, Result result, uint32_t bytesTransferred)
-    {
-        AsyncFileResult r;
-        r.result = result;
-        r.bytesTransferred = bytesTransferred;
-
-        close(op->fd);
-        op->promise.set_value(r);
-        Allocator::GetTemp().Delete(op);
-    }
-
-    static void ReadTask(void* data)
-    {
-        AsyncOp* op = static_cast<AsyncOp*>(data);
-
-        ssize_t n = pread(op->fd, op->buffer, op->size, op->offset);
-
-        if (n < 0)
-            HandleCompletedOp(op, Result::FromLastError(), 0);
-        else
-            HandleCompletedOp(op, Result::Success, static_cast<uint32_t>(n));
-    }
-
-    static void WriteTask(void* data)
-    {
-        AsyncOp* op = static_cast<AsyncOp*>(data);
-
-        ssize_t n = pwrite(op->fd, op->buffer, op->size, op->offset);
-
-        if (n < 0)
-            HandleCompletedOp(op, Result::FromLastError(), 0);
-        else
-            HandleCompletedOp(op, Result::Success, static_cast<uint32_t>(n));
     }
 }
 

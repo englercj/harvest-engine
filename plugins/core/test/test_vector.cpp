@@ -826,7 +826,7 @@ HE_TEST(core, Vector, ShrinkToFit)
 
     v.ShrinkToFit();
     HE_EXPECT_EQ(v.Size(), 0);
-    HE_EXPECT_GE(v.Capacity(), 0);
+    // HE_EXPECT_GE(v.Capacity(), 0);
 
     v.Resize(32);
     HE_EXPECT_EQ(v.Size(), 32);
@@ -842,7 +842,7 @@ HE_TEST(core, Vector, ShrinkToFit)
 
     v.ShrinkToFit();
     HE_EXPECT_EQ(v.Size(), 0);
-    HE_EXPECT_GE(v.Capacity(), 0);
+    // HE_EXPECT_GE(v.Capacity(), 0);
 }
 
 // ------------------------------------------------------------------------------------------------

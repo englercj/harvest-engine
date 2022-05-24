@@ -36,15 +36,32 @@ template <typename T, unsigned int N> char (&_heLengthOf(const T (&)[N]))[N];
 
 /// \def HE_PP_COUNT_ARGS(...)
 /// Counts the number of arguments in __VA_ARGS__
-#if defined(_MSC_VER)
-    #define HE_PP_COUNT_ARGS_(_1, _2, _3, _4, _5, _6, _7, _8, _9, _10, _11, _12, _13, _14, _15, _16, _17, _18, _19, _20, N, ...) N
-    #define HE_PP_COUNT_ARGS_EXPAND_(...) HE_PP_EXPAND(HE_PP_COUNT_ARGS_(__VA_ARGS__, 19, 18, 17, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0))
-    #define HE_PP_COUNT_ARGS_HELPER_(...) unused, __VA_ARGS__
-    #define HE_PP_COUNT_ARGS(...) HE_PP_COUNT_ARGS_EXPAND_(HE_PP_COUNT_ARGS_HELPER_(__VA_ARGS__))
-#else
-    #define HE_PP_COUNT_ARGS_(_0, _1, _2, _3, _4, _5, _6, _7, _8, _9, _10, _11, _12, _13, _14, _15, _16, _17, _18, _19, _20, N, ...) N
-    #define HE_PP_COUNT_ARGS(...) HE_PP_COUNT_ARGS_(0, ##__VA_ARGS__, 20, 19, 18, 17, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0)
-#endif
+#define HE_PP_JOIN5_(_0, _1, _2, _3, _4) _0 ## _1 ## _2 ## _3 ## _4
+#define HE_PP_VA_ARGS_TAIL(_0,_1,_2,_3,_4,_5,_6,_7,_8,_9,_10,_11,_12,_13,_14,_15,_16,_17,_18,_19, x, ...) x
+#define HE_PP_VA_ARGS_SEQ() 20,19,18,17,16,15,14,13,12,11,10,9,8,7,6,5,4,3,2,1,0
+
+#define HE_PP_SELECT_FIRST_0(x, ...) __VA_ARGS__
+#define HE_PP_SELECT_FIRST_1(x, ...) x
+#define HE_PP_SELECT_FIRST(c) HE_PP_JOIN_(HE_PP_SELECT_FIRST_, c)
+
+#define HE_PP_HAS_COMMA_(...) HE_PP_EXPAND(HE_PP_VA_ARGS_TAIL(__VA_ARGS__, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0))
+#define HE_PP_IS_EMPTY_TRIGGER_PARENTHESIS_(...) ,
+
+#define HE_PP_IS_EMPTY(...) HE_PP_IS_EMPTY_( \
+    /* test if there is just one argument, eventually an empty one */ \
+    HE_PP_HAS_COMMA_(__VA_ARGS__),                                \
+    /* test if _TRIGGER_PARENTHESIS_ together with the argument adds a comma */ \
+    HE_PP_HAS_COMMA_(HE_PP_IS_EMPTY_TRIGGER_PARENTHESIS_ __VA_ARGS__), \
+    /* test if the argument together with a parenthesis adds a comma */ \
+    HE_PP_HAS_COMMA_(__VA_ARGS__ ()),                             \
+    /* test if placing it between _TRIGGER_PARENTHESIS_ and the parenthesis adds a comma */ \
+    HE_PP_HAS_COMMA_(HE_PP_IS_EMPTY_TRIGGER_PARENTHESIS_ __VA_ARGS__ ()))
+
+#define HE_PP_IS_EMPTY_(_0, _1, _2, _3) HE_PP_HAS_COMMA_(HE_PP_JOIN5_(HE_PP_IS_EMPTY_IS_EMPTY_CASE_, _0, _1, _2, _3))
+#define HE_PP_IS_EMPTY_IS_EMPTY_CASE_0001 ,
+
+#define HE_PP_COUNT_ARGS_(...) HE_PP_EXPAND(HE_PP_VA_ARGS_TAIL(__VA_ARGS__))
+#define HE_PP_COUNT_ARGS(...) HE_PP_SELECT_FIRST(HE_PP_IS_EMPTY(__VA_ARGS__))(0, HE_PP_COUNT_ARGS_(__VA_ARGS__, HE_PP_VA_ARGS_SEQ()))
 
 /// Expands to the first argument that was passed in
 #define HE_PP_FIRST_ARG(x, ...) (x)

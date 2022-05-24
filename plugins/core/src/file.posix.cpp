@@ -17,12 +17,15 @@
 
 #if defined(HE_PLATFORM_API_POSIX) && !defined(HE_PLATFORM_EMSCRIPTEN)
 
+#include "file_helpers.posix.h"
+
 #include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <sys/stat.h>
+#include <sys/mman.h>
 #include <sys/types.h>
 
 namespace he
@@ -95,7 +98,7 @@ namespace he
                 return Result::Success;
             }
 
-            path.Resize(he::Max(512, path.Size() * 2));
+            path.Resize(he::Max(512u, path.Size() * 2));
         } while (true);
 
         return PosixResult(ENAMETOOLONG);
@@ -221,6 +224,9 @@ namespace he
     {
         HE_ASSERT(m_fd == -1);
         m_fd = PosixFileOpen(path, mode, openFlags, 0);
+
+        if (m_fd == -1)
+            return Result::FromLastError();
 
         if (mode == FileOpenMode::WriteAppend || mode == FileOpenMode::ReadWriteAppend)
             lseek(m_fd, 0, SEEK_END);
@@ -355,7 +361,7 @@ namespace he
         l.l_start = offset;
         l.l_len = size;
 
-        const int rc = fcntl(file.fd, cmd, &l);
+        const int rc = fcntl(m_fd, cmd, &l);
         return rc ? PosixResult(rc) : Result::Success;
     }
 
@@ -367,7 +373,7 @@ namespace he
         l.l_start = offset;
         l.l_len = size;
 
-        const int rc = fcntl(file.fd, F_SETLKW, &l);
+        const int rc = fcntl(m_fd, F_SETLKW, &l);
         return rc ? PosixResult(rc) : Result::Success;
     }
 
@@ -463,7 +469,7 @@ namespace he
 
         int flags = MAP_SHARED | MAP_FILE;
 
-        m_data = mmap(nullptr, size, prot, flags, file.fd, offset);
+        m_data = mmap(nullptr, size, prot, flags, file.m_fd, offset);
 
         if (m_data == MAP_FAILED)
         {

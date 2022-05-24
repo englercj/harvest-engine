@@ -14,7 +14,7 @@
 #define HE_FILE ""
 
 /// The current line number. This value is always zero for non-internal builds.
-#define HE_LINE 0
+#define HE_LINE 0u
 
 #if HE_INTERNAL_BUILD
     #undef HE_DEBUG_BREAK
@@ -48,11 +48,8 @@
 
     #define HE_FILE __FILE__
 
-    #if HE_COMPILER_MSVC
-        // When building with Edit-and-continue MSVC will treat __LINE__ as a variable name,
-        // rather than a literal. This hack forces it to be an unsigned literal.
-        #define HE_LINE HE_PP_JOIN(__LINE__, u)
-    #else
-        #define HE_LINE __LINE__
-    #endif
+    // When building with Edit-and-continue MSVC will treat __LINE__ as a variable name,
+    // rather than a literal. This hack forces it to be an unsigned literal.
+    // We also do this on other compilers so HE_LINE is always unsigned, no matter the compiler.
+    #define HE_LINE HE_PP_JOIN(__LINE__, u)
 #endif

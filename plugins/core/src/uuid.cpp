@@ -4,6 +4,7 @@
 
 #include "he/core/ascii.h"
 #include "he/core/memory_ops.h"
+#include "he/core/random.h"
 
 namespace he
 {
@@ -12,7 +13,6 @@ namespace he
 
     Uuid Uuid::FromString(StringView src)
     {
-
         Uuid id;
 
         constexpr uint32_t ByteLen = HE_LENGTH_OF(id.m_bytes);
@@ -47,6 +47,18 @@ namespace he
     }
 
     HE_POP_WARNINGS()
+
+    Uuid Uuid::CreateV4()
+    {
+        Uuid id;
+        GetSecureRandomBytes(id.m_bytes);
+
+        // Per section 4.4, set bits for version and `clock_seq_hi_and_reserved`
+        id.m_bytes[6] = (id.m_bytes[6] & 0x0f) | 0x40;
+        id.m_bytes[8] = (id.m_bytes[8] & 0x3f) | 0x80;
+
+        return id;
+    }
 
     uint64_t Uuid::GetLow() const
     {

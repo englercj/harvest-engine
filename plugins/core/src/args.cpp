@@ -24,6 +24,20 @@ namespace he
         Usage,
     };
 
+    template <>
+    const char* AsString(ArgType x)
+    {
+        switch (x)
+        {
+            case ArgType::Boolean: return "Boolean";
+            case ArgType::Integer: return "Integer";
+            case ArgType::Float: return "Float";
+            case ArgType::String: return "String";
+        }
+
+        return "<unknown>";
+    }
+
     static void WriteArgHelpName(String& ss, const ArgDesc& desc, ArgHelpFormat format)
     {
         const bool required = HasFlags(desc.flags, ArgFlag::Required);
@@ -511,19 +525,5 @@ namespace he
         ss += '\n';
 
         return ss;
-    }
-
-    template <>
-    const char* AsString(ArgType x)
-    {
-        switch (x)
-        {
-            case ArgType::Boolean: return "Boolean";
-            case ArgType::Integer: return "Integer";
-            case ArgType::Float: return "Float";
-            case ArgType::String: return "String";
-        }
-
-        return "<unknown>";
     }
 }

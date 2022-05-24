@@ -96,6 +96,7 @@ HE_TEST(core, compiler, WARNINGS)
 {
     HE_PUSH_WARNINGS();
     HE_DISABLE_MSVC_WARNING(4101); // unused var
+    HE_DISABLE_GCC_CLANG_WARNING("-Wunused-variable");
 
     int unused;
 

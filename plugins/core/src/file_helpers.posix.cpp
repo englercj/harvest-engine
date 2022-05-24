@@ -7,9 +7,8 @@
 
 #if defined(HE_PLATFORM_API_POSIX) && !defined(HE_PLATFORM_EMSCRIPTEN)
 
-#include "he/core/win32_min.h"
-
-#include <fileapi.h>
+#include <errno.h>
+#include <fcntl.h>
 
 namespace he
 {
@@ -43,7 +42,8 @@ namespace he
                 flags = O_RDWR | O_APPEND | O_CREAT;
                 break;
             default:
-                return Result::InvalidParameter;
+                errno = EINVAL;
+                return -1;
         }
 
         flags |= O_CLOEXEC; // do not inherit descriptor for child process
@@ -53,7 +53,7 @@ namespace he
 
         int fd = open(path, flags, 0666);
         if (fd < 0)
-            return Result::FromLastError();
+            return fd;
 
         int advice = POSIX_FADV_NORMAL;
         if (HasFlags(openFlags, FileOpenFlag::RandomAccess))

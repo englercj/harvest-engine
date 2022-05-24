@@ -11,7 +11,7 @@
 #include "fmt/core.h"
 
 #include <algorithm>
-#include <ctime>
+#include <time.h>
 
 namespace he
 {
@@ -52,7 +52,7 @@ namespace fmt
         }
 
         template <typename FormatContext>
-        auto format(const std::tm& tm, FormatContext& ctx) const -> decltype(ctx.out())
+        auto format(const struct tm& tm, FormatContext& ctx) const -> decltype(ctx.out())
         {
             // By appending an extra space we can distinguish an empty result that
             // indicates insufficient buffer size from a guaranteed non-empty result
@@ -64,7 +64,7 @@ namespace fmt
             buf.Resize(he::String::MaxEmbedCharacters, he::DefaultInit);
             while (true)
             {
-                const size_t count = std::strftime(buf.Data(), buf.Size(), format.Data(), &tm);
+                const size_t count = strftime(buf.Data(), buf.Size(), format.Data(), &tm);
                 if (count != 0)
                 {
                     buf.Resize(static_cast<uint32_t>(count));
@@ -84,9 +84,9 @@ namespace fmt
         template <typename FormatContext>
         auto format(const he::SystemTime& t, FormatContext& ctx) const -> decltype(ctx.out())
         {
-            const std::time_t time = t.val / he::Seconds::Ratio;
-            std::tm tm;
-            localtime_s(&tm, &time);
+            const time_t time = t.val / he::Seconds::Ratio;
+            struct tm tm;
+            localtime_r(&time, &tm);
 
             return _TimeFormatter::format(tm, ctx);
         }
@@ -98,9 +98,9 @@ namespace fmt
         template <typename FormatContext>
         auto format(const he::FmtLocalTime& t, FormatContext& ctx) const -> decltype(ctx.out())
         {
-            const std::time_t time = t.time.val / he::Seconds::Ratio;
-            std::tm tm;
-            localtime_s(&tm, &time);
+            const time_t time = t.time.val / he::Seconds::Ratio;
+            struct tm tm;
+            localtime_r(&time, &tm);
 
             return _TimeFormatter::format(tm, ctx);
         }
@@ -112,9 +112,9 @@ namespace fmt
         template <typename FormatContext>
         auto format(const he::FmtUtcTime& t, FormatContext& ctx) const -> decltype(ctx.out())
         {
-            const std::time_t time = t.time.val / he::Seconds::Ratio;
-            std::tm tm;
-            gmtime_s(&tm, &time);
+            const time_t time = t.time.val / he::Seconds::Ratio;
+            struct tm tm;
+            gmtime_r(&time, &tm);
 
             return _TimeFormatter::format(tm, ctx);
         }

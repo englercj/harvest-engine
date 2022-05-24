@@ -341,7 +341,7 @@ HE_TEST(core, buffer_writer, ShrinkToFit)
 
     buf.ShrinkToFit();
     HE_EXPECT_EQ(buf.Size(), 0);
-    HE_EXPECT_GE(buf.Capacity(), 0);
+    // HE_EXPECT_GE(buf.Capacity(), 0);
 
     buf.Resize(2048);
     HE_EXPECT_EQ(buf.Size(), 2048);
@@ -357,7 +357,7 @@ HE_TEST(core, buffer_writer, ShrinkToFit)
 
     buf.ShrinkToFit();
     HE_EXPECT_EQ(buf.Size(), 0);
-    HE_EXPECT_GE(buf.Capacity(), 0);
+    // HE_EXPECT_GE(buf.Capacity(), 0);
 }
 
 // ------------------------------------------------------------------------------------------------

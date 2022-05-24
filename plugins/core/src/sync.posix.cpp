@@ -18,8 +18,10 @@
 #endif
 
 #include <pthread.h>
+#include <semaphore.h>
+#include <unistd.h>
 
-#if HE_ASSERTIONS_ENABLED
+#if HE_ENABLE_ASSERTIONS
     #define HE_ASSERT_PTHREAD(expr) \
         do { \
             const int r_ = (expr); \
@@ -47,7 +49,7 @@ namespace he
         HE_ASSERT(IsAligned(m_opaque, alignof(pthread_rwlock_t)));
 
         pthread_rwlock_t* rwlock = reinterpret_cast<pthread_rwlock_t*>(m_opaque);
-        HE_ASSERT_PTHREAD(pthread_rwlock_init(rwlock));
+        HE_ASSERT_PTHREAD(pthread_rwlock_init(rwlock, nullptr));
     }
 
     RWLock::~RWLock()
@@ -104,14 +106,14 @@ namespace he
 
         pthread_mutex_t* mutex = reinterpret_cast<pthread_mutex_t*>(m_opaque);
 
-    #if HE_ASSERTIONS_ENABLED
+    #if HE_ENABLE_ASSERTIONS
         pthread_mutexattr_t attr;
         HE_ASSERT_PTHREAD(pthread_mutexattr_init(&attr));
         HE_ASSERT_PTHREAD(pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_ERRORCHECK));
 
         HE_ASSERT_PTHREAD(pthread_mutex_init(mutex, &attr));
 
-        HE_ASSERT_PTHREAD(thread_mutexattr_destroy(&attr));
+        HE_ASSERT_PTHREAD(pthread_mutexattr_destroy(&attr));
     #else
         HE_ASSERT_PTHREAD(pthread_mutex_init(mutex, nullptr));
     #endif
@@ -156,7 +158,7 @@ namespace he
         pthread_mutex_t* mutex = reinterpret_cast<pthread_mutex_t*>(m_opaque);
         HE_ASSERT_PTHREAD(pthread_mutex_init(mutex, &attr));
 
-        HE_ASSERT_PTHREAD(thread_mutexattr_destroy(&attr));
+        HE_ASSERT_PTHREAD(pthread_mutexattr_destroy(&attr));
     }
 
     RecursiveMutex::~RecursiveMutex()
@@ -192,7 +194,7 @@ namespace he
         HE_ASSERT(IsAligned(m_opaque, alignof(pthread_cond_t)));
 
         pthread_cond_t* cv = reinterpret_cast<pthread_cond_t*>(m_opaque);
-        HE_ASSERT_PTHREAD(pthread_cond_init(cv));
+        HE_ASSERT_PTHREAD(pthread_cond_init(cv, nullptr));
     }
 
     ConditionVariable::~ConditionVariable()
@@ -216,27 +218,27 @@ namespace he
     template <>
     void ConditionVariable::WaitMutex<Mutex>(Mutex& mutex)
     {
-        pthread_mutex_t* mutex = reinterpret_cast<pthread_mutex_t*>(mutex.m_opaque);
+        pthread_mutex_t* m = reinterpret_cast<pthread_mutex_t*>(mutex.m_opaque);
         pthread_cond_t* cv = reinterpret_cast<pthread_cond_t*>(m_opaque);
-        HE_ASSERT_PTHREAD(pthread_cond_wait(cv, mutex));
+        HE_ASSERT_PTHREAD(pthread_cond_wait(cv, m));
     }
 
     template <>
     void ConditionVariable::WaitMutex<RecursiveMutex>(RecursiveMutex& mutex)
     {
-        pthread_mutex_t* mutex = reinterpret_cast<pthread_mutex_t*>(mutex.m_opaque);
+        pthread_mutex_t* m = reinterpret_cast<pthread_mutex_t*>(mutex.m_opaque);
         pthread_cond_t* cv = reinterpret_cast<pthread_cond_t*>(m_opaque);
-        HE_ASSERT_PTHREAD(pthread_cond_wait(cv, mutex));
+        HE_ASSERT_PTHREAD(pthread_cond_wait(cv, m));
     }
 
     template <>
     bool ConditionVariable::WaitMutex<Mutex>(Mutex& mutex, Duration timeout)
     {
         const timespec timeoutSpec = PosixTimeFromDuration(timeout);
-        pthread_mutex_t* mutex = reinterpret_cast<pthread_mutex_t*>(mutex.m_opaque);
+        pthread_mutex_t* m = reinterpret_cast<pthread_mutex_t*>(mutex.m_opaque);
         pthread_cond_t* cv = reinterpret_cast<pthread_cond_t*>(m_opaque);
-        const int r = pthread_cond_timedwait(cv, mutex, &timeoutSpec);
-        HE_ASSERT(r == 0 || r == ETIMEDOUT, HE_KV(syscall, "pthread_cond_timedwait(cv, mutex, &timeoutSpec)"), HE_KV(result, PosixResult(r)));
+        const int r = pthread_cond_timedwait(cv, m, &timeoutSpec);
+        HE_ASSERT(r == 0 || r == ETIMEDOUT, HE_KV(syscall, "pthread_cond_timedwait(cv, m, &timeoutSpec)"), HE_KV(result, PosixResult(r)));
         return r == 0;
     }
 
@@ -244,10 +246,10 @@ namespace he
     bool ConditionVariable::WaitMutex<RecursiveMutex>(RecursiveMutex& mutex, Duration timeout)
     {
         const timespec timeoutSpec = PosixTimeFromDuration(timeout);
-        pthread_mutex_t* mutex = reinterpret_cast<pthread_mutex_t*>(mutex.m_opaque);
+        pthread_mutex_t* m = reinterpret_cast<pthread_mutex_t*>(mutex.m_opaque);
         pthread_cond_t* cv = reinterpret_cast<pthread_cond_t*>(m_opaque);
-        const int r = pthread_cond_timedwait(cv, mutex, &timeoutSpec);
-        HE_ASSERT(r == 0 || r == ETIMEDOUT, HE_KV(syscall, "pthread_cond_timedwait(cv, mutex, &timeoutSpec)"), HE_KV(result, PosixResult(r)));
+        const int r = pthread_cond_timedwait(cv, m, &timeoutSpec);
+        HE_ASSERT(r == 0 || r == ETIMEDOUT, HE_KV(syscall, "pthread_cond_timedwait(cv, m, &timeoutSpec)"), HE_KV(result, PosixResult(r)));
         return r == 0;
     }
 
@@ -305,7 +307,7 @@ namespace he
         end += timeout;
 
         const struct timespec timeoutSpec = PosixTimeFromSystemTime(end);
-        const int r = sem_timedwait(sem, timeoutSpec);
+        const int r = sem_timedwait(sem, &timeoutSpec);
         HE_ASSERT(r == 0 || errno == ETIMEDOUT, HE_KV(syscall, "sem_timedwait(sem, timeoutSpec)"), HE_KV(result, Result::FromLastError()));
 
         return r == 0;
@@ -335,16 +337,16 @@ namespace he
 
     #if defined(__linux__)
         data->eventFd = eventfd(0, EFD_CLOEXEC);
-        HE_ASSERT(data->epollFd != -1, HE_KV(syscall, "eventfd(0, EFD_CLOEXEC)"), HE_KV(result, Result::FromLastError()));
+        HE_ASSERT(data->eventFd != -1, HE_KV(syscall, "eventfd(0, EFD_CLOEXEC)"), HE_KV(result, Result::FromLastError()));
 
         struct epoll_event ev;
         ev.events = EPOLLIN;
-        ev.data.fd = fds[0];
+        ev.data.fd = data->eventFd;
 
         data->epollFd = epoll_create(1);
         HE_ASSERT(data->epollFd != -1, HE_KV(syscall, "epoll_create(1)"), HE_KV(result, Result::FromLastError()));
 
-        HE_ASSERT_ERRNO(epoll_ctl(epollFd, EPOLL_CTL_ADD, eventFd, &ev));
+        HE_ASSERT_ERRNO(epoll_ctl(data->epollFd, EPOLL_CTL_ADD, data->eventFd, &ev));
 
         if (initiallySignaled)
             Signal();
@@ -415,13 +417,12 @@ namespace he
 
     void SyncEvent::Wait()
     {
-        SyncEventData* data = reinterpret_cast<SyncEventData*>(m_opaque);
-
     #if defined(__linux__)
         Wait(Duration_Max);
     #else
         LockGuard lock(data->mutex);
 
+        SyncEventData* data = reinterpret_cast<SyncEventData*>(m_opaque);
         data->cv.Wait(data->mutex, [data]() { return data->state; });
         if (!data->manualReset)
             data->state = false;

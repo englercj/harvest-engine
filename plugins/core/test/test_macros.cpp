@@ -42,6 +42,7 @@ HE_TEST(core, macros, UNIQUE_NAME)
 {
     HE_PUSH_WARNINGS();
     HE_DISABLE_MSVC_WARNING(4101); // unused variable
+    HE_DISABLE_GCC_CLANG_WARNING("-Wunused-variable");
 
     int HE_UNIQUE_NAME(a);
     int HE_UNIQUE_NAME(a);
@@ -82,8 +83,13 @@ HE_TEST(core, macros, PP_FIRST_ARG)
 // ------------------------------------------------------------------------------------------------
 HE_TEST(core, macros, PP_REST_ARGS)
 {
+    HE_PUSH_WARNINGS();
+    HE_DISABLE_GCC_CLANG_WARNING("-Wunused-value");
+
     static_assert(HE_PP_REST_ARGS(1, 2) == 2);
     static_assert(HE_PP_REST_ARGS(1, 2, 3) == 3); // (2, 3) resolves to 3
+
+    HE_POP_WARNINGS();
 
     HE_EXPECT_EQ_STR(HE_STRINGIFY(HE_PP_REST_ARGS(5, 4, 3)), "(4, 3)");
 }

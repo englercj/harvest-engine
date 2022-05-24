@@ -292,7 +292,7 @@ namespace he
     template <typename T>
     inline Result File::ReadAll(T& dst, const char* path, uint32_t* outBytesRead)
     {
-        constexpr uint32_t ElementSize = sizeof(T::ElementType);
+        constexpr uint32_t ElementSize = sizeof(typename T::ElementType);
 
         File f;
         Result r = f.Open(path, FileOpenMode::ReadExisting);

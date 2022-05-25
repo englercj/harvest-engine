@@ -44,8 +44,8 @@ namespace he
 
         /// The file is being opened with no system caching for data reads and writes. When this
         /// flag is set there are a number of restrictions that must be followed:
-        /// - Read/write offsets much be aligned to 4096 bytes
-        /// - Read/write sizes much be aligned to 4096 bytes
+        /// - Read/write offsets must be aligned to 4096 bytes
+        /// - Read/write sizes must be aligned to 4096 bytes
         /// - Read/write buffers must have an address that is aligned to 4096 bytes
         NoBuffering     = 1 << 1,
 

@@ -375,7 +375,7 @@ namespace he
         ///
         /// \param str The string source to copy from.
         template <typename R> requires(!std::is_same_v<R, String> && StdContiguousRange<R, const char>)
-        String& operator=(const R& range) { Assign(range.data(), range.size()); return *this; }
+        String& operator=(const R& range) { Assign(range.data(), static_cast<uint32_t>(range.size())); return *this; }
 
         /// Replaces the contents of this string with a copy of the characters in `range`.
         ///

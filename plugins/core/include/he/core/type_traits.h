@@ -63,4 +63,7 @@ namespace he
 
     template <typename T>
     concept Enum = std::is_enum_v<T>;
+
+    template <typename T, typename U>
+    concept Exactly = std::is_same_v<T, U>;
 }

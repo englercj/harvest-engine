@@ -83,6 +83,167 @@ namespace he::schema
     };
 
     // --------------------------------------------------------------------------------------------
+    // As of GCC 11 it *still* doesn't support explicit member function specialization in a
+    // non-namespace scope so we have the actual definitions here and have the member functions
+    // call into them.
+    // https://gcc.gnu.org/bugzilla/show_bug.cgi?id=85282
+
+    template <DataType T> T _ReadDataElement(const Word* data, uint32_t index, uint32_t step)
+    {
+        HE_ASSERT(IsAligned(step, BitsPerByte));
+        const uint8_t* element = reinterpret_cast<const uint8_t*>(data) + (static_cast<uint64_t>(index) * (step / BitsPerByte));
+        return *reinterpret_cast<const T*>(element);
+    }
+
+    template <> bool _ReadDataElement<bool>(const Word* data, uint32_t index, uint32_t step)
+    {
+        HE_UNUSED(step);
+        const uint8_t* bits = reinterpret_cast<const uint8_t*>(data) + (index / BitsPerByte);
+        const uint32_t shift = index % BitsPerByte;
+        return (*bits & (1 << shift)) != 0;
+    }
+
+    template <> Void _ReadDataElement<Void>(const Word* data, uint32_t index, uint32_t step)
+    {
+        HE_UNUSED(data, index, step);
+        return {};
+    }
+
+    template <DataType T> void _WriteDataElement(Word* data, uint32_t index, uint32_t step, T value)
+    {
+        uint8_t* dst = reinterpret_cast<uint8_t*>(data) + (static_cast<uint64_t>(index) * step / BitsPerByte);
+        MemCopy(dst, &value, sizeof(T));
+    }
+
+    template <> void _WriteDataElement<bool>(Word* data, uint32_t index, uint32_t step, bool value)
+    {
+        HE_UNUSED(step);
+        uint8_t* b = reinterpret_cast<uint8_t*>(data) + (index / BitsPerByte);
+        const uint32_t shift = index % BitsPerByte;
+        *b = (*b & ~(1 << shift)) | (static_cast<uint8_t>(value) << shift);
+    }
+
+    template <> void _WriteDataElement<Void>(Word* data, uint32_t index, uint32_t step, Void value)
+    {
+        HE_UNUSED(data, index, step, value);
+    }
+
+    template <DataType T> T _ReadDataFieldUnsafe(const Word* data, uint32_t dataOffset)
+    {
+        return reinterpret_cast<const T*>(data)[dataOffset];
+    }
+
+    template <> bool _ReadDataFieldUnsafe<bool>(const Word* data, uint32_t dataOffset)
+    {
+        const uint8_t* b = reinterpret_cast<const uint8_t*>(data) + (dataOffset / BitsPerByte);
+        const uint32_t shift = dataOffset % BitsPerByte;
+        return (*b & (1 << shift)) != 0;
+    }
+
+    template <> Void _ReadDataFieldUnsafe<Void>(const Word* data, uint32_t dataOffset)
+    {
+        HE_UNUSED(data, dataOffset);
+        return {};
+    }
+
+    template <DataType T> T _ReadDataField(const Word* data, uint64_t dataFieldsWordSize, uint32_t dataOffset, T defaultValue)
+    {
+        constexpr uint64_t BitsInType = sizeof(T) * BitsPerByte;
+        if (((dataOffset + 1) * BitsInType) <= (dataFieldsWordSize * BitsPerWord)) [[likely]]
+            return _ReadDataFieldUnsafe<T>(data, dataOffset);
+
+        return defaultValue;
+    }
+
+    template <> bool _ReadDataField<bool>(const Word* data, uint64_t dataFieldsWordSize, uint32_t dataOffset, bool defaultValue)
+    {
+        if (dataOffset < (dataFieldsWordSize * BitsPerWord)) [[likely]]
+            return _ReadDataFieldUnsafe<bool>(data, dataOffset);
+
+        return defaultValue;
+    }
+
+    template <> Void _ReadDataField<Void>(const Word* data, uint64_t dataFieldsWordSize, uint32_t dataOffset, Void defaultValue)
+    {
+        HE_UNUSED(data, dataFieldsWordSize, dataOffset, defaultValue);
+        return {};
+    }
+
+    template <DataType T> void _WriteDataField(Word* data, uint32_t dataOffset, T value)
+    {
+        reinterpret_cast<T*>(data)[dataOffset] = value;
+    }
+
+    template <> void _WriteDataField<bool>(Word* data, uint32_t dataOffset, bool value)
+    {
+        uint8_t* b = reinterpret_cast<uint8_t*>(data) + (dataOffset / BitsPerByte);
+        const uint32_t shift = dataOffset % BitsPerByte;
+        *b = (*b & ~(1 << shift)) | (static_cast<uint8_t>(value) << shift);
+    }
+
+    template <> void _WriteDataField<Void>(Word* data, uint32_t dataOffset, Void value)
+    {
+        HE_UNUSED(data, dataOffset, value);
+    }
+
+    struct BitSpan
+    {
+        bool IsSet(uint32_t index) const
+        {
+            const uint8_t* b = data + (index / BitsPerByte);
+            const uint32_t shift = (index % BitsPerByte) + offset;
+            return (*b & (1 << shift)) != 0;
+        }
+
+        void Set(uint32_t index, bool value)
+        {
+            uint8_t* b = data + (index / BitsPerByte);
+            const uint32_t shift = index % BitsPerByte;
+            *b = (*b & ~(1 << shift)) | (static_cast<uint8_t>(value) << shift);
+        }
+
+        bool IsEmpty() const { return count == 0; }
+
+        uint8_t* data;
+        uint32_t offset;
+        uint32_t count;
+    };
+
+    template <DataType T> struct _ReadDataArrayReturnType { using Type = Span<T>; };
+    template <> struct _ReadDataArrayReturnType<bool> { using Type = BitSpan; };
+    template <> struct _ReadDataArrayReturnType<Void> { using Type = Void; };
+
+    template <DataType T> typename _ReadDataArrayReturnType<T>::Type _ReadDataArrayField(Word* data, uint32_t dataWordSize, uint32_t dataOffset, uint16_t elementCount)
+    {
+        constexpr uint64_t BitsInType = sizeof(T) * BitsPerByte;
+        if (((dataOffset + elementCount) * BitsInType) <= (dataWordSize * BitsPerWord)) [[likely]]
+        {
+            T* b = reinterpret_cast<T*>(data) + dataOffset;
+            return { b, elementCount };
+        }
+
+        return {};
+    }
+
+    template <> BitSpan _ReadDataArrayField<bool>(Word* data, uint32_t dataWordSize, uint32_t dataOffset, uint16_t elementCount)
+    {
+        if ((dataOffset + elementCount) <= (dataWordSize * BitsPerWord)) [[likely]]
+        {
+            uint8_t* b = reinterpret_cast<uint8_t*>(data) + (dataOffset / BitsPerByte);
+            const uint32_t offset = dataOffset % BitsPerByte;
+            return { b, offset, elementCount };
+        }
+
+        return {};
+    }
+
+    template <> Void _ReadDataArrayField<Void>(Word* data, uint32_t dataWordSize, uint32_t dataOffset, uint16_t elementCount)
+    {
+        HE_UNUSED(data, dataWordSize, dataOffset, elementCount);
+        return {};
+    }
+
+    // --------------------------------------------------------------------------------------------
     class PointerReader
     {
     public:
@@ -159,7 +320,7 @@ namespace he::schema
         uint16_t StructDataFieldCount() const;
         uint16_t StructDataWordSize() const { return Tag().StructDataWordSize(); }
         uint16_t StructPointerCount() const { return Tag().StructPointerCount(); }
-        ElementSize ElementSize() const { return m_elementSize; }
+        ElementSize GetElementSize() const { return m_elementSize; }
         PointerReader Tag() const { HE_ASSERT(m_elementSize == ElementSize::Composite); return PointerReader(m_data - 1); }
         bool IsEmpty() const { return m_size == 0; }
 
@@ -168,35 +329,14 @@ namespace he::schema
             HE_ASSERT(IsValid());
             HE_ASSERT(index < Size());
             HE_ASSERT(m_elementSize == ElementSizeOfType<T>::Value);
-            HE_ASSERT(IsAligned(m_step, BitsPerByte));
-            const uint8_t* element = reinterpret_cast<const uint8_t*>(m_data) + (index * (m_step / BitsPerByte));
-            return *reinterpret_cast<const T*>(element);
-        }
-
-        template <> bool GetDataElement<bool>(uint32_t index) const
-        {
-            HE_ASSERT(IsValid());
-            HE_ASSERT(index < Size());
-            HE_ASSERT(m_elementSize == ElementSize::Bit);
-            const uint8_t* bits = reinterpret_cast<const uint8_t*>(m_data) + (index / BitsPerByte);
-            const uint32_t shift = index % BitsPerByte;
-            return (*bits & (1 << shift)) != 0;
-        }
-
-        template <> Void GetDataElement<Void>(uint32_t index) const
-        {
-            HE_ASSERT(IsValid());
-            HE_ASSERT(index < Size());
-            HE_ASSERT(m_elementSize == ElementSize::Void);
-            HE_UNUSED(index);
-            return {};
+            return _ReadDataElement<T>(m_data, index, m_step);
         }
 
         StructReader GetCompositeElement(uint32_t index) const;
 
-        template <typename T> T::Reader GetCompositeElement(uint32_t index) const
+        template <typename T> typename T::Reader GetCompositeElement(uint32_t index) const
         {
-            return T::Reader(GetCompositeElement(index));
+            return typename T::Reader(GetCompositeElement(index));
         }
 
         PointerReader GetPointerElement(uint32_t index) const;
@@ -254,25 +394,8 @@ namespace he::schema
 
         template <DataType T> T GetDataField(uint32_t dataOffset, T defaultValue = static_cast<T>(0)) const
         {
-            constexpr uint64_t BitsInType = sizeof(T) * BitsPerByte;
             const uint64_t dataFieldsWordSize = m_dataWordSize - m_metaWordSize;
-            if (((dataOffset + 1) * BitsInType) <= (dataFieldsWordSize * BitsPerWord)) [[likely]]
-                return reinterpret_cast<const T*>(DataFields())[dataOffset];
-
-            return defaultValue;
-        }
-
-        template <> bool GetDataField<bool>(uint32_t dataOffset, bool defaultValue) const
-        {
-            const uint64_t dataFieldsWordSize = m_dataWordSize - m_metaWordSize;
-            if (dataOffset < (dataFieldsWordSize * BitsPerWord)) [[likely]]
-            {
-                const uint8_t* b = reinterpret_cast<const uint8_t*>(DataFields()) + (dataOffset / BitsPerByte);
-                const uint32_t shift = dataOffset % BitsPerByte;
-                return (*b & (1 << shift)) != 0;
-            }
-
-            return defaultValue;
+            return _ReadDataField<T>(DataFields(), dataFieldsWordSize, dataOffset, defaultValue);
         }
 
         template <DataType T> T TryGetDataField(uint16_t index, uint32_t dataOffset, T defaultValue = static_cast<T>(0)) const
@@ -417,27 +540,27 @@ namespace he::schema
         String::Builder AddString(StringView str);
 
         template <typename T>
-        T::Builder AddStruct()
+        typename T::Builder AddStruct()
         {
             constexpr uint16_t DataFieldCount = T::DataFieldCount;
             constexpr uint16_t DataWordSize = T::DataWordSize;
             constexpr uint16_t PointerCount = T::PointerCount;
-            return T::Builder(AddStruct(DataFieldCount, DataWordSize, PointerCount));
+            return typename T::Builder(AddStruct(DataFieldCount, DataWordSize, PointerCount));
         }
 
         template <typename T>
-        List<T>::Builder AddList(uint32_t elementCount)
+        typename List<T>::Builder AddList(uint32_t elementCount)
         {
             if constexpr (ElementSizeOfType<T>::Value == ElementSize::Composite)
             {
                 constexpr uint16_t DataFieldCount = T::DataFieldCount;
                 constexpr uint16_t DataWordSize = T::DataWordSize;
                 constexpr uint16_t PointerCount = T::PointerCount;
-                return List<T>::Builder(AddStructList(elementCount, DataFieldCount, DataWordSize, PointerCount));
+                return typename List<T>::Builder(AddStructList(elementCount, DataFieldCount, DataWordSize, PointerCount));
             }
             else
             {
-                return List<T>::Builder(AddList(ElementSizeOfType<T>::Value, elementCount));
+                return typename List<T>::Builder(AddList(ElementSizeOfType<T>::Value, elementCount));
             }
         }
 
@@ -465,8 +588,8 @@ namespace he::schema
         Span<uint8_t> AsBytes() { return { reinterpret_cast<uint8_t*>(Location()), BytesPerWord }; }
         Span<const uint8_t> AsBytes() const { return { reinterpret_cast<const uint8_t*>(Location()), BytesPerWord }; }
 
-        Builder* Builder() { return m_builder; }
-        const schema::Builder* Builder() const { return m_builder; }
+        Builder* GetBuilder() { return m_builder; }
+        const Builder* GetBuilder() const { return m_builder; }
 
         Word* Location() { return m_builder ? m_builder->Data() + m_wordOffset : nullptr; }
         const Word* Location() const { return m_builder ? m_builder->Data() + m_wordOffset : nullptr; }
@@ -576,11 +699,11 @@ namespace he::schema
         ListReader AsReader() const { return ListReader(Location(), m_size, m_step, m_elementSize); }
         operator ListReader() const { return AsReader(); }
 
-        Span<uint8_t> AsBytes() { return { reinterpret_cast<uint8_t*>(Location()), (static_cast<uint64_t>(m_size) * m_step / BitsPerByte) }; }
-        Span<const uint8_t> AsBytes() const { return { reinterpret_cast<const uint8_t*>(Location()), (static_cast<uint64_t>(m_size) * m_step / BitsPerByte) }; }
+        Span<uint8_t> AsBytes() { return { reinterpret_cast<uint8_t*>(Location()), (m_size * (m_step / BitsPerByte)) }; }
+        Span<const uint8_t> AsBytes() const { return { reinterpret_cast<const uint8_t*>(Location()), (m_size * (m_step / BitsPerByte)) }; }
 
-        Builder* Builder() { return m_builder; }
-        const schema::Builder* Builder() const { return m_builder; }
+        Builder* GetBuilder() { return m_builder; }
+        const Builder* GetBuilder() const { return m_builder; }
 
         Word* Data() { return Location(); }
         const Word* Data() const { return Location(); }
@@ -595,7 +718,7 @@ namespace he::schema
         uint16_t StructDataFieldCount() const { return m_structDataFieldCount; }
         uint16_t StructDataWordSize() const { return Tag().StructDataWordSize(); }
         uint16_t StructPointerCount() const { return Tag().StructPointerCount(); }
-        ElementSize ElementSize() const { return m_elementSize; }
+        ElementSize GetElementSize() const { return m_elementSize; }
         PointerBuilder Tag() const { HE_ASSERT(m_elementSize == ElementSize::Composite); return PointerBuilder(m_builder, m_wordOffset - 1); }
         bool IsEmpty() const { return m_size == 0; }
 
@@ -604,48 +727,25 @@ namespace he::schema
         template <DataType T> T GetDataElement(uint32_t index) const
         {
             HE_ASSERT(IsValid());
-            const uint8_t* b = reinterpret_cast<const uint8_t*>(Data()) + (static_cast<uint64_t>(index) * m_step / BitsPerByte);
-            return *reinterpret_cast<const T*>(b);
+            return _ReadDataElement<T>(Data(), index, m_step);
         }
-
-        template <> bool GetDataElement<bool>(uint32_t index) const
-        {
-            HE_ASSERT(IsValid());
-            const uint8_t* b = reinterpret_cast<const uint8_t*>(Data()) + (index / BitsPerByte);
-            const uint32_t shift = index % BitsPerByte;
-            return (*b & (1 << shift)) != 0;
-        }
-
-        template <> Void GetDataElement<Void>(uint32_t) const { return {}; }
 
         PointerBuilder GetPointerElement(uint32_t index) const { HE_ASSERT(IsValid()); return PointerBuilder(m_builder, m_wordOffset + index); }
 
         StructBuilder GetCompositeElement(uint32_t index) const;
 
-        template <typename T> T::Builder GetCompositeElement(uint32_t index) const
+        template <typename T> typename T::Builder GetCompositeElement(uint32_t index) const
         {
             HE_ASSERT(IsValid());
-            return T::Builder(GetCompositeElement(index));
+            return typename T::Builder(GetCompositeElement(index));
         }
 
         template <DataType T> void SetDataElement(uint32_t index, T value)
         {
             HE_ASSERT(IsValid());
             HE_ASSERT(m_elementSize == ElementSizeOfType<T>::Value);
-            uint8_t* dst = reinterpret_cast<uint8_t*>(Data()) + (static_cast<uint64_t>(index) * m_step / BitsPerByte);
-            MemCopy(dst, &value, sizeof(T));
+            _WriteDataElement<T>(Data(), index, m_step, value);
         }
-
-        template <> void SetDataElement<bool>(uint32_t index, bool value)
-        {
-            HE_ASSERT(IsValid());
-            HE_ASSERT(m_elementSize == ElementSize::Bit);
-            uint8_t* b = reinterpret_cast<uint8_t*>(Data()) + (index / BitsPerByte);
-            const uint32_t shift = index % BitsPerByte;
-            *b = (*b & ~(1 << shift)) | (static_cast<uint8_t>(value) << shift);
-        }
-
-        template <> void SetDataElement<Void>(uint32_t, Void) {}
 
         void SetPointerElement(uint32_t index, const StructReader& value)
         {
@@ -709,8 +809,8 @@ namespace he::schema
         Span<uint8_t> AsBytes() { return { reinterpret_cast<uint8_t*>(Location()), ((m_dataWordSize + m_pointerCount) * BytesPerWord) }; }
         Span<const uint8_t> AsBytes() const { return { reinterpret_cast<const uint8_t*>(Location()), ((m_dataWordSize + m_pointerCount) * BytesPerWord) }; }
 
-        Builder* Builder() { return m_builder; }
-        const schema::Builder* Builder() const { return m_builder; }
+        Builder* GetBuilder() { return m_builder; }
+        const Builder* GetBuilder() const { return m_builder; }
 
         Word* Location() { return m_builder ? m_builder->Data() + m_wordOffset : nullptr; }
         const Word* Location() const { return m_builder ? m_builder->Data() + m_wordOffset : nullptr; }
@@ -750,29 +850,15 @@ namespace he::schema
         {
             HE_ASSERT(IsValid());
             HE_ASSERT(((dataOffset + 1) * (sizeof(T) * BitsPerByte)) <= (static_cast<uint64_t>(m_dataWordSize - m_metaWordSize) * BitsPerWord));
-            reinterpret_cast<T*>(DataFields())[dataOffset] = value;
+            _WriteDataField<T>(DataFields(), dataOffset, value);
         }
 
         template <DataType T>
         void SetAndMarkDataField(uint16_t index, uint32_t dataOffset, T value)
         {
-            HE_ASSERT(IsValid());
+            SetDataField(dataOffset, value);
             MarkHasDataField(index, true);
-            reinterpret_cast<T*>(DataFields())[dataOffset] = value;
         }
-
-        template <>
-        void SetAndMarkDataField<bool>(uint16_t index, uint32_t dataOffset, bool value)
-        {
-            HE_ASSERT(IsValid());
-            MarkHasDataField(index, true);
-            uint8_t* b = reinterpret_cast<uint8_t*>(DataFields()) + (dataOffset / BitsPerByte);
-            const uint32_t shift = dataOffset % BitsPerByte;
-            *b = (*b & ~(1 << shift)) | (static_cast<uint8_t>(value) << shift);
-        }
-
-        template <>
-        void SetAndMarkDataField<Void>(uint16_t, uint32_t, Void) {}
 
         void ClearDataField(uint16_t index) { MarkHasDataField(index, false); }
         void ClearDataFields()
@@ -783,19 +869,18 @@ namespace he::schema
         }
 
         template <DataType T>
-        Span<T> GetDataArrayField(uint16_t index, uint32_t dataOffset, uint16_t elementCount)
+        typename _ReadDataArrayReturnType<T>::Type GetDataArrayField(uint16_t index, uint32_t dataOffset, uint16_t elementCount)
         {
             HE_ASSERT(elementCount > 0);
-
-            constexpr uint64_t BitsInType = sizeof(T) * BitsPerByte;
-            if (((dataOffset + elementCount) * BitsInType) <= (m_dataWordSize * BitsPerWord)) [[likely]]
+            typename _ReadDataArrayReturnType<T>::Type ret = _ReadDataArrayField<T>(DataFields(), m_dataWordSize, dataOffset, elementCount);
+            if constexpr (!std::is_same_v<decltype(ret), Void>)
             {
-                MarkHasDataField(index, true);
-                T* data = reinterpret_cast<T*>(DataFields()) + dataOffset;
-                return { data, elementCount };
+                if (!ret.IsEmpty())
+                {
+                    MarkHasDataField(index, true);
+                }
             }
-
-            return {};
+            return ret;
         }
 
         // Pointer Fields
@@ -981,7 +1066,7 @@ namespace he::schema
             else if constexpr (std::is_same_v<T, String>)
                 return GetPointerElement(index).TryGetString();
             else if constexpr (IsSpecialization<T, List>)
-                return GetPointerElement(index).TryGetList<T::ElementType>();
+                return GetPointerElement(index).TryGetList<typename T::ElementType>();
             else if constexpr (ElementSizeOfType<T>::Value == ElementSize::Composite)
                 return GetCompositeElement<T>(index);
             else
@@ -1016,7 +1101,7 @@ namespace he::schema
             else if constexpr (std::is_same_v<T, String>)
                 return GetPointerElement(index).TryGetString();
             else if constexpr (IsSpecialization<T, List>)
-                return GetPointerElement(index).TryGetList<T::ElementType>();
+                return GetPointerElement(index).TryGetList<typename T::ElementType>();
             else if constexpr (ElementSizeOfType<T>::Value == ElementSize::Composite)
                 return GetCompositeElement<T>(index);
             else

@@ -2,6 +2,7 @@
 
 #include "he/core/directory.h"
 
+#include "he/core/enum_ops.h"
 #include "he/core/file.h"
 #include "he/core/path.h"
 
@@ -46,5 +47,19 @@ namespace he
         }
 
         return Result::Success;
+    }
+
+    template <>
+    const char* AsString(SpecialDirectory x)
+    {
+        switch (x)
+        {
+            case SpecialDirectory::Documents: return "Documents";
+            case SpecialDirectory::LocalAppData: return "LocalAppData";
+            case SpecialDirectory::SharedAppData: return "SharedAppData";
+            case SpecialDirectory::Temp: return "Temp";
+        }
+
+        return "<unknown>";
     }
 }

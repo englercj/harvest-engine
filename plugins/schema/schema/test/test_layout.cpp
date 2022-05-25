@@ -185,7 +185,7 @@ HE_TEST(schema, layout, PointerReader)
         const ListReader list = ptr.TryGetList(ElementSize::Byte);
         HE_EXPECT(list.IsValid());
         HE_EXPECT_EQ(list.Size(), ptr.ListSize());
-        HE_EXPECT_EQ(list.ElementSize(), ptr.ListElementSize());
+        HE_EXPECT_EQ(list.GetElementSize(), ptr.ListElementSize());
         HE_EXPECT_EQ(list.StepSize(), 8);
     }
 }
@@ -207,7 +207,7 @@ HE_TEST(schema, layout, ListReader)
         HE_EXPECT_EQ_PTR(list.Data(), (SimpleStringTest + 1));
         HE_EXPECT_EQ(list.Size(), 8);
         HE_EXPECT_EQ(list.StepSize(), 8);
-        HE_EXPECT_EQ(list.ElementSize(), ElementSize::Byte);
+        HE_EXPECT_EQ(list.GetElementSize(), ElementSize::Byte);
         HE_EXPECT(!list.IsEmpty());
         HE_EXPECT_EQ(list.GetDataElement<char>(0), 't');
         HE_EXPECT_EQ(list.GetDataElement<char>(1), 'e');
@@ -320,7 +320,7 @@ HE_TEST(schema, layout, PointerBuilder)
         Builder b;
         PointerBuilder ptr(&b, 0);
         HE_EXPECT(ptr.IsValid());
-        HE_EXPECT_EQ_PTR(ptr.Builder(), &b);
+        HE_EXPECT_EQ_PTR(ptr.GetBuilder(), &b);
         HE_EXPECT_EQ_PTR(ptr.Location(), b.Data());
         HE_EXPECT(ptr.IsNull());
         HE_EXPECT(!ptr.IsZeroStruct());
@@ -336,7 +336,7 @@ HE_TEST(schema, layout, PointerBuilder)
         ptr.SetOffsetAndKind(-80, PointerKind::Struct);
 
         HE_EXPECT(ptr.IsValid());
-        HE_EXPECT_EQ_PTR(ptr.Builder(), &b);
+        HE_EXPECT_EQ_PTR(ptr.GetBuilder(), &b);
         HE_EXPECT_EQ_PTR(ptr.Location(), b.Data());
         HE_EXPECT(!ptr.IsNull());
         HE_EXPECT(!ptr.IsZeroStruct());
@@ -352,7 +352,7 @@ HE_TEST(schema, layout, PointerBuilder)
         ptr.SetOffsetAndKind(-256, PointerKind::List);
 
         HE_EXPECT(ptr.IsValid());
-        HE_EXPECT_EQ_PTR(ptr.Builder(), &b);
+        HE_EXPECT_EQ_PTR(ptr.GetBuilder(), &b);
         HE_EXPECT_EQ_PTR(ptr.Location(), b.Data());
         HE_EXPECT(!ptr.IsNull());
         HE_EXPECT(!ptr.IsZeroStruct());
@@ -368,7 +368,7 @@ HE_TEST(schema, layout, PointerBuilder)
         ptr.SetOffsetAndKind(-1, PointerKind::Struct);
 
         HE_EXPECT(ptr.IsValid());
-        HE_EXPECT_EQ_PTR(ptr.Builder(), &b);
+        HE_EXPECT_EQ_PTR(ptr.GetBuilder(), &b);
         HE_EXPECT_EQ_PTR(ptr.Location(), b.Data());
         HE_EXPECT(!ptr.IsNull());
         HE_EXPECT(ptr.IsZeroStruct());
@@ -386,14 +386,14 @@ HE_TEST(schema, layout, PointerBuilder)
         ptr.Set(list);
 
         HE_EXPECT(ptr.IsValid());
-        HE_EXPECT_EQ_PTR(ptr.Builder(), &b);
+        HE_EXPECT_EQ_PTR(ptr.GetBuilder(), &b);
         HE_EXPECT_EQ_PTR(ptr.Location(), b.Data());
         HE_EXPECT(!ptr.IsNull());
         HE_EXPECT(!ptr.IsZeroStruct());
         HE_EXPECT_EQ(ptr.Kind(), PointerKind::List);
         HE_EXPECT_EQ(ptr.Offset(), 0);
         HE_EXPECT_EQ_PTR(ptr.Target(), list.Location());
-        HE_EXPECT_EQ(ptr.ListElementSize(), list.ElementSize());
+        HE_EXPECT_EQ(ptr.ListElementSize(), list.GetElementSize());
         HE_EXPECT_EQ(ptr.ListSize(), list.Size());
 
         {
@@ -406,19 +406,19 @@ HE_TEST(schema, layout, PointerBuilder)
 
         ListBuilder list2 = ptr.TryGetList(ElementSize::Byte);
         HE_EXPECT(list2.IsValid());
-        HE_EXPECT_EQ(list2.ElementSize(), list.ElementSize());
+        HE_EXPECT_EQ(list2.GetElementSize(), list.GetElementSize());
         HE_EXPECT_EQ(list2.Size(), list.Size());
         HE_EXPECT_EQ_PTR(list2.Data(), list.Data());
 
         String::Builder str = ptr.TryGetString();
         HE_EXPECT(str.IsValid());
-        HE_EXPECT_EQ(str.ElementSize(), list.ElementSize());
+        HE_EXPECT_EQ(str.GetElementSize(), list.GetElementSize());
         HE_EXPECT_EQ(str.Size(), list.Size() - 1);
         HE_EXPECT_EQ_PTR(str.Data(), reinterpret_cast<char*>(list.Data()));
 
         List<uint8_t>::Builder list4 = ptr.TryGetList<uint8_t>();
         HE_EXPECT(list4.IsValid());
-        HE_EXPECT_EQ(list4.ElementSize(), list.ElementSize());
+        HE_EXPECT_EQ(list4.GetElementSize(), list.GetElementSize());
         HE_EXPECT_EQ(list4.Size(), list.Size());
         HE_EXPECT_EQ_PTR(list4.Data(), reinterpret_cast<uint8_t*>(list.Data()));
     }
@@ -432,7 +432,7 @@ HE_TEST(schema, layout, PointerBuilder)
         ptr.Set(st);
 
         HE_EXPECT(ptr.IsValid());
-        HE_EXPECT_EQ_PTR(ptr.Builder(), &b);
+        HE_EXPECT_EQ_PTR(ptr.GetBuilder(), &b);
         HE_EXPECT_EQ_PTR(ptr.Location(), b.Data());
         HE_EXPECT(!ptr.IsNull());
         HE_EXPECT(!ptr.IsZeroStruct());
@@ -462,7 +462,7 @@ HE_TEST(schema, layout, PointerBuilder)
         ptr.SetOffsetAndKind(10, PointerKind::List);
 
         HE_EXPECT(ptr.IsValid());
-        HE_EXPECT_EQ_PTR(ptr.Builder(), &b);
+        HE_EXPECT_EQ_PTR(ptr.GetBuilder(), &b);
         HE_EXPECT_EQ_PTR(ptr.Location(), b.Data());
         HE_EXPECT(!ptr.IsNull());
         HE_EXPECT(!ptr.IsZeroStruct());
@@ -489,7 +489,7 @@ HE_TEST(schema, layout, PointerBuilder)
         ptr.Set(list);
 
         HE_EXPECT(ptr.IsValid());
-        HE_EXPECT_EQ_PTR(ptr.Builder(), &b);
+        HE_EXPECT_EQ_PTR(ptr.GetBuilder(), &b);
         HE_EXPECT_EQ_PTR(ptr.Location(), b.Data());
         HE_EXPECT(!ptr.IsNull());
         HE_EXPECT(!ptr.IsZeroStruct());
@@ -503,7 +503,7 @@ HE_TEST(schema, layout, PointerBuilder)
         ptr2.Copy(ptr);
 
         HE_EXPECT(ptr2.IsValid());
-        HE_EXPECT_EQ_PTR(ptr2.Builder(), &b);
+        HE_EXPECT_EQ_PTR(ptr2.GetBuilder(), &b);
         HE_EXPECT_EQ_PTR(ptr2.Location(), b.Data() + 3);
         HE_EXPECT(!ptr2.IsNull());
         HE_EXPECT(!ptr2.IsZeroStruct());
@@ -515,7 +515,7 @@ HE_TEST(schema, layout, PointerBuilder)
 
         ListBuilder list2 = ptr2.TryGetList(ElementSize::Byte);
         HE_EXPECT_NE_PTR(list2.Location(), list.Location());
-        HE_EXPECT_EQ(list2.ElementSize(), list.ElementSize());
+        HE_EXPECT_EQ(list2.GetElementSize(), list.GetElementSize());
         HE_EXPECT_EQ(list2.Size(), list.Size());
         HE_EXPECT_EQ_MEM(list2.Location(), list.Location(), list.Size());
     }
@@ -529,7 +529,7 @@ HE_TEST(schema, layout, PointerBuilder)
         ptr.Set(st);
 
         HE_EXPECT(ptr.IsValid());
-        HE_EXPECT_EQ_PTR(ptr.Builder(), &b);
+        HE_EXPECT_EQ_PTR(ptr.GetBuilder(), &b);
         HE_EXPECT_EQ_PTR(ptr.Location(), b.Data());
         HE_EXPECT(!ptr.IsNull());
         HE_EXPECT(!ptr.IsZeroStruct());
@@ -543,7 +543,7 @@ HE_TEST(schema, layout, PointerBuilder)
         ptr2.Copy(ptr);
 
         HE_EXPECT(ptr2.IsValid());
-        HE_EXPECT_EQ_PTR(ptr2.Builder(), &b);
+        HE_EXPECT_EQ_PTR(ptr2.GetBuilder(), &b);
         HE_EXPECT_EQ_PTR(ptr2.Location(), b.Data() + 5);
         HE_EXPECT(!ptr2.IsNull());
         HE_EXPECT(!ptr2.IsZeroStruct());
@@ -577,13 +577,13 @@ HE_TEST(schema, layout, ListBuilder)
         Builder b;
         ListBuilder list = b.AddList<uint16_t>(8);
         HE_EXPECT(list.IsValid());
-        HE_EXPECT_EQ_PTR(list.Builder(), &b);
+        HE_EXPECT_EQ_PTR(list.GetBuilder(), &b);
         HE_EXPECT_EQ_PTR(list.Location(), b.Data() + 1);
         HE_EXPECT_EQ_PTR(list.Data(), b.Data() + 1);
         HE_EXPECT_EQ(list.Size(), 8);
         HE_EXPECT_EQ(list.StepSize(), 16);
         HE_EXPECT_EQ(list.StructDataFieldCount(), 0);
-        HE_EXPECT_EQ(list.ElementSize(), ElementSize::TwoBytes);
+        HE_EXPECT_EQ(list.GetElementSize(), ElementSize::TwoBytes);
         HE_EXPECT(!list.IsEmpty());
         for (uint16_t i = 0; i < list.Size(); ++i)
         {
@@ -606,13 +606,13 @@ HE_TEST(schema, layout, ListBuilder)
         Builder b;
         ListBuilder list = b.AddList<String>(5);
         HE_EXPECT(list.IsValid());
-        HE_EXPECT_EQ_PTR(list.Builder(), &b);
+        HE_EXPECT_EQ_PTR(list.GetBuilder(), &b);
         HE_EXPECT_EQ_PTR(list.Location(), b.Data() + 1);
         HE_EXPECT_EQ_PTR(list.Data(), b.Data() + 1);
         HE_EXPECT_EQ(list.Size(), 5);
         HE_EXPECT_EQ(list.StepSize(), 64);
         HE_EXPECT_EQ(list.StructDataFieldCount(), 0);
-        HE_EXPECT_EQ(list.ElementSize(), ElementSize::Pointer);
+        HE_EXPECT_EQ(list.GetElementSize(), ElementSize::Pointer);
         HE_EXPECT(!list.IsEmpty());
         for (uint16_t i = 0; i < list.Size(); ++i)
         {
@@ -642,7 +642,7 @@ HE_TEST(schema, layout, ListBuilder)
         Builder b;
         ListBuilder list = b.AddStructList(4, 8, 2, 4);
         HE_EXPECT(list.IsValid());
-        HE_EXPECT_EQ_PTR(list.Builder(), &b);
+        HE_EXPECT_EQ_PTR(list.GetBuilder(), &b);
         HE_EXPECT_EQ_PTR(list.Location(), b.Data() + 2);
         HE_EXPECT_EQ_PTR(list.Data(), b.Data() + 2);
         HE_EXPECT_EQ_PTR(list.Tag().Location(), b.Data() + 1);
@@ -651,7 +651,7 @@ HE_TEST(schema, layout, ListBuilder)
         HE_EXPECT_EQ(list.StructDataFieldCount(), 8);
         HE_EXPECT_EQ(list.StructDataWordSize(), 2);
         HE_EXPECT_EQ(list.StructPointerCount(), 4);
-        HE_EXPECT_EQ(list.ElementSize(), ElementSize::Composite);
+        HE_EXPECT_EQ(list.GetElementSize(), ElementSize::Composite);
         HE_EXPECT(!list.IsEmpty());
         for (uint16_t i = 0; i < list.Size(); ++i)
         {
@@ -760,7 +760,7 @@ HE_TEST(schema, layout, StructBuilder)
         Builder b;
         StructBuilder st = b.AddStruct(19, 4, 13);
         HE_EXPECT(st.IsValid());
-        HE_EXPECT_EQ_PTR(st.Builder(), &b);
+        HE_EXPECT_EQ_PTR(st.GetBuilder(), &b);
         HE_EXPECT_EQ_PTR(st.Location(), b.Data() + 1);
         HE_EXPECT_EQ(st.DataFieldCount(), 19);
         HE_EXPECT_EQ(st.DataWordSize(), 4);

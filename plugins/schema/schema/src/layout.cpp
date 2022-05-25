@@ -284,7 +284,7 @@ namespace he::schema
         const Word* target = value.Data();
         uint32_t listSize = value.Size();
 
-        if (value.ElementSize() == ElementSize::Composite)
+        if (value.GetElementSize() == ElementSize::Composite)
         {
             // point to the tag before the list values
             target -= 1;
@@ -296,7 +296,7 @@ namespace he::schema
 
         HE_ASSERT(listSize <= 0x1fffffff);
         SetTargetAndKind(target, PointerKind::List);
-        SetList(value.ElementSize(), listSize);
+        SetList(value.GetElementSize(), listSize);
     }
 
     void PointerBuilder::Copy(const PointerReader& reader)
@@ -316,10 +316,10 @@ namespace he::schema
             {
                 ListReader srcList = reader.TryGetList(reader.ListElementSize());
                 ListBuilder dstList;
-                if (srcList.ElementSize() == ElementSize::Composite)
+                if (srcList.GetElementSize() == ElementSize::Composite)
                     dstList = m_builder->AddStructList(srcList.Size(), srcList.StructDataFieldCount(), srcList.StructDataWordSize(), srcList.StructPointerCount());
                 else
-                    dstList = m_builder->AddList(srcList.ElementSize(), srcList.Size());
+                    dstList = m_builder->AddList(srcList.GetElementSize(), srcList.Size());
                 dstList.Copy(srcList);
                 Set(dstList);
                 break;
@@ -347,10 +347,10 @@ namespace he::schema
         HE_ASSERT(reader.Data() >= m_builder->Data() && reader.Data() < m_builder->Data() + m_builder->Size());
         const uint32_t wordOffset = static_cast<uint32_t>(reader.Data() - m_builder->Data());
 
-        if (reader.ElementSize() == ElementSize::Composite)
+        if (reader.GetElementSize() == ElementSize::Composite)
             return ListBuilder(m_builder, wordOffset, reader.Size(), reader.StepSize(), reader.StructDataFieldCount());
 
-        return ListBuilder(m_builder, wordOffset, reader.Size(), reader.StepSize(), reader.ElementSize());
+        return ListBuilder(m_builder, wordOffset, reader.Size(), reader.StepSize(), reader.GetElementSize());
     }
 
     StructBuilder PointerBuilder::TryGetStruct() const
@@ -371,7 +371,7 @@ namespace he::schema
 
         HE_ASSERT(m_size == reader.Size());
         HE_ASSERT(m_step == reader.StepSize());
-        HE_ASSERT(m_elementSize == reader.ElementSize());
+        HE_ASSERT(m_elementSize == reader.GetElementSize());
 
         if (m_elementSize == ElementSize::Composite)
         {

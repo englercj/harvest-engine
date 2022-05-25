@@ -52,12 +52,13 @@ HE_TEST(sqlite, Statement, Basic)
 
         HE_EXPECT(s.Bind(1, 50));
         uint32_t rowCount = 0;
-        HE_EXPECT(s.EachRow([&](const Statement& st)
+        const bool eachRowResult = s.EachRow([&](const Statement& st)
         {
             ++rowCount;
             HE_EXPECT_EQ(st.GetColumn(0).GetInt(), 50);
             HE_EXPECT_EQ(s.GetColumn(1).GetBlob().Size(), 1);
-        }));
+        });
+        HE_EXPECT(eachRowResult);
         HE_EXPECT_EQ(rowCount, 2);
         HE_EXPECT(s.Reset());
     }

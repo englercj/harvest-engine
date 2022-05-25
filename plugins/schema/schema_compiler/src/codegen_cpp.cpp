@@ -1720,7 +1720,7 @@ namespace he::schema
             case Type::Data::Tag::Blob:
             {
                 const List<uint8_t>::Reader valueBytes = value.Blob();
-                List<uint8_t>::Builder bytes = dst.Builder()->AddList<uint8_t>(valueBytes.Size());
+                List<uint8_t>::Builder bytes = dst.GetBuilder()->AddList<uint8_t>(valueBytes.Size());
                 MemCopy(bytes.Data(), valueBytes.Data(), valueBytes.Size());
                 dst.GetPointerField(index).Set(bytes);
                 break;
@@ -1728,7 +1728,7 @@ namespace he::schema
             case Type::Data::Tag::String:
             {
                 const String::Reader valueStr = value.String();
-                const String::Builder str = dst.Builder()->AddString(valueStr);
+                const String::Builder str = dst.GetBuilder()->AddString(valueStr);
                 dst.GetPointerField(index).Set(str);
                 break;
             }
@@ -1760,7 +1760,7 @@ namespace he::schema
             {
                 const Declaration::Reader decl = m_request.GetDecl(type.Struct().Id());
                 const Declaration::Data::Struct::Reader structDecl = decl.Data().Struct();
-                StructBuilder st = dst.Builder()->AddStruct(structDecl.DataFieldCount(), structDecl.DataWordSize(), structDecl.PointerCount());
+                StructBuilder st = dst.GetBuilder()->AddStruct(structDecl.DataFieldCount(), structDecl.DataWordSize(), structDecl.PointerCount());
                 FillStructDefault(st, structDecl, value.Tuple(), scope);
                 dst.GetPointerField(index).Set(st);
                 break;

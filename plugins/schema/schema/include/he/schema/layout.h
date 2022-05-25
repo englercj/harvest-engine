@@ -88,14 +88,16 @@ namespace he::schema
     // call into them.
     // https://gcc.gnu.org/bugzilla/show_bug.cgi?id=85282
 
-    template <DataType T> T _ReadDataElement(const Word* data, uint32_t index, uint32_t step)
+    template <DataType T>
+    inline T _ReadDataElement(const Word* data, uint32_t index, uint32_t step)
     {
         HE_ASSERT(IsAligned(step, BitsPerByte));
         const uint8_t* element = reinterpret_cast<const uint8_t*>(data) + (static_cast<uint64_t>(index) * (step / BitsPerByte));
         return *reinterpret_cast<const T*>(element);
     }
 
-    template <> bool _ReadDataElement<bool>(const Word* data, uint32_t index, uint32_t step)
+    template <>
+    inline bool _ReadDataElement<bool>(const Word* data, uint32_t index, uint32_t step)
     {
         HE_UNUSED(step);
         const uint8_t* bits = reinterpret_cast<const uint8_t*>(data) + (index / BitsPerByte);
@@ -103,19 +105,22 @@ namespace he::schema
         return (*bits & (1 << shift)) != 0;
     }
 
-    template <> Void _ReadDataElement<Void>(const Word* data, uint32_t index, uint32_t step)
+    template <>
+    inline Void _ReadDataElement<Void>(const Word* data, uint32_t index, uint32_t step)
     {
         HE_UNUSED(data, index, step);
         return {};
     }
 
-    template <DataType T> void _WriteDataElement(Word* data, uint32_t index, uint32_t step, T value)
+    template <DataType T>
+    inline void _WriteDataElement(Word* data, uint32_t index, uint32_t step, T value)
     {
         uint8_t* dst = reinterpret_cast<uint8_t*>(data) + (static_cast<uint64_t>(index) * step / BitsPerByte);
         MemCopy(dst, &value, sizeof(T));
     }
 
-    template <> void _WriteDataElement<bool>(Word* data, uint32_t index, uint32_t step, bool value)
+    template <>
+    inline void _WriteDataElement<bool>(Word* data, uint32_t index, uint32_t step, bool value)
     {
         HE_UNUSED(step);
         uint8_t* b = reinterpret_cast<uint8_t*>(data) + (index / BitsPerByte);
@@ -123,30 +128,35 @@ namespace he::schema
         *b = (*b & ~(1 << shift)) | (static_cast<uint8_t>(value) << shift);
     }
 
-    template <> void _WriteDataElement<Void>(Word* data, uint32_t index, uint32_t step, Void value)
+    template <>
+    inline void _WriteDataElement<Void>(Word* data, uint32_t index, uint32_t step, Void value)
     {
         HE_UNUSED(data, index, step, value);
     }
 
-    template <DataType T> T _ReadDataFieldUnsafe(const Word* data, uint32_t dataOffset)
+    template <DataType T>
+    inline T _ReadDataFieldUnsafe(const Word* data, uint32_t dataOffset)
     {
         return reinterpret_cast<const T*>(data)[dataOffset];
     }
 
-    template <> bool _ReadDataFieldUnsafe<bool>(const Word* data, uint32_t dataOffset)
+    template <>
+    inline bool _ReadDataFieldUnsafe<bool>(const Word* data, uint32_t dataOffset)
     {
         const uint8_t* b = reinterpret_cast<const uint8_t*>(data) + (dataOffset / BitsPerByte);
         const uint32_t shift = dataOffset % BitsPerByte;
         return (*b & (1 << shift)) != 0;
     }
 
-    template <> Void _ReadDataFieldUnsafe<Void>(const Word* data, uint32_t dataOffset)
+    template <>
+    inline Void _ReadDataFieldUnsafe<Void>(const Word* data, uint32_t dataOffset)
     {
         HE_UNUSED(data, dataOffset);
         return {};
     }
 
-    template <DataType T> T _ReadDataField(const Word* data, uint64_t dataFieldsWordSize, uint32_t dataOffset, T defaultValue)
+    template <DataType T>
+    inline T _ReadDataField(const Word* data, uint64_t dataFieldsWordSize, uint32_t dataOffset, T defaultValue)
     {
         constexpr uint64_t BitsInType = sizeof(T) * BitsPerByte;
         if (((dataOffset + 1) * BitsInType) <= (dataFieldsWordSize * BitsPerWord)) [[likely]]
@@ -155,7 +165,8 @@ namespace he::schema
         return defaultValue;
     }
 
-    template <> bool _ReadDataField<bool>(const Word* data, uint64_t dataFieldsWordSize, uint32_t dataOffset, bool defaultValue)
+    template <>
+    inline bool _ReadDataField<bool>(const Word* data, uint64_t dataFieldsWordSize, uint32_t dataOffset, bool defaultValue)
     {
         if (dataOffset < (dataFieldsWordSize * BitsPerWord)) [[likely]]
             return _ReadDataFieldUnsafe<bool>(data, dataOffset);
@@ -163,25 +174,29 @@ namespace he::schema
         return defaultValue;
     }
 
-    template <> Void _ReadDataField<Void>(const Word* data, uint64_t dataFieldsWordSize, uint32_t dataOffset, Void defaultValue)
+    template <>
+    inline Void _ReadDataField<Void>(const Word* data, uint64_t dataFieldsWordSize, uint32_t dataOffset, Void defaultValue)
     {
         HE_UNUSED(data, dataFieldsWordSize, dataOffset, defaultValue);
         return {};
     }
 
-    template <DataType T> void _WriteDataField(Word* data, uint32_t dataOffset, T value)
+    template <DataType T>
+    inline void _WriteDataField(Word* data, uint32_t dataOffset, T value)
     {
         reinterpret_cast<T*>(data)[dataOffset] = value;
     }
 
-    template <> void _WriteDataField<bool>(Word* data, uint32_t dataOffset, bool value)
+    template <>
+    inline void _WriteDataField<bool>(Word* data, uint32_t dataOffset, bool value)
     {
         uint8_t* b = reinterpret_cast<uint8_t*>(data) + (dataOffset / BitsPerByte);
         const uint32_t shift = dataOffset % BitsPerByte;
         *b = (*b & ~(1 << shift)) | (static_cast<uint8_t>(value) << shift);
     }
 
-    template <> void _WriteDataField<Void>(Word* data, uint32_t dataOffset, Void value)
+    template <>
+    inline void _WriteDataField<Void>(Word* data, uint32_t dataOffset, Void value)
     {
         HE_UNUSED(data, dataOffset, value);
     }
@@ -213,7 +228,8 @@ namespace he::schema
     template <> struct _ReadDataArrayReturnType<bool> { using Type = BitSpan; };
     template <> struct _ReadDataArrayReturnType<Void> { using Type = Void; };
 
-    template <DataType T> typename _ReadDataArrayReturnType<T>::Type _ReadDataArrayField(Word* data, uint32_t dataWordSize, uint32_t dataOffset, uint16_t elementCount)
+    template <DataType T>
+    inline typename _ReadDataArrayReturnType<T>::Type _ReadDataArrayField(Word* data, uint32_t dataWordSize, uint32_t dataOffset, uint16_t elementCount)
     {
         constexpr uint64_t BitsInType = sizeof(T) * BitsPerByte;
         if (((dataOffset + elementCount) * BitsInType) <= (dataWordSize * BitsPerWord)) [[likely]]
@@ -225,7 +241,8 @@ namespace he::schema
         return {};
     }
 
-    template <> BitSpan _ReadDataArrayField<bool>(Word* data, uint32_t dataWordSize, uint32_t dataOffset, uint16_t elementCount)
+    template <>
+    inline BitSpan _ReadDataArrayField<bool>(Word* data, uint32_t dataWordSize, uint32_t dataOffset, uint16_t elementCount)
     {
         if ((dataOffset + elementCount) <= (dataWordSize * BitsPerWord)) [[likely]]
         {
@@ -237,7 +254,8 @@ namespace he::schema
         return {};
     }
 
-    template <> Void _ReadDataArrayField<Void>(Word* data, uint32_t dataWordSize, uint32_t dataOffset, uint16_t elementCount)
+    template <>
+    inline Void _ReadDataArrayField<Void>(Word* data, uint32_t dataWordSize, uint32_t dataOffset, uint16_t elementCount)
     {
         HE_UNUSED(data, dataWordSize, dataOffset, elementCount);
         return {};

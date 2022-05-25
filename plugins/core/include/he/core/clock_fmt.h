@@ -4,6 +4,7 @@
 
 #include "he/core/assert.h"
 #include "he/core/clock.h"
+#include "he/core/compiler.h"
 #include "he/core/string.h"
 #include "he/core/string_view.h"
 #include "he/core/utils.h"
@@ -86,7 +87,11 @@ namespace fmt
         {
             const time_t time = t.val / he::Seconds::Ratio;
             struct tm tm;
+        #if HE_COMPILER_MSVC
+            localtime_s(&tm, &time);
+        #else
             localtime_r(&time, &tm);
+        #endif
 
             return _TimeFormatter::format(tm, ctx);
         }
@@ -100,7 +105,11 @@ namespace fmt
         {
             const time_t time = t.time.val / he::Seconds::Ratio;
             struct tm tm;
+        #if HE_COMPILER_MSVC
+            localtime_s(&tm, &time);
+        #else
             localtime_r(&time, &tm);
+        #endif
 
             return _TimeFormatter::format(tm, ctx);
         }
@@ -114,7 +123,11 @@ namespace fmt
         {
             const time_t time = t.time.val / he::Seconds::Ratio;
             struct tm tm;
+        #if HE_COMPILER_MSVC
+            gmtime_s(&tm, &time);
+        #else
             gmtime_r(&time, &tm);
+        #endif
 
             return _TimeFormatter::format(tm, ctx);
         }

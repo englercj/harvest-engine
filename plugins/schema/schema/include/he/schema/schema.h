@@ -88,13 +88,17 @@ namespace he::schema
         }
     }
 
-     inline bool IsPointer(const Type::Reader& t)
-     {
-         if (t.Data().IsArray())
-                 return IsPointer(t.Data().Array().ElementType());
+    inline bool IsPointer(const Type::Reader& t)
+    {
+        if (t.Data().IsArray())
+        {
+            const Type::Reader elmType = t.Data().Array().ElementType();
+            HE_ASSERT(!elmType.Data().IsArray(), HE_MSG("Arrays of arrays are not supported"));
+            return IsPointer(elmType);
+        }
 
         return IsPointer(t.Data().Tag());
-     }
+    }
 
     // Returns the bit alignment requirements for a type
     inline uint32_t GetTypeAlign(const Type::Reader& t)

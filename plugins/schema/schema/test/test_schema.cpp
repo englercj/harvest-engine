@@ -180,6 +180,11 @@ HE_TEST(schema, schema, IsPointer)
     for (uint16_t i = 0; i < max; ++i)
     {
         const Type::Data::Tag tag = Type::Data::Tag(i);
+
+        // Arrays of arrays are not supported.
+        if (tag == Type::Data::Tag::Array)
+            continue;
+
         e.Data().SetTag(tag);
         HE_EXPECT_EQ(IsPointer(t), IsPointer(tag));
     }

@@ -4,6 +4,7 @@
 #include "he/core/appender.h"
 #include "he/core/assert.h"
 #include "he/core/clock.h"
+#include "he/core/debugger.h"
 #include "he/core/key_value.h"
 #include "he/core/key_value_fmt.h"
 #include "he/core/log.h"
@@ -117,7 +118,9 @@ static void TestRunnerLogSink(void*, const LogSource& source, const KeyValue* kv
 #include "he/core/main.inl"
 int he::AppMain(int argc, char* argv[])
 {
-    AddLogSink(DebuggerSink);
+    if (IsDebuggerAttached())
+        AddLogSink(DebuggerSink);
+
     AddLogSink(TestRunnerLogSink);
 
     static ArgDesc argDescriptors[] =

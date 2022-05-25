@@ -6,13 +6,11 @@
 #include "he/window/device.h"
 
 #include "he/core/main.inl"
-
 int he::AppMain(int argc, char* argv[])
 {
     HE_UNUSED(argc, argv);
 
-    he::DebuggerSink debugSink;
-    he::AddLogSink(debugSink);
+    AddLogSink(DebuggerSink);
 
     window::Device* device = window::CreateDevice();
     if (!device)
@@ -25,8 +23,6 @@ int he::AppMain(int argc, char* argv[])
     int rc = device->Run(app, desc);
 
     window::DestroyDevice(device);
-
-    he::RemoveLogSink(debugSink);
 
     return rc;
 }

@@ -201,8 +201,9 @@ namespace he::schema
         HE_UNUSED(data, dataOffset, value);
     }
 
-    struct BitSpan
+    class BitSpan
     {
+    public:
         bool IsSet(uint32_t index) const
         {
             const uint8_t* b = data + (index / BitsPerByte);
@@ -218,6 +219,15 @@ namespace he::schema
         }
 
         bool IsEmpty() const { return count == 0; }
+
+        struct Ref
+        {
+            BitSpan* span;
+            uint32_t index;
+            Ref& operator=(bool value) { span->Set(index, value); return *this; }
+            explicit operator bool() const { return span->IsSet(index); }
+        };
+        Ref operator[](uint32_t index) { return Ref(this, index); }
 
         uint8_t* data;
         uint32_t offset;
@@ -867,7 +877,14 @@ namespace he::schema
         void SetDataField(uint32_t dataOffset, T value)
         {
             HE_ASSERT(IsValid());
-            HE_ASSERT(((dataOffset + 1) * (sizeof(T) * BitsPerByte)) <= (static_cast<uint64_t>(m_dataWordSize - m_metaWordSize) * BitsPerWord));
+            if constexpr (std::is_same_v<bool, T>)
+            {
+                HE_ASSERT(dataOffset < (static_cast<uint64_t>(m_dataWordSize - m_metaWordSize) * BitsPerWord));
+            }
+            else
+            {
+                HE_ASSERT(((dataOffset + 1) * (sizeof(T) * BitsPerByte)) <= (static_cast<uint64_t>(m_dataWordSize - m_metaWordSize) * BitsPerWord));
+            }
             _WriteDataField<T>(DataFields(), dataOffset, value);
         }
 
@@ -887,7 +904,7 @@ namespace he::schema
         }
 
         template <DataType T>
-        typename _ReadDataArrayReturnType<T>::Type GetDataArrayField(uint16_t index, uint32_t dataOffset, uint16_t elementCount)
+        typename _ReadDataArrayReturnType<T>::Type GetAndMarkDataArrayField(uint16_t index, uint32_t dataOffset, uint16_t elementCount)
         {
             HE_ASSERT(elementCount > 0);
             typename _ReadDataArrayReturnType<T>::Type ret = _ReadDataArrayField<T>(DataFields(), m_dataWordSize, dataOffset, elementCount);

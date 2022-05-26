@@ -10,18 +10,18 @@
 using namespace he::schema;
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST(schema, toml, ToToml)
+HE_TEST(schema, toml, Roundtrip)
 {
-    he::StringBuilder b;
-
     Declaration::Reader schema = GetSchema(Declaration::DeclInfo);
 
-    HE_EXPECT(ToToml<Declaration>(b, schema));
+    he::StringBuilder toml;
+    HE_EXPECT(ToToml<Declaration>(toml, schema));
 
-    std::cout << b.Str().Data() << std::endl;
-}
+    Builder builder;
+    HE_EXPECT(FromToml<Declaration>(builder, toml.Str().Data()));
 
-// ------------------------------------------------------------------------------------------------
-HE_TEST(schema, toml, FromToml)
-{
+    he::StringBuilder toml2;
+    HE_EXPECT(ToToml<Declaration>(toml2, builder.Root().TryGetStruct<Declaration>()));
+
+    HE_EXPECT_EQ(toml.Str(), toml2.Str());
 }

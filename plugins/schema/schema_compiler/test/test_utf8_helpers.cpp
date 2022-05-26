@@ -8,19 +8,19 @@ using namespace he;
 using namespace he::schema;
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST(schema, utf8_helpers, ToUTF8)
+HE_TEST(schema_compiler, utf8_helpers, ToUTF8)
 {
     // TODO
 }
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST(schema, utf8_helpers, FromUTF8)
+HE_TEST(schema_compiler, utf8_helpers, FromUTF8)
 {
     // TODO
 }
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST(schema, utf8_helpers, ValidateUTF8)
+HE_TEST(schema_compiler, utf8_helpers, ValidateUTF8)
 {
     // TODO
 }

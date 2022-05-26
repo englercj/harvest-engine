@@ -1,6 +1,6 @@
 // Copyright Chad Engler
 
-#include "lexer.h"
+#include "he/schema/compile_types.h"
 
 #include "he/core/test.h"
 
@@ -8,7 +8,7 @@ using namespace he;
 using namespace he::schema;
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST(schema_compiler, lexer, test)
+HE_TEST(schema_compiler, compile_types, test)
 {
     // TODO
 }

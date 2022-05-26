@@ -113,6 +113,7 @@ namespace he::schema
             case ElementSize::EightBytes: return 64;
             case ElementSize::Pointer: return 64;
             case ElementSize::Composite: return 0;
+            case ElementSize::_Count: break;
         }
 
         HE_ASSERT(false, HE_MSG("Unknown type kind"));

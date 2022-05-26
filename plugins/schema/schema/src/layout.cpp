@@ -273,6 +273,9 @@ namespace he::schema
 
     void PointerBuilder::Set(const ListReader& value)
     {
+        // TODO: Zero-sized list support. This can be useful if you want to set a list value to
+        // an empty list instead of using the default value (which may contain elements).
+
         if (!value.IsValid())
         {
             SetNull();

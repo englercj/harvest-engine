@@ -8,7 +8,7 @@ using namespace he;
 using namespace he::schema;
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST(schema_compiler, lexer, test)
+HE_TEST(schema_compiler, verifier, test)
 {
     // TODO
 }

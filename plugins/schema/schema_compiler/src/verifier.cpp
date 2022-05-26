@@ -538,32 +538,53 @@ namespace he::schema
                 return false;
             }
 
-            if (ast.array.elementType->kind == AstExpression::Kind::Array && ast.array.elementType->array.size != nullptr)
+            if (!ast.array.size)
             {
-                m_context->AddError(ast.location, "Arrays cannot be nested in lists or other arrays are not supported.");
+                m_context->AddError(ast.location, "Expected size expression for array, but got nullptr. This is a parser bug.");
                 return false;
             }
 
-            Type::Data::Tag tag = Type::Data::Tag::List;
-
-            if (ast.array.size)
+            if (ast.array.elementType->kind == AstExpression::Kind::Array)
             {
-                if (onlyPointers)
-                {
-                    m_context->AddError(ast.location, "Only pointer types are allowed in this context, fixed-size arrays are not allowed.");
-                    return false;
-                }
-
-                tag = Type::Data::Tag::Array;
-                if (!VerifyTypeArraySize(*ast.array.size, scope_))
-                    return false;
+                m_context->AddError(ast.location, "Arrays of Arrays are not supported.");
+                return false;
             }
 
+            if (onlyPointers)
+            {
+                m_context->AddError(ast.location, "Only pointer types are allowed in this context, fixed-size arrays are not allowed.");
+                return false;
+            }
+
+            if (!VerifyTypeArraySize(*ast.array.size, scope_))
+                return false;
+
             TypeKey key{ &ast, &scope_ };
-            TypeValue value{ tag, nullptr, {} };
+            TypeValue value{ Type::Data::Tag::Array, nullptr, {} };
             m_context->TrackType(key, value);
 
             return VerifyType(*ast.array.elementType, scope_);
+        }
+
+        if (ast.kind == AstExpression::Kind::List)
+        {
+            if (!ast.list.elementType)
+            {
+                m_context->AddError(ast.location, "Expected element type for list, but got nullptr. This is a parser bug.");
+                return false;
+            }
+
+            if (ast.list.elementType->kind == AstExpression::Kind::Array)
+            {
+                m_context->AddError(ast.location, "Lists of Arrays are not supported.");
+                return false;
+            }
+
+            TypeKey key{ &ast, &scope_ };
+            TypeValue value{ Type::Data::Tag::List, nullptr, {} };
+            m_context->TrackType(key, value);
+
+            return VerifyType(*ast.list.elementType, scope_);
         }
 
         if (ast.kind != AstExpression::Kind::QualifiedName)
@@ -700,6 +721,11 @@ namespace he::schema
         {
             case AstExpression::Kind::UnsignedInt:
             {
+                if (ast.unsignedInt < 2)
+                {
+                    m_context->AddError(ast.location, "Array size is too small. Must have at least 2 elements.");
+                    return false;
+                }
                 if (ast.unsignedInt > std::numeric_limits<uint16_t>::max())
                 {
                     m_context->AddError(ast.location, "Array size is too large. Max is UINT16_MAX ({})", std::numeric_limits<uint16_t>::max());
@@ -709,9 +735,9 @@ namespace he::schema
             }
             case AstExpression::Kind::SignedInt:
             {
-                if (ast.signedInt < 0)
+                if (ast.signedInt < 2)
                 {
-                    m_context->AddError(ast.location, "Array size is too small. Min is UINT16_MIN (0)");
+                    m_context->AddError(ast.location, "Array size is too small. Must have at least 2 elements.");
                     return false;
                 }
                 if (ast.signedInt > std::numeric_limits<uint16_t>::max())
@@ -850,10 +876,10 @@ namespace he::schema
                 m_context->AddError(astValue.location, "An integer value expression is not valid for this type");
                 return false;
 
-            case AstExpression::Kind::List:
-                if (astType.kind != AstExpression::Kind::Array)
+            case AstExpression::Kind::Sequence:
+                if (astType.kind != AstExpression::Kind::Array && astType.kind != AstExpression::Kind::List)
                 {
-                    m_context->AddError(astValue.location, "A list value expression is only valid for List and Array types");
+                    m_context->AddError(astValue.location, "A sequence value expression is only valid for List and Array types");
                     return false;
                 }
                 return true;
@@ -964,6 +990,7 @@ namespace he::schema
             }
 
             case AstExpression::Kind::Array:
+            case AstExpression::Kind::List:
             case AstExpression::Kind::Generic:
             case AstExpression::Kind::Identifier:
             case AstExpression::Kind::Namespace:

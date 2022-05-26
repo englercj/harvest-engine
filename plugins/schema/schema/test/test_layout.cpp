@@ -830,7 +830,7 @@ HE_TEST(schema, layout, StructBuilder)
         HE_EXPECT_EQ(st.TryGetDataField<bool>(2, 16, false), true);
 
         HE_EXPECT(!st.HasDataField(3));
-        he::Span<uint32_t> v = st.GetDataArrayField<uint32_t>(3, 4, 2);
+        he::Span<uint32_t> v = st.GetAndMarkDataArrayField<uint32_t>(3, 4, 2);
         HE_EXPECT(st.HasDataField(3));
         HE_EXPECT_EQ(v.Size(), 2);
         v[0] = 1;
@@ -872,7 +872,7 @@ HE_TEST(schema, layout, StructBuilder)
         HE_EXPECT_EQ(st.TryGetDataField<uint16_t>(0, 0), 12345);
         HE_EXPECT_EQ(st.TryGetDataField<uint64_t>(1, 1), 987654321);
         HE_EXPECT_EQ(st.TryGetDataField<bool>(2, 64), true);
-        HE_EXPECT_EQ(st.GetDataArrayField<uint32_t>(3, 5, 3).Size(), 3);
+        HE_EXPECT_EQ(st.GetAndMarkDataArrayField<uint32_t>(3, 5, 3).Size(), 3);
         HE_EXPECT_EQ(st.GetPointerField(0).TryGetString().AsView(), "test0");
         StructBuilder st_p1_st = st.GetPointerField(1).TryGetStruct();
         HE_EXPECT_EQ(st_p1_st.DataFieldCount(), 5);

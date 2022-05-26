@@ -456,8 +456,8 @@ namespace he::schema
             }
             case Type::Data::Tag::List:
             {
-                HE_ASSERT(ast.kind == AstExpression::Kind::Array);
-                Type::Builder elementType = CreateType(*ast.array.elementType, scope);
+                HE_ASSERT(ast.kind == AstExpression::Kind::List);
+                Type::Builder elementType = CreateType(*ast.list.elementType, scope);
                 Type::Data::List::Builder list = data.InitList();
                 list.SetElementType(elementType);
                 break;
@@ -680,13 +680,13 @@ namespace he::schema
                 }
                 break;
             }
-            case AstExpression::Kind::List:
+            case AstExpression::Kind::Sequence:
             {
                 Type::Reader elementType = typeData.IsArray() ? typeData.Array().ElementType() : typeData.List().ElementType();
-                List<Value>::Builder list = data.InitList(ast.list.Size());
+                List<Value>::Builder list = data.InitList(ast.sequence.Size());
 
                 uint16_t i = 0;
-                for (const AstExpression& item : ast.list)
+                for (const AstExpression& item : ast.sequence)
                 {
                     Value::Builder itemValue = CreateValue(elementType, item, scope);
                     list.Set(i++, itemValue);
@@ -769,6 +769,7 @@ namespace he::schema
 
             // These are used in types, not in values. Any of this is a syntax error.
             case AstExpression::Kind::Array:
+            case AstExpression::Kind::List:
             case AstExpression::Kind::Generic:
             case AstExpression::Kind::Identifier:
             case AstExpression::Kind::Namespace:
@@ -858,7 +859,7 @@ namespace he::schema
 
         if (first != 0)
         {
-            m_context->AddError(ast.location, "Invalid blob byte string, there are trailing nibbles");
+            m_context->AddError(ast.location, "Invalid blob byte string, there is a trailing nibble");
             m_valid = false;
             return {};
         }

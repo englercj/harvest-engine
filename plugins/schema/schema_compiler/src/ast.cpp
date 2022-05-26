@@ -19,6 +19,7 @@ namespace he
             case schema::AstExpression::Kind::List: return "List";
             case schema::AstExpression::Kind::Identifier: return "Identifier";
             case schema::AstExpression::Kind::Namespace: return "Namespace";
+            case schema::AstExpression::Kind::Sequence: return "Sequence";
             case schema::AstExpression::Kind::SignedInt: return "SignedInt";
             case schema::AstExpression::Kind::String: return "String";
             case schema::AstExpression::Kind::Tuple: return "Tuple";

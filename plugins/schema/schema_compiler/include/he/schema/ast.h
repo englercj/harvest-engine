@@ -158,13 +158,14 @@ namespace he::schema
         {
             Unknown,
 
-            Array,          ///< Dynamic or fixed size array type
+            Array,          ///< Fixed length array type
             Blob,           ///< Blob value (0x"ab cd ef")
             Float,          ///< Floating-point value
             Generic,        ///< Generic parameter name
-            List,           ///< List or array value ([ 1, 2, 3 ])
+            List,           ///< Dynamic length list type
             Identifier,     ///< Any identifier
             Namespace,      ///< Namespace
+            Sequence,       ///< List or array value ([ 1, 2, 3 ])
             SignedInt,      ///< Signed integer value
             String,         ///< String value ("string")
             Tuple,          ///< Tuple value ({ x = 1, y = 2 })
@@ -179,10 +180,10 @@ namespace he::schema
         {
             StringView blob;
             double floatingPoint;
-            AstList<AstExpression> list;
             StringView identifier;
-            int64_t signedInt;
             StringView namespaceName;
+            AstList<AstExpression> sequence;
+            int64_t signedInt;
             StringView string;
             AstList<struct AstTupleParam> tuple;
             uint64_t unsignedInt;
@@ -198,6 +199,11 @@ namespace he::schema
                 StringView name;
                 AstList<AstExpression> params;
             } generic;
+
+            struct
+            {
+                AstExpression* elementType;
+            } list;
 
             struct
             {

@@ -316,19 +316,29 @@ namespace he::schema
             AstExpression* elementType = AstCreate<AstExpression>();
             MemCopy(elementType, &type, sizeof(AstExpression));
 
-            type.kind = AstExpression::Kind::Array;
-            type.array.elementType = elementType;
-            type.array.size = nullptr;
+            AstExpression* size = nullptr;
 
             if (!At(Lexer::TokenType::CloseSquareBracket))
             {
-                type.array.size = AstCreate<AstExpression>();
+                size = AstCreate<AstExpression>();
                 if (!ConsumeValue(*type.array.size))
                     return false;
             }
 
             if (!Consume(Lexer::TokenType::CloseSquareBracket))
                 return false;
+
+            if (size)
+            {
+                type.kind = AstExpression::Kind::Array;
+                type.array.elementType = elementType;
+                type.array.size = size;
+            }
+            else
+            {
+                type.kind = AstExpression::Kind::List;
+                type.list.elementType = elementType;
+            }
         }
 
         return true;
@@ -355,7 +365,7 @@ namespace he::schema
 
             case Lexer::TokenType::OpenSquareBracket:
             {
-                value.kind = AstExpression::Kind::List;
+                value.kind = AstExpression::Kind::Sequence;
                 if (!Consume(Lexer::TokenType::OpenSquareBracket))
                     return false;
 
@@ -364,7 +374,7 @@ namespace he::schema
                     if (At(Lexer::TokenType::CloseSquareBracket))
                         break;
 
-                    AstExpression* item = AstCreate(value.list);
+                    AstExpression* item = AstCreate(value.sequence);
                     if (!ConsumeValue(*item))
                         return false;
                 } while (TryConsume(Lexer::TokenType::Comma));

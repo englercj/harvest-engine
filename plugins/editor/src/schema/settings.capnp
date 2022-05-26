@@ -10,7 +10,7 @@ $Cxx.namespace("he::editor::schema");
 # A project that has been recently opened
 struct RecentProject
 {
-    name @0 :Text;              # Name of the project.
+    name @0 :Text = "test";              # Name of the project.
     path @1 :Text;              # Absolute path to the project file.
     openTime @2 :UInt64;        # Harvest timestamp when this project was last opened.
     recentAssets @3 :List(Data);

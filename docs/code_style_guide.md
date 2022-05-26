@@ -54,6 +54,21 @@ private:
 }
 ```
 
+If a getter takes any parameters, or if the getter has the same name as the type it returns then the function should be prefixed with `Get`:
+
+```cpp
+enum ElementSize { Small, Big };
+
+class Example
+{
+public:
+    ElementSize GetElementSize() const { return m_elementSize; }
+
+private:
+    ElementSize m_elementSize;
+}
+```
+
 ## Setters
 
 Setters should use the name of what they set with a `Set` prefix.
@@ -94,3 +109,45 @@ Example:
 ```cpp
 #define HE_MAKE_STRING(name, value) ::he::String name(#value)
 ```
+
+## Error Handling
+
+### When to use HE_ASSERT
+
+The `HE_ASSERT` macro is used to validate preconditions that MUST be true. That is, without the condition being true the program must immediately halt either because continuing would crash anyway or because continuing would cause data corruption. Generally speaking assertions should be used to validate *programmer* assumptions, not *user* assumptions or data.
+
+Examples:
+
+- DO use `HE_ASSERT` to validate array bounds access and other memory overwrite errors.
+- DO NOT use `HE_ASSERT` to validate data that can comes from user input, data files, network, etc.
+
+`HE_ASSERT` is compiled out of the program when `HE_ENABLE_ASSERTIONS=0`. By default, the Shipping configuration will define `HE_ENABLE_ASSERTIONS=0` and therefore strip assertions from the build.
+
+### When to use HE_VERIFY
+
+The `HE_VERIFY` macro is used to validate preconditions that SHOULD be true. That is, a bug is present if the condition is not true but the program can recover. Most commonly `HE_VERIFY` is used to validate expected state or input which when incorrect can lead to bad behavior. However since the program can continue, it does so after logging the issue.
+
+Examples:
+
+- DO use `HE_VERIFY` to validate function parameters are within expected ranges
+- DO NOT use `HE_VERIFY` to validate data the comes from user input, data files, network, etc.
+
+### When to use HE_LOG_ERROR
+
+The logging system should be used anytime there is unexpected behavior or data input to leave a record of this misbehavior.
+
+### Errors in APIs
+
+Errors should be expressed through a boolean or enum return value. Use a bool unless the type of error would influence the behavior of a caller, in which case use an enum.
+
+For platform abstractions where the implementation will be interfacing with the Operating System use the `he::Result` structure which represents an operating system result code.
+
+## Disallowed Features
+
+### Exceptions
+
+Exceptions (throw/try/catch) should not be used at any time. Stack unwinding is disabled by compiler flags.
+
+### RTTI
+
+Run time type information should not be used at any time, and is disabled by compiler flags. If reflection data is required for logic then utilize the Harvest Schema IDL to generate such information at build time.

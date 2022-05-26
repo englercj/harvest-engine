@@ -139,6 +139,10 @@ D (29 bits) = Size of the list:
 
 The elements of the list are tightly-packed. For example, `bool`s are packed bit-by-bit in little-endian order (the first bool is the least-significant bit of the first byte).
 
+#### Zero-Sized Lists
+
+A pointer to a list of zero-size is stored as a normal list pointer with the offset set to `-1`. This allows you to distinguish between a null pointer and a pointer to a list with no elements. Since a list with no elements has no actual data the offset just points back to the pointer word itself.
+
 #### Composite Elements
 
 When `C = 7`, the elements of the list are fixed-width composite values –- structs. In this case, the list content is prefixed by a "tag" word that describes the elements. It has the following layout:

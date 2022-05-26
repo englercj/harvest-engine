@@ -4,23 +4,29 @@
 
 ### Windows
 
-Install Visual Studio 2019 16.5+, then run `boostrap.sh` using Git Bash from within the cloned folder.
+Install Visual Studio 2022.
+
+Then run `boostrap.sh` using Git Bash from within the cloned folder.
 
 ### Linux
 
-Install build dependencies: `apt install build-essential libx11-dev libxi-dev`
+Install system dependencies: `apt install build-essential libx11-dev libxi-dev`
 
 Then run `bootstrap.sh` from within the cloned folder.
 
-## Supported Compilers
+Note: If you want to use clang instead, then run `boostrap.sh gmake2 --cc=clang`
 
-| Compiler | Minimum Version |
-| -------- | --------------- |
-| MSVC     | 14.25 (VS2019 v16.5) |
-| GCC      | 10.1.0 |
-| Clang    | 11.0.0 |
+## Compiler Support
 
-## Supported Platforms
+The recommended version is the version that is actively used for development and testing. Compatibility with the minimum version is maintained, but may not actively be tested for new changes.
+
+| Compiler |    Minimum Version    |  Recommended Version  |
+| -------- | --------------------- | --------------------- |
+| MSVC     | 14.25 (VS2019 v16.5)  | 14.30 (VS2022 v17.0)  |
+| GCC      | 10.1.0                | 11.2.0                |
+| Clang    | 11.0.0                | 14.0.0                |
+
+## Platform Support
 
 - :x: No support planned
 - :new_moon: Planned, but not started
@@ -31,11 +37,11 @@ Then run `bootstrap.sh` from within the cloned folder.
 
 |     Platform     |         Status         |  Minimum SDK  | Notes |
 | ---------------- | ---------------------- | ------------- | ----- |
-| Linux            | :waning_crescent_moon: | glibc 2.30    | |
 | Windows          | :last_quarter_moon:    | 10.0.18362.0  | Win 10 1909+ or Win 11 required |
+| Linux            | :waning_crescent_moon: | glibc 2.30    | C++20 standard library required |
+| macOS            | :new_moon:             | ?             | |
+| Android          | :new_moon:             | ?             | |
+| iOS              | :new_moon:             | ?             | |
 | Xbox Series X\|S | :new_moon:             | ?             | |
 | PlayStation 5    | :new_moon:             | ?             | |
 | Nintendo Switch  | :new_moon:             | ?             | |
-| macOS            | :x:                    | n/a           | |
-| Android          | :x:                    | n/a           | |
-| iOS              | :x:                    | n/a           | |

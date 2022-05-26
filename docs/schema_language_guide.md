@@ -11,11 +11,11 @@ Quickly:
 - Protobuf: serialize/deserialize step is expensive, std proliferation is big sad, unknown fields aren't supported for json serialization, no default values.
 - Flatbuffers: mutate and reflection APIs are weak, no unknown field support, no defaults for struct fields, fields that are unset or set to default are stored the same.
 - Bond: Compiler is Haskell, library relies on boost, very complex (but feature rich), no defaults for struct fields.
-- Capnp: API is very difficult to use, unknown fields aren't supported for json serialization, uses exceptions and RTTI, comes with a *lot* of libraries (including KJ), fields that are unset or set to default are stored the same, default value can never change.
+- Capnp: API is very difficult to use, unknown fields aren't supported for json serialization, uses exceptions and RTTI, comes with a *lot* of libraries (including KJ), fields that are unset or set to default are binary the same, default value can never change.
 
 The goals of Harvest Schema are:
 
-- Zero-copy binary format that is used in-memory and on disk. Data can be read with `mmap`.
+- Zero-copy binary format that is used in-memory and on the wire. Data can be read with `mmap`.
 - Support for unknown fields in both binary and text representations, and when serializing between them.
 - Ability to distinguish between unset fields and fields set to the default value.
 - Allow the default value of fields to change while continuing to properly load old "set" data.
@@ -102,7 +102,7 @@ Only one namespace may be specified per file. Though not required, it is recomme
 
 ### Types
 
-#### Build-in Types
+#### Built-in Types
 
 The following types are defined as part of the language:
 
@@ -111,29 +111,44 @@ The following types are defined as part of the language:
 - `int8`, `int16`, `int32`, `int64` - Signed integral values that are 1, 2, 4, and 8 bytes in size, respectively.
 - `uint8`, `uint16`, `uint32`, `uint64` - Unsigned integral values that are 1, 2, 4, and 8 bytes in size, respectively.
 - `float32`, `float64` - Floating-point values that are 4 and 8 bytes in size, respectively.
-- `List<T>` - A variable sized list of values of type `T`.
 - `String` - A variable sized list of UTF-8 characters terminated by a null (zero) byte.
-- `Blob` - A variable sized sequence of bytes. Similar to `List<uint8>` but also allows for a special byte-string syntax for values.
+- `Blob` - A dynamic sized list of bytes.
 
-#### Fixed-Size Arrays
+#### Lists
 
-Any type can be in a fixed-size array by using the `[N]` syntax, where `N` is the number of elements in the array. The size of a fixed-size array is limited to 65,535. Multi-dimensional arrays are not allowed.
+List are a dynamic length sequence of elements created by specifying square brackets after a type (`[]`). Lists of arrays are not supported. However, lists of lists *are* supported.
 
 ```c++
-struct Vec3
+struct Image
 {
-    v @0 :float32[3];
+    pixels @0 :uint8[]; // list of bytes
+}
+
+struct Image2D
+{
+    pixels @0 :uint8[][]; // A list of lists of uint8s
+}
+
+// You can wrap an array in a struct to have a list of them
+struct Uuid
+{
+    data @0 :uint8[16];
+}
+
+struct Container
+{
+    id @0 :Uuid[];
 }
 ```
 
-The binary encoding for this type is equivalent to:
+#### Arrays
+
+Arrays are a fixed length sequence of elements created by specifying square brackets with a size after the type (`[N]`, where `N` is the number of elements). The size of a fixed-size array is stored using 16-bits and is therefore limited to 65,535. Arrays of arrays are not supported. However, arrays of lists *are* supported.
 
 ```c++
 struct Vec3
 {
-    v0 @0 :float32;
-    v1 @1 :float32;
-    v2 @2 :float32;
+    v @0 :float32[3]; // fixed-size array of three float32 values
 }
 ```
 
@@ -141,7 +156,7 @@ Changing the size of a fixed-size array is not backwards-compatible for the bina
 
 ### Type Aliases
 
-Aliases of types can be created using the `alias` keyword. Aliases are a language-level feature, and don't affect codegen. In fact, the schema wont even include aliases; only their resolved types are included.
+Aliases of types can be created using the `alias` keyword. Aliases are a language-level feature. A generated schema will not include aliases; only their resolved types. Because of this, you cannot apply attributes to type aliases.
 
 ```c++
 alias Vec3 = float32[3];
@@ -167,7 +182,7 @@ struct Values
 {
     foo @0 :int32 = 123;
     bar @1 :String = "blah";
-    baz @2 :List<bool> = [true, false, false, true];
+    baz @2 :bool[] = [true, false, false, true];
     qux @3 :Vec3 = { x = 0, z = 2 };
 
     fixed @4 :float32[4] = [1, 2, 3, 4];
@@ -176,11 +191,13 @@ struct Values
 }
 ```
 
+If no default value is specified a "zeroed" value is assumed to be the default. For example, bools use `false`, int32 uses `0`, and structs use a zeroed blob with no fields set.
+
 #### Field Ordinals
 
-Every field has a numerical value that represents its order in the evolution of the schema. This value is specified with an `@` followed by a decimal number which starts at zero and increments by one without any gaps.
+Every field has a numerical value that represents its order in the evolution of the schema. This value is specified with an `@` followed by a decimal number which starts at zero and increments by one without any gaps. These ordinals represent the evolution of the schema and are used to create backwards-compatible memory layouts.
 
-These ordinals define the evolution of the schema. You should never remove or change fields that have an ordinal value, and new fields should always use the next integer ordinal value.
+Removing a field, or changing its ordinal, or changing its type will result in a different memory format and break backwards-compatibility in the binary format.
 
 #### Nesting
 
@@ -245,7 +262,7 @@ Constants define a literal value that is output into generated code.
 ```c++
 const Foo :int32 = 123;
 const Bar :Vec3 = { x = 0, y = 1, z = 2 };
-const Key :Blob = 0x"23d8edbd1ea57d74 aa59328790523ef";
+const Key :Blob = 0x"23d8edbd1ea57d74 aa59328790523ef"; // spaces are allowed in blob literals
 ```
 
 Constants can be used in other constants or as the default value for fields:
@@ -317,7 +334,7 @@ Structs, Interfaces, and Methods be generic, meaning they have type parameters. 
 ```c++
 struct Map<Key, Value>
 {
-    entries @0 :List<Entry>;
+    entries @0 :Entry[];
 
     struct Entry
     {
@@ -330,13 +347,7 @@ struct People
 {
     nameMap @0 :Map<String, Person>;
 }
-```
 
-Generics are similar to C# generics. However, only pointer types (structs, lists, and interfaces) can be used as generic parameters. This is because primitive generic parameters would mean different specializations of a struct would have different layouts. This would significantly complicate the implementation.
-
-Methods in an interface can also be generic:
-
-```c++
 interface Assignable<T>
 {
     Get @0 () -> T;
@@ -348,6 +359,8 @@ interface AssignableFactory
     Create<T> @0 (initialValue :T) -> Assignable<T>;
 }
 ```
+
+Only pointer types (structs, lists, interfaces, and strings) can be used as generic parameters. This restriction means that all specializations of a generic have the same size and layout. This significantly simplifies the implementation.
 
 ### Attributes
 
@@ -402,7 +415,3 @@ Valid values for the attribute target are:
 - `method`
 - `parameter`
 - `struct`
-
-There are a few built-in attributes that can affect code generation:
-
-- `$Flags` Marks an enum as a series of flags. See [Enums](#Enums) section for details.

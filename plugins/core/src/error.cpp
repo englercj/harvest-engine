@@ -29,7 +29,7 @@ namespace he
         {
             case ErrorKind::Assert:
             case ErrorKind::Except:
-                std::abort();
+                // TODO: std::abort(); or similar
                 break;
             case ErrorKind::Expect:
             case ErrorKind::Verify:

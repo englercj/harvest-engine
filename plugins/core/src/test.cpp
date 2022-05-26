@@ -12,6 +12,7 @@
 
 #include <algorithm>
 #include <atomic>
+#include <cstdlib>
 
 namespace he
 {
@@ -116,6 +117,8 @@ namespace internal
 
         String testFqn;
 
+        MonotonicTime startAll = MonotonicClock::Now();
+
         for (TestFixture* fixture : runner.tests)
         {
             const TestInfo& info = fixture->GetTestInfo();
@@ -151,8 +154,14 @@ namespace internal
                 HE_KV(test_time_ns, (end - start).val));
         }
 
+        MonotonicTime endAll = MonotonicClock::Now();
+
         HE_LOGF_INFO(he_test, "Ran {} tests with {} expectations. {} tests failed.",
             internal::g_totalTestRuns.load(), internal::g_totalTestExpects.load(), internal::g_totalTestFailures.load());
+
+        HE_LOG_INFO(he_test,
+            HE_KV(test_event_kind, TestEventKind::TestTiming),
+            HE_KV(test_time_ns, (endAll - startAll).val));
 
         return internal::g_totalTestFailures.load();
     }

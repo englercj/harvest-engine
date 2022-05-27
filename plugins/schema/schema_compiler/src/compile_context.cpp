@@ -75,6 +75,7 @@ namespace he::schema
     const AstNode* CompileContext::FindNode(StringView name, const AstNode& scope, bool isImport) const
     {
         const AstNode* node = scope.children.Find([&](const AstNode& node) { return node.name == name; });
+
         if (node)
             return node;
 

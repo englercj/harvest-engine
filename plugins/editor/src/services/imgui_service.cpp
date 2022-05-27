@@ -73,11 +73,14 @@ namespace he::editor
     void ImGuiService::Update()
     {
         ImGui::Render();
+        ImGui::UpdatePlatformWindows();
+        m_imguiPlatformService.UpdateViews();
     }
 
     void ImGuiService::Render()
     {
         m_imguiRenderService.Render();
+        ImGui::RenderPlatformWindowsDefault(nullptr, nullptr);
     }
 
     void ImGuiService::OnEvent(const window::Event& ev)

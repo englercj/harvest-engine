@@ -4,6 +4,9 @@
 
 namespace he.editor.schema;
 
-// Hides the field from editor views so that it cannot be changed by the user. The data is
-// still persisted and available to code.
-attribute EditorHidden(*) :void;
+struct Editor
+{
+    // Hides the field from editor views so that it cannot be changed by the user. The data is
+    // still persisted and available to code.
+    attribute Hidden(*) :void;
+}

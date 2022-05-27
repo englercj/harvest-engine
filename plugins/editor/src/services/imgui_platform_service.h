@@ -33,12 +33,13 @@ namespace he::editor
         void Terminate();
 
         void NewFrame();
+        void UpdateViews();
 
         void OnEvent(const window::Event& ev);
 
     private:
         void UpdateMonitors();
-        void UpdateMousePos();
+        void UpdateMouseData();
         void UpdateMouseCursor();
         void UpdateDpiResources(float dpiScale);
 
@@ -72,5 +73,8 @@ namespace he::editor
 
         std::unordered_map<float, std::unique_ptr<ImFontAtlas>> m_dpiFontAtlas{};
         ImFontAtlas* m_originalFontAtlas{ nullptr };
+
+        bool m_isModifierDown[4]{};
+        bool m_mouseInside{ false };
     };
 }

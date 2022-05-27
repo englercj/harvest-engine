@@ -22,6 +22,7 @@ namespace he::window
         MouseUp,                ///< A mouse button has been released
         MouseWheel,             ///< The mouse wheel has rolled
         MouseMove,              ///< The mouse has moved
+        MouseLeave,             ///< The mouse has left the active window
 
         // Keyboard events
         KeyDown,                ///< A keyboard key has been depressed
@@ -54,7 +55,7 @@ namespace he::window
     /// Base structure for an event.
     struct Event
     {
-        Event(EventType t)
+        explicit Event(EventType t)
             : type(t) {}
 
         /// The type of the event.
@@ -64,7 +65,7 @@ namespace he::window
     /// Base structure for an event related to a specific view.
     struct ViewEvent : public Event
     {
-        ViewEvent(EventType e, View* v)
+        explicit ViewEvent(EventType e, View* v)
             : Event(e), view(v) {}
 
         /// The target view of the event.
@@ -74,7 +75,7 @@ namespace he::window
     /// Base structure for MouseUp and MouseDown events.
     struct MouseButtonEvent : public ViewEvent
     {
-        MouseButtonEvent(EventType t, View* v, MouseButton b)
+        explicit MouseButtonEvent(EventType t, View* v, MouseButton b)
             : ViewEvent(t, v), button(b) {}
 
         /// The button that was pressed or released.
@@ -84,21 +85,21 @@ namespace he::window
     /// \copydoc EventType::MouseDown
     struct MouseDownEvent : public MouseButtonEvent
     {
-        MouseDownEvent(View* v, MouseButton b)
+        explicit MouseDownEvent(View* v, MouseButton b)
             : MouseButtonEvent(EventType::MouseDown, v, b) {}
     };
 
     /// \copydoc EventType::MouseUp
     struct MouseUpEvent : public MouseButtonEvent
     {
-        MouseUpEvent(View* v, MouseButton b)
+        explicit MouseUpEvent(View* v, MouseButton b)
             : MouseButtonEvent(EventType::MouseUp, v, b) {}
     };
 
     /// \copydoc EventType::MouseWheel
     struct MouseWheelEvent : public ViewEvent
     {
-        MouseWheelEvent(View* v, const Vec2f& d)
+        explicit MouseWheelEvent(View* v, const Vec2f& d)
             : ViewEvent(EventType::MouseWheel, v), delta(d) {}
 
         /// The delta movement of the wheel along the x/y axes.
@@ -108,24 +109,30 @@ namespace he::window
     /// \copydoc EventType::MouseMove
     struct MouseMoveEvent : public ViewEvent
     {
-        MouseMoveEvent(View* v, const Vec2f& p, bool a, bool r)
-            : ViewEvent(EventType::MouseMove, v), pos(p), absolute(a), raw(r) {}
+        explicit MouseMoveEvent(View* v, const Vec2f& p, bool a)
+            : ViewEvent(EventType::MouseMove, v), pos(p), absolute(a) {}
 
-        /// The current position of the mouse.
+        /// When absolute is true this represents the position of the mouse in screen space.
+        /// When absolute is false this represents the delta movement of the mouse from the
+        /// last mouse position.
         Vec2f pos;
 
         /// Indicates the origin of the `pos` member coordinates. When false `pos` represents
         /// delta movement from the last cursor location. Otherwise it is view-space coordinates.
         bool absolute;
+    };
 
-        /// When true the `pos` member is raw input values, i.e. high definition mouse inputs.
-        bool raw;
+    /// \copydoc EventType::MouseLeave
+    struct MouseLeaveEvent : public ViewEvent
+    {
+        explicit MouseLeaveEvent(View* v)
+            : ViewEvent(EventType::MouseLeave, v) {}
     };
 
     /// Base structure for KeyUp and KeyDown events.
     struct KeyEvent : public ViewEvent
     {
-        KeyEvent(EventType t, View* v, Key k)
+        explicit KeyEvent(EventType t, View* v, Key k)
             : ViewEvent(t, v), key(k) {}
 
         /// The key that was pressed or released.
@@ -135,31 +142,31 @@ namespace he::window
     /// \copydoc EventType::KeyDown
     struct KeyDownEvent : public KeyEvent
     {
-        KeyDownEvent(View* v, Key k)
+        explicit KeyDownEvent(View* v, Key k)
             : KeyEvent(EventType::KeyDown, v, k) {}
     };
 
     /// \copydoc EventType::KeyUp
     struct KeyUpEvent : public KeyEvent
     {
-        KeyUpEvent(View* v, Key k)
+        explicit KeyUpEvent(View* v, Key k)
             : KeyEvent(EventType::KeyUp, v, k) {}
     };
 
     /// \copydoc EventType::Text
     struct TextEvent : public ViewEvent
     {
-        TextEvent(View* v, char32_t c)
+        explicit TextEvent(View* v, char16_t c)
             : ViewEvent(EventType::Text, v), ch(c) {}
 
         /// The input character.
-        char32_t ch;
+        char16_t ch;
     };
 
     /// Base structure for gamepad events.
     struct GamepadEvent : public Event
     {
-        GamepadEvent(EventType e, uint32_t i)
+        explicit GamepadEvent(EventType e, uint32_t i)
             : Event(e), index(i) {}
 
         /// Index of the gamepad this event is for.
@@ -169,7 +176,7 @@ namespace he::window
     /// \copydoc EventType::GamepadAxis
     struct GamepadAxisEvent : public GamepadEvent
     {
-        GamepadAxisEvent(uint32_t i, GamepadAxis a, float v)
+        explicit GamepadAxisEvent(uint32_t i, GamepadAxis a, float v)
             : GamepadEvent(EventType::GamepadAxis, i), axis(a), value(v) {}
 
         /// The axis that has changed.
@@ -182,7 +189,7 @@ namespace he::window
     /// \copydoc EventType::GamepadButtonDown
     struct GamepadButtonDownEvent : public GamepadEvent
     {
-        GamepadButtonDownEvent(uint32_t i, GamepadButton b)
+        explicit GamepadButtonDownEvent(uint32_t i, GamepadButton b)
             : GamepadEvent(EventType::GamepadButtonDown, i), button(b) {}
 
         /// The button that was pressed.
@@ -192,7 +199,7 @@ namespace he::window
     /// \copydoc EventType::GamepadButtonUp
     struct GamepadButtonUpEvent : public GamepadEvent
     {
-        GamepadButtonUpEvent(uint32_t i, GamepadButton b)
+        explicit GamepadButtonUpEvent(uint32_t i, GamepadButton b)
             : GamepadEvent(EventType::GamepadButtonUp, i), button(b) {}
 
         /// The button that was released.
@@ -202,28 +209,28 @@ namespace he::window
     /// \copydoc EventType::GamepadConnected
     struct GamepadConnectedEvent : public GamepadEvent
     {
-        GamepadConnectedEvent(uint32_t i)
+        explicit GamepadConnectedEvent(uint32_t i)
             : GamepadEvent(EventType::GamepadConnected, i) {}
     };
 
     /// \copydoc EventType::GamepadDisconnected
     struct GamepadDisconnectedEvent : public GamepadEvent
     {
-        GamepadDisconnectedEvent(uint32_t i)
+        explicit GamepadDisconnectedEvent(uint32_t i)
             : GamepadEvent(EventType::GamepadDisconnected, i) {}
     };
 
     /// \copydoc EventType::ViewRequestClose
     struct ViewRequestCloseEvent : public ViewEvent
     {
-        ViewRequestCloseEvent(View* v)
+        explicit ViewRequestCloseEvent(View* v)
             : ViewEvent(EventType::ViewRequestClose, v) {}
     };
 
     /// \copydoc EventType::ViewMoved
     struct ViewMovedEvent : public ViewEvent
     {
-        ViewMovedEvent(View* v, const Vec2i& p)
+        explicit ViewMovedEvent(View* v, const Vec2i& p)
             : ViewEvent(EventType::ViewMoved, v), pos(p) {}
 
         /// The new position of the view.
@@ -233,7 +240,7 @@ namespace he::window
     /// \copydoc EventType::ViewResized
     struct ViewResizedEvent : public ViewEvent
     {
-        ViewResizedEvent(View* v, const Vec2i& s)
+        explicit ViewResizedEvent(View* v, const Vec2i& s)
             : ViewEvent(EventType::ViewResized, v), size(s) {}
 
         /// The new size of the view.
@@ -243,7 +250,7 @@ namespace he::window
     /// \copydoc EventType::ViewActivated
     struct ViewActivatedEvent : public ViewEvent
     {
-        ViewActivatedEvent(View* v, bool a)
+        explicit ViewActivatedEvent(View* v, bool a)
             : ViewEvent(EventType::ViewActivated, v), active(a) {}
 
         /// True if the view was activated, false if it was deactivated.
@@ -253,7 +260,7 @@ namespace he::window
     /// \copydoc EventType::ViewDpiScaleChanged
     struct ViewDpiScaleChangedEvent : public ViewEvent
     {
-        ViewDpiScaleChangedEvent(View* v, float s)
+        explicit ViewDpiScaleChangedEvent(View* v, float s)
             : ViewEvent(EventType::ViewDpiScaleChanged, v), scale(s) {}
 
         /// The new DPI scale of the view.
@@ -263,7 +270,7 @@ namespace he::window
     /// \copydoc EventType::ViewDropFile
     struct ViewDropFileEvent : public ViewEvent
     {
-        ViewDropFileEvent(View* v, const char* p)
+        explicit ViewDropFileEvent(View* v, const char* p)
             : ViewEvent(EventType::ViewDropFile, v), filePath(p) {}
 
         /// The file path that was dropped.
@@ -273,7 +280,7 @@ namespace he::window
     /// \copydoc EventType::Initialized
     struct InitializedEvent : public ViewEvent
     {
-        InitializedEvent(View* v)
+        explicit InitializedEvent(View* v)
             : ViewEvent(EventType::Initialized, v) {}
     };
 

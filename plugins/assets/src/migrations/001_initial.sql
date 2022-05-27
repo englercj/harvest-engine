@@ -30,7 +30,6 @@ CREATE TABLE asset (
     type                    TEXT NOT NULL,          -- Type of the Asset.
     name                    TEXT NOT NULL,          -- Friendly name of the Asset.
     state                   INTEGER NOT NULL,       -- `AssetState` enum value.
-    data_hash               INTEGER DEFAULT 0,      -- Last recorded Fnv32 hash of the asset's data bytes.
     import_data_hash        INTEGER DEFAULT 0,      -- Last recorded Fnv32 hash of the asset's import data bytes.
     importer_id             INTEGER DEFAULT 0,      -- ID of the last importer to process this asset.
     importer_version        INTEGER DEFAULT 0,      -- Version of the importer that processed this asset.

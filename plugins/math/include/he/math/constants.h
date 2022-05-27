@@ -31,17 +31,20 @@ namespace he
     inline constexpr Vec4a Vec4a_Z{ 0.0f, 0.0f, 1.0f, 0.0f };
     inline constexpr Vec4a Vec4a_W{ 0.0f, 0.0f, 0.0f, 1.0f };
 
+    inline constexpr Vec2f Vec2f_Infinity{ Float_Infinity, Float_Infinity };
     inline constexpr Vec2f Vec2f_Zero{ 0, 0 };
     inline constexpr Vec2f Vec2f_One{ 1, 1, };
     inline constexpr Vec2f Vec2f_X{ 1, 0 };
     inline constexpr Vec2f Vec2f_Y{ 0, 1 };
 
+    inline constexpr Vec3f Vec3f_Infinity{ Float_Infinity, Float_Infinity, Float_Infinity };
     inline constexpr Vec3f Vec3f_Zero{ 0, 0, 0 };
     inline constexpr Vec3f Vec3f_One{ 1, 1, 1 };
     inline constexpr Vec3f Vec3f_X{ 1, 0, 0 };
     inline constexpr Vec3f Vec3f_Y{ 0, 1, 0 };
     inline constexpr Vec3f Vec3f_Z{ 0, 0, 1 };
 
+    inline constexpr Vec4f Vec4f_Infinity{ Float_Infinity, Float_Infinity, Float_Infinity, Float_Infinity };
     inline constexpr Vec4f Vec4f_Zero{ 0, 0, 0, 0 };
     inline constexpr Vec4f Vec4f_One{ 1, 1, 1, 1 };
     inline constexpr Vec4f Vec4f_X{ 1, 0, 0, 0 };

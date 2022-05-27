@@ -2,6 +2,10 @@
 
 #include "file_helpers.win32.h"
 
+#include "he/core/ascii.h"
+#include "he/core/scope_guard.h"
+#include "he/core/string.h"
+#include "he/core/string_view.h"
 #include "he/core/wstr.h"
 
 #if defined(HE_PLATFORM_API_WIN32)
@@ -75,6 +79,107 @@ namespace he
             dwCreationDisposition,
             dwFlagsAndAttributes,
             nullptr);
+    }
+
+    Result Win32FileGetAttributes(HANDLE handle, FileAttributes& outAttributes)
+    {
+        FILE_BASIC_INFO basicInfo{};
+        if (!::GetFileInformationByHandleEx(handle, FileBasicInfo, &basicInfo, sizeof(FILE_BASIC_INFO)))
+            return Result::FromLastError();
+
+        FILE_STANDARD_INFO standardInfo{};
+        if (!::GetFileInformationByHandleEx(handle, FileStandardInfo, &standardInfo, sizeof(FILE_STANDARD_INFO)))
+            return Result::FromLastError();
+
+        outAttributes.flags = FileAttributeFlag::None;
+
+        if ((basicInfo.FileAttributes & FILE_ATTRIBUTE_HIDDEN) == FILE_ATTRIBUTE_HIDDEN)
+        {
+            outAttributes.flags |= FileAttributeFlag::Hidden;
+        }
+
+        if ((basicInfo.FileAttributes & FILE_ATTRIBUTE_READONLY) == FILE_ATTRIBUTE_READONLY)
+        {
+            outAttributes.flags |= FileAttributeFlag::ReadOnly;
+        }
+
+        if (standardInfo.Directory == TRUE)
+        {
+            outAttributes.flags |= FileAttributeFlag::Directory;
+            outAttributes.size = 0;
+        }
+        else
+        {
+            outAttributes.size = standardInfo.EndOfFile.QuadPart;
+        }
+
+        outAttributes.createTime = Win32FileTimeToSystemTime(basicInfo.CreationTime.QuadPart);
+        outAttributes.accessTime = Win32FileTimeToSystemTime(basicInfo.LastAccessTime.QuadPart);
+        outAttributes.writeTime = Win32FileTimeToSystemTime(basicInfo.LastWriteTime.QuadPart);
+
+        return Result::Success;
+    }
+
+    Result Win32FileGetPath(HANDLE handle, String& outPath)
+    {
+        DWORD flags = VOLUME_NAME_DOS;
+
+        while (true)
+        {
+            DWORD wideRequiredLen = ::GetFinalPathNameByHandleW(handle, nullptr, 0, flags);
+            if (wideRequiredLen == 0)
+            {
+                // Its possible there is no DOS name for the file, so try to get the NT path
+                if (::GetLastError() == ERROR_PATH_NOT_FOUND && flags == VOLUME_NAME_DOS)
+                {
+                    flags = VOLUME_NAME_NT;
+                    continue;
+                }
+
+                return Result::FromLastError();
+            }
+
+            wchar_t* buf = outPath.GetAllocator().Malloc<wchar_t>(wideRequiredLen);
+            HE_AT_SCOPE_EXIT([&]()
+            {
+                outPath.GetAllocator().Free(buf);
+            });
+
+            DWORD widePathLen = ::GetFinalPathNameByHandleW(handle, buf, wideRequiredLen, flags);
+            if (widePathLen == 0 || widePathLen > wideRequiredLen)
+                return Result::FromLastError();
+
+            WCToMBStr(outPath, buf);
+            break;
+        }
+
+        if (flags == VOLUME_NAME_DOS)
+        {
+            constexpr StringView Prefix = "\\\\?\\";
+            constexpr StringView UNCPrefix = "\\\\?\\UNC\\";
+
+            // Check if path starts with a \\?\X: prefix, and if so remove the \\?\ prefix
+            if (outPath.Size() >= 6
+                && String::EqualN(outPath.Data(), Prefix.Data(), Prefix.Size())
+                && IsAlpha(outPath[4])
+                && outPath[5] == ':'
+                && outPath[6] == '\\')
+            {
+                outPath.Erase(0, Prefix.Size());
+            }
+            // Check if path starts with a \\?\UNC\ prefix, and if so replace it with simpler \\ prefix
+            else if (String::EqualN(outPath.Data(), UNCPrefix.Data(), UNCPrefix.Size()))
+            {
+                outPath.Erase(2, 6);
+            }
+        }
+        else
+        {
+            // result is in the NT namespace, so apply the DOS to NT namespace prefix
+            outPath.Insert(0, "\\\\?\\GLOBALROOT");
+        }
+
+        return Result::Success;
     }
 }
 

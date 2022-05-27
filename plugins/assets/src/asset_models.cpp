@@ -13,7 +13,7 @@ namespace he::assets
 {
     static bool Bind(const sqlite::Statement& stmt, const AssetFileModel& model)
     {
-        if (!stmt.Bind(1, model.id.val.m_bytes))
+        if (!stmt.Bind(1, model.id.m_bytes))
             return false;
 
         if (!stmt.Bind(2, model.path.Data()))
@@ -39,7 +39,7 @@ namespace he::assets
 
     static void Read(const sqlite::Statement& stmt, AssetFileModel& model)
     {
-        stmt.GetColumn(0).ReadBlob(model.id.val.m_bytes);
+        stmt.GetColumn(0).ReadBlob(model.id.m_bytes);
         model.path = stmt.GetColumn(1).GetText().Data();
         model.lastModifiedTime.val = static_cast<uint64_t>(stmt.GetColumn(2).GetInt64());
         model.lastFileSize = stmt.GetColumn(3).GetUint();
@@ -50,10 +50,10 @@ namespace he::assets
 
     static bool Bind(const sqlite::Statement& stmt, const AssetModel& model)
     {
-        if (!stmt.Bind(1, model.id.val.m_bytes))
+        if (!stmt.Bind(1, model.id.m_bytes))
             return false;
 
-        if (!stmt.Bind(2, model.fileId.val.m_bytes))
+        if (!stmt.Bind(2, model.fileId.m_bytes))
             return false;
 
         if (!stmt.Bind(3, model.type.Data()))
@@ -88,8 +88,8 @@ namespace he::assets
 
     static void Read(const sqlite::Statement& stmt, AssetModel& model)
     {
-        stmt.GetColumn(0).ReadBlob(model.id.val.m_bytes);
-        stmt.GetColumn(1).ReadBlob(model.fileId.val.m_bytes);
+        stmt.GetColumn(0).ReadBlob(model.id.m_bytes);
+        stmt.GetColumn(1).ReadBlob(model.fileId.m_bytes);
         model.type = stmt.GetColumn(2).GetText().Data();
         model.name = stmt.GetColumn(3).GetText().Data();
         model.state = AssetState(stmt.GetColumn(4).GetUint());
@@ -103,14 +103,11 @@ namespace he::assets
 
     bool AssetFileModel::AddOrUpdate(AssetDatabase& db, AssetFile::Reader file, const AssetFileModel& model)
     {
-        const capnp::Data::Reader fileId = file.getId();
-        HE_ASSERT(model.id.val == fileId);
-
-        const Span<const uint8_t> fileIdBytes{ fileId.begin(), fileId.end() };
+        HE_ASSERT(ToUuid(file.GetId()) == model.id);
 
         sqlite::Transaction transaction = db.BeginTransaction();
 
-        AssetFileId ids[2];
+        Uuid ids[2];
         size_t count = 0;
 
         // Read existing items to see what kind of operation we need to perform.
@@ -119,12 +116,12 @@ namespace he::assets
                 SELECT id FROM asset_file WHERE id = ? OR path = ?
             )");
 
-            if (!stmt->Bind(1, fileIdBytes) || !stmt->Bind(2, model.path.Data()))
+            if (!stmt->Bind(1, model.id.m_bytes) || !stmt->Bind(2, model.path.Data()))
                 return false;
 
             const bool res = stmt->EachRow([&](const sqlite::Statement& stmt)
             {
-                stmt.GetColumn(0).ReadBlob(ids[count++].val.m_bytes);
+                stmt.GetColumn(0).ReadBlob(ids[count++].m_bytes);
             });
 
             if (!res)
@@ -141,9 +138,9 @@ namespace he::assets
         {
             size_t i = static_cast<size_t>(-1);
 
-            if (ids[0].val == fileId)
+            if (ids[0] == model.id)
                 i = 0;
-            else if (count > 1 && ids[1].val == fileId)
+            else if (count > 1 && ids[1] == model.id)
                 i = 1;
 
             if (i != static_cast<size_t>(-1))
@@ -176,19 +173,19 @@ namespace he::assets
         }
 
         // Read existing Asset IDs so we can remove ones that no longer exist.
-        std::unordered_set<AssetId> assetIds;
+        std::unordered_set<Uuid> assetIds;
         {
             sqlite::ScopedStatement stmt = db.StatementLiteral(R"(
                 SELECT id FROM asset WHERE asset_file_id = ?
             )");
 
-            if (!stmt->Bind(1, fileIdBytes))
+            if (!stmt->Bind(1, model.id.m_bytes))
                 return false;
 
             const bool res = stmt->EachRow([&](const sqlite::Statement& stmt)
             {
-                AssetId assetId;
-                stmt.GetColumn(0).ReadBlob(assetId.val.m_bytes);
+                Uuid assetId;
+                stmt.GetColumn(0).ReadBlob(assetId.m_bytes);
                 assetIds.insert(assetId);
             });
 
@@ -197,20 +194,16 @@ namespace he::assets
         }
 
         // Add or update each existing asset in the file
-        for (const Asset::Reader asset : file.getAssets())
+        for (const Asset::Reader asset : file.GetAssets())
         {
             AssetModel::AddOrUpdate(db, model.id, asset);
 
-            const capnp::Data::Reader assetIdData = asset.getId();
-            HE_ASSERT(assetIdData.size() == sizeof(Uuid::m_bytes));
-
-            AssetId assetId;
-            MemCopy(assetId.val.m_bytes, assetIdData.begin(), assetIdData.size());
+            const Uuid assetId = ToUuid(asset.GetId());
             assetIds.erase(assetId);
         }
 
         // Remove each asset that no longer exists in the file.
-        for (const AssetId& id : assetIds)
+        for (const Uuid& id : assetIds)
         {
             AssetModel::RemoveOne(db, id);
         }
@@ -219,14 +212,14 @@ namespace he::assets
         return true;
     }
 
-    bool AssetFileModel::FindOne(AssetDatabase& db, const AssetFileId& id, AssetFileModel& model)
+    bool AssetFileModel::FindOne(AssetDatabase& db, const Uuid& fileId, AssetFileModel& model)
     {
         sqlite::ScopedStatement stmt = db.StatementLiteral(R"(
             SELECT id, path, last_modified_time, last_file_size, last_session_token, source_modified_time, source_file_size
             FROM asset_file WHERE id = ?
         )");
 
-        if (!stmt->Bind(1, id.val.m_bytes))
+        if (!stmt->Bind(1, fileId.m_bytes))
             return false;
 
         if (stmt->Step() == sqlite::StepResult::Row)
@@ -238,13 +231,13 @@ namespace he::assets
         return false;
     }
 
-    bool AssetFileModel::RemoveOne(AssetDatabase& db, const AssetFileId& id)
+    bool AssetFileModel::RemoveOne(AssetDatabase& db, const Uuid& fileId)
     {
         sqlite::ScopedStatement stmt = db.StatementLiteral(R"(
             DELETE FROM asset_file WHERE id = ?
         )");
 
-        if (!stmt->Bind(1, id.val.m_bytes))
+        if (!stmt->Bind(1, fileId.m_bytes))
             return false;
 
         return stmt->Step() == sqlite::StepResult::Done;
@@ -276,54 +269,47 @@ namespace he::assets
         return stmt->Step() == sqlite::StepResult::Done;
     }
 
-    bool AssetModel::AddOrUpdate(AssetDatabase& db, const AssetFileId& fileId, Asset::Reader asset)
+    bool AssetModel::AddOrUpdate(AssetDatabase& db, const Uuid& fileId, Asset::Reader asset)
     {
         sqlite::ScopedStatement stmt = db.StatementLiteral(R"(
             INSERT INTO asset_file
-                (id, asset_file_id, type, name, state, data_hash, import_data_hash)
+                (id, asset_file_id, type, name, state, import_data_hash)
             VALUES (?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT (id) DO UPDATE SET
                 asset_file_id = excluded.asset_file_id,
                 type = excluded.type,
                 name = excluded.name,
-                data_hash = excluded.data_hash,
                 import_data_hash = excluded.import_data_hash
         )");
 
-        const capnp::Data::Reader assetIdData = asset.getId();
-        const Span<const uint8_t> assetIdBytes{ assetIdData.begin(), assetIdData.end() };
-
-        if (!stmt->Bind(1, assetIdBytes))
+        if (!stmt->Bind(1, asset.GetId().GetValue()))
             return false;
 
-        if (!stmt->Bind(2, fileId.val.m_bytes))
+        if (!stmt->Bind(2, fileId.m_bytes))
             return false;
 
-        if (!stmt->Bind(3, asset.getType().cStr()))
+        if (!stmt->Bind(3, asset.GetType().GetName().Data()))
             return false;
 
-        if (!stmt->Bind(4, asset.getName().cStr()))
+        if (!stmt->Bind(4, asset.GetName().Data()))
             return false;
 
-        if (!stmt->Bind(5, static_cast<uint16_t>(AssetState::UNKNOWN)))
+        if (!stmt->Bind(5, static_cast<uint16_t>(AssetState::Unknown)))
             return false;
 
-        if (!stmt->Bind(6, FnvHash32(asset.data()->data(), asset.data()->size())))
-            return false;
-
-        if (!stmt->Bind(7, FnvHash32(asset.import_data()->data(), asset.import_data()->size())))
+        if (!stmt->Bind(6, FNV32::HashData(asset.GetImportData().Data(), asset.GetImportData().Size())))
             return false;
 
         return stmt->Step() == sqlite::StepResult::Done;
     }
 
-    bool AssetModel::FindOne(AssetDatabase& db, const AssetId& id, AssetModel& model)
+    bool AssetModel::FindOne(AssetDatabase& db, const Uuid& assetId, AssetModel& model)
     {
         sqlite::ScopedStatement stmt = db.StatementLiteral(R"(
             SELECT * FROM asset WHERE id = ?
         )");
 
-        if (!stmt->Bind(0, id.val.m_bytes))
+        if (!stmt->Bind(0, assetId.m_bytes))
             return false;
 
         const sqlite::StepResult res = stmt->Step();
@@ -337,13 +323,13 @@ namespace he::assets
         return false;
     }
 
-    bool AssetModel::FindAll(AssetDatabase& db, const AssetFileId& fileId, Vector<AssetModel>& models)
+    bool AssetModel::FindAll(AssetDatabase& db, const Uuid& fileId, Vector<AssetModel>& models)
     {
         sqlite::ScopedStatement stmt = db.StatementLiteral(R"(
             SELECT * FROM asset WHERE asset_file_id = ?
         )");
 
-        if (!stmt->Bind(0, fileId.val.m_bytes))
+        if (!stmt->Bind(0, fileId.m_bytes))
             return false;
 
         return stmt->EachRow([&](const sqlite::Statement& stmt)
@@ -352,13 +338,13 @@ namespace he::assets
         });
     }
 
-    bool AssetModel::RemoveOne(AssetDatabase& db, const AssetId& id)
+    bool AssetModel::RemoveOne(AssetDatabase& db, const Uuid& assetId)
     {
         sqlite::ScopedStatement stmt = db.StatementLiteral(R"(
             DELTE FROM asset WHERE id = ?
         )");
 
-        if (!stmt->Bind(0, id.val.m_bytes))
+        if (!stmt->Bind(0, assetId.m_bytes))
             return false;
 
         return stmt->Step() == sqlite::StepResult::Done;

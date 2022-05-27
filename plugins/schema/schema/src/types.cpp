@@ -3,6 +3,7 @@
 #include "he/schema/schema.h"
 
 #include "he/core/enum_ops.h"
+#include "he/core/memory_ops.h"
 
 namespace he
 {

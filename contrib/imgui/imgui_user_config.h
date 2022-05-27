@@ -77,7 +77,7 @@
         operator he::Vec2f() const { return he::Vec2f{ x, y }; }
 
 #define IM_VEC4_CLASS_EXTRA                                                         \
-        constexpr ImVec4(const he::Vec4f& f) x(f.x), y(f.y), z(f.z), w(f.w) {}      \
+        constexpr ImVec4(const he::Vec4f& f) : x(f.x), y(f.y), z(f.z), w(f.w) {}    \
         operator he::Vec4f() const { return he::Vec4f{ x, y, z, w }; }
 
 //---- Use 32-bit vertex indices (default is 16-bit) is one way to allow large meshes with more than 64K vertices.

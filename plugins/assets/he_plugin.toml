@@ -13,9 +13,9 @@ homepage = ""
     type = "static"
     group = "engine/libs"
     files = ["include/**", "src/**"]
-    public_dependson = ["he_core", "he_schema", "he_sqlite", "capnp"]
-    public_includedirs = ["include", "%{he.get_generated_dir(prj.name)}/include"]
-    private_includedirs = ["src", "%{he.get_generated_dir(prj.name)}/src"]
+    public_dependson = ["he_core", "he_schema", "he_sqlite"]
+    public_includedirs = ["include", "%{he.get_generated_dir('he_assets')}/include"]
+    private_includedirs = ["src", "%{he.get_generated_dir('he_assets')}/src"]
 
     [[modules.bin2c_compile]]
         glob = "**.sql"
@@ -25,7 +25,3 @@ homepage = ""
         glob = "**.hsc"
         targets = ["c++"]
         dependson_include = ["he_schema"]
-
-    [[modules.capnp_compile]]
-        glob = "**.capnp"
-        targets = ["c++"]

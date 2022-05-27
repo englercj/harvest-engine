@@ -8,6 +8,7 @@
 #include "he/core/string.h"
 #include "he/core/types.h"
 #include "he/core/vector.h"
+#include "he/core/uuid.h"
 
 namespace he::assets
 {
@@ -21,23 +22,23 @@ namespace he::assets
 
     struct AssetFileModel final : FileProperties
     {
-        AssetFileId id;
+        Uuid id;
         uint32_t lastSessionToken{ 0 };
         String path;
         FileProperties source;
 
         static bool AddOrUpdate(AssetDatabase& db, AssetFile::Reader file, const AssetFileModel& model);
-        static bool FindOne(AssetDatabase& db, const AssetFileId& id, AssetFileModel& model);
-        static bool RemoveOne(AssetDatabase& db, const AssetFileId& id);
+        static bool FindOne(AssetDatabase& db, const Uuid& fileId, AssetFileModel& model);
+        static bool RemoveOne(AssetDatabase& db, const Uuid& fileId);
     };
 
     struct AssetModel final
     {
-        AssetId id;
-        AssetFileId fileId;
+        Uuid id;
+        Uuid fileId;
         String type;
         String name;
-        AssetState state{ AssetState::UNKNOWN };
+        AssetState state{ AssetState::Unknown };
         uint32_t dataHash{ 0 };
         uint32_t importDataHash{ 0 };
         uint32_t importerId{ 0 };
@@ -46,55 +47,55 @@ namespace he::assets
         uint32_t compilerVersion{ 0 };
 
         static bool AddOrUpdate(AssetDatabase& db, const AssetModel& model);
-        static bool AddOrUpdate(AssetDatabase& db, const AssetFileId& fileId, Asset::Reader asset);
-        static bool FindOne(AssetDatabase& db, const AssetId& id, AssetModel& model);
-        static bool FindAll(AssetDatabase& db, const AssetFileId& fileId, Vector<AssetModel>& models);
-        static bool RemoveOne(AssetDatabase& db, const AssetId& id);
+        static bool AddOrUpdate(AssetDatabase& db, const Uuid& fileId, Asset::Reader asset);
+        static bool FindOne(AssetDatabase& db, const Uuid& assetId, AssetModel& model);
+        static bool FindAll(AssetDatabase& db, const Uuid& fileId, Vector<AssetModel>& models);
+        static bool RemoveOne(AssetDatabase& db, const Uuid& assetId);
     };
 
     struct AssetBackingFileModel final : FileProperties
     {
-        AssetId assetId;
+        Uuid assetId;
         String fileName;
 
         static bool AddOrUpdate(AssetDatabase& db, const AssetBackingFileModel& model);
-        static bool FindAll(AssetDatabase& db, const AssetId& id, Vector<AssetBackingFileModel>& model);
-        static bool RemoveAll(AssetDatabase& db, const AssetId& id);
-        static bool RemoveOne(AssetDatabase& db, const AssetId& id, const char* path);
+        static bool FindAll(AssetDatabase& db, const Uuid& assetId, Vector<AssetBackingFileModel>& model);
+        static bool RemoveAll(AssetDatabase& db, const Uuid& assetId);
+        static bool RemoveOne(AssetDatabase& db, const Uuid& assetId, const char* path);
     };
 
     struct AssetReferenceModel final
     {
-        AssetId fromId;
-        AssetId toId;
+        Uuid fromAssetId;
+        Uuid toAssetId;
 
         static bool Add(AssetDatabase& db, const AssetReferenceModel& model);
-        static bool FindAllFrom(AssetDatabase& db, const AssetId& fromId);
-        static bool FindAllTo(AssetDatabase& db, const AssetId& toId);
-        static bool RemoveAllFrom(AssetDatabase& db, const AssetId& fromId);
+        static bool FindAllFrom(AssetDatabase& db, const Uuid& fromAssetId);
+        static bool FindAllTo(AssetDatabase& db, const Uuid& toAssetId);
+        static bool RemoveAllFrom(AssetDatabase& db, const Uuid& fromAssetId);
     };
 
     struct MessageModel final
     {
-        AssetId refId;
+        Uuid assetId;
         String message;
         LogLevel level{ LogLevel::Info };
         SystemTime timestamp{ 0 };
-        MessageSource source{ MessageSource::UNKNOWN };
+        MessageSource source{ MessageSource::Unknown };
 
         static bool Add(AssetDatabase& db, const MessageModel& model);
-        static bool RemoveAll(AssetDatabase& db, const AssetId& refId);
+        static bool RemoveAll(AssetDatabase& db, const Uuid& refAssetId);
     };
 
     struct CompilerReferenceModel final
     {
-        AssetId assetId;
+        Uuid assetId;
 
         // Type of the reference
         CompilerReferenceType referenceType{ CompilerReferenceType::AssetData };
 
         // Valid for AssetData, AssetBackingFile, and Resource types.
-        AssetId toAssetId;
+        Uuid toAssetId;
 
         // Valid for AssetBackingFile, and FilePath types.
         String filePath;
@@ -106,6 +107,6 @@ namespace he::assets
         uint32_t resourceKeyHash{ 0 };
 
         static bool Add(AssetDatabase& db, const CompilerReferenceModel& model);
-        static bool RemoveAll(AssetDatabase& db, const AssetId& id);
+        static bool RemoveAll(AssetDatabase& db, const Uuid& assetId);
     };
 }

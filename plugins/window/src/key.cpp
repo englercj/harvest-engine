@@ -24,6 +24,7 @@ namespace he
             case window::Key::NumPad_Add: return "NumPad_Add";
             case window::Key::NumPad_Subtract: return "NumPad_Subtract";
             case window::Key::NumPad_Divide: return "NumPad_Divide";
+            case window::Key::NumPad_Enter: return "NumPad_Enter";
             case window::Key::NumPad_0: return "NumPad_0";
             case window::Key::NumPad_1: return "NumPad_1";
             case window::Key::NumPad_2: return "NumPad_2";

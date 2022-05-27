@@ -15,6 +15,7 @@ namespace he
             case window::EventType::MouseUp: return  "MouseUp";
             case window::EventType::MouseWheel: return  "MouseWheel";
             case window::EventType::MouseMove: return  "MouseMove";
+            case window::EventType::MouseLeave: return  "MouseLeave";
             case window::EventType::KeyDown: return  "KeyDown";
             case window::EventType::KeyUp: return  "KeyUp";
             case window::EventType::Text: return  "Text";

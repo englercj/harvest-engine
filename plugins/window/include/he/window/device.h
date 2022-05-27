@@ -83,6 +83,7 @@ namespace he::window
         /// relative to that view.
         ///
         /// \param[in] view The view to make the coordinates relative to, or nullptr for screen space.
+        /// \return The cursor position, or Vec2f_Infinity on error.
         virtual Vec2f GetCursorPos(View* view) const = 0;
 
         /// Sets the current cursor position. Passing a view pointer will assume the coordinates

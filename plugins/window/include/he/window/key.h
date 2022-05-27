@@ -26,6 +26,7 @@ namespace he::window
         NumPad_Add,
         NumPad_Subtract,
         NumPad_Divide,
+        NumPad_Enter,
         NumPad_0,
         NumPad_1,
         NumPad_2,

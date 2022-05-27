@@ -13,6 +13,9 @@ namespace he
     constexpr intptr_t Win32InvalidFd = reinterpret_cast<intptr_t>(INVALID_HANDLE_VALUE);
 
     HANDLE Win32FileOpen(const char* path, FileOpenMode mode, FileOpenFlag flags, DWORD extraFlags);
+
+    Result Win32FileGetAttributes(HANDLE handle, FileAttributes& outAttributes);
+    Result Win32FileGetPath(HANDLE handle, String& outPath);
 }
 
 #endif

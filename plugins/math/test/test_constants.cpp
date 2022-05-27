@@ -74,6 +74,8 @@ HE_TEST(math, constants, Vec4a)
 // ------------------------------------------------------------------------------------------------
 HE_TEST(math, constants, Vec2f)
 {
+    HE_EXPECT_EQ(Vec2f_Infinity.x, Float_Infinity);
+    HE_EXPECT_EQ(Vec2f_Infinity.y, Float_Infinity);
     HE_EXPECT_EQ(Vec2f_Zero.x, 0.0f);
     HE_EXPECT_EQ(Vec2f_Zero.y, 0.0f);
     HE_EXPECT_EQ(Vec2f_One.x, 1.0f);
@@ -87,6 +89,9 @@ HE_TEST(math, constants, Vec2f)
 // ------------------------------------------------------------------------------------------------
 HE_TEST(math, constants, Vec3f)
 {
+    HE_EXPECT_EQ(Vec3f_Infinity.x, Float_Infinity);
+    HE_EXPECT_EQ(Vec3f_Infinity.y, Float_Infinity);
+    HE_EXPECT_EQ(Vec3f_Infinity.z, Float_Infinity);
     HE_EXPECT_EQ(Vec3f_Zero.x, 0.0f);
     HE_EXPECT_EQ(Vec3f_Zero.y, 0.0f);
     HE_EXPECT_EQ(Vec3f_Zero.z, 0.0f);
@@ -107,6 +112,10 @@ HE_TEST(math, constants, Vec3f)
 // ------------------------------------------------------------------------------------------------
 HE_TEST(math, constants, Vec4f)
 {
+    HE_EXPECT_EQ(Vec4f_Infinity.x, Float_Infinity);
+    HE_EXPECT_EQ(Vec4f_Infinity.y, Float_Infinity);
+    HE_EXPECT_EQ(Vec4f_Infinity.z, Float_Infinity);
+    HE_EXPECT_EQ(Vec4f_Infinity.w, Float_Infinity);
     HE_EXPECT_EQ(Vec4f_Zero.x, 0.0f);
     HE_EXPECT_EQ(Vec4f_Zero.y, 0.0f);
     HE_EXPECT_EQ(Vec4f_Zero.z, 0.0f);

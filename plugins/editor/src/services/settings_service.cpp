@@ -2,8 +2,6 @@
 
 #include "settings_service.h"
 
-#include "schema/kj_file_stream.h"
-
 #include "he/core/file.h"
 #include "he/core/log.h"
 #include "he/core/path.h"
@@ -11,9 +9,7 @@
 #include "he/core/string.h"
 #include "he/core/string_fmt.h"
 #include "he/core/types.h"
-
-#include "capnp/serialize.h"
-#include "capnp/compat/json.h"
+#include "he/schema/toml.h"
 
 namespace he::editor
 {
@@ -22,7 +18,8 @@ namespace he::editor
     SettingsService::SettingsService(DirectoryService& directoryService)
         : m_directoryService(directoryService)
     {
-        m_settings = m_builder.getRoot<Settings>();
+        m_settings = m_builder.AddStruct<Settings>();
+        m_builder.SetRoot(m_settings);
     }
 
     bool SettingsService::Reload()
@@ -30,47 +27,31 @@ namespace he::editor
         String path = m_directoryService.GetAppDirectory(DirectoryService::DirType::Settings);
         ConcatPath(path, SettingsFileName);
 
-        File file;
-
-        Result r = file.Open(path.Data(), FileOpenMode::ReadExisting, FileOpenFlag::SequentialScan);
+        String buf;
+        Result r = File::ReadAll(buf, path.Data());
         if (!r)
         {
             if (GetFileResult(r) == FileResult::NotFound)
                 return true;
 
-            HE_LOG_ERROR(editor, HE_MSG("Failed to open settings file for reading."),
-                HE_KV(path, path),
-                HE_KV(error, r));
-            return false;
-        }
-
-        String fileBuf(Allocator::GetTemp());
-        fileBuf.Resize(static_cast<uint32_t>(file.GetSize()), DefaultInit);
-
-        uint32_t bytesRead = 0;
-        r = file.Read(fileBuf.Data(), fileBuf.Size(), &bytesRead);
-        if (!r)
-        {
             HE_LOG_ERROR(editor, HE_MSG("Failed to read settings file."),
                 HE_KV(path, path),
-                HE_KV(error, r));
+                HE_KV(result, r));
             return false;
         }
 
-        if (bytesRead != fileBuf.Size())
+        m_settings = {};
+        m_builder.Clear();
+
+        if (!he::schema::FromToml<Settings>(m_builder, buf.Data()))
         {
-            HE_LOG_ERROR(editor, HE_MSG("Got a short read from settings file."),
+            HE_LOG_ERROR(editor, HE_MSG("Failed to deserialize settings file. Is it valid TOML?"),
                 HE_KV(path, path),
-                HE_KV(expected_bytes, fileBuf.Size()),
-                HE_KV(actual_bytes, bytesRead));
+                HE_KV(result, r));
             return false;
         }
 
-        file.Close();
-
-        capnp::JsonCodec json;
-        json.decode({ fileBuf.Data(), fileBuf.Size() }, m_settings);
-
+        m_settings = m_builder.Root().TryGetStruct<Settings>();
         return true;
     }
 
@@ -79,27 +60,19 @@ namespace he::editor
         String path = m_directoryService.GetAppDirectory(DirectoryService::DirType::Settings);
         ConcatPath(path, SettingsFileName);
 
-        File file;
-
-        Result r = file.Open(path.Data(), FileOpenMode::WriteTruncate);
-        if (!r)
+        StringBuilder buf;
+        if (!he::schema::ToToml<Settings>(buf, m_settings))
         {
-            HE_LOG_ERROR(editor, HE_MSG("Failed to open settings file for writing."),
-                HE_KV(path, path),
-                HE_KV(error, r));
+            HE_LOG_ERROR(editor, HE_MSG("Failed to serialize settings file. This is likely an editor bug."));
             return false;
         }
 
-        capnp::JsonCodec json;
-        json.setHasMode(capnp::HasMode::NON_DEFAULT);
-        kj::String data = json.encode(m_settings);
-
-        r = file.Write(data.cStr(), static_cast<uint32_t>(data.size()));
+        Result r = File::WriteAll(buf.Str().Data(), buf.Size(), path.Data());
         if (!r)
         {
             HE_LOG_ERROR(editor, HE_MSG("Failed to write settings file."),
                 HE_KV(path, path),
-                HE_KV(error, r));
+                HE_KV(result, r));
             return false;
         }
 

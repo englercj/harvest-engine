@@ -59,14 +59,9 @@ namespace he::editor
         m_workspaceService.Show();
         m_imguiService.Update();
 
-        // Perform rendering of platform windows
+        // Perform rendering pass
         m_renderService.BeginFrame();
-
         m_imguiService.Render();
-
-        ImGui::UpdatePlatformWindows();
-        ImGui::RenderPlatformWindowsDefault(nullptr, nullptr);
-
         m_renderService.EndFrame();
     }
 

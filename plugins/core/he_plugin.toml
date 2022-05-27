@@ -43,6 +43,7 @@ homepage = ""
 
     [[modules.variants]]
         conditions = ["system:win32"]
+        public_dependson = ["sys:gdi32"]
         public_defines = [
             "HE_PLATFORM_RWLOCK_SIZE=8",
             "HE_PLATFORM_MUTEX_SIZE=8",

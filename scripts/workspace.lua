@@ -12,7 +12,6 @@ he.workspace = function ()
     flags               { "FatalWarnings", "MultiProcessorCompile" }
     floatingpoint       "Fast"
     location            (he.build_dir)
-    rtti                "On" -- TODO: Disable once I remove the need for it from capnp
     warnings            "Extra"
     isaextensions       "RDRND"
 

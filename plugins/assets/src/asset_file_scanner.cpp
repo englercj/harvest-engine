@@ -7,13 +7,15 @@
 #include "he/assets/types.h"
 #include "he/core/allocator.h"
 #include "he/core/directory.h"
+#include "he/core/log.h"
 #include "he/core/path.h"
+#include "he/core/result.h"
+#include "he/core/result_fmt.h"
 #include "he/core/scope_guard.h"
 #include "he/core/string.h"
+#include "he/core/string_fmt.h"
 #include "he/core/string_view.h"
-
-#include "capnp/message.h"
-#include "capnp/serialize.h"
+#include "he/schema/toml.h"
 
 namespace he::assets
 {
@@ -78,12 +80,35 @@ namespace he::assets
 
             AsyncFileResult r = pending.load.get();
 
-            const uint32_t expectedBytes = pending.words.Size() * sizeof(capnp::word);
+            const uint32_t expectedBytes = pending.content.Size();
             if (!r.result || r.bytesTransferred != expectedBytes)
+            {
+                HE_LOG_ERROR(he_assets,
+                    HE_MSG("Failed to load asset file."),
+                    HE_KV(file_path, pending.path),
+                    HE_KV(result, r.result),
+                    HE_KV(bytes_read, r.bytesTransferred),
+                    HE_KV(bytes_expected, expectedBytes));
                 return false;
+            }
 
-            if (!ProcessFile(pending.words))
+            FileAttributes attributes;
+            Result res = pending.file.GetAttributes(attributes);
+            if (!res)
+            {
+                HE_LOG_ERROR(he_assets,
+                    HE_MSG("Failed to read asset file attributes."),
+                    HE_KV(result, res));
                 return false;
+            }
+
+            if (!ProcessFile(attributes, pending.path, pending.content))
+            {
+                HE_LOG_ERROR(he_assets,
+                    HE_MSG("Failed to process asset file."),
+                    HE_KV(file_path, pending.path));
+                return false;
+            }
 
             if (max != 0 && ++done >= max)
                 break;
@@ -92,14 +117,25 @@ namespace he::assets
         return true;
     }
 
-    bool AssetFileScanner::ProcessFile(Span<const capnp::word> words)
+    bool AssetFileScanner::ProcessFile(const FileAttributes& attributes, const String& path, const String& content)
     {
-        const kj::ArrayPtr<const kj::ArrayPtr<const capnp::word>> segments{ { words.Data(), words.Size() } };
-        capnp::SegmentArrayMessageReader reader(segments);
-        AssetFile::Reader file = reader.getRoot<AssetFile>();
+        schema::Builder builder;
+        if (!schema::FromToml<AssetFile>(builder, content.Data()))
+            return false;
+
+        AssetFile::Reader assetFile = builder.Root().TryGetStruct<AssetFile>();
+        if (!assetFile.IsValid())
+            return false;
 
         AssetFileModel model;
-        return AssetFileModel::AddOrUpdate(m_db, file, model);
+        model.id = ToUuid(assetFile.GetId());
+        model.lastSessionToken = 0; // TODO!
+        model.path = path;
+        model.lastModifiedTime = attributes.writeTime;
+        model.lastFileSize = static_cast<uint32_t>(attributes.size);
+        model.source = {}; // TODO!
+
+        return AssetFileModel::AddOrUpdate(m_db, assetFile, model);
     }
 
     bool AssetFileScanner::ReadFile(const char* fname)
@@ -112,22 +148,27 @@ namespace he::assets
         pending = FindAvailablePending();
         HE_ASSERT(pending);
 
-        if (!pending->file.Open(fname, FileOpenMode::ReadExisting, FileOpenFlag::SequentialScan))
+        pending->path = fname;
+
+        Result r = pending->file.Open(fname, FileOpenMode::ReadExisting, FileOpenFlag::SequentialScan);
+        if (!r)
+        {
+            HE_LOG_ERROR(he_assets, HE_MSG("Failed to open asset file."), HE_KV(file_path, pending->path), HE_KV(result, r));
             return false;
+        }
 
         const uint64_t fileSize = pending->file.GetSize();
 
         if (fileSize > std::numeric_limits<uint32_t>::max())
+        {
+            HE_LOG_ERROR(he_assets, HE_MSG("Asset file size is larger than UINT32_MAX"), HE_KV(file_path, pending->path));
             return false;
-
-        if ((fileSize % sizeof(capnp::word)) != 0)
-            return false;
+        }
 
         const uint32_t fileByteSize = static_cast<uint32_t>(fileSize);
-        const uint32_t wordCount = fileByteSize / sizeof(capnp::word);
 
-        pending->words.Resize(wordCount);
-        pending->load = pending->file.ReadAsync(pending->words.Data(), 0, fileByteSize);
+        pending->content.Resize(fileByteSize);
+        pending->load = pending->file.ReadAsync(pending->content.Data(), 0, fileByteSize);
         return true;
     }
 

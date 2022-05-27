@@ -89,7 +89,7 @@ namespace he::window
 
         /// Gets the current position of the view.
         ///
-        /// \return The position of the view in screen coordinates.
+        /// \return The position of the view in screen space.
         virtual Vec2i GetPosition() const = 0;
 
         /// Gets the current size of the view.
@@ -104,8 +104,13 @@ namespace he::window
 
         /// Checks if this view is the focused view of the application.
         ///
-        /// \return True if this is focused view, false otherwise.
+        /// \return True if this is the focused view, false otherwise.
         virtual bool IsFocused() const = 0;
+
+        /// Checks if this view or any child is the focused view of the application.
+        ///
+        /// \return True if this or any child is the focused view, false otherwise.
+        virtual bool IsChildFocused() const = 0;
 
         /// Checks if this view is minimized.
         ///
@@ -144,6 +149,11 @@ namespace he::window
         ///
         /// \param[in] alpha The normalized alpha value to set the window to.
         virtual void SetAlpha(float alpha) = 0;
+
+        /// Enable or disable the view accepting input.
+        ///
+        /// \param[in] value True if the view should accept input, false otherwise.
+        virtual void SetAcceptInput(bool value) = 0;
 
         /// Causes this view to become the active, focused, view of the application.
         virtual void Focus() = 0;

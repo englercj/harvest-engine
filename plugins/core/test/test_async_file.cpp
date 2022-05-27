@@ -2,6 +2,8 @@
 
 #include "he/core/async_file.h"
 
+#include "he/core/directory.h"
+#include "he/core/path.h"
 #include "he/core/result.h"
 #include "he/core/result_fmt.h"
 #include "he/core/test.h"
@@ -110,4 +112,63 @@ HE_TEST_F(core, AsyncFileFixture, Read_Write)
 
     f.Close();
     File::Remove(TestPath);
+}
+
+// ------------------------------------------------------------------------------------------------
+HE_TEST_F(core, AsyncFileFixture, GetAttributes)
+{
+    constexpr const char TestPath[] = "5a0c50d8-7918-47a3-9d00-24d955f48680";
+    TouchTestFile(TestPath);
+
+    AsyncFile f;
+    Result r = f.Open(TestPath, FileOpenMode::ReadWriteExisting);
+    HE_EXPECT(r, r);
+
+    {
+        std::future<AsyncFileResult> future = f.WriteAsync(TestPath, 0, HE_LENGTH_OF(TestPath));
+        HE_EXPECT(future.valid());
+        future.wait();
+
+        AsyncFileResult fr = future.get();
+        HE_EXPECT(fr.result, fr.result);
+        HE_EXPECT_EQ(fr.bytesTransferred, HE_LENGTH_OF(TestPath));
+    }
+
+    {
+        FileAttributes attributes;
+        r = f.GetAttributes(attributes);
+        HE_EXPECT(r, r);
+        HE_EXPECT(attributes.flags == FileAttributeFlag::None);
+        HE_EXPECT_EQ(attributes.size, HE_LENGTH_OF(TestPath));
+        HE_EXPECT_LE(attributes.createTime.val, SystemClock::Now().val);
+        HE_EXPECT_LE(attributes.accessTime.val, SystemClock::Now().val);
+        HE_EXPECT_LE(attributes.writeTime.val, SystemClock::Now().val);
+    }
+
+    File::Remove(TestPath);
+}
+
+// ------------------------------------------------------------------------------------------------
+HE_TEST_F(core, AsyncFileFixture, GetPath)
+{
+    constexpr const char TestPath[] = "8c6a85bc-7b50-41b2-bf0f-8b5b8081d143";
+
+    AsyncFile f;
+    Result r = f.Open(TestPath, FileOpenMode::WriteTruncate);
+    HE_EXPECT(r, r);
+
+    String path;
+    r = f.GetPath(path);
+    HE_EXPECT(r, r);
+    HE_EXPECT(IsAbsolutePath(path));
+    NormalizePath(path);
+
+    String expectedPath;
+    r = Directory::GetCurrent(expectedPath);
+    HE_EXPECT(r, r);
+    HE_EXPECT(IsAbsolutePath(expectedPath));
+    ConcatPath(expectedPath, TestPath);
+    NormalizePath(expectedPath);
+
+    HE_EXPECT_EQ(path, expectedPath);
 }

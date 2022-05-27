@@ -114,6 +114,13 @@ namespace he
         /// \return A future representing the asynchronous write operation.
         std::future<AsyncFileResult> WriteAsync(const void* src, uint64_t offset, uint32_t size);
 
+        // Fills `attributes` with the attributes of the file at `path`. If this returns a
+        // non-successful result then `attributes` will not contain valid values.
+        Result GetAttributes(FileAttributes& outAttributes) const;
+
+        // Returns the full path to file
+        Result GetPath(String& outPath) const;
+
     public:
         intptr_t m_fd;
     };

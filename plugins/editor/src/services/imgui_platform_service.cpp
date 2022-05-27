@@ -6,6 +6,7 @@
 #include "he/core/assert.h"
 #include "he/core/enum_ops.h"
 #include "he/core/memory_ops.h"
+#include "he/math/vec2.h"
 
 #include "imgui_internal.h"
 
@@ -22,6 +23,119 @@ namespace he::editor
         window::MouseCursor::ResizeTopLeft,     // ImGuiMouseCursor_ResizeNWSE
         window::MouseCursor::Hand,              // ImGuiMouseCursor_Hand
         window::MouseCursor::NotAllowed,        // ImGuiMouseCursor_NotAllowed
+    };
+
+    constexpr ImGuiMouseButton ImGuiMouseButtonMap[]
+    {
+        ImGuiMouseButton_Left,      // Left
+        ImGuiMouseButton_Right,     // Right
+        ImGuiMouseButton_Middle,    // Middle
+        3,                          // Extra1
+        4,                          // Extra2
+    };
+
+    constexpr ImGuiKey ImGuiKeyMap[]
+    {
+        ImGuiKey_None,              // None
+        ImGuiKey_Backspace,         // Backspace
+        ImGuiKey_Enter,             // Enter
+        ImGuiKey_Escape,            // Escape
+        ImGuiKey_Space,             // Space
+        ImGuiKey_Tab,               // Tab
+        ImGuiKey_Pause,             // Pause
+        ImGuiKey_PrintScreen,       // PrintScreen
+        ImGuiKey_KeypadDecimal,     // NumPad_Decimal
+        ImGuiKey_KeypadMultiply,    // NumPad_Multiply
+        ImGuiKey_KeypadAdd,         // NumPad_Add
+        ImGuiKey_KeypadSubtract,    // NumPad_Subtract
+        ImGuiKey_KeypadDivide,      // NumPad_Divide
+        ImGuiKey_KeypadEnter,       // NumPad_Enter
+        ImGuiKey_Keypad0,           // NumPad_0
+        ImGuiKey_Keypad1,           // NumPad_1
+        ImGuiKey_Keypad2,           // NumPad_2
+        ImGuiKey_Keypad3,           // NumPad_3
+        ImGuiKey_Keypad4,           // NumPad_4
+        ImGuiKey_Keypad5,           // NumPad_5
+        ImGuiKey_Keypad6,           // NumPad_6
+        ImGuiKey_Keypad7,           // NumPad_7
+        ImGuiKey_Keypad8,           // NumPad_8
+        ImGuiKey_Keypad9,           // NumPad_9
+        ImGuiKey_F1,                // F1
+        ImGuiKey_F2,                // F2
+        ImGuiKey_F3,                // F3
+        ImGuiKey_F4,                // F4
+        ImGuiKey_F5,                // F5
+        ImGuiKey_F6,                // F6
+        ImGuiKey_F7,                // F7
+        ImGuiKey_F8,                // F8
+        ImGuiKey_F9,                // F9
+        ImGuiKey_F10,               // F10
+        ImGuiKey_F11,               // F11
+        ImGuiKey_F12,               // F12
+        ImGuiKey_Home,              // Home
+        ImGuiKey_LeftArrow,         // Left
+        ImGuiKey_UpArrow,           // Up
+        ImGuiKey_RightArrow,        // Right
+        ImGuiKey_DownArrow,         // Down
+        ImGuiKey_PageUp,            // PageUp
+        ImGuiKey_PageDown,          // PageDown
+        ImGuiKey_Insert,            // Insert
+        ImGuiKey_Delete,            // Delete
+        ImGuiKey_End,               // End
+        ImGuiKey_ModAlt,            // Alt
+        ImGuiKey_ModCtrl,           // Control
+        ImGuiKey_ModShift,          // Shift
+        ImGuiKey_ModSuper,          // Super
+        ImGuiKey_ScrollLock,        // ScrollLock
+        ImGuiKey_NumLock,           // NumLock
+        ImGuiKey_CapsLock,          // CapsLock
+        ImGuiKey_0,                 // Number_0
+        ImGuiKey_1,                 // Number_1
+        ImGuiKey_2,                 // Number_2
+        ImGuiKey_3,                 // Number_3
+        ImGuiKey_4,                 // Number_4
+        ImGuiKey_5,                 // Number_5
+        ImGuiKey_6,                 // Number_6
+        ImGuiKey_7,                 // Number_7
+        ImGuiKey_8,                 // Number_8
+        ImGuiKey_9,                 // Number_9
+        ImGuiKey_A,                 // A
+        ImGuiKey_B,                 // B
+        ImGuiKey_C,                 // C
+        ImGuiKey_D,                 // D
+        ImGuiKey_E,                 // E
+        ImGuiKey_F,                 // F
+        ImGuiKey_G,                 // G
+        ImGuiKey_H,                 // H
+        ImGuiKey_I,                 // I
+        ImGuiKey_J,                 // J
+        ImGuiKey_K,                 // K
+        ImGuiKey_L,                 // L
+        ImGuiKey_M,                 // M
+        ImGuiKey_N,                 // N
+        ImGuiKey_O,                 // O
+        ImGuiKey_P,                 // P
+        ImGuiKey_Q,                 // Q
+        ImGuiKey_R,                 // R
+        ImGuiKey_S,                 // S
+        ImGuiKey_T,                 // T
+        ImGuiKey_U,                 // U
+        ImGuiKey_V,                 // V
+        ImGuiKey_W,                 // W
+        ImGuiKey_X,                 // X
+        ImGuiKey_Y,                 // Y
+        ImGuiKey_Z,                 // Z
+        ImGuiKey_Semicolon,         // Semicolon
+        ImGuiKey_Equal,             // Equals
+        ImGuiKey_Comma,             // Comma
+        ImGuiKey_Minus,             // Minus
+        ImGuiKey_Period,            // Period
+        ImGuiKey_Slash,             // Slash
+        ImGuiKey_GraveAccent,       // Grave
+        ImGuiKey_LeftBracket,       // LeftBracket
+        ImGuiKey_Backslash,         // Backslash
+        ImGuiKey_RightBracket,      // RightBracket
+        ImGuiKey_Apostrophe,        // Apostrophe
     };
 
     ImGuiPlatformService::ImGuiPlatformService()
@@ -49,18 +163,17 @@ namespace he::editor
 
         io.BackendPlatformName = "imgui_impl_harvest";
         io.BackendPlatformUserData = this;
-        io.BackendFlags |= ImGuiBackendFlags_HasMouseCursors;         // We can honor GetMouseCursor() values (optional)
-        io.BackendFlags |= ImGuiBackendFlags_HasSetMousePos;          // We can honor io.WantSetMousePos requests (optional, rarely used)
-        io.BackendFlags |= ImGuiBackendFlags_PlatformHasViewports;    // We can create multi-viewports on the Platform side (optional)
-        io.BackendFlags |= ImGuiBackendFlags_HasMouseHoveredViewport; // We can set io.MouseHoveredViewport correctly (optional, not easy)
-        io.BackendFlags &= ~ImGuiBackendFlags_HasGamepad; // TODO: Gamepad navigation support
+        io.BackendFlags |= ImGuiBackendFlags_HasMouseCursors;           // We can honor GetMouseCursor() values (optional)
+        io.BackendFlags |= ImGuiBackendFlags_HasSetMousePos;            // We can honor io.WantSetMousePos requests (optional, rarely used)
+        io.BackendFlags |= ImGuiBackendFlags_PlatformHasViewports;      // We can create multi-viewports on the Platform side (optional)
+        io.BackendFlags |= ImGuiBackendFlags_HasMouseHoveredViewport;   // We can set io.MouseHoveredViewport correctly (optional, not easy)
 
         ImGuiViewport* mainViewport = ImGui::GetMainViewport();
         mainViewport->PlatformHandle = m_view;
         mainViewport->PlatformHandleRaw = m_view->GetNativeHandle();
         mainViewport->PlatformUserData = nullptr;
 
-        if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
+        if (HasFlag(io.ConfigFlags, ImGuiConfigFlags_ViewportsEnable))
         {
             UpdateMonitors();
 
@@ -81,30 +194,6 @@ namespace he::editor
             platform_io.Platform_GetWindowDpiScale = &ImGuiPlatformService::GetWindowDpiScale;
             platform_io.Platform_OnChangedViewport = &ImGuiPlatformService::OnChangedViewport;
         }
-
-        // Keyboard mapping. Dear ImGui will use those indices to peek into the io.KeysDown[] array that we will update during the application lifetime.
-        io.KeyMap[ImGuiKey_Tab] = static_cast<int32_t>(window::Key::Tab);
-        io.KeyMap[ImGuiKey_LeftArrow] = static_cast<int32_t>(window::Key::Left);
-        io.KeyMap[ImGuiKey_RightArrow] = static_cast<int32_t>(window::Key::Right);
-        io.KeyMap[ImGuiKey_UpArrow] = static_cast<int32_t>(window::Key::Up);
-        io.KeyMap[ImGuiKey_DownArrow] = static_cast<int32_t>(window::Key::Down);
-        io.KeyMap[ImGuiKey_PageUp] = static_cast<int32_t>(window::Key::PageUp);
-        io.KeyMap[ImGuiKey_PageDown] = static_cast<int32_t>(window::Key::PageDown);
-        io.KeyMap[ImGuiKey_Home] = static_cast<int32_t>(window::Key::Home);
-        io.KeyMap[ImGuiKey_End] = static_cast<int32_t>(window::Key::End);
-        io.KeyMap[ImGuiKey_Insert] = static_cast<int32_t>(window::Key::Insert);
-        io.KeyMap[ImGuiKey_Delete] = static_cast<int32_t>(window::Key::Delete);
-        io.KeyMap[ImGuiKey_Backspace] = static_cast<int32_t>(window::Key::Backspace);
-        io.KeyMap[ImGuiKey_Space] = static_cast<int32_t>(window::Key::Space);
-        io.KeyMap[ImGuiKey_Enter] = static_cast<int32_t>(window::Key::Enter);
-        io.KeyMap[ImGuiKey_Escape] = static_cast<int32_t>(window::Key::Escape);
-        io.KeyMap[ImGuiKey_KeyPadEnter] = static_cast<int32_t>(window::Key::Enter);
-        io.KeyMap[ImGuiKey_A] = static_cast<int32_t>(window::Key::A);
-        io.KeyMap[ImGuiKey_C] = static_cast<int32_t>(window::Key::C);
-        io.KeyMap[ImGuiKey_V] = static_cast<int32_t>(window::Key::V);
-        io.KeyMap[ImGuiKey_X] = static_cast<int32_t>(window::Key::X);
-        io.KeyMap[ImGuiKey_Y] = static_cast<int32_t>(window::Key::Y);
-        io.KeyMap[ImGuiKey_Z] = static_cast<int32_t>(window::Key::Z);
 
         UpdateDpiResources(view->GetDpiScale());
 
@@ -130,15 +219,13 @@ namespace he::editor
         if (m_needToUpdateMonitors)
             UpdateMonitors();
 
-        // Setup time step
         MonotonicTime now = MonotonicClock::Now();
         Duration delta = now - m_time;
         m_time = now;
 
-        io.DeltaTime = ToFloatPeriod<Seconds>(delta);
+        io.DeltaTime = ToPeriod<Seconds, float>(delta);
 
-        // Update OS mouse position
-        UpdateMousePos();
+        UpdateMouseData();
 
         // Update OS mouse cursor with the cursor requested by imgui
         ImGuiMouseCursor cursor = io.MouseDrawCursor ? ImGuiMouseCursor_None : ImGui::GetMouseCursor();
@@ -146,6 +233,24 @@ namespace he::editor
         {
             m_lastCursor = cursor;
             UpdateMouseCursor();
+        }
+    }
+
+    void ImGuiPlatformService::UpdateViews()
+    {
+        const ImGuiContext& ctx = *ImGui::GetCurrentContext();
+        for (int i = 0; i < ctx.Viewports.Size; ++i)
+        {
+            const ImGuiViewportP* viewport = ctx.Viewports[i];
+            if (!viewport)
+                continue;
+
+            window::View* view = static_cast<window::View*>(viewport->PlatformHandle);
+            if (!view)
+                continue;
+
+            const bool acceptInput = !HasFlag(viewport->Flags, ImGuiViewportFlags_NoInputs);
+            view->SetAcceptInput(acceptInput);
         }
     }
 
@@ -161,11 +266,8 @@ namespace he::editor
             case window::EventType::ViewActivated:
             {
                 const auto& evt = static_cast<const window::ViewActivatedEvent&>(ev);
-                if (!evt.active && evt.view == m_view)
-                {
-                    ImGuiIO& io = ImGui::GetIO();
-                    MemZero(io.KeysDown, sizeof(io.KeysDown));
-                }
+                ImGuiIO& io = ImGui::GetIO();
+                io.AddFocusEvent(evt.active && evt.view == m_view);
                 break;
             }
             case window::EventType::ViewRequestClose:
@@ -197,23 +299,56 @@ namespace he::editor
             {
                 const auto& evt = static_cast<const window::MouseButtonEvent&>(ev);
                 const bool down = evt.type == window::EventType::MouseDown;
+                const ImGuiMouseButton btn = ImGuiMouseButtonMap[static_cast<int32_t>(evt.button)];
+
                 ImGuiIO& io = ImGui::GetIO();
-                io.MouseDown[static_cast<uint32_t>(evt.button)] = down;
+                io.AddMouseButtonEvent(btn, down);
+                break;
+            }
+            case window::EventType::MouseMove:
+            {
+                const auto& evt = static_cast<const window::MouseMoveEvent&>(ev);
+                m_mouseInside = true;
+
+                ImGuiIO& io = ImGui::GetIO();
+
+                Vec2f pos = evt.pos;
+                if (!evt.absolute)
+                {
+                    pos = m_device->GetCursorPos(nullptr);
+                }
+
+                if (HasFlag(io.ConfigFlags, ImGuiConfigFlags_ViewportsEnable))
+                {
+                    io.AddMousePosEvent(pos.x, pos.y);
+                }
+                else
+                {
+                    Vec2f viewPos = evt.view->ScreenToView(pos);
+                    io.AddMousePosEvent(viewPos.x, viewPos.y);
+                }
+                break;
+            }
+            case window::EventType::MouseLeave:
+            {
+                m_mouseInside = false;
+
+                ImGuiIO& io = ImGui::GetIO();
+                io.AddMousePosEvent(-FLT_MAX, -FLT_MAX);
                 break;
             }
             case window::EventType::MouseWheel:
             {
                 const auto& evt = static_cast<const window::MouseWheelEvent&>(ev);
                 ImGuiIO& io = ImGui::GetIO();
-                io.MouseWheel += evt.delta.y;
-                io.MouseWheelH += evt.delta.x;
+                io.AddMouseWheelEvent(evt.delta.x, evt.delta.y);
                 break;
             }
             case window::EventType::Text:
             {
                 const auto& evt = static_cast<const window::TextEvent&>(ev);
                 ImGuiIO& io = ImGui::GetIO();
-                io.AddInputCharacter(evt.ch);
+                io.AddInputCharacterUTF16(evt.ch);
                 break;
             }
             case window::EventType::KeyDown:
@@ -221,19 +356,27 @@ namespace he::editor
             {
                 const auto& evt = static_cast<const window::KeyEvent&>(ev);
                 const bool down = evt.type == window::EventType::KeyDown;
-                ImGuiIO& io = ImGui::GetIO();
-                io.KeysDown[static_cast<uint32_t>(evt.key)] = down;
+                const ImGuiKey key = ImGuiKeyMap[static_cast<uint32_t>(evt.key)];
 
                 switch (evt.key)
                 {
-                    case window::Key::Control: io.KeyCtrl = down; break;
-                    case window::Key::Shift: io.KeyShift = down; break;
-                    case window::Key::Alt: io.KeyAlt = down; break;
-                    case window::Key::Super: io.KeySuper = down; break;
+                    case window::Key::Control: m_isModifierDown[0] = down; break;
+                    case window::Key::Shift: m_isModifierDown[1] = down; break;
+                    case window::Key::Alt: m_isModifierDown[2] = down; break;
+                    case window::Key::Super: m_isModifierDown[3] = down; break;
                     default: break;
                 }
+
+                ImGuiIO& io = ImGui::GetIO();
+                io.AddKeyEvent(ImGuiKey_ModCtrl, m_isModifierDown[0]);
+                io.AddKeyEvent(ImGuiKey_ModShift, m_isModifierDown[1]);
+                io.AddKeyEvent(ImGuiKey_ModAlt, m_isModifierDown[2]);
+                io.AddKeyEvent(ImGuiKey_ModSuper, m_isModifierDown[3]);
+                io.AddKeyEvent(key, down);
                 break;
             }
+            default:
+                break;
         }
     }
 
@@ -246,7 +389,6 @@ namespace he::editor
             return;
 
         window::Monitor* monitors = HE_ALLOCA(window::Monitor, count);
-
         m_device->GetMonitors(monitors, count);
 
         ImGuiPlatformIO& io = ImGui::GetPlatformIO();
@@ -272,73 +414,62 @@ namespace he::editor
         }
     }
 
-    void ImGuiPlatformService::UpdateMousePos()
+    void ImGuiPlatformService::UpdateMouseData()
     {
         ImGuiIO& io = ImGui::GetIO();
         HE_ASSERT(m_view != nullptr);
 
-        const bool viewportsEnabled = (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable) != 0;
-
-        // Set OS mouse position if requested (rarely used, only when ImGuiConfigFlags_NavEnableSetMousePos is enabled by user)
-        // (When multi-viewports are enabled, all imgui positions are same as OS positions)
-        if (io.WantSetMousePos)
+        const bool isViewportsEnabled = HasFlag(io.ConfigFlags, ImGuiConfigFlags_ViewportsEnable);
+        const bool isAppFocused = m_view->IsChildFocused() || ImGui::FindViewportByPlatformHandle(m_device->GetFocusedView());
+        if (isAppFocused)
         {
-            window::View* relativeView = viewportsEnabled ? nullptr : m_view;
-            m_device->SetCursorPos(relativeView, { io.MousePos.x, io.MousePos.y });
-        }
-
-        io.MousePos = ImVec2(-FLT_MAX, -FLT_MAX);
-        io.MouseHoveredViewport = 0;
-
-        // Set imgui mouse position
-        Vec2f screenPos = m_device->GetCursorPos(nullptr);
-        window::View* focusedView = m_device->GetFocusedView();
-
-        if (focusedView)
-        {
-            // if (::IsChild(focusedView, m_view))
-            //     focusedView = m_view;
-
-            // Multi-viewport mode: mouse position in OS absolute coordinates
-            // (io.MousePos is (0,0) when the mouse is on the upper-left of the primary monitor)
-            // This is the position you can get with GetCursorPos(). In theory adding viewport->Pos
-            // is also the reverse operation of doing ScreenToClient().
-            if (viewportsEnabled)
+            // (Optional) Set OS mouse position from Dear ImGui if requested (rarely used, only
+            // when ImGuiConfigFlags_NavEnableSetMousePos is enabled by user)
+            // When multi-viewports are enabled, all Dear ImGui positions are same as OS positions.
+            if (io.WantSetMousePos)
             {
-                if (ImGui::FindViewportByPlatformHandle(focusedView) != nullptr)
-                    io.MousePos = { screenPos.x, screenPos.y };
+                window::View* relativeView = isViewportsEnabled ? nullptr : m_view;
+                m_device->SetCursorPos(relativeView, { io.MousePos.x, io.MousePos.y });
             }
-            // Single viewport mode: mouse position in client window coordinates
-            // (io.MousePos is (0,0) when the mouse is on the upper-left corner of the app window.)
-            // This is the position you can get with GetCursorPos() + ScreenToClient() or
-            // from WM_MOUSEMOVE.
-            else if (focusedView == m_view)
+
+            // (Optional) Fallback to provide mouse position when focused.
+            const Vec2f screenPos = m_device->GetCursorPos(nullptr);
+            if (!io.WantSetMousePos && !m_mouseInside && screenPos != Vec2f_Infinity)
             {
-                Vec2f clientPos = focusedView->ScreenToView(screenPos);
-                io.MousePos = { clientPos.x, clientPos.y };
+                if (isViewportsEnabled)
+                {
+                    io.AddMousePosEvent(screenPos.x, screenPos.y);
+                }
+                else
+                {
+                    const Vec2f viewPos = m_view->ScreenToView(screenPos);
+                    io.AddMousePosEvent(viewPos.x, viewPos.y);
+                }
             }
         }
 
-        // Set hovered window
+        // (Optional) When using multiple viewports: call io.AddMouseViewportEvent() with the
+        // viewport the OS mouse cursor is hovering. If ImGuiBackendFlags_HasMouseHoveredViewport
+        // is not set by the backend, Dear imGui will ignore this field and infer the information
+        // using its flawed heuristic.
+        ImGuiID mouseViewportId = 0;
         window::View* hoveredView = m_device->GetHoveredView();
         if (hoveredView)
         {
             ImGuiViewport* viewport = ImGui::FindViewportByPlatformHandle(hoveredView);
             if (viewport)
             {
-                if ((viewport->Flags & ImGuiViewportFlags_NoInputs) == 0)
-                {
-                    io.MouseHoveredViewport = viewport->ID;
-                }
+                mouseViewportId = viewport->ID;
             }
         }
+        io.AddMouseViewportEvent(mouseViewportId);
     }
 
     void ImGuiPlatformService::UpdateMouseCursor()
     {
         ImGuiIO& io = ImGui::GetIO();
 
-        if ((io.ConfigFlags & ImGuiConfigFlags_NoMouseCursorChange) != 0)
+        if (HasFlag(io.ConfigFlags, ImGuiConfigFlags_NoMouseCursorChange))
             return;
 
         ImGuiMouseCursor cursor = ImGui::GetMouseCursor();
@@ -407,15 +538,15 @@ namespace he::editor
         desc.pos = { static_cast<int32_t>(vp->Pos.x), static_cast<int32_t>(vp->Pos.y) };
         desc.flags = window::ViewFlag::None;
 
-        if ((vp->Flags & ImGuiViewportFlags_NoDecoration) != 0)
+        if (HasFlag(vp->Flags, ImGuiViewportFlags_NoDecoration))
             desc.flags |= window::ViewFlag::Borderless;
-        if ((vp->Flags & ImGuiViewportFlags_NoTaskBarIcon) == 0)
+        if (!HasFlag(vp->Flags, ImGuiViewportFlags_NoTaskBarIcon))
             desc.flags |= window::ViewFlag::TaskBarIcon;
-        if ((vp->Flags & ImGuiViewportFlags_NoFocusOnClick) == 0)
+        if (!HasFlag(vp->Flags, ImGuiViewportFlags_NoFocusOnClick))
             desc.flags |= window::ViewFlag::FocusOnClick;
-        if ((vp->Flags & ImGuiViewportFlags_NoInputs) == 0)
+        if (!HasFlag(vp->Flags, ImGuiViewportFlags_NoInputs))
             desc.flags |= window::ViewFlag::AcceptInput;
-        if ((vp->Flags & ImGuiViewportFlags_TopMost) != 0)
+        if (HasFlag(vp->Flags, ImGuiViewportFlags_TopMost))
             desc.flags |= window::ViewFlag::TopMost;
 
         if (vp->ParentViewportId)
@@ -456,7 +587,7 @@ namespace he::editor
     {
         window::View* view = static_cast<window::View*>(vp->PlatformHandle);
 
-        const bool focus = (vp->Flags & ImGuiViewportFlags_NoFocusOnAppearing) == 0;
+        const bool focus = !HasFlag(vp->Flags, ImGuiViewportFlags_NoFocusOnAppearing);
         view->SetVisible(true, focus);
     }
 

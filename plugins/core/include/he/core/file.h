@@ -142,8 +142,8 @@ namespace he
         // non-successful result then `outAttributes` will not contain valid values.
         static Result GetAttributes(const char* path, FileAttributes& outAttributes);
 
-        /// Read a file's contents into a vector buffer. The vector will be resized to hold the
-        /// read data.
+        /// Read a file's contents into a container buffer. The container will be resized to
+        /// hold the read data.
         ///
         /// \param[out] dst The destination vector to write data into.
         /// \param[in] path The path to the file to read. The file is expected to exist.
@@ -236,10 +236,10 @@ namespace he
 
         // Fills `attributes` with the attributes of the file at `path`. If this returns a
         // non-successful result then `attributes` will not contain valid values.
-        Result GetAttributes(FileAttributes& attributes) const;
+        Result GetAttributes(FileAttributes& outAttributes) const;
 
         // Returns the full path to file
-        Result GetPath(String& path) const;
+        Result GetPath(String& outPath) const;
 
         // Sets the file's creation time, access time, and last written time, according to the
         // values passed in `createTime`, `accessTime`, and `writeTime`, respectively. If any
@@ -295,13 +295,13 @@ namespace he
         constexpr uint32_t ElementSize = sizeof(typename T::ElementType);
 
         File f;
-        Result r = f.Open(path, FileOpenMode::ReadExisting);
+        Result r = f.Open(path, FileOpenMode::ReadExisting, FileOpenFlag::SequentialScan);
         if (!r)
             return r;
 
         const uint32_t size = static_cast<uint32_t>(f.GetSize());
         const uint32_t containerSize = ElementSize == 1 ? size : (size + (ElementSize - 1)) / ElementSize;
-        dst.Resize(containerSize, he::DefaultInit);
+        dst.Resize(containerSize, DefaultInit);
 
         uint32_t bytesRead = 0;
         r = f.ReadAt(dst.Data(), 0, size, &bytesRead);

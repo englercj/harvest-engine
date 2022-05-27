@@ -4,6 +4,8 @@
 
 #include "he/core/appender.h"
 #include "he/core/enum_fmt.h"
+#include "he/core/key_value.h"
+#include "he/core/key_value_fmt.h"
 #include "he/core/log.h"
 #include "he/core/memory_ops.h"
 #include "he/core/path.h"

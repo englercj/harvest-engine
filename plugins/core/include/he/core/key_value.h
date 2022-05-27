@@ -93,6 +93,14 @@ namespace he
             m_value.s = v;
         }
 
+        template <size_t N>
+        KeyValue(const char* k, const char (&v)[N])
+            : m_key(k)
+            , m_kind(ValueKind::String)
+        {
+            m_value.s.Assign(v, N);
+        }
+
         template <typename T> requires(!Enum<T> && (StdContiguousRange<T, const char> || ContiguousRange<T, const char>))
         KeyValue(const char* k, const T& v)
             : m_key(k)

@@ -201,6 +201,18 @@ namespace he
         return f;
     }
 
+    Result AsyncFile::GetAttributes(FileAttributes& outAttributes) const
+    {
+        const HANDLE handle = reinterpret_cast<HANDLE>(m_fd);
+        return Win32FileGetAttributes(handle, outAttributes);
+    }
+
+    Result AsyncFile::GetPath(String& outPath) const
+    {
+        const HANDLE handle = reinterpret_cast<HANDLE>(m_fd);
+        return Win32FileGetPath(handle, outPath);
+    }
+
     static void HandleCompletedOp(AsyncOp* op, Result result, uint32_t bytesTransferred)
     {
         AsyncFileResult r;

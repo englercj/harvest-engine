@@ -9,7 +9,7 @@ license = "MIT"
 homepage = "https://github.com/ocornut/imgui"
 
 [install]
-    github = "ocornut/imgui#1ee252772ae9c0a971d06257bb5c89f628fa696a" # v1.87 docking branch
+    github = "ocornut/imgui#250333d895b1067533533dcfab137512745b9689" # latest docking branch (post v1.87)
 
 [[modules]]
     name = "imgui"

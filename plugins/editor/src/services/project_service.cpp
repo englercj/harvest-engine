@@ -2,8 +2,6 @@
 
 #include "project_service.h"
 
-#include "schema/kj_file_stream.h"
-
 #include "he/core/appender.h"
 #include "he/core/assert.h"
 #include "he/core/file.h"
@@ -16,9 +14,7 @@
 #include "he/core/string_fmt.h"
 #include "he/core/uuid.h"
 #include "he/core/vector.h"
-
-#include "capnp/serialize.h"
-#include "capnp/compat/json.h"
+#include "he/schema/toml.h"
 
 namespace he::editor
 {
@@ -30,15 +26,12 @@ namespace he::editor
     {
         HE_ASSERT(!IsOpen());
 
-        m_project = m_builder.getRoot<schema::Project>();
-        m_project.setName(name);
-        m_project.disownAssetRoot();
-
-        // Set ID
         const Uuid projId = Uuid::CreateV4();
-        schema::ProjectId::Builder idBuilder = m_project.getId();
-        idBuilder.setX0(projId.GetLow());
-        idBuilder.setX1(projId.GetHigh());
+
+        m_project = m_builder.Root().TryGetStruct<Project>();
+        HE_ASSERT(m_project.GetId().Size() == sizeof(projId.m_bytes));
+        MemCopy(m_project.GetId().Data(), projId.m_bytes, sizeof(projId.m_bytes));
+        m_project.InitName(name);
 
         m_projectPath = path;
 
@@ -75,45 +68,27 @@ namespace he::editor
     {
         HE_ASSERT(IsOpen());
 
-        File file;
-
-        Result r = file.Open(m_projectPath.Data(), FileOpenMode::ReadExisting, FileOpenFlag::SequentialScan);
-        if (!r)
-        {
-            HE_LOG_ERROR(editor, HE_MSG("Failed to open project file for reading."),
-                HE_KV(path, m_projectPath),
-                HE_KV(error, r));
-            return false;
-        }
-
-        String fileBuf(Allocator::GetTemp());
-        fileBuf.Resize(static_cast<uint32_t>(file.GetSize()), DefaultInit);
-
-        uint32_t bytesRead = 0;
-        r = file.Read(fileBuf.Data(), fileBuf.Size(), &bytesRead);
+        String buf;
+        Result r = File::ReadAll(buf, m_projectPath.Data());
         if (!r)
         {
             HE_LOG_ERROR(editor, HE_MSG("Failed to read project file."),
                 HE_KV(path, m_projectPath),
-                HE_KV(error, r));
+                HE_KV(result, r));
             return false;
         }
 
-        if (bytesRead != fileBuf.Size())
+        m_project = {};
+        m_builder.Clear();
+
+        if (!he::schema::FromToml<Project>(m_builder, buf.Data()))
         {
-            HE_LOG_ERROR(editor, HE_MSG("Got a short read from project file."),
-                HE_KV(path, m_projectPath),
-                HE_KV(expected_bytes, fileBuf.Size()),
-                HE_KV(actual_bytes, bytesRead));
+            HE_LOG_ERROR(editor, HE_MSG("Failed to deserialize project file. Is it valid TOML?"),
+                HE_KV(path, m_projectPath));
             return false;
         }
 
-        file.Close();
-
-        m_project = m_builder.getRoot<Project>();
-        capnp::JsonCodec json;
-        json.decode({ fileBuf.Data(), fileBuf.Size() }, m_project);
-
+        m_project = m_builder.Root().TryGetStruct<Project>();
         return true;
     }
 
@@ -121,27 +96,19 @@ namespace he::editor
     {
         HE_ASSERT(IsOpen());
 
-        File file;
-
-        Result r = file.Open(m_projectPath.Data(), FileOpenMode::WriteTruncate);
-        if (!r)
+        StringBuilder buf;
+        if (!he::schema::ToToml<Project>(buf, m_project))
         {
-            HE_LOG_ERROR(editor, HE_MSG("Failed to open project file for writing."),
-                HE_KV(path, m_projectPath),
-                HE_KV(error, r));
+            HE_LOG_ERROR(editor, HE_MSG("Failed to serialize project file. This is likely an editor bug."));
             return false;
         }
 
-        capnp::JsonCodec json;
-        json.setHasMode(capnp::HasMode::NON_DEFAULT);
-        kj::String data = json.encode(m_project);
-
-        r = file.Write(data.cStr(), static_cast<uint32_t>(data.size()));
+        Result r = File::WriteAll(buf.Str().Data(), buf.Size(), m_projectPath.Data());
         if (!r)
         {
             HE_LOG_ERROR(editor, HE_MSG("Failed to write project file."),
                 HE_KV(path, m_projectPath),
-                HE_KV(error, r));
+                HE_KV(result, r));
             return false;
         }
 
@@ -155,14 +122,10 @@ namespace he::editor
         String appDir = m_directoryService.GetAppDirectory(DirectoryService::DirType::Resources);
         appDir += '/';
 
-        const schema::ProjectId::Reader projId = m_project.asReader().getId();
-        const kj::ArrayPtr<const kj::byte> bytes = capnp::AnyStruct::Reader(projId).getDataSection();
-        const Span<const uint8_t> span(bytes.begin(), bytes.end());
+        const Span<const uint8_t> projId = m_project.AsReader().GetId();
+        HE_ASSERT(projId.Size() == sizeof(Uuid));
 
-        HE_ASSERT(span.Size() == sizeof(Uuid));
-
-        fmt::format_to(Appender(appDir), "{}", span);
-
+        fmt::format_to(Appender(appDir), "{}", projId);
         return appDir;
     }
 }

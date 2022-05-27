@@ -3,9 +3,9 @@
 #pragma once
 
 #include "directory_service.h"
-#include "schema/settings.capnp.h"
+#include "schema/settings.hsc.h"
 
-#include "capnp/message.h"
+#include "he/schema/layout.h"
 
 namespace he::editor
 {
@@ -24,7 +24,7 @@ namespace he::editor
     private:
         DirectoryService& m_directoryService;
 
-        capnp::MallocMessageBuilder m_builder{};
-        Settings::Builder m_settings{ nullptr };
+        he::schema::Builder m_builder{};
+        Settings::Builder m_settings{};
     };
 }

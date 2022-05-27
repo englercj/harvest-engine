@@ -13,17 +13,17 @@ homepage = ""
     type = "windowed_app"
     group = "engine/tools"
     files = ["src/**"]
-    private_includedirs = ["src", "%{he.get_generated_dir(prj.name)}/src"]
+    private_includedirs = ["src", "%{he.get_generated_dir('he_editor')}/src"]
     private_defines = ["GOOGLE_PROTOBUF_INTERNAL_DONATE_STEAL_INLINE=0"]
     private_dependson = [
+        "he_assets",
         "he_core",
+        "he_math",
         "he_rhi",
         "he_schema",
         "he_window",
 
         "boost_di",
-        "capnp",
-        "capnp_json",
         "imgui",
         "sqlite3",
     ]
@@ -39,10 +39,7 @@ homepage = ""
     [[modules.schema_compile]]
         glob = "src/schema/*.hsc"
         targets = ["c++"]
-
-    [[modules.capnp_compile]]
-        glob = "src/schema/*.capnp"
-        targets = ["c++"]
+        dependson_include = ["he_assets", "he_schema"]
 
     [[modules.variants]]
         conditions = ["system:windows"]

@@ -21,6 +21,10 @@ homepage = ""
         conditions = ["system:linux"]
         public_dependson = ["sys:dl"]
 
+    [[modules.variants]]
+        conditions = ["system:win32"]
+        public_dependson = ["sys:gdi32"]
+
 [[modules]]
     name = "he_window_test_app"
     type = "windowed_app"

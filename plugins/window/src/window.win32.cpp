@@ -11,6 +11,7 @@
 
 #include "he/core/alloca.h"
 #include "he/core/compiler.h"
+#include "he/core/enum_ops.h"
 #include "he/core/log.h"
 #include "he/core/memory_ops.h"
 #include "he/core/result.h"
@@ -98,6 +99,7 @@ namespace he::window::Win32
         Vec2i GetSize() const override;
         float GetDpiScale() const override;
         bool IsFocused() const override;
+        bool IsChildFocused() const override;
         bool IsMinimized() const override;
         bool IsMaximized() const override;
 
@@ -106,6 +108,7 @@ namespace he::window::Win32
         void SetVisible(bool visible, bool focus) override;
         void SetTitle(const char* text) override;
         void SetAlpha(float alpha) override;
+        void SetAcceptInput(bool value) override;
 
         void Focus() override;
         void Minimize() override;
@@ -117,7 +120,6 @@ namespace he::window::Win32
         Vec2f ScreenToView(const Vec2f& pos) const override;
 
         void TrackCapture(const Event& ev);
-        void AdjustWindowRegion();
 
     public:
         DeviceImpl* m_device{ nullptr };
@@ -171,6 +173,7 @@ namespace he::window::Win32
         Application* m_app{ nullptr };
         HINSTANCE m_hInstance{ nullptr };
         MouseCursor m_cursor{ MouseCursor::Arrow };
+        HWND m_mouseTrackingHwnd{ nullptr };
         std::atomic<int32_t> m_returnCode{ 0 };
         std::atomic<bool> m_running{ true };
         bool m_cursorRelativeMode{ false };
@@ -203,9 +206,13 @@ namespace he::window::Win32
     };
 
     // --------------------------------------------------------------------------------------------
-    static Key TranslateKey(WPARAM wparam)
+    static Key TranslateKey(WPARAM wparam, LPARAM lparam)
     {
         int32_t vkey = wparam & 0xff;
+
+        if (vkey == VK_RETURN && (HIWORD(lparam) & KF_EXTENDED))
+            return Key::NumPad_Enter;
+
         switch (vkey)
         {
             case VK_BACK: return Key::Backspace;
@@ -442,6 +449,10 @@ namespace he::window::Win32
             }
             case WM_NCHITTEST:
             {
+                // If we've disabled input, pass through the hit test
+                if (!HasFlag(view->m_flags, ViewFlag::AcceptInput))
+                    return HTTRANSPARENT;
+
                 // Perform application defined hit testing if decoration is disabled.
                 if (HasFlag(view->m_flags, ViewFlag::Borderless))
                 {
@@ -479,14 +490,30 @@ namespace he::window::Win32
             case WM_RBUTTONDOWN:
             case WM_MBUTTONDOWN:
             case WM_XBUTTONDOWN:
+            case WM_LBUTTONDBLCLK:
+            case WM_RBUTTONDBLCLK:
+            case WM_MBUTTONDBLCLK:
+            case WM_XBUTTONDBLCLK:
             {
                 MouseButton button = MouseButton::None;
                 switch (message)
                 {
-                    case WM_LBUTTONDOWN: button = MouseButton::Left; break;
-                    case WM_RBUTTONDOWN: button = MouseButton::Right; break;
-                    case WM_MBUTTONDOWN: button = MouseButton::Middle; break;
-                    case WM_XBUTTONDOWN: button = (GET_XBUTTON_WPARAM(wParam) == XBUTTON1) ? MouseButton::Extra1 : MouseButton::Extra2; break;
+                    case WM_LBUTTONDOWN:
+                    case WM_LBUTTONDBLCLK:
+                        button = MouseButton::Left;
+                        break;
+                    case WM_RBUTTONDOWN:
+                    case WM_RBUTTONDBLCLK:
+                        button = MouseButton::Right;
+                        break;
+                    case WM_MBUTTONDOWN:
+                    case WM_MBUTTONDBLCLK:
+                        button = MouseButton::Middle;
+                        break;
+                    case WM_XBUTTONDOWN:
+                    case WM_XBUTTONDBLCLK:
+                        button = (GET_XBUTTON_WPARAM(wParam) == XBUTTON1) ? MouseButton::Extra1 : MouseButton::Extra2;
+                        break;
                 }
 
                 MouseDownEvent ev(view, button);
@@ -530,12 +557,25 @@ namespace he::window::Win32
             case WM_NCMOUSEMOVE:
             case WM_MOUSEMOVE:
             {
+                if (!device->m_mouseTrackingHwnd)
+                {
+                    TRACKMOUSEEVENT tme = { sizeof(tme), TME_LEAVE, hWnd, 0 };
+                    ::TrackMouseEvent(&tme);
+                    device->m_mouseTrackingHwnd = hWnd;
+                }
+                else
+                {
+                    HE_ASSERT(device->m_mouseTrackingHwnd == hWnd);
+                }
+
                 if (device->m_hasHighDefMouse)
                     break;
 
-                const float xpos = static_cast<float>(GET_X_LPARAM(lParam));
-                const float ypos = static_cast<float>(GET_Y_LPARAM(lParam));
-                MouseMoveEvent ev(view, { xpos, ypos }, true, false);
+                POINT pos{ GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) };
+                ::ClientToScreen(hWnd, &pos);
+
+                Vec2f posf{ static_cast<float>(pos.x), static_cast<float>(pos.y) };
+                MouseMoveEvent ev(view, posf, true);
 
                 if (device->m_cursorRelativeMode)
                     device->CenterCursor();
@@ -543,10 +583,22 @@ namespace he::window::Win32
                 app->OnEvent(ev);
                 return 0;
             }
+            case WM_MOUSELEAVE:
+            {
+                if (device->m_mouseTrackingHwnd)
+                {
+                    HE_ASSERT(device->m_mouseTrackingHwnd == hWnd);
+                    device->m_mouseTrackingHwnd = nullptr;
+
+                    MouseLeaveEvent ev(view);
+                    app->OnEvent(ev);
+                }
+                break;
+            }
             case WM_KEYDOWN:
             case WM_SYSKEYDOWN:
             {
-                Key key = TranslateKey(wParam);
+                Key key = TranslateKey(wParam, lParam);
                 if (key != Key::None)
                 {
                     KeyDownEvent ev(view, key);
@@ -557,7 +609,7 @@ namespace he::window::Win32
             case WM_KEYUP:
             case WM_SYSKEYUP:
             {
-                Key key = TranslateKey(wParam);
+                Key key = TranslateKey(wParam, lParam);
                 if (key != Key::None)
                 {
                     KeyUpEvent ev(view, key);
@@ -567,8 +619,11 @@ namespace he::window::Win32
             }
             case WM_CHAR:
             {
-                TextEvent ev(view, LOWORD(wParam));
-                app->OnEvent(ev);
+                if (wParam > 0 && wParam < 0x10000)
+                {
+                    TextEvent ev(view, LOWORD(wParam));
+                    app->OnEvent(ev);
+                }
                 return 0;
             }
             case WM_ACTIVATE:
@@ -637,21 +692,35 @@ namespace he::window::Win32
                 UINT size = ::GetRawInputData((HRAWINPUT)lParam, RID_INPUT, &raw, &rawSize, sizeof(RAWINPUTHEADER));
 
                 if (size != rawSize)
-                    return 0;
+                    break;
 
-                if (raw.header.dwType == RIM_TYPEMOUSE)
+                if (raw.header.dwType != RIM_TYPEMOUSE)
+                    break;
+
+                const RAWMOUSE& rawMouse = raw.data.mouse;
+                const bool absolute = HasFlag(rawMouse.usFlags, MOUSE_MOVE_ABSOLUTE);
+
+                Vec2f pos{ static_cast<float>(rawMouse.lLastX), static_cast<float>(rawMouse.lLastY) };
+
+                // When raw mouse gives absolute coordinates they are normalized in the range [0,65535]
+                // so we need to adjust them by the screen size to get what we expect.
+                // https://docs.microsoft.com/en-us/windows/win32/api/winuser/ns-winuser-rawmouse
+                if (absolute)
                 {
-                    const bool absolute = (raw.data.mouse.usFlags & MOUSE_MOVE_ABSOLUTE) != 0;
-                    const float lastX = static_cast<float>(raw.data.mouse.lLastX);
-                    const float lastY = static_cast<float>(raw.data.mouse.lLastY);
+                    const bool isVirtualDesktop = HasFlag(rawMouse.usFlags, MOUSE_VIRTUAL_DESKTOP);
+                    const int width = ::GetSystemMetrics(isVirtualDesktop ? SM_CXVIRTUALSCREEN : SM_CXSCREEN);
+                    const int height = ::GetSystemMetrics(isVirtualDesktop ? SM_CYVIRTUALSCREEN : SM_CYSCREEN);
 
-                    MouseMoveEvent ev(view, { lastX, lastY }, absolute, true);
-
-                    if (device->m_cursorRelativeMode)
-                        device->CenterCursor();
-
-                    app->OnEvent(ev);
+                    pos.x = (pos.x / 65535.0f) * width;
+                    pos.y = (pos.y / 65535.0f) * height;
                 }
+
+                MouseMoveEvent ev(view, pos, absolute);
+
+                if (device->m_cursorRelativeMode)
+                    device->CenterCursor();
+
+                app->OnEvent(ev);
                 return 0;
             }
         }
@@ -671,9 +740,6 @@ namespace he::window::Win32
         // Create window
         DWORD dwStyle = WS_SYSMENU;
         DWORD dwExStyle = 0;
-
-        if (!HasFlag(m_flags, ViewFlag::AcceptInput))
-            dwExStyle |= WS_EX_TRANSPARENT;
 
         if (HasFlag(m_flags, ViewFlag::Borderless))
             dwStyle |= WS_POPUP;
@@ -791,6 +857,12 @@ namespace he::window::Win32
         return ::GetForegroundWindow() == m_window;
     }
 
+    bool ViewImpl::IsChildFocused() const
+    {
+        HWND hWnd = ::GetForegroundWindow();
+        return hWnd && (hWnd == m_window || ::IsChild(hWnd, m_window));
+    }
+
     bool ViewImpl::IsMinimized() const
     {
         return ::IsIconic(m_window) != 0;
@@ -866,6 +938,14 @@ namespace he::window::Win32
             DWORD style = ::GetWindowLongW(m_window, GWL_EXSTYLE) & ~WS_EX_LAYERED;
             ::SetWindowLongW(m_window, GWL_EXSTYLE, style);
         }
+    }
+
+    void ViewImpl::SetAcceptInput(bool value)
+    {
+        if (value)
+            m_flags |= ViewFlag::AcceptInput;
+        else
+            m_flags &= ~ViewFlag::AcceptInput;
     }
 
     void ViewImpl::Focus()
@@ -1110,7 +1190,8 @@ namespace he::window::Win32
         ViewImpl* view = static_cast<ViewImpl*>(view_);
 
         POINT p = {};
-        ::GetCursorPos(&p);
+        if (!::GetCursorPos(&p))
+            return Vec2f_Infinity;
 
         if (view)
             ::ScreenToClient(view->m_window, &p);
@@ -1197,16 +1278,27 @@ namespace he::window::Win32
             monitor.workPos = { info.rcWork.left, info.rcWork.top };
             monitor.workSize = { info.rcWork.right - info.rcWork.left, info.rcWork.bottom - info.rcWork.top };
             monitor.dpiScale = 1.0f;
-            monitor.primary = (info.dwFlags & MONITORINFOF_PRIMARY) != 0;
+            monitor.primary = HasFlag(info.dwFlags, MONITORINFOF_PRIMARY);
 
+            UINT xdpi = 96;
+            UINT ydpi = 96;
             if (data->device->m_GetDpiForMonitor)
             {
-                UINT xdpi = 96;
-                UINT ydpi = 96;
                 data->device->m_GetDpiForMonitor(hMonitor, MDT_EFFECTIVE_DPI, &xdpi, &ydpi);
                 HE_ASSERT(xdpi == ydpi);
-                monitor.dpiScale = xdpi / 96.0f;
             }
+            else
+            {
+                const HDC dc = ::GetDC(NULL);
+                if (dc)
+                {
+                    xdpi = ::GetDeviceCaps(dc, LOGPIXELSX);
+                    ydpi = ::GetDeviceCaps(dc, LOGPIXELSY);
+                    HE_ASSERT(xdpi == ydpi);
+                    ::ReleaseDC(NULL, dc);
+                }
+            }
+            monitor.dpiScale = xdpi / 96.0f;
         }
 
         data->index++;

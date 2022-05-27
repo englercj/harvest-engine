@@ -4,11 +4,10 @@
 
 #include "directory_service.h"
 #include "platform_service.h"
-#include "schema/project.capnp.h"
+#include "schema/project.hsc.h"
 
 #include "he/core/string.h"
-
-#include "capnp/message.h"
+#include "he/schema/layout.h"
 
 namespace he::editor
 {
@@ -41,8 +40,8 @@ namespace he::editor
     private:
         DirectoryService& m_directoryService;
 
-        capnp::MallocMessageBuilder m_builder{};
-        Project::Builder m_project{ nullptr };
+        he::schema::Builder m_builder{};
+        Project::Builder m_project{};
         String m_projectPath{};
     };
 }

@@ -24,6 +24,7 @@ homepage = ""
     [[modules.schema_compile]]
         glob = "**.hsc"
         targets = ["c++"]
+        dependson_include = ["he_schema"]
 
     [[modules.capnp_compile]]
         glob = "**.capnp"

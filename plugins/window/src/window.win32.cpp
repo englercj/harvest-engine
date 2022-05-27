@@ -14,6 +14,7 @@
 #include "he/core/log.h"
 #include "he/core/memory_ops.h"
 #include "he/core/result.h"
+#include "he/core/result_fmt.h"
 #include "he/core/string.h"
 #include "he/core/utils.h"
 #include "he/core/wstr.h"

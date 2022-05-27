@@ -641,6 +641,8 @@ namespace he::rhi::d3d12
                 case DescriptorRangeType::Sampler:
                     samplerCount += range.count;
                     break;
+                case DescriptorRangeType::_Count:
+                    break;
             }
         }
 

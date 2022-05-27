@@ -85,6 +85,17 @@ namespace internal
 
     static bool TestLibErrorHandler(void*, const ErrorSource& source, const KeyValue* kvs, uint32_t count)
     {
+        ErrorKind kind = kvs[0].GetEnum<ErrorKind>();
+        switch (kind)
+        {
+            case ErrorKind::Assert:
+            case ErrorKind::Except:
+            case ErrorKind::Verify:
+                return DefaultErrorHandler(nullptr, source, kvs, count);
+            case ErrorKind::Expect:
+                break;
+        }
+
         LogSource logSource;
         logSource.level = LogLevel::Error;
         logSource.line = source.line;
@@ -93,18 +104,6 @@ namespace internal
         logSource.category = "he_test";
 
         Log(logSource, kvs, count);
-
-        ErrorKind kind = kvs[0].GetEnum<ErrorKind>();
-        switch (kind)
-        {
-            case ErrorKind::Assert:
-            case ErrorKind::Except:
-                // TODO: std::abort(); or similar
-                break;
-            case ErrorKind::Expect:
-            case ErrorKind::Verify:
-                break;
-        }
 
         return true;
     }

@@ -16,27 +16,20 @@ namespace he
     static void* s_errorHandlerUserData = nullptr;
     static RWLock s_errorHandlerLock{};
 
+    extern bool _PlatformErrorHandler(const ErrorSource& source, const KeyValue* kvs, uint32_t count);
+
     bool DefaultErrorHandler(void*, const ErrorSource& source, const KeyValue* kvs, uint32_t count)
     {
-        const LogSource logSource{ LogLevel::Error, source.line, source.file, source.funcName, "app_error" };
+        LogSource logSource;
+        logSource.level = LogLevel::Error;
+        logSource.line = source.line;
+        logSource.file = source.file;
+        logSource.funcName = source.funcName;
+        logSource.category = "app_error";
+
         Log(logSource, kvs, count);
 
-        // TODO: Platform-specific handlers (popup for win32)
-
-        // Error kind is always the first KV
-        ErrorKind kind = kvs[0].GetEnum<ErrorKind>();
-        switch (kind)
-        {
-            case ErrorKind::Assert:
-            case ErrorKind::Except:
-                // TODO: std::abort(); or similar
-                break;
-            case ErrorKind::Expect:
-            case ErrorKind::Verify:
-                break;
-        }
-
-        return true;
+        return _PlatformErrorHandler(source, kvs, count);
     }
 
     void SetErrorHandler(ErrorHandlerFunc handler, void* userData)

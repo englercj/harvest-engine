@@ -517,7 +517,10 @@ namespace he::schema
             {
                 WriteType(fieldType, decl, nullptr);
             }
-            m_writer.Write(" Get{}() const;\n", upperCamelName);
+            if (!isArray || isReader)
+                m_writer.Write(" Get{}() const;\n", upperCamelName);
+            else
+                m_writer.Write(" Get{}();\n", upperCamelName);
         }
     }
 
@@ -669,7 +672,10 @@ namespace he::schema
                 m_writer.Write(' ');
             }
             WriteName(decl, scope, {}, suffix);
-            m_writer.Write("{}::Get{}() const {{ ", suffix, upperCamelName);
+            if (!isArray || isReader)
+                m_writer.Write("{}::Get{}() const {{ ", suffix, upperCamelName);
+            else
+                m_writer.Write("{}::Get{}() {{ ", suffix, upperCamelName);
 
             if (structDecl.GetIsUnion())
                 m_writer.Write("HE_ASSERT(Is{}()); ", upperCamelName);
@@ -684,7 +690,10 @@ namespace he::schema
                     WriteDataValue(fieldType, decl, norm.GetDefaultValue());
                     m_writer.Write("; ");
                 }
-                m_writer.Write("return SuperType::TryGetDataArrayField<");
+                if (isReader)
+                    m_writer.Write("return SuperType::TryGetDataArrayField<");
+                else
+                    m_writer.Write("return SuperType::GetAndMarkDataArrayField<");
                 WriteType(fieldTypeData.GetArray().GetElementType(), scope, nullptr);
             }
             else
@@ -741,6 +750,9 @@ namespace he::schema
         Type::Reader fieldType = norm.GetType();
         Type::Data::Reader fieldTypeData = fieldType.GetData();
         const bool fieldIsPointer = IsPointer(fieldType);
+
+        if (!fieldIsPointer && fieldTypeData.IsArray())
+            return;
 
         m_writer.WriteIndent();
         m_writer.Write("void Set{}(", upperCamelName);
@@ -801,6 +813,9 @@ namespace he::schema
         Type::Reader fieldType = norm.GetType();
         Type::Data::Reader fieldTypeData = fieldType.GetData();
         const bool fieldIsPointer = IsPointer(fieldType);
+
+        if (!fieldIsPointer && fieldTypeData.IsArray())
+            return;
 
         m_writer.WriteIndent();
         m_writer.Write("inline void ");
@@ -1310,7 +1325,7 @@ namespace he::schema
 
                 if (anyType.GetParamScopeId() == 0)
                 {
-                    m_writer.Write("AnyPointer");
+                    m_writer.Write("::he::schema::AnyPointer");
                 }
                 else
                 {

@@ -16,9 +16,25 @@ return function (plugin)
                     end
                 end
 
-                if options.includeDirs then
-                    for _, dir in ipairs(options.includeDirs) do
+                if options.includedirs then
+                    for _, dir in ipairs(options.includedirs) do
                         opt = opt .. "-I " .. dir .. " "
+                    end
+                end
+
+                if options.dependson_include then
+                    for _, mod_name in ipairs(options.dependson_include) do
+                        local mod = he.get_module(mod_name)
+                        assert(mod ~= nil, "Module '" .. ctx.name .. "' has a he_schema dependency on '" .. mod_name .. "', but no such module has been imported.")
+                        if mod._plugin._install_valid == false then
+                            verbosef("Module '%s' has a he_schema dependency on '%s' but it was not installed, ignoring.", ctx.name, mod_name)
+                        else
+                            if mod.public_includedirs then
+                                for _, dir in ipairs(mod.public_includedirs) do
+                                    opt = opt .. "-I " .. path.join(mod._plugin._install_dir, dir) .. " "
+                                end
+                            end
+                        end
                     end
                 end
 

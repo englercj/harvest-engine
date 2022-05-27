@@ -321,7 +321,7 @@ namespace he::schema
             if (!At(Lexer::TokenType::CloseSquareBracket))
             {
                 size = AstCreate<AstExpression>();
-                if (!ConsumeValue(*type.array.size))
+                if (!ConsumeValue(*size))
                     return false;
             }
 

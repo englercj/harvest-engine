@@ -99,7 +99,7 @@ namespace he::schema
 
                 for (AstNode& child : node.children)
                 {
-                    if (node.kind != AstNode::Kind::Enumerator)
+                    if (child.kind != AstNode::Kind::Enumerator)
                     {
                         m_context->AddError(child.location, "Enums may only contain enumerators");
                         return false;
@@ -979,12 +979,17 @@ namespace he::schema
             }
             case AstExpression::Kind::Unknown:
             {
-                const TypeKey key{ &astType, &scopeType };
-                const TypeValue& type = m_context->GetType(key);
-                if (type.tag != Type::Data::Tag::Void)
+                if (astType.kind != AstExpression::Kind::QualifiedName
+                    || astType.qualified.names.Front()->kind != AstExpression::Kind::Identifier
+                    || astType.qualified.names.Front()->identifier != KW_Void)
                 {
-                    m_context->AddError(astValue.location, "A {} expression cannot be used as a value", astValue.kind);
-                    return false;
+                    const TypeKey key{ &astType, &scopeType };
+                    const TypeValue& type = m_context->GetType(key);
+                    if (type.tag != Type::Data::Tag::Void)
+                    {
+                        m_context->AddError(astValue.location, "A {} expression cannot be used as a value", astValue.kind);
+                        return false;
+                    }
                 }
                 return true;
             }

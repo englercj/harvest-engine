@@ -51,7 +51,7 @@ namespace he::schema
 
         const AstNode* FindNode(TypeId id) const;
         const AstNode* FindNode(const AstExpression& name, const AstNode& scope) const;
-        const AstNode* FindNode(StringView name, const AstNode& scope) const;
+        const AstNode* FindNode(StringView name, const AstNode& scope, bool isImport = false) const;
 
         Declaration::Reader GetDecl(TypeId id) const { return m_declIdMap.at(id); }
 

@@ -72,7 +72,7 @@ namespace he::schema
         return scope;
     }
 
-    const AstNode* CompileContext::FindNode(StringView name, const AstNode& scope) const
+    const AstNode* CompileContext::FindNode(StringView name, const AstNode& scope, bool isImport) const
     {
         const AstNode* node = scope.children.Find([&](const AstNode& node) { return node.name == name; });
         if (node)
@@ -82,12 +82,12 @@ namespace he::schema
             return FindNode(name, *scope.parent);
 
         // If we walked up to top scope, and it isn't our root, then search our imports
-        if (scope.parent == nullptr)
+        if (!isImport && scope.parent == nullptr)
         {
             for (const CompileContext* importCtx : m_imports)
             {
                 HE_ASSERT(importCtx->m_fullyParsed);
-                node = FindNode(name, importCtx->m_parser.Ast().root);
+                node = FindNode(name, importCtx->m_parser.Ast().root, true);
                 if (node)
                     return node;
             }

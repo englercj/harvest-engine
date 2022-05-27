@@ -168,14 +168,14 @@ HE_TEST(schema, schema, IsPointer)
 
         if (tag != Type::Data::Tag::Array)
         {
-            t.Data().SetTag(tag);
+            t.GetData().SetTag(tag);
             HE_EXPECT_EQ(IsPointer(t), IsPointer(tag));
         }
     }
 
     // Arrays should be pointers if their elements are
-    t.Data().SetTag(Type::Data::Tag::Array);
-    Type::Data::Array::Builder a = t.Data().Array();
+    t.GetData().SetTag(Type::Data::Tag::Array);
+    Type::Data::Array::Builder a = t.GetData().GetArray();
     Type::Builder e = a.InitElementType();
     for (uint16_t i = 0; i < max; ++i)
     {
@@ -185,7 +185,7 @@ HE_TEST(schema, schema, IsPointer)
         if (tag == Type::Data::Tag::Array)
             continue;
 
-        e.Data().SetTag(tag);
+        e.GetData().SetTag(tag);
         HE_EXPECT_EQ(IsPointer(t), IsPointer(tag));
     }
 }
@@ -196,51 +196,51 @@ HE_TEST(schema, schema, GetTypeAlign)
     Builder b;
     Type::Builder t = b.AddStruct<Type>();
 
-    t.Data().SetTag(Type::Data::Tag::Void); HE_EXPECT_EQ(GetTypeAlign(t), 0);
-    t.Data().SetTag(Type::Data::Tag::Bool); HE_EXPECT_EQ(GetTypeAlign(t), 1);
-    t.Data().SetTag(Type::Data::Tag::Int8); HE_EXPECT_EQ(GetTypeAlign(t), 8);
-    t.Data().SetTag(Type::Data::Tag::Int16); HE_EXPECT_EQ(GetTypeAlign(t), 16);
-    t.Data().SetTag(Type::Data::Tag::Int32); HE_EXPECT_EQ(GetTypeAlign(t), 32);
-    t.Data().SetTag(Type::Data::Tag::Int64); HE_EXPECT_EQ(GetTypeAlign(t), 64);
-    t.Data().SetTag(Type::Data::Tag::Uint8); HE_EXPECT_EQ(GetTypeAlign(t), 8);
-    t.Data().SetTag(Type::Data::Tag::Uint16); HE_EXPECT_EQ(GetTypeAlign(t), 16);
-    t.Data().SetTag(Type::Data::Tag::Uint32); HE_EXPECT_EQ(GetTypeAlign(t), 32);
-    t.Data().SetTag(Type::Data::Tag::Uint64); HE_EXPECT_EQ(GetTypeAlign(t), 64);
-    t.Data().SetTag(Type::Data::Tag::Float32); HE_EXPECT_EQ(GetTypeAlign(t), 32);
-    t.Data().SetTag(Type::Data::Tag::Float64); HE_EXPECT_EQ(GetTypeAlign(t), 64);
-    t.Data().SetTag(Type::Data::Tag::Blob); HE_EXPECT_EQ(GetTypeAlign(t), 64);
-    t.Data().SetTag(Type::Data::Tag::String); HE_EXPECT_EQ(GetTypeAlign(t), 64);
-    // t.Data().SetTag(Type::Data::Tag::Array); HE_EXPECT_EQ(GetTypeAlign(t), 0);
-    t.Data().SetTag(Type::Data::Tag::List); HE_EXPECT_EQ(GetTypeAlign(t), 64);
-    t.Data().SetTag(Type::Data::Tag::Enum); HE_EXPECT_EQ(GetTypeAlign(t), 16);
-    t.Data().SetTag(Type::Data::Tag::Struct); HE_EXPECT_EQ(GetTypeAlign(t), 64);
-    t.Data().SetTag(Type::Data::Tag::Interface); HE_EXPECT_EQ(GetTypeAlign(t), 64);
-    t.Data().SetTag(Type::Data::Tag::AnyPointer); HE_EXPECT_EQ(GetTypeAlign(t), 64);
+    t.GetData().SetTag(Type::Data::Tag::Void); HE_EXPECT_EQ(GetTypeAlign(t), 0);
+    t.GetData().SetTag(Type::Data::Tag::Bool); HE_EXPECT_EQ(GetTypeAlign(t), 1);
+    t.GetData().SetTag(Type::Data::Tag::Int8); HE_EXPECT_EQ(GetTypeAlign(t), 8);
+    t.GetData().SetTag(Type::Data::Tag::Int16); HE_EXPECT_EQ(GetTypeAlign(t), 16);
+    t.GetData().SetTag(Type::Data::Tag::Int32); HE_EXPECT_EQ(GetTypeAlign(t), 32);
+    t.GetData().SetTag(Type::Data::Tag::Int64); HE_EXPECT_EQ(GetTypeAlign(t), 64);
+    t.GetData().SetTag(Type::Data::Tag::Uint8); HE_EXPECT_EQ(GetTypeAlign(t), 8);
+    t.GetData().SetTag(Type::Data::Tag::Uint16); HE_EXPECT_EQ(GetTypeAlign(t), 16);
+    t.GetData().SetTag(Type::Data::Tag::Uint32); HE_EXPECT_EQ(GetTypeAlign(t), 32);
+    t.GetData().SetTag(Type::Data::Tag::Uint64); HE_EXPECT_EQ(GetTypeAlign(t), 64);
+    t.GetData().SetTag(Type::Data::Tag::Float32); HE_EXPECT_EQ(GetTypeAlign(t), 32);
+    t.GetData().SetTag(Type::Data::Tag::Float64); HE_EXPECT_EQ(GetTypeAlign(t), 64);
+    t.GetData().SetTag(Type::Data::Tag::Blob); HE_EXPECT_EQ(GetTypeAlign(t), 64);
+    t.GetData().SetTag(Type::Data::Tag::String); HE_EXPECT_EQ(GetTypeAlign(t), 64);
+    // t.GetData().SetTag(Type::Data::Tag::Array); HE_EXPECT_EQ(GetTypeAlign(t), 0);
+    t.GetData().SetTag(Type::Data::Tag::List); HE_EXPECT_EQ(GetTypeAlign(t), 64);
+    t.GetData().SetTag(Type::Data::Tag::Enum); HE_EXPECT_EQ(GetTypeAlign(t), 16);
+    t.GetData().SetTag(Type::Data::Tag::Struct); HE_EXPECT_EQ(GetTypeAlign(t), 64);
+    t.GetData().SetTag(Type::Data::Tag::Interface); HE_EXPECT_EQ(GetTypeAlign(t), 64);
+    t.GetData().SetTag(Type::Data::Tag::AnyPointer); HE_EXPECT_EQ(GetTypeAlign(t), 64);
 
-    t.Data().SetTag(Type::Data::Tag::Array);
-    Type::Data::Array::Builder a = t.Data().Array();
+    t.GetData().SetTag(Type::Data::Tag::Array);
+    Type::Data::Array::Builder a = t.GetData().GetArray();
     Type::Builder e = a.InitElementType();
 
-    e.Data().SetTag(Type::Data::Tag::Void); HE_EXPECT_EQ(GetTypeAlign(t), 0);
-    e.Data().SetTag(Type::Data::Tag::Bool); HE_EXPECT_EQ(GetTypeAlign(t), 1);
-    e.Data().SetTag(Type::Data::Tag::Int8); HE_EXPECT_EQ(GetTypeAlign(t), 8);
-    e.Data().SetTag(Type::Data::Tag::Int16); HE_EXPECT_EQ(GetTypeAlign(t), 16);
-    e.Data().SetTag(Type::Data::Tag::Int32); HE_EXPECT_EQ(GetTypeAlign(t), 32);
-    e.Data().SetTag(Type::Data::Tag::Int64); HE_EXPECT_EQ(GetTypeAlign(t), 64);
-    e.Data().SetTag(Type::Data::Tag::Uint8); HE_EXPECT_EQ(GetTypeAlign(t), 8);
-    e.Data().SetTag(Type::Data::Tag::Uint16); HE_EXPECT_EQ(GetTypeAlign(t), 16);
-    e.Data().SetTag(Type::Data::Tag::Uint32); HE_EXPECT_EQ(GetTypeAlign(t), 32);
-    e.Data().SetTag(Type::Data::Tag::Uint64); HE_EXPECT_EQ(GetTypeAlign(t), 64);
-    e.Data().SetTag(Type::Data::Tag::Float32); HE_EXPECT_EQ(GetTypeAlign(t), 32);
-    e.Data().SetTag(Type::Data::Tag::Float64); HE_EXPECT_EQ(GetTypeAlign(t), 64);
-    e.Data().SetTag(Type::Data::Tag::Blob); HE_EXPECT_EQ(GetTypeAlign(t), 64);
-    e.Data().SetTag(Type::Data::Tag::String); HE_EXPECT_EQ(GetTypeAlign(t), 64);
-    // e.Data().SetTag(Type::Data::Tag::Array); HE_EXPECT_EQ(GetTypeAlign(t), 0);
-    e.Data().SetTag(Type::Data::Tag::List); HE_EXPECT_EQ(GetTypeAlign(t), 64);
-    e.Data().SetTag(Type::Data::Tag::Enum); HE_EXPECT_EQ(GetTypeAlign(t), 16);
-    e.Data().SetTag(Type::Data::Tag::Struct); HE_EXPECT_EQ(GetTypeAlign(t), 64);
-    e.Data().SetTag(Type::Data::Tag::Interface); HE_EXPECT_EQ(GetTypeAlign(t), 64);
-    e.Data().SetTag(Type::Data::Tag::AnyPointer); HE_EXPECT_EQ(GetTypeAlign(t), 64);
+    e.GetData().SetTag(Type::Data::Tag::Void); HE_EXPECT_EQ(GetTypeAlign(t), 0);
+    e.GetData().SetTag(Type::Data::Tag::Bool); HE_EXPECT_EQ(GetTypeAlign(t), 1);
+    e.GetData().SetTag(Type::Data::Tag::Int8); HE_EXPECT_EQ(GetTypeAlign(t), 8);
+    e.GetData().SetTag(Type::Data::Tag::Int16); HE_EXPECT_EQ(GetTypeAlign(t), 16);
+    e.GetData().SetTag(Type::Data::Tag::Int32); HE_EXPECT_EQ(GetTypeAlign(t), 32);
+    e.GetData().SetTag(Type::Data::Tag::Int64); HE_EXPECT_EQ(GetTypeAlign(t), 64);
+    e.GetData().SetTag(Type::Data::Tag::Uint8); HE_EXPECT_EQ(GetTypeAlign(t), 8);
+    e.GetData().SetTag(Type::Data::Tag::Uint16); HE_EXPECT_EQ(GetTypeAlign(t), 16);
+    e.GetData().SetTag(Type::Data::Tag::Uint32); HE_EXPECT_EQ(GetTypeAlign(t), 32);
+    e.GetData().SetTag(Type::Data::Tag::Uint64); HE_EXPECT_EQ(GetTypeAlign(t), 64);
+    e.GetData().SetTag(Type::Data::Tag::Float32); HE_EXPECT_EQ(GetTypeAlign(t), 32);
+    e.GetData().SetTag(Type::Data::Tag::Float64); HE_EXPECT_EQ(GetTypeAlign(t), 64);
+    e.GetData().SetTag(Type::Data::Tag::Blob); HE_EXPECT_EQ(GetTypeAlign(t), 64);
+    e.GetData().SetTag(Type::Data::Tag::String); HE_EXPECT_EQ(GetTypeAlign(t), 64);
+    // e.GetData().SetTag(Type::Data::Tag::Array); HE_EXPECT_EQ(GetTypeAlign(t), 0);
+    e.GetData().SetTag(Type::Data::Tag::List); HE_EXPECT_EQ(GetTypeAlign(t), 64);
+    e.GetData().SetTag(Type::Data::Tag::Enum); HE_EXPECT_EQ(GetTypeAlign(t), 16);
+    e.GetData().SetTag(Type::Data::Tag::Struct); HE_EXPECT_EQ(GetTypeAlign(t), 64);
+    e.GetData().SetTag(Type::Data::Tag::Interface); HE_EXPECT_EQ(GetTypeAlign(t), 64);
+    e.GetData().SetTag(Type::Data::Tag::AnyPointer); HE_EXPECT_EQ(GetTypeAlign(t), 64);
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -249,52 +249,52 @@ HE_TEST(schema, schema, GetTypeSize)
     Builder b;
     Type::Builder t = b.AddStruct<Type>();
 
-    t.Data().SetTag(Type::Data::Tag::Void); HE_EXPECT_EQ(GetTypeSize(t), 0);
-    t.Data().SetTag(Type::Data::Tag::Bool); HE_EXPECT_EQ(GetTypeSize(t), 1);
-    t.Data().SetTag(Type::Data::Tag::Int8); HE_EXPECT_EQ(GetTypeSize(t), 8);
-    t.Data().SetTag(Type::Data::Tag::Int16); HE_EXPECT_EQ(GetTypeSize(t), 16);
-    t.Data().SetTag(Type::Data::Tag::Int32); HE_EXPECT_EQ(GetTypeSize(t), 32);
-    t.Data().SetTag(Type::Data::Tag::Int64); HE_EXPECT_EQ(GetTypeSize(t), 64);
-    t.Data().SetTag(Type::Data::Tag::Uint8); HE_EXPECT_EQ(GetTypeSize(t), 8);
-    t.Data().SetTag(Type::Data::Tag::Uint16); HE_EXPECT_EQ(GetTypeSize(t), 16);
-    t.Data().SetTag(Type::Data::Tag::Uint32); HE_EXPECT_EQ(GetTypeSize(t), 32);
-    t.Data().SetTag(Type::Data::Tag::Uint64); HE_EXPECT_EQ(GetTypeSize(t), 64);
-    t.Data().SetTag(Type::Data::Tag::Float32); HE_EXPECT_EQ(GetTypeSize(t), 32);
-    t.Data().SetTag(Type::Data::Tag::Float64); HE_EXPECT_EQ(GetTypeSize(t), 64);
-    t.Data().SetTag(Type::Data::Tag::Blob); HE_EXPECT_EQ(GetTypeSize(t), 64);
-    t.Data().SetTag(Type::Data::Tag::String); HE_EXPECT_EQ(GetTypeSize(t), 64);
-    // t.Data().SetTag(Type::Data::Tag::Array); HE_EXPECT_EQ(GetTypeSize(t), 0);
-    t.Data().SetTag(Type::Data::Tag::List); HE_EXPECT_EQ(GetTypeSize(t), 64);
-    t.Data().SetTag(Type::Data::Tag::Enum); HE_EXPECT_EQ(GetTypeSize(t), 16);
-    t.Data().SetTag(Type::Data::Tag::Struct); HE_EXPECT_EQ(GetTypeSize(t), 64);
-    t.Data().SetTag(Type::Data::Tag::Interface); HE_EXPECT_EQ(GetTypeSize(t), 64);
-    t.Data().SetTag(Type::Data::Tag::AnyPointer); HE_EXPECT_EQ(GetTypeSize(t), 64);
+    t.GetData().SetTag(Type::Data::Tag::Void); HE_EXPECT_EQ(GetTypeSize(t), 0);
+    t.GetData().SetTag(Type::Data::Tag::Bool); HE_EXPECT_EQ(GetTypeSize(t), 1);
+    t.GetData().SetTag(Type::Data::Tag::Int8); HE_EXPECT_EQ(GetTypeSize(t), 8);
+    t.GetData().SetTag(Type::Data::Tag::Int16); HE_EXPECT_EQ(GetTypeSize(t), 16);
+    t.GetData().SetTag(Type::Data::Tag::Int32); HE_EXPECT_EQ(GetTypeSize(t), 32);
+    t.GetData().SetTag(Type::Data::Tag::Int64); HE_EXPECT_EQ(GetTypeSize(t), 64);
+    t.GetData().SetTag(Type::Data::Tag::Uint8); HE_EXPECT_EQ(GetTypeSize(t), 8);
+    t.GetData().SetTag(Type::Data::Tag::Uint16); HE_EXPECT_EQ(GetTypeSize(t), 16);
+    t.GetData().SetTag(Type::Data::Tag::Uint32); HE_EXPECT_EQ(GetTypeSize(t), 32);
+    t.GetData().SetTag(Type::Data::Tag::Uint64); HE_EXPECT_EQ(GetTypeSize(t), 64);
+    t.GetData().SetTag(Type::Data::Tag::Float32); HE_EXPECT_EQ(GetTypeSize(t), 32);
+    t.GetData().SetTag(Type::Data::Tag::Float64); HE_EXPECT_EQ(GetTypeSize(t), 64);
+    t.GetData().SetTag(Type::Data::Tag::Blob); HE_EXPECT_EQ(GetTypeSize(t), 64);
+    t.GetData().SetTag(Type::Data::Tag::String); HE_EXPECT_EQ(GetTypeSize(t), 64);
+    // t.GetData().SetTag(Type::Data::Tag::Array); HE_EXPECT_EQ(GetTypeSize(t), 0);
+    t.GetData().SetTag(Type::Data::Tag::List); HE_EXPECT_EQ(GetTypeSize(t), 64);
+    t.GetData().SetTag(Type::Data::Tag::Enum); HE_EXPECT_EQ(GetTypeSize(t), 16);
+    t.GetData().SetTag(Type::Data::Tag::Struct); HE_EXPECT_EQ(GetTypeSize(t), 64);
+    t.GetData().SetTag(Type::Data::Tag::Interface); HE_EXPECT_EQ(GetTypeSize(t), 64);
+    t.GetData().SetTag(Type::Data::Tag::AnyPointer); HE_EXPECT_EQ(GetTypeSize(t), 64);
 
-    t.Data().SetTag(Type::Data::Tag::Array);
-    Type::Data::Array::Builder a = t.Data().Array();
+    t.GetData().SetTag(Type::Data::Tag::Array);
+    Type::Data::Array::Builder a = t.GetData().GetArray();
     a.SetSize(10);
     Type::Builder e = a.InitElementType();
 
-    e.Data().SetTag(Type::Data::Tag::Void); HE_EXPECT_EQ(GetTypeSize(t), 0);
-    e.Data().SetTag(Type::Data::Tag::Bool); HE_EXPECT_EQ(GetTypeSize(t), 10);
-    e.Data().SetTag(Type::Data::Tag::Int8); HE_EXPECT_EQ(GetTypeSize(t), 80);
-    e.Data().SetTag(Type::Data::Tag::Int16); HE_EXPECT_EQ(GetTypeSize(t), 160);
-    e.Data().SetTag(Type::Data::Tag::Int32); HE_EXPECT_EQ(GetTypeSize(t), 320);
-    e.Data().SetTag(Type::Data::Tag::Int64); HE_EXPECT_EQ(GetTypeSize(t), 640);
-    e.Data().SetTag(Type::Data::Tag::Uint8); HE_EXPECT_EQ(GetTypeSize(t), 80);
-    e.Data().SetTag(Type::Data::Tag::Uint16); HE_EXPECT_EQ(GetTypeSize(t), 160);
-    e.Data().SetTag(Type::Data::Tag::Uint32); HE_EXPECT_EQ(GetTypeSize(t), 320);
-    e.Data().SetTag(Type::Data::Tag::Uint64); HE_EXPECT_EQ(GetTypeSize(t), 640);
-    e.Data().SetTag(Type::Data::Tag::Float32); HE_EXPECT_EQ(GetTypeSize(t), 320);
-    e.Data().SetTag(Type::Data::Tag::Float64); HE_EXPECT_EQ(GetTypeSize(t), 640);
-    e.Data().SetTag(Type::Data::Tag::Blob); HE_EXPECT_EQ(GetTypeSize(t), 640);
-    e.Data().SetTag(Type::Data::Tag::String); HE_EXPECT_EQ(GetTypeSize(t), 640);
-    // e.Data().SetTag(Type::Data::Tag::Array); HE_EXPECT_EQ(GetTypeSize(t), 0);
-    e.Data().SetTag(Type::Data::Tag::List); HE_EXPECT_EQ(GetTypeSize(t), 640);
-    e.Data().SetTag(Type::Data::Tag::Enum); HE_EXPECT_EQ(GetTypeSize(t), 160);
-    e.Data().SetTag(Type::Data::Tag::Struct); HE_EXPECT_EQ(GetTypeSize(t), 640);
-    e.Data().SetTag(Type::Data::Tag::Interface); HE_EXPECT_EQ(GetTypeSize(t), 640);
-    e.Data().SetTag(Type::Data::Tag::AnyPointer); HE_EXPECT_EQ(GetTypeSize(t), 640);
+    e.GetData().SetTag(Type::Data::Tag::Void); HE_EXPECT_EQ(GetTypeSize(t), 0);
+    e.GetData().SetTag(Type::Data::Tag::Bool); HE_EXPECT_EQ(GetTypeSize(t), 10);
+    e.GetData().SetTag(Type::Data::Tag::Int8); HE_EXPECT_EQ(GetTypeSize(t), 80);
+    e.GetData().SetTag(Type::Data::Tag::Int16); HE_EXPECT_EQ(GetTypeSize(t), 160);
+    e.GetData().SetTag(Type::Data::Tag::Int32); HE_EXPECT_EQ(GetTypeSize(t), 320);
+    e.GetData().SetTag(Type::Data::Tag::Int64); HE_EXPECT_EQ(GetTypeSize(t), 640);
+    e.GetData().SetTag(Type::Data::Tag::Uint8); HE_EXPECT_EQ(GetTypeSize(t), 80);
+    e.GetData().SetTag(Type::Data::Tag::Uint16); HE_EXPECT_EQ(GetTypeSize(t), 160);
+    e.GetData().SetTag(Type::Data::Tag::Uint32); HE_EXPECT_EQ(GetTypeSize(t), 320);
+    e.GetData().SetTag(Type::Data::Tag::Uint64); HE_EXPECT_EQ(GetTypeSize(t), 640);
+    e.GetData().SetTag(Type::Data::Tag::Float32); HE_EXPECT_EQ(GetTypeSize(t), 320);
+    e.GetData().SetTag(Type::Data::Tag::Float64); HE_EXPECT_EQ(GetTypeSize(t), 640);
+    e.GetData().SetTag(Type::Data::Tag::Blob); HE_EXPECT_EQ(GetTypeSize(t), 640);
+    e.GetData().SetTag(Type::Data::Tag::String); HE_EXPECT_EQ(GetTypeSize(t), 640);
+    // e.GetData().SetTag(Type::Data::Tag::Array); HE_EXPECT_EQ(GetTypeSize(t), 0);
+    e.GetData().SetTag(Type::Data::Tag::List); HE_EXPECT_EQ(GetTypeSize(t), 640);
+    e.GetData().SetTag(Type::Data::Tag::Enum); HE_EXPECT_EQ(GetTypeSize(t), 160);
+    e.GetData().SetTag(Type::Data::Tag::Struct); HE_EXPECT_EQ(GetTypeSize(t), 640);
+    e.GetData().SetTag(Type::Data::Tag::Interface); HE_EXPECT_EQ(GetTypeSize(t), 640);
+    e.GetData().SetTag(Type::Data::Tag::AnyPointer); HE_EXPECT_EQ(GetTypeSize(t), 640);
 }
 
 // ------------------------------------------------------------------------------------------------

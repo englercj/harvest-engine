@@ -61,8 +61,8 @@ namespace he::schema
             {
                 HE_LOG_ERROR(he_schema,
                     HE_MSG("Encountered invalid character for blob value. Skipping deserialization of field."),
-                    HE_KV(field_name, field.Name().AsView()),
-                    HE_KV(field_type, field.Meta().Normal().Type().Data().Tag()),
+                    HE_KV(field_name, field.GetName().AsView()),
+                    HE_KV(field_type, field.GetMeta().GetNormal().GetType().GetData().GetTag()),
                     HE_KV(toml_type, GetNodeTypeString(value.type())),
                     HE_KV(bad_char, c),
                     HE_KV(char_offset, (s - begin)));
@@ -85,8 +85,8 @@ namespace he::schema
         {
             HE_LOG_ERROR(he_schema,
                 HE_MSG("Encountered invalid blob hex string, there is a trailing nibble. Skipping deserialization of field."),
-                HE_KV(field_name, field.Name().AsView()),
-                HE_KV(field_type, field.Meta().Normal().Type().Data().Tag()),
+                HE_KV(field_name, field.GetName().AsView()),
+                HE_KV(field_type, field.GetMeta().GetNormal().GetType().GetData().GetTag()),
                 HE_KV(toml_type, GetNodeTypeString(value.type())));
             return false;
         }
@@ -159,7 +159,7 @@ namespace he::schema
         bool SetStruct(const toml::table& table)
         {
             const Declaration::Reader decl = m_stack.Back().decl;
-            const Declaration::Data::Struct::Reader st = decl.Data().Struct();
+            const Declaration::Data::Struct::Reader st = decl.GetData().GetStruct();
 
             for (auto&& [key, value] : table)
             {
@@ -175,8 +175,8 @@ namespace he::schema
                     HE_LOG_WARN(he_schema,
                         HE_MSG("Encountered unknown field name. Skipping deserialization of field."),
                         HE_KV(field_name, key.str()),
-                        HE_KV(decl_name, decl.Name()),
-                        HE_KV(decl_id, decl.Id()));
+                        HE_KV(decl_name, decl.GetName()),
+                        HE_KV(decl_id, decl.GetId()));
                 }
             }
 
@@ -185,7 +185,7 @@ namespace he::schema
 
         void SetField(Field::Reader field, const toml::node& value)
         {
-            switch (field.Meta().Tag())
+            switch (field.GetMeta().GetTag())
             {
                 case Field::Meta::Tag::Normal: SetNormalField(field, value); break;
                 case Field::Meta::Tag::Group: SetGroupField(field, value); break;
@@ -202,14 +202,14 @@ namespace he::schema
         void SetGroupField(Field::Reader field, const toml::node& value)
         {
             const Declaration::Reader decl = m_stack.Back().decl;
-            const Field::Meta::Group::Reader groupField = field.Meta().Group();
+            const Field::Meta::Group::Reader groupField = field.GetMeta().GetGroup();
 
             Declaration::Reader groupChild;
-            for (Declaration::Reader child : decl.Children())
+            for (Declaration::Reader child : decl.GetChildren())
             {
-                if (child.Id() == groupField.TypeId())
+                if (child.GetId() == groupField.GetTypeId())
                 {
-                    if (!HE_VERIFY(child.Data().IsStruct() && child.Data().Struct().IsGroup()))
+                    if (!HE_VERIFY(child.GetData().IsStruct() && child.GetData().GetStruct().GetIsGroup()))
                         return;
 
                     groupChild = child;
@@ -218,13 +218,13 @@ namespace he::schema
             }
 
             if (!HE_VERIFY(groupChild.IsValid(),
-                HE_KV(field_name, field.Name().AsView()),
-                HE_KV(group_id, groupField.TypeId())))
+                HE_KV(field_name, field.GetName().AsView()),
+                HE_KV(group_id, groupField.GetTypeId())))
             {
                 return;
             }
 
-            PushGroup(groupChild.Id(), m_stack.Back().builder);
+            PushGroup(groupChild.GetId(), m_stack.Back().builder);
             SetStruct(*value.as_table());
             PopGroup();
         }
@@ -232,14 +232,14 @@ namespace he::schema
         void SetUnionField(Field::Reader field, const toml::node& value)
         {
             const Declaration::Reader decl = m_stack.Back().decl;
-            const Field::Meta::Union::Reader unionField = field.Meta().Union();
+            const Field::Meta::Union::Reader unionField = field.GetMeta().GetUnion();
 
             Declaration::Reader unionChild;
-            for (Declaration::Reader child : decl.Children())
+            for (Declaration::Reader child : decl.GetChildren())
             {
-                if (child.Id() == unionField.TypeId())
+                if (child.GetId() == unionField.GetTypeId())
                 {
-                    if (!HE_VERIFY(child.Data().IsStruct() && child.Data().Struct().IsUnion()))
+                    if (!HE_VERIFY(child.GetData().IsStruct() && child.GetData().GetStruct().GetIsUnion()))
                         return;
 
                     unionChild = child;
@@ -248,14 +248,14 @@ namespace he::schema
             }
 
             if (!HE_VERIFY(unionChild.IsValid(),
-                HE_KV(field_name, field.Name().AsView()),
-                HE_KV(group_id, unionField.TypeId())))
+                HE_KV(field_name, field.GetName().AsView()),
+                HE_KV(group_id, unionField.GetTypeId())))
             {
                 return;
             }
 
             Field::Reader activeField;
-            Declaration::Data::Struct::Reader unionStruct = unionChild.Data().Struct();
+            Declaration::Data::Struct::Reader unionStruct = unionChild.GetData().GetStruct();
 
             const toml::table* data = value.as_table();
 
@@ -268,9 +268,9 @@ namespace he::schema
             {
                 const uint16_t tag = static_cast<uint16_t>(tagNode->as_integer()->get());
 
-                for (Field::Reader f : unionStruct.Fields())
+                for (Field::Reader f : unionStruct.GetFields())
                 {
-                    if (f.UnionTag() == tag)
+                    if (f.GetUnionTag() == tag)
                     {
                         activeField = f;
                         break;
@@ -281,14 +281,14 @@ namespace he::schema
             {
                 HE_LOG_WARN(he_schema,
                     HE_MSG("Encountered TOML table without the _he_union_tag key. Guessing active field based on the first name encountered."),
-                    HE_KV(union_field_name, field.Name().AsView()),
-                    HE_KV(union_type_id, unionChild.Id()));
+                    HE_KV(union_field_name, field.GetName().AsView()),
+                    HE_KV(union_type_id, unionChild.GetId()));
 
                 const toml::key& firstFieldName = data->begin()->first;
 
-                for (Field::Reader f : unionStruct.Fields())
+                for (Field::Reader f : unionStruct.GetFields())
                 {
-                    if (f.Name().AsView() == firstFieldName.str())
+                    if (f.GetName().AsView() == firstFieldName.str())
                     {
                         activeField = f;
                         break;
@@ -300,20 +300,20 @@ namespace he::schema
             {
                 HE_LOG_ERROR(he_schema,
                     HE_MSG("Unable to determine active field of union from TOML data. Skipping deserialization of field."),
-                    HE_KV(field_name, field.Name().AsView()),
-                    HE_KV(union_type_id, unionChild.Id()),
+                    HE_KV(field_name, field.GetName().AsView()),
+                    HE_KV(union_type_id, unionChild.GetId()),
                     HE_KV(toml_table_size, data->size()));
                 return;
             }
 
             StructBuilder builder = m_stack.Back().builder;
-            PushGroup(unionChild.Id(), builder);
+            PushGroup(unionChild.GetId(), builder);
 
-            builder.SetDataField(unionStruct.UnionTagOffset(), activeField.UnionTag());
+            builder.SetDataField(unionStruct.GetUnionTagOffset(), activeField.GetUnionTag());
 
-            if (!activeField.Meta().IsNormal() || !activeField.Meta().Normal().Type().Data().IsVoid())
+            if (!activeField.GetMeta().IsNormal() || !activeField.GetMeta().GetNormal().GetType().GetData().IsVoid())
             {
-                const StringView activeFieldName = activeField.Name().AsView();
+                const StringView activeFieldName = activeField.GetName().AsView();
                 const toml::node* fieldValue = data->get({ activeFieldName.begin(), activeFieldName.end() });
 
                 if (fieldValue)
@@ -325,8 +325,8 @@ namespace he::schema
                     HE_LOG_ERROR(he_schema,
                         HE_MSG("Active union field name not found in TOML data. Skipping deserialization of field."),
                         HE_KV(active_field_name, activeFieldName),
-                        HE_KV(union_field_name, field.Name().AsView()),
-                        HE_KV(union_type_id, unionChild.Id()),
+                        HE_KV(union_field_name, field.GetName().AsView()),
+                        HE_KV(union_type_id, unionChild.GetId()),
                         HE_KV(toml_table_size, data->size()));
                 }
             }
@@ -350,23 +350,23 @@ namespace he::schema
 
         void SetValue(StructBuilder builder, const Field::Reader field, const toml::node& value)
         {
-            const Field::Meta::Normal::Reader norm = field.Meta().Normal();
-            const Type::Reader type = norm.Type();
-            const Type::Data::Reader typeData = type.Data();
-            const Type::Data::Tag typeDataTag = typeData.Tag();
+            const Field::Meta::Normal::Reader norm = field.GetMeta().GetNormal();
+            const Type::Reader type = norm.GetType();
+            const Type::Data::Reader typeData = type.GetData();
+            const Type::Data::Tag typeDataTag = typeData.GetTag();
 
             if (!CheckTypeMatch(typeDataTag, value))
             {
                 HE_LOG_ERROR(he_schema,
                     HE_MSG("Mismatch between toml data and field type. Skipping deserialization of field."),
-                    HE_KV(field_name, field.Name().AsView()),
+                    HE_KV(field_name, field.GetName().AsView()),
                     HE_KV(field_type, typeDataTag),
                     HE_KV(toml_type, GetNodeTypeString(value.type())));
                 return;
             }
 
-            const uint32_t dataOffset = norm.DataOffset();
-            const uint16_t index = norm.Index();
+            const uint32_t dataOffset = norm.GetDataOffset();
+            const uint16_t index = norm.GetIndex();
 
             switch (typeDataTag)
             {
@@ -413,16 +413,16 @@ namespace he::schema
                 case Type::Data::Tag::Enum:
                 {
                     const StringView enumName = value.as_string()->get();
-                    const Type::Data::Enum::Reader enumType = typeData.Enum();
+                    const Type::Data::Enum::Reader enumType = typeData.GetEnum();
 
-                    PushGroup(enumType.Id());
-                    Declaration::Data::Enum::Reader enumDecl = m_stack.Back().decl.Data().Enum();
+                    PushGroup(enumType.GetId());
+                    Declaration::Data::Enum::Reader enumDecl = m_stack.Back().decl.GetData().GetEnum();
 
-                    for (Enumerator::Reader e : enumDecl.Enumerators())
+                    for (Enumerator::Reader e : enumDecl.GetEnumerators())
                     {
-                        if (e.Name() == enumName)
+                        if (e.GetName() == enumName)
                         {
-                            builder.SetAndMarkDataField(index, dataOffset, e.Ordinal());
+                            builder.SetAndMarkDataField(index, dataOffset, e.GetOrdinal());
                             break;
                         }
                     }
@@ -433,9 +433,9 @@ namespace he::schema
                     {
                         HE_LOG_ERROR(he_schema,
                             HE_MSG("Cannot find enum value for field. No such enumerator exists by that name."),
-                            HE_KV(parent_id, m_stack.Back().decl.Id()),
-                            HE_KV(parent_name, m_stack.Back().decl.Name().AsView()),
-                            HE_KV(field_name, field.Name().AsView()),
+                            HE_KV(parent_id, m_stack.Back().decl.GetId()),
+                            HE_KV(parent_name, m_stack.Back().decl.GetName().AsView()),
+                            HE_KV(field_name, field.GetName().AsView()),
                             HE_KV(enum_name, enumName),
                             HE_KV(index, index),
                             HE_KV(data_offset, dataOffset));
@@ -446,9 +446,9 @@ namespace he::schema
                 }
                 case Type::Data::Tag::Struct:
                 {
-                    const Type::Data::Struct::Reader structType = typeData.Struct();
+                    const Type::Data::Struct::Reader structType = typeData.GetStruct();
 
-                    PushGroup(structType.Id());
+                    PushGroup(structType.GetId());
                     SetStruct(*value.as_table());
                     builder.GetPointerField(index).Set(m_stack.Back().builder);
                     PopGroup();
@@ -459,10 +459,10 @@ namespace he::schema
                 {
                     HE_LOG_ERROR(he_schema,
                         HE_MSG("Skipping Interface field when parsing from TOML."),
-                        HE_KV(parent_id, m_stack.Back().decl.Id()),
-                        HE_KV(parent_name, m_stack.Back().decl.Name().AsView()),
-                        HE_KV(interface_type_id, typeData.Interface().Id()),
-                        HE_KV(field_name, field.Name().AsView()),
+                        HE_KV(parent_id, m_stack.Back().decl.GetId()),
+                        HE_KV(parent_name, m_stack.Back().decl.GetName().AsView()),
+                        HE_KV(interface_type_id, typeData.GetInterface().GetId()),
+                        HE_KV(field_name, field.GetName().AsView()),
                         HE_KV(index, index),
                         HE_KV(data_offset, dataOffset));
                     break;
@@ -471,9 +471,9 @@ namespace he::schema
                 {
                     HE_LOG_ERROR(he_schema,
                         HE_MSG("Skipping AnyPointer field when parsing from TOML."),
-                        HE_KV(parent_id, m_stack.Back().decl.Id()),
-                        HE_KV(parent_name, m_stack.Back().decl.Name().AsView()),
-                        HE_KV(field_name, field.Name().AsView()),
+                        HE_KV(parent_id, m_stack.Back().decl.GetId()),
+                        HE_KV(parent_name, m_stack.Back().decl.GetName().AsView()),
+                        HE_KV(field_name, field.GetName().AsView()),
                         HE_KV(index, index),
                         HE_KV(data_offset, dataOffset));
                     break;
@@ -484,18 +484,18 @@ namespace he::schema
         // TODO: Combine the 3 set value functions using the template technique I used in the TomlWriter.
         void SetArrayValue(StructBuilder builder, const Field::Reader field, const toml::node& value)
         {
-            const Field::Meta::Normal::Reader norm = field.Meta().Normal();
-            const Type::Reader type = norm.Type();
-            const Type::Data::Reader typeData = type.Data();
-            const Type::Data::Tag typeDataTag = typeData.Tag();
+            const Field::Meta::Normal::Reader norm = field.GetMeta().GetNormal();
+            const Type::Reader type = norm.GetType();
+            const Type::Data::Reader typeData = type.GetData();
+            const Type::Data::Tag typeDataTag = typeData.GetTag();
 
-            const uint32_t dataOffset = norm.DataOffset();
-            const uint16_t index = norm.Index();
+            const uint32_t dataOffset = norm.GetDataOffset();
+            const uint16_t index = norm.GetIndex();
 
-            const Type::Data::Array::Reader arrayType = type.Data().Array();
-            const Type::Reader elementType = arrayType.ElementType();
-            const Type::Data::Tag elementTypeDataTag = elementType.Data().Tag();
-            const uint16_t size = arrayType.Size();
+            const Type::Data::Array::Reader arrayType = type.GetData().GetArray();
+            const Type::Reader elementType = arrayType.GetElementType();
+            const Type::Data::Tag elementTypeDataTag = elementType.GetData().GetTag();
+            const uint16_t size = arrayType.GetSize();
             const toml::array* arr = value.as_array();
             const toml::node* first = arr->get(0);
 
@@ -508,7 +508,7 @@ namespace he::schema
             {
                 HE_LOG_ERROR(he_schema,
                     HE_MSG("Toml array elements are not homogeneous, he_schema does not support mixed-type arrays. Skipping deserialization of field."),
-                    HE_KV(field_name, field.Name().AsView()),
+                    HE_KV(field_name, field.GetName().AsView()),
                     HE_KV(field_type, typeDataTag),
                     HE_KV(field_element_type, elementTypeDataTag),
                     HE_KV(toml_type, GetNodeTypeString(value.type())));
@@ -520,7 +520,7 @@ namespace he::schema
             {
                 HE_LOG_ERROR(he_schema,
                     HE_MSG("Mismatch between toml array element type and array field element type. Skipping deserialization of field."),
-                    HE_KV(field_name, field.Name()),
+                    HE_KV(field_name, field.GetName()),
                     HE_KV(field_type, typeDataTag),
                     HE_KV(field_element_type, elementTypeDataTag),
                     HE_KV(toml_type, GetNodeTypeString(value.type())),
@@ -534,7 +534,7 @@ namespace he::schema
             {
                 HE_LOG_WARN(he_schema,
                     HE_MSG("Toml array contains more elements than the array size. Trailing elements will be skipped."),
-                    HE_KV(field_name, field.Name().AsView()),
+                    HE_KV(field_name, field.GetName().AsView()),
                     HE_KV(field_type, typeDataTag),
                     HE_KV(field_element_type, elementTypeDataTag),
                     HE_KV(field_array_size, size),
@@ -583,10 +583,10 @@ namespace he::schema
                     {
                         HE_LOG_ERROR(he_schema,
                             HE_MSG("Skipping array field when parsing TOML. Arrays of arrays are not supported."),
-                            HE_KV(parent_id, m_stack.Back().decl.Id()),
-                            HE_KV(parent_name, m_stack.Back().decl.Name().AsView()),
-                            HE_KV(interface_type_id, elementType.Data().Interface().Id()),
-                            HE_KV(field_name, field.Name().AsView()),
+                            HE_KV(parent_id, m_stack.Back().decl.GetId()),
+                            HE_KV(parent_name, m_stack.Back().decl.GetName().AsView()),
+                            HE_KV(interface_type_id, elementType.GetData().GetInterface().GetId()),
+                            HE_KV(field_name, field.GetName().AsView()),
                             HE_KV(index, index),
                             HE_KV(data_offset, dataOffset));
                         break;
@@ -599,16 +599,16 @@ namespace he::schema
                     case Type::Data::Tag::Enum:
                     {
                         const StringView enumName = elmValue.as_string()->get();
-                        const Type::Data::Enum::Reader enumType = elementType.Data().Enum();
-                        PushGroup(enumType.Id());
-                        Declaration::Data::Enum::Reader enumDecl = m_stack.Back().decl.Data().Enum();
+                        const Type::Data::Enum::Reader enumType = elementType.GetData().GetEnum();
+                        PushGroup(enumType.GetId());
+                        Declaration::Data::Enum::Reader enumDecl = m_stack.Back().decl.GetData().GetEnum();
 
-                        for (Enumerator::Reader e : enumDecl.Enumerators())
+                        for (Enumerator::Reader e : enumDecl.GetEnumerators())
                         {
-                            if (e.Name() == enumName)
+                            if (e.GetName() == enumName)
                             {
                                 Span<uint16_t> values = builder.GetAndMarkDataArrayField<uint16_t>(index, dataOffset, size);
-                                values[i] = e.Ordinal();
+                                values[i] = e.GetOrdinal();
                                 break;
                             }
                         }
@@ -619,9 +619,9 @@ namespace he::schema
                         {
                             HE_LOG_ERROR(he_schema,
                                 HE_MSG("Cannot find enum value for field. No such enumerator exists by that name."),
-                                HE_KV(parent_id, m_stack.Back().decl.Id()),
-                                HE_KV(parent_name, m_stack.Back().decl.Name().AsView()),
-                                HE_KV(field_name, field.Name().AsView()),
+                                HE_KV(parent_id, m_stack.Back().decl.GetId()),
+                                HE_KV(parent_name, m_stack.Back().decl.GetName().AsView()),
+                                HE_KV(field_name, field.GetName().AsView()),
                                 HE_KV(enum_name, enumName),
                                 HE_KV(index, index),
                                 HE_KV(data_offset, dataOffset));
@@ -632,9 +632,9 @@ namespace he::schema
                     }
                     case Type::Data::Tag::Struct:
                     {
-                        const Type::Data::Struct::Reader structType = elementType.Data().Struct();
+                        const Type::Data::Struct::Reader structType = elementType.GetData().GetStruct();
 
-                        PushGroup(structType.Id());
+                        PushGroup(structType.GetId());
                         SetStruct(*elmValue.as_table());
                         builder.GetPointerArrayField(index, size).SetPointerElement(i, m_stack.Back().builder);
                         PopGroup();
@@ -645,10 +645,10 @@ namespace he::schema
                     {
                         HE_LOG_ERROR(he_schema,
                             HE_MSG("Skipping Interface field when serializing."),
-                            HE_KV(parent_id, m_stack.Back().decl.Id()),
-                            HE_KV(parent_name, m_stack.Back().decl.Name().AsView()),
-                            HE_KV(interface_type_id, elementType.Data().Interface().Id()),
-                            HE_KV(field_name, field.Name().AsView()),
+                            HE_KV(parent_id, m_stack.Back().decl.GetId()),
+                            HE_KV(parent_name, m_stack.Back().decl.GetName().AsView()),
+                            HE_KV(interface_type_id, elementType.GetData().GetInterface().GetId()),
+                            HE_KV(field_name, field.GetName().AsView()),
                             HE_KV(index, index),
                             HE_KV(data_offset, dataOffset));
                         break;
@@ -657,9 +657,9 @@ namespace he::schema
                     {
                         HE_LOG_ERROR(he_schema,
                             HE_MSG("Skipping AnyPointer type when serializing to TOML."),
-                            HE_KV(parent_id, m_stack.Back().decl.Id()),
-                            HE_KV(parent_name, m_stack.Back().decl.Name().AsView()),
-                            HE_KV(field_name, field.Name().AsView()),
+                            HE_KV(parent_id, m_stack.Back().decl.GetId()),
+                            HE_KV(parent_name, m_stack.Back().decl.GetName().AsView()),
+                            HE_KV(field_name, field.GetName().AsView()),
                             HE_KV(index, index),
                             HE_KV(data_offset, dataOffset));
                         break;
@@ -672,17 +672,17 @@ namespace he::schema
 
         void SetListValue(StructBuilder builder, const Field::Reader field, const toml::node& value)
         {
-            const Field::Meta::Normal::Reader norm = field.Meta().Normal();
-            const Type::Reader type = norm.Type();
-            const Type::Data::Reader typeData = type.Data();
-            const Type::Data::Tag typeDataTag = typeData.Tag();
+            const Field::Meta::Normal::Reader norm = field.GetMeta().GetNormal();
+            const Type::Reader type = norm.GetType();
+            const Type::Data::Reader typeData = type.GetData();
+            const Type::Data::Tag typeDataTag = typeData.GetTag();
 
-            const uint32_t dataOffset = norm.DataOffset();
-            const uint16_t index = norm.Index();
+            const uint32_t dataOffset = norm.GetDataOffset();
+            const uint16_t index = norm.GetIndex();
 
-            const Type::Data::List::Reader listType = type.Data().List();
-            const Type::Reader elementType = listType.ElementType();
-            const Type::Data::Tag elementTypeDataTag = elementType.Data().Tag();
+            const Type::Data::List::Reader listType = type.GetData().GetList();
+            const Type::Reader elementType = listType.GetElementType();
+            const Type::Data::Tag elementTypeDataTag = elementType.GetData().GetTag();
             const toml::array* arr = value.as_array();
             const size_t arrSize = arr->size();
             const toml::node* first = arr->get(0);
@@ -696,7 +696,7 @@ namespace he::schema
             {
                 HE_LOG_ERROR(he_schema,
                     HE_MSG("Toml array elements are not homogeneous, he_schema does not support mixed-type arrays. Skipping deserialization of field."),
-                    HE_KV(field_name, field.Name().AsView()),
+                    HE_KV(field_name, field.GetName().AsView()),
                     HE_KV(field_type, typeDataTag),
                     HE_KV(field_element_type, elementTypeDataTag),
                     HE_KV(toml_type, GetNodeTypeString(value.type())));
@@ -708,7 +708,7 @@ namespace he::schema
             {
                 HE_LOG_ERROR(he_schema,
                     HE_MSG("Mismatch between toml array element type and array field element type. Skipping deserialization of field."),
-                    HE_KV(field_name, field.Name()),
+                    HE_KV(field_name, field.GetName()),
                     HE_KV(field_type, typeDataTag),
                     HE_KV(field_element_type, elementTypeDataTag),
                     HE_KV(toml_type, GetNodeTypeString(value.type())),
@@ -720,7 +720,7 @@ namespace he::schema
             {
                 HE_LOG_ERROR(he_schema,
                     HE_MSG("Toml array length is too long to fit into a list. Skipping deserialization of field."),
-                    HE_KV(field_name, field.Name()),
+                    HE_KV(field_name, field.GetName()),
                     HE_KV(field_type, typeDataTag),
                     HE_KV(field_element_type, elementTypeDataTag),
                     HE_KV(toml_type, GetNodeTypeString(value.type())),
@@ -733,10 +733,10 @@ namespace he::schema
 
             ListBuilder list;
 
-            if (elementType.Data().IsStruct())
+            if (elementType.GetData().IsStruct())
             {
-                const Type::Data::Struct::Reader structType = elementType.Data().Struct();
-                PushGroup(structType.Id());
+                const Type::Data::Struct::Reader structType = elementType.GetData().GetStruct();
+                PushGroup(structType.GetId());
                 const DeclInfo* info = m_stack.Back().info;
                 list = m_dst.AddStructList(size, info->dataFieldCount, info->dataWordSize, info->pointerCount);
                 PopGroup();
@@ -787,10 +787,10 @@ namespace he::schema
                     {
                         HE_LOG_ERROR(he_schema,
                             HE_MSG("Skipping array field when parsing TOML. Lists of arrays are not supported."),
-                            HE_KV(parent_id, m_stack.Back().decl.Id()),
-                            HE_KV(parent_name, m_stack.Back().decl.Name().AsView()),
-                            HE_KV(interface_type_id, elementType.Data().Interface().Id()),
-                            HE_KV(field_name, field.Name().AsView()),
+                            HE_KV(parent_id, m_stack.Back().decl.GetId()),
+                            HE_KV(parent_name, m_stack.Back().decl.GetName().AsView()),
+                            HE_KV(interface_type_id, elementType.GetData().GetInterface().GetId()),
+                            HE_KV(field_name, field.GetName().AsView()),
                             HE_KV(index, index),
                             HE_KV(data_offset, dataOffset));
                         break;
@@ -799,10 +799,9 @@ namespace he::schema
                     {
                         HE_LOG_ERROR(he_schema,
                             HE_MSG("Skipping list field when parsing TOML. Lists of lists are not supported, yet."),
-                            HE_KV(parent_id, m_stack.Back().decl.Id()),
-                            HE_KV(parent_name, m_stack.Back().decl.Name().AsView()),
-                            HE_KV(interface_type_id, elementType.Data().Interface().Id()),
-                            HE_KV(field_name, field.Name().AsView()),
+                            HE_KV(parent_id, m_stack.Back().decl.GetId()),
+                            HE_KV(parent_name, m_stack.Back().decl.GetName().AsView()),
+                            HE_KV(field_name, field.GetName().AsView()),
                             HE_KV(index, index),
                             HE_KV(data_offset, dataOffset));
                         break;
@@ -810,17 +809,17 @@ namespace he::schema
                     case Type::Data::Tag::Enum:
                     {
                         const StringView enumName = elmValue.as_string()->get();
-                        const Type::Data::Enum::Reader enumType = elementType.Data().Enum();
-                        PushGroup(enumType.Id());
-                        Declaration::Data::Enum::Reader enumDecl = m_stack.Back().decl.Data().Enum();
+                        const Type::Data::Enum::Reader enumType = elementType.GetData().GetEnum();
+                        PushGroup(enumType.GetId());
+                        Declaration::Data::Enum::Reader enumDecl = m_stack.Back().decl.GetData().GetEnum();
 
                         bool found = false;
-                        for (Enumerator::Reader e : enumDecl.Enumerators())
+                        for (Enumerator::Reader e : enumDecl.GetEnumerators())
                         {
-                            if (e.Name() == enumName)
+                            if (e.GetName() == enumName)
                             {
                                 found = true;
-                                list.SetDataElement(i, e.Ordinal());
+                                list.SetDataElement(i, e.GetOrdinal());
                                 break;
                             }
                         }
@@ -831,9 +830,9 @@ namespace he::schema
                         {
                             HE_LOG_ERROR(he_schema,
                                 HE_MSG("Cannot find enum value for field. No such enumerator exists by that name."),
-                                HE_KV(parent_id, m_stack.Back().decl.Id()),
-                                HE_KV(parent_name, m_stack.Back().decl.Name().AsView()),
-                                HE_KV(field_name, field.Name().AsView()),
+                                HE_KV(parent_id, m_stack.Back().decl.GetId()),
+                                HE_KV(parent_name, m_stack.Back().decl.GetName().AsView()),
+                                HE_KV(field_name, field.GetName().AsView()),
                                 HE_KV(enum_name, enumName),
                                 HE_KV(index, index),
                                 HE_KV(data_offset, dataOffset));
@@ -844,10 +843,10 @@ namespace he::schema
                     }
                     case Type::Data::Tag::Struct:
                     {
-                        const Type::Data::Struct::Reader structType = elementType.Data().Struct();
+                        const Type::Data::Struct::Reader structType = elementType.GetData().GetStruct();
 
                         StructBuilder elementBuilder = list.GetCompositeElement(i);
-                        PushGroup(structType.Id(), elementBuilder);
+                        PushGroup(structType.GetId(), elementBuilder);
                         SetStruct(*elmValue.as_table());
                         PopGroup();
 
@@ -857,10 +856,10 @@ namespace he::schema
                     {
                         HE_LOG_ERROR(he_schema,
                             HE_MSG("Skipping Interface field when serializing."),
-                            HE_KV(parent_id, m_stack.Back().decl.Id()),
-                            HE_KV(parent_name, m_stack.Back().decl.Name().AsView()),
-                            HE_KV(interface_type_id, elementType.Data().Interface().Id()),
-                            HE_KV(field_name, field.Name().AsView()),
+                            HE_KV(parent_id, m_stack.Back().decl.GetId()),
+                            HE_KV(parent_name, m_stack.Back().decl.GetName().AsView()),
+                            HE_KV(interface_type_id, elementType.GetData().GetInterface().GetId()),
+                            HE_KV(field_name, field.GetName().AsView()),
                             HE_KV(index, index),
                             HE_KV(data_offset, dataOffset));
                         break;
@@ -869,9 +868,9 @@ namespace he::schema
                     {
                         HE_LOG_ERROR(he_schema,
                             HE_MSG("Skipping AnyPointer type when serializing to TOML."),
-                            HE_KV(parent_id, m_stack.Back().decl.Id()),
-                            HE_KV(parent_name, m_stack.Back().decl.Name().AsView()),
-                            HE_KV(field_name, field.Name().AsView()),
+                            HE_KV(parent_id, m_stack.Back().decl.GetId()),
+                            HE_KV(parent_name, m_stack.Back().decl.GetName().AsView()),
+                            HE_KV(field_name, field.GetName().AsView()),
                             HE_KV(index, index),
                             HE_KV(data_offset, dataOffset));
                         break;
@@ -890,8 +889,8 @@ namespace he::schema
             {
                 HE_LOG_ERROR(he_schema,
                     HE_MSG("Failed to find dependent type, unable to properly deserialize data."),
-                    HE_KV(parent_id, m_stack.Back().decl.Id()),
-                    HE_KV(parent_name, m_stack.Back().decl.Name().AsView()),
+                    HE_KV(parent_id, m_stack.Back().decl.GetId()),
+                    HE_KV(parent_name, m_stack.Back().decl.GetName().AsView()),
                     HE_KV(id, id));
             }
             PushGroup(info);
@@ -905,8 +904,8 @@ namespace he::schema
             {
                 HE_LOG_ERROR(he_schema,
                     HE_MSG("Failed to find dependent type, unable to properly deserialize data."),
-                    HE_KV(parent_id, m_stack.Back().decl.Id()),
-                    HE_KV(parent_name, m_stack.Back().decl.Name().AsView()),
+                    HE_KV(parent_id, m_stack.Back().decl.GetId()),
+                    HE_KV(parent_name, m_stack.Back().decl.GetName().AsView()),
                     HE_KV(id, id));
             }
 
@@ -966,17 +965,17 @@ namespace he::schema
         void WriteStruct(StructReader data)
         {
             const Declaration::Reader decl = m_stack.Back().decl;
-            const Declaration::Data::Struct::Reader structDecl = decl.Data().Struct();
+            const Declaration::Data::Struct::Reader structDecl = decl.GetData().GetStruct();
 
             // Write the basic fields first
-            for (Field::Reader field : structDecl.Fields())
+            for (Field::Reader field : structDecl.GetFields())
             {
-                const Field::Meta::Tag tag = field.Meta().Tag();
+                const Field::Meta::Tag tag = field.GetMeta().GetTag();
 
                 if (tag == Field::Meta::Tag::Normal)
                 {
-                    const Field::Meta::Normal::Reader norm = field.Meta().Normal();
-                    if (!norm.Type().Data().IsStruct())
+                    const Field::Meta::Normal::Reader norm = field.GetMeta().GetNormal();
+                    if (!norm.GetType().GetData().IsStruct())
                     {
                         WriteField(data, field);
                     }
@@ -984,14 +983,14 @@ namespace he::schema
             }
 
             // Then write structure fields
-            for (Field::Reader field : structDecl.Fields())
+            for (Field::Reader field : structDecl.GetFields())
             {
-                const Field::Meta::Tag tag = field.Meta().Tag();
+                const Field::Meta::Tag tag = field.GetMeta().GetTag();
 
                 if (tag == Field::Meta::Tag::Normal)
                 {
-                    const Field::Meta::Normal::Reader norm = field.Meta().Normal();
-                    if (norm.Type().Data().IsStruct())
+                    const Field::Meta::Normal::Reader norm = field.GetMeta().GetNormal();
+                    if (norm.GetType().GetData().IsStruct())
                     {
                         WriteField(data, field);
                     }
@@ -1005,7 +1004,7 @@ namespace he::schema
 
         void WriteField(StructReader data, Field::Reader field)
         {
-            switch (field.Meta().Tag())
+            switch (field.GetMeta().GetTag())
             {
                 case Field::Meta::Tag::Normal: WriteNormalField(data, field); break;
                 case Field::Meta::Tag::Group: WriteGroupField(data, field); break;
@@ -1015,25 +1014,25 @@ namespace he::schema
 
         void WriteNormalField(StructReader data, Field::Reader field)
         {
-            const Field::Meta::Normal::Reader norm = field.Meta().Normal();
-            const Type::Reader fieldType = norm.Type();
+            const Field::Meta::Normal::Reader norm = field.GetMeta().GetNormal();
+            const Type::Reader fieldType = norm.GetType();
 
-            if (fieldType.Data().IsVoid())
+            if (fieldType.GetData().IsVoid())
                 return;
 
             if (IsPointer(fieldType))
             {
-                if (!data.HasPointerField(norm.Index()))
+                if (!data.HasPointerField(norm.GetIndex()))
                     return;
             }
             else
             {
-                if (!data.HasDataField(norm.Index()))
+                if (!data.HasDataField(norm.GetIndex()))
                     return;
             }
 
-            const bool asHex = FindAttribute(field.Attributes(), Toml::Hex::Id).IsValid();
-            WriteValue(data, field.Name(), fieldType, norm.Index(), norm.DataOffset(), asHex);
+            const bool asHex = FindAttribute(field.GetAttributes(), Toml::Hex::Id).IsValid();
+            WriteValue(data, field.GetName(), fieldType, norm.GetIndex(), norm.GetDataOffset(), asHex);
 
             if (m_arrayStack <= 1)
                 m_writer.Write('\n');
@@ -1042,14 +1041,14 @@ namespace he::schema
         void WriteGroupField(StructReader data, Field::Reader field)
         {
             const Declaration::Reader decl = m_stack.Back().decl;
-            const Field::Meta::Group::Reader groupField = field.Meta().Group();
+            const Field::Meta::Group::Reader groupField = field.GetMeta().GetGroup();
 
             Declaration::Reader groupChild;
-            for (Declaration::Reader child : decl.Children())
+            for (Declaration::Reader child : decl.GetChildren())
             {
-                if (child.Id() == groupField.TypeId())
+                if (child.GetId() == groupField.GetTypeId())
                 {
-                    if (!HE_VERIFY(child.Data().IsStruct() && child.Data().Struct().IsGroup()))
+                    if (!HE_VERIFY(child.GetData().IsStruct() && child.GetData().GetStruct().GetIsGroup()))
                         return;
 
                     groupChild = child;
@@ -1060,7 +1059,7 @@ namespace he::schema
             if (!HE_VERIFY(groupChild.IsValid()))
                 return;
 
-            PushGroup(groupChild.Id(), field.Name());
+            PushGroup(groupChild.GetId(), field.GetName());
             m_writer.WriteLine("[{}]", m_pathName);
             m_writer.IncreaseIndent();
             WriteStruct(data);
@@ -1071,14 +1070,14 @@ namespace he::schema
         void WriteUnionField(StructReader data, Field::Reader field)
         {
             const Declaration::Reader decl = m_stack.Back().decl;
-            const Field::Meta::Union::Reader unionField = field.Meta().Union();
+            const Field::Meta::Union::Reader unionField = field.GetMeta().GetUnion();
 
             Declaration::Reader unionChild;
-            for (Declaration::Reader child : decl.Children())
+            for (Declaration::Reader child : decl.GetChildren())
             {
-                if (child.Id() == unionField.TypeId())
+                if (child.GetId() == unionField.GetTypeId())
                 {
-                    if (!HE_VERIFY(child.Data().IsStruct() && child.Data().Struct().IsUnion()))
+                    if (!HE_VERIFY(child.GetData().IsStruct() && child.GetData().GetStruct().GetIsUnion()))
                         return;
 
                     unionChild = child;
@@ -1089,14 +1088,14 @@ namespace he::schema
             if (!HE_VERIFY(unionChild.IsValid()))
                 return;
 
-            Declaration::Data::Struct::Reader unionStruct = unionChild.Data().Struct();
+            Declaration::Data::Struct::Reader unionStruct = unionChild.GetData().GetStruct();
 
-            const uint16_t tag = data.GetDataField<uint16_t>(unionStruct.UnionTagOffset());
+            const uint16_t tag = data.GetDataField<uint16_t>(unionStruct.GetUnionTagOffset());
 
             Field::Reader activeField;
-            for (Field::Reader f : unionStruct.Fields())
+            for (Field::Reader f : unionStruct.GetFields())
             {
-                if (f.UnionTag() == tag)
+                if (f.GetUnionTag() == tag)
                 {
                     activeField = f;
                     break;
@@ -1106,10 +1105,10 @@ namespace he::schema
             if (!HE_VERIFY(activeField.IsValid()))
                 return;
 
-            PushGroup(unionChild.Id(), field.Name());
+            PushGroup(unionChild.GetId(), field.GetName());
             m_writer.WriteLine("[{}]", m_pathName);
             m_writer.IncreaseIndent();
-            m_writer.WriteLine("_he_union_tag = {} # {}", tag, activeField.Name().AsView());
+            m_writer.WriteLine("_he_union_tag = {} # {}", tag, activeField.GetName().AsView());
             WriteField(data, activeField);
             m_writer.DecreaseIndent();
             PopGroup();
@@ -1165,10 +1164,10 @@ namespace he::schema
         {
             using Helper = ValueHelper<ReaderType>;
 
-            const bool isArrayOfStructs = elementType.Data().IsStruct();
+            const bool isArrayOfStructs = elementType.GetData().IsStruct();
 
             if (isArrayOfStructs)
-                PushGroup(elementType.Data().Struct().Id(), name);
+                PushGroup(elementType.GetData().GetStruct().GetId(), name);
             else
                 m_writer.Write('[');
 
@@ -1203,8 +1202,8 @@ namespace he::schema
 
             const auto dataValueFmt = asHex ? "{:#x}" : "{}";
 
-            const Type::Data::Reader typeData = type.Data();
-            const Type::Data::Tag typeDataTag = typeData.Tag();
+            const Type::Data::Reader typeData = type.GetData();
+            const Type::Data::Tag typeDataTag = typeData.GetTag();
 
             if (!name.IsEmpty()
                 && typeDataTag != Type::Data::Tag::Array
@@ -1231,9 +1230,9 @@ namespace he::schema
                 case Type::Data::Tag::Float64: m_writer.Write(dataValueFmt, Helper::template GetData<double>(data, index, dataOffset)); break;
                 case Type::Data::Tag::Array:
                 {
-                    const Type::Data::Array::Reader arrayType = type.Data().Array();
-                    const Type::Reader elementType = arrayType.ElementType();
-                    const uint32_t size = arrayType.Size();
+                    const Type::Data::Array::Reader arrayType = type.GetData().GetArray();
+                    const Type::Reader elementType = arrayType.GetElementType();
+                    const uint32_t size = arrayType.GetSize();
                     WriteArrayValue(data, name, elementType, index, dataOffset, size, asHex);
                     break;
                 }
@@ -1252,8 +1251,8 @@ namespace he::schema
                 }
                 case Type::Data::Tag::List:
                 {
-                    const Type::Data::List::Reader listType = typeData.List();
-                    const Type::Reader elementType = listType.ElementType();
+                    const Type::Data::List::Reader listType = typeData.GetList();
+                    const Type::Reader elementType = listType.GetElementType();
                     const ElementSize elementSize = GetTypeElementSize(elementType);
                     const ListReader list = Helper::GetPointer(data, index).TryGetList(elementSize);
                     WriteArrayValue(list, name, elementType, 0, 0, list.Size(), asHex);
@@ -1261,18 +1260,18 @@ namespace he::schema
                 }
                 case Type::Data::Tag::Enum:
                 {
-                    const Type::Data::Enum::Reader enumType = typeData.Enum();
-                    PushGroup(enumType.Id(), "");
-                    Declaration::Data::Enum::Reader enumDecl = m_stack.Back().decl.Data().Enum();
+                    const Type::Data::Enum::Reader enumType = typeData.GetEnum();
+                    PushGroup(enumType.GetId(), "");
+                    Declaration::Data::Enum::Reader enumDecl = m_stack.Back().decl.GetData().GetEnum();
 
                     bool found = false;
                     const uint16_t enumValue = Helper::template GetData<uint16_t>(data, index, dataOffset);
-                    for (Enumerator::Reader e : enumDecl.Enumerators())
+                    for (Enumerator::Reader e : enumDecl.GetEnumerators())
                     {
-                        if (e.Ordinal() == enumValue)
+                        if (e.GetOrdinal() == enumValue)
                         {
                             found = true;
-                            m_writer.Write("\"{}\"", e.Name().AsView());
+                            m_writer.Write("\"{}\"", e.GetName().AsView());
                             break;
                         }
                     }
@@ -1282,8 +1281,8 @@ namespace he::schema
                     {
                         HE_LOG_ERROR(he_schema,
                             HE_MSG("Cannot find enum value for field. No enumerator exists in the schema with that value."),
-                            HE_KV(parent_id, m_stack.Back().decl.Id()),
-                            HE_KV(parent_name, m_stack.Back().decl.Name().AsView()),
+                            HE_KV(parent_id, m_stack.Back().decl.GetId()),
+                            HE_KV(parent_name, m_stack.Back().decl.GetName().AsView()),
                             HE_KV(enum_value, enumValue),
                             HE_KV(path, m_pathName),
                             HE_KV(name, name),
@@ -1296,11 +1295,11 @@ namespace he::schema
                 }
                 case Type::Data::Tag::Struct:
                 {
-                    const Type::Data::Struct::Reader structType = typeData.Struct();
+                    const Type::Data::Struct::Reader structType = typeData.GetStruct();
                     const StructReader value = Helper::GetComposite(data, index);
 
                     if (m_arrayStack <= 1)
-                        PushGroup(structType.Id(), name);
+                        PushGroup(structType.GetId(), name);
                     else
                         m_writer.Write("{ ");
 
@@ -1326,9 +1325,9 @@ namespace he::schema
                 {
                     HE_LOG_ERROR(he_schema,
                         HE_MSG("Skipping Interface type when serializing."),
-                        HE_KV(parent_id, m_stack.Back().decl.Id()),
-                        HE_KV(parent_name, m_stack.Back().decl.Name().AsView()),
-                        HE_KV(interface_type_id, typeData.Interface().Id()),
+                        HE_KV(parent_id, m_stack.Back().decl.GetId()),
+                        HE_KV(parent_name, m_stack.Back().decl.GetName().AsView()),
+                        HE_KV(interface_type_id, typeData.GetInterface().GetId()),
                         HE_KV(path, m_pathName),
                         HE_KV(name, name),
                         HE_KV(index, index),
@@ -1339,8 +1338,8 @@ namespace he::schema
                 {
                     HE_LOG_ERROR(he_schema,
                         HE_MSG("Skipping AnyPointer type when serializing to TOML."),
-                        HE_KV(parent_id, m_stack.Back().decl.Id()),
-                        HE_KV(parent_name, m_stack.Back().decl.Name().AsView()),
+                        HE_KV(parent_id, m_stack.Back().decl.GetId()),
+                        HE_KV(parent_name, m_stack.Back().decl.GetName().AsView()),
                         HE_KV(path, m_pathName),
                         HE_KV(name, name),
                         HE_KV(index, index),
@@ -1358,8 +1357,8 @@ namespace he::schema
             {
                 HE_LOG_ERROR(he_schema,
                     HE_MSG("Failed to find dependent type, unable to properly serialize data."),
-                    HE_KV(parent_id, m_stack.Back().decl.Id()),
-                    HE_KV(parent_name, m_stack.Back().decl.Name().AsView()),
+                    HE_KV(parent_id, m_stack.Back().decl.GetId()),
+                    HE_KV(parent_name, m_stack.Back().decl.GetName().AsView()),
                     HE_KV(path, m_pathName),
                     HE_KV(id, id),
                     HE_KV(name, name));

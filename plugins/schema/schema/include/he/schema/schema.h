@@ -90,14 +90,14 @@ namespace he::schema
 
     inline bool IsPointer(const Type::Reader& t)
     {
-        if (t.Data().IsArray())
+        if (t.GetData().IsArray())
         {
-            const Type::Reader elmType = t.Data().Array().ElementType();
-            HE_ASSERT(!elmType.Data().IsArray(), HE_MSG("Arrays of arrays are not supported"));
+            const Type::Reader elmType = t.GetData().GetArray().GetElementType();
+            HE_ASSERT(!elmType.GetData().IsArray(), HE_MSG("Arrays of arrays are not supported"));
             return IsPointer(elmType);
         }
 
-        return IsPointer(t.Data().Tag());
+        return IsPointer(t.GetData().GetTag());
     }
 
     // Returns the bit alignment requirements for a type
@@ -123,7 +123,7 @@ namespace he::schema
     // Returns the bit alignment requirements for a type
     inline uint32_t GetTypeAlign(const Type::Reader& t)
     {
-        switch (t.Data().Tag())
+        switch (t.GetData().GetTag())
         {
             case Type::Data::Tag::Void: return 0;
             case Type::Data::Tag::Bool: return 1;
@@ -137,7 +137,7 @@ namespace he::schema
             case Type::Data::Tag::Uint64: return 64;
             case Type::Data::Tag::Float32: return 32;
             case Type::Data::Tag::Float64: return 64;
-            case Type::Data::Tag::Array: return GetTypeAlign(t.Data().Array().ElementType());
+            case Type::Data::Tag::Array: return GetTypeAlign(t.GetData().GetArray().GetElementType());
             case Type::Data::Tag::Blob: return 64; // pointer
             case Type::Data::Tag::String: return 64; // pointer
             case Type::Data::Tag::List: return 64; // pointer
@@ -155,13 +155,13 @@ namespace he::schema
     inline uint32_t GetTypeSize(const Type::Reader& type)
     {
         const uint32_t align = GetTypeAlign(type);
-        const uint32_t count = type.Data().IsArray() ? type.Data().Array().Size() : 1;
+        const uint32_t count = type.GetData().IsArray() ? type.GetData().GetArray().GetSize() : 1;
         return align * count;
     }
 
     inline ElementSize GetTypeElementSize(const Type::Reader& t)
     {
-        switch (t.Data().Tag())
+        switch (t.GetData().GetTag())
         {
             case Type::Data::Tag::Void: return ElementSize::Void;
             case Type::Data::Tag::Bool: return ElementSize::Bit;
@@ -175,7 +175,7 @@ namespace he::schema
             case Type::Data::Tag::Uint64: return ElementSize::EightBytes;
             case Type::Data::Tag::Float32: return ElementSize::FourBytes;
             case Type::Data::Tag::Float64: return ElementSize::EightBytes;
-            case Type::Data::Tag::Array: return GetTypeElementSize(t.Data().Array().ElementType());
+            case Type::Data::Tag::Array: return GetTypeElementSize(t.GetData().GetArray().GetElementType());
             case Type::Data::Tag::Blob: return ElementSize::Pointer;
             case Type::Data::Tag::String: return ElementSize::Pointer;
             case Type::Data::Tag::List: return ElementSize::Pointer;
@@ -193,7 +193,7 @@ namespace he::schema
     {
         for (Attribute::Reader attribute : attributes)
         {
-            if (attribute.Id() == id)
+            if (attribute.GetId() == id)
                 return attribute;
         }
 
@@ -208,9 +208,9 @@ namespace he::schema
 
     inline Field::Reader FindField(StringView name, Declaration::Data::Struct::Reader st)
     {
-        for (Field::Reader field : st.Fields())
+        for (Field::Reader field : st.GetFields())
         {
-            if (field.Name() == name)
+            if (field.GetName() == name)
                 return field;
         }
 

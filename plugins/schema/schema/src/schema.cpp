@@ -23,7 +23,7 @@ namespace he::schema
 
     bool SchemaVisitor::VisitDecl(Declaration::Reader decl, Declaration::Reader scope)
     {
-        switch (decl.Data().Tag())
+        switch (decl.GetData().GetTag())
         {
             case Declaration::Data::Tag::File:
             {
@@ -47,7 +47,7 @@ namespace he::schema
 
     bool SchemaVisitor::VisitFile(Declaration::Reader decl)
     {
-        for (Declaration::Reader child : decl.Children())
+        for (Declaration::Reader child : decl.GetChildren())
         {
             if (!VisitDecl(child, decl))
                 return false;
@@ -59,9 +59,9 @@ namespace he::schema
     bool SchemaVisitor::VisitEnum(Declaration::Reader decl, Declaration::Reader scope)
     {
         HE_UNUSED(scope);
-        Declaration::Data::Enum::Reader enumDecl = decl.Data().Enum();
+        Declaration::Data::Enum::Reader enumDecl = decl.GetData().GetEnum();
 
-        for (Enumerator::Reader enumerator : enumDecl.Enumerators())
+        for (Enumerator::Reader enumerator : enumDecl.GetEnumerators())
         {
             if (!VisitEnumerator(enumerator, decl))
                 return false;
@@ -73,20 +73,20 @@ namespace he::schema
     bool SchemaVisitor::VisitInterface(Declaration::Reader decl, Declaration::Reader scope)
     {
         HE_UNUSED(scope);
-        Declaration::Data::Interface::Reader interfaceDecl = decl.Data().Interface();
+        Declaration::Data::Interface::Reader interfaceDecl = decl.GetData().GetInterface();
 
-        for (Declaration::Reader child : decl.Children())
+        for (Declaration::Reader child : decl.GetChildren())
         {
-            Declaration::Data::Reader childData = child.Data();
-            Declaration::Data::Struct::Reader childSt = childData.IsStruct() ? childData.Struct() : Declaration::Data::Struct::Reader{};
-            if (!childData.IsStruct() || (!childSt.IsMethodParams() && !childSt.IsMethodResults()))
+            Declaration::Data::Reader childData = child.GetData();
+            Declaration::Data::Struct::Reader childSt = childData.IsStruct() ? childData.GetStruct() : Declaration::Data::Struct::Reader{};
+            if (!childData.IsStruct() || (!childSt.GetIsMethodParams() && !childSt.GetIsMethodResults()))
             {
                 if (!VisitDecl(child, decl))
                     return false;
             }
         }
 
-        for (Method::Reader method : interfaceDecl.Methods())
+        for (Method::Reader method : interfaceDecl.GetMethods())
         {
             if (!VisitMethod(method, decl))
                 return false;
@@ -98,20 +98,20 @@ namespace he::schema
     bool SchemaVisitor::VisitStruct(Declaration::Reader decl, Declaration::Reader scope)
     {
         HE_UNUSED(scope);
-        Declaration::Data::Struct::Reader structDecl = decl.Data().Struct();
+        Declaration::Data::Struct::Reader structDecl = decl.GetData().GetStruct();
 
-        for (Declaration::Reader child : decl.Children())
+        for (Declaration::Reader child : decl.GetChildren())
         {
-            Declaration::Data::Reader childData = child.Data();
-            Declaration::Data::Struct::Reader childSt = childData.IsStruct() ? childData.Struct() : Declaration::Data::Struct::Reader{};
-            if (!childData.IsStruct() || (!childSt.IsMethodParams() && !childSt.IsMethodResults() && !childSt.IsGroup() && !childSt.IsUnion()))
+            Declaration::Data::Reader childData = child.GetData();
+            Declaration::Data::Struct::Reader childSt = childData.IsStruct() ? childData.GetStruct() : Declaration::Data::Struct::Reader{};
+            if (!childData.IsStruct() || (!childSt.GetIsMethodParams() && !childSt.GetIsMethodResults() && !childSt.GetIsGroup() && !childSt.GetIsUnion()))
             {
                 if (!VisitDecl(child, decl))
                     return false;
             }
         }
 
-        for (Field::Reader field : structDecl.Fields())
+        for (Field::Reader field : structDecl.GetFields())
         {
             if (!VisitField(field, decl))
                 return false;
@@ -122,7 +122,7 @@ namespace he::schema
 
     bool SchemaVisitor::VisitField(Field::Reader field, Declaration::Reader scope)
     {
-        switch (field.Meta().Tag())
+        switch (field.GetMeta().GetTag())
         {
             case Field::Meta::Tag::Normal:
                 if (!VisitNormalField(field, scope))

@@ -20,14 +20,14 @@ namespace he::schema
     {
         m_writer.Reserve(8192); // 8 KB
 
-        Declaration::Reader root = m_request.schemaFile.Root();
+        Declaration::Reader root = m_request.schemaFile.GetRoot();
 
         if (root.HasSource())
-            m_writer.WriteLine("// {}", root.Source().File().AsView());
+            m_writer.WriteLine("// {}", root.GetSource().GetFile().AsView());
 
-        m_writer.WriteLine(HE_ID_FMT ";", root.Id());
+        m_writer.WriteLine(HE_ID_FMT ";", root.GetId());
 
-        for (String::Reader importStr : root.Data().File().Imports())
+        for (String::Reader importStr : root.GetData().GetFile().GetImports())
         {
             m_writer.WriteLine("import \"{}\";", importStr.AsView());
         }
@@ -42,12 +42,12 @@ namespace he::schema
 
     bool CodeGenEcho::VisitFile(Declaration::Reader decl)
     {
-        if (!decl.Name().IsEmpty())
+        if (!decl.GetName().IsEmpty())
         {
-            m_writer.WriteLine("namespace {};", decl.Name().AsView());
+            m_writer.WriteLine("namespace {};", decl.GetName().AsView());
         }
 
-        for (Attribute::Reader attr : decl.Attributes())
+        for (Attribute::Reader attr : decl.GetAttributes())
         {
             WriteAttribute(attr, decl);
             m_writer.Write(";\n");
@@ -58,39 +58,39 @@ namespace he::schema
 
     bool CodeGenEcho::VisitAttribute(Declaration::Reader decl, Declaration::Reader scope)
     {
-        HE_ASSERT(decl.Data().IsAttribute());
-        Declaration::Data::Attribute::Reader attrDecl = decl.Data().Attribute();
+        HE_ASSERT(decl.GetData().IsAttribute());
+        Declaration::Data::Attribute::Reader attrDecl = decl.GetData().GetAttribute();
 
         he::String targetStr(Allocator::GetTemp());
 
-        if (attrDecl.TargetsAttribute())
+        if (attrDecl.GetTargetsAttribute())
             targetStr += "attribute,";
-        if (attrDecl.TargetsConstant())
+        if (attrDecl.GetTargetsConstant())
             targetStr += "const,";
-        if (attrDecl.TargetsEnum())
+        if (attrDecl.GetTargetsEnum())
             targetStr += "enum,";
-        if (attrDecl.TargetsEnumerator())
+        if (attrDecl.GetTargetsEnumerator())
             targetStr += "enumerator,";
-        if (attrDecl.TargetsField())
+        if (attrDecl.GetTargetsField())
             targetStr += "field,";
-        if (attrDecl.TargetsFile())
+        if (attrDecl.GetTargetsFile())
             targetStr += "file,";
-        if (attrDecl.TargetsInterface())
+        if (attrDecl.GetTargetsInterface())
             targetStr += "interface,";
-        if (attrDecl.TargetsMethod())
+        if (attrDecl.GetTargetsMethod())
             targetStr += "method,";
-        if (attrDecl.TargetsParameter())
+        if (attrDecl.GetTargetsParameter())
             targetStr += "parameter,";
-        if (attrDecl.TargetsStruct())
+        if (attrDecl.GetTargetsStruct())
             targetStr += "struct,";
 
         if (!targetStr.IsEmpty())
             targetStr.PopBack();
 
         m_writer.WriteIndent();
-        m_writer.Write("attribute {} " HE_ID_FMT " ({}) :", decl.Name().AsView(), decl.Id(), targetStr);
-        WriteType(attrDecl.Type(), scope);
-        WriteAttributes(decl.Attributes(), scope);
+        m_writer.Write("attribute {} " HE_ID_FMT " ({}) :", decl.GetName().AsView(), decl.GetId(), targetStr);
+        WriteType(attrDecl.GetType(), scope);
+        WriteAttributes(decl.GetAttributes(), scope);
         m_writer.Write(";\n");
 
         return true;
@@ -98,15 +98,15 @@ namespace he::schema
 
     bool CodeGenEcho::VisitConstant(Declaration::Reader decl, Declaration::Reader scope)
     {
-        HE_ASSERT(decl.Data().IsConstant());
-        Declaration::Data::Constant::Reader constDecl = decl.Data().Constant();
+        HE_ASSERT(decl.GetData().IsConstant());
+        Declaration::Data::Constant::Reader constDecl = decl.GetData().GetConstant();
 
         m_writer.WriteIndent();
-        m_writer.Write("const {} " HE_ID_FMT " :", decl.Name().AsView(), decl.Id());
-        WriteType(constDecl.Type(), scope);
+        m_writer.Write("const {} " HE_ID_FMT " :", decl.GetName().AsView(), decl.GetId());
+        WriteType(constDecl.GetType(), scope);
         m_writer.Write(" = ");
-        WriteValue(constDecl.Type(), scope, constDecl.Value());
-        WriteAttributes(decl.Attributes(), scope);
+        WriteValue(constDecl.GetType(), scope, constDecl.GetValue());
+        WriteAttributes(decl.GetAttributes(), scope);
         m_writer.Write(";\n");
 
         return true;
@@ -114,11 +114,11 @@ namespace he::schema
 
     bool CodeGenEcho::VisitEnum(Declaration::Reader decl, Declaration::Reader scope)
     {
-        HE_ASSERT(decl.Data().IsEnum());
+        HE_ASSERT(decl.GetData().IsEnum());
 
         m_writer.WriteIndent();
-        m_writer.Write("enum {} " HE_ID_FMT, decl.Name().AsView(), decl.Id());
-        WriteAttributes(decl.Attributes(), scope);
+        m_writer.Write("enum {} " HE_ID_FMT, decl.GetName().AsView(), decl.GetId());
+        WriteAttributes(decl.GetAttributes(), scope);
         m_writer.Write('\n');
 
         m_writer.WriteLine("{");
@@ -136,11 +136,11 @@ namespace he::schema
     bool CodeGenEcho::VisitEnumerator(Enumerator::Reader enumerator, Declaration::Reader scope)
     {
         m_writer.WriteIndent();
-        m_writer.Write("{} @{}", enumerator.Name().AsView(), enumerator.Ordinal());
-        if (!enumerator.Attributes().IsEmpty())
+        m_writer.Write("{} @{}", enumerator.GetName().AsView(), enumerator.GetOrdinal());
+        if (!enumerator.GetAttributes().IsEmpty())
         {
             m_writer.Write(' ');
-            WriteAttributes(enumerator.Attributes(), scope);
+            WriteAttributes(enumerator.GetAttributes(), scope);
         }
         m_writer.Write(";\n");
 
@@ -149,19 +149,19 @@ namespace he::schema
 
     bool CodeGenEcho::VisitInterface(Declaration::Reader decl, Declaration::Reader scope)
     {
-        HE_ASSERT(decl.Data().IsInterface());
-        Declaration::Data::Interface::Reader interfaceDecl = decl.Data().Interface();
+        HE_ASSERT(decl.GetData().IsInterface());
+        Declaration::Data::Interface::Reader interfaceDecl = decl.GetData().GetInterface();
 
         m_writer.WriteIndent();
-        m_writer.Write("interface {}", decl.Name().AsView());
-        WriteTypeParams(decl.TypeParams());
-        m_writer.Write(" " HE_ID_FMT, decl.Id());
+        m_writer.Write("interface {}", decl.GetName().AsView());
+        WriteTypeParams(decl.GetTypeParams());
+        m_writer.Write(" " HE_ID_FMT, decl.GetId());
         if (interfaceDecl.HasSuper())
         {
             m_writer.Write(" extends ");
-            WriteType(interfaceDecl.Super(), scope);
+            WriteType(interfaceDecl.GetSuper(), scope);
         }
-        WriteAttributes(decl.Attributes(), scope);
+        WriteAttributes(decl.GetAttributes(), scope);
         m_writer.Write('\n');
 
         m_writer.WriteLine("{");
@@ -181,16 +181,16 @@ namespace he::schema
         HE_UNUSED(scope);
 
         m_writer.WriteIndent();
-        m_writer.Write("{} @{} ", method.Name().AsView(), method.Ordinal());
+        m_writer.Write("{} @{} ", method.GetName().AsView(), method.GetOrdinal());
 
-        Declaration::Reader paramStruct = m_request.GetDecl(method.ParamStruct());
+        Declaration::Reader paramStruct = m_request.GetDecl(method.GetParamStruct());
         WriteTuple(paramStruct);
 
         m_writer.Write(" -> ");
 
-        if (method.ResultStruct() != 0)
+        if (method.GetResultStruct() != 0)
         {
-            Declaration::Reader resultStruct = m_request.GetDecl(method.ResultStruct());
+            Declaration::Reader resultStruct = m_request.GetDecl(method.GetResultStruct());
             WriteTuple(resultStruct);
         }
         else
@@ -204,17 +204,17 @@ namespace he::schema
 
     bool CodeGenEcho::VisitStruct(Declaration::Reader decl, Declaration::Reader scope)
     {
-        HE_ASSERT(decl.Data().IsStruct());
-        Declaration::Data::Struct::Reader structDecl = decl.Data().Struct();
+        HE_ASSERT(decl.GetData().IsStruct());
+        Declaration::Data::Struct::Reader structDecl = decl.GetData().GetStruct();
 
-        if (!structDecl.IsGroup() && !structDecl.IsUnion())
+        if (!structDecl.GetIsGroup() && !structDecl.GetIsUnion())
         {
             m_writer.WriteIndent();
-            m_writer.Write("struct {}", decl.Name().AsView());
-            WriteTypeParams(decl.TypeParams());
-            m_writer.Write(" " HE_ID_FMT, decl.Id());
-            WriteAttributes(decl.Attributes(), scope);
-            m_writer.Write(" // {} data fields, {} data words, {} pointers", structDecl.DataFieldCount(), structDecl.DataWordSize(), structDecl.PointerCount());
+            m_writer.Write("struct {}", decl.GetName().AsView());
+            WriteTypeParams(decl.GetTypeParams());
+            m_writer.Write(" " HE_ID_FMT, decl.GetId());
+            WriteAttributes(decl.GetAttributes(), scope);
+            m_writer.Write(" // {} data fields, {} data words, {} pointers", structDecl.GetDataFieldCount(), structDecl.GetDataWordSize(), structDecl.GetPointerCount());
         }
 
         m_writer.Write('\n');
@@ -232,38 +232,38 @@ namespace he::schema
 
     bool CodeGenEcho::VisitNormalField(Field::Reader field, Declaration::Reader scope)
     {
-        HE_ASSERT(field.Meta().IsNormal());
-        HE_ASSERT(scope.Data().IsStruct());
-        Declaration::Data::Struct::Reader structDecl = scope.Data().Struct();
-        Field::Meta::Normal::Reader norm = field.Meta().Normal();
+        HE_ASSERT(field.GetMeta().IsNormal());
+        HE_ASSERT(scope.GetData().IsStruct());
+        Declaration::Data::Struct::Reader structDecl = scope.GetData().GetStruct();
+        Field::Meta::Normal::Reader norm = field.GetMeta().GetNormal();
 
-        if (IsPointer(norm.Type()))
+        if (IsPointer(norm.GetType()))
         {
             m_writer.WriteIndent();
             WriteField(field, scope);
 
-            if (norm.Type().Data().IsArray())
+            if (norm.GetType().GetData().IsArray())
             {
-                m_writer.Write("; // ptrs[{}, {})", norm.Index(), norm.Index() + norm.Type().Data().Array().Size());
+                m_writer.Write("; // ptrs[{}, {})", norm.GetIndex(), norm.GetIndex() + norm.GetType().GetData().GetArray().GetSize());
             }
             else
             {
-                m_writer.Write("; // ptr[{}]", norm.Index());
+                m_writer.Write("; // ptr[{}]", norm.GetIndex());
             }
         }
         else
         {
-            const uint32_t fieldSize = GetTypeSize(norm.Type());
-            const uint32_t begin = norm.DataOffset() * fieldSize;
+            const uint32_t fieldSize = GetTypeSize(norm.GetType());
+            const uint32_t begin = norm.GetDataOffset() * fieldSize;
             const uint32_t end = begin + fieldSize;
             m_writer.WriteIndent();
             WriteField(field, scope);
             m_writer.Write("; // bits[{}, {})", begin, end);
         }
 
-        if (structDecl.IsUnion())
+        if (structDecl.GetIsUnion())
         {
-            m_writer.Write(", union tag = {}", field.UnionTag());
+            m_writer.Write(", union tag = {}", field.GetUnionTag());
         }
         m_writer.Write('\n');
         return true;
@@ -281,14 +281,14 @@ namespace he::schema
 
     void CodeGenEcho::WriteAttribute(Attribute::Reader attribute, Declaration::Reader scope)
     {
-        Declaration::Reader decl = m_request.GetDecl(attribute.Id());
-        HE_ASSERT(decl.Data().IsAttribute());
-        m_writer.Write("${}", decl.Name().AsView());
+        Declaration::Reader decl = m_request.GetDecl(attribute.GetId());
+        HE_ASSERT(decl.GetData().IsAttribute());
+        m_writer.Write("${}", decl.GetName().AsView());
 
-        if (!attribute.Value().Data().IsVoid())
+        if (!attribute.GetValue().GetData().IsVoid())
         {
             m_writer.Write('(');
-            WriteValue(decl.Data().Attribute().Type(), scope, attribute.Value());
+            WriteValue(decl.GetData().GetAttribute().GetType(), scope, attribute.GetValue());
             m_writer.Write(')');
         }
     }
@@ -304,78 +304,78 @@ namespace he::schema
 
     void CodeGenEcho::WriteField(Field::Reader field, Declaration::Reader scope)
     {
-        HE_ASSERT(field.Meta().IsNormal());
-        Field::Meta::Normal::Reader norm = field.Meta().Normal();
+        HE_ASSERT(field.GetMeta().IsNormal());
+        Field::Meta::Normal::Reader norm = field.GetMeta().GetNormal();
 
-        m_writer.Write("{} @{} :", field.Name().AsView(), norm.Ordinal());
-        WriteType(norm.Type(), scope);
+        m_writer.Write("{} @{} :", field.GetName().AsView(), norm.GetOrdinal());
+        WriteType(norm.GetType(), scope);
 
-        if (norm.HasDefaultValue() && !norm.DefaultValue().Data().IsVoid())
+        if (norm.HasDefaultValue() && !norm.GetDefaultValue().GetData().IsVoid())
         {
             m_writer.Write(" = ");
-            WriteValue(norm.Type(), scope, norm.DefaultValue());
+            WriteValue(norm.GetType(), scope, norm.GetDefaultValue());
         }
 
-        WriteAttributes(field.Attributes(), scope);
+        WriteAttributes(field.GetAttributes(), scope);
     }
 
     bool CodeGenEcho::WriteGroupOrUnionField(Field::Reader field, Declaration::Reader scope)
     {
-        HE_ASSERT(field.Meta().IsGroup() || field.Meta().IsUnion());
-        HE_ASSERT(scope.Data().IsStruct());
-        Declaration::Data::Struct::Reader structDecl = scope.Data().Struct();
+        HE_ASSERT(field.GetMeta().IsGroup() || field.GetMeta().IsUnion());
+        HE_ASSERT(scope.GetData().IsStruct());
+        Declaration::Data::Struct::Reader structDecl = scope.GetData().GetStruct();
 
-        TypeId typeId = field.Meta().IsGroup() ? field.Meta().Group().TypeId() : field.Meta().Union().TypeId();
+        TypeId typeId = field.GetMeta().IsGroup() ? field.GetMeta().GetGroup().GetTypeId() : field.GetMeta().GetUnion().GetTypeId();
         Declaration::Reader group = m_request.GetDecl(typeId);
-        HE_ASSERT(group.Data().IsStruct());
-        Declaration::Data::Struct::Reader groupStruct = group.Data().Struct();
+        HE_ASSERT(group.GetData().IsStruct());
+        Declaration::Data::Struct::Reader groupStruct = group.GetData().GetStruct();
 
         m_writer.WriteIndent();
-        if (groupStruct.IsGroup())
+        if (groupStruct.GetIsGroup())
         {
-            m_writer.Write("{} :group", field.Name().AsView());
-            if (structDecl.IsUnion())
+            m_writer.Write("{} :group", field.GetName().AsView());
+            if (structDecl.GetIsUnion())
             {
-                m_writer.Write(" // union tag = {}", field.UnionTag());
+                m_writer.Write(" // union tag = {}", field.GetUnionTag());
             }
         }
         else
         {
-            HE_ASSERT(groupStruct.IsUnion());
+            HE_ASSERT(groupStruct.GetIsUnion());
             const uint32_t tagSize = 16;
-            const uint32_t begin = groupStruct.UnionTagOffset() * tagSize;
+            const uint32_t begin = groupStruct.GetUnionTagOffset() * tagSize;
             const uint32_t end = begin + tagSize;
-            m_writer.Write("{} :union // tag bits[{}, {})", field.Name().AsView(), begin, end);
-            if (structDecl.IsUnion())
+            m_writer.Write("{} :union // tag bits[{}, {})", field.GetName().AsView(), begin, end);
+            if (structDecl.GetIsUnion())
             {
-                m_writer.Write(", union tag = {}", field.UnionTag());
+                m_writer.Write(", union tag = {}", field.GetUnionTag());
             }
         }
 
-        WriteAttributes(group.Attributes(), scope);
+        WriteAttributes(group.GetAttributes(), scope);
         return VisitStruct(group, scope);
     }
 
     void CodeGenEcho::WriteName(Declaration::Reader decl, Declaration::Reader scope, Brand::Reader brand)
     {
-        if (decl.ParentId() != scope.Id() && decl.ParentId() != scope.ParentId())
+        if (decl.GetParentId() != scope.GetId() && decl.GetParentId() != scope.GetParentId())
         {
-            Declaration::Reader parent = m_request.GetDecl(decl.ParentId());
-            if (!parent.Data().IsFile())
+            Declaration::Reader parent = m_request.GetDecl(decl.GetParentId());
+            if (!parent.GetData().IsFile())
             {
                 WriteName(parent, scope, brand);
                 m_writer.Write('.');
             }
         }
 
-        m_writer.Write(decl.Name());
+        m_writer.Write(decl.GetName());
 
-        for (Brand::Scope::Reader brandScope : brand.Scopes())
+        for (Brand::Scope::Reader brandScope : brand.GetScopes())
         {
-            if (brandScope.ScopeId() == decl.Id())
+            if (brandScope.GetScopeId() == decl.GetId())
             {
                 m_writer.Write("<");
-                List<Type>::Reader scopeParams = brandScope.Params();
+                List<Type>::Reader scopeParams = brandScope.GetParams();
                 for (uint32_t i = 0; i < scopeParams.Size(); ++i)
                 {
                     Type::Reader t = scopeParams[i];
@@ -391,9 +391,9 @@ namespace he::schema
 
     void CodeGenEcho::WriteTuple(Declaration::Reader decl)
     {
-        HE_ASSERT(decl.Data().IsStruct());
-        Declaration::Data::Struct::Reader structDecl = decl.Data().Struct();
-        List<Field>::Reader fields = structDecl.Fields();
+        HE_ASSERT(decl.GetData().IsStruct());
+        Declaration::Data::Struct::Reader structDecl = decl.GetData().GetStruct();
+        List<Field>::Reader fields = structDecl.GetFields();
 
         m_writer.Write('(');
 
@@ -430,7 +430,7 @@ namespace he::schema
 
     void CodeGenEcho::WriteType(Type::Reader type, Declaration::Reader scope)
     {
-        switch (type.Data().Tag())
+        switch (type.GetData().GetTag())
         {
             case Type::Data::Tag::Void: m_writer.Write("void"); break;
             case Type::Data::Tag::Bool: m_writer.Write("bool"); break;
@@ -446,9 +446,9 @@ namespace he::schema
             case Type::Data::Tag::Float64: m_writer.Write("float64"); break;
             case Type::Data::Tag::Array:
             {
-                Type::Data::Array::Reader arrayType = type.Data().Array();
-                WriteType(arrayType.ElementType(), scope);
-                m_writer.Write("[{}]", arrayType.Size());
+                Type::Data::Array::Reader arrayType = type.GetData().GetArray();
+                WriteType(arrayType.GetElementType(), scope);
+                m_writer.Write("[{}]", arrayType.GetSize());
                 break;
             }
             case Type::Data::Tag::Blob:
@@ -459,47 +459,47 @@ namespace he::schema
                 break;
             case Type::Data::Tag::List:
             {
-                Type::Data::List::Reader listType = type.Data().List();
-                WriteType(listType.ElementType(), scope);
+                Type::Data::List::Reader listType = type.GetData().GetList();
+                WriteType(listType.GetElementType(), scope);
                 m_writer.Write("[]");
                 break;
             }
             case Type::Data::Tag::Enum:
             {
-                Type::Data::Enum::Reader enumType = type.Data().Enum();
-                Declaration::Reader decl = m_request.GetDecl(enumType.Id());
-                HE_ASSERT(decl.Data().IsEnum());
-                WriteName(decl, scope, enumType.Brand());
+                Type::Data::Enum::Reader enumType = type.GetData().GetEnum();
+                Declaration::Reader decl = m_request.GetDecl(enumType.GetId());
+                HE_ASSERT(decl.GetData().IsEnum());
+                WriteName(decl, scope, enumType.GetBrand());
                 break;
             }
             case Type::Data::Tag::Struct:
             {
-                Type::Data::Struct::Reader structType = type.Data().Struct();
-                Declaration::Reader decl = m_request.GetDecl(structType.Id());
-                HE_ASSERT(decl.Data().IsStruct());
-                WriteName(decl, scope, structType.Brand());
+                Type::Data::Struct::Reader structType = type.GetData().GetStruct();
+                Declaration::Reader decl = m_request.GetDecl(structType.GetId());
+                HE_ASSERT(decl.GetData().IsStruct());
+                WriteName(decl, scope, structType.GetBrand());
                 break;
             }
             case Type::Data::Tag::Interface:
             {
-                Type::Data::Interface::Reader interfaceType = type.Data().Interface();
-                Declaration::Reader decl = m_request.GetDecl(interfaceType.Id());
-                HE_ASSERT(decl.Data().IsInterface());
-                WriteName(decl, scope, interfaceType.Brand());
+                Type::Data::Interface::Reader interfaceType = type.GetData().GetInterface();
+                Declaration::Reader decl = m_request.GetDecl(interfaceType.GetId());
+                HE_ASSERT(decl.GetData().IsInterface());
+                WriteName(decl, scope, interfaceType.GetBrand());
                 break;
             }
             case Type::Data::Tag::AnyPointer:
             {
-                Type::Data::AnyPointer::Reader anyType = type.Data().AnyPointer();
+                Type::Data::AnyPointer::Reader anyType = type.GetData().GetAnyPointer();
 
-                if (anyType.ParamScopeId() == 0)
+                if (anyType.GetParamScopeId() == 0)
                 {
                     m_writer.Write("AnyPointer");
                 }
                 else
                 {
-                    Declaration::Reader decl = m_request.GetDecl(anyType.ParamScopeId());
-                    m_writer.Write(decl.TypeParams()[anyType.ParamIndex()]);
+                    Declaration::Reader decl = m_request.GetDecl(anyType.GetParamScopeId());
+                    m_writer.Write(decl.GetTypeParams()[anyType.GetParamIndex()]);
                 }
                 break;
             }
@@ -508,68 +508,68 @@ namespace he::schema
 
     void CodeGenEcho::WriteValue(Type::Reader type, Declaration::Reader scope, Value::Reader value)
     {
-        switch (value.Data().Tag())
+        switch (value.GetData().GetTag())
         {
             case Value::Data::Tag::Void: break;
-            case Value::Data::Tag::Bool: m_writer.Write("{}", value.Data().Bool()); break;
-            case Value::Data::Tag::Int8: m_writer.Write("{}", value.Data().Int8()); break;
-            case Value::Data::Tag::Int16: m_writer.Write("{}", value.Data().Int16()); break;
-            case Value::Data::Tag::Int32: m_writer.Write("{}", value.Data().Int32()); break;
-            case Value::Data::Tag::Int64: m_writer.Write("{}", value.Data().Int64()); break;
-            case Value::Data::Tag::Uint8: m_writer.Write("{}", value.Data().Uint8()); break;
-            case Value::Data::Tag::Uint16: m_writer.Write("{}", value.Data().Uint16()); break;
-            case Value::Data::Tag::Uint32: m_writer.Write("{}", value.Data().Uint32()); break;
-            case Value::Data::Tag::Uint64: m_writer.Write("{}", value.Data().Uint64()); break;
-            case Value::Data::Tag::Float32: m_writer.Write("{}", value.Data().Float32()); break;
-            case Value::Data::Tag::Float64: m_writer.Write("{}", value.Data().Float64()); break;
+            case Value::Data::Tag::Bool: m_writer.Write("{}", value.GetData().GetBool()); break;
+            case Value::Data::Tag::Int8: m_writer.Write("{}", value.GetData().GetInt8()); break;
+            case Value::Data::Tag::Int16: m_writer.Write("{}", value.GetData().GetInt16()); break;
+            case Value::Data::Tag::Int32: m_writer.Write("{}", value.GetData().GetInt32()); break;
+            case Value::Data::Tag::Int64: m_writer.Write("{}", value.GetData().GetInt64()); break;
+            case Value::Data::Tag::Uint8: m_writer.Write("{}", value.GetData().GetUint8()); break;
+            case Value::Data::Tag::Uint16: m_writer.Write("{}", value.GetData().GetUint16()); break;
+            case Value::Data::Tag::Uint32: m_writer.Write("{}", value.GetData().GetUint32()); break;
+            case Value::Data::Tag::Uint64: m_writer.Write("{}", value.GetData().GetUint64()); break;
+            case Value::Data::Tag::Float32: m_writer.Write("{}", value.GetData().GetFloat32()); break;
+            case Value::Data::Tag::Float64: m_writer.Write("{}", value.GetData().GetFloat64()); break;
             case Value::Data::Tag::Array:
             {
-                HE_ASSERT(type.Data().IsArray());
-                const Type::Reader elementType = type.Data().Array().ElementType();
-                const List<Value>::Reader arrayValues = value.Data().Array();
+                HE_ASSERT(type.GetData().IsArray());
+                const Type::Reader elementType = type.GetData().GetArray().GetElementType();
+                const List<Value>::Reader arrayValues = value.GetData().GetArray();
                 WriteValueList(elementType, scope, arrayValues);
                 break;
             }
             case Value::Data::Tag::Blob:
             {
-                HE_ASSERT(type.Data().IsBlob());
-                List<uint8_t>::Reader bytes = value.Data().Blob();
+                HE_ASSERT(type.GetData().IsBlob());
+                List<uint8_t>::Reader bytes = value.GetData().GetBlob();
                 Span<const uint8_t> byteSpan{ bytes.Data(), bytes.Size() };
                 m_writer.Write("0x\"{}\"", byteSpan);
                 break;
             }
             case Value::Data::Tag::String:
             {
-                HE_ASSERT(type.Data().IsString());
-                String::Reader str = value.Data().String();
+                HE_ASSERT(type.GetData().IsString());
+                String::Reader str = value.GetData().GetString();
                 m_writer.Write("\"{}\"", str.AsView());
                 break;
             }
             case Value::Data::Tag::List:
             {
-                HE_ASSERT(type.Data().IsList());
-                const Type::Reader elementType = type.Data().List().ElementType();
-                const List<Value>::Reader listValues = value.Data().List();
+                HE_ASSERT(type.GetData().IsList());
+                const Type::Reader elementType = type.GetData().GetList().GetElementType();
+                const List<Value>::Reader listValues = value.GetData().GetList();
                 WriteValueList(elementType, scope, listValues);
                 break;
             }
             case Value::Data::Tag::Enum:
             {
-                HE_ASSERT(type.Data().IsEnum());
-                const Type::Data::Enum::Reader enumType = type.Data().Enum();
-                const Declaration::Reader decl = m_request.GetDecl(enumType.Id());
-                const uint16_t enumValue = value.Data().Enum();
+                HE_ASSERT(type.GetData().IsEnum());
+                const Type::Data::Enum::Reader enumType = type.GetData().GetEnum();
+                const Declaration::Reader decl = m_request.GetDecl(enumType.GetId());
+                const uint16_t enumValue = value.GetData().GetEnum();
 
-                HE_ASSERT(decl.Data().IsEnum());
-                Declaration::Data::Enum::Reader enumDecl = decl.Data().Enum();
+                HE_ASSERT(decl.GetData().IsEnum());
+                Declaration::Data::Enum::Reader enumDecl = decl.GetData().GetEnum();
 
-                WriteName(decl, scope, enumType.Brand());
+                WriteName(decl, scope, enumType.GetBrand());
                 m_writer.Write('.');
-                for (Enumerator::Reader e : enumDecl.Enumerators())
+                for (Enumerator::Reader e : enumDecl.GetEnumerators())
                 {
-                    if (e.Ordinal() == enumValue)
+                    if (e.GetOrdinal() == enumValue)
                     {
-                        m_writer.Write(e.Name());
+                        m_writer.Write(e.GetName());
                         break;
                     }
                 }
@@ -577,15 +577,15 @@ namespace he::schema
             }
             case Value::Data::Tag::Tuple:
             {
-                HE_ASSERT(type.Data().IsStruct());
-                const Type::Data::Struct::Reader structType = type.Data().Struct();
-                const Declaration::Reader decl = m_request.GetDecl(structType.Id());
+                HE_ASSERT(type.GetData().IsStruct());
+                const Type::Data::Struct::Reader structType = type.GetData().GetStruct();
+                const Declaration::Reader decl = m_request.GetDecl(structType.GetId());
 
-                HE_ASSERT(decl.Data().IsStruct());
-                const Declaration::Data::Struct::Reader structDecl = decl.Data().Struct();
-                const List<Field>::Reader fields = structDecl.Fields();
+                HE_ASSERT(decl.GetData().IsStruct());
+                const Declaration::Data::Struct::Reader structDecl = decl.GetData().GetStruct();
+                const List<Field>::Reader fields = structDecl.GetFields();
 
-                const List<Value::TupleValue>::Reader tupleValue = value.Data().Tuple();
+                const List<Value::TupleValue>::Reader tupleValue = value.GetData().GetTuple();
                 m_writer.Write("{ ");
                 for (uint32_t i = 0; i < tupleValue.Size(); ++i)
                 {
@@ -593,18 +593,18 @@ namespace he::schema
                     uint32_t fieldIndex = ~0u;
                     for (uint32_t j = 0; j < fields.Size(); ++j)
                     {
-                        if (fields[j].Name() == v.Name())
+                        if (fields[j].GetName() == v.GetName())
                         {
                             fieldIndex = j;
                             break;
                         }
                     }
                     HE_ASSERT(fieldIndex != ~0u);
-                    m_writer.Write("{} = ", v.Name().AsView());
+                    m_writer.Write("{} = ", v.GetName().AsView());
 
                     Field::Reader field = fields[fieldIndex];
-                    Field::Meta::Normal::Reader norm = field.Meta().Normal();
-                    WriteValue(norm.Type(), scope, v.Value());
+                    Field::Meta::Normal::Reader norm = field.GetMeta().GetNormal();
+                    WriteValue(norm.GetType(), scope, v.GetValue());
 
                     if (i != (tupleValue.Size() - 1))
                         m_writer.Write(", ");

@@ -528,11 +528,11 @@ namespace he::schema
 
     StructLayout::StructLayout(Declaration::Builder decl)
         : m_decl(decl)
-        , m_struct(decl.Data().Struct())
+        , m_struct(decl.GetData().GetStruct())
     {
         m_fieldPlacer = Allocator::GetDefault().New<StructFieldPlacer>();
 
-        m_members.Reserve(m_decl.Children().Size() + m_struct.Fields().Size() + 1);
+        m_members.Reserve(m_decl.GetChildren().Size() + m_struct.GetFields().Size() + 1);
         m_members.PushBack({ {}, m_decl, m_fieldPlacer });
         CollectMembers(m_members.Back(), 0);
     }
@@ -564,10 +564,10 @@ namespace he::schema
                 maybeUnionMember = &parent;
             }
 
-            if (member.field.Meta().IsNormal())
+            if (member.field.GetMeta().IsNormal())
             {
-                Field::Meta::Normal::Builder norm = member.field.Meta().Normal();
-                const Type::Builder fieldType = norm.Type();
+                Field::Meta::Normal::Builder norm = member.field.GetMeta().GetNormal();
+                const Type::Builder fieldType = norm.GetType();
                 const uint32_t fieldSize = GetTypeSize(fieldType);
 
                 if (IsPointer(fieldType))
@@ -576,7 +576,7 @@ namespace he::schema
                     const uint16_t count = static_cast<uint16_t>(fieldSize / BitsPerWord);
                     norm.SetIndex(member.placer->PlacePointer(count));
                 }
-                else if (fieldType.Data().IsVoid())
+                else if (fieldType.GetData().IsVoid())
                 {
                     member.placer->PlaceVoid();
                     norm.SetDataOffset(0);
@@ -599,21 +599,21 @@ namespace he::schema
         // Go through unions and groups and finish them off with the right offsets and sizes
         for (MemberRef& member : m_members)
         {
-            if (member.decl.IsValid() && member.decl.Data().IsStruct())
+            if (member.decl.IsValid() && member.decl.GetData().IsStruct())
             {
-                Declaration::Data::Struct::Builder st = member.decl.Data().Struct();
-                if (st.IsUnion())
+                Declaration::Data::Struct::Builder st = member.decl.GetData().GetStruct();
+                if (st.GetIsUnion())
                 {
                     UnionFieldPlacer* unionPlacer = static_cast<UnionFieldPlacer*>(member.placer);
                     unionPlacer->PlaceTag();
                     st.SetUnionTagOffset(unionPlacer->TagOffset());
                 }
 
-                if (st.IsUnion() || st.IsGroup())
+                if (st.GetIsUnion() || st.GetIsGroup())
                 {
-                    st.SetDataFieldCount(m_struct.DataFieldCount());
-                    st.SetDataWordSize(m_struct.DataWordSize());
-                    st.SetPointerCount(m_struct.PointerCount());
+                    st.SetDataFieldCount(m_struct.GetDataFieldCount());
+                    st.SetDataWordSize(m_struct.GetDataWordSize());
+                    st.SetPointerCount(m_struct.GetPointerCount());
                 }
             }
         }
@@ -621,58 +621,56 @@ namespace he::schema
 
     void StructLayout::CollectMembers(MemberRef& parentRef, uint32_t parentIndex)
     {
-        HE_ASSERT(parentRef.decl.IsValid() && parentRef.decl.Data().IsStruct());
+        HE_ASSERT(parentRef.decl.IsValid() && parentRef.decl.GetData().IsStruct());
         Declaration::Builder decl = parentRef.decl;
-        Declaration::Data::Struct::Builder st = decl.Data().Struct();
-        List<Field>::Builder fields = st.Fields();
+        Declaration::Data::Struct::Builder st = decl.GetData().GetStruct();
+        List<Field>::Builder fields = st.GetFields();
 
 
         FieldPlacer* parentPlacer = parentRef.placer;
 
         std::unordered_map<TypeId, uint32_t> groups;
 
-        for (Field::Builder field : st.Fields())
+        for (Field::Builder field : st.GetFields())
         {
             m_members.PushBack({ field, {}, parentPlacer, false, parentIndex });
 
-            if (field.Meta().IsNormal())
+            if (field.GetMeta().IsNormal())
             {
-                const uint16_t ordinal = field.Meta().Normal().Ordinal();
+                const uint16_t ordinal = field.GetMeta().GetNormal().GetOrdinal();
                 const uint32_t index = m_members.Size() - 1;
                 auto res = m_fields.emplace(ordinal, index);
                 HE_ASSERT(res.second);
                 HE_UNUSED(res);
             }
-            else if (field.Meta().IsGroup())
+            else if (field.GetMeta().IsGroup())
             {
-                groups.emplace(field.Meta().Group().TypeId(), m_members.Size() - 1);
+                groups.emplace(field.GetMeta().GetGroup().GetTypeId(), m_members.Size() - 1);
             }
             else
             {
-                HE_ASSERT(field.Meta().IsUnion());
-                groups.emplace(field.Meta().Union().TypeId(), m_members.Size() - 1);
+                groups.emplace(field.GetMeta().GetUnion().GetTypeId(), m_members.Size() - 1);
             }
         }
 
-        for (Declaration::Builder child : decl.Children())
+        for (Declaration::Builder child : decl.GetChildren())
         {
-            auto it = groups.find(child.Id());
+            auto it = groups.find(child.GetId());
             if (it == groups.end())
                 continue;
 
             MemberRef& fieldRef = m_members[it->second];
             fieldRef.decl = child;
 
-            HE_ASSERT(child.Data().IsStruct());
-            Declaration::Data::Struct::Builder childStruct = child.Data().Struct();
+            Declaration::Data::Struct::Builder childStruct = child.GetData().GetStruct();
 
-            if (childStruct.IsGroup())
+            if (childStruct.GetIsGroup())
             {
                 CollectMembers(fieldRef, it->second);
             }
             else
             {
-                HE_ASSERT(childStruct.IsUnion());
+                HE_ASSERT(childStruct.GetIsUnion());
                 fieldRef.placer = m_placers.PushBack(Allocator::GetDefault().New<UnionFieldPlacer>(*parentPlacer));
                 CollectUnionMembers(fieldRef, it->second);
             }
@@ -681,58 +679,56 @@ namespace he::schema
 
     void StructLayout::CollectUnionMembers(MemberRef& parentRef, uint32_t parentIndex)
     {
-        HE_ASSERT(parentRef.decl.IsValid() && parentRef.decl.Data().IsStruct());
+        HE_ASSERT(parentRef.decl.IsValid() && parentRef.decl.GetData().IsStruct());
         Declaration::Builder decl = parentRef.decl;
-        Declaration::Data::Struct::Builder st = decl.Data().Struct();
-        List<Field>::Builder fields = st.Fields();
+        Declaration::Data::Struct::Builder st = decl.GetData().GetStruct();
+        List<Field>::Builder fields = st.GetFields();
 
         UnionFieldPlacer* unionPlacer = static_cast<UnionFieldPlacer*>(parentRef.placer);
 
         std::unordered_map<TypeId, uint32_t> groups;
 
-        for (Field::Builder field : st.Fields())
+        for (Field::Builder field : st.GetFields())
         {
             m_placers.PushBack(Allocator::GetDefault().New<UnionGroupFieldPlacer>(*unionPlacer));
             m_members.PushBack({ field, {}, m_placers.Back(), true, parentIndex });
             const uint32_t index = m_members.Size() - 1;
 
-            if (field.Meta().IsNormal())
+            if (field.GetMeta().IsNormal())
             {
-                const uint16_t ordinal = field.Meta().Normal().Ordinal();
+                const uint16_t ordinal = field.GetMeta().GetNormal().GetOrdinal();
                 auto res = m_fields.emplace(ordinal, index);
                 HE_ASSERT(res.second);
                 HE_UNUSED(res);
             }
-            else if (field.Meta().IsGroup())
+            else if (field.GetMeta().IsGroup())
             {
-                groups.emplace(field.Meta().Group().TypeId(), index);
+                groups.emplace(field.GetMeta().GetGroup().GetTypeId(), index);
             }
             else
             {
-                HE_ASSERT(field.Meta().IsUnion());
-                groups.emplace(field.Meta().Union().TypeId(), index);
+                groups.emplace(field.GetMeta().GetUnion().GetTypeId(), index);
             }
         }
 
-        for (Declaration::Builder child : decl.Children())
+        for (Declaration::Builder child : decl.GetChildren())
         {
-            auto it = groups.find(child.Id());
+            auto it = groups.find(child.GetId());
             if (it == groups.end())
                 continue;
 
             MemberRef& fieldRef = m_members[it->second];
             fieldRef.decl = child;
 
-            HE_ASSERT(child.Data().IsStruct());
-            Declaration::Data::Struct::Builder childStruct = child.Data().Struct();
+            Declaration::Data::Struct::Builder childStruct = child.GetData().GetStruct();
 
-            if (childStruct.IsGroup())
+            if (childStruct.GetIsGroup())
             {
                 CollectMembers(fieldRef, it->second);
             }
             else
             {
-                HE_ASSERT(childStruct.IsUnion());
+                HE_ASSERT(childStruct.GetIsUnion());
                 fieldRef.placer = m_placers.PushBack(Allocator::GetDefault().New<UnionFieldPlacer>(*fieldRef.placer));
                 CollectUnionMembers(fieldRef, it->second);
             }

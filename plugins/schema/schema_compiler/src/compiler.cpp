@@ -85,7 +85,7 @@ namespace he::schema
 
     void Compiler::CompileAttribute(const AstNode& node, Declaration::Builder decl)
     {
-        Declaration::Data::Attribute::Builder data = decl.Data().InitAttribute();
+        Declaration::Data::Attribute::Builder data = decl.GetData().InitAttribute();
         data.SetType(CreateType(node.attribute.type, *node.parent));
         data.SetTargetsAttribute(node.attribute.targetsAttribute);
         data.SetTargetsConstant(node.attribute.targetsConstant);
@@ -101,14 +101,14 @@ namespace he::schema
 
     void Compiler::CompileConstant(const AstNode& node, Declaration::Builder decl)
     {
-        Declaration::Data::Constant::Builder data = decl.Data().InitConstant();
+        Declaration::Data::Constant::Builder data = decl.GetData().InitConstant();
         data.SetType(CreateType(node.constant.type, node));
-        data.SetValue(CreateValue(data.Type(), node.constant.value, node));
+        data.SetValue(CreateValue(data.GetType(), node.constant.value, node));
     }
 
     void Compiler::CompileEnum(const AstNode& node, Declaration::Builder decl)
     {
-        Declaration::Data::Enum::Builder data = decl.Data().InitEnum();
+        Declaration::Data::Enum::Builder data = decl.GetData().InitEnum();
         List<Enumerator>::Builder members = data.InitEnumerators(node.children.Size());
 
         uint16_t i = 0;
@@ -126,7 +126,7 @@ namespace he::schema
 
     void Compiler::CompileFile(const AstNode& node, Declaration::Builder decl)
     {
-        Declaration::Data::File::Builder fileDecl = decl.Data().InitFile();
+        Declaration::Data::File::Builder fileDecl = decl.GetData().InitFile();
 
         he::String buf(Allocator::GetTemp());
         for (const AstExpression& item : node.file.nameSpace.qualified.names)
@@ -176,7 +176,7 @@ namespace he::schema
 
     void Compiler::CompileInterface(const AstNode& node, Declaration::Builder decl)
     {
-        Declaration::Data::Interface::Builder data = decl.Data().InitInterface();
+        Declaration::Data::Interface::Builder data = decl.GetData().InitInterface();
 
         uint16_t methodCount = 0;
         uint16_t childCount = 0;
@@ -226,7 +226,7 @@ namespace he::schema
 
     void Compiler::CompileStruct(const AstNode& node, Declaration::Builder decl)
     {
-        Declaration::Data::Struct::Builder data = decl.Data().InitStruct();
+        Declaration::Data::Struct::Builder data = decl.GetData().InitStruct();
         data.SetIsGroup(node.kind == AstNode::Kind::Group);
         data.SetIsUnion(node.kind == AstNode::Kind::Union);
 
@@ -270,12 +270,12 @@ namespace he::schema
                     name = child.name;
                     name[0] = ToUpper(name[0]);
                     groupStruct.InitName(name);
-                    groupStruct.SetId(MakeTypeId(name, decl.Id()));
-                    groupStruct.SetParentId(decl.Id());
+                    groupStruct.SetId(MakeTypeId(name, decl.GetId()));
+                    groupStruct.SetParentId(decl.GetId());
                     CompileStruct(child, groupStruct);
 
-                    Field::Meta::Group::Builder group = field.Meta().InitGroup();
-                    group.SetTypeId(groupStruct.Id());
+                    Field::Meta::Group::Builder group = field.GetMeta().InitGroup();
+                    group.SetTypeId(groupStruct.GetId());
 
                     ++childIndex;
                     ++fieldIndex;
@@ -294,12 +294,12 @@ namespace he::schema
                     name = child.name;
                     name[0] = ToUpper(name[0]);
                     unionStruct.InitName(name);
-                    unionStruct.SetId(MakeTypeId(name, decl.Id()));
-                    unionStruct.SetParentId(decl.Id());
+                    unionStruct.SetId(MakeTypeId(name, decl.GetId()));
+                    unionStruct.SetParentId(decl.GetId());
                     CompileStruct(child, unionStruct);
 
-                    Field::Meta::Union::Builder unionBuilder = field.Meta().InitUnion();
-                    unionBuilder.SetTypeId(unionStruct.Id());
+                    Field::Meta::Union::Builder unionBuilder = field.GetMeta().InitUnion();
+                    unionBuilder.SetTypeId(unionStruct.GetId());
 
                     ++childIndex;
                     ++fieldIndex;
@@ -315,7 +315,7 @@ namespace he::schema
             }
         }
 
-        if (!data.IsGroup() && !data.IsUnion())
+        if (!data.GetIsGroup() && !data.GetIsUnion())
         {
             StructLayout layout(decl);
             layout.CalculateLayout();
@@ -329,11 +329,11 @@ namespace he::schema
         field.SetDeclOrder(index);
         field.SetUnionTag(0); // Set during struct layout
         field.SetAttributes(CreateAttributes(node.attributes, node));
-        Field::Meta::Normal::Builder normal = field.Meta().InitNormal();
+        Field::Meta::Normal::Builder normal = field.GetMeta().InitNormal();
         normal.SetType(CreateType(node.field.type, *node.parent));
         normal.SetOrdinal(static_cast<uint16_t>(node.id));
         normal.SetIndex(0); // Set during struct layout
-        normal.SetDefaultValue(CreateValue(normal.Type(), node.field.defaultValue, node));
+        normal.SetDefaultValue(CreateValue(normal.GetType(), node.field.defaultValue, node));
         normal.SetDataOffset(0); // Set during struct layout
     }
 
@@ -358,7 +358,7 @@ namespace he::schema
                 paramStruct.SetParentId(node.id);
                 paramStruct.SetTypeParams(CreateTypeParams(child.typeParams));
 
-                Declaration::Data::Struct::Builder paramData = paramStruct.Data().InitStruct();
+                Declaration::Data::Struct::Builder paramData = paramStruct.GetData().InitStruct();
                 paramData.SetIsMethodParams(true);
                 paramData.SetIsMethodResults(true);
 
@@ -372,7 +372,7 @@ namespace he::schema
                 }
 
                 ++childIndex;
-                return paramStruct.Id();
+                return paramStruct.GetId();
             }
             case AstMethodParams::Kind::Type:
             {
@@ -405,7 +405,7 @@ namespace he::schema
     {
         const TypeValue& info = m_context->GetType({ &ast, &scope });
         Type::Builder type = m_builder.AddStruct<Type>();
-        Type::Data::Builder data = type.Data();
+        Type::Data::Builder data = type.GetData();
 
         if (info.type)
         {
@@ -639,7 +639,7 @@ namespace he::schema
             return false;
         }
 
-        m_context->AddError(location, "Expected {} value, but encountered integer expression", type.Tag());
+        m_context->AddError(location, "Expected {} value, but encountered integer expression", type.GetTag());
         return {};
     }
 
@@ -649,9 +649,9 @@ namespace he::schema
             return {};
 
         Value::Builder value = m_builder.AddStruct<Value>();
-        Value::Data::Builder data = value.Data();
+        Value::Data::Builder data = value.GetData();
 
-        Type::Data::Reader typeData = type.Data();
+        Type::Data::Reader typeData = type.GetData();
 
         switch (ast.kind)
         {
@@ -682,7 +682,7 @@ namespace he::schema
             }
             case AstExpression::Kind::Sequence:
             {
-                Type::Reader elementType = typeData.IsArray() ? typeData.Array().ElementType() : typeData.List().ElementType();
+                Type::Reader elementType = typeData.IsArray() ? typeData.GetArray().GetElementType() : typeData.GetList().GetElementType();
                 List<Value>::Builder list = data.InitList(ast.sequence.Size());
 
                 uint16_t i = 0;
@@ -733,7 +733,7 @@ namespace he::schema
 
                 // Shouldn't be possible to not find this because if the ID is set on typeData,
                 // then the verifier must have found a valid node.
-                const AstNode* structDeclNode = m_context->FindNode(typeData.Struct().Id());
+                const AstNode* structDeclNode = m_context->FindNode(typeData.GetStruct().GetId());
                 HE_ASSERT(structDeclNode && structDeclNode->kind == AstNode::Kind::Struct);
 
                 List<Value::TupleValue>::Builder list = data.InitTuple(ast.tuple.Size());

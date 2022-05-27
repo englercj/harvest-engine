@@ -6,9 +6,11 @@
 #include "he/core/appender.h"
 #include "he/core/ascii.h"
 #include "he/core/memory_ops.h"
+#include "he/core/result_fmt.h"
 #include "he/core/string_view_fmt.h"
 #include "he/core/utils.h"
-#include "fmt/core.h"
+
+#include "fmt/format.h"
 
 void WriteFileData(he::File& file, he::StringView name, const uint8_t* data, size_t size, bool asText)
 {
@@ -55,7 +57,7 @@ void WriteFileData(he::File& file, he::StringView name, const uint8_t* data, siz
                 if (buf.Size() >= MemoryBufferSize)
                 {
                     he::Result r = file.Write(buf.Data(), buf.Size(), &bytesWritten);
-                    if (!HE_VERIFY_RESULT(r))
+                    if (!HE_VERIFY(r, HE_KV(result, r)))
                         return;
                     buf.Clear();
                 }
@@ -83,6 +85,6 @@ void WriteFileData(he::File& file, he::StringView name, const uint8_t* data, siz
     buf += "};\n";
 
     he::Result r = file.Write(buf.Data(), buf.Size(), &bytesWritten);
-    if (!HE_VERIFY_RESULT(r))
+    if (!HE_VERIFY(r, HE_KV(result, r)))
         return;
 }

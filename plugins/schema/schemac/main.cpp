@@ -12,6 +12,8 @@
 #include "he/schema/codegen.h"
 #include "he/schema/compile_session.h"
 
+#include "fmt/format.h"
+
 #include <filesystem>
 #include <iostream>
 
@@ -63,43 +65,38 @@ static bool CompileFile(const char* path, const AppArgs& args)
     return true;
 }
 
-static void LogToStdOut(void*, const LogSource& source, const LogKV* kvs, uint32_t count)
+static void LogToStdOut(void*, const LogSource& source, const KeyValue* kvs, uint32_t count)
 {
+    // We specially format the schema_compiler output so it gets picked up by the error window.
     if (String::Equal(source.category, "schema_compiler") && count >= 4)
     {
         uint64_t line = 0;
         uint64_t column = 0;
-        const char* msg = nullptr;
-        const char* file = nullptr;
+        const String* msg = nullptr;
+        const String* file = nullptr;
 
         for (uint32_t i = 0; i < count; ++i)
         {
-            const LogKV& kv = kvs[i];
-            if (String::Equal(kv.key, HE_LOG_MESSAGE_KEY))
-                msg = kv.GetString();
-            else if (String::Equal(kv.key, "file"))
-                file = kv.GetString();
-            else if (String::Equal(kv.key, "line"))
+            const KeyValue& kv = kvs[i];
+            if (String::Equal(kv.Key(), HE_MSG_KEY))
+                msg = &kv.GetString();
+            else if (String::Equal(kv.Key(), "file"))
+                file = &kv.GetString();
+            else if (String::Equal(kv.Key(), "line"))
                 line = kv.GetUint();
-            else if (String::Equal(kv.key, "column"))
+            else if (String::Equal(kv.Key(), "column"))
                 column = kv.GetUint();
         }
 
         if (msg && file)
         {
             std::ostream& out = source.level >= LogLevel::Error ? std::cerr : std::cout;
-            out << file << '(' << line << ',' << column << "): error 0: " << msg << std::endl;
+            out << file->Data() << '(' << line << ',' << column << "): error 0: " << msg->Data() << std::endl;
             return;
         }
     }
 
-    static String s_buf;
-
-    s_buf.Clear();
-    fmt::format_to(Appender(s_buf), "{}({}): [{}]({}) ", source.file, source.line, source.level, source.category);
-    FormatKVsTo(s_buf, kvs, count);
-    std::ostream& out = source.level >= LogLevel::Error ? std::cerr : std::cout;
-    out << s_buf.Data() << std::endl;
+    ConsoleSink(nullptr, source, kvs, count);
 }
 
 #include "he/core/main.inl"

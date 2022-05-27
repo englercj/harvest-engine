@@ -11,6 +11,7 @@
 #include "he/core/macros.h"
 #include "he/core/memory_ops.h"
 #include "he/core/result.h"
+#include "he/core/result_fmt.h"
 #include "he/core/scope_guard.h"
 #include "he/core/string.h"
 #include "he/core/log.h"

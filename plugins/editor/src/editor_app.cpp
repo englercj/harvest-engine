@@ -89,15 +89,14 @@ namespace he::editor
         if (!m_logService.Initialize())
             return false;
 
-        if (!m_settingsService.Reload())
-            return false;
-
         if (!m_renderService.Initialize(view))
             return false;
 
         if (!m_imguiService.Initialize(view))
             return false;
 
+        // Failing to load settings is OK, we'll run with defaults and have an error in the log
+        m_settingsService.Reload();
         return true;
     }
 

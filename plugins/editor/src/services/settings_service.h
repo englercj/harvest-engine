@@ -16,6 +16,7 @@ namespace he::editor
     public:
         SettingsService(DirectoryService& directoryService);
 
+        void Reset();
         bool Reload();
         bool Save();
 

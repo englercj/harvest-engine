@@ -13,11 +13,17 @@
 
 namespace he::editor
 {
-    constexpr char SettingsFileName[] = "he_editor_settings.json";
+    constexpr char SettingsFileName[] = "he_editor_settings.toml";
 
     SettingsService::SettingsService(DirectoryService& directoryService)
         : m_directoryService(directoryService)
     {
+        Reset();
+    }
+
+    void SettingsService::Reset()
+    {
+        m_builder.Clear();
         m_settings = m_builder.AddStruct<Settings>();
         m_builder.SetRoot(m_settings);
     }
@@ -45,7 +51,8 @@ namespace he::editor
 
         if (!he::schema::FromToml<Settings>(m_builder, buf.Data()))
         {
-            HE_LOG_ERROR(editor, HE_MSG("Failed to deserialize settings file. Is it valid TOML?"),
+            Reset();
+            HE_LOG_ERROR(editor, HE_MSG("Failed to deserialize settings file, settings will reset to default. Is it valid TOML?"),
                 HE_KV(path, path),
                 HE_KV(result, r));
             return false;

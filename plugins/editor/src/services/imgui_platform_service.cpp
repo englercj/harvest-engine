@@ -329,14 +329,6 @@ namespace he::editor
                 }
                 break;
             }
-            case window::EventType::MouseLeave:
-            {
-                m_mouseInside = false;
-
-                ImGuiIO& io = ImGui::GetIO();
-                io.AddMousePosEvent(-FLT_MAX, -FLT_MAX);
-                break;
-            }
             case window::EventType::MouseWheel:
             {
                 const auto& evt = static_cast<const window::MouseWheelEvent&>(ev);

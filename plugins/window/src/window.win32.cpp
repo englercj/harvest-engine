@@ -173,7 +173,6 @@ namespace he::window::Win32
         Application* m_app{ nullptr };
         HINSTANCE m_hInstance{ nullptr };
         MouseCursor m_cursor{ MouseCursor::Arrow };
-        HWND m_mouseTrackingHwnd{ nullptr };
         std::atomic<int32_t> m_returnCode{ 0 };
         std::atomic<bool> m_running{ true };
         bool m_cursorRelativeMode{ false };
@@ -557,17 +556,6 @@ namespace he::window::Win32
             case WM_NCMOUSEMOVE:
             case WM_MOUSEMOVE:
             {
-                if (!device->m_mouseTrackingHwnd)
-                {
-                    TRACKMOUSEEVENT tme = { sizeof(tme), TME_LEAVE, hWnd, 0 };
-                    ::TrackMouseEvent(&tme);
-                    device->m_mouseTrackingHwnd = hWnd;
-                }
-                else
-                {
-                    HE_ASSERT(device->m_mouseTrackingHwnd == hWnd);
-                }
-
                 if (device->m_hasHighDefMouse)
                     break;
 
@@ -582,18 +570,6 @@ namespace he::window::Win32
 
                 app->OnEvent(ev);
                 return 0;
-            }
-            case WM_MOUSELEAVE:
-            {
-                if (device->m_mouseTrackingHwnd)
-                {
-                    HE_ASSERT(device->m_mouseTrackingHwnd == hWnd);
-                    device->m_mouseTrackingHwnd = nullptr;
-
-                    MouseLeaveEvent ev(view);
-                    app->OnEvent(ev);
-                }
-                break;
             }
             case WM_KEYDOWN:
             case WM_SYSKEYDOWN:

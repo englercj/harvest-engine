@@ -22,7 +22,6 @@ namespace he::window
         MouseUp,                ///< A mouse button has been released
         MouseWheel,             ///< The mouse wheel has rolled
         MouseMove,              ///< The mouse has moved
-        MouseLeave,             ///< The mouse has left the active window
 
         // Keyboard events
         KeyDown,                ///< A keyboard key has been depressed
@@ -120,13 +119,6 @@ namespace he::window
         /// Indicates the origin of the `pos` member coordinates. When false `pos` represents
         /// delta movement from the last cursor location. Otherwise it is view-space coordinates.
         bool absolute;
-    };
-
-    /// \copydoc EventType::MouseLeave
-    struct MouseLeaveEvent : public ViewEvent
-    {
-        explicit MouseLeaveEvent(View* v)
-            : ViewEvent(EventType::MouseLeave, v) {}
     };
 
     /// Base structure for KeyUp and KeyDown events.

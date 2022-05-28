@@ -262,6 +262,8 @@ namespace he::editor
             StatusBarButton(ICON_FA_EXCLAMATION_TRIANGLE " 0");
             StatusBarButton(ICON_FA_INFO_CIRCLE " 0");
 
+            ImGui::Text("<- fake data for styling");
+
             ImGui::PopStyleVar();
 
             EndAppStatusBar();

@@ -5,10 +5,10 @@
 #include "directory_service.h"
 
 #include "he/core/clock.h"
+#include "he/core/key_value.h"
 #include "he/core/log.h"
 #include "he/core/log_sinks.h"
-
-#include "fmt/core.h"
+#include "he/core/vector.h"
 
 #include <deque>
 
@@ -30,10 +30,8 @@ namespace he::editor
     private:
         struct LogEntry
         {
-            LogEntry(const LogSource& src) : source(src) {}
-
-            const LogSource& source;
-            String msg{};
+            LogSource source{};
+            Vector<KeyValue> kvs{};
             SystemTime timestamp{ SystemClock::Now() };
         };
 

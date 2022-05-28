@@ -24,6 +24,7 @@ namespace he::editor
     {
         AddLogSink(*this);
 
+        // TODO: log rotation for files
         const String dir = m_directoryService.GetAppDirectory(DirectoryService::DirType::Logs);
         const Result r = m_fileSink.Configure(dir.Data(), "editor");
         if (!r)
@@ -51,11 +52,8 @@ namespace he::editor
         if (service.m_entries.size() == MaxEntries)
             service.m_entries.pop_front();
 
-        LogEntry& entry = service.m_entries.emplace_back(source);
-
-        // TODO: Maybe just copy the KVs and display them later in a formatted UI? Treat a couple like "message" special at display time?
-
-        fmt::format_to(Appender(entry.msg), "[{}]({}) {}\n",
-            source.level, source.category, fmt::join(kvs, kvs + count, ", "));
+        LogEntry& entry = service.m_entries.emplace_back();
+        entry.source = source;
+        entry.kvs.Insert(0, kvs, kvs + count);
     }
 }

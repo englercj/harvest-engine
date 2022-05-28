@@ -125,8 +125,22 @@ namespace he
             fmt::format_to(Appender(m_value.s), "{}", v);
         }
 
-        KeyValue(const KeyValue&) = delete;
-        KeyValue& operator=(const KeyValue&) = delete;
+        KeyValue(const KeyValue& x) { *this = x; }
+        KeyValue& operator=(const KeyValue& x)
+        {
+            m_key = x.m_key;
+            m_kind = x.m_kind;
+            switch (m_kind)
+            {
+                case ValueKind::Bool: m_value.b = x.m_value.b; break;
+                case ValueKind::Enum: m_value.e = x.m_value.e; break;
+                case ValueKind::Int: m_value.i = x.m_value.i; break;
+                case ValueKind::Uint: m_value.u = x.m_value.u; break;
+                case ValueKind::Double: m_value.d = x.m_value.d; break;
+                case ValueKind::String: m_value.s = x.m_value.s; break;
+            }
+            return *this;
+        }
 
         KeyValue(KeyValue&& x) { *this = Move(x); }
         KeyValue& operator=(KeyValue&& x)

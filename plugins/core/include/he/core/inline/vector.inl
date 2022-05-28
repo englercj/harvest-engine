@@ -158,8 +158,8 @@ namespace he
     template <typename T> requires(!std::is_trivially_copyable_v<T> && std::is_move_assignable_v<T>)
     void _VectorReverseMoveAssign(T* dst, T* src, uint32_t n)
     {
-        const T* dstEnd = dst + n;
-        const T* srcEnd = src + n;
+        T* srcEnd = src + n;
+        T* dstEnd = dst + n;
 
         while (dst != dstEnd)
         {
@@ -171,8 +171,8 @@ namespace he
     template <typename T> requires(!std::is_trivially_copyable_v<T> && !std::is_move_assignable_v<T>)
     void _VectorReverseMoveAssign(T* dst, T* src, uint32_t n)
     {
-        const T* dstEnd = dst + n;
         const T* srcEnd = src + n;
+        T* dstEnd = dst + n;
 
         while (dst != dstEnd)
         {

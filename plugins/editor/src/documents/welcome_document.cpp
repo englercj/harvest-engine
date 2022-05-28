@@ -2,6 +2,7 @@
 
 #include "welcome_document.h"
 
+#include "dialogs/choice_dialog.h"
 #include "dialogs/create_project_dialog.h"
 #include "fonts/IconsFontAwesome5Pro.h"
 #include "widgets/menu.h"
@@ -75,6 +76,13 @@ namespace he::editor
                 if (m_projectService.Open(paths[0].Data()))
                 {
                     RequestClose();
+                }
+                else
+                {
+                    m_dialogService.Open<ChoiceDialog>().Configure(
+                        "Error",
+                        "Failed to open project file. Check the log for details.",
+                        ChoiceDialog::Button::OK);
                 }
             }
         }

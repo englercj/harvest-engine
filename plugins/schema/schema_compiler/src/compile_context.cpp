@@ -1,7 +1,5 @@
 // Copyright Chad Engler
 
-#pragma once
-
 #include "compile_context.h"
 
 #include "utf8_helpers.h"
@@ -298,6 +296,7 @@ namespace he::schema
 
                                 ToUTF8(out, value);
                             }
+                            break;
                         }
                         default:
                             AddError(GetStrLoc(), "Unknown escape sequence: \\{}", *s);

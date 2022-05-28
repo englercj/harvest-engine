@@ -913,7 +913,6 @@ namespace he::schema
 
             Field::Meta::Normal::Reader norm = field.GetMeta().GetNormal();
             Type::Reader fieldType = norm.GetType();
-            Type::Data::Reader fieldTypeData = fieldType.GetData();
             const bool fieldIsPointer = IsPointer(fieldType);
 
             if (fieldIsPointer)

@@ -598,7 +598,7 @@ namespace he::schema
 
         if (type.IsUint8())
         {
-            if (value == -1 || (value >= 0 && value <= std::numeric_limits<uint8_t>::max()))
+            if (value == static_cast<T>(-1) || (value >= 0 && value <= std::numeric_limits<uint8_t>::max()))
             {
                 data.SetUint8(static_cast<int8_t>(value));
                 return true;
@@ -610,7 +610,7 @@ namespace he::schema
 
         if (type.IsUint16())
         {
-            if (value == -1 || (value >= 0 && value <= std::numeric_limits<uint16_t>::max()))
+            if (value == static_cast<T>(-1) || (value >= 0 && value <= std::numeric_limits<uint16_t>::max()))
             {
                 data.SetUint16(static_cast<int16_t>(value));
                 return true;
@@ -622,7 +622,7 @@ namespace he::schema
 
         if (type.IsUint32())
         {
-            if (value == -1 || (value >= 0 && value <= std::numeric_limits<uint32_t>::max()))
+            if (value == static_cast<T>(-1) || (value >= 0 && value <= std::numeric_limits<uint32_t>::max()))
             {
                 data.SetUint32(static_cast<uint32_t>(value));
                 return true;
@@ -634,7 +634,7 @@ namespace he::schema
 
         if (type.IsUint64())
         {
-            if (value == -1 || value >= 0)
+            if (value == static_cast<T>(-1) || value >= 0)
             {
                 data.SetUint64(static_cast<uint64_t>(value));
                 return true;

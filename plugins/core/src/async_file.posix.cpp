@@ -4,6 +4,7 @@
 
 #include "he/core/assert.h"
 #include "he/core/cpu.h"
+#include "he/core/scope_guard.h"
 #include "he/core/sync.h"
 #include "he/core/task_executor.h"
 #include "he/core/utils.h"
@@ -115,7 +116,7 @@ namespace he
             return;
 
         if (s_executor == &s_threadPool)
-            s_threadPool->Shutdown();
+            s_threadPool.Shutdown();
 
         s_executor = nullptr;
     }

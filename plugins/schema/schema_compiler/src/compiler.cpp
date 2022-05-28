@@ -391,7 +391,7 @@ namespace he::schema
                 }
 
                 // otherwise, must be an explicit structure type
-                const AstNode* v = m_context->FindNode(params.type, node);
+                const AstNode* v = m_context->FindNodeByName(params.type, node);
                 HE_ASSERT(v && v->kind == AstNode::Kind::Struct);
                 return v->id;
             }
@@ -508,29 +508,34 @@ namespace he::schema
         }
 
         // Go through each name of the qualified name
-        const AstNode* scope = &scope_;
         uint16_t scopeIndex = 0;
         Brand::Builder brand = m_builder.AddStruct<Brand>();
         List<Brand::Scope>::Builder brandScopes = brand.InitScopes(scopeCount);
-        for (const AstExpression& child : name.qualified.names)
-        {
-            HE_ASSERT(child.kind == AstExpression::Kind::Identifier || child.kind == AstExpression::Kind::Generic);
 
-            if (child.kind == AstExpression::Kind::Generic)
+        const AstNode* scope = &scope_;
+        AstListIterator<AstExpression> startIt = name.qualified.names.begin();
+
+        for (AstListIterator<AstExpression> it = name.qualified.names.begin(); it != name.qualified.names.end(); ++it)
+        {
+            HE_ASSERT(it->kind == AstExpression::Kind::Identifier || it->kind == AstExpression::Kind::Generic);
+
+            if (it->kind == AstExpression::Kind::Generic)
             {
-                scope = m_context->FindNode(child.identifier, *scope);
+                scope = m_context->FindNodeByName(startIt, (it + 1), *scope);
                 HE_ASSERT(scope);
 
                 Brand::Scope::Builder brandScope = brandScopes[scopeIndex++];
                 brandScope.SetScopeId(scope->id);
 
                 uint16_t paramIndex = 0;
-                List<Type>::Builder brandParams = brandScope.InitParams(child.generic.params.Size());
-                for (const AstExpression& astType : child.generic.params)
+                List<Type>::Builder brandParams = brandScope.InitParams(it->generic.params.Size());
+                for (const AstExpression& astType : it->generic.params)
                 {
                     Type::Builder type = CreateType(astType, scope_); // use original scope
                     brandParams.Set(paramIndex++, type);
                 }
+
+                startIt = it + 1;
             }
         }
 
@@ -695,7 +700,7 @@ namespace he::schema
             }
             case AstExpression::Kind::QualifiedName:
             {
-                const AstNode* valueNode = m_context->FindNode(ast, scope);
+                const AstNode* valueNode = m_context->FindNodeByName(ast, scope);
                 HE_ASSERT(valueNode);
                 HE_ASSERT(valueNode->kind == AstNode::Kind::Enumerator || valueNode->kind == AstNode::Kind::Constant);
 
@@ -733,7 +738,7 @@ namespace he::schema
 
                 // Shouldn't be possible to not find this because if the ID is set on typeData,
                 // then the verifier must have found a valid node.
-                const AstNode* structDeclNode = m_context->FindNode(typeData.GetStruct().GetId());
+                const AstNode* structDeclNode = m_context->FindNodeById(typeData.GetStruct().GetId());
                 HE_ASSERT(structDeclNode && structDeclNode->kind == AstNode::Kind::Struct);
 
                 List<Value::TupleValue>::Builder list = data.InitTuple(ast.tuple.Size());
@@ -790,7 +795,7 @@ namespace he::schema
         List<Attribute>::Builder list = m_builder.AddList<Attribute>(ast.Size());
         for (const AstAttribute& astAttr : ast)
         {
-            const AstNode* attrDeclNode = m_context->FindNode(astAttr.name, scope);
+            const AstNode* attrDeclNode = m_context->FindNodeByName(astAttr.name, scope);
             HE_ASSERT(attrDeclNode && attrDeclNode->kind == AstNode::Kind::Attribute);
 
             Type::Builder attrType = CreateType(attrDeclNode->attribute.type, *attrDeclNode->parent);
@@ -879,7 +884,7 @@ namespace he::schema
 
             case AstExpression::Kind::QualifiedName:
             {
-                const AstNode* constant = m_context->FindNode(ast, scope);
+                const AstNode* constant = m_context->FindNodeByName(ast, scope);
                 HE_ASSERT(constant && constant->kind == AstNode::Kind::Constant);
                 return GetArraySize(constant->constant.value, *constant->parent);
             }

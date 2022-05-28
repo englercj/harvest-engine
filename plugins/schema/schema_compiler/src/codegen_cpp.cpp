@@ -1203,7 +1203,16 @@ namespace he::schema
             }
             else if (!scope.IsValid())
             {
-                m_writer.Write("::{}::", m_namespaceName);
+                StringView nameSpace = parent.GetId() == m_root.GetId() ? m_root.GetName() : parent.GetName();
+                m_writer.Write("::");
+                WriteWithReplace(nameSpace, '.', "::");
+                m_writer.Write("::");
+            }
+            else if (parent.GetId() != m_root.GetId() && m_root.GetName() != parent.GetName())
+            {
+                m_writer.Write("::");
+                WriteWithReplace(parent.GetName().AsView(), '.', "::");
+                m_writer.Write("::");
             }
         }
 

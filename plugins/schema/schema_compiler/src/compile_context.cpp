@@ -18,6 +18,83 @@
 
 namespace he::schema
 {
+    static const AstNode* FindNodeByName(StringView name, const AstNode& scope)
+    {
+        const AstNode* node = scope.children.Find([&](const AstNode& node) { return node.name == name; });
+
+        if (node)
+            return node;
+
+        if (scope.parent)
+            return FindNodeByName(name, *scope.parent);
+
+        HE_ASSERT(scope.kind == AstNode::Kind::File);
+        return nullptr;
+    }
+
+    static const AstNode* FindNodeInScope(AstListIterator<AstExpression> begin, AstListIterator<AstExpression> end, const AstNode& scopeStart)
+    {
+        if (begin == end)
+            return nullptr;
+
+        const AstNode* scope = &scopeStart;
+        //const AstExpression* expr = begin;
+
+        // If our name expression starts with a dot ('.') it will leave an empty identifier at
+        // the beginning. This means that we should unwind and search from the top scope.
+        if (begin->kind == AstExpression::Kind::Identifier && begin->identifier.IsEmpty())
+        {
+            while (scope->parent)
+                scope = scope->parent;
+            ++begin;
+        }
+
+        // Try to match the qualified name against the namespace of the current top scope.
+        const AstNode* topNode = scope;
+        while (topNode->parent)
+            topNode = topNode->parent;
+
+        HE_ASSERT(topNode->kind == AstNode::Kind::File);
+        if (topNode->file.nameSpace.kind == AstExpression::Kind::QualifiedName)
+        {
+            for (const AstExpression& name : topNode->file.nameSpace.qualified.names)
+            {
+                if (!begin || begin == end || begin->kind != AstExpression::Kind::Identifier)
+                    break;
+
+                if (name.kind != AstExpression::Kind::Identifier)
+                    break;
+
+                if (begin->identifier != name.identifier)
+                    break;
+
+                ++begin;
+            }
+        }
+
+        // Try to match the qualified name against a name in the current scope, walking up the
+        // scope for each try.
+        while (begin && begin != end && scope)
+        {
+            switch (begin->kind)
+            {
+                case AstExpression::Kind::Identifier:
+                    scope = FindNodeByName(begin->identifier, *scope);
+                    break;
+                case AstExpression::Kind::Generic:
+                    scope = FindNodeByName(begin->generic.name, *scope);
+                    break;
+                default:
+                    HE_ASSERT(false, HE_MSG("Invalid expression in qualified name. This is a verifier bug."));
+                    break;
+            }
+
+            ++begin;
+        }
+
+        return scope;
+    }
+
     bool CompileContext::LoadFile()
     {
         Result r = File::ReadAll(m_input, m_path.Data());
@@ -30,68 +107,38 @@ namespace he::schema
         return true;
     }
 
-    const AstNode* CompileContext::FindNode(TypeId id) const
+    const AstNode* CompileContext::FindNodeById(TypeId id) const
     {
         auto it = m_typeIdMap.find(id);
         return it == m_typeIdMap.end() ? nullptr : it->second;
     }
 
-    const AstNode* CompileContext::FindNode(const AstExpression& name, const AstNode& scope_) const
+    const AstNode* CompileContext::FindNodeByName(const AstExpression& name, const AstNode& scope) const
     {
         HE_ASSERT(name.kind == AstExpression::Kind::QualifiedName);
-
-        const AstNode* scope = &scope_;
-        const AstExpression* expr = name.qualified.names.Front();
-        if (expr->kind == AstExpression::Kind::Identifier && expr->identifier.IsEmpty())
-        {
-            while (scope->parent)
-                scope = scope->parent;
-            expr = name.qualified.names.Next(expr);
-        }
-
-        while (scope && expr)
-        {
-            switch (expr->kind)
-            {
-                case AstExpression::Kind::Identifier:
-                    scope = FindNode(expr->identifier, *scope);
-                    break;
-
-                case AstExpression::Kind::Generic:
-                    scope = FindNode(expr->generic.name, *scope);
-                    break;
-
-                default:
-                    HE_ASSERT(false, HE_MSG("Invalid expression in qualified name, though should've been verified."));
-                    break;
-            }
-
-            expr = name.qualified.names.Next(expr);
-        }
-
-        return scope;
+        return FindNodeByName(name.qualified.names.begin(), name.qualified.names.end(), scope);
     }
 
-    const AstNode* CompileContext::FindNode(StringView name, const AstNode& scope, bool isImport) const
+    const AstNode* CompileContext::FindNodeByName(AstListIterator<AstExpression> begin, AstListIterator<AstExpression> end, const AstNode& scope) const
     {
-        const AstNode* node = scope.children.Find([&](const AstNode& node) { return node.name == name; });
+        if (begin == end)
+            return nullptr;
 
+        // Look for the node in our scope first.
+        const AstNode* node = FindNodeInScope(begin, end, scope);
         if (node)
             return node;
 
-        if (scope.parent)
-            return FindNode(name, *scope.parent);
-
-        // If we walked up to top scope, and it isn't our root, then search our imports
-        if (!isImport && scope.parent == nullptr)
+        // If we didn't find it in our scope check if any of the imports have it.
+        for (const CompileContext* importCtx : m_imports)
         {
-            for (const CompileContext* importCtx : m_imports)
-            {
-                HE_ASSERT(importCtx->m_fullyParsed);
-                node = FindNode(name, importCtx->m_parser.Ast().root, true);
-                if (node)
-                    return node;
-            }
+            HE_ASSERT(importCtx->m_fullyParsed);
+            const AstNode& root = importCtx->m_parser.Ast().root;
+            HE_ASSERT(root.kind == AstNode::Kind::File);
+
+            node = FindNodeInScope(begin, end, root);
+            if (node)
+                return node;
         }
 
         return nullptr;

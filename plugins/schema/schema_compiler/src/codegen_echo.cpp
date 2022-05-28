@@ -285,7 +285,7 @@ namespace he::schema
         HE_ASSERT(decl.GetData().IsAttribute());
         m_writer.Write("${}", decl.GetName().AsView());
 
-        if (!attribute.GetValue().GetData().IsVoid())
+        if (attribute.HasValue() && !attribute.GetValue().GetData().IsVoid())
         {
             m_writer.Write('(');
             WriteValue(decl.GetData().GetAttribute().GetType(), scope, attribute.GetValue());
@@ -365,6 +365,19 @@ namespace he::schema
             {
                 WriteName(parent, scope, brand);
                 m_writer.Write('.');
+            }
+            else
+            {
+                Declaration::Reader root = m_request.schemaFile.GetRoot();
+                if (!scope.IsValid())
+                {
+                    StringView nameSpace = parent.GetId() == root.GetId() ? root.GetName() : parent.GetName();
+                    m_writer.Write(".{}.", nameSpace);
+                }
+                else if (parent.GetId() != root.GetId() && root.GetName() != parent.GetName())
+                {
+                    m_writer.Write(".{}.", parent.GetName().AsView());
+                }
             }
         }
 

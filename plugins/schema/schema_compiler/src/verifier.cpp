@@ -12,6 +12,8 @@
 #include "he/core/string_view_fmt.h"
 #include "he/schema/schema.h"
 
+#include "fmt/format.h"
+
 #include <set>
 #include <unordered_set>
 
@@ -274,7 +276,7 @@ namespace he::schema
                 return false;
             }
 
-            const AstNode* attrNode = m_context->FindNode(astAttr.name, node);
+            const AstNode* attrNode = m_context->FindNodeByName(astAttr.name, node);
             if (!attrNode)
             {
                 m_context->AddError(astAttr.location, "Unknown attribute identifier, no declaration found for this name");
@@ -593,19 +595,29 @@ namespace he::schema
             return false;
         }
 
-        const AstNode* scope = &scope_;
         for (const AstExpression& name : ast.qualified.names)
         {
+            if (name.kind != AstExpression::Kind::Identifier && name.kind != AstExpression::Kind::Generic)
+            {
+                m_context->AddError(name.location, "Only type names are allowed here.");
+                return false;
+            }
+        }
+
+        // Special case handling for type params and built-in types
+        if (ast.qualified.names.Size() == 1)
+        {
+            const AstExpression& name = *ast.qualified.names.Front();
             if (name.kind == AstExpression::Kind::Identifier)
             {
                 // Check for type param
-                const AstTypeParamRef ref = FindTypeParam(name.identifier, *scope);
+                const AstTypeParamRef ref = FindTypeParam(name.identifier, scope_);
                 if (ref.scope)
                 {
                     TypeKey key{ &ast, &scope_ };
                     TypeValue value{ Type::Data::Tag::AnyPointer, nullptr, ref };
                     m_context->TrackType(key, value);
-                    continue;
+                    return true;
                 }
 
                 // Check for builtin
@@ -627,89 +639,89 @@ namespace he::schema
                     TypeKey key{ &ast, &scope_ };
                     TypeValue value{ it->second, nullptr, {} };
                     m_context->TrackType(key, value);
-                    break;
+                    return true;
                 }
+            }
+        }
 
-                // Check for user-defined type
-                const AstNode* t = m_context->FindNode(name.identifier, *scope);
-                if (!t)
-                {
-                    m_context->AddError(name.location, "Unknown identifier '{}'", name.identifier);
-                    return false;
-                }
-
-                while (t->kind == AstNode::Kind::Alias)
-                    t = m_context->FindNode(t->alias.target, *t->parent);
-
-                if (t->kind != AstNode::Kind::Enum
-                    && t->kind != AstNode::Kind::Interface
-                    && t->kind != AstNode::Kind::Struct)
-                {
-                    m_context->AddError(name.location, "{} identifiers cannot be used as types", t->kind);
-                    return false;
-                }
-
-                if (onlyPointers && t->kind == AstNode::Kind::Enum)
-                {
-                    m_context->AddError(ast.location, "Only pointer types are allowed in this context, Enums are not allowed.");
-                    return false;
-                }
-
-                TypeKey key{ &ast, &scope_ };
-                TypeValue value{ Type::Data::Tag::AnyPointer, t, {} };
-                m_context->TrackType(key, value);
-
-                scope = t;
-
-                continue;
+        // Find the user-defined type and cache it
+        {
+            const AstNode* t = m_context->FindNodeByName(ast, scope_);
+            if (!t)
+            {
+                m_context->AddError(ast.location, "Unknown type name");
+                return false;
             }
 
-            if (name.kind == AstExpression::Kind::Generic)
+            while (t->kind == AstNode::Kind::Alias)
+                t = m_context->FindNodeByName(t->alias.target, *t->parent);
+
+            if (t->kind != AstNode::Kind::Enum
+                && t->kind != AstNode::Kind::Interface
+                && t->kind != AstNode::Kind::Struct)
             {
-                if (name.generic.params.IsEmpty())
+                m_context->AddError(ast.location, "{} identifiers cannot be used as types", t->kind);
+                return false;
+            }
+
+            if (onlyPointers && t->kind == AstNode::Kind::Enum)
+            {
+                m_context->AddError(ast.location, "Only pointer types are allowed in this context, Enums are not allowed.");
+                return false;
+            }
+
+            TypeKey key{ &ast, &scope_ };
+            TypeValue value{ Type::Data::Tag::AnyPointer, t, {} };
+            m_context->TrackType(key, value);
+        }
+
+        // Check the generic names and their params
+        const AstNode* scope = &scope_;
+        AstListIterator<AstExpression> startIt = ast.qualified.names.begin();
+        for (AstListIterator<AstExpression> it = ast.qualified.names.begin(); it != ast.qualified.names.end(); ++it)
+        {
+            if (it->kind == AstExpression::Kind::Generic)
+            {
+                if (it->generic.params.IsEmpty())
                 {
-                    m_context->AddError(name.location, "Generic type parameters cannot be empty.");
+                    m_context->AddError(it->location, "Generic type parameters cannot be empty.");
                     return false;
                 }
 
                 // Check for user-defined type
-                const AstNode* t = m_context->FindNode(name.generic.name, *scope);
+                const AstNode* t = m_context->FindNodeByName(startIt, (it + 1), *scope);
                 if (!t)
                 {
-                    m_context->AddError(name.location, "Unknown identifier '{}'", name.generic.name);
+                    m_context->AddError(it->location, "Unknown type name '{}'", it->generic.name);
                     return false;
                 }
 
                 if (t->kind != AstNode::Kind::Interface && t->kind != AstNode::Kind::Struct)
                 {
-                    m_context->AddError(name.location, "{} identifiers cannot be used as generic types", t->kind);
+                    m_context->AddError(it->location, "{} identifiers cannot be used as generic types", t->kind);
                     return false;
                 }
 
-                if (t->typeParams.Size() != name.generic.params.Size())
+                if (t->typeParams.Size() != it->generic.params.Size())
                 {
-                    m_context->AddError(name.location, "Generic requires {} type parameters, but only {} were given.",
-                        t->typeParams.Size(), name.generic.params.Size());
+                    m_context->AddError(it->location, "Generic requires {} type parameters, but only {} were given.",
+                        t->typeParams.Size(), it->generic.params.Size());
                     return false;
                 }
 
-                for (const AstExpression& param : name.generic.params)
+                for (const AstExpression& param : it->generic.params)
                 {
-                    if (!VerifyType(param, *scope, true))
+                    if (!VerifyType(param, scope_, true))
                         return false;
                 }
 
-                TypeKey key{ &ast, scope};
+                TypeKey key{ &ast, scope };
                 TypeValue value{ Type::Data::Tag::AnyPointer, t, {} };
                 m_context->TrackType(key, value);
 
                 scope = t;
-
-                continue;
+                startIt = it + 1;
             }
-
-            m_context->AddError(name.location, "Expected identifier, but encountered {}", name.kind);
-            return false;
         }
 
         return true;
@@ -749,7 +761,7 @@ namespace he::schema
             }
             case AstExpression::Kind::QualifiedName:
             {
-                const AstNode* sizeConst = m_context->FindNode(ast, scope);
+                const AstNode* sizeConst = m_context->FindNodeByName(ast, scope);
                 if (!sizeConst)
                 {
                     m_context->AddError(ast.location, "Unknown identifier used as array size.");
@@ -818,7 +830,7 @@ namespace he::schema
         bool result = m_context->TrackTypeId(node);
         if (!result)
         {
-            const AstNode* otherNode = m_context->FindNode(node.id);
+            const AstNode* otherNode = m_context->FindNodeById(node.id);
             HE_ASSERT(otherNode);
             m_context->AddError(node.location, "ID collision detected. Declaration '{}' has an ID that matches '{}' (L{}:{})",
                 node.name, otherNode->name, otherNode->location.line, otherNode->location.column);
@@ -886,14 +898,14 @@ namespace he::schema
 
             case AstExpression::Kind::QualifiedName:
             {
-                const AstNode* valueNode = m_context->FindNode(astValue, scopeValue);
+                const AstNode* valueNode = m_context->FindNodeByName(astValue, scopeValue);
                 if (!valueNode)
                 {
                     m_context->AddError(astValue.location, "Unknown name for value.");
                     return false;
                 }
 
-                const AstNode* typeNode = m_context->FindNode(astType, scopeType);
+                const AstNode* typeNode = m_context->FindNodeByName(astType, scopeType);
 
                 // We already validated the type, so if we don't find it then its a builtin.
                 // Since there are no builtins that take a qualified name value, this is an error.
@@ -950,7 +962,7 @@ namespace he::schema
                     return false;
                 }
 
-                const AstNode* node = m_context->FindNode(astType, scopeType);
+                const AstNode* node = m_context->FindNodeByName(astType, scopeType);
                 HE_ASSERT(node); // we already validated the type, so we should always find it.
                 if (node->kind != AstNode::Kind::Struct)
                 {

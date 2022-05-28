@@ -49,9 +49,9 @@ namespace he::schema
         bool VerifyFile() { return m_verifier.Verify(m_parser.Ast(), *this); }
         bool CompileFile() { return m_compiler.Compile(m_parser.Ast(), *this); }
 
-        const AstNode* FindNode(TypeId id) const;
-        const AstNode* FindNode(const AstExpression& name, const AstNode& scope) const;
-        const AstNode* FindNode(StringView name, const AstNode& scope, bool isImport = false) const;
+        const AstNode* FindNodeById(TypeId id) const;
+        const AstNode* FindNodeByName(const AstExpression& name, const AstNode& scope) const;
+        const AstNode* FindNodeByName(AstListIterator<AstExpression> begin, AstListIterator<AstExpression> end, const AstNode& scope) const;
 
         Declaration::Reader GetDecl(TypeId id) const { return m_declIdMap.at(id); }
 

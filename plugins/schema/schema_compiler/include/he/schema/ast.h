@@ -45,8 +45,26 @@ namespace he::schema
         AstListIterator& operator--() { m_node = m_list->Previous(m_node); return *this; }
         AstListIterator operator--(int) { AstListIterator x(m_list, m_node); m_node = m_list->Previous(m_node); return x; }
 
+        AstListIterator operator+(int n) const
+        {
+            AstListIterator x(m_list, m_node);
+            for (int i = 0; i < n; ++i)
+                ++x;
+            return x;
+        }
+
+        AstListIterator operator-(int n) const
+        {
+            AstListIterator x(m_list, m_node);
+            for (int i = 0; i < n; ++i)
+                --x;
+            return x;
+        }
+
         bool operator==(const AstListIterator& x) const { return m_list == x.m_list && m_node == x.m_node; }
         bool operator!=(const AstListIterator& x) const { return m_list != x.m_list || m_node != x.m_node; }
+
+        operator bool() const { return m_node != nullptr; }
 
     private:
         const AstList<T>* m_list{ nullptr };

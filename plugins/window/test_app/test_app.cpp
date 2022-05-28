@@ -39,7 +39,7 @@ namespace he
             case window::EventType::MouseMove:
             {
                 const auto& evt = static_cast<const window::MouseMoveEvent&>(ev);
-                PrintToDebugger("{{ pos.x={}, pos.y={}, absolute={}, raw={} }}", evt.pos.x, evt.pos.y, evt.absolute, evt.raw);
+                PrintToDebugger("{{ pos.x={}, pos.y={}, absolute={} }}", evt.pos.x, evt.pos.y, evt.absolute);
                 break;
             }
             case window::EventType::KeyDown:

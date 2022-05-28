@@ -97,17 +97,17 @@ namespace he::editor
 
         Settings::Builder& settings = m_settingsService.GetSettings();
 
-        const auto recentProjects = settings.getRecentProjects();
+        const auto recentProjects = settings.GetRecentProjects();
 
-        if (recentProjects.size() == 0)
+        if (recentProjects.Size() == 0)
         {
             ImGui::TextUnformatted("No recently opened projects.");
             return;
         }
 
-        for (auto&& recent : recentProjects.asReader())
+        for (auto&& recent : recentProjects.AsReader())
         {
-            const char* path = recent.getPath().cStr();
+            const char* path = recent.GetPath().Data();
             if (LinkButton(path))
             {
                 m_projectService.Open(path);

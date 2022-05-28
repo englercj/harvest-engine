@@ -19,8 +19,7 @@ int he::AppMain(int argc, char* argv[])
 {
     // Initialize logging and add the debug sink as early as possible.
     // We'll add the file sync later after we prepare the directories for writing logs to.
-    DebuggerSink debugSink;
-    he::AddLogSink(debugSink);
+    he::AddLogSink(DebuggerSink);
 
     const auto injector = editor::MakeAppInjector();
     editor::g_appInjector = &injector;
@@ -40,8 +39,6 @@ int he::AppMain(int argc, char* argv[])
     int rc = data.device->Run(app, desc);
 
     window::DestroyDevice(data.device);
-
-    he::RemoveLogSink(debugSink);
 
     return rc;
 }

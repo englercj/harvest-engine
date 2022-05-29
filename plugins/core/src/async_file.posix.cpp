@@ -173,7 +173,7 @@ namespace he
     std::future<AsyncFileResult> AsyncFile::ReadAsync(void* dst, uint64_t offset, uint32_t size)
     {
         AsyncOp* op = Allocator::GetTemp().New<AsyncOp>();
-        op->fd = dup(m_fd);
+        op->fd = dup(static_cast<int>(m_fd));
         op->offset = offset;
         op->size = size;
         op->buffer = dst;
@@ -191,7 +191,7 @@ namespace he
     std::future<AsyncFileResult> AsyncFile::WriteAsync(const void* src, uint64_t offset, uint32_t size)
     {
         AsyncOp* op = Allocator::GetTemp().New<AsyncOp>();
-        op->fd = dup(m_fd);
+        op->fd = dup(static_cast<int>(m_fd));
         op->offset = offset;
         op->size = size;
         op->buffer = const_cast<void*>(src);
@@ -204,6 +204,16 @@ namespace he
             s_executor->Add(WriteTask, op);
 
         return f;
+    }
+
+    Result AsyncFile::GetAttributes(FileAttributes& outAttributes) const
+    {
+        return PosixFileGetAttributes(static_cast<int>(m_fd), outAttributes);
+    }
+
+    Result AsyncFile::GetPath(String& outPath) const
+    {
+        return PosixFileGetPath(static_cast<int>(m_fd), outPath);
     }
 }
 

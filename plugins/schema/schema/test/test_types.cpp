@@ -57,11 +57,14 @@ HE_TEST(schema, types, ElementSize)
 }
 
 // ------------------------------------------------------------------------------------------------
-HE_SCHEMA_DECL_INFO_FOR_ID(0x86387955f9f51cad);
-struct TestDecl
+namespace he::schema
 {
-    HE_SCHEMA_DECL_STRUCT(0x86387955f9f51cad, 0x2503e27f9b0730f1, 1, 2, 3);
-}; 
+    HE_SCHEMA_DECL_INFO_FOR_ID(0x86387955f9f51cad);
+    struct TestDecl
+    {
+        HE_SCHEMA_DECL_STRUCT(0x86387955f9f51cad, 0x2503e27f9b0730f1, 1, 2, 3);
+    };
+}
 HE_TEST(schema, types, DeclInfo)
 {
     static_assert(TestDecl::Id == 0x86387955f9f51cad);

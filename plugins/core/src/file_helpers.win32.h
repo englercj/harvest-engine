@@ -3,6 +3,7 @@
 #pragma once
 
 #include "he/core/file.h"
+#include "he/core/string.h"
 
 #if defined(HE_PLATFORM_API_WIN32)
 

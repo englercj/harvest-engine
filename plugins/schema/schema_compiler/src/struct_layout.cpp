@@ -624,8 +624,6 @@ namespace he::schema
         HE_ASSERT(parentRef.decl.IsValid() && parentRef.decl.GetData().IsStruct());
         Declaration::Builder decl = parentRef.decl;
         Declaration::Data::Struct::Builder st = decl.GetData().GetStruct();
-        List<Field>::Builder fields = st.GetFields();
-
 
         FieldPlacer* parentPlacer = parentRef.placer;
 
@@ -682,7 +680,6 @@ namespace he::schema
         HE_ASSERT(parentRef.decl.IsValid() && parentRef.decl.GetData().IsStruct());
         Declaration::Builder decl = parentRef.decl;
         Declaration::Data::Struct::Builder st = decl.GetData().GetStruct();
-        List<Field>::Builder fields = st.GetFields();
 
         UnionFieldPlacer* unionPlacer = static_cast<UnionFieldPlacer*>(parentRef.placer);
 

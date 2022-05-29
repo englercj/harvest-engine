@@ -1066,7 +1066,7 @@ namespace he::schema
     void Parser::AddLexerError()
     {
         HE_ASSERT(m_token.type == Lexer::TokenType::Error);
-        m_context->AddError(m_token.line, m_token.column, m_token.error);
+        m_context->AddError(m_token.line, m_token.column, fmt::runtime(m_token.error));
     }
 
     template <std::integral T>

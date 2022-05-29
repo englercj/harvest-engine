@@ -15,6 +15,57 @@
 
 namespace he::schema
 {
+    template <typename T> struct TomlValueHelper;
+    template <> struct TomlValueHelper<bool> { static bool Get(const toml::node& value) { return value.as_boolean()->get(); } };
+    template <> struct TomlValueHelper<uint64_t> { static uint64_t Get(const toml::node& value) { return ::he::String::ToInteger<uint64_t>(value.as_string()->get().c_str(), nullptr, 16); } };
+    template <std::integral T> struct TomlValueHelper<T> { static T Get(const toml::node& value) { return static_cast<T>(value.as_integer()->get()); } };
+    template <std::floating_point T> struct TomlValueHelper<T> { static T Get(const toml::node& value) { return static_cast<T>(value.as_floating_point()->get()); } };
+
+    template <typename ReaderType>
+    struct SchemaValueHelper;
+
+    template <>
+    struct SchemaValueHelper<StructReader>
+    {
+        template <typename T>
+        static T GetData(const StructReader& data, uint32_t index, uint32_t dataOffset)
+        {
+            HE_UNUSED(index);
+            return data.GetDataField<T>(dataOffset);
+        }
+
+        static PointerReader GetPointer(const StructReader& data, uint32_t index)
+        {
+            return data.GetPointerField(static_cast<uint16_t>(index));
+        }
+
+        static StructReader GetComposite(const StructReader& data, uint32_t index)
+        {
+            return data.GetPointerField(static_cast<uint16_t>(index)).TryGetStruct();
+        }
+    };
+
+    template <>
+    struct SchemaValueHelper<ListReader>
+    {
+        template <typename T>
+        static T GetData(const ListReader& data, uint32_t index, uint32_t dataOffset)
+        {
+            HE_UNUSED(dataOffset);
+            return data.GetDataElement<T>(index);
+        }
+
+        static PointerReader GetPointer(const ListReader& data, uint32_t index)
+        {
+            return data.GetPointerElement(index);
+        }
+
+        static StructReader GetComposite(const ListReader& data, uint32_t index)
+        {
+            return data.GetCompositeElement(index);
+        }
+    };
+
     static const char* GetNodeTypeString(toml::node_type t)
     {
         switch (t)
@@ -333,12 +384,6 @@ namespace he::schema
 
             PopGroup();
         }
-
-        template <typename T> struct TomlValueHelper;
-        template <> struct TomlValueHelper<bool> { static bool Get(const toml::node& value) { return value.as_boolean()->get(); } };
-        template <> struct TomlValueHelper<uint64_t> { static uint64_t Get(const toml::node& value) { return ::he::String::ToInteger<uint64_t>(value.as_string()->get().c_str(), nullptr, 16); } };
-        template <std::integral T> struct TomlValueHelper<T> { static T Get(const toml::node& value) { return static_cast<T>(value.as_integer()->get()); } };
-        template <std::floating_point T> struct TomlValueHelper<T> { static T Get(const toml::node& value) { return static_cast<T>(value.as_floating_point()->get()); } };
 
         template <typename T>
         void SetArrayDataElement(StructBuilder& builder, uint16_t fieldIndex, uint32_t fieldDataOffset, uint16_t arrSize, uint16_t arrIndex, const toml::node& value)
@@ -1115,54 +1160,9 @@ namespace he::schema
         }
 
         template <typename ReaderType>
-        struct ValueHelper;
-
-        template <>
-        struct ValueHelper<StructReader>
-        {
-            template <typename T>
-            static T GetData(const StructReader& data, uint32_t index, uint32_t dataOffset)
-            {
-                HE_UNUSED(index);
-                return data.GetDataField<T>(dataOffset);
-            }
-
-            static PointerReader GetPointer(const StructReader& data, uint32_t index)
-            {
-                return data.GetPointerField(static_cast<uint16_t>(index));
-            }
-
-            static StructReader GetComposite(const StructReader& data, uint32_t index)
-            {
-                return data.GetPointerField(static_cast<uint16_t>(index)).TryGetStruct();
-            }
-        };
-
-        template <>
-        struct ValueHelper<ListReader>
-        {
-            template <typename T>
-            static T GetData(const ListReader& data, uint32_t index, uint32_t dataOffset)
-            {
-                HE_UNUSED(dataOffset);
-                return data.GetDataElement<T>(index);
-            }
-
-            static PointerReader GetPointer(const ListReader& data, uint32_t index)
-            {
-                return data.GetPointerElement(index);
-            }
-
-            static StructReader GetComposite(const ListReader& data, uint32_t index)
-            {
-                return data.GetCompositeElement(index);
-            }
-        };
-
-        template <typename ReaderType>
         void WriteArrayValue(ReaderType data, StringView name, Type::Reader elementType, uint32_t index, uint32_t dataOffset, uint32_t size, bool asHex)
         {
-            using Helper = ValueHelper<ReaderType>;
+            using Helper = SchemaValueHelper<ReaderType>;
 
             const bool isArrayOfStructs = elementType.GetData().IsStruct();
 
@@ -1198,9 +1198,9 @@ namespace he::schema
         template <typename ReaderType>
         void WriteValue(ReaderType data, StringView name, Type::Reader type, uint32_t index, uint32_t dataOffset, bool asHex)
         {
-            using Helper = ValueHelper<ReaderType>;
+            using Helper = SchemaValueHelper<ReaderType>;
 
-            const auto dataValueFmt = asHex ? "{:#x}" : "{}";
+            const auto dataValueFmt = fmt::runtime(asHex ? "{:#x}" : "{}");
 
             const Type::Data::Reader typeData = type.GetData();
             const Type::Data::Tag typeDataTag = typeData.GetTag();
@@ -1238,7 +1238,7 @@ namespace he::schema
                 }
                 case Type::Data::Tag::Blob:
                 {
-                    const List<uint8_t>::Reader byteList = Helper::GetPointer(data, index).TryGetList<uint8_t>();
+                    const List<uint8_t>::Reader byteList = Helper::GetPointer(data, index).template TryGetList<uint8_t>();
                     const Span<const uint8_t> bytes{ byteList.Data(), byteList.Size() };
                     m_writer.Write("\"{}\"", bytes); // TODO: Base64 if attribute is set
                     break;

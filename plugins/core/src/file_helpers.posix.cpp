@@ -1,14 +1,21 @@
 // Copyright Chad Engler
 
-#include "file_helpers.win32.h"
+#include "file_helpers.posix.h"
 
+#include "he/core/string_view.h"
 #include "he/core/enum_ops.h"
+#include "he/core/path.h"
 #include "he/core/wstr.h"
+
+#include "fmt/core.h"
 
 #if defined(HE_PLATFORM_API_POSIX) && !defined(HE_PLATFORM_EMSCRIPTEN)
 
 #include <errno.h>
 #include <fcntl.h>
+#include <unistd.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 
 namespace he
 {
@@ -69,6 +76,114 @@ namespace he
         }
 
         return fd;
+    }
+
+    static Result ReadLink(const char* linkPath, String& path)
+    {
+        // POSIX says we should be able to read the size of the link here
+        // but linux isn't POSIX compliant in the /proc filesystem.
+        // if (lstat(linkPath, &sb) == -1)
+        //     return Result::FromLastError();
+
+        // path.Resize(sb.st_size + 1);
+
+        path.Resize(String::MaxEmbedCharacters, he::DefaultInit);
+
+        do
+        {
+            ssize_t r = readlink(linkPath, path.Data(), path.Size());
+            if (r < 0)
+                return Result::FromLastError();
+
+            if (r < path.Size())
+            {
+                // resize to properly null terminate
+                path.Resize(r);
+                return Result::Success;
+            }
+
+            path.Resize(he::Max(512u, path.Size() * 2));
+        } while (true);
+
+        return PosixResult(ENAMETOOLONG);
+    }
+
+    void PosixFileGatherAttributes(const struct stat& sb, const char* path, FileAttributes& attribs)
+    {
+        attribs.flags = FileAttributeFlag::None;
+
+        if (path != nullptr)
+        {
+            const StringView baseName = GetBaseName(path);
+            if (baseName[0] == '.')
+                attribs.flags |= FileAttributeFlag::Hidden;
+        }
+
+        mode_t test = S_IWOTH;
+
+        if (getuid() == sb.st_uid)
+            test = S_IWUSR;
+        else if (getgid() == sb.st_gid)
+            test = S_IXGRP;
+
+        if ((sb.st_mode & test) == 0)
+            attribs.flags |= FileAttributeFlag::ReadOnly;
+
+        if (S_ISDIR(sb.st_mode))
+        {
+            attribs.flags |= FileAttributeFlag::Directory;
+            attribs.size = 0;
+        }
+        else
+        {
+            attribs.size = static_cast<uint64_t>(sb.st_size);
+        }
+
+        attribs.createTime = { 0 };
+    #if _POSIX_VERSION < 200809L
+        timespec ts{};
+        ts.tv_sec = sb.st_atime;
+        attribs.accessTime = PosixTimeToSystemTime(ts);
+        ts.tv_sec = sb.st_mtime;
+        attribs.writeTime = PosixTimeToSystemTime(ts);
+    #else
+        attribs.accessTime = PosixTimeToSystemTime(sb.st_atim);
+        attribs.writeTime = PosixTimeToSystemTime(sb.st_mtim);
+    #endif
+    }
+
+    Result PosixFileGetAttributes(int fd, FileAttributes& outAttributes)
+    {
+        struct stat sb;
+        if (fstat(fd, &sb))
+            return Result::FromLastError();
+
+        // TODO: Hidden allocator here, necessary to avoid PATH_MAX issues but probably should
+        // expose this so callers know it can allocate.
+        String path;
+        Result r = PosixFileGetPath(fd, path);
+
+        PosixFileGatherAttributes(sb, r ? path.Data() : nullptr, outAttributes);
+
+        return Result::Success;
+    }
+
+    Result PosixFileGetPath(int fd, String& outPath)
+    {
+        char buf[64];
+        auto res = fmt::format_to_n(buf, HE_LENGTH_OF(buf), "/proc/self/fd/{}", fd);
+        buf[res.size] = '\0';
+
+        Result r = ReadLink(buf, outPath);
+
+        // Size of link name changed between lstate and readlink, and it got larger. Try reading
+        // it one more time before giving up.
+        if (!r)
+        {
+            r = ReadLink(buf, outPath);
+        }
+
+        return r;
     }
 }
 

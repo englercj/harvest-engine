@@ -30,80 +30,6 @@
 
 namespace he
 {
-    static void GatherFileAttributes(const struct stat& sb, const char* path, FileAttributes& attribs)
-    {
-        attribs.flags = FileAttributeFlag::None;
-
-        if (path != nullptr)
-        {
-            const StringView baseName = GetBaseName(path);
-            if (baseName[0] == '.')
-                attribs.flags |= FileAttributeFlag::Hidden;
-        }
-
-        mode_t test = S_IWOTH;
-
-        if (getuid() == sb.st_uid)
-            test = S_IWUSR;
-        else if (getgid() == sb.st_gid)
-            test = S_IXGRP;
-
-        if ((sb.st_mode & test) == 0)
-            attribs.flags |= FileAttributeFlag::ReadOnly;
-
-        if (S_ISDIR(sb.st_mode))
-        {
-            attribs.flags |= FileAttributeFlag::Directory;
-            attribs.size = 0;
-        }
-        else
-        {
-            attribs.size = static_cast<uint64_t>(sb.st_size);
-        }
-
-        attribs.createTime = { 0 };
-    #if _POSIX_VERSION < 200809L
-        timespec ts{};
-        ts.tv_sec = sb.st_atime;
-        attribs.accessTime = PosixTimeToSystemTime(ts);
-        ts.tv_sec = sb.st_mtime;
-        attribs.writeTime = PosixTimeToSystemTime(ts);
-    #else
-        attribs.accessTime = PosixTimeToSystemTime(sb.st_atim);
-        attribs.writeTime = PosixTimeToSystemTime(sb.st_mtim);
-    #endif
-    }
-
-    static Result ReadLink(const char* linkPath, String& path)
-    {
-        // POSIX says we should be able to read the size of the link here
-        // but linux isn't POSIX compliant in the /proc filesystem.
-        // if (lstat(linkPath, &sb) == -1)
-        //     return Result::FromLastError();
-
-        // path.Resize(sb.st_size + 1);
-
-        path.Resize(String::MaxEmbedCharacters, he::DefaultInit);
-
-        do
-        {
-            ssize_t r = readlink(linkPath, path.Data(), path.Size());
-            if (r < 0)
-                return Result::FromLastError();
-
-            if (r < path.Size())
-            {
-                // resize to properly null terminate
-                path.Resize(r);
-                return Result::Success;
-            }
-
-            path.Resize(he::Max(512u, path.Size() * 2));
-        } while (true);
-
-        return PosixResult(ENAMETOOLONG);
-    }
-
     FileResult GetFileResult(Result result)
     {
         // EAGAIN and EWOULDBLOCK are the same on most modern *nix platforms
@@ -195,8 +121,7 @@ namespace he
         if (stat(path, &sb))
             return Result::FromLastError();
 
-        GatherFileAttributes(sb, path, outAttributes);
-
+        PosixFileGatherAttributes(sb, path, outAttributes);
         return Result::Success;
     }
 
@@ -379,36 +304,12 @@ namespace he
 
     Result File::GetAttributes(FileAttributes& outAttributes) const
     {
-        struct stat sb;
-        if (fstat(static_cast<int>(m_fd), &sb))
-            return Result::FromLastError();
-
-        // TODO: Hidden allocator here, necessary to avoid PATH_MAX issues but probably should
-        // expose this so callers know it can allocate.
-        String path;
-        Result r = GetPath(path);
-
-        GatherFileAttributes(sb, r ? path.Data() : nullptr, outAttributes);
-
-        return Result::Success;
+        return PosixFileGetAttributes(static_cast<int>(m_fd), outAttributes);
     }
 
     Result File::GetPath(String& path) const
     {
-        char buf[64];
-        auto res = fmt::format_to_n(buf, HE_LENGTH_OF(buf), "/proc/self/fd/{}", static_cast<int>(m_fd));
-        buf[res.size] = '\0';
-
-        Result r = ReadLink(buf, path);
-
-        // Size of link name changed between lstate and readlink, and it got larger. Try reading
-        // it one more time before giving up.
-        if (!r)
-        {
-            r = ReadLink(buf, path);
-        }
-
-        return r;
+        return PosixFileGetPath(static_cast<int>(m_fd), path);
     }
 
     Result File::SetTimes(const SystemTime* accessTime, const SystemTime* writeTime)

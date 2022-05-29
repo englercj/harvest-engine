@@ -109,8 +109,8 @@ int he::AppMain(int argc, char* argv[])
     ArgDesc ArgDescriptors[] =
     {
         { args.help,        'h', "help",        "Output this help text" },
-        { args.outDir,      'o', "out",         "Output directory to write generated files" },
-        { args.targets,     't', "target",      "Target language to generate definitions for" },
+        { args.outDir,      'o', "out",         "Output directory to write generated files", ArgFlag::Required },
+        { args.targets,     't', "target",      "Target language to generate definitions for", ArgFlag::Required },
         { args.includeDirs, 'I', "include",     "Path to search for import declarations" },
         { args.includeSourceInfo, "--src-info", "Include source info in compiled schema (file, line column)" },
     };
@@ -124,13 +124,20 @@ int he::AppMain(int argc, char* argv[])
         return -1;
     }
 
+    Result r = Directory::Create(args.outDir, true);
+    if (!r)
+    {
+        HE_LOG_ERROR(he_schemac, HE_MSG("Failed to create output directory."), HE_KV(path, args.outDir), HE_KV(result, r));
+        return -1;
+    }
+
     String fullPath;
 
     for (const char* param : result.values)
     {
         fullPath = param;
         Result r = MakeAbsolute(fullPath);
-        if (!HE_VERIFY(r))
+        if (!r)
         {
             HE_LOG_ERROR(schema_compiler,
                 HE_MSG("Failed to get the full path to input file."),

@@ -3,7 +3,9 @@
 #include "he/core/allocator.h"
 #include "he/core/args.h"
 #include "he/core/ascii.h"
+#include "he/core/directory.h"
 #include "he/core/file.h"
+#include "he/core/log.h"
 #include "he/core/path.h"
 #include "he/core/result_fmt.h"
 #include "he/core/scope_guard.h"
@@ -42,8 +44,8 @@ int he::AppMain(int argc, char* argv[])
     ArgDesc ArgDescriptors[] =
     {
         { args.help,        'h', "help",        "Output this help text" },
-        { args.outDir,      'o', "out",         "Output directory to write generated files" },
-        { args.optLevel,    'O', "opt-level",   "Optimization level to apply. Default is 1, max is 3" },
+        { args.outDir,      'o', "out",         "Output directory to write generated files", ArgFlag::Required },
+        { args.optLevel,    'O', "opt-level",   "Optimization level to apply. Default is 1, min is 0, max is 3" },
         { args.defines,     'D', "define",      "Define a symbol for the preprocessor" },
         { args.includeDirs, 'I', "include",     "Path to search for import declarations" },
         { args.targets,     't', "target",      "Target profile to generate for" },
@@ -58,12 +60,19 @@ int he::AppMain(int argc, char* argv[])
         return -1;
     }
 
+    Result res = Directory::Create(args.outDir, true);
+    if (!res)
+    {
+        HE_LOG_ERROR(he_schemac, HE_MSG("Failed to create output directory."), HE_KV(path, args.outDir), HE_KV(result, res));
+        return -1;
+    }
+
     // Create the global session and compilation request
     Slang::ComPtr<slang::IGlobalSession> globalSession;
     SlangResult r = slang::createGlobalSession(globalSession.writeRef());
     if (SLANG_FAILED(r))
     {
-        std::cerr << "Failed to create global session. Error (" << r << ')' << std::endl;
+        HE_LOG_ERROR(he_shaderc, HE_MSG("Failed to create global slang session."), HE_KV(result, r));
         return -1;
     }
 
@@ -71,7 +80,7 @@ int he::AppMain(int argc, char* argv[])
     r = globalSession->createCompileRequest(request.writeRef());
     if (SLANG_FAILED(r))
     {
-        std::cerr << "Failed to create compile request. Error (" << r << ')' << std::endl;
+        HE_LOG_ERROR(he_shaderc, HE_MSG("Failed to create slang compile request."), HE_KV(result, r));
         return -1;
     }
 
@@ -101,7 +110,7 @@ int he::AppMain(int argc, char* argv[])
     r = request->getModule(0, mod.writeRef());
     if (!mod || SLANG_FAILED(r))
     {
-        std::cerr << "Failed to get module. Error (" << r << ')' << std::endl;
+        HE_LOG_ERROR(he_shaderc, HE_MSG("Failed to module from compile request."), HE_KV(result, r));
         return -1;
     }
 
@@ -126,7 +135,9 @@ int he::AppMain(int argc, char* argv[])
         }
         else
         {
-            std::cerr << "Unknown target '" << target << "'. Only DX Shader Model (sm_*) and GLSL (glsl_*) targets are supported." << std::endl;
+            HE_LOG_ERROR(he_shaderc,
+                HE_MSG("Unknown compilation target. Only DX Shader Model (sm_*) and GLSL (glsl_*) targets are supported."),
+                HE_KV(target, target));
             return -1;
         }
 
@@ -138,7 +149,9 @@ int he::AppMain(int argc, char* argv[])
         SlangProfileID profileId = globalSession->findProfile(target);
         if (profileId == SLANG_PROFILE_UNKNOWN)
         {
-            std::cerr << "Unknown target '" << target << "'. No target found with that name." << std::endl;
+            HE_LOG_ERROR(he_shaderc,
+                HE_MSG("Unknown compilation target. No target found with that name."),
+                HE_KV(target, target));
             return -1;
         }
         request->setTargetProfile(index, profileId);
@@ -147,7 +160,9 @@ int he::AppMain(int argc, char* argv[])
     r = request->compile();
     if (SLANG_FAILED(r))
     {
-        std::cerr << "Failed to compile. Error (" << r << ')' << std::endl;
+        HE_LOG_ERROR(he_shaderc,
+            HE_MSG("Failed to compile shader."),
+            HE_KV(result, r));
         return -1;
     }
 
@@ -179,7 +194,13 @@ int he::AppMain(int argc, char* argv[])
             r = request->getEntryPointCodeBlob(entryIndex, targetIndex, entryBlob.writeRef());
             if (!entryBlob || SLANG_FAILED(r))
             {
-                std::cerr << "Failed to get entry point code blob. Error (" << r << ')' << std::endl;
+                HE_LOG_ERROR(he_shaderc,
+                    HE_MSG("Failed to get entry point code blob from compiled shader."),
+                    HE_KV(entry_index, entryIndex),
+                    HE_KV(entry_name, entry->getName()),
+                    HE_KV(entry_stage, entry->getStage()),
+                    HE_KV(target_index, targetIndex),
+                    HE_KV(result, r));
                 return -1;
             }
 
@@ -201,7 +222,13 @@ int he::AppMain(int argc, char* argv[])
                 case SLANG_STAGE_GEOMETRY: constName += "_gs"; break;
                 case SLANG_STAGE_MESH: constName += "_ms"; break;
                 default:
-                    std::cerr << "Unknown shader stage '" << entry->getStage() << "'." << std::endl;
+                    HE_LOG_ERROR(he_shaderc,
+                        HE_MSG("Encountered unknown shader stage."),
+                        HE_KV(entry_index, entryIndex),
+                        HE_KV(entry_name, entry->getName()),
+                        HE_KV(entry_stage, entry->getStage()),
+                        HE_KV(target_index, targetIndex),
+                        HE_KV(result, r));
                     return -1;
             }
 
@@ -216,7 +243,14 @@ int he::AppMain(int argc, char* argv[])
             }
             else
             {
-                std::cerr << "Unknown target '" << target << "'." << std::endl;
+                HE_LOG_ERROR(he_shaderc,
+                    HE_MSG("Encountered unknown shader target."),
+                    HE_KV(entry_index, entryIndex),
+                    HE_KV(entry_name, entry->getName()),
+                    HE_KV(entry_stage, entry->getStage()),
+                    HE_KV(target_index, targetIndex),
+                    HE_KV(target_name, target),
+                    HE_KV(result, r));
                 return -1;
             }
 

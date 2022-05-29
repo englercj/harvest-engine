@@ -17,13 +17,16 @@ return function (plugin)
                     opt = opt .. "-c "
                 end
 
+                local buildCmd = he.target_bin_dir .. "/he_bin2c " .. opt .. "-n c_%{file.name:gsub('[%.-]', '_')} -f %{file.abspath} -o " .. he.file_gen_dir .. "/%{file.name}.h"
+
                 dependson { "he_bin2c" }
 
                 he.filter_push_combine { "files:" .. options.glob }
                     compilebuildoutputs "on"
                     buildmessage "Creating C header for file %{file.abspath}"
                     buildcommands {
-                        he.target_bin_dir .. "/he_bin2c " .. opt .. "-n c_%{file.name:gsub('[%.-]', '_')} -f %{file.abspath} -o " .. he.file_gen_dir .. "/%{file.name}.h",
+                        "{ECHO} " .. buildCmd,
+                        buildCmd,
                     }
                     buildoutputs {
                         he.file_gen_dir .. "/%{file.name}.h",

@@ -132,6 +132,7 @@ namespace he::window::Linux
         Vec2i GetSize() const override;
         float GetDpiScale() const override;
         bool IsFocused() const override;
+        bool IsChildFocused() const override;
         bool IsMinimized() const override;
         bool IsMaximized() const override;
 
@@ -140,6 +141,7 @@ namespace he::window::Linux
         void SetVisible(bool visible, bool focus) override;
         void SetTitle(const char* text) override;
         void SetAlpha(float alpha) override;
+        void SetAcceptInput(bool value) override;
 
         void Focus() override;
         void Minimize() override;
@@ -613,6 +615,15 @@ namespace he::window::Linux
         return focused == m_window;
     }
 
+    bool ViewImpl::IsChildFocused() const
+    {
+        Window focused = None;
+        int revertTo = RevertToNone;
+        m_device->m_XGetInputFocus(m_device->m_display, &focused, &revertTo);
+        // TODO! QueryTree()?
+        return focused == m_window;
+    }
+
     bool ViewImpl::IsMinimized() const
     {
         int result = WithdrawnState;
@@ -735,6 +746,12 @@ namespace he::window::Linux
             PropModeReplace,
             reinterpret_cast<uint8_t*>(&value),
             1L);
+    }
+
+    void ViewImpl::SetAcceptInput(bool value)
+    {
+        // TODO
+        HE_UNUSED(value);
     }
 
     void ViewImpl::Focus()
@@ -1299,7 +1316,7 @@ namespace he::window::Linux
                     if (XIMaskIsSet(raw->valuators.mask, 1))
                         pos.y = static_cast<float>(values[1]);
 
-                    MouseMoveEvent ev(GetFocusedView(), pos, false, true);
+                    MouseMoveEvent ev(GetFocusedView(), pos, false);
 
                     if (m_cursorRelativeMode)
                         CenterCursor();
@@ -1321,8 +1338,11 @@ namespace he::window::Linux
         {
             case EnterNotify:
             {
+                if (m_hasHighDefMouse)
+                    break;
+
                 Vec2f pos{ static_cast<float>(event.xcrossing.x), static_cast<float>(event.xcrossing.y) };
-                MouseMoveEvent ev(view, pos, true, false);
+                MouseMoveEvent ev(view, pos, true);
                 m_app->OnEvent(ev);
                 break;
             }
@@ -1409,8 +1429,11 @@ namespace he::window::Linux
             }
             case MotionNotify:
             {
+                if (m_hasHighDefMouse)
+                    break;
+
                 Vec2f pos = { static_cast<float>(event.xmotion.x), static_cast<float>(event.xmotion.y) };
-                MouseMoveEvent ev(view, pos, true, false);
+                MouseMoveEvent ev(view, pos, true);
 
                 if (m_cursorRelativeMode)
                     CenterCursor();

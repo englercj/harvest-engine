@@ -15,7 +15,7 @@ HE_TEST(core, assert, ASSERT)
     {
         HE_EXPECT_EQ(source.line, 39);
         HE_EXPECT_EQ(GetBaseName(source.file), "test_assert.cpp");
-        HE_EXPECT_EQ_STR(source.funcName, "_heTestClass_core_assert_ASSERT::TestBody");
+        HE_EXPECT_EQ_STR(source.funcName, "virtual void _heTestClass_core_assert_ASSERT::TestBody()");
 
         HE_EXPECT_EQ(count, 3);
 
@@ -46,7 +46,7 @@ HE_TEST(core, assert, VERIFY)
     {
         HE_EXPECT_EQ(source.line, 69);
         HE_EXPECT_EQ(GetBaseName(source.file), "test_assert.cpp");
-        HE_EXPECT_EQ_STR(source.funcName, "_heTestClass_core_assert_VERIFY::TestBody");
+        HE_EXPECT_EQ_STR(source.funcName, "virtual void _heTestClass_core_assert_VERIFY::TestBody()");
 
         HE_EXPECT_EQ(count, 3);
         HE_EXPECT_EQ_STR(kvs[0].Key(), "error_kind");

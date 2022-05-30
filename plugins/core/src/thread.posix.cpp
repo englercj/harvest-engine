@@ -2,6 +2,8 @@
 
 #include "he/core/thread.h"
 
+#include "he/core/utils.h"
+
 #include <type_traits>
 
 #if defined(HE_PLATFORM_API_POSIX)
@@ -24,16 +26,18 @@ namespace he
         cpu_set_t set;
         CPU_ZERO(&set);
 
-        for (uint32_t i = 0; i < sizeof(mask); ++i)
+        static_assert(__CPU_SETSIZE >= (sizeof(mask) * 8));
+
+        for (uint32_t i = 0; i < (sizeof(mask) * 8); ++i)
         {
             const uint64_t flag = 1 << i;
             if ((mask & flag) != 0)
             {
-                CPU_SET(mask, &set);
+                CPU_SET(i, &set);
             }
         }
 
-        int rc = pthread_setaffinity_np(static_cast<pthread_t>(thread), sizeof(set), &set);
+        const int rc = pthread_setaffinity_np(static_cast<pthread_t>(thread), sizeof(set), &set);
         return PosixResult(rc);
     }
 

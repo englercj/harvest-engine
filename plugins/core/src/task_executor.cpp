@@ -76,7 +76,7 @@ namespace he
             });
 
             if (m_tasks.empty())
-                return false;
+                return m_running;
 
             task = m_tasks.front();
             m_tasks.pop_front();

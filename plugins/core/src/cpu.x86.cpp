@@ -98,12 +98,12 @@ namespace he
             "pushl %%ebx\n\t"
             "cpuid\n\t"
             "popl %%ebx\n\t"
-            : "=a"(eax), "=&r"(ebx), "=c"(ecx), "=d"(edx)
+            : "=a"(eax), "=r"(ebx), "=c"(ecx), "=d"(edx)
             : "a"(reg), "c"(0));
     #else
         asm volatile(
             "cpuid"
-            : "=a"(eax), "=&r"(ebx), "=c"(ecx), "=d"(edx)
+            : "=a"(eax), "=b"(ebx), "=c"(ecx), "=d"(edx)
             : "a"(reg), "c"(0));
     #endif
     }

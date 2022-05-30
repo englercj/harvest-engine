@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include "he/core/compiler.h"
 #include "he/core/config.h"
 #include "he/core/key_value.h"
 #include "he/core/macros.h"
@@ -34,7 +35,7 @@
 #define HE_LOG(lvl, catStr, ...) \
     do { \
         if constexpr (static_cast<int>(::he::LogLevel::lvl) >= HE_LOG_LEVEL_ENABLED) { \
-            constexpr ::he::LogSource LogEntrySource_{ ::he::LogLevel::lvl, HE_LINE, HE_FILE, __FUNCTION__, catStr }; \
+            constexpr ::he::LogSource LogEntrySource_{ ::he::LogLevel::lvl, HE_LINE, HE_FILE, HE_FUNC_SIG, catStr }; \
             const ::he::KeyValue logKvList_[]{ {"",0}, __VA_ARGS__ }; \
             ::he::Log(LogEntrySource_, logKvList_ + 1, HE_LENGTH_OF(logKvList_) - 1); \
         } \

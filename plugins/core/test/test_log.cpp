@@ -2,6 +2,7 @@
 
 #include "he/core/log.h"
 
+#include "he/core/compiler.h"
 #include "he/core/path.h"
 #include "he/core/test.h"
 
@@ -34,9 +35,14 @@ HE_TEST(core, log, AddLogSink_RemoveLogSink)
     auto sink = [](void*, const LogSource& source, const KeyValue* kvs, uint32_t count)
     {
         HE_EXPECT_EQ(source.level, LogLevel::Info);
-        HE_EXPECT(source.line == 50 || source.line == 51);
+        HE_EXPECT(source.line == 56 || source.line == 57);
         HE_EXPECT_EQ(GetBaseName(source.file), "test_log.cpp");
-        HE_EXPECT_EQ_STR(source.funcName, "_heTestClass_core_log_AddLogSink_RemoveLogSink::TestBody");
+    #if HE_COMPILER_MSVC
+        HE_EXPECT_EQ_STR(source.funcName, "void _heTestClass_core_log_AddLogSink_RemoveLogSink::TestBody(void)");
+    #elif HE_COMPILER_GCC
+        HE_EXPECT_EQ_STR(source.funcName, "virtual void _heTestClass_core_log_AddLogSink_RemoveLogSink::TestBody()");
+    #else
+    #endif
         HE_EXPECT_EQ_STR(source.category, "log_test");
 
         HE_EXPECT_EQ(count, 1);

@@ -14,7 +14,14 @@ using namespace he;
 // ------------------------------------------------------------------------------------------------
 extern "C" HE_DLL_EXPORT void _HeTestingDllExport()
 {
-    HE_EXPECT_EQ_STR(HE_FUNC_SIG, "void __cdecl _HeTestingDllExport(void)");
+    const char* funcSig = HE_FUNC_SIG;
+#if HE_COMPILER_MSVC
+    HE_EXPECT_EQ_STR(funcSig, "void __cdecl _HeTestingDllExport(void)");
+#elif HE_COMPILER_GCC
+    HE_EXPECT_EQ_STR(funcSig, "void _HeTestingDllExport()");
+#else
+    #error "Need to add test for: " HE_FUNC_SIG
+#endif
 }
 
 // ------------------------------------------------------------------------------------------------

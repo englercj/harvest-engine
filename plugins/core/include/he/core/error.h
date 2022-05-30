@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include "he/core/compiler.h"
 #include "he/core/debug.h"
 #include "he/core/key_value.h"
 #include "he/core/macros.h"

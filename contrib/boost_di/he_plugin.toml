@@ -3,13 +3,13 @@
 id = "boost-ext.di"
 name = "[Boost::ext].DI"
 description = "Header only Dependency Injection library with no dependencies."
-version = "52e6eaeb8d8ec4110e804d55252ce192c6bd55ae"
+version = "48eccb76aee03f0eceafe9bf47a713a8c0e7d810"
 author = "Kris Jusiak <krzysztof@jusiak.net>"
 license = "BSL-1.0"
 homepage = "https://github.com/boost-ext/di"
 
 [install]
-    github = "boost-ext/di#52e6eaeb8d8ec4110e804d55252ce192c6bd55ae"
+    github = "boost-ext/di#48eccb76aee03f0eceafe9bf47a713a8c0e7d810" # latest cpp14 branch
 
 [[modules]]
     name = "boost_di"

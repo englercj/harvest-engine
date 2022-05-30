@@ -10,21 +10,13 @@
 #include "he/core/main.inl"
 #include "he/window/view.h"
 
-namespace he::editor
-{
-    const AppInjectorType* g_appInjector = nullptr;
-}
-
 int he::AppMain(int argc, char* argv[])
 {
     // Initialize logging and add the debug sink as early as possible.
     // We'll add the file sync later after we prepare the directories for writing logs to.
     he::AddLogSink(DebuggerSink);
 
-    const auto injector = editor::MakeAppInjector();
-    editor::g_appInjector = &injector;
-
-    editor::EditorData& data = injector.create<editor::EditorData&>();
+    editor::EditorData& data = editor::DICreate<editor::EditorData&>();
     data.argc = argc;
     data.argv = argv;
     data.device = window::CreateDevice();
@@ -35,7 +27,7 @@ int he::AppMain(int argc, char* argv[])
     desc.title = "Harvest";
     desc.flags = window::ViewFlag::Default | window::ViewFlag::Borderless;
 
-    editor::EditorApp& app = injector.create<editor::EditorApp&>();
+    editor::EditorApp& app = editor::DICreate<editor::EditorApp&>();
     int rc = data.device->Run(app, desc);
 
     window::DestroyDevice(data.device);

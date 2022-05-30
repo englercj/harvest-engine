@@ -16,7 +16,7 @@ homepage = "https://freetype.org/"
     type = "static"
     group = "engine/contrib"
     files = [
-        # base
+        "src/autofit/autofit.c",
         "src/base/ftbase.c",
         "src/base/ftbbox.c",
         "src/base/ftbdf.c",
@@ -33,21 +33,15 @@ homepage = "https://freetype.org/"
         "src/base/ftpfr.c",
         "src/base/ftstroke.c",
         "src/base/ftsynth.c",
-        "src/base/ftsystem.c",
         "src/base/fttype1.c",
         "src/base/ftwinfnt.c",
-
-        # modules
-        "src/autofit/autofit.c",
         "src/bdf/bdf.c",
         "src/bzip2/ftbzip2.c",
         "src/cache/ftcache.c",
         "src/cff/cff.c",
         "src/cid/type1cid.c",
-        "src/gxvalid/gxvalid.c",
         "src/gzip/ftgzip.c",
         "src/lzw/ftlzw.c",
-        "src/otvalid/otvalid.c",
         "src/pcf/pcf.c",
         "src/pfr/pfr.c",
         "src/psaux/psaux.c",
@@ -59,19 +53,25 @@ homepage = "https://freetype.org/"
         "src/truetype/truetype.c",
         "src/type1/type1.c",
         "src/type42/type42.c",
+        "src/winfonts/winfnt.c",
     ]
-    private_defines = ["_LIB", "FT2_BUILD_LIBRARY"]
+    private_defines = ["_LIB", "FT2_BUILD_LIBRARY", "FT_CONFIG_OPTION_SYSTEM_ZLIB"]
     public_dependson = ["zlib"]
     public_includedirs = ["include"]
     warnings = "Off"
 
     [[modules.variants]]
         conditions = ["system:not windows"]
-        files = ["src/base/ftdebug.c"]
+        private_defines = ["HAVE_UNISTD_H=1", "HAVE_FCNTL_H=1"]
+        files = [
+            "builds/unix/ftsystem.c",
+            "src/base/ftdebug.c",
+        ]
 
     [[modules.variants]]
         conditions = ["system:windows"]
         files = [
             "builds/windows/ftdebug.c",
-            "src/winfonts/winfnt.c",
+            "src/base/ftsystem.c",
+            "src/base/ftver.rc",
         ]

@@ -543,8 +543,13 @@ namespace he::editor
         {
             rhi::ShaderDesc desc{};
             desc.stage = rhi::ShaderStage::Vertex;
+        #if defined(HE_PLATFORM_API_WIN32)
             desc.code = c_imgui_vs_dxbc;
             desc.codeSize = sizeof(c_imgui_vs_dxbc);
+        #else
+            desc.code = c_imgui_vs_spv;
+            desc.codeSize = sizeof(c_imgui_vs_spv);
+        #endif
             Result r = device->CreateShader(desc, vs);
             if (!r)
             {
@@ -557,8 +562,13 @@ namespace he::editor
         {
             rhi::ShaderDesc desc{};
             desc.stage = rhi::ShaderStage::Pixel;
+        #if defined(HE_PLATFORM_API_WIN32)
             desc.code = c_imgui_ps_dxbc;
             desc.codeSize = sizeof(c_imgui_ps_dxbc);
+        #else
+            desc.code = c_imgui_ps_spv;
+            desc.codeSize = sizeof(c_imgui_ps_spv);
+        #endif
             Result r = device->CreateShader(desc, ps);
             if (!r)
             {

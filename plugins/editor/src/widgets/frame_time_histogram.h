@@ -12,8 +12,8 @@ namespace he::editor
     class FrameTimeHistogram
     {
     public:
-        static constexpr size_t HistorySize = 101;
-        static constexpr size_t MarkerCount = 2;
+        static constexpr int HistorySize = 101;
+        static constexpr int MarkerCount = 2;
 
         FrameTimeHistogram() { Clear(); }
 

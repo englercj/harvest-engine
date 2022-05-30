@@ -28,14 +28,12 @@ namespace he::editor
             di::bind<he::editor::EditorData>().to(s_editorData));
     }
 
-    using AppInjectorType = decltype(MakeAppInjector());
-
-    extern const AppInjectorType* g_appInjector;
+    inline const auto g_appInjector = MakeAppInjector();
 
     template <typename T>
-    auto DICreate() -> decltype(g_appInjector->template create<T>())
+    auto DICreate() -> decltype(g_appInjector.template create<T>())
     {
-        return g_appInjector->template create<T>();
+        return g_appInjector.template create<T>();
     }
 
     template <typename T>

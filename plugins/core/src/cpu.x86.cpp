@@ -13,10 +13,8 @@
 
 #if HE_COMPILER_MSVC
     #include <intrin.h>
-#endif
-
-#if HE_COMPILER_GCC
-    #include <xsaveintrin.h>
+#else
+    #include <cpuid.h>
 #endif
 
 namespace he
@@ -93,18 +91,8 @@ namespace he
         ebx = regs[1];
         ecx = regs[2];
         edx = regs[3];
-    #elif HE_CPU_X86_32 && defined(__PIC__)
-        asm volatile(
-            "pushl %%ebx\n\t"
-            "cpuid\n\t"
-            "popl %%ebx\n\t"
-            : "=a"(eax), "=r"(ebx), "=c"(ecx), "=d"(edx)
-            : "a"(reg), "c"(0));
     #else
-        asm volatile(
-            "cpuid"
-            : "=a"(eax), "=b"(ebx), "=c"(ecx), "=d"(edx)
-            : "a"(reg), "c"(0));
+        __cpuid(reg, eax, ebx, ecx, edx);
     #endif
     }
 

@@ -38,7 +38,7 @@ HE_TEST(core, log, AddLogSink_RemoveLogSink)
         HE_EXPECT(source.line == 56 || source.line == 57);
         HE_EXPECT_EQ(GetBaseName(source.file), "test_log.cpp");
     #if HE_COMPILER_MSVC
-        HE_EXPECT_EQ_STR(source.funcName, "void _heTestClass_core_log_AddLogSink_RemoveLogSink::TestBody(void)");
+        HE_EXPECT_EQ_STR(source.funcName, "void __cdecl _heTestClass_core_log_AddLogSink_RemoveLogSink::TestBody(void)");
     #elif HE_COMPILER_GCC
         HE_EXPECT_EQ_STR(source.funcName, "virtual void _heTestClass_core_log_AddLogSink_RemoveLogSink::TestBody()");
     #else

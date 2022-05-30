@@ -13,9 +13,13 @@ HE_TEST(core, assert, ASSERT)
 {
     auto handler = [](void*, const ErrorSource& source, const KeyValue* kvs, uint32_t count) -> bool
     {
-        HE_EXPECT_EQ(source.line, 39);
+        HE_EXPECT_EQ(source.line, 43);
         HE_EXPECT_EQ(GetBaseName(source.file), "test_assert.cpp");
+    #if HE_COMPILER_MSVC
+        HE_EXPECT_EQ_STR(source.funcName, "void __cdecl _heTestClass_core_assert_ASSERT::TestBody(void)");
+    #elif HE_COMPILER_GCC
         HE_EXPECT_EQ_STR(source.funcName, "virtual void _heTestClass_core_assert_ASSERT::TestBody()");
+    #endif
 
         HE_EXPECT_EQ(count, 3);
 
@@ -44,9 +48,15 @@ HE_TEST(core, assert, VERIFY)
 {
     auto handler = [](void*, const ErrorSource& source, const KeyValue* kvs, uint32_t count) -> bool
     {
-        HE_EXPECT_EQ(source.line, 69);
+        HE_EXPECT_EQ(source.line, 79);
         HE_EXPECT_EQ(GetBaseName(source.file), "test_assert.cpp");
+    #if HE_COMPILER_MSVC
+        HE_EXPECT_EQ_STR(source.funcName, "void __cdecl _heTestClass_core_assert_VERIFY::TestBody(void)");
+    #elif HE_COMPILER_GCC
         HE_EXPECT_EQ_STR(source.funcName, "virtual void _heTestClass_core_assert_VERIFY::TestBody()");
+    #else
+        #error "Need to add test for: " HE_FUNC_SIG
+    #endif
 
         HE_EXPECT_EQ(count, 3);
         HE_EXPECT_EQ_STR(kvs[0].Key(), "error_kind");

@@ -136,7 +136,7 @@ int he::AppMain(int argc, char* argv[])
     for (const char* param : result.values)
     {
         fullPath = param;
-        Result r = MakeAbsolute(fullPath);
+        r = MakeAbsolute(fullPath);
         if (!r)
         {
             HE_LOG_ERROR(schema_compiler,

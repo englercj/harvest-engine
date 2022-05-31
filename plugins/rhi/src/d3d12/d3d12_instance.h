@@ -5,6 +5,9 @@
 #include "d3d12_common.h"
 #include "d3d12_resources.h"
 
+#include "he/core/allocator.h"
+#include "he/core/result.h"
+#include "he/core/vector.h"
 #include "he/rhi/config.h"
 #include "he/rhi/instance.h"
 #include "he/rhi/types.h"

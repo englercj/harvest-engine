@@ -26,14 +26,12 @@
         do { \
             const int r_ = (expr); \
             HE_ASSERT(r_ == 0, HE_KV(syscall, #expr), HE_KV(result, PosixResult(r_))); \
-            HE_UNUSED(r_); \
         } while (0)
 
     #define HE_ASSERT_ERRNO(expr) \
         do { \
             const int r_ = (expr); \
             HE_ASSERT(r_ == 0, HE_KV(syscall, #expr), HE_KV(result, Result::FromLastError())); \
-            HE_UNUSED(r_); \
         } while (0)
 #else
     #define HE_ASSERT_PTHREAD(expr) (expr)

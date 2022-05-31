@@ -30,20 +30,18 @@ namespace he
     {
         String dst(allocator);
 
-        wchar_t* src = nullptr;
+        wchar_t src[4096];
         DWORD srcLen = ::FormatMessageW(
-            FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_ALLOCATE_BUFFER  | FORMAT_MESSAGE_IGNORE_INSERTS,
+            FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
             nullptr,
-            DWORD(m_code),
+            m_code,
             MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
-            (LPWSTR)&src,
-            0,
+            src,
+            HE_LENGTH_OF(src),
             nullptr);
 
         if (srcLen == 0 || src == nullptr)
         {
-            ::LocalFree(src);
-
             fmt::format_to(Appender(dst), "Unknown error: {}", m_code);
             return dst;
         }
@@ -53,8 +51,6 @@ namespace he
             src[srcLen -= 3] = 0;
 
         WCToMBStr(dst, src);
-
-        ::LocalFree(src);
         return dst;
     }
 }

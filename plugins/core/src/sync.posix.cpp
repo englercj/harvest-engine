@@ -25,13 +25,13 @@
     #define HE_ASSERT_PTHREAD(expr) \
         do { \
             const int r_ = (expr); \
-            HE_ASSERT(r_ == 0, HE_KV(syscall, #expr), HE_KV(result, PosixResult(r_))); \
+            HE_ASSERT(r_ == 0, HE_KV(check_expr, #expr), HE_KV(result, PosixResult(r_))); \
         } while (0)
 
     #define HE_ASSERT_ERRNO(expr) \
         do { \
             const int r_ = (expr); \
-            HE_ASSERT(r_ == 0, HE_KV(syscall, #expr), HE_KV(result, Result::FromLastError())); \
+            HE_ASSERT(r_ == 0, HE_KV(check_expr, #expr), HE_KV(result, Result::FromLastError())); \
         } while (0)
 #else
     #define HE_ASSERT_PTHREAD(expr) (expr)
@@ -60,7 +60,7 @@ namespace he
     {
         pthread_rwlock_t* rwlock = reinterpret_cast<pthread_rwlock_t*>(m_opaque);
         const int r = pthread_rwlock_tryrdlock(rwlock);
-        HE_ASSERT(r == 0 || r == EBUSY, HE_KV(syscall, "pthread_rwlock_tryrdlock(rwlock)"), HE_KV(result, PosixResult(r)));
+        HE_ASSERT(r == 0 || r == EBUSY, HE_KV(check_expr, "pthread_rwlock_tryrdlock(rwlock)"), HE_KV(result, PosixResult(r)));
         return r == 0;
     }
 
@@ -80,7 +80,7 @@ namespace he
     {
         pthread_rwlock_t* rwlock = reinterpret_cast<pthread_rwlock_t*>(m_opaque);
         const int r = pthread_rwlock_trywrlock(rwlock);
-        HE_ASSERT(r == 0 || r == EBUSY, HE_KV(syscall, "pthread_rwlock_trywrlock(rwlock)"), HE_KV(result, PosixResult(r)));
+        HE_ASSERT(r == 0 || r == EBUSY, HE_KV(check_expr, "pthread_rwlock_trywrlock(rwlock)"), HE_KV(result, PosixResult(r)));
         return r == 0;
     }
 
@@ -127,7 +127,7 @@ namespace he
     {
         pthread_mutex_t* mutex = reinterpret_cast<pthread_mutex_t*>(m_opaque);
         const int r = pthread_mutex_trylock(mutex);
-        HE_ASSERT(r == 0 || r == EBUSY, HE_KV(syscall, "pthread_mutex_trylock(mutex)"), HE_KV(result, PosixResult(r)));
+        HE_ASSERT(r == 0 || r == EBUSY, HE_KV(check_expr, "pthread_mutex_trylock(mutex)"), HE_KV(result, PosixResult(r)));
         return r == 0;
     }
 
@@ -169,7 +169,7 @@ namespace he
     {
         pthread_mutex_t* mutex = reinterpret_cast<pthread_mutex_t*>(m_opaque);
         const int r = pthread_mutex_trylock(mutex);
-        HE_ASSERT(r == 0 || r == EBUSY, HE_KV(syscall, "pthread_mutex_trylock(mutex)"), HE_KV(result, PosixResult(r)));
+        HE_ASSERT(r == 0 || r == EBUSY, HE_KV(check_expr, "pthread_mutex_trylock(mutex)"), HE_KV(result, PosixResult(r)));
         return r == 0;
     }
 
@@ -236,7 +236,7 @@ namespace he
         pthread_mutex_t* m = reinterpret_cast<pthread_mutex_t*>(mutex.m_opaque);
         pthread_cond_t* cv = reinterpret_cast<pthread_cond_t*>(m_opaque);
         const int r = pthread_cond_timedwait(cv, m, &timeoutSpec);
-        HE_ASSERT(r == 0 || r == ETIMEDOUT, HE_KV(syscall, "pthread_cond_timedwait(cv, m, &timeoutSpec)"), HE_KV(result, PosixResult(r)));
+        HE_ASSERT(r == 0 || r == ETIMEDOUT, HE_KV(check_expr, "pthread_cond_timedwait(cv, m, &timeoutSpec)"), HE_KV(result, PosixResult(r)));
         return r == 0;
     }
 
@@ -247,7 +247,7 @@ namespace he
         pthread_mutex_t* m = reinterpret_cast<pthread_mutex_t*>(mutex.m_opaque);
         pthread_cond_t* cv = reinterpret_cast<pthread_cond_t*>(m_opaque);
         const int r = pthread_cond_timedwait(cv, m, &timeoutSpec);
-        HE_ASSERT(r == 0 || r == ETIMEDOUT, HE_KV(syscall, "pthread_cond_timedwait(cv, m, &timeoutSpec)"), HE_KV(result, PosixResult(r)));
+        HE_ASSERT(r == 0 || r == ETIMEDOUT, HE_KV(check_expr, "pthread_cond_timedwait(cv, m, &timeoutSpec)"), HE_KV(result, PosixResult(r)));
         return r == 0;
     }
 
@@ -279,7 +279,7 @@ namespace he
         while (true)
         {
             const int r = sem_wait(sem);
-            HE_ASSERT(r == 0 || errno == EINTR, HE_KV(syscall, "sem_wait(sem)"), HE_KV(result, Result::FromLastError()));
+            HE_ASSERT(r == 0 || errno == EINTR, HE_KV(check_expr, "sem_wait(sem)"), HE_KV(result, Result::FromLastError()));
 
             if (r == 0)
                 return;
@@ -296,7 +296,7 @@ namespace he
         if (timeout == Duration_Zero)
         {
             const int r = sem_trywait(sem);
-            HE_ASSERT(r == 0 || errno == EAGAIN, HE_KV(syscall, "sem_trywait(sem)"), HE_KV(result, Result::FromLastError()));
+            HE_ASSERT(r == 0 || errno == EAGAIN, HE_KV(check_expr, "sem_trywait(sem)"), HE_KV(result, Result::FromLastError()));
             return r == 0;
         }
 
@@ -306,7 +306,7 @@ namespace he
 
         const struct timespec timeoutSpec = PosixTimeFromSystemTime(end);
         const int r = sem_timedwait(sem, &timeoutSpec);
-        HE_ASSERT(r == 0 || errno == ETIMEDOUT, HE_KV(syscall, "sem_timedwait(sem, timeoutSpec)"), HE_KV(result, Result::FromLastError()));
+        HE_ASSERT(r == 0 || errno == ETIMEDOUT, HE_KV(check_expr, "sem_timedwait(sem, timeoutSpec)"), HE_KV(result, Result::FromLastError()));
 
         return r == 0;
     }
@@ -335,14 +335,14 @@ namespace he
 
     #if defined(__linux__)
         data->eventFd = eventfd(0, EFD_CLOEXEC);
-        HE_ASSERT(data->eventFd != -1, HE_KV(syscall, "eventfd(0, EFD_CLOEXEC)"), HE_KV(result, Result::FromLastError()));
+        HE_ASSERT(data->eventFd != -1, HE_KV(check_expr, "eventfd(0, EFD_CLOEXEC)"), HE_KV(result, Result::FromLastError()));
 
         struct epoll_event ev;
         ev.events = EPOLLIN;
         ev.data.fd = data->eventFd;
 
         data->epollFd = epoll_create(1);
-        HE_ASSERT(data->epollFd != -1, HE_KV(syscall, "epoll_create(1)"), HE_KV(result, Result::FromLastError()));
+        HE_ASSERT(data->epollFd != -1, HE_KV(check_expr, "epoll_create(1)"), HE_KV(result, Result::FromLastError()));
 
         HE_ASSERT_ERRNO(epoll_ctl(data->epollFd, EPOLL_CTL_ADD, data->eventFd, &ev));
 
@@ -376,7 +376,7 @@ namespace he
         const ssize_t nr = write(data->eventFd, &value, sizeof(uint64_t));
         HE_ASSERT(nr == sizeof(uint64_t),
             HE_KV(write_bytes, nr),
-            HE_KV(syscall, "write(data->eventFd, &value, sizeof(uint64_t))"),
+            HE_KV(check_expr, "write(data->eventFd, &value, sizeof(uint64_t))"),
             HE_KV(result, Result::FromLastError()));
     #else
         LockGuard lock(data->mutex);
@@ -394,7 +394,7 @@ namespace he
         struct epoll_event ev;
         const ssize_t fdsReady = epoll_wait(data->epollFd, &ev, 1, 0);
         HE_ASSERT(fdsReady != -1,
-            HE_KV(syscall, "epoll_wait(data->epollFd, &ev, 1, 0)"),
+            HE_KV(check_expr, "epoll_wait(data->epollFd, &ev, 1, 0)"),
             HE_KV(result, Result::FromLastError()));
 
         if (fdsReady > 0)
@@ -403,7 +403,7 @@ namespace he
             const ssize_t nr = read(data->eventFd, &value, sizeof(uint64_t));
             HE_ASSERT(nr == sizeof(uint64_t),
                 HE_KV(read_bytes, nr),
-                HE_KV(syscall, "read(data->eventFd, &value, sizeof(uint64_t))"),
+                HE_KV(check_expr, "read(data->eventFd, &value, sizeof(uint64_t))"),
                 HE_KV(result, Result::FromLastError()));
         }
     #else
@@ -442,7 +442,7 @@ namespace he
         struct epoll_event ev;
         const ssize_t fdsReady = epoll_wait(data->epollFd, &ev, 1, timeoutMs);
         HE_ASSERT(fdsReady != -1 || errno == EINTR,
-            HE_KV(syscall, "epoll_wait(data->epollFd, &ev, 1, timeoutMs)"),
+            HE_KV(check_expr, "epoll_wait(data->epollFd, &ev, 1, timeoutMs)"),
             HE_KV(result, Result::FromLastError()));
 
         const bool result = fdsReady > 0;

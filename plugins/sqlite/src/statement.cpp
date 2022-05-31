@@ -41,7 +41,7 @@ namespace he::sqlite
         if (!HasFlag(flags, PrepareFlags::NoVTables))
             flagValues |= SQLITE_PREPARE_NO_VTAB;
 
-        HE_SQLITE_OK(sqlite3_prepare_v3(m_db, query, -1, flagValues, &m_stmt, nullptr));
+        HE_SQLITE_CHECK(OK, sqlite3_prepare_v3(m_db, query, -1, flagValues, &m_stmt, nullptr));
         return true;
     }
 
@@ -54,7 +54,7 @@ namespace he::sqlite
                 m_stmt = nullptr;
                 m_db = nullptr;
             });
-            HE_SQLITE_OK(sqlite3_finalize(m_stmt));
+            HE_SQLITE_CHECK(OK, sqlite3_finalize(m_stmt));
         }
 
         return true;
@@ -62,25 +62,25 @@ namespace he::sqlite
 
     bool Statement::Reset() const
     {
-        HE_SQLITE_OK(sqlite3_reset(m_stmt));
+        HE_SQLITE_CHECK(OK, sqlite3_reset(m_stmt));
         return true;
     }
 
     bool Statement::Bind(int32_t index, double value) const
     {
-        HE_SQLITE_OK(sqlite3_bind_double(m_stmt, index, value));
+        HE_SQLITE_CHECK(OK, sqlite3_bind_double(m_stmt, index, value));
         return true;
     }
 
     bool Statement::Bind(int32_t index, int32_t value) const
     {
-        HE_SQLITE_OK(sqlite3_bind_int(m_stmt, index, value));
+        HE_SQLITE_CHECK(OK, sqlite3_bind_int(m_stmt, index, value));
         return true;
     }
 
     bool Statement::Bind(int32_t index, int64_t value) const
     {
-        HE_SQLITE_OK(sqlite3_bind_int64(m_stmt, index, value));
+        HE_SQLITE_CHECK(OK, sqlite3_bind_int64(m_stmt, index, value));
         return true;
     }
 
@@ -91,25 +91,25 @@ namespace he::sqlite
 
     bool Statement::Bind(int32_t index, Span<const uint8_t> value) const
     {
-        HE_SQLITE_OK(sqlite3_bind_blob(m_stmt, index, value.Data(), static_cast<int32_t>(value.Size()), nullptr));
+        HE_SQLITE_CHECK(OK, sqlite3_bind_blob(m_stmt, index, value.Data(), static_cast<int32_t>(value.Size()), nullptr));
         return true;
     }
 
     bool Statement::Bind(int32_t index, Span<const char> value) const
     {
-        HE_SQLITE_OK(sqlite3_bind_text(m_stmt, index, value.Data(), static_cast<int32_t>(value.Size()), nullptr));
+        HE_SQLITE_CHECK(OK, sqlite3_bind_text(m_stmt, index, value.Data(), static_cast<int32_t>(value.Size()), nullptr));
         return true;
     }
 
     bool Statement::Bind(int32_t index, const char* value) const
     {
-        HE_SQLITE_OK(sqlite3_bind_text(m_stmt, index, value, -1, nullptr));
+        HE_SQLITE_CHECK(OK, sqlite3_bind_text(m_stmt, index, value, -1, nullptr));
         return true;
     }
 
     bool Statement::Bind(int32_t index, decltype(nullptr)) const
     {
-        HE_SQLITE_OK(sqlite3_bind_null(m_stmt, index));
+        HE_SQLITE_CHECK(OK, sqlite3_bind_null(m_stmt, index));
         return true;
     }
 
@@ -121,19 +121,19 @@ namespace he::sqlite
     bool Statement::Bind(const char* paramName, double value) const
     {
         const int32_t index = sqlite3_bind_parameter_index(m_stmt, paramName);
-        return HE_VERIFY(index > 0) ? Bind(index, value) : false;
+        return HE_VERIFY(index > 0, HE_KV(param_name, paramName)) ? Bind(index, value) : false;
     }
 
     bool Statement::Bind(const char* paramName, int32_t value) const
     {
         const int32_t index = sqlite3_bind_parameter_index(m_stmt, paramName);
-        return HE_VERIFY(index > 0) ? Bind(index, value) : false;
+        return HE_VERIFY(index > 0, HE_KV(param_name, paramName)) ? Bind(index, value) : false;
     }
 
     bool Statement::Bind(const char* paramName, int64_t value) const
     {
         const int32_t index = sqlite3_bind_parameter_index(m_stmt, paramName);
-        return HE_VERIFY(index > 0) ? Bind(index, value) : false;
+        return HE_VERIFY(index > 0, HE_KV(param_name, paramName)) ? Bind(index, value) : false;
     }
 
     bool Statement::Bind(const char* paramName, uint32_t value) const
@@ -144,31 +144,31 @@ namespace he::sqlite
     bool Statement::Bind(const char* paramName, Span<const uint8_t> value) const
     {
         const int32_t index = sqlite3_bind_parameter_index(m_stmt, paramName);
-        return HE_VERIFY(index > 0) ? Bind(index, value) : false;
+        return HE_VERIFY(index > 0, HE_KV(param_name, paramName)) ? Bind(index, value) : false;
     }
 
     bool Statement::Bind(const char* paramName, Span<const char> value) const
     {
         const int32_t index = sqlite3_bind_parameter_index(m_stmt, paramName);
-        return HE_VERIFY(index > 0) ? Bind(index, value) : false;
+        return HE_VERIFY(index > 0, HE_KV(param_name, paramName)) ? Bind(index, value) : false;
     }
 
     bool Statement::Bind(const char* paramName, const char* value) const
     {
         const int32_t index = sqlite3_bind_parameter_index(m_stmt, paramName);
-        return HE_VERIFY(index > 0) ? Bind(index, value) : false;
+        return HE_VERIFY(index > 0, HE_KV(param_name, paramName)) ? Bind(index, value) : false;
     }
 
     bool Statement::Bind(const char* paramName, decltype(nullptr) value) const
     {
         const int32_t index = sqlite3_bind_parameter_index(m_stmt, paramName);
-        return HE_VERIFY(index > 0) ? Bind(index, value) : false;
+        return HE_VERIFY(index > 0, HE_KV(param_name, paramName)) ? Bind(index, value) : false;
     }
 
     bool Statement::BindNull(const char* paramName) const
     {
         const int32_t index = sqlite3_bind_parameter_index(m_stmt, paramName);
-        return HE_VERIFY(index > 0) ? BindNull(index) : false;
+        return HE_VERIFY(index > 0, HE_KV(param_name, paramName)) ? BindNull(index) : false;
     }
 
     StepResult Statement::Step() const
@@ -180,7 +180,11 @@ namespace he::sqlite
             case SQLITE_ROW: return StepResult::Row;
             case SQLITE_DONE: return StepResult::Done;
             default:
-                HE_SQLITE_ERROR(r, "SQLite error. Expected result: SQLITE_ROW({}) or SQLITE_DONE({})", SQLITE_ROW, SQLITE_DONE);
+                HE_LOG_ERROR(he_sqlite,
+                    HE_MSG("SQLite error. Expected result: SQLITE_ROW({}) or SQLITE_DONE({})", SQLITE_ROW, SQLITE_DONE),
+                    HE_KV(result, r),
+                    HE_KV(result_str, sqlite3_errstr(r)),
+                    HE_KV(result_msg, sqlite3_errmsg(m_db)));
                 return StepResult::Error;
         }
     }

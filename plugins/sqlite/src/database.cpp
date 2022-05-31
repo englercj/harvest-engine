@@ -45,7 +45,7 @@ namespace he::sqlite
 {
     bool Database::Execute(sqlite3* m_db, const char* query)
     {
-        HE_SQLITE_OK(sqlite3_exec(m_db, query, nullptr, nullptr, nullptr));
+        HE_SQLITE_CHECK(OK, sqlite3_exec(m_db, query, nullptr, nullptr, nullptr));
         return true;
     }
 
@@ -56,7 +56,7 @@ namespace he::sqlite
 
     bool Database::Open(const char* path)
     {
-        HE_SQLITE_OK(sqlite3_open(path, &m_db));
+        HE_SQLITE_CHECK(OK, sqlite3_open(path, &m_db));
 
         if (!Execute(StartupSql))
             return false;
@@ -78,7 +78,7 @@ namespace he::sqlite
                 pair.second.Finalize();
             }
 
-            HE_SQLITE_OK(sqlite3_close(m_db));
+            HE_SQLITE_CHECK(OK, sqlite3_close(m_db));
         }
 
         return true;
@@ -89,7 +89,9 @@ namespace he::sqlite
         Statement& stmt = m_statementCache[sql];
         if (!stmt.IsPrepared())
         {
-            HE_ASSERT(stmt.Prepare(m_db, sql));
+            const bool r = stmt.Prepare(m_db, sql);
+            HE_ASSERT(r);
+            HE_UNUSED(r);
         }
         return stmt;
     }

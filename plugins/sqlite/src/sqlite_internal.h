@@ -5,20 +5,14 @@
 #include "he/core/assert.h"
 #include "he/core/log.h"
 
-#define HE_SQLITE_ERROR(r, msg, ...) \
-    HE_LOG_ERROR(he_sqlite, \
-        HE_MSG(msg, __VA_ARGS__), \
-        HE_KV(error, r), \
-        HE_KV(error_str, sqlite3_errstr(r)), \
-        HE_KV(error_msg, sqlite3_errmsg(m_db)))
-
-#define HE_SQLITE_CHECK(result, ...) { \
-    const int r = (__VA_ARGS__); \
-    if (!HE_VERIFY(r == result)) { \
-        HE_SQLITE_ERROR(r, "SQLite error. Expected result: " #result "({})", result); \
-        return false; \
-    } \
-}
-
-#define HE_SQLITE_OK(...)   HE_SQLITE_CHECK(SQLITE_OK, __VA_ARGS__)
-#define HE_SQLITE_DONE(...) HE_SQLITE_CHECK(SQLITE_DONE, __VA_ARGS__)
+#define HE_SQLITE_CHECK(k, expr, ...) \
+    do { \
+        const int r_ = (expr); \
+        if (!HE_VERIFY(r_ == SQLITE_ ## k, \
+            HE_KV(check_expr, #expr), \
+            HE_KV(result, r_), \
+            HE_KV(result_str, sqlite3_errstr(r_)), \
+            HE_KV(result_msg, sqlite3_errmsg(m_db)), ##__VA_ARGS__)) { \
+            return false; \
+        } \
+    } while (0)

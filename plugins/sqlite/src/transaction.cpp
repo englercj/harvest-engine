@@ -26,11 +26,10 @@ namespace he::sqlite
         HE_ASSERT(idResult);
         HE_UNUSED(idResult);
 
-        fmt::format_to_n(m_id, HE_LENGTH_OF(m_id) - 1, "{}", Span<const uint8_t>(idBytes));
+        fmt::format_to_n(m_id, HE_LENGTH_OF(m_id), "{}", Span<const uint8_t>(idBytes));
 
         m_id[0] = '_'; // must start with a non-numeric character
-        m_id[14] = ToHex(idBytes[7] & 0xf);
-        m_id[15] = '\0';
+        m_id[15] = '\0'; // end with a null terminator to simplify Execute() logic
 
         HE_VERIFY(Execute("SAVEPOINT"));
     }
@@ -59,10 +58,16 @@ namespace he::sqlite
 
     bool Transaction::Execute(const char* cmd)
     {
-        const uint32_t len = String::Length(cmd);
-        HE_ASSERT(len < 16);
+        constexpr uint32_t BufferLen = 32;
+        constexpr uint32_t QueryMaxLen = BufferLen - (HE_LENGTH_OF(m_id) + 1); // +1 for the ' ' character
 
-        char query[32];
+        // our size checks & memcpy assume m_id ends in a null terminator
+        HE_ASSERT(m_id[15] == '\0');
+
+        const uint32_t len = String::Length(cmd);
+        HE_ASSERT(len <= QueryMaxLen);
+
+        char query[BufferLen];
         MemCopy(query, cmd, len);
         query[len] = ' ';
         MemCopy(query + len + 1, m_id, HE_LENGTH_OF(m_id));

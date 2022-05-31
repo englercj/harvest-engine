@@ -22,16 +22,6 @@
 
 #define HE_DX_SAFE_RELEASE(x) do { if (x) { x->Release(); x = nullptr; } } while(0)
 
-#define HE_DX_CHECK(expr, ...) \
-    do { \
-        HRESULT hr_ = (expr); \
-        if (hr_ == DXGI_ERROR_DEVICE_REMOVED) \
-            hr_ = m_d3dDevice->GetDeviceRemovedReason(); \
-        const Result hrResult_ = Win32Result(hr_); \
-        if (!HE_VERIFY(hrResult_, HE_KV(syscall, #expr), HE_KV(result, hrResult_), ##__VA_ARGS__)) \
-            return hrResult_; \
-    } while(0)
-
 #if HE_RHI_ENABLE_NAMES
     #define HE_DX_SET_NAME(x, name) do { if (x && name) { x->SetName(HE_TO_WSTR(name)); } } while(0)
 #else

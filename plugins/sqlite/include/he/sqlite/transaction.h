@@ -2,6 +2,8 @@
 
 #pragma once
 
+#include "he/core/types.h"
+
 struct sqlite3;
 
 namespace he::sqlite
@@ -12,8 +14,13 @@ namespace he::sqlite
     {
     public:
         explicit Transaction(sqlite3* db);
-
         ~Transaction();
+
+        Transaction(Transaction&& x);
+        Transaction& operator=(Transaction&& x);
+
+        Transaction(const Transaction&) = delete;
+        Transaction& operator=(const Transaction&) = delete;
 
         bool Commit();
         bool Rollback();
@@ -22,8 +29,8 @@ namespace he::sqlite
         bool Execute(const char* cmd);
 
     private:
-        sqlite3* m_db = nullptr;
-        bool m_finalized = false;
+        sqlite3* m_db;
+        bool m_finalized;
         char m_id[16];
     };
 }

@@ -20,6 +20,8 @@ namespace he::sqlite
 {
     Transaction::Transaction(sqlite3* db)
         : m_db(db)
+        , m_finalized(false)
+        // , m_id() // Intentionally not initialized. We do it below.
     {
         uint8_t idBytes[HE_LENGTH_OF(m_id) / 2];
         const bool idResult = GetSecureRandomBytes(idBytes);
@@ -36,14 +38,31 @@ namespace he::sqlite
 
     Transaction::~Transaction()
     {
-        if (!m_finalized)
-        {
-            Rollback();
-        }
+        Rollback();
+    }
+
+    Transaction::Transaction(Transaction&& x)
+        : m_db(Exchange(x.m_db, nullptr))
+        , m_finalized(Exchange(x.m_finalized, false))
+    {
+        MemCopy(m_id, x.m_id, sizeof(m_id));
+    }
+
+    Transaction& Transaction::operator=(Transaction&& x)
+    {
+        Rollback();
+
+        m_db = Exchange(x.m_db, nullptr);
+        m_finalized = Exchange(x.m_finalized, false);
+        MemCopy(m_id, x.m_id, sizeof(m_id));
+        return *this;
     }
 
     bool Transaction::Commit()
     {
+        if (m_finalized)
+            return true;
+
         if (!Execute("RELEASE"))
             return false;
 
@@ -53,6 +72,9 @@ namespace he::sqlite
 
     bool Transaction::Rollback()
     {
+        if (m_finalized)
+            return true;
+
         return Execute("ROLLBACK TO") && Commit();
     }
 

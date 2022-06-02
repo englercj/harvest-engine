@@ -33,8 +33,10 @@ namespace he::sqlite
         bool MigrateSchema(Span<const SchemaMigration> migrations) const;
 
     private:
-        sqlite3* m_db = nullptr;
+        static void ErrorLogCallback(void* userData, int code, const char* msg);
 
-        std::unordered_map<const char*, Statement> m_statementCache;
+    private:
+        sqlite3* m_db{ nullptr };
+        std::unordered_map<const char*, Statement> m_statementCache{};
     };
 }

@@ -19,7 +19,25 @@ homepage = "https://www.sqlite.org/index.html"
     warnings = "Off"
     files = ["sqlite3.c"]
     public_includedirs = ["."]
+    public_defines = ["SQLITE_OMIT_DEPRECATED"]
+    private_defines = [
+        "SQLITE_DQS=0",
+        "SQLITE_THREADSAFE=2",
+        "SQLITE_DEFAULT_MEMSTATUS=0",
+        "SQLITE_DEFAULT_WAL_SYNCHRONOUS=1",
+        "SQLITE_LIKE_DOESNT_MATCH_BLOBS=1",
+        "SQLITE_MAX_EXPR_DEPTH",
+        "SQLITE_OMIT_DECLTYPE",
+        "SQLITE_OMIT_PROGRESS_CALLBACK",
+        "SQLITE_OMIT_SHARED_CACHE",
+        "SQLITE_USE_ALLOCA",
+        "SQLITE_OMIT_AUTOINIT",
+    ]
 
     [[modules.variants]]
         conditions = ["system:linux"]
         public_dependson = ["sys:pthread", "sys:dl"]
+
+    [[modules.variants]]
+        conditions = ["tags:debug"]
+        private_defines = ["SQLITE_DEBUG"]

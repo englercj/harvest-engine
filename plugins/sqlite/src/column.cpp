@@ -67,11 +67,11 @@ namespace he::sqlite
         return { static_cast<const uint8_t*>(p), static_cast<uint32_t>(s) };
     }
 
-    Span<const char> Column::GetText() const
+    StringView Column::GetText() const
     {
         const Type t = GetType();
         if (!HE_VERIFY(t == Type::Text || t == Type::Null))
-            return { "", 0 };
+            return { "" };
 
         const uint8_t* p = sqlite3_column_text(m_stmt, m_index);
         const int32_t s = sqlite3_column_bytes(m_stmt, m_index);

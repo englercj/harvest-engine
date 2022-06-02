@@ -8,7 +8,7 @@ namespace he::sqlite
 {
     struct SchemaMigration
     {
-        const char* description = nullptr;
-        const char* sql = nullptr;
+        const char* description{ nullptr };
+        const char* sql{ nullptr };
     };
 }

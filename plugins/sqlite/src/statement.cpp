@@ -25,6 +25,8 @@ namespace he::sqlite
 
     Statement& Statement::operator=(Statement&& o)
     {
+        Finalize();
+
         m_db = Exchange(o.m_db, nullptr);
         m_stmt = Exchange(o.m_stmt, nullptr);
         return *this;
@@ -95,7 +97,7 @@ namespace he::sqlite
         return true;
     }
 
-    bool Statement::Bind(int32_t index, Span<const char> value) const
+    bool Statement::Bind(int32_t index, StringView value) const
     {
         HE_SQLITE_CHECK(OK, sqlite3_bind_text(m_stmt, index, value.Data(), static_cast<int32_t>(value.Size()), nullptr));
         return true;
@@ -147,7 +149,7 @@ namespace he::sqlite
         return HE_VERIFY(index > 0, HE_KV(param_name, paramName)) ? Bind(index, value) : false;
     }
 
-    bool Statement::Bind(const char* paramName, Span<const char> value) const
+    bool Statement::Bind(const char* paramName, StringView value) const
     {
         const int32_t index = sqlite3_bind_parameter_index(m_stmt, paramName);
         return HE_VERIFY(index > 0, HE_KV(param_name, paramName)) ? Bind(index, value) : false;

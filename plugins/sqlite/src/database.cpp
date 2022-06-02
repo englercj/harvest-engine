@@ -7,17 +7,22 @@
 #include "he/core/assert.h"
 #include "he/core/clock.h"
 #include "he/core/hash.h"
+#include "he/core/log.h"
 #include "he/core/scope_guard.h"
 
 #include "sqlite3.h"
 
+#include <atomic>
+
 static const char StartupSql[] = R"(
-    PRAGMA encoding = 'UTF-8';
     PRAGMA automatic_index = true;
-    PRAGMA recursive_triggers = true;
+    PRAGMA encoding = 'UTF-8';
     PRAGMA foreign_keys = true;
     PRAGMA journal_mode = WAL;
-    VACUUM;
+    PRAGMA page_size = 4096;
+    PRAGMA recursive_triggers = true;
+    PRAGMA synchronous = normal;
+    PRAGMA temp_store = memory;
 )";
 
 static const char SchemaVersionTableSql[] = R"(
@@ -43,10 +48,20 @@ static const char InsertSchemaVersionSql[] = R"(
 
 namespace he::sqlite
 {
+    static std::atomic<int32_t> s_initCount{ 0 };
+
     bool Database::Execute(sqlite3* m_db, const char* query)
     {
         HE_SQLITE_CHECK(OK, sqlite3_exec(m_db, query, nullptr, nullptr, nullptr));
         return true;
+    }
+
+    void Database::ErrorLogCallback(void*, int code, const char* msg)
+    {
+        HE_LOG_ERROR(he_sqlite,
+            HE_MSG(msg),
+            HE_KV(result, code),
+            HE_KV(result_str, sqlite3_errstr(code)));
     }
 
     Database::~Database()
@@ -56,6 +71,12 @@ namespace he::sqlite
 
     bool Database::Open(const char* path)
     {
+        if (s_initCount.fetch_add(1) == 0)
+        {
+            HE_SQLITE_CHECK(OK, sqlite3_config(SQLITE_CONFIG_LOG, &Database::ErrorLogCallback, nullptr));
+            HE_SQLITE_CHECK(OK, sqlite3_initialize());
+        }
+
         HE_SQLITE_CHECK(OK, sqlite3_open(path, &m_db));
 
         if (!Execute(StartupSql))
@@ -78,7 +99,13 @@ namespace he::sqlite
                 pair.second.Finalize();
             }
 
+            Execute("pragma optimize;");
             HE_SQLITE_CHECK(OK, sqlite3_close(m_db));
+        }
+
+        if (s_initCount.fetch_sub(1) == 1)
+        {
+            HE_SQLITE_CHECK(OK, sqlite3_shutdown());
         }
 
         return true;

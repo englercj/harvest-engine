@@ -4,6 +4,7 @@
 
 #include "he/core/enum_ops.h"
 #include "he/core/span.h"
+#include "he/core/string_view.h"
 #include "he/core/types.h"
 #include "he/core/utils.h"
 #include "he/sqlite/column.h"
@@ -52,7 +53,7 @@ namespace he::sqlite
         bool Bind(int32_t index, int64_t value) const;
         bool Bind(int32_t index, uint32_t value) const;
         bool Bind(int32_t index, Span<const uint8_t> value) const;
-        bool Bind(int32_t index, Span<const char> value) const;
+        bool Bind(int32_t index, StringView value) const;
         bool Bind(int32_t index, const char* value) const;
         bool Bind(int32_t index, decltype(nullptr)) const;
         bool BindNull(int32_t index) const;
@@ -62,7 +63,7 @@ namespace he::sqlite
         bool Bind(const char* paramName, int64_t value) const;
         bool Bind(const char* paramName, uint32_t value) const;
         bool Bind(const char* paramName, Span<const uint8_t> value) const;
-        bool Bind(const char* paramName, Span<const char> value) const;
+        bool Bind(const char* paramName, StringView value) const;
         bool Bind(const char* paramName, const char* value) const;
         bool Bind(const char* paramName, decltype(nullptr)) const;
         bool BindNull(const char* paramName) const;
@@ -75,8 +76,8 @@ namespace he::sqlite
         Column GetColumn(int32_t index) const;
 
     private:
-        sqlite3* m_db = nullptr;
-        sqlite3_stmt* m_stmt = nullptr;
+        sqlite3* m_db{ nullptr };
+        sqlite3_stmt* m_stmt{ nullptr };
     };
 
     class ScopedStatement final
@@ -84,6 +85,12 @@ namespace he::sqlite
     public:
         ScopedStatement(const Statement& stmt) : m_stmt(stmt) {}
         ~ScopedStatement() { m_stmt.Reset(); }
+
+        ScopedStatement(const ScopedStatement&) = delete;
+        ScopedStatement(ScopedStatement&&) = delete;
+
+        ScopedStatement& operator=(const ScopedStatement&) = delete;
+        ScopedStatement& operator=(ScopedStatement&&) = delete;
 
         const Statement& operator*() const { return m_stmt; }
         const Statement* operator->() const { return &m_stmt; }

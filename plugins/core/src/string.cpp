@@ -311,13 +311,12 @@ namespace he
 
     void String::Insert(uint32_t index, const char* str, uint32_t len)
     {
-        HE_ASSERT(str);
-
         if (len == 0)
             return;
 
         uint32_t size = Size();
 
+        HE_ASSERT(str);
         HE_ASSERT(index <= size);
 
         GrowBy(len);

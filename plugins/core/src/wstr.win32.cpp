@@ -38,7 +38,7 @@ namespace he
             return;
         }
 
-        dst.Resize(requiredLen);
+        dst.Resize(requiredLen, DefaultInit);
 
         const int32_t len = ::WideCharToMultiByte(CP_UTF8, 0, src, -1, dst.Data(), dst.Size(), nullptr, nullptr);
 

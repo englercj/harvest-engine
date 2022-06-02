@@ -42,7 +42,7 @@ namespace he
             return;
         }
 
-        dst.Resize(static_cast<uint32_t>(requiredLen));
+        dst.Resize(static_cast<uint32_t>(requiredLen), DefaultInit);
 
         const size_t len = std::wcsrtombs(dst.Data(), &src, dst.Size(), &state);
 

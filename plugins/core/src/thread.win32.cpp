@@ -4,6 +4,8 @@
 
 #include "he/core/wstr.h"
 
+#include <thread>
+
 #if defined(HE_PLATFORM_API_WIN32)
 
 #include "he/core/win32_min.h"
@@ -35,6 +37,17 @@ namespace he
     void SetCurrentThreadName(const char* name)
     {
         ::SetThreadDescription(::GetCurrentThread(), HE_TO_WSTR(name));
+    }
+
+    void SleepCurrentThread(Duration amount)
+    {
+        const uint32_t ms = ToPeriod<Milliseconds, uint32_t>(amount);
+        ::Sleep(ms);
+    }
+
+    void YieldCurrentThread()
+    {
+        ::SwitchToThread();
     }
 }
 

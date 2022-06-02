@@ -9,6 +9,8 @@
 #if defined(HE_PLATFORM_API_POSIX)
 
 #include <pthread.h>
+#include <unistd.h>
+#include <sched.h>
 #include <sys/prctl.h>
 
 namespace he
@@ -44,6 +46,20 @@ namespace he
     void SetCurrentThreadName(const char* name)
     {
         prctl(PR_SET_NAME, name, 0, 0, 0);
+    }
+
+    void SleepCurrentThread(Duration amount)
+    {
+        uint32_t secs = ToPeriod<Seconds, uint32_t>(amount);
+        while (secs)
+        {
+            secs = sleep(secs);
+        }
+    }
+
+    void YieldCurrentThread()
+    {
+        sched_yield();
     }
 }
 

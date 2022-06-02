@@ -2,10 +2,9 @@
 
 #pragma once
 
+#include "he/core/clock.h"
 #include "he/core/result.h"
 #include "he/core/types.h"
-
-#include <thread>
 
 namespace he
 {
@@ -14,4 +13,7 @@ namespace he
     ThreadHandle GetCurrentThreadHandle();
     Result SetThreadAffinity(ThreadHandle thread, uint64_t mask);
     void SetCurrentThreadName(const char* name);
+
+    void SleepCurrentThread(Duration amount);
+    void YieldCurrentThread();
 }

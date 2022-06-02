@@ -87,7 +87,7 @@ namespace he::sqlite
 
     void Column::ReadText(Span<char> text) const
     {
-        Span<const char> data = GetText();
+        const StringView data = GetText();
         MemCopy(text.Data(), data.Data(), Min(text.Size(), data.Size()));
     }
 }

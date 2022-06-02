@@ -12,8 +12,6 @@
 
 #include "sqlite3.h"
 
-#include <atomic>
-
 static const char StartupSql[] = R"(
     PRAGMA automatic_index = true;
     PRAGMA encoding = 'UTF-8';
@@ -48,8 +46,6 @@ static const char InsertSchemaVersionSql[] = R"(
 
 namespace he::sqlite
 {
-    static std::atomic<int32_t> s_initCount{ 0 };
-
     bool Database::Execute(sqlite3* m_db, const char* query)
     {
         HE_SQLITE_CHECK(OK, sqlite3_exec(m_db, query, nullptr, nullptr, nullptr));
@@ -71,12 +67,6 @@ namespace he::sqlite
 
     bool Database::Open(const char* path)
     {
-        if (s_initCount.fetch_add(1) == 0)
-        {
-            HE_SQLITE_CHECK(OK, sqlite3_config(SQLITE_CONFIG_LOG, &Database::ErrorLogCallback, nullptr));
-            HE_SQLITE_CHECK(OK, sqlite3_initialize());
-        }
-
         HE_SQLITE_CHECK(OK, sqlite3_open(path, &m_db));
 
         if (!Execute(StartupSql))
@@ -101,11 +91,6 @@ namespace he::sqlite
 
             Execute("pragma optimize;");
             HE_SQLITE_CHECK(OK, sqlite3_close(m_db));
-        }
-
-        if (s_initCount.fetch_sub(1) == 1)
-        {
-            HE_SQLITE_CHECK(OK, sqlite3_shutdown());
         }
 
         return true;

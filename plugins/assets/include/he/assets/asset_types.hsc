@@ -44,9 +44,8 @@ struct Asset
     type @1 :AssetTypeId;       // unique string identifier of the asset type
     name @2 :String;            // user-defined human-friendly name
     tags @3 :String[];          // user-defined search & filter strings
-    sources @4 :String[];       // relative path to source file(s)
-    references @5 :AssetId[];   // outgoing references to other assets
-    importData @6 :Blob;        // Importer can place any data it wants in this space
+    references @4 :AssetId[];   // outgoing references to other assets
+    importData @5 :Blob;        // Importer can place any data it wants in this space
 }
 
 struct AssetFileId
@@ -58,4 +57,5 @@ struct AssetFile
 {
     id @0 :AssetFileId;     // unique identifier of the file
     assets @1 :Asset[];     // list of assets contained in the file
+    source @2 :String;      // relative path to source file for the assets
 }

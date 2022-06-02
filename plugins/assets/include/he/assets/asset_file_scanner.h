@@ -18,9 +18,7 @@ namespace he::assets
     class AssetFileScanner
     {
     public:
-        AssetFileScanner(AssetDatabase& db)
-            : m_db(db)
-        {}
+        AssetFileScanner(AssetDatabase& db);
 
         bool Run(const char* rootDir);
 
@@ -34,14 +32,26 @@ namespace he::assets
         };
 
         bool ScanDirectory(const char* dir);
-        bool ReadFile(const char* fname);
+        bool IsFileUpToDate(const char* path);
+        bool StartFileUpdate(const char* path);
         bool ProcessPending(uint32_t max, bool wait);
-        bool ProcessFile(const FileAttributes& attributes, const String& path, const String& content);
+        bool ProcessFile(const PendingLoad& pending);
+
+        bool WriteScanHeader();
+        bool ClearScanHeader();
 
         PendingLoad* FindAvailablePending();
 
     private:
+        struct ScanHeader
+        {
+            uint32_t pid;
+            uint32_t token;
+        };
+
+    private:
         AssetDatabase& m_db;
-        PendingLoad m_pending[32];
+        PendingLoad m_pending[32]{};
+        uint32_t m_token{ 0 };
     };
 }

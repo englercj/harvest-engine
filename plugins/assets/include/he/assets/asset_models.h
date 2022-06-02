@@ -16,20 +16,24 @@ namespace he::assets
 
     struct FileProperties
     {
-        SystemTime lastModifiedTime{ 0 };
-        uint32_t lastFileSize{ 0 };
+        String path{};
+        SystemTime writeTime{ 0 };
+        uint32_t fileSize{ 0 };
     };
 
     struct AssetFileModel final : FileProperties
     {
-        Uuid id;
-        uint32_t lastSessionToken{ 0 };
-        String path;
-        FileProperties source;
+        Uuid id{};
+        FileProperties source{};
+        uint32_t scanToken{ 0 };
 
         static bool AddOrUpdate(AssetDatabase& db, AssetFile::Reader file, const AssetFileModel& model);
-        static bool FindOne(AssetDatabase& db, const Uuid& fileId, AssetFileModel& model);
+        static bool FindOne(AssetDatabase& db, const Uuid& fileId, AssetFileModel& outModel);
+        static bool FindOne(AssetDatabase& db, const char* path, AssetFileModel& outModel);
         static bool RemoveOne(AssetDatabase& db, const Uuid& fileId);
+        static bool RemoveAll(AssetDatabase& db, uint32_t scanToken);
+
+        static bool UpdateScanToken(AssetDatabase& db, const Uuid& fileId, uint32_t scanToken);
     };
 
     struct AssetModel final
@@ -53,15 +57,18 @@ namespace he::assets
         static bool RemoveOne(AssetDatabase& db, const Uuid& assetId);
     };
 
-    struct AssetBackingFileModel final : FileProperties
+    struct ConfigModel final
     {
-        Uuid assetId;
-        String fileName;
+        String key;
+        Vector<uint8_t> value;
 
-        static bool AddOrUpdate(AssetDatabase& db, const AssetBackingFileModel& model);
-        static bool FindAll(AssetDatabase& db, const Uuid& assetId, Vector<AssetBackingFileModel>& model);
-        static bool RemoveAll(AssetDatabase& db, const Uuid& assetId);
-        static bool RemoveOne(AssetDatabase& db, const Uuid& assetId, const char* path);
+        static bool AddOrUpdate(AssetDatabase& db, const ConfigModel& model);
+        static bool FindOne(AssetDatabase& db, const char* key, ConfigModel& outModel);
+    };
+
+    struct TagModel final
+    {
+        String tag;
     };
 
     struct AssetReferenceModel final

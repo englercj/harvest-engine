@@ -402,21 +402,15 @@ namespace he::assets
     bool ConfigModel::AddOrUpdate(AssetDatabase& db, const ConfigModel& model)
     {
         sqlite::ScopedStatement stmt = db.StatementLiteral(R"(
-            INSERT INTO config
-                (key, value_int, value_float)
-            VALUES (?, ?, ?)
-            ON CONFLICT (key) DO UPDATE SET
-                value_int = excluded.value_int,
-                value_float = excluded.value_float
+            INSERT INTO config (key, value)
+            VALUES (?, ?)
+            ON CONFLICT (key) DO UPDATE SET value = excluded.value
         )");
 
         if (!stmt->Bind(1, model.key))
             return false;
 
-        if (!stmt->Bind(2, model.value_int))
-            return false;
-
-        if (!stmt->Bind(3, model.value_float))
+        if (!stmt->Bind(2, model.value))
             return false;
 
         return stmt->Step() == sqlite::StepResult::Done;
@@ -436,8 +430,7 @@ namespace he::assets
         if (res == sqlite::StepResult::Row)
         {
             outModel.key = stmt->GetColumn(0).GetText();
-            outModel.value_int = stmt->GetColumn(1).GetInt64();
-            outModel.value_float = stmt->GetColumn(2).GetDouble();
+            outModel.value = stmt->GetColumn(1).GetBlob();
             return stmt->Step() == sqlite::StepResult::Done;
         }
 

@@ -6,6 +6,7 @@
 #include "he/assets/asset_models.h"
 #include "he/assets/types.h"
 #include "he/core/allocator.h"
+#include "he/core/clock_fmt.h"
 #include "he/core/directory.h"
 #include "he/core/log.h"
 #include "he/core/path.h"

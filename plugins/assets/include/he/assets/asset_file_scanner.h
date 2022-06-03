@@ -25,10 +25,10 @@ namespace he::assets
     private:
         struct PendingLoad
         {
-            AsyncFile file;
-            String path;
-            String content;
-            std::future<AsyncFileResult> load;
+            AsyncFile file{};
+            String path{};
+            String content{};
+            std::future<AsyncFileResult> load{};
         };
 
         bool ScanDirectory(const char* dir);

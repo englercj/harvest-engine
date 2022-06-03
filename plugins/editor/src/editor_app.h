@@ -9,6 +9,7 @@
 #include "services/main_window_service.h"
 #include "services/render_service.h"
 #include "services/settings_service.h"
+#include "services/task_service.h"
 #include "services/workspace_service.h"
 
 #include "he/window/application.h"
@@ -26,6 +27,7 @@ namespace he::editor
             MainWindowService& mainWindowService,
             RenderService& renderService,
             SettingsService& settingsService,
+            TaskService& taskService,
             WorkspaceService& workspaceService);
 
         void OnEvent(const window::Event& ev) override;
@@ -45,6 +47,7 @@ namespace he::editor
         MainWindowService& m_mainWindowService;
         RenderService& m_renderService;
         SettingsService& m_settingsService;
+        TaskService& m_taskService;
         WorkspaceService& m_workspaceService;
 
         bool m_initialized{ false };

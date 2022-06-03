@@ -5,6 +5,7 @@
 #include "di.h"
 #include "dialogs/dialog.h"
 
+#include "he/core/types.h"
 #include "he/core/utils.h"
 #include "he/core/vector.h"
 

@@ -10,11 +10,13 @@
 #include "he/core/path.h"
 #include "he/core/result_fmt.h"
 #include "he/core/span.h"
-#include "he/core/span_fmt.h"
 #include "he/core/string_fmt.h"
 #include "he/core/uuid.h"
 #include "he/core/vector.h"
 #include "he/schema/toml.h"
+
+#include "fmt/format.h"
+#include "fmt/ranges.h"
 
 namespace he::editor
 {
@@ -125,7 +127,7 @@ namespace he::editor
         const Span<const uint8_t> projId = m_project.AsReader().GetId();
         HE_ASSERT(projId.Size() == sizeof(Uuid));
 
-        fmt::format_to(Appender(appDir), "{}", projId);
+        fmt::format_to(Appender(appDir), "{:x}", fmt::join(projId, ""));
         return appDir;
     }
 }

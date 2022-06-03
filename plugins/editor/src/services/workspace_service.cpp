@@ -8,6 +8,7 @@
 #include "documents/stats_document.h"
 #include "documents/imgui_stack_tool_document.h"
 #include "documents/imgui_style_editor_document.h"
+#include "documents/imgui_widget_document.h"
 #include "documents/welcome_document.h"
 #include "fonts/IconsFontAwesome5Pro.h"
 #include "widgets/menu.h"
@@ -24,12 +25,14 @@ namespace he::editor
         DocumentService& documentService,
         ImGuiService& imguiService,
         MainWindowService& mainWindowService,
-        PlatformService& platformService)
+        PlatformService& platformService,
+        TaskService& taskService)
         : m_dialogService(dialogService)
         , m_documentService(documentService)
         , m_imguiService(imguiService)
         , m_mainWindowService(mainWindowService)
         , m_platformService(platformService)
+        , m_taskService(taskService)
     {}
 
     void WorkspaceService::Show()
@@ -203,6 +206,9 @@ namespace he::editor
                 if (MenuItem("ImGui Style Editor"))
                     m_documentService.Open<ImGuiStyleEditorDocument>();
 
+                if (MenuItem("ImGui Custom Widgets"))
+                    m_documentService.Open<ImGuiWidgetDocument>();
+
                 if (MenuItem("Stats"))
                     m_documentService.Open<StatsDocument>();
 
@@ -265,6 +271,20 @@ namespace he::editor
             ImGui::Text("<- fake data for styling");
 
             ImGui::PopStyleVar();
+
+            if (m_taskService.IsEmpty())
+            {
+                constexpr char ReadyText[] = ICON_FA_CHECK " Ready";
+
+                ImGuiStyle& style = ImGui::GetStyle();
+                const float width = ImGui::CalcTextSize(ReadyText).x + (style.FramePadding.x * 3);
+                ImGui::SameLine(ImGui::GetWindowWidth() - width);
+                ImGui::Text(ReadyText);
+            }
+            else
+            {
+                // TODO
+            }
 
             EndAppStatusBar();
         }

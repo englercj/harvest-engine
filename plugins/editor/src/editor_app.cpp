@@ -2,6 +2,8 @@
 
 #include "editor_app.h"
 
+#include "he/core/async_file.h"
+
 namespace he::editor
 {
     EditorApp::EditorApp(
@@ -11,6 +13,7 @@ namespace he::editor
         MainWindowService& mainWindowService,
         RenderService& renderService,
         SettingsService& settingsService,
+        TaskService& taskService,
         WorkspaceService& workspaceService)
         : m_directoryService(directoryService)
         , m_imguiService(imguiService)
@@ -18,6 +21,7 @@ namespace he::editor
         , m_mainWindowService(mainWindowService)
         , m_renderService(renderService)
         , m_settingsService(settingsService)
+        , m_taskService(taskService)
         , m_workspaceService(workspaceService)
     {}
 
@@ -95,6 +99,13 @@ namespace he::editor
         if (!m_imguiService.Initialize(view))
             return false;
 
+        if (!m_taskService.Initialize())
+            return false;
+
+        AsyncFileIOConfig config;
+        config.executor = &m_taskService;
+        StartupAsyncFileIO(config);
+
         // Failing to load settings is OK, we'll run with defaults and have an error in the log
         m_settingsService.Reload();
         return true;
@@ -115,8 +126,11 @@ namespace he::editor
 
         m_initialized = false;
 
+        ShutdownAsyncFileIO();
+
         m_settingsService.Save();
 
+        m_taskService.Terminate();
         m_imguiService.Terminate();
         m_renderService.Terminate();
         m_mainWindowService.Quit(0);

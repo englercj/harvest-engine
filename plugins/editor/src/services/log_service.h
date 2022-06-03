@@ -22,8 +22,16 @@ namespace he::editor
         bool Initialize();
         void Terminate();
 
-        auto EntriesBegin() { return m_entries.begin(); }
-        auto EntriesEnd() { return m_entries.end(); }
+        template <typename F>
+        void ForEach(F&& itr) const
+        {
+            LockGuard lock(m_mutex);
+            for (const LogEntry& entry : m_entries)
+            {
+                if (!itr(entry))
+                    break;
+            }
+        }
 
         static void LogHandler(void* userData, const LogSource& source, const KeyValue* kvs, uint32_t count);
 

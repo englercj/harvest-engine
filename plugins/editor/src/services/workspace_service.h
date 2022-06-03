@@ -7,6 +7,7 @@
 #include "imgui_service.h"
 #include "main_window_service.h"
 #include "platform_service.h"
+#include "task_service.h"
 
 #include "he/window/view.h"
 
@@ -22,7 +23,8 @@ namespace he::editor
             DocumentService& documentService,
             ImGuiService& imguiService,
             MainWindowService& mainWindowService,
-            PlatformService& platformService);
+            PlatformService& platformService,
+            TaskService& taskService);
 
         void Show();
 
@@ -38,6 +40,7 @@ namespace he::editor
         ImGuiService& m_imguiService;
         MainWindowService& m_mainWindowService;
         PlatformService& m_platformService;
+        TaskService& m_taskService;
 
         window::ViewHitArea m_menuHitArea{ window::ViewHitArea::Normal };
     };

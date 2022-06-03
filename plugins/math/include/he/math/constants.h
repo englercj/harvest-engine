@@ -7,11 +7,12 @@
 
 namespace he
 {
-    inline constexpr float Float_Pi = 3.141592654f;
-    inline constexpr float Float_Pi2 = 6.283185307f;
-    inline constexpr float Float_PiHalf = 1.570796327f;
-    inline constexpr float Float_PiQuarter = 0.785398163f;
-    inline constexpr float Float_Sqrt2 = 1.414213562f;
+    inline constexpr float Float_Pi = 3.14159265358979323846f;
+    inline constexpr float Float_Pi2 = 6.28318530717958647692f;
+    inline constexpr float Float_PiHalf = 1.57079632679489661923f;
+    inline constexpr float Float_PiQuarter = 0.78539816339744830962f;
+    inline constexpr float Float_Sqrt2 = 1.41421356237309504880f;
+
 
     inline constexpr float Float_Epsilon = 1.192092896e-7f;
     inline constexpr float Float_Min = 1.175494351e-38f;

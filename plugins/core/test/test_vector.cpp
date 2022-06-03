@@ -6,6 +6,8 @@
 
 #include "he/core/test.h"
 
+#include "fmt/ranges.h"
+
 using namespace he;
 
 // ------------------------------------------------------------------------------------------------
@@ -521,6 +523,27 @@ HE_TEST(core, Vector, operator_assign_copy)
             HE_EXPECT(!copy[i].copyAssigned);
         }
     }
+}
+
+// ------------------------------------------------------------------------------------------------
+HE_TEST(core, string, operator_assign_range)
+{
+    Vector<int> v;
+    v.PushBack(1);
+    v.PushBack(2);
+    v.PushBack(3);
+
+    Vector<int> v2;
+    v2.PushBack(5);
+    v = v2;
+    HE_EXPECT_EQ(v.Size(), v2.Size());
+    HE_EXPECT_EQ(v, v2);
+
+    const int v3Data[]{ 5, 4, 3 };
+    Span<const int> v3(v3Data);
+    v = v3;
+    HE_EXPECT_EQ(v.Size(), v3.Size());
+    HE_EXPECT_EQ_MEM(v.Data(), v3.Data(), v.Size() * sizeof(int));
 }
 
 // ------------------------------------------------------------------------------------------------

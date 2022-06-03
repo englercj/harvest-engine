@@ -15,7 +15,8 @@ namespace he
 {
     void PrintToDebugger(const char* s)
     {
-        fputs(s, stderr);
+        fputs(s, stdout);
+        fflush(stdout);
     }
 
     bool IsDebuggerAttached()

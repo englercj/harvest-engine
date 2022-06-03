@@ -2,15 +2,15 @@
 
 #include "he/core/thread.h"
 
+#include "he/core/string.h"
 #include "he/core/utils.h"
-
-#include <type_traits>
 
 #if defined(HE_PLATFORM_API_POSIX)
 
 #include <pthread.h>
 #include <unistd.h>
 #include <sched.h>
+#include <time.h>
 #include <sys/prctl.h>
 
 namespace he
@@ -45,16 +45,18 @@ namespace he
 
     void SetCurrentThreadName(const char* name)
     {
+    #if defined(HE_PLATFORM_LINUX)
         prctl(PR_SET_NAME, name, 0, 0, 0);
+    #else
+        pthread_setname_np(pthread_self(), name);
+    #endif
     }
 
     void SleepCurrentThread(Duration amount)
     {
-        uint32_t secs = ToPeriod<Seconds, uint32_t>(amount);
-        while (secs)
-        {
-            secs = sleep(secs);
-        }
+        const timespec req = PosixTimeFromDuration(amount);
+        timespec rem = { 0, 0 };
+        nanosleep(&req, &rem);
     }
 
     void YieldCurrentThread()

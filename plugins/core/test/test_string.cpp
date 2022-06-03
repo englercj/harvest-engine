@@ -695,13 +695,12 @@ HE_TEST(core, string, operator_assign_str)
 
     s = "Test";
     HE_EXPECT_EQ(s.Size(), 4);
-    HE_EXPECT_EQ_STR(s.Data(), "Test");
+    HE_EXPECT_EQ(s, "Test");
 
     s = "bc";
     HE_EXPECT_EQ(s.Size(), 2);
-    HE_EXPECT_EQ_STR(s.Data(), "bc");
+    HE_EXPECT_EQ(s, "bc");
 }
-
 
 // ------------------------------------------------------------------------------------------------
 HE_TEST(core, string, operator_assign_range)
@@ -711,12 +710,12 @@ HE_TEST(core, string, operator_assign_range)
     String s2("hello");
     s = s2;
     HE_EXPECT_EQ(s.Size(), s2.Size());
-    HE_EXPECT_EQ_STR(s.Data(), s2.Data());
+    HE_EXPECT_EQ(s, s2);
 
     StringView s3("HELLO!!");
     s = s3;
     HE_EXPECT_EQ(s.Size(), s3.Size());
-    HE_EXPECT_EQ_STR(s.Data(), s3.Data());
+    HE_EXPECT_EQ(s, s3);
 
     Vector<char> s4;
     s4.PushBack('a');
@@ -724,9 +723,8 @@ HE_TEST(core, string, operator_assign_range)
     s4.PushBack('c');
     s = s4;
     HE_EXPECT_EQ(s.Size(), s4.Size());
-    HE_EXPECT_EQ_STR(s.Data(), "aoc");
+    HE_EXPECT_EQ(s, "aoc");
 }
-
 
 // ------------------------------------------------------------------------------------------------
 HE_TEST(core, string, operator_assign_move)

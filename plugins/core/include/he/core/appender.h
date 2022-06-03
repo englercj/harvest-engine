@@ -5,6 +5,8 @@
 #include "he/core/types.h"
 #include "he/core/utils.h"
 
+#include <iterator>
+
 namespace he
 {
     /// An output iterator that appends to a container. Useful for formatting to a container
@@ -13,12 +15,11 @@ namespace he
     class Appender
     {
     public:
-        //using iterator_category = std::output_iterator_tag;
+        using difference_type   = ptrdiff_t;
         using value_type        = void;
         using pointer           = void;
         using reference         = void;
-        using container_type    = T;
-        using difference_type   = ptrdiff_t;
+        using iterator_category = std::forward_iterator_tag;
         using _Unchecked_type   = Appender; // Mark iterator as checked.
 
         constexpr explicit Appender(T& container) noexcept

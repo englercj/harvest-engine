@@ -102,6 +102,18 @@ namespace he
         template <typename U> requires(std::is_convertible_v<U(*)[], T(*)[]>)
         bool operator!=(const Vector<U>& x) const { return !this->operator==(x); }
 
+        /// Replaces the contents of this string with a copy of the characters in `range`.
+        ///
+        /// \param str The string source to copy from.
+        template <typename R> requires(!std::is_same_v<R, Vector<T>> && StdContiguousRange<R, const T>)
+        Vector& operator=(const R& range) { Clear(); Insert(0, range.data(), static_cast<uint32_t>(range.size())); return *this; }
+
+        /// Replaces the contents of this string with a copy of the characters in `range`.
+        ///
+        /// \param str The string source to copy from.
+        template <typename R> requires(!std::is_same_v<R, Vector<T>> && ContiguousRange<R, const T>)
+        Vector& operator=(const R& range) { Clear(); Insert(0, range.Data(), range.Size()); return *this; }
+
         // ----------------------------------------------------------------------------------------
         // Capacity
 
@@ -290,6 +302,14 @@ namespace he
         /// \param begin The start of the range to copy.
         /// \param end The end of the range to copy.
         void Insert(uint32_t index, const T* begin, const T* end);
+
+        /// Copies the range of elements from `[begin, end)` into the vector at `index`.
+        /// Asserts if `index` is out of range.
+        ///
+        /// \param index The index in the vector to insert at.
+        /// \param begin The start of the range to copy.
+        /// \param count The number of items in the range to copy.
+        void Insert(uint32_t index, const T* begin, uint32_t count) { Insert(index, begin, begin + count); }
 
         /// Erases `count` elements from the vector starting at `index`.
         /// Asserts if `index` is out of range.

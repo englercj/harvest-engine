@@ -2,15 +2,17 @@
 
 #include "he/schema/toml.h"
 
+#include "he/core/ascii.h"
 #include "he/core/assert.h"
 #include "he/core/enum_fmt.h"
 #include "he/core/log.h"
-#include "he/core/span_fmt.h"
 #include "he/core/string.h"
 #include "he/core/string_fmt.h"
 #include "he/core/string_builder.h"
 #include "he/core/string_view_fmt.h"
 
+#include "fmt/format.h"
+#include "fmt/ranges.h"
 #include "toml++/toml.h"
 
 namespace he::schema
@@ -1238,9 +1240,8 @@ namespace he::schema
                 }
                 case Type::Data::Tag::Blob:
                 {
-                    const List<uint8_t>::Reader byteList = Helper::GetPointer(data, index).template TryGetList<uint8_t>();
-                    const Span<const uint8_t> bytes{ byteList.Data(), byteList.Size() };
-                    m_writer.Write("\"{}\"", bytes); // TODO: Base64 if attribute is set
+                    const List<uint8_t>::Reader bytes = Helper::GetPointer(data, index).template TryGetList<uint8_t>();
+                    m_writer.Write("\"{:x}\"", fmt::join(bytes, "")); // TODO: Base64 if attribute is set
                     break;
                 }
                 case Type::Data::Tag::String:

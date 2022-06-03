@@ -6,7 +6,6 @@
 #include "he/core/assert.h"
 #include "he/core/memory_ops.h"
 #include "he/core/span.h"
-#include "he/core/span_fmt.h"
 #include "he/core/string.h"
 #include "he/core/utils.h"
 #include "he/core/random.h"
@@ -14,7 +13,8 @@
 #include "he/sqlite/statement.h"
 
 #include "sqlite3.h"
-#include "fmt/core.h"
+#include "fmt/format.h"
+#include "fmt/ranges.h"
 
 namespace he::sqlite
 {
@@ -28,7 +28,7 @@ namespace he::sqlite
         HE_ASSERT(idResult);
         HE_UNUSED(idResult);
 
-        fmt::format_to_n(m_id, HE_LENGTH_OF(m_id), "{}", Span<const uint8_t>(idBytes));
+        fmt::format_to_n(m_id, HE_LENGTH_OF(m_id), "{:x}", fmt::join(idBytes, ""));
 
         m_id[0] = '_'; // must start with a non-numeric character
         m_id[15] = '\0'; // end with a null terminator to simplify Execute() logic

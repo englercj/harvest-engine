@@ -2,9 +2,11 @@
 
 #include "codegen_echo.h"
 
-#include "he/core/span_fmt.h"
 #include "he/core/string_fmt.h"
 #include "he/core/string_view_fmt.h"
+
+#include "fmt/format.h"
+#include "fmt/ranges.h"
 
 #include <iostream>
 
@@ -546,15 +548,14 @@ namespace he::schema
             case Value::Data::Tag::Blob:
             {
                 HE_ASSERT(type.GetData().IsBlob());
-                List<uint8_t>::Reader bytes = value.GetData().GetBlob();
-                Span<const uint8_t> byteSpan{ bytes.Data(), bytes.Size() };
-                m_writer.Write("0x\"{}\"", byteSpan);
+                const List<uint8_t>::Reader bytes = value.GetData().GetBlob();
+                m_writer.Write("0x\"{:x}\"", fmt::join(bytes, ""));
                 break;
             }
             case Value::Data::Tag::String:
             {
                 HE_ASSERT(type.GetData().IsString());
-                String::Reader str = value.GetData().GetString();
+                const String::Reader str = value.GetData().GetString();
                 m_writer.Write("\"{}\"", str.AsView());
                 break;
             }

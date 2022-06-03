@@ -2,10 +2,10 @@
 
 #include "codegen_cpp.h"
 
+#include "he/core/ascii.h"
 #include "he/core/file.h"
 #include "he/core/path.h"
 #include "he/core/enum_fmt.h"
-#include "he/core/span_fmt.h"
 #include "he/core/string.h"
 #include "he/core/string_fmt.h"
 #include "he/core/string_view.h"

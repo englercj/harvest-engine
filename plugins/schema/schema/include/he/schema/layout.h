@@ -12,6 +12,8 @@
 #include "he/core/vector.h"
 #include "he/schema/types.h"
 
+#include <iterator>
+
 namespace he::schema
 {
     // --------------------------------------------------------------------------------------------
@@ -1056,12 +1058,14 @@ namespace he::schema
 
         using difference_type   = uint32_t;
         using value_type        = ElementType;
-        using container_type    = T;
+        using pointer           = const value_type*;
+        using reference         = const value_type&;
+        using iterator_category = std::random_access_iterator_tag;
         using _Unchecked_type   = ListIterator; // Mark iterator as checked.
 
     public:
         ListIterator() = default;
-        ListIterator(T* list, uint32_t index) : m_list(list), m_index(index) {}
+        ListIterator(const T* list, uint32_t index) : m_list(list), m_index(index) {}
 
         ElementType operator*() const { return m_list->Get(m_index); }
         ElementType operator->() const { return m_list->Get(m_index); }
@@ -1075,7 +1079,7 @@ namespace he::schema
         bool operator!=(const ListIterator& x) const { return m_list != x.m_list || m_index != x.m_index; }
 
     private:
-        T* m_list{ nullptr };
+        const T* m_list{ nullptr };
         uint32_t m_index{ 0 };
     };
 
@@ -1110,8 +1114,8 @@ namespace he::schema
 
         ElementType operator[](uint32_t index) const { return Get(index); }
 
-        IteratorType begin() { return IteratorType(this, 0); }
-        IteratorType end() { return IteratorType(this, Size()); }
+        IteratorType begin() const { return IteratorType(this, 0); }
+        IteratorType end() const { return IteratorType(this, Size()); }
     };
 
     template <typename T>
@@ -1159,8 +1163,8 @@ namespace he::schema
 
         ElementType operator[](uint32_t index) const { return Get(index); }
 
-        IteratorType begin() { return IteratorType(this, 0); }
-        IteratorType end() { return IteratorType(this, Size()); }
+        IteratorType begin() const { return IteratorType(this, 0); }
+        IteratorType end() const { return IteratorType(this, Size()); }
     };
 
     // --------------------------------------------------------------------------------------------

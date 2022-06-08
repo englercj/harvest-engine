@@ -49,7 +49,7 @@ namespace he::assets
         if (error)
             return false;
 
-        if (!AssetFileModel::RemoveAll(m_db, m_token))
+        if (!AssetFileModel::RemoveOutdated(m_db, m_token))
             return false;
 
         if (!ClearScanHeader())
@@ -115,22 +115,22 @@ namespace he::assets
         }
 
         const uint32_t fileSize = static_cast<uint32_t>(attributes.size);
-        if (model.fileSize != fileSize)
+        if (model.file.size != fileSize)
         {
             HE_LOG_DEBUG(he_assets,
                 HE_MSG("Asset file size has changed, update required."),
                 HE_KV(path, path),
-                HE_KV(last_file_size, model.fileSize),
+                HE_KV(last_file_size, model.file.size),
                 HE_KV(file_size, fileSize));
             return false;
         }
 
-        if (model.writeTime != attributes.writeTime)
+        if (model.file.writeTime != attributes.writeTime)
         {
             HE_LOG_DEBUG(he_assets,
                 HE_MSG("Asset file write time has changed, update required."),
                 HE_KV(path, path),
-                HE_KV(last_write_time, model.writeTime),
+                HE_KV(last_write_time, model.file.writeTime),
                 HE_KV(write_time, attributes.writeTime));
             return false;
         }
@@ -151,12 +151,12 @@ namespace he::assets
             }
 
             const uint32_t sourceFileSize = static_cast<uint32_t>(attributes.size);
-            if (model.source.fileSize != sourceFileSize)
+            if (model.source.size != sourceFileSize)
             {
                 HE_LOG_DEBUG(he_assets,
                     HE_MSG("Source file size has changed, update required."),
                     HE_KV(path, path),
-                    HE_KV(last_file_size, model.source.fileSize),
+                    HE_KV(last_file_size, model.source.size),
                     HE_KV(file_size, sourceFileSize));
                 return false;
             }
@@ -173,7 +173,7 @@ namespace he::assets
         }
 
         // Nothing has changed, good to go. Just mark the scan token.
-        return AssetFileModel::UpdateScanToken(m_db, model.id, m_token);
+        return AssetFileModel::UpdateScanToken(m_db, model.uuid, m_token);
     }
 
     bool AssetFileScanner::StartFileUpdate(const char* fname)
@@ -278,10 +278,10 @@ namespace he::assets
         }
 
         AssetFileModel model;
-        model.id = ToUuid(assetFile.GetId());
-        model.path = pending.path;
-        model.writeTime = attributes.writeTime;
-        model.fileSize = static_cast<uint32_t>(attributes.size);
+        model.uuid = assetFile.GetUuid();
+        model.file.path = pending.path;
+        model.file.writeTime = attributes.writeTime;
+        model.file.size = static_cast<uint32_t>(attributes.size);
         model.source = {};
         model.scanToken = m_token;
 
@@ -296,7 +296,7 @@ namespace he::assets
             if (res)
             {
                 model.source.writeTime = attributes.writeTime;
-                model.source.fileSize = static_cast<uint32_t>(attributes.size);
+                model.source.size = static_cast<uint32_t>(attributes.size);
             }
             else
             {

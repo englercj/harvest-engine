@@ -18,20 +18,6 @@ enum AssetState
     CompileFailed @5;
 }
 
-enum MessageSource
-{
-    Unknown @0;
-    Importer @1;
-    Compiler @2;
-    System @3;
-    User @4;
-}
-
-struct AssetId
-{
-    value @0 :uint8[16] $Toml.Hex;
-}
-
 struct AssetTypeId
 {
     name @0 :String;
@@ -40,22 +26,17 @@ struct AssetTypeId
 
 struct Asset
 {
-    id @0 :AssetId;             // unique identifier of the asset
-    type @1 :AssetTypeId;       // unique string identifier of the asset type
-    name @2 :String;            // user-defined human-friendly name
-    tags @3 :String[];          // user-defined search & filter strings
-    references @4 :AssetId[];   // outgoing references to other assets
-    importData @5 :Blob;        // Importer can place any data it wants in this space
-}
-
-struct AssetFileId
-{
-    value @0 :uint8[16] $Toml.Hex;
+    uuid @0 :he.schema.Uuid;            // unique identifier of the asset
+    type @1 :AssetTypeId;               // unique string identifier of the asset type
+    name @2 :String;                    // user-defined human-friendly name
+    tags @3 :String[];                  // user-defined search & filter strings
+    references @4 :he.schema.Uuid[];    // outgoing references to other assets
+    importData @5 :Blob;                // Importer can place any data it wants in this space
 }
 
 struct AssetFile
 {
-    id @0 :AssetFileId;     // unique identifier of the file
-    assets @1 :Asset[];     // list of assets contained in the file
-    source @2 :String;      // relative path to source file for the assets
+    uuid @0 :he.schema.Uuid;    // unique identifier of the file
+    assets @1 :Asset[];         // list of assets contained in the file
+    source @2 :String;          // relative path to source file for the assets
 }

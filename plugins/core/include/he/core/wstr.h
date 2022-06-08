@@ -63,6 +63,15 @@ namespace he
     /// \param src The source wide string to convert.
     void WCToMBStr(String& dst, const wchar_t* src);
 
+    /// Converts a null terminated wide character UTF-8 string to a multibyte string.
+    ///
+    /// \note Behavior is undefined if `src` is nullptr.
+    ///
+    /// \param dst The string to write the result to, empty if the source couldn't be converted.
+    /// \param src The source wide string to convert.
+    /// \param srcLen The maximum length of the wide source string to convert.
+    void WCToMBStr(String& dst, const wchar_t* src, uint32_t srcLen);
+
     /// Compares the null terminated wide character strings and returns the result of the comparison.
     ///
     /// \param a The left-hand side of the comparison operation.

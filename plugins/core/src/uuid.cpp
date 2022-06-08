@@ -60,37 +60,6 @@ namespace he
         return id;
     }
 
-    uint64_t Uuid::GetLow() const
-    {
-        uint64_t v;
-        MemCopy(&v, m_bytes, sizeof(v));
-        return v;
-    }
-
-    uint64_t Uuid::GetHigh() const
-    {
-        uint64_t v;
-        MemCopy(&v, m_bytes + sizeof(v), sizeof(v));
-        return v;
-    }
-
-    String Uuid::ToString(Allocator& allocator) const
-    {
-        String out(allocator);
-        out.Reserve(36);
-
-        for (uint32_t i = 0; i < HE_LENGTH_OF(m_bytes); ++i)
-        {
-            if (i == 4 || i == 6 || i == 8 || i == 10)
-                out.PushBack('-');
-
-            out.PushBack(ToHex((m_bytes[i] & 0xF0) >> 4));
-            out.PushBack(ToHex(m_bytes[i] & 0x0F));
-        }
-
-        return out;
-    }
-
     bool Uuid::operator==(const Uuid& x) const
     {
         return MemEqual(this, &x, sizeof(x));

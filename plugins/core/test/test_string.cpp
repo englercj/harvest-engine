@@ -3,14 +3,17 @@
 #include "fixtures.h"
 
 #include "he/core/string.h"
+#include "he/core/string_fmt.h"
 
+#include "he/core/appender.h"
 #include "he/core/allocator.h"
 #include "he/core/memory_ops.h"
-#include "he/core/string_fmt.h"
 #include "he/core/string_view.h"
 #include "he/core/test.h"
 #include "he/core/utils.h"
 #include "he/core/vector.h"
+
+#include "fmt/format.h"
 
 #include <type_traits>
 
@@ -1523,4 +1526,16 @@ HE_TEST(core, string, Assign)
     s.Assign(s2);
     HE_EXPECT_EQ(s.Size(), 5);
     HE_EXPECT_EQ_STR(s.Data(), "hello");
+}
+
+// ------------------------------------------------------------------------------------------------
+HE_TEST(core, string, fmt)
+{
+    constexpr char TestString[] = "Hello, world!";
+
+    const String s1(TestString);
+
+    String s2;
+    fmt::format_to(Appender(s2), "{}", s1);
+    HE_EXPECT_EQ(s1, s2);
 }

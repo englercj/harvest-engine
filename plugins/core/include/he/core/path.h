@@ -26,6 +26,14 @@ namespace he
     /// \param[in] path The path to check.
     bool IsAbsolutePath(StringView path);
 
+    /// Checks if the path is a child of parent.
+    ///
+    /// \note Both paths are expected to be absolute, and normalized.
+    ///
+    /// \param[in] path The path to check.
+    /// \param[in] parent The path to check against.
+    bool IsChildPath(StringView path, StringView parent);
+
     /// Finds and returns the extension of the path including the leading dot.
     /// For example, the extension of "/home/human/file.cpp" is ".cpp".
     ///

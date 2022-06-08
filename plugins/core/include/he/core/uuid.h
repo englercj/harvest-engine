@@ -52,24 +52,6 @@ namespace he
         /// \return The version number of the UUID.
         constexpr uint8_t GetVersion() const { return (m_bytes[6] & 0xf0) >> 4; }
 
-        /// Gets the first 8 bytes of a Uuid as a uint64.
-        /// This can be useful for interop with third-party systems.
-        ///
-        /// \return The first 8 bytes of the Uuid as a uint64.
-        uint64_t GetLow() const;
-
-        /// Gets the last 8 bytes of a Uuid as a uint64.
-        /// This can be useful for interop with third-party systems.
-        ///
-        /// \return The last 8 bytes of the Uuid as a uint64.
-        uint64_t GetHigh() const;
-
-        /// Creates a cannonical string representation of the UUID.
-        ///
-        /// \param[in] allocator The allocator to use to construct the string.
-        /// \return The cannonical UUID string.
-        String ToString(Allocator& allocator = Allocator::GetDefault()) const;
-
         /// Checks if two UUIDs are the same.
         ///
         /// \return True if the UUIDs are the same, false otherwise.
@@ -93,6 +75,23 @@ namespace he
     /// A UUID of all zeroes. Sometimes called the nil, zero, or empty UUID.
     /// 00000000-0000-0000-0000-000000000000
     inline constexpr Uuid Uuid_Zero{ { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 } };
+
+    /// Name string is a fully-qualified domain name.
+    /// 6ba7b810-9dad-11d1-80b4-00c04fd430c8
+    inline constexpr Uuid Uuid_NamespaceDNS{ { 0x6b, 0xa7, 0xb8, 0x10, 0x9d, 0xad, 0x11, 0xd1, 0x80, 0xb4, 0x00, 0xc0, 0x4f, 0xd4, 0x30, 0xc8 } };
+
+    /// Name string is a URL.
+    /// 6ba7b811-9dad-11d1-80b4-00c04fd430c8
+    inline constexpr Uuid Uuid_NamespaceURL{ { 0x6b, 0xa7, 0xb8, 0x11, 0x9d, 0xad, 0x11, 0xd1, 0x80, 0xb4, 0x00, 0xc0, 0x4f, 0xd4, 0x30, 0xc8 } };
+
+    /// Name string is an ISO OID.
+    /// 6ba7b812-9dad-11d1-80b4-00c04fd430c8
+    inline constexpr Uuid Uuid_NamespaceOID{ { 0x6b, 0xa7, 0xb8, 0x12, 0x9d, 0xad, 0x11, 0xd1, 0x80, 0xb4, 0x00, 0xc0, 0x4f, 0xd4, 0x30, 0xc8 } };
+
+    /// Name string is an X.500 DN (in DER or a text output format).
+    /// 6ba7b814-9dad-11d1-80b4-00c04fd430c8
+    inline constexpr Uuid Uuid_NamespaceX500{ { 0x6b, 0xa7, 0xb8, 0x14, 0x9d, 0xad, 0x11, 0xd1, 0x80, 0xb4, 0x00, 0xc0, 0x4f, 0xd4, 0x30, 0xc8 } };
+
 }
 
 // Hash overloads

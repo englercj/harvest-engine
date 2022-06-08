@@ -3,6 +3,7 @@
 #include "file_helpers.win32.h"
 
 #include "he/core/ascii.h"
+#include "he/core/enum_ops.h"
 #include "he/core/scope_guard.h"
 #include "he/core/string.h"
 #include "he/core/string_view.h"
@@ -93,15 +94,14 @@ namespace he
 
         outAttributes.flags = FileAttributeFlag::None;
 
-        if ((basicInfo.FileAttributes & FILE_ATTRIBUTE_HIDDEN) == FILE_ATTRIBUTE_HIDDEN)
-        {
-            outAttributes.flags |= FileAttributeFlag::Hidden;
-        }
+        if (HasFlag(basicInfo.FileAttributes, FILE_ATTRIBUTE_DIRECTORY))
+            outAttributes.flags |= FileAttributeFlag::Directory;
 
-        if ((basicInfo.FileAttributes & FILE_ATTRIBUTE_READONLY) == FILE_ATTRIBUTE_READONLY)
-        {
+        if (HasFlag(basicInfo.FileAttributes, FILE_ATTRIBUTE_HIDDEN))
+            outAttributes.flags |= FileAttributeFlag::Hidden;
+
+        if (HasFlag(basicInfo.FileAttributes, FILE_ATTRIBUTE_READONLY))
             outAttributes.flags |= FileAttributeFlag::ReadOnly;
-        }
 
         if (standardInfo.Directory == TRUE)
         {

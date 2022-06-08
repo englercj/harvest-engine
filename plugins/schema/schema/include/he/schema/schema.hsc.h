@@ -15,6 +15,7 @@ namespace he::schema
     HE_SCHEMA_DECL_INFO_FOR_ID(0xc5144765ef1b906b); // Toml::Name
     HE_SCHEMA_DECL_INFO_FOR_ID(0xadd3e5b7bc72e8a5); // Toml::Hex
     HE_SCHEMA_DECL_INFO_FOR_ID(0xc2fc1f39cbc0264f); // Toml::Base64
+    HE_SCHEMA_DECL_INFO_FOR_ID(0xef69d825c0ea441b); // Uuid
     HE_SCHEMA_DECL_INFO_FOR_ID(0xa66eff5acba76a75); // Brand
     HE_SCHEMA_DECL_INFO_FOR_ID(0xac8f534465c8369b); // Brand::Scope
     HE_SCHEMA_DECL_INFO_FOR_ID(0xdd2b0f1a9d06a3b0); // Type
@@ -75,6 +76,14 @@ namespace he::schema
             Base64() = delete;
             HE_SCHEMA_DECL_ATTRIBUTE(0xc2fc1f39cbc0264f, 0xc209341a45619228);
         };
+    };
+    struct Uuid final
+    {
+        Uuid() = delete;
+        HE_SCHEMA_DECL_STRUCT(0xef69d825c0ea441b, 0x979e892c449bc4d8, 1, 3, 0);
+
+        class Reader;
+        class Builder;
     };
     struct Brand final
     {
@@ -410,6 +419,28 @@ namespace he::schema
     // ---------------------------------------------------------------------------------------------
     // Reader & Builder Declarations
 
+    class Uuid::Reader final : public ::he::schema::StructReader
+    {
+    public:
+        using StructType = Uuid;
+        using SuperType = ::he::schema::StructReader;
+
+        bool HasValue() const;
+        ::he::Span<const uint8_t> GetValue() const;
+
+    };
+    class Uuid::Builder final : public ::he::schema::StructBuilder
+    {
+    public:
+        using StructType = Uuid;
+        using SuperType = ::he::schema::StructBuilder;
+
+        StructType::Reader AsReader() const { return StructType::Reader(SuperType::AsReader()); }
+        operator StructType::Reader() const { return AsReader(); }
+
+        bool HasValue() const;
+        ::he::Span<uint8_t> GetValue();
+    };
     class Brand::Scope::Reader final : public ::he::schema::StructReader
     {
     public:
@@ -1946,6 +1977,12 @@ namespace he::schema
 
     // ---------------------------------------------------------------------------------------------
     // Reader & Builder Field Definitions
+
+    inline bool Uuid::Reader::HasValue() const { return SuperType::HasDataField(0); }
+    inline ::he::Span<const uint8_t> Uuid::Reader::GetValue() const { return SuperType::TryGetDataArrayField<uint8_t>(0, 0, 16); }
+
+    inline bool Uuid::Builder::HasValue() const { return SuperType::HasDataField(0); }
+    inline ::he::Span<uint8_t> Uuid::Builder::GetValue() { return SuperType::GetAndMarkDataArrayField<uint8_t>(0, 0, 16); }
 
     inline bool Brand::Scope::Reader::HasScopeId() const { return SuperType::HasDataField(0); }
     inline uint64_t Brand::Scope::Reader::GetScopeId() const { return SuperType::TryGetDataField<uint64_t>(0, 0); }

@@ -47,6 +47,27 @@ namespace he
         else
             dst.Clear();
     }
+
+    void WCToMBStr(String& dst, const wchar_t* src, uint32_t srcLen_)
+    {
+        const int32_t srcLen = static_cast<int32_t>(srcLen_);
+        const int32_t requiredLen = ::WideCharToMultiByte(CP_UTF8, 0, src, srcLen, nullptr, 0, nullptr, nullptr);
+
+        if (requiredLen <= 0)
+        {
+            dst.Clear();
+            return;
+        }
+
+        dst.Resize(requiredLen, DefaultInit);
+
+        const int32_t len = ::WideCharToMultiByte(CP_UTF8, 0, src, srcLen, dst.Data(), dst.Size(), nullptr, nullptr);
+
+        if (len > 0)
+            dst.Resize(len - 1);
+        else
+            dst.Clear();
+    }
 }
 
 #endif

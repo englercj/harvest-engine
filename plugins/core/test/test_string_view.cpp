@@ -3,11 +3,14 @@
 #include "fixtures.h"
 
 #include "he/core/string_view.h"
+#include "he/core/string_view_fmt.h"
 
+#include "he/core/appender.h"
 #include "he/core/allocator.h"
 #include "he/core/string.h"
-#include "he/core/string_view_fmt.h"
 #include "he/core/test.h"
+
+#include "fmt/format.h"
 
 #include <string>
 
@@ -393,4 +396,16 @@ HE_TEST(core, string_view, RangeBasedFor)
         HE_EXPECT_EQ(c, TestString[i++]);
     }
     HE_EXPECT_EQ(i, HE_LENGTH_OF(TestString) - 1);
+}
+
+// ------------------------------------------------------------------------------------------------
+HE_TEST(core, string_view, fmt)
+{
+    constexpr char TestString[] = "Hello, world!";
+
+    const StringView s1(TestString);
+
+    String s2;
+    fmt::format_to(Appender(s2), "{}", s1);
+    HE_EXPECT_EQ(s1, s2);
 }

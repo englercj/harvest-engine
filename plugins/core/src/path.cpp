@@ -41,6 +41,26 @@ namespace he
         return false;
     }
 
+    bool IsChildPath(StringView path, StringView parent)
+    {
+        if (path.Size() <= parent.Size())
+            return false;
+
+        if (!IsAbsolutePath(path) || !IsAbsolutePath(parent))
+            return false;
+
+        for (uint32_t i = 0; i < parent.Size(); ++i)
+        {
+            const char c = path[i];
+            const char p = parent[i];
+
+            if (c != p)
+                return false;
+        }
+
+        return true;
+    }
+
     StringView GetExtension(StringView path)
     {
         if (path.IsEmpty())
@@ -251,7 +271,7 @@ namespace he
 
     Result MakeAbsolute(String& path)
     {
-        if (path.IsEmpty())
+        if (path.IsEmpty() || IsAbsolutePath(path))
             return Result::Success;
 
         File f;

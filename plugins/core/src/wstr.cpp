@@ -5,6 +5,7 @@
 #include "he/core/assert.h"
 
 #include <cwchar>
+#include <string>
 
 namespace he
 {
@@ -36,7 +37,7 @@ namespace he
         std::mbstate_t state{};
         const size_t requiredLen = std::wcsrtombs(nullptr, &src, 0, &state);
 
-        if (requiredLen == 0)
+        if (requiredLen == 0 || requiredLen == static_cast<size_t>(-1))
         {
             dst.Clear();
             return;
@@ -50,6 +51,13 @@ namespace he
             dst.Resize(len);
         else
             dst.Clear();
+    }
+
+    void WCToMBStr(String& dst, const wchar_t* src, uint32_t srcLen)
+    {
+        HE_ASSERT(src);
+        std::wstring wsrc(src, srcLen);
+        WCToMBStr(dst, wsrc.c_str());
     }
 #endif
 

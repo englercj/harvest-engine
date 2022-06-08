@@ -40,6 +40,36 @@ HE_TEST(core, path, IsAbsolutePath)
 }
 
 // ------------------------------------------------------------------------------------------------
+HE_TEST(core, path, IsChildPath)
+{
+    struct TestCase
+    {
+        const char* child;
+        const char* parent;
+        const bool exp;
+    } tests[] =
+    {
+        { "/a", "/", true },
+        { "/a/b", "/a/", true },
+        { "/a/b", "/a", true },
+        { "/ab/c", "/ab/", true },
+        { "/ab/c", "/ab", true },
+
+        { "", "/", false },
+        { "/a/b", "/ab/", false },
+        { "/a/", "/ab/", false },
+        { "/ab", "/ab", false },
+        { "/ab", "/ab/", false },
+        { "/ab/", "/ab", false },
+    };
+
+    for (TestCase tc : tests)
+    {
+        HE_EXPECT_EQ(IsChildPath(tc.child, tc.parent), tc.exp);
+    }
+}
+
+// ------------------------------------------------------------------------------------------------
 HE_TEST(core, path, GetExtension)
 {
     struct TestCase

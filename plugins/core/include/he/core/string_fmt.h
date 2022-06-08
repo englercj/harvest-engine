@@ -17,10 +17,7 @@ namespace fmt
         template <typename FormatContext>
         auto format(const he::String& s, FormatContext& ctx) const -> decltype(ctx.out())
         {
-            auto out = ctx.out();
-            for (const char c : s)
-                *out++ = c;
-            return out;
+            return fmt::format_to(ctx.out(), "{}", fmt::string_view(s.Data(), s.Size()));
         }
     };
 }

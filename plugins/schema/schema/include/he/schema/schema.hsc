@@ -11,6 +11,11 @@ struct Toml
     attribute Base64(field) :void;
 }
 
+struct Uuid
+{
+    value @0 :uint8[16] $Toml.Hex;
+}
+
 struct Brand
 {
     struct Scope

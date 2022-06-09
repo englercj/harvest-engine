@@ -9,38 +9,25 @@
 
 namespace he
 {
-    template <typename T>
+    template <typename F>
     class ScopeGuard
     {
     public:
-        ScopeGuard(const T& f)
-            : m_func(f)
+        static_assert(!std::is_reference_v<F> && !std::is_const_v<F> && !std::is_volatile_v<F>, "ScopeGuard stores its action by value.");
+
+        ScopeGuard(F f)
+            : m_func(Move(func))
             , m_active(true)
         {}
 
-        ScopeGuard(T&& f)
-            : m_func(Move(f))
-            , m_active(true)
+        ScopeGuard(ScopeGuard&& x)
+            : m_func(Move(x.m_func))
+            , m_active(Exchange(x.m_active, false))
         {}
-
-        ScopeGuard(ScopeGuard&& other)
-            : m_func(Move(other.m_func))
-            , m_active(other.m_active)
-        {
-            other.m_active = false;
-        }
-
-        ScopeGuard& operator=(ScopeGuard&& other)
-        {
-            m_func = Move(other.m_func);
-            m_active = other.m_active;
-
-            other.m_active = false;
-            return *this;
-        }
 
         ScopeGuard(const ScopeGuard&) = delete;
         ScopeGuard& operator=(const ScopeGuard&) = delete;
+        ScopeGuard& operator=(ScopeGuard&& other) = delete;
 
         ~ScopeGuard()
         {
@@ -54,14 +41,14 @@ namespace he
         }
 
     private:
-        T m_func;
+        F m_func;
         bool m_active;
     };
 
-    template <typename T>
-    inline ScopeGuard<typename std::decay_t<T>> MakeScopeGuard(T&& func)
+    template <typename F>
+    inline [[nodiscard]] ScopeGuard<std::decay_t<F>> MakeScopeGuard(F&& func)
     {
-        return ScopeGuard<typename std::decay_t<T>>(Forward<T>(func));
+        return ScopeGuard<std::decay_t<F>>(Forward<F>(func));
     }
 }
 

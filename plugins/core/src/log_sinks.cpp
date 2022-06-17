@@ -88,7 +88,7 @@ namespace he
         return m_file.Open(m_buf.Data(), FileOpenMode::WriteTruncate);
     }
 
-    void FileSink::Handler(const LogSource& source, const KeyValue* kvs, uint32_t count)
+    void FileSink::OnLogEntry(const LogSource& source, const KeyValue* kvs, uint32_t count)
     {
         SystemTime now = SystemClock::Now();
 
@@ -106,7 +106,7 @@ namespace he
         m_file.Write(m_buf.Data(), m_buf.Size());
     }
 
-    void DebuggerSink(void*, const LogSource& source, const KeyValue* kvs, uint32_t count)
+    void DebuggerSink(const LogSource& source, const KeyValue* kvs, uint32_t count)
     {
         String msg(Allocator::GetTemp());
 
@@ -136,7 +136,7 @@ namespace he
         PrintToDebugger(msg.Data());
     }
 
-    void ConsoleSink(void*, const LogSource& source, const KeyValue* kvs, uint32_t count)
+    void ConsoleSink(const LogSource& source, const KeyValue* kvs, uint32_t count)
     {
         String msg(Allocator::GetTemp());
 

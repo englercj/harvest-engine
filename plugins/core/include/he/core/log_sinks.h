@@ -19,16 +19,6 @@ namespace he
     class FileSink
     {
     public:
-        /// Handler function that can be added a sink. Make sure to pass the FileSink instance
-        /// as the userData parameter when calling \ref AddLogSink.
-        ///
-        /// \param[in] source The source information for this log entry.
-        /// \param[in] kvs An array of key-value pairs.
-        /// \param[in] count The size of the `kvs` array.
-        static void LogHandler(void* userData, const LogSource& source, const KeyValue* kvs, uint32_t count)
-        {
-            static_cast<FileSink*>(userData)->Handler(source, kvs, count);
-        }
 
     public:
         /// Constructs a new file sink.
@@ -44,8 +34,12 @@ namespace he
         /// \return The result of opening the file to write to.
         Result Configure(const char* directory, const char* prefix, bool utcTime = false);
 
-    private:
-        void Handler(const LogSource& source, const KeyValue* kvs, uint32_t count);
+        /// Handler function that can be added as a sink.
+        ///
+        /// \param[in] source The source information for this log entry.
+        /// \param[in] kvs An array of key-value pairs.
+        /// \param[in] count The size of the `kvs` array.
+        void OnLogEntry(const LogSource& source, const KeyValue* kvs, uint32_t count);
 
     private:
         Mutex m_mutex{};
@@ -60,7 +54,7 @@ namespace he
     /// \param[in] source The source information for this log entry.
     /// \param[in] kvs An array of key-value pairs.
     /// \param[in] count The size of the `kvs` array.
-    void DebuggerSink(void* userData, const LogSource& source, const KeyValue* kvs, uint32_t count);
+    void DebuggerSink(const LogSource& source, const KeyValue* kvs, uint32_t count);
 
     /// Log sink that logs to stdout (and stderr for warnings and errors).
     ///
@@ -68,5 +62,5 @@ namespace he
     /// \param[in] source The source information for this log entry.
     /// \param[in] kvs An array of key-value pairs.
     /// \param[in] count The size of the `kvs` array.
-    void ConsoleSink(void* userData, const LogSource& source, const KeyValue* kvs, uint32_t count);
+    void ConsoleSink(const LogSource& source, const KeyValue* kvs, uint32_t count);
 }

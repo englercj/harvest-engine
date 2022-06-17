@@ -27,7 +27,7 @@ namespace he::editor
             desc.enableDebugBreakOnError = true;
             desc.enableDebugBreakOnWarning = true;
 
-            Result r = rhi::CreateInstance(desc, m_rhi);
+            Result r = rhi::Instance::Create(desc, m_rhi);
             if (!r)
             {
                 HE_LOGF_ERROR(render_service, "Failed to create RHI instance. Error: {}", r);
@@ -130,7 +130,7 @@ namespace he::editor
         m_rhi->DestroyDevice(m_device);
         m_device = nullptr;
 
-        rhi::DestroyInstance(m_rhi);
+        rhi::Instance::Destroy(m_rhi);
     }
 
     void RenderService::BeginFrame()

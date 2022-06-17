@@ -61,10 +61,10 @@ namespace he::schema
             return x;
         }
 
-        bool operator==(const AstListIterator& x) const { return m_list == x.m_list && m_node == x.m_node; }
-        bool operator!=(const AstListIterator& x) const { return m_list != x.m_list || m_node != x.m_node; }
+        [[nodiscard]] bool operator==(const AstListIterator& x) const { return m_list == x.m_list && m_node == x.m_node; }
+        [[nodiscard]] bool operator!=(const AstListIterator& x) const { return m_list != x.m_list || m_node != x.m_node; }
 
-        operator bool() const { return m_node != nullptr; }
+        [[nodiscard]] explicit operator bool() const { return m_node != nullptr; }
 
     private:
         const AstList<T>* m_list{ nullptr };

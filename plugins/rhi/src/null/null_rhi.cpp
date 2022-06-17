@@ -333,7 +333,7 @@ namespace he::rhi
 {
     template <> Result _CreateInstance<ApiBackend::Null>(Allocator& allocator, Instance*& instance)
     {
-        HE_LOGF_INFO(rhi, "Initializing NULL RHI backend.");
+        HE_LOGF_INFO(he_rhi, "Initializing NULL RHI backend.");
         instance = allocator.New<null::InstanceImpl>(allocator);
         return Result::Success;
     }

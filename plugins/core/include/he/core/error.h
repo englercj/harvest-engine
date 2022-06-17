@@ -43,7 +43,7 @@ namespace he
     /// \param[in] kvs An array of key-value pairs.
     /// \param[in] count The size of the `kvs` array.
     /// \return True if the application should break in debugger, or false otherwise.
-    using ErrorHandlerFunc = bool(*)(void* userData, const ErrorSource& source, const KeyValue* kvs, uint32_t count);
+    using Pfn_ErrorHandler = bool(*)(void* userData, const ErrorSource& source, const KeyValue* kvs, uint32_t count);
 
     /// Default handler for application errors. This function is used unless \ref SetErrorHandler
     /// is called with a different function. The default handling may use platform-specific APIs.
@@ -61,14 +61,14 @@ namespace he
     /// \param[in] handler The handler to call when an error occurs, or nullptr to indicate
     ///     that \ref DefaultErrorHandler should be used.
     /// \param[in] userData Pointer to arbitrary user-defined data to be passed to the handler.
-    void SetErrorHandler(ErrorHandlerFunc handler, void* userData = nullptr);
+    void SetErrorHandler(Pfn_ErrorHandler handler, void* userData = nullptr);
 
     /// Gets the current handler to be called when an application error occurs. This will never
     /// return nullptr, even in cases where \ref DefaultErrorHandler is used.
     ///
     /// \param[out] userData The user data that was registered for the error handler.
     /// \return Pointer to the currently assigned error handler function.
-    ErrorHandlerFunc GetErrorHandler(void*& userData);
+    Pfn_ErrorHandler GetErrorHandler(void*& userData);
 
     /// Called to handle an application error. Not meant to be called directly.
     ///
@@ -83,7 +83,7 @@ namespace he
     class ScopedErrorHandler
     {
     public:
-        ScopedErrorHandler(ErrorHandlerFunc handler, void* userData = nullptr)
+        ScopedErrorHandler(Pfn_ErrorHandler handler, void* userData = nullptr)
         {
             m_old = GetErrorHandler(m_oldUser);
             SetErrorHandler(handler, userData);
@@ -95,7 +95,7 @@ namespace he
         }
 
     private:
-        ErrorHandlerFunc m_old;
+        Pfn_ErrorHandler m_old;
         void* m_oldUser;
     };
 }

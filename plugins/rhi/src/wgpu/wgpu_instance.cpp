@@ -16,7 +16,7 @@ namespace he::rhi
 {
     template <> Result _CreateInstance<ApiBackend::WebGPU>(Allocator& allocator, Instance*& instance)
     {
-        HE_LOGF_ERROR(rhi, "WebGPU RHI backend is not yet implemented.");
+        HE_LOGF_ERROR(he_rhi, "WebGPU RHI backend is not yet implemented.");
         instance = nullptr;
         return Result::NotSupported;
     }

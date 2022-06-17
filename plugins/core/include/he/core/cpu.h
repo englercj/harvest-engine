@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include "he/core/compiler.h"
 #include "he/core/types.h"
 
 // TODO: Document these macros
@@ -60,6 +61,28 @@
 #if HE_CPU_ARM_64 || HE_CPU_WASM_64 || HE_CPU_X86_64
     #undef  HE_CPU_64_BIT
     #define HE_CPU_64_BIT           1
+#endif
+
+#if HE_COMPILER_MSVC
+    #if HE_CPU_ARM
+        extern "C" void __yield(void);
+        #pragma intrinsic(__yield)
+        #define HE_SPIN_WAIT_PAUSE()    __yield()
+    #elif HE_CPU_WASM
+        #error "Wasm not supported via MSVC yet"
+    #elif HE_CPU_X86
+        extern "C" void _mm_pause(void);
+        #pragma intrinsic(_mm_pause)
+        #define HE_SPIN_WAIT_PAUSE()    _mm_pause()
+    #endif
+#else
+    #if HE_CPU_ARM
+        #define HE_SPIN_WAIT_PAUSE()    (__asm__ __volatile__("yield;" ::: "memory"))
+    #elif HE_CPU_WASM
+        #define HE_SPIN_WAIT_PAUSE()    _mm_pause()
+    #elif HE_CPU_X86
+        #define HE_SPIN_WAIT_PAUSE()    (__asm__ __volatile__("pause;" ::: "memory"))
+    #endif
 #endif
 
 namespace he

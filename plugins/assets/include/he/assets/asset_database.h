@@ -3,13 +3,14 @@
 #pragma once
 
 #include "he/assets/types.h"
-#include "he/core/async_file.h"
+#include "he/core/async_file_loader.h"
+#include "he/core/delegate.h"
 #include "he/core/string.h"
 #include "he/core/types.h"
 #include "he/schema/layout.h"
 #include "he/sqlite/database.h"
 
-#include <future>
+#include <functional>
 
 namespace he::assets
 {
@@ -19,47 +20,61 @@ namespace he::assets
         struct LoadResult
         {
             Result result{};
+
             schema::Builder builder{};
             AssetFile::Builder assetFile{};
         };
 
+        using LoadDelegate = Delegate<void(LoadResult)>;
+
     public:
         ~AssetDatabase() { Terminate(); }
 
-        bool Initialize(const char* dbPath);
+        bool Initialize(const char* dbPath, const char* rootDir, AsyncFileLoader& loader);
         bool Terminate();
 
+        // TODO: Audit the path handling in these.
+        // All of these should work with absolute paths, or asset root relative paths.
         bool IsFileUpToDate(const char* path);
-        bool MaybeUpdateFile(const char* path);
+        bool UpdateAssetFile(const char* path, LoadDelegate callback = {});
+        bool LoadAssetFile(const char* path, LoadDelegate callback);
+        bool LoadAssetFile(const AssetFileUuid& fileUuid, LoadDelegate callback);
 
-        std::future<LoadResult> LoadAssetFile(const char* path);
-        std::future<LoadResult> LoadAssetFile(const AssetFileUuid& fileUuid);
+        void OnAssetFileDeleted(const char* path);
+        void OnAssetFileUpdated(const char* path);
 
-        void PollPendingLoads();
+        const String& RootDir() const { return m_rootDir; }
 
         sqlite::Transaction BeginTransaction() const { return m_db.BeginTransaction(); }
         const sqlite::Statement& StatementLiteral(const char* sql) { return m_db.StatementLiteral(sql); }
 
     private:
-        struct PendingLoad
+        bool PrepareRelativePath(const char* path, String& relPath) const;
+        bool PrepareAbsolutePath(const char* path, String& absPath) const;
+
+    private:
+        struct LoadRequest
         {
-            AsyncFile file{};
+            AsyncFileId fileId{};
             String path{};
             String content{};
-            std::future<AsyncFileResult> load{};
+            AssetDatabase* db{ nullptr };
+            LoadDelegate callback{};
         };
 
-        struct LoadReq
+        struct UpdateRequest
         {
-            int32_t pendingIndex{ -1 };
-            std::promise<LoadResult> promise{};
+            String path{};
+            AssetDatabase* db{ nullptr };
+            LoadDelegate callback{};
         };
 
-        PendingLoad* FindAvailablePending();
+        static void HandleFileReadComplete(LoadRequest* load, Result result);
+        static void HandleLoadForUpdateComplete(UpdateRequest* req, LoadResult load);
 
     private:
         sqlite::Database m_db;
-        PendingLoad m_pending[32]{};
-        Vector<LoadReq> m_requestedLoads{};
+        String m_rootDir;
+        AsyncFileLoader* m_loader;
     };
 }

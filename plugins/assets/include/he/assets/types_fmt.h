@@ -24,7 +24,7 @@ namespace fmt
         {
             constexpr uint32_t ByteSize = sizeof(id.val.m_bytes);
             const uint8_t* b = id.val.m_bytes;
-            return fmt::format_to(ctx.out(), "{:x}", fmt::join(b, b + ByteSize, ""));
+            return fmt::format_to(ctx.out(), "{:02x}", fmt::join(b, b + ByteSize, ""));
         }
     };
 }

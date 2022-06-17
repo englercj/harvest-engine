@@ -58,7 +58,7 @@ namespace he
         String ToString(Allocator& allocator = Allocator::GetDefault()) const;
 
         /// Converts the Result to a boolean. This value is the same as \ref IsOK().
-        explicit operator bool() const { return IsOk(); }
+        [[nodiscard]] explicit operator bool() const { return IsOk(); }
 
         /// Checks if two Result store the same system code.
         ///

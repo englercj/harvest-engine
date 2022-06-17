@@ -13,7 +13,7 @@ namespace he::editor
 {
     constexpr const char* DirectoryNames[] =
     {
-        "Harvest",      // AppDataRoot
+        "Harvest",      // Root
         "logs",         // Logs
         "resources",    // Resources
         "settings",     // Settings
@@ -22,29 +22,27 @@ namespace he::editor
 
     String DirectoryService::GetAppDirectory(DirType type)
     {
-        if (m_appDataRoot.IsEmpty())
+        if (m_root.IsEmpty())
         {
-            Result r = Directory::GetSpecial(m_appDataRoot, SpecialDirectory::LocalAppData);
+            Result r = Directory::GetSpecial(m_root, SpecialDirectory::LocalAppData);
             if (!HE_VERIFY(r))
             {
-                m_appDataRoot.Clear();
+                m_root.Clear();
                 HE_LOG_ERROR(editor,
                     HE_MSG("Failed to read local app data directory. Things may not work as expected."),
                     HE_KV(result, r));
-                return m_appDataRoot;
+                return m_root;
             }
 
-            const uint32_t appRootIndex = static_cast<uint32_t>(DirType::AppDataRoot);
-            ConcatPath(m_appDataRoot, DirectoryNames[appRootIndex]);
+            const uint32_t appRootIndex = static_cast<uint32_t>(DirType::Root);
+            ConcatPath(m_root, DirectoryNames[appRootIndex]);
         }
 
-        if (type == DirType::AppDataRoot)
-        {
-            return m_appDataRoot;
-        }
+        if (type == DirType::Root)
+            return m_root;
 
         const uint32_t typeIndex = static_cast<uint32_t>(type);
-        String path = m_appDataRoot;
+        String path = m_root;
         ConcatPath(path, DirectoryNames[typeIndex]);
         return path;
     }
@@ -53,7 +51,7 @@ namespace he::editor
     {
         bool result = true;
 
-        String path(m_appDataRoot.GetAllocator());
+        String path;
         for (uint32_t i = 0; i < static_cast<uint32_t>(DirType::_Count); ++i)
         {
             path = GetAppDirectory(static_cast<DirType>(i));

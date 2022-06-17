@@ -2,6 +2,7 @@
 
 #include "he/core/thread.h"
 
+#include "he/core/cpu.h"
 #include "he/core/string.h"
 #include "he/core/utils.h"
 
@@ -25,21 +26,30 @@ namespace he
 
     Result SetThreadAffinity(ThreadHandle thread, uint64_t mask)
     {
+        static_assert(__CPU_SETSIZE >= (sizeof(mask) * 8));
+
+        const CpuInfo& info = GetCpuInfo();
+        const uint32_t len = Min(info.threadCount, (sizeof(mask) * 8));
+
         cpu_set_t set;
         CPU_ZERO(&set);
 
-        static_assert(__CPU_SETSIZE >= (sizeof(mask) * 8));
-
-        for (uint32_t i = 0; i < (sizeof(mask) * 8); ++i)
+        bool anySet = false;
+        for (uint32_t i = 0; i < len; ++i)
         {
             const uint64_t flag = 1 << i;
             if ((mask & flag) != 0)
             {
+                anySet = true;
                 CPU_SET(i, &set);
             }
         }
 
-        const int rc = pthread_setaffinity_np(static_cast<pthread_t>(thread), sizeof(set), &set);
+        if (!HE_VERIFY(anySet, HE_MSG("Affinity mask shouldn't be zero.")))
+            return Result::InvalidParameter;
+
+        const pthread_t th = static_cast<pthread_t>(thread);
+        const int rc = pthread_setaffinity_np(th, sizeof(set), &set);
         return PosixResult(rc);
     }
 

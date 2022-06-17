@@ -9,30 +9,24 @@
 
 namespace he
 {
-    struct LogSinkStorage
+    static Vector<LogDelegate>& GetSinks()
     {
-        LogSinkFunc func;
-        void* userData;
-    };
-
-    static Vector<LogSinkStorage>& GetSinks()
-    {
-        static Vector<LogSinkStorage> s_sinks;
+        static Vector<LogDelegate> s_sinks;
         return s_sinks;
     }
 
-    void AddLogSink(LogSinkFunc sink, void* userData)
+    void AddLogSink(LogDelegate sink)
     {
-        GetSinks().PushBack({ sink, userData });
+        GetSinks().PushBack(sink);
     }
 
-    void RemoveLogSink(LogSinkFunc sink, void* userData)
+    void RemoveLogSink(LogDelegate sink)
     {
-        Vector<LogSinkStorage>& sinks = GetSinks();
+        Vector<LogDelegate>& sinks = GetSinks();
 
         for (uint32_t i = 0; i < sinks.Size(); ++i)
         {
-            if (sinks[i].func == sink && sinks[i].userData == userData)
+            if (sinks[i] == sink)
             {
                 sinks.Erase(i, 1);
                 return;
@@ -42,11 +36,11 @@ namespace he
 
     void Log(const LogSource& source, const KeyValue* kvs, uint32_t count)
     {
-        Vector<LogSinkStorage>& sinks = GetSinks();
+        Vector<LogDelegate>& sinks = GetSinks();
 
-        for (const LogSinkStorage& sink : sinks)
+        for (const LogDelegate& sink : sinks)
         {
-            sink.func(sink.userData, source, kvs, count);
+            sink(source, kvs, count);
         }
     }
 

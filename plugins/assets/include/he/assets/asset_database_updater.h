@@ -10,16 +10,16 @@ namespace he::assets
     {
     public:
         static AssetDatabaseUpdater* Create(AssetDatabase& db);
-        static void Destroy(AssetDatabaseUpdater* db);
+        static void Destroy(AssetDatabaseUpdater* updater);
 
     public:
         virtual ~AssetDatabaseUpdater() {}
 
-    protected:
-        AssetDatabaseUpdater(AssetDatabase& db);
+        virtual bool Start() = 0;
+        virtual void Stop() = 0;
 
-        virtual bool Start(const char* rootDir) = 0;
-        virtual bool Stop() = 0;
+    protected:
+        AssetDatabaseUpdater(AssetDatabase& db) : m_db(db) {}
 
     protected:
         AssetDatabase& m_db;

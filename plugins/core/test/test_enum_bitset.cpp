@@ -9,7 +9,7 @@ using namespace he;
 // ------------------------------------------------------------------------------------------------
 HE_TEST(core, enum_bitset, Test)
 {
-    enum class Test { None = 0, A, B, C, D };
+    enum class Test : uint8_t { None = 0, A, B, C, D };
 
     EnumBitset<Test> test;
 

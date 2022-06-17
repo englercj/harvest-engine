@@ -1,0 +1,39 @@
+# Copyright Chad Engler
+
+id = "DirectStorage"
+name = "DirectStorage"
+description = "DirectStorage for Windows."
+version = "1.0.2"
+author = "Microsoft"
+license = "SEE LICENSE IN LICENSE.txt"
+homepage = "https://www.nuget.org/packages/Microsoft.Direct3D.DirectStorage/1.0.2"
+
+[install]
+    nuget = "Microsoft.Direct3D.DirectStorage#1.0.2"
+    valid_systems = ["windows"]
+
+[[modules]]
+    name = "DirectStorage"
+    type = "shared"
+    group = "engine/contrib"
+    public_includedirs = ["native/include"]
+
+    [[modules.variants]]
+        conditions = ["system:windows", "architecture:x86_64"]
+        public_dependson = [
+            "file:%{he.get_plugin('DirectStorage')._install_dir}/native/lib/x64/dstorage.lib"
+        ]
+        post_build_commands = [
+            "{COPYFILE} %{he.get_plugin('DirectStorage')._install_dir}/native/bin/x64/dstorage.dll %{cfg.targetdir}",
+            "{COPYFILE} %{he.get_plugin('DirectStorage')._install_dir}/native/bin/x64/dstoragecore.dll %{cfg.targetdir}",
+        ]
+
+    [[modules.variants]]
+        conditions = ["system:windows", "architecture:ARM64"]
+        public_dependson = [
+            "file:%{he.get_plugin('DirectStorage')._install_dir}/native/lib/ARM64/dstorage.lib"
+        ]
+        post_build_commands = [
+            "{COPYFILE} %{he.get_plugin('DirectStorage')._install_dir}/native/bin/ARM64/dstorage.dll %{cfg.targetdir}",
+            "{COPYFILE} %{he.get_plugin('DirectStorage')._install_dir}/native/bin/ARM64/dstoragecore.dll %{cfg.targetdir}",
+        ]

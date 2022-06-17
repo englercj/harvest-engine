@@ -73,45 +73,7 @@ namespace he
         if (!::GetFileAttributesExW(HE_TO_WSTR(path), GetFileExInfoStandard, &attrData))
             return Result::FromLastError();
 
-        outAttributes.flags = FileAttributeFlag::None;
-
-        if ((attrData.dwFileAttributes & FILE_ATTRIBUTE_HIDDEN) == FILE_ATTRIBUTE_HIDDEN)
-        {
-            outAttributes.flags |= FileAttributeFlag::Hidden;
-        }
-
-        if ((attrData.dwFileAttributes & FILE_ATTRIBUTE_READONLY) == FILE_ATTRIBUTE_READONLY)
-        {
-            outAttributes.flags |= FileAttributeFlag::ReadOnly;
-        }
-
-        if ((attrData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) == FILE_ATTRIBUTE_DIRECTORY)
-        {
-            outAttributes.flags |= FileAttributeFlag::Directory;
-            outAttributes.size = 0;
-        }
-        else
-        {
-            ULARGE_INTEGER size;
-            size.HighPart = attrData.nFileSizeHigh;
-            size.LowPart = attrData.nFileSizeLow;
-            outAttributes.size = size.QuadPart;
-        }
-
-        ULARGE_INTEGER i;
-
-        i.HighPart = attrData.ftCreationTime.dwHighDateTime;
-        i.LowPart = attrData.ftCreationTime.dwLowDateTime;
-        outAttributes.createTime = Win32FileTimeToSystemTime(i.QuadPart);
-
-        i.HighPart = attrData.ftLastAccessTime.dwHighDateTime;
-        i.LowPart = attrData.ftLastAccessTime.dwLowDateTime;
-        outAttributes.accessTime = Win32FileTimeToSystemTime(i.QuadPart);
-
-        i.HighPart = attrData.ftLastWriteTime.dwHighDateTime;
-        i.LowPart = attrData.ftLastWriteTime.dwLowDateTime;
-        outAttributes.writeTime = Win32FileTimeToSystemTime(i.QuadPart);
-
+        Win32ParseFileAttributes(attrData, outAttributes);
         return Result::Success;
     }
 

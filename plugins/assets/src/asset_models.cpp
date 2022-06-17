@@ -36,9 +36,6 @@ namespace he::assets
         if (!stmt.Bind(7, model.source.size))
             return false;
 
-        if (!stmt.Bind(8, model.scanToken))
-            return false;
-
         return true;
     }
 
@@ -51,7 +48,6 @@ namespace he::assets
         model.source.path = stmt.GetColumn(4).GetText();
         model.source.writeTime.val = BitCast<uint64_t>(stmt.GetColumn(5).GetInt64());
         model.source.size = stmt.GetColumn(6).GetUint();
-        model.scanToken = stmt.GetColumn(7).GetUint();
     }
 
     static bool Bind(const sqlite::Statement& stmt, const AssetModel& model)
@@ -172,7 +168,7 @@ namespace he::assets
         {
             sqlite::ScopedStatement stmt = db.StatementLiteral(R"(
                 INSERT INTO asset_file
-                    (uuid, file_path, file_write_time, file_size, source_path, source_write_time, source_size, scan_token)
+                    (uuid, file_path, file_write_time, file_size, source_path, source_write_time, source_size)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT (uuid) DO UPDATE SET
                     file_path = excluded.file_path,
@@ -180,8 +176,7 @@ namespace he::assets
                     file_size = excluded.file_size,
                     source_path = excluded.source_path,
                     source_write_time = excluded.source_write_time,
-                    source_size = excluded.source_size,
-                    scan_token = excluded.scan_token
+                    source_size = excluded.source_size
             )");
 
             if (!Bind(*stmt, model))
@@ -298,6 +293,18 @@ namespace he::assets
         return HE_VERIFY(stmt->Step() == sqlite::StepResult::Done);
     }
 
+    bool AssetFileModel::RemoveOne(AssetDatabase& db, const char* path)
+    {
+        sqlite::ScopedStatement stmt = db.StatementLiteral(R"(
+            DELETE FROM asset_file WHERE file_path = ?
+        )");
+
+        if (!stmt->Bind(1, path))
+            return false;
+
+        return HE_VERIFY(stmt->Step() == sqlite::StepResult::Done);
+    }
+
     bool AssetFileModel::RemoveOutdated(AssetDatabase& db, uint32_t scanToken)
     {
         sqlite::ScopedStatement stmt = db.StatementLiteral(R"(
@@ -311,7 +318,7 @@ namespace he::assets
 
     }
 
-    bool UpdateScanToken(AssetDatabase& db, const AssetFileUuid& fileUuid, uint32_t scanToken)
+    bool AssetFileModel::UpdateScanToken(AssetDatabase& db, const AssetFileUuid& fileUuid, uint32_t scanToken)
     {
         sqlite::ScopedStatement stmt = db.StatementLiteral(R"(
             UPDATE asset_file SET scan_token = ? WHERE uuid = ?

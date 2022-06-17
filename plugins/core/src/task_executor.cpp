@@ -22,11 +22,15 @@ namespace he
         {
             m_threads.PushBack(std::thread(PumpThread, this));
             ThreadHandle handle = reinterpret_cast<ThreadHandle>(m_threads.Back().native_handle());
-            Result r = SetThreadAffinity(handle, config.affinity);
-            if (!r)
+
+            if (config.affinity > 0)
             {
-                Shutdown();
-                return r;
+                Result r = SetThreadAffinity(handle, config.affinity);
+                if (!r)
+                {
+                    Shutdown();
+                    return r;
+                }
             }
         }
 
@@ -51,13 +55,13 @@ namespace he
         m_threads.Clear();
     }
 
-    void ThreadPoolExecutor::Add(TaskFunc func, void* taskData)
+    void ThreadPoolExecutor::Add(TaskDelegate func)
     {
         if (!func)
             return;
 
         m_mutex.Acquire();
-        m_tasks.push_back({ func, taskData });
+        m_tasks.push_back(func);
         m_mutex.Release();
 
         m_cv.WakeOne();
@@ -65,7 +69,7 @@ namespace he
 
     bool ThreadPoolExecutor::Pump()
     {
-        ThreadTask task;
+        TaskDelegate task;
 
         {
             LockGuard lock(m_mutex);
@@ -82,7 +86,7 @@ namespace he
             m_tasks.pop_front();
         }
 
-        task.func(task.taskData);
+        task();
         return true;
     }
 

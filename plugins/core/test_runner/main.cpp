@@ -104,7 +104,7 @@ static bool HandleTestLibLogEntry(const LogSource& source, const KeyValue* kvs, 
     return true;
 }
 
-static void TestRunnerLogSink(void*, const LogSource& source, const KeyValue* kvs, uint32_t count)
+static void TestRunnerLogSink(const LogSource& source, const KeyValue* kvs, uint32_t count)
 {
     if (String::Equal(source.category, "he_test"))
     {
@@ -112,7 +112,7 @@ static void TestRunnerLogSink(void*, const LogSource& source, const KeyValue* kv
             return;
     }
 
-    ConsoleSink(nullptr, source, kvs, count);
+    ConsoleSink(source, kvs, count);
 }
 
 #include "he/core/main.inl"

@@ -34,6 +34,7 @@ namespace he::editor
         bool IsOpen() const { return !m_projectPath.IsEmpty(); }
 
         Project::Builder& GetProject() { return m_project; }
+        const Project::Builder& GetProject() const { return m_project; }
 
         String GetResourceDir() const;
 

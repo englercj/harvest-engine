@@ -17,7 +17,7 @@ namespace he::rhi
     template <> Result _CreateInstance<ApiBackend::Vulkan>(Allocator& allocator, Instance*& instance)
     {
         HE_UNUSED(allocator);
-        HE_LOGF_ERROR(rhi, "Vulkan RHI backend is not yet implemented.");
+        HE_LOGF_ERROR(he_rhi, "Vulkan RHI backend is not yet implemented.");
         instance = nullptr;
         return Result::NotSupported;
     }

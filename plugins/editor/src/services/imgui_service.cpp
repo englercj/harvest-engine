@@ -45,7 +45,10 @@ namespace he::editor
 
         SetupColors();
 
-        if (!m_imguiPlatformService.Initialize(m_editorData.device, view, &ImGuiService::SetupStyle, &ImGuiService::SetupFontAtlas, this))
+        auto setupStyle = ImGuiPlatformService::StyleSetupDelegate::Make<&ImGuiService::SetupStyle>(this);
+        auto setupFonts = ImGuiPlatformService::FontAtlasSetupDelegate::Make<&ImGuiService::SetupFontAtlas>(this);
+
+        if (!m_imguiPlatformService.Initialize(m_editorData.device, view, setupStyle, setupFonts))
             return false;
 
         if (!m_imguiRenderService.Initialize(m_renderService.GetSwapChainFormat()))
@@ -165,7 +168,7 @@ namespace he::editor
         colors[ImGuiCol_ModalWindowDimBg]       = ImVec4(0.13f, 0.13f, 0.13f, 0.78f);
     }
 
-    void ImGuiService::SetupStyle(void*, ImGuiStyle& style)
+    void ImGuiService::SetupStyle(ImGuiStyle& style)
     {
         style.Alpha                             = 1.0f;
         style.WindowPadding                     = ImVec2(8, 8);
@@ -208,7 +211,7 @@ namespace he::editor
         style.CircleTessellationMaxError        = 0.30f;
     }
 
-    void ImGuiService::SetupFontAtlas(void* ctx, ImFontAtlas& atlas, float dpiScale)
+    void ImGuiService::SetupFontAtlas(ImFontAtlas& atlas, float dpiScale)
     {
         // NOTE: The order MUST match the Font enum in imgui_service.h
 
@@ -253,8 +256,7 @@ namespace he::editor
         }
 
         // Inform the render service that there's a new font
-        ImGuiService* service = static_cast<ImGuiService*>(ctx);
-        const bool result = service->m_imguiRenderService.SetupFontAtlas(atlas);
+        const bool result = m_imguiRenderService.SetupFontAtlas(atlas);
         HE_ASSERT(result);
         HE_UNUSED(result);
     }

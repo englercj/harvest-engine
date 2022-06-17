@@ -13,10 +13,16 @@
 
 #include "he/core/win32_min.h"
 
-#include <fileapi.h>
-
 namespace he
 {
+    inline uint64_t Win32ToUint64(DWORD high, DWORD low)
+    {
+        ULARGE_INTEGER value;
+        value.HighPart = high;
+        value.LowPart = low;
+        return value.QuadPart;
+    }
+
     HANDLE Win32FileOpen(const char* path, FileOpenMode mode, FileOpenFlag flags, DWORD extraFlags)
     {
         DWORD dwDesiredAccess = 0;
@@ -82,41 +88,62 @@ namespace he
             nullptr);
     }
 
-    Result Win32FileGetAttributes(HANDLE handle, FileAttributes& outAttributes)
+    void Win32ParseFileAttributes(const WIN32_FILE_ATTRIBUTE_DATA& info, FileAttributes& outAttributes)
     {
-        FILE_BASIC_INFO basicInfo{};
-        if (!::GetFileInformationByHandleEx(handle, FileBasicInfo, &basicInfo, sizeof(FILE_BASIC_INFO)))
-            return Result::FromLastError();
-
-        FILE_STANDARD_INFO standardInfo{};
-        if (!::GetFileInformationByHandleEx(handle, FileStandardInfo, &standardInfo, sizeof(FILE_STANDARD_INFO)))
-            return Result::FromLastError();
+        ULARGE_INTEGER i;
 
         outAttributes.flags = FileAttributeFlag::None;
 
-        if (HasFlag(basicInfo.FileAttributes, FILE_ATTRIBUTE_DIRECTORY))
-            outAttributes.flags |= FileAttributeFlag::Directory;
-
-        if (HasFlag(basicInfo.FileAttributes, FILE_ATTRIBUTE_HIDDEN))
+        if (HasFlag(info.dwFileAttributes, FILE_ATTRIBUTE_HIDDEN))
             outAttributes.flags |= FileAttributeFlag::Hidden;
 
-        if (HasFlag(basicInfo.FileAttributes, FILE_ATTRIBUTE_READONLY))
+        if (HasFlag(info.dwFileAttributes, FILE_ATTRIBUTE_READONLY))
             outAttributes.flags |= FileAttributeFlag::ReadOnly;
 
-        if (standardInfo.Directory == TRUE)
+        if (HasFlag(info.dwFileAttributes, FILE_ATTRIBUTE_DIRECTORY))
         {
             outAttributes.flags |= FileAttributeFlag::Directory;
             outAttributes.size = 0;
         }
         else
         {
-            outAttributes.size = standardInfo.EndOfFile.QuadPart;
+            i.HighPart = info.nFileSizeHigh;
+            i.LowPart = info.nFileSizeLow;
+            outAttributes.size = i.QuadPart;
         }
 
-        outAttributes.createTime = Win32FileTimeToSystemTime(basicInfo.CreationTime.QuadPart);
-        outAttributes.accessTime = Win32FileTimeToSystemTime(basicInfo.LastAccessTime.QuadPart);
-        outAttributes.writeTime = Win32FileTimeToSystemTime(basicInfo.LastWriteTime.QuadPart);
+        i.HighPart = info.ftCreationTime.dwHighDateTime;
+        i.LowPart = info.ftCreationTime.dwLowDateTime;
+        outAttributes.createTime = Win32FileTimeToSystemTime(i.QuadPart);
 
+        i.HighPart = info.ftLastAccessTime.dwHighDateTime;
+        i.LowPart = info.ftLastAccessTime.dwLowDateTime;
+        outAttributes.accessTime = Win32FileTimeToSystemTime(i.QuadPart);
+
+        i.HighPart = info.ftLastWriteTime.dwHighDateTime;
+        i.LowPart = info.ftLastWriteTime.dwLowDateTime;
+        outAttributes.writeTime = Win32FileTimeToSystemTime(i.QuadPart);
+    }
+
+    void Win32ParseFileAttributes(const BY_HANDLE_FILE_INFORMATION& info, FileAttributes& outAttributes)
+    {
+        WIN32_FILE_ATTRIBUTE_DATA attrData{};
+        attrData.dwFileAttributes = info.dwFileAttributes;
+        attrData.ftCreationTime = info.ftCreationTime;
+        attrData.ftLastAccessTime = info.ftLastAccessTime;
+        attrData.ftLastWriteTime = info.ftLastWriteTime;
+        attrData.nFileSizeHigh = info.nFileSizeHigh;
+        attrData.nFileSizeLow = info.nFileSizeLow;
+        Win32ParseFileAttributes(attrData, outAttributes);
+    }
+
+    Result Win32FileGetAttributes(HANDLE handle, FileAttributes& outAttributes)
+    {
+        BY_HANDLE_FILE_INFORMATION fileInfo{};
+        if (!::GetFileInformationByHandle(handle, &fileInfo))
+            return Result::FromLastError();
+
+        Win32ParseFileAttributes(fileInfo, outAttributes);
         return Result::Success;
     }
 

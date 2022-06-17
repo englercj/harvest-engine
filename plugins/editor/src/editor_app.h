@@ -4,6 +4,7 @@
 
 #include "editor_data.h"
 #include "services/directory_service.h"
+#include "services/file_loader_service.h"
 #include "services/imgui_service.h"
 #include "services/log_service.h"
 #include "services/main_window_service.h"
@@ -22,6 +23,7 @@ namespace he::editor
     public:
         EditorApp(
             DirectoryService& directoryService,
+            FileLoaderService& fileLoaderService,
             ImGuiService& imguiService,
             LogService& logService,
             MainWindowService& mainWindowService,
@@ -42,6 +44,7 @@ namespace he::editor
 
     private:
         DirectoryService& m_directoryService;
+        FileLoaderService& m_fileLoaderService;
         ImGuiService& m_imguiService;
         LogService& m_logService;
         MainWindowService& m_mainWindowService;

@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include "he/core/delegate.h"
 #include "he/core/string_view.h"
 #include "he/core/sync.h"
 #include "he/core/task_executor.h"
@@ -13,15 +14,15 @@
 
 namespace he::editor
 {
+    using TaskDelegate = Delegate<void(float&)>;
+
     class TaskService : public TaskExecutor
     {
     public:
-        using TaskFunc = std::function<void(float&)>;
-
         struct TaskData
         {
             String name;
-            TaskFunc func;
+            TaskDelegate func;
             float progress;
         };
 
@@ -31,7 +32,7 @@ namespace he::editor
         bool Initialize();
         void Terminate();
 
-        void Add(StringView name, TaskFunc func);
+        void Add(StringView name, TaskDelegate func);
 
         bool IsEmpty() const { return m_tasks.empty(); }
 
@@ -47,7 +48,7 @@ namespace he::editor
         }
 
     private:
-        void Add(TaskExecutor::TaskFunc func, void* taskData) override;
+        void Add(he::TaskDelegate func) override;
 
         bool Pump();
 

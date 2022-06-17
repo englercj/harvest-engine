@@ -11,9 +11,8 @@ CREATE TABLE asset_file (
     source_size             INTEGER DEFAULT 0,      -- Last size of the file we read from the import source on disk.
     scan_token              INTEGER DEFAULT 0,      -- An identifier from the last file scanner that checked this entry.
     UNIQUE (id),
-    UNIQUE (path)
+    UNIQUE (file_path)
 ) WITHOUT ROWID;
-CREATE INDEX idx_asset_file_path ON asset_file (path);
 CREATE INDEX idx_asset_file_source_path ON asset_file (source_path);
 
 CREATE TABLE asset (

@@ -227,7 +227,7 @@ namespace he::schema
             BitSpan* span;
             uint32_t index;
             Ref& operator=(bool value) { span->Set(index, value); return *this; }
-            explicit operator bool() const { return span->IsSet(index); }
+            [[nodiscard]] explicit operator bool() const { return span->IsSet(index); }
         };
         Ref operator[](uint32_t index) { return Ref(this, index); }
 

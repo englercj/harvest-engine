@@ -3,13 +3,13 @@
 id = "WinPixEventRuntime"
 name = "WinPixEventRuntime"
 description = "Allows applications to be instrumented with marker events, for use with Microsoft PIX."
-version = "1.0.210818001"
+version = "1.0.220124001"
 author = "Microsoft"
 license = "SEE LICENSE IN license.txt"
 homepage = "https://devblogs.microsoft.com/pix/winpixeventruntime/"
 
 [install]
-    nuget = "WinPixEventRuntime#1.0.210818001"
+    nuget = "WinPixEventRuntime#1.0.220124001"
     valid_systems = ["windows"]
 
 [[modules]]
@@ -20,14 +20,18 @@ homepage = "https://devblogs.microsoft.com/pix/winpixeventruntime/"
 
     [[modules.variants]]
         conditions = ["system:windows", "architecture:x86_64"]
+        public_dependson = [
+            "file:%{he.get_plugin('WinPixEventRuntime')._install_dir}/bin/x64/WinPixEventRuntime.lib"
+        ]
         post_build_commands = [
             "{COPYFILE} %{he.get_plugin('WinPixEventRuntime')._install_dir}/bin/x64/WinPixEventRuntime.dll %{cfg.targetdir}",
-            "{COPYFILE} %{he.get_plugin('WinPixEventRuntime')._install_dir}/bin/x64/WinPixEventRuntime.lib %{cfg.targetdir}",
         ]
 
     [[modules.variants]]
         conditions = ["system:windows", "architecture:ARM64"]
+        public_dependson = [
+            "file:%{he.get_plugin('WinPixEventRuntime')._install_dir}/bin/ARM64/WinPixEventRuntime.lib"
+        ]
         post_build_commands = [
             "{COPYFILE} %{he.get_plugin('WinPixEventRuntime')._install_dir}/bin/ARM64/WinPixEventRuntime.dll %{cfg.targetdir}",
-            "{COPYFILE} %{he.get_plugin('WinPixEventRuntime')._install_dir}/bin/ARM64/WinPixEventRuntime.lib %{cfg.targetdir}",
         ]

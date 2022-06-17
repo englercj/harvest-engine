@@ -11,7 +11,7 @@ namespace he::editor
     public:
         enum class DirType
         {
-            AppDataRoot,
+            Root,
             Logs,
             Resources,
             Settings,
@@ -25,6 +25,6 @@ namespace he::editor
         bool CreateAll();
 
     private:
-        String m_appDataRoot{};
+        String m_root{};
     };
 }

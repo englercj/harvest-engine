@@ -13,7 +13,7 @@ All paths can contain globs and are relative to the he_plugin file, or the insta
 | description   | String        | Short description fo the plugin meant for humans. |
 | version       | String        | An arbitrary version string identifying the version of the plugin. |
 | author        | String        | The plugin's author name and email, in the format "Name <email>". |
-| license       | String        | An SPDX license identifier (https://spdx.org/licenses/) without "LicenseRef", or "UNLICENSED", or "SEE LICENSE IN <filename>". If this is not specified it is treated as "UNLICENSED". |
+| license       | String        | An SPDX license identifier (https://spdx.org/licenses/), or "UNLICENSED", or "SEE LICENSE IN <filename>". If this is not specified it is treated as "UNLICENSED". |
 | warnings      | String        | Desired level of warning: "Off", "Default", or "Extra". The default is "Extra" |
 | tags          | Array<String> | An array of string identifiers used as search tags. |
 | modules       | Array<Module> | An array of modules that this plugin provides. See the Module Keys section. |
@@ -85,13 +85,13 @@ When depending on a module the actual effect of that dependency on the generated
 - The type of the module that has the dependency
 - The type of the module that is being depended on
 
-For example, a "default" module depending on a "static" module in a dynamic build will link the static library and inhrit the public include paths. During a static build it will only inherit the public include paths and mark the dependency so any application using the module links both.
+For example, a "default" module depending on a "static" module in a dynamic build will link the static library and inherit the public include paths. During a static build it will only inherit the public include paths and mark the dependency so any application using the module links both.
 
 The "public_dependson" and "public_dependson_include" keys will propagate those values through the module dependency tree so that other modules inherit those values when their projects are generated. The "private_dependson" and "private_dependson_include" keys do not propagate and are used only in that module's project generation.
 
 ### Dependency Prefixes
 
-When a dependency is specified with no prefix, for example "he_core" it is assumed the value refers to a module. However, there are also a few supported prefixes that change how the dependency name is interpretted:
+When a dependency is specified with no prefix, for example "he_core" it is assumed the value refers to a module. However, there are also a few supported prefixes that change how the dependency name is interpreted:
 
 | Prefix | Description |
 | ------ | ----------- |

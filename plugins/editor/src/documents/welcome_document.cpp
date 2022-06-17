@@ -118,7 +118,17 @@ namespace he::editor
             const char* path = recent.GetPath().Data();
             if (LinkButton(path))
             {
-                m_projectService.Open(path);
+                if (m_projectService.Open(path))
+                {
+                    RequestClose();
+                }
+                else
+                {
+                    m_dialogService.Open<ChoiceDialog>().Configure(
+                        "Error",
+                        "Failed to open project file. Check the log for details.",
+                        ChoiceDialog::Button::OK);
+                }
             }
         }
     }

@@ -5,6 +5,7 @@
 #include "he/assets/types.h"
 #include "he/core/clock.h"
 #include "he/core/log.h"
+#include "he/core/memory_ops.h"
 #include "he/core/string.h"
 #include "he/core/types.h"
 #include "he/core/vector.h"
@@ -26,12 +27,12 @@ namespace he::assets
         AssetFileUuid uuid{};
         FileProperties file{};
         FileProperties source{};
-        uint32_t scanToken{ 0 };
 
         static bool AddOrUpdate(AssetDatabase& db, AssetFile::Reader file, const AssetFileModel& model);
         static bool FindOne(AssetDatabase& db, const AssetFileUuid& fileUuid, AssetFileModel& outModel);
         static bool FindOne(AssetDatabase& db, const char* path, AssetFileModel& outModel);
         static bool RemoveOne(AssetDatabase& db, const AssetFileUuid& fileUuid);
+        static bool RemoveOne(AssetDatabase& db, const char* path);
         static bool RemoveOutdated(AssetDatabase& db, uint32_t scanToken);
 
         static bool UpdateScanToken(AssetDatabase& db, const AssetFileUuid& fileUuid, uint32_t scanToken);
@@ -70,6 +71,13 @@ namespace he::assets
     {
         String key;
         Vector<uint8_t> value;
+
+        template <typename T> requires(std::is_trivially_copyable_v<T>)
+        void SetValue(const T& v)
+        {
+            value.Resize(sizeof(T), DefaultInit);
+            MemCopy(value.Data(), &v, sizeof(T));
+        }
 
         static bool AddOrUpdate(AssetDatabase& db, const ConfigModel& model);
         static bool FindOne(AssetDatabase& db, const char* key, ConfigModel& outModel);

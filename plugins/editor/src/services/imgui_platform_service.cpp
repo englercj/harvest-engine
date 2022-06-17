@@ -144,15 +144,13 @@ namespace he::editor
     bool ImGuiPlatformService::Initialize(
         window::Device* device,
         window::View* view,
-        SetupStyleFunc setupStyle,
-        SetupFontAtlasFunc setupFontAtlas,
-        void* setupCtx)
+        StyleSetupDelegate setupStyle,
+        FontAtlasSetupDelegate setupFontAtlas)
     {
         m_device = device;
         m_view = view;
         m_setupStyle = setupStyle;
         m_setupFontAtlas = setupFontAtlas;
-        m_setupCtx = setupCtx;
         m_time = MonotonicClock::Now();
 
         ImGuiIO& io = ImGui::GetIO();
@@ -477,7 +475,7 @@ namespace he::editor
         ImGuiContext& g = *GImGui;
 
         // Set the style to the scaled value
-        m_setupStyle(m_setupCtx, g.Style);
+        m_setupStyle(g.Style);
         g.Style.ScaleAllSizes(dpiScale);
 
         // Get or create the font atlas for this DPI scale
@@ -485,7 +483,7 @@ namespace he::editor
         if (!atlas)
         {
             atlas = std::make_unique<ImFontAtlas>();
-            m_setupFontAtlas(m_setupCtx, *atlas, dpiScale);
+            m_setupFontAtlas(*atlas, dpiScale);
         }
 
         // Find indices of active fonts so we can switch them to the new atlas

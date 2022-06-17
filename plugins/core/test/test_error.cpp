@@ -10,7 +10,7 @@ using namespace he;
 HE_TEST(core, error, ErrorHandler)
 {
     void* originalUserData = nullptr;
-    ErrorHandlerFunc originalHandler = GetErrorHandler(originalUserData);
+    Pfn_ErrorHandler originalHandler = GetErrorHandler(originalUserData);
 
     auto handler = [](void*, const ErrorSource& source, const KeyValue* kvs, uint32_t count) -> bool
     {
@@ -37,8 +37,8 @@ HE_TEST(core, error, ErrorHandler)
         ScopedErrorHandler scope(handler, testUserData);
 
         void* errorUserData = nullptr;
-        ErrorHandlerFunc errorHandler = GetErrorHandler(errorUserData);
-        HE_EXPECT_EQ_PTR(errorHandler, static_cast<ErrorHandlerFunc>(handler));
+        Pfn_ErrorHandler errorHandler = GetErrorHandler(errorUserData);
+        HE_EXPECT_EQ_PTR(errorHandler, static_cast<Pfn_ErrorHandler>(handler));
         HE_EXPECT_EQ_PTR(errorUserData, testUserData);
 
         ErrorSource source;
@@ -53,7 +53,7 @@ HE_TEST(core, error, ErrorHandler)
     HE_EXPECT_EQ(handleResult, false);
 
     void* errorUserData = nullptr;
-    ErrorHandlerFunc errorHandler = GetErrorHandler(errorUserData);
+    Pfn_ErrorHandler errorHandler = GetErrorHandler(errorUserData);
     HE_EXPECT_EQ_PTR(errorHandler, originalHandler);
     HE_EXPECT_EQ_PTR(errorUserData, originalUserData);
 }

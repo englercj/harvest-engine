@@ -22,13 +22,13 @@ namespace he
         struct
         {
             uint32_t threadCount{ 0 }; ///< A value of zero will choose a number of threads between 4 and 8 based on hardware.
-            uint64_t threadAffinity{ 0xffffffffffffffff };
+            uint64_t threadAffinity{ 0 }; ///< Affinity to use for spawned threads. Only considered when non-zero.
         } pool;
 
         /// Configuration for the IOCP backend used on win32 systems.
         struct
         {
-            uint64_t threadAffinity{ 0xffffffffffffffff };
+            uint64_t threadAffinity{ 0 }; ///< Affinity to use for the IOCP thread. Only considered when non-zero.
         } iocp;
     };
 

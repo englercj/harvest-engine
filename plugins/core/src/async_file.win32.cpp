@@ -7,10 +7,10 @@
 #include "he/core/result.h"
 #include "he/core/result_fmt.h"
 #include "he/core/scope_guard.h"
+#include "he/core/sync.h"
 #include "he/core/thread.h"
 
 #include <future>
-#include <mutex>
 
 #if defined(HE_PLATFORM_API_WIN32)
 
@@ -22,7 +22,7 @@
 
 namespace he
 {
-    static std::mutex s_ioStartupMutex{};
+    static Mutex s_ioStartupMutex{};
     static uint32_t s_ioStartupCount{ 0 };
     static HANDLE s_ioThread{ nullptr };
     static HANDLE s_ioPort{ nullptr };
@@ -38,15 +38,17 @@ namespace he
     static void HandleCompletedOverlap(AsyncOp* op);
     static DWORD IOCompletionThread(LPVOID);
 
+    static void UnlockedShutdownAsyncFileIO();
+
     Result StartupAsyncFileIO(const AsyncFileIOConfig& config)
     {
-        std::lock_guard<std::mutex> lock(s_ioStartupMutex);
+        LockGuard lock(s_ioStartupMutex);
 
         const uint32_t count = ++s_ioStartupCount;
         if (count > 1)
             return Result::Success;
 
-        auto countGuard = MakeScopeGuard([]() { --s_ioStartupCount; });
+        auto failGuard = MakeScopeGuard([]() { UnlockedShutdownAsyncFileIO(); });
 
         // Create the completion port
         s_ioPort = ::CreateIoCompletionPort(INVALID_HANDLE_VALUE, nullptr, 0, 1);
@@ -54,29 +56,26 @@ namespace he
         if (s_ioPort == nullptr)
             return Result::FromLastError();
 
-        auto portGuard = MakeScopeGuard([&]() { CloseHandle(s_ioPort); });
-
         // Create the thread for handling competion events
         s_ioThread = ::CreateThread(nullptr, 0, IOCompletionThread, s_ioPort, 0, nullptr);
-
         if (s_ioThread == nullptr)
             return Result::FromLastError();
 
-        Result affinityResult = SetThreadAffinity(reinterpret_cast<uintptr_t>(s_ioThread), config.iocp.threadAffinity);
-        if (!affinityResult)
-            return affinityResult;
+        if (config.iocp.threadAffinity > 0)
+        {
+            Result affinityResult = SetThreadAffinity(reinterpret_cast<ThreadHandle>(s_ioThread), config.iocp.threadAffinity);
+            if (!affinityResult)
+                return affinityResult;
+        }
 
         ::SetThreadDescription(s_ioThread, L"Async File IOCP Thread");
 
-        portGuard.Dismiss();
-        countGuard.Dismiss();
+        failGuard.Dismiss();
         return Result::Success;
     }
 
-    void ShutdownAsyncFileIO()
+    static void UnlockedShutdownAsyncFileIO()
     {
-        std::lock_guard<std::mutex> lock(s_ioStartupMutex);
-
         HE_ASSERT(s_ioStartupCount > 0);
         const uint32_t count = --s_ioStartupCount;
         if (count > 0)
@@ -97,6 +96,12 @@ namespace he
             ::CloseHandle(s_ioPort);
             s_ioPort = nullptr;
         }
+    }
+
+    void ShutdownAsyncFileIO()
+    {
+        LockGuard lock(s_ioStartupMutex);
+        UnlockedShutdownAsyncFileIO();
     }
 
     AsyncFile::AsyncFile()

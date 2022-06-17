@@ -19,6 +19,7 @@
 #include "he/core/string.h"
 #include "he/core/utils.h"
 #include "he/core/wstr.h"
+#include "he/math/float.h"
 #include "he/math/vec2.h"
 
 #include <atomic>
@@ -52,6 +53,7 @@
 
 namespace he::window::Win32
 {
+    class GamepadImpl;
     class DeviceImpl;
     class ViewImpl;
 
@@ -63,6 +65,7 @@ namespace he::window::Win32
     using Pfn_GetDpiForMonitor = HRESULT (WINAPI*)(_In_ HMONITOR hmonitor, _In_ MONITOR_DPI_TYPE dpiType, _Out_ UINT* dpiX, _Out_ UINT* dpiY);
 
     using Pfn_XInputGetState = DWORD (WINAPI*)(_In_ DWORD dwUserIndex, _Out_ XINPUT_STATE* pState);
+    using Pfn_XInputSetState = DWORD (WINAPI*)(_In_ DWORD dwUserIndex, _In_ XINPUT_VIBRATION* pVibration);
     using Pfn_XInputEnable = VOID (WINAPI*)(_In_ BOOL enable);
 
     constexpr wchar_t WindowClassName[] = L"Harvest Application Window";
@@ -84,6 +87,23 @@ namespace he::window::Win32
         { XINPUT_GAMEPAD_B, GamepadButton::Action2 },
         { XINPUT_GAMEPAD_X, GamepadButton::Action3 },
         { XINPUT_GAMEPAD_Y, GamepadButton::Action4 },
+    };
+
+    // --------------------------------------------------------------------------------------------
+    class GamepadImpl final : public Gamepad
+    {
+    public:
+        GamepadImpl(DeviceImpl* device, const uint32_t index)
+            : Gamepad(index)
+            , m_device(device)
+        {}
+
+        Result SetVibration(float leftMotorSpeed, float rightMotorSpeed) override;
+
+        void Update(bool refreshConnectivity);
+
+    private:
+        DeviceImpl* m_device{ nullptr };
     };
 
     // --------------------------------------------------------------------------------------------
@@ -163,7 +183,7 @@ namespace he::window::Win32
         uint32_t GetMonitorCount() const override;
         uint32_t GetMonitors(Monitor* monitors, uint32_t maxCount) const override;
 
-        void UpdateGamepads();
+        Gamepad& GetGamepad(uint32_t index) override;
 
         void SyncCursor() const;
         void ShowCursor(bool show);
@@ -191,16 +211,12 @@ namespace he::window::Win32
 
         HMODULE m_xinputLib{ nullptr };
         Pfn_XInputGetState m_XInputGetState{ nullptr };
+        Pfn_XInputSetState m_XInputSetState{ nullptr };
         Pfn_XInputEnable m_XInputEnable{ nullptr };
 
         static_assert(MaxGamepads <= XUSER_MAX_COUNT, "Cannot handle more than XUSER_MAX_COUNT gamepads.");
 
-        struct Gamepad
-        {
-            XINPUT_STATE state{};
-            bool connected{ false };
-        };
-        Gamepad m_gamepads[MaxGamepads]{};
+        GamepadImpl m_gamepads[MaxGamepads];
         bool m_refreshGamepadConnectivity{ true };
     };
 
@@ -704,6 +720,108 @@ namespace he::window::Win32
         return DefWindowProc(hWnd, message, wParam, lParam);
     }
 
+    static void NormalizeThumbs(float& x, float& y, SHORT deadZone)
+    {
+        float mag = Sqrt((x * x) + (y * y));
+
+        if (mag > deadZone)
+        {
+            x /= mag;
+            y /= mag;
+
+            mag = (mag - deadZone) / static_cast<float>(32767 - deadZone);
+
+            x *= mag;
+            y *= mag;
+        }
+        else
+        {
+            x = 0.0f;
+            y = 0.0f;
+        }
+    }
+
+    static float NormalizeTrigger(float t)
+    {
+        if (t > XINPUT_GAMEPAD_TRIGGER_THRESHOLD)
+        {
+            return static_cast<float>(t - XINPUT_GAMEPAD_TRIGGER_THRESHOLD) / (255 - XINPUT_GAMEPAD_TRIGGER_THRESHOLD);
+        }
+
+        return 0.0f;
+    }
+
+    // --------------------------------------------------------------------------------------------
+    Result GamepadImpl::SetVibration(float leftMotorSpeed, float rightMotorSpeed)
+    {
+        if (!m_device->m_XInputSetState)
+            return Result::NotSupported;
+
+        XINPUT_VIBRATION vibration{};
+        vibration.wLeftMotorSpeed = static_cast<WORD>(leftMotorSpeed * 65535);
+        vibration.wRightMotorSpeed = static_cast<WORD>(rightMotorSpeed * 65535);
+        DWORD r = m_device->m_XInputSetState(Index(), &vibration);
+        return Win32Result(r);
+    }
+
+    void GamepadImpl::Update(bool refreshConnectivity)
+    {
+        if (!IsConnected() && !refreshConnectivity)
+            return;
+
+        Application& app = *m_device->m_app;
+
+        XINPUT_STATE xstate{};
+        DWORD error = m_device->m_XInputGetState(Index(), &xstate);
+        const bool connected = error == ERROR_SUCCESS;
+
+        // If we got a real error, skip this one
+        if (!connected && error != ERROR_DEVICE_NOT_CONNECTED)
+        {
+            Result r = Win32Result(error);
+            HE_LOG_ERROR(he_window,
+                HE_MSG("Failed to read gamepad state, gamepad will be disconnected."),
+                HE_KV(index, Index()),
+                HE_KV(result, r));
+
+            SetConnected(app, false);
+            return;
+        }
+
+        // If connected state changed notify the app.
+        SetConnected(app, connected);
+
+        if (!connected)
+            return;
+
+        // Update the button states
+        const WORD buttons = xstate.Gamepad.wButtons;
+        for (const XInputButtonMapping& mapping : XInputButtonMappings)
+        {
+            const bool isPressed = HasFlag(buttons, mapping.flag);
+            SetButtonDown(app, mapping.button, isPressed);
+        }
+
+        // Update the axis states
+        float lx = xstate.Gamepad.sThumbLX;
+        float ly = xstate.Gamepad.sThumbLY;
+        NormalizeThumbs(lx, ly, XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE);
+        SetAxisValue(app, GamepadAxis::LThumbX, lx);
+        SetAxisValue(app, GamepadAxis::LThumbY, ly);
+
+        float rx = xstate.Gamepad.sThumbRX;
+        float ry = xstate.Gamepad.sThumbRY;
+        NormalizeThumbs(rx, ry, XINPUT_GAMEPAD_RIGHT_THUMB_DEADZONE);
+        SetAxisValue(app, GamepadAxis::RThumbX, rx);
+        SetAxisValue(app, GamepadAxis::RThumbY, ry);
+
+        const float lt = NormalizeTrigger(xstate.Gamepad.bLeftTrigger);
+        SetAxisValue(app, GamepadAxis::LTrigger, lt);
+
+        const float rt = NormalizeTrigger(xstate.Gamepad.bRightTrigger);
+        SetAxisValue(app, GamepadAxis::RTrigger, rt);
+    }
+
     // --------------------------------------------------------------------------------------------
     ViewImpl::ViewImpl(DeviceImpl* device, const ViewDesc& desc)
         : m_device(device)
@@ -988,6 +1106,7 @@ namespace he::window::Win32
     // --------------------------------------------------------------------------------------------
     DeviceImpl::DeviceImpl(Allocator& allocator)
         : Device(allocator)
+        , m_gamepads{ { this, 0 }, { this, 1 }, { this, 2 }, { this, 3 } }
     {}
 
     DeviceImpl::~DeviceImpl()
@@ -1023,6 +1142,7 @@ namespace he::window::Win32
         if (m_xinputLib)
         {
             m_XInputGetState = reinterpret_cast<Pfn_XInputGetState>(::GetProcAddress(m_xinputLib, "XInputGetState"));
+            m_XInputSetState = reinterpret_cast<Pfn_XInputSetState>(::GetProcAddress(m_xinputLib, "XInputSetState"));
             m_XInputEnable = reinterpret_cast<Pfn_XInputEnable>(::GetProcAddress(m_xinputLib, "XInputEnable"));
         }
 
@@ -1068,7 +1188,7 @@ namespace he::window::Win32
         ViewImpl view(this, desc);
         view.SetVisible(true, true);
 
-        // Initialized event
+        // Dispatch the Initialized event before we start the loop
         {
             InitializedEvent ev(&view);
             app.OnEvent(ev);
@@ -1077,8 +1197,17 @@ namespace he::window::Win32
         // Event loop
         while (m_running.load())
         {
-            UpdateGamepads();
+            // Update gamepads
+            if (m_XInputGetState)
+            {
+                for (GamepadImpl& pad : m_gamepads)
+                {
+                    pad.Update(m_refreshGamepadConnectivity);
+                }
+                m_refreshGamepadConnectivity = false;
+            }
 
+            // Process window messages
             MSG msg;
             while (::PeekMessageW(&msg, nullptr, 0, 0, PM_REMOVE))
             {
@@ -1086,6 +1215,7 @@ namespace he::window::Win32
                 ::DispatchMessageW(&msg);
             }
 
+            // Handle cursor clipping
             if (m_viewClipped == false && m_cursorRelativeMode)
             {
                 RECT rect =
@@ -1103,17 +1233,17 @@ namespace he::window::Win32
                 m_viewClipped = false;
             }
 
+            // Tick the application after updates have completed
             if (m_running.load())
                 app.OnTick();
         }
 
-        // Terminating event
+        // Dispatch the Terminating event now that we've exited the event loop
         {
             TerminatingEvent ev;
             app.OnEvent(ev);
         }
 
-        // Shutdown
         m_app = nullptr;
         return m_returnCode.load();
     }
@@ -1292,127 +1422,10 @@ namespace he::window::Win32
         return data.index;
     }
 
-    void DeviceImpl::UpdateGamepads()
+    Gamepad& DeviceImpl::GetGamepad(uint32_t index)
     {
-        if (!m_XInputGetState)
-            return;
-
-        for (uint32_t i = 0; i < MaxGamepads; ++i)
-        {
-            Gamepad& gamepad = m_gamepads[i];
-
-            if (!gamepad.connected && !m_refreshGamepadConnectivity)
-                continue;
-
-            XINPUT_STATE xstate{};
-            DWORD error = m_XInputGetState(i, &xstate);
-            const bool connected = error == ERROR_SUCCESS;
-
-            // If we got a real error, skip this one
-            if (!connected && error != ERROR_DEVICE_NOT_CONNECTED)
-            {
-                gamepad.connected = false;
-                HE_LOG_ERROR(window, HE_MSG("Failed to read gamepad state"), HE_KV(index, i), HE_KV(error, error));
-                continue;
-            }
-
-            // If connected state changed notify the app.
-            if (connected != gamepad.connected)
-            {
-                gamepad.connected = connected;
-
-                if (connected)
-                {
-                    MemZero(&gamepad.state, sizeof(gamepad.state));
-                    GamepadConnectedEvent ev(i);
-                    m_app->OnEvent(ev);
-                }
-                else
-                {
-                    GamepadDisconnectedEvent ev(i);
-                    m_app->OnEvent(ev);
-                }
-            }
-
-            if (!connected)
-                continue;
-
-            XINPUT_GAMEPAD& pad = gamepad.state.Gamepad;
-
-            const WORD buttons = xstate.Gamepad.wButtons;
-            const WORD diff = pad.wButtons ^ buttons;
-            if (diff != 0)
-            {
-                pad.wButtons = buttons;
-
-                for (const XInputButtonMapping& mapping : XInputButtonMappings)
-                {
-                    if (mapping.flag & diff) // changed
-                    {
-                        if (mapping.flag & buttons) // is pressed
-                        {
-                            GamepadButtonDownEvent ev(i, mapping.button);
-                            m_app->OnEvent(ev);
-                        }
-                        else
-                        {
-                            GamepadButtonUpEvent ev(i, mapping.button);
-                            m_app->OnEvent(ev);
-                        }
-                    }
-                }
-            }
-
-            if (xstate.Gamepad.sThumbLX != pad.sThumbLX)
-            {
-                pad.sThumbLX = xstate.Gamepad.sThumbLX;
-
-                GamepadAxisEvent ev(i, GamepadAxis::LThumbX, pad.sThumbLX / 32768.0f);
-                m_app->OnEvent(ev);
-            }
-
-            if (xstate.Gamepad.sThumbLY != pad.sThumbLY)
-            {
-                pad.sThumbLY = xstate.Gamepad.sThumbLY;
-
-                GamepadAxisEvent ev(i, GamepadAxis::LThumbY, pad.sThumbLY / 32768.0f);
-                m_app->OnEvent(ev);
-            }
-
-            if (xstate.Gamepad.sThumbRX != pad.sThumbRX)
-            {
-                pad.sThumbRX = xstate.Gamepad.sThumbRX;
-
-                GamepadAxisEvent ev(i, GamepadAxis::RThumbX, pad.sThumbRX / 32768.0f);
-                m_app->OnEvent(ev);
-            }
-
-            if (xstate.Gamepad.sThumbRY != pad.sThumbRY)
-            {
-                pad.sThumbRY = xstate.Gamepad.sThumbRY;
-
-                GamepadAxisEvent ev(i, GamepadAxis::RThumbY, pad.sThumbRY / 32768.0f);
-                m_app->OnEvent(ev);
-            }
-
-            if (xstate.Gamepad.bLeftTrigger != pad.bLeftTrigger)
-            {
-                pad.bLeftTrigger = xstate.Gamepad.bLeftTrigger;
-
-                GamepadAxisEvent ev(i, GamepadAxis::LTrigger, pad.bLeftTrigger / 255.0f);
-                m_app->OnEvent(ev);
-            }
-
-            if (xstate.Gamepad.bRightTrigger != pad.bRightTrigger)
-            {
-                pad.bRightTrigger = xstate.Gamepad.bRightTrigger;
-
-                GamepadAxisEvent ev(i, GamepadAxis::RTrigger, pad.bRightTrigger / 255.0f);
-                m_app->OnEvent(ev);
-            }
-        }
-
-        m_refreshGamepadConnectivity = false;
+        HE_ASSERT(index < HE_LENGTH_OF(m_gamepads));
+        return m_gamepads[index];
     }
 
     void DeviceImpl::SyncCursor() const

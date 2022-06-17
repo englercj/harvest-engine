@@ -13,7 +13,7 @@ homepage = ""
     type = "static"
     group = "engine/libs"
     files = ["include/**", "src/**"]
-    public_dependson = ["fmt"]
+    public_dependson = ["fmt", "concurrentqueue"]
     public_includedirs = ["include"]
     private_includedirs = ["src"]
 
@@ -43,7 +43,6 @@ homepage = ""
 
     [[modules.variants]]
         conditions = ["system:win32"]
-        public_dependson = ["sys:gdi32"]
         public_defines = [
             "HE_PLATFORM_RWLOCK_SIZE=8",
             "HE_PLATFORM_MUTEX_SIZE=8",
@@ -52,6 +51,10 @@ homepage = ""
             "HE_PLATFORM_SEMAPHORE_SIZE=8",
             "HE_PLATFORM_SYNC_EVENT_SIZE=8",
         ]
+
+    [[modules.variants]]
+        conditions = ["system:windows"]
+        public_dependson = ["DirectStorage"]
 
 [[modules]]
     name = "he_core_tests"

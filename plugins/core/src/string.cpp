@@ -328,7 +328,8 @@ namespace he
             MemMove(data + index + len, data + index, (size - index));
         }
 
-        MemCopy(data + index, str, len);
+        // `str` could technically be within our buffer, so need to use MemMove
+        MemMove(data + index, str, len);
         SetSize(size + len);
     }
 

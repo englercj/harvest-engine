@@ -23,24 +23,12 @@ namespace he::assets
         bool Run(const char* rootDir);
 
     private:
-        struct PendingLoad
-        {
-            AsyncFile file{};
-            String path{};
-            String content{};
-            std::future<AsyncFileResult> load{};
-        };
-
         bool ScanDirectory(const char* dir);
-        bool IsFileUpToDate(const char* path);
-        bool StartFileUpdate(const char* path);
-        bool ProcessPending(uint32_t max, bool wait);
-        bool ProcessFile(const PendingLoad& pending);
 
         bool WriteScanHeader();
         bool ClearScanHeader();
 
-        PendingLoad* FindAvailablePending();
+        void OnUpdateComplete(AssetDatabase::LoadResult result);
 
     private:
         struct ScanHeader
@@ -51,7 +39,6 @@ namespace he::assets
 
     private:
         AssetDatabase& m_db;
-        PendingLoad m_pending[32]{};
         uint32_t m_token{ 0 };
     };
 }

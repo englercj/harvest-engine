@@ -60,14 +60,14 @@ namespace he::rhi::d3d12
         m_dxgiLib = LoadLibraryW(L"dxgi.dll");
         if (!m_dxgiLib)
         {
-            HE_LOGF_ERROR(rhi, "D3D12 intialization error: Failed to load dxgi.dll library.");
+            HE_LOGF_ERROR(he_rhi, "D3D12 intialization error: Failed to load dxgi.dll library.");
             return Result::FromLastError();
         }
 
         m_CreateDXGIFactory2 = reinterpret_cast<PFN_CREATE_DXGI_FACTORY2>(GetProcAddress(m_dxgiLib, "CreateDXGIFactory2"));
         if (!m_CreateDXGIFactory2)
         {
-            HE_LOGF_ERROR(rhi, "D3D12 intialization error: Failed to get CreateDXGIFactory2 proc.");
+            HE_LOGF_ERROR(he_rhi, "D3D12 intialization error: Failed to get CreateDXGIFactory2 proc.");
             return Result::FromLastError();
         }
 
@@ -77,14 +77,14 @@ namespace he::rhi::d3d12
         m_d3d12Lib = LoadLibraryW(L"d3d12.dll");
         if (!m_d3d12Lib)
         {
-            HE_LOGF_ERROR(rhi, "D3D12 intialization error: Failed to load d3d12.dll library.");
+            HE_LOGF_ERROR(he_rhi, "D3D12 intialization error: Failed to load d3d12.dll library.");
             return Result::FromLastError();
         }
 
         m_D3D12CreateDevice = reinterpret_cast<PFN_D3D12_CREATE_DEVICE>(GetProcAddress(m_d3d12Lib, "D3D12CreateDevice"));
         if (!m_D3D12CreateDevice)
         {
-            HE_LOGF_ERROR(rhi, "D3D12 intialization error: Failed to get D3D12CreateDevice proc.");
+            HE_LOGF_ERROR(he_rhi, "D3D12 intialization error: Failed to get D3D12CreateDevice proc.");
             return Result::FromLastError();
         }
 
@@ -92,7 +92,7 @@ namespace he::rhi::d3d12
         m_D3D12SerializeVersionedRootSignature = reinterpret_cast<PFN_D3D12_SERIALIZE_VERSIONED_ROOT_SIGNATURE>(GetProcAddress(m_d3d12Lib, "D3D12SerializeVersionedRootSignature"));
         if (!m_D3D12SerializeRootSignature && !m_D3D12SerializeVersionedRootSignature)
         {
-            HE_LOGF_ERROR(rhi, "D3D12 initialization error: Failed to get D3D12SerializeRootSignature or D3D12SerializeVersionedRootSignature proc.");
+            HE_LOGF_ERROR(he_rhi, "D3D12 initialization error: Failed to get D3D12SerializeRootSignature or D3D12SerializeVersionedRootSignature proc.");
             return Result::FromLastError();
         }
 
@@ -107,7 +107,7 @@ namespace he::rhi::d3d12
         if (FAILED(hr))
         {
             Result r = Win32Result(hr);
-            HE_LOGF_ERROR(rhi, "D3D12 intialization error: CreateDXGIFactory2 failed with error: {}", r);
+            HE_LOGF_ERROR(he_rhi, "D3D12 intialization error: CreateDXGIFactory2 failed with error: {}", r);
             return r;
         }
 
@@ -306,16 +306,16 @@ namespace he::rhi::d3d12
             hr = m_D3D12CreateDevice(adapter1, flevel, IID_PPV_ARGS(&d3dDevice));
             if (SUCCEEDED(hr))
             {
-                HE_LOGF_TRACE(rhi, "D3D12 device created at level: {}.{}", (flevel >> 12) & 0xf, (flevel >> 7) & 0xf);
+                HE_LOGF_TRACE(he_rhi, "D3D12 device created at level: {}.{}", (flevel >> 12) & 0xf, (flevel >> 7) & 0xf);
                 uint32_t numNodes = d3dDevice->GetNodeCount();
-                HE_LOGF_TRACE(rhi, "    GPU Architecture (num nodes: {}):", numNodes);
+                HE_LOGF_TRACE(he_rhi, "    GPU Architecture (num nodes: {}):", numNodes);
                 for (uint32_t j = 0; j < numNodes; ++j)
                 {
                     D3D12_FEATURE_DATA_ARCHITECTURE arch;
                     arch.NodeIndex = j;
                     hr = d3dDevice->CheckFeatureSupport(D3D12_FEATURE_ARCHITECTURE, &arch, sizeof(arch));
                     HE_ASSERT(SUCCEEDED(hr));
-                    HE_LOGF_TRACE(rhi, "        Node #{}: TileBasedRenderer {}, UMA {}, CacheCoherentUMA {}", j, arch.TileBasedRenderer, arch.UMA, arch.CacheCoherentUMA);
+                    HE_LOGF_TRACE(he_rhi, "        Node #{}: TileBasedRenderer {}, UMA {}, CacheCoherentUMA {}", j, arch.TileBasedRenderer, arch.UMA, arch.CacheCoherentUMA);
                 }
                 break;
             }
@@ -388,10 +388,10 @@ namespace he::rhi::d3d12
             char description[256];
             WCToMBStr(description, HE_LENGTH_OF(description), dxgiAdapterDesc1.Description);
 
-            HE_LOGF_TRACE(rhi, "Adapter #{} ({:#018x}) {}", i, adapterInfo.luid, description);
-            HE_LOGF_TRACE(rhi, "    VendorId: {:#010x}, DeviceId: {:#010x}, SubSysId: {:#010x}, Revision: {:#010x}",
+            HE_LOGF_TRACE(he_rhi, "Adapter #{} ({:#018x}) {}", i, adapterInfo.luid, description);
+            HE_LOGF_TRACE(he_rhi, "    VendorId: {:#010x}, DeviceId: {:#010x}, SubSysId: {:#010x}, Revision: {:#010x}",
                 dxgiAdapterDesc1.VendorId, dxgiAdapterDesc1.DeviceId, dxgiAdapterDesc1.SubSysId, dxgiAdapterDesc1.Revision);
-            HE_LOGF_TRACE(rhi, "    Video Memory: {}, System Memory: {}, Shared Memory: {}",
+            HE_LOGF_TRACE(he_rhi, "    Video Memory: {}, System Memory: {}, Shared Memory: {}",
                 dxgiAdapterDesc1.DedicatedVideoMemory, dxgiAdapterDesc1.DedicatedSystemMemory, dxgiAdapterDesc1.SharedSystemMemory);
 
             const bool isHardwareAdapter = (dxgiAdapterDesc1.Flags & DXGI_ADAPTER_FLAG_SOFTWARE) == 0;
@@ -430,12 +430,12 @@ namespace he::rhi::d3d12
                 display.info.pos = { r.left, r.top };
                 display.info.size = { r.right - r.left, r.bottom - r.top };
 
-                HE_LOGF_TRACE(rhi, "    Display #{}", j);
-                HE_LOGF_TRACE(rhi, "        Name: {}", display.info.name);
-                HE_LOGF_TRACE(rhi, "        Position: {}", display.info.pos);
-                HE_LOGF_TRACE(rhi, "        Size: {}", display.info.size);
-                HE_LOGF_TRACE(rhi, "        AttachedToDesktop: {}", dxgiOutputDesc.AttachedToDesktop);
-                HE_LOGF_TRACE(rhi, "        Rotation: {}", dxgiOutputDesc.Rotation);
+                HE_LOGF_TRACE(he_rhi, "    Display #{}", j);
+                HE_LOGF_TRACE(he_rhi, "        Name: {}", display.info.name);
+                HE_LOGF_TRACE(he_rhi, "        Position: {}", display.info.pos);
+                HE_LOGF_TRACE(he_rhi, "        Size: {}", display.info.size);
+                HE_LOGF_TRACE(he_rhi, "        AttachedToDesktop: {}", dxgiOutputDesc.AttachedToDesktop);
+                HE_LOGF_TRACE(he_rhi, "        Rotation: {}", dxgiOutputDesc.Rotation);
 
                 // Must match ToDxSwapChainViewFormat/FromDxSwapChainViewFormat in formats.cpp
                 constexpr DXGI_FORMAT SupportedSwapChainViewFormats[]
@@ -486,7 +486,7 @@ namespace he::rhi
 {
     template <> Result _CreateInstance<ApiBackend::D3D12>(Allocator& allocator, Instance*& instance)
     {
-        HE_LOGF_INFO(rhi, "Initializing D3D12 rendering backend.");
+        HE_LOGF_INFO(he_rhi, "Initializing D3D12 rendering backend.");
         instance = allocator.New<d3d12::InstanceImpl>(allocator);
         return Result::Success;
     }

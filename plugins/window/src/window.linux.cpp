@@ -20,9 +20,8 @@
 #include <array>
 #include <climits>
 #include <cstdint>
-#include <dlfcn.h>
 
-// xlib headers define None, so we can't use ::None in this file after including
+// xlib headers have `#define None`, so we can't use *::None in this file after including
 // those headers. This hacks around that by giving us another symbol to use.
 namespace he::window
 {
@@ -54,6 +53,7 @@ namespace he::window
 
 namespace he::window::Linux
 {
+    class GamepadImpl;
     class DeviceImpl;
     class ViewImpl;
 
@@ -118,6 +118,56 @@ namespace he::window::Linux
 
     using Pfn_XIQueryVersion = Status(*)(Display*,int*,int*);
     using Pfn_XISelectEvents = int(*)(Display*,Window,XIEventMask*,int);
+
+    constexpr GamepadAxis JoyAxisToGamepadAxis[] =
+    {
+        GamepadAxis::LThumbX,   // 0
+        GamepadAxis::LThumbY,   // 1
+        GamepadAxis::LTrigger,  // 2
+        GamepadAxis::RThumbX,   // 3
+        GamepadAxis::RThumbY,   // 4
+        GamepadAxis::RTrigger,  // 5
+    };
+
+    constexpr GamepadButton JoyButtonToGamepadButton[] =
+    {
+        GamepadButton::Action1,     // 0
+        GamepadButton::Action2,     // 1
+        GamepadButton::Action3,     // 2
+        GamepadButton::Action4,     // 3
+        GamepadButton::LShoulder,   // 4
+        GamepadButton::RShoulder,   // 5
+        GamepadButton::Back,        // 6
+        GamepadButton::Start,       // 7
+        GamepadButton_None,         // 8, center button - not supported
+        GamepadButton::LThumb,      // 9
+        GamepadButton::RThumb,      // 10
+    };
+
+    // --------------------------------------------------------------------------------------------
+    class GamepadImpl final : public Gamepad
+    {
+    public:
+        static constexpr int16_t StickDeadZone = 8000;
+        static constexpr int16_t TriggerDeadZone = 8000;
+
+    public:
+        GamepadImpl(DeviceImpl* device, const uint32_t index)
+            : Gamepad(index)
+            , m_device(device)
+        {}
+
+        ~GamepadImpl();
+
+        Result SetVibration(float leftMotorSpeed, float rightMotorSpeed) override;
+
+        void Open();
+        void Update();
+
+    private:
+        DeviceImpl* m_device{ nullptr };
+        int32_t m_fd{ -1 };
+    };
 
     // --------------------------------------------------------------------------------------------
     class ViewImpl : public View
@@ -208,7 +258,6 @@ namespace he::window::Linux
         Cursor GetActiveCursor() const;
         void HandleXEvent(XEvent& event);
 
-        void OpenGamepads();
         void UpdateGamepads();
 
     public:
@@ -309,7 +358,7 @@ namespace he::window::Linux
         Pfn_XIQueryVersion m_XIQueryVersion{ nullptr };
         Pfn_XISelectEvents m_XISelectEvents{ nullptr };
 
-        int32_t m_gamepadFds[MaxGamepads]{};
+        GamepadImpl m_gamepads[MaxGamepads];
     };
 
     // --------------------------------------------------------------------------------------------
@@ -431,6 +480,99 @@ namespace he::window::Linux
             case XK_apostrophe: return Key::Apostrophe;
         }
         return Key_None;
+    }
+
+    // --------------------------------------------------------------------------------------------
+    GamepadImpl::~GamepadImpl()
+    {
+        if (m_fd != -1)
+            close(m_fd);
+    }
+
+    Result GamepadImpl::SetVibration(float leftMotorSpeed, float rightMotorSpeed)
+    {
+        // TODO
+        return Result::NotSupported;
+    }
+
+    void GamepadImpl::Open()
+    {
+        if (m_fd != -1)
+            return;
+
+        static_assert(MaxGamepads < 10, "Only single-digit gamepad counts are currently supported");
+
+        char jspath[] = "/dev/input/js0";
+
+        constexpr uint32_t JsPathIndex = HE_LENGTH_OF(jspath) - 2;
+
+        jspath[JsPathIndex] = '0' + m_index;
+        m_fd = open(jspath, O_RDONLY | O_NONBLOCK);
+
+        SetConnected(*m_device->m_app, m_fd != -1);
+    }
+
+    void GamepadImpl::Update()
+    {
+        if (!IsConnected())
+            return;
+
+        Application& app = *m_device->m_app;
+
+        js_event jsEvents[8];
+        while (true)
+        {
+            const int32_t bytesRead = read(m_fd, jsEvents, sizeof(jsEvents));
+            if (bytesRead == -1)
+                break;
+
+            const uint32_t count = bytesRead / sizeof(js_event);
+
+            for (uint32_t i = 0; i < count; ++i)
+            {
+                const struct js_event& js = jsEvents[i];
+
+                // don't care if this is an init event, so just mask it off
+                const uint8_t type = js.type & ~JS_EVENT_INIT;
+
+                if (HasFlag(type, JS_EVENT_AXIS))
+                {
+                    const uint8_t axisIndex = js.number;
+
+                    // thumb or trigger axis
+                    if (axisIndex < HE_LENGTH_OF(JoyAxisToGamepadAxis))
+                    {
+                        // TODO
+                    }
+                    // dpad x-axis
+                    else if (axisIndex == 6)
+                    {
+                        // TODO
+                    }
+                    // dpad y-axis
+                    else if (axisIndex == 7)
+                    {
+                        // TODO
+                    }
+                }
+
+                if (HasFlag(type, JS_EVENT_BUTTON))
+                {
+                    const uint8_t buttonIndex = js.number;
+                    if (buttonIndex < HE_LENGTH_OF(JoyButtonToGamepadButton))
+                    {
+                        const GamepadButton button = JoyButtonToGamepadButton[buttonIndex];
+                        SetButtonDown(app, button, js.value == 1);
+                    }
+                }
+            }
+        }
+    }
+
+    void GamepadImpl::Reset()
+    {
+        m_buttons = 0;
+        MemZero(m_axes, sizeof(m_axes));
     }
 
     // --------------------------------------------------------------------------------------------
@@ -847,6 +989,7 @@ namespace he::window::Linux
     // --------------------------------------------------------------------------------------------
     DeviceImpl::DeviceImpl(Allocator& allocator)
         : Device(allocator)
+        , m_gamepads{ { this, 0 }, { this, 1 }, { this, 2 }, { this, 3 } }
     {}
 
     DeviceImpl::~DeviceImpl()
@@ -894,7 +1037,7 @@ namespace he::window::Linux
         m_xlib = dlopen("libX11.so.6", RTLD_LAZY | RTLD_LOCAL);
         if (!m_xlib)
         {
-            HE_LOGF_ERROR(window, "Failed to load Xlib.");
+            HE_LOGF_ERROR(he_window, "Failed to load Xlib.");
             return false;
         }
 
@@ -959,14 +1102,14 @@ namespace he::window::Linux
         // This function returns a nonzero status if initialization was successful; otherwise, it returns zero
         if (m_XInitThreads() == 0)
         {
-            HE_LOGF_ERROR(window, "XInitThreads failed.");
+            HE_LOGF_ERROR(he_window, "XInitThreads failed.");
             return false;
         }
 
         m_display = m_XOpenDisplay(nullptr);
         if (m_display == nullptr)
         {
-            HE_LOGF_ERROR(window, "XOpenDisplay failed.");
+            HE_LOGF_ERROR(he_window, "XOpenDisplay failed.");
             return false;
         }
 
@@ -1003,7 +1146,7 @@ namespace he::window::Linux
         m_im = m_XOpenIM(m_display, nullptr, nullptr, nullptr);
         if (m_im == nullptr)
         {
-            HE_LOGF_ERROR(window, "XOpenIM failed.");
+            HE_LOGF_ERROR(he_window, "XOpenIM failed.");
             return false;
         }
 
@@ -1073,19 +1216,28 @@ namespace he::window::Linux
         ViewImpl view(this, desc);
         view.SetVisible(true, true);
 
-        // Initialized event
+        // Open gamepad files
+        for (GamepadImpl& pad : m_gamepads)
+        {
+            pad.Open();
+        }
+
+        // Dispatch the Initialized event before we start the loop
         {
             InitializedEvent ev(&view);
             app.OnEvent(ev);
         }
 
-        OpenGamepads();
-
         // Event loop
         while (m_running.load())
         {
-            UpdateGamepads();
+            // Update gamepads
+            for (GamepadImpl& pad : m_gamepads)
+            {
+                pad.Update();
+            }
 
+            // Process window messages
             while (m_XPending(m_display))
             {
                 XEvent event;
@@ -1093,6 +1245,7 @@ namespace he::window::Linux
                 HandleXEvent(event);
             }
 
+            // Handle view clipping
             if (m_viewClipped == false && m_cursorRelativeMode)
             {
                 uint32_t mask = ButtonPressMask | ButtonReleaseMask | PointerMotionMask;
@@ -1107,16 +1260,16 @@ namespace he::window::Linux
                 m_viewClipped = false;
             }
 
+            // Tick the application after updates have completed
             app.OnTick();
         }
 
-        // Terminating event
+        // Dispatch the Terminating event now that we've exited the event loop
         {
             TerminatingEvent ev;
             app.OnEvent(ev);
         }
 
-        // Shutdown
         m_app = nullptr;
         return m_returnCode.load();
     }
@@ -1498,26 +1651,6 @@ namespace he::window::Linux
                 if (m_app)
                     m_app->OnEvent(ev);
                 break;
-            }
-        }
-    }
-
-    void DeviceImpl::OpenGamepads()
-    {
-        static_assert(MaxGamepads < 10, "Only support single-digit gamepad counts");
-
-        char jspath[] = "/dev/input/jsX";
-        char* num = jspath + HE_LENGTH_OF(jspath) - 2;
-
-        for (uint32_t i = 0; i < MaxGamepads; ++i)
-        {
-            *num = '0' + i;
-            m_gamepadFds[i] = open(jspath, O_RDONLY | O_NONBLOCK);
-
-            if (m_gamepadFds[i] != -1)
-            {
-                GamepadConnectedEvent ev(i);
-                m_app->OnEvent(ev);
             }
         }
     }

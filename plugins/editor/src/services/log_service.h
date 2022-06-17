@@ -33,7 +33,7 @@ namespace he::editor
             }
         }
 
-        static void LogHandler(void* userData, const LogSource& source, const KeyValue* kvs, uint32_t count);
+        void OnLogEntry(const LogSource& source, const KeyValue* kvs, uint32_t count);
 
     private:
         struct LogEntry

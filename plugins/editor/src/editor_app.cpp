@@ -8,6 +8,7 @@ namespace he::editor
 {
     EditorApp::EditorApp(
         DirectoryService& directoryService,
+        FileLoaderService& fileLoaderService,
         ImGuiService& imguiService,
         LogService& logService,
         MainWindowService& mainWindowService,
@@ -16,6 +17,7 @@ namespace he::editor
         TaskService& taskService,
         WorkspaceService& workspaceService)
         : m_directoryService(directoryService)
+        , m_fileLoaderService(fileLoaderService)
         , m_imguiService(imguiService)
         , m_logService(logService)
         , m_mainWindowService(mainWindowService)
@@ -91,6 +93,9 @@ namespace he::editor
             return false;
 
         if (!m_logService.Initialize())
+            return false;
+
+        if (!m_fileLoaderService.Initialize())
             return false;
 
         if (!m_renderService.Initialize(view))

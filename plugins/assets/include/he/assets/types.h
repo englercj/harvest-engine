@@ -24,8 +24,8 @@ namespace he::assets
     struct _UuidWrapper
     {
         _UuidWrapper() : val() {}
-        explicit _UuidWrapper(const Uuid& uuid) : val(uuid) {}
-        explicit _UuidWrapper(schema::Uuid::Reader uuid) { *this = uuid; }
+        _UuidWrapper(const Uuid& uuid) : val(uuid) {}
+        _UuidWrapper(schema::Uuid::Reader uuid) { *this = uuid; }
 
         _UuidWrapper& operator=(const schema::Uuid::Reader uuid)
         {

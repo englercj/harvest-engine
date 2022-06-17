@@ -11,7 +11,7 @@
 using namespace he;
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST(core, Vector, Constants)
+HE_TEST(core, vector, Constants)
 {
     // Changing these are potentially breaking so checking them here so any changes are made with thoughtfulness.
     static_assert(std::is_same_v<Vector<int>::ElementType, int>);
@@ -20,7 +20,7 @@ HE_TEST(core, Vector, Constants)
     static_assert(Vector<int>::MaxElements == 0xffffffff);
 }
 // ------------------------------------------------------------------------------------------------
-HE_TEST(core, Vector, Construct)
+HE_TEST(core, vector, Construct)
 {
     {
         Vector<int> v;
@@ -34,7 +34,7 @@ HE_TEST(core, Vector, Construct)
 }
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST(core, Vector, Construct_Copy)
+HE_TEST(core, vector, Construct_Copy)
 {
     constexpr uint32_t ExpectedSize = 10;
 
@@ -179,7 +179,7 @@ HE_TEST(core, Vector, Construct_Copy)
 }
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST(core, Vector, Construct_Move)
+HE_TEST(core, vector, Construct_Move)
 {
     constexpr uint32_t ExpectedSize = 10;
 
@@ -437,7 +437,7 @@ HE_TEST(core, Vector, Construct_Move)
 }
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST(core, Vector, operator_assign_copy)
+HE_TEST(core, vector, operator_assign_copy)
 {
     constexpr uint32_t ExpectedSize = 10;
 
@@ -526,7 +526,7 @@ HE_TEST(core, Vector, operator_assign_copy)
 }
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST(core, string, operator_assign_range)
+HE_TEST(core, vector, operator_assign_range)
 {
     Vector<int> v;
     v.PushBack(1);
@@ -547,7 +547,7 @@ HE_TEST(core, string, operator_assign_range)
 }
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST(core, Vector, operator_assign_move)
+HE_TEST(core, vector, operator_assign_move)
 {
     constexpr uint32_t ExpectedSize = 10;
 
@@ -689,7 +689,7 @@ HE_TEST(core, Vector, operator_assign_move)
 }
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST(core, Vector, operator_index)
+HE_TEST(core, vector, operator_index)
 {
     Vector<int> v;
     v.Resize(10, 12345);
@@ -698,7 +698,7 @@ HE_TEST(core, Vector, operator_index)
 }
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST(core, Vector, operator_eq)
+HE_TEST(core, vector, operator_eq)
 {
     Vector<int> v;
     v.Resize(10, 12345);
@@ -710,7 +710,7 @@ HE_TEST(core, Vector, operator_eq)
 }
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST(core, Vector, operator_ne)
+HE_TEST(core, vector, operator_ne)
 {
     Vector<int> v;
     v.Resize(10, 12345);
@@ -722,7 +722,7 @@ HE_TEST(core, Vector, operator_ne)
 }
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST(core, Vector, IsEmpty)
+HE_TEST(core, vector, IsEmpty)
 {
     Vector<int> v;
     HE_EXPECT(v.IsEmpty());
@@ -732,7 +732,7 @@ HE_TEST(core, Vector, IsEmpty)
 }
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST(core, Vector, Capacity)
+HE_TEST(core, vector, Capacity)
 {
     Vector<int> v;
     HE_EXPECT_EQ(v.Capacity(), 0);
@@ -745,7 +745,7 @@ HE_TEST(core, Vector, Capacity)
 }
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST(core, Vector, Size)
+HE_TEST(core, vector, Size)
 {
     Vector<int> v;
     HE_EXPECT_EQ(v.Size(), 0);
@@ -758,7 +758,7 @@ HE_TEST(core, Vector, Size)
 }
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST(core, Vector, Reserve)
+HE_TEST(core, vector, Reserve)
 {
     Vector<int> v;
     HE_EXPECT_EQ(v.Capacity(), 0);
@@ -771,7 +771,7 @@ HE_TEST(core, Vector, Reserve)
 }
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST(core, Vector, Resize)
+HE_TEST(core, vector, Resize)
 {
     uint8_t zeroes[16]{};
 
@@ -801,7 +801,7 @@ HE_TEST(core, Vector, Resize)
 }
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST(core, Vector, Expand)
+HE_TEST(core, vector, Expand)
 {
     uint8_t zeroes[16]{};
 
@@ -837,7 +837,7 @@ HE_TEST(core, Vector, Expand)
 }
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST(core, Vector, ShrinkToFit)
+HE_TEST(core, vector, ShrinkToFit)
 {
     Vector<uint8_t> v;
     HE_EXPECT_EQ(v.Size(), 0);
@@ -869,7 +869,7 @@ HE_TEST(core, Vector, ShrinkToFit)
 }
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST(core, Vector, Data)
+HE_TEST(core, vector, Data)
 {
     Vector<int> v;
     HE_EXPECT(!v.Data());
@@ -885,7 +885,7 @@ HE_TEST(core, Vector, Data)
 }
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST(core, Vector, Adopt_Release)
+HE_TEST(core, vector, Adopt_Release)
 {
     static int s_destructed = 0;
 
@@ -935,7 +935,7 @@ HE_TEST(core, Vector, Adopt_Release)
 }
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST(core, Vector, Front_Back)
+HE_TEST(core, vector, Front_Back)
 {
     Vector<int> v;
     v.PushBack(1);
@@ -946,7 +946,7 @@ HE_TEST(core, Vector, Front_Back)
 }
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST(core, Vector, Begin)
+HE_TEST(core, vector, Begin)
 {
     Vector<int> v;
     HE_EXPECT(!v.Begin());
@@ -956,7 +956,7 @@ HE_TEST(core, Vector, Begin)
 }
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST(core, Vector, End)
+HE_TEST(core, vector, End)
 {
     Vector<int> v;
     HE_EXPECT(!v.End());
@@ -966,7 +966,7 @@ HE_TEST(core, Vector, End)
 }
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST(core, Vector, RangeBasedFor)
+HE_TEST(core, vector, RangeBasedFor)
 {
     uint8_t values[]{ 1, 2, 3, 4, 5, 6, 7, 8 };
 
@@ -984,7 +984,7 @@ HE_TEST(core, Vector, RangeBasedFor)
 }
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST(core, Vector, Clear)
+HE_TEST(core, vector, Clear)
 {
     {
         Vector<int> v;
@@ -1020,7 +1020,7 @@ HE_TEST(core, Vector, Clear)
 }
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST(core, Vector, Insert)
+HE_TEST(core, vector, Insert)
 {
     Vector<uint8_t> v;
     HE_EXPECT_EQ(v.Size(), 0);
@@ -1068,7 +1068,7 @@ HE_TEST(core, Vector, Insert)
 }
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST(core, Vector, Erase)
+HE_TEST(core, vector, Erase)
 {
     const uint8_t expected[]{ 1, 2, 60, 3 };
 
@@ -1092,7 +1092,7 @@ HE_TEST(core, Vector, Erase)
 }
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST(core, Vector, PushBack)
+HE_TEST(core, vector, PushBack)
 {
     Vector<int> v;
     HE_EXPECT_EQ(v.Size(), 0);
@@ -1106,7 +1106,7 @@ HE_TEST(core, Vector, PushBack)
 }
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST(core, Vector, PushFront)
+HE_TEST(core, vector, PushFront)
 {
     Vector<int> v;
     HE_EXPECT_EQ(v.Size(), 0);
@@ -1120,7 +1120,7 @@ HE_TEST(core, Vector, PushFront)
 }
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST(core, Vector, PopBack)
+HE_TEST(core, vector, PopBack)
 {
     Vector<int> v;
     v.PushBack(10);
@@ -1138,7 +1138,7 @@ HE_TEST(core, Vector, PopBack)
 }
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST(core, Vector, PopFront)
+HE_TEST(core, vector, PopFront)
 {
     Vector<int> v;
     v.PushBack(10);
@@ -1156,7 +1156,7 @@ HE_TEST(core, Vector, PopFront)
 }
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST(core, Vector, EmplaceBack)
+HE_TEST(core, vector, EmplaceBack)
 {
     {
         Vector<int> v;

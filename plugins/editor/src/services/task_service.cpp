@@ -41,7 +41,7 @@ namespace he::editor
         m_threads.Clear();
     }
 
-    void TaskService::Add(StringView name, TaskFunc func)
+    void TaskService::Add(StringView name, TaskDelegate func)
     {
         if (!func)
             return;
@@ -58,9 +58,15 @@ namespace he::editor
         m_cv.WakeOne();
     }
 
-    void TaskService::Add(TaskExecutor::TaskFunc func, void* userData)
+    static void _heTaskThunk(he::TaskDelegate cont, float&)
     {
-        Add("Engine Task", std::bind(func, userData));
+        cont();
+    }
+
+    void TaskService::Add(he::TaskDelegate func)
+    {
+        TaskDelegate delegate = TaskDelegate::Make<&_heTaskThunk>(func);
+        Add("Engine Task", delegate);
     }
 
     bool TaskService::Pump()

@@ -9,7 +9,7 @@ namespace he.editor.schema;
 // A project file that can be opened by the editor
 struct Project
 {
-    id @0 :uint8[16] $Toml.Hex; // Unique identifier for the project
-    name @1 :String;            // Human-friendly name
-    assetRoot @2 :String;       // Relative path to the root of the project's asset data
+    id @0 :he.schema.Uuid;  // Unique identifier for the project
+    name @1 :String;        // Human-friendly name
+    assetRoot @2 :String;   // Relative path to the root of the project's asset data
 }

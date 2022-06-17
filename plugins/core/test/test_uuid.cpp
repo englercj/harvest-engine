@@ -176,7 +176,7 @@ HE_TEST(core, uuid, fmt)
 
     // Test formatting with the upper specifier.
     str.Clear();
-    fmt::format_to(Appender(str), "{}", Uuid_NamespaceX500);
+    fmt::format_to(Appender(str), "{:X}", Uuid_NamespaceX500);
     HE_EXPECT_EQ(str, "6BA7B814-9DAD-11D1-80B4-00C04FD430C8");
 }
 

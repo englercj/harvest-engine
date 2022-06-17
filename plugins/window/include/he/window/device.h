@@ -3,7 +3,9 @@
 #pragma once
 
 #include "he/core/allocator.h"
+#include "he/core/span.h"
 #include "he/math/types.h"
+#include "he/window/gamepad.h"
 #include "he/window/mouse.h"
 #include "he/window/view.h"
 
@@ -26,18 +28,28 @@ namespace he::window
 
     /// Interface for the windowing device. This acts as the abstraction over the platform
     /// windowing APIs. Most applications will only create one single instance of this class.
-    /// Create an instance by calling \ref CreateDevice.
+    /// Create an instance by calling \ref Device::Create.
     class Device
     {
     public:
-        Device(Allocator& allocator) : m_allocator(allocator) {}
+        /// Creates a new windowing platform device for running windowed applications.
+        ///
+        /// \param[in] allocator The allocator to use for all allocations created by this device.
+        /// \return The newly created device, or nullptr if there was an error.
+        static Device* Create(Allocator& allocator = Allocator::GetDefault());
+
+        /// Destroys a device that was created with \ref Create.
+        ///
+        /// \param[in] device The device to destroy.
+        static void Destroy(Device* device);
+
+    public:
         virtual ~Device() {}
 
-        /// Initialize the device. This is called by \ref CreateDevice and should not be
-        /// called directly.
+        /// Gets the allocator used for all allocations in this device.
         ///
-        /// \return True if initialization completes successfully, false otherwise.
-        virtual bool Initialize() = 0;
+        /// \return The allocator.
+        Allocator& GetAllocator() { return m_allocator; }
 
         /// Runs an application and creates a default view. This blocks until \ref Quit is called
         /// and the exit code is returned.
@@ -118,19 +130,17 @@ namespace he::window
         /// \return The number of available monitors.
         virtual uint32_t GetMonitors(Monitor* monitors, uint32_t maxCount) const = 0;
 
-    public:
-        /// The allocator for this device.
+        /// Retrieves the gamepad interface for the given index.
+        ///
+        /// \return The gamepad interface.
+        virtual Gamepad& GetGamepad(uint32_t index) = 0;
+
+    protected:
+        Device(Allocator& allocator) : m_allocator(allocator) {}
+
+        virtual bool Initialize() = 0;
+
+    protected:
         Allocator& m_allocator;
     };
-
-    /// Creates a new windowing platform device for running windowed applications.
-    ///
-    /// \param[in] allocator The allocator to use for all window objects created by this device.
-    /// \return The newly created device, or nullptr if there was an error.
-    Device* CreateDevice(Allocator& allocator = Allocator::GetDefault());
-
-    /// Destroys a device that was created with \ref CreateDevice.
-    ///
-    /// \param[in] device The device to destroy.
-    void DestroyDevice(Device* device);
 }

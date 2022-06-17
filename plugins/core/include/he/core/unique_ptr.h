@@ -33,7 +33,7 @@ namespace he
         [[nodiscard]] T* operator->() const { return m_ptr; }
         [[nodiscard]] T& operator*() const { return *m_ptr; }
 
-        explicit operator bool() const { return m_ptr != nullptr; }
+        [[nodiscard]] explicit operator bool() const { return m_ptr != nullptr; }
 
         UniquePtr& operator=(nullptr_t) { Reset(); return *this; }
 
@@ -80,7 +80,7 @@ namespace he
         [[nodiscard]] T* operator->() const { return m_ptr; }
         [[nodiscard]] T& operator*() const { return *m_ptr; }
 
-        explicit operator bool() const { return m_ptr != nullptr; }
+        [[nodiscard]] explicit operator bool() const { return m_ptr != nullptr; }
 
         UniquePtr& operator=(nullptr_t) { Reset(); return *this; }
 

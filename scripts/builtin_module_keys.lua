@@ -93,7 +93,7 @@ local function _handle_dependson(ctx, values)
         end
 
         if ctx.type == "console_app" or ctx.type == "windowed_app" or (ctx.type == "default" and not he.is_static_only) then
-            if mod.type == "default" or mod.type == "static" or mod.type == "shared" then
+            if mod.type == "default" or mod.type == "static" then
                 links { mod.name }
             elseif mod.type == "custom" then
                 dependson { mod.name }

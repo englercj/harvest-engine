@@ -2,6 +2,7 @@
 
 #include "he/core/thread.h"
 
+#include "he/core/assert.h"
 #include "he/core/wstr.h"
 
 #include <thread>
@@ -28,6 +29,10 @@ namespace he
             return Result::FromLastError();
 
         mask &= processMask;
+
+        if (!HE_VERIFY(mask > 0, HE_MSG("Affinity mask shouldn't be zero.")))
+            return Result::InvalidParameter;
+
         if (!::SetThreadAffinityMask(reinterpret_cast<HANDLE>(thread), mask))
             return Result::FromLastError();
 

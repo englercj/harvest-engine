@@ -10,7 +10,7 @@
 
 namespace he::rhi
 {
-    Result CreateInstance(const InstanceDesc& desc, Instance*& instance)
+    Result Instance::Create(const InstanceDesc& desc, Instance*& instance)
     {
         Allocator& allocator = desc.allocator ? *desc.allocator : Allocator::GetDefault();
 
@@ -43,7 +43,7 @@ namespace he::rhi
                 break;
         #endif
             default:
-                HE_LOGF_ERROR(rhi, "Failed to create RHI instance. Unsupported API type: {}", desc.api);
+                HE_LOGF_ERROR(he_rhi, "Failed to create RHI instance. Unsupported API type: {}", desc.api);
                 result = Result::InvalidParameter;
         }
 
@@ -54,7 +54,7 @@ namespace he::rhi
 
         if (!result)
         {
-            DestroyInstance(instance);
+            Instance::Destroy(instance);
             instance = nullptr;
             return result;
         }
@@ -62,7 +62,7 @@ namespace he::rhi
         return Result::Success;
     }
 
-    void DestroyInstance(Instance* instance)
+    void Instance::Destroy(Instance* instance)
     {
         if (instance)
         {

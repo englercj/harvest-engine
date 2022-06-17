@@ -12,7 +12,7 @@
 
 namespace he
 {
-    static ErrorHandlerFunc s_errorHandler = nullptr;
+    static Pfn_ErrorHandler s_errorHandler = nullptr;
     static void* s_errorHandlerUserData = nullptr;
     static RWLock s_errorHandlerLock{};
 
@@ -32,7 +32,7 @@ namespace he
         return _PlatformErrorHandler(source, kvs, count);
     }
 
-    void SetErrorHandler(ErrorHandlerFunc handler, void* userData)
+    void SetErrorHandler(Pfn_ErrorHandler handler, void* userData)
     {
         LockGuard lock(s_errorHandlerLock);
 
@@ -40,11 +40,11 @@ namespace he
         s_errorHandlerUserData = userData;
     }
 
-    ErrorHandlerFunc GetErrorHandler(void*& userData)
+    Pfn_ErrorHandler GetErrorHandler(void*& userData)
     {
         s_errorHandlerLock.AcquireRead();
 
-        ErrorHandlerFunc handler = s_errorHandler;
+        Pfn_ErrorHandler handler = s_errorHandler;
         userData = s_errorHandlerUserData;
 
         s_errorHandlerLock.ReleaseRead();
@@ -56,7 +56,7 @@ namespace he
     {
         s_errorHandlerLock.AcquireRead();
 
-        ErrorHandlerFunc handler = s_errorHandler;
+        Pfn_ErrorHandler handler = s_errorHandler;
         void* userData = s_errorHandlerUserData;
 
         s_errorHandlerLock.ReleaseRead();

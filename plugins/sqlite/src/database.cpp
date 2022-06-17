@@ -52,14 +52,6 @@ namespace he::sqlite
         return true;
     }
 
-    void Database::ErrorLogCallback(void*, int code, const char* msg)
-    {
-        HE_LOG_ERROR(he_sqlite,
-            HE_MSG(msg),
-            HE_KV(result, code),
-            HE_KV(result_str, sqlite3_errstr(code)));
-    }
-
     Database::~Database()
     {
         Close();

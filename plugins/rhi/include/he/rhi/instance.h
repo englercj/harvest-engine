@@ -13,6 +13,19 @@ namespace he::rhi
     class Instance
     {
     public:
+        /// Creates an instance which is entry object to managing the rendering hardware interface.
+        ///
+        /// \param[in] desc The descriptor for how to create the instance.
+        /// \param[out] out A pointer to the newly created instance.
+        /// \return The result of the operation.
+        static Result Create(const InstanceDesc& desc, Instance*& out);
+
+        /// Destroys an instance that was created with \ref CreateInstance
+        ///
+        /// \param[in] instance The instance to destroy.
+        static void Destroy(Instance* instance);
+
+    public:
         virtual ~Instance() {}
 
         /// Gets the allocator instance used for all allocations in this instance.
@@ -76,21 +89,9 @@ namespace he::rhi
         /// \param[in] device The device to destroy.
         virtual void DestroyDevice(Device* device) = 0;
 
-    private:
-        friend Result CreateInstance(const InstanceDesc& desc, Instance*& instance);
+    protected:
+        Instance() = default;
 
         virtual Result Initialize(const InstanceDesc& desc) = 0;
     };
-
-    /// Creates an instance which is entry object to managing the rendering hardware interface.
-    ///
-    /// \param[in] desc The descriptor for how to create the instance.
-    /// \param[out] out A pointer to the newly created instance.
-    /// \return The result of the operation.
-    Result CreateInstance(const InstanceDesc& desc, Instance*& out);
-
-    /// Destroys an instance that was created with \ref CreateInstance
-    ///
-    /// \param[in] instance The instance to destroy.
-    void DestroyInstance(Instance* instance);
 }

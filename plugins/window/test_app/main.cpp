@@ -12,7 +12,7 @@ int he::AppMain(int argc, char* argv[])
 
     AddLogSink(DebuggerSink);
 
-    window::Device* device = window::CreateDevice();
+    window::Device* device = window::Device::Create();
     if (!device)
         return -1;
 
@@ -22,7 +22,7 @@ int he::AppMain(int argc, char* argv[])
     TestApp app(device);
     int rc = device->Run(app, desc);
 
-    window::DestroyDevice(device);
+    window::Device::Destroy(device);
 
     return rc;
 }

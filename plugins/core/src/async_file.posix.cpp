@@ -83,7 +83,7 @@ namespace he
         if (count > 1)
             return Result::Success;
 
-        auto countGuard = MakeScopeGuard([]() { --s_ioStartupCount; });
+        auto countGuard = MakeScopeGuard([]() { UnlockedShutdownAsyncFileIO(); });
 
         s_executor = config.executor;
 
@@ -106,10 +106,8 @@ namespace he
         return Result::Success;
     }
 
-    void ShutdownAsyncFileIO()
+    void UnlockedShutdownAsyncFileIO()
     {
-        LockGuard lock(s_ioStartupMutex);
-
         HE_ASSERT(s_ioStartupCount > 0);
         const uint32_t count = --s_ioStartupCount;
         if (count > 0)
@@ -119,6 +117,12 @@ namespace he
             s_threadPool.Shutdown();
 
         s_executor = nullptr;
+    }
+
+    void ShutdownAsyncFileIO()
+    {
+        LockGuard lock(s_ioStartupMutex);
+        UnlockedShutdownAsyncFileIO();
     }
 
     AsyncFile::AsyncFile()

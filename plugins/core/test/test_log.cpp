@@ -29,32 +29,32 @@ HE_TEST(core, log, LogLevel)
     static_assert(HE_LOG_LEVEL_ENABLED >= HE_LOG_LEVEL_TRACE && HE_LOG_LEVEL_ENABLED <= HE_LOG_LEVEL_ERROR);
 }
 
+static void TestLogHandler(const LogSource& source, const KeyValue* kvs, uint32_t count)
+{
+    HE_EXPECT_EQ(source.level, LogLevel::Info);
+    HE_EXPECT(source.line == 56 || source.line == 57);
+    HE_EXPECT_EQ(GetBaseName(source.file), "test_log.cpp");
+#if HE_COMPILER_MSVC
+    HE_EXPECT_EQ_STR(source.funcName, "void __cdecl _heTestClass_core_log_AddLogSink_RemoveLogSink::TestBody(void)");
+#elif HE_COMPILER_GCC
+    HE_EXPECT_EQ_STR(source.funcName, "virtual void _heTestClass_core_log_AddLogSink_RemoveLogSink::TestBody()");
+#else
+#endif
+    HE_EXPECT_EQ_STR(source.category, "log_test");
+
+    HE_EXPECT_EQ(count, 1);
+    HE_EXPECT_EQ_STR(kvs[0].Key(), HE_MSG_KEY);
+    HE_EXPECT_EQ(kvs[0].Kind(), KeyValue::ValueKind::String);
+    HE_EXPECT_EQ(kvs[0].GetString(), "testing");
+}
+
 // ------------------------------------------------------------------------------------------------
 HE_TEST(core, log, AddLogSink_RemoveLogSink)
 {
-    auto sink = [](void*, const LogSource& source, const KeyValue* kvs, uint32_t count)
-    {
-        HE_EXPECT_EQ(source.level, LogLevel::Info);
-        HE_EXPECT(source.line == 56 || source.line == 57);
-        HE_EXPECT_EQ(GetBaseName(source.file), "test_log.cpp");
-    #if HE_COMPILER_MSVC
-        HE_EXPECT_EQ_STR(source.funcName, "void __cdecl _heTestClass_core_log_AddLogSink_RemoveLogSink::TestBody(void)");
-    #elif HE_COMPILER_GCC
-        HE_EXPECT_EQ_STR(source.funcName, "virtual void _heTestClass_core_log_AddLogSink_RemoveLogSink::TestBody()");
-    #else
-    #endif
-        HE_EXPECT_EQ_STR(source.category, "log_test");
-
-        HE_EXPECT_EQ(count, 1);
-        HE_EXPECT_EQ_STR(kvs[0].Key(), HE_MSG_KEY);
-        HE_EXPECT_EQ(kvs[0].Kind(), KeyValue::ValueKind::String);
-        HE_EXPECT_EQ(kvs[0].GetString(), "testing");
-    };
-
-    AddLogSink(sink, nullptr);
+    AddLogSink(TestLogHandler);
 
     HE_LOG_INFO(log_test, HE_MSG("testing"));
     HE_LOGF_INFO(log_test, "testing");
 
-    RemoveLogSink(sink, nullptr);
+    RemoveLogSink(TestLogHandler);
 }

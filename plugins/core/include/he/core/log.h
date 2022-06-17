@@ -4,14 +4,17 @@
 
 #include "he/core/compiler.h"
 #include "he/core/config.h"
+#include "he/core/delegate.h"
 #include "he/core/key_value.h"
 #include "he/core/macros.h"
 #include "he/core/types.h"
 
+#include <type_traits>
+
 #define HE_LOG_LEVEL_TRACE  0   ///< Detailed tracing for a system, usually disbaled unless tracking a bug.
 #define HE_LOG_LEVEL_DEBUG  1   ///< Debug information useful for developers, usually disabled in non-internal builds.
 #define HE_LOG_LEVEL_INFO   2   ///< Informational logging useful for general users, usually enabled.
-#define HE_LOG_LEVEL_WARN   3   ///< Warning that something has gone wrong, but it is recoverable.
+#define HE_LOG_LEVEL_WARN   3   ///< Warning that something has gone wrong, but behavior should remain correct.
 #define HE_LOG_LEVEL_ERROR  4   ///< Error notification that something has gone wrong, may experience strange behavior.
 
 /// \def HE_LOG_LEVEL_ENABLED
@@ -146,7 +149,7 @@ namespace he
         const char* category;   ///< The name of the category the log comes from.
     };
 
-    /// A pointer to a function that handles processing log entries.
+    /// A delegate that handles processing log entries.
     ///
     /// If your sink processes data on another thread, it must copy any parameters it
     /// wants to process later. The structures that are passed in are not guaranteed to
@@ -157,14 +160,25 @@ namespace he
     /// \param[in] source The source information for this log entry.
     /// \param[in] kvs An array of key-value pairs.
     /// \param[in] count The size of the `kvs` array.
-    using LogSinkFunc = void(*)(void* userData, const LogSource& source, const KeyValue* kvs, uint32_t count);
+    using LogDelegate = Delegate<void(const LogSource& source, const KeyValue* kvs, uint32_t count)>;
 
     /// Stores the sink to be called when a log entry is dispatched.
     ///
     /// \param[in] sink The log sink to store and send logs to.
     /// \param[in] userData Pointer to opaque data that will be passed to the sink function as the
     ///     first parameter.
-    void AddLogSink(LogSinkFunc sink, void* userData = nullptr);
+    void AddLogSink(LogDelegate sink);
+
+    /// Removes the stored sink so it is no longer invoked when a log entry is dispatched.
+    ///
+    /// \param[in] sink The log sink to remove.
+    /// \param[in] userData The user data pointer that was originally passed into AddLogSink.
+    void RemoveLogSink(LogDelegate sink);
+
+    template <typename T>
+    concept LogHandler = requires(T& t) {
+        { t.OnLogEntry(std::declval<const LogSource&>(), std::declval<const KeyValue*>(), std::declval<uint32_t>()) } -> std::convertible_to<void>;
+    };
 
     /// Stores the sink to be called when a log entry is dispatched. The sink object must have a
     /// lifetime that extends beyond its time added as a log sink. That is, you should not destroy
@@ -174,14 +188,8 @@ namespace he
     /// function that expects the instance as the first parameter.
     ///
     /// \param[in] sink The log sink to add.
-    template <typename T>
-    void AddLogSink(T& sink) { AddLogSink(&T::LogHandler, &sink); }
-
-    /// Removes the stored sink so it is no longer invoked when a log entry is dispatched.
-    ///
-    /// \param[in] sink The log sink to remove.
-    /// \param[in] userData The user data pointer that was originally passed into AddLogSink.
-    void RemoveLogSink(LogSinkFunc sink, void* userData = nullptr);
+    template <LogHandler T>
+    void AddLogSink(T& sink) { AddLogSink(LogDelegate::Make<&T::OnLogEntry>(&sink)); }
 
     /// Removes the stored sink so it is no longer invoked when a log entry is dispatched.
     ///
@@ -189,8 +197,8 @@ namespace he
     /// function that expects the instance as the first parameter.
     ///
     /// \param[in] sink The log sink to remove.
-    template <typename T>
-    void RemoveLogSink(T& sink) { RemoveLogSink(&T::LogHandler, &sink); }
+    template <LogHandler T>
+    void RemoveLogSink(T& sink) { RemoveLogSink(LogDelegate::Make<&T::OnLogEntry>(&sink)); }
 
     /// Entry point for handling a log entry.
     ///

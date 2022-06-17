@@ -2,9 +2,11 @@
 
 #include "he/assets/asset_database_updater.h"
 
+#include "he/assets/asset_file_scanner.h"
 #include "he/assets/asset_models.h"
 #include "he/core/assert.h"
 #include "he/core/clock.h"
+#include "he/core/delegate.h"
 #include "he/core/file.h"
 #include "he/core/log.h"
 #include "he/core/path.h"
@@ -13,6 +15,7 @@
 #include "he/core/scope_guard.h"
 #include "he/core/string.h"
 #include "he/core/string_fmt.h"
+#include "he/core/thread.h"
 #include "he/core/types.h"
 #include "he/core/vector.h"
 #include "he/core/wstr.h"
@@ -26,6 +29,8 @@
 
 namespace he::assets
 {
+    constexpr char NextUsnConfigKey[] = "he.assets.next_usn";
+
     struct JournalEntry
     {
         String path;
@@ -35,11 +40,13 @@ namespace he::assets
         uint32_t reasonFlags;
     };
 
+    using JournalEntryDelegate = Delegate<void(const JournalEntry&)>;
+
     class JournalWatcher
     {
     public:
-        static constexpr uint32_t BufferSize = 4096 * 8;
-        static constexpr DWORD ReasonMask = USN_REASON_DATA_EXTEND | USN_REASON_DATA_OVERWRITE | USN_REASON_DATA_TRUNCATION | USN_REASON_EA_CHANGE | USN_REASON_FILE_CREATE | USN_REASON_FILE_DELETE | USN_REASON_RENAME_NEW_NAME;
+        static constexpr uint32_t BufferSize = 4096;
+        static constexpr DWORD ReasonMask = USN_REASON_DATA_EXTEND | USN_REASON_DATA_OVERWRITE | USN_REASON_DATA_TRUNCATION | USN_REASON_FILE_CREATE | USN_REASON_FILE_DELETE | USN_REASON_RENAME_NEW_NAME | USN_REASON_RENAME_OLD_NAME;
 
     public:
         JournalWatcher() = default;
@@ -64,7 +71,7 @@ namespace he::assets
             wchar_t root[4];
             ::PathBuildRootW(root, num);
 
-            wchar_t vol[]{ '\\', '\\', '.', '\\', 'X', ':', '\0' };
+            wchar_t vol[] = L"\\\\.\\X:";
             vol[4] = root[0];
             m_volume = ::CreateFileW(
                 vol,
@@ -122,6 +129,7 @@ namespace he::assets
             m_nextUsn = journalData.NextUsn;
 
             guard.Dismiss();
+            return true;
         }
 
         void Terminate()
@@ -153,7 +161,7 @@ namespace he::assets
             return true;
         }
 
-        bool PollEntries(void(*handler)(void*,const JournalEntry&), void* userData = nullptr)
+        bool GetEntries(JournalEntryDelegate iterator)
         {
             HE_ASSERT(m_buffer);
 
@@ -179,10 +187,7 @@ namespace he::assets
 
                 if (ParseRecord(record, entry))
                 {
-                    if (IsChildPath(entry.path, m_path))
-                    {
-                        handler(userData, entry);
-                    }
+                    iterator(entry);
                 }
             }
 
@@ -307,19 +312,15 @@ namespace he::assets
     public:
         AssetDatabaseUpdaterImpl(AssetDatabase& db) : AssetDatabaseUpdater(db) {}
 
-        bool Start(const char* rootDir) override
+        bool Start() override
         {
-            m_rootDir = rootDir;
-            MakeAbsolute(m_rootDir);
-            NormalizePath(m_rootDir);
-
-            if (!m_watcher.Initialize(m_rootDir.Data()))
+            if (!m_watcher.Initialize(m_db.RootDir().Data()))
                 return false;
 
             bool needsFullScan = true;
 
             ConfigModel config;
-            if (ConfigModel::FindOne(m_db, "he.assets.next_usn", config) && config.value.Size() == sizeof(int64_t))
+            if (ConfigModel::FindOne(m_db, NextUsnConfigKey, config) && config.value.Size() == sizeof(int64_t))
             {
                 int64_t startUsn;
                 MemCopy(&startUsn, config.value.Data(), sizeof(int64_t));
@@ -340,7 +341,7 @@ namespace he::assets
             return true;
         }
 
-        bool Stop() override
+        void Stop() override
         {
             m_watchThread.join();
 
@@ -351,25 +352,47 @@ namespace he::assets
     private:
         void ScanThreadFunc()
         {
-            while (m_running)
-            {
-                const bool r = m_watcher.PollEntries([](void* userData, const JournalEntry& entry)
-                {
-                    AssetDatabaseUpdaterImpl* self = static_cast<AssetDatabaseUpdaterImpl*>(userData);
-                    self->m_db
-                    self->HandleEntry(entry);
-                }, this);
-            }
+            SetCurrentThreadName("Asset File Scanner");
+            AssetFileScanner scanner(m_db);
+            scanner.Run(m_rootDir.Data());
         }
 
         void WatchThreadFunc()
         {
+            SetCurrentThreadName("Asset File Watcher");
 
+            while (m_running)
+            {
+                auto delegate = JournalEntryDelegate::Make<&AssetDatabaseUpdaterImpl::HandleEntry>(this);
+                const bool r = m_watcher.GetEntries(delegate);
+
+                if (r)
+                {
+                    ConfigModel config;
+                    config.key = NextUsnConfigKey;
+                    config.SetValue(m_watcher.NextUsn());
+
+                    ConfigModel::AddOrUpdate(m_db, config);
+                }
+            }
         }
 
         void HandleEntry(const JournalEntry& entry)
         {
-            AssetModel
+            if (!IsChildPath(entry.path, m_rootDir))
+                return;
+
+            if (GetExtension(entry.path) != AssetFileExtension)
+                return;
+
+            if (HasAnyFlags(entry.reasonFlags, USN_REASON_FILE_DELETE | USN_REASON_RENAME_OLD_NAME))
+            {
+                m_db.OnAssetFileDeleted(entry.path.Data());
+            }
+            else if (!m_db.IsFileUpToDate(entry.path.Data()))
+            {
+                m_db.OnAssetFileUpdated(entry.path.Data());
+            }
         }
 
     private:
@@ -389,7 +412,7 @@ namespace he::assets
 
     void AssetDatabaseUpdater::Destroy(AssetDatabaseUpdater* updater)
     {
-        Allocator::GetDefault().Delete(db);
+        Allocator::GetDefault().Delete(updater);
     }
 }
 

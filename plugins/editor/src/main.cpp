@@ -19,7 +19,7 @@ int he::AppMain(int argc, char* argv[])
     editor::EditorData& data = editor::DICreate<editor::EditorData&>();
     data.argc = argc;
     data.argv = argv;
-    data.device = window::CreateDevice();
+    data.device = window::Device::Create();
     if (!data.device)
         return -1;
 
@@ -30,7 +30,7 @@ int he::AppMain(int argc, char* argv[])
     editor::EditorApp& app = editor::DICreate<editor::EditorApp&>();
     int rc = data.device->Run(app, desc);
 
-    window::DestroyDevice(data.device);
+    window::Device::Destroy(data.device);
 
     return rc;
 }

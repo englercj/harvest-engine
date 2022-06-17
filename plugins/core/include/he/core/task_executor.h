@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include "he/core/delegate.h"
 #include "he/core/result.h"
 #include "he/core/sync.h"
 #include "he/core/types.h"
@@ -14,15 +15,15 @@
 namespace he
 {
     // --------------------------------------------------------------------------------------------
+    using TaskDelegate = Delegate<void()>;
+
+    // --------------------------------------------------------------------------------------------
     class TaskExecutor
     {
     public:
-        using TaskFunc = void(*)(void*);
-
-    public:
         virtual ~TaskExecutor() {}
 
-        virtual void Add(TaskFunc func, void* taskData) = 0;
+        virtual void Add(TaskDelegate func) = 0;
     };
 
     // --------------------------------------------------------------------------------------------
@@ -31,9 +32,9 @@ namespace he
     public:
         struct Config
         {
-            uint32_t count{ 0 };
-            uint64_t affinity{ 0xffffffffffffffff };
-            const char* name{ nullptr };
+            uint32_t count{ 0 }; ///< Number of threads to spawn.
+            uint64_t affinity{ 0 }; ///< Affinity to use for spawned threads. Only considered when non-zero.
+            const char* name{ nullptr }; ///< Name to assign to spawned thread. Only considered when non-null.
         };
 
     public:
@@ -42,25 +43,19 @@ namespace he
         Result Startup(const Config& config);
         void Shutdown();
 
-        void Add(TaskFunc func, void* taskData) override;
+        void Add(TaskDelegate func) override;
 
     private:
         bool Pump();
 
         static void PumpThread(ThreadPoolExecutor* executor);
 
-        struct ThreadTask
-        {
-            TaskFunc func;
-            void* taskData;
-        };
-
     private:
         Vector<std::thread> m_threads;
         String m_threadName;
 
         bool m_running;
-        std::deque<ThreadTask> m_tasks;
+        std::deque<TaskDelegate> m_tasks;
 
         Mutex m_mutex;
         ConditionVariable m_cv;

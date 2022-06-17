@@ -4,6 +4,7 @@
 
 #include "he/core/allocator.h"
 #include "he/core/clock.h"
+#include "he/core/delegate.h"
 #include "he/window/device.h"
 #include "he/window/event.h"
 
@@ -17,8 +18,8 @@ namespace he::editor
     class ImGuiPlatformService
     {
     public:
-        using SetupStyleFunc = void(*)(void* ctx, ImGuiStyle& style);
-        using SetupFontAtlasFunc = void(*)(void* ctx, ImFontAtlas& atlas, float dpiScale);
+        using StyleSetupDelegate = Delegate<void(ImGuiStyle& style)>;
+        using FontAtlasSetupDelegate = Delegate<void(ImFontAtlas& atlas, float dpiScale)>;
 
     public:
         ImGuiPlatformService();
@@ -26,9 +27,8 @@ namespace he::editor
         bool Initialize(
             window::Device* device,
             window::View* view,
-            SetupStyleFunc setupStyle,
-            SetupFontAtlasFunc setupFontAtlas,
-            void* setupCtx);
+            StyleSetupDelegate setupStyle,
+            FontAtlasSetupDelegate setupFontAtlas);
 
         void Terminate();
 
@@ -64,9 +64,8 @@ namespace he::editor
         window::Device* m_device{ nullptr };
         window::View* m_view{ nullptr };
 
-        SetupStyleFunc m_setupStyle{ nullptr };
-        SetupFontAtlasFunc m_setupFontAtlas{ nullptr };
-        void* m_setupCtx{ nullptr };
+        StyleSetupDelegate m_setupStyle{};
+        FontAtlasSetupDelegate m_setupFontAtlas{};
 
         ImGuiMouseCursor m_lastCursor{ ImGuiMouseCursor_COUNT };
         bool m_needToUpdateMonitors{ false };

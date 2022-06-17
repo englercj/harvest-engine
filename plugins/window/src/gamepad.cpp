@@ -3,6 +3,97 @@
 #include "he/window/gamepad.h"
 
 #include "he/core/enum_ops.h"
+#include "he/window/event.h"
+#include "he/window/application.h"
+
+namespace he::window
+{
+    float Gamepad::GetAxisValue(GamepadAxis axis) const
+    {
+        if (axis == GamepadAxis::None)
+            return 0.0f;
+
+        const uint32_t index = static_cast<uint32_t>(axis);
+        HE_ASSERT(index >= 0 && index < HE_LENGTH_OF(m_axes));
+        return m_axes[index];
+    }
+
+    bool Gamepad::IsButtonDown(GamepadButton button) const
+    {
+        if (button == GamepadButton::None)
+            return false;
+
+        const uint32_t flag = (1 << static_cast<uint32_t>(button));
+        return HasFlag(m_buttons, flag);
+    }
+
+    void Gamepad::SetConnected(Application& app, bool connected)
+    {
+        if (m_connected == connected)
+            return;
+
+        m_connected = connected;
+
+        if (connected)
+        {
+            Reset();
+            GamepadConnectedEvent ev(m_index);
+            app.OnEvent(ev);
+        }
+        else
+        {
+            GamepadDisconnectedEvent ev(m_index);
+            app.OnEvent(ev);
+        }
+    }
+
+    void Gamepad::Reset()
+    {
+        m_buttons = 0;
+        MemZero(m_axes, sizeof(m_axes));
+    }
+
+    void Gamepad::SetAxisValue(Application& app, GamepadAxis axis, float value)
+    {
+        if (axis == GamepadAxis::None)
+            return;
+
+        const uint32_t index = static_cast<uint32_t>(axis);
+        HE_ASSERT(index >= 0 && index < HE_LENGTH_OF(m_axes));
+
+        if (m_axes[index] == value)
+            return;
+
+        m_axes[index] = value;
+
+        GamepadAxisEvent ev(m_index, axis, value);
+        app.OnEvent(ev);
+    }
+
+    void Gamepad::SetButtonDown(Application& app, GamepadButton button, bool value)
+    {
+        if (button == GamepadButton::None)
+            return;
+
+        const uint32_t flag = (1 << static_cast<uint32_t>(button));
+
+        if (HasFlag(m_buttons, flag) == value)
+            return;
+
+        SetFlag(m_buttons, flag, value);
+
+        if (value)
+        {
+            GamepadButtonDownEvent ev(m_index, button);
+            app.OnEvent(ev);
+        }
+        else
+        {
+            GamepadButtonUpEvent ev(m_index, button);
+            app.OnEvent(ev);
+        }
+    }
+}
 
 namespace he
 {

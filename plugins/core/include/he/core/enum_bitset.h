@@ -27,6 +27,8 @@ namespace he
         using EnumType = T;
         using IntType = std::underlying_type_t<T>;
 
+        static_assert(std::is_unsigned_v<IntType>, "The underlying type of an EnumBitset must be unsigned.");
+
     public:
         EnumBitset() = default;
 

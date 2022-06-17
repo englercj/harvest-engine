@@ -45,7 +45,7 @@ namespace he::editor
                 ::CoUninitialize();
         }
 
-        operator bool() const { return SUCCEEDED(m_result); }
+        [[nodiscard]] explicit operator bool() const { return SUCCEEDED(m_result); }
 
         HRESULT m_result;
     };

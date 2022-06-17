@@ -65,7 +65,7 @@ namespace he
         explicit ArgResult(Code c, const char* msg) : code(c), msg(msg) {}
         explicit ArgResult(Code c, String&& msg) : code(c), msg(Move(msg)) {}
 
-        operator bool() const { return code == Success; }
+        [[nodiscard]] explicit operator bool() const { return code == Success; }
     };
 
     struct ArgDesc

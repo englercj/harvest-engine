@@ -43,16 +43,14 @@ namespace he::editor
         RemoveLogSink(m_fileSink);
     }
 
-    void LogService::LogHandler(void* userData, const LogSource& source, const KeyValue* kvs, uint32_t count)
+    void LogService::OnLogEntry(const LogSource& source, const KeyValue* kvs, uint32_t count)
     {
-        LogService& service = *static_cast<LogService*>(userData);
+        LockGuard lock(m_mutex);
 
-        LockGuard lock(service.m_mutex);
+        if (m_entries.size() == MaxEntries)
+            m_entries.pop_front();
 
-        if (service.m_entries.size() == MaxEntries)
-            service.m_entries.pop_front();
-
-        LogEntry& entry = service.m_entries.emplace_back();
+        LogEntry& entry = m_entries.emplace_back();
         entry.source = source;
         entry.kvs.Insert(0, kvs, kvs + count);
     }

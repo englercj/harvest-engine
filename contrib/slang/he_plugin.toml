@@ -23,10 +23,12 @@ homepage = "https://github.com/shader-slang/slang"
 
     [[modules.variants]]
         conditions = ["system:windows", "architecture:x86_64"]
+        public_dependson = [
+            "file:%{he.get_plugin('nvidia.slang')._install_dir}/bin/windows-x64/release/slang.lib"
+        ]
         post_build_commands = [
             "{COPYFILE} %{he.get_plugin('nvidia.slang')._install_dir}/bin/windows-x64/release/gfx.dll %{cfg.targetdir}",
             "{COPYFILE} %{he.get_plugin('nvidia.slang')._install_dir}/bin/windows-x64/release/slang.dll %{cfg.targetdir}",
-            "{COPYFILE} %{he.get_plugin('nvidia.slang')._install_dir}/bin/windows-x64/release/slang.lib %{cfg.targetdir}",
             "{COPYFILE} %{he.get_plugin('nvidia.slang')._install_dir}/bin/windows-x64/release/slang-glslang.dll %{cfg.targetdir}",
         ]
 

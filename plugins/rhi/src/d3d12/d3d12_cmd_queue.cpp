@@ -88,21 +88,21 @@ namespace he::rhi::d3d12
         HRESULT hr = d3dDevice->CreateCommandQueue(&d3dDesc, IID_PPV_ARGS(&m_d3dCmdQueue));
         if (FAILED(hr))
         {
-            HE_LOGF_ERROR(rhi, "Failed to create command queue.");
+            HE_LOGF_ERROR(he_rhi, "Failed to create command queue.");
             return m_device->MakeResult(hr);
         }
 
         hr = d3dDevice->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&m_d3dFence));
         if (FAILED(hr))
         {
-            HE_LOGF_ERROR(rhi, "Failed to create fence for command queue.");
+            HE_LOGF_ERROR(he_rhi, "Failed to create fence for command queue.");
             return m_device->MakeResult(hr);
         }
 
         m_fenceEvent = CreateEventW(nullptr, false, false, nullptr);
         if (!m_fenceEvent)
         {
-            HE_LOGF_ERROR(rhi, "Failed to create fence event for command queue.");
+            HE_LOGF_ERROR(he_rhi, "Failed to create fence event for command queue.");
             return Result::FromLastError();
         }
 

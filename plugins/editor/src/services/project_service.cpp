@@ -31,8 +31,9 @@ namespace he::editor
         const Uuid projId = Uuid::CreateV4();
 
         m_project = m_builder.Root().TryGetStruct<Project>();
-        HE_ASSERT(m_project.GetId().Size() == sizeof(projId.m_bytes));
-        MemCopy(m_project.GetId().Data(), projId.m_bytes, sizeof(projId.m_bytes));
+        Span<uint8_t> data = m_project.GetId().GetValue();
+        HE_ASSERT(data.Size() == sizeof(projId.m_bytes));
+        MemCopy(data.Data(), projId.m_bytes, sizeof(projId.m_bytes));
         m_project.InitName(name);
 
         m_projectPath = path;
@@ -124,7 +125,7 @@ namespace he::editor
         String appDir = m_directoryService.GetAppDirectory(DirectoryService::DirType::Resources);
         appDir += '/';
 
-        const Span<const uint8_t> projId = m_project.AsReader().GetId();
+        const Span<const uint8_t> projId = m_project.GetId().GetValue();
         HE_ASSERT(projId.Size() == sizeof(Uuid));
 
         fmt::format_to(Appender(appDir), "{:x}", fmt::join(projId, ""));

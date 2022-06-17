@@ -8,20 +8,23 @@ namespace he::window
 {
     extern Device* _CreateDevice(Allocator& allocator);
 
-    Device* CreateDevice(Allocator& allocator)
+    Device* Device::Create(Allocator& allocator)
     {
         Device* device = _CreateDevice(allocator);
         if (!device->Initialize())
         {
-            allocator.Delete(device);
+            Device::Destroy(device);
             return nullptr;
         }
 
         return device;
     }
 
-    void DestroyDevice(Device* device)
+    void Device::Destroy(Device* device)
     {
-        device->m_allocator.Delete(device);
+        if (device)
+        {
+            device->GetAllocator().Delete(device);
+        }
     }
 }

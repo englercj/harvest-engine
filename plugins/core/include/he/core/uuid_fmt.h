@@ -45,8 +45,8 @@ namespace fmt
         auto format(const he::Uuid& uuid, FormatContext& ctx) -> decltype(ctx.out())
         {
             // 00000000-0000-0000-0000-000000000000
-            constexpr char LowerFmt[] = "{:x}-{:x}-{:x}-{:x}-{:x}";
-            constexpr char UpperFmt[] = "{:X}-{:X}-{:X}-{:X}-{:X}";
+            constexpr char LowerFmt[] = "{:02x}-{:02x}-{:02x}-{:02x}-{:02x}";
+            constexpr char UpperFmt[] = "{:02X}-{:02X}-{:02X}-{:02X}-{:02X}";
 
             static_assert(sizeof(uuid.m_bytes) == 16);
             const uint8_t* b = uuid.m_bytes;

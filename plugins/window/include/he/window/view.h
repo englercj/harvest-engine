@@ -70,7 +70,7 @@ namespace he::window
         class View* parent{ nullptr };
     };
 
-    /// Interface for controling a spawned platform view.
+    /// Interface for controlling a spawned platform view.
     class View
     {
     public:

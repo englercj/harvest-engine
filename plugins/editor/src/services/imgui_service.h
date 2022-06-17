@@ -48,8 +48,9 @@ namespace he::editor
 
     private:
         static void SetupColors();
-        static void SetupStyle(void* ctx, ImGuiStyle& style);
-        static void SetupFontAtlas(void* ctx, ImFontAtlas& atlas, float dpiScale);
+
+        void SetupStyle(ImGuiStyle& style);
+        void SetupFontAtlas(ImFontAtlas& atlas, float dpiScale);
 
         static void MergeFontAwesome(ImFontAtlas& atlas, float scaledFontSize);
 

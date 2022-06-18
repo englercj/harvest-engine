@@ -8,6 +8,7 @@
 #include "he/core/types.h"
 #include "he/core/utils.h"
 
+#include <functional>
 #include <type_traits>
 
 namespace he
@@ -35,7 +36,7 @@ namespace he
         static Delegate Make() noexcept
         {
             Delegate d;
-            d.Connect<F>();
+            d.Set<F>();
             return d;
         }
 
@@ -43,53 +44,35 @@ namespace he
         static Delegate Make(T&& payload) noexcept
         {
             Delegate d;
-            d.Connect<F>(Forward<T>(payload));
+            d.Set<F>(Forward<T>(payload));
             return d;
         }
 
-        template <typename F> requires(std::is_invocable_r_v<R, F, Args...> && std::is_nothrow_assignable_v<F>)
-        static Delegate Alloc(F&& invocable, Allocator& allocator = Allocator::GetDefault()) noexcept
+        static Delegate Make(FunctionType* func, const void* payload = nullptr) noexcept
         {
-            struct Storage
-            {
-                F invocable;
-                Allocator* allocator;
-            };
-            Storage* storage = allocator.New<Storage>();
-            storage->invocable = Move(invocable);
-            storage->allocator = allocator;
+            return Delegate(func, payload);
+        }
 
-            Delegate d;
-            d.Connect([](const void* payload, Args... args) -> R
-            {
-                Storage* store = static_cast<Storage*>(payload);
-                R r = R(std::invoke(store->invocable, Forward<Args>(args)...));
-                store->allocator.Delete(store);
-                return r;
-            }, storage);
-            return d;
+        static Delegate Make(InvocableType* func) noexcept
+        {
+            return Delegate(func);
         }
 
     public:
-        Delegate() noexcept = default;
+        Delegate() = default;
 
         Delegate(FunctionType* func, const void* payload = nullptr) noexcept
-            : m_payload(payload)
-            , m_func(func)
-        {}
-
-        constexpr Delegate(InvocableType* func) noexcept
         {
-            m_payload = func;
-            m_func = [](const void* payload, Args... args) -> R
-            {
-                InvocableType* f = static_cast<InvocableType*>(const_cast<void*>(payload));
-                return f(Forward<Args>(args)...);
-            };
+            Set(func, payload);
+        }
+
+        Delegate(InvocableType* func) noexcept
+        {
+            Set(func);
         }
 
         template <auto F>
-        constexpr void Connect() noexcept
+        void Set() noexcept
         {
             m_payload = nullptr;
 
@@ -111,7 +94,7 @@ namespace he
         }
 
         template <auto F, typename T>
-        void Connect(T& payload) noexcept
+        void Set(T& payload) noexcept
         {
             m_payload = &payload;
 
@@ -130,7 +113,7 @@ namespace he
         }
 
         template <auto F, typename T>
-        void Connect(T* payload) noexcept
+        void Set(T* payload) noexcept
         {
             m_payload = payload;
 
@@ -148,10 +131,20 @@ namespace he
             }
         }
 
-        void Connect(FunctionType* func, const void* payload = nullptr) noexcept
+        void Set(FunctionType* func, const void* payload = nullptr) noexcept
         {
             m_payload = payload;
             m_func = func;
+        }
+
+        void Set(InvocableType* func) noexcept
+        {
+            m_payload = func;
+            m_func = [](const void* payload, Args... args) -> R
+            {
+                InvocableType* f = static_cast<InvocableType*>(const_cast<void*>(payload));
+                return f(Forward<Args>(args)...);
+            };
         }
 
         void Clear() noexcept
@@ -174,7 +167,7 @@ namespace he
 
     private:
         template<auto F, size_t... Index>
-        [[nodiscard]] static constexpr auto Wrap(std::index_sequence<Index...>) noexcept
+        [[nodiscard]] static auto Wrap(std::index_sequence<Index...>) noexcept
         {
             return [](const void*, Args... args) -> R
             {
@@ -184,7 +177,7 @@ namespace he
         }
 
         template<auto F, typename T, size_t... Index>
-        [[nodiscard]] static constexpr auto Wrap(T&, std::index_sequence<Index...>) noexcept
+        [[nodiscard]] static auto Wrap(T&, std::index_sequence<Index...>) noexcept
         {
             return [](const void* payload, Args... args) -> R
             {
@@ -195,7 +188,7 @@ namespace he
         }
 
         template<auto F, typename T, size_t... Index>
-        [[nodiscard]] static constexpr auto Wrap(T*, std::index_sequence<Index...>) noexcept
+        [[nodiscard]] static auto Wrap(T*, std::index_sequence<Index...>) noexcept
         {
             return [](const void* payload, Args... args) -> R
             {
@@ -212,9 +205,9 @@ namespace he
 
     // deduction guide
     template<typename R, typename... Args>
-    Delegate(R(*)(Args...)) -> Delegate<R(Args...)>;
+    Delegate(R(*)(const void*, Args...), const void* = nullptr) -> Delegate<R(Args...)>;
 
     // deduction guide
     template<typename R, typename... Args>
-    Delegate(R(*)(const void*, Args...), const void* = nullptr) -> Delegate<R(Args...)>;
+    Delegate(R(*)(Args...)) -> Delegate<R(Args...)>;
 }

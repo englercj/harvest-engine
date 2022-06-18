@@ -184,6 +184,7 @@ namespace he
 
         ~AsyncFileLoaderImpl()
         {
+            Allocator::GetDefault().Delete(m_defaultQueue);
             GlobalTerminate();
         }
 
@@ -253,7 +254,10 @@ namespace he
 
         void DestroyQueue(AsyncFileQueue* queue) override
         {
-            Allocator::GetDefault().Delete(queue);
+            if (queue != m_defaultQueue)
+            {
+                Allocator::GetDefault().Delete(queue);
+            }
         }
 
     private:

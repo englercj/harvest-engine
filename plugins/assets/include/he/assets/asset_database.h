@@ -28,7 +28,7 @@ namespace he::assets
         using LoadDelegate = Delegate<void(LoadResult)>;
 
     public:
-        ~AssetDatabase() { Terminate(); }
+        ~AssetDatabase() noexcept { Terminate(); }
 
         bool Initialize(const char* dbPath, const char* rootDir, AsyncFileLoader& loader);
         bool Terminate();

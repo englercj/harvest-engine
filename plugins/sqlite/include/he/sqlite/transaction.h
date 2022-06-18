@@ -13,11 +13,11 @@ namespace he::sqlite
     class Transaction final
     {
     public:
-        explicit Transaction(sqlite3* db);
-        ~Transaction();
+        explicit Transaction(sqlite3* db) noexcept;
+        ~Transaction() noexcept;
 
-        Transaction(Transaction&& x);
-        Transaction& operator=(Transaction&& x);
+        Transaction(Transaction&& x) noexcept;
+        Transaction& operator=(Transaction&& x) noexcept;
 
         Transaction(const Transaction&) = delete;
         Transaction& operator=(const Transaction&) = delete;

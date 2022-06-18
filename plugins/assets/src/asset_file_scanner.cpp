@@ -21,7 +21,7 @@
 
 namespace he::assets
 {
-    AssetFileScanner::AssetFileScanner(AssetDatabase& db)
+    AssetFileScanner::AssetFileScanner(AssetDatabase& db) noexcept
         : m_db(db)
     {
         GetSecureRandomBytes(reinterpret_cast<uint8_t*>(&m_token), sizeof(m_token));

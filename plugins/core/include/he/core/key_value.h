@@ -63,22 +63,22 @@ namespace he
         };
 
     public:
-        KeyValue(const char* k, bool v) : m_key(k), m_kind(ValueKind::Bool), m_value{ .b = v } {}
-        KeyValue(const char* k, signed char v) : m_key(k), m_kind(ValueKind::Int), m_value{ .i = v } {}
-        KeyValue(const char* k, signed short v) : m_key(k), m_kind(ValueKind::Int), m_value{ .i = v } {}
-        KeyValue(const char* k, signed int v) : m_key(k), m_kind(ValueKind::Int), m_value{ .i = v } {}
-        KeyValue(const char* k, signed long v) : m_key(k), m_kind(ValueKind::Int), m_value{ .i = v } {}
-        KeyValue(const char* k, signed long long v) : m_key(k), m_kind(ValueKind::Int), m_value{ .i = v } {}
-        KeyValue(const char* k, unsigned char v) : m_key(k), m_kind(ValueKind::Uint), m_value{ .u = v } {}
-        KeyValue(const char* k, unsigned short v) : m_key(k), m_kind(ValueKind::Uint), m_value{ .u = v } {}
-        KeyValue(const char* k, unsigned int v) : m_key(k), m_kind(ValueKind::Uint), m_value{ .u = v } {}
-        KeyValue(const char* k, unsigned long v) : m_key(k), m_kind(ValueKind::Uint), m_value{ .u = v } {}
-        KeyValue(const char* k, unsigned long long v) : m_key(k), m_kind(ValueKind::Uint), m_value{ .u = v } {}
-        KeyValue(const char* k, float v) : m_key(k), m_kind(ValueKind::Double), m_value{ .d = v } {}
-        KeyValue(const char* k, double v) : m_key(k), m_kind(ValueKind::Double), m_value{ .d = v } {}
+        KeyValue(const char* k, bool v) noexcept : m_key(k), m_kind(ValueKind::Bool), m_value{ .b = v } {}
+        KeyValue(const char* k, signed char v) noexcept : m_key(k), m_kind(ValueKind::Int), m_value{ .i = v } {}
+        KeyValue(const char* k, signed short v) noexcept : m_key(k), m_kind(ValueKind::Int), m_value{ .i = v } {}
+        KeyValue(const char* k, signed int v) noexcept : m_key(k), m_kind(ValueKind::Int), m_value{ .i = v } {}
+        KeyValue(const char* k, signed long v) noexcept : m_key(k), m_kind(ValueKind::Int), m_value{ .i = v } {}
+        KeyValue(const char* k, signed long long v) noexcept : m_key(k), m_kind(ValueKind::Int), m_value{ .i = v } {}
+        KeyValue(const char* k, unsigned char v) noexcept : m_key(k), m_kind(ValueKind::Uint), m_value{ .u = v } {}
+        KeyValue(const char* k, unsigned short v) noexcept : m_key(k), m_kind(ValueKind::Uint), m_value{ .u = v } {}
+        KeyValue(const char* k, unsigned int v) noexcept : m_key(k), m_kind(ValueKind::Uint), m_value{ .u = v } {}
+        KeyValue(const char* k, unsigned long v) noexcept : m_key(k), m_kind(ValueKind::Uint), m_value{ .u = v } {}
+        KeyValue(const char* k, unsigned long long v) noexcept : m_key(k), m_kind(ValueKind::Uint), m_value{ .u = v } {}
+        KeyValue(const char* k, float v) noexcept : m_key(k), m_kind(ValueKind::Double), m_value{ .d = v } {}
+        KeyValue(const char* k, double v) noexcept : m_key(k), m_kind(ValueKind::Double), m_value{ .d = v } {}
 
         template <Enum T>
-        constexpr KeyValue(const char* k, T v)
+        constexpr KeyValue(const char* k, T v) noexcept
             : m_key(k)
             , m_kind(ValueKind::Enum)
         {
@@ -86,7 +86,7 @@ namespace he
             m_value.e.toString = [](uint64_t val) { return AsString(static_cast<T>(val)); };
         }
 
-        KeyValue(const char* k, const char* v)
+        KeyValue(const char* k, const char* v) noexcept
             : m_key(k)
             , m_kind(ValueKind::String)
         {
@@ -94,7 +94,7 @@ namespace he
         }
 
         template <size_t N>
-        KeyValue(const char* k, const char (&v)[N])
+        KeyValue(const char* k, const char (&v)[N]) noexcept
             : m_key(k)
             , m_kind(ValueKind::String)
         {
@@ -102,7 +102,7 @@ namespace he
         }
 
         template <typename T> requires(!Enum<T> && (StdContiguousRange<T, const char> || ContiguousRange<T, const char>))
-        KeyValue(const char* k, const T& v)
+        KeyValue(const char* k, const T& v) noexcept
             : m_key(k)
             , m_kind(ValueKind::String)
         {
@@ -110,7 +110,7 @@ namespace he
         }
 
         template <typename... Args>
-        KeyValue(const char* k, fmt::format_string<Args...> fmt, Args&&... args)
+        KeyValue(const char* k, fmt::format_string<Args...> fmt, Args&&... args) noexcept
             : m_key(k)
             , m_kind(ValueKind::String)
         {
@@ -118,15 +118,15 @@ namespace he
         }
 
         template <typename T> requires(!Enum<T> && !StdContiguousRange<T, const char> && !ContiguousRange<T, const char>)
-        KeyValue(const char* k, const T& v)
+        KeyValue(const char* k, const T& v) noexcept
             : m_key(k)
             , m_kind(ValueKind::String)
         {
             fmt::format_to(Appender(m_value.s), "{}", v);
         }
 
-        KeyValue(const KeyValue& x) { *this = x; }
-        KeyValue& operator=(const KeyValue& x)
+        KeyValue(const KeyValue& x) noexcept { *this = x; }
+        KeyValue& operator=(const KeyValue& x) noexcept
         {
             m_key = x.m_key;
             m_kind = x.m_kind;
@@ -142,8 +142,8 @@ namespace he
             return *this;
         }
 
-        KeyValue(KeyValue&& x) { *this = Move(x); }
-        KeyValue& operator=(KeyValue&& x)
+        KeyValue(KeyValue&& x) noexcept { *this = Move(x); }
+        KeyValue& operator=(KeyValue&& x) noexcept
         {
             m_key = x.m_key;
             m_kind = x.m_kind;

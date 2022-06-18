@@ -44,7 +44,7 @@ namespace he::window
         static void Destroy(Device* device);
 
     public:
-        virtual ~Device() {}
+        virtual ~Device() = default;
 
         /// Gets the allocator used for all allocations in this device.
         ///
@@ -136,7 +136,7 @@ namespace he::window
         virtual Gamepad& GetGamepad(uint32_t index) = 0;
 
     protected:
-        Device(Allocator& allocator) : m_allocator(allocator) {}
+        explicit Device(Allocator& allocator) noexcept : m_allocator(allocator) {}
 
         virtual bool Initialize() = 0;
 

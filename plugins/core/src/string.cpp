@@ -139,49 +139,49 @@ namespace he
         return nullptr;
     }
 
-    String::String(Allocator& allocator)
+    String::String(Allocator& allocator) noexcept
         : m_allocator(allocator)
     {
         SetSizeEmbed(0);
     }
 
-    String::String(const char* str, Allocator& allocator)
+    String::String(const char* str, Allocator& allocator) noexcept
         : String(allocator)
     {
         Append(str);
     }
 
-    String::String(const char* str, uint32_t len, Allocator& allocator)
+    String::String(const char* str, uint32_t len, Allocator& allocator) noexcept
         : String(allocator)
     {
         Append(str, len);
     }
 
-    String::String(const String& x, Allocator& allocator)
+    String::String(const String& x, Allocator& allocator) noexcept
         : String(allocator)
     {
         CopyFrom(x);
     }
 
-    String::String(String&& x, Allocator& allocator)
+    String::String(String&& x, Allocator& allocator) noexcept
         : String(allocator)
     {
         MoveFrom(Move(x));
     }
 
-    String::String(const String& x)
+    String::String(const String& x) noexcept
         : String(x.m_allocator)
     {
         CopyFrom(x);
     }
 
-    String::String(String&& x)
+    String::String(String&& x) noexcept
         : String(x.m_allocator)
     {
         MoveFrom(Move(x));
     }
 
-    String::~String()
+    String::~String() noexcept
     {
         if (!IsEmbedded())
         {
@@ -189,13 +189,13 @@ namespace he
         }
     }
 
-    String& String::operator=(const String& x)
+    String& String::operator=(const String& x) noexcept
     {
         CopyFrom(x);
         return *this;
     }
 
-    String& String::operator=(String&& x)
+    String& String::operator=(String&& x) noexcept
     {
         MoveFrom(Move(x));
         return *this;

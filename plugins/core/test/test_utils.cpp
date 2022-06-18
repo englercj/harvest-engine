@@ -228,11 +228,11 @@ HE_TEST(core, utils, Exchange)
 
         TestMove() = default;
 
-        TestMove(const TestMove&) { copyCtor = true; }
-        TestMove& operator=(const TestMove&) { copyAssign = true; return *this; }
+        TestMove(const TestMove&) noexcept { copyCtor = true; }
+        TestMove& operator=(const TestMove&) noexcept { copyAssign = true; return *this; }
 
-        TestMove(TestMove&&) { moveCtor = true; }
-        TestMove& operator=(TestMove&&) { moveAssign = true; return *this; }
+        TestMove(TestMove&&) noexcept { moveCtor = true; }
+        TestMove& operator=(TestMove&&) noexcept { moveAssign = true; return *this; }
     };
 
     TestMove x{};

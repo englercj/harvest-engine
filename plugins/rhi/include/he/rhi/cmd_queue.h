@@ -11,7 +11,7 @@ namespace he::rhi
     class CmdQueue
     {
     public:
-        virtual ~CmdQueue() {}
+        virtual ~CmdQueue() = default;
 
         /// Adds a GPU-side signal to the queue that will set the fence.
         ///

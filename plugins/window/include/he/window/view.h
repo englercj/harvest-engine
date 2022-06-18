@@ -74,7 +74,7 @@ namespace he::window
     class View
     {
     public:
-        virtual ~View() {}
+        virtual ~View() = default;
 
         /// Gets the native OS view handle for this view. For example, this is an HWND on Windows.
         ///

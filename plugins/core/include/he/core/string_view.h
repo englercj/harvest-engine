@@ -23,7 +23,7 @@ namespace he
         /// Construct a string view from a null terminated string.
         ///
         /// \param str The string to refer to.
-        constexpr StringView(const char* str)
+        constexpr StringView(const char* str) noexcept
             : m_span(str, String::LengthConst(str))
         {}
 
@@ -31,7 +31,7 @@ namespace he
         ///
         /// \param begin The start of the range for the string view to refer to.
         /// \param end The end of the range for the string view to refer to.
-        constexpr StringView(const char* begin, const char* end)
+        constexpr StringView(const char* begin, const char* end) noexcept
             : m_span(begin, end)
         {}
 
@@ -39,7 +39,7 @@ namespace he
         ///
         /// \param str The string to refer to.
         /// \param len The number of characters to refer to.
-        constexpr StringView(const char* str, uint32_t len)
+        constexpr StringView(const char* str, uint32_t len) noexcept
             : m_span(str, len)
         {}
 
@@ -47,7 +47,7 @@ namespace he
         ///
         /// \param str The string to refer to.
         template <typename T>
-        constexpr StringView(const T& str)
+        constexpr StringView(const T& str) noexcept
             requires(!std::is_same_v<std::remove_cv_t<T>, StringView> && (StdContiguousRange<T, const char> || ContiguousRange<T, const char>))
             : m_span(str)
         {}
@@ -55,7 +55,7 @@ namespace he
         /// Construct a span from another span object.
         ///
         /// \param x The string view to refer to.
-        constexpr StringView(const StringView& x)
+        constexpr StringView(const StringView& x) noexcept
             : m_span(x.m_span)
         {}
 
@@ -65,7 +65,7 @@ namespace he
         /// Copy the pointer and size of string view `x`.
         ///
         /// \param x The string view to copy from.
-        constexpr StringView& operator=(const StringView& x) { m_span = x.m_span; return *this; }
+        constexpr StringView& operator=(const StringView& x) noexcept { m_span = x.m_span; return *this; }
 
         /// Gets a reference to the character at `index`. Asserts if `index` is not less
         /// than \see Size().

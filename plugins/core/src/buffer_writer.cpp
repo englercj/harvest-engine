@@ -10,43 +10,43 @@
 
 namespace he
 {
-    BufferWriter::BufferWriter(Allocator& allocator)
+    BufferWriter::BufferWriter(Allocator& allocator) noexcept
         : m_allocator(allocator)
         , m_strategy(GrowthStrategy::Factor)
         , m_growth(0.5f)
     {}
 
-    BufferWriter::BufferWriter(GrowthStrategy strategy, float growth, Allocator& allocator)
+    BufferWriter::BufferWriter(GrowthStrategy strategy, float growth, Allocator& allocator) noexcept
         : m_allocator(allocator)
         , m_strategy(strategy)
         , m_growth(growth)
     {}
 
-    BufferWriter::BufferWriter(const BufferWriter& x, Allocator& allocator)
+    BufferWriter::BufferWriter(const BufferWriter& x, Allocator& allocator) noexcept
         : m_allocator(allocator)
     {
         CopyFrom(x);
     }
 
-    BufferWriter::BufferWriter(BufferWriter&& x, Allocator& allocator)
+    BufferWriter::BufferWriter(BufferWriter&& x, Allocator& allocator) noexcept
         : m_allocator(allocator)
     {
         MoveFrom(Move(x));
     }
 
-    BufferWriter::BufferWriter(const BufferWriter& x)
+    BufferWriter::BufferWriter(const BufferWriter& x) noexcept
         : m_allocator(x.m_allocator)
     {
         CopyFrom(x);
     }
 
-    BufferWriter::BufferWriter(BufferWriter&& x)
+    BufferWriter::BufferWriter(BufferWriter&& x) noexcept
         : m_allocator(x.m_allocator)
     {
         MoveFrom(Move(x));
     }
 
-    BufferWriter::~BufferWriter()
+    BufferWriter::~BufferWriter() noexcept
     {
         if (m_data)
         {
@@ -54,13 +54,13 @@ namespace he
         }
     }
 
-    BufferWriter& BufferWriter::operator=(const BufferWriter& x)
+    BufferWriter& BufferWriter::operator=(const BufferWriter& x) noexcept
     {
         CopyFrom(x);
         return *this;
     }
 
-    BufferWriter& BufferWriter::operator=(BufferWriter&& x)
+    BufferWriter& BufferWriter::operator=(BufferWriter&& x) noexcept
     {
         MoveFrom(Move(x));
         return *this;

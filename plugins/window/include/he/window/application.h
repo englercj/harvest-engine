@@ -13,7 +13,7 @@ namespace he::window
     class Application
     {
     public:
-        virtual ~Application() {}
+        virtual ~Application() = default;
 
         /// Called during the window event loop to process an event.
         ///

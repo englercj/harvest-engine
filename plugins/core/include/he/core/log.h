@@ -176,7 +176,8 @@ namespace he
     void RemoveLogSink(LogDelegate sink);
 
     template <typename T>
-    concept LogHandler = requires(T& t) {
+    concept LogHandler = requires(T& t)
+    {
         { t.OnLogEntry(std::declval<const LogSource&>(), std::declval<const KeyValue*>(), std::declval<uint32_t>()) } -> std::convertible_to<void>;
     };
 

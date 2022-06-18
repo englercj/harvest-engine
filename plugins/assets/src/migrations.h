@@ -8,7 +8,8 @@
 
 namespace he::assets
 {
-    static const sqlite::SchemaMigration AssetDatabase_Migrations[] = {
+    static const sqlite::SchemaMigration AssetDatabase_Migrations[] =
+    {
         { "Initial Schema", c_001_initial_sql },
     };
 }

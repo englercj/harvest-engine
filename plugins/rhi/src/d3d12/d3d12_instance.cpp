@@ -27,12 +27,12 @@ HE_DEFINE_GUID(DXGI_DEBUG_DXGI, 0x25cddaa4, 0xb1c6, 0x47e1, 0xac, 0x3e, 0x98, 0x
 
 namespace he::rhi::d3d12
 {
-    InstanceImpl::InstanceImpl(Allocator& allocator)
+    InstanceImpl::InstanceImpl(Allocator& allocator) noexcept
         : m_allocator(allocator)
         , m_adapters(allocator)
     { }
 
-    InstanceImpl::~InstanceImpl()
+    InstanceImpl::~InstanceImpl() noexcept
     {
         HE_DX_SAFE_RELEASE(m_dxgiFactory2);
         HE_DX_SAFE_RELEASE(m_infoQueue);

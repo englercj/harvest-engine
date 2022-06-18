@@ -72,7 +72,7 @@ namespace he::rhi::d3d12
         d3dDesc.MaxLOD = desc.maxLOD;
     }
 
-    DeviceImpl::~DeviceImpl()
+    DeviceImpl::~DeviceImpl() noexcept
     {
         for (uint32_t i = 0; i < HE_LENGTH_OF(m_nullTextureSRV); ++i)
             m_cpuGeneralPool.Free(1, m_nullTextureSRV[i]);

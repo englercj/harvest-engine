@@ -14,7 +14,7 @@ namespace he::schema
 {
     #define HE_ID_FMT "@{:#018x}"
 
-    CodeGenEcho::CodeGenEcho(const CodeGenRequest& request)
+    CodeGenEcho::CodeGenEcho(const CodeGenRequest& request) noexcept
         : m_request(request)
     {}
 

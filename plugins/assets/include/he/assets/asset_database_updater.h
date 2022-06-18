@@ -13,7 +13,7 @@ namespace he::assets
         static void Destroy(AssetDatabaseUpdater* updater);
 
     public:
-        virtual ~AssetDatabaseUpdater() {}
+        virtual ~AssetDatabaseUpdater() = default;
 
         virtual bool Start() = 0;
         virtual void Stop() = 0;

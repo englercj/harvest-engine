@@ -11,7 +11,7 @@ namespace he::rhi
     class CmdList
     {
     public:
-        virtual ~CmdList() {}
+        virtual ~CmdList() = default;
 
         /// Begin recording of commands into this list.
         ///

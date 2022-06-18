@@ -160,13 +160,13 @@ namespace he
         static Result WriteAll(const void* src, uint32_t size, const char* path, uint32_t* bytesWritten = nullptr);
 
     public:
-        File();
+        File() noexcept;
         File(const File&) = delete;
-        File(File&& x);
-        ~File();
+        File(File&& x) noexcept;
+        ~File() noexcept;
 
         File& operator=(const File&) = delete;
-        File& operator=(File&& x);
+        File& operator=(File&& x) noexcept;
 
         /// Opens the file at `path` in the given `mode` using behavior defined by `flags`.
         ///
@@ -254,13 +254,13 @@ namespace he
     class MemoryMap
     {
     public:
-        MemoryMap();
+        MemoryMap() noexcept;
         MemoryMap(const MemoryMap&) = delete;
-        MemoryMap(MemoryMap&& x);
-        ~MemoryMap();
+        MemoryMap(MemoryMap&& x) noexcept;
+        ~MemoryMap() noexcept;
 
         MemoryMap& operator=(const MemoryMap&) = delete;
-        MemoryMap& operator=(MemoryMap&& x);
+        MemoryMap& operator=(MemoryMap&& x) noexcept;
 
         // Memory maps a file.
         Result Map(File& file, MemoryMapMode mode, uint64_t offset = 0, uint32_t size = 0);

@@ -218,53 +218,53 @@ namespace he
     }
 
     template <typename T>
-    Vector<T>::Vector(Allocator& allocator)
+    Vector<T>::Vector(Allocator& allocator) noexcept
         : m_allocator(allocator)
     {}
 
     template <typename T>
-    Vector<T>::Vector(const Vector& x, Allocator& allocator)
+    Vector<T>::Vector(const Vector& x, Allocator& allocator) noexcept
         : Vector(allocator)
     {
         CopyFrom(x);
     }
 
     template <typename T>
-    Vector<T>::Vector(Vector&& x, Allocator& allocator)
+    Vector<T>::Vector(Vector&& x, Allocator& allocator) noexcept
         : Vector(allocator)
     {
         MoveFrom(Move(x));
     }
 
     template <typename T>
-    Vector<T>::Vector(const Vector& x)
+    Vector<T>::Vector(const Vector& x) noexcept
         : Vector(x.m_allocator)
     {
         CopyFrom(x);
     }
 
     template <typename T>
-    Vector<T>::Vector(Vector&& x)
+    Vector<T>::Vector(Vector&& x) noexcept
         : Vector(x.m_allocator)
     {
         MoveFrom(Move(x));
     }
 
     template <typename T>
-    Vector<T>::~Vector()
+    Vector<T>::~Vector() noexcept
     {
         Destroy();
     }
 
     template <typename T>
-    Vector<T>& Vector<T>::operator=(const Vector& x)
+    Vector<T>& Vector<T>::operator=(const Vector& x) noexcept
     {
         CopyFrom(x);
         return *this;
     }
 
     template <typename T>
-    Vector<T>& Vector<T>::operator=(Vector&& x)
+    Vector<T>& Vector<T>::operator=(Vector&& x) noexcept
     {
         MoveFrom(Move(x));
         return *this;

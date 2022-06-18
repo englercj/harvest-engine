@@ -18,7 +18,7 @@ namespace he::assets
     class AssetFileScanner
     {
     public:
-        AssetFileScanner(AssetDatabase& db);
+        AssetFileScanner(AssetDatabase& db) noexcept;
 
         bool Run(const char* rootDir);
 

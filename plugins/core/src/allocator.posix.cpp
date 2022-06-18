@@ -13,7 +13,7 @@
 
 namespace he
 {
-    void* CrtAllocator::Malloc(size_t size, size_t alignment)
+    void* CrtAllocator::Malloc(size_t size, size_t alignment) noexcept
     {
         alignment = AlignUp(alignment, sizeof(void*));
 
@@ -22,7 +22,7 @@ namespace he
         return rc ? nullptr : p;
     }
 
-    void* CrtAllocator::Realloc(void* ptr, size_t newSize, size_t alignment)
+    void* CrtAllocator::Realloc(void* ptr, size_t newSize, size_t alignment) noexcept
     {
         if (ptr == nullptr)
             return Malloc(newSize, alignment);
@@ -60,7 +60,7 @@ namespace he
         return p;
     }
 
-    void CrtAllocator::Free(void* ptr)
+    void CrtAllocator::Free(void* ptr) noexcept
     {
         free(ptr);
     }

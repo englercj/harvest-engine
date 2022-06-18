@@ -42,7 +42,7 @@ namespace he
         /// \param size The size in bytes of the new memory block.
         /// \param alignment Optional. Custom alignment for the pointer.
         /// \return A pointer to the newly allocated memory.
-        [[nodiscard]] virtual void* Malloc(size_t size, size_t alignment = DefaultAlignment) = 0;
+        [[nodiscard]] virtual void* Malloc(size_t size, size_t alignment = DefaultAlignment) noexcept = 0;
 
         /// Rellocates a memory block on the heap. Tries to avoid allocate and copy by extending
         /// the existing memory block if possible.
@@ -51,12 +51,12 @@ namespace he
         /// \param newSize The desired size in bytes of the new memory block.
         /// \param alignment Optional. Custom alignment for the pointer. Must match what was originally passed to Malloc.
         /// \return A pointer to the newly reallocated memory.
-        virtual void* Realloc(void* ptr, size_t newSize, size_t alignment = DefaultAlignment) = 0;
+        virtual void* Realloc(void* ptr, size_t newSize, size_t alignment = DefaultAlignment) noexcept = 0;
 
         /// Frees a memory block that was allocated with Malloc or reallocated with Realloc.
         ///
         /// \param ptr The pointer returned from Malloc or Realloc.
-        virtual void Free(void* ptr) = 0;
+        virtual void Free(void* ptr) noexcept = 0;
 
         /// Allocates a new memory block that can fit `count` instance of a type `T`.
         ///
@@ -66,7 +66,7 @@ namespace he
         /// \param count The number of elements to allocate space for.
         /// \return A pointer to the newly allocated memory.
         template <typename T>
-        [[nodiscard]] T* Malloc(uint32_t count)
+        [[nodiscard]] T* Malloc(uint32_t count) noexcept
         {
             return static_cast<T*>(Malloc(sizeof(T) * count, alignof(T)));
         }
@@ -76,7 +76,7 @@ namespace he
         /// \tparam The type to allocate and construct.
         /// \param args optional arguments for the constructor.
         template <typename T, class... Args>
-        [[nodiscard]] T* New(Args&&... args)
+        [[nodiscard]] T* New(Args&&... args) noexcept(std::is_nothrow_constructible_v<T, Args...>)
         {
             void* p = Malloc<T>(1);
             return new(p) T(Forward<Args>(args)...);
@@ -88,7 +88,7 @@ namespace he
         /// \param count The number of array elements to allocate and construct.
         /// \param args optional arguments for the constructor.
         template <typename T> requires(std::is_trivially_constructible_v<T> && std::is_trivially_destructible_v<T>)
-        [[nodiscard]] T* NewArray(uint32_t count)
+        [[nodiscard]] T* NewArray(uint32_t count) noexcept
         {
             T* mem = Malloc<T>(count);
             MemZero(mem, count * sizeof(T));
@@ -101,7 +101,7 @@ namespace he
         /// \param count The number of array elements to allocate and construct.
         /// \param args optional arguments for the constructor.
         template <typename T, class... Args>
-        [[nodiscard]] T* NewArray(uint32_t count, Args&&... args)
+        [[nodiscard]] T* NewArray(uint32_t count, Args&&... args) noexcept(std::is_nothrow_constructible_v<T, Args...>)
         {
             constexpr size_t Align = alignof(T);
             constexpr size_t Offset = AlignUp<size_t>(sizeof(size_t), Align);
@@ -129,7 +129,7 @@ namespace he
         ///
         /// \param p The pointer to destruct and deallocate.
         template <typename T> requires(std::is_trivially_destructible_v<T>)
-        void Delete(const T* p)
+        void Delete(const T* p) noexcept
         {
             Free(const_cast<T*>(p));
         }
@@ -138,7 +138,7 @@ namespace he
         ///
         /// \param p The pointer to destruct and deallocate.
         template <typename T> requires(!std::is_trivially_destructible_v<T>)
-        void Delete(const T* p)
+        void Delete(const T* p) noexcept(std::is_nothrow_destructible_v<T>)
         {
             if (p)
             {
@@ -151,7 +151,7 @@ namespace he
         ///
         /// \param p The pointer to destruct and deallocate.
         template <typename T> requires(std::is_trivially_destructible_v<T>)
-        void DeleteArray(const T* p)
+        void DeleteArray(const T* p) noexcept
         {
             Free(const_cast<T*>(p));
         }
@@ -160,7 +160,7 @@ namespace he
         ///
         /// \param p The pointer to destruct and deallocate.
         template <typename T> requires(!std::is_trivially_destructible_v<T>)
-        void DeleteArray(const T* p)
+        void DeleteArray(const T* p) noexcept(std::is_nothrow_destructible_v<T>)
         {
             if (!p)
                 return;
@@ -190,26 +190,26 @@ namespace he
         /// Returns the singleton instance of the CrtAllocator.
         static CrtAllocator& Get();
 
-        [[nodiscard]] void* Malloc(size_t size, size_t alignment = DefaultAlignment) override;
-        void* Realloc(void* ptr, size_t newSize, size_t alignment = DefaultAlignment) override;
-        void Free(void* ptr) override;
+        [[nodiscard]] void* Malloc(size_t size, size_t alignment = DefaultAlignment) noexcept override;
+        void* Realloc(void* ptr, size_t newSize, size_t alignment = DefaultAlignment) noexcept override;
+        void Free(void* ptr) noexcept override;
     };
 
     /// Allocator that allocates pages of space and expects them all to be freed at the end of use.
     class LinearPageAllocator : public Allocator
     {
     public:
-        explicit LinearPageAllocator(size_t pageSize, Allocator& allocator = Allocator::GetDefault());
+        explicit LinearPageAllocator(size_t pageSize, Allocator& allocator = Allocator::GetDefault()) noexcept;
         LinearPageAllocator(const LinearPageAllocator&) = delete;
-        LinearPageAllocator(LinearPageAllocator&& x);
-        ~LinearPageAllocator();
+        LinearPageAllocator(LinearPageAllocator&& x) noexcept;
+        ~LinearPageAllocator() noexcept;
 
         LinearPageAllocator& operator=(const LinearPageAllocator&) = delete;
         LinearPageAllocator& operator=(LinearPageAllocator&& x) = delete;
 
-        [[nodiscard]] void* Malloc(size_t size, size_t alignment = DefaultAlignment) override;
-        void* Realloc(void* ptr, size_t newSize, size_t alignment = DefaultAlignment) override;
-        void Free(void*) override {}
+        [[nodiscard]] void* Malloc(size_t size, size_t alignment = DefaultAlignment) noexcept override;
+        void* Realloc(void* ptr, size_t newSize, size_t alignment = DefaultAlignment) noexcept override;
+        void Free(void*) noexcept override {}
 
         /// Invalidates all issued pointers and resets the state for reuse. Previously allocated
         /// pages are kept for reuse.

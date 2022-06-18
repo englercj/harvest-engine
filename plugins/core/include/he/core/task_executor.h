@@ -21,7 +21,7 @@ namespace he
     class TaskExecutor
     {
     public:
-        virtual ~TaskExecutor() {}
+        virtual ~TaskExecutor() = default;
 
         virtual void Add(TaskDelegate func) = 0;
     };

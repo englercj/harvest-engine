@@ -35,7 +35,7 @@ namespace he::schema
 
     public:
         AstListIterator() = default;
-        AstListIterator(const ListType* list, T* node) : m_list(list), m_node(node) {}
+        AstListIterator(const ListType* list, T* node) noexcept : m_list(list), m_node(node) {}
 
         T& operator*() const { return *m_node; }
         T* operator->() const { return m_node; }
@@ -169,8 +169,8 @@ namespace he::schema
     struct AstExpression
     {
         // All allocations are within the linear allocator, so no need to manage union destruction
-        AstExpression() { MemZero(this, sizeof(*this)); }
-        ~AstExpression() {}
+        AstExpression() noexcept { MemZero(this, sizeof(*this)); }
+        ~AstExpression() = default;
 
         enum class Kind
         {
@@ -258,8 +258,8 @@ namespace he::schema
     struct AstMethodParams
     {
         // All allocations are within the linear allocator, so no need to manage union destruction
-        AstMethodParams() { MemZero(this, sizeof(*this)); }
-        ~AstMethodParams() {}
+        AstMethodParams() noexcept { MemZero(this, sizeof(*this)); }
+        ~AstMethodParams() = default;
 
         enum class Kind
         {
@@ -280,8 +280,8 @@ namespace he::schema
     struct AstNode
     {
         // All allocations are within the linear allocator, so no need to manage union destruction
-        AstNode() { MemZero(this, sizeof(*this)); }
-        ~AstNode() {}
+        AstNode() noexcept { MemZero(this, sizeof(*this)); }
+        ~AstNode() = default;
 
         enum class Kind
         {
@@ -369,7 +369,7 @@ namespace he::schema
 
     struct AstFile
     {
-        AstFile() : root(), allocator(sizeof(AstNode) * 128) {}
+        AstFile() noexcept : root(), allocator(sizeof(AstNode) * 128) {}
 
         AstNode root;
         LinearPageAllocator allocator;

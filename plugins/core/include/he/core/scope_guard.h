@@ -15,12 +15,12 @@ namespace he
     public:
         static_assert(!std::is_reference_v<F> && !std::is_const_v<F> && !std::is_volatile_v<F>, "ScopeGuard stores its action by value.");
 
-        ScopeGuard(F f)
+        ScopeGuard(F func) noexcept(std::is_nothrow_move_constructible_v<F>)
             : m_func(Move(func))
             , m_active(true)
         {}
 
-        ScopeGuard(ScopeGuard&& x)
+        ScopeGuard(ScopeGuard&& x) noexcept(std::is_nothrow_move_constructible_v<F>)
             : m_func(Move(x.m_func))
             , m_active(Exchange(x.m_active, false))
         {}
@@ -29,7 +29,7 @@ namespace he
         ScopeGuard& operator=(const ScopeGuard&) = delete;
         ScopeGuard& operator=(ScopeGuard&& other) = delete;
 
-        ~ScopeGuard()
+        ~ScopeGuard() noexcept(std::is_nothrow_invocable_v<F>)
         {
             if (m_active)
                 m_func();
@@ -46,7 +46,7 @@ namespace he
     };
 
     template <typename F>
-    inline [[nodiscard]] ScopeGuard<std::decay_t<F>> MakeScopeGuard(F&& func)
+    inline [[nodiscard]] ScopeGuard<std::decay_t<F>> MakeScopeGuard(F&& func) noexcept(std::is_nothrow_move_constructible_v<F>)
     {
         return ScopeGuard<std::decay_t<F>>(Forward<F>(func));
     }

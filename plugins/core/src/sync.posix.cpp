@@ -41,7 +41,7 @@
 namespace he
 {
     // --------------------------------------------------------------------------------------------
-    RWLock::RWLock()
+    RWLock::RWLock() noexcept
     {
         static_assert(sizeof(m_opaque) == sizeof(pthread_rwlock_t));
         HE_ASSERT(IsAligned(m_opaque, alignof(pthread_rwlock_t)));
@@ -50,7 +50,7 @@ namespace he
         HE_ASSERT_PTHREAD(pthread_rwlock_init(rwlock, nullptr));
     }
 
-    RWLock::~RWLock()
+    RWLock::~RWLock() noexcept
     {
         pthread_rwlock_t* rwlock = reinterpret_cast<pthread_rwlock_t*>(m_opaque);
         HE_ASSERT_PTHREAD(pthread_rwlock_destroy(rwlock));
@@ -97,7 +97,7 @@ namespace he
     }
 
     // --------------------------------------------------------------------------------------------
-    Mutex::Mutex()
+    Mutex::Mutex() noexcept
     {
         static_assert(sizeof(m_opaque) == sizeof(pthread_mutex_t));
         HE_ASSERT(IsAligned(m_opaque, alignof(pthread_mutex_t)));
@@ -117,7 +117,7 @@ namespace he
     #endif
     }
 
-    Mutex::~Mutex()
+    Mutex::~Mutex() noexcept
     {
         pthread_mutex_t* mutex = reinterpret_cast<pthread_mutex_t*>(m_opaque);
         HE_ASSERT_PTHREAD(pthread_mutex_destroy(mutex));
@@ -144,7 +144,7 @@ namespace he
     }
 
     // --------------------------------------------------------------------------------------------
-    RecursiveMutex::RecursiveMutex()
+    RecursiveMutex::RecursiveMutex() noexcept
     {
         static_assert(sizeof(m_opaque) == sizeof(pthread_mutex_t));
         HE_ASSERT(IsAligned(m_opaque, alignof(pthread_mutex_t)));
@@ -159,7 +159,7 @@ namespace he
         HE_ASSERT_PTHREAD(pthread_mutexattr_destroy(&attr));
     }
 
-    RecursiveMutex::~RecursiveMutex()
+    RecursiveMutex::~RecursiveMutex() noexcept
     {
         pthread_mutex_t* mutex = reinterpret_cast<pthread_mutex_t*>(m_opaque);
         HE_ASSERT_PTHREAD(pthread_mutex_destroy(mutex));
@@ -186,7 +186,7 @@ namespace he
     }
 
     // --------------------------------------------------------------------------------------------
-    ConditionVariable::ConditionVariable()
+    ConditionVariable::ConditionVariable() noexcept
     {
         static_assert(sizeof(m_opaque) == sizeof(pthread_cond_t));
         HE_ASSERT(IsAligned(m_opaque, alignof(pthread_cond_t)));
@@ -195,7 +195,7 @@ namespace he
         HE_ASSERT_PTHREAD(pthread_cond_init(cv, nullptr));
     }
 
-    ConditionVariable::~ConditionVariable()
+    ConditionVariable::~ConditionVariable() noexcept
     {
         pthread_cond_t* cv = reinterpret_cast<pthread_cond_t*>(m_opaque);
         HE_ASSERT_PTHREAD(pthread_cond_destroy(cv));
@@ -252,7 +252,7 @@ namespace he
     }
 
     // --------------------------------------------------------------------------------------------
-    Semaphore::Semaphore(uint32_t initialCount)
+    Semaphore::Semaphore(uint32_t initialCount) noexcept
     {
         static_assert(sizeof(m_opaque) == sizeof(sem_t));
         HE_ASSERT(IsAligned(m_opaque, alignof(sem_t)));
@@ -261,7 +261,7 @@ namespace he
         HE_ASSERT_ERRNO(sem_init(sem, 0, initialCount));
     }
 
-    Semaphore::~Semaphore()
+    Semaphore::~Semaphore() noexcept
     {
         sem_t* sem = reinterpret_cast<sem_t*>(m_opaque);
         HE_ASSERT_ERRNO(sem_destroy(sem));
@@ -325,7 +325,7 @@ namespace he
         bool manualReset{ false };
     };
 
-    SyncEvent::SyncEvent(bool manualReset, bool initiallySignaled)
+    SyncEvent::SyncEvent(bool manualReset, bool initiallySignaled) noexcept
     {
         static_assert(sizeof(m_opaque) == sizeof(SyncEventData));
         HE_ASSERT(IsAligned(m_opaque, alignof(SyncEventData)));
@@ -353,7 +353,7 @@ namespace he
     #endif
     }
 
-    SyncEvent::~SyncEvent()
+    SyncEvent::~SyncEvent() noexcept
     {
         SyncEventData* data = reinterpret_cast<SyncEventData*>(m_opaque);
 

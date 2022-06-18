@@ -10,7 +10,7 @@ namespace he::editor
     class Document
     {
     public:
-        virtual ~Document() {}
+        virtual ~Document() = default;
 
         virtual void Show() = 0;
         virtual void ShowPanels() {}

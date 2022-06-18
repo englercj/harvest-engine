@@ -8,7 +8,7 @@
 
 namespace he::rhi::d3d12
 {
-    DescriptorPool::~DescriptorPool()
+    DescriptorPool::~DescriptorPool() noexcept
     {
         HE_ASSERT(m_heap == nullptr);
     }

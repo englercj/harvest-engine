@@ -104,20 +104,20 @@ namespace he
         UnlockedShutdownAsyncFileIO();
     }
 
-    AsyncFile::AsyncFile()
+    AsyncFile::AsyncFile() noexcept
         : m_fd(Win32InvalidFd)
     {}
 
-    AsyncFile::AsyncFile(AsyncFile&& x)
+    AsyncFile::AsyncFile(AsyncFile&& x) noexcept
         : m_fd(Exchange(x.m_fd, Win32InvalidFd))
     {}
 
-    AsyncFile::~AsyncFile()
+    AsyncFile::~AsyncFile() noexcept
     {
         Close();
     }
 
-    AsyncFile& AsyncFile::operator=(AsyncFile&& x)
+    AsyncFile& AsyncFile::operator=(AsyncFile&& x) noexcept
     {
         Close();
         m_fd = Exchange(x.m_fd, Win32InvalidFd);

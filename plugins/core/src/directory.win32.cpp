@@ -25,12 +25,12 @@ namespace he
         WIN32_FIND_DATAW findData;
     };
 
-    DirectoryScanner::DirectoryScanner(Allocator& allocator)
+    DirectoryScanner::DirectoryScanner(Allocator& allocator) noexcept
         : m_allocator(allocator)
         , m_impl(allocator.New<DirectoryScannerImpl>())
     {}
 
-    DirectoryScanner::~DirectoryScanner()
+    DirectoryScanner::~DirectoryScanner() noexcept
     {
         Close();
 

@@ -105,13 +105,15 @@ namespace he
     // Concepts
 
     template <typename T, typename E>
-    concept ContiguousRange = requires(T& t) {
+    concept ContiguousRange = requires(T& t)
+    {
         { t.Data() } -> std::convertible_to<std::add_pointer_t<E>>;
         { t.Size() } -> std::convertible_to<uint32_t>;
     };
 
     template <typename T, typename E>
-    concept StdContiguousRange = requires(T& t) {
+    concept StdContiguousRange = requires(T& t)
+    {
         { t.data() } -> std::convertible_to<std::add_pointer_t<E>>;
         { t.size() } -> std::convertible_to<size_t>;
     };

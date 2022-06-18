@@ -19,8 +19,8 @@ namespace he
     class RWLock
     {
     public:
-        RWLock();
-        ~RWLock();
+        RWLock() noexcept;
+        ~RWLock() noexcept;
 
         RWLock(const RWLock&) = delete;
         RWLock(RWLock&&) = delete;
@@ -52,8 +52,8 @@ namespace he
     class Mutex
     {
     public:
-        Mutex();
-        ~Mutex();
+        Mutex() noexcept;
+        ~Mutex() noexcept;
 
         Mutex(const Mutex&) = delete;
         Mutex(Mutex&&) = delete;
@@ -74,8 +74,8 @@ namespace he
     class RecursiveMutex
     {
     public:
-        RecursiveMutex();
-        ~RecursiveMutex();
+        RecursiveMutex() noexcept;
+        ~RecursiveMutex() noexcept;
 
         RecursiveMutex(const RecursiveMutex&) = delete;
         RecursiveMutex(RecursiveMutex&&) = delete;
@@ -97,8 +97,8 @@ namespace he
     class LockGuard
     {
     public:
-        explicit LockGuard(T& mutex) : m_mutex(mutex) { m_mutex.Acquire(); }
-        ~LockGuard() { m_mutex.Release(); }
+        explicit LockGuard(T& mutex) noexcept : m_mutex(mutex) { m_mutex.Acquire(); }
+        ~LockGuard() noexcept { m_mutex.Release(); }
 
     private:
         friend class ConditionVariable;
@@ -110,8 +110,8 @@ namespace he
     class ReadLockGuard
     {
     public:
-        explicit ReadLockGuard(RWLock& lock) : m_lock(lock) { m_lock.AcquireRead(); }
-        ~ReadLockGuard() { m_lock.ReleaseRead(); }
+        explicit ReadLockGuard(RWLock& lock) noexcept : m_lock(lock) { m_lock.AcquireRead(); }
+        ~ReadLockGuard() noexcept { m_lock.ReleaseRead(); }
 
     private:
         friend class ConditionVariable;
@@ -133,8 +133,8 @@ namespace he
         template <typename T> struct MutexHelper<LockGuard<T>>{ static T& Get(LockGuard<T>& l) { return l.m_mutex; } };
 
     public:
-        ConditionVariable();
-        ~ConditionVariable();
+        ConditionVariable() noexcept;
+        ~ConditionVariable() noexcept;
 
         ConditionVariable(const ConditionVariable&) = delete;
         ConditionVariable(ConditionVariable&&) = delete;
@@ -196,8 +196,8 @@ namespace he
     class Semaphore
     {
     public:
-        explicit Semaphore(uint32_t initialCount = 0);
-        ~Semaphore();
+        explicit Semaphore(uint32_t initialCount = 0) noexcept;
+        ~Semaphore() noexcept;
 
         Semaphore(const Semaphore&) = delete;
         Semaphore(Semaphore&&) = delete;
@@ -228,8 +228,8 @@ namespace he
         ///     resolves successfully. Default is true.
         /// \param[in] initiallySignaled Optional. When true, the event is created in a signaled
         ///     state. Default is false.
-        explicit SyncEvent(bool manualReset = true, bool initiallySignaled = false);
-        ~SyncEvent();
+        explicit SyncEvent(bool manualReset = true, bool initiallySignaled = false) noexcept;
+        ~SyncEvent() noexcept;
 
         SyncEvent(const SyncEvent&) = delete;
         SyncEvent(SyncEvent&&) = delete;

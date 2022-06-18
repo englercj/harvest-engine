@@ -26,7 +26,7 @@ namespace he
         ///
         /// \param ptr The pointer to the start of the range.
         /// \param size The length of the range.
-        constexpr Span(T* ptr, uint32_t size)
+        constexpr Span(T* ptr, uint32_t size) noexcept
             : m_ptr(ptr)
             , m_size(size)
         {}
@@ -36,8 +36,8 @@ namespace he
         ///
         /// \param begin The pointer to the start of the range.
         /// \param end the pointer to one past the last element of the range.
-        template <typename P>
-        constexpr Span(T* begin, P end) requires(std::convertible_to<P, T*>)
+        template <typename P> requires(std::convertible_to<P, T*>)
+        constexpr Span(T* begin, P end) noexcept
             : m_ptr(begin)
             , m_size(static_cast<uint32_t>(static_cast<T*>(end) - begin))
         {}
@@ -46,7 +46,7 @@ namespace he
         ///
         /// \param arr The array to have the span point to.
         template <uint32_t N>
-        constexpr Span(T (&arr)[N])
+        constexpr Span(T (&arr)[N]) noexcept
             : m_ptr(arr)
             , m_size(N)
         {}
@@ -56,7 +56,7 @@ namespace he
         ///
         /// \param range The object that provides the range.
         template <typename R> requires(!IsSpecialization<std::remove_cv_t<R>, Span> && StdContiguousRange<R, T>)
-        constexpr Span(R& range)
+        constexpr Span(R& range) noexcept
             : m_ptr(range.data())
             , m_size(static_cast<uint32_t>(range.size()))
         {
@@ -68,7 +68,7 @@ namespace he
         ///
         /// \param range The object that provides the range.
         template <typename R> requires(!IsSpecialization<std::remove_cv_t<R>, Span> && ContiguousRange<R, T>)
-        constexpr Span(R& range)
+        constexpr Span(R& range) noexcept
             : m_ptr(range.Data())
             , m_size(range.Size())
         {}
@@ -77,7 +77,7 @@ namespace he
         ///
         /// \param s The span to construct from.
         template <typename U> requires(std::is_convertible_v<U(*)[], T(*)[]>)
-        constexpr Span(const Span<U>& s)
+        constexpr Span(const Span<U>& s) noexcept
             : m_ptr(s.m_ptr)
             , m_size(s.m_size)
         {}
@@ -89,7 +89,7 @@ namespace he
         ///
         /// \param x The span to copy from.
         template <typename U> requires(std::is_convertible_v<U(*)[], T(*)[]>)
-        constexpr Span<T>& operator=(const Span<U>& x)
+        constexpr Span<T>& operator=(const Span<U>& x) noexcept
         {
             m_ptr = x.m_ptr;
             m_size = x.m_size;

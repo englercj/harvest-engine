@@ -39,7 +39,7 @@ namespace he::schema
         }
     }
 
-    CompileSession::CompileSession(const char* path, const Config& config)
+    CompileSession::CompileSession(const char* path, const Config& config) noexcept
         : m_config(config)
         , m_context(nullptr)
     {

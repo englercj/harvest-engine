@@ -65,13 +65,13 @@ namespace he
     class AsyncFile
     {
     public:
-        AsyncFile();
+        AsyncFile() noexcept;
         AsyncFile(const AsyncFile&) = delete;
-        AsyncFile(AsyncFile&& x);
-        ~AsyncFile();
+        AsyncFile(AsyncFile&& x) noexcept;
+        ~AsyncFile() noexcept;
 
         AsyncFile& operator=(const AsyncFile&) = delete;
-        AsyncFile& operator=(AsyncFile&& x);
+        AsyncFile& operator=(AsyncFile&& x) noexcept;
 
         /// Opens the file at `path` in the given `mode` using behavior defined by `flags`.
         ///

@@ -61,9 +61,9 @@ namespace he
         Vector<const char*> values{};
 
         explicit ArgResult() = default;
-        explicit ArgResult(Code c) : code(c) {}
-        explicit ArgResult(Code c, const char* msg) : code(c), msg(msg) {}
-        explicit ArgResult(Code c, String&& msg) : code(c), msg(Move(msg)) {}
+        explicit ArgResult(Code c) noexcept : code(c) {}
+        explicit ArgResult(Code c, const char* msg) noexcept : code(c), msg(msg) {}
+        explicit ArgResult(Code c, String&& msg) noexcept : code(c), msg(Move(msg)) {}
 
         [[nodiscard]] explicit operator bool() const { return code == Success; }
     };
@@ -71,19 +71,19 @@ namespace he
     struct ArgDesc
     {
         template <typename T>
-        ArgDesc(T& v, char shortArg, const char* longArg = nullptr, const char* description = nullptr, ArgFlag flags = ArgFlag::None)
+        ArgDesc(T& v, char shortArg, const char* longArg = nullptr, const char* description = nullptr, ArgFlag flags = ArgFlag::None) noexcept
             : ArgDesc(ArgTypeOf<T>::Value, &v, sizeof(T), shortArg, longArg, description, flags | ArgSignedFlag<T>::Value) { }
 
         template <typename T>
-        ArgDesc(T& v, const char* longArg, const char* description = nullptr, ArgFlag flags = ArgFlag::None)
+        ArgDesc(T& v, const char* longArg, const char* description = nullptr, ArgFlag flags = ArgFlag::None) noexcept
             : ArgDesc(ArgTypeOf<T>::Value, &v, sizeof(T), 0, longArg, description, flags | ArgSignedFlag<T>::Value) { }
 
         template <typename T>
-        ArgDesc(Vector<T>& v, char shortArg, const char* longArg = nullptr, const char* description = nullptr, ArgFlag flags = ArgFlag::None)
+        ArgDesc(Vector<T>& v, char shortArg, const char* longArg = nullptr, const char* description = nullptr, ArgFlag flags = ArgFlag::None) noexcept
             : ArgDesc(ArgTypeOf<T>::Value, &v, sizeof(T), shortArg, longArg, description, flags | InternalVectorFlag | ArgSignedFlag<T>::Value) { }
 
         template <typename T>
-        ArgDesc(Vector<T>& v, const char* longArg, const char* description = nullptr, ArgFlag flags = ArgFlag::None)
+        ArgDesc(Vector<T>& v, const char* longArg, const char* description = nullptr, ArgFlag flags = ArgFlag::None) noexcept
             : ArgDesc(ArgTypeOf<T>::Value, &v, sizeof(T), 0, longArg, description, flags | InternalVectorFlag | ArgSignedFlag<T>::Value) { }
 
         ArgType type;
@@ -98,7 +98,7 @@ namespace he
         bool hasValue{ false };
 
     private:
-        ArgDesc(ArgType type, void* buffer, size_t size, char shortArg, const char* longArg, const char* description, ArgFlag flags)
+        ArgDesc(ArgType type, void* buffer, size_t size, char shortArg, const char* longArg, const char* description, ArgFlag flags) noexcept
             : type(type)
             , buffer(buffer)
             , size(size)

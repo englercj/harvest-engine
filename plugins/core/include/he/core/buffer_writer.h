@@ -35,7 +35,7 @@ namespace he
         /// Constructs a new buffer.
         ///
         /// \param[in] allocator Optional. The allocator to use.
-        explicit BufferWriter(Allocator& allocator = Allocator::GetDefault());
+        explicit BufferWriter(Allocator& allocator = Allocator::GetDefault()) noexcept;
 
         /// Constructs a new buffer.
         ///
@@ -43,14 +43,14 @@ namespace he
         /// \param[in] growth Optional. The amount of growth during a resize. This is either a
         ///     fixed amount, or a factor of the size depending on `strategy`.
         /// \param[in] allocator Optional. The allocator to use.
-        BufferWriter(GrowthStrategy strategy, float growth, Allocator& allocator = Allocator::GetDefault());
+        BufferWriter(GrowthStrategy strategy, float growth, Allocator& allocator = Allocator::GetDefault()) noexcept;
 
         /// Construct a buffer by copying `x`, and using `allocator` for this
         /// buffer's allocations.
         ///
         /// \param x The buffer to copy from.
         /// \param allocator The allocator to use for any allocations.
-        BufferWriter(const BufferWriter& x, Allocator& allocator);
+        BufferWriter(const BufferWriter& x, Allocator& allocator) noexcept;
 
         /// Construct a buffer by moving `x`, and using `allocator` for this buffer
         /// writer's allocations. If the allocators do not match then a copy operation will
@@ -58,20 +58,20 @@ namespace he
         ///
         /// \param x The buffer to move from.
         /// \param allocator The allocator to use for any allocations.
-        BufferWriter(BufferWriter&& x, Allocator& allocator);
+        BufferWriter(BufferWriter&& x, Allocator& allocator) noexcept;
 
         /// Construct a buffer by copying `x`, using the allocator from `x`.
         ///
         /// \param x The buffer to copy from.
-        BufferWriter(const BufferWriter& x);
+        BufferWriter(const BufferWriter& x) noexcept;
 
         /// Construct a buffer by moving `x`, using the allocator from `x`.
         ///
         /// \param x The buffer to move from.
-        BufferWriter(BufferWriter&& x);
+        BufferWriter(BufferWriter&& x) noexcept;
 
         /// Destructs the buffer and all elements therein. All memory allocations are freed.
-        ~BufferWriter();
+        ~BufferWriter() noexcept;
 
         // ----------------------------------------------------------------------------------------
         // Operators
@@ -79,13 +79,13 @@ namespace he
         /// Copy the buffer `x` into this buffer.
         ///
         /// \param x The buffer to copy from.
-        BufferWriter& operator=(const BufferWriter& x);
+        BufferWriter& operator=(const BufferWriter& x) noexcept;
 
         /// Move the buffer `x` into this buffer.
         /// If the allocators do not match then a copy operation will be performed.
         ///
         /// \param x The buffer to move from.
-        BufferWriter& operator=(BufferWriter&& x);
+        BufferWriter& operator=(BufferWriter&& x) noexcept;
 
         /// Gets a reference to the element at `index`. Asserts if `index` is not less than
         /// \see Size().

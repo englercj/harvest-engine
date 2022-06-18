@@ -18,7 +18,7 @@
 
 namespace he::sqlite
 {
-    Transaction::Transaction(sqlite3* db)
+    Transaction::Transaction(sqlite3* db) noexcept
         : m_db(db)
         , m_finalized(false)
         // , m_id() // Intentionally not initialized. We do it below.
@@ -36,19 +36,19 @@ namespace he::sqlite
         HE_VERIFY(Execute("SAVEPOINT"));
     }
 
-    Transaction::~Transaction()
+    Transaction::~Transaction() noexcept
     {
         Rollback();
     }
 
-    Transaction::Transaction(Transaction&& x)
+    Transaction::Transaction(Transaction&& x) noexcept
         : m_db(Exchange(x.m_db, nullptr))
         , m_finalized(Exchange(x.m_finalized, false))
     {
         MemCopy(m_id, x.m_id, sizeof(m_id));
     }
 
-    Transaction& Transaction::operator=(Transaction&& x)
+    Transaction& Transaction::operator=(Transaction&& x) noexcept
     {
         Rollback();
 

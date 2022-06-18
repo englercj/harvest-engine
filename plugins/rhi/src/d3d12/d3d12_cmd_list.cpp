@@ -170,7 +170,7 @@ namespace he::rhi::d3d12
     // --------------------------------------------------------------------------------------------
     // Copy Command List
 
-    CopyCmdListImpl::~CopyCmdListImpl()
+    CopyCmdListImpl::~CopyCmdListImpl() noexcept
     {
         HE_DX_SAFE_RELEASE(m_d3dCmdList);
     }
@@ -256,7 +256,7 @@ namespace he::rhi::d3d12
     // --------------------------------------------------------------------------------------------
     // Compute Command List
 
-    ComputeCmdListImpl::~ComputeCmdListImpl()
+    ComputeCmdListImpl::~ComputeCmdListImpl() noexcept
     {
         HE_DX_SAFE_RELEASE(m_d3dCmdList);
     }
@@ -440,7 +440,7 @@ namespace he::rhi::d3d12
     // --------------------------------------------------------------------------------------------
     // Render Command List
 
-    RenderCmdListImpl::~RenderCmdListImpl()
+    RenderCmdListImpl::~RenderCmdListImpl() noexcept
     {
         HE_DX_SAFE_RELEASE(m_d3dCmdList);
     }

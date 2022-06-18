@@ -215,7 +215,7 @@ namespace he::schema
         };
 
     public:
-        UnionFieldPlacer(FieldPlacer& parent) : m_parent(parent) {}
+        UnionFieldPlacer(FieldPlacer& parent) noexcept : m_parent(parent) {}
         UnionFieldPlacer(const UnionFieldPlacer&) = delete;
         UnionFieldPlacer& operator=(const UnionFieldPlacer&) = delete;
 
@@ -407,7 +407,7 @@ namespace he::schema
         };
 
     public:
-        UnionGroupFieldPlacer(UnionFieldPlacer& parent) : m_parent(parent) {}
+        UnionGroupFieldPlacer(UnionFieldPlacer& parent) noexcept : m_parent(parent) {}
         UnionGroupFieldPlacer(const UnionGroupFieldPlacer&) = delete;
         UnionGroupFieldPlacer& operator=(const UnionGroupFieldPlacer&) = delete;
 
@@ -526,7 +526,7 @@ namespace he::schema
 
     // --------------------------------------------------------------------------------------------
 
-    StructLayout::StructLayout(Declaration::Builder decl)
+    StructLayout::StructLayout(Declaration::Builder decl) noexcept
         : m_decl(decl)
         , m_struct(decl.GetData().GetStruct())
     {
@@ -537,7 +537,7 @@ namespace he::schema
         CollectMembers(m_members.Back(), 0);
     }
 
-    StructLayout::~StructLayout()
+    StructLayout::~StructLayout() noexcept
     {
         Allocator::GetDefault().Delete(m_fieldPlacer);
     }

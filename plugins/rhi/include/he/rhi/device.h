@@ -13,7 +13,7 @@ namespace he::rhi
     class Device
     {
     public:
-        virtual ~Device() {}
+        virtual ~Device() = default;
 
         /// Creates a buffer resource.
         ///

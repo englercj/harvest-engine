@@ -8,7 +8,7 @@
 
 namespace he::sqlite
 {
-    Column::Column(sqlite3_stmt* stmt, int32_t index)
+    Column::Column(sqlite3_stmt* stmt, int32_t index) noexcept
         : m_stmt(stmt)
         , m_index(index)
     {}

@@ -13,17 +13,17 @@
 
 namespace he::sqlite
 {
-    Statement::~Statement()
+    Statement::~Statement() noexcept
     {
         Finalize();
     }
 
-    Statement::Statement(Statement&& o)
+    Statement::Statement(Statement&& o) noexcept
         : m_db(Exchange(o.m_db, nullptr))
         , m_stmt(Exchange(o.m_stmt, nullptr))
     { }
 
-    Statement& Statement::operator=(Statement&& o)
+    Statement& Statement::operator=(Statement&& o) noexcept
     {
         Finalize();
 

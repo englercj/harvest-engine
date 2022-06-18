@@ -180,7 +180,7 @@ namespace he::rhi::null
     class DeviceImpl final : public Device
     {
     public:
-        DeviceImpl(InstanceImpl* instance) : m_instance(instance) {}
+        explicit DeviceImpl(InstanceImpl* instance) noexcept : m_instance(instance) {}
 
         Result CreateBuffer(const BufferDesc& desc, Buffer*& out) override { HE_UNUSED(desc); out = nullptr; return Result::Success; }
         void DestroyBuffer(Buffer* buffer) override { HE_UNUSED(buffer); }
@@ -298,7 +298,7 @@ namespace he::rhi::null
     class InstanceImpl final : public Instance
     {
     public:
-        InstanceImpl(Allocator& allocator) : m_allocator(allocator) {}
+        explicit InstanceImpl(Allocator& allocator) noexcept : m_allocator(allocator) {}
 
         Result Initialize(const InstanceDesc& desc) override
         {

@@ -25,8 +25,8 @@ namespace he
         constexpr explicit Appender(T& container) noexcept
             : m_container(&container) {}
 
-        constexpr Appender& operator=(const typename T::ElementType& v) { m_container->PushBack(v); return *this; }
-        constexpr Appender& operator=(typename T::ElementType&& v) { m_container->PushBack(Move(v)); return *this; }
+        constexpr Appender& operator=(const typename T::ElementType& v) noexcept { m_container->PushBack(v); return *this; }
+        constexpr Appender& operator=(typename T::ElementType&& v) noexcept { m_container->PushBack(Move(v)); return *this; }
 
         [[nodiscard]] constexpr Appender& operator*() noexcept { return *this; }
         constexpr Appender& operator++() noexcept { return *this; }

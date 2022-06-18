@@ -84,7 +84,7 @@ namespace he::window
         virtual Result SetVibration(float leftMotorSpeed, float rightMotorSpeed) = 0;
 
     protected:
-        Gamepad(uint32_t index) : m_index(index) {}
+        explicit Gamepad(uint32_t index) noexcept : m_index(index) {}
 
         void Reset();
 

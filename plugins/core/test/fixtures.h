@@ -18,14 +18,14 @@ namespace he
     struct NonTrivial
     {
         int* p;
-        NonTrivial() { p = new int; }
-        ~NonTrivial() { delete p; }
+        NonTrivial() noexcept { p = new int; }
+        ~NonTrivial() noexcept { delete p; }
 
-        NonTrivial(const NonTrivial&) { p = new int; }
-        NonTrivial& operator=(const NonTrivial&) { delete p; p = new int; return *this; }
+        NonTrivial(const NonTrivial&) noexcept { p = new int; }
+        NonTrivial& operator=(const NonTrivial&) noexcept { delete p; p = new int; return *this; }
 
-        NonTrivial(NonTrivial&& x) { p = x.p; x.p = nullptr; }
-        NonTrivial& operator=(NonTrivial&& x) { delete p; p = x.p; x.p = nullptr; return *this; }
+        NonTrivial(NonTrivial&& x) noexcept { p = x.p; x.p = nullptr; }
+        NonTrivial& operator=(NonTrivial&& x) noexcept { delete p; p = x.p; x.p = nullptr; return *this; }
     };
 
     struct VirtualDestructor { virtual ~VirtualDestructor() {} };
@@ -33,8 +33,8 @@ namespace he
     struct CopyOnly
     {
         CopyOnly() = default;
-        CopyOnly(const CopyOnly&) { copyConstructed = true; }
-        CopyOnly& operator=(const CopyOnly&) { copyAssigned = true; return *this; }
+        CopyOnly(const CopyOnly&) noexcept { copyConstructed = true; }
+        CopyOnly& operator=(const CopyOnly&) noexcept { copyAssigned = true; return *this; }
         CopyOnly(CopyOnly&&) = delete;
         CopyOnly& operator=(CopyOnly&&) = delete;
 
@@ -47,8 +47,8 @@ namespace he
         MoveOnly() = default;
         MoveOnly(const MoveOnly&) = delete;
         MoveOnly& operator=(const MoveOnly&) = delete;
-        MoveOnly(MoveOnly&&) { moveConstructed = true; }
-        MoveOnly& operator=(MoveOnly&&) { moveAssigned = true; return *this; }
+        MoveOnly(MoveOnly&&) noexcept { moveConstructed = true; }
+        MoveOnly& operator=(MoveOnly&&) noexcept { moveAssigned = true; return *this; }
 
         bool moveConstructed{ false };
         bool moveAssigned{ false };
@@ -57,10 +57,10 @@ namespace he
     struct CopyAndMove
     {
         CopyAndMove() = default;
-        CopyAndMove(const CopyAndMove&) { copyConstructed = true; }
-        CopyAndMove& operator=(const CopyAndMove&) { copyAssigned = true; return *this; }
-        CopyAndMove(CopyAndMove&&) { moveConstructed = true; }
-        CopyAndMove& operator=(CopyAndMove&&) { moveAssigned = true; return *this; }
+        CopyAndMove(const CopyAndMove&) noexcept { copyConstructed = true; }
+        CopyAndMove& operator=(const CopyAndMove&) noexcept { copyAssigned = true; return *this; }
+        CopyAndMove(CopyAndMove&&) noexcept { moveConstructed = true; }
+        CopyAndMove& operator=(CopyAndMove&&) noexcept { moveAssigned = true; return *this; }
 
         bool copyConstructed{ false };
         bool copyAssigned{ false };
@@ -72,9 +72,9 @@ namespace he
     class AnotherAllocator : public Allocator
     {
     public:
-        void* Malloc(size_t size, size_t alignment = DefaultAlignment) override { return Allocator::GetDefault().Malloc(size, alignment); }
-        void* Realloc(void* ptr, size_t newSize, size_t alignment = DefaultAlignment) override { return Allocator::GetDefault().Realloc(ptr, newSize, alignment); }
-        void Free(void* ptr) override { Allocator::GetDefault().Free(ptr); }
+        void* Malloc(size_t size, size_t alignment = DefaultAlignment) noexcept override { return Allocator::GetDefault().Malloc(size, alignment); }
+        void* Realloc(void* ptr, size_t newSize, size_t alignment = DefaultAlignment) noexcept override { return Allocator::GetDefault().Realloc(ptr, newSize, alignment); }
+        void Free(void* ptr) noexcept override { Allocator::GetDefault().Free(ptr); }
     };
 
     // --------------------------------------------------------------------------------------------

@@ -20,7 +20,7 @@ namespace he::rhi::d3d12
     class DeviceImpl final : public Device
     {
     public:
-        ~DeviceImpl();
+        ~DeviceImpl() noexcept;
 
         Result Initialize(InstanceImpl* instance, ID3D12Device* device, const AdapterImpl* adapter, const DeviceDesc& desc);
         Result MakeResult(HRESULT hr);

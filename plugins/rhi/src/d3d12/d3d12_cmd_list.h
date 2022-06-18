@@ -20,7 +20,7 @@ namespace he::rhi::d3d12
     class CopyCmdListImpl : public CopyCmdList
     {
     public:
-        ~CopyCmdListImpl();
+        ~CopyCmdListImpl() noexcept;
 
         Result Initialize(DeviceImpl* device, const CmdListDesc& desc);
 
@@ -45,7 +45,7 @@ namespace he::rhi::d3d12
     class ComputeCmdListImpl : public ComputeCmdList
     {
     public:
-        ~ComputeCmdListImpl();
+        ~ComputeCmdListImpl() noexcept;
 
         Result Initialize(DeviceImpl* device, const CmdListDesc& desc);
 
@@ -91,7 +91,7 @@ namespace he::rhi::d3d12
     class RenderCmdListImpl : public RenderCmdList
     {
     public:
-        ~RenderCmdListImpl();
+        ~RenderCmdListImpl() noexcept;
 
         Result Initialize(DeviceImpl* device, const CmdListDesc& desc);
 

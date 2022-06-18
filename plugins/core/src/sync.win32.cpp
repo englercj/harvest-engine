@@ -16,7 +16,7 @@
 namespace he
 {
     // --------------------------------------------------------------------------------------------
-    RWLock::RWLock()
+    RWLock::RWLock() noexcept
     {
         static_assert(sizeof(m_opaque) == sizeof(SRWLOCK));
         HE_ASSERT(IsAligned(m_opaque, alignof(SRWLOCK)));
@@ -25,7 +25,7 @@ namespace he
         ::InitializeSRWLock(srw);
     }
 
-    RWLock::~RWLock()
+    RWLock::~RWLock() noexcept
     {
         HE_ASSERT(TryAcquireWrite() && (ReleaseWrite(), true));
     }
@@ -67,7 +67,7 @@ namespace he
     }
 
     // --------------------------------------------------------------------------------------------
-    Mutex::Mutex()
+    Mutex::Mutex() noexcept
     {
         static_assert(sizeof(m_opaque) == sizeof(SRWLOCK));
         HE_ASSERT(IsAligned(m_opaque, alignof(SRWLOCK)));
@@ -76,7 +76,7 @@ namespace he
         ::InitializeSRWLock(srw);
     }
 
-    Mutex::~Mutex()
+    Mutex::~Mutex() noexcept
     {
         HE_ASSERT(TryAcquire() && (Release(), true));
     }
@@ -100,7 +100,7 @@ namespace he
     }
 
     // --------------------------------------------------------------------------------------------
-    RecursiveMutex::RecursiveMutex()
+    RecursiveMutex::RecursiveMutex() noexcept
     {
         static_assert(sizeof(m_opaque) == sizeof(CRITICAL_SECTION));
         HE_ASSERT(IsAligned(m_opaque, alignof(CRITICAL_SECTION)));
@@ -109,7 +109,7 @@ namespace he
         ::InitializeCriticalSection(cs);
     }
 
-    RecursiveMutex::~RecursiveMutex() {}
+    RecursiveMutex::~RecursiveMutex() noexcept {}
 
     bool RecursiveMutex::TryAcquire()
     {
@@ -130,7 +130,7 @@ namespace he
     }
 
     // --------------------------------------------------------------------------------------------
-    ConditionVariable::ConditionVariable()
+    ConditionVariable::ConditionVariable() noexcept
     {
         static_assert(sizeof(m_opaque) == sizeof(CONDITION_VARIABLE));
         HE_ASSERT(IsAligned(m_opaque, alignof(CONDITION_VARIABLE)));
@@ -139,7 +139,7 @@ namespace he
         ::InitializeConditionVariable(cv);
     }
 
-    ConditionVariable::~ConditionVariable()
+    ConditionVariable::~ConditionVariable() noexcept
     {
 
     }
@@ -195,7 +195,7 @@ namespace he
     }
 
     // --------------------------------------------------------------------------------------------
-    Semaphore::Semaphore(uint32_t initialCount)
+    Semaphore::Semaphore(uint32_t initialCount) noexcept
     {
         static_assert(sizeof(m_opaque) == sizeof(HANDLE));
         HE_ASSERT(IsAligned(m_opaque, alignof(HANDLE)));
@@ -205,7 +205,7 @@ namespace he
         HE_ASSERT(h != nullptr, HE_KV(result, Result::FromLastError()));
     }
 
-    Semaphore::~Semaphore()
+    Semaphore::~Semaphore() noexcept
     {
         HANDLE& h = *reinterpret_cast<HANDLE*>(&m_opaque);
         const BOOL r = ::CloseHandle(h);
@@ -239,7 +239,7 @@ namespace he
     }
 
     // --------------------------------------------------------------------------------------------
-    SyncEvent::SyncEvent(bool manualReset, bool initiallySignaled)
+    SyncEvent::SyncEvent(bool manualReset, bool initiallySignaled) noexcept
     {
         static_assert(sizeof(m_opaque) == sizeof(HANDLE));
         HE_ASSERT(IsAligned(m_opaque, alignof(HANDLE)));
@@ -248,7 +248,7 @@ namespace he
         h = ::CreateEventW(nullptr, manualReset, initiallySignaled, nullptr);
     }
 
-    SyncEvent::~SyncEvent()
+    SyncEvent::~SyncEvent() noexcept
     {
         HANDLE& h = *reinterpret_cast<HANDLE*>(&m_opaque);
         const BOOL r = ::CloseHandle(h);

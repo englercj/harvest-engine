@@ -226,7 +226,7 @@ namespace he::schema
         {
             BitSpan* span;
             uint32_t index;
-            Ref& operator=(bool value) { span->Set(index, value); return *this; }
+            Ref& operator=(bool value) noexcept { span->Set(index, value); return *this; }
             [[nodiscard]] explicit operator bool() const { return span->IsSet(index); }
         };
         Ref operator[](uint32_t index) { return Ref(this, index); }
@@ -278,7 +278,7 @@ namespace he::schema
     {
     public:
         PointerReader() = default;
-        explicit PointerReader(const Word* data) : m_data(data) {}
+        explicit PointerReader(const Word* data) noexcept : m_data(data) {}
 
         // Common
 
@@ -335,7 +335,7 @@ namespace he::schema
             const Word* data,
             uint32_t size,
             uint32_t step,
-            ElementSize elementSize)
+            ElementSize elementSize) noexcept
             : m_data(data)
             , m_size(size)
             , m_step(step)
@@ -383,7 +383,7 @@ namespace he::schema
     {
     public:
         StructReader() = default;
-        StructReader(const Word* data, uint16_t dataWordSize, uint16_t pointerCount)
+        StructReader(const Word* data, uint16_t dataWordSize, uint16_t pointerCount) noexcept
             : m_data(data)
             , m_dataWordSize(dataWordSize)
             , m_pointerCount(pointerCount)
@@ -508,21 +508,34 @@ namespace he::schema
     class Builder
     {
     public:
-        explicit Builder(Allocator& allocator = Allocator::GetDefault()) : Builder(256, allocator) {}
-        explicit Builder(uint32_t initialWordSize, Allocator& allocator = Allocator::GetDefault())
+        explicit Builder(Allocator& allocator = Allocator::GetDefault()) noexcept
+            : Builder(256, allocator)
+        {}
+
+        explicit Builder(uint32_t initialWordSize, Allocator& allocator = Allocator::GetDefault()) noexcept
             : m_data(allocator)
         {
             Reserve(initialWordSize);
             Clear();
         }
 
-        Builder(Builder&& x)
+        Builder(const Builder& x) noexcept
+            : m_data(x.m_data)
+        {}
+
+        Builder(Builder&& x) noexcept
             : m_data(Move(x.m_data))
         {
             x.Clear();
         }
 
-        Builder& operator=(Builder&& x)
+        Builder& operator=(const Builder& x) noexcept
+        {
+            m_data = x.m_data;
+            return *this;
+        }
+
+        Builder& operator=(Builder&& x) noexcept
         {
             m_data = Move(x.m_data);
             x.Clear();
@@ -603,7 +616,7 @@ namespace he::schema
     {
     public:
         PointerBuilder() = default;
-        PointerBuilder(Builder* builder, uint32_t wordOffset)
+        PointerBuilder(Builder* builder, uint32_t wordOffset) noexcept
             : m_builder(builder)
             , m_wordOffset(wordOffset)
         {}
@@ -702,7 +715,7 @@ namespace he::schema
             uint32_t wordOffset,
             uint32_t size,
             uint32_t step,
-            ElementSize elementSize)
+            ElementSize elementSize) noexcept
             : m_builder(builder)
             , m_wordOffset(wordOffset)
             , m_size(size)
@@ -715,7 +728,7 @@ namespace he::schema
             uint32_t wordOffset,
             uint32_t size,
             uint32_t step,
-            uint16_t structDataFieldCount)
+            uint16_t structDataFieldCount) noexcept
             : m_builder(builder)
             , m_wordOffset(wordOffset)
             , m_size(size)
@@ -810,7 +823,7 @@ namespace he::schema
             uint32_t wordOffset,
             uint16_t dataFieldCount,
             uint16_t dataWordSize,
-            uint16_t pointerCount)
+            uint16_t pointerCount) noexcept
             : m_builder(builder)
             , m_wordOffset(wordOffset)
             , m_dataFieldCount(dataFieldCount)
@@ -991,7 +1004,7 @@ namespace he::schema
     {
     public:
         Reader() = default;
-        explicit Reader(ListReader reader) : ListReader(reader) {}
+        explicit Reader(ListReader reader) noexcept : ListReader(reader) {}
 
         const char* Data() const { return reinterpret_cast<const char*>(ListReader::Data()); }
         uint32_t Size() const { return ListReader::Size() - 1; }
@@ -1013,7 +1026,7 @@ namespace he::schema
     {
     public:
         Builder() = default;
-        explicit Builder(ListBuilder builder) : ListBuilder(builder) {}
+        explicit Builder(ListBuilder builder) noexcept : ListBuilder(builder) {}
 
         char* Data() { return reinterpret_cast<char*>(Location()); }
         const char* Data() const { return reinterpret_cast<const char*>(Location()); }
@@ -1093,7 +1106,7 @@ namespace he::schema
 
     public:
         Reader() = default;
-        explicit Reader(ListReader reader) : ListReader(reader) {}
+        explicit Reader(ListReader reader) noexcept : ListReader(reader) {}
 
         const T* Data() const requires(DataType<T>) { return reinterpret_cast<const T*>(ListReader::Data()); }
 
@@ -1127,7 +1140,7 @@ namespace he::schema
 
     public:
         Builder() = default;
-        explicit Builder(ListBuilder builder) : ListBuilder(builder) {}
+        explicit Builder(ListBuilder builder) noexcept : ListBuilder(builder) {}
 
         T* Data() requires(DataType<T>) { return reinterpret_cast<T*>(ListBuilder::Data()); }
         const T* Data() const requires(DataType<T>) { return reinterpret_cast<const T*>(ListBuilder::Data()); }

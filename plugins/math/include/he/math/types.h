@@ -34,8 +34,8 @@ namespace he
         static constexpr uint32_t Size = 4;
 
         Vec4a() = default;
-        constexpr Vec4a(Simd128 v) : v(v) {}
-        constexpr Vec4a(float x, float y, float z, float w) : v(MakeSimd128(x, y, z, w)) {}
+        constexpr Vec4a(Simd128 v) noexcept : v(v) {}
+        constexpr Vec4a(float x, float y, float z, float w) noexcept : v(MakeSimd128(x, y, z, w)) {}
 
         HE_FORCE_INLINE operator Simd128() const { return v; }
 
@@ -50,9 +50,9 @@ namespace he
     struct Quata
     {
         Quata() = default;
-        constexpr Quata(Vec4a v) : v(v) {}
-        constexpr Quata(Simd128 v) : v(v) {}
-        constexpr Quata(float x, float y, float z, float w) : v(x, y, z, w) {}
+        constexpr Quata(Vec4a v) noexcept : v(v) {}
+        constexpr Quata(Simd128 v) noexcept : v(v) {}
+        constexpr Quata(float x, float y, float z, float w) noexcept : v(x, y, z, w) {}
 
         Vec4a v;
     };

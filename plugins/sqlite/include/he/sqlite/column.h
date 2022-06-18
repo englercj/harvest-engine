@@ -23,7 +23,7 @@ namespace he::sqlite
         };
 
     public:
-        Column(sqlite3_stmt* stmt, int32_t index);
+        Column(sqlite3_stmt* stmt, int32_t index) noexcept;
 
         Type GetType() const;
 

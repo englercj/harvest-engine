@@ -42,7 +42,7 @@ namespace he
     /// \param alignment The alignment to match.
     /// \return The aligned value.
     template <std::unsigned_integral T>
-    [[nodiscard]] constexpr T AlignDown(T value, size_t alignment)
+    [[nodiscard]] constexpr T AlignDown(T value, size_t alignment) noexcept
     {
         return static_cast<T>(value & ~(alignment - 1));
     }
@@ -55,7 +55,7 @@ namespace he
     /// \param alignment The alignment to match.
     /// \return The aligned value.
     template <typename T>
-    [[nodiscard]] inline T* AlignDown(T* value, size_t alignment)
+    [[nodiscard]] inline T* AlignDown(T* value, size_t alignment) noexcept
     {
         return reinterpret_cast<T*>(AlignDown(reinterpret_cast<uintptr_t>(value), alignment));
     }
@@ -68,7 +68,7 @@ namespace he
     /// \param alignment The alignment to match.
     /// \return The aligned value.
     template <std::unsigned_integral T>
-    [[nodiscard]] constexpr inline T AlignUp(T value, size_t alignment)
+    [[nodiscard]] constexpr inline T AlignUp(T value, size_t alignment) noexcept
     {
         return static_cast<T>((value + (alignment - 1)) & ~(alignment - 1));
     }
@@ -81,7 +81,7 @@ namespace he
     /// \param alignment The alignment to match.
     /// \return The aligned value.
     template <typename T>
-    [[nodiscard]] inline T* AlignUp(T* value, size_t alignment)
+    [[nodiscard]] inline T* AlignUp(T* value, size_t alignment) noexcept
     {
         return reinterpret_cast<T*>(AlignUp(reinterpret_cast<uintptr_t>(value), alignment));
     }
@@ -91,7 +91,7 @@ namespace he
     /// \param value The value to check.
     /// \return True if the value is a power of two, false otherwise.
     template <std::unsigned_integral T>
-    [[nodiscard]] constexpr inline bool IsPowerOf2(T value)
+    [[nodiscard]] constexpr inline bool IsPowerOf2(T value) noexcept
     {
         return value > 0 && (value & (value - 1)) == 0;
     }

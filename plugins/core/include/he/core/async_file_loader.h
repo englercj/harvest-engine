@@ -75,7 +75,7 @@ namespace he
         using LoadDelegate = Delegate<void(Result result)>;
 
     public:
-        virtual ~AsyncFileQueue() {}
+        virtual ~AsyncFileQueue() = default;
 
         /// Enqueues a read request to the queue. The request remains in the queue until Submit
         /// is called, or until the queue is 1/2 full. If there are no free entries in the queue
@@ -169,7 +169,7 @@ namespace he
         static void Destroy(AsyncFileLoader* updater);
 
     public:
-        virtual ~AsyncFileLoader() {}
+        virtual ~AsyncFileLoader() = default;
 
         /// Gets the allocator used for all allocations in this device.
         ///

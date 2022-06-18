@@ -18,7 +18,7 @@ namespace he::schema
     constexpr const char ReaderSuffix[] = "::Reader";
     constexpr const char BuilderSuffix[] = "::Builder";
 
-    CodeGenCpp::CodeGenCpp(const CodeGenRequest& request)
+    CodeGenCpp::CodeGenCpp(const CodeGenRequest& request) noexcept
         : m_request(request)
         , m_root(m_request.schemaFile.GetRoot())
     {

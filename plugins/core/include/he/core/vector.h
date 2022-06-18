@@ -36,33 +36,33 @@ namespace he
         /// Construct an empty vector.
         ///
         /// \param allocator Optional. The allocator to use.
-        explicit Vector(Allocator& allocator = Allocator::GetDefault());
+        explicit Vector(Allocator& allocator = Allocator::GetDefault()) noexcept;
 
         /// Construct a vector by copying `x`, and using `allocator` for this vector's allocations.
         ///
         /// \param x The vector to copy from.
         /// \param allocator The allocator to use.
-        Vector(const Vector& x, Allocator& allocator);
+        Vector(const Vector& x, Allocator& allocator) noexcept;
 
         /// Construct a vector by moving `x`, and using `allocator` for this vector's allocations.
         /// If the allocators do not match then a copy operation will be performed.
         ///
         /// \param x The vector to move from.
         /// \param allocator The allocator to use.
-        Vector(Vector&& x, Allocator& allocator);
+        Vector(Vector&& x, Allocator& allocator) noexcept;
 
         /// Construct a vector by copying `x`, using the allocator from `x`.
         ///
         /// \param x The vector to copy from.
-        Vector(const Vector& x);
+        Vector(const Vector& x) noexcept;
 
         /// Construct a vector by moving `x`, using the allocator from `x`.
         ///
         /// \param x The vector to move from.
-        Vector(Vector&& x);
+        Vector(Vector&& x) noexcept;
 
         /// Destructs the vector and all elements therein. All memory allocations are freed.
-        ~Vector();
+        ~Vector() noexcept;
 
         // ----------------------------------------------------------------------------------------
         // Operators
@@ -70,13 +70,13 @@ namespace he
         /// Copy the vector `x` into this vector.
         ///
         /// \param x The vector to copy from.
-        Vector& operator=(const Vector& x);
+        Vector& operator=(const Vector& x) noexcept;
 
         /// Move the vector `x` into this vector.
         /// If the allocators do not match then a copy operation will be performed.
         ///
         /// \param x The vector to move from.
-        Vector& operator=(Vector&& x);
+        Vector& operator=(Vector&& x) noexcept;
 
         /// Gets a reference to the element at `index`. Asserts if `index` is not less than
         /// \see Size().

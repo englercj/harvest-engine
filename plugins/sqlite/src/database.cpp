@@ -52,7 +52,7 @@ namespace he::sqlite
         return true;
     }
 
-    Database::~Database()
+    Database::~Database() noexcept
     {
         Close();
     }

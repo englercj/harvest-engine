@@ -37,13 +37,22 @@ namespace he
         /// Construct a new scanner.
         ///
         /// \param[in] allocator The allocator to use.
-        DirectoryScanner(Allocator& allocator = Allocator::GetDefault());
+        DirectoryScanner(Allocator& allocator = Allocator::GetDefault()) noexcept;
+
+        /// Constructs a new scanner by moving the other scanner into this one.
+        ///
+        /// \param[in] x The scanner to move from.
+        DirectoryScanner(DirectoryScanner&& x) noexcept
+            : m_allocator(x.m_allocator)
+            , m_impl(Exchange(x.m_impl, nullptr))
+        {}
 
         /// Destructs a scanner.
-        ~DirectoryScanner();
+        ~DirectoryScanner() noexcept;
 
         DirectoryScanner(const DirectoryScanner&) = delete;
         DirectoryScanner& operator=(const DirectoryScanner&) = delete;
+        DirectoryScanner& operator=(DirectoryScanner&&) = delete;
 
         /// Begins a recursive directory walk from `path`.
         ///

@@ -241,7 +241,7 @@ namespace he::rhi
     struct DisplayInfo
     {
         /// Constructs a display info structure.
-        DisplayInfo(Allocator& a) : name(a) {}
+        DisplayInfo(Allocator& a) noexcept : name(a) {}
 
         /// The name of the output device.
         String name;

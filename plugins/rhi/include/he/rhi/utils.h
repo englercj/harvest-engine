@@ -9,7 +9,7 @@ namespace he::rhi
     /// Gets the default "preferred" rendering API for the current platform.
     ///
     /// \return Returns the preferred API type.
-    constexpr ApiBackend GetDefaultApiBackend()
+    constexpr ApiBackend GetDefaultApiBackend() noexcept
     {
     #if HE_RHI_ENABLE_D3D12
         return ApiBackend::D3D12;
@@ -28,7 +28,7 @@ namespace he::rhi
     ///
     /// \param[in] x Then format to check.
     /// \return True if the format is a depth format.
-    constexpr bool IsDepthFormat(Format x)
+    constexpr bool IsDepthFormat(Format x) noexcept
     {
         return x == Format::Depth16Unorm
             || x == Format::Depth32Float

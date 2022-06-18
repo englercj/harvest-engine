@@ -3,7 +3,7 @@
 namespace he
 {
     template <bool (*fn)(char c)>
-    constexpr bool _IsCharTest(const char* str)
+    constexpr bool _IsCharTest(const char* str) noexcept
     {
         while (*str)
         {
@@ -15,67 +15,67 @@ namespace he
         return true;
     }
 
-    constexpr bool IsWhitespace(char c)
+    constexpr bool IsWhitespace(char c) noexcept
     {
         return c == ' ' || c == '\t' || c == '\n' || c == '\v' || c == '\f' || c == '\r';
     }
 
-    constexpr bool IsWhitespace(const char* str)
+    constexpr bool IsWhitespace(const char* str) noexcept
     {
         return _IsCharTest<IsWhitespace>(str);
     }
 
-    constexpr bool IsUpper(char c)
+    constexpr bool IsUpper(char c) noexcept
     {
         return c >= 'A' && c <= 'Z';
     }
 
-    constexpr bool IsUpper(const char* str)
+    constexpr bool IsUpper(const char* str) noexcept
     {
         return _IsCharTest<IsUpper>(str);
     }
 
-    constexpr bool IsLower(char c)
+    constexpr bool IsLower(char c) noexcept
     {
         return c >= 'a' && c <= 'z';
     }
 
-    constexpr bool IsLower(const char* str)
+    constexpr bool IsLower(const char* str) noexcept
     {
         return _IsCharTest<IsLower>(str);
     }
 
-    constexpr bool IsAlpha(char c)
+    constexpr bool IsAlpha(char c) noexcept
     {
         return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z');
     }
 
-    constexpr bool IsAlpha(const char* str)
+    constexpr bool IsAlpha(const char* str) noexcept
     {
         return _IsCharTest<IsAlpha>(str);
     }
 
-    constexpr bool IsNumeric(char c)
+    constexpr bool IsNumeric(char c) noexcept
     {
         return c >= '0' && c <= '9';
     }
 
-    constexpr bool IsNumeric(const char* str)
+    constexpr bool IsNumeric(const char* str) noexcept
     {
         return _IsCharTest<IsNumeric>(str);
     }
 
-    constexpr bool IsAlphaNum(char c)
+    constexpr bool IsAlphaNum(char c) noexcept
     {
         return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9');
     }
 
-    constexpr bool IsAlphaNum(const char* str)
+    constexpr bool IsAlphaNum(const char* str) noexcept
     {
         return _IsCharTest<IsAlphaNum>(str);
     }
 
-    constexpr bool IsInteger(const char* str)
+    constexpr bool IsInteger(const char* str) noexcept
     {
         if (*str == '-')
             str++;
@@ -83,7 +83,7 @@ namespace he
         return IsNumeric(str);
     }
 
-    constexpr bool IsFloat(const char* str)
+    constexpr bool IsFloat(const char* str) noexcept
     {
         if (*str == '-')
             str++;
@@ -111,32 +111,32 @@ namespace he
         return true;
     }
 
-    constexpr bool IsHex(char c)
+    constexpr bool IsHex(char c) noexcept
     {
         return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F');
     }
 
-    constexpr bool IsHex(const char* str)
+    constexpr bool IsHex(const char* str) noexcept
     {
         return _IsCharTest<IsHex>(str);
     }
 
-    constexpr bool IsPrint(char c)
+    constexpr bool IsPrint(char c) noexcept
     {
         return c >= ' ' && c <= '~';
     }
 
-    constexpr bool IsPrint(const char* str)
+    constexpr bool IsPrint(const char* str) noexcept
     {
         return _IsCharTest<IsPrint>(str);
     }
 
-    constexpr char ToUpper(char c)
+    constexpr char ToUpper(char c) noexcept
     {
         return IsLower(c) ? c + 'A' - 'a' : c;
     }
 
-    constexpr void ToUpper(char* str)
+    constexpr void ToUpper(char* str) noexcept
     {
         while (*str)
         {
@@ -145,12 +145,12 @@ namespace he
         }
     }
 
-    constexpr char ToLower(char c)
+    constexpr char ToLower(char c) noexcept
     {
         return IsUpper(c) ? c + 'a' - 'A' : c;
     }
 
-    constexpr void ToLower(char* str)
+    constexpr void ToLower(char* str) noexcept
     {
         while (*str)
         {
@@ -159,7 +159,7 @@ namespace he
         }
     }
 
-    constexpr char ToHex(uint8_t nibble, bool upperCase)
+    constexpr char ToHex(uint8_t nibble, bool upperCase) noexcept
     {
         constexpr char HexDigits[] = "0123456789abcdef";
 
@@ -172,7 +172,7 @@ namespace he
         return '\0';
     }
 
-    constexpr uint8_t HexToNibble(char c)
+    constexpr uint8_t HexToNibble(char c) noexcept
     {
         return (c >= '0' && c <= '9') ? c - '0'
             : c >= 'a' && c <= 'f' ? 10 + c - 'a'
@@ -180,7 +180,7 @@ namespace he
             : 0;
     }
 
-    constexpr uint8_t HexPairToByte(char a, char b)
+    constexpr uint8_t HexPairToByte(char a, char b) noexcept
     {
         return HexToNibble(a) * 16 + HexToNibble(b);
     }

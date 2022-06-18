@@ -17,7 +17,7 @@ namespace he::rhi::d3d12
     // --------------------------------------------------------------------------------------------
     // Base Queue Implementation
 
-    BaseCmdQueueImpl::~BaseCmdQueueImpl()
+    BaseCmdQueueImpl::~BaseCmdQueueImpl() noexcept
     {
         if (m_d3dFence)
         {

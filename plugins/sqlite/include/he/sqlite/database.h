@@ -18,7 +18,7 @@ namespace he::sqlite
         static bool Execute(sqlite3* db, const char* query);
 
     public:
-        ~Database();
+        ~Database() noexcept;
 
         bool Open(const char* path);
         bool Close();

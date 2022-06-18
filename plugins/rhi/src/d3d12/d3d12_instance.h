@@ -23,8 +23,8 @@ namespace he::rhi::d3d12
     class InstanceImpl final : public Instance
     {
     public:
-        InstanceImpl(Allocator& allocator);
-        ~InstanceImpl();
+        explicit InstanceImpl(Allocator& allocator) noexcept;
+        ~InstanceImpl() noexcept;
 
         Result Initialize(const InstanceDesc& desc) override;
 

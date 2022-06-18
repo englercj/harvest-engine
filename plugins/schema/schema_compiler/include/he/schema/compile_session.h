@@ -28,7 +28,7 @@ namespace he::schema
         };
 
     public:
-        CompileSession(const char* path, const Config& config);
+        CompileSession(const char* path, const Config& config) noexcept;
         ~CompileSession();
 
         bool Parse();

@@ -77,20 +77,20 @@ namespace he
         return Result::Success;
     }
 
-    File::File()
+    File::File() noexcept
         : m_fd(Win32InvalidFd)
     {}
 
-    File::File(File&& x)
+    File::File(File&& x) noexcept
         : m_fd(Exchange(x.m_fd, Win32InvalidFd))
     {}
 
-    File::~File()
+    File::~File() noexcept
     {
         Close();
     }
 
-    File& File::operator=(File&& x)
+    File& File::operator=(File&& x) noexcept
     {
         Close();
         m_fd = Exchange(x.m_fd, Win32InvalidFd);
@@ -357,26 +357,26 @@ namespace he
         return Result::Success;
     }
 
-    MemoryMap::MemoryMap()
+    MemoryMap::MemoryMap() noexcept
         : m_data(nullptr)
         , m_size(0)
         , m_handle(nullptr)
         , m_fileHandle(INVALID_HANDLE_VALUE)
     {}
 
-    MemoryMap::MemoryMap(MemoryMap&& x)
+    MemoryMap::MemoryMap(MemoryMap&& x) noexcept
         : m_data(Exchange(x.m_data, nullptr))
         , m_size(Exchange(x.m_size, 0))
         , m_handle(Exchange(x.m_handle, nullptr))
         , m_fileHandle(Exchange(x.m_fileHandle, INVALID_HANDLE_VALUE))
     {}
 
-    MemoryMap::~MemoryMap()
+    MemoryMap::~MemoryMap() noexcept
     {
         Unmap();
     }
 
-    MemoryMap& MemoryMap::operator=(MemoryMap&& x)
+    MemoryMap& MemoryMap::operator=(MemoryMap&& x) noexcept
     {
         Unmap();
         m_data = Exchange(x.m_data, nullptr);

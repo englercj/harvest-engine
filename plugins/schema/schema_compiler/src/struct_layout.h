@@ -14,8 +14,8 @@ namespace he::schema
     class StructLayout
     {
     public:
-        StructLayout(Declaration::Builder decl);
-        ~StructLayout();
+        explicit StructLayout(Declaration::Builder decl) noexcept;
+        ~StructLayout() noexcept;
 
         void CalculateLayout();
 

@@ -19,7 +19,7 @@ namespace he::rhi::d3d12
     class DescriptorPool
     {
     public:
-        ~DescriptorPool();
+        ~DescriptorPool() noexcept;
 
         HRESULT Create(Allocator& allocator, ID3D12Device* d3dDevice, const D3D12_DESCRIPTOR_HEAP_DESC& d3dHeapDesc);
         void Destroy(Allocator& allocator);
@@ -48,7 +48,7 @@ namespace he::rhi::d3d12
 
     struct DisplayImpl final : Display
     {
-        DisplayImpl(Allocator& allocator) : info(allocator), modes(allocator) {}
+        explicit DisplayImpl(Allocator& allocator) noexcept : info(allocator), modes(allocator) {}
 
         DisplayInfo info;
         Vector<DisplayModeImpl> modes;
@@ -56,7 +56,7 @@ namespace he::rhi::d3d12
 
     struct AdapterImpl final : Adapter
     {
-        AdapterImpl(Allocator& allocator) : displays(allocator) {}
+        explicit AdapterImpl(Allocator& allocator) noexcept : displays(allocator) {}
 
         AdapterInfo info{};
         IDXGIAdapter1* dxgiAdapter1{ nullptr };
@@ -107,7 +107,7 @@ namespace he::rhi::d3d12
 
     struct DescriptorTableImpl final : DescriptorTable
     {
-        DescriptorTableImpl(Allocator& allocator) : ranges(allocator) {}
+        explicit DescriptorTableImpl(Allocator& allocator) noexcept : ranges(allocator) {}
 
         D3D12_CPU_DESCRIPTOR_HANDLE d3dCpuStart{ 0 };
         D3D12_GPU_DESCRIPTOR_HANDLE d3dGpuStart{ 0 };
@@ -167,7 +167,7 @@ namespace he::rhi::d3d12
 
     struct SwapChainImpl final : SwapChain
     {
-        SwapChainImpl(Allocator& allocator) : d3dResources(allocator), d3dRtvCpuHandles(allocator) {}
+        explicit SwapChainImpl(Allocator& allocator) noexcept : d3dResources(allocator), d3dRtvCpuHandles(allocator) {}
 
         IDXGISwapChain3* dxgiSwapChain3{ nullptr };
         HANDLE swapEvent{ nullptr };
@@ -203,7 +203,7 @@ namespace he::rhi::d3d12
 
     struct VertexBufferFormatImpl final : VertexBufferFormat
     {
-        VertexBufferFormatImpl(Allocator& allocator) : attributes(allocator) {}
+        explicit VertexBufferFormatImpl(Allocator& allocator) noexcept : attributes(allocator) {}
 
         uint32_t stride{ 0 };
         StepRate stepRate{ StepRate::PerVertex };

@@ -12,7 +12,7 @@ namespace he::schema
     class CodeGenEcho : private SchemaVisitor
     {
     public:
-        CodeGenEcho(const CodeGenRequest& request);
+        explicit CodeGenEcho(const CodeGenRequest& request) noexcept;
 
         bool Generate();
 

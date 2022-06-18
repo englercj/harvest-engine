@@ -32,11 +32,11 @@ namespace he::sqlite
     class Statement final
     {
     public:
-        Statement() {}
-        ~Statement();
+        Statement() = default;
+        ~Statement() noexcept;
 
-        Statement(Statement&& o);
-        Statement& operator=(Statement&& o);
+        Statement(Statement&& o) noexcept;
+        Statement& operator=(Statement&& o) noexcept;
 
         Statement(const Statement&) = delete;
         Statement& operator=(const Statement&) = delete;
@@ -83,8 +83,8 @@ namespace he::sqlite
     class ScopedStatement final
     {
     public:
-        ScopedStatement(const Statement& stmt) : m_stmt(stmt) {}
-        ~ScopedStatement() { m_stmt.Reset(); }
+        ScopedStatement(const Statement& stmt) noexcept : m_stmt(stmt) {}
+        ~ScopedStatement() noexcept { m_stmt.Reset(); }
 
         ScopedStatement(const ScopedStatement&) = delete;
         ScopedStatement(ScopedStatement&&) = delete;

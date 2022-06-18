@@ -17,7 +17,7 @@ namespace he::schema
     class CodeGenCpp
     {
     public:
-        CodeGenCpp(const CodeGenRequest& request);
+        explicit CodeGenCpp(const CodeGenRequest& request) noexcept;
 
         bool Generate();
 

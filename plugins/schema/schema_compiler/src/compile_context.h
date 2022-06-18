@@ -24,7 +24,7 @@ namespace he::schema
     class CompileContext
     {
     public:
-        CompileContext(const char* path, const CompileSession::Config& config, TypeIdMap& typeIdMap, TypeMap& typeMap, DeclIdMap& declIdMap)
+        CompileContext(const char* path, const CompileSession::Config& config, TypeIdMap& typeIdMap, TypeMap& typeMap, DeclIdMap& declIdMap) noexcept
             : m_path(path)
             , m_config(config)
             , m_typeIdMap(typeIdMap)

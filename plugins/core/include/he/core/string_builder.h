@@ -23,7 +23,7 @@ namespace he
         /// Constructs a new builder.
         ///
         /// \param[in] allocator Optional. The allocator to use.
-        explicit StringBuilder(Allocator& allocator = Allocator::GetDefault())
+        explicit StringBuilder(Allocator& allocator = Allocator::GetDefault()) noexcept
             : m_str(allocator)
             , m_indentDepth(0)
         {}
@@ -33,7 +33,7 @@ namespace he
         ///
         /// \param x The builder to copy from.
         /// \param allocator The allocator to use for any allocations.
-        StringBuilder(const StringBuilder& x, Allocator& allocator)
+        StringBuilder(const StringBuilder& x, Allocator& allocator) noexcept
             : m_str(x.m_str, allocator)
             , m_indentDepth(x.m_indentDepth)
         {}
@@ -44,7 +44,7 @@ namespace he
         ///
         /// \param x The builder to move from.
         /// \param allocator The allocator to use for any allocations.
-        StringBuilder(StringBuilder&& x, Allocator& allocator)
+        StringBuilder(StringBuilder&& x, Allocator& allocator) noexcept
             : m_str(Move(x.m_str), allocator)
             , m_indentDepth(Exchange(x.m_indentDepth, 0))
         {}
@@ -52,7 +52,7 @@ namespace he
         /// Construct a builder by copying `x`, using the allocator from `x`.
         ///
         /// \param x The builder to copy from.
-        StringBuilder(const StringBuilder& x)
+        StringBuilder(const StringBuilder& x) noexcept
             : m_str(x.m_str)
             , m_indentDepth(x.m_indentDepth)
         {}
@@ -60,7 +60,7 @@ namespace he
         /// Construct a builder by moving `x`, using the allocator from `x`.
         ///
         /// \param x The builder to move from.
-        StringBuilder(StringBuilder&& x)
+        StringBuilder(StringBuilder&& x) noexcept
             : m_str(Move(x.m_str))
             , m_indentDepth(Exchange(x.m_indentDepth, 0))
         {}
@@ -71,7 +71,7 @@ namespace he
         /// Copy the buffer `x` into this buffer.
         ///
         /// \param x The buffer to copy from.
-        StringBuilder& operator=(const StringBuilder& x)
+        StringBuilder& operator=(const StringBuilder& x) noexcept
         {
             m_str = x.m_str;
             m_indentDepth = x.m_indentDepth;
@@ -82,7 +82,7 @@ namespace he
         /// If the allocators do not match then a copy operation will be performed.
         ///
         /// \param x The buffer to move from.
-        StringBuilder& operator=(StringBuilder&& x)
+        StringBuilder& operator=(StringBuilder&& x) noexcept
         {
             m_str = Move(x.m_str);
             m_indentDepth = Exchange(x.m_indentDepth, 0);

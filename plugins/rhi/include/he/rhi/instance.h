@@ -26,7 +26,7 @@ namespace he::rhi
         static void Destroy(Instance* instance);
 
     public:
-        virtual ~Instance() {}
+        virtual ~Instance() = default;
 
         /// Gets the allocator instance used for all allocations in this instance.
         ///

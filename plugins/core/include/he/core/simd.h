@@ -88,7 +88,7 @@
     struct alignas(16) Simd128 { float x, y, z, w; };
 #endif
 
-constexpr Simd128 MakeSimd128(float x, float y, float z, float w)
+constexpr Simd128 MakeSimd128(float x, float y, float z, float w) noexcept
 {
     #if HE_SIMD_SSE2 && HE_COMPILER_MSVC
         return Simd128{ .m128_f32 = { x, y, z, w } };

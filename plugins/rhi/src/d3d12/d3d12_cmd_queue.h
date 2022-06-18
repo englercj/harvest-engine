@@ -18,7 +18,7 @@ namespace he::rhi::d3d12
     class BaseCmdQueueImpl
     {
     public:
-        ~BaseCmdQueueImpl();
+        ~BaseCmdQueueImpl() noexcept;
 
     protected:
         void SignalInternal(CpuFence* fence);

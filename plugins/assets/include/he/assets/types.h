@@ -23,11 +23,11 @@ namespace he::assets
     template <typename Tag>
     struct _UuidWrapper
     {
-        _UuidWrapper() : val() {}
-        _UuidWrapper(const Uuid& uuid) : val(uuid) {}
-        _UuidWrapper(schema::Uuid::Reader uuid) { *this = uuid; }
+        _UuidWrapper() noexcept : val() {}
+        _UuidWrapper(const Uuid& uuid) noexcept : val(uuid) {}
+        _UuidWrapper(schema::Uuid::Reader uuid) noexcept { *this = uuid; }
 
-        _UuidWrapper& operator=(const schema::Uuid::Reader uuid)
+        _UuidWrapper& operator=(const schema::Uuid::Reader uuid) noexcept
         {
             Span<const uint8_t> value = uuid.GetValue();
             HE_ASSERT(value.Size() == sizeof(Uuid::m_bytes));

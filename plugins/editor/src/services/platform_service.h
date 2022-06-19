@@ -23,12 +23,6 @@ namespace he::editor
         /// The default path to open the dialog with.
         const char* defaultPath{ nullptr };
 
-        /// When set the user can select multiple items. This is ignored for save dialogs.
-        bool allowMultiSelect{ false };
-
-        /// When set the user can only select folder, not files. This is ignored for save dialogs.
-        bool folderSelect{ false };
-
         /// An array of filters to use in the dialog. The user can select from this list in the UI.
         const FileDialogFilter* filters{ nullptr };
 
@@ -39,19 +33,33 @@ namespace he::editor
     class PlatformService
     {
     public:
-        /// Opens a native file dialog for selecting files or folders to be opened.
+        /// Opens a native file dialog for selecting multiple files to be opened.
         ///
         /// @param config Configuration for the dialog
-        /// @param paths Vector of selected paths. If config.allowMultiSelect is false this will contain a single entry.
+        /// @param paths Vector of selected paths.
         /// @return Returns true if the user made a selection, or false if the user cancelled or there was an error.
-        bool OpenFileDialog(const FileDialogConfig& config, Vector<String>& paths);
+        bool OpenFilesDialog(Vector<String>& paths, const FileDialogConfig& config = {});
+
+        /// Opens a native file dialog for selecting a file to be opened.
+        ///
+        /// @param config Configuration for the dialog
+        /// @param path The path the user selected.
+        /// @return Returns true if the user made a selection, or false if the user cancelled or there was an error.
+        bool OpenFileDialog(String& paths, const FileDialogConfig& config = {});
+
+        /// Opens a native file dialog for selecting a folder.
+        ///
+        /// @param config Configuration for the dialog
+        /// @param path The path the user selected.
+        /// @return Returns true if the user made a selection, or false if the user cancelled or there was an error.
+        bool OpenFolderDialog(String& path, const FileDialogConfig& config = {});
 
         /// Opens a native file dialog for selecting a file save location.
         ///
         /// @param config Configuration for the dialog
         /// @param path The path the user selected.
         /// @return Returns true if the user made a selection, or false if the user cancelled or there was an error.
-        bool SaveFileDialog(const FileDialogConfig& config, String& path);
+        bool SaveFileDialog(String& path, const FileDialogConfig& config = {});
 
         /// Opens the file explorer to a particular directory, and optionally selects an item within it.
         ///

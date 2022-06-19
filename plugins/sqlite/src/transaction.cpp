@@ -28,7 +28,7 @@ namespace he::sqlite
         HE_ASSERT(idResult);
         HE_UNUSED(idResult);
 
-        fmt::format_to_n(m_id, HE_LENGTH_OF(m_id), "{:x}", fmt::join(idBytes, ""));
+        fmt::format_to_n(m_id, HE_LENGTH_OF(m_id), "{:02x}", fmt::join(idBytes, ""));
 
         m_id[0] = '_'; // must start with a non-numeric character
         m_id[15] = '\0'; // end with a null terminator to simplify Execute() logic

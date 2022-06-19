@@ -6,13 +6,12 @@
 #include "platform_service.h"
 #include "schema/project.hsc.h"
 
+#include "he/core/signal.h"
 #include "he/core/string.h"
 #include "he/schema/layout.h"
 
 namespace he::editor
 {
-    using Project = schema::Project;
-
     constexpr const char ProjectExtension[] = ".he_project";
     constexpr const FileDialogFilter ProjectFilters[] =
     {
@@ -24,25 +23,33 @@ namespace he::editor
     public:
         ProjectService(DirectoryService& directoryService);
 
-        bool Create(const char* name, const char* path);
+        bool Create(const char* name, const char* path, const char* assetRoot);
         bool Open(const char* path);
         bool Close();
 
         bool Reload();
         bool Save();
 
-        bool IsOpen() const { return !m_projectPath.IsEmpty(); }
+        bool IsOpen() const { return !m_projectPath.IsEmpty() && m_project.IsValid(); }
 
-        Project::Builder& GetProject() { return m_project; }
-        const Project::Builder& GetProject() const { return m_project; }
+        schema::Project::Builder& Project() { return m_project; }
+        const schema::Project::Builder& Project() const { return m_project; }
 
-        String GetResourceDir() const;
+        const String& ProjectPath() const { return m_projectPath; }
+        String ResourceDir() const;
+
+    public:
+        using OnLoadSignal = Signal<void()>;
+
+        OnLoadSignal& OnLoad() { return m_onLoadSignal; }
 
     private:
         DirectoryService& m_directoryService;
 
         he::schema::Builder m_builder{};
-        Project::Builder m_project{};
+        schema::Project::Builder m_project{};
         String m_projectPath{};
+
+        OnLoadSignal m_onLoadSignal{};
     };
 }

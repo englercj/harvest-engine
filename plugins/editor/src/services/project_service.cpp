@@ -24,18 +24,32 @@ namespace he::editor
         : m_directoryService(directoryService)
     {}
 
-    bool ProjectService::Create(const char* name, const char* path)
+    bool ProjectService::Create(const char* name, const char* path, const char* assetRoot)
     {
         HE_ASSERT(!IsOpen());
 
-        const Uuid projId = Uuid::CreateV4();
+        // Create a new project structure and set it as the root
+        m_builder.Clear();
+        m_project = m_builder.AddStruct<schema::Project>();
+        m_builder.SetRoot(m_project);
 
-        m_project = m_builder.Root().TryGetStruct<Project>();
-        Span<uint8_t> data = m_project.GetId().GetValue();
-        HE_ASSERT(data.Size() == sizeof(projId.m_bytes));
-        MemCopy(data.Data(), projId.m_bytes, sizeof(projId.m_bytes));
+        // Generate the ID
+        const Uuid projId = Uuid::CreateV4();
+        Span<uint8_t> idData = m_project.InitId().GetValue();
+        HE_ASSERT(idData.Size() == sizeof(projId.m_bytes));
+        MemCopy(idData.Data(), projId.m_bytes, sizeof(projId.m_bytes));
+
+        // Assign the name
         m_project.InitName(name);
 
+        // Assign the project root if it was explicitly set, otherwise we assume the
+        // same directory as the project file itself.
+        if (!String::IsEmpty(assetRoot))
+            m_project.InitAssetRoot(assetRoot);
+        else
+            m_project.InitAssetRoot(".");
+
+        // Store off the path to project file and save it out
         m_projectPath = path;
 
         if (!Save())
@@ -84,14 +98,14 @@ namespace he::editor
         m_project = {};
         m_builder.Clear();
 
-        if (!he::schema::FromToml<Project>(m_builder, buf.Data()))
+        if (!he::schema::FromToml<schema::Project>(m_builder, buf.Data()))
         {
             HE_LOG_ERROR(editor, HE_MSG("Failed to deserialize project file. Is it valid TOML?"),
                 HE_KV(path, m_projectPath));
             return false;
         }
 
-        m_project = m_builder.Root().TryGetStruct<Project>();
+        m_project = m_builder.Root().TryGetStruct<schema::Project>();
         return true;
     }
 
@@ -100,7 +114,7 @@ namespace he::editor
         HE_ASSERT(IsOpen());
 
         StringBuilder buf;
-        if (!he::schema::ToToml<Project>(buf, m_project))
+        if (!he::schema::ToToml<schema::Project>(buf, m_project))
         {
             HE_LOG_ERROR(editor, HE_MSG("Failed to serialize project file. This is likely an editor bug."));
             return false;
@@ -115,20 +129,23 @@ namespace he::editor
             return false;
         }
 
+        m_onLoadSignal.Dispatch();
         return true;
     }
 
-    String ProjectService::GetResourceDir() const
+    String ProjectService::ResourceDir() const
     {
         HE_ASSERT(IsOpen());
 
         String appDir = m_directoryService.GetAppDirectory(DirectoryService::DirType::Resources);
-        appDir += '/';
+
+        if (!appDir.IsEmpty() && appDir.Back() != '/' && appDir.Back() != '\\')
+            appDir.PushBack('/');
 
         const Span<const uint8_t> projId = m_project.GetId().GetValue();
         HE_ASSERT(projId.Size() == sizeof(Uuid));
 
-        fmt::format_to(Appender(appDir), "{:x}", fmt::join(projId, ""));
+        fmt::format_to(Appender(appDir), "{:02x}", fmt::join(projId, ""));
         return appDir;
     }
 }

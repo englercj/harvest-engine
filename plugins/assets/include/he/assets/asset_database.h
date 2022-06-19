@@ -30,7 +30,7 @@ namespace he::assets
     public:
         ~AssetDatabase() noexcept { Terminate(); }
 
-        bool Initialize(const char* dbPath, const char* rootDir, AsyncFileLoader& loader);
+        bool Initialize(const char* dbPath, const char* assetRoot, AsyncFileLoader& loader);
         bool Terminate();
 
         // TODO: Audit the path handling in these.
@@ -43,7 +43,7 @@ namespace he::assets
         void OnAssetFileDeleted(const char* path);
         void OnAssetFileUpdated(const char* path);
 
-        const String& RootDir() const { return m_rootDir; }
+        const String& AssetRoot() const { return m_assetRoot; }
 
         sqlite::Transaction BeginTransaction() const { return m_db.BeginTransaction(); }
         const sqlite::Statement& StatementLiteral(const char* sql) { return m_db.StatementLiteral(sql); }
@@ -74,7 +74,7 @@ namespace he::assets
 
     private:
         sqlite::Database m_db;
-        String m_rootDir;
+        String m_assetRoot;
         AsyncFileLoader* m_loader;
     };
 }

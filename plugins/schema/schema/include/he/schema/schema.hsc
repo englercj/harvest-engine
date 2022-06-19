@@ -8,12 +8,13 @@ struct Toml
 {
     attribute Name(field, enumerator) :String;
     attribute Hex(field) :void;
+    attribute HexString(field) :void;
     attribute Base64(field) :void;
 }
 
 struct Uuid
 {
-    value @0 :uint8[16] $Toml.Hex;
+    value @0 :uint8[16] $Toml.HexString;
 }
 
 struct Brand

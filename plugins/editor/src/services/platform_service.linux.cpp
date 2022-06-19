@@ -8,24 +8,38 @@
 
 namespace he::editor
 {
-    bool PlatformService::OpenFileDialog(const FileDialogConfig& config, Vector<String>& paths)
+    bool PlatformService::OpenFilesDialog(Vector<String>& paths, const FileDialogConfig& config)
     {
-        HE_UNUSED(config, paths);
-        HE_LOG_WARN(editor, HE_MSG("File dialogs are not implemented on this platform!"));
+        HE_UNUSED(paths, config);
+        HE_LOG_WARN(editor, HE_MSG("File dialogs are not implemented for linux!"));
         return false;
     }
 
-    bool PlatformService::SaveFileDialog(const FileDialogConfig& config, String& path)
+    bool PlatformService::OpenFileDialog(String& path, const FileDialogConfig& config)
     {
-        HE_UNUSED(config, path);
-        HE_LOG_WARN(editor, HE_MSG("File dialogs are not implemented on this platform!"));
+        HE_UNUSED(path, config);
+        HE_LOG_WARN(editor, HE_MSG("File dialogs are not implemented for linux!"));
+        return false;
+    }
+
+    bool PlatformService::OpenFolderDialog(String& path, const FileDialogConfig& config)
+    {
+        HE_UNUSED(path, config);
+        HE_LOG_WARN(editor, HE_MSG("File dialogs are not implemented for linux!"));
+        return false;
+    }
+
+    bool PlatformService::SaveFileDialog(String& path, const FileDialogConfig& config)
+    {
+        HE_UNUSED(path, config);
+        HE_LOG_WARN(editor, HE_MSG("File dialogs are not implemented for linux!"));
         return false;
     }
 
     bool PlatformService::OpenInFileExplorer(const char* directory, const char* selectItem)
     {
         HE_UNUSED(directory, selectItem);
-        HE_LOG_WARN(editor, HE_MSG("File dialogs are not implemented on this platform!"));
+        HE_LOG_WARN(editor, HE_MSG("File dialogs are not implemented for linux!"));
         return false;
     }
 }

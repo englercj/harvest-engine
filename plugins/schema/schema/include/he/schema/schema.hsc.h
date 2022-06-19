@@ -14,6 +14,7 @@ namespace he::schema
     HE_SCHEMA_DECL_INFO_FOR_ID(0xc209341a45619228); // Toml
     HE_SCHEMA_DECL_INFO_FOR_ID(0xc5144765ef1b906b); // Toml::Name
     HE_SCHEMA_DECL_INFO_FOR_ID(0xadd3e5b7bc72e8a5); // Toml::Hex
+    HE_SCHEMA_DECL_INFO_FOR_ID(0xc218a66445285bb8); // Toml::HexString
     HE_SCHEMA_DECL_INFO_FOR_ID(0xc2fc1f39cbc0264f); // Toml::Base64
     HE_SCHEMA_DECL_INFO_FOR_ID(0xef69d825c0ea441b); // Uuid
     HE_SCHEMA_DECL_INFO_FOR_ID(0xa66eff5acba76a75); // Brand
@@ -69,6 +70,12 @@ namespace he::schema
         {
             Hex() = delete;
             HE_SCHEMA_DECL_ATTRIBUTE(0xadd3e5b7bc72e8a5, 0xc209341a45619228);
+        };
+
+        struct HexString
+        {
+            HexString() = delete;
+            HE_SCHEMA_DECL_ATTRIBUTE(0xc218a66445285bb8, 0xc209341a45619228);
         };
 
         struct Base64

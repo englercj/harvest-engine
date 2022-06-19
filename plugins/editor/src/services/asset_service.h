@@ -27,6 +27,9 @@ namespace he::editor
         const assets::AssetDatabase& AssetDB() const { return m_db; }
 
     private:
+        void OnProjectLoaded();
+
+    private:
         FileLoaderService& m_fileLoaderService;
         ProjectService& m_projectService;
 

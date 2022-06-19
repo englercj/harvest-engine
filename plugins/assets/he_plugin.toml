@@ -27,5 +27,5 @@ homepage = ""
         dependson_include = ["he_schema"]
 
     [[modules.variants]]
-        conditions = ["system:win32"]
+        conditions = ["system:windows"]
         public_dependson = ["sys:Shlwapi"]

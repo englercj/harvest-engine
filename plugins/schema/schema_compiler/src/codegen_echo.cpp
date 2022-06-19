@@ -549,7 +549,7 @@ namespace he::schema
             {
                 HE_ASSERT(type.GetData().IsBlob());
                 const List<uint8_t>::Reader bytes = value.GetData().GetBlob();
-                m_writer.Write("0x\"{:x}\"", fmt::join(bytes, ""));
+                m_writer.Write("0x\"{:02x}\"", fmt::join(bytes, ""));
                 break;
             }
             case Value::Data::Tag::String:

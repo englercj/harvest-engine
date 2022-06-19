@@ -44,6 +44,7 @@ homepage = ""
     [[modules.variants]]
         conditions = ["system:windows"]
         disablewarnings = ["4127", "5054"]
+        public_dependson = ["sys:Shlwapi"]
 
         [[modules.variants.shader_compile]]
             glob = "src/shaders/*.hlsl"

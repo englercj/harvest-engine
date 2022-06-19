@@ -1078,8 +1078,7 @@ namespace he::schema
                     return;
             }
 
-            const bool asHex = FindAttribute(field.GetAttributes(), Toml::Hex::Id).IsValid();
-            WriteValue(data, field.GetName(), fieldType, norm.GetIndex(), norm.GetDataOffset(), asHex);
+            WriteValue(data, field.GetName(), field.GetAttributes(), fieldType, norm.GetIndex(), norm.GetDataOffset());
 
             if (m_arrayStack <= 1)
                 m_writer.Write('\n');
@@ -1162,16 +1161,21 @@ namespace he::schema
         }
 
         template <typename ReaderType>
-        void WriteArrayValue(ReaderType data, StringView name, Type::Reader elementType, uint32_t index, uint32_t dataOffset, uint32_t size, bool asHex)
+        void WriteArrayValue(ReaderType data, StringView name, List<Attribute>::Reader attributes, Type::Reader elementType, uint32_t index, uint32_t dataOffset, uint32_t size)
         {
             using Helper = SchemaValueHelper<ReaderType>;
 
             const bool isArrayOfStructs = elementType.GetData().IsStruct();
 
             if (isArrayOfStructs)
+            {
                 PushGroup(elementType.GetData().GetStruct().GetId(), name);
+            }
             else
-                m_writer.Write('[');
+            {
+                m_writer.WriteIndent();
+                m_writer.Write("{} = [", name);
+            }
 
             for (uint32_t i = 0; i < size; ++i)
             {
@@ -1184,7 +1188,7 @@ namespace he::schema
                 }
                 else
                 {
-                    WriteValue(data, "", elementType, index + i, dataOffset + i, asHex);
+                    WriteValue(data, "", attributes, elementType, index + i, dataOffset + i);
 
                     if (i != (size - 1))
                         m_writer.Write(", ");
@@ -1198,10 +1202,11 @@ namespace he::schema
         }
 
         template <typename ReaderType>
-        void WriteValue(ReaderType data, StringView name, Type::Reader type, uint32_t index, uint32_t dataOffset, bool asHex)
+        void WriteValue(ReaderType data, StringView name, List<Attribute>::Reader attributes, Type::Reader type, uint32_t index, uint32_t dataOffset)
         {
             using Helper = SchemaValueHelper<ReaderType>;
 
+            const bool asHex = FindAttribute(attributes, Toml::Hex::Id).IsValid();
             const auto dataValueFmt = fmt::runtime(asHex ? "{:#x}" : "{}");
 
             const Type::Data::Reader typeData = type.GetData();
@@ -1232,16 +1237,39 @@ namespace he::schema
                 case Type::Data::Tag::Float64: m_writer.Write(dataValueFmt, Helper::template GetData<double>(data, index, dataOffset)); break;
                 case Type::Data::Tag::Array:
                 {
+                    const bool asHexString = FindAttribute(attributes, Toml::HexString::Id).IsValid();
+
                     const Type::Data::Array::Reader arrayType = type.GetData().GetArray();
                     const Type::Reader elementType = arrayType.GetElementType();
-                    const uint32_t size = arrayType.GetSize();
-                    WriteArrayValue(data, name, elementType, index, dataOffset, size, asHex);
+                    const uint16_t size = arrayType.GetSize();
+
+                    if constexpr (std::is_same_v<ReaderType, StructReader>)
+                    {
+                        if (asHexString && elementType.GetData().IsUint8())
+                        {
+                            // TODO: Need to support this in the reader
+                            const Span<const uint8_t> bytes = data.TryGetDataArrayField<uint8_t>(static_cast<uint16_t>(index), dataOffset, size);
+                            m_writer.WriteIndent();
+                            m_writer.Write("{} = \"{:02x}\"", name, fmt::join(bytes, ""));
+                        }
+                        else
+                        {
+                            WriteArrayValue(data, name, attributes, elementType, index, dataOffset, size);
+                        }
+                    }
+                    else
+                    {
+                        WriteArrayValue(data, name, attributes, elementType, index, dataOffset, size);
+                    }
+
                     break;
                 }
                 case Type::Data::Tag::Blob:
                 {
+                    // TODO: Hex as array, Base64 as string, if attributes are set.
+                    // HexString is the default output format, so that attribute has no effect.
                     const List<uint8_t>::Reader bytes = Helper::GetPointer(data, index).template TryGetList<uint8_t>();
-                    m_writer.Write("\"{:x}\"", fmt::join(bytes, "")); // TODO: Base64 if attribute is set
+                    m_writer.Write("\"{:02x}\"", fmt::join(bytes, ""));
                     break;
                 }
                 case Type::Data::Tag::String:
@@ -1252,11 +1280,31 @@ namespace he::schema
                 }
                 case Type::Data::Tag::List:
                 {
+                    const bool asHexString = FindAttribute(attributes, Toml::HexString::Id).IsValid();
+
                     const Type::Data::List::Reader listType = typeData.GetList();
                     const Type::Reader elementType = listType.GetElementType();
                     const ElementSize elementSize = GetTypeElementSize(elementType);
                     const ListReader list = Helper::GetPointer(data, index).TryGetList(elementSize);
-                    WriteArrayValue(list, name, elementType, 0, 0, list.Size(), asHex);
+
+                    if constexpr (std::is_same_v<ReaderType, StructReader>)
+                    {
+                        if (asHexString && elementType.GetData().IsUint8())
+                        {
+                            // TODO: Need to support this in the reader
+                            List<uint8_t>::Reader bytes = data.GetPointerField(static_cast<uint16_t>(index)).TryGetList<uint8_t>();
+                            m_writer.WriteIndent();
+                            m_writer.Write("{} = \"{:02x}\"", name, fmt::join(bytes, ""));
+                        }
+                        else
+                        {
+                            WriteArrayValue(list, name, attributes, elementType, 0, 0, list.Size());
+                        }
+                    }
+                    else
+                    {
+                        WriteArrayValue(list, name, attributes, elementType, 0, 0, list.Size());
+                    }
                     break;
                 }
                 case Type::Data::Tag::Enum:
@@ -1300,25 +1348,28 @@ namespace he::schema
                     const StructReader value = Helper::GetComposite(data, index);
 
                     if (m_arrayStack <= 1)
-                        PushGroup(structType.GetId(), name);
-                    else
-                        m_writer.Write("{ ");
-
-                    if (!name.IsEmpty() && m_arrayStack == 0)
                     {
+                        PushGroup(structType.GetId(), name);
                         m_writer.WriteLine("[{}]", m_pathName);
                         m_writer.IncreaseIndent();
+                    }
+                    else
+                    {
+                        m_writer.WriteIndent();
+                        m_writer.Write("{} = {{", name);
                     }
 
                     WriteStruct(value);
 
                     if (m_arrayStack <= 1)
-                        PopGroup();
-                    else
-                        m_writer.Write(" }");
-
-                    if (!name.IsEmpty() && m_arrayStack == 0)
+                    {
                         m_writer.DecreaseIndent();
+                        PopGroup();
+                    }
+                    else
+                    {
+                        m_writer.Write(" }");
+                    }
 
                     break;
                 }

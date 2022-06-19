@@ -24,6 +24,8 @@ namespace he::editor
         _Count,
     };
 
+    inline constexpr ImVec4 Color_Error{ 1.00f, 0.60f, 0.00f, 1.00f };
+
     class ImGuiService
     {
     public:

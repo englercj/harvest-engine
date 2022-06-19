@@ -2,6 +2,8 @@
 
 #include "input_text.h"
 
+#include "he/core/string_view.h"
+
 namespace he::editor
 {
     struct InputTextCallback_UserData
@@ -42,5 +44,69 @@ namespace he::editor
         cbUserData.chainCallback = callback;
         cbUserData.chainCallbackUserData = userData;
         return ImGui::InputText(label, str.Data(), str.Capacity() + 1, flags, InputTextCallback, &cbUserData);
+    }
+
+    bool InputOpenFile(const char* label, String& path, PlatformService& service, Span<const FileDialogFilter> filters)
+    {
+        bool result = false;
+
+        ImGui::PushID(label);
+
+        InputText("##path_input", path);
+        ImGui::SameLine();
+        if (ImGui::Button("Browse..."))
+        {
+            FileDialogConfig config{};
+            config.defaultPath = path.Data();
+            config.filters = filters.Data();
+            config.filterCount = filters.Size();
+
+            result = service.OpenFileDialog(path, config);
+        }
+
+        ImGui::PopID();
+        return result;
+    }
+
+    bool InputSaveFile(const char* label, String& path, PlatformService& service, Span<const FileDialogFilter> filters)
+    {
+        bool result = false;
+
+        ImGui::PushID(label);
+
+        InputText("##path_input", path);
+        ImGui::SameLine();
+        if (ImGui::Button("Browse..."))
+        {
+            FileDialogConfig config{};
+            config.defaultPath = path.Data();
+            config.filters = filters.Data();
+            config.filterCount = filters.Size();
+
+            result = service.SaveFileDialog(path, config);
+        }
+
+        ImGui::PopID();
+        return result;
+    }
+
+    bool InputOpenFolder(const char* label, String& path, PlatformService& service)
+    {
+        bool result = false;
+
+        ImGui::PushID(label);
+
+        InputText("##path_input", path);
+        ImGui::SameLine();
+        if (ImGui::Button("Browse..."))
+        {
+            FileDialogConfig config{};
+            config.defaultPath = path.Data();
+
+            result = service.OpenFolderDialog(path, config);
+        }
+
+        ImGui::PopID();
+        return result;
     }
 }

@@ -20,20 +20,12 @@
 
 namespace he::assets
 {
-    bool AssetDatabase::Initialize(const char* dbPath, const char* rootDir, AsyncFileLoader& loader)
+    bool AssetDatabase::Initialize(const char* dbPath, const char* assetRoot, AsyncFileLoader& loader)
     {
-        m_rootDir = rootDir;
-        Result r = MakeAbsolute(m_rootDir);
-        if (!r)
-        {
-            HE_LOG_ERROR(he_assets,
-                HE_MSG("Failed to get absolute path for root directory."),
-                HE_KV(root_dir, rootDir),
-                HE_KV(result, r));
+        if (!HE_VERIFY(IsAbsolutePath(assetRoot), HE_KV(asset_root, assetRoot)))
             return false;
-        }
-        NormalizePath(m_rootDir);
 
+        m_assetRoot = assetRoot;
         m_loader = &loader;
 
         if (!m_db.Open(dbPath))
@@ -303,12 +295,12 @@ namespace he::assets
         relPath = path;
         if (IsAbsolutePath(relPath))
         {
-            if (!MakeRelative(relPath, m_rootDir))
+            if (!MakeRelative(relPath, m_assetRoot))
             {
                 HE_LOG_WARN(he_assets,
                     HE_MSG("Absolute path does not refer to a file in the asset root directory, ignoring."),
                     HE_KV(file_path, relPath),
-                    HE_KV(root_dir, m_rootDir));
+                    HE_KV(root_dir, m_assetRoot));
                 return false;
             }
         }
@@ -319,16 +311,16 @@ namespace he::assets
 
     bool AssetDatabase::PrepareAbsolutePath(const char* path, String& absPath) const
     {
-        if (IsAbsolutePath(path) && !IsChildPath(path, m_rootDir))
+        if (IsAbsolutePath(path) && !IsChildPath(path, m_assetRoot))
         {
             HE_LOG_WARN(he_assets,
                 HE_MSG("Absolute path does not refer to a file in the asset root directory, ignoring."),
                 HE_KV(file_path, path),
-                HE_KV(root_dir, m_rootDir));
+                HE_KV(root_dir, m_assetRoot));
             return false;
         }
 
-        absPath = m_rootDir;
+        absPath = m_assetRoot;
         ConcatPath(absPath, path);
         return true;
     }

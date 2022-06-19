@@ -3,6 +3,7 @@
 #pragma once
 
 #include "dialog.h"
+#include "services/dialog_service.h"
 #include "services/platform_service.h"
 #include "services/project_service.h"
 
@@ -14,6 +15,7 @@ namespace he::editor
     {
     public:
         CreateProjectDialog(
+            DialogService& dialogService,
             PlatformService& platformService,
             ProjectService& projectService);
 
@@ -21,10 +23,15 @@ namespace he::editor
         void ShowButtons() override;
 
     private:
+        DialogService& m_dialogService;
         PlatformService& m_platformService;
         ProjectService& m_projectService;
 
         String m_name{};
         String m_path{};
+        String m_assetRoot{};
+        String m_errorMessage{};
+
+        bool m_overrideAssetRoot{ false };
     };
 }

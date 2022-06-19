@@ -70,10 +70,10 @@ namespace he::editor
             config.filters = ProjectFilters;
             config.filterCount = HE_LENGTH_OF(ProjectFilters);
 
-            Vector<String> paths;
-            if (m_platformService.OpenFileDialog(config, paths))
+            String path;
+            if (m_platformService.OpenFileDialog(path, config))
             {
-                if (m_projectService.Open(paths[0].Data()))
+                if (m_projectService.Open(path.Data()))
                 {
                     RequestClose();
                 }
@@ -92,7 +92,6 @@ namespace he::editor
         if (ImGui::Button(ICON_FA_PLUS " Create New Project"))
         {
             m_dialogService.Open<CreateProjectDialog>();
-            RequestClose();
         }
     }
 

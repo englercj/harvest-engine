@@ -9,7 +9,7 @@ import "he/schema/schema.hsc";
 
 namespace he.editor.schema;
 
-// A project that has been recently opened
+// A project that has been recently opened.
 struct RecentProject
 {
     name @0 :String;            // Name of the project.

@@ -314,7 +314,7 @@ namespace he::assets
 
         bool Start() override
         {
-            if (!m_watcher.Initialize(m_db.RootDir().Data()))
+            if (!m_watcher.Initialize(m_db.AssetRoot().Data()))
                 return false;
 
             bool needsFullScan = true;

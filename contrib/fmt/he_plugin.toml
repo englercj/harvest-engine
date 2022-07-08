@@ -22,4 +22,5 @@ homepage = "https://fmt.dev/"
         "include/fmt/xchar.h",
         "src/format.cc",
     ]
-    public_includedirs = ["include"]
+    # There are a number of warnings emitted from fmt headers, so treat them as external
+    public_externalincludedirs = ["include"]

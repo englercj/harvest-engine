@@ -54,6 +54,9 @@ namespace he
         UniquePtr& operator=(const UniquePtr&) = delete;
 
     private:
+        template <typename U>
+        friend class UniquePtr;
+
         T* m_ptr;
     };
 

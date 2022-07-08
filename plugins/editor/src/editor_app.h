@@ -3,6 +3,7 @@
 #pragma once
 
 #include "editor_data.h"
+#include "services/asset_service.h"
 #include "services/directory_service.h"
 #include "services/file_loader_service.h"
 #include "services/imgui_service.h"
@@ -22,6 +23,7 @@ namespace he::editor
     {
     public:
         EditorApp(
+            AssetService& assetService,
             DirectoryService& directoryService,
             FileLoaderService& fileLoaderService,
             ImGuiService& imguiService,
@@ -43,6 +45,7 @@ namespace he::editor
         void OnViewTerminated(window::View* view);
 
     private:
+        AssetService& m_assetService;
         DirectoryService& m_directoryService;
         FileLoaderService& m_fileLoaderService;
         ImGuiService& m_imguiService;

@@ -15,6 +15,7 @@ namespace he
 
     HANDLE Win32FileOpen(const char* path, FileOpenMode mode, FileOpenFlag flags, DWORD extraFlags);
 
+    FileAttributeFlag Win32ParseFileAttributeFlags(DWORD dwFileAttributes);
     void Win32ParseFileAttributes(const WIN32_FILE_ATTRIBUTE_DATA& info, FileAttributes& outAttributes);
     void Win32ParseFileAttributes(const BY_HANDLE_FILE_INFORMATION& info, FileAttributes& outAttributes);
 

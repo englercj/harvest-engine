@@ -25,5 +25,5 @@ HE_TEST(core, thread, SetThreadAffinity)
 // ------------------------------------------------------------------------------------------------
 HE_TEST(core, thread, SetCurrentThreadName)
 {
-    SetCurrentThreadName("HE Test Thread");
+    SetCurrentThreadName("[HE] Test Thread");
 }

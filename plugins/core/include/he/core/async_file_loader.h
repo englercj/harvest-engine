@@ -68,6 +68,7 @@ namespace he
             uint16_t capacity{ 512 };
 
             /// The debug name of the queue.
+            /// Only affects DirectStorage on Win32 platforms.
             const char* name{ nullptr };
         };
 

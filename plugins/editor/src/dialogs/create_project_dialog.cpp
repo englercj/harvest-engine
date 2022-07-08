@@ -97,7 +97,8 @@ namespace he::editor
     {
         const bool canSave = !m_name.IsEmpty() && !m_path.IsEmpty();
 
-        if (DialogButton("Save", canSave))
+        ImGui::BeginDisabled(!canSave);
+        if (DialogButton("Save"))
         {
             if (!m_projectService.Create(m_name.Data(), m_path.Data(), m_assetRoot.Data()))
             {
@@ -108,6 +109,7 @@ namespace he::editor
             }
             RequestClose();
         }
+        ImGui::EndDisabled();
 
         ImGui::SameLine();
 

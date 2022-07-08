@@ -43,7 +43,7 @@ CREATE TABLE config (
 CREATE TABLE tag (
     id                      INTEGER PRIMARY KEY,    -- Primary key for a row.
     name                    TEXT NOT NULL,          -- The name of this tag entry.
-    UNIQUE (tag)
+    UNIQUE (name)
 ) WITHOUT ROWID;
 
 CREATE TABLE asset_tag (
@@ -89,17 +89,17 @@ CREATE TABLE message (
 CREATE INDEX idx_message_ref_id ON message (ref_id);
 
 -- Full-Text searching of the asset table.
-CREATE VIRTUAL TABLE fts_asset USING fts5(uuid, name, content_rowid='id' content='asset');
+CREATE VIRTUAL TABLE fts_asset USING fts5(uuid, name, type, content='asset', content_rowid='id');
 
 CREATE TRIGGER asset_ai AFTER INSERT ON asset BEGIN
-    INSERT INTO fts_asset(rowid, uuid, name) VALUES (new.id, new.uuid, new.name);
+    INSERT INTO fts_asset(rowid, uuid, type, name) VALUES (new.id, new.uuid, new.type, new.name);
 END;
 
 CREATE TRIGGER asset_ad AFTER DELETE ON asset BEGIN
-    INSERT INTO fts_asset(fts_asset, rowid, uuid, name) VALUES ('delete', old.id, old.uuid, old.name);
+    INSERT INTO fts_asset(fts_asset, rowid, uuid, type, name) VALUES ('delete', old.id, old.uuid, old.type, old.name);
 END;
 
 CREATE TRIGGER asset_au AFTER UPDATE ON asset BEGIN
-    INSERT INTO fts_asset(fts_asset, rowid, uuid, name) VALUES ('delete', old.id, old.uuid, old.name);
-    INSERT INTO fts_asset(rowid, uuid, name) VALUES (new.id, new.uuid, new.name);
+    INSERT INTO fts_asset(fts_asset, rowid, uuid, type, name) VALUES ('delete', old.id, old.uuid, old.type, old.name);
+    INSERT INTO fts_asset(rowid, uuid, type, name) VALUES (new.id, new.uuid, new.type, new.name);
 END;

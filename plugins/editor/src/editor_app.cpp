@@ -7,6 +7,7 @@
 namespace he::editor
 {
     EditorApp::EditorApp(
+        AssetService& assetService,
         DirectoryService& directoryService,
         FileLoaderService& fileLoaderService,
         ImGuiService& imguiService,
@@ -16,7 +17,8 @@ namespace he::editor
         SettingsService& settingsService,
         TaskService& taskService,
         WorkspaceService& workspaceService)
-        : m_directoryService(directoryService)
+        : m_assetService(assetService)
+        , m_directoryService(directoryService)
         , m_fileLoaderService(fileLoaderService)
         , m_imguiService(imguiService)
         , m_logService(logService)
@@ -98,13 +100,17 @@ namespace he::editor
         if (!m_fileLoaderService.Initialize())
             return false;
 
+        if (!m_taskService.Initialize())
+            return false;
+
+        if (!m_assetService.Initialize())
+            return false;
+
+        // Startup rendering
         if (!m_renderService.Initialize(view))
             return false;
 
         if (!m_imguiService.Initialize(view))
-            return false;
-
-        if (!m_taskService.Initialize())
             return false;
 
         AsyncFileIOConfig config;

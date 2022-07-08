@@ -2,8 +2,9 @@
 
 #include "imgui_service.h"
 
-#include "fonts/IconsFontAwesome5Pro.h"
-#include "fonts/fa5-pro-solid-900.ttf.h"
+#include "fonts/icons_material_design.h"
+#include "fonts/fa-solid-900.ttf.h"
+#include "fonts/materialdesignicons-webfont.ttf.h"
 #include "fonts/NotoSans-Regular.ttf.h"
 #include "fonts/NotoMono-Regular.ttf.h"
 
@@ -46,7 +47,7 @@ namespace he::editor
         SetupColors();
 
         auto setupStyle = ImGuiPlatformService::StyleSetupDelegate::Make<&ImGuiService::SetupStyle>(this);
-        auto setupFonts = ImGuiPlatformService::FontAtlasSetupDelegate::Make<&ImGuiService::SetupFontAtlas>(this);
+        auto setupFonts = ImGuiPlatformService::FontsSetupDelegate::Make<&ImGuiService::SetupFonts>(this);
 
         if (!m_imguiPlatformService.Initialize(m_editorData.device, view, setupStyle, setupFonts))
             return false;
@@ -170,48 +171,49 @@ namespace he::editor
 
     void ImGuiService::SetupStyle(ImGuiStyle& style)
     {
-        style.Alpha                             = 1.0f;
-        style.WindowPadding                     = ImVec2(8, 8);
-        style.WindowRounding                    = 0.0f;
-        style.WindowBorderSize                  = 0.0f;
-        style.WindowMinSize                     = ImVec2(32, 32);
-        style.WindowTitleAlign                  = ImVec2(0.0f, 0.5f);
-        style.WindowMenuButtonPosition          = ImGuiDir_Left;
-        style.ChildRounding                     = 0.0f;
-        style.ChildBorderSize                   = 0.0f;
-        style.PopupRounding                     = 0.0f;
-        style.PopupBorderSize                   = 1.0f;
-        style.FramePadding                      = ImVec2(14, 8);
-        style.FrameRounding                     = 0.0f;
-        style.FrameBorderSize                   = 0.0f;
-        style.ItemSpacing                       = ImVec2(6, 2);
-        style.ItemInnerSpacing                  = ImVec2(1, 0);
-        style.CellPadding                       = ImVec2(4, 2);
-        style.TouchExtraPadding                 = ImVec2(0, 0);
-        style.IndentSpacing                     = 21.0f;
-        style.ColumnsMinSpacing                 = 6.0f;
-        style.ScrollbarSize                     = 20.0f;
-        style.ScrollbarRounding                 = 0.0f;
-        style.GrabMinSize                       = 12.0f;
-        style.GrabRounding                      = 0.0f;
-        style.LogSliderDeadzone                 = 4.0f;
-        style.TabRounding                       = 0.0f;
-        style.TabBorderSize                     = 0.0f;
-        style.TabMinWidthForCloseButton         = 0.0f;
-        style.ColorButtonPosition               = ImGuiDir_Right;
-        style.ButtonTextAlign                   = ImVec2(0.5f, 0.5f);
-        style.SelectableTextAlign               = ImVec2(0.0f, 0.0f);
-        style.DisplayWindowPadding              = ImVec2(19, 19);
-        style.DisplaySafeAreaPadding            = ImVec2(3, 3);
-        style.MouseCursorScale                  = 1.0f;
-        style.AntiAliasedLines                  = true;
-        style.AntiAliasedLinesUseTex            = true;
-        style.AntiAliasedFill                   = true;
-        style.CurveTessellationTol              = 1.25f;
-        style.CircleTessellationMaxError        = 0.30f;
+        style.Alpha                             = 1.0f;                 // Global alpha applies to everything in Dear ImGui.
+        style.DisabledAlpha                     = 0.6f;                 // Additional alpha multiplier applied by BeginDisabled(). Multiply over current value of Alpha.
+        style.WindowPadding                     = ImVec2(8, 8);         // Padding within a window
+        style.WindowRounding                    = 0.0f;                 // Radius of window corners rounding. Set to 0.0f to have rectangular windows. Large values tend to lead to variety of artifacts and are not recommended.
+        style.WindowBorderSize                  = 0.0f;                 // Thickness of border around windows. Generally set to 0.0f or 1.0f. Other values not well tested.
+        style.WindowMinSize                     = ImVec2(32, 32);       // Minimum window size
+        style.WindowTitleAlign                  = ImVec2(0.0f, 0.5f);   // Alignment for title bar text
+        style.WindowMenuButtonPosition          = ImGuiDir_Left;        // Position of the collapsing/docking button in the title bar (left/right). Defaults to ImGuiDir_Left.
+        style.ChildRounding                     = 0.0f;                 // Radius of child window corners rounding. Set to 0.0f to have rectangular child windows
+        style.ChildBorderSize                   = 0.0f;                 // Thickness of border around child windows. Generally set to 0.0f or 1.0f. Other values not well tested.
+        style.PopupRounding                     = 0.0f;                 // Radius of popup window corners rounding. Set to 0.0f to have rectangular child windows
+        style.PopupBorderSize                   = 1.0f;                 // Thickness of border around popup or tooltip windows. Generally set to 0.0f or 1.0f. Other values not well tested.
+        style.FramePadding                      = ImVec2(14, 8);        // Padding within a framed rectangle (used by most widgets)
+        style.FrameRounding                     = 0.0f;                 // Radius of frame corners rounding. Set to 0.0f to have rectangular frames (used by most widgets).
+        style.FrameBorderSize                   = 0.0f;                 // Thickness of border around frames. Generally set to 0.0f or 1.0f. Other values not well tested.
+        style.ItemSpacing                       = ImVec2(6, 2);         // Horizontal and vertical spacing between widgets/lines
+        style.ItemInnerSpacing                  = ImVec2(1, 0);         // Horizontal and vertical spacing between within elements of a composed widget (e.g. a slider and its label)
+        style.CellPadding                       = ImVec2(4, 2);         // Padding within a table cell
+        style.TouchExtraPadding                 = ImVec2(0, 0);         // Expand reactive bounding box for touch-based system where touch position is not accurate enough. Unfortunately we don't sort widgets so priority on overlap will always be given to the first widget. So don't grow this too much!
+        style.IndentSpacing                     = 21.0f;                // Horizontal spacing when e.g. entering a tree node. Generally == (FontSize + FramePadding.x*2).
+        style.ColumnsMinSpacing                 = 6.0f;                 // Minimum horizontal spacing between two columns. Preferably > (FramePadding.x + 1).
+        style.ScrollbarSize                     = 20.0f;                // Width of the vertical scrollbar, Height of the horizontal scrollbar
+        style.ScrollbarRounding                 = 0.0f;                 // Radius of grab corners rounding for scrollbar
+        style.GrabMinSize                       = 12.0f;                // Minimum width/height of a grab box for slider/scrollbar
+        style.GrabRounding                      = 0.0f;                 // Radius of grabs corners rounding. Set to 0.0f to have rectangular slider grabs.
+        style.LogSliderDeadzone                 = 4.0f;                 // The size in pixels of the dead-zone around zero on logarithmic sliders that cross zero.
+        style.TabRounding                       = 0.0f;                 // Radius of upper corners of a tab. Set to 0.0f to have rectangular tabs.
+        style.TabBorderSize                     = 0.0f;                 // Thickness of border around tabs.
+        style.TabMinWidthForCloseButton         = 0.0f;                 // Minimum width for close button to appears on an unselected tab when hovered. Set to 0.0f to always show when hovering, set to FLT_MAX to never show close button unless selected.
+        style.ColorButtonPosition               = ImGuiDir_Right;       // Side of the color button in the ColorEdit4 widget (left/right). Defaults to ImGuiDir_Right.
+        style.ButtonTextAlign                   = ImVec2(0.5f, 0.5f);   // Alignment of button text when button is larger than text.
+        style.SelectableTextAlign               = ImVec2(0.0f, 0.0f);   // Alignment of selectable text. Defaults to (0.0f, 0.0f) (top-left aligned). It's generally important to keep this left-aligned if you want to lay multiple items on a same line.
+        style.DisplayWindowPadding              = ImVec2(19, 19);       // Window position are clamped to be visible within the display area or monitors by at least this amount. Only applies to regular windows.
+        style.DisplaySafeAreaPadding            = ImVec2(3, 3);         // If you cannot see the edge of your screen (e.g. on a TV) increase the safe area padding. Covers popups/tooltips as well regular windows.
+        style.MouseCursorScale                  = 1.0f;                 // Scale software rendered mouse cursor (when io.MouseDrawCursor is enabled). May be removed later.
+        style.AntiAliasedLines                  = true;                 // Enable anti-aliased lines/borders. Disable if you are really tight on CPU/GPU.
+        style.AntiAliasedLinesUseTex            = true;                 // Enable anti-aliased lines/borders using textures where possible. Require backend to render with bilinear filtering (NOT point/nearest filtering).
+        style.AntiAliasedFill                   = true;                 // Enable anti-aliased filled shapes (rounded rectangles, circles, etc.).
+        style.CurveTessellationTol              = 1.25f;                // Tessellation tolerance when using PathBezierCurveTo() without a specific number of segments. Decrease for highly tessellated curves (higher quality, more polygons), increase to reduce quality.
+        style.CircleTessellationMaxError        = 0.30f;                // Maximum error (in pixels) allowed when using AddCircle()/AddCircleFilled() or drawing rounded corner rectangles with no explicit segment count specified. Decrease for higher quality but more geometry.
     }
 
-    void ImGuiService::SetupFontAtlas(ImFontAtlas& atlas, float dpiScale)
+    void ImGuiService::SetupFonts(ImFontAtlas& atlas, float dpiScale)
     {
         // NOTE: The order MUST match the Font enum in imgui_service.h
 
@@ -223,7 +225,7 @@ namespace he::editor
             String::Copy(config.Name, "NotoSans-Regular.ttf");
             atlas.AddFontFromMemoryCompressedTTF(c_NotoSans_Regular_ttf, HE_LENGTH_OF(c_NotoSans_Regular_ttf), fontSize, &config);
 
-            MergeFontAwesome(atlas, 11.0f * dpiScale);
+            MergeMaterialDesignIcons(atlas, fontSize);
         }
 
         // Add NotoSans-Regular font for headers
@@ -251,8 +253,6 @@ namespace he::editor
             ImFontConfig config{};
             String::Copy(config.Name, "NotoMono-Regular.ttf");
             atlas.AddFontFromMemoryCompressedTTF(c_NotoMono_Regular_ttf, HE_LENGTH_OF(c_NotoMono_Regular_ttf), fontSize, &config);
-
-            MergeFontAwesome(atlas, 11.0f * dpiScale);
         }
 
         // Inform the render service that there's a new font
@@ -261,16 +261,20 @@ namespace he::editor
         HE_UNUSED(result);
     }
 
-    void ImGuiService::MergeFontAwesome(ImFontAtlas& atlas, float scaledFontSize)
+    void ImGuiService::MergeMaterialDesignIcons(ImFontAtlas& atlas, float fontSize)
     {
-        scaledFontSize = Floor(scaledFontSize);
+        // https://materialdesignicons.com/
+        static const ImWchar IconRanges[] { ICON_MIN_MDI, ICON_MAX_MDI, 0 };
 
         ImFontConfig config{};
-        String::Copy(config.Name, "fa5-pro-solid-900.ttf");
+        String::Copy(config.Name, FONT_ICON_FILE_NAME_MDI);
         config.MergeMode = true;
-        config.GlyphMinAdvanceX = Floor(scaledFontSize / 2.0f);
-        static const ImWchar iconRanges[] { ICON_MIN_FA, ICON_MAX_FA, 0 };
+        config.GlyphMinAdvanceX = Floor(fontSize / 2.0f);
+        config.OversampleH = 1;
+        config.OversampleV = 1;
+        config.PixelSnapH = true;
+        config.GlyphOffset = { 0, 2 };
 
-        atlas.AddFontFromMemoryCompressedTTF(c_fa5_pro_solid_900_ttf, HE_LENGTH_OF(c_fa5_pro_solid_900_ttf), scaledFontSize, &config, iconRanges);
+        atlas.AddFontFromMemoryCompressedTTF(c_materialdesignicons_webfont_ttf, HE_LENGTH_OF(c_materialdesignicons_webfont_ttf), fontSize, &config, IconRanges);
     }
 }

@@ -10,7 +10,7 @@
 
 #if defined(HE_PLATFORM_API_POSIX)
 
-#include <cerrno>
+#include <errno.h>
 #include <string.h>
 
 namespace he

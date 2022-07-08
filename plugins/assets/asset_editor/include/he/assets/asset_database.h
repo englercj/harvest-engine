@@ -21,8 +21,8 @@ namespace he::assets
         {
             Result result{};
 
-            schema::Builder builder{};
-            AssetFile::Builder assetFile{};
+            he::schema::Builder builder{};
+            schema::AssetFile::Builder assetFile{};
         };
 
         using LoadDelegate = Delegate<void(LoadResult)>;

@@ -2,7 +2,7 @@
 
 #include "document.h"
 
-#include "fonts/IconsFontAwesome5Pro.h"
+#include "fonts/icons_material_design.h"
 #include "widgets/menu.h"
 
 #include "he/core/appender.h"
@@ -27,7 +27,7 @@ namespace he::editor
 
     void Document::ShowContextMenu()
     {
-        if (MenuItem("Close", ICON_FA_TIMES, "Ctrl+W"))
+        if (MenuItem("Close", ICON_MDI_CLOSE, "Ctrl+W"))
         {
             RequestClose();
         }

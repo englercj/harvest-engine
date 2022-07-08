@@ -40,11 +40,15 @@ he.target_gen_dir       = path.join(he.target_build_dir, "generated")
 -- Generated file paths
 he.file_gen_dir = "%{he.get_generated_dir(prj.name)}/%{path.getrelative(he.get_module(prj.name)._plugin._install_dir, file.directory)}"
 he.get_generated_dir = function (project_name)
-    return path.join(he.gen_dir, project_name)
+    local plugin = he.get_module(project_name)._plugin
+    local plugin_dir_name = plugin.id:gsub("%.", "_")
+    return path.join(he.gen_dir, plugin_dir_name)
 end
 
 -- Generated file paths based on target & configuration
 he.target_file_gen_dir = "%{he.get_target_generated_dir(prj.name)}/%{path.getrelative(he.get_module(prj.name)._plugin._install_dir, file.directory)}"
 he.get_target_generated_dir = function (project_name)
-    return path.join(he.target_gen_dir, project_name)
+    local plugin = he.get_module(project_name)._plugin
+    local plugin_dir_name = plugin.id:gsub("%.", "_")
+    return path.join(he.target_gen_dir, plugin_dir_name)
 end

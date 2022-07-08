@@ -7,7 +7,8 @@
 #include "he/core/cpu.h"
 #include "he/core/macros.h"
 
-/// Causes a breakpoint in the code, where the user will be prompted to run the debugger.
+/// Causes execution to break to an attached debugger. If no debugger is attached the
+/// application may exit.
 #define HE_DEBUG_BREAK() (false)
 
 /// The current file name. This value is always empty for non-internal builds.

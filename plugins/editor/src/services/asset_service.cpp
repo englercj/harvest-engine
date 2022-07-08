@@ -47,21 +47,21 @@ namespace he::editor
         if (!relativeAssetRoot.IsValid() || relativeAssetRoot.IsEmpty())
             return;
 
-        String resourcesDir = m_projectService.ResourceDir();
-        ConcatPath(resourcesDir, AssetDbFile);
-        NormalizePath(resourcesDir);
+        String assetDbFile = m_projectService.DataDir();
+        ConcatPath(assetDbFile, AssetDbFile);
+        NormalizePath(assetDbFile);
 
-        String assetRoot = m_projectService.ProjectPath();
+        String assetRoot = GetDirectory(m_projectService.ProjectPath());
         ConcatPath(assetRoot, relativeAssetRoot);
         NormalizePath(assetRoot);
 
         auto failGuard = MakeScopeGuard([&]() { Terminate(); });
 
-        if (!m_db.Initialize(resourcesDir.Data(), assetRoot.Data(), m_fileLoaderService.Loader()))
+        if (!m_db.Initialize(assetDbFile.Data(), assetRoot.Data(), m_fileLoaderService.Loader()))
         {
             HE_LOG_ERROR(he_editor,
                 HE_MSG("Failed to initialize asset cache DB."),
-                HE_KV(resources_dir, resourcesDir),
+                HE_KV(asset_db_file, assetDbFile),
                 HE_KV(asset_root, assetRoot));
             return;
         }
@@ -71,7 +71,7 @@ namespace he::editor
         {
             HE_LOG_ERROR(he_editor,
                 HE_MSG("Failed to start asset DB updater."),
-                HE_KV(resources_dir, resourcesDir),
+                HE_KV(asset_db_file, assetDbFile),
                 HE_KV(asset_root, assetRoot));
             return;
         }

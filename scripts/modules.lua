@@ -11,6 +11,13 @@ local target_dir_by_kind = {
     StaticLib = he.target_lib_dir,
 }
 
+local module_type_by_kind = {
+    ConsoleApp = 1,
+    WindowedApp = 2,
+    SharedLib = 3,
+    StaticLib = 4,
+}
+
 local kind_by_module_type = {
     default = (he.is_static_only and "StaticLib" or "SharedLib"),
     static = "StaticLib",
@@ -115,6 +122,8 @@ local function _module_project(mod)
     local kind_target_dir = target_dir_by_kind[kindname]
     assert(kind_target_dir, "No target_dir known for kind: '" .. kindname .. "'.")
 
+    local module_type = module_type_by_kind[kindname];
+
     group(mod.group)
     project(mod.name)
         language "C++"
@@ -123,7 +132,10 @@ local function _module_project(mod)
         targetdir(kind_target_dir)
         location(he.projects_dir)
 
-        defines { "HE_CFG_MODULE_NAME=\"" .. mod.name .. "\"" }
+        defines {
+            "HE_CFG_MODULE_NAME=\"" .. mod.name .. "\"",
+            "HE_CFG_MODULE_TYPE=" .. module_type,
+        }
 
         if kindname == "SharedLib" then
             defines { "HE_CFG_MODULE_SHARED=1" }

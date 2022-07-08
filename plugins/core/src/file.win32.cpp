@@ -99,7 +99,9 @@ namespace he
 
     Result File::Open(const char* path, FileOpenMode mode, FileOpenFlag flags)
     {
-        HE_ASSERT(m_fd == Win32InvalidFd);
+        if (!HE_VERIFY(m_fd == Win32InvalidFd))
+            return Result::InvalidParameter;
+
         HANDLE handle = Win32FileOpen(path, mode, flags, 0);
 
         if (handle == INVALID_HANDLE_VALUE)

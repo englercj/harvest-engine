@@ -5,6 +5,7 @@
 #include "he/core/result.h"
 #include "he/core/string.h"
 #include "he/core/types.h"
+#include "he/core/utils.h"
 
 namespace he
 {
@@ -18,7 +19,7 @@ namespace he
     };
 
     /// Helper utility for recursively iterating through the contents of a directory.
-    class DirectoryScanner
+    class DirectoryScanner final
     {
     public:
         /// Structure representing an entry in a recursive directory scan.
@@ -37,7 +38,10 @@ namespace he
         /// Construct a new scanner.
         ///
         /// \param[in] allocator The allocator to use.
-        DirectoryScanner(Allocator& allocator = Allocator::GetDefault()) noexcept;
+        DirectoryScanner(Allocator& allocator = Allocator::GetDefault()) noexcept
+            : m_allocator(allocator)
+            , m_impl(nullptr)
+        {}
 
         /// Constructs a new scanner by moving the other scanner into this one.
         ///
@@ -48,7 +52,7 @@ namespace he
         {}
 
         /// Destructs a scanner.
-        ~DirectoryScanner() noexcept;
+        ~DirectoryScanner() noexcept { Close(); }
 
         DirectoryScanner(const DirectoryScanner&) = delete;
         DirectoryScanner& operator=(const DirectoryScanner&) = delete;

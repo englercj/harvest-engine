@@ -2,7 +2,7 @@
 
 #include "misc.h"
 
-#include "fonts/IconsFontAwesome5Pro.h"
+#include "fonts/icons_material_design.h"
 
 #include "imgui.h"
 
@@ -10,7 +10,7 @@ namespace he::editor
 {
     void ShowHelpMarker(const char* helpText)
     {
-        ImGui::TextDisabled(" " ICON_FA_QUESTION_CIRCLE " ");
+        ImGui::TextDisabled(" " ICON_MDI_HELP_CIRCLE " ");
         if (ImGui::IsItemHovered())
         {
             ImGui::BeginTooltip();

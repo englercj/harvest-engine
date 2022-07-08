@@ -168,6 +168,7 @@ namespace he
             bool rdrand : 1{ false };
             bool osxsave : 1{ false };
             bool hypervisor : 1{ false };
+            bool tscInvariant : 1{ false };
         } x86;
 
         /// Availability of various ARM instructions

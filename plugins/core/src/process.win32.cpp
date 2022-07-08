@@ -51,9 +51,9 @@ namespace he
     bool IsProcessRunning(uint32_t pid)
     {
         const HANDLE process = ::OpenProcess(SYNCHRONIZE, FALSE, pid);
-        const DWORD ret = ::WaitForSingleObject(process, 0);
+        const DWORD r = ::WaitForSingleObject(process, 0);
         ::CloseHandle(process);
-        return ret == WAIT_TIMEOUT;
+        return r == WAIT_TIMEOUT;
     }
 }
 

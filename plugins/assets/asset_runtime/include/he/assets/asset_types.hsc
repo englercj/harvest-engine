@@ -4,30 +4,20 @@
 
 import "he/schema/schema.hsc";
 
-namespace he.assets;
+namespace he.assets.schema;
 
-enum AssetState
-{
-    Unknown @0;
-    NeedsImport @1;
-    NeedsCompile @2;
-    Ready @3;
+// ------------------------------------------------------------------------------------------------
+// Asset Attributes
 
-    // Failure states
-    ImportFailed @4;
-    CompileFailed @5;
-}
+attribute AssetType(struct): String;
 
-struct AssetTypeId
-{
-    name @0 :String;
-    value @1 :uint32;
-}
+// ------------------------------------------------------------------------------------------------
+// Base Asset Structures
 
 struct Asset
 {
     uuid @0 :he.schema.Uuid;            // unique identifier of the asset
-    type @1 :AssetTypeId;               // unique string identifier of the asset type
+    type @1 :String;                    // unique string identifier of the asset type
     name @2 :String;                    // user-defined human-friendly name
     tags @3 :String[];                  // user-defined search & filter strings
     references @4 :he.schema.Uuid[];    // outgoing references to other assets
@@ -39,4 +29,11 @@ struct AssetFile
     uuid @0 :he.schema.Uuid;    // unique identifier of the file
     assets @1 :Asset[];         // list of assets contained in the file
     source @2 :String;          // relative path to source file for the assets
+}
+
+// ------------------------------------------------------------------------------------------------
+// Built-in Asset Types
+
+struct Texture $AssetType("he.asset.texture")
+{
 }

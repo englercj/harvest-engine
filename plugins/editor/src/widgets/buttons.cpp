@@ -37,31 +37,9 @@ namespace he::editor
         return pressed;
     }
 
-    bool ConditionButton(const char* label, bool enabled, const ImVec2& size)
-    {
-        ImGuiStyle& style = ImGui::GetStyle();
-
-        if (!enabled)
-        {
-            ImGui::PushStyleColor(ImGuiCol_Text, style.Colors[ImGuiCol_TextDisabled]);
-            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, style.Colors[ImGuiCol_Button]);
-            ImGui::PushStyleColor(ImGuiCol_ButtonActive, style.Colors[ImGuiCol_Button]);
-        }
-
-        const bool pressed = ImGui::Button(label, size);
-
-        if (!enabled)
-        {
-            ImGui::PopStyleColor(3);
-            return false; // always false if disabled
-        }
-
-        return pressed;
-    }
-
-    bool DialogButton(const char* label, bool enabled)
+    bool DialogButton(const char* label)
     {
         const float dpiScale = ImGui::GetWindowDpiScale();
-        return ConditionButton(label, enabled, ImVec2(UnscaledDialogButtonWidth * dpiScale, 0));
+        return ImGui::Button(label, ImVec2(UnscaledDialogButtonWidth * dpiScale, 0));
     }
 }

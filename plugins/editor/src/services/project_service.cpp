@@ -4,6 +4,7 @@
 
 #include "he/core/appender.h"
 #include "he/core/assert.h"
+#include "he/core/directory.h"
 #include "he/core/file.h"
 #include "he/core/log.h"
 #include "he/core/memory_ops.h"
@@ -26,7 +27,8 @@ namespace he::editor
 
     bool ProjectService::Create(const char* name, const char* path, const char* assetRoot)
     {
-        HE_ASSERT(!IsOpen());
+        if (!HE_VERIFY(!IsOpen()))
+            return false;
 
         // Create a new project structure and set it as the root
         m_builder.Clear();
@@ -46,8 +48,6 @@ namespace he::editor
         // same directory as the project file itself.
         if (!String::IsEmpty(assetRoot))
             m_project.InitAssetRoot(assetRoot);
-        else
-            m_project.InitAssetRoot(".");
 
         // Store off the path to project file and save it out
         m_projectPath = path;
@@ -63,7 +63,8 @@ namespace he::editor
 
     bool ProjectService::Open(const char* path)
     {
-        HE_ASSERT(!IsOpen());
+        if (!HE_VERIFY(!IsOpen()))
+            return false;
 
         m_projectPath = path;
         return Reload();
@@ -78,40 +79,57 @@ namespace he::editor
             return false;
 
         m_projectPath.Clear();
+        m_onUnloadSignal.Dispatch();
         return true;
     }
 
     bool ProjectService::Reload()
     {
-        HE_ASSERT(IsOpen());
-
         String buf;
         Result r = File::ReadAll(buf, m_projectPath.Data());
         if (!r)
         {
-            HE_LOG_ERROR(editor, HE_MSG("Failed to read project file."),
+            HE_LOG_ERROR(editor,
+                HE_MSG("Failed to read project file."),
                 HE_KV(path, m_projectPath),
                 HE_KV(result, r));
             return false;
         }
 
-        m_project = {};
-        m_builder.Clear();
+        Close();
 
         if (!he::schema::FromToml<schema::Project>(m_builder, buf.Data()))
         {
-            HE_LOG_ERROR(editor, HE_MSG("Failed to deserialize project file. Is it valid TOML?"),
+            HE_LOG_ERROR(editor,
+                HE_MSG("Failed to deserialize project file. Is it valid TOML?"),
                 HE_KV(path, m_projectPath));
             return false;
         }
 
         m_project = m_builder.Root().TryGetStruct<schema::Project>();
+
+        // ensure the directory exists
+        const String dataDir = DataDir();
+        r = Directory::Create(dataDir.Data(), true);
+        if (!r)
+        {
+            HE_LOG_ERROR(editor,
+                HE_MSG("Failed to create resource directory for newly opened project."),
+                HE_KV(project_id, m_project.GetId().GetValue()),
+                HE_KV(project_name, m_project.GetName().AsView()),
+                HE_KV(path, dataDir),
+                HE_KV(result, r));
+            return false;
+        }
+
+        m_onLoadSignal.Dispatch();
         return true;
     }
 
     bool ProjectService::Save()
     {
-        HE_ASSERT(IsOpen());
+        if (!HE_VERIFY(IsOpen()))
+            return false;
 
         StringBuilder buf;
         if (!he::schema::ToToml<schema::Project>(buf, m_project))
@@ -123,21 +141,22 @@ namespace he::editor
         Result r = File::WriteAll(buf.Str().Data(), buf.Size(), m_projectPath.Data());
         if (!r)
         {
-            HE_LOG_ERROR(editor, HE_MSG("Failed to write project file."),
+            HE_LOG_ERROR(editor,
+                HE_MSG("Failed to write project file."),
                 HE_KV(path, m_projectPath),
                 HE_KV(result, r));
             return false;
         }
 
-        m_onLoadSignal.Dispatch();
         return true;
     }
 
-    String ProjectService::ResourceDir() const
+    String ProjectService::DataDir() const
     {
-        HE_ASSERT(IsOpen());
+        if (!HE_VERIFY(IsOpen()))
+            return "";
 
-        String appDir = m_directoryService.GetAppDirectory(DirectoryService::DirType::Resources);
+        String appDir = m_directoryService.GetAppDirectory(DirectoryService::DirType::Projects);
 
         if (!appDir.IsEmpty() && appDir.Back() != '/' && appDir.Back() != '\\')
             appDir.PushBack('/');

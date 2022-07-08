@@ -145,12 +145,12 @@ namespace he::editor
         window::Device* device,
         window::View* view,
         StyleSetupDelegate setupStyle,
-        FontAtlasSetupDelegate setupFontAtlas)
+        FontsSetupDelegate setupFonts)
     {
         m_device = device;
         m_view = view;
         m_setupStyle = setupStyle;
-        m_setupFontAtlas = setupFontAtlas;
+        m_setupFonts = setupFonts;
         m_time = MonotonicClock::Now();
 
         ImGuiIO& io = ImGui::GetIO();
@@ -479,11 +479,11 @@ namespace he::editor
         g.Style.ScaleAllSizes(dpiScale);
 
         // Get or create the font atlas for this DPI scale
-        std::unique_ptr<ImFontAtlas>& atlas = m_dpiFontAtlas[dpiScale];
+        UniquePtr<ImFontAtlas>& atlas = m_dpiFontAtlas[dpiScale];
         if (!atlas)
         {
-            atlas = std::make_unique<ImFontAtlas>();
-            m_setupFontAtlas(*atlas, dpiScale);
+            atlas = MakeUnique<ImFontAtlas>();
+            m_setupFonts(*atlas, dpiScale);
         }
 
         // Find indices of active fonts so we can switch them to the new atlas
@@ -502,7 +502,7 @@ namespace he::editor
         g.IO.Fonts->Locked = false;
 
         // Swap ImGui's state to the new font atlas
-        g.IO.Fonts = atlas.get();
+        g.IO.Fonts = atlas.Get();
         g.IO.Fonts->Locked = locked;
 
         // Set the current font information based on our found indices

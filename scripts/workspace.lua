@@ -62,6 +62,7 @@ he.workspace = function ()
             "/utf-8",       -- Specifies both the source character set and the execution character set as UTF-8.
             "/w44668",      -- A symbol that was not defined was used with a preprocessor directive.
             "/w44062",      -- An enumerator has no associated case handler in a switch statement, and there's no default label that can catch it.
+            "/wd6255",      -- _alloca indicates failure by raising a stack overflow exception. Consider using _malloca instead.
         }
 
     filter { "toolset:gcc or clang" }
@@ -81,8 +82,8 @@ he.workspace = function ()
 
     filter { "configurations:Release" }
         defines { "NDEBUG", "HE_CFG_RELEASE" }
-        flags { "LinkTimeOptimization" }
         tags { "release", "internal" }
+        flags { "LinkTimeOptimization" }
         inlining "Auto"
         optimize "Speed"
         runtime "Release"
@@ -90,8 +91,8 @@ he.workspace = function ()
 
     filter { "configurations:Shipping" }
         defines { "NDEBUG", "HE_CFG_SHIPPING" }
-        flags { "LinkTimeOptimization" }
         tags { "shipping", "external" }
+        flags { "LinkTimeOptimization" }
         inlining "Auto"
         optimize "Speed"
         runtime "Release"

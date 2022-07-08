@@ -29,12 +29,16 @@ namespace he::editor
             ImGui::Text("Clicked: %d", s_clickCount);
 
             static bool s_condEnabled = true;
-            if (ConditionButton("Condition Button", s_condEnabled))
+            ImGui::BeginDisabled(!s_condEnabled);
+            if (ImGui::Button("Condition Button"))
                 s_condEnabled = !s_condEnabled;
+            ImGui::EndDisabled();
 
             static bool s_dialogEnabled = true;
-            if (DialogButton("Dialog Btn", s_dialogEnabled))
+            ImGui::BeginDisabled(!s_dialogEnabled);
+            if (DialogButton("Dialog Btn"))
                 s_dialogEnabled = !s_dialogEnabled;
+            ImGui::EndDisabled();
 
             if (ImGui::Button("Reset"))
             {

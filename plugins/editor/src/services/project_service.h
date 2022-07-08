@@ -36,12 +36,14 @@ namespace he::editor
         const schema::Project::Builder& Project() const { return m_project; }
 
         const String& ProjectPath() const { return m_projectPath; }
-        String ResourceDir() const;
+        String DataDir() const;
 
     public:
         using OnLoadSignal = Signal<void()>;
+        using OnUnloadSignal = Signal<void()>;
 
         OnLoadSignal& OnLoad() { return m_onLoadSignal; }
+        OnUnloadSignal& OnUnload() { return m_onUnloadSignal; }
 
     private:
         DirectoryService& m_directoryService;
@@ -51,5 +53,6 @@ namespace he::editor
         String m_projectPath{};
 
         OnLoadSignal m_onLoadSignal{};
+        OnUnloadSignal m_onUnloadSignal{};
     };
 }

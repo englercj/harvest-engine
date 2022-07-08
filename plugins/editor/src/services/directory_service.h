@@ -12,9 +12,9 @@ namespace he::editor
         enum class DirType
         {
             Root,
+            Data,
             Logs,
-            Resources,
-            Settings,
+            Projects,
 
             _Count,
         };

@@ -12,6 +12,8 @@
 #include "he/window/event.h"
 #include "he/window/view.h"
 
+#include "imgui.h"
+
 namespace he::editor
 {
     enum class Font : uint8_t
@@ -52,9 +54,9 @@ namespace he::editor
         static void SetupColors();
 
         void SetupStyle(ImGuiStyle& style);
-        void SetupFontAtlas(ImFontAtlas& atlas, float dpiScale);
+        void SetupFonts(ImFontAtlas& atlas, float dpiScale);
 
-        static void MergeFontAwesome(ImFontAtlas& atlas, float scaledFontSize);
+        static void MergeMaterialDesignIcons(ImFontAtlas& atlas, float fontSize);
 
     private:
         EditorData& m_editorData;

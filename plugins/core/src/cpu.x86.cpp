@@ -122,9 +122,9 @@ namespace he
                 }
             }
 
+            // Function Id 1 = Processor Info and Feature Bits
             if (highestFuncId >= 1)
             {
-                // Function Id 1 = Processor Info and Feature Bits
                 cpuid(1, eax, ebx, ecx, edx);
 
                 x86.sse = (edx & (1 << 25)) != 0;
@@ -161,9 +161,9 @@ namespace he
                 }
             }
 
+            // Function Id 7 = Extended Features
             if (highestFuncId >= 7)
             {
-                // Function Id 7 = Extended Features
                 cpuid(7, eax, ebx, ecx, edx);
 
                 x86.avx2 = (ebx & (1 << 5)) != 0;
@@ -171,6 +171,17 @@ namespace he
 
                 if (!x86.avx)
                     x86.avx2 = false;
+            }
+
+            // Function Id 80000000h = Get Highest Extended Function Implemented
+            cpuid(0x80000000, eax, ebx, ecx, edx);
+            const uint32_t highestExFuncId = eax;
+
+            // Function Id 80000007h = Advanced Power Management Information
+            if (highestExFuncId >= 0x80000007)
+            {
+                cpuid(0x80000007, eax, ebx, ecx, edx);
+                x86.tscInvariant = (edx & (1 << 8)) != 0;
             }
 
             _FillPlatformCpuInfo(*this);

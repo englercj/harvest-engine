@@ -14,9 +14,9 @@ namespace he::editor
     constexpr const char* DirectoryNames[] =
     {
         "Harvest",      // Root
+        "data",         // Data
         "logs",         // Logs
-        "resources",    // Resources
-        "settings",     // Settings
+        "projects",     // Projects
     };
     static_assert(HE_LENGTH_OF(DirectoryNames) == static_cast<uint32_t>(DirectoryService::DirType::_Count), "");
 

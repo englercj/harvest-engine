@@ -147,8 +147,10 @@ namespace he
 
     Result AsyncFile::Open(const char* path, FileOpenMode mode, FileOpenFlag flags)
     {
-        HE_ASSERT(m_fd == -1);
-        m_fd = PosixFileOpen(path, mode, flags, 0);
+        if (!HE_VERIFY(m_fd == -1))
+            return Result::InvalidParameter;
+
+        m_fd = PosixFileOpen(path, mode, flags, O_NONBLOCK);
         return Result::Success;
     }
 

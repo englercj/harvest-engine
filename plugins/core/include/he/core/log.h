@@ -17,15 +17,15 @@
 #define HE_LOG_LEVEL_WARN   3   ///< Warning that something has gone wrong, but behavior should remain correct.
 #define HE_LOG_LEVEL_ERROR  4   ///< Error notification that something has gone wrong, may experience strange behavior.
 
-/// \def HE_LOG_LEVEL_ENABLED
+/// \def HE_LOG_ENABLE_LEVEL
 /// Defines the log level enabled at compile time. Any level less than this defined value
 /// is compiled out of the application. This defaults to Debug for internal builds and
 /// Info for non-internal builds.
-#if !defined(HE_LOG_LEVEL_ENABLED)
+#if !defined(HE_LOG_ENABLE_LEVEL)
     #if HE_INTERNAL_BUILD
-        #define HE_LOG_LEVEL_ENABLED HE_LOG_LEVEL_DEBUG
+        #define HE_LOG_ENABLE_LEVEL HE_LOG_LEVEL_DEBUG
     #else
-        #define HE_LOG_LEVEL_ENABLED HE_LOG_LEVEL_INFO
+        #define HE_LOG_ENABLE_LEVEL HE_LOG_LEVEL_INFO
     #endif
 #endif
 
@@ -37,7 +37,7 @@
 /// \param ... A series of \see HE_KV(k, v, ...) or \see HE_MSG(fmt, ...) calls.
 #define HE_LOG(lvl, catStr, ...) \
     do { \
-        if constexpr (static_cast<int>(::he::LogLevel::lvl) >= HE_LOG_LEVEL_ENABLED) { \
+        if constexpr (static_cast<int>(::he::LogLevel::lvl) >= HE_LOG_ENABLE_LEVEL) { \
             constexpr ::he::LogSource LogEntrySource_{ ::he::LogLevel::lvl, HE_LINE, HE_FILE, HE_FUNC_SIG, catStr }; \
             const ::he::KeyValue logKvList_[]{ {"",0}, __VA_ARGS__ }; \
             ::he::Log(LogEntrySource_, logKvList_ + 1, HE_LENGTH_OF(logKvList_) - 1); \

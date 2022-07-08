@@ -2,7 +2,31 @@
 
 #pragma once
 
-/// \def HE_INTERNAL_BUILD
+/// \def HE_CFG_DEBUG
+/// Defined when the current configuration is Debug.
+
+/// \def HE_CFG_RELEASE
+/// Defined when the current configuration is Release.
+
+/// \def HE_CFG_SHIPPING
+/// Defined when the current configuration is Shipping.
+
+/// \def HE_PLATFORM_EMSCRIPTEN
+/// Defined when the target platform is Emscripten.
+
+/// \def HE_PLATFORM_LINUX
+/// Defined when the target platform is Linux.
+
+/// \def HE_PLATFORM_WINDOWS
+/// Defined when the target platform is Windows.
+
+/// \def HE_PLATFORM_API_POSIX
+/// Defined when the target platform implements Posix APIs.
+
+/// \def HE_PLATFORM_API_WIN32
+/// Defined when the target platform implements Win32 APIs.
+
+/// \def HE_CFG_INTERNAL
 /// Controls if this build is considered Internal. By default this is enabled for non-Shipping
 /// configurations.
 #if !defined(HE_INTERNAL_BUILD)

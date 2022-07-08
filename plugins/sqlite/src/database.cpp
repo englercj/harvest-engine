@@ -24,18 +24,18 @@ static const char StartupSql[] = R"(
 )";
 
 static const char SchemaVersionTableSql[] = R"(
-    CREATE TABLE IF NOT EXIST schema_version (
+    CREATE TABLE IF NOT EXISTS schema_version (
         version         INTEGER NOT NULL,
         description     TEXT,
         installed_on    INTEGER NOT NULL,
         execution_time  INTEGER NOT NULL,
         checksum        INTEGER NOT NULL,
-        success         INTEGER NOT NULL,
+        success         INTEGER NOT NULL
     );
 )";
 
 static const char GetLatestSchemaVersionSql[] = R"(
-    SELECT version FROM schema_version WHERE sucess = 1
+    SELECT version FROM schema_version WHERE success = 1
     ORDER BY version DESC LIMIT 1;
 )";
 

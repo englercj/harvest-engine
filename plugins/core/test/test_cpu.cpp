@@ -49,6 +49,7 @@ HE_TEST(core, cpu, Report)
     std::cout << "        rdrand: " << info.x86.rdrand << std::endl;
     std::cout << "        osxsave: " << info.x86.osxsave << std::endl;
     std::cout << "        hypervisor: " << info.x86.hypervisor << std::endl;
+    std::cout << "        tscInvariant: " << info.x86.tscInvariant << std::endl;
 
     std::cout << "    arm:" << std::endl;
     std::cout << "        neon: " << info.arm.neon << std::endl;

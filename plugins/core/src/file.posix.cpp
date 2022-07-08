@@ -147,7 +147,9 @@ namespace he
 
     Result File::Open(const char* path, FileOpenMode mode, FileOpenFlag openFlags)
     {
-        HE_ASSERT(m_fd == -1);
+        if (!HE_VERIFY(m_fd == -1))
+            return Result::InvalidParameter;
+
         m_fd = PosixFileOpen(path, mode, openFlags, 0);
 
         if (m_fd == -1)

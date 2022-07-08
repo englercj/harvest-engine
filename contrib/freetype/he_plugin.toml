@@ -3,13 +3,13 @@
 id = "freetype"
 name = "Freetype"
 description = "Dear ImGui is a bloat-free graphical user interface library for C++."
-version = "2.11.0"
+version = "2.12.1"
 author = "Werner Lemberg <wl@gnu.org>"
 license = "FTL"
 homepage = "https://freetype.org/"
 
 [install]
-    github = "freetype/freetype#VER-2-10-4"
+    github = "freetype/freetype#VER-2-12-1"
 
 [[modules]]
     name = "freetype"
@@ -48,8 +48,10 @@ homepage = "https://freetype.org/"
         "src/pshinter/pshinter.c",
         "src/psnames/psnames.c",
         "src/raster/raster.c",
+        "src/sdf/sdf.c",
         "src/sfnt/sfnt.c",
         "src/smooth/smooth.c",
+        "src/svg/svg.c",
         "src/truetype/truetype.c",
         "src/type1/type1.c",
         "src/type42/type42.c",
@@ -61,7 +63,7 @@ homepage = "https://freetype.org/"
     warnings = "Off"
 
     [[modules.variants]]
-        conditions = ["system:not windows"]
+        conditions = ["system:linux or macosx"]
         private_defines = ["HAVE_UNISTD_H=1", "HAVE_FCNTL_H=1"]
         files = [
             "builds/unix/ftsystem.c",
@@ -71,7 +73,7 @@ homepage = "https://freetype.org/"
     [[modules.variants]]
         conditions = ["system:windows"]
         files = [
+            "builds/windows/ftsystem.c",
             "builds/windows/ftdebug.c",
-            "src/base/ftsystem.c",
             "src/base/ftver.rc",
         ]

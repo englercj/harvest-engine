@@ -3,8 +3,8 @@ return function (ctx)
         if mod.group == "engine/tests" and mod.type == "static" then
             he.try_handle_module_key(ctx, "public_dependson", { mod.name })
 
-            -- TODO: remove this hack for the test_runner, needed right now because the "unused"
-            -- test symbols are otherwise stripped out.
+            -- Prevent link-time stripping of symbols from the library being tested.
+            -- Without this test cases are removed because they are not referenced anywhere.
             filter { "toolset:msc-*", "language:C++" }
                 linkoptions { "/WHOLEARCHIVE:" .. mod.name }
             filter { "toolset:gcc or clang" }

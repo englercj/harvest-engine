@@ -5,13 +5,13 @@
 #include "he/core/allocator.h"
 #include "he/core/clock.h"
 #include "he/core/delegate.h"
+#include "he/core/unique_ptr.h"
 #include "he/window/device.h"
 #include "he/window/event.h"
 
 #include "imgui.h"
 
 #include <unordered_map>
-#include <memory>
 
 namespace he::editor
 {
@@ -19,7 +19,7 @@ namespace he::editor
     {
     public:
         using StyleSetupDelegate = Delegate<void(ImGuiStyle& style)>;
-        using FontAtlasSetupDelegate = Delegate<void(ImFontAtlas& atlas, float dpiScale)>;
+        using FontsSetupDelegate = Delegate<void(ImFontAtlas& atlas, float dpiScale)>;
 
     public:
         ImGuiPlatformService();
@@ -28,7 +28,7 @@ namespace he::editor
             window::Device* device,
             window::View* view,
             StyleSetupDelegate setupStyle,
-            FontAtlasSetupDelegate setupFontAtlas);
+            FontsSetupDelegate setupFonts);
 
         void Terminate();
 
@@ -65,12 +65,12 @@ namespace he::editor
         window::View* m_view{ nullptr };
 
         StyleSetupDelegate m_setupStyle{};
-        FontAtlasSetupDelegate m_setupFontAtlas{};
+        FontsSetupDelegate m_setupFonts{};
 
         ImGuiMouseCursor m_lastCursor{ ImGuiMouseCursor_COUNT };
         bool m_needToUpdateMonitors{ false };
 
-        std::unordered_map<float, std::unique_ptr<ImFontAtlas>> m_dpiFontAtlas{};
+        std::unordered_map<float, UniquePtr<ImFontAtlas>> m_dpiFontAtlas{};
         ImFontAtlas* m_originalFontAtlas{ nullptr };
 
         bool m_isModifierDown[4]{};

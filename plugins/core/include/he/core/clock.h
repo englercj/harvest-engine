@@ -9,8 +9,11 @@
 #include <type_traits>
 
 #if HE_COMPILER_MSVC && HE_CPU_X86
-    extern "C" uint64_t __rdtsc();
+    extern "C" unsigned __int64 __rdtsc();
     #pragma intrinsic(__rdtsc)
+#elif HE_COMPILER_MSVC && HE_CPU_ARM
+    extern "C" __int64 _ReadStatusReg(int);
+    #pragma intrinsic(_ReadStatusReg)
 #endif
 
 struct timespec;
@@ -38,20 +41,17 @@ namespace he
 
     // Nanoseconds that have passed since the Unix epoch (Jan 1 1970 00:00:00).
     // These values are pulled from the system's clock which is not monotonic.
-    struct SystemClockTag;
-    using SystemClock = Clock<SystemClockTag>;
+    using SystemClock = Clock<struct SystemClockTag>;
     using SystemTime = SystemClock::Time;
 
     // Nanoseconds that have passed since an OS-defined epoch (usually boot time).
     // This clock is guaranteed to be monotonic.
-    struct MonotonicClockTag;
-    using MonotonicClock = Clock<MonotonicClockTag>;
+    using MonotonicClock = Clock<struct MonotonicClockTag>;
     using MonotonicTime = MonotonicClock::Time;
 
     // Number of cycles since the last CPU reset.
     // This clock is not guaranteed to be monotonic.
-    struct CycleClockTag;
-    using CycleClock = Clock<CycleClockTag>;
+    using CycleClock = Clock<struct CycleClockTag>;
     using CycleCount = CycleClock::Time;
 
     // --------------------------------------------------------------------------------------------

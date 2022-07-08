@@ -30,7 +30,7 @@ namespace he::editor
 
     bool SettingsService::Reload()
     {
-        String path = m_directoryService.GetAppDirectory(DirectoryService::DirType::Settings);
+        String path = m_directoryService.GetAppDirectory(DirectoryService::DirType::Data);
         ConcatPath(path, SettingsFileName);
 
         String buf;
@@ -64,7 +64,7 @@ namespace he::editor
 
     bool SettingsService::Save()
     {
-        String path = m_directoryService.GetAppDirectory(DirectoryService::DirType::Settings);
+        String path = m_directoryService.GetAppDirectory(DirectoryService::DirType::Data);
         ConcatPath(path, SettingsFileName);
 
         StringBuilder buf;

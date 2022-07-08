@@ -2,8 +2,8 @@
 
 #pragma once
 
-#include "he/core/compiler.h"
 #include "he/core/string.h"
+#include "he/core/types.h"
 
 namespace he::editor
 {

@@ -14,7 +14,7 @@ namespace he
     /// Normalization of OS results for specific file system results.
     enum class FileResult : uint8_t
     {
-        Success = 0,
+        Success,
         Failure,
 
         AccessDenied,

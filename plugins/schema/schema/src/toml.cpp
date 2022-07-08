@@ -1,5 +1,7 @@
 // Copyright Chad Engler
 
+// TODO: Everything in here is crap, need to completely rework this.
+
 #include "he/schema/toml.h"
 
 #include "he/core/ascii.h"
@@ -163,7 +165,7 @@ namespace he::schema
             case Type::Data::Tag::Uint64: return value.is_string();
             case Type::Data::Tag::Float32: return value.is_floating_point();
             case Type::Data::Tag::Float64: return value.is_floating_point();
-            case Type::Data::Tag::Array: return value.is_array();
+            case Type::Data::Tag::Array: return value.is_array() || value.is_string();
             case Type::Data::Tag::Blob: return value.is_string();
             case Type::Data::Tag::String: return value.is_string();
             case Type::Data::Tag::List: return value.is_array();
@@ -543,6 +545,28 @@ namespace he::schema
             const Type::Reader elementType = arrayType.GetElementType();
             const Type::Data::Tag elementTypeDataTag = elementType.GetData().GetTag();
             const uint16_t size = arrayType.GetSize();
+
+            if (value.is_string())
+            {
+                if (!elementType.GetData().IsUint8())
+                {
+                    HE_LOG_ERROR(he_schema,
+                        HE_MSG("Only uint8 arrays can be serialized as strings. Skipping deserialization of field."),
+                        HE_KV(field_name, field.GetName().AsView()),
+                        HE_KV(field_type, typeDataTag),
+                        HE_KV(field_element_type, elementTypeDataTag),
+                        HE_KV(toml_type, GetNodeTypeString(value.type())));
+                    return;
+                }
+
+                Vector<uint8_t> bytes;
+                ParseBlobString(bytes, field, value);
+
+                Span<uint8_t> data = builder.GetAndMarkDataArrayField<uint8_t>(index, dataOffset, size);
+                MemCopy(data.Data(), bytes.Data(), Min(data.Size(), bytes.Size()));
+                return;
+            }
+
             const toml::array* arr = value.as_array();
             const toml::node* first = arr->get(0);
 

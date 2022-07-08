@@ -16,7 +16,8 @@ homepage = ""
     private_includedirs = ["src", "%{he.get_generated_dir('he_editor')}/src"]
     private_defines = ["GOOGLE_PROTOBUF_INTERNAL_DONATE_STEAL_INLINE=0"]
     private_dependson = [
-        "he_assets",
+        "he_asset_editor",
+        "he_asset_runtime",
         "he_core",
         "he_math",
         "he_rhi",
@@ -33,13 +34,13 @@ homepage = ""
         compress = true
 
     [[modules.bin2c_compile]]
-        glob = "src/fonts/**.otf"
-        compress = true
+        glob = "src/fonts/**.woff2"
+        compress = false
 
     [[modules.schema_compile]]
         glob = "src/schema/*.hsc"
         targets = ["c++"]
-        dependson_include = ["he_assets", "he_schema"]
+        dependson_include = ["he_asset_runtime", "he_schema"]
 
     [[modules.variants]]
         conditions = ["system:windows"]

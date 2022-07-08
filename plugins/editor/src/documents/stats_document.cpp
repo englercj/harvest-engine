@@ -2,7 +2,6 @@
 
 #include "stats_document.h"
 
-#include "fonts/IconsFontAwesome5Pro.h"
 #include "widgets/menu.h"
 
 #include "imgui.h"

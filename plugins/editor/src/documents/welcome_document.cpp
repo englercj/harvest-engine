@@ -4,7 +4,7 @@
 
 #include "dialogs/choice_dialog.h"
 #include "dialogs/create_project_dialog.h"
-#include "fonts/IconsFontAwesome5Pro.h"
+#include "fonts/icons_material_design.h"
 #include "widgets/menu.h"
 #include "widgets/buttons.h"
 
@@ -64,7 +64,7 @@ namespace he::editor
         m_imguiService.PopFont();
         ImGui::NewLine();
 
-        if (ImGui::Button(ICON_FA_FOLDER_OPEN " Open Project"))
+        if (ImGui::Button(ICON_MDI_FOLDER_OPEN " Open Project"))
         {
             FileDialogConfig config{};
             config.filters = ProjectFilters;
@@ -89,7 +89,7 @@ namespace he::editor
 
         ImGui::SameLine();
 
-        if (ImGui::Button(ICON_FA_PLUS " Create New Project"))
+        if (ImGui::Button(ICON_MDI_PLUS " Create New Project"))
         {
             m_dialogService.Open<CreateProjectDialog>();
         }

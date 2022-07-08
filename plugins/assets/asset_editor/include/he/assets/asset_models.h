@@ -15,6 +15,18 @@ namespace he::assets
 {
     class AssetDatabase;
 
+    enum class AssetState : uint8_t
+    {
+        Unknown = 0,
+        NeedsImport = 1,
+        NeedsCompile = 2,
+        Ready = 3,
+
+        // Failure states
+        ImportFailed = 4,
+        CompileFailed = 5,
+    };
+
     struct FileProperties
     {
         String path{};
@@ -28,7 +40,7 @@ namespace he::assets
         FileProperties file{};
         FileProperties source{};
 
-        static bool AddOrUpdate(AssetDatabase& db, AssetFile::Reader file, const AssetFileModel& model);
+        static bool AddOrUpdate(AssetDatabase& db, schema::AssetFile::Reader file, const AssetFileModel& model);
         static bool FindOne(AssetDatabase& db, const AssetFileUuid& fileUuid, AssetFileModel& outModel);
         static bool FindOne(AssetDatabase& db, const char* path, AssetFileModel& outModel);
         static bool RemoveOne(AssetDatabase& db, const AssetFileUuid& fileUuid);
@@ -54,7 +66,7 @@ namespace he::assets
         uint32_t compilerVersion{ 0 };
 
         static bool AddOrUpdate(AssetDatabase& db, const AssetModel& model);
-        static bool AddOrUpdate(AssetDatabase& db, const AssetFileUuid& fileUuid, Asset::Reader asset);
+        static bool AddOrUpdate(AssetDatabase& db, const AssetFileUuid& fileUuid, schema::Asset::Reader asset);
         static bool FindOne(AssetDatabase& db, const AssetUuid& assetUuid, AssetModel& model);
         static bool FindAll(AssetDatabase& db, const AssetFileUuid& fileUuid, Vector<AssetModel>& models);
         static bool FindAll(AssetDatabase& db, const char* search);

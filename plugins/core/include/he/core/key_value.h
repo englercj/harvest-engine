@@ -174,14 +174,14 @@ namespace he
         const char* GetEnumString() const;
 
     private:
-        const char* m_key;
-        ValueKind m_kind;
+        const char* m_key{ nullptr };
+        ValueKind m_kind{ ValueKind::Bool };
 
         struct
         {
             union
             {
-                bool b;
+                bool b{ false };
                 int64_t i;
                 uint64_t u;
                 double d;
@@ -192,7 +192,7 @@ namespace he
                     const char* (*toString)(uint64_t value);
                 } e;
             };
-            String s{ Allocator::GetTemp() };
+            String s{ Allocator::GetDefault() };
         } m_value;
     };
 }

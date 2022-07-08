@@ -48,6 +48,3 @@ namespace he::editor
         float m_markers[MarkerCount]{ 0.99f, 0.999f };
     };
 }
-
-
-// Xns

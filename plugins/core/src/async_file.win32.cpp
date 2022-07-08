@@ -68,7 +68,7 @@ namespace he
                 return affinityResult;
         }
 
-        ::SetThreadDescription(s_ioThread, L"Async File IOCP Thread");
+        ::SetThreadDescription(s_ioThread, L"[HE] Async File IOCP Thread");
 
         failGuard.Dismiss();
         return Result::Success;
@@ -126,7 +126,9 @@ namespace he
 
     Result AsyncFile::Open(const char* path, FileOpenMode mode, FileOpenFlag flags)
     {
-        HE_ASSERT(m_fd == Win32InvalidFd);
+        if (!HE_VERIFY(m_fd == Win32InvalidFd))
+            return Result::InvalidParameter;
+
         HANDLE handle = Win32FileOpen(path, mode, flags, FILE_FLAG_OVERLAPPED);
 
         if (handle == INVALID_HANDLE_VALUE)

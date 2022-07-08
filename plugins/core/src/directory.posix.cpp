@@ -18,19 +18,10 @@
 
 namespace he
 {
-    DirectoryScanner::DirectoryScanner(Allocator& allocator)
-        : m_allocator(allocator)
-        , m_impl(nullptr)
-    {}
-
-    DirectoryScanner::~DirectoryScanner()
-    {
-        Close();
-    }
-
     Result DirectoryScanner::Open(const char* path)
     {
-        HE_ASSERT(m_impl == nullptr);
+        if (!HE_VERIFY(m_impl == nullptr))
+            return Result::InvalidParameter;
 
         m_impl = opendir(path);
 
@@ -52,8 +43,10 @@ namespace he
 
     bool DirectoryScanner::NextEntry(Entry& outEntry)
     {
+        if (!HE_VERIFY(m_impl))
+            return false;
+
         DIR* dir = static_cast<DIR*>(m_impl);
-        HE_ASSERT(dir);
 
         outEntry.name.Clear();
 

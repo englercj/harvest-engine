@@ -25,26 +25,13 @@ namespace he
         WIN32_FIND_DATAW findData;
     };
 
-    DirectoryScanner::DirectoryScanner(Allocator& allocator) noexcept
-        : m_allocator(allocator)
-        , m_impl(allocator.New<DirectoryScannerImpl>())
-    {}
-
-    DirectoryScanner::~DirectoryScanner() noexcept
-    {
-        Close();
-
-        if (m_impl)
-        {
-            m_allocator.Delete(static_cast<DirectoryScannerImpl*>(m_impl));
-        }
-    }
-
     Result DirectoryScanner::Open(const char* path)
     {
-        DirectoryScannerImpl* impl = static_cast<DirectoryScannerImpl*>(m_impl);
-        HE_ASSERT(impl);
-        HE_ASSERT(impl->handle == INVALID_HANDLE_VALUE);
+        if (!HE_VERIFY(m_impl == nullptr))
+            return Result::InvalidParameter;
+
+        DirectoryScannerImpl* impl = m_allocator.New<DirectoryScannerImpl>();
+        m_impl = impl;
 
         constexpr const wchar_t PatternSuffix[] = L"/*.*";
 
@@ -75,20 +62,27 @@ namespace he
 
     void DirectoryScanner::Close()
     {
-        DirectoryScannerImpl* impl = static_cast<DirectoryScannerImpl*>(m_impl);
-        HE_ASSERT(impl);
-
-        if (impl->handle != INVALID_HANDLE_VALUE)
+        if (m_impl)
         {
-            ::FindClose(impl->handle);
-            impl->handle = INVALID_HANDLE_VALUE;
+            DirectoryScannerImpl* impl = static_cast<DirectoryScannerImpl*>(m_impl);
+
+            if (impl->handle != INVALID_HANDLE_VALUE)
+            {
+                ::FindClose(impl->handle);
+                impl->handle = INVALID_HANDLE_VALUE;
+            }
+
+            m_allocator.Delete(impl);
+            m_impl = nullptr;
         }
     }
 
     bool DirectoryScanner::NextEntry(Entry& outEntry)
     {
+        if (!HE_VERIFY(m_impl))
+            return false;
+
         DirectoryScannerImpl* impl = static_cast<DirectoryScannerImpl*>(m_impl);
-        HE_ASSERT(impl);
 
         outEntry.name.Clear();
 

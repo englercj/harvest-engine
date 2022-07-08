@@ -10,7 +10,7 @@
 #include "documents/imgui_style_editor_document.h"
 #include "documents/imgui_widget_document.h"
 #include "documents/welcome_document.h"
-#include "fonts/IconsFontAwesome5Pro.h"
+#include "fonts/icons_material_design.h"
 #include "widgets/menu.h"
 
 #define IMGUI_DEFINE_MATH_OPERATORS
@@ -123,7 +123,7 @@ namespace he::editor
                 // Assets menu
                 MenuSeparator("Assets");
 
-                if (BeginMenu("Create New Asset", ICON_FA_FILE_PLUS))
+                if (BeginMenu("Create New Asset", ICON_MDI_FILE_PLUS))
                 {
                     MenuItem("Texture1");
                     MenuItem("Texture2");
@@ -131,28 +131,28 @@ namespace he::editor
 
                     EndMenu();
                 }
-                MenuItem("Open Asset...", ICON_FA_FOLDER_OPEN, "Ctrl+O", false, false);
+                MenuItem("Open Asset...", ICON_MDI_FOLDER_OPEN, "Ctrl+O", false, false);
 
-                if (BeginMenu("Open Recent Asset", ICON_FA_HOURGLASS_HALF))
+                if (BeginMenu("Open Recent Asset", ICON_MDI_TIMER_SAND))
                 {
                     MenuItem("Some Asset");
 
                     EndMenu();
                 }
-                MenuItem("Import Asset...", ICON_FA_FILE_IMPORT);
-                MenuItem("Export Asset...", ICON_FA_FILE_EXPORT);
+                MenuItem("Import Asset...", ICON_MDI_FILE_IMPORT);
+                MenuItem("Export Asset...", ICON_MDI_FILE_EXPORT);
 
                 // Save menu
                 MenuSeparator("Save");
 
-                MenuItem("Save", ICON_FA_SAVE, "Ctrl+S");
+                MenuItem("Save", ICON_MDI_CONTENT_SAVE, "Ctrl+S");
                 MenuItem("Save As...", nullptr, "Ctrl+Alt+S");
-                MenuItem("Save All", nullptr, "Ctrl+Shift+S");
+                MenuItem("Save All", ICON_MDI_CONTENT_SAVE_ALL, "Ctrl+Shift+S");
 
                 // Project menu
                 MenuSeparator("Project");
 
-                if (MenuItem("Open Project...", ICON_FA_FOLDER_OPEN, nullptr, false, false))
+                if (MenuItem("Open Project...", ICON_MDI_FOLDER_OPEN, nullptr, false, false))
                 {
                 }
 
@@ -168,7 +168,7 @@ namespace he::editor
                 // Application menu
                 MenuSeparator("Exit");
 
-                if (MenuItem("Exit", ICON_FA_TIMES_CIRCLE, "Alt+F4"))
+                if (MenuItem("Exit", ICON_MDI_CLOSE_CIRCLE, "Alt+F4"))
                     view->RequestClose();
 
                 EndTopLevelMenu();
@@ -178,22 +178,21 @@ namespace he::editor
             {
                 MenuSeparator("History");
 
-                MenuItem("Undo", ICON_FA_UNDO, "Ctrl+Z");
-                MenuItem("Redo", ICON_FA_REDO, "Ctrl+Y");
+                MenuItem("Undo", ICON_MDI_UNDO, "Ctrl+Z");
+                MenuItem("Redo", ICON_MDI_REDO, "Ctrl+Y");
 
                 MenuSeparator("Edit");
 
-                MenuItem("Cut", ICON_FA_CUT, "Ctrl+X");
-                MenuItem("Copy", ICON_FA_CLIPBOARD, "Ctrl+C");
-                MenuItem("Paste", ICON_FA_PASTE, "Ctrl+V");
-                MenuItem("Clone", ICON_FA_CLONE, "Ctrl+V");
-                MenuItem("Delete", ICON_FA_TRASH, "Ctrl+V");
+                MenuItem("Cut", ICON_MDI_CONTENT_CUT, "Ctrl+X");
+                MenuItem("Copy", ICON_MDI_CONTENT_COPY, "Ctrl+C");
+                MenuItem("Paste", ICON_MDI_CONTENT_PASTE, "Ctrl+V");
+                MenuItem("Clone", ICON_MDI_CONTENT_DUPLICATE, "Ctrl+V");
+                MenuItem("Delete", ICON_MDI_DELETE, "Delete");
 
                 MenuSeparator("Configuration");
 
-                MenuItem("User Settings...", ICON_FA_USER_COG);
-                MenuItem("Project Settings...", ICON_FA_SLIDERS_V);
-                MenuItem("Plugins...", ICON_FA_PLUG);
+                MenuItem("User Settings...", ICON_MDI_ACCOUNT_COG);
+                MenuItem("Project Settings...", ICON_MDI_COG);
 
                 EndTopLevelMenu();
             }
@@ -219,15 +218,20 @@ namespace he::editor
             {
                 MenuSeparator("Documentation");
 
-                if (MenuItem("Welcome", ICON_FA_HOME))
+                if (MenuItem("Welcome", ICON_MDI_HOME))
                     m_documentService.Open<WelcomeDocument>();
-                MenuItem("API Reference  " ICON_FA_EXTERNAL_LINK_ALT, ICON_FA_BOOK);
-                MenuItem("Tutorials  " ICON_FA_EXTERNAL_LINK_ALT, ICON_FA_BOOK_READER);
-                MenuItem("Report Bug  " ICON_FA_EXTERNAL_LINK_ALT, ICON_FA_BUG);
+                MenuItem("API Reference  " ICON_MDI_OPEN_IN_NEW, ICON_MDI_BOOK_OPEN);
+                MenuItem("Tutorials  " ICON_MDI_OPEN_IN_NEW, ICON_MDI_BOOK_OPEN_VARIANT);
+                MenuItem("Report Bug  " ICON_MDI_OPEN_IN_NEW, ICON_MDI_BUG);
 
                 MenuSeparator("Application");
 
-                if (MenuItem("About", ICON_FA_QUESTION_CIRCLE))
+                if (MenuItem("Licenses"))
+                {
+
+                }
+
+                if (MenuItem("About", ICON_MDI_HELP_CIRCLE))
                 {
                     m_dialogService.Open<ChoiceDialog>().Configure(
                         "About Harvest",
@@ -257,16 +261,16 @@ namespace he::editor
 
         if (BeginAppStatusBar())
         {
-            StatusBarButton(ICON_FA_FOLDER_TREE " Asset Browser " ICON_FA_CHEVRON_UP);
-            StatusBarButton(ICON_FA_ALIGN_JUSTIFY " Console " ICON_FA_CHEVRON_UP);
+            StatusBarButton(ICON_MDI_FILE_TREE " Asset Browser " ICON_MDI_CHEVRON_UP);
+            StatusBarButton(ICON_MDI_CONSOLE_LINE " Console " ICON_MDI_CHEVRON_UP);
 
             ImGui::Dummy(ImVec2(16.0f, 0) * dpiScale);
 
             ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(3.0f * dpiScale, ImGui::GetStyle().FramePadding.y));
 
-            StatusBarButton(ICON_FA_TIMES_OCTAGON " 01");
-            StatusBarButton(ICON_FA_EXCLAMATION_TRIANGLE " 0");
-            StatusBarButton(ICON_FA_INFO_CIRCLE " 0");
+            StatusBarButton(ICON_MDI_ALERT_OCTAGON " 01");
+            StatusBarButton(ICON_MDI_ALERT " 0");
+            StatusBarButton(ICON_MDI_INFORMATION " 0");
 
             ImGui::Text("<- fake data for styling");
 
@@ -274,7 +278,7 @@ namespace he::editor
 
             if (m_taskService.IsEmpty())
             {
-                constexpr char ReadyText[] = ICON_FA_CHECK " Ready";
+                constexpr char ReadyText[] = ICON_MDI_CHECK " Ready";
 
                 ImGuiStyle& style = ImGui::GetStyle();
                 const float width = ImGui::CalcTextSize(ReadyText).x + (style.FramePadding.x * 3);

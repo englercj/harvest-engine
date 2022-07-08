@@ -95,7 +95,7 @@ namespace he::editor
 
     void TaskService::PumpThread(TaskService* service)
     {
-        SetCurrentThreadName("Task Service Thread");
+        SetCurrentThreadName("[HE] Editor Task Service Thread");
 
         while (service->Pump()) {}
     }

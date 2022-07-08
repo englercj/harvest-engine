@@ -26,7 +26,7 @@ HE_TEST(core, log, LogLevel)
 
     static_assert(std::is_same_v<std::underlying_type_t<LogLevel>, uint8_t>);
 
-    static_assert(HE_LOG_LEVEL_ENABLED >= HE_LOG_LEVEL_TRACE && HE_LOG_LEVEL_ENABLED <= HE_LOG_LEVEL_ERROR);
+    static_assert(HE_LOG_ENABLE_LEVEL >= HE_LOG_LEVEL_TRACE && HE_LOG_ENABLE_LEVEL <= HE_LOG_LEVEL_ERROR);
 }
 
 static void TestLogHandler(const LogSource& source, const KeyValue* kvs, uint32_t count)

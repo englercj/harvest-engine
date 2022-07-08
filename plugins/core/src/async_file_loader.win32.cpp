@@ -4,7 +4,6 @@
 
 #include "he/core/assert.h"
 #include "he/core/cpu.h"
-#include "he/core/log.h"
 #include "he/core/result.h"
 #include "he/core/scope_guard.h"
 #include "he/core/sync.h"
@@ -302,7 +301,7 @@ namespace he
                     return affinityResult;
             }
 
-            ::SetThreadDescription(s_callbackThread, L"DStorage Callback Thread");
+            ::SetThreadDescription(s_callbackThread, L"[HE] DStorage Callback Thread");
 
             failGuard.Dismiss();
             return Result::Success;
@@ -360,6 +359,8 @@ namespace he
 
     static DWORD DStorageCallbackThread(LPVOID)
     {
+        // TODO: Because of the queue this always completes callbacks in order, but reads can complete
+        // out of order. Need to improve the way we track & dispatch here.
         while (s_callbackRunning)
         {
             CallbackEntry cb;

@@ -269,7 +269,6 @@ namespace he::assets
         if (!PrepareRelativePath(path, relPath))
             return;
 
-        NormalizePath(relPath);
         AssetFileModel::RemoveOne(*this, relPath.Data());
     }
 
@@ -283,11 +282,15 @@ namespace he::assets
             return;
         }
 
-        String relPath;
-        if (!PrepareRelativePath(path, relPath))
+        if (IsFileUpToDate(path))
+        {
+            HE_LOG_TRACE(he_assets,
+                HE_MSG("OnAssetFileUpdated called, but the file seems to be already up to date."),
+                HE_KV(file_path, path));
             return;
+        }
 
-        UpdateAssetFile(relPath.Data());
+        UpdateAssetFile(path);
     }
 
     bool AssetDatabase::PrepareRelativePath(const char* path, String& relPath) const
@@ -322,6 +325,7 @@ namespace he::assets
 
         absPath = m_assetRoot;
         ConcatPath(absPath, path);
+        NormalizePath(absPath);
         return true;
     }
 
@@ -337,7 +341,7 @@ namespace he::assets
 
         LoadResult loadResult;
 
-        if (!schema::FromToml<AssetFile>(loadResult.builder, load->content.Data()))
+        if (!he::schema::FromToml<schema::AssetFile>(loadResult.builder, load->content.Data()))
         {
             HE_LOG_ERROR(he_assets,
                 HE_MSG("Failed to parse asset file. Is it valid TOML?"),
@@ -347,7 +351,7 @@ namespace he::assets
             return;
         }
 
-        loadResult.assetFile = loadResult.builder.Root().TryGetStruct<AssetFile>();
+        loadResult.assetFile = loadResult.builder.Root().TryGetStruct<schema::AssetFile>();
         if (!loadResult.assetFile.IsValid())
         {
             HE_LOG_ERROR(he_assets,
@@ -405,7 +409,7 @@ namespace he::assets
 
         if (load.assetFile.HasSource() && !load.assetFile.GetSource().IsEmpty())
         {
-            const schema::String::Reader sourcePath = load.assetFile.GetSource();
+            const he::schema::String::Reader sourcePath = load.assetFile.GetSource();
 
             model.source.path = sourcePath;
 

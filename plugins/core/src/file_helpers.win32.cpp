@@ -17,9 +17,7 @@ namespace he
 {
     inline uint64_t Win32ToUint64(DWORD high, DWORD low)
     {
-        ULARGE_INTEGER value;
-        value.HighPart = high;
-        value.LowPart = low;
+        ULARGE_INTEGER value{ .LowPart = low, .HighPart = high };
         return value.QuadPart;
     }
 
@@ -88,21 +86,30 @@ namespace he
             nullptr);
     }
 
+    FileAttributeFlag Win32ParseFileAttributeFlags(DWORD dwFileAttributes)
+    {
+        FileAttributeFlag flags = FileAttributeFlag::None;
+
+        if (HasFlag(dwFileAttributes, FILE_ATTRIBUTE_HIDDEN))
+            flags |= FileAttributeFlag::Hidden;
+
+        if (HasFlag(dwFileAttributes, FILE_ATTRIBUTE_READONLY))
+            flags |= FileAttributeFlag::ReadOnly;
+
+        if (HasFlag(dwFileAttributes, FILE_ATTRIBUTE_DIRECTORY))
+            flags |= FileAttributeFlag::Directory;
+
+        return flags;
+    }
+
     void Win32ParseFileAttributes(const WIN32_FILE_ATTRIBUTE_DATA& info, FileAttributes& outAttributes)
     {
-        ULARGE_INTEGER i;
+        ULARGE_INTEGER i{};
 
-        outAttributes.flags = FileAttributeFlag::None;
+        outAttributes.flags = Win32ParseFileAttributeFlags(info.dwFileAttributes);
 
-        if (HasFlag(info.dwFileAttributes, FILE_ATTRIBUTE_HIDDEN))
-            outAttributes.flags |= FileAttributeFlag::Hidden;
-
-        if (HasFlag(info.dwFileAttributes, FILE_ATTRIBUTE_READONLY))
-            outAttributes.flags |= FileAttributeFlag::ReadOnly;
-
-        if (HasFlag(info.dwFileAttributes, FILE_ATTRIBUTE_DIRECTORY))
+        if (HasFlag(outAttributes.flags, FileAttributeFlag::Directory))
         {
-            outAttributes.flags |= FileAttributeFlag::Directory;
             outAttributes.size = 0;
         }
         else

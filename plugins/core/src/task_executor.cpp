@@ -11,7 +11,7 @@ namespace he
     Result ThreadPoolExecutor::Startup(const Config& config)
     {
         m_running = true;
-        m_threadName = config.name ? config.name : "Thread Pool Executor";
+        m_threadName = config.name ? config.name : "[HE] Thread Pool Executor";
         uint32_t count = config.count;
 
         if (count == 0)

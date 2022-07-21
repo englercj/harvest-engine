@@ -49,6 +49,7 @@ namespace fmt
 
             if (it < end)
                 spec = { it, end };
+
             return end;
         }
 
@@ -148,7 +149,9 @@ namespace fmt
             while (end != ctx.end() && *end != '}')
                 ++end;
 
-            spec = { it, end };
+            if (it < end)
+                spec = { it, end };
+
             return end;
         }
 

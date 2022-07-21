@@ -8,6 +8,25 @@
 namespace he
 {
     // --------------------------------------------------------------------------------------------
+    inline uint16_t CombineHash(uint16_t a, uint16_t b)
+    {
+        constexpr uint16_t C = 0x9e37u;
+        return a ^ (b + C + (a << 3) + (a >> 1));
+    }
+
+    inline uint32_t CombineHash(uint32_t a, uint32_t b)
+    {
+        constexpr uint32_t C = 0x9e3779b9u;
+        return a ^ (b + C + (a << 6) + (a >> 2));
+    }
+
+    inline uint64_t CombineHash(uint64_t a, uint64_t b)
+    {
+        constexpr uint64_t C = 0x9e3779b97f4a7c15ull;
+        return a ^ (b + C + (a << 12) + (a >> 4));
+    }
+
+    // --------------------------------------------------------------------------------------------
     // Fowler–Noll–Vo (FNV-1a) 32-bit non-cryptographic hash
     class FNV32
     {

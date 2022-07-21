@@ -6,7 +6,6 @@
 #include "keywords.h"
 
 #include "he/core/appender.h"
-#include "he/core/ascii.h"
 #include "he/core/assert.h"
 #include "he/core/enum_fmt.h"
 #include "he/core/hash.h"
@@ -573,12 +572,6 @@ namespace he::schema
         if (!ConsumeIdentifier(node.name))
             return false;
 
-        if (!IsUpper(node.name[0]))
-        {
-            AddError("Declaration names should start with an uppercase character");
-            // return false; // No need to return we can continue parsing.
-        }
-
         if (At(Lexer::TokenType::Ordinal))
         {
             if (!ConsumeId(node.id))
@@ -733,12 +726,6 @@ namespace he::schema
             if (!ConsumeIdentifier(child->name))
                 return false;
 
-            if (!IsUpper(child->name[0]))
-            {
-                AddError("Enumerator names must start with an uppercase letter");
-                // return false; // No need to return we can continue parsing.
-            }
-
             uint16_t ordinal = 0;
             if (!ConsumeOrdinal(ordinal))
                 return false;
@@ -816,12 +803,6 @@ namespace he::schema
             AstNode* method = CreateNode(*node, AstNode::Kind::Method);
             if (!ConsumeIdentifier(method->name))
                 return false;
-
-            if (!IsUpper(method->name[0]))
-            {
-                AddError("Interface method names must start with an uppercase letter");
-                // return false; // No need to return we can continue parsing.
-            }
 
             if (!ConsumeTypeParams(*method))
                 return false;
@@ -963,12 +944,6 @@ namespace he::schema
                     if (!ConsumeIdentifier(name))
                         return false;
 
-                    if (!IsLower(name[0]))
-                    {
-                        AddError("Field names must start with a lowercase character");
-                        // return false; // No need to return we can continue parsing.
-                    }
-
                     if (!Consume(Lexer::TokenType::Colon))
                         return false;
 
@@ -1026,12 +1001,6 @@ namespace he::schema
 
         if (!ConsumeIdentifier(node->name))
             return false;
-
-        if (!IsLower(node->name[0]))
-        {
-            AddError("Field names must start with a lowercase character");
-            // return false; // No need to return we can continue parsing.
-        }
 
         // Ordinals are optional for tuple struct syntax
         if (requireOrdinal || At(Lexer::TokenType::Ordinal))

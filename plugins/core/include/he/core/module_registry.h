@@ -14,13 +14,11 @@
 #define HE_MODULE_TYPE_STATIC_LIB       4
 
 #if HE_CFG_MODULE_TYPE == HE_MODULE_TYPE_STATIC_LIB
-    #define HE_EXPORT_MODULE(Impl, Name) \
-        static ::he::StaticModuleRegistrar<Impl> HE_UNIQUE_NAME(StaticModuleRegistrar){ #Name }
+    #define HE_EXPORT_MODULE(Impl) \
+        static ::he::StaticModuleRegistrar<Impl> HE_UNIQUE_NAME(StaticModuleRegistrar){ HE_CFG_MODULE_NAME }
 #else
     #define HE_EXPORT_MODULE(Impl, Name) \
-        extern "C" HE_DLL_EXPORT ::he::Module* CreateHarvestModule(::he::Allocator& allocator) { \
-            return allocator.New<Impl>(); \
-        }
+        extern "C" HE_DLL_EXPORT ::he::Module* CreateHarvestModule(::he::Allocator& allocator) { return allocator.New<Impl>(); }
 #endif
 
 namespace he

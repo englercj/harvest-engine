@@ -34,6 +34,8 @@ namespace he::schema
         bool VerifyMembers(const AstNode& node, AstNode::Kind kind);
         bool VerifyMembersOf(const AstNode& node, AstNode::Kind kind, std::set<MemberOrdinal>& ordinals);
         bool VerifyMethodParams(const AstNode& node, const AstMethodParams& params);
+        bool VerifyDeclName(const AstNode& node);
+        bool VerifyFieldName(const AstNode& node);
         bool VerifyOrdinal(const AstNode& node);
         bool VerifyType(const AstExpression& ast, const AstNode& scope, bool isGenericParam = false);
         bool VerifyTypeArraySize(const AstExpression& ast, const AstNode& scope);

@@ -618,7 +618,7 @@ namespace he::schema
             else
             {
                 const Type::Data::Tag getterKind = fieldTypeData.IsBlob() ? Type::Data::Tag::List : fieldTypeData.GetTag();
-                m_writer.Write("return SuperType::GetPointerField({}).TryGet{}", norm.GetIndex(), getterKind);
+                m_writer.Write("return SuperType::GetPointerField({}).TryGet{:s}", norm.GetIndex(), getterKind);
                 if (fieldTypeData.IsBlob())
                 {
                     m_writer.Write("<uint8_t>");
@@ -871,7 +871,7 @@ namespace he::schema
             }
             else
             {
-                m_writer.Write("auto v = m_builder->Add{}", getterKind);
+                m_writer.Write("auto v = m_builder->Add{:s}", getterKind);
                 if (fieldTypeData.IsBlob())
                 {
                     m_writer.Write("<uint8_t>");
@@ -1052,7 +1052,7 @@ namespace he::schema
         m_writer.WriteLine("{");
         m_writer.IncreaseIndent();
 
-        m_writer.WriteLine(HE_ID_FMT ", " HE_ID_FMT ", DeclKind::{}, {}, {}, {}, (RawFileSchema_{:016x} + {}),",
+        m_writer.WriteLine(HE_ID_FMT ", " HE_ID_FMT ", DeclKind::{:s}, {}, {}, {}, (RawFileSchema_{:016x} + {}),",
             decl.GetId(), decl.GetParentId(), decl.GetData().GetTag(), dataFieldCount, dataWordSize, pointerCount, m_root.GetId(), schemaOffset);
 
         if (it != m_defaultValues.end())
@@ -1605,7 +1605,7 @@ namespace he::schema
             case Value::Data::Tag::Interface:
             case Value::Data::Tag::AnyPointer:
             case Value::Data::Tag::Void:
-                HE_ASSERT(false, HE_MSG("{} cannot have a default value", elementTag));
+                HE_ASSERT(false, HE_MSG("{:s} cannot have a default value", elementTag));
                 break;
         }
 
@@ -1783,7 +1783,7 @@ namespace he::schema
             case Type::Data::Tag::Interface:
             case Type::Data::Tag::AnyPointer:
             case Type::Data::Tag::Void:
-                HE_ASSERT(false, HE_MSG("{} types cannot have default values", type.GetTag()));
+                HE_ASSERT(false, HE_MSG("{:s} types cannot have default values", type.GetTag()));
                 break;
         }
     }

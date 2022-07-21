@@ -5,6 +5,7 @@
 #include "compile_context.h"
 #include "keywords.h"
 
+#include "he/core/ascii.h"
 #include "he/core/enum_fmt.h"
 #include "he/core/enum_ops.h"
 #include "he/core/random.h"
@@ -14,6 +15,7 @@
 
 #include "fmt/format.h"
 
+#include <limits>
 #include <set>
 #include <unordered_set>
 
@@ -77,22 +79,28 @@ namespace he::schema
         {
             case AstNode::Kind::Alias:
             {
-                return VerifyTypeId(node)
+                return VerifyDeclName(node)
+                    && VerifyTypeId(node)
                     && VerifyType(node.alias.target, *node.parent);
             }
             case AstNode::Kind::Attribute:
             {
-                return VerifyTypeId(node)
+                return VerifyDeclName(node)
+                    && VerifyTypeId(node)
                     && VerifyType(node.attribute.type, *node.parent);
             }
             case AstNode::Kind::Constant:
             {
-                return VerifyTypeId(node)
+                return VerifyDeclName(node)
+                    && VerifyTypeId(node)
                     && VerifyType(node.constant.type, *node.parent)
                     && VerifyValue(node.constant.type, *node.parent, node.constant.value, *node.parent);
             }
             case AstNode::Kind::Enum:
             {
+                if (!VerifyDeclName(node))
+                    return false;
+
                 if (!VerifyTypeId(node))
                     return false;
 
@@ -114,11 +122,12 @@ namespace he::schema
             }
             case AstNode::Kind::Enumerator:
             {
-                return VerifyOrdinal(node);
+                return VerifyDeclName(node) && VerifyOrdinal(node);
             }
             case AstNode::Kind::Field:
             {
-                return VerifyOrdinal(node)
+                return VerifyFieldName(node)
+                    && VerifyOrdinal(node)
                     && VerifyType(node.field.type, *node.parent)
                     && (
                         node.field.defaultValue.kind == AstExpression::Kind::Unknown
@@ -177,6 +186,9 @@ namespace he::schema
             }
             case AstNode::Kind::Group:
             {
+                if (!VerifyFieldName(node))
+                    return false;
+
                 uint32_t childCount = 0;
                 for (AstNode& item : node.children)
                 {
@@ -195,6 +207,9 @@ namespace he::schema
             }
             case AstNode::Kind::Interface:
             {
+                if (!VerifyDeclName(node))
+                    return false;
+
                 if (!VerifyTypeId(node))
                     return false;
 
@@ -205,6 +220,9 @@ namespace he::schema
             }
             case AstNode::Kind::Method:
             {
+                if (!VerifyDeclName(node))
+                    return false;
+
                 if (!VerifyOrdinal(node))
                     return false;
 
@@ -218,6 +236,9 @@ namespace he::schema
             }
             case AstNode::Kind::Struct:
             {
+                if (!VerifyDeclName(node))
+                    return false;
+
                 if (!VerifyTypeId(node))
                     return false;
 
@@ -228,6 +249,9 @@ namespace he::schema
             }
             case AstNode::Kind::Union:
             {
+                if (!VerifyFieldName(node))
+                    return false;
+
                 uint32_t childCount = 0;
                 for (AstNode& item : node.children)
                 {
@@ -516,6 +540,46 @@ namespace he::schema
         }
 
         m_context->AddError(node.location, "Unknown method param type. This is a compiler bug.");
+        return false;
+    }
+
+    bool Verifier::VerifyDeclName(const AstNode& node)
+    {
+        if (IsUpper(node.name[0])) [[likely]]
+            return true;
+
+        const char* p = node.name.Begin();
+        const char* end = node.name.End();
+
+        while (p < end && *p == '_')
+            ++p;
+
+        if (p > node.name.Begin() && p < end)
+        {
+            return IsNumeric(*p) || IsUpper(*p);
+        }
+
+        m_context->AddError(node.location, "Declaration name must begin with an upper-case letter, or underscores followed by a number or upper-case letter.");
+        return false;
+    }
+
+    bool Verifier::VerifyFieldName(const AstNode& node)
+    {
+        if (IsLower(node.name[0])) [[likely]]
+            return true;
+
+        const char* p = node.name.Begin();
+        const char* end = node.name.End();
+
+        while (p < end && *p == '_')
+            ++p;
+
+        if (p > node.name.Begin() && p < end)
+        {
+            return IsNumeric(*p) || IsLower(*p);
+        }
+
+        m_context->AddError(node.location, "Field name must begin with a lower-case letter, or underscores followed by a number or lower-case letter.");
         return false;
     }
 
@@ -898,61 +962,100 @@ namespace he::schema
 
             case AstExpression::Kind::QualifiedName:
             {
-                const AstNode* valueNode = m_context->FindNodeByName(astValue, scopeValue);
-                if (!valueNode)
-                {
-                    m_context->AddError(astValue.location, "Unknown name for value.");
-                    return false;
-                }
-
-                const AstNode* typeNode = m_context->FindNodeByName(astType, scopeType);
-
-                // We already validated the type, so if we don't find it then its a builtin.
-                // Since there are no builtins that take a qualified name value, this is an error.
-                // TODO: Bools take a value that is a qualified name (with one entry)
-                if (!typeNode)
-                {
-                    m_context->AddError(astValue.location, "Invalid value expression for type");
-                    return false;
-                }
-
                 if (astType.kind != AstExpression::Kind::QualifiedName)
                 {
-                    m_context->AddError(astValue.location, "A {} value expression is not valid for this type", valueNode->kind);
+                    m_context->AddError(astValue.location, "Invalid type name in expression. This is a verifier bug.");
                     return false;
                 }
 
-                if (valueNode->kind == AstNode::Kind::Enumerator)
+                const AstNode* valueNode = m_context->FindNodeByName(astValue, scopeValue);
+                if (valueNode)
                 {
-                    if (typeNode->kind != AstNode::Kind::Enum)
+                    if (valueNode->kind == AstNode::Kind::Constant)
                     {
-                        m_context->AddError(astValue.location, "Value is an enumerator, but the type is not an Enum");
-                        return false;
+                        return VerifyValue(astType, scopeType, valueNode->constant.value, *valueNode->parent);
                     }
-
-                    if (!valueNode->parent || valueNode->parent->kind != AstNode::Kind::Enum)
-                    {
-                        m_context->AddError(valueNode->location, "This enumerator does not live within an enum declaration. This is a parser bug.");
-                        return false;
-                    }
-
-                    if (valueNode->parent != typeNode)
-                    {
-                        m_context->AddError(astValue.location, "Expected an enumerator from {}, but got an enumerator from {}",
-                            typeNode->name, valueNode->parent->name);
-                        return false;
-                    }
-
-                    return true;
                 }
 
-                if (valueNode->kind == AstNode::Kind::Constant)
+                // We already validated the type, so if we don't find it then its a builtin.
+                const AstNode* typeNode = m_context->FindNodeByName(astType, scopeType);
+                const char* builtinName = nullptr;
+                Type::Data::Tag builtinType = Type::Data::Tag::Void;
+
+                if (!typeNode)
                 {
-                    return VerifyValue(astType, scopeType, valueNode->constant.value, *valueNode->parent);
+                    if (astType.kind != AstExpression::Kind::QualifiedName
+                        || astType.qualified.names.Size() != 1
+                        || astType.qualified.names.Front()->kind != AstExpression::Kind::Identifier)
+                    {
+                        m_context->AddError(astValue.location, "Invalid type expression expected a named type or builtin. This is verifier bug.");
+                        return false;
+                    }
+
+                    const auto it = m_builtinTypeMap.find(astType.qualified.names.Front()->identifier);
+                    if (it == m_builtinTypeMap.end())
+                    {
+                        m_context->AddError(astValue.location, "Invalid type expression expected a named type or builtin. This is verifier bug.");
+                        return false;
+                    }
+
+                    builtinName = it->first.Data();
+                    builtinType = it->second;
                 }
 
-                m_context->AddError(astValue.location, "Expected name to be an enumerator or constant, but found {}", valueNode->kind);
-                return false;
+                // user-defined type
+                if (typeNode)
+                {
+                    if (!valueNode)
+                    {
+                        m_context->AddError(astValue.location, "Invalid value expression for this type");
+                        return false;
+                    }
+
+                    if (valueNode->kind == AstNode::Kind::Enumerator)
+                    {
+                        if (!typeNode || typeNode->kind != AstNode::Kind::Enum)
+                        {
+                            m_context->AddError(astValue.location, "Value is an enumerator, but the type is not an Enum");
+                            return false;
+                        }
+
+                        if (!valueNode->parent || valueNode->parent->kind != AstNode::Kind::Enum)
+                        {
+                            m_context->AddError(valueNode->location, "This enumerator does not live within an enum declaration. This is a parser bug.");
+                            return false;
+                        }
+
+                        if (valueNode->parent != typeNode)
+                        {
+                            m_context->AddError(astValue.location, "Expected an enumerator from {}, but got an enumerator from {}",
+                                typeNode->name, valueNode->parent->name);
+                            return false;
+                        }
+
+                        return true;
+                    }
+
+                    m_context->AddError(astValue.location, "Expected name to be an enumerator or constant, but found {}", valueNode->kind);
+                    return false;
+                }
+
+                // built-in type
+                if (builtinType != Type::Data::Tag::Bool)
+                {
+                    m_context->AddError(valueNode->location, "Qualified name expressions are not valid values for this type.");
+                    return false;
+                }
+
+                if (astValue.qualified.names.Size() != 1
+                    || astValue.qualified.names.Front()->kind != AstExpression::Kind::Identifier
+                    || (astValue.qualified.names.Front()->identifier != KW_True && astValue.qualified.names.Front()->identifier != KW_False))
+                {
+                    m_context->AddError(valueNode->location, "Expected true or false for value.");
+                    return false;
+                }
+
+                return true;
             }
             case AstExpression::Kind::Tuple:
             {

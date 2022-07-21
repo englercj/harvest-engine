@@ -48,6 +48,12 @@ namespace he
     /// \return The closest integer that is greater than or equal to the input value.
     constexpr float Ceil(float x) noexcept;
 
+    /// Rounds the parameter to the closest integer value.
+    ///
+    /// \param x The value to round.
+    /// \return The closest integer to the input value.
+    constexpr float Round(float x) noexcept;
+
     /// Converts the parameter to radians.
     ///
     /// \param deg The angle as degrees.

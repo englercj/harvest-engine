@@ -91,12 +91,17 @@ HE_TEST(math, float, Floor)
     // https://en.cppreference.com/w/cpp/numeric/math/floor
 
     // If arg is ±∞, it is returned unmodified
+    // We assert on nan & infinity inputs for Ceil
     //HE_EXPECT_EQ(Floor(Float_Infinity), Float_Infinity);
     //HE_EXPECT_EQ(Floor(-Float_Infinity), -Float_Infinity);
 
     // If arg is ±0, it is returned, unmodified
     HE_EXPECT_EQ(Floor(0.0f), 0.0f);
     HE_EXPECT_EQ(Floor(-0.0f), -0.0f);
+
+    // If arg is NaN, NaN is returned
+    // We assert on nan & infinity inputs for Floor
+    //HE_EXPECT_EQ(Floor(Float_Nan), Float_Nan);
 
     static_assert(Floor(0.999999f) == 0.0f);
     static_assert(Floor(1.0f) == 1.0f);
@@ -118,12 +123,17 @@ HE_TEST(math, float, Ceil)
     // https://en.cppreference.com/w/cpp/numeric/math/ceil
 
     // If arg is ±∞, it is returned unmodified
+    // We assert on nan & infinity inputs for Ceil
     //HE_EXPECT_EQ(Ceil(Float_Infinity), Float_Infinity);
     //HE_EXPECT_EQ(Ceil(-Float_Infinity), -Float_Infinity);
 
     // If arg is ±0, it is returned, unmodified
     HE_EXPECT_EQ(Ceil(0.0f), 0.0f);
     HE_EXPECT_EQ(Ceil(-0.0f), -0.0f);
+
+    // If arg is NaN, NaN is returned
+    // We assert on nan & infinity inputs for Ceil
+    //HE_EXPECT_EQ(Ceil(Float_Nan), Float_Nan);
 
     static_assert(Ceil(0.999999f) == 1.0f);
     static_assert(Ceil(1.0f) == 1.0f);
@@ -137,6 +147,38 @@ HE_TEST(math, float, Ceil)
     HE_EXPECT_EQ(Ceil(1.9f), 2.0f);
     HE_EXPECT_EQ(Ceil(-1.1f), -1.0f);
     HE_EXPECT_EQ(Ceil(-1.9f), -1.0f);
+}
+
+// ------------------------------------------------------------------------------------------------
+HE_TEST(math, float, Round)
+{
+    // https://en.cppreference.com/w/cpp/numeric/math/round
+
+    // If arg is ±∞, it is returned unmodified
+    // We assert on nan & infinity inputs for Round
+    // HE_EXPECT_EQ(Round(Float_Infinity), Float_Infinity);
+    // HE_EXPECT_EQ(Round(-Float_Infinity), -Float_Infinity);
+
+    // If arg is ±0, it is returned, unmodified
+    HE_EXPECT_EQ(Round(0.0f), 0.0f);
+    HE_EXPECT_EQ(Round(-0.0f), -0.0f);
+
+    // If arg is NaN, NaN is returned
+    // We assert on nan & infinity inputs for Round
+    //HE_EXPECT_EQ(Floor(Float_Nan), Float_Nan);
+
+    static_assert(Round(0.999999f) == 1.0f);
+    static_assert(Round(1.0f) == 1.0f);
+    static_assert(Round(1.1f) == 1.0f);
+    static_assert(Round(1.9f) == 2.0f);
+    static_assert(Round(-1.1f) == -1.0f);
+    static_assert(Round(-1.9f) == -2.0f);
+    static_assert(Round(-2.0f) == -2.0f);
+
+    HE_EXPECT_EQ(Round(1.1f), 1.0f);
+    HE_EXPECT_EQ(Round(1.9f), 2.0f);
+    HE_EXPECT_EQ(Round(-1.1f), -1.0f);
+    HE_EXPECT_EQ(Round(-1.9f), -2.0f);
 }
 
 // ------------------------------------------------------------------------------------------------

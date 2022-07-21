@@ -36,6 +36,12 @@ namespace he
         return x > f ? f + 1 : f;
     }
 
+    constexpr float Round(float x) noexcept
+    {
+        HE_ASSERT(!IsNan(x) && IsFinite(x));
+        return x >= 0.0f ? Floor(x + 0.5f) : Ceil(x - 0.5f);
+    }
+
     constexpr float ToRadians(float deg) noexcept
     {
         return (deg * Float_Pi) / 180.0f;

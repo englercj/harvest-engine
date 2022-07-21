@@ -27,6 +27,7 @@ homepage = "https://github.com/ocornut/imgui"
         "imstb_rectpack.h",
         "imstb_textedit.h",
         "imstb_truetype.h",
+        "misc/debuggers/imgui.natstepfilter",
         "misc/debuggers/imgui.natvis",
         "misc/freetype/imgui_freetype.cpp",
         "misc/freetype/imgui_freetype.h",

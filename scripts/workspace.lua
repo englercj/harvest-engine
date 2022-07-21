@@ -29,7 +29,6 @@ he.workspace = function ()
     filter { "system:linux" }
         defines { "HE_PLATFORM_LINUX", "HE_PLATFORM_API_POSIX" }
         platforms { "x64" }
-        buildoptions { "-mcx16", "-fvisibility=hidden", "-fvisibility-inlines-hidden" }
 
     filter { "system:windows" }
         defines { "HE_PLATFORM_WINDOWS", "HE_PLATFORM_API_WIN32" }
@@ -67,8 +66,17 @@ he.workspace = function ()
 
     filter { "toolset:gcc or clang" }
         buildoptions {
+            "-mcx16",
+            "-fPIC",
+            "-fvisibility=hidden",
+            "-fvisibility-inlines-hidden",
             "-Wundef",      -- A symbol that was not defined was used with a preprocessor directive.
             "-Wswitch",     -- An enumerator has no associated case handler in a switch statement, and there's no default label that can catch it.
+        }
+
+    filter { "toolset:emcc" }
+        em_options {
+            "ALLOW_MEMORY_GROWTH=1",
         }
 
     -- Configuration setup

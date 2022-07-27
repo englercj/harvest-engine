@@ -220,16 +220,6 @@ namespace he::schema
     bool CompileSession::CompileAll()
     {
         return Compile(*m_context);
-        //if (!m_context->CompileFile())
-        //    return false;
-
-        //for (auto pair : m_importMap)
-        //{
-        //    if (!pair.second->CompileFile())
-        //        return false;
-        //}
-
-        //return true;
     }
 
     bool CompileSession::Compile(CompileContext& ctx)

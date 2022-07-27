@@ -113,6 +113,9 @@ The following types are defined as part of the language:
 - `float32`, `float64` - Floating-point values that are 4 and 8 bytes in size, respectively.
 - `String` - A variable sized list of UTF-8 characters terminated by a null (zero) byte.
 - `Blob` - A dynamic sized list of bytes.
+- `AnyPointer` - A dynamic type that can resolve to any pointer type at runtime (any list, string, blob, or struct)
+- `AnyStruct` - A dynamic type that can resolve to any struct type at runtime
+- `AnyList` - A dynamic type that can resolve to any list type at runtime
 
 #### Lists
 
@@ -154,6 +157,8 @@ struct Vec3
 
 Changing the size of a fixed-size array is not backwards-compatible for the binary format, just as changing the type of any field is not backwards-compatible. Other formats may treat these types differently, and have different restrictions about changes.
 
+Arrays of non-pointer types are considered set or unset as a single unit. That is, you cannot test if a single array element is set, only if the entire field is set.
+
 ### Type Aliases
 
 Aliases of types can be created using the `alias` keyword. Aliases are a language-level feature. A generated schema will not include aliases; only their resolved types. Because of this, you cannot apply attributes to type aliases.
@@ -187,7 +192,14 @@ struct Values
 
     fixed @4 :float32[4] = [1, 2, 3, 4];
     data @5 :Blob = 0x"a1 40 33";
-    none @6 :void; // void cannot have a default value
+
+    // void cannot have a default value, because it does not encode a value at all
+    none @6 :void;
+
+    // None of the Any* types are allowed to have default values.
+    any @7 :AnyPointer;
+    anyStruct @7 :AnyStruct;
+    anyList @7 :AnyList;
 }
 ```
 

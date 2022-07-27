@@ -53,13 +53,13 @@ namespace he::schema
 
     Lexer::Token Lexer::PeekNextToken()
     {
-        HE_ASSERT(m_nextTokenStart >= m_lineStart);
+        HE_ASSERT(m_nextTokenStart >= m_nextLineStart);
 
         Token token;
         token.type = m_nextError ? TokenType::Error : m_nextToken;
         token.text = { m_nextTokenStart, m_cursor };
         token.line = m_line;
-        token.column = static_cast<uint32_t>(m_nextTokenStart - m_lineStart) + 1;
+        token.column = static_cast<uint32_t>(m_nextTokenStart - m_nextLineStart) + 1;
         token.error = m_nextError;
         return token;
     }

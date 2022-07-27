@@ -117,7 +117,7 @@ namespace he::schema
                 HE_LOG_ERROR(he_schema,
                     HE_MSG("Encountered invalid character for blob value. Skipping deserialization of field."),
                     HE_KV(field_name, field.GetName().AsView()),
-                    HE_KV(field_type, field.GetMeta().GetNormal().GetType().GetData().GetTag()),
+                    HE_KV(field_type, field.GetMeta().GetNormal().GetType().GetData().GetUnionTag()),
                     HE_KV(toml_type, GetNodeTypeString(value.type())),
                     HE_KV(bad_char, c),
                     HE_KV(char_offset, (s - begin)));
@@ -141,7 +141,7 @@ namespace he::schema
             HE_LOG_ERROR(he_schema,
                 HE_MSG("Encountered invalid blob hex string, there is a trailing nibble. Skipping deserialization of field."),
                 HE_KV(field_name, field.GetName().AsView()),
-                HE_KV(field_type, field.GetMeta().GetNormal().GetType().GetData().GetTag()),
+                HE_KV(field_type, field.GetMeta().GetNormal().GetType().GetData().GetUnionTag()),
                 HE_KV(toml_type, GetNodeTypeString(value.type())));
             return false;
         }
@@ -149,30 +149,33 @@ namespace he::schema
         return true;
     }
 
-    static bool CheckTypeMatch(const Type::Data::Tag typeDataTag, const toml::node& value)
+    static bool CheckTypeMatch(const Type::Data::UnionTag typeDataTag, const toml::node& value)
     {
         switch (typeDataTag)
         {
-            case Type::Data::Tag::Void: return false;
-            case Type::Data::Tag::Bool: return value.is_boolean();
-            case Type::Data::Tag::Int8: return value.is_integer();
-            case Type::Data::Tag::Int16: return value.is_integer();
-            case Type::Data::Tag::Int32: return value.is_integer();
-            case Type::Data::Tag::Int64: return value.is_integer();
-            case Type::Data::Tag::Uint8: return value.is_integer();
-            case Type::Data::Tag::Uint16: return value.is_integer();
-            case Type::Data::Tag::Uint32: return value.is_integer();
-            case Type::Data::Tag::Uint64: return value.is_string();
-            case Type::Data::Tag::Float32: return value.is_floating_point();
-            case Type::Data::Tag::Float64: return value.is_floating_point();
-            case Type::Data::Tag::Array: return value.is_array() || value.is_string();
-            case Type::Data::Tag::Blob: return value.is_string();
-            case Type::Data::Tag::String: return value.is_string();
-            case Type::Data::Tag::List: return value.is_array();
-            case Type::Data::Tag::Enum: return value.is_string();
-            case Type::Data::Tag::Struct: return value.is_table();
-            case Type::Data::Tag::Interface: return false;
-            case Type::Data::Tag::AnyPointer: return false;
+            case Type::Data::UnionTag::Void: return false;
+            case Type::Data::UnionTag::Bool: return value.is_boolean();
+            case Type::Data::UnionTag::Int8: return value.is_integer();
+            case Type::Data::UnionTag::Int16: return value.is_integer();
+            case Type::Data::UnionTag::Int32: return value.is_integer();
+            case Type::Data::UnionTag::Int64: return value.is_integer();
+            case Type::Data::UnionTag::Uint8: return value.is_integer();
+            case Type::Data::UnionTag::Uint16: return value.is_integer();
+            case Type::Data::UnionTag::Uint32: return value.is_integer();
+            case Type::Data::UnionTag::Uint64: return value.is_string();
+            case Type::Data::UnionTag::Float32: return value.is_floating_point();
+            case Type::Data::UnionTag::Float64: return value.is_floating_point();
+            case Type::Data::UnionTag::Array: return value.is_array() || value.is_string();
+            case Type::Data::UnionTag::Blob: return value.is_string();
+            case Type::Data::UnionTag::String: return value.is_string();
+            case Type::Data::UnionTag::List: return value.is_array();
+            case Type::Data::UnionTag::Enum: return value.is_string();
+            case Type::Data::UnionTag::Struct: return value.is_table();
+            case Type::Data::UnionTag::Interface: return false;
+            case Type::Data::UnionTag::AnyPointer: return false;
+            case Type::Data::UnionTag::AnyStruct: return false;
+            case Type::Data::UnionTag::AnyList: return false;
+            case Type::Data::UnionTag::Parameter: return false;
         }
         return false;
     }
@@ -240,11 +243,11 @@ namespace he::schema
 
         void SetField(Field::Reader field, const toml::node& value)
         {
-            switch (field.GetMeta().GetTag())
+            switch (field.GetMeta().GetUnionTag())
             {
-                case Field::Meta::Tag::Normal: SetNormalField(field, value); break;
-                case Field::Meta::Tag::Group: SetGroupField(field, value); break;
-                case Field::Meta::Tag::Union: SetUnionField(field, value); break;
+                case Field::Meta::UnionTag::Normal: SetNormalField(field, value); break;
+                case Field::Meta::UnionTag::Group: SetGroupField(field, value); break;
+                case Field::Meta::UnionTag::Union: SetUnionField(field, value); break;
             }
         }
 
@@ -402,7 +405,7 @@ namespace he::schema
             const Field::Meta::Normal::Reader norm = field.GetMeta().GetNormal();
             const Type::Reader type = norm.GetType();
             const Type::Data::Reader typeData = type.GetData();
-            const Type::Data::Tag typeDataTag = typeData.GetTag();
+            const Type::Data::UnionTag typeDataTag = typeData.GetUnionTag();
 
             if (!CheckTypeMatch(typeDataTag, value))
             {
@@ -419,24 +422,24 @@ namespace he::schema
 
             switch (typeDataTag)
             {
-                case Type::Data::Tag::Void: break;
-                case Type::Data::Tag::Bool: builder.SetAndMarkDataField(index, dataOffset, TomlValueHelper<bool>::Get(value)); break;
-                case Type::Data::Tag::Int8: builder.SetAndMarkDataField(index, dataOffset, TomlValueHelper<int8_t>::Get(value)); break;
-                case Type::Data::Tag::Int16: builder.SetAndMarkDataField(index, dataOffset, TomlValueHelper<int16_t>::Get(value)); break;
-                case Type::Data::Tag::Int32: builder.SetAndMarkDataField(index, dataOffset, TomlValueHelper<int32_t>::Get(value)); break;
-                case Type::Data::Tag::Int64: builder.SetAndMarkDataField(index, dataOffset, TomlValueHelper<int64_t>::Get(value)); break;
-                case Type::Data::Tag::Uint8: builder.SetAndMarkDataField(index, dataOffset, TomlValueHelper<uint8_t>::Get(value)); break;
-                case Type::Data::Tag::Uint16: builder.SetAndMarkDataField(index, dataOffset, TomlValueHelper<uint16_t>::Get(value)); break;
-                case Type::Data::Tag::Uint32: builder.SetAndMarkDataField(index, dataOffset, TomlValueHelper<uint32_t>::Get(value)); break;
-                case Type::Data::Tag::Uint64: builder.SetAndMarkDataField(index, dataOffset, TomlValueHelper<uint64_t>::Get(value)); break;
-                case Type::Data::Tag::Float32: builder.SetAndMarkDataField(index, dataOffset, TomlValueHelper<float>::Get(value)); break;
-                case Type::Data::Tag::Float64: builder.SetAndMarkDataField(index, dataOffset, TomlValueHelper<double>::Get(value)); break;
-                case Type::Data::Tag::Array:
+                case Type::Data::UnionTag::Void: break;
+                case Type::Data::UnionTag::Bool: builder.SetAndMarkDataField(index, dataOffset, TomlValueHelper<bool>::Get(value)); break;
+                case Type::Data::UnionTag::Int8: builder.SetAndMarkDataField(index, dataOffset, TomlValueHelper<int8_t>::Get(value)); break;
+                case Type::Data::UnionTag::Int16: builder.SetAndMarkDataField(index, dataOffset, TomlValueHelper<int16_t>::Get(value)); break;
+                case Type::Data::UnionTag::Int32: builder.SetAndMarkDataField(index, dataOffset, TomlValueHelper<int32_t>::Get(value)); break;
+                case Type::Data::UnionTag::Int64: builder.SetAndMarkDataField(index, dataOffset, TomlValueHelper<int64_t>::Get(value)); break;
+                case Type::Data::UnionTag::Uint8: builder.SetAndMarkDataField(index, dataOffset, TomlValueHelper<uint8_t>::Get(value)); break;
+                case Type::Data::UnionTag::Uint16: builder.SetAndMarkDataField(index, dataOffset, TomlValueHelper<uint16_t>::Get(value)); break;
+                case Type::Data::UnionTag::Uint32: builder.SetAndMarkDataField(index, dataOffset, TomlValueHelper<uint32_t>::Get(value)); break;
+                case Type::Data::UnionTag::Uint64: builder.SetAndMarkDataField(index, dataOffset, TomlValueHelper<uint64_t>::Get(value)); break;
+                case Type::Data::UnionTag::Float32: builder.SetAndMarkDataField(index, dataOffset, TomlValueHelper<float>::Get(value)); break;
+                case Type::Data::UnionTag::Float64: builder.SetAndMarkDataField(index, dataOffset, TomlValueHelper<double>::Get(value)); break;
+                case Type::Data::UnionTag::Array:
                 {
                     SetArrayValue(builder, field, value);
                     break;
                 }
-                case Type::Data::Tag::Blob:
+                case Type::Data::UnionTag::Blob:
                 {
                     Vector<uint8_t> bytes{ Allocator::GetTemp() };
                     if (!ParseBlobString(bytes, field, value))
@@ -447,19 +450,19 @@ namespace he::schema
                     builder.GetPointerField(index).Set(bytesBuilder);
                     break;
                 }
-                case Type::Data::Tag::String:
+                case Type::Data::UnionTag::String:
                 {
                     const std::string& str = value.as_string()->get();
                     String::Builder strBuilder = m_dst.AddString(str);
                     builder.GetPointerField(index).Set(strBuilder);
                     break;
                 }
-                case Type::Data::Tag::List:
+                case Type::Data::UnionTag::List:
                 {
                     SetListValue(builder, field, value);
                     break;
                 }
-                case Type::Data::Tag::Enum:
+                case Type::Data::UnionTag::Enum:
                 {
                     const StringView enumName = value.as_string()->get();
                     const Type::Data::Enum::Reader enumType = typeData.GetEnum();
@@ -493,7 +496,7 @@ namespace he::schema
 
                     break;
                 }
-                case Type::Data::Tag::Struct:
+                case Type::Data::UnionTag::Struct:
                 {
                     const Type::Data::Struct::Reader structType = typeData.GetStruct();
 
@@ -504,7 +507,7 @@ namespace he::schema
 
                     break;
                 }
-                case Type::Data::Tag::Interface:
+                case Type::Data::UnionTag::Interface:
                 {
                     HE_LOG_ERROR(he_schema,
                         HE_MSG("Skipping Interface field when parsing from TOML."),
@@ -516,7 +519,10 @@ namespace he::schema
                         HE_KV(data_offset, dataOffset));
                     break;
                 }
-                case Type::Data::Tag::AnyPointer:
+                case Type::Data::UnionTag::AnyPointer:
+                case Type::Data::UnionTag::AnyStruct:
+                case Type::Data::UnionTag::AnyList:
+                case Type::Data::UnionTag::Parameter:
                 {
                     HE_LOG_ERROR(he_schema,
                         HE_MSG("Skipping AnyPointer field when parsing from TOML."),
@@ -536,14 +542,14 @@ namespace he::schema
             const Field::Meta::Normal::Reader norm = field.GetMeta().GetNormal();
             const Type::Reader type = norm.GetType();
             const Type::Data::Reader typeData = type.GetData();
-            const Type::Data::Tag typeDataTag = typeData.GetTag();
+            const Type::Data::UnionTag typeDataTag = typeData.GetUnionTag();
 
             const uint32_t dataOffset = norm.GetDataOffset();
             const uint16_t index = norm.GetIndex();
 
             const Type::Data::Array::Reader arrayType = type.GetData().GetArray();
             const Type::Reader elementType = arrayType.GetElementType();
-            const Type::Data::Tag elementTypeDataTag = elementType.GetData().GetTag();
+            const Type::Data::UnionTag elementTypeDataTag = elementType.GetData().GetUnionTag();
             const uint16_t size = arrayType.GetSize();
 
             if (value.is_string())
@@ -619,19 +625,19 @@ namespace he::schema
 
                 switch (elementTypeDataTag)
                 {
-                    case Type::Data::Tag::Void: break;
-                    case Type::Data::Tag::Bool: SetArrayDataElement<bool>(builder, index, dataOffset, size, i, elmValue); break;
-                    case Type::Data::Tag::Int8: SetArrayDataElement<int8_t>(builder, index, dataOffset, size, i, elmValue); break;
-                    case Type::Data::Tag::Int16: SetArrayDataElement<int16_t>(builder, index, dataOffset, size, i, elmValue); break;
-                    case Type::Data::Tag::Int32: SetArrayDataElement<int32_t>(builder, index, dataOffset, size, i, elmValue); break;
-                    case Type::Data::Tag::Int64: SetArrayDataElement<int64_t>(builder, index, dataOffset, size, i, elmValue); break;
-                    case Type::Data::Tag::Uint8: SetArrayDataElement<uint8_t>(builder, index, dataOffset, size, i, elmValue); break;
-                    case Type::Data::Tag::Uint16: SetArrayDataElement<uint16_t>(builder, index, dataOffset, size, i, elmValue); break;
-                    case Type::Data::Tag::Uint32: SetArrayDataElement<uint32_t>(builder, index, dataOffset, size, i, elmValue); break;
-                    case Type::Data::Tag::Uint64: SetArrayDataElement<uint64_t>(builder, index, dataOffset, size, i, elmValue); break;
-                    case Type::Data::Tag::Float32: SetArrayDataElement<float>(builder, index, dataOffset, size, i, elmValue); break;
-                    case Type::Data::Tag::Float64: SetArrayDataElement<double>(builder, index, dataOffset, size, i, elmValue); break;
-                    case Type::Data::Tag::Blob:
+                    case Type::Data::UnionTag::Void: break;
+                    case Type::Data::UnionTag::Bool: SetArrayDataElement<bool>(builder, index, dataOffset, size, i, elmValue); break;
+                    case Type::Data::UnionTag::Int8: SetArrayDataElement<int8_t>(builder, index, dataOffset, size, i, elmValue); break;
+                    case Type::Data::UnionTag::Int16: SetArrayDataElement<int16_t>(builder, index, dataOffset, size, i, elmValue); break;
+                    case Type::Data::UnionTag::Int32: SetArrayDataElement<int32_t>(builder, index, dataOffset, size, i, elmValue); break;
+                    case Type::Data::UnionTag::Int64: SetArrayDataElement<int64_t>(builder, index, dataOffset, size, i, elmValue); break;
+                    case Type::Data::UnionTag::Uint8: SetArrayDataElement<uint8_t>(builder, index, dataOffset, size, i, elmValue); break;
+                    case Type::Data::UnionTag::Uint16: SetArrayDataElement<uint16_t>(builder, index, dataOffset, size, i, elmValue); break;
+                    case Type::Data::UnionTag::Uint32: SetArrayDataElement<uint32_t>(builder, index, dataOffset, size, i, elmValue); break;
+                    case Type::Data::UnionTag::Uint64: SetArrayDataElement<uint64_t>(builder, index, dataOffset, size, i, elmValue); break;
+                    case Type::Data::UnionTag::Float32: SetArrayDataElement<float>(builder, index, dataOffset, size, i, elmValue); break;
+                    case Type::Data::UnionTag::Float64: SetArrayDataElement<double>(builder, index, dataOffset, size, i, elmValue); break;
+                    case Type::Data::UnionTag::Blob:
                     {
                         Vector<uint8_t> bytes{ Allocator::GetTemp() };
                         if (!ParseBlobString(bytes, field, elmValue))
@@ -643,14 +649,14 @@ namespace he::schema
                         builder.GetPointerArrayField(index, size).SetPointerElement(i, bytesBuilder);
                         break;
                     }
-                    case Type::Data::Tag::String:
+                    case Type::Data::UnionTag::String:
                     {
                         const std::string& str = elmValue.as_string()->get();
                         String::Builder strBuilder = m_dst.AddString(str);
                         builder.GetPointerArrayField(index, size).SetPointerElement(i, strBuilder);
                         break;
                     }
-                    case Type::Data::Tag::Array:
+                    case Type::Data::UnionTag::Array:
                     {
                         HE_LOG_ERROR(he_schema,
                             HE_MSG("Skipping array field when parsing TOML. Arrays of arrays are not supported."),
@@ -662,12 +668,12 @@ namespace he::schema
                             HE_KV(data_offset, dataOffset));
                         break;
                     }
-                    case Type::Data::Tag::List:
+                    case Type::Data::UnionTag::List:
                     {
                         SetListValue(builder, field, elmValue);
                         break;
                     }
-                    case Type::Data::Tag::Enum:
+                    case Type::Data::UnionTag::Enum:
                     {
                         const StringView enumName = elmValue.as_string()->get();
                         const Type::Data::Enum::Reader enumType = elementType.GetData().GetEnum();
@@ -701,7 +707,7 @@ namespace he::schema
 
                         break;
                     }
-                    case Type::Data::Tag::Struct:
+                    case Type::Data::UnionTag::Struct:
                     {
                         const Type::Data::Struct::Reader structType = elementType.GetData().GetStruct();
 
@@ -712,7 +718,7 @@ namespace he::schema
 
                         break;
                     }
-                    case Type::Data::Tag::Interface:
+                    case Type::Data::UnionTag::Interface:
                     {
                         HE_LOG_ERROR(he_schema,
                             HE_MSG("Skipping Interface field when serializing."),
@@ -724,7 +730,10 @@ namespace he::schema
                             HE_KV(data_offset, dataOffset));
                         break;
                     }
-                    case Type::Data::Tag::AnyPointer:
+                    case Type::Data::UnionTag::AnyPointer:
+                    case Type::Data::UnionTag::AnyStruct:
+                    case Type::Data::UnionTag::AnyList:
+                    case Type::Data::UnionTag::Parameter:
                     {
                         HE_LOG_ERROR(he_schema,
                             HE_MSG("Skipping AnyPointer type when serializing to TOML."),
@@ -746,14 +755,14 @@ namespace he::schema
             const Field::Meta::Normal::Reader norm = field.GetMeta().GetNormal();
             const Type::Reader type = norm.GetType();
             const Type::Data::Reader typeData = type.GetData();
-            const Type::Data::Tag typeDataTag = typeData.GetTag();
+            const Type::Data::UnionTag typeDataTag = typeData.GetUnionTag();
 
             const uint32_t dataOffset = norm.GetDataOffset();
             const uint16_t index = norm.GetIndex();
 
             const Type::Data::List::Reader listType = type.GetData().GetList();
             const Type::Reader elementType = listType.GetElementType();
-            const Type::Data::Tag elementTypeDataTag = elementType.GetData().GetTag();
+            const Type::Data::UnionTag elementTypeDataTag = elementType.GetData().GetUnionTag();
             const toml::array* arr = value.as_array();
             const size_t arrSize = arr->size();
             const toml::node* first = arr->get(0);
@@ -824,19 +833,19 @@ namespace he::schema
 
                 switch (elementTypeDataTag)
                 {
-                    case Type::Data::Tag::Void: break;
-                    case Type::Data::Tag::Bool: list.SetDataElement(i, TomlValueHelper<bool>::Get(elmValue)); break;
-                    case Type::Data::Tag::Int8: list.SetDataElement(i, TomlValueHelper<int8_t>::Get(elmValue)); break;
-                    case Type::Data::Tag::Int16: list.SetDataElement(i, TomlValueHelper<int16_t>::Get(elmValue)); break;
-                    case Type::Data::Tag::Int32: list.SetDataElement(i, TomlValueHelper<int32_t>::Get(elmValue)); break;
-                    case Type::Data::Tag::Int64: list.SetDataElement(i, TomlValueHelper<int64_t>::Get(elmValue)); break;
-                    case Type::Data::Tag::Uint8: list.SetDataElement(i, TomlValueHelper<uint8_t>::Get(elmValue)); break;
-                    case Type::Data::Tag::Uint16: list.SetDataElement(i, TomlValueHelper<uint16_t>::Get(elmValue)); break;
-                    case Type::Data::Tag::Uint32: list.SetDataElement(i, TomlValueHelper<uint32_t>::Get(elmValue)); break;
-                    case Type::Data::Tag::Uint64: list.SetDataElement(i, TomlValueHelper<uint64_t>::Get(elmValue)); break;
-                    case Type::Data::Tag::Float32: list.SetDataElement(i, TomlValueHelper<float>::Get(elmValue)); break;
-                    case Type::Data::Tag::Float64: list.SetDataElement(i, TomlValueHelper<double>::Get(elmValue)); break;
-                    case Type::Data::Tag::Blob:
+                    case Type::Data::UnionTag::Void: break;
+                    case Type::Data::UnionTag::Bool: list.SetDataElement(i, TomlValueHelper<bool>::Get(elmValue)); break;
+                    case Type::Data::UnionTag::Int8: list.SetDataElement(i, TomlValueHelper<int8_t>::Get(elmValue)); break;
+                    case Type::Data::UnionTag::Int16: list.SetDataElement(i, TomlValueHelper<int16_t>::Get(elmValue)); break;
+                    case Type::Data::UnionTag::Int32: list.SetDataElement(i, TomlValueHelper<int32_t>::Get(elmValue)); break;
+                    case Type::Data::UnionTag::Int64: list.SetDataElement(i, TomlValueHelper<int64_t>::Get(elmValue)); break;
+                    case Type::Data::UnionTag::Uint8: list.SetDataElement(i, TomlValueHelper<uint8_t>::Get(elmValue)); break;
+                    case Type::Data::UnionTag::Uint16: list.SetDataElement(i, TomlValueHelper<uint16_t>::Get(elmValue)); break;
+                    case Type::Data::UnionTag::Uint32: list.SetDataElement(i, TomlValueHelper<uint32_t>::Get(elmValue)); break;
+                    case Type::Data::UnionTag::Uint64: list.SetDataElement(i, TomlValueHelper<uint64_t>::Get(elmValue)); break;
+                    case Type::Data::UnionTag::Float32: list.SetDataElement(i, TomlValueHelper<float>::Get(elmValue)); break;
+                    case Type::Data::UnionTag::Float64: list.SetDataElement(i, TomlValueHelper<double>::Get(elmValue)); break;
+                    case Type::Data::UnionTag::Blob:
                     {
                         Vector<uint8_t> bytes{ Allocator::GetTemp() };
                         if (!ParseBlobString(bytes, field, elmValue))
@@ -847,14 +856,14 @@ namespace he::schema
                         list.SetPointerElement(i, bytesBuilder);
                         break;
                     }
-                    case Type::Data::Tag::String:
+                    case Type::Data::UnionTag::String:
                     {
                         const std::string& str = elmValue.as_string()->get();
                         String::Builder strBuilder = m_dst.AddString(str);
                         list.SetPointerElement(i, strBuilder);
                         break;
                     }
-                    case Type::Data::Tag::Array:
+                    case Type::Data::UnionTag::Array:
                     {
                         HE_LOG_ERROR(he_schema,
                             HE_MSG("Skipping array field when parsing TOML. Lists of arrays are not supported."),
@@ -866,7 +875,7 @@ namespace he::schema
                             HE_KV(data_offset, dataOffset));
                         break;
                     }
-                    case Type::Data::Tag::List:
+                    case Type::Data::UnionTag::List:
                     {
                         HE_LOG_ERROR(he_schema,
                             HE_MSG("Skipping list field when parsing TOML. Lists of lists are not supported, yet."),
@@ -877,7 +886,7 @@ namespace he::schema
                             HE_KV(data_offset, dataOffset));
                         break;
                     }
-                    case Type::Data::Tag::Enum:
+                    case Type::Data::UnionTag::Enum:
                     {
                         const StringView enumName = elmValue.as_string()->get();
                         const Type::Data::Enum::Reader enumType = elementType.GetData().GetEnum();
@@ -912,7 +921,7 @@ namespace he::schema
 
                         break;
                     }
-                    case Type::Data::Tag::Struct:
+                    case Type::Data::UnionTag::Struct:
                     {
                         const Type::Data::Struct::Reader structType = elementType.GetData().GetStruct();
 
@@ -923,7 +932,7 @@ namespace he::schema
 
                         break;
                     }
-                    case Type::Data::Tag::Interface:
+                    case Type::Data::UnionTag::Interface:
                     {
                         HE_LOG_ERROR(he_schema,
                             HE_MSG("Skipping Interface field when serializing."),
@@ -935,7 +944,10 @@ namespace he::schema
                             HE_KV(data_offset, dataOffset));
                         break;
                     }
-                    case Type::Data::Tag::AnyPointer:
+                    case Type::Data::UnionTag::AnyPointer:
+                    case Type::Data::UnionTag::AnyStruct:
+                    case Type::Data::UnionTag::AnyList:
+                    case Type::Data::UnionTag::Parameter:
                     {
                         HE_LOG_ERROR(he_schema,
                             HE_MSG("Skipping AnyPointer type when serializing to TOML."),
@@ -1041,9 +1053,9 @@ namespace he::schema
             // Write the basic fields first
             for (Field::Reader field : structDecl.GetFields())
             {
-                const Field::Meta::Tag tag = field.GetMeta().GetTag();
+                const Field::Meta::UnionTag tag = field.GetMeta().GetUnionTag();
 
-                if (tag == Field::Meta::Tag::Normal)
+                if (tag == Field::Meta::UnionTag::Normal)
                 {
                     const Field::Meta::Normal::Reader norm = field.GetMeta().GetNormal();
                     if (!norm.GetType().GetData().IsStruct())
@@ -1056,9 +1068,9 @@ namespace he::schema
             // Then write structure fields
             for (Field::Reader field : structDecl.GetFields())
             {
-                const Field::Meta::Tag tag = field.GetMeta().GetTag();
+                const Field::Meta::UnionTag tag = field.GetMeta().GetUnionTag();
 
-                if (tag == Field::Meta::Tag::Normal)
+                if (tag == Field::Meta::UnionTag::Normal)
                 {
                     const Field::Meta::Normal::Reader norm = field.GetMeta().GetNormal();
                     if (norm.GetType().GetData().IsStruct())
@@ -1075,11 +1087,11 @@ namespace he::schema
 
         void WriteField(StructReader data, Field::Reader field)
         {
-            switch (field.GetMeta().GetTag())
+            switch (field.GetMeta().GetUnionTag())
             {
-                case Field::Meta::Tag::Normal: WriteNormalField(data, field); break;
-                case Field::Meta::Tag::Group: WriteGroupField(data, field); break;
-                case Field::Meta::Tag::Union: WriteUnionField(data, field); break;
+                case Field::Meta::UnionTag::Normal: WriteNormalField(data, field); break;
+                case Field::Meta::UnionTag::Group: WriteGroupField(data, field); break;
+                case Field::Meta::UnionTag::Union: WriteUnionField(data, field); break;
             }
         }
 
@@ -1234,12 +1246,12 @@ namespace he::schema
             const auto dataValueFmt = fmt::runtime(asHex ? "{:#x}" : "{}");
 
             const Type::Data::Reader typeData = type.GetData();
-            const Type::Data::Tag typeDataTag = typeData.GetTag();
+            const Type::Data::UnionTag typeDataTag = typeData.GetUnionTag();
 
             if (!name.IsEmpty()
-                && typeDataTag != Type::Data::Tag::Array
-                && typeDataTag != Type::Data::Tag::List
-                && typeDataTag != Type::Data::Tag::Struct)
+                && typeDataTag != Type::Data::UnionTag::Array
+                && typeDataTag != Type::Data::UnionTag::List
+                && typeDataTag != Type::Data::UnionTag::Struct)
             {
                 m_writer.WriteIndent();
                 m_writer.Write("{} = ", name);
@@ -1247,19 +1259,19 @@ namespace he::schema
 
             switch (typeDataTag)
             {
-                case Type::Data::Tag::Void: break;
-                case Type::Data::Tag::Bool: m_writer.Write(dataValueFmt, Helper::template GetData<bool>(data, index, dataOffset)); break;
-                case Type::Data::Tag::Int8: m_writer.Write(dataValueFmt, Helper::template GetData<int8_t>(data, index, dataOffset)); break;
-                case Type::Data::Tag::Int16: m_writer.Write(dataValueFmt, Helper::template GetData<int16_t>(data, index, dataOffset)); break;
-                case Type::Data::Tag::Int32: m_writer.Write(dataValueFmt, Helper::template GetData<int32_t>(data, index, dataOffset)); break;
-                case Type::Data::Tag::Int64: m_writer.Write(dataValueFmt, Helper::template GetData<int64_t>(data, index, dataOffset)); break;
-                case Type::Data::Tag::Uint8: m_writer.Write(dataValueFmt, Helper::template GetData<uint8_t>(data, index, dataOffset)); break;
-                case Type::Data::Tag::Uint16: m_writer.Write(dataValueFmt, Helper::template GetData<uint16_t>(data, index, dataOffset)); break;
-                case Type::Data::Tag::Uint32: m_writer.Write(dataValueFmt, Helper::template GetData<uint32_t>(data, index, dataOffset)); break;
-                case Type::Data::Tag::Uint64: m_writer.Write("\"{:#x}\"", Helper::template GetData<uint64_t>(data, index, dataOffset)); break;
-                case Type::Data::Tag::Float32: m_writer.Write(dataValueFmt, Helper::template GetData<float>(data, index, dataOffset)); break;
-                case Type::Data::Tag::Float64: m_writer.Write(dataValueFmt, Helper::template GetData<double>(data, index, dataOffset)); break;
-                case Type::Data::Tag::Array:
+                case Type::Data::UnionTag::Void: break;
+                case Type::Data::UnionTag::Bool: m_writer.Write(dataValueFmt, Helper::template GetData<bool>(data, index, dataOffset)); break;
+                case Type::Data::UnionTag::Int8: m_writer.Write(dataValueFmt, Helper::template GetData<int8_t>(data, index, dataOffset)); break;
+                case Type::Data::UnionTag::Int16: m_writer.Write(dataValueFmt, Helper::template GetData<int16_t>(data, index, dataOffset)); break;
+                case Type::Data::UnionTag::Int32: m_writer.Write(dataValueFmt, Helper::template GetData<int32_t>(data, index, dataOffset)); break;
+                case Type::Data::UnionTag::Int64: m_writer.Write(dataValueFmt, Helper::template GetData<int64_t>(data, index, dataOffset)); break;
+                case Type::Data::UnionTag::Uint8: m_writer.Write(dataValueFmt, Helper::template GetData<uint8_t>(data, index, dataOffset)); break;
+                case Type::Data::UnionTag::Uint16: m_writer.Write(dataValueFmt, Helper::template GetData<uint16_t>(data, index, dataOffset)); break;
+                case Type::Data::UnionTag::Uint32: m_writer.Write(dataValueFmt, Helper::template GetData<uint32_t>(data, index, dataOffset)); break;
+                case Type::Data::UnionTag::Uint64: m_writer.Write("\"{:#x}\"", Helper::template GetData<uint64_t>(data, index, dataOffset)); break;
+                case Type::Data::UnionTag::Float32: m_writer.Write(dataValueFmt, Helper::template GetData<float>(data, index, dataOffset)); break;
+                case Type::Data::UnionTag::Float64: m_writer.Write(dataValueFmt, Helper::template GetData<double>(data, index, dataOffset)); break;
+                case Type::Data::UnionTag::Array:
                 {
                     const bool asHexString = FindAttribute(attributes, Toml::HexString::Id).IsValid();
 
@@ -1288,7 +1300,7 @@ namespace he::schema
 
                     break;
                 }
-                case Type::Data::Tag::Blob:
+                case Type::Data::UnionTag::Blob:
                 {
                     // TODO: Hex as array, Base64 as string, if attributes are set.
                     // HexString is the default output format, so that attribute has no effect.
@@ -1296,13 +1308,13 @@ namespace he::schema
                     m_writer.Write("\"{:02x}\"", fmt::join(bytes, ""));
                     break;
                 }
-                case Type::Data::Tag::String:
+                case Type::Data::UnionTag::String:
                 {
                     const String::Reader str = Helper::GetPointer(data, index).TryGetString();
                     m_writer.Write("\"{}\"", str.AsView());
                     break;
                 }
-                case Type::Data::Tag::List:
+                case Type::Data::UnionTag::List:
                 {
                     const bool asHexString = FindAttribute(attributes, Toml::HexString::Id).IsValid();
 
@@ -1331,7 +1343,7 @@ namespace he::schema
                     }
                     break;
                 }
-                case Type::Data::Tag::Enum:
+                case Type::Data::UnionTag::Enum:
                 {
                     const Type::Data::Enum::Reader enumType = typeData.GetEnum();
                     PushGroup(enumType.GetId(), "");
@@ -1366,7 +1378,7 @@ namespace he::schema
 
                     break;
                 }
-                case Type::Data::Tag::Struct:
+                case Type::Data::UnionTag::Struct:
                 {
                     const Type::Data::Struct::Reader structType = typeData.GetStruct();
                     const StructReader value = Helper::GetComposite(data, index);
@@ -1397,7 +1409,7 @@ namespace he::schema
 
                     break;
                 }
-                case Type::Data::Tag::Interface:
+                case Type::Data::UnionTag::Interface:
                 {
                     HE_LOG_ERROR(he_schema,
                         HE_MSG("Skipping Interface type when serializing."),
@@ -1410,7 +1422,10 @@ namespace he::schema
                         HE_KV(data_offset, dataOffset));
                     break;
                 }
-                case Type::Data::Tag::AnyPointer:
+                case Type::Data::UnionTag::AnyPointer:
+                case Type::Data::UnionTag::AnyStruct:
+                case Type::Data::UnionTag::AnyList:
+                case Type::Data::UnionTag::Parameter:
                 {
                     HE_LOG_ERROR(he_schema,
                         HE_MSG("Skipping AnyPointer type when serializing to TOML."),

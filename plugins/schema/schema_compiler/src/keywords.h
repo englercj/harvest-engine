@@ -28,6 +28,8 @@ namespace he::schema
 
     // Types
     inline constexpr StringView KW_AnyPointer = "AnyPointer";
+    inline constexpr StringView KW_AnyStruct = "AnyStruct";
+    inline constexpr StringView KW_AnyList = "AnyList";
     inline constexpr StringView KW_Blob = "Blob";
     inline constexpr StringView KW_Bool = "bool";
     inline constexpr StringView KW_Float32 = "float32";

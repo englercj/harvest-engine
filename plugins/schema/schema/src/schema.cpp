@@ -23,22 +23,22 @@ namespace he::schema
 
     bool SchemaVisitor::VisitDecl(Declaration::Reader decl, Declaration::Reader scope)
     {
-        switch (decl.GetData().GetTag())
+        switch (decl.GetData().GetUnionTag())
         {
-            case Declaration::Data::Tag::File:
+            case Declaration::Data::UnionTag::File:
             {
                 HE_ASSERT(!scope.IsValid());
                 return VisitFile(decl);
             }
-            case Declaration::Data::Tag::Attribute:
+            case Declaration::Data::UnionTag::Attribute:
                 return VisitAttribute(decl, scope);
-            case Declaration::Data::Tag::Constant:
+            case Declaration::Data::UnionTag::Constant:
                 return VisitConstant(decl, scope);
-            case Declaration::Data::Tag::Enum:
+            case Declaration::Data::UnionTag::Enum:
                 return VisitEnum(decl, scope);
-            case Declaration::Data::Tag::Interface:
+            case Declaration::Data::UnionTag::Interface:
                 return VisitInterface(decl, scope);
-            case Declaration::Data::Tag::Struct:
+            case Declaration::Data::UnionTag::Struct:
                 return VisitStruct(decl, scope);
         }
 
@@ -122,17 +122,17 @@ namespace he::schema
 
     bool SchemaVisitor::VisitField(Field::Reader field, Declaration::Reader scope)
     {
-        switch (field.GetMeta().GetTag())
+        switch (field.GetMeta().GetUnionTag())
         {
-            case Field::Meta::Tag::Normal:
+            case Field::Meta::UnionTag::Normal:
                 if (!VisitNormalField(field, scope))
                     return false;
                 break;
-            case Field::Meta::Tag::Group:
+            case Field::Meta::UnionTag::Group:
                 if (!VisitGroupField(field, scope))
                     return false;
                 break;
-            case Field::Meta::Tag::Union:
+            case Field::Meta::UnionTag::Union:
                 if (!VisitUnionField(field, scope))
                     return false;
                 break;

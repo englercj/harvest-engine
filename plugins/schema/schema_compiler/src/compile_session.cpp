@@ -19,26 +19,6 @@
 
 namespace he::schema
 {
-    static void CacheDeclIds(Declaration::Reader decl, DeclIdMap& map);
-
-    static void CacheDeclIds(SchemaFile::Reader schemaFile, DeclIdMap& map)
-    {
-        CacheDeclIds(schemaFile.GetRoot(), map);
-    }
-
-    static void CacheDeclIds(Declaration::Reader decl, DeclIdMap& map)
-    {
-        HE_ASSERT(HasFlag(decl.GetId(), TypeIdFlag));
-        const auto result = map.emplace(decl.GetId(), decl);
-        HE_UNUSED(result);
-        HE_ASSERT(result.second);
-
-        for (Declaration::Reader child : decl.GetChildren())
-        {
-            CacheDeclIds(child, map);
-        }
-    }
-
     CompileSession::CompileSession(const char* path, const Config& config) noexcept
         : m_config(config)
         , m_context(nullptr)
@@ -267,7 +247,6 @@ namespace he::schema
             return false;
 
         ctx.MarkFullyCompiled();
-        CacheDeclIds(ctx.Schema().Root().TryGetStruct<SchemaFile>(), m_declIdMap);
         return true;
     }
 }

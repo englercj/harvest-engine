@@ -21,66 +21,66 @@ namespace he::schema
         return FNV64::HashData(name.Data(), name.Size(), parentId) | TypeIdFlag;
     }
 
-    constexpr bool IsSignedIntegral(Type::Data::Tag t)
+    constexpr bool IsSignedIntegral(Type::Data::UnionTag t)
     {
         switch (t)
         {
-            case Type::Data::Tag::Int8:
-            case Type::Data::Tag::Int16:
-            case Type::Data::Tag::Int32:
-            case Type::Data::Tag::Int64:
+            case Type::Data::UnionTag::Int8:
+            case Type::Data::UnionTag::Int16:
+            case Type::Data::UnionTag::Int32:
+            case Type::Data::UnionTag::Int64:
                 return true;
             default:
                 return false;
         }
     }
 
-    constexpr bool IsUnsignedIntegral(Type::Data::Tag t)
+    constexpr bool IsUnsignedIntegral(Type::Data::UnionTag t)
     {
         switch (t)
         {
-            case Type::Data::Tag::Uint8:
-            case Type::Data::Tag::Uint16:
-            case Type::Data::Tag::Uint32:
-            case Type::Data::Tag::Uint64:
+            case Type::Data::UnionTag::Uint8:
+            case Type::Data::UnionTag::Uint16:
+            case Type::Data::UnionTag::Uint32:
+            case Type::Data::UnionTag::Uint64:
                 return true;
             default:
                 return false;
         }
     }
 
-    constexpr bool IsIntegral(Type::Data::Tag t)
+    constexpr bool IsIntegral(Type::Data::UnionTag t)
     {
         return IsSignedIntegral(t) || IsUnsignedIntegral(t);
     }
 
-    constexpr bool IsFloat(Type::Data::Tag t)
+    constexpr bool IsFloat(Type::Data::UnionTag t)
     {
         switch (t)
         {
-            case Type::Data::Tag::Float32:
-            case Type::Data::Tag::Float64:
+            case Type::Data::UnionTag::Float32:
+            case Type::Data::UnionTag::Float64:
                 return true;
             default:
                 return false;
         }
     }
 
-    constexpr bool IsArithmetic(Type::Data::Tag t)
+    constexpr bool IsArithmetic(Type::Data::UnionTag t)
     {
         return IsIntegral(t) || IsFloat(t);
     }
 
-    constexpr bool IsPointer(Type::Data::Tag t)
+    constexpr bool IsPointer(Type::Data::UnionTag t)
     {
         switch (t)
         {
-            case Type::Data::Tag::Blob:
-            case Type::Data::Tag::String:
-            case Type::Data::Tag::List:
-            case Type::Data::Tag::Struct:
-            case Type::Data::Tag::Interface:
-            case Type::Data::Tag::AnyPointer:
+            case Type::Data::UnionTag::Blob:
+            case Type::Data::UnionTag::String:
+            case Type::Data::UnionTag::List:
+            case Type::Data::UnionTag::Struct:
+            case Type::Data::UnionTag::Interface:
+            case Type::Data::UnionTag::AnyPointer:
                 return true;
 
             default:
@@ -97,7 +97,7 @@ namespace he::schema
             return IsPointer(elmType);
         }
 
-        return IsPointer(t.GetData().GetTag());
+        return IsPointer(t.GetData().GetUnionTag());
     }
 
     // Returns the bit alignment requirements for a type
@@ -123,28 +123,31 @@ namespace he::schema
     // Returns the bit alignment requirements for a type
     inline uint32_t GetTypeAlign(const Type::Reader& t)
     {
-        switch (t.GetData().GetTag())
+        switch (t.GetData().GetUnionTag())
         {
-            case Type::Data::Tag::Void: return 0;
-            case Type::Data::Tag::Bool: return 1;
-            case Type::Data::Tag::Int8: return 8;
-            case Type::Data::Tag::Int16: return 16;
-            case Type::Data::Tag::Int32: return 32;
-            case Type::Data::Tag::Int64: return 64;
-            case Type::Data::Tag::Uint8: return 8;
-            case Type::Data::Tag::Uint16: return 16;
-            case Type::Data::Tag::Uint32: return 32;
-            case Type::Data::Tag::Uint64: return 64;
-            case Type::Data::Tag::Float32: return 32;
-            case Type::Data::Tag::Float64: return 64;
-            case Type::Data::Tag::Array: return GetTypeAlign(t.GetData().GetArray().GetElementType());
-            case Type::Data::Tag::Blob: return 64; // pointer
-            case Type::Data::Tag::String: return 64; // pointer
-            case Type::Data::Tag::List: return 64; // pointer
-            case Type::Data::Tag::Enum: return 16; // uint16
-            case Type::Data::Tag::Struct: return 64; // pointer
-            case Type::Data::Tag::Interface: return 64; // pointer
-            case Type::Data::Tag::AnyPointer: return 64; // pointer
+            case Type::Data::UnionTag::Void: return 0;
+            case Type::Data::UnionTag::Bool: return 1;
+            case Type::Data::UnionTag::Int8: return 8;
+            case Type::Data::UnionTag::Int16: return 16;
+            case Type::Data::UnionTag::Int32: return 32;
+            case Type::Data::UnionTag::Int64: return 64;
+            case Type::Data::UnionTag::Uint8: return 8;
+            case Type::Data::UnionTag::Uint16: return 16;
+            case Type::Data::UnionTag::Uint32: return 32;
+            case Type::Data::UnionTag::Uint64: return 64;
+            case Type::Data::UnionTag::Float32: return 32;
+            case Type::Data::UnionTag::Float64: return 64;
+            case Type::Data::UnionTag::Array: return GetTypeAlign(t.GetData().GetArray().GetElementType());
+            case Type::Data::UnionTag::Blob: return 64; // pointer
+            case Type::Data::UnionTag::String: return 64; // pointer
+            case Type::Data::UnionTag::List: return 64; // pointer
+            case Type::Data::UnionTag::Enum: return 16; // uint16
+            case Type::Data::UnionTag::Struct: return 64; // pointer
+            case Type::Data::UnionTag::Interface: return 64; // pointer
+            case Type::Data::UnionTag::AnyPointer: return 64; // pointer
+            case Type::Data::UnionTag::AnyStruct: return 64; // pointer
+            case Type::Data::UnionTag::AnyList: return 64; // pointer
+            case Type::Data::UnionTag::Parameter: return 64; // pointer
         }
 
         HE_ASSERT(false, HE_MSG("Unknown type kind"));
@@ -159,34 +162,42 @@ namespace he::schema
         return align * count;
     }
 
-    inline ElementSize GetTypeElementSize(const Type::Reader& t)
+    constexpr ElementSize GetTypeElementSize(Type::Data::UnionTag t)
     {
-        switch (t.GetData().GetTag())
+        switch (t)
         {
-            case Type::Data::Tag::Void: return ElementSize::Void;
-            case Type::Data::Tag::Bool: return ElementSize::Bit;
-            case Type::Data::Tag::Int8: return ElementSize::Byte;
-            case Type::Data::Tag::Int16: return ElementSize::TwoBytes;
-            case Type::Data::Tag::Int32: return ElementSize::FourBytes;
-            case Type::Data::Tag::Int64: return ElementSize::EightBytes;
-            case Type::Data::Tag::Uint8: return ElementSize::Byte;
-            case Type::Data::Tag::Uint16: return ElementSize::TwoBytes;
-            case Type::Data::Tag::Uint32: return ElementSize::FourBytes;
-            case Type::Data::Tag::Uint64: return ElementSize::EightBytes;
-            case Type::Data::Tag::Float32: return ElementSize::FourBytes;
-            case Type::Data::Tag::Float64: return ElementSize::EightBytes;
-            case Type::Data::Tag::Array: return GetTypeElementSize(t.GetData().GetArray().GetElementType());
-            case Type::Data::Tag::Blob: return ElementSize::Pointer;
-            case Type::Data::Tag::String: return ElementSize::Pointer;
-            case Type::Data::Tag::List: return ElementSize::Pointer;
-            case Type::Data::Tag::Enum: return ElementSize::TwoBytes;
-            case Type::Data::Tag::Struct: return ElementSize::Composite;
-            case Type::Data::Tag::Interface: return ElementSize::Pointer;
-            case Type::Data::Tag::AnyPointer: return ElementSize::Pointer;
+            case Type::Data::UnionTag::Void: return ElementSize::Void;
+            case Type::Data::UnionTag::Bool: return ElementSize::Bit;
+            case Type::Data::UnionTag::Int8: return ElementSize::Byte;
+            case Type::Data::UnionTag::Int16: return ElementSize::TwoBytes;
+            case Type::Data::UnionTag::Int32: return ElementSize::FourBytes;
+            case Type::Data::UnionTag::Int64: return ElementSize::EightBytes;
+            case Type::Data::UnionTag::Uint8: return ElementSize::Byte;
+            case Type::Data::UnionTag::Uint16: return ElementSize::TwoBytes;
+            case Type::Data::UnionTag::Uint32: return ElementSize::FourBytes;
+            case Type::Data::UnionTag::Uint64: return ElementSize::EightBytes;
+            case Type::Data::UnionTag::Float32: return ElementSize::FourBytes;
+            case Type::Data::UnionTag::Float64: return ElementSize::EightBytes;
+            case Type::Data::UnionTag::Array: return ElementSize::Void; // Lists of arrays are not supported
+            case Type::Data::UnionTag::Blob: return ElementSize::Pointer;
+            case Type::Data::UnionTag::String: return ElementSize::Pointer;
+            case Type::Data::UnionTag::List: return ElementSize::Pointer;
+            case Type::Data::UnionTag::Enum: return ElementSize::TwoBytes;
+            case Type::Data::UnionTag::Struct: return ElementSize::Composite;
+            case Type::Data::UnionTag::Interface: return ElementSize::Pointer;
+            case Type::Data::UnionTag::AnyPointer: return ElementSize::Pointer;
+            case Type::Data::UnionTag::AnyStruct: return ElementSize::Pointer;
+            case Type::Data::UnionTag::AnyList: return ElementSize::Pointer;
+            case Type::Data::UnionTag::Parameter: return ElementSize::Pointer;
         }
 
         HE_ASSERT(false, HE_MSG("Unknown type kind"));
         return ElementSize::Void;
+    }
+
+    inline ElementSize GetTypeElementSize(const Type::Reader& t)
+    {
+        return GetTypeElementSize(t.GetData().GetUnionTag());
     }
 
     inline Attribute::Reader FindAttribute(List<Attribute>::Reader attributes, TypeId id)

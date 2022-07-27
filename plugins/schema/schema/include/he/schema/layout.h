@@ -26,9 +26,13 @@ namespace he::schema
     class PointerReader;
     class StructReader;
 
+    // TODO: Better helpers for the Any* objects that make usage easier to do correctly.
     struct AnyPointer { using Reader = PointerReader; using Builder = PointerBuilder; };
+    struct AnyStruct { using Reader = PointerReader; using Builder = PointerBuilder; };
+    struct AnyList { using Reader = PointerReader; using Builder = PointerBuilder; };
     struct String { class Reader; class Builder; };
     template <typename T> struct List { using ElementType = T; class Reader; class Builder; };
+    struct Blob { using Reader = typename List<uint8_t>::Reader; using Builder = typename List<uint8_t>::Builder; };
 
     // --------------------------------------------------------------------------------------------
     constexpr uint32_t BytesPerWord = sizeof(Word);
@@ -300,6 +304,7 @@ namespace he::schema
 
         template <typename T> typename List<T>::Reader TryGetList(const Word* defaultValue = nullptr) const;
         String::Reader TryGetString(const Word* defaultValue = nullptr) const;
+        Blob::Reader TryGetBlob(const Word* defaultValue = nullptr) const;
 
         // Structs
 
@@ -401,7 +406,8 @@ namespace he::schema
 
         bool HasDataField(uint16_t index) const
         {
-            HE_ASSERT(IsValid());
+            if (!HE_VERIFY(IsValid()))
+                return false;
 
             const uint16_t dataFieldCount = DataFieldCount();
             if (index >= dataFieldCount)
@@ -442,6 +448,9 @@ namespace he::schema
 
         PointerReader GetPointerField(uint16_t index) const
         {
+            if (!HE_VERIFY(IsValid()))
+                return PointerReader();
+
             if (index < m_pointerCount) [[likely]]
                 return PointerReader(PointerFields() + index);
 
@@ -451,23 +460,23 @@ namespace he::schema
         // Data Array Fields
 
         template <DataType T>
-        Span<const T> TryGetDataArrayField(uint16_t index, uint32_t dataOffset, uint16_t elementCount, Span<const T> defaultValue = {}) const
+        Span<const T> TryGetDataArrayField(uint16_t index, uint32_t dataOffset, uint16_t elementCount, const Word* defaultValue = nullptr) const
         {
             HE_ASSERT(elementCount > 0);
-            HE_ASSERT(defaultValue.IsEmpty() || defaultValue.Size() == elementCount);
 
-            if (!HasDataField(index))
-                return defaultValue;
-
-            constexpr uint64_t BitsInType = sizeof(T) * BitsPerByte;
-            const uint64_t dataFieldsWordSize = m_dataWordSize - m_metaWordSize;
-            if (((dataOffset + elementCount) * BitsInType) <= (dataFieldsWordSize * BitsPerWord)) [[likely]]
+            if (HasDataField(index))
             {
-                const T* data = reinterpret_cast<const T*>(DataFields()) + dataOffset;
-                return { data, elementCount };
+                constexpr uint64_t BitsInType = sizeof(T) * BitsPerByte;
+                const uint64_t dataFieldsWordSize = m_dataWordSize - m_metaWordSize;
+                if (((dataOffset + elementCount) * BitsInType) <= (dataFieldsWordSize * BitsPerWord)) [[likely]]
+                {
+                    const T * data = reinterpret_cast<const T*>(DataFields()) + dataOffset;
+                    return { data, elementCount };
+                }
             }
 
-            return defaultValue;
+            const List<T>::Reader list = PointerReader(defaultValue).TryGetList<T>();
+            return { list.Data(), list.Size() };
         }
 
         // Pointer Array Fields
@@ -580,6 +589,7 @@ namespace he::schema
         StructBuilder AddStruct(uint16_t dataFieldCount, uint16_t dataWordSize, uint16_t pointerCount);
         ListBuilder AddList(ElementSize elementSize, uint32_t elementCount);
         ListBuilder AddStructList(uint32_t elementCount, uint16_t dataFieldCount, uint16_t dataWordSize, uint16_t pointerCount);
+        List<uint8_t>::Builder AddBlob(Span<uint8_t> data);
         String::Builder AddString(StringView str);
 
         template <typename T>
@@ -680,6 +690,7 @@ namespace he::schema
 
         template <typename T> typename List<T>::Builder TryGetList() const;
         String::Builder TryGetString() const;
+        Blob::Builder TryGetBlob() const;
 
         // Structs
 
@@ -1192,6 +1203,11 @@ namespace he::schema
         return String::Reader(TryGetList(ElementSize::Byte, defaultValue));
     }
 
+    inline Blob::Reader PointerReader::TryGetBlob(const Word* defaultValue) const
+    {
+        return Blob::Reader(TryGetList(ElementSize::Byte, defaultValue));
+    }
+
     // --------------------------------------------------------------------------------------------
     template <typename T>
     inline typename List<T>::Builder PointerBuilder::TryGetList() const
@@ -1202,5 +1218,18 @@ namespace he::schema
     inline String::Builder PointerBuilder::TryGetString() const
     {
         return String::Builder(TryGetList(ElementSize::Byte));
+    }
+
+    inline Blob::Builder PointerBuilder::TryGetBlob() const
+    {
+        return Blob::Builder(TryGetList(ElementSize::Byte));
+    }
+
+    // --------------------------------------------------------------------------------------------
+    template <typename T>
+    inline typename T::Reader ReadRoot(const Word* data)
+    {
+        PointerReader ptr(data);
+        return ptr.TryGetStruct<T>();
     }
 }

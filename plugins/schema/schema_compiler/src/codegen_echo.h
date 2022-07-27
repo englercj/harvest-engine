@@ -37,12 +37,23 @@ namespace he::schema
         void WriteAttributes(List<Attribute>::Reader attributes, Declaration::Reader scope);
         void WriteField(Field::Reader field, Declaration::Reader scope);
         bool WriteGroupOrUnionField(Field::Reader field, Declaration::Reader scope);
-        void WriteName(Declaration::Reader decl, Declaration::Reader scope, Brand::Reader brand);
+        void WriteName(Declaration::Reader decl, Brand::Reader brand, Declaration::Reader scope);
         void WriteTuple(Declaration::Reader decl);
         void WriteTypeParams(List<String>::Reader typeParams);
         void WriteType(Type::Reader type, Declaration::Reader scope);
-        void WriteValue(Type::Reader type, Declaration::Reader scope, Value::Reader value);
-        void WriteValueList(Type::Reader elementType, Declaration::Reader scope, List<Value>::Reader values);
+        void WriteValue(Type::Reader type, Value::Reader value, Declaration::Reader scope);
+        void WriteValue(Type::Reader fieldType, StructReader value, uint16_t index, uint32_t dataOffset, Declaration::Reader scope);
+        void WriteValue(Type::Reader elementType, ListReader value, uint32_t index, Declaration::Reader scope);
+
+        void WriteArrayValue(Type::Reader elementType, StructReader value, uint16_t index, uint32_t dataOffset, uint16_t size, Declaration::Reader scope);
+        void WriteListValue(Type::Reader elementType, ListReader list, Declaration::Reader scope);
+        void WriteStructValue(TypeId typeId, StructReader value, Declaration::Reader scope);
+        void WriteUnionValue(TypeId typeId, StructReader value, Declaration::Reader scope);
+        bool TryWriteFieldValue(Field::Reader field, StructReader value, Declaration::Reader scope);
+
+        bool AnyGroupFieldSet(Field::Reader field, StructReader value);
+        bool IsUnionFieldSet(Field::Reader field, StructReader value);
+        bool IsNormalFieldSet(Field::Reader field, StructReader value);
 
     private:
         const CodeGenRequest& m_request;

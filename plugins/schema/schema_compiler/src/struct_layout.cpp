@@ -605,7 +605,7 @@ namespace he::schema
                 if (st.GetIsUnion())
                 {
                     UnionFieldPlacer* unionPlacer = static_cast<UnionFieldPlacer*>(member.placer);
-                    unionPlacer->PlaceTag();
+                    unionPlacer->PlaceTag(); // may already be done, but call again to be sure.
                     st.SetUnionTagOffset(unionPlacer->TagOffset());
                 }
 

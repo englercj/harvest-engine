@@ -53,7 +53,8 @@ namespace he::schema
         const AstNode* FindNodeByName(const AstExpression& name, const AstNode& scope) const;
         const AstNode* FindNodeByName(AstListIterator<AstExpression> begin, AstListIterator<AstExpression> end, const AstNode& scope) const;
 
-        Declaration::Reader GetDecl(TypeId id) const { return m_declIdMap.at(id); }
+        bool TrackDecl(Declaration::Builder decl);
+        Declaration::Builder GetDecl(TypeId id) const { return m_declIdMap.at(id); }
 
         bool TrackTypeId(const AstNode& node);
         bool TrackType(const TypeKey& key, const TypeValue& value);

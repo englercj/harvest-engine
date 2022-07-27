@@ -43,9 +43,10 @@ namespace he::schema
         bool VerifyValue(const AstExpression& astType, const AstNode& scopeType, const AstExpression& astValue, const AstNode& scope);
 
         AstTypeParamRef FindTypeParam(StringView name, const AstNode& scope) const;
+        uint16_t GetArraySize(const AstExpression& ast, const AstNode& scope) const;
 
     private:
         class CompileContext* m_context{ nullptr };
-        std::unordered_map<StringView, Type::Data::Tag> m_builtinTypeMap{};
+        std::unordered_map<StringView, Type::Data::UnionTag> m_builtinTypeMap{};
     };
 }

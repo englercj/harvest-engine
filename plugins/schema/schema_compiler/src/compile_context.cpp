@@ -142,9 +142,16 @@ namespace he::schema
         return nullptr;
     }
 
+    bool CompileContext::TrackDecl(Declaration::Builder decl)
+    {
+        HE_ASSERT(HasFlag(decl.GetId(), TypeIdFlag));
+        const auto result = m_declIdMap.emplace(decl.GetId(), decl);
+        return result.second;
+    }
+
     bool CompileContext::TrackTypeId(const AstNode& node)
     {
-        auto result = m_typeIdMap.emplace(node.id, &node);
+        const auto result = m_typeIdMap.emplace(node.id, &node);
         return result.second;
     }
 

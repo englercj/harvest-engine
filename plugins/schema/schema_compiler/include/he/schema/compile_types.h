@@ -27,7 +27,7 @@ namespace he::schema
 
     struct TypeValue
     {
-        Type::Data::Tag tag;
+        Type::Data::UnionTag tag;
         const AstNode* type;
         AstTypeParamRef typeParamRef;
     };
@@ -45,5 +45,5 @@ namespace he::schema
 
     using TypeMap = std::unordered_map<TypeKey, TypeValue, TypeKeyHasher>;
     using TypeIdMap = std::unordered_map<TypeId, const AstNode*>;
-    using DeclIdMap = std::unordered_map<TypeId, Declaration::Reader, TypeIdHasher>;
+    using DeclIdMap = std::unordered_map<TypeId, Declaration::Builder, TypeIdHasher>;
 }

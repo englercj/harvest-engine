@@ -142,7 +142,7 @@ namespace he::schema
         HE_ASSERT(elementCount > 0);
 
         if ((index + elementCount) > m_pointerCount) [[unlikely]]
-            return PointerReader().TryGetList(ElementSize::Pointer, defaultValue);
+            return PointerReader(defaultValue).TryGetList(ElementSize::Pointer);
 
         constexpr uint16_t ElementSizeIndex = static_cast<uint16_t>(ElementSize::Pointer);
         constexpr uint32_t elementBitSize = BitsPerElementSize[ElementSizeIndex];
@@ -240,6 +240,16 @@ namespace he::schema
         ListBuilder list = AddList(ElementSize::Byte, str.Size() + 1);
         MemCopy(list.Data(), str.Data(), str.Size());
         return String::Builder(list);
+    }
+
+    List<uint8_t>::Builder Builder::AddBlob(Span<uint8_t> data)
+    {
+        if (data.IsEmpty())
+            return {};
+
+        ListBuilder list = AddList(ElementSize::Byte, data.Size());
+        MemCopy(list.Data(), data.Data(), data.Size());
+        return List<uint8_t>::Builder(list);
     }
 
     void PointerBuilder::Set(const PointerReader& value)

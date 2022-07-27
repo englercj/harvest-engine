@@ -6,16 +6,13 @@
 
 #include "he/core/string.h"
 #include "he/core/types.h"
+#include "he/core/vector.h"
 #include "he/schema/schema.h"
 
 #include "fmt/core.h"
 
 #include <concepts>
-#include <optional>
-#include <set>
 #include <type_traits>
-#include <unordered_map>
-#include <unordered_set>
 
 namespace he::schema
 {
@@ -50,7 +47,7 @@ namespace he::schema
 
         Type::Builder CreateType(const AstExpression& ast, const AstNode& scope);
         Brand::Builder CreateTypeBrand(const AstExpression& name, const AstNode& scope);
-        Value::Builder CreateValue(Type::Reader type, const AstExpression& ast, const AstNode& scope);
+        Value::Builder CreateValue(Type::Builder type, const AstExpression& ast, const AstNode& scope);
         List<Attribute>::Builder CreateAttributes(const AstList<AstAttribute>& ast, const AstNode& scope);
         List<String>::Builder CreateTypeParams(const AstList<AstTypeParam>& ast);
 
@@ -59,11 +56,40 @@ namespace he::schema
         uint16_t GetArraySize(const AstExpression& ast, const AstNode& scope) const;
 
         template <typename T> requires(std::is_same_v<T, uint64_t> || std::is_same_v<T, int64_t>)
-        bool SetInt(const AstFileLocation& location, T value, Type::Data::Reader type, Value::Data::Builder data);
+        void SetInt(const AstFileLocation& location, T value, Type::Data::Builder type, Value::Data::Builder data);
+
+        ListBuilder CreateListValue(const Type::Builder elementType, const AstExpression& ast, const AstNode& scope);
+        StructBuilder CreateStructValue(const Type::Data::Struct::Builder structType, const AstExpression& ast, const AstNode& scope);
+
+        void FillStructValue(StructBuilder dst, const Declaration::Data::Struct::Builder structDecl, const AstExpression& ast, const AstNode& scope);
+        void FillStructField(StructBuilder dst, const Type::Data::Builder type, uint16_t index, uint32_t dataOffset, const AstExpression& ast, const AstNode& scope);
+
+        bool ReadBoolValue(const AstExpression& ast) const;
+        uint16_t ReadEnumValue(const AstExpression& ast, const AstNode& scope) const;
+
+        template <typename OutType, typename InType>
+        OutType ReadIntValue(const AstFileLocation& location, InType value);
+
+        template <typename T> T ReadIntValue(const AstExpression& ast);
+        template <typename T> T ReadFloatValue(const AstExpression& ast);
+
+        void TrackDecl(const AstFileLocation& location, Declaration::Builder decl);
+
+    private:
+        struct PendingValue
+        {
+            const AstExpression* ast;
+            const AstNode* scope;
+
+            Type::Builder type;
+            Value::Builder value;
+        };
 
     private:
         CompileContext* m_context{ nullptr };
         Builder m_builder{};
         bool m_valid{ true };
+
+        Vector<PendingValue> m_pendingValues{};
     };
 }

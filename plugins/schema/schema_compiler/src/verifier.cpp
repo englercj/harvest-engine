@@ -21,24 +21,26 @@
 
 namespace he::schema
 {
-    struct BuiltinType { const StringView name; const Type::Data::Tag kind; };
+    struct BuiltinType { const StringView name; const Type::Data::UnionTag kind; };
     constexpr BuiltinType BuiltinTypes[] =
     {
-        { KW_Void, Type::Data::Tag::Void },
-        { KW_Bool, Type::Data::Tag::Bool },
-        { KW_Int8, Type::Data::Tag::Int8 },
-        { KW_Int16, Type::Data::Tag::Int16 },
-        { KW_Int32, Type::Data::Tag::Int32 },
-        { KW_Int64, Type::Data::Tag::Int64 },
-        { KW_Uint8, Type::Data::Tag::Uint8 },
-        { KW_Uint16, Type::Data::Tag::Uint16 },
-        { KW_Uint32, Type::Data::Tag::Uint32 },
-        { KW_Uint64, Type::Data::Tag::Uint64 },
-        { KW_Float32, Type::Data::Tag::Float32 },
-        { KW_Float64, Type::Data::Tag::Float64 },
-        { KW_Blob, Type::Data::Tag::Blob },
-        { KW_String, Type::Data::Tag::String },
-        { KW_AnyPointer, Type::Data::Tag::AnyPointer },
+        { KW_Void, Type::Data::UnionTag::Void },
+        { KW_Bool, Type::Data::UnionTag::Bool },
+        { KW_Int8, Type::Data::UnionTag::Int8 },
+        { KW_Int16, Type::Data::UnionTag::Int16 },
+        { KW_Int32, Type::Data::UnionTag::Int32 },
+        { KW_Int64, Type::Data::UnionTag::Int64 },
+        { KW_Uint8, Type::Data::UnionTag::Uint8 },
+        { KW_Uint16, Type::Data::UnionTag::Uint16 },
+        { KW_Uint32, Type::Data::UnionTag::Uint32 },
+        { KW_Uint64, Type::Data::UnionTag::Uint64 },
+        { KW_Float32, Type::Data::UnionTag::Float32 },
+        { KW_Float64, Type::Data::UnionTag::Float64 },
+        { KW_Blob, Type::Data::UnionTag::Blob },
+        { KW_String, Type::Data::UnionTag::String },
+        { KW_AnyPointer, Type::Data::UnionTag::AnyPointer },
+        { KW_AnyStruct, Type::Data::UnionTag::AnyStruct },
+        { KW_AnyList, Type::Data::UnionTag::AnyList },
     };
 
     bool Verifier::Verify(const AstFile& ast, CompileContext& ctx)
@@ -626,7 +628,7 @@ namespace he::schema
                 return false;
 
             TypeKey key{ &ast, &scope_ };
-            TypeValue value{ Type::Data::Tag::Array, nullptr, {} };
+            TypeValue value{ Type::Data::UnionTag::Array, nullptr, {} };
             m_context->TrackType(key, value);
 
             return VerifyType(*ast.array.elementType, scope_);
@@ -647,7 +649,7 @@ namespace he::schema
             }
 
             TypeKey key{ &ast, &scope_ };
-            TypeValue value{ Type::Data::Tag::List, nullptr, {} };
+            TypeValue value{ Type::Data::UnionTag::List, nullptr, {} };
             m_context->TrackType(key, value);
 
             return VerifyType(*ast.list.elementType, scope_);
@@ -679,7 +681,7 @@ namespace he::schema
                 if (ref.scope)
                 {
                     TypeKey key{ &ast, &scope_ };
-                    TypeValue value{ Type::Data::Tag::AnyPointer, nullptr, ref };
+                    TypeValue value{ Type::Data::UnionTag::Parameter, nullptr, ref };
                     m_context->TrackType(key, value);
                     return true;
                 }
@@ -735,7 +737,7 @@ namespace he::schema
             }
 
             TypeKey key{ &ast, &scope_ };
-            TypeValue value{ Type::Data::Tag::AnyPointer, t, {} };
+            TypeValue value{ Type::Data::UnionTag::AnyPointer, t, {} };
             m_context->TrackType(key, value);
         }
 
@@ -780,7 +782,7 @@ namespace he::schema
                 }
 
                 TypeKey key{ &ast, scope };
-                TypeValue value{ Type::Data::Tag::AnyPointer, t, {} };
+                TypeValue value{ Type::Data::UnionTag::AnyPointer, t, {} };
                 m_context->TrackType(key, value);
 
                 scope = t;
@@ -855,14 +857,14 @@ namespace he::schema
 
                 switch (typeIt->second)
                 {
-                    case Type::Data::Tag::Int8:
-                    case Type::Data::Tag::Int16:
-                    case Type::Data::Tag::Int32:
-                    case Type::Data::Tag::Int64:
-                    case Type::Data::Tag::Uint8:
-                    case Type::Data::Tag::Uint16:
-                    case Type::Data::Tag::Uint32:
-                    case Type::Data::Tag::Uint64:
+                    case Type::Data::UnionTag::Int8:
+                    case Type::Data::UnionTag::Int16:
+                    case Type::Data::UnionTag::Int32:
+                    case Type::Data::UnionTag::Int64:
+                    case Type::Data::UnionTag::Uint8:
+                    case Type::Data::UnionTag::Uint16:
+                    case Type::Data::UnionTag::Uint32:
+                    case Type::Data::UnionTag::Uint64:
                         break;
 
                     default:
@@ -918,7 +920,6 @@ namespace he::schema
                 return false;
 
             case AstExpression::Kind::Float:
-                // TODO: Check size
                 if (astType.kind == AstExpression::Kind::QualifiedName && astType.qualified.names.Size() == 1)
                 {
                     const AstExpression* name = astType.qualified.names.Front();
@@ -938,7 +939,6 @@ namespace he::schema
 
             case AstExpression::Kind::SignedInt:
             case AstExpression::Kind::UnsignedInt:
-                // TODO: Check size
                 if (astType.kind == AstExpression::Kind::QualifiedName && astType.qualified.names.Size() == 1)
                 {
                     const AstExpression* name = astType.qualified.names.Front();
@@ -957,6 +957,16 @@ namespace he::schema
                 {
                     m_context->AddError(astValue.location, "A sequence value expression is only valid for List and Array types");
                     return false;
+                }
+                if (astType.kind == AstExpression::Kind::Array)
+                {
+                    HE_ASSERT(astType.array.size);
+                    const uint16_t size = GetArraySize(*astType.array.size, scopeType);
+                    if (size != astValue.sequence.Size())
+                    {
+                        m_context->AddError(astValue.location, "Sequence value expression length does not match array size");
+                        return false;
+                    }
                 }
                 return true;
 
@@ -980,7 +990,7 @@ namespace he::schema
                 // We already validated the type, so if we don't find it then its a builtin.
                 const AstNode* typeNode = m_context->FindNodeByName(astType, scopeType);
                 const char* builtinName = nullptr;
-                Type::Data::Tag builtinType = Type::Data::Tag::Void;
+                Type::Data::UnionTag builtinType = Type::Data::UnionTag::Void;
 
                 if (!typeNode)
                 {
@@ -1041,7 +1051,7 @@ namespace he::schema
                 }
 
                 // built-in type
-                if (builtinType != Type::Data::Tag::Bool)
+                if (builtinType != Type::Data::UnionTag::Bool)
                 {
                     m_context->AddError(valueNode->location, "Qualified name expressions are not valid values for this type.");
                     return false;
@@ -1066,10 +1076,9 @@ namespace he::schema
                 }
 
                 const AstNode* node = m_context->FindNodeByName(astType, scopeType);
-                HE_ASSERT(node); // we already validated the type, so we should always find it.
-                if (node->kind != AstNode::Kind::Struct)
+                if (!node || node->kind != AstNode::Kind::Struct)
                 {
-                    m_context->AddError(astValue.location, "A Tuple value expression is only valid for Struct types");
+                    m_context->AddError(astValue.location, "A Tuple value expression is only valid for user-defined struct types.");
                     return false;
                 }
 
@@ -1100,7 +1109,7 @@ namespace he::schema
                 {
                     const TypeKey key{ &astType, &scopeType };
                     const TypeValue& type = m_context->GetType(key);
-                    if (type.tag != Type::Data::Tag::Void)
+                    if (type.tag != Type::Data::UnionTag::Void)
                     {
                         m_context->AddError(astValue.location, "A {} expression cannot be used as a value", astValue.kind);
                         return false;
@@ -1142,5 +1151,28 @@ namespace he::schema
             return FindTypeParam(name, *scope.parent);
 
         return ref;
+    }
+
+    uint16_t Verifier::GetArraySize(const AstExpression& ast, const AstNode& scope) const
+    {
+        switch (ast.kind)
+        {
+            case AstExpression::Kind::UnsignedInt:
+                return static_cast<uint16_t>(ast.unsignedInt);
+
+            case AstExpression::Kind::SignedInt:
+                return static_cast<uint16_t>(ast.signedInt);
+
+            case AstExpression::Kind::QualifiedName:
+            {
+                const AstNode* constant = m_context->FindNodeByName(ast, scope);
+                HE_ASSERT(constant && constant->kind == AstNode::Kind::Constant);
+                return GetArraySize(constant->constant.value, *constant->parent);
+            }
+
+            default:
+                HE_ASSERT(false, HE_MSG("Encountered invalid array size value type. This should've been verified already."));
+                return 0;
+        }
     }
 }

@@ -4,6 +4,9 @@
 
 namespace he.schema;
 
+// ------------------------------------------------------------------------------------------------
+// Toml Serialization Attributes
+
 struct Toml
 {
     attribute Name(field, enumerator) :String;
@@ -12,10 +15,16 @@ struct Toml
     attribute Base64(field) :void;
 }
 
+// ------------------------------------------------------------------------------------------------
+// Common Utility Structures
+
 struct Uuid
 {
     value @0 :uint8[16] $Toml.HexString;
 }
+
+// ------------------------------------------------------------------------------------------------
+// Schema Structures
 
 struct Brand
 {
@@ -46,6 +55,9 @@ struct Type
         float64 @11 :void;
         blob @12 :void;
         string @13 :void;
+        anyPointer @25 :void;
+        anyStruct @26 :void;
+        anyList @27 :void;
 
         array :group
         {
@@ -76,10 +88,10 @@ struct Type
             brand @22 :Brand;
         }
 
-        anyPointer :group
+        parameter :group
         {
-            paramScopeId @23 :uint64;
-            paramIndex @24 :uint16;
+            scopeId @23 :uint64;
+            index @24 :uint16;
         }
     }
 }
@@ -108,12 +120,9 @@ struct Value
         float64 @11 :float64;
         blob @12 :Blob;
         string @13 :String;
-        array @14 :Value[];
-        list @15 :Value[];
-        enum @16 :uint16;
-        tuple @17 :TupleValue[];
-        interface @18 :void;
-        anyPointer @19 :void;
+        list @14 :AnyPointer;
+        enum @15 :uint16;
+        struct @16 :AnyPointer;
     }
 }
 

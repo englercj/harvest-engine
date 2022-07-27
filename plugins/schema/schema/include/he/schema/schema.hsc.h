@@ -26,7 +26,7 @@ namespace he::schema
     HE_SCHEMA_DECL_INFO_FOR_ID(0x857c744e5276d4b5); // Type::Data::Enum
     HE_SCHEMA_DECL_INFO_FOR_ID(0x8e064c19f3d729f1); // Type::Data::Struct
     HE_SCHEMA_DECL_INFO_FOR_ID(0x9c00ee98d42bb48b); // Type::Data::Interface
-    HE_SCHEMA_DECL_INFO_FOR_ID(0xb150cde6a6ba5d63); // Type::Data::AnyPointer
+    HE_SCHEMA_DECL_INFO_FOR_ID(0xafc692a2adf7b907); // Type::Data::Parameter
     HE_SCHEMA_DECL_INFO_FOR_ID(0xa1a552dda5da9ae9); // Value
     HE_SCHEMA_DECL_INFO_FOR_ID(0xbc63c2f6a4186852); // Value::TupleValue
     HE_SCHEMA_DECL_INFO_FOR_ID(0xda924af5c1761799); // Value::Data
@@ -170,15 +170,15 @@ namespace he::schema
                 class Builder;
             };
 
-            struct AnyPointer final
+            struct Parameter final
             {
-                AnyPointer() = delete;
-                HE_SCHEMA_DECL_STRUCT(0xb150cde6a6ba5d63, 0xc37ce87995a2ca78, 6, 3, 1);
+                Parameter() = delete;
+                HE_SCHEMA_DECL_STRUCT(0xafc692a2adf7b907, 0xc37ce87995a2ca78, 6, 3, 1);
 
                 class Reader;
                 class Builder;
             };
-            enum class Tag : uint16_t
+            enum class UnionTag : uint16_t
             {
                 Void = 0,
                 Bool = 1,
@@ -194,12 +194,15 @@ namespace he::schema
                 Float64 = 11,
                 Blob = 12,
                 String = 13,
+                AnyPointer = 20,
+                AnyStruct = 21,
+                AnyList = 22,
                 Array = 14,
                 List = 15,
                 Enum = 16,
                 Struct = 17,
                 Interface = 18,
-                AnyPointer = 19,
+                Parameter = 19,
             };
         };
     };
@@ -227,7 +230,7 @@ namespace he::schema
 
             class Reader;
             class Builder;
-            enum class Tag : uint16_t
+            enum class UnionTag : uint16_t
             {
                 Void = 0,
                 Bool = 1,
@@ -243,12 +246,9 @@ namespace he::schema
                 Float64 = 11,
                 Blob = 12,
                 String = 13,
-                Array = 14,
-                List = 15,
-                Enum = 16,
-                Tuple = 17,
-                Interface = 18,
-                AnyPointer = 19,
+                List = 14,
+                Enum = 15,
+                Struct = 16,
             };
         };
     };
@@ -310,7 +310,7 @@ namespace he::schema
                 class Reader;
                 class Builder;
             };
-            enum class Tag : uint16_t
+            enum class UnionTag : uint16_t
             {
                 Normal = 0,
                 Group = 1,
@@ -403,7 +403,7 @@ namespace he::schema
                 class Reader;
                 class Builder;
             };
-            enum class Tag : uint16_t
+            enum class UnionTag : uint16_t
             {
                 File = 0,
                 Attribute = 1,
@@ -651,35 +651,35 @@ namespace he::schema
         void SetBrand(Brand::Reader value);
         Brand::Builder InitBrand();
     };
-    class Type::Data::AnyPointer::Reader final : public ::he::schema::StructReader
+    class Type::Data::Parameter::Reader final : public ::he::schema::StructReader
     {
     public:
-        using StructType = Type::Data::AnyPointer;
+        using StructType = Type::Data::Parameter;
         using SuperType = ::he::schema::StructReader;
 
-        bool HasParamScopeId() const;
-        uint64_t GetParamScopeId() const;
+        bool HasScopeId() const;
+        uint64_t GetScopeId() const;
 
-        bool HasParamIndex() const;
-        uint16_t GetParamIndex() const;
+        bool HasIndex() const;
+        uint16_t GetIndex() const;
 
     };
-    class Type::Data::AnyPointer::Builder final : public ::he::schema::StructBuilder
+    class Type::Data::Parameter::Builder final : public ::he::schema::StructBuilder
     {
     public:
-        using StructType = Type::Data::AnyPointer;
+        using StructType = Type::Data::Parameter;
         using SuperType = ::he::schema::StructBuilder;
 
         StructType::Reader AsReader() const { return StructType::Reader(SuperType::AsReader()); }
         operator StructType::Reader() const { return AsReader(); }
 
-        bool HasParamScopeId() const;
-        uint64_t GetParamScopeId() const;
-        void SetParamScopeId(uint64_t value);
+        bool HasScopeId() const;
+        uint64_t GetScopeId() const;
+        void SetScopeId(uint64_t value);
 
-        bool HasParamIndex() const;
-        uint16_t GetParamIndex() const;
-        void SetParamIndex(uint16_t value);
+        bool HasIndex() const;
+        uint16_t GetIndex() const;
+        void SetIndex(uint16_t value);
     };
     class Type::Data::Reader final : public ::he::schema::StructReader
     {
@@ -687,7 +687,7 @@ namespace he::schema
         using StructType = Type::Data;
         using SuperType = ::he::schema::StructReader;
 
-        Tag GetTag() const { return SuperType::GetDataField<Tag>(0); }
+        UnionTag GetUnionTag() const { return SuperType::GetDataField<UnionTag>(0); }
 
         bool IsVoid() const;
         bool HasVoid() const;
@@ -745,6 +745,18 @@ namespace he::schema
         bool HasString() const;
         ::he::schema::Void GetString() const;
 
+        bool IsAnyPointer() const;
+        bool HasAnyPointer() const;
+        ::he::schema::Void GetAnyPointer() const;
+
+        bool IsAnyStruct() const;
+        bool HasAnyStruct() const;
+        ::he::schema::Void GetAnyStruct() const;
+
+        bool IsAnyList() const;
+        bool HasAnyList() const;
+        ::he::schema::Void GetAnyList() const;
+
         bool IsArray() const;
         Array::Reader GetArray() const;
 
@@ -760,8 +772,8 @@ namespace he::schema
         bool IsInterface() const;
         Interface::Reader GetInterface() const;
 
-        bool IsAnyPointer() const;
-        AnyPointer::Reader GetAnyPointer() const;
+        bool IsParameter() const;
+        Parameter::Reader GetParameter() const;
 
     };
     class Type::Data::Builder final : public ::he::schema::StructBuilder
@@ -773,9 +785,9 @@ namespace he::schema
         StructType::Reader AsReader() const { return StructType::Reader(SuperType::AsReader()); }
         operator StructType::Reader() const { return AsReader(); }
 
-        Tag GetTag() const { return SuperType::GetDataField<Tag>(0); }
+        UnionTag GetUnionTag() const { return SuperType::GetDataField<UnionTag>(0); }
 
-        void SetTag(Tag t) { return SuperType::SetDataField(0, t); }
+        void SetUnionTag(UnionTag t) { SuperType::SetDataField(0, t); }
 
         bool IsVoid() const;
         bool HasVoid() const;
@@ -847,6 +859,21 @@ namespace he::schema
         ::he::schema::Void GetString() const;
         void SetString();
 
+        bool IsAnyPointer() const;
+        bool HasAnyPointer() const;
+        ::he::schema::Void GetAnyPointer() const;
+        void SetAnyPointer();
+
+        bool IsAnyStruct() const;
+        bool HasAnyStruct() const;
+        ::he::schema::Void GetAnyStruct() const;
+        void SetAnyStruct();
+
+        bool IsAnyList() const;
+        bool HasAnyList() const;
+        ::he::schema::Void GetAnyList() const;
+        void SetAnyList();
+
         bool IsArray() const;
         Array::Builder GetArray() const;
         Array::Builder InitArray();
@@ -867,9 +894,9 @@ namespace he::schema
         Interface::Builder GetInterface() const;
         Interface::Builder InitInterface();
 
-        bool IsAnyPointer() const;
-        AnyPointer::Builder GetAnyPointer() const;
-        AnyPointer::Builder InitAnyPointer();
+        bool IsParameter() const;
+        Parameter::Builder GetParameter() const;
+        Parameter::Builder InitParameter();
     };
     class Type::Reader final : public ::he::schema::StructReader
     {
@@ -929,7 +956,7 @@ namespace he::schema
         using StructType = Value::Data;
         using SuperType = ::he::schema::StructReader;
 
-        Tag GetTag() const { return SuperType::GetDataField<Tag>(0); }
+        UnionTag GetUnionTag() const { return SuperType::GetDataField<UnionTag>(0); }
 
         bool IsVoid() const;
         bool HasVoid() const;
@@ -981,35 +1008,23 @@ namespace he::schema
 
         bool IsBlob() const;
         bool HasBlob() const;
-        ::he::schema::List<uint8_t>::Reader GetBlob() const;
+        ::he::schema::Blob::Reader GetBlob() const;
 
         bool IsString() const;
         bool HasString() const;
         ::he::schema::String::Reader GetString() const;
 
-        bool IsArray() const;
-        bool HasArray() const;
-        ::he::schema::List<Value>::Reader GetArray() const;
-
         bool IsList() const;
         bool HasList() const;
-        ::he::schema::List<Value>::Reader GetList() const;
+        ::he::schema::AnyPointer::Reader GetList() const;
 
         bool IsEnum() const;
         bool HasEnum() const;
         uint16_t GetEnum() const;
 
-        bool IsTuple() const;
-        bool HasTuple() const;
-        ::he::schema::List<TupleValue>::Reader GetTuple() const;
-
-        bool IsInterface() const;
-        bool HasInterface() const;
-        ::he::schema::Void GetInterface() const;
-
-        bool IsAnyPointer() const;
-        bool HasAnyPointer() const;
-        ::he::schema::Void GetAnyPointer() const;
+        bool IsStruct() const;
+        bool HasStruct() const;
+        ::he::schema::AnyPointer::Reader GetStruct() const;
 
     };
     class Value::Data::Builder final : public ::he::schema::StructBuilder
@@ -1021,9 +1036,9 @@ namespace he::schema
         StructType::Reader AsReader() const { return StructType::Reader(SuperType::AsReader()); }
         operator StructType::Reader() const { return AsReader(); }
 
-        Tag GetTag() const { return SuperType::GetDataField<Tag>(0); }
+        UnionTag GetUnionTag() const { return SuperType::GetDataField<UnionTag>(0); }
 
-        void SetTag(Tag t) { return SuperType::SetDataField(0, t); }
+        void SetUnionTag(UnionTag t) { SuperType::SetDataField(0, t); }
 
         bool IsVoid() const;
         bool HasVoid() const;
@@ -1087,9 +1102,9 @@ namespace he::schema
 
         bool IsBlob() const;
         bool HasBlob() const;
-        ::he::schema::List<uint8_t>::Builder GetBlob() const;
-        void SetBlob(::he::schema::List<uint8_t>::Reader value);
-        ::he::schema::List<uint8_t>::Builder InitBlob(uint32_t size);
+        ::he::schema::Blob::Builder GetBlob() const;
+        void SetBlob(::he::schema::Blob::Reader value);
+        ::he::schema::Blob::Builder InitBlob(uint32_t size);
 
         bool IsString() const;
         bool HasString() const;
@@ -1097,38 +1112,22 @@ namespace he::schema
         void SetString(::he::schema::String::Reader value);
         ::he::schema::String::Builder InitString(::he::StringView str);
 
-        bool IsArray() const;
-        bool HasArray() const;
-        ::he::schema::List<Value>::Builder GetArray() const;
-        void SetArray(::he::schema::List<Value>::Reader value);
-        ::he::schema::List<Value>::Builder InitArray(uint32_t size);
-
         bool IsList() const;
         bool HasList() const;
-        ::he::schema::List<Value>::Builder GetList() const;
-        void SetList(::he::schema::List<Value>::Reader value);
-        ::he::schema::List<Value>::Builder InitList(uint32_t size);
+        ::he::schema::AnyPointer::Builder GetList() const;
+        void SetList(::he::schema::AnyPointer::Reader value);
+        ::he::schema::AnyPointer::Builder InitList();
 
         bool IsEnum() const;
         bool HasEnum() const;
         uint16_t GetEnum() const;
         void SetEnum(uint16_t value);
 
-        bool IsTuple() const;
-        bool HasTuple() const;
-        ::he::schema::List<TupleValue>::Builder GetTuple() const;
-        void SetTuple(::he::schema::List<TupleValue>::Reader value);
-        ::he::schema::List<TupleValue>::Builder InitTuple(uint32_t size);
-
-        bool IsInterface() const;
-        bool HasInterface() const;
-        ::he::schema::Void GetInterface() const;
-        void SetInterface();
-
-        bool IsAnyPointer() const;
-        bool HasAnyPointer() const;
-        ::he::schema::Void GetAnyPointer() const;
-        void SetAnyPointer();
+        bool IsStruct() const;
+        bool HasStruct() const;
+        ::he::schema::AnyPointer::Builder GetStruct() const;
+        void SetStruct(::he::schema::AnyPointer::Reader value);
+        ::he::schema::AnyPointer::Builder InitStruct();
     };
     class Value::Reader final : public ::he::schema::StructReader
     {
@@ -1332,7 +1331,7 @@ namespace he::schema
         using StructType = Field::Meta;
         using SuperType = ::he::schema::StructReader;
 
-        Tag GetTag() const { return SuperType::GetDataField<Tag>(6); }
+        UnionTag GetUnionTag() const { return SuperType::GetDataField<UnionTag>(6); }
 
         bool IsNormal() const;
         Normal::Reader GetNormal() const;
@@ -1353,9 +1352,9 @@ namespace he::schema
         StructType::Reader AsReader() const { return StructType::Reader(SuperType::AsReader()); }
         operator StructType::Reader() const { return AsReader(); }
 
-        Tag GetTag() const { return SuperType::GetDataField<Tag>(6); }
+        UnionTag GetUnionTag() const { return SuperType::GetDataField<UnionTag>(6); }
 
-        void SetTag(Tag t) { return SuperType::SetDataField(6, t); }
+        void SetUnionTag(UnionTag t) { SuperType::SetDataField(6, t); }
 
         bool IsNormal() const;
         Normal::Builder GetNormal() const;
@@ -1825,7 +1824,7 @@ namespace he::schema
         using StructType = Declaration::Data;
         using SuperType = ::he::schema::StructReader;
 
-        Tag GetTag() const { return SuperType::GetDataField<Tag>(8); }
+        UnionTag GetUnionTag() const { return SuperType::GetDataField<UnionTag>(8); }
 
         bool IsFile() const;
         File::Reader GetFile() const;
@@ -1855,9 +1854,9 @@ namespace he::schema
         StructType::Reader AsReader() const { return StructType::Reader(SuperType::AsReader()); }
         operator StructType::Reader() const { return AsReader(); }
 
-        Tag GetTag() const { return SuperType::GetDataField<Tag>(8); }
+        UnionTag GetUnionTag() const { return SuperType::GetDataField<UnionTag>(8); }
 
-        void SetTag(Tag t) { return SuperType::SetDataField(8, t); }
+        void SetUnionTag(UnionTag t) { SuperType::SetDataField(8, t); }
 
         bool IsFile() const;
         File::Builder GetFile() const;
@@ -2082,187 +2081,214 @@ namespace he::schema
     inline void Type::Data::Interface::Builder::SetBrand(Brand::Reader value) { SuperType::GetPointerField(0).Set(value); }
     inline Brand::Builder Type::Data::Interface::Builder::InitBrand() { auto v = m_builder->AddStruct<Brand>(); SuperType::GetPointerField(0).Set(v); return v; }
 
-    inline bool Type::Data::AnyPointer::Reader::HasParamScopeId() const { return SuperType::HasDataField(4); }
-    inline uint64_t Type::Data::AnyPointer::Reader::GetParamScopeId() const { return SuperType::TryGetDataField<uint64_t>(4, 1); }
+    inline bool Type::Data::Parameter::Reader::HasScopeId() const { return SuperType::HasDataField(4); }
+    inline uint64_t Type::Data::Parameter::Reader::GetScopeId() const { return SuperType::TryGetDataField<uint64_t>(4, 1); }
 
-    inline bool Type::Data::AnyPointer::Reader::HasParamIndex() const { return SuperType::HasDataField(5); }
-    inline uint16_t Type::Data::AnyPointer::Reader::GetParamIndex() const { return SuperType::TryGetDataField<uint16_t>(5, 1); }
+    inline bool Type::Data::Parameter::Reader::HasIndex() const { return SuperType::HasDataField(5); }
+    inline uint16_t Type::Data::Parameter::Reader::GetIndex() const { return SuperType::TryGetDataField<uint16_t>(5, 1); }
 
-    inline bool Type::Data::AnyPointer::Builder::HasParamScopeId() const { return SuperType::HasDataField(4); }
-    inline uint64_t Type::Data::AnyPointer::Builder::GetParamScopeId() const { return SuperType::TryGetDataField<uint64_t>(4, 1); }
-    inline void Type::Data::AnyPointer::Builder::SetParamScopeId(uint64_t value) { SuperType::SetAndMarkDataField<uint64_t>(4, 1, value); }
+    inline bool Type::Data::Parameter::Builder::HasScopeId() const { return SuperType::HasDataField(4); }
+    inline uint64_t Type::Data::Parameter::Builder::GetScopeId() const { return SuperType::TryGetDataField<uint64_t>(4, 1); }
+    inline void Type::Data::Parameter::Builder::SetScopeId(uint64_t value) { SuperType::SetAndMarkDataField<uint64_t>(4, 1, value); }
 
-    inline bool Type::Data::AnyPointer::Builder::HasParamIndex() const { return SuperType::HasDataField(5); }
-    inline uint16_t Type::Data::AnyPointer::Builder::GetParamIndex() const { return SuperType::TryGetDataField<uint16_t>(5, 1); }
-    inline void Type::Data::AnyPointer::Builder::SetParamIndex(uint16_t value) { SuperType::SetAndMarkDataField<uint16_t>(5, 1, value); }
+    inline bool Type::Data::Parameter::Builder::HasIndex() const { return SuperType::HasDataField(5); }
+    inline uint16_t Type::Data::Parameter::Builder::GetIndex() const { return SuperType::TryGetDataField<uint16_t>(5, 1); }
+    inline void Type::Data::Parameter::Builder::SetIndex(uint16_t value) { SuperType::SetAndMarkDataField<uint16_t>(5, 1, value); }
 
-    inline bool Type::Data::Reader::IsVoid() const { return GetTag() == Tag::Void; }
+    inline bool Type::Data::Reader::IsVoid() const { return GetUnionTag() == UnionTag::Void; }
     inline bool Type::Data::Reader::HasVoid() const { return false; }
     inline ::he::schema::Void Type::Data::Reader::GetVoid() const { HE_ASSERT(IsVoid()); return {}; }
 
-    inline bool Type::Data::Reader::IsBool() const { return GetTag() == Tag::Bool; }
+    inline bool Type::Data::Reader::IsBool() const { return GetUnionTag() == UnionTag::Bool; }
     inline bool Type::Data::Reader::HasBool() const { return false; }
     inline ::he::schema::Void Type::Data::Reader::GetBool() const { HE_ASSERT(IsBool()); return {}; }
 
-    inline bool Type::Data::Reader::IsInt8() const { return GetTag() == Tag::Int8; }
+    inline bool Type::Data::Reader::IsInt8() const { return GetUnionTag() == UnionTag::Int8; }
     inline bool Type::Data::Reader::HasInt8() const { return false; }
     inline ::he::schema::Void Type::Data::Reader::GetInt8() const { HE_ASSERT(IsInt8()); return {}; }
 
-    inline bool Type::Data::Reader::IsInt16() const { return GetTag() == Tag::Int16; }
+    inline bool Type::Data::Reader::IsInt16() const { return GetUnionTag() == UnionTag::Int16; }
     inline bool Type::Data::Reader::HasInt16() const { return false; }
     inline ::he::schema::Void Type::Data::Reader::GetInt16() const { HE_ASSERT(IsInt16()); return {}; }
 
-    inline bool Type::Data::Reader::IsInt32() const { return GetTag() == Tag::Int32; }
+    inline bool Type::Data::Reader::IsInt32() const { return GetUnionTag() == UnionTag::Int32; }
     inline bool Type::Data::Reader::HasInt32() const { return false; }
     inline ::he::schema::Void Type::Data::Reader::GetInt32() const { HE_ASSERT(IsInt32()); return {}; }
 
-    inline bool Type::Data::Reader::IsInt64() const { return GetTag() == Tag::Int64; }
+    inline bool Type::Data::Reader::IsInt64() const { return GetUnionTag() == UnionTag::Int64; }
     inline bool Type::Data::Reader::HasInt64() const { return false; }
     inline ::he::schema::Void Type::Data::Reader::GetInt64() const { HE_ASSERT(IsInt64()); return {}; }
 
-    inline bool Type::Data::Reader::IsUint8() const { return GetTag() == Tag::Uint8; }
+    inline bool Type::Data::Reader::IsUint8() const { return GetUnionTag() == UnionTag::Uint8; }
     inline bool Type::Data::Reader::HasUint8() const { return false; }
     inline ::he::schema::Void Type::Data::Reader::GetUint8() const { HE_ASSERT(IsUint8()); return {}; }
 
-    inline bool Type::Data::Reader::IsUint16() const { return GetTag() == Tag::Uint16; }
+    inline bool Type::Data::Reader::IsUint16() const { return GetUnionTag() == UnionTag::Uint16; }
     inline bool Type::Data::Reader::HasUint16() const { return false; }
     inline ::he::schema::Void Type::Data::Reader::GetUint16() const { HE_ASSERT(IsUint16()); return {}; }
 
-    inline bool Type::Data::Reader::IsUint32() const { return GetTag() == Tag::Uint32; }
+    inline bool Type::Data::Reader::IsUint32() const { return GetUnionTag() == UnionTag::Uint32; }
     inline bool Type::Data::Reader::HasUint32() const { return false; }
     inline ::he::schema::Void Type::Data::Reader::GetUint32() const { HE_ASSERT(IsUint32()); return {}; }
 
-    inline bool Type::Data::Reader::IsUint64() const { return GetTag() == Tag::Uint64; }
+    inline bool Type::Data::Reader::IsUint64() const { return GetUnionTag() == UnionTag::Uint64; }
     inline bool Type::Data::Reader::HasUint64() const { return false; }
     inline ::he::schema::Void Type::Data::Reader::GetUint64() const { HE_ASSERT(IsUint64()); return {}; }
 
-    inline bool Type::Data::Reader::IsFloat32() const { return GetTag() == Tag::Float32; }
+    inline bool Type::Data::Reader::IsFloat32() const { return GetUnionTag() == UnionTag::Float32; }
     inline bool Type::Data::Reader::HasFloat32() const { return false; }
     inline ::he::schema::Void Type::Data::Reader::GetFloat32() const { HE_ASSERT(IsFloat32()); return {}; }
 
-    inline bool Type::Data::Reader::IsFloat64() const { return GetTag() == Tag::Float64; }
+    inline bool Type::Data::Reader::IsFloat64() const { return GetUnionTag() == UnionTag::Float64; }
     inline bool Type::Data::Reader::HasFloat64() const { return false; }
     inline ::he::schema::Void Type::Data::Reader::GetFloat64() const { HE_ASSERT(IsFloat64()); return {}; }
 
-    inline bool Type::Data::Reader::IsBlob() const { return GetTag() == Tag::Blob; }
+    inline bool Type::Data::Reader::IsBlob() const { return GetUnionTag() == UnionTag::Blob; }
     inline bool Type::Data::Reader::HasBlob() const { return false; }
     inline ::he::schema::Void Type::Data::Reader::GetBlob() const { HE_ASSERT(IsBlob()); return {}; }
 
-    inline bool Type::Data::Reader::IsString() const { return GetTag() == Tag::String; }
+    inline bool Type::Data::Reader::IsString() const { return GetUnionTag() == UnionTag::String; }
     inline bool Type::Data::Reader::HasString() const { return false; }
     inline ::he::schema::Void Type::Data::Reader::GetString() const { HE_ASSERT(IsString()); return {}; }
 
-    inline bool Type::Data::Reader::IsArray() const { return GetTag() == Tag::Array; }
+    inline bool Type::Data::Reader::IsAnyPointer() const { return GetUnionTag() == UnionTag::AnyPointer; }
+    inline bool Type::Data::Reader::HasAnyPointer() const { return false; }
+    inline ::he::schema::Void Type::Data::Reader::GetAnyPointer() const { HE_ASSERT(IsAnyPointer()); return {}; }
+
+    inline bool Type::Data::Reader::IsAnyStruct() const { return GetUnionTag() == UnionTag::AnyStruct; }
+    inline bool Type::Data::Reader::HasAnyStruct() const { return false; }
+    inline ::he::schema::Void Type::Data::Reader::GetAnyStruct() const { HE_ASSERT(IsAnyStruct()); return {}; }
+
+    inline bool Type::Data::Reader::IsAnyList() const { return GetUnionTag() == UnionTag::AnyList; }
+    inline bool Type::Data::Reader::HasAnyList() const { return false; }
+    inline ::he::schema::Void Type::Data::Reader::GetAnyList() const { HE_ASSERT(IsAnyList()); return {}; }
+
+    inline bool Type::Data::Reader::IsArray() const { return GetUnionTag() == UnionTag::Array; }
     inline Type::Data::Array::Reader Type::Data::Reader::GetArray() const { HE_ASSERT(IsArray()); return Array::Reader(*this); }
 
-    inline bool Type::Data::Reader::IsList() const { return GetTag() == Tag::List; }
+    inline bool Type::Data::Reader::IsList() const { return GetUnionTag() == UnionTag::List; }
     inline Type::Data::List::Reader Type::Data::Reader::GetList() const { HE_ASSERT(IsList()); return List::Reader(*this); }
 
-    inline bool Type::Data::Reader::IsEnum() const { return GetTag() == Tag::Enum; }
+    inline bool Type::Data::Reader::IsEnum() const { return GetUnionTag() == UnionTag::Enum; }
     inline Type::Data::Enum::Reader Type::Data::Reader::GetEnum() const { HE_ASSERT(IsEnum()); return Enum::Reader(*this); }
 
-    inline bool Type::Data::Reader::IsStruct() const { return GetTag() == Tag::Struct; }
+    inline bool Type::Data::Reader::IsStruct() const { return GetUnionTag() == UnionTag::Struct; }
     inline Type::Data::Struct::Reader Type::Data::Reader::GetStruct() const { HE_ASSERT(IsStruct()); return Struct::Reader(*this); }
 
-    inline bool Type::Data::Reader::IsInterface() const { return GetTag() == Tag::Interface; }
+    inline bool Type::Data::Reader::IsInterface() const { return GetUnionTag() == UnionTag::Interface; }
     inline Type::Data::Interface::Reader Type::Data::Reader::GetInterface() const { HE_ASSERT(IsInterface()); return Interface::Reader(*this); }
 
-    inline bool Type::Data::Reader::IsAnyPointer() const { return GetTag() == Tag::AnyPointer; }
-    inline Type::Data::AnyPointer::Reader Type::Data::Reader::GetAnyPointer() const { HE_ASSERT(IsAnyPointer()); return AnyPointer::Reader(*this); }
+    inline bool Type::Data::Reader::IsParameter() const { return GetUnionTag() == UnionTag::Parameter; }
+    inline Type::Data::Parameter::Reader Type::Data::Reader::GetParameter() const { HE_ASSERT(IsParameter()); return Parameter::Reader(*this); }
 
-    inline bool Type::Data::Builder::IsVoid() const { return GetTag() == Tag::Void; }
+    inline bool Type::Data::Builder::IsVoid() const { return GetUnionTag() == UnionTag::Void; }
     inline bool Type::Data::Builder::HasVoid() const { return false; }
     inline ::he::schema::Void Type::Data::Builder::GetVoid() const { HE_ASSERT(IsVoid()); return {}; }
-    inline void Type::Data::Builder::SetVoid() { SetTag(Tag::Void); }
+    inline void Type::Data::Builder::SetVoid() { SetUnionTag(UnionTag::Void); }
 
-    inline bool Type::Data::Builder::IsBool() const { return GetTag() == Tag::Bool; }
+    inline bool Type::Data::Builder::IsBool() const { return GetUnionTag() == UnionTag::Bool; }
     inline bool Type::Data::Builder::HasBool() const { return false; }
     inline ::he::schema::Void Type::Data::Builder::GetBool() const { HE_ASSERT(IsBool()); return {}; }
-    inline void Type::Data::Builder::SetBool() { SetTag(Tag::Bool); }
+    inline void Type::Data::Builder::SetBool() { SetUnionTag(UnionTag::Bool); }
 
-    inline bool Type::Data::Builder::IsInt8() const { return GetTag() == Tag::Int8; }
+    inline bool Type::Data::Builder::IsInt8() const { return GetUnionTag() == UnionTag::Int8; }
     inline bool Type::Data::Builder::HasInt8() const { return false; }
     inline ::he::schema::Void Type::Data::Builder::GetInt8() const { HE_ASSERT(IsInt8()); return {}; }
-    inline void Type::Data::Builder::SetInt8() { SetTag(Tag::Int8); }
+    inline void Type::Data::Builder::SetInt8() { SetUnionTag(UnionTag::Int8); }
 
-    inline bool Type::Data::Builder::IsInt16() const { return GetTag() == Tag::Int16; }
+    inline bool Type::Data::Builder::IsInt16() const { return GetUnionTag() == UnionTag::Int16; }
     inline bool Type::Data::Builder::HasInt16() const { return false; }
     inline ::he::schema::Void Type::Data::Builder::GetInt16() const { HE_ASSERT(IsInt16()); return {}; }
-    inline void Type::Data::Builder::SetInt16() { SetTag(Tag::Int16); }
+    inline void Type::Data::Builder::SetInt16() { SetUnionTag(UnionTag::Int16); }
 
-    inline bool Type::Data::Builder::IsInt32() const { return GetTag() == Tag::Int32; }
+    inline bool Type::Data::Builder::IsInt32() const { return GetUnionTag() == UnionTag::Int32; }
     inline bool Type::Data::Builder::HasInt32() const { return false; }
     inline ::he::schema::Void Type::Data::Builder::GetInt32() const { HE_ASSERT(IsInt32()); return {}; }
-    inline void Type::Data::Builder::SetInt32() { SetTag(Tag::Int32); }
+    inline void Type::Data::Builder::SetInt32() { SetUnionTag(UnionTag::Int32); }
 
-    inline bool Type::Data::Builder::IsInt64() const { return GetTag() == Tag::Int64; }
+    inline bool Type::Data::Builder::IsInt64() const { return GetUnionTag() == UnionTag::Int64; }
     inline bool Type::Data::Builder::HasInt64() const { return false; }
     inline ::he::schema::Void Type::Data::Builder::GetInt64() const { HE_ASSERT(IsInt64()); return {}; }
-    inline void Type::Data::Builder::SetInt64() { SetTag(Tag::Int64); }
+    inline void Type::Data::Builder::SetInt64() { SetUnionTag(UnionTag::Int64); }
 
-    inline bool Type::Data::Builder::IsUint8() const { return GetTag() == Tag::Uint8; }
+    inline bool Type::Data::Builder::IsUint8() const { return GetUnionTag() == UnionTag::Uint8; }
     inline bool Type::Data::Builder::HasUint8() const { return false; }
     inline ::he::schema::Void Type::Data::Builder::GetUint8() const { HE_ASSERT(IsUint8()); return {}; }
-    inline void Type::Data::Builder::SetUint8() { SetTag(Tag::Uint8); }
+    inline void Type::Data::Builder::SetUint8() { SetUnionTag(UnionTag::Uint8); }
 
-    inline bool Type::Data::Builder::IsUint16() const { return GetTag() == Tag::Uint16; }
+    inline bool Type::Data::Builder::IsUint16() const { return GetUnionTag() == UnionTag::Uint16; }
     inline bool Type::Data::Builder::HasUint16() const { return false; }
     inline ::he::schema::Void Type::Data::Builder::GetUint16() const { HE_ASSERT(IsUint16()); return {}; }
-    inline void Type::Data::Builder::SetUint16() { SetTag(Tag::Uint16); }
+    inline void Type::Data::Builder::SetUint16() { SetUnionTag(UnionTag::Uint16); }
 
-    inline bool Type::Data::Builder::IsUint32() const { return GetTag() == Tag::Uint32; }
+    inline bool Type::Data::Builder::IsUint32() const { return GetUnionTag() == UnionTag::Uint32; }
     inline bool Type::Data::Builder::HasUint32() const { return false; }
     inline ::he::schema::Void Type::Data::Builder::GetUint32() const { HE_ASSERT(IsUint32()); return {}; }
-    inline void Type::Data::Builder::SetUint32() { SetTag(Tag::Uint32); }
+    inline void Type::Data::Builder::SetUint32() { SetUnionTag(UnionTag::Uint32); }
 
-    inline bool Type::Data::Builder::IsUint64() const { return GetTag() == Tag::Uint64; }
+    inline bool Type::Data::Builder::IsUint64() const { return GetUnionTag() == UnionTag::Uint64; }
     inline bool Type::Data::Builder::HasUint64() const { return false; }
     inline ::he::schema::Void Type::Data::Builder::GetUint64() const { HE_ASSERT(IsUint64()); return {}; }
-    inline void Type::Data::Builder::SetUint64() { SetTag(Tag::Uint64); }
+    inline void Type::Data::Builder::SetUint64() { SetUnionTag(UnionTag::Uint64); }
 
-    inline bool Type::Data::Builder::IsFloat32() const { return GetTag() == Tag::Float32; }
+    inline bool Type::Data::Builder::IsFloat32() const { return GetUnionTag() == UnionTag::Float32; }
     inline bool Type::Data::Builder::HasFloat32() const { return false; }
     inline ::he::schema::Void Type::Data::Builder::GetFloat32() const { HE_ASSERT(IsFloat32()); return {}; }
-    inline void Type::Data::Builder::SetFloat32() { SetTag(Tag::Float32); }
+    inline void Type::Data::Builder::SetFloat32() { SetUnionTag(UnionTag::Float32); }
 
-    inline bool Type::Data::Builder::IsFloat64() const { return GetTag() == Tag::Float64; }
+    inline bool Type::Data::Builder::IsFloat64() const { return GetUnionTag() == UnionTag::Float64; }
     inline bool Type::Data::Builder::HasFloat64() const { return false; }
     inline ::he::schema::Void Type::Data::Builder::GetFloat64() const { HE_ASSERT(IsFloat64()); return {}; }
-    inline void Type::Data::Builder::SetFloat64() { SetTag(Tag::Float64); }
+    inline void Type::Data::Builder::SetFloat64() { SetUnionTag(UnionTag::Float64); }
 
-    inline bool Type::Data::Builder::IsBlob() const { return GetTag() == Tag::Blob; }
+    inline bool Type::Data::Builder::IsBlob() const { return GetUnionTag() == UnionTag::Blob; }
     inline bool Type::Data::Builder::HasBlob() const { return false; }
     inline ::he::schema::Void Type::Data::Builder::GetBlob() const { HE_ASSERT(IsBlob()); return {}; }
-    inline void Type::Data::Builder::SetBlob() { SetTag(Tag::Blob); }
+    inline void Type::Data::Builder::SetBlob() { SetUnionTag(UnionTag::Blob); }
 
-    inline bool Type::Data::Builder::IsString() const { return GetTag() == Tag::String; }
+    inline bool Type::Data::Builder::IsString() const { return GetUnionTag() == UnionTag::String; }
     inline bool Type::Data::Builder::HasString() const { return false; }
     inline ::he::schema::Void Type::Data::Builder::GetString() const { HE_ASSERT(IsString()); return {}; }
-    inline void Type::Data::Builder::SetString() { SetTag(Tag::String); }
+    inline void Type::Data::Builder::SetString() { SetUnionTag(UnionTag::String); }
 
-    inline bool Type::Data::Builder::IsArray() const { return GetTag() == Tag::Array; }
+    inline bool Type::Data::Builder::IsAnyPointer() const { return GetUnionTag() == UnionTag::AnyPointer; }
+    inline bool Type::Data::Builder::HasAnyPointer() const { return false; }
+    inline ::he::schema::Void Type::Data::Builder::GetAnyPointer() const { HE_ASSERT(IsAnyPointer()); return {}; }
+    inline void Type::Data::Builder::SetAnyPointer() { SetUnionTag(UnionTag::AnyPointer); }
+
+    inline bool Type::Data::Builder::IsAnyStruct() const { return GetUnionTag() == UnionTag::AnyStruct; }
+    inline bool Type::Data::Builder::HasAnyStruct() const { return false; }
+    inline ::he::schema::Void Type::Data::Builder::GetAnyStruct() const { HE_ASSERT(IsAnyStruct()); return {}; }
+    inline void Type::Data::Builder::SetAnyStruct() { SetUnionTag(UnionTag::AnyStruct); }
+
+    inline bool Type::Data::Builder::IsAnyList() const { return GetUnionTag() == UnionTag::AnyList; }
+    inline bool Type::Data::Builder::HasAnyList() const { return false; }
+    inline ::he::schema::Void Type::Data::Builder::GetAnyList() const { HE_ASSERT(IsAnyList()); return {}; }
+    inline void Type::Data::Builder::SetAnyList() { SetUnionTag(UnionTag::AnyList); }
+
+    inline bool Type::Data::Builder::IsArray() const { return GetUnionTag() == UnionTag::Array; }
     inline Type::Data::Array::Builder Type::Data::Builder::GetArray() const { HE_ASSERT(IsArray()); return Array::Builder(*this); }
-    inline Type::Data::Array::Builder Type::Data::Builder::InitArray() { SetTag(Tag::Array); SuperType::ClearPointerField(0); SuperType::ClearDataField(0); return Array::Builder(*this); }
+    inline Type::Data::Array::Builder Type::Data::Builder::InitArray() { SetUnionTag(UnionTag::Array); SuperType::ClearPointerField(0); SuperType::ClearDataField(0); return Array::Builder(*this); }
 
-    inline bool Type::Data::Builder::IsList() const { return GetTag() == Tag::List; }
+    inline bool Type::Data::Builder::IsList() const { return GetUnionTag() == UnionTag::List; }
     inline Type::Data::List::Builder Type::Data::Builder::GetList() const { HE_ASSERT(IsList()); return List::Builder(*this); }
-    inline Type::Data::List::Builder Type::Data::Builder::InitList() { SetTag(Tag::List); SuperType::ClearPointerField(0); return List::Builder(*this); }
+    inline Type::Data::List::Builder Type::Data::Builder::InitList() { SetUnionTag(UnionTag::List); SuperType::ClearPointerField(0); return List::Builder(*this); }
 
-    inline bool Type::Data::Builder::IsEnum() const { return GetTag() == Tag::Enum; }
+    inline bool Type::Data::Builder::IsEnum() const { return GetUnionTag() == UnionTag::Enum; }
     inline Type::Data::Enum::Builder Type::Data::Builder::GetEnum() const { HE_ASSERT(IsEnum()); return Enum::Builder(*this); }
-    inline Type::Data::Enum::Builder Type::Data::Builder::InitEnum() { SetTag(Tag::Enum); SuperType::ClearDataField(1); SuperType::ClearPointerField(0); return Enum::Builder(*this); }
+    inline Type::Data::Enum::Builder Type::Data::Builder::InitEnum() { SetUnionTag(UnionTag::Enum); SuperType::ClearDataField(1); SuperType::ClearPointerField(0); return Enum::Builder(*this); }
 
-    inline bool Type::Data::Builder::IsStruct() const { return GetTag() == Tag::Struct; }
+    inline bool Type::Data::Builder::IsStruct() const { return GetUnionTag() == UnionTag::Struct; }
     inline Type::Data::Struct::Builder Type::Data::Builder::GetStruct() const { HE_ASSERT(IsStruct()); return Struct::Builder(*this); }
-    inline Type::Data::Struct::Builder Type::Data::Builder::InitStruct() { SetTag(Tag::Struct); SuperType::ClearDataField(2); SuperType::ClearPointerField(0); return Struct::Builder(*this); }
+    inline Type::Data::Struct::Builder Type::Data::Builder::InitStruct() { SetUnionTag(UnionTag::Struct); SuperType::ClearDataField(2); SuperType::ClearPointerField(0); return Struct::Builder(*this); }
 
-    inline bool Type::Data::Builder::IsInterface() const { return GetTag() == Tag::Interface; }
+    inline bool Type::Data::Builder::IsInterface() const { return GetUnionTag() == UnionTag::Interface; }
     inline Type::Data::Interface::Builder Type::Data::Builder::GetInterface() const { HE_ASSERT(IsInterface()); return Interface::Builder(*this); }
-    inline Type::Data::Interface::Builder Type::Data::Builder::InitInterface() { SetTag(Tag::Interface); SuperType::ClearDataField(3); SuperType::ClearPointerField(0); return Interface::Builder(*this); }
+    inline Type::Data::Interface::Builder Type::Data::Builder::InitInterface() { SetUnionTag(UnionTag::Interface); SuperType::ClearDataField(3); SuperType::ClearPointerField(0); return Interface::Builder(*this); }
 
-    inline bool Type::Data::Builder::IsAnyPointer() const { return GetTag() == Tag::AnyPointer; }
-    inline Type::Data::AnyPointer::Builder Type::Data::Builder::GetAnyPointer() const { HE_ASSERT(IsAnyPointer()); return AnyPointer::Builder(*this); }
-    inline Type::Data::AnyPointer::Builder Type::Data::Builder::InitAnyPointer() { SetTag(Tag::AnyPointer); SuperType::ClearDataField(4); SuperType::ClearDataField(5); return AnyPointer::Builder(*this); }
+    inline bool Type::Data::Builder::IsParameter() const { return GetUnionTag() == UnionTag::Parameter; }
+    inline Type::Data::Parameter::Builder Type::Data::Builder::GetParameter() const { HE_ASSERT(IsParameter()); return Parameter::Builder(*this); }
+    inline Type::Data::Parameter::Builder Type::Data::Builder::InitParameter() { SetUnionTag(UnionTag::Parameter); SuperType::ClearDataField(4); SuperType::ClearDataField(5); return Parameter::Builder(*this); }
 
     inline Type::Data::Reader Type::Reader::GetData() const { return Data::Reader(*this); }
 
@@ -2284,190 +2310,162 @@ namespace he::schema
     inline void Value::TupleValue::Builder::SetValue(Value::Reader value) { SuperType::GetPointerField(1).Set(value); }
     inline Value::Builder Value::TupleValue::Builder::InitValue() { auto v = m_builder->AddStruct<Value>(); SuperType::GetPointerField(1).Set(v); return v; }
 
-    inline bool Value::Data::Reader::IsVoid() const { return GetTag() == Tag::Void; }
+    inline bool Value::Data::Reader::IsVoid() const { return GetUnionTag() == UnionTag::Void; }
     inline bool Value::Data::Reader::HasVoid() const { return false; }
     inline ::he::schema::Void Value::Data::Reader::GetVoid() const { HE_ASSERT(IsVoid()); return {}; }
 
-    inline bool Value::Data::Reader::IsBool() const { return GetTag() == Tag::Bool; }
+    inline bool Value::Data::Reader::IsBool() const { return GetUnionTag() == UnionTag::Bool; }
     inline bool Value::Data::Reader::HasBool() const { return IsBool() && SuperType::HasDataField(0); }
     inline bool Value::Data::Reader::GetBool() const { HE_ASSERT(IsBool()); return SuperType::GetDataField<bool>(16); }
 
-    inline bool Value::Data::Reader::IsInt8() const { return GetTag() == Tag::Int8; }
+    inline bool Value::Data::Reader::IsInt8() const { return GetUnionTag() == UnionTag::Int8; }
     inline bool Value::Data::Reader::HasInt8() const { return IsInt8() && SuperType::HasDataField(0); }
     inline int8_t Value::Data::Reader::GetInt8() const { HE_ASSERT(IsInt8()); return SuperType::GetDataField<int8_t>(2); }
 
-    inline bool Value::Data::Reader::IsInt16() const { return GetTag() == Tag::Int16; }
+    inline bool Value::Data::Reader::IsInt16() const { return GetUnionTag() == UnionTag::Int16; }
     inline bool Value::Data::Reader::HasInt16() const { return IsInt16() && SuperType::HasDataField(0); }
     inline int16_t Value::Data::Reader::GetInt16() const { HE_ASSERT(IsInt16()); return SuperType::GetDataField<int16_t>(1); }
 
-    inline bool Value::Data::Reader::IsInt32() const { return GetTag() == Tag::Int32; }
+    inline bool Value::Data::Reader::IsInt32() const { return GetUnionTag() == UnionTag::Int32; }
     inline bool Value::Data::Reader::HasInt32() const { return IsInt32() && SuperType::HasDataField(0); }
     inline int32_t Value::Data::Reader::GetInt32() const { HE_ASSERT(IsInt32()); return SuperType::GetDataField<int32_t>(1); }
 
-    inline bool Value::Data::Reader::IsInt64() const { return GetTag() == Tag::Int64; }
+    inline bool Value::Data::Reader::IsInt64() const { return GetUnionTag() == UnionTag::Int64; }
     inline bool Value::Data::Reader::HasInt64() const { return IsInt64() && SuperType::HasDataField(0); }
     inline int64_t Value::Data::Reader::GetInt64() const { HE_ASSERT(IsInt64()); return SuperType::GetDataField<int64_t>(1); }
 
-    inline bool Value::Data::Reader::IsUint8() const { return GetTag() == Tag::Uint8; }
+    inline bool Value::Data::Reader::IsUint8() const { return GetUnionTag() == UnionTag::Uint8; }
     inline bool Value::Data::Reader::HasUint8() const { return IsUint8() && SuperType::HasDataField(0); }
     inline uint8_t Value::Data::Reader::GetUint8() const { HE_ASSERT(IsUint8()); return SuperType::GetDataField<uint8_t>(2); }
 
-    inline bool Value::Data::Reader::IsUint16() const { return GetTag() == Tag::Uint16; }
+    inline bool Value::Data::Reader::IsUint16() const { return GetUnionTag() == UnionTag::Uint16; }
     inline bool Value::Data::Reader::HasUint16() const { return IsUint16() && SuperType::HasDataField(0); }
     inline uint16_t Value::Data::Reader::GetUint16() const { HE_ASSERT(IsUint16()); return SuperType::GetDataField<uint16_t>(1); }
 
-    inline bool Value::Data::Reader::IsUint32() const { return GetTag() == Tag::Uint32; }
+    inline bool Value::Data::Reader::IsUint32() const { return GetUnionTag() == UnionTag::Uint32; }
     inline bool Value::Data::Reader::HasUint32() const { return IsUint32() && SuperType::HasDataField(0); }
     inline uint32_t Value::Data::Reader::GetUint32() const { HE_ASSERT(IsUint32()); return SuperType::GetDataField<uint32_t>(1); }
 
-    inline bool Value::Data::Reader::IsUint64() const { return GetTag() == Tag::Uint64; }
+    inline bool Value::Data::Reader::IsUint64() const { return GetUnionTag() == UnionTag::Uint64; }
     inline bool Value::Data::Reader::HasUint64() const { return IsUint64() && SuperType::HasDataField(0); }
     inline uint64_t Value::Data::Reader::GetUint64() const { HE_ASSERT(IsUint64()); return SuperType::GetDataField<uint64_t>(1); }
 
-    inline bool Value::Data::Reader::IsFloat32() const { return GetTag() == Tag::Float32; }
+    inline bool Value::Data::Reader::IsFloat32() const { return GetUnionTag() == UnionTag::Float32; }
     inline bool Value::Data::Reader::HasFloat32() const { return IsFloat32() && SuperType::HasDataField(0); }
     inline float Value::Data::Reader::GetFloat32() const { HE_ASSERT(IsFloat32()); return SuperType::GetDataField<float>(1); }
 
-    inline bool Value::Data::Reader::IsFloat64() const { return GetTag() == Tag::Float64; }
+    inline bool Value::Data::Reader::IsFloat64() const { return GetUnionTag() == UnionTag::Float64; }
     inline bool Value::Data::Reader::HasFloat64() const { return IsFloat64() && SuperType::HasDataField(0); }
     inline double Value::Data::Reader::GetFloat64() const { HE_ASSERT(IsFloat64()); return SuperType::GetDataField<double>(1); }
 
-    inline bool Value::Data::Reader::IsBlob() const { return GetTag() == Tag::Blob; }
+    inline bool Value::Data::Reader::IsBlob() const { return GetUnionTag() == UnionTag::Blob; }
     inline bool Value::Data::Reader::HasBlob() const { return IsBlob() && SuperType::HasPointerField(0); }
-    inline ::he::schema::List<uint8_t>::Reader Value::Data::Reader::GetBlob() const { HE_ASSERT(IsBlob()); return SuperType::GetPointerField(0).TryGetList<uint8_t>(); }
+    inline ::he::schema::Blob::Reader Value::Data::Reader::GetBlob() const { HE_ASSERT(IsBlob()); return SuperType::GetPointerField(0).TryGetList<uint8_t>(); }
 
-    inline bool Value::Data::Reader::IsString() const { return GetTag() == Tag::String; }
+    inline bool Value::Data::Reader::IsString() const { return GetUnionTag() == UnionTag::String; }
     inline bool Value::Data::Reader::HasString() const { return IsString() && SuperType::HasPointerField(0); }
     inline ::he::schema::String::Reader Value::Data::Reader::GetString() const { HE_ASSERT(IsString()); return SuperType::GetPointerField(0).TryGetString(); }
 
-    inline bool Value::Data::Reader::IsArray() const { return GetTag() == Tag::Array; }
-    inline bool Value::Data::Reader::HasArray() const { return IsArray() && SuperType::HasPointerField(0); }
-    inline ::he::schema::List<Value>::Reader Value::Data::Reader::GetArray() const { HE_ASSERT(IsArray()); return SuperType::GetPointerField(0).TryGetList<Value>(); }
-
-    inline bool Value::Data::Reader::IsList() const { return GetTag() == Tag::List; }
+    inline bool Value::Data::Reader::IsList() const { return GetUnionTag() == UnionTag::List; }
     inline bool Value::Data::Reader::HasList() const { return IsList() && SuperType::HasPointerField(0); }
-    inline ::he::schema::List<Value>::Reader Value::Data::Reader::GetList() const { HE_ASSERT(IsList()); return SuperType::GetPointerField(0).TryGetList<Value>(); }
+    inline ::he::schema::AnyPointer::Reader Value::Data::Reader::GetList() const { HE_ASSERT(IsList()); return SuperType::GetPointerField(0); }
 
-    inline bool Value::Data::Reader::IsEnum() const { return GetTag() == Tag::Enum; }
+    inline bool Value::Data::Reader::IsEnum() const { return GetUnionTag() == UnionTag::Enum; }
     inline bool Value::Data::Reader::HasEnum() const { return IsEnum() && SuperType::HasDataField(0); }
     inline uint16_t Value::Data::Reader::GetEnum() const { HE_ASSERT(IsEnum()); return SuperType::GetDataField<uint16_t>(1); }
 
-    inline bool Value::Data::Reader::IsTuple() const { return GetTag() == Tag::Tuple; }
-    inline bool Value::Data::Reader::HasTuple() const { return IsTuple() && SuperType::HasPointerField(0); }
-    inline ::he::schema::List<Value::TupleValue>::Reader Value::Data::Reader::GetTuple() const { HE_ASSERT(IsTuple()); return SuperType::GetPointerField(0).TryGetList<Value::TupleValue>(); }
+    inline bool Value::Data::Reader::IsStruct() const { return GetUnionTag() == UnionTag::Struct; }
+    inline bool Value::Data::Reader::HasStruct() const { return IsStruct() && SuperType::HasPointerField(0); }
+    inline ::he::schema::AnyPointer::Reader Value::Data::Reader::GetStruct() const { HE_ASSERT(IsStruct()); return SuperType::GetPointerField(0); }
 
-    inline bool Value::Data::Reader::IsInterface() const { return GetTag() == Tag::Interface; }
-    inline bool Value::Data::Reader::HasInterface() const { return false; }
-    inline ::he::schema::Void Value::Data::Reader::GetInterface() const { HE_ASSERT(IsInterface()); return {}; }
-
-    inline bool Value::Data::Reader::IsAnyPointer() const { return GetTag() == Tag::AnyPointer; }
-    inline bool Value::Data::Reader::HasAnyPointer() const { return false; }
-    inline ::he::schema::Void Value::Data::Reader::GetAnyPointer() const { HE_ASSERT(IsAnyPointer()); return {}; }
-
-    inline bool Value::Data::Builder::IsVoid() const { return GetTag() == Tag::Void; }
+    inline bool Value::Data::Builder::IsVoid() const { return GetUnionTag() == UnionTag::Void; }
     inline bool Value::Data::Builder::HasVoid() const { return false; }
     inline ::he::schema::Void Value::Data::Builder::GetVoid() const { HE_ASSERT(IsVoid()); return {}; }
-    inline void Value::Data::Builder::SetVoid() { SetTag(Tag::Void); }
+    inline void Value::Data::Builder::SetVoid() { SetUnionTag(UnionTag::Void); }
 
-    inline bool Value::Data::Builder::IsBool() const { return GetTag() == Tag::Bool; }
+    inline bool Value::Data::Builder::IsBool() const { return GetUnionTag() == UnionTag::Bool; }
     inline bool Value::Data::Builder::HasBool() const { return IsBool() && SuperType::HasDataField(0); }
     inline bool Value::Data::Builder::GetBool() const { HE_ASSERT(IsBool()); return SuperType::GetDataField<bool>(16); }
-    inline void Value::Data::Builder::SetBool(bool value) { SetTag(Tag::Bool); SuperType::SetDataField<bool>(16, value); }
+    inline void Value::Data::Builder::SetBool(bool value) { SetUnionTag(UnionTag::Bool); SuperType::SetDataField<bool>(16, value); }
 
-    inline bool Value::Data::Builder::IsInt8() const { return GetTag() == Tag::Int8; }
+    inline bool Value::Data::Builder::IsInt8() const { return GetUnionTag() == UnionTag::Int8; }
     inline bool Value::Data::Builder::HasInt8() const { return IsInt8() && SuperType::HasDataField(0); }
     inline int8_t Value::Data::Builder::GetInt8() const { HE_ASSERT(IsInt8()); return SuperType::GetDataField<int8_t>(2); }
-    inline void Value::Data::Builder::SetInt8(int8_t value) { SetTag(Tag::Int8); SuperType::SetDataField<int8_t>(2, value); }
+    inline void Value::Data::Builder::SetInt8(int8_t value) { SetUnionTag(UnionTag::Int8); SuperType::SetDataField<int8_t>(2, value); }
 
-    inline bool Value::Data::Builder::IsInt16() const { return GetTag() == Tag::Int16; }
+    inline bool Value::Data::Builder::IsInt16() const { return GetUnionTag() == UnionTag::Int16; }
     inline bool Value::Data::Builder::HasInt16() const { return IsInt16() && SuperType::HasDataField(0); }
     inline int16_t Value::Data::Builder::GetInt16() const { HE_ASSERT(IsInt16()); return SuperType::GetDataField<int16_t>(1); }
-    inline void Value::Data::Builder::SetInt16(int16_t value) { SetTag(Tag::Int16); SuperType::SetDataField<int16_t>(1, value); }
+    inline void Value::Data::Builder::SetInt16(int16_t value) { SetUnionTag(UnionTag::Int16); SuperType::SetDataField<int16_t>(1, value); }
 
-    inline bool Value::Data::Builder::IsInt32() const { return GetTag() == Tag::Int32; }
+    inline bool Value::Data::Builder::IsInt32() const { return GetUnionTag() == UnionTag::Int32; }
     inline bool Value::Data::Builder::HasInt32() const { return IsInt32() && SuperType::HasDataField(0); }
     inline int32_t Value::Data::Builder::GetInt32() const { HE_ASSERT(IsInt32()); return SuperType::GetDataField<int32_t>(1); }
-    inline void Value::Data::Builder::SetInt32(int32_t value) { SetTag(Tag::Int32); SuperType::SetDataField<int32_t>(1, value); }
+    inline void Value::Data::Builder::SetInt32(int32_t value) { SetUnionTag(UnionTag::Int32); SuperType::SetDataField<int32_t>(1, value); }
 
-    inline bool Value::Data::Builder::IsInt64() const { return GetTag() == Tag::Int64; }
+    inline bool Value::Data::Builder::IsInt64() const { return GetUnionTag() == UnionTag::Int64; }
     inline bool Value::Data::Builder::HasInt64() const { return IsInt64() && SuperType::HasDataField(0); }
     inline int64_t Value::Data::Builder::GetInt64() const { HE_ASSERT(IsInt64()); return SuperType::GetDataField<int64_t>(1); }
-    inline void Value::Data::Builder::SetInt64(int64_t value) { SetTag(Tag::Int64); SuperType::SetDataField<int64_t>(1, value); }
+    inline void Value::Data::Builder::SetInt64(int64_t value) { SetUnionTag(UnionTag::Int64); SuperType::SetDataField<int64_t>(1, value); }
 
-    inline bool Value::Data::Builder::IsUint8() const { return GetTag() == Tag::Uint8; }
+    inline bool Value::Data::Builder::IsUint8() const { return GetUnionTag() == UnionTag::Uint8; }
     inline bool Value::Data::Builder::HasUint8() const { return IsUint8() && SuperType::HasDataField(0); }
     inline uint8_t Value::Data::Builder::GetUint8() const { HE_ASSERT(IsUint8()); return SuperType::GetDataField<uint8_t>(2); }
-    inline void Value::Data::Builder::SetUint8(uint8_t value) { SetTag(Tag::Uint8); SuperType::SetDataField<uint8_t>(2, value); }
+    inline void Value::Data::Builder::SetUint8(uint8_t value) { SetUnionTag(UnionTag::Uint8); SuperType::SetDataField<uint8_t>(2, value); }
 
-    inline bool Value::Data::Builder::IsUint16() const { return GetTag() == Tag::Uint16; }
+    inline bool Value::Data::Builder::IsUint16() const { return GetUnionTag() == UnionTag::Uint16; }
     inline bool Value::Data::Builder::HasUint16() const { return IsUint16() && SuperType::HasDataField(0); }
     inline uint16_t Value::Data::Builder::GetUint16() const { HE_ASSERT(IsUint16()); return SuperType::GetDataField<uint16_t>(1); }
-    inline void Value::Data::Builder::SetUint16(uint16_t value) { SetTag(Tag::Uint16); SuperType::SetDataField<uint16_t>(1, value); }
+    inline void Value::Data::Builder::SetUint16(uint16_t value) { SetUnionTag(UnionTag::Uint16); SuperType::SetDataField<uint16_t>(1, value); }
 
-    inline bool Value::Data::Builder::IsUint32() const { return GetTag() == Tag::Uint32; }
+    inline bool Value::Data::Builder::IsUint32() const { return GetUnionTag() == UnionTag::Uint32; }
     inline bool Value::Data::Builder::HasUint32() const { return IsUint32() && SuperType::HasDataField(0); }
     inline uint32_t Value::Data::Builder::GetUint32() const { HE_ASSERT(IsUint32()); return SuperType::GetDataField<uint32_t>(1); }
-    inline void Value::Data::Builder::SetUint32(uint32_t value) { SetTag(Tag::Uint32); SuperType::SetDataField<uint32_t>(1, value); }
+    inline void Value::Data::Builder::SetUint32(uint32_t value) { SetUnionTag(UnionTag::Uint32); SuperType::SetDataField<uint32_t>(1, value); }
 
-    inline bool Value::Data::Builder::IsUint64() const { return GetTag() == Tag::Uint64; }
+    inline bool Value::Data::Builder::IsUint64() const { return GetUnionTag() == UnionTag::Uint64; }
     inline bool Value::Data::Builder::HasUint64() const { return IsUint64() && SuperType::HasDataField(0); }
     inline uint64_t Value::Data::Builder::GetUint64() const { HE_ASSERT(IsUint64()); return SuperType::GetDataField<uint64_t>(1); }
-    inline void Value::Data::Builder::SetUint64(uint64_t value) { SetTag(Tag::Uint64); SuperType::SetDataField<uint64_t>(1, value); }
+    inline void Value::Data::Builder::SetUint64(uint64_t value) { SetUnionTag(UnionTag::Uint64); SuperType::SetDataField<uint64_t>(1, value); }
 
-    inline bool Value::Data::Builder::IsFloat32() const { return GetTag() == Tag::Float32; }
+    inline bool Value::Data::Builder::IsFloat32() const { return GetUnionTag() == UnionTag::Float32; }
     inline bool Value::Data::Builder::HasFloat32() const { return IsFloat32() && SuperType::HasDataField(0); }
     inline float Value::Data::Builder::GetFloat32() const { HE_ASSERT(IsFloat32()); return SuperType::GetDataField<float>(1); }
-    inline void Value::Data::Builder::SetFloat32(float value) { SetTag(Tag::Float32); SuperType::SetDataField<float>(1, value); }
+    inline void Value::Data::Builder::SetFloat32(float value) { SetUnionTag(UnionTag::Float32); SuperType::SetDataField<float>(1, value); }
 
-    inline bool Value::Data::Builder::IsFloat64() const { return GetTag() == Tag::Float64; }
+    inline bool Value::Data::Builder::IsFloat64() const { return GetUnionTag() == UnionTag::Float64; }
     inline bool Value::Data::Builder::HasFloat64() const { return IsFloat64() && SuperType::HasDataField(0); }
     inline double Value::Data::Builder::GetFloat64() const { HE_ASSERT(IsFloat64()); return SuperType::GetDataField<double>(1); }
-    inline void Value::Data::Builder::SetFloat64(double value) { SetTag(Tag::Float64); SuperType::SetDataField<double>(1, value); }
+    inline void Value::Data::Builder::SetFloat64(double value) { SetUnionTag(UnionTag::Float64); SuperType::SetDataField<double>(1, value); }
 
-    inline bool Value::Data::Builder::IsBlob() const { return GetTag() == Tag::Blob; }
+    inline bool Value::Data::Builder::IsBlob() const { return GetUnionTag() == UnionTag::Blob; }
     inline bool Value::Data::Builder::HasBlob() const { return IsBlob() && SuperType::HasPointerField(0); }
-    inline ::he::schema::List<uint8_t>::Builder Value::Data::Builder::GetBlob() const { HE_ASSERT(IsBlob()); return SuperType::GetPointerField(0).TryGetList<uint8_t>(); }
-    inline void Value::Data::Builder::SetBlob(::he::schema::List<uint8_t>::Reader value) { SetTag(Tag::Blob); SuperType::GetPointerField(0).Set(value); }
-    inline ::he::schema::List<uint8_t>::Builder Value::Data::Builder::InitBlob(uint32_t size) { SetTag(Tag::Blob); auto v = m_builder->AddList<uint8_t>(size); SuperType::GetPointerField(0).Set(v); return v; }
+    inline ::he::schema::Blob::Builder Value::Data::Builder::GetBlob() const { HE_ASSERT(IsBlob()); return SuperType::GetPointerField(0).TryGetList<uint8_t>(); }
+    inline void Value::Data::Builder::SetBlob(::he::schema::Blob::Reader value) { SetUnionTag(UnionTag::Blob); SuperType::GetPointerField(0).Set(value); }
+    inline ::he::schema::Blob::Builder Value::Data::Builder::InitBlob(uint32_t size) { SetUnionTag(UnionTag::Blob); auto v = m_builder->AddList<uint8_t>(size); SuperType::GetPointerField(0).Set(v); return v; }
 
-    inline bool Value::Data::Builder::IsString() const { return GetTag() == Tag::String; }
+    inline bool Value::Data::Builder::IsString() const { return GetUnionTag() == UnionTag::String; }
     inline bool Value::Data::Builder::HasString() const { return IsString() && SuperType::HasPointerField(0); }
     inline ::he::schema::String::Builder Value::Data::Builder::GetString() const { HE_ASSERT(IsString()); return SuperType::GetPointerField(0).TryGetString(); }
-    inline void Value::Data::Builder::SetString(::he::schema::String::Reader value) { SetTag(Tag::String); SuperType::GetPointerField(0).Set(value); }
-    inline ::he::schema::String::Builder Value::Data::Builder::InitString(::he::StringView str) { SetTag(Tag::String); auto v = m_builder->AddString(str); SuperType::GetPointerField(0).Set(v); return v; }
+    inline void Value::Data::Builder::SetString(::he::schema::String::Reader value) { SetUnionTag(UnionTag::String); SuperType::GetPointerField(0).Set(value); }
+    inline ::he::schema::String::Builder Value::Data::Builder::InitString(::he::StringView str) { SetUnionTag(UnionTag::String); auto v = m_builder->AddString(str); SuperType::GetPointerField(0).Set(v); return v; }
 
-    inline bool Value::Data::Builder::IsArray() const { return GetTag() == Tag::Array; }
-    inline bool Value::Data::Builder::HasArray() const { return IsArray() && SuperType::HasPointerField(0); }
-    inline ::he::schema::List<Value>::Builder Value::Data::Builder::GetArray() const { HE_ASSERT(IsArray()); return SuperType::GetPointerField(0).TryGetList<Value>(); }
-    inline void Value::Data::Builder::SetArray(::he::schema::List<Value>::Reader value) { SetTag(Tag::Array); SuperType::GetPointerField(0).Set(value); }
-    inline ::he::schema::List<Value>::Builder Value::Data::Builder::InitArray(uint32_t size) { SetTag(Tag::Array); auto v = m_builder->AddList<Value>(size); SuperType::GetPointerField(0).Set(v); return v; }
-
-    inline bool Value::Data::Builder::IsList() const { return GetTag() == Tag::List; }
+    inline bool Value::Data::Builder::IsList() const { return GetUnionTag() == UnionTag::List; }
     inline bool Value::Data::Builder::HasList() const { return IsList() && SuperType::HasPointerField(0); }
-    inline ::he::schema::List<Value>::Builder Value::Data::Builder::GetList() const { HE_ASSERT(IsList()); return SuperType::GetPointerField(0).TryGetList<Value>(); }
-    inline void Value::Data::Builder::SetList(::he::schema::List<Value>::Reader value) { SetTag(Tag::List); SuperType::GetPointerField(0).Set(value); }
-    inline ::he::schema::List<Value>::Builder Value::Data::Builder::InitList(uint32_t size) { SetTag(Tag::List); auto v = m_builder->AddList<Value>(size); SuperType::GetPointerField(0).Set(v); return v; }
+    inline ::he::schema::AnyPointer::Builder Value::Data::Builder::GetList() const { HE_ASSERT(IsList()); return SuperType::GetPointerField(0); }
+    inline void Value::Data::Builder::SetList(::he::schema::AnyPointer::Reader value) { SetUnionTag(UnionTag::List); SuperType::GetPointerField(0).Set(value); }
+    inline ::he::schema::AnyPointer::Builder Value::Data::Builder::InitList() { SetUnionTag(UnionTag::List); return SuperType::GetPointerField(0); }
 
-    inline bool Value::Data::Builder::IsEnum() const { return GetTag() == Tag::Enum; }
+    inline bool Value::Data::Builder::IsEnum() const { return GetUnionTag() == UnionTag::Enum; }
     inline bool Value::Data::Builder::HasEnum() const { return IsEnum() && SuperType::HasDataField(0); }
     inline uint16_t Value::Data::Builder::GetEnum() const { HE_ASSERT(IsEnum()); return SuperType::GetDataField<uint16_t>(1); }
-    inline void Value::Data::Builder::SetEnum(uint16_t value) { SetTag(Tag::Enum); SuperType::SetDataField<uint16_t>(1, value); }
+    inline void Value::Data::Builder::SetEnum(uint16_t value) { SetUnionTag(UnionTag::Enum); SuperType::SetDataField<uint16_t>(1, value); }
 
-    inline bool Value::Data::Builder::IsTuple() const { return GetTag() == Tag::Tuple; }
-    inline bool Value::Data::Builder::HasTuple() const { return IsTuple() && SuperType::HasPointerField(0); }
-    inline ::he::schema::List<Value::TupleValue>::Builder Value::Data::Builder::GetTuple() const { HE_ASSERT(IsTuple()); return SuperType::GetPointerField(0).TryGetList<Value::TupleValue>(); }
-    inline void Value::Data::Builder::SetTuple(::he::schema::List<Value::TupleValue>::Reader value) { SetTag(Tag::Tuple); SuperType::GetPointerField(0).Set(value); }
-    inline ::he::schema::List<Value::TupleValue>::Builder Value::Data::Builder::InitTuple(uint32_t size) { SetTag(Tag::Tuple); auto v = m_builder->AddList<Value::TupleValue>(size); SuperType::GetPointerField(0).Set(v); return v; }
-
-    inline bool Value::Data::Builder::IsInterface() const { return GetTag() == Tag::Interface; }
-    inline bool Value::Data::Builder::HasInterface() const { return false; }
-    inline ::he::schema::Void Value::Data::Builder::GetInterface() const { HE_ASSERT(IsInterface()); return {}; }
-    inline void Value::Data::Builder::SetInterface() { SetTag(Tag::Interface); }
-
-    inline bool Value::Data::Builder::IsAnyPointer() const { return GetTag() == Tag::AnyPointer; }
-    inline bool Value::Data::Builder::HasAnyPointer() const { return false; }
-    inline ::he::schema::Void Value::Data::Builder::GetAnyPointer() const { HE_ASSERT(IsAnyPointer()); return {}; }
-    inline void Value::Data::Builder::SetAnyPointer() { SetTag(Tag::AnyPointer); }
+    inline bool Value::Data::Builder::IsStruct() const { return GetUnionTag() == UnionTag::Struct; }
+    inline bool Value::Data::Builder::HasStruct() const { return IsStruct() && SuperType::HasPointerField(0); }
+    inline ::he::schema::AnyPointer::Builder Value::Data::Builder::GetStruct() const { HE_ASSERT(IsStruct()); return SuperType::GetPointerField(0); }
+    inline void Value::Data::Builder::SetStruct(::he::schema::AnyPointer::Reader value) { SetUnionTag(UnionTag::Struct); SuperType::GetPointerField(0).Set(value); }
+    inline ::he::schema::AnyPointer::Builder Value::Data::Builder::InitStruct() { SetUnionTag(UnionTag::Struct); return SuperType::GetPointerField(0); }
 
     inline Value::Data::Reader Value::Reader::GetData() const { return Data::Reader(*this); }
 
@@ -2569,26 +2567,26 @@ namespace he::schema
     inline uint64_t Field::Meta::Union::Builder::GetTypeId() const { return SuperType::TryGetDataField<uint64_t>(6, 2); }
     inline void Field::Meta::Union::Builder::SetTypeId(uint64_t value) { SuperType::SetAndMarkDataField<uint64_t>(6, 2, value); }
 
-    inline bool Field::Meta::Reader::IsNormal() const { return GetTag() == Tag::Normal; }
+    inline bool Field::Meta::Reader::IsNormal() const { return GetUnionTag() == UnionTag::Normal; }
     inline Field::Meta::Normal::Reader Field::Meta::Reader::GetNormal() const { HE_ASSERT(IsNormal()); return Normal::Reader(*this); }
 
-    inline bool Field::Meta::Reader::IsGroup() const { return GetTag() == Tag::Group; }
+    inline bool Field::Meta::Reader::IsGroup() const { return GetUnionTag() == UnionTag::Group; }
     inline Field::Meta::Group::Reader Field::Meta::Reader::GetGroup() const { HE_ASSERT(IsGroup()); return Group::Reader(*this); }
 
-    inline bool Field::Meta::Reader::IsUnion() const { return GetTag() == Tag::Union; }
+    inline bool Field::Meta::Reader::IsUnion() const { return GetUnionTag() == UnionTag::Union; }
     inline Field::Meta::Union::Reader Field::Meta::Reader::GetUnion() const { HE_ASSERT(IsUnion()); return Union::Reader(*this); }
 
-    inline bool Field::Meta::Builder::IsNormal() const { return GetTag() == Tag::Normal; }
+    inline bool Field::Meta::Builder::IsNormal() const { return GetUnionTag() == UnionTag::Normal; }
     inline Field::Meta::Normal::Builder Field::Meta::Builder::GetNormal() const { HE_ASSERT(IsNormal()); return Normal::Builder(*this); }
-    inline Field::Meta::Normal::Builder Field::Meta::Builder::InitNormal() { SetTag(Tag::Normal); SuperType::ClearDataField(2); SuperType::ClearDataField(3); SuperType::ClearPointerField(2); SuperType::ClearPointerField(3); SuperType::ClearDataField(4); return Normal::Builder(*this); }
+    inline Field::Meta::Normal::Builder Field::Meta::Builder::InitNormal() { SetUnionTag(UnionTag::Normal); SuperType::ClearDataField(2); SuperType::ClearDataField(3); SuperType::ClearPointerField(2); SuperType::ClearPointerField(3); SuperType::ClearDataField(4); return Normal::Builder(*this); }
 
-    inline bool Field::Meta::Builder::IsGroup() const { return GetTag() == Tag::Group; }
+    inline bool Field::Meta::Builder::IsGroup() const { return GetUnionTag() == UnionTag::Group; }
     inline Field::Meta::Group::Builder Field::Meta::Builder::GetGroup() const { HE_ASSERT(IsGroup()); return Group::Builder(*this); }
-    inline Field::Meta::Group::Builder Field::Meta::Builder::InitGroup() { SetTag(Tag::Group); SuperType::ClearDataField(5); return Group::Builder(*this); }
+    inline Field::Meta::Group::Builder Field::Meta::Builder::InitGroup() { SetUnionTag(UnionTag::Group); SuperType::ClearDataField(5); return Group::Builder(*this); }
 
-    inline bool Field::Meta::Builder::IsUnion() const { return GetTag() == Tag::Union; }
+    inline bool Field::Meta::Builder::IsUnion() const { return GetUnionTag() == UnionTag::Union; }
     inline Field::Meta::Union::Builder Field::Meta::Builder::GetUnion() const { HE_ASSERT(IsUnion()); return Union::Builder(*this); }
-    inline Field::Meta::Union::Builder Field::Meta::Builder::InitUnion() { SetTag(Tag::Union); SuperType::ClearDataField(6); return Union::Builder(*this); }
+    inline Field::Meta::Union::Builder Field::Meta::Builder::InitUnion() { SetUnionTag(UnionTag::Union); SuperType::ClearDataField(6); return Union::Builder(*this); }
 
     inline bool Field::Reader::HasName() const { return SuperType::HasPointerField(0); }
     inline ::he::schema::String::Reader Field::Reader::GetName() const { return SuperType::GetPointerField(0).TryGetString(); }
@@ -2896,47 +2894,47 @@ namespace he::schema
     inline void Declaration::Data::Struct::Builder::SetFields(::he::schema::List<Field>::Reader value) { SuperType::GetPointerField(5).Set(value); }
     inline ::he::schema::List<Field>::Builder Declaration::Data::Struct::Builder::InitFields(uint32_t size) { auto v = m_builder->AddList<Field>(size); SuperType::GetPointerField(5).Set(v); return v; }
 
-    inline bool Declaration::Data::Reader::IsFile() const { return GetTag() == Tag::File; }
+    inline bool Declaration::Data::Reader::IsFile() const { return GetUnionTag() == UnionTag::File; }
     inline Declaration::Data::File::Reader Declaration::Data::Reader::GetFile() const { HE_ASSERT(IsFile()); return File::Reader(*this); }
 
-    inline bool Declaration::Data::Reader::IsAttribute() const { return GetTag() == Tag::Attribute; }
+    inline bool Declaration::Data::Reader::IsAttribute() const { return GetUnionTag() == UnionTag::Attribute; }
     inline Declaration::Data::Attribute::Reader Declaration::Data::Reader::GetAttribute() const { HE_ASSERT(IsAttribute()); return Attribute::Reader(*this); }
 
-    inline bool Declaration::Data::Reader::IsConstant() const { return GetTag() == Tag::Constant; }
+    inline bool Declaration::Data::Reader::IsConstant() const { return GetUnionTag() == UnionTag::Constant; }
     inline Declaration::Data::Constant::Reader Declaration::Data::Reader::GetConstant() const { HE_ASSERT(IsConstant()); return Constant::Reader(*this); }
 
-    inline bool Declaration::Data::Reader::IsEnum() const { return GetTag() == Tag::Enum; }
+    inline bool Declaration::Data::Reader::IsEnum() const { return GetUnionTag() == UnionTag::Enum; }
     inline Declaration::Data::Enum::Reader Declaration::Data::Reader::GetEnum() const { HE_ASSERT(IsEnum()); return Enum::Reader(*this); }
 
-    inline bool Declaration::Data::Reader::IsInterface() const { return GetTag() == Tag::Interface; }
+    inline bool Declaration::Data::Reader::IsInterface() const { return GetUnionTag() == UnionTag::Interface; }
     inline Declaration::Data::Interface::Reader Declaration::Data::Reader::GetInterface() const { HE_ASSERT(IsInterface()); return Interface::Reader(*this); }
 
-    inline bool Declaration::Data::Reader::IsStruct() const { return GetTag() == Tag::Struct; }
+    inline bool Declaration::Data::Reader::IsStruct() const { return GetUnionTag() == UnionTag::Struct; }
     inline Declaration::Data::Struct::Reader Declaration::Data::Reader::GetStruct() const { HE_ASSERT(IsStruct()); return Struct::Reader(*this); }
 
-    inline bool Declaration::Data::Builder::IsFile() const { return GetTag() == Tag::File; }
+    inline bool Declaration::Data::Builder::IsFile() const { return GetUnionTag() == UnionTag::File; }
     inline Declaration::Data::File::Builder Declaration::Data::Builder::GetFile() const { HE_ASSERT(IsFile()); return File::Builder(*this); }
-    inline Declaration::Data::File::Builder Declaration::Data::Builder::InitFile() { SetTag(Tag::File); SuperType::ClearPointerField(5); return File::Builder(*this); }
+    inline Declaration::Data::File::Builder Declaration::Data::Builder::InitFile() { SetUnionTag(UnionTag::File); SuperType::ClearPointerField(5); return File::Builder(*this); }
 
-    inline bool Declaration::Data::Builder::IsAttribute() const { return GetTag() == Tag::Attribute; }
+    inline bool Declaration::Data::Builder::IsAttribute() const { return GetUnionTag() == UnionTag::Attribute; }
     inline Declaration::Data::Attribute::Builder Declaration::Data::Builder::GetAttribute() const { HE_ASSERT(IsAttribute()); return Attribute::Builder(*this); }
-    inline Declaration::Data::Attribute::Builder Declaration::Data::Builder::InitAttribute() { SetTag(Tag::Attribute); SuperType::ClearPointerField(5); SuperType::ClearDataField(2); SuperType::ClearDataField(3); SuperType::ClearDataField(4); SuperType::ClearDataField(5); SuperType::ClearDataField(6); SuperType::ClearDataField(7); SuperType::ClearDataField(8); SuperType::ClearDataField(9); SuperType::ClearDataField(10); SuperType::ClearDataField(11); return Attribute::Builder(*this); }
+    inline Declaration::Data::Attribute::Builder Declaration::Data::Builder::InitAttribute() { SetUnionTag(UnionTag::Attribute); SuperType::ClearPointerField(5); SuperType::ClearDataField(2); SuperType::ClearDataField(3); SuperType::ClearDataField(4); SuperType::ClearDataField(5); SuperType::ClearDataField(6); SuperType::ClearDataField(7); SuperType::ClearDataField(8); SuperType::ClearDataField(9); SuperType::ClearDataField(10); SuperType::ClearDataField(11); return Attribute::Builder(*this); }
 
-    inline bool Declaration::Data::Builder::IsConstant() const { return GetTag() == Tag::Constant; }
+    inline bool Declaration::Data::Builder::IsConstant() const { return GetUnionTag() == UnionTag::Constant; }
     inline Declaration::Data::Constant::Builder Declaration::Data::Builder::GetConstant() const { HE_ASSERT(IsConstant()); return Constant::Builder(*this); }
-    inline Declaration::Data::Constant::Builder Declaration::Data::Builder::InitConstant() { SetTag(Tag::Constant); SuperType::ClearPointerField(5); SuperType::ClearPointerField(6); return Constant::Builder(*this); }
+    inline Declaration::Data::Constant::Builder Declaration::Data::Builder::InitConstant() { SetUnionTag(UnionTag::Constant); SuperType::ClearPointerField(5); SuperType::ClearPointerField(6); return Constant::Builder(*this); }
 
-    inline bool Declaration::Data::Builder::IsEnum() const { return GetTag() == Tag::Enum; }
+    inline bool Declaration::Data::Builder::IsEnum() const { return GetUnionTag() == UnionTag::Enum; }
     inline Declaration::Data::Enum::Builder Declaration::Data::Builder::GetEnum() const { HE_ASSERT(IsEnum()); return Enum::Builder(*this); }
-    inline Declaration::Data::Enum::Builder Declaration::Data::Builder::InitEnum() { SetTag(Tag::Enum); SuperType::ClearPointerField(5); return Enum::Builder(*this); }
+    inline Declaration::Data::Enum::Builder Declaration::Data::Builder::InitEnum() { SetUnionTag(UnionTag::Enum); SuperType::ClearPointerField(5); return Enum::Builder(*this); }
 
-    inline bool Declaration::Data::Builder::IsInterface() const { return GetTag() == Tag::Interface; }
+    inline bool Declaration::Data::Builder::IsInterface() const { return GetUnionTag() == UnionTag::Interface; }
     inline Declaration::Data::Interface::Builder Declaration::Data::Builder::GetInterface() const { HE_ASSERT(IsInterface()); return Interface::Builder(*this); }
-    inline Declaration::Data::Interface::Builder Declaration::Data::Builder::InitInterface() { SetTag(Tag::Interface); SuperType::ClearPointerField(5); SuperType::ClearPointerField(6); return Interface::Builder(*this); }
+    inline Declaration::Data::Interface::Builder Declaration::Data::Builder::InitInterface() { SetUnionTag(UnionTag::Interface); SuperType::ClearPointerField(5); SuperType::ClearPointerField(6); return Interface::Builder(*this); }
 
-    inline bool Declaration::Data::Builder::IsStruct() const { return GetTag() == Tag::Struct; }
+    inline bool Declaration::Data::Builder::IsStruct() const { return GetUnionTag() == UnionTag::Struct; }
     inline Declaration::Data::Struct::Builder Declaration::Data::Builder::GetStruct() const { HE_ASSERT(IsStruct()); return Struct::Builder(*this); }
-    inline Declaration::Data::Struct::Builder Declaration::Data::Builder::InitStruct() { SetTag(Tag::Struct); SuperType::ClearDataField(12); SuperType::ClearDataField(13); SuperType::ClearDataField(14); SuperType::ClearDataField(15); SuperType::ClearDataField(16); SuperType::ClearDataField(17); SuperType::ClearDataField(18); SuperType::ClearDataField(19); SuperType::ClearPointerField(5); return Struct::Builder(*this); }
+    inline Declaration::Data::Struct::Builder Declaration::Data::Builder::InitStruct() { SetUnionTag(UnionTag::Struct); SuperType::ClearDataField(12); SuperType::ClearDataField(13); SuperType::ClearDataField(14); SuperType::ClearDataField(15); SuperType::ClearDataField(16); SuperType::ClearDataField(17); SuperType::ClearDataField(18); SuperType::ClearDataField(19); SuperType::ClearPointerField(5); return Struct::Builder(*this); }
 
     inline bool Declaration::Reader::HasName() const { return SuperType::HasPointerField(0); }
     inline ::he::schema::String::Reader Declaration::Reader::GetName() const { return SuperType::GetPointerField(0).TryGetString(); }

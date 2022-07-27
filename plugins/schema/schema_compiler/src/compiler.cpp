@@ -15,9 +15,8 @@
 #include "he/core/string_view_fmt.h"
 #include "he/core/vector.h"
 
-#include <concepts>
-#include <set>
-#include <unordered_set>
+#include <limits>
+#include <type_traits>
 
 namespace he::schema
 {
@@ -30,6 +29,35 @@ namespace he::schema
         SchemaFile::Builder schema = m_builder.AddStruct<SchemaFile>();
         m_builder.SetRoot(schema);
         CompileNode(ast.root, schema.InitRoot());
+
+        // Struct values are delayed until after the rest of the schema is created. This is so that
+        // we can look up the struct declaration in the schema and use it to create the value here.
+        // Lists are similarly delayed because they may contain structures.
+        // All other values are created as they are encountered in the schema.
+        for (const PendingValue& pending : m_pendingValues)
+        {
+            const Type::Data::Builder typeData = pending.type.GetData();
+
+            if (pending.ast->kind == AstExpression::Kind::Tuple)
+            {
+                // Shouldn't be possible to not find this because if the ID is set on typeData,
+                // then the verifier must have found a valid node.
+                const AstNode* structDeclNode = m_context->FindNodeById(typeData.GetStruct().GetId());
+                HE_ASSERT(structDeclNode && structDeclNode->kind == AstNode::Kind::Struct);
+
+                const Type::Data::Struct::Builder structType = typeData.GetStruct();
+                StructBuilder st = CreateStructValue(structType, *pending.ast, *pending.scope);
+                pending.value.GetData().InitStruct().Set(st);
+            }
+            else
+            {
+                HE_ASSERT(pending.ast->kind == AstExpression::Kind::Sequence);
+
+                const Type::Builder elementType = typeData.IsArray() ? typeData.GetArray().GetElementType() : typeData.GetList().GetElementType();
+                ListBuilder list = CreateListValue(elementType, *pending.ast, *pending.scope);
+                pending.value.GetData().InitList().Set(list);
+            }
+        }
 
         return m_valid;
     }
@@ -81,6 +109,8 @@ namespace he::schema
                 m_valid = false;
                 break;
         }
+
+        TrackDecl(node.location, decl);
     }
 
     void Compiler::CompileAttribute(const AstNode& node, Declaration::Builder decl)
@@ -128,7 +158,7 @@ namespace he::schema
     {
         Declaration::Data::File::Builder fileDecl = decl.GetData().InitFile();
 
-        he::String buf(Allocator::GetTemp());
+        he::String buf;
         for (const AstExpression& item : node.file.nameSpace.qualified.names)
         {
             HE_ASSERT(item.kind == AstExpression::Kind::Identifier);
@@ -266,13 +296,14 @@ namespace he::schema
                     field.SetAttributes(CreateAttributes(child.attributes, node));
 
                     Declaration::Builder groupStruct = children[childIndex];
-                    he::String name(Allocator::GetTemp());
+                    he::String name;
                     name = child.name;
                     name[0] = ToUpper(name[0]);
                     groupStruct.InitName(name);
                     groupStruct.SetId(MakeTypeId(name, decl.GetId()));
                     groupStruct.SetParentId(decl.GetId());
                     CompileStruct(child, groupStruct);
+                    TrackDecl(child.location, groupStruct);
 
                     Field::Meta::Group::Builder group = field.GetMeta().InitGroup();
                     group.SetTypeId(groupStruct.GetId());
@@ -290,13 +321,14 @@ namespace he::schema
                     field.SetAttributes(CreateAttributes(child.attributes, node));
 
                     Declaration::Builder unionStruct = children[childIndex];
-                    he::String name(Allocator::GetTemp());
+                    he::String name;
                     name = child.name;
                     name[0] = ToUpper(name[0]);
                     unionStruct.InitName(name);
                     unionStruct.SetId(MakeTypeId(name, decl.GetId()));
                     unionStruct.SetParentId(decl.GetId());
                     CompileStruct(child, unionStruct);
+                    TrackDecl(child.location, unionStruct);
 
                     Field::Meta::Union::Builder unionBuilder = field.GetMeta().InitUnion();
                     unionBuilder.SetTypeId(unionStruct.GetId());
@@ -324,16 +356,21 @@ namespace he::schema
 
     void Compiler::CompileField(const AstNode& node, Field::Builder field, uint16_t index)
     {
+        const List<Attribute>::Builder attributes = CreateAttributes(node.attributes, node);
+        const Type::Builder type = CreateType(node.field.type, *node.parent);
+        const Value::Builder value = CreateValue(type, node.field.defaultValue, node);
+
         HE_ASSERT(node.kind == AstNode::Kind::Field);
         field.InitName(node.name);
         field.SetDeclOrder(index);
         field.SetUnionTag(0); // Set during struct layout
-        field.SetAttributes(CreateAttributes(node.attributes, node));
+        field.SetAttributes(attributes);
+
         Field::Meta::Normal::Builder normal = field.GetMeta().InitNormal();
-        normal.SetType(CreateType(node.field.type, *node.parent));
+        normal.SetType(type);
         normal.SetOrdinal(static_cast<uint16_t>(node.id));
         normal.SetIndex(0); // Set during struct layout
-        normal.SetDefaultValue(CreateValue(normal.GetType(), node.field.defaultValue, node));
+        normal.SetDefaultValue(value);
         normal.SetDataOffset(0); // Set during struct layout
     }
 
@@ -350,7 +387,7 @@ namespace he::schema
             case AstMethodParams::Kind::Fields:
             {
                 Declaration::Builder paramStruct = children[childIndex];
-                he::String name(Allocator::GetTemp());
+                he::String name;
                 name = child.name;
                 name += suffix;
                 paramStruct.InitName(name);
@@ -410,7 +447,7 @@ namespace he::schema
         if (info.type)
         {
             HE_ASSERT(ast.kind == AstExpression::Kind::QualifiedName);
-            HE_ASSERT(info.tag == Type::Data::Tag::AnyPointer);
+            HE_ASSERT(info.tag == Type::Data::UnionTag::AnyPointer);
             switch (info.type->kind)
             {
                 case AstNode::Kind::Alias:
@@ -445,7 +482,7 @@ namespace he::schema
 
         switch (info.tag)
         {
-            case Type::Data::Tag::Array:
+            case Type::Data::UnionTag::Array:
             {
                 HE_ASSERT(ast.kind == AstExpression::Kind::Array);
                 Type::Builder elementType = CreateType(*ast.array.elementType, scope);
@@ -454,7 +491,7 @@ namespace he::schema
                 arr.SetSize(GetArraySize(*ast.array.size, scope));
                 break;
             }
-            case Type::Data::Tag::List:
+            case Type::Data::UnionTag::List:
             {
                 HE_ASSERT(ast.kind == AstExpression::Kind::List);
                 Type::Builder elementType = CreateType(*ast.list.elementType, scope);
@@ -462,32 +499,50 @@ namespace he::schema
                 list.SetElementType(elementType);
                 break;
             }
-            case Type::Data::Tag::AnyPointer:
+            case Type::Data::UnionTag::AnyPointer:
             {
                 HE_ASSERT(ast.kind == AstExpression::Kind::QualifiedName);
-                Type::Data::AnyPointer::Builder any = data.InitAnyPointer();
+                HE_ASSERT(ast.qualified.names.Size() == 1);
+                HE_ASSERT(ast.qualified.names.Front()->kind == AstExpression::Kind::Identifier);
+                HE_ASSERT(ast.qualified.names.Front()->identifier == KW_AnyPointer);
+                data.SetAnyPointer();
+                break;
+            }
+            case Type::Data::UnionTag::AnyStruct:
+            {
+                HE_ASSERT(ast.kind == AstExpression::Kind::QualifiedName);
+                HE_ASSERT(ast.qualified.names.Size() == 1);
+                HE_ASSERT(ast.qualified.names.Front()->kind == AstExpression::Kind::Identifier);
+                HE_ASSERT(ast.qualified.names.Front()->identifier == KW_AnyStruct);
+                data.SetAnyStruct();
+                break;
+            }
+            case Type::Data::UnionTag::AnyList:
+            {
+                HE_ASSERT(ast.kind == AstExpression::Kind::QualifiedName);
+                HE_ASSERT(ast.qualified.names.Size() == 1);
+                HE_ASSERT(ast.qualified.names.Front()->kind == AstExpression::Kind::Identifier);
+                HE_ASSERT(ast.qualified.names.Front()->identifier == KW_AnyList);
+                data.SetAnyList();
+                break;
+            }
+            case Type::Data::UnionTag::Parameter:
+            {
+                Type::Data::Parameter::Builder param = data.InitParameter();
 
                 // check if this is a generic parameter, if not we assume it is the keyword
                 const AstTypeParamRef& ref = info.typeParamRef;
-                if (ref.scope)
-                {
-                    any.SetParamScopeId(ref.scope->id);
-                    any.SetParamIndex(ref.index);
-                }
-                else
-                {
-                    HE_ASSERT(ast.qualified.names.Size() == 1);
-                    HE_ASSERT(ast.qualified.names.Front()->kind == AstExpression::Kind::Identifier);
-                    HE_ASSERT(ast.qualified.names.Front()->identifier == KW_AnyPointer);
-                }
+                HE_ASSERT(ref.scope);
+                param.SetScopeId(ref.scope->id);
+                param.SetIndex(ref.index);
                 break;
             }
             default:
             {
                 HE_ASSERT(ast.kind == AstExpression::Kind::QualifiedName);
                 HE_ASSERT(ast.qualified.names.Size() == 1 && ast.qualified.names.Front()->kind == AstExpression::Kind::Identifier);
-                HE_ASSERT(info.tag != Type::Data::Tag::Enum && info.tag != Type::Data::Tag::Struct && info.tag != Type::Data::Tag::Interface);
-                data.SetTag(info.tag);
+                HE_ASSERT(info.tag != Type::Data::UnionTag::Enum && info.tag != Type::Data::UnionTag::Struct && info.tag != Type::Data::UnionTag::Interface);
+                data.SetUnionTag(info.tag);
                 break;
             }
         }
@@ -543,232 +598,142 @@ namespace he::schema
     }
 
     template <typename T> requires(std::is_same_v<T, uint64_t> || std::is_same_v<T, int64_t>)
-    bool Compiler::SetInt(const AstFileLocation& location, T value, Type::Data::Reader type, Value::Data::Builder data)
+    void Compiler::SetInt(const AstFileLocation& location, T value, Type::Data::Builder type, Value::Data::Builder data)
     {
         if (type.IsInt8())
         {
-            const bool fitsMin = std::is_signed_v<T> ? value >= std::numeric_limits<int8_t>::min() : true;
-            if (fitsMin && value <= std::numeric_limits<int8_t>::max())
-            {
-                data.SetInt8(static_cast<int8_t>(value));
-                return true;
-            }
-
-            m_context->AddError(location, "Integer value out of range for type 'int8'");
-            return false;
+            data.SetInt8(ReadIntValue<int8_t>(location, value));
         }
-
-        if (type.IsInt16())
+        else if (type.IsInt16())
         {
-            const bool fitsMin = std::is_signed_v<T> ? value >= std::numeric_limits<int16_t>::min() : true;
-            if (fitsMin && value <= std::numeric_limits<int16_t>::max())
-            {
-                data.SetInt16(static_cast<int16_t>(value));
-                return true;
-            }
-
-            m_context->AddError(location, "Integer value out of range for type 'int16'");
-            return false;
+            data.SetInt16(ReadIntValue<int16_t>(location, value));
         }
-
-        if (type.IsInt32())
+        else if (type.IsInt32())
         {
-            const bool fitsMin = std::is_signed_v<T> ? value >= std::numeric_limits<int32_t>::min() : true;
-            if (fitsMin && value <= std::numeric_limits<int32_t>::max())
-            {
-                data.SetInt32(static_cast<int32_t>(value));
-                return true;
-            }
-
-            m_context->AddError(location, "Integer value out of range for type 'int32'");
-            return false;
+            data.SetInt32(ReadIntValue<int32_t>(location, value));
         }
-
-        if (type.IsInt64())
+        else if (type.IsInt64())
         {
-            if (value <= static_cast<T>(std::numeric_limits<int64_t>::max()))
-            {
-                data.SetInt64(static_cast<int64_t>(value));
-                return true;
-            }
-
-            m_context->AddError(location, "Integer value out of range for type 'int64'");
-            return false;
+            data.SetInt64(ReadIntValue<int64_t>(location, value));
         }
-
-        if (type.IsUint8())
+        else if (type.IsUint8())
         {
-            if (value == static_cast<T>(-1) || (value >= 0 && value <= std::numeric_limits<uint8_t>::max()))
-            {
-                data.SetUint8(static_cast<int8_t>(value));
-                return true;
-            }
-
-            m_context->AddError(location, "Integer value out of range for type 'uint8'");
-            return false;
+            data.SetUint8(ReadIntValue<uint8_t>(location, value));
         }
-
-        if (type.IsUint16())
+        else if (type.IsUint16())
         {
-            if (value == static_cast<T>(-1) || (value >= 0 && value <= std::numeric_limits<uint16_t>::max()))
-            {
-                data.SetUint16(static_cast<int16_t>(value));
-                return true;
-            }
-
-            m_context->AddError(location, "Integer value out of range for type 'uint16'");
-            return false;
+            data.SetUint16(ReadIntValue<uint16_t>(location, value));
         }
-
-        if (type.IsUint32())
+        else if (type.IsUint32())
         {
-            if (value == static_cast<T>(-1) || (value >= 0 && value <= std::numeric_limits<uint32_t>::max()))
-            {
-                data.SetUint32(static_cast<uint32_t>(value));
-                return true;
-            }
-
-            m_context->AddError(location, "Integer value out of range for type 'uint32'");
-            return false;
+            data.SetUint32(ReadIntValue<uint32_t>(location, value));
         }
-
-        if (type.IsUint64())
+        else if (type.IsUint64())
         {
-            if (value == static_cast<T>(-1) || value >= 0)
-            {
-                data.SetUint64(static_cast<uint64_t>(value));
-                return true;
-            }
-
-            m_context->AddError(location, "Integer value out of range for type 'uint64'");
-            return false;
+            data.SetUint64(ReadIntValue<uint64_t>(location, value));
         }
-
-        m_context->AddError(location, "Expected {} value, but encountered integer expression", type.GetTag());
-        return {};
+        else
+        {
+            m_context->AddError(location, "Expected {} value, but encountered integer expression", type.GetUnionTag());
+            m_valid = false;
+        }
     }
 
-    Value::Builder Compiler::CreateValue(Type::Reader type, const AstExpression& ast, const AstNode& scope)
+    Value::Builder Compiler::CreateValue(Type::Builder type, const AstExpression& ast, const AstNode& scope)
     {
         if (ast.kind == AstExpression::Kind::Unknown)
             return {};
 
         Value::Builder value = m_builder.AddStruct<Value>();
         Value::Data::Builder data = value.GetData();
-
-        Type::Data::Reader typeData = type.GetData();
+        Type::Data::Builder typeData = type.GetData();
 
         switch (ast.kind)
         {
             case AstExpression::Kind::Blob:
             {
-                Vector<uint8_t> bytes(Allocator::GetTemp());
-                if (!DecodeBlob(ast, bytes))
-                    return {};
+                HE_ASSERT(typeData.IsBlob());
 
-                List<uint8_t>::Builder list = data.InitBlob(bytes.Size());
-                MemCopy(list.Data(), bytes.Data(), bytes.Size());
+                Vector<uint8_t> bytes;
+                if (DecodeBlob(ast, bytes))
+                {
+                    List<uint8_t>::Builder list = data.InitBlob(bytes.Size());
+                    MemCopy(list.Data(), bytes.Data(), bytes.Size());
+                }
+
                 break;
             }
             case AstExpression::Kind::Float:
             {
-                const double v = ast.floatingPoint;
+                HE_ASSERT(typeData.IsFloat32() || typeData.IsFloat64());
+
                 if (typeData.IsFloat32())
-                    data.SetFloat32(static_cast<float>(v));
-                else if (typeData.IsFloat64())
-                    data.SetFloat64(v);
+                    data.SetFloat32(ReadFloatValue<float>(ast));
                 else
-                {
-                    m_context->AddError(ast.location, "Unexpected floating-point value");
-                    m_valid = false;
-                    return {};
-                }
+                    data.SetFloat64(ReadFloatValue<double>(ast));
+
                 break;
             }
             case AstExpression::Kind::Sequence:
             {
-                Type::Reader elementType = typeData.IsArray() ? typeData.GetArray().GetElementType() : typeData.GetList().GetElementType();
-                List<Value>::Builder list = data.InitList(ast.sequence.Size());
+                HE_ASSERT(typeData.IsArray() || typeData.IsList());
 
-                uint16_t i = 0;
-                for (const AstExpression& item : ast.sequence)
-                {
-                    Value::Builder itemValue = CreateValue(elementType, item, scope);
-                    list.Set(i++, itemValue);
-                }
+                PendingValue& v = m_pendingValues.EmplaceBack();
+                v.ast = &ast;
+                v.scope = &scope;
+                v.type = type;
+                v.value = value;
                 break;
             }
             case AstExpression::Kind::QualifiedName:
             {
-                const AstNode* valueNode = m_context->FindNodeByName(ast, scope);
-                HE_ASSERT(valueNode);
-                HE_ASSERT(valueNode->kind == AstNode::Kind::Enumerator || valueNode->kind == AstNode::Kind::Constant);
+                HE_ASSERT(typeData.IsEnum() || typeData.IsBool());
 
-                if (valueNode->kind == AstNode::Kind::Constant)
-                    return CreateValue(type, valueNode->constant.value, *valueNode->parent);
+                if (typeData.IsEnum())
+                    data.SetEnum(ReadEnumValue(ast, scope));
+                else
+                    data.SetBool(ReadBoolValue(ast));
 
-                data.SetEnum(static_cast<uint16_t>(valueNode->id));
                 break;
             }
             case AstExpression::Kind::SignedInt:
             {
-                if (!SetInt(ast.location, ast.signedInt, typeData, data))
-                {
-                    m_valid = false;
-                    return {};
-                }
+                HE_ASSERT(typeData.IsInt8() || typeData.IsInt16() || typeData.IsInt32() || typeData.IsInt64()
+                    || typeData.IsUint8() || typeData.IsUint16() || typeData.IsUint32() || typeData.IsUint64());
+
+                SetInt(ast.location, ast.signedInt, typeData, data);
+                break;
+            }
+            case AstExpression::Kind::UnsignedInt:
+            {
+                HE_ASSERT(typeData.IsInt8() || typeData.IsInt16() || typeData.IsInt32() || typeData.IsInt64()
+                    || typeData.IsUint8() || typeData.IsUint16() || typeData.IsUint32() || typeData.IsUint64());
+
+                SetInt(ast.location, ast.unsignedInt, typeData, data);
                 break;
             }
             case AstExpression::Kind::String:
             {
                 HE_ASSERT(typeData.IsString());
 
-                he::String str(Allocator::GetTemp());
-                if (!m_context->DecodeString(ast, str))
+                he::String str;
+                if (m_context->DecodeString(ast, str))
                 {
-                    m_valid = false;
-                    return {};
+                    data.InitString(str);
+                    return value;
                 }
-                data.InitString(str);
+
                 break;
             }
             case AstExpression::Kind::Tuple:
             {
                 HE_ASSERT(typeData.IsStruct());
 
-                // Shouldn't be possible to not find this because if the ID is set on typeData,
-                // then the verifier must have found a valid node.
-                const AstNode* structDeclNode = m_context->FindNodeById(typeData.GetStruct().GetId());
-                HE_ASSERT(structDeclNode && structDeclNode->kind == AstNode::Kind::Struct);
-
-                List<Value::TupleValue>::Builder list = data.InitTuple(ast.tuple.Size());
-                uint16_t i = 0;
-                for (const AstTupleParam& item : ast.tuple)
-                {
-                    for (const AstNode& child : structDeclNode->children)
-                    {
-                        if (child.kind == AstNode::Kind::Field && child.name == item.name)
-                        {
-                            Type::Reader fieldType = CreateType(child.field.type, *structDeclNode);
-                            Value::Builder itemValue = CreateValue(fieldType, item.value, scope);
-
-                            Value::TupleValue::Builder v = m_builder.AddStruct<Value::TupleValue>();
-                            v.InitName(item.name);
-                            v.SetValue(itemValue);
-                            list.Set(i++, v);
-                            break;
-                        }
-                    }
-                }
-                break;
-            }
-            case AstExpression::Kind::UnsignedInt:
-            {
-                if (!SetInt(ast.location, ast.unsignedInt, typeData, data))
-                {
-                    m_valid = false;
-                    return {};
-                }
+                PendingValue& v = m_pendingValues.EmplaceBack();
+                v.ast = &ast;
+                v.scope = &scope;
+                v.type = type;
+                v.value = value;
                 break;
             }
 
@@ -779,8 +744,9 @@ namespace he::schema
             case AstExpression::Kind::Identifier:
             case AstExpression::Kind::Namespace:
             case AstExpression::Kind::Unknown:
-                HE_ASSERT(false, HE_MSG("Invalid value type. Verify should've caught this."));
-                return {};
+                HE_ASSERT(false, HE_MSG("Invalid value type. This is a verifier bug."));
+                m_valid = false;
+                break;
         }
 
         return value;
@@ -866,7 +832,7 @@ namespace he::schema
         {
             m_context->AddError(ast.location, "Invalid blob byte string, there is a trailing nibble");
             m_valid = false;
-            return {};
+            return false;
         }
 
         return true;
@@ -892,6 +858,331 @@ namespace he::schema
             default:
                 HE_ASSERT(false, HE_MSG("Encountered invalid array size value type. This should've been verified already."));
                 return 0;
+        }
+    }
+
+    ListBuilder Compiler::CreateListValue(const Type::Builder elementType, const AstExpression& ast, const AstNode& scope)
+    {
+        HE_ASSERT(ast.kind == AstExpression::Kind::Sequence);
+
+        const Type::Data::UnionTag elementTag = elementType.GetData().GetUnionTag();
+
+        ElementSize elementSize = ElementSize::Void;
+        switch (elementTag)
+        {
+            case Type::Data::UnionTag::Bool: elementSize = ElementSize::Bit; break;
+            case Type::Data::UnionTag::Int8: elementSize = ElementSize::Byte; break;
+            case Type::Data::UnionTag::Int16: elementSize = ElementSize::TwoBytes; break;
+            case Type::Data::UnionTag::Int32: elementSize = ElementSize::FourBytes; break;
+            case Type::Data::UnionTag::Int64: elementSize = ElementSize::EightBytes; break;
+            case Type::Data::UnionTag::Uint8: elementSize = ElementSize::Byte; break;
+            case Type::Data::UnionTag::Uint16: elementSize = ElementSize::TwoBytes; break;
+            case Type::Data::UnionTag::Uint32: elementSize = ElementSize::FourBytes; break;
+            case Type::Data::UnionTag::Uint64: elementSize = ElementSize::EightBytes; break;
+            case Type::Data::UnionTag::Float32: elementSize = ElementSize::FourBytes; break;
+            case Type::Data::UnionTag::Float64: elementSize = ElementSize::EightBytes; break;
+            case Type::Data::UnionTag::Blob: elementSize = ElementSize::Pointer; break;
+            case Type::Data::UnionTag::String: elementSize = ElementSize::Pointer; break;
+            case Type::Data::UnionTag::List: elementSize = ElementSize::Pointer; break;
+            case Type::Data::UnionTag::Enum: elementSize = ElementSize::TwoBytes; break;
+            case Type::Data::UnionTag::Struct: elementSize = ElementSize::Composite; break;
+            case Type::Data::UnionTag::Array:
+                HE_ASSERT(false, HE_MSG("Arrays cannot be nested in lists or other arrays"));
+                break;
+            case Type::Data::UnionTag::Interface:
+            case Type::Data::UnionTag::AnyPointer:
+            case Type::Data::UnionTag::AnyStruct:
+            case Type::Data::UnionTag::AnyList:
+            case Type::Data::UnionTag::Parameter:
+            case Type::Data::UnionTag::Void:
+                HE_ASSERT(false, HE_MSG("{:s} cannot have a default value", elementTag));
+                break;
+        }
+
+        const uint32_t size = ast.sequence.Size();
+        ListBuilder list = m_builder.AddList(elementSize, size);
+
+        uint16_t i = 0;
+        for (const AstExpression& value : ast.sequence)
+        {
+            switch (elementTag)
+            {
+                case Type::Data::UnionTag::Bool: list.SetDataElement<bool>(i, ReadBoolValue(value)); break;
+                case Type::Data::UnionTag::Int8: list.SetDataElement<int8_t>(i, ReadIntValue<int8_t>(value)); break;
+                case Type::Data::UnionTag::Int16: list.SetDataElement<int16_t>(i, ReadIntValue<int16_t>(value)); break;
+                case Type::Data::UnionTag::Int32: list.SetDataElement<int32_t>(i, ReadIntValue<int32_t>(value)); break;
+                case Type::Data::UnionTag::Int64: list.SetDataElement<int64_t>(i, ReadIntValue<int64_t>(value)); break;
+                case Type::Data::UnionTag::Uint8: list.SetDataElement<uint8_t>(i, ReadIntValue<uint8_t>(value)); break;
+                case Type::Data::UnionTag::Uint16: list.SetDataElement<uint16_t>(i, ReadIntValue<uint16_t>(value)); break;
+                case Type::Data::UnionTag::Uint32: list.SetDataElement<uint32_t>(i, ReadIntValue<uint32_t>(value)); break;
+                case Type::Data::UnionTag::Uint64: list.SetDataElement<uint64_t>(i, ReadIntValue<uint64_t>(value)); break;
+                case Type::Data::UnionTag::Float32: list.SetDataElement<float>(i, ReadFloatValue<float>(value)); break;
+                case Type::Data::UnionTag::Float64: list.SetDataElement<double>(i, ReadFloatValue<double>(value)); break;
+                case Type::Data::UnionTag::Enum: list.SetDataElement<uint16_t>(i, ReadEnumValue(value, scope)); break;
+                case Type::Data::UnionTag::Blob:
+                {
+                    Vector<uint8_t> bytes;
+                    if (DecodeBlob(value, bytes))
+                    {
+                        List<uint8_t>::Builder blob = m_builder.AddBlob(bytes);
+                        list.SetPointerElement(i, blob);
+                    }
+                    break;
+                }
+                case Type::Data::UnionTag::String:
+                {
+                    he::String str;
+                    if (m_context->DecodeString(ast, str))
+                    {
+                        String::Builder strBuilder = m_builder.AddString(str);
+                        list.SetPointerElement(i, strBuilder);
+                    }
+                    else
+                    {
+                        m_valid = false;
+                    }
+                    break;
+                }
+                case Type::Data::UnionTag::List:
+                {
+                    const Type::Builder subElementType = elementType.GetData().GetList().GetElementType();
+                    ListBuilder v = CreateListValue(subElementType, value, scope);
+                    list.SetPointerElement(i, v);
+                    break;
+                }
+                case Type::Data::UnionTag::Struct:
+                {
+                    const Declaration::Builder decl = m_context->GetDecl(elementType.GetData().GetStruct().GetId());
+                    const Declaration::Data::Struct::Builder structDecl = decl.GetData().GetStruct();
+                    StructBuilder v = list.GetCompositeElement(i);
+                    FillStructValue(v, structDecl, value, scope);
+                    break;
+                }
+                case Type::Data::UnionTag::Array:
+                    HE_ASSERT(false, HE_MSG("Arrays cannot be nested in lists or other arrays"));
+                    break;
+                case Type::Data::UnionTag::Interface:
+                case Type::Data::UnionTag::AnyPointer:
+                case Type::Data::UnionTag::AnyStruct:
+                case Type::Data::UnionTag::AnyList:
+                case Type::Data::UnionTag::Parameter:
+                case Type::Data::UnionTag::Void:
+                    HE_ASSERT(false, HE_MSG("{} types cannot have default values", elementTag));
+                    break;
+            }
+
+            ++i;
+        }
+
+        return list;
+    }
+
+    StructBuilder Compiler::CreateStructValue(const Type::Data::Struct::Builder structType, const AstExpression& ast, const AstNode& scope)
+    {
+        const Declaration::Builder decl = m_context->GetDecl(structType.GetId());
+        const Declaration::Data::Struct::Builder structDecl = decl.GetData().GetStruct();
+
+        StructBuilder st = m_builder.AddStruct(structDecl.GetDataFieldCount(), structDecl.GetDataWordSize(), structDecl.GetPointerCount());
+        FillStructValue(st, structDecl, ast, scope);
+        return st;
+    }
+
+    void Compiler::FillStructValue(StructBuilder dst, const Declaration::Data::Struct::Builder structDecl, const AstExpression& ast, const AstNode& scope)
+    {
+        HE_ASSERT(ast.kind == AstExpression::Kind::Tuple);
+
+        for (const AstTupleParam& item : ast.tuple)
+        {
+            for (const Field::Builder field : structDecl.GetFields())
+            {
+                if (item.name != field.GetName())
+                    continue;
+
+                const Field::Meta::Builder fieldMeta = field.GetMeta();
+
+                HE_ASSERT(!fieldMeta.IsUnion(), HE_MSG("Union fields cannot have a default value"));
+
+                if (fieldMeta.IsGroup())
+                {
+                    HE_ASSERT(item.value.kind == AstExpression::Kind::Tuple);
+                    const Declaration::Builder groupDecl = m_context->GetDecl(fieldMeta.GetGroup().GetTypeId());
+                    const Declaration::Data::Struct::Builder groupStructDecl = groupDecl.GetData().GetStruct();
+                    FillStructValue(dst, groupStructDecl, item.value, scope);
+                }
+                else
+                {
+                    const Field::Meta::Normal::Builder norm = fieldMeta.GetNormal();
+                    FillStructField(dst, norm.GetType().GetData(), norm.GetIndex(), norm.GetDataOffset(), item.value, scope);
+                }
+            }
+        }
+    }
+
+    void Compiler::FillStructField(StructBuilder dst, const Type::Data::Builder type, uint16_t index, uint32_t dataOffset, const AstExpression& ast, const AstNode& scope)
+    {
+        switch (type.GetUnionTag())
+        {
+            case Type::Data::UnionTag::Bool: dst.SetAndMarkDataField<bool>(index, dataOffset, ReadBoolValue(ast)); break;
+            case Type::Data::UnionTag::Int8: dst.SetAndMarkDataField<int8_t>(index, dataOffset, ReadIntValue<int8_t>(ast)); break;
+            case Type::Data::UnionTag::Int16: dst.SetAndMarkDataField<int16_t>(index, dataOffset, ReadIntValue<int16_t>(ast)); break;
+            case Type::Data::UnionTag::Int32: dst.SetAndMarkDataField<int32_t>(index, dataOffset, ReadIntValue<int32_t>(ast)); break;
+            case Type::Data::UnionTag::Int64: dst.SetAndMarkDataField<int64_t>(index, dataOffset, ReadIntValue<int64_t>(ast)); break;
+            case Type::Data::UnionTag::Uint8: dst.SetAndMarkDataField<uint8_t>(index, dataOffset, ReadIntValue<uint8_t>(ast)); break;
+            case Type::Data::UnionTag::Uint16: dst.SetAndMarkDataField<uint16_t>(index, dataOffset, ReadIntValue<uint16_t>(ast)); break;
+            case Type::Data::UnionTag::Uint32: dst.SetAndMarkDataField<uint32_t>(index, dataOffset, ReadIntValue<uint32_t>(ast)); break;
+            case Type::Data::UnionTag::Uint64: dst.SetAndMarkDataField<uint64_t>(index, dataOffset, ReadIntValue<uint64_t>(ast)); break;
+            case Type::Data::UnionTag::Float32: dst.SetAndMarkDataField<float>(index, dataOffset, ReadFloatValue<float>(ast)); break;
+            case Type::Data::UnionTag::Float64: dst.SetAndMarkDataField<double>(index, dataOffset, ReadFloatValue<double>(ast)); break;
+            case Type::Data::UnionTag::Enum: dst.SetAndMarkDataField<uint16_t>(index, dataOffset, ReadEnumValue(ast, scope)); break;
+            case Type::Data::UnionTag::Blob:
+            {
+                Vector<uint8_t> bytes;
+                if (DecodeBlob(ast, bytes))
+                {
+                    List<uint8_t>::Builder blob = m_builder.AddBlob(bytes);
+                    dst.GetPointerField(index).Set(blob);
+                }
+                break;
+            }
+            case Type::Data::UnionTag::String:
+            {
+                he::String str;
+                if (m_context->DecodeString(ast, str))
+                {
+                    String::Builder strBuilder = m_builder.AddString(str);
+                    dst.GetPointerField(index).Set(strBuilder);
+                }
+                else
+                {
+                    m_valid = false;
+                }
+                break;
+            }
+            case Type::Data::UnionTag::Array:
+            {
+                HE_ASSERT(ast.kind == AstExpression::Kind::Sequence);
+
+                const Type::Data::Array::Builder arrayType = type.GetArray();
+                const Type::Builder elementType = arrayType.GetElementType();
+                const uint16_t size = arrayType.GetSize();
+                const bool elementIsPointer = IsPointer(elementType);
+
+                uint16_t i = 0;
+                for (const AstExpression& item : ast.sequence)
+                {
+                    if (!HE_VERIFY(i < size, HE_MSG("Sequence longer than array size. This is a verifier bug.")))
+                    {
+                        m_valid = false;
+                        break;
+                    }
+
+                    if (elementIsPointer)
+                        FillStructField(dst, elementType.GetData(), index + i, 0, item, scope);
+                    else
+                        FillStructField(dst, elementType.GetData(), index, dataOffset + i, item, scope);
+
+                    ++i;
+                }
+                break;
+            }
+            case Type::Data::UnionTag::List:
+            {
+                const Type::Builder elementType = type.GetList().GetElementType();
+                ListBuilder list = CreateListValue(elementType, ast, scope);
+                dst.GetPointerField(index).Set(list);
+                break;
+            }
+            case Type::Data::UnionTag::Struct:
+            {
+                const Type::Data::Struct::Builder structType = type.GetStruct();
+                StructBuilder st = CreateStructValue(structType, ast, scope);
+                dst.GetPointerField(index).Set(st);
+                break;
+            }
+            case Type::Data::UnionTag::Interface:
+            case Type::Data::UnionTag::AnyPointer:
+            case Type::Data::UnionTag::AnyStruct:
+            case Type::Data::UnionTag::AnyList:
+            case Type::Data::UnionTag::Parameter:
+            case Type::Data::UnionTag::Void:
+                HE_ASSERT(false, HE_MSG("{:s} types cannot have default values", type.GetUnionTag()));
+                break;
+        }
+    }
+
+    bool Compiler::ReadBoolValue(const AstExpression& ast) const
+    {
+        HE_ASSERT(ast.qualified.names.Size() == 1 && ast.qualified.names.Front()->kind == AstExpression::Kind::Identifier);
+        return ast.qualified.names.Front()->identifier == KW_True;
+    }
+
+    uint16_t Compiler::ReadEnumValue(const AstExpression& ast, const AstNode& scope) const
+    {
+        const AstNode* valueNode = m_context->FindNodeByName(ast, scope);
+        HE_ASSERT(valueNode);
+        HE_ASSERT(valueNode->kind == AstNode::Kind::Enumerator || valueNode->kind == AstNode::Kind::Constant);
+
+        if (valueNode->kind == AstNode::Kind::Constant)
+        {
+            return ReadEnumValue(valueNode->constant.value, *valueNode->parent);
+        }
+
+        return static_cast<uint16_t>(valueNode->id);
+    }
+
+    template <typename OutType, typename InType>
+    OutType Compiler::ReadIntValue(const AstFileLocation& location, InType value)
+    {
+        OutType out = static_cast<OutType>(value);
+
+        if (static_cast<InType>(out) != value)
+        {
+            m_context->AddError(location, "Integer value out of range for type.");
+            m_valid = false;
+        }
+
+        return out;
+    }
+
+    template <typename T>
+    T Compiler::ReadIntValue(const AstExpression& ast)
+    {
+        HE_ASSERT(ast.kind == AstExpression::Kind::SignedInt || ast.kind == AstExpression::Kind::UnsignedInt);
+
+        T value = 0;
+
+        if (ast.kind == AstExpression::Kind::SignedInt)
+            value = ReadIntValue<T>(ast.location, ast.signedInt);
+        else
+            value = ReadIntValue<T>(ast.location, ast.unsignedInt);
+
+        return value;
+    }
+
+    template <typename T>
+    T Compiler::ReadFloatValue(const AstExpression& ast)
+    {
+        HE_ASSERT(ast.kind == AstExpression::Kind::Float);
+
+        if constexpr (std::is_same_v<T, float>)
+        {
+            if (ast.floatingPoint < std::numeric_limits<float>::lowest() || ast.floatingPoint > std::numeric_limits<float>::max())
+            {
+                m_context->AddError(ast.location, "Floating-pointer value out of range for type.");
+                m_valid = false;
+            }
+        }
+
+        return static_cast<T>(ast.floatingPoint);
+    }
+
+    void Compiler::TrackDecl(const AstFileLocation& location, Declaration::Builder decl)
+    {
+        if (!m_context->TrackDecl(decl))
+        {
+            const Declaration::Builder otherDecl = m_context->GetDecl(decl.GetId());
+            m_context->AddError(location, "Duplicate ID detected, this declaration collides with '{}' defined elsewhere.", otherDecl.GetName().AsView());
+            m_valid = false;
         }
     }
 }

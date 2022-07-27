@@ -406,7 +406,7 @@ namespace he::schema
 
         bool HasDataField(uint16_t index) const
         {
-            if (!HE_VERIFY(IsValid()))
+            if (!IsValid())
                 return false;
 
             const uint16_t dataFieldCount = DataFieldCount();
@@ -448,7 +448,7 @@ namespace he::schema
 
         PointerReader GetPointerField(uint16_t index) const
         {
-            if (!HE_VERIFY(IsValid()))
+            if (!IsValid())
                 return PointerReader();
 
             if (index < m_pointerCount) [[likely]]

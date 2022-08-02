@@ -612,7 +612,7 @@ namespace he::schema
                 if (hasDefault)
                     m_writer.Write(", ");
             }
-            else if (fieldTypeData.IsAnyPointer())
+            else if (fieldTypeData.IsAnyPointer() || fieldTypeData.IsAnyStruct() || fieldTypeData.IsAnyList())
             {
                 HE_ASSERT(!hasDefault);
                 m_writer.Write("return SuperType::GetPointerField({}", norm.GetIndex());
@@ -866,7 +866,7 @@ namespace he::schema
                 m_writer.Write("SetUnionTag(UnionTag::{}); ", upperCamelName);
 
             const Type::Data::UnionTag getterKind = fieldTypeData.IsBlob() ? Type::Data::UnionTag::List : fieldTypeData.GetUnionTag();
-            if (fieldTypeData.IsAnyPointer())
+            if (fieldTypeData.IsAnyPointer() || fieldTypeData.IsAnyStruct() || fieldTypeData.IsAnyList())
             {
                 m_writer.Write("return SuperType::GetPointerField({}); }}\n", norm.GetIndex());
             }
@@ -1024,9 +1024,6 @@ namespace he::schema
 
         m_writer.WriteLine(HE_ID_FMT ", " HE_ID_FMT ", DeclKind::{:s}, {}, {}, {}, (RawFileSchema_{:016x} + {}),",
             decl.GetId(), decl.GetParentId(), decl.GetData().GetUnionTag(), dataFieldCount, dataWordSize, pointerCount, m_root.GetId(), schemaOffset);
-
-        // TODO: remove default values
-        m_writer.WriteLine("nullptr, 0,");
 
         if (!dependencies.empty())
             m_writer.WriteLine("Dependencies_{:016x}, HE_LENGTH_OF(Dependencies_{:016x}),", decl.GetId(), decl.GetId());

@@ -36,7 +36,6 @@ namespace he::schema
             return nullptr;
 
         const AstNode* scope = &scopeStart;
-        //const AstExpression* expr = begin;
 
         // If our name expression starts with a dot ('.') it will leave an empty identifier at
         // the beginning. This means that we should unwind and search from the top scope.
@@ -130,6 +129,11 @@ namespace he::schema
         // If we didn't find it in our scope check if any of the imports have it.
         for (const CompileContext* importCtx : m_imports)
         {
+            // TODO: Bug here! This finds names in other namespaces of includes without them
+            // being fully specified. For example my file with a namespace of `he.test1` can
+            // find `Type` defined in an import with a namespace of `he.test2` because we don't
+            // check for namespace equivalence or require fqn here.
+
             HE_ASSERT(importCtx->m_fullyParsed);
             const AstNode& root = importCtx->m_parser.Ast().root;
             HE_ASSERT(root.kind == AstNode::Kind::File);

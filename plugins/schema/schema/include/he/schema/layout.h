@@ -32,7 +32,8 @@ namespace he::schema
     struct AnyList { using Reader = PointerReader; using Builder = PointerBuilder; };
     struct String { class Reader; class Builder; };
     template <typename T> struct List { using ElementType = T; class Reader; class Builder; };
-    struct Blob { using Reader = typename List<uint8_t>::Reader; using Builder = typename List<uint8_t>::Builder; };
+
+    using Blob = List<uint8_t>;
 
     // --------------------------------------------------------------------------------------------
     constexpr uint32_t BytesPerWord = sizeof(Word);
@@ -589,7 +590,7 @@ namespace he::schema
         StructBuilder AddStruct(uint16_t dataFieldCount, uint16_t dataWordSize, uint16_t pointerCount);
         ListBuilder AddList(ElementSize elementSize, uint32_t elementCount);
         ListBuilder AddStructList(uint32_t elementCount, uint16_t dataFieldCount, uint16_t dataWordSize, uint16_t pointerCount);
-        List<uint8_t>::Builder AddBlob(Span<uint8_t> data);
+        List<uint8_t>::Builder AddBlob(Span<const uint8_t> data);
         String::Builder AddString(StringView str);
 
         template <typename T>

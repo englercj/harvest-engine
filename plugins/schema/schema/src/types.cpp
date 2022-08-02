@@ -45,7 +45,7 @@ namespace he
         switch (x)
         {
             case schema::DeclKind::Attribute: return "Attribute";
-            case schema::DeclKind::Const: return "Const";
+            case schema::DeclKind::Constant: return "Constant";
             case schema::DeclKind::Enum: return "Enum";
             case schema::DeclKind::File: return "File";
             case schema::DeclKind::Interface: return "Interface";

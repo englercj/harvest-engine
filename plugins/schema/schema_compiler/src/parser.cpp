@@ -1070,7 +1070,7 @@ namespace he::schema
         }
 
         using LargestType = std::conditional_t<std::is_signed_v<T>, int64_t, uint64_t>;
-        LargestType value = he::String::ToInteger<T>(begin, &end, base);
+        LargestType value = he::String::ToInteger<T>(begin, end, base);
 
         if (isSigned)
         {

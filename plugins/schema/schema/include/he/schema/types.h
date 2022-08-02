@@ -71,7 +71,7 @@ namespace he::schema
     enum class DeclKind : uint16_t
     {
         Attribute,
-        Const,
+        Constant,
         Enum,
         File,
         Interface,
@@ -103,13 +103,6 @@ namespace he::schema
 
         /// Pointer to the raw schema words for this declaration.
         const Word* const schema;
-
-        /// Pointer to the raw default value words for this declaration. If the declaration did
-        /// not need to generate a default value to point to, this is nullptr.
-        const Word* const defaultValues;
-
-        /// Number of words for the generated default values data.
-        const uint32_t defaultValuesSize;
 
         /// Array of pointers to types that are used by this declaration, in order of their IDs.
         const DeclInfo* const* dependencies;

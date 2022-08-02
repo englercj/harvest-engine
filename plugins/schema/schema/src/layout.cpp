@@ -242,7 +242,7 @@ namespace he::schema
         return String::Builder(list);
     }
 
-    List<uint8_t>::Builder Builder::AddBlob(Span<uint8_t> data)
+    List<uint8_t>::Builder Builder::AddBlob(Span<const uint8_t> data)
     {
         if (data.IsEmpty())
             return {};

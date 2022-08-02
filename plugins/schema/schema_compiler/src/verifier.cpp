@@ -73,7 +73,7 @@ namespace he::schema
 
         if (node.children.Size() > std::numeric_limits<uint16_t>::max())
         {
-            m_context->AddError(node.location, "{} has too many members. Max is UINT16_MAX ({})", node.kind, std::numeric_limits<uint16_t>::max());
+            m_context->AddError(node.location, "{:s} has too many members. Max is UINT16_MAX ({})", node.kind, std::numeric_limits<uint16_t>::max());
             return false;
         }
 
@@ -173,7 +173,7 @@ namespace he::schema
                 {
                     if (importExpr.kind != AstExpression::Kind::String)
                     {
-                        m_context->AddError(importExpr.location, "Expected string expression for import, but got {}", importExpr.kind);
+                        m_context->AddError(importExpr.location, "Expected string expression for import, but got {:s}", importExpr.kind);
                         return false;
                     }
 
@@ -272,7 +272,7 @@ namespace he::schema
             }
         }
 
-        m_context->AddError(node.location, "Unknown node type ({}) in AST. This is a parser bug.", node.kind);
+        m_context->AddError(node.location, "Unknown node type ({:s}) in AST. This is a parser bug.", node.kind);
         return false;
     }
 
@@ -311,7 +311,7 @@ namespace he::schema
 
             if (attrNode->kind != AstNode::Kind::Attribute)
             {
-                m_context->AddError(astAttr.location, "Expected attribute identifier, but got {}", attrNode->kind);
+                m_context->AddError(astAttr.location, "Expected attribute identifier, but got {:s}", attrNode->kind);
                 return false;
             }
 
@@ -513,7 +513,7 @@ namespace he::schema
 
                 if (params.type.kind != AstExpression::Kind::QualifiedName)
                 {
-                    m_context->AddError(params.type.location, "Expected structure name, but encountered {}", params.type.kind);
+                    m_context->AddError(params.type.location, "Expected structure name, but encountered {:s}", params.type.kind);
                     return false;
                 }
 
@@ -657,7 +657,7 @@ namespace he::schema
 
         if (ast.kind != AstExpression::Kind::QualifiedName)
         {
-            m_context->AddError(ast.location, "Expected type name, but encountered {}", ast.kind);
+            m_context->AddError(ast.location, "Expected type name, but encountered {:s}", ast.kind);
             return false;
         }
 
@@ -868,7 +868,7 @@ namespace he::schema
                         break;
 
                     default:
-                        m_context->AddError(ast.location, "Expected integer constant, but encountered constant of type {}", typeIt->second);
+                        m_context->AddError(ast.location, "Expected integer constant, but encountered constant of type {:s}", typeIt->second);
                         return false;
                 }
 
@@ -878,7 +878,7 @@ namespace he::schema
                 break;
             }
             default:
-                m_context->AddError(ast.location, "Expected unsigned integer or integer constant for array size, but got {}", ast.kind);
+                m_context->AddError(ast.location, "Expected unsigned integer or integer constant for array size, but got {:s}", ast.kind);
                 return false;
         }
 
@@ -1050,28 +1050,28 @@ namespace he::schema
                     return false;
                 }
 
-                // built-in type
-                if (builtinType != Type::Data::UnionTag::Bool)
+                // If we got here this must be a boolean value, otherwise we don't know what it is
+                if (astValue.qualified.names.Size() == 1
+                    && astValue.qualified.names.Front()->kind == AstExpression::Kind::Identifier
+                    && (astValue.qualified.names.Front()->identifier == KW_True || astValue.qualified.names.Front()->identifier == KW_False))
                 {
-                    m_context->AddError(valueNode->location, "Qualified name expressions are not valid values for this type.");
-                    return false;
+                    if (builtinType != Type::Data::UnionTag::Bool)
+                    {
+                        m_context->AddError(astValue.location, "The values `true` and `false` are only valid for bool types.");
+                        return false;
+                    }
+
+                    return true;
                 }
 
-                if (astValue.qualified.names.Size() != 1
-                    || astValue.qualified.names.Front()->kind != AstExpression::Kind::Identifier
-                    || (astValue.qualified.names.Front()->identifier != KW_True && astValue.qualified.names.Front()->identifier != KW_False))
-                {
-                    m_context->AddError(valueNode->location, "Expected true or false for value.");
-                    return false;
-                }
-
-                return true;
+                m_context->AddError(astValue.location, "Unknown qualified name in value expression. Is this value defined?");
+                return false;
             }
             case AstExpression::Kind::Tuple:
             {
                 if (astType.kind != AstExpression::Kind::QualifiedName)
                 {
-                    m_context->AddError(astValue.location, "A {} value expression is not valid for this type", astValue.kind);
+                    m_context->AddError(astValue.location, "A {:s} value expression is not valid for this type", astValue.kind);
                     return false;
                 }
 
@@ -1111,7 +1111,9 @@ namespace he::schema
                     const TypeValue& type = m_context->GetType(key);
                     if (type.tag != Type::Data::UnionTag::Void)
                     {
-                        m_context->AddError(astValue.location, "A {} expression cannot be used as a value", astValue.kind);
+                        // TODO: Bug here! Location should be the node, not the value (since it doesn't exist)
+                        // This information isn't passed through to here, so we need to do that for an accurate error.
+                        m_context->AddError(astValue.location, "Missing value expression, expected a {:s}", type.tag);
                         return false;
                     }
                 }
@@ -1123,11 +1125,11 @@ namespace he::schema
             case AstExpression::Kind::Generic:
             case AstExpression::Kind::Identifier:
             case AstExpression::Kind::Namespace:
-                m_context->AddError(astValue.location, "A {} expression cannot be used as a value", astValue.kind);
+                m_context->AddError(astValue.location, "A {:s} expression cannot be used as a value", astValue.kind);
                 return false;
         }
 
-        m_context->AddError(astValue.location, "Unknown expression type ({}) for value. This is a parser bug.", astValue.kind);
+        m_context->AddError(astValue.location, "Unknown expression type ({:s}) for value. This is a parser bug.", astValue.kind);
         return false;
     }
 

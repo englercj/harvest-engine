@@ -252,14 +252,12 @@ namespace he::schema
     {
         0x979e892c449bc4d8, 0x0000000000000000, DeclKind::File, 0, 0, 0, (RawFileSchema_979e892c449bc4d8 + 2),
         nullptr, 0,
-        nullptr, 0,
     };
 
     // Toml
     const DeclInfo DeclInfoForId<0xc209341a45619228>::Value =
     {
         0xc209341a45619228, 0x979e892c449bc4d8, DeclKind::Struct, 0, 0, 0, (RawFileSchema_979e892c449bc4d8 + 17),
-        nullptr, 0,
         nullptr, 0,
     };
 
@@ -268,14 +266,12 @@ namespace he::schema
     {
         0xc5144765ef1b906b, 0xc209341a45619228, DeclKind::Attribute, 0, 0, 0, (RawFileSchema_979e892c449bc4d8 + 163),
         nullptr, 0,
-        nullptr, 0,
     };
 
     // Toml::Hex
     const DeclInfo DeclInfoForId<0xadd3e5b7bc72e8a5>::Value =
     {
         0xadd3e5b7bc72e8a5, 0xc209341a45619228, DeclKind::Attribute, 0, 0, 0, (RawFileSchema_979e892c449bc4d8 + 175),
-        nullptr, 0,
         nullptr, 0,
     };
 
@@ -284,7 +280,6 @@ namespace he::schema
     {
         0xc218a66445285bb8, 0xc209341a45619228, DeclKind::Attribute, 0, 0, 0, (RawFileSchema_979e892c449bc4d8 + 187),
         nullptr, 0,
-        nullptr, 0,
     };
 
     // Toml::Base64
@@ -292,14 +287,12 @@ namespace he::schema
     {
         0xc2fc1f39cbc0264f, 0xc209341a45619228, DeclKind::Attribute, 0, 0, 0, (RawFileSchema_979e892c449bc4d8 + 199),
         nullptr, 0,
-        nullptr, 0,
     };
 
     // Uuid
     const DeclInfo DeclInfoForId<0xef69d825c0ea441b>::Value =
     {
         0xef69d825c0ea441b, 0x979e892c449bc4d8, DeclKind::Struct, 1, 3, 0, (RawFileSchema_979e892c449bc4d8 + 29),
-        nullptr, 0,
         nullptr, 0,
     };
 
@@ -311,7 +304,6 @@ namespace he::schema
     const DeclInfo DeclInfoForId<0xa66eff5acba76a75>::Value =
     {
         0xa66eff5acba76a75, 0x979e892c449bc4d8, DeclKind::Struct, 0, 0, 1, (RawFileSchema_979e892c449bc4d8 + 41),
-        nullptr, 0,
         Dependencies_a66eff5acba76a75, HE_LENGTH_OF(Dependencies_a66eff5acba76a75),
     };
 
@@ -323,7 +315,6 @@ namespace he::schema
     const DeclInfo DeclInfoForId<0xac8f534465c8369b>::Value =
     {
         0xac8f534465c8369b, 0xa66eff5acba76a75, DeclKind::Struct, 1, 2, 1, (RawFileSchema_979e892c449bc4d8 + 270),
-        nullptr, 0,
         Dependencies_ac8f534465c8369b, HE_LENGTH_OF(Dependencies_ac8f534465c8369b),
     };
 
@@ -335,7 +326,6 @@ namespace he::schema
     const DeclInfo DeclInfoForId<0xdd2b0f1a9d06a3b0>::Value =
     {
         0xdd2b0f1a9d06a3b0, 0x979e892c449bc4d8, DeclKind::Struct, 6, 3, 1, (RawFileSchema_979e892c449bc4d8 + 53),
-        nullptr, 0,
         Dependencies_dd2b0f1a9d06a3b0, HE_LENGTH_OF(Dependencies_dd2b0f1a9d06a3b0),
     };
 
@@ -352,7 +342,6 @@ namespace he::schema
     const DeclInfo DeclInfoForId<0xc37ce87995a2ca78>::Value =
     {
         0xc37ce87995a2ca78, 0xdd2b0f1a9d06a3b0, DeclKind::Struct, 6, 3, 1, (RawFileSchema_979e892c449bc4d8 + 336),
-        nullptr, 0,
         Dependencies_c37ce87995a2ca78, HE_LENGTH_OF(Dependencies_c37ce87995a2ca78),
     };
 
@@ -364,7 +353,6 @@ namespace he::schema
     const DeclInfo DeclInfoForId<0xc1d124ae8dd0aa95>::Value =
     {
         0xc1d124ae8dd0aa95, 0xc37ce87995a2ca78, DeclKind::Struct, 6, 3, 1, (RawFileSchema_979e892c449bc4d8 + 536),
-        nullptr, 0,
         Dependencies_c1d124ae8dd0aa95, HE_LENGTH_OF(Dependencies_c1d124ae8dd0aa95),
     };
 
@@ -376,7 +364,6 @@ namespace he::schema
     const DeclInfo DeclInfoForId<0xed43a001e459b840>::Value =
     {
         0xed43a001e459b840, 0xc37ce87995a2ca78, DeclKind::Struct, 6, 3, 1, (RawFileSchema_979e892c449bc4d8 + 548),
-        nullptr, 0,
         Dependencies_ed43a001e459b840, HE_LENGTH_OF(Dependencies_ed43a001e459b840),
     };
 
@@ -388,7 +375,6 @@ namespace he::schema
     const DeclInfo DeclInfoForId<0x857c744e5276d4b5>::Value =
     {
         0x857c744e5276d4b5, 0xc37ce87995a2ca78, DeclKind::Struct, 6, 3, 1, (RawFileSchema_979e892c449bc4d8 + 560),
-        nullptr, 0,
         Dependencies_857c744e5276d4b5, HE_LENGTH_OF(Dependencies_857c744e5276d4b5),
     };
 
@@ -400,7 +386,6 @@ namespace he::schema
     const DeclInfo DeclInfoForId<0x8e064c19f3d729f1>::Value =
     {
         0x8e064c19f3d729f1, 0xc37ce87995a2ca78, DeclKind::Struct, 6, 3, 1, (RawFileSchema_979e892c449bc4d8 + 572),
-        nullptr, 0,
         Dependencies_8e064c19f3d729f1, HE_LENGTH_OF(Dependencies_8e064c19f3d729f1),
     };
 
@@ -412,7 +397,6 @@ namespace he::schema
     const DeclInfo DeclInfoForId<0x9c00ee98d42bb48b>::Value =
     {
         0x9c00ee98d42bb48b, 0xc37ce87995a2ca78, DeclKind::Struct, 6, 3, 1, (RawFileSchema_979e892c449bc4d8 + 584),
-        nullptr, 0,
         Dependencies_9c00ee98d42bb48b, HE_LENGTH_OF(Dependencies_9c00ee98d42bb48b),
     };
 
@@ -420,7 +404,6 @@ namespace he::schema
     const DeclInfo DeclInfoForId<0xafc692a2adf7b907>::Value =
     {
         0xafc692a2adf7b907, 0xc37ce87995a2ca78, DeclKind::Struct, 6, 3, 1, (RawFileSchema_979e892c449bc4d8 + 596),
-        nullptr, 0,
         nullptr, 0,
     };
 
@@ -432,7 +415,6 @@ namespace he::schema
     const DeclInfo DeclInfoForId<0xa1a552dda5da9ae9>::Value =
     {
         0xa1a552dda5da9ae9, 0x979e892c449bc4d8, DeclKind::Struct, 0, 3, 1, (RawFileSchema_979e892c449bc4d8 + 65),
-        nullptr, 0,
         Dependencies_a1a552dda5da9ae9, HE_LENGTH_OF(Dependencies_a1a552dda5da9ae9),
     };
 
@@ -444,7 +426,6 @@ namespace he::schema
     const DeclInfo DeclInfoForId<0xbc63c2f6a4186852>::Value =
     {
         0xbc63c2f6a4186852, 0xa1a552dda5da9ae9, DeclKind::Struct, 0, 0, 2, (RawFileSchema_979e892c449bc4d8 + 878),
-        nullptr, 0,
         Dependencies_bc63c2f6a4186852, HE_LENGTH_OF(Dependencies_bc63c2f6a4186852),
     };
 
@@ -452,7 +433,6 @@ namespace he::schema
     const DeclInfo DeclInfoForId<0xda924af5c1761799>::Value =
     {
         0xda924af5c1761799, 0xa1a552dda5da9ae9, DeclKind::Struct, 0, 3, 1, (RawFileSchema_979e892c449bc4d8 + 890),
-        nullptr, 0,
         nullptr, 0,
     };
 
@@ -464,7 +444,6 @@ namespace he::schema
     const DeclInfo DeclInfoForId<0xf4155b14cbf230b8>::Value =
     {
         0xf4155b14cbf230b8, 0x979e892c449bc4d8, DeclKind::Struct, 1, 2, 1, (RawFileSchema_979e892c449bc4d8 + 77),
-        nullptr, 0,
         Dependencies_f4155b14cbf230b8, HE_LENGTH_OF(Dependencies_f4155b14cbf230b8),
     };
 
@@ -476,7 +455,6 @@ namespace he::schema
     const DeclInfo DeclInfoForId<0xd7baf7c88e03fa02>::Value =
     {
         0xd7baf7c88e03fa02, 0x979e892c449bc4d8, DeclKind::Struct, 2, 2, 2, (RawFileSchema_979e892c449bc4d8 + 89),
-        nullptr, 0,
         Dependencies_d7baf7c88e03fa02, HE_LENGTH_OF(Dependencies_d7baf7c88e03fa02),
     };
 
@@ -489,7 +467,6 @@ namespace he::schema
     const DeclInfo DeclInfoForId<0xcc214d2a9c304894>::Value =
     {
         0xcc214d2a9c304894, 0x979e892c449bc4d8, DeclKind::Struct, 7, 4, 4, (RawFileSchema_979e892c449bc4d8 + 101),
-        nullptr, 0,
         Dependencies_cc214d2a9c304894, HE_LENGTH_OF(Dependencies_cc214d2a9c304894),
     };
 
@@ -503,7 +480,6 @@ namespace he::schema
     const DeclInfo DeclInfoForId<0xcaa0cb1693b7d451>::Value =
     {
         0xcaa0cb1693b7d451, 0xcc214d2a9c304894, DeclKind::Struct, 7, 4, 4, (RawFileSchema_979e892c449bc4d8 + 1291),
-        nullptr, 0,
         Dependencies_caa0cb1693b7d451, HE_LENGTH_OF(Dependencies_caa0cb1693b7d451),
     };
 
@@ -516,7 +492,6 @@ namespace he::schema
     const DeclInfo DeclInfoForId<0xa88498c0a2ba743e>::Value =
     {
         0xa88498c0a2ba743e, 0xcaa0cb1693b7d451, DeclKind::Struct, 7, 4, 4, (RawFileSchema_979e892c449bc4d8 + 1359),
-        nullptr, 0,
         Dependencies_a88498c0a2ba743e, HE_LENGTH_OF(Dependencies_a88498c0a2ba743e),
     };
 
@@ -525,14 +500,12 @@ namespace he::schema
     {
         0xe63c151fb71df3a8, 0xcaa0cb1693b7d451, DeclKind::Struct, 7, 4, 4, (RawFileSchema_979e892c449bc4d8 + 1371),
         nullptr, 0,
-        nullptr, 0,
     };
 
     // Field::Meta::Union
     const DeclInfo DeclInfoForId<0xa351c96f08f70cc8>::Value =
     {
         0xa351c96f08f70cc8, 0xcaa0cb1693b7d451, DeclKind::Struct, 7, 4, 4, (RawFileSchema_979e892c449bc4d8 + 1383),
-        nullptr, 0,
         nullptr, 0,
     };
 
@@ -544,7 +517,6 @@ namespace he::schema
     const DeclInfo DeclInfoForId<0x9fc1b8877a1fdd29>::Value =
     {
         0x9fc1b8877a1fdd29, 0x979e892c449bc4d8, DeclKind::Struct, 4, 4, 3, (RawFileSchema_979e892c449bc4d8 + 113),
-        nullptr, 0,
         Dependencies_9fc1b8877a1fdd29, HE_LENGTH_OF(Dependencies_9fc1b8877a1fdd29),
     };
 
@@ -552,7 +524,6 @@ namespace he::schema
     const DeclInfo DeclInfoForId<0xa045f0dd3245ab5d>::Value =
     {
         0xa045f0dd3245ab5d, 0x979e892c449bc4d8, DeclKind::Struct, 2, 2, 2, (RawFileSchema_979e892c449bc4d8 + 125),
-        nullptr, 0,
         nullptr, 0,
     };
 
@@ -567,7 +538,6 @@ namespace he::schema
     const DeclInfo DeclInfoForId<0xd6eb382ff8ab299c>::Value =
     {
         0xd6eb382ff8ab299c, 0x979e892c449bc4d8, DeclKind::Struct, 20, 5, 7, (RawFileSchema_979e892c449bc4d8 + 137),
-        nullptr, 0,
         Dependencies_d6eb382ff8ab299c, HE_LENGTH_OF(Dependencies_d6eb382ff8ab299c),
     };
 
@@ -584,7 +554,6 @@ namespace he::schema
     const DeclInfo DeclInfoForId<0xc991ea09a07196a4>::Value =
     {
         0xc991ea09a07196a4, 0xd6eb382ff8ab299c, DeclKind::Struct, 20, 5, 7, (RawFileSchema_979e892c449bc4d8 + 1730),
-        nullptr, 0,
         Dependencies_c991ea09a07196a4, HE_LENGTH_OF(Dependencies_c991ea09a07196a4),
     };
 
@@ -592,7 +561,6 @@ namespace he::schema
     const DeclInfo DeclInfoForId<0x9daade8d780913d2>::Value =
     {
         0x9daade8d780913d2, 0xc991ea09a07196a4, DeclKind::Struct, 20, 5, 7, (RawFileSchema_979e892c449bc4d8 + 1864),
-        nullptr, 0,
         nullptr, 0,
     };
 
@@ -604,7 +572,6 @@ namespace he::schema
     const DeclInfo DeclInfoForId<0xaee6bea627f2e404>::Value =
     {
         0xaee6bea627f2e404, 0xc991ea09a07196a4, DeclKind::Struct, 20, 5, 7, (RawFileSchema_979e892c449bc4d8 + 1876),
-        nullptr, 0,
         Dependencies_aee6bea627f2e404, HE_LENGTH_OF(Dependencies_aee6bea627f2e404),
     };
 
@@ -617,7 +584,6 @@ namespace he::schema
     const DeclInfo DeclInfoForId<0xea1ead965998efd0>::Value =
     {
         0xea1ead965998efd0, 0xc991ea09a07196a4, DeclKind::Struct, 20, 5, 7, (RawFileSchema_979e892c449bc4d8 + 1888),
-        nullptr, 0,
         Dependencies_ea1ead965998efd0, HE_LENGTH_OF(Dependencies_ea1ead965998efd0),
     };
 
@@ -629,7 +595,6 @@ namespace he::schema
     const DeclInfo DeclInfoForId<0xb1105982b244c8c1>::Value =
     {
         0xb1105982b244c8c1, 0xc991ea09a07196a4, DeclKind::Struct, 20, 5, 7, (RawFileSchema_979e892c449bc4d8 + 1900),
-        nullptr, 0,
         Dependencies_b1105982b244c8c1, HE_LENGTH_OF(Dependencies_b1105982b244c8c1),
     };
 
@@ -642,7 +607,6 @@ namespace he::schema
     const DeclInfo DeclInfoForId<0x96db68a0fd0a0577>::Value =
     {
         0x96db68a0fd0a0577, 0xc991ea09a07196a4, DeclKind::Struct, 20, 5, 7, (RawFileSchema_979e892c449bc4d8 + 1912),
-        nullptr, 0,
         Dependencies_96db68a0fd0a0577, HE_LENGTH_OF(Dependencies_96db68a0fd0a0577),
     };
 
@@ -654,7 +618,6 @@ namespace he::schema
     const DeclInfo DeclInfoForId<0xe4d7f374357efe15>::Value =
     {
         0xe4d7f374357efe15, 0xc991ea09a07196a4, DeclKind::Struct, 20, 5, 7, (RawFileSchema_979e892c449bc4d8 + 1924),
-        nullptr, 0,
         Dependencies_e4d7f374357efe15, HE_LENGTH_OF(Dependencies_e4d7f374357efe15),
     };
 
@@ -666,7 +629,6 @@ namespace he::schema
     const DeclInfo DeclInfoForId<0x8a8a83386362f90d>::Value =
     {
         0x8a8a83386362f90d, 0x979e892c449bc4d8, DeclKind::Struct, 0, 0, 1, (RawFileSchema_979e892c449bc4d8 + 149),
-        nullptr, 0,
         Dependencies_8a8a83386362f90d, HE_LENGTH_OF(Dependencies_8a8a83386362f90d),
     };
 

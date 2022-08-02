@@ -61,19 +61,22 @@ namespace he::schema
         ListBuilder CreateListValue(const Type::Builder elementType, const AstExpression& ast, const AstNode& scope);
         StructBuilder CreateStructValue(const Type::Data::Struct::Builder structType, const AstExpression& ast, const AstNode& scope);
 
+        void FillValue(Value::Builder value, Type::Builder type, const AstExpression& ast, const AstNode& scope);
         void FillStructValue(StructBuilder dst, const Declaration::Data::Struct::Builder structDecl, const AstExpression& ast, const AstNode& scope);
         void FillStructField(StructBuilder dst, const Type::Data::Builder type, uint16_t index, uint32_t dataOffset, const AstExpression& ast, const AstNode& scope);
 
-        bool ReadBoolValue(const AstExpression& ast) const;
+        bool ReadBoolValue(const AstExpression& ast, const AstNode& scope) const;
         uint16_t ReadEnumValue(const AstExpression& ast, const AstNode& scope) const;
 
         template <typename OutType, typename InType>
         OutType ReadIntValue(const AstFileLocation& location, InType value);
 
-        template <typename T> T ReadIntValue(const AstExpression& ast);
-        template <typename T> T ReadFloatValue(const AstExpression& ast);
+        template <typename T> T ReadIntValue(const AstExpression& ast, const AstNode& scope);
+        template <typename T> T ReadFloatValue(const AstExpression& ast, const AstNode& scope);
 
         void TrackDecl(const AstFileLocation& location, Declaration::Builder decl);
+
+        const AstNode* TryResolveConstant(const AstExpression& ast, const AstNode& scope);
 
     private:
         struct PendingValue

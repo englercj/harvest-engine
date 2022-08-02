@@ -81,6 +81,9 @@ namespace he::schema
             case Type::Data::UnionTag::Struct:
             case Type::Data::UnionTag::Interface:
             case Type::Data::UnionTag::AnyPointer:
+            case Type::Data::UnionTag::AnyStruct:
+            case Type::Data::UnionTag::AnyList:
+            case Type::Data::UnionTag::Parameter:
                 return true;
 
             default:

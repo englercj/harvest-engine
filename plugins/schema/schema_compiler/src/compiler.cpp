@@ -132,8 +132,8 @@ namespace he::schema
     void Compiler::CompileConstant(const AstNode& node, Declaration::Builder decl)
     {
         Declaration::Data::Constant::Builder data = decl.GetData().InitConstant();
-        data.SetType(CreateType(node.constant.type, node));
-        data.SetValue(CreateValue(data.GetType(), node.constant.value, node));
+        data.SetType(CreateType(node.constant.type, *node.parent));
+        data.SetValue(CreateValue(data.GetType(), node.constant.value, *node.parent));
     }
 
     void Compiler::CompileEnum(const AstNode& node, Declaration::Builder decl)
@@ -645,109 +645,8 @@ namespace he::schema
             return {};
 
         Value::Builder value = m_builder.AddStruct<Value>();
-        Value::Data::Builder data = value.GetData();
-        Type::Data::Builder typeData = type.GetData();
 
-        switch (ast.kind)
-        {
-            case AstExpression::Kind::Blob:
-            {
-                HE_ASSERT(typeData.IsBlob());
-
-                Vector<uint8_t> bytes;
-                if (DecodeBlob(ast, bytes))
-                {
-                    List<uint8_t>::Builder list = data.InitBlob(bytes.Size());
-                    MemCopy(list.Data(), bytes.Data(), bytes.Size());
-                }
-
-                break;
-            }
-            case AstExpression::Kind::Float:
-            {
-                HE_ASSERT(typeData.IsFloat32() || typeData.IsFloat64());
-
-                if (typeData.IsFloat32())
-                    data.SetFloat32(ReadFloatValue<float>(ast));
-                else
-                    data.SetFloat64(ReadFloatValue<double>(ast));
-
-                break;
-            }
-            case AstExpression::Kind::Sequence:
-            {
-                HE_ASSERT(typeData.IsArray() || typeData.IsList());
-
-                PendingValue& v = m_pendingValues.EmplaceBack();
-                v.ast = &ast;
-                v.scope = &scope;
-                v.type = type;
-                v.value = value;
-                break;
-            }
-            case AstExpression::Kind::QualifiedName:
-            {
-                HE_ASSERT(typeData.IsEnum() || typeData.IsBool());
-
-                if (typeData.IsEnum())
-                    data.SetEnum(ReadEnumValue(ast, scope));
-                else
-                    data.SetBool(ReadBoolValue(ast));
-
-                break;
-            }
-            case AstExpression::Kind::SignedInt:
-            {
-                HE_ASSERT(typeData.IsInt8() || typeData.IsInt16() || typeData.IsInt32() || typeData.IsInt64()
-                    || typeData.IsUint8() || typeData.IsUint16() || typeData.IsUint32() || typeData.IsUint64());
-
-                SetInt(ast.location, ast.signedInt, typeData, data);
-                break;
-            }
-            case AstExpression::Kind::UnsignedInt:
-            {
-                HE_ASSERT(typeData.IsInt8() || typeData.IsInt16() || typeData.IsInt32() || typeData.IsInt64()
-                    || typeData.IsUint8() || typeData.IsUint16() || typeData.IsUint32() || typeData.IsUint64());
-
-                SetInt(ast.location, ast.unsignedInt, typeData, data);
-                break;
-            }
-            case AstExpression::Kind::String:
-            {
-                HE_ASSERT(typeData.IsString());
-
-                he::String str;
-                if (m_context->DecodeString(ast, str))
-                {
-                    data.InitString(str);
-                    return value;
-                }
-
-                break;
-            }
-            case AstExpression::Kind::Tuple:
-            {
-                HE_ASSERT(typeData.IsStruct());
-
-                PendingValue& v = m_pendingValues.EmplaceBack();
-                v.ast = &ast;
-                v.scope = &scope;
-                v.type = type;
-                v.value = value;
-                break;
-            }
-
-            // These are used in types, not in values. Any of this is a syntax error.
-            case AstExpression::Kind::Array:
-            case AstExpression::Kind::List:
-            case AstExpression::Kind::Generic:
-            case AstExpression::Kind::Identifier:
-            case AstExpression::Kind::Namespace:
-            case AstExpression::Kind::Unknown:
-                HE_ASSERT(false, HE_MSG("Invalid value type. This is a verifier bug."));
-                m_valid = false;
-                break;
-        }
+        FillValue(value, type, ast, scope);
 
         return value;
     }
@@ -907,17 +806,17 @@ namespace he::schema
         {
             switch (elementTag)
             {
-                case Type::Data::UnionTag::Bool: list.SetDataElement<bool>(i, ReadBoolValue(value)); break;
-                case Type::Data::UnionTag::Int8: list.SetDataElement<int8_t>(i, ReadIntValue<int8_t>(value)); break;
-                case Type::Data::UnionTag::Int16: list.SetDataElement<int16_t>(i, ReadIntValue<int16_t>(value)); break;
-                case Type::Data::UnionTag::Int32: list.SetDataElement<int32_t>(i, ReadIntValue<int32_t>(value)); break;
-                case Type::Data::UnionTag::Int64: list.SetDataElement<int64_t>(i, ReadIntValue<int64_t>(value)); break;
-                case Type::Data::UnionTag::Uint8: list.SetDataElement<uint8_t>(i, ReadIntValue<uint8_t>(value)); break;
-                case Type::Data::UnionTag::Uint16: list.SetDataElement<uint16_t>(i, ReadIntValue<uint16_t>(value)); break;
-                case Type::Data::UnionTag::Uint32: list.SetDataElement<uint32_t>(i, ReadIntValue<uint32_t>(value)); break;
-                case Type::Data::UnionTag::Uint64: list.SetDataElement<uint64_t>(i, ReadIntValue<uint64_t>(value)); break;
-                case Type::Data::UnionTag::Float32: list.SetDataElement<float>(i, ReadFloatValue<float>(value)); break;
-                case Type::Data::UnionTag::Float64: list.SetDataElement<double>(i, ReadFloatValue<double>(value)); break;
+                case Type::Data::UnionTag::Bool: list.SetDataElement<bool>(i, ReadBoolValue(value, scope)); break;
+                case Type::Data::UnionTag::Int8: list.SetDataElement<int8_t>(i, ReadIntValue<int8_t>(value, scope)); break;
+                case Type::Data::UnionTag::Int16: list.SetDataElement<int16_t>(i, ReadIntValue<int16_t>(value, scope)); break;
+                case Type::Data::UnionTag::Int32: list.SetDataElement<int32_t>(i, ReadIntValue<int32_t>(value, scope)); break;
+                case Type::Data::UnionTag::Int64: list.SetDataElement<int64_t>(i, ReadIntValue<int64_t>(value, scope)); break;
+                case Type::Data::UnionTag::Uint8: list.SetDataElement<uint8_t>(i, ReadIntValue<uint8_t>(value, scope)); break;
+                case Type::Data::UnionTag::Uint16: list.SetDataElement<uint16_t>(i, ReadIntValue<uint16_t>(value, scope)); break;
+                case Type::Data::UnionTag::Uint32: list.SetDataElement<uint32_t>(i, ReadIntValue<uint32_t>(value, scope)); break;
+                case Type::Data::UnionTag::Uint64: list.SetDataElement<uint64_t>(i, ReadIntValue<uint64_t>(value, scope)); break;
+                case Type::Data::UnionTag::Float32: list.SetDataElement<float>(i, ReadFloatValue<float>(value, scope)); break;
+                case Type::Data::UnionTag::Float64: list.SetDataElement<double>(i, ReadFloatValue<double>(value, scope)); break;
                 case Type::Data::UnionTag::Enum: list.SetDataElement<uint16_t>(i, ReadEnumValue(value, scope)); break;
                 case Type::Data::UnionTag::Blob:
                 {
@@ -987,6 +886,117 @@ namespace he::schema
         return st;
     }
 
+    void Compiler::FillValue(Value::Builder value, Type::Builder type, const AstExpression& ast, const AstNode& scope)
+    {
+        Value::Data::Builder data = value.GetData();
+        Type::Data::Builder typeData = type.GetData();
+
+        switch (ast.kind)
+        {
+            case AstExpression::Kind::Blob:
+            {
+                HE_ASSERT(typeData.IsBlob());
+
+                Vector<uint8_t> bytes;
+                if (DecodeBlob(ast, bytes))
+                {
+                    List<uint8_t>::Builder list = data.InitBlob(bytes.Size());
+                    MemCopy(list.Data(), bytes.Data(), bytes.Size());
+                }
+
+                break;
+            }
+            case AstExpression::Kind::Float:
+            {
+                HE_ASSERT(typeData.IsFloat32() || typeData.IsFloat64());
+
+                if (typeData.IsFloat32())
+                    data.SetFloat32(ReadFloatValue<float>(ast, scope));
+                else
+                    data.SetFloat64(ReadFloatValue<double>(ast, scope));
+
+                break;
+            }
+            case AstExpression::Kind::Sequence:
+            {
+                HE_ASSERT(typeData.IsArray() || typeData.IsList());
+
+                PendingValue& v = m_pendingValues.EmplaceBack();
+                v.ast = &ast;
+                v.scope = &scope;
+                v.type = type;
+                v.value = value;
+                break;
+            }
+            case AstExpression::Kind::QualifiedName:
+            {
+                //HE_ASSERT(typeData.IsEnum() || typeData.IsBool());
+
+                if (typeData.IsEnum())
+                    data.SetEnum(ReadEnumValue(ast, scope));
+                else if (typeData.IsBool())
+                    data.SetBool(ReadBoolValue(ast, scope));
+                else
+                {
+                    const AstNode* constant = m_context->FindNodeByName(ast, scope);
+                    HE_ASSERT(constant && constant->kind == AstNode::Kind::Constant);
+                    return FillValue(value, type, constant->constant.value, *constant->parent);
+                }
+
+                break;
+            }
+            case AstExpression::Kind::SignedInt:
+            {
+                HE_ASSERT(typeData.IsInt8() || typeData.IsInt16() || typeData.IsInt32() || typeData.IsInt64()
+                    || typeData.IsUint8() || typeData.IsUint16() || typeData.IsUint32() || typeData.IsUint64());
+
+                SetInt(ast.location, ast.signedInt, typeData, data);
+                break;
+            }
+            case AstExpression::Kind::UnsignedInt:
+            {
+                HE_ASSERT(typeData.IsInt8() || typeData.IsInt16() || typeData.IsInt32() || typeData.IsInt64()
+                    || typeData.IsUint8() || typeData.IsUint16() || typeData.IsUint32() || typeData.IsUint64());
+
+                SetInt(ast.location, ast.unsignedInt, typeData, data);
+                break;
+            }
+            case AstExpression::Kind::String:
+            {
+                HE_ASSERT(typeData.IsString());
+
+                he::String str;
+                if (m_context->DecodeString(ast, str))
+                {
+                    data.InitString(str);
+                }
+                break;
+            }
+            case AstExpression::Kind::Tuple:
+            {
+                HE_ASSERT(typeData.IsStruct());
+
+                PendingValue& v = m_pendingValues.EmplaceBack();
+                v.ast = &ast;
+                v.scope = &scope;
+                v.type = type;
+                v.value = value;
+                break;
+            }
+
+            // These are used in types, not in values. Any of this is a syntax error.
+            case AstExpression::Kind::Array:
+            case AstExpression::Kind::List:
+            case AstExpression::Kind::Generic:
+            case AstExpression::Kind::Identifier:
+            case AstExpression::Kind::Namespace:
+            case AstExpression::Kind::Unknown:
+                HE_ASSERT(false, HE_MSG("Invalid value type. This is a verifier bug."));
+                m_valid = false;
+                break;
+        }
+    }
+
     void Compiler::FillStructValue(StructBuilder dst, const Declaration::Data::Struct::Builder structDecl, const AstExpression& ast, const AstNode& scope)
     {
         HE_ASSERT(ast.kind == AstExpression::Kind::Tuple);
@@ -1022,17 +1032,17 @@ namespace he::schema
     {
         switch (type.GetUnionTag())
         {
-            case Type::Data::UnionTag::Bool: dst.SetAndMarkDataField<bool>(index, dataOffset, ReadBoolValue(ast)); break;
-            case Type::Data::UnionTag::Int8: dst.SetAndMarkDataField<int8_t>(index, dataOffset, ReadIntValue<int8_t>(ast)); break;
-            case Type::Data::UnionTag::Int16: dst.SetAndMarkDataField<int16_t>(index, dataOffset, ReadIntValue<int16_t>(ast)); break;
-            case Type::Data::UnionTag::Int32: dst.SetAndMarkDataField<int32_t>(index, dataOffset, ReadIntValue<int32_t>(ast)); break;
-            case Type::Data::UnionTag::Int64: dst.SetAndMarkDataField<int64_t>(index, dataOffset, ReadIntValue<int64_t>(ast)); break;
-            case Type::Data::UnionTag::Uint8: dst.SetAndMarkDataField<uint8_t>(index, dataOffset, ReadIntValue<uint8_t>(ast)); break;
-            case Type::Data::UnionTag::Uint16: dst.SetAndMarkDataField<uint16_t>(index, dataOffset, ReadIntValue<uint16_t>(ast)); break;
-            case Type::Data::UnionTag::Uint32: dst.SetAndMarkDataField<uint32_t>(index, dataOffset, ReadIntValue<uint32_t>(ast)); break;
-            case Type::Data::UnionTag::Uint64: dst.SetAndMarkDataField<uint64_t>(index, dataOffset, ReadIntValue<uint64_t>(ast)); break;
-            case Type::Data::UnionTag::Float32: dst.SetAndMarkDataField<float>(index, dataOffset, ReadFloatValue<float>(ast)); break;
-            case Type::Data::UnionTag::Float64: dst.SetAndMarkDataField<double>(index, dataOffset, ReadFloatValue<double>(ast)); break;
+            case Type::Data::UnionTag::Bool: dst.SetAndMarkDataField<bool>(index, dataOffset, ReadBoolValue(ast, scope)); break;
+            case Type::Data::UnionTag::Int8: dst.SetAndMarkDataField<int8_t>(index, dataOffset, ReadIntValue<int8_t>(ast, scope)); break;
+            case Type::Data::UnionTag::Int16: dst.SetAndMarkDataField<int16_t>(index, dataOffset, ReadIntValue<int16_t>(ast, scope)); break;
+            case Type::Data::UnionTag::Int32: dst.SetAndMarkDataField<int32_t>(index, dataOffset, ReadIntValue<int32_t>(ast, scope)); break;
+            case Type::Data::UnionTag::Int64: dst.SetAndMarkDataField<int64_t>(index, dataOffset, ReadIntValue<int64_t>(ast, scope)); break;
+            case Type::Data::UnionTag::Uint8: dst.SetAndMarkDataField<uint8_t>(index, dataOffset, ReadIntValue<uint8_t>(ast, scope)); break;
+            case Type::Data::UnionTag::Uint16: dst.SetAndMarkDataField<uint16_t>(index, dataOffset, ReadIntValue<uint16_t>(ast, scope)); break;
+            case Type::Data::UnionTag::Uint32: dst.SetAndMarkDataField<uint32_t>(index, dataOffset, ReadIntValue<uint32_t>(ast, scope)); break;
+            case Type::Data::UnionTag::Uint64: dst.SetAndMarkDataField<uint64_t>(index, dataOffset, ReadIntValue<uint64_t>(ast, scope)); break;
+            case Type::Data::UnionTag::Float32: dst.SetAndMarkDataField<float>(index, dataOffset, ReadFloatValue<float>(ast, scope)); break;
+            case Type::Data::UnionTag::Float64: dst.SetAndMarkDataField<double>(index, dataOffset, ReadFloatValue<double>(ast, scope)); break;
             case Type::Data::UnionTag::Enum: dst.SetAndMarkDataField<uint16_t>(index, dataOffset, ReadEnumValue(ast, scope)); break;
             case Type::Data::UnionTag::Blob:
             {
@@ -1110,10 +1120,20 @@ namespace he::schema
         }
     }
 
-    bool Compiler::ReadBoolValue(const AstExpression& ast) const
+    bool Compiler::ReadBoolValue(const AstExpression& ast, const AstNode& scope) const
     {
-        HE_ASSERT(ast.qualified.names.Size() == 1 && ast.qualified.names.Front()->kind == AstExpression::Kind::Identifier);
-        return ast.qualified.names.Front()->identifier == KW_True;
+        if (ast.qualified.names.Size() == 1 && ast.qualified.names.Front()->kind == AstExpression::Kind::Identifier)
+        {
+            const StringView identifier = ast.qualified.names.Front()->identifier;
+            if (identifier == KW_True)
+                return true;
+            if (identifier == KW_False)
+                return false;
+        }
+
+        const AstNode* valueNode = m_context->FindNodeByName(ast, scope);
+        HE_ASSERT(valueNode && valueNode->kind == AstNode::Kind::Constant);
+        return ReadBoolValue(valueNode->constant.value, *valueNode->parent);
     }
 
     uint16_t Compiler::ReadEnumValue(const AstExpression& ast, const AstNode& scope) const
@@ -1145,9 +1165,16 @@ namespace he::schema
     }
 
     template <typename T>
-    T Compiler::ReadIntValue(const AstExpression& ast)
+    T Compiler::ReadIntValue(const AstExpression& ast, const AstNode& scope)
     {
-        HE_ASSERT(ast.kind == AstExpression::Kind::SignedInt || ast.kind == AstExpression::Kind::UnsignedInt);
+        HE_ASSERT(ast.kind == AstExpression::Kind::SignedInt || ast.kind == AstExpression::Kind::UnsignedInt || ast.kind == AstExpression::Kind::QualifiedName);
+
+        if (ast.kind == AstExpression::Kind::QualifiedName)
+        {
+            const AstNode* valueNode = m_context->FindNodeByName(ast, scope);
+            HE_ASSERT(valueNode && valueNode->kind == AstNode::Kind::Constant);
+            return ReadIntValue<T>(valueNode->constant.value, *valueNode->parent);
+        }
 
         T value = 0;
 
@@ -1160,9 +1187,16 @@ namespace he::schema
     }
 
     template <typename T>
-    T Compiler::ReadFloatValue(const AstExpression& ast)
+    T Compiler::ReadFloatValue(const AstExpression& ast, const AstNode& scope)
     {
-        HE_ASSERT(ast.kind == AstExpression::Kind::Float);
+        HE_ASSERT(ast.kind == AstExpression::Kind::Float || ast.kind == AstExpression::Kind::QualifiedName);
+
+        if (ast.kind == AstExpression::Kind::QualifiedName)
+        {
+            const AstNode* valueNode = m_context->FindNodeByName(ast, scope);
+            HE_ASSERT(valueNode && valueNode->kind == AstNode::Kind::Constant);
+            return ReadFloatValue<T>(valueNode->constant.value, *valueNode->parent);
+        }
 
         if constexpr (std::is_same_v<T, float>)
         {

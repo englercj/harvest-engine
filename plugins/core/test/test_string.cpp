@@ -1267,15 +1267,15 @@ HE_TEST(core, string, GetAllocator)
 HE_TEST(core, string, CompareTo)
 {
     const String a("Hello, world!");
-    const String b("Hello, world!");
+    const String b("Hello, World!");
     const String c("Goodbye, world!");
     const StringView v("Another one");
 
     HE_EXPECT_EQ(a.CompareTo(a), 0);
-    HE_EXPECT_EQ(a.CompareTo(b), 0);
+    HE_EXPECT_GT(a.CompareTo(b), 0);
     HE_EXPECT_GT(a.CompareTo(c), 0);
 
-    HE_EXPECT_EQ(b.CompareTo(a), 0);
+    HE_EXPECT_LT(b.CompareTo(a), 0);
     HE_EXPECT_EQ(b.CompareTo(b), 0);
     HE_EXPECT_GT(b.CompareTo(c), 0);
 
@@ -1284,6 +1284,29 @@ HE_TEST(core, string, CompareTo)
     HE_EXPECT_EQ(c.CompareTo(c), 0);
 
     HE_EXPECT_GT(c.CompareTo(v), 0);
+}
+
+// ------------------------------------------------------------------------------------------------
+HE_TEST(core, string, CompareToI)
+{
+    const String a("Hello, world!");
+    const String b("Hello, World!");
+    const String c("Goodbye, world!");
+    const StringView v("Another one");
+
+    HE_EXPECT_EQ(a.CompareToI(a), 0);
+    HE_EXPECT_EQ(a.CompareToI(b), 0);
+    HE_EXPECT_GT(a.CompareToI(c), 0);
+
+    HE_EXPECT_EQ(b.CompareToI(a), 0);
+    HE_EXPECT_EQ(b.CompareToI(b), 0);
+    HE_EXPECT_GT(b.CompareToI(c), 0);
+
+    HE_EXPECT_LT(c.CompareToI(a), 0);
+    HE_EXPECT_LT(c.CompareToI(b), 0);
+    HE_EXPECT_EQ(c.CompareToI(c), 0);
+
+    HE_EXPECT_GT(c.CompareToI(v), 0);
 }
 
 // ------------------------------------------------------------------------------------------------

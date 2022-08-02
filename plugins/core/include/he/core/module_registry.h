@@ -5,20 +5,29 @@
 #include "he/core/allocator.h"
 #include "he/core/delegate.h"
 #include "he/core/string.h"
+#include "he/core/system.h"
+#include "he/core/type_info.h"
 #include "he/core/types.h"
+#include "he/core/unique_ptr.h"
+#include "he/core/utils.h"
 #include "he/core/vector.h"
+
+#include <unordered_map>
 
 #define HE_MODULE_TYPE_CONSOLE_APP      1
 #define HE_MODULE_TYPE_WINDOWED_APP     2
 #define HE_MODULE_TYPE_SHARED_LIB       3
 #define HE_MODULE_TYPE_STATIC_LIB       4
 
+/// \def HE_EXPORT_MODULE
+/// Exports a Harvest module to be usable by the module system.
 #if HE_CFG_MODULE_TYPE == HE_MODULE_TYPE_STATIC_LIB
     #define HE_EXPORT_MODULE(Impl) \
         static ::he::StaticModuleRegistrar<Impl> HE_UNIQUE_NAME(StaticModuleRegistrar){ HE_CFG_MODULE_NAME }
 #else
-    #define HE_EXPORT_MODULE(Impl, Name) \
-        extern "C" HE_DLL_EXPORT ::he::Module* CreateHarvestModule(::he::Allocator& allocator) { return allocator.New<Impl>(); }
+    #define HE_EXPORT_MODULE(Impl) \
+        extern "C" HE_DLL_EXPORT const char* GetHarvestModuleName() { return HE_CFG_MODULE_NAME; } \
+        extern "C" HE_DLL_EXPORT ::he::UniquePtr<::he::Module> CreateHarvestModule() { return ::he::MakeUnique<Impl>(); }
 #endif
 
 namespace he
@@ -26,21 +35,27 @@ namespace he
     class Module;
     class ModuleRegistry;
 
-    /// Helper to register static modules
+    // --------------------------------------------------------------------------------------------
+
+    /// Helper to register static modules. Not intended to be used directly.
+    ///
+    /// \internal
+    /// \see HE_EXPORT_MODULE
     template <typename T>
     struct StaticModuleRegistrar final
     {
         explicit StaticModuleRegistrar(const char* name)
         {
-            auto createDelegate = ModuleRegistry::CreateModuleDelegate::Make<&StaticModuleRegistrar::CreateModule>(this);
-            ModuleRegistry::Get().RegisterStaticModule(name, createDelegate);
+            ModuleRegistry::Get().RegisterStaticModule(name, &StaticModuleRegistrar::CreateModule);
         }
 
-        Module* CreateModule(::he::Allocator& allocator)
+        static UniquePtr<Module> CreateModule(void*)
         {
-            return allocator.New<T>();
+            return MakeUnique<T>();
         }
     };
+
+    // --------------------------------------------------------------------------------------------
 
     /// Interface for a module.
     class Module
@@ -48,36 +63,151 @@ namespace he
     public:
         virtual ~Module() = default;
 
-        /// Called after the registration pass so this module can perform startup work.
+        /// Called just after the module is created. During the register pass the module may
+        /// register any APIs that it wishes to provide.
+        virtual void Register() {}
+
+        /// Called just before the module is destroyed.
+        virtual void Unregister() {}
+
+        /// Called after the registration pass so this module can perform startup work, including
+        /// using the APIs provided by other modules.
+        ///
+        /// \return True if startup was successful, or false if the module was unable to startup.
         virtual bool Startup() { return true; }
 
         /// Called when the module is going to be unloaded and must be shut down.
-        virtual bool Shutdown() { return true; }
+        virtual void Shutdown() {}
     };
+
+    // --------------------------------------------------------------------------------------------
 
     /// Registry of modules loaded by Harvest.
     class ModuleRegistry final
     {
     public:
-        using CreateModuleDelegate = Delegate<Module*(Allocator&)>;
+        using CreateModuleDelegate = Delegate<UniquePtr<Module>()>;
 
     public:
         static ModuleRegistry& Get();
 
     public:
-        bool LoadAllModules();
-        bool UnloadAllModules();
+        ModuleRegistry() = default;
+        ModuleRegistry(const ModuleRegistry&) = delete;
+        ModuleRegistry(ModuleRegistry&&) = delete;
+        ~ModuleRegistry() noexcept;
+
+        ModuleRegistry& operator=(const ModuleRegistry&) = delete;
+        ModuleRegistry& operator=(ModuleRegistry&&) = delete;
+
+        void LoadStaticModules();
+        bool LoadDynamicModule(const char* path);
+
+        void UnloadAllModules();
+
+        bool StartupAllModules();
+        void ShutdownAllModules();
+
+        template <typename T> void RegisterApi();
+        template <typename T> void UnregisterApi();
+
+        template <typename T> T* FindApi();
+        template <typename T> T& GetApi();
+
+    private:
+        template <typename T>
+        friend struct StaticModuleRegistrar;
 
         void RegisterStaticModule(const char* name, CreateModuleDelegate create);
 
     private:
+        using Pfn_GetHarvestModuleName = const char*(*)();
+        using Pfn_CreateHarvestModule = UniquePtr<Module>(*)();
+
         struct StaticModule
         {
             const char* name;
             CreateModuleDelegate create;
-            Module* instance;
         };
 
+        struct ModuleEntry
+        {
+            const char* name;
+            UniquePtr<Module> instance;
+            DynamicLib dl;
+        };
+
+        struct ApiEntry
+        {
+            void* instance;
+            void(*destroy)(void*);
+        };
+
+    private:
         Vector<StaticModule> m_staticModules{};
+        Vector<ModuleEntry> m_modules{};
+        std::unordered_map<TypeInfo, ApiEntry> m_apis{};
+    #if HE_ENABLE_ASSERTIONS
+        bool m_startupOrLater{ false };
+    #endif
     };
+
+    // --------------------------------------------------------------------------------------------
+    // Inline implementations
+
+    template <typename T>
+    inline void ModuleRegistry::RegisterApi()
+    {
+        constexpr TypeInfo Info = TypeInfo::Get<T>();
+
+        const auto pair = m_apis.try_emplace(Info);
+        if (!HE_VERIFY(pair.second,
+            HE_MSG("API has already been registered"),
+            HE_KV(name, Info.Name()),
+            HE_KV(hash, Info.Hash())))
+        {
+            return;
+        }
+
+        ApiEntry& entry = pair.first->second;
+        entry.instance = Allocator::GetDefault().New<T>();
+        entry.destroy = [](void* api) { Allocator::GetDefault().Delete(static_cast<T*>(api)); };
+    }
+
+    template <typename T>
+    inline void ModuleRegistry::UnregisterApi()
+    {
+        constexpr TypeInfo Info = TypeInfo::Get<T>();
+        const auto it = m_apis.find(Info);
+
+        if (it != m_apis.end())
+        {
+            ApiEntry& entry = it->second;
+            entry.destroy(entry.instance);
+        }
+
+        m_apis.erase(it);
+    }
+
+    template <typename T>
+    inline T* ModuleRegistry::FindApi()
+    {
+        HE_ASSERT(m_startupOrLater, HE_MSG("You can only get a registered API after the registration pass has completed."));
+
+        constexpr TypeInfo Info = TypeInfo::Get<T>();
+
+        const auto it = m_apis.find(Info);
+        if (it == m_apis.end())
+            return nullptr;
+
+        return static_cast<T*>(it->second.instance);
+    }
+
+    template <typename T>
+    inline T& ModuleRegistry::GetApi()
+    {
+        T* api = FindApi<T>();
+        HE_ASSERT(api);
+        return *api;
+    }
 }

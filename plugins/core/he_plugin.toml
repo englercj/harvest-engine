@@ -19,7 +19,7 @@ homepage = ""
 
     [[modules.variants]]
         conditions = ["system:linux"]
-        public_dependson = ["sys:pthread", "sys:uring"]
+        public_dependson = ["sys:pthread", "sys:uring", "sys:dl"]
         public_defines = [
             "HE_PLATFORM_RWLOCK_SIZE=56",
             "HE_PLATFORM_MUTEX_SIZE=40",
@@ -31,7 +31,7 @@ homepage = ""
 
     [[modules.variants]]
         conditions = ["system:posix", "system:not linux"]
-        public_dependson = ["sys:pthread"]
+        public_dependson = ["sys:pthread", "sys:dl"]
         public_defines = [
             "HE_PLATFORM_RWLOCK_SIZE=56",
             "HE_PLATFORM_MUTEX_SIZE=40",

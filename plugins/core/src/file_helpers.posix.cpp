@@ -102,7 +102,7 @@ namespace he
                 return Result::Success;
             }
 
-            path.Resize(he::Max(512u, path.Size() * 2));
+            path.Resize(he::Max(512u, path.Size() * 2), he::DefaultInit);
         } while (true);
 
         return PosixResult(ENAMETOOLONG);

@@ -30,7 +30,7 @@ namespace he
         {
             fmt::format_to(
                 Appender(out),
-                FMT_STRING("[{:%Y-%m-%d_%H-%M-%S}{:.04f}] [{}]({}) {}\n"),
+                FMT_STRING("[{:%Y-%m-%d_%H-%M-%S}{:.04f}] [{:s}]({}) {}\n"),
                 TimeFmt(now),
                 fractionalSeconds,
                 source.level,
@@ -41,7 +41,7 @@ namespace he
         {
             fmt::format_to(
                 Appender(out),
-                FMT_STRING("[{:%Y-%m-%d_%H-%M-%S}{:.04f}] [{}]({}) {}\n"),
+                FMT_STRING("[{:%Y-%m-%d_%H-%M-%S}{:.04f}] [{:s}]({}) {}\n"),
                 TimeFmt(now),
                 fractionalSeconds,
                 source.level,
@@ -114,7 +114,7 @@ namespace he
         {
             fmt::format_to(
                 Appender(msg),
-                "{}({}): [{}]({}) {}\n",
+                "{}({}): [{:s}]({}) {}\n",
                 source.file,
                 source.line,
                 source.level,
@@ -125,7 +125,7 @@ namespace he
         {
             fmt::format_to(
                 Appender(msg),
-                "{}({}): [{}]({}) {}\n",
+                "{}({}): [{:s}]({}) {}\n",
                 source.file,
                 source.line,
                 source.level,
@@ -144,7 +144,7 @@ namespace he
         {
             fmt::format_to(
                 Appender(msg),
-                "[{}]({}) {}\n",
+                "[{:s}]({}) {}\n",
                 source.level,
                 source.category,
                 kvs[0].GetString());
@@ -153,7 +153,7 @@ namespace he
         {
             fmt::format_to(
                 Appender(msg),
-                "[{}]({}) {}\n",
+                "[{:s}]({}) {}\n",
                 source.level,
                 source.category,
                 fmt::join(kvs, kvs + count, ", "));

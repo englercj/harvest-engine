@@ -254,7 +254,7 @@ namespace he
         /// \param[in] base Optional. The numerical base of the value being parsed.
         /// \return The parsed number.
         template <typename T>
-        static T ToInteger(const char* str, const char** end = nullptr, int32_t base = 10);
+        static T ToInteger(const char* str, const char* end = nullptr, int32_t base = 10);
 
         /// Parses the string into a floating point value.
         /// If successful, a floating point value corresponding to the contents of str is returned.
@@ -267,7 +267,7 @@ namespace he
         ///     nullptr (default) the string is parsed until a null terminator is reached.
         /// \return The parsed number.
         template <typename T = float>
-        static T ToFloat(const char* str, const char** end = nullptr);
+        static T ToFloat(const char* str, const char* end = nullptr);
 
     public:
         // ----------------------------------------------------------------------------------------
@@ -634,6 +634,46 @@ namespace he
         ///     If this string is greater than `x`, a positive value is returned.
         template <typename R> requires(ContiguousRange<R, const char>)
         int32_t CompareTo(const R& range) const { return CompareTo(range.Data(), range.Size()); }
+
+        /// Compares this string to `len` characters of `str` and returns the result of the comparison.
+        ///
+        /// \param str The string to compare against.
+        /// \param len The maximum number of characters to compare. Must be less than or equal to
+        ///     the string length of `str`.
+        /// \return The result of the comparison.
+        ///     If the values are equal, zero is returned.
+        ///     If this string is less than `x`, a negative value is returned.
+        ///     If this string is greater than `x`, a positive value is returned.
+        int32_t CompareToI(const char* str, uint32_t len) const;
+
+        /// Compares this string to the null terminated string `str` and returns the result of the comparison.
+        ///
+        /// \param str The string to compare against.
+        /// \return The result of the comparison.
+        ///     If the values are equal, zero is returned.
+        ///     If this string is less than `x`, a negative value is returned.
+        ///     If this string is greater than `x`, a positive value is returned.
+        int32_t CompareToI(const char* str) const { return CompareToI(str, String::Length(str)); }
+
+        /// Compares this string to a range of characters.
+        ///
+        /// \param range The range of characters to compare against.
+        /// \return The result of the comparison.
+        ///     If the values are equal, zero is returned.
+        ///     If this string is less than `x`, a negative value is returned.
+        ///     If this string is greater than `x`, a positive value is returned.
+        template <typename R> requires(StdContiguousRange<R, const char>)
+        int32_t CompareToI(const R& range) const { return CompareToI(range.data(), range.size()); }
+
+        /// Compares this string to a range of characters.
+        ///
+        /// \param range The range of characters to compare against.
+        /// \return The result of the comparison.
+        ///     If the values are equal, zero is returned.
+        ///     If this string is less than `x`, a negative value is returned.
+        ///     If this string is greater than `x`, a positive value is returned.
+        template <typename R> requires(ContiguousRange<R, const char>)
+        int32_t CompareToI(const R& range) const { return CompareToI(range.Data(), range.Size()); }
 
         // ----------------------------------------------------------------------------------------
         // Iterators

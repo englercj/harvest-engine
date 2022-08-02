@@ -19,6 +19,8 @@
 
 namespace he
 {
+    void _FillPlatformCpuInfo(CpuInfo& info);
+
     struct VendorIdMapping
     {
         StringView name;
@@ -98,7 +100,7 @@ namespace he
 
     struct CpuInfoImpl : CpuInfo
     {
-        HE_FORCE_INLINE CpuInfoImpl()
+        CpuInfoImpl()
         {
             uint32_t eax = 0;
             uint32_t ebx = 0;

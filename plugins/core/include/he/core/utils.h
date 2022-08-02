@@ -175,14 +175,14 @@ namespace he
 
     /// Exchange the value of `obj` with `newVal` and returns the original value of `obj`.
     ///
-    /// \param a The object to assign the new value to.
-    /// \param b The new value to assign to `a`.
+    /// \param obj The object to assign the new value to.
+    /// \param newVal The new value to assign to `a`.
     /// \return The value previously held in `a`.
     template <typename T, typename U = T>
-    constexpr T Exchange(T& a, U&& b) noexcept
+    constexpr T Exchange(T& obj, U&& newVal) noexcept
     {
-        T old = Move(a);
-        a = Forward<U>(b);
+        T old = Move(obj);
+        obj = Forward<U>(newVal);
         return old;
     }
 }

@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include "he/core/ascii.h"
 #include "he/core/span.h"
 #include "he/core/string.h"
 #include "he/core/type_traits.h"
@@ -78,7 +79,7 @@ namespace he
         ///
         /// \param x The string to check against.
         /// \return True if the strings are equal, false otherwise.
-        constexpr bool operator==(const StringView& x) const { return Size() == x.Size() && CompareKnownLength(Data(), x.Data(), Size()) == 0; }
+        constexpr bool operator==(const StringView& x) const { return Size() == x.Size() && CompareInternal(Data(), x.Data(), Size()) == 0; }
 
         /// Checks if this string is not equal to `x`.
         ///
@@ -155,8 +156,7 @@ namespace he
         template <typename T>
         T ToInteger(int32_t base = 10)
         {
-            const char* end = m_span.End();
-            return String::ToInteger<T>(m_span.Begin(), &end, base);
+            return String::ToInteger<T>(m_span.Begin(), m_span.End(), base);
         }
 
         /// Parses the string into a floating point value.
@@ -169,8 +169,7 @@ namespace he
         template <typename T = float>
         T ToFloat()
         {
-            const char* end = m_span.End();
-            return String::ToFloat<T>(m_span.Begin(), &end);
+            return String::ToFloat<T>(m_span.Begin(), m_span.End());
         }
 
         // ----------------------------------------------------------------------------------------
@@ -187,7 +186,7 @@ namespace he
         {
             const uint32_t s0 = Size();
             const uint32_t s1 = x.Size();
-            const int32_t result = CompareKnownLength(Data(), x.Data(), Min(s0, s1));
+            const int32_t result = CompareInternal(Data(), x.Data(), Min(s0, s1));
 
             if (result != 0)
                 return result;
@@ -200,6 +199,46 @@ namespace he
 
             return 0;
         }
+
+        /// Compares this string view to another in a case-insensitive manner and returns the
+        /// result of the comparison.
+        ///
+        /// \param x The string view to compare against.
+        /// \return The result of the comparison.
+        ///     If the values are equal, zero is returned.
+        ///     If this string is less than `x`, a negative value is returned.
+        ///     If this string is greater than `x`, a positive value is returned.
+        constexpr int32_t CompareToI(const StringView& x) const
+        {
+            const uint32_t s0 = Size();
+            const uint32_t s1 = x.Size();
+            const uint32_t len = Min(s0, s1);
+            const int32_t result = CompareInternalI(Data(), x.Data(), len);
+
+            if (result != 0)
+                return result;
+
+            if (s0 < s1)
+                return -1;
+
+            if (s0 > s1)
+                return 1;
+
+            return 0;
+        }
+
+        /// Compares this string view to another and returns true if they are equal.
+        ///
+        /// \param x The string view to compare against.
+        /// \return True if they are equal, false otherwise.
+        constexpr bool EqualTo(const StringView& x) const { return CompareTo(x) == 0; }
+
+        /// Compares this string view to another in a case-insensitive manner and
+        /// returns true if they are equal.
+        ///
+        /// \param x The string view to compare against.
+        /// \return True if they are equal, false otherwise.
+        constexpr bool EqualToI(const StringView& x) const { return CompareToI(x) == 0; }
 
         // ----------------------------------------------------------------------------------------
         // Iterators
@@ -222,12 +261,33 @@ namespace he
 
     private:
         /// Compares two strings of known length.
-        constexpr int32_t CompareKnownLength(const char* a, const char* b, uint32_t len) const
+        static constexpr int32_t CompareInternal(const char* a, const char* b, uint32_t len)
+        {
+            if (!std::is_constant_evaluated())
+            {
+                return MemCmp(a, b, len);
+            }
+            else
+            {
+                for (; len > 0; --len, ++a, ++b)
+                {
+                    if (*a != *b)
+                        return *a < *b ? -1 : 1;
+                }
+
+                return 0;
+            }
+        }
+
+        /// Compares two strings of known length.
+        static constexpr int32_t CompareInternalI(const char* a, const char* b, uint32_t len)
         {
             for (; len > 0; --len, ++a, ++b)
             {
-                if (*a != *b)
-                    return *a < *b ? -1 : 1;
+                const char al = ToLower(*a);
+                const char bl = ToLower(*b);
+                if (al != bl)
+                    return al < bl ? -1 : 1;
             }
 
             return 0;

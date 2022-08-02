@@ -11,9 +11,11 @@
 
 namespace he
 {
+    void _FillPlatformCpuInfo(CpuInfo& info);
+
     struct CpuInfoImpl : CpuInfo
     {
-        HE_FORCE_INLINE CpuInfoImpl()
+        CpuInfoImpl()
         {
         #if HE_CPU_ARM_64 || defined(__ARM_NEON__) || defined(__ARM_NEON)
             // AArch64 includes neon

@@ -2,6 +2,7 @@
 
 #include "he/core/string.h"
 
+#include "he/core/ascii.h"
 #include "he/core/assert.h"
 #include "he/core/hash.h"
 #include "he/core/memory_ops.h"
@@ -308,6 +309,39 @@ namespace he
         return 0;
     }
 
+    int32_t String::CompareToI(const char* str, uint32_t len) const
+    {
+        const uint32_t s0 = Size();
+        const uint32_t s1 = len;
+
+        const char* a = Data();
+        const char* b = str;
+
+        len = Min(s0, s1);
+
+        int32_t result = 0;
+        for (; len > 0; --len, ++a, ++b)
+        {
+            const char al = ToLower(*a);
+            const char bl = ToLower(*b);
+            if (al != bl)
+            {
+                result = al < bl ? -1 : 1;
+                break;
+            }
+        }
+
+        if (result != 0)
+            return result;
+
+        if (s0 < s1)
+            return -1;
+
+        if (s0 > s1)
+            return 1;
+
+        return 0;
+    }
 
     void String::Insert(uint32_t index, const char* str, uint32_t len)
     {
@@ -470,7 +504,7 @@ namespace he
     }
 
 #define HE_FROMSTR_INT_IMPL(T, fn) \
-    template <> T String::ToInteger<T>(const char* str, const char** end, int32_t base) { return static_cast<T>(std::fn(str, const_cast<char**>(end), base)); }
+    template <> T String::ToInteger<T>(const char* str, const char* end, int32_t base) { return static_cast<T>(std::fn(str, end ? const_cast<char**>(&end) : nullptr, base)); }
 
     HE_FROMSTR_INT_IMPL(signed char, strtol)
     HE_FROMSTR_INT_IMPL(char, strtol)
@@ -488,7 +522,7 @@ namespace he
 #undef HE_FROMSTR_INT_IMPL
 
 #define HE_FROMSTR_FLT_IMPL(T, fn) \
-    template <> T String::ToFloat<T>(const char* str, const char** end) { return std::fn(str, const_cast<char**>(end)); }
+    template <> T String::ToFloat<T>(const char* str, const char* end) { return std::fn(str, end ? const_cast<char**>(&end) : nullptr); }
 
     HE_FROMSTR_FLT_IMPL(float, strtof)
     HE_FROMSTR_FLT_IMPL(double, strtod)

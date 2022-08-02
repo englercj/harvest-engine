@@ -190,7 +190,4 @@ namespace he
     ///
     /// \return The discovered CPU information.
     const CpuInfo& GetCpuInfo();
-
-    /// \ignore
-    void _FillPlatformCpuInfo(CpuInfo& info);
 }

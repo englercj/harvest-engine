@@ -327,20 +327,40 @@ HE_TEST(core, string_view, ToFloat)
 HE_TEST(core, string_view, CompareTo)
 {
     const StringView a("Hello, world!");
-    const StringView b("Hello, world!");
+    const StringView b("Hello, World!");
     const StringView c("Goodbye, world!");
 
     HE_EXPECT_EQ(a.CompareTo(a), 0);
-    HE_EXPECT_EQ(a.CompareTo(b), 0);
+    HE_EXPECT_GT(a.CompareTo(b), 0);
     HE_EXPECT_GT(a.CompareTo(c), 0);
 
-    HE_EXPECT_EQ(b.CompareTo(a), 0);
+    HE_EXPECT_LT(b.CompareTo(a), 0);
     HE_EXPECT_EQ(b.CompareTo(b), 0);
     HE_EXPECT_GT(b.CompareTo(c), 0);
 
     HE_EXPECT_LT(c.CompareTo(a), 0);
     HE_EXPECT_LT(c.CompareTo(b), 0);
     HE_EXPECT_EQ(c.CompareTo(c), 0);
+}
+
+// ------------------------------------------------------------------------------------------------
+HE_TEST(core, string_view, CompareToI)
+{
+    const StringView a("Hello, world!");
+    const StringView b("Hello, World!");
+    const StringView c("Goodbye, world!");
+
+    HE_EXPECT_EQ(a.CompareToI(a), 0);
+    HE_EXPECT_EQ(a.CompareToI(b), 0);
+    HE_EXPECT_GT(a.CompareToI(c), 0);
+
+    HE_EXPECT_EQ(b.CompareToI(a), 0);
+    HE_EXPECT_EQ(b.CompareToI(b), 0);
+    HE_EXPECT_GT(b.CompareToI(c), 0);
+
+    HE_EXPECT_LT(c.CompareToI(a), 0);
+    HE_EXPECT_LT(c.CompareToI(b), 0);
+    HE_EXPECT_EQ(c.CompareToI(c), 0);
 }
 
 // ------------------------------------------------------------------------------------------------

@@ -9,11 +9,16 @@ namespace he::assets
 {
     struct CompileContext
     {
+        schema::AssetFile::Reader assetFile;
         schema::Asset::Reader asset;
+
+        template <typename T>
+        bool GetResource(const AssetUuid& assetId, ResourceId resourceId, Vector<T>& data) const;
     };
 
     struct CompileResult
     {
+        bool AddResource(const AssetUuid& assetId, ResourceId resourceId, Span<const uint8_t> data);
     };
 
     class AssetCompiler
@@ -23,7 +28,7 @@ namespace he::assets
         virtual CompilerVersion Version() const = 0;
 
         /// Function to compile an asset, may be called from any thread.
-        virtual void Compile(const CompileContext& ctx, CompileResult& result) = 0;
+        virtual bool Compile(const CompileContext& ctx, CompileResult& result) = 0;
     };
 }
 

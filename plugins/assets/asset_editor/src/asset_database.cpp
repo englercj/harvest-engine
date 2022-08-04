@@ -13,6 +13,7 @@
 #include "he/core/result.h"
 #include "he/core/result_fmt.h"
 #include "he/core/scope_guard.h"
+#include "he/core/string_builder.h"
 #include "he/core/string_fmt.h"
 #include "he/schema/toml.h"
 
@@ -209,7 +210,6 @@ namespace he::assets
 
         const uint32_t fileByteSize = static_cast<uint32_t>(attrs.size);
 
-        // TODO: Use an object pool
         LoadRequest* load = Allocator::GetDefault().New<LoadRequest>();
         load->path = absPath;
         load->content.Resize(fileByteSize, DefaultInit);
@@ -255,6 +255,44 @@ namespace he::assets
         return LoadAssetFile(model.file.path.Data(), Move(callback));
     }
 
+    bool AssetDatabase::SaveAssetFile(const char* path, schema::AssetFile::Reader assetFile)
+    {
+        if (!HE_VERIFY(!String::IsEmpty(path)))
+        {
+            HE_LOG_ERROR(he_assets,
+                HE_MSG("SaveAssetFile called with an empty path."),
+                HE_KV(path, path));
+            return false;
+        }
+
+        String absPath;
+        if (!HE_VERIFY(PrepareAbsolutePath(path, absPath)))
+            return false;
+
+        StringBuilder stringBuilder;
+        if (!HE_VERIFY(he::schema::ToToml<schema::AssetFile>(stringBuilder, assetFile)))
+        {
+            HE_LOG_ERROR(he_assets,
+                HE_MSG("Failed to serialize asset file. Is it valid?"),
+                HE_KV(path, path));
+            return false;
+        }
+
+        const String& str = stringBuilder.Str();
+        const Result r = File::WriteAll(str.Data(), str.Size(), path);
+        if (!r)
+        {
+            HE_LOG_ERROR(he_assets,
+                HE_MSG("Failed to write asset file."),
+                HE_KV(path, path),
+                HE_KV(result, r));
+            return false;
+        }
+
+        AssetFileUpdateInternal(path, assetFile);
+        return true;
+    }
+
     void AssetDatabase::OnAssetFileDeleted(const char* path)
     {
         if (!HE_VERIFY(!String::IsEmpty(path)))
@@ -290,7 +328,7 @@ namespace he::assets
             return;
         }
 
-        UpdateAssetFile(path);
+        UpdateAssetFile(path, {});
     }
 
     bool AssetDatabase::PrepareRelativePath(const char* path, String& relPath) const
@@ -329,64 +367,14 @@ namespace he::assets
         return true;
     }
 
-    void AssetDatabase::HandleFileReadComplete(LoadRequest* load, Result result)
+    void AssetDatabase::AssetFileUpdateInternal(const char* path, schema::AssetFile::Reader assetFile)
     {
-        HE_AT_SCOPE_EXIT([&]() { Allocator::GetDefault().Delete(load); });
-
-        if (!result)
-        {
-            load->callback({ result });
-            return;
-        }
-
-        LoadResult loadResult;
-
-        if (!he::schema::FromToml<schema::AssetFile>(loadResult.builder, load->content.Data()))
-        {
-            HE_LOG_ERROR(he_assets,
-                HE_MSG("Failed to parse asset file. Is it valid TOML?"),
-                HE_KV(file_path, load->path));
-
-            load->callback({ Result::InvalidParameter });
-            return;
-        }
-
-        loadResult.assetFile = loadResult.builder.Root().TryGetStruct<schema::AssetFile>();
-        if (!loadResult.assetFile.IsValid())
-        {
-            HE_LOG_ERROR(he_assets,
-                HE_MSG("Failed to parse asset file. The root struct is not an AssetFile."),
-                HE_KV(file_path, load->path));
-
-            load->callback({ Result::InvalidParameter });
-            return;
-        }
-
-        load->callback(Move(loadResult));
-    }
-
-    void AssetDatabase::HandleLoadForUpdateComplete(UpdateRequest* req, LoadResult load)
-    {
-        AssetDatabase& db = *req->db;
-        const String& path = req->path;
-        const LoadDelegate& callback = req->callback;
-
-        HE_AT_SCOPE_EXIT([&]() { Allocator::GetDefault().Delete(req); });
-
-        // Early out of the file failed to load
-        if (!load.result)
-        {
-            if (callback)
-                callback(Move(load));
-            return;
-        }
-
         String relPath;
-        if (!HE_VERIFY(db.PrepareRelativePath(path.Data(), relPath)))
+        if (!HE_VERIFY(PrepareRelativePath(path, relPath)))
             return;
 
         String absPath;
-        if (!HE_VERIFY(db.PrepareAbsolutePath(path.Data(), absPath)))
+        if (!HE_VERIFY(PrepareAbsolutePath(path, absPath)))
             return;
 
         // Otherwise lets prepare the file model and update the DB
@@ -401,21 +389,21 @@ namespace he::assets
         }
 
         AssetFileModel model;
-        model.uuid = load.assetFile.GetUuid();
+        model.uuid = assetFile.GetUuid();
         model.file.path = relPath;
         model.file.writeTime = attrs.writeTime;
         model.file.size = static_cast<uint32_t>(attrs.size);
         model.source = {};
 
-        if (load.assetFile.HasSource() && !load.assetFile.GetSource().IsEmpty())
+        if (assetFile.HasSource() && !assetFile.GetSource().IsEmpty())
         {
-            const he::schema::String::Reader sourcePath = load.assetFile.GetSource();
+            const he::schema::String::Reader sourcePath = assetFile.GetSource();
 
             model.source.path = sourcePath;
 
             // TODO: Modify for when we support sparse checkout of source files.
             String sourceAbsPath;
-            if (db.PrepareAbsolutePath(model.source.path.Data(), sourceAbsPath))
+            if (PrepareAbsolutePath(model.source.path.Data(), sourceAbsPath))
             {
                 res = File::GetAttributes(sourceAbsPath.Data(), attrs);
                 if (res)
@@ -434,16 +422,65 @@ namespace he::assets
             }
         }
 
-        if (!AssetFileModel::AddOrUpdate(db, load.assetFile, model))
+        if (!AssetFileModel::AddOrUpdate(*this, assetFile, model))
         {
             HE_LOG_WARN(he_assets,
                 HE_MSG("Failed to update asset cached DB with asset file data. Check the logs above this for additional details."),
-                HE_KV(file_uuid, AssetFileUuid(load.assetFile.GetUuid())),
+                HE_KV(file_uuid, AssetFileUuid(assetFile.GetUuid())),
                 HE_KV(file_path, absPath));
         }
+    }
+
+    void AssetDatabase::HandleFileReadComplete(LoadRequest* load, Result result)
+    {
+        HE_AT_SCOPE_EXIT([&]() { Allocator::GetDefault().Delete(load); });
+
+        if (!result)
+        {
+            load->callback({ result });
+            return;
+        }
+
+        LoadResult loadResult;
+
+        if (!he::schema::FromToml(loadResult.builder, load->content.Data()))
+        {
+            HE_LOG_ERROR(he_assets,
+                HE_MSG("Failed to parse asset file. Is it valid TOML?"),
+                HE_KV(file_path, load->path));
+
+            load->callback({ Result::InvalidParameter });
+            return;
+        }
+
+        // Root() of TypeBuilder will add it if it doesn't exist, so we check the underlying raw
+        // builder if the root was properly set.
+        he::schema::PointerBuilder root = loadResult.builder.builder.Root();
+        if (root.IsNull() || !root.TryGetStruct<schema::AssetFile>().IsValid())
+        {
+           HE_LOG_ERROR(he_assets,
+               HE_MSG("Failed to parse asset file. The root struct is not an AssetFile."),
+               HE_KV(file_path, load->path));
+
+           load->callback({ Result::InvalidParameter });
+           return;
+        }
+
+        load->callback(Move(loadResult));
+    }
+
+    void AssetDatabase::HandleLoadForUpdateComplete(UpdateRequest* req, LoadResult load)
+    {
+        AssetDatabase& db = *req->db;
+        const String& path = req->path;
+        const LoadDelegate& callback = req->callback;
+
+        HE_AT_SCOPE_EXIT([&]() { Allocator::GetDefault().Delete(req); });
+
+        if (load.result)
+            db.AssetFileUpdateInternal(path.Data(), load.builder.Root());
 
         if (callback)
             callback(Move(load));
     }
-
 }

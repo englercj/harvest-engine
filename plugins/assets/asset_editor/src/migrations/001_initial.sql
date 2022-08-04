@@ -19,9 +19,10 @@ CREATE TABLE asset (
     id                      INTEGER PRIMARY KEY,    -- Primary key for a row.
     uuid                    BLOB(16) NOT NULL,      -- Globally unique ID of the Asset.
     asset_file_id           INTEGER NOT NULL,       -- The file this asset exists in.
-    type                    TEXT NOT NULL,          -- Type of the Asset.
+    asset_type_name         TEXT NOT NULL,          -- Type of the Asset.
     name                    TEXT NOT NULL,          -- Friendly name of the Asset.
     state                   INTEGER NOT NULL,       -- `he::assets::AssetState` enum value.
+    data_hash               INTEGER DEFAULT 0,      -- Last recorded Fnv32 hash of the asset's data bytes.
     import_data_hash        INTEGER DEFAULT 0,      -- Last recorded Fnv32 hash of the asset's import data bytes.
     importer_id             INTEGER DEFAULT 0,      -- ID of the last importer to process this asset.
     importer_version        INTEGER DEFAULT 0,      -- Version of the importer that processed this asset.

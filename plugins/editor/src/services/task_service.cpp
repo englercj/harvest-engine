@@ -3,10 +3,27 @@
 #include "task_service.h"
 
 #include "he/core/thread.h"
+#include "he/core/unique_ptr.h"
 #include "he/core/utils.h"
 
 namespace he::editor
 {
+    class TaskWrapper : public Task
+    {
+    public:
+        TaskWrapper(const char* name, TaskDelegate func)
+            : m_name(name)
+            , m_func(func)
+        {}
+
+        const char* Name() const override { return m_name.Data(); }
+        void Run() override { m_func(); }
+
+    private:
+        String m_name;
+        TaskDelegate m_func;
+    };
+
     bool TaskService::Initialize()
     {
         m_running = true;
@@ -41,55 +58,57 @@ namespace he::editor
         m_threads.Clear();
     }
 
-    void TaskService::Add(StringView name, TaskDelegate func)
+    void TaskService::Add(const char* name, TaskDelegate func)
     {
         if (!func)
             return;
 
-        TaskData data;
-        data.name = name;
-        data.progress = 0.0f;
-        data.func = func;
+        Add(MakeUnique<TaskWrapper>(name, func));
+    }
 
+    void TaskService::Add(UniquePtr<Task> task)
+    {
         m_mutex.Acquire();
-        m_tasks.push_back(Move(data));
+        m_pendingTasks.push_back(Move(task));
         m_mutex.Release();
 
         m_cv.WakeOne();
     }
 
-    static void _heTaskThunk(he::TaskDelegate cont, float&)
-    {
-        cont();
-    }
-
-    void TaskService::Add(he::TaskDelegate func)
-    {
-        TaskDelegate delegate = TaskDelegate::Make<&_heTaskThunk>(func);
-        Add("Engine Task", delegate);
-    }
-
     bool TaskService::Pump()
     {
-        TaskData data;
+        // TODO: Use some lock-free algos in here, we're currently thrashing this lock both here
+        // and in the ForEach method.
+
+        Task* task = nullptr;
 
         {
             LockGuard lock(m_mutex);
 
             m_cv.Wait(lock, [this]()
             {
-                return !m_tasks.empty() || !m_running;
+                return !m_pendingTasks.empty() || !m_running;
             });
 
-            if (m_tasks.empty())
+            if (m_pendingTasks.empty())
                 return m_running;
 
-            data = Move(m_tasks.front());
-            m_tasks.pop_front();
+            m_runningTasks.push_back(Move(m_pendingTasks.front()));
+            m_pendingTasks.pop_front();
         }
 
-        data.func(data.progress);
-        data.progress = 1.0f;
+        task->m_taskIsRunning = true;
+        task->Run();
+
+        {
+            LockGuard lock(m_mutex);
+
+            m_runningTasks.erase(std::remove_if(m_runningTasks.begin(), m_runningTasks.end(), [&](const UniquePtr<Task>& x)
+            {
+                return task == x.Get();
+            }));
+        }
+
         return true;
     }
 

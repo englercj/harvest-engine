@@ -80,6 +80,7 @@ local function _platform_file_excludes()
     filter { "files:**.linux.*" }       flags { "ExcludeFromBuild" }
     filter { "files:**.posix.*" }       flags { "ExcludeFromBuild" }
     filter { "files:**.win32.*" }       flags { "ExcludeFromBuild" }
+    filter { "files:**.windows.*" }     flags { "ExcludeFromBuild" }
     filter { "files:**.xbox.*" }        flags { "ExcludeFromBuild" }
 
     filter { "system:emscripten", "files:**.emscripten.*" }
@@ -92,6 +93,9 @@ local function _platform_file_excludes()
         removeflags { "ExcludeFromBuild" }
 
     filter { "system:windows or xbox", "files:**.win32.*" }
+        removeflags { "ExcludeFromBuild" }
+
+    filter { "system:windows", "files:**.windows.*" }
         removeflags { "ExcludeFromBuild" }
 
     filter { "system:xbox", "files:**.xbox.*" }

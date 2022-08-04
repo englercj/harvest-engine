@@ -3,6 +3,7 @@
 #include "he/schema/schema.h"
 
 #include "he/core/assert.h"
+#include "he/core/uuid.h"
 
 #include <algorithm>
 
@@ -11,6 +12,15 @@ namespace he::schema
     static bool DeclInfoComp(const DeclInfo* info, TypeId id)
     {
         return info->id < id;
+    }
+
+    void FillUuidV4(Uuid::Builder builder)
+    {
+        he::Uuid uuid = he::Uuid::CreateV4();
+        Span<uint8_t> dst = builder.GetValue();
+
+        HE_ASSERT(dst.Size() == sizeof(uuid.m_bytes));
+        MemCopy(dst.Data(), uuid.m_bytes, sizeof(uuid.m_bytes));
     }
 
     const DeclInfo* FindDependency(const DeclInfo& info, TypeId id)

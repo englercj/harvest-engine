@@ -46,10 +46,11 @@ namespace he
     {
         explicit StaticModuleRegistrar(const char* name)
         {
-            ModuleRegistry::Get().RegisterStaticModule(name, &StaticModuleRegistrar::CreateModule);
+            const auto cb = ModuleRegistry::CreateModuleDelegate::Make(&StaticModuleRegistrar::CreateModule);
+            ModuleRegistry::Get().RegisterStaticModule(name, cb);
         }
 
-        static UniquePtr<Module> CreateModule(void*)
+        static UniquePtr<Module> CreateModule()
         {
             return MakeUnique<T>();
         }

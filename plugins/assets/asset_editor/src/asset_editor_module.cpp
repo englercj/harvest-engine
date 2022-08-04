@@ -4,35 +4,67 @@
 
 #include "he/assets/asset_type_registry.h"
 #include "he/assets/types.h"
-#include "he/assets/texture/texture_compiler.h"
-#include "he/assets/texture/texture_importer.h"
+#include "he/assets/compilers/texture2d_compiler.h"
+#include "he/assets/importers/image_importer.h"
 #include "he/core/module_registry.h"
 #include "he/core/types.h"
+
+#include "encoder/basisu_enc.h"
 
 namespace he::assets
 {
     class AssetEditorModule : public Module
     {
+        void Register() override
+        {
+            ModuleRegistry& registry = ModuleRegistry::Get();
+
+            registry.RegisterApi<AssetTypeRegistry>();
+        }
+
+        void Unregister() override
+        {
+            ModuleRegistry& registry = ModuleRegistry::Get();
+
+            registry.UnregisterApi<AssetTypeRegistry>();
+        }
+
         bool Startup() override
         {
-            // ----------
-            // Register Asset Types
-            AssetTypeRegistry& types = AssetTypeRegistry::Get();
+            ModuleRegistry& registry = ModuleRegistry::Get();
 
-            // Texture
-            types.RegisterAssetType<schema::Texture, TextureCompiler>();
-            types.RegisterImporter<TextureImporter>();
+            AssetTypeRegistry& types = registry.GetApi<AssetTypeRegistry>();
+            types.RegisterAssetType<schema::Texture2D, Texture2DCompiler>();
+            types.RegisterImporter<ImageImporter>();
 
-            // ----------
-            // Register Editor Types
-            //EditorRegistry& editor = EditorDocumentRegistry::Get();
+            //EditorDocumentRegistry* editor = registry.FindApi<EditorDocumentRegistry>();
+            //if (editor)
+            //{
+            //    editor->RegisterAssetDocument<schema::Texture, TextureDocument>();
+            //}
 
-            //// Texture
-            //editor.RegisterAssetDocument<schema::Texture, TextureDocument>();
+            basisu::basisu_encoder_init();
 
             return true;
+        }
+
+        void Shutdown() override
+        {
+            basisu::basisu_encoder_deinit();
+
+            ModuleRegistry& registry = ModuleRegistry::Get();
+
+            //EditorDocumentRegistry* editor = registry.FindApi<EditorDocumentRegistry>();
+            //if (editor)
+            //{
+            //    editor->UnregisterAssetDocument<schema::Texture, TextureDocument>();
+            //}
+
+            AssetTypeRegistry& types = registry.GetApi<AssetTypeRegistry>();
+            types.UnregisterAssetType<schema::Texture2D>();
+            types.UnregisterImporter<ImageImporter>();
         }
     };
 }
 
-HE_EXPORT_MODULE(he::assets::AssetEditorModule, AssetEditor);
+HE_EXPORT_MODULE(he::assets::AssetEditorModule);

@@ -2,6 +2,7 @@
 
 #include "asset_service.h"
 
+#include "he/assets/asset_models.h"
 #include "he/core/log.h"
 #include "he/core/path.h"
 #include "he/core/scope_guard.h"
@@ -12,25 +13,27 @@ namespace he::editor
 {
     AssetService::AssetService(
         FileLoaderService& fileLoaderService,
-        ProjectService& projectService)
+        ProjectService& projectService,
+        TaskService& taskService)
         : m_fileLoaderService(fileLoaderService)
         , m_projectService(projectService)
+        , m_taskService(taskService)
+        , m_db()
+        , m_updater(m_db)
+        , m_server(m_db, m_taskService)
     {}
 
     bool AssetService::Initialize()
     {
         m_projectService.OnLoad().Attach<&AssetService::OnProjectLoaded>(this);
+        OnProjectLoaded();
         return true;
     }
 
     void AssetService::Terminate()
     {
-        if (m_updater)
-        {
-            m_updater->Stop();
-            assets::AssetDatabaseUpdater::Destroy(m_updater);
-            m_updater = nullptr;
-        }
+        m_onDbReadyBinding.Detach();
+        m_updater.Stop();
 
         m_db.Terminate();
     }
@@ -66,8 +69,9 @@ namespace he::editor
             return;
         }
 
-        m_updater = assets::AssetDatabaseUpdater::Create(m_db);
-        if (!m_updater->Start())
+        m_onDbReadyBinding = m_updater.OnReady().Attach<&AssetService::OnDbReady>(this);
+
+        if (!m_updater.Start())
         {
             HE_LOG_ERROR(he_editor,
                 HE_MSG("Failed to start asset DB updater."),
@@ -77,5 +81,19 @@ namespace he::editor
         }
 
         failGuard.Dismiss();
+    }
+
+    void AssetService::OnDbReady()
+    {
+        m_dbReady = true;
+
+        TaskDelegate task = TaskDelegate::Make<&AssetService::ProcessPendingAssetsTask>(this);
+        m_taskService.Add("Process pending assets", task);
+    }
+
+    void AssetService::ProcessPendingAssetsTask()
+    {
+        m_server.StartPendingImports();
+        m_server.StartPendingCompiles();
     }
 }

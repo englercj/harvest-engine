@@ -20,9 +20,7 @@ namespace he::assets
         struct LoadResult
         {
             Result result{};
-
-            he::schema::Builder builder{};
-            schema::AssetFile::Builder assetFile{};
+            he::schema::TypedBuilder<schema::AssetFile> builder{};
         };
 
         using LoadDelegate = Delegate<void(LoadResult)>;
@@ -36,9 +34,10 @@ namespace he::assets
         // TODO: Audit the path handling in these.
         // All of these should work with absolute paths, or asset root relative paths.
         bool IsFileUpToDate(const char* path);
-        bool UpdateAssetFile(const char* path, LoadDelegate callback = {});
+        bool UpdateAssetFile(const char* path, LoadDelegate callback);
         bool LoadAssetFile(const char* path, LoadDelegate callback);
         bool LoadAssetFile(const AssetFileUuid& fileUuid, LoadDelegate callback);
+        bool SaveAssetFile(const char* path, schema::AssetFile::Reader assetFile);
 
         void OnAssetFileDeleted(const char* path);
         void OnAssetFileUpdated(const char* path);
@@ -51,6 +50,8 @@ namespace he::assets
     private:
         bool PrepareRelativePath(const char* path, String& relPath) const;
         bool PrepareAbsolutePath(const char* path, String& absPath) const;
+
+        void AssetFileUpdateInternal(const char* path, schema::AssetFile::Reader assetFile);
 
     private:
         struct LoadRequest

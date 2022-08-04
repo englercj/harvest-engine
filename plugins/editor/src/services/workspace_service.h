@@ -5,6 +5,7 @@
 #include "dialog_service.h"
 #include "document_service.h"
 #include "imgui_service.h"
+#include "log_service.h"
 #include "main_window_service.h"
 #include "platform_service.h"
 #include "task_service.h"
@@ -22,6 +23,7 @@ namespace he::editor
             DialogService& dialogService,
             DocumentService& documentService,
             ImGuiService& imguiService,
+            LogService& logService,
             MainWindowService& mainWindowService,
             PlatformService& platformService,
             TaskService& taskService);
@@ -38,6 +40,7 @@ namespace he::editor
         DialogService& m_dialogService;
         DocumentService& m_documentService;
         ImGuiService& m_imguiService;
+        LogService& m_logService;
         MainWindowService& m_mainWindowService;
         PlatformService& m_platformService;
         TaskService& m_taskService;

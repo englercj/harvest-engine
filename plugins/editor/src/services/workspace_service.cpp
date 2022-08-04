@@ -12,6 +12,7 @@
 #include "documents/welcome_document.h"
 #include "fonts/icons_material_design.h"
 #include "widgets/menu.h"
+#include "widgets/progress.h"
 
 #define IMGUI_DEFINE_MATH_OPERATORS
 #include "imgui.h"
@@ -24,12 +25,14 @@ namespace he::editor
         DialogService& dialogService,
         DocumentService& documentService,
         ImGuiService& imguiService,
+        LogService& logService,
         MainWindowService& mainWindowService,
         PlatformService& platformService,
         TaskService& taskService)
         : m_dialogService(dialogService)
         , m_documentService(documentService)
         , m_imguiService(imguiService)
+        , m_logService(logService)
         , m_mainWindowService(mainWindowService)
         , m_platformService(platformService)
         , m_taskService(taskService)
@@ -268,11 +271,19 @@ namespace he::editor
 
             ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(3.0f * dpiScale, ImGui::GetStyle().FramePadding.y));
 
-            StatusBarButton(ICON_MDI_ALERT_OCTAGON " 01");
-            StatusBarButton(ICON_MDI_ALERT " 0");
-            StatusBarButton(ICON_MDI_INFORMATION " 0");
+            String buf;
 
-            ImGui::Text("<- fake data for styling");
+            buf.Clear();
+            fmt::format_to(Appender(buf), ICON_MDI_ALERT_OCTAGON " {}", m_logService.GetNumEntries(LogLevel::Error));
+            StatusBarButton(buf.Data());
+
+            buf.Clear();
+            fmt::format_to(Appender(buf), ICON_MDI_ALERT " {}", m_logService.GetNumEntries(LogLevel::Warn));
+            StatusBarButton(buf.Data());
+
+            buf.Clear();
+            fmt::format_to(Appender(buf), ICON_MDI_INFORMATION " {}", m_logService.GetNumEntries(LogLevel::Info));
+            StatusBarButton(buf.Data());
 
             ImGui::PopStyleVar();
 
@@ -287,7 +298,11 @@ namespace he::editor
             }
             else
             {
-                // TODO
+                const uint32_t pending = m_taskService.PendingSize();
+                const uint32_t running = m_taskService.RunningSize();
+
+                ProgressSpinner();
+                ImGui::Text("Running %u tasks (%u pending)...", running, pending);
             }
 
             EndAppStatusBar();

@@ -13,6 +13,7 @@
 #include "he/core/type_traits.h"
 #include "he/core/utils.h"
 #include "he/core/uuid.h"
+#include "he/schema/schema.h"
 
 namespace he::assets
 {
@@ -30,6 +31,7 @@ namespace he::assets
     {
         _UuidWrapper() noexcept : val() {}
         _UuidWrapper(const Uuid& uuid) noexcept : val(uuid) {}
+        _UuidWrapper(he::schema::Uuid::Builder uuid) noexcept { *this = uuid.AsReader(); }
         _UuidWrapper(he::schema::Uuid::Reader uuid) noexcept { *this = uuid; }
 
         _UuidWrapper& operator=(const he::schema::Uuid::Reader uuid) noexcept
@@ -89,6 +91,8 @@ namespace he::assets
         constexpr bool operator!=(const _HashId& x) const { return val != x.val; }
         constexpr bool operator<(const _HashId& x) const { return val < x.val; }
 
+        constexpr _HashId operator^(const _HashId& x) const { return CombineHash(val, x.val); }
+
         uint32_t val;
     };
 
@@ -112,6 +116,9 @@ namespace he::assets
     /// has been compiled with the current version of the compiler code.
     /// \see AssetCompiler::Version()
     using CompilerVersion = _HashId<struct CompilerVersionTag>;
+
+    /// Unique identifier for a type of resource. Usually a hash of a unique string.
+    using ResourceId = _HashId<struct ResourceIdTag>;
 }
 
 // Hash overloads

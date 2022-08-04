@@ -231,6 +231,8 @@ namespace he::schema
         return {};
     }
 
+    void FillUuidV4(Uuid::Builder builder);
+
     const DeclInfo* FindDependency(const DeclInfo& info, TypeId id);
 
     class SchemaVisitor

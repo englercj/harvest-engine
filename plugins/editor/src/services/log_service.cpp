@@ -44,15 +44,33 @@ namespace he::editor
         RemoveLogSink(m_fileSink);
     }
 
+    uint32_t LogService::GetNumEntries(LogLevel level) const
+    {
+        return GetLevelCount(level).load();
+    }
+
     void LogService::OnLogEntry(const LogSource& source, const KeyValue* kvs, uint32_t count)
     {
         LockGuard lock(m_mutex);
 
         if (m_entries.size() == MaxEntries)
+        {
+            GetLevelCount(m_entries.front().source.level).fetch_sub(1);
             m_entries.pop_front();
+        }
 
         LogEntry& entry = m_entries.emplace_back();
         entry.source = source;
         entry.kvs.Insert(0, kvs, kvs + count);
+
+        GetLevelCount(entry.source.level).fetch_add(1);
+    }
+
+    const std::atomic<uint32_t>& LogService::GetLevelCount(LogLevel level) const
+    {
+        const uint32_t index = static_cast<uint32_t>(level);
+        HE_ASSERT(index < HE_LENGTH_OF(m_levelCounts));
+
+        return m_levelCounts[index];
     }
 }

@@ -622,6 +622,21 @@ namespace he::schema
         Vector<Word> m_data;
     };
 
+    template <typename T>
+    struct TypedBuilder
+    {
+        Builder builder{};
+
+        T::Builder Root()
+        {
+            PointerBuilder ptr = builder.Root();
+            if (ptr.IsNull())
+                return builder.AddStruct<T>();
+
+            return ptr.TryGetStruct<T>();
+        }
+    };
+
     // --------------------------------------------------------------------------------------------
     class PointerBuilder
     {

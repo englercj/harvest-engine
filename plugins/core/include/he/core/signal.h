@@ -22,7 +22,12 @@ namespace he
         class Binding
         {
         public:
-            bool Detach() { return m_signal->Detach(*this); }
+            Binding() = default;
+
+            bool IsValid() const { return m_signal != nullptr; }
+            bool Detach() { return IsValid() && m_signal->Detach(*this); }
+
+            operator bool() const { return IsValid(); }
 
         private:
             friend Signal;
@@ -32,8 +37,8 @@ namespace he
                 , m_token(token)
             {}
 
-            Signal* m_signal;
-            uint64_t m_token;
+            Signal* m_signal{ nullptr };
+            uint64_t m_token{ 0 };
         };
 
     private:

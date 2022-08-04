@@ -1,0 +1,35 @@
+# Copyright Chad Engler
+
+id = "binomial.basis_universal"
+name = "Basis Universal"
+description = "Basis Universal Supercompressed GPU Texture Codec"
+version = "1.16.3"
+author = "Binomial LLC"
+license = "Apache-2.0"
+homepage = "http://www.binomial.info/"
+
+[install]
+    github = "BinomialLLC/basis_universal#1.16.3"
+
+[[modules]]
+    name = "basis_universal"
+    type = "static"
+    group = "engine/contrib"
+    warnings = "Off"
+    files = [
+        "encoder/*.h",
+        "encoder/*.cpp",
+        "transcoder/*.h",
+        "transcoder/*.cpp",
+    ]
+    public_externalincludedirs = ["."]
+    private_defines = [
+        "BASISU_SUPPORT_SSE=1",
+        "BASISD_SUPPORT_KTX2=1",
+        "BASISD_SUPPORT_KTX2_ZSTD=1",
+    ]
+    public_dependson = ["zstd"]
+
+    [[modules.variants]]
+        conditions = ["system:posix"]
+        public_dependson = ["sys:m", "sys:pthread"]

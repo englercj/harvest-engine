@@ -428,7 +428,8 @@ namespace he::assets
         if (!stmt->Bind(5, static_cast<uint16_t>(AssetState::Unknown)))
             return false;
 
-        const uint32_t importDataHash = FNV32::HashData(asset.GetImportData().Data(), asset.GetImportData().Size());
+        he::schema::AnyStruct::Reader ptr = asset.GetImportData();
+        const uint32_t importDataHash = ptr.IsNull() ? 0 : FNV32::HashData(ptr.Target(), ptr.StructWordSize());
         if (!stmt->Bind(6, importDataHash))
             return false;
 
@@ -462,6 +463,36 @@ namespace he::assets
         )");
 
         if (!stmt->Bind(1, fileUuid.val.m_bytes))
+            return false;
+
+        return stmt->EachRow([&](const sqlite::Statement& stmt)
+        {
+            Read(stmt, models.EmplaceBack());
+        });
+    }
+
+    bool AssetModel::FindAll(AssetDatabase& db, const char* search, Vector<AssetModel>& models)
+    {
+        sqlite::ScopedStatement stmt = db.StatementLiteral(R"(
+            SELECT * FROM fts_asset WHERE fts_asset MATCH ? ORDER BY rank
+        )");
+
+        if (!stmt->Bind(1, search))
+            return false;
+
+        return stmt->EachRow([&](const sqlite::Statement& stmt)
+        {
+            Read(stmt, models.EmplaceBack());
+        });
+    }
+
+    bool AssetModel::FindAll(AssetDatabase& db, AssetState state, Vector<AssetModel>& models)
+    {
+        sqlite::ScopedStatement stmt = db.StatementLiteral(R"(
+            SELECT * FROM asset WHERE state = ?
+        )");
+
+        if (!stmt->Bind(1, static_cast<uint8_t>(state)))
             return false;
 
         return stmt->EachRow([&](const sqlite::Statement& stmt)
@@ -658,6 +689,21 @@ namespace he::assets
 
         transaction.Commit();
         return true;
+    }
+
+    bool AssetModel::UpdateState(AssetDatabase& db, const AssetUuid& assetUuid, AssetState state)
+    {
+        sqlite::ScopedStatement stmt = db.StatementLiteral(R"(
+            UPDATE asset SET state = ? WHERE uuid = ?
+        )");
+
+        if (!stmt->Bind(1, static_cast<uint8_t>(state)))
+            return false;
+
+        if (!stmt->Bind(2, assetUuid.val.m_bytes))
+            return false;
+
+        return stmt->Step() == sqlite::StepResult::Done;
     }
 
     bool ConfigModel::AddOrUpdate(AssetDatabase& db, const ConfigModel& model)

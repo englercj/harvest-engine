@@ -10,7 +10,6 @@
 
 #include <deque>
 #include <thread>
-#include <condition_variable>
 
 namespace he
 {
@@ -23,7 +22,8 @@ namespace he
     public:
         virtual ~TaskExecutor() = default;
 
-        virtual void Add(TaskDelegate func) = 0;
+        virtual void Add(const char* name, TaskDelegate func) = 0;
+        virtual void Add(TaskDelegate func) { Add("", func); };
     };
 
     // --------------------------------------------------------------------------------------------
@@ -43,14 +43,14 @@ namespace he
         Result Startup(const Config& config);
         void Shutdown();
 
-        void Add(TaskDelegate func) override;
+        void Add(const char* name, TaskDelegate func) override;
 
     private:
         bool Pump();
 
         static void PumpThread(ThreadPoolExecutor* executor);
 
-    private:
+    protected:
         Vector<std::thread> m_threads;
         String m_threadName;
 

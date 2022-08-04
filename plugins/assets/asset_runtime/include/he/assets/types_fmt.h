@@ -27,4 +27,19 @@ namespace fmt
             return fmt::format_to(ctx.out(), "{:02x}", fmt::join(b, b + ByteSize, ""));
         }
     };
+
+    template <typename T>
+    struct formatter<he::assets::_HashId<T>>
+    {
+        constexpr auto parse(fmt::format_parse_context& ctx) -> decltype(ctx.begin())
+        {
+            return ctx.begin();
+        }
+
+        template <typename FormatContext>
+        auto format(const he::assets::_HashId<T>& id, FormatContext& ctx) -> decltype(ctx.out())
+        {
+            return fmt::format_to(ctx.out(), "{:#010x}", id.val);
+        }
+    };
 }

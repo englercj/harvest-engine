@@ -1,17 +1,45 @@
 // Copyright Chad Engler
 
+#include "he/assets/change_journal_watcher.h"
+
 #include "he/core/assert.h"
 #include "he/core/log.h"
 #include "he/core/result_fmt.h"
 #include "he/core/scope_guard.h"
 #include "he/core/wstr.h"
 
-#if defined(HE_PLATFORM_API_WIN32)
+#if defined(HE_PLATFORM_WINDOWS)
 
-#include "change_journal_watcher.win32.h"
+#include <Shlwapi.h>
+#include <Windows.h>
 
 namespace he::assets
 {
+    constexpr uint32_t BufferSize = 4096;
+    constexpr DWORD ReasonMask = USN_REASON_DATA_EXTEND | USN_REASON_DATA_OVERWRITE | USN_REASON_DATA_TRUNCATION | USN_REASON_FILE_CREATE | USN_REASON_FILE_DELETE | USN_REASON_RENAME_NEW_NAME | USN_REASON_RENAME_OLD_NAME;
+
+    ChangeJournalReasonFlag ToChangeJournalReasonFlags(DWORD reasons)
+    {
+        ChangeJournalReasonFlag flags = ChangeJournalReasonFlag::None;
+
+        if (HasFlag(reasons, USN_REASON_FILE_CREATE))
+            flags |= ChangeJournalReasonFlag::Added;
+
+        if (HasFlag(reasons, USN_REASON_FILE_DELETE))
+            flags |= ChangeJournalReasonFlag::Removed;
+
+        if (HasFlag(reasons, USN_REASON_DATA_EXTEND) || HasFlag(reasons, USN_REASON_DATA_OVERWRITE) || HasFlag(reasons, USN_REASON_DATA_TRUNCATION))
+            flags |= ChangeJournalReasonFlag::Modified;
+
+        if (HasFlag(reasons, USN_REASON_RENAME_NEW_NAME))
+            flags |= ChangeJournalReasonFlag::Renamed_OldName;
+
+        if (HasFlag(reasons, USN_REASON_RENAME_OLD_NAME))
+            flags |= ChangeJournalReasonFlag::Renamed_NewName;
+
+        return flags;
+    }
+
     template <typename T>
     static bool ReadFileName(String& dst, const T* record)
     {
@@ -35,6 +63,83 @@ namespace he::assets
         const uint32_t fnameLen = record->FileNameLength / sizeof(wchar_t);
         WCToMBStr(dst, fname, fnameLen);
         return true;
+    }
+
+    static bool ReadUsnRecords(HANDLE volume, USN startUsn, DWORDLONG journalId, uint8_t* buffer, DWORD& bytesReturned)
+    {
+        READ_USN_JOURNAL_DATA_V1 readData{};
+        readData.StartUsn = startUsn;
+        readData.ReasonMask = ReasonMask;
+        readData.ReturnOnlyOnClose = false;
+        readData.Timeout = 1;
+        readData.BytesToWaitFor = BufferSize;
+        readData.UsnJournalID = journalId;
+        readData.MinMajorVersion = 2;
+        readData.MaxMajorVersion = 3;
+
+        const BOOL res = ::DeviceIoControl(
+            volume,
+            FSCTL_READ_USN_JOURNAL,
+            &readData,
+            sizeof(readData),
+            buffer,
+            BufferSize,
+            &bytesReturned,
+            nullptr);
+
+        if (res == 0 || bytesReturned < sizeof(USN))
+        {
+            HE_LOG_ERROR(he_assets,
+                HE_MSG("Failed to read USN journal records."),
+                HE_KV(bytes_returned, bytesReturned),
+                HE_KV(result, Result::FromLastError()));
+            return false;
+        }
+
+        return true;
+    }
+
+    static bool ParseUsnRecord(const USN_RECORD* record, ChangeJournalWatcher::Entry& entry)
+    {
+        switch (record->MajorVersion)
+        {
+            case 2:
+            {
+                const USN_RECORD_V2* recordV2 = reinterpret_cast<const USN_RECORD_V2*>(record);
+                entry.usn = recordV2->Reason;
+                entry.timestamp = Win32FileTimeToSystemTime(recordV2->TimeStamp.QuadPart);
+                entry.attributeFlags = recordV2->FileAttributes;
+                entry.reasonFlags = ToChangeJournalReasonFlags(recordV2->Reason);
+                return ReadFileName(entry.path, recordV2);
+            }
+            case 3:
+            {
+                const USN_RECORD_V3* recordV3 = reinterpret_cast<const USN_RECORD_V3*>(record);
+                entry.usn = recordV3->Reason;
+                entry.timestamp = Win32FileTimeToSystemTime(recordV3->TimeStamp.QuadPart);
+                entry.attributeFlags = recordV3->FileAttributes;
+                entry.reasonFlags = ToChangeJournalReasonFlags(recordV3->Reason);
+                return ReadFileName(entry.path, recordV3);
+            }
+            case 4:
+            {
+                const USN_RECORD_V4* recordV4 = reinterpret_cast<const USN_RECORD_V4*>(record);
+                HE_LOG_TRACE(he_assets,
+                    HE_MSG("Encountered v4 USN record (range tracking), ignoring."),
+                    HE_KV(major_version, recordV4->Header.MajorVersion),
+                    HE_KV(minor_version, recordV4->Header.MinorVersion),
+                    HE_KV(usn, recordV4->Usn),
+                    HE_KV(reason, recordV4->Reason));
+                // v4 records are valid, but aren't interesting for us. Return false to skip it.
+                return false;
+            }
+        }
+
+        HE_LOG_WARN(he_assets,
+            HE_MSG("Encountered unknown USN record version, ignoring."),
+            HE_KV(major_version, record->MajorVersion),
+            HE_KV(minor_version, record->MinorVersion));
+        return false;
     }
 
     bool ChangeJournalWatcher::Initialize(const char* path)
@@ -151,8 +256,10 @@ namespace he::assets
         Entry entry;
 
         DWORD bytesReturned = 0;
-        if (!ReadRecords(bytesReturned))
+        if (!ReadUsnRecords(m_volume, m_nextUsn, m_journalId, m_buffer, bytesReturned))
             return false;
+
+        m_nextUsn = *reinterpret_cast<USN*>(m_buffer);
 
         const uint8_t* end = m_buffer + bytesReturned;
         const uint8_t* p = m_buffer + sizeof(USN);
@@ -168,91 +275,13 @@ namespace he::assets
                 return false;
             }
 
-            if (ParseRecord(record, entry))
+            if (ParseUsnRecord(record, entry))
             {
                 iterator(entry);
             }
         }
 
         return true;
-    }
-
-    bool ChangeJournalWatcher::ReadRecords(DWORD& bytesReturned)
-    {
-        READ_USN_JOURNAL_DATA_V1 readData{};
-        readData.StartUsn = m_nextUsn;
-        readData.ReasonMask = ReasonMask;
-        readData.ReturnOnlyOnClose = false;
-        readData.Timeout = 1;
-        readData.BytesToWaitFor = BufferSize;
-        readData.UsnJournalID = m_journalId;
-        readData.MinMajorVersion = 2;
-        readData.MaxMajorVersion = 3;
-
-        const BOOL res = ::DeviceIoControl(
-            m_volume,
-            FSCTL_READ_USN_JOURNAL,
-            &readData,
-            sizeof(readData),
-            m_buffer,
-            BufferSize,
-            &bytesReturned,
-            nullptr);
-
-        if (res == 0 || bytesReturned < sizeof(USN))
-        {
-            HE_LOG_ERROR(he_assets,
-                HE_MSG("Failed to read USN journal records."),
-                HE_KV(bytes_returned, bytesReturned),
-                HE_KV(result, Result::FromLastError()));
-            return false;
-        }
-
-        m_nextUsn = *reinterpret_cast<USN*>(m_buffer);
-        return true;
-    }
-
-    bool ChangeJournalWatcher::ParseRecord(const USN_RECORD* record, Entry& entry)
-    {
-        switch (record->MajorVersion)
-        {
-            case 2:
-            {
-                const USN_RECORD_V2* recordV2 = reinterpret_cast<const USN_RECORD_V2*>(record);
-                entry.usn = recordV2->Reason;
-                entry.timestamp = Win32FileTimeToSystemTime(recordV2->TimeStamp.QuadPart);
-                entry.attributeFlags = recordV2->FileAttributes;
-                entry.reasonFlags = recordV2->Reason;
-                return ReadFileName(entry.path, recordV2);
-            }
-            case 3:
-            {
-                const USN_RECORD_V3* recordV3 = reinterpret_cast<const USN_RECORD_V3*>(record);
-                entry.usn = recordV3->Reason;
-                entry.timestamp = Win32FileTimeToSystemTime(recordV3->TimeStamp.QuadPart);
-                entry.attributeFlags = recordV3->FileAttributes;
-                entry.reasonFlags = recordV3->Reason;
-                return ReadFileName(entry.path, recordV3);
-            }
-            case 4:
-            {
-                const USN_RECORD_V4* recordV4 = reinterpret_cast<const USN_RECORD_V4*>(record);
-                HE_LOG_TRACE(he_assets,
-                    HE_MSG("Encountered v4 USN record (range tracking), ignoring."),
-                    HE_KV(major_version, recordV4->Header.MajorVersion),
-                    HE_KV(minor_version, recordV4->Header.MinorVersion),
-                    HE_KV(usn, recordV4->Usn),
-                    HE_KV(reason, recordV4->Reason));
-                // v4 records are valid, but aren't interesting for us. Return false to skip it.
-                return false;
-            }
-        }
-
-        HE_LOG_WARN(he_assets,
-            HE_MSG("Encountered unknown USN record version, ignoring."),
-            HE_KV(major_version, record->MajorVersion),
-            HE_KV(minor_version, record->MinorVersion));
-        return false;
     }
 }
 

@@ -2,8 +2,6 @@
 
 @0xea67347ea000c22e;
 
-import "editor_attributes.hsc";
-
 import "he/assets/asset_types.hsc";
 import "he/schema/schema.hsc";
 
@@ -21,5 +19,5 @@ struct RecentProject
 // Setting that are local to the user
 struct Settings
 {
-    recentProjects @0 :RecentProject[] $Editor.Hidden;
+    recentProjects @0 :RecentProject[] $Display.Hidden;
 }

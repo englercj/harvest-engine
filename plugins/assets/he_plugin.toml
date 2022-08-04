@@ -27,7 +27,7 @@ homepage = ""
     type = "static"
     group = "engine/libs"
     files = ["asset_editor/include/**", "asset_editor/src/**"]
-    public_dependson = ["he_asset_runtime", "he_core", "he_schema", "he_sqlite"]
+    public_dependson = ["he_asset_runtime", "he_core", "he_schema", "he_sqlite", "basis_universal"]
     public_includedirs = ["asset_editor/include", "%{he.get_generated_dir('he_asset_editor')}/asset_editor/include"]
     private_includedirs = ["asset_editor/src", "%{he.get_generated_dir('he_asset_editor')}/asset_editor/src"]
 

@@ -14,10 +14,7 @@ namespace he::assets
 
         /// Asset file to be created from this import. If a file already exists then this will
         /// contain the existing asset file.
-        schema::AssetFile::Builder assetFile{};
-
-        /// The builder to hold the asset file allocations.
-        he::schema::Builder assetFileBuilder{};
+        he::schema::TypedBuilder<schema::AssetFile> assetFile{};
 
         /// A builder for the additional information that was requested by the importer on a
         /// previous run.
@@ -33,6 +30,9 @@ namespace he::assets
         /// Builder for a structure of additional data the importer requires to perform the import
         /// operation.
         he::schema::Builder moreInfoBuilder{};
+
+        schema::Asset::Builder AddAsset(StringView assetTypeName, StringView name);
+        bool AddResource(const AssetUuid& assetId, ResourceId resourceId, Span<const uint8_t> data);
     };
 
     class AssetImporter
@@ -41,8 +41,14 @@ namespace he::assets
         virtual ImporterId Id() const = 0;
         virtual ImporterVersion Version() const = 0;
 
+        /// Checks if the proposed file can be handled by this importer.
+        ///
+        /// \param[in] file The path to the file to be imported.
+        /// \return True if this importer can handle the file, false otherwise.
+        virtual bool CanImport(const char* file) = 0;
+
         /// Function to import a source, may be called from any thread.
-        virtual void Import(const ImportContext& ctx, ImportResult& result) = 0;
+        virtual bool Import(const ImportContext& ctx, ImportResult& result) = 0;
     };
 }
 

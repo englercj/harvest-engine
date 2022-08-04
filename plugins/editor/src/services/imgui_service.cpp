@@ -3,8 +3,7 @@
 #include "imgui_service.h"
 
 #include "fonts/icons_material_design.h"
-#include "fonts/fa-solid-900.ttf.h"
-#include "fonts/materialdesignicons-webfont.ttf.h"
+#include "fonts/materialdesignicons.ttf.h"
 #include "fonts/NotoSans-Regular.ttf.h"
 #include "fonts/NotoMono-Regular.ttf.h"
 
@@ -275,6 +274,6 @@ namespace he::editor
         config.PixelSnapH = true;
         config.GlyphOffset = { 0, 2 };
 
-        atlas.AddFontFromMemoryCompressedTTF(c_materialdesignicons_webfont_ttf, HE_LENGTH_OF(c_materialdesignicons_webfont_ttf), fontSize, &config, IconRanges);
+        atlas.AddFontFromMemoryCompressedTTF(c_materialdesignicons_ttf, HE_LENGTH_OF(c_materialdesignicons_ttf), fontSize, &config, IconRanges);
     }
 }

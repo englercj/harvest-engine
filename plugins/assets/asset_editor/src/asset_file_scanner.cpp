@@ -29,7 +29,7 @@ namespace he::assets
 
     bool AssetFileScanner::Run(const char* rootDir)
     {
-        // Set a sentinel in the database to indicate a scan is in progress. This
+        // Set a sentinel in the database to indicate a scan is in progress.
         if (!WriteScanHeader())
             return false;
 
@@ -37,9 +37,11 @@ namespace he::assets
         if (!ScanDirectory(rootDir))
             return false;
 
+        // Remove anything from the DB that we didn't find in the scan
         if (!AssetFileModel::RemoveOutdated(m_db, m_token))
             return false;
 
+        // Remove our sentinel so other processes know they can do work.
         if (!ClearScanHeader())
             return false;
 
@@ -111,6 +113,7 @@ namespace he::assets
 
     void AssetFileScanner::OnUpdateComplete(AssetDatabase::LoadResult result)
     {
-        AssetFileModel::UpdateScanToken(m_db, result.assetFile.GetUuid().AsReader(), m_token);
+        const AssetFileUuid assetFileUuid{ result.builder.Root().GetUuid() };
+        AssetFileModel::UpdateScanToken(m_db, assetFileUuid, m_token);
     }
 }

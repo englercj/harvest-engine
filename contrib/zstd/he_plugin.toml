@@ -1,0 +1,23 @@
+# Copyright Chad Engler
+
+id = "facebook.zstd"
+name = "Zstandard"
+description = "Zstandard is a fast compression algorithm, providing high compression ratios."
+version = "1.5.2"
+author = "Facebook"
+license = "BSD-3-Clause"
+homepage = "http://www.zstd.net/"
+
+[install]
+    github = "facebook/zstd#v1.5.2"
+
+[[modules]]
+    name = "zstd"
+    type = "static"
+    group = "engine/contrib"
+    files = [
+        "lib/common/**",
+        "lib/compress/**",
+        "lib/decompress/**",
+    ]
+    public_includedirs = ["include"]

@@ -47,6 +47,8 @@ namespace he
         }
 
     public:
+        TypeInfo() = default;
+
         [[nodiscard]] constexpr bool operator==(const TypeInfo& x) const { return m_hash == x.m_hash; }
         [[nodiscard]] constexpr bool operator!=(const TypeInfo& x) const { return m_hash != x.m_hash; }
         [[nodiscard]] constexpr bool operator<(const TypeInfo& x) const { return m_hash < x.m_hash; }
@@ -60,8 +62,8 @@ namespace he
             , m_name(name)
         {}
 
-        uint64_t m_hash;
-        StringView m_name;
+        uint64_t m_hash{ 0 };
+        StringView m_name{};
     };
 }
 

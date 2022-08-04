@@ -10,6 +10,7 @@
 #include "he/core/log_sinks.h"
 #include "he/core/vector.h"
 
+#include <atomic>
 #include <deque>
 
 namespace he::editor
@@ -33,7 +34,17 @@ namespace he::editor
             }
         }
 
+        uint32_t GetNumEntries(LogLevel level) const;
+
         void OnLogEntry(const LogSource& source, const KeyValue* kvs, uint32_t count);
+
+    private:
+        const std::atomic<uint32_t>& GetLevelCount(LogLevel level) const;
+
+        std::atomic<uint32_t>& GetLevelCount(LogLevel level)
+        {
+            return const_cast<std::atomic<uint32_t>&>(const_cast<const LogService*>(this)->GetLevelCount(level));
+        }
 
     private:
         struct LogEntry
@@ -50,6 +61,8 @@ namespace he::editor
         DirectoryService& m_directoryService;
 
         FileSink m_fileSink{};
+
+        std::atomic<uint32_t> m_levelCounts[5];
 
         Mutex m_mutex{};
         std::deque<LogEntry> m_entries{};

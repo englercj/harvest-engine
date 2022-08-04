@@ -18,4 +18,7 @@ namespace he::schema
 
     template <typename T>
     bool FromToml(Builder& dst, const char* data) { return FromToml(dst, data, T::DeclInfo); }
+
+    template <typename T>
+    bool FromToml(TypedBuilder<T>& dst, const char* data) { return FromToml<T>(dst.builder, data); }
 }

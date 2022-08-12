@@ -39,6 +39,7 @@ All paths can contain globs and are relative to the he_plugin file, or the insta
 | name                      | String            | Required. Globally unique name of the module. Also used as the project name. |
 | type                      | String            | See the Module Types section for valid values. |
 | group                     | String            | Name of the group this module belongs to. This will be a virtual folder in the solution tree. |
+| language                  | String            | Language of the source to be compiled in the module project. Default is "C++" if not specified. |
 | files                     | Array<String>     | File paths to include in the module project. |
 | post_build_commands       | Array<String>     | Commands to run after the module is built. |
 | pre_build_commands        | Array<String>     | Commands to run before the module is built. |

@@ -127,10 +127,11 @@ local function _module_project(mod)
     assert(kind_target_dir, "No target_dir known for kind: '" .. kindname .. "'.")
 
     local module_type = module_type_by_kind[kindname];
+    local language_type = iif(mod.language ~= nil, mod.language, "C++")
 
     group(mod.group)
     project(mod.name)
-        language "C++"
+        language(language_type)
         kind(kindname)
         objdir(target_obj_dir)
         targetdir(kind_target_dir)
@@ -140,12 +141,6 @@ local function _module_project(mod)
             "HE_CFG_MODULE_NAME=\"" .. mod.name .. "\"",
             "HE_CFG_MODULE_TYPE=" .. module_type,
         }
-
-        if kindname == "SharedLib" then
-            defines { "HE_CFG_MODULE_SHARED=1" }
-        elseif kindname == "StaticLib" then
-            defines { "HE_CFG_MODULE_STATIC=1" }
-        end
 
         for key, value in he.ordered_pairs(mod) do
             _try_handle_key(mod, key, value)

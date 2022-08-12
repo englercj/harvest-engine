@@ -20,6 +20,12 @@ he.workspace = function ()
 
     preferredtoolarchitecture "x86_64"
 
+    -- Address Sanitizer setup
+    if _OPTIONS.asan ~= nil then
+        flags { "NoIncrementalLink" }
+        sanitize { "Address" }
+    end
+
     -- System setup
     filter { "system:emscripten" }
         defines { "HE_PLATFORM_EMSCRIPTEN", "HE_PLATFORM_API_POSIX" }
@@ -52,7 +58,9 @@ he.workspace = function ()
         }
 
     filter { "system:windows", "platforms:x64" }
-        editandcontinue "On"
+        if _OPTIONS.asan == nil then
+            editandcontinue "On"
+        end
 
     -- Compiler setup
     filter { "toolset:msc-*" }
@@ -86,7 +94,7 @@ he.workspace = function ()
         inlining "Explicit"
         optimize "Off"
         runtime "Debug"
-        symbols "On"
+        symbols "FastLink"
 
     filter { "configurations:Release" }
         defines { "NDEBUG", "HE_CFG_RELEASE" }

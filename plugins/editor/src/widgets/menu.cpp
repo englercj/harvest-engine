@@ -454,6 +454,17 @@ namespace he::editor
         return ImGuiMenuItemEx(label, icon, shortcut, selected, enabled);
     }
 
+    bool MenuItem(Command& cmd, bool selected)
+    {
+        if (MenuItem(cmd.Label(), cmd.Icon(), cmd.Shortcut(), selected, cmd.CanRun()))
+        {
+            cmd.Run();
+            return true;
+        }
+
+        return false;
+    }
+
     void MenuSeparator(const char* label)
     {
         ImGuiWindow* window = ImGui::GetCurrentWindow();

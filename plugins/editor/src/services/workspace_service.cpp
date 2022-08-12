@@ -6,13 +6,13 @@
 #include "dialogs/choice_dialog.h"
 #include "documents/document.h"
 #include "documents/stats_document.h"
-#include "documents/imgui_stack_tool_document.h"
-#include "documents/imgui_style_editor_document.h"
-#include "documents/imgui_widget_document.h"
+#include "documents/imgui_debug_document.h"
 #include "documents/welcome_document.h"
 #include "fonts/icons_material_design.h"
 #include "widgets/menu.h"
 #include "widgets/progress.h"
+
+#include "he/core/appender.h"
 
 #define IMGUI_DEFINE_MATH_OPERATORS
 #include "imgui.h"
@@ -22,20 +22,26 @@
 namespace he::editor
 {
     WorkspaceService::WorkspaceService(
+        AssetService& assetService,
         DialogService& dialogService,
         DocumentService& documentService,
         ImGuiService& imguiService,
         LogService& logService,
         MainWindowService& mainWindowService,
         PlatformService& platformService,
-        TaskService& taskService)
-        : m_dialogService(dialogService)
+        ProjectService& projectService,
+        TaskService& taskService,
+        UniquePtr<OpenProjectCommand> openProjectCommand) noexcept
+        : m_assetService(assetService)
+        , m_dialogService(dialogService)
         , m_documentService(documentService)
         , m_imguiService(imguiService)
         , m_logService(logService)
         , m_mainWindowService(mainWindowService)
         , m_platformService(platformService)
+        , m_projectService(projectService)
         , m_taskService(taskService)
+        , m_openProjectCommand(Move(openProjectCommand))
     {}
 
     void WorkspaceService::Show()
@@ -121,6 +127,12 @@ namespace he::editor
             if (ImGui::IsItemHovered())
                 m_menuHitArea = window::ViewHitArea::SystemMenu;
 
+            Document* activeDocument = m_documentService.ActiveDocument();
+            if (activeDocument)
+            {
+                activeDocument->ShowMainMenu();
+            }
+
             if (BeginTopLevelMenu("File"))
             {
                 // Assets menu
@@ -134,6 +146,7 @@ namespace he::editor
 
                     EndMenu();
                 }
+                MenuItem("Create ");
                 MenuItem("Open Asset...", ICON_MDI_FOLDER_OPEN, "Ctrl+O", false, false);
 
                 if (BeginMenu("Open Recent Asset", ICON_MDI_TIMER_SAND))
@@ -149,15 +162,12 @@ namespace he::editor
                 MenuSeparator("Save");
 
                 MenuItem("Save", ICON_MDI_CONTENT_SAVE, "Ctrl+S");
-                MenuItem("Save As...", nullptr, "Ctrl+Alt+S");
                 MenuItem("Save All", ICON_MDI_CONTENT_SAVE_ALL, "Ctrl+Shift+S");
 
                 // Project menu
                 MenuSeparator("Project");
 
-                if (MenuItem("Open Project...", ICON_MDI_FOLDER_OPEN, nullptr, false, false))
-                {
-                }
+                MenuItem(*m_openProjectCommand);
 
                 if (BeginMenu("Open Recent Project", nullptr, false))
                 {
@@ -202,14 +212,8 @@ namespace he::editor
 
             if (BeginTopLevelMenu("Tools"))
             {
-                if (MenuItem("ImGui Stack Tool"))
-                    m_documentService.Open<ImGuiStackToolDocument>();
-
-                if (MenuItem("ImGui Style Editor"))
-                    m_documentService.Open<ImGuiStyleEditorDocument>();
-
-                if (MenuItem("ImGui Custom Widgets"))
-                    m_documentService.Open<ImGuiWidgetDocument>();
+                if (MenuItem("ImGui Debug"))
+                    m_documentService.Open<ImGuiDebugDocument>();
 
                 if (MenuItem("Stats"))
                     m_documentService.Open<StatsDocument>();
@@ -260,50 +264,51 @@ namespace he::editor
 
     void WorkspaceService::ShowAppStatusBar()
     {
-        const float dpiScale = ImGui::GetWindowDpiScale();
+        ImGuiStyle& style = ImGui::GetStyle();
 
         if (BeginAppStatusBar())
         {
             StatusBarButton(ICON_MDI_FILE_TREE " Asset Browser " ICON_MDI_CHEVRON_UP);
             StatusBarButton(ICON_MDI_CONSOLE_LINE " Console " ICON_MDI_CHEVRON_UP);
 
-            ImGui::Dummy(ImVec2(16.0f, 0) * dpiScale);
+            static String s_buf;
+            s_buf.Clear();
+            fmt::format_to(Appender(s_buf), ICON_MDI_ALERT_OCTAGON " {} " ICON_MDI_ALERT " {} " ICON_MDI_INFORMATION " {} " ICON_MDI_CHEVRON_UP,
+                m_logService.GetNumEntries(LogLevel::Error),
+                m_logService.GetNumEntries(LogLevel::Warn),
+                m_logService.GetNumEntries(LogLevel::Info));
+            StatusBarButton(s_buf.Data());
 
-            ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(3.0f * dpiScale, ImGui::GetStyle().FramePadding.y));
+            s_buf.Clear();
 
-            String buf;
+            bool showSpinner = false;
 
-            buf.Clear();
-            fmt::format_to(Appender(buf), ICON_MDI_ALERT_OCTAGON " {}", m_logService.GetNumEntries(LogLevel::Error));
-            StatusBarButton(buf.Data());
-
-            buf.Clear();
-            fmt::format_to(Appender(buf), ICON_MDI_ALERT " {}", m_logService.GetNumEntries(LogLevel::Warn));
-            StatusBarButton(buf.Data());
-
-            buf.Clear();
-            fmt::format_to(Appender(buf), ICON_MDI_INFORMATION " {}", m_logService.GetNumEntries(LogLevel::Info));
-            StatusBarButton(buf.Data());
-
-            ImGui::PopStyleVar();
-
-            if (m_taskService.IsEmpty())
+            if (m_projectService.IsOpen() && !m_assetService.IsAssetDBReady())
             {
-                constexpr char ReadyText[] = ICON_MDI_CHECK " Ready";
-
-                ImGuiStyle& style = ImGui::GetStyle();
-                const float width = ImGui::CalcTextSize(ReadyText).x + (style.FramePadding.x * 3);
-                ImGui::SameLine(ImGui::GetWindowWidth() - width);
-                ImGui::Text(ReadyText);
+                showSpinner = true;
+                s_buf = "Updating asset database...";
             }
-            else
+            else if (!m_taskService.IsEmpty())
             {
                 const uint32_t pending = m_taskService.PendingSize();
                 const uint32_t running = m_taskService.RunningSize();
 
-                ProgressSpinner();
-                ImGui::Text("Running %u tasks (%u pending)...", running, pending);
+                showSpinner = true;
+                fmt::format_to(Appender(s_buf), "Running {} tasks ({} pending)...", running, pending);
             }
+            else
+            {
+                s_buf = ICON_MDI_CHECK " Ready";
+            }
+
+            ImVec2 spinnerSize = showSpinner ? ProgressSpinnerSize() : ImVec2{};
+            const float width = spinnerSize.x + ImGui::CalcTextSize(s_buf.Data()).x + (style.FramePadding.x * 3);
+            ImGui::SameLine(ImGui::GetWindowWidth() - width);
+
+            if (showSpinner)
+                ProgressSpinner();
+
+            ImGui::TextUnformatted(s_buf.Data());
 
             EndAppStatusBar();
         }

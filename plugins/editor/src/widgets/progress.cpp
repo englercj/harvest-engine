@@ -32,6 +32,20 @@ namespace he::editor
         return v < 0.5f ? (4.0f * v * v * v) : (1.0f - (Pow((-2.0f * v) + 2.0f, 3.0f) / 2.0f));
     }
 
+    ImVec2 ProgressSpinnerSize(float thickness, float radius)
+    {
+        const ImGuiContext& g = *GImGui;
+        const ImGuiStyle& style = g.Style;
+
+        if (radius == 0.0f)
+            radius = g.FontSize / 2.0f;
+
+        if (thickness == 0.0f)
+            thickness = radius / 4.0f;
+
+        return ImVec2{ (radius + style.FramePadding.x) * 2.0f, (radius + style.FramePadding.y) * 2.0f };
+    }
+
     void ProgressSpinner(float thickness, float radius)
     {
         // Setup item
@@ -43,7 +57,10 @@ namespace he::editor
         const ImGuiStyle& style = g.Style;
 
         if (radius == 0.0f)
-            radius = g.FontSize;
+            radius = g.FontSize / 2.0f;
+
+        if (thickness == 0.0f)
+            thickness = radius / 4.0f;
 
         const ImVec2 pos = window->DC.CursorPos;
         const ImVec2 size{ (radius + style.FramePadding.x) * 2.0f, (radius + style.FramePadding.y) * 2.0f };

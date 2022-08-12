@@ -18,7 +18,7 @@ namespace he::editor
     CreateProjectDialog::CreateProjectDialog(
         DialogService& dialogService,
         PlatformService& platformService,
-        ProjectService& projectService)
+        ProjectService& projectService) noexcept
         : m_dialogService(dialogService)
         , m_platformService(platformService)
         , m_projectService(projectService)
@@ -107,13 +107,13 @@ namespace he::editor
                     "Failed to create project file. Check the log for details.",
                     ChoiceDialog::Button::OK);
             }
-            RequestClose();
+            Close();
         }
         ImGui::EndDisabled();
 
         ImGui::SameLine();
 
         if (ImGui::Button("Cancel"))
-            RequestClose();
+            Close();
     }
 }

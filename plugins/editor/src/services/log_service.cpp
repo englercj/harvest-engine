@@ -17,7 +17,7 @@
 
 namespace he::editor
 {
-    LogService::LogService(DirectoryService& directoryService)
+    LogService::LogService(DirectoryService& directoryService) noexcept
         : m_directoryService(directoryService)
     {}
 

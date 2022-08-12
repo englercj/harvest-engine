@@ -35,7 +35,7 @@ namespace he::editor
             EditorData& editorData,
             ImGuiPlatformService& imguiPlatformService,
             ImGuiRenderService& imguiRenderService,
-            RenderService& renderService);
+            RenderService& renderService) noexcept;
 
         bool Initialize(window::View* view);
         void Terminate();

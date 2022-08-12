@@ -12,7 +12,7 @@ namespace he::editor
     class MainWindowService
     {
     public:
-        MainWindowService(EditorData& editorData);
+        MainWindowService(EditorData& editorData) noexcept;
 
         void SetView(window::View* view) { m_view = view; }
         window::View* GetView() { return m_view; }

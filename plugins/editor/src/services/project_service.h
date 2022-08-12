@@ -21,7 +21,7 @@ namespace he::editor
     class ProjectService
     {
     public:
-        ProjectService(DirectoryService& directoryService);
+        ProjectService(DirectoryService& directoryService) noexcept;
 
         bool Create(const char* name, const char* path, const char* assetRoot);
         bool Open(const char* path);

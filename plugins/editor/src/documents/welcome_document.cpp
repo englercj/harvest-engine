@@ -18,14 +18,16 @@ namespace he::editor
     WelcomeDocument::WelcomeDocument(
         DialogService& dialogService,
         ImGuiService& imguiService,
-        PlatformService& platformService,
         ProjectService& projectService,
-        SettingsService& settingsService)
+        SettingsService& settingsService,
+        UniquePtr<OpenProjectCommand> openProjectCommand,
+        UniquePtr<OpenProjectFileCommand> openProjectFileCommand) noexcept
         : m_dialogService(dialogService)
         , m_imguiService(imguiService)
-        , m_platformService(platformService)
         , m_projectService(projectService)
         , m_settingsService(settingsService)
+        , m_openProjectCommand(Move(openProjectCommand))
+        , m_openProjectFileCommand(Move(openProjectFileCommand))
     {
         m_title = "Welcome";
     }
@@ -64,27 +66,9 @@ namespace he::editor
         m_imguiService.PopFont();
         ImGui::NewLine();
 
-        if (ImGui::Button(ICON_MDI_FOLDER_OPEN " Open Project"))
+        if (CommandButton(ICON_MDI_FOLDER_OPEN " Open Project", *m_openProjectCommand))
         {
-            FileDialogConfig config{};
-            config.filters = ProjectFilters;
-            config.filterCount = HE_LENGTH_OF(ProjectFilters);
-
-            String path;
-            if (m_platformService.OpenFileDialog(path, config))
-            {
-                if (m_projectService.Open(path.Data()))
-                {
-                    RequestClose();
-                }
-                else
-                {
-                    m_dialogService.Open<ChoiceDialog>().Configure(
-                        "Error",
-                        "Failed to open project file. Check the log for details.",
-                        ChoiceDialog::Button::OK);
-                }
-            }
+            RequestClose();
         }
 
         ImGui::SameLine();
@@ -115,19 +99,10 @@ namespace he::editor
         for (auto&& recent : recentProjects.AsReader())
         {
             const char* path = recent.GetPath().Data();
-            if (LinkButton(path))
+            m_openProjectFileCommand->SetPath(path);
+            if (CommandLinkButton(path, *m_openProjectFileCommand))
             {
-                if (m_projectService.Open(path))
-                {
-                    RequestClose();
-                }
-                else
-                {
-                    m_dialogService.Open<ChoiceDialog>().Configure(
-                        "Error",
-                        "Failed to open project file. Check the log for details.",
-                        ChoiceDialog::Button::OK);
-                }
+                RequestClose();
             }
         }
     }

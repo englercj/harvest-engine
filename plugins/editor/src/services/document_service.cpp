@@ -13,11 +13,11 @@ namespace he::editor
     {
         for (uint32_t i = 0; i < m_documents.Size();)
         {
-            std::unique_ptr<Document>& doc = m_documents[i];
+            UniquePtr<Document>& doc = m_documents[i];
 
-            if (doc->IsCloseRequested())
+            if (doc->IsClosing())
             {
-                if (doc.get() == m_activeDocument)
+                if (doc.Get() == m_activeDocument)
                 {
                     m_activeDocument = nullptr;
                 }
@@ -31,7 +31,7 @@ namespace he::editor
         }
 
         if (m_activeDocument == nullptr && !m_documents.IsEmpty())
-            m_activeDocument = m_documents[0].get();
+            m_activeDocument = m_documents[0].Get();
     }
 
     void DocumentService::ShowDocuments()
@@ -40,18 +40,18 @@ namespace he::editor
         ImGuiDockNodeFlags dockFlags = ImGuiDockNodeFlags_NoWindowMenuButton | ImGuiDockNodeFlags_NoCloseButton | ImGuiDockNodeFlags_PassthruCentralNode;
         ImGuiID dockId = ImGui::DockSpaceOverViewport(viewport, dockFlags);
 
-        for (std::unique_ptr<Document>& doc : m_documents)
+        for (UniquePtr<Document>& doc : m_documents)
         {
             ImGui::SetNextWindowDockID(dockId, ImGuiCond_FirstUseEver);
             ImGuiWindowFlags windowFlags = doc->IsDirty() ? ImGuiWindowFlags_UnsavedDocument : ImGuiWindowFlags_None;
 
-            const char* label = doc->GetLabel();
+            const char* label = doc->Label();
 
             bool open = true;
             bool visible = ImGui::Begin(label, &open, windowFlags);
 
             if (visible)
-                m_activeDocument = doc.get();
+                m_activeDocument = doc.Get();
 
             if (BeginDockTabContextMenu("ContextMenu"))
             {
@@ -59,14 +59,13 @@ namespace he::editor
                 EndDockTabContextMenu();
             }
 
-            // TODO: Close request confirmation for dirty documents
             if (!open)
-                doc->RequestClose();
+                doc->Close();
 
             if (visible)
                 doc->Show();
 
-            if (doc->IsCloseRequested())
+            if (doc->IsClosing())
                 ImGui::SetTabItemClosed(label);
 
             ImGui::End();

@@ -25,7 +25,7 @@ namespace he::editor
         AssetService(
             FileLoaderService& fileLoaderService,
             ProjectService& projectService,
-            TaskService& taskService);
+            TaskService& taskService) noexcept;
 
         bool Initialize();
         void Terminate();

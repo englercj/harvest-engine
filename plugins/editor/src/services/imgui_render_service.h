@@ -15,7 +15,7 @@ namespace he::editor
     class ImGuiRenderService
     {
     public:
-        ImGuiRenderService(RenderService& renderService);
+        ImGuiRenderService(RenderService& renderService) noexcept;
 
         bool Initialize(rhi::SwapChainFormat swapChainFormat);
         void Terminate();

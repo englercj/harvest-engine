@@ -8,6 +8,8 @@ namespace he::editor
 {
     struct EditorData
     {
+        EditorData() = default;
+
         int argc{ 0 };
         char** argv{ nullptr };
 

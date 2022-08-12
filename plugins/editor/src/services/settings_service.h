@@ -14,7 +14,7 @@ namespace he::editor
     class SettingsService
     {
     public:
-        SettingsService(DirectoryService& directoryService);
+        SettingsService(DirectoryService& directoryService) noexcept;
 
         void Reset();
         bool Reload();

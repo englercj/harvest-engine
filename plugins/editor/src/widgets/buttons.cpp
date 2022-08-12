@@ -42,4 +42,30 @@ namespace he::editor
         const float dpiScale = ImGui::GetWindowDpiScale();
         return ImGui::Button(label, ImVec2(UnscaledDialogButtonWidth * dpiScale, 0));
     }
+
+    bool CommandButton(const char* label, Command& cmd)
+    {
+        const bool disabled = !cmd.CanRun();
+        ImGui::BeginDisabled(disabled);
+
+        const bool active = ImGui::Button(label);
+        if (active)
+            cmd.Run();
+
+        ImGui::EndDisabled();
+        return active;
+    }
+
+    bool CommandLinkButton(const char* label, Command& cmd)
+    {
+        const bool disabled = !cmd.CanRun();
+        ImGui::BeginDisabled(disabled);
+
+        const bool active = LinkButton(label);
+        if (active)
+            cmd.Run();
+
+        ImGui::EndDisabled();
+        return active;
+    }
 }

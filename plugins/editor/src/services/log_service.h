@@ -18,7 +18,7 @@ namespace he::editor
     class LogService
     {
     public:
-        LogService(DirectoryService& directoryService);
+        LogService(DirectoryService& directoryService) noexcept;
 
         bool Initialize();
         void Terminate();

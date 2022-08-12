@@ -35,8 +35,6 @@ namespace he::editor
     class TaskService : public TaskExecutor
     {
     public:
-        TaskService() = default;
-
         bool Initialize();
         void Terminate();
 
@@ -80,13 +78,13 @@ namespace he::editor
         static void PumpThread(TaskService* service);
 
     private:
-        Vector<std::thread> m_threads;
+        Vector<std::thread> m_threads{};
 
-        std::deque<UniquePtr<Task>> m_runningTasks;
-        std::deque<UniquePtr<Task>> m_pendingTasks;
+        std::deque<UniquePtr<Task>> m_runningTasks{};
+        std::deque<UniquePtr<Task>> m_pendingTasks{};
 
-        bool m_running;
-        Mutex m_mutex;
-        ConditionVariable m_cv;
+        bool m_running{ false };
+        Mutex m_mutex{};
+        ConditionVariable m_cv{};
     };
 }

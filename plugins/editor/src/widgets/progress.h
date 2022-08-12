@@ -8,6 +8,8 @@
 
 namespace he::editor
 {
-    void ProgressSpinner(float thickness = 5.0f, float radius = 0.0f);
-    void ProgressBar(float value, const ImVec2& size_arg = ImVec2(-FLT_MIN, 0), const char* overlay = nullptr);
+    ImVec2 ProgressSpinnerSize(float thickness = 0.0f, float radius = 0.0f);
+    void ProgressSpinner(float thickness = 0.0f, float radius = 0.0f);
+
+    void ProgressBar(float value, const ImVec2& size = ImVec2(-FLT_MIN, 0), const char* overlay = nullptr);
 }

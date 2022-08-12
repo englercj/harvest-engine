@@ -7,7 +7,7 @@
 
 namespace he::editor
 {
-    MainWindowService::MainWindowService(EditorData& editorData)
+    MainWindowService::MainWindowService(EditorData& editorData) noexcept
         : m_editorData(editorData)
     {}
 

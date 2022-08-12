@@ -2,6 +2,7 @@
 
 #include "document.h"
 
+#include "di.h"
 #include "fonts/icons_material_design.h"
 #include "widgets/menu.h"
 
@@ -14,22 +15,32 @@
 
 namespace he::editor
 {
-    uint32_t Document::s_nextCounter = 0;
+    std::atomic<uint32_t> Document::s_nextId = 1;
 
-    const char* Document::GetLabel() const
+    Document::Document()
+        // Using DICreate here so every document doesn't have to manually pass this through.
+        : m_closeDocumentCommand(DICreateUnique<CloseDocumentCommand>())
     {
-        // TODO: We can cache this with some API changes if it is too slow.
-        static String s_label;
-        s_label.Clear();
-        fmt::format_to(Appender(s_label), "{} ##doc-id-{}", m_title, m_counter);
-        return s_label.Data();
+        m_closeDocumentCommand->SetDocument(this);
     }
 
     void Document::ShowContextMenu()
     {
-        if (MenuItem("Close", ICON_MDI_CLOSE, "Ctrl+W"))
-        {
-            RequestClose();
-        }
+        MenuItem(*m_closeDocumentCommand);
+    }
+
+    const char* Document::Label() const
+    {
+        // TODO: We can cache this with some API changes if it is too slow.
+        static String s_label;
+        s_label.Clear();
+        fmt::format_to(Appender(s_label), "{} ##doc-id-{}", m_title, m_id);
+        return s_label.Data();
+    }
+
+    void Document::RequestClose()
+    {
+        if (m_closeDocumentCommand->CanRun())
+            m_closeDocumentCommand->Run();
     }
 }

@@ -15,7 +15,7 @@ namespace he::editor
 {
     constexpr char SettingsFileName[] = "he_editor_settings.toml";
 
-    SettingsService::SettingsService(DirectoryService& directoryService)
+    SettingsService::SettingsService(DirectoryService& directoryService) noexcept
         : m_directoryService(directoryService)
     {
         Reset();

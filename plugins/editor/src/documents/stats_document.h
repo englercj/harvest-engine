@@ -10,7 +10,7 @@ namespace he::editor
     class StatsDocument : public Document
     {
     public:
-        StatsDocument();
+        StatsDocument() noexcept;
 
         void Show() override;
 

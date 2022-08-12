@@ -32,7 +32,7 @@ namespace he::editor
             RenderService& renderService,
             SettingsService& settingsService,
             TaskService& taskService,
-            WorkspaceService& workspaceService);
+            WorkspaceService& workspaceService) noexcept;
 
         void OnEvent(const window::Event& ev) override;
         void OnTick() override;

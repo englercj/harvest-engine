@@ -1,24 +1,60 @@
 // Copyright Chad Engler
 
-#include "imgui_widget_document.h"
+#include "imgui_debug_document.h"
 
 #include "widgets/buttons.h"
 #include "widgets/progress.h"
+#include "widgets/property_grid.h"
 #include "widgets/misc.h"
+
+#include "he/assets/types.h"
+#include "he/schema/types.h"
 
 #include "imgui.h"
 
 namespace he::editor
 {
-    ImGuiWidgetDocument::ImGuiWidgetDocument()
+    ImGuiDebugDocument::ImGuiDebugDocument() noexcept
     {
-        m_title = "ImGui Custom Widgets";
+        m_title = "ImGui Debugging";
     }
 
-    void ImGuiWidgetDocument::Show()
+    void ImGuiDebugDocument::Show()
     {
-        ImGui::ShowDemoWindow();
+        if (m_demoOpen)
+        {
+            // TODO: Need to prevent this from docking. When it does, things explode!
+            // No way to specify window flags outside passing them to Begin() though so might need
+            ImGui::ShowDemoWindow(&m_demoOpen);
+        }
 
+        if (ImGui::BeginTabBar("ImGui Debug Tabs"))
+        {
+            if (ImGui::BeginTabItem("Custom Widgets"))
+            {
+                ShowCustomWidgetsTab();
+                ImGui::EndTabItem();
+            }
+
+            if (ImGui::BeginTabItem("Property Grid"))
+            {
+                ShowPropertyGridTab();
+                ImGui::EndTabItem();
+            }
+
+            ImGui::BeginDisabled(m_demoOpen);
+            if (ImGui::TabItemButton("ImGui Tools " ICON_MDI_OPEN_IN_NEW, ImGuiTabItemFlags_Trailing | ImGuiTabItemFlags_NoTooltip))
+            {
+                m_demoOpen = true;
+            }
+            ImGui::EndDisabled();
+
+            ImGui::EndTabBar();
+        }
+    }
+
+    void ImGuiDebugDocument::ShowCustomWidgetsTab()
+    {
         if (ImGui::CollapsingHeader("Buttons"))
         {
             static int s_clickCount = 0;
@@ -83,5 +119,26 @@ namespace he::editor
             ImGui::Text("Some underlined text.");
             SetItemUnderLine(ImColor(0xffffffff));
         }
+    }
+
+    void ImGuiDebugDocument::ShowPropertyGridTab()
+    {
+        namespace as = assets::schema;
+
+        static schema::Builder s_builder;
+        static as::Asset::Builder s_asset;
+
+        if (!s_asset.IsValid())
+        {
+            s_asset = s_builder.AddStruct<as::Asset>();
+            FillUuidV4(s_asset.InitUuid());
+            s_asset.InitType(as::Texture2D::AssetTypeName);
+            s_asset.InitName("Test Texture");
+
+            as::Texture2D::Builder tex = s_builder.AddStruct<as::Texture2D>();
+            s_asset.GetData().Set(tex);
+        }
+
+        PropertyGrid(s_asset);
     }
 }

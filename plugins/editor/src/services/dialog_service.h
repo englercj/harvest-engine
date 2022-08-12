@@ -7,9 +7,9 @@
 
 #include "he/core/types.h"
 #include "he/core/utils.h"
+#include "he/core/unique_ptr.h"
 #include "he/core/vector.h"
 
-#include <memory>
 #include <type_traits>
 
 namespace he::editor
@@ -25,10 +25,10 @@ namespace he::editor
         T& Open()
         {
             m_dialogs.PushBack(DICreateUnique<T>());
-            return *static_cast<T*>(m_dialogs.Back().get());
+            return *static_cast<T*>(m_dialogs.Back().Get());
         }
 
     private:
-        Vector<std::unique_ptr<Dialog>> m_dialogs{};
+        Vector<UniquePtr<Dialog>> m_dialogs{};
     };
 }

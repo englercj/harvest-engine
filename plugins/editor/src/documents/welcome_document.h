@@ -4,6 +4,7 @@
 
 #include "document.h"
 
+#include "commands/open_project_command.h"
 #include "services/dialog_service.h"
 #include "services/imgui_service.h"
 #include "services/platform_service.h"
@@ -18,9 +19,10 @@ namespace he::editor
         WelcomeDocument(
             DialogService& dialogService,
             ImGuiService& imguiService,
-            PlatformService& platformService,
             ProjectService& projectService,
-            SettingsService& settingsService);
+            SettingsService& settingsService,
+            UniquePtr<OpenProjectCommand> openProjectCommand,
+            UniquePtr<OpenProjectFileCommand> openProjectFileCommand) noexcept;
 
         void Show() override;
 
@@ -31,8 +33,10 @@ namespace he::editor
     private:
         DialogService& m_dialogService;
         ImGuiService& m_imguiService;
-        PlatformService& m_platformService;
         ProjectService& m_projectService;
         SettingsService& m_settingsService;
+
+        UniquePtr<OpenProjectCommand> m_openProjectCommand;
+        UniquePtr<OpenProjectFileCommand> m_openProjectFileCommand;
     };
 }

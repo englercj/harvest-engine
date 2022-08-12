@@ -8,7 +8,7 @@
 
 namespace he::editor
 {
-    StatsDocument::StatsDocument()
+    StatsDocument::StatsDocument() noexcept
     {
         m_title = "App Stats";
         m_frameTime.SetDisplayUnits<Milliseconds>();

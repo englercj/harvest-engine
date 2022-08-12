@@ -22,8 +22,6 @@ namespace he::editor
         using FontsSetupDelegate = Delegate<void(ImFontAtlas& atlas, float dpiScale)>;
 
     public:
-        ImGuiPlatformService();
-
         bool Initialize(
             window::Device* device,
             window::View* view,

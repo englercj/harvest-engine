@@ -20,7 +20,7 @@ namespace he::editor
         EditorData& editorData,
         ImGuiPlatformService& imguiPlatformService,
         ImGuiRenderService& imguiRenderService,
-        RenderService& renderService)
+        RenderService& renderService) noexcept
         : m_editorData(editorData)
         , m_imguiPlatformService(imguiPlatformService)
         , m_imguiRenderService(imguiRenderService)

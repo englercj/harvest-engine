@@ -10,15 +10,15 @@ namespace he::editor
     class Dialog
     {
     public:
-        virtual ~Dialog() {}
+        virtual ~Dialog() = default;
 
         virtual void ShowContent() = 0;
         virtual void ShowButtons() = 0;
 
-        const char* GetLabel() const;
+        const char* Label() const;
 
-        bool IsCloseRequested() const { return m_wantsClose; }
-        void RequestClose() { m_wantsClose = true; }
+        bool IsClosing() const { return m_wantsClose; }
+        void Close() { m_wantsClose = true; }
 
     protected:
         String m_title{};

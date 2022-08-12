@@ -17,7 +17,7 @@ namespace he::editor
         CreateProjectDialog(
             DialogService& dialogService,
             PlatformService& platformService,
-            ProjectService& projectService);
+            ProjectService& projectService) noexcept;
 
         void ShowContent() override;
         void ShowButtons() override;

@@ -14,7 +14,7 @@ namespace he::editor
     AssetService::AssetService(
         FileLoaderService& fileLoaderService,
         ProjectService& projectService,
-        TaskService& taskService)
+        TaskService& taskService) noexcept
         : m_fileLoaderService(fileLoaderService)
         , m_projectService(projectService)
         , m_taskService(taskService)
@@ -36,6 +36,7 @@ namespace he::editor
         m_updater.Stop();
 
         m_db.Terminate();
+        m_dbReady = false;
     }
 
     void AssetService::OnProjectLoaded()
@@ -46,9 +47,6 @@ namespace he::editor
             return;
 
         const he::schema::String::Reader relativeAssetRoot = m_projectService.Project().GetAssetRoot();
-
-        if (!relativeAssetRoot.IsValid() || relativeAssetRoot.IsEmpty())
-            return;
 
         String assetDbFile = m_projectService.DataDir();
         ConcatPath(assetDbFile, AssetDbFile);

@@ -9,8 +9,6 @@ namespace he::editor
     class FileLoaderService
     {
     public:
-        FileLoaderService() = default;
-
         bool Initialize();
         void Terminate();
 

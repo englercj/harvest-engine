@@ -13,9 +13,9 @@ namespace he::editor
     {
         for (uint32_t i = 0; i < m_dialogs.Size();)
         {
-            std::unique_ptr<Dialog>& dialog = m_dialogs[i];
+            UniquePtr<Dialog>& dialog = m_dialogs[i];
 
-            if (dialog->IsCloseRequested())
+            if (dialog->IsClosing())
             {
                 m_dialogs.Erase(i, 1);
             }
@@ -33,9 +33,9 @@ namespace he::editor
         ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 1.0f * dpiScale);
         ImGui::PushStyleColor(ImGuiCol_TitleBgActive, ImGui::GetStyle().Colors[ImGuiCol_Header]);
 
-        for (std::unique_ptr<Dialog>& dialog : m_dialogs)
+        for (UniquePtr<Dialog>& dialog : m_dialogs)
         {
-            const char* label = dialog->GetLabel();
+            const char* label = dialog->Label();
             const ImGuiID id = ImGui::GetID(label);
 
             if (!ImGui::IsPopupOpen(id, ImGuiPopupFlags_None))
@@ -56,7 +56,7 @@ namespace he::editor
                 }
                 ImGui::EndChild();
 
-                if (dialog->IsCloseRequested())
+                if (dialog->IsClosing())
                     ImGui::CloseCurrentPopup();
 
                 ImGui::EndPopup();

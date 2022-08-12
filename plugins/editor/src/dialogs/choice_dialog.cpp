@@ -23,6 +23,8 @@ namespace he
             case editor::ChoiceDialog::Choice::Cancel: return "Cancel";
             case editor::ChoiceDialog::Choice::Retry: return "Retry";
             case editor::ChoiceDialog::Choice::Continue: return "Continue";
+            case editor::ChoiceDialog::Choice::Save: return "Save";
+            case editor::ChoiceDialog::Choice::DontSave: return "Don't Save";
         }
 
         return "<unknown>";
@@ -31,11 +33,12 @@ namespace he
 
 namespace he::editor
 {
-    void ChoiceDialog::Configure(const char* title, const char* msg, Button buttons)
+    void ChoiceDialog::Configure(const char* title, const char* msg, Button buttons, ResultDelegate callback)
     {
         m_title = title;
         m_message = msg;
         m_buttons = buttons;
+        m_callback = callback;
     }
 
     void ChoiceDialog::ShowContent()
@@ -50,9 +53,11 @@ namespace he::editor
         TryShowButton(Button::YesAll, Choice::YesAll);
         TryShowButton(Button::NoAll, Choice::NoAll);
         TryShowButton(Button::OK, Choice::OK);
-        TryShowButton(Button::Cancel, Choice::Cancel);
         TryShowButton(Button::Retry, Choice::Retry);
         TryShowButton(Button::Continue, Choice::Continue);
+        TryShowButton(Button::Save, Choice::Save);
+        TryShowButton(Button::DontSave, Choice::DontSave);
+        TryShowButton(Button::Cancel, Choice::Cancel);
     }
 
     void ChoiceDialog::TryShowButton(Button button, Choice choice)
@@ -61,8 +66,9 @@ namespace he::editor
         {
             if (DialogButton(AsString(choice)))
             {
-                m_result = choice;
-                RequestClose();
+                if (m_callback)
+                    m_callback(choice);
+                Close();
             }
         }
     }

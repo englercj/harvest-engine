@@ -13,7 +13,7 @@ namespace he::editor
 {
     uint32_t Dialog::s_nextCounter = 0;
 
-    const char* Dialog::GetLabel() const
+    const char* Dialog::Label() const
     {
         // TODO: We can cache this with some API changes if it is too slow.
         static String s_label;

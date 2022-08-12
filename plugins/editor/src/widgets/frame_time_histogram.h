@@ -15,8 +15,6 @@ namespace he::editor
         static constexpr int HistorySize = 101;
         static constexpr int MarkerCount = 2;
 
-        FrameTimeHistogram() { Clear(); }
-
         void Clear();
 
         template <typename T>

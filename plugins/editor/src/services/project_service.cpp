@@ -21,7 +21,7 @@
 
 namespace he::editor
 {
-    ProjectService::ProjectService(DirectoryService& directoryService)
+    ProjectService::ProjectService(DirectoryService& directoryService) noexcept
         : m_directoryService(directoryService)
     {}
 

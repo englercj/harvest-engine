@@ -2,6 +2,8 @@
 
 #pragma once
 
+#include "commands/command.h"
+
 #include "he/window/view.h"
 
 #include "imgui.h"
@@ -29,6 +31,7 @@ namespace he::editor
     void EndMenu();
 
     bool MenuItem(const char* label, const char* icon = nullptr, const char* shortcut = nullptr, bool selected = false, bool enabled = true);
+    bool MenuItem(Command& cmd, bool selected = false);
     void MenuSeparator(const char* label = nullptr);
 
     void MenuSystemButtons(window::View* view, window::ViewHitArea& hitArea);

@@ -95,6 +95,8 @@ namespace he::editor
 
             m_runningTasks.push_back(Move(m_pendingTasks.front()));
             m_pendingTasks.pop_front();
+
+            task = m_runningTasks.back().Get();
         }
 
         task->m_taskIsRunning = true;

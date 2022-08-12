@@ -138,9 +138,6 @@ namespace he::editor
         ImGuiKey_Apostrophe,        // Apostrophe
     };
 
-    ImGuiPlatformService::ImGuiPlatformService()
-    {}
-
     bool ImGuiPlatformService::Initialize(
         window::Device* device,
         window::View* view,

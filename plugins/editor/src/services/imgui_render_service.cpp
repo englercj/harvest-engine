@@ -34,7 +34,7 @@ namespace he::editor
     //    return Vec4f{ SRGBToLinear(value.x), SRGBToLinear(value.y), SRGBToLinear(value.z), value.w };
     //}
 
-    ImGuiRenderService::ImGuiRenderService(RenderService& renderService)
+    ImGuiRenderService::ImGuiRenderService(RenderService& renderService) noexcept
         : m_renderService(renderService)
     {}
 

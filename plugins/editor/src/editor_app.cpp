@@ -16,7 +16,7 @@ namespace he::editor
         RenderService& renderService,
         SettingsService& settingsService,
         TaskService& taskService,
-        WorkspaceService& workspaceService)
+        WorkspaceService& workspaceService) noexcept
         : m_assetService(assetService)
         , m_directoryService(directoryService)
         , m_fileLoaderService(fileLoaderService)
@@ -137,13 +137,17 @@ namespace he::editor
 
         m_initialized = false;
 
-        ShutdownAsyncFileIO();
-
         m_settingsService.Save();
 
-        m_taskService.Terminate();
+        ShutdownAsyncFileIO();
+
         m_imguiService.Terminate();
         m_renderService.Terminate();
+        m_assetService.Terminate();
+        m_taskService.Terminate();
+        m_fileLoaderService.Terminate();
+        m_logService.Terminate();
+
         m_mainWindowService.Quit(0);
     }
 }

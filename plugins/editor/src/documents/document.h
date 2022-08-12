@@ -2,36 +2,47 @@
 
 #pragma once
 
+#include "commands/close_document_command.h"
+
 #include "he/core/string.h"
 #include "he/core/types.h"
+#include "he/core/unique_ptr.h"
+
+#include <atomic>
 
 namespace he::editor
 {
     class Document
     {
     public:
+        Document();
         virtual ~Document() = default;
 
         virtual void Show() = 0;
         virtual void ShowPanels() {}
         virtual void ShowContextMenu();
+        virtual void ShowMainMenu() {}
         virtual void ResetDockLayout() {}
 
-        const char* GetLabel() const;
+        const char* Label() const;
+        const String& Title() const { return m_title; }
 
-        bool IsCloseRequested() const { return m_wantsClose; }
-        void RequestClose() { m_wantsClose = true; }
+        bool IsClosing() const { return m_pendingClose; }
+        void Close() { m_pendingClose = true; }
+        void RequestClose();
 
         bool IsDirty() const { return m_dirty; }
 
     protected:
         String m_title{};
+        bool m_dirty{ false };
 
     private:
-        static uint32_t s_nextCounter;
+        static std::atomic<uint32_t> s_nextId;
 
-        const uint32_t m_counter{ s_nextCounter++ };
-        bool m_dirty{ false };
-        bool m_wantsClose{ false };
+        UniquePtr<CloseDocumentCommand> m_closeDocumentCommand;
+
+        const uint32_t m_id{ s_nextId++ };
+        bool m_pendingClose{ false };
     };
 }

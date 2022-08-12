@@ -3,6 +3,7 @@
 #pragma once
 
 #include "he/core/assert.h"
+#include "he/core/config.h"
 #include "he/core/debug.h"
 #include "he/math/types.h"
 
@@ -26,6 +27,11 @@
 //#define IMGUI_DISABLE                                     // Disable everything: all headers and source files will be empty.
 //#define IMGUI_DISABLE_DEMO_WINDOWS                        // Disable demo windows: ShowDemoWindow()/ShowStyleEditor() will be empty. Not recommended.
 //#define IMGUI_DISABLE_METRICS_WINDOW                      // Disable metrics/debugger and other debug tools: ShowMetricsWindow() and ShowStackToolWindow() will be empty.
+
+#if !HE_INTERNAL_BUILD
+    #define IMGUI_DISABLE_DEMO_WINDOWS 1
+    #define IMGUI_DISABLE_METRICS_WINDOW 1
+#endif
 
 //---- Don't implement some functions to reduce linkage requirements.
 //#define IMGUI_DISABLE_WIN32_DEFAULT_CLIPBOARD_FUNCTIONS   // [Win32] Don't implement default clipboard handler. Won't use and link with OpenClipboard/GetClipboardData/CloseClipboard etc. (user32.lib/.a, kernel32.lib/.a)

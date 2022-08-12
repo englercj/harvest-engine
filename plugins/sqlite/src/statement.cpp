@@ -40,7 +40,7 @@ namespace he::sqlite
         uint32_t flagValues = 0;
         if (HasFlag(flags, PrepareFlags::Temporary))
             flagValues |= SQLITE_PREPARE_PERSISTENT;
-        if (!HasFlag(flags, PrepareFlags::NoVTables))
+        if (HasFlag(flags, PrepareFlags::NoVTables))
             flagValues |= SQLITE_PREPARE_NO_VTAB;
 
         HE_SQLITE_CHECK(OK, sqlite3_prepare_v3(m_db, query, -1, flagValues, &m_stmt, nullptr));

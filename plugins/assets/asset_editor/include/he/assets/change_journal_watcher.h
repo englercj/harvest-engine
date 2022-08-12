@@ -40,7 +40,7 @@ namespace he::assets
 
     public:
         ChangeJournalWatcher() = default;
-        ~ChangeJournalWatcher() { Terminate(); }
+        ~ChangeJournalWatcher() noexcept { Terminate(); }
 
         bool Initialize(const char* path);
 

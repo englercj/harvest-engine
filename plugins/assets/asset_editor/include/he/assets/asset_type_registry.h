@@ -22,18 +22,20 @@ namespace he::assets
     class AssetTypeRegistry
     {
     public:
-        struct AssetTypeEntry
+        struct Entry
         {
-            const he::schema::DeclInfo* declInfo;
+            const he::schema::DeclInfo* declInfo{ nullptr };
 
-            TypeInfo compilerInfo;
-            UniquePtr<AssetCompiler> compiler;
+            TypeInfo compilerInfo{};
+            UniquePtr<AssetCompiler> compiler{};
+
+            bool importOnly{ false };
         };
 
         struct ImporterEntry
         {
-            TypeInfo importerInfo;
-            UniquePtr<AssetImporter> importer;
+            TypeInfo importerInfo{};
+            UniquePtr<AssetImporter> importer{};
         };
 
     public:
@@ -56,9 +58,8 @@ namespace he::assets
         template <typename AssetType>
         void UnregisterAssetType();
 
-        const AssetTypeEntry* FindAssetType(AssetTypeId typeId) const { auto it = m_assetTypes.find(typeId); return it == m_assetTypes.end() ? nullptr : &it->second; }
-        const AssetTypeEntry& GetAssetType(AssetTypeId typeId) const { return m_assetTypes.at(typeId); }
-        AssetCompiler* FindCompiler(AssetTypeId AssetTypeId) const;
+        const Entry* FindAssetType(AssetTypeId typeId) const { auto it = m_assetTypes.find(typeId); return it == m_assetTypes.end() ? nullptr : &it->second; }
+        const Entry& GetAssetType(AssetTypeId typeId) const { return m_assetTypes.at(typeId); }
 
     private:
         const ImporterEntry* FindImporter(const TypeInfo& info);
@@ -71,7 +72,7 @@ namespace he::assets
 
     private:
         Vector<ImporterEntry> m_importers;
-        std::unordered_map<AssetTypeId, AssetTypeEntry> m_assetTypes;
+        std::unordered_map<AssetTypeId, Entry> m_assetTypes;
     };
 
     // --------------------------------------------------------------------------------------------

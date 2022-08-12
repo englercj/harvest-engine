@@ -90,17 +90,33 @@ CREATE TABLE message (
 CREATE INDEX idx_message_ref_id ON message (ref_id);
 
 -- Full-Text searching of the asset table.
-CREATE VIRTUAL TABLE fts_asset USING fts5(uuid, name, type, content='asset', content_rowid='id');
+CREATE VIRTUAL TABLE fts_asset USING fts5(name, content='asset', content_rowid='id');
 
 CREATE TRIGGER asset_ai AFTER INSERT ON asset BEGIN
-    INSERT INTO fts_asset(rowid, uuid, type, name) VALUES (new.id, new.uuid, new.type, new.name);
+    INSERT INTO fts_asset(rowid, name) VALUES (new.id, new.name);
 END;
 
 CREATE TRIGGER asset_ad AFTER DELETE ON asset BEGIN
-    INSERT INTO fts_asset(fts_asset, rowid, uuid, type, name) VALUES ('delete', old.id, old.uuid, old.type, old.name);
+    INSERT INTO fts_asset(fts_asset, rowid, name) VALUES ('delete', old.id, old.name);
 END;
 
 CREATE TRIGGER asset_au AFTER UPDATE ON asset BEGIN
-    INSERT INTO fts_asset(fts_asset, rowid, uuid, type, name) VALUES ('delete', old.id, old.uuid, old.type, old.name);
-    INSERT INTO fts_asset(rowid, uuid, type, name) VALUES (new.id, new.uuid, new.type, new.name);
+    INSERT INTO fts_asset(fts_asset, rowid, name) VALUES ('delete', old.id, old.name);
+    INSERT INTO fts_asset(rowid, name) VALUES (new.id, new.name);
+END;
+
+-- Full-Text searching of the tag table.
+CREATE VIRTUAL TABLE fts_tag USING fts5(name, content='tag', content_rowid='id');
+
+CREATE TRIGGER tag_ai AFTER INSERT ON tag BEGIN
+    INSERT INTO fts_tag(rowid, name) VALUES (new.id, new.name);
+END;
+
+CREATE TRIGGER tag_ad AFTER DELETE ON tag BEGIN
+    INSERT INTO fts_tag(fts_tag, rowid, name) VALUES ('delete', old.id, old.name);
+END;
+
+CREATE TRIGGER tag_au AFTER UPDATE ON tag BEGIN
+    INSERT INTO fts_tag(fts_tag, rowid, name) VALUES ('delete', old.id, old.name);
+    INSERT INTO fts_tag(rowid, name) VALUES (new.id, new.name);
 END;

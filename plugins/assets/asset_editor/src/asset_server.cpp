@@ -242,17 +242,18 @@ namespace he::assets
         if (AssetModel::FindOne(data->server->m_db, data->assetUuid, model))
         {
             const AssetTypeId typeId{ model.type };
-            AssetCompiler* compiler = AssetTypeRegistry::Get().FindCompiler(typeId);
-            if (compiler)
+            const AssetTypeRegistry::Entry* assetType = AssetTypeRegistry::Get().FindAssetType(typeId);
+
+            if (assetType)
             {
-                success = compiler->Compile(data->ctx, data->result);
+                success = assetType->compiler->Compile(data->ctx, data->result);
 
                 if (success)
                 {
                     HE_LOG_DEBUG(he_assets,
                         HE_MSG("Compiling asset."),
-                        HE_KV(compiler_id, compiler->Id()),
-                        HE_KV(compiler_version, compiler->Version()),
+                        HE_KV(compiler_id, assetType->compiler->Id()),
+                        HE_KV(compiler_version, assetType->compiler->Version()),
                         HE_KV(asset_uuid, AssetUuid(data->ctx.asset.GetUuid())),
                         HE_KV(asset_type, model.type));
                     AssetModel::UpdateState(data->server->m_db, data->ctx.asset.GetUuid(), AssetState::Ready);
@@ -261,8 +262,8 @@ namespace he::assets
                 {
                     HE_LOG_ERROR(he_assets,
                         HE_MSG("Failed to compile asset."),
-                        HE_KV(compiler_id, compiler->Id()),
-                        HE_KV(compiler_version, compiler->Version()),
+                        HE_KV(compiler_id, assetType->compiler->Id()),
+                        HE_KV(compiler_version, assetType->compiler->Version()),
                         HE_KV(asset_uuid, AssetUuid(data->ctx.asset.GetUuid())),
                         HE_KV(asset_type, model.type));
                     AssetModel::UpdateState(data->server->m_db, data->ctx.asset.GetUuid(), AssetState::CompileFailed);
@@ -271,7 +272,7 @@ namespace he::assets
             else
             {
                 HE_LOG_WARN(he_assets,
-                    HE_MSG("No compiler found that can handle this asset type."),
+                    HE_MSG("Unknown asset type, no compiler is registered."),
                     HE_KV(asset_uuid, AssetUuid(data->ctx.asset.GetUuid())),
                     HE_KV(asset_type, model.type));
             }

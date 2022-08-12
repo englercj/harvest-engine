@@ -15,12 +15,6 @@ namespace he::assets
         return s_registry;
     }
 
-    AssetCompiler* AssetTypeRegistry::FindCompiler(AssetTypeId assetTypeId) const
-    {
-        const auto it = m_assetTypes.find(assetTypeId);
-        return it == m_assetTypes.end() ? nullptr : it->second.compiler.Get();
-    }
-
     const AssetTypeRegistry::ImporterEntry* AssetTypeRegistry::FindImporter(const TypeInfo& info)
     {
         for (const ImporterEntry& entry : m_importers)
@@ -80,10 +74,14 @@ namespace he::assets
             return false;
         }
 
-        AssetTypeEntry& entry = pair.first->second;
+        const he::schema::Declaration::Reader decl = GetSchema(declInfo);
+        const he::schema::List<he::schema::Attribute>::Reader attributes = decl.GetAttributes();
+
+        Entry& entry = pair.first->second;
         entry.declInfo = &declInfo;
         entry.compilerInfo = compilerInfo;
         entry.compiler = Move(compiler);
+        entry.importOnly = HasAttribute<schema::Display::ImportOnly>(attributes);
 
         return true;
     }

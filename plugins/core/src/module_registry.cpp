@@ -26,7 +26,6 @@ namespace he
             ModuleEntry& entry = m_modules.EmplaceBack();
             entry.name = m.name;
             entry.instance = m.create();
-
             entry.instance->Register();
         }
     }
@@ -66,7 +65,9 @@ namespace he
         for (auto&& it : m_apis)
         {
             ApiEntry& entry = it.second;
-            entry.destroy(entry.instance);
+
+            if (entry.destroy)
+                entry.destroy(entry.instance);
         }
         m_apis.clear();
 

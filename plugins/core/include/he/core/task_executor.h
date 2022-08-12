@@ -38,7 +38,7 @@ namespace he
         };
 
     public:
-        ~ThreadPoolExecutor() { Shutdown(); }
+        ~ThreadPoolExecutor() noexcept { Shutdown(); }
 
         Result Startup(const Config& config);
         void Shutdown();
@@ -51,13 +51,13 @@ namespace he
         static void PumpThread(ThreadPoolExecutor* executor);
 
     protected:
-        Vector<std::thread> m_threads;
-        String m_threadName;
+        Vector<std::thread> m_threads{};
+        String m_threadName{};
 
-        bool m_running;
-        std::deque<TaskDelegate> m_tasks;
+        bool m_running{ false };
+        std::deque<TaskDelegate> m_tasks{};
 
-        Mutex m_mutex;
-        ConditionVariable m_cv;
+        Mutex m_mutex{};
+        ConditionVariable m_cv{};
     };
 }

@@ -21,13 +21,13 @@
 
 /// \def HE_EXPORT_MODULE
 /// Exports a Harvest module to be usable by the module system.
-#if HE_CFG_MODULE_TYPE == HE_MODULE_TYPE_STATIC_LIB
-    #define HE_EXPORT_MODULE(Impl) \
-        static ::he::StaticModuleRegistrar<Impl> HE_UNIQUE_NAME(StaticModuleRegistrar){ HE_CFG_MODULE_NAME }
-#else
+#if HE_CFG_MODULE_TYPE == HE_MODULE_TYPE_SHARED_LIB
     #define HE_EXPORT_MODULE(Impl) \
         extern "C" HE_DLL_EXPORT const char* GetHarvestModuleName() { return HE_CFG_MODULE_NAME; } \
         extern "C" HE_DLL_EXPORT ::he::UniquePtr<::he::Module> CreateHarvestModule() { return ::he::MakeUnique<Impl>(); }
+#else
+    #define HE_EXPORT_MODULE(Impl) \
+        static ::he::StaticModuleRegistrar<Impl> HE_UNIQUE_NAME(StaticModuleRegistrar){ HE_CFG_MODULE_NAME }
 #endif
 
 namespace he
@@ -109,7 +109,11 @@ namespace he
         bool StartupAllModules();
         void ShutdownAllModules();
 
+        // Register a pre-existing instance. Lifetime ownership is not transferred so this instance
+        // must not be destroyed until after it is unregistered.
+        template <typename T> void RegisterApi(T& instance);
         template <typename T> void RegisterApi();
+
         template <typename T> void UnregisterApi();
 
         template <typename T> T* FindApi();
@@ -155,6 +159,25 @@ namespace he
 
     // --------------------------------------------------------------------------------------------
     // Inline implementations
+
+    template <typename T>
+    inline void ModuleRegistry::RegisterApi(T& instance)
+    {
+        constexpr TypeInfo Info = TypeInfo::Get<T>();
+
+        const auto pair = m_apis.try_emplace(Info);
+        if (!HE_VERIFY(pair.second,
+            HE_MSG("API has already been registered"),
+            HE_KV(name, Info.Name()),
+            HE_KV(hash, Info.Hash())))
+        {
+            return;
+        }
+
+        ApiEntry& entry = pair.first->second;
+        entry.instance = &instance;
+        entry.destroy = nullptr;
+    }
 
     template <typename T>
     inline void ModuleRegistry::RegisterApi()

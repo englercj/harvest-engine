@@ -17,21 +17,21 @@ homepage = "https://www.sqlite.org/index.html"
     type = "static"
     group = "engine/contrib"
     warnings = "Off"
-    files = ["sqlite3.c"]
+    files = ["sqlite3.h", "sqlite3.c"]
     public_includedirs = ["."]
-    public_defines = ["SQLITE_OMIT_DEPRECATED"]
+    public_defines = ["SQLITE_OMIT_DEPRECATED=1"]
     private_defines = [
         "SQLITE_DQS=0",
-        "SQLITE_THREADSAFE=2",
+        "SQLITE_THREADSAFE=1",
         "SQLITE_DEFAULT_MEMSTATUS=0",
         "SQLITE_DEFAULT_WAL_SYNCHRONOUS=1",
         "SQLITE_LIKE_DOESNT_MATCH_BLOBS=1",
         "SQLITE_MAX_EXPR_DEPTH=0",
-        "SQLITE_OMIT_DECLTYPE",
-        "SQLITE_OMIT_PROGRESS_CALLBACK",
-        "SQLITE_OMIT_SHARED_CACHE",
-        "SQLITE_USE_ALLOCA",
-        "SQLITE_ENABLE_FTS5",
+        "SQLITE_OMIT_DECLTYPE=1",
+        "SQLITE_OMIT_PROGRESS_CALLBACK=1",
+        "SQLITE_OMIT_SHARED_CACHE=1",
+        "SQLITE_USE_ALLOCA=1",
+        "SQLITE_ENABLE_FTS5=1",
     ]
 
     [[modules.variants]]
@@ -40,4 +40,4 @@ homepage = "https://www.sqlite.org/index.html"
 
     [[modules.variants]]
         conditions = ["tags:debug"]
-        private_defines = ["SQLITE_DEBUG"]
+        private_defines = ["SQLITE_DEBUG=1"]

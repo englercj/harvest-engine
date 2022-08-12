@@ -937,6 +937,8 @@ namespace he::schema
             MarkHasDataField(index, true);
         }
 
+        void MarkDataField(uint16_t index) { MarkHasDataField(index, true); }
+
         void ClearDataField(uint16_t index) { MarkHasDataField(index, false); }
         void ClearDataFields()
         {
@@ -1034,7 +1036,7 @@ namespace he::schema
         explicit Reader(ListReader reader) noexcept : ListReader(reader) {}
 
         const char* Data() const { return reinterpret_cast<const char*>(ListReader::Data()); }
-        uint32_t Size() const { return ListReader::Size() - 1; }
+        uint32_t Size() const { return ListReader::Size() == 0 ? 0 : ListReader::Size() - 1; }
 
         StringView AsView() const { return StringView{ Data(), Size() }; }
         operator StringView() const { return AsView(); }
@@ -1058,7 +1060,7 @@ namespace he::schema
         char* Data() { return reinterpret_cast<char*>(Location()); }
         const char* Data() const { return reinterpret_cast<const char*>(Location()); }
 
-        uint32_t Size() const { return ListBuilder::Size() - 1; }
+        uint32_t Size() const { return ListBuilder::Size() == 0 ? 0 : ListBuilder::Size() - 1; }
 
         typename String::Reader AsReader() const { return String::Reader(ListBuilder::AsReader()); }
         operator typename String::Reader() const { return AsReader(); }

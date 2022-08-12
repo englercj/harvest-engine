@@ -261,7 +261,7 @@ struct Declaration
             isUnion @28 :bool;
             isMethodParams @29 :bool;
             isMethodResults @30 :bool;
-            unionTagOffset @31 :uint32;   // offset to union tag, in 2-byte units, if isUnion is true.
+            unionTagOffset @31 :uint32;   // offset in the parent struct to union tag, in 2-byte units, if isUnion is true.
             fields @32 :Field[];
         }
     }

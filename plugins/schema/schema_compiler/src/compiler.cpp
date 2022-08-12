@@ -1003,14 +1003,12 @@ namespace he::schema
 
         for (const AstTupleParam& item : ast.tuple)
         {
-            for (const Field::Builder field : structDecl.GetFields())
+            for (const Field::Builder& field : structDecl.GetFields())
             {
                 if (item.name != field.GetName())
                     continue;
 
                 const Field::Meta::Builder fieldMeta = field.GetMeta();
-
-                HE_ASSERT(!fieldMeta.IsUnion(), HE_MSG("Union fields cannot have a default value"));
 
                 if (fieldMeta.IsGroup())
                 {
@@ -1019,31 +1017,89 @@ namespace he::schema
                     const Declaration::Data::Struct::Builder groupStructDecl = groupDecl.GetData().GetStruct();
                     FillStructValue(dst, groupStructDecl, item.value, scope);
                 }
+                else if (fieldMeta.IsUnion())
+                {
+                    HE_ASSERT(item.value.kind == AstExpression::Kind::Tuple);
+                    HE_ASSERT(item.value.tuple.Size() == 1);
+                    const Declaration::Builder unionDecl = m_context->GetDecl(fieldMeta.GetUnion().GetTypeId());
+                    const Declaration::Data::Struct::Builder unionStructDecl = unionDecl.GetData().GetStruct();
+                    FillUnionValue(dst, unionStructDecl, item.value, scope);
+                }
                 else
                 {
                     const Field::Meta::Normal::Builder norm = fieldMeta.GetNormal();
-                    FillStructField(dst, norm.GetType().GetData(), norm.GetIndex(), norm.GetDataOffset(), item.value, scope);
+                    FillStructField(dst, norm.GetType().GetData(), norm.GetIndex(), norm.GetDataOffset(), item.value, scope, true);
                 }
             }
         }
     }
 
-    void Compiler::FillStructField(StructBuilder dst, const Type::Data::Builder type, uint16_t index, uint32_t dataOffset, const AstExpression& ast, const AstNode& scope)
+    void Compiler::FillUnionValue(StructBuilder dst, const Declaration::Data::Struct::Builder structDecl, const AstExpression& ast, const AstNode& scope)
     {
+        HE_ASSERT(ast.kind == AstExpression::Kind::Tuple);
+        HE_ASSERT(structDecl.GetIsUnion());
+
+        const AstTupleParam* param = ast.tuple.Front();
+
+        Field::Builder activeField;
+        for (const Field::Builder& field : structDecl.GetFields())
+        {
+            if (param->name == field.GetName())
+            {
+                activeField = field;
+                break;
+            }
+        }
+        HE_ASSERT(activeField.IsValid());
+
+        dst.SetDataField(structDecl.GetUnionTagOffset(), activeField.GetUnionTag());
+
+        const Field::Meta::Builder meta = activeField.GetMeta();
+
+        if (meta.IsGroup())
+        {
+            const Declaration::Builder groupDecl = m_context->GetDecl(meta.GetGroup().GetTypeId());
+            const Declaration::Data::Struct::Builder groupStructDecl = groupDecl.GetData().GetStruct();
+            FillStructValue(dst, groupStructDecl, param->value, scope);
+        }
+        else if (meta.IsUnion())
+        {
+            const Declaration::Builder unionDecl = m_context->GetDecl(meta.GetUnion().GetTypeId());
+            const Declaration::Data::Struct::Builder unionStructDecl = unionDecl.GetData().GetStruct();
+            FillStructValue(dst, unionStructDecl, param->value, scope);
+            return;
+        }
+        else
+        {
+            const Field::Meta::Normal::Builder norm = meta.GetNormal();
+            const Type::Data::Builder type = norm.GetType().GetData();
+            const uint16_t index = norm.GetIndex();
+            const uint32_t dataOffset = norm.GetDataOffset();
+            FillStructField(dst, type, index, dataOffset, param->value, scope, false);
+        }
+    }
+
+    void Compiler::FillStructField(StructBuilder dst, const Type::Data::Builder type, uint16_t index, uint32_t dataOffset, const AstExpression& ast, const AstNode& scope, bool markDataField)
+    {
+        if (markDataField && !IsPointer(type.GetUnionTag()))
+        {
+            dst.MarkDataField(index);
+        }
+
         switch (type.GetUnionTag())
         {
-            case Type::Data::UnionTag::Bool: dst.SetAndMarkDataField<bool>(index, dataOffset, ReadBoolValue(ast, scope)); break;
-            case Type::Data::UnionTag::Int8: dst.SetAndMarkDataField<int8_t>(index, dataOffset, ReadIntValue<int8_t>(ast, scope)); break;
-            case Type::Data::UnionTag::Int16: dst.SetAndMarkDataField<int16_t>(index, dataOffset, ReadIntValue<int16_t>(ast, scope)); break;
-            case Type::Data::UnionTag::Int32: dst.SetAndMarkDataField<int32_t>(index, dataOffset, ReadIntValue<int32_t>(ast, scope)); break;
-            case Type::Data::UnionTag::Int64: dst.SetAndMarkDataField<int64_t>(index, dataOffset, ReadIntValue<int64_t>(ast, scope)); break;
-            case Type::Data::UnionTag::Uint8: dst.SetAndMarkDataField<uint8_t>(index, dataOffset, ReadIntValue<uint8_t>(ast, scope)); break;
-            case Type::Data::UnionTag::Uint16: dst.SetAndMarkDataField<uint16_t>(index, dataOffset, ReadIntValue<uint16_t>(ast, scope)); break;
-            case Type::Data::UnionTag::Uint32: dst.SetAndMarkDataField<uint32_t>(index, dataOffset, ReadIntValue<uint32_t>(ast, scope)); break;
-            case Type::Data::UnionTag::Uint64: dst.SetAndMarkDataField<uint64_t>(index, dataOffset, ReadIntValue<uint64_t>(ast, scope)); break;
-            case Type::Data::UnionTag::Float32: dst.SetAndMarkDataField<float>(index, dataOffset, ReadFloatValue<float>(ast, scope)); break;
-            case Type::Data::UnionTag::Float64: dst.SetAndMarkDataField<double>(index, dataOffset, ReadFloatValue<double>(ast, scope)); break;
-            case Type::Data::UnionTag::Enum: dst.SetAndMarkDataField<uint16_t>(index, dataOffset, ReadEnumValue(ast, scope)); break;
+            case Type::Data::UnionTag::Bool: dst.SetDataField<bool>(dataOffset, ReadBoolValue(ast, scope)); break;
+            case Type::Data::UnionTag::Int8: dst.SetDataField<int8_t>(dataOffset, ReadIntValue<int8_t>(ast, scope)); break;
+            case Type::Data::UnionTag::Int16: dst.SetDataField<int16_t>(dataOffset, ReadIntValue<int16_t>(ast, scope)); break;
+            case Type::Data::UnionTag::Int32: dst.SetDataField<int32_t>(dataOffset, ReadIntValue<int32_t>(ast, scope)); break;
+            case Type::Data::UnionTag::Int64: dst.SetDataField<int64_t>(dataOffset, ReadIntValue<int64_t>(ast, scope)); break;
+            case Type::Data::UnionTag::Uint8: dst.SetDataField<uint8_t>(dataOffset, ReadIntValue<uint8_t>(ast, scope)); break;
+            case Type::Data::UnionTag::Uint16: dst.SetDataField<uint16_t>(dataOffset, ReadIntValue<uint16_t>(ast, scope)); break;
+            case Type::Data::UnionTag::Uint32: dst.SetDataField<uint32_t>(dataOffset, ReadIntValue<uint32_t>(ast, scope)); break;
+            case Type::Data::UnionTag::Uint64: dst.SetDataField<uint64_t>(dataOffset, ReadIntValue<uint64_t>(ast, scope)); break;
+            case Type::Data::UnionTag::Float32: dst.SetDataField<float>(dataOffset, ReadFloatValue<float>(ast, scope)); break;
+            case Type::Data::UnionTag::Float64: dst.SetDataField<double>(dataOffset, ReadFloatValue<double>(ast, scope)); break;
+            case Type::Data::UnionTag::Enum: dst.SetDataField<uint16_t>(dataOffset, ReadEnumValue(ast, scope)); break;
             case Type::Data::UnionTag::Blob:
             {
                 Vector<uint8_t> bytes;
@@ -1087,9 +1143,9 @@ namespace he::schema
                     }
 
                     if (elementIsPointer)
-                        FillStructField(dst, elementType.GetData(), index + i, 0, item, scope);
+                        FillStructField(dst, elementType.GetData(), index + i, 0, item, scope, false);
                     else
-                        FillStructField(dst, elementType.GetData(), index, dataOffset + i, item, scope);
+                        FillStructField(dst, elementType.GetData(), index, dataOffset + i, item, scope, false);
 
                     ++i;
                 }

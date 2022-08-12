@@ -1027,6 +1027,144 @@ namespace he::schema
     };
 
     // --------------------------------------------------------------------------------------------
+    //class TomlWriter2 final : private StructVisitor
+    //{
+    //public:
+    //    TomlWriter2(StringBuilder& dst)
+    //        : m_writer(dst)
+    //    {
+    //        m_writer.Reserve(8192); // 8 KB
+    //    }
+
+    //    void Write(StructReader data, const DeclInfo& info) { VisitStruct(data, info); }
+
+    //private:
+    //    void VisitNormalField(StructReader data, Field::Reader field, const DeclInfo& scope) override
+    //    {
+    //        const StringView name = field.GetName();
+    //        const Type::Data::Reader typeData = field.GetMeta().GetNormal().GetType().GetData();
+
+    //        if (typeData.IsStruct())
+    //        {
+    //            m_writer.WriteLine("[{}]", name);
+    //            m_writer.IncreaseIndent();
+    //            StructVisitor::VisitNormalField(data, field, scope);
+    //            m_writer.DecreaseIndent();
+    //            return;
+    //        }
+
+    //        if (typeData.IsArray() || typeData.IsList())
+    //        {
+    //            // TODO;
+    //            return;
+    //        }
+
+    //        m_writer.WriteIndent();
+    //        m_writer.Write("{} = ", field.GetName());
+    //        StructVisitor::VisitNormalField(data, field, scope);
+    //        m_writer.Write('\n');
+    //    }
+
+    //    void VisitGroupField(StructReader data, Field::Reader field, const DeclInfo& scope) override
+    //    {
+
+    //    }
+
+    //    void VisitUnionField(StructReader data, Field::Reader field, const DeclInfo& scope) override
+    //    {
+
+    //    }
+
+    //    void VisitValue(bool value, Type::Reader type, const DeclInfo& scope) override
+    //    {
+
+    //    }
+
+    //    void VisitValue(int8_t value, Type::Reader type, const DeclInfo& scope) override
+    //    {
+
+    //    }
+
+    //    void VisitValue(int16_t value, Type::Reader type, const DeclInfo& scope) override
+    //    {
+
+    //    }
+
+    //    void VisitValue(int32_t value, Type::Reader type, const DeclInfo& scope) override
+    //    {
+
+    //    }
+
+    //    void VisitValue(int64_t value, Type::Reader type, const DeclInfo& scope) override
+    //    {
+
+    //    }
+
+    //    void VisitValue(uint8_t value, Type::Reader type, const DeclInfo& scope) override
+    //    {
+
+    //    }
+
+    //    void VisitValue(uint16_t value, Type::Reader type, const DeclInfo& scope) override
+    //    {
+
+    //    }
+
+    //    void VisitValue(uint32_t value, Type::Reader type, const DeclInfo& scope) override
+    //    {
+
+    //    }
+
+    //    void VisitValue(uint64_t value, Type::Reader type, const DeclInfo& scope) override
+    //    {
+
+    //    }
+
+    //    void VisitValue(float value, Type::Reader type, const DeclInfo& scope) override
+    //    {
+
+    //    }
+
+    //    void VisitValue(double value, Type::Reader type, const DeclInfo& scope) override
+    //    {
+
+    //    }
+
+    //    void VisitValue(Blob::Reader value, Type::Reader type, const DeclInfo& scope) override
+    //    {
+
+    //    }
+
+    //    void VisitValue(String::Reader value, Type::Reader type, const DeclInfo& scope) override
+    //    {
+
+    //    }
+
+    //    void VisitValue(EnumValueTag, uint16_t value, Type::Reader type, const DeclInfo& scope) override
+    //    {
+
+    //    }
+
+    //    void VisitAnyPointer(PointerReader ptr, Type::Reader type, const DeclInfo& scope) override
+    //    {
+
+    //    }
+
+    //    void VisitAnyStruct(PointerReader ptr, Type::Reader type, const DeclInfo& scope) override
+    //    {
+
+    //    }
+
+    //    void VisitAnyList(PointerReader ptr, Type::Reader type, const DeclInfo& scope) override
+    //    {
+
+    //    }
+
+    //private:
+    //    StringBuilder& m_writer;
+    //};
+
+    // --------------------------------------------------------------------------------------------
     class TomlWriter
     {
     public:
@@ -1242,7 +1380,7 @@ namespace he::schema
         {
             using Helper = SchemaValueHelper<ReaderType>;
 
-            const bool asHex = FindAttribute(attributes, Toml::Hex::Id).IsValid();
+            const bool asHex = HasAttribute<Toml::Hex>(attributes);
             const auto dataValueFmt = fmt::runtime(asHex ? "{:#x}" : "{}");
 
             const Type::Data::Reader typeData = type.GetData();
@@ -1273,7 +1411,7 @@ namespace he::schema
                 case Type::Data::UnionTag::Float64: m_writer.Write(dataValueFmt, Helper::template GetData<double>(data, index, dataOffset)); break;
                 case Type::Data::UnionTag::Array:
                 {
-                    const bool asHexString = FindAttribute(attributes, Toml::HexString::Id).IsValid();
+                    const bool asHexString = HasAttribute<Toml::HexString>(attributes);
 
                     const Type::Data::Array::Reader arrayType = type.GetData().GetArray();
                     const Type::Reader elementType = arrayType.GetElementType();
@@ -1316,7 +1454,7 @@ namespace he::schema
                 }
                 case Type::Data::UnionTag::List:
                 {
-                    const bool asHexString = FindAttribute(attributes, Toml::HexString::Id).IsValid();
+                    const bool asHexString = HasAttribute<Toml::HexString>(attributes);
 
                     const Type::Data::List::Reader listType = typeData.GetList();
                     const Type::Reader elementType = listType.GetElementType();

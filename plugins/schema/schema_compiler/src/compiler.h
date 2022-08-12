@@ -63,7 +63,8 @@ namespace he::schema
 
         void FillValue(Value::Builder value, Type::Builder type, const AstExpression& ast, const AstNode& scope);
         void FillStructValue(StructBuilder dst, const Declaration::Data::Struct::Builder structDecl, const AstExpression& ast, const AstNode& scope);
-        void FillStructField(StructBuilder dst, const Type::Data::Builder type, uint16_t index, uint32_t dataOffset, const AstExpression& ast, const AstNode& scope);
+        void FillStructField(StructBuilder dst, const Type::Data::Builder type, uint16_t index, uint32_t dataOffset, const AstExpression& ast, const AstNode& scope, bool markDataField);
+        void FillUnionValue(StructBuilder dst, const Declaration::Data::Struct::Builder structDecl, const AstExpression& ast, const AstNode& scope);
 
         bool ReadBoolValue(const AstExpression& ast, const AstNode& scope) const;
         uint16_t ReadEnumValue(const AstExpression& ast, const AstNode& scope) const;

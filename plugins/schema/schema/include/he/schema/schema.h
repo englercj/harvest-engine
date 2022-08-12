@@ -5,6 +5,7 @@
 #include "he/core/assert.h"
 #include "he/core/enum_ops.h"
 #include "he/core/hash.h"
+#include "he/core/macros.h"
 #include "he/core/types.h"
 #include "he/schema/types.h"
 
@@ -214,6 +215,23 @@ namespace he::schema
         return {};
     }
 
+    template <typename T>
+    inline Attribute::Reader FindAttribute(List<Attribute>::Reader attributes)
+    {
+        return FindAttribute(attributes, T::Id);
+    }
+
+    inline bool HasAttribute(List<Attribute>::Reader attributes, TypeId id)
+    {
+        return FindAttribute(attributes, id).IsValid();
+    }
+
+    template <typename T>
+    inline bool HasAttribute(List<Attribute>::Reader attributes)
+    {
+        return HasAttribute(attributes, T::Id);
+    }
+
     inline Declaration::Reader GetSchema(const DeclInfo& info)
     {
         const DeclInfo& I = Declaration::DeclInfo;
@@ -260,6 +278,72 @@ namespace he::schema
         virtual bool VisitNormalField(Field::Reader field, Declaration::Reader scope) { HE_UNUSED(field, scope); return true; }
         virtual bool VisitGroupField(Field::Reader field, Declaration::Reader scope) { HE_UNUSED(field, scope); return true; }
         virtual bool VisitUnionField(Field::Reader field, Declaration::Reader scope) { HE_UNUSED(field, scope); return true; }
+
+    protected:
+        Declaration::Reader m_schema;
+    };
+
+    class StructVisitor
+    {
+    public:
+        struct EnumValueTag {};
+
+    public:
+        virtual ~StructVisitor() = default;
+
+        void Visit(StructReader data, const DeclInfo& declInfo) { VisitStruct(data, declInfo); }
+
+    protected:
+        // This section has functions that child classes are likely to override.
+
+        virtual void VisitNormalField(StructReader data, Field::Reader field, const DeclInfo& scope);
+        virtual void VisitGroupField(StructReader data, Field::Reader field, const DeclInfo& scope);
+        virtual void VisitUnionField(StructReader data, Field::Reader field, const DeclInfo& scope);
+
+        virtual void VisitValue(bool value, Type::Reader type, const DeclInfo& scope) { HE_UNUSED(value, type, scope); }
+        virtual void VisitValue(int8_t value, Type::Reader type, const DeclInfo& scope) { HE_UNUSED(value, type, scope); }
+        virtual void VisitValue(int16_t value, Type::Reader type, const DeclInfo& scope) { HE_UNUSED(value, type, scope); }
+        virtual void VisitValue(int32_t value, Type::Reader type, const DeclInfo& scope) { HE_UNUSED(value, type, scope); }
+        virtual void VisitValue(int64_t value, Type::Reader type, const DeclInfo& scope) { HE_UNUSED(value, type, scope); }
+        virtual void VisitValue(uint8_t value, Type::Reader type, const DeclInfo& scope) { HE_UNUSED(value, type, scope); }
+        virtual void VisitValue(uint16_t value, Type::Reader type, const DeclInfo& scope) { HE_UNUSED(value, type, scope); }
+        virtual void VisitValue(uint32_t value, Type::Reader type, const DeclInfo& scope) { HE_UNUSED(value, type, scope); }
+        virtual void VisitValue(uint64_t value, Type::Reader type, const DeclInfo& scope) { HE_UNUSED(value, type, scope); }
+        virtual void VisitValue(float value, Type::Reader type, const DeclInfo& scope) { HE_UNUSED(value, type, scope); }
+        virtual void VisitValue(double value, Type::Reader type, const DeclInfo& scope) { HE_UNUSED(value, type, scope); }
+        virtual void VisitValue(Blob::Reader value, Type::Reader type, const DeclInfo& scope) { HE_UNUSED(value, type, scope); }
+        virtual void VisitValue(String::Reader value, Type::Reader type, const DeclInfo& scope) { HE_UNUSED(value, type, scope); }
+        virtual void VisitValue(EnumValueTag, uint16_t value, Type::Reader type, const DeclInfo& scope) { HE_UNUSED(value, type, scope); }
+
+        virtual void VisitAnyPointer(PointerReader ptr, Type::Reader type, const DeclInfo& scope) { HE_UNUSED(ptr, type, scope); }
+        virtual void VisitAnyStruct(PointerReader ptr, Type::Reader type, const DeclInfo& scope) { HE_UNUSED(ptr, type, scope); }
+        virtual void VisitAnyList(PointerReader ptr, Type::Reader type, const DeclInfo& scope) { HE_UNUSED(ptr, type, scope); }
+
+    protected:
+        // This section has functions that child classes are less likely to override.
+        // However, in some advanced cases it may be useful to do so.
+
+        virtual void VisitStruct(StructReader data, const DeclInfo& info);
+        virtual void VisitField(StructReader data, Field::Reader field, const DeclInfo& scope);
+
+        virtual void VisitValue(Value::Reader data, Type::Reader type, const DeclInfo& scope);
+        virtual void VisitValue(StructReader data, Type::Reader type, uint16_t index, uint32_t dataOffset, const DeclInfo& scope);
+        virtual void VisitValue(ListReader data, Type::Reader elementType, uint32_t index, const DeclInfo& scope);
+
+        virtual void VisitArrayValue(StructReader data, Type::Reader elementType, uint16_t index, uint32_t dataOffset, uint16_t size, const DeclInfo& scope);
+        virtual void VisitListValue(ListReader data, Type::Reader elementType, const DeclInfo& scope);
+
+        virtual bool ShouldVisitNormalField(StructReader data, Field::Reader field, const DeclInfo& scope);
+        virtual bool ShouldVisitGroupField(StructReader data, Field::Reader field, const DeclInfo& scope);
+        virtual bool ShouldVisitUnionField(StructReader data, Field::Reader field, const DeclInfo& scope);
+
+        virtual bool AnyGroupFieldSet(StructReader data, Field::Reader field, const DeclInfo& scope);
+        virtual bool IsUnionFieldSet(StructReader data, Field::Reader field, const DeclInfo& scope);
+        virtual bool IsNormalFieldSet(StructReader data, Field::Reader field, const DeclInfo& scope);
+
+    protected:
+        bool HasValue(StructReader data, Field::Reader field);
+        const DeclInfo* FindGroupOrUnionInfo(Field::Reader field, const DeclInfo& scope);
 
     protected:
         Declaration::Reader m_schema;

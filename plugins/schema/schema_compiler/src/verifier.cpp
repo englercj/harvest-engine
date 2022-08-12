@@ -1076,30 +1076,7 @@ namespace he::schema
                 }
 
                 const AstNode* node = m_context->FindNodeByName(astType, scopeType);
-                if (!node || node->kind != AstNode::Kind::Struct)
-                {
-                    m_context->AddError(astValue.location, "A Tuple value expression is only valid for user-defined struct types.");
-                    return false;
-                }
-
-                for (const AstTupleParam& param : astValue.tuple)
-                {
-                    const AstNode* field = node->children.Find([&](const AstNode& child)
-                    {
-                        return child.kind == AstNode::Kind::Field && child.name == param.name;
-                    });
-
-                    if (!field)
-                    {
-                        m_context->AddError(param.location, "Field '{}' does not exist on type '{}'", param.name, node->name);
-                        return false;
-                    }
-
-                    if (!VerifyValue(field->field.type, *field->parent, param.value, scopeValue))
-                        return false;
-                }
-
-                return true;
+                return VerifyTupleValue(node, astValue, scopeValue);
             }
             case AstExpression::Kind::Unknown:
             {
@@ -1131,6 +1108,57 @@ namespace he::schema
 
         m_context->AddError(astValue.location, "Unknown expression type ({:s}) for value. This is a parser bug.", astValue.kind);
         return false;
+    }
+
+    bool Verifier::VerifyTupleValue(const AstNode* node, const AstExpression& astValue, const AstNode& scopeValue)
+    {
+        HE_ASSERT(astValue.kind == AstExpression::Kind::Tuple);
+
+        if (!node || (node->kind != AstNode::Kind::Struct && node->kind != AstNode::Kind::Group && node->kind != AstNode::Kind::Union))
+        {
+            m_context->AddError(astValue.location, "A Tuple value expression is only valid for user-defined struct types, unions, and groups.");
+            return false;
+        }
+
+        if (node->kind == AstNode::Kind::Union && astValue.tuple.Size() > 1)
+        {
+            m_context->AddError(astValue.location, "A Tuple value expression for a union can only contain a single field to be set.");
+            return false;
+        }
+
+        for (const AstTupleParam& param : astValue.tuple)
+        {
+            const AstNode* field = node->children.Find([&](const AstNode& child)
+            {
+                const bool isType = child.kind == AstNode::Kind::Field || child.kind == AstNode::Kind::Group || child.kind == AstNode::Kind::Union;
+                return isType && child.name == param.name;
+            });
+
+            if (!field)
+            {
+                m_context->AddError(param.location, "Field '{}' does not exist on type '{}'", param.name, node->name);
+                return false;
+            }
+
+            if (field->kind == AstNode::Kind::Field)
+            {
+                if (!VerifyValue(field->field.type, *field->parent, param.value, scopeValue))
+                    return false;
+            }
+            else
+            {
+                if (param.value.kind != AstExpression::Kind::Tuple)
+                {
+                    m_context->AddError(param.location, "Union and group values must be set using a tuple expression.");
+                    return false;
+                }
+
+                if (!VerifyTupleValue(field, param.value, scopeValue))
+                    return false;
+            }
+        }
+
+        return true;
     }
 
     AstTypeParamRef Verifier::FindTypeParam(StringView name, const AstNode& scope) const

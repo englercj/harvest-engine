@@ -42,6 +42,8 @@ namespace he::schema
         bool VerifyTypeId(const AstNode& node);
         bool VerifyValue(const AstExpression& astType, const AstNode& scopeType, const AstExpression& astValue, const AstNode& scope);
 
+        bool VerifyTupleValue(const AstNode* node, const AstExpression& astValue, const AstNode& scopeValue);
+
         AstTypeParamRef FindTypeParam(StringView name, const AstNode& scope) const;
         uint16_t GetArraySize(const AstExpression& ast, const AstNode& scope) const;
 

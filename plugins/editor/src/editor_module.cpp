@@ -14,14 +14,14 @@ namespace he::editor
     {
         void Register() override
         {
-            ModuleRegistry& registry = ModuleRegistry::Get();
+            ModuleRegistry& registry = Registry();
 
             registry.RegisterApi(DICreate<PropertyGridService&>());
         }
 
         void Unregister() override
         {
-            ModuleRegistry& registry = ModuleRegistry::Get();
+            ModuleRegistry& registry = Registry();
 
             registry.UnregisterApi<PropertyGridService>();
         }

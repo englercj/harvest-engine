@@ -17,21 +17,21 @@ namespace he::assets
     {
         void Register() override
         {
-            ModuleRegistry& registry = ModuleRegistry::Get();
+            ModuleRegistry& registry = Registry();
 
             registry.RegisterApi<AssetTypeRegistry>();
         }
 
         void Unregister() override
         {
-            ModuleRegistry& registry = ModuleRegistry::Get();
+            ModuleRegistry& registry = Registry();
 
             registry.UnregisterApi<AssetTypeRegistry>();
         }
 
         bool Startup() override
         {
-            ModuleRegistry& registry = ModuleRegistry::Get();
+            ModuleRegistry& registry = Registry();
 
             AssetTypeRegistry& types = registry.GetApi<AssetTypeRegistry>();
             types.RegisterAssetType<schema::Texture2D, Texture2DCompiler>();
@@ -52,7 +52,7 @@ namespace he::assets
         {
             basisu::basisu_encoder_deinit();
 
-            ModuleRegistry& registry = ModuleRegistry::Get();
+            ModuleRegistry& registry = Registry();
 
             //EditorDocumentRegistry* editor = registry.FindApi<EditorDocumentRegistry>();
             //if (editor)

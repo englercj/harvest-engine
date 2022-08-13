@@ -24,6 +24,7 @@
 #if HE_CFG_MODULE_TYPE == HE_MODULE_TYPE_SHARED_LIB
     #define HE_EXPORT_MODULE(Impl) \
         extern "C" HE_DLL_EXPORT const char* GetHarvestModuleName() { return HE_CFG_MODULE_NAME; } \
+        extern "C" HE_DLL_EXPORT ::he::TypeInfo GetHarvestModuleTypeInfo() { return ::he::TypeInfo::Get<Impl>(); } \
         extern "C" HE_DLL_EXPORT ::he::UniquePtr<::he::Module> CreateHarvestModule() { return ::he::MakeUnique<Impl>(); }
 #else
     #define HE_EXPORT_MODULE(Impl) \
@@ -47,7 +48,7 @@ namespace he
         explicit StaticModuleRegistrar(const char* name)
         {
             const auto cb = ModuleRegistry::CreateModuleDelegate::Make(&StaticModuleRegistrar::CreateModule);
-            ModuleRegistry::Get().RegisterStaticModule(name, cb);
+            ModuleRegistry::RegisterStaticModule(name, TypeInfo::Get<T>(), cb);
         }
 
         static UniquePtr<Module> CreateModule()
@@ -79,6 +80,17 @@ namespace he
 
         /// Called when the module is going to be unloaded and must be shut down.
         virtual void Shutdown() {}
+
+    public:
+        /// Accessor for the registry this module is created in. Can be used to access other
+        /// modules and their provided APIs.
+        ///
+        /// \return The registry that owns this module.
+        ModuleRegistry& Registry() { return *m_owner; }
+
+    private:
+        friend ModuleRegistry;
+        ModuleRegistry* m_owner{ nullptr };
     };
 
     // --------------------------------------------------------------------------------------------
@@ -88,9 +100,6 @@ namespace he
     {
     public:
         using CreateModuleDelegate = Delegate<UniquePtr<Module>()>;
-
-    public:
-        static ModuleRegistry& Get();
 
     public:
         ModuleRegistry() = default;
@@ -123,21 +132,24 @@ namespace he
         template <typename T>
         friend struct StaticModuleRegistrar;
 
-        void RegisterStaticModule(const char* name, CreateModuleDelegate create);
+        static void RegisterStaticModule(const char* name, TypeInfo type, CreateModuleDelegate create);
 
     private:
         using Pfn_GetHarvestModuleName = const char*(*)();
+        using Pfn_GetHarvestModuleTypeInfo = TypeInfo(*)();
         using Pfn_CreateHarvestModule = UniquePtr<Module>(*)();
 
         struct StaticModule
         {
             const char* name;
+            TypeInfo type;
             CreateModuleDelegate create;
         };
 
         struct ModuleEntry
         {
             const char* name;
+            TypeInfo type;
             UniquePtr<Module> instance;
             DynamicLib dl;
         };
@@ -149,7 +161,9 @@ namespace he
         };
 
     private:
-        Vector<StaticModule> m_staticModules{};
+        static Vector<StaticModule> s_staticModules{};
+
+    private:
         Vector<ModuleEntry> m_modules{};
         std::unordered_map<TypeInfo, ApiEntry> m_apis{};
     #if HE_ENABLE_ASSERTIONS

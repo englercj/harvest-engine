@@ -8,20 +8,16 @@ namespace he::editor
 {
     EditorApp::EditorApp(
         AssetService& assetService,
-        DirectoryService& directoryService,
         FileLoaderService& fileLoaderService,
         ImGuiService& imguiService,
-        LogService& logService,
         MainWindowService& mainWindowService,
         RenderService& renderService,
         SettingsService& settingsService,
         TaskService& taskService,
         WorkspaceService& workspaceService) noexcept
         : m_assetService(assetService)
-        , m_directoryService(directoryService)
         , m_fileLoaderService(fileLoaderService)
         , m_imguiService(imguiService)
-        , m_logService(logService)
         , m_mainWindowService(mainWindowService)
         , m_renderService(renderService)
         , m_settingsService(settingsService)
@@ -91,12 +87,6 @@ namespace he::editor
         m_mainWindowService.SetView(view);
 
         // Initialize required services
-        if (!m_directoryService.CreateAll())
-            return false;
-
-        if (!m_logService.Initialize())
-            return false;
-
         if (!m_fileLoaderService.Initialize())
             return false;
 
@@ -146,7 +136,6 @@ namespace he::editor
         m_assetService.Terminate();
         m_taskService.Terminate();
         m_fileLoaderService.Terminate();
-        m_logService.Terminate();
 
         m_mainWindowService.Quit(0);
     }

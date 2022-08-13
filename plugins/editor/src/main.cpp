@@ -3,19 +3,42 @@
 #include "di.h"
 #include "editor_app.h"
 #include "editor_data.h"
+#include "services/directory_service.h"
+#include "services/log_service.h"
 
 #include "he/core/log.h"
 #include "he/core/log_sinks.h"
 #include "he/core/macros.h"
-#include "he/core/main.inl"
+#include "he/core/module_registry.h"
 #include "he/window/view.h"
 
+#include "he/core/main.inl"
 int he::AppMain(int argc, char* argv[])
 {
     // Initialize logging and add the debug sink as early as possible.
-    // We'll add the file sync later after we prepare the directories for writing logs to.
-    he::AddLogSink(DebuggerSink);
+    // The application will add the file sink later in LogService.
+    AddLogSink(DebuggerSink);
 
+    // Initialize the directory service first so that the log service has existing directories
+    // to write data into.
+    DirectoryService& directoryService = editor::DICreate<DirectoryService&>();
+    if (!directoryService.CreateAll())
+        return -1;
+
+    // Initialize the log service as early as possible, so we can capture as many logs as possible.
+    // In particular we want to capture any failed module loads to the log file.
+    LogService& logService = editor::DICreate<LogService&>();
+    if (!logService.Initialize())
+        return -1;
+
+    // Create and startup the static modules that were registered by any linked libraries.
+    ModuleRegistry& moduleRegistry = editor::DICreate<ModuleRegistry&>();
+    moduleRegistry.LoadStaticModules();
+
+    if (!moduleRegistry.StartupAllModules())
+        return -1;
+
+    // Now that modules are started Create the editor data necessary to run the application and kick off the app.
     editor::EditorData& data = editor::DICreate<editor::EditorData&>();
     data.argc = argc;
     data.argv = argv;
@@ -24,13 +47,17 @@ int he::AppMain(int argc, char* argv[])
         return -1;
 
     window::ViewDesc desc{};
-    desc.title = "Harvest";
+    desc.title = "Harvest Editor";
     desc.flags = window::ViewFlag::Default | window::ViewFlag::Borderless;
 
     editor::EditorApp& app = editor::DICreate<editor::EditorApp&>();
-    int rc = data.device->Run(app, desc);
+    const int rc = data.device->Run(app, desc);
 
+    // Destroy all the things in reverse order that we initialized them in.
     window::Device::Destroy(data.device);
+    logService.Terminate();
+    moduleRegistry.ShutdownAllModules();
+    moduleRegistry.UnloadAllModules();
 
     return rc;
 }

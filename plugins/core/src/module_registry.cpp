@@ -13,19 +13,15 @@ namespace he
         UnloadAllModules();
     }
 
-    ModuleRegistry& ModuleRegistry::Get()
-    {
-        static ModuleRegistry s_registry;
-        return s_registry;
-    }
-
     void ModuleRegistry::LoadStaticModules()
     {
-        for (StaticModule& m : m_staticModules)
+        for (StaticModule& m : s_staticModules)
         {
             ModuleEntry& entry = m_modules.EmplaceBack();
             entry.name = m.name;
+            entry.type = m.type;
             entry.instance = m.create();
+            entry.instance->m_owner = this;
             entry.instance->Register();
         }
     }
@@ -41,10 +37,11 @@ namespace he
             return false;
         }
 
-        const auto pfnGetHarvestModuleName = entry.dl.Symbol<Pfn_GetHarvestModuleName>("GetHarvestModuleName");
-        const auto pfnCreateHarvestModule = entry.dl.Symbol<Pfn_CreateHarvestModule>("CreateHarvestModule");
+        const Pfn_GetHarvestModuleName pfnGetHarvestModuleName = entry.dl.Symbol<Pfn_GetHarvestModuleName>("GetHarvestModuleName");
+        const Pfn_GetHarvestModuleTypeInfo pfnGetHarvestModuleTypeInfo = entry.dl.Symbol<Pfn_GetHarvestModuleTypeInfo>("GetHarvestModuleTypeInfo");
+        const Pfn_CreateHarvestModule pfnCreateHarvestModule = entry.dl.Symbol<Pfn_CreateHarvestModule>("CreateHarvestModule");
 
-        if (!pfnGetHarvestModuleName || !pfnCreateHarvestModule)
+        if (!pfnGetHarvestModuleName || !pfnGetHarvestModuleTypeInfo || !pfnCreateHarvestModule)
         {
             HE_LOG_ERROR(he_core,
                 HE_MSG("Dynamic module is missing expected symbols. Does this library export a Harvest module?"),
@@ -53,6 +50,7 @@ namespace he
         }
 
         entry.name = pfnGetHarvestModuleName();
+        entry.type = pfnGetHarvestModuleTypeInfo();
         entry.instance = pfnCreateHarvestModule();
         entry.instance->Register();
 
@@ -106,8 +104,8 @@ namespace he
         }
     }
 
-    void ModuleRegistry::RegisterStaticModule(const char* name, CreateModuleDelegate create)
+    void ModuleRegistry::RegisterStaticModule(const char* name, TypeInfo type, CreateModuleDelegate create)
     {
-        m_staticModules.PushBack({ name, create });
+        s_staticModules.PushBack({ name, type, create });
     }
 }

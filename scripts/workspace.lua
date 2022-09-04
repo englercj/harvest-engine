@@ -37,9 +37,20 @@ he.workspace = function ()
         platforms { "x64" }
 
     filter { "system:windows" }
-        defines { "HE_PLATFORM_WINDOWS", "HE_PLATFORM_API_WIN32" }
+        defines {
+            "HE_PLATFORM_WINDOWS",
+            "HE_PLATFORM_API_WIN32",
+            "WINVER=0x0A00",            -- require minimum of windows 10
+            "_WIN32_WINNT=0x0A00",      -- require minimum of windows 10
+            "_ITERATOR_DEBUG_LEVEL=0",  -- Improve debug performance by disabling iterator checks
+        }
         platforms { "x64", "ARM64" }
         systemversion(_OPTIONS.windows_systemversion)
+
+    filter { "system:windows", "platforms:x64" }
+        if _OPTIONS.asan == nil then
+            editandcontinue "On"
+        end
 
     -- Platform setup
     filter { "platforms:x64" }
@@ -47,20 +58,6 @@ he.workspace = function ()
 
     filter { "platforms:ARM64" }
         vectorextensions "NEON"
-
-    -- System setup
-    filter { "system:windows" }
-        defines {
-            -- require minimum of windows 10
-            "WINVER=0x0A00",
-            "_WIN32_WINNT=0x0A00",
-            "_ITERATOR_DEBUG_LEVEL=0", -- Improve debug performance
-        }
-
-    filter { "system:windows", "platforms:x64" }
-        if _OPTIONS.asan == nil then
-            editandcontinue "On"
-        end
 
     -- Compiler setup
     filter { "toolset:msc-*" }
@@ -74,17 +71,17 @@ he.workspace = function ()
 
     filter { "toolset:gcc or clang" }
         buildoptions {
-            "-mcx16",
-            "-fPIC",
-            "-fvisibility=hidden",
-            "-fvisibility-inlines-hidden",
-            "-Wundef",      -- A symbol that was not defined was used with a preprocessor directive.
-            "-Wswitch",     -- An enumerator has no associated case handler in a switch statement, and there's no default label that can catch it.
+            "-mcx16",                       -- Enable use of CMPXCHG16B for 16-byte aligned 128-bit objects
+            "-fPIC",                        -- Generate position-independent code
+            "-fvisibility=hidden",          -- Mark all symbols as hidden by default
+            "-fvisibility-inlines-hidden",  -- Hide inlines from the symbol table
+            "-Wundef",                      -- A symbol that was not defined was used with a preprocessor directive.
+            "-Wswitch",                     -- An enumerator has no associated case handler in a switch statement, and there's no default label that can catch it.
         }
 
     filter { "toolset:emcc" }
         em_options {
-            "ALLOW_MEMORY_GROWTH=1",
+            "ALLOW_MEMORY_GROWTH=1",        -- Enable dynamic memory growth of the WASM memory buffer
         }
 
     -- Configuration setup

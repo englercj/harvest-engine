@@ -4,9 +4,11 @@
 
 #include "input_text.h"
 #include "fonts/icons_material_design.h"
+#include "services/asset_edit_service.h"
 
 #include "he/assets/types.h"
 #include "he/core/ascii.h"
+#include "he/core/scope_guard.h"
 #include "he/core/string.h"
 #include "he/core/vector.h"
 #include "he/schema/schema.h"
@@ -105,20 +107,26 @@ namespace he::editor
 
     class PropertyGridStructVisitor : public schema::StructVisitor
     {
+    public:
+        PropertyGridStructVisitor(AssetEditContext& ctx) : m_edit(ctx) {}
+
+        AssetEdit& Edit() { return m_edit; }
+
     private:
         void VisitStruct(schema::StructReader data, const schema::DeclInfo& info) override
         {
             const schema::Declaration::Reader decl = schema::GetSchema(info);
+            const schema::Field::Reader field = m_edit.m_path.Back().field;
 
-            if (!m_activeField.IsValid())
+            if (!field.IsValid())
             {
                 schema::StructVisitor::VisitStruct(data, info);
                 return;
             }
 
-            StringView name = m_activeField.GetName();
+            StringView name = field.GetName();
             StringView desc;
-            GetNameAndDescription(name, desc, m_activeField.GetAttributes());
+            GetNameAndDescription(name, desc, field.GetAttributes());
 
             bool open = false;
             if (BeginPropertyGridRow())
@@ -157,7 +165,8 @@ namespace he::editor
 
         void VisitNormalField(schema::StructReader data, schema::Field::Reader field, const schema::DeclInfo& scope) override
         {
-            m_activeField = field;
+            m_edit.m_path.PushBack({ field });
+            HE_AT_SCOPE_EXIT([&]() { m_edit.m_path.PopBack(); });
 
             StringView name = field.GetName();
             StringView desc;
@@ -224,14 +233,16 @@ namespace he::editor
 
         void VisitGroupField(schema::StructReader data, schema::Field::Reader field, const schema::DeclInfo& scope)
         {
-            m_activeField = field;
+            m_edit.m_path.PushBack({ field });
+            HE_AT_SCOPE_EXIT([&]() { m_edit.m_path.PopBack(); });
+
             schema::StructVisitor::VisitGroupField(data, field, scope);
         }
 
-
         void VisitUnionField(schema::StructReader data, schema::Field::Reader field, const schema::DeclInfo& scope) override
         {
-            m_activeField = field;
+            m_edit.m_path.PushBack({ field });
+            HE_AT_SCOPE_EXIT([&]() { m_edit.m_path.PopBack(); });
 
             const schema::DeclInfo* info = FindGroupOrUnionInfo(field, scope);
             if (!info)
@@ -328,7 +339,8 @@ namespace he::editor
             bool v = value;
             if (ImGui::Checkbox("##bool-value", &v))
             {
-                // TODO: edit value
+                AssetEditAction& action = m_edit.EmplaceAction(AssetEditAction::Kind::SetValue);
+                action.value.GetData().SetBool(v);
             }
         }
 
@@ -339,7 +351,8 @@ namespace he::editor
             int8_t v = value;
             if (ImGui::InputScalar("##int8-value", ImGuiDataType_S8, &v))
             {
-                // TODO: edit value
+                AssetEditAction& action = m_edit.EmplaceAction(AssetEditAction::Kind::SetValue);
+                action.value.GetData().SetInt8(v);
             }
         }
 
@@ -350,7 +363,8 @@ namespace he::editor
             int16_t v = value;
             if (ImGui::InputScalar("##int16-value", ImGuiDataType_S16, &v))
             {
-                // TODO: edit value
+                AssetEditAction& action = m_edit.EmplaceAction(AssetEditAction::Kind::SetValue);
+                action.value.GetData().SetInt16(v);
             }
         }
 
@@ -450,7 +464,9 @@ namespace he::editor
 
         void VisitValue(schema::String::Reader value, schema::Type::Reader type, const schema::DeclInfo& scope) override
         {
-            const bool readOnly = schema::HasAttribute<assets::schema::Display::ReadOnly>(m_activeField.GetAttributes());
+            const schema::Field::Reader field = m_edit.m_path.Back().field;
+
+            const bool readOnly = schema::HasAttribute<assets::schema::Display::ReadOnly>(field.GetAttributes());
             HE_UNUSED(type, scope);
 
             static String v;
@@ -603,13 +619,15 @@ namespace he::editor
 
         void RevertActionButton(schema::StructReader data)
         {
-            if (!m_activeField.GetMeta().IsNormal())
+            const schema::Field::Reader field = m_edit.m_path.Back().field;
+
+            if (!field.GetMeta().IsNormal())
                 return;
 
-            const schema::Field::Meta::Normal::Reader norm = m_activeField.GetMeta().GetNormal();
+            const schema::Field::Meta::Normal::Reader norm = field.GetMeta().GetNormal();
             const schema::Type::Reader type = norm.GetType();
 
-            const bool readOnly = schema::HasAttribute<assets::schema::Display::ReadOnly>(m_activeField.GetAttributes());
+            const bool readOnly = schema::HasAttribute<assets::schema::Display::ReadOnly>(field.GetAttributes());
             const bool isPointer = schema::IsPointer(type);
             const bool hasValue = isPointer ? data.HasPointerField(norm.GetIndex()) : data.HasDataField(norm.GetIndex());
 
@@ -662,12 +680,12 @@ namespace he::editor
         }
 
     private:
-        schema::Field::Reader m_activeField;
+        AssetEdit m_edit;
     };
 
-    void PropertyGrid(schema::StructBuilder data, const schema::DeclInfo& declInfo)
+    void PropertyGrid(AssetEditContext& ctx)
     {
-        const ImGuiID id = ImGui::GetID(data.GetBuilder()->Data());
+        const ImGuiID id = ImGui::GetID(&ctx);
         if (BeginPropertyGrid(id))
         {
             if (BeginPropertyGridHeader())
@@ -677,8 +695,10 @@ namespace he::editor
 
             if (BeginPropertyGridTable())
             {
-                PropertyGridStructVisitor visitor;
-                visitor.Visit(data, declInfo);
+                PropertyGridStructVisitor visitor(ctx);
+                visitor.Visit(ctx.Data(), ctx.DeclInfo());
+                ctx.PushEdit(Move(visitor.Edit()));
+
                 EndPropertyGridTable();
             }
 

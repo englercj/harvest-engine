@@ -106,13 +106,15 @@ namespace he::editor
         template <typename T, typename... TArgs>
         auto get(const di::type_traits::direct&, const di::type_traits::heap&, TArgs&&... args) const
         {
-            return Allocator::GetDefault().New<T>(Forward<TArgs>(args)...);
+            void* p = Allocator::GetDefault().Malloc<T>(1);
+            return new(p) T(Forward<TArgs>(args)...);
         }
 
         template <typename T, typename... TArgs>
         auto get(const di::type_traits::uniform&, const di::type_traits::heap&, TArgs&&... args) const
         {
-            return Allocator::GetDefault().New<T>(Forward<TArgs>(args)...);
+            void* p = Allocator::GetDefault().Malloc<T>(1);
+            return new(p) T{ Forward<TArgs>(args)... };
         }
 
         template <typename T, typename... TArgs>

@@ -22,9 +22,11 @@ namespace he::rhi::d3d12
     struct ShaderModelPair { D3D_SHADER_MODEL d3dSm; ShaderModel sm; };
     static const ShaderModelPair ShaderModelPairs[] =
     {
+    // Windows 10 21H1
     #if defined(NTDDI_WIN10_FE) && NTDDI_VERSION >= NTDDI_WIN10_FE
         { D3D_SHADER_MODEL_6_7, ShaderModel::Sm_6_7 },
     #endif
+    // Windows 10 2004 "20H1"
     #if defined(NTDDI_WIN10_VB) && NTDDI_VERSION >= NTDDI_WIN10_VB
         { D3D_SHADER_MODEL_6_6, ShaderModel::Sm_6_6 },
     #endif

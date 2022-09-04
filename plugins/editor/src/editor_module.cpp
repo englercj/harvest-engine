@@ -3,7 +3,7 @@
 #pragma once
 
 #include "di.h"
-#include "services/property_grid_service.h"
+#include "services/type_edit_ui_service.h"
 
 #include "he/core/module_registry.h"
 #include "he/core/types.h"
@@ -16,14 +16,14 @@ namespace he::editor
         {
             ModuleRegistry& registry = Registry();
 
-            registry.RegisterApi(DICreate<PropertyGridService&>());
+            registry.RegisterApi(DICreate<TypeEditUIService&>());
         }
 
         void Unregister() override
         {
             ModuleRegistry& registry = Registry();
 
-            registry.UnregisterApi<PropertyGridService>();
+            registry.UnregisterApi<TypeEditUIService>();
         }
     };
 }

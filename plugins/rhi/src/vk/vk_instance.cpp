@@ -7,7 +7,7 @@
 
 #if HE_RHI_ENABLE_VULKAN
 
-namespace he::rhi::vulkan
+namespace he::rhi::vk
 {
 
 }
@@ -16,10 +16,9 @@ namespace he::rhi
 {
     template <> Result _CreateInstance<ApiBackend::Vulkan>(Allocator& allocator, Instance*& instance)
     {
-        HE_UNUSED(allocator);
-        HE_LOGF_ERROR(he_rhi, "Vulkan RHI backend is not yet implemented.");
-        instance = nullptr;
-        return Result::NotSupported;
+        HE_LOGF_INFO(rhi, "Initializing Vulkan rendering backend.");
+        instance = allocator.New<vk::InstanceImpl>(allocator);
+        return Result::Success;
     }
 }
 

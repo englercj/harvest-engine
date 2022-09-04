@@ -6,7 +6,6 @@
 #include "d3d12_common.h"
 
 #include "he/core/vector.h"
-#include "he/core/wstr.h"
 #include "he/rhi/config.h"
 #include "he/rhi/types.h"
 

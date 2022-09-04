@@ -51,7 +51,7 @@
     #define DBT_DEVNODES_CHANGED 0x0007
 #endif
 
-namespace he::window::Win32
+namespace he::window::win32
 {
     class GamepadImpl;
     class DeviceImpl;
@@ -1487,7 +1487,7 @@ namespace he::window
 {
     Device* _CreateDevice(Allocator& allocator)
     {
-        return allocator.New<Win32::DeviceImpl>(allocator);
+        return allocator.New<win32::DeviceImpl>(allocator);
     }
 }
 

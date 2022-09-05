@@ -55,8 +55,8 @@
     #undef  HE_COMPILER_GCC
     #define HE_COMPILER_GCC                 (__GNUC__ * 10000 + __GNUC_MINOR__ * 100 + __GNUC_PATCHLEVEL__)
 
-    #if HE_COMPILER_GCC < 80300
-        #error "GCC 8.3.0+ is required."
+    #if HE_COMPILER_GCC < 110200
+        #error "GCC 11.2.0+ is required."
     #endif
 
     #define HE_FUNC_SIG                     __PRETTY_FUNCTION__

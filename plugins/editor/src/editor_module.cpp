@@ -1,7 +1,5 @@
 // Copyright Chad Engler
 
-#pragma once
-
 #include "di.h"
 #include "services/type_edit_ui_service.h"
 

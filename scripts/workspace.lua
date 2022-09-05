@@ -54,7 +54,7 @@ he.workspace = function ()
 
     -- Platform setup
     filter { "platforms:x64" }
-        vectorextensions "AVX"
+        vectorextensions "SSE4.1"
 
     filter { "platforms:ARM64" }
         vectorextensions "NEON"
@@ -69,14 +69,21 @@ he.workspace = function ()
             "/wd6255",      -- _alloca indicates failure by raising a stack overflow exception. Consider using _malloca instead.
         }
 
+    filter { "toolset:msc-*", "platforms:x64" }
+        vectorextensions "AVX"  -- MSVC has no sse4.1 arch, so we enable AVX
+
     filter { "toolset:gcc or clang" }
         buildoptions {
             "-mcx16",                       -- Enable use of CMPXCHG16B for 16-byte aligned 128-bit objects
             "-fPIC",                        -- Generate position-independent code
             "-fvisibility=hidden",          -- Mark all symbols as hidden by default
-            "-fvisibility-inlines-hidden",  -- Hide inlines from the symbol table
             "-Wundef",                      -- A symbol that was not defined was used with a preprocessor directive.
             "-Wswitch",                     -- An enumerator has no associated case handler in a switch statement, and there's no default label that can catch it.
+        }
+
+    filter { "toolset:gcc or clang", "files:**.cpp" }
+        buildoptions {
+            "-fvisibility-inlines-hidden",  -- Hide inlines from the symbol table
         }
 
     filter { "toolset:emcc" }

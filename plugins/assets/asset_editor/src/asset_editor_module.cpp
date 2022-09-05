@@ -1,7 +1,5 @@
 // Copyright Chad Engler
 
-#pragma once
-
 #include "he/assets/asset_type_registry.h"
 #include "he/assets/types.h"
 #include "he/assets/compilers/texture2d_compiler.h"

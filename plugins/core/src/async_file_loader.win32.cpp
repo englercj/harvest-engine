@@ -183,7 +183,7 @@ namespace he
 
         ~AsyncFileLoaderImpl()
         {
-            Allocator::GetDefault().Delete(m_defaultQueue);
+            m_allocator.Delete(m_defaultQueue);
             GlobalTerminate();
         }
 
@@ -239,11 +239,11 @@ namespace he
 
         Result CreateQueue(const AsyncFileQueue::Config& config, AsyncFileQueue*& out) override
         {
-            AsyncFileQueueImpl* queue = Allocator::GetDefault().New<AsyncFileQueueImpl>();
+            AsyncFileQueueImpl* queue = m_allocator.New<AsyncFileQueueImpl>();
             Result r = queue->Initialize(config);
             if (!r)
             {
-                Allocator::GetDefault().Delete(queue);
+                m_allocator.Delete(queue);
                 queue = nullptr;
             }
 
@@ -255,7 +255,7 @@ namespace he
         {
             if (queue != m_defaultQueue)
             {
-                Allocator::GetDefault().Delete(queue);
+                m_allocator.Delete(queue);
             }
         }
 

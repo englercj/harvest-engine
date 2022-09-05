@@ -1,7 +1,5 @@
 // Copyright Chad Engler
 
-#pragma once
-
 #include "he/core/async_file_loader.h"
 
 #include "he/core/file.h"

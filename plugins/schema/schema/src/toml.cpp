@@ -12,6 +12,7 @@
 #include "he/core/string_fmt.h"
 #include "he/core/string_builder.h"
 #include "he/core/string_view_fmt.h"
+#include "he/core/types.h"
 
 #include "fmt/format.h"
 #include "fmt/ranges.h"
@@ -1422,7 +1423,7 @@ namespace he::schema
                         if (asHexString && elementType.GetData().IsUint8())
                         {
                             // TODO: Need to support this in the reader
-                            const Span<const uint8_t> bytes = data.TryGetDataArrayField<uint8_t>(static_cast<uint16_t>(index), dataOffset, size);
+                            const Span<const uint8_t> bytes = data.template TryGetDataArrayField<uint8_t>(static_cast<uint16_t>(index), dataOffset, size);
                             m_writer.WriteIndent();
                             m_writer.Write("{} = \"{:02x}\"", name, fmt::join(bytes, ""));
                         }
@@ -1466,7 +1467,7 @@ namespace he::schema
                         if (asHexString && elementType.GetData().IsUint8())
                         {
                             // TODO: Need to support this in the reader
-                            List<uint8_t>::Reader bytes = data.GetPointerField(static_cast<uint16_t>(index)).TryGetList<uint8_t>();
+                            List<uint8_t>::Reader bytes = data.GetPointerField(static_cast<uint16_t>(index)).template TryGetList<uint8_t>();
                             m_writer.WriteIndent();
                             m_writer.Write("{} = \"{:02x}\"", name, fmt::join(bytes, ""));
                         }

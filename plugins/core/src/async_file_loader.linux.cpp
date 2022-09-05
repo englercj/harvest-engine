@@ -57,10 +57,14 @@ namespace he
         {
             uint32_t done{ 0 };
             uint32_t total{ 0 };
-            Callback cb{};
+            LoadDelegate cb{};
         };
 
     public:
+        AsyncFileQueueImpl(Allocator& allocator)
+            : m_allocator(allocator)
+        {}
+
         ~AsyncFileQueueImpl()
         {
             m_cqRun = false;
@@ -245,6 +249,8 @@ namespace he
         }
 
     private:
+        Allocator& m_allocator;
+
         io_uring m_ring{};
         uint8_t* m_statusBits{ nullptr };
         ReadGroup* m_activeGroup{ nullptr };
@@ -260,7 +266,7 @@ namespace he
 
         ~AsyncFileLoaderImpl()
         {
-            Allocator::GetDefault().Delete(m_defaultQueue);
+            m_allocator.Delete(m_defaultQueue);
             GlobalTerminate();
         }
 
@@ -299,11 +305,11 @@ namespace he
 
         Result CreateQueue(const AsyncFileQueue::Config& config, AsyncFileQueue*& out) override
         {
-            AsyncFileQueueImpl* queue = Allocator::GetDefault().New<AsyncFileQueueImpl>();
+            AsyncFileQueueImpl* queue = m_allocator.New<AsyncFileQueueImpl>(m_allocator);
             Result r = queue->Initialize(config);
             if (!r)
             {
-                Allocator::GetDefault().Delete(queue);
+                m_allocator.Delete(queue);
                 queue = nullptr;
             }
 
@@ -315,7 +321,7 @@ namespace he
         {
             if (queue != m_defaultQueue)
             {
-                Allocator::GetDefault().Delete(queue);
+                m_allocator.Delete(queue);
             }
         }
 

@@ -989,7 +989,6 @@ namespace he::schema
 
                 // We already validated the type, so if we don't find it then its a builtin.
                 const AstNode* typeNode = m_context->FindNodeByName(astType, scopeType);
-                const char* builtinName = nullptr;
                 Type::Data::UnionTag builtinType = Type::Data::UnionTag::Void;
 
                 if (!typeNode)
@@ -1009,7 +1008,6 @@ namespace he::schema
                         return false;
                     }
 
-                    builtinName = it->first.Data();
                     builtinType = it->second;
                 }
 

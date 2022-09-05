@@ -119,7 +119,7 @@ namespace he
         ///
         /// \param[in] token The tracker to check.
         /// \return True if the requests the token is tracking have completed, false otherwise.
-        virtual [[nodiscard]] bool IsComplete(AsyncFileTracker token) const = 0;
+        [[nodiscard]] virtual bool IsComplete(AsyncFileTracker token) const = 0;
 
         /// Returns the result of the requests the token is tracking. If the requests have not
         /// yet completed, this function will stall until they do.

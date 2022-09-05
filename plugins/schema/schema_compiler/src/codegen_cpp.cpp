@@ -1292,6 +1292,7 @@ namespace he::schema
                 Type::Data::Parameter::Reader param = type.GetData().GetParameter();
                 Declaration::Reader decl = m_request.GetDecl(param.GetScopeId());
                 m_writer.Write(decl.GetTypeParams()[param.GetIndex()]);
+                break;
             }
             case Type::Data::UnionTag::AnyPointer:
             {

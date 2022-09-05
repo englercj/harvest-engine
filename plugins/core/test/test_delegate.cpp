@@ -1,7 +1,5 @@
 // Copyright Chad Engler
 
-#pragma once
-
 #include "fixtures.h"
 
 #include "he/core/delegate.h"

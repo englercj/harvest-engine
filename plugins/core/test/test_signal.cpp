@@ -1,7 +1,5 @@
 // Copyright Chad Engler
 
-#pragma once
-
 #include "he/core/signal.h"
 
 #include "he/core/test.h"

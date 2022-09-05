@@ -46,7 +46,7 @@ namespace he
     };
 
     template <typename F>
-    inline [[nodiscard]] ScopeGuard<std::decay_t<F>> MakeScopeGuard(F&& func) noexcept(std::is_nothrow_move_constructible_v<F>)
+    [[nodiscard]] inline ScopeGuard<std::decay_t<F>> MakeScopeGuard(F&& func) noexcept(std::is_nothrow_move_constructible_v<F>)
     {
         return ScopeGuard<std::decay_t<F>>(Forward<F>(func));
     }

@@ -48,12 +48,12 @@ namespace he
 
         close(op->fd);
         op->promise.set_value(r);
-        Allocator::GetTemp().Delete(op);
+        Allocator::GetDefault().Delete(op);
     }
 
-    static void ReadTask(void* data)
+    static void ReadTask(const void* data)
     {
-        AsyncOp* op = static_cast<AsyncOp*>(data);
+        AsyncOp* op = const_cast<AsyncOp*>(static_cast<const AsyncOp*>(data));
 
         ssize_t n = pread(op->fd, op->buffer, op->size, op->offset);
 
@@ -63,9 +63,9 @@ namespace he
             HandleCompletedOp(op, Result::Success, static_cast<uint32_t>(n));
     }
 
-    static void WriteTask(void* data)
+    static void WriteTask(const void* data)
     {
-        AsyncOp* op = static_cast<AsyncOp*>(data);
+        AsyncOp* op = const_cast<AsyncOp*>(static_cast<const AsyncOp*>(data));
 
         ssize_t n = pwrite(op->fd, op->buffer, op->size, op->offset);
 
@@ -74,6 +74,8 @@ namespace he
         else
             HandleCompletedOp(op, Result::Success, static_cast<uint32_t>(n));
     }
+
+    static void UnlockedShutdownAsyncFileIO();
 
     Result StartupAsyncFileIO(const AsyncFileIOConfig& config)
     {
@@ -178,7 +180,7 @@ namespace he
 
     std::future<AsyncFileResult> AsyncFile::ReadAsync(void* dst, uint64_t offset, uint32_t size)
     {
-        AsyncOp* op = Allocator::GetTemp().New<AsyncOp>();
+        AsyncOp* op = Allocator::GetDefault().New<AsyncOp>();
         op->fd = dup(static_cast<int>(m_fd));
         op->offset = offset;
         op->size = size;
@@ -189,14 +191,14 @@ namespace he
         if (op->fd == -1)
             HandleCompletedOp(op, Result::FromLastError(), 0);
         else
-            s_executor->Add(ReadTask, op);
+            s_executor->Add(TaskDelegate::Make(ReadTask, op));
 
         return f;
     }
 
     std::future<AsyncFileResult> AsyncFile::WriteAsync(const void* src, uint64_t offset, uint32_t size)
     {
-        AsyncOp* op = Allocator::GetTemp().New<AsyncOp>();
+        AsyncOp* op = Allocator::GetDefault().New<AsyncOp>();
         op->fd = dup(static_cast<int>(m_fd));
         op->offset = offset;
         op->size = size;
@@ -207,7 +209,7 @@ namespace he
         if (op->fd == -1)
             HandleCompletedOp(op, Result::FromLastError(), 0);
         else
-            s_executor->Add(WriteTask, op);
+            s_executor->Add(TaskDelegate::Make(WriteTask, op));
 
         return f;
     }

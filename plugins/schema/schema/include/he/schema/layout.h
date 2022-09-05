@@ -476,7 +476,7 @@ namespace he::schema
                 }
             }
 
-            const List<T>::Reader list = PointerReader(defaultValue).TryGetList<T>();
+            const typename List<T>::Reader list = PointerReader(defaultValue).TryGetList<T>();
             return { list.Data(), list.Size() };
         }
 
@@ -620,21 +620,6 @@ namespace he::schema
 
     private:
         Vector<Word> m_data;
-    };
-
-    template <typename T>
-    struct TypedBuilder
-    {
-        Builder builder{};
-
-        T::Builder Root()
-        {
-            PointerBuilder ptr = builder.Root();
-            if (ptr.IsNull())
-                return builder.AddStruct<T>();
-
-            return ptr.TryGetStruct<T>();
-        }
     };
 
     // --------------------------------------------------------------------------------------------
@@ -1250,4 +1235,20 @@ namespace he::schema
         PointerReader ptr(data);
         return ptr.TryGetStruct<T>();
     }
+
+    // --------------------------------------------------------------------------------------------
+    template <typename T>
+    struct TypedBuilder
+    {
+        Builder builder{};
+
+        T::Builder Root()
+        {
+            PointerBuilder ptr = builder.Root();
+            if (ptr.IsNull())
+                return builder.AddStruct<T>();
+
+            return ptr.TryGetStruct<T>();
+        }
+    };
 }

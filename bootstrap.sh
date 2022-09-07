@@ -2,8 +2,8 @@
 # Copyright Chad Engler
 
 BUILD_DIR="build"
-PREMAKE_VERSION="nightly"
-# PREMAKE_VERSION="5.0.0-beta1"
+#PREMAKE_VERSION="nightly"
+PREMAKE_VERSION="5.0.0-beta2"
 
 OS_NAME="$(uname -s)"
 case $OS_NAME in

@@ -171,23 +171,38 @@ namespace he
 
     inline Vec4a SetY(const Vec4a& v, float s)
     {
+    #if HE_SIMD_SSE4_1
+        __m128 temp = _mm_set_ss(s);
+        return _mm_insert_ps(v, temp, 0x10);
+    #else
         __m128 a = _mm_shuffle_ps(v, v, _MM_SHUFFLE(3, 2, 0, 1));
         __m128 b = _mm_move_ss(a, _mm_set_ss(s));
         return _mm_shuffle_ps(b, b, _MM_SHUFFLE(3, 2, 0, 1));
+    #endif
     }
 
     inline Vec4a SetZ(const Vec4a& v, float s)
     {
+    #if HE_SIMD_SSE4_1
+        __m128 temp = _mm_set_ss(s);
+        return _mm_insert_ps(v, temp, 0x20);
+    #else
         __m128 a = _mm_shuffle_ps(v, v, _MM_SHUFFLE(3, 0, 1, 2));
         __m128 b = _mm_move_ss(a, _mm_set_ss(s));
         return _mm_shuffle_ps(b, b, _MM_SHUFFLE(3, 0, 1, 2));
+    #endif
     }
 
     inline Vec4a SetW(const Vec4a& v, float s)
     {
+    #if HE_SIMD_SSE4_1
+        __m128 temp = _mm_set_ss(s);
+        return _mm_insert_ps(v, temp, 0x30);
+    #else
         __m128 a = _mm_shuffle_ps(v, v, _MM_SHUFFLE(0, 2, 1, 3));
         __m128 b = _mm_move_ss(a, _mm_set_ss(s));
         return _mm_shuffle_ps(b, b, _MM_SHUFFLE(0, 2, 1, 3));
+    #endif
     }
 
     inline Vec4a Load(const float* p)

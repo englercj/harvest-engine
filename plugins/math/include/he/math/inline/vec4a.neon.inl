@@ -401,7 +401,7 @@ namespace he
     #if HE_CPU_ARM_64
         return vsqrtq_f32(v);
     #else
-        // 3 iterations of Newton-Raphson refinment of sqrt
+        // 3 iterations of Newton-Raphson refinement of sqrt
         float32x4_t s0 = vrsqrteq_f32(v);
         float32x4_t p0 = vmulq_f32(v, s0);
         float32x4_t r0 = vrsqrtsq_f32(p0, s0);

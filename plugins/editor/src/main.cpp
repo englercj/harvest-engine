@@ -21,13 +21,13 @@ int he::AppMain(int argc, char* argv[])
 
     // Initialize the directory service first so that the log service has existing directories
     // to write data into.
-    DirectoryService& directoryService = editor::DICreate<DirectoryService&>();
+    editor::DirectoryService& directoryService = editor::DICreate<editor::DirectoryService&>();
     if (!directoryService.CreateAll())
         return -1;
 
     // Initialize the log service as early as possible, so we can capture as many logs as possible.
     // In particular we want to capture any failed module loads to the log file.
-    LogService& logService = editor::DICreate<LogService&>();
+    editor::LogService& logService = editor::DICreate<editor::LogService&>();
     if (!logService.Initialize())
         return -1;
 

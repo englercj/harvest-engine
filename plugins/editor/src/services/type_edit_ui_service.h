@@ -19,7 +19,7 @@ namespace he::editor
     {
     public:
         template <typename T>
-        using Pfn_Editor = void(*)(T, schema::Field::Reader, AssetEditService::Context*);
+        using Pfn_Editor = void(*)(T, schema::Field::Reader, AssetEditContext*);
 
     public:
         template <typename T>
@@ -30,7 +30,7 @@ namespace he::editor
         template <typename T>
         void ShowTypeEditor(const void* value, schema::Field::Reader path)
         {
-            ShowTypeEditor(TypeInfo::Get<T>(), value, data, path);
+            ShowTypeEditor(TypeInfo::Get<T>(), value, path);
         }
 
     private:

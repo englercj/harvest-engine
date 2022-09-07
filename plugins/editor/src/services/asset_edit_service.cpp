@@ -164,12 +164,15 @@ namespace he::editor
 
     void AssetEditContext::RedoAction(AssetEditAction& action)
     {
+        // TODO!
         switch (action.kind)
         {
             case AssetEditAction::Kind::AddListItem:
             case AssetEditAction::Kind::RemoveListItem:
+            case AssetEditAction::Kind::SetUnionTag:
             case AssetEditAction::Kind::SetValue:
             case AssetEditAction::Kind::ResetToDefault:
+                break;
         }
     }
 
@@ -183,12 +186,15 @@ namespace he::editor
 
     void AssetEditContext::UndoAction(AssetEditAction& action)
     {
+        // TODO!
         switch (action.kind)
         {
             case AssetEditAction::Kind::AddListItem:
             case AssetEditAction::Kind::RemoveListItem:
+            case AssetEditAction::Kind::SetUnionTag:
             case AssetEditAction::Kind::SetValue:
             case AssetEditAction::Kind::ResetToDefault:
+                break;
         }
     }
 }

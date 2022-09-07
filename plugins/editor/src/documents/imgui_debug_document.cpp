@@ -2,6 +2,7 @@
 
 #include "imgui_debug_document.h"
 
+#include "services/asset_edit_service.h"
 #include "widgets/buttons.h"
 #include "widgets/progress.h"
 #include "widgets/property_grid.h"
@@ -139,6 +140,7 @@ namespace he::editor
             s_asset.GetData().Set(tex);
         }
 
-        PropertyGrid(s_asset);
+        AssetEdit edit;
+        PropertyGrid(s_asset, edit);
     }
 }

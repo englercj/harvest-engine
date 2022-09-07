@@ -108,7 +108,7 @@ namespace he::editor
     class PropertyGridStructVisitor : public schema::StructVisitor
     {
     public:
-        PropertyGridStructVisitor(AssetEditContext& ctx) : m_edit(ctx) {}
+        PropertyGridStructVisitor(AssetEdit& edit) : m_edit(edit) {}
 
         AssetEdit& Edit() { return m_edit; }
 
@@ -116,8 +116,9 @@ namespace he::editor
         void VisitStruct(schema::StructReader data, const schema::DeclInfo& info) override
         {
             const schema::Declaration::Reader decl = schema::GetSchema(info);
-            const schema::Field::Reader field = m_edit.m_path.Back().field;
+            const schema::Field::Reader field = m_edit.path.Back().field;
 
+            // For the root struct just visit it normally
             if (!field.IsValid())
             {
                 schema::StructVisitor::VisitStruct(data, info);
@@ -165,8 +166,8 @@ namespace he::editor
 
         void VisitNormalField(schema::StructReader data, schema::Field::Reader field, const schema::DeclInfo& scope) override
         {
-            m_edit.m_path.PushBack({ field });
-            HE_AT_SCOPE_EXIT([&]() { m_edit.m_path.PopBack(); });
+            m_edit.path.PushBack({ field });
+            HE_AT_SCOPE_EXIT([&]() { m_edit.path.PopBack(); });
 
             StringView name = field.GetName();
             StringView desc;
@@ -233,16 +234,16 @@ namespace he::editor
 
         void VisitGroupField(schema::StructReader data, schema::Field::Reader field, const schema::DeclInfo& scope)
         {
-            m_edit.m_path.PushBack({ field });
-            HE_AT_SCOPE_EXIT([&]() { m_edit.m_path.PopBack(); });
+            m_edit.path.PushBack({ field });
+            HE_AT_SCOPE_EXIT([&]() { m_edit.path.PopBack(); });
 
             schema::StructVisitor::VisitGroupField(data, field, scope);
         }
 
         void VisitUnionField(schema::StructReader data, schema::Field::Reader field, const schema::DeclInfo& scope) override
         {
-            m_edit.m_path.PushBack({ field });
-            HE_AT_SCOPE_EXIT([&]() { m_edit.m_path.PopBack(); });
+            m_edit.path.PushBack({ field });
+            HE_AT_SCOPE_EXIT([&]() { m_edit.path.PopBack(); });
 
             const schema::DeclInfo* info = FindGroupOrUnionInfo(field, scope);
             if (!info)
@@ -336,12 +337,21 @@ namespace he::editor
         {
             HE_UNUSED(type, scope);
 
+            const schema::Field::Reader field = m_edit.path.Back().field;
+            const bool readOnly = schema::HasAttribute<assets::schema::Display::ReadOnly>(field.GetAttributes());
+            const ImGuiInputTextFlags flags = readOnly ? ImGuiInputTextFlags_ReadOnly : ImGuiInputTextFlags_None;
+
             bool v = value;
+
+            ImGui::BeginDisabled(readOnly);
             if (ImGui::Checkbox("##bool-value", &v))
             {
                 AssetEditAction& action = m_edit.EmplaceAction(AssetEditAction::Kind::SetValue);
-                action.value.GetData().SetBool(v);
+                action.value.value.GetData().SetBool(v);
             }
+            if (readOnly && ImGui::IsItemHovered())
+                ImGui::SetTooltip("This field is read-only.");
+            ImGui::EndDisabled();
         }
 
         void VisitValue(int8_t value, schema::Type::Reader type, const schema::DeclInfo& scope) override
@@ -349,10 +359,10 @@ namespace he::editor
             HE_UNUSED(type, scope);
 
             int8_t v = value;
-            if (ImGui::InputScalar("##int8-value", ImGuiDataType_S8, &v))
+            if (InputScalar(v, ImGuiDataType_S8))
             {
                 AssetEditAction& action = m_edit.EmplaceAction(AssetEditAction::Kind::SetValue);
-                action.value.GetData().SetInt8(v);
+                action.value.value.GetData().SetInt8(v);
             }
         }
 
@@ -361,10 +371,10 @@ namespace he::editor
             HE_UNUSED(type, scope);
 
             int16_t v = value;
-            if (ImGui::InputScalar("##int16-value", ImGuiDataType_S16, &v))
+            if (InputScalar(v, ImGuiDataType_S16))
             {
                 AssetEditAction& action = m_edit.EmplaceAction(AssetEditAction::Kind::SetValue);
-                action.value.GetData().SetInt16(v);
+                action.value.value.GetData().SetInt16(v);
             }
         }
 
@@ -373,9 +383,10 @@ namespace he::editor
             HE_UNUSED(type, scope);
 
             int32_t v = value;
-            if (ImGui::InputScalar("##int32-value", ImGuiDataType_S32, &v))
+            if (InputScalar(v, ImGuiDataType_S32))
             {
-                // TODO: edit value
+                AssetEditAction& action = m_edit.EmplaceAction(AssetEditAction::Kind::SetValue);
+                action.value.value.GetData().SetInt32(v);
             }
         }
 
@@ -384,9 +395,10 @@ namespace he::editor
             HE_UNUSED(type, scope);
 
             int64_t v = value;
-            if (ImGui::InputScalar("##int64-value", ImGuiDataType_S64, &v))
+            if (InputScalar(v, ImGuiDataType_S64))
             {
-                // TODO: edit value
+                AssetEditAction& action = m_edit.EmplaceAction(AssetEditAction::Kind::SetValue);
+                action.value.value.GetData().SetInt64(v);
             }
         }
 
@@ -395,9 +407,10 @@ namespace he::editor
             HE_UNUSED(type, scope);
 
             uint8_t v = value;
-            if (ImGui::InputScalar("##uint8-value", ImGuiDataType_U8, &v))
+            if (InputScalar(v, ImGuiDataType_U8))
             {
-                // TODO: edit value
+                AssetEditAction& action = m_edit.EmplaceAction(AssetEditAction::Kind::SetValue);
+                action.value.value.GetData().SetUint8(v);
             }
         }
 
@@ -406,9 +419,10 @@ namespace he::editor
             HE_UNUSED(type, scope);
 
             uint16_t v = value;
-            if (ImGui::InputScalar("##uint16-value", ImGuiDataType_U16, &v))
+            if (InputScalar(v, ImGuiDataType_U16))
             {
-                // TODO: edit value
+                AssetEditAction& action = m_edit.EmplaceAction(AssetEditAction::Kind::SetValue);
+                action.value.value.GetData().SetUint16(v);
             }
         }
 
@@ -417,9 +431,10 @@ namespace he::editor
             HE_UNUSED(type, scope);
 
             uint32_t v = value;
-            if (ImGui::InputScalar("##uint32-value", ImGuiDataType_U32, &v))
+            if (InputScalar(v, ImGuiDataType_U32))
             {
-                // TODO: edit value
+                AssetEditAction& action = m_edit.EmplaceAction(AssetEditAction::Kind::SetValue);
+                action.value.value.GetData().SetUint32(v);
             }
         }
 
@@ -428,9 +443,10 @@ namespace he::editor
             HE_UNUSED(type, scope);
 
             uint64_t v = value;
-            if (ImGui::InputScalar("##uint64-value", ImGuiDataType_U64, &v))
+            if (InputScalar(v, ImGuiDataType_U64))
             {
-                // TODO: edit value
+                AssetEditAction& action = m_edit.EmplaceAction(AssetEditAction::Kind::SetValue);
+                action.value.value.GetData().SetUint64(v);
             }
         }
 
@@ -439,9 +455,10 @@ namespace he::editor
             HE_UNUSED(type, scope);
 
             float v = value;
-            if (ImGui::InputScalar("##float-value", ImGuiDataType_Float, &v))
+            if (InputScalar(v, ImGuiDataType_Float))
             {
-                // TODO: edit value
+                AssetEditAction& action = m_edit.EmplaceAction(AssetEditAction::Kind::SetValue);
+                action.value.value.GetData().SetFloat32(v);
             }
         }
 
@@ -450,21 +467,23 @@ namespace he::editor
             HE_UNUSED(type, scope);
 
             double v = value;
-            if (ImGui::InputScalar("##double-value", ImGuiDataType_Double, &v))
+            if (InputScalar(v, ImGuiDataType_Double))
             {
-                // TODO: edit value
+                AssetEditAction& action = m_edit.EmplaceAction(AssetEditAction::Kind::SetValue);
+                action.value.value.GetData().SetFloat64(v);
             }
         }
 
         void VisitValue(schema::Blob::Reader value, schema::Type::Reader type, const schema::DeclInfo& scope) override
         {
-            // TODO
+            // TODO: What editor do we show for blobs? None?
             HE_UNUSED(value, type, scope);
+            ImGui::TextUnformatted("Binary Data");
         }
 
         void VisitValue(schema::String::Reader value, schema::Type::Reader type, const schema::DeclInfo& scope) override
         {
-            const schema::Field::Reader field = m_edit.m_path.Back().field;
+            const schema::Field::Reader field = m_edit.path.Back().field;
 
             const bool readOnly = schema::HasAttribute<assets::schema::Display::ReadOnly>(field.GetAttributes());
             HE_UNUSED(type, scope);
@@ -477,9 +496,10 @@ namespace he::editor
             ImGui::BeginDisabled(readOnly);
             if (InputText("##string-value", v, flags))
             {
-                // TODO: edit value
+                AssetEditAction& action = m_edit.EmplaceAction(AssetEditAction::Kind::SetValue);
+                action.value.value.GetData().InitString(v);
             }
-            if (ImGui::IsItemHovered())
+            if (readOnly && ImGui::IsItemHovered())
                 ImGui::SetTooltip("This field is read-only.");
             ImGui::EndDisabled();
         }
@@ -525,7 +545,8 @@ namespace he::editor
                     const bool isSelected = e.GetOrdinal() == value;
                     if (ImGui::Selectable(name.Data(), isSelected))
                     {
-                        // TODO: edit value
+                        AssetEditAction& action = m_edit.EmplaceAction(AssetEditAction::Kind::SetValue);
+                        action.value.value.GetData().SetEnum(e.GetOrdinal());
                     }
 
                     if (!desc.IsEmpty() && ImGui::IsItemHovered())
@@ -543,19 +564,22 @@ namespace he::editor
         {
             // TODO
             HE_UNUSED(ptr, type, scope);
+            ImGui::TextUnformatted("Any Pointer");
         }
 
         void VisitAnyStruct(schema::PointerReader ptr, schema::Type::Reader type, const schema::DeclInfo& scope) override
         {
             // TODO
             HE_UNUSED(ptr, type, scope);
-            VisitStruct(ptr.TryGetStruct(), assets::schema::Texture2D::DeclInfo);
+            ImGui::TextUnformatted("Any Struct");
+            //VisitStruct(ptr.TryGetStruct(), assets::schema::Texture2D::DeclInfo);
         }
 
         void VisitAnyList(schema::PointerReader ptr, schema::Type::Reader type, const schema::DeclInfo& scope) override
         {
             // TODO
             HE_UNUSED(ptr, type, scope);
+            ImGui::TextUnformatted("Any List");
         }
 
         bool ShouldVisitNormalField(schema::StructReader data, schema::Field::Reader field, const schema::DeclInfo& scope) override
@@ -605,7 +629,7 @@ namespace he::editor
                 case schema::Type::Data::UnionTag::Array:
                 case schema::Type::Data::UnionTag::List:
                 case schema::Type::Data::UnionTag::Struct:
-                    HE_ASSERT(!typeData.IsStruct(), HE_MSG("No {} support in default value visit.", typeTag));
+                    HE_ASSERT(!typeData.IsStruct(), HE_MSG("No {} support in default value visit, yet.", typeTag));
                     break;
                 case schema::Type::Data::UnionTag::AnyPointer:
                 case schema::Type::Data::UnionTag::AnyStruct:
@@ -619,7 +643,7 @@ namespace he::editor
 
         void RevertActionButton(schema::StructReader data)
         {
-            const schema::Field::Reader field = m_edit.m_path.Back().field;
+            const schema::Field::Reader field = m_edit.path.Back().field;
 
             if (!field.GetMeta().IsNormal())
                 return;
@@ -679,13 +703,34 @@ namespace he::editor
                 desc = descriptionAttr.GetValue().GetData().GetString();
         }
 
+        template <typename T>
+        bool InputScalar(T& v, ImGuiDataType type)
+        {
+            const schema::Field::Reader field = m_edit.path.Back().field;
+            const bool readOnly = schema::HasAttribute<assets::schema::Display::ReadOnly>(field.GetAttributes());
+            const ImGuiInputTextFlags flags = readOnly ? ImGuiInputTextFlags_ReadOnly : ImGuiInputTextFlags_None;
+
+            bool changed = false;
+
+            ImGui::BeginDisabled(readOnly);
+            if (ImGui::InputScalar("##scalar-value", type, &v))
+            {
+                changed = true;
+            }
+            if (readOnly && ImGui::IsItemHovered())
+                ImGui::SetTooltip("This field is read-only.");
+            ImGui::EndDisabled();
+
+            return changed;
+        }
+
     private:
-        AssetEdit m_edit;
+        AssetEdit& m_edit;
     };
 
-    void PropertyGrid(AssetEditContext& ctx)
+    void PropertyGrid(schema::StructReader data, const schema::DeclInfo& declInfo, AssetEdit& edit)
     {
-        const ImGuiID id = ImGui::GetID(&ctx);
+        const ImGuiID id = ImGui::GetID(&edit);
         if (BeginPropertyGrid(id))
         {
             if (BeginPropertyGridHeader())
@@ -695,9 +740,8 @@ namespace he::editor
 
             if (BeginPropertyGridTable())
             {
-                PropertyGridStructVisitor visitor(ctx);
-                visitor.Visit(ctx.Data(), ctx.DeclInfo());
-                ctx.PushEdit(Move(visitor.Edit()));
+                PropertyGridStructVisitor visitor(edit);
+                visitor.Visit(data, declInfo);
 
                 EndPropertyGridTable();
             }

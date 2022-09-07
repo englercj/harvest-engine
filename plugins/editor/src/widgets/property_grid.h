@@ -10,7 +10,7 @@
 
 namespace he::editor
 {
-    class AssetEditContext;
+    class AssetEdit;
 
     // --------------------------------------------------------------------------------------------
 
@@ -69,6 +69,11 @@ namespace he::editor
 
     /// Simple interface for creating a property grid for a single structure.
     ///
-    /// \param[in] ctx The asset edit context to draw a grid for.
-    void PropertyGrid(AssetEditContext& ctx);
+    /// \param[in] data The structure to build a property grid for.
+    /// \param[in] declInfo The decaration info that describes the structure in `data`.
+    /// \param[out] edit The edit to adds changes into.
+    void PropertyGrid(schema::StructReader data, const schema::DeclInfo& declInfo, AssetEdit& edit);
+
+    template <typename T>
+    void PropertyGrid(T data, AssetEdit& edit) { PropertyGrid(data, T::StructType::DeclInfo, edit); }
 }

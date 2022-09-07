@@ -75,40 +75,33 @@ local function _try_handle_key(ctx, key, value)
     end
 end
 
-local function _platform_file_excludes()
-    filter { "files:**.emscripten.*" }  flags { "ExcludeFromBuild" }
-    filter { "files:**.linux.*" }       flags { "ExcludeFromBuild" }
-    filter { "files:**.posix.*" }       flags { "ExcludeFromBuild" }
-    filter { "files:**.win32.*" }       flags { "ExcludeFromBuild" }
-    filter { "files:**.windows.*" }     flags { "ExcludeFromBuild" }
-    filter { "files:**.xbox.*" }        flags { "ExcludeFromBuild" }
+local function _system_tag_file_excludes()
+    local seen = {}
 
-    filter { "system:emscripten", "files:**.emscripten.*" }
-        removeflags { "ExcludeFromBuild" }
+    for _, tag_list in he.ordered_pairs(os.systemTags) do
+        for _, tag in ipairs(tag_list) do
+            if not table.contains(seen, tag) then
+                table.insert(seen, tag)
 
-    filter { "system:linux", "files:**.linux.*" }
-        removeflags { "ExcludeFromBuild" }
+                local system_filter = "system:" .. tag
+                local files_filter = "files:**." .. tag .. ".*"
 
-    filter { "system:posix", "files:**.posix.*" }
-        removeflags { "ExcludeFromBuild" }
+                filter { files_filter }
+                    flags { "ExcludeFromBuild" }
 
-    filter { "system:windows or xbox", "files:**.win32.*" }
-        removeflags { "ExcludeFromBuild" }
-
-    filter { "system:windows", "files:**.windows.*" }
-        removeflags { "ExcludeFromBuild" }
-
-    filter { "system:xbox", "files:**.xbox.*" }
-        removeflags { "ExcludeFromBuild" }
+                filter { system_filter, files_filter }
+                    removeflags { "ExcludeFromBuild" }
+            end
+        end
+    end
 
     filter { }
 end
 
-
 local function _module_project(mod)
     if mod._plugin._install_valid == false then
         verbosef("Skipping project for module '%s' in group '%s', not installed.", mod.name, mod.group)
-	return
+        return
     end
 
     verbosef("Generating project for module '%s' in group '%s'", mod.name, mod.group)
@@ -146,7 +139,7 @@ local function _module_project(mod)
             _try_handle_key(mod, key, value)
         end
 
-        _platform_file_excludes()
+        _system_tag_file_excludes()
 
     os.chdir(oldcwd)
 end

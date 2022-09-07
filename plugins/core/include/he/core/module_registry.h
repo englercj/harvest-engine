@@ -141,27 +141,27 @@ namespace he
 
         struct StaticModule
         {
-            const char* name;
-            TypeInfo type;
-            CreateModuleDelegate create;
+            const char* name{ nullptr };
+            TypeInfo type{};
+            CreateModuleDelegate create{};
         };
 
         struct ModuleEntry
         {
-            const char* name;
-            TypeInfo type;
-            UniquePtr<Module> instance;
-            DynamicLib dl;
+            const char* name{ nullptr };
+            TypeInfo type{};
+            UniquePtr<Module> instance{};
+            DynamicLib dl{};
         };
 
         struct ApiEntry
         {
-            void* instance;
-            void(*destroy)(void*);
+            void* instance{ nullptr };
+            void(*destroy)(const void*){ nullptr };
         };
 
     private:
-        static Vector<StaticModule> s_staticModules{};
+        static Vector<StaticModule> s_staticModules;
 
     private:
         Vector<ModuleEntry> m_modules{};
@@ -209,7 +209,7 @@ namespace he
 
         ApiEntry& entry = pair.first->second;
         entry.instance = Allocator::GetDefault().New<T>();
-        entry.destroy = [](void* api) { Allocator::GetDefault().Delete(static_cast<T*>(api)); };
+        entry.destroy = [](const void* api) { Allocator::GetDefault().Delete(static_cast<const T*>(api)); };
     }
 
     template <typename T>

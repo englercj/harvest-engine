@@ -8,6 +8,8 @@
 
 namespace he
 {
+    Vector<ModuleRegistry::StaticModule> ModuleRegistry::s_staticModules;
+
     ModuleRegistry::~ModuleRegistry() noexcept
     {
         UnloadAllModules();

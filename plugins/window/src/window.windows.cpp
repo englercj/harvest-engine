@@ -58,15 +58,15 @@ namespace he::window::win32
     class ViewImpl;
 
     // ------------------------------------------------------------------------------------------------
-    using Pfn_GetDpiForWindow = UINT (WINAPI*)(_In_ HWND hwnd);
-    using Pfn_SetProcessDpiAwarenessContext = DPI_AWARENESS_CONTEXT (WINAPI*)(_In_ DPI_AWARENESS_CONTEXT dpiContext);
-    using Pfn_AdjustWindowRectExForDpi = BOOL (WINAPI*)(_Inout_ LPRECT lpRect, _In_ DWORD dwStyle, _In_ BOOL bMenu, _In_ DWORD dwExStyle, _In_ UINT dpi);
+    using Pfn_GetDpiForWindow = UINT(WINAPI*)(_In_ HWND hwnd);
+    using Pfn_SetProcessDpiAwarenessContext = DPI_AWARENESS_CONTEXT(WINAPI*)(_In_ DPI_AWARENESS_CONTEXT dpiContext);
+    using Pfn_AdjustWindowRectExForDpi = BOOL(WINAPI*)(_Inout_ LPRECT lpRect, _In_ DWORD dwStyle, _In_ BOOL bMenu, _In_ DWORD dwExStyle, _In_ UINT dpi);
 
-    using Pfn_GetDpiForMonitor = HRESULT (WINAPI*)(_In_ HMONITOR hmonitor, _In_ MONITOR_DPI_TYPE dpiType, _Out_ UINT* dpiX, _Out_ UINT* dpiY);
+    using Pfn_GetDpiForMonitor = HRESULT(WINAPI*)(_In_ HMONITOR hmonitor, _In_ MONITOR_DPI_TYPE dpiType, _Out_ UINT* dpiX, _Out_ UINT* dpiY);
 
-    using Pfn_XInputGetState = DWORD (WINAPI*)(_In_ DWORD dwUserIndex, _Out_ XINPUT_STATE* pState);
-    using Pfn_XInputSetState = DWORD (WINAPI*)(_In_ DWORD dwUserIndex, _In_ XINPUT_VIBRATION* pVibration);
-    using Pfn_XInputEnable = VOID (WINAPI*)(_In_ BOOL enable);
+    using Pfn_XInputGetState = DWORD(WINAPI*)(_In_ DWORD dwUserIndex, _Out_ XINPUT_STATE* pState);
+    using Pfn_XInputSetState = DWORD(WINAPI*)(_In_ DWORD dwUserIndex, _In_ XINPUT_VIBRATION* pVibration);
+    using Pfn_XInputEnable = VOID(WINAPI*)(_In_ BOOL enable);
 
     constexpr wchar_t WindowClassName[] = L"Harvest Application Window";
 

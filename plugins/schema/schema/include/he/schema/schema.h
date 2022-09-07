@@ -342,7 +342,6 @@ namespace he::schema
         virtual bool IsNormalFieldSet(StructReader data, Field::Reader field, const DeclInfo& scope);
 
     protected:
-        bool HasValue(StructReader data, Field::Reader field);
         const DeclInfo* FindGroupOrUnionInfo(Field::Reader field, const DeclInfo& scope);
 
     protected:

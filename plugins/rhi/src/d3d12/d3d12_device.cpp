@@ -104,7 +104,7 @@ namespace he::rhi::d3d12
         m_adapter = adapter;
 
         // Gather device information
-        m_info.backend = ApiBackend::D3D12;
+        m_info.api = Api_D3D12;
         m_info.adapter = adapter->info;
 
         auto SupportShaderModel = [&](ShaderModel shaderModel)

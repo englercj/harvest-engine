@@ -4,7 +4,6 @@
 
 #include "d3d12_common.h"
 
-#include "he/rhi/cmd_list.h"
 #include "he/rhi/cmd_queue.h"
 #include "he/rhi/config.h"
 #include "he/rhi/types.h"

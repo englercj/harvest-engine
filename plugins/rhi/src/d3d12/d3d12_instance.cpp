@@ -4,7 +4,6 @@
 
 #include "d3d12_device.h"
 #include "d3d12_formats.h"
-#include "rhi_internal.h"
 
 #include "he/core/allocator.h"
 #include "he/core/assert.h"
@@ -64,14 +63,14 @@ namespace he::rhi::d3d12
             return Result::FromLastError();
         }
 
-        m_CreateDXGIFactory2 = reinterpret_cast<PFN_CREATE_DXGI_FACTORY2>(GetProcAddress(m_dxgiLib, "CreateDXGIFactory2"));
+        m_CreateDXGIFactory2 = reinterpret_cast<Pfn_CreateDXGIFactory2>(GetProcAddress(m_dxgiLib, "CreateDXGIFactory2"));
         if (!m_CreateDXGIFactory2)
         {
             HE_LOGF_ERROR(he_rhi, "D3D12 intialization error: Failed to get CreateDXGIFactory2 proc.");
             return Result::FromLastError();
         }
 
-        m_DXGIGetDebugInterface1 = reinterpret_cast<PFN_DXGI_GET_DEBUG_INTERFACE1>(GetProcAddress(m_dxgiLib, "DXGIGetDebugInterface1"));
+        m_DXGIGetDebugInterface1 = reinterpret_cast<Pfn_DXGIGetDebugInterface1>(GetProcAddress(m_dxgiLib, "DXGIGetDebugInterface1"));
 
         // Load d3d12.dll and pointers
         m_d3d12Lib = LoadLibraryW(L"d3d12.dll");
@@ -479,16 +478,6 @@ namespace he::rhi::d3d12
 
             HE_DX_SAFE_RELEASE(dxgiAdapter1);
         }
-    }
-}
-
-namespace he::rhi
-{
-    template <> Result _CreateInstance<ApiBackend::D3D12>(Allocator& allocator, Instance*& instance)
-    {
-        HE_LOGF_INFO(he_rhi, "Initializing D3D12 rendering backend.");
-        instance = allocator.New<d3d12::InstanceImpl>(allocator);
-        return Result::Success;
     }
 }
 

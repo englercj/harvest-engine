@@ -16,9 +16,8 @@
 
 namespace he::rhi::d3d12
 {
-    using PFN_CREATE_DXGI_FACTORY1 = HRESULT(WINAPI*)(REFIID riid, void** factory);
-    using PFN_CREATE_DXGI_FACTORY2 = HRESULT(WINAPI*)(UINT flags, REFIID riid, void** factory);
-    using PFN_DXGI_GET_DEBUG_INTERFACE1 = HRESULT(WINAPI*)(UINT flags, REFIID riid, void** debug);
+    using Pfn_CreateDXGIFactory2 = HRESULT(WINAPI*)(UINT flags, REFIID riid, void** factory);
+    using Pfn_DXGIGetDebugInterface1 = HRESULT(WINAPI*)(UINT flags, REFIID riid, void** debug);
 
     class InstanceImpl final : public Instance
     {
@@ -61,8 +60,8 @@ namespace he::rhi::d3d12
 
         // dxgi.dll
         HMODULE m_dxgiLib{ nullptr };
-        PFN_CREATE_DXGI_FACTORY2 m_CreateDXGIFactory2{ nullptr };
-        PFN_DXGI_GET_DEBUG_INTERFACE1 m_DXGIGetDebugInterface1{ nullptr };
+        Pfn_CreateDXGIFactory2 m_CreateDXGIFactory2{ nullptr };
+        Pfn_DXGIGetDebugInterface1 m_DXGIGetDebugInterface1{ nullptr };
 
         // d3d12.dll
         HMODULE m_d3d12Lib{ nullptr };

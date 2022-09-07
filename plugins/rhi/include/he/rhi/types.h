@@ -5,6 +5,7 @@
 #include "he/core/allocator.h"
 #include "he/core/enum_ops.h"
 #include "he/core/string.h"
+#include "he/core/string_view.h"
 #include "he/core/types.h"
 #include "he/math/types.h"
 #include "he/rhi/config.h"
@@ -30,6 +31,14 @@ namespace he::rhi
 
     /// The maximum number of buffers a swapchain can contain.
     constexpr uint32_t MaxFrameCount = 3;
+
+    /// Api name for the Null backend.
+    /// Can be assigned to \ref InstanceDesc::api to initialize a Null backend.
+    constexpr StringView Api_Null = "null";
+
+    /// Api name for D3D12.
+    /// Can be assigned to \ref InstanceDesc::api to initialize a D3D12 backend.
+    constexpr StringView Api_D3D12 = "d3d12";
 
     // --------------------------------------------------------------------------------------------
     // Api interfaces
@@ -189,16 +198,6 @@ namespace he::rhi
         NotFound,       ///< The device was not found.
     };
 
-    /// Type of graphics API that can back the harvest rendering system.
-    enum class ApiBackend : uint8_t
-    {
-        Unknown,
-        Null,
-        D3D12,
-        Vulkan,
-        WebGPU,
-    };
-
     // --------------------------------------------------------------------------------------------
     // Instance Types
 
@@ -275,10 +274,11 @@ namespace he::rhi
         /// The allocator to use for all allocations in the lifetime of this instance.
         Allocator* allocator{ nullptr };
 
-        /// The API backend to initialize, not all backends are supported on all platforms.
-        /// Specifying \ref ApiBackend::Unknown is equivalent to using the result of
-        /// \ref GetDefaultApiBackend.
-        ApiBackend api{ ApiBackend::Unknown };
+        /// Override for which API to use. By default, chooses the best one for the platform.
+        /// Use the `he::rhi::Api_*` constants to set this.
+        ///
+        /// \note Not all values are valid for all platforms, so this value may get ignored.
+        StringView api{};
 
         bool enableDebugCpu{ false };               ///< Enables cpu-side debugging features.
         bool enableDebugGpu{ false };               ///< Enables gpu-side debugging features.
@@ -1560,8 +1560,9 @@ namespace he::rhi
     /// Information about an initialized device.
     struct DeviceInfo
     {
-        /// The backend API implementation of the device.
-        ApiBackend backend{ ApiBackend::Null };
+        /// The name of the API used to create this device.
+        /// Will be one of the `he::rhi::Api_*` constants.
+        StringView api{};
 
         /// The preferred shader model, usually the highest supported value.
         ShaderModel preferredShaderModel{ ShaderModel::None };

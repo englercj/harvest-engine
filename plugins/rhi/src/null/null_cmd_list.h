@@ -2,28 +2,17 @@
 
 #pragma once
 
-#include "d3d12_common.h"
-
 #include "he/rhi/cmd_list.h"
 #include "he/rhi/config.h"
 #include "he/rhi/types.h"
 
-#include <vector>
+#if HE_RHI_ENABLE_NULL
 
-#if HE_RHI_ENABLE_D3D12
-
-namespace he::rhi::d3d12
+namespace he::rhi::null
 {
-    class DeviceImpl;
-    struct RootSignatureImpl;
-
     class CopyCmdListImpl final : public CopyCmdList
     {
     public:
-        ~CopyCmdListImpl() noexcept;
-
-        Result Initialize(DeviceImpl* device, const CmdListDesc& desc);
-
         Result Begin(CmdAllocator* alloc) override;
         Result End() override;
 
@@ -36,19 +25,11 @@ namespace he::rhi::d3d12
 
         void Copy(const Buffer* src, const Texture* dst, const BufferTextureCopy& region) override;
         void Copy(const Texture* src, const Buffer* dst, const BufferTextureCopy& region) override;
-
-    public:
-        DeviceImpl* m_device{ nullptr };
-        ID3D12GraphicsCommandList* m_d3dCmdList{ nullptr };
     };
 
     class ComputeCmdListImpl final : public ComputeCmdList
     {
     public:
-        ~ComputeCmdListImpl() noexcept;
-
-        Result Initialize(DeviceImpl* device, const CmdListDesc& desc);
-
         Result Begin(CmdAllocator* alloc) override;
         Result End() override;
 
@@ -81,20 +62,11 @@ namespace he::rhi::d3d12
 
         void RWBarrier(const Buffer* buffer) override;
         void RWBarrier(const Texture* texture) override;
-
-    public:
-        DeviceImpl* m_device{ nullptr };
-        ID3D12GraphicsCommandList* m_d3dCmdList{ nullptr };
-        const RootSignatureImpl* m_computeRootSignature{ nullptr };
     };
 
     class RenderCmdListImpl final : public RenderCmdList
     {
     public:
-        ~RenderCmdListImpl() noexcept;
-
-        Result Initialize(DeviceImpl* device, const CmdListDesc& desc);
-
         Result Begin(CmdAllocator* alloc) override;
         Result End() override;
 
@@ -154,18 +126,6 @@ namespace he::rhi::d3d12
 
         void Draw(const DrawDesc& desc) override;
         void DrawIndexed(const DrawIndexedDesc& desc) override;
-
-    public:
-        DeviceImpl* m_device{ nullptr };
-        ID3D12GraphicsCommandList* m_d3dCmdList{ nullptr };
-
-        uint32_t m_colorAttachmentCount{ 0 };
-        ColorAttachment m_colorAttachments[MaxColorAttachments]{};
-        DepthStencilAttachment m_depthStencilAttachment{};
-        bool m_hasDepthStencilAttachment{ false };
-
-        const RootSignatureImpl* m_computeRootSignature{ nullptr };
-        const RootSignatureImpl* m_renderRootSignature{ nullptr };
     };
 }
 

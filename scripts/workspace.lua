@@ -81,7 +81,9 @@ he.workspace = function ()
             "-Wswitch",                     -- An enumerator has no associated case handler in a switch statement, and there's no default label that can catch it.
         }
 
-    filter { "toolset:gcc or clang", "files:**.cpp" }
+    -- Should really be using "language:c++" here instead of the file filter,
+    -- but doing so still includes this in CFLAGS which causes an error.
+    filter { "toolset:gcc or clang", "files:**.cpp or **.cc" }
         buildoptions {
             "-fvisibility-inlines-hidden",  -- Hide inlines from the symbol table
         }

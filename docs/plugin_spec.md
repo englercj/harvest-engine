@@ -60,7 +60,7 @@ The following keys must be prefixed with "public" or "private". The former means
 
 ### Module Variant Keys
 
-Variants can include any Module Key which will only be applied when that variant is active (based on the "condition"). The only exceptions are "name", "type", and "variants" which cannot be overridden by a variant.
+Variants can include any Module Key which will only be applied when that variant is active (based on the "conditions"). The only exceptions are "name", "type", and "variants" which cannot be overridden by a variant.
 
 Variants are treated as additive and will have the effect of adding new keys to the module when they are active.
 
@@ -72,7 +72,6 @@ Variants are treated as additive and will have the effect of adding new keys to 
 
 | Type | Description |
 | ---- | ----------- |
-| default | The default module type. Built as a hot-reloadable shared library during dynamic (internal) builds and as a static library during static (shipping) builds. |
 | static | Always built as a static library. |
 | shared | Always built as a shared library (dll/so). |
 | custom | Custom build steps like copying prebuilt binaries. Depending on a module of this type doesn't generate any link commands. |
@@ -88,7 +87,7 @@ When depending on a module the actual effect of that dependency on the generated
 - The type of the module that has the dependency
 - The type of the module that is being depended on
 
-For example, a "default" module depending on a "static" module in a dynamic build will link the static library and inherit the public include paths. During a static build it will only inherit the public include paths and mark the dependency so any application using the module links both.
+For example, a "dynamic" module depending on a "static" module will link the static library and inherit the public include paths. A "static" module depending on a "static" module will only inherit the public include paths and remembers the dependency so any application or shared library using the module links both.
 
 The "public_dependson" and "public_dependson_include" keys will propagate those values through the module dependency tree so that other modules inherit those values when their projects are generated. The "private_dependson" and "private_dependson_include" keys do not propagate and are used only in that module's project generation.
 
@@ -99,7 +98,7 @@ When a dependency is specified with no prefix, for example "he_core" it is assum
 | Prefix | Description |
 | ------ | ----------- |
 | module: | The name refers to a module. This is the default, and is not required. |
-| sys: | The name refers to a system library. Do not include any prefix or file extension, the system will deduce those based on the target system. |
+| sys: | The name refers to a system library. Do not include any system prefix or file extension, the system will deduce those automatically. E.g.: Specify `dl` and not `libdl.so`. |
 | file: | The name refers to a file path to a library. The path is used exactly as-is so you will need to include any prefix or file extension information. |
 
 Example: `"public_dependson": ["he_core", "module:he_platform", "sys:user32", "file:mylib.lib"]`
@@ -122,7 +121,7 @@ name = "My Tool Plugin"
 `game/tools/plugin/my_tool.lua`
 ```lua
 return function (plugin)
-    -- plugin = the parsed he_plugin file
+    -- plugin = the parsed he_plugin.toml file as a lua table
 
     he.add_module_key {
         key = "mytool",

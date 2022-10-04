@@ -16,6 +16,9 @@ homepage = ""
     public_dependson = ["he_core"]
     public_includedirs = ["include"]
 
+    [modules.docs]
+        inputs = ["include"]
+
 [[modules]]
     name = "he_math_tests"
     type = "static"

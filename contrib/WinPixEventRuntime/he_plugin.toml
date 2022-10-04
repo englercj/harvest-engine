@@ -10,7 +10,7 @@ homepage = "https://devblogs.microsoft.com/pix/winpixeventruntime/"
 
 [install]
     nuget = "WinPixEventRuntime#1.0.220124001"
-    valid_systems = ["windows"]
+    valid_targets = ["windows"]
 
 [[modules]]
     name = "WinPixEventRuntime"

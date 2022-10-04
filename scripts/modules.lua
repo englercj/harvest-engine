@@ -1,8 +1,8 @@
 -- Copyright Chad Engler
 
 local p = premake
-local TOML = dofile("toml.lua")
-local install_plugin = dofile("install_plugin.lua")
+local TOML = include("toml.lua")
+local install_plugin = include("install_plugin.lua")
 
 local target_dir_by_kind = {
     ConsoleApp = he.target_bin_dir,
@@ -206,9 +206,6 @@ local function _import_plugin(plugin_path, options)
     -- Check if the plugin provides any modules, and warn if it doesn't.
     if plugin.modules == nil or table.isempty(plugin.modules) then
         verbosef("No modules listed in plugin '%s'", plugin.id)
-        if not imports_other_plugins then
-            p.warn("Plugin '" .. plugin.name .. "' imported from '" .. plugin_path .. "' contains no modules, and imports no plugins.")
-        end
         os.chdir(oldcwd)
         return {}
     end

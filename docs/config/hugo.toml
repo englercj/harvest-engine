@@ -1,0 +1,60 @@
+baseURL = "/"
+languageCode = "en-us"
+title = "Harvest Engine"
+theme = "compose-823b5de743db69a764f2d7be33d940f0d674fead"
+themesDir = "build/plugins/onweru.compose"
+contentDir = "build/docs/markdown"
+resourceDir = "build/docs/.hugo_resources"
+buildDrafts = true
+cleanDestinationDir = true
+enableGitInfo = true
+enableRobotsTXT = true
+pygmentsCodeFences = true
+
+disableKinds = ["taxonomy", "taxonomyTerm"]
+
+[outputs]
+    home = ["HTML", "RSS","JSON"]
+
+[markup]
+    [markup.goldmark]
+        [markup.goldmark.renderer]
+            unsafe = false
+        [markup.goldmark.extensions]
+            typographer = false
+
+    [markup.highlight]
+        codeFences = true
+        guessSyntax = false
+        hl_Lines = ""
+        lineNoStart = 1
+        lineNos = true
+        lineNumbersInTable = false
+        noClasses = false
+        style = "monokai"
+        tabWidth = 4
+
+    [markup.tableOfContents]
+        endLevel = 4
+        ordered = false
+        startLevel = 2
+
+[params]
+    uniqueHomePage = true
+    enableDarkMode = true
+    codeMaxLines = 7
+    codeLineNumbers = true
+
+    [params.logo]
+        lightMod = ""
+        darkMod = ""
+
+    [params.source]
+        name = "GitHub"
+        iconLight = "images/GitHubMarkLight.svg"
+        iconDark = "images/GitHubMarkDark.svg"
+        url = ""
+
+    [params.author]
+        name = "Chad Engler"
+        url = ""

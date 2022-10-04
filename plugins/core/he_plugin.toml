@@ -17,6 +17,9 @@ homepage = ""
     public_includedirs = ["include"]
     private_includedirs = ["src"]
 
+    [modules.docs]
+        inputs = ["include"]
+
     [[modules.variants]]
         conditions = ["system:linux"]
         public_dependson = ["sys:pthread", "sys:uring", "sys:dl"]

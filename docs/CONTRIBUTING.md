@@ -603,24 +603,27 @@ TODO:
 
 # Git Workflow
 
-## Trunk-based Development
+Generally speaking the development of Harvest follows the [releaseflow](http://releaseflow.org/) strategy. This document describes additional rules. For any rules that conflict between this document and the [releaseflow](http://releaseflow.org/) documents, the rules in this document take precedence.
 
-TODO:
-- Branching Strategy
-    * `main` is the latest development branch.
-    * `release/x.y` is the release branch for a particular major/minor release.
-    * `feature/a` is for *short-lived* feature branches intended to merge into `main` via PR.
-    * `bugfix/b` is for *short-lived* bug fixes intended to merge into `main` via PR.
-    * No committing directly to `main`.
-    * No long-lived `feature/` or `bugfix/` branches, delete them once they merge to `main`.
-    * Any merged into a `release/` branch should be merged to `main` as well, or implemented there separately if necessary.
+## Branch Naming
 
-## Prefer Rebasing
+- `main` is the latest development branch.
+- `release/<major.minor>` is the release branch for a particular major/minor release.
+- `feature/<name>` is for *short-lived* feature branches intended to merge into `main` via PR.
+- `bugfix/<name>` is for *short-lived* bug fixes intended to merge into `main` via PR.
 
-TODO:
-- Try to keep the main line as straight as possible, no octopus merging
-- Merge PRs with the `Squash and Merge` strategy and keep the PR number in the summary
-- Default to rebase for `git pull` either by using the recommended config below or specifying `git pull --rebase`
+## Additional Rules
+
+Some additional rules of the Harvest development process are:
+
+- No committing directly to `main`.
+- PRs should be merged using the "Squash & Merge" strategy.
+- No long-lived `feature/` or `bugfix/` branches, delete them once they merge to `main`.
+- Any changes merged into a `release/` branch should be merged to `main` as well
+    * Usually this can be done by cherry-picking the squashed commit of the PR.
+- Prefer rebase to merge.
+    - Try to keep the commit line as straight as possible, no octopus merging.
+    - Default to rebase for `git pull` either by using the recommended config below or specifying `git pull --rebase`
 
 ## Commit Messages
 

@@ -171,26 +171,37 @@ return function (plugin)
     -- If the plugin doesn't specify an install block then use the he_plugin file's path as
     -- the install path and return that it is enabled.
     if i == nil then
+        verbosef("Plugin '%s' has no install block, skipping installation.", plugin.id)
         return true, install_dir
     end
 
     -- Check if the target system is valid for this plugin to be imported on, by default plugins
     -- are assumed to work on all systems
-    local is_valid_system = false
-    if i.valid_systems == nil then
-        is_valid_system = true
-    else
-        local sysTags = os.getSystemTags(os.target())
-        for _, system in ipairs(i.valid_systems) do
-            if table.contains(sysTags, system) then
-                is_valid_system = true
-                break
-            end
+    local valid_targets = iif(i.valid_targets, i.valid_targets, { os.target() })
+    local is_valid_target = false
+    for _, v in ipairs(valid_targets) do
+        if os.istarget(v) then
+            is_valid_target = true
+            break
         end
     end
 
-    if is_valid_system == false then
-        verbosef("Skipping import of plugin '%s', current system is not listed in its 'valid_systems' key.", plugin.id)
+    if not is_valid_target then
+        verbosef("Skipping install of plugin '%s', current target is not listed in its 'valid_targets' key.", plugin.id)
+        return false, install_dir
+    end
+
+    local valid_hosts = iif(i.valid_hosts, i.valid_hosts, { os.host() })
+    local is_valid_host = false
+    for _, v in ipairs(valid_hosts) do
+        if os.ishost(v) then
+            is_valid_host = true
+            break
+        end
+    end
+
+    if not is_valid_host then
+        verbosef("Skipping install of plugin '%s', current host is not listed in its 'valid_hosts' key.", plugin.id)
         return false, install_dir
     end
 
@@ -202,7 +213,7 @@ return function (plugin)
     elseif i.nuget ~= nil then
         install_dir = _install_from_nuget(plugin.id, i.nuget)
     elseif i.archive ~= nil then
-        local target = os.target()
+        local target = iif(i.index_archive_by_host, os.host(), os.target())
         local url = i.archive
         if type(url) == "table" then
             url = url[target]
@@ -213,6 +224,8 @@ return function (plugin)
         install_dir = _install_from_archive(plugin.id, url, path.getname(url), extract_dir)
     elseif i.source ~= nil then
         install_dir = path.join(install_dir, i.source)
+    else
+        verbosef("Plugin '%s' has no install source, nothing will be downloaded.", plugin.id)
     end
 
     if i.basepath ~= nil then
@@ -221,7 +234,7 @@ return function (plugin)
 
     -- Run the install scripts if specified
     if i.exec ~= nil then
-        local func = dofile(i.exec)
+        local func = include(i.exec)
         func(plugin)
     end
 

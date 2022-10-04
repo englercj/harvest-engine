@@ -45,7 +45,7 @@ namespace he
         if (alignment == sizeof(void*))
             return realloc(ptr, newSize);
 
-        // We got an unaligned pointer from realloc, so we need to manually do an aligned malloc
+        // We have an overaligned pointer so we need to manually do an aligned malloc and copy
         void* p = Malloc(newSize, alignment);
         if (p == nullptr)
         {
@@ -53,7 +53,6 @@ namespace he
             return p;
         }
 
-        // Finally, copy over the old data
         const size_t oldSize = malloc_usable_size(ptr);
         memcpy(p, ptr, Min(oldSize, newSize));
         free(ptr);

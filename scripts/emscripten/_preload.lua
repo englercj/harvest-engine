@@ -1,9 +1,4 @@
---
--- Name:        emscripten/_preload.lua
--- Purpose:     Define the Emscripten APIs
--- Author:      Chad Engler
--- Copyright:   (c) 2021 Chad Engler
---
+-- Copyright Chad Engler
 
 local p = premake
 local api = p.api

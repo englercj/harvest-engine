@@ -6,26 +6,28 @@ All paths can contain globs and are relative to the he_plugin file, or the insta
 
 ## Plugin Keys
 
-|      Key      |   Value Type  | Description |
-| ------------- | ------------- | ----------- |
-| id            | String        | Required. Globally unique identifier for the plugin. |
-| name          | String        | Friendly name of the plugin meant for humans. |
-| description   | String        | Short description fo the plugin meant for humans. |
-| version       | String        | An arbitrary version string identifying the version of the plugin. |
-| author        | String        | The plugin's author name and email, in the format "Name <email>". |
-| license       | String        | An SPDX license identifier (https://spdx.org/licenses/), or "UNLICENSED", or "SEE LICENSE IN <filename>". If this is not specified it is treated as "UNLICENSED". |
-| warnings      | String        | Desired level of warning: "Off", "Default", or "Extra". The default is "Extra" |
-| tags          | Array<String> | An array of string identifiers used as search tags. |
-| modules       | Array<Module> | An array of modules that this plugin provides. See the Module Keys section. |
-| install       | Install       | Description of how to install the plugin. |
+|      Key      |       Value Type      | Description |
+| ------------- | --------------------- | ----------- |
+| id            | String                | Required. Globally unique identifier for the plugin. |
+| name          | String                | Friendly name of the plugin meant for humans. |
+| description   | String                | Short description fo the plugin meant for humans. |
+| version       | String                | An arbitrary version string identifying the version of the plugin. |
+| author        | String|Array<String>  | The plugin's author name and email, in the format "Name <email>". |
+| license       | String                | An SPDX license identifier (https://spdx.org/licenses/), or "UNLICENSED", or "SEE LICENSE IN <filename>". If this is not specified it is treated as "UNLICENSED". |
+| warnings      | String                | Desired level of warning: "Off", "Default", or "Extra". The default is "Extra" |
+| tags          | Array<String>         | An array of string identifiers used as search tags. |
+| modules       | Array<Module>         | An array of modules that this plugin provides. See the Module Keys section. |
+| install       | Install               | Description of how to install the plugin. |
 
 ## Install Keys
 
 |      Key      |   Value Type  | Description |
 | ------------- | ------------- | ----------- |
 | exec          | String        | Path to a lua file that returns a function for execution when the plugin is imported. Use as an entry point for build system extension. |
-| valid_systems | Array<String> | List of systems this plugin is valid to be installed on. |
+| valid_targets | Array<String> | List of target system tags this plugin is valid to be installed on. |
+| valid_hosts   | Array<String> | List of host system tags this plugin is valid to be installed on. |
 | archive       | mixed         | Either a string URL of the archive to download, or an object where the key is a system name and the value is a string URL of the archive to download for that system. |
+| index_archive_by_host | Boolean | Tells the installer to index the archive object by *host* system rather than *target* system. This can be useful for plugins that provide only executables and should be downloaded based on the host system that will run them, rather than the target system being built for. |
 | source        | String        | Path relative to the install directory to the plugin. This is useful if the plugin's contents are in a different location than the he_plugin file. |
 | github        | String        | A string repository specifier in the form "<user>/<repo>#<commit-ish>" |
 | bitbucket     | String        | A string repository specifier in the form "<user>/<repo>#<commit-ish>" |

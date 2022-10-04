@@ -10,5 +10,8 @@ include "workspace.lua"
 
 include "builtin_module_keys.lua"
 
-dofile "emscripten/_preload.lua"
-dofile "emscripten/emscripten.lua"
+include "emscripten/_preload.lua"
+include "emscripten/emscripten.lua"
+
+include "docgen/_preload.lua"
+include "docgen/docgen.lua"

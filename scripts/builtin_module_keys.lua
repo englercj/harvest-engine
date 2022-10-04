@@ -224,7 +224,7 @@ he.add_module_key {
     type = "string",
     desc = "a string file path",
     handler = function (ctx, value)
-        local func = dofile(value)
+        local func = include(value)
         func(ctx)
     end,
 }

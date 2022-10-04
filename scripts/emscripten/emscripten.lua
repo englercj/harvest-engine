@@ -2,11 +2,11 @@
 
 local p = premake
 
-if not p.modules.emscripten then
-    p.modules.emscripten = {}
-    p.modules.emscripten._VERSION = p._VERSION
+p.modules.emscripten = {}
+local m = p.modules.emscripten
 
-    include('emscripten_emcc.lua')
-end
+m._VERSION = p._VERSION
 
-return p.modules.emscripten
+include("emscripten_emcc.lua")
+
+return m

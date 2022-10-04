@@ -9,8 +9,6 @@ license = "MIT"
 homepage = "https://github.com/shader-slang/slang"
 
 [install]
-    valid_systems = ["linux", "windows"]
-
     [install.archive]
         linux = "https://github.com/shader-slang/slang/releases/download/v0.19.6/slang-0.19.6-linux-x86_64.zip"
         windows = "https://github.com/shader-slang/slang/releases/download/v0.19.6/slang-0.19.6-win64.zip"

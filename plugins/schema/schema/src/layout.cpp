@@ -136,6 +136,30 @@ namespace he::schema
         return PointerReader(m_data + index);
     }
 
+    bool StructReader::HasDataField(uint16_t index) const
+    {
+        if (!IsValid())
+            return false;
+
+        const uint16_t dataFieldCount = DataFieldCount();
+        if (index >= dataFieldCount)
+            return false;
+
+        if (index <= 32) [[likely]]
+        {
+            const uint32_t mask = *(reinterpret_cast<const uint32_t*>(m_data) + 1);
+            return (mask & (1 << index)) != 0;
+        }
+        else
+        {
+            index -= 32;
+            const uint32_t maskIndex = index / BitsPerWord;
+            const uint32_t maskShift = index % BitsPerWord;
+            const uint64_t mask = *(m_data + 1 + maskIndex);
+            return (mask & (1ull << maskShift)) != 0;
+        }
+    }
+
     ListReader StructReader::TryGetPointerArrayField(uint16_t index, uint16_t elementCount, const Word* defaultValue) const
     {
         HE_ASSERT(IsValid());

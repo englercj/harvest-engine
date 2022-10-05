@@ -28,7 +28,6 @@ namespace he::schema
     HE_SCHEMA_DECL_INFO_FOR_ID(0x9c00ee98d42bb48b); // Type::Data::Interface
     HE_SCHEMA_DECL_INFO_FOR_ID(0xafc692a2adf7b907); // Type::Data::Parameter
     HE_SCHEMA_DECL_INFO_FOR_ID(0xa1a552dda5da9ae9); // Value
-    HE_SCHEMA_DECL_INFO_FOR_ID(0xbc63c2f6a4186852); // Value::TupleValue
     HE_SCHEMA_DECL_INFO_FOR_ID(0xda924af5c1761799); // Value::Data
     HE_SCHEMA_DECL_INFO_FOR_ID(0xf4155b14cbf230b8); // Attribute
     HE_SCHEMA_DECL_INFO_FOR_ID(0xd7baf7c88e03fa02); // Enumerator
@@ -213,15 +212,6 @@ namespace he::schema
 
         class Reader;
         class Builder;
-
-        struct TupleValue final
-        {
-            TupleValue() = delete;
-            HE_SCHEMA_DECL_STRUCT(0xbc63c2f6a4186852, 0xa1a552dda5da9ae9, 0, 0, 2);
-
-            class Reader;
-            class Builder;
-        };
 
         struct Data final
         {
@@ -917,38 +907,6 @@ namespace he::schema
         operator StructType::Reader() const { return AsReader(); }
 
         Data::Builder GetData() const;
-    };
-    class Value::TupleValue::Reader final : public ::he::schema::StructReader
-    {
-    public:
-        using StructType = Value::TupleValue;
-        using SuperType = ::he::schema::StructReader;
-
-        bool HasName() const;
-        ::he::schema::String::Reader GetName() const;
-
-        bool HasValue() const;
-        Value::Reader GetValue() const;
-
-    };
-    class Value::TupleValue::Builder final : public ::he::schema::StructBuilder
-    {
-    public:
-        using StructType = Value::TupleValue;
-        using SuperType = ::he::schema::StructBuilder;
-
-        StructType::Reader AsReader() const { return StructType::Reader(SuperType::AsReader()); }
-        operator StructType::Reader() const { return AsReader(); }
-
-        bool HasName() const;
-        ::he::schema::String::Builder GetName() const;
-        void SetName(::he::schema::String::Reader value);
-        ::he::schema::String::Builder InitName(::he::StringView str);
-
-        bool HasValue() const;
-        Value::Builder GetValue() const;
-        void SetValue(Value::Reader value);
-        Value::Builder InitValue();
     };
     class Value::Data::Reader final : public ::he::schema::StructReader
     {
@@ -2293,22 +2251,6 @@ namespace he::schema
     inline Type::Data::Reader Type::Reader::GetData() const { return Data::Reader(*this); }
 
     inline Type::Data::Builder Type::Builder::GetData() const { return Data::Builder(*this); }
-
-    inline bool Value::TupleValue::Reader::HasName() const { return SuperType::HasPointerField(0); }
-    inline ::he::schema::String::Reader Value::TupleValue::Reader::GetName() const { return SuperType::GetPointerField(0).TryGetString(); }
-
-    inline bool Value::TupleValue::Reader::HasValue() const { return SuperType::HasPointerField(1); }
-    inline Value::Reader Value::TupleValue::Reader::GetValue() const { return SuperType::GetPointerField(1).TryGetStruct<Value>(); }
-
-    inline bool Value::TupleValue::Builder::HasName() const { return SuperType::HasPointerField(0); }
-    inline ::he::schema::String::Builder Value::TupleValue::Builder::GetName() const { return SuperType::GetPointerField(0).TryGetString(); }
-    inline void Value::TupleValue::Builder::SetName(::he::schema::String::Reader value) { SuperType::GetPointerField(0).Set(value); }
-    inline ::he::schema::String::Builder Value::TupleValue::Builder::InitName(::he::StringView str) { auto v = m_builder->AddString(str); SuperType::GetPointerField(0).Set(v); return v; }
-
-    inline bool Value::TupleValue::Builder::HasValue() const { return SuperType::HasPointerField(1); }
-    inline Value::Builder Value::TupleValue::Builder::GetValue() const { return SuperType::GetPointerField(1).TryGetStruct<Value>(); }
-    inline void Value::TupleValue::Builder::SetValue(Value::Reader value) { SuperType::GetPointerField(1).Set(value); }
-    inline Value::Builder Value::TupleValue::Builder::InitValue() { auto v = m_builder->AddStruct<Value>(); SuperType::GetPointerField(1).Set(v); return v; }
 
     inline bool Value::Data::Reader::IsVoid() const { return GetUnionTag() == UnionTag::Void; }
     inline bool Value::Data::Reader::HasVoid() const { return false; }

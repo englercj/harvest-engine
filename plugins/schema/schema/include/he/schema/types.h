@@ -3,6 +3,7 @@
 #pragma once
 
 #include "he/core/types.h"
+#include "he/core/type_traits.h"
 
 namespace he::schema
 {
@@ -114,6 +115,9 @@ namespace he::schema
     template <TypeId Id>
     struct DeclInfoForId;
 
+    template <Enum T>
+    struct EnumInfo;
+
     #define HE_SCHEMA_DECL_INFO_FOR_ID(id) \
         template <> struct DeclInfoForId<id> { static const DeclInfo Value; }
 
@@ -122,6 +126,9 @@ namespace he::schema
         static constexpr ::he::schema::TypeId ParentId = parentId; \
         static constexpr ::he::schema::DeclKind Kind = ::he::schema::DeclKind::kind; \
         static constexpr const ::he::schema::DeclInfo& DeclInfo = ::he::schema::DeclInfoForId<id>::Value
+
+    #define HE_SCHEMA_DECL_ENUM(type, id, parentId) \
+        template <> struct EnumInfo<type> { HE_SCHEMA_DECL_(id, parentId, Enum); };
 
     #define HE_SCHEMA_DECL_ATTRIBUTE(id, parentId) \
         HE_SCHEMA_DECL_(id, parentId, Attribute)

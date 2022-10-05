@@ -222,7 +222,7 @@ namespace he::schema
 
             for (auto&& [key, value] : table)
             {
-                const Field::Reader field = FindField(key.str(), st);
+                const Field::Reader field = FindFieldByName(key.str(), st);
 
                 if (field.IsValid())
                 {

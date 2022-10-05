@@ -202,19 +202,7 @@ namespace he::schema
     {
         HE_UNUSED(scope);
         HE_ASSERT(decl.GetData().IsEnum());
-        Declaration::Data::Enum::Reader enumDecl = decl.GetData().GetEnum();
-
-        m_writer.WriteLine("enum class {} : uint16_t", decl.GetName().AsView());
-        m_writer.WriteLine("{");
-        m_writer.IncreaseIndent();
-
-        for (Enumerator::Reader e : enumDecl.GetEnumerators())
-        {
-            m_writer.WriteLine("{} = {},", e.GetName().AsView(), e.GetOrdinal());
-        }
-
-        m_writer.DecreaseIndent();
-        m_writer.WriteLine("};");
+        m_writer.WriteLine("using {0} = ::he::schema::{0}_{1:016x};", decl.GetName().AsView(), decl.GetId());
     }
 
     void CodeGenCpp::WriteInterfaceDecl(Declaration::Reader decl, Declaration::Reader scope)
@@ -384,6 +372,7 @@ namespace he::schema
         WriteName(decl, scope, {}, nullptr);
         m_writer.Write(";\n");
         m_writer.WriteLine("using SuperType = ::he::schema::StructReader;\n");
+        m_writer.WriteLine("static constexpr bool IsSchemaReader = true;");
 
         if (structDecl.GetIsUnion())
         {
@@ -1148,6 +1137,25 @@ namespace he::schema
         else
             WriteName(decl, m_root, {}, nullptr);
         m_writer.Write('\n');
+
+        if (decl.GetData().IsEnum())
+        {
+            Declaration::Data::Enum::Reader enumDecl = decl.GetData().GetEnum();
+
+            m_writer.WriteLine("enum class {}_{:016x} : uint16_t", decl.GetName().AsView(), decl.GetId());
+            m_writer.WriteLine("{");
+            m_writer.IncreaseIndent();
+
+            for (Enumerator::Reader e : enumDecl.GetEnumerators())
+            {
+                m_writer.WriteLine("{} = {},", e.GetName().AsView(), e.GetOrdinal());
+            }
+
+            m_writer.DecreaseIndent();
+            m_writer.WriteLine("};");
+            m_writer.WriteLine("HE_SCHEMA_DECL_ENUM({}_{:016x}, " HE_ID_FMT ", " HE_ID_FMT ");",
+                decl.GetName().AsView(), decl.GetId(), decl.GetId(), decl.GetParentId());
+        }
 
         for (Declaration::Reader child : decl.GetChildren())
         {

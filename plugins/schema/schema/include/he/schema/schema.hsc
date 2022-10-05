@@ -98,12 +98,6 @@ struct Type
 
 struct Value
 {
-    struct TupleValue
-    {
-        name @0 :String;
-        value @1 :Value;
-    }
-
     data :union
     {
         void @0 :void;

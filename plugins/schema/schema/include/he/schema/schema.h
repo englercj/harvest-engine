@@ -238,11 +238,22 @@ namespace he::schema
         return Declaration::Reader(StructReader(info.schema, I.dataWordSize, I.pointerCount));
     }
 
-    inline Field::Reader FindField(StringView name, Declaration::Data::Struct::Reader st)
+    inline Field::Reader FindFieldByName(StringView name, Declaration::Data::Struct::Reader st)
     {
         for (Field::Reader field : st.GetFields())
         {
             if (field.GetName() == name)
+                return field;
+        }
+
+        return {};
+    }
+
+    inline Field::Reader FindFieldByUnionTag(uint16_t unionTag, Declaration::Data::Struct::Reader st)
+    {
+        for (Field::Reader field : st.GetFields())
+        {
+            if (field.GetUnionTag() == unionTag)
                 return field;
         }
 

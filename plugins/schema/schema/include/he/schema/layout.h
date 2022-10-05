@@ -405,29 +405,7 @@ namespace he::schema
 
         // Data fields
 
-        bool HasDataField(uint16_t index) const
-        {
-            if (!IsValid())
-                return false;
-
-            const uint16_t dataFieldCount = DataFieldCount();
-            if (index >= dataFieldCount)
-                return false;
-
-            if (index <= 32) [[likely]]
-            {
-                const uint32_t mask = *(reinterpret_cast<const uint32_t*>(m_data) + 1);
-                return (mask & (1 << index)) != 0;
-            }
-            else
-            {
-                index -= 32;
-                const uint32_t maskIndex = index / BitsPerWord;
-                const uint32_t maskShift = index % BitsPerWord;
-                const uint64_t mask = *(m_data + 1 + maskIndex);
-                return (mask & (1ull << maskShift)) != 0;
-            }
-        }
+        bool HasDataField(uint16_t index) const;
 
         template <DataType T> T GetDataField(uint32_t dataOffset, T defaultValue = static_cast<T>(0)) const
         {
@@ -489,6 +467,11 @@ namespace he::schema
         {
             return typename List<T>::Reader(TryGetPointerArrayField(index, elementCount, defaultValue));
         }
+
+        // Operators
+
+        bool operator==(const StructReader& x) const { return m_data == x.m_data; }
+        bool operator!=(const StructReader& x) const { return m_data != x.m_data; }
 
     private:
         uint16_t MetadataWordSize() const
@@ -963,6 +946,11 @@ namespace he::schema
             return typename List<T>::Builder(GetPointerArrayField(index, elementCount));
         }
 
+        // Operators
+
+        bool operator==(const StructBuilder& x) const { return m_builder == x.m_builder && m_wordOffset == x.m_wordOffset; }
+        bool operator!=(const StructBuilder& x) const { return m_builder != x.m_builder || m_wordOffset != x.m_wordOffset; }
+
     protected:
         uint16_t MetadataWordSize() const
         {
@@ -1250,5 +1238,8 @@ namespace he::schema
 
             return ptr.TryGetStruct<T>();
         }
+
+        T::Builder operator*() const { return Root(); }
+        T::Builder operator->() const { return Root(); }
     };
 }

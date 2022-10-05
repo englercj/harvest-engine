@@ -489,14 +489,40 @@ namespace he
 
         HE_ASSERT((index + count) <= m_size);
 
-        const uint32_t shiftCount = m_size - count - index;
-        if (shiftCount > 0)
+        const uint32_t moveCount = m_size - count - index;
+        if (moveCount > 0)
         {
-            _VectorMoveAssign(m_data + index, m_data + index + count, shiftCount);
+            _VectorMoveAssign(m_data + index, m_data + index + count, moveCount);
         }
 
         m_size -= count;
         _VectorDestruct(m_data + m_size, count);
+    }
+
+    template <typename T>
+    void Vector<T>::EraseUnordered(uint32_t index, uint32_t count)
+    {
+        if (count == 0)
+            return;
+
+        HE_ASSERT((index + count) <= m_size);
+
+        // Move over as many tail elements as we can into the erased elements
+        const uint32_t tailCount = m_size - count - index;
+        const uint32_t moveCount = Min(tailCount, count);
+        if (moveCount > 0)
+        {
+            _VectorMoveAssign(m_data + index, m_data + m_size - moveCount, moveCount);
+        }
+
+        // Destruct any trailing elements that weren't move assigned
+        if (count > moveCount)
+        {
+            const uint32_t destructCount = count - moveCount;
+            _VectorDestruct(m_data + index + moveCount, destructCount);
+        }
+
+        m_size -= count;
     }
 
     template <typename T>

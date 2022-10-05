@@ -136,6 +136,8 @@ namespace he
             return *this;
         }
 
+        explicit operator bool() const { return IsOpen(); }
+
         /// Checks if this library is currently open.
         ///
         /// \return True if the library is open, false otherwise.

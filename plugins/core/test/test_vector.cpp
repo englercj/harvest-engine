@@ -1068,7 +1068,7 @@ HE_TEST(core, vector, Insert)
 }
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST(core, vector, Erase)
+HE_TEST(core, vector, Erase_Trivial)
 {
     const uint8_t expected[]{ 1, 2, 60, 3 };
 
@@ -1088,6 +1088,117 @@ HE_TEST(core, vector, Erase)
         v.Erase(1, 1);
         HE_EXPECT_EQ(v.Size(), HE_LENGTH_OF(expected2));
         HE_EXPECT_EQ_MEM(v.Data(), expected2, v.Size());
+    }
+}
+
+// ------------------------------------------------------------------------------------------------
+HE_TEST(core, vector, Erase_NonTrivial)
+{
+    static int s_destructed = 0;
+
+    struct TestObj : CopyAndMove { ~TestObj() { ++s_destructed; } };
+
+    // Case 1: size = 5, index = 1, count = 2 (two middle, two moves, zero dtor)
+    {
+        Vector<TestObj> v;
+        v.Resize(5);
+        v.Erase(1, 2);
+        HE_EXPECT_EQ(s_destructed, 0);
+        HE_EXPECT_EQ(v.Size(), 3);
+        HE_EXPECT(!v[0].copyConstructed && !v[0].copyAssigned && !v[0].moveConstructed && !v[0].moveAssigned);
+        HE_EXPECT(!v[1].copyConstructed && !v[1].copyAssigned && !v[1].moveConstructed && v[1].moveAssigned);
+        HE_EXPECT(!v[2].copyConstructed && !v[2].copyAssigned && !v[2].moveConstructed && v[2].moveAssigned);
+    }
+
+    // Case 2: size = 5, index = 3, count = 2 (two trailing, zero moves, two dtor)
+    {
+        Vector<TestObj> v;
+        v.Resize(5);
+        v.Erase(3, 2);
+        HE_EXPECT_EQ(s_destructed, 2);
+        HE_EXPECT_EQ(v.Size(), 3);
+        HE_EXPECT(!v[0].copyConstructed && !v[0].copyAssigned && !v[0].moveConstructed && !v[0].moveAssigned);
+        HE_EXPECT(!v[1].copyConstructed && !v[1].copyAssigned && !v[1].moveConstructed && !v[1].moveAssigned);
+        HE_EXPECT(!v[2].copyConstructed && !v[2].copyAssigned && !v[2].moveConstructed && !v[2].moveAssigned);
+    }
+
+    // Case 3: size = 5, index = 0, count = 3 (three start, two moves, one destruct)
+    {
+        Vector<TestObj> v;
+        v.Resize(5);
+        v.Erase(0, 3);
+        HE_EXPECT_EQ(s_destructed, 3);
+        HE_EXPECT_EQ(v.Size(), 2);
+        HE_EXPECT(!v[0].copyConstructed && !v[0].copyAssigned && !v[0].moveConstructed && v[0].moveAssigned);
+        HE_EXPECT(!v[1].copyConstructed && !v[1].copyAssigned && !v[1].moveConstructed && v[1].moveAssigned);
+    }
+}
+
+// ------------------------------------------------------------------------------------------------
+HE_TEST(core, vector, EraseUnordered)
+{
+    const uint8_t fixture[]{ 1, 2, 60, 3 };
+    const uint8_t expected[]{ 3, 2, 60 };
+
+    Vector<uint8_t> v;
+
+    v.Insert(0, fixture, fixture + HE_LENGTH_OF(fixture));
+    HE_EXPECT_EQ(v.Size(), HE_LENGTH_OF(fixture));
+    HE_EXPECT_EQ_MEM(v.Data(), fixture, v.Size());
+
+    v.EraseUnordered(0, 1);
+    HE_EXPECT_EQ(v.Size(), HE_LENGTH_OF(expected));
+    HE_EXPECT_EQ_MEM(v.Data(), expected, v.Size());
+
+    {
+        const uint8_t expected2[]{ 3, 60 };
+
+        v.Erase(1, 1);
+        HE_EXPECT_EQ(v.Size(), HE_LENGTH_OF(expected2));
+        HE_EXPECT_EQ_MEM(v.Data(), expected2, v.Size());
+    }
+}
+
+// ------------------------------------------------------------------------------------------------
+HE_TEST(core, vector, EraseUnordered_NonTrivial)
+{
+    static int s_destructed = 0;
+
+    struct TestObj : CopyAndMove { ~TestObj() { ++s_destructed; } };
+
+    // Case 1: size = 5, index = 1, count = 2 (two middle, two moves, zero dtor)
+    {
+        Vector<TestObj> v;
+        v.Resize(5);
+        v.EraseUnordered(1, 2);
+        HE_EXPECT_EQ(s_destructed, 0);
+        HE_EXPECT_EQ(v.Size(), 3);
+        HE_EXPECT(!v[0].copyConstructed && !v[0].copyAssigned && !v[0].moveConstructed && !v[0].moveAssigned);
+        HE_EXPECT(!v[1].copyConstructed && !v[1].copyAssigned && !v[1].moveConstructed && v[1].moveAssigned);
+        HE_EXPECT(!v[2].copyConstructed && !v[2].copyAssigned && !v[2].moveConstructed && v[2].moveAssigned);
+    }
+
+    // Case 2: size = 5, index = 3, count = 2 (two trailing, zero moves, two dtor)
+    {
+        Vector<TestObj> v;
+        v.Resize(5);
+        v.EraseUnordered(3, 2);
+        HE_EXPECT_EQ(s_destructed, 2);
+        HE_EXPECT_EQ(v.Size(), 3);
+        HE_EXPECT(!v[0].copyConstructed && !v[0].copyAssigned && !v[0].moveConstructed && !v[0].moveAssigned);
+        HE_EXPECT(!v[1].copyConstructed && !v[1].copyAssigned && !v[1].moveConstructed && !v[1].moveAssigned);
+        HE_EXPECT(!v[2].copyConstructed && !v[2].copyAssigned && !v[2].moveConstructed && !v[2].moveAssigned);
+    }
+
+    // Case 3: size = 5, index = 0, count = 3 (three start, two moves, one destruct)
+    {
+        Vector<TestObj> v;
+        v.Resize(5);
+        v.EraseUnordered(0, 3);
+        HE_EXPECT_EQ(s_destructed, 3);
+        HE_EXPECT_EQ(v.Size(), 2);
+        HE_EXPECT(!v[0].copyConstructed && !v[0].copyAssigned && !v[0].moveConstructed && v[0].moveAssigned);
+        HE_EXPECT(!v[1].copyConstructed && !v[1].copyAssigned && !v[1].moveConstructed && v[1].moveAssigned);
     }
 }
 

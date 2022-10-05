@@ -311,12 +311,23 @@ namespace he
         /// \param count The number of items in the range to copy.
         void Insert(uint32_t index, const T* begin, uint32_t count) { Insert(index, begin, begin + count); }
 
-        /// Erases `count` elements from the vector starting at `index`.
-        /// Asserts if `index` is out of range.
+        /// Erases `count` elements from the vector starting at `index`. Order of elements
+        /// is preserved. Asserts if `index + count` is out of range.
         ///
-        /// \param index The index in the vector to insert at.
-        /// \param count The number of elements to remove.
-        void Erase(uint32_t index, uint32_t count);
+        /// \param index The index of the first element to erase.
+        /// \param count Optional. The number of elements to erase. Default is one.
+        void Erase(uint32_t index, uint32_t count = 1);
+
+        /// Erases `count` elements from the vector starting at `index`. Order of elements
+        /// is *not* preserved. Asserts if `index + count` is out of range.
+        ///
+        /// \note This function may result in less element moves and may therefore be faster than
+        /// the Erase function in some cases. However, ordering of elements after the operation is
+        /// not defined.
+        ///
+        /// \param index The index of the first element to erase.
+        /// \param count Optional. The number of elements to erase. Default is one.
+        void EraseUnordered(uint32_t index, uint32_t count = 1);
 
         /// Copies the element into the end of the vector.
         ///

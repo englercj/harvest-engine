@@ -992,6 +992,7 @@ namespace he::schema
         const uint16_t pointerCount = isStruct ? decl.GetData().GetStruct().GetPointerCount() : 0;
 
         std::set<TypeId> dependencies;
+        dependencies.insert(decl.GetParentId()); // always list parent scope as a dependency type to make it easy to find.
         FindAllDependencies(decl, dependencies);
 
         if (!dependencies.empty())

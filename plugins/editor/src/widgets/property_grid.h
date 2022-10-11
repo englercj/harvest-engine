@@ -3,14 +3,13 @@
 #pragma once
 
 #include "he/core/types.h"
-#include "he/schema/layout.h"
-#include "he/schema/types.h"
+#include "he/schema/dynamic.h"
 
 #include "imgui.h"
 
 namespace he::editor
 {
-    class AssetEdit;
+    struct AssetEdit;
 
     // --------------------------------------------------------------------------------------------
 
@@ -72,8 +71,5 @@ namespace he::editor
     /// \param[in] data The structure to build a property grid for.
     /// \param[in] declInfo The decaration info that describes the structure in `data`.
     /// \param[out] edit The edit to adds changes into.
-    void PropertyGrid(schema::StructReader data, const schema::DeclInfo& declInfo, AssetEdit& edit);
-
-    template <typename T>
-    void PropertyGrid(T data, AssetEdit& edit) { PropertyGrid(data, T::StructType::DeclInfo, edit); }
+    void PropertyGrid(schema::DynamicStruct::Builder& data, AssetEdit& edit);
 }

@@ -43,8 +43,29 @@ namespace he::schema
     // --------------------------------------------------------------------------------------------
     template <typename T> concept DataType = std::is_arithmetic_v<T> || std::is_enum_v<T> || std::is_same_v<T, Void>;
 
-    template <typename T> struct TypeHelper { using Reader = typename T::Reader; using Builder = typename T::Builder; };
-    template <DataType T> struct TypeHelper<T> { using Reader = T; using Builder = T; };
+    template <typename T>
+    struct LayoutTraits
+    {
+        using Reader = typename T::Reader;
+        using Builder = typename T::Builder;
+        static constexpr bool IsList = false;
+    };
+
+    template <DataType T>
+    struct LayoutTraits<T>
+    {
+        using Reader = T;
+        using Builder = T;
+        static constexpr bool IsList = false;
+    };
+
+    template <typename T>
+    struct LayoutTraits<List<T>>
+    {
+        using Reader = typename List<T>::Reader;
+        using Builder = typename List<T>::Builder;
+        static constexpr bool IsList = true;
+    };
 
     // --------------------------------------------------------------------------------------------
     template <size_t S> struct ElementSizeForByteSize;
@@ -407,13 +428,13 @@ namespace he::schema
 
         bool HasDataField(uint16_t index) const;
 
-        template <DataType T> T GetDataField(uint32_t dataOffset, T defaultValue = static_cast<T>(0)) const
+        template <DataType T> T GetDataField(uint32_t dataOffset, T defaultValue = T{}) const
         {
             const uint64_t dataFieldsWordSize = m_dataWordSize - m_metaWordSize;
             return _ReadDataField<T>(DataFields(), dataFieldsWordSize, dataOffset, defaultValue);
         }
 
-        template <DataType T> T TryGetDataField(uint16_t index, uint32_t dataOffset, T defaultValue = static_cast<T>(0)) const
+        template <DataType T> T TryGetDataField(uint16_t index, uint32_t dataOffset, T defaultValue = T{}) const
         {
             return HasDataField(index) ? GetDataField(dataOffset, defaultValue) : defaultValue;
         }
@@ -871,13 +892,13 @@ namespace he::schema
 
         bool HasDataField(uint16_t index) const { return AsReader().HasDataField(index); }
 
-        template <DataType T> T GetDataField(uint32_t dataOffset, T defaultValue = static_cast<T>(0)) const
+        template <DataType T> T GetDataField(uint32_t dataOffset, T defaultValue = T{}) const
         {
             HE_ASSERT(IsValid());
             return AsReader().GetDataField<T>(dataOffset, defaultValue);
         }
 
-        template <DataType T> T TryGetDataField(uint16_t index, uint32_t dataOffset, T defaultValue = static_cast<T>(0)) const
+        template <DataType T> T TryGetDataField(uint16_t index, uint32_t dataOffset, T defaultValue = T{}) const
         {
             HE_ASSERT(IsValid());
             return AsReader().TryGetDataField<T>(index, dataOffset, defaultValue);
@@ -1103,7 +1124,7 @@ namespace he::schema
     class List<T>::Reader : public ListReader
     {
     public:
-        using ElementType = typename TypeHelper<T>::Reader;
+        using ElementType = typename LayoutTraits<T>::Reader;
         using IteratorType = ListIterator<List<T>::Reader>;
 
     public:
@@ -1137,7 +1158,7 @@ namespace he::schema
     class List<T>::Builder : public ListBuilder
     {
     public:
-        using ElementType = typename TypeHelper<T>::Builder;
+        using ElementType = typename LayoutTraits<T>::Builder;
         using IteratorType = ListIterator<List<T>::Builder>;
 
     public:
@@ -1162,7 +1183,7 @@ namespace he::schema
                 return GetPointerElement(index).TryGetStruct<T>();
         }
 
-        void Set(uint32_t index, typename TypeHelper<T>::Reader reader)
+        void Set(uint32_t index, typename LayoutTraits<T>::Reader reader)
         {
             HE_ASSERT(index < Size());
             if constexpr (DataType<T>)

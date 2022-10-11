@@ -5,12 +5,41 @@
 #include "he/core/assert.h"
 #include "he/core/string_view.h"
 #include "he/core/types.h"
+#include "he/schema/layout.h"
 #include "he/schema/schema.h"
 
 namespace he::schema
 {
     // --------------------------------------------------------------------------------------------
+    template <typename T>
+    bool IsValidElementType(Type::Reader elementType);
+
+    // --------------------------------------------------------------------------------------------
     class DynamicEnum;
+
+    struct DynamicStruct
+    {
+        DynamicStruct() = delete;
+
+        class Reader;
+        class Builder;
+    };
+
+    struct DynamicArray
+    {
+        DynamicArray() = delete;
+
+        class Reader;
+        class Builder;
+    };
+
+    struct DynamicList
+    {
+        DynamicList() = delete;
+
+        class Reader;
+        class Builder;
+    };
 
     struct DynamicValue
     {
@@ -28,6 +57,7 @@ namespace he::schema
             Float,
             Blob,
             String,
+            Array,
             List,
             Enum,
             Struct,
@@ -38,23 +68,13 @@ namespace he::schema
         class Builder;
     };
 
-    struct DynamicStruct
+    template <>
+    struct LayoutTraits<DynamicEnum>
     {
-        DynamicStruct() = delete;
-
-        class Reader;
-        class Builder;
+        using Reader = DynamicEnum;
+        using Builder = DynamicEnum;
+        static constexpr bool IsList = false;
     };
-
-    struct DynamicList
-    {
-        DynamicList() = delete;
-
-        class Reader;
-        class Builder;
-    };
-
-    template <> struct TypeHelper<DynamicEnum> { using Reader = DynamicEnum; using Builder = DynamicEnum; };
 
     // --------------------------------------------------------------------------------------------
     class DynamicEnum
@@ -116,13 +136,11 @@ namespace he::schema
         Declaration::Reader Schema() const { return GetSchema(Decl()); }
         Declaration::Data::Struct::Reader StructSchema() const { return Schema().GetData().GetStruct(); }
 
-        DynamicValue::Reader GetField(Field::Reader field) const;
-        DynamicValue::Reader GetField(StringView fieldName) const;
+        DynamicValue::Reader Get(Field::Reader field) const;
+        DynamicValue::Reader Get(StringView fieldName) const;
 
-        bool HasField(Field::Reader field) const;
-        bool HasField(StringView fieldName) const;
-
-        bool IsActiveInUnion(Field::Reader field) const;
+        bool Has(Field::Reader field) const;
+        bool Has(StringView fieldName) const;
 
         Field::Reader ActiveUnionField() const;
 
@@ -141,7 +159,7 @@ namespace he::schema
         StructReader Struct() const { return m_reader; }
 
     private:
-        bool IsActiveInUnion(const DeclInfo& info, Field::Reader field) const;
+        bool IsActiveInUnion(Field::Reader field) const;
 
     private:
         const DeclInfo* m_info{ nullptr };
@@ -166,25 +184,24 @@ namespace he::schema
         Declaration::Reader Schema() const { return GetSchema(Decl()); }
         Declaration::Data::Struct::Reader StructSchema() const { return Schema().GetData().GetStruct(); }
 
-        DynamicValue::Builder GetField(Field::Reader field) const;
-        DynamicValue::Builder GetField(StringView fieldName) const;
+        DynamicValue::Builder Get(Field::Reader field) const;
+        DynamicValue::Builder Get(StringView fieldName) const;
 
-        void SetField(Field::Reader field, const DynamicValue::Reader& value);
-        void SetField(StringView fieldName, const DynamicValue::Reader& value);
+        void Set(Field::Reader field, const DynamicValue::Reader& value);
+        void Set(StringView fieldName, const DynamicValue::Reader& value);
 
-        DynamicValue::Builder InitField(Field::Reader field);
-        DynamicValue::Builder InitField(StringView fieldName);
+        DynamicValue::Builder Init(Field::Reader field);
+        DynamicValue::Builder Init(StringView fieldName);
 
-        DynamicValue::Builder InitField(Field::Reader field, uint32_t size);
-        DynamicValue::Builder InitField(StringView fieldName, uint32_t size);
+        DynamicValue::Builder Init(Field::Reader field, uint32_t size);
+        DynamicValue::Builder Init(StringView fieldName, uint32_t size);
 
-        void ClearField(Field::Reader field);
-        void ClearField(StringView fieldName);
+        void Clear(Field::Reader field);
+        void Clear(StringView fieldName);
 
-        bool HasField(Field::Reader field) const;
-        bool HasField(StringView fieldName) const;
+        bool Has(Field::Reader field) const;
+        bool Has(StringView fieldName) const;
 
-        bool IsActiveInUnion(Field::Reader field) const;
         Field::Reader ActiveUnionField() const;
 
         template <typename T> requires(T::Kind == DeclKind::Struct)
@@ -205,7 +222,7 @@ namespace he::schema
 
     private:
         void SetInUnion(Field::Reader field);
-        bool IsActiveInUnion(const DeclInfo& info, Field::Reader field) const;
+        bool IsActiveInUnion(Field::Reader field) const;
 
     private:
         const DeclInfo* m_info{ nullptr };
@@ -213,45 +230,180 @@ namespace he::schema
     };
 
     // --------------------------------------------------------------------------------------------
-    class DynamicList::Reader
+    class DynamicArray::Reader
     {
     public:
-        using IteratorType = ListIterator<DynamicList::Reader>;
+        using IteratorType = ListIterator<DynamicArray::Reader>;
+        using ElementType = DynamicValue::Reader;
 
     public:
         Reader() = default;
 
-        Reader(const DeclInfo& parentInfo, Type::Reader type, ListReader reader) noexcept
-            : m_parentInfo(&parentInfo)
+        Reader(const DeclInfo& scope, Type::Reader type, ListReader reader) noexcept
+            : m_scope(&scope)
             , m_type(type)
-            , m_reader(reader)
+            , m_list(reader)
         {
-            HE_ASSERT(GetSchema(parentInfo).GetData().IsStruct());
-            HE_ASSERT(type.GetData().IsList());
+            HE_ASSERT(GetSchema(scope).GetData().IsStruct());
+            HE_ASSERT(type.GetData().IsArray());
+            HE_ASSERT(IsPointer(type.GetData().GetArray().GetElementType()));
+        }
+
+        Reader(const DeclInfo& scope, Type::Reader type, const void* data) noexcept
+            : m_scope(&scope)
+            , m_type(type)
+            , m_array(data)
+        {
+            HE_ASSERT(GetSchema(scope).GetData().IsStruct());
+            HE_ASSERT(type.GetData().IsArray());
+            HE_ASSERT(!IsPointer(type.GetData().GetArray().GetElementType()));
         }
 
     public:
         Type::Reader Type() const { return m_type; }
-        // const DeclInfo& ElementDecl() const { HE_ASSERT(m_elementInfo); return *m_elementInfo; }
-        // Declaration::Reader ElementSchema() const { return GetSchema(ElementDecl()); }
+        Type::Data::Array::Reader ArrayType() const { return m_type.GetData().GetArray(); }
 
-        uint32_t Size() const { return m_reader.Size(); }
+        uint16_t Size() const { return ArrayType().GetSize(); }
 
-        DynamicValue::Reader Get(uint32_t index) const;
-
-        DynamicValue::Reader operator[](uint32_t index) const { return Get(index); }
+        DynamicValue::Reader Get(uint16_t index) const;
+        DynamicValue::Reader operator[](uint16_t index) const;
 
         template <typename T>
         typename List<T>::Reader AsListOf() const
         {
-            // TODO!
-            // const bool valid = HE_VERIFY(&T::DeclInfo = m_elementInfo,
-            //     HE_MSG("DynamicList requested as an element type that doesn't match the schema."),
-            //     HE_KV(requested_type_name, GetSchema(T::DeclInfo).GetName()),
-            //     HE_KV(requested_type_id, T::Id),
-            //     HE_KV(actual_type_name, ElementSchema().GetName()),
-            //     HE_KV(actual_type_id, ElementSchema().GetId()));
-            return valid ? typename List<T>::Reader(m_reader) : typename List<T>::Reader{};
+            using ListReaderType = typename schema::List<T>::Reader;
+            const bool valid = HE_VERIFY(IsPointer(ArrayType().GetElementType()), HE_MSG("DynamicArray requested as a List with a non-pointer element type."))
+                && HE_VERIFY(IsValidElementType<T>(ArrayType().GetElementType()), HE_MSG("DynamicArray requested as a List with an element type that doesn't match the schema."));
+            return valid ? ListReaderType(m_list) : ListReaderType{};
+        }
+
+        template <DataType T>
+        Span<const T> AsSpanOf() const
+        {
+            const bool valid = HE_VERIFY(!IsPointer(ArrayType().GetElementType()), HE_MSG("DynamicArray requested as a Span with a pointer element type."))
+                && HE_VERIFY(IsValidElementType<T>(ArrayType().GetElementType()), HE_MSG("DynamicArray requested as a Span with an element type that doesn't match the schema."));
+            return valid ? Span<const T>(static_cast<const T*>(m_array), Size()) : Span<const T>{};
+        }
+
+        IteratorType begin() const { return IteratorType(this, 0); }
+        IteratorType end() const { return IteratorType(this, Size()); }
+
+    private:
+        const DeclInfo* m_scope{ nullptr };
+        Type::Reader m_type{};
+
+        union
+        {
+            ListReader m_list;
+            const void* m_array;
+        };
+    };
+
+    class DynamicArray::Builder
+    {
+    public:
+        using IteratorType = ListIterator<DynamicArray::Builder>;
+        using ElementType = DynamicValue::Builder;
+
+    public:
+        Builder() = default;
+
+        Builder(const DeclInfo& scope, Type::Reader type, ListBuilder builder) noexcept
+            : m_scope(&scope)
+            , m_type(type)
+            , m_list(builder)
+        {
+            HE_ASSERT(GetSchema(scope).GetData().IsStruct());
+            HE_ASSERT(type.GetData().IsArray());
+            HE_ASSERT(IsPointer(type.GetData().GetArray().GetElementType()));
+        }
+
+        Builder(const DeclInfo& scope, Type::Reader type, void* data) noexcept
+            : m_scope(&scope)
+            , m_type(type)
+            , m_array(data)
+        {
+            HE_ASSERT(GetSchema(scope).GetData().IsStruct());
+            HE_ASSERT(type.GetData().IsArray());
+            HE_ASSERT(!IsPointer(type.GetData().GetArray().GetElementType()));
+        }
+
+    public:
+        Type::Reader Type() const { return m_type; }
+        Type::Data::Array::Reader ArrayType() const { return m_type.GetData().GetArray(); }
+
+        uint16_t Size() const { return ArrayType().GetSize(); }
+
+        DynamicValue::Builder Get(uint16_t index) const;
+        DynamicValue::Builder operator[](uint16_t index) const;
+
+        template <typename T>
+        typename List<T>::Builder AsListOf() const
+        {
+            using ListBuilderType = typename schema::List<T>::Builder;
+            const bool valid = HE_VERIFY(IsPointer(ArrayType().GetElementType()), HE_MSG("DynamicArray requested as a List with a non-pointer element type."))
+                && HE_VERIFY(IsValidElementType<T>(ArrayType().GetElementType()), HE_MSG("DynamicArray requested as a List with an element type that doesn't match the schema."));
+            return valid ? ListBuilderType(m_list) : ListBuilderType{};
+        }
+
+        template <DataType T>
+        Span<T> AsSpanOf() const
+        {
+            const bool valid = HE_VERIFY(!IsPointer(ArrayType().GetElementType()), HE_MSG("DynamicArray requested as a Span with a pointer element type."))
+                && HE_VERIFY(IsValidElementType<T>(ArrayType().GetElementType()), HE_MSG("DynamicArray requested as a Span with an element type that doesn't match the schema."));
+            return valid ? Span<T>(static_cast<T*>(m_array), Size()) : Span<T>{};
+        }
+
+        IteratorType begin() const { return IteratorType(this, 0); }
+        IteratorType end() const { return IteratorType(this, Size()); }
+
+    private:
+        const DeclInfo* m_scope{ nullptr };
+        Type::Reader m_type{};
+
+        union
+        {
+            ListBuilder m_list;
+            void* m_array;
+        };
+    };
+
+    // --------------------------------------------------------------------------------------------
+    class DynamicList::Reader
+    {
+    public:
+        using IteratorType = ListIterator<DynamicList::Reader>;
+        using ElementType = DynamicValue::Reader;
+
+    public:
+        Reader() = default;
+
+        Reader(const DeclInfo& scope, Type::Reader type, ListReader reader) noexcept
+            : m_scope(&scope)
+            , m_type(type)
+            , m_reader(reader)
+        {
+            HE_ASSERT(GetSchema(scope).GetData().IsStruct());
+            HE_ASSERT(type.GetData().IsList());
+            HE_ASSERT(type.GetData().GetList().GetElementType().GetData().IsArray() == false); // Lists of Arrays are not supported.
+        }
+
+    public:
+        Type::Reader Type() const { return m_type; }
+        Type::Data::List::Reader ListType() const { return m_type.GetData().GetList(); }
+
+        uint32_t Size() const { return m_reader.Size(); }
+
+        DynamicValue::Reader Get(uint32_t index) const;
+        DynamicValue::Reader operator[](uint32_t index) const;
+
+        template <typename T>
+        typename List<T>::Reader AsListOf() const
+        {
+            using ListReaderType = typename schema::List<T>::Reader;
+            const bool valid = HE_VERIFY(IsValidElementType<T>(ListType().GetElementType()),
+                HE_MSG("DynamicList requested as an element type that doesn't match the schema."));
+            return valid ? ListReaderType(m_reader) : ListReaderType{};
         }
 
         ListReader List() const { return m_reader; }
@@ -260,7 +412,7 @@ namespace he::schema
         IteratorType end() const { return IteratorType(this, m_reader.Size()); }
 
     private:
-        const DeclInfo* m_parentInfo{ nullptr };
+        const DeclInfo* m_scope{ nullptr };
         Type::Reader m_type{};
         ListReader m_reader{};
     };
@@ -269,22 +421,23 @@ namespace he::schema
     {
     public:
         using IteratorType = ListIterator<DynamicList::Builder>;
+        using ElementType = DynamicValue::Builder;
 
     public:
         Builder() = default;
 
-        Builder(const DeclInfo& parentInfo, Type::Reader type, ListBuilder builder) noexcept
-            : m_parentInfo(&parentInfo)
+        Builder(const DeclInfo& scope, Type::Reader type, ListBuilder builder) noexcept
+            : m_scope(&scope)
             , m_type(type)
             , m_builder(builder)
         {
-            HE_ASSERT(GetSchema(parentInfo).GetData().IsStruct());
+            HE_ASSERT(GetSchema(scope).GetData().IsStruct());
             HE_ASSERT(type.GetData().IsList());
         }
 
     public:
-        // const DeclInfo& ElementDecl() const { HE_ASSERT(m_elementInfo); return *m_elementInfo; }
-        // Declaration::Reader ElementSchema() const { return GetSchema(ElementDecl()); }
+        Type::Reader Type() const { return m_type; }
+        Type::Data::List::Reader ListType() const { return m_type.GetData().GetList(); }
 
         uint32_t Size() const { return m_builder.Size(); }
 
@@ -292,22 +445,18 @@ namespace he::schema
         void Set(uint32_t index, const DynamicValue::Reader& value);
         DynamicValue::Builder Init(uint32_t index, uint32_t size);
 
-        DynamicValue::Builder operator[](uint32_t index) const { return Get(index); }
+        DynamicValue::Builder operator[](uint32_t index) const;
 
         template <typename T>
         typename List<T>::Builder AsListOf() const
         {
-            // TODO!
-            // const bool valid = HE_VERIFY(&T::DeclInfo = m_elementInfo,
-            //     HE_MSG("DynamicList requested as an element type that doesn't match the schema."),
-            //     HE_KV(requested_type_name, GetSchema(T::DeclInfo).GetName()),
-            //     HE_KV(requested_type_id, T::Id),
-            //     HE_KV(actual_type_name, ElementSchema().GetName()),
-            //     HE_KV(actual_type_id, ElementSchema().GetId()));
-            return valid ? typename List<T>::Builder(m_builder) : typename List<T>::Builder{};
+            using ListBuilderType = typename schema::List<T>::Builder;
+            const bool valid = HE_VERIFY(IsValidElementType<T>(ListType().GetElementType()),
+                HE_MSG("DynamicList requested as an element type that doesn't match the schema."));
+            return valid ? ListBuilderType(m_builder) : ListBuilderType{};
         }
 
-        Reader AsReader() const { return Reader(m_type, m_builder.AsReader()); }
+        Reader AsReader() const { return Reader(*m_scope, m_type, m_builder.AsReader()); }
 
         ListBuilder List() const { return m_builder; }
 
@@ -315,7 +464,7 @@ namespace he::schema
         IteratorType end() const { return IteratorType(this, Size()); }
 
     private:
-        const DeclInfo* m_parentInfo{ nullptr };
+        const DeclInfo* m_scope{ nullptr };
         Type::Reader m_type{};
         ListBuilder m_builder{};
     };
@@ -326,7 +475,7 @@ namespace he::schema
     public:
         // These constructors are intentionally not marked as `explicit` to allow implicit conversions.
 
-        Reader(decltype(nullptr) value = nullptr) noexcept : m_kind(Kind::Unknown) {}
+        Reader(decltype(nullptr) = nullptr) noexcept : m_kind(Kind::Unknown), m_void() {}
         Reader(Void value) noexcept : m_kind(Kind::Void), m_void(value) {}
         Reader(bool value) noexcept : m_kind(Kind::Bool), m_bool(value) {}
         Reader(char value) noexcept : m_kind(Kind::Int), m_int(value) {}
@@ -344,6 +493,7 @@ namespace he::schema
         Reader(double value) noexcept : m_kind(Kind::Float), m_float(value) {}
         Reader(const String::Reader& value) noexcept : m_kind(Kind::String), m_string(value) {}
         Reader(const Blob::Reader& value) noexcept : m_kind(Kind::Blob), m_blob(value) {}
+        Reader(const DynamicArray::Reader& value) noexcept : m_kind(Kind::Array), m_array(value) {}
         Reader(const DynamicList::Reader& value) noexcept : m_kind(Kind::List), m_list(value) {}
         Reader(DynamicEnum value) noexcept : m_kind(Kind::Enum), m_enum(value) {}
         Reader(const DynamicStruct::Reader& value) noexcept : m_kind(Kind::Struct), m_struct(value) {}
@@ -353,7 +503,7 @@ namespace he::schema
         Kind GetKind() const { return m_kind; }
 
         template <typename T>
-        typename TypeHelper<T>::Reader As() const;
+        typename LayoutTraits<T>::Reader As() const;
 
     private:
         Kind m_kind;
@@ -367,6 +517,7 @@ namespace he::schema
             double m_float;
             String::Reader m_string;
             Blob::Reader m_blob;
+            DynamicArray::Reader m_array;
             DynamicList::Reader m_list;
             DynamicEnum m_enum;
             DynamicStruct::Reader m_struct;
@@ -379,7 +530,7 @@ namespace he::schema
     public:
         // These constructors are intentionally not marked as `explicit` to allow implicit conversions.
 
-        Builder(decltype(nullptr) value = nullptr) noexcept : m_kind(Kind::Unknown) {}
+        Builder(decltype(nullptr) = nullptr) noexcept : m_kind(Kind::Unknown), m_void() {}
         Builder(Void value) noexcept : m_kind(Kind::Void), m_void(value) {}
         Builder(bool value) noexcept : m_kind(Kind::Bool), m_bool(value) {}
         Builder(char value) noexcept : m_kind(Kind::Int), m_int(value) {}
@@ -397,6 +548,7 @@ namespace he::schema
         Builder(double value) noexcept : m_kind(Kind::Float), m_float(value) {}
         Builder(const String::Builder& value) noexcept : m_kind(Kind::String), m_string(value) {}
         Builder(const Blob::Builder& value) noexcept : m_kind(Kind::Blob), m_blob(value) {}
+        Builder(const DynamicArray::Builder& value) noexcept : m_kind(Kind::Array), m_array(value) {}
         Builder(const DynamicList::Builder& value) noexcept : m_kind(Kind::List), m_list(value) {}
         Builder(DynamicEnum value) noexcept : m_kind(Kind::Enum), m_enum(value) {}
         Builder(const DynamicStruct::Builder& value) noexcept : m_kind(Kind::Struct), m_struct(value) {}
@@ -406,7 +558,7 @@ namespace he::schema
         Kind GetKind() const { return m_kind; }
 
         template <typename T>
-        typename TypeHelper<T>::Builder As() const;
+        typename LayoutTraits<T>::Builder As() const;
 
         Reader AsReader() const;
 
@@ -422,10 +574,161 @@ namespace he::schema
             double m_float;
             String::Builder m_string;
             Blob::Builder m_blob;
+            DynamicArray::Builder m_array;
             DynamicList::Builder m_list;
             DynamicEnum m_enum;
             DynamicStruct::Builder m_struct;
             PointerBuilder m_anyPointer;
         };
     };
+
+    // --------------------------------------------------------------------------------------------
+    template <typename T>
+    class DynamicStructVisitor
+    {
+    public:
+        static constexpr bool IsReader = std::is_same_v<T, DynamicStruct::Reader>;
+        static constexpr bool IsBuilder = std::is_same_v<T, DynamicStruct::Builder>;
+
+        static_assert(IsReader || IsBuilder, "DynamicStructVisitor is intended for DynamicStruct::Reader and DynamicStruct::Builder types.");
+
+        template <typename T>
+        using Access = std::conditional_t<IsReader, const typename T::Reader, typename T::Builder>;
+
+    public:
+        virtual ~DynamicStructVisitor() = default;
+
+        void Visit(Access<DynamicStruct>& data) { VisitStruct(data); }
+
+    public:
+        // This section has functions that child classes are likely to override.
+
+        virtual void VisitNormalField(Access<DynamicStruct>& data, Field::Reader field)
+        {
+            VisitValue(data.Get(field));
+        }
+
+        virtual void VisitGroupField(Access<DynamicStruct>& data, Field::Reader field)
+        {
+            DynamicStruct::Builder st = data.Get(field).As<DynamicStruct>();
+            VisitStruct(st);
+        }
+
+        virtual void VisitUnionField(Access<DynamicStruct>& data, Field::Reader field)
+        {
+            DynamicStruct::Builder st = data.Get(field).As<DynamicStruct>();
+            VisitStruct(st);
+        }
+
+        virtual void VisitValue(const Access<DynamicValue>& value) { HE_UNUSED(value); }
+
+    protected:
+        // This section has functions that child classes are less likely to override.
+        // However, in some advanced cases it may be useful to do so.
+
+        virtual void VisitStruct(Access<DynamicStruct>& data);
+        virtual void VisitField(Access<DynamicStruct>& data, Field::Reader field);
+
+        virtual bool ShouldVisitNormalField(const Access<DynamicStruct>& data, Field::Reader field) { return data.Has(field); }
+        virtual bool ShouldVisitGroupField(const Access<DynamicStruct>& data, Field::Reader field) { return data.Has(field); }
+        virtual bool ShouldVisitUnionField(const Access<DynamicStruct>& data, Field::Reader field) { return data.Has(field); }
+    };
+
+    // --------------------------------------------------------------------------------------------
+    template <typename T>
+    void DynamicStructVisitor<T>::VisitStruct(Access<DynamicStruct>& data)
+    {
+        const Declaration::Data::Struct::Reader structDecl = data.StructSchema();
+
+        if (structDecl.GetIsUnion())
+        {
+            const Field::Reader activeField = data.ActiveUnionField();
+            VisitField(data, activeField);
+        }
+        else
+        {
+            for (Field::Reader field : structDecl.GetFields())
+            {
+                VisitField(data, field);
+            }
+        }
+    }
+
+    template <typename T>
+    void DynamicStructVisitor<T>::VisitField(Access<DynamicStruct>& data, Field::Reader field)
+    {
+        switch (field.GetMeta().GetUnionTag())
+        {
+            case Field::Meta::UnionTag::Normal:
+                if (ShouldVisitNormalField(data, field))
+                    VisitNormalField(data, field);
+                break;
+
+            case Field::Meta::UnionTag::Group:
+                if (ShouldVisitGroupField(data, field))
+                    VisitGroupField(data, field);
+                break;
+
+            case Field::Meta::UnionTag::Union:
+                if (ShouldVisitUnionField(data, field))
+                    VisitUnionField(data, field);
+                break;
+        }
+    }
+
+    // --------------------------------------------------------------------------------------------
+    template <typename T>
+    inline bool IsValidElementType(Type::Reader elementType)
+    {
+        const Type::Data::Reader elementTypeData = elementType.GetData();
+        switch (elementTypeData.GetUnionTag())
+        {
+            case Type::Data::UnionTag::Void: return std::is_same_v<T, Void>;
+            case Type::Data::UnionTag::Bool: return std::is_same_v<T, bool>;
+            case Type::Data::UnionTag::Int8: return std::is_same_v<T, int8_t>;
+            case Type::Data::UnionTag::Int16: return std::is_same_v<T, int16_t>;
+            case Type::Data::UnionTag::Int32: return std::is_same_v<T, int32_t>;
+            case Type::Data::UnionTag::Int64: return std::is_same_v<T, int64_t>;
+            case Type::Data::UnionTag::Uint8: return std::is_same_v<T, uint8_t>;
+            case Type::Data::UnionTag::Uint16: return std::is_same_v<T, uint16_t>;
+            case Type::Data::UnionTag::Uint32: return std::is_same_v<T, uint32_t>;
+            case Type::Data::UnionTag::Uint64: return std::is_same_v<T, uint64_t>;
+            case Type::Data::UnionTag::Float32: return std::is_same_v<T, float>;
+            case Type::Data::UnionTag::Float64: return std::is_same_v<T, double>;
+            case Type::Data::UnionTag::Blob: return std::is_same_v<T, schema::Blob>;
+            case Type::Data::UnionTag::String: return std::is_same_v<T, schema::String>;
+            case Type::Data::UnionTag::AnyPointer: return std::is_same_v<T, schema::AnyPointer>;
+            case Type::Data::UnionTag::AnyStruct: return std::is_same_v<T, schema::AnyStruct>;
+            case Type::Data::UnionTag::AnyList: return std::is_same_v<T, schema::AnyList>;
+            case Type::Data::UnionTag::Enum: return std::is_enum_v<T>;
+            case Type::Data::UnionTag::Struct: return T::Kind == DeclKind::Struct;
+            case Type::Data::UnionTag::Interface: return false;
+            case Type::Data::UnionTag::Parameter: return false;
+
+            case Type::Data::UnionTag::Array:
+            {
+                if constexpr (LayoutTraits<T>::IsList)
+                {
+                    return IsValidElementType<T::ElementType>(elementTypeData.GetArray().GetElementType());
+                }
+                else
+                {
+                    return false;
+                }
+            }
+
+            case Type::Data::UnionTag::List:
+            {
+                if constexpr (LayoutTraits<T>::IsList)
+                {
+                    return IsValidElementType<T::ElementType>(elementTypeData.GetList().GetElementType());
+                }
+                else
+                {
+                    return false;
+                }
+            }
+        }
+        return false;
+    }
 }

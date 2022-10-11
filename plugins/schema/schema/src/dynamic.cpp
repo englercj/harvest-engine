@@ -1,7 +1,5 @@
 // Copyright Chad Engler
 
-// TODO: This will need to be updated if/when we support anonymous unions
-
 #include "he/schema/dynamic.h"
 
 #include "he/core/assert.h"
@@ -15,6 +13,143 @@
 
 namespace he::schema
 {
+    // --------------------------------------------------------------------------------------------
+    #define HE_DYNAMIC_VALUE_CLASS_AS_TYPE(member, kind, Class, Type) \
+        template <> typename LayoutTraits<Type>::Class DynamicValue::Class::As<Type>() const \
+        { \
+            const bool valid = HE_VERIFY(m_kind == Kind::kind, \
+                HE_MSG("DynamicValue requested as a type it doesn't hold."), \
+                HE_KV(requested_type_name, TypeInfo::Get<Type>().Name()), \
+                HE_KV(actual_kind, m_kind)); \
+            return valid ? member : typename LayoutTraits<Type>::Class{}; \
+        }
+
+    #define HE_DYNAMIC_VALUE_AS_TYPE(member, kind, Type) \
+        HE_DYNAMIC_VALUE_CLASS_AS_TYPE(member, kind, Reader, Type) \
+        HE_DYNAMIC_VALUE_CLASS_AS_TYPE(member, kind, Builder, Type)
+
+    HE_DYNAMIC_VALUE_AS_TYPE(m_void, Void, Void)
+    HE_DYNAMIC_VALUE_AS_TYPE(m_bool, Bool, bool)
+    HE_DYNAMIC_VALUE_AS_TYPE(m_string, String, String)
+    HE_DYNAMIC_VALUE_AS_TYPE(m_blob, Blob, Blob)
+    HE_DYNAMIC_VALUE_AS_TYPE(m_list, List, DynamicList)
+    HE_DYNAMIC_VALUE_AS_TYPE(m_enum, Enum, DynamicEnum)
+    HE_DYNAMIC_VALUE_AS_TYPE(m_struct, Struct, DynamicStruct)
+    HE_DYNAMIC_VALUE_AS_TYPE(m_anyPointer, AnyPointer, AnyPointer)
+
+    #undef HE_DYNAMIC_VALUE_AS_TYPE
+    #undef HE_DYNAMIC_VALUE_CLASS_AS_TYPE
+
+    // --------------------------------------------------------------------------------------------
+    template <typename T, typename U>
+    T CoerceInteger(U value)
+    {
+        const T result = static_cast<T>(value);
+        HE_VERIFY(static_cast<U>(result) == value,
+            HE_MSG("Value out of range for requested type."),
+            HE_KV(requested_type, TypeInfo::Get<T>().Name()),
+            HE_KV(value, value));
+        return result;
+    }
+
+    template <typename T>
+    T CoerceSignedToUnsigned(long long value)
+    {
+        HE_VERIFY(value >= 0 && static_cast<T>(value) == value,
+            HE_MSG("Value out of range for requested type."),
+            HE_KV(requested_type, TypeInfo::Get<T>().Name()),
+            HE_KV(value, value));
+        return static_cast<T>(value);
+    }
+
+    template <>
+    uint64_t CoerceSignedToUnsigned<uint64_t>(long long value)
+    {
+        HE_VERIFY(value >= 0,
+            HE_MSG("Value out of range for requested type."),
+            HE_KV(requested_type, TypeInfo::Get<uint64_t>().Name()),
+            HE_KV(value, value));
+        return static_cast<uint64_t>(value);
+    }
+
+    template <typename T>
+    T CoerceUnsignedToSigned(unsigned long long value)
+    {
+        const T result = static_cast<T>(value);
+        HE_VERIFY(result >= 0 && static_cast<unsigned long long>(result) == value,
+            HE_MSG("Value out of range for requested type."),
+            HE_KV(requested_type, TypeInfo::Get<T>().Name()),
+            HE_KV(value, value));
+        return result;
+    }
+
+    template <>
+    int64_t CoerceUnsignedToSigned<int64_t>(unsigned long long value)
+    {
+        const int64_t result = static_cast<int64_t>(value);
+        HE_VERIFY(result >= 0,
+            HE_MSG("Value out of range for requested type."),
+            HE_KV(requested_type, TypeInfo::Get<int64_t>().Name()),
+            HE_KV(value, value));
+        return result;
+    }
+
+    template <typename T, std::floating_point U>
+    T CoerceFloat(U value)
+    {
+        constexpr T min = std::numeric_limits<T>::lowest();
+        constexpr T max = std::numeric_limits<T>::max();
+        HE_VERIFY(value >= static_cast<U>(min) && value <= static_cast<U>(max),
+            HE_MSG("Value out of range for requested type."),
+            HE_KV(requested_type, TypeInfo::Get<T>().Name()),
+            HE_KV(value, value));
+
+        const T result = static_cast<T>(value);
+        HE_VERIFY(static_cast<U>(result) == value,
+            HE_MSG("Value out of range for requested type."),
+            HE_KV(requested_type, TypeInfo::Get<T>().Name()),
+            HE_KV(value, value));
+        return result;
+    }
+
+    template <typename T, typename U>
+    T ImplicitCast(U&& value) { return static_cast<T>(Forward<U>(value)); }
+
+    #define HE_DYNAMIC_VALUE_CLASS_AS_NUMERIC_TYPE(Class, Type, coerceInt, coerceUint, coerceFloat) \
+        template <> Type DynamicValue::Class::As<Type>() const \
+        { \
+            switch (m_kind) \
+            { \
+                case Kind::Int: return coerceInt<Type>(m_int); \
+                case Kind::Uint: return coerceUint<Type>(m_uint); \
+                case Kind::Float: return coerceFloat<Type>(m_float); \
+                default: \
+                    HE_VERIFY(false, \
+                        HE_MSG("DynamicValue requested as a numeric type, but it doesn't hold a numeric type."), \
+                        HE_KV(requested_type_name, TypeInfo::Get<Type>().Name()), \
+                        HE_KV(actual_kind, m_kind)); \
+                    return Type{}; \
+            } \
+        }
+
+    #define HE_DYNAMIC_VALUE_AS_NUMERIC_TYPE(Type, coerceInt, coerceUint, coerceFloat) \
+        HE_DYNAMIC_VALUE_CLASS_AS_NUMERIC_TYPE(Reader, Type, coerceInt, coerceUint, coerceFloat) \
+        HE_DYNAMIC_VALUE_CLASS_AS_NUMERIC_TYPE(Builder, Type, coerceInt, coerceUint, coerceFloat)
+
+    HE_DYNAMIC_VALUE_AS_NUMERIC_TYPE(int8_t, CoerceInteger, CoerceUnsignedToSigned, CoerceFloat)
+    HE_DYNAMIC_VALUE_AS_NUMERIC_TYPE(int16_t, CoerceInteger, CoerceUnsignedToSigned, CoerceFloat)
+    HE_DYNAMIC_VALUE_AS_NUMERIC_TYPE(int32_t, CoerceInteger, CoerceUnsignedToSigned, CoerceFloat)
+    HE_DYNAMIC_VALUE_AS_NUMERIC_TYPE(int64_t, ImplicitCast, CoerceUnsignedToSigned, CoerceFloat)
+    HE_DYNAMIC_VALUE_AS_NUMERIC_TYPE(uint8_t, CoerceSignedToUnsigned, CoerceInteger, CoerceFloat)
+    HE_DYNAMIC_VALUE_AS_NUMERIC_TYPE(uint16_t, CoerceSignedToUnsigned, CoerceInteger, CoerceFloat)
+    HE_DYNAMIC_VALUE_AS_NUMERIC_TYPE(uint32_t, CoerceSignedToUnsigned, CoerceInteger, CoerceFloat)
+    HE_DYNAMIC_VALUE_AS_NUMERIC_TYPE(uint64_t, CoerceSignedToUnsigned, ImplicitCast, CoerceFloat)
+    HE_DYNAMIC_VALUE_AS_NUMERIC_TYPE(float, ImplicitCast, ImplicitCast, ImplicitCast)
+    HE_DYNAMIC_VALUE_AS_NUMERIC_TYPE(double, ImplicitCast, ImplicitCast, ImplicitCast)
+
+    #undef HE_DYNAMIC_VALUE_AS_NUMERIC_TYPE
+    #undef HE_DYNAMIC_VALUE_CLASS_AS_NUMERIC_TYPE
+
     // --------------------------------------------------------------------------------------------
     static uint16_t GetEnumValue(const DeclInfo& parentInfo, Type::Reader type, const DynamicValue::Reader& value)
     {
@@ -71,8 +206,30 @@ namespace he::schema
         }
     }
 
+    static const void* GetDataArrayPointer(StructReader reader, Type::Reader elementType, uint16_t index, uint32_t dataOffset, uint16_t arraySize, const Word* defaultValue)
+    {
+        switch (elementType.GetData().GetUnionTag())
+        {
+            case Type::Data::UnionTag::Void: return reader.TryGetDataArrayField<Void>(index, dataOffset, arraySize, defaultValue).Data();
+            case Type::Data::UnionTag::Bool: return reader.TryGetDataArrayField<bool>(index, dataOffset, arraySize, defaultValue).Data();
+            case Type::Data::UnionTag::Int8: return reader.TryGetDataArrayField<int8_t>(index, dataOffset, arraySize, defaultValue).Data();
+            case Type::Data::UnionTag::Int16: return reader.TryGetDataArrayField<int16_t>(index, dataOffset, arraySize, defaultValue).Data();
+            case Type::Data::UnionTag::Int32: return reader.TryGetDataArrayField<int32_t>(index, dataOffset, arraySize, defaultValue).Data();
+            case Type::Data::UnionTag::Int64: return reader.TryGetDataArrayField<int64_t>(index, dataOffset, arraySize, defaultValue).Data();
+            case Type::Data::UnionTag::Uint8: return reader.TryGetDataArrayField<uint8_t>(index, dataOffset, arraySize, defaultValue).Data();
+            case Type::Data::UnionTag::Uint16: return reader.TryGetDataArrayField<uint16_t>(index, dataOffset, arraySize, defaultValue).Data();
+            case Type::Data::UnionTag::Uint32: return reader.TryGetDataArrayField<uint32_t>(index, dataOffset, arraySize, defaultValue).Data();
+            case Type::Data::UnionTag::Uint64: return reader.TryGetDataArrayField<uint64_t>(index, dataOffset, arraySize, defaultValue).Data();
+            case Type::Data::UnionTag::Float32: return reader.TryGetDataArrayField<float>(index, dataOffset, arraySize, defaultValue).Data();
+            case Type::Data::UnionTag::Float64: return reader.TryGetDataArrayField<double>(index, dataOffset, arraySize, defaultValue).Data();
+            default:
+                HE_VERIFY(false, HE_MSG("Only works for arrays with data element types."));
+                return nullptr;
+        }
+    }
+
     // --------------------------------------------------------------------------------------------
-    DynamicValue::Reader DynamicStruct::Reader::GetField(Field::Reader field) const
+    DynamicValue::Reader DynamicStruct::Reader::Get(Field::Reader field) const
     {
         if (!field.IsValid())
             return DynamicValue::Reader{};
@@ -97,11 +254,13 @@ namespace he::schema
             return DynamicValue::Reader{};
         }
 
-        switch (field.GetMeta().GetUnionTag())
+        const Field::Meta::Reader meta = field.GetMeta();
+
+        switch (meta.GetUnionTag())
         {
             case Field::Meta::UnionTag::Normal:
             {
-                const Field::Meta::Normal::Reader norm = field.GetMeta().GetNormal();
+                const Field::Meta::Normal::Reader norm = meta.GetNormal();
                 const Value::Data::Reader defaultValue = norm.GetDefaultValue().GetData();
                 const Type::Reader type = norm.GetType();
                 const Type::Data::Reader typeData = type.GetData();
@@ -147,7 +306,22 @@ namespace he::schema
                     }
                     case Type::Data::UnionTag::Array:
                     {
-                        // TODO: DynamicArray
+                        const Type::Data::Array::Reader arrayType = typeData.GetArray();
+                        const uint16_t arraySize = arrayType.GetSize();
+                        const Type::Reader elementType = arrayType.GetElementType();
+
+                        const Word* value = defaultValue.IsList() ? defaultValue.GetList().Data() : nullptr;
+
+                        if (IsPointer(elementType))
+                        {
+                            const ListReader reader = m_reader.TryGetPointerArrayField(index, arraySize, value);
+                            return DynamicArray::Reader(*m_info, type, reader);
+                        }
+                        else
+                        {
+                            const void* ptr = GetDataArrayPointer(m_reader, elementType, index, dataOffset, arraySize, value);
+                            return DynamicArray::Reader(*m_info, type, ptr);
+                        }
                         break;
                     }
                     case Type::Data::UnionTag::List:
@@ -198,7 +372,7 @@ namespace he::schema
             }
             case Field::Meta::UnionTag::Group:
             {
-                const Field::Meta::Group::Reader group = field.GetMeta().GetGroup();
+                const Field::Meta::Group::Reader group = meta.GetGroup();
                 const DeclInfo* info = FindDependency(*m_info, group.GetTypeId());
                 const bool valid = HE_VERIFY(info,
                     HE_MSG("Field requested from DynamicStruct is a group that has a missing type."),
@@ -209,7 +383,7 @@ namespace he::schema
             }
             case Field::Meta::UnionTag::Union:
             {
-                const Field::Meta::Union::Reader group = field.GetMeta().GetUnion();
+                const Field::Meta::Union::Reader group = meta.GetUnion();
                 const DeclInfo* info = FindDependency(*m_info, group.GetTypeId());
                 const bool valid = HE_VERIFY(info,
                     HE_MSG("Field requested from DynamicStruct is a union that has a missing type."),
@@ -223,22 +397,24 @@ namespace he::schema
         return DynamicValue::Reader{};
     }
 
-    DynamicValue::Reader DynamicStruct::Reader::GetField(StringView fieldName) const
+    DynamicValue::Reader DynamicStruct::Reader::Get(StringView fieldName) const
     {
         const Field::Reader field = FindFieldByName(fieldName, StructSchema());
         const bool valid = HE_VERIFY(field.IsValid(),
             HE_MSG("Field requested from DynamicStruct that is not a member of the schema."),
             HE_KV(struct_name, Schema().GetName()),
             HE_KV(requested_field_name, fieldName));
-        return valid ? GetField(field) : DynamicValue::Reader{};
+        return valid ? Get(field) : DynamicValue::Reader{};
     }
 
-    bool DynamicStruct::Reader::HasField(Field::Reader field) const
+    bool DynamicStruct::Reader::Has(Field::Reader field) const
     {
         if (!field.IsValid())
             return false;
 
-        const List<Field>::Reader fields = StructSchema().GetFields();
+        const Declaration::Data::Struct::Reader structDecl = StructSchema();
+
+        const List<Field>::Reader fields = structDecl.GetFields();
         const auto it = std::find(fields.begin(), fields.end(), field);
         if (!HE_VERIFY(it != fields.end(),
             HE_MSG("Field requested from DynamicStruct that is not a member of the schema."),
@@ -246,6 +422,11 @@ namespace he::schema
             HE_KV(requested_field_name, field.GetName())))
         {
             return false;
+        }
+
+        if (structDecl.GetIsUnion())
+        {
+            return IsActiveInUnion(field);
         }
 
         const Field::Meta::Reader meta = field.GetMeta();
@@ -260,51 +441,29 @@ namespace he::schema
                 return isPointer ? m_reader.HasPointerField(index) : m_reader.HasDataField(index);
             }
             case Field::Meta::UnionTag::Group:
+            case Field::Meta::UnionTag::Union:
             {
                 // groups are always available
                 return true;
-            }
-            case Field::Meta::UnionTag::Union:
-            {
-                // TODO: Support 'unset' unions by storing a bitset index for the union tag
-
-                const Field::Meta::Union::Reader group = meta.GetUnion();
-                const DeclInfo* info = FindDependency(*m_info, group.GetTypeId());
-                const Declaration::Reader decl = info ? GetSchema(*info) : Declaration::Reader{};
-                const bool valid = HE_VERIFY(decl.IsValid() && decl.GetData().IsStruct() && decl.GetData().GetStruct().GetIsUnion(),
-                    HE_MSG("Field requested from DynamicStruct is a union that has a missing type."),
-                    HE_KV(struct_name, Schema().GetName()),
-                    HE_KV(requested_field_name, field.GetName()),
-                    HE_KV(requested_field_type_id, group.GetTypeId()));
-
-                if (!valid)
-                    return false;
-
-                return IsActiveInUnion(*info, field);
             }
         }
 
         return false;
     }
 
-    bool DynamicStruct::Reader::HasField(StringView fieldName) const
+    bool DynamicStruct::Reader::Has(StringView fieldName) const
     {
         const Field::Reader field = FindFieldByName(fieldName, StructSchema());
         const bool valid = HE_VERIFY(field.IsValid(),
             HE_MSG("Field requested from DynamicStruct that is not a member of the schema."),
             HE_KV(struct_name, Schema().GetName()),
             HE_KV(requested_field_name, fieldName));
-        return valid ? HasField(field) : false;
+        return valid ? Has(field) : false;
     }
 
     bool DynamicStruct::Reader::IsActiveInUnion(Field::Reader field) const
     {
-        return IsActiveInUnion(*m_info, field);
-    }
-
-    bool DynamicStruct::Reader::IsActiveInUnion(const DeclInfo& info, Field::Reader field) const
-    {
-        const Declaration::Reader decl = GetSchema(info);
+        const Declaration::Reader decl = GetSchema(*m_info);
 
         if (!decl.IsValid() || !decl.GetData().IsStruct() || !decl.GetData().GetStruct().GetIsUnion())
             return false;
@@ -325,7 +484,7 @@ namespace he::schema
     }
 
     // --------------------------------------------------------------------------------------------
-    DynamicValue::Builder DynamicStruct::Builder::GetField(Field::Reader field) const
+    DynamicValue::Builder DynamicStruct::Builder::Get(Field::Reader field) const
     {
         if (!field.IsValid())
             return DynamicValue::Builder{};
@@ -383,7 +542,20 @@ namespace he::schema
                     case Type::Data::UnionTag::AnyList: return AnyList::Builder(m_builder.GetPointerField(index));
                     case Type::Data::UnionTag::Array:
                     {
-                        // TODO: DynamicArray
+                        const Type::Data::Array::Reader arrayType = typeData.GetArray();
+                        const uint16_t arraySize = arrayType.GetSize();
+                        const Type::Reader elementType = arrayType.GetElementType();
+
+                        if (IsPointer(elementType))
+                        {
+                            const ListBuilder builder = m_builder.GetPointerArrayField(index, arraySize);
+                            return DynamicArray::Builder(*m_info, type, builder);
+                        }
+                        else
+                        {
+                            const void* ptr = GetDataArrayPointer(m_builder, elementType, index, dataOffset, arraySize, nullptr);
+                            return DynamicArray::Builder(*m_info, type, const_cast<void*>(ptr));
+                        }
                         break;
                     }
                     case Type::Data::UnionTag::List:
@@ -457,17 +629,17 @@ namespace he::schema
         return DynamicValue::Builder{};
     }
 
-    DynamicValue::Builder DynamicStruct::Builder::GetField(StringView fieldName) const
+    DynamicValue::Builder DynamicStruct::Builder::Get(StringView fieldName) const
     {
         const Field::Reader field = FindFieldByName(fieldName, StructSchema());
         const bool valid = HE_VERIFY(field.IsValid(),
             HE_MSG("Field requested from DynamicStruct that is not a member of the schema."),
             HE_KV(struct_name, Schema().GetName()),
             HE_KV(requested_field_name, fieldName));
-        return valid ? GetField(field) : DynamicValue::Builder{};
+        return valid ? Get(field) : DynamicValue::Builder{};
     }
 
-    void DynamicStruct::Builder::SetField(Field::Reader field, const DynamicValue::Reader& value)
+    void DynamicStruct::Builder::Set(Field::Reader field, const DynamicValue::Reader& value)
     {
         if (!field.IsValid())
             return;
@@ -543,7 +715,7 @@ namespace he::schema
                     }
                     case Type::Data::UnionTag::Array:
                     {
-                        // TODO: DynamicArray
+                        HE_VERIFY(false, HE_MSG("Setting an array field via DynamicStruct::Builder::Set is not supported. Use DynamicStruct::Builder::Get() to get a DynamicArray::Builder object instead."));
                         break;
                     }
                     case Type::Data::UnionTag::List:
@@ -593,16 +765,16 @@ namespace he::schema
             case Field::Meta::UnionTag::Group:
             {
                 const DynamicStruct::Reader src = value.As<DynamicStruct>();
-                DynamicStruct::Builder dst = InitField(field).As<DynamicStruct>();
+                DynamicStruct::Builder dst = Init(field).As<DynamicStruct>();
 
                 if (!HE_VERIFY(&src.Decl() == &dst.Decl()))
                     return;
 
-                for (const Field::Reader field : src.StructSchema().GetFields())
+                for (const Field::Reader groupField : src.StructSchema().GetFields())
                 {
-                    if (src.HasField(field))
+                    if (src.Has(groupField))
                     {
-                        dst.SetField(field, src.GetField(field));
+                        dst.Set(groupField, src.Get(groupField));
                     }
                 }
                 break;
@@ -610,7 +782,7 @@ namespace he::schema
             case Field::Meta::UnionTag::Union:
             {
                 const DynamicStruct::Reader src = value.As<DynamicStruct>();
-                DynamicStruct::Builder dst = InitField(field).As<DynamicStruct>();
+                DynamicStruct::Builder dst = Init(field).As<DynamicStruct>();
 
                 if (!HE_VERIFY(&src.Decl() == &dst.Decl()))
                     return;
@@ -618,14 +790,14 @@ namespace he::schema
                 const Field::Reader unionField = src.ActiveUnionField();
                 if (HE_VERIFY(unionField.IsValid()))
                 {
-                    dst.SetField(unionField, src.GetField(unionField));
+                    dst.Set(unionField, src.Get(unionField));
                 }
                 break;
             }
         }
     }
 
-    void DynamicStruct::Builder::SetField(StringView fieldName, const DynamicValue::Reader& value)
+    void DynamicStruct::Builder::Set(StringView fieldName, const DynamicValue::Reader& value)
     {
         const Field::Reader field = FindFieldByName(fieldName, StructSchema());
         if (HE_VERIFY(field.IsValid(),
@@ -633,11 +805,11 @@ namespace he::schema
             HE_KV(struct_name, Schema().GetName()),
             HE_KV(requested_field_name, fieldName)))
         {
-            SetField(field, value);
+            Set(field, value);
         }
     }
 
-    DynamicValue::Builder DynamicStruct::Builder::InitField(Field::Reader field)
+    DynamicValue::Builder DynamicStruct::Builder::Init(Field::Reader field)
     {
         if (!field.IsValid())
             return DynamicValue::Builder{};
@@ -691,13 +863,13 @@ namespace he::schema
                         }
 
                         const Declaration::Reader decl = GetSchema(*info);
-                        const Declaration::Data::Struct::Reader structDecl = decl.GetData().GetStruct();
-                        const StructBuilder builder = m_builder.GetBuilder()->AddStruct(structDecl.GetDataFieldCount(), structDecl.GetDataWordSize(), structDecl.GetPointerCount());
+                        const Declaration::Data::Struct::Reader fieldStructDecl = decl.GetData().GetStruct();
+                        const StructBuilder builder = m_builder.GetBuilder()->AddStruct(fieldStructDecl.GetDataFieldCount(), fieldStructDecl.GetDataWordSize(), fieldStructDecl.GetPointerCount());
                         m_builder.GetPointerField(index).Set(builder);
                         return DynamicStruct::Builder(*info, builder);
                     }
                     default:
-                        HE_VERIFY(false, HE_MSG("InitField without a size is only valid for struct fields"), HE_KV(field_type, typeData.GetUnionTag()));
+                        HE_VERIFY(false, HE_MSG("Init without a size is only valid for struct fields"), HE_KV(field_type, typeData.GetUnionTag()));
                         return DynamicStruct::Builder{};
                 }
 
@@ -705,7 +877,7 @@ namespace he::schema
             }
             case Field::Meta::UnionTag::Group:
             {
-                ClearField(field);
+                Clear(field);
                 const Field::Meta::Group::Reader group = field.GetMeta().GetGroup();
                 const DeclInfo* info = FindDependency(*m_info, group.GetTypeId());
                 const bool valid = HE_VERIFY(info,
@@ -717,7 +889,7 @@ namespace he::schema
             }
             case Field::Meta::UnionTag::Union:
             {
-                ClearField(field);
+                Clear(field);
                 const Field::Meta::Union::Reader group = field.GetMeta().GetUnion();
                 const DeclInfo* info = FindDependency(*m_info, group.GetTypeId());
                 const bool valid = HE_VERIFY(info,
@@ -728,19 +900,21 @@ namespace he::schema
                 return valid ? DynamicStruct::Builder(*info, m_builder) : DynamicValue::Builder{};
             }
         }
+
+        return DynamicValue::Builder{};
     }
 
-    DynamicValue::Builder DynamicStruct::Builder::InitField(StringView fieldName)
+    DynamicValue::Builder DynamicStruct::Builder::Init(StringView fieldName)
     {
         const Field::Reader field = FindFieldByName(fieldName, StructSchema());
         const bool valid = HE_VERIFY(field.IsValid(),
             HE_MSG("Field requested from DynamicStruct that is not a member of the schema."),
             HE_KV(struct_name, Schema().GetName()),
             HE_KV(requested_field_name, fieldName));
-        return valid ? InitField(field) : DynamicValue::Builder{};
+        return valid ? Init(field) : DynamicValue::Builder{};
     }
 
-    DynamicValue::Builder DynamicStruct::Builder::InitField(Field::Reader field, uint32_t size)
+    DynamicValue::Builder DynamicStruct::Builder::Init(Field::Reader field, uint32_t size)
     {
         if (!field.IsValid())
             return DynamicValue::Builder{};
@@ -760,7 +934,7 @@ namespace he::schema
         SetInUnion(field);
 
         if (!HE_VERIFY(field.GetMeta().IsNormal(),
-            HE_MSG("InitField with a size is only valid for blob, string, and list fields"),
+            HE_MSG("Init with a size is only valid for blob, string, and list fields"),
             HE_KV(field_kind, field.GetMeta().GetUnionTag())))
         {
             return DynamicStruct::Builder{};
@@ -812,28 +986,28 @@ namespace he::schema
                 }
 
                 const Declaration::Reader decl = GetSchema(*info);
-                const Declaration::Data::Struct::Reader structDecl = decl.GetData().GetStruct();
-                ListBuilder list = m_builder.GetBuilder()->AddStructList(size, structDecl.GetDataFieldCount(), structDecl.GetDataWordSize(), structDecl.GetPointerCount());
+                const Declaration::Data::Struct::Reader fieldStructDecl = decl.GetData().GetStruct();
+                ListBuilder list = m_builder.GetBuilder()->AddStructList(size, fieldStructDecl.GetDataFieldCount(), fieldStructDecl.GetDataWordSize(), fieldStructDecl.GetPointerCount());
                 m_builder.GetPointerField(index).Set(list);
                 return DynamicList::Builder(*m_info, type, list);
             }
             default:
-                HE_VERIFY(false, HE_MSG("InitField with a size is only valid for blob, string, and list fields"), HE_KV(field_type, typeData.GetUnionTag()));
+                HE_VERIFY(false, HE_MSG("Init with a size is only valid for blob, string, and list fields"), HE_KV(field_type, typeData.GetUnionTag()));
                 return DynamicStruct::Builder{};
         }
     }
 
-    DynamicValue::Builder DynamicStruct::Builder::InitField(StringView fieldName, uint32_t size)
+    DynamicValue::Builder DynamicStruct::Builder::Init(StringView fieldName, uint32_t size)
     {
         const Field::Reader field = FindFieldByName(fieldName, StructSchema());
         const bool valid = HE_VERIFY(field.IsValid(),
             HE_MSG("Field requested from DynamicStruct that is not a member of the schema."),
             HE_KV(struct_name, Schema().GetName()),
             HE_KV(requested_field_name, fieldName));
-        return valid ? InitField(field, size) : DynamicValue::Builder{};
+        return valid ? Init(field, size) : DynamicValue::Builder{};
     }
 
-    void DynamicStruct::Builder::ClearField(Field::Reader field)
+    void DynamicStruct::Builder::Clear(Field::Reader field)
     {
         if (!field.IsValid())
             return;
@@ -880,9 +1054,9 @@ namespace he::schema
                 }
 
                 DynamicStruct::Builder builder(*info, m_builder);
-                for (const Field::Reader field : builder.StructSchema().GetFields())
+                for (const Field::Reader groupField : builder.StructSchema().GetFields())
                 {
-                    builder.ClearField(field);
+                    builder.Clear(groupField);
                 }
             }
             case Field::Meta::UnionTag::Union:
@@ -900,12 +1074,12 @@ namespace he::schema
 
                 DynamicStruct::Builder builder(*info, m_builder);
                 const Field::Reader unionField = builder.ActiveUnionField();
-                builder.ClearField(unionField);
+                builder.Clear(unionField);
             }
         }
     }
 
-    void DynamicStruct::Builder::ClearField(StringView fieldName)
+    void DynamicStruct::Builder::Clear(StringView fieldName)
     {
         const Field::Reader field = FindFieldByName(fieldName, StructSchema());
         if (HE_VERIFY(field.IsValid(),
@@ -913,28 +1087,23 @@ namespace he::schema
             HE_KV(struct_name, Schema().GetName()),
             HE_KV(requested_field_name, fieldName)))
         {
-            ClearField(field);
+            Clear(field);
         }
     }
 
-    bool DynamicStruct::Builder::HasField(Field::Reader field) const
+    bool DynamicStruct::Builder::Has(Field::Reader field) const
     {
-        return AsReader().HasField(field);
+        return AsReader().Has(field);
     }
 
-    bool DynamicStruct::Builder::HasField(StringView fieldName) const
+    bool DynamicStruct::Builder::Has(StringView fieldName) const
     {
         const Field::Reader field = FindFieldByName(fieldName, StructSchema());
         const bool valid = HE_VERIFY(field.IsValid(),
             HE_MSG("Field requested from DynamicStruct that is not a member of the schema."),
             HE_KV(struct_name, Schema().GetName()),
             HE_KV(requested_field_name, fieldName));
-        return valid ? HasField(field) : false;
-    }
-
-    bool DynamicStruct::Builder::IsActiveInUnion(Field::Reader field) const
-    {
-        return IsActiveInUnion(*m_info, field);
+        return valid ? Has(field) : false;
     }
 
     Field::Reader DynamicStruct::Builder::ActiveUnionField() const
@@ -956,9 +1125,9 @@ namespace he::schema
         m_builder.SetDataField<uint16_t>(structDecl.GetUnionTagOffset(), field.GetUnionTag());
     }
 
-    bool DynamicStruct::Builder::IsActiveInUnion(const DeclInfo& info, Field::Reader field) const
+    bool DynamicStruct::Builder::IsActiveInUnion(Field::Reader field) const
     {
-        const Declaration::Reader decl = GetSchema(info);
+        const Declaration::Reader decl = GetSchema(*m_info);
 
         if (!decl.IsValid() || !decl.GetData().IsStruct() || !decl.GetData().GetStruct().GetIsUnion())
             return false;
@@ -969,15 +1138,173 @@ namespace he::schema
     }
 
     // --------------------------------------------------------------------------------------------
+    DynamicValue::Reader DynamicArray::Reader::Get(uint16_t index) const
+    {
+        if (!HE_VERIFY(index < Size()))
+            return DynamicValue::Reader{};
+
+        const Type::Reader elementType = ArrayType().GetElementType();
+        const Type::Data::Reader elementTypeData = elementType.GetData();
+
+        switch (elementTypeData.GetUnionTag())
+        {
+            case Type::Data::UnionTag::Void: return Void{};
+            case Type::Data::UnionTag::Bool: return static_cast<const bool*>(m_array)[index];
+            case Type::Data::UnionTag::Int8: return static_cast<const int8_t*>(m_array)[index];
+            case Type::Data::UnionTag::Int16: return static_cast<const int16_t*>(m_array)[index];
+            case Type::Data::UnionTag::Int32: return static_cast<const int32_t*>(m_array)[index];
+            case Type::Data::UnionTag::Int64: return static_cast<const int64_t*>(m_array)[index];
+            case Type::Data::UnionTag::Uint8: return static_cast<const uint8_t*>(m_array)[index];
+            case Type::Data::UnionTag::Uint16: return static_cast<const uint16_t*>(m_array)[index];
+            case Type::Data::UnionTag::Uint32: return static_cast<const uint32_t*>(m_array)[index];
+            case Type::Data::UnionTag::Uint64: return static_cast<const uint64_t*>(m_array)[index];
+            case Type::Data::UnionTag::Float32: return static_cast<const float*>(m_array)[index];
+            case Type::Data::UnionTag::Float64: return static_cast<const double*>(m_array)[index];
+            case Type::Data::UnionTag::Blob: return m_list.GetPointerElement(index).TryGetBlob();
+            case Type::Data::UnionTag::String: return m_list.GetPointerElement(index).TryGetString();
+            case Type::Data::UnionTag::AnyPointer: return AnyPointer::Reader(m_list.GetPointerElement(index));
+            case Type::Data::UnionTag::AnyStruct: return AnyStruct::Reader(m_list.GetPointerElement(index));
+            case Type::Data::UnionTag::AnyList: return AnyList::Reader(m_list.GetPointerElement(index));
+            case Type::Data::UnionTag::Array:
+            {
+                HE_VERIFY(false, HE_MSG("Arrays of arrays are not supported."));
+                return DynamicValue::Reader{};
+            }
+            case Type::Data::UnionTag::List:
+            {
+                const ElementSize elementSize = GetTypeElementSize(elementType);
+                const ListReader list = m_list.GetPointerElement(index).TryGetList(elementSize);
+                return DynamicList::Reader(*m_scope, elementType, list);
+            }
+            case Type::Data::UnionTag::Enum:
+            {
+                const Type::Data::Enum::Reader enumType = elementTypeData.GetEnum();
+                const DeclInfo* info = FindDependency(*m_scope, enumType.GetId());
+                const bool valid = HE_VERIFY(info,
+                    HE_MSG("Field requested from DynamicStruct is an enum that has a missing type."),
+                    HE_KV(struct_name, GetSchema(*m_scope).GetName()),
+                    HE_KV(requested_type_id, enumType.GetId()));
+                const uint16_t value = static_cast<const uint16_t*>(m_array)[index];
+                return valid ? DynamicEnum(*info, value) : DynamicEnum{};
+            }
+            case Type::Data::UnionTag::Struct:
+            {
+                const Type::Data::Struct::Reader structType = elementTypeData.GetStruct();
+                const DeclInfo* info = FindDependency(*m_scope, structType.GetId());
+                const bool valid = HE_VERIFY(info,
+                    HE_MSG("Field requested from DynamicStruct is a struct that has a missing type."),
+                    HE_KV(struct_name, GetSchema(*m_scope).GetName()),
+                    HE_KV(requested_type_id, structType.GetId()));
+                const StructReader reader = m_list.GetPointerElement(index).TryGetStruct();
+                return valid ? DynamicStruct::Reader(*info, reader) : DynamicStruct::Reader{};
+            }
+            case Type::Data::UnionTag::Interface:
+            {
+                return DynamicValue::Reader{}; // Interfaces do not currently have values.
+            }
+            case Type::Data::UnionTag::Parameter:
+            {
+                return AnyPointer::Reader(m_list.GetPointerElement(index));
+            }
+        }
+
+        return DynamicValue::Reader{};
+    }
+
+    DynamicValue::Reader DynamicArray::Reader::operator[](uint16_t index) const
+    {
+        return Get(index);
+    }
+
+    // --------------------------------------------------------------------------------------------
+    DynamicValue::Builder DynamicArray::Builder::Get(uint16_t index) const
+    {
+        if (!HE_VERIFY(index < Size()))
+            return DynamicValue::Builder{};
+
+        const Type::Reader elementType = ArrayType().GetElementType();
+        const Type::Data::Reader elementTypeData = elementType.GetData();
+
+        switch (elementTypeData.GetUnionTag())
+        {
+            case Type::Data::UnionTag::Void: return Void{};
+            case Type::Data::UnionTag::Bool: return static_cast<const bool*>(m_array)[index];
+            case Type::Data::UnionTag::Int8: return static_cast<const int8_t*>(m_array)[index];
+            case Type::Data::UnionTag::Int16: return static_cast<const int16_t*>(m_array)[index];
+            case Type::Data::UnionTag::Int32: return static_cast<const int32_t*>(m_array)[index];
+            case Type::Data::UnionTag::Int64: return static_cast<const int64_t*>(m_array)[index];
+            case Type::Data::UnionTag::Uint8: return static_cast<const uint8_t*>(m_array)[index];
+            case Type::Data::UnionTag::Uint16: return static_cast<const uint16_t*>(m_array)[index];
+            case Type::Data::UnionTag::Uint32: return static_cast<const uint32_t*>(m_array)[index];
+            case Type::Data::UnionTag::Uint64: return static_cast<const uint64_t*>(m_array)[index];
+            case Type::Data::UnionTag::Float32: return static_cast<const float*>(m_array)[index];
+            case Type::Data::UnionTag::Float64: return static_cast<const double*>(m_array)[index];
+            case Type::Data::UnionTag::Blob: return m_list.GetPointerElement(index).TryGetBlob();
+            case Type::Data::UnionTag::String: return m_list.GetPointerElement(index).TryGetString();
+            case Type::Data::UnionTag::AnyPointer: return AnyPointer::Builder(m_list.GetPointerElement(index));
+            case Type::Data::UnionTag::AnyStruct: return AnyStruct::Builder(m_list.GetPointerElement(index));
+            case Type::Data::UnionTag::AnyList: return AnyList::Builder(m_list.GetPointerElement(index));
+            case Type::Data::UnionTag::Array:
+            {
+                HE_VERIFY(false, HE_MSG("Arrays of arrays are not supported."));
+                return DynamicValue::Builder{};
+            }
+            case Type::Data::UnionTag::List:
+            {
+                const ElementSize elementSize = GetTypeElementSize(elementType);
+                const ListBuilder list = m_list.GetPointerElement(index).TryGetList(elementSize);
+                return DynamicList::Builder(*m_scope, elementType, list);
+            }
+            case Type::Data::UnionTag::Enum:
+            {
+                const Type::Data::Enum::Reader enumType = elementTypeData.GetEnum();
+                const DeclInfo* info = FindDependency(*m_scope, enumType.GetId());
+                const bool valid = HE_VERIFY(info,
+                    HE_MSG("Field requested from DynamicStruct is an enum that has a missing type."),
+                    HE_KV(struct_name, GetSchema(*m_scope).GetName()),
+                    HE_KV(requested_type_id, enumType.GetId()));
+                const uint16_t value = static_cast<const uint16_t*>(m_array)[index];
+                return valid ? DynamicEnum(*info, value) : DynamicEnum{};
+            }
+            case Type::Data::UnionTag::Struct:
+            {
+                const Type::Data::Struct::Reader structType = elementTypeData.GetStruct();
+                const DeclInfo* info = FindDependency(*m_scope, structType.GetId());
+                const bool valid = HE_VERIFY(info,
+                    HE_MSG("Field requested from DynamicStruct is a struct that has a missing type."),
+                    HE_KV(struct_name, GetSchema(*m_scope).GetName()),
+                    HE_KV(requested_type_id, structType.GetId()));
+                const StructBuilder builder = m_list.GetPointerElement(index).TryGetStruct();
+                return valid ? DynamicStruct::Builder(*info, builder) : DynamicStruct::Builder{};
+            }
+            case Type::Data::UnionTag::Interface:
+            {
+                return DynamicValue::Builder{}; // Interfaces do not currently have values.
+            }
+            case Type::Data::UnionTag::Parameter:
+            {
+                return AnyPointer::Builder(m_list.GetPointerElement(index));
+            }
+        }
+
+        return DynamicValue::Builder{};
+    }
+
+    DynamicValue::Builder DynamicArray::Builder::operator[](uint16_t index) const
+    {
+        return Get(index);
+    }
+
+    // --------------------------------------------------------------------------------------------
     DynamicValue::Reader DynamicList::Reader::Get(uint32_t index) const
     {
         if (!HE_VERIFY(index < Size()))
             return DynamicValue::Reader{};
 
-        const Type::Data::List::Reader listType = m_type.GetData().GetList();
-        const Type::Reader elementType = listType.GetElementType();
+        const Type::Reader elementType = ListType().GetElementType();
+        const Type::Data::Reader elementTypeData = elementType.GetData();
 
-        switch (elementType.GetData().GetUnionTag())
+        switch (elementTypeData.GetUnionTag())
         {
             case Type::Data::UnionTag::Void: return m_reader.GetDataElement<Void>(index);
             case Type::Data::UnionTag::Bool: return m_reader.GetDataElement<bool>(index);
@@ -998,33 +1325,33 @@ namespace he::schema
             case Type::Data::UnionTag::AnyList: return AnyList::Reader(m_reader.GetPointerElement(index));
             case Type::Data::UnionTag::Array:
             {
-                // TODO: DynamicArray
-                break;
+                HE_VERIFY(false, HE_MSG("Lists of arrays are not supported."));
+                return DynamicValue::Reader{};
             }
             case Type::Data::UnionTag::List:
             {
                 const ElementSize elementSize = GetTypeElementSize(elementType);
                 const ListReader list = m_reader.GetPointerElement(index).TryGetList(elementSize);
-                return DynamicList::Reader(*m_parentInfo, elementType, list);
+                return DynamicList::Reader(*m_scope, elementType, list);
             }
             case Type::Data::UnionTag::Enum:
             {
-                const Type::Data::Enum::Reader enumType = elementType.GetData().GetEnum();
-                const DeclInfo* info = FindDependency(*m_parentInfo, enumType.GetId());
+                const Type::Data::Enum::Reader enumType = elementTypeData.GetEnum();
+                const DeclInfo* info = FindDependency(*m_scope, enumType.GetId());
                 const bool valid = HE_VERIFY(info,
                     HE_MSG("Field requested from DynamicStruct is an enum that has a missing type."),
-                    HE_KV(struct_name, GetSchema(*m_parentInfo).GetName()),
+                    HE_KV(struct_name, GetSchema(*m_scope).GetName()),
                     HE_KV(requested_type_id, enumType.GetId()));
                 const uint16_t value = m_reader.GetDataElement<uint16_t>(index);
                 return valid ? DynamicEnum(*info, value) : DynamicEnum{};
             }
             case Type::Data::UnionTag::Struct:
             {
-                const Type::Data::Struct::Reader structType = elementType.GetData().GetStruct();
-                const DeclInfo* info = FindDependency(*m_parentInfo, structType.GetId());
+                const Type::Data::Struct::Reader structType = elementTypeData.GetStruct();
+                const DeclInfo* info = FindDependency(*m_scope, structType.GetId());
                 const bool valid = HE_VERIFY(info,
                     HE_MSG("Field requested from DynamicStruct is a struct that has a missing type."),
-                    HE_KV(struct_name, GetSchema(*m_parentInfo).GetName()),
+                    HE_KV(struct_name, GetSchema(*m_scope).GetName()),
                     HE_KV(requested_type_id, structType.GetId()));
                 const StructReader reader = m_reader.GetCompositeElement(index);
                 return valid ? DynamicStruct::Reader(*info, reader) : DynamicStruct::Reader{};
@@ -1042,16 +1369,21 @@ namespace he::schema
         return DynamicValue::Reader{};
     }
 
+    DynamicValue::Reader DynamicList::Reader::operator[](uint32_t index) const
+    {
+        return Get(index);
+    }
+
     // --------------------------------------------------------------------------------------------
     DynamicValue::Builder DynamicList::Builder::Get(uint32_t index) const
     {
         if (!HE_VERIFY(index < Size()))
             return DynamicValue::Builder{};
 
-        const Type::Data::List::Reader listType = m_type.GetData().GetList();
-        const Type::Reader elementType = listType.GetElementType();
+        const Type::Reader elementType = ListType().GetElementType();
+        const Type::Data::Reader elementTypeData = elementType.GetData();
 
-        switch (elementType.GetData().GetUnionTag())
+        switch (elementTypeData.GetUnionTag())
         {
             case Type::Data::UnionTag::Void: return m_builder.GetDataElement<Void>(index);
             case Type::Data::UnionTag::Bool: return m_builder.GetDataElement<bool>(index);
@@ -1072,33 +1404,33 @@ namespace he::schema
             case Type::Data::UnionTag::AnyList: return AnyList::Builder(m_builder.GetPointerElement(index));
             case Type::Data::UnionTag::Array:
             {
-                // TODO: DynamicArray
-                break;
+                HE_VERIFY(false, HE_MSG("Lists of arrays are not supported."));
+                return DynamicValue::Builder{};
             }
             case Type::Data::UnionTag::List:
             {
                 const ElementSize elementSize = GetTypeElementSize(elementType);
                 const ListBuilder list = m_builder.GetPointerElement(index).TryGetList(elementSize);
-                return DynamicList::Builder(*m_parentInfo, elementType, list);
+                return DynamicList::Builder(*m_scope, elementType, list);
             }
             case Type::Data::UnionTag::Enum:
             {
-                const Type::Data::Enum::Reader enumType = elementType.GetData().GetEnum();
-                const DeclInfo* info = FindDependency(*m_parentInfo, enumType.GetId());
+                const Type::Data::Enum::Reader enumType = elementTypeData.GetEnum();
+                const DeclInfo* info = FindDependency(*m_scope, enumType.GetId());
                 const bool valid = HE_VERIFY(info,
                     HE_MSG("Field requested from DynamicStruct is an enum that has a missing type."),
-                    HE_KV(struct_name, GetSchema(*m_parentInfo).GetName()),
+                    HE_KV(struct_name, GetSchema(*m_scope).GetName()),
                     HE_KV(requested_type_id, enumType.GetId()));
                 const uint16_t value = m_builder.GetDataElement<uint16_t>(index);
                 return valid ? DynamicEnum(*info, value) : DynamicEnum{};
             }
             case Type::Data::UnionTag::Struct:
             {
-                const Type::Data::Struct::Reader structType = elementType.GetData().GetStruct();
-                const DeclInfo* info = FindDependency(*m_parentInfo, structType.GetId());
+                const Type::Data::Struct::Reader structType = elementTypeData.GetStruct();
+                const DeclInfo* info = FindDependency(*m_scope, structType.GetId());
                 const bool valid = HE_VERIFY(info,
                     HE_MSG("Field requested from DynamicStruct is a struct that has a missing type."),
-                    HE_KV(struct_name, GetSchema(*m_parentInfo).GetName()),
+                    HE_KV(struct_name, GetSchema(*m_scope).GetName()),
                     HE_KV(requested_type_id, structType.GetId()));
                 const StructBuilder builder = m_builder.GetCompositeElement(index);
                 return valid ? DynamicStruct::Builder(*info, builder) : DynamicStruct::Builder{};
@@ -1123,8 +1455,9 @@ namespace he::schema
 
         const Type::Data::List::Reader listType = m_type.GetData().GetList();
         const Type::Reader elementType = listType.GetElementType();
+        const Type::Data::Reader elementTypeData = elementType.GetData();
 
-        switch (elementType.GetData().GetUnionTag())
+        switch (elementTypeData.GetUnionTag())
         {
             case Type::Data::UnionTag::Void: m_builder.SetDataElement(index, value.As<Void>()); break;
             case Type::Data::UnionTag::Bool: m_builder.SetDataElement(index, value.As<bool>()); break;
@@ -1146,13 +1479,13 @@ namespace he::schema
             case Type::Data::UnionTag::Parameter:
             {
                 // TODO: Support these better
-                HE_LOGF_ERROR(he_schema, "Lists of AnyPointer types are not supported by DynamicList::Builder::Set()");
+                HE_VERIFY(false, HE_MSG("Lists of AnyPointer types are not supported by DynamicList::Builder::Set(), yet."));
                 break;
             }
             case Type::Data::UnionTag::Array:
             {
-                // TODO: DynamicArray
-                break;
+                HE_VERIFY(false, HE_MSG("Lists of arrays are not supported."));
+                break;;
             }
             case Type::Data::UnionTag::List:
             {
@@ -1166,17 +1499,17 @@ namespace he::schema
             }
             case Type::Data::UnionTag::Enum:
             {
-                const uint16_t enumValue = GetEnumValue(*m_parentInfo, elementType, value);
+                const uint16_t enumValue = GetEnumValue(*m_scope, elementType, value);
                 m_builder.SetDataElement(index, enumValue);
                 break;
             }
             case Type::Data::UnionTag::Struct:
             {
-                const Type::Data::Struct::Reader structType = elementType.GetData().GetStruct();
-                const DeclInfo* info = FindDependency(*m_parentInfo, structType.GetId());
+                const Type::Data::Struct::Reader structType = elementTypeData.GetStruct();
+                const DeclInfo* info = FindDependency(*m_scope, structType.GetId());
                 if (!HE_VERIFY(info,
                     HE_MSG("Field requested from DynamicStruct is a struct that has a missing type."),
-                    HE_KV(struct_name, GetSchema(*m_parentInfo).GetName()),
+                    HE_KV(struct_name, GetSchema(*m_scope).GetName()),
                     HE_KV(requested_type_id, structType.GetId())))
                 {
                     return;
@@ -1201,7 +1534,7 @@ namespace he::schema
     DynamicValue::Builder DynamicList::Builder::Init(uint32_t index, uint32_t size)
     {
         if (!HE_VERIFY(index < Size()))
-            return;
+            return DynamicValue::Builder{};
 
         const Type::Data::List::Reader listType = m_type.GetData().GetList();
         const Type::Reader elementType = listType.GetElementType();
@@ -1213,13 +1546,13 @@ namespace he::schema
             {
                 Blob::Builder blob = m_builder.GetBuilder()->AddList<uint8_t>(size);
                 m_builder.GetPointerElement(index).Set(blob);
-                return DynamicList::Builder(*m_parentInfo, elementType, blob);
+                return DynamicList::Builder(*m_scope, elementType, blob);
             }
             case Type::Data::UnionTag::String:
             {
                 String::Builder str = String::Builder(m_builder.GetBuilder()->AddList<char>(size));
                 m_builder.GetPointerElement(index).Set(str);
-                return DynamicList::Builder(*m_parentInfo, elementType, str);
+                return DynamicList::Builder(*m_scope, elementType, str);
             }
             case Type::Data::UnionTag::List:
             {
@@ -1231,14 +1564,14 @@ namespace he::schema
                 {
                     ListBuilder list = m_builder.GetBuilder()->AddList(subElementSize, size);
                     m_builder.GetPointerElement(index).Set(list);
-                    return DynamicList::Builder(*m_parentInfo, subElementType, list);
+                    return DynamicList::Builder(*m_scope, subElementType, list);
                 }
 
                 const Type::Data::Struct::Reader structType = subElementType.GetData().GetStruct();
-                const DeclInfo* info = FindDependency(*m_parentInfo, structType.GetId());
+                const DeclInfo* info = FindDependency(*m_scope, structType.GetId());
                 if (!HE_VERIFY(info,
                     HE_MSG("Element requested from DynamicList is a list of structs that has a missing type."),
-                    HE_KV(struct_name, GetSchema(*m_parentInfo).GetName()),
+                    HE_KV(struct_name, GetSchema(*m_scope).GetName()),
                     HE_KV(requested_type_id, structType.GetId())))
                 {
                     return DynamicStruct::Builder{};
@@ -1248,7 +1581,7 @@ namespace he::schema
                 const Declaration::Data::Struct::Reader structDecl = decl.GetData().GetStruct();
                 ListBuilder list = m_builder.GetBuilder()->AddStructList(size, structDecl.GetDataFieldCount(), structDecl.GetDataWordSize(), structDecl.GetPointerCount());
                 m_builder.GetPointerElement(index).Set(list);
-                return DynamicList::Builder(*m_parentInfo, subElementType, list);
+                return DynamicList::Builder(*m_scope, subElementType, list);
             }
             default:
                 HE_VERIFY(false, HE_MSG("Init with a size is only valid for blob, string, and list elements"), HE_KV(element_type, elementTypeData.GetUnionTag()));
@@ -1256,142 +1589,10 @@ namespace he::schema
         }
     }
 
-    // --------------------------------------------------------------------------------------------
-    #define HE_DYNAMIC_VALUE_CLASS_AS_TYPE(member, kind, Class, Type) \
-        template <> typename TypeHelper<Type>::Class DynamicValue::Class::As<Type>() const \
-        { \
-            const bool valid = HE_VERIFY(m_kind == Kind::kind, \
-                HE_MSG("DynamicValue requested as a type it doesn't hold."), \
-                HE_KV(requested_type_name, TypeInfo::Get<Type>().Name()), \
-                HE_KV(actual_kind, m_kind)); \
-            return valid ? member : typename TypeHelper<Type>::Class{}; \
-        }
-
-    #define HE_DYNAMIC_VALUE_AS_TYPE(member, kind, Type) \
-        HE_DYNAMIC_VALUE_CLASS_AS_TYPE(member, kind, Reader, Type) \
-        HE_DYNAMIC_VALUE_CLASS_AS_TYPE(member, kind, Builder, Type)
-
-    HE_DYNAMIC_VALUE_AS_TYPE(m_void, Void, Void)
-    HE_DYNAMIC_VALUE_AS_TYPE(m_bool, Bool, bool)
-    HE_DYNAMIC_VALUE_AS_TYPE(m_string, String, String)
-    HE_DYNAMIC_VALUE_AS_TYPE(m_blob, Blob, Blob)
-    HE_DYNAMIC_VALUE_AS_TYPE(m_list, List, DynamicList)
-    HE_DYNAMIC_VALUE_AS_TYPE(m_enum, Enum, DynamicEnum)
-    HE_DYNAMIC_VALUE_AS_TYPE(m_struct, Struct, DynamicStruct)
-    HE_DYNAMIC_VALUE_AS_TYPE(m_anyPointer, AnyPointer, AnyPointer)
-
-    #undef HE_DYNAMIC_VALUE_AS_TYPE
-    #undef HE_DYNAMIC_VALUE_CLASS_AS_TYPE
-
-    // --------------------------------------------------------------------------------------------
-    template <typename T, typename U>
-    T CoerceInteger(U value)
+    DynamicValue::Builder DynamicList::Builder::operator[](uint32_t index) const
     {
-        const T result = static_cast<T>(value);
-        HE_VERIFY(static_cast<U>(result) == value,
-            HE_MSG("Value out of range for requested type."),
-            HE_KV(requested_type, TypeInfo::Get<T>().Name()),
-            HE_KV(value, value));
-        return result;
+        return Get(index);
     }
-
-    template <typename T>
-    T CoerceSignedToUnsigned(long long value)
-    {
-        HE_VERIFY(value >= 0 && static_cast<T>(value) == value,
-            HE_MSG("Value out of range for requested type."),
-            HE_KV(requested_type, TypeInfo::Get<T>().Name()),
-            HE_KV(value, value));
-        return value;
-    }
-
-    template <>
-    uint64_t CoerceSignedToUnsigned<uint64_t>(long long value)
-    {
-        HE_VERIFY(value >= 0,
-            HE_MSG("Value out of range for requested type."),
-            HE_KV(requested_type, TypeInfo::Get<uint64_t>().Name()),
-            HE_KV(value, value));
-        return value;
-    }
-
-    template <typename T>
-    T CoerceUnsignedToSigned(unsigned long long value)
-    {
-        const T result = static_cast<T>(value);
-        HE_VERIFY(result >= 0 && static_cast<unsigned long long>(result) == value,
-            HE_MSG("Value out of range for requested type."),
-            HE_KV(requested_type, TypeInfo::Get<T>().Name()),
-            HE_KV(value, value));
-        return result;
-    }
-
-    template <>
-    int64_t CoerceUnsignedToSigned<int64_t>(unsigned long long value)
-    {
-        const int64_t result = static_cast<int64_t>(value);
-        HE_VERIFY(result >= 0,
-            HE_MSG("Value out of range for requested type."),
-            HE_KV(requested_type, TypeInfo::Get<int64_t>().Name()),
-            HE_KV(value, value));
-        return result;
-    }
-
-    template <typename T, std::floating_point U>
-    T CoerceFloat(U value)
-    {
-        constexpr T min = std::numeric_limits<T>::lowest();
-        constexpr T max = std::numeric_limits<T>::max();
-        HE_VERIFY(value >= static_cast<U>(min) && value <= static_cast<U>(max),
-            HE_MSG("Value out of range for requested type."),
-            HE_KV(requested_type, TypeInfo::Get<T>().Name()),
-            HE_KV(value, value));
-
-        const T result = static_cast<T>(value);
-        HE_VERIFY(static_cast<U>(result) == value,
-            HE_MSG("Value out of range for requested type."),
-            HE_KV(requested_type, TypeInfo::Get<T>().Name()),
-            HE_KV(value, value));
-        return result;
-    }
-
-    template <typename T, typename U>
-    T ImplicitCast(U&& value) { return Forward<U>(value); }
-
-    #define HE_DYNAMIC_VALUE_CLASS_AS_NUMERIC_TYPE(Class, Type, coerceInt, coerceUint, coerceFloat) \
-        template <> Type DynamicValue::Class::As<Type>() const \
-        { \
-            switch (m_kind) \
-            { \
-                case Kind::Int: return coerceInt<Type>(m_int); \
-                case Kind::Uint: return coerceUint<Type>(m_uint); \
-                case Kind::Float: return coerceFloat<Type>(m_float); \
-                default: \
-                    HE_VERIFY(false, \
-                        HE_MSG("DynamicValue requested as a numeric type, but it doesn't hold a numeric type."), \
-                        HE_KV(requested_type_name, TypeInfo::Get<Type>().Name()), \
-                        HE_KV(actual_kind, m_kind)); \
-                    return Type{}; \
-            } \
-        }
-
-    #define HE_DYNAMIC_VALUE_AS_NUMERIC_TYPE(Type, coerceInt, coerceUint, coerceFloat) \
-        HE_DYNAMIC_VALUE_CLASS_AS_NUMERIC_TYPE(Reader, Type, coerceInt, coerceUint, coerceFloat) \
-        HE_DYNAMIC_VALUE_CLASS_AS_NUMERIC_TYPE(Builder, Type, coerceInt, coerceUint, coerceFloat)
-
-    HE_DYNAMIC_VALUE_AS_NUMERIC_TYPE(int8_t, CoerceInteger, CoerceUnsignedToSigned, CoerceFloat)
-    HE_DYNAMIC_VALUE_AS_NUMERIC_TYPE(int16_t, CoerceInteger, CoerceUnsignedToSigned, CoerceFloat)
-    HE_DYNAMIC_VALUE_AS_NUMERIC_TYPE(int32_t, CoerceInteger, CoerceUnsignedToSigned, CoerceFloat)
-    HE_DYNAMIC_VALUE_AS_NUMERIC_TYPE(int64_t, ImplicitCast, CoerceUnsignedToSigned, CoerceFloat)
-    HE_DYNAMIC_VALUE_AS_NUMERIC_TYPE(uint8_t, CoerceSignedToUnsigned, CoerceInteger, CoerceFloat)
-    HE_DYNAMIC_VALUE_AS_NUMERIC_TYPE(uint16_t, CoerceSignedToUnsigned, CoerceInteger, CoerceFloat)
-    HE_DYNAMIC_VALUE_AS_NUMERIC_TYPE(uint32_t, CoerceSignedToUnsigned, CoerceInteger, CoerceFloat)
-    HE_DYNAMIC_VALUE_AS_NUMERIC_TYPE(uint64_t, CoerceSignedToUnsigned, ImplicitCast, CoerceFloat)
-    HE_DYNAMIC_VALUE_AS_NUMERIC_TYPE(float, ImplicitCast, ImplicitCast, ImplicitCast)
-    HE_DYNAMIC_VALUE_AS_NUMERIC_TYPE(double, ImplicitCast, ImplicitCast, ImplicitCast)
-
-    #undef HE_DYNAMIC_VALUE_AS_NUMERIC_TYPE
-    #undef HE_DYNAMIC_VALUE_CLASS_AS_NUMERIC_TYPE
 }
 
 namespace he
@@ -1409,6 +1610,7 @@ namespace he
             case schema::DynamicValue::Kind::Float: return "Float";
             case schema::DynamicValue::Kind::Blob: return "Blob";
             case schema::DynamicValue::Kind::String: return "String";
+            case schema::DynamicValue::Kind::Array: return "Array";
             case schema::DynamicValue::Kind::List: return "List";
             case schema::DynamicValue::Kind::Enum: return "Enum";
             case schema::DynamicValue::Kind::Struct: return "Struct";

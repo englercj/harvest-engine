@@ -9,25 +9,17 @@
 #include "he/core/types.h"
 #include "he/core/unique_ptr.h"
 #include "he/core/vector.h"
-#include "he/schema/schema.h"
+#include "he/schema/dynamic.h"
 #include "he/schema/layout.h"
+#include "he/schema/schema.h"
 
 namespace he::editor
 {
     // --------------------------------------------------------------------------------------------
     struct AssetEditPathEntry
     {
-        schema::Field::Reader field{};  ///< The field being edited.
-        uint32_t listIndex{ 0 };        ///< Index for an array or list field.
-    };
-
-    // --------------------------------------------------------------------------------------------
-    struct AssetEditValue
-    {
-        AssetEditValue() : builder(), value(builder.AddStruct<schema::Value>()) {}
-
-        schema::Builder builder;
-        schema::Value::Builder value;
+        he::schema::Field::Reader field{};              ///< The field being edited.
+        uint32_t listIndex{ 0 };                        ///< Index for an array or list field.
     };
 
     // --------------------------------------------------------------------------------------------
@@ -37,15 +29,15 @@ namespace he::editor
         {
             AddListItem,
             RemoveListItem,
-            SetUnionTag,
             SetValue,
-            ResetToDefault,
+            InitValue,
+            ClearValue,
         };
 
         Kind kind{ Kind::SetValue };
         Vector<AssetEditPathEntry> path{};
-        AssetEditValue value{};
-        AssetEditValue previousValue{};
+        he::schema::DynamicValue::Builder value{};
+        he::schema::DynamicValue::Builder previousValue{};
     };
 
     // --------------------------------------------------------------------------------------------
@@ -59,6 +51,7 @@ namespace he::editor
             return action;
         }
 
+        he::schema::Builder m_builder{};
         String name{};
         Vector<AssetEditPathEntry> path{};
         Vector<AssetEditAction> actions{};
@@ -68,8 +61,12 @@ namespace he::editor
     class AssetEditContext
     {
     public:
-        schema::StructBuilder& Data() { return m_data; }
-        const schema::DeclInfo& DeclInfo() { return *m_declInfo; }
+        he::schema::Builder& Builder() { return m_builder; }
+        const he::schema::Builder& Builder() const { return m_builder; }
+
+        he::schema::DynamicStruct::Builder& Data() { return m_data; }
+        const he::schema::DynamicStruct::Builder& Data() const { return m_data; }
+
         Span<const AssetEdit> Edits() const { return m_edits; }
 
         void PushEdit(AssetEdit&& edit);
@@ -85,9 +82,8 @@ namespace he::editor
         void UndoAction(AssetEditAction& action);
 
     private:
-        schema::Builder m_builder{};
-        schema::StructBuilder m_data{};
-        const schema::DeclInfo* m_declInfo{ nullptr };
+        he::schema::Builder m_builder{};
+        he::schema::DynamicStruct::Builder m_data{};
 
         Vector<AssetEdit> m_edits{};
         uint32_t m_activeEditCount{ 0 };

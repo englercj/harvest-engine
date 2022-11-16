@@ -1,5 +1,6 @@
 // Copyright Chad Engler
 
+#include "he/assets/asset_editors.h"
 #include "he/assets/asset_type_registry.h"
 #include "he/assets/types.h"
 #include "he/assets/compilers/texture2d_compiler.h"
@@ -7,10 +8,14 @@
 #include "he/core/module_registry.h"
 #include "he/core/types.h"
 
+#include "services/type_edit_ui_service.h"
+
 #include "encoder/basisu_enc.h"
 
 namespace he::assets
 {
+    Module* g_assetEditorModule = nullptr;
+
     class AssetEditorModule : public Module
     {
         void Register() override
@@ -29,6 +34,9 @@ namespace he::assets
 
         bool Startup() override
         {
+            HE_ASSERT(!g_assetEditorModule);
+            g_assetEditorModule = this;
+
             ModuleRegistry& registry = Registry();
 
             AssetTypeRegistry& types = registry.GetApi<AssetTypeRegistry>();
@@ -41,6 +49,13 @@ namespace he::assets
             //    editor->RegisterAssetDocument<schema::Texture, TextureDocument>();
             //}
 
+            editor::TypeEditUIService& editors = registry.GetApi<editor::TypeEditUIService>();
+            editors.RegisterTypeEditor<schema::Vec2f>({ true, &Vec2fEditor });
+            editors.RegisterTypeEditor<schema::Vec3f>({ true, &Vec3fEditor });
+
+            editors.RegisterFieldEditor<schema::Asset>("uuid", { true, &AssetUuidFieldEditor });
+            editors.RegisterFieldEditor<schema::Asset>("data", { false, &AssetDataFieldEditor });
+
             basisu::basisu_encoder_init();
 
             return true;
@@ -52,6 +67,13 @@ namespace he::assets
 
             ModuleRegistry& registry = Registry();
 
+            //editor::TypeEditUIService& editors = registry.GetApi<editor::TypeEditUIService>();
+            //editors.RegisterTypeEditor<schema::Vec2f>({ true, &Vec2fEditor });
+            //editors.RegisterTypeEditor<schema::Vec3f>({ true, &Vec3fEditor });
+
+            //editors.RegisterFieldEditor(he::schema::FindFieldByName<schema::Asset>("uuid"), { true, &AssetUuidFieldEditor });
+            //editors.RegisterFieldEditor(he::schema::FindFieldByName<schema::Asset>("data"), { true, &AssetDataFieldEditor });
+
             //EditorDocumentRegistry* editor = registry.FindApi<EditorDocumentRegistry>();
             //if (editor)
             //{
@@ -61,6 +83,9 @@ namespace he::assets
             AssetTypeRegistry& types = registry.GetApi<AssetTypeRegistry>();
             types.UnregisterAssetType<schema::Texture2D>();
             types.UnregisterImporter<ImageImporter>();
+
+            HE_ASSERT(g_assetEditorModule);
+            g_assetEditorModule = nullptr;
         }
     };
 }

@@ -23,12 +23,12 @@
 /// Exports a Harvest module to be usable by the module system.
 #if HE_CFG_MODULE_TYPE == HE_MODULE_TYPE_SHARED_LIB
     #define HE_EXPORT_MODULE(Impl) \
-        extern "C" HE_DLL_EXPORT const char* GetHarvestModuleName() { return HE_CFG_MODULE_NAME; } \
+        extern "C" HE_DLL_EXPORT const char* GetHarvestModuleName() { return HE_STRINGIFY(HE_CFG_MODULE_NAME); } \
         extern "C" HE_DLL_EXPORT ::he::TypeInfo GetHarvestModuleTypeInfo() { return ::he::TypeInfo::Get<Impl>(); } \
         extern "C" HE_DLL_EXPORT ::he::UniquePtr<::he::Module> CreateHarvestModule() { return ::he::MakeUnique<Impl>(); }
 #else
     #define HE_EXPORT_MODULE(Impl) \
-        static ::he::StaticModuleRegistrar<Impl> HE_UNIQUE_NAME(StaticModuleRegistrar){ HE_CFG_MODULE_NAME }
+        extern "C" HE_RETAIN ::he::StaticModuleRegistrar<Impl> HE_PP_JOIN(HE_CFG_MODULE_NAME, _ModuleRegistrar){ HE_STRINGIFY(HE_CFG_MODULE_NAME) }
 #endif
 
 namespace he
@@ -60,7 +60,7 @@ namespace he
     // --------------------------------------------------------------------------------------------
 
     /// Interface for a module.
-    class Module
+    class HE_DLL_EXPORT Module
     {
     public:
         virtual ~Module() = default;
@@ -160,8 +160,7 @@ namespace he
             void(*destroy)(const void*){ nullptr };
         };
 
-    private:
-        static Vector<StaticModule> s_staticModules;
+        static Vector<ModuleRegistry::StaticModule>& StaticModules();
 
     private:
         Vector<ModuleEntry> m_modules{};

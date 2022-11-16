@@ -9,6 +9,7 @@
 
 namespace he::editor
 {
+    class TypeEditUIService;
     struct AssetEdit;
 
     // --------------------------------------------------------------------------------------------
@@ -71,5 +72,5 @@ namespace he::editor
     /// \param[in] data The structure to build a property grid for.
     /// \param[in] declInfo The decaration info that describes the structure in `data`.
     /// \param[out] edit The edit to adds changes into.
-    void PropertyGrid(schema::DynamicStruct::Builder& data, AssetEdit& edit);
+    void PropertyGrid(const schema::DynamicStruct::Reader& data, TypeEditUIService& service, AssetEdit& edit);
 }

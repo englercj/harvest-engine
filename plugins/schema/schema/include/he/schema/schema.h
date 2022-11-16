@@ -22,6 +22,11 @@ namespace he::schema
         return FNV64::HashData(name.Data(), name.Size(), parentId) | TypeIdFlag;
     }
 
+    constexpr bool IsTypeId(TypeId id)
+    {
+        return HasFlag(id, TypeIdFlag);
+    }
+
     constexpr bool IsSignedIntegral(Type::Data::UnionTag t)
     {
         switch (t)
@@ -236,6 +241,13 @@ namespace he::schema
     {
         const DeclInfo& I = Declaration::DeclInfo;
         return Declaration::Reader(StructReader(info.schema, I.dataWordSize, I.pointerCount));
+    }
+
+    template <typename T>
+    inline Field::Reader FindFieldByName(StringView name)
+    {
+        const Declaration::Reader decl = GetSchema(T::DeclInfo);
+        return FindFieldByName(name, decl.GetData().GetStruct());
     }
 
     inline Field::Reader FindFieldByName(StringView name, Declaration::Data::Struct::Reader st)

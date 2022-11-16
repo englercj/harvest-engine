@@ -13,12 +13,22 @@ namespace he::assets
         schema::Asset::Reader asset;
 
         template <typename T>
-        bool GetResource(const AssetUuid& assetId, ResourceId resourceId, Vector<T>& data) const;
+        bool GetResource(const AssetUuid& assetId, ResourceId resourceId, Vector<T>& data) const
+        {
+            // TODO
+            HE_UNUSED(assetId, resourceId, data);
+            return true;
+        }
     };
 
     struct CompileResult
     {
-        bool AddResource(const AssetUuid& assetId, ResourceId resourceId, Span<const uint8_t> data);
+        bool AddResource(const AssetUuid& assetId, ResourceId resourceId, Span<const uint8_t> data)
+        {
+            // TODO
+            HE_UNUSED(assetId, resourceId, data);
+            return true;
+        }
     };
 
     class AssetCompiler

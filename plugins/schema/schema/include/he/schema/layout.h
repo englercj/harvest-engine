@@ -912,7 +912,7 @@ namespace he::schema
             {
                 HE_ASSERT(dataOffset < (static_cast<uint64_t>(m_dataWordSize - m_metaWordSize) * BitsPerWord));
             }
-            else
+            else if constexpr (!std::is_same_v<Void, T>)
             {
                 HE_ASSERT(((dataOffset + 1) * (sizeof(T) * BitsPerByte)) <= (static_cast<uint64_t>(m_dataWordSize - m_metaWordSize) * BitsPerWord));
             }
@@ -922,8 +922,11 @@ namespace he::schema
         template <DataType T>
         void SetAndMarkDataField(uint16_t index, uint32_t dataOffset, T value)
         {
-            SetDataField(dataOffset, value);
-            MarkHasDataField(index, true);
+            if constexpr (!std::is_same_v<Void, T>)
+            {
+                SetDataField(dataOffset, value);
+                MarkHasDataField(index, true);
+            }
         }
 
         void MarkDataField(uint16_t index) { MarkHasDataField(index, true); }

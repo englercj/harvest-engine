@@ -13,7 +13,7 @@ homepage = ""
     type = "windowed_app"
     group = "engine/tools"
     files = ["src/**"]
-    private_includedirs = ["src", "%{he.get_generated_dir('he_editor')}/src"]
+    public_includedirs = ["src", "%{he.get_generated_dir('he_editor')}/src"]
     private_defines = ["GOOGLE_PROTOBUF_INTERNAL_DONATE_STEAL_INLINE=0"]
     private_dependson = [
         "he_asset_editor",

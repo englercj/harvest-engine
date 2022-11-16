@@ -126,4 +126,7 @@ namespace he
 
     template <typename T, typename U>
     concept Exactly = std::is_same_v<T, U>;
+
+    template <typename T, typename... U>
+    concept AnyOf = (std::same_as<T, U> || ...);
 }

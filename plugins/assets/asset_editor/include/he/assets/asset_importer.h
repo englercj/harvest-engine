@@ -31,8 +31,19 @@ namespace he::assets
         /// operation.
         he::schema::Builder moreInfoBuilder{};
 
-        schema::Asset::Builder AddAsset(StringView assetTypeName, StringView name);
-        bool AddResource(const AssetUuid& assetId, ResourceId resourceId, Span<const uint8_t> data);
+        schema::Asset::Builder AddAsset(StringView assetTypeName, StringView name)
+        {
+            // TODO
+            HE_UNUSED(assetTypeName, name);
+            return {};
+        }
+
+        bool AddResource(const AssetUuid& assetId, ResourceId resourceId, Span<const uint8_t> data)
+        {
+            // TODO
+            HE_UNUSED(assetId, resourceId, data);
+            return {};
+        }
     };
 
     class AssetImporter

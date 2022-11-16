@@ -8,7 +8,11 @@
 
 namespace he
 {
-    Vector<ModuleRegistry::StaticModule> ModuleRegistry::s_staticModules;
+    Vector<ModuleRegistry::StaticModule>& ModuleRegistry::StaticModules()
+    {
+        static Vector<ModuleRegistry::StaticModule> s_staticModules{};
+        return s_staticModules;
+    }
 
     ModuleRegistry::~ModuleRegistry() noexcept
     {
@@ -17,7 +21,7 @@ namespace he
 
     void ModuleRegistry::LoadStaticModules()
     {
-        for (StaticModule& m : s_staticModules)
+        for (StaticModule& m : StaticModules())
         {
             ModuleEntry& entry = m_modules.EmplaceBack();
             entry.name = m.name;
@@ -108,6 +112,6 @@ namespace he
 
     void ModuleRegistry::RegisterStaticModule(const char* name, TypeInfo type, CreateModuleDelegate create)
     {
-        s_staticModules.PushBack({ name, type, create });
+        StaticModules().PushBack({ name, type, create });
     }
 }

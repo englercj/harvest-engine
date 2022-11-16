@@ -15,7 +15,8 @@
 
 namespace he::editor
 {
-    ImGuiDebugDocument::ImGuiDebugDocument() noexcept
+    ImGuiDebugDocument::ImGuiDebugDocument(TypeEditUIService& editUIService) noexcept
+        : m_editUIService(editUIService)
     {
         m_title = "ImGui Debugging";
     }
@@ -124,23 +125,25 @@ namespace he::editor
 
     void ImGuiDebugDocument::ShowPropertyGridTab()
     {
-        namespace as = assets::schema;
+        static AssetEditContext s_ctx;
 
-        static schema::Builder s_builder;
-        static as::Asset::Builder s_asset;
-
-        if (!s_asset.IsValid())
+        if (s_ctx.Builder().Root().IsNull())
         {
-            s_asset = s_builder.AddStruct<as::Asset>();
-            FillUuidV4(s_asset.InitUuid());
-            s_asset.InitType(as::Texture2D::AssetTypeName);
-            s_asset.InitName("Test Texture");
+            assets::schema::Asset::Builder asset = s_ctx.Builder().AddStruct<assets::schema::Asset>();
+            FillUuidV4(asset.InitUuid());
+            asset.InitType(assets::schema::Texture2D::AssetTypeName);
+            asset.InitName("Test Texture");
 
-            as::Texture2D::Builder tex = s_builder.AddStruct<as::Texture2D>();
-            s_asset.GetData().Set(tex);
+            assets::schema::Texture2D::Builder tex = s_ctx.Builder().AddStruct<assets::schema::Texture2D>();
+            asset.GetData().Set(tex);
+
+            s_ctx.Builder().SetRoot(asset);
+            s_ctx.Data() = he::schema::DynamicStruct::Builder{ assets::schema::Asset::DeclInfo, asset };
         }
 
         AssetEdit edit;
-        PropertyGrid(s_asset, edit);
+        PropertyGrid(s_ctx.Data().AsReader(), m_editUIService, edit);
+
+        s_ctx.PushEdit(Move(edit));
     }
 }

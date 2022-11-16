@@ -5,11 +5,13 @@ return function (ctx)
 
             -- Prevent link-time stripping of symbols from the library being tested.
             -- Without this test cases are removed because they are not referenced anywhere.
-            filter { "toolset:msc-*", "language:C++" }
+            he.filter_push { "toolset:msc-*", "language:C++" }
                 linkoptions { "/WHOLEARCHIVE:" .. mod.name }
-            filter { "toolset:gcc or clang" }
+            he.filter_pop()
+
+            he.filter_push { "toolset:gcc or clang" }
                 linkoptions { "-Wl,--whole-archive %{path.getdirectory(he.target_lib_dir)}/" .. mod.name .. "/lib" .. mod.name .. ".a -Wl,--no-whole-archive" }
-            filter { }
+            he.filter_pop()
         end
     end
 end

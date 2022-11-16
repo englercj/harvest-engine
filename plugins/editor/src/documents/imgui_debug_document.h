@@ -4,12 +4,14 @@
 
 #include "document.h"
 
+#include "services/type_edit_ui_service.h"
+
 namespace he::editor
 {
     class ImGuiDebugDocument : public Document
     {
     public:
-        ImGuiDebugDocument() noexcept;
+        ImGuiDebugDocument(TypeEditUIService& s) noexcept;
 
         void Show() override;
 
@@ -18,6 +20,8 @@ namespace he::editor
         void ShowPropertyGridTab();
 
     private:
+        TypeEditUIService& m_editUIService;
+
         bool m_demoOpen{ false };
     };
 }

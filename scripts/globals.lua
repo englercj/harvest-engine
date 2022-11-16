@@ -10,13 +10,6 @@ if #he.sln_name == 0 then
     he.sln_name = path.getbasename(he.root_dir) .. "_" .. os.target()
 end
 
--- Detect the build type
-he.is_static_only = false
-
-if _OPTIONS.static ~= nil then
-    he.is_static_only = true
-end
-
 -- Detect the build dir
 local to_dir = "build"
 

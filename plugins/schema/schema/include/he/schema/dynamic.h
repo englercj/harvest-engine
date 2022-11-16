@@ -147,7 +147,7 @@ namespace he::schema
         template <typename T> requires(T::Kind == DeclKind::Struct)
         typename T::Reader As() const
         {
-            const bool valid = HE_VERIFY(&T::DeclInfo = m_info,
+            const bool valid = HE_VERIFY(&T::DeclInfo == m_info,
                 HE_MSG("DynamicStruct requested as a type that doesn't match the schema."),
                 HE_KV(requested_type_name, GetSchema(T::DeclInfo).GetName()),
                 HE_KV(requested_type_id, T::Id),
@@ -207,7 +207,7 @@ namespace he::schema
         template <typename T> requires(T::Kind == DeclKind::Struct)
         typename T::Builder As() const
         {
-            const bool valid = HE_VERIFY(&T::DeclInfo = m_info,
+            const bool valid = HE_VERIFY(&T::DeclInfo == m_info,
                 HE_MSG("DynamicStruct requested as a type that doesn't match the schema."),
                 HE_KV(requested_type_name, GetSchema(T::DeclInfo).GetName()),
                 HE_KV(requested_type_id, T::Id),
@@ -237,7 +237,11 @@ namespace he::schema
         using ElementType = DynamicValue::Reader;
 
     public:
-        Reader() = default;
+        Reader() noexcept
+            : m_scope(nullptr)
+            , m_type()
+            , m_array{ nullptr, 0 }
+        {}
 
         Reader(const DeclInfo& scope, Type::Reader type, ListReader reader) noexcept
             : m_scope(&scope)
@@ -249,10 +253,10 @@ namespace he::schema
             HE_ASSERT(IsPointer(type.GetData().GetArray().GetElementType()));
         }
 
-        Reader(const DeclInfo& scope, Type::Reader type, const void* data) noexcept
+        Reader(const DeclInfo& scope, Type::Reader type, const Word* data, uint32_t offset) noexcept
             : m_scope(&scope)
             , m_type(type)
-            , m_array(data)
+            , m_array{ data, offset }
         {
             HE_ASSERT(GetSchema(scope).GetData().IsStruct());
             HE_ASSERT(type.GetData().IsArray());
@@ -266,6 +270,8 @@ namespace he::schema
         uint16_t Size() const { return ArrayType().GetSize(); }
 
         DynamicValue::Reader Get(uint16_t index) const;
+        bool Has(uint32_t index) const;
+
         DynamicValue::Reader operator[](uint16_t index) const;
 
         template <typename T>
@@ -289,13 +295,21 @@ namespace he::schema
         IteratorType end() const { return IteratorType(this, Size()); }
 
     private:
+        Declaration::Reader Scope() const { HE_ASSERT(m_scope); return GetSchema(*m_scope); }
+        Declaration::Data::Struct::Reader ScopeStruct() const { return Scope().GetData().GetStruct(); }
+
+    private:
         const DeclInfo* m_scope{ nullptr };
         Type::Reader m_type{};
 
         union
         {
             ListReader m_list;
-            const void* m_array;
+            struct
+            {
+                const Word* data;
+                uint32_t dataOffset;
+            } m_array;
         };
     };
 
@@ -306,7 +320,11 @@ namespace he::schema
         using ElementType = DynamicValue::Builder;
 
     public:
-        Builder() = default;
+        Builder() noexcept
+            : m_scope(nullptr)
+            , m_type()
+            , m_array{ nullptr, 0 }
+        {}
 
         Builder(const DeclInfo& scope, Type::Reader type, ListBuilder builder) noexcept
             : m_scope(&scope)
@@ -318,10 +336,10 @@ namespace he::schema
             HE_ASSERT(IsPointer(type.GetData().GetArray().GetElementType()));
         }
 
-        Builder(const DeclInfo& scope, Type::Reader type, void* data) noexcept
+        Builder(const DeclInfo& scope, Type::Reader type, Word* data, uint32_t offset) noexcept
             : m_scope(&scope)
             , m_type(type)
-            , m_array(data)
+            , m_array{ data, offset }
         {
             HE_ASSERT(GetSchema(scope).GetData().IsStruct());
             HE_ASSERT(type.GetData().IsArray());
@@ -335,6 +353,12 @@ namespace he::schema
         uint16_t Size() const { return ArrayType().GetSize(); }
 
         DynamicValue::Builder Get(uint16_t index) const;
+        void Set(uint16_t index, const DynamicValue::Reader& value);
+        DynamicValue::Builder Init(uint16_t index);
+        DynamicValue::Builder Init(uint16_t index, uint32_t size);
+        void Clear(uint32_t index);
+        bool Has(uint32_t index) const;
+
         DynamicValue::Builder operator[](uint16_t index) const;
 
         template <typename T>
@@ -354,8 +378,14 @@ namespace he::schema
             return valid ? Span<T>(static_cast<T*>(m_array), Size()) : Span<T>{};
         }
 
+        Reader AsReader() const { return IsPointer(m_type) ? Reader(*m_scope, m_type, m_list) : Reader(*m_scope, m_type, m_array.data, m_array.dataOffset); }
+
         IteratorType begin() const { return IteratorType(this, 0); }
         IteratorType end() const { return IteratorType(this, Size()); }
+
+    private:
+        Declaration::Reader Scope() const { HE_ASSERT(m_scope); return GetSchema(*m_scope); }
+        Declaration::Data::Struct::Reader ScopeStruct() const { return Scope().GetData().GetStruct(); }
 
     private:
         const DeclInfo* m_scope{ nullptr };
@@ -364,7 +394,11 @@ namespace he::schema
         union
         {
             ListBuilder m_list;
-            void* m_array;
+            struct
+            {
+                Word* data;
+                uint32_t dataOffset;
+            } m_array;
         };
     };
 
@@ -395,6 +429,8 @@ namespace he::schema
         uint32_t Size() const { return m_reader.Size(); }
 
         DynamicValue::Reader Get(uint32_t index) const;
+        bool Has(uint32_t index) const;
+
         DynamicValue::Reader operator[](uint32_t index) const;
 
         template <typename T>
@@ -444,6 +480,8 @@ namespace he::schema
         DynamicValue::Builder Get(uint32_t index) const;
         void Set(uint32_t index, const DynamicValue::Reader& value);
         DynamicValue::Builder Init(uint32_t index, uint32_t size);
+        void Clear(uint32_t index);
+        bool Has(uint32_t index) const;
 
         DynamicValue::Builder operator[](uint32_t index) const;
 
@@ -584,7 +622,7 @@ namespace he::schema
 
     // --------------------------------------------------------------------------------------------
     template <typename T>
-    class DynamicStructVisitor
+    class DynamicStructVisitorT
     {
     public:
         static constexpr bool IsReader = std::is_same_v<T, DynamicStruct::Reader>;
@@ -596,7 +634,7 @@ namespace he::schema
         using Access = std::conditional_t<IsReader, const typename T::Reader, typename T::Builder>;
 
     public:
-        virtual ~DynamicStructVisitor() = default;
+        virtual ~DynamicStructVisitorT() = default;
 
         void Visit(Access<DynamicStruct>& data) { VisitStruct(data); }
 
@@ -610,13 +648,13 @@ namespace he::schema
 
         virtual void VisitGroupField(Access<DynamicStruct>& data, Field::Reader field)
         {
-            DynamicStruct::Builder st = data.Get(field).As<DynamicStruct>();
+            T st = data.Get(field).As<DynamicStruct>();
             VisitStruct(st);
         }
 
         virtual void VisitUnionField(Access<DynamicStruct>& data, Field::Reader field)
         {
-            DynamicStruct::Builder st = data.Get(field).As<DynamicStruct>();
+            T st = data.Get(field).As<DynamicStruct>();
             VisitStruct(st);
         }
 
@@ -634,9 +672,15 @@ namespace he::schema
         virtual bool ShouldVisitUnionField(const Access<DynamicStruct>& data, Field::Reader field) { return data.Has(field); }
     };
 
+    struct DynamicStructVisitor
+    {
+        using Reader = DynamicStructVisitorT<DynamicStruct::Reader>;
+        using Builder = DynamicStructVisitorT<DynamicStruct::Builder>;
+    };
+
     // --------------------------------------------------------------------------------------------
     template <typename T>
-    void DynamicStructVisitor<T>::VisitStruct(Access<DynamicStruct>& data)
+    void DynamicStructVisitorT<T>::VisitStruct(Access<DynamicStruct>& data)
     {
         const Declaration::Data::Struct::Reader structDecl = data.StructSchema();
 
@@ -655,7 +699,7 @@ namespace he::schema
     }
 
     template <typename T>
-    void DynamicStructVisitor<T>::VisitField(Access<DynamicStruct>& data, Field::Reader field)
+    void DynamicStructVisitorT<T>::VisitField(Access<DynamicStruct>& data, Field::Reader field)
     {
         switch (field.GetMeta().GetUnionTag())
         {

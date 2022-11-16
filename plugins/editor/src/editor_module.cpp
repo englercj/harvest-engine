@@ -24,16 +24,6 @@ namespace he::editor
 
             registry.UnregisterApi<TypeEditUIService>();
         }
-
-        bool Startup() override
-        {
-            ModuleRegistry& registry = Registry();
-
-            TypeEditUIService& editors = registry.GetApi<TypeEditUIService>();
-            editors.RegisterTypeEditor<bool>(&PropertyGridEditor_Bool);
-
-            return true;
-        }
     };
 }
 

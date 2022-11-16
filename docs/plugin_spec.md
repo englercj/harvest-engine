@@ -47,7 +47,7 @@ All paths can contain globs and are relative to the he_plugin file, or the insta
 | pre_build_commands        | Array<String>     | Commands to run before the module is built. |
 | dependson_runtime         | Array<String>     | Module names this module will use at runtime, but are not required to build. See the Module Dependencies section for more details. |
 | variants                  | Array<Variant>    | Variations of the module's properties activated by a filter. See the Variant Keys section. |
-| exec                      | String            | Path to a lua file that return a function for execution in the context of the module's project. Use as a last resort for advanced module project functionality. |
+| exec                      | String            | Path to a lua file that returns a function for execution when the module is being setup. Use as an entry point for advanced module project functionality. |
 
 ### Prefixed Module Keys
 
@@ -72,12 +72,12 @@ Variants are treated as additive and will have the effect of adding new keys to 
 
 | Type | Description |
 | ---- | ----------- |
-| static | Always built as a static library. |
-| shared | Always built as a shared library (dll/so). |
-| custom | Custom build steps like copying prebuilt binaries. Depending on a module of this type doesn't generate any link commands. |
+| static | Built as a static library. |
+| shared | Built as a shared library (dll/so). |
+| console_app | Built as a console application. |
+| windowed_app | Built as a windowed application. |
 | header | Header-only module that does not generate any symbols to be linked. |
-| console_app | A console application |
-| windowed_app | A windowed application |
+| custom | Only contains custom build scripts. For example, copying prebuilt binaries. Depending on a module of this type doesn't generate any link commands, but does create a build-order dependency. |
 
 ## Module Dependencies
 
@@ -103,7 +103,9 @@ When a dependency is specified with no prefix, for example "he_core" it is assum
 
 Example: `"public_dependson": ["he_core", "module:he_platform", "sys:user32", "file:mylib.lib"]`
 
-## Module Keys Extension
+## Extending Module Functionality
+
+### Add New Module Key
 
 You can extend the supported keys by calling the `he.add_module_key` function in a lua function specified in your plugin's `install/exec` key.
 
@@ -129,6 +131,7 @@ return function (plugin)
         type = "string",
         desc = "a string path to the files to run mytool on, globs are allowed",
         handler = function (ctx, value)
+            -- The handler function is called when the key is specified in a [module] block
             -- ctx = the module that used the "mytool" key
             -- value = the value of the "mytool" key in the module
 
@@ -151,3 +154,29 @@ end
 ```
 
 Now another module can use the new `mytool` key and it will execute the `handler` function.
+
+## Add Module Dependency Handler
+
+A module dependency handler is a function that is called for each dependency a module has. This can be useful when you have a module key that doesn't effect the module it is declared in, but instead affects other modules that include it.
+
+For example, the `exports_module_interface` key doesn't change the module itself, but informs modules that link it to perform custom setup. This looks like:
+
+```lua
+he.add_module_key {
+    key = "exports_module_interface",
+    scope = "private",
+    type = "boolean",
+    desc = "a boolean describing if the module uses the HE_EXPORT_MODULE() macro to export a module class",
+    -- Notice there is no handler, because we don't actually do anything with the value on the module itself
+}
+
+he.add_module_dependency_handler(function (ctx, mod)
+    -- ctx = The module that we're currently setting up
+    -- mod = The module that ctx depends on
+
+    if mod.exports_module_interface == true then
+        -- Here we can modify the project for `ctx` based on data in `mod`
+    end
+end)
+
+```

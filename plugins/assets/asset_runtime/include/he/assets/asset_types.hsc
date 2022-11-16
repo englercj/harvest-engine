@@ -26,64 +26,22 @@ struct ScalarRange
 {
     data :union
     {
-        int8 :group
+        int :group
         {
-            min @0 :int8;
-            max @1 :int8;
+            min @0 :int64;
+            max @1 :int64;
         }
 
-        int16 :group
+        uint :group
         {
-            min @2 :int16;
-            max @3 :int16;
+            min @2 :uint64;
+            max @3 :uint64;
         }
 
-        int32 :group
+        float :group
         {
-            min @4 :int32;
-            max @5 :int32;
-        }
-
-        int64 :group
-        {
-            min @6 :int64;
-            max @7 :int64;
-        }
-
-        uint8 :group
-        {
-            min @8 :uint8;
-            max @9 :uint8;
-        }
-
-        uint16 :group
-        {
-            min @10 :uint16;
-            max @11 :uint16;
-        }
-
-        uint32 :group
-        {
-            min @12 :uint32;
-            max @13 :uint32;
-        }
-
-        uint64 :group
-        {
-            min @14 :uint64;
-            max @15 :uint64;
-        }
-
-        float32 :group
-        {
-            min @16 :float32;
-            max @17 :float32;
-        }
-
-        float64 :group
-        {
-            min @18 :float64;
-            max @19 :float64;
+            min @4 :float64;
+            max @5 :float64;
         }
     }
 }
@@ -215,20 +173,20 @@ struct Texture2D $AssetType $Display.ImportOnly $Display.Description("A two dime
     mipMapping :group
     {
         generate @2 :bool = true $Display.Description("Enables automatic generation of mips.");
-        scale @3 :float32 = 1.0 $Display.Clamp({ data = { float32 = { min = 0.000125, max = 4.0 } } }) $Display.Description("Set mipmap filter kernel's scale, lower=sharper, higher=more blurry");
+        scale @3 :float32 = 1.0 $Display.Clamp({ data = { float = { min = 0.000125, max = 4.0 } } }) $Display.Description("Set mipmap filter kernel's scale, lower=sharper, higher=more blurry");
         filter @4 :MipMapFilter = MipMapFilter.Kaiser $Display.Description("The filtering mechanism to use when generating mips.");
         sRGB @5 :bool = false $Display.Name("sRGB") $Display.Description("Convert image to linear before filtering, then back to sRGB.");
         renormalize @6 :bool = false $Display.Description("Renormalize normal map to unit length vectors after filtering.");
         clamp @7 :bool = false $Display.Description("Use clamp addressing on borders, instead of wrapping.");
         sampleFirst @8 :bool = false $Display.Description("Always first/largest mip level when generating a mip. Results in slower mip map generation.");
-        smallestDimension @9 :int32 = 1 $Display.Clamp({ data = { int32 = { min = 1, max = 16384 } } }) $Display.Description("Set smallest pixel dimension for generated mipmaps.");
+        smallestDimension @9 :int32 = 1 $Display.Clamp({ data = { int = { min = 1, max = 16384 } } }) $Display.Description("Set smallest pixel dimension for generated mipmaps.");
     }
 
     compression :group
     {
         format @10 :CompressionFormat = CompressionFormat.ETC1S;
         quality @11 :CompressionQuality = CompressionQuality.Normal;
-        level @12 :int8 = 12 $Display.Clamp({ data = { int8 = { min = -7, max = 22 } } }) $Display.Description("");
+        level @12 :int8 = 12 $Display.Clamp({ data = { int = { min = -7, max = 22 } } }) $Display.Description("");
     }
 }
 

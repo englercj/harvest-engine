@@ -37,6 +37,7 @@
     #define HE_FUNC_SIG                     __PRETTY_FUNCTION__
     #define HE_FORCE_INLINE                 __attribute__((always_inline)) inline
     #define HE_NO_INLINE                    __attribute__((noinline))
+    #define HE_RETAIN                       __attribute__((used, retain))
     #define HE_LIKELY(x)                    static_cast<bool>(__builtin_expect(!!(x), 1))
     #define HE_UNLIKELY(x)                  static_cast<bool>(__builtin_expect(!!(x), 0))
     #define HE_DLL_EXPORT                   __attribute__((visibility("default")))
@@ -62,6 +63,7 @@
     #define HE_FUNC_SIG                     __PRETTY_FUNCTION__
     #define HE_FORCE_INLINE                 __attribute__((always_inline)) inline
     #define HE_NO_INLINE                    __attribute__((noinline))
+    #define HE_RETAIN                       __attribute__((used, retain))
     #define HE_LIKELY(x)                    static_cast<bool>(__builtin_expect(!!(x), 1))
     #define HE_UNLIKELY(x)                  static_cast<bool>(__builtin_expect(!!(x), 0))
     #define HE_DLL_EXPORT                   __attribute__((visibility("default")))
@@ -88,6 +90,7 @@
     #define HE_FUNC_SIG                     __FUNCSIG__
     #define HE_FORCE_INLINE                 __forceinline
     #define HE_NO_INLINE                    __declspec(noinline)
+    #define HE_RETAIN
     #define HE_LIKELY(x)                    (!!(x))
     #define HE_UNLIKELY(x)                  (!!(x))
     #define HE_DLL_EXPORT                   __declspec(dllexport)

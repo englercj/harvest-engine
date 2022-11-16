@@ -6,6 +6,7 @@
 #include "he/core/enum_ops.h"
 #include "he/core/log.h"
 #include "he/core/type_info.h"
+#include "he/schema/layout.h"
 
 #include <algorithm>
 #include <concepts>
@@ -32,6 +33,7 @@ namespace he::schema
     HE_DYNAMIC_VALUE_AS_TYPE(m_bool, Bool, bool)
     HE_DYNAMIC_VALUE_AS_TYPE(m_string, String, String)
     HE_DYNAMIC_VALUE_AS_TYPE(m_blob, Blob, Blob)
+    HE_DYNAMIC_VALUE_AS_TYPE(m_array, Array, DynamicArray)
     HE_DYNAMIC_VALUE_AS_TYPE(m_list, List, DynamicList)
     HE_DYNAMIC_VALUE_AS_TYPE(m_enum, Enum, DynamicEnum)
     HE_DYNAMIC_VALUE_AS_TYPE(m_struct, Struct, DynamicStruct)
@@ -40,7 +42,6 @@ namespace he::schema
     #undef HE_DYNAMIC_VALUE_AS_TYPE
     #undef HE_DYNAMIC_VALUE_CLASS_AS_TYPE
 
-    // --------------------------------------------------------------------------------------------
     template <typename T, typename U>
     T CoerceInteger(U value)
     {
@@ -150,6 +151,29 @@ namespace he::schema
     #undef HE_DYNAMIC_VALUE_AS_NUMERIC_TYPE
     #undef HE_DYNAMIC_VALUE_CLASS_AS_NUMERIC_TYPE
 
+
+    DynamicValue::Reader DynamicValue::Builder::AsReader() const
+    {
+        switch (m_kind)
+        {
+            case DynamicValue::Kind::Unknown: return nullptr;
+            case DynamicValue::Kind::Void: return m_void;
+            case DynamicValue::Kind::Bool: return m_bool;
+            case DynamicValue::Kind::Int: return m_int;
+            case DynamicValue::Kind::Uint: return m_uint;
+            case DynamicValue::Kind::Float: return m_float;
+            case DynamicValue::Kind::Blob: return m_blob.AsReader();
+            case DynamicValue::Kind::String: return m_string.AsReader();
+            case DynamicValue::Kind::Array: return m_array.AsReader();
+            case DynamicValue::Kind::List: return m_list.AsReader();
+            case DynamicValue::Kind::Enum: return m_enum;
+            case DynamicValue::Kind::Struct: return m_struct.AsReader();
+            case DynamicValue::Kind::AnyPointer: return m_anyPointer.AsReader();
+        }
+
+        return nullptr;
+    }
+
     // --------------------------------------------------------------------------------------------
     static uint16_t GetEnumValue(const DeclInfo& parentInfo, Type::Reader type, const DynamicValue::Reader& value)
     {
@@ -206,28 +230,6 @@ namespace he::schema
         }
     }
 
-    static const void* GetDataArrayPointer(StructReader reader, Type::Reader elementType, uint16_t index, uint32_t dataOffset, uint16_t arraySize, const Word* defaultValue)
-    {
-        switch (elementType.GetData().GetUnionTag())
-        {
-            case Type::Data::UnionTag::Void: return reader.TryGetDataArrayField<Void>(index, dataOffset, arraySize, defaultValue).Data();
-            case Type::Data::UnionTag::Bool: return reader.TryGetDataArrayField<bool>(index, dataOffset, arraySize, defaultValue).Data();
-            case Type::Data::UnionTag::Int8: return reader.TryGetDataArrayField<int8_t>(index, dataOffset, arraySize, defaultValue).Data();
-            case Type::Data::UnionTag::Int16: return reader.TryGetDataArrayField<int16_t>(index, dataOffset, arraySize, defaultValue).Data();
-            case Type::Data::UnionTag::Int32: return reader.TryGetDataArrayField<int32_t>(index, dataOffset, arraySize, defaultValue).Data();
-            case Type::Data::UnionTag::Int64: return reader.TryGetDataArrayField<int64_t>(index, dataOffset, arraySize, defaultValue).Data();
-            case Type::Data::UnionTag::Uint8: return reader.TryGetDataArrayField<uint8_t>(index, dataOffset, arraySize, defaultValue).Data();
-            case Type::Data::UnionTag::Uint16: return reader.TryGetDataArrayField<uint16_t>(index, dataOffset, arraySize, defaultValue).Data();
-            case Type::Data::UnionTag::Uint32: return reader.TryGetDataArrayField<uint32_t>(index, dataOffset, arraySize, defaultValue).Data();
-            case Type::Data::UnionTag::Uint64: return reader.TryGetDataArrayField<uint64_t>(index, dataOffset, arraySize, defaultValue).Data();
-            case Type::Data::UnionTag::Float32: return reader.TryGetDataArrayField<float>(index, dataOffset, arraySize, defaultValue).Data();
-            case Type::Data::UnionTag::Float64: return reader.TryGetDataArrayField<double>(index, dataOffset, arraySize, defaultValue).Data();
-            default:
-                HE_VERIFY(false, HE_MSG("Only works for arrays with data element types."));
-                return nullptr;
-        }
-    }
-
     // --------------------------------------------------------------------------------------------
     DynamicValue::Reader DynamicStruct::Reader::Get(Field::Reader field) const
     {
@@ -271,25 +273,25 @@ namespace he::schema
                 switch (typeData.GetUnionTag())
                 {
                     case Type::Data::UnionTag::Void: return m_reader.TryGetDataField<Void>(index, dataOffset);
-                    case Type::Data::UnionTag::Bool: return m_reader.TryGetDataField<bool>(index, dataOffset, defaultValue.IsBool() ? defaultValue.GetBool() : false);
-                    case Type::Data::UnionTag::Int8: return m_reader.TryGetDataField<int8_t>(index, dataOffset, defaultValue.IsInt8() ? defaultValue.GetInt8() : 0);
-                    case Type::Data::UnionTag::Int16: return m_reader.TryGetDataField<int16_t>(index, dataOffset, defaultValue.IsInt16() ? defaultValue.GetInt16() : 0);
-                    case Type::Data::UnionTag::Int32: return m_reader.TryGetDataField<int32_t>(index, dataOffset, defaultValue.IsInt32() ? defaultValue.GetInt32() : 0);
-                    case Type::Data::UnionTag::Int64: return m_reader.TryGetDataField<int64_t>(index, dataOffset, defaultValue.IsInt64() ? defaultValue.GetInt64() : 0);
-                    case Type::Data::UnionTag::Uint8: return m_reader.TryGetDataField<uint8_t>(index, dataOffset, defaultValue.IsUint8() ? defaultValue.GetUint8() : 0);
-                    case Type::Data::UnionTag::Uint16: return m_reader.TryGetDataField<uint16_t>(index, dataOffset, defaultValue.IsUint16() ? defaultValue.GetUint16() : 0);
-                    case Type::Data::UnionTag::Uint32: return m_reader.TryGetDataField<uint32_t>(index, dataOffset, defaultValue.IsUint32() ? defaultValue.GetUint32() : 0);
-                    case Type::Data::UnionTag::Uint64: return m_reader.TryGetDataField<uint64_t>(index, dataOffset, defaultValue.IsUint64() ? defaultValue.GetUint64() : 0);
-                    case Type::Data::UnionTag::Float32: return m_reader.TryGetDataField<float>(index, dataOffset, defaultValue.IsFloat32() ? defaultValue.GetFloat32() : 0.0f);
-                    case Type::Data::UnionTag::Float64: return m_reader.TryGetDataField<double>(index, dataOffset, defaultValue.IsFloat64() ? defaultValue.GetFloat64() : 0.0);
+                    case Type::Data::UnionTag::Bool: return m_reader.TryGetDataField<bool>(index, dataOffset, defaultValue.IsValid() && defaultValue.IsBool() ? defaultValue.GetBool() : false);
+                    case Type::Data::UnionTag::Int8: return m_reader.TryGetDataField<int8_t>(index, dataOffset, defaultValue.IsValid() && defaultValue.IsInt8() ? defaultValue.GetInt8() : 0);
+                    case Type::Data::UnionTag::Int16: return m_reader.TryGetDataField<int16_t>(index, dataOffset, defaultValue.IsValid() && defaultValue.IsInt16() ? defaultValue.GetInt16() : 0);
+                    case Type::Data::UnionTag::Int32: return m_reader.TryGetDataField<int32_t>(index, dataOffset, defaultValue.IsValid() && defaultValue.IsInt32() ? defaultValue.GetInt32() : 0);
+                    case Type::Data::UnionTag::Int64: return m_reader.TryGetDataField<int64_t>(index, dataOffset, defaultValue.IsValid() && defaultValue.IsInt64() ? defaultValue.GetInt64() : 0);
+                    case Type::Data::UnionTag::Uint8: return m_reader.TryGetDataField<uint8_t>(index, dataOffset, defaultValue.IsValid() && defaultValue.IsUint8() ? defaultValue.GetUint8() : 0);
+                    case Type::Data::UnionTag::Uint16: return m_reader.TryGetDataField<uint16_t>(index, dataOffset, defaultValue.IsValid() && defaultValue.IsUint16() ? defaultValue.GetUint16() : 0);
+                    case Type::Data::UnionTag::Uint32: return m_reader.TryGetDataField<uint32_t>(index, dataOffset, defaultValue.IsValid() && defaultValue.IsUint32() ? defaultValue.GetUint32() : 0);
+                    case Type::Data::UnionTag::Uint64: return m_reader.TryGetDataField<uint64_t>(index, dataOffset, defaultValue.IsValid() && defaultValue.IsUint64() ? defaultValue.GetUint64() : 0);
+                    case Type::Data::UnionTag::Float32: return m_reader.TryGetDataField<float>(index, dataOffset, defaultValue.IsValid() && defaultValue.IsFloat32() ? defaultValue.GetFloat32() : 0.0f);
+                    case Type::Data::UnionTag::Float64: return m_reader.TryGetDataField<double>(index, dataOffset, defaultValue.IsValid() && defaultValue.IsFloat64() ? defaultValue.GetFloat64() : 0.0);
                     case Type::Data::UnionTag::Blob:
                     {
-                        const uint8_t* value = defaultValue.IsBlob() ? defaultValue.GetBlob().Data() : nullptr;
+                        const uint8_t* value = defaultValue.IsValid() && defaultValue.IsBlob() ? defaultValue.GetBlob().Data() : nullptr;
                         return m_reader.GetPointerField(index).TryGetBlob(reinterpret_cast<const Word*>(value));
                     }
                     case Type::Data::UnionTag::String:
                     {
-                        const char* value = defaultValue.IsString() ? defaultValue.GetString().Data() : nullptr;
+                        const char* value = defaultValue.IsValid() && defaultValue.IsString() ? defaultValue.GetString().Data() : nullptr;
                         return m_reader.GetPointerField(index).TryGetString(reinterpret_cast<const Word*>(value));
                     }
                     case Type::Data::UnionTag::AnyPointer:
@@ -310,7 +312,7 @@ namespace he::schema
                         const uint16_t arraySize = arrayType.GetSize();
                         const Type::Reader elementType = arrayType.GetElementType();
 
-                        const Word* value = defaultValue.IsList() ? defaultValue.GetList().Data() : nullptr;
+                        const Word* value = defaultValue.IsValid() && defaultValue.IsList() ? defaultValue.GetList().Data() : nullptr;
 
                         if (IsPointer(elementType))
                         {
@@ -319,8 +321,7 @@ namespace he::schema
                         }
                         else
                         {
-                            const void* ptr = GetDataArrayPointer(m_reader, elementType, index, dataOffset, arraySize, value);
-                            return DynamicArray::Reader(*m_info, type, ptr);
+                            return DynamicArray::Reader(*m_info, type, m_reader.Data(), dataOffset);
                         }
                         break;
                     }
@@ -330,7 +331,7 @@ namespace he::schema
                         const Type::Reader elementType = listType.GetElementType();
                         const ElementSize elementSize = GetTypeElementSize(elementType);
 
-                        const Word* value = defaultValue.IsList() ? defaultValue.GetList().Data() : nullptr;
+                        const Word* value = defaultValue.IsValid() && defaultValue.IsList() ? defaultValue.GetList().Data() : nullptr;
                         const ListReader reader = m_reader.GetPointerField(index).TryGetList(elementSize, value);
 
                         return DynamicList::Reader(*m_info, type, reader);
@@ -339,7 +340,7 @@ namespace he::schema
                     {
                         const Type::Data::Enum::Reader enumType = typeData.GetEnum();
                         const DeclInfo* info = FindDependency(*m_info, enumType.GetId());
-                        const uint16_t value = defaultValue.IsEnum() ? defaultValue.GetEnum() : 0;
+                        const uint16_t value = defaultValue.IsValid() && defaultValue.IsEnum() ? defaultValue.GetEnum() : 0;
                         const bool valid = HE_VERIFY(info,
                             HE_MSG("Field requested from DynamicStruct is an enum that has a missing type."),
                             HE_KV(struct_name, Schema().GetName()),
@@ -356,7 +357,9 @@ namespace he::schema
                             HE_KV(struct_name, Schema().GetName()),
                             HE_KV(requested_field_name, field.GetName()),
                             HE_KV(requested_field_type_id, structType.GetId()));
-                        return valid ? DynamicStruct::Reader(*info, m_reader) : DynamicStruct::Reader{};
+                        const Word* value = defaultValue.IsValid() && defaultValue.IsStruct() ? defaultValue.GetStruct().Data() : nullptr;
+                        const StructReader reader = m_reader.GetPointerField(index).TryGetStruct(value);
+                        return valid ? DynamicStruct::Reader(*info, reader) : DynamicStruct::Reader{};
                     }
                     case Type::Data::UnionTag::Interface:
                     {
@@ -436,6 +439,10 @@ namespace he::schema
             case Field::Meta::UnionTag::Normal:
             {
                 const Field::Meta::Normal::Reader norm = meta.GetNormal();
+
+                if (norm.GetType().GetData().IsVoid())
+                    return false;
+
                 const bool isPointer = IsPointer(norm.GetType());
                 const uint16_t index = norm.GetIndex();
                 return isPointer ? m_reader.HasPointerField(index) : m_reader.HasDataField(index);
@@ -524,17 +531,17 @@ namespace he::schema
                 switch (typeData.GetUnionTag())
                 {
                     case Type::Data::UnionTag::Void: return m_builder.TryGetDataField<Void>(index, dataOffset);
-                    case Type::Data::UnionTag::Bool: return m_builder.TryGetDataField<bool>(index, dataOffset, defaultValue.IsBool() ? defaultValue.GetBool() : false);
-                    case Type::Data::UnionTag::Int8: return m_builder.TryGetDataField<int8_t>(index, dataOffset, defaultValue.IsInt8() ? defaultValue.GetInt8() : 0);
-                    case Type::Data::UnionTag::Int16: return m_builder.TryGetDataField<int16_t>(index, dataOffset, defaultValue.IsInt16() ? defaultValue.GetInt16() : 0);
-                    case Type::Data::UnionTag::Int32: return m_builder.TryGetDataField<int32_t>(index, dataOffset, defaultValue.IsInt32() ? defaultValue.GetInt32() : 0);
-                    case Type::Data::UnionTag::Int64: return m_builder.TryGetDataField<int64_t>(index, dataOffset, defaultValue.IsInt64() ? defaultValue.GetInt64() : 0);
-                    case Type::Data::UnionTag::Uint8: return m_builder.TryGetDataField<uint8_t>(index, dataOffset, defaultValue.IsUint8() ? defaultValue.GetUint8() : 0);
-                    case Type::Data::UnionTag::Uint16: return m_builder.TryGetDataField<uint16_t>(index, dataOffset, defaultValue.IsUint16() ? defaultValue.GetUint16() : 0);
-                    case Type::Data::UnionTag::Uint32: return m_builder.TryGetDataField<uint32_t>(index, dataOffset, defaultValue.IsUint32() ? defaultValue.GetUint32() : 0);
-                    case Type::Data::UnionTag::Uint64: return m_builder.TryGetDataField<uint64_t>(index, dataOffset, defaultValue.IsUint64() ? defaultValue.GetUint64() : 0);
-                    case Type::Data::UnionTag::Float32: return m_builder.TryGetDataField<float>(index, dataOffset, defaultValue.IsFloat32() ? defaultValue.GetFloat32() : 0.0f);
-                    case Type::Data::UnionTag::Float64: return m_builder.TryGetDataField<double>(index, dataOffset, defaultValue.IsFloat64() ? defaultValue.GetFloat64() : 0.0);
+                    case Type::Data::UnionTag::Bool: return m_builder.TryGetDataField<bool>(index, dataOffset, defaultValue.IsValid() && defaultValue.IsBool() ? defaultValue.GetBool() : false);
+                    case Type::Data::UnionTag::Int8: return m_builder.TryGetDataField<int8_t>(index, dataOffset, defaultValue.IsValid() && defaultValue.IsInt8() ? defaultValue.GetInt8() : 0);
+                    case Type::Data::UnionTag::Int16: return m_builder.TryGetDataField<int16_t>(index, dataOffset, defaultValue.IsValid() && defaultValue.IsInt16() ? defaultValue.GetInt16() : 0);
+                    case Type::Data::UnionTag::Int32: return m_builder.TryGetDataField<int32_t>(index, dataOffset, defaultValue.IsValid() && defaultValue.IsInt32() ? defaultValue.GetInt32() : 0);
+                    case Type::Data::UnionTag::Int64: return m_builder.TryGetDataField<int64_t>(index, dataOffset, defaultValue.IsValid() && defaultValue.IsInt64() ? defaultValue.GetInt64() : 0);
+                    case Type::Data::UnionTag::Uint8: return m_builder.TryGetDataField<uint8_t>(index, dataOffset, defaultValue.IsValid() && defaultValue.IsUint8() ? defaultValue.GetUint8() : 0);
+                    case Type::Data::UnionTag::Uint16: return m_builder.TryGetDataField<uint16_t>(index, dataOffset, defaultValue.IsValid() && defaultValue.IsUint16() ? defaultValue.GetUint16() : 0);
+                    case Type::Data::UnionTag::Uint32: return m_builder.TryGetDataField<uint32_t>(index, dataOffset, defaultValue.IsValid() && defaultValue.IsUint32() ? defaultValue.GetUint32() : 0);
+                    case Type::Data::UnionTag::Uint64: return m_builder.TryGetDataField<uint64_t>(index, dataOffset, defaultValue.IsValid() && defaultValue.IsUint64() ? defaultValue.GetUint64() : 0);
+                    case Type::Data::UnionTag::Float32: return m_builder.TryGetDataField<float>(index, dataOffset, defaultValue.IsValid() && defaultValue.IsFloat32() ? defaultValue.GetFloat32() : 0.0f);
+                    case Type::Data::UnionTag::Float64: return m_builder.TryGetDataField<double>(index, dataOffset, defaultValue.IsValid() && defaultValue.IsFloat64() ? defaultValue.GetFloat64() : 0.0);
                     case Type::Data::UnionTag::Blob: return m_builder.GetPointerField(index).TryGetBlob();
                     case Type::Data::UnionTag::String: return m_builder.GetPointerField(index).TryGetString();
                     case Type::Data::UnionTag::AnyPointer: return AnyPointer::Builder(m_builder.GetPointerField(index));
@@ -553,8 +560,7 @@ namespace he::schema
                         }
                         else
                         {
-                            const void* ptr = GetDataArrayPointer(m_builder, elementType, index, dataOffset, arraySize, nullptr);
-                            return DynamicArray::Builder(*m_info, type, const_cast<void*>(ptr));
+                            return DynamicArray::Builder(*m_info, type, const_cast<Word*>(m_builder.Location()), dataOffset);
                         }
                         break;
                     }
@@ -563,15 +569,15 @@ namespace he::schema
                         const Type::Data::List::Reader listType = typeData.GetList();
                         const Type::Reader elementType = listType.GetElementType();
                         const ElementSize elementSize = GetTypeElementSize(elementType);
-                        const ListBuilder reader = m_builder.GetPointerField(index).TryGetList(elementSize);
+                        const ListBuilder builder = m_builder.GetPointerField(index).TryGetList(elementSize);
 
-                        return DynamicList::Builder(*m_info, type, reader);
+                        return DynamicList::Builder(*m_info, type, builder);
                     }
                     case Type::Data::UnionTag::Enum:
                     {
                         const Type::Data::Enum::Reader enumType = typeData.GetEnum();
                         const DeclInfo* info = FindDependency(*m_info, enumType.GetId());
-                        const uint16_t value = defaultValue.IsEnum() ? defaultValue.GetEnum() : 0;
+                        const uint16_t value = defaultValue.IsValid() && defaultValue.IsEnum() ? defaultValue.GetEnum() : 0;
                         const bool valid = HE_VERIFY(info,
                             HE_MSG("Field requested from DynamicStruct is an enum that has a missing type."),
                             HE_KV(struct_name, Schema().GetName()),
@@ -588,7 +594,8 @@ namespace he::schema
                             HE_KV(struct_name, Schema().GetName()),
                             HE_KV(requested_field_name, field.GetName()),
                             HE_KV(requested_field_type_id, structType.GetId()));
-                        return valid ? DynamicStruct::Builder(*info, m_builder) : DynamicStruct::Builder{};
+                        const StructBuilder builder = m_builder.GetPointerField(index).TryGetStruct();
+                        return valid ? DynamicStruct::Builder(*info, builder) : DynamicStruct::Builder{};
                     }
                     case Type::Data::UnionTag::Interface:
                     {
@@ -663,7 +670,6 @@ namespace he::schema
             case Field::Meta::UnionTag::Normal:
             {
                 const Field::Meta::Normal::Reader norm = field.GetMeta().GetNormal();
-                const Value::Data::Reader defaultValue = norm.GetDefaultValue().GetData();
                 const Type::Reader type = norm.GetType();
                 const Type::Data::Reader typeData = type.GetData();
 
@@ -684,33 +690,48 @@ namespace he::schema
                     case Type::Data::UnionTag::Uint64: m_builder.SetAndMarkDataField(index, dataOffset, value.As<uint64_t>()); break;
                     case Type::Data::UnionTag::Float32: m_builder.SetAndMarkDataField(index, dataOffset, value.As<float>()); break;
                     case Type::Data::UnionTag::Float64: m_builder.SetAndMarkDataField(index, dataOffset, value.As<double>()); break;
-                    case Type::Data::UnionTag::Blob: m_builder.GetPointerField(index).Set(value.As<Blob>()); break;
-                    case Type::Data::UnionTag::String: m_builder.GetPointerField(index).Set(value.As<String>()); break;
+                    case Type::Data::UnionTag::Blob:
+                    {
+                        const Blob::Reader src = value.As<Blob>();
+                        Blob::Builder dst = Init(field, src.Size()).As<Blob>();
+                        dst.Copy(src);
+                        break;
+                    }
+                    case Type::Data::UnionTag::String:
+                    {
+                        const String::Reader src = value.As<String>();
+                        String::Builder dst = Init(field, src.Size()).As<String>();
+                        dst.Copy(src);
+                        break;
+                    }
                     case Type::Data::UnionTag::AnyPointer:
                     case Type::Data::UnionTag::Parameter:
                     {
-                        switch (value.GetKind())
-                        {
-                            case DynamicValue::Kind::Blob: m_builder.GetPointerField(index).Set(value.As<Blob>()); break;
-                            case DynamicValue::Kind::String: m_builder.GetPointerField(index).Set(value.As<String>()); break;
-                            case DynamicValue::Kind::List: m_builder.GetPointerField(index).Set(value.As<DynamicList>().List()); break;
-                            case DynamicValue::Kind::Struct: m_builder.GetPointerField(index).Set(value.As<DynamicStruct>().Struct()); break;
-                            case DynamicValue::Kind::AnyPointer: m_builder.GetPointerField(index).Set(value.As<AnyPointer>()); break;
-                            default:
-                                HE_VERIFY(false, HE_MSG("Expected a pointer value."), HE_KV(value_kind, value.GetKind()));
-                        }
+                        // TODO!
+                        //switch (value.GetKind())
+                        //{
+                        //    case DynamicValue::Kind::Blob: m_builder.GetPointerField(index).Set(value.As<Blob>()); break;
+                        //    case DynamicValue::Kind::String: m_builder.GetPointerField(index).Set(value.As<String>()); break;
+                        //    case DynamicValue::Kind::List: m_builder.GetPointerField(index).Set(value.As<DynamicList>().List()); break;
+                        //    case DynamicValue::Kind::Struct: m_builder.GetPointerField(index).Set(value.As<DynamicStruct>().Struct()); break;
+                        //    case DynamicValue::Kind::AnyPointer: m_builder.GetPointerField(index).Set(value.As<AnyPointer>()); break;
+                        //    default:
+                        //        HE_VERIFY(false, HE_MSG("Expected a pointer value."), HE_KV(value_kind, value.GetKind()));
+                        //}
                         break;
                     }
                     case Type::Data::UnionTag::AnyStruct:
                     {
                         const DynamicStruct::Reader src = value.As<DynamicStruct>();
-                        m_builder.GetPointerField(index).Set(src.Struct());
+                        DynamicStruct::Builder dst = Init(field).As<DynamicStruct>();
+                        dst.Struct().Copy(src.Struct());
                         break;
                     }
                     case Type::Data::UnionTag::AnyList:
                     {
                         const DynamicList::Reader src = value.As<DynamicList>();
-                        m_builder.GetPointerField(index).Set(src.List());
+                        DynamicList::Builder dst = Init(field, src.Size()).As<DynamicList>();
+                        dst.List().Copy(src.List());
                         break;
                     }
                     case Type::Data::UnionTag::Array:
@@ -723,7 +744,8 @@ namespace he::schema
                         const DynamicList::Reader src = value.As<DynamicList>();
                         if (HE_VERIFY(src.Type() == type))
                         {
-                            m_builder.GetPointerField(index).Set(src.List());
+                            DynamicList::Builder dst = Init(field, src.Size()).As<DynamicList>();
+                            dst.List().Copy(src.List());
                         }
                         break;
                     }
@@ -750,7 +772,8 @@ namespace he::schema
 
                         if (HE_VERIFY(&src.Decl() == info))
                         {
-                            m_builder.GetPointerField(index).Set(src.Struct());
+                            DynamicStruct::Builder dst = Init(field).As<DynamicStruct>();
+                            dst.Struct().Copy(src.Struct());
                         }
                         break;
                     }
@@ -833,7 +856,6 @@ namespace he::schema
             case Field::Meta::UnionTag::Normal:
             {
                 const Field::Meta::Normal::Reader norm = field.GetMeta().GetNormal();
-                const Value::Data::Reader defaultValue = norm.GetDefaultValue().GetData();
                 const Type::Reader type = norm.GetType();
                 const Type::Data::Reader typeData = type.GetData();
 
@@ -941,7 +963,6 @@ namespace he::schema
         }
 
         const Field::Meta::Normal::Reader norm = field.GetMeta().GetNormal();
-        const Value::Data::Reader defaultValue = norm.GetDefaultValue().GetData();
         const Type::Reader type = norm.GetType();
         const Type::Data::Reader typeData = type.GetData();
 
@@ -1140,26 +1161,31 @@ namespace he::schema
     // --------------------------------------------------------------------------------------------
     DynamicValue::Reader DynamicArray::Reader::Get(uint16_t index) const
     {
-        if (!HE_VERIFY(index < Size()))
+        const uint16_t size = Size();
+
+        if (!HE_VERIFY(index < size))
             return DynamicValue::Reader{};
 
         const Type::Reader elementType = ArrayType().GetElementType();
         const Type::Data::Reader elementTypeData = elementType.GetData();
 
+        const uint32_t dataWordSize = ScopeStruct().GetDataWordSize();
+        Word* data = const_cast<Word*>(m_array.data);
+
         switch (elementTypeData.GetUnionTag())
         {
             case Type::Data::UnionTag::Void: return Void{};
-            case Type::Data::UnionTag::Bool: return static_cast<const bool*>(m_array)[index];
-            case Type::Data::UnionTag::Int8: return static_cast<const int8_t*>(m_array)[index];
-            case Type::Data::UnionTag::Int16: return static_cast<const int16_t*>(m_array)[index];
-            case Type::Data::UnionTag::Int32: return static_cast<const int32_t*>(m_array)[index];
-            case Type::Data::UnionTag::Int64: return static_cast<const int64_t*>(m_array)[index];
-            case Type::Data::UnionTag::Uint8: return static_cast<const uint8_t*>(m_array)[index];
-            case Type::Data::UnionTag::Uint16: return static_cast<const uint16_t*>(m_array)[index];
-            case Type::Data::UnionTag::Uint32: return static_cast<const uint32_t*>(m_array)[index];
-            case Type::Data::UnionTag::Uint64: return static_cast<const uint64_t*>(m_array)[index];
-            case Type::Data::UnionTag::Float32: return static_cast<const float*>(m_array)[index];
-            case Type::Data::UnionTag::Float64: return static_cast<const double*>(m_array)[index];
+            case Type::Data::UnionTag::Bool: return static_cast<bool>(_ReadDataArrayField<bool>(data, dataWordSize, m_array.dataOffset, size)[index]);
+            case Type::Data::UnionTag::Int8: return _ReadDataArrayField<const int8_t>(data, dataWordSize, m_array.dataOffset, size)[index];
+            case Type::Data::UnionTag::Int16: return _ReadDataArrayField<const int16_t>(data, dataWordSize, m_array.dataOffset, size)[index];
+            case Type::Data::UnionTag::Int32: return _ReadDataArrayField<const int32_t>(data, dataWordSize, m_array.dataOffset, size)[index];
+            case Type::Data::UnionTag::Int64: return _ReadDataArrayField<const int64_t>(data, dataWordSize, m_array.dataOffset, size)[index];
+            case Type::Data::UnionTag::Uint8: return _ReadDataArrayField<const uint8_t>(data, dataWordSize, m_array.dataOffset, size)[index];
+            case Type::Data::UnionTag::Uint16: return _ReadDataArrayField<const uint16_t>(data, dataWordSize, m_array.dataOffset, size)[index];
+            case Type::Data::UnionTag::Uint32: return _ReadDataArrayField<const uint32_t>(data, dataWordSize, m_array.dataOffset, size)[index];
+            case Type::Data::UnionTag::Uint64: return _ReadDataArrayField<const uint64_t>(data, dataWordSize, m_array.dataOffset, size)[index];
+            case Type::Data::UnionTag::Float32: return _ReadDataArrayField<const float>(data, dataWordSize, m_array.dataOffset, size)[index];
+            case Type::Data::UnionTag::Float64: return _ReadDataArrayField<const double>(data, dataWordSize, m_array.dataOffset, size)[index];
             case Type::Data::UnionTag::Blob: return m_list.GetPointerElement(index).TryGetBlob();
             case Type::Data::UnionTag::String: return m_list.GetPointerElement(index).TryGetString();
             case Type::Data::UnionTag::AnyPointer: return AnyPointer::Reader(m_list.GetPointerElement(index));
@@ -1184,7 +1210,7 @@ namespace he::schema
                     HE_MSG("Field requested from DynamicStruct is an enum that has a missing type."),
                     HE_KV(struct_name, GetSchema(*m_scope).GetName()),
                     HE_KV(requested_type_id, enumType.GetId()));
-                const uint16_t value = static_cast<const uint16_t*>(m_array)[index];
+                const uint16_t value = _ReadDataArrayField<const int16_t>(data, dataWordSize, m_array.dataOffset, size)[index];
                 return valid ? DynamicEnum(*info, value) : DynamicEnum{};
             }
             case Type::Data::UnionTag::Struct:
@@ -1211,6 +1237,23 @@ namespace he::schema
         return DynamicValue::Reader{};
     }
 
+    bool DynamicArray::Reader::Has(uint32_t index) const
+    {
+        if (!HE_VERIFY(index < Size()))
+            return false;
+
+        const Type::Reader elementType = ArrayType().GetElementType();
+        const Type::Data::Reader elementTypeData = elementType.GetData();
+
+        if (elementTypeData.IsVoid())
+            return false;
+
+        if (!IsPointer(elementType))
+            return true;
+
+        return !m_list.GetPointerElement(index).IsNull();
+    }
+
     DynamicValue::Reader DynamicArray::Reader::operator[](uint16_t index) const
     {
         return Get(index);
@@ -1219,26 +1262,30 @@ namespace he::schema
     // --------------------------------------------------------------------------------------------
     DynamicValue::Builder DynamicArray::Builder::Get(uint16_t index) const
     {
-        if (!HE_VERIFY(index < Size()))
+        const uint16_t size = Size();
+
+        if (!HE_VERIFY(index < size))
             return DynamicValue::Builder{};
 
         const Type::Reader elementType = ArrayType().GetElementType();
         const Type::Data::Reader elementTypeData = elementType.GetData();
 
+        const uint32_t dataWordSize = ScopeStruct().GetDataWordSize();
+
         switch (elementTypeData.GetUnionTag())
         {
             case Type::Data::UnionTag::Void: return Void{};
-            case Type::Data::UnionTag::Bool: return static_cast<const bool*>(m_array)[index];
-            case Type::Data::UnionTag::Int8: return static_cast<const int8_t*>(m_array)[index];
-            case Type::Data::UnionTag::Int16: return static_cast<const int16_t*>(m_array)[index];
-            case Type::Data::UnionTag::Int32: return static_cast<const int32_t*>(m_array)[index];
-            case Type::Data::UnionTag::Int64: return static_cast<const int64_t*>(m_array)[index];
-            case Type::Data::UnionTag::Uint8: return static_cast<const uint8_t*>(m_array)[index];
-            case Type::Data::UnionTag::Uint16: return static_cast<const uint16_t*>(m_array)[index];
-            case Type::Data::UnionTag::Uint32: return static_cast<const uint32_t*>(m_array)[index];
-            case Type::Data::UnionTag::Uint64: return static_cast<const uint64_t*>(m_array)[index];
-            case Type::Data::UnionTag::Float32: return static_cast<const float*>(m_array)[index];
-            case Type::Data::UnionTag::Float64: return static_cast<const double*>(m_array)[index];
+            case Type::Data::UnionTag::Bool: return static_cast<bool>(_ReadDataArrayField<bool>(m_array.data, dataWordSize, m_array.dataOffset, size)[index]);
+            case Type::Data::UnionTag::Int8: return _ReadDataArrayField<const int8_t>(m_array.data, dataWordSize, m_array.dataOffset, size)[index];
+            case Type::Data::UnionTag::Int16: return _ReadDataArrayField<const int16_t>(m_array.data, dataWordSize, m_array.dataOffset, size)[index];
+            case Type::Data::UnionTag::Int32: return _ReadDataArrayField<const int32_t>(m_array.data, dataWordSize, m_array.dataOffset, size)[index];
+            case Type::Data::UnionTag::Int64: return _ReadDataArrayField<const int64_t>(m_array.data, dataWordSize, m_array.dataOffset, size)[index];
+            case Type::Data::UnionTag::Uint8: return _ReadDataArrayField<const uint8_t>(m_array.data, dataWordSize, m_array.dataOffset, size)[index];
+            case Type::Data::UnionTag::Uint16: return _ReadDataArrayField<const uint16_t>(m_array.data, dataWordSize, m_array.dataOffset, size)[index];
+            case Type::Data::UnionTag::Uint32: return _ReadDataArrayField<const uint32_t>(m_array.data, dataWordSize, m_array.dataOffset, size)[index];
+            case Type::Data::UnionTag::Uint64: return _ReadDataArrayField<const uint64_t>(m_array.data, dataWordSize, m_array.dataOffset, size)[index];
+            case Type::Data::UnionTag::Float32: return _ReadDataArrayField<const float>(m_array.data, dataWordSize, m_array.dataOffset, size)[index];
+            case Type::Data::UnionTag::Float64: return _ReadDataArrayField<const double>(m_array.data, dataWordSize, m_array.dataOffset, size)[index];
             case Type::Data::UnionTag::Blob: return m_list.GetPointerElement(index).TryGetBlob();
             case Type::Data::UnionTag::String: return m_list.GetPointerElement(index).TryGetString();
             case Type::Data::UnionTag::AnyPointer: return AnyPointer::Builder(m_list.GetPointerElement(index));
@@ -1263,7 +1310,7 @@ namespace he::schema
                     HE_MSG("Field requested from DynamicStruct is an enum that has a missing type."),
                     HE_KV(struct_name, GetSchema(*m_scope).GetName()),
                     HE_KV(requested_type_id, enumType.GetId()));
-                const uint16_t value = static_cast<const uint16_t*>(m_array)[index];
+                const uint16_t value = _ReadDataArrayField<const int16_t>(m_array.data, dataWordSize, m_array.dataOffset, size)[index];
                 return valid ? DynamicEnum(*info, value) : DynamicEnum{};
             }
             case Type::Data::UnionTag::Struct:
@@ -1288,6 +1335,263 @@ namespace he::schema
         }
 
         return DynamicValue::Builder{};
+    }
+
+    void DynamicArray::Builder::Set(uint16_t index, const DynamicValue::Reader& value)
+    {
+        const uint16_t size = Size();
+
+        if (!HE_VERIFY(index < size))
+            return;
+
+        const Type::Reader elementType = ArrayType().GetElementType();
+        const Type::Data::Reader elementTypeData = elementType.GetData();
+
+        const uint32_t dataWordSize = ScopeStruct().GetDataWordSize();
+
+        switch (elementTypeData.GetUnionTag())
+        {
+            case Type::Data::UnionTag::Void: break;
+            case Type::Data::UnionTag::Bool: _ReadDataArrayField<bool>(m_array.data, dataWordSize, m_array.dataOffset, size).Set(index, value.As<bool>()); break;
+            case Type::Data::UnionTag::Int8: _ReadDataArrayField<int8_t>(m_array.data, dataWordSize, m_array.dataOffset, size)[index] = value.As<int8_t>(); break;
+            case Type::Data::UnionTag::Int16: _ReadDataArrayField<int16_t>(m_array.data, dataWordSize, m_array.dataOffset, size)[index] = value.As<int16_t>(); break;
+            case Type::Data::UnionTag::Int32: _ReadDataArrayField<int32_t>(m_array.data, dataWordSize, m_array.dataOffset, size)[index] = value.As<int32_t>(); break;
+            case Type::Data::UnionTag::Int64: _ReadDataArrayField<int64_t>(m_array.data, dataWordSize, m_array.dataOffset, size)[index] = value.As<int64_t>(); break;
+            case Type::Data::UnionTag::Uint8: _ReadDataArrayField<uint8_t>(m_array.data, dataWordSize, m_array.dataOffset, size)[index] = value.As<uint8_t>(); break;
+            case Type::Data::UnionTag::Uint16: _ReadDataArrayField<uint16_t>(m_array.data, dataWordSize, m_array.dataOffset, size)[index] = value.As<uint16_t>(); break;
+            case Type::Data::UnionTag::Uint32: _ReadDataArrayField<uint32_t>(m_array.data, dataWordSize, m_array.dataOffset, size)[index] = value.As<uint32_t>(); break;
+            case Type::Data::UnionTag::Uint64: _ReadDataArrayField<uint64_t>(m_array.data, dataWordSize, m_array.dataOffset, size)[index] = value.As<uint64_t>(); break;
+            case Type::Data::UnionTag::Float32: _ReadDataArrayField<float>(m_array.data, dataWordSize, m_array.dataOffset, size)[index] = value.As<float>(); break;
+            case Type::Data::UnionTag::Float64: _ReadDataArrayField<double>(m_array.data, dataWordSize, m_array.dataOffset, size)[index] = value.As<double>(); break;
+            case Type::Data::UnionTag::Blob:
+            {
+                const Blob::Reader src = value.As<Blob>();
+                Blob::Builder dst = Init(index, src.Size()).As<Blob>();
+                dst.Copy(src);
+                break;
+            }
+            case Type::Data::UnionTag::String:
+            {
+                const String::Reader src = value.As<String>();
+                String::Builder dst = Init(index, src.Size()).As<String>();
+                dst.Copy(src);
+                break;
+            }
+            case Type::Data::UnionTag::AnyPointer:
+            case Type::Data::UnionTag::AnyStruct:
+            case Type::Data::UnionTag::AnyList:
+            case Type::Data::UnionTag::Parameter:
+            {
+                // TODO: Support these better
+                HE_VERIFY(false, HE_MSG("Arrays of AnyPointer types are not supported by DynamicArray::Builder::Set(), yet."));
+                break;
+            }
+            case Type::Data::UnionTag::Array:
+            {
+                HE_VERIFY(false, HE_MSG("Arrays of arrays are not supported."));
+                break;
+            }
+            case Type::Data::UnionTag::List:
+            {
+                const DynamicList::Reader src = value.As<DynamicList>();
+                if (HE_VERIFY(src.Type() == elementType))
+                {
+                    DynamicList::Builder dst = Init(index, src.Size()).As<DynamicList>();
+                    dst.List().Copy(src.List());
+                }
+                break;
+            }
+            case Type::Data::UnionTag::Enum:
+            {
+                const uint16_t enumValue = GetEnumValue(*m_scope, elementType, value);
+                _ReadDataArrayField<uint16_t>(m_array.data, dataWordSize, m_array.dataOffset, size)[index] = enumValue;
+                break;
+            }
+            case Type::Data::UnionTag::Struct:
+            {
+                const Type::Data::Struct::Reader structType = elementTypeData.GetStruct();
+                const DeclInfo* info = FindDependency(*m_scope, structType.GetId());
+                if (!HE_VERIFY(info,
+                    HE_MSG("Field requested from DynamicStruct is a struct that has a missing type."),
+                    HE_KV(struct_name, GetSchema(*m_scope).GetName()),
+                    HE_KV(requested_type_id, structType.GetId())))
+                {
+                    return;
+                }
+
+                const DynamicStruct::Reader src = value.As<DynamicStruct>();
+
+                if (HE_VERIFY(&src.Decl() == info))
+                {
+                    DynamicStruct::Builder dst = Init(index).As<DynamicStruct>();
+                    dst.Struct().Copy(src.Struct());
+                }
+                break;
+            }
+            case Type::Data::UnionTag::Interface:
+            {
+                // Interfaces do not currently have values.
+                break;
+            }
+        }
+    }
+
+    DynamicValue::Builder DynamicArray::Builder::Init(uint16_t index)
+    {
+        if (!HE_VERIFY(index < Size()))
+            return DynamicValue::Builder{};
+
+        const Type::Reader elementType = ArrayType().GetElementType();
+        const Type::Data::Reader elementTypeData = elementType.GetData();
+
+        switch (elementTypeData.GetUnionTag())
+        {
+            case Type::Data::UnionTag::AnyPointer:
+            case Type::Data::UnionTag::AnyStruct:
+            case Type::Data::UnionTag::Parameter:
+            {
+                PointerBuilder ptr = m_list.GetPointerElement(index);
+                ptr.SetNull();
+                return AnyPointer::Builder(ptr);
+            }
+            case Type::Data::UnionTag::Struct:
+            {
+                HE_ASSERT(m_scope);
+                const Type::Data::Struct::Reader structType = elementTypeData.GetStruct();
+                const DeclInfo* info = FindDependency(*m_scope, structType.GetId());
+                if (!HE_VERIFY(info,
+                    HE_MSG("Field requested from DynamicStruct is a struct that has a missing type."),
+                    HE_KV(struct_name, GetSchema(*m_scope).GetName()),
+                    HE_KV(requested_array_index, index),
+                    HE_KV(requested_array_type_id, structType.GetId())))
+                {
+                    return DynamicStruct::Builder{};
+                }
+
+                const Declaration::Reader decl = GetSchema(*info);
+                const Declaration::Data::Struct::Reader fieldStructDecl = decl.GetData().GetStruct();
+                const StructBuilder builder = m_list.GetBuilder()->AddStruct(fieldStructDecl.GetDataFieldCount(), fieldStructDecl.GetDataWordSize(), fieldStructDecl.GetPointerCount());
+                m_list.GetPointerElement(index).Set(builder);
+                return DynamicStruct::Builder(*info, builder);
+            }
+            default:
+                HE_VERIFY(false, HE_MSG("Init without a size is only valid for struct fields"), HE_KV(element_type, elementTypeData.GetUnionTag()));
+                return DynamicStruct::Builder{};
+        }
+    }
+
+    DynamicValue::Builder DynamicArray::Builder::Init(uint16_t index, uint32_t size)
+    {
+        if (!HE_VERIFY(index < Size()))
+            return DynamicValue::Builder{};
+
+        const Type::Reader elementType = ArrayType().GetElementType();
+        const Type::Data::Reader elementTypeData = elementType.GetData();
+
+        switch (elementTypeData.GetUnionTag())
+        {
+            case Type::Data::UnionTag::Blob:
+            {
+                Blob::Builder blob = m_list.GetBuilder()->AddList<uint8_t>(size);
+                m_list.GetPointerElement(index).Set(blob);
+                return DynamicList::Builder(*m_scope, elementType, blob);
+            }
+            case Type::Data::UnionTag::String:
+            {
+                String::Builder str = String::Builder(m_list.GetBuilder()->AddList<char>(size));
+                m_list.GetPointerElement(index).Set(str);
+                return DynamicList::Builder(*m_scope, elementType, str);
+            }
+            case Type::Data::UnionTag::List:
+            {
+                const Type::Data::List::Reader subListType = elementTypeData.GetList();
+                const Type::Reader subElementType = subListType.GetElementType();
+                const ElementSize subElementSize = GetTypeElementSize(subElementType);
+
+                if (subElementSize != ElementSize::Composite)
+                {
+                    ListBuilder list = m_list.GetBuilder()->AddList(subElementSize, size);
+                    m_list.GetPointerElement(index).Set(list);
+                    return DynamicList::Builder(*m_scope, subElementType, list);
+                }
+
+                const Type::Data::Struct::Reader structType = subElementType.GetData().GetStruct();
+                const DeclInfo* info = FindDependency(*m_scope, structType.GetId());
+                if (!HE_VERIFY(info,
+                    HE_MSG("Element requested from DynamicList is a list of structs that has a missing type."),
+                    HE_KV(struct_name, GetSchema(*m_scope).GetName()),
+                    HE_KV(requested_type_id, structType.GetId())))
+                {
+                    return DynamicStruct::Builder{};
+                }
+
+                const Declaration::Reader decl = GetSchema(*info);
+                const Declaration::Data::Struct::Reader structDecl = decl.GetData().GetStruct();
+                ListBuilder list = m_list.GetBuilder()->AddStructList(size, structDecl.GetDataFieldCount(), structDecl.GetDataWordSize(), structDecl.GetPointerCount());
+                m_list.GetPointerElement(index).Set(list);
+                return DynamicList::Builder(*m_scope, subElementType, list);
+            }
+            default:
+                HE_VERIFY(false, HE_MSG("Init with a size is only valid for blob, string, and list elements"), HE_KV(element_type, elementTypeData.GetUnionTag()));
+                return DynamicStruct::Builder{};
+        }
+    }
+
+    void DynamicArray::Builder::Clear(uint32_t index)
+    {
+        const uint16_t size = Size();
+
+        if (!HE_VERIFY(index < size))
+            return;
+
+        const Type::Reader elementType = ArrayType().GetElementType();
+        const Type::Data::Reader elementTypeData = elementType.GetData();
+
+        const uint32_t dataWordSize = ScopeStruct().GetDataWordSize();
+
+        switch (elementTypeData.GetUnionTag())
+        {
+            case Type::Data::UnionTag::Void: break;
+            case Type::Data::UnionTag::Bool: _ReadDataArrayField<bool>(m_array.data, dataWordSize, m_array.dataOffset, size).Set(index, false); break;
+            case Type::Data::UnionTag::Int8: _ReadDataArrayField<int8_t>(m_array.data, dataWordSize, m_array.dataOffset, size)[index] = static_cast<int8_t>(0); break;
+            case Type::Data::UnionTag::Int16: _ReadDataArrayField<int16_t>(m_array.data, dataWordSize, m_array.dataOffset, size)[index] = static_cast<int16_t>(0); break;
+            case Type::Data::UnionTag::Int32: _ReadDataArrayField<int32_t>(m_array.data, dataWordSize, m_array.dataOffset, size)[index] = static_cast<int32_t>(0); break;
+            case Type::Data::UnionTag::Int64: _ReadDataArrayField<int64_t>(m_array.data, dataWordSize, m_array.dataOffset, size)[index] = static_cast<int64_t>(0); break;
+            case Type::Data::UnionTag::Uint8: _ReadDataArrayField<uint8_t>(m_array.data, dataWordSize, m_array.dataOffset, size)[index] = static_cast<uint8_t>(0); break;
+            case Type::Data::UnionTag::Uint16: _ReadDataArrayField<uint16_t>(m_array.data, dataWordSize, m_array.dataOffset, size)[index] = static_cast<uint16_t>(0); break;
+            case Type::Data::UnionTag::Uint32: _ReadDataArrayField<uint32_t>(m_array.data, dataWordSize, m_array.dataOffset, size)[index] = static_cast<uint32_t>(0); break;
+            case Type::Data::UnionTag::Uint64: _ReadDataArrayField<uint64_t>(m_array.data, dataWordSize, m_array.dataOffset, size)[index] = static_cast<uint64_t>(0); break;
+            case Type::Data::UnionTag::Float32: _ReadDataArrayField<float>(m_array.data, dataWordSize, m_array.dataOffset, size)[index] = static_cast<float>(0); break;
+            case Type::Data::UnionTag::Float64: _ReadDataArrayField<double>(m_array.data, dataWordSize, m_array.dataOffset, size)[index] = static_cast<double>(0); break;
+            case Type::Data::UnionTag::Enum: _ReadDataArrayField<uint16_t>(m_array.data, dataWordSize, m_array.dataOffset, size)[index] = 0; break;
+
+            case Type::Data::UnionTag::Blob:
+            case Type::Data::UnionTag::String:
+            case Type::Data::UnionTag::AnyPointer:
+            case Type::Data::UnionTag::AnyStruct:
+            case Type::Data::UnionTag::AnyList:
+            case Type::Data::UnionTag::Parameter:
+            case Type::Data::UnionTag::List:
+            case Type::Data::UnionTag::Struct:
+                m_list.GetPointerElement(index).SetNull();
+                break;
+
+            case Type::Data::UnionTag::Array:
+            {
+                HE_VERIFY(false, HE_MSG("Arrays of arrays are not supported."));
+                break;
+            }
+            case Type::Data::UnionTag::Interface:
+            {
+                // Interfaces do not currently have values.
+                break;
+            }
+        }
+    }
+
+    bool DynamicArray::Builder::Has(uint32_t index) const
+    {
+        return AsReader().Has(index);
     }
 
     DynamicValue::Builder DynamicArray::Builder::operator[](uint16_t index) const
@@ -1367,6 +1671,23 @@ namespace he::schema
         }
 
         return DynamicValue::Reader{};
+    }
+
+    bool DynamicList::Reader::Has(uint32_t index) const
+    {
+        if (!HE_VERIFY(index < Size()))
+            return false;
+
+        const Type::Reader elementType = ListType().GetElementType();
+        const Type::Data::Reader elementTypeData = elementType.GetData();
+
+        if (elementTypeData.IsVoid())
+            return false;
+
+        if (elementTypeData.IsStruct() || !IsPointer(elementType))
+            return true;
+
+        return !m_reader.GetPointerElement(index).IsNull();
     }
 
     DynamicValue::Reader DynamicList::Reader::operator[](uint32_t index) const
@@ -1471,8 +1792,20 @@ namespace he::schema
             case Type::Data::UnionTag::Uint64: m_builder.SetDataElement(index, value.As<uint64_t>()); break;
             case Type::Data::UnionTag::Float32: m_builder.SetDataElement(index, value.As<float>()); break;
             case Type::Data::UnionTag::Float64: m_builder.SetDataElement(index, value.As<double>()); break;
-            case Type::Data::UnionTag::Blob: m_builder.GetPointerElement(index).Set(value.As<Blob>()); break;
-            case Type::Data::UnionTag::String: m_builder.GetPointerElement(index).Set(value.As<String>()); break;
+            case Type::Data::UnionTag::Blob:
+            {
+                const Blob::Reader src = value.As<Blob>();
+                Blob::Builder dst = Init(index, src.Size()).As<Blob>();
+                dst.Copy(src);
+                break;
+            }
+            case Type::Data::UnionTag::String:
+            {
+                const String::Reader src = value.As<String>();
+                String::Builder dst = Init(index, src.Size()).As<String>();
+                dst.Copy(src);
+                break;
+            }
             case Type::Data::UnionTag::AnyPointer:
             case Type::Data::UnionTag::AnyStruct:
             case Type::Data::UnionTag::AnyList:
@@ -1485,16 +1818,16 @@ namespace he::schema
             case Type::Data::UnionTag::Array:
             {
                 HE_VERIFY(false, HE_MSG("Lists of arrays are not supported."));
-                break;;
+                break;
             }
             case Type::Data::UnionTag::List:
             {
                 const DynamicList::Reader src = value.As<DynamicList>();
-
-                if (!HE_VERIFY(src.Type() == elementType))
-                    return;
-
-                m_builder.GetPointerElement(index).Set(src.List());
+                if (HE_VERIFY(src.Type() == elementType))
+                {
+                    DynamicList::Builder dst = Init(index, src.Size()).As<DynamicList>();
+                    dst.List().Copy(src.List());
+                }
                 break;
             }
             case Type::Data::UnionTag::Enum:
@@ -1587,6 +1920,78 @@ namespace he::schema
                 HE_VERIFY(false, HE_MSG("Init with a size is only valid for blob, string, and list elements"), HE_KV(element_type, elementTypeData.GetUnionTag()));
                 return DynamicStruct::Builder{};
         }
+    }
+
+    void DynamicList::Builder::Clear(uint32_t index)
+    {
+        if (!HE_VERIFY(index < Size()))
+            return;
+
+        const Type::Data::List::Reader listType = m_type.GetData().GetList();
+        const Type::Reader elementType = listType.GetElementType();
+        const Type::Data::Reader elementTypeData = elementType.GetData();
+
+        switch (elementTypeData.GetUnionTag())
+        {
+            case Type::Data::UnionTag::Void: m_builder.SetDataElement(index, Void{}); break;
+            case Type::Data::UnionTag::Bool: m_builder.SetDataElement(index, false); break;
+            case Type::Data::UnionTag::Int8: m_builder.SetDataElement(index, static_cast<int8_t>(0)); break;
+            case Type::Data::UnionTag::Int16: m_builder.SetDataElement(index, static_cast<int16_t>(0)); break;
+            case Type::Data::UnionTag::Int32: m_builder.SetDataElement(index, static_cast<int32_t>(0)); break;
+            case Type::Data::UnionTag::Int64: m_builder.SetDataElement(index, static_cast<int64_t>(0)); break;
+            case Type::Data::UnionTag::Uint8: m_builder.SetDataElement(index, static_cast<uint8_t>(0)); break;
+            case Type::Data::UnionTag::Uint16: m_builder.SetDataElement(index, static_cast<uint16_t>(0)); break;
+            case Type::Data::UnionTag::Uint32: m_builder.SetDataElement(index, static_cast<uint32_t>(0)); break;
+            case Type::Data::UnionTag::Uint64: m_builder.SetDataElement(index, static_cast<uint64_t>(0)); break;
+            case Type::Data::UnionTag::Float32: m_builder.SetDataElement(index, 0.0f); break;
+            case Type::Data::UnionTag::Float64: m_builder.SetDataElement(index, 0.0); break;
+            case Type::Data::UnionTag::Enum: m_builder.SetDataElement(index, static_cast<uint16_t>(0)); break;
+
+            case Type::Data::UnionTag::Blob:
+            case Type::Data::UnionTag::String:
+            case Type::Data::UnionTag::AnyPointer:
+            case Type::Data::UnionTag::AnyStruct:
+            case Type::Data::UnionTag::AnyList:
+            case Type::Data::UnionTag::Parameter:
+            case Type::Data::UnionTag::List:
+                m_builder.GetPointerElement(index).SetNull();
+                break;
+
+            case Type::Data::UnionTag::Struct:
+            {
+                const Type::Data::Struct::Reader structType = elementTypeData.GetStruct();
+                const DeclInfo* info = FindDependency(*m_scope, structType.GetId());
+                if (!HE_VERIFY(info,
+                    HE_MSG("Field requested from DynamicStruct is a struct that has a missing type."),
+                    HE_KV(struct_name, GetSchema(*m_scope).GetName()),
+                    HE_KV(requested_type_id, structType.GetId())))
+                {
+                    return;
+                }
+
+                DynamicStruct::Builder builder(*info, m_builder.GetCompositeElement(index));
+                for (const Field::Reader field : builder.StructSchema().GetFields())
+                {
+                    builder.Clear(field);
+                }
+                break;
+            }
+            case Type::Data::UnionTag::Array:
+            {
+                HE_VERIFY(false, HE_MSG("Lists of arrays are not supported."));
+                break;
+            }
+            case Type::Data::UnionTag::Interface:
+            {
+                // Interfaces do not currently have values.
+                break;
+            }
+        }
+    }
+
+    bool DynamicList::Builder::Has(uint32_t index) const
+    {
+        return AsReader().Has(index);
     }
 
     DynamicValue::Builder DynamicList::Builder::operator[](uint32_t index) const

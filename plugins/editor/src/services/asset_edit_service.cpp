@@ -5,94 +5,99 @@
 #include "he/core/appender.h"
 #include "he/core/assert.h"
 #include "he/core/enum_ops.h"
+#include "he/core/enum_fmt.h"
 #include "he/core/string_view_fmt.h"
+#include "he/core/types.h"
 
 #include "fmt/format.h"
 
 namespace he::editor
 {
-    class StructValueSetter : public schema::StructVisitor
+    static schema::DynamicValue::Builder GetByPath(const schema::DynamicValue::Builder& data, const AssetEditPathEntry& entry)
     {
-    public:
-        StructValueSetter(AssetEditAction& action)
-            : m_path(action.path)
-        {}
-
-    private:
-        void VisitField(schema::StructReader data, schema::Field::Reader field, const schema::DeclInfo& scope) override
+        switch (data.GetKind())
         {
-            if (m_path[m_index].field.Data() == field.Data())
-            {
-                ++m_index;
-                schema::StructVisitor::VisitField(data, field, scope);
-            }
+            case schema::DynamicValue::Kind::Array: return data.As<schema::DynamicArray>().Get(static_cast<uint16_t>(entry.listIndex));
+            case schema::DynamicValue::Kind::List: return data.As<schema::DynamicList>().Get(entry.listIndex);
+            case schema::DynamicValue::Kind::Struct: return data.As<schema::DynamicStruct>().Get(entry.field);
+            //case schema::DynamicValue::Kind::AnyPointer:
+            //{
+            //    HE_ASSERT(entry.info, HE_MSG("Editing an AnyPointer field requires DeclInfo to be set."));
+            //    const he::schema::AnyPointer::Reader dataPtr = data.As<he::schema::AnyPointer>();
+            //    entry.
+            //    // TODO: Read declInfo, check if list or struct, create a DynamicList or DynamicStruct and return it
+
+            //    const he::schema::StructReader assetDataStruct = assetDataPtr.TryGetStruct();
+            //    const he::schema::DynamicStruct::Reader assetData(*assetType->declInfo, assetDataStruct);
+            //}
+            default:
+                HE_VERIFY(false,
+                    HE_MSG("Path is invalid, it indexes into a field that is not an array, list, or struct."),
+                    HE_KV(kind, data.GetKind()));
+                return schema::DynamicValue::Builder{};
+        }
+    }
+
+    static void SetByPath(schema::DynamicValue::Builder& data, const AssetEditPathEntry& entry, const schema::DynamicValue::Reader& value)
+    {
+        switch (data.GetKind())
+        {
+            case schema::DynamicValue::Kind::Array: data.As<schema::DynamicArray>().Set(static_cast<uint16_t>(entry.listIndex), value); break;
+            case schema::DynamicValue::Kind::List: data.As<schema::DynamicList>().Set(entry.listIndex, value); break;
+            case schema::DynamicValue::Kind::Struct: data.As<schema::DynamicStruct>().Set(entry.field, value); break;
+            default:
+                HE_VERIFY(false,
+                    HE_MSG("Path is invalid, it indexes into a field that is not an array, list, or struct."),
+                    HE_KV(kind, data.GetKind()));
+        }
+    }
+
+    static schema::DynamicValue::Builder InitByPath(schema::DynamicValue::Builder& data, const AssetEditPathEntry& entry)
+    {
+        switch (data.GetKind())
+        {
+            case schema::DynamicValue::Kind::Array: return data.As<schema::DynamicArray>().Init(static_cast<uint16_t>(entry.listIndex));
+            case schema::DynamicValue::Kind::List: return data.As<schema::DynamicList>().Get(entry.listIndex); // No init necessary for lists of structs
+            case schema::DynamicValue::Kind::Struct: return data.As<schema::DynamicStruct>().Init(entry.field);
+            default:
+                HE_VERIFY(false,
+                    HE_MSG("Path is invalid, it indexes into a field that is not an array, list, or struct."),
+                    HE_KV(kind, data.GetKind()));
+                return schema::DynamicValue::Builder{};
+        }
+    }
+
+    //static schema::DynamicValue::Builder InitByPath(schema::DynamicValue::Builder& data, const AssetEditPathEntry& entry, uint32_t size)
+    //{
+    //    switch (data.GetKind())
+    //    {
+    //        case schema::DynamicValue::Kind::Array: return data.As<schema::DynamicArray>().Init(static_cast<uint16_t>(entry.listIndex), size);
+    //        case schema::DynamicValue::Kind::List: return data.As<schema::DynamicList>().Init(entry.listIndex, size);
+    //        case schema::DynamicValue::Kind::Struct: return data.As<schema::DynamicStruct>().Init(entry.field, size);
+    //        default:
+    //            HE_VERIFY(false, HE_MSG("Path is invalid, it indexes into a field that is not an array, list, or struct."));
+    //            return schema::DynamicValue::Builder{};
+    //    }
+    //}
+
+    static void ClearByPath(schema::DynamicValue::Builder& data, const AssetEditPathEntry& entry)
+    {
+        if (HE_VERIFY(data.GetKind() == schema::DynamicValue::Kind::Struct,
+            HE_MSG("Path is invalid, only struct fields can be cleared.")))
+        {
+            data.As<schema::DynamicStruct>().Clear(entry.field);
+        }
+    }
+
+    static schema::DynamicValue::Builder WalkToLastPathEntry(schema::DynamicValue::Builder data, Span<const AssetEditPathEntry> path)
+    {
+        for (uint32_t i = 0; i < (path.Size() - 1); ++i)
+        {
+            data = GetByPath(data, path[i]);
         }
 
-        void VisitNormalField(schema::StructReader data, schema::Field::Reader field, const schema::DeclInfo& scope) override
-        {
-            // TODO: If the field is a pointer we need to create it before continuing.
-            schema::StructVisitor::VisitNormalField(data, field, scope);
-        }
-
-        void VisitUnionField(schema::StructReader data, schema::Field::Reader field, const schema::DeclInfo& scope) override
-        {
-            // TODO: Set the tag of the union to something else, then visit the newly set one.
-            schema::StructVisitor::VisitUnionField(data, field, scope);
-        }
-
-        void VisitValue(schema::StructReader data, schema::Type::Reader type, uint16_t index, uint32_t dataOffset, const schema::DeclInfo& scope) override
-        {
-            // TODO: cache the StructReader as a builder so when we visit a field's value we can set it.
-            schema::StructVisitor::VisitValue(data, type, index, dataOffset, scope);
-        }
-
-        void VisitValue(schema::ListReader data, schema::Type::Reader elementType, uint32_t index, const schema::DeclInfo& scope) override
-        {
-            // TODO: cache the ListReader as a builder so when we visit a field's value we can set it.
-            schema::StructVisitor::VisitValue(data, elementType, index, scope);
-        }
-
-        bool ShouldVisitNormalField(schema::StructReader data, schema::Field::Reader field, const schema::DeclInfo& scope) override
-        {
-            HE_UNUSED(data, field, scope);
-            return true;
-        }
-
-        bool ShouldVisitGroupField(schema::StructReader data, schema::Field::Reader field, const schema::DeclInfo& scope) override
-        {
-            HE_UNUSED(data, field, scope);
-            return true;
-        }
-
-        bool ShouldVisitUnionField(schema::StructReader data, schema::Field::Reader field, const schema::DeclInfo& scope) override
-        {
-            HE_UNUSED(data, field, scope);
-            return true;
-        }
-
-    private:
-        schema::StructBuilder AsBuilder(schema::StructReader reader, schema::Builder& builder)
-        {
-            HE_ASSERT(reader.Data() >= builder.Data() && reader.Data() < builder.Data() + builder.Size());
-            const uint32_t wordOffset = static_cast<uint32_t>(reader.Data() - builder.Data());
-            return schema::StructBuilder(&builder, wordOffset, reader.DataFieldCount(), reader.DataWordSize(), reader.PointerCount());
-        }
-
-        schema::ListBuilder AsBuilder(schema::ListReader reader, schema::Builder& builder)
-        {
-            HE_ASSERT(reader.Data() >= builder.Data() && reader.Data() < builder.Data() + builder.Size());
-            const uint32_t wordOffset = static_cast<uint32_t>(reader.Data() - builder.Data());
-
-            if (reader.GetElementSize() == schema::ElementSize::Composite)
-                return schema::ListBuilder(&builder, wordOffset, reader.Size(), reader.StepSize(), reader.StructDataFieldCount());
-
-            return schema::ListBuilder(&builder, wordOffset, reader.Size(), reader.StepSize(), reader.GetElementSize());
-        }
-
-    private:
-        uint32_t m_index{ 0 };
-        Span<const AssetEditPathEntry> m_path;
-    };
+        return data;
+    }
 
     void AssetEditContext::PushEdit(AssetEdit&& edit)
     {
@@ -107,6 +112,7 @@ namespace he::editor
             {
                 return;
             }
+            // TODO: Verify paths have a declInfo for anypointer fields
         }
 
         if (edit.name.IsEmpty() && edit.actions.Size() == 1)
@@ -164,14 +170,24 @@ namespace he::editor
 
     void AssetEditContext::RedoAction(AssetEditAction& action)
     {
-        // TODO!
+        schema::DynamicValue::Builder data = WalkToLastPathEntry(m_data, action.path);
+        // TODO: previous value needs to live in AssetEdit::m_builder
+        //action.previousValue = GetPathEntry(data, action.path.Back());
+
         switch (action.kind)
         {
             case AssetEditAction::Kind::AddListItem:
             case AssetEditAction::Kind::RemoveListItem:
-            case AssetEditAction::Kind::SetUnionTag:
+                // TODO: Add/Remove list item
+                break;
             case AssetEditAction::Kind::SetValue:
-            case AssetEditAction::Kind::ResetToDefault:
+                SetByPath(data, action.path.Back(), action.value.AsReader());
+                break;
+            case AssetEditAction::Kind::InitValue:
+                InitByPath(data, action.path.Back());
+                break;
+            case AssetEditAction::Kind::ClearValue:
+                ClearByPath(data, action.path.Back());
                 break;
         }
     }
@@ -186,15 +202,24 @@ namespace he::editor
 
     void AssetEditContext::UndoAction(AssetEditAction& action)
     {
-        // TODO!
+        schema::DynamicValue::Builder data = WalkToLastPathEntry(m_data, action.path);
+
         switch (action.kind)
         {
             case AssetEditAction::Kind::AddListItem:
             case AssetEditAction::Kind::RemoveListItem:
-            case AssetEditAction::Kind::SetUnionTag:
-            case AssetEditAction::Kind::SetValue:
-            case AssetEditAction::Kind::ResetToDefault:
+                // TODO: Add/remove list item
                 break;
+            case AssetEditAction::Kind::SetValue:
+            case AssetEditAction::Kind::InitValue:
+            case AssetEditAction::Kind::ClearValue:
+            {
+                if (action.previousValue.GetKind() == schema::DynamicValue::Kind::Unknown)
+                    ClearByPath(data, action.path.Back());
+                else
+                    SetByPath(data, action.path.Back(), action.previousValue.AsReader());
+                break;
+            }
         }
     }
 }
@@ -209,7 +234,8 @@ namespace he
             case editor::AssetEditAction::Kind::AddListItem: return "Add List Item";
             case editor::AssetEditAction::Kind::RemoveListItem: return "Remove List Item";
             case editor::AssetEditAction::Kind::SetValue: return "Set Value";
-            case editor::AssetEditAction::Kind::ResetToDefault: return "Reset To Default";
+            case editor::AssetEditAction::Kind::InitValue: return "Init Value";
+            case editor::AssetEditAction::Kind::ClearValue: return "Clear Value";
         }
 
         return "<unknown>";

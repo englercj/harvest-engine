@@ -19,28 +19,40 @@ namespace he::editor
     class TypeEditUIService
     {
     public:
-        using EditorDelegate = Delegate<bool(schema::DynamicValue::Builder value, AssetEdit& edit)>;
-
-    public:
-        void ShowTypeEditor(const TypeInfo& info, const void* value, schema::Field::Reader path);
-
-        template <typename T>
-        void ShowTypeEditor(const void* value, schema::Field::Reader path)
+        struct Context
         {
-            ShowTypeEditor(TypeInfo::Get<T>(), value, path);
-        }
+            const he::schema::DynamicValue::Reader data;
+            he::schema::Field::Reader field;
+            uint32_t listIndex;
+
+            AssetEdit& edit;
+            he::schema::DynamicStructVisitor::Reader& visitor;
+        };
+
+        using EditorDelegate = Delegate<void(const he::schema::DynamicValue::Reader& value, Context& ctx)>;
+
+        struct Editor
+        {
+            bool isInline{ false };
+            EditorDelegate func{};
+        };
 
     public:
-        template <schema::DataType T>
-        void RegisterTypeEditor(EditorDelegate func) { RegisterTypeEditor(TypeInfo::Get<T>().Hash(), func); }
+        void RegisterTypeEditor(he::schema::TypeId typeId, Editor&& editor);
 
         template <typename T>
-        void RegisterTypeEditor()
+        void RegisterTypeEditor(Editor&& editor) { RegisterTypeEditor(T::Id, Move(editor)); }
+
+        void RegisterFieldEditor(he::schema::Field::Reader field, Editor&& editor);
+
+        template <typename T>
+        void RegisterFieldEditor(StringView name, Editor&& editor) { RegisterFieldEditor(he::schema::FindFieldByName<T>(name), Move(editor)); }
+
+        const Editor* FindEditor(he::schema::TypeId typeId) const;
+        const Editor* FindEditor(he::schema::Field::Reader field) const;
 
     private:
-        void RegisterTypeEditor(uint64_t key, EditorDelegate func);
-
-    private:
-        std::unordered_map<uint64_t, EditorDelegate> m_editors{};
+        std::unordered_map<he::schema::TypeId, Editor> m_typeEditors{};
+        std::unordered_map<const he::schema::Word*, Editor> m_fieldEditors{};
     };
 }

@@ -67,14 +67,14 @@ end
 local function _handle_dependson(ctx, values)
     for _, mod_name in ipairs(values) do
         if string.startswith(mod_name, "sys:") then
-            if ctx.type == "console_app" or ctx.type == "windowed_app" or (ctx.type == "default" and not he.is_static_only) then
+            if ctx.type == "console_app" or ctx.type == "windowed_app" or ctx.type == "shared" then
                 links { string.sub(mod_name, 5) }
             end
             return
         end
 
         if string.startswith(mod_name, "file:") then
-            if ctx.type == "console_app" or ctx.type == "windowed_app" or (ctx.type == "default" and not he.is_static_only) then
+            if ctx.type == "console_app" or ctx.type == "windowed_app" or ctx.type == "shared" then
                 links { string.sub(mod_name, 6) }
             end
             return
@@ -92,12 +92,16 @@ local function _handle_dependson(ctx, values)
             return
         end
 
-        if ctx.type == "console_app" or ctx.type == "windowed_app" or (ctx.type == "default" and not he.is_static_only) then
-            if mod.type == "default" or mod.type == "static" then
+        if ctx.type == "console_app" or ctx.type == "windowed_app" or ctx.type == "shared" then
+            if mod.type == "static" then
                 links { mod.name }
             elseif mod.type == "custom" then
                 dependson { mod.name }
             end
+        end
+
+        for _, handler in ipairs(he.module_dependency_handlers) do
+            handler(ctx, mod)
         end
 
         local oldcwd = os.getcwd()
@@ -236,3 +240,25 @@ he.add_module_key {
     desc = "an array of variant objects",
     handler = function (ctx, values) _handle_variants(ctx, values) end,
 }
+
+he.add_module_key {
+    key = "exports_module_interface",
+    scope = "private",
+    type = "boolean",
+    desc = "a boolean describing if the module uses the HE_EXPORT_MODULE() macro to export a module class",
+}
+
+he.add_module_dependency_handler(function (ctx, mod)
+    -- Modules exported from static libraries are stripped by the linker because their
+    -- symbols aren't used anywhere. On GCC/Clang this is easily fixed by adding the "used" and
+    -- "retain" attributes to the static module registrar variable. However, MSVC has no such
+    -- equivalent. Instead we have to tell the linker to include the symbols explicitly in the
+    -- options of the executable that links the library.
+    if (ctx.type == "console_app" or ctx.type == "windowed_app") then
+        if mod.type == "static" and mod.exports_module_interface == true then
+            he.filter_push { "toolset:msc-*", "language:C++" }
+                linkoptions { "/INCLUDE:" .. mod.name .. "_ModuleRegistrar" }
+            he.filter_pop()
+        end
+    end
+end)

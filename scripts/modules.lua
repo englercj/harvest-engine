@@ -19,7 +19,6 @@ local module_type_by_kind = {
 }
 
 local kind_by_module_type = {
-    default = (he.is_static_only and "StaticLib" or "SharedLib"),
     static = "StaticLib",
     shared = "SharedLib",
     header = "StaticLib",
@@ -57,6 +56,8 @@ he.imported_modules_count = 0
 
 he.module_key_infos = {}
 
+he.module_dependency_handlers = {}
+
 local function _try_handle_key(ctx, key, value)
     if key == nil or value == nil then
         return
@@ -71,7 +72,9 @@ local function _try_handle_key(ctx, key, value)
         p.warn("Module '" .. ctx.name .. "' contains unknown key '" .. key .. "'.")
     else
         assert(type(value) == info.type, "Unexpected type for '" .. key .. "' in module '" .. ctx.name .. "', expected " .. info.desc)
-        info.handler(ctx, value)
+        if info.handler ~= nil then
+            info.handler(ctx, value)
+        end
     end
 end
 
@@ -98,6 +101,9 @@ local function _system_tag_file_excludes()
     filter { }
 end
 
+local function _msvc_module_links(mod)
+end
+
 local function _module_project(mod)
     if mod._plugin._install_valid == false then
         verbosef("Skipping project for module '%s' in group '%s', not installed.", mod.name, mod.group)
@@ -109,9 +115,7 @@ local function _module_project(mod)
     local oldcwd = os.getcwd()
     os.chdir(mod._plugin._install_dir)
 
-    if type(mod.type) ~= "string" or mod.type == "" then
-        mod.type = "default"
-    end
+    assert(type(mod.type) == "string", "Module type must be a string.")
 
     local kindname = kind_by_module_type[mod.type]
     assert(kindname, "Unknown module type: '" .. mod.type .. "'.")
@@ -126,12 +130,12 @@ local function _module_project(mod)
     project(mod.name)
         language(language_type)
         kind(kindname)
-        objdir(target_obj_dir)
+        objdir(he.target_obj_dir)
         targetdir(kind_target_dir)
         location(he.projects_dir)
 
         defines {
-            "HE_CFG_MODULE_NAME=\"" .. mod.name .. "\"",
+            "HE_CFG_MODULE_NAME=" .. mod.name,
             "HE_CFG_MODULE_TYPE=" .. module_type,
         }
 
@@ -140,6 +144,7 @@ local function _module_project(mod)
         end
 
         _system_tag_file_excludes()
+        _msvc_module_links()
 
     os.chdir(oldcwd)
 end
@@ -285,6 +290,7 @@ end
 he.add_module_key = function (info)
     local dst = _get_scope_table(info.scope)
 
+    -- dst is nil when the scope is 'private'
     if dst == nil then
         assert(he.module_key_infos[info.key] == nil, "There is already a module key registered with the name: " .. info.key)
         he.module_key_infos[info.key] = info
@@ -304,6 +310,10 @@ he.add_module_key = function (info)
         he.module_key_infos[public_key] = info
         he.module_key_infos[private_key] = info
     end
+end
+
+he.add_module_dependency_handler = function (handler)
+    table.insert(he.module_dependency_handlers, handler)
 end
 
 he.get_module = function (name)

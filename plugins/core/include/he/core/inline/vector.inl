@@ -515,14 +515,8 @@ namespace he
             _VectorMoveAssign(m_data + index, m_data + m_size - moveCount, moveCount);
         }
 
-        // Destruct any trailing elements that weren't move assigned
-        if (count > moveCount)
-        {
-            const uint32_t destructCount = count - moveCount;
-            _VectorDestruct(m_data + index + moveCount, destructCount);
-        }
-
         m_size -= count;
+        _VectorDestruct(m_data + m_size, count);
     }
 
     template <typename T>

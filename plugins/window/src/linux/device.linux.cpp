@@ -1,367 +1,23 @@
 // Copyright Chad Engler
-// TODO: check for newly connected/disconnected gamepads
-// TODO: View Flags - AcceptInput, FocusOnClick, TaskBarIcon
-// TODO: drag and drop (AcceptFiles)
 
-#include "he/window/application.h"
-#include "he/window/device.h"
-#include "he/window/event.h"
-#include "he/window/gamepad.h"
-#include "he/window/key.h"
-#include "he/window/mouse.h"
-#include "he/window/view.h"
+#include "device.linux.h"
 
-#include "he/core/assert.h"
-#include "he/core/macros.h"
+#include "gamepad.linux.h"
+#include "view.linux.h"
+
 #include "he/core/log.h"
-#include "he/math/vec2.h"
-
-#include <atomic>
-#include <array>
-#include <climits>
-#include <cstdint>
-
-// xlib headers have `#define None`, so we can't use *::None in this file after including
-// those headers. This hacks around that by giving us another symbol to use.
-namespace he::window
-{
-    constexpr Key Key_None = Key::None;
-    constexpr MouseCursor MouseCursor_None = MouseCursor::None;
-    constexpr MouseButton MouseButton_None = MouseButton::None;
-    constexpr GamepadAxis GamepadAxis_None = GamepadAxis::None;
-    constexpr GamepadButton GamepadButton_None = GamepadButton::None;
-}
+#include "he/window/event.h"
+#include "he/window/key.h"
 
 #if defined(HE_PLATFORM_LINUX)
 
 #include <dlfcn.h>
 #include <fcntl.h>
-#include <unistd.h>
-#include <linux/joystick.h>
-#include <sys/types.h>
-#include <sys/stat.h>
 
-#include <X11/cursorfont.h>
-#include <X11/keysym.h>
-#include <X11/Xatom.h>
-#include <X11/XKBlib.h>
-#include <X11/Xlib.h>
-#include <X11/Xmd.h>
-#include <X11/Xresource.h>
-#include <X11/Xutil.h>
-#include <X11/extensions/XInput2.h>
+#include "x11_all.h"
 
-namespace he::window::Linux
+namespace he::window::linux
 {
-    class GamepadImpl;
-    class DeviceImpl;
-    class ViewImpl;
-
-    // ------------------------------------------------------------------------------------------------
-    using Pfn_XChangeProperty = int(*)(Display*,Window,Atom,Atom,int,int,const unsigned char*,int);
-    using Pfn_XCloseDisplay = int(*)(Display*);
-    using Pfn_XCloseIM = Status(*)(XIM);
-    using Pfn_XCreateFontCursor = Cursor(*)(Display*,unsigned int);
-    using Pfn_XCreateBitmapFromData = Pixmap(*)(Display*,Drawable,const char*,unsigned int,unsigned int);
-    using Pfn_XCreateIC = XIC(*)(XIM,...);
-    using Pfn_XCreatePixmapCursor = Cursor(*)(Display*,Pixmap,Pixmap,XColor*,XColor*,unsigned int,unsigned int);
-    using Pfn_XCreateWindow = Window(*)(Display*,Window,int,int,unsigned int,unsigned int,unsigned int,int,unsigned int,Visual*,unsigned long,XSetWindowAttributes*);
-    using Pfn_XDefineCursor = int(*)(Display*,Window,Cursor);
-    using Pfn_XDeleteContext = int(*)(Display*,XID,XContext);
-    using Pfn_XDestroyIC = void(*)(XIC);
-    using Pfn_XDestroyWindow = int(*)(Display*,Window);
-    using Pfn_XFilterEvent = Bool(*)(XEvent*,Window);
-    using Pfn_XFindContext = int(*)(Display*,XID,XContext,XPointer*);
-    using Pfn_XFlush = int(*)(Display*);
-    using Pfn_XFree = int(*)(void*);
-    using Pfn_XFreeCursor = int(*)(Display*,Cursor);
-    using Pfn_XFreeEventData = void(*)(Display*,XGenericEventCookie*);
-    using Pfn_XFreePixmap = int(*)(Display*,Pixmap);
-    using Pfn_XGetEventData = Bool(*)(Display*,XGenericEventCookie*);
-    using Pfn_XGetInputFocus = int(*)(Display*,Window*,int*);
-    using Pfn_XGetWMNormalHints = Status(*)(Display*,Window,XSizeHints*,long*);
-    using Pfn_XGetWindowAttributes = Status(*)(Display*,Window,XWindowAttributes*);
-    using Pfn_XGetWindowProperty = int(*)(Display*,Window,Atom,long,long,Bool,Atom,Atom*,int*,unsigned long*,unsigned long*,unsigned char**);
-    using Pfn_XGrabPointer = int(*)(Display*,Window,Bool,unsigned int,int,int,Window,Cursor,Time);
-    using Pfn_XIconifyWindow = Status(*)(Display*,Window,int);
-    using Pfn_XInitThreads = Status(*)(void);
-    using Pfn_XInternAtom = Atom(*)(Display*,const char*,Bool);
-    using Pfn_XLookupKeysym = KeySym(*)(XKeyEvent *key_event, int index);
-    using Pfn_XMapRaised = int(*)(Display*,Window);
-    using Pfn_XMapWindow = int(*)(Display*,Window);
-    using Pfn_XMoveResizeWindow = int(*)(Display*,Window,int,int,unsigned int,unsigned int);
-    using Pfn_XMoveWindow = int(*)(Display*,Window,int,int);
-    using Pfn_XNextEvent = int(*)(Display*,XEvent*);
-    using Pfn_XOpenDisplay = Display*(*)(const char*);
-    using Pfn_XOpenIM = XIM(*)(Display*,XrmDatabase*,char*,char*);
-    using Pfn_XPeekEvent = int(*)(Display*,XEvent*);
-    using Pfn_XPending = int(*)(Display*);
-    using Pfn_XQueryExtension = Bool(*)(Display*,const char*,int*,int*,int*);
-    using Pfn_XQueryPointer = Bool(*)(Display*,Window,Window*,Window*,int*,int*,int*,int*,unsigned int*);
-    using Pfn_XRaiseWindow = int(*)(Display*,Window);
-    using Pfn_XRefreshKeyboardMapping = int(*)(XMappingEvent*);
-    using Pfn_XResizeWindow = int(*)(Display*,Window,unsigned int,unsigned int);
-    using Pfn_XSaveContext = int(*)(Display*,XID,XContext,const char*);
-    using Pfn_XSendEvent = Status(*)(Display*,Window,Bool,long,XEvent*);
-    using Pfn_XSetInputFocus = int(*)(Display*,Window,int,Time);
-    using Pfn_XSetWMProtocols = Status(*)(Display*,Window,Atom*,int);
-    using Pfn_XStoreName = int(*)(Display*,Window,const char*);
-    using Pfn_XTranslateCoordinates = Bool(*)(Display*,Window,Window,int,int,int*,int*,Window*);
-    using Pfn_XUngrabPointer = int(*)(Display*,Time);
-    using Pfn_XUnmapWindow = int(*)(Display*,Window);
-    using Pfn_XUnsetICFocus = void(*)(XIC);
-    using Pfn_XWarpPointer = int(*)(Display*,Window,Window,int,int,unsigned int,unsigned int,int,int);
-    using Pfn_XkbSetDetectableAutoRepeat = Bool(*)(Display*,Bool,Bool*);
-    using Pfn_XrmUniqueQuark = XrmQuark(*)();
-    using Pfn_Xutf8LookupString = int(*)(XIC,XKeyPressedEvent*,char*,int,KeySym*,Status*);
-    using Pfn_Xutf8SetWMProperties = void(*)(Display*,Window,const char*,const char*,char**,int,XSizeHints*,XWMHints*,XClassHint*);
-
-    using Pfn_XIQueryVersion = Status(*)(Display*,int*,int*);
-    using Pfn_XISelectEvents = int(*)(Display*,Window,XIEventMask*,int);
-
-    constexpr GamepadAxis JoyAxisToGamepadAxis[] =
-    {
-        GamepadAxis::LThumbX,   // 0
-        GamepadAxis::LThumbY,   // 1
-        GamepadAxis::LTrigger,  // 2
-        GamepadAxis::RThumbX,   // 3
-        GamepadAxis::RThumbY,   // 4
-        GamepadAxis::RTrigger,  // 5
-    };
-
-    constexpr GamepadButton JoyButtonToGamepadButton[] =
-    {
-        GamepadButton::Action1,     // 0
-        GamepadButton::Action2,     // 1
-        GamepadButton::Action3,     // 2
-        GamepadButton::Action4,     // 3
-        GamepadButton::LShoulder,   // 4
-        GamepadButton::RShoulder,   // 5
-        GamepadButton::Back,        // 6
-        GamepadButton::Start,       // 7
-        GamepadButton_None,         // 8, center button - not supported
-        GamepadButton::LThumb,      // 9
-        GamepadButton::RThumb,      // 10
-    };
-
-    // --------------------------------------------------------------------------------------------
-    class GamepadImpl final : public Gamepad
-    {
-    public:
-        static constexpr int16_t StickDeadZone = 8000;
-        static constexpr int16_t TriggerDeadZone = 8000;
-
-    public:
-        GamepadImpl(DeviceImpl* device, const uint32_t index)
-            : Gamepad(index)
-            , m_device(device)
-        {}
-
-        ~GamepadImpl();
-
-        Result SetVibration(float leftMotorSpeed, float rightMotorSpeed) override;
-
-        void Open();
-        void Update();
-
-    private:
-        DeviceImpl* m_device{ nullptr };
-        int32_t m_fd{ -1 };
-    };
-
-    // --------------------------------------------------------------------------------------------
-    class ViewImpl : public View
-    {
-    public:
-        ViewImpl(DeviceImpl* device, const ViewDesc& desc);
-        ~ViewImpl();
-
-        void* GetNativeHandle() const override;
-        void* GetUserData() const override;
-        Vec2i GetPosition() const override;
-        Vec2i GetSize() const override;
-        float GetDpiScale() const override;
-        bool IsFocused() const override;
-        bool IsChildFocused() const override;
-        bool IsMinimized() const override;
-        bool IsMaximized() const override;
-
-        void SetPosition(const Vec2i& pos) override;
-        void SetSize(const Vec2i& size) override;
-        void SetVisible(bool visible, bool focus) override;
-        void SetTitle(const char* text) override;
-        void SetAlpha(float alpha) override;
-        void SetAcceptInput(bool value) override;
-
-        void Focus() override;
-        void Minimize() override;
-        void Maximize() override;
-        void Restore() override;
-        void RequestClose() override;
-
-        Vec2f ViewToScreen(const Vec2f& pos) const override;
-        Vec2f ScreenToView(const Vec2f& pos) const override;
-
-        void TrackCapture(const Event& ev);
-
-        void CaptureMouse();
-        void ReleaseMouse();
-
-    public:
-        DeviceImpl* m_device{ nullptr };
-        void* m_userData{ nullptr };
-        XIC m_ic{ nullptr };
-        ViewFlag m_flags{ ViewFlag::Default };
-
-        Window m_window{ None };
-        int m_captureCount{ 0 };
-        Vec2i m_pos{ 0, 0 };
-        Vec2i m_size{ 1, 1 };
-
-        bool m_maximized{ false };
-    };
-
-    // --------------------------------------------------------------------------------------------
-    class DeviceImpl : public Device
-    {
-    public:
-        DeviceImpl(Allocator& allocator);
-        ~DeviceImpl();
-
-        bool Initialize() override;
-
-        int Run(Application& app, const ViewDesc& desc) override;
-        void Quit(int rc) override;
-
-        bool HasHighDefMouse() const override;
-
-        View* CreateView(const ViewDesc& desc) override;
-        void DestroyView(View* view) override;
-
-        View* GetFocusedView() const override;
-        View* GetHoveredView() const override;
-
-        Vec2f GetCursorPos(View* view) const override;
-        void SetCursorPos(View* view, const Vec2f& pos) override;
-
-        void SetCursor(MouseCursor cursor) override;
-
-        void SetCursorRelativeMode(bool relativeMode) override;
-
-        uint32_t GetMonitorCount() const override;
-        uint32_t GetMonitors(Monitor* monitors, uint32_t maxCount) const override;
-
-        void ShowCursor(bool show);
-        void CenterCursor();
-
-        ViewImpl* GetViewFromWindow(Window win) const;
-        Cursor GetActiveCursor() const;
-        void HandleXEvent(XEvent& event);
-
-        void UpdateGamepads();
-
-    public:
-        Application* m_app{ nullptr };
-        Display* m_display{ nullptr };
-        Window m_root{ None };
-        XContext m_context{ None };
-        XIM m_im{ nullptr };
-        int32_t m_xiMajorOpcode{ 0 };
-        MouseCursor m_cursor{ MouseCursor::Arrow };
-        Cursor m_hiddenCursor{ None };
-        Pixmap m_hiddenCursorBitmap{ None };
-        std::atomic<int32_t> m_returnCode{ 0 };
-        std::atomic<bool> m_running{ true };
-        bool m_cursorRelativeMode{ false };
-        bool m_cursorVisible{ true };
-        bool m_hasHighDefMouse{ false };
-        bool m_hasDetectableAutoRepeat{ false };
-        bool m_viewClipped{ false };
-        Vec2f m_cursorRestorePosition{ 0, 0 };
-
-        Cursor m_cursors[static_cast<int32_t>(MouseCursor::_Count)];
-        Atom m_atomNetActiveWindow{ None };
-        Atom m_atomNetWMPing{ None };
-        Atom m_atomNetWMState{ None };
-        Atom m_atomNetWMStateAbove{ None };
-        Atom m_atomNetWMStateMinimized{ None };
-        Atom m_atomNetWMStateMaximizedHorz{ None };
-        Atom m_atomNetWMStateMaximizedVert{ None };
-        Atom m_atomNetWMStateFullscreen{ None };
-        Atom m_atomNetWMWindowOpacity{ None };
-        Atom m_atomNetWMWindowType{ None };
-        Atom m_atomNetWMWindowTypeNormal{ None };
-        Atom m_atomMotifWMHints{ None };
-        Atom m_atomWMDeleteWindow{ None };
-        Atom m_atomWMState{ None };
-
-        void* m_xlib{ nullptr };
-        Pfn_XChangeProperty m_XChangeProperty{ nullptr };
-        Pfn_XCloseDisplay m_XCloseDisplay{ nullptr };
-        Pfn_XCloseIM m_XCloseIM{ nullptr };
-        Pfn_XCreateFontCursor m_XCreateFontCursor{ nullptr };
-        Pfn_XCreateBitmapFromData m_XCreateBitmapFromData{ nullptr };
-        Pfn_XCreateIC m_XCreateIC{ nullptr };
-        Pfn_XCreatePixmapCursor m_XCreatePixmapCursor{ nullptr };
-        Pfn_XCreateWindow m_XCreateWindow{ nullptr };
-        Pfn_XDefineCursor m_XDefineCursor{ nullptr };
-        Pfn_XDeleteContext m_XDeleteContext{ nullptr };
-        Pfn_XDestroyIC m_XDestroyIC{ nullptr };
-        Pfn_XDestroyWindow m_XDestroyWindow{ nullptr };
-        Pfn_XFilterEvent m_XFilterEvent{ nullptr };
-        Pfn_XFindContext m_XFindContext{ nullptr };
-        Pfn_XFlush m_XFlush{ nullptr };
-        Pfn_XFree m_XFree{ nullptr };
-        Pfn_XFreeCursor m_XFreeCursor{ nullptr };
-        Pfn_XFreeEventData m_XFreeEventData{ nullptr };
-        Pfn_XFreePixmap m_XFreePixmap{ nullptr };
-        Pfn_XGetEventData m_XGetEventData{ nullptr };
-        Pfn_XGetInputFocus m_XGetInputFocus{ nullptr };
-        Pfn_XGetWMNormalHints m_XGetWMNormalHints{ nullptr };
-        Pfn_XGetWindowAttributes m_XGetWindowAttributes{ nullptr };
-        Pfn_XGetWindowProperty m_XGetWindowProperty{ nullptr };
-        Pfn_XGrabPointer m_XGrabPointer{ nullptr };
-        Pfn_XIconifyWindow m_XIconifyWindow{ nullptr };
-        Pfn_XInitThreads m_XInitThreads{ nullptr };
-        Pfn_XInternAtom m_XInternAtom{ nullptr };
-        Pfn_XLookupKeysym m_XLookupKeysym{ nullptr };
-        Pfn_XMapRaised m_XMapRaised{ nullptr };
-        Pfn_XMapWindow m_XMapWindow{ nullptr };
-        Pfn_XMoveResizeWindow m_XMoveResizeWindow{ nullptr };
-        Pfn_XMoveWindow m_XMoveWindow{ nullptr };
-        Pfn_XNextEvent m_XNextEvent{ nullptr };
-        Pfn_XOpenDisplay m_XOpenDisplay{ nullptr };
-        Pfn_XOpenIM m_XOpenIM{ nullptr };
-        Pfn_XPeekEvent m_XPeekEvent{ nullptr };
-        Pfn_XPending m_XPending{ nullptr };
-        Pfn_XQueryExtension m_XQueryExtension{ nullptr };
-        Pfn_XQueryPointer m_XQueryPointer{ nullptr };
-        Pfn_XRaiseWindow m_XRaiseWindow{ nullptr };
-        Pfn_XRefreshKeyboardMapping m_XRefreshKeyboardMapping{ nullptr };
-        Pfn_XResizeWindow m_XResizeWindow{ nullptr };
-        Pfn_XSaveContext m_XSaveContext{ nullptr };
-        Pfn_XSendEvent m_XSendEvent{ nullptr };
-        Pfn_XSetInputFocus m_XSetInputFocus{ nullptr };
-        Pfn_XSetWMProtocols m_XSetWMProtocols{ nullptr };
-        Pfn_XStoreName m_XStoreName{ nullptr };
-        Pfn_XTranslateCoordinates m_XTranslateCoordinates{ nullptr };
-        Pfn_XUngrabPointer m_XUngrabPointer{ nullptr };
-        Pfn_XUnmapWindow m_XUnmapWindow{ nullptr };
-        Pfn_XUnsetICFocus m_XUnsetICFocus{ nullptr };
-        Pfn_XWarpPointer m_XWarpPointer{ nullptr };
-        Pfn_XkbSetDetectableAutoRepeat m_XkbSetDetectableAutoRepeat{ nullptr };
-        Pfn_XrmUniqueQuark m_XrmUniqueQuark{ nullptr };
-        Pfn_Xutf8LookupString m_Xutf8LookupString{ nullptr };
-        Pfn_Xutf8SetWMProperties m_Xutf8SetWMProperties{ nullptr };
-
-        void* m_xi{ nullptr };
-        Pfn_XIQueryVersion m_XIQueryVersion{ nullptr };
-        Pfn_XISelectEvents m_XISelectEvents{ nullptr };
-
-        GamepadImpl m_gamepads[MaxGamepads];
-    };
-
-    // --------------------------------------------------------------------------------------------
     static Key TranslateKey(KeySym x11Key)
     {
         switch (x11Key)
@@ -479,520 +135,15 @@ namespace he::window::Linux
             case XK_bracketright: return Key::RightBracket;
             case XK_apostrophe: return Key::Apostrophe;
         }
-        return Key_None;
+        return Key::None;
     }
 
-    // --------------------------------------------------------------------------------------------
-    GamepadImpl::~GamepadImpl()
-    {
-        if (m_fd != -1)
-            close(m_fd);
-    }
-
-    Result GamepadImpl::SetVibration(float leftMotorSpeed, float rightMotorSpeed)
-    {
-        // TODO
-        return Result::NotSupported;
-    }
-
-    void GamepadImpl::Open()
-    {
-        if (m_fd != -1)
-            return;
-
-        static_assert(MaxGamepads < 10, "Only single-digit gamepad counts are currently supported");
-
-        char jspath[] = "/dev/input/js0";
-
-        constexpr uint32_t JsPathIndex = HE_LENGTH_OF(jspath) - 2;
-
-        jspath[JsPathIndex] = '0' + m_index;
-        m_fd = open(jspath, O_RDONLY | O_NONBLOCK);
-
-        SetConnected(*m_device->m_app, m_fd != -1);
-    }
-
-    void GamepadImpl::Update()
-    {
-        if (!IsConnected())
-            return;
-
-        Application& app = *m_device->m_app;
-
-        js_event jsEvents[8];
-        while (true)
-        {
-            const int32_t bytesRead = read(m_fd, jsEvents, sizeof(jsEvents));
-            if (bytesRead == -1)
-                break;
-
-            const uint32_t count = bytesRead / sizeof(js_event);
-
-            for (uint32_t i = 0; i < count; ++i)
-            {
-                const struct js_event& js = jsEvents[i];
-
-                // don't care if this is an init event, so just mask it off
-                const uint8_t type = js.type & ~JS_EVENT_INIT;
-
-                if (HasFlag(type, JS_EVENT_AXIS))
-                {
-                    const uint8_t axisIndex = js.number;
-
-                    // thumb or trigger axis
-                    if (axisIndex < HE_LENGTH_OF(JoyAxisToGamepadAxis))
-                    {
-                        // TODO
-                    }
-                    // dpad x-axis
-                    else if (axisIndex == 6)
-                    {
-                        // TODO
-                    }
-                    // dpad y-axis
-                    else if (axisIndex == 7)
-                    {
-                        // TODO
-                    }
-                }
-
-                if (HasFlag(type, JS_EVENT_BUTTON))
-                {
-                    const uint8_t buttonIndex = js.number;
-                    if (buttonIndex < HE_LENGTH_OF(JoyButtonToGamepadButton))
-                    {
-                        const GamepadButton button = JoyButtonToGamepadButton[buttonIndex];
-                        SetButtonDown(app, button, js.value == 1);
-                    }
-                }
-            }
-        }
-    }
-
-    void GamepadImpl::Reset()
-    {
-        m_buttons = 0;
-        MemZero(m_axes, sizeof(m_axes));
-    }
-
-    // --------------------------------------------------------------------------------------------
-    ViewImpl::ViewImpl(DeviceImpl* device, const ViewDesc& desc)
-        : m_device(device)
-        , m_userData(desc.userData)
-        , m_flags(desc.flags)
-    {
-        Display* display = m_device->m_display;
-        int screenNum = DefaultScreen(display);
-        int depth = DefaultDepth(display, screenNum);
-        Visual* visual = DefaultVisual(display, screenNum);
-
-        Window rootWindow = m_device->m_root;
-        Window parentWindow = desc.parent ? static_cast<Window>(reinterpret_cast<uintptr_t>(desc.parent)) : rootWindow;
-
-        // Create main window
-        XSetWindowAttributes attribs{};
-        attribs.event_mask = StructureNotifyMask | KeyPressMask | KeyReleaseMask
-            | PointerMotionMask | ButtonPressMask | ButtonReleaseMask
-            | FocusChangeMask | EnterWindowMask;
-
-        // VisibilityChangeMask, ExposureMask, LeaveWindowMask, PropertyChangeMask
-
-        if (desc.parent)
-        {
-            XWindowAttributes parentAttribs;
-            m_device->m_XGetWindowAttributes(display, parentWindow, &parentAttribs);
-            depth = parentAttribs.depth;
-            visual = parentAttribs.visual;
-        }
-
-        m_pos = desc.pos;
-        m_size = desc.size;
-        if (m_size.x == 0) m_size.x = 1920;
-        if (m_size.y == 0) m_size.y = 1080;
-
-        m_window = m_device->m_XCreateWindow(
-            display,
-            parentWindow,
-            m_pos.x,
-            m_pos.y,
-            m_size.x,
-            m_size.y,
-            0,
-            depth,
-            InputOutput,
-            visual,
-            CWBorderPixel | CWEventMask,
-            &attribs);
-
-        HE_ASSERT(m_window != None, HE_MSG("Failed to create X window."));
-
-        m_device->m_XSaveContext(display, m_window, m_device->m_context, reinterpret_cast<XPointer>(this));
-
-        // Set motif hints for view types
-        if (m_device->m_atomMotifWMHints != None)
-        {
-            struct ViewHints
-            {
-                unsigned long flags;
-                unsigned long functions;
-                unsigned long decorations;
-                long input_mode;
-                unsigned long status;
-            };
-
-            ViewHints hints{};
-            hints.flags = (1L << 1); // MWM_HINTS_DECORATIONS
-            if (HasFlag(m_flags, ViewFlag::Borderless))
-                hints.decorations = 0;
-            else
-                hints.decorations = (1L << 0); // MWM_DECOR_ALL
-
-            m_device->m_XChangeProperty(
-                display,
-                m_window,
-                m_device->m_atomMotifWMHints,
-                m_device->m_atomMotifWMHints,
-                32,
-                PropModeReplace,
-                reinterpret_cast<uint8_t*>(&hints),
-                sizeof(hints) / sizeof(long));
-        }
-
-        // Setup property state
-        if (m_device->m_atomNetWMState != None)
-        {
-            Atom states[3];
-            int count = 0;
-
-            if (HasFlag(m_flags, ViewFlag::StartMaximized)
-                && m_device->m_atomNetWMStateMaximizedHorz != None
-                && m_device->m_atomNetWMStateMaximizedVert != None)
-            {
-                states[count++] = m_device->m_atomNetWMStateMaximizedHorz;
-                states[count++] = m_device->m_atomNetWMStateMaximizedVert;
-                m_maximized = true;
-            }
-
-            if (HasFlag(m_flags, ViewFlag::TopMost) && m_device->m_atomNetWMStateAbove != None)
-            {
-                states[count++] = m_device->m_atomNetWMStateAbove;
-            }
-
-            if (count)
-            {
-                m_device->m_XChangeProperty(display, m_window, m_device->m_atomNetWMState, XA_ATOM, 32, PropModeReplace, reinterpret_cast<uint8_t*>(states), count);
-            }
-        }
-
-        // Setup supported protocols
-        {
-            Atom protocols[] =
-            {
-                m_device->m_atomWMDeleteWindow,
-                m_device->m_atomNetWMPing,
-            };
-            m_device->m_XSetWMProtocols(display, m_window, protocols, HE_LENGTH_OF(protocols));
-        }
-
-        // Declare this is a normal window
-        if (m_device->m_atomNetWMWindowType != None && m_device->m_atomNetWMWindowTypeNormal != None)
-        {
-            Atom type = m_device->m_atomNetWMWindowTypeNormal;
-            m_device->m_XChangeProperty(display, m_window, m_device->m_atomNetWMWindowType, XA_ATOM, 32, PropModeReplace, reinterpret_cast<uint8_t*>(&type), 1);
-        }
-
-        m_ic = m_device->m_XCreateIC(m_device->m_im, XNInputStyle, XIMPreeditNothing | XIMStatusNothing, XNClientWindow, m_device->m_root, nullptr);
-        HE_ASSERT(m_ic != nullptr, HE_MSG("XCreateIC failed."));
-    }
-
-    ViewImpl::~ViewImpl()
-    {
-        if (m_ic)
-            m_device->m_XDestroyIC(m_ic);
-
-        Display* display = m_device->m_display;
-        if (m_window)
-        {
-            m_device->m_XDeleteContext(display, m_window, m_device->m_context);
-            m_device->m_XUnmapWindow(display, m_window);
-            m_device->m_XDestroyWindow(display, m_window);
-        }
-
-        m_device->m_XFlush(display);
-    }
-
-    void* ViewImpl::GetNativeHandle() const
-    {
-        uintptr_t handle = static_cast<uintptr_t>(m_window);
-        return reinterpret_cast<void*>(handle);
-    }
-
-    void* ViewImpl::GetUserData() const
-    {
-        return m_userData;
-    }
-
-    Vec2i ViewImpl::GetPosition() const
-    {
-        return m_pos;
-    }
-
-    Vec2i ViewImpl::GetSize() const
-    {
-        return m_size;
-    }
-
-    float ViewImpl::GetDpiScale() const
-    {
-        // TODO
-        return 1.0f;
-    }
-
-    bool ViewImpl::IsFocused() const
-    {
-        Window focused = None;
-        int revertTo = RevertToNone;
-        m_device->m_XGetInputFocus(m_device->m_display, &focused, &revertTo);
-
-        return focused == m_window;
-    }
-
-    bool ViewImpl::IsChildFocused() const
-    {
-        Window focused = None;
-        int revertTo = RevertToNone;
-        m_device->m_XGetInputFocus(m_device->m_display, &focused, &revertTo);
-        // TODO! QueryTree()?
-        return focused == m_window;
-    }
-
-    bool ViewImpl::IsMinimized() const
-    {
-        int result = WithdrawnState;
-
-        struct WindowState
-        {
-            CARD32 state;
-            Window icon;
-        };
-
-        Atom actualType;
-        int actualFormat;
-        unsigned long itemCount = 0;
-        unsigned long bytesAfter = 0;
-        WindowState* state = nullptr;
-        m_device->m_XGetWindowProperty(
-            m_device->m_display,
-            m_window,
-            m_device->m_atomWMState,
-            0,
-            LONG_MAX,
-            False,
-            m_device->m_atomWMState,
-            &actualType,
-            &actualFormat,
-            &itemCount,
-            &bytesAfter,
-            reinterpret_cast<uint8_t**>(&state));
-
-        if (itemCount >= 2)
-        {
-            result = state->state;
-        }
-
-        if (state)
-            m_device->m_XFree(state);
-
-        return result == IconicState;
-    }
-
-    bool ViewImpl::IsMaximized() const
-    {
-        if (m_device->m_atomNetWMState == None
-            || m_device->m_atomNetWMStateMaximizedHorz == None
-            || m_device->m_atomNetWMStateMaximizedVert == None)
-        {
-            return false;
-        }
-
-        Atom actualType;
-        int actualFormat;
-        unsigned long itemCount = 0;
-        unsigned long bytesAfter = 0;
-        Atom* states = nullptr;
-        m_device->m_XGetWindowProperty(
-            m_device->m_display,
-            m_window,
-            m_device->m_atomNetWMState,
-            0,
-            LONG_MAX,
-            False,
-            XA_ATOM,
-            &actualType,
-            &actualFormat,
-            &itemCount,
-            &bytesAfter,
-            reinterpret_cast<uint8_t**>(&states));
-
-        bool maximized = false;
-        for (uint32_t i = 0; i < itemCount; ++i)
-        {
-            if (states[i] == m_device->m_atomNetWMStateMaximizedHorz
-                || states[i] == m_device->m_atomNetWMStateMaximizedVert)
-            {
-                maximized = true;
-                break;
-            }
-        }
-
-        if (states)
-            m_device->m_XFree(states);
-
-        return maximized;
-    }
-
-    void ViewImpl::SetPosition(const Vec2i& pos)
-    {
-        m_device->m_XMoveWindow(m_device->m_display, m_window, pos.x, pos.y);
-    }
-
-    void ViewImpl::SetSize(const Vec2i& size)
-    {
-        m_device->m_XResizeWindow(m_device->m_display, m_window, size.x, size.y);
-    }
-
-    void ViewImpl::SetVisible(bool visible, bool focus)
-    {
-        if (visible && focus)
-            m_device->m_XMapRaised(m_device->m_display, m_window);
-        else if (visible)
-            m_device->m_XMapWindow(m_device->m_display, m_window);
-        else
-            m_device->m_XUnmapWindow(m_device->m_display, m_window);
-    }
-
-    void ViewImpl::SetTitle(const char* text)
-    {
-        m_device->m_XStoreName(m_device->m_display, m_window, text);
-    }
-
-    void ViewImpl::SetAlpha(float alpha)
-    {
-        CARD32 value = static_cast<CARD32>(0xffffffffu * static_cast<double>(alpha));
-        m_device->m_XChangeProperty(
-            m_device->m_display,
-            m_window,
-            m_device->m_atomNetWMWindowOpacity,
-            XA_CARDINAL,
-            32,
-            PropModeReplace,
-            reinterpret_cast<uint8_t*>(&value),
-            1L);
-    }
-
-    void ViewImpl::SetAcceptInput(bool value)
-    {
-        // TODO
-        HE_UNUSED(value);
-    }
-
-    void ViewImpl::Focus()
-    {
-        m_device->m_XRaiseWindow(m_device->m_display, m_window);
-        m_device->m_XSetInputFocus(m_device->m_display, m_window, RevertToNone, CurrentTime);
-    }
-
-    void ViewImpl::Minimize()
-    {
-        // TODO
-    }
-
-    void ViewImpl::Maximize()
-    {
-        // TODO
-    }
-
-    void ViewImpl::Restore()
-    {
-        // TODO
-    }
-
-    void ViewImpl::RequestClose()
-    {
-        // TODO
-    }
-
-    Vec2f ViewImpl::ViewToScreen(const Vec2f& pos) const
-    {
-        const int srcX = static_cast<int>(pos.x);
-        const int srcY = static_cast<int>(pos.y);
-        int dstX = 0;
-        int dstY = 0;
-        Window childWin = None;
-        Bool result = m_device->m_XTranslateCoordinates(m_device->m_display, m_window, m_device->m_root, srcX, srcY, &dstX, &dstY, &childWin);
-
-        if (result == False)
-            return pos;
-
-        return { static_cast<float>(dstX), static_cast<float>(dstY) };
-    }
-
-    Vec2f ViewImpl::ScreenToView(const Vec2f& pos) const
-    {
-        const int srcX = static_cast<int>(pos.x);
-        const int srcY = static_cast<int>(pos.y);
-        int dstX = 0;
-        int dstY = 0;
-        Window childWin = None;
-        Bool result = m_device->m_XTranslateCoordinates(m_device->m_display, m_device->m_root, m_window, srcX, srcY, &dstX, &dstY, &childWin);
-
-        if (result == False)
-            return pos;
-
-        return { static_cast<float>(dstX), static_cast<float>(dstY) };
-    }
-
-    void ViewImpl::TrackCapture(const Event& ev)
-    {
-        HE_ASSERT(ev.type == EventType::MouseDown || ev.type == EventType::MouseUp);
-
-        if (ev.type == EventType::MouseDown)
-        {
-            if (m_captureCount++ == 0)
-                CaptureMouse();
-        }
-        else
-        {
-            if (--m_captureCount == 0)
-                ReleaseMouse();
-        }
-    }
-
-    void ViewImpl::CaptureMouse()
-    {
-        if (!m_device->m_cursorRelativeMode)
-        {
-            uint32_t mask = ButtonPressMask | ButtonReleaseMask | PointerMotionMask;
-            Cursor cursor = m_device->GetActiveCursor();
-            m_device->m_XGrabPointer(m_device->m_display, m_window, True, mask, GrabModeAsync, GrabModeAsync, None, cursor, CurrentTime);
-        }
-    }
-
-    void ViewImpl::ReleaseMouse()
-    {
-        if (!m_device->m_cursorRelativeMode)
-        {
-            m_device->m_XUngrabPointer(m_device->m_display, CurrentTime);
-        }
-    }
-
-    // --------------------------------------------------------------------------------------------
-    DeviceImpl::DeviceImpl(Allocator& allocator)
+    DeviceImpl::DeviceImpl(Allocator& allocator) noexcept
         : Device(allocator)
         , m_gamepads{ { this, 0 }, { this, 1 }, { this, 2 }, { this, 3 } }
     {}
 
-    DeviceImpl::~DeviceImpl()
+    DeviceImpl::~DeviceImpl() noexcept
     {
         for (int32_t& fd : m_gamepadFds)
         {
@@ -1010,7 +161,7 @@ namespace he::window::Linux
         {
             if (m_display)
             {
-                if (m_hiddenCursor != None)
+                if (m_hiddenCursor != X11_None)
                 {
                     m_XFreeCursor(m_display, m_hiddenCursor);
                     m_XFreePixmap(m_display, m_hiddenCursorBitmap);
@@ -1018,7 +169,7 @@ namespace he::window::Linux
 
                 for (uint32_t i = 0; i < static_cast<uint32_t>(MouseCursor::_Count); ++i)
                 {
-                    if (m_cursors[i] != None)
+                    if (m_cursors[i] != X11_None)
                         m_XFreeCursor(m_display, m_cursors[i]);
                 }
 
@@ -1298,7 +449,7 @@ namespace he::window::Linux
 
     View* DeviceImpl::GetFocusedView() const
     {
-        Window focused = None;
+        Window focused = X11_None;
         int revertTo = RevertToNone;
         m_XGetInputFocus(m_display, &focused, &revertTo);
 
@@ -1307,8 +458,8 @@ namespace he::window::Linux
 
     View* DeviceImpl::GetHoveredView() const
     {
-        Window rootWin = None;
-        Window childWin = None;
+        Window rootWin = X11_None;
+        Window childWin = X11_None;
         int rootX = 0;
         int rootY = 0;
         int winX = 0;
@@ -1324,8 +475,8 @@ namespace he::window::Linux
         ViewImpl* view = static_cast<ViewImpl*>(view_);
         Window win = view ? view->m_window : m_root;
 
-        Window rootWin = None;
-        Window childWin = None;
+        Window rootWin = X11_None;
+        Window childWin = X11_None;
         int rootX = 0;
         int rootY = 0;
         int winX = 0;
@@ -1346,7 +497,7 @@ namespace he::window::Linux
 
         const int dstX = static_cast<int>(pos.x);
         const int dstY = static_cast<int>(pos.y);
-        m_XWarpPointer(m_display, None, win, 0, 0, 0, 0, dstX, dstY);
+        m_XWarpPointer(m_display, X11_None, win, 0, 0, 0, 0, dstX, dstY);
     }
 
     void DeviceImpl::SetCursor(MouseCursor cursor)
@@ -1430,7 +581,7 @@ namespace he::window::Linux
 
     ViewImpl* DeviceImpl::GetViewFromWindow(Window win) const
     {
-        if (win == None)
+        if (win == X11_None)
             return nullptr;
 
         ViewImpl* view = nullptr;
@@ -1442,7 +593,7 @@ namespace he::window::Linux
 
     Cursor DeviceImpl::GetActiveCursor() const
     {
-        if (!m_cursorVisible || m_viewClipped || m_cursor <= MouseCursor_None || m_cursor >= MouseCursor::_Count)
+        if (!m_cursorVisible || m_viewClipped || m_cursor <= MouseCursor::None || m_cursor >= MouseCursor::_Count)
             return m_hiddenCursor;
 
         return m_cursors[static_cast<int32_t>(m_cursor)];
@@ -1529,7 +680,7 @@ namespace he::window::Linux
             }
             case ButtonPress:
             {
-                MouseButton button = MouseButton_None;
+                MouseButton button = MouseButton::None;
                 switch (event.xbutton.button)
                 {
                     case Button1: button = MouseButton::Left; break;
@@ -1553,7 +704,7 @@ namespace he::window::Linux
                     }
                 }
 
-                if (button != MouseButton_None)
+                if (button != MouseButton::None)
                 {
                     MouseDownEvent ev(view, button);
                     view->TrackCapture(ev);
@@ -1564,7 +715,7 @@ namespace he::window::Linux
             }
             case ButtonRelease:
             {
-                MouseButton button = MouseButton_None;
+                MouseButton button = MouseButton::None;
                 switch (event.xbutton.button)
                 {
                     case Button1: button = MouseButton::Left; break;
@@ -1572,7 +723,7 @@ namespace he::window::Linux
                     case Button3: button = MouseButton::Right; break;
                 }
 
-                if (button != MouseButton_None)
+                if (button != MouseButton::None)
                 {
                     MouseUpEvent ev(view, button);
                     view->TrackCapture(ev);
@@ -1599,7 +750,7 @@ namespace he::window::Linux
                 KeySym keysym = m_XLookupKeysym(&event.xkey, 0);
                 Key key = TranslateKey(keysym);
 
-                if (key != Key_None)
+                if (key != Key::None)
                 {
                     KeyDownEvent ev(view, key);
                     m_app->OnEvent(ev);
@@ -1627,7 +778,7 @@ namespace he::window::Linux
                 KeySym keysym = m_XLookupKeysym(&event.xkey, 0);
                 Key key = TranslateKey(keysym);
 
-                if (key != Key_None)
+                if (key != Key::None)
                 {
                     KeyUpEvent ev(view, key);
                     m_app->OnEvent(ev);
@@ -1678,7 +829,7 @@ namespace he::window::Linux
                         // Normalize the axis value
                         float value = js.value / 32767.0f;
 
-                        GamepadAxis axis = GamepadAxis_None;
+                        GamepadAxis axis = GamepadAxis::None;
                         switch (js.number)
                         {
                             case 0: axis = GamepadAxis::LThumbX; break;
@@ -1689,7 +840,7 @@ namespace he::window::Linux
                             case 5: axis = GamepadAxis::RThumbY; break;
                         }
 
-                        if (axis != GamepadAxis_None)
+                        if (axis != GamepadAxis::None)
                         {
                             GamepadAxisEvent ev(i, axis, value);
                             m_app->OnEvent(ev);
@@ -1698,7 +849,7 @@ namespace he::window::Linux
                     }
                     case JS_EVENT_BUTTON:
                     {
-                        GamepadButton button = GamepadButton_None;
+                        GamepadButton button = GamepadButton::None;
                         switch (js.number)
                         {
                             case 0: button = GamepadButton::Action1; break;
@@ -1718,7 +869,7 @@ namespace he::window::Linux
                             case 14: button = GamepadButton::DPad_Right; break;
                         }
 
-                        if (button != GamepadButton_None)
+                        if (button != GamepadButton::None)
                         {
                             if (js.value == 1)
                             {
@@ -1743,7 +894,7 @@ namespace he::window
 {
     Device* _CreateDevice(Allocator& allocator)
     {
-        return allocator.New<Linux::DeviceImpl>(allocator);
+        return allocator.New<linux::DeviceImpl>(allocator);
     }
 }
 

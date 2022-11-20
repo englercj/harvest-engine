@@ -1,47 +1,21 @@
 // Copyright Chad Engler
-// TODO: drag and drop (AcceptFiles)
 
-#include "he/window/application.h"
-#include "he/window/device.h"
-#include "he/window/event.h"
-#include "he/window/gamepad.h"
-#include "he/window/key.h"
-#include "he/window/mouse.h"
-#include "he/window/view.h"
+#include "device.win32.h"
 
-#include "he/core/alloca.h"
-#include "he/core/compiler.h"
+#include "common.win32.h"
+#include "view.win32.h"
+
+#include "he/core/assert.h"
 #include "he/core/enum_ops.h"
-#include "he/core/log.h"
-#include "he/core/memory_ops.h"
-#include "he/core/result.h"
-#include "he/core/result_fmt.h"
-#include "he/core/string.h"
-#include "he/core/utils.h"
-#include "he/core/wstr.h"
-#include "he/math/float.h"
 #include "he/math/vec2.h"
+#include "he/window/application.h"
+#include "he/window/event.h"
 
-#include <atomic>
-#include <array>
-#include <cstdint>
+#if defined(HE_PLATFORM_API_WIN32)
 
-#if defined(HE_PLATFORM_WINDOWS)
-
-#if !defined(NOMINMAX)
-    #define NOMINMAX
-#endif
-
-#pragma warning(push)
-#pragma warning(disable : 4668)
-
-#include <sdkddkver.h>
-#include <shellscalingapi.h>
-#include <Shlobj.h>
+#include <ShellScalingApi.h>
 #include <Windows.h>
 #include <Xinput.h>
-
-#pragma warning(pop)
 
 // From Windowsx.h
 #define GET_X_LPARAM(lp) ((int)(short)LOWORD(lp))
@@ -53,174 +27,6 @@
 
 namespace he::window::win32
 {
-    class GamepadImpl;
-    class DeviceImpl;
-    class ViewImpl;
-
-    // ------------------------------------------------------------------------------------------------
-    using Pfn_GetDpiForWindow = UINT(WINAPI*)(_In_ HWND hwnd);
-    using Pfn_SetProcessDpiAwarenessContext = DPI_AWARENESS_CONTEXT(WINAPI*)(_In_ DPI_AWARENESS_CONTEXT dpiContext);
-    using Pfn_AdjustWindowRectExForDpi = BOOL(WINAPI*)(_Inout_ LPRECT lpRect, _In_ DWORD dwStyle, _In_ BOOL bMenu, _In_ DWORD dwExStyle, _In_ UINT dpi);
-
-    using Pfn_GetDpiForMonitor = HRESULT(WINAPI*)(_In_ HMONITOR hmonitor, _In_ MONITOR_DPI_TYPE dpiType, _Out_ UINT* dpiX, _Out_ UINT* dpiY);
-
-    using Pfn_XInputGetState = DWORD(WINAPI*)(_In_ DWORD dwUserIndex, _Out_ XINPUT_STATE* pState);
-    using Pfn_XInputSetState = DWORD(WINAPI*)(_In_ DWORD dwUserIndex, _In_ XINPUT_VIBRATION* pVibration);
-    using Pfn_XInputEnable = VOID(WINAPI*)(_In_ BOOL enable);
-
-    constexpr wchar_t WindowClassName[] = L"Harvest Application Window";
-
-    struct XInputButtonMapping { uint32_t flag; GamepadButton button; };
-    constexpr XInputButtonMapping XInputButtonMappings[] =
-    {
-        { XINPUT_GAMEPAD_DPAD_UP, GamepadButton::DPad_Up },
-        { XINPUT_GAMEPAD_DPAD_DOWN, GamepadButton::DPad_Down },
-        { XINPUT_GAMEPAD_DPAD_LEFT, GamepadButton::DPad_Left },
-        { XINPUT_GAMEPAD_DPAD_RIGHT, GamepadButton::DPad_Right },
-        { XINPUT_GAMEPAD_START, GamepadButton::Start },
-        { XINPUT_GAMEPAD_BACK, GamepadButton::Back },
-        { XINPUT_GAMEPAD_LEFT_THUMB, GamepadButton::LThumb },
-        { XINPUT_GAMEPAD_RIGHT_THUMB, GamepadButton::RThumb },
-        { XINPUT_GAMEPAD_LEFT_SHOULDER, GamepadButton::LShoulder },
-        { XINPUT_GAMEPAD_RIGHT_SHOULDER, GamepadButton::RShoulder },
-        { XINPUT_GAMEPAD_A, GamepadButton::Action1 },
-        { XINPUT_GAMEPAD_B, GamepadButton::Action2 },
-        { XINPUT_GAMEPAD_X, GamepadButton::Action3 },
-        { XINPUT_GAMEPAD_Y, GamepadButton::Action4 },
-    };
-
-    // --------------------------------------------------------------------------------------------
-    class GamepadImpl final : public Gamepad
-    {
-    public:
-        GamepadImpl(DeviceImpl* device, const uint32_t index)
-            : Gamepad(index)
-            , m_device(device)
-        {}
-
-        Result SetVibration(float leftMotorSpeed, float rightMotorSpeed) override;
-
-        void Update(bool refreshConnectivity);
-
-    private:
-        DeviceImpl* m_device{ nullptr };
-    };
-
-    // --------------------------------------------------------------------------------------------
-    class ViewImpl final : public View
-    {
-    public:
-        ViewImpl(DeviceImpl* device, const ViewDesc& desc);
-        ~ViewImpl();
-
-        void* GetNativeHandle() const override;
-        void* GetUserData() const override;
-        Vec2i GetPosition() const override;
-        Vec2i GetSize() const override;
-        float GetDpiScale() const override;
-        bool IsFocused() const override;
-        bool IsChildFocused() const override;
-        bool IsMinimized() const override;
-        bool IsMaximized() const override;
-
-        void SetPosition(const Vec2i& pos) override;
-        void SetSize(const Vec2i& size) override;
-        void SetVisible(bool visible, bool focus) override;
-        void SetTitle(const char* text) override;
-        void SetAlpha(float alpha) override;
-        void SetAcceptInput(bool value) override;
-
-        void Focus() override;
-        void Minimize() override;
-        void Maximize() override;
-        void Restore() override;
-        void RequestClose() override;
-
-        Vec2f ViewToScreen(const Vec2f& pos) const override;
-        Vec2f ScreenToView(const Vec2f& pos) const override;
-
-        void TrackCapture(const Event& ev);
-
-    public:
-        DeviceImpl* m_device{ nullptr };
-        HWND m_window{ nullptr };
-        ViewFlag m_flags{ ViewFlag::Default };
-        void* m_userData{ nullptr };
-        int m_captureCount{ 0 };
-        Vec2i m_pos{ 0, 0 };
-        Vec2i m_size{ 1, 1 };
-        uint32_t m_dpi{ USER_DEFAULT_SCREEN_DPI };
-        bool m_hackNeedsFrameUpdate{ true };
-    };
-
-    // --------------------------------------------------------------------------------------------
-    class DeviceImpl final : public Device
-    {
-    public:
-        DeviceImpl(Allocator& allocator);
-        ~DeviceImpl();
-
-        bool Initialize() override;
-
-        int Run(Application& app, const ViewDesc& desc) override;
-        void Quit(int rc) override;
-
-        bool HasHighDefMouse() const override;
-
-        View* CreateView(const ViewDesc& desc) override;
-        void DestroyView(View* view) override;
-
-        View* GetFocusedView() const override;
-        View* GetHoveredView() const override;
-
-        Vec2f GetCursorPos(View* view) const override;
-        void SetCursorPos(View* view, const Vec2f& pos) override;
-
-        void SetCursor(MouseCursor cursor) override;
-
-        void SetCursorRelativeMode(bool relativeMode) override;
-
-        uint32_t GetMonitorCount() const override;
-        uint32_t GetMonitors(Monitor* monitors, uint32_t maxCount) const override;
-
-        Gamepad& GetGamepad(uint32_t index) override;
-
-        void SyncCursor() const;
-        void ShowCursor(bool show);
-        void CenterCursor();
-
-    public:
-        Application* m_app{ nullptr };
-        HINSTANCE m_hInstance{ nullptr };
-        MouseCursor m_cursor{ MouseCursor::Arrow };
-        std::atomic<int32_t> m_returnCode{ 0 };
-        std::atomic<bool> m_running{ true };
-        bool m_cursorRelativeMode{ false };
-        bool m_cursorVisible{ true };
-        bool m_hasHighDefMouse{ false };
-        bool m_viewClipped{ false };
-        Vec2f m_cursorRestorePosition{ 0, 0 };
-
-        HMODULE m_userLib{ nullptr };
-        Pfn_GetDpiForWindow m_GetDpiForWindow{ nullptr };
-        Pfn_SetProcessDpiAwarenessContext m_SetProcessDpiAwarenessContext{ nullptr };
-        Pfn_AdjustWindowRectExForDpi m_AdjustWindowRectExForDpi{ nullptr };
-
-        HMODULE m_shcoreLib{ nullptr };
-        Pfn_GetDpiForMonitor m_GetDpiForMonitor{ nullptr };
-
-        HMODULE m_xinputLib{ nullptr };
-        Pfn_XInputGetState m_XInputGetState{ nullptr };
-        Pfn_XInputSetState m_XInputSetState{ nullptr };
-        Pfn_XInputEnable m_XInputEnable{ nullptr };
-
-        static_assert(MaxGamepads <= XUSER_MAX_COUNT, "Cannot handle more than XUSER_MAX_COUNT gamepads.");
-
-        GamepadImpl m_gamepads[MaxGamepads];
-        bool m_refreshGamepadConnectivity{ true };
-    };
-
-    // --------------------------------------------------------------------------------------------
     static Key TranslateKey(WPARAM wparam, LPARAM lparam)
     {
         int32_t vkey = wparam & 0xff;
@@ -720,398 +526,65 @@ namespace he::window::win32
         return DefWindowProc(hWnd, message, wParam, lParam);
     }
 
-    static void NormalizeThumbs(float& x, float& y, SHORT deadZone)
+    struct VisitMonitorData
     {
-        float mag = Sqrt((x * x) + (y * y));
+        const DeviceImpl* device;
+        Monitor* monitors;
+        uint32_t index;
+        uint32_t maxCount;
+    };
 
-        if (mag > deadZone)
-        {
-            x /= mag;
-            y /= mag;
-
-            mag = (mag - deadZone) / static_cast<float>(32767 - deadZone);
-
-            x *= mag;
-            y *= mag;
-        }
-        else
-        {
-            x = 0.0f;
-            y = 0.0f;
-        }
-    }
-
-    static float NormalizeTrigger(float t)
+    static BOOL CALLBACK VisitMonitorsCallback(HMONITOR hMonitor, HDC, LPRECT, LPARAM dwData)
     {
-        if (t > XINPUT_GAMEPAD_TRIGGER_THRESHOLD)
+        VisitMonitorData* data = reinterpret_cast<VisitMonitorData*>(dwData);
+        if (data->index >= data->maxCount)
+            return FALSE;
+
+        MONITORINFO info{};
+        info.cbSize = sizeof(MONITORINFO);
+        if (::GetMonitorInfoW(hMonitor, &info))
         {
-            return static_cast<float>(t - XINPUT_GAMEPAD_TRIGGER_THRESHOLD) / (255 - XINPUT_GAMEPAD_TRIGGER_THRESHOLD);
-        }
+            Monitor& monitor = data->monitors[data->index];
+            monitor.pos = { info.rcMonitor.left, info.rcMonitor.top };
+            monitor.size = { info.rcMonitor.right - info.rcMonitor.left, info.rcMonitor.bottom - info.rcMonitor.top };
+            monitor.workPos = { info.rcWork.left, info.rcWork.top };
+            monitor.workSize = { info.rcWork.right - info.rcWork.left, info.rcWork.bottom - info.rcWork.top };
+            monitor.dpiScale = 1.0f;
+            monitor.primary = HasFlag(info.dwFlags, MONITORINFOF_PRIMARY);
 
-        return 0.0f;
-    }
-
-    // --------------------------------------------------------------------------------------------
-    Result GamepadImpl::SetVibration(float leftMotorSpeed, float rightMotorSpeed)
-    {
-        if (!m_device->m_XInputSetState)
-            return Result::NotSupported;
-
-        XINPUT_VIBRATION vibration{};
-        vibration.wLeftMotorSpeed = static_cast<WORD>(leftMotorSpeed * 65535);
-        vibration.wRightMotorSpeed = static_cast<WORD>(rightMotorSpeed * 65535);
-        DWORD r = m_device->m_XInputSetState(Index(), &vibration);
-        return Win32Result(r);
-    }
-
-    void GamepadImpl::Update(bool refreshConnectivity)
-    {
-        if (!IsConnected() && !refreshConnectivity)
-            return;
-
-        Application& app = *m_device->m_app;
-
-        XINPUT_STATE xstate{};
-        DWORD error = m_device->m_XInputGetState(Index(), &xstate);
-        const bool connected = error == ERROR_SUCCESS;
-
-        // If we got a real error, skip this one
-        if (!connected && error != ERROR_DEVICE_NOT_CONNECTED)
-        {
-            Result r = Win32Result(error);
-            HE_LOG_ERROR(he_window,
-                HE_MSG("Failed to read gamepad state, gamepad will be disconnected."),
-                HE_KV(index, Index()),
-                HE_KV(result, r));
-
-            SetConnected(app, false);
-            return;
-        }
-
-        // If connected state changed notify the app.
-        SetConnected(app, connected);
-
-        if (!connected)
-            return;
-
-        // Update the button states
-        const WORD buttons = xstate.Gamepad.wButtons;
-        for (const XInputButtonMapping& mapping : XInputButtonMappings)
-        {
-            const bool isPressed = HasFlag(buttons, mapping.flag);
-            SetButtonDown(app, mapping.button, isPressed);
-        }
-
-        // Update the axis states
-        float lx = xstate.Gamepad.sThumbLX;
-        float ly = xstate.Gamepad.sThumbLY;
-        NormalizeThumbs(lx, ly, XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE);
-        SetAxisValue(app, GamepadAxis::LThumbX, lx);
-        SetAxisValue(app, GamepadAxis::LThumbY, ly);
-
-        float rx = xstate.Gamepad.sThumbRX;
-        float ry = xstate.Gamepad.sThumbRY;
-        NormalizeThumbs(rx, ry, XINPUT_GAMEPAD_RIGHT_THUMB_DEADZONE);
-        SetAxisValue(app, GamepadAxis::RThumbX, rx);
-        SetAxisValue(app, GamepadAxis::RThumbY, ry);
-
-        const float lt = NormalizeTrigger(xstate.Gamepad.bLeftTrigger);
-        SetAxisValue(app, GamepadAxis::LTrigger, lt);
-
-        const float rt = NormalizeTrigger(xstate.Gamepad.bRightTrigger);
-        SetAxisValue(app, GamepadAxis::RTrigger, rt);
-    }
-
-    // --------------------------------------------------------------------------------------------
-    ViewImpl::ViewImpl(DeviceImpl* device, const ViewDesc& desc)
-        : m_device(device)
-        , m_userData(desc.userData)
-        , m_flags(desc.flags)
-    {
-        const char* title = desc.title ? desc.title : "Harvest Window";
-        wchar_t* wtitle = HE_TO_WSTR(title);
-
-        // Create window
-        DWORD dwStyle = WS_SYSMENU;
-        DWORD dwExStyle = 0;
-
-        if (HasFlag(m_flags, ViewFlag::Borderless))
-            dwStyle |= WS_POPUP;
-        else
-            dwStyle |= WS_OVERLAPPED;
-
-        // WS_CAPTION: enables aero minimize animation/transition
-        // WS_MAXIMIZEBOX, WS_MINIMIZEBOX: enable minimize/maximize
-        // WS_THICKFRAME: without this the window cannot be resized and so aero snap, de-maximizing and minimizing won't work
-        if (HasFlag(m_flags, ViewFlag::AllowResize))
-            dwStyle |= WS_CAPTION | WS_MAXIMIZEBOX | WS_MINIMIZEBOX | WS_THICKFRAME;
-
-        if (HasFlag(m_flags, ViewFlag::StartMaximized))
-            dwStyle |= WS_MAXIMIZE;
-
-        if (HasFlag(m_flags, ViewFlag::TaskBarIcon))
-            dwExStyle |= WS_EX_APPWINDOW;
-        else
-            dwExStyle |= WS_EX_TOOLWINDOW;
-
-        if (HasFlag(m_flags, ViewFlag::TopMost))
-            dwExStyle |= WS_EX_TOPMOST;
-
-        RECT rect = { 0, 0, 1920, 1080 };
-        if (desc.size.x > 0 && desc.size.y > 0)
-        {
-            rect.left = desc.pos.x;
-            rect.top = desc.pos.y;
-            rect.right = rect.left + desc.size.x;
-            rect.bottom = rect.top + desc.size.y;
-        }
-
-        if (device->m_AdjustWindowRectExForDpi)
-            device->m_AdjustWindowRectExForDpi(&rect, dwStyle, FALSE, dwExStyle, m_dpi);
-        else
-            ::AdjustWindowRectEx(&rect, dwStyle, FALSE, dwExStyle);
-
-        if (desc.pos.x != 0 || desc.pos.y != 0)
-            m_pos = { rect.left, rect.top };
-
-        m_size = { rect.right - rect.left, rect.bottom - rect.top };
-
-        HWND hParent = desc.parent ? static_cast<HWND>(desc.parent->GetNativeHandle()) : nullptr;
-
-        m_window = ::CreateWindowExW(
-            dwExStyle,
-            WindowClassName,
-            wtitle,
-            dwStyle,
-            m_pos.x,
-            m_pos.y,
-            m_size.x,
-            m_size.y,
-            hParent,
-            nullptr,
-            device->m_hInstance,
-            this);
-
-        HE_ASSERT(m_window != 0, HE_MSG("CreateWindowEx failed."), HE_KV(error, Result::FromLastError()));
-
-        // Inform Windows that it should redraw our frame styles
-        ::SetWindowPos(m_window, nullptr, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE | SWP_FRAMECHANGED);
-
-        // Cache the DPI of the window now that it is created
-        if (device->m_GetDpiForWindow)
-            m_dpi = device->m_GetDpiForWindow(m_window);
-    }
-
-    ViewImpl::~ViewImpl()
-    {
-        if (::GetCapture() == m_window)
-        {
-            HWND parent = ::GetParent(m_window);
-            if (parent != nullptr)
-                {
-                // Transfer capture so if we started dragging from a window that later disappears, we'll
-                // still receive the MOUSEUP event.
-                ::ReleaseCapture();
-                ::SetCapture(parent);
+            UINT xdpi = 96;
+            UINT ydpi = 96;
+            if (data->device->m_GetDpiForMonitor)
+            {
+                data->device->m_GetDpiForMonitor(hMonitor, MDT_EFFECTIVE_DPI, &xdpi, &ydpi);
+                HE_ASSERT(xdpi == ydpi);
             }
-        }
-
-        // Any messages handled beyond this point need to fail to get the View.
-        ::SetWindowLongPtrW(m_window, GWLP_USERDATA, 0);
-        ::DestroyWindow(m_window);
-    }
-
-    void* ViewImpl::GetNativeHandle() const
-    {
-        return m_window;
-    }
-
-    void* ViewImpl::GetUserData() const
-    {
-        return m_userData;
-    }
-
-    Vec2i ViewImpl::GetPosition() const
-    {
-        return m_pos;
-    }
-
-    Vec2i ViewImpl::GetSize() const
-    {
-        return m_size;
-    }
-
-    float ViewImpl::GetDpiScale() const
-    {
-        return static_cast<float>(m_dpi) / USER_DEFAULT_SCREEN_DPI;
-    }
-
-    bool ViewImpl::IsFocused() const
-    {
-        return ::GetForegroundWindow() == m_window;
-    }
-
-    bool ViewImpl::IsChildFocused() const
-    {
-        HWND hWnd = ::GetForegroundWindow();
-        return hWnd && (hWnd == m_window || ::IsChild(hWnd, m_window));
-    }
-
-    bool ViewImpl::IsMinimized() const
-    {
-        return ::IsIconic(m_window) != 0;
-    }
-
-    bool ViewImpl::IsMaximized() const
-    {
-        WINDOWPLACEMENT placement;
-        placement.length = sizeof(WINDOWPLACEMENT);
-        if (!::GetWindowPlacement(m_window, &placement))
-            return false;
-        return placement.showCmd == SW_SHOWMAXIMIZED;
-    }
-
-    void ViewImpl::SetPosition(const Vec2i& pos)
-    {
-        DWORD dwStyle = GetWindowLongW(m_window, GWL_STYLE);
-        DWORD dwExStyle = GetWindowLongW(m_window, GWL_EXSTYLE);
-
-        RECT rect = { static_cast<LONG>(pos.x), static_cast<LONG>(pos.y), static_cast<LONG>(pos.x), static_cast<LONG>(pos.y) };
-        if (m_device->m_AdjustWindowRectExForDpi)
-            m_device->m_AdjustWindowRectExForDpi(&rect, dwStyle, FALSE, dwExStyle, m_dpi);
-        else
-            ::AdjustWindowRectEx(&rect, dwStyle, FALSE, dwExStyle);
-
-        ::SetWindowPos(m_window, nullptr, rect.left, rect.top, 0, 0, SWP_NOZORDER | SWP_NOSIZE | SWP_NOACTIVATE);
-    }
-
-    void ViewImpl::SetSize(const Vec2i& size)
-    {
-        DWORD dwStyle = GetWindowLongW(m_window, GWL_STYLE);
-        DWORD dwExStyle = GetWindowLongW(m_window, GWL_EXSTYLE);
-
-        RECT rect = { 0, 0, static_cast<LONG>(size.x), static_cast<LONG>(size.y) };
-        if (m_device->m_AdjustWindowRectExForDpi)
-            m_device->m_AdjustWindowRectExForDpi(&rect, dwStyle, FALSE, dwExStyle, m_dpi);
-        else
-            ::AdjustWindowRectEx(&rect, dwStyle, FALSE, dwExStyle);
-
-        ::SetWindowPos(m_window, nullptr, 0, 0, rect.right - rect.left, rect.bottom - rect.top, SWP_NOZORDER | SWP_NOMOVE | SWP_NOACTIVATE);
-    }
-
-    void ViewImpl::SetVisible(bool visible, bool focus)
-    {
-        int nCmdShow = SW_HIDE;
-        if (visible)
-        {
-            if (focus)
-                nCmdShow = SW_SHOW;
             else
-                nCmdShow = SW_SHOWNA;
+            {
+                const HDC dc = ::GetDC(NULL);
+                if (dc)
+                {
+                    xdpi = ::GetDeviceCaps(dc, LOGPIXELSX);
+                    ydpi = ::GetDeviceCaps(dc, LOGPIXELSY);
+                    HE_ASSERT(xdpi == ydpi);
+                    ::ReleaseDC(NULL, dc);
+                }
+            }
+            monitor.dpiScale = xdpi / 96.0f;
         }
 
-        ::ShowWindow(m_window, nCmdShow);
+        data->index++;
+        return TRUE;
     }
 
-    void ViewImpl::SetTitle(const char* text)
-    {
-        wchar_t* wtext = HE_TO_WSTR(text);
-        ::SetWindowTextW(m_window, wtext);
-    }
-
-    void ViewImpl::SetAlpha(float alpha)
-    {
-        if (alpha < 1.0f)
-        {
-            DWORD style = ::GetWindowLongW(m_window, GWL_EXSTYLE) | WS_EX_LAYERED;
-            ::SetWindowLongW(m_window, GWL_EXSTYLE, style);
-            ::SetLayeredWindowAttributes(m_window, 0, BYTE(255 * alpha), LWA_ALPHA);
-        }
-        else
-        {
-            DWORD style = ::GetWindowLongW(m_window, GWL_EXSTYLE) & ~WS_EX_LAYERED;
-            ::SetWindowLongW(m_window, GWL_EXSTYLE, style);
-        }
-    }
-
-    void ViewImpl::SetAcceptInput(bool value)
-    {
-        if (value)
-            m_flags |= ViewFlag::AcceptInput;
-        else
-            m_flags &= ~ViewFlag::AcceptInput;
-    }
-
-    void ViewImpl::Focus()
-    {
-        ::BringWindowToTop(m_window);
-        ::SetForegroundWindow(m_window);
-        ::SetFocus(m_window);
-    }
-
-    void ViewImpl::Minimize()
-    {
-        ::ShowWindow(m_window, SW_MINIMIZE);
-    }
-
-    void ViewImpl::Maximize()
-    {
-        ::ShowWindow(m_window, SW_MAXIMIZE);
-    }
-
-    void ViewImpl::Restore()
-    {
-        ::ShowWindow(m_window, SW_NORMAL);
-    }
-
-    void ViewImpl::RequestClose()
-    {
-        ::PostMessage(m_window, WM_CLOSE, 0, 0);
-    }
-
-    Vec2f ViewImpl::ViewToScreen(const Vec2f& pos) const
-    {
-        POINT p = { static_cast<LONG>(pos.x), static_cast<LONG>(pos.y) };
-
-        ::ClientToScreen(m_window, &p);
-
-        return { static_cast<float>(p.x), static_cast<float>(p.y) };
-    }
-
-    Vec2f ViewImpl::ScreenToView(const Vec2f& pos) const
-    {
-        POINT p = { static_cast<LONG>(pos.x), static_cast<LONG>(pos.y) };
-
-        ::ScreenToClient(m_window, &p);
-
-        return { static_cast<float>(p.x), static_cast<float>(p.y) };
-    }
-
-    void ViewImpl::TrackCapture(const Event& ev)
-    {
-        HE_ASSERT(ev.type == EventType::MouseDown || ev.type == EventType::MouseUp);
-
-        if (ev.type == EventType::MouseDown)
-        {
-            if (m_captureCount++ == 0)
-                ::SetCapture(m_window);
-        }
-        else
-        {
-            if (--m_captureCount == 0)
-                ::ReleaseCapture();
-        }
-    }
-
-    // --------------------------------------------------------------------------------------------
-    DeviceImpl::DeviceImpl(Allocator& allocator)
+    DeviceImpl::DeviceImpl(Allocator& allocator) noexcept
         : Device(allocator)
         , m_gamepads{ { this, 0 }, { this, 1 }, { this, 2 }, { this, 3 } }
     {}
 
-    DeviceImpl::~DeviceImpl()
+    DeviceImpl::~DeviceImpl() noexcept
     {
-        ::UnregisterClassW(WindowClassName, m_hInstance);
+        ::UnregisterClassW(_heWindowClassName, m_hInstance);
         ::FreeLibrary(m_userLib);
         ::FreeLibrary(m_shcoreLib);
         ::FreeLibrary(m_xinputLib);
@@ -1161,7 +634,7 @@ namespace he::window::win32
         wcex.lpfnWndProc = WindowProc;
         wcex.hInstance = m_hInstance;
         wcex.hbrBackground = reinterpret_cast<HBRUSH>(COLOR_BACKGROUND + 1);
-        wcex.lpszClassName = WindowClassName;
+        wcex.lpszClassName = _heWindowClassName;
         // wcex.hIcon = desc.iconResourceId ? ::LoadIconW(m_hInstance, MAKEINTRESOURCEW(desc.iconResourceId)) : nullptr;
         // wcex.hIconSm = desc.iconSmResourceId ? ::LoadIconW(m_hInstance, MAKEINTRESOURCEW(desc.iconSmResourceId)) : nullptr;
         ::RegisterClassExW(&wcex);
@@ -1360,57 +833,6 @@ namespace he::window::win32
         return count;
     }
 
-    struct VisitMonitorData
-    {
-        const DeviceImpl* device;
-        Monitor* monitors;
-        uint32_t index;
-        uint32_t maxCount;
-    };
-
-    static BOOL CALLBACK VisitMonitorsCallback(HMONITOR hMonitor, HDC, LPRECT, LPARAM dwData)
-    {
-        VisitMonitorData* data = reinterpret_cast<VisitMonitorData*>(dwData);
-        if (data->index >= data->maxCount)
-            return FALSE;
-
-        MONITORINFO info{};
-        info.cbSize = sizeof(MONITORINFO);
-        if (::GetMonitorInfoW(hMonitor, &info))
-        {
-            Monitor& monitor = data->monitors[data->index];
-            monitor.pos = { info.rcMonitor.left, info.rcMonitor.top };
-            monitor.size = { info.rcMonitor.right - info.rcMonitor.left, info.rcMonitor.bottom - info.rcMonitor.top };
-            monitor.workPos = { info.rcWork.left, info.rcWork.top };
-            monitor.workSize = { info.rcWork.right - info.rcWork.left, info.rcWork.bottom - info.rcWork.top };
-            monitor.dpiScale = 1.0f;
-            monitor.primary = HasFlag(info.dwFlags, MONITORINFOF_PRIMARY);
-
-            UINT xdpi = 96;
-            UINT ydpi = 96;
-            if (data->device->m_GetDpiForMonitor)
-            {
-                data->device->m_GetDpiForMonitor(hMonitor, MDT_EFFECTIVE_DPI, &xdpi, &ydpi);
-                HE_ASSERT(xdpi == ydpi);
-            }
-            else
-            {
-                const HDC dc = ::GetDC(NULL);
-                if (dc)
-                {
-                    xdpi = ::GetDeviceCaps(dc, LOGPIXELSX);
-                    ydpi = ::GetDeviceCaps(dc, LOGPIXELSY);
-                    HE_ASSERT(xdpi == ydpi);
-                    ::ReleaseDC(NULL, dc);
-                }
-            }
-            monitor.dpiScale = xdpi / 96.0f;
-        }
-
-        data->index++;
-        return TRUE;
-    }
-
     uint32_t DeviceImpl::GetMonitors(Monitor* monitors, uint32_t maxCount) const
     {
         VisitMonitorData data;
@@ -1451,7 +873,7 @@ namespace he::window::win32
                 IDC_WAIT,       // Wait
             };
             static_assert(HE_LENGTH_OF(cursorNames) == static_cast<int32_t>(MouseCursor::_Count), "");
-            ::SetCursor(LoadCursorW(nullptr, cursorNames[static_cast<int32_t>(m_cursor)]));
+            ::SetCursor(::LoadCursorW(nullptr, cursorNames[static_cast<int32_t>(m_cursor)]));
         }
         else
         {

@@ -13,13 +13,13 @@
 
 namespace he::editor
 {
-    static const ImVec2 TopLevelIconFramePadding = { 8.0f, 0.0f };
-    static const ImVec2 TopLevelMenuItemPadding = { 10.0f, 16.0f };
-    static const ImVec2 MenuWindowPadding = { 0.0f, 10.0f };
-    static const ImVec2 MenuItemSpacing = { 10.0f, 12.0f };
-    static const ImVec2 StatusItemPadding = { 6.0f, 8.0f };
-    static const float MenuItemIconWidth = 16.0f;
-    static const float MenuSysButtonWidth = 45.0f;
+    constexpr ImVec2 TopLevelIconFramePadding{ 8.0f, 0.0f };
+    constexpr ImVec2 TopLevelMenuItemPadding{ 10.0f, 15.0f };
+    constexpr ImVec2 MenuWindowPadding{ 0.0f, 10.0f };
+    constexpr ImVec2 MenuItemSpacing{ 10.0f, 12.0f };
+    constexpr ImVec2 StatusItemPadding{ 6.0f, 8.0f };
+    constexpr float MenuItemIconWidth = 16.0f;
+    constexpr float MenuSysButtonWidth = 45.0f;
 
     void TopLevelIcon()
     {
@@ -84,9 +84,12 @@ namespace he::editor
         ImGui::PopStyleColor(2);
     }
 
-    bool StatusBarButton(const char* label, const ImVec2& size, ImGuiButtonFlags flags)
+    bool StatusBarButton(const char* label, float width, ImGuiButtonFlags flags)
     {
         ImGuiStyle& style = ImGui::GetStyle();
+
+        const ImVec2 labelSize = ImGui::CalcTextSize(label, NULL, true);
+        ImVec2 size(width, labelSize.y + (style.FramePadding.y * 2.0f) - style.WindowBorderSize);
 
         ImGui::PushStyleColor(ImGuiCol_Button, style.Colors[ImGuiCol_Header]);
         ImGui::PushStyleColor(ImGuiCol_ButtonActive, style.Colors[ImGuiCol_HeaderActive]);

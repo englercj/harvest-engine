@@ -17,7 +17,7 @@ namespace he::editor
     bool BeginAppStatusBar();
     void EndAppStatusBar();
 
-    bool StatusBarButton(const char* label, const ImVec2& size = ImVec2(0, 0), ImGuiButtonFlags flags = ImGuiButtonFlags_None);
+    bool StatusBarButton(const char* label, float width = 0.0f, ImGuiButtonFlags flags = ImGuiButtonFlags_None);
 
     // Main Menu bar
 

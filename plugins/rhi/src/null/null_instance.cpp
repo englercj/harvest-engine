@@ -1,7 +1,5 @@
 // Copyright Chad Engler
 
-#pragma once
-
 #include "null_instance.h"
 
 #include "null_device.h"

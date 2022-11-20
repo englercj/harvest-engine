@@ -1,7 +1,5 @@
 // Copyright Chad Engler
 
-#pragma once
-
 #include "null_device.h"
 
 #include "null_cmd_list.h"

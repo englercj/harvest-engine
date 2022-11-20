@@ -35,23 +35,29 @@ namespace he::assets
         const schema::Vec2f::Reader vec = value.As<he::schema::DynamicStruct>().As<schema::Vec2f>();
 
         float x = vec.GetX();
-        ImGui::TextUnformatted("X:");
+        ImGui::TextUnformatted("X =");
+        ImGui::SameLine();
+        ImGui::PushItemWidth(96.0f);
         if (ImGui::InputFloat("##vec2f-x", &x))
         {
             editor::AssetEditAction& action = ctx.edit.EmplaceAction(editor::AssetEditAction::Kind::SetValue);
             action.path.PushBack({ GetField<schema::Vec2f, FieldName_X>() });
             action.value = x;
         }
+        ImGui::PopItemWidth();
         ImGui::SameLine();
 
         float y = vec.GetY();
-        ImGui::TextUnformatted("Y:");
+        ImGui::TextUnformatted("Y =");
+        ImGui::SameLine();
+        ImGui::PushItemWidth(96.0f);
         if (ImGui::InputFloat("##vec2f-y", &y))
         {
             editor::AssetEditAction& action = ctx.edit.EmplaceAction(editor::AssetEditAction::Kind::SetValue);
             action.path.PushBack({ GetField<schema::Vec2f, FieldName_Y>() });
             action.value = y;
         }
+        ImGui::PopItemWidth();
     }
 
     void Vec3fEditor(const he::schema::DynamicValue::Reader& value, editor::TypeEditUIService::Context& ctx)
@@ -59,33 +65,42 @@ namespace he::assets
         const schema::Vec3f::Reader vec = value.As<he::schema::DynamicStruct>().As<schema::Vec3f>();
 
         float x = vec.GetX();
-        ImGui::TextUnformatted("X:");
+        ImGui::TextUnformatted("X =");
+        ImGui::SameLine();
+        ImGui::PushItemWidth(96.0f);
         if (ImGui::InputFloat("##vec3f-x", &x))
         {
             editor::AssetEditAction& action = ctx.edit.EmplaceAction(editor::AssetEditAction::Kind::SetValue);
             action.path.PushBack({ GetField<schema::Vec3f, FieldName_X>() });
             action.value = x;
         }
+        ImGui::PopItemWidth();
         ImGui::SameLine();
 
         float y = vec.GetY();
-        ImGui::TextUnformatted("Y:");
+        ImGui::TextUnformatted("Y =");
+        ImGui::SameLine();
+        ImGui::PushItemWidth(96.0f);
         if (ImGui::InputFloat("##vec3f-y", &y))
         {
             editor::AssetEditAction& action = ctx.edit.EmplaceAction(editor::AssetEditAction::Kind::SetValue);
             action.path.PushBack({ GetField<schema::Vec3f, FieldName_Y>() });
             action.value = y;
         }
+        ImGui::PopItemWidth();
         ImGui::SameLine();
 
         float z = vec.GetZ();
-        ImGui::TextUnformatted("Z:");
+        ImGui::TextUnformatted("Z =");
+        ImGui::SameLine();
+        ImGui::PushItemWidth(96.0f);
         if (ImGui::InputFloat("##vec3f-z", &y))
         {
             editor::AssetEditAction& action = ctx.edit.EmplaceAction(editor::AssetEditAction::Kind::SetValue);
             action.path.PushBack({ GetField<schema::Vec3f, FieldName_Z>() });
             action.value = z;
         }
+        ImGui::PopItemWidth();
     }
 
     void AssetUuidFieldEditor(const he::schema::DynamicValue::Reader& value, editor::TypeEditUIService::Context& ctx)
@@ -100,7 +115,9 @@ namespace he::assets
         fmt::format_to(Appender(s_buf), "{}", assetUuid);
 
         ImGui::BeginDisabled(true);
+        ImGui::PushItemWidth(-1.0f);
         ImGui::InputText("##asset-uuid", s_buf.Data(), s_buf.Capacity() + 1, ImGuiInputTextFlags_ReadOnly);
+        ImGui::PopItemWidth();
         ImGui::EndDisabled();
         if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
             ImGui::SetTooltip("This field is read-only.");

@@ -12,6 +12,31 @@
 #include <concepts>
 #include <limits>
 
+namespace he
+{
+    template <>
+    const char* AsString(schema::DynamicValue::Kind x)
+    {
+        switch (x)
+        {
+            case schema::DynamicValue::Kind::Unknown: return "Unknown";
+            case schema::DynamicValue::Kind::Void: return "Void";
+            case schema::DynamicValue::Kind::Bool: return "Bool";
+            case schema::DynamicValue::Kind::Int: return "Int";
+            case schema::DynamicValue::Kind::Uint: return "Uint";
+            case schema::DynamicValue::Kind::Float: return "Float";
+            case schema::DynamicValue::Kind::Blob: return "Blob";
+            case schema::DynamicValue::Kind::String: return "String";
+            case schema::DynamicValue::Kind::Array: return "Array";
+            case schema::DynamicValue::Kind::List: return "List";
+            case schema::DynamicValue::Kind::Enum: return "Enum";
+            case schema::DynamicValue::Kind::Struct: return "Struct";
+            case schema::DynamicValue::Kind::AnyPointer: return "AnyPointer";
+        }
+        return "<unknown>";
+    }
+}
+
 namespace he::schema
 {
     // --------------------------------------------------------------------------------------------
@@ -799,7 +824,7 @@ namespace he::schema
                     case Type::Data::UnionTag::List:
                     {
                         const DynamicList::Reader src = value.As<DynamicList>();
-                        if (HE_VERIFY(src.Type() == type))
+                        if (HE_VERIFY(src.GetType() == type))
                         {
                             DynamicList::Builder dst = Init(field, src.Size()).As<DynamicList>();
                             dst.List().Copy(src.List());
@@ -1506,7 +1531,7 @@ namespace he::schema
             case Type::Data::UnionTag::List:
             {
                 const DynamicList::Reader src = value.As<DynamicList>();
-                if (HE_VERIFY(src.Type() == elementType))
+                if (HE_VERIFY(src.GetType() == elementType))
                 {
                     DynamicList::Builder dst = Init(index, src.Size()).As<DynamicList>();
                     dst.List().Copy(src.List());
@@ -1987,7 +2012,7 @@ namespace he::schema
             case Type::Data::UnionTag::List:
             {
                 const DynamicList::Reader src = value.As<DynamicList>();
-                if (HE_VERIFY(src.Type() == elementType))
+                if (HE_VERIFY(src.GetType() == elementType))
                 {
                     DynamicList::Builder dst = Init(index, src.Size()).As<DynamicList>();
                     dst.List().Copy(src.List());
@@ -2161,30 +2186,5 @@ namespace he::schema
     DynamicValue::Builder DynamicList::Builder::operator[](uint32_t index) const
     {
         return Get(index);
-    }
-}
-
-namespace he
-{
-    template <>
-    const char* AsString(schema::DynamicValue::Kind x)
-    {
-        switch (x)
-        {
-            case schema::DynamicValue::Kind::Unknown: return "Unknown";
-            case schema::DynamicValue::Kind::Void: return "Void";
-            case schema::DynamicValue::Kind::Bool: return "Bool";
-            case schema::DynamicValue::Kind::Int: return "Int";
-            case schema::DynamicValue::Kind::Uint: return "Uint";
-            case schema::DynamicValue::Kind::Float: return "Float";
-            case schema::DynamicValue::Kind::Blob: return "Blob";
-            case schema::DynamicValue::Kind::String: return "String";
-            case schema::DynamicValue::Kind::Array: return "Array";
-            case schema::DynamicValue::Kind::List: return "List";
-            case schema::DynamicValue::Kind::Enum: return "Enum";
-            case schema::DynamicValue::Kind::Struct: return "Struct";
-            case schema::DynamicValue::Kind::AnyPointer: return "AnyPointer";
-        }
-        return "<unknown>";
     }
 }

@@ -243,13 +243,6 @@ namespace he::schema
         return Declaration::Reader(StructReader(info.schema, I.dataWordSize, I.pointerCount));
     }
 
-    template <typename T>
-    inline Field::Reader FindFieldByName(StringView name)
-    {
-        const Declaration::Reader decl = GetSchema(T::DeclInfo);
-        return FindFieldByName(name, decl.GetData().GetStruct());
-    }
-
     inline Field::Reader FindFieldByName(StringView name, Declaration::Data::Struct::Reader st)
     {
         for (Field::Reader field : st.GetFields())
@@ -259,6 +252,13 @@ namespace he::schema
         }
 
         return {};
+    }
+
+    template <typename T>
+    inline Field::Reader FindFieldByName(StringView name)
+    {
+        const Declaration::Reader decl = GetSchema(T::DeclInfo);
+        return FindFieldByName(name, decl.GetData().GetStruct());
     }
 
     inline Field::Reader FindFieldByUnionTag(uint16_t unionTag, Declaration::Data::Struct::Reader st)

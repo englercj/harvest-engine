@@ -94,13 +94,13 @@ namespace he::schema
 
         uint16_t Value() const { return m_value; }
 
-        Enumerator::Reader Enumerator() const
+        Enumerator::Reader Enum() const
         {
             auto enumerators = EnumSchema().GetEnumerators();
             return m_value < enumerators.Size() ? enumerators[m_value] : Enumerator::Reader{};
         }
 
-        template <Enum T>
+        template <he::Enum T>
         T As() const
         {
             HE_VERIFY(EnumInfo<T>::Id = Schema().GetId(),
@@ -264,7 +264,7 @@ namespace he::schema
         }
 
     public:
-        Type::Reader Type() const { return m_type; }
+        Type::Reader GetType() const { return m_type; }
         Type::Data::Array::Reader ArrayType() const { return m_type.GetData().GetArray(); }
 
         uint16_t Size() const { return ArrayType().GetSize(); }
@@ -347,7 +347,7 @@ namespace he::schema
         }
 
     public:
-        Type::Reader Type() const { return m_type; }
+        Type::Reader GetType() const { return m_type; }
         Type::Data::Array::Reader ArrayType() const { return m_type.GetData().GetArray(); }
 
         uint16_t Size() const { return ArrayType().GetSize(); }
@@ -423,7 +423,7 @@ namespace he::schema
         }
 
     public:
-        Type::Reader Type() const { return m_type; }
+        Type::Reader GetType() const { return m_type; }
         Type::Data::List::Reader ListType() const { return m_type.GetData().GetList(); }
 
         uint32_t Size() const { return m_reader.Size(); }
@@ -472,7 +472,7 @@ namespace he::schema
         }
 
     public:
-        Type::Reader Type() const { return m_type; }
+        Type::Reader GetType() const { return m_type; }
         Type::Data::List::Reader ListType() const { return m_type.GetData().GetList(); }
 
         uint32_t Size() const { return m_builder.Size(); }
@@ -630,8 +630,8 @@ namespace he::schema
 
         static_assert(IsReader || IsBuilder, "DynamicStructVisitor is intended for DynamicStruct::Reader and DynamicStruct::Builder types.");
 
-        template <typename T>
-        using Access = std::conditional_t<IsReader, const typename T::Reader, typename T::Builder>;
+        template <typename U>
+        using Access = std::conditional_t<IsReader, const typename U::Reader, typename U::Builder>;
 
     public:
         virtual ~DynamicStructVisitorT() = default;
@@ -648,13 +648,13 @@ namespace he::schema
 
         virtual void VisitGroupField(Access<DynamicStruct>& data, Field::Reader field)
         {
-            T st = data.Get(field).As<DynamicStruct>();
+            T st = data.Get(field).template As<DynamicStruct>();
             VisitStruct(st);
         }
 
         virtual void VisitUnionField(Access<DynamicStruct>& data, Field::Reader field)
         {
-            T st = data.Get(field).As<DynamicStruct>();
+            T st = data.Get(field).template As<DynamicStruct>();
             VisitStruct(st);
         }
 

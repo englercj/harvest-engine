@@ -1116,6 +1116,12 @@ namespace he::schema
         ListIterator& operator--() { --m_index; return *this; }
         ListIterator operator--(int) { ListIterator x = *this; --m_index; return x; }
 
+        friend ListIterator operator-(const ListIterator& a, const ListIterator& b)
+        {
+            HE_ASSERT(a.m_list == b.m_list);
+            return ListIterator(a.m_list, (a.m_index - b.m_index));
+        }
+
         bool operator==(const ListIterator& x) const { return m_list == x.m_list && m_index == x.m_index; }
         bool operator!=(const ListIterator& x) const { return m_list != x.m_list || m_index != x.m_index; }
 

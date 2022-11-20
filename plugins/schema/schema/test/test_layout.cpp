@@ -69,39 +69,39 @@ HE_TEST(schema, layout, DataType)
 }
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST(schema, layout, TypeHelper)
+HE_TEST(schema, layout, LayoutTraits)
 {
-    static_assert(std::is_same_v<TypeHelper<bool>::Reader, bool>);
-    static_assert(std::is_same_v<TypeHelper<bool>::Builder, bool>);
-    static_assert(std::is_same_v<TypeHelper<char>::Reader, char>);
-    static_assert(std::is_same_v<TypeHelper<char>::Builder, char>);
-    static_assert(std::is_same_v<TypeHelper<int8_t>::Reader, int8_t>);
-    static_assert(std::is_same_v<TypeHelper<int8_t>::Builder, int8_t>);
-    static_assert(std::is_same_v<TypeHelper<int16_t>::Reader, int16_t>);
-    static_assert(std::is_same_v<TypeHelper<int16_t>::Builder, int16_t>);
-    static_assert(std::is_same_v<TypeHelper<int32_t>::Reader, int32_t>);
-    static_assert(std::is_same_v<TypeHelper<int32_t>::Builder, int32_t>);
-    static_assert(std::is_same_v<TypeHelper<int64_t>::Reader, int64_t>);
-    static_assert(std::is_same_v<TypeHelper<int64_t>::Builder, int64_t>);
-    static_assert(std::is_same_v<TypeHelper<uint8_t>::Reader, uint8_t>);
-    static_assert(std::is_same_v<TypeHelper<uint8_t>::Builder, uint8_t>);
-    static_assert(std::is_same_v<TypeHelper<uint16_t>::Reader, uint16_t>);
-    static_assert(std::is_same_v<TypeHelper<uint16_t>::Builder, uint16_t>);
-    static_assert(std::is_same_v<TypeHelper<uint32_t>::Reader, uint32_t>);
-    static_assert(std::is_same_v<TypeHelper<uint32_t>::Builder, uint32_t>);
-    static_assert(std::is_same_v<TypeHelper<uint64_t>::Reader, uint64_t>);
-    static_assert(std::is_same_v<TypeHelper<uint64_t>::Builder, uint64_t>);
+    static_assert(std::is_same_v<LayoutTraits<bool>::Reader, bool>);
+    static_assert(std::is_same_v<LayoutTraits<bool>::Builder, bool>);
+    static_assert(std::is_same_v<LayoutTraits<char>::Reader, char>);
+    static_assert(std::is_same_v<LayoutTraits<char>::Builder, char>);
+    static_assert(std::is_same_v<LayoutTraits<int8_t>::Reader, int8_t>);
+    static_assert(std::is_same_v<LayoutTraits<int8_t>::Builder, int8_t>);
+    static_assert(std::is_same_v<LayoutTraits<int16_t>::Reader, int16_t>);
+    static_assert(std::is_same_v<LayoutTraits<int16_t>::Builder, int16_t>);
+    static_assert(std::is_same_v<LayoutTraits<int32_t>::Reader, int32_t>);
+    static_assert(std::is_same_v<LayoutTraits<int32_t>::Builder, int32_t>);
+    static_assert(std::is_same_v<LayoutTraits<int64_t>::Reader, int64_t>);
+    static_assert(std::is_same_v<LayoutTraits<int64_t>::Builder, int64_t>);
+    static_assert(std::is_same_v<LayoutTraits<uint8_t>::Reader, uint8_t>);
+    static_assert(std::is_same_v<LayoutTraits<uint8_t>::Builder, uint8_t>);
+    static_assert(std::is_same_v<LayoutTraits<uint16_t>::Reader, uint16_t>);
+    static_assert(std::is_same_v<LayoutTraits<uint16_t>::Builder, uint16_t>);
+    static_assert(std::is_same_v<LayoutTraits<uint32_t>::Reader, uint32_t>);
+    static_assert(std::is_same_v<LayoutTraits<uint32_t>::Builder, uint32_t>);
+    static_assert(std::is_same_v<LayoutTraits<uint64_t>::Reader, uint64_t>);
+    static_assert(std::is_same_v<LayoutTraits<uint64_t>::Builder, uint64_t>);
 
     enum TestEnum { A, B, C };
-    static_assert(std::is_same_v<TypeHelper<TestEnum>::Reader, TestEnum>);
-    static_assert(std::is_same_v<TypeHelper<TestEnum>::Builder, TestEnum>);
+    static_assert(std::is_same_v<LayoutTraits<TestEnum>::Reader, TestEnum>);
+    static_assert(std::is_same_v<LayoutTraits<TestEnum>::Builder, TestEnum>);
 
-    static_assert(std::is_same_v<TypeHelper<Void>::Reader, Void>);
-    static_assert(std::is_same_v<TypeHelper<Void>::Builder, Void>);
+    static_assert(std::is_same_v<LayoutTraits<Void>::Reader, Void>);
+    static_assert(std::is_same_v<LayoutTraits<Void>::Builder, Void>);
 
     struct TestStruct { class Reader; class Builder; };
-    static_assert(std::is_same_v<TypeHelper<TestStruct>::Reader, TestStruct::Reader>);
-    static_assert(std::is_same_v<TypeHelper<TestStruct>::Builder, TestStruct::Builder>);
+    static_assert(std::is_same_v<LayoutTraits<TestStruct>::Reader, TestStruct::Reader>);
+    static_assert(std::is_same_v<LayoutTraits<TestStruct>::Builder, TestStruct::Builder>);
 }
 
 // ------------------------------------------------------------------------------------------------

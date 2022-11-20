@@ -677,6 +677,8 @@ namespace he::schema
         void Set(const StructReader& value);
 
         void Copy(const PointerReader& reader);
+        void Copy(const ListReader& value);
+        void Copy(const StructReader& value);
 
         // Lists
 

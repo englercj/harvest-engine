@@ -351,28 +351,56 @@ namespace he::schema
         {
             case PointerKind::List:
             {
-                ListReader srcList = reader.TryGetList(reader.ListElementSize());
-                ListBuilder dstList;
-                if (srcList.GetElementSize() == ElementSize::Composite)
-                    dstList = m_builder->AddStructList(srcList.Size(), srcList.StructDataFieldCount(), srcList.StructDataWordSize(), srcList.StructPointerCount());
-                else
-                    dstList = m_builder->AddList(srcList.GetElementSize(), srcList.Size());
-                dstList.Copy(srcList);
-                Set(dstList);
+                ListReader src = reader.TryGetList(reader.ListElementSize());
+                Copy(src);
                 break;
             }
             case PointerKind::Struct:
             {
-                StructReader srcStruct = reader.TryGetStruct();
-                StructBuilder dstStruct = m_builder->AddStruct(srcStruct.DataFieldCount(), srcStruct.DataWordSize(), srcStruct.PointerCount());
-                dstStruct.Copy(srcStruct);
-                Set(dstStruct);
+                StructReader src = reader.TryGetStruct();
+                Copy(src);
                 break;
             }
             case PointerKind::_Count:
-                HE_ASSERT(false, HE_MSG("Encountered invalid pointer kind"));
+                HE_VERIFY(reader.Kind() != PointerKind::_Count, HE_MSG("Encountered invalid pointer kind."));
                 break;
         }
+    }
+
+    void PointerBuilder::Copy(const ListReader& value)
+    {
+        if (Location() == value.Data())
+            return;
+
+        if (!value.IsValid())
+        {
+            SetNull();
+            return;
+        }
+
+        ListBuilder dst;
+        if (value.GetElementSize() == ElementSize::Composite)
+            dst = m_builder->AddStructList(value.Size(), value.StructDataFieldCount(), value.StructDataWordSize(), value.StructPointerCount());
+        else
+            dst = m_builder->AddList(value.GetElementSize(), value.Size());
+        dst.Copy(value);
+        Set(dst);
+    }
+
+    void PointerBuilder::Copy(const StructReader& value)
+    {
+        if (Location() == value.Data())
+            return;
+
+        if (!value.IsValid())
+        {
+            SetNull();
+            return;
+        }
+
+        StructBuilder dst = m_builder->AddStruct(value.DataFieldCount(), value.DataWordSize(), value.PointerCount());
+        dst.Copy(value);
+        Set(dst);
     }
 
     ListBuilder PointerBuilder::TryGetList(ElementSize expectedElementSize) const

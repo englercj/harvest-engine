@@ -448,9 +448,31 @@ namespace he::schema
                 return isPointer ? m_reader.HasPointerField(index) : m_reader.HasDataField(index);
             }
             case Field::Meta::UnionTag::Group:
+            {
+                const Field::Meta::Group::Reader group = field.GetMeta().GetGroup();
+                const DeclInfo* info = FindDependency(*m_info, group.GetTypeId());
+                if (!HE_VERIFY(info,
+                    HE_MSG("Field requested from DynamicStruct is a group that has a missing type."),
+                    HE_KV(struct_name, Schema().GetName()),
+                    HE_KV(requested_field_name, field.GetName()),
+                    HE_KV(requested_field_type_id, group.GetTypeId())))
+                {
+                    return false;
+                }
+
+                DynamicStruct::Reader reader(*info, m_reader);
+                for (const Field::Reader groupField : reader.StructSchema().GetFields())
+                {
+                    if (reader.Has(groupField))
+                        return true;
+                }
+
+                return false;
+            }
             case Field::Meta::UnionTag::Union:
             {
-                // groups are always available
+                // TODO: We need to allocate a field index for the union tag to make this work.
+                // For now just assume unions are available.
                 return true;
             }
         }
@@ -485,6 +507,9 @@ namespace he::schema
         const Declaration::Data::Struct::Reader structDecl = StructSchema();
         if (!structDecl.GetIsUnion())
             return {};
+
+        if (!m_reader.IsValid())
+            return structDecl.GetFields().Get(0);
 
         const uint16_t tag = m_reader.GetDataField<uint16_t>(structDecl.GetUnionTagOffset());
         return FindFieldByUnionTag(tag, structDecl);
@@ -704,39 +729,71 @@ namespace he::schema
                         dst.Copy(src);
                         break;
                     }
-                    case Type::Data::UnionTag::AnyPointer:
-                    case Type::Data::UnionTag::Parameter:
-                    {
-                        // TODO!
-                        //switch (value.GetKind())
-                        //{
-                        //    case DynamicValue::Kind::Blob: m_builder.GetPointerField(index).Set(value.As<Blob>()); break;
-                        //    case DynamicValue::Kind::String: m_builder.GetPointerField(index).Set(value.As<String>()); break;
-                        //    case DynamicValue::Kind::List: m_builder.GetPointerField(index).Set(value.As<DynamicList>().List()); break;
-                        //    case DynamicValue::Kind::Struct: m_builder.GetPointerField(index).Set(value.As<DynamicStruct>().Struct()); break;
-                        //    case DynamicValue::Kind::AnyPointer: m_builder.GetPointerField(index).Set(value.As<AnyPointer>()); break;
-                        //    default:
-                        //        HE_VERIFY(false, HE_MSG("Expected a pointer value."), HE_KV(value_kind, value.GetKind()));
-                        //}
-                        break;
-                    }
                     case Type::Data::UnionTag::AnyStruct:
                     {
-                        const DynamicStruct::Reader src = value.As<DynamicStruct>();
-                        DynamicStruct::Builder dst = Init(field).As<DynamicStruct>();
-                        dst.Struct().Copy(src.Struct());
+                        PointerBuilder ptr = Init(field).As<AnyPointer>();
+                        if (value.GetKind() == DynamicValue::Kind::Struct)
+                        {
+                            ptr.Copy(value.As<DynamicStruct>().Struct());
+                        }
+                        else if (value.GetKind() == DynamicValue::Kind::AnyPointer && value.As<AnyPointer>().Kind() == PointerKind::Struct)
+                        {
+                            ptr.Copy(value.As<AnyPointer>());
+                        }
+                        else
+                        {
+                            HE_VERIFY(false,
+                                HE_MSG("Expected a struct value when setting an AnyStruct field."),
+                                HE_KV(value_kind, value.GetKind()));
+                        }
                         break;
                     }
                     case Type::Data::UnionTag::AnyList:
                     {
-                        const DynamicList::Reader src = value.As<DynamicList>();
-                        DynamicList::Builder dst = Init(field, src.Size()).As<DynamicList>();
-                        dst.List().Copy(src.List());
+                        PointerBuilder ptr = Init(field).As<AnyPointer>();
+                        switch (value.GetKind())
+                        {
+                            case DynamicValue::Kind::Blob: ptr.Copy(value.As<Blob>()); break;
+                            case DynamicValue::Kind::String: ptr.Copy(value.As<String>()); break;
+                            case DynamicValue::Kind::List: ptr.Copy(value.As<DynamicList>().List()); break;
+                            case DynamicValue::Kind::AnyPointer:
+                            {
+                                if (HE_VERIFY(value.As<AnyPointer>().Kind() == PointerKind::List))
+                                {
+                                    ptr.Copy(value.As<AnyPointer>());
+                                    break;
+                                }
+                                [[fallthrough]]; // Fall through to error case below
+                            }
+                            default:
+                                HE_VERIFY(false,
+                                    HE_MSG("Expected a list value when setting an AnyList field."),
+                                    HE_KV(value_kind, value.GetKind()));
+                        }
+                        break;
+                    }
+                    case Type::Data::UnionTag::AnyPointer:
+                    case Type::Data::UnionTag::Parameter:
+                    {
+                        PointerBuilder ptr = Init(field).As<AnyPointer>();
+                        switch (value.GetKind())
+                        {
+                            case DynamicValue::Kind::Blob: ptr.Copy(value.As<Blob>()); break;
+                            case DynamicValue::Kind::String: ptr.Copy(value.As<String>()); break;
+                            case DynamicValue::Kind::List: ptr.Copy(value.As<DynamicList>().List()); break;
+                            case DynamicValue::Kind::Struct: ptr.Copy(value.As<DynamicStruct>().Struct()); break;
+                            case DynamicValue::Kind::AnyPointer: ptr.Copy(value.As<AnyPointer>()); break;
+                            default:
+                                HE_VERIFY(false,
+                                    HE_MSG("Expected a pointer value when setting an AnyPointer field."),
+                                    HE_KV(value_kind, value.GetKind()));
+                        }
                         break;
                     }
                     case Type::Data::UnionTag::Array:
                     {
-                        HE_VERIFY(false, HE_MSG("Setting an array field via DynamicStruct::Builder::Set is not supported. Use DynamicStruct::Builder::Get() to get a DynamicArray::Builder object instead."));
+                        HE_VERIFY(false,
+                            HE_MSG("Setting an array field via DynamicStruct::Builder::Set is not supported. Use DynamicStruct::Builder::Get() to get a DynamicArray::Builder object any set an element instead."));
                         break;
                     }
                     case Type::Data::UnionTag::List:
@@ -865,6 +922,7 @@ namespace he::schema
                 {
                     case Type::Data::UnionTag::AnyPointer:
                     case Type::Data::UnionTag::AnyStruct:
+                    case Type::Data::UnionTag::AnyList:
                     case Type::Data::UnionTag::Parameter:
                     {
                         PointerBuilder ptr = m_builder.GetPointerField(index);
@@ -1079,6 +1137,7 @@ namespace he::schema
                 {
                     builder.Clear(groupField);
                 }
+                break;
             }
             case Field::Meta::UnionTag::Union:
             {
@@ -1096,6 +1155,7 @@ namespace he::schema
                 DynamicStruct::Builder builder(*info, m_builder);
                 const Field::Reader unionField = builder.ActiveUnionField();
                 builder.Clear(unionField);
+                break;
             }
         }
     }
@@ -1377,13 +1437,65 @@ namespace he::schema
                 dst.Copy(src);
                 break;
             }
-            case Type::Data::UnionTag::AnyPointer:
             case Type::Data::UnionTag::AnyStruct:
+            {
+                PointerBuilder ptr = Init(index).As<AnyPointer>();
+                if (value.GetKind() == DynamicValue::Kind::Struct)
+                {
+                    ptr.Copy(value.As<DynamicStruct>().Struct());
+                }
+                else if (value.GetKind() == DynamicValue::Kind::AnyPointer && value.As<AnyPointer>().Kind() == PointerKind::Struct)
+                {
+                    ptr.Copy(value.As<AnyPointer>());
+                }
+                else
+                {
+                    HE_VERIFY(false,
+                        HE_MSG("Expected a struct value when setting an AnyStruct field."),
+                        HE_KV(value_kind, value.GetKind()));
+                }
+                break;
+            }
             case Type::Data::UnionTag::AnyList:
+            {
+                PointerBuilder ptr = Init(index).As<AnyPointer>();
+                switch (value.GetKind())
+                {
+                    case DynamicValue::Kind::Blob: ptr.Copy(value.As<Blob>()); break;
+                    case DynamicValue::Kind::String: ptr.Copy(value.As<String>()); break;
+                    case DynamicValue::Kind::List: ptr.Copy(value.As<DynamicList>().List()); break;
+                    case DynamicValue::Kind::AnyPointer:
+                    {
+                        if (HE_VERIFY(value.As<AnyPointer>().Kind() == PointerKind::List))
+                        {
+                            ptr.Copy(value.As<AnyPointer>());
+                            break;
+                        }
+                        [[fallthrough]]; // Fall through to error case below
+                    }
+                    default:
+                        HE_VERIFY(false,
+                            HE_MSG("Expected a list value when setting an AnyList field."),
+                            HE_KV(value_kind, value.GetKind()));
+                }
+                break;
+            }
+            case Type::Data::UnionTag::AnyPointer:
             case Type::Data::UnionTag::Parameter:
             {
-                // TODO: Support these better
-                HE_VERIFY(false, HE_MSG("Arrays of AnyPointer types are not supported by DynamicArray::Builder::Set(), yet."));
+                PointerBuilder ptr = Init(index).As<AnyPointer>();
+                switch (value.GetKind())
+                {
+                    case DynamicValue::Kind::Blob: ptr.Copy(value.As<Blob>()); break;
+                    case DynamicValue::Kind::String: ptr.Copy(value.As<String>()); break;
+                    case DynamicValue::Kind::List: ptr.Copy(value.As<DynamicList>().List()); break;
+                    case DynamicValue::Kind::Struct: ptr.Copy(value.As<DynamicStruct>().Struct()); break;
+                    case DynamicValue::Kind::AnyPointer: ptr.Copy(value.As<AnyPointer>()); break;
+                    default:
+                        HE_VERIFY(false,
+                            HE_MSG("Expected a pointer value when setting an AnyPointer field."),
+                            HE_KV(value_kind, value.GetKind()));
+                }
                 break;
             }
             case Type::Data::UnionTag::Array:
@@ -1806,13 +1918,65 @@ namespace he::schema
                 dst.Copy(src);
                 break;
             }
-            case Type::Data::UnionTag::AnyPointer:
             case Type::Data::UnionTag::AnyStruct:
+            {
+                PointerBuilder ptr = m_builder.GetPointerElement(index);
+                if (value.GetKind() == DynamicValue::Kind::Struct)
+                {
+                    ptr.Copy(value.As<DynamicStruct>().Struct());
+                }
+                else if (value.GetKind() == DynamicValue::Kind::AnyPointer && value.As<AnyPointer>().Kind() == PointerKind::Struct)
+                {
+                    ptr.Copy(value.As<AnyPointer>());
+                }
+                else
+                {
+                    HE_VERIFY(false,
+                        HE_MSG("Expected a struct value when setting an AnyStruct field."),
+                        HE_KV(value_kind, value.GetKind()));
+                }
+                break;
+            }
             case Type::Data::UnionTag::AnyList:
+            {
+                PointerBuilder ptr = m_builder.GetPointerElement(index);
+                switch (value.GetKind())
+                {
+                    case DynamicValue::Kind::Blob: ptr.Copy(value.As<Blob>()); break;
+                    case DynamicValue::Kind::String: ptr.Copy(value.As<String>()); break;
+                    case DynamicValue::Kind::List: ptr.Copy(value.As<DynamicList>().List()); break;
+                    case DynamicValue::Kind::AnyPointer:
+                    {
+                        if (HE_VERIFY(value.As<AnyPointer>().Kind() == PointerKind::List))
+                        {
+                            ptr.Copy(value.As<AnyPointer>());
+                            break;
+                        }
+                        [[fallthrough]]; // Fall through to error case below
+                    }
+                    default:
+                        HE_VERIFY(false,
+                            HE_MSG("Expected a list value when setting an AnyList field."),
+                            HE_KV(value_kind, value.GetKind()));
+                }
+                break;
+            }
+            case Type::Data::UnionTag::AnyPointer:
             case Type::Data::UnionTag::Parameter:
             {
-                // TODO: Support these better
-                HE_VERIFY(false, HE_MSG("Lists of AnyPointer types are not supported by DynamicList::Builder::Set(), yet."));
+                PointerBuilder ptr = m_builder.GetPointerElement(index);
+                switch (value.GetKind())
+                {
+                    case DynamicValue::Kind::Blob: ptr.Copy(value.As<Blob>()); break;
+                    case DynamicValue::Kind::String: ptr.Copy(value.As<String>()); break;
+                    case DynamicValue::Kind::List: ptr.Copy(value.As<DynamicList>().List()); break;
+                    case DynamicValue::Kind::Struct: ptr.Copy(value.As<DynamicStruct>().Struct()); break;
+                    case DynamicValue::Kind::AnyPointer: ptr.Copy(value.As<AnyPointer>()); break;
+                    default:
+                        HE_VERIFY(false,
+                            HE_MSG("Expected a pointer value when setting an AnyPointer field."),
+                            HE_KV(value_kind, value.GetKind()));
+                }
                 break;
             }
             case Type::Data::UnionTag::Array:

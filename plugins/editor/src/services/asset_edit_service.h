@@ -19,7 +19,8 @@ namespace he::editor
     struct AssetEditPathEntry
     {
         he::schema::Field::Reader field{};              ///< The field being edited.
-        uint32_t listIndex{ 0 };                        ///< Index for an array or list field.
+        uint32_t index{ 0 };                            ///< Index for an array or list field.
+        const he::schema::DeclInfo* info{ nullptr };    ///< Type of the field when it is AnyPointer/AnyStruct
     };
 
     // --------------------------------------------------------------------------------------------
@@ -37,6 +38,9 @@ namespace he::editor
         Kind kind{ Kind::SetValue };
         Vector<AssetEditPathEntry> path{};
         he::schema::DynamicValue::Builder value{};
+
+    private:
+        friend class AssetEditContext;
         he::schema::DynamicValue::Builder previousValue{};
     };
 

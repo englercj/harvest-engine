@@ -209,9 +209,8 @@ namespace he::editor
         {
             const schema::Field::Reader field = m_edit.path.Back().field;
             const bool readOnly = schema::HasAttribute<assets::schema::Display::ReadOnly>(field.GetAttributes());
-            const bool hasValue = data.Has(field);
 
-            if (!readOnly && hasValue)
+            if (!readOnly && data.Has(field))
             {
                 if (ImGui::Button(ICON_MDI_UNDO_VARIANT))
                 {
@@ -314,11 +313,6 @@ namespace he::editor
             return true;
         }
 
-        template <typename T>
-        bool InputScalar(T& v, ImGuiDataType type)
-        {
-        }
-
         void ShowValueEditor(schema::Void value)
         {
             HE_UNUSED(value);
@@ -343,32 +337,17 @@ namespace he::editor
                 ImGui::SetTooltip("This field is read-only.");
         }
 
+        template <Arithmetic T> struct _ImGuiDataTypeForType;
+        template <> struct _ImGuiDataTypeForType<int64_t> { static constexpr ImGuiDataType Value = ImGuiDataType_S64; };
+        template <> struct _ImGuiDataTypeForType<uint64_t> { static constexpr ImGuiDataType Value = ImGuiDataType_U64; };
+        template <> struct _ImGuiDataTypeForType<double> { static constexpr ImGuiDataType Value = ImGuiDataType_Double; };
+
         template <Arithmetic T>
         void ShowValueEditor(T value)
         {
+            constexpr ImGuiDataType DataType = _ImGuiDataTypeForType<T>::Value;
+
             const schema::Field::Reader field = m_edit.path.Back().field;
-            const schema::Type::Data::Reader typeData = field.GetMeta().GetNormal().GetType().GetData();
-            const schema::Type::Data::UnionTag tag = typeData.IsArray() ? typeData.GetArray().GetElementType().GetData().GetUnionTag() : typeData.GetUnionTag();
-
-            ImGuiDataType dataType = ImGuiDataType_COUNT;
-            switch (tag)
-            {
-                case schema::Type::Data::UnionTag::Int8: dataType = ImGuiDataType_S8; break;
-                case schema::Type::Data::UnionTag::Int16: dataType = ImGuiDataType_S16; break;
-                case schema::Type::Data::UnionTag::Int32: dataType = ImGuiDataType_S32; break;
-                case schema::Type::Data::UnionTag::Int64: dataType = ImGuiDataType_S64; break;
-                case schema::Type::Data::UnionTag::Uint8: dataType = ImGuiDataType_U8; break;
-                case schema::Type::Data::UnionTag::Uint16: dataType = ImGuiDataType_U16; break;
-                case schema::Type::Data::UnionTag::Uint32: dataType = ImGuiDataType_U32; break;
-                case schema::Type::Data::UnionTag::Uint64: dataType = ImGuiDataType_U64; break;
-                case schema::Type::Data::UnionTag::Float32: dataType = ImGuiDataType_Float; break;
-                case schema::Type::Data::UnionTag::Float64: dataType = ImGuiDataType_Double; break;
-                default:
-                    HE_ASSERT(false, HE_MSG("Expected arithmetic type."), HE_KV(type, tag));
-                    break;
-            }
-            HE_ASSERT(dataType != ImGuiDataType_COUNT);
-
             const bool readOnly = schema::HasAttribute<assets::schema::Display::ReadOnly>(field.GetAttributes());
             const schema::Attribute::Reader slider = schema::FindAttribute<assets::schema::Display::Slider>(field.GetAttributes());
             const schema::Attribute::Reader clamp = schema::FindAttribute<assets::schema::Display::Clamp>(field.GetAttributes());
@@ -376,6 +355,7 @@ namespace he::editor
             bool changed = false;
 
             ImGui::BeginDisabled(readOnly);
+            ImGui::PushItemWidth(-1.0f);
 
             T v = value;
             if (slider.IsValid())
@@ -384,19 +364,20 @@ namespace he::editor
                 T max = std::numeric_limits<T>::max();
                 ReadScalarRange(slider.GetValue(), min, max);
 
-                if (ImGui::SliderScalar("##scalar-slider", dataType, &v, &min, &max, nullptr, ImGuiSliderFlags_AlwaysClamp))
+                if (ImGui::SliderScalar("##scalar-slider", DataType, &v, &min, &max, nullptr, ImGuiSliderFlags_AlwaysClamp))
                 {
                     changed = true;
                 }
             }
             else
             {
-                if (ImGui::InputScalar("##scalar-value", dataType, &v))
+                if (ImGui::InputScalar("##scalar-value", DataType, &v, nullptr, nullptr, nullptr, ImGuiInputTextFlags_EnterReturnsTrue))
                 {
                     changed = true;
                 }
             }
 
+            ImGui::PopItemWidth();
             ImGui::EndDisabled();
 
             if (readOnly && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
@@ -440,12 +421,17 @@ namespace he::editor
                 | (readOnly ? ImGuiInputTextFlags_ReadOnly : ImGuiInputTextFlags_None);
 
             ImGui::BeginDisabled(readOnly);
+            ImGui::PushItemWidth(-1.0f);
+
             if (InputText("##string-value", v, flags))
             {
                 AssetEditAction& action = m_edit.EmplaceAction(AssetEditAction::Kind::SetValue);
                 action.value = m_edit.m_builder.AddString(v);
             }
+
+            ImGui::PopItemWidth();
             ImGui::EndDisabled();
+
             if (readOnly && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
                 ImGui::SetTooltip("This field is read-only.");
         }
@@ -488,6 +474,12 @@ namespace he::editor
                 }
             }
 
+            const schema::Field::Reader field = m_edit.path.Back().field;
+            const bool readOnly = schema::HasAttribute<assets::schema::Display::ReadOnly>(field.GetAttributes());
+
+            ImGui::BeginDisabled(readOnly);
+            ImGui::PushItemWidth(-1.0f);
+
             if (ImGui::BeginCombo("##enum-value", valueName))
             {
                 for (const schema::Enumerator::Reader e : enumDecl.GetEnumerators())
@@ -512,6 +504,9 @@ namespace he::editor
 
                 ImGui::EndCombo();
             }
+
+            ImGui::PopItemWidth();
+            ImGui::EndDisabled();
         }
 
         void ShowValueEditor(schema::AnyPointer::Reader ptr)
@@ -663,11 +658,21 @@ namespace he::editor
                 ImGui::TableNextColumn();
                 ImGui::AlignTextToFramePadding();
 
+                const bool isReadOnly = schema::HasAttribute<assets::schema::Display::ReadOnly>(field.GetAttributes());
+                const bool isModified = !isReadOnly && data.Has(field);
+
                 const bool isSequenceValue = typeData.IsValid() && (typeData.IsArray() || typeData.IsList());
                 const bool isStructValue = (typeData.IsValid() && typeData.IsStruct()) || (field.IsValid() && field.GetMeta().IsGroup());
                 const bool hasCustomInlineEditor = customValueEditor && customValueEditor->isInline;
                 const bool hasCustomFullEditor = customValueEditor && !customValueEditor->isInline;
                 const bool isExpandable = isSequenceValue || hasCustomFullEditor || (isStructValue && !hasCustomInlineEditor);
+
+                if (isModified)
+                {
+                    // TODO: Move this color into a theme palette somewhere
+                    const ImVec4 color(166 / 255.0f, 255 / 255.0f, 161 / 255.0f, 1.0f); // Mint Green
+                    ImGui::PushStyleColor(ImGuiCol_Text, color);
+                }
 
                 if (isExpandable)
                 {
@@ -684,6 +689,11 @@ namespace he::editor
                     ImGui::TextUnformatted(name.Begin(), name.End());
                 }
 
+                if (isModified)
+                {
+                    ImGui::PopStyleColor();
+                }
+
                 if (!desc.IsEmpty() && ImGui::IsItemHovered())
                     ImGui::SetTooltip("%s", desc.Data());
 
@@ -698,18 +708,17 @@ namespace he::editor
                     customValueEditor->func(value, ctx);
                 }
                 // union field
-                else if (data.StructSchema().GetIsUnion())
+                else if (field.GetMeta().IsUnion())
                 {
-                    HE_ASSERT(field.IsValid());
-
-                    const schema::Field::Reader activeField = data.ActiveUnionField();
-                    StringView activeFieldName = field.GetName();
+                    const schema::DynamicStruct::Reader& unionStruct = data.Get(field).As<schema::DynamicStruct>();
+                    const schema::Field::Reader activeField = unionStruct.ActiveUnionField();
+                    StringView activeFieldName = activeField.GetName();
                     StringView activeFieldDesc;
-                    GetNameAndDescription(activeFieldName, activeFieldDesc, field.GetAttributes());
+                    GetNameAndDescription(activeFieldName, activeFieldDesc, activeField.GetAttributes());
 
                     if (ImGui::BeginCombo("##union-field-type", activeFieldName.Data()))
                     {
-                        for (const schema::Field::Reader& unionField : data.StructSchema().GetFields())
+                        for (const schema::Field::Reader& unionField : unionStruct.StructSchema().GetFields())
                         {
                             StringView unionFieldName = unionField.GetName();
                             StringView unionFieldDesc;

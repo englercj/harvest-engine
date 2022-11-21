@@ -16,7 +16,7 @@ namespace he
 
     String GetEnv(const char* name)
     {
-        const wchar_t* wideName = HE_TO_WSTR(name);
+        const wchar_t* wideName = HE_TO_WCSTR(name);
         const uint32_t requiredLen = ::GetEnvironmentVariableW(wideName, nullptr, 0);
 
         wchar_t* wideValue = Allocator::GetDefault().Malloc<wchar_t>(requiredLen);
@@ -34,8 +34,8 @@ namespace he
 
     Result SetEnv(const char* name, const char* value)
     {
-        const wchar_t* wideName = HE_TO_WSTR(name);
-        const wchar_t* wideValue = value ? HE_TO_WSTR(value) : nullptr;
+        const wchar_t* wideName = HE_TO_WCSTR(name);
+        const wchar_t* wideValue = value ? HE_TO_WCSTR(value) : nullptr;
 
         if (!::SetEnvironmentVariableW(wideName, wideValue))
             return Result::FromLastError();

@@ -42,27 +42,27 @@ namespace he
 
     bool File::Exists(const char* path)
     {
-        DWORD attr = ::GetFileAttributesW(HE_TO_WSTR(path));
+        DWORD attr = ::GetFileAttributesW(HE_TO_WCSTR(path));
         return attr != INVALID_FILE_ATTRIBUTES && !(attr & FILE_ATTRIBUTE_DIRECTORY);
     }
 
     Result File::Remove(const char* path)
     {
-        if (!::DeleteFileW(HE_TO_WSTR(path)))
+        if (!::DeleteFileW(HE_TO_WCSTR(path)))
             return Result::FromLastError();
         return Result::Success;
     }
 
     Result File::Rename(const char* oldPath, const char* newPath)
     {
-        if (!::MoveFileW(HE_TO_WSTR(oldPath), HE_TO_WSTR(newPath)))
+        if (!::MoveFileW(HE_TO_WCSTR(oldPath), HE_TO_WCSTR(newPath)))
             return Result::FromLastError();
         return Result::Success;
     }
 
     Result File::Copy(const char* oldPath, const char* newPath, bool clobber)
     {
-        if (!::CopyFileW(HE_TO_WSTR(oldPath), HE_TO_WSTR(newPath), !clobber))
+        if (!::CopyFileW(HE_TO_WCSTR(oldPath), HE_TO_WCSTR(newPath), !clobber))
             return Result::FromLastError();
         return Result::Success;
     }
@@ -70,7 +70,7 @@ namespace he
     Result File::GetAttributes(const char* path, FileAttributes& outAttributes)
     {
         WIN32_FILE_ATTRIBUTE_DATA attrData{};
-        if (!::GetFileAttributesExW(HE_TO_WSTR(path), GetFileExInfoStandard, &attrData))
+        if (!::GetFileAttributesExW(HE_TO_WCSTR(path), GetFileExInfoStandard, &attrData))
             return Result::FromLastError();
 
         Win32ParseFileAttributes(attrData, outAttributes);

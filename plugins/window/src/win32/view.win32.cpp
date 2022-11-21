@@ -28,7 +28,7 @@ namespace he::window::win32
         , m_flags(desc.flags)
     {
         const char* title = desc.title ? desc.title : "Harvest Window";
-        wchar_t* wtitle = HE_TO_WSTR(title);
+        wchar_t* wtitle = HE_TO_WCSTR(title);
 
         // Create window
         DWORD dwStyle = WS_SYSMENU;
@@ -226,7 +226,7 @@ namespace he::window::win32
 
     void ViewImpl::SetTitle(const char* text)
     {
-        wchar_t* wtext = HE_TO_WSTR(text);
+        wchar_t* wtext = HE_TO_WCSTR(text);
         ::SetWindowTextW(m_window, wtext);
     }
 

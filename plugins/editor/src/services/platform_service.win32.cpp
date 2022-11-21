@@ -113,7 +113,7 @@ namespace he::editor
         if (String::IsEmpty(defaultPath))
             return;
 
-        wchar_t* defaultPathW = HE_TO_WSTR(defaultPath);
+        wchar_t* defaultPathW = HE_TO_WCSTR(defaultPath);
 
         IShellItem* folder = nullptr;
         HRESULT hr = ::SHCreateItemFromParsingName(defaultPathW, NULL, IID_PPV_ARGS(&folder));
@@ -166,7 +166,7 @@ namespace he::editor
 
     static PIDLIST_ABSOLUTE ParseDisplayName(const char* path)
     {
-        wchar_t* pathW = HE_TO_WSTR(path);
+        wchar_t* pathW = HE_TO_WCSTR(path);
 
         PIDLIST_ABSOLUTE pidl = nullptr;
         SFGAOF flags = 0;

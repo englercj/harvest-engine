@@ -206,7 +206,7 @@ namespace he
         Result OpenFile(const char* path, AsyncFileId& fd) override
         {
             IDStorageFile* file = nullptr;
-            HRESULT hr = s_factory->OpenFile(HE_TO_WSTR(path), IID_PPV_ARGS(&file));
+            HRESULT hr = s_factory->OpenFile(HE_TO_WCSTR(path), IID_PPV_ARGS(&file));
             fd.val = reinterpret_cast<uintptr_t>(file);
             return FAILED(hr) ? Win32Result(hr) : Result::Success;
         }

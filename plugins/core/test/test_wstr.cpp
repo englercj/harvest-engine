@@ -36,13 +36,23 @@ static void Test_WCToMBStr(const wchar_t* src, const char (&expected)[N])
 }
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST(core, wstr, TO_WSTR)
+HE_TEST(core, wstr, TO_WCSTR)
 {
     const wchar_t ExpectedStr[] = L"zß水🍌";
-    const wchar_t* ws = HE_TO_WSTR("z\u00df\u6c34\U0001f34c");
+    const wchar_t* wcs = HE_TO_WCSTR("z\u00df\u6c34\U0001f34c");
 
-    HE_EXPECT(WCStrCmp(ws, ExpectedStr) == 0);
-    HE_EXPECT_EQ_MEM(ws, ExpectedStr, sizeof(ExpectedStr));
+    HE_EXPECT(WCStrCmp(wcs, ExpectedStr) == 0);
+    HE_EXPECT_EQ_MEM(wcs, ExpectedStr, sizeof(ExpectedStr));
+}
+
+// ------------------------------------------------------------------------------------------------
+HE_TEST(core, wstr, TO_MBSTR)
+{
+    const char ExpectedStr[] = "z\u00df\u6c34\U0001f34c";
+    const char* mbs = HE_TO_MBSTR(L"zß水🍌");
+
+    HE_EXPECT(String::Compare(mbs, ExpectedStr) == 0);
+    HE_EXPECT_EQ_MEM(mbs, ExpectedStr, sizeof(ExpectedStr));
 }
 
 // ------------------------------------------------------------------------------------------------

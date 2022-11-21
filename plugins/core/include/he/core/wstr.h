@@ -5,21 +5,38 @@
 #include "he/core/alloca.h"
 #include "he/core/string.h"
 
-// Due to how the TO_WSTR macro is setup it isn't easy to pass along the size of the wstr buffer
-// that gets allocated. So instead we specify a huge size as our buffer size for MultiByteToWideChar.
-// This is safe because the wstr buffer is actually large enough to fit all the converted
+// Due to how the HE_TO_WCSTR & HE_TO_MBSTR macros are setup it isn't easy to pass along the
+// size of the wstr buffer that gets allocated. So instead we specify a fixed huge size.
+// This is safe because the wstr buffer is garuanteed to be large enough to fit all the converted
 // characters.
 
 /// Converts a multibyte character string to a wide character string.
 /// The destination wide character string is allocated on the stack using HE_ALLOCA,
 /// so no free operation is necessary.
 ///
-/// \param STR The multibyte character string to convert.
+/// \note The parameter will be evaluated multiple times so be careful when using an expression
+/// with side effects in this macro.
+///
+/// \param s The multibyte character string to convert.
 /// \return The wide character version of the string.
-#define HE_TO_WSTR(STR) ([](wchar_t* dst, const char* src) { \
+#define HE_TO_WCSTR(s) ([](wchar_t* dst, const char* src) { \
     (void)he::MBToWCStr(dst, 0x3fffffff, src); \
     return dst; \
-}(HE_ALLOCA(wchar_t, he::MBToWCStr(nullptr, 0, STR)), STR))
+}(HE_ALLOCA(wchar_t, he::MBToWCStr(nullptr, 0, s)), s))
+
+/// Converts a wide character string to a multibyte character string.
+/// The destination multibyte character string is allocated on the stack using HE_ALLOCA,
+/// so no free operation is necessary.
+///
+/// \note The parameter will be evaluated multiple times so be careful when using an expression
+/// with side effects in this macro.
+///
+/// \param s The wide character string to convert.
+/// \return The multibyte character version of the string.
+#define HE_TO_MBSTR(s) ([](char* dst, const wchar_t* src) { \
+    (void)he::WCToMBStr(dst, 0x3fffffff, src); \
+    return dst; \
+}(HE_ALLOCA(char, he::WCToMBStr(nullptr, 0, s)), s))
 
 namespace he
 {
@@ -74,11 +91,11 @@ namespace he
 
     /// Compares the null terminated wide character strings and returns the result of the comparison.
     ///
-    /// \param a The left-hand side of the comparison operation.
-    /// \param b The right-hand side of the comparison operation.
+    /// \param lhs The left-hand side of the comparison operation.
+    /// \param rhs The right-hand side of the comparison operation.
     /// \return The result of the comparison.
     ///     If the values are equal, zero is returned.
-    ///     If this string is less than `x`, a negative value is returned.
-    ///     If this string is greater than `x`, a positive value is returned.
-    int32_t WCStrCmp(const wchar_t* a, const wchar_t* b);
+    ///     If `lhs` is less than `rhs`, a negative value is returned.
+    ///     If `lhs` is greater than `rhs`, a positive value is returned.
+    int32_t WCStrCmp(const wchar_t* lhs, const wchar_t* rhs);
 }

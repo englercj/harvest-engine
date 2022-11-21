@@ -77,7 +77,7 @@ namespace he
             dwFlagsAndAttributes |= FILE_FLAG_SEQUENTIAL_SCAN;
 
         return ::CreateFileW(
-            HE_TO_WSTR(path),
+            HE_TO_WCSTR(path),
             dwDesiredAccess,
             dwShareMode,
             nullptr,

@@ -263,7 +263,7 @@ namespace he
         String errorTitle = AsString(errorKind);
         errorTitle += " Details:";
         temp.AddStaticText(
-            HE_TO_WSTR(errorTitle.Data()),
+            HE_TO_WCSTR(errorTitle.Data()),
             WS_CHILD | WS_VISIBLE | SS_LEFT | SS_NOPREFIX | SS_CENTERIMAGE,
             0,
             itemHeight + (margin * 2),
@@ -276,7 +276,7 @@ namespace he
         fmt::format_to(Appender(errorMsg), "{}", fmt::join(kvs, kvs + count, "\r\n"));
         fmt::format_to(Appender(errorMsg), "\r\nsource.file = {}\r\nsource.line = {}\r\nsource.funcName = {}", source.file, source.line, source.funcName);
         temp.AddEditBox(
-            HE_TO_WSTR(errorMsg.Data()),
+            HE_TO_WCSTR(errorMsg.Data()),
             WS_CHILD | WS_VISIBLE | WS_BORDER | WS_VSCROLL | WS_HSCROLL | ES_READONLY | ES_MULTILINE,
             0,
             margin,

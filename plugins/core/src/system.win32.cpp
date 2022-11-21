@@ -170,7 +170,7 @@ namespace he
 
     void* DLOpen(const char* path)
     {
-        return static_cast<void*>(::LoadLibraryW(HE_TO_WSTR(path)));
+        return static_cast<void*>(::LoadLibraryW(HE_TO_WCSTR(path)));
     }
 
     void DLClose(void* handle)

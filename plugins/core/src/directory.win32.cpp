@@ -162,7 +162,7 @@ namespace he
 
     Result Directory::SetCurrent(const char* path)
     {
-        if (!SetCurrentDirectoryW(HE_TO_WSTR(path)))
+        if (!SetCurrentDirectoryW(HE_TO_WCSTR(path)))
             return Result::FromLastError();
 
         return Result::Success;
@@ -170,7 +170,7 @@ namespace he
 
     Result Directory::Rename(const char* oldPath, const char* newPath)
     {
-        if (!MoveFileW(HE_TO_WSTR(oldPath), HE_TO_WSTR(newPath)))
+        if (!MoveFileW(HE_TO_WCSTR(oldPath), HE_TO_WCSTR(newPath)))
             return Result::FromLastError();
 
         return Result::Success;
@@ -178,13 +178,13 @@ namespace he
 
     bool Directory::Exists(const char* path)
     {
-        const DWORD attr = GetFileAttributesW(HE_TO_WSTR(path));
+        const DWORD attr = GetFileAttributesW(HE_TO_WCSTR(path));
         return attr != INVALID_FILE_ATTRIBUTES && HasFlag(attr, FILE_ATTRIBUTE_DIRECTORY);
     }
 
     Result Directory::Create(const char* path, bool parents)
     {
-        wchar_t* widePath = HE_TO_WSTR(path);
+        wchar_t* widePath = HE_TO_WCSTR(path);
 
         // Create the parent directories along the path
         if (parents)
@@ -220,7 +220,7 @@ namespace he
 
     Result Directory::Remove(const char* path)
     {
-        if (!::RemoveDirectoryW(HE_TO_WSTR(path)))
+        if (!::RemoveDirectoryW(HE_TO_WCSTR(path)))
             return Result::FromLastError();
 
         return Result::Success;

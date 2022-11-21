@@ -157,7 +157,7 @@ namespace he
         m_impl = impl;
 
         impl->handle = ::CreateFileW(
-            HE_TO_WSTR(path),
+            HE_TO_WCSTR(path),
             FILE_LIST_DIRECTORY,
             FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
             nullptr,

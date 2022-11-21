@@ -12,7 +12,7 @@ namespace he
 {
     void PrintToDebugger(const char* s)
     {
-        wchar_t* wideStr = HE_TO_WSTR(s);
+        wchar_t* wideStr = HE_TO_WCSTR(s);
         ::OutputDebugStringW(wideStr);
     }
 

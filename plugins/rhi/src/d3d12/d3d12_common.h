@@ -23,7 +23,7 @@
 #define HE_DX_SAFE_RELEASE(x) do { if (x) { x->Release(); x = nullptr; } } while(0)
 
 #if HE_RHI_ENABLE_NAMES
-    #define HE_DX_SET_NAME(x, name) do { if (x && name) { x->SetName(HE_TO_WSTR(name)); } } while(0)
+    #define HE_DX_SET_NAME(x, name) do { if (x && name) { x->SetName(HE_TO_WCSTR(name)); } } while(0)
 #else
     #define HE_DX_SET_NAME(...)
 #endif

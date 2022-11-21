@@ -41,7 +41,7 @@ namespace he
 
     void SetCurrentThreadName(const char* name)
     {
-        ::SetThreadDescription(::GetCurrentThread(), HE_TO_WSTR(name));
+        ::SetThreadDescription(::GetCurrentThread(), HE_TO_WCSTR(name));
     }
 
     void SleepCurrentThread(Duration amount)

@@ -7,6 +7,7 @@
 
 #include "he/core/allocator.h"
 #include "he/core/assert.h"
+#include "he/core/enum_ops.h"
 #include "he/core/log.h"
 #include "he/core/macros.h"
 #include "he/core/memory_ops.h"
@@ -393,7 +394,7 @@ namespace he::rhi::d3d12
             HE_LOGF_TRACE(he_rhi, "    Video Memory: {}, System Memory: {}, Shared Memory: {}",
                 dxgiAdapterDesc1.DedicatedVideoMemory, dxgiAdapterDesc1.DedicatedSystemMemory, dxgiAdapterDesc1.SharedSystemMemory);
 
-            const bool isHardwareAdapter = (dxgiAdapterDesc1.Flags & DXGI_ADAPTER_FLAG_SOFTWARE) == 0;
+            const bool isHardwareAdapter = !HasFlag(dxgiAdapterDesc1.Flags, DXGI_ADAPTER_FLAG_SOFTWARE);
             if (isHardwareAdapter)
             {
                 AdapterImpl& preferred = m_adapters[m_preferredAdapter];

@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include "he/core/allocator.h"
 #include "he/core/clock.h"
 #include "he/core/enum_ops.h"
 #include "he/core/string.h"
@@ -68,12 +69,12 @@ namespace he
     /// On posix this is the host name.
     ///
     /// \return The system name.
-    String GetSystemName();
+    String GetSystemName(Allocator& allocator = Allocator::GetDefault());
 
     /// Gets the name of the system user who is associated with the current process.
     ///
     /// \return The system user name.
-    String GetSystemUserName();
+    String GetSystemUserName(Allocator& allocator = Allocator::GetDefault());
 
     /// Gets the power status of the system.
     ///

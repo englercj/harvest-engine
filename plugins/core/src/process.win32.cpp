@@ -14,21 +14,21 @@ namespace he
 {
     constexpr uint32_t MaxStackLen = 2048;
 
-    String GetEnv(const char* name)
+    String GetEnv(const char* name, Allocator& allocator)
     {
         const wchar_t* wideName = HE_TO_WCSTR(name);
         const uint32_t requiredLen = ::GetEnvironmentVariableW(wideName, nullptr, 0);
 
-        wchar_t* wideValue = Allocator::GetDefault().Malloc<wchar_t>(requiredLen);
+        wchar_t* wideValue = allocator.Malloc<wchar_t>(requiredLen);
         const uint32_t writtenLen = ::GetEnvironmentVariableW(wideName, wideValue, requiredLen);
         if (writtenLen == 0 || writtenLen >= requiredLen)
         {
             wideValue[0] = L'\0';
         }
 
-        String value;
+        String value(allocator);
         WCToMBStr(value, wideValue);
-        Allocator::GetDefault().Free(wideValue);
+        allocator.Free(wideValue);
         return value;
     }
 

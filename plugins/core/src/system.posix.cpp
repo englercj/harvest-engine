@@ -96,9 +96,9 @@ namespace he
         return s_info;
     }
 
-    String GetSystemName()
+    String GetSystemName(Allocator& allocator)
     {
-        String name;
+        String name(allocator);
         name.Resize(String::MaxEmbedCharacters, he::DefaultInit);
 
         do
@@ -126,9 +126,9 @@ namespace he
         return name;
     }
 
-    String GetSystemUserName()
+    String GetSystemUserName(Allocator& allocator)
     {
-        String name;
+        String name(allocator);
 
         const uid_t uid = getuid();
         const passwd* pwd = getpwuid(uid);

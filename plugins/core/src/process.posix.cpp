@@ -17,10 +17,10 @@ namespace he
 {
     constexpr uint32_t MaxStackLen = 2048;
 
-    String GetEnv(const char* name)
+    String GetEnv(const char* name, Allocator& allocator)
     {
         const char* v = getenv(name);
-        String value;
+        String value(allocator);
         if (v)
             value = v;
         return value;

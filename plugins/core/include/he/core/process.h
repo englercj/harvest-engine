@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include "he/core/allocator.h"
 #include "he/core/result.h"
 #include "he/core/string.h"
 #include "he/core/types.h"
@@ -13,7 +14,7 @@ namespace he
     ///
     /// \param[in] name The name of the environment variable to read.
     /// \return The contents of the environment variable, or an empty string if an error occurred.
-    String GetEnv(const char* name);
+    String GetEnv(const char* name, Allocator& allocator = Allocator::GetDefault());
 
     /// Sets an enviroment variable.
     ///

@@ -27,15 +27,15 @@ namespace he
         return s_info;
     }
 
-    String GetSystemName()
+    String GetSystemName(Allocator& allocator)
     {
-        const String name = "Emscripten";
+        const String name("Emscripten", allocator);
         return name;
     }
 
-    String GetSystemUserName()
+    String GetSystemUserName(Allocator& allocator)
     {
-        const String name = "Unknown";
+        const String name("Unknown", allocator);
         return name;
     }
 

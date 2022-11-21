@@ -121,9 +121,9 @@ namespace he
         return s_info;
     }
 
-    String GetSystemName()
+    String GetSystemName(Allocator& allocator)
     {
-        String name{};
+        String name(allocator);
 
         wchar_t nameBuf[MAX_COMPUTERNAME_LENGTH + 1];
         DWORD nameBufLen = HE_LENGTH_OF(nameBuf);
@@ -133,9 +133,9 @@ namespace he
         return name;
     }
 
-    String GetSystemUserName()
+    String GetSystemUserName(Allocator& allocator)
     {
-        String name{};
+        String name(allocator);
 
         wchar_t nameBuf[UNLEN + 1];
         DWORD nameBufLen = HE_LENGTH_OF(nameBuf);

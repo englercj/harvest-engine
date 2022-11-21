@@ -3,6 +3,7 @@
 #pragma once
 
 #include "he/core/allocator.h"
+#include "he/core/span.h"
 #include "he/core/string.h"
 #include "he/core/types.h"
 #include "he/math/types.h"
@@ -41,7 +42,7 @@ namespace he::window
         ViewResized,            ///< A view has been resized
         ViewActivated,          ///< A view has been activated
         ViewDpiScaleChanged,    ///< The DPI scale of a view has changed
-        ViewDropFile,           ///< A file has been dropped into a view
+        ViewDropFiles,          ///< Files have been dropped into a view
 
         // App events
         Initialized,            ///< The application has been initialized, and the default view was created
@@ -259,14 +260,16 @@ namespace he::window
         float scale;
     };
 
-    /// \copydoc EventType::ViewDropFile
-    struct ViewDropFileEvent : public ViewEvent
+    /// \copydoc EventType::ViewDropFiles
+    struct ViewDropFilesEvent : public ViewEvent
     {
-        explicit ViewDropFileEvent(View* v, const char* p) noexcept
-            : ViewEvent(EventType::ViewDropFile, v), filePath(p) {}
+        explicit ViewDropFilesEvent(View* v, Span<const String> p) noexcept
+            : ViewEvent(EventType::ViewDropFiles, v), paths(p) {}
 
         /// The file path that was dropped.
-        String filePath;
+        ///
+        /// \note The string values here are only valid until OnEvent() returns.
+        Span<const String> paths;
     };
 
     /// \copydoc EventType::Initialized

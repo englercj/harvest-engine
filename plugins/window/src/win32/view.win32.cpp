@@ -16,6 +16,10 @@
 
 #include <Windows.h>
 
+#ifndef WM_COPYGLOBALDATA
+    #define WM_COPYGLOBALDATA 0x0049
+#endif
+
 namespace he::window::win32
 {
     ViewImpl::ViewImpl(DeviceImpl* device, const ViewDesc& desc) noexcept
@@ -95,6 +99,18 @@ namespace he::window::win32
         // Cache the DPI of the window now that it is created
         if (device->m_GetDpiForWindow)
             m_dpi = device->m_GetDpiForWindow(m_window);
+
+        // Ensure we get drop file messages despite our elevation level
+        if (HasFlag(m_flags, ViewFlag::AcceptFiles))
+        {
+            if (device->m_ChangeWindowMessageFilterEx)
+            {
+                device->m_ChangeWindowMessageFilterEx(m_window, WM_DROPFILES, MSGFLT_ALLOW, NULL);
+                device->m_ChangeWindowMessageFilterEx(m_window, WM_COPYDATA, MSGFLT_ALLOW, NULL);
+                device->m_ChangeWindowMessageFilterEx(m_window, WM_COPYGLOBALDATA, MSGFLT_ALLOW, NULL);
+            }
+            ::DragAcceptFiles(m_window, TRUE);
+        }
     }
 
     ViewImpl::~ViewImpl() noexcept

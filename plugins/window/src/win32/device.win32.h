@@ -26,6 +26,7 @@ namespace he::window::win32
     using Pfn_GetDpiForWindow = UINT(WINAPI*)(_In_ HWND hwnd);
     using Pfn_SetProcessDpiAwarenessContext = DPI_AWARENESS_CONTEXT(WINAPI*)(_In_ DPI_AWARENESS_CONTEXT dpiContext);
     using Pfn_AdjustWindowRectExForDpi = BOOL(WINAPI*)(_Inout_ LPRECT lpRect, _In_ DWORD dwStyle, _In_ BOOL bMenu, _In_ DWORD dwExStyle, _In_ UINT dpi);
+    using Pfn_ChangeWindowMessageFilterEx = BOOL(WINAPI*)(_In_ HWND hwnd, _In_ UINT message, _In_ DWORD action, _Inout_ PCHANGEFILTERSTRUCT pChangeFilterStruct);
 
     using Pfn_GetDpiForMonitor = HRESULT(WINAPI*)(_In_ HMONITOR hmonitor, _In_ MONITOR_DPI_TYPE dpiType, _Out_ UINT* dpiX, _Out_ UINT* dpiY);
 
@@ -84,6 +85,7 @@ namespace he::window::win32
         Pfn_GetDpiForWindow m_GetDpiForWindow{ nullptr };
         Pfn_SetProcessDpiAwarenessContext m_SetProcessDpiAwarenessContext{ nullptr };
         Pfn_AdjustWindowRectExForDpi m_AdjustWindowRectExForDpi{ nullptr };
+        Pfn_ChangeWindowMessageFilterEx m_ChangeWindowMessageFilterEx{ nullptr };
 
         HMODULE m_shcoreLib{ nullptr };
         Pfn_GetDpiForMonitor m_GetDpiForMonitor{ nullptr };

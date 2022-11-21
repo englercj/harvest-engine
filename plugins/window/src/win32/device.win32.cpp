@@ -7,6 +7,9 @@
 
 #include "he/core/assert.h"
 #include "he/core/enum_ops.h"
+#include "he/core/string.h"
+#include "he/core/vector.h"
+#include "he/core/wstr.h"
 #include "he/math/vec2.h"
 #include "he/window/application.h"
 #include "he/window/event.h"
@@ -521,6 +524,47 @@ namespace he::window::win32
                 app->OnEvent(ev);
                 return 0;
             }
+            case WM_DROPFILES:
+            {
+                if (!HasFlag(view->m_flags, ViewFlag::AcceptFiles))
+                    break;
+
+                HDROP drop = reinterpret_cast<HDROP>(wParam);
+
+                // Move the mouse to the position of the drop
+                POINT pt{};
+                if (!device->m_cursorRelativeMode && ::DragQueryPoint(drop, &pt))
+                {
+                    ::ClientToScreen(hWnd, &pt);
+
+                    Vec2f pos{ static_cast<float>(pt.x), static_cast<float>(pt.y) };
+                    MouseMoveEvent ev(view, pos, true);
+
+                    app->OnEvent(ev);
+                }
+
+                // Read the dropped paths
+                const UINT count = ::DragQueryFileW(drop, 0xffffffff, NULL, 0);
+                Vector<String> paths;
+                paths.Resize(count);
+
+                Vector<wchar_t> buf;
+
+                for (UINT i = 0; i < count; ++i)
+                {
+                    const UINT length = ::DragQueryFileW(drop, i, NULL, 0);
+                    buf.Resize(length + 1);
+
+                    ::DragQueryFileW(drop, i, buf.Data(), buf.Size());
+                    WCToMBStr(paths[i], buf.Data());
+                }
+
+                ViewDropFilesEvent ev(view, paths);
+                app->OnEvent(ev);
+
+                ::DragFinish(drop);
+                return 0;
+            }
         }
 
         return DefWindowProc(hWnd, message, wParam, lParam);
@@ -601,6 +645,7 @@ namespace he::window::win32
             m_GetDpiForWindow = reinterpret_cast<Pfn_GetDpiForWindow>(::GetProcAddress(m_userLib, "GetDpiForWindow"));
             m_SetProcessDpiAwarenessContext = reinterpret_cast<Pfn_SetProcessDpiAwarenessContext>(::GetProcAddress(m_userLib, "SetProcessDpiAwarenessContext"));
             m_AdjustWindowRectExForDpi = reinterpret_cast<Pfn_AdjustWindowRectExForDpi>(::GetProcAddress(m_userLib, "AdjustWindowRectExForDpi"));
+            m_ChangeWindowMessageFilterEx = reinterpret_cast<Pfn_ChangeWindowMessageFilterEx>(::GetProcAddress(m_userLib, "ChangeWindowMessageFilterEx"));
         }
 
         m_shcoreLib = ::LoadLibraryW(L"Shcore.dll");

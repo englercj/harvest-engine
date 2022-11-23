@@ -892,7 +892,7 @@ namespace he::window::linux
 
 namespace he::window
 {
-    Device* _CreateDevice(Allocator& allocator)
+    Device* _CreateWindowDevice(Allocator& allocator)
     {
         return allocator.New<linux::DeviceImpl>(allocator);
     }

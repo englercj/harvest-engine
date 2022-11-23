@@ -37,12 +37,14 @@ namespace he::window
         if (connected)
         {
             Reset();
-            GamepadConnectedEvent ev(m_index);
+            GamepadConnectedEvent ev;
+            ev.index = m_index;
             app.OnEvent(ev);
         }
         else
         {
-            GamepadDisconnectedEvent ev(m_index);
+            GamepadDisconnectedEvent ev;
+            ev.index = m_index;
             app.OnEvent(ev);
         }
     }
@@ -66,7 +68,10 @@ namespace he::window
 
         m_axes[index] = value;
 
-        GamepadAxisEvent ev(m_index, axis, value);
+        GamepadAxisEvent ev;
+        ev.index = m_index;
+        ev.axis = axis;
+        ev.value = value;
         app.OnEvent(ev);
     }
 
@@ -84,12 +89,16 @@ namespace he::window
 
         if (value)
         {
-            GamepadButtonDownEvent ev(m_index, button);
+            GamepadButtonDownEvent ev;
+            ev.index = m_index;
+            ev.button = button;
             app.OnEvent(ev);
         }
         else
         {
-            GamepadButtonUpEvent ev(m_index, button);
+            GamepadButtonUpEvent ev;
+            ev.index = m_index;
+            ev.button = button;
             app.OnEvent(ev);
         }
     }

@@ -12,27 +12,31 @@
 
 namespace he::editor
 {
-    constexpr window::MouseCursor ImGuiMouseCursorMap[]
+    constexpr window::PointerCursor ImGuiMouseCursorMap[]
     {
-        window::MouseCursor::Arrow,             // ImGuiMouseCursor_Arrow
-        window::MouseCursor::TextInput,         // ImGuiMouseCursor_TextInput
-        window::MouseCursor::ResizeAll,         // ImGuiMouseCursor_ResizeAll
-        window::MouseCursor::ResizeVertical,    // ImGuiMouseCursor_ResizeNS
-        window::MouseCursor::ResizeHorizontal,  // ImGuiMouseCursor_ResizeEW
-        window::MouseCursor::ResizeTopRight,    // ImGuiMouseCursor_ResizeNESW
-        window::MouseCursor::ResizeTopLeft,     // ImGuiMouseCursor_ResizeNWSE
-        window::MouseCursor::Hand,              // ImGuiMouseCursor_Hand
-        window::MouseCursor::NotAllowed,        // ImGuiMouseCursor_NotAllowed
+        window::PointerCursor::Arrow,             // ImGuiMouseCursor_Arrow
+        window::PointerCursor::TextInput,         // ImGuiMouseCursor_TextInput
+        window::PointerCursor::ResizeAll,         // ImGuiMouseCursor_ResizeAll
+        window::PointerCursor::ResizeVertical,    // ImGuiMouseCursor_ResizeNS
+        window::PointerCursor::ResizeHorizontal,  // ImGuiMouseCursor_ResizeEW
+        window::PointerCursor::ResizeTopRight,    // ImGuiMouseCursor_ResizeNESW
+        window::PointerCursor::ResizeTopLeft,     // ImGuiMouseCursor_ResizeNWSE
+        window::PointerCursor::Hand,              // ImGuiMouseCursor_Hand
+        window::PointerCursor::NotAllowed,        // ImGuiMouseCursor_NotAllowed
     };
+    static_assert(HE_LENGTH_OF(ImGuiMouseCursorMap) == static_cast<uint32_t>(ImGuiMouseCursor_COUNT));
 
     constexpr ImGuiMouseButton ImGuiMouseButtonMap[]
     {
-        ImGuiMouseButton_Left,      // Left
-        ImGuiMouseButton_Right,     // Right
-        ImGuiMouseButton_Middle,    // Middle
+        -1,                         // None
+        ImGuiMouseButton_Left,      // Primary
+        ImGuiMouseButton_Right,     // Secondary
+        ImGuiMouseButton_Middle,    // Auxiliary
         3,                          // Extra1
         4,                          // Extra2
+        5,                          // Eraser
     };
+    static_assert(HE_LENGTH_OF(ImGuiMouseButtonMap) == static_cast<uint32_t>(window::PointerButton::_Count));
 
     constexpr ImGuiKey ImGuiKeyMap[]
     {
@@ -137,6 +141,7 @@ namespace he::editor
         ImGuiKey_RightBracket,      // RightBracket
         ImGuiKey_Apostrophe,        // Apostrophe
     };
+    static_assert(HE_LENGTH_OF(ImGuiKeyMap) == static_cast<uint32_t>(window::Key::_Count));
 
     bool ImGuiPlatformService::Initialize(
         window::Device* device,
@@ -251,21 +256,21 @@ namespace he::editor
 
     void ImGuiPlatformService::OnEvent(const window::Event& ev)
     {
-        switch (ev.type)
+        switch (ev.kind)
         {
-            case window::EventType::DisplayChanged:
+            case window::EventKind::DisplayChanged:
             {
                 m_needToUpdateMonitors = true;
                 break;
             }
-            case window::EventType::ViewActivated:
+            case window::EventKind::ViewActivated:
             {
                 const auto& evt = static_cast<const window::ViewActivatedEvent&>(ev);
                 ImGuiIO& io = ImGui::GetIO();
                 io.AddFocusEvent(evt.active && evt.view == m_view);
                 break;
             }
-            case window::EventType::ViewRequestClose:
+            case window::EventKind::ViewRequestClose:
             {
                 const auto& evt = static_cast<const window::ViewRequestCloseEvent&>(ev);
                 ImGuiViewport* viewport = ImGui::FindViewportByPlatformHandle(evt.view);
@@ -273,7 +278,7 @@ namespace he::editor
                     viewport->PlatformRequestClose = true;
                 break;
             }
-            case window::EventType::ViewMoved:
+            case window::EventKind::ViewMoved:
             {
                 const auto& evt = static_cast<const window::ViewRequestCloseEvent&>(ev);
                 ImGuiViewport* viewport = ImGui::FindViewportByPlatformHandle(evt.view);
@@ -281,7 +286,7 @@ namespace he::editor
                     viewport->PlatformRequestMove = true;
                 break;
             }
-            case window::EventType::ViewResized:
+            case window::EventKind::ViewResized:
             {
                 const auto& evt = static_cast<const window::ViewResizedEvent&>(ev);
                 ImGuiViewport* viewport = ImGui::FindViewportByPlatformHandle(evt.view);
@@ -289,60 +294,77 @@ namespace he::editor
                     viewport->PlatformRequestResize = true;
                 break;
             }
-            case window::EventType::MouseDown:
-            case window::EventType::MouseUp:
+            case window::EventKind::PointerDown:
+            case window::EventKind::PointerUp:
             {
-                const auto& evt = static_cast<const window::MouseButtonEvent&>(ev);
-                const bool down = evt.type == window::EventType::MouseDown;
-                const ImGuiMouseButton btn = ImGuiMouseButtonMap[static_cast<int32_t>(evt.button)];
-
-                ImGuiIO& io = ImGui::GetIO();
-                io.AddMouseButtonEvent(btn, down);
-                break;
-            }
-            case window::EventType::MouseMove:
-            {
-                const auto& evt = static_cast<const window::MouseMoveEvent&>(ev);
-                m_mouseInside = true;
-
-                ImGuiIO& io = ImGui::GetIO();
-
-                Vec2f pos = evt.pos;
-                if (!evt.absolute)
+                const auto& evt = static_cast<const window::PointerButtonEvent&>(ev);
+                if (evt.pointerKind == window::PointerKind::Mouse)
                 {
-                    pos = m_device->GetCursorPos(nullptr);
-                }
+                    const bool down = evt.kind == window::EventKind::PointerDown;
+                    const int32_t index = static_cast<int32_t>(evt.button);
 
-                if (HasFlag(io.ConfigFlags, ImGuiConfigFlags_ViewportsEnable))
-                {
-                    io.AddMousePosEvent(pos.x, pos.y);
-                }
-                else
-                {
-                    Vec2f viewPos = evt.view->ScreenToView(pos);
-                    io.AddMousePosEvent(viewPos.x, viewPos.y);
+                    if (index >= 0 && index < HE_LENGTH_OF(ImGuiMouseButtonMap))
+                    {
+                        const ImGuiMouseButton btn = ImGuiMouseButtonMap[index];
+
+                        if (btn >= 0)
+                        {
+                            ImGuiIO& io = ImGui::GetIO();
+                            io.AddMouseButtonEvent(btn, down);
+                        }
+                    }
                 }
                 break;
             }
-            case window::EventType::MouseWheel:
+            case window::EventKind::PointerMove:
             {
-                const auto& evt = static_cast<const window::MouseWheelEvent&>(ev);
-                ImGuiIO& io = ImGui::GetIO();
-                io.AddMouseWheelEvent(evt.delta.x, evt.delta.y);
+                const auto& evt = static_cast<const window::PointerMoveEvent&>(ev);
+                if (evt.pointerKind == window::PointerKind::Mouse)
+                {
+                    m_mouseInside = true;
+
+                    ImGuiIO& io = ImGui::GetIO();
+
+                    Vec2f pos = evt.pos;
+                    if (!evt.absolute)
+                    {
+                        pos = m_device->GetCursorPos(nullptr);
+                    }
+
+                    if (HasFlag(io.ConfigFlags, ImGuiConfigFlags_ViewportsEnable))
+                    {
+                        io.AddMousePosEvent(pos.x, pos.y);
+                    }
+                    else
+                    {
+                        Vec2f viewPos = evt.view->ScreenToView(pos);
+                        io.AddMousePosEvent(viewPos.x, viewPos.y);
+                    }
+                }
                 break;
             }
-            case window::EventType::Text:
+            case window::EventKind::PointerWheel:
+            {
+                const auto& evt = static_cast<const window::PointerWheelEvent&>(ev);
+                if (evt.pointerKind == window::PointerKind::Mouse)
+                {
+                    ImGuiIO& io = ImGui::GetIO();
+                    io.AddMouseWheelEvent(evt.delta.x, evt.delta.y);
+                }
+                break;
+            }
+            case window::EventKind::Text:
             {
                 const auto& evt = static_cast<const window::TextEvent&>(ev);
                 ImGuiIO& io = ImGui::GetIO();
                 io.AddInputCharacterUTF16(evt.ch);
                 break;
             }
-            case window::EventType::KeyDown:
-            case window::EventType::KeyUp:
+            case window::EventKind::KeyDown:
+            case window::EventKind::KeyUp:
             {
                 const auto& evt = static_cast<const window::KeyEvent&>(ev);
-                const bool down = evt.type == window::EventType::KeyDown;
+                const bool down = evt.kind == window::EventKind::KeyDown;
                 const ImGuiKey key = ImGuiKeyMap[static_cast<uint32_t>(evt.key)];
 
                 switch (evt.key)
@@ -462,7 +484,7 @@ namespace he::editor
         ImGuiMouseCursor cursor = ImGui::GetMouseCursor();
 
         if (cursor == ImGuiMouseCursor_None || io.MouseDrawCursor)
-            m_device->SetCursor(window::MouseCursor::None);
+            m_device->SetCursor(window::PointerCursor::None);
         else
             m_device->SetCursor(ImGuiMouseCursorMap[cursor]);
     }

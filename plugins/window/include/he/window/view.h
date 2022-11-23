@@ -35,13 +35,14 @@ namespace he::window
     {
         None            = 0,
         AcceptFiles     = 1 << 0,   ///< Can accept drag/dropped files
-        AcceptInput     = 1 << 1,   ///< Can accept mouse input & focus
-        Borderless      = 1 << 2,   ///< Disabled OS borders and title bar
-        FocusOnClick    = 1 << 3,   ///< Enables focus when clicked
-        AllowResize     = 1 << 4,   ///< Can be resized, minimized, and maximized
-        StartMaximized  = 1 << 5,   ///< Starts the windows maximized
-        TaskBarIcon     = 1 << 6,   ///< Display a task bar icon
-        TopMost         = 1 << 7,   ///< Set as the top-most window
+        AcceptInput     = 1 << 1,   ///< Can accept user input & focus
+        AcceptTouch     = 1 << 2,   ///< Can accept touch input (AcceptInput must also be set)
+        Borderless      = 1 << 3,   ///< Disabled OS borders and title bar
+        FocusOnClick    = 1 << 4,   ///< Enables focus when clicked
+        AllowResize     = 1 << 5,   ///< Can be resized, minimized, and maximized
+        StartMaximized  = 1 << 6,   ///< Starts the windows maximized
+        TaskBarIcon     = 1 << 7,   ///< Display a task bar icon
+        TopMost         = 1 << 8,   ///< Set as the top-most window
 
         /// The default flags used for creating a view.
         Default = AcceptInput | FocusOnClick | AllowResize | TaskBarIcon,

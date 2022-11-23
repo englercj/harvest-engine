@@ -111,6 +111,7 @@ namespace he
             case window::Key::Backslash: return "Backslash";
             case window::Key::RightBracket: return "RightBracket";
             case window::Key::Apostrophe: return "Apostrophe";
+            case window::Key::_Count: return "_Count";
         }
 
         return "<unknown>";

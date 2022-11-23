@@ -125,5 +125,7 @@ namespace he::window
         Backslash,
         RightBracket,
         Apostrophe,
+
+        _Count,
     };
 }

@@ -6,7 +6,7 @@
 #include "he/core/span.h"
 #include "he/math/types.h"
 #include "he/window/gamepad.h"
-#include "he/window/mouse.h"
+#include "he/window/pointer.h"
 #include "he/window/view.h"
 
 namespace he::window
@@ -24,6 +24,15 @@ namespace he::window
         Vec2i workSize; ///< Working size of the monitor (excludes task bars, menu bars, etc)
         float dpiScale; ///< Gets the DPI scale of a monitor, where 1.0 is 96 DPI
         bool primary;   ///< True if the monitor is the primary monitor
+    };
+
+    /// Information about an initialized device.
+    struct DeviceInfo
+    {
+        bool hasMouse{ false };
+        bool hasHighDefMouse{ false };
+        bool hasPen{ false };
+        uint32_t maxTouches{ 0 };
     };
 
     /// Interface for the windowing device. This acts as the abstraction over the platform
@@ -68,7 +77,7 @@ namespace he::window
         /// Returns true if high definition mouse tracking is available.
         ///
         /// \return True if the feature is available, false otherwise.
-        virtual bool HasHighDefMouse() const = 0;
+        virtual const DeviceInfo& GetInfo() const = 0;
 
         /// Creates a platform view using the descriptor.
         ///
@@ -108,7 +117,7 @@ namespace he::window
         /// Sets the cursor display mode.
         ///
         /// \param[in] cursor The type of cursor to set it to.
-        virtual void SetCursor(MouseCursor cursor) = 0;
+        virtual void SetCursor(PointerCursor cursor) = 0;
 
         /// Enables or disabled Relative Mode for the cursor.
         /// When enabled Relative Mode hides the cursor and moves it to the center of the screen.

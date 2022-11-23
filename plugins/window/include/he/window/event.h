@@ -2,27 +2,25 @@
 
 #pragma once
 
-#include "he/core/allocator.h"
-#include "he/core/span.h"
-#include "he/core/string.h"
+#include "he/core/string_view.h"
 #include "he/core/types.h"
 #include "he/math/types.h"
 #include "he/window/gamepad.h"
 #include "he/window/key.h"
-#include "he/window/mouse.h"
+#include "he/window/pointer.h"
 
 namespace he::window
 {
     class View;
 
-    /// Enumeration of all the types of events that can be passed to \ref Application::OnEvent.
-    enum class EventType : uint32_t
+    /// Enumeration of all the kinds of events that can be passed to \ref Application::OnEvent.
+    enum class EventKind : uint32_t
     {
         // Mouse events
-        MouseDown,              ///< A mouse button has been depressed
-        MouseUp,                ///< A mouse button has been released
-        MouseWheel,             ///< The mouse wheel has rolled
-        MouseMove,              ///< The mouse has moved
+        PointerDown,            ///< A pointer has become active \see PointerDownEvent
+        PointerUp,              ///< A pointer is no longer active state
+        PointerMove,            ///< A pointer has changed coordinates
+        PointerWheel,           ///< A pointer's wheel button has been rotated, typically a mouse wheel
 
         // Keyboard events
         KeyDown,                ///< A keyboard key has been depressed
@@ -42,7 +40,8 @@ namespace he::window
         ViewResized,            ///< A view has been resized
         ViewActivated,          ///< A view has been activated
         ViewDpiScaleChanged,    ///< The DPI scale of a view has changed
-        ViewDropFiles,          ///< Files have been dropped into a view
+        ViewDropFile,           ///< A file have been dropped into a view
+        ViewDropFileComplete,   ///< All files for the drop operation have been sent, useful to batch the ViewDropFile events
 
         // App events
         Initialized,            ///< The application has been initialized, and the default view was created
@@ -55,255 +54,294 @@ namespace he::window
     /// Base structure for an event.
     struct Event
     {
-        explicit Event(EventType t) noexcept
-            : type(t) {}
+        explicit Event(EventKind k) noexcept
+            : kind(k) {}
 
-        /// The type of the event.
-        EventType type;
+        /// The kind of event this is.
+        const EventKind kind;
     };
 
     /// Base structure for an event related to a specific view.
-    struct ViewEvent : public Event
+    struct ViewEvent : Event
     {
-        explicit ViewEvent(EventType e, View* v) noexcept
-            : Event(e), view(v) {}
+        explicit ViewEvent(EventKind k, View* v) noexcept
+            : Event(k), view(v) {}
 
         /// The target view of the event.
         View* view;
     };
 
-    /// Base structure for MouseUp and MouseDown events.
-    struct MouseButtonEvent : public ViewEvent
+    /// Base pointer event structure used for all pointer events.
+    struct PointerEvent : ViewEvent
     {
-        explicit MouseButtonEvent(EventType t, View* v, MouseButton b) noexcept
-            : ViewEvent(t, v), button(b) {}
+        explicit PointerEvent(EventKind k, View* v) noexcept
+            : ViewEvent(k, v) {}
 
-        /// The button that was pressed or released.
-        MouseButton button;
+        PointerId pointerId{ 0 };   ///< A unique identifier for the pointer causing the event.
+        PointerKind pointerKind{};  ///< The kind of the pointer device.
+        Vec2i size{ 1, 1 };         ///< The width(x) & height(y) of the contact geometry of the pointer.
+        Vec2i tilt{ 0, 0 };         ///< Plane angle (in degrees, [-90, 90]) between the X–Z plane and the plane containing both the pointer (e.g. pen stylus) axis and the X axis.
+        uint32_t rotation{ 0 };     ///< The clockwise rotation of the pointer (e.g. pen stylus) around its major axis in degrees, with a value in the range [0, 359].
+        float pressure{ 0 };        ///< Normalized pressure of the pointer, where 0 and 1 represent the minimum and maximum pressure the hardware is capable of detecting, respectively.
+
+        /// Indicates if the pointer represents the primary pointer of this pointer kind.
+        ///
+        /// For mouse, there is only one pointer, so it will always be the primary pointer.
+        /// For touch input, a pointer is considered primary if the user touched the screen when
+        /// there were no other active touches.
+        /// For pen and stylus input, a pointer is considered primary if the user's pen initially
+        /// contacted the screen when there were no other active pens contacting the screen.
+        bool isPrimary{ false };
     };
 
-    /// \copydoc EventType::MouseDown
-    struct MouseDownEvent : public MouseButtonEvent
+    /// Base structure for PointerDown and PointerUp events.
+    struct PointerButtonEvent : PointerEvent
     {
-        explicit MouseDownEvent(View* v, MouseButton b) noexcept
-            : MouseButtonEvent(EventType::MouseDown, v, b) {}
+        explicit PointerButtonEvent(EventKind k, View* v) noexcept
+            : PointerEvent(k, v) {}
+
+        /// Button that either became active or inactive with this event.
+        PointerButton button{ PointerButton::None };
     };
 
-    /// \copydoc EventType::MouseUp
-    struct MouseUpEvent : public MouseButtonEvent
+    /// \copydoc EventKind::PointerUp
+    ///
+    /// A pointer has become active. For mouse, this happens when the device transitions from no
+    /// buttons pressed to at least one button pressed. For touch, this happens when physical
+    /// contact is made with the digitizer. For pen, this happens when the stylus makes physical
+    /// contact with the digitizer.
+    struct PointerDownEvent : PointerButtonEvent
     {
-        explicit MouseUpEvent(View* v, MouseButton b) noexcept
-            : MouseButtonEvent(EventType::MouseUp, v, b) {}
+        explicit PointerDownEvent(View* v) noexcept
+            : PointerButtonEvent(EventKind::PointerDown, v) {}
     };
 
-    /// \copydoc EventType::MouseWheel
-    struct MouseWheelEvent : public ViewEvent
+    /// \copydoc EventKind::PointerUp
+    struct PointerUpEvent : PointerButtonEvent
     {
-        explicit MouseWheelEvent(View* v, const Vec2f& d) noexcept
-            : ViewEvent(EventType::MouseWheel, v), delta(d) {}
-
-        /// The delta movement of the wheel along the x/y axes.
-        Vec2f delta;
+        explicit PointerUpEvent(View* v) noexcept
+            : PointerButtonEvent(EventKind::PointerUp, v) {}
     };
 
-    /// \copydoc EventType::MouseMove
-    struct MouseMoveEvent : public ViewEvent
+    /// \copydoc EventKind::PointerMove
+    struct PointerMoveEvent : PointerEvent
     {
-        explicit MouseMoveEvent(View* v, const Vec2f& p, bool a) noexcept
-            : ViewEvent(EventType::MouseMove, v), pos(p), absolute(a) {}
+        explicit PointerMoveEvent(View* v) noexcept
+            : PointerEvent(EventKind::PointerMove, v) {}
 
         /// When absolute is true this represents the position of the mouse in screen space.
         /// When absolute is false this represents the delta movement of the mouse from the
         /// last mouse position.
-        Vec2f pos;
+        Vec2f pos{ 0, 0 };
 
         /// Indicates the origin of the `pos` member coordinates. When false `pos` represents
         /// delta movement from the last cursor location. Otherwise it is view-space coordinates.
-        bool absolute;
+        bool absolute{ false };
+    };
+
+    /// \copydoc EventKind::PointerWheel
+    struct PointerWheelEvent : PointerEvent
+    {
+        explicit PointerWheelEvent(View* v) noexcept
+            : PointerEvent(EventKind::PointerWheel, v) {}
+
+        /// The delta movement of the wheel along the x & y axes.
+        Vec2f delta{ 0 , 0 };
     };
 
     /// Base structure for KeyUp and KeyDown events.
-    struct KeyEvent : public ViewEvent
+    struct KeyEvent : ViewEvent
     {
-        explicit KeyEvent(EventType t, View* v, Key k) noexcept
-            : ViewEvent(t, v), key(k) {}
+        explicit KeyEvent(EventKind k, View* v) noexcept
+            : ViewEvent(k, v) {}
 
         /// The key that was pressed or released.
-        Key key;
+        Key key{ Key::None };
     };
 
-    /// \copydoc EventType::KeyDown
-    struct KeyDownEvent : public KeyEvent
+    /// \copydoc EventKind::KeyDown
+    struct KeyDownEvent : KeyEvent
     {
-        explicit KeyDownEvent(View* v, Key k) noexcept
-            : KeyEvent(EventType::KeyDown, v, k) {}
+        explicit KeyDownEvent(View* v) noexcept
+            : KeyEvent(EventKind::KeyDown, v) {}
     };
 
-    /// \copydoc EventType::KeyUp
-    struct KeyUpEvent : public KeyEvent
+    /// \copydoc EventKind::KeyUp
+    struct KeyUpEvent : KeyEvent
     {
-        explicit KeyUpEvent(View* v, Key k) noexcept
-            : KeyEvent(EventType::KeyUp, v, k) {}
+        explicit KeyUpEvent(View* v) noexcept
+            : KeyEvent(EventKind::KeyUp, v) {}
     };
 
-    /// \copydoc EventType::Text
-    struct TextEvent : public ViewEvent
+    /// \copydoc EventKind::Text
+    struct TextEvent : ViewEvent
     {
-        explicit TextEvent(View* v, char16_t c) noexcept
-            : ViewEvent(EventType::Text, v), ch(c) {}
+        explicit TextEvent(View* v) noexcept
+            : ViewEvent(EventKind::Text, v) {}
 
         /// The input character.
-        char16_t ch;
+        char16_t ch{ 0 };
     };
 
     /// Base structure for gamepad events.
-    struct GamepadEvent : public Event
+    struct GamepadEvent : Event
     {
-        explicit GamepadEvent(EventType e, uint32_t i) noexcept
-            : Event(e), index(i) {}
+        explicit GamepadEvent(EventKind k) noexcept
+            : Event(k) {}
 
         /// Index of the gamepad this event is for.
-        uint32_t index;
+        uint32_t index{ 0 };
     };
 
-    /// \copydoc EventType::GamepadAxis
-    struct GamepadAxisEvent : public GamepadEvent
+    /// \copydoc EventKind::GamepadAxis
+    struct GamepadAxisEvent : GamepadEvent
     {
-        explicit GamepadAxisEvent(uint32_t i, GamepadAxis a, float v) noexcept
-            : GamepadEvent(EventType::GamepadAxis, i), axis(a), value(v) {}
+        explicit GamepadAxisEvent() noexcept
+            : GamepadEvent(EventKind::GamepadAxis) {}
 
         /// The axis that has changed.
-        GamepadAxis axis;
+        GamepadAxis axis{ GamepadAxis::None };
 
         /// The new normalized value of the axis.
-        float value;
+        float value{ 0 };
     };
 
-    /// \copydoc EventType::GamepadButtonDown
-    struct GamepadButtonDownEvent : public GamepadEvent
+    /// Base structure for GamepadButtonDown and GamepadButtonUp events.
+    struct GamepadButtonEvent : GamepadEvent
     {
-        explicit GamepadButtonDownEvent(uint32_t i, GamepadButton b) noexcept
-            : GamepadEvent(EventType::GamepadButtonDown, i), button(b) {}
+        explicit GamepadButtonEvent(EventKind k) noexcept
+            : GamepadEvent(k) {}
 
-        /// The button that was pressed.
-        GamepadButton button;
+        /// The button that was pressed or released.
+        GamepadButton button{ GamepadButton::None };
     };
 
-    /// \copydoc EventType::GamepadButtonUp
-    struct GamepadButtonUpEvent : public GamepadEvent
+    /// \copydoc EventKind::GamepadButtonDown
+    struct GamepadButtonDownEvent : GamepadButtonEvent
     {
-        explicit GamepadButtonUpEvent(uint32_t i, GamepadButton b) noexcept
-            : GamepadEvent(EventType::GamepadButtonUp, i), button(b) {}
-
-        /// The button that was released.
-        GamepadButton button;
+        explicit GamepadButtonDownEvent() noexcept
+            : GamepadButtonEvent(EventKind::GamepadButtonDown) {}
     };
 
-    /// \copydoc EventType::GamepadConnected
-    struct GamepadConnectedEvent : public GamepadEvent
+    /// \copydoc EventKind::GamepadButtonUp
+    struct GamepadButtonUpEvent : GamepadButtonEvent
     {
-        explicit GamepadConnectedEvent(uint32_t i) noexcept
-            : GamepadEvent(EventType::GamepadConnected, i) {}
+        explicit GamepadButtonUpEvent() noexcept
+            : GamepadButtonEvent(EventKind::GamepadButtonUp) {}
     };
 
-    /// \copydoc EventType::GamepadDisconnected
-    struct GamepadDisconnectedEvent : public GamepadEvent
+    /// \copydoc EventKind::GamepadConnected
+    struct GamepadConnectedEvent : GamepadEvent
     {
-        explicit GamepadDisconnectedEvent(uint32_t i) noexcept
-            : GamepadEvent(EventType::GamepadDisconnected, i) {}
+        explicit GamepadConnectedEvent() noexcept
+            : GamepadEvent(EventKind::GamepadConnected) {}
     };
 
-    /// \copydoc EventType::ViewRequestClose
-    struct ViewRequestCloseEvent : public ViewEvent
+    /// \copydoc EventKind::GamepadDisconnected
+    struct GamepadDisconnectedEvent : GamepadEvent
+    {
+        explicit GamepadDisconnectedEvent() noexcept
+            : GamepadEvent(EventKind::GamepadDisconnected) {}
+    };
+
+    /// \copydoc EventKind::ViewRequestClose
+    struct ViewRequestCloseEvent : ViewEvent
     {
         explicit ViewRequestCloseEvent(View* v) noexcept
-            : ViewEvent(EventType::ViewRequestClose, v) {}
+            : ViewEvent(EventKind::ViewRequestClose, v) {}
     };
 
-    /// \copydoc EventType::ViewMoved
-    struct ViewMovedEvent : public ViewEvent
+    /// \copydoc EventKind::ViewMoved
+    struct ViewMovedEvent : ViewEvent
     {
-        explicit ViewMovedEvent(View* v, const Vec2i& p) noexcept
-            : ViewEvent(EventType::ViewMoved, v), pos(p) {}
+        explicit ViewMovedEvent(View* v) noexcept
+            : ViewEvent(EventKind::ViewMoved, v) {}
 
         /// The new position of the view.
-        Vec2i pos;
+        Vec2i pos{ 0, 0 };
     };
 
-    /// \copydoc EventType::ViewResized
-    struct ViewResizedEvent : public ViewEvent
+    /// \copydoc EventKind::ViewResized
+    struct ViewResizedEvent : ViewEvent
     {
-        explicit ViewResizedEvent(View* v, const Vec2i& s) noexcept
-            : ViewEvent(EventType::ViewResized, v), size(s) {}
+        explicit ViewResizedEvent(View* v) noexcept
+            : ViewEvent(EventKind::ViewResized, v) {}
 
         /// The new size of the view.
-        Vec2i size;
+        Vec2i size{ 0, 0 };
     };
 
-    /// \copydoc EventType::ViewActivated
-    struct ViewActivatedEvent : public ViewEvent
+    /// \copydoc EventKind::ViewActivated
+    struct ViewActivatedEvent : ViewEvent
     {
-        explicit ViewActivatedEvent(View* v, bool a) noexcept
-            : ViewEvent(EventType::ViewActivated, v), active(a) {}
+        explicit ViewActivatedEvent(View* v) noexcept
+            : ViewEvent(EventKind::ViewActivated, v) {}
 
         /// True if the view was activated, false if it was deactivated.
-        bool active;
+        bool active{ false };
     };
 
-    /// \copydoc EventType::ViewDpiScaleChanged
-    struct ViewDpiScaleChangedEvent : public ViewEvent
+    /// \copydoc EventKind::ViewDpiScaleChanged
+    struct ViewDpiScaleChangedEvent : ViewEvent
     {
-        explicit ViewDpiScaleChangedEvent(View* v, float s) noexcept
-            : ViewEvent(EventType::ViewDpiScaleChanged, v), scale(s) {}
+        explicit ViewDpiScaleChangedEvent(View* v) noexcept
+            : ViewEvent(EventKind::ViewDpiScaleChanged, v) {}
 
         /// The new DPI scale of the view.
-        float scale;
+        float scale{ 0 };
     };
 
-    /// \copydoc EventType::ViewDropFiles
-    struct ViewDropFilesEvent : public ViewEvent
+    /// \copydoc EventKind::ViewDropFile
+    struct ViewDropFileEvent : ViewEvent
     {
-        explicit ViewDropFilesEvent(View* v, Span<const String> p) noexcept
-            : ViewEvent(EventType::ViewDropFiles, v), paths(p) {}
+        explicit ViewDropFileEvent(View* v) noexcept
+            : ViewEvent(EventKind::ViewDropFile, v) {}
 
         /// The file path that was dropped.
         ///
-        /// \note The string values here are only valid until OnEvent() returns.
-        Span<const String> paths;
+        /// \note The string memory is only valid until OnEvent() returns.
+        StringView path{};
     };
 
-    /// \copydoc EventType::Initialized
-    struct InitializedEvent : public ViewEvent
+    /// \copydoc EventKind::ViewDropFileComplete
+    struct ViewDropFileCompleteEvent : ViewEvent
+    {
+        explicit ViewDropFileCompleteEvent(View* v) noexcept
+            : ViewEvent(EventKind::ViewDropFileComplete, v) {}
+    };
+
+    /// \copydoc EventKind::Initialized
+    struct InitializedEvent : ViewEvent
     {
         explicit InitializedEvent(View* v) noexcept
-            : ViewEvent(EventType::Initialized, v) {}
+            : ViewEvent(EventKind::Initialized, v) {}
     };
 
-    /// \copydoc EventType::Terminating
-    struct TerminatingEvent : public Event
+    /// \copydoc EventKind::Terminating
+    struct TerminatingEvent : Event
     {
         TerminatingEvent() noexcept
-            : Event(EventType::Terminating) {}
+            : Event(EventKind::Terminating) {}
     };
 
-    /// \copydoc EventType::Suspending
-    struct SuspendingEvent : public Event
+    /// \copydoc EventKind::Suspending
+    struct SuspendingEvent : Event
     {
         SuspendingEvent() noexcept
-            : Event(EventType::Suspending) {}
+            : Event(EventKind::Suspending) {}
     };
 
-    /// \copydoc EventType::Resuming
-    struct ResumingEvent : public Event
+    /// \copydoc EventKind::Resuming
+    struct ResumingEvent : Event
     {
         ResumingEvent() noexcept
-            : Event(EventType::Resuming) {}
+            : Event(EventKind::Resuming) {}
     };
 
-    /// \copydoc EventType::DisplayChanged
-    struct DisplayChangedEvent : public Event
+    /// \copydoc EventKind::DisplayChanged
+    struct DisplayChangedEvent : Event
     {
         DisplayChangedEvent() noexcept
-            : Event(EventType::DisplayChanged) {}
+            : Event(EventKind::DisplayChanged) {}
     };
 }

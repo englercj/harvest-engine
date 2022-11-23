@@ -6,6 +6,8 @@
 
 #include "he/core/types.h"
 #include "he/window/device.h"
+#include "he/window/event.h"
+#include "he/window/pointer.h"
 
 #include <atomic>
 
@@ -27,6 +29,17 @@ namespace he::window::win32
     using Pfn_SetProcessDpiAwarenessContext = DPI_AWARENESS_CONTEXT(WINAPI*)(_In_ DPI_AWARENESS_CONTEXT dpiContext);
     using Pfn_AdjustWindowRectExForDpi = BOOL(WINAPI*)(_Inout_ LPRECT lpRect, _In_ DWORD dwStyle, _In_ BOOL bMenu, _In_ DWORD dwExStyle, _In_ UINT dpi);
     using Pfn_ChangeWindowMessageFilterEx = BOOL(WINAPI*)(_In_ HWND hwnd, _In_ UINT message, _In_ DWORD action, _Inout_ PCHANGEFILTERSTRUCT pChangeFilterStruct);
+    using Pfn_RegisterTouchWindow = BOOL(WINAPI*)(_In_ HWND hwnd, _In_ ULONG ulFlags);
+    using Pfn_GetTouchInputInfo = BOOL(WINAPI*)(_In_ HTOUCHINPUT hTouchInput, _In_ UINT cInputs, _Out_writes_(cInputs) PTOUCHINPUT pInputs, _In_ int cbSize);
+    using Pfn_CloseTouchInputHandle = BOOL(WINAPI*)(_In_ HTOUCHINPUT hTouchInput);
+    using Pfn_GetPointerType = BOOL(WINAPI*)(_In_ UINT32 pointerId, _Out_ POINTER_INPUT_TYPE *pointerType);
+    using Pfn_GetPointerFrameInfo = BOOL(WINAPI*)(_In_ UINT32 pointerId, _Inout_ UINT32 *pointerCount, _Out_writes_opt_(*pointerCount) POINTER_INFO *pointerInfo);
+    using Pfn_GetPointerFrameInfoHistory = BOOL(WINAPI*)(_In_ UINT32 pointerId, _Inout_ UINT32 *entriesCount, _Inout_ UINT32 *pointerCount, _Out_writes_opt_(*entriesCount * *pointerCount) POINTER_INFO *pointerInfo);
+    using Pfn_GetPointerFramePenInfo = BOOL(WINAPI*)(_In_ UINT32 pointerId, _Inout_ UINT32 *pointerCount, _Out_writes_opt_(*pointerCount) POINTER_PEN_INFO *penInfo);
+    using Pfn_GetPointerFramePenInfoHistory = BOOL(WINAPI*)(_In_ UINT32 pointerId, _Inout_ UINT32 *entriesCount, _Inout_ UINT32 *pointerCount, _Out_writes_opt_(*entriesCount * *pointerCount) POINTER_PEN_INFO *penInfo);
+    using Pfn_GetPointerFrameTouchInfo = BOOL(WINAPI*)(_In_ UINT32 pointerId, _Inout_ UINT32 *pointerCount, _Out_writes_opt_(*pointerCount) POINTER_TOUCH_INFO *touchInfo);
+    using Pfn_GetPointerFrameTouchInfoHistory = BOOL(WINAPI*)(_In_ UINT32 pointerId, _Inout_ UINT32 *entriesCount, _Inout_ UINT32 *pointerCount, _Out_writes_opt_(*entriesCount * *pointerCount) POINTER_TOUCH_INFO *touchInfo);
+    using Pfn_SkipPointerFrameMessages = BOOL(WINAPI*)(_In_ UINT32 pointerId);
 
     using Pfn_GetDpiForMonitor = HRESULT(WINAPI*)(_In_ HMONITOR hmonitor, _In_ MONITOR_DPI_TYPE dpiType, _Out_ UINT* dpiX, _Out_ UINT* dpiY);
 
@@ -45,7 +58,7 @@ namespace he::window::win32
         int Run(Application& app, const ViewDesc& desc) override;
         void Quit(int rc) override;
 
-        bool HasHighDefMouse() const override;
+        const DeviceInfo& GetInfo() const override;
 
         View* CreateView(const ViewDesc& desc) override;
         void DestroyView(View* view) override;
@@ -56,7 +69,7 @@ namespace he::window::win32
         Vec2f GetCursorPos(View* view) const override;
         void SetCursorPos(View* view, const Vec2f& pos) override;
 
-        void SetCursor(MouseCursor cursor) override;
+        void SetCursor(PointerCursor cursor) override;
 
         void SetCursorRelativeMode(bool relativeMode) override;
 
@@ -69,23 +82,48 @@ namespace he::window::win32
         void ShowCursor(bool show);
         void CenterCursor();
 
+        void DispatchPointerEvent(const PointerEvent& data, const POINTER_INFO& info, PEN_FLAGS penFlags);
+        void DispatchPointerEventMouse(View* view, const POINTER_INFO& info);
+        void DispatchPointerEventPen(View* view, const POINTER_PEN_INFO& info);
+        void DispatchPointerEventTouch(View* view, const POINTER_TOUCH_INFO& info);
+
+        bool HandlePointerFrameMouse(View* view, PointerId pointerId);
+        bool HandlePointerFrameHistoryMouse(View* view, PointerId pointerId);
+
+        bool HandlePointerFramePen(View* view, PointerId pointerId);
+        bool HandlePointerFrameHistoryPen(View* view, PointerId pointerId);
+
+        bool HandlePointerFrameTouch(View* view, PointerId pointerId);
+        bool HandlePointerFrameHistoryTouch(View* view, PointerId pointerId);
+
     public:
         Application* m_app{ nullptr };
         HINSTANCE m_hInstance{ nullptr };
-        MouseCursor m_cursor{ MouseCursor::Arrow };
+        PointerCursor m_cursor{ PointerCursor::Arrow };
         std::atomic<int32_t> m_returnCode{ 0 };
         std::atomic<bool> m_running{ true };
         bool m_cursorRelativeMode{ false };
         bool m_cursorVisible{ true };
-        bool m_hasHighDefMouse{ false };
         bool m_viewClipped{ false };
         Vec2f m_cursorRestorePosition{ 0, 0 };
+        DeviceInfo m_deviceInfo{};
 
         HMODULE m_userLib{ nullptr };
         Pfn_GetDpiForWindow m_GetDpiForWindow{ nullptr };
         Pfn_SetProcessDpiAwarenessContext m_SetProcessDpiAwarenessContext{ nullptr };
         Pfn_AdjustWindowRectExForDpi m_AdjustWindowRectExForDpi{ nullptr };
         Pfn_ChangeWindowMessageFilterEx m_ChangeWindowMessageFilterEx{ nullptr };
+        Pfn_RegisterTouchWindow m_RegisterTouchWindow{ nullptr };
+        Pfn_GetTouchInputInfo m_GetTouchInputInfo{ nullptr };
+        Pfn_CloseTouchInputHandle m_CloseTouchInputHandle{ nullptr };
+        Pfn_GetPointerType m_GetPointerType{ nullptr };
+        Pfn_GetPointerFrameInfo m_GetPointerFrameInfo{ nullptr };
+        Pfn_GetPointerFrameInfoHistory m_GetPointerFrameInfoHistory{ nullptr };
+        Pfn_GetPointerFramePenInfo m_GetPointerFramePenInfo{ nullptr };
+        Pfn_GetPointerFramePenInfoHistory m_GetPointerFramePenInfoHistory{ nullptr };
+        Pfn_GetPointerFrameTouchInfo m_GetPointerFrameTouchInfo{ nullptr };
+        Pfn_GetPointerFrameTouchInfoHistory m_GetPointerFrameTouchInfoHistory{ nullptr };
+        Pfn_SkipPointerFrameMessages m_SkipPointerFrameMessages{ nullptr };
 
         HMODULE m_shcoreLib{ nullptr };
         Pfn_GetDpiForMonitor m_GetDpiForMonitor{ nullptr };

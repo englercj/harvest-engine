@@ -143,6 +143,44 @@ namespace he::window::win32
         return Key::None;
     }
 
+    static PointerKind GetMouseMessagePointerKind()
+    {
+        constexpr LPARAM PenOrTouchSignature = 0xFF515700;
+        constexpr LPARAM SignatureMask = 0xFFFFFF00;
+        constexpr LPARAM TouchFlag = 0x80;
+
+        // See: https://learn.microsoft.com/en-us/windows/win32/tablet/system-events-and-mouse-messages#distinguishing-pen-input-from-mouse-and-touch
+        const LPARAM extra = ::GetMessageExtraInfo();
+        const bool isPenOrTouch = (extra & SignatureMask) == PenOrTouchSignature;
+
+        if (isPenOrTouch)
+        {
+            if (HasFlag(extra, TouchFlag))
+                return PointerKind::Touch;
+            else
+                return PointerKind::Pen;
+        }
+
+        return PointerKind::Mouse;
+    }
+
+    static PointerId GetMouseMessagePointerId()
+    {
+        // The lower 7 bits returned from GetMessageExtraInfo are used to represent the
+        // cursor ID. For mouse this is zero, or a variable value for the pen ID.
+        constexpr LPARAM CursorIdMask = 0x7f;
+
+        const LPARAM extra = ::GetMessageExtraInfo();
+        const PointerId pointerId = (extra & CursorIdMask) + 1; // +1 converts it to Harvest ID space
+
+        // Ensure that our assumptions about how these values work are actually valid
+        HE_ASSERT(pointerId != 0, HE_KV(pointer_id, pointerId));
+        HE_ASSERT(GetMouseMessagePointerKind() != PointerKind::Mouse || pointerId == PointerId_Mouse, HE_KV(pointer_id, pointerId));
+        HE_ASSERT(GetMouseMessagePointerKind() == PointerKind::Mouse || pointerId != PointerId_Mouse, HE_KV(pointer_id, pointerId));
+
+        return pointerId;
+    }
+
     static LRESULT CALLBACK WindowProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     {
         if (message == WM_NCCREATE)
@@ -171,16 +209,24 @@ namespace he::window::win32
             case WM_MOVE:
             {
                 view->m_pos = { GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) };
-                ViewMovedEvent ev(view, view->m_pos);
+                ViewMovedEvent ev(view);
+                ev.pos = view->m_pos;
                 app->OnEvent(ev);
                 return 0;
             }
             case WM_SIZE:
             {
                 view->m_size = { GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) };
-                ViewResizedEvent ev(view, view->m_size);
+                ViewResizedEvent ev(view);
+                ev.size = view->m_size;
                 app->OnEvent(ev);
                 return 0;
+            }
+            case WM_POINTERACTIVATE:
+            {
+                if (!HasFlag(view->m_flags, ViewFlag::FocusOnClick))
+                    return PA_NOACTIVATE;
+                break;
             }
             case WM_MOUSEACTIVATE:
             {
@@ -239,38 +285,6 @@ namespace he::window::win32
                 }
                 break;
             }
-            case WM_NCLBUTTONDOWN:
-            case WM_NCRBUTTONDOWN:
-            case WM_NCMBUTTONDOWN:
-            {
-                if (HasFlag(view->m_flags, ViewFlag::Borderless))
-                {
-                    // Windows handles HTCLOSE by closing the window, but doesn't seem to do
-                    // anything for the other button hit tests. The default HTCLOSE handling
-                    // also seems to care about mouse position in a way that doesn't always
-                    // align to the application's view of the window. We want to expose
-                    // the button values from WM_NCHITTEST to get the accessibility features
-                    // (like screen reader support) that Windows provides by default. However,
-                    // we prevent the default OS behavior on click and let the application
-                    // handle it instead to enable more advanced handling and consistency.
-                    if (wParam == HTCLOSE || wParam == HTMINBUTTON || wParam == HTMAXBUTTON)
-                    {
-                        MouseButton button = MouseButton::None;
-                        switch (message)
-                        {
-                            case WM_NCLBUTTONDOWN: button = MouseButton::Left; break;
-                            case WM_NCRBUTTONDOWN: button = MouseButton::Right; break;
-                            case WM_NCMBUTTONDOWN: button = MouseButton::Middle; break;
-                        }
-
-                        MouseDownEvent ev(view, button);
-                        view->TrackCapture(ev);
-                        app->OnEvent(ev);
-                        return 0;
-                    }
-                }
-                break;
-            }
             case WM_NCHITTEST:
             {
                 // If we've disabled input, pass through the hit test
@@ -310,99 +324,14 @@ namespace he::window::win32
                 }
                 break;
             }
-            case WM_LBUTTONDOWN:
-            case WM_RBUTTONDOWN:
-            case WM_MBUTTONDOWN:
-            case WM_XBUTTONDOWN:
-            case WM_LBUTTONDBLCLK:
-            case WM_RBUTTONDBLCLK:
-            case WM_MBUTTONDBLCLK:
-            case WM_XBUTTONDBLCLK:
-            {
-                MouseButton button = MouseButton::None;
-                switch (message)
-                {
-                    case WM_LBUTTONDOWN:
-                    case WM_LBUTTONDBLCLK:
-                        button = MouseButton::Left;
-                        break;
-                    case WM_RBUTTONDOWN:
-                    case WM_RBUTTONDBLCLK:
-                        button = MouseButton::Right;
-                        break;
-                    case WM_MBUTTONDOWN:
-                    case WM_MBUTTONDBLCLK:
-                        button = MouseButton::Middle;
-                        break;
-                    case WM_XBUTTONDOWN:
-                    case WM_XBUTTONDBLCLK:
-                        button = (GET_XBUTTON_WPARAM(wParam) == XBUTTON1) ? MouseButton::Extra1 : MouseButton::Extra2;
-                        break;
-                }
-
-                MouseDownEvent ev(view, button);
-                view->TrackCapture(ev);
-                app->OnEvent(ev);
-                return 0;
-            }
-            case WM_LBUTTONUP:
-            case WM_RBUTTONUP:
-            case WM_MBUTTONUP:
-            case WM_XBUTTONUP:
-            {
-                MouseButton button = MouseButton::None;
-                switch (message)
-                {
-                    case WM_LBUTTONUP: button = MouseButton::Left; break;
-                    case WM_RBUTTONUP: button = MouseButton::Right; break;
-                    case WM_MBUTTONUP: button = MouseButton::Middle; break;
-                    case WM_XBUTTONUP: button = (GET_XBUTTON_WPARAM(wParam) == XBUTTON1) ? MouseButton::Extra1 : MouseButton::Extra2; break;
-                }
-
-                MouseUpEvent ev(view, button);
-                view->TrackCapture(ev);
-                app->OnEvent(ev);
-                return 0;
-            }
-            case WM_MOUSEWHEEL:
-            {
-                const float delta = GET_WHEEL_DELTA_WPARAM(wParam) / static_cast<float>(WHEEL_DELTA);
-                MouseWheelEvent ev(view, { 0, delta });
-                app->OnEvent(ev);
-                return 0;
-            }
-            case WM_MOUSEHWHEEL:
-            {
-                const float delta = GET_WHEEL_DELTA_WPARAM(wParam) / static_cast<float>(WHEEL_DELTA);
-                MouseWheelEvent ev(view, { delta, 0 });
-                app->OnEvent(ev);
-                return 0;
-            }
-            case WM_NCMOUSEMOVE:
-            case WM_MOUSEMOVE:
-            {
-                if (device->m_hasHighDefMouse)
-                    break;
-
-                POINT pos{ GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) };
-                ::ClientToScreen(hWnd, &pos);
-
-                Vec2f posf{ static_cast<float>(pos.x), static_cast<float>(pos.y) };
-                MouseMoveEvent ev(view, posf, true);
-
-                if (device->m_cursorRelativeMode)
-                    device->CenterCursor();
-
-                app->OnEvent(ev);
-                return 0;
-            }
             case WM_KEYDOWN:
             case WM_SYSKEYDOWN:
             {
                 Key key = TranslateKey(wParam, lParam);
                 if (key != Key::None)
                 {
-                    KeyDownEvent ev(view, key);
+                    KeyDownEvent ev(view);
+                    ev.key = key;
                     app->OnEvent(ev);
                 }
                 return 0;
@@ -413,7 +342,8 @@ namespace he::window::win32
                 Key key = TranslateKey(wParam, lParam);
                 if (key != Key::None)
                 {
-                    KeyUpEvent ev(view, key);
+                    KeyUpEvent ev(view);
+                    ev.key = key;
                     app->OnEvent(ev);
                 }
                 return 0;
@@ -422,7 +352,8 @@ namespace he::window::win32
             {
                 if (wParam > 0 && wParam < 0x10000)
                 {
-                    TextEvent ev(view, LOWORD(wParam));
+                    TextEvent ev(view);
+                    ev.ch = LOWORD(wParam);
                     app->OnEvent(ev);
                 }
                 return 0;
@@ -436,9 +367,12 @@ namespace he::window::win32
                 }
 
                 const bool active = LOWORD(wParam) != WA_INACTIVE;
-                ViewActivatedEvent ev(view, active);
+                ViewActivatedEvent ev(view);
+                ev.active = active;
+
                 if (app)
                     app->OnEvent(ev);
+
                 return 0;
             }
             case WM_MOVING:
@@ -462,7 +396,8 @@ namespace he::window::win32
                     prcNewWindow->bottom - prcNewWindow->top,
                     SWP_NOZORDER | SWP_NOACTIVATE);
 
-                ViewDpiScaleChangedEvent ev(view, view->GetDpiScale());
+                ViewDpiScaleChangedEvent ev(view);
+                ev.scale = view->GetDpiScale();
                 app->OnEvent(ev);
                 break;
             }
@@ -474,7 +409,7 @@ namespace he::window::win32
             case WM_DEVICECHANGE:
             {
                 if (LOWORD(wParam) == DBT_DEVNODES_CHANGED)
-                    view->m_device->m_refreshGamepadConnectivity = true;
+                    device->m_refreshGamepadConnectivity = true;
                 break;
             }
             case WM_DISPLAYCHANGE:
@@ -488,6 +423,9 @@ namespace he::window::win32
                 // handling of high def mouse input
                 // https://docs.microsoft.com/en-us/windows/desktop/dxtecharts/taking-advantage-of-high-dpi-mouse-movement
 
+                if (!device->m_deviceInfo.hasHighDefMouse)
+                    break;
+
                 RAWINPUT raw;
                 UINT rawSize = sizeof(raw);
                 UINT size = ::GetRawInputData((HRAWINPUT)lParam, RID_INPUT, &raw, &rawSize, sizeof(RAWINPUTHEADER));
@@ -496,6 +434,10 @@ namespace he::window::win32
                     break;
 
                 if (raw.header.dwType != RIM_TYPEMOUSE)
+                    break;
+
+                PointerKind pointerKind = GetMouseMessagePointerKind();
+                if (pointerKind != PointerKind::Mouse || (::GetMessageExtraInfo() & 0x82) == 0x82)
                     break;
 
                 const RAWMOUSE& rawMouse = raw.data.mouse;
@@ -515,14 +457,81 @@ namespace he::window::win32
                     pos.x = (pos.x / 65535.0f) * width;
                     pos.y = (pos.y / 65535.0f) * height;
                 }
+                else if (pos.x == 0 && pos.y == 0)
+                {
+                    // ignore relative motion of 0,0
+                    break;
+                }
 
-                MouseMoveEvent ev(view, pos, absolute);
+                PointerMoveEvent ev(view);
+                ev.pointerId = GetMouseMessagePointerId();
+                ev.pointerKind = PointerKind::Mouse;
+                ev.isPrimary = true;
+                ev.pos = pos;
+                ev.absolute = absolute;
 
                 if (device->m_cursorRelativeMode)
                     device->CenterCursor();
 
                 app->OnEvent(ev);
-                return 0;
+                break;
+            }
+            case WM_POINTERDOWN:
+            case WM_POINTERUP:
+            case WM_POINTERWHEEL:
+            case WM_POINTERHWHEEL:
+            {
+                if (!device->m_GetPointerType)
+                    break;
+
+                const WORD pointerId = GET_POINTERID_WPARAM(wParam);
+                POINTER_INPUT_TYPE type{};
+                if (!device->m_GetPointerType(pointerId, &type))
+                    break;
+
+                bool handled = false;
+                switch (type)
+                {
+                    case PT_MOUSE: handled = device->HandlePointerFrameMouse(view, pointerId); break;
+                    case PT_PEN: handled = device->HandlePointerFramePen(view, pointerId); break;
+                    case PT_TOUCH: handled = device->HandlePointerFrameTouch(view, pointerId); break;
+                }
+
+                if (handled)
+                {
+                    if (device->m_SkipPointerFrameMessages)
+                        device->m_SkipPointerFrameMessages(pointerId);
+                    return 0;
+                }
+
+                break;
+            }
+            case WM_POINTERUPDATE:
+            {
+                if (!device->m_GetPointerType)
+                    break;
+
+                const WORD pointerId = GET_POINTERID_WPARAM(wParam);
+                POINTER_INPUT_TYPE type{};
+                if (!device->m_GetPointerType(pointerId, &type))
+                    break;
+
+                bool handled = false;
+                switch (type)
+                {
+                    case PT_MOUSE: handled = device->HandlePointerFrameHistoryMouse(view, pointerId); break;
+                    case PT_PEN: handled = device->HandlePointerFrameHistoryPen(view, pointerId); break;
+                    case PT_TOUCH: handled = device->HandlePointerFrameHistoryTouch(view, pointerId); break;
+                }
+
+                if (handled)
+                {
+                    if (device->m_SkipPointerFrameMessages)
+                        device->m_SkipPointerFrameMessages(pointerId);
+                    return 0;
+                }
+
+                break;
             }
             case WM_DROPFILES:
             {
@@ -531,37 +540,28 @@ namespace he::window::win32
 
                 HDROP drop = reinterpret_cast<HDROP>(wParam);
 
-                // Move the mouse to the position of the drop
-                POINT pt{};
-                if (!device->m_cursorRelativeMode && ::DragQueryPoint(drop, &pt))
-                {
-                    ::ClientToScreen(hWnd, &pt);
-
-                    Vec2f pos{ static_cast<float>(pt.x), static_cast<float>(pt.y) };
-                    MouseMoveEvent ev(view, pos, true);
-
-                    app->OnEvent(ev);
-                }
-
-                // Read the dropped paths
                 const UINT count = ::DragQueryFileW(drop, 0xffffffff, NULL, 0);
-                Vector<String> paths;
-                paths.Resize(count);
 
-                Vector<wchar_t> buf;
+                Vector<wchar_t> buf{};
+                String path{};
 
                 for (UINT i = 0; i < count; ++i)
                 {
                     const UINT length = ::DragQueryFileW(drop, i, NULL, 0);
                     buf.Resize(length + 1);
 
-                    ::DragQueryFileW(drop, i, buf.Data(), buf.Size());
-                    WCToMBStr(paths[i], buf.Data());
+                    if (::DragQueryFileW(drop, i, buf.Data(), buf.Size()))
+                    {
+                        WCToMBStr(path, buf.Data());
+
+                        ViewDropFileEvent ev(view);
+                        ev.path = path;
+                        app->OnEvent(ev);
+                    }
                 }
 
-                ViewDropFilesEvent ev(view, paths);
+                ViewDropFileCompleteEvent ev(view);
                 app->OnEvent(ev);
-
                 ::DragFinish(drop);
                 return 0;
             }
@@ -636,6 +636,9 @@ namespace he::window::win32
 
     bool DeviceImpl::Initialize()
     {
+        ::EnableMouseInPointer(TRUE);
+        HE_ASSERT(::IsMouseInPointerEnabled());
+
         m_hInstance = ::GetModuleHandleW(nullptr);
 
         // Bind to optional Windows APIs
@@ -646,6 +649,18 @@ namespace he::window::win32
             m_SetProcessDpiAwarenessContext = reinterpret_cast<Pfn_SetProcessDpiAwarenessContext>(::GetProcAddress(m_userLib, "SetProcessDpiAwarenessContext"));
             m_AdjustWindowRectExForDpi = reinterpret_cast<Pfn_AdjustWindowRectExForDpi>(::GetProcAddress(m_userLib, "AdjustWindowRectExForDpi"));
             m_ChangeWindowMessageFilterEx = reinterpret_cast<Pfn_ChangeWindowMessageFilterEx>(::GetProcAddress(m_userLib, "ChangeWindowMessageFilterEx"));
+            m_RegisterTouchWindow = reinterpret_cast<Pfn_RegisterTouchWindow>(::GetProcAddress(m_userLib, "RegisterTouchWindow"));
+            m_GetTouchInputInfo = reinterpret_cast<Pfn_GetTouchInputInfo>(::GetProcAddress(m_userLib, "GetTouchInputInfo"));
+            m_CloseTouchInputHandle = reinterpret_cast<Pfn_CloseTouchInputHandle>(::GetProcAddress(m_userLib, "CloseTouchInputHandle"));
+            m_GetPointerType = reinterpret_cast<Pfn_GetPointerType>(::GetProcAddress(m_userLib, "GetPointerType"));
+            m_GetPointerFrameInfo = reinterpret_cast<Pfn_GetPointerFrameInfo>(::GetProcAddress(m_userLib, "GetPointerFrameInfo"));
+            m_GetPointerFrameInfo = reinterpret_cast<Pfn_GetPointerFrameInfo>(::GetProcAddress(m_userLib, "GetPointerFrameInfo"));
+            m_GetPointerFrameInfoHistory = reinterpret_cast<Pfn_GetPointerFrameInfoHistory>(::GetProcAddress(m_userLib, "GetPointerFrameInfoHistory"));
+            m_GetPointerFramePenInfo = reinterpret_cast<Pfn_GetPointerFramePenInfo>(::GetProcAddress(m_userLib, "GetPointerFramePenInfo"));
+            m_GetPointerFramePenInfoHistory = reinterpret_cast<Pfn_GetPointerFramePenInfoHistory>(::GetProcAddress(m_userLib, "GetPointerFramePenInfoHistory"));
+            m_GetPointerFrameTouchInfo = reinterpret_cast<Pfn_GetPointerFrameTouchInfo>(::GetProcAddress(m_userLib, "GetPointerFrameTouchInfo"));
+            m_GetPointerFrameTouchInfoHistory = reinterpret_cast<Pfn_GetPointerFrameTouchInfoHistory>(::GetProcAddress(m_userLib, "GetPointerFrameTouchInfoHistory"));
+            m_SkipPointerFrameMessages = reinterpret_cast<Pfn_SkipPointerFrameMessages>(::GetProcAddress(m_userLib, "SkipPointerFrameMessages"));
         }
 
         m_shcoreLib = ::LoadLibraryW(L"Shcore.dll");
@@ -684,6 +699,9 @@ namespace he::window::win32
         // wcex.hIconSm = desc.iconSmResourceId ? ::LoadIconW(m_hInstance, MAKEINTRESOURCEW(desc.iconSmResourceId)) : nullptr;
         ::RegisterClassExW(&wcex);
 
+        // Always have support for mouse
+        m_deviceInfo.hasMouse = true;
+
         // Enable raw mouse input
         RAWINPUTDEVICE rid;
         rid.usUsagePage = 0x01; // HID_USAGE_PAGE_GENERIC
@@ -692,7 +710,20 @@ namespace he::window::win32
         rid.hwndTarget = nullptr;
         if (::RegisterRawInputDevices(&rid, 1, sizeof(rid)))
         {
-            m_hasHighDefMouse = true;
+            m_deviceInfo.hasHighDefMouse = true;
+        }
+
+        // Check for touch support
+        const int32_t digitizer = ::GetSystemMetrics(SM_DIGITIZER);
+        if (HasFlag(digitizer, NID_READY))
+        {
+            if (HasAnyFlags(digitizer, NID_INTEGRATED_PEN | NID_EXTERNAL_PEN))
+                m_deviceInfo.hasPen = true;
+
+            if (HasAnyFlags(digitizer, NID_INTEGRATED_TOUCH | NID_EXTERNAL_TOUCH))
+            {
+                m_deviceInfo.maxTouches = ::GetSystemMetrics(SM_MAXIMUMTOUCHES);
+            }
         }
 
         return true;
@@ -772,9 +803,9 @@ namespace he::window::win32
         m_running.store(false);
     }
 
-    bool DeviceImpl::HasHighDefMouse() const
+    const DeviceInfo& DeviceImpl::GetInfo() const
     {
-        return m_hasHighDefMouse;
+        return m_deviceInfo;
     }
 
     View* DeviceImpl::CreateView(const ViewDesc& desc)
@@ -835,7 +866,7 @@ namespace he::window::win32
         ::SetCursorPos(p.x, p.y);
     }
 
-    void DeviceImpl::SetCursor(MouseCursor cursor)
+    void DeviceImpl::SetCursor(PointerCursor cursor)
     {
         if (m_cursor != cursor)
         {
@@ -900,7 +931,7 @@ namespace he::window::win32
         if (!m_cursorVisible)
             return;
 
-        if (m_cursor > MouseCursor::None && m_cursor < MouseCursor::_Count)
+        if (m_cursor > PointerCursor::None && m_cursor < PointerCursor::_Count)
         {
             static LPCTSTR cursorNames[] =
             {
@@ -917,7 +948,7 @@ namespace he::window::win32
                 IDC_SIZENS,     // ResizeVertical
                 IDC_WAIT,       // Wait
             };
-            static_assert(HE_LENGTH_OF(cursorNames) == static_cast<int32_t>(MouseCursor::_Count), "");
+            static_assert(HE_LENGTH_OF(cursorNames) == static_cast<int32_t>(PointerCursor::_Count), "");
             ::SetCursor(::LoadCursorW(nullptr, cursorNames[static_cast<int32_t>(m_cursor)]));
         }
         else
@@ -948,11 +979,329 @@ namespace he::window::win32
         const Vec2f pos = MakeVec2<float>(view->GetSize()) / 2.0f;
         SetCursorPos(view, pos);
     }
+
+    static PointerButton GetPointerButton(POINTER_BUTTON_CHANGE_TYPE buttonType, PEN_FLAGS penFlags)
+    {
+        switch (buttonType)
+        {
+            case POINTER_CHANGE_FIRSTBUTTON_DOWN:
+            case POINTER_CHANGE_FIRSTBUTTON_UP:
+                return PointerButton::Primary;
+
+            case POINTER_CHANGE_SECONDBUTTON_DOWN:
+            case POINTER_CHANGE_SECONDBUTTON_UP:
+                return PointerButton::Secondary;
+
+            case POINTER_CHANGE_THIRDBUTTON_DOWN:
+            case POINTER_CHANGE_THIRDBUTTON_UP:
+                return PointerButton::Auxiliary;
+
+            case POINTER_CHANGE_FOURTHBUTTON_DOWN:
+            case POINTER_CHANGE_FOURTHBUTTON_UP:
+                return PointerButton::Extra1;
+
+            case POINTER_CHANGE_FIFTHBUTTON_DOWN:
+            case POINTER_CHANGE_FIFTHBUTTON_UP:
+                return PointerButton::Extra2;
+
+            default:
+                break;
+        }
+
+        if (HasFlag(penFlags, PEN_FLAG_ERASER))
+            return PointerButton::Eraser;
+
+        return PointerButton::None;
+    }
+
+    template <typename T>
+    static T MakeAndCopyPointerEvent(const PointerEvent& data)
+    {
+        T ev(data.view);
+        ev.pointerId = data.pointerId;
+        ev.pointerKind = data.pointerKind;
+        ev.size = data.size;
+        ev.tilt = data.tilt;
+        ev.rotation = data.rotation;
+        ev.pressure = data.pressure;
+        ev.isPrimary = data.isPrimary;
+        return ev;
+    }
+
+    void DeviceImpl::DispatchPointerEvent(const PointerEvent& data, const POINTER_INFO& info, PEN_FLAGS penFlags)
+    {
+        if (HasFlag(info.pointerFlags, POINTER_FLAG_DOWN))
+        {
+            PointerDownEvent ev = MakeAndCopyPointerEvent<PointerDownEvent>(data);
+            ev.button = GetPointerButton(info.ButtonChangeType, penFlags);
+            static_cast<ViewImpl*>(ev.view)->TrackCapture(ev);
+            m_app->OnEvent(ev);
+        }
+        else if (HasFlag(info.pointerFlags, POINTER_FLAG_UP))
+        {
+            PointerUpEvent ev = MakeAndCopyPointerEvent<PointerUpEvent>(data);
+            ev.button = GetPointerButton(info.ButtonChangeType, penFlags);
+            static_cast<ViewImpl*>(ev.view)->TrackCapture(ev);
+            m_app->OnEvent(ev);
+        }
+        else if (HasFlag(info.pointerFlags, POINTER_FLAG_WHEEL))
+        {
+            PointerWheelEvent ev = MakeAndCopyPointerEvent<PointerWheelEvent>(data);
+            const float delta = info.InputData / static_cast<float>(WHEEL_DELTA);
+            ev.delta = { 0, delta };
+            m_app->OnEvent(ev);
+        }
+        else if (HasFlag(info.pointerFlags, POINTER_FLAG_HWHEEL))
+        {
+            PointerWheelEvent ev = MakeAndCopyPointerEvent<PointerWheelEvent>(data);
+            const float delta = info.InputData / static_cast<float>(WHEEL_DELTA);
+            ev.delta = { delta, 0 };
+            m_app->OnEvent(ev);
+        }
+        else if (HasFlag(info.pointerFlags, POINTER_FLAG_UPDATE))
+        {
+            if (data.pointerKind == PointerKind::Mouse && m_deviceInfo.hasHighDefMouse)
+                return;
+
+            PointerMoveEvent ev = MakeAndCopyPointerEvent<PointerMoveEvent>(data);
+            ev.pos = { static_cast<float>(info.ptPixelLocation.x), static_cast<float>(info.ptPixelLocation.y) };
+            ev.absolute = true;
+            m_app->OnEvent(ev);
+        }
+    }
+
+    void DeviceImpl::DispatchPointerEventMouse(View* view, const POINTER_INFO& info)
+    {
+        PointerEvent data(EventKind::PointerDown, view);
+        data.pointerId = info.pointerId;
+        data.pointerKind = PointerKind::Mouse;
+        data.size = { 1, 1 };
+        data.tilt = { 0, 0 };
+        data.rotation = 0;
+        data.pressure = 0;
+        data.isPrimary = HasFlag(info.pointerFlags, POINTER_FLAG_PRIMARY);
+        DispatchPointerEvent(data, info, PEN_FLAG_NONE);
+    }
+
+    void DeviceImpl::DispatchPointerEventPen(View* view, const POINTER_PEN_INFO& info)
+    {
+        const INT32 tiltX = HasFlag(info.penMask, PEN_MASK_TILT_X) ? info.tiltX : 0;
+        const INT32 tiltY = HasFlag(info.penMask, PEN_MASK_TILT_Y) ? info.tiltY : 0;
+        const UINT32 rotation = HasFlag(info.penMask, PEN_MASK_ROTATION) ? info.rotation : 0;
+        const UINT32 pressure = HasFlag(info.penMask, PEN_MASK_PRESSURE) ? info.pressure : 0;
+
+        PointerEvent data(EventKind::PointerDown, view);
+        data.pointerId = info.pointerInfo.pointerId;
+        data.pointerKind = PointerKind::Pen;
+        data.size = { 1, 1 };
+        data.tilt = { tiltX, tiltY };
+        data.rotation = rotation;
+        data.pressure = pressure / 1024.0f; // Normalize the win32 [0, 1024] range to our [0.0, 1.0] range
+        data.isPrimary = HasFlag(info.pointerInfo.pointerFlags, POINTER_FLAG_PRIMARY);
+        DispatchPointerEvent(data, info.pointerInfo, info.penFlags);
+    }
+
+    void DeviceImpl::DispatchPointerEventTouch(View* view, const POINTER_TOUCH_INFO& info)
+    {
+        const RECT contact = HasFlag(info.touchMask, TOUCH_MASK_CONTACTAREA) ? info.rcContact : RECT{};
+        const UINT32 rotation = HasFlag(info.touchMask, TOUCH_MASK_ORIENTATION) ? info.orientation : 0;
+        const UINT32 pressure = HasFlag(info.touchMask, TOUCH_MASK_PRESSURE) ? info.pressure : 0;
+
+        const LONG width = contact.right - contact.left;
+        const LONG height = contact.bottom - contact.top;
+
+        PointerEvent data(EventKind::PointerDown, view);
+        data.pointerId = info.pointerInfo.pointerId;
+        data.pointerKind = PointerKind::Touch;
+        data.size = { width ? width : 1, height ? height : 1 };
+        data.tilt = { 0, 0 };
+        data.rotation = rotation;
+        data.pressure = pressure / 1024.0f; // Normalize the win32 [0, 1024] range to our [0.0, 1.0] range
+        data.isPrimary = HasFlag(info.pointerInfo.pointerFlags, POINTER_FLAG_PRIMARY);
+        DispatchPointerEvent(data, info.pointerInfo, PEN_FLAG_NONE);
+    }
+
+    bool DeviceImpl::HandlePointerFrameMouse(View* view, PointerId pointerId)
+    {
+        if (!m_GetPointerFrameInfo)
+            return false;
+
+        UINT32 infoCount = 0;
+        if (!m_GetPointerFrameInfo(pointerId, &infoCount, NULL) || infoCount == 0)
+            return false;
+
+    #if HE_ENABLE_ASSERTIONS
+        const UINT32 prevInfoCount = infoCount;
+    #endif
+        POINTER_INFO* infos = HE_ALLOCA(POINTER_INFO, infoCount);
+        if (!m_GetPointerFrameInfo(pointerId, &infoCount, infos))
+            return false;
+
+        HE_ASSERT(prevInfoCount == infoCount);
+
+        for (UINT32 i = 0; i < infoCount; ++i)
+        {
+            const POINTER_INFO& info = infos[i];
+            DispatchPointerEventMouse(view, info);
+        }
+
+        return true;
+    }
+
+    bool DeviceImpl::HandlePointerFrameHistoryMouse(View* view, PointerId pointerId)
+    {
+        if (!m_GetPointerFrameInfoHistory)
+            return false;
+
+        UINT32 entryCount = 0;
+        UINT32 pointerCount = 0;
+        if (!m_GetPointerFrameInfoHistory(pointerId, &entryCount, &pointerCount, NULL))
+            return false;
+
+        if (entryCount == 0 || pointerCount == 0)
+            return false;
+
+        const UINT32 totalInfoCount = entryCount * pointerCount;
+        POINTER_INFO* infos = HE_ALLOCA(POINTER_INFO, totalInfoCount);
+        if (!m_GetPointerFrameInfoHistory(pointerId, &entryCount, &pointerCount, infos))
+            return false;
+
+        HE_ASSERT(totalInfoCount == (entryCount * pointerCount));
+
+        // entries are in reverse chronological order, so we need to loop in reverse.
+        UINT32 i = totalInfoCount;
+        while (i)
+        {
+            --i;
+            const POINTER_INFO& info = infos[i];
+            DispatchPointerEventMouse(view, info);
+        }
+
+        return true;
+    }
+
+    bool DeviceImpl::HandlePointerFramePen(View* view, PointerId pointerId)
+    {
+        if (!m_GetPointerFramePenInfo)
+            return false;
+
+        UINT32 infoCount = 0;
+        if (!m_GetPointerFramePenInfo(pointerId, &infoCount, NULL) || infoCount == 0)
+            return false;
+
+    #if HE_ENABLE_ASSERTIONS
+        const UINT32 prevInfoCount = infoCount;
+    #endif
+        POINTER_PEN_INFO* infos = HE_ALLOCA(POINTER_PEN_INFO, infoCount);
+        if (!m_GetPointerFramePenInfo(pointerId, &infoCount, infos))
+            return false;
+
+        HE_ASSERT(prevInfoCount == infoCount);
+
+        for (UINT32 i = 0; i < infoCount; ++i)
+        {
+            const POINTER_PEN_INFO& info = infos[i];
+            DispatchPointerEventPen(view, info);
+        }
+
+        return true;
+    }
+
+    bool DeviceImpl::HandlePointerFrameHistoryPen(View* view, PointerId pointerId)
+    {
+        if (!m_GetPointerFramePenInfoHistory)
+            return false;
+
+        UINT32 entryCount = 0;
+        UINT32 pointerCount = 0;
+        if (!m_GetPointerFramePenInfoHistory(pointerId, &entryCount, &pointerCount, NULL))
+            return false;
+
+        if (entryCount == 0 || pointerCount == 0)
+            return false;
+
+        const UINT32 totalInfoCount = entryCount * pointerCount;
+        POINTER_PEN_INFO* infos = HE_ALLOCA(POINTER_PEN_INFO, totalInfoCount);
+        if (!m_GetPointerFramePenInfoHistory(pointerId, &entryCount, &pointerCount, infos))
+            return false;
+
+        HE_ASSERT(totalInfoCount == (entryCount * pointerCount));
+
+        // entries are in reverse chronological order, so we need to loop in reverse.
+        UINT32 i = totalInfoCount;
+        while (i)
+        {
+            --i;
+            const POINTER_PEN_INFO& info = infos[i];
+            DispatchPointerEventPen(view, info);
+        }
+
+        return true;
+    }
+
+    bool DeviceImpl::HandlePointerFrameTouch(View* view, PointerId pointerId)
+    {
+        if (!m_GetPointerFrameTouchInfo)
+            return false;
+
+        UINT32 infoCount = 0;
+        if (!m_GetPointerFrameTouchInfo(pointerId, &infoCount, NULL) || infoCount == 0)
+            return false;
+
+    #if HE_ENABLE_ASSERTIONS
+        const UINT32 prevInfoCount = infoCount;
+    #endif
+        POINTER_TOUCH_INFO* infos = HE_ALLOCA(POINTER_TOUCH_INFO, infoCount);
+        if (!m_GetPointerFrameTouchInfo(pointerId, &infoCount, infos))
+            return false;
+
+        HE_ASSERT(prevInfoCount == infoCount);
+
+        for (UINT32 i = 0; i < infoCount; ++i)
+        {
+            const POINTER_TOUCH_INFO& info = infos[i];
+            DispatchPointerEventTouch(view, info);
+        }
+
+        return true;
+    }
+
+    bool DeviceImpl::HandlePointerFrameHistoryTouch(View* view, PointerId pointerId)
+    {
+        if (!m_GetPointerFrameTouchInfoHistory)
+            return false;
+
+        UINT32 entryCount = 0;
+        UINT32 pointerCount = 0;
+        if (!m_GetPointerFrameTouchInfoHistory(pointerId, &entryCount, &pointerCount, NULL))
+            return false;
+
+        if (entryCount == 0 || pointerCount == 0)
+            return false;
+
+        const UINT32 totalInfoCount = entryCount * pointerCount;
+        POINTER_TOUCH_INFO* infos = HE_ALLOCA(POINTER_TOUCH_INFO, totalInfoCount);
+        if (!m_GetPointerFrameTouchInfoHistory(pointerId, &entryCount, &pointerCount, infos))
+            return false;
+
+        HE_ASSERT(totalInfoCount == (entryCount * pointerCount));
+
+        // entries are in reverse chronological order, so we need to loop in reverse.
+        UINT32 i = totalInfoCount;
+        while (i)
+        {
+            --i;
+            const POINTER_TOUCH_INFO& info = infos[i];
+            DispatchPointerEventTouch(view, info);
+        }
+
+        return true;
+    }
 }
 
 namespace he::window
 {
-    Device* _CreateDevice(Allocator& allocator)
+    Device* _CreateWindowDevice(Allocator& allocator)
     {
         return allocator.New<win32::DeviceImpl>(allocator);
     }

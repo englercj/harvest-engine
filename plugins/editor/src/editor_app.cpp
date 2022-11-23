@@ -30,22 +30,22 @@ namespace he::editor
         if (m_initialized)
             m_imguiService.OnEvent(ev);
 
-        switch (ev.type)
+        switch (ev.kind)
         {
-            case window::EventType::Initialized:
+            case window::EventKind::Initialized:
             {
                 const auto& evt = static_cast<const window::InitializedEvent&>(ev);
                 if (!OnViewInitialized(evt.view))
                     m_mainWindowService.Quit(1);
                 break;
             }
-            case window::EventType::ViewRequestClose:
+            case window::EventKind::ViewRequestClose:
             {
                 const auto& evt = static_cast<const window::ViewRequestCloseEvent&>(ev);
                 OnViewTerminated(evt.view);
                 break;
             }
-            case window::EventType::ViewResized:
+            case window::EventKind::ViewResized:
             {
                 const auto& evt = static_cast<const window::ViewResizedEvent&>(ev);
                 OnViewResized(evt.view, evt.size);

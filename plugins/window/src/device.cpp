@@ -6,11 +6,11 @@
 
 namespace he::window
 {
-    extern Device* _CreateDevice(Allocator& allocator);
+    extern Device* _CreateWindowDevice(Allocator& allocator);
 
     Device* Device::Create(Allocator& allocator)
     {
-        Device* device = _CreateDevice(allocator);
+        Device* device = _CreateWindowDevice(allocator);
         if (!device->Initialize())
         {
             Device::Destroy(device);

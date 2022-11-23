@@ -111,6 +111,14 @@ namespace he::window::win32
             }
             ::DragAcceptFiles(m_window, TRUE);
         }
+
+        if (HasFlag(m_flags, ViewFlag::AcceptTouch))
+        {
+            if (device->m_RegisterTouchWindow)
+            {
+                device->m_RegisterTouchWindow(m_window, TWF_FINETOUCH | TWF_WANTPALM);
+            }
+        }
     }
 
     ViewImpl::~ViewImpl() noexcept
@@ -119,7 +127,7 @@ namespace he::window::win32
         {
             HWND parent = ::GetParent(m_window);
             if (parent != nullptr)
-                {
+            {
                 // Transfer capture so if we started dragging from a window that later disappears, we'll
                 // still receive the MOUSEUP event.
                 ::ReleaseCapture();
@@ -300,9 +308,9 @@ namespace he::window::win32
 
     void ViewImpl::TrackCapture(const Event& ev)
     {
-        HE_ASSERT(ev.type == EventType::MouseDown || ev.type == EventType::MouseUp);
+        HE_ASSERT(ev.kind == EventKind::PointerDown || ev.kind == EventKind::PointerUp);
 
-        if (ev.type == EventType::MouseDown)
+        if (ev.kind == EventKind::PointerDown)
         {
             if (m_captureCount++ == 0)
                 ::SetCapture(m_window);

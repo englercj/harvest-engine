@@ -148,7 +148,7 @@ namespace he::assets
 
         auto guard = MakeScopeGuard([&]() { Terminate(); });
 
-        const int num = ::PathGetDriveNumberW(HE_TO_WSTR(path));
+        const int num = ::PathGetDriveNumberW(HE_TO_WCSTR(path));
         if (num == -1)
         {
             HE_LOG_ERROR(he_assets,

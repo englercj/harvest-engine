@@ -721,9 +721,7 @@ namespace he::window::win32
                 m_deviceInfo.hasPen = true;
 
             if (HasAnyFlags(digitizer, NID_INTEGRATED_TOUCH | NID_EXTERNAL_TOUCH))
-            {
                 m_deviceInfo.maxTouches = ::GetSystemMetrics(SM_MAXIMUMTOUCHES);
-            }
         }
 
         return true;

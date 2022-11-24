@@ -170,7 +170,7 @@ namespace he
     {
         const HANDLE handle = reinterpret_cast<HANDLE>(m_fd);
 
-        AsyncOp* op = Allocator::GetTemp().New<AsyncOp>();
+        AsyncOp* op = Allocator::GetDefault().New<AsyncOp>();
         ::DuplicateHandle(::GetCurrentProcess(), handle, ::GetCurrentProcess(), &op->file, 0, FALSE, DUPLICATE_SAME_ACCESS);
 
         op->overlap.Offset = (DWORD)offset;
@@ -191,7 +191,7 @@ namespace he
     {
         const HANDLE handle = reinterpret_cast<HANDLE>(m_fd);
 
-        AsyncOp* op = Allocator::GetTemp().New<AsyncOp>();
+        AsyncOp* op = Allocator::GetDefault().New<AsyncOp>();
         ::DuplicateHandle(::GetCurrentProcess(), handle, ::GetCurrentProcess(), &op->file, 0, FALSE, DUPLICATE_SAME_ACCESS);
 
         op->overlap.Offset = (DWORD)offset;
@@ -228,7 +228,7 @@ namespace he
 
         ::CloseHandle(op->file);
         op->promise.set_value(r);
-        Allocator::GetTemp().Delete(op);
+        Allocator::GetDefault().Delete(op);
     }
 
     static void HandleCompletedOverlap(AsyncOp* op)

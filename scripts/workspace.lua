@@ -75,6 +75,7 @@ he.workspace = function ()
     filter { "toolset:gcc or clang" }
         buildoptions {
             "-mcx16",                       -- Enable use of CMPXCHG16B for 16-byte aligned 128-bit objects
+            "-mxsave",                      -- Enable use of xsave/xrstor instructions
             "-fPIC",                        -- Generate position-independent code
             "-fvisibility=hidden",          -- Mark all symbols as hidden by default
             "-Wundef",                      -- A symbol that was not defined was used with a preprocessor directive.

@@ -11,7 +11,7 @@
 
 #include <future>
 
-#if defined(HE_PLATFORM_API_POSIX) && !defined(HE_PLATFORM_EMSCRIPTEN)
+#if defined(HE_PLATFORM_API_POSIX) && !defined(HE_PLATFORM_LINUX) && !defined(HE_PLATFORM_EMSCRIPTEN)
 
 #include "file_helpers.posix.h"
 

@@ -6,6 +6,8 @@
 #include "he/core/directory.h"
 #include "he/core/enum_ops.h"
 #include "he/core/file.h"
+#include "he/core/path.h"
+#include "he/core/scope_guard.h"
 
 #include <algorithm>
 #include <unordered_map>
@@ -14,8 +16,10 @@
 
 #include <errno.h>
 #include <fcntl.h>
+#include <limits.h>
 #include <unistd.h>
 #include <sys/epoll.h>
+#include <sys/inotify.h>
 #include <sys/stat.h>
 
 namespace he
@@ -58,7 +62,7 @@ namespace he
         DirectoryScanner::Entry entry;
         while (scanner.NextEntry(entry))
         {
-            fullPath.Assign(dir, dirLen);
+            fullPath.Assign(path, pathLen);
             ConcatPath(fullPath, entry.name);
 
             if (!entry.isDirectory)
@@ -94,7 +98,7 @@ namespace he
 
         const auto* info = reinterpret_cast<const inotify_event*>(impl->buf);
 
-        if (!HE_VERIFY(validBytes >= (requiredBytes + info->len),
+        if (!HE_VERIFY(impl->validBytes >= (requiredBytes + info->len),
             HE_KV(required_bytes, requiredBytes),
             HE_KV(struct_size, sizeof(inotify_event)),
             HE_KV(file_name_length, info->len),
@@ -126,8 +130,8 @@ namespace he
         // Build the name from the watch descriptor's stored name, and the event's file name
         if (info->len > 0)
         {
-            outEntry.name = impl->wdToPathMap[info->wd];
-            outEntry.name.Append(info->name, info->len - 1);
+            outEntry.path = impl->wdToPathMap[info->wd];
+            outEntry.path.Append(info->name, info->len - 1);
         }
 
         // Discover the reason for the update. If we don't find a match for one of our reasons
@@ -144,6 +148,8 @@ namespace he
             outEntry.reason = FileChangeReason::Renamed_NewName;
         else
             return PosixResult(ETIMEDOUT);
+
+        return Result::Success;
     }
 
     Result DirectoryWatcher::Open(const char* path)
@@ -153,7 +159,7 @@ namespace he
 
         auto failGuard = MakeScopeGuard([&]() { Close(); });
 
-        DirectoryWatcherImpl* impl = m_allocator.New<DirectoryWatcherImpl>(m_allocator);
+        DirectoryWatcherImpl* impl = m_allocator.New<DirectoryWatcherImpl>();
         m_impl = impl;
 
         int rc = pipe2(impl->stopPipeFds, O_NONBLOCK);
@@ -176,11 +182,11 @@ namespace he
 
         impl->stopEpollEvent.events = EPOLLIN | EPOLLET;
         impl->stopEpollEvent.data.fd = impl->stopPipeFds[StopPipeReadIndex];
-        rc = epoll_ctl(mEpollFd, EPOLL_CTL_ADD, impl->stopPipeFds[StopPipeReadIndex], &impl->stopPipeEpollEvent);
+        rc = epoll_ctl(impl->epollFd, EPOLL_CTL_ADD, impl->stopPipeFds[StopPipeReadIndex], &impl->stopEpollEvent);
         if (rc == -1)
             return Result::FromLastError();
 
-        impl->buf = static_cast<uint8_t>(m_allocator.Malloc(EventBufferSize, alignof(inotify_event)));
+        impl->buf = static_cast<uint8_t*>(m_allocator.Malloc(EventBufferSize, alignof(inotify_event)));
 
         struct stat sb;
         if (stat(path, &sb))
@@ -189,9 +195,9 @@ namespace he
         if (!S_ISDIR(sb.st_mode))
             return Result::InvalidParameter;
 
-        rc = WatchDir(impl, path);
-        if (rc == -1)
-            return Result::FromLastError();
+        Result r = WatchDir(impl, path);
+        if (!r)
+            return r;
 
         failGuard.Dismiss();
         return Result::Success;
@@ -207,26 +213,26 @@ namespace he
         if (impl->epollFd != -1)
         {
             write(impl->stopPipeFds[StopPipeWriteIndex], "s", 1);
-            epoll_ctl(impl->epollFd, EPOLL_CTL_DEL, impl->notifyFd, 0);
-            epoll_ctl(impl->epollFd, EPOLL_CTL_DEL, impl->stopPipeFds[StopPipeReadIdx], 0);
+            epoll_ctl(impl->epollFd, EPOLL_CTL_DEL, impl->inotifyFd, 0);
+            epoll_ctl(impl->epollFd, EPOLL_CTL_DEL, impl->stopPipeFds[StopPipeReadIndex], 0);
             close(impl->epollFd);
         }
 
-        if (impl->notifyFd != -1)
-            close(impl->notifyFd);
+        if (impl->inotifyFd != -1)
+            close(impl->inotifyFd);
 
-        if (impl->stopPipeFds[StopPipeReadIdx] != -1)
-            close(impl->stopPipeFds[StopPipeReadIdx]);
+        if (impl->stopPipeFds[StopPipeReadIndex] != -1)
+            close(impl->stopPipeFds[StopPipeReadIndex]);
 
-        if (impl->stopPipeFds[StopPipeWriteIdx] != -1)
-            close(impl->stopPipeFds[StopPipeWriteIdx]);
+        if (impl->stopPipeFds[StopPipeWriteIndex] != -1)
+            close(impl->stopPipeFds[StopPipeWriteIndex]);
 
         m_allocator.Free(impl->buf);
         m_allocator.Delete(impl);
         m_impl = nullptr;
     }
 
-    Result WaitForEntry(Entry& outEntry, Duration timeout)
+    Result DirectoryWatcher::WaitForEntry(Entry& outEntry, Duration timeout)
     {
         if (!HE_VERIFY(m_impl))
             return false;

@@ -17,19 +17,25 @@ namespace he
         /// will primarily be blocking waits on system IO functions.
         TaskExecutor* executor{ nullptr };
 
-        /// Configuration for the thread pool executor which is used on posix systems.
-        /// If `executor` is set, that object is used, and these values are ignored.
-        struct
-        {
-            uint32_t threadCount{ 0 }; ///< A value of zero will choose a number of threads between 4 and 8 based on hardware.
-            uint64_t threadAffinity{ 0 }; ///< Affinity to use for spawned threads. Only considered when non-zero.
-        } pool;
-
         /// Configuration for the IOCP backend used on win32 systems.
         struct
         {
-            uint64_t threadAffinity{ 0 }; ///< Affinity to use for the IOCP thread. Only considered when non-zero.
+            /// Affinity to use for the IOCP thread. Only considered when non-zero.
+            uint64_t threadAffinity{ 0 };
         } iocp;
+
+        /// Configuration for the io_uring backend used on linux systems.
+        struct
+        {
+            /// The maximum number of requests the io_uring queue can hold. The ReadAsync and
+            /// WriteAsync functions will stall until an additional slot is available if this
+            /// capacity is reached.
+            /// Value must be in the range [128, 8192].
+            uint16_t capacity{ 256 };
+
+            /// Affinity to use for the completion queue thread. Only considered when non-zero.
+            uint64_t threadAffinity{ 0 };
+        } iouring;
     };
 
     /// Result of an asynchronous file operation.

@@ -65,15 +65,16 @@ namespace he
         value.Set(v);
     };
 
-    struct SystemInfoImpl : SystemImpl
+    struct SystemInfoImpl : SystemInfo
     {
         SystemInfoImpl()
         {
             utsname data;
-            if (uname(&data) != 0)
-                return info;
+            const int rc = uname(&data);
+            HE_UNUSED(rc);
+            HE_ASSERT(rc == 0);
 
-            system = data.sysname;
+            platform = data.sysname;
 
             const char* major = data.release;
             const char* majorEnd = String::Find(major, '.');
@@ -85,8 +86,6 @@ namespace he
 
             const char* patch = minorEnd + 1;
             version.patch = String::ToInteger<uint32_t>(patch);
-
-            return info;
         }
     };
 

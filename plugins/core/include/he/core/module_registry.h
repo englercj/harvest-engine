@@ -45,11 +45,7 @@ namespace he
     template <typename T>
     struct StaticModuleRegistrar final
     {
-        explicit StaticModuleRegistrar(const char* name)
-        {
-            const auto cb = ModuleRegistry::CreateModuleDelegate::Make(&StaticModuleRegistrar::CreateModule);
-            ModuleRegistry::RegisterStaticModule(name, TypeInfo::Get<T>(), cb);
-        }
+        explicit StaticModuleRegistrar(const char* name);
 
         static UniquePtr<Module> CreateModule()
         {
@@ -172,6 +168,13 @@ namespace he
 
     // --------------------------------------------------------------------------------------------
     // Inline implementations
+
+    template <typename T>
+    StaticModuleRegistrar<T>::StaticModuleRegistrar(const char* name)
+    {
+        const auto cb = ModuleRegistry::CreateModuleDelegate::Make(&StaticModuleRegistrar::CreateModule);
+        ModuleRegistry::RegisterStaticModule(name, TypeInfo::Get<T>(), cb);
+    }
 
     template <typename T>
     inline void ModuleRegistry::RegisterApi(T& instance)

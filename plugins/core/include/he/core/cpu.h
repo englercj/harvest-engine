@@ -77,11 +77,11 @@
     #endif
 #else
     #if HE_CPU_ARM
-        #define HE_SPIN_WAIT_PAUSE()    (__asm__ __volatile__("yield;" ::: "memory"))
+        #define HE_SPIN_WAIT_PAUSE()    asm volatile("yield;" ::: "memory")
     #elif HE_CPU_WASM
         #define HE_SPIN_WAIT_PAUSE()    _mm_pause()
     #elif HE_CPU_X86
-        #define HE_SPIN_WAIT_PAUSE()    (__asm__ __volatile__("pause;" ::: "memory"))
+        #define HE_SPIN_WAIT_PAUSE()    asm volatile("pause;" ::: "memory")
     #endif
 #endif
 

@@ -29,7 +29,7 @@ namespace he
         static_assert(__CPU_SETSIZE >= (sizeof(mask) * 8));
 
         const CpuInfo& info = GetCpuInfo();
-        const uint32_t len = Min(info.threadCount, (sizeof(mask) * 8));
+        const uint32_t len = Min(info.threadCount, static_cast<uint32_t>(sizeof(mask) * 8));
 
         cpu_set_t set;
         CPU_ZERO(&set);

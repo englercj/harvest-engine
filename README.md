@@ -15,6 +15,7 @@ Install system dependencies: `apt install build-essential libx11-dev libxi-dev l
 Then run `bootstrap.sh` from within the cloned folder.
 
 Note: If you want to use clang instead, then run `boostrap.sh gmake2 --cc=clang`
+Note: v2.2 of liburing is required,
 
 ## Compiler Support
 
@@ -22,8 +23,8 @@ The recommended version is the version that is actively used for development and
 
 | Compiler |    Minimum Version    |  Recommended Version  |
 | -------- | --------------------- | --------------------- |
-| MSVC     | 14.25 (VS2019 v16.5)  | 14.30 (VS2022 v17.0)  |
-| GCC      | 10.1.0                | 11.2.0                |
+| MSVC     | 14.29 (VS2019 v16.10) | 14.30 (VS2022 v17.0)  |
+| GCC      | 11.2.0                | 11.2.0                |
 | Clang    | 11.0.0                | 14.0.0                |
 
 ## Platform Support
@@ -38,7 +39,7 @@ The recommended version is the version that is actively used for development and
 |     Platform     |         Status         |  Minimum SDK  | Notes |
 | ---------------- | ---------------------- | ------------- | ----- |
 | Windows          | :last_quarter_moon:    | 10.0.18362.0  | Win 10 1909+ or Win 11 required |
-| Linux            | :waning_crescent_moon: | glibc 2.30    | C++20 standard library required |
+| Linux            | :waning_crescent_moon: | kernel 5.18   | glibc 2.30+, liburing v2.2+ required |
 | macOS            | :new_moon:             | ?             | |
 | Android          | :new_moon:             | ?             | |
 | iOS              | :new_moon:             | ?             | |

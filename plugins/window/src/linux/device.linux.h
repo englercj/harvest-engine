@@ -4,6 +4,7 @@
 
 #include "gamepad.linux.h"
 
+#include "he/math/types.h"
 #include "he/window/device.h"
 
 #include <atomic>
@@ -106,14 +107,14 @@ namespace he::window::linux
         uint32_t GetMonitorCount() const override;
         uint32_t GetMonitors(Monitor* monitors, uint32_t maxCount) const override;
 
+        Gamepad& GetGamepad(uint32_t index) override;
+
         void ShowCursor(bool show);
         void CenterCursor();
 
         ViewImpl* GetViewFromWindow(Window win) const;
         Cursor GetActiveCursor() const;
         void HandleXEvent(XEvent& event);
-
-        void UpdateGamepads();
 
     public:
         Application* m_app{ nullptr };

@@ -30,8 +30,8 @@
     #undef  HE_COMPILER_CLANG
     #define HE_COMPILER_CLANG               (__clang_major__ * 10000 + __clang_minor__ * 100 + __clang_patchlevel__)
 
-    #if HE_COMPILER_CLANG < 100000
-        #error "Clang 10+ is required."
+    #if HE_COMPILER_CLANG < 110000
+        #error "Clang 11+ is required."
     #endif
 
     #define HE_FUNC_SIG                     __PRETTY_FUNCTION__
@@ -82,9 +82,9 @@
     #undef  HE_COMPILER_MSVC
     #define HE_COMPILER_MSVC                (_MSC_VER)
 
-    // Visual Studio 2019 >= 16.9 required
+    // Visual Studio 2019 >= 16.10 required
     #if HE_COMPILER_MSVC < 1929
-        #error "MSVC 14.29 (VS2019 v16.9) is required."
+        #error "MSVC 14.29 (VS2019 v16.10) is required."
     #endif
 
     #define HE_FUNC_SIG                     __FUNCSIG__

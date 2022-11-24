@@ -54,7 +54,14 @@ mkdir -p $PREMAKE_DIR
 
 if [[ ! -f "$PREMAKE_PATH" ]]; then
     echo "Downloading premake..."
-    curl -L -s -o $PREMAKE_PATH $PREMAKE_DL_URL
+    if command -v "curl" &> /dev/null; then
+        curl -L -s -o $PREMAKE_PATH $PREMAKE_DL_URL
+    elif command -v "wget" &> /dev/null; then
+        wget -O $PREMAKE_PATH $PREMAKE_DL_URL
+    else
+        echo "Unable to download premake because neither wget nor curl are available."
+        exit 1
+    fi
 fi
 
 if [[ ! -f "$PREMAKE_DIR/$PREMAKE_EXE" ]]; then

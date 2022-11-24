@@ -54,7 +54,7 @@ namespace he
     /// \param[in] source The source information for this log entry.
     /// \param[in] kvs An array of key-value pairs.
     /// \param[in] count The size of the `kvs` array.
-    void DebuggerSink(const LogSource& source, const KeyValue* kvs, uint32_t count);
+    void DebuggerSink(const void*, const LogSource& source, const KeyValue* kvs, uint32_t count);
 
     /// Log sink that logs to stdout (and stderr for warnings and errors).
     ///
@@ -62,5 +62,5 @@ namespace he
     /// \param[in] source The source information for this log entry.
     /// \param[in] kvs An array of key-value pairs.
     /// \param[in] count The size of the `kvs` array.
-    void ConsoleSink(const LogSource& source, const KeyValue* kvs, uint32_t count);
+    void ConsoleSink(const void*, const LogSource& source, const KeyValue* kvs, uint32_t count);
 }

@@ -28,7 +28,6 @@ namespace he
     {
     public:
         using ReturnType = R;
-        using InvocableType = R(Args...);
         using FunctionType = R(const void*, Args...);
 
     public:
@@ -53,22 +52,12 @@ namespace he
             return Delegate(func, payload);
         }
 
-        static Delegate Make(InvocableType* func) noexcept
-        {
-            return Delegate(func);
-        }
-
     public:
         Delegate() = default;
 
         Delegate(FunctionType* func, const void* payload = nullptr) noexcept
         {
             Set(func, payload);
-        }
-
-        Delegate(InvocableType* func) noexcept
-        {
-            Set(func);
         }
 
         template <auto F>
@@ -135,16 +124,6 @@ namespace he
         {
             m_payload = payload;
             m_func = func;
-        }
-
-        void Set(InvocableType* func) noexcept
-        {
-            m_payload = func;
-            m_func = [](const void* payload, Args... args) -> R
-            {
-                InvocableType* f = static_cast<InvocableType*>(const_cast<void*>(payload));
-                return f(Forward<Args>(args)...);
-            };
         }
 
         void Clear() noexcept

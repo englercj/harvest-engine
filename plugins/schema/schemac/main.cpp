@@ -65,7 +65,7 @@ static bool CompileFile(const char* path, const AppArgs& args)
     return true;
 }
 
-static void LogToStdOut(const LogSource& source, const KeyValue* kvs, uint32_t count)
+static void LogToStdOut(const void*, const LogSource& source, const KeyValue* kvs, uint32_t count)
 {
     // We specially format the schema_compiler output so it gets picked up by the error window.
     if (String::Equal(source.category, "schema_compiler") && count >= 4)
@@ -96,7 +96,7 @@ static void LogToStdOut(const LogSource& source, const KeyValue* kvs, uint32_t c
         }
     }
 
-    ConsoleSink(source, kvs, count);
+    ConsoleSink(nullptr, source, kvs, count);
 }
 
 #include "he/core/main.inl"

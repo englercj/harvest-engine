@@ -47,7 +47,7 @@ namespace he
     {
         explicit StaticModuleRegistrar(const char* name);
 
-        static UniquePtr<Module> CreateModule()
+        static UniquePtr<Module> CreateModule(const void*)
         {
             return MakeUnique<T>();
         }

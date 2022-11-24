@@ -106,7 +106,7 @@ namespace he
         m_file.Write(m_buf.Data(), m_buf.Size());
     }
 
-    void DebuggerSink(const LogSource& source, const KeyValue* kvs, uint32_t count)
+    void DebuggerSink(const void*, const LogSource& source, const KeyValue* kvs, uint32_t count)
     {
         String msg(Allocator::GetTemp());
 
@@ -136,7 +136,7 @@ namespace he
         PrintToDebugger(msg.Data());
     }
 
-    void ConsoleSink(const LogSource& source, const KeyValue* kvs, uint32_t count)
+    void ConsoleSink(const void*, const LogSource& source, const KeyValue* kvs, uint32_t count)
     {
         String msg(Allocator::GetTemp());
 

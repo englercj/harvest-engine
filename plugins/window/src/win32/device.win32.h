@@ -78,6 +78,7 @@ namespace he::window::win32
 
         Gamepad& GetGamepad(uint32_t index) override;
 
+    public:
         void SyncCursor() const;
         void ShowCursor(bool show);
         void CenterCursor();

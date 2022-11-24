@@ -8,7 +8,7 @@
 
 #if defined(HE_PLATFORM_LINUX)
 
-#include "x11_all.h"
+#include "x11_all.linux.h"
 
 namespace he::window::linux
 {
@@ -365,7 +365,7 @@ namespace he::window::linux
         int dstX = 0;
         int dstY = 0;
         Window childWin = X11_None;
-        Bool result = m_device->m_XTranslateCoordinates(m_device->m_display, m_window, m_device->m_root, srcX, srcY, &dstX, &dstY, &childWin);
+        X11_Bool result = m_device->m_XTranslateCoordinates(m_device->m_display, m_window, m_device->m_root, srcX, srcY, &dstX, &dstY, &childWin);
 
         if (result == False)
             return pos;
@@ -380,7 +380,7 @@ namespace he::window::linux
         int dstX = 0;
         int dstY = 0;
         Window childWin = X11_None;
-        Bool result = m_device->m_XTranslateCoordinates(m_device->m_display, m_device->m_root, m_window, srcX, srcY, &dstX, &dstY, &childWin);
+        X11_Bool result = m_device->m_XTranslateCoordinates(m_device->m_display, m_device->m_root, m_window, srcX, srcY, &dstX, &dstY, &childWin);
 
         if (result == False)
             return pos;
@@ -390,9 +390,9 @@ namespace he::window::linux
 
     void ViewImpl::TrackCapture(const Event& ev)
     {
-        HE_ASSERT(ev.type == EventType::MouseDown || ev.type == EventType::MouseUp);
+        HE_ASSERT(ev.kind == EventKind::PointerDown || ev.kind == EventKind::PointerUp);
 
-        if (ev.type == EventType::MouseDown)
+        if (ev.kind == EventKind::PointerDown)
         {
             if (m_captureCount++ == 0)
                 CaptureMouse();

@@ -21,6 +21,7 @@ namespace he::window::win32
 
         Result SetVibration(float leftMotorSpeed, float rightMotorSpeed) override;
 
+    public:
         void Update(bool refreshConnectivity);
 
     private:

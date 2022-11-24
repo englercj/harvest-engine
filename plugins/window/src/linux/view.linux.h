@@ -6,7 +6,7 @@
 
 #if defined(HE_PLATFORM_LINUX)
 
-#include "x11_all.h"
+#include "x11_all.linux.h"
 
 namespace he::window
 {

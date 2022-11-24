@@ -14,7 +14,7 @@ namespace he::window
             return 0.0f;
 
         const uint32_t index = static_cast<uint32_t>(axis);
-        HE_ASSERT(index >= 0 && index < HE_LENGTH_OF(m_axes));
+        HE_ASSERT(index < HE_LENGTH_OF(m_axes));
         return m_axes[index];
     }
 
@@ -61,7 +61,7 @@ namespace he::window
             return;
 
         const uint32_t index = static_cast<uint32_t>(axis);
-        HE_ASSERT(index >= 0 && index < HE_LENGTH_OF(m_axes));
+        HE_ASSERT(index < HE_LENGTH_OF(m_axes));
 
         if (m_axes[index] == value)
             return;

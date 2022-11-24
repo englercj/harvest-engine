@@ -6,79 +6,81 @@
 
 #include "he/math/types.h"
 #include "he/window/device.h"
+#include "he/window/event.h"
+#include "he/window/pointer.h"
 
 #include <atomic>
 
 #if defined(HE_PLATFORM_LINUX)
 
-#include "x11_all.h"
+#include "x11_all.linux.h"
 
 namespace he::window::linux
 {
     class ViewImpl;
 
-    using Pfn_XChangeProperty = int(*)(Display*,Window,Atom,Atom,int,int,const unsigned char*,int);
+    using Pfn_XChangeProperty = int(*)(Display*, Window, Atom, Atom, int, int, const unsigned char*, int);
     using Pfn_XCloseDisplay = int(*)(Display*);
     using Pfn_XCloseIM = Status(*)(XIM);
-    using Pfn_XCreateFontCursor = Cursor(*)(Display*,unsigned int);
-    using Pfn_XCreateBitmapFromData = Pixmap(*)(Display*,Drawable,const char*,unsigned int,unsigned int);
-    using Pfn_XCreateIC = XIC(*)(XIM,...);
-    using Pfn_XCreatePixmapCursor = Cursor(*)(Display*,Pixmap,Pixmap,XColor*,XColor*,unsigned int,unsigned int);
-    using Pfn_XCreateWindow = Window(*)(Display*,Window,int,int,unsigned int,unsigned int,unsigned int,int,unsigned int,Visual*,unsigned long,XSetWindowAttributes*);
-    using Pfn_XDefineCursor = int(*)(Display*,Window,Cursor);
-    using Pfn_XDeleteContext = int(*)(Display*,XID,XContext);
+    using Pfn_XCreateFontCursor = Cursor(*)(Display*, unsigned int);
+    using Pfn_XCreateBitmapFromData = Pixmap(*)(Display*, Drawable, const char*, unsigned int, unsigned int);
+    using Pfn_XCreateIC = XIC(*)(XIM, ...);
+    using Pfn_XCreatePixmapCursor = Cursor(*)(Display*, Pixmap, Pixmap, XColor*, XColor*, unsigned int, unsigned int);
+    using Pfn_XCreateWindow = Window(*)(Display*, Window, int, int, unsigned int, unsigned int, unsigned int, int, unsigned int, Visual*, unsigned long, XSetWindowAttributes*);
+    using Pfn_XDefineCursor = int(*)(Display*, Window, Cursor);
+    using Pfn_XDeleteContext = int(*)(Display*, XID, XContext);
     using Pfn_XDestroyIC = void(*)(XIC);
-    using Pfn_XDestroyWindow = int(*)(Display*,Window);
-    using Pfn_XFilterEvent = Bool(*)(XEvent*,Window);
-    using Pfn_XFindContext = int(*)(Display*,XID,XContext,XPointer*);
+    using Pfn_XDestroyWindow = int(*)(Display*, Window);
+    using Pfn_XFilterEvent = X11_Bool(*)(XEvent*, Window);
+    using Pfn_XFindContext = int(*)(Display*, XID, XContext, XPointer*);
     using Pfn_XFlush = int(*)(Display*);
     using Pfn_XFree = int(*)(void*);
-    using Pfn_XFreeCursor = int(*)(Display*,Cursor);
-    using Pfn_XFreeEventData = void(*)(Display*,XGenericEventCookie*);
-    using Pfn_XFreePixmap = int(*)(Display*,Pixmap);
-    using Pfn_XGetEventData = Bool(*)(Display*,XGenericEventCookie*);
-    using Pfn_XGetInputFocus = int(*)(Display*,Window*,int*);
-    using Pfn_XGetWMNormalHints = Status(*)(Display*,Window,XSizeHints*,long*);
-    using Pfn_XGetWindowAttributes = Status(*)(Display*,Window,XWindowAttributes*);
-    using Pfn_XGetWindowProperty = int(*)(Display*,Window,Atom,long,long,Bool,Atom,Atom*,int*,unsigned long*,unsigned long*,unsigned char**);
-    using Pfn_XGrabPointer = int(*)(Display*,Window,Bool,unsigned int,int,int,Window,Cursor,Time);
-    using Pfn_XIconifyWindow = Status(*)(Display*,Window,int);
+    using Pfn_XFreeCursor = int(*)(Display*, Cursor);
+    using Pfn_XFreeEventData = void(*)(Display*, XGenericEventCookie*);
+    using Pfn_XFreePixmap = int(*)(Display*, Pixmap);
+    using Pfn_XGetEventData = X11_Bool(*)(Display*, XGenericEventCookie*);
+    using Pfn_XGetInputFocus = int(*)(Display*, Window*, int*);
+    using Pfn_XGetWMNormalHints = Status(*)(Display*, Window, XSizeHints*, long*);
+    using Pfn_XGetWindowAttributes = Status(*)(Display*, Window, XWindowAttributes*);
+    using Pfn_XGetWindowProperty = int(*)(Display*, Window, Atom, long, long, X11_Bool, Atom, Atom*, int*, unsigned long*, unsigned long*, unsigned char**);
+    using Pfn_XGrabPointer = int(*)(Display*, Window, X11_Bool, unsigned int, int, int, Window, Cursor, Time);
+    using Pfn_XIconifyWindow = Status(*)(Display*, Window, int);
     using Pfn_XInitThreads = Status(*)(void);
-    using Pfn_XInternAtom = Atom(*)(Display*,const char*,Bool);
+    using Pfn_XInternAtom = Atom(*)(Display*, const char*, X11_Bool);
     using Pfn_XLookupKeysym = KeySym(*)(XKeyEvent *key_event, int index);
-    using Pfn_XMapRaised = int(*)(Display*,Window);
-    using Pfn_XMapWindow = int(*)(Display*,Window);
-    using Pfn_XMoveResizeWindow = int(*)(Display*,Window,int,int,unsigned int,unsigned int);
-    using Pfn_XMoveWindow = int(*)(Display*,Window,int,int);
-    using Pfn_XNextEvent = int(*)(Display*,XEvent*);
+    using Pfn_XMapRaised = int(*)(Display*, Window);
+    using Pfn_XMapWindow = int(*)(Display*, Window);
+    using Pfn_XMoveResizeWindow = int(*)(Display*, Window, int, int, unsigned int, unsigned int);
+    using Pfn_XMoveWindow = int(*)(Display*, Window, int, int);
+    using Pfn_XNextEvent = int(*)(Display*, XEvent*);
     using Pfn_XOpenDisplay = Display*(*)(const char*);
-    using Pfn_XOpenIM = XIM(*)(Display*,XrmDatabase*,char*,char*);
-    using Pfn_XPeekEvent = int(*)(Display*,XEvent*);
+    using Pfn_XOpenIM = XIM(*)(Display*, XrmDatabase*, char*, char*);
+    using Pfn_XPeekEvent = int(*)(Display*, XEvent*);
     using Pfn_XPending = int(*)(Display*);
-    using Pfn_XQueryExtension = Bool(*)(Display*,const char*,int*,int*,int*);
-    using Pfn_XQueryPointer = Bool(*)(Display*,Window,Window*,Window*,int*,int*,int*,int*,unsigned int*);
-    using Pfn_XRaiseWindow = int(*)(Display*,Window);
+    using Pfn_XQueryExtension = X11_Bool(*)(Display*, const char*, int*, int*, int*);
+    using Pfn_XQueryPointer = X11_Bool(*)(Display*, Window, Window*, Window*, int*, int*, int*, int*, unsigned int*);
+    using Pfn_XRaiseWindow = int(*)(Display*, Window);
     using Pfn_XRefreshKeyboardMapping = int(*)(XMappingEvent*);
-    using Pfn_XResizeWindow = int(*)(Display*,Window,unsigned int,unsigned int);
-    using Pfn_XSaveContext = int(*)(Display*,XID,XContext,const char*);
-    using Pfn_XSendEvent = Status(*)(Display*,Window,Bool,long,XEvent*);
-    using Pfn_XSetInputFocus = int(*)(Display*,Window,int,Time);
-    using Pfn_XSetWMProtocols = Status(*)(Display*,Window,Atom*,int);
-    using Pfn_XStoreName = int(*)(Display*,Window,const char*);
-    using Pfn_XTranslateCoordinates = Bool(*)(Display*,Window,Window,int,int,int*,int*,Window*);
-    using Pfn_XUngrabPointer = int(*)(Display*,Time);
-    using Pfn_XUnmapWindow = int(*)(Display*,Window);
+    using Pfn_XResizeWindow = int(*)(Display*, Window, unsigned int, unsigned int);
+    using Pfn_XSaveContext = int(*)(Display*, XID, XContext, const char*);
+    using Pfn_XSendEvent = Status(*)(Display*, Window, X11_Bool, long, XEvent*);
+    using Pfn_XSetInputFocus = int(*)(Display*, Window, int, Time);
+    using Pfn_XSetWMProtocols = Status(*)(Display*, Window, Atom*, int);
+    using Pfn_XStoreName = int(*)(Display*, Window, const char*);
+    using Pfn_XTranslateCoordinates = X11_Bool(*)(Display*, Window, Window, int, int, int*, int*, Window*);
+    using Pfn_XUngrabPointer = int(*)(Display*, Time);
+    using Pfn_XUnmapWindow = int(*)(Display*, Window);
     using Pfn_XUnsetICFocus = void(*)(XIC);
-    using Pfn_XWarpPointer = int(*)(Display*,Window,Window,int,int,unsigned int,unsigned int,int,int);
-    using Pfn_XkbSetDetectableAutoRepeat = Bool(*)(Display*,Bool,Bool*);
+    using Pfn_XWarpPointer = int(*)(Display*, Window, Window, int, int, unsigned int, unsigned int, int, int);
+    using Pfn_XkbSetDetectableAutoRepeat = X11_Bool(*)(Display*, X11_Bool, X11_Bool*);
     using Pfn_XrmUniqueQuark = XrmQuark(*)();
-    using Pfn_Xutf8LookupString = int(*)(XIC,XKeyPressedEvent*,char*,int,KeySym*,Status*);
-    using Pfn_Xutf8SetWMProperties = void(*)(Display*,Window,const char*,const char*,char**,int,XSizeHints*,XWMHints*,XClassHint*);
+    using Pfn_Xutf8LookupString = int(*)(XIC, XKeyPressedEvent*, char*, int, KeySym*, Status*);
+    using Pfn_Xutf8SetWMProperties = void(*)(Display*, Window, const char*, const char*, char**, int, XSizeHints*, XWMHints*, XClassHint*);
 
-    using Pfn_XIQueryVersion = Status(*)(Display*,int*,int*);
-    using Pfn_XISelectEvents = int(*)(Display*,Window,XIEventMask*,int);
+    using Pfn_XIQueryVersion = Status(*)(Display*, int*, int*);
+    using Pfn_XISelectEvents = int(*)(Display*, Window, XIEventMask*, int);
 
-    class DeviceImpl : public Device
+    class DeviceImpl final : public Device
     {
     public:
         DeviceImpl(Allocator& allocator) noexcept;
@@ -89,7 +91,7 @@ namespace he::window::linux
         int Run(Application& app, const ViewDesc& desc) override;
         void Quit(int rc) override;
 
-        bool HasHighDefMouse() const override;
+        const DeviceInfo& GetInfo() const override;
 
         View* CreateView(const ViewDesc& desc) override;
         void DestroyView(View* view) override;
@@ -100,7 +102,7 @@ namespace he::window::linux
         Vec2f GetCursorPos(View* view) const override;
         void SetCursorPos(View* view, const Vec2f& pos) override;
 
-        void SetCursor(MouseCursor cursor) override;
+        void SetCursor(PointerCursor cursor) override;
 
         void SetCursorRelativeMode(bool relativeMode) override;
 
@@ -109,6 +111,7 @@ namespace he::window::linux
 
         Gamepad& GetGamepad(uint32_t index) override;
 
+    public:
         void ShowCursor(bool show);
         void CenterCursor();
 
@@ -123,19 +126,19 @@ namespace he::window::linux
         XContext m_context{ X11_None };
         XIM m_im{ nullptr };
         int32_t m_xiMajorOpcode{ 0 };
-        MouseCursor m_cursor{ MouseCursor::Arrow };
+        PointerCursor m_cursor{ PointerCursor::Arrow };
         Cursor m_hiddenCursor{ X11_None };
         Pixmap m_hiddenCursorBitmap{ X11_None };
         std::atomic<int32_t> m_returnCode{ 0 };
         std::atomic<bool> m_running{ true };
         bool m_cursorRelativeMode{ false };
         bool m_cursorVisible{ true };
-        bool m_hasHighDefMouse{ false };
         bool m_hasDetectableAutoRepeat{ false };
         bool m_viewClipped{ false };
         Vec2f m_cursorRestorePosition{ 0, 0 };
+        DeviceInfo m_deviceInfo{};
 
-        Cursor m_cursors[static_cast<int32_t>(MouseCursor::_Count)];
+        Cursor m_cursors[static_cast<int32_t>(PointerCursor::_Count)];
         Atom m_atomNetActiveWindow{ X11_None };
         Atom m_atomNetWMPing{ X11_None };
         Atom m_atomNetWMState{ X11_None };
@@ -215,6 +218,7 @@ namespace he::window::linux
         Pfn_XISelectEvents m_XISelectEvents{ nullptr };
 
         GamepadImpl m_gamepads[MaxGamepads];
+        bool m_refreshGamepadConnectivity{ true };
     };
 }
 

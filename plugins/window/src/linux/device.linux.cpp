@@ -1,11 +1,15 @@
 // Copyright Chad Engler
 
+// TODO: File drop, pen, touch
+
 #include "device.linux.h"
 
 #include "gamepad.linux.h"
 #include "view.linux.h"
 
 #include "he/core/log.h"
+#include "he/math/vec2.h"
+#include "he/window/application.h"
 #include "he/window/event.h"
 #include "he/window/key.h"
 
@@ -14,7 +18,7 @@
 #include <dlfcn.h>
 #include <fcntl.h>
 
-#include "x11_all.h"
+#include "x11_all.linux.h"
 
 namespace he::window::linux
 {
@@ -145,15 +149,6 @@ namespace he::window::linux
 
     DeviceImpl::~DeviceImpl() noexcept
     {
-        for (int32_t& fd : m_gamepadFds)
-        {
-            if (fd != -1)
-            {
-                close(fd);
-                fd = -1;
-            }
-        }
-
         if (m_xi)
             dlclose(m_xi);
 
@@ -167,7 +162,7 @@ namespace he::window::linux
                     m_XFreePixmap(m_display, m_hiddenCursorBitmap);
                 }
 
-                for (uint32_t i = 0; i < static_cast<uint32_t>(MouseCursor::_Count); ++i)
+                for (uint32_t i = 0; i < static_cast<uint32_t>(PointerCursor::_Count); ++i)
                 {
                     if (m_cursors[i] != X11_None)
                         m_XFreeCursor(m_display, m_cursors[i]);
@@ -286,8 +281,8 @@ namespace he::window::linux
         // repeated key presses and prevent it from sending virtual key up events.
         if (m_XkbSetDetectableAutoRepeat)
         {
-            Bool supported = False;
-            Bool enabled = m_XkbSetDetectableAutoRepeat(m_display, true, &supported);
+            X11_Bool supported = False;
+            X11_Bool enabled = m_XkbSetDetectableAutoRepeat(m_display, true, &supported);
 
             if (enabled == True && supported == True)
                 m_hasDetectableAutoRepeat = true;
@@ -300,6 +295,9 @@ namespace he::window::linux
             HE_LOGF_ERROR(he_window, "XOpenIM failed.");
             return false;
         }
+
+        // Always have support for mouse
+        m_deviceInfo.hasMouse = true;
 
         // Detect raw mouse input support
         m_xi = dlopen("libXi.so.6", RTLD_LAZY | RTLD_LOCAL);
@@ -314,16 +312,16 @@ namespace he::window::linux
                 if (m_XQueryExtension(m_display, "XInputExtension", &m_xiMajorOpcode, &eventBase, &errorBase))
                 {
                     int majorVer, minorVer;
-                    if (m_XIQueryVersion(m_display, &majorVer, &minorVer) == Success)
+                    if (m_XIQueryVersion(m_display, &majorVer, &minorVer) == X11_Success)
                     {
-                        m_hasHighDefMouse = true;
+                        m_deviceInfo.hasHighDefMouse = true;
                     }
                 }
             }
         }
 
         // Enable raw mouse input support
-        if (m_hasHighDefMouse)
+        if (m_deviceInfo.hasHighDefMouse)
         {
             XIEventMask em;
             uint8_t mask[XIMaskLen(XI_RawMotion)]{};
@@ -343,18 +341,18 @@ namespace he::window::linux
         m_hiddenCursor = m_XCreatePixmapCursor(m_display, m_hiddenCursorBitmap, m_hiddenCursorBitmap, &dummy, &dummy, 0, 0);
 
         // Create standard cursors
-        m_cursors[static_cast<uint32_t>(MouseCursor::Arrow)] = m_XCreateFontCursor(m_display, XC_left_ptr);
-        m_cursors[static_cast<uint32_t>(MouseCursor::Hand)] = m_XCreateFontCursor(m_display, XC_hand2);
-        m_cursors[static_cast<uint32_t>(MouseCursor::NotAllowed)] = m_XCreateFontCursor(m_display, XC_X_cursor);
-        m_cursors[static_cast<uint32_t>(MouseCursor::TextInput)] = m_XCreateFontCursor(m_display, XC_xterm);
-        m_cursors[static_cast<uint32_t>(MouseCursor::ResizeAll)] = m_XCreateFontCursor(m_display, XC_fleur);
-        m_cursors[static_cast<uint32_t>(MouseCursor::ResizeTopLeft)] = m_XCreateFontCursor(m_display, XC_top_left_corner);
-        m_cursors[static_cast<uint32_t>(MouseCursor::ResizeTopRight)] = m_XCreateFontCursor(m_display, XC_top_right_corner);
-        m_cursors[static_cast<uint32_t>(MouseCursor::ResizeBottomLeft)] = m_XCreateFontCursor(m_display, XC_bottom_left_corner);
-        m_cursors[static_cast<uint32_t>(MouseCursor::ResizeBottomRight)] = m_XCreateFontCursor(m_display, XC_bottom_right_corner);
-        m_cursors[static_cast<uint32_t>(MouseCursor::ResizeHorizontal)] = m_XCreateFontCursor(m_display, XC_sb_h_double_arrow);
-        m_cursors[static_cast<uint32_t>(MouseCursor::ResizeVertical)] = m_XCreateFontCursor(m_display, XC_sb_v_double_arrow);
-        m_cursors[static_cast<uint32_t>(MouseCursor::Wait)] = m_XCreateFontCursor(m_display, XC_watch);
+        m_cursors[static_cast<uint32_t>(PointerCursor::Arrow)] = m_XCreateFontCursor(m_display, XC_left_ptr);
+        m_cursors[static_cast<uint32_t>(PointerCursor::Hand)] = m_XCreateFontCursor(m_display, XC_hand2);
+        m_cursors[static_cast<uint32_t>(PointerCursor::NotAllowed)] = m_XCreateFontCursor(m_display, XC_X_cursor);
+        m_cursors[static_cast<uint32_t>(PointerCursor::TextInput)] = m_XCreateFontCursor(m_display, XC_xterm);
+        m_cursors[static_cast<uint32_t>(PointerCursor::ResizeAll)] = m_XCreateFontCursor(m_display, XC_fleur);
+        m_cursors[static_cast<uint32_t>(PointerCursor::ResizeTopLeft)] = m_XCreateFontCursor(m_display, XC_top_left_corner);
+        m_cursors[static_cast<uint32_t>(PointerCursor::ResizeTopRight)] = m_XCreateFontCursor(m_display, XC_top_right_corner);
+        m_cursors[static_cast<uint32_t>(PointerCursor::ResizeBottomLeft)] = m_XCreateFontCursor(m_display, XC_bottom_left_corner);
+        m_cursors[static_cast<uint32_t>(PointerCursor::ResizeBottomRight)] = m_XCreateFontCursor(m_display, XC_bottom_right_corner);
+        m_cursors[static_cast<uint32_t>(PointerCursor::ResizeHorizontal)] = m_XCreateFontCursor(m_display, XC_sb_h_double_arrow);
+        m_cursors[static_cast<uint32_t>(PointerCursor::ResizeVertical)] = m_XCreateFontCursor(m_display, XC_sb_v_double_arrow);
+        m_cursors[static_cast<uint32_t>(PointerCursor::Wait)] = m_XCreateFontCursor(m_display, XC_watch);
 
         return true;
     }
@@ -366,12 +364,6 @@ namespace he::window::linux
         // Create root window
         ViewImpl view(this, desc);
         view.SetVisible(true, true);
-
-        // Open gamepad files
-        for (GamepadImpl& pad : m_gamepads)
-        {
-            pad.Open();
-        }
 
         // Dispatch the Initialized event before we start the loop
         {
@@ -385,8 +377,9 @@ namespace he::window::linux
             // Update gamepads
             for (GamepadImpl& pad : m_gamepads)
             {
-                pad.Update();
+                pad.Update(m_refreshGamepadConnectivity);
             }
+            m_refreshGamepadConnectivity = false;
 
             // Process window messages
             while (m_XPending(m_display))
@@ -431,9 +424,9 @@ namespace he::window::linux
         m_running.store(false);
     }
 
-    bool DeviceImpl::HasHighDefMouse() const
+    const DeviceInfo& DeviceImpl::GetInfo() const
     {
-        return m_hasHighDefMouse;
+        return m_deviceInfo;
     }
 
     View* DeviceImpl::CreateView(const ViewDesc& desc)
@@ -482,7 +475,7 @@ namespace he::window::linux
         int winX = 0;
         int winY = 0;
         uint32_t mask;
-        Bool result = m_XQueryPointer(m_display, win, &rootWin, &childWin, &rootX, &rootY, &winX, &winY, &mask);
+        X11_Bool result = m_XQueryPointer(m_display, win, &rootWin, &childWin, &rootX, &rootY, &winX, &winY, &mask);
 
         if (result != True)
             return {};
@@ -500,7 +493,7 @@ namespace he::window::linux
         m_XWarpPointer(m_display, X11_None, win, 0, 0, 0, 0, dstX, dstY);
     }
 
-    void DeviceImpl::SetCursor(MouseCursor cursor)
+    void DeviceImpl::SetCursor(PointerCursor cursor)
     {
         if (m_cursor != cursor)
         {
@@ -560,6 +553,12 @@ namespace he::window::linux
         return i;
     }
 
+    Gamepad& DeviceImpl::GetGamepad(uint32_t index)
+    {
+        HE_ASSERT(index < HE_LENGTH_OF(m_gamepads));
+        return m_gamepads[index];
+    }
+
     void DeviceImpl::ShowCursor(bool show)
     {
         if (m_cursorVisible == show)
@@ -593,7 +592,7 @@ namespace he::window::linux
 
     Cursor DeviceImpl::GetActiveCursor() const
     {
-        if (!m_cursorVisible || m_viewClipped || m_cursor <= MouseCursor::None || m_cursor >= MouseCursor::_Count)
+        if (!m_cursorVisible || m_viewClipped || m_cursor <= PointerCursor::None || m_cursor >= PointerCursor::_Count)
             return m_hiddenCursor;
 
         return m_cursors[static_cast<int32_t>(m_cursor)];
@@ -601,9 +600,11 @@ namespace he::window::linux
 
     void DeviceImpl::HandleXEvent(XEvent& event)
     {
+        // GenericEvent does not carry the view so we need to handle it before trying to read
+        // the view value from event.xany.window
         if (event.type == GenericEvent)
         {
-            if (m_hasHighDefMouse
+            if (m_deviceInfo.hasHighDefMouse
                 && event.xcookie.extension == m_xiMajorOpcode
                 && m_XGetEventData(m_display, &event.xcookie)
                 && event.xcookie.evtype == XI_RawMotion)
@@ -612,20 +613,27 @@ namespace he::window::linux
                 if (raw->valuators.mask_len)
                 {
                     Vec2f pos{};
-                    const double* values = raw->raw_values;
 
                     if (XIMaskIsSet(raw->valuators.mask, 0))
-                        pos.x = static_cast<float>(values[0]);
+                        pos.x = static_cast<float>(raw->raw_values[0]);
 
                     if (XIMaskIsSet(raw->valuators.mask, 1))
-                        pos.y = static_cast<float>(values[1]);
+                        pos.y = static_cast<float>(raw->raw_values[1]);
 
-                    MouseMoveEvent ev(GetFocusedView(), pos, false);
+                    if (pos.x != 0 || pos.y != 0)
+                    {
+                        PointerMoveEvent ev(GetFocusedView());
+                        ev.pointerId = PointerId_Mouse;
+                        ev.pointerKind = PointerKind::Mouse;
+                        ev.isPrimary = true;
+                        ev.pos = pos;
+                        ev.absolute = false;
 
-                    if (m_cursorRelativeMode)
-                        CenterCursor();
+                        if (m_cursorRelativeMode)
+                            CenterCursor();
 
-                    m_app->OnEvent(ev);
+                        m_app->OnEvent(ev);
+                    }
                 }
             }
 
@@ -642,11 +650,15 @@ namespace he::window::linux
         {
             case EnterNotify:
             {
-                if (m_hasHighDefMouse)
+                if (m_deviceInfo.hasHighDefMouse)
                     break;
 
-                Vec2f pos{ static_cast<float>(event.xcrossing.x), static_cast<float>(event.xcrossing.y) };
-                MouseMoveEvent ev(view, pos, true);
+                PointerMoveEvent ev(view);
+                ev.pointerId = PointerId_Mouse;
+                ev.pointerKind = PointerKind::Mouse;
+                ev.isPrimary = true;
+                ev.pos = { static_cast<float>(event.xcrossing.x), static_cast<float>(event.xcrossing.y) };
+                ev.absolute = true;
                 m_app->OnEvent(ev);
                 break;
             }
@@ -665,7 +677,8 @@ namespace he::window::linux
                 if (view->m_pos != pos)
                 {
                     view->m_pos = pos;
-                    ViewMovedEvent ev(view, view->m_pos);
+                    ViewMovedEvent ev(view);
+                    ev.pos = view->m_pos;
                     m_app->OnEvent(ev);
                 }
 
@@ -673,40 +686,53 @@ namespace he::window::linux
                 if (view->m_size != size)
                 {
                     view->m_size = size;
-                    ViewResizedEvent ev(view, view->m_size);
+                    ViewResizedEvent ev(view);
+                    ev.size = view->m_size;
                     m_app->OnEvent(ev);
                 }
                 break;
             }
             case ButtonPress:
             {
-                MouseButton button = MouseButton::None;
+                PointerButton button = PointerButton::None;
                 switch (event.xbutton.button)
                 {
-                    case Button1: button = MouseButton::Left; break;
-                    case Button2: button = MouseButton::Middle; break;
-                    case Button3: button = MouseButton::Right; break;
+                    case Button1: button = PointerButton::Primary; break;
+                    case Button2: button = PointerButton::Auxiliary; break;
+                    case Button3: button = PointerButton::Secondary; break;
                     case Button4:
                     case Button5:
                     {
                         const float delta = event.xbutton.button == Button4 ? 1.0f : -1.0f;
-                        MouseWheelEvent ev(view, { 0, delta });
+                        PointerWheelEvent ev(view);
+                        ev.pointerId = PointerId_Mouse;
+                        ev.pointerKind = PointerKind::Mouse;
+                        ev.isPrimary = true;
+                        ev.delta = { 0, delta };
                         m_app->OnEvent(ev);
                         break;
                     }
                     case 6: // Button6
                     case 7: // Button7
                     {
-                        const float delta = event.xbutton.button == 6 ? 1.0f : -1.0f;
-                        MouseWheelEvent ev(view, { delta, 0 });
+                        const float delta = event.xbutton.button == 6 ? -1.0f : 1.0f;
+                        PointerWheelEvent ev(view);
+                        ev.pointerId = PointerId_Mouse;
+                        ev.pointerKind = PointerKind::Mouse;
+                        ev.isPrimary = true;
+                        ev.delta = { delta, 0 };
                         m_app->OnEvent(ev);
                         break;
                     }
                 }
 
-                if (button != MouseButton::None)
+                if (button != PointerButton::None)
                 {
-                    MouseDownEvent ev(view, button);
+                    PointerDownEvent ev(view);
+                    ev.pointerId = PointerId_Mouse;
+                    ev.pointerKind = PointerKind::Mouse;
+                    ev.isPrimary = true;
+                    ev.button = button;
                     view->TrackCapture(ev);
                     m_app->OnEvent(ev);
                 }
@@ -715,17 +741,21 @@ namespace he::window::linux
             }
             case ButtonRelease:
             {
-                MouseButton button = MouseButton::None;
+                PointerButton button = PointerButton::None;
                 switch (event.xbutton.button)
                 {
-                    case Button1: button = MouseButton::Left; break;
-                    case Button2: button = MouseButton::Middle; break;
-                    case Button3: button = MouseButton::Right; break;
+                    case Button1: button = PointerButton::Primary; break;
+                    case Button2: button = PointerButton::Auxiliary; break;
+                    case Button3: button = PointerButton::Secondary; break;
                 }
 
-                if (button != MouseButton::None)
+                if (button != PointerButton::None)
                 {
-                    MouseUpEvent ev(view, button);
+                    PointerUpEvent ev(view);
+                    ev.pointerId = PointerId_Mouse;
+                    ev.pointerKind = PointerKind::Mouse;
+                    ev.isPrimary = true;
+                    ev.button = button;
                     view->TrackCapture(ev);
                     m_app->OnEvent(ev);
                 }
@@ -733,11 +763,16 @@ namespace he::window::linux
             }
             case MotionNotify:
             {
-                if (m_hasHighDefMouse)
+                if (m_deviceInfo.hasHighDefMouse)
                     break;
 
                 Vec2f pos = { static_cast<float>(event.xmotion.x), static_cast<float>(event.xmotion.y) };
-                MouseMoveEvent ev(view, pos, true);
+                PointerMoveEvent ev(view);
+                ev.pointerId = PointerId_Mouse;
+                ev.pointerKind = PointerKind::Mouse;
+                ev.isPrimary = true;
+                ev.pos = pos;
+                ev.absolute = true;
 
                 if (m_cursorRelativeMode)
                     CenterCursor();
@@ -752,7 +787,8 @@ namespace he::window::linux
 
                 if (key != Key::None)
                 {
-                    KeyDownEvent ev(view, key);
+                    KeyDownEvent ev(view);
+                    ev.key = key;
                     m_app->OnEvent(ev);
                 }
 
@@ -764,7 +800,8 @@ namespace he::window::linux
                 {
                     if (len > 0)
                     {
-                        TextEvent ev(view, ch);
+                        TextEvent ev(view);
+                        ev.ch = ch;
                         m_app->OnEvent(ev);
                     }
                 }
@@ -780,7 +817,8 @@ namespace he::window::linux
 
                 if (key != Key::None)
                 {
-                    KeyUpEvent ev(view, key);
+                    KeyUpEvent ev(view);
+                    ev.key = key;
                     m_app->OnEvent(ev);
                 }
                 break;
@@ -797,94 +835,14 @@ namespace he::window::linux
                     view->m_captureCount = 0;
                 }
 
-                const bool active = event.type == FocusIn;
-                ViewActivatedEvent ev(view, active);
                 if (m_app)
-                    m_app->OnEvent(ev);
-                break;
-            }
-        }
-    }
-
-    void DeviceImpl::UpdateGamepads()
-    {
-        js_event js{};
-
-        for (uint32_t i = 0; i < MaxGamepads; ++i)
-        {
-            int32_t fd = m_gamepadFds[i];
-
-            if (fd == -1)
-                continue;
-
-            while (read(fd, &js, sizeof(js)) != -1)
-            {
-                // don't care if this is an init event, so just mask it off
-                uint8_t type = js.type & ~JS_EVENT_INIT;
-
-                switch (type)
                 {
-                    case JS_EVENT_AXIS:
-                    {
-                        // Normalize the axis value
-                        float value = js.value / 32767.0f;
-
-                        GamepadAxis axis = GamepadAxis::None;
-                        switch (js.number)
-                        {
-                            case 0: axis = GamepadAxis::LThumbX; break;
-                            case 1: axis = GamepadAxis::LThumbY; break;
-                            case 2: axis = GamepadAxis::RThumbX; break;
-                            case 3: axis = GamepadAxis::RThumbY; break;
-                            case 4: axis = GamepadAxis::RThumbX; break;
-                            case 5: axis = GamepadAxis::RThumbY; break;
-                        }
-
-                        if (axis != GamepadAxis::None)
-                        {
-                            GamepadAxisEvent ev(i, axis, value);
-                            m_app->OnEvent(ev);
-                        }
-                        break;
-                    }
-                    case JS_EVENT_BUTTON:
-                    {
-                        GamepadButton button = GamepadButton::None;
-                        switch (js.number)
-                        {
-                            case 0: button = GamepadButton::Action1; break;
-                            case 1: button = GamepadButton::Action2; break;
-                            case 2: button = GamepadButton::Action3; break;
-                            case 3: button = GamepadButton::Action4; break;
-                            case 4: button = GamepadButton::LShoulder; break;
-                            case 5: button = GamepadButton::RShoulder; break;
-                            case 6: button = GamepadButton::Back; break;
-                            case 7: button = GamepadButton::Start; break;
-                            // case 8: button = GamepadButton::Guide; break;
-                            case 9: button = GamepadButton::LThumb; break;
-                            case 10: button = GamepadButton::RThumb; break;
-                            case 11: button = GamepadButton::DPad_Up; break;
-                            case 12: button = GamepadButton::DPad_Down; break;
-                            case 13: button = GamepadButton::DPad_Left; break;
-                            case 14: button = GamepadButton::DPad_Right; break;
-                        }
-
-                        if (button != GamepadButton::None)
-                        {
-                            if (js.value == 1)
-                            {
-                                GamepadButtonDownEvent ev(i, button);
-                                m_app->OnEvent(ev);
-                            }
-                            else
-                            {
-                                GamepadButtonUpEvent ev(i, button);
-                                m_app->OnEvent(ev);
-                            }
-                        }
-                        break;
-                    }
+                    const bool active = event.type == FocusIn;
+                    ViewActivatedEvent ev(view);
+                    ev.active = active;
+                    m_app->OnEvent(ev);
                 }
+                break;
             }
         }
     }

@@ -7,6 +7,8 @@
 
 #if defined(HE_PLATFORM_LINUX)
 
+struct js_event;
+
 namespace he::window::linux
 {
     class DeviceImpl;
@@ -27,8 +29,13 @@ namespace he::window::linux
 
         Result SetVibration(float leftMotorSpeed, float rightMotorSpeed) override;
 
+    public:
         void Open();
-        void Update();
+        void Close();
+
+        void Update(bool refreshConnectivity);
+        void UpdateAxis(const js_event& js);
+        void UpdateButton(const js_event& js);
 
     private:
         DeviceImpl* m_device{ nullptr };

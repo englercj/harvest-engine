@@ -164,6 +164,7 @@ namespace he::window::win32
         return PointerKind::Mouse;
     }
 
+#if HE_ENABLE_ASSERTIONS
     static PointerId GetMouseMessagePointerId()
     {
         // The lower 7 bits returned from GetMessageExtraInfo are used to represent the
@@ -180,6 +181,7 @@ namespace he::window::win32
 
         return pointerId;
     }
+#endif
 
     static LRESULT CALLBACK WindowProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     {
@@ -457,14 +459,16 @@ namespace he::window::win32
                     pos.x = (pos.x / 65535.0f) * width;
                     pos.y = (pos.y / 65535.0f) * height;
                 }
+                // Ignore relative motion of 0,0
                 else if (pos.x == 0 && pos.y == 0)
                 {
-                    // ignore relative motion of 0,0
                     break;
                 }
 
+                HE_ASSERT(GetMouseMessagePointerId() == PointerId_Mouse);
+
                 PointerMoveEvent ev(view);
-                ev.pointerId = GetMouseMessagePointerId();
+                ev.pointerId = PointerId_Mouse;
                 ev.pointerKind = PointerKind::Mouse;
                 ev.isPrimary = true;
                 ev.pos = pos;
@@ -717,11 +721,14 @@ namespace he::window::win32
         const int32_t digitizer = ::GetSystemMetrics(SM_DIGITIZER);
         if (HasFlag(digitizer, NID_READY))
         {
+            if (HasAnyFlags(digitizer, NID_INTEGRATED_TOUCH | NID_EXTERNAL_TOUCH))
+            {
+                m_deviceInfo.hasTouch = true;
+                m_deviceInfo.maxTouches = ::GetSystemMetrics(SM_MAXIMUMTOUCHES);
+            }
+
             if (HasAnyFlags(digitizer, NID_INTEGRATED_PEN | NID_EXTERNAL_PEN))
                 m_deviceInfo.hasPen = true;
-
-            if (HasAnyFlags(digitizer, NID_INTEGRATED_TOUCH | NID_EXTERNAL_TOUCH))
-                m_deviceInfo.maxTouches = ::GetSystemMetrics(SM_MAXIMUMTOUCHES);
         }
 
         return true;

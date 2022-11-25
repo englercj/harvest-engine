@@ -225,6 +225,7 @@ namespace he::window::linux
         m_XOpenIM = reinterpret_cast<Pfn_XOpenIM>(dlsym(m_xlib, "XOpenIM"));
         m_XPeekEvent = reinterpret_cast<Pfn_XPeekEvent>(dlsym(m_xlib, "XPeekEvent"));
         m_XPending = reinterpret_cast<Pfn_XPending>(dlsym(m_xlib, "XPending"));
+        m_XIQueryDevice = reinterpret_cast<Pfn_XIQueryDevice>(dlsym(m_xlib, "XIQueryDevice"));
         m_XQueryExtension = reinterpret_cast<Pfn_XQueryExtension>(dlsym(m_xlib, "XQueryExtension"));
         m_XQueryPointer = reinterpret_cast<Pfn_XQueryPointer>(dlsym(m_xlib, "XQueryPointer"));
         m_XRaiseWindow = reinterpret_cast<Pfn_XRaiseWindow>(dlsym(m_xlib, "XRaiseWindow"));
@@ -305,6 +306,10 @@ namespace he::window::linux
         {
             m_XIQueryVersion = reinterpret_cast<Pfn_XIQueryVersion>(dlsym(m_xi, "XIQueryVersion"));
             m_XISelectEvents = reinterpret_cast<Pfn_XISelectEvents>(dlsym(m_xi, "XISelectEvents"));
+            m_XIGrabTouchBegin = reinterpret_cast<Pfn_XIGrabTouchBegin>(dlsym(m_xi, "XIGrabTouchBegin"));
+            m_XIUngrabTouchBegin = reinterpret_cast<Pfn_XIUngrabTouchBegin>(dlsym(m_xi, "XIUngrabTouchBegin"));
+            m_XIQueryDevice = reinterpret_cast<Pfn_XIQueryDevice>(dlsym(m_xi, "XIQueryDevice"));
+            m_XIFreeDeviceInfo = reinterpret_cast<Pfn_XIFreeDeviceInfo>(dlsym(m_xi, "XIFreeDeviceInfo"));
 
             if (m_XIQueryVersion && m_XISelectEvents)
             {
@@ -314,7 +319,35 @@ namespace he::window::linux
                     int majorVer, minorVer;
                     if (m_XIQueryVersion(m_display, &majorVer, &minorVer) == X11_Success)
                     {
-                        m_deviceInfo.hasHighDefMouse = true;
+                        const int version = (majorVer * 1000) + minorVer;
+                        constexpr int Version_2_0 = (2 * 1000) + 0;
+                        constexpr int Version_2_2 = (2 * 1000) + 2;
+                        m_deviceInfo.hasHighDefMouse = version >= Version_2_0;
+                        m_deviceInfo.hasTouch = version >= Version_2_2;
+
+                        if (m_deviceInfo.hasTouch)
+                        {
+                            int deviceCount = 0;
+                            XIDeviceInfo* devices = m_XIQueryDevice(m_display, XIAllDevices, &deviceCount);
+                            for (int i = 0; i < deviceCount; ++i)
+                            {
+                                const XIDeviceInfo& device = devices[i];
+                                for (int j = 0; j < device.num_classes; ++j)
+                                {
+                                    const XITouchClassInfo* touchClass = reinterpret_cast<const XITouchClassInfo*>(device.classes[j]);
+                                    if (touchClass->type != XITouchClass)
+                                        continue;
+
+                                    // TODO: Only reading first touch device currently to get maxTouches
+                                    // Theoretically there could be multiple touch devices, each
+                                    // with multiple multiple touch classes.
+                                    m_deviceInfo.maxTouches = touchClass->num_touches;
+                                    goto loopEnd;
+                                }
+                            }
+                        loopEnd:
+                            m_XIFreeDeviceInfo(devices);
+                        }
                     }
                 }
             }
@@ -323,14 +356,30 @@ namespace he::window::linux
         // Enable raw mouse input support
         if (m_deviceInfo.hasHighDefMouse)
         {
-            XIEventMask em;
-            uint8_t mask[XIMaskLen(XI_RawMotion)]{};
+            uint8_t mask[XIMaskLen(XI_LASTEVENT)]{};
 
+            XIEventMask em;
             em.deviceid = XIAllMasterDevices;
             em.mask_len = sizeof(mask);
             em.mask = mask;
             XISetMask(mask, XI_RawMotion);
+            XISetMask(mask, XI_Motion);
+            if (m_deviceInfo.hasTouch)
+            {
+                XISetMask(mask, XI_TouchBegin);
+                XISetMask(mask, XI_TouchUpdate);
+                XISetMask(mask, XI_TouchEnd);
+            }
 
+            m_XISelectEvents(m_display, m_root, &em, 1);
+
+            MemZero(&em, sizeof(em));
+            MemZero(mask, sizeof(mask));
+            em.deviceid = XIAllDevices;
+            em.mask_len = sizeof(mask);
+            em.mask = mask;
+
+            XISetMask(mask, XI_HierarchyChanged);
             m_XISelectEvents(m_display, m_root, &em, 1);
         }
 
@@ -600,52 +649,197 @@ namespace he::window::linux
 
     void DeviceImpl::HandleXEvent(XEvent& event)
     {
-        // GenericEvent does not carry the view so we need to handle it before trying to read
-        // the view value from event.xany.window
+        // Give input methods (like IMEs) a chance to handle the event
+        if (m_XFilterEvent(&event, X11_None) == True)
+            return;
+
         if (event.type == GenericEvent)
+            return HandleGenericXEvent(event);
+
+        ViewImpl* view = GetViewFromWindow(event.xany.window);
+
+        if (view)
+            HandleViewXEvent(view, event);
+        else
+            HandleNonViewXEvent(event);
+    }
+
+    void DeviceImpl::HandleGenericXEvent(XEvent& event)
+    {
+        if (!m_XGetEventData(m_display, &event.xcookie) || event.xcookie.extension != m_xiMajorOpcode)
         {
-            if (m_deviceInfo.hasHighDefMouse
-                && event.xcookie.extension == m_xiMajorOpcode
-                && m_XGetEventData(m_display, &event.xcookie)
-                && event.xcookie.evtype == XI_RawMotion)
-            {
-                XIRawEvent* raw = static_cast<XIRawEvent*>(event.xcookie.data);
-                if (raw->valuators.mask_len)
-                {
-                    Vec2f pos{};
-
-                    if (XIMaskIsSet(raw->valuators.mask, 0))
-                        pos.x = static_cast<float>(raw->raw_values[0]);
-
-                    if (XIMaskIsSet(raw->valuators.mask, 1))
-                        pos.y = static_cast<float>(raw->raw_values[1]);
-
-                    if (pos.x != 0 || pos.y != 0)
-                    {
-                        PointerMoveEvent ev(GetFocusedView());
-                        ev.pointerId = PointerId_Mouse;
-                        ev.pointerKind = PointerKind::Mouse;
-                        ev.isPrimary = true;
-                        ev.pos = pos;
-                        ev.absolute = false;
-
-                        if (m_cursorRelativeMode)
-                            CenterCursor();
-
-                        m_app->OnEvent(ev);
-                    }
-                }
-            }
-
             m_XFreeEventData(m_display, &event.xcookie);
             return;
         }
 
-        ViewImpl* view = GetViewFromWindow(event.xany.window);
+        switch (event.xcookie.evtype)
+        {
+            case XI_RawMotion:
+            {
+                if (!m_deviceInfo.hasHighDefMouse)
+                    break;
 
-        if (!view)
-            return;
+                const XIRawEvent* xev = static_cast<const XIRawEvent*>(event.xcookie.data);
+                InputDeviceInfo& device = FindInputDeviceInfo(xev->deviceid);
 
+                if (xev->valuators.mask_len == 0)
+                    break;
+                Vec2f pos{};
+
+                if (XIMaskIsSet(xev->valuators.mask, 0))
+                    pos.x = static_cast<float>(xev->raw_values[0]);
+
+                if (XIMaskIsSet(xev->valuators.mask, 1))
+                    pos.y = static_cast<float>(xev->raw_values[1]);
+
+                // Ignore duplicate events
+                if (xev->time == device.prevTime && pos == device.prevPos)
+                    break;;
+
+                device.prevTime = xev->time;
+                device.prevPos = pos;
+
+                // Technically each axis could separately report relative or absolute, so this
+                // is a bit of a hack. In practice that doesn't seem to happen though.
+                const bool absolute = !device.relative[0];
+
+                // Ignore relative motion of 0,0
+                if (!absolute && pos.x == 0 && pos.y == 0)
+                    break;
+
+                PointerMoveEvent ev(GetFocusedView());
+                ev.pointerId = PointerId_Mouse;
+                ev.pointerKind = PointerKind::Mouse;
+                ev.isPrimary = true;
+                ev.pos = pos;
+                ev.absolute = absolute;
+
+                if (m_cursorRelativeMode)
+                    CenterCursor();
+
+                m_app->OnEvent(ev);
+                break;
+            }
+            case XI_HierarchyChanged:
+            {
+                const XIHierarchyEvent* xev = static_cast<const XIHierarchyEvent*>(event.xcookie.data);
+                for (int i = 0; i < xev->num_info; ++i)
+                {
+                    if (xev->info[i].flags & XISlaveRemoved)
+                    {
+                        m_inputDeviceCache.erase(xev->info[i].deviceid);
+                    }
+                }
+                break;
+            }
+            case XI_Motion:
+            {
+                if (m_deviceInfo.hasHighDefMouse)
+                    break;
+
+                const XIDeviceEvent* xev = static_cast<const XIDeviceEvent*>(event.xcookie.data);
+
+                if (HasFlag(xev->flags, XIPointerEmulated))
+                    break;
+
+                ViewImpl* view = GetViewFromWindow(xev->event);
+
+                PointerMoveEvent ev(view);
+                ev.pointerId = PointerId_Mouse;
+                ev.pointerKind = PointerKind::Mouse;
+                ev.isPrimary = true;
+                ev.pos = { static_cast<float>(xev->root_x), static_cast<float>(xev->root_y) };
+                ev.absolute = true;
+
+                if (m_cursorRelativeMode)
+                    CenterCursor();
+
+                m_app->OnEvent(ev);
+                break;
+            }
+            case XI_TouchBegin:
+            {
+                const XIDeviceEvent* xev = static_cast<const XIDeviceEvent*>(event.xcookie.data);
+                ViewImpl* view = GetViewFromWindow(xev->event);
+
+                PointerDownEvent ev(view);
+                ev.pointerId = static_cast<PointerId>(xev->detail);
+                ev.pointerKind = PointerKind::Touch;
+                ev.size = { 1, 1 }; // TODO
+                ev.pressure = 1.0f;
+                ev.isPrimary = true; // TODO
+                ev.button = PointerButton::Primary;
+
+                if (m_cursorRelativeMode)
+                    CenterCursor();
+
+                view->TrackCapture(ev);
+                m_app->OnEvent(ev);
+                break;
+            }
+            case XI_TouchEnd:
+            {
+                const XIDeviceEvent* xev = static_cast<const XIDeviceEvent*>(event.xcookie.data);
+                ViewImpl* view = GetViewFromWindow(xev->event);
+
+                PointerUpEvent ev(view);
+                ev.pointerId = static_cast<PointerId>(xev->detail);
+                ev.pointerKind = PointerKind::Touch;
+                ev.size = { 1, 1 }; // TODO
+                ev.pressure = 1.0f;
+                ev.isPrimary = true; // TODO
+                ev.button = PointerButton::Primary;
+
+                if (m_cursorRelativeMode)
+                    CenterCursor();
+
+                view->TrackCapture(ev);
+                m_app->OnEvent(ev);
+                break;
+            }
+            case XI_TouchUpdate:
+            {
+                const XIDeviceEvent* xev = static_cast<const XIDeviceEvent*>(event.xcookie.data);
+                ViewImpl* view = GetViewFromWindow(xev->event);
+
+                PointerMoveEvent ev(view);
+                ev.pointerId = static_cast<PointerId>(xev->detail);
+                ev.pointerKind = PointerKind::Touch;
+                ev.size = { 1, 1 }; // TODO
+                ev.pressure = 1.0f;
+                ev.isPrimary = true; // TODO
+                ev.pos = { static_cast<float>(xev->root_x), static_cast<float>(xev->root_y) };
+                ev.absolute = true;
+
+                if (m_cursorRelativeMode)
+                    CenterCursor();
+
+                m_app->OnEvent(ev);
+                break;
+            }
+        }
+
+        m_XFreeEventData(m_display, &event.xcookie);
+    }
+
+    void DeviceImpl::HandleNonViewXEvent(XEvent& event)
+    {
+        switch (event.type)
+        {
+            case MappingNotify:
+            {
+                const int request = event.xmapping.request;
+                if (request == MappingKeyboard || request == MappingModifier)
+                {
+                    m_XRefreshKeyboardMapping(&event.xmapping);
+                }
+                break;
+            }
+        }
+    }
+
+    void DeviceImpl::HandleViewXEvent(ViewImpl* view, XEvent& event)
+    {
         switch (event.type)
         {
             case EnterNotify:
@@ -823,16 +1017,19 @@ namespace he::window::linux
                 }
                 break;
             }
-            case KeymapNotify:
-                m_XRefreshKeyboardMapping(&event.xmapping);
-                break;
             case FocusIn:
             case FocusOut:
             {
-                if (view->m_captureCount)
+                if (view->m_mouseCaptureCount)
                 {
                     view->ReleaseMouse();
-                    view->m_captureCount = 0;
+                    view->m_mouseCaptureCount = 0;
+                }
+
+                if (view->m_touchCaptureCount)
+                {
+                    view->ReleaseTouch();
+                    view->m_touchCaptureCount = 0;
                 }
 
                 if (m_app)
@@ -845,6 +1042,38 @@ namespace he::window::linux
                 break;
             }
         }
+    }
+
+    DeviceImpl::InputDeviceInfo& DeviceImpl::FindInputDeviceInfo(int deviceId)
+    {
+        const auto pair = m_inputDeviceCache.try_emplace(deviceId);
+        const bool isNew = pair.second;
+        InputDeviceInfo& info = pair.first->second;
+
+        if (!isNew)
+            return info;
+
+        HE_ASSERT(m_XIQueryDevice);
+        int deviceCount = 0;
+        XIDeviceInfo* device = m_XIQueryDevice(m_display, deviceId, &deviceCount);
+        HE_ASSERT(deviceCount == 1);
+
+        info.deviceId = deviceId;
+
+        uint32_t axis = 0;
+        for (int i = 0; i < device->num_classes; ++i)
+        {
+            const XIValuatorClassInfo* val = reinterpret_cast<const XIValuatorClassInfo*>(device->classes[i]);
+            if (val->type == XIValuatorClass)
+            {
+                info.relative[axis++] = val->mode == XIModeRelative;
+
+                if (axis == HE_LENGTH_OF(info.relative))
+                    break;
+            }
+        }
+
+        return info;
     }
 }
 

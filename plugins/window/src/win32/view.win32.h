@@ -50,7 +50,7 @@ namespace he::window::win32
         Vec2f ViewToScreen(const Vec2f& pos) const override;
         Vec2f ScreenToView(const Vec2f& pos) const override;
 
-        void TrackCapture(const Event& ev);
+        void TrackCapture(const PointerEvent& ev);
 
     public:
         DeviceImpl* m_device{ nullptr };

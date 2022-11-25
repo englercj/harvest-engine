@@ -10,6 +10,7 @@
 #include "he/window/pointer.h"
 
 #include <atomic>
+#include <unordered_map>
 
 #if defined(HE_PLATFORM_LINUX)
 
@@ -57,6 +58,7 @@ namespace he::window::linux
     using Pfn_XOpenIM = XIM(*)(Display*, XrmDatabase*, char*, char*);
     using Pfn_XPeekEvent = int(*)(Display*, XEvent*);
     using Pfn_XPending = int(*)(Display*);
+    using Pfn_XIQueryDevice = XIDeviceInfo*(*)(Display*, int, int*);
     using Pfn_XQueryExtension = X11_Bool(*)(Display*, const char*, int*, int*, int*);
     using Pfn_XQueryPointer = X11_Bool(*)(Display*, Window, Window*, Window*, int*, int*, int*, int*, unsigned int*);
     using Pfn_XRaiseWindow = int(*)(Display*, Window);
@@ -79,6 +81,10 @@ namespace he::window::linux
 
     using Pfn_XIQueryVersion = Status(*)(Display*, int*, int*);
     using Pfn_XISelectEvents = int(*)(Display*, Window, XIEventMask*, int);
+    using Pfn_XIGrabTouchBegin = int(*)(Display*, int, Window, int, XIEventMask*, int, XIGrabModifiers*);
+    using Pfn_XIUngrabTouchBegin = Status(*)(Display*, int, Window, int, XIGrabModifiers*);
+    using Pfn_XIQueryDevice = XIDeviceInfo*(*)(Display*, int, int*);
+    using Pfn_XIFreeDeviceInfo = void(*)(XIDeviceInfo*);
 
     class DeviceImpl final : public Device
     {
@@ -118,6 +124,20 @@ namespace he::window::linux
         ViewImpl* GetViewFromWindow(Window win) const;
         Cursor GetActiveCursor() const;
         void HandleXEvent(XEvent& event);
+        void HandleGenericXEvent(XEvent& event);
+        void HandleNonViewXEvent(XEvent& event);
+        void HandleViewXEvent(ViewImpl* view, XEvent& event);
+
+        struct InputDeviceInfo
+        {
+            int deviceId{ 0 };
+            bool relative[2]{};
+
+            uint32_t prevTime{ 0 };
+            Vec2f prevPos{};
+        };
+
+        InputDeviceInfo& FindInputDeviceInfo(int deviceId);
 
     public:
         Application* m_app{ nullptr };
@@ -137,6 +157,8 @@ namespace he::window::linux
         bool m_viewClipped{ false };
         Vec2f m_cursorRestorePosition{ 0, 0 };
         DeviceInfo m_deviceInfo{};
+
+        std::unordered_map<int, InputDeviceInfo> m_inputDeviceCache{};
 
         Cursor m_cursors[static_cast<int32_t>(PointerCursor::_Count)];
         Atom m_atomNetActiveWindow{ X11_None };
@@ -193,6 +215,7 @@ namespace he::window::linux
         Pfn_XOpenIM m_XOpenIM{ nullptr };
         Pfn_XPeekEvent m_XPeekEvent{ nullptr };
         Pfn_XPending m_XPending{ nullptr };
+        Pfn_XIQueryDevice m_XIQueryDevice{ nullptr };
         Pfn_XQueryExtension m_XQueryExtension{ nullptr };
         Pfn_XQueryPointer m_XQueryPointer{ nullptr };
         Pfn_XRaiseWindow m_XRaiseWindow{ nullptr };
@@ -216,6 +239,10 @@ namespace he::window::linux
         void* m_xi{ nullptr };
         Pfn_XIQueryVersion m_XIQueryVersion{ nullptr };
         Pfn_XISelectEvents m_XISelectEvents{ nullptr };
+        Pfn_XIGrabTouchBegin m_XIGrabTouchBegin{ nullptr };
+        Pfn_XIUngrabTouchBegin m_XIUngrabTouchBegin{ nullptr };
+        Pfn_XIQueryDevice m_XIQueryDevice{ nullptr };
+        Pfn_XIFreeDeviceInfo m_XIFreeDeviceInfo{ nullptr };
 
         GamepadImpl m_gamepads[MaxGamepads];
         bool m_refreshGamepadConnectivity{ true };

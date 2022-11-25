@@ -27,11 +27,13 @@ namespace he::window::linux
 
         // Create main window
         XSetWindowAttributes attribs{};
-        attribs.event_mask = StructureNotifyMask | KeyPressMask | KeyReleaseMask
-            | PointerMotionMask | ButtonPressMask | ButtonReleaseMask
-            | FocusChangeMask | EnterWindowMask;
-
-        // VisibilityChangeMask, ExposureMask, LeaveWindowMask, PropertyChangeMask
+        attribs.event_mask = StructureNotifyMask
+            | KeyPressMask | KeyReleaseMask
+            | ButtonPressMask | ButtonReleaseMask
+            | PointerMotionMask
+            | FocusChangeMask
+            | EnterWindowMask
+            | KeymapStateMask;
 
         if (desc.parent)
         {
@@ -388,19 +390,35 @@ namespace he::window::linux
         return { static_cast<float>(dstX), static_cast<float>(dstY) };
     }
 
-    void ViewImpl::TrackCapture(const Event& ev)
+    void ViewImpl::TrackCapture(const PointerEvent& ev)
     {
         HE_ASSERT(ev.kind == EventKind::PointerDown || ev.kind == EventKind::PointerUp);
 
         if (ev.kind == EventKind::PointerDown)
         {
-            if (m_captureCount++ == 0)
-                CaptureMouse();
+            if (ev.pointerKind == PointerKind::Mouse)
+            {
+                if (m_mouseCaptureCount++ == 0)
+                    CaptureMouse();
+            }
+            else if (ev.pointerKind == PointerKind::Touch)
+            {
+                if (m_touchCaptureCount++ == 0)
+                    CaptureTouch();
+            }
         }
         else
         {
-            if (--m_captureCount == 0)
-                ReleaseMouse();
+            if (ev.pointerKind == PointerKind::Mouse)
+            {
+                if (--m_mouseCaptureCount == 0)
+                    ReleaseMouse();
+            }
+            else if (ev.pointerKind == PointerKind::Touch)
+            {
+                if (--m_touchCaptureCount == 0)
+                    ReleaseTouch();
+            }
         }
     }
 
@@ -420,6 +438,42 @@ namespace he::window::linux
         {
             m_device->m_XUngrabPointer(m_device->m_display, CurrentTime);
         }
+    }
+
+    void ViewImpl::CaptureTouch()
+    {
+        if (!m_device->m_deviceInfo.hasTouch)
+            return;
+
+        uint8_t mask[XIMaskLen(XI_LASTEVENT)]{};
+
+        XIGrabModifiers mods;
+        mods.modifiers = XIAnyModifier;
+        mods.status = 0;
+
+        XIEventMask em;
+        em.deviceid = XIAllDevices;
+        em.mask_len = sizeof(mask);
+        em.mask = mask;
+
+        XISetMask(em.mask, XI_TouchBegin);
+        XISetMask(em.mask, XI_TouchUpdate);
+        XISetMask(em.mask, XI_TouchEnd);
+        XISetMask(em.mask, XI_Motion);
+
+        m_device->m_XIGrabTouchBegin(m_device->m_display, XIAllDevices, m_window, True, &em, 1, &mods);
+    }
+
+    void ViewImpl::ReleaseTouch()
+    {
+        if (!m_device->m_deviceInfo.hasTouch)
+            return;
+
+        XIGrabModifiers mods;
+        mods.modifiers = XIAnyModifier;
+        mods.status = 0;
+
+        m_device->m_XIUngrabTouchBegin(m_device->m_display, XIAllDevices, m_window, 1, &mods);
     }
 }
 

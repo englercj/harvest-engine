@@ -31,6 +31,7 @@ namespace he::window
     {
         bool hasMouse{ false };
         bool hasHighDefMouse{ false };
+        bool hasTouch{ false };
         bool hasPen{ false };
         uint32_t maxTouches{ 0 };
     };

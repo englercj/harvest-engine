@@ -49,10 +49,13 @@ namespace he::window::linux
         Vec2f ViewToScreen(const Vec2f& pos) const override;
         Vec2f ScreenToView(const Vec2f& pos) const override;
 
-        void TrackCapture(const Event& ev);
+        void TrackCapture(const PointerEvent& ev);
 
         void CaptureMouse();
         void ReleaseMouse();
+
+        void CaptureTouch();
+        void ReleaseTouch();
 
     public:
         DeviceImpl* m_device{ nullptr };
@@ -61,7 +64,8 @@ namespace he::window::linux
         ViewFlag m_flags{ ViewFlag::Default };
 
         Window m_window{ X11_None };
-        int m_captureCount{ 0 };
+        int m_mouseCaptureCount{ 0 };
+        int m_touchCaptureCount{ 0 };
         Vec2i m_pos{ 0, 0 };
         Vec2i m_size{ 1, 1 };
 

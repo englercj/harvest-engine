@@ -306,7 +306,7 @@ namespace he::window::win32
         return { static_cast<float>(p.x), static_cast<float>(p.y) };
     }
 
-    void ViewImpl::TrackCapture(const Event& ev)
+    void ViewImpl::TrackCapture(const PointerEvent& ev)
     {
         HE_ASSERT(ev.kind == EventKind::PointerDown || ev.kind == EventKind::PointerUp);
 

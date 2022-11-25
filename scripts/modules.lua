@@ -9,6 +9,7 @@ local target_dir_by_kind = {
     WindowedApp = he.target_bin_dir,
     SharedLib = he.target_bin_dir,
     StaticLib = he.target_lib_dir,
+    Utility = he.target_lib_dir,
 }
 
 local module_type_by_kind = {
@@ -16,9 +17,11 @@ local module_type_by_kind = {
     WindowedApp = 2,
     SharedLib = 3,
     StaticLib = 4,
+    Utility = 5,
 }
 
 local kind_by_module_type = {
+    custom = "Utility",
     static = "StaticLib",
     shared = "SharedLib",
     header = "StaticLib",

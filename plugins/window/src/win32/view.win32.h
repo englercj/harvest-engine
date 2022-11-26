@@ -58,7 +58,6 @@ namespace he::window::win32
         ViewFlag m_flags{ ViewFlag::Default };
         void* m_userData{ nullptr };
         int32_t m_captureCount{ 0 };
-        uint64_t m_primaryTouchId{ 0 };
         Vec2i m_pos{ 0, 0 };
         Vec2i m_size{ 1, 1 };
         uint32_t m_dpi{ USER_DEFAULT_SCREEN_DPI };

@@ -1,13 +1,12 @@
 // Copyright Chad Engler
 
-// TODO: File drop, pen, touch
-
 #include "device.linux.h"
 
 #include "gamepad.linux.h"
 #include "view.linux.h"
 
 #include "he/core/log.h"
+#include "he/core/memory_ops.h"
 #include "he/math/vec2.h"
 #include "he/window/application.h"
 #include "he/window/event.h"
@@ -17,6 +16,8 @@
 
 #include <dlfcn.h>
 #include <fcntl.h>
+#include <string.h>
+#include <unistd.h>
 
 #include "x11_all.linux.h"
 
@@ -142,6 +143,62 @@ namespace he::window::linux
         return Key::None;
     }
 
+    static const char* UriToFilePath(char* uri)
+    {
+        constexpr char FilePrefix[] = "file://";
+        constexpr uint32_t FilePrefixLen = HE_LENGTH_OF(FilePrefix) - 1;
+
+        if (uri[0] == '#')
+            return nullptr;
+
+        // If the uri specifies the file:// scheme then we want to verify the hostname
+        if (String::EqualN(uri, FilePrefix, FilePrefixLen))
+        {
+            uri += FilePrefixLen;
+
+            const char* hostEnd = String::Find(uri, '/');
+            if (hostEnd)
+            {
+                char host[257];
+                if (gethostname(host, 255) == 0)
+                {
+                    host[256] = '\0';
+                    const uint32_t hostLen = hostEnd - uri;
+                    if (!String::EqualN(uri, host, hostLen))
+                        return nullptr;
+
+                    uri = const_cast<char*>(hostEnd + 1);
+                }
+            }
+        }
+        // If a uri scheme is specified, but its not file:// then we can't handle this
+        else if (String::Find(uri, ":/"))
+        {
+            return nullptr;
+        }
+
+        // Decode the URI in-place
+        const char* end = uri + String::Length(uri);
+        const char* read = uri;
+        char* write = uri;
+
+        while (read < end && write < end)
+        {
+            if (read[0] == '%' && read[1] && read[2])
+            {
+                const char digits[3]{ read[1], read[2], '\0' };
+                *write++ = static_cast<char>(String::ToInteger<uint8_t>(digits, nullptr, 16));
+                read += 3;
+            }
+            else
+            {
+                *write++ = *read++;
+            }
+        }
+
+        return uri;
+    }
+
     DeviceImpl::DeviceImpl(Allocator& allocator) noexcept
         : Device(allocator)
         , m_gamepads{ { this, 0 }, { this, 1 }, { this, 2 }, { this, 3 } }
@@ -190,6 +247,7 @@ namespace he::window::linux
         m_XChangeProperty = reinterpret_cast<Pfn_XChangeProperty>(dlsym(m_xlib, "XChangeProperty"));
         m_XCloseDisplay = reinterpret_cast<Pfn_XCloseDisplay>(dlsym(m_xlib, "XCloseDisplay"));
         m_XCloseIM = reinterpret_cast<Pfn_XCloseIM>(dlsym(m_xlib, "XCloseIM"));
+        m_XConvertSelection = reinterpret_cast<Pfn_XConvertSelection>(dlsym(m_xlib, "XConvertSelection"));
         m_XCreateFontCursor = reinterpret_cast<Pfn_XCreateFontCursor>(dlsym(m_xlib, "XCreateFontCursor"));
         m_XCreateBitmapFromData = reinterpret_cast<Pfn_XCreateBitmapFromData>(dlsym(m_xlib, "XCreateBitmapFromData"));
         m_XCreateIC = reinterpret_cast<Pfn_XCreateIC>(dlsym(m_xlib, "XCreateIC"));
@@ -206,6 +264,7 @@ namespace he::window::linux
         m_XFreeCursor = reinterpret_cast<Pfn_XFreeCursor>(dlsym(m_xlib, "XFreeCursor"));
         m_XFreeEventData = reinterpret_cast<Pfn_XFreeEventData>(dlsym(m_xlib, "XFreeEventData"));
         m_XFreePixmap = reinterpret_cast<Pfn_XFreePixmap>(dlsym(m_xlib, "XFreePixmap"));
+        m_XGetAtomName = reinterpret_cast<Pfn_XGetAtomName>(dlsym(m_xlib, "XGetAtomName"));
         m_XGetEventData = reinterpret_cast<Pfn_XGetEventData>(dlsym(m_xlib, "XGetEventData"));
         m_XGetInputFocus = reinterpret_cast<Pfn_XGetInputFocus>(dlsym(m_xlib, "XGetInputFocus"));
         m_XGetWMNormalHints = reinterpret_cast<Pfn_XGetWMNormalHints>(dlsym(m_xlib, "XGetWMNormalHints"));
@@ -225,7 +284,6 @@ namespace he::window::linux
         m_XOpenIM = reinterpret_cast<Pfn_XOpenIM>(dlsym(m_xlib, "XOpenIM"));
         m_XPeekEvent = reinterpret_cast<Pfn_XPeekEvent>(dlsym(m_xlib, "XPeekEvent"));
         m_XPending = reinterpret_cast<Pfn_XPending>(dlsym(m_xlib, "XPending"));
-        m_XIQueryDevice = reinterpret_cast<Pfn_XIQueryDevice>(dlsym(m_xlib, "XIQueryDevice"));
         m_XQueryExtension = reinterpret_cast<Pfn_XQueryExtension>(dlsym(m_xlib, "XQueryExtension"));
         m_XQueryPointer = reinterpret_cast<Pfn_XQueryPointer>(dlsym(m_xlib, "XQueryPointer"));
         m_XRaiseWindow = reinterpret_cast<Pfn_XRaiseWindow>(dlsym(m_xlib, "XRaiseWindow"));
@@ -273,7 +331,19 @@ namespace he::window::linux
         m_atomNetWMWindowTypeNormal = m_XInternAtom(m_display, "_NET_WM_WINDOW_TYPE_NORMAL", False);
         m_atomMotifWMHints = m_XInternAtom(m_display, "_MOTIF_WM_HINTS", False);
         m_atomWMDeleteWindow = m_XInternAtom(m_display, "WM_DELETE_WINDOW", False);
+        m_atomWMProtocols = m_XInternAtom(m_display, "WM_PROTOCOLS", False);
         m_atomWMState = m_XInternAtom(m_display, "WM_STATE", False);
+        // m_atomWMTakeFocus = m_XInternAtom(m_display, "WM_TAKE_FOCUS", False);
+        m_atomXdndAware = m_XInternAtom(m_display, "XdndAware", False);
+        m_atomXdndEnter = m_XInternAtom(m_display, "XdndEnter", False);
+        m_atomXdndPosition = m_XInternAtom(m_display, "XdndPosition", False);
+        m_atomXdndStatus = m_XInternAtom(m_display, "XdndStatus", False);
+        m_atomXdndActionCopy = m_XInternAtom(m_display, "XdndActionCopy", False);
+        m_atomXdndDrop = m_XInternAtom(m_display, "XdndDrop", False);
+        m_atomXdndFinished = m_XInternAtom(m_display, "XdndFinished", False);
+        m_atomXdndSelection = m_XInternAtom(m_display, "XdndSelection", False);
+        m_atomXdndTypeList = m_XInternAtom(m_display, "XdndTypeList", False);
+        m_atomTextUriList = m_XInternAtom(m_display, "text/uri-list", False);
 
         m_root = RootWindow(m_display, DefaultScreen(m_display));
         m_context = ((XContext)m_XrmUniqueQuark()); // XUniqueContext();
@@ -283,7 +353,7 @@ namespace he::window::linux
         if (m_XkbSetDetectableAutoRepeat)
         {
             X11_Bool supported = False;
-            X11_Bool enabled = m_XkbSetDetectableAutoRepeat(m_display, true, &supported);
+            X11_Bool enabled = m_XkbSetDetectableAutoRepeat(m_display, True, &supported);
 
             if (enabled == True && supported == True)
                 m_hasDetectableAutoRepeat = true;
@@ -338,7 +408,7 @@ namespace he::window::linux
                                     if (touchClass->type != XITouchClass)
                                         continue;
 
-                                    // TODO: Only reading first touch device currently to get maxTouches
+                                    // Only reading first touch device currently to get maxTouches
                                     // Theoretically there could be multiple touch devices, each
                                     // with multiple multiple touch classes.
                                     m_deviceInfo.maxTouches = touchClass->num_touches;
@@ -762,12 +832,15 @@ namespace he::window::linux
                 const XIDeviceEvent* xev = static_cast<const XIDeviceEvent*>(event.xcookie.data);
                 ViewImpl* view = GetViewFromWindow(xev->event);
 
+                if (view->m_primaryTouchId == 0)
+                    view->m_primaryTouchId = xev->detail;
+
                 PointerDownEvent ev(view);
                 ev.pointerId = static_cast<PointerId>(xev->detail);
                 ev.pointerKind = PointerKind::Touch;
-                ev.size = { 1, 1 }; // TODO
+                ev.size = { 5, 5 }; // No size from xinput so we use a 'reasonable' size
                 ev.pressure = 1.0f;
-                ev.isPrimary = true; // TODO
+                ev.isPrimary = view->m_primaryTouchId == xev->detail;
                 ev.button = PointerButton::Primary;
 
                 if (m_cursorRelativeMode)
@@ -782,16 +855,21 @@ namespace he::window::linux
                 const XIDeviceEvent* xev = static_cast<const XIDeviceEvent*>(event.xcookie.data);
                 ViewImpl* view = GetViewFromWindow(xev->event);
 
+                HE_ASSERT(view->m_primaryTouchId != 0);
+
                 PointerUpEvent ev(view);
                 ev.pointerId = static_cast<PointerId>(xev->detail);
                 ev.pointerKind = PointerKind::Touch;
-                ev.size = { 1, 1 }; // TODO
+                ev.size = { 5, 5 }; // No size from xinput so we use a 'reasonable' size
                 ev.pressure = 1.0f;
-                ev.isPrimary = true; // TODO
+                ev.isPrimary = view->m_primaryTouchId == xev->detail;
                 ev.button = PointerButton::Primary;
 
                 if (m_cursorRelativeMode)
                     CenterCursor();
+
+                if (ev.isPrimary)
+                    view->m_primaryTouchId = 0;
 
                 view->TrackCapture(ev);
                 m_app->OnEvent(ev);
@@ -802,12 +880,14 @@ namespace he::window::linux
                 const XIDeviceEvent* xev = static_cast<const XIDeviceEvent*>(event.xcookie.data);
                 ViewImpl* view = GetViewFromWindow(xev->event);
 
+                HE_ASSERT(view->m_primaryTouchId != 0);
+
                 PointerMoveEvent ev(view);
                 ev.pointerId = static_cast<PointerId>(xev->detail);
                 ev.pointerKind = PointerKind::Touch;
-                ev.size = { 1, 1 }; // TODO
+                ev.size = { 5, 5 }; // No size from xinput so we use a 'reasonable' size
                 ev.pressure = 1.0f;
-                ev.isPrimary = true; // TODO
+                ev.isPrimary = view->m_primaryTouchId == xev->detail;
                 ev.pos = { static_cast<float>(xev->root_x), static_cast<float>(xev->root_y) };
                 ev.absolute = true;
 
@@ -858,10 +938,98 @@ namespace he::window::linux
             }
             case ClientMessage:
             {
-                if (static_cast<Atom>(event.xclient.data.l[0]) == m_atomWMDeleteWindow)
+                if (event.xclient.message_type == m_atomWMProtocols)
                 {
-                    ViewRequestCloseEvent ev(view);
-                    m_app->OnEvent(ev);
+                    const Atom protocol = event.xclient.data.l[0];
+                    if (protocol == m_atomWMDeleteWindow)
+                    {
+                        ViewRequestCloseEvent ev(view);
+                        m_app->OnEvent(ev);
+                    }
+                    else if (protocol == m_atomNetWMPing)
+                    {
+                        XEvent reply = event;
+                        reply.xclient.window = m_root;
+                        m_XSendEvent(m_display, m_root, False, SubstructureNotifyMask | SubstructureRedirectMask, &reply);
+                    }
+                }
+                else if (event.xclient.message_type == m_atomXdndEnter)
+                {
+                    const bool useList = HasFlag(event.xclient.data.l[1], 1);
+
+                    m_dndSource  = event.xclient.data.l[0];
+                    m_dndVersion = event.xclient.data.l[1] >> 24;
+                    m_dndFormat  = X11_None;
+
+                    Atom* formats = nullptr;
+                    uint64_t formatCount = 0;
+                    if (useList)
+                    {
+                        formatCount = ReadWindowProperty(m_dndSource, m_atomXdndTypeList, XA_ATOM, reinterpret_cast<uint8_t**>(&formats));
+                    }
+                    else
+                    {
+                        formatCount = 3;
+                        formats = reinterpret_cast<Atom*>(event.xclient.data.l + 2);
+                    }
+
+                    for (uint64_t i = 0; i < formatCount; ++i)
+                    {
+                        if (formats[i] == m_atomTextUriList)
+                        {
+                            m_dndFormat = m_atomTextUriList;
+                            break;
+                        }
+                    }
+
+                    if (useList && formats)
+                        m_XFree(formats);
+                }
+                else if (event.xclient.message_type == m_atomXdndDrop)
+                {
+                    Time time = CurrentTime;
+
+                    if (m_dndFormat != X11_None)
+                    {
+                        if (m_dndVersion >= 1)
+                            time = event.xclient.data.l[2];
+
+                        m_XConvertSelection(m_display, m_atomXdndSelection, m_dndFormat, m_atomXdndSelection, view->m_window, time);
+                    }
+                    else if (m_dndVersion >= 2)
+                    {
+                        XEvent reply = { ClientMessage };
+                        reply.xclient.window = m_dndSource;
+                        reply.xclient.message_type = m_atomXdndFinished;
+                        reply.xclient.format = 32;
+                        reply.xclient.data.l[0] = view->m_window;
+                        reply.xclient.data.l[1] = 0; // The drag was rejected
+                        reply.xclient.data.l[2] = X11_None;
+
+                        m_XSendEvent(m_display, m_dndSource, False, NoEventMask, &reply);
+                        m_XFlush(m_display);
+                    }
+                }
+                else if (event.xclient.message_type == m_atomXdndPosition)
+                {
+                    XEvent reply = { ClientMessage };
+                    reply.xclient.window = m_dndSource;
+                    reply.xclient.message_type = m_atomXdndStatus;
+                    reply.xclient.format = 32;
+                    reply.xclient.data.l[0] = view->m_window;
+                    reply.xclient.data.l[2] = 0; // Specify an empty rectangle
+                    reply.xclient.data.l[3] = 0;
+
+                    if (m_dndFormat)
+                    {
+                        // Reply that we are ready to copy the dragged data
+                        reply.xclient.data.l[1] = 1; // Accept with no rectangle
+                        if (m_dndVersion >= 2)
+                            reply.xclient.data.l[4] = m_atomXdndActionCopy;
+                    }
+
+                    m_XSendEvent(m_display, m_dndSource, False, NoEventMask, &reply);
+                    m_XFlush(m_display);
                 }
                 break;
             }
@@ -1003,11 +1171,27 @@ namespace he::window::linux
             }
             case KeyRelease:
             {
-                // TODO: Check if `m_hasDetectableAutoRepeat == false` and skip KeyRelease
-                // events that are being repeated.
-                // Example: https://github.com/glfw/glfw/blob/4afa227a056681d2628894b0893527bf69496a41/src/x11_window.c#L1335
                 KeySym keysym = m_XLookupKeysym(&event.xkey, 0);
                 Key key = TranslateKey(keysym);
+
+                // If detectable auto repeat is not available then the X server will send us a
+                // KeyRelease for each repeated KeyPress, which is not desireable. So in this case
+                // we attempt to detect the simulated KeyRelease events by checking for a KeyPress
+                // that follows it for the same key in very little time.
+                if (!m_hasDetectableAutoRepeat)
+                {
+                    XEvent next;
+                    m_XPeekEvent(m_display, &next);
+
+                    if (next.type == KeyPress
+                        && next.xkey.window == event.xkey.window
+                        && next.xkey.keycode == event.xkey.keycode)
+                    {
+                        const Time diff = next.xkey.time - event.xkey.time;
+                        if (diff < 10)
+                            break;
+                    }
+                }
 
                 if (key != Key::None)
                 {
@@ -1041,7 +1225,78 @@ namespace he::window::linux
                 }
                 break;
             }
+            case SelectionNotify:
+            {
+                if (event.xselection.property != m_atomXdndSelection || event.xselection.target != m_dndFormat)
+                    break;
+
+                char* data = nullptr;
+                const uint64_t result = ReadWindowProperty(
+                    event.xselection.requestor,
+                    event.xselection.property,
+                    event.xselection.target,
+                    reinterpret_cast<uint8_t**>(&data));
+
+                if (result)
+                {
+                    char* p = nullptr;
+                    char* line = strtok_r(data, "\r\n", &p);
+                    while (line)
+                    {
+                        const char* path = UriToFilePath(line);
+                        if (path)
+                        {
+                            ViewDropFileEvent ev(view);
+                            ev.path = path;
+                            m_app->OnEvent(ev);
+                        }
+                        line = strtok_r(nullptr, "\r\n", &p);
+                    }
+                    ViewDropFileCompleteEvent ev(view);
+                    m_app->OnEvent(ev);
+
+                    m_XFree(data);
+                }
+
+                if (m_dndVersion >= 2)
+                {
+                    XEvent reply = { ClientMessage };
+                    reply.xclient.window = m_dndSource;
+                    reply.xclient.message_type = m_atomXdndFinished;
+                    reply.xclient.format = 32;
+                    reply.xclient.data.l[0] = view->m_window;
+                    reply.xclient.data.l[1] = result;
+                    reply.xclient.data.l[2] = m_atomXdndActionCopy;
+
+                    m_XSendEvent(m_display, m_dndSource, False, NoEventMask, &reply);
+                    m_XFlush(m_display);
+                }
+                break;
+            }
         }
+    }
+
+    uint64_t DeviceImpl::ReadWindowProperty(Window window, Atom property, Atom type, uint8_t** value)
+    {
+        Atom actualType = X11_None;
+        int actualFormat = 0;
+        uint64_t itemCount = 0;
+        uint64_t bytesAfter = 0;;
+
+        m_XGetWindowProperty(m_display,
+                        window,
+                        property,
+                        0,
+                        LONG_MAX,
+                        False,
+                        type,
+                        &actualType,
+                        &actualFormat,
+                        &itemCount,
+                        &bytesAfter,
+                        value);
+
+        return itemCount;
     }
 
     DeviceImpl::InputDeviceInfo& DeviceImpl::FindInputDeviceInfo(int deviceId)

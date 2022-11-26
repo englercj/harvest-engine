@@ -23,6 +23,7 @@ namespace he::window::linux
     using Pfn_XChangeProperty = int(*)(Display*, Window, Atom, Atom, int, int, const unsigned char*, int);
     using Pfn_XCloseDisplay = int(*)(Display*);
     using Pfn_XCloseIM = Status(*)(XIM);
+    using Pfn_XConvertSelection = int(*)(Display*, Atom, Atom, Atom, Window, Time);
     using Pfn_XCreateFontCursor = Cursor(*)(Display*, unsigned int);
     using Pfn_XCreateBitmapFromData = Pixmap(*)(Display*, Drawable, const char*, unsigned int, unsigned int);
     using Pfn_XCreateIC = XIC(*)(XIM, ...);
@@ -39,6 +40,7 @@ namespace he::window::linux
     using Pfn_XFreeCursor = int(*)(Display*, Cursor);
     using Pfn_XFreeEventData = void(*)(Display*, XGenericEventCookie*);
     using Pfn_XFreePixmap = int(*)(Display*, Pixmap);
+    using Pfn_XGetAtomName = char*(*)(Display*, Atom);
     using Pfn_XGetEventData = X11_Bool(*)(Display*, XGenericEventCookie*);
     using Pfn_XGetInputFocus = int(*)(Display*, Window*, int*);
     using Pfn_XGetWMNormalHints = Status(*)(Display*, Window, XSizeHints*, long*);
@@ -58,7 +60,6 @@ namespace he::window::linux
     using Pfn_XOpenIM = XIM(*)(Display*, XrmDatabase*, char*, char*);
     using Pfn_XPeekEvent = int(*)(Display*, XEvent*);
     using Pfn_XPending = int(*)(Display*);
-    using Pfn_XIQueryDevice = XIDeviceInfo*(*)(Display*, int, int*);
     using Pfn_XQueryExtension = X11_Bool(*)(Display*, const char*, int*, int*, int*);
     using Pfn_XQueryPointer = X11_Bool(*)(Display*, Window, Window*, Window*, int*, int*, int*, int*, unsigned int*);
     using Pfn_XRaiseWindow = int(*)(Display*, Window);
@@ -128,6 +129,8 @@ namespace he::window::linux
         void HandleNonViewXEvent(XEvent& event);
         void HandleViewXEvent(ViewImpl* view, XEvent& event);
 
+        uint64_t ReadWindowProperty(Window window, Atom property, Atom type, uint8_t** value);
+
         struct InputDeviceInfo
         {
             int deviceId{ 0 };
@@ -160,6 +163,10 @@ namespace he::window::linux
 
         std::unordered_map<int, InputDeviceInfo> m_inputDeviceCache{};
 
+        int m_dndVersion{ 0 };
+        Window m_dndSource{ X11_None };
+        Atom m_dndFormat{ X11_None };
+
         Cursor m_cursors[static_cast<int32_t>(PointerCursor::_Count)];
         Atom m_atomNetActiveWindow{ X11_None };
         Atom m_atomNetWMPing{ X11_None };
@@ -174,12 +181,24 @@ namespace he::window::linux
         Atom m_atomNetWMWindowTypeNormal{ X11_None };
         Atom m_atomMotifWMHints{ X11_None };
         Atom m_atomWMDeleteWindow{ X11_None };
+        Atom m_atomWMProtocols{ X11_None };
         Atom m_atomWMState{ X11_None };
+        Atom m_atomXdndAware{ X11_None };
+        Atom m_atomXdndEnter{ X11_None };
+        Atom m_atomXdndPosition{ X11_None };
+        Atom m_atomXdndStatus{ X11_None };
+        Atom m_atomXdndActionCopy{ X11_None };
+        Atom m_atomXdndDrop{ X11_None };
+        Atom m_atomXdndFinished{ X11_None };
+        Atom m_atomXdndSelection{ X11_None };
+        Atom m_atomXdndTypeList{ X11_None };
+        Atom m_atomTextUriList{ X11_None };
 
         void* m_xlib{ nullptr };
         Pfn_XChangeProperty m_XChangeProperty{ nullptr };
         Pfn_XCloseDisplay m_XCloseDisplay{ nullptr };
         Pfn_XCloseIM m_XCloseIM{ nullptr };
+        Pfn_XConvertSelection m_XConvertSelection{ nullptr };
         Pfn_XCreateFontCursor m_XCreateFontCursor{ nullptr };
         Pfn_XCreateBitmapFromData m_XCreateBitmapFromData{ nullptr };
         Pfn_XCreateIC m_XCreateIC{ nullptr };
@@ -196,6 +215,7 @@ namespace he::window::linux
         Pfn_XFreeCursor m_XFreeCursor{ nullptr };
         Pfn_XFreeEventData m_XFreeEventData{ nullptr };
         Pfn_XFreePixmap m_XFreePixmap{ nullptr };
+        Pfn_XGetAtomName m_XGetAtomName{ nullptr };
         Pfn_XGetEventData m_XGetEventData{ nullptr };
         Pfn_XGetInputFocus m_XGetInputFocus{ nullptr };
         Pfn_XGetWMNormalHints m_XGetWMNormalHints{ nullptr };
@@ -215,7 +235,6 @@ namespace he::window::linux
         Pfn_XOpenIM m_XOpenIM{ nullptr };
         Pfn_XPeekEvent m_XPeekEvent{ nullptr };
         Pfn_XPending m_XPending{ nullptr };
-        Pfn_XIQueryDevice m_XIQueryDevice{ nullptr };
         Pfn_XQueryExtension m_XQueryExtension{ nullptr };
         Pfn_XQueryPointer m_XQueryPointer{ nullptr };
         Pfn_XRaiseWindow m_XRaiseWindow{ nullptr };

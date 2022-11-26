@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include "he/window/event.h"
 #include "he/window/view.h"
 
 #if defined(HE_PLATFORM_LINUX)
@@ -66,6 +67,7 @@ namespace he::window::linux
         Window m_window{ X11_None };
         int m_mouseCaptureCount{ 0 };
         int m_touchCaptureCount{ 0 };
+        int m_primaryTouchId{ 0 };
         Vec2i m_pos{ 0, 0 };
         Vec2i m_size{ 1, 1 };
 

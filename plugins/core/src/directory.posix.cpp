@@ -4,6 +4,7 @@
 
 #include "he/core/assert.h"
 #include "he/core/path.h"
+#include "he/core/utils.h"
 
 #if defined(HE_PLATFORM_API_POSIX)
 

@@ -6,9 +6,11 @@
 #include "he/core/macros.h"
 #include "he/core/scope_guard.h"
 #include "he/core/string.h"
+#include "he/core/string_view.h"
 #include "he/core/utils.h"
 
 #include <concepts>
+#include <type_traits>
 
 #if defined(HE_PLATFORM_API_POSIX)
 
@@ -19,51 +21,58 @@
 
 namespace he
 {
-    static void ReadPowerStatusBool(const char* path, PowerStatus::Value<bool>& value)
+    static uint32_t ReadFile(char* dst, uint32_t len, const char* path)
     {
         File file;
         if (!file.Open(path, FileOpenMode::ReadExisting))
-            return;
+            return 0;
 
-        char data[2];
         uint32_t bytesRead;
-        if (!file.Read(data, HE_LENGTH_OF(data), &bytesRead) || bytesRead != 2)
-            return;
+        if (!file.ReadAt(dst, 0, len, &bytesRead) || bytesRead == 0)
+            return 0;
 
-        value.Set(data[0] != '0');
+        return bytesRead;
     };
 
-    template <std::integral T>
-    static void ReadPowerStatusInt(const char* path, PowerStatus::Value<T>& value)
+    template <uint32_t N>
+    static uint32_t ReadFile(char (&dst)[N], const char* path)
     {
-        File file;
-        if (!file.Open(path, FileOpenMode::ReadExisting))
-            return;
+        return ReadFile(dst, N, path);
+    }
 
-        char data[100];
-        uint32_t bytesRead;
-        if (!file.Read(data, HE_LENGTH_OF(data), &bytesRead) || bytesRead < 2)
-            return;
-
-        const T v = String::ToInteger<T>(data);
-        value.Set(v);
-    };
-
-    template <std::floating_point T>
-    static void ReadPowerStatusFloat(const char* path, PowerStatus::Value<T>& value)
+    template <typename T>
+    static void GetPowerSupplyValue(const char* data, uint32_t dataLen, StringView key, PowerStatus::Value<T>& value)
     {
-        File file;
-        if (!file.Open(path, FileOpenMode::ReadExisting))
+        const char* p = String::Find(key);
+        if (!p)
             return;
 
-        char data[100];
-        uint32_t bytesRead;
-        if (!file.Read(data, HE_LENGTH_OF(data), &bytesRead) || bytesRead < 2)
+        const char* dataEnd = data + dataLen;
+        const char* valueStart = p + keyLen;
+
+        if (*valueStart == '=')
+            ++valueStart;
+
+        if (valueStart >= dataEnd)
             return;
 
-        const T v = String::ToFloat<T>(data);
-        value.Set(v);
-    };
+        const char* valueEnd = valueStart;
+        while (valueEnd < dataEnd && *valueEnd != '\n')
+            ++valueEnd;
+
+        if constexpr (std::is_same_v<T, bool>)
+        {
+            value.Set(valueStart[0] != '0');
+        }
+        else if constexpr (std::is_integral_v<T>)
+        {
+            value.Set(String::ToInteger<T>(valueStart, valueEnd));
+        }
+        else if constexpr (std::is_floating_point_v<T>)
+        {
+            value.Set(String::ToFloat<T>(valueStart, valueEnd));
+        }
+    }
 
     struct SystemInfoImpl : SystemInfo
     {
@@ -141,12 +150,39 @@ namespace he
     {
         PowerStatus status{};
 
-        ReadPowerStatusBool("/sys/class/power_supply/AC0/online", status.onACPower);
-        ReadPowerStatusBool("/sys/class/power_supply/BAT0/present", status.hasBattery);
-        ReadPowerStatusInt("/sys/class/power_supply/BAT0/capacity", status.batteryLife);
+        constexpr StringView CapacityKey = "POWER_SUPPLY_CAPACITY";
+        constexpr StringView EnergyNowKey = "POWER_SUPPLY_ENERGY_NOW";
+        constexpr StringView PowerNowKey = "POWER_SUPPLY_POWER_NOW";
+        constexpr StringView PresentKey = "POWER_SUPPLY_PRESENT";
+        constexpr StringView OnlineKey = "POWER_SUPPLY_ONLINE";
 
-        // TODO: calculate battery life time
-        // status.batteryLifeTime
+        char buf[1024];
+
+        // Read AC adapter info
+        const uint32_t acLen = ReadFile(buf, "/sys/class/power_supply/AC0/uevent");
+        if (acLen > 0)
+        {
+            GetPowerSupplyValue(buf, acLen, OnlineKey, status.onACPower);
+        }
+
+        // Read battery info
+        const uint32_t batLen = ReadFile(buf, "/sys/class/power_supply/BAT0/uevent");
+        if (batLen > 0)
+        {
+            GetPowerSupplyValue(buf, batLen, PresentKey, status.hasBattery);
+            GetPowerSupplyValue(buf, batLen, CapacityKey, status.batteryLife);
+
+            PowerStatus::Value<double> energyNow;
+            GetPowerSupplyValue(buf, batLen, EnergyNowKey, energyNow);
+
+            PowerStatus::Value<double> powerNow;
+            GetPowerSupplyValue(buf, batLen, PowerNowKey, powerNow);
+
+            if (energyNow.valid && powerNow.valid)
+            {
+                status.batterLifeTime.Set(FromPeriod<Hours>(energyNow.value / powerNow.value));
+            }
+        }
 
         // If we're on AC power, but didn't find a battery file we can be confident that
         // a battery isn't present on the system.

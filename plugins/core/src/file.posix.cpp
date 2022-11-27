@@ -4,7 +4,6 @@
 
 #include "he/core/allocator.h"
 #include "he/core/assert.h"
-#include "he/core/enum_ops.h"
 #include "he/core/macros.h"
 #include "he/core/path.h"
 #include "he/core/scope_guard.h"
@@ -70,48 +69,42 @@ namespace he
 
     Result File::Copy(const char* oldPath, const char* newPath, bool clobber)
     {
-        // TODO: REDO WITH BIG OL STRINGS FOR BUFFERS
-
         if (!clobber && File::Exists(newPath))
             return Result::InvalidParameter;
 
+        Result result = Result::Success;
+
         File oldFile;
-        Result oldResult = oldFile.Open(oldPath, FileOpenMode::ReadExisting);
-        if (!oldResult)
-        {
-            return oldResult;
-        }
+        result = oldFile.Open(oldPath, FileOpenMode::ReadExisting);
+        if (!result)
+            return result;
 
         File newFile;
-        Result newResult = newFile.Open(newPath, FileOpenMode::WriteTruncate);
-        if (!newResult)
-        {
-            return newResult;
-        }
+        result = newFile.Open(newPath, FileOpenMode::WriteTruncate);
+        if (!result)
+            return result;
 
         uint64_t oldFileSize = oldFile.GetSize();
 
-        char buffer[4096];
+        constexpr uint32_t BufferSize = 65536;
+        void* buffer = Allocator::GetDefault().Malloc(BufferSize);
         uint32_t amountRead = 0;
         uint64_t totalRead = 0;
-        Result result = Result::Success;
         while (totalRead < oldFileSize)
         {
-            result = oldFile.Read(buffer, HE_LENGTH_OF(buffer), &amountRead);
+            result = oldFile.Read(buffer, BufferSize, &amountRead);
             if (!result || amountRead == 0)
-            {
                 break;
-            }
 
             uint32_t amountWritten = 0;
             result = newFile.Write(buffer, amountRead, &amountWritten);
             if (!result || amountWritten == 0)
-            {
                 break;
-            }
+
             totalRead += amountRead;
         }
 
+        Allocator::GetDefault().Free(buffer);
         return result;
     }
 
@@ -353,10 +346,13 @@ namespace he
         return *this;
     }
 
-    Result MemoryMap::Map(File& file, MemoryMapMode mode, uint64_t offset, uint32_t size)
+    Result MemoryMap::Map(const File& file, MemoryMapMode mode, uint64_t offset, uint32_t size)
     {
         HE_ASSERT(m_data == nullptr);
         HE_ASSERT(IsAligned(offset, sysconf(_SC_PAGE_SIZE)), HE_KV(offset, offset), HE_KV(page_size, sysconf(_SC_PAGE_SIZE)));
+
+        if (!file.IsOpen())
+            return Result::InvalidParameter;
 
         if (size == 0)
         {

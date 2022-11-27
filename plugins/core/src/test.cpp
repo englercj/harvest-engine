@@ -49,7 +49,6 @@ namespace internal
 
     TestFixture::TestFixture()
     {
-        // TODO: Can probably make this a linked list andavoid the allocation at static construction that happens here.
         _TestRunner::Get().tests.PushBack(this);
     }
 

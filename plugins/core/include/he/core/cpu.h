@@ -5,20 +5,34 @@
 #include "he/core/compiler.h"
 #include "he/core/types.h"
 
-// TODO: Document these macros
-
+/// Set to one (1) when the target is any ARM platform, and zero (0) otherwise.
 #define HE_CPU_ARM                  0
+
+/// Set to one (1) when the target is 32-bit ARM platforms, and zero (0) otherwise.
 #define HE_CPU_ARM_32               0
+
+/// Set to one (1) when the target is 64-bit ARM platforms, and zero (0) otherwise.
 #define HE_CPU_ARM_64               0
 
+/// Set to one (1) when the target is any WASM platform, and zero (0) otherwise.
 #define HE_CPU_WASM                 0
+
+/// Set to one (1) when the target is 32-bit WASM platforms, and zero (0) otherwise.
 #define HE_CPU_WASM_32              0
+
+/// Set to one (1) when the target is 64-bit WASM platforms, and zero (0) otherwise.
 #define HE_CPU_WASM_64              0
 
+/// Set to one (1) when the target is any x86 platform, and zero (0) otherwise.
 #define HE_CPU_X86                  0
+
+/// Set to one (1) when the target is 32-bit x86 platforms, and zero (0) otherwise.
 #define HE_CPU_X86_32               0
+
+/// Set to one (1) when the target is 64-bit x86 platforms, and zero (0) otherwise.
 #define HE_CPU_X86_64               0
 
+/// Set to one (1) when the target is any 64-bit platform, and zero (0) otherwise.
 #define HE_CPU_64_BIT               0
 
 #if defined(__BIG_ENDIAN__) || defined(__ARMEB__)
@@ -63,6 +77,9 @@
     #define HE_CPU_64_BIT           1
 #endif
 
+/// \def HE_SPIN_WAIT_PAUSE
+/// Causes a cpu with dynamic execution to pause the next instruction for an
+/// implementation-specific amount of time. This is useful in spin-wait loops.
 #if HE_COMPILER_MSVC
     #if HE_CPU_ARM
         extern "C" void __yield(void);
@@ -90,7 +107,7 @@ namespace he
     /// Normalized vendor identifier for CPU detection.
     enum class CpuVendorId : uint32_t
     {
-        Unknown,
+        Unknown,    ///< Unknown vendor ID
 
         Intel,      ///< Intel Corporation
 

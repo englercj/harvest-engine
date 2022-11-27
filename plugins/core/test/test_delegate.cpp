@@ -191,23 +191,9 @@ HE_TEST(core, delegate, Construct)
         HE_EXPECT_EQ(d(3), 3);
     }
 
-    // Invocable type construct
-    {
-        Delegate<int(int)> d([](int c) { return c; });
-        HE_EXPECT(d);
-        HE_EXPECT_EQ(d(3), 3);
-    }
-
     // Deduction guide, function type
     {
         Delegate d(+[](const void*, int c) { return c; });
-        HE_EXPECT(d);
-        HE_EXPECT_EQ(d(3), 3);
-    }
-
-    // Deduction guide, invocable type
-    {
-        Delegate d(+[](int c) { return c; });
         HE_EXPECT(d);
         HE_EXPECT_EQ(d(3), 3);
     }
@@ -382,7 +368,7 @@ HE_TEST(core, delegate, Set)
 // ------------------------------------------------------------------------------------------------
 HE_TEST(core, delegate, Clear)
 {
-    Delegate d(+[](int c) { return c; });
+    Delegate d(+[](const void*, int c) { return c; });
     HE_EXPECT(d);
     d.Clear();
     HE_EXPECT(!d);
@@ -391,9 +377,9 @@ HE_TEST(core, delegate, Clear)
 // ------------------------------------------------------------------------------------------------
 HE_TEST(core, delegate, Payload)
 {
-    auto f1 = +[](int c) { return c; };
+    auto f1 = +[](const void*, int c) { return c; };
     Delegate d1(f1);
-    HE_EXPECT_EQ_PTR(d1.Payload(), f1);
+    HE_EXPECT_EQ(d1.Payload(), nullptr);
 
     Delegate d2(+[](const void*, int c) { return c; }, &d1);
     HE_EXPECT_EQ_PTR(d2.Payload(), &d1);

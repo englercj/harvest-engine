@@ -29,7 +29,7 @@ HE_TEST(core, log, LogLevel)
     static_assert(HE_LOG_ENABLE_LEVEL >= HE_LOG_LEVEL_TRACE && HE_LOG_ENABLE_LEVEL <= HE_LOG_LEVEL_ERROR);
 }
 
-static void TestLogHandler(const LogSource& source, const KeyValue* kvs, uint32_t count)
+static void TestLogHandler(const void*, const LogSource& source, const KeyValue* kvs, uint32_t count)
 {
     HE_EXPECT_EQ(source.level, LogLevel::Info);
     HE_EXPECT(source.line == 56 || source.line == 57);

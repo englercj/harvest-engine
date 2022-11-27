@@ -4,10 +4,10 @@
 
 #include "he/core/alloca.h"
 #include "he/core/assert.h"
-#include "he/core/enum_ops.h"
 #include "he/core/memory_ops.h"
 #include "he/core/path.h"
 #include "he/core/scope_guard.h"
+#include "he/core/utils.h"
 #include "he/core/wstr.h"
 
 #if defined(HE_PLATFORM_API_WIN32)

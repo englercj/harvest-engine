@@ -5,6 +5,7 @@
 #include "he/core/config.h"
 #include "he/core/log.h"
 #include "he/core/system.h"
+#include "he/core/type_info_fmt.h"
 
 namespace he
 {
@@ -23,12 +24,24 @@ namespace he
     {
         for (StaticModule& m : StaticModules())
         {
-            ModuleEntry& entry = m_modules.EmplaceBack();
+            ModuleEntry entry;
             entry.name = m.name;
             entry.type = m.type;
             entry.instance = m.create();
+            if (!entry.instance)
+            {
+                HE_LOG_ERROR(he_core,
+                    HE_MSG("Static module load failed. Failed to instantiate the harvest module object."),
+                    HE_KV(name, m.name),
+                    HE_KV(type, m.type));
+                continue;
+            }
+
             entry.instance->m_owner = this;
             entry.instance->Register();
+            entry.destroy = m.destroy;
+
+            m_modules.EmplaceBack(Move(entry));
         }
     }
 
@@ -46,11 +59,12 @@ namespace he
         const Pfn_GetHarvestModuleName pfnGetHarvestModuleName = entry.dl.Symbol<Pfn_GetHarvestModuleName>("GetHarvestModuleName");
         const Pfn_GetHarvestModuleTypeInfo pfnGetHarvestModuleTypeInfo = entry.dl.Symbol<Pfn_GetHarvestModuleTypeInfo>("GetHarvestModuleTypeInfo");
         const Pfn_CreateHarvestModule pfnCreateHarvestModule = entry.dl.Symbol<Pfn_CreateHarvestModule>("CreateHarvestModule");
+        const Pfn_DestroyHarvestModule pfnDestroyHarvestModule = entry.dl.Symbol<Pfn_DestroyHarvestModule>("DestroyHarvestModule");
 
-        if (!pfnGetHarvestModuleName || !pfnGetHarvestModuleTypeInfo || !pfnCreateHarvestModule)
+        if (!pfnGetHarvestModuleName || !pfnGetHarvestModuleTypeInfo || !pfnCreateHarvestModule || !pfnDestroyHarvestModule)
         {
             HE_LOG_ERROR(he_core,
-                HE_MSG("Dynamic module is missing expected symbols. Does this library export a Harvest module?"),
+                HE_MSG("Dynamic module load failed. The shared library is missing expected symbols. Does this library export a Harvest module?"),
                 HE_KV(path, path));
             return false;
         }
@@ -58,8 +72,21 @@ namespace he
         entry.name = pfnGetHarvestModuleName();
         entry.type = pfnGetHarvestModuleTypeInfo();
         entry.instance = pfnCreateHarvestModule();
-        entry.instance->Register();
 
+        if (!entry.instance)
+        {
+            HE_LOG_ERROR(he_core,
+                HE_MSG("Dynamic module load failed. Failed to instantiate the harvest module object."),
+                HE_KV(path, path),
+                HE_KV(name, entry.name),
+                HE_KV(type, entry.type));
+            return false;
+        }
+
+        entry.instance->Register();
+        entry.destroy = pfnDestroyHarvestModule;
+
+        m_modules.PushBack(Move(entry));
         return true;
     }
 
@@ -78,7 +105,7 @@ namespace he
         // Delete the module instances and close any dynamic libraries that were opened.
         for (ModuleEntry& entry : m_modules)
         {
-            entry.instance.Reset();
+            entry.destroy(entry.instance);
             entry.dl.Close();
         }
         m_modules.Clear();
@@ -108,10 +135,5 @@ namespace he
         {
             entry.instance->Shutdown();
         }
-    }
-
-    void ModuleRegistry::RegisterStaticModule(const char* name, TypeInfo type, CreateModuleDelegate create)
-    {
-        StaticModules().PushBack({ name, type, create });
     }
 }

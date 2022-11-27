@@ -3,12 +3,10 @@
 #pragma once
 
 #include "he/core/allocator.h"
-#include "he/core/delegate.h"
 #include "he/core/string.h"
 #include "he/core/system.h"
 #include "he/core/type_info.h"
 #include "he/core/types.h"
-#include "he/core/unique_ptr.h"
 #include "he/core/utils.h"
 #include "he/core/vector.h"
 
@@ -25,7 +23,8 @@
     #define HE_EXPORT_MODULE(Impl) \
         extern "C" HE_DLL_EXPORT const char* GetHarvestModuleName() { return HE_STRINGIFY(HE_CFG_MODULE_NAME); } \
         extern "C" HE_DLL_EXPORT ::he::TypeInfo GetHarvestModuleTypeInfo() { return ::he::TypeInfo::Get<Impl>(); } \
-        extern "C" HE_DLL_EXPORT ::he::UniquePtr<::he::Module> CreateHarvestModule() { return ::he::MakeUnique<Impl>(); }
+        extern "C" HE_DLL_EXPORT ::he::Module* CreateHarvestModule() { return ::he::Allocator::GetDefault().New<Impl>(); } \
+        extern "C" HE_DLL_EXPORT void DestroyHarvestModule(::he::Module* m) { ::he::Allocator::GetDefault().Delete(m); }
 #else
     #define HE_EXPORT_MODULE(Impl) \
         HE_RETAIN ::he::StaticModuleRegistrar<Impl> HE_PP_JOIN(HE_CFG_MODULE_NAME, _ModuleRegistrar){ HE_STRINGIFY(HE_CFG_MODULE_NAME) }
@@ -47,10 +46,8 @@ namespace he
     {
         explicit StaticModuleRegistrar(const char* name);
 
-        static UniquePtr<Module> CreateModule(const void*)
-        {
-            return MakeUnique<T>();
-        }
+        static Module* CreateModule() { return ::he::Allocator::GetDefault().New<T>(); }
+        static void DestroyModule(Module* m) { ::he::Allocator::GetDefault().Delete(m); }
     };
 
     // --------------------------------------------------------------------------------------------
@@ -95,9 +92,6 @@ namespace he
     class ModuleRegistry final
     {
     public:
-        using CreateModuleDelegate = Delegate<UniquePtr<Module>()>;
-
-    public:
         ModuleRegistry() = default;
         ModuleRegistry(const ModuleRegistry&) = delete;
         ModuleRegistry(ModuleRegistry&&) = delete;
@@ -128,25 +122,25 @@ namespace he
         template <typename T>
         friend struct StaticModuleRegistrar;
 
-        static void RegisterStaticModule(const char* name, TypeInfo type, CreateModuleDelegate create);
-
-    private:
         using Pfn_GetHarvestModuleName = const char*(*)();
         using Pfn_GetHarvestModuleTypeInfo = TypeInfo(*)();
-        using Pfn_CreateHarvestModule = UniquePtr<Module>(*)();
+        using Pfn_CreateHarvestModule = Module*(*)();
+        using Pfn_DestroyHarvestModule = void(*)(Module*);
 
         struct StaticModule
         {
             const char* name{ nullptr };
             TypeInfo type{};
-            CreateModuleDelegate create{};
+            Pfn_CreateHarvestModule create{ nullptr };
+            Pfn_DestroyHarvestModule destroy{ nullptr };
         };
 
         struct ModuleEntry
         {
             const char* name{ nullptr };
             TypeInfo type{};
-            UniquePtr<Module> instance{};
+            Pfn_DestroyHarvestModule destroy{ nullptr };
+            Module* instance{};
             DynamicLib dl{};
         };
 
@@ -172,8 +166,12 @@ namespace he
     template <typename T>
     StaticModuleRegistrar<T>::StaticModuleRegistrar(const char* name)
     {
-        const auto cb = ModuleRegistry::CreateModuleDelegate::Make(&StaticModuleRegistrar::CreateModule);
-        ModuleRegistry::RegisterStaticModule(name, TypeInfo::Get<T>(), cb);
+        ModuleRegistry::StaticModules().PushBack({
+            name,
+            TypeInfo::Get<T>(),
+            &StaticModuleRegistrar::CreateModule,
+            &StaticModuleRegistrar::DestroyModule,
+        });
     }
 
     template <typename T>

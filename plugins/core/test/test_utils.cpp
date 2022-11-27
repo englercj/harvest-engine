@@ -5,12 +5,23 @@
 #include "he/core/utils.h"
 
 #include "he/core/alloca.h"
+#include "he/core/enum_ops.h"
 #include "he/core/macros.h"
 #include "he/core/test.h"
 
 #include <type_traits>
 
 using namespace he;
+
+// ------------------------------------------------------------------------------------------------
+enum class Flags : uint32_t
+{
+    None = 0,
+    A = 1 << 0,
+    B = 1 << 1,
+    C = 1 << 2,
+};
+HE_ENUM_FLAGS(Flags);
 
 // ------------------------------------------------------------------------------------------------
 HE_TEST(core, utils, IsAligned)
@@ -173,6 +184,40 @@ HE_TEST(core, utils, Abs)
 
     HE_EXPECT_EQ(Abs(1), 1);
     HE_EXPECT_EQ(Abs(-1), 1);
+}
+
+// ------------------------------------------------------------------------------------------------
+HE_TEST(core, utils, HasFlag)
+{
+    HE_EXPECT(HasFlag(Flags::A | Flags::B, Flags::A));
+    HE_EXPECT(HasFlag(Flags::A | Flags::B, Flags::B));
+    HE_EXPECT(!HasFlag(Flags::A | Flags::B, Flags::C));
+}
+
+// ------------------------------------------------------------------------------------------------
+HE_TEST(core, utils, HasFlags)
+{
+    HE_EXPECT(HasFlags(Flags::A | Flags::B, Flags::A));
+    HE_EXPECT(HasFlags(Flags::A | Flags::B, Flags::B));
+    HE_EXPECT(!HasFlags(Flags::A | Flags::B, Flags::C));
+
+    HE_EXPECT(HasFlags(Flags::A | Flags::B, Flags::A | Flags::B));
+    HE_EXPECT(HasFlags(Flags::A | Flags::B, Flags::B | Flags::A));
+    HE_EXPECT(!HasFlags(Flags::A | Flags::B, Flags::A | Flags::C));
+    HE_EXPECT(!HasFlags(Flags::A | Flags::B, Flags::C));
+}
+
+// ------------------------------------------------------------------------------------------------
+HE_TEST(core, utils, HasAnyFlags)
+{
+    HE_EXPECT(HasAnyFlags(Flags::A | Flags::B, Flags::A));
+    HE_EXPECT(HasAnyFlags(Flags::A | Flags::B, Flags::B));
+    HE_EXPECT(!HasAnyFlags(Flags::A | Flags::B, Flags::C));
+
+    HE_EXPECT(HasAnyFlags(Flags::A | Flags::B, Flags::A | Flags::B));
+    HE_EXPECT(HasAnyFlags(Flags::A | Flags::B, Flags::B | Flags::A));
+    HE_EXPECT(HasAnyFlags(Flags::A | Flags::B, Flags::A | Flags::C));
+    HE_EXPECT(!HasAnyFlags(Flags::A | Flags::B, Flags::C));
 }
 
 // ------------------------------------------------------------------------------------------------

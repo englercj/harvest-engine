@@ -3,6 +3,7 @@
 #pragma once
 
 #include "he/core/type_info.h"
+#include "he/core/string_view_fmt.h"
 
 #include "fmt/core.h"
 

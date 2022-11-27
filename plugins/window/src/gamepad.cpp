@@ -85,10 +85,10 @@ namespace he::window
         if (HasFlag(m_buttons, flag) == value)
             return;
 
-        SetFlag(m_buttons, flag, value);
-
         if (value)
         {
+            m_buttons |= flag;
+
             GamepadButtonDownEvent ev;
             ev.index = m_index;
             ev.button = button;
@@ -96,6 +96,8 @@ namespace he::window
         }
         else
         {
+            m_buttons &= ~flag;
+
             GamepadButtonUpEvent ev;
             ev.index = m_index;
             ev.button = button;

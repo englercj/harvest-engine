@@ -3,10 +3,10 @@
 #include "file_helpers.win32.h"
 
 #include "he/core/ascii.h"
-#include "he/core/enum_ops.h"
 #include "he/core/scope_guard.h"
 #include "he/core/string.h"
 #include "he/core/string_view.h"
+#include "he/core/utils.h"
 #include "he/core/wstr.h"
 
 #if defined(HE_PLATFORM_API_WIN32)

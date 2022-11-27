@@ -3,8 +3,8 @@
 #include "file_helpers.posix.h"
 
 #include "he/core/string_view.h"
-#include "he/core/enum_ops.h"
 #include "he/core/path.h"
+#include "he/core/utils.h"
 #include "he/core/wstr.h"
 
 #include "fmt/core.h"
@@ -158,8 +158,7 @@ namespace he
         if (fstat(fd, &sb))
             return Result::FromLastError();
 
-        // TODO: Hidden allocator here, necessary to avoid PATH_MAX issues but probably should
-        // expose this so callers know it can allocate.
+        // A bit of a hidden allocator here but is necessary to avoid PATH_MAX issues.
         String path;
         Result r = PosixFileGetPath(fd, path);
 

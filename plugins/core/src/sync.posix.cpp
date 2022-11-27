@@ -300,9 +300,12 @@ namespace he
             return r == 0;
         }
 
-        // TODO: handle potential overflow
-        SystemTime end = SystemClock::Now();
-        end += timeout;
+        const SystemTime now = SystemClock::Now();
+        SystemTime end = now + timeout;
+
+        // handle overflow
+        if (end < now)
+            end = { UINT64_MAX };
 
         const struct timespec timeoutSpec = PosixTimeFromSystemTime(end);
         const int r = sem_timedwait(sem, &timeoutSpec);

@@ -61,9 +61,16 @@ namespace he
             TimeFmt(now));
     }
 
-    FileSink::FileSink(Allocator& allocator)
+    FileSink::FileSink(Allocator& allocator) noexcept
         : m_buf(allocator)
-    {}
+    {
+        m_buf.Reserve(BufferFlushSize + 1024);
+    }
+
+    FileSink::~FileSink() noexcept
+    {
+        Flush();
+    }
 
     Result FileSink::Configure(const char* directory, const char* prefix, bool utcTime)
     {
@@ -93,17 +100,22 @@ namespace he
         SystemTime now = SystemClock::Now();
 
         LockGuard lock(m_mutex);
-
-        if (!m_file.IsOpen())
-            return;
-
-        m_buf.Clear();
         if (m_utc)
             FormatFileLogLine<FmtUtcTime>(m_buf, source, kvs, count, now);
         else
             FormatFileLogLine<FmtLocalTime>(m_buf, source, kvs, count, now);
 
-        m_file.Write(m_buf.Data(), m_buf.Size());
+        if (m_buf.Size() >= BufferFlushSize)
+            Flush();
+    }
+
+    void FileSink::Flush()
+    {
+        if (m_file.IsOpen() && !m_buf.IsEmpty())
+        {
+            m_file.Write(m_buf.Data(), m_buf.Size());
+        }
+        m_buf.Clear();
     }
 
     void DebuggerSink(const void*, const LogSource& source, const KeyValue* kvs, uint32_t count)

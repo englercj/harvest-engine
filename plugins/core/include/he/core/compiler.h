@@ -89,7 +89,7 @@
     #define HE_FUNC_SIG                     __FUNCSIG__
     #define HE_FORCE_INLINE                 __forceinline
     #define HE_NO_INLINE                    __declspec(noinline)
-    #define HE_RETAIN
+    #define HE_RETAIN                       extern "C"
     #define HE_DLL_EXPORT                   __declspec(dllexport)
     #define HE_LIKELY(x)                    (!!(x))
     #define HE_UNLIKELY(x)                  (!!(x))

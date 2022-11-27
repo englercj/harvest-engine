@@ -9,5 +9,5 @@ using namespace he;
 // ------------------------------------------------------------------------------------------------
 HE_TEST(core, unique_ptr, Test)
 {
-    // TODO - remove? improve?
+    // TODO
 }

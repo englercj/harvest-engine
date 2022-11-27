@@ -4,10 +4,10 @@
 
 #include "he/core/clock.h"
 #include "he/core/directory.h"
-#include "he/core/enum_ops.h"
 #include "he/core/file.h"
 #include "he/core/path.h"
 #include "he/core/scope_guard.h"
+#include "he/core/utils.h"
 
 #include <algorithm>
 #include <unordered_map>

@@ -3,6 +3,7 @@
 #pragma once
 
 #include "he/core/types.h"
+#include "he/window/event.h"
 #include "he/window/view.h"
 
 #if defined(HE_PLATFORM_API_WIN32)

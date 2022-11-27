@@ -19,54 +19,6 @@
 
 namespace he
 {
-    // TODO: Move flag checks into utils.h
-
-    /// Checks if the `value` contains the flag `search`, and only the flag `search`.
-    ///
-    /// \param value The value to check against.
-    /// \param search The flag to search for.
-    /// \return True if `value` has the flag `search`.
-    template <typename T, typename U = T> requires(std::is_convertible_v<U, T>)
-    constexpr bool HasFlag(T value, U search) { return (value & static_cast<T>(search)) == static_cast<T>(search); }
-
-    /// Checks if the `value` contains the flags `search`, and only the flags `search`.
-    ///
-    /// \param value The value to check against.
-    /// \param search The flags to search for.
-    /// \return True if `value` has the flags `search`.
-    template <typename T, typename U = T> requires(std::is_convertible_v<U, T>)
-    constexpr bool HasFlags(T value, U search) { return (value & static_cast<T>(search)) == static_cast<T>(search); }
-
-    /// Checks if the `value` contains the flags `search`.
-    ///
-    /// \param value The value to check against.
-    /// \param search The flags to search for.
-    /// \return True if `value` has the flags `search`.
-    template <typename T, typename U = T> requires(std::is_convertible_v<U, T>)
-    constexpr bool HasAnyFlags(T value, U search) { return (value & static_cast<T>(search)) != static_cast<T>(0); }
-
-    /// Sets the `flag` bits in the `value` bitset.
-    ///
-    /// \param value The bitset to set into.
-    /// \param flag The bits to set on value.
-    template <typename T, typename U = T> requires(std::is_convertible_v<U, T>)
-    constexpr void SetFlag(T& value, U flag) { value |= static_cast<T>(flag); }
-
-    /// Clears the `flag` bits in the `value` bitset.
-    ///
-    /// \param value The bitset to clear from.
-    /// \param flag The bits to clear on value.
-    template <typename T, typename U = T> requires(std::is_convertible_v<U, T>)
-    constexpr void UnsetFlag(T& value, U flag) { value &= ~static_cast<T>(flag); }
-
-    /// Sets or clears the `flag` bits in the `value` bitset based on `set`.
-    ///
-    /// \param value The bitset to set into or clear from.
-    /// \param flag The bits to set or clear on value.
-    /// \param set When true the flags bits are set, when false they are cleared.
-    template <typename T, typename U = T> requires(std::is_convertible_v<U, T>)
-    constexpr void SetFlag(T& value, U flag, bool set) { if (set) SetFlag(value, flag); else UnsetFlag(value, flag); }
-
     /// Returns the enum as a string.
     ///
     /// \param[in] x The value to get the string representation of.

@@ -40,6 +40,7 @@ namespace he
     /// Flags for behavior of a file once opened.
     enum class FileOpenFlag : uint32_t
     {
+        /// No special behavior.
         None            = 0,
 
         /// The file is being opened with no system caching for data reads and writes. When this
@@ -74,7 +75,7 @@ namespace he
     {
         None            = 0,
         Exclusive       = 1 << 0, ///< Lock the file for exclusive access by this process.
-        NonBlocking     = 1 << 1, ///< Do not block until the lock is aquired.
+        NonBlocking     = 1 << 1, ///< Do not block until the lock is acquired.
     };
     HE_ENUM_FLAGS(FileLockFlag);
 
@@ -132,14 +133,27 @@ namespace he
         /// \return The result of the remove operation.
         static Result Remove(const char* path);
 
-        // Renames a file, moving it from `oldPath` to `newPath`.
+        /// Renames a file, moving it from `oldPath` to `newPath`.
+        ///
+        /// \param[in] oldPath The path to the file to be moved.
+        /// \param[in] newPath The path to the location for the file to be moved to.
+        /// \return The result of the rename operation.
         static Result Rename(const char* oldPath, const char* newPath);
 
-        // Copies a file from the `oldPath` to `newPath`. This performs a deep copy of the data.
+        /// Copies a file from the `oldPath` to `newPath`. This performs a deep copy of the data.
+        ///
+        /// \param[in] oldPath The path to the file to be copied.
+        /// \param[in] newPath The path to the location for the file to be copied to.
+        /// \param[in] clobber Optional. Overwrite the destination file if it exists. Default is true.
+        /// \return The result of the copy operation.
         static Result Copy(const char* oldPath, const char* newPath, bool clobber = true);
 
-        // Fills `outAttributes` with the attributes of the file at `path`. If this returns a
-        // non-successful result then `outAttributes` will not contain valid values.
+        /// Fills `outAttributes` with the attributes of the file at `path`. If this returns a
+        /// non-successful result then `outAttributes` will not contain valid values.
+        ///
+        /// \param[in] path The path to the file to get the attribute of.
+        /// \param[out] outAttributes The attributes structure to fill with data.
+        /// \return The result of the operation.
         static Result GetAttributes(const char* path, FileAttributes& outAttributes);
 
         /// Read a file's contents into a container buffer. The container will be resized to
@@ -148,6 +162,7 @@ namespace he
         /// \param[out] dst The destination vector to write data into.
         /// \param[in] path The path to the file to read. The file is expected to exist.
         /// \param[out] bytesRead Optional. The resulting number of bytes read.
+        /// \return The result of the operation.
         template <typename T>
         static Result ReadAll(T& dst, const char* path,  uint32_t* bytesRead = nullptr);
 
@@ -157,16 +172,25 @@ namespace he
         /// \param[in] size The number of bytes to write to the file.
         /// \param[in] path The path of the write to write to. Existing files will be overwritten.
         /// \param[out] bytesWritten Optional. The resulting number of bytes written.
+        /// \return The result of the operation.
         static Result WriteAll(const void* src, uint32_t size, const char* path, uint32_t* bytesWritten = nullptr);
 
     public:
+        /// Constructs a file.
         File() noexcept;
-        File(const File&) = delete;
+
+        /// Moves a file object (not the file on disk).
         File(File&& x) noexcept;
+
+        /// Destructs a file and closes the filesystem handle.
         ~File() noexcept;
 
-        File& operator=(const File&) = delete;
+        /// Moves a file object (not the file on disk).
         File& operator=(File&& x) noexcept;
+
+        // Copy operations are not allowed
+        File(const File&) = delete;
+        File& operator=(const File&) = delete;
 
         /// Opens the file at `path` in the given `mode` using behavior defined by `flags`.
         ///
@@ -210,40 +234,92 @@ namespace he
         /// \return The result of the operation.
         Result SetPos(uint64_t offset);
 
-        // Reads `size` bytes from the file into `dst` and stores the count of `bytesRead`.
+        /// Reads `size` bytes from the file into `dst` and stores the count of `bytesRead`.
+        ///
+        /// \param[out] dst The destination buffer to fill with data from the file.
+        /// \param[in] size The number of bytes to read. The `dst` buffer is expected to be large
+        ///     enough to contain `size` bytes.
+        /// \param[out] bytesRead Optional. The number of bytes that were actually read from the file.
+        /// \return The result of the read operation.
         Result Read(void* dst, uint32_t size, uint32_t* bytesRead = nullptr);
 
-        // Reads `size` bytes from the file at `offset` into `dst` and stores the count of
-        // `bytesRead`.
-        // Note: The position of the file handle after calling this function is undefined.
+        /// Reads `size` bytes from the file at `offset` into `dst` and stores the count of
+        /// `bytesRead`.
+        ///
+        /// \note The position of the file handle after calling this function is undefined.
+        ///
+        /// \param[out] dst The destination buffer to fill with data from the file.
+        /// \param[in] offset The byte offset into the file to begin the read.
+        /// \param[in] size The number of bytes to read. The `dst` buffer is expected to be large
+        ///     enough to contain `size` bytes.
+        /// \param[out] bytesRead Optional. The number of bytes that were actually read from the file.
+        /// \return The result of the read operation.
         Result ReadAt(void* dst, uint64_t offset, uint32_t size, uint32_t* bytesRead = nullptr);
 
-        // Writes the `size` bytes from `src` to the given file and stores the `bytesWritten`.
+        /// Writes the `size` bytes from `src` to the given file and stores the `bytesWritten`.
+        ///
+        /// \param[out] src The source buffer to write into the file.
+        /// \param[in] size The number of bytes to write. The `src` buffer is expected to be large
+        ///     enough to contain `size` bytes.
+        /// \param[out] bytesWritten Optional. The number of bytes that were actually written to the file.
+        /// \return The result of the write operation.
         Result Write(const void* src, uint32_t size, uint32_t* bytesWritten = nullptr);
 
-        // Writes `size` bytes from `src` at `offset` and stores the count of `bytesWritten`.
-        // Note: The position of the file handle after calling this function is undefined.
+        /// Writes `size` bytes from `src` at `offset` and stores the count of `bytesWritten`.
+        ///
+        /// \note The position of the file handle after calling this function is undefined.
+        ///
+        /// \param[out] src The source buffer to write into the file.
+        /// \param[in] offset The byte offset into the file to begin the write.
+        /// \param[in] size The number of bytes to write. The `src` buffer is expected to be large
+        ///     enough to contain `size` bytes.
+        /// \param[out] bytesWritten Optional. The number of bytes that were actually written to the file.
+        /// \return The result of the write operation.
         Result WriteAt(const void* src, uint64_t offset, uint32_t size, uint32_t* bytesWritten = nullptr);
 
-        // Flushes the buffers from the given file.
+        /// Flushes the buffers from the given file.
+        ///
+        /// \return The result of the flush operation.
         Result Flush();
 
-        // Locks the file for exclusive or shared access by the calling process.
+        /// Locks the file for exclusive or shared access by the calling process. A lock can extend
+        /// beyond the end of the file.
+        ///
+        /// \param[in] offset The byte offset from the start of the file to begin the lock section.
+        /// \param[in] size The number of bytes to lock in the file. Passing zero (0) means to
+        ///     lock from offset to the end of the file, no matter how large the file grows.
+        /// \param[in] flags Flags to control the behavior of the lock.
+        /// \return The result of the lock operation.
         Result Lock(uint64_t offset, uint64_t size, FileLockFlag flags = FileLockFlag::None);
 
-        // Unlocks the file access held by this process.
+        /// Unlocks the file access held by this process.
+        ///
+        /// \param[in] offset The byte offset from the start of the file to begin the unlock section.
+        /// \param[in] size The number of bytes to unlock in the file. Passing zero (0) means to
+        ///     unlock from offset to the end of the file, no matter how large the file grows.
+        /// \return The result of the unlock operation.
         Result Unlock(uint64_t offset, uint64_t size);
 
-        // Fills `attributes` with the attributes of the file at `path`. If this returns a
-        // non-successful result then `attributes` will not contain valid values.
+        /// Fills `attributes` with the attributes of the file at `path`. If this returns a
+        /// non-successful result then `attributes` will not contain valid values.
+        ///
+        /// \param[out] outAttributes The attributes structure to fill with data.
+        /// \return The result of the operation.
         Result GetAttributes(FileAttributes& outAttributes) const;
 
-        // Returns the full path to file
+        /// Returns the full path to file
+        ///
+        /// \param[out] outPath The string to fill with the absolute path to this file.
+        /// \return The result of the operation.
         Result GetPath(String& outPath) const;
 
-        // Sets the file's creation time, access time, and last written time, according to the
-        // values passed in `createTime`, `accessTime`, and `writeTime`, respectively. If any
-        // value is `nullptr`, the corresponding file time attribute remains unchanged.
+        /// Sets the file's access time and/ore last write time. If any time is `nullptr`, the
+        /// corresponding file time attribute remains unchanged.
+        ///
+        /// \param[in] accessTime Time value to set the file's last access time to, or nullptr to
+        ///     leave it unchanged.
+        /// \param[in] writeTime Time value to set the file's last write time to, or nullptr to
+        ///     leave it unchanged.
         Result SetTimes(const SystemTime* accessTime, const SystemTime* writeTime);
 
     public:
@@ -254,29 +330,53 @@ namespace he
     class MemoryMap
     {
     public:
+        /// Constructs a memory map object.
         MemoryMap() noexcept;
-        MemoryMap(const MemoryMap&) = delete;
+
+        /// Moves a memory map object.
         MemoryMap(MemoryMap&& x) noexcept;
+
+        /// Destructs a memory map object, and closes filesystem handles.
         ~MemoryMap() noexcept;
 
-        MemoryMap& operator=(const MemoryMap&) = delete;
+        /// Moves a memory map object.
         MemoryMap& operator=(MemoryMap&& x) noexcept;
 
-        // Memory maps a file.
-        Result Map(File& file, MemoryMapMode mode, uint64_t offset = 0, uint32_t size = 0);
+        // Copy operations are not allowed
+        MemoryMap(const MemoryMap&) = delete;
+        MemoryMap& operator=(const MemoryMap&) = delete;
+
+        /// Maps a file's content into a memory buffer.
+        ///
+        /// \param[in] file The open file object to map into memory.
+        /// \param[in] mode The access mode for the memory map.
+        /// \param[in] offset Optional. Offset in bytes from the start of the file to begin the map section.
+        /// \param[in] size Optional. Number of bytes to map. Passing zero means to map the entire file.
+        /// \return The result of the mapping operation.
+        Result Map(const File& file, MemoryMapMode mode, uint64_t offset = 0, uint32_t size = 0);
 
         /// Checks if a file is currently memory mapped.
         ///
         /// \return True if a file is memory mapped, false otherwise.
         bool IsMapped() const;
 
-        // Unmaps the file from memory.
+        /// Unmaps the file from memory.
         void Unmap();
 
-        // Flushes the memory mapped data to the underlying file.
+        /// Flushes a section of the memory mapped data to the underlying file.
+        ///
+        /// \param[in] offset Number of bytes from the start of the mapped buffer to begin the flush.
+        /// \param[in] size Number of bytes to flush to the file.
+        /// \param[in] async Optional. Set to true to not block while the data is being flushed
+        ///     to disk. The default value is false, which blocks until the data has been flushed.
+        /// \return The result of the flush operation.
         Result Flush(uint64_t offset, uint32_t size, bool async = false);
 
-        // Flushes an entire memory mapped region of a file to the underlying file.
+        /// Flushes the entire memory mapped region of a file to the underlying file.
+        ///
+        /// \param[in] async Optional. Set to true to not block while the data is being flushed
+        ///     to disk. The default value is false, which blocks until the data has been flushed.
+        /// \return The result of the flush operation.
         Result Flush(bool async = false) { return Flush(0, m_size, async); }
 
     public:
@@ -288,6 +388,9 @@ namespace he
         void* m_fileHandle;
     #endif
     };
+
+    // --------------------------------------------------------------------------------------------
+    // Inline definitions
 
     template <typename T>
     inline Result File::ReadAll(T& dst, const char* path, uint32_t* outBytesRead)

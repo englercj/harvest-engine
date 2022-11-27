@@ -10,6 +10,7 @@
 #include "he/core/macros.h"
 #include "he/core/memory_ops.h"
 #include "he/core/string.h"
+#include "he/core/utils.h"
 
 #include <algorithm>
 

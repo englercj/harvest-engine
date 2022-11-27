@@ -6,12 +6,12 @@
 #include "he/core/ascii.h"
 #include "he/core/assert.h"
 #include "he/core/clock.h"
-#include "he/core/enum_ops.h"
 #include "he/core/macros.h"
 #include "he/core/memory_ops.h"
 #include "he/core/scope_guard.h"
 #include "he/core/string.h"
 #include "he/core/string_view.h"
+#include "he/core/utils.h"
 #include "he/core/wstr.h"
 
 #if defined(HE_PLATFORM_API_WIN32)
@@ -301,8 +301,8 @@ namespace he
         o.Offset = (DWORD)offset;
         o.OffsetHigh = (DWORD)(offset >> 32);
 
-        const DWORD sizeLow = (DWORD)size;
-        const DWORD sizeHigh = (DWORD)(size >> 32);
+        const DWORD sizeLow = size == 0 ? MAXDWORD : (DWORD)size;
+        const DWORD sizeHigh = size == 0 ? MAXDWORD : (DWORD)(size >> 32);
 
         const BOOL rc = ::LockFileEx(handle, dwFlags, 0, sizeLow, sizeHigh, &o);
 
@@ -316,8 +316,8 @@ namespace he
         const DWORD offsetLow = (DWORD)offset;
         const DWORD offsetHigh = (DWORD)(offset >> 32);
 
-        const DWORD sizeLow = (DWORD)size;
-        const DWORD sizeHigh = (DWORD)(size >> 32);
+        const DWORD sizeLow = size == 0 ? MAXDWORD : (DWORD)size;
+        const DWORD sizeHigh = size == 0 ? MAXDWORD : (DWORD)(size >> 32);
 
         const BOOL rc = ::UnlockFile(handle, offsetLow, offsetHigh, sizeLow, sizeHigh);
 
@@ -388,10 +388,25 @@ namespace he
         return *this;
     }
 
-    Result MemoryMap::Map(File& file, MemoryMapMode mode, uint64_t offset, uint32_t size)
+    #if HE_ENABLE_ASSERTIONS
+        static SYSTEM_INFO GetWin32SystemInfo()
+        {
+            SYSTEM_INFO info;
+            ::GetSystemInfo(&info);
+            return info;
+        }
+    #endif
+
+    Result MemoryMap::Map(const File& file, MemoryMapMode mode, uint64_t offset, uint32_t size)
     {
+    #if HE_ENABLE_ASSERTIONS
         HE_ASSERT(m_handle == nullptr && m_fileHandle == INVALID_HANDLE_VALUE);
-        // TODO: Validate offset is multiple of allocation granularity
+        static SYSTEM_INFO s_sysInfo = GetWin32SystemInfo();
+        HE_ASSERT(IsAligned(offset, s_sysInfo.dwAllocationGranularity), HE_KV(offset, offset), HE_KV(allocation_granularity, s_sysInfo.dwAllocationGranularity));
+    #endif
+
+        if (!file.IsOpen())
+            return Result::InvalidParameter;
 
         const HANDLE fileHandle = reinterpret_cast<HANDLE>(file.m_fd);
 

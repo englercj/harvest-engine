@@ -79,41 +79,6 @@ HE_TEST(core, enum_ops, Flags)
 }
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST(core, enum_ops, HasFlag)
-{
-    HE_EXPECT(HasFlag(Flags::A | Flags::B, Flags::A));
-    HE_EXPECT(HasFlag(Flags::A | Flags::B, Flags::B));
-    HE_EXPECT(!HasFlag(Flags::A | Flags::B, Flags::C));
-}
-
-// ------------------------------------------------------------------------------------------------
-HE_TEST(core, enum_ops, HasFlags)
-{
-    HE_EXPECT(HasFlags(Flags::A | Flags::B, Flags::A));
-    HE_EXPECT(HasFlags(Flags::A | Flags::B, Flags::B));
-    HE_EXPECT(!HasFlags(Flags::A | Flags::B, Flags::C));
-
-    HE_EXPECT(HasFlags(Flags::A | Flags::B, Flags::A | Flags::B));
-    HE_EXPECT(HasFlags(Flags::A | Flags::B, Flags::B | Flags::A));
-    HE_EXPECT(!HasFlags(Flags::A | Flags::B, Flags::A | Flags::C));
-    HE_EXPECT(!HasFlags(Flags::A | Flags::B, Flags::C));
-}
-
-// ------------------------------------------------------------------------------------------------
-HE_TEST(core, enum_ops, HasAnyFlags)
-{
-    HE_EXPECT(HasAnyFlags(Flags::A | Flags::B, Flags::A));
-    HE_EXPECT(HasAnyFlags(Flags::A | Flags::B, Flags::B));
-    HE_EXPECT(!HasAnyFlags(Flags::A | Flags::B, Flags::C));
-
-    HE_EXPECT(HasAnyFlags(Flags::A | Flags::B, Flags::A | Flags::B));
-    HE_EXPECT(HasAnyFlags(Flags::A | Flags::B, Flags::B | Flags::A));
-    HE_EXPECT(HasAnyFlags(Flags::A | Flags::B, Flags::A | Flags::C));
-    HE_EXPECT(!HasAnyFlags(Flags::A | Flags::B, Flags::C));
-}
-
-
-// ------------------------------------------------------------------------------------------------
 HE_TEST(core, enum_ops, AsString)
 {
     HE_EXPECT_EQ_STR(AsString(TestStrEnum::A), "A");

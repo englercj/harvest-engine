@@ -14,17 +14,19 @@ namespace he
 
     /// Log sink that logs to a file. The file's name is based on the current system time
     /// and prefixed with a user-defined value.
-    ///
-    /// TODO: Use async file IO to reduce lock contention and stalls when writing.
     class FileSink
     {
     public:
+        static constexpr uint32_t BufferFlushSize = 4096;
 
     public:
         /// Constructs a new file sink.
         ///
         /// \param[in] allocator The allocator to use.
-        FileSink(Allocator& allocator = Allocator::GetDefault());
+        FileSink(Allocator& allocator = Allocator::GetDefault()) noexcept;
+
+        /// Destructs a file sink.
+        ~FileSink() noexcept;
 
         /// Configures a new file sink.
         ///
@@ -40,6 +42,9 @@ namespace he
         /// \param[in] kvs An array of key-value pairs.
         /// \param[in] count The size of the `kvs` array.
         void OnLogEntry(const LogSource& source, const KeyValue* kvs, uint32_t count);
+
+    private:
+        void Flush();
 
     private:
         Mutex m_mutex{};

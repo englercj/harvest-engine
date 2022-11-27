@@ -8,9 +8,9 @@
 
 namespace he::assets
 {
-    void Vec2fEditor(const he::schema::DynamicValue::Reader& value, editor::TypeEditUIService::Context& ctx);
-    void Vec3fEditor(const he::schema::DynamicValue::Reader& value, editor::TypeEditUIService::Context& ctx);
+    void Vec2fEditor(const void*, const he::schema::DynamicValue::Reader& value, editor::TypeEditUIService::Context& ctx);
+    void Vec3fEditor(const void*, const he::schema::DynamicValue::Reader& value, editor::TypeEditUIService::Context& ctx);
 
-    void AssetUuidFieldEditor(const he::schema::DynamicValue::Reader& value, editor::TypeEditUIService::Context& ctx);
-    void AssetDataFieldEditor(const he::schema::DynamicValue::Reader& value, editor::TypeEditUIService::Context& ctx);
+    void AssetUuidFieldEditor(const void*, const he::schema::DynamicValue::Reader& value, editor::TypeEditUIService::Context& ctx);
+    void AssetDataFieldEditor(const void*, const he::schema::DynamicValue::Reader& value, editor::TypeEditUIService::Context& ctx);
 }

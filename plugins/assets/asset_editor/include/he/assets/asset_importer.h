@@ -68,4 +68,4 @@ namespace he::assets
         static constexpr ImporterId IdValue{ id }; \
         static constexpr ImporterVersion VersionValue{ version }; \
         ImporterId Id() const override { return IdValue; } \
-        ImporterVersion Version() const override { return VersionValue; } \
+        ImporterVersion Version() const override { return VersionValue; }

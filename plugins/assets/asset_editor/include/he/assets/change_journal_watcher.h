@@ -8,9 +8,6 @@
 #include "he/core/string.h"
 #include "he/core/path.h"
 
-#if defined(HE_PLATFORM_API_WIN32)
-
-
 namespace he::assets
 {
     enum class ChangeJournalReasonFlag : uint32_t
@@ -61,5 +58,3 @@ namespace he::assets
         int64_t m_nextUsn{ 0 };
     };
 }
-
-#endif

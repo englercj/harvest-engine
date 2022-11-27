@@ -50,12 +50,12 @@ namespace he::assets
         model.source.size = stmt.GetColumn(6).GetUint();
     }
 
-    static bool Bind(const sqlite::Statement& stmt, const AssetModel& model)
+    static bool Bind(const sqlite::Statement& stmt, const AssetModel& model, int64_t assetFileId)
     {
         if (!stmt.Bind(1, model.uuid.val.m_bytes))
             return false;
 
-        if (!stmt.Bind(2, model.fileUuid.val.m_bytes))
+        if (!stmt.Bind(2, assetFileId))
             return false;
 
         if (!stmt.Bind(3, model.type))
@@ -187,7 +187,7 @@ namespace he::assets
         }
 
         // Get the id of the file row that was just inserted or updates
-        int64_t fileId = 0;
+        int64_t assetFileId = 0;
         {
             sqlite::ScopedStatement stmt = db.StatementLiteral(R"(
                 SELECT id FROM asset_file WHERE uuid = ?
@@ -199,7 +199,7 @@ namespace he::assets
             if (!HE_VERIFY(stmt->Step() == sqlite::StepResult::Row, HE_MSG("Failed to find a row we just inserted.")))
                 return false;
 
-            fileId = stmt->GetColumn(0).GetInt64();
+            assetFileId = stmt->GetColumn(0).GetInt64();
 
             if (!HE_VERIFY(stmt->Step() == sqlite::StepResult::Done))
                 return false;
@@ -212,7 +212,7 @@ namespace he::assets
                 SELECT uuid FROM asset WHERE asset_file_id = ?
             )");
 
-            if (!stmt->Bind(1, fileId))
+            if (!stmt->Bind(1, assetFileId))
                 return false;
 
             const bool res = stmt->EachRow([&](const sqlite::Statement& stmt)
@@ -353,7 +353,7 @@ namespace he::assets
         sqlite::Transaction transaction = db.BeginTransaction();
 
         // Get the id of the file row this asset belongs to
-        int64_t fileId = 0;
+        int64_t assetFileId = 0;
         {
             sqlite::ScopedStatement stmt = db.StatementLiteral(R"(
                 SELECT id FROM asset_file WHERE uuid = ?
@@ -372,7 +372,7 @@ namespace he::assets
                 return false;
             }
 
-            fileId = stmt->GetColumn(0).GetInt64();
+            assetFileId = stmt->GetColumn(0).GetInt64();
 
             if (!HE_VERIFY(stmt->Step() == sqlite::StepResult::Done))
                 return false;
@@ -394,7 +394,7 @@ namespace he::assets
                 compiler_version = excluded.compiler_version
         )");
 
-        if (!Bind(*stmt, model))
+        if (!Bind(*stmt, model, assetFileId))
             return false;
 
         return stmt->Step() == sqlite::StepResult::Done;

@@ -28,7 +28,7 @@
         extern "C" HE_DLL_EXPORT ::he::UniquePtr<::he::Module> CreateHarvestModule() { return ::he::MakeUnique<Impl>(); }
 #else
     #define HE_EXPORT_MODULE(Impl) \
-        extern "C" HE_RETAIN ::he::StaticModuleRegistrar<Impl> HE_PP_JOIN(HE_CFG_MODULE_NAME, _ModuleRegistrar){ HE_STRINGIFY(HE_CFG_MODULE_NAME) }
+        HE_RETAIN ::he::StaticModuleRegistrar<Impl> HE_PP_JOIN(HE_CFG_MODULE_NAME, _ModuleRegistrar){ HE_STRINGIFY(HE_CFG_MODULE_NAME) }
 #endif
 
 namespace he

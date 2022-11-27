@@ -60,33 +60,23 @@ namespace he
         template <auto F, typename T>
         Binding Attach(T&& payload)
         {
-            return AddAttachment(DelegateType::Make<F>(Forward<T>(payload)), false);
+            return AddAttachment(DelegateType::template Make<F>(Forward<T>(payload)), false);
         }
 
         Binding Attach(typename DelegateType::FunctionType* func, const void* payload = nullptr)
         {
-            return AddAttachment(DelegateType::Make(func, payload), false);
-        }
-
-        Binding Attach(typename DelegateType::InvocableType* func)
-        {
-            return AddAttachment(DelegateType::Make(func), false);
+            return AddAttachment(DelegateType::template Make(func, payload), false);
         }
 
         template <auto F, typename T>
         Binding AttachOnce(T&& payload)
         {
-            return AddAttachment(DelegateType::Make<F>(Forward<T>(payload)), true);
+            return AddAttachment(DelegateType::template Make<F>(Forward<T>(payload)), true);
         }
 
         Binding AttachOnce(typename DelegateType::FunctionType* func, const void* payload = nullptr)
         {
-            return AddAttachment(DelegateType::Make(func, payload), true);
-        }
-
-        Binding AttachOnce(typename DelegateType::InvocableType* func)
-        {
-            return AddAttachment(DelegateType::Make(func), true);
+            return AddAttachment(DelegateType::template Make(func, payload), true);
         }
 
         bool Detach(const Binding& binding)

@@ -47,4 +47,4 @@ namespace he::assets
         static constexpr CompilerId IdValue{ id }; \
         static constexpr CompilerVersion VersionValue{ version }; \
         CompilerId Id() const override { return IdValue; } \
-        CompilerVersion Version() const override { return VersionValue; } \
+        CompilerVersion Version() const override { return VersionValue; }

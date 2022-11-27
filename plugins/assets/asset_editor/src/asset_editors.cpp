@@ -30,7 +30,7 @@ namespace he::assets
         return s_field;
     }
 
-    void Vec2fEditor(const he::schema::DynamicValue::Reader& value, editor::TypeEditUIService::Context& ctx)
+    void Vec2fEditor(const void*, const he::schema::DynamicValue::Reader& value, editor::TypeEditUIService::Context& ctx)
     {
         const schema::Vec2f::Reader vec = value.As<he::schema::DynamicStruct>().As<schema::Vec2f>();
 
@@ -60,7 +60,7 @@ namespace he::assets
         ImGui::PopItemWidth();
     }
 
-    void Vec3fEditor(const he::schema::DynamicValue::Reader& value, editor::TypeEditUIService::Context& ctx)
+    void Vec3fEditor(const void*, const he::schema::DynamicValue::Reader& value, editor::TypeEditUIService::Context& ctx)
     {
         const schema::Vec3f::Reader vec = value.As<he::schema::DynamicStruct>().As<schema::Vec3f>();
 
@@ -103,7 +103,7 @@ namespace he::assets
         ImGui::PopItemWidth();
     }
 
-    void AssetUuidFieldEditor(const he::schema::DynamicValue::Reader& value, editor::TypeEditUIService::Context& ctx)
+    void AssetUuidFieldEditor(const void*, const he::schema::DynamicValue::Reader& value, editor::TypeEditUIService::Context& ctx)
     {
         HE_UNUSED(ctx);
 
@@ -123,7 +123,7 @@ namespace he::assets
             ImGui::SetTooltip("This field is read-only.");
     }
 
-    void AssetDataFieldEditor(const he::schema::DynamicValue::Reader& value, editor::TypeEditUIService::Context& ctx)
+    void AssetDataFieldEditor(const void*, const he::schema::DynamicValue::Reader& value, editor::TypeEditUIService::Context& ctx)
     {
         ModuleRegistry& registry = g_assetEditorModule->Registry();
         AssetTypeRegistry& types = registry.GetApi<AssetTypeRegistry>();

@@ -94,7 +94,7 @@ namespace he::assets
     inline bool AssetTypeRegistry::RegisterAssetType()
     {
         constexpr const he::schema::DeclInfo& DeclInfo = AssetType::DeclInfo;
-        constexpr const TypeInfo& CompilerInfo = TypeInfo::Get<CompilerType>();
+        constexpr const TypeInfo CompilerInfo = TypeInfo::Get<CompilerType>();
         return RegisterAssetType(AssetType::AssetTypeName, DeclInfo, CompilerInfo, MakeUnique<CompilerType>());
     }
 

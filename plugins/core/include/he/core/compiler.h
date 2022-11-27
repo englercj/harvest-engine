@@ -24,7 +24,6 @@
     #define HE_HAS_BUILTIN(x) 0
 #endif
 
-// TODO: Document other macros in here
 
 #if defined(__clang__)
     #undef  HE_COMPILER_CLANG
@@ -38,9 +37,9 @@
     #define HE_FORCE_INLINE                 __attribute__((always_inline)) inline
     #define HE_NO_INLINE                    __attribute__((noinline))
     #define HE_RETAIN                       __attribute__((used, retain))
+    #define HE_DLL_EXPORT                   __attribute__((visibility("default")))
     #define HE_LIKELY(x)                    static_cast<bool>(__builtin_expect(!!(x), 1))
     #define HE_UNLIKELY(x)                  static_cast<bool>(__builtin_expect(!!(x), 0))
-    #define HE_DLL_EXPORT                   __attribute__((visibility("default")))
     #define HE_UNREACHABLE()                __builtin_unreachable()
 
     #define HE_PUSH_WARNINGS()              _Pragma("clang diagnostic push")
@@ -64,9 +63,9 @@
     #define HE_FORCE_INLINE                 __attribute__((always_inline)) inline
     #define HE_NO_INLINE                    __attribute__((noinline))
     #define HE_RETAIN                       __attribute__((used, retain))
+    #define HE_DLL_EXPORT                   __attribute__((visibility("default")))
     #define HE_LIKELY(x)                    static_cast<bool>(__builtin_expect(!!(x), 1))
     #define HE_UNLIKELY(x)                  static_cast<bool>(__builtin_expect(!!(x), 0))
-    #define HE_DLL_EXPORT                   __attribute__((visibility("default")))
     #define HE_UNREACHABLE()                __builtin_unreachable()
 
     #define HE_PUSH_WARNINGS()              _Pragma("GCC diagnostic push")
@@ -91,9 +90,9 @@
     #define HE_FORCE_INLINE                 __forceinline
     #define HE_NO_INLINE                    __declspec(noinline)
     #define HE_RETAIN
+    #define HE_DLL_EXPORT                   __declspec(dllexport)
     #define HE_LIKELY(x)                    (!!(x))
     #define HE_UNLIKELY(x)                  (!!(x))
-    #define HE_DLL_EXPORT                   __declspec(dllexport)
     #define HE_UNREACHABLE()                __assume(0)
 
     #define HE_PUSH_WARNINGS()              __pragma(warning(push))
@@ -108,3 +107,62 @@
 #else
     #error "Unknown compiler"
 #endif
+
+/// \def HE_FUNC_SIG
+/// The typed and fully qualified function signature
+
+/// \def HE_FORCE_INLINE
+/// Attribute for a function that tells the compiler to always inline it.
+
+/// \def HE_NO_INLINE
+/// Attribute for a function that tells the compiler to never inline it.
+
+/// \def HE_RETAIN
+/// Attribute for a symbol that tells the compiler not to strip it during link.
+/// Note: This only work son GCC/Clang currently.
+
+/// \def HE_DLL_EXPORT
+/// Marks as symbol as exported from a shared library.
+
+/// \def HE_LIKELY
+/// Marks a condition as likely to occur.
+/// Note: Prefer the C++20 [[likely]] attribute whenever possible.
+
+/// \def HE_UNLIKELY
+/// Marks a condition as unlikely to occur.
+/// Note: Prefer the C++20 [[unlikely]] attribute whenever possible.
+
+/// \def HE_UNREACHABLE
+/// Informs the compiler that this line of code cannot be reached.
+
+/// \def HE_PUSH_WARNINGS
+/// Stores the current warning state for all warnings.
+
+/// \def HE_POP_WARNINGS
+/// Restores the last warning state on the stack for all warnings.
+
+/// \def HE_DISABLE_CLANG_WARNING
+/// Disables a warning only when the compiler is clang.
+///
+/// \param[in] n The quoted string warning flag to disable. E.g.: "-Wunused-function"
+
+/// \def HE_DISABLE_GCC_WARNING
+/// Disables a warning only when the compiler is gcc.
+///
+/// \param[in] n The quoted string warning flag to disable. E.g.: "-Wunused-function"
+
+/// \def HE_DISABLE_GCC_CLANG_WARNING
+/// Disables a warning only when the compiler is gcc or clang.
+///
+/// \param[in] n The quoted string warning flag to disable. E.g.: "-Wunused-function"
+
+/// \def HE_DISABLE_MSVC_WARNING
+/// Disables a warning only when the compiler is msvc.
+///
+/// \param[in] n The diagnostic number of the warning to disable. E.g.: 4127
+
+/// \def HE_DISABLE_OPTIMIZE_START
+/// Starts a block in which code will not be optimized, despite compiler configuration.
+
+/// \def HE_DISABLE_OPTIMIZE_END
+/// Ends a block in which code will not be optimized, despite compiler configuration.

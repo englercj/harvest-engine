@@ -17,7 +17,10 @@ namespace he
     /// \see GetSystemInfo()
     struct SystemInfo
     {
-        String platform;
+        uint32_t allocationGranularity{ 0 };
+        uint32_t pageSize{ 0 };
+
+        String platform{};
 
         struct
         {

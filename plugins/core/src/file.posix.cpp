@@ -8,6 +8,7 @@
 #include "he/core/path.h"
 #include "he/core/scope_guard.h"
 #include "he/core/string.h"
+#include "he/core/system.h"
 #include "he/core/utils.h"
 
 #include "fmt/core.h"
@@ -349,7 +350,7 @@ namespace he
     Result MemoryMap::Map(const File& file, MemoryMapMode mode, uint64_t offset, uint32_t size)
     {
         HE_ASSERT(m_data == nullptr);
-        HE_ASSERT(IsAligned(offset, sysconf(_SC_PAGE_SIZE)), HE_KV(offset, offset), HE_KV(page_size, sysconf(_SC_PAGE_SIZE)));
+        HE_ASSERT(IsAligned(offset, GetSystemInfo().pageSize), HE_KV(offset, offset), HE_KV(page_size, GetSystemInfo().pageSize));
 
         if (!file.IsOpen())
             return Result::InvalidParameter;
@@ -363,7 +364,7 @@ namespace he
 
         int prot = PROT_READ;
 
-        if (mode == MemoryMapMode::Write)
+        if (mode == MemoryMapMode::ReadWrite)
             prot |= PROT_WRITE;
 
         int flags = MAP_SHARED | MAP_FILE;

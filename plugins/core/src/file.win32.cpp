@@ -11,6 +11,7 @@
 #include "he/core/scope_guard.h"
 #include "he/core/string.h"
 #include "he/core/string_view.h"
+#include "he/core/system.h"
 #include "he/core/utils.h"
 #include "he/core/wstr.h"
 
@@ -388,21 +389,11 @@ namespace he
         return *this;
     }
 
-    #if HE_ENABLE_ASSERTIONS
-        static SYSTEM_INFO GetWin32SystemInfo()
-        {
-            SYSTEM_INFO info;
-            ::GetSystemInfo(&info);
-            return info;
-        }
-    #endif
-
     Result MemoryMap::Map(const File& file, MemoryMapMode mode, uint64_t offset, uint32_t size)
     {
     #if HE_ENABLE_ASSERTIONS
         HE_ASSERT(m_handle == nullptr && m_fileHandle == INVALID_HANDLE_VALUE);
-        static SYSTEM_INFO s_sysInfo = GetWin32SystemInfo();
-        HE_ASSERT(IsAligned(offset, s_sysInfo.dwAllocationGranularity), HE_KV(offset, offset), HE_KV(allocation_granularity, s_sysInfo.dwAllocationGranularity));
+        HE_ASSERT(IsAligned(offset, GetSystemInfo().allocationGranularity), HE_KV(offset, offset), HE_KV(allocation_granularity, GetSystemInfo().allocationGranularity));
     #endif
 
         if (!file.IsOpen())

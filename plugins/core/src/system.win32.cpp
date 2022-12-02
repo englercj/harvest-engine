@@ -87,6 +87,11 @@ namespace he
     {
         SystemInfoImpl()
         {
+            SYSTEM_INFO sysInfo{};
+            ::GetSystemInfo(&sysInfo);
+            allocationGranularity = sysInfo.dwAllocationGranularity;
+            pageSize = sysInfo.dwPageSize;
+
             RTL_OSVERSIONINFOEXW osvi{};
             osvi.dwOSVersionInfoSize = sizeof(osvi);
 

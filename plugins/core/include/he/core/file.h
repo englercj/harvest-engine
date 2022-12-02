@@ -82,8 +82,8 @@ namespace he
     /// Flags for behavior of a memory mapped file once opened.
     enum class MemoryMapMode : uint8_t
     {
-        Read,   ///< Map the file into read-only memory.
-        Write,  ///< Map the file into read-write memory.
+        Read,       ///< Map the file into read-only memory.
+        ReadWrite,  ///< Map the file into read-write memory.
     };
 
     /// Structure that represents the attributes of a file.

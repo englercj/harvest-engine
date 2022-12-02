@@ -78,6 +78,11 @@ namespace he
     {
         SystemInfoImpl()
         {
+            // Allocation granularity can sometimes actually be smaller than a page size, but I
+            // can't find any examples of where it is larger than a page.
+            allocationGranularity = static_cast<uint32_t>(sysconf(_SC_PAGE_SIZE));
+            pageSize = static_cast<uint32_t>(sysconf(_SC_PAGE_SIZE));
+
             utsname data;
             const int rc = uname(&data);
             HE_UNUSED(rc);

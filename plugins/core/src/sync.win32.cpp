@@ -225,7 +225,7 @@ namespace he
     {
         HANDLE& h = *reinterpret_cast<HANDLE*>(&m_opaque);
         const DWORD r = ::WaitForSingleObject(h, INFINITE);
-        HE_ASSERT(r != WAIT_OBJECT_0, HE_KV(result, Result::FromLastError()));
+        HE_ASSERT(r == WAIT_OBJECT_0, HE_KV(result, Result::FromLastError()));
         HE_UNUSED(r);
     }
 

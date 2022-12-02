@@ -5,6 +5,7 @@
 #include "he/core/memory_ops.h"
 #include "he/core/types.h"
 #include "he/core/utils.h"
+#include "he/core/virtual_memory.h"
 
 #include <type_traits>
 
@@ -190,9 +191,60 @@ namespace he
         /// Returns the singleton instance of the CrtAllocator.
         static CrtAllocator& Get();
 
+        /// \copydoc Allocator::Malloc(size_t, size_t)
         [[nodiscard]] void* Malloc(size_t size, size_t alignment = DefaultAlignment) noexcept override;
+
+        /// \copydoc Allocator::Realloc(void*, size_t, size_t)
         void* Realloc(void* ptr, size_t newSize, size_t alignment = DefaultAlignment) noexcept override;
+
+        /// \copydoc Allocator::Free(void*)
         void Free(void* ptr) noexcept override;
+    };
+
+    /// The arena allocator allocates a virtual address space upfront and then commits memory as
+    /// necessary when allocation functions (Malloc/Realloc) are called.
+    ///
+    /// Memory is allocated linearly in the virtual address space reserved at construction time.
+    class ArenaAllocator : public Allocator
+    {
+    public:
+        static constexpr uint32_t DefaultMaxSize = 32 * 1024 * 1024; // 32 MB
+
+    public:
+        /// Constructs an arena allocator. Reserves enough virtual address space to cover
+        /// `maxSize` bytes.
+        ///
+        /// \param[in] maxSize The maximum address space to allocate.
+        explicit ArenaAllocator(uint32_t maxSize = DefaultMaxSize) noexcept;
+
+        /// Constructs an arena allocator by moving the data from `x`.
+        ArenaAllocator(ArenaAllocator&& x) noexcept;
+
+        /// \copydoc Allocator::Malloc(size_t, size_t)
+        [[nodiscard]] void* Malloc(size_t size, size_t alignment = DefaultAlignment) noexcept override;
+
+        /// \copydoc Allocator::Realloc(void*, size_t, size_t)
+        void* Realloc(void* ptr, size_t newSize, size_t alignment = DefaultAlignment) noexcept override;
+
+        /// \copydoc Allocator::Free(void*)
+        void Free(void*) noexcept override;
+
+        /// Invalidates all issued pointers and resets the state for reuse. Previously allocated
+        /// pages are kept for reuse.
+        void Clear();
+
+        /// Invalidates all issued pointers, frees all page memory, and resets state for reuse.
+        void Reset();
+
+    private:
+        ArenaAllocator(const ArenaAllocator&) = delete;
+        ArenaAllocator& operator=(const ArenaAllocator&) = delete;
+        ArenaAllocator& operator=(ArenaAllocator&& x) = delete;
+
+    private:
+        VirtualMemory m_arena{};
+        uint32_t m_committed{ 0 };
+        uint32_t m_allocated{ 0 };
     };
 
     /// Allocator that allocates pages of space and expects them all to be freed at the end of use.

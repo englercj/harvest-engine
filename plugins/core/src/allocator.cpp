@@ -5,6 +5,8 @@
 #include "he/core/assert.h"
 #include "he/core/compiler.h"
 #include "he/core/config.h"
+#include "he/core/result.h"
+#include "he/core/result_fmt.h"
 #include "he/core/types.h"
 #include "he/core/utils.h"
 
@@ -33,6 +35,45 @@ namespace he
         static CrtAllocator* s_allocator = new(s_mem) CrtAllocator();
         return *s_allocator;
     }
+
+    ArenaAllocator::ArenaAllocator(uint32_t maxSize) noexcept
+    {
+        const Result r = m_arena.Reserve(BytesToPages(maxSize));
+        HE_VERIFY(r, HE_KV(result, r));
+    }
+
+    ArenaAllocator::ArenaAllocator(ArenaAllocator&& x) noexcept
+        : m_arena(Move(x.m_arena))
+        , m_committed(Exchange(x.m_committed, 0))
+        , m_allocated(Exchange(x.m_allocated, 0))
+    {}
+
+    void* ArenaAllocator::Malloc(size_t size, size_t alignment = DefaultAlignment) noexcept
+    {
+        const uint8_t* start = AlignUp(m_arena + m_size, alignment);
+        const void* result = VirtualCommit(start, size);
+    }
+
+    void* ArenaAllocator::Realloc(void* ptr, size_t newSize, size_t alignment = DefaultAlignment) noexcept
+    {
+
+    }
+
+    void ArenaAllocator::Free(void*) noexcept
+    {
+    }
+
+    void ArenaAllocator::Clear()
+    {
+
+    }
+
+    void ArenaAllocator::Reset()
+    {
+
+    }
+
+
 
     LinearPageAllocator::LinearPageAllocator(size_t pageSize, Allocator& allocator) noexcept
         : m_allocator(allocator)

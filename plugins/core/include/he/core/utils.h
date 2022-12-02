@@ -173,40 +173,6 @@ namespace he
         return (value & static_cast<T>(search)) != static_cast<T>(0);
     }
 
-    /// Sets the `flag` bits in the `value` bitset.
-    ///
-    /// \param value The bitset to set into.
-    /// \param flag The bits to set on value.
-    template <typename T, typename U = T> requires(std::is_convertible_v<U, T>)
-    constexpr void SetFlag(T& value, U flag)
-    {
-        value |= static_cast<T>(flag);
-    }
-
-    /// Clears the `flag` bits in the `value` bitset.
-    ///
-    /// \param value The bitset to clear from.
-    /// \param flag The bits to clear on value.
-    template <typename T, typename U = T> requires(std::is_convertible_v<U, T>)
-    constexpr void UnsetFlag(T& value, U flag)
-    {
-        value &= ~static_cast<T>(flag);
-    }
-
-    /// Sets or clears the `flag` bits in the `value` bitset based on `set`.
-    ///
-    /// \param value The bitset to set into or clear from.
-    /// \param flag The bits to set or clear on value.
-    /// \param set When true the flags bits are set, when false they are cleared.
-    template <typename T, typename U = T> requires(std::is_convertible_v<U, T>)
-    constexpr void SetFlag(T& value, U flag, bool set)
-    {
-        if (set)
-            SetFlag(value, flag);
-        else
-            UnsetFlag(value, flag);
-    }
-
     /// Returns the object's bit pattern as a different type. The two types must both be the
     /// same size, and be trivially copyable.
     ///

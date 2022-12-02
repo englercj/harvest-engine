@@ -537,7 +537,7 @@ HE_TEST(core, file, MemoryMap)
 
     {
         MemoryMap mm;
-        r = mm.Map(f, MemoryMapMode::Write);
+        r = mm.Map(f, MemoryMapMode::ReadWrite);
         HE_EXPECT(r, r);
         HE_EXPECT(mm.IsMapped());
 

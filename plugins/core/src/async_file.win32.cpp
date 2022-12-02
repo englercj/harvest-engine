@@ -10,8 +10,6 @@
 #include "he/core/sync.h"
 #include "he/core/thread.h"
 
-#include <future>
-
 #if defined(HE_PLATFORM_API_WIN32)
 
 #include "file_helpers.win32.h"
@@ -22,24 +20,98 @@
 
 namespace he
 {
+    // --------------------------------------------------------------------------------------------
     static Mutex s_ioStartupMutex{};
     static uint32_t s_ioStartupCount{ 0 };
     static HANDLE s_ioThread{ nullptr };
     static HANDLE s_ioPort{ nullptr };
 
-    struct AsyncOp
+    constexpr ULONG_PTR CK_Shutdown = 1;
+    constexpr ULONG_PTR CK_FileComplete = 2;
+    constexpr ULONG_PTR CK_FileError = 3;
+
+    // --------------------------------------------------------------------------------------------
+    class AsyncOp : public OVERLAPPED
     {
-        HANDLE file{ INVALID_HANDLE_VALUE };
-        OVERLAPPED overlap{};
-        std::promise<AsyncFileResult> promise{};
+    public:
+        ~AsyncOp()
+        {
+            Close();
+        }
+
+        HANDLE File() const { return m_file; }
+
+        void Close()
+        {
+            if (m_file != INVALID_HANDLE_VALUE)
+            {
+                ::CloseHandle(m_file);
+                m_file = INVALID_HANDLE_VALUE;
+            }
+        }
+
+        void Reset(HANDLE fd, uint64_t offset, AsyncFile::CompleteDelegate callback)
+        {
+            Close();
+            ::DuplicateHandle(::GetCurrentProcess(), fd, ::GetCurrentProcess(), &m_file, 0, FALSE, DUPLICATE_SAME_ACCESS);
+
+            m_event.Reset();
+
+            Offset = (DWORD)offset;
+            OffsetHigh = (DWORD)(offset >> 32);
+
+            m_result = Win32Result(ERROR_IO_PENDING);
+            m_bytesTransferred = 0;
+            m_callback = callback;
+        }
+
+        bool IsComplete()
+        {
+            return m_event.Wait(Duration_Zero);
+        }
+
+        void Wait()
+        {
+            m_event.Wait();
+        }
+
+        void SetResult(DWORD err, DWORD bytesTransferred)
+        {
+            m_result = Win32Result(err);
+            m_bytesTransferred = static_cast<uint32_t>(bytesTransferred);
+            m_event.Signal();
+
+            if (m_callback)
+                m_callback(*this);
+        }
+
+        Result GetResult(uint32_t* bytesTransferred)
+        {
+            HE_ASSERT(IsComplete());
+
+            if (bytesTransferred)
+                *bytesTransferred = m_bytesTransferred;
+
+            return m_result;
+        }
+
+        operator AsyncFileOp() const { return AsyncFileOp{ reinterpret_cast<uintptr_t>(this) }; }
+
+    private:
+        HANDLE m_file{ INVALID_HANDLE_VALUE };
+        SyncEvent m_event{};
+
+        Result m_result{};
+        uint32_t m_bytesTransferred{ 0 };
+        AsyncFile::CompleteDelegate m_callback{};
     };
 
-    static void HandleCompletedOp(AsyncOp* op, Result result, uint32_t bytesTransferred);
-    static void HandleCompletedOverlap(AsyncOp* op);
+    // --------------------------------------------------------------------------------------------
     static DWORD IOCompletionThread(LPVOID);
 
     static void UnlockedShutdownAsyncFileIO();
 
+    // --------------------------------------------------------------------------------------------
     Result StartupAsyncFileIO(const AsyncFileIOConfig& config)
     {
         LockGuard lock(s_ioStartupMutex);
@@ -85,7 +157,7 @@ namespace he
         {
             HE_ASSERT(s_ioPort);
 
-            ::PostQueuedCompletionStatus(s_ioPort, 0, 0, nullptr);
+            ::PostQueuedCompletionStatus(s_ioPort, 0, CK_Shutdown, nullptr);
             ::WaitForSingleObject(s_ioThread, INFINITE);
             ::CloseHandle(s_ioThread);
             s_ioThread = nullptr;
@@ -102,6 +174,22 @@ namespace he
     {
         LockGuard lock(s_ioStartupMutex);
         UnlockedShutdownAsyncFileIO();
+    }
+
+    // --------------------------------------------------------------------------------------------
+    bool AsyncFile::IsComplete(AsyncFileOp token)
+    {
+        AsyncOp* op = reinterpret_cast<AsyncOp*>(token.val);
+        return op->IsComplete();
+    }
+
+    Result AsyncFile::GetResult(AsyncFileOp token, uint32_t* bytesTransferred)
+    {
+        AsyncOp* op = reinterpret_cast<AsyncOp*>(token.val);
+        op->Wait();
+        Result r = op->GetResult(bytesTransferred);
+        Allocator::GetDefault().Delete(op);
+        return r;
     }
 
     AsyncFile::AsyncFile() noexcept
@@ -134,7 +222,7 @@ namespace he
         if (handle == INVALID_HANDLE_VALUE)
             return Result::FromLastError();
 
-        ::CreateIoCompletionPort(handle, s_ioPort, 0, 0);
+        ::CreateIoCompletionPort(handle, s_ioPort, CK_FileComplete, 0);
 
         m_fd = reinterpret_cast<intptr_t>(handle);
 
@@ -166,46 +254,36 @@ namespace he
         return fileSize.QuadPart;
     }
 
-    std::future<AsyncFileResult> AsyncFile::ReadAsync(void* dst, uint64_t offset, uint32_t size)
+    AsyncFileOp AsyncFile::ReadAsync(void* dst, uint64_t offset, uint32_t size, CompleteDelegate callback)
     {
         const HANDLE handle = reinterpret_cast<HANDLE>(m_fd);
 
+        // TODO: Pool these allocations in an object pool.
         AsyncOp* op = Allocator::GetDefault().New<AsyncOp>();
-        ::DuplicateHandle(::GetCurrentProcess(), handle, ::GetCurrentProcess(), &op->file, 0, FALSE, DUPLICATE_SAME_ACCESS);
+        op->Reset(handle, offset, callback);
 
-        op->overlap.Offset = (DWORD)offset;
-        op->overlap.OffsetHigh = (DWORD)(offset >> 32);
-        BOOL result = ::ReadFile(op->file, dst, size, nullptr, &op->overlap);
+        BOOL result = ::ReadFile(op->File(), dst, size, nullptr, op);
 
-        auto f = op->promise.get_future();
+        if (!result && ::GetLastError() != ERROR_IO_PENDING)
+            ::PostQueuedCompletionStatus(s_ioPort, ::GetLastError(), CK_FileError, op);
 
-        if (result)
-            HandleCompletedOverlap(op);
-        else if (::GetLastError() != ERROR_IO_PENDING)
-            HandleCompletedOp(op, Result::FromLastError(), 0);
-
-        return f;
+        return *op;
     }
 
-    std::future<AsyncFileResult> AsyncFile::WriteAsync(const void* src, uint64_t offset, uint32_t size)
+    AsyncFileOp AsyncFile::WriteAsync(const void* src, uint64_t offset, uint32_t size, CompleteDelegate callback)
     {
         const HANDLE handle = reinterpret_cast<HANDLE>(m_fd);
 
+        // TODO: Pool these allocations in an object pool.
         AsyncOp* op = Allocator::GetDefault().New<AsyncOp>();
-        ::DuplicateHandle(::GetCurrentProcess(), handle, ::GetCurrentProcess(), &op->file, 0, FALSE, DUPLICATE_SAME_ACCESS);
+        op->Reset(handle, offset, callback);
 
-        op->overlap.Offset = (DWORD)offset;
-        op->overlap.OffsetHigh = (DWORD)(offset >> 32);
-        BOOL result = ::WriteFile(op->file, src, size, nullptr, &op->overlap);
+        BOOL result = ::WriteFile(op->File(), src, size, nullptr, op);
 
-        auto f = op->promise.get_future();
+        if (!result && ::GetLastError() != ERROR_IO_PENDING)
+            ::PostQueuedCompletionStatus(s_ioPort, ::GetLastError(), CK_FileError, op);
 
-        if (result)
-            HandleCompletedOverlap(op);
-        else if (::GetLastError() != ERROR_IO_PENDING)
-            HandleCompletedOp(op, Result::FromLastError(), 0);
-
-        return f;
+        return *op;
     }
 
     Result AsyncFile::GetAttributes(FileAttributes& outAttributes) const
@@ -220,39 +298,12 @@ namespace he
         return Win32FileGetPath(handle, outPath);
     }
 
-    static void HandleCompletedOp(AsyncOp* op, Result result, uint32_t bytesTransferred)
-    {
-        AsyncFileResult r;
-        r.result = result;
-        r.bytesTransferred = bytesTransferred;
-
-        ::CloseHandle(op->file);
-        op->promise.set_value(r);
-        Allocator::GetDefault().Delete(op);
-    }
-
-    static void HandleCompletedOverlap(AsyncOp* op)
-    {
-        DWORD bytesTransferred;
-        BOOL result = ::GetOverlappedResult(op->file, &op->overlap, &bytesTransferred, true);
-
-        if (result)
-        {
-            HandleCompletedOp(op, Result::Success, bytesTransferred);
-        }
-        else
-        {
-            Result r = Result::FromLastError();
-            HE_LOG_ERROR(async_file, HE_MSG("Failed to get result of overlapped file IO"), HE_KV(error, r));
-            HandleCompletedOp(op, r, 0);
-        }
-    }
-
+    // --------------------------------------------------------------------------------------------
     static DWORD IOCompletionThread(LPVOID)
     {
         HE_ASSERT(s_ioPort);
 
-        OVERLAPPED_ENTRY entries[32];
+        OVERLAPPED_ENTRY entries[16];
 
         while (s_ioStartupCount > 0)
         {
@@ -274,11 +325,38 @@ namespace he
             {
                 OVERLAPPED_ENTRY& entry = entries[i];
 
-                if (entry.lpOverlapped == nullptr)
-                    continue;
+                switch (entry.lpCompletionKey)
+                {
+                    case CK_Shutdown:
+                    {
+                        // Wake event to tell us to shutdown. Return out of the thread function.
+                        return 0;
+                    }
+                    case CK_FileComplete:
+                    {
+                        // Event sent by windows when a file operation completes normally.
+                        HE_ASSERT(entry.lpOverlapped);
+                        AsyncOp* op = static_cast<AsyncOp*>(entry.lpOverlapped);
 
-                AsyncOp* op = CONTAINING_RECORD(entry.lpOverlapped, AsyncOp, overlap);
-                HandleCompletedOverlap(op);
+                        DWORD bytesTransferred = 0;
+                        const BOOL result = ::GetOverlappedResult(op->File(), op, &bytesTransferred, false);
+                        HE_ASSERT(result || ::GetLastError() != ERROR_IO_PENDING, HE_KV(result, Result::FromLastError()));
+
+                        const DWORD err = result ? ERROR_SUCCESS : ::GetLastError();
+                        op->SetResult(err, bytesTransferred);
+                        break;
+                    }
+                    case CK_FileError:
+                    {
+                        // When ReadFile/WriteFile return an error we send an event here so we can
+                        // call the callback from this thread. We pass the error through the bytes
+                        // transferred parameter, which is why the SetResult params seem reversed.
+                        HE_ASSERT(entry.lpOverlapped);
+                        AsyncOp* op = static_cast<AsyncOp*>(entry.lpOverlapped);
+                        op->SetResult(entry.dwNumberOfBytesTransferred, 0);
+                        break;
+                    }
+                }
             }
         }
 

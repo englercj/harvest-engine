@@ -3,13 +3,13 @@
 id = "DirectStorage"
 name = "DirectStorage"
 description = "DirectStorage for Windows."
-version = "1.0.2"
+version = "1.1.0"
 author = "Microsoft"
 license = "SEE LICENSE IN LICENSE.txt"
-homepage = "https://www.nuget.org/packages/Microsoft.Direct3D.DirectStorage/1.0.2"
+homepage = "https://www.nuget.org/packages/Microsoft.Direct3D.DirectStorage"
 
 [install]
-    nuget = "Microsoft.Direct3D.DirectStorage#1.0.2"
+    nuget = "Microsoft.Direct3D.DirectStorage#1.1.0"
     valid_targets = ["windows"]
 
 [[modules]]

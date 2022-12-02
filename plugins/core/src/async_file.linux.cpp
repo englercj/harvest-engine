@@ -14,31 +14,28 @@
 #include "he/core/thread.h"
 #include "he/core/utils.h"
 
-#include <atomic>
-#include <future>
 #include <thread>
 
 #if defined(HE_PLATFORM_LINUX)
 
 #include "file_helpers.posix.h"
 
+#include <errno.h>
 #include <liburing.h>
 #include <sched.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <liburing/io_uring.h>
 #include <sys/utsname.h>
-
-// #include <errno.h>
-// #include <fcntl.h>
-// #include <stdio.h>
-// #include <stdlib.h>
-// #include <unistd.h>
-// #include <sys/stat.h>
-// #include <sys/types.h>
 
 namespace he
 {
+    // --------------------------------------------------------------------------------------------
+    static Mutex s_ioStartupMutex{};
+    static uint32_t s_ioStartupCount{ 0 };
+    static io_uring s_ring{};
+    static std::thread s_cqThread{};
+
+    // --------------------------------------------------------------------------------------------
     struct RequiredIORingOp { int value; const char* name; };
     constexpr RequiredIORingOp RequiredOps[] =
     {
@@ -47,22 +44,81 @@ namespace he
         { IORING_OP_MSG_RING, "IORING_OP_MSG_RING" },
     };
 
-    static Mutex s_ioStartupMutex{};
-    static uint32_t s_ioStartupCount{ 0 };
-    static io_uring s_ring{};
-    static std::thread s_cqThread{};
-
-    struct AsyncOp
+    // --------------------------------------------------------------------------------------------
+    class AsyncOp
     {
-        int fd;
-        bool isRead;
-        std::promise<AsyncFileResult> promise;
+    public:
+        ~AsyncOp()
+        {
+            Close();
+        }
+
+        int File() const { return m_fd; }
+
+        void Close()
+        {
+            if (m_fd != -1)
+            {
+                close(m_fd);
+                m_fd = -1;
+            }
+        }
+
+        bool Reset(int fd, AsyncFile::CompleteDelegate callback)
+        {
+            m_fd = dup(fd);
+            m_event.Reset();
+
+            m_result = PosixResult(EINPROGRESS);
+            m_bytesTransferred = 0;
+            m_callback = callback;
+
+            return m_fd != -1;
+        }
+
+        bool IsComplete() const
+        {
+            return m_event.Wait(Duration_Zero);
+        }
+
+        void Wait() const
+        {
+            m_event.Wait();
+        }
+
+        Result GetResult(uint32_t* bytesTransferred)
+        {
+            HE_ASSERT(IsComplete());
+
+            if (bytesTransferred)
+                *bytesTransferred = m_bytesTransferred;
+
+            return m_result;
+        }
+
+        void SetResult(int res)
+        {
+            m_result = res < 0 ? PosixResult(-res) : Result::Success;
+            m_bytesTransferred = res < 0 ? 0 : res;
+            m_event.Signal();
+
+            if (m_callback)
+                m_callback(*this);
+        }
+
+        operator AsyncFileOp() const { return AsyncFileOp{ reinterpret_cast<uintptr_t>(this) }; }
+
+    private:
+        int m_fd{ -1 };
+        SyncEvent m_event{};
+
+        Result m_result{};
+        uint32_t m_bytesTransferred{ 0 };
+        AsyncFile::CompleteDelegate m_callback{};
     };
 
-    static void HandleCompletedOp(AsyncOp* op, Result result, uint32_t bytesTransferred);
-    static void HandleCompletedOp(AsyncOp* op, int32_t res);
+    // --------------------------------------------------------------------------------------------
     static void CompletionQueueThread();
-
     static void UnlockedShutdownAsyncFileIO();
 
     static io_uring_sqe* SpinWaitForSqe()
@@ -99,6 +155,7 @@ namespace he
         return sqe;
     }
 
+    // --------------------------------------------------------------------------------------------
     Result StartupAsyncFileIO(const AsyncFileIOConfig& config)
     {
         LockGuard lock(s_ioStartupMutex);
@@ -156,6 +213,22 @@ namespace he
     {
         LockGuard lock(s_ioStartupMutex);
         UnlockedShutdownAsyncFileIO();
+    }
+
+    // --------------------------------------------------------------------------------------------
+    bool AsyncFile::IsComplete(AsyncFileOp token)
+    {
+        AsyncOp* op = reinterpret_cast<AsyncOp*>(token.val);
+        return op->IsComplete();
+    }
+
+    Result AsyncFile::GetResult(AsyncFileOp token, uint32_t* bytesTransferred)
+    {
+        AsyncOp* op = reinterpret_cast<AsyncOp*>(token.val);
+        op->Wait();
+        Result r = op->GetResult(bytesTransferred);
+        Allocator::GetDefault().Delete(op);
+        return r;
     }
 
     AsyncFile::AsyncFile() noexcept
@@ -216,88 +289,71 @@ namespace he
         return buf.st_size;
     }
 
-    std::future<AsyncFileResult> AsyncFile::ReadAsync(void* dst, uint64_t offset, uint32_t size)
+    AsyncFileOp AsyncFile::ReadAsync(void* dst, uint64_t offset, uint32_t size, CompleteDelegate callback)
     {
+        const int fd = static_cast<int>(m_fd);
+
+        // TODO: Pool these allocations in an object pool.
         AsyncOp* op = Allocator::GetDefault().New<AsyncOp>();
-        op->fd = dup(static_cast<int>(m_fd));
-        op->isRead = true;
 
-        auto f = op->promise.get_future();
-
-        if (op->fd == -1)
+        if (!op->Reset(fd, callback))
         {
-            HandleCompletedOp(op, Result::FromLastError(), 0);
+            io_uring_sqe* sqe = GetNextSqe();
+            io_uring_prep_msg_ring(sqe, s_ring.ring_fd, -static_cast<unsigned int>(errno), op, 0);
         }
         else
         {
             io_uring_sqe* sqe = GetNextSqe();
-            io_uring_prep_read(sqe, op->fd, dst, size, offset);
+            io_uring_prep_read(sqe, op->File(), dst, size, offset);
             io_uring_sqe_set_data(sqe, op);
         }
 
-        return f;
+        return *op;
     }
 
-    std::future<AsyncFileResult> AsyncFile::WriteAsync(const void* src, uint64_t offset, uint32_t size)
+    AsyncFileOp AsyncFile::WriteAsync(const void* src, uint64_t offset, uint32_t size, CompleteDelegate callback)
     {
+        const int fd = static_cast<int>(m_fd);
+
+        // TODO: Pool these allocations in an object pool.
         AsyncOp* op = Allocator::GetDefault().New<AsyncOp>();
-        op->fd = dup(static_cast<int>(m_fd));
-        op->isRead = false;
 
-        auto f = op->promise.get_future();
-
-        if (op->fd == -1)
+        if (!op->Reset(fd, callback))
         {
-            HandleCompletedOp(op, Result::FromLastError(), 0);
+            io_uring_sqe* sqe = GetNextSqe();
+            io_uring_prep_msg_ring(sqe, s_ring.ring_fd, -static_cast<unsigned int>(errno), op, 0);
         }
         else
         {
             io_uring_sqe* sqe = GetNextSqe();
-            io_uring_prep_write(sqe, op->fd, src, size, offset);
+            io_uring_prep_write(sqe, op->File(), src, size, offset);
             io_uring_sqe_set_data(sqe, op);
         }
 
-        return f;
+        return *op;
     }
 
     Result AsyncFile::GetAttributes(FileAttributes& outAttributes) const
     {
-        return PosixFileGetAttributes(static_cast<int>(m_fd), outAttributes);
+        const int fd = static_cast<int>(m_fd);
+        return PosixFileGetAttributes(fd, outAttributes);
     }
 
     Result AsyncFile::GetPath(String& outPath) const
     {
-        return PosixFileGetPath(static_cast<int>(m_fd), outPath);
+        const int fd = static_cast<int>(m_fd);
+        return PosixFileGetPath(fd, outPath);
     }
 
-    static void HandleCompletedOp(AsyncOp* op, Result result, uint32_t bytesTransferred)
-    {
-        AsyncFileResult r;
-        r.result = result;
-        r.bytesTransferred = bytesTransferred;
-
-        close(op->fd);
-        op->promise.set_value(r);
-        Allocator::GetDefault().Delete(op);
-    }
-
-    static void HandleCompletedOp(AsyncOp* op, int32_t res)
-    {
-        const Result r = res < 0 ? PosixResult(-res) : Result::Success;
-        const uint32_t bytesTransferred = res < 0 ? 0 : res;
-        HandleCompletedOp(op, r, bytesTransferred);
-    }
-
+    // --------------------------------------------------------------------------------------------
     static void CompletionQueueThread()
     {
         SetCurrentThreadName("[HE] Async File io_uring CQ Thread");
 
         while (s_ioStartupCount > 0)
         {
-            io_uring_cqe* cqe;
+            io_uring_cqe* cqe = nullptr;
             const int rc = io_uring_wait_cqe(&s_ring, &cqe);
-
-            HE_AT_SCOPE_EXIT([&]() { io_uring_cqe_seen(&s_ring, cqe); });
 
             if (rc != 0)
             {
@@ -307,14 +363,13 @@ namespace he
                 continue;
             }
 
-            if (cqe->user_data == 0)
-                continue;
+            HE_ASSERT(cqe);
 
             AsyncOp* op = static_cast<AsyncOp*>(io_uring_cqe_get_data(cqe));
             if (op)
-            {
-                HandleCompletedOp(op, cqe->res);
-            }
+                op->SetResult(cqe->res);
+
+            io_uring_cqe_seen(&s_ring, cqe);
         }
     }
 }

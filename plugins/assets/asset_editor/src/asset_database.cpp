@@ -21,13 +21,12 @@
 
 namespace he::assets
 {
-    bool AssetDatabase::Initialize(const char* dbPath, const char* assetRoot, AsyncFileLoader& loader)
+    bool AssetDatabase::Initialize(const char* dbPath, const char* assetRoot)
     {
         if (!HE_VERIFY(IsAbsolutePath(assetRoot), HE_KV(asset_root, assetRoot)))
             return false;
 
         m_assetRoot = assetRoot;
-        m_loader = &loader;
 
         if (!m_db.Open(dbPath))
             return false;
@@ -172,8 +171,8 @@ namespace he::assets
             return false;
         }
 
-        AsyncFileId fileId;
-        Result r = m_loader->OpenFile(absPath.Data(), fileId);
+        AsyncFile file;
+        Result r = file.Open(absPath.Data(), FileOpenMode::ReadExisting, FileOpenFlag::SequentialScan);
         if (!r)
         {
             HE_LOG_ERROR(he_assets,
@@ -185,30 +184,19 @@ namespace he::assets
             return false;
         }
 
-        FileAttributes attrs;
-        r = m_loader->GetAttributes(fileId, attrs);
-        if (!r)
-        {
-            HE_LOG_ERROR(he_assets,
-                HE_MSG("Failed to read attributes of asset file. Does it exist?"),
-                HE_KV(file_path, absPath));
-
-            callback({ r });
-            return false;
-        }
-
-        if (attrs.size > std::numeric_limits<uint32_t>::max())
+        const uint64_t size = file.GetSize();
+        if (size > std::numeric_limits<uint32_t>::max())
         {
             HE_LOG_ERROR(he_assets,
                 HE_MSG("Asset file size is larger than UINT32_MAX"),
-                HE_KV(file_size, attrs.size),
+                HE_KV(file_size, size),
                 HE_KV(file_path, absPath));
 
             callback({ Result::InvalidParameter });
             return false;
         }
 
-        const uint32_t fileByteSize = static_cast<uint32_t>(attrs.size);
+        const uint32_t fileByteSize = static_cast<uint32_t>(size);
 
         LoadRequest* load = Allocator::GetDefault().New<LoadRequest>();
         load->path = absPath;
@@ -216,22 +204,11 @@ namespace he::assets
         load->db = this;
         load->callback = callback;
 
-        AsyncFileQueue* queue = m_loader->DefaultQueue();
+        std::future<AsyncFileResult> future = file.ReadAsync(load->content.Data(), 0, fileByteSize);
 
-        AsyncFileRequest req;
-        req.file = fileId;
-        req.offset = 0;
-        req.size = fileByteSize;
-        req.dst = load->content.Data();
-        req.dstSize = fileByteSize;
-        req.name = load->path.Data();
+        // Call on complete: HandleFileReadComplete(load)
 
-        queue->EnqueueRequest(req);
-        queue->EnqueueDelegate(AsyncFileQueue::LoadDelegate::Make<&HandleFileReadComplete>(load));
-        queue->Submit();
-
-        load->db->m_loader->CloseFile(fileId);
-
+        file.Close();
         return true;
     }
 

@@ -3,7 +3,7 @@
 #pragma once
 
 #include "he/assets/types.h"
-#include "he/core/async_file_loader.h"
+#include "he/core/async_file.h"
 #include "he/core/delegate.h"
 #include "he/core/string.h"
 #include "he/core/types.h"
@@ -28,7 +28,7 @@ namespace he::assets
     public:
         ~AssetDatabase() noexcept { Terminate(); }
 
-        bool Initialize(const char* dbPath, const char* assetRoot, AsyncFileLoader& loader);
+        bool Initialize(const char* dbPath, const char* assetRoot);
         bool Terminate();
 
         // TODO: Audit the path handling in these.
@@ -56,7 +56,7 @@ namespace he::assets
     private:
         struct LoadRequest
         {
-            AsyncFileId fileId{};
+            AsyncFile file{};
             String path{};
             String content{};
             AssetDatabase* db{ nullptr };
@@ -76,6 +76,5 @@ namespace he::assets
     private:
         sqlite::Database m_db;
         String m_assetRoot;
-        AsyncFileLoader* m_loader;
     };
 }

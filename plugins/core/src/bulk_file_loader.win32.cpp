@@ -1,6 +1,8 @@
 // Copyright Chad Engler
 
-#include "he/core/async_file_loader.h"
+// TODO: Implement compression handling using `IDStorageCustomDecompressionQueue`
+
+#include "he/core/bulk_file_loader.h"
 
 #include "he/core/assert.h"
 #include "he/core/cpu.h"
@@ -11,8 +13,6 @@
 #include "he/core/types.h"
 #include "he/core/utils.h"
 #include "he/core/wstr.h"
-
-#include "blockingconcurrentqueue.h"
 
 #include <atomic>
 
@@ -29,37 +29,105 @@ namespace he
     static Mutex s_initMutex{};
     static uint32_t s_initCount{ 0 };
     static IDStorageFactory* s_factory{ nullptr };
-    static HANDLE s_callbackThread{ nullptr };
-    static std::atomic<bool> s_callbackRunning{ true };
 
-    struct CallbackEntry
+    class RequestTracker
     {
-        AsyncFileQueue::LoadDelegate callback;
-        IDStorageStatusArray* status;
-        uint32_t index;
-    };
-    static moodycamel::BlockingConcurrentQueue<CallbackEntry> s_callbackQueue{};
-
-    static DWORD DStorageCallbackThread(LPVOID);
-
-    DSTORAGE_COMPRESSION_FORMAT ToDsCompressionFormat(AsyncFileRequest::CompressionFormat f)
-    {
-        switch (f)
+    public:
+        RequestTracker()
         {
-            case AsyncFileRequest::CompressionFormat::None:
-                return DSTORAGE_COMPRESSION_FORMAT_NONE;
-            case AsyncFileRequest::CompressionFormat::Zlib:
-                return DSTORAGE_CUSTOM_COMPRESSION_0;
+            m_event = ::CreateEventW(nullptr, TRUE, FALSE, nullptr);
+            HE_ASSERT(m_event);
+
+            auto callback = [](TP_CALLBACK_INSTANCE*, void* context, TP_WAIT*, TP_WAIT_RESULT)
+            {
+                RequestTracker* tracker = reinterpret_cast<RequestTracker*>(context);
+                if (tracker->m_callback)
+                    tracker->m_callback(*tracker);
+            };
+
+            m_wait = ::CreateThreadpoolWait(callback, this, nullptr);
+            HE_ASSERT(m_wait);
         }
 
-        HE_ASSERT(false, HE_MSG("Unknown compression format"), HE_KV(format, f));
+        ~RequestTracker()
+        {
+            if (m_wait)
+            {
+                ::WaitForThreadpoolWaitCallbacks(m_wait, TRUE);
+                ::CloseThreadpoolWait(m_wait);
+            }
+
+            if (m_event)
+            {
+                ::CloseHandle(m_event);
+            }
+        }
+
+        void Reset(BulkFileQueue::LoadDelegate callback, uint32_t index)
+        {
+            m_callback = callback;
+            m_index = index;
+
+            ::ResetEvent(m_event);
+
+            if (m_callback)
+                ::SetThreadpoolWait(m_wait, m_event, nullptr);
+            else
+                ::SetThreadpoolWait(m_wait, nullptr, nullptr);
+        }
+
+        bool IsSet() const
+        {
+            return ::WaitForSingleObject(m_event, 0) == WAIT_OBJECT_0;
+        }
+
+        void Wait() const { ::WaitForSingleObject(m_event, INFINITE); }
+        HANDLE Event() const { return m_event; }
+        uint32_t Index() const { return m_index; }
+
+        operator BulkReadId() const { return BulkReadId{ reinterpret_cast<uintptr_t>(this) }; }
+
+    private:
+        BulkFileQueue::LoadDelegate m_callback{};
+        uint32_t m_index{ 0 };
+
+        HANDLE m_event{ nullptr };
+        TP_WAIT* m_wait{ nullptr };
+    };
+
+    DSTORAGE_COMPRESSION_FORMAT ToDsCompressionFormat(BulkReadRequest::CompressionFormat x)
+    {
+        switch (x)
+        {
+            case BulkReadRequest::CompressionFormat::None: return DSTORAGE_COMPRESSION_FORMAT_NONE;
+            case BulkReadRequest::CompressionFormat::Zlib: return DSTORAGE_CUSTOM_COMPRESSION_0;
+            case BulkReadRequest::CompressionFormat::GDeflate: return DSTORAGE_COMPRESSION_FORMAT_GDEFLATE;
+        }
+
+        HE_VERIFY(false, HE_MSG("Unknown compression format"), HE_KV(format, x));
         return DSTORAGE_COMPRESSION_FORMAT_NONE;
     }
 
-    class AsyncFileQueueImpl final : public AsyncFileQueue
+    DSTORAGE_PRIORITY ToDsPriority(BulkFileQueue::Config::Priority x)
+    {
+        switch (x)
+        {
+            case BulkFileQueue::Config::Priority::Low: return DSTORAGE_PRIORITY_LOW;
+            case BulkFileQueue::Config::Priority::Normal: return DSTORAGE_PRIORITY_NORMAL;
+            case BulkFileQueue::Config::Priority::High: return DSTORAGE_PRIORITY_HIGH;
+            case BulkFileQueue::Config::Priority::Realtime: return DSTORAGE_PRIORITY_REALTIME;
+        }
+
+        HE_VERIFY(false, HE_MSG("Unknown queue priority"), HE_KV(priority, x));
+        return DSTORAGE_PRIORITY_NORMAL;
+    }
+
+    class BulkFileQueueImpl final : public BulkFileQueue
     {
     public:
-        ~AsyncFileQueueImpl()
+        BulkFileQueueImpl(Allocator& allocator) : m_allocator(allocator) {}
+
+        ~BulkFileQueueImpl()
         {
             if (m_status)
             {
@@ -69,6 +137,7 @@ namespace he
 
             if (m_queue)
             {
+                m_queue->CancelRequestsWithTag(~0ull, reinterpret_cast<uint64_t>(this));
                 m_queue->Release();
                 m_queue = nullptr;
             }
@@ -81,7 +150,7 @@ namespace he
             m_capacity = config.capacity;
 
             if (!HE_VERIFY(m_capacity >= DSTORAGE_MIN_QUEUE_CAPACITY && m_capacity <= DSTORAGE_MAX_QUEUE_CAPACITY,
-                HE_MSG("Queue capacity must be within DStorage limits. The value will be clamped"),
+                HE_MSG("Queue capacity must be within DirectStorage limits. The value will be clamped"),
                 HE_KV(capacity, m_capacity),
                 HE_KV(min_capacity, DSTORAGE_MIN_QUEUE_CAPACITY),
                 HE_KV(max_capacity, DSTORAGE_MAX_QUEUE_CAPACITY)))
@@ -91,8 +160,8 @@ namespace he
 
             DSTORAGE_QUEUE_DESC desc{};
             desc.SourceType = DSTORAGE_REQUEST_SOURCE_FILE;
-            desc.Capacity = config.capacity;
-            desc.Priority = DSTORAGE_PRIORITY_NORMAL;
+            desc.Capacity = m_capacity;
+            desc.Priority = ToDsPriority(config.priority);
             desc.Name = name;
             desc.Device = nullptr;
 
@@ -100,14 +169,14 @@ namespace he
             if (FAILED(hr))
                 return Win32Result(hr);
 
-            hr = s_factory->CreateStatusArray(config.capacity, name, IID_PPV_ARGS(&m_status));
+            hr = s_factory->CreateStatusArray(m_capacity, name, IID_PPV_ARGS(&m_status));
             if (FAILED(hr))
                 return Win32Result(hr);
 
             return Result::Success;
         }
 
-        void EnqueueRequest(const AsyncFileRequest& req) override
+        void Enqueue(const BulkReadRequest& req) override
         {
             DSTORAGE_REQUEST dsReq{};
             dsReq.Options.CompressionFormat = ToDsCompressionFormat(req.compression);
@@ -119,71 +188,61 @@ namespace he
             dsReq.Destination.Memory.Buffer = req.dst;
             dsReq.Destination.Memory.Size = req.dstSize;
             dsReq.UncompressedSize = dsReq.Options.CompressionFormat == DSTORAGE_COMPRESSION_FORMAT_NONE ? 0 : req.dstSize;
-            dsReq.CancellationTag = req.cancellationTag;
+            dsReq.CancellationTag = reinterpret_cast<uint64_t>(this);
             dsReq.Name = req.name;
 
             m_queue->EnqueueRequest(&dsReq);
         }
 
-        void EnqueueDelegate(LoadDelegate callback) override
-        {
-            if (!callback)
-                return;
-
-            const uint32_t index = static_cast<uint32_t>(m_index++ % m_capacity);
-            m_queue->EnqueueStatus(m_status, index);
-
-            CallbackEntry cb;
-            cb.callback = callback;
-            cb.status = m_status;
-            cb.index = index;
-            s_callbackQueue.enqueue(cb);
-        }
-
-        AsyncFileTracker EnqueueTracker() override
+        BulkReadId Submit(LoadDelegate callback) override
         {
             const uint32_t index = static_cast<uint32_t>(m_index++ % m_capacity);
-            m_queue->EnqueueStatus(m_status, index);
-            return { index };
-        }
+            // TODO: Pool these allocations in an object pool
+            RequestTracker* tracker = m_allocator.New<RequestTracker>();
 
-        void CancelRequestsWithTag(uint64_t mask, uint64_t value) override
-        {
-            m_queue->CancelRequestsWithTag(mask, value);
-        }
-
-        void Submit() override
-        {
+            tracker->Reset(callback, index);
+            m_queue->EnqueueStatus(m_status, tracker->Index());
+            m_queue->EnqueueSetEvent(tracker->Event());
             m_queue->Submit();
+
+            return *tracker;
         }
 
-        bool IsComplete(AsyncFileTracker token) const override
+        bool IsComplete(BulkReadId token) const override
         {
-            return m_status->IsComplete(token.val);
+            RequestTracker* tracker = reinterpret_cast<RequestTracker*>(token.val);
+            return tracker->IsSet();
         }
 
-        Result GetResult(AsyncFileTracker token) const override
+        Result GetResult(BulkReadId token) const override
         {
-            const HRESULT hr = m_status->GetHResult(token.val);
+            RequestTracker* tracker = reinterpret_cast<RequestTracker*>(token.val);
+            tracker->Wait();
+
+            const HRESULT hr = m_status->GetHResult(tracker->Index());
+            HE_ASSERT(hr != E_PENDING);
+
+            m_allocator.Delete(tracker);
             return FAILED(hr) ? Win32Result(hr) : Result::Success;
         }
 
     private:
-        IDStorageQueue* m_queue{ nullptr };
+        Allocator& m_allocator;
+
+        IDStorageQueue1* m_queue{ nullptr };
         IDStorageStatusArray* m_status{ nullptr };
         std::atomic<uint64_t> m_index{ 0 };
 
         uint16_t m_capacity{ 0 };
     };
 
-    class AsyncFileLoaderImpl final : public AsyncFileLoader
+    class BulkFileLoaderImpl final : public BulkFileLoader
     {
     public:
-        AsyncFileLoaderImpl(Allocator& allocator) : AsyncFileLoader(allocator) {}
+        BulkFileLoaderImpl(Allocator& allocator) : BulkFileLoader(allocator) {}
 
-        ~AsyncFileLoaderImpl()
+        ~BulkFileLoaderImpl()
         {
-            m_allocator.Delete(m_defaultQueue);
             GlobalTerminate();
         }
 
@@ -193,17 +252,10 @@ namespace he
             if (!r)
                 return r;
 
-            if (config.defaultQueue.capacity > 0)
-            {
-                r = CreateQueue(config.defaultQueue, m_defaultQueue);
-                if (!r)
-                    return r;
-            }
-
             return Result::Success;
         }
 
-        Result OpenFile(const char* path, AsyncFileId& fd) override
+        Result OpenFile(const char* path, BulkFileId& fd) override
         {
             IDStorageFile* file = nullptr;
             HRESULT hr = s_factory->OpenFile(HE_TO_WCSTR(path), IID_PPV_ARGS(&file));
@@ -211,14 +263,14 @@ namespace he
             return FAILED(hr) ? Win32Result(hr) : Result::Success;
         }
 
-        void CloseFile(AsyncFileId fd) override
+        void CloseFile(BulkFileId fd) override
         {
             IDStorageFile* file = reinterpret_cast<IDStorageFile*>(fd.val);
             if (file)
                 file->Release();
         }
 
-        Result GetAttributes(AsyncFileId fd, FileAttributes& outAttributes)
+        Result GetAttributes(BulkFileId fd, FileAttributes& outAttributes)
         {
             IDStorageFile* file = reinterpret_cast<IDStorageFile*>(fd.val);
 
@@ -232,14 +284,9 @@ namespace he
             return Result::Success;
         }
 
-        AsyncFileQueue* DefaultQueue() override
+        Result CreateQueue(const BulkFileQueue::Config& config, BulkFileQueue*& out) override
         {
-            return m_defaultQueue;
-        }
-
-        Result CreateQueue(const AsyncFileQueue::Config& config, AsyncFileQueue*& out) override
-        {
-            AsyncFileQueueImpl* queue = m_allocator.New<AsyncFileQueueImpl>();
+            BulkFileQueueImpl* queue = m_allocator.New<BulkFileQueueImpl>();
             Result r = queue->Initialize(config);
             if (!r)
             {
@@ -251,12 +298,9 @@ namespace he
             return r;
         }
 
-        void DestroyQueue(AsyncFileQueue* queue) override
+        void DestroyQueue(BulkFileQueue* queue) override
         {
-            if (queue != m_defaultQueue)
-            {
-                m_allocator.Delete(queue);
-            }
+            m_allocator.Delete(queue);
         }
 
     private:
@@ -271,7 +315,8 @@ namespace he
             auto failGuard = MakeScopeGuard([&]() { UnlockedGlobalTerminate(); });
 
             DSTORAGE_CONFIGURATION dsConfig;
-            dsConfig.NumSubmitThreads = config.submitThreadCount;
+            dsConfig.NumSubmitThreads = config.dstorage.submitThreadCount;
+            dsConfig.NumBuiltInCpuDecompressionThreads = config.dstorage.decompressThreadCount;
             ::DStorageSetConfiguration(&dsConfig);
 
             HRESULT hr = ::DStorageGetFactory(IID_PPV_ARGS(&s_factory));
@@ -288,21 +333,6 @@ namespace he
 
             s_factory->SetDebugFlags(flags);
 
-            s_callbackRunning = true;
-
-            s_callbackThread = ::CreateThread(nullptr, 0, DStorageCallbackThread, nullptr, 0, nullptr);
-            if (s_callbackThread == nullptr)
-                return Result::FromLastError();
-
-            if (config.callbackThreadAffinity > 0)
-            {
-                Result affinityResult = SetThreadAffinity(reinterpret_cast<ThreadHandle>(s_callbackThread), config.callbackThreadAffinity);
-                if (!affinityResult)
-                    return affinityResult;
-            }
-
-            ::SetThreadDescription(s_callbackThread, L"[HE] DStorage Callback Thread");
-
             failGuard.Dismiss();
             return Result::Success;
         }
@@ -313,15 +343,6 @@ namespace he
             const uint32_t count = --s_initCount;
             if (count > 0)
                 return;
-
-            if (s_callbackThread)
-            {
-                s_callbackRunning = false;
-                s_callbackQueue.enqueue({});
-                ::WaitForSingleObject(s_callbackThread, INFINITE);
-                ::CloseHandle(s_callbackThread);
-                s_callbackThread = nullptr;
-            }
 
             if (s_factory)
             {
@@ -335,54 +356,11 @@ namespace he
             LockGuard lock(s_initMutex);
             UnlockedGlobalTerminate();
         }
-
-    private:
-        AsyncFileQueue* m_defaultQueue{ nullptr };
     };
 
-    static bool SpinWaitForComplete(IDStorageStatusArray* status, uint32_t index)
+    BulkFileLoader* _CreateBulkFileLoader(Allocator& allocator)
     {
-        constexpr uint32_t SpinIterations = 10;
-
-        for (uint32_t i = 0; i < SpinIterations; ++i)
-        {
-            if (status->IsComplete(index))
-                return false;
-
-            HE_SPIN_WAIT_PAUSE();
-        }
-
-        // Yield the thread if we didn't complete in our spin
-        ::SwitchToThread();
-        return true;
-    }
-
-    static DWORD DStorageCallbackThread(LPVOID)
-    {
-        // TODO: Because of the queue this always completes callbacks in order, but reads can complete
-        // out of order. Need to improve the way we track & dispatch here.
-        while (s_callbackRunning)
-        {
-            CallbackEntry cb;
-            s_callbackQueue.wait_dequeue(cb);
-
-            if (!cb.callback)
-                continue;
-
-            // Spin wait until the index is marked as available
-            while (SpinWaitForComplete(cb.status, cb.index)) {}
-
-            const HRESULT hr = cb.status->GetHResult(cb.index);
-            const Result r = FAILED(hr) ? Win32Result(hr) : Result::Success;
-            cb.callback(r);
-        }
-
-        return 0;
-    }
-
-    AsyncFileLoader* _CreateAsyncFileLoader(Allocator& allocator)
-    {
-        return allocator.New<AsyncFileLoaderImpl>(allocator);
+        return allocator.New<BulkFileLoaderImpl>(allocator);
     }
 }
 

@@ -18,23 +18,29 @@ namespace he
         ReadWriteExecute,   ///< Memory can be read, written, or executed.
     };
 
-    /// Aligns up a number of bytes to a count of pages.
-    ///
-    /// \param[in] size The number of bytes to align up to pages.
-    /// \return Number of pages necessary to fit `size` bytes.
-    size_t BytesToPages(size_t size);
-
-    /// Calculates the byte size of a count of pages.
-    ///
-    /// \param[in] count The number of pages to calculate the size of.
-    /// \return Number of bytes available across `count` pages.
-    size_t PagesToBytes(size_t count);
-
     /// The virtual memory class tracks a block of reserved virtual pages and provides mechanisms
     /// for interacting with those pages. Virtual pages that are reserved do not consume any
     /// physical memory, only virtual address space, until \ref VirtualMemory::Commit is called.
     class VirtualMemory
     {
+    public:
+        /// Returns the size of a virtual memory page.
+        ///
+        /// \return Size of a page in bytes.
+        static size_t GetPageSize();
+
+        /// Aligns up a number of bytes to a count of pages.
+        ///
+        /// \param[in] size The number of bytes to align up to pages.
+        /// \return Number of pages necessary to fit `size` bytes.
+        static size_t BytesToPages(size_t size);
+
+        /// Calculates the byte size of a count of pages.
+        ///
+        /// \param[in] count The number of pages to calculate the size of.
+        /// \return Number of bytes available across `count` pages.
+        static size_t PagesToBytes(size_t count);
+
     public:
         /// Constructs a virtual memory block with no reserved pages.
         VirtualMemory() = default;
@@ -46,7 +52,7 @@ namespace he
         ~VirtualMemory() noexcept { Release(); }
 
         /// Move assigns a virtual memory block.
-        VirtualMemory& operator=(VirtualMemory&& x);
+        VirtualMemory& operator=(VirtualMemory&& x) noexcept;
 
         /// Reserves `count` pages of virtual address space, but does not commit any actual pages
         /// to physical memory.

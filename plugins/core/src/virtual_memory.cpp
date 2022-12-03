@@ -8,17 +8,23 @@
 
 namespace he
 {
-    size_t BytesToPages(size_t size)
+    size_t VirtualMemory::GetPageSize()
     {
         static const size_t s_pageSize = GetSystemInfo().pageSize;
-        const size_t pageCount = (size + (s_pageSize - 1)) / s_pageSize;
+        return s_pageSize;
+    }
+
+    size_t VirtualMemory::BytesToPages(size_t size)
+    {
+        const size_t pageSize = GetPageSize();
+        const size_t pageCount = (size + (pageSize - 1)) / pageSize;
         return pageCount;
     }
 
-    size_t PagesToBytes(size_t count)
+    size_t VirtualMemory::PagesToBytes(size_t count)
     {
-        static const size_t s_pageSize = GetSystemInfo().pageSize;
-        const size_t byteSize = count * s_pageSize;
+        const size_t pageSize = GetPageSize();
+        const size_t byteSize = count * pageSize;
         return byteSize;
     }
 
@@ -27,7 +33,7 @@ namespace he
         , m_size(Exchange(x.m_size, 0))
     {}
 
-    VirtualMemory& VirtualMemory::operator=(VirtualMemory&& x)
+    VirtualMemory& VirtualMemory::operator=(VirtualMemory&& x) noexcept
     {
         m_block = Exchange(x.m_block, nullptr);
         m_size = Exchange(x.m_size, 0);

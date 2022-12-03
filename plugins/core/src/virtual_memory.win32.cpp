@@ -33,7 +33,7 @@ namespace he
     Result VirtualMemory::Reserve(size_t count)
     {
         const size_t size = PagesToBytes(count);
-        m_block = ::VirtualAlloc(nullptr, size, MEM_RESERVE, 0);
+        m_block = ::VirtualAlloc(nullptr, size, MEM_RESERVE, PAGE_NOACCESS);
         if (m_block == nullptr)
             return Result::FromLastError();
 

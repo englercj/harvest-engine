@@ -2,17 +2,12 @@
 
 #pragma once
 
-#include "he/core/allocator.h"
-#include "he/core/assert.h"
-#include "he/core/config.h"
-#include "he/core/debug.h"
-#include "he/core/error.h"
-#include "he/core/macros.h"
-#include "he/core/string.h"
 #include "he/core/types.h"
 
 namespace he
 {
+    class String;
+
     /// Class for dealing with system results. It stores the raw error code from the OS and
     /// provides mechanisms for converting it to a string. The strings are from the OS and
     /// are therefore not garuanteed to be the same across platforms.
@@ -55,7 +50,9 @@ namespace he
 
         /// Looks up the error string for the system code using platform-specific APIs. The
         /// current system locale is used for the lookup.
-        String ToString(Allocator& allocator = Allocator::GetDefault()) const;
+        ///
+        /// \param[out] out The string to format the error message into.
+        void ToString(String& out) const;
 
         /// Converts the Result to a boolean. This value is the same as \ref IsOK().
         [[nodiscard]] explicit operator bool() const { return IsOk(); }

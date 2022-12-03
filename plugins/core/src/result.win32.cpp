@@ -2,7 +2,6 @@
 
 #include "he/core/result.h"
 
-#include "he/core/alloca.h"
 #include "he/core/appender.h"
 #include "he/core/string.h"
 #include "he/core/wstr.h"
@@ -26,10 +25,8 @@ namespace he
         return Win32Result(::GetLastError());
     }
 
-    String Result::ToString(Allocator& allocator) const
+    void Result::ToString(String& out) const
     {
-        String dst(allocator);
-
         wchar_t src[4096];
         DWORD srcLen = ::FormatMessageW(
             FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
@@ -42,16 +39,14 @@ namespace he
 
         if (srcLen == 0 || src == nullptr)
         {
-            fmt::format_to(Appender(dst), "Unknown error: {}", m_code);
-            return dst;
+            fmt::format_to(Appender(out), "Unknown error: {}", m_code);
         }
 
         // Remove a trailing period & \r\n for consistency with posix messages.
         if (srcLen >= 3 && src[srcLen - 3] == '.')
             src[srcLen -= 3] = 0;
 
-        WCToMBStr(dst, src);
-        return dst;
+        WCToMBStr(out, src);
     }
 }
 

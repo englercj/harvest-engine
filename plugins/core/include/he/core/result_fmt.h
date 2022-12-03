@@ -2,7 +2,6 @@
 
 #pragma once
 
-#include "he/core/allocator.h"
 #include "he/core/result.h"
 #include "he/core/string.h"
 #include "he/core/string_fmt.h"
@@ -22,7 +21,8 @@ namespace fmt
         template <typename FormatContext>
         auto format(const he::Result& result, FormatContext& ctx) -> decltype(ctx.out())
         {
-            const he::String msg = result.ToString(he::Allocator::GetTemp());
+            he::String msg;
+            result.ToString(msg);
             return fmt::format_to(ctx.out(), "({}) {}", result.GetCode(), msg);
         }
     };

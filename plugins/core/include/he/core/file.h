@@ -307,7 +307,7 @@ namespace he
         /// \return The result of the operation.
         Result GetAttributes(FileAttributes& outAttributes) const;
 
-        /// Returns the full path to file
+        /// Gets the full path to the file and writes it into `outPath`.
         ///
         /// \param[out] outPath The string to fill with the absolute path to this file.
         /// \return The result of the operation.

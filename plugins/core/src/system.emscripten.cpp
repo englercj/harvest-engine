@@ -27,16 +27,16 @@ namespace he
         return s_info;
     }
 
-    String GetSystemName(Allocator& allocator)
+    Result GetSystemName(String& outName)
     {
-        const String name("Emscripten", allocator);
-        return name;
+        outName = "Emscripten";
+        return Result::Success;
     }
 
-    String GetSystemUserName(Allocator& allocator)
+    Result GetSystemUserName(String& outName)
     {
-        const String name("Unknown", allocator);
-        return name;
+        outName = "Unknown";
+        return Result::Success;
     }
 
     PowerStatus GetPowerStatus()

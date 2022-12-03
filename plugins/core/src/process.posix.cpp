@@ -17,13 +17,17 @@ namespace he
 {
     constexpr uint32_t MaxStackLen = 2048;
 
-    String GetEnv(const char* name, Allocator& allocator)
+    Result GetEnv(const char* name, String& outValue)
     {
         const char* v = getenv(name);
-        String value(allocator);
-        if (v)
-            value = v;
-        return value;
+        if (v == nullptr)
+        {
+            outValue.Clear();
+            return PosixResult(ENOENT);
+        }
+
+        outValue = v;
+        return Result::Success;
     }
 
     Result SetEnv(const char* name, const char* value)

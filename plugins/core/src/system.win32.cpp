@@ -126,28 +126,28 @@ namespace he
         return s_info;
     }
 
-    String GetSystemName(Allocator& allocator)
+    Result GetSystemName(String& outName)
     {
-        String name(allocator);
-
         wchar_t nameBuf[MAX_COMPUTERNAME_LENGTH + 1];
         DWORD nameBufLen = HE_LENGTH_OF(nameBuf);
-        if (::GetComputerNameW(nameBuf, &nameBufLen))
-            WCToMBStr(name, nameBuf);
 
-        return name;
+        if (!::GetComputerNameW(nameBuf, &nameBufLen))
+            return Result::FromLastError();
+
+        WCToMBStr(outName, nameBuf);
+        return Result::Success;
     }
 
-    String GetSystemUserName(Allocator& allocator)
+    Result GetSystemUserName(String& outName)
     {
-        String name(allocator);
-
         wchar_t nameBuf[UNLEN + 1];
         DWORD nameBufLen = HE_LENGTH_OF(nameBuf);
-        if (::GetUserNameW(nameBuf, &nameBufLen))
-            WCToMBStr(name, nameBuf);
 
-        return name;
+        if (!::GetUserNameW(nameBuf, &nameBufLen))
+            return Result::FromLastError();
+
+        WCToMBStr(outName, nameBuf);
+        return Result::Success;
     }
 
     PowerStatus GetPowerStatus()

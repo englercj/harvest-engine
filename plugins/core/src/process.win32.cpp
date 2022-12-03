@@ -14,22 +14,34 @@ namespace he
 {
     constexpr uint32_t MaxStackLen = 2048;
 
-    String GetEnv(const char* name, Allocator& allocator)
+    Result GetEnv(const char* name, String& outValue)
     {
         const wchar_t* wideName = HE_TO_WCSTR(name);
         const uint32_t requiredLen = ::GetEnvironmentVariableW(wideName, nullptr, 0);
-
-        wchar_t* wideValue = allocator.Malloc<wchar_t>(requiredLen);
-        const uint32_t writtenLen = ::GetEnvironmentVariableW(wideName, wideValue, requiredLen);
-        if (writtenLen == 0 || writtenLen >= requiredLen)
+        if (requiredLen == 0)
         {
-            wideValue[0] = L'\0';
+            outValue.Clear();
+            return Result::FromLastError();
         }
 
-        String value(allocator);
-        WCToMBStr(value, wideValue);
-        allocator.Free(wideValue);
-        return value;
+        wchar_t* wideValue = HE_ALLOCA(wchar_t, requiredLen);
+        const uint32_t writtenLen = ::GetEnvironmentVariableW(wideName, wideValue, requiredLen);
+        if (writtenLen == 0)
+        {
+            outValue.Clear();
+            return Result::FromLastError();
+        }
+
+        // Try and catch a case where the env var changed and got longer between
+        // the call to get the size and the call to copy the value.
+        if (writtenLen >= requiredLen)
+        {
+            outValue.Clear();
+            return Win32Result(ERROR_ENVVAR_NOT_FOUND);
+        }
+
+        WCToMBStr(outValue, wideValue);
+        return Result::Success;
     }
 
     Result SetEnv(const char* name, const char* value)

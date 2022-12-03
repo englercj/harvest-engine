@@ -15,6 +15,7 @@
 #if defined(HE_PLATFORM_API_POSIX)
 
 #include <dlfcn.h>
+#include <errno.h>
 #include <pwd.h>
 #include <unistd.h>
 #include <sys/utsname.h>
@@ -109,46 +110,42 @@ namespace he
         return s_info;
     }
 
-    String GetSystemName(Allocator& allocator)
+    Result GetSystemName(String& outName)
     {
-        String name(allocator);
-        name.Resize(String::MaxEmbedCharacters, he::DefaultInit);
+        outName.Resize(String::MaxEmbedCharacters, he::DefaultInit);
 
         do
         {
-            const int rc = gethostname(name.Data(), name.Size());
-
+            const int rc = gethostname(outName.Data(), outName.Size());
             if (rc < 0)
             {
-                name.Clear();
-                break;
+                outName.Clear();
+                return Result::FromLastError();
             }
 
-            const uint32_t len = String::Length(name.Data());
-
-            if (len < name.Size())
+            const uint32_t len = String::Length(outName.Data());
+            if (len < outName.Size())
             {
                 // resize to properly null terminate
-                name.Resize(len);
+                outName.Resize(len);
                 break;
             }
 
-            name.Resize(Max(256u, name.Size() * 2), he::DefaultInit);
+            outName.Resize(Max(256u, outName.Size() * 2), he::DefaultInit);
         } while (true);
 
-        return name;
+        return Result::Success;
     }
 
-    String GetSystemUserName(Allocator& allocator)
+    Result GetSystemUserName(String& outName)
     {
-        String name(allocator);
-
         const uid_t uid = getuid();
         const passwd* pwd = getpwuid(uid);
-        if (pwd)
-            name = pwd->pw_name;
+        if (pwd == nullptr)
+            return errno == 0 ? PosixResult(ENOENT) : Result::FromLastError();
 
-        return name;
+        outName = pwd->pw_name;
+        return Result::Success;
     }
 
     PowerStatus GetPowerStatus()

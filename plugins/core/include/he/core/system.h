@@ -2,9 +2,8 @@
 
 #pragma once
 
-#include "he/core/allocator.h"
 #include "he/core/clock.h"
-#include "he/core/enum_ops.h"
+#include "he/core/result.h"
 #include "he/core/string.h"
 #include "he/core/types.h"
 #include "he/core/utils.h"
@@ -67,17 +66,20 @@ namespace he
     /// Gets basic information about the system.
     const SystemInfo& GetSystemInfo();
 
-    /// Gets the name of the system.
+    /// Gets the name of the system and writes it into `outName`.
     /// On windows this is the NetBIOS name.
     /// On posix this is the host name.
     ///
-    /// \return The system name.
-    String GetSystemName(Allocator& allocator = Allocator::GetDefault());
+    /// \param[out] outName The string to fill with the name of the system.
+    /// \return The result of the operation.
+    Result GetSystemName(String& outName);
 
-    /// Gets the name of the system user who is associated with the current process.
+    /// Gets the name of the system user who is associated with the current process, and writes
+    /// it to `outName`.
     ///
-    /// \return The system user name.
-    String GetSystemUserName(Allocator& allocator = Allocator::GetDefault());
+    /// \param[out] outName The string to fill with the name of the user.
+    /// \return The result of the operation.
+    Result GetSystemUserName(String& outName);
 
     /// Gets the power status of the system.
     ///

@@ -2,19 +2,19 @@
 
 #pragma once
 
-#include "he/core/allocator.h"
 #include "he/core/result.h"
 #include "he/core/string.h"
 #include "he/core/types.h"
 
 namespace he
 {
-    /// Gets the contents of the environment variable of `name` from the environment
-    /// block of the calling process.
+    /// Gets the contents of the environment variable of `name` from the environment block of the
+    /// calling process. If the variable does not exist in the environment an error is returned.
     ///
     /// \param[in] name The name of the environment variable to read.
-    /// \return The contents of the environment variable, or an empty string if an error occurred.
-    String GetEnv(const char* name, Allocator& allocator = Allocator::GetDefault());
+    /// \param[out] outValue The value of the environment variable that was read.
+    /// \return The result of the operation.
+    Result GetEnv(const char* name, String& outValue);
 
     /// Sets an enviroment variable.
     ///

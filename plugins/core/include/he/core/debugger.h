@@ -24,7 +24,7 @@ namespace he
     template <typename... Args>
     void PrintToDebugger(fmt::format_string<Args...> fmt, Args&&... args)
     {
-        String buf(Allocator::GetTemp());
+        String buf;
         fmt::format_to(Appender(buf), fmt, Forward<Args>(args)...);
         return PrintToDebugger(buf.Data());
     }

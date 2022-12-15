@@ -22,7 +22,7 @@ void WriteFileData(he::File& file, he::StringView name, const uint8_t* data, siz
     constexpr auto HexByteFmt = FMT_STRING("{:#04x}, ");
     constexpr auto HexLineFmt = FMT_STRING("    {}// {}\n");
 
-    he::String buf(he::Allocator::GetTemp());
+    he::String buf;
     buf.Reserve(MemoryBufferSize + 256); // little extra to prevent regrowth if a line goes over a bit
 
     uint32_t bytesWritten = 0;

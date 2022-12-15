@@ -2,11 +2,14 @@
 
 #pragma once
 
+#include "he/core/arena_allocator.h"
 #include "he/core/memory_ops.h"
 #include "he/core/string_view.h"
 #include "he/core/type_traits.h"
 #include "he/core/types.h"
 #include "he/schema/types.h"
+
+#include <iterator>
 
 namespace he::schema
 {
@@ -31,6 +34,7 @@ namespace he::schema
         using difference_type = uint32_t;
         using value_type = ElementType;
         using container_type = ListType;
+        using iterator_category = std::bidirectional_iterator_tag;
         using _Unchecked_type = AstListIterator; // Mark iterator as checked.
 
     public:
@@ -45,10 +49,10 @@ namespace he::schema
         AstListIterator& operator--() { m_node = m_list->Previous(m_node); return *this; }
         AstListIterator operator--(int) { AstListIterator x(m_list, m_node); m_node = m_list->Previous(m_node); return x; }
 
-        AstListIterator operator+(int n) const
+        AstListIterator operator+(uint32_t n) const
         {
             AstListIterator x(m_list, m_node);
-            for (int i = 0; i < n; ++i)
+            for (uint32_t i = 0; i < n; ++i)
                 ++x;
             return x;
         }
@@ -372,6 +376,6 @@ namespace he::schema
         AstFile() noexcept : root(), allocator(sizeof(AstNode) * 128) {}
 
         AstNode root;
-        LinearPageAllocator allocator;
+        ArenaAllocator allocator;
     };
 }

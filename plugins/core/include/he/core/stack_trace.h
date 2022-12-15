@@ -2,7 +2,6 @@
 
 #pragma once
 
-#include "he/core/delegate.h"
 #include "he/core/result.h"
 #include "he/core/string.h"
 #include "he/core/types.h"

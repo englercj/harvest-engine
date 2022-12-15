@@ -30,7 +30,7 @@ namespace he
         return PAGE_NOACCESS;
     }
 
-    Result VirtualMemory::Reserve(size_t count)
+    Result VirtualMemory::Reserve(uint32_t count)
     {
         const size_t size = PagesToBytes(count);
         m_block = ::VirtualAlloc(nullptr, size, MEM_RESERVE, PAGE_NOACCESS);
@@ -50,7 +50,7 @@ namespace he
         return r ? Result::Success : Result::FromLastError();
     }
 
-    void* VirtualMemory::Commit(size_t index, size_t count, MemoryAccess access)
+    void* VirtualMemory::Commit(uint32_t index, uint32_t count, MemoryAccess access)
     {
         HE_ASSERT(index < m_size);
         HE_ASSERT((index + count) <= m_size);
@@ -61,7 +61,7 @@ namespace he
         return ::VirtualAlloc(start, size, MEM_COMMIT, flags);
     }
 
-    Result VirtualMemory::Decommit(size_t index, size_t count)
+    Result VirtualMemory::Decommit(uint32_t index, uint32_t count)
     {
         HE_ASSERT(index < m_size);
         HE_ASSERT((index + count) <= m_size);
@@ -72,7 +72,7 @@ namespace he
         return r ? Result::Success : Result::FromLastError();
     }
 
-    Result VirtualMemory::Protect(size_t index, size_t count, MemoryAccess access)
+    Result VirtualMemory::Protect(uint32_t index, uint32_t count, MemoryAccess access)
     {
         HE_ASSERT(index < m_size);
         HE_ASSERT((index + count) <= m_size);

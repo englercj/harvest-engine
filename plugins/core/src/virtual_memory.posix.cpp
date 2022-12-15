@@ -25,7 +25,7 @@ namespace he
         return PROT_NONE;
     }
 
-    Result VirtualMemory::Reserve(size_t count)
+    Result VirtualMemory::Reserve(uint32_t count)
     {
         const size_t size = PagesToBytes(count);
         m_block = mmap(nullptr, size, PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
@@ -49,7 +49,7 @@ namespace he
         return rc == 0 ? Result::Success : Result::FromLastError();
     }
 
-    void* VirtualMemory::Commit(size_t index, size_t count, MemoryAccess access)
+    void* VirtualMemory::Commit(uint32_t index, uint32_t count, MemoryAccess access)
     {
         HE_ASSERT(index < m_size);
         HE_ASSERT((index + count) <= m_size);
@@ -61,7 +61,7 @@ namespace he
         return rc == 0 ? start : nullptr;
     }
 
-    Result VirtualMemory::Decommit(void* block, size_t index, size_t count)
+    Result VirtualMemory::Decommit(void* block, uint32_t index, uint32_t count)
     {
         HE_ASSERT(index < m_size);
         HE_ASSERT((index + count) <= m_size);
@@ -75,7 +75,7 @@ namespace he
         return rc == 0 ? Result::Success : Result::FromLastError();
     }
 
-    Result VirtualMemory::Protect(size_t index, size_t count, MemoryAccess access)
+    Result VirtualMemory::Protect(uint32_t index, uint32_t count, MemoryAccess access)
     {
         HE_ASSERT(index < m_size);
         HE_ASSERT((index + count) <= m_size);

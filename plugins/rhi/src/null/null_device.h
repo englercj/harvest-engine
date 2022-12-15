@@ -111,7 +111,7 @@ namespace he::rhi::null
         void DestroyVertexBufferFormat(VertexBufferFormat* vbf) override;
 
         const DeviceInfo& GetInfo() override { return m_info; }
-        Result GetSwapChainFormats(void* nvh, uint32_t& count, SwapChainFormat* formats) override;
+        Result GetSwapChainFormats(void* nvh, SwapChainFormat* formats, uint32_t& count) override;
 
     private:
         InstanceImpl* m_instance{ nullptr };

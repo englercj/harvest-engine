@@ -3,6 +3,7 @@
 #pragma once
 
 #include "he/core/system.h"
+#include "he/core/string_fmt.h"
 
 #include "fmt/core.h"
 

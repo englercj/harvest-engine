@@ -8,6 +8,7 @@
 #include "he/core/result.h"
 #include "he/core/result_fmt.h"
 #include "he/core/scope_guard.h"
+#include "he/core/vector.h"
 #include "he/rhi/cmd_list.h"
 #include "he/rhi/cmd_queue.h"
 #include "he/rhi/device.h"
@@ -176,14 +177,14 @@ namespace he::editor
     rhi::SwapChainFormat RenderService::FindPreferredSwapChainFormat()
     {
         uint32_t count = 0;
-        Result r = m_device->GetSwapChainFormats(m_view->GetNativeHandle(), count, nullptr);
+        Result r = m_device->GetSwapChainFormats(m_view->GetNativeHandle(), nullptr, count);
         HE_ASSERT(r, HE_KV(result, r));
         HE_ASSERT(count > 0);
 
-        rhi::SwapChainFormat* formats = Allocator::GetTemp().Malloc<rhi::SwapChainFormat>(count);
-        HE_AT_SCOPE_EXIT([&]() { Allocator::GetTemp().Free(formats); });
+        Vector<rhi::SwapChainFormat> formats;
+        formats.Resize(count);
 
-        r = m_device->GetSwapChainFormats(m_view->GetNativeHandle(), count, formats);
+        r = m_device->GetSwapChainFormats(m_view->GetNativeHandle(), formats.Data(), count);
         HE_ASSERT(r, HE_KV(result, r));
 
         for (uint32_t i = 0; i < count; ++i)

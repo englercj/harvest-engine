@@ -126,12 +126,12 @@ namespace he::schema
 
     bool CompileSession::ParseImport(const AstExpression& ast, CompileContext& ctx)
     {
-        he::String path(Allocator::GetTemp());
+        he::String path;
         if (!ctx.DecodeString(ast, path))
             return false;
 
         // Try to find the imported file in the cache as a path relative to our current file.
-        he::String fullPath(GetDirectory(ctx.Path()), Allocator::GetTemp());
+        he::String fullPath(GetDirectory(ctx.Path()));
         ConcatPath(fullPath, path);
         CompileContext* cached = TryFindCachedImport(fullPath);
         if (cached)

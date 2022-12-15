@@ -514,9 +514,11 @@ namespace he::rhi
         /// call it again with the properly sized array.
         ///
         /// \param[in] nvh The native view handle for the platform view.
-        /// \param[out] count The number of supported swap chain formats detected.
         /// \param[out] formats Array of formats to write to. Pass null to just get the count.
-        virtual Result GetSwapChainFormats(void* nvh, uint32_t& count, SwapChainFormat* formats) = 0;
+        /// \param[in,out] count The length of the `formats` array to write to. This function
+        ///     will write the number of detected formats upon return, even if it is larger than
+        ///     the length of the `formats` array.
+        virtual Result GetSwapChainFormats(void* nvh, SwapChainFormat* formats, uint32_t& count) = 0;
 
         /// Safely destroys a device resource by checking for nullptr before attempting to destroy
         /// the object, then setting the passed in variable to nullptr after destroying.

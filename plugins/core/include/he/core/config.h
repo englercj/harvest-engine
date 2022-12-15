@@ -26,7 +26,7 @@
 /// \def HE_PLATFORM_API_WIN32
 /// Defined when the target platform implements Win32 APIs.
 
-/// \def HE_CFG_INTERNAL
+/// \def HE_INTERNAL_BUILD
 /// Controls if this build is considered Internal. By default this is enabled for non-Shipping
 /// configurations.
 #if !defined(HE_INTERNAL_BUILD)
@@ -49,9 +49,8 @@
     #define HE_ENABLE_SIMD              1
 #endif
 
-/// \def HE_ENABLE_CUSTOM_ALLOCATORS
-/// Controls if the user is responsible for defining the \ref Allocator::GetDefault and
-/// \ref Allocator::GetTemp functions.
-#if !defined(HE_ENABLE_CUSTOM_ALLOCATORS)
-    #define HE_ENABLE_CUSTOM_ALLOCATORS 0
+/// \def HE_USER_DEFINED_DEFAULT_ALLOCATOR
+/// Controls if the user is responsible for defining the \ref Allocator::GetDefault function.
+#if !defined(HE_USER_DEFINED_DEFAULT_ALLOCATOR)
+    #define HE_USER_DEFINED_DEFAULT_ALLOCATOR 0
 #endif

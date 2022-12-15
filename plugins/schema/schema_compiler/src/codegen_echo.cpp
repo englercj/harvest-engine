@@ -63,7 +63,7 @@ namespace he::schema
         HE_ASSERT(decl.GetData().IsAttribute());
         Declaration::Data::Attribute::Reader attrDecl = decl.GetData().GetAttribute();
 
-        he::String targetStr(Allocator::GetTemp());
+        he::String targetStr;
 
         if (attrDecl.GetTargetsAttribute())
             targetStr += "attribute,";

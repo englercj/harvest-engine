@@ -77,7 +77,7 @@ int he::AppMain(int argc, char* argv[])
     {
         // maxLen guess from stb_compress_intofile in stb.h
         const uint32_t maxLen = fileData.Size() + 512 + (fileData.Size() >> 2) + sizeof(int);
-        output = Allocator::GetTemp().Malloc<uint8_t>(maxLen);
+        output = Allocator::GetDefault().Malloc<uint8_t>(maxLen);
         outputSize = stb_compress(output, fileData.Data(), fileData.Size());
         he::MemZero(output + outputSize, maxLen - outputSize);
     }
@@ -103,7 +103,7 @@ int he::AppMain(int argc, char* argv[])
 
     if (args.compress)
     {
-        Allocator::GetTemp().Free(output);
+        Allocator::GetDefault().Free(output);
     }
 
     return 0;

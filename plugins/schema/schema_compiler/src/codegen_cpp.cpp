@@ -255,7 +255,7 @@ namespace he::schema
             m_writer.WriteLine("{");
             m_writer.IncreaseIndent();
 
-            he::String upperCamelName(Allocator::GetTemp());
+            he::String upperCamelName;
             for (Field::Reader field : structDecl.GetFields())
             {
                 upperCamelName = field.GetName();
@@ -456,7 +456,7 @@ namespace he::schema
         HE_ASSERT(decl.GetData().IsStruct());
         Declaration::Data::Struct::Reader structDecl = decl.GetData().GetStruct();
 
-        he::String upperCamelName(field.GetName(), Allocator::GetTemp());
+        he::String upperCamelName(field.GetName());
         upperCamelName[0] = ToUpper(upperCamelName[0]);
 
         const char* suffix = isReader ? ReaderSuffix : BuilderSuffix;
@@ -520,7 +520,7 @@ namespace he::schema
         HE_ASSERT(decl.GetData().IsStruct());
         Declaration::Data::Struct::Reader structDecl = decl.GetData().GetStruct();
 
-        he::String upperCamelName(field.GetName(), Allocator::GetTemp());
+        he::String upperCamelName(field.GetName());
         upperCamelName[0] = ToUpper(upperCamelName[0]);
 
         const char* suffix = isReader ? ReaderSuffix : BuilderSuffix;
@@ -718,7 +718,7 @@ namespace he::schema
         HE_ASSERT(decl.GetData().IsStruct());
         Declaration::Data::Struct::Reader structDecl = decl.GetData().GetStruct();
 
-        he::String upperCamelName(field.GetName(), Allocator::GetTemp());
+        he::String upperCamelName(field.GetName());
         upperCamelName[0] = ToUpper(upperCamelName[0]);
 
         if (field.GetMeta().IsGroup() || field.GetMeta().IsUnion())
@@ -774,7 +774,7 @@ namespace he::schema
         HE_ASSERT(decl.GetData().IsStruct());
         Declaration::Data::Struct::Reader structDecl = decl.GetData().GetStruct();
 
-        he::String upperCamelName(field.GetName(), Allocator::GetTemp());
+        he::String upperCamelName(field.GetName());
         upperCamelName[0] = ToUpper(upperCamelName[0]);
 
         if (field.GetMeta().IsGroup() || field.GetMeta().IsUnion())
@@ -898,7 +898,7 @@ namespace he::schema
                 continue;
             }
 
-            he::String upperCamelName(field.GetName(), Allocator::GetTemp());
+            he::String upperCamelName(field.GetName());
             upperCamelName[0] = ToUpper(upperCamelName[0]);
 
             Field::Meta::Normal::Reader norm = field.GetMeta().GetNormal();
@@ -1088,7 +1088,7 @@ namespace he::schema
             m_writer.WriteLine("{");
             m_writer.IncreaseIndent();
 
-            he::String upperCamelName(Allocator::GetTemp());
+            he::String upperCamelName;
             for (const Field::Reader f : structDecl.GetFields())
             {
                 upperCamelName = f.GetName();
@@ -1117,7 +1117,7 @@ namespace he::schema
 
     bool CodeGenCpp::FlushToFile(const char* suffix)
     {
-        he::String filePath(m_request.outDir, Allocator::GetTemp());
+        he::String filePath(m_request.outDir);
         ConcatPath(filePath, m_request.fileName);
         RemoveExtension(filePath);
         filePath += suffix;

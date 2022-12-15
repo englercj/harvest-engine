@@ -10,7 +10,7 @@ Then run `boostrap.sh` using Git Bash from within the cloned folder.
 
 ### Linux
 
-Install system dependencies: `apt install build-essential libx11-dev libxi-dev liburing-dev`
+Install system dependencies: `apt install build-essential binutils-dev libdw-dev libx11-dev libxi-dev liburing-dev`
 
 Then run `bootstrap.sh` from within the cloned folder.
 

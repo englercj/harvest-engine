@@ -15,7 +15,9 @@ namespace he
 {
     void* CrtAllocator::Malloc(size_t size, size_t alignment) noexcept
     {
+        // posix_memalign requires alignment to be a power of two and a multiple of sizeof(void*)
         alignment = AlignUp(alignment, sizeof(void*));
+        HE_ASSERT(IsPowerOf2(alignment));
 
         void* p;
         int rc = posix_memalign(&p, alignment, size);

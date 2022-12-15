@@ -27,19 +27,19 @@ namespace he
         /// Returns the size of a virtual memory page.
         ///
         /// \return Size of a page in bytes.
-        static size_t GetPageSize();
+        static size_t PageSize();
 
         /// Aligns up a number of bytes to a count of pages.
         ///
         /// \param[in] size The number of bytes to align up to pages.
         /// \return Number of pages necessary to fit `size` bytes.
-        static size_t BytesToPages(size_t size);
+        static uint32_t BytesToPages(size_t size);
 
         /// Calculates the byte size of a count of pages.
         ///
         /// \param[in] count The number of pages to calculate the size of.
         /// \return Number of bytes available across `count` pages.
-        static size_t PagesToBytes(size_t count);
+        static size_t PagesToBytes(uint32_t count);
 
     public:
         /// Constructs a virtual memory block with no reserved pages.
@@ -59,7 +59,7 @@ namespace he
         ///
         /// \param[in] count Number of pages to reserve.
         /// \return The result of the operation.
-        Result Reserve(size_t count);
+        Result Reserve(uint32_t count);
 
         /// Releases all reserved, or comitted, pages in the block. The block cannot be used until
         /// \ref Reserve is called again to reserve a new block of pages.
@@ -74,7 +74,7 @@ namespace he
         /// \param[in] count The number of pages to commit.
         /// \param[in] access The access rights to set on the committed pages.
         /// \return A pointer to the first page that was committed.
-        void* Commit(size_t index, size_t count, MemoryAccess access = MemoryAccess::ReadWrite);
+        void* Commit(uint32_t index, uint32_t count, MemoryAccess access = MemoryAccess::ReadWrite);
 
         /// Decommits a range of pages from the block, returning them to the reserved state.
         /// Decommitting pages that are not committed will not cause this function to fail.
@@ -82,7 +82,7 @@ namespace he
         /// \param[in] index The starting index of the page(s) to decommit.
         /// \param[in] count The number of pages to decommit.
         /// \return The result of the operation.
-        Result Decommit(size_t index, size_t count);
+        Result Decommit(uint32_t index, uint32_t count);
 
         /// Sets the memory protections for a range of committed pages. If the state of any page in
         /// the range is not committed, the function fails and returns without modifying the access
@@ -92,28 +92,34 @@ namespace he
         /// \param[in] count The number of pages to protect.
         /// \param[in] access The access rights to set on the committed pages.
         /// \return The result of the operation.
-        Result Protect(size_t index, size_t count, MemoryAccess access);
+        Result Protect(uint32_t index, uint32_t count, MemoryAccess access);
 
         /// Gets the number of pages reserved in this block.
         ///
         /// \return The number of pages this block has reserved.
-        size_t Size() const { return m_size; }
+        uint32_t Size() const { return m_size; }
+
+        /// Gets the number of pages reserved in this block.
+        ///
+        /// \return The number of pages this block has reserved.
+        size_t ByteSize() const { return PagesToBytes(m_size); }
 
         /// Gets a pointer to the underlying block of virtual pages.
         ///
         /// \return pointer to the start of the virtual address space.
-        void* Block() { return m_block; }
-
-        /// \copydoc Block
-        const void* Block() const { return m_block; }
+        void* Block() const { return m_block; }
 
         /// Gets a pointer to the page at `index`.
         ///
         /// \param[in] index The index of the page to get a pointer to.
-        const void* GetPage(size_t index) const;
+        /// \return A pointer to the page at `index`.
+        void* GetPage(uint32_t index) const;
 
-        /// \copydoc GetPage
-        void* GetPage(size_t index) { return const_cast<void*>(const_cast<const VirtualMemory*>(this)->GetPage(index)); }
+        /// Gets a pointer to the page at `index`. Asserts if `index` is not less than \ref Size().
+        ///
+        /// \param index The index of the page to return.
+        /// \return A pointer to the page at `index`.
+        void* operator[](uint32_t index) const { return GetPage(index); }
 
     private:
         VirtualMemory(const VirtualMemory&) = delete;
@@ -121,6 +127,6 @@ namespace he
 
     private:
         void* m_block{ nullptr };
-        size_t m_size{ 0 };
+        uint32_t m_size{ 0 };
     };
 }

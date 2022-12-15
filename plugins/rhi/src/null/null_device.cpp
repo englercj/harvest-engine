@@ -370,12 +370,13 @@ namespace he::rhi::null
         HE_UNUSED(vbf);
     }
 
-    Result DeviceImpl::GetSwapChainFormats(void* nvh, uint32_t& count, SwapChainFormat* formats)
+    Result DeviceImpl::GetSwapChainFormats(void* nvh, SwapChainFormat* formats, uint32_t& count)
     {
         HE_UNUSED(nvh);
+        if (formats && count >= 1)
+            formats[0] = { Format::RGBA8Unorm, ColorSpace::sRGB };
+
         count = 1;
-        if (formats)
-            formats[0] = { Format::RGBA8Unorm_sRGB, ColorSpace::sRGB };
         return Result::Success;
     }
 }

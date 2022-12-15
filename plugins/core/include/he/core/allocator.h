@@ -5,12 +5,19 @@
 #include "he/core/memory_ops.h"
 #include "he/core/types.h"
 #include "he/core/utils.h"
-#include "he/core/virtual_memory.h"
 
 #include <type_traits>
 
 namespace he
 {
+    // --------------------------------------------------------------------------------------------
+    /// Interface for memory allocators.
+    ///
+    /// All functions of a Harvest memory allocator are expected to be thread-safe when dealing
+    /// with different pointers. That is, calling Free with different pointers from different
+    /// threads must be safe. However, calling Free with the *same* pointer from different threads
+    /// is not safe. Similarly calling two different functions with the same pointer from different
+    /// threads is not safe.
     class Allocator
     {
     public:
@@ -21,36 +28,40 @@ namespace he
         /// Most places in the engine that allocate also take an allocator parameter, which
         /// if not specified uses this allocator instead.
         ///
-        /// If you wish to override the allocator used here you can define the symbol
-        /// `HE_ENABLE_CUSTOM_ALLOCATORS`, and then define this function's body in your code.
+        /// If you wish to define the allocator used here yourself then define the symbol
+        /// \ref HE_USER_DEFINED_DEFAULT_ALLOCATOR as one (1), and then define this function's
+        /// body in your code.
         ///
-        /// \return The default allocator.
+        /// \return The default allocator object.
         static Allocator& GetDefault();
-
-        /// Gets an allocator used for temporary allocations throughout the engine.
-        ///
-        /// If you wish to override the allocator used here you can define the symbol
-        /// `HE_ENABLE_CUSTOM_ALLOCATORS`, and then define this function's body in your code.
-        ///
-        /// \return The default allocator.
-        static Allocator& GetTemp();
 
     public:
         virtual ~Allocator() = default;
 
-        /// Allocates a new memory block on the heap, which can be over aligned.
+        /// Allocates a new memory block that is at least `size` bytes large and returns a pointer
+        /// to the allocated memory that is aligned to `alignment`.
         ///
         /// \param size The size in bytes of the new memory block.
         /// \param alignment Optional. Custom alignment for the pointer.
         /// \return A pointer to the newly allocated memory.
         [[nodiscard]] virtual void* Malloc(size_t size, size_t alignment = DefaultAlignment) noexcept = 0;
 
-        /// Rellocates a memory block on the heap. Tries to avoid allocate and copy by extending
-        /// the existing memory block if possible.
+        /// Rellocates an existing memory block. This function may be more efficient than creating
+        /// a new allocation, copying data, and freeing the original allocation. Instead, this
+        /// function may simply extend the existing allocation if possible.
         ///
-        /// \param ptr A pointer to an existing memory allocation returned from Malloc.
+        /// The semantics for this function are as follows:
+        /// 1. If `ptr` is null, then it is equivalent to \ref Allocator::Malloc
+        /// 2. If `ptr` is not null, and `newSize` is zero, then it is equivalent to
+        ///     \ref Allocator::Free
+        /// 3. If `ptr` is not null, and `newSize` is not zero, then the memory is reallocated to
+        ///     match `newSize` and a valid pointer is returned.
+        ///
+        /// \param ptr A pointer to an existing memory allocation returned from Malloc. This
+        ///     pointer should no longer be used after this function returns.
         /// \param newSize The desired size in bytes of the new memory block.
-        /// \param alignment Optional. Custom alignment for the pointer. Must match what was originally passed to Malloc.
+        /// \param alignment Optional. Custom alignment for the pointer. Must match the original
+        ///     value passed to Malloc for over-aligned allocations.
         /// \return A pointer to the newly reallocated memory.
         virtual void* Realloc(void* ptr, size_t newSize, size_t alignment = DefaultAlignment) noexcept = 0;
 
@@ -64,7 +75,7 @@ namespace he
         /// \note Constructors are not called.
         ///
         /// \tparam The type to allocate enough space for, and to use for alignment.
-        /// \param count The number of elements to allocate space for.
+        /// \param count The number of instances to allocate space for.
         /// \return A pointer to the newly allocated memory.
         template <typename T>
         [[nodiscard]] T* Malloc(uint32_t count) noexcept
@@ -184,7 +195,9 @@ namespace he
         }
     };
 
-    /// Allocator that forwards memory requests to the CRT.
+    // --------------------------------------------------------------------------------------------
+    /// Allocator that forwards memory requests to the CRT. This is the default allocator that
+    /// the engine will use if \ref HE_USER_DEFINED_DEFAULT_ALLOCATOR is defined as zero (default).
     class CrtAllocator : public Allocator
     {
     public:
@@ -199,92 +212,5 @@ namespace he
 
         /// \copydoc Allocator::Free(void*)
         void Free(void* ptr) noexcept override;
-    };
-
-    /// The arena allocator allocates a virtual address space upfront and then commits memory as
-    /// necessary when allocation functions (Malloc/Realloc) are called.
-    ///
-    /// Memory is allocated linearly in the virtual address space reserved at construction time.
-    class ArenaAllocator : public Allocator
-    {
-    public:
-        static constexpr uint32_t DefaultMaxSize = 32 * 1024 * 1024; // 32 MB
-
-    public:
-        /// Constructs an arena allocator. Reserves enough virtual address space to cover
-        /// `maxSize` bytes.
-        ///
-        /// \param[in] maxSize The maximum address space to allocate.
-        explicit ArenaAllocator(uint32_t maxSize = DefaultMaxSize) noexcept;
-
-        /// Constructs an arena allocator by moving the data from `x`.
-        ArenaAllocator(ArenaAllocator&& x) noexcept;
-
-        /// \copydoc Allocator::Malloc(size_t, size_t)
-        [[nodiscard]] void* Malloc(size_t size, size_t alignment = DefaultAlignment) noexcept override;
-
-        /// \copydoc Allocator::Realloc(void*, size_t, size_t)
-        void* Realloc(void* ptr, size_t newSize, size_t alignment = DefaultAlignment) noexcept override;
-
-        /// \copydoc Allocator::Free(void*)
-        void Free(void*) noexcept override;
-
-        /// Invalidates all issued pointers and resets the state for reuse. Previously allocated
-        /// pages are kept for reuse.
-        void Clear();
-
-        /// Invalidates all issued pointers, frees all page memory, and resets state for reuse.
-        void Reset();
-
-    private:
-        ArenaAllocator(const ArenaAllocator&) = delete;
-        ArenaAllocator& operator=(const ArenaAllocator&) = delete;
-        ArenaAllocator& operator=(ArenaAllocator&& x) = delete;
-
-    private:
-        VirtualMemory m_arena{};
-        uint32_t m_committed{ 0 };
-        uint32_t m_allocated{ 0 };
-    };
-
-    /// Allocator that allocates pages of space and expects them all to be freed at the end of use.
-    class LinearPageAllocator : public Allocator
-    {
-    public:
-        explicit LinearPageAllocator(size_t pageSize, Allocator& allocator = Allocator::GetDefault()) noexcept;
-        LinearPageAllocator(const LinearPageAllocator&) = delete;
-        LinearPageAllocator(LinearPageAllocator&& x) noexcept;
-        ~LinearPageAllocator() noexcept;
-
-        LinearPageAllocator& operator=(const LinearPageAllocator&) = delete;
-        LinearPageAllocator& operator=(LinearPageAllocator&& x) = delete;
-
-        [[nodiscard]] void* Malloc(size_t size, size_t alignment = DefaultAlignment) noexcept override;
-        void* Realloc(void* ptr, size_t newSize, size_t alignment = DefaultAlignment) noexcept override;
-        void Free(void*) noexcept override {}
-
-        /// Invalidates all issued pointers and resets the state for reuse. Previously allocated
-        /// pages are kept for reuse.
-        void Clear();
-
-        /// Invalidates all issued pointers, frees all page memory, and resets state for reuse.
-        void Reset();
-
-    private:
-        struct PageHeader
-        {
-            PageHeader* next;
-            PageHeader* previous;
-        };
-
-        bool CanFit(size_t size, size_t alignment) const;
-        void AllocPage();
-
-    private:
-        Allocator& m_allocator;
-        PageHeader* m_currentPage{ nullptr };
-        PageHeader* m_lastPage{ nullptr };
-        size_t m_pageOffset{ 0 };
-        const size_t m_pageSize{ 0 };
     };
 }

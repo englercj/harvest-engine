@@ -120,7 +120,7 @@ namespace he
 
     void DebuggerSink(const void*, const LogSource& source, const KeyValue* kvs, uint32_t count)
     {
-        String msg(Allocator::GetTemp());
+        String msg;
 
         if (count == 1 && kvs[0].Kind() == KeyValue::ValueKind::String && String::Equal(kvs[0].Key(), HE_MSG_KEY))
         {
@@ -150,7 +150,7 @@ namespace he
 
     void ConsoleSink(const void*, const LogSource& source, const KeyValue* kvs, uint32_t count)
     {
-        String msg(Allocator::GetTemp());
+        String msg;
 
         if (count == 1 && kvs[0].Kind() == KeyValue::ValueKind::String && String::Equal(kvs[0].Key(), HE_MSG_KEY))
         {

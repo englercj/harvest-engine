@@ -105,7 +105,7 @@ namespace he
         ss += arg0;
         ss += ' ';
 
-        Vector<const ArgDesc*> sortedDescs(Allocator::GetTemp());
+        Vector<const ArgDesc*> sortedDescs;
         sortedDescs.Reserve(descs.Size());
 
         for (const ArgDesc& d : descs)
@@ -480,14 +480,14 @@ namespace he
 
     String MakeHelpString(Span<ArgDesc> descs, const char* arg0, const ArgResult* result)
     {
-        String ss(Allocator::GetTemp());
+        String ss;
         ss.Reserve(1024);
 
         WriteUsageString(ss, descs, arg0, result);
 
         uint32_t longestHelpLen = 0;
         {
-            String buf(Allocator::GetTemp());
+            String buf;
 
             for (const ArgDesc& desc : descs)
             {

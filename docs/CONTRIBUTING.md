@@ -170,6 +170,9 @@ TODO:
 - Prefer unsigned over signed when the value should never be negative
     * Small wrapping burden here, but worth expressing intent
 - Use `uint8_t` to represent bytes/blobs (`uint8_t[]`)
+- Use `size_t` for memory region sizes, and `uint32_t` for element counts
+    * Memory allocators may deal with sizes > 4B, so use size_t
+    * Vectors shouldn't deal with sized > 4B, so use uint32_t
 - Use `void*` as a last resort
 
 ## Strings
@@ -182,14 +185,16 @@ TODO:
 
 TODO:
 - Structs should be [Aggregates](https://en.cppreference.com/w/cpp/language/aggregate_initialization)
-    * No methods, or very few (like operators), no polymorphism
-- Classes can be any functionality, but if its POD use Struct
+    * No polymorphism
+    * No member functions, or very few (like operators or a ctor)
+- Classes can be any functionality, but if its POD use `struct`
 
 ## Parameter Ordering
 
 TODO:
 - Destination (or out param) first or last?
     * I'm inconsistent currently
+    * proposal: destination first, count/size of buffers directly after, everything else
 
 ## Use Hard Types
 

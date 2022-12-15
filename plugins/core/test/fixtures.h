@@ -3,12 +3,14 @@
 #pragma once
 
 #include "he/core/allocator.h"
+#include "he/core/arena_allocator.h"
 #include "he/core/buffer_writer.h"
 #include "he/core/span.h"
 #include "he/core/string_view.h"
 #include "he/core/test.h"
 #include "he/core/types.h"
 #include "he/core/vector.h"
+#include "he/core/virtual_memory.h"
 
 namespace he
 {
@@ -75,6 +77,15 @@ namespace he
         void* Malloc(size_t size, size_t alignment = DefaultAlignment) noexcept override { return Allocator::GetDefault().Malloc(size, alignment); }
         void* Realloc(void* ptr, size_t newSize, size_t alignment = DefaultAlignment) noexcept override { return Allocator::GetDefault().Realloc(ptr, newSize, alignment); }
         void Free(void* ptr) noexcept override { Allocator::GetDefault().Free(ptr); }
+    };
+
+    // --------------------------------------------------------------------------------------------
+    class ArenaAllocatorTestAttorney
+    {
+    public:
+        static VirtualMemory& GetVM(ArenaAllocator& a) { return a.m_arena; }
+        static uint32_t GetCommittedPages(ArenaAllocator& a) { return a.m_committedPages; }
+        static size_t GetAllocatedBytes(ArenaAllocator& a) { return a.m_allocatedBytes; }
     };
 
     // --------------------------------------------------------------------------------------------

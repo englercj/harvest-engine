@@ -62,5 +62,5 @@ HE_TEST(core, config, Report)
     std::cout << "    HE_INTERNAL_BUILD = " << HE_INTERNAL_BUILD << std::endl;
     std::cout << "    HE_ENABLE_ASSERTIONS = " << HE_ENABLE_ASSERTIONS << std::endl;
     std::cout << "    HE_ENABLE_SIMD = " << HE_ENABLE_SIMD << std::endl;
-    std::cout << "    HE_ENABLE_CUSTOM_ALLOCATORS = " << HE_ENABLE_CUSTOM_ALLOCATORS << std::endl;
+    std::cout << "    HE_USER_DEFINED_DEFAULT_ALLOCATOR = " << HE_USER_DEFINED_DEFAULT_ALLOCATOR << std::endl;
 }

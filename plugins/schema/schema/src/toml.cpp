@@ -442,7 +442,7 @@ namespace he::schema
                 }
                 case Type::Data::UnionTag::Blob:
                 {
-                    Vector<uint8_t> bytes{ Allocator::GetTemp() };
+                    Vector<uint8_t> bytes;
                     if (!ParseBlobString(bytes, field, value))
                         return;
 
@@ -640,7 +640,7 @@ namespace he::schema
                     case Type::Data::UnionTag::Float64: SetArrayDataElement<double>(builder, index, dataOffset, size, i, elmValue); break;
                     case Type::Data::UnionTag::Blob:
                     {
-                        Vector<uint8_t> bytes{ Allocator::GetTemp() };
+                        Vector<uint8_t> bytes;
                         if (!ParseBlobString(bytes, field, elmValue))
                             return;
 
@@ -848,7 +848,7 @@ namespace he::schema
                     case Type::Data::UnionTag::Float64: list.SetDataElement(i, TomlValueHelper<double>::Get(elmValue)); break;
                     case Type::Data::UnionTag::Blob:
                     {
-                        Vector<uint8_t> bytes{ Allocator::GetTemp() };
+                        Vector<uint8_t> bytes;
                         if (!ParseBlobString(bytes, field, elmValue))
                             return;
 

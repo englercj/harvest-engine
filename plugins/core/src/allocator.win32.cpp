@@ -2,6 +2,7 @@
 
 #include "he/core/allocator.h"
 
+#include "he/core/assert.h"
 #include "he/core/utils.h"
 
 #if defined(HE_PLATFORM_API_WIN32)
@@ -12,7 +13,11 @@ namespace he
 {
     void* CrtAllocator::Malloc(size_t size, size_t alignment) noexcept
     {
+        // _aligned_malloc requires alignment to be a power of two. The alignment to sizeof(void*)
+        // is for consistency with posix_memalign which additionally requires alignment to be a
+        // multiple of sizeof(void*)
         alignment = AlignUp(alignment, sizeof(void*));
+        HE_ASSERT(IsPowerOf2(alignment));
         return _aligned_malloc(size, alignment);
     }
 

@@ -1820,16 +1820,20 @@ namespace he::rhi::d3d12
         m_instance->m_allocator.Delete(vbf);
     }
 
-    Result DeviceImpl::GetSwapChainFormats(void* nvh, uint32_t& count, SwapChainFormat* formats)
+    Result DeviceImpl::GetSwapChainFormats(void* nvh, SwapChainFormat* formats, uint32_t& count)
     {
-        count = 0;
+        uint32_t detectedCount = 0;
 
         // Based on HDR support check in D3D12 examples from MS
         // https://github.com/microsoft/DirectX-Graphics-Samples/blob/05c6b6454378cb3501a39528f4417bb30307f146/Samples/UWP/D3D12HDR/src/D3D12HDR.cpp#L1010
 
         HWND windowHandle = static_cast<HWND>(nvh);
         RECT windowRect{};
-        ::GetWindowRect(windowHandle, &windowRect);
+        if (!::GetWindowRect(windowHandle, &windowRect))
+        {
+            count = 0;
+            return Result::FromLastError();
+        }
 
         const DisplayImpl* bestDisplay = nullptr;
         int bestIntersectionArea = -1;
@@ -1862,22 +1866,23 @@ namespace he::rhi::d3d12
             // Check if HDR is supported
             if (bestDisplay->info.colorSpace == ColorSpace::HDR10_PQ)
             {
-                if (formats)
+                if (formats && detectedCount < count)
                 {
-                    formats[count].format = Format::RGB10A2Unorm;
-                    formats[count].colorSpace = ColorSpace::HDR10_PQ;
+                    formats[detectedCount].format = Format::RGB10A2Unorm;
+                    formats[detectedCount].colorSpace = ColorSpace::HDR10_PQ;
                 }
-                ++count;
+                ++detectedCount;
             }
         }
 
-        if (formats)
+        if (formats && detectedCount < count)
         {
-            formats[count].format = Format::RGBA8Unorm;
-            formats[count].colorSpace = ColorSpace::sRGB;
+            formats[detectedCount].format = Format::RGBA8Unorm;
+            formats[detectedCount].colorSpace = ColorSpace::sRGB;
         }
-        ++count;
+        ++detectedCount;
 
+        count = detectedCount;
         return Result::Success;
     }
 

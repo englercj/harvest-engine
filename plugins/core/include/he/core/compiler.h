@@ -24,6 +24,16 @@
     #define HE_HAS_BUILTIN(x) 0
 #endif
 
+/// \def HE_HAS_FEATURE
+/// Checks if a feature is supported by the compiler.
+///
+/// \param[in] x The feature to check for.
+/// \return Evaluates to 1 or 0 depending on if the feature in available.
+#if defined(__has_feature)
+    #define HE_HAS_FEATURE(x) __has_feature(x)
+#else
+    #define HE_HAS_FEATURE(x) 0
+#endif
 
 #if defined(__clang__)
     #undef  HE_COMPILER_CLANG

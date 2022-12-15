@@ -350,8 +350,9 @@ namespace he
         ///
         /// \param[in] file The open file object to map into memory.
         /// \param[in] mode The access mode for the memory map.
-        /// \param[in] offset Optional. Offset in bytes from the start of the file to begin the map section.
-        /// \param[in] size Optional. Number of bytes to map. Passing zero means to map the entire file.
+        /// \param[in] offset Optional. Offset in bytes from the start of the file to begin the
+        ///     map section. This value must be aligned to the system allocation granularity.
+        /// \param[in] size Optional. Number of bytes to map. Zero will map the entire file.
         /// \return The result of the mapping operation.
         Result Map(const File& file, MemoryMapMode mode, uint64_t offset = 0, uint32_t size = 0);
 

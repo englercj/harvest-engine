@@ -16,11 +16,17 @@ namespace he
     /// \see GetSystemInfo()
     struct SystemInfo
     {
+        /// The granularity for the starting address at which virtual memory can be allocated.
         uint32_t allocationGranularity{ 0 };
+
+        /// The page size and the granularity of page protection and commitment.
+        /// This is the page size used by the VirtualMemory class.
         uint32_t pageSize{ 0 };
 
+        /// The name of the platform as reported by the platform itself.
         String platform{};
 
+        /// Version of the platform.
         struct
         {
             uint32_t major{ 0 };

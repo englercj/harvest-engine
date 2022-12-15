@@ -89,24 +89,22 @@ HE_TEST_F(core, AsyncFileFixture, Read_Write)
 
     {
         const uint32_t value = 250;
-        std::future<AsyncFileResult> future = f.WriteAsync(&value, 0, sizeof(value));
-        HE_EXPECT(future.valid());
-        future.wait();
+        AsyncFileOp op = f.WriteAsync(&value, 0, sizeof(value));
 
-        AsyncFileResult r = future.get();
-        HE_EXPECT(r.result, r.result);
-        HE_EXPECT_EQ(r.bytesTransferred, sizeof(value));
+        uint32_t bytesTransferred = 0;
+        Result r = AsyncFile::GetResult(op, &bytesTransferred);
+        HE_EXPECT(r, r);
+        HE_EXPECT_EQ(bytesTransferred, sizeof(value));
     }
 
     {
         uint32_t value = 0;
-        std::future<AsyncFileResult> future = f.ReadAsync(&value, 0, sizeof(value));
-        HE_EXPECT(future.valid());
-        future.wait();
+        AsyncFileOp op = f.ReadAsync(&value, 0, sizeof(value));
 
-        AsyncFileResult r = future.get();
-        HE_EXPECT(r.result, r.result);
-        HE_EXPECT_EQ(r.bytesTransferred, sizeof(value));
+        uint32_t bytesTransferred = 0;
+        Result r = AsyncFile::GetResult(op, &bytesTransferred);
+        HE_EXPECT(r, r);
+        HE_EXPECT_EQ(bytesTransferred, sizeof(value));
         HE_EXPECT_EQ(value, 250);
     }
 
@@ -121,22 +119,21 @@ HE_TEST_F(core, AsyncFileFixture, GetAttributes)
     TouchTestFile(TestPath);
 
     AsyncFile f;
-    Result r = f.Open(TestPath, FileOpenMode::ReadWriteExisting);
-    HE_EXPECT(r, r);
+    Result openResult = f.Open(TestPath, FileOpenMode::ReadWriteExisting);
+    HE_EXPECT(openResult, openResult);
 
     {
-        std::future<AsyncFileResult> future = f.WriteAsync(TestPath, 0, HE_LENGTH_OF(TestPath));
-        HE_EXPECT(future.valid());
-        future.wait();
+        AsyncFileOp op = f.WriteAsync(TestPath, 0, HE_LENGTH_OF(TestPath));
 
-        AsyncFileResult fr = future.get();
-        HE_EXPECT(fr.result, fr.result);
-        HE_EXPECT_EQ(fr.bytesTransferred, HE_LENGTH_OF(TestPath));
+        uint32_t bytesTransferred = 0;
+        Result r = AsyncFile::GetResult(op, &bytesTransferred);
+        HE_EXPECT(r, r);
+        HE_EXPECT_EQ(bytesTransferred, HE_LENGTH_OF(TestPath));
     }
 
     {
         FileAttributes attributes;
-        r = f.GetAttributes(attributes);
+        Result r = f.GetAttributes(attributes);
         HE_EXPECT(r, r);
         HE_EXPECT(attributes.flags == FileAttributeFlag::None);
         HE_EXPECT_EQ(attributes.size, HE_LENGTH_OF(TestPath));

@@ -118,15 +118,15 @@ namespace he
         switch (dir)
         {
             case SpecialDirectory::LocalAppData:
-                if (FAILED(SHGetKnownFolderPath(FOLDERID_LocalAppData, 0, nullptr, &path)))
+                if (FAILED(::SHGetKnownFolderPath(FOLDERID_LocalAppData, 0, nullptr, &path)))
                     return Result::NotSupported;
                 break;
             case SpecialDirectory::SharedAppData:
-                if (FAILED(SHGetKnownFolderPath(FOLDERID_ProgramData, 0, nullptr, &path)))
+                if (FAILED(::SHGetKnownFolderPath(FOLDERID_ProgramData, 0, nullptr, &path)))
                     return Result::NotSupported;
                 break;
             case SpecialDirectory::Documents:
-                if (FAILED(SHGetKnownFolderPath(FOLDERID_Documents, 0, nullptr, &path)))
+                if (FAILED(::SHGetKnownFolderPath(FOLDERID_Documents, 0, nullptr, &path)))
                     return Result::NotSupported;
                 break;
             case SpecialDirectory::Temp:
@@ -134,7 +134,7 @@ namespace he
                 // The maximum possible path size is MAX_PATH+1 (261).
                 // See: https://docs.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-gettemppathw
                 path = HE_ALLOCA(wchar_t, MAX_PATH + 2);
-                const DWORD pathLen = GetTempPathW(MAX_PATH + 2, path);
+                const DWORD pathLen = ::GetTempPathW(MAX_PATH + 2, path);
                 if (pathLen == 0)
                     return Result::FromLastError();
             }
@@ -147,12 +147,12 @@ namespace he
 
     Result Directory::GetCurrent(String& dst)
     {
-        const DWORD requiredLen = GetCurrentDirectoryW(0, nullptr);
+        const DWORD requiredLen = ::GetCurrentDirectoryW(0, nullptr);
         if (requiredLen == 0)
             return Result::FromLastError();
 
         wchar_t* path = HE_ALLOCA(wchar_t, requiredLen);
-        const DWORD pathLen = GetCurrentDirectoryW(requiredLen, path);
+        const DWORD pathLen = ::GetCurrentDirectoryW(requiredLen, path);
         if (pathLen == 0)
             return Result::FromLastError();
 
@@ -162,7 +162,7 @@ namespace he
 
     Result Directory::SetCurrent(const char* path)
     {
-        if (!SetCurrentDirectoryW(HE_TO_WCSTR(path)))
+        if (!::SetCurrentDirectoryW(HE_TO_WCSTR(path)))
             return Result::FromLastError();
 
         return Result::Success;

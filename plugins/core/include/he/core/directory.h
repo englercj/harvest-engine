@@ -38,7 +38,7 @@ namespace he
         /// Construct a new scanner.
         ///
         /// \param[in] allocator The allocator to use.
-        DirectoryScanner(Allocator& allocator = Allocator::GetDefault()) noexcept
+        explicit DirectoryScanner(Allocator& allocator = Allocator::GetDefault()) noexcept
             : m_allocator(allocator)
             , m_impl(nullptr)
         {}

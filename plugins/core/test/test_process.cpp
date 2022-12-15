@@ -13,19 +13,25 @@ HE_TEST(core, process, GetEnv_SetEnv)
     constexpr char VarName[] = "THIS_ENV_VAR_DOESNT_EXIST_I_HOPE";
     constexpr char VarValue[] = "testing";
 
-    const String emptyEnv = GetEnv(VarName);
+    String emptyEnv;
+    Result r = GetEnv(VarName, emptyEnv);
+    HE_EXPECT(!r, r);
     HE_EXPECT(emptyEnv.IsEmpty());
 
-    const Result r = SetEnv(VarName, VarValue);
+    r = SetEnv(VarName, VarValue);
     HE_EXPECT(r, r);
 
-    const String realEnv = GetEnv(VarName);
+    String realEnv;
+    r = GetEnv(VarName, realEnv);
+    HE_EXPECT(r, r);
     HE_EXPECT_EQ(realEnv, VarValue);
 
-    const Result r2 = SetEnv(VarName, nullptr);
-    HE_EXPECT(r2, r2);
+    r = SetEnv(VarName, nullptr);
+    HE_EXPECT(r, r);
 
-    const String emptyEnv2 = GetEnv(VarName);
+    String emptyEnv2;
+    r = GetEnv(VarName, emptyEnv2);
+    HE_EXPECT(!r, r);
     HE_EXPECT(emptyEnv2.IsEmpty());
 }
 

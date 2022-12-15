@@ -191,7 +191,7 @@ namespace he
         /// can accept any mutex, or lock guard as a parameter.
         /// \internal
         template <typename T> struct MutexHelper{ static T& Get(T& m) { return m; } };
-        template <typename T> struct MutexHelper<LockGuard<T>>{ static T& Get(LockGuard<T>& l) { return l.m_mutex; } };
+        template <typename T> struct MutexHelper<LockGuard<T>>{ static T& Get(LockGuard<T>& l) { return l.m_lock; } };
 
     public:
         /// Constructs a condition variable.

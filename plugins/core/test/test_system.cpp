@@ -4,6 +4,7 @@
 #include "he/core/system_fmt.h"
 
 #include "he/core/appender.h"
+#include "he/core/result_fmt.h"
 #include "he/core/test.h"
 
 #include <iostream>
@@ -23,6 +24,17 @@ HE_TEST(core, system, GetSystemInfo)
 {
     const SystemInfo& info = GetSystemInfo();
 
+    std::cout << "    allocationGranularity = " << info.allocationGranularity << std::endl;
+    std::cout << "    pageSize = " << info.pageSize << std::endl;
+    std::cout << "    platform = " << info.platform.Data() << std::endl;
+    std::cout << "    version = " << info.version.major << '.' << info.version.minor << '.' << info.version.patch << '.' << info.version.build << std::endl;
+}
+
+// ------------------------------------------------------------------------------------------------
+HE_TEST(core, system, SystemInfo_Fmt)
+{
+    const SystemInfo& info = GetSystemInfo();
+
     String infoStr;
     fmt::format_to(Appender(infoStr), "{}", info);
 
@@ -32,7 +44,9 @@ HE_TEST(core, system, GetSystemInfo)
 // ------------------------------------------------------------------------------------------------
 HE_TEST(core, system, GetSystemName)
 {
-    String name = GetSystemName();
+    String name;
+    Result r = GetSystemName(name);
+    HE_EXPECT(r, r);
     HE_EXPECT(!name.IsEmpty());
 
     std::cout << "    System Name = " << name.Data() << std::endl;
@@ -41,7 +55,9 @@ HE_TEST(core, system, GetSystemName)
 // ------------------------------------------------------------------------------------------------
 HE_TEST(core, system, GetSystemUserName)
 {
-    String name = GetSystemUserName();
+    String name;
+    Result r = GetSystemUserName(name);
+    HE_EXPECT(r, r);
     HE_EXPECT(!name.IsEmpty());
 
     std::cout << "    User Name = " << name.Data() << std::endl;

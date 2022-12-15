@@ -286,7 +286,7 @@ namespace he
 
         Result CreateQueue(const BulkFileQueue::Config& config, BulkFileQueue*& out) override
         {
-            BulkFileQueueImpl* queue = m_allocator.New<BulkFileQueueImpl>();
+            BulkFileQueueImpl* queue = m_allocator.New<BulkFileQueueImpl>(m_allocator);
             Result r = queue->Initialize(config);
             if (!r)
             {

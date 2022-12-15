@@ -31,21 +31,21 @@ namespace he
         };
 
         /// The file to perform this read request from.
-        BulkFileId file;
+        BulkFileId file{};
 
         /// The offset, in bytes, in the file to start the read request at.
-        uint64_t offset;
+        uint64_t offset{ 0 };
 
         /// Number of bytes to read from the file.
         /// If using compression this is the compressed size of the data being read.
-        uint32_t size;
+        uint32_t size{ 0 };
 
         /// Address of the buffer to write the result of the request into.
-        void* dst;
+        void* dst{ nullptr };
 
         /// Number of bytes in the destination buffer.
         /// If using compression this is the uncompressed size of the data being read.
-        uint32_t dstSize;
+        uint32_t dstSize{ 0 };
 
         /// Indicates how the data is compressed in the file.
         CompressionFormat compression{ CompressionFormat::None };

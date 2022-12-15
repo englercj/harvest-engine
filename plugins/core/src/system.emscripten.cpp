@@ -14,6 +14,9 @@ namespace he
     {
         SystemInfoImpl()
         {
+            // wasm has a constant page size of 64KiB
+            allocationGranularity = 65536;
+            pageSize = 65536;
             platform = "Emscripten";
             version.major = __EMSCRIPTEN_major__;
             version.minor = __EMSCRIPTEN_minor__;

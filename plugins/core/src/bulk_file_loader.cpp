@@ -39,6 +39,20 @@ namespace he
         {
             case BulkReadRequest::CompressionFormat::None: return "None";
             case BulkReadRequest::CompressionFormat::Zlib: return "Zlib";
+            case BulkReadRequest::CompressionFormat::GDeflate: return "GDeflate";
+        }
+        return "<unknown>";
+    }
+
+    template <>
+    const char* AsString(BulkFileQueue::Config::Priority x)
+    {
+        switch (x)
+        {
+            case BulkFileQueue::Config::Priority::Low: return "Low";
+            case BulkFileQueue::Config::Priority::Normal: return "Normal";
+            case BulkFileQueue::Config::Priority::High: return "High";
+            case BulkFileQueue::Config::Priority::Realtime: return "Realtime";
         }
         return "<unknown>";
     }

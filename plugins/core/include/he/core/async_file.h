@@ -35,11 +35,13 @@ namespace he
             uint64_t threadAffinity{ 0 };
         } iouring;
 
-        /// Configuration for the Thread Pool backend used on posix system.
+        /// Configuration for the thread pool backend used on posix systems.
         struct
         {
             /// Used by the backend to schedule IO operations. Work performed on this executor
             /// will primarily be blocking waits on system IO functions and executing user callbacks.
+            /// If this value is set then no additional threads are spawned and the \ref threadCount
+            /// and \ref threadAffinity values are ignored.
             TaskExecutor* executor{ nullptr };
 
             /// The number of threads to spawn for handling IO operations. Specifying zero (default)

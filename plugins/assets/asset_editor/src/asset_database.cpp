@@ -204,9 +204,11 @@ namespace he::assets
         load->db = this;
         load->callback = callback;
 
-        std::future<AsyncFileResult> future = file.ReadAsync(load->content.Data(), 0, fileByteSize);
-
-        // Call on complete: HandleFileReadComplete(load)
+        file.ReadAsync(load->content.Data(), 0, fileByteSize, AsyncFile::CompleteDelegate::Make([](const void* l, AsyncFileOp token)
+        {
+            Result r = AsyncFile::GetResult(token);
+            HandleFileReadComplete(static_cast<LoadRequest*>(const_cast<void*>(l)), r);
+        }, load));
 
         file.Close();
         return true;

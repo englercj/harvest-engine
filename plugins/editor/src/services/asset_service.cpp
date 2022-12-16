@@ -12,11 +12,9 @@
 namespace he::editor
 {
     AssetService::AssetService(
-        FileLoaderService& fileLoaderService,
         ProjectService& projectService,
         TaskService& taskService) noexcept
-        : m_fileLoaderService(fileLoaderService)
-        , m_projectService(projectService)
+        : m_projectService(projectService)
         , m_taskService(taskService)
         , m_db()
         , m_updater(m_db)
@@ -58,7 +56,7 @@ namespace he::editor
 
         auto failGuard = MakeScopeGuard([&]() { Terminate(); });
 
-        if (!m_db.Initialize(assetDbFile.Data(), assetRoot.Data(), m_fileLoaderService.Loader()))
+        if (!m_db.Initialize(assetDbFile.Data(), assetRoot.Data()))
         {
             HE_LOG_ERROR(he_editor,
                 HE_MSG("Failed to initialize asset cache DB."),

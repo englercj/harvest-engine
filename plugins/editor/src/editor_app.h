@@ -4,7 +4,6 @@
 
 #include "editor_data.h"
 #include "services/asset_service.h"
-#include "services/file_loader_service.h"
 #include "services/imgui_service.h"
 #include "services/main_window_service.h"
 #include "services/render_service.h"
@@ -22,7 +21,6 @@ namespace he::editor
     public:
         EditorApp(
             AssetService& assetService,
-            FileLoaderService& fileLoaderService,
             ImGuiService& imguiService,
             MainWindowService& mainWindowService,
             RenderService& renderService,
@@ -42,7 +40,6 @@ namespace he::editor
 
     private:
         AssetService& m_assetService;
-        FileLoaderService& m_fileLoaderService;
         ImGuiService& m_imguiService;
         MainWindowService& m_mainWindowService;
         RenderService& m_renderService;

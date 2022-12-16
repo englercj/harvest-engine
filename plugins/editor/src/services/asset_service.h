@@ -2,7 +2,6 @@
 
 #pragma once
 
-#include "file_loader_service.h"
 #include "project_service.h"
 #include "task_service.h"
 
@@ -23,7 +22,6 @@ namespace he::editor
     {
     public:
         AssetService(
-            FileLoaderService& fileLoaderService,
             ProjectService& projectService,
             TaskService& taskService) noexcept;
 
@@ -54,7 +52,6 @@ namespace he::editor
         void ProcessPendingAssetsTask();
 
     private:
-        FileLoaderService& m_fileLoaderService;
         ProjectService& m_projectService;
         TaskService& m_taskService;
 

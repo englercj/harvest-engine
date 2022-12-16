@@ -8,7 +8,6 @@ namespace he::editor
 {
     EditorApp::EditorApp(
         AssetService& assetService,
-        FileLoaderService& fileLoaderService,
         ImGuiService& imguiService,
         MainWindowService& mainWindowService,
         RenderService& renderService,
@@ -16,7 +15,6 @@ namespace he::editor
         TaskService& taskService,
         WorkspaceService& workspaceService) noexcept
         : m_assetService(assetService)
-        , m_fileLoaderService(fileLoaderService)
         , m_imguiService(imguiService)
         , m_mainWindowService(mainWindowService)
         , m_renderService(renderService)
@@ -87,9 +85,6 @@ namespace he::editor
         m_mainWindowService.SetView(view);
 
         // Initialize required services
-        if (!m_fileLoaderService.Initialize())
-            return false;
-
         if (!m_taskService.Initialize())
             return false;
 
@@ -104,7 +99,7 @@ namespace he::editor
             return false;
 
         AsyncFileIOConfig config;
-        config.executor = &m_taskService;
+        config.threadpool.executor = &m_taskService;
         StartupAsyncFileIO(config);
 
         // Failing to load settings is OK, we'll run with defaults and have an error in the log
@@ -135,7 +130,6 @@ namespace he::editor
         m_renderService.Terminate();
         m_assetService.Terminate();
         m_taskService.Terminate();
-        m_fileLoaderService.Terminate();
 
         m_mainWindowService.Quit(0);
     }

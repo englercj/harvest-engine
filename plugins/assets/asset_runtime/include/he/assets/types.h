@@ -46,23 +46,28 @@ namespace he::assets
         constexpr bool operator!=(const _UuidWrapper& x) const { return val != x.val; }
         constexpr bool operator<(const _UuidWrapper& x) const { return val < x.val; }
 
-        inline bool operator==(const he::schema::Uuid::Reader x) const
+        inline bool operator==(const he::schema::Uuid::Reader& x) const
         {
             Span<const uint8_t> value = x.GetValue();
             return value.Size() == sizeof(Uuid::m_bytes) && MemEqual(val.m_bytes, value.Data(), sizeof(Uuid::m_bytes));
         }
+        inline bool operator==(const he::schema::Uuid::Builder& x) const { return *this == x.AsReader(); }
 
-        inline bool operator!=(const he::schema::Uuid::Reader x) const
+        inline bool operator!=(const he::schema::Uuid::Reader& x) const
         {
             Span<const uint8_t> value = x.GetValue();
             return value.Size() != sizeof(Uuid::m_bytes) || !MemEqual(val.m_bytes, value.Data(), sizeof(Uuid::m_bytes));
         }
+        inline bool operator!=(const he::schema::Uuid::Builder& x) const { return *this != x.AsReader(); }
 
-        inline bool operator<(const he::schema::Uuid::Reader x) const
+        inline bool operator<(const he::schema::Uuid::Reader& x) const
         {
             Span<const uint8_t> value = x.GetValue();
             return value.Size() == sizeof(Uuid::m_bytes) && MemLess(val.m_bytes, value.Data(), sizeof(Uuid::m_bytes));
         }
+        inline bool operator<(const he::schema::Uuid::Builder& x) const { return *this < x.AsReader(); }
+
+        [[nodiscard]] uint64_t HashCode() const noexcept { return val.HashCode(); }
 
         Uuid val;
     };
@@ -91,7 +96,9 @@ namespace he::assets
         constexpr bool operator!=(const _HashId& x) const { return val != x.val; }
         constexpr bool operator<(const _HashId& x) const { return val < x.val; }
 
-        constexpr _HashId operator^(const _HashId& x) const { return CombineHash(val, x.val); }
+        constexpr _HashId operator^(const _HashId& x) const { return CombineHash32(val, x.val); }
+
+        [[nodiscard]] uint64_t HashCode() const noexcept { return val; }
 
         uint32_t val;
     };
@@ -119,28 +126,4 @@ namespace he::assets
 
     /// Unique identifier for a type of resource. Usually a hash of a unique string.
     using ResourceId = _HashId<struct ResourceIdTag>;
-}
-
-// Hash overloads
-namespace std
-{
-    template <typename> struct hash;
-
-    template <typename T>
-    struct hash<he::assets::_UuidWrapper<T>>
-    {
-        size_t operator()(const he::assets::_UuidWrapper<T>& value) const
-        {
-            return std::hash<he::Uuid>()(value.val);
-        }
-    };
-
-    template <typename T>
-    struct hash<he::assets::_HashId<T>>
-    {
-        size_t operator()(const he::assets::_HashId<T>& id) const
-        {
-            return static_cast<size_t>(id.val);
-        }
-    };
 }

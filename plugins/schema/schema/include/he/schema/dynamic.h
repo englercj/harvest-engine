@@ -177,7 +177,7 @@ namespace he::schema
         {}
 
         template <typename T> requires(T::StructType::Kind == DeclKind::Struct)
-        Builder(T&& builder) noexcept : Builder(T::StructType::DeclInfo, builder) {}
+        Builder(const T& builder) noexcept : Builder(T::StructType::DeclInfo, builder) {}
 
     public:
         const DeclInfo& Decl() const { HE_ASSERT(m_info); return *m_info; }
@@ -264,13 +264,14 @@ namespace he::schema
         }
 
     public:
+        const DeclInfo& Scope() const { HE_ASSERT(m_scope); return *m_scope; }
         Type::Reader GetType() const { return m_type; }
         Type::Data::Array::Reader ArrayType() const { return m_type.GetData().GetArray(); }
 
         uint16_t Size() const { return ArrayType().GetSize(); }
 
         DynamicValue::Reader Get(uint16_t index) const;
-        bool Has(uint32_t index) const;
+        bool Has(uint16_t index) const;
 
         DynamicValue::Reader operator[](uint16_t index) const;
 
@@ -295,8 +296,8 @@ namespace he::schema
         IteratorType end() const { return IteratorType(this, Size()); }
 
     private:
-        Declaration::Reader Scope() const { HE_ASSERT(m_scope); return GetSchema(*m_scope); }
-        Declaration::Data::Struct::Reader ScopeStruct() const { return Scope().GetData().GetStruct(); }
+        Declaration::Reader ScopeSchema() const { HE_ASSERT(m_scope); return GetSchema(*m_scope); }
+        Declaration::Data::Struct::Reader ScopeStruct() const { return ScopeSchema().GetData().GetStruct(); }
 
     private:
         const DeclInfo* m_scope{ nullptr };
@@ -347,6 +348,7 @@ namespace he::schema
         }
 
     public:
+        const DeclInfo& Scope() const { HE_ASSERT(m_scope); return *m_scope; }
         Type::Reader GetType() const { return m_type; }
         Type::Data::Array::Reader ArrayType() const { return m_type.GetData().GetArray(); }
 
@@ -356,8 +358,8 @@ namespace he::schema
         void Set(uint16_t index, const DynamicValue::Reader& value);
         DynamicValue::Builder Init(uint16_t index);
         DynamicValue::Builder Init(uint16_t index, uint32_t size);
-        void Clear(uint32_t index);
-        bool Has(uint32_t index) const;
+        void Clear(uint16_t index);
+        bool Has(uint16_t index) const;
 
         DynamicValue::Builder operator[](uint16_t index) const;
 
@@ -384,8 +386,8 @@ namespace he::schema
         IteratorType end() const { return IteratorType(this, Size()); }
 
     private:
-        Declaration::Reader Scope() const { HE_ASSERT(m_scope); return GetSchema(*m_scope); }
-        Declaration::Data::Struct::Reader ScopeStruct() const { return Scope().GetData().GetStruct(); }
+        Declaration::Reader ScopeSchema() const { HE_ASSERT(m_scope); return GetSchema(*m_scope); }
+        Declaration::Data::Struct::Reader ScopeStruct() const { return ScopeSchema().GetData().GetStruct(); }
 
     private:
         const DeclInfo* m_scope{ nullptr };
@@ -423,6 +425,7 @@ namespace he::schema
         }
 
     public:
+        const DeclInfo& Scope() const { HE_ASSERT(m_scope); return *m_scope; }
         Type::Reader GetType() const { return m_type; }
         Type::Data::List::Reader ListType() const { return m_type.GetData().GetList(); }
 
@@ -472,6 +475,7 @@ namespace he::schema
         }
 
     public:
+        const DeclInfo& Scope() const { HE_ASSERT(m_scope); return *m_scope; }
         Type::Reader GetType() const { return m_type; }
         Type::Data::List::Reader ListType() const { return m_type.GetData().GetList(); }
 
@@ -610,8 +614,8 @@ namespace he::schema
             int64_t m_int;
             uint64_t m_uint;
             double m_float;
-            String::Builder m_string;
             Blob::Builder m_blob;
+            String::Builder m_string;
             DynamicArray::Builder m_array;
             DynamicList::Builder m_list;
             DynamicEnum m_enum;

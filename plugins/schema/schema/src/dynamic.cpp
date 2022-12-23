@@ -56,8 +56,8 @@ namespace he::schema
 
     HE_DYNAMIC_VALUE_AS_TYPE(m_void, Void, Void)
     HE_DYNAMIC_VALUE_AS_TYPE(m_bool, Bool, bool)
-    HE_DYNAMIC_VALUE_AS_TYPE(m_string, String, String)
     HE_DYNAMIC_VALUE_AS_TYPE(m_blob, Blob, Blob)
+    HE_DYNAMIC_VALUE_AS_TYPE(m_string, String, String)
     HE_DYNAMIC_VALUE_AS_TYPE(m_array, Array, DynamicArray)
     HE_DYNAMIC_VALUE_AS_TYPE(m_list, List, DynamicList)
     HE_DYNAMIC_VALUE_AS_TYPE(m_enum, Enum, DynamicEnum)
@@ -1322,7 +1322,7 @@ namespace he::schema
         return DynamicValue::Reader{};
     }
 
-    bool DynamicArray::Reader::Has(uint32_t index) const
+    bool DynamicArray::Reader::Has(uint16_t index) const
     {
         if (!HE_VERIFY(index < Size()))
             return false;
@@ -1674,7 +1674,7 @@ namespace he::schema
         }
     }
 
-    void DynamicArray::Builder::Clear(uint32_t index)
+    void DynamicArray::Builder::Clear(uint16_t index)
     {
         const uint16_t size = Size();
 
@@ -1726,7 +1726,7 @@ namespace he::schema
         }
     }
 
-    bool DynamicArray::Builder::Has(uint32_t index) const
+    bool DynamicArray::Builder::Has(uint16_t index) const
     {
         return AsReader().Has(index);
     }

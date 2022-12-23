@@ -17,10 +17,12 @@ namespace he::assets
     class AssetDatabase final
     {
     public:
+        using AssetFileBuilder = he::schema::TypedBuilder<schema::AssetFile>;
+
         struct LoadResult
         {
             Result result{};
-            he::schema::TypedBuilder<schema::AssetFile> builder{};
+            AssetFileBuilder builder{};
         };
 
         using LoadDelegate = Delegate<void(LoadResult)>;

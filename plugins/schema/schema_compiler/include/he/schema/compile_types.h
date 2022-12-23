@@ -34,12 +34,9 @@ namespace he::schema
 
     struct TypeKeyHasher
     {
-        size_t operator()(const TypeKey& key) const
+        constexpr uint64_t operator()(const TypeKey& key) const noexcept
         {
-            const uintptr_t expr = reinterpret_cast<uintptr_t>(key.expr);
-            const uintptr_t scope = reinterpret_cast<uintptr_t>(key.scope);
-
-            return std::hash<uintptr_t>()(expr) ^ std::hash<uintptr_t>()(scope);
+            return CombineHash64(GetHashCode(key.expr), GetHashCode(key.scope));
         }
     };
 

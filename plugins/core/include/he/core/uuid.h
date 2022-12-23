@@ -46,6 +46,13 @@ namespace he
         /// \return The newly constructed UUID.
         static Uuid CreateV4();
 
+        /// Returns a non-cryptographic hash of the uuid.
+        /// Since uuids are already either random or hashed bits this simply returns a well
+        /// defined slice of the uuid's bytes.
+        ///
+        /// \return The hash value.
+        [[nodiscard]] uint64_t HashCode() const noexcept;
+
     public:
         /// Gets the version number of a Uuid. This is usually a value in the range [0, 5].
         ///
@@ -91,17 +98,4 @@ namespace he
     /// Name string is an X.500 DN (in DER or a text output format).
     /// 6ba7b814-9dad-11d1-80b4-00c04fd430c8
     inline constexpr Uuid Uuid_NamespaceX500{ { 0x6b, 0xa7, 0xb8, 0x14, 0x9d, 0xad, 0x11, 0xd1, 0x80, 0xb4, 0x00, 0xc0, 0x4f, 0xd4, 0x30, 0xc8 } };
-
-}
-
-// Hash overloads
-namespace std
-{
-    template <typename> struct hash;
-
-    template <>
-    struct hash<he::Uuid>
-    {
-        size_t operator()(const he::Uuid& value) const;
-    };
 }

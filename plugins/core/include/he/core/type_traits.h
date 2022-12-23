@@ -10,6 +10,31 @@
 namespace he
 {
     // --------------------------------------------------------------------------------------------
+    // Aligned Storage
+
+    /// A trivial standard-layout type suitable for use as uninitialized storage for any object
+    /// whose size is at most `Len` and whose alignment requirement is a divisor of `Align`.
+    ///
+    /// \note Behavior is undefined if `Len == 0`
+    ///
+    /// \tparam Len The number of bytes to provide storage for.
+    /// \tparam Align The alignment the bytes must satisfy.
+    template <uint32_t Len, uint32_t Align>
+    struct AlignedStorage
+    {
+        static constexpr uint32_t Length = Len;
+        static constexpr uint32_t Alignment = Align;
+        alignas(Alignment) uint8_t data[Len];
+    };
+
+    /// A trivial standard-layout type suitable for use as uninitialized storage for an object
+    /// of type `T`.
+    ///
+    /// \tparam T The type to provide aligned storage for.
+    template <typename T>
+    using AlignedStorageFor = AlignedStorage<sizeof(T), alignof(T)>;
+
+    // --------------------------------------------------------------------------------------------
     // Is Specialization
 
     template <typename T, template <typename...> typename Template>

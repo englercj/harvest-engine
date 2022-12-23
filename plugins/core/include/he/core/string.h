@@ -277,10 +277,10 @@ namespace he
         using ElementType = char;
 
         /// The maximum number of characters that can be stored inline in the object.
-        static constexpr uint32_t MaxEmbedCharacters = 63;
+        static constexpr uint32_t MaxEmbedCharacters = 31;
 
         /// The maximum number of characters that can be stored on the heap.
-        static constexpr uint32_t MaxHeapCharacters = 0xfffffffe;
+        static constexpr uint32_t MaxHeapCharacters = 0x7ffffffe;
 
         // ----------------------------------------------------------------------------------------
         // Construction
@@ -592,6 +592,11 @@ namespace he
         /// \return The allocator object this string uses.
         Allocator& GetAllocator() const { return m_allocator; }
 
+        /// Returns a non-cryptographic hash of the string contents.
+        ///
+        /// \return The hash value.
+        [[nodiscard]] uint64_t HashCode() const noexcept;
+
         // ----------------------------------------------------------------------------------------
         // Comparison
 
@@ -849,15 +854,3 @@ namespace he
 }
 
 #include "he/core/inline/string.inl"
-
-// Hash overloads
-namespace std
-{
-    template <typename> struct hash;
-
-    template <>
-    struct hash<he::String>
-    {
-        size_t operator()(const he::String& value) const;
-    };
-}

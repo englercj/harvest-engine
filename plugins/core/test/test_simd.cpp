@@ -11,7 +11,6 @@ using namespace he;
 // ------------------------------------------------------------------------------------------------
 HE_TEST(core, simd, Report)
 {
-    std::cout << "    HE_ENABLE_SIMD = " << HE_ENABLE_SIMD << std::endl;
     std::cout << "    HE_SIMD_AVX = " << HE_SIMD_AVX << std::endl;
     std::cout << "    HE_SIMD_AVX2 = " << HE_SIMD_AVX2 << std::endl;
     std::cout << "    HE_SIMD_NEON = " << HE_SIMD_NEON << std::endl;

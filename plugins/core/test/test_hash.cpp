@@ -2,9 +2,8 @@
 
 #include "he/core/hash.h"
 
+#include "he/core/random.h"
 #include "he/core/test.h"
-
-#include <random>
 
 using namespace he;
 
@@ -98,6 +97,18 @@ static void TestHashAlgorithm()
 }
 
 // ------------------------------------------------------------------------------------------------
+HE_TEST(core, hash, CombineHash)
+{
+    // TODO
+}
+
+// ------------------------------------------------------------------------------------------------
+HE_TEST(core, hash, Mix)
+{
+    // TODO
+}
+
+// ------------------------------------------------------------------------------------------------
 HE_TEST(core, hash, FNV32)
 {
     TestHashAlgorithm<FNV32>();
@@ -107,6 +118,7 @@ HE_TEST(core, hash, FNV32)
     HE_EXPECT_EQ(FNV32::HashString("foobar"), 0xbf9cf968);
     HE_EXPECT_EQ(FNV32::HashString("foobarabcdefghiglmnop"), 0xaec8b08c);
     HE_EXPECT_EQ(FNV32::HashString("\200"), 0x850b939f);
+
     HE_EXPECT_EQ(FNV32::HashData("foobar", 6), 0xbf9cf968);
     HE_EXPECT_EQ(FNV32::HashScalar('\200'), 0x850b939f);
 
@@ -130,6 +142,7 @@ HE_TEST(core, hash, FNV64)
     HE_EXPECT_EQ(FNV64::HashString("foobar"), 0x85944171f73967e8);
     HE_EXPECT_EQ(FNV64::HashString("foobarabcdefghiglmnop"), 0x9c6beb459f40f26c);
     HE_EXPECT_EQ(FNV64::HashString("\200"), 0xaf643d4c8602915f);
+
     HE_EXPECT_EQ(FNV64::HashData("foobar", 6), 0x85944171f73967e8);
     HE_EXPECT_EQ(FNV64::HashScalar('\200'), 0xaf643d4c8602915f);
 
@@ -141,4 +154,194 @@ HE_TEST(core, hash, FNV64)
     uint64_t h = FNV64::HashString("abc");
     h = FNV64::HashString("def", h);
     HE_EXPECT_EQ(h, FNV64::HashString("abcdef"));
+}
+
+// ------------------------------------------------------------------------------------------------
+HE_TEST(core, hash, CRC32)
+{
+    TestHashAlgorithm<CRC32C>();
+
+    HE_EXPECT_EQ(CRC32C::HashString(""), 0);
+    HE_EXPECT_EQ(CRC32C::HashString("a"), 0xc1d04330);
+    HE_EXPECT_EQ(CRC32C::HashString("foobar"), 0x0d5f5c7f);
+    HE_EXPECT_EQ(CRC32C::HashString("foobarabcdefghiglmnop"), 0xfef874d9);
+    HE_EXPECT_EQ(CRC32C::HashString("\200"), 0xd08b6829);
+
+    HE_EXPECT_EQ(CRC32C::HashData("foobar", 6), 0x0d5f5c7f);
+    HE_EXPECT_EQ(CRC32C::HashScalar('\200'), 0xd08b6829);
+
+    uint32_t h = CRC32C::HashString("abc");
+    h = CRC32C::HashString("def", h);
+    HE_EXPECT_EQ(h, CRC32C::HashString("abcdef"));
+}
+
+// ------------------------------------------------------------------------------------------------
+HE_TEST(core, hash, WyHash)
+{
+    TestHashAlgorithm<WyHash>();
+
+    HE_EXPECT_EQ(WyHash::HashString(""), 0x0409638ee2bde459);
+    HE_EXPECT_EQ(WyHash::HashString("a"), 0x28d2053309d28531);
+    HE_EXPECT_EQ(WyHash::HashString("foobar"), 0x0b9d35b96e1f6fe2);
+    HE_EXPECT_EQ(WyHash::HashString("foobarabcdefghiglmnop"), 0x698f1bc80e749f46);
+    HE_EXPECT_EQ(WyHash::HashString("\200"), 0x26f0dff3757426db);
+
+    HE_EXPECT_EQ(WyHash::HashData("foobar", 6), 0x0b9d35b96e1f6fe2);
+    HE_EXPECT_EQ(WyHash::HashScalar('\200'), 0x26f0dff3757426db);
+}
+
+// ------------------------------------------------------------------------------------------------
+HE_TEST(core, hash, Hasher)
+{
+    enum TestEnum { V = 123 };
+    enum class TestEnumClass { V = 123 };
+
+    static_assert(Hasher<bool>()(true) == 0xffffffffffffffff);
+    static_assert(Hasher<bool>()(false) == 0);
+    static_assert(Hasher<char>()(123) == 0x7fcb4990c961f6a8);
+    static_assert(Hasher<unsigned char>()(123) == 0x7fcb4990c961f6a8);
+    static_assert(Hasher<signed char>()(123) == 0x7fcb4990c961f6a8);
+    static_assert(Hasher<wchar_t>()(123) == 0x7fcb4990c961f6a8);
+    static_assert(Hasher<char8_t>()(123) == 0x7fcb4990c961f6a8);
+    static_assert(Hasher<char16_t>()(123) == 0x7fcb4990c961f6a8);
+    static_assert(Hasher<char32_t>()(123) == 0x7fcb4990c961f6a8);
+    static_assert(Hasher<short>()(123) == 0x7fcb4990c961f6a8);
+    static_assert(Hasher<unsigned short>()(123) == 0x7fcb4990c961f6a8);
+    static_assert(Hasher<int>()(123) == 0x7fcb4990c961f6a8);
+    static_assert(Hasher<unsigned int>()(123) == 0x7fcb4990c961f6a8);
+    static_assert(Hasher<long>()(123) == 0x7fcb4990c961f6a8);
+    static_assert(Hasher<unsigned long>()(123) == 0x7fcb4990c961f6a8);
+    static_assert(Hasher<long long>()(123) == 0x7fcb4990c961f6a8);
+    static_assert(Hasher<unsigned long long>()(123) == 0x7fcb4990c961f6a8);
+    static_assert(Hasher<TestEnum>()(TestEnum::V) == 0x7fcb4990c961f6a8);
+    static_assert(Hasher<TestEnumClass>()(TestEnumClass::V) == 0x7fcb4990c961f6a8);
+
+    HE_EXPECT_EQ(Hasher<bool>()(true), 0xffffffffffffffff);
+    HE_EXPECT_EQ(Hasher<bool>()(false), 0);
+    HE_EXPECT_EQ(Hasher<char>()(123), 0x7fcb4990c961f6a8);
+    HE_EXPECT_EQ(Hasher<unsigned char>()(123), 0x7fcb4990c961f6a8);
+    HE_EXPECT_EQ(Hasher<signed char>()(123), 0x7fcb4990c961f6a8);
+    HE_EXPECT_EQ(Hasher<wchar_t>()(123), 0x7fcb4990c961f6a8);
+    HE_EXPECT_EQ(Hasher<char8_t>()(123), 0x7fcb4990c961f6a8);
+    HE_EXPECT_EQ(Hasher<char16_t>()(123), 0x7fcb4990c961f6a8);
+    HE_EXPECT_EQ(Hasher<char32_t>()(123), 0x7fcb4990c961f6a8);
+    HE_EXPECT_EQ(Hasher<short>()(123), 0x7fcb4990c961f6a8);
+    HE_EXPECT_EQ(Hasher<unsigned short>()(123), 0x7fcb4990c961f6a8);
+    HE_EXPECT_EQ(Hasher<int>()(123), 0x7fcb4990c961f6a8);
+    HE_EXPECT_EQ(Hasher<unsigned int>()(123), 0x7fcb4990c961f6a8);
+    HE_EXPECT_EQ(Hasher<long>()(123), 0x7fcb4990c961f6a8);
+    HE_EXPECT_EQ(Hasher<unsigned long>()(123), 0x7fcb4990c961f6a8);
+    HE_EXPECT_EQ(Hasher<long long>()(123), 0x7fcb4990c961f6a8);
+    HE_EXPECT_EQ(Hasher<unsigned long long>()(123), 0x7fcb4990c961f6a8);
+    HE_EXPECT_EQ(Hasher<TestEnum>()(TestEnum::V), 0x7fcb4990c961f6a8);
+    HE_EXPECT_EQ(Hasher<TestEnumClass>()(TestEnumClass::V), 0x7fcb4990c961f6a8);
+    HE_EXPECT_EQ(Hasher<void*>()((void*)123), 0x7fcb4990c961f6a8);
+    HE_EXPECT_EQ(Hasher<float>()(123), 0xf8450ab74f865b48);
+    HE_EXPECT_EQ(Hasher<double>()(123), 0xfde89695555aaf6f);
+    HE_EXPECT_EQ(Hasher<long double>()(123), 0xfde89695555aaf6f);
+}
+
+// ------------------------------------------------------------------------------------------------
+HE_TEST(core, hash, GetHashCode)
+{
+    enum TestEnum { V = 123 };
+    enum class TestEnumClass { V = 123 };
+
+    static_assert(GetHashCode<bool>(true) == Hasher<bool>()(true));
+    static_assert(GetHashCode<bool>(false) == Hasher<bool>()(false));
+    static_assert(GetHashCode<char>(123) == Hasher<char>()(123));
+    static_assert(GetHashCode<unsigned >(123) == Hasher<unsigned char>()(123));
+    static_assert(GetHashCode<signed >(123) == Hasher<signed char>()(123));
+    static_assert(GetHashCode<wchar_t>(123) == Hasher<wchar_t>()(123));
+    static_assert(GetHashCode<char8_t>(123) == Hasher<char8_t>()(123));
+    static_assert(GetHashCode<char16_t>(123) == Hasher<char16_t>()(123));
+    static_assert(GetHashCode<char32_t>(123) == Hasher<char32_t>()(123));
+    static_assert(GetHashCode<short>(123) == Hasher<short>()(123));
+    static_assert(GetHashCode<unsigned >(123) == Hasher<unsigned short>()(123));
+    static_assert(GetHashCode<int>(123) == Hasher<int>()(123));
+    static_assert(GetHashCode<unsigned >(123) == Hasher<unsigned int>()(123));
+    static_assert(GetHashCode<long>(123) == Hasher<long>()(123));
+    static_assert(GetHashCode<unsigned >(123) == Hasher<unsigned long>()(123));
+    static_assert(GetHashCode<long >(123) == Hasher<long long>()(123));
+    static_assert(GetHashCode<unsigned >(123) == Hasher<unsigned long long>()(123));
+    static_assert(GetHashCode<TestEnum>(TestEnum::V) == Hasher<TestEnum>()(TestEnum::V));
+    static_assert(GetHashCode<TestEnumClass>(TestEnumClass::V) == Hasher<TestEnumClass>()(TestEnumClass::V));
+
+    HE_EXPECT_EQ(GetHashCode<bool>(true), Hasher<bool>()(true));
+    HE_EXPECT_EQ(GetHashCode<bool>(false), Hasher<bool>()(false));
+    HE_EXPECT_EQ(GetHashCode<char>(123), Hasher<char>()(123));
+    HE_EXPECT_EQ(GetHashCode<unsigned >(123), Hasher<unsigned char>()(123));
+    HE_EXPECT_EQ(GetHashCode<signed >(123), Hasher<signed char>()(123));
+    HE_EXPECT_EQ(GetHashCode<wchar_t>(123), Hasher<wchar_t>()(123));
+    HE_EXPECT_EQ(GetHashCode<char8_t>(123), Hasher<char8_t>()(123));
+    HE_EXPECT_EQ(GetHashCode<char16_t>(123), Hasher<char16_t>()(123));
+    HE_EXPECT_EQ(GetHashCode<char32_t>(123), Hasher<char32_t>()(123));
+    HE_EXPECT_EQ(GetHashCode<short>(123), Hasher<short>()(123));
+    HE_EXPECT_EQ(GetHashCode<unsigned >(123), Hasher<unsigned short>()(123));
+    HE_EXPECT_EQ(GetHashCode<int>(123), Hasher<int>()(123));
+    HE_EXPECT_EQ(GetHashCode<unsigned >(123), Hasher<unsigned int>()(123));
+    HE_EXPECT_EQ(GetHashCode<long>(123), Hasher<long>()(123));
+    HE_EXPECT_EQ(GetHashCode<unsigned >(123), Hasher<unsigned long>()(123));
+    HE_EXPECT_EQ(GetHashCode<long >(123), Hasher<long long>()(123));
+    HE_EXPECT_EQ(GetHashCode<unsigned >(123), Hasher<unsigned long long>()(123));
+    HE_EXPECT_EQ(GetHashCode<TestEnum>(TestEnum::V), Hasher<TestEnum>()(TestEnum::V));
+    HE_EXPECT_EQ(GetHashCode<TestEnumClass>(TestEnumClass::V), Hasher<TestEnumClass>()(TestEnumClass::V));
+    HE_EXPECT_EQ(GetHashCode<void*>((void*)123), Hasher<void*>()((void*)123));
+    HE_EXPECT_EQ(GetHashCode<float>(123), Hasher<float>()(123));
+    HE_EXPECT_EQ(GetHashCode<double>(123), Hasher<double>()(123));
+    HE_EXPECT_EQ(GetHashCode<long double>(123), Hasher<long double>()(123));
+}
+
+// ------------------------------------------------------------------------------------------------
+HE_TEST(core, hash, HasHashCode)
+{
+    struct Nope1 {};
+    struct Nope2 { uint32_t HashCode() const; };
+    struct Nope3 { uint64_t HashCode(); };
+    struct Nope4 { int64_t HashCode() const; };
+    struct Yup1 { uint64_t HashCode() const; };
+    struct Yup2 { uint64_t HashCode() const noexcept; };
+
+    static_assert(!HasHashCode<Nope1>);
+    static_assert(!HasHashCode<Nope2>);
+    static_assert(!HasHashCode<Nope3>);
+    static_assert(!HasHashCode<Nope4>);
+    static_assert(HasHashCode<Yup1>);
+    static_assert(HasHashCode<Yup2>);
+}
+
+// ------------------------------------------------------------------------------------------------
+HE_TEST(core, hash, Hashable)
+{
+    enum TestEnum {};
+    enum class TestEnumClass {};
+
+    static_assert(Hashable<bool>);
+    static_assert(Hashable<char>);
+    static_assert(Hashable<unsigned char>);
+    static_assert(Hashable<signed char>);
+    static_assert(Hashable<wchar_t>);
+    static_assert(Hashable<char8_t>);
+    static_assert(Hashable<char16_t>);
+    static_assert(Hashable<char32_t>);
+    static_assert(Hashable<short>);
+    static_assert(Hashable<unsigned short>);
+    static_assert(Hashable<int>);
+    static_assert(Hashable<unsigned int>);
+    static_assert(Hashable<long>);
+    static_assert(Hashable<unsigned long>);
+    static_assert(Hashable<long long>);
+    static_assert(Hashable<unsigned long long>);
+    static_assert(Hashable<TestEnum>);
+    static_assert(Hashable<TestEnumClass>);
+    static_assert(Hashable<void*>);
+    static_assert(Hashable<float>);
+    static_assert(Hashable<double>);
+    static_assert(Hashable<long double>);
+
+    struct HashableObj { uint64_t HashCode() const; };
+    static_assert(Hashable<HashableObj>);
+
+    struct NotHashableObj {};
+    static_assert(!Hashable<NotHashableObj>);
 }

@@ -291,6 +291,11 @@ namespace he
         return Data()[Size() - 1];
     }
 
+    uint64_t String::HashCode() const noexcept
+    {
+        return WyHash::HashData(Data(), Size());
+    }
+
     int32_t String::CompareTo(const char* str, uint32_t len) const
     {
         const uint32_t s0 = Size();
@@ -440,7 +445,6 @@ namespace he
         return newCapacity;
     }
 
-
     void String::SetSize(uint32_t size)
     {
         if (IsEmbedded())
@@ -528,16 +532,4 @@ namespace he
     HE_FROMSTR_FLT_IMPL(double, strtod)
 
 #undef HE_FROMSTR_FLT_IMPL
-}
-
-namespace std
-{
-    size_t hash<he::String>::operator()(const he::String& value) const
-    {
-    #if HE_CPU_64_BIT
-        return he::FNV64::HashString(value.Data());
-    #else
-        return he::FNV32::HashString(value.Data());
-    #endif
-    }
 }

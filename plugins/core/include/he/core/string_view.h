@@ -142,6 +142,11 @@ namespace he
         /// \return A reference to the last character in the view's range.
         constexpr const char& Back() const { return m_span.Back(); }
 
+        /// Returns a non-cryptographic hash of the string contents.
+        ///
+        /// \return The hash value.
+        [[nodiscard]] uint64_t HashCode() const noexcept;
+
         // ----------------------------------------------------------------------------------------
         // Converters
 
@@ -297,17 +302,5 @@ namespace he
         friend class StringViewTestAttorney;
 
         Span<const char> m_span;
-    };
-}
-
-// Hash overloads
-namespace std
-{
-    template <typename> struct hash;
-
-    template <>
-    struct hash<he::StringView>
-    {
-        size_t operator()(const he::StringView& value) const;
     };
 }

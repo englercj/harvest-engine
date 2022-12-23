@@ -6,13 +6,12 @@
 #include "he/core/assert.h"
 #include "he/core/macros.h"
 #include "he/core/memory_ops.h"
+#include "he/core/type_traits.h"
 #include "he/core/types.h"
 #include "he/core/utils.h"
 
 #include <algorithm>
-#include <concepts>
 #include <new>
-#include <type_traits>
 
 namespace he
 {
@@ -93,7 +92,7 @@ namespace he
         /// \param x The vector to check against.
         /// \return True if the vectors are equal, false otherwise.
         template <typename U> requires(std::is_convertible_v<U(*)[], T(*)[]>)
-        bool operator==(const Vector<U>& x) const { return x.Size() == Size() && std::equal(x.Begin(), x.End(), Begin(), End()); }
+        bool operator==(const Vector<U>& x) const;
 
         /// Checks if this vector is not equal to another vector.
         ///
@@ -219,7 +218,7 @@ namespace he
         /// After calling this method the vector is reset to a valid empty state and can be
         /// used again, which creates a new allocation of memory.
         ///
-        /// \return The vectors's allocated memory.
+        /// \return The vector's allocated memory.
         T* Release();
 
         /// Gets a reference to the vector's first element. The vector must not be empty.

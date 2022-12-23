@@ -4,14 +4,10 @@
 
 #include "he/core/hash.h"
 
-namespace std
+namespace he
 {
-    size_t hash<he::StringView>::operator()(const he::StringView& value) const
+    uint64_t StringView::HashCode() const noexcept
     {
-    #if HE_CPU_64_BIT
-        return he::FNV64::HashData(value.Data(), value.Size());
-    #else
-        return he::FNV32::HashData(value.Data(), value.Size());
-    #endif
+        return WyHash::HashData(Data(), Size());
     }
 }

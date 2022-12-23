@@ -157,4 +157,92 @@ namespace he
     {
         return m_state;
     }
+
+    // --------------------------------------------------------------------------------------------
+    // CRC32C
+
+    template <Arithmetic T>
+    inline CRC32C::ValueType CRC32C::HashScalar(const T& obj, ValueType seed)
+    {
+        return HashData(&obj, sizeof(T), seed);
+    }
+
+    inline CRC32C::CRC32C(ValueType seed)
+    {
+        Reset(seed);
+    }
+
+    template <Arithmetic T>
+    inline CRC32C& CRC32C::Scalar(const T& obj)
+    {
+        m_state = HashScalar(obj, m_state);
+        return *this;
+    }
+
+    inline CRC32C& CRC32C::String(const char* str)
+    {
+        m_state = HashString(str, m_state);
+        return *this;
+    }
+
+    inline CRC32C& CRC32C::Data(const void* data, uint32_t len)
+    {
+        m_state = HashData(data, len, m_state);
+        return *this;
+    }
+
+    inline CRC32C& CRC32C::Reset(ValueType seed)
+    {
+        m_state = seed;
+        return *this;
+    }
+
+    inline CRC32C::ValueType CRC32C::Done()
+    {
+        return m_state;
+    }
+
+    // --------------------------------------------------------------------------------------------
+    // WyHash
+
+    template <Arithmetic T>
+    inline WyHash::ValueType WyHash::HashScalar(const T& obj, ValueType seed)
+    {
+        return HashData(&obj, sizeof(T), seed);
+    }
+
+    inline WyHash::WyHash(ValueType seed)
+    {
+        Reset(seed);
+    }
+
+    template <Arithmetic T>
+    inline WyHash& WyHash::Scalar(const T& obj)
+    {
+        m_state = HashScalar(obj, m_state);
+        return *this;
+    }
+
+    inline WyHash& WyHash::String(const char* str)
+    {
+        m_state = HashString(str, m_state);
+        return *this;
+    }
+
+    inline WyHash& WyHash::Data(const void* data, uint32_t len)
+    {
+        m_state = HashData(data, len, m_state);
+        return *this;
+    }
+
+    inline WyHash& WyHash::Reset(ValueType seed)
+    {
+        m_state = seed;
+        return *this;
+    }
+
+    inline WyHash::ValueType WyHash::Done()
+    {
+        return m_state;
+    }
 }

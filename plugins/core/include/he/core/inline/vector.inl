@@ -278,6 +278,19 @@ namespace he
     }
 
     template <typename T>
+    template <typename U> requires(std::is_convertible_v<U(*)[], T(*)[]>)
+    bool Vector<T>::operator==(const Vector<U>& x) const
+    {
+        if (this == &x)
+            return true;
+
+        if (Size() != x.Size())
+            return false;
+
+        return std::equal(x.Begin(), x.End(), Begin(), End());
+    }
+
+    template <typename T>
     uint32_t Vector<T>::Capacity() const
     {
         return m_capacity;

@@ -53,8 +53,10 @@ namespace he
         [[nodiscard]] constexpr bool operator!=(const TypeInfo& x) const { return m_hash != x.m_hash; }
         [[nodiscard]] constexpr bool operator<(const TypeInfo& x) const { return m_hash < x.m_hash; }
 
-        constexpr uint64_t Hash() const { return m_hash; }
-        constexpr const StringView& Name() const { return m_name; }
+        [[nodiscard]] constexpr uint64_t Hash() const { return m_hash; }
+        [[nodiscard]] constexpr const StringView& Name() const { return m_name; }
+
+        [[nodiscard]] constexpr uint64_t HashCode() const noexcept { return Mix64(Hash()); }
 
     private:
         constexpr TypeInfo(uint64_t hash, const StringView& name)
@@ -64,17 +66,5 @@ namespace he
 
         uint64_t m_hash{ 0 };
         StringView m_name{};
-    };
-}
-
-namespace std
-{
-    template <>
-    struct hash<he::TypeInfo>
-    {
-        constexpr size_t operator()(const he::TypeInfo& info) const
-        {
-            return static_cast<size_t>(info.Hash());
-        }
     };
 }

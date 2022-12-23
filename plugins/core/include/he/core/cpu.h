@@ -35,8 +35,8 @@
 /// Set to one (1) when the target is any 64-bit platform, and zero (0) otherwise.
 #define HE_CPU_64_BIT               0
 
-#if defined(__BIG_ENDIAN__) || defined(__ARMEB__)
-    #error "Big endian systems are not supported."
+#if defined(__BIG_ENDIAN__) || defined(__ARMEB__) || (defined(__BYTE_ORDER__) && __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__)
+    #error "Big endian systems are not supported by the Harvest engine."
 #endif
 
 #if defined(_M_ARM) || defined(__arm__)

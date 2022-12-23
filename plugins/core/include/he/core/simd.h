@@ -15,8 +15,6 @@
 #define HE_SIMD_SSE4_2              0
 #define HE_SIMD_FMA3                0
 
-#if HE_ENABLE_SIMD
-
 #if HE_CPU_X86 && (defined(__AVX__) || defined(__AVX2__))
     #include <immintrin.h>
 
@@ -43,7 +41,8 @@
     #undef HE_SIMD_SSE4_2
     #define HE_SIMD_SSE4_2          1
 #elif HE_CPU_X86 && (HE_CPU_X86_64 || defined(__SSE2__) || defined(_M_IX86_FP))
-    #include <immintrin.h>
+    #include <emmintrin.h>
+    #include <xmmintrin.h>
 
     #undef HE_SIMD_SSE2
     #define HE_SIMD_SSE2             1
@@ -54,6 +53,7 @@
     #endif
 
     #if defined(__SSE4_1__)
+        #include <smmintrin.h>
         #undef HE_SIMD_SSE4_1
         #define HE_SIMD_SSE4_1      1
     #endif
@@ -78,14 +78,15 @@
     #define HE_SIMD_NEON            1
 #endif
 
-#endif
-
 #if HE_SIMD_SSE2
     using Simd128 = __m128;
+    using Simd128i = __m128i;
 #elif HE_SIMD_NEON
     using Simd128 = float32x4_t;
+    using Simd128i = int32x4_t;
 #else
     struct alignas(16) Simd128 { float x, y, z, w; };
+    struct alignas(16) Simd128i { int32_t x, y, z, w; };
 #endif
 
 constexpr Simd128 MakeSimd128(float x, float y, float z, float w) noexcept
@@ -96,5 +97,16 @@ constexpr Simd128 MakeSimd128(float x, float y, float z, float w) noexcept
         return Simd128{ .n128_f32 = { x, y, z, w } };
     #else
         return Simd128{ x, y, z, w };
+    #endif
+}
+
+constexpr Simd128i MakeSimd128i(int32_t x, int32_t y, int32_t z, int32_t w) noexcept
+{
+    #if HE_SIMD_SSE2 && HE_COMPILER_MSVC
+        return Simd128i{ .m128i_i32 = { x, y, z, w } };
+    #elif HE_SIMD_NEON && HE_COMPILER_MSVC
+        return Simd128i{ .n128_i32 = { x, y, z, w } };
+    #else
+        return Simd128i{ x, y, z, w };
     #endif
 }

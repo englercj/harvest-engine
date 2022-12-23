@@ -145,6 +145,9 @@
 /// \def HE_UNREACHABLE
 /// Informs the compiler that this line of code cannot be reached.
 
+/// \def HE_PREFETCH
+/// Prefetches data from the specified address on one memory cache line.
+
 /// \def HE_PUSH_WARNINGS
 /// Stores the current warning state for all warnings.
 

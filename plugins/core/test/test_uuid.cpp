@@ -128,18 +128,18 @@ HE_TEST(core, uuid, Constants)
 // ------------------------------------------------------------------------------------------------
 HE_TEST(core, uuid, Hash)
 {
-    HE_EXPECT_EQ(std::hash<Uuid>()(Uuid_Zero), 0x00000000);
+    HE_EXPECT_EQ(Hasher<Uuid>()(Uuid_Zero), 0x00000000);
 
 #if HE_CPU_64_BIT
-    HE_EXPECT_EQ(std::hash<Uuid>()(Uuid_NamespaceDNS), 0xd111ad9d10b8a76b);
-    HE_EXPECT_EQ(std::hash<Uuid>()(Uuid_NamespaceURL), 0xd111ad9d11b8a76b);
-    HE_EXPECT_EQ(std::hash<Uuid>()(Uuid_NamespaceOID), 0xd111ad9d12b8a76b);
-    HE_EXPECT_EQ(std::hash<Uuid>()(Uuid_NamespaceX500), 0xd111ad9d14b8a76b);
+    HE_EXPECT_EQ(Hasher<Uuid>()(Uuid_NamespaceDNS), 0xd111ad9d10b8a76b);
+    HE_EXPECT_EQ(Hasher<Uuid>()(Uuid_NamespaceURL), 0xd111ad9d11b8a76b);
+    HE_EXPECT_EQ(Hasher<Uuid>()(Uuid_NamespaceOID), 0xd111ad9d12b8a76b);
+    HE_EXPECT_EQ(Hasher<Uuid>()(Uuid_NamespaceX500), 0xd111ad9d14b8a76b);
 #else
-    HE_EXPECT_EQ(std::hash<Uuid>()(Uuid_NamespaceDNS), 0x10b8a76b);
-    HE_EXPECT_EQ(std::hash<Uuid>()(Uuid_NamespaceURL), 0x11b8a76b);
-    HE_EXPECT_EQ(std::hash<Uuid>()(Uuid_NamespaceOID), 0x12b8a76b);
-    HE_EXPECT_EQ(std::hash<Uuid>()(Uuid_NamespaceX500), 0x14b8a76b);
+    HE_EXPECT_EQ(Hasher<Uuid>()(Uuid_NamespaceDNS), 0x10b8a76b);
+    HE_EXPECT_EQ(Hasher<Uuid>()(Uuid_NamespaceURL), 0x11b8a76b);
+    HE_EXPECT_EQ(Hasher<Uuid>()(Uuid_NamespaceOID), 0x12b8a76b);
+    HE_EXPECT_EQ(Hasher<Uuid>()(Uuid_NamespaceX500), 0x14b8a76b);
 #endif
 }
 

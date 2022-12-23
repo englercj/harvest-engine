@@ -166,11 +166,11 @@ namespace he
             desc.Device = nullptr;
 
             HRESULT hr = s_factory->CreateQueue(&desc, IID_PPV_ARGS(&m_queue));
-            if (FAILED(hr))
+            if (!HE_VERIFY(SUCCEEDED(hr)))
                 return Win32Result(hr);
 
             hr = s_factory->CreateStatusArray(m_capacity, name, IID_PPV_ARGS(&m_status));
-            if (FAILED(hr))
+            if (!HE_VERIFY(SUCCEEDED(hr)))
                 return Win32Result(hr);
 
             return Result::Success;

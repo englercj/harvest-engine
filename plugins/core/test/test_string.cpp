@@ -384,8 +384,8 @@ HE_TEST(core, string, Constants)
 {
     // Changing these are potentially breaking so checking them here so a change is made with thoughtfulness.
     static_assert(std::is_same_v<String::ElementType, char>);
-    static_assert(String::MaxEmbedCharacters == 63);
-    static_assert(String::MaxHeapCharacters == 0xfffffffe);
+    static_assert(String::MaxEmbedCharacters == 31);
+    static_assert(String::MaxHeapCharacters == 0x7ffffffe);
 }
 
 // ------------------------------------------------------------------------------------------------

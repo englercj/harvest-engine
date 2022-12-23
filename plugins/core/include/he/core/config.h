@@ -43,12 +43,6 @@
     #define HE_ENABLE_ASSERTIONS        HE_INTERNAL_BUILD
 #endif
 
-/// \def HE_ENABLE_SIMD
-/// Controls if SIMD instructions can be used. By default this is enabled.
-#if !defined(HE_ENABLE_SIMD)
-    #define HE_ENABLE_SIMD              1
-#endif
-
 /// \def HE_USER_DEFINED_DEFAULT_ALLOCATOR
 /// Controls if the user is responsible for defining the \ref Allocator::GetDefault function.
 #if !defined(HE_USER_DEFINED_DEFAULT_ALLOCATOR)

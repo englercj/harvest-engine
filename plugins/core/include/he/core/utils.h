@@ -218,4 +218,15 @@ namespace he
         obj = Forward<U>(newVal);
         return old;
     }
+
+    /// Functor template for performing equality comparisons. The base template simply invokes
+    /// `operator==` on type `T`.
+    template <typename T>
+    struct EqualTo
+    {
+        [[nodiscard]] constexpr bool operator()(const T& a, const T& b) const
+        {
+            return a == b;
+        }
+    };
 }

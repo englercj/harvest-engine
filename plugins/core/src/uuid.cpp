@@ -9,9 +9,9 @@
 namespace he
 {
     HE_PUSH_WARNINGS()
-    HE_DISABLE_MSVC_WARNING(4701) // potentially uninitialized local variable 'id' used
+        HE_DISABLE_MSVC_WARNING(4701) // potentially uninitialized local variable 'id' used
 
-    Uuid Uuid::FromString(StringView src)
+        Uuid Uuid::FromString(StringView src)
     {
         Uuid id;
 
@@ -48,7 +48,7 @@ namespace he
 
     HE_POP_WARNINGS()
 
-    Uuid Uuid::CreateV4()
+        Uuid Uuid::CreateV4()
     {
         Uuid id;
         GetSecureRandomBytes(id.m_bytes);
@@ -59,6 +59,15 @@ namespace he
 
         return id;
     }
+
+    uint64_t Uuid::HashCode() const noexcept
+    {
+        static_assert(sizeof(Uuid::m_bytes) > sizeof(uint64_t));
+        uint64_t h;
+        he::MemCopy(&h, value.m_bytes, sizeof(uint64_t));
+        return h;
+    }
+
 
     bool Uuid::operator==(const Uuid& x) const
     {
@@ -73,15 +82,5 @@ namespace he
     bool Uuid::operator<(const Uuid& x) const
     {
         return MemLess(this, &x, sizeof(x));
-    }
-}
-
-namespace std
-{
-    size_t hash<he::Uuid>::operator()(const he::Uuid& value) const
-    {
-        size_t h;
-        he::MemCopy(&h, value.m_bytes, sizeof(h));
-        return h;
     }
 }

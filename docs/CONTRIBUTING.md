@@ -428,12 +428,14 @@ TODO:
 - Lambdas are OK, but generally free functions should be preferred
     * Simple iterators or predicates that are immediately passed into a function are OK
 - Avoid function pointer parameters, instead prefer `he::Delegate`
-    * Templates for callbacks are OK
+    * Templates for callbacks are preferred if the callback is invoked immediately, like an iterator.
 - All params on one line, or all params separated by newlines with one indent
     * Do not split params across multiple lines unless you split *all* params on multiple lines
     * Same for function calls, all on one line or all on separate lines
 - Omitting unused parameter names when their use is obvious (like a deleted copy ctor)
     * Otherwise write the name and use `HE_UNUSED` to avoid warnings if needed
+- Pure functions should be marked `[[nodiscard]]`
+    * With no side effect, there is no reason to call a pure function and not use the return value
 
 ## Casting
 

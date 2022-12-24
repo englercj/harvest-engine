@@ -16,9 +16,6 @@
 
 #include "fmt/core.h"
 
-#include <set>
-#include <unordered_map>
-
 namespace he::schema
 {
     class CompileContext

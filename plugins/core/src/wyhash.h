@@ -18,8 +18,6 @@
 #include "he/core/types.h"
 
 #if HE_COMPILER_MSVC
-    #include <nmmintrin.h>
-
     extern "C" unsigned __int64 _umul128(unsigned __int64, unsigned __int64, unsigned __int64*);
     #pragma intrinsic(_umul128)
 #endif

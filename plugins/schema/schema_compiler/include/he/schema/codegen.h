@@ -6,8 +6,6 @@
 #include "he/schema/compile_types.h"
 #include "he/schema/schema.h"
 
-#include <unordered_map>
-
 namespace he::schema
 {
     class Builder;

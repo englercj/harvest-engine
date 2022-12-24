@@ -185,7 +185,8 @@ namespace he
         ValueType Done();
 
     private:
-        ValueType m_state;
+        uint64_t m_state;
+        uint64_t m_secret[4];
     };
 
     // --------------------------------------------------------------------------------------------

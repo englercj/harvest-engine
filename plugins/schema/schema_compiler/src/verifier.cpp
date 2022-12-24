@@ -8,6 +8,8 @@
 #include "he/core/ascii.h"
 #include "he/core/enum_fmt.h"
 #include "he/core/enum_ops.h"
+#include "he/core/hash.h"
+#include "he/core/hash_table.h"
 #include "he/core/random.h"
 #include "he/core/string_fmt.h"
 #include "he/core/string_view_fmt.h"
@@ -17,7 +19,6 @@
 
 #include <limits>
 #include <set>
-#include <unordered_set>
 
 namespace he::schema
 {
@@ -43,9 +44,15 @@ namespace he::schema
         { KW_AnyList, Type::Data::UnionTag::AnyList },
     };
 
+    [[nodiscard]] constexpr uint64_t Verifier::MemberOrdinal::HashCode() const
+    {
+        const uint64_t locValue = (static_cast<uint64_t>(loc.column) << 32) | loc.line;
+        return CombineHash64(Mix64(value), Mix64(locValue));
+    }
+
     bool Verifier::Verify(const AstFile& ast, CompileContext& ctx)
     {
-        if (m_builtinTypeMap.empty())
+        if (m_builtinTypeMap.IsEmpty())
         {
             for (const BuiltinType& t : BuiltinTypes)
             {
@@ -418,11 +425,11 @@ namespace he::schema
 
     bool Verifier::VerifyMembers(const AstNode& node, AstNode::Kind kind)
     {
-        std::set<MemberOrdinal> ordinals;
+        HashSet<MemberOrdinal> ordinals;
         if (!VerifyMembersOf(node, kind, ordinals))
             return false;
 
-        if (ordinals.size() > std::numeric_limits<uint16_t>::max())
+        if (ordinals.Size() > std::numeric_limits<uint16_t>::max())
         {
             m_context->AddError(node.location, "Declaration contains too many members");
             return false;
@@ -443,10 +450,10 @@ namespace he::schema
         return true;
     }
 
-    bool Verifier::VerifyMembersOf(const AstNode& node, AstNode::Kind kind, std::set<MemberOrdinal>& ordinals)
+    bool Verifier::VerifyMembersOf(const AstNode& node, AstNode::Kind kind, HashSet<MemberOrdinal>& ordinals)
     {
-        std::unordered_set<StringView> names;
-        names.reserve(node.children.Size());
+        HashSet<StringView> names;
+        names.Reserve(node.children.Size());
 
         for (const AstNode& child : node.children)
         {
@@ -470,15 +477,15 @@ namespace he::schema
                 return false;
             }
 
-            auto ordinalPair = ordinals.insert({ static_cast<uint16_t>(child.id), child.location });
-            if (!ordinalPair.second)
+            const auto ordinalResult = ordinals.Insert({ static_cast<uint16_t>(child.id), child.location });
+            if (!ordinalResult.inserted)
             {
                 m_context->AddError(child.location, "Encountered duplicate ordinal value for {} '{} @{}'", kind, child.name, child.id);
                 return false;
             }
 
-            auto namePair = names.insert(child.name);
-            if (!namePair.second)
+            const auto nameResult = names.Insert(child.name);
+            if (!nameResult.inserted)
             {
                 m_context->AddError(child.location, "Encountered duplicate name for {}", kind);
                 return false;
@@ -687,10 +694,10 @@ namespace he::schema
                 }
 
                 // Check for builtin
-                const auto it = m_builtinTypeMap.find(name.identifier);
-                if (it != m_builtinTypeMap.end())
+                const Type::Data::UnionTag* tag = m_builtinTypeMap.Find(name.identifier);
+                if (tag)
                 {
-                    if (onlyPointers && !IsPointer(it->second))
+                    if (onlyPointers && !IsPointer(*tag))
                     {
                         m_context->AddError(ast.location, "Only pointer types are allowed in this context, {} is not allowed.", name.identifier);
                         return false;
@@ -703,7 +710,7 @@ namespace he::schema
                     }
 
                     TypeKey key{ &ast, &scope_ };
-                    TypeValue value{ it->second, nullptr, {} };
+                    TypeValue value{ *tag, nullptr, {} };
                     m_context->TrackType(key, value);
                     return true;
                 }
@@ -848,14 +855,14 @@ namespace he::schema
                     return false;
                 }
 
-                const auto typeIt = m_builtinTypeMap.find(sizeConst->constant.type.qualified.names.Front()->identifier);
-                if (typeIt == m_builtinTypeMap.end())
+                const Type::Data::UnionTag* tag = m_builtinTypeMap.Find(sizeConst->constant.type.qualified.names.Front()->identifier);
+                if (!tag)
                 {
                     m_context->AddError(ast.location, "Expected integer constant, but encountered constant of non-integral type.");
                     return false;
                 }
 
-                switch (typeIt->second)
+                switch (*tag)
                 {
                     case Type::Data::UnionTag::Int8:
                     case Type::Data::UnionTag::Int16:
@@ -868,7 +875,7 @@ namespace he::schema
                         break;
 
                     default:
-                        m_context->AddError(ast.location, "Expected integer constant, but encountered constant of type {:s}", typeIt->second);
+                        m_context->AddError(ast.location, "Expected integer constant, but encountered constant of type {:s}", *tag);
                         return false;
                 }
 
@@ -944,8 +951,8 @@ namespace he::schema
                     const AstExpression* name = astType.qualified.names.Front();
                     if (name->kind == AstExpression::Kind::Identifier)
                     {
-                        auto it = m_builtinTypeMap.find(name->identifier);
-                        if (it != m_builtinTypeMap.end() && IsArithmetic(it->second))
+                        const Type::Data::UnionTag* tag = m_builtinTypeMap.Find(name->identifier);
+                        if (tag && IsArithmetic(*tag))
                             return true;
                     }
                 }
@@ -1001,14 +1008,14 @@ namespace he::schema
                         return false;
                     }
 
-                    const auto it = m_builtinTypeMap.find(astType.qualified.names.Front()->identifier);
-                    if (it == m_builtinTypeMap.end())
+                    const Type::Data::UnionTag* tag = m_builtinTypeMap.Find(astType.qualified.names.Front()->identifier);
+                    if (!tag)
                     {
                         m_context->AddError(astValue.location, "Invalid type expression expected a named type or builtin. This is verifier bug.");
                         return false;
                     }
 
-                    builtinType = it->second;
+                    builtinType = *tag;
                 }
 
                 // user-defined type

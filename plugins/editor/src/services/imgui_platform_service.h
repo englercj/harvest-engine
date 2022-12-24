@@ -5,13 +5,12 @@
 #include "he/core/allocator.h"
 #include "he/core/clock.h"
 #include "he/core/delegate.h"
+#include "he/core/hash_table.h"
 #include "he/core/unique_ptr.h"
 #include "he/window/device.h"
 #include "he/window/event.h"
 
 #include "imgui.h"
-
-#include <unordered_map>
 
 namespace he::editor
 {
@@ -68,7 +67,7 @@ namespace he::editor
         ImGuiMouseCursor m_lastCursor{ ImGuiMouseCursor_COUNT };
         bool m_needToUpdateMonitors{ false };
 
-        std::unordered_map<float, UniquePtr<ImFontAtlas>> m_dpiFontAtlas{};
+        HashMap<float, UniquePtr<ImFontAtlas>> m_dpiFontAtlas{};
         ImFontAtlas* m_originalFontAtlas{ nullptr };
 
         bool m_isModifierDown[4]{};

@@ -18,9 +18,9 @@ namespace he
 {
 namespace internal
 {
-    std::atomic<uint32_t> g_totalTestRuns{ 0 };
-    std::atomic<uint32_t> g_totalTestExpects{ 0 };
-    std::atomic<uint32_t> g_totalTestFailures{ 0 };
+    std::atomic<uint64_t> g_totalTestRuns{ 0 };
+    std::atomic<uint64_t> g_totalTestExpects{ 0 };
+    std::atomic<uint64_t> g_totalTestFailures{ 0 };
 }
 
     template <>
@@ -107,7 +107,7 @@ namespace internal
         return true;
     }
 
-    uint32_t RunAllTests(const char* filter)
+    uint64_t RunAllTests(const char* filter)
     {
         SortTests();
 

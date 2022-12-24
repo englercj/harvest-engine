@@ -3,11 +3,11 @@
 #include "struct_layout.h"
 
 #include "he/core/assert.h"
+#include "he/core/hash_table.h"
 
 #include <algorithm>
 #include <cmath>
 #include <limits>
-#include <unordered_map>
 
 namespace he::schema
 {
@@ -627,7 +627,7 @@ namespace he::schema
 
         FieldPlacer* parentPlacer = parentRef.placer;
 
-        std::unordered_map<TypeId, uint32_t> groups;
+        HashMap<TypeId, uint32_t> groups;
 
         for (Field::Builder field : st.GetFields())
         {
@@ -643,34 +643,34 @@ namespace he::schema
             }
             else if (field.GetMeta().IsGroup())
             {
-                groups.emplace(field.GetMeta().GetGroup().GetTypeId(), m_members.Size() - 1);
+                groups.Emplace(field.GetMeta().GetGroup().GetTypeId(), m_members.Size() - 1);
             }
             else
             {
-                groups.emplace(field.GetMeta().GetUnion().GetTypeId(), m_members.Size() - 1);
+                groups.Emplace(field.GetMeta().GetUnion().GetTypeId(), m_members.Size() - 1);
             }
         }
 
         for (Declaration::Builder child : decl.GetChildren())
         {
-            auto it = groups.find(child.GetId());
-            if (it == groups.end())
+            const uint32_t* index = groups.Find(child.GetId());
+            if (!index)
                 continue;
 
-            MemberRef& fieldRef = m_members[it->second];
+            MemberRef& fieldRef = m_members[*index];
             fieldRef.decl = child;
 
             Declaration::Data::Struct::Builder childStruct = child.GetData().GetStruct();
 
             if (childStruct.GetIsGroup())
             {
-                CollectMembers(fieldRef, it->second);
+                CollectMembers(fieldRef, *index);
             }
             else
             {
                 HE_ASSERT(childStruct.GetIsUnion());
                 fieldRef.placer = m_placers.PushBack(Allocator::GetDefault().New<UnionFieldPlacer>(*parentPlacer));
-                CollectUnionMembers(fieldRef, it->second);
+                CollectUnionMembers(fieldRef, *index);
             }
         }
     }
@@ -683,7 +683,7 @@ namespace he::schema
 
         UnionFieldPlacer* unionPlacer = static_cast<UnionFieldPlacer*>(parentRef.placer);
 
-        std::unordered_map<TypeId, uint32_t> groups;
+        HashMap<TypeId, uint32_t> groups;
 
         for (Field::Builder field : st.GetFields())
         {
@@ -700,34 +700,34 @@ namespace he::schema
             }
             else if (field.GetMeta().IsGroup())
             {
-                groups.emplace(field.GetMeta().GetGroup().GetTypeId(), index);
+                groups.Emplace(field.GetMeta().GetGroup().GetTypeId(), index);
             }
             else
             {
-                groups.emplace(field.GetMeta().GetUnion().GetTypeId(), index);
+                groups.Emplace(field.GetMeta().GetUnion().GetTypeId(), index);
             }
         }
 
         for (Declaration::Builder child : decl.GetChildren())
         {
-            auto it = groups.find(child.GetId());
-            if (it == groups.end())
+            const uint32_t* index = groups.Find(child.GetId());
+            if (!index)
                 continue;
 
-            MemberRef& fieldRef = m_members[it->second];
+            MemberRef& fieldRef = m_members[*index];
             fieldRef.decl = child;
 
             Declaration::Data::Struct::Builder childStruct = child.GetData().GetStruct();
 
             if (childStruct.GetIsGroup())
             {
-                CollectMembers(fieldRef, it->second);
+                CollectMembers(fieldRef, *index);
             }
             else
             {
                 HE_ASSERT(childStruct.GetIsUnion());
                 fieldRef.placer = m_placers.PushBack(Allocator::GetDefault().New<UnionFieldPlacer>(*fieldRef.placer));
-                CollectUnionMembers(fieldRef, it->second);
+                CollectUnionMembers(fieldRef, *index);
             }
         }
     }

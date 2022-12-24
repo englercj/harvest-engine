@@ -93,14 +93,13 @@ namespace he
     void ModuleRegistry::UnloadAllModules()
     {
         // Delete all the APIs that were provided by modules
-        for (auto&& it : m_apis)
+        for (const auto& pair : m_apis)
         {
-            ApiEntry& entry = it.second;
-
+            const ApiEntry& entry = pair.value;
             if (entry.destroy)
                 entry.destroy(entry.instance);
         }
-        m_apis.clear();
+        m_apis.Clear();
 
         // Delete the module instances and close any dynamic libraries that were opened.
         for (ModuleEntry& entry : m_modules)

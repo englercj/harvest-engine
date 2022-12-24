@@ -2,11 +2,10 @@
 
 #pragma once
 
+#include "he/core/hash_table.h"
 #include "he/core/types.h"
 #include "he/schema/ast.h"
 #include "he/schema/schema.h"
-
-#include <unordered_map>
 
 namespace he::schema
 {
@@ -34,13 +33,13 @@ namespace he::schema
 
     struct TypeKeyHasher
     {
-        constexpr uint64_t operator()(const TypeKey& key) const noexcept
+        [[nodiscard]] constexpr uint64_t operator()(const TypeKey& key) const noexcept
         {
             return CombineHash64(GetHashCode(key.expr), GetHashCode(key.scope));
         }
     };
 
-    using TypeMap = std::unordered_map<TypeKey, TypeValue, TypeKeyHasher>;
-    using TypeIdMap = std::unordered_map<TypeId, const AstNode*>;
-    using DeclIdMap = std::unordered_map<TypeId, Declaration::Builder, TypeIdHasher>;
+    using TypeMap = HashMap<TypeKey, TypeValue, TypeKeyHasher>;
+    using TypeIdMap = HashMap<TypeId, const AstNode*>;
+    using DeclIdMap = HashMap<TypeId, Declaration::Builder, TypeIdHasher>;
 }

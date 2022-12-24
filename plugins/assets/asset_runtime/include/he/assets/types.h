@@ -98,7 +98,7 @@ namespace he::assets
 
         constexpr _HashId operator^(const _HashId& x) const { return CombineHash32(val, x.val); }
 
-        [[nodiscard]] uint64_t HashCode() const noexcept { return val; }
+        [[nodiscard]] constexpr uint64_t HashCode() const noexcept { return val; }
 
         uint32_t val;
     };

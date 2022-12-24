@@ -64,7 +64,7 @@ namespace he
     {
         static_assert(sizeof(Uuid::m_bytes) > sizeof(uint64_t));
         uint64_t h;
-        he::MemCopy(&h, value.m_bytes, sizeof(uint64_t));
+        he::MemCopy(&h, m_bytes, sizeof(uint64_t));
         return h;
     }
 

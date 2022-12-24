@@ -5,6 +5,7 @@
 #include "he/core/allocator.h"
 #include "he/core/arena_allocator.h"
 #include "he/core/buffer_writer.h"
+#include "he/core/hash_table.h"
 #include "he/core/span.h"
 #include "he/core/string_view.h"
 #include "he/core/test.h"
@@ -98,6 +99,14 @@ namespace he
         static uint8_t* GetPtr(BufferWriter& b) { return b.m_data; }
         static BufferWriter::GrowthStrategy GetStrategy(const BufferWriter& b) { return b.m_strategy; }
         static float GetGrowth(const BufferWriter& b) { return b.m_growth; }
+    };
+
+    // --------------------------------------------------------------------------------------------
+    class HashTableTestAttorney
+    {
+    public:
+        template <typename T>
+        static Vector<typename T::EntryType>& GetVector(HashTable<T>& v) { return v.m_entries; }
     };
 
     // --------------------------------------------------------------------------------------------

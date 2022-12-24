@@ -712,13 +712,25 @@ HE_TEST(core, vector, operator_eq)
 // ------------------------------------------------------------------------------------------------
 HE_TEST(core, vector, operator_ne)
 {
-    Vector<int> v;
-    v.Resize(10, 12345);
+    {
+        Vector<int> v;
+        v.Resize(10, 12345);
 
-    Vector<int> v2;
-    v2.Resize(11, 12345);
+        Vector<int> v2;
+        v2.Resize(11, 12345);
 
-    HE_EXPECT(v != v2);
+        HE_EXPECT(v != v2);
+    }
+
+    {
+        Vector<int> v;
+        v.Resize(10, 12345);
+
+        Vector<int> v2;
+        v2.Resize(10, 12346);
+
+        HE_EXPECT(v != v2);
+    }
 }
 
 // ------------------------------------------------------------------------------------------------

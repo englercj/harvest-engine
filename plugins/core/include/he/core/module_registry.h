@@ -3,14 +3,13 @@
 #pragma once
 
 #include "he/core/allocator.h"
+#include "he/core/hash_table.h"
 #include "he/core/string.h"
 #include "he/core/system.h"
 #include "he/core/type_info.h"
 #include "he/core/types.h"
 #include "he/core/utils.h"
 #include "he/core/vector.h"
-
-#include <unordered_map>
 
 #define HE_MODULE_TYPE_CONSOLE_APP      1
 #define HE_MODULE_TYPE_WINDOWED_APP     2
@@ -154,7 +153,7 @@ namespace he
 
     private:
         Vector<ModuleEntry> m_modules{};
-        std::unordered_map<TypeInfo, ApiEntry> m_apis{};
+        HashMap<TypeInfo, ApiEntry> m_apis{};
     #if HE_ENABLE_ASSERTIONS
         bool m_startupOrLater{ false };
     #endif
@@ -179,8 +178,8 @@ namespace he
     {
         constexpr TypeInfo Info = TypeInfo::Get<T>();
 
-        const auto pair = m_apis.try_emplace(Info);
-        if (!HE_VERIFY(pair.second,
+        const auto result = m_apis.Emplace(Info);
+        if (!HE_VERIFY(result.inserted,
             HE_MSG("API has already been registered"),
             HE_KV(name, Info.Name()),
             HE_KV(hash, Info.Hash())))
@@ -188,7 +187,7 @@ namespace he
             return;
         }
 
-        ApiEntry& entry = pair.first->second;
+        ApiEntry& entry = result.entry.value;
         entry.instance = &instance;
         entry.destroy = nullptr;
     }
@@ -198,8 +197,8 @@ namespace he
     {
         constexpr TypeInfo Info = TypeInfo::Get<T>();
 
-        const auto pair = m_apis.try_emplace(Info);
-        if (!HE_VERIFY(pair.second,
+        const auto result = m_apis.Emplace(Info);
+        if (!HE_VERIFY(result.inserted,
             HE_MSG("API has already been registered"),
             HE_KV(name, Info.Name()),
             HE_KV(hash, Info.Hash())))
@@ -207,7 +206,7 @@ namespace he
             return;
         }
 
-        ApiEntry& entry = pair.first->second;
+        ApiEntry& entry = result.entry.value;
         entry.instance = Allocator::GetDefault().New<T>();
         entry.destroy = [](const void* api) { Allocator::GetDefault().Delete(static_cast<const T*>(api)); };
     }
@@ -216,15 +215,14 @@ namespace he
     inline void ModuleRegistry::UnregisterApi()
     {
         constexpr TypeInfo Info = TypeInfo::Get<T>();
-        const auto it = m_apis.find(Info);
+        const ApiEntry* entry = m_apis.Find(Info);
 
-        if (it != m_apis.end())
+        if (entry)
         {
-            ApiEntry& entry = it->second;
-            entry.destroy(entry.instance);
+            entry->destroy(entry->instance);
+            m_apis.Erase(Info);
         }
 
-        m_apis.erase(it);
     }
 
     template <typename T>
@@ -234,11 +232,8 @@ namespace he
 
         constexpr TypeInfo Info = TypeInfo::Get<T>();
 
-        const auto it = m_apis.find(Info);
-        if (it == m_apis.end())
-            return nullptr;
-
-        return static_cast<T*>(it->second.instance);
+        const ApiEntry* entry = m_apis.Find(Info);
+        return entry ? static_cast<T*>(entry->instance) : nullptr;
     }
 
     template <typename T>

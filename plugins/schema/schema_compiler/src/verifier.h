@@ -2,13 +2,11 @@
 
 #pragma once
 
+#include "he/core/hash_table.h"
 #include "he/core/types.h"
 #include "he/core/vector.h"
 #include "he/schema/ast.h"
 #include "he/schema/compile_types.h"
-
-#include <set>
-#include <unordered_map>
 
 namespace he::schema
 {
@@ -22,8 +20,9 @@ namespace he::schema
         {
             uint16_t value;
             AstFileLocation loc;
-            bool operator==(const MemberOrdinal& v) const { return value == v.value; }
-            bool operator<(const MemberOrdinal& v) const { return value < v.value; }
+            [[nodiscard]] bool operator==(const MemberOrdinal& v) const { return value == v.value; }
+            [[nodiscard]] bool operator<(const MemberOrdinal& v) const { return value < v.value; }
+            [[nodiscard]] constexpr uint64_t HashCode() const;
         };
 
     private:
@@ -32,7 +31,7 @@ namespace he::schema
 
         bool VerifyAttributes(const AstNode& node);
         bool VerifyMembers(const AstNode& node, AstNode::Kind kind);
-        bool VerifyMembersOf(const AstNode& node, AstNode::Kind kind, std::set<MemberOrdinal>& ordinals);
+        bool VerifyMembersOf(const AstNode& node, AstNode::Kind kind, HashSet<MemberOrdinal>& ordinals);
         bool VerifyMethodParams(const AstNode& node, const AstMethodParams& params);
         bool VerifyDeclName(const AstNode& node);
         bool VerifyFieldName(const AstNode& node);
@@ -49,6 +48,6 @@ namespace he::schema
 
     private:
         class CompileContext* m_context{ nullptr };
-        std::unordered_map<StringView, Type::Data::UnionTag> m_builtinTypeMap{};
+        HashMap<StringView, Type::Data::UnionTag> m_builtinTypeMap{};
     };
 }

@@ -6,14 +6,13 @@
 #include "he/assets/asset_type_registry.h"
 #include "he/assets/types_fmt.h"
 #include "he/assets/types.h"
+#include "he/core/hash_table.h"
 #include "he/core/log.h"
 #include "he/core/path.h"
 #include "he/core/result_fmt.h"
 #include "he/core/span.h"
 #include "he/core/string.h"
 #include "he/core/string_fmt.h"
-
-#include <unordered_set>
 
 namespace he::assets
 {
@@ -57,12 +56,12 @@ namespace he::assets
             HE_LOG_ERROR(he_editor, HE_MSG("Failed to query assets needing import."));
         }
 
-        std::unordered_set<AssetFileUuid> fileUuids;
+        HashSet<AssetFileUuid> fileUuids;
 
         for (const AssetModel& asset : pending)
         {
-            const auto pair = fileUuids.insert(asset.fileUuid);
-            if (pair.second)
+            const auto result = fileUuids.Insert(asset.fileUuid);
+            if (result.inserted)
             {
                 AssetFileModel assetFile;
                 if (AssetFileModel::FindOne(m_db, asset.fileUuid, assetFile))

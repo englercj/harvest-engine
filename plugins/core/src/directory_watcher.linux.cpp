@@ -5,12 +5,12 @@
 #include "he/core/clock.h"
 #include "he/core/directory.h"
 #include "he/core/file.h"
+#include "he/core/hash_table.h"
 #include "he/core/path.h"
 #include "he/core/scope_guard.h"
 #include "he/core/utils.h"
 
 #include <algorithm>
-#include <unordered_map>
 
 #if defined(HE_PLATFORM_LINUX)
 
@@ -34,7 +34,7 @@ namespace he
 
     struct DirectoryWatcherImpl
     {
-        std::unordered_map<int, String> wdToPathMap{};
+        HashMap<int, String> wdToPathMap{};
 
         int stopPipeFds[2]{ -1, -1 };
         int inotifyFd{ -1 };
@@ -73,7 +73,7 @@ namespace he
             if (wd == -1)
                 return Result::FromLastError();
 
-            impl->wdToPathMap.insert({ wd, fullPath });
+            impl->wdToPathMap.Emplace(wd, fullPath);
 
             Result r = WatchDir(impl, fullPath.Data());
             if (!r)
@@ -119,7 +119,7 @@ namespace he
         {
             if (HasFlag(info->mask, IN_IGNORED))
             {
-                impl->wdToPathMap.erase(info->wd);
+                impl->wdToPathMap.Erase(info->wd);
             }
         });
 

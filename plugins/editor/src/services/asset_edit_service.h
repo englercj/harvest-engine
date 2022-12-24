@@ -5,6 +5,7 @@
 #include "asset_service.h"
 #include "framework/schema_edit.h"
 
+#include "he/core/hash_table.h"
 #include "he/core/types.h"
 #include "he/core/unique_ptr.h"
 #include "he/core/vector.h"
@@ -28,7 +29,7 @@ namespace he::editor
     public:
         explicit AssetEditService(AssetService& assetService) noexcept;
 
-        bool OpenAsset(const assets::AssetUuid& assetUuid);
+        SchemaEditContext* OpenAsset(const assets::AssetUuid& assetUuid);
         void SaveAsset(const assets::AssetUuid& assetUuid);
         void CloseAsset(SchemaEditContext* ctx);
 
@@ -42,7 +43,7 @@ namespace he::editor
     private:
         AssetService& m_assetService;
 
-        std::unordered_map<assets::AssetUuid, CtxEntry> m_contexts{};
-        std::unordered_map<assets::AssetFileUuid, assets::AssetDatabase::AssetFileBuilder> m_openFiles{};
+        HashMap<assets::AssetUuid, CtxEntry> m_contexts{};
+        HashMap<assets::AssetFileUuid, assets::AssetDatabase::AssetFileBuilder> m_openFiles{};
     };
 }

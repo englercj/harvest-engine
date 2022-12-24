@@ -797,7 +797,7 @@ namespace he::window::linux
                 {
                     if (xev->info[i].flags & XISlaveRemoved)
                     {
-                        m_inputDeviceCache.erase(xev->info[i].deviceid);
+                        m_inputDeviceCache.Erase(xev->info[i].deviceid);
                     }
                 }
                 break;
@@ -1301,9 +1301,9 @@ namespace he::window::linux
 
     DeviceImpl::InputDeviceInfo& DeviceImpl::FindInputDeviceInfo(int deviceId)
     {
-        const auto pair = m_inputDeviceCache.try_emplace(deviceId);
-        const bool isNew = pair.second;
-        InputDeviceInfo& info = pair.first->second;
+        const auto result = m_inputDeviceCache.Emplace(deviceId);
+        const bool isNew = result.inserted;
+        InputDeviceInfo& info = result.entry;
 
         if (!isNew)
             return info;

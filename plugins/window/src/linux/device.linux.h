@@ -10,7 +10,6 @@
 #include "he/window/pointer.h"
 
 #include <atomic>
-#include <unordered_map>
 
 #if defined(HE_PLATFORM_LINUX)
 
@@ -161,7 +160,7 @@ namespace he::window::linux
         Vec2f m_cursorRestorePosition{ 0, 0 };
         DeviceInfo m_deviceInfo{};
 
-        std::unordered_map<int, InputDeviceInfo> m_inputDeviceCache{};
+        HashMap<int, InputDeviceInfo> m_inputDeviceCache{};
 
         int m_dndVersion{ 0 };
         Window m_dndSource{ X11_None };

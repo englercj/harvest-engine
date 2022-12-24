@@ -3,15 +3,15 @@
 namespace he
 {
     template <typename T>
-    HashTable<T>::HashTable(Allocator& allocator) noexcept
-        : HashTable(HasherType(), EqualType(), allocator)
-    {}
-
-    template <typename T>
     HashTable<T>::HashTable(const HasherType& hash, const EqualType& equal, Allocator& allocator) noexcept
         : m_entries(allocator)
         , m_hash(hash)
         , m_equal(equal)
+    {}
+
+    template <typename T>
+    HashTable<T>::HashTable(Allocator& allocator) noexcept
+        : HashTable(HasherType(), EqualType(), allocator)
     {}
 
     template <typename T>
@@ -140,9 +140,58 @@ namespace he
 
     template <typename T>
     template <typename K>
+    const typename HashTable<T>::EntryType* HashTable<T>::Find(const K& key) const
+    {
+        if (IsEmpty()) [[unlikely]]
+            return nullptr;
+
+        const uint64_t hash = m_hash(key);
+        uint32_t distanceAndFingerprint = DistAndFingerprintFromHash(hash);
+        uint32_t bucketIndex = BucketIndexFromHash(hash);
+        const Bucket* bucket = m_buckets + bucketIndex;
+
+        // We check a couple buckets outside the loop first because this manual loop unroll
+        // results in an improved lookup time on average. This is because the loop is actually
+        // the degenerate case where an entry has been overflowed multiple times.
+        if (distanceAndFingerprint == bucket->distanceAndFingerprint && m_equal(key, Traits::GetKey(m_entries[bucket->entryIndex])))
+        {
+            return Begin() + bucket->entryIndex;
+        }
+
+        distanceAndFingerprint = DistAdd(distanceAndFingerprint);
+        bucketIndex = Next(bucketIndex);
+        bucket = m_buckets + bucketIndex;
+
+        if (distanceAndFingerprint == bucket->distanceAndFingerprint && m_equal(key, Traits::GetKey(m_entries[bucket->entryIndex])))
+        {
+            return Begin() + bucket->entryIndex;
+        }
+
+        while (true)
+        {
+            distanceAndFingerprint = DistAdd(distanceAndFingerprint);
+            bucketIndex = Next(bucketIndex);
+            bucket = m_buckets + bucketIndex;
+
+            if (distanceAndFingerprint == bucket->distanceAndFingerprint)
+            {
+                if (m_equal(key, Traits::GetKey(m_entries[bucket->entryIndex])))
+                {
+                    return Begin() + bucket->entryIndex;
+                }
+            }
+            else if (distanceAndFingerprint > bucket->distanceAndFingerprint)
+            {
+                return nullptr;
+            }
+        }
+    }
+
+    template <typename T>
+    template <typename K>
     const typename HashTable<T>::EntryType& HashTable<T>::Get(const K& key) const
     {
-        EntryType* entry = Find(key);
+        const EntryType* entry = Find(key);
         HE_ASSERT(entry);
         return *entry;
     }
@@ -153,36 +202,36 @@ namespace he
         HE_ASSERT(entries.Size() <= MaxBucketCount());
 
         const uint8_t shifts = CalculateShiftsForSize(entries.Size());
-        const bool needsRealloc = m_bucketCount == 0 || shifts < m_shifts || entries.GetAllocator() != m_entries.GetAllocator();
+        const bool needsRealloc = m_bucketCount == 0 || shifts < m_shifts || &entries.GetAllocator() != &m_entries.GetAllocator();
 
         m_entries = Move(entries);
         if (needsRealloc)
         {
             m_shifts = shifts;
             DeallocateBuckets();
-            AllocateBucketsFromShift(); // TODO: Should happen after entries move
+            AllocateBucketsFromShift();
         }
         ClearBuckets();
 
         // We can't use ClearAndFillBucketsFromEntries() because the incoming entries might not be
-        // unique. So  loop until we reach the end of the incoming container. Duplicated entries
+        // unique. So loop until we reach the end of the incoming container. Duplicated entries
         // will be replaced with Back().
         uint32_t index = 0;
         while (index != m_entries.Size())
         {
             const KeyType& key = Traits::GetKey(m_entries[index]);
             const uint64_t hash = m_hash(key);
-            const uint32_t distanceAndFingerprint = DistAndFingerprintFromHash(hash);
-            const uint32_t bucketIndex = BucketIndexFromHash(hash);
+            uint32_t distanceAndFingerprint = DistAndFingerprintFromHash(hash);
+            uint32_t bucketIndex = BucketIndexFromHash(hash);
 
             bool found = false;
             while (true)
             {
                 const Bucket& bucket = m_buckets[bucketIndex];
-                if (distanceAndFingerprint > bucket.m_distanceAndFingerprint)
+                if (distanceAndFingerprint > bucket.distanceAndFingerprint)
                     break;
 
-                if (distanceAndFingerprint == bucket.m_distanceAndFingerprint
+                if (distanceAndFingerprint == bucket.distanceAndFingerprint
                     && m_equal(key, Traits::GetKey(m_entries[bucket.entryIndex])))
                 {
                     found = true;
@@ -210,14 +259,37 @@ namespace he
 
     template <typename T>
     template <typename K>
-    typename HashTable<T>::EmplaceResult HashTable<T>::Emplace(K&& key)
+    bool HashTable<T>::Erase(K&& key)
+    {
+        if (IsEmpty())
+            return false;
+
+        auto [distanceAndFingerprint, bucketIndex] = NextWhileLess(key);
+
+        while (distanceAndFingerprint == m_buckets[bucketIndex].distanceAndFingerprint
+            && !m_equal(key, Traits::GetKey(m_entries[m_buckets[bucketIndex].entryIndex])))
+        {
+            distanceAndFingerprint = DistAdd(distanceAndFingerprint);
+            bucketIndex = Next(bucketIndex);
+        }
+
+        if (distanceAndFingerprint != m_buckets[bucketIndex].distanceAndFingerprint)
+            return false;
+
+        DoErase(bucketIndex);
+        return true;
+    }
+
+    template <typename T>
+    template <typename K, typename... Args>
+    HashTable<T>::EmplaceResult HashTable<T>::Emplace(K&& key, Args&&... args)
     {
         if (IsFull())
             GrowToNextShift();
 
         const uint64_t hash = m_hash(key);
-        const uint32_t distanceAndFingerprint = DistAndFingerprintFromHash(hash);
-        const uint32_t bucketIndex = BucketIndexFromHash(hash);
+        uint32_t distanceAndFingerprint = DistAndFingerprintFromHash(hash);
+        uint32_t bucketIndex = BucketIndexFromHash(hash);
 
         while (distanceAndFingerprint <= m_buckets[bucketIndex].distanceAndFingerprint)
         {
@@ -225,18 +297,17 @@ namespace he
             if (distanceAndFingerprint == bucket.distanceAndFingerprint
                 && m_equal(key, Traits::GetKey(m_entries[bucket.entryIndex])))
             {
-                return { Begin() + bucket.entryIndex, false };
+                return { m_entries[bucket.entryIndex], false };
             }
 
             distanceAndFingerprint = DistAdd(distanceAndFingerprint);
             bucketIndex = Next(bucketIndex);
         }
 
-        // Value is new, emplace the new entry and then update buckets
         const uint32_t index = m_entries.Size();
-        m_entries.EmplaceBack(Forward<K>(key));
+        m_entries.EmplaceBack(Forward<K>(key), Forward<Args>(args)...);
         PlaceAndShiftUp({ distanceAndFingerprint, index }, bucketIndex);
-        return { Begin() + index, true };
+        return { m_entries.Back(), true };
     }
 
     template <typename T>
@@ -277,8 +348,8 @@ namespace he
     HashTable<T>::Bucket HashTable<T>::NextWhileLess(const K& key) const
     {
         const uint64_t hash = m_hash(key);
-        const uint32_t distanceAndFingerprint = DistAndFingerprintFromHash(hash);
-        const uint32_t bucketIndex = BucketIndexFromHash(hash);
+        uint32_t distanceAndFingerprint = DistAndFingerprintFromHash(hash);
+        uint32_t bucketIndex = BucketIndexFromHash(hash);
 
         while (distanceAndFingerprint < m_buckets[bucketIndex].distanceAndFingerprint)
         {
@@ -318,7 +389,7 @@ namespace he
     template <typename T>
     constexpr uint8_t HashTable<T>::CalculateShiftsForSize(uint32_t size) const
     {
-        constexpr uint8_t shifts = InitialShifts;
+        uint8_t shifts = InitialShifts;
         while (shifts > 0 && static_cast<uint32_t>(CalculateBucketCount(shifts) * m_maxLoadFactor) < size)
             --shifts;
         return shifts;
@@ -441,106 +512,31 @@ namespace he
         m_entries.PopBack();
     }
 
-    template <typename T>
-    template <typename K>
-    uint32_t HashTable<T>::DoEraseKey(K&& key)
+    template <typename K, typename V, typename H, typename E>
+    template <typename U, typename X>
+    typename HashMap<K, V, H, E>::EmplaceResult HashMap<K, V, H, E>::EmplaceOrAssign(U&& key, X&& value)
     {
-        if (IsEmpty())
-            return 0;
-
-        auto [distanceAndFingerprint, bucketIndex] = NextWhileLess(key);
-
-        while (distanceAndFingerprint == m_buckets[bucketIndex].distanceAndFingerprint
-            && !m_equal(key, Traits::GetKey(m_entries[m_buckets[bucketIndex].entryIndex])))
+        const EmplaceResult result = Super::Emplace(Forward<U>(key));
+        if (!result.inserted)
         {
-            distanceAndFingerprint = DistAdd(distanceAndFingerprint);
-            bucketIndex = Next(bucketIndex);
+            result.entry.value = Forward<X>(value);
         }
-
-        if (distanceAndFingerprint != m_buckets[bucketIndex].distanceAndFingerprint)
-            return 0;
-
-        DoErase(bucketIndex);
-        return 1;
+        return result;
     }
 
-    template <typename T>
-    template <typename K>
-    const typename HashTable<T>::EntryType* HashTable<T>::DoFind(const K& key) const
+    template <typename K, typename V, typename H, typename E>
+    template <typename U>
+    typename const HashMap<K, V, H, E>::ValueType* HashMap<K, V, H, E>::Find(const U& key) const
     {
-        if (IsEmpty()) [[unlikely]]
-            return nullptr;
-
-        const uint64_t hash = m_hash(key);
-        const uint32_t distanceAndFingerprint = DistAndFingerprintFromHash(hash);
-        const uint32_t bucketIndex = BucketIndexFromHash(hash);
-        EntryType* bucket = m_buckets + bucketIndex;
-
-        // We check a couple buckets outside the loop first because this manual loop unroll
-        // results in an improved lookup time on average. This is because the loop is actually
-        // the degenerate case where an entry has been overflowed multiple times.
-        if (distanceAndFingerprint == bucket->distanceAndFingerprint && m_equal(key, Traits::GetKey(m_entries[bucket->entryIndex])))
-        {
-            return Begin() + bucket->entryIndex;
-        }
-
-        distanceAndFingerprint = DistAdd(distanceAndFingerprint);
-        bucketIndex = Next(bucketIndex);
-        bucket = m_buckets + bucketIndex;
-
-        if (distanceAndFingerprint == bucket->distanceAndFingerprint && m_equal(key, Traits::GetKey(m_entries[bucket->entryIndex])))
-        {
-            return Begin() + bucket->entryIndex;
-        }
-
-        while (true)
-        {
-            distanceAndFingerprint = DistAdd(distanceAndFingerprint);
-            bucketIndex = Next(bucketIndex);
-            bucket = m_buckets + bucketIndex;
-
-            if (distanceAndFingerprint == bucket->distanceAndFingerprint)
-            {
-                if (m_equal(key, Traits::GetKey(m_entries[bucket->entryIndex])))
-                {
-                    return Begin() + bucket->entryIndex;
-                }
-            }
-            else if (distanceAndFingerprint > bucket->distanceAndFingerprint)
-            {
-                return nullptr;
-            }
-        }
+        const EntryType* v = Super::Find(key);
+        return v ? &v->value : nullptr;
     }
 
-    template <Hashable K, typename V, typename H, typename E>
-    template <typename U, typename... Args>
-    typename HashMap<K, V, H, E>::EmplaceResult HashMap<K, V, H, E>::Emplace(U&& key, Args&&... args)
+    template <typename K, typename V, typename H, typename E>
+    template <typename U>
+    typename HashMap<K, V, H, E>::ValueType* HashMap<K, V, H, E>::Find(const U& key)
     {
-        if (this->IsFull())
-            this->GrowToNextShift();
-
-        const uint64_t hash = m_hash(key);
-        const uint32_t distanceAndFingerprint = DistAndFingerprintFromHash(hash);
-        const uint32_t bucketIndex = BucketIndexFromHash(hash);
-
-        while (distanceAndFingerprint <= this->m_buckets[bucketIndex].distanceAndFingerprint)
-        {
-            const Super::Bucket& bucket = this->m_buckets[bucketIndex];
-            if (distanceAndFingerprint == bucket.distanceAndFingerprint
-                && this->m_equal(key, Traits::GetKey(this->m_entries[bucket.entryIndex])))
-            {
-                return { this->Begin() + bucket.entryIndex, false };
-            }
-
-            distanceAndFingerprint = this->DistAdd(distanceAndFingerprint);
-            bucketIndex = this->Next(bucketIndex);
-        }
-
-        // Value is new, emplace the new entry and then update buckets
-        const uint32_t index = this->m_entries.Size();
-        this->m_entries.EmplaceBack(Forward<K>(key), Forward<Args>(args)...);
-        this->PlaceAndShiftUp({ distanceAndFingerprint, index }, bucketIndex);
-        return { this->Begin() + index, true };
+        EntryType* v = Super::Find(key);
+        return v ? &v->value : nullptr;
     }
 }

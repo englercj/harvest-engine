@@ -2,11 +2,10 @@
 
 #pragma once
 
+#include "he/core/hash_table.h"
 #include "he/sqlite/schema_migration.h"
 #include "he/sqlite/statement.h"
 #include "he/sqlite/transaction.h"
-
-#include <unordered_map>
 
 struct sqlite3;
 
@@ -34,6 +33,6 @@ namespace he::sqlite
 
     private:
         sqlite3* m_db{ nullptr };
-        std::unordered_map<const char*, Statement> m_statementCache{};
+        HashMap<const char*, Statement> m_statementCache{};
     };
 }

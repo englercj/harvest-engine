@@ -169,10 +169,7 @@ namespace he
     ///     tested against the "fully qualified" test name, which looks like "module:suite:test".
     ///     If the filter string is contained anywhere within that string, it is included.
     /// \return Zero if all tests pass, or a non-zero value if there was a failure.
-    uint32_t RunAllTests(const char* filter = nullptr);
-
-    /// Return a span of all test fixture pointers.
-    Span<TestFixture*> GetAllTests();
+    uint64_t RunAllTests(const char* filter = nullptr);
 
     /// Checks if two floating point values are within `maxUlpDiff` floating point steps of eachother.
     ///
@@ -234,9 +231,9 @@ namespace he
 
 namespace internal
 {
-    extern std::atomic<uint32_t> g_totalTestRuns;
-    extern std::atomic<uint32_t> g_totalTestExpects;
-    extern std::atomic<uint32_t> g_totalTestFailures;
+    extern std::atomic<uint64_t> g_totalTestRuns;
+    extern std::atomic<uint64_t> g_totalTestExpects;
+    extern std::atomic<uint64_t> g_totalTestFailures;
 }
 }
 

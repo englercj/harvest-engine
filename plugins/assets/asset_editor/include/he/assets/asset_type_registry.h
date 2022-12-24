@@ -5,14 +5,13 @@
 #include "he/assets/asset_importer.h"
 #include "he/assets/asset_compiler.h"
 #include "he/assets/types.h"
+#include "he/core/hash_table.h"
 #include "he/core/type_info.h"
 #include "he/core/types.h"
 #include "he/core/unique_ptr.h"
 #include "he/core/vector.h"
 #include "he/core/utils.h"
 #include "he/schema/types.h"
-
-#include <unordered_map>
 
 namespace he::assets
 {
@@ -58,8 +57,8 @@ namespace he::assets
         template <typename AssetType>
         void UnregisterAssetType();
 
-        const Entry* FindAssetType(AssetTypeId typeId) const { auto it = m_assetTypes.find(typeId); return it == m_assetTypes.end() ? nullptr : &it->second; }
-        const Entry& GetAssetType(AssetTypeId typeId) const { return m_assetTypes.at(typeId); }
+        const Entry* FindAssetType(AssetTypeId typeId) const { return m_assetTypes.Find(typeId); }
+        const Entry& GetAssetType(AssetTypeId typeId) const { return m_assetTypes.Get(typeId); }
 
     private:
         const ImporterEntry* FindImporter(const TypeInfo& info);
@@ -72,7 +71,7 @@ namespace he::assets
 
     private:
         Vector<ImporterEntry> m_importers;
-        std::unordered_map<AssetTypeId, Entry> m_assetTypes;
+        HashMap<AssetTypeId, Entry> m_assetTypes;
     };
 
     // --------------------------------------------------------------------------------------------

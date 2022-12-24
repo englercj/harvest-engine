@@ -65,8 +65,8 @@ namespace he::assets
         UniquePtr<AssetCompiler> compiler)
     {
         const AssetTypeId assetTypeId{ assetTypeName };
-        const auto pair = m_assetTypes.try_emplace(assetTypeId);
-        if (!pair.second)
+        const auto result = m_assetTypes.Emplace(assetTypeId);
+        if (!result.inserted)
         {
             HE_LOG_ERROR(he_assets,
                 HE_MSG("Asset type is already registered."),
@@ -77,7 +77,7 @@ namespace he::assets
         const he::schema::Declaration::Reader decl = GetSchema(declInfo);
         const he::schema::List<he::schema::Attribute>::Reader attributes = decl.GetAttributes();
 
-        Entry& entry = pair.first->second;
+        Entry& entry = result.entry.value;
         entry.declInfo = &declInfo;
         entry.compilerInfo = compilerInfo;
         entry.compiler = Move(compiler);
@@ -89,6 +89,6 @@ namespace he::assets
     void AssetTypeRegistry::UnregisterAssetType(const char* assetTypeName)
     {
         const AssetTypeId assetTypeId{ assetTypeName };
-        m_assetTypes.erase(assetTypeId);
+        m_assetTypes.Erase(assetTypeId);
     }
 }

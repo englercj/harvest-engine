@@ -28,7 +28,12 @@ namespace he
 
         [[nodiscard]] T* Get() const { return m_ptr; }
         T* Release() { T* p = m_ptr; m_ptr = nullptr; return p; }
-        void Reset(T* p = nullptr) { Allocator::GetDefault().Delete(m_ptr); m_ptr = p; }
+
+        void Reset(T* p = nullptr) noexcept(std::is_nothrow_destructible_v<T>)
+        {
+            Allocator::GetDefault().Delete(m_ptr);
+            m_ptr = p;
+        }
 
         [[nodiscard]] T* operator->() const { return m_ptr; }
         [[nodiscard]] T& operator*() const { return *m_ptr; }

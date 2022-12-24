@@ -5,11 +5,10 @@
 #include "he/assets/asset_database.h"
 #include "he/assets/types_fmt.h"
 #include "he/core/hash.h"
+#include "he/core/hash_table.h"
 #include "he/core/uuid_fmt.h"
 #include "he/sqlite/database.h"
 #include "he/sqlite/statement.h"
-
-#include <unordered_set>
 
 namespace he::assets
 {
@@ -206,7 +205,7 @@ namespace he::assets
         }
 
         // Read existing Asset IDs so we can remove ones that no longer exist.
-        std::unordered_set<AssetUuid> assetUuids;
+        HashSet<AssetUuid> assetUuids;
         {
             sqlite::ScopedStatement stmt = db.StatementLiteral(R"(
                 SELECT uuid FROM asset WHERE asset_file_id = ?
@@ -219,7 +218,7 @@ namespace he::assets
             {
                 AssetUuid assetId;
                 stmt.GetColumn(0).ReadBlob(assetId.val.m_bytes);
-                assetUuids.insert(assetId);
+                assetUuids.Insert(assetId);
             });
 
             if (!res)
@@ -232,7 +231,7 @@ namespace he::assets
             AssetModel::AddOrUpdate(db, model.uuid, asset);
 
             const AssetUuid assetId(asset.GetUuid());
-            assetUuids.erase(assetId);
+            assetUuids.Erase(assetId);
         }
 
         // Remove each asset that no longer exists in the file.

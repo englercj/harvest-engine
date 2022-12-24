@@ -76,9 +76,9 @@ namespace he::sqlite
                 m_db = nullptr;
             });
 
-            for (auto&& pair : m_statementCache)
+            for (auto&& entry : m_statementCache)
             {
-                pair.second.Finalize();
+                entry.value.Finalize();
             }
 
             Execute("pragma optimize;");

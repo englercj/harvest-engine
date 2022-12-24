@@ -14,9 +14,9 @@ namespace he::editor
 
     SchemaEditContext* AssetEditService::OpenAsset(const assets::AssetUuid& assetUuid)
     {
-        auto ctxIt = m_contexts.find(assetUuid);
-        if (ctxIt != m_contexts.end())
-            return ctxIt->second.ctx.Get();
+        CtxEntry* existingEntry = m_contexts.Find(assetUuid);
+        if (existingEntry)
+            return existingEntry->ctx.Get();
 
         assets::AssetDatabase& db = m_assetService.AssetDB();
 
@@ -28,19 +28,18 @@ namespace he::editor
             return nullptr;
         }
 
-        auto fileIt = m_openFiles.find(assetFile.uuid);
-        if (fileIt != m_openFiles.end())
+        assets::AssetDatabase::AssetFileBuilder* builder = m_openFiles.Find(assetFile.uuid);
+        if (builder)
         {
-            assets::AssetDatabase::AssetFileBuilder& builder = fileIt->second;
-            for (assets::schema::Asset::Builder asset : builder.Root().GetAssets())
+            for (assets::schema::Asset::Builder asset : builder->Root().GetAssets())
             {
                 if (assetUuid == asset.GetUuid())
                 {
                     CtxEntry entry;
                     entry.ctx = MakeUnique<SchemaEditContext>(asset);
                     entry.refCount = 1;
-                    auto pair = m_contexts.emplace(assetUuid, Move(entry));
-                    return pair.first->second.ctx.Get();
+                    const auto result = m_contexts.Emplace(assetUuid, Move(entry));
+                    return result.entry.value.ctx.Get();
                 }
             }
 
@@ -52,7 +51,10 @@ namespace he::editor
         else
         {
             // TODO: Load file
+            return nullptr;
         }
+
+        return nullptr;
     }
 
     void AssetEditService::SaveAsset(const assets::AssetUuid& assetUuid)
@@ -65,12 +67,13 @@ namespace he::editor
             HE_MSG("Unable to find the asset file associated with the asset."),
             HE_KV(asset_uuid, assetUuid)))
         {
-            return nullptr;
+            return;
         }
     }
 
     void AssetEditService::CloseAsset(SchemaEditContext* ctx)
     {
         // TODO: close context
+        HE_UNUSED(ctx);
     }
 }

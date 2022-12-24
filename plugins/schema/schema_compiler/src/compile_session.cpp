@@ -26,14 +26,14 @@ namespace he::schema
         m_context = Allocator::GetDefault().New<CompileContext>(path, config, m_typeIdMap, m_typeMap, m_declIdMap);
     }
 
-    CompileSession::~CompileSession()
+    CompileSession::~CompileSession() noexcept
     {
         Allocator& alloc = Allocator::GetDefault();
 
         alloc.Delete(m_context);
-        for (auto pair : m_importMap)
+        for (auto&& entry : m_importMap)
         {
-            alloc.Delete(pair.second);
+            alloc.Delete(entry.value);
         }
     }
 
@@ -196,11 +196,8 @@ namespace he::schema
 
     CompileContext* CompileSession::TryFindCachedImport(const he::String& path) const
     {
-        auto it = m_importMap.find(path);
-        if (it != m_importMap.end())
-            return it->second;
-
-        return nullptr;
+        CompileContext* const* ctx = m_importMap.Find(path);
+        return ctx ? *ctx: nullptr;
     }
 
     bool CompileSession::VerifyAll() const
@@ -208,9 +205,9 @@ namespace he::schema
         if (!m_context->VerifyFile())
             return false;
 
-        for (auto pair : m_importMap)
+        for (auto&& entry : m_importMap)
         {
-            if (!pair.second->VerifyFile())
+            if (!entry.value->VerifyFile())
                 return false;
         }
 

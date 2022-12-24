@@ -106,8 +106,8 @@ namespace he::schema
 
     const AstNode* CompileContext::FindNodeById(TypeId id) const
     {
-        auto it = m_typeIdMap.find(id);
-        return it == m_typeIdMap.end() ? nullptr : it->second;
+        const AstNode** node = m_typeIdMap.Find(id);
+        return node ? *node : nullptr;
     }
 
     const AstNode* CompileContext::FindNodeByName(const AstExpression& name, const AstNode& scope) const
@@ -149,20 +149,20 @@ namespace he::schema
     bool CompileContext::TrackDecl(Declaration::Builder decl)
     {
         HE_ASSERT(HasFlag(decl.GetId(), TypeIdFlag));
-        const auto result = m_declIdMap.emplace(decl.GetId(), decl);
-        return result.second;
+        const auto result = m_declIdMap.Emplace(decl.GetId(), decl);
+        return result.inserted;
     }
 
     bool CompileContext::TrackTypeId(const AstNode& node)
     {
-        const auto result = m_typeIdMap.emplace(node.id, &node);
-        return result.second;
+        const auto result = m_typeIdMap.Emplace(node.id, &node);
+        return result.inserted;
     }
 
     bool CompileContext::TrackType(const TypeKey& key, const TypeValue& value)
     {
-        auto result = m_typeMap.insert_or_assign(key, value);
-        return result.second;
+        auto result = m_typeMap.EmplaceOrAssign(key, value);
+        return result.inserted;
     }
 
 

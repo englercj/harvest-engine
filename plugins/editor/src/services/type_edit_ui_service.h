@@ -5,14 +5,13 @@
 #include "asset_edit_service.h"
 
 #include "he/core/delegate.h"
+#include "he/core/hash_table.h"
 #include "he/core/span.h"
 #include "he/core/type_info.h"
 #include "he/core/types.h"
 #include "he/schema/dynamic.h"
 #include "he/schema/layout.h"
 #include "he/schema/schema.h"
-
-#include <unordered_map>
 
 namespace he::editor
 {
@@ -25,7 +24,7 @@ namespace he::editor
             he::schema::Field::Reader field;
             uint32_t listIndex;
 
-            AssetEdit& edit;
+            SchemaEdit& edit;
             he::schema::DynamicStructVisitor::Reader& visitor;
         };
 
@@ -52,7 +51,7 @@ namespace he::editor
         const Editor* FindEditor(he::schema::Field::Reader field) const;
 
     private:
-        std::unordered_map<he::schema::TypeId, Editor> m_typeEditors{};
-        std::unordered_map<const he::schema::Word*, Editor> m_fieldEditors{};
+        HashMap<he::schema::TypeId, Editor> m_typeEditors{};
+        HashMap<const he::schema::Word*, Editor> m_fieldEditors{};
     };
 }

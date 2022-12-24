@@ -54,11 +54,11 @@ namespace he::schema
         const AstNode* FindNodeByName(AstListIterator<AstExpression> begin, AstListIterator<AstExpression> end, const AstNode& scope) const;
 
         bool TrackDecl(Declaration::Builder decl);
-        Declaration::Builder GetDecl(TypeId id) const { return m_declIdMap.at(id); }
+        Declaration::Builder GetDecl(TypeId id) const { return m_declIdMap.Get(id); }
 
         bool TrackTypeId(const AstNode& node);
         bool TrackType(const TypeKey& key, const TypeValue& value);
-        const TypeValue& GetType(const TypeKey& key) const { return m_typeMap.at(key); }
+        const TypeValue& GetType(const TypeKey& key) const { return m_typeMap.Get(key); }
 
         bool DecodeString(const AstExpression& ast, he::String& out);
 

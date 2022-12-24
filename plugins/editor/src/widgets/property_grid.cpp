@@ -4,7 +4,7 @@
 
 #include "input_text.h"
 #include "fonts/icons_material_design.h"
-#include "services/asset_edit_service.h"
+#include "framework/schema_edit.h"
 #include "services/type_edit_ui_service.h"
 
 #include "he/assets/types.h"
@@ -106,22 +106,22 @@ namespace he::editor
         ImGui::PopID();
     }
 
-    class PropertyGridStructVisitor : public schema::DynamicStructVisitor::Reader
+    class PropertyGridStructVisitor : public he::schema::DynamicStructVisitor::Reader
     {
     public:
-        using SuperType = schema::DynamicStructVisitor::Reader;
+        using SuperType = he::schema::DynamicStructVisitor::Reader;
 
     public:
-        PropertyGridStructVisitor(AssetEdit& edit, TypeEditUIService& service)
+        PropertyGridStructVisitor(SchemaEdit& edit, TypeEditUIService& service)
             : m_edit(edit)
             , m_editUIService(service)
         {}
 
-        const AssetEdit& Edit() const { return m_edit; }
-        AssetEdit& Edit() { return m_edit; }
+        const SchemaEdit& Edit() const { return m_edit; }
+        SchemaEdit& Edit() { return m_edit; }
 
     private:
-        void VisitStruct(const schema::DynamicStruct::Reader& data) override
+        void VisitStruct(const he::schema::DynamicStruct::Reader& data) override
         {
             // For the root struct just visit it normally
             if (m_edit.path.IsEmpty())
@@ -130,91 +130,91 @@ namespace he::editor
                 return;
             }
 
-            const schema::Field::Reader field = m_edit.path.Back().field;
+            const he::schema::Field::Reader field = m_edit.path.Back().field;
             ShowEditorRow(data, field);
         }
 
-        void VisitField(const schema::DynamicStruct::Reader& data, schema::Field::Reader field) override
+        void VisitField(const he::schema::DynamicStruct::Reader& data, he::schema::Field::Reader field) override
         {
             m_edit.path.PushBack({ field });
             SuperType::VisitField(data, field);
             m_edit.path.PopBack();
         }
 
-        void VisitNormalField(const schema::DynamicStruct::Reader& data, schema::Field::Reader field) override
+        void VisitNormalField(const he::schema::DynamicStruct::Reader& data, he::schema::Field::Reader field) override
         {
             ShowEditorRow(data, field);
         }
 
-        void VisitGroupField(const schema::DynamicStruct::Reader& data, schema::Field::Reader field) override
+        void VisitGroupField(const he::schema::DynamicStruct::Reader& data, he::schema::Field::Reader field) override
         {
             ShowEditorRow(data, field);
         }
 
-        void VisitUnionField(const schema::DynamicStruct::Reader& data, schema::Field::Reader field) override
+        void VisitUnionField(const he::schema::DynamicStruct::Reader& data, he::schema::Field::Reader field) override
         {
             ShowEditorRow(data, field);
         }
 
-        void VisitValue(const schema::DynamicValue::Reader& value) override
+        void VisitValue(const he::schema::DynamicValue::Reader& value) override
         {
-            const schema::Field::Reader field = m_edit.path.Back().field;
+            const he::schema::Field::Reader field = m_edit.path.Back().field;
 
             switch (value.GetKind())
             {
-                case schema::DynamicValue::Kind::Unknown: ImGui::TextUnformatted("Unknown DynamicValue type."); break; //TODO: Log once? VERIFY once?
-                case schema::DynamicValue::Kind::Void: ShowValueEditor(value.As<schema::Void>()); break;
-                case schema::DynamicValue::Kind::Bool: ShowValueEditor(value.As<bool>()); break;
-                case schema::DynamicValue::Kind::Blob: ShowValueEditor(value.As<schema::Blob>()); break;
-                case schema::DynamicValue::Kind::String: ShowValueEditor(value.As<schema::String>()); break;
-                case schema::DynamicValue::Kind::Array: ShowValueEditor(value.As<schema::DynamicArray>()); break;
-                case schema::DynamicValue::Kind::List: ShowValueEditor(value.As<schema::DynamicList>()); break;
-                case schema::DynamicValue::Kind::Enum: ShowValueEditor(value.As<schema::DynamicEnum>()); break;
-                case schema::DynamicValue::Kind::AnyPointer: ShowValueEditor(value.As<schema::AnyPointer>()); break;
-                case schema::DynamicValue::Kind::Int: ShowValueEditor(value.As<int64_t>()); break;
-                case schema::DynamicValue::Kind::Uint: ShowValueEditor(value.As<uint64_t>()); break;
-                case schema::DynamicValue::Kind::Float: ShowValueEditor(value.As<double>()); break;
-                case schema::DynamicValue::Kind::Struct:
+                case he::schema::DynamicValue::Kind::Unknown: ImGui::TextUnformatted("Unknown DynamicValue type."); break; //TODO: Log once? VERIFY once?
+                case he::schema::DynamicValue::Kind::Void: ShowValueEditor(value.As<he::schema::Void>()); break;
+                case he::schema::DynamicValue::Kind::Bool: ShowValueEditor(value.As<bool>()); break;
+                case he::schema::DynamicValue::Kind::Blob: ShowValueEditor(value.As<he::schema::Blob>()); break;
+                case he::schema::DynamicValue::Kind::String: ShowValueEditor(value.As<he::schema::String>()); break;
+                case he::schema::DynamicValue::Kind::Array: ShowValueEditor(value.As<he::schema::DynamicArray>()); break;
+                case he::schema::DynamicValue::Kind::List: ShowValueEditor(value.As<he::schema::DynamicList>()); break;
+                case he::schema::DynamicValue::Kind::Enum: ShowValueEditor(value.As<he::schema::DynamicEnum>()); break;
+                case he::schema::DynamicValue::Kind::AnyPointer: ShowValueEditor(value.As<he::schema::AnyPointer>()); break;
+                case he::schema::DynamicValue::Kind::Int: ShowValueEditor(value.As<int64_t>()); break;
+                case he::schema::DynamicValue::Kind::Uint: ShowValueEditor(value.As<uint64_t>()); break;
+                case he::schema::DynamicValue::Kind::Float: ShowValueEditor(value.As<double>()); break;
+                case he::schema::DynamicValue::Kind::Struct:
                 {
-                    schema::DynamicStruct::Reader builder = value.As<schema::DynamicStruct>();
+                    he::schema::DynamicStruct::Reader builder = value.As<he::schema::DynamicStruct>();
                     SuperType::VisitStruct(builder);
                     break;
                 }
             }
         }
 
-        bool ShouldVisitNormalField(const schema::DynamicStruct::Reader& data, schema::Field::Reader field) override
+        bool ShouldVisitNormalField(const he::schema::DynamicStruct::Reader& data, he::schema::Field::Reader field) override
         {
             HE_UNUSED(data);
-            const bool hidden = schema::HasAttribute<assets::schema::Display::Hidden>(field.GetAttributes());
+            const bool hidden = he::schema::HasAttribute<assets::schema::Display::Hidden>(field.GetAttributes());
             return !hidden;
         }
 
-        bool ShouldVisitGroupField(const schema::DynamicStruct::Reader& data, schema::Field::Reader field) override
+        bool ShouldVisitGroupField(const he::schema::DynamicStruct::Reader& data, he::schema::Field::Reader field) override
         {
             HE_UNUSED(data);
-            const bool hidden = schema::HasAttribute<assets::schema::Display::Hidden>(field.GetAttributes());
+            const bool hidden = he::schema::HasAttribute<assets::schema::Display::Hidden>(field.GetAttributes());
             return !hidden;
         }
 
-        bool ShouldVisitUnionField(const schema::DynamicStruct::Reader& data, schema::Field::Reader field) override
+        bool ShouldVisitUnionField(const he::schema::DynamicStruct::Reader& data, he::schema::Field::Reader field) override
         {
             HE_UNUSED(data);
-            const bool hidden = schema::HasAttribute<assets::schema::Display::Hidden>(field.GetAttributes());
+            const bool hidden = he::schema::HasAttribute<assets::schema::Display::Hidden>(field.GetAttributes());
             return !hidden;
         }
 
     private:
-        void RevertActionButton(const schema::DynamicStruct::Reader& data)
+        void RevertActionButton(const he::schema::DynamicStruct::Reader& data)
         {
-            const schema::Field::Reader field = m_edit.path.Back().field;
-            const bool readOnly = schema::HasAttribute<assets::schema::Display::ReadOnly>(field.GetAttributes());
+            const he::schema::Field::Reader field = m_edit.path.Back().field;
+            const bool readOnly = he::schema::HasAttribute<assets::schema::Display::ReadOnly>(field.GetAttributes());
 
             if (!readOnly && data.Has(field))
             {
                 if (ImGui::Button(ICON_MDI_UNDO_VARIANT))
                 {
-                    m_edit.EmplaceAction(AssetEditAction::Kind::ClearValue);
+                    m_edit.EmplaceAction(SchemaEditAction::Kind::ClearValue);
                 }
                 if (ImGui::IsItemHovered())
                     ImGui::SetTooltip("Reset to default");
@@ -249,10 +249,10 @@ namespace he::editor
             return s_buf;
         }
 
-        void GetNameAndDescription(StringView& name, StringView& desc, schema::List<schema::Attribute>::Reader attributes)
+        void GetNameAndDescription(StringView& name, StringView& desc, he::schema::List<he::schema::Attribute>::Reader attributes)
         {
-            const schema::Attribute::Reader displayNameAttr = schema::FindAttribute<assets::schema::Display::Name>(attributes);
-            const schema::Attribute::Reader descriptionAttr = schema::FindAttribute<assets::schema::Display::Description>(attributes);
+            const he::schema::Attribute::Reader displayNameAttr = he::schema::FindAttribute<assets::schema::Display::Name>(attributes);
+            const he::schema::Attribute::Reader descriptionAttr = he::schema::FindAttribute<assets::schema::Display::Description>(attributes);
 
             if (displayNameAttr.IsValid())
                 name = displayNameAttr.GetValue().GetData().GetString();
@@ -263,9 +263,9 @@ namespace he::editor
                 desc = descriptionAttr.GetValue().GetData().GetString();
         }
 
-        template <typename T> bool ReadScalarRange(const schema::Value::Reader value, T& min, T& max);
+        template <typename T> bool ReadScalarRange(const he::schema::Value::Reader value, T& min, T& max);
 
-        template <> bool ReadScalarRange(const schema::Value::Reader value, int64_t& min, int64_t& max)
+        template <> bool ReadScalarRange(const he::schema::Value::Reader value, int64_t& min, int64_t& max)
         {
             if (!value.IsValid() || !value.GetData().IsStruct())
                 return false;
@@ -281,7 +281,7 @@ namespace he::editor
             return true;
         }
 
-        template <> bool ReadScalarRange(const schema::Value::Reader value, uint64_t& min, uint64_t& max)
+        template <> bool ReadScalarRange(const he::schema::Value::Reader value, uint64_t& min, uint64_t& max)
         {
             if (!value.IsValid() || !value.GetData().IsStruct())
                 return false;
@@ -297,7 +297,7 @@ namespace he::editor
             return true;
         }
 
-        template <> bool ReadScalarRange(const schema::Value::Reader value, double& min, double& max)
+        template <> bool ReadScalarRange(const he::schema::Value::Reader value, double& min, double& max)
         {
             if (!value.IsValid() || !value.GetData().IsStruct())
                 return false;
@@ -313,7 +313,7 @@ namespace he::editor
             return true;
         }
 
-        void ShowValueEditor(schema::Void value)
+        void ShowValueEditor(he::schema::Void value)
         {
             HE_UNUSED(value);
             ImGui::TextUnformatted("void");
@@ -321,15 +321,15 @@ namespace he::editor
 
         void ShowValueEditor(bool value)
         {
-            const schema::Field::Reader field = m_edit.path.Back().field;
-            const bool readOnly = schema::HasAttribute<assets::schema::Display::ReadOnly>(field.GetAttributes());
+            const he::schema::Field::Reader field = m_edit.path.Back().field;
+            const bool readOnly = he::schema::HasAttribute<assets::schema::Display::ReadOnly>(field.GetAttributes());
 
             bool v = value;
 
             ImGui::BeginDisabled(readOnly);
             if (ImGui::Checkbox("##bool-value", &v))
             {
-                AssetEditAction& action = m_edit.EmplaceAction(AssetEditAction::Kind::SetValue);
+                SchemaEditAction& action = m_edit.EmplaceAction(SchemaEditAction::Kind::SetValue);
                 action.value = v;
             }
             ImGui::EndDisabled();
@@ -347,10 +347,10 @@ namespace he::editor
         {
             constexpr ImGuiDataType DataType = _ImGuiDataTypeForType<T>::Value;
 
-            const schema::Field::Reader field = m_edit.path.Back().field;
-            const bool readOnly = schema::HasAttribute<assets::schema::Display::ReadOnly>(field.GetAttributes());
-            const schema::Attribute::Reader slider = schema::FindAttribute<assets::schema::Display::Slider>(field.GetAttributes());
-            const schema::Attribute::Reader clamp = schema::FindAttribute<assets::schema::Display::Clamp>(field.GetAttributes());
+            const he::schema::Field::Reader field = m_edit.path.Back().field;
+            const bool readOnly = he::schema::HasAttribute<assets::schema::Display::ReadOnly>(field.GetAttributes());
+            const he::schema::Attribute::Reader slider = he::schema::FindAttribute<assets::schema::Display::Slider>(field.GetAttributes());
+            const he::schema::Attribute::Reader clamp = he::schema::FindAttribute<assets::schema::Display::Clamp>(field.GetAttributes());
 
             bool changed = false;
 
@@ -396,22 +396,22 @@ namespace he::editor
 
             if (changed)
             {
-                AssetEditAction& action = m_edit.EmplaceAction(AssetEditAction::Kind::SetValue);
+                SchemaEditAction& action = m_edit.EmplaceAction(SchemaEditAction::Kind::SetValue);
                 action.value = v;
             }
         }
 
-        void ShowValueEditor(schema::Blob::Reader value)
+        void ShowValueEditor(he::schema::Blob::Reader value)
         {
             HE_UNUSED(value);
             ImGui::TextUnformatted("<binary data>");
         }
 
-        void ShowValueEditor(schema::String::Reader value)
+        void ShowValueEditor(he::schema::String::Reader value)
         {
-            const schema::Field::Reader field = m_edit.path.Back().field;
+            const he::schema::Field::Reader field = m_edit.path.Back().field;
 
-            const bool readOnly = schema::HasAttribute<assets::schema::Display::ReadOnly>(field.GetAttributes());
+            const bool readOnly = he::schema::HasAttribute<assets::schema::Display::ReadOnly>(field.GetAttributes());
 
             static String v;
             v = value;
@@ -425,7 +425,7 @@ namespace he::editor
 
             if (InputText("##string-value", v, flags))
             {
-                AssetEditAction& action = m_edit.EmplaceAction(AssetEditAction::Kind::SetValue);
+                SchemaEditAction& action = m_edit.EmplaceAction(SchemaEditAction::Kind::SetValue);
                 action.value = m_edit.m_builder.AddString(v);
             }
 
@@ -436,7 +436,7 @@ namespace he::editor
                 ImGui::SetTooltip("This field is read-only.");
         }
 
-        void ShowValueEditor(const schema::DynamicArray::Reader& value)
+        void ShowValueEditor(const he::schema::DynamicArray::Reader& value)
         {
             HE_ASSERT(m_edit.path.Back().field.GetMeta().GetNormal().GetType().GetData().IsArray());
 
@@ -448,7 +448,7 @@ namespace he::editor
             }
         }
 
-        void ShowValueEditor(const schema::DynamicList::Reader& value)
+        void ShowValueEditor(const he::schema::DynamicList::Reader& value)
         {
             HE_ASSERT(m_edit.path.Back().field.GetMeta().GetNormal().GetType().GetData().IsList());
 
@@ -460,12 +460,12 @@ namespace he::editor
             }
         }
 
-        void ShowValueEditor(schema::DynamicEnum value)
+        void ShowValueEditor(he::schema::DynamicEnum value)
         {
-            const schema::Declaration::Data::Enum::Reader enumDecl = value.EnumSchema();
+            const he::schema::Declaration::Data::Enum::Reader enumDecl = value.EnumSchema();
 
             const char* valueName = "Select...";
-            for (const schema::Enumerator::Reader e : enumDecl.GetEnumerators())
+            for (const he::schema::Enumerator::Reader e : enumDecl.GetEnumerators())
             {
                 if (e.GetOrdinal() == value.Value())
                 {
@@ -474,15 +474,15 @@ namespace he::editor
                 }
             }
 
-            const schema::Field::Reader field = m_edit.path.Back().field;
-            const bool readOnly = schema::HasAttribute<assets::schema::Display::ReadOnly>(field.GetAttributes());
+            const he::schema::Field::Reader field = m_edit.path.Back().field;
+            const bool readOnly = he::schema::HasAttribute<assets::schema::Display::ReadOnly>(field.GetAttributes());
 
             ImGui::BeginDisabled(readOnly);
             ImGui::PushItemWidth(-1.0f);
 
             if (ImGui::BeginCombo("##enum-value", valueName))
             {
-                for (const schema::Enumerator::Reader e : enumDecl.GetEnumerators())
+                for (const he::schema::Enumerator::Reader e : enumDecl.GetEnumerators())
                 {
                     StringView name = e.GetName();
                     StringView desc;
@@ -491,8 +491,8 @@ namespace he::editor
                     const bool isSelected = e.GetOrdinal() == value.Value();
                     if (ImGui::Selectable(name.Data(), isSelected))
                     {
-                        AssetEditAction& action = m_edit.EmplaceAction(AssetEditAction::Kind::SetValue);
-                        action.value = schema::DynamicEnum(value.Decl(), e.GetOrdinal());
+                        SchemaEditAction& action = m_edit.EmplaceAction(SchemaEditAction::Kind::SetValue);
+                        action.value = he::schema::DynamicEnum(value.Decl(), e.GetOrdinal());
                     }
 
                     if (!desc.IsEmpty() && ImGui::IsItemHovered())
@@ -509,26 +509,26 @@ namespace he::editor
             ImGui::EndDisabled();
         }
 
-        void ShowValueEditor(schema::AnyPointer::Reader ptr)
+        void ShowValueEditor(he::schema::AnyPointer::Reader ptr)
         {
             HE_UNUSED(ptr);
             ImGui::TextUnformatted("<any pointer>");
         }
 
-        template <AnyOf<schema::DynamicArray::Reader, schema::DynamicList::Reader> T, AnyOf<uint16_t, uint32_t> U>
+        template <AnyOf<he::schema::DynamicArray::Reader, he::schema::DynamicList::Reader> T, AnyOf<uint16_t, uint32_t> U>
         void ShowEditorRow(const T& data, U index)
         {
             String name;
             fmt::format_to(Appender(name), "[{}]", index);
 
-            const schema::Type::Reader elementType = [&]()
+            const he::schema::Type::Reader elementType = [&]()
             {
-                if constexpr (std::is_same_v<T, schema::DynamicArray::Reader>)
+                if constexpr (std::is_same_v<T, he::schema::DynamicArray::Reader>)
                     return data.ArrayType().GetElementType();
                 else
                     return data.ListType().GetElementType();
             }();
-            const schema::Type::Data::Reader typeData = elementType.GetData();
+            const he::schema::Type::Data::Reader typeData = elementType.GetData();
 
             const TypeEditUIService::Editor* customValueEditor = nullptr;
             if (typeData.IsStruct())
@@ -570,28 +570,28 @@ namespace he::editor
                 {
                     if (customValueEditor->isInline)
                     {
-                        schema::DynamicValue::Reader value = data.Get(index);
+                        he::schema::DynamicValue::Reader value = data.Get(index);
                         TypeEditUIService::Context ctx{ data, {}, index, m_edit, *this };
                         customValueEditor->func(value, ctx);
                     }
                 }
                 else if (!isExpandable)
                 {
-                    schema::DynamicValue::Reader value = data.Get(index);
+                    he::schema::DynamicValue::Reader value = data.Get(index);
                     VisitValue(value);
                 }
 
                 // Actions column
                 ImGui::TableNextColumn();
-                const schema::Field::Reader field = m_edit.path.Back().field;
-                const bool readOnly = schema::HasAttribute<assets::schema::Display::ReadOnly>(field.GetAttributes());
+                const he::schema::Field::Reader field = m_edit.path.Back().field;
+                const bool readOnly = he::schema::HasAttribute<assets::schema::Display::ReadOnly>(field.GetAttributes());
                 if (!readOnly)
                 {
                     if (typeData.IsList())
                     {
                         if (ImGui::Button(ICON_MDI_PLUS))
                         {
-                            m_edit.EmplaceAction(AssetEditAction::Kind::AddListItem);
+                            m_edit.EmplaceAction(SchemaEditAction::Kind::AddListItem);
                         }
                         if (ImGui::IsItemHovered())
                             ImGui::SetTooltip("Add new element");
@@ -601,7 +601,7 @@ namespace he::editor
                     {
                         if (ImGui::Button(ICON_MDI_UNDO_VARIANT))
                         {
-                            m_edit.EmplaceAction(AssetEditAction::Kind::ClearValue);
+                            m_edit.EmplaceAction(SchemaEditAction::Kind::ClearValue);
                         }
                     }
                 }
@@ -619,14 +619,14 @@ namespace he::editor
                 {
                     if (!customValueEditor->isInline)
                     {
-                        schema::DynamicValue::Reader value = data.Get(index);
+                        he::schema::DynamicValue::Reader value = data.Get(index);
                         TypeEditUIService::Context ctx{ data, {}, index, m_edit, *this };
                         customValueEditor->func(value, ctx);
                     }
                 }
                 else
                 {
-                    schema::DynamicValue::Reader value = data.Get(index);
+                    he::schema::DynamicValue::Reader value = data.Get(index);
                     VisitValue(value);
                 }
 
@@ -635,17 +635,17 @@ namespace he::editor
             }
         }
 
-        void ShowEditorRow(const schema::DynamicStruct::Reader& data, schema::Field::Reader field)
+        void ShowEditorRow(const he::schema::DynamicStruct::Reader& data, he::schema::Field::Reader field)
         {
             StringView name = field.GetName();
             StringView desc;
             GetNameAndDescription(name, desc, field.GetAttributes());
 
-            schema::Type::Data::Reader typeData;
+            he::schema::Type::Data::Reader typeData;
             if (field.GetMeta().IsNormal())
             {
-                const schema::Field::Meta::Normal::Reader norm = field.GetMeta().GetNormal();
-                const schema::Type::Reader type = norm.GetType();
+                const he::schema::Field::Meta::Normal::Reader norm = field.GetMeta().GetNormal();
+                const he::schema::Type::Reader type = norm.GetType();
                 typeData = type.GetData();
             }
 
@@ -658,7 +658,7 @@ namespace he::editor
                 ImGui::TableNextColumn();
                 ImGui::AlignTextToFramePadding();
 
-                const bool isReadOnly = schema::HasAttribute<assets::schema::Display::ReadOnly>(field.GetAttributes());
+                const bool isReadOnly = he::schema::HasAttribute<assets::schema::Display::ReadOnly>(field.GetAttributes());
                 const bool isModified = !isReadOnly && data.Has(field);
 
                 const bool isSequenceValue = typeData.IsValid() && (typeData.IsArray() || typeData.IsList());
@@ -703,22 +703,22 @@ namespace he::editor
                 // custom inline editor for this field
                 if (customValueEditor && customValueEditor->isInline)
                 {
-                    schema::DynamicValue::Reader value = data.Get(field);
+                    he::schema::DynamicValue::Reader value = data.Get(field);
                     TypeEditUIService::Context ctx{ data, field, 0, m_edit, *this };
                     customValueEditor->func(value, ctx);
                 }
                 // union field
                 else if (field.GetMeta().IsUnion())
                 {
-                    const schema::DynamicStruct::Reader& unionStruct = data.Get(field).As<schema::DynamicStruct>();
-                    const schema::Field::Reader activeField = unionStruct.ActiveUnionField();
+                    const he::schema::DynamicStruct::Reader& unionStruct = data.Get(field).As<he::schema::DynamicStruct>();
+                    const he::schema::Field::Reader activeField = unionStruct.ActiveUnionField();
                     StringView activeFieldName = activeField.GetName();
                     StringView activeFieldDesc;
                     GetNameAndDescription(activeFieldName, activeFieldDesc, activeField.GetAttributes());
 
                     if (ImGui::BeginCombo("##union-field-type", activeFieldName.Data()))
                     {
-                        for (const schema::Field::Reader& unionField : unionStruct.StructSchema().GetFields())
+                        for (const he::schema::Field::Reader& unionField : unionStruct.StructSchema().GetFields())
                         {
                             StringView unionFieldName = unionField.GetName();
                             StringView unionFieldDesc;
@@ -727,7 +727,7 @@ namespace he::editor
                             const bool isSelected = unionField.GetUnionTag() == activeField.GetUnionTag();
                             if (ImGui::Selectable(unionFieldName.Data(), isSelected))
                             {
-                                AssetEditAction& action = m_edit.EmplaceAction(AssetEditAction::Kind::InitValue);
+                                SchemaEditAction& action = m_edit.EmplaceAction(SchemaEditAction::Kind::InitValue);
                                 action.path.PushBack({ unionField });
                             }
 
@@ -747,7 +747,7 @@ namespace he::editor
                 // normal field
                 else if (!isExpandable && !customValueEditor && typeData.IsValid())
                 {
-                    schema::DynamicValue::Reader value = data.Get(field);
+                    he::schema::DynamicValue::Reader value = data.Get(field);
                     VisitValue(value);
                 }
 
@@ -757,7 +757,7 @@ namespace he::editor
                 {
                     if (ImGui::Button(ICON_MDI_PLUS))
                     {
-                        m_edit.EmplaceAction(AssetEditAction::Kind::AddListItem);
+                        m_edit.EmplaceAction(SchemaEditAction::Kind::AddListItem);
                     }
                     if (ImGui::IsItemHovered())
                         ImGui::SetTooltip("Add new element");
@@ -776,13 +776,13 @@ namespace he::editor
                 if (customValueEditor)
                 {
                     HE_ASSERT(!customValueEditor->isInline);
-                    schema::DynamicValue::Reader value = data.Get(field);
+                    he::schema::DynamicValue::Reader value = data.Get(field);
                     TypeEditUIService::Context ctx{ data, field, 0, m_edit, *this };
                     customValueEditor->func(value, ctx);
                 }
                 else
                 {
-                    schema::DynamicValue::Reader value = data.Get(field);
+                    he::schema::DynamicValue::Reader value = data.Get(field);
                     VisitValue(value);
                 }
 
@@ -792,11 +792,11 @@ namespace he::editor
         }
 
     private:
-        AssetEdit& m_edit;
+        SchemaEdit& m_edit;
         TypeEditUIService& m_editUIService;
     };
 
-    void PropertyGrid(const schema::DynamicStruct::Reader& data, TypeEditUIService& service, AssetEdit& edit)
+    void PropertyGrid(const he::schema::DynamicStruct::Reader& data, TypeEditUIService& service, SchemaEdit& edit)
     {
         const ImGuiID id = ImGui::GetID(&edit);
         if (BeginPropertyGrid(id))

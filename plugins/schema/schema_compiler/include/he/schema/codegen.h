@@ -23,7 +23,7 @@ namespace he::schema
     struct CodeGenRequest
     {
         /// Lookup a declaration by ID, assert that is is valid, and return a reference to it.
-        Declaration::Reader GetDecl(uint64_t id) const { return declsById->at(id).AsReader(); }
+        Declaration::Reader GetDecl(uint64_t id) const { return declsById->Get(id).AsReader(); }
 
         /// Raw data that was built by the compiler.
         Span<const Word> schemaData;

@@ -125,7 +125,7 @@ namespace he::editor
 
     void ImGuiDebugDocument::ShowPropertyGridTab()
     {
-        static AssetEditContext s_ctx;
+        static SchemaEditContext s_ctx;
 
         if (s_ctx.Builder().Root().IsNull())
         {
@@ -141,7 +141,7 @@ namespace he::editor
             s_ctx.Data() = he::schema::DynamicStruct::Builder{ assets::schema::Asset::DeclInfo, asset };
         }
 
-        AssetEdit edit;
+        SchemaEdit edit;
         PropertyGrid(s_ctx.Data().AsReader(), m_editUIService, edit);
 
         s_ctx.PushEdit(Move(edit));

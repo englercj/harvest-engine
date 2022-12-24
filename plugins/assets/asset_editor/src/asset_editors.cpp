@@ -40,7 +40,7 @@ namespace he::assets
         ImGui::PushItemWidth(96.0f);
         if (ImGui::InputFloat("##vec2f-x", &x))
         {
-            editor::AssetEditAction& action = ctx.edit.EmplaceAction(editor::AssetEditAction::Kind::SetValue);
+            editor::SchemaEditAction& action = ctx.edit.EmplaceAction(editor::SchemaEditAction::Kind::SetValue);
             action.path.PushBack({ GetField<schema::Vec2f, FieldName_X>() });
             action.value = x;
         }
@@ -53,7 +53,7 @@ namespace he::assets
         ImGui::PushItemWidth(96.0f);
         if (ImGui::InputFloat("##vec2f-y", &y))
         {
-            editor::AssetEditAction& action = ctx.edit.EmplaceAction(editor::AssetEditAction::Kind::SetValue);
+            editor::SchemaEditAction& action = ctx.edit.EmplaceAction(editor::SchemaEditAction::Kind::SetValue);
             action.path.PushBack({ GetField<schema::Vec2f, FieldName_Y>() });
             action.value = y;
         }
@@ -70,7 +70,7 @@ namespace he::assets
         ImGui::PushItemWidth(96.0f);
         if (ImGui::InputFloat("##vec3f-x", &x))
         {
-            editor::AssetEditAction& action = ctx.edit.EmplaceAction(editor::AssetEditAction::Kind::SetValue);
+            editor::SchemaEditAction& action = ctx.edit.EmplaceAction(editor::SchemaEditAction::Kind::SetValue);
             action.path.PushBack({ GetField<schema::Vec3f, FieldName_X>() });
             action.value = x;
         }
@@ -83,7 +83,7 @@ namespace he::assets
         ImGui::PushItemWidth(96.0f);
         if (ImGui::InputFloat("##vec3f-y", &y))
         {
-            editor::AssetEditAction& action = ctx.edit.EmplaceAction(editor::AssetEditAction::Kind::SetValue);
+            editor::SchemaEditAction& action = ctx.edit.EmplaceAction(editor::SchemaEditAction::Kind::SetValue);
             action.path.PushBack({ GetField<schema::Vec3f, FieldName_Y>() });
             action.value = y;
         }
@@ -96,7 +96,7 @@ namespace he::assets
         ImGui::PushItemWidth(96.0f);
         if (ImGui::InputFloat("##vec3f-z", &y))
         {
-            editor::AssetEditAction& action = ctx.edit.EmplaceAction(editor::AssetEditAction::Kind::SetValue);
+            editor::SchemaEditAction& action = ctx.edit.EmplaceAction(editor::SchemaEditAction::Kind::SetValue);
             action.path.PushBack({ GetField<schema::Vec3f, FieldName_Z>() });
             action.value = z;
         }

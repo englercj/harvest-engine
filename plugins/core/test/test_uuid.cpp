@@ -6,6 +6,7 @@
 #include "he/core/uuid_fmt.h"
 
 #include "he/core/appender.h"
+#include "he/core/hash.h"
 #include "he/core/test.h"
 
 #include "fmt/format.h"

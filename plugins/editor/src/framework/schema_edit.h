@@ -65,9 +65,7 @@ namespace he::editor
     class SchemaEditContext
     {
     public:
-        SchemaEditContext(he::schema::DynamicStruct::Builder data)
-            : m_data(data)
-        {}
+        SchemaEditContext(const he::schema::DynamicStruct::Reader& data);
 
         he::schema::DynamicStruct::Builder& Data() { return m_data; }
         const he::schema::DynamicStruct::Builder& Data() const { return m_data; }
@@ -89,6 +87,7 @@ namespace he::editor
         void ApplyAction(he::schema::DynamicValue::Builder& data, const SchemaEditAction& action);
 
     private:
+        he::schema::Builder m_builder{};
         he::schema::DynamicStruct::Builder m_data{};
 
         Vector<SchemaEdit> m_edits{};

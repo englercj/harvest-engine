@@ -192,6 +192,14 @@ namespace he::editor
     }
 
     // --------------------------------------------------------------------------------------------
+    SchemaEditContext::SchemaEditContext(const he::schema::DynamicStruct::Reader& data)
+    {
+        he::schema::Declaration::Data::Struct::Reader decl = data.StructSchema();
+        he::schema::StructBuilder builder = m_builder.AddStruct(decl.GetDataFieldCount(), decl.GetDataWordSize(), decl.GetPointerCount());
+        builder.Copy(data.Struct());
+        m_data = { data.Decl(), builder };
+    }
+
     void SchemaEditContext::PushEdit(SchemaEdit&& edit)
     {
         if (edit.actions.IsEmpty())

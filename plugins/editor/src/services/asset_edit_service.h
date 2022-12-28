@@ -30,7 +30,7 @@ namespace he::editor
         explicit AssetEditService(AssetService& assetService) noexcept;
 
         SchemaEditContext* OpenAsset(const assets::AssetUuid& assetUuid);
-        void SaveAsset(const assets::AssetUuid& assetUuid);
+        bool SaveAsset(const assets::AssetUuid& assetUuid);
         void CloseAsset(SchemaEditContext* ctx);
 
     private:
@@ -44,6 +44,5 @@ namespace he::editor
         AssetService& m_assetService;
 
         HashMap<assets::AssetUuid, CtxEntry> m_contexts{};
-        HashMap<assets::AssetFileUuid, assets::AssetDatabase::AssetFileBuilder> m_openFiles{};
     };
 }

@@ -3,8 +3,10 @@
 #include "he/assets/compilers/texture2d_compiler.h"
 
 #include "he/assets/types.h"
+#include "he/assets/types_fmt.h"
 #include "he/core/enum_ops.h"
 #include "he/core/file.h"
+#include "he/core/result_fmt.h"
 #include "he/schema/layout.h"
 
 #include "encoder/basisu_comp.h"
@@ -86,28 +88,64 @@ namespace he::assets
 
     bool Texture2DCompiler::Compile(const CompileContext& ctx, CompileResult& result)
     {
+        HE_UNUSED(result);
+        constexpr ResourceId Texture2DKtx2Id{ schema::Texture2D::Ktx2ResourceName };
         constexpr ResourceId Texture2DPixelsId{ schema::Texture2D::PixelsResourceName };
 
+        // Get the pixel resource for this image and validate the data for correctness
         Vector<he::schema::Word> pixelsResourceData;
-        if (!ctx.GetResource(ctx.asset.GetUuid(), Texture2DPixelsId, pixelsResourceData))
+        Result r = ctx.db.GetResource(pixelsResourceData, ctx.asset.GetUuid(), Texture2DPixelsId);
+        if (!r)
+        {
+            HE_LOG_ERROR(he_assets,
+                HE_MSG("Failed to get pixel resource during texture2d compile."),
+                HE_KV(asset_uuid, AssetUuid(ctx.asset.GetUuid())),
+                HE_KV(asset_name, ctx.asset.GetName()),
+                HE_KV(asset_file_source, ctx.assetFile.GetSource()),
+                HE_KV(resource_id, Texture2DPixelsId),
+                HE_KV(result, r));
             return false;
+        }
 
         const auto pixelsResource = he::schema::ReadRoot<schema::Texture2D::PixelsResource>(pixelsResourceData.Data());
         if (!pixelsResource.IsValid())
+        {
+            HE_LOG_ERROR(he_assets,
+                HE_MSG("Pixel resource is not of the expected type."),
+                HE_KV(asset_uuid, AssetUuid(ctx.asset.GetUuid())),
+                HE_KV(asset_name, ctx.asset.GetName()),
+                HE_KV(asset_file_source, ctx.assetFile.GetSource()),
+                HE_KV(resource_id, Texture2DPixelsId),
+                HE_KV(result, r));
             return false;
-
-        if (!ctx.asset.HasData())
-            return false;
+        }
 
         const schema::Texture2D::Reader asset = ctx.asset.GetData().TryGetStruct<schema::Texture2D>();
         if (!asset.IsValid())
+        {
+            HE_LOG_ERROR(he_assets,
+                HE_MSG("Asset data is empty or not of the expected type for a Texture2D asset."),
+                HE_KV(asset_uuid, AssetUuid(ctx.asset.GetUuid())),
+                HE_KV(asset_name, ctx.asset.GetName()),
+                HE_KV(asset_file_source, ctx.assetFile.GetSource()),
+                HE_KV(result, r));
             return false;
+        }
 
         basisu::basis_compressor_params params{};
         params.m_debug = false;
 
         if (!pixelsResource.HasSource())
+        {
+            HE_LOG_ERROR(he_assets,
+                HE_MSG("PixelsResource has an empty source blob."),
+                HE_KV(asset_uuid, AssetUuid(ctx.asset.GetUuid())),
+                HE_KV(asset_name, ctx.asset.GetName()),
+                HE_KV(asset_file_source, ctx.assetFile.GetSource()),
+                HE_KV(resource_id, Texture2DPixelsId),
+                HE_KV(result, r));
             return false;
+        }
 
         if (pixelsResource.GetSource().Size() != pixelsResource.GetWidth() * pixelsResource.GetHeight())
             return false;
@@ -166,19 +204,20 @@ namespace he::assets
             params.m_quality_level = GetBasisEtc1sQuality(quality);
         }
 
-        // configure KTX2 file creation
+        // Configure KTX2 file creation
         params.m_create_ktx2_file = true;
         params.m_ktx2_uastc_supercompression = basist::KTX2_SS_ZSTANDARD;
         params.m_ktx2_zstd_supercompression_level = comp.GetLevel();
         params.m_ktx2_srgb_transfer_func = params.m_perceptual;
 
-        // TODO: use our job system for multithreading
+        // Configure multithreading
         params.m_multithreading = false;
         params.m_pJob_pool = nullptr;
 
-        // No status output
+        // Configure output
         params.m_status_output = false;
 
+        // Compress and format the texture into a KTX2 file
         basisu::basis_compressor compressor;
         if (!compressor.init(params))
         {
@@ -193,10 +232,8 @@ namespace he::assets
             return false;
         }
 
-        constexpr ResourceId Texture2DKtx2Id{ schema::Texture2D::Ktx2ResourceName };
-
         const basisu::uint8_vec& data = compressor.get_output_ktx2_file();
-        result.AddResource(ctx.asset.GetUuid(), Texture2DKtx2Id, { data.data(), data.size() });
+        ctx.db.AddResource(ctx.asset.GetUuid(), Texture2DKtx2Id, data);
         return true;
     }
 }

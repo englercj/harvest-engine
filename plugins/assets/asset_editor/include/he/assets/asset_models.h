@@ -97,71 +97,36 @@ namespace he::assets
         static bool FindOne(AssetDatabase& db, const char* key, ConfigModel& outModel);
     };
 
-    struct TagModel final
-    {
-        String tag;
-    };
-
+    // TODO
     struct AssetReferenceModel final
     {
-        AssetUuid fromAssetUuid;
-        AssetUuid toAssetUuid;
+        enum class Kind : uint8_t
+        {
+            Asset = 0,
+            Resource = 1,
+            File = 2,
+        };
+
+        Kind kind{ Kind::Asset };
+
+        /// Source asset the reference is from.
+        AssetUuid fromAssetUuid{};
+
+        /// Destination asset the reference is to.
+        /// Only valid when `kind` is `Asset` or `Resource`.
+        AssetUuid toAssetUuid{};
+
+        /// Destination resource the reference is to.
+        /// Only valid when `kind` is `Resource`.
+        ResourceId resourceId{};
+
+        /// Relative path to the file of this reference.
+        /// Only valid when `kind` is `File`.
+        String filePath{};
 
         static bool Add(AssetDatabase& db, const AssetReferenceModel& model);
         static bool FindAllFrom(AssetDatabase& db, const AssetUuid& fromAssetUuid);
         static bool FindAllTo(AssetDatabase& db, const AssetUuid& toAssetUuid);
         static bool RemoveAllFrom(AssetDatabase& db, const AssetUuid& fromAssetUuid);
-    };
-
-    struct MessageModel final
-    {
-        enum class Source : uint8_t
-        {
-            Unknown = 0,
-            Importer = 1,
-            Compiler = 2,
-            System = 3,
-            User = 4,
-        };
-
-        Uuid refUuid;
-        String message;
-        LogLevel level{ LogLevel::Info };
-        SystemTime timestamp{ 0 };
-        Source source{ Source::Unknown };
-
-        static bool Add(AssetDatabase& db, const MessageModel& model);
-        static bool RemoveAll(AssetDatabase& db, const Uuid& refUuid);
-    };
-
-    struct CompilerReferenceModel final
-    {
-        enum class Kind : uint8_t
-        {
-            AssetData = 0,
-            AssetBackingFile = 1,
-            FilePath = 2,
-            Resource = 3,
-        };
-
-        AssetUuid assetUuid;
-
-        // Type of the reference
-        Kind kind{ Kind::AssetData };
-
-        // Valid for AssetData, AssetBackingFile, and Resource types.
-        AssetUuid toAssetUuid;
-
-        // Valid for AssetBackingFile, and FilePath types.
-        String filePath;
-
-        // Valid for Resource types.
-        uint32_t resourceKeyTypeId{ 0 };
-
-        // Valid for Resource types.
-        uint32_t resourceKeyHash{ 0 };
-
-        static bool Add(AssetDatabase& db, const CompilerReferenceModel& model);
-        static bool RemoveAll(AssetDatabase& db, const AssetUuid& assetUuid);
     };
 }

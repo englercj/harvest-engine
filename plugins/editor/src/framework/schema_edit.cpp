@@ -196,7 +196,8 @@ namespace he::editor
     {
         he::schema::Declaration::Data::Struct::Reader decl = data.StructSchema();
         he::schema::StructBuilder builder = m_builder.AddStruct(decl.GetDataFieldCount(), decl.GetDataWordSize(), decl.GetPointerCount());
-        builder.Copy(data.Struct());
+        if (data.Struct().IsValid())
+            builder.Copy(data.Struct());
         m_data = { data.Decl(), builder };
     }
 

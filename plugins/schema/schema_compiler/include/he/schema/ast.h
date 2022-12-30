@@ -373,7 +373,7 @@ namespace he::schema
 
     struct AstFile
     {
-        AstFile() noexcept : root(), allocator(sizeof(AstNode) * 128) {}
+        AstFile() noexcept : root(), allocator(sizeof(AstNode) * 65536) {}
 
         AstNode root;
         ArenaAllocator allocator;

@@ -435,8 +435,15 @@ namespace he::schema
             return false;
         }
 
+        if (ordinals.IsEmpty())
+            return true;
+
+        Vector<MemberOrdinal> sortedOrdinals;
+        sortedOrdinals.Insert(0, ordinals.Begin(), ordinals.End());
+        std::sort(sortedOrdinals.Begin(), sortedOrdinals.End(), [](const auto& a, const auto& b) { return a.value < b.value; });
+
         uint16_t expectedOrdinal = 0;
-        for (const MemberOrdinal& ordinal : ordinals)
+        for (const MemberOrdinal& ordinal : sortedOrdinals)
         {
             if (ordinal.value != expectedOrdinal)
             {

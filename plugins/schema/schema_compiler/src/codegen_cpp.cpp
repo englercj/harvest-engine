@@ -177,7 +177,7 @@ namespace he::schema
             m_writer.Write("extern const ");
 
         if (typeData.IsString())
-            m_writer.Write("char");
+            m_writer.Write("he::StringView");
         else
             WriteType(type, scope, ReaderSuffix);
 
@@ -186,8 +186,6 @@ namespace he::schema
 
         if (typeData.IsArray())
             m_writer.Write("[{}]", typeData.GetArray().GetSize());
-        else if (typeData.IsString())
-            m_writer.Write("[]");
 
         if (isInline)
         {

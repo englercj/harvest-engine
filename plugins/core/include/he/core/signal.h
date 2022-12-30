@@ -24,10 +24,10 @@ namespace he
         public:
             Binding() = default;
 
-            bool IsValid() const { return m_signal != nullptr; }
+            [[nodiscard]] bool IsValid() const { return m_signal != nullptr; }
             bool Detach() { return IsValid() && m_signal->Detach(*this); }
 
-            operator bool() const { return IsValid(); }
+            [[nodiscard]] explicit operator bool() const { return IsValid(); }
 
         private:
             friend Signal;

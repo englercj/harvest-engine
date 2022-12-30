@@ -59,7 +59,7 @@ namespace he::assets
     }
 
     bool AssetTypeRegistry::RegisterAssetType(
-        const char* assetTypeName,
+        StringView assetTypeName,
         const he::schema::DeclInfo& declInfo,
         const TypeInfo& compilerInfo,
         UniquePtr<AssetCompiler> compiler)
@@ -86,7 +86,7 @@ namespace he::assets
         return true;
     }
 
-    void AssetTypeRegistry::UnregisterAssetType(const char* assetTypeName)
+    void AssetTypeRegistry::UnregisterAssetType(StringView assetTypeName)
     {
         const AssetTypeId assetTypeId{ assetTypeName };
         m_assetTypes.Erase(assetTypeId);

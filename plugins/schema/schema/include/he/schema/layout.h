@@ -558,6 +558,7 @@ namespace he::schema
 
         Word* Data() { return m_data.Data(); }
         const Word* Data() const { return m_data.Data(); }
+
         uint32_t Size() const { return m_data.Size(); }
         uint32_t ByteSize() const { return Size() * BytesPerWord; }
 
@@ -1263,6 +1264,12 @@ namespace he::schema
         Builder builder{};
 
         T::Builder Root()
+        {
+            PointerBuilder ptr = builder.Root();
+            return ptr.TryGetStruct<T>();
+        }
+
+        T::Builder AddRoot()
         {
             PointerBuilder ptr = builder.Root();
             if (ptr.IsNull())

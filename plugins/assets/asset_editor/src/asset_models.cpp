@@ -280,6 +280,24 @@ namespace he::assets
         return false;
     }
 
+    bool AssetFileModel::FindOne(AssetDatabase& db, const AssetUuid& assetUuid, AssetFileModel& model)
+    {
+        sqlite::ScopedStatement stmt = db.StatementLiteral(R"(
+            SELECT * FROM asset_file WHERE id = (SELECT asset_file_id FROM asset WHERE uuid = ?)
+        )");
+
+        if (!stmt->Bind(1, assetUuid.val.m_bytes))
+            return false;
+
+        if (stmt->Step() == sqlite::StepResult::Row)
+        {
+            Read(*stmt, model);
+            return HE_VERIFY(stmt->Step() == sqlite::StepResult::Done);
+        }
+
+        return false;
+    }
+
     bool AssetFileModel::RemoveOne(AssetDatabase& db, const AssetFileUuid& fileUuid)
     {
         sqlite::ScopedStatement stmt = db.StatementLiteral(R"(

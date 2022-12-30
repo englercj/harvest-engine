@@ -549,13 +549,15 @@ namespace he::editor
         ImGui::SameLine(windowWidth - (sysButtonSize.x * 3));
 
         // Minimize
-        if (ImGui::Button(ICON_MDI_WINDOW_MINIMIZE, sysButtonSize))
+        if (ImGui::Button(ICON_MDI_WINDOW_MINIMIZE "##minimize_sys_button", sysButtonSize))
             view->Minimize();
         if (ImGui::IsItemHovered())
             hitArea = window::ViewHitArea::ButtonMinimize;
 
         // Maximize & Restore
-        if (ImGui::Button(view->IsMaximized() ? ICON_MDI_WINDOW_RESTORE : ICON_MDI_WINDOW_MAXIMIZE, sysButtonSize))
+        constexpr char RestoreButtonText[] = ICON_MDI_WINDOW_RESTORE "##restore_sys_button";
+        constexpr char MaximizeButtonText[] = ICON_MDI_WINDOW_MAXIMIZE "##maximize_sys_button";
+        if (ImGui::Button(view->IsMaximized() ? RestoreButtonText : MaximizeButtonText, sysButtonSize))
             view->ToggleMaximize();
         if (ImGui::IsItemHovered())
             hitArea = window::ViewHitArea::ButtonMaximizeAndRestore;
@@ -563,7 +565,7 @@ namespace he::editor
         // Close
         ImGui::PushStyleColor(ImGuiCol_ButtonHovered, { 0.9f, 0.0f, 0.0f, 1.0f });
         ImGui::PushStyleColor(ImGuiCol_ButtonActive, style.Colors[ImGuiCol_ButtonHovered]);
-        if (ImGui::Button(ICON_MDI_CLOSE, sysButtonSize))
+        if (ImGui::Button(ICON_MDI_CLOSE "##close_sys_button", sysButtonSize))
             view->RequestClose();
         if (ImGui::IsItemHovered())
             hitArea = window::ViewHitArea::ButtonClose;

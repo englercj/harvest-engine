@@ -517,10 +517,7 @@ namespace he
     typename HashMap<K, V, H, E>::EmplaceResult HashMap<K, V, H, E>::EmplaceOrAssign(U&& key, X&& value)
     {
         const EmplaceResult result = Super::Emplace(Forward<U>(key));
-        if (!result.inserted)
-        {
-            result.entry.value = Forward<X>(value);
-        }
+        result.entry.value = Forward<X>(value);
         return result;
     }
 

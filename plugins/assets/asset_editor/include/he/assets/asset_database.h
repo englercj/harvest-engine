@@ -10,8 +10,6 @@
 #include "he/schema/layout.h"
 #include "he/sqlite/database.h"
 
-#include <functional>
-
 namespace he::assets
 {
     class AssetDatabase final
@@ -30,28 +28,48 @@ namespace he::assets
     public:
         ~AssetDatabase() noexcept { Terminate(); }
 
-        bool Initialize(const char* dbPath, const char* assetRoot);
+        bool Initialize(const char* cacheRoot, const char* assetRoot);
         bool Terminate();
 
         // TODO: Audit the path handling in these.
         // All of these should work with absolute paths, or asset root relative paths.
         bool IsFileUpToDate(const char* path);
-        bool UpdateAssetFile(const char* path, LoadDelegate callback);
-        bool LoadAssetFile(const char* path, LoadDelegate callback);
-        bool LoadAssetFile(const AssetFileUuid& fileUuid, LoadDelegate callback);
+        bool UpdateAssetFileAsync(const char* path, LoadDelegate callback);
+        bool LoadAssetFileAsync(const char* path, LoadDelegate callback);
+        bool LoadAssetFileAsync(const AssetFileUuid& fileUuid, LoadDelegate callback);
+
+        LoadResult LoadAssetFile(const char* path);
+        LoadResult LoadAssetFile(const AssetFileUuid& fileUuid);
         bool SaveAssetFile(const char* path, schema::AssetFile::Reader assetFile);
 
         void OnAssetFileDeleted(const char* path);
         void OnAssetFileUpdated(const char* path);
 
+    public:
         const String& AssetRoot() const { return m_assetRoot; }
 
         sqlite::Transaction BeginTransaction() const { return m_db.BeginTransaction(); }
         const sqlite::Statement& StatementLiteral(const char* sql) { return m_db.StatementLiteral(sql); }
 
+    public:
+        Result AddResource(const AssetUuid& assetUuid, ResourceId resourceId, Span<const uint8_t> data) const
+        {
+            String path = MakeResourcePath(assetUuid, resourceId);
+            return File::WriteAll(data.Data(), data.Size(), path.Data());
+        }
+
+        template <typename T>
+        Result GetResource(T& data, const AssetUuid& assetUuid, ResourceId resourceId) const
+        {
+            String path = MakeResourcePath(assetUuid, resourceId);
+            return File::ReadAll(data, path.Data());
+        }
+
     private:
         bool PrepareRelativePath(const char* path, String& relPath) const;
         bool PrepareAbsolutePath(const char* path, String& absPath) const;
+
+        String MakeResourcePath(const AssetUuid& assetUuid, ResourceId resourceId) const;
 
         void AssetFileUpdateInternal(const char* path, schema::AssetFile::Reader assetFile);
 
@@ -78,5 +96,6 @@ namespace he::assets
     private:
         sqlite::Database m_db;
         String m_assetRoot;
+        String m_resourceRoot;
     };
 }

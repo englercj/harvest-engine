@@ -157,7 +157,7 @@ HE_TEST(core, hash, FNV64)
 }
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST(core, hash, CRC32)
+HE_TEST(core, hash, CRC32C)
 {
     TestHashAlgorithm<CRC32C>();
 

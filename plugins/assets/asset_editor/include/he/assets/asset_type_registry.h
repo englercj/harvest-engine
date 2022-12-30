@@ -66,8 +66,8 @@ namespace he::assets
         bool RegisterImporter(const TypeInfo& info, UniquePtr<AssetImporter> importer);
         void UnregisterImporter(const TypeInfo& info);
 
-        bool RegisterAssetType(const char* assetTypeName, const he::schema::DeclInfo& declInfo, const TypeInfo& compilerInfo, UniquePtr<AssetCompiler> compiler);
-        void UnregisterAssetType(const char* assetTypeName);
+        bool RegisterAssetType(StringView assetTypeName, const he::schema::DeclInfo& declInfo, const TypeInfo& compilerInfo, UniquePtr<AssetCompiler> compiler);
+        void UnregisterAssetType(StringView assetTypeName);
 
     private:
         Vector<ImporterEntry> m_importers;

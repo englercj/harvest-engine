@@ -79,7 +79,7 @@ namespace he::assets
                     if (!m_db.IsFileUpToDate(assetFilePath))
                     {
                         auto callback = AssetDatabase::LoadDelegate::Make<&AssetFileScanner::OnUpdateComplete>(this);
-                        m_db.UpdateAssetFile(assetFilePath, callback);
+                        m_db.UpdateAssetFileAsync(assetFilePath, callback);
                     }
                     else
                     {

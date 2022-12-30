@@ -20,7 +20,7 @@ namespace he::assets
         AssetServer(AssetDatabase& db, TaskExecutor& executor);
 
         void StartImport(const char* path);
-        void StartImport(const char* path, he::schema::Builder&& moreInfoBuilder);
+        void StartImport(const char* path, he::schema::Builder&& importSettings);
         void StartPendingImports();
 
         void StartCompile(const AssetUuid& assetUuid);
@@ -37,20 +37,36 @@ namespace he::assets
     private:
         struct ImportTaskData
         {
-            String path;
+            ImportTaskData(AssetServer* server)
+                : server(server)
+                , ctx(server->m_db)
+                , result(ctx, assetFile)
+            {}
+
+            String path{};
+            he::schema::Builder importSettings{};
+            he::schema::Builder assetFile{};
+
+            AssetServer* server;
             ImportContext ctx;
             ImportResult result;
-            AssetServer* server;
         };
         static void Import_OnAssetFileLoad(ImportTaskData* data, AssetDatabase::LoadResult result);
         static void Import_Task(ImportTaskData* data);
 
         struct CompileTaskData
         {
-            AssetUuid assetUuid;
+            CompileTaskData(AssetServer* server)
+                : server(server)
+                , ctx(server->m_db)
+                , result(ctx)
+            {}
+
+            AssetUuid assetUuid{};
+
+            AssetServer* server;
             CompileContext ctx;
             CompileResult result;
-            AssetServer* server;
         };
         static void Compile_Task(CompileTaskData* data);
 

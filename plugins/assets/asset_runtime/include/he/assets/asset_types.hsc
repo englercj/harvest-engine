@@ -103,9 +103,9 @@ struct Asset
     type @1 :String $Display.ReadOnly;                  // unique string identifier of the asset type
     name @2 :String;                                    // user-defined human-friendly name
     tags @3 :String[];                                  // user-defined search & filter strings
-    references @4 :he.schema.Uuid[] $Display.Hidden;    // outgoing references to other assets
+    references @4 :AssetReference[] $Display.Hidden;    // outgoing references to other assets and data files
     data @5 :AnyStruct;                                 // Data for the asset, type is deduced based on `type`
-    importData @6 :AnyStruct $Display.Hidden;           // Data for the importer, stores import settings for re-importing
+    importData @6 :AnyStruct $Display.Hidden;           // Any data the importer would like to attach to the asset
 }
 
 struct AssetFile
@@ -113,6 +113,28 @@ struct AssetFile
     uuid @0 :he.schema.Uuid;    // unique identifier of the file
     assets @1 :Asset[];         // list of assets contained in the file
     source @2 :String;          // relative path to source file for the assets
+}
+
+struct AssetReference
+{
+    data :union
+    {
+        asset :group
+        {
+            uuid @0 :he.schema.Uuid;
+        }
+
+        resource :group
+        {
+            assetUuid @1 :he.schema.Uuid;
+            resourceId @2 :uint32;
+        }
+
+        file :group
+        {
+            path @3 :String;
+        }
+    }
 }
 
 // ------------------------------------------------------------------------------------------------

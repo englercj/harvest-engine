@@ -3,8 +3,11 @@
 #include "he/assets/importers/image_importer.h"
 
 #include "he/assets/types.h"
+#include "he/assets/types_fmt.h"
 #include "he/core/log.h"
 #include "he/core/path.h"
+#include "he/core/result_fmt.h"
+#include "he/core/string_fmt.h"
 
 #include "encoder/basisu_comp.h"
 #include "encoder/basisu_enc.h"
@@ -30,6 +33,9 @@ namespace he::assets
 
     bool ImageImporter::Import(const ImportContext& ctx, ImportResult& result)
     {
+        constexpr ResourceId Texture2DPixelsId{ schema::Texture2D::PixelsResourceName };
+
+        // Load and validate the image is good to be used
         basisu::image img;
         if (!basisu::load_image(ctx.file, img))
         {
@@ -52,30 +58,49 @@ namespace he::assets
             return false;
         }
 
-        const StringView assetTypeName = schema::Texture2D::AssetTypeName;
-        const StringView assetName = GetPathWithoutExtension(GetBaseName(ctx.file));
+        constexpr StringView assetTypeName = schema::Texture2D::AssetTypeName;
 
-        schema::Asset::Builder asset = result.AddAsset(assetTypeName, assetName);
+        // Update or create a texture 2d asset for this image
+        schema::Asset::Builder asset;
+        for (auto&& existing : ctx.assetFile.GetAssets())
+        {
+            if (existing.GetType() == assetTypeName)
+            {
+                asset = result.UpdateAsset(existing.GetUuid());
+                break;
+            }
+        }
+
         if (!asset.IsValid())
-            return false;
+        {
+            const StringView assetName = GetPathWithoutExtension(GetBaseName(ctx.file));
+            asset = result.CreateAsset(assetTypeName, assetName);
+        }
 
+        HE_ASSERT(asset.IsValid());
+
+        // Create a resource to store the pixels of the image, which can be used later by the compiler
         const Span<const uint8_t> rgbaBytes = Span<const basisu::color_rgba>(img.get_pixels()).AsBytes();
 
         he::schema::Builder builder;
         schema::Texture2D::PixelsResource::Builder pixelResource = builder.AddStruct<schema::Texture2D::PixelsResource>();
         pixelResource.SetWidth(img.get_width());
         pixelResource.SetHeight(img.get_height());
-
-        he::schema::List<::he::schema::Blob>::Builder mips = pixelResource.InitMips(1);
-        mips.Set(0, builder.AddBlob(rgbaBytes));
-
+        pixelResource.SetSource(builder.AddBlob(rgbaBytes));
         builder.SetRoot(pixelResource);
 
-        constexpr ResourceId Texture2DPixelsId{ schema::Texture2D::PixelsResourceName };
-
         const Span<const uint8_t> resourceBytes = Span<const he::schema::Word>(builder).AsBytes();
-        if (!result.AddResource(asset.GetUuid(), Texture2DPixelsId, resourceBytes))
+        Result r = ctx.db.AddResource(asset.GetUuid(), Texture2DPixelsId, resourceBytes);
+        if (!r)
+        {
+            HE_LOG_ERROR(he_assets,
+                HE_MSG("Failed to add pixel resource during image import."),
+                HE_KV(asset_uuid, AssetUuid(asset.GetUuid())),
+                HE_KV(asset_name, asset.GetName()),
+                HE_KV(result, r),
+                HE_KV(path, ctx.file));
             return false;
+        }
 
         return true;
     }

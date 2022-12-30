@@ -79,7 +79,7 @@ namespace he::editor
             return nullptr;
 
         CtxEntry& entry = m_contexts.Emplace(assetUuid).entry.value;
-        entry.ctx = MakeUnique<SchemaEditContext>(result.asset);
+        entry.ctx = MakeUnique<SchemaEditContext>(result.asset.AsReader());
         entry.refCount = 1;
 
         return entry.ctx.Get();
@@ -88,17 +88,16 @@ namespace he::editor
     bool AssetEditService::SaveAsset(const assets::AssetUuid& assetUuid)
     {
         CtxEntry* entry = m_contexts.Find(assetUuid);
-        if (HE_VERIFY(entry,
+        if (!HE_VERIFY(entry,
             HE_MSG("SaveAsset called with an asset uuid that is not open")))
         {
-            return;
+            return false;
         }
 
         assets::AssetDatabase& db = m_assetService.AssetDB();
         AssetLoadResult result = LoadAsset(db, assetUuid);
-
         if (!result.asset.IsValid())
-            return;
+            return false;
 
         result.asset.Copy(entry->ctx->Data().Struct());
 
@@ -108,7 +107,7 @@ namespace he::editor
     void AssetEditService::CloseAsset(SchemaEditContext* ctx)
     {
         const assets::schema::Asset::Builder& asset = ctx->Data().As<assets::schema::Asset>();
-        if (HE_VERIFY(asset.IsValid(),
+        if (!HE_VERIFY(asset.IsValid(),
             HE_MSG("Schema context is not editing. Was it opened with the asset edit service?")))
         {
             return;
@@ -116,7 +115,7 @@ namespace he::editor
 
         const he::schema::Uuid::Builder& assetUuid = asset.GetUuid();
         CtxEntry* entry = m_contexts.Find(assetUuid);
-        if (HE_VERIFY(entry && entry->ctx.Get() == ctx,
+        if (!HE_VERIFY(entry && entry->ctx.Get() == ctx,
             HE_MSG("Schema context not found. Was it opened with the asset edit service?")))
         {
             return;

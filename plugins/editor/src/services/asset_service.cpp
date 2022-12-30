@@ -46,21 +46,18 @@ namespace he::editor
 
         const he::schema::String::Reader relativeAssetRoot = m_projectService.Project().GetAssetRoot();
 
-        String assetDbFile = m_projectService.DataDir();
-        ConcatPath(assetDbFile, AssetDbFile);
-        NormalizePath(assetDbFile);
-
+        const String& cacheRoot = m_projectService.DataDir();
         String assetRoot = GetDirectory(m_projectService.ProjectPath());
         ConcatPath(assetRoot, relativeAssetRoot);
         NormalizePath(assetRoot);
 
         auto failGuard = MakeScopeGuard([&]() { Terminate(); });
 
-        if (!m_db.Initialize(assetDbFile.Data(), assetRoot.Data()))
+        if (!m_db.Initialize(cacheRoot.Data(), assetRoot.Data()))
         {
             HE_LOG_ERROR(he_editor,
                 HE_MSG("Failed to initialize asset cache DB."),
-                HE_KV(asset_db_file, assetDbFile),
+                HE_KV(cache_root, cacheRoot),
                 HE_KV(asset_root, assetRoot));
             return;
         }
@@ -71,7 +68,7 @@ namespace he::editor
         {
             HE_LOG_ERROR(he_editor,
                 HE_MSG("Failed to start asset DB updater."),
-                HE_KV(asset_db_file, assetDbFile),
+                HE_KV(cache_root, cacheRoot),
                 HE_KV(asset_root, assetRoot));
             return;
         }

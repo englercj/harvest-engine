@@ -55,7 +55,7 @@ CREATE TABLE asset_tag (
     FOREIGN KEY (tag_id) REFERENCES tag (id) ON DELETE CASCADE
 ) WITHOUT ROWID;
 CREATE INDEX idx_asset_tag_fk_asset_id ON asset_tag (asset_id);
-CREATE INDEX idx_asset_tag_fk_tag_rowid ON asset_tag (tag_id);
+CREATE INDEX idx_asset_tag_fk_tag_id ON asset_tag (tag_id);
 
 CREATE TABLE asset_reference (
     id                      INTEGER PRIMARY KEY,    -- Primary key for a row.

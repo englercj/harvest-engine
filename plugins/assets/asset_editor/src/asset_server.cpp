@@ -23,23 +23,24 @@ namespace he::assets
 
     void AssetServer::StartImport(const char* path)
     {
-        ImportTaskData* data = Allocator::GetDefault().New<ImportTaskData>();
+        ImportTaskData* data = Allocator::GetDefault().New<ImportTaskData>(this);
         data->path = path;
         data->server = this;
 
         AssetDatabase::LoadDelegate cb = AssetDatabase::LoadDelegate::Make<&AssetServer::Import_OnAssetFileLoad>(data);
-        m_db.LoadAssetFile(path, cb);
+        m_db.LoadAssetFileAsync(path, cb);
     }
 
-    void AssetServer::StartImport(const char* path, he::schema::Builder&& moreInfoBuilder)
+    void AssetServer::StartImport(const char* path, he::schema::Builder&& importSettings)
     {
-        ImportTaskData* data = Allocator::GetDefault().New<ImportTaskData>();
+        ImportTaskData* data = Allocator::GetDefault().New<ImportTaskData>(this);
         data->path = path;
-        data->ctx.moreInfoBuilder = Move(moreInfoBuilder);
-        data->server = this;
+        data->importSettings = Move(importSettings);
+        data->ctx.file = data->path.Data();
+        data->ctx.settings = data->importSettings.Root().TryGetStruct();
 
         AssetDatabase::LoadDelegate cb = AssetDatabase::LoadDelegate::Make<&AssetServer::Import_OnAssetFileLoad>(data);
-        m_db.LoadAssetFile(path, cb);
+        m_db.LoadAssetFileAsync(path, cb);
     }
 
     void AssetServer::StartPendingImports()
@@ -86,7 +87,7 @@ namespace he::assets
 
     void AssetServer::StartCompile(const AssetModel& asset)
     {
-        CompileTaskData* data = Allocator::GetDefault().New<CompileTaskData>();
+        CompileTaskData* data = Allocator::GetDefault().New<CompileTaskData>(this);
         data->assetUuid = asset.uuid;
         data->server = this;
 
@@ -134,13 +135,16 @@ namespace he::assets
                 return;
             }
 
-            schema::AssetFile::Builder assetFile = data->ctx.assetFile.Root();
+            schema::AssetFile::Builder assetFile = data->assetFile.AddStruct<schema::AssetFile>();
             FillUuidV4(assetFile.InitUuid());
             assetFile.InitSource(data->path);
+
+            data->assetFile.SetRoot(assetFile);
+            data->ctx.assetFile = assetFile;
         }
 
-        data->ctx.file = data->path.Data();
-        data->ctx.assetFile = Move(load.builder);
+        data->assetFile = Move(load.builder.builder);
+        data->ctx.assetFile = data->assetFile.Root().TryGetStruct<schema::AssetFile>();
 
         String taskName = "Importing file '";
         taskName += GetBaseName(data->path);
@@ -168,7 +172,7 @@ namespace he::assets
                     HE_MSG("Importing asset source."),
                     HE_KV(importer_id, importer.Id()),
                     HE_KV(importer_version, importer.Version()),
-                    HE_KV(asset_file_uuid, AssetFileUuid(data->ctx.assetFile.Root().GetUuid())),
+                    HE_KV(asset_file_uuid, AssetFileUuid(data->ctx.assetFile.GetUuid())),
                     HE_KV(path, data->ctx.file));
 
                 found = true;
@@ -180,7 +184,7 @@ namespace he::assets
                         HE_MSG("Failed to import asset source."),
                         HE_KV(importer_id, importer.Id()),
                         HE_KV(importer_version, importer.Version()),
-                        HE_KV(asset_file_uuid, AssetFileUuid(data->ctx.assetFile.Root().GetUuid())),
+                        HE_KV(asset_file_uuid, AssetFileUuid(data->ctx.assetFile.GetUuid())),
                         HE_KV(path, data->path));
                     break;
                 }
@@ -192,27 +196,62 @@ namespace he::assets
             HE_LOG_WARN(he_assets, HE_MSG("No importer found that can handle this asset source."), HE_KV(path, data->path));
         }
 
-        // TODO: Only compile the touched stuff instead of everything.
-        // Maybe only if there are new resources or data has changed?
+        Vector<schema::Asset::Reader> needsCompile;
+
         if (success)
         {
             String assetFilePath = data->path;
             assetFilePath += AssetFileExtension;
 
-            success = data->server->m_db.SaveAssetFile(assetFilePath.Data(), data->ctx.assetFile.Root());
+            schema::AssetFile::Builder assetFile = data->assetFile.Root().TryGetStruct<schema::AssetFile>();
+
+            const uint32_t prevSize = assetFile.GetAssets().Size();
+            const uint32_t newListSize = prevSize + data->result.m_updated.Size();
+            he::schema::List<schema::Asset>::Builder assets = data->assetFile.AddList<schema::Asset>(newListSize);
+
+            // copy over existing and updated assets, preserving the order.
+            for (uint32_t i = 0; i < prevSize; ++i)
+            {
+                schema::Asset::Reader asset = assetFile.GetAssets()[i];
+
+                bool foundUpdated = false;
+                for (auto&& updated : data->result.m_updated)
+                {
+                    if (asset.GetUuid() == updated.GetUuid())
+                    {
+                        foundUpdated = true;
+                        assets.Set(i, updated);
+                    }
+                }
+
+                if (!foundUpdated)
+                {
+                    assets.Set(i, asset);
+                }
+            }
+
+            // copy over new assets
+            for (uint32_t i = prevSize; i < newListSize; ++i)
+            {
+                schema::Asset::Reader asset = data->result.m_new[i - prevSize];
+                assets.Set(i, asset);
+            }
+
+            assetFile.SetAssets(assets);
+
+            success = data->server->m_db.SaveAssetFile(assetFilePath.Data(), assetFile);
             if (!success)
             {
                 HE_LOG_ERROR(he_assets,
                     HE_MSG("Failed to save asset file after import."),
                     HE_KV(asset_file_path, assetFilePath),
-                    HE_KV(asset_file_uuid, AssetFileUuid(data->ctx.assetFile.Root().GetUuid())),
+                    HE_KV(asset_file_uuid, AssetFileUuid(assetFile.GetUuid())),
                     HE_KV(source_path, data->path));
             }
-
         }
 
         sqlite::Transaction t = data->server->m_db.BeginTransaction();
-        for (const schema::Asset::Builder asset : data->ctx.assetFile.Root().GetAssets())
+        for (const schema::Asset::Reader asset : data->ctx.assetFile.GetAssets())
         {
             AssetUuid assetUuid{ asset.GetUuid() };
 
@@ -231,7 +270,6 @@ namespace he::assets
         data->server->m_onImportCompleteSignal.Dispatch(success, data->ctx, data->result);
         Allocator::GetDefault().Delete(data);
     }
-
 
     void AssetServer::Compile_Task(CompileTaskData* data)
     {

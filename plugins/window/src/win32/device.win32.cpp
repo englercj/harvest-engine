@@ -311,14 +311,14 @@ namespace he::window::win32
                             case ViewHitArea::Draggable: return HTCAPTION;
                             case ViewHitArea::Normal: return HTCLIENT;
                             case ViewHitArea::NotInView: return HTNOWHERE;
-                            case ViewHitArea::ResizeTopLeft: return allowResize ? HTTOPLEFT : HTCLIENT;
-                            case ViewHitArea::ResizeTop: return allowResize ? HTTOP : HTCLIENT;
-                            case ViewHitArea::ResizeTopRight: return allowResize ? HTTOPRIGHT : HTCLIENT;
-                            case ViewHitArea::ResizeRight: return allowResize ? HTRIGHT : HTCLIENT;
-                            case ViewHitArea::ResizeBottomRight: return allowResize ? HTBOTTOMRIGHT : HTCLIENT;
-                            case ViewHitArea::ResizeBottom: return allowResize ? HTBOTTOM : HTCLIENT;
-                            case ViewHitArea::ResizeBottomLeft: return allowResize ? HTBOTTOMLEFT : HTCLIENT;
-                            case ViewHitArea::ResizeLeft: return allowResize ? HTLEFT : HTCLIENT;
+                            case ViewHitArea::ResizeTopLeft: return allowResize ? HTTOPLEFT : HTBORDER;
+                            case ViewHitArea::ResizeTop: return allowResize ? HTTOP : HTBORDER;
+                            case ViewHitArea::ResizeTopRight: return allowResize ? HTTOPRIGHT : HTBORDER;
+                            case ViewHitArea::ResizeRight: return allowResize ? HTRIGHT : HTBORDER;
+                            case ViewHitArea::ResizeBottomRight: return allowResize ? HTBOTTOMRIGHT : HTBORDER;
+                            case ViewHitArea::ResizeBottom: return allowResize ? HTBOTTOM : HTBORDER;
+                            case ViewHitArea::ResizeBottomLeft: return allowResize ? HTBOTTOMLEFT : HTBORDER;
+                            case ViewHitArea::ResizeLeft: return allowResize ? HTLEFT : HTBORDER;
                             case ViewHitArea::SystemMenu: return HTSYSMENU;
                         }
                         HE_VERIFY(false, HE_MSG("Unknown hit area."));
@@ -480,6 +480,36 @@ namespace he::window::win32
                 app->OnEvent(ev);
                 break;
             }
+            case WM_NCPOINTERDOWN:
+            case WM_NCPOINTERUP:
+            {
+                // Perform a hit test so we know if this is a special part of the non-client area.
+                const int x = GET_X_LPARAM(lParam);
+                const int y = GET_Y_LPARAM(lParam);
+                const LPARAM lParamHittest = MAKELPARAM(x, y);
+                const LRESULT hittest = ::SendMessageW(hWnd, WM_NCHITTEST, 0, lParamHittest);
+
+                // Check for a few events that we want to handle, and forward anything else over to
+                // the default windows proc.
+                bool defProc = true;
+                switch (hittest)
+                {
+                    case HTCLIENT:
+                    case HTBORDER:
+                    case HTMINBUTTON:
+                    case HTMAXBUTTON:
+                    case HTNOWHERE:
+                        defProc = false;
+                        break;
+                }
+
+                // If the value is not in our list then break out to the default window proc.
+                if (defProc)
+                    break;
+
+                // This is an event on our list of things to handle, fall through to the handlers below.
+                [[fallthrough]];
+            }
             case WM_POINTERDOWN:
             case WM_POINTERUP:
             case WM_POINTERWHEEL:
@@ -571,7 +601,7 @@ namespace he::window::win32
             }
         }
 
-        return DefWindowProc(hWnd, message, wParam, lParam);
+        return ::DefWindowProcW(hWnd, message, wParam, lParam);
     }
 
     struct VisitMonitorData

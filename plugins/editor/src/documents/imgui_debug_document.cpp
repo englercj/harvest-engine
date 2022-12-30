@@ -125,20 +125,19 @@ namespace he::editor
 
     void ImGuiDebugDocument::ShowPropertyGridTab()
     {
-        static SchemaEditContext s_ctx;
+        static SchemaEditContext s_ctx{ assets::schema::Asset::Reader{} };
 
-        if (s_ctx.Builder().Root().IsNull())
+        assets::schema::Asset::Builder asset = s_ctx.Data().As<assets::schema::Asset>();
+        if (asset.GetData().IsNull())
         {
-            assets::schema::Asset::Builder asset = s_ctx.Builder().AddStruct<assets::schema::Asset>();
             FillUuidV4(asset.InitUuid());
             asset.InitType(assets::schema::Texture2D::AssetTypeName);
             asset.InitName("Test Texture");
 
-            assets::schema::Texture2D::Builder tex = s_ctx.Builder().AddStruct<assets::schema::Texture2D>();
+            assets::schema::Texture2D::Builder tex = asset.GetBuilder()->AddStruct<assets::schema::Texture2D>();
             asset.GetData().Set(tex);
 
-            s_ctx.Builder().SetRoot(asset);
-            s_ctx.Data() = he::schema::DynamicStruct::Builder{ assets::schema::Asset::DeclInfo, asset };
+            asset.GetBuilder()->SetRoot(asset);
         }
 
         SchemaEdit edit;

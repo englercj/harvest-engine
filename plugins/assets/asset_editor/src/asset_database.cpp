@@ -2,33 +2,50 @@
 
 #include "he/assets/asset_database.h"
 
+#include "migrations.h"
+
 #include "he/assets/asset_models.h"
 #include "he/assets/types.h"
 #include "he/assets/types_fmt.h"
+#include "he/core/appender.h"
+#include "he/core/async_file.h"
 #include "he/core/clock.h"
 #include "he/core/clock_fmt.h"
+#include "he/core/directory.h"
 #include "he/core/file.h"
 #include "he/core/log.h"
 #include "he/core/path.h"
 #include "he/core/result.h"
 #include "he/core/result_fmt.h"
 #include "he/core/scope_guard.h"
+#include "he/core/string.h"
 #include "he/core/string_builder.h"
 #include "he/core/string_fmt.h"
 #include "he/schema/toml.h"
 
-#include "migrations.h"
+#include "fmt/core.h"
+
+#include <limits>
 
 namespace he::assets
 {
-    bool AssetDatabase::Initialize(const char* dbPath, const char* assetRoot)
+    bool AssetDatabase::Initialize(const char* cacheRoot, const char* assetRoot)
     {
+        // Asset root needs to be an absolute path for us to utilize it correctly
+        m_assetRoot = assetRoot;
         if (!HE_VERIFY(IsAbsolutePath(assetRoot), HE_KV(asset_root, assetRoot)))
             return false;
 
-        m_assetRoot = assetRoot;
+        // Ensure the cache root, and the resources directory both exist
+        m_resourceRoot = GetDirectory(cacheRoot);
+        ConcatPath(m_resourceRoot, "resources");
+        if (!HE_VERIFY(Directory::Create(m_resourceRoot.Data(), true), HE_KV(resource_root, m_resourceRoot)))
+            return false;
 
-        if (!m_db.Open(dbPath))
+        // Open the sqlite database and migrate the schema
+        String dbPath = cacheRoot;
+        ConcatPath(dbPath, "asset_cache.db");
+        if (!m_db.Open(dbPath.Data()))
             return false;
 
         if (!m_db.MigrateSchema(AssetDatabase_Migrations))
@@ -126,12 +143,12 @@ namespace he::assets
         return true;
     }
 
-    bool AssetDatabase::UpdateAssetFile(const char* path, LoadDelegate callback)
+    bool AssetDatabase::UpdateAssetFileAsync(const char* path, LoadDelegate callback)
     {
         if (!HE_VERIFY(!String::IsEmpty(path)))
         {
             HE_LOG_WARN(he_assets,
-                HE_MSG("UpdateAssetFile called with an empty path, ignoring update request."),
+                HE_MSG("UpdateAssetFileAsync called with an empty path, ignoring update request."),
                 HE_KV(file_path, path));
             return false;
         }
@@ -141,15 +158,15 @@ namespace he::assets
         req->path = path;
         req->callback = callback;
 
-        return LoadAssetFile(path, LoadDelegate::Make<&HandleLoadForUpdateComplete>(req));
+        return LoadAssetFileAsync(path, LoadDelegate::Make<&HandleLoadForUpdateComplete>(req));
     }
 
-    bool AssetDatabase::LoadAssetFile(const char* path, LoadDelegate callback)
+    bool AssetDatabase::LoadAssetFileAsync(const char* path, LoadDelegate callback)
     {
         if (!HE_VERIFY(callback))
         {
             HE_LOG_ERROR(he_assets,
-                HE_MSG("LoadAssetFile called without a callback, ignoring load request."),
+                HE_MSG("LoadAssetFileAsync called without a callback, ignoring load request."),
                 HE_KV(file_path, path));
             return false;
         }
@@ -157,7 +174,7 @@ namespace he::assets
         if (!HE_VERIFY(!String::IsEmpty(path)))
         {
             HE_LOG_WARN(he_assets,
-                HE_MSG("LoadAssetFile called with an empty path, ignoring load request."),
+                HE_MSG("LoadAssetFileAsync called with an empty path, ignoring load request."),
                 HE_KV(file_path, path));
 
             callback({ Result::InvalidParameter });
@@ -214,7 +231,7 @@ namespace he::assets
         return true;
     }
 
-    bool AssetDatabase::LoadAssetFile(const AssetFileUuid& fileUuid, LoadDelegate callback)
+    bool AssetDatabase::LoadAssetFileAsync(const AssetFileUuid& fileUuid, LoadDelegate callback)
     {
         if (!HE_VERIFY(callback))
         {
@@ -231,7 +248,69 @@ namespace he::assets
             return false;
         }
 
-        return LoadAssetFile(model.file.path.Data(), Move(callback));
+        return LoadAssetFileAsync(model.file.path.Data(), Move(callback));
+    }
+
+    AssetDatabase::LoadResult AssetDatabase::LoadAssetFile(const char* path)
+    {
+        if (!HE_VERIFY(!String::IsEmpty(path)))
+        {
+            HE_LOG_WARN(he_assets,
+                HE_MSG("LoadAssetFile called with an empty path, ignoring load request."),
+                HE_KV(file_path, path));
+
+            return { Result::InvalidParameter };
+        }
+
+        String absPath;
+        if (!PrepareAbsolutePath(path, absPath))
+        {
+            return { Result::InvalidParameter };
+        }
+
+        LoadResult loadResult;
+        String content;
+        Result r = File::ReadAll(content, absPath.Data());
+        if (!r)
+        {
+            HE_LOG_ERROR(he_assets,
+                HE_MSG("Failed to load asset file."),
+                HE_KV(file_path, absPath),
+                HE_KV(result, r));
+
+            return { r };
+        }
+
+        if (!he::schema::FromToml(loadResult.builder, content.Data()))
+        {
+            HE_LOG_ERROR(he_assets,
+                HE_MSG("Failed to parse asset file. Is it valid TOML?"),
+                HE_KV(file_path, absPath));
+
+            return { Result::InvalidParameter };
+        }
+
+        if (loadResult.builder.Root().IsValid())
+        {
+            HE_LOG_ERROR(he_assets,
+                HE_MSG("Failed to parse asset file. The root struct is not an AssetFile."),
+                HE_KV(file_path, absPath));
+
+            return { Result::InvalidParameter };
+        }
+
+        return loadResult;
+    }
+
+    AssetDatabase::LoadResult AssetDatabase::LoadAssetFile(const AssetFileUuid& fileUuid)
+    {
+        AssetFileModel model;
+        if (!AssetFileModel::FindOne(*this, fileUuid, model))
+        {
+            return { Result::InvalidParameter };
+        }
+
+        return LoadAssetFile(model.file.path.Data());
     }
 
     bool AssetDatabase::SaveAssetFile(const char* path, schema::AssetFile::Reader assetFile)
@@ -307,7 +386,7 @@ namespace he::assets
             return;
         }
 
-        UpdateAssetFile(path, {});
+        UpdateAssetFileAsync(path, {});
     }
 
     bool AssetDatabase::PrepareRelativePath(const char* path, String& relPath) const
@@ -344,6 +423,13 @@ namespace he::assets
         ConcatPath(absPath, path);
         NormalizePath(absPath);
         return true;
+    }
+
+    String AssetDatabase::MakeResourcePath(const AssetUuid& assetUuid, ResourceId resourceId) const
+    {
+        String path = m_resourceRoot;
+        fmt::format_to(Appender(path), "/{}/{}", assetUuid, resourceId);
+        return path;
     }
 
     void AssetDatabase::AssetFileUpdateInternal(const char* path, schema::AssetFile::Reader assetFile)

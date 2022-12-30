@@ -16,8 +16,6 @@
 
 namespace he::editor
 {
-    constexpr const char AssetDbFile[] = "asset_cache.db";
-
     class AssetService
     {
     public:
@@ -29,7 +27,7 @@ namespace he::editor
         void Terminate();
 
         void StartImport(const char* path) { m_server.StartImport(path); }
-        void StartImport(const char* path, he::schema::Builder&& moreInfoBuilder) { m_server.StartImport(path, Move(moreInfoBuilder)); }
+        void StartImport(const char* path, he::schema::Builder&& challengeBuilder) { m_server.StartImport(path, Move(challengeBuilder)); }
 
         void StartCompile(const assets::AssetUuid& assetUuid) { m_server.StartCompile(assetUuid); }
 

@@ -516,8 +516,11 @@ namespace he
     template <typename U, typename X>
     typename HashMap<K, V, H, E>::EmplaceResult HashMap<K, V, H, E>::EmplaceOrAssign(U&& key, X&& value)
     {
-        const EmplaceResult result = Super::Emplace(Forward<U>(key));
-        result.entry.value = Forward<X>(value);
+        const EmplaceResult result = Super::Emplace(Forward<U>(key), Forward<X>(value));
+        if (!result.inserted)
+        {
+            result.entry.value = Forward<X>(value);
+        }
         return result;
     }
 

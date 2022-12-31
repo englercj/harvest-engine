@@ -312,8 +312,11 @@ namespace he
         bool Erase(K&& key);
 
         /// Constructs an entry in-place if the key does not exist, does nothing if the key exists.
+        /// If additional arguments are passed beyond the key, they'll be forwarded to the
+        /// constructor of the value type *only if* a new entry is inserted. If an existing entry
+        /// is found, then the arguments are untouched.
         ///
-        /// Returns a result object that contains a reference to the newly created entry if one was
+        /// The result object returned contains a reference to the newly created entry if one was
         /// created, or the existing entry if one was found. Also holds a bool that is true when a
         /// new entry was created.
         ///

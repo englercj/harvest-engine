@@ -26,6 +26,13 @@ namespace he
     class SymLoader
     {
     public:
+        static SymLoader& Get()
+        {
+            static SymLoader s_sym{};
+            return s_sym;
+        }
+
+    public:
         SymLoader()
         {
             m_lib = ::LoadLibraryW(L"dbghelp.dll");
@@ -71,6 +78,15 @@ namespace he
     };
 
     // --------------------------------------------------------------------------------------------
+    // Used by Tracy to synchronize access to DbgHelp so we don't stomp on each other.
+    extern "C"
+    {
+        void DbgHelpSyncInit() { HE_VERIFY(SymLoader::Get().m_initialized); }
+        void DbgHelpSyncLock () { SymLoader::Get().m_mutex.Acquire(); }
+        void DbgHelpSyncUnlock () { SymLoader::Get().m_mutex.Release(); }
+    }
+
+    // --------------------------------------------------------------------------------------------
     Result CaptureStackTrace(uintptr_t* frames, uint32_t& count, uint32_t skipCount)
     {
         static_assert(sizeof(void*) == sizeof(uintptr_t));
@@ -82,14 +98,14 @@ namespace he
     // --------------------------------------------------------------------------------------------
     Result GetSymbolInfo(uintptr_t frame, SymbolInfo& info)
     {
-        static SymLoader s_sym{};
-        if (!s_sym.m_initialized)
+        SymLoader& sym = SymLoader::Get();
+        if (!sym.m_initialized)
             return Result::NotSupported;
 
         HANDLE proc = ::GetCurrentProcess();
 
         // DbgHelp functions are not thread safe, so we need to lock around them.
-        LockGuard lock(s_sym.m_mutex);
+        LockGuard lock(sym.m_mutex);
 
         // Load the symbol information for this frame address
         // Win32 expects a buffer that can hold the SYMBOL_INFO structure and the symbol name
@@ -98,12 +114,12 @@ namespace he
         SYMBOL_INFO* symbol = reinterpret_cast<SYMBOL_INFO*>(symbolBuffer);
         symbol->SizeOfStruct = sizeof(SYMBOL_INFO);
         symbol->MaxNameLen = MAX_SYM_NAME;
-        if (!s_sym.m_SymFromAddr(proc, frame, nullptr, symbol))
+        if (!sym.m_SymFromAddr(proc, frame, nullptr, symbol))
             return Result::FromLastError();
 
         // Try to demangle the function's name
         info.name.Resize(MAX_SYM_NAME);
-        const DWORD len = s_sym.m_UnDecorateSymbolName(symbol->Name, info.name.Data(), info.name.Size(), UNDNAME_COMPLETE);
+        const DWORD len = sym.m_UnDecorateSymbolName(symbol->Name, info.name.Data(), info.name.Size(), UNDNAME_COMPLETE);
         if (len > 0)
             info.name.Resize(len);
         else
@@ -113,7 +129,7 @@ namespace he
         IMAGEHLP_LINE64 line{};
         line.SizeOfStruct = sizeof(IMAGEHLP_LINE64);
         DWORD offset = 0;
-        if (s_sym.m_SymGetLineFromAddr64(proc, frame, &offset, &line))
+        if (sym.m_SymGetLineFromAddr64(proc, frame, &offset, &line))
         {
             info.file = line.FileName;
             info.line = line.LineNumber;

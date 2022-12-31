@@ -177,6 +177,10 @@ local function _install_from_nuget(name, source)
     return install_dir
 end
 
+local function _install_from_vcpkg(name, source)
+    -- TODO
+end
+
 return function (plugin)
     local i = plugin.install
     local plugin_dir = path.getdirectory(plugin._file_path)
@@ -237,7 +241,10 @@ return function (plugin)
     end
 
     -- Check for install sources and perform the install
-    if i.github ~= nil then
+    if i.vcpkg ~= nil then
+        local install_dir = _install_from_vcpkg(plugin.id, i.vcpkg)
+        install_dirs["*"] = install_dir
+    elseif i.github ~= nil then
         local install_dir = _install_from_github(plugin.id, i.github)
         install_dirs["*"] = install_dir
     elseif i.bitbucket ~= nil then

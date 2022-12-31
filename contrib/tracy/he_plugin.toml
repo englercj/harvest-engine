@@ -1,0 +1,102 @@
+# Copyright Chad Engler
+
+id = "wolfpld.tracy"
+name = "Tracy"
+description = "C++ frame profiler"
+version = "0.9.0"
+author = "Bartosz Taudul <wolf@nereid.pl>"
+license = "BSD-3-Clause"
+homepage = "https://github.com/wolfpld/tracy"
+
+[install]
+    github = "wolfpld/tracy#v0.9"
+
+[[modules]]
+    name = "tracy"
+    type = "static"
+    group = "engine/contrib"
+    warnings = "Off"
+    files = [
+        "%{path.getdirectory(he.get_plugin('wolfpld.tracy')._file_path)}/public/TracyClient.cpp",
+        "%{path.getdirectory(he.get_plugin('wolfpld.tracy')._file_path)}/public/tracy/Tracy.hpp",
+    ]
+    public_defines = ["TRACY_ENABLE", "TRACY_ON_DEMAND", "TRACY_DBGHELP_LOCK=DbgHelpSync"]
+    public_includedirs = [
+        "%{path.getdirectory(he.get_plugin('wolfpld.tracy')._file_path)}/public",
+    ]
+
+    [[modules.variants]]
+        conditions = ["system:linux"]
+        public_dependson = ["sys:pthread", "sys:dl"]
+
+[[modules]]
+    name = "tracy_cli"
+    type = "console_app"
+    group = "engine/contrib"
+    warnings = "Off"
+    files = [
+        "getopt/getopt.c",
+        "public/common/TracySocket.cpp",
+        "public/common/TracyStackFrames.cpp",
+        "public/common/TracySystem.cpp",
+        "public/common/tracy_lz4.cpp",
+        "public/common/tracy_lz4hc.cpp",
+        "server/TracyMemory.cpp",
+        "server/TracyMmap.cpp",
+        "server/TracyPrint.cpp",
+        "server/TracyTaskDispatch.cpp",
+        "server/TracyTextureCompression.cpp",
+        "server/TracyThreadCompress.cpp",
+        "server/TracyWorker.cpp",
+        "capture/src/capture.cpp",
+
+        "getopt/getopt.h",
+        "public/common/TracyAlign.hpp",
+        "public/common/TracyAlloc.hpp",
+        "public/common/TracyApi.h",
+        "public/common/TracyColor.hpp",
+        "public/common/TracyForceInline.hpp",
+        "public/common/TracyMutex.hpp",
+        "public/common/TracyProtocol.hpp",
+        "public/common/TracyQueue.hpp",
+        "public/common/TracySocket.hpp",
+        "public/common/TracyStackFrames.hpp",
+        "public/common/TracySystem.hpp",
+        "public/common/TracyUwp.hpp",
+        "public/common/TracyYield.hpp",
+        "public/common/tracy_lz4.hpp",
+        "public/common/tracy_lz4hc.hpp",
+        "server/TracyCharUtil.hpp",
+        "server/TracyEvent.hpp",
+        "server/TracyFileRead.hpp",
+        "server/TracyFileWrite.hpp",
+        "server/TracyMemory.hpp",
+        "server/TracyMmap.hpp",
+        "server/TracyPopcnt.hpp",
+        "server/TracyPrint.hpp",
+        "server/TracySlab.hpp",
+        "server/TracyTaskDispatch.hpp",
+        "server/TracyTextureCompression.hpp",
+        "server/TracyThreadCompress.hpp",
+        "server/TracyVector.hpp",
+        "server/TracyWorker.hpp",
+    ]
+    # TODO: also depends on 'capstone'
+    private_defines = ["TRACY_NO_STATISTICS"]
+    private_dependson = ["tracy", "zstd"]
+
+    [[modules.variants]]
+        conditions = ["system:win32"]
+        public_dependson = ["sys:ws2_32"]
+
+[[modules]]
+    name = "tracy_gui"
+    type = "windowed_app"
+    group = "engine/contrib"
+    warnings = "Off"
+    files = [
+        "%{path.getdirectory(he.get_plugin('wolfpld.tracy')._file_path)}/profiler/**",
+    ]
+    private_defines = ["TRACY_NO_STATISTICS"]
+    private_dependson = ["tracy"]
+ws2_32

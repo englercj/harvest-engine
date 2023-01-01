@@ -2,8 +2,8 @@
 
 id = "he.core"
 name = "Harvest Core"
-description = "Provides core utilities used throughout the engine."
-version = "1.0.0"
+description = "Core utilities and platform abstractions."
+version = "0.1.0"
 author = "Chad Engler <englercj@live.com>"
 license = "UNLICENSED"
 homepage = ""

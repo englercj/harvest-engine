@@ -2,8 +2,8 @@
 
 id = "he.editor"
 name = "Harvest Editor"
-description = "Harvest editor application."
-version = "1.0.0"
+description = "Harvest Editor application."
+version = "0.1.0"
 author = "Chad Engler <englercj@live.com>"
 license = "UNLICENSED"
 homepage = ""
@@ -16,8 +16,8 @@ homepage = ""
     public_includedirs = ["src", "%{he.get_generated_dir('he_editor')}/src"]
     private_defines = ["GOOGLE_PROTOBUF_INTERNAL_DONATE_STEAL_INLINE=0"]
     private_dependson = [
-        "he_asset_editor",
-        "he_asset_runtime",
+        "he_assets",
+        "he_assets_edit",
         "he_core",
         "he_math",
         "he_rhi",
@@ -40,7 +40,7 @@ homepage = ""
     [[modules.schema_compile]]
         glob = "src/schema/*.hsc"
         targets = ["c++"]
-        dependson_include = ["he_asset_runtime", "he_schema"]
+        dependson_include = ["he_assets", "he_schema"]
 
     [[modules.variants]]
         conditions = ["system:windows"]

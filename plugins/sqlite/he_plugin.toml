@@ -1,9 +1,9 @@
 # Copyright Chad Engler
 
 id = "he.sqlite"
-name = "Harvest SQLite Wrapper"
-description = "Provides utilities for utilizing sqlite easily and safely."
-version = "1.0.0"
+name = "Harvest SQLite"
+description = "SQLite wrappers for easily and safely using SQLite3 in C++."
+version = "0.1.0"
 author = "Chad Engler <englercj@live.com>"
 license = "UNLICENSED"
 homepage = ""

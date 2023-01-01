@@ -2,8 +2,8 @@
 
 id = "he.schema"
 name = "Harvest Schema"
-description = "Provides the Harvest Schema language parsing, code generation, and tooling."
-version = "1.0.0"
+description = "Harvest Schema language parsing, code generation, and tooling."
+version = "0.1.0"
 author = "Chad Engler <englercj@live.com>"
 license = "UNLICENSED"
 homepage = ""

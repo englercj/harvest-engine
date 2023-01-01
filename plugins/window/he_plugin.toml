@@ -2,8 +2,8 @@
 
 id = "he.window"
 name = "Harvest Windowing"
-description = "Provides windowing and input utilities for creating windowed applications."
-version = "1.0.0"
+description = "Windowing and input utilities for creating cross-platform windowed applications."
+version = "0.1.0"
 author = "Chad Engler <englercj@live.com>"
 license = "UNLICENSED"
 homepage = ""

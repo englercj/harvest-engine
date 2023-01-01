@@ -1,21 +1,21 @@
 # Copyright Chad Engler
 
 id = "he.assets"
-name = "Harvest Asset Editor Library"
-description = "Core asset system plugin. Includes runtime asset management, editing facilities, and basic asset types."
-version = "1.0.0"
+name = "Harvest Assets"
+description = "Harvest asset system including editing utilities, built-in asset types, and runtime resource management."
+version = "0.1.0"
 author = "Chad Engler <englercj@live.com>"
 license = "UNLICENSED"
 homepage = ""
 
 [[modules]]
-    name = "he_asset_runtime"
+    name = "he_assets"
     type = "static"
     group = "engine/libs"
-    files = ["asset_runtime/include/**", "asset_runtime/src/**"]
+    files = ["assets/include/**", "assets/src/**"]
     public_dependson = ["he_core", "he_schema"]
-    public_includedirs = ["asset_runtime/include", "%{he.get_generated_dir('he_asset_runtime')}/asset_runtime/include"]
-    private_includedirs = ["asset_runtime/src", "%{he.get_generated_dir('he_asset_runtime')}/asset_runtime/src"]
+    public_includedirs = ["assets/include", "%{he.get_generated_dir('he_assets')}/assets/include"]
+    private_includedirs = ["assets/src", "%{he.get_generated_dir('he_assets')}/assets/src"]
 
     [[modules.schema_compile]]
         glob = "**.hsc"
@@ -23,16 +23,16 @@ homepage = ""
         dependson_include = ["he_schema"]
 
 [[modules]]
-    name = "he_asset_editor"
+    name = "he_assets_edit"
     type = "static"
     group = "engine/libs"
-    files = ["asset_editor/include/**", "asset_editor/src/**"]
+    files = ["assets_edit/include/**", "assets_edit/src/**"]
     exports_module_interface = true
-    public_dependson = ["he_asset_runtime", "he_core", "he_schema", "he_sqlite", "basis_universal"]
+    public_dependson = ["he_assets", "he_core", "he_schema", "he_sqlite", "basis_universal"]
     private_dependson = ["imgui"]
     private_dependson_include = ["he_editor"]
-    public_includedirs = ["asset_editor/include", "%{he.get_generated_dir('he_asset_editor')}/asset_editor/include"]
-    private_includedirs = ["asset_editor/src", "%{he.get_generated_dir('he_asset_editor')}/asset_editor/src"]
+    public_includedirs = ["assets_edit/include", "%{he.get_generated_dir('he_assets_edit')}/assets_edit/include"]
+    private_includedirs = ["assets_edit/src", "%{he.get_generated_dir('he_assets_edit')}/assets_edit/src"]
 
     [[modules.bin2c_compile]]
         glob = "**.sql"

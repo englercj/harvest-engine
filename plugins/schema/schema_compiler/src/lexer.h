@@ -66,6 +66,7 @@ namespace he::schema
         TokenType LexToken();
         TokenType LexOrdinal();
         TokenType LexBlob();
+        TokenType LexLeadingZero();
         TokenType LexBinNum();
         TokenType LexDecNum();
         TokenType LexHexNum();

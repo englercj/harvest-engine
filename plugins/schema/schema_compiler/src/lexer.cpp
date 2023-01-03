@@ -99,34 +99,7 @@ namespace he::schema
                 case '@':
                     return LexOrdinal();
                 case '0':
-                {
-                    if (*m_cursor == 'x')
-                    {
-                        ++m_cursor;
-
-                        if (*m_cursor == '"')
-                        {
-                            ++m_cursor;
-                            return LexBlob();
-                        }
-
-                        return LexHexNum();
-                    }
-
-                    if (*m_cursor == 'o')
-                    {
-                        ++m_cursor;
-                        return LexOctNum();
-                    }
-
-                    if (*m_cursor == 'b')
-                    {
-                        ++m_cursor;
-                        return LexBinNum();
-                    }
-
-                    return LexDecNum();
-                }
+                    return LexLeadingZero();
                 case '1':
                 case '2':
                 case '3':
@@ -219,6 +192,36 @@ namespace he::schema
             if (c == '"')
                 return TokenType::Blob;
         }
+    }
+
+    Lexer::TokenType Lexer::LexLeadingZero()
+    {
+        if (*m_cursor == 'x')
+        {
+            ++m_cursor;
+
+            if (*m_cursor == '"')
+            {
+                ++m_cursor;
+                return LexBlob();
+            }
+
+            return LexHexNum();
+        }
+
+        if (*m_cursor == 'o')
+        {
+            ++m_cursor;
+            return LexOctNum();
+        }
+
+        if (*m_cursor == 'b')
+        {
+            ++m_cursor;
+            return LexBinNum();
+        }
+
+        return LexDecNum();
     }
 
     Lexer::TokenType Lexer::LexBinNum()

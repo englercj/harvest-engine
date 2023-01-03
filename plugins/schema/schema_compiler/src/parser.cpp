@@ -153,8 +153,7 @@ namespace he::schema
 
     bool Parser::Next(Lexer::TokenType expected)
     {
-        Next();
-        return Expect(expected);
+        return Next() && Expect(expected);
     }
 
     bool Parser::NextDecl()

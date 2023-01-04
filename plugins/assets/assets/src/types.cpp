@@ -7,6 +7,6 @@
 #include "he/core/memory_ops.h"
 #include "he/core/types.h"
 
-namespace std
+namespace he::assets
 {
 }

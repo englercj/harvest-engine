@@ -30,6 +30,10 @@ return function (plugin)
                             verbosef("Module '%s' has a he_schema dependency on '%s' but it was not installed, ignoring.", ctx.name, mod_name)
                         else
                             if mod.public_includedirs then
+                                -- If we can include a file from this module, then we actually have a hard dependency on that module.
+                                -- This is because we only need include access to build the schema files, but the generated
+                                -- cpp files will require the generated files from `mod` to be able to compile correctly.
+                                dependson { mod.name }
                                 for _, dir in ipairs(mod.public_includedirs) do
                                     opt = opt .. "-I " .. path.join(mod._plugin._install_dir, dir) .. " "
                                 end
@@ -38,7 +42,8 @@ return function (plugin)
                     end
                 end
 
-                local buildCmd = he.target_bin_dir .. "/he_schemac " .. opt .. "-o " .. he.file_gen_dir .. " %{file.abspath}"
+                local schemac = he.target_bin_dir .. "/he_schemac" .. iif(os.istarget("win32"), ".exe", "")
+                local buildCmd = schemac .. " " .. opt .. "-o " .. he.file_gen_dir .. " %{file.abspath}"
 
                 dependson { "he_schemac" }
 
@@ -47,7 +52,10 @@ return function (plugin)
                     buildmessage "Compiling schema file %{file.abspath}"
                     buildcommands {
                         "{ECHO} " .. buildCmd,
-                        buildCmd
+                        buildCmd,
+                    }
+                    buildinputs {
+                        schemac,
                     }
                     buildoutputs {
                         he.file_gen_dir .. "/%{file.basename}.hsc.h",

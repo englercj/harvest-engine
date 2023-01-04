@@ -45,11 +45,11 @@ namespace he::assets
             types.RegisterAssetType<Texture2D, Texture2DCompiler>();
             types.RegisterImporter<ImageImporter>();
 
-            //EditorDocumentRegistry* editor = registry.FindApi<EditorDocumentRegistry>();
-            //if (editor)
-            //{
-            //    editor->RegisterAssetDocument<schema::Texture, TextureDocument>();
-            //}
+            AssetDocumentService* docs = registry.FindApi<AssetDocumentService>();
+            if (docs)
+            {
+                docs->RegisterAssetDocument<schema::Texture2D, Texture2DDocument>();
+            }
 
             editor::TypeEditUIService& editors = registry.GetApi<editor::TypeEditUIService>();
             editors.RegisterFieldEditor<Asset>("uuid", { &AssetUuidFieldEditor, editor::TypeEditUIService::EditorFlag::Inline });
@@ -79,6 +79,19 @@ namespace he::assets
             AssetTypeRegistry& types = registry.GetApi<AssetTypeRegistry>();
             types.UnregisterAssetType<Texture2D>();
             types.UnregisterImporter<ImageImporter>();
+
+            AssetDocumentService* docs = registry.FindApi<AssetDocumentService>();
+            if (docs)
+            {
+                docs->UnregisterAssetDocument<schema::Texture2D, Texture2DDocument>();
+            }
+
+            editor::TypeEditUIService& editors = registry.GetApi<editor::TypeEditUIService>();
+            editors.UnregisterTypeEditor<schema::Vec2f>({ true, &Vec2fEditor });
+            editors.UnregisterTypeEditor<schema::Vec3f>({ true, &Vec3fEditor });
+
+            editors.UnregisterFieldEditor(he::schema::FindFieldByName<schema::Asset>("uuid"), { true, &AssetUuidFieldEditor });
+            editors.UnregisterFieldEditor(he::schema::FindFieldByName<schema::Asset>("data"), { true, &AssetDataFieldEditor });
 
             HE_ASSERT(g_assetEditorModule);
             g_assetEditorModule = nullptr;

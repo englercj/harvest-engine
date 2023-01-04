@@ -3,10 +3,13 @@
 #pragma once
 
 #include "he/editor/commands/open_project_command.h"
+#include "he/editor/commands/open_project_file_command.h"
 #include "he/editor/documents/document.h"
 #include "he/editor/services/dialog_service.h"
 #include "he/editor/services/project_service.h"
 #include "he/editor/services/settings_service.h"
+
+#include "he/core/unique_ptr.h"
 
 namespace he::editor
 {

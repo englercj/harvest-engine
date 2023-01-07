@@ -23,16 +23,16 @@ homepage = ""
         dependson_include = ["he_schema"]
 
 [[modules]]
-    name = "he_assets_edit"
+    name = "he_assets_editor"
     type = "static"
     group = "engine/libs"
-    files = ["assets_edit/include/**", "assets_edit/src/**"]
     exports_module_interface = true
+    files = ["assets_editor/include/**", "assets_editor/src/**"]
     public_dependson = ["he_assets", "he_core", "he_schema", "he_sqlite", "basis_universal"]
     private_dependson = ["imgui"]
     private_dependson_include = ["he_editor"]
-    public_includedirs = ["assets_edit/include", "%{he.get_generated_dir('he_assets_edit')}/assets_edit/include"]
-    private_includedirs = ["assets_edit/src", "%{he.get_generated_dir('he_assets_edit')}/assets_edit/src"]
+    public_includedirs = ["assets_editor/include", "%{he.get_generated_dir('he_assets_editor')}/assets_editor/include"]
+    private_includedirs = ["assets_editor/src", "%{he.get_generated_dir('he_assets_editor')}/assets_editor/src"]
 
     [[modules.bin2c_compile]]
         files = ["**.sql"]

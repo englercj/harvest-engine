@@ -16,7 +16,7 @@ homepage = ""
     public_includedirs = ["src", "%{he.get_generated_dir('he_editor')}/src"]
     private_dependson = [
         "he_assets",
-        "he_assets_edit",
+        "he_assets_editor",
         "he_core",
         "he_math",
         "he_rhi",

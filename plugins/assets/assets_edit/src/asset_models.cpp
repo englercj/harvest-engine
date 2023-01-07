@@ -4,6 +4,7 @@
 
 #include "he/assets/asset_database.h"
 #include "he/assets/types_fmt.h"
+#include "he/core/enum_ops.h"
 #include "he/core/hash.h"
 #include "he/core/hash_table.h"
 #include "he/core/uuid_fmt.h"
@@ -298,6 +299,21 @@ namespace he::assets
         return false;
     }
 
+    bool AssetFileModel::FindAll(AssetDatabase& db, const char* pathPrefix, Vector<AssetFileModel>& models)
+    {
+        sqlite::ScopedStatement stmt = db.StatementLiteral(R"(
+            SELECT * FROM asset_file WHERE file_path LIKE ? || '%'
+        )");
+
+        if (!stmt->Bind(1, pathPrefix))
+            return false;
+
+        return stmt->EachRow([&](const sqlite::Statement& stmt)
+        {
+            Read(stmt, models.EmplaceBack());
+        });
+    }
+
     bool AssetFileModel::RemoveOne(AssetDatabase& db, const AssetFileUuid& fileUuid)
     {
         sqlite::ScopedStatement stmt = db.StatementLiteral(R"(
@@ -488,21 +504,6 @@ namespace he::assets
         });
     }
 
-    bool AssetModel::FindAll(AssetDatabase& db, const char* search, Vector<AssetModel>& models)
-    {
-        sqlite::ScopedStatement stmt = db.StatementLiteral(R"(
-            SELECT * FROM fts_asset WHERE fts_asset MATCH ? ORDER BY rank
-        )");
-
-        if (!stmt->Bind(1, search))
-            return false;
-
-        return stmt->EachRow([&](const sqlite::Statement& stmt)
-        {
-            Read(stmt, models.EmplaceBack());
-        });
-    }
-
     bool AssetModel::FindAll(AssetDatabase& db, AssetState state, Vector<AssetModel>& models)
     {
         sqlite::ScopedStatement stmt = db.StatementLiteral(R"(
@@ -518,10 +519,42 @@ namespace he::assets
         });
     }
 
+    bool AssetModel::FindAll(AssetDatabase& db, const char* search, Vector<AssetModel>& models)
+    {
+        sqlite::ScopedStatement stmt = db.StatementLiteral(R"(
+            SELECT * FROM fts_asset WHERE fts_asset MATCH ? ORDER BY rank
+        )");
+
+        if (!stmt->Bind(1, search))
+            return false;
+
+        return stmt->EachRow([&](const sqlite::Statement& stmt)
+        {
+            Read(stmt, models.EmplaceBack());
+        });
+    }
+
+    bool AssetModel::FindAll(AssetDatabase& db, const char* pathPrefix, Vector<AssetModel>& models, AssetFilePathTag)
+    {
+        sqlite::ScopedStatement stmt = db.StatementLiteral(R"(
+            SELECT * FROM asset
+            JOIN asset_file ON asset_file.id = asset.asset_file_id
+            WHERE asset_file.file_path LIKE ? || '%'
+        )");
+
+        if (!stmt->Bind(1, pathPrefix))
+            return false;
+
+        return stmt->EachRow([&](const sqlite::Statement& stmt)
+        {
+            Read(stmt, models.EmplaceBack());
+        });
+    }
+
     bool AssetModel::RemoveOne(AssetDatabase& db, const AssetUuid& assetUuid)
     {
         sqlite::ScopedStatement stmt = db.StatementLiteral(R"(
-            DELTE FROM asset WHERE uuid = ?
+            DELETE FROM asset WHERE uuid = ?
         )");
 
         if (!stmt->Bind(1, assetUuid.val.m_bytes))
@@ -759,5 +792,24 @@ namespace he::assets
         }
 
         return false;
+    }
+}
+
+namespace he
+{
+    template <>
+    const char* AsString(assets::AssetState x)
+    {
+        switch (x)
+        {
+            case assets::AssetState::Unknown: return "Unknown";
+            case assets::AssetState::NeedsImport: return "NeedsImport";
+            case assets::AssetState::NeedsCompile: return "NeedsCompile";
+            case assets::AssetState::Ready: return "Ready";
+            case assets::AssetState::ImportFailed: return "ImportFailed";
+            case assets::AssetState::CompileFailed: return "CompileFailed";
+        }
+
+        return "<unknown>";
     }
 }

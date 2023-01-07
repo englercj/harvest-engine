@@ -31,6 +31,8 @@ namespace he::assets
         bool Initialize(const char* cacheRoot, const char* assetRoot);
         bool Terminate();
 
+        bool IsInitialized() const { return m_db.IsOpen(); }
+
         // TODO: Audit the path handling in these.
         // All of these should work with absolute paths, or asset root relative paths.
         bool IsFileUpToDate(const char* path);

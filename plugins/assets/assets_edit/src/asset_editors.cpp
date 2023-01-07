@@ -8,7 +8,9 @@
 #include "he/core/appender.h"
 #include "he/core/module_registry.h"
 
+#define IMGUI_DEFINE_MATH_OPERATORS
 #include "imgui.h"
+#include "imgui_internal.h"
 
 namespace he::assets
 {
@@ -17,6 +19,10 @@ namespace he::assets
     struct FieldName_X { static constexpr StringView Name = "x"; };
     struct FieldName_Y { static constexpr StringView Name = "y"; };
     struct FieldName_Z { static constexpr StringView Name = "z"; };
+
+    constexpr ImU32 ColorX = IM_COL32(168, 46, 2, 255);
+    constexpr ImU32 ColorY = IM_COL32(112, 162, 22, 255);
+    constexpr ImU32 ColorZ = IM_COL32(51, 122, 210, 255);
 
     template <typename T, typename F>
     const he::schema::Field::Reader GetField()
@@ -30,34 +36,58 @@ namespace he::assets
         return s_field;
     }
 
+    static bool VecFloatEditor(float& value, const char* name, ImU32 color)
+    {
+        const ImVec2 startPos = ImGui::GetCursorScreenPos();
+        const float dpiScale = ImGui::GetWindowDpiScale();
+
+        ImGui::PushItemWidth(65.0f * dpiScale);
+        ImGui::PushID(static_cast<int>(ImGui::GetCursorPosX() + ImGui::GetCursorPosY()));
+        const bool changed = ImGui::InputFloat("##vec-float", &value, 0, 0, "%.5f", ImGuiInputTextFlags_EnterReturnsTrue);
+        const bool hovered = ImGui::IsItemHovered();
+        ImGui::PopID();
+        ImGui::PopItemWidth();
+
+        const ImVec2 offset{ 4.0f * dpiScale, 3.0f * dpiScale };
+        const ImVec2 size{ 4.0f * dpiScale, ImGui::GetFrameHeight() - (offset.y * 2.0f) };
+
+        const ImRect colorRect
+        {
+            startPos.x + offset.x,
+            startPos.y + offset.y,
+            startPos.x + offset.x + size.x,
+            startPos.y + offset.y + size.y,
+        };
+        ImGui::GetWindowDrawList()->AddRectFilled(colorRect.Min, colorRect.Max, color);
+
+        if (hovered)
+        {
+            ImGui::SetTooltip("%s = %f", name, value);
+        }
+
+        return changed;
+    }
+
     void Vec2fEditor(const void*, const he::schema::DynamicValue::Reader& value, editor::TypeEditUIService::Context& ctx)
     {
         const schema::Vec2f::Reader vec = value.As<he::schema::DynamicStruct>().As<schema::Vec2f>();
 
         float x = vec.GetX();
-        ImGui::TextUnformatted("X =");
-        ImGui::SameLine();
-        ImGui::PushItemWidth(96.0f);
-        if (ImGui::InputFloat("##vec2f-x", &x))
+        if (VecFloatEditor(x, "X", ColorX))
         {
             editor::SchemaEditAction& action = ctx.edit.EmplaceAction(editor::SchemaEditAction::Kind::SetValue);
             action.path.PushBack({ GetField<schema::Vec2f, FieldName_X>() });
             action.value = x;
         }
-        ImGui::PopItemWidth();
-        ImGui::SameLine();
 
         float y = vec.GetY();
-        ImGui::TextUnformatted("Y =");
         ImGui::SameLine();
-        ImGui::PushItemWidth(96.0f);
-        if (ImGui::InputFloat("##vec2f-y", &y))
+        if (VecFloatEditor(y, "Y", ColorY))
         {
             editor::SchemaEditAction& action = ctx.edit.EmplaceAction(editor::SchemaEditAction::Kind::SetValue);
             action.path.PushBack({ GetField<schema::Vec2f, FieldName_Y>() });
             action.value = y;
         }
-        ImGui::PopItemWidth();
     }
 
     void Vec3fEditor(const void*, const he::schema::DynamicValue::Reader& value, editor::TypeEditUIService::Context& ctx)
@@ -65,42 +95,30 @@ namespace he::assets
         const schema::Vec3f::Reader vec = value.As<he::schema::DynamicStruct>().As<schema::Vec3f>();
 
         float x = vec.GetX();
-        ImGui::TextUnformatted("X =");
-        ImGui::SameLine();
-        ImGui::PushItemWidth(96.0f);
-        if (ImGui::InputFloat("##vec3f-x", &x))
+        if (VecFloatEditor(x, "X", ColorX))
         {
             editor::SchemaEditAction& action = ctx.edit.EmplaceAction(editor::SchemaEditAction::Kind::SetValue);
             action.path.PushBack({ GetField<schema::Vec3f, FieldName_X>() });
             action.value = x;
         }
-        ImGui::PopItemWidth();
-        ImGui::SameLine();
 
         float y = vec.GetY();
-        ImGui::TextUnformatted("Y =");
         ImGui::SameLine();
-        ImGui::PushItemWidth(96.0f);
-        if (ImGui::InputFloat("##vec3f-y", &y))
+        if (VecFloatEditor(y, "Y", ColorY))
         {
             editor::SchemaEditAction& action = ctx.edit.EmplaceAction(editor::SchemaEditAction::Kind::SetValue);
             action.path.PushBack({ GetField<schema::Vec3f, FieldName_Y>() });
             action.value = y;
         }
-        ImGui::PopItemWidth();
-        ImGui::SameLine();
 
         float z = vec.GetZ();
-        ImGui::TextUnformatted("Z =");
         ImGui::SameLine();
-        ImGui::PushItemWidth(96.0f);
-        if (ImGui::InputFloat("##vec3f-z", &y))
+        if (VecFloatEditor(z, "Z", ColorZ))
         {
             editor::SchemaEditAction& action = ctx.edit.EmplaceAction(editor::SchemaEditAction::Kind::SetValue);
             action.path.PushBack({ GetField<schema::Vec3f, FieldName_Z>() });
             action.value = z;
         }
-        ImGui::PopItemWidth();
     }
 
     void AssetUuidFieldEditor(const void*, const he::schema::DynamicValue::Reader& value, editor::TypeEditUIService::Context& ctx)

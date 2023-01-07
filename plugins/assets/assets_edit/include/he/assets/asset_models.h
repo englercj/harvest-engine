@@ -44,6 +44,7 @@ namespace he::assets
         static bool FindOne(AssetDatabase& db, const AssetFileUuid& fileUuid, AssetFileModel& outModel);
         static bool FindOne(AssetDatabase& db, const char* path, AssetFileModel& outModel);
         static bool FindOne(AssetDatabase& db, const AssetUuid& assetUuid, AssetFileModel& outModel);
+        static bool FindAll(AssetDatabase& db, const char* pathPrefix, Vector<AssetFileModel>& models);
         static bool RemoveOne(AssetDatabase& db, const AssetFileUuid& fileUuid);
         static bool RemoveOne(AssetDatabase& db, const char* path);
         static bool RemoveOutdated(AssetDatabase& db, uint32_t scanToken);
@@ -52,6 +53,7 @@ namespace he::assets
         static bool UpdateScanToken(AssetDatabase& db, const char* path, uint32_t scanToken);
     };
 
+    struct AssetFilePathTag {};
     struct AssetModel final
     {
         AssetUuid uuid;
@@ -70,8 +72,9 @@ namespace he::assets
         static bool AddOrUpdate(AssetDatabase& db, const AssetFileUuid& fileUuid, schema::Asset::Reader asset);
         static bool FindOne(AssetDatabase& db, const AssetUuid& assetUuid, AssetModel& model);
         static bool FindAll(AssetDatabase& db, const AssetFileUuid& fileUuid, Vector<AssetModel>& models);
-        static bool FindAll(AssetDatabase& db, const char* search, Vector<AssetModel>& models);
         static bool FindAll(AssetDatabase& db, AssetState state, Vector<AssetModel>& models);
+        static bool FindAll(AssetDatabase& db, const char* search, Vector<AssetModel>& models);
+        static bool FindAll(AssetDatabase& db, const char* pathPrefix, Vector<AssetModel>& models, AssetFilePathTag);
         static bool RemoveOne(AssetDatabase& db, const AssetUuid& assetUuid);
 
         static bool AddTag(AssetDatabase& db, const AssetUuid& assetUuid, const char* tag);

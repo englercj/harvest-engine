@@ -2,6 +2,7 @@
 
 #include "he/core/debugger.h"
 #include "he/core/enum_fmt.h"
+#include "he/core/string_view_fmt.h"
 #include "he/math/types_fmt.h"
 #include "he/window/event.h"
 
@@ -124,15 +125,27 @@ namespace he
                 PrintToDebugger("{{ scale={} }}", evt.scale);
                 break;
             }
-            case window::EventKind::ViewDropFile:
+            case window::EventKind::ViewDndStart:
             {
-                const auto& evt = static_cast<const window::ViewDropFileEvent&>(ev);
-                PrintToDebugger("{{ filePath={} }}", evt.path.Data());
+                const auto& evt = static_cast<const window::ViewDndStartEvent&>(ev);
+                HE_UNUSED(evt);
                 break;
             }
-            case window::EventKind::ViewDropFileComplete:
+            case window::EventKind::ViewDndMove:
             {
-                const auto& evt = static_cast<const window::ViewDropFileCompleteEvent&>(ev);
+                const auto& evt = static_cast<const window::ViewDndMoveEvent&>(ev);
+                PrintToDebugger("{{ pos={} }}", evt.pos);
+                break;
+            }
+            case window::EventKind::ViewDndDrop:
+            {
+                const auto& evt = static_cast<const window::ViewDndDropEvent&>(ev);
+                PrintToDebugger("{{ path={} }}", evt.path);
+                break;
+            }
+            case window::EventKind::ViewDndEnd:
+            {
+                const auto& evt = static_cast<const window::ViewDndEndEvent&>(ev);
                 HE_UNUSED(evt);
                 break;
             }

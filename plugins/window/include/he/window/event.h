@@ -40,8 +40,10 @@ namespace he::window
         ViewResized,            ///< A view has been resized
         ViewActivated,          ///< A view has been activated
         ViewDpiScaleChanged,    ///< The DPI scale of a view has changed
-        ViewDropFile,           ///< A file have been dropped into a view
-        ViewDropFileComplete,   ///< All files for the drop operation have been sent, useful to batch the ViewDropFile events
+        ViewDndStart,           ///< A drag-and-drop operation has started on a view
+        ViewDndMove,            ///< The drop target location has changed, this is similar to a PointerMove event
+        ViewDndDrop,            ///< An object has been dropped into a view
+        ViewDndEnd,             ///< The drag-and-drop operation has completed
 
         // App events
         Initialized,            ///< The application has been initialized, and the default view was created
@@ -291,23 +293,38 @@ namespace he::window
         float scale{ 0 };
     };
 
-    /// \copydoc EventKind::ViewDropFile
-    struct ViewDropFileEvent : ViewEvent
+    /// \copydoc EventKind::ViewDndStart
+    struct ViewDndStartEvent : ViewEvent
     {
-        explicit ViewDropFileEvent(View* v) noexcept
-            : ViewEvent(EventKind::ViewDropFile, v) {}
+        explicit ViewDndStartEvent(View* v) noexcept
+            : ViewEvent(EventKind::ViewDndStart, v) {}
+    };
 
-        /// The file path that was dropped.
-        ///
-        /// \note The string memory is only valid until OnEvent() returns.
+    /// \copydoc EventKind::ViewDndMove
+    struct ViewDndMoveEvent : ViewEvent
+    {
+        explicit ViewDndMoveEvent(View* v) noexcept
+            : ViewEvent(EventKind::ViewDndMove, v) {}
+
+        /// The absolute position of the cursor when the drop position changes.
+        Vec2f pos{ 0, 0 };
+    };
+
+    /// \copydoc EventKind::ViewDndDrop
+    struct ViewDndDropEvent : ViewEvent
+    {
+        explicit ViewDndDropEvent(View* v) noexcept
+            : ViewEvent(EventKind::ViewDndDrop, v) {}
+
+        /// The path of the dropped object.
         StringView path{};
     };
 
-    /// \copydoc EventKind::ViewDropFileComplete
-    struct ViewDropFileCompleteEvent : ViewEvent
+    /// \copydoc EventKind::ViewDndEnd
+    struct ViewDndEndEvent : ViewEvent
     {
-        explicit ViewDropFileCompleteEvent(View* v) noexcept
-            : ViewEvent(EventKind::ViewDropFileComplete, v) {}
+        explicit ViewDndEndEvent(View* v) noexcept
+            : ViewEvent(EventKind::ViewDndEnd, v) {}
     };
 
     /// \copydoc EventKind::Initialized

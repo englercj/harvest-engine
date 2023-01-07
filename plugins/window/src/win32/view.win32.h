@@ -8,6 +8,8 @@
 
 #if defined(HE_PLATFORM_API_WIN32)
 
+#include "drop_target.win32.h"
+
 #include <Windows.h>
 
 namespace he::window
@@ -63,6 +65,7 @@ namespace he::window::win32
         Vec2i m_size{ 1, 1 };
         uint32_t m_dpi{ USER_DEFAULT_SCREEN_DPI };
         bool m_hackNeedsFrameUpdate{ true };
+        DropTarget m_dropTarget{ this };
     };
 }
 

@@ -103,13 +103,7 @@ namespace he::window::win32
         // Ensure we get drop file messages despite our elevation level
         if (HasFlag(m_flags, ViewFlag::AcceptFiles))
         {
-            if (device->m_ChangeWindowMessageFilterEx)
-            {
-                device->m_ChangeWindowMessageFilterEx(m_window, WM_DROPFILES, MSGFLT_ALLOW, NULL);
-                device->m_ChangeWindowMessageFilterEx(m_window, WM_COPYDATA, MSGFLT_ALLOW, NULL);
-                device->m_ChangeWindowMessageFilterEx(m_window, WM_COPYGLOBALDATA, MSGFLT_ALLOW, NULL);
-            }
-            ::DragAcceptFiles(m_window, TRUE);
+            ::RegisterDragDrop(m_window, &m_dropTarget);
         }
 
         if (HasFlag(m_flags, ViewFlag::AcceptTouch))
@@ -136,6 +130,7 @@ namespace he::window::win32
         }
 
         // Any messages handled beyond this point need to fail to get the View.
+        ::RevokeDragDrop(m_window);
         ::SetWindowLongPtrW(m_window, GWLP_USERDATA, 0);
         ::DestroyWindow(m_window);
     }

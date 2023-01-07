@@ -66,6 +66,21 @@ namespace he::window::linux
 
         m_device->m_XSaveContext(display, m_window, m_device->m_context, reinterpret_cast<XPointer>(this));
 
+        // Announce that our view supports Drag-and-drop
+        if (HasFlag(m_flags, ViewFlag::AcceptFiles))
+        {
+            const Atom xdndVersion = SupportedX11DndVersion;
+            m_device->m_XChangeProperty(
+                display,
+                m_window,
+                m_device->m_atomXdndAware,
+                XA_ATOM,
+                32,
+                PropModeReplace,
+                reinterpret_cast<uint8_t*>(&xdndVersion),
+                1);
+        }
+
         // Set motif hints for view types
         if (m_device->m_atomMotifWMHints != X11_None)
         {
@@ -118,7 +133,15 @@ namespace he::window::linux
 
             if (count)
             {
-                m_device->m_XChangeProperty(display, m_window, m_device->m_atomNetWMState, XA_ATOM, 32, PropModeReplace, reinterpret_cast<uint8_t*>(states), count);
+                m_device->m_XChangeProperty(
+                    display,
+                    m_window,
+                    m_device->m_atomNetWMState,
+                    XA_ATOM,
+                    32,
+                    PropModeReplace,
+                    reinterpret_cast<uint8_t*>(states),
+                    count);
             }
         }
 

@@ -86,6 +86,8 @@ namespace he::window::linux
     using Pfn_XIQueryDevice = XIDeviceInfo*(*)(Display*, int, int*);
     using Pfn_XIFreeDeviceInfo = void(*)(XIDeviceInfo*);
 
+    constexpr int SupportedX11DndVersion = 5;
+
     class DeviceImpl final : public Device
     {
     public:
@@ -184,6 +186,7 @@ namespace he::window::linux
         Atom m_atomWMState{ X11_None };
         Atom m_atomXdndAware{ X11_None };
         Atom m_atomXdndEnter{ X11_None };
+        Atom m_atomXdndLeave{ X11_None };
         Atom m_atomXdndPosition{ X11_None };
         Atom m_atomXdndStatus{ X11_None };
         Atom m_atomXdndActionCopy{ X11_None };

@@ -336,6 +336,7 @@ namespace he::window::linux
         // m_atomWMTakeFocus = m_XInternAtom(m_display, "WM_TAKE_FOCUS", False);
         m_atomXdndAware = m_XInternAtom(m_display, "XdndAware", False);
         m_atomXdndEnter = m_XInternAtom(m_display, "XdndEnter", False);
+        m_atomXdndLeave = m_XInternAtom(m_display, "XdndLeave", False);
         m_atomXdndPosition = m_XInternAtom(m_display, "XdndPosition", False);
         m_atomXdndStatus = m_XInternAtom(m_display, "XdndStatus", False);
         m_atomXdndActionCopy = m_XInternAtom(m_display, "XdndActionCopy", False);
@@ -829,8 +830,12 @@ namespace he::window::linux
             }
             case XI_TouchBegin:
             {
+
                 const XIDeviceEvent* xev = static_cast<const XIDeviceEvent*>(event.xcookie.data);
                 ViewImpl* view = GetViewFromWindow(xev->event);
+
+                if (!HasFlag(view->m_flags, ViewFlag::AcceptTouch))
+                    break;
 
                 if (view->m_primaryTouchId == 0)
                     view->m_primaryTouchId = xev->detail;
@@ -854,6 +859,9 @@ namespace he::window::linux
             {
                 const XIDeviceEvent* xev = static_cast<const XIDeviceEvent*>(event.xcookie.data);
                 ViewImpl* view = GetViewFromWindow(xev->event);
+
+                if (!HasFlag(view->m_flags, ViewFlag::AcceptTouch))
+                    break;
 
                 HE_ASSERT(view->m_primaryTouchId != 0);
 
@@ -879,6 +887,9 @@ namespace he::window::linux
             {
                 const XIDeviceEvent* xev = static_cast<const XIDeviceEvent*>(event.xcookie.data);
                 ViewImpl* view = GetViewFromWindow(xev->event);
+
+                if (!HasFlag(view->m_flags, ViewFlag::AcceptTouch))
+                    break;
 
                 HE_ASSERT(view->m_primaryTouchId != 0);
 
@@ -961,6 +972,9 @@ namespace he::window::linux
                     m_dndVersion = event.xclient.data.l[1] >> 24;
                     m_dndFormat  = X11_None;
 
+                    if (m_dndVersion > SupportedX11DndVersion)
+                        return;
+
                     Atom* formats = nullptr;
                     uint64_t formatCount = 0;
                     if (useList)
@@ -984,9 +998,27 @@ namespace he::window::linux
 
                     if (useList && formats)
                         m_XFree(formats);
+
+                    ViewDndStartEvent ev(view);
+                    m_app->OnEvent(ev);
+                }
+                else if (event.xclient.message_type == m_atomXdndLeave)
+                {
+                    if (m_dndVersion > SupportedX11DndVersion)
+                        return;
+
+                    m_dndSource = X11_None;
+                    m_dndVersion = 0;
+                    m_dndFormat = X11_None;
+
+                    ViewDndEndEvent ev(view);
+                    m_app->OnEvent(ev);
                 }
                 else if (event.xclient.message_type == m_atomXdndDrop)
                 {
+                    if (m_dndVersion > SupportedX11DndVersion)
+                        return;
+
                     Time time = CurrentTime;
 
                     if (m_dndFormat != X11_None)
@@ -996,28 +1028,38 @@ namespace he::window::linux
 
                         m_XConvertSelection(m_display, m_atomXdndSelection, m_dndFormat, m_atomXdndSelection, view->m_window, time);
                     }
-                    else if (m_dndVersion >= 2)
+                    else
                     {
-                        XEvent reply = { ClientMessage };
-                        reply.xclient.window = m_dndSource;
-                        reply.xclient.message_type = m_atomXdndFinished;
-                        reply.xclient.format = 32;
-                        reply.xclient.data.l[0] = view->m_window;
-                        reply.xclient.data.l[1] = 0; // The drag was rejected
-                        reply.xclient.data.l[2] = X11_None;
+                        if (m_dndVersion >= 2)
+                        {
+                            XEvent reply = { ClientMessage };
+                            reply.xclient.window = m_dndSource;
+                            reply.xclient.message_type = m_atomXdndFinished;
+                            reply.xclient.format = 32;
+                            reply.xclient.data.l[0] = view->m_window;
+                            reply.xclient.data.l[1] = 0; // The drag was rejected
+                            reply.xclient.data.l[2] = X11_None;
 
-                        m_XSendEvent(m_display, m_dndSource, False, NoEventMask, &reply);
-                        m_XFlush(m_display);
+                            m_XSendEvent(m_display, m_dndSource, False, NoEventMask, &reply);
+                            m_XFlush(m_display);
+                        }
+
+                        ViewDndEndEvent ev(view);
+                        m_app->OnEvent(ev);
                     }
                 }
                 else if (event.xclient.message_type == m_atomXdndPosition)
                 {
+                    if (m_dndVersion > SupportedX11DndVersion)
+                        return;
+
                     XEvent reply = { ClientMessage };
                     reply.xclient.window = m_dndSource;
                     reply.xclient.message_type = m_atomXdndStatus;
                     reply.xclient.format = 32;
                     reply.xclient.data.l[0] = view->m_window;
-                    reply.xclient.data.l[2] = 0; // Specify an empty rectangle
+                    reply.xclient.data.l[1] = 0; // reject the drag, we'll change to accept below
+                    reply.xclient.data.l[2] = 0; // empty rectangle
                     reply.xclient.data.l[3] = 0;
 
                     if (m_dndFormat)
@@ -1030,6 +1072,10 @@ namespace he::window::linux
 
                     m_XSendEvent(m_display, m_dndSource, False, NoEventMask, &reply);
                     m_XFlush(m_display);
+
+                    ViewDndMoveEvent ev(view);
+                    ev.pos = { static_cast<float>(event.xclient.data.l[2] >> 16), static_cast<float>(event.xclient.data.l[2] & 0xffff) };
+                    m_app->OnEvent();
                 }
                 break;
             }
@@ -1271,6 +1317,9 @@ namespace he::window::linux
                     m_XSendEvent(m_display, m_dndSource, False, NoEventMask, &reply);
                     m_XFlush(m_display);
                 }
+
+                ViewDndEndEvent ev(view);
+                m_app->OnEvent(ev);
                 break;
             }
         }

@@ -567,38 +567,6 @@ namespace he::window::win32
 
                 break;
             }
-            case WM_DROPFILES:
-            {
-                if (!HasFlag(view->m_flags, ViewFlag::AcceptFiles))
-                    break;
-
-                HDROP drop = reinterpret_cast<HDROP>(wParam);
-
-                const UINT count = ::DragQueryFileW(drop, 0xffffffff, NULL, 0);
-
-                Vector<wchar_t> buf{};
-                String path{};
-
-                for (UINT i = 0; i < count; ++i)
-                {
-                    const UINT length = ::DragQueryFileW(drop, i, NULL, 0);
-                    buf.Resize(length + 1);
-
-                    if (::DragQueryFileW(drop, i, buf.Data(), buf.Size()))
-                    {
-                        WCToMBStr(path, buf.Data());
-
-                        ViewDropFileEvent ev(view);
-                        ev.path = path;
-                        app->OnEvent(ev);
-                    }
-                }
-
-                ViewDropFileCompleteEvent ev(view);
-                app->OnEvent(ev);
-                ::DragFinish(drop);
-                return 0;
-            }
         }
 
         return ::DefWindowProcW(hWnd, message, wParam, lParam);
@@ -768,6 +736,8 @@ namespace he::window::win32
     {
         m_app = &app;
 
+        ::OleInitialize(nullptr);
+
         // Create root window
         ViewImpl view(this, desc);
         view.SetVisible(true, true);
@@ -827,6 +797,9 @@ namespace he::window::win32
             TerminatingEvent ev;
             app.OnEvent(ev);
         }
+
+
+        ::OleUninitialize();
 
         m_app = nullptr;
         return m_returnCode.load();

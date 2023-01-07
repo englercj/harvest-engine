@@ -1,6 +1,6 @@
 # Plugin File Spec
 
-TODO: `import_plugins`, `extend.modules`
+TODO: `import_plugins`, `extend.modules`, `copy_files`
 
 All keys are optional unless otherwise specified.
 
@@ -133,22 +133,25 @@ return function (plugin)
         type = "string",
         desc = "a string path to the files to run mytool on, globs are allowed",
         handler = function (ctx, value)
-            -- The handler function is called when the key is specified in a [module] block
+            -- The handler function is called when the key is specified in a [[modules]] block
             -- ctx = the module that used the "mytool" key
             -- value = the value of the "mytool" key in the module
 
-            -- The project for the module that used the "mytool" key is currently in scope
-            -- Paths are relative to the he_plugin file that contained the module.
             files { value }
             dependson { "mytool" }
+
+            local mytool = he.target_bin_dir .. "/mytool" .. iif(os.istarget("win32"), ".exe", "")
+            local buildCmd = mytool .. " -o " .. he.file_gen_dir .. " %{file.abspath}"
 
             -- It is important to use filter_push_combine as that will push a filter on the stack
             -- that combines the files filter with the current active filter. Not doing this will
             -- have incorrect results when your tool is used in a variant.
             he.filter_push_combine { "files:" .. value }
+                compilebuildoutputs "off" -- If you output cpp files this should be "on"
                 buildmessage "Running mytool on file %{file.abspath}"
-                buildcommands { he.target_bin_dir .. "/mytool %{file.abspath} -o " .. he.file_gen_dir }
-                buildoutputs { he.file_gen_dir .. "/%{file.name}.h" }
+                buildcommands { "{ECHO} " .. buildCmd, buildCmd } -- echo the command in the build log
+                buildinputs { mytool } -- when the tool changes, this file needs to be recompiled
+                buildoutputs { he.file_gen_dir .. "/%{file.basename}.mytool.h" }
             he.filter_pop()
         end,
     }

@@ -30,15 +30,15 @@ homepage = ""
     ]
 
     [[modules.bin2c_compile]]
-        glob = "src/fonts/**.ttf"
+        files = ["src/fonts/**.ttf"]
         compress = true
 
     [[modules.bin2c_compile]]
-        glob = "src/fonts/**.woff2"
+        files = ["src/fonts/**.woff2"]
         compress = false
 
     [[modules.schema_compile]]
-        glob = "src/schema/*.hsc"
+        files = ["src/schema/*.hsc"]
         targets = ["c++"]
         dependson_include = ["he_assets", "he_schema"]
 
@@ -48,12 +48,12 @@ homepage = ""
         public_dependson = ["sys:Shlwapi"]
 
         [[modules.variants.shader_compile]]
-            glob = "src/shaders/*.hlsl"
+            files = ["src/shaders/*.hlsl"]
             targets = ["sm_5_1"]
 
     [[modules.variants]]
         conditions = ["system:linux"]
 
         [[modules.variants.shader_compile]]
-            glob = "src/shaders/*.hlsl"
+            files = ["src/shaders/*.hlsl"]
             targets = ["glsl_450"]

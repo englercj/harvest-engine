@@ -5,7 +5,7 @@ return function (plugin)
         key = "shader_compile",
         scope = "private",
         type = "table",
-        desc = "an array of string path globs to compile",
+        desc = "an array of compilation target configuration objects",
         handler = function (ctx, values)
             for _, options in ipairs(values) do
                 local opt = ""
@@ -32,19 +32,21 @@ return function (plugin)
                     end
                 end
 
+                local exe = he.target_bin_dir .. "/he_shaderc" .. iif(os.istarget("win32"), ".exe", "")
+                local buildCmd = exe .. " " .. opt .. "-o " .. he.file_gen_dir .. " %{file.abspath}"
+
+                files(options.files)
                 dependson { "he_shaderc" }
 
-                he.filter_push_combine { "files:" .. options.glob }
-                    compilebuildoutputs "off"
-                    buildmessage "Compiling shader file %{file.abspath}"
-                    buildcommands {
-                        he.target_bin_dir .. "/he_shaderc %{file.abspath} " .. opt .. "-o " .. he.file_gen_dir,
-                    }
-                    buildoutputs {
-                        he.file_gen_dir .. "/%{file.name}_generated.h",
-                    }
-
-                he.filter_pop()
+                for _, file_path in ipairs(options.files) do
+                    he.filter_push_combine { "files:" .. file_path }
+                        compilebuildoutputs "off"
+                        buildmessage "Compiling shader file %{file.abspath}"
+                        buildcommands { "{ECHO} " .. buildCmd, buildCmd }
+                        buildinputs { exe }
+                        buildoutputs { he.file_gen_dir .. "/%{file.basename}.shaders.h" }
+                    he.filter_pop()
+                end
             end
         end
     }

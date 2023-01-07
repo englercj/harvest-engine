@@ -1,7 +1,7 @@
 // Copyright Chad Engler
 
 #include "imgui_render_service.h"
-#include "shaders/imgui.hlsl_generated.h"
+#include "shaders/imgui.shaders.h"
 
 #include "he/core/file.h"
 #include "he/core/log.h"

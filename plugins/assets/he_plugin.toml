@@ -18,7 +18,7 @@ homepage = ""
     private_includedirs = ["assets/src", "%{he.get_generated_dir('he_assets')}/assets/src"]
 
     [[modules.schema_compile]]
-        glob = "**.hsc"
+        files = ["**.hsc"]
         targets = ["c++"]
         dependson_include = ["he_schema"]
 
@@ -35,7 +35,7 @@ homepage = ""
     private_includedirs = ["assets_edit/src", "%{he.get_generated_dir('he_assets_edit')}/assets_edit/src"]
 
     [[modules.bin2c_compile]]
-        glob = "**.sql"
+        files = ["**.sql"]
         text = true
 
     [[modules.variants]]

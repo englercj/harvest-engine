@@ -21,19 +21,19 @@ homepage = "https://www.nuget.org/packages/Microsoft.Direct3D.DirectStorage"
     [[modules.variants]]
         conditions = ["system:windows", "architecture:x86_64"]
         public_dependson = [
-            "file:%{he.get_plugin('DirectStorage')._install_dir}/native/lib/x64/dstorage.lib"
+            "file:native/lib/x64/dstorage.lib"
         ]
-        post_build_commands = [
-            "{COPYFILE} %{he.get_plugin('DirectStorage')._install_dir}/native/bin/x64/dstorage.dll %{cfg.targetdir}",
-            "{COPYFILE} %{he.get_plugin('DirectStorage')._install_dir}/native/bin/x64/dstoragecore.dll %{cfg.targetdir}",
+        copy_files = [
+            "native/bin/x64/dstorage.dll",
+            "native/bin/x64/dstoragecore.dll",
         ]
 
     [[modules.variants]]
         conditions = ["system:windows", "architecture:ARM64"]
         public_dependson = [
-            "file:%{he.get_plugin('DirectStorage')._install_dir}/native/lib/ARM64/dstorage.lib"
+            "file:native/lib/ARM64/dstorage.lib"
         ]
-        post_build_commands = [
-            "{COPYFILE} %{he.get_plugin('DirectStorage')._install_dir}/native/bin/ARM64/dstorage.dll %{cfg.targetdir}",
-            "{COPYFILE} %{he.get_plugin('DirectStorage')._install_dir}/native/bin/ARM64/dstoragecore.dll %{cfg.targetdir}",
+        copy_files = [
+            "native/bin/ARM64/dstorage.dll",
+            "native/bin/ARM64/dstoragecore.dll",
         ]

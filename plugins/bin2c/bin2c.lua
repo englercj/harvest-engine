@@ -5,7 +5,7 @@ return function (plugin)
         key = "bin2c_compile",
         scope = "private",
         type = "table",
-        desc = "an array of string path globs to compile",
+        desc = "an array of compilation target configuration objects",
         handler = function (ctx, values)
             for _, options in ipairs(values) do
                 local opt = ""
@@ -17,22 +17,21 @@ return function (plugin)
                     opt = opt .. "-c "
                 end
 
-                local buildCmd = he.target_bin_dir .. "/he_bin2c " .. opt .. "-n c_%{file.name:gsub('[%.-]', '_')} -f %{file.abspath} -o " .. he.file_gen_dir .. "/%{file.name}.h"
+                local exe = he.target_bin_dir .. "/he_bin2c" .. iif(os.istarget("win32"), ".exe", "")
+                local buildCmd = exe .. " " .. opt .. "-n c_%{file.name:gsub('[%.-]', '_')} -f %{file.abspath} -o " .. he.file_gen_dir .. "/%{file.name}.h"
 
+                files(options.files)
                 dependson { "he_bin2c" }
 
-                he.filter_push_combine { "files:" .. options.glob }
-                    compilebuildoutputs "on"
-                    buildmessage "Creating C header for file %{file.abspath}"
-                    buildcommands {
-                        "{ECHO} " .. buildCmd,
-                        buildCmd,
-                    }
-                    buildoutputs {
-                        he.file_gen_dir .. "/%{file.name}.h",
-                    }
-
-                he.filter_pop()
+                for _, file_path in ipairs(options.files) do
+                    he.filter_push_combine { "files:" .. file_path }
+                        compilebuildoutputs "off"
+                        buildmessage "Creating C header for file %{file.abspath}"
+                        buildcommands { "{ECHO} " .. buildCmd, buildCmd }
+                        buildinputs { exe }
+                        buildoutputs { he.file_gen_dir .. "/%{file.name}.h" }
+                    he.filter_pop()
+                end
             end
         end
     }

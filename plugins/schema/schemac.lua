@@ -42,27 +42,24 @@ return function (plugin)
                     end
                 end
 
-                local schemac = he.target_bin_dir .. "/he_schemac" .. iif(os.istarget("win32"), ".exe", "")
-                local buildCmd = schemac .. " " .. opt .. "-o " .. he.file_gen_dir .. " %{file.abspath}"
+                local exe = he.target_bin_dir .. "/he_schemac" .. iif(os.istarget("win32"), ".exe", "")
+                local buildCmd = exe .. " " .. opt .. "-o " .. he.file_gen_dir .. " %{file.abspath}"
 
+                files(options.files)
                 dependson { "he_schemac" }
 
-                he.filter_push_combine { "files:" .. options.glob }
-                    compilebuildoutputs "on"
-                    buildmessage "Compiling schema file %{file.abspath}"
-                    buildcommands {
-                        "{ECHO} " .. buildCmd,
-                        buildCmd,
-                    }
-                    buildinputs {
-                        schemac,
-                    }
-                    buildoutputs {
-                        he.file_gen_dir .. "/%{file.basename}.hsc.h",
-                        he.file_gen_dir .. "/%{file.basename}.hsc.cpp",
-                    }
-
-                he.filter_pop()
+                for _, file_path in ipairs(options.files) do
+                    he.filter_push_combine { "files:" .. file_path }
+                        compilebuildoutputs "on"
+                        buildmessage "Compiling schema file %{file.abspath}"
+                        buildcommands { "{ECHO} " .. buildCmd, buildCmd }
+                        buildinputs { exe }
+                        buildoutputs {
+                            he.file_gen_dir .. "/%{file.basename}.hsc.h",
+                            he.file_gen_dir .. "/%{file.basename}.hsc.cpp",
+                        }
+                    he.filter_pop()
+                end
             end
         end
     }

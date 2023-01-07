@@ -2,6 +2,92 @@
 
 local p = premake
 
+-- ------------------------------------------------------------------------------------------------
+-- Proxies for built-in premake functions
+
+he.add_module_key {
+    key = "defines",
+    scope = "include",
+    type = "table",
+    desc = "an array of strings",
+    handler = function (ctx, values) defines(values) end,
+}
+he.add_module_key {
+    key = "disablewarnings",
+    scope = "private",
+    type = "table",
+    desc = "an array of warning specified to be disabled",
+    handler = function (ctx, values) disablewarnings(values) end,
+}
+
+he.add_module_key {
+    key = "includedirs",
+    scope = "include",
+    type = "table",
+    desc = "an array of string include paths (relative to the he_plugin file)",
+    handler = function (ctx, values) includedirs(values) end,
+}
+
+he.add_module_key {
+    key = "externalincludedirs",
+    scope = "include",
+    type = "table",
+    desc = "an array of string include paths (relative to the he_plugin file)",
+    handler = function (ctx, values) externalincludedirs(values) end,
+}
+
+he.add_module_key {
+    key = "buildoptions",
+    scope = "include",
+    type = "table",
+    desc = "an array of string build options",
+    handler = function (ctx, values) buildoptions(values) end,
+}
+
+he.add_module_key {
+    key = "targetname",
+    scope = "private",
+    type = "string",
+    desc = "string name of the output file (without the extension)",
+    handler = function (ctx, value) targetname(value) end,
+}
+
+he.add_module_key {
+    key = "files",
+    scope = "private",
+    type = "table",
+    desc = "a table of strings",
+    handler = function (ctx, values) files(values) end,
+}
+
+he.add_module_key {
+    key = "warnings",
+    scope = "private",
+    type = "string",
+    desc = "one of: 'off', 'default', or 'extra'",
+    handler = function (ctx, value) warnings(value) end,
+}
+
+he.add_module_key {
+    key = "post_build_commands",
+    scope = "private",
+    type = "table",
+    desc = "an array of strings",
+    handler = function (ctx, values) postbuildcommands(values) end,
+}
+
+he.add_module_key {
+    key = "pre_build_commands",
+    scope = "private",
+    type = "table",
+    desc = "an array of strings",
+    handler = function (ctx, values) prebuildcommands(values) end,
+}
+
+-- ------------------------------------------------------------------------------------------------
+-- Harvest functions useful for our module system
+
+
 local function _handle_variant_key(ctx, key, value)
     if table.contains(he.variant_disallow_keys, key) then
         p.warn("Module '" .. ctx.name .. "' has a variant (index " .. _ .. ") that tries to override a disallowed key '" .. key .. "'.")
@@ -95,7 +181,7 @@ local function _handle_dependson(ctx, values)
         if ctx.type == "console_app" or ctx.type == "windowed_app" or ctx.type == "shared" then
             if mod.type == "static" then
                 links { mod.name }
-            elseif mod.type == "custom" then
+            elseif mod.type ~= "header" then
                 dependson { mod.name }
             end
         end
@@ -127,51 +213,24 @@ local function _handle_dependson(ctx, values)
     end
 end
 
-he.add_module_key {
-    key = "defines",
-    scope = "include",
-    type = "table",
-    desc = "an array of strings",
-    handler = function (ctx, values) defines(values) end,
-}
-he.add_module_key {
-    key = "disablewarnings",
-    scope = "private",
-    type = "table",
-    desc = "an array of warning specified to be disabled",
-    handler = function (ctx, values) disablewarnings(values) end,
-}
-
-he.add_module_key {
-    key = "includedirs",
-    scope = "include",
-    type = "table",
-    desc = "an array of string include paths (relative to the he_plugin file)",
-    handler = function (ctx, values) includedirs(values) end,
-}
-
-he.add_module_key {
-    key = "externalincludedirs",
-    scope = "include",
-    type = "table",
-    desc = "an array of string include paths (relative to the he_plugin file)",
-    handler = function (ctx, values) externalincludedirs(values) end,
-}
-
-he.add_module_key {
-    key = "buildoptions",
-    scope = "include",
-    type = "table",
-    desc = "an array of string build options",
-    handler = function (ctx, values) buildoptions(values) end,
-}
+local function _handle_copy_files(ctx, values)
+    files(values)
+    for _, file_path in ipairs(values) do
+        he.filter_push_combine { "files:" .. file_path }
+            compilebuildoutputs "off"
+            buildmessage "Copying file(s) %{file.abspath}"
+            buildcommands { "{COPYFILE} %{file.abspath} %{cfg.targetdir}" }
+            buildoutputs { "%{cfg.targetdir}/%{file.name}" }
+        he.filter_pop()
+    end
+end
 
 he.add_module_key {
     key = "dependson_include",
     scope = "include",
     type = "table",
     desc = "an array of module names",
-    handler = function (ctx, values) _handle_dependson_include(ctx, values) end,
+    handler = _handle_dependson_include,
 }
 
 he.add_module_key {
@@ -179,47 +238,7 @@ he.add_module_key {
     scope = "link",
     type = "table",
     desc = "an array of module names, system libraries ('sys:X'), or files ('file:X')",
-    handler = function (ctx, values) _handle_dependson(ctx, values) end,
-}
-
-he.add_module_key {
-    key = "targetname",
-    scope = "private",
-    type = "string",
-    desc = "string name of the output file (without the extension)",
-    handler = function (ctx, value) targetname(value) end,
-}
-
-he.add_module_key {
-    key = "files",
-    scope = "private",
-    type = "table",
-    desc = "a table of strings",
-    handler = function (ctx, values) files(values) end,
-}
-
-he.add_module_key {
-    key = "warnings",
-    scope = "private",
-    type = "string",
-    desc = "one of: 'off', 'default', or 'extra'",
-    handler = function (ctx, value) warnings(value) end,
-}
-
-he.add_module_key {
-    key = "post_build_commands",
-    scope = "private",
-    type = "table",
-    desc = "an array of strings",
-    handler = function (ctx, values) postbuildcommands(values) end,
-}
-
-he.add_module_key {
-    key = "pre_build_commands",
-    scope = "private",
-    type = "table",
-    desc = "an array of strings",
-    handler = function (ctx, values) prebuildcommands(values) end,
+    handler = _handle_dependson,
 }
 
 he.add_module_key {
@@ -238,7 +257,7 @@ he.add_module_key {
     scope = "private",
     type = "table",
     desc = "an array of variant objects",
-    handler = function (ctx, values) _handle_variants(ctx, values) end,
+    handler = _handle_variants,
 }
 
 he.add_module_key {
@@ -248,6 +267,15 @@ he.add_module_key {
     desc = "a boolean describing if the module uses the HE_EXPORT_MODULE() macro to export a module class",
 }
 
+he.add_module_key {
+    key = "copy_files",
+    scope = "private",
+    type = "table",
+    desc = "an array of files to copy to the output directory on build",
+    handler = _handle_copy_files,
+}
+
+-- Handler to implement "exports_module_interface" key
 he.add_module_dependency_handler(function (ctx, mod)
     -- Modules exported from static libraries are stripped by the linker because their
     -- symbols aren't used anywhere. On GCC/Clang this is easily fixed by adding the "used" and

@@ -22,18 +22,18 @@ homepage = "https://github.com/shader-slang/slang"
     [[modules.variants]]
         conditions = ["system:windows", "architecture:x86_64"]
         public_dependson = [
-            "file:%{he.get_plugin('nvidia.slang')._install_dir}/bin/windows-x64/release/slang.lib"
+            "file:bin/windows-x64/release/slang.lib"
         ]
-        post_build_commands = [
-            "{COPYFILE} %{he.get_plugin('nvidia.slang')._install_dir}/bin/windows-x64/release/gfx.dll %{cfg.targetdir}",
-            "{COPYFILE} %{he.get_plugin('nvidia.slang')._install_dir}/bin/windows-x64/release/slang.dll %{cfg.targetdir}",
-            "{COPYFILE} %{he.get_plugin('nvidia.slang')._install_dir}/bin/windows-x64/release/slang-glslang.dll %{cfg.targetdir}",
+        copy_files = [
+            "bin/windows-x64/release/gfx.dll",
+            "bin/windows-x64/release/slang.dll",
+            "bin/windows-x64/release/slang-glslang.dll",
         ]
 
     [[modules.variants]]
         conditions = ["system:linux", "architecture:x86_64"]
-        post_build_commands = [
-            "{COPYFILE} %{he.get_plugin('nvidia.slang')._install_dir}/bin/linux-x64/release/libgfx.so %{cfg.targetdir}",
-            "{COPYFILE} %{he.get_plugin('nvidia.slang')._install_dir}/bin/linux-x64/release/libslang.so %{cfg.targetdir}",
-            "{COPYFILE} %{he.get_plugin('nvidia.slang')._install_dir}/bin/linux-x64/release/libslang-glslang.so %{cfg.targetdir}",
+        copy_files = [
+            "bin/linux-x64/release/libgfx.so",
+            "bin/linux-x64/release/libslang.so",
+            "bin/linux-x64/release/libslang-glslang.so",
         ]

@@ -29,7 +29,7 @@ struct AppArgs
     he::Vector<const char*> targets{};
 };
 
-static void SlanDiagHandler(const char* msg, void*)
+static void SlangDiagHandler(const char* msg, void*)
 {
     std::cout << msg << std::endl;
 }
@@ -84,7 +84,7 @@ int he::AppMain(int argc, char* argv[])
         return -1;
     }
 
-    request->setDiagnosticCallback(SlanDiagHandler, nullptr);
+    request->setDiagnosticCallback(SlangDiagHandler, nullptr);
     request->setMatrixLayoutMode(SLANG_MATRIX_LAYOUT_COLUMN_MAJOR);
     request->setOptimizationLevel(args.optLevel);
     request->setOutputContainerFormat(SLANG_CONTAINER_FORMAT_NONE);
@@ -169,12 +169,12 @@ int he::AppMain(int argc, char* argv[])
     slang::ShaderReflection* reflection = slang::ShaderReflection::get(request);
     const uint64_t entryCount = reflection->getEntryPointCount();
 
-    String constBaseName = GetBaseName(fileName);
-    RemoveExtension(constBaseName);
+    String fileBaseName = GetBaseName(fileName);
+    RemoveExtension(fileBaseName);
 
     String outPath = args.outDir;
-    ConcatPath(outPath, GetBaseName(fileName));
-    outPath += "_generated.h";
+    ConcatPath(outPath, fileBaseName);
+    outPath += ".shaders.h";
 
     File f;
     f.Open(outPath.Data(), FileOpenMode::WriteTruncate);
@@ -205,7 +205,7 @@ int he::AppMain(int argc, char* argv[])
             }
 
             constName = "c_";
-            constName += constBaseName;
+            constName += fileBaseName;
             for (char& c : constName)
             {
                 if (c == '-' || c == '.')

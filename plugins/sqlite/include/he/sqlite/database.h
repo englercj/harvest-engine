@@ -22,6 +22,8 @@ namespace he::sqlite
         bool Open(const char* path);
         bool Close();
 
+        bool IsOpen() const { return m_db != nullptr; }
+
         const Statement& StatementLiteral(const char* sql);
 
         bool Execute(const char* query) const;

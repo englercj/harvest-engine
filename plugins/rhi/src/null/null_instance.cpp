@@ -28,6 +28,11 @@ namespace he::rhi::null
         return m_allocator;
     }
 
+    StringView InstanceImpl::ApiName() const
+    {
+        return Api_Null;
+    }
+
     ApiResult InstanceImpl::GetApiResult(Result result) const
     {
         HE_UNUSED(result);

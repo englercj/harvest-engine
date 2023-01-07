@@ -19,7 +19,7 @@ namespace he::rhi
     #endif
 
     #if HE_RHI_ENABLE_NULL
-        if (api == Api_Null)
+        if (api.IsEmpty() || api == Api_Null)
             return allocator.New<null::InstanceImpl>(allocator);
     #endif
 

@@ -20,6 +20,7 @@ namespace he::rhi::null
         Result Initialize(const InstanceDesc& desc) override;
 
         Allocator& GetAllocator() override;
+        StringView ApiName() const override;
         ApiResult GetApiResult(Result result) const override;
 
         void GetAdapters(uint32_t& count, const Adapter*& adapters) override;

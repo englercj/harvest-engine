@@ -25,13 +25,13 @@ namespace he::rhi
         const Result result = instance->Initialize(desc);
         if (!result)
         {
-            HE_LOG_ERROR(he_rhi, HE_MSG("Failed to initialize RHI instance."), HE_KV(api, desc.api), HE_KV(result, result));
+            HE_LOG_ERROR(he_rhi, HE_MSG("Failed to initialize RHI instance."), HE_KV(api, instance->ApiName()), HE_KV(result, result));
             Instance::Destroy(instance);
             instance = nullptr;
             return result;
         }
 
-        HE_LOG_INFO(he_rhi, HE_MSG("Created backend instance for RHI."), HE_KV(api, desc.api));
+        HE_LOG_INFO(he_rhi, HE_MSG("Created backend instance for RHI."), HE_KV(api, instance->ApiName()));
         return Result::Success;
     }
 

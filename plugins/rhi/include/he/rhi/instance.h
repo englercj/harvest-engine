@@ -33,6 +33,11 @@ namespace he::rhi
         /// \return The allocator.
         virtual Allocator& GetAllocator() = 0;
 
+        /// Gets a string name of the API used by this RHI instance.
+        ///
+        /// \return The name of the API used by this instance.
+        virtual StringView ApiName() const = 0;
+
         /// Translates a result structure into an API result.
         ///
         /// \param[in] result The result object to translate.

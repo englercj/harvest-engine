@@ -28,6 +28,7 @@ namespace he::rhi::d3d12
         Result Initialize(const InstanceDesc& desc) override;
 
         Allocator& GetAllocator() override { return m_allocator; }
+        StringView ApiName() const override { return Api_D3D12; }
         ApiResult GetApiResult(Result result) const override;
 
         void GetAdapters(uint32_t& count, const Adapter*& adapters) override;

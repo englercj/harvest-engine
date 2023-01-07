@@ -1,5 +1,7 @@
 # Plugin File Spec
 
+TODO: `import_plugins`, `extend.modules`
+
 All keys are optional unless otherwise specified.
 
 All paths can contain globs and are relative to the he_plugin file, or the install directory if the plugin is installed from a remote source. That is, if you use "install.github", "install.bitbucket", "install.nuget", or "install.archive" to install the plugin then paths are relative to the extracted files location.

@@ -87,3 +87,44 @@ end
 he.filter_get_active = function ()
     return filter_stack[#filter_stack]
 end
+
+-- ------------------------------------------------------------------------------------------------
+-- Table extensions
+
+-- Returns true if this table looks like it is an array.
+-- Because of lua there's no way to know for sure, but this should be right 99% of the time.
+function table.is_array(t)
+    local i = 0
+    for _ in pairs(t) do
+        i = i + 1
+        if t[i] == nil then return false end
+    end
+    return true
+end
+
+-- Merges a series of tables into a new result, including concatinating arrays.
+function table.deep_merge(...)
+    local result = {}
+    local args = {...}
+
+    for _, arg in ipairs(args) do
+        assert(type(arg) == "table", "deep_merge expects tables as arguments.")
+        for key, value in pairs(arg) do
+            local both_tables = type(result[key]) == "table" and type(value) == "table"
+            local both_arrays = both_tables and table.is_array(result[key]) and table.is_array(value)
+
+            if both_tables and both_arrays then
+                local t = result[key]
+                for _, el in ipairs(value) do
+                    table.insert(t, el)
+                end
+            elseif both_tables then
+                result[key] = table.deep_merge(result[key], value)
+            else
+                result[key] = value
+            end
+        end
+    end
+
+    return result
+end

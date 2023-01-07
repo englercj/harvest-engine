@@ -6,3 +6,5 @@ he.workspace()
     startproject "he_editor"
 
     he.import_plugins { "." }
+
+    he.generate_projects()

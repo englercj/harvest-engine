@@ -218,10 +218,9 @@ local function _import_plugin(plugin_path, options)
         return {}
     end
 
-    local imported = {}
-
+    -- Import modules provided by this plugin
     for _, mod in ipairs(plugin.modules) do
-        verbosef("Examining plugin module '%s'...", mod.name)
+        verbosef("Importing plugin module '%s'...", mod.name)
         mod._plugin = plugin
 
         local existing = he.imported_modules[mod.name]
@@ -230,13 +229,23 @@ local function _import_plugin(plugin_path, options)
         if _should_include_module(mod, options) then
             he.imported_modules[mod.name] = mod
             he.imported_modules_count = he.imported_modules_count + 1
+        end
+    end
 
-            table.insert(imported, mod);
+    -- Apply any extensions provided by this plugin
+    if plugin.extend and plugin.extend.modules then
+        for _, ext in ipairs(plugin.extend.modules) do
+            local mod = he.imported_modules[ext.name]
+            if not mod then
+                premake.warn("No module named '" .. ext.name .. "' was found, but the plugin '" .. plugin.id .. "' tries to extend it.")
+            else
+                verbosef("Extending module '%s' with data from plugin '%s'...", mod.name, plugin.id)
+                he.imported_modules[ext.name] = table.deep_merge(mod, ext)
+            end
         end
     end
 
     os.chdir(oldcwd)
-    return imported
 end
 
 local function _get_scope_table(scope)
@@ -258,34 +267,20 @@ he.import_plugins = function (plugins, options)
         options = {}
     end
 
-    local imported = {}
-
     for _, plugin_path in ipairs(plugins) do
         local dirs = os.matchdirs(plugin_path)
-        local import_count = 0
-
         if table.isempty(dirs) then
             dirs = { plugin_path }
         end
 
         for _, plugin_dir in ipairs(dirs) do
-            local imported_mods = _import_plugin(plugin_dir, options)
-
-            if imported_mods ~= nil then
-                import_count = import_count + 1
-
-                for _, mod in ipairs(imported_mods) do
-                    table.insert(imported, mod);
-                end
-            end
-        end
-
-        if import_count == 0 then
-            p.warn("No plugins found to import using path '" .. plugin_path .. "'.")
+            _import_plugin(plugin_dir, options)
         end
     end
+end
 
-    for _, mod in ipairs(imported) do
+he.generate_projects = function ()
+    for mod_name, mod in pairs(he.imported_modules) do
         _module_project(mod)
     end
 end

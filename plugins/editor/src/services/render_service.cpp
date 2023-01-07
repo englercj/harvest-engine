@@ -102,6 +102,7 @@ namespace he::editor
             desc.nativeViewHandle = view->GetNativeHandle();
             desc.bufferCount = HE_LENGTH_OF(m_frameDatas);
             desc.format = m_preferredSwapChainFormat;
+            desc.enableVSync = true;
 
             Result r = m_device->CreateSwapChain(desc, m_swapChain);
             if (!r)

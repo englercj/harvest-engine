@@ -256,6 +256,8 @@ namespace he::editor
 
     void ImGuiPlatformService::OnEvent(const window::Event& ev)
     {
+        ImGuiIO& io = ImGui::GetIO();
+
         switch (ev.kind)
         {
             case window::EventKind::DisplayChanged:
@@ -266,7 +268,6 @@ namespace he::editor
             case window::EventKind::ViewActivated:
             {
                 const auto& evt = static_cast<const window::ViewActivatedEvent&>(ev);
-                ImGuiIO& io = ImGui::GetIO();
                 io.AddFocusEvent(evt.active && evt.view == m_view);
                 break;
             }
@@ -309,7 +310,6 @@ namespace he::editor
 
                         if (btn >= 0)
                         {
-                            ImGuiIO& io = ImGui::GetIO();
                             io.AddMouseButtonEvent(btn, down);
                         }
                     }
@@ -322,8 +322,6 @@ namespace he::editor
                 if (evt.pointerKind == window::PointerKind::Mouse)
                 {
                     m_mouseInside = true;
-
-                    ImGuiIO& io = ImGui::GetIO();
 
                     Vec2f pos = evt.pos;
                     if (!evt.absolute)
@@ -348,7 +346,6 @@ namespace he::editor
                 const auto& evt = static_cast<const window::PointerWheelEvent&>(ev);
                 if (evt.pointerKind == window::PointerKind::Mouse)
                 {
-                    ImGuiIO& io = ImGui::GetIO();
                     io.AddMouseWheelEvent(evt.delta.x, evt.delta.y);
                 }
                 break;
@@ -356,7 +353,6 @@ namespace he::editor
             case window::EventKind::Text:
             {
                 const auto& evt = static_cast<const window::TextEvent&>(ev);
-                ImGuiIO& io = ImGui::GetIO();
                 io.AddInputCharacterUTF16(evt.ch);
                 break;
             }
@@ -376,7 +372,6 @@ namespace he::editor
                     default: break;
                 }
 
-                ImGuiIO& io = ImGui::GetIO();
                 io.AddKeyEvent(ImGuiKey_ModCtrl, m_isModifierDown[0]);
                 io.AddKeyEvent(ImGuiKey_ModShift, m_isModifierDown[1]);
                 io.AddKeyEvent(ImGuiKey_ModAlt, m_isModifierDown[2]);
@@ -493,9 +488,13 @@ namespace he::editor
     {
         ImGuiContext& g = *GImGui;
 
+        if (m_lastDpiScale == dpiScale)
+            return;
+
+        m_lastDpiScale = dpiScale;
+
         // Set the style to the scaled value
-        m_setupStyle(g.Style);
-        g.Style.ScaleAllSizes(dpiScale);
+        m_setupStyle(g.Style, ImPlot::GetStyle(), dpiScale);
 
         // Get or create the font atlas for this DPI scale
         UniquePtr<ImFontAtlas>& atlas = m_dpiFontAtlas[dpiScale];

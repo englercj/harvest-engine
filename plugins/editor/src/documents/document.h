@@ -19,7 +19,6 @@ namespace he::editor
         virtual ~Document() = default;
 
         virtual void Show() = 0;
-        virtual void ShowPanels() {}
         virtual void ShowContextMenu();
         virtual void ShowMainMenu() {}
         virtual void ResetDockLayout() {}

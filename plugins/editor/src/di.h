@@ -10,6 +10,7 @@
 #include "he/core/utils.h"
 #include "he/core/unique_ptr.h"
 
+#define BOOST_DI_CFG_CTOR_LIMIT_SIZE 15
 #include "boost/di.hpp"
 #include "boost/di/extension/injector.hpp"
 

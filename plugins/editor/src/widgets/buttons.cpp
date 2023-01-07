@@ -2,6 +2,7 @@
 
 #include "buttons.h"
 
+#include "menu.h"
 #include "misc.h"
 
 #include "imgui.h"
@@ -39,8 +40,13 @@ namespace he::editor
 
     bool DialogButton(const char* label)
     {
-        const float dpiScale = ImGui::GetWindowDpiScale();
-        return ImGui::Button(label, ImVec2(UnscaledDialogButtonWidth * dpiScale, 0));
+        return ImGui::Button(label, ImVec2(DialogButtonWidth(), 0));
+    }
+
+    float DialogButtonWidth()
+    {
+        constexpr float DialogButtonWidth = 80.0f;
+        return DialogButtonWidth * ImGui::GetWindowDpiScale();
     }
 
     bool CommandButton(const char* label, Command& cmd)
@@ -67,5 +73,25 @@ namespace he::editor
 
         ImGui::EndDisabled();
         return active;
+    }
+
+    bool BeginPopupMenuButton(const char* label, const char* popupId, const ImVec2& size)
+    {
+        const bool clicked = ImGui::Button(label, size);
+        const ImVec2 min = ImGui::GetItemRectMin();
+        const ImVec2 max = ImGui::GetItemRectMax();
+
+        if (clicked)
+        {
+            ImGui::OpenPopup(popupId);
+        }
+
+        ImGui::SetNextWindowPos(ImVec2(min.x, max.y), ImGuiCond_Always);
+        return BeginPopupMenu(popupId);
+    }
+
+    void EndPopupMenuButton()
+    {
+        EndPopupMenu();
     }
 }

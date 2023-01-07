@@ -11,13 +11,14 @@
 #include "he/window/event.h"
 
 #include "imgui.h"
+#include "implot.h"
 
 namespace he::editor
 {
     class ImGuiPlatformService
     {
     public:
-        using StyleSetupDelegate = Delegate<void(ImGuiStyle& style)>;
+        using StyleSetupDelegate = Delegate<void(ImGuiStyle& style, ImPlotStyle& plotStyle, float dpiScale)>;
         using FontsSetupDelegate = Delegate<void(ImFontAtlas& atlas, float dpiScale)>;
 
     public:
@@ -67,6 +68,7 @@ namespace he::editor
         ImGuiMouseCursor m_lastCursor{ ImGuiMouseCursor_COUNT };
         bool m_needToUpdateMonitors{ false };
 
+        float m_lastDpiScale{ 0.0f };
         HashMap<float, UniquePtr<ImFontAtlas>> m_dpiFontAtlas{};
         ImFontAtlas* m_originalFontAtlas{ nullptr };
 

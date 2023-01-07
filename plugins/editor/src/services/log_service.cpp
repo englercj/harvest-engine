@@ -49,6 +49,39 @@ namespace he::editor
         return GetLevelCount(level).load();
     }
 
+    uint32_t LogService::GetEntriesHash() const
+    {
+        return m_entriesHash.load();
+    }
+
+    static void HashEntry(CRC32C& crc, const LogService::Entry& entry)
+    {
+        crc.Scalar(entry.timestamp.val);
+        crc.Scalar(AsUnderlyingType(entry.source.level));
+        crc.Scalar(entry.source.line);
+        crc.String(entry.source.file);
+        crc.String(entry.source.funcName);
+        crc.String(entry.source.category);
+
+        for (const KeyValue& kv : entry.kvs)
+        {
+            switch (kv.Kind())
+            {
+                case he::KeyValue::ValueKind::Bool: crc.Scalar(kv.GetBool()); break;
+                case he::KeyValue::ValueKind::Enum: crc.Scalar(kv.GetEnumValue()); break;
+                case he::KeyValue::ValueKind::Int: crc.Scalar(kv.GetInt()); break;
+                case he::KeyValue::ValueKind::Uint: crc.Scalar(kv.GetUint()); break;
+                case he::KeyValue::ValueKind::Double: crc.Scalar(kv.GetDouble()); break;
+                case he::KeyValue::ValueKind::String:
+                {
+                    const String& str = kv.GetString();
+                    crc.Data(str.Data(), str.Size());
+                    break;
+                }
+            }
+        }
+    }
+
     void LogService::OnLogEntry(const LogSource& source, const KeyValue* kvs, uint32_t count)
     {
         LockGuard lock(m_mutex);
@@ -59,11 +92,13 @@ namespace he::editor
             m_entries.pop_front();
         }
 
-        LogEntry& entry = m_entries.emplace_back();
+        Entry& entry = m_entries.emplace_back();
         entry.source = source;
         entry.kvs.Insert(0, kvs, kvs + count);
+        HashEntry(m_entriesCrc, entry);
 
         GetLevelCount(entry.source.level).fetch_add(1);
+        m_entriesHash.store(m_entriesCrc.Done());
     }
 
     const std::atomic<uint32_t>& LogService::GetLevelCount(LogLevel level) const

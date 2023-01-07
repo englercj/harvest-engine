@@ -22,11 +22,17 @@ namespace he::editor
 
         Document* ActiveDocument() const { return m_activeDocument; }
 
+        Document& Open(UniquePtr<Document> document)
+        {
+            m_documents.PushBack(Move(document));
+            return *m_documents.Back();
+        }
+
         template <typename T> requires(std::is_base_of_v<Document, T>)
         T& Open()
         {
-            m_documents.PushBack(DICreateUnique<T>());
-            return *static_cast<T*>(m_documents.Back().Get());
+            Document& doc = Open(DICreateUnique<T>());
+            return static_cast<T&>(doc);
         }
 
     private:

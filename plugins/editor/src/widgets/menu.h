@@ -27,6 +27,13 @@ namespace he::editor
     bool BeginTopLevelMenu(const char* label, bool enabled = true);
     void EndTopLevelMenu();
 
+    // Vertical menu for use anywhere (like in a popup)
+
+    bool BeginPopupMenu(const char* popupId);
+    void EndPopupMenu();
+
+    // General menu items
+
     bool BeginMenu(const char* label, const char* icon = nullptr, bool enabled = true);
     void EndMenu();
 

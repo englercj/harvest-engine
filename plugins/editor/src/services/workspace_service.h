@@ -8,6 +8,7 @@
 #include "imgui_service.h"
 #include "log_service.h"
 #include "main_window_service.h"
+#include "panel_service.h"
 #include "platform_service.h"
 #include "task_service.h"
 #include "commands/open_project_command.h"
@@ -30,6 +31,7 @@ namespace he::editor
             ImGuiService& imguiService,
             LogService& logService,
             MainWindowService& mainWindowService,
+            PanelService& panelService,
             PlatformService& platformService,
             ProjectService& projectService,
             TaskService& taskService,
@@ -50,6 +52,7 @@ namespace he::editor
         ImGuiService& m_imguiService;
         LogService& m_logService;
         MainWindowService& m_mainWindowService;
+        PanelService& m_panelService;
         PlatformService& m_platformService;
         ProjectService& m_projectService;
         TaskService& m_taskService;

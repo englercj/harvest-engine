@@ -5,6 +5,7 @@
 #include "directory_service.h"
 
 #include "he/core/clock.h"
+#include "he/core/hash.h"
 #include "he/core/key_value.h"
 #include "he/core/log.h"
 #include "he/core/log_sinks.h"
@@ -18,16 +19,24 @@ namespace he::editor
     class LogService
     {
     public:
+        struct Entry
+        {
+            LogSource source{};
+            Vector<KeyValue> kvs{};
+            SystemTime timestamp{ SystemClock::Now() };
+        };
+
+    public:
         LogService(DirectoryService& directoryService) noexcept;
 
         bool Initialize();
         void Terminate();
 
         template <typename F>
-        void ForEach(F&& itr) const
+        void ForEach(F&& itr)
         {
             LockGuard lock(m_mutex);
-            for (const LogEntry& entry : m_entries)
+            for (const Entry& entry : m_entries)
             {
                 if (!itr(entry))
                     break;
@@ -35,6 +44,7 @@ namespace he::editor
         }
 
         uint32_t GetNumEntries(LogLevel level) const;
+        uint32_t GetEntriesHash() const;
 
         void OnLogEntry(const LogSource& source, const KeyValue* kvs, uint32_t count);
 
@@ -47,14 +57,6 @@ namespace he::editor
         }
 
     private:
-        struct LogEntry
-        {
-            LogSource source{};
-            Vector<KeyValue> kvs{};
-            SystemTime timestamp{ SystemClock::Now() };
-        };
-
-    private:
         static constexpr size_t MaxEntries = 256;
 
     private:
@@ -62,9 +64,11 @@ namespace he::editor
 
         FileSink m_fileSink{};
 
-        std::atomic<uint32_t> m_levelCounts[5];
+        std::atomic<uint32_t> m_levelCounts[5]{};
+        std::atomic<uint32_t> m_entriesHash{};
 
         Mutex m_mutex{};
-        std::deque<LogEntry> m_entries{};
+        std::deque<Entry> m_entries{};
+        CRC32C m_entriesCrc{};
     };
 }

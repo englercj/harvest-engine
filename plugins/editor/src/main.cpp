@@ -48,7 +48,7 @@ int he::AppMain(int argc, char* argv[])
 
     window::ViewDesc desc{};
     desc.title = "Harvest Editor";
-    desc.flags = window::ViewFlag::Default | window::ViewFlag::Borderless;
+    desc.flags = window::ViewFlag::Default | window::ViewFlag::Borderless | window::ViewFlag::AcceptFiles;
 
     editor::EditorApp& app = editor::DICreate<editor::EditorApp&>();
     const int rc = data.device->Run(app, desc);

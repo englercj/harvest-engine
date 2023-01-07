@@ -87,7 +87,7 @@ namespace he::editor
 
         if (!m_errorMessage.IsEmpty())
         {
-            ImGui::PushStyleColor(ImGuiCol_Text, Color_Error);
+            ImGui::PushStyleColor(ImGuiCol_Text, Colors::Error);
             ImGui::TextUnformatted(m_errorMessage.Data());
             ImGui::PopStyleColor();
         }

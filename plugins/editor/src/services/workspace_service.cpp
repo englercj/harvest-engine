@@ -4,11 +4,15 @@
 
 #include "di.h"
 #include "dialogs/choice_dialog.h"
+#include "documents/asset_browser_document.h"
+#include "documents/dev_console_document.h"
 #include "documents/document.h"
 #include "documents/stats_document.h"
 #include "documents/imgui_debug_document.h"
+#include "documents/log_document.h"
 #include "documents/welcome_document.h"
 #include "fonts/icons_material_design.h"
+#include "widgets/animations.h"
 #include "widgets/menu.h"
 #include "widgets/progress.h"
 
@@ -28,6 +32,7 @@ namespace he::editor
         ImGuiService& imguiService,
         LogService& logService,
         MainWindowService& mainWindowService,
+        PanelService& panelService,
         PlatformService& platformService,
         ProjectService& projectService,
         TaskService& taskService,
@@ -38,6 +43,7 @@ namespace he::editor
         , m_imguiService(imguiService)
         , m_logService(logService)
         , m_mainWindowService(mainWindowService)
+        , m_panelService(panelService)
         , m_platformService(platformService)
         , m_projectService(projectService)
         , m_taskService(taskService)
@@ -48,12 +54,14 @@ namespace he::editor
     {
         m_documentService.DestroyClosedDocuments();
         m_dialogService.DestroyClosedDialogs();
+        m_panelService.DestroyClosedPanels();
 
         ShowAppMenuBar();
         ShowAppStatusBar();
 
         m_documentService.ShowDocuments();
         m_dialogService.ShowDialogs();
+        m_panelService.ShowPanels();
     }
 
     window::ViewHitArea WorkspaceService::GetHitArea(const Vec2i& point) const
@@ -126,12 +134,6 @@ namespace he::editor
             TopLevelIcon();
             if (ImGui::IsItemHovered())
                 m_menuHitArea = window::ViewHitArea::SystemMenu;
-
-            Document* activeDocument = m_documentService.ActiveDocument();
-            if (activeDocument)
-            {
-                activeDocument->ShowMainMenu();
-            }
 
             if (BeginTopLevelMenu("File"))
             {
@@ -249,6 +251,10 @@ namespace he::editor
                 EndTopLevelMenu();
             }
 
+            Document* activeDocument = m_documentService.ActiveDocument();
+            if (activeDocument)
+                activeDocument->ShowMainMenu();
+
             MenuSystemButtons(view, m_menuHitArea);
 
             // If we're in the main menu bar, not over anything more specific, set us to draggable.
@@ -262,22 +268,43 @@ namespace he::editor
             ImGui::PopStyleColor(2);
     }
 
+    template <typename T>
+    static void StatusBarPanel(PanelService& panelService, const char* openLabel, const char* closeLabel)
+    {
+        const bool isOpen = panelService.IsOpen<T>();
+        const char* label = isOpen ? closeLabel : openLabel;
+        if (StatusBarButton(label))
+        {
+            if (isOpen)
+                panelService.Close();
+            else
+                panelService.Open<T>();
+        }
+    }
+
     void WorkspaceService::ShowAppStatusBar()
     {
         ImGuiStyle& style = ImGui::GetStyle();
 
         if (BeginAppStatusBar())
         {
-            StatusBarButton(ICON_MDI_FILE_TREE " Asset Browser " ICON_MDI_CHEVRON_UP);
-            StatusBarButton(ICON_MDI_CONSOLE_LINE " Console " ICON_MDI_CHEVRON_UP);
+            constexpr const char* AssetBrowserOpen = ICON_MDI_FILE_TREE " Asset Browser " ICON_MDI_CHEVRON_UP;
+            constexpr const char* AssetBrowserClose = ICON_MDI_FILE_TREE " Asset Browser " ICON_MDI_CHEVRON_DOWN;
+            StatusBarPanel<AssetBrowserDocument>(m_panelService, AssetBrowserOpen, AssetBrowserClose);
 
+            constexpr const char* DevConsoleOpen = ICON_MDI_CONSOLE_LINE " Developer Console " ICON_MDI_CHEVRON_UP;
+            constexpr const char* DevConsoleClose = ICON_MDI_CONSOLE_LINE " Developer Console " ICON_MDI_CHEVRON_DOWN;
+            StatusBarPanel<DevConsoleDocument>(m_panelService, DevConsoleOpen, DevConsoleClose);
+
+            const bool isLogOpen = m_panelService.IsOpen<LogDocument>();
             static String s_buf;
             s_buf.Clear();
-            fmt::format_to(Appender(s_buf), ICON_MDI_ALERT_OCTAGON " {} " ICON_MDI_ALERT " {} " ICON_MDI_INFORMATION " {} " ICON_MDI_CHEVRON_UP,
+            fmt::format_to(Appender(s_buf), ICON_MDI_ALERT_OCTAGON " {} " ICON_MDI_ALERT " {} " ICON_MDI_INFORMATION " {} {}",
                 m_logService.GetNumEntries(LogLevel::Error),
                 m_logService.GetNumEntries(LogLevel::Warn),
-                m_logService.GetNumEntries(LogLevel::Info));
-            StatusBarButton(s_buf.Data());
+                m_logService.GetNumEntries(LogLevel::Info),
+                isLogOpen ? ICON_MDI_CHEVRON_DOWN : ICON_MDI_CHEVRON_UP);
+            StatusBarPanel<LogDocument>(m_panelService, s_buf.Data(), s_buf.Data());
 
             s_buf.Clear();
 

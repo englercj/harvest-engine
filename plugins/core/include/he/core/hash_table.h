@@ -37,6 +37,7 @@
 #include "he/core/assert.h"
 #include "he/core/hash.h"
 #include "he/core/memory_ops.h"
+#include "he/core/span.h"
 #include "he/core/types.h"
 #include "he/core/type_traits.h"
 #include "he/core/vector.h"
@@ -245,6 +246,16 @@ namespace he
         /// \copydoc Get
         template <typename K>
         [[nodiscard]] EntryType& Get(const K& key) { return const_cast<EntryType&>(const_cast<const HashTable*>(this)->Get(key)); }
+
+        /// Get a span of all entries in the table.
+        ///
+        /// \return Span of entries
+        Span<const EntryType> Entries() const { return m_entries; }
+
+        /// Get a span of all entries in the table.
+        ///
+        /// \return Span of entries
+        Span<EntryType> Entries() { return m_entries; }
 
         /// Adopts the vector of entries and discards any ionternally held entries.
         ///

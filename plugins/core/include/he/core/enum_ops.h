@@ -25,4 +25,11 @@ namespace he
     /// \return The string representation of the enum value.
     template <he::Enum T>
     const char* AsString(T x);
+
+    /// Converts an enum value to its underlying type.
+    ///
+    /// \param[in] x The value to get the value as the underlying type.
+    /// \return The enum value as the underlying type.
+    template <he::Enum T>
+    std::underlying_type_t<T> AsUnderlyingType(T x) { return static_cast<std::underlying_type_t<T>>(x); }
 }

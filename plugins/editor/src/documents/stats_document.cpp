@@ -1,11 +1,10 @@
 // Copyright Chad Engler
 
-#include "stats_document.h"
-
-#include "widgets/menu.h"
+#include "he/editor/documents/stats_document.h"
 
 #include "he/core/memory_ops.h"
 #include "he/core/utils.h"
+#include "he/editor/widgets/menu.h"
 
 #include "imgui.h"
 #include "implot.h"

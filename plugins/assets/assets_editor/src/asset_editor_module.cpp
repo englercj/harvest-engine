@@ -7,8 +7,7 @@
 #include "he/assets/importers/image_importer.h"
 #include "he/core/module_registry.h"
 #include "he/core/types.h"
-
-#include "services/type_edit_ui_service.h"
+#include "he/editor/services/type_edit_ui_service.h"
 
 #include "encoder/basisu_enc.h"
 
@@ -40,7 +39,7 @@ namespace he::assets
             ModuleRegistry& registry = Registry();
 
             AssetTypeRegistry& types = registry.GetApi<AssetTypeRegistry>();
-            types.RegisterAssetType<schema::Texture2D, Texture2DCompiler>();
+            types.RegisterAssetType<Texture2D, Texture2DCompiler>();
             types.RegisterImporter<ImageImporter>();
 
             //EditorDocumentRegistry* editor = registry.FindApi<EditorDocumentRegistry>();
@@ -50,11 +49,8 @@ namespace he::assets
             //}
 
             editor::TypeEditUIService& editors = registry.GetApi<editor::TypeEditUIService>();
-            editors.RegisterTypeEditor<schema::Vec2f>({ true, &Vec2fEditor });
-            editors.RegisterTypeEditor<schema::Vec3f>({ true, &Vec3fEditor });
-
-            editors.RegisterFieldEditor<schema::Asset>("uuid", { true, &AssetUuidFieldEditor });
-            editors.RegisterFieldEditor<schema::Asset>("data", { false, &AssetDataFieldEditor });
+            editors.RegisterFieldEditor<Asset>("uuid", { true, &AssetUuidFieldEditor });
+            editors.RegisterFieldEditor<Asset>("data", { false, &AssetDataFieldEditor });
 
             basisu::basisu_encoder_init();
 
@@ -68,11 +64,8 @@ namespace he::assets
             ModuleRegistry& registry = Registry();
 
             //editor::TypeEditUIService& editors = registry.GetApi<editor::TypeEditUIService>();
-            //editors.RegisterTypeEditor<schema::Vec2f>({ true, &Vec2fEditor });
-            //editors.RegisterTypeEditor<schema::Vec3f>({ true, &Vec3fEditor });
-
-            //editors.RegisterFieldEditor(he::schema::FindFieldByName<schema::Asset>("uuid"), { true, &AssetUuidFieldEditor });
-            //editors.RegisterFieldEditor(he::schema::FindFieldByName<schema::Asset>("data"), { true, &AssetDataFieldEditor });
+            //editors.UnregisterFieldEditor(schema::FindFieldByName<Asset>("uuid"), { true, &AssetUuidFieldEditor });
+            //editors.UnregisterFieldEditor(schema::FindFieldByName<Asset>("data"), { true, &AssetDataFieldEditor });
 
             //EditorDocumentRegistry* editor = registry.FindApi<EditorDocumentRegistry>();
             //if (editor)
@@ -81,7 +74,7 @@ namespace he::assets
             //}
 
             AssetTypeRegistry& types = registry.GetApi<AssetTypeRegistry>();
-            types.UnregisterAssetType<schema::Texture2D>();
+            types.UnregisterAssetType<Texture2D>();
             types.UnregisterImporter<ImageImporter>();
 
             HE_ASSERT(g_assetEditorModule);

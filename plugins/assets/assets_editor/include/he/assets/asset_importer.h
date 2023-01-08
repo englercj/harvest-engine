@@ -24,11 +24,11 @@ namespace he::assets
 
         /// The existing asset file that was created when this file was previously imported, or
         /// a newly created asset file if one did not previously exist.
-        schema::AssetFile::Reader assetFile{};
+        AssetFile::Reader assetFile{};
 
         /// Import settings requested by the importer on a previous run.
         /// If no such settings have been provided then this reader will be invalid.
-        he::schema::StructReader settings{};
+        schema::StructReader settings{};
     };
 
     // --------------------------------------------------------------------------------------------
@@ -36,7 +36,7 @@ namespace he::assets
     class ImportResult
     {
     public:
-        explicit ImportResult(ImportContext& ctx, he::schema::Builder& builder)
+        explicit ImportResult(ImportContext& ctx, schema::Builder& builder)
             : m_ctx(ctx)
             , m_builder(builder)
         {}
@@ -47,21 +47,21 @@ namespace he::assets
         /// \param[in] name The user friendly name of the asset.
         /// \return A builder for the created asset object. If an error occurs an invalid builder
         /// is returned, so be sure to check `.IsValid()` before using it.
-        schema::Asset::Builder CreateAsset(StringView assetTypeName, StringView name);
+        Asset::Builder CreateAsset(StringView assetTypeName, StringView name);
 
         /// Update an existing asset in the asset file. If the asset uuid doesn't exist in the file
         /// an invalid builder is returned.
         ///
         /// \param[in] assetUuid The UUID of the asset to update.
         /// \return A builder for the asset that can be modified.
-        schema::Asset::Builder UpdateAsset(const AssetUuid& assetUuid);
+        Asset::Builder UpdateAsset(const AssetUuid& assetUuid);
 
         /// Update an existing asset in the asset file. If the asset uuid doesn't exist in the file
         /// an invalid builder is returned.
         ///
         /// \param[in] asset The asset to update.
         /// \return A builder for the asset that can be modified.
-        schema::Asset::Builder UpdateAsset(schema::Asset::Reader asset);
+        Asset::Builder UpdateAsset(Asset::Reader asset);
 
         /// Add a resource resulting from the import process. These resources are generally data
         /// that is extracted from the source so that parsing the source file isn't necessary for
@@ -97,11 +97,11 @@ namespace he::assets
         friend class AssetServer;
 
         ImportContext& m_ctx;
-        he::schema::Builder& m_builder;
+        schema::Builder& m_builder;
 
-        he::schema::DynamicStruct::Builder m_reqSettings{};
-        Vector<schema::Asset::Builder> m_new{};
-        Vector<schema::Asset::Builder> m_updated{};
+        schema::DynamicStruct::Builder m_reqSettings{};
+        Vector<Asset::Builder> m_new{};
+        Vector<Asset::Builder> m_updated{};
     };
 
     // --------------------------------------------------------------------------------------------

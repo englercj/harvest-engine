@@ -1,6 +1,6 @@
 // Copyright Chad Engler
 
-#include "import_asset_command.h"
+#include "he/editor/commands/import_asset_command.h"
 
 namespace he::editor
 {

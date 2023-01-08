@@ -1,6 +1,6 @@
 // Copyright Chad Engler
 
-#include "dialog.h"
+#include "he/editor/dialogs/dialog.h"
 
 #include "he/core/appender.h"
 #include "he/core/string.h"

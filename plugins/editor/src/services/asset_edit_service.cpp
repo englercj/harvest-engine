@@ -1,6 +1,6 @@
 // Copyright Chad Engler
 
-#include "asset_edit_service.h"
+#include "he/editor/services/asset_edit_service.h"
 
 #include "he/assets/asset_models.h"
 #include "he/assets/types_fmt.h"
@@ -13,7 +13,7 @@ namespace he::editor
     {
         assets::AssetFileModel fileModel;
         assets::AssetDatabase::AssetFileBuilder file;
-        assets::schema::Asset::Builder asset;
+        assets::Asset::Builder asset;
     };
 
     static AssetLoadResult LoadAsset(assets::AssetDatabase& db, const assets::AssetUuid& assetUuid)
@@ -39,8 +39,8 @@ namespace he::editor
 
         result.file = Move(assetLoad.builder);
 
-        assets::schema::AssetFile::Builder file = result.file.Root();
-        for (assets::schema::Asset::Builder asset : file.GetAssets())
+        assets::AssetFile::Builder file = result.file.Root();
+        for (assets::Asset::Builder asset : file.GetAssets())
         {
             if (assetUuid == asset.GetUuid())
             {
@@ -106,14 +106,14 @@ namespace he::editor
 
     void AssetEditService::CloseAsset(SchemaEditContext* ctx)
     {
-        const assets::schema::Asset::Builder& asset = ctx->Data().As<assets::schema::Asset>();
+        const assets::Asset::Builder& asset = ctx->Data().As<assets::Asset>();
         if (!HE_VERIFY(asset.IsValid(),
             HE_MSG("Schema context is not editing. Was it opened with the asset edit service?")))
         {
             return;
         }
 
-        const he::schema::Uuid::Builder& assetUuid = asset.GetUuid();
+        const schema::Uuid::Builder& assetUuid = asset.GetUuid();
         CtxEntry* entry = m_contexts.Find(assetUuid);
         if (!HE_VERIFY(entry && entry->ctx.Get() == ctx,
             HE_MSG("Schema context not found. Was it opened with the asset edit service?")))

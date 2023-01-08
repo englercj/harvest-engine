@@ -1,6 +1,6 @@
 // Copyright Chad Engler
 
-#include "dev_console_document.h"
+#include "he/editor/documents/dev_console_document.h"
 
 #include "imgui.h"
 

@@ -1,6 +1,6 @@
 // Copyright Chad Engler
 
-#include "project_service.h"
+#include "he/editor/services/project_service.h"
 
 #include "he/core/appender.h"
 #include "he/core/assert.h"
@@ -32,7 +32,7 @@ namespace he::editor
 
         // Create a new project structure and set it as the root
         m_builder.Clear();
-        m_project = m_builder.AddStruct<schema::Project>();
+        m_project = m_builder.AddStruct<Project>();
         m_builder.SetRoot(m_project);
 
         // Generate the ID
@@ -98,7 +98,7 @@ namespace he::editor
 
         Close();
 
-        if (!he::schema::FromToml<schema::Project>(m_builder, buf.Data()))
+        if (!schema::FromToml<Project>(m_builder, buf.Data()))
         {
             HE_LOG_ERROR(editor,
                 HE_MSG("Failed to deserialize project file. Is it valid TOML?"),
@@ -106,7 +106,7 @@ namespace he::editor
             return false;
         }
 
-        m_project = m_builder.Root().TryGetStruct<schema::Project>();
+        m_project = m_builder.Root().TryGetStruct<Project>();
 
         // ensure the directory exists
         const String dataDir = DataDir();
@@ -132,7 +132,7 @@ namespace he::editor
             return false;
 
         StringBuilder buf;
-        if (!he::schema::ToToml<schema::Project>(buf, m_project))
+        if (!schema::ToToml<Project>(buf, m_project))
         {
             HE_LOG_ERROR(editor, HE_MSG("Failed to serialize project file. This is likely an editor bug."));
             return false;

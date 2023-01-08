@@ -23,7 +23,7 @@ namespace he::assets
     public:
         struct Entry
         {
-            const he::schema::DeclInfo* declInfo{ nullptr };
+            const schema::DeclInfo* declInfo{ nullptr };
 
             TypeInfo compilerInfo{};
             UniquePtr<AssetCompiler> compiler{};
@@ -66,7 +66,7 @@ namespace he::assets
         bool RegisterImporter(const TypeInfo& info, UniquePtr<AssetImporter> importer);
         void UnregisterImporter(const TypeInfo& info);
 
-        bool RegisterAssetType(StringView assetTypeName, const he::schema::DeclInfo& declInfo, const TypeInfo& compilerInfo, UniquePtr<AssetCompiler> compiler);
+        bool RegisterAssetType(StringView assetTypeName, const schema::DeclInfo& declInfo, const TypeInfo& compilerInfo, UniquePtr<AssetCompiler> compiler);
         void UnregisterAssetType(StringView assetTypeName);
 
     private:
@@ -92,7 +92,7 @@ namespace he::assets
     template <typename AssetType, typename CompilerType>
     inline bool AssetTypeRegistry::RegisterAssetType()
     {
-        constexpr const he::schema::DeclInfo& DeclInfo = AssetType::DeclInfo;
+        constexpr const schema::DeclInfo& DeclInfo = AssetType::DeclInfo;
         constexpr const TypeInfo CompilerInfo = TypeInfo::Get<CompilerType>();
         return RegisterAssetType(AssetType::AssetTypeName, DeclInfo, CompilerInfo, MakeUnique<CompilerType>());
     }

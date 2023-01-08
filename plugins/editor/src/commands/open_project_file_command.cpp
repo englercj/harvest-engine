@@ -1,8 +1,8 @@
 // Copyright Chad Engler
 
-#include "open_project_file_command.h"
+#include "he/editor/commands/open_project_file_command.h"
 
-#include "dialogs/choice_dialog.h"
+#include "he/editor/dialogs/choice_dialog.h"
 
 namespace he::editor
 {

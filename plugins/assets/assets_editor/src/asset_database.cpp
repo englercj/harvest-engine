@@ -281,7 +281,7 @@ namespace he::assets
             return { r };
         }
 
-        if (!he::schema::FromToml(loadResult.builder, content.Data()))
+        if (!schema::FromToml(loadResult.builder, content.Data()))
         {
             HE_LOG_ERROR(he_assets,
                 HE_MSG("Failed to parse asset file. Is it valid TOML?"),
@@ -313,7 +313,7 @@ namespace he::assets
         return LoadAssetFile(model.file.path.Data());
     }
 
-    bool AssetDatabase::SaveAssetFile(const char* path, schema::AssetFile::Reader assetFile)
+    bool AssetDatabase::SaveAssetFile(const char* path, AssetFile::Reader assetFile)
     {
         if (!HE_VERIFY(!String::IsEmpty(path)))
         {
@@ -328,7 +328,7 @@ namespace he::assets
             return false;
 
         StringBuilder stringBuilder;
-        if (!HE_VERIFY(he::schema::ToToml<schema::AssetFile>(stringBuilder, assetFile)))
+        if (!HE_VERIFY(schema::ToToml<AssetFile>(stringBuilder, assetFile)))
         {
             HE_LOG_ERROR(he_assets,
                 HE_MSG("Failed to serialize asset file. Is it valid?"),
@@ -432,7 +432,7 @@ namespace he::assets
         return path;
     }
 
-    void AssetDatabase::AssetFileUpdateInternal(const char* path, schema::AssetFile::Reader assetFile)
+    void AssetDatabase::AssetFileUpdateInternal(const char* path, AssetFile::Reader assetFile)
     {
         String relPath;
         if (!HE_VERIFY(PrepareRelativePath(path, relPath)))
@@ -462,7 +462,7 @@ namespace he::assets
 
         if (assetFile.HasSource() && !assetFile.GetSource().IsEmpty())
         {
-            const he::schema::String::Reader sourcePath = assetFile.GetSource();
+            const schema::String::Reader sourcePath = assetFile.GetSource();
 
             model.source.path = sourcePath;
 
@@ -508,7 +508,7 @@ namespace he::assets
 
         LoadResult loadResult;
 
-        if (!he::schema::FromToml(loadResult.builder, load->content.Data()))
+        if (!schema::FromToml(loadResult.builder, load->content.Data()))
         {
             HE_LOG_ERROR(he_assets,
                 HE_MSG("Failed to parse asset file. Is it valid TOML?"),
@@ -520,8 +520,8 @@ namespace he::assets
 
         // Root() of TypeBuilder will add it if it doesn't exist, so we check the underlying raw
         // builder if the root was properly set.
-        he::schema::PointerBuilder root = loadResult.builder.builder.Root();
-        if (root.IsNull() || !root.TryGetStruct<schema::AssetFile>().IsValid())
+        schema::PointerBuilder root = loadResult.builder.builder.Root();
+        if (root.IsNull() || !root.TryGetStruct<AssetFile>().IsValid())
         {
            HE_LOG_ERROR(he_assets,
                HE_MSG("Failed to parse asset file. The root struct is not an AssetFile."),

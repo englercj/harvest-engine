@@ -1,8 +1,8 @@
 // Copyright Chad Engler
 
-#include "dialog_service.h"
+#include "he/editor/services/dialog_service.h"
 
-#include "widgets/menu.h"
+#include "he/editor/widgets/menu.h"
 
 #include "imgui.h"
 #include "imgui_internal.h"

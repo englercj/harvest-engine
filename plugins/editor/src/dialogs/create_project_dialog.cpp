@@ -1,15 +1,14 @@
 // Copyright Chad Engler
 
-#include "create_project_dialog.h"
-
-#include "dialogs/choice_dialog.h"
-#include "services/project_service.h"
-#include "services/imgui_service.h"
-#include "widgets/buttons.h"
-#include "widgets/input_text.h"
-#include "widgets/misc.h"
+#include "he/editor/dialogs/create_project_dialog.h"
 
 #include "he/core/string.h"
+#include "he/editor/dialogs/choice_dialog.h"
+#include "he/editor/services/project_service.h"
+#include "he/editor/services/imgui_service.h"
+#include "he/editor/widgets/buttons.h"
+#include "he/editor/widgets/input_text.h"
+#include "he/editor/widgets/misc.h"
 
 #include "imgui.h"
 

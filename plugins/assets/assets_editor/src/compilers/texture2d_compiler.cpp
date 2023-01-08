@@ -13,73 +13,73 @@
 
 namespace he::assets
 {
-    static const char* GetBasisMipMapFilter(schema::Texture2D::MipMapFilter x)
+    static const char* GetBasisMipMapFilter(Texture2D::MipMapFilter x)
     {
         switch (x)
         {
-            case schema::Texture2D::MipMapFilter::Box: return "box";
-            case schema::Texture2D::MipMapFilter::Tent: return "tent";
-            case schema::Texture2D::MipMapFilter::Bell: return "bell";
-            case schema::Texture2D::MipMapFilter::BSpline: return "b-spline";
-            case schema::Texture2D::MipMapFilter::Mitchell: return "mitchell";
-            case schema::Texture2D::MipMapFilter::Blackman: return "blackman";
-            case schema::Texture2D::MipMapFilter::Lanczos3: return "lanczos3";
-            case schema::Texture2D::MipMapFilter::Lanczos4: return "lanczos4";
-            case schema::Texture2D::MipMapFilter::Lanczos6: return "lanczos6";
-            case schema::Texture2D::MipMapFilter::Lanczos12: return "lanczos12";
-            case schema::Texture2D::MipMapFilter::Kaiser: return "kaiser";
-            case schema::Texture2D::MipMapFilter::Gaussian: return "gaussian";
-            case schema::Texture2D::MipMapFilter::CatmullRom: return "catmullrom";
-            case schema::Texture2D::MipMapFilter::QuadraticInterp: return "quadratic_interp";
-            case schema::Texture2D::MipMapFilter::QuadraticApprox: return "quadratic_approx";
-            case schema::Texture2D::MipMapFilter::QuadraticMix: return "quadratic_mix";
+            case Texture2D::MipMapFilter::Box: return "box";
+            case Texture2D::MipMapFilter::Tent: return "tent";
+            case Texture2D::MipMapFilter::Bell: return "bell";
+            case Texture2D::MipMapFilter::BSpline: return "b-spline";
+            case Texture2D::MipMapFilter::Mitchell: return "mitchell";
+            case Texture2D::MipMapFilter::Blackman: return "blackman";
+            case Texture2D::MipMapFilter::Lanczos3: return "lanczos3";
+            case Texture2D::MipMapFilter::Lanczos4: return "lanczos4";
+            case Texture2D::MipMapFilter::Lanczos6: return "lanczos6";
+            case Texture2D::MipMapFilter::Lanczos12: return "lanczos12";
+            case Texture2D::MipMapFilter::Kaiser: return "kaiser";
+            case Texture2D::MipMapFilter::Gaussian: return "gaussian";
+            case Texture2D::MipMapFilter::CatmullRom: return "catmullrom";
+            case Texture2D::MipMapFilter::QuadraticInterp: return "quadratic_interp";
+            case Texture2D::MipMapFilter::QuadraticApprox: return "quadratic_approx";
+            case Texture2D::MipMapFilter::QuadraticMix: return "quadratic_mix";
         }
 
         HE_LOG_WARN(he_assets, HE_MSG("Encountered unknown texture mipmap filter, assuming 'kaiser'"), HE_KV(filter, x));
         return "kaiser";
     }
 
-    static float GetBasisUastcRdoQuality(schema::Texture2D::CompressionQuality x)
+    static float GetBasisUastcRdoQuality(Texture2D::CompressionQuality x)
     {
         switch (x)
         {
-            case schema::Texture2D::CompressionQuality::VeryLow: return 5.0f;
-            case schema::Texture2D::CompressionQuality::Low: return 1.5f;
-            case schema::Texture2D::CompressionQuality::Normal: return 1.0f;
-            case schema::Texture2D::CompressionQuality::High: return 0.5f;
-            case schema::Texture2D::CompressionQuality::VeryHigh: return 0.0f;
+            case Texture2D::CompressionQuality::VeryLow: return 5.0f;
+            case Texture2D::CompressionQuality::Low: return 1.5f;
+            case Texture2D::CompressionQuality::Normal: return 1.0f;
+            case Texture2D::CompressionQuality::High: return 0.5f;
+            case Texture2D::CompressionQuality::VeryHigh: return 0.0f;
         }
 
         HE_LOG_WARN(he_assets, HE_MSG("Encountered unknown texture compression quality, using default values."), HE_KV(quality, x));
         return 1.0f;
     }
 
-    static int32_t GetBasisUastcFlags(schema::Texture2D::CompressionQuality x)
+    static int32_t GetBasisUastcFlags(Texture2D::CompressionQuality x)
     {
         switch (x)
         {
-            case schema::Texture2D::CompressionQuality::VeryLow: return basisu::cPackUASTCLevelFastest;
-            case schema::Texture2D::CompressionQuality::Low: return basisu::cPackUASTCLevelFaster;
-            case schema::Texture2D::CompressionQuality::Normal: return basisu::cPackUASTCLevelDefault;
-            case schema::Texture2D::CompressionQuality::High: return basisu::cPackUASTCLevelSlower;
-            case schema::Texture2D::CompressionQuality::VeryHigh: return basisu::cPackUASTCLevelVerySlow;
+            case Texture2D::CompressionQuality::VeryLow: return basisu::cPackUASTCLevelFastest;
+            case Texture2D::CompressionQuality::Low: return basisu::cPackUASTCLevelFaster;
+            case Texture2D::CompressionQuality::Normal: return basisu::cPackUASTCLevelDefault;
+            case Texture2D::CompressionQuality::High: return basisu::cPackUASTCLevelSlower;
+            case Texture2D::CompressionQuality::VeryHigh: return basisu::cPackUASTCLevelVerySlow;
         }
 
         HE_LOG_WARN(he_assets, HE_MSG("Encountered unknown texture compression quality, using default values."), HE_KV(quality, x));
         return basisu::cPackUASTCLevelDefault;
     }
 
-    static uint32_t GetBasisEtc1sQuality(schema::Texture2D::CompressionQuality x)
+    static uint32_t GetBasisEtc1sQuality(Texture2D::CompressionQuality x)
     {
         static_assert(basisu::BASISU_QUALITY_MIN == 1 && basisu::BASISU_QUALITY_MAX == 255);
 
         switch (x)
         {
-            case schema::Texture2D::CompressionQuality::VeryLow: return 1;
-            case schema::Texture2D::CompressionQuality::Low: return 64;
-            case schema::Texture2D::CompressionQuality::Normal: return 128;
-            case schema::Texture2D::CompressionQuality::High: return 192;
-            case schema::Texture2D::CompressionQuality::VeryHigh: return 255;
+            case Texture2D::CompressionQuality::VeryLow: return 1;
+            case Texture2D::CompressionQuality::Low: return 64;
+            case Texture2D::CompressionQuality::Normal: return 128;
+            case Texture2D::CompressionQuality::High: return 192;
+            case Texture2D::CompressionQuality::VeryHigh: return 255;
         }
 
         HE_LOG_WARN(he_assets, HE_MSG("Encountered unknown texture compression quality, using default values."), HE_KV(quality, x));
@@ -89,11 +89,11 @@ namespace he::assets
     bool Texture2DCompiler::Compile(const CompileContext& ctx, CompileResult& result)
     {
         HE_UNUSED(result);
-        constexpr ResourceId Texture2DKtx2Id{ schema::Texture2D::Ktx2ResourceName };
-        constexpr ResourceId Texture2DPixelsId{ schema::Texture2D::PixelsResourceName };
+        constexpr ResourceId Texture2DKtx2Id{ Texture2D::Ktx2ResourceName };
+        constexpr ResourceId Texture2DPixelsId{ Texture2D::PixelsResourceName };
 
         // Get the pixel resource for this image and validate the data for correctness
-        Vector<he::schema::Word> pixelsResourceData;
+        Vector<schema::Word> pixelsResourceData;
         Result r = ctx.db.GetResource(pixelsResourceData, ctx.asset.GetUuid(), Texture2DPixelsId);
         if (!r)
         {
@@ -107,7 +107,7 @@ namespace he::assets
             return false;
         }
 
-        const auto pixelsResource = he::schema::ReadRoot<schema::Texture2D::PixelsResource>(pixelsResourceData.Data());
+        const auto pixelsResource = schema::ReadRoot<Texture2D::PixelsResource>(pixelsResourceData.Data());
         if (!pixelsResource.IsValid())
         {
             HE_LOG_ERROR(he_assets,
@@ -120,7 +120,7 @@ namespace he::assets
             return false;
         }
 
-        const schema::Texture2D::Reader asset = ctx.asset.GetData().TryGetStruct<schema::Texture2D>();
+        const Texture2D::Reader asset = ctx.asset.GetData().TryGetStruct<Texture2D>();
         if (!asset.IsValid())
         {
             HE_LOG_ERROR(he_assets,
@@ -156,7 +156,7 @@ namespace he::assets
 
         if (pixelsResource.HasMips())
         {
-            he::schema::List<he::schema::Blob>::Reader mips = pixelsResource.GetMips();
+            schema::List<schema::Blob>::Reader mips = pixelsResource.GetMips();
             params.m_source_mipmap_images.resize(1);
             params.m_source_mipmap_images[0].resize(mips.Size());
 
@@ -172,7 +172,7 @@ namespace he::assets
         }
 
         // Mipmap settings
-        schema::Texture2D::MipMapping::Reader mipMapping = asset.GetMipMapping();
+        Texture2D::MipMapping::Reader mipMapping = asset.GetMipMapping();
         params.m_mip_gen = mipMapping.GetGenerate();
         params.m_mip_scale = mipMapping.GetScale();
         params.m_mip_filter = GetBasisMipMapFilter(mipMapping.GetFilter());
@@ -189,10 +189,10 @@ namespace he::assets
         params.m_tex_type = basist::cBASISTexType2D;
 
         // Compression settings
-        const schema::Texture2D::Compression::Reader comp = asset.GetCompression();
-        const schema::Texture2D::CompressionQuality quality = comp.GetQuality();
+        const Texture2D::Compression::Reader comp = asset.GetCompression();
+        const Texture2D::CompressionQuality quality = comp.GetQuality();
 
-        params.m_uastc = comp.GetFormat() == schema::Texture2D::CompressionFormat::UASTC;
+        params.m_uastc = comp.GetFormat() == Texture2D::CompressionFormat::UASTC;
         if (params.m_uastc)
         {
             params.m_rdo_uastc = true;

@@ -4,54 +4,20 @@
 
 import "he/schema/schema.hsc";
 
-namespace he.assets.schema;
-
-// ------------------------------------------------------------------------------------------------
-// Common Structures
-
-struct Vec2f
-{
-    x @0 :float32;
-    y @1 :float32;
-}
-
-struct Vec3f
-{
-    x @0 :float32;
-    y @1 :float32;
-    z @2 :float32;
-}
-
-struct ScalarRange
-{
-    data :union
-    {
-        int :group
-        {
-            min @0 :int64;
-            max @1 :int64;
-        }
-
-        uint :group
-        {
-            min @2 :uint64;
-            max @3 :uint64;
-        }
-
-        float :group
-        {
-            min @4 :float64;
-            max @5 :float64;
-        }
-    }
-}
+namespace he.assets;
 
 // ------------------------------------------------------------------------------------------------
 // Display Attributes
 
-// TODO: This should probably live somewhere else? It isn't asset-specific.
-// It can't live in the editor though, because we need it here and can't depend on editor...
-
+// A collection of attributes that modify how fields are treated when on display, most often when
+// shown in the editor property grid.
+//
+// This is a strange place for these to live, but it is a compromise to avoid strange dependencies.
+// We need asset types to live in the non-editor assets module because some of the types defined in
+// here are used at runtime. Specifically, there are asset types that are just passed through as a
+// runtime resource. Because of that, this module cannot have any dependencies on the editor.
+// Hence, the strange relationship of defining these here but implementing code that cares about them
+// in editor modules.
 struct Display
 {
     // hides an asset type from the list of types that the editor can create directly.
@@ -71,10 +37,6 @@ struct Display
     // Human-friendly description text for the target.
     // The editor will use this value as a tooltip.
     attribute Description(enum, enumerator, field, struct) :String;
-
-    // Marks a field as referring to an asset of a particular type.
-    // Only meaningful for `he.schema.Uuid` fields.
-    attribute Asset(field) :String;
 
     // Allows for multi-line editing of a String field.
     attribute Multiline(field) :void;
@@ -97,6 +59,21 @@ struct Display
 // string that will be used as the asset type identifier.
 attribute AssetType(struct) :void;
 
+// Marks a field as referring to an asset of a particular type.
+// Only meaningful for `he.schema.Uuid` fields.
+attribute AssetRef(field) :String;
+
+// A reference held by an asset to another object: either an asset, or a file.
+struct AssetReference
+{
+    data :union
+    {
+        asset @0 :he.schema.Uuid;
+        file @1 :String;
+    }
+}
+
+// A source editable asset object in the Harvest asset system.
 struct Asset
 {
     uuid @0 :he.schema.Uuid $Display.ReadOnly;          // unique identifier of the asset
@@ -104,37 +81,16 @@ struct Asset
     name @2 :String;                                    // user-defined human-friendly name
     tags @3 :String[];                                  // user-defined search & filter strings
     references @4 :AssetReference[] $Display.Hidden;    // outgoing references to other assets and data files
-    data @5 :AnyStruct;                                 // Data for the asset, type is deduced based on `type`
+    data @5 :AnyStruct;                                 // Data for the asset, structure type is deduced based on the value of the `type` member above
     importData @6 :AnyStruct $Display.Hidden;           // Any data the importer would like to attach to the asset
 }
 
+// The asset file structure that is stored in *.he_asset files
 struct AssetFile
 {
     uuid @0 :he.schema.Uuid;    // unique identifier of the file
     assets @1 :Asset[];         // list of assets contained in the file
     source @2 :String;          // relative path to source file for the assets
-}
-
-struct AssetReference
-{
-    data :union
-    {
-        asset :group
-        {
-            uuid @0 :he.schema.Uuid;
-        }
-
-        resource :group
-        {
-            assetUuid @1 :he.schema.Uuid;
-            resourceId @2 :uint32;
-        }
-
-        file :group
-        {
-            path @3 :String;
-        }
-    }
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -216,5 +172,5 @@ struct Texture2DArray $AssetType $Display.Description("An array of two dimension
 {
     const AssetTypeName :String = "he.asset.texture2d_array";
 
-    textures @0 :he.schema.Uuid[] $Display.Asset(Texture2D.AssetTypeName);
+    textures @0 :he.schema.Uuid[] $AssetRef(Texture2D.AssetTypeName);
 }

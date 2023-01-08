@@ -1,6 +1,6 @@
 // Copyright Chad Engler
 
-#include "editor_app.h"
+#include "he/editor/editor_app.h"
 
 #include "he/core/async_file.h"
 

@@ -12,9 +12,11 @@ homepage = ""
     name = "he_editor"
     type = "windowed_app"
     group = "engine/tools"
-    files = ["src/**"]
-    public_includedirs = ["src", "%{he.get_generated_dir('he_editor')}/src"]
-    private_dependson = [
+    files = ["include/**", "src/**"]
+    public_includedirs = ["include", "%{he.get_generated_dir('he_editor')}/include"]
+    private_includedirs = ["src", "%{he.get_generated_dir('he_editor')}/src"]
+    public_dependson = [
+        "boost_di",
         "he_assets",
         "he_assets_editor",
         "he_core",
@@ -22,23 +24,16 @@ homepage = ""
         "he_rhi",
         "he_schema",
         "he_window",
-
-        "boost_di",
         "imgui",
         "implot",
-        "sqlite3",
     ]
 
     [[modules.bin2c_compile]]
         files = ["src/fonts/**.ttf"]
         compress = true
 
-    [[modules.bin2c_compile]]
-        files = ["src/fonts/**.woff2"]
-        compress = false
-
     [[modules.schema_compile]]
-        files = ["src/schema/*.hsc"]
+        files = ["include/**.hsc", "src/**.hsc"]
         targets = ["c++"]
         dependson_include = ["he_assets", "he_schema"]
 

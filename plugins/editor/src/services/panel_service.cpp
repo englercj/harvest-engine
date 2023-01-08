@@ -1,10 +1,10 @@
 // Copyright Chad Engler
 
-#include "panel_service.h"
+#include "he/editor/services/panel_service.h"
 
-#include "widgets/animations.h"
-#include "widgets/buttons.h"
-#include "widgets/menu.h"
+#include "he/editor/widgets/animations.h"
+#include "he/editor/widgets/buttons.h"
+#include "he/editor/widgets/menu.h"
 
 #define IMGUI_DEFINE_MATH_OPERATORS
 #include "imgui.h"

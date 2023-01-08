@@ -1,22 +1,21 @@
 // Copyright Chad Engler
 
-#include "workspace_service.h"
-
-#include "di.h"
-#include "dialogs/choice_dialog.h"
-#include "documents/asset_browser_document.h"
-#include "documents/dev_console_document.h"
-#include "documents/document.h"
-#include "documents/stats_document.h"
-#include "documents/imgui_debug_document.h"
-#include "documents/log_document.h"
-#include "documents/welcome_document.h"
-#include "fonts/icons_material_design.h"
-#include "widgets/animations.h"
-#include "widgets/menu.h"
-#include "widgets/progress.h"
+#include "he/editor/services/workspace_service.h"
 
 #include "he/core/appender.h"
+#include "he/editor/di.h"
+#include "he/editor/dialogs/choice_dialog.h"
+#include "he/editor/documents/asset_browser_document.h"
+#include "he/editor/documents/dev_console_document.h"
+#include "he/editor/documents/document.h"
+#include "he/editor/documents/stats_document.h"
+#include "he/editor/documents/imgui_debug_document.h"
+#include "he/editor/documents/log_document.h"
+#include "he/editor/documents/welcome_document.h"
+#include "he/editor/icons/icons_material_design.h"
+#include "he/editor/widgets/animations.h"
+#include "he/editor/widgets/menu.h"
+#include "he/editor/widgets/progress.h"
 
 #define IMGUI_DEFINE_MATH_OPERATORS
 #include "imgui.h"

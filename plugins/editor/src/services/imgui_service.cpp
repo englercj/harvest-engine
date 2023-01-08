@@ -1,8 +1,7 @@
 // Copyright Chad Engler
 
-#include "imgui_service.h"
+#include "he/editor/services/imgui_service.h"
 
-#include "fonts/icons_material_design.h"
 #include "fonts/materialdesignicons.ttf.h"
 #include "fonts/NotoSans-Regular.ttf.h"
 #include "fonts/NotoMono-Regular.ttf.h"
@@ -11,6 +10,7 @@
 #include "he/core/macros.h"
 #include "he/core/string.h"
 #include "he/core/string_view_fmt.h"
+#include "he/editor/icons/icons_material_design.h"
 #include "he/math/float.h"
 #include "he/math/types_fmt.h"
 

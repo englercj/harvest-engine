@@ -1,6 +1,6 @@
 // Copyright Chad Engler
 
-#include "asset_service.h"
+#include "he/editor/services/asset_service.h"
 
 #include "he/assets/asset_models.h"
 #include "he/core/log.h"
@@ -44,7 +44,7 @@ namespace he::editor
         if (!m_projectService.IsOpen())
             return;
 
-        const he::schema::String::Reader relativeAssetRoot = m_projectService.Project().GetAssetRoot();
+        const schema::String::Reader relativeAssetRoot = m_projectService.GetProject().GetAssetRoot();
 
         const String& cacheRoot = m_projectService.DataDir();
         String assetRoot = GetDirectory(m_projectService.ProjectPath());

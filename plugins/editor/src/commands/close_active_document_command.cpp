@@ -1,6 +1,6 @@
 // Copyright Chad Engler
 
-#include "close_active_document_command.h"
+#include "he/editor/commands/close_active_document_command.h"
 
 namespace he::editor
 {

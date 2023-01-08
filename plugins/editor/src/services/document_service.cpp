@@ -1,8 +1,8 @@
 // Copyright Chad Engler
 
-#include "document_service.h"
+#include "he/editor/services/document_service.h"
 
-#include "widgets/menu.h"
+#include "he/editor/widgets/menu.h"
 
 #include "imgui.h"
 #include "imgui_internal.h"

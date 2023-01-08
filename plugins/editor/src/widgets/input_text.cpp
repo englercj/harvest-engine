@@ -1,6 +1,6 @@
 // Copyright Chad Engler
 
-#include "input_text.h"
+#include "he/editor/widgets/input_text.h"
 
 #include "he/core/string_view.h"
 

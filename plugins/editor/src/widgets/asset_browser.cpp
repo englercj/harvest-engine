@@ -1,10 +1,6 @@
 // Copyright Chad Engler
 
-#include "asset_browser.h"
-
-#include "fonts/icons_material_design.h"
-#include "widgets/buttons.h"
-#include "widgets/menu.h"
+#include "he/editor/widgets/asset_browser.h"
 
 #include "he/assets/asset_database.h"
 #include "he/assets/types.h"
@@ -16,6 +12,9 @@
 #include "he/core/path.h"
 #include "he/core/result_fmt.h"
 #include "he/core/string_fmt.h"
+#include "he/editor/icons/icons_material_design.h"
+#include "he/editor/widgets/buttons.h"
+#include "he/editor/widgets/menu.h"
 
 #include "imgui.h"
 #include "fmt/format.h"

@@ -20,7 +20,7 @@ namespace he::assets
         AssetServer(AssetDatabase& db, TaskExecutor& executor);
 
         void StartImport(const char* path);
-        void StartImport(const char* path, he::schema::Builder&& importSettings);
+        void StartImport(const char* path, schema::Builder&& importSettings);
         void StartPendingImports();
 
         void StartCompile(const AssetUuid& assetUuid);
@@ -44,8 +44,8 @@ namespace he::assets
             {}
 
             String path{};
-            he::schema::Builder importSettings{};
-            he::schema::Builder assetFile{};
+            schema::Builder importSettings{};
+            schema::Builder assetFile{};
 
             AssetServer* server;
             ImportContext ctx;

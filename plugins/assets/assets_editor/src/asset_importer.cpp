@@ -4,9 +4,9 @@
 
 namespace he::assets
 {
-    schema::Asset::Builder ImportResult::CreateAsset(StringView assetTypeName, StringView name)
+    Asset::Builder ImportResult::CreateAsset(StringView assetTypeName, StringView name)
     {
-        schema::Asset::Builder builder = m_builder.AddStruct<schema::Asset>();
+        Asset::Builder builder = m_builder.AddStruct<Asset>();
         FillUuidV4(builder.InitUuid());
         builder.InitType(assetTypeName);
         builder.InitName(name);
@@ -14,7 +14,7 @@ namespace he::assets
         return builder;
     }
 
-    schema::Asset::Builder ImportResult::UpdateAsset(const AssetUuid& assetUuid)
+    Asset::Builder ImportResult::UpdateAsset(const AssetUuid& assetUuid)
     {
         for (auto&& asset : m_ctx.assetFile.GetAssets())
         {
@@ -27,9 +27,9 @@ namespace he::assets
         return {};
     }
 
-    schema::Asset::Builder ImportResult::UpdateAsset(schema::Asset::Reader asset)
+    Asset::Builder ImportResult::UpdateAsset(Asset::Reader asset)
     {
-        schema::Asset::Builder builder = m_builder.AddStruct<schema::Asset>();
+        Asset::Builder builder = m_builder.AddStruct<Asset>();
         builder.Copy(asset);
         m_updated.PushBack(builder);
         return builder;

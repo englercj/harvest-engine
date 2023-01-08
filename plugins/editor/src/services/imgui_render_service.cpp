@@ -1,6 +1,7 @@
 // Copyright Chad Engler
 
-#include "imgui_render_service.h"
+#include "he/editor/services/imgui_render_service.h"
+
 #include "shaders/imgui.shaders.h"
 
 #include "he/core/file.h"

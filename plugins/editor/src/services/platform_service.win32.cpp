@@ -1,6 +1,6 @@
 // Copyright Chad Engler
 
-#include "platform_service.h"
+#include "he/editor/services/platform_service.h"
 
 #include "he/core/enum_ops.h"
 #include "he/core/log.h"

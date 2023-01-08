@@ -1,15 +1,14 @@
 // Copyright Chad Engler
 
-#include "welcome_document.h"
-
-#include "dialogs/choice_dialog.h"
-#include "dialogs/create_project_dialog.h"
-#include "fonts/icons_material_design.h"
-#include "widgets/menu.h"
-#include "widgets/buttons.h"
+#include "he/editor/documents/welcome_document.h"
 
 #include "he/core/string.h"
 #include "he/core/vector.h"
+#include "he/editor/dialogs/choice_dialog.h"
+#include "he/editor/dialogs/create_project_dialog.h"
+#include "he/editor/icons/icons_material_design.h"
+#include "he/editor/widgets/menu.h"
+#include "he/editor/widgets/buttons.h"
 
 #include "imgui.h"
 

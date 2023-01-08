@@ -1,6 +1,6 @@
 // Copyright Chad Engler
 
-#include "main_window_service.h"
+#include "he/editor/services/main_window_service.h"
 
 #include "he/math/vec2.h"
 #include "he/window/device.h"

@@ -1,8 +1,8 @@
 // Copyright Chad Engler
 
-#include "misc.h"
+#include "he/editor/widgets/misc.h"
 
-#include "fonts/icons_material_design.h"
+#include "he/editor/icons/icons_material_design.h"
 
 #include "imgui.h"
 

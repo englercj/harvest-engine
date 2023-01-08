@@ -1,14 +1,13 @@
 // Copyright Chad Engler
 
-#include "document.h"
-
-#include "di.h"
-#include "fonts/icons_material_design.h"
-#include "widgets/menu.h"
+#include "he/editor/documents/document.h"
 
 #include "he/core/appender.h"
 #include "he/core/string.h"
 #include "he/core/string_fmt.h"
+#include "he/editor/di.h"
+#include "he/editor/icons/icons_material_design.h"
+#include "he/editor/widgets/menu.h"
 
 #include "imgui.h"
 #include "fmt/core.h"

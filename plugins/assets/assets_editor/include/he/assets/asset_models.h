@@ -40,7 +40,7 @@ namespace he::assets
         FileProperties file{};
         FileProperties source{};
 
-        static bool AddOrUpdate(AssetDatabase& db, schema::AssetFile::Reader file, const AssetFileModel& model);
+        static bool AddOrUpdate(AssetDatabase& db, AssetFile::Reader file, const AssetFileModel& model);
         static bool FindOne(AssetDatabase& db, const AssetFileUuid& fileUuid, AssetFileModel& outModel);
         static bool FindOne(AssetDatabase& db, const char* path, AssetFileModel& outModel);
         static bool FindOne(AssetDatabase& db, const AssetUuid& assetUuid, AssetFileModel& outModel);
@@ -69,7 +69,7 @@ namespace he::assets
         uint32_t compilerVersion{ 0 };
 
         static bool AddOrUpdate(AssetDatabase& db, const AssetModel& model);
-        static bool AddOrUpdate(AssetDatabase& db, const AssetFileUuid& fileUuid, schema::Asset::Reader asset);
+        static bool AddOrUpdate(AssetDatabase& db, const AssetFileUuid& fileUuid, Asset::Reader asset);
         static bool FindOne(AssetDatabase& db, const AssetUuid& assetUuid, AssetModel& model);
         static bool FindAll(AssetDatabase& db, const AssetFileUuid& fileUuid, Vector<AssetModel>& models);
         static bool FindAll(AssetDatabase& db, AssetState state, Vector<AssetModel>& models);

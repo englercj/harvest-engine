@@ -1,30 +1,30 @@
 // Copyright Chad Engler
 
-#include "type_edit_ui_service.h"
+#include "he/editor/services/type_edit_ui_service.h"
 
 namespace he::editor
 {
-    static he::schema::TypeId GetFieldTypeId(he::schema::Field::Reader field)
+    static schema::TypeId GetFieldTypeId(schema::Field::Reader field)
     {
-        const he::schema::Field::Meta::Reader meta = field.GetMeta();
+        const schema::Field::Meta::Reader meta = field.GetMeta();
 
         switch (meta.GetUnionTag())
         {
-            case he::schema::Field::Meta::UnionTag::Normal:
+            case schema::Field::Meta::UnionTag::Normal:
             {
-                const he::schema::Type::Data::Reader type = meta.GetNormal().GetType().GetData();
+                const schema::Type::Data::Reader type = meta.GetNormal().GetType().GetData();
                 return type.IsStruct() ? type.GetStruct().GetId() : 0;
             }
-            case he::schema::Field::Meta::UnionTag::Group: return meta.GetGroup().GetTypeId();
-            case he::schema::Field::Meta::UnionTag::Union: return meta.GetUnion().GetTypeId();
+            case schema::Field::Meta::UnionTag::Group: return meta.GetGroup().GetTypeId();
+            case schema::Field::Meta::UnionTag::Union: return meta.GetUnion().GetTypeId();
         }
 
         return 0;
     }
 
-    void TypeEditUIService::RegisterTypeEditor(he::schema::TypeId typeId, Editor&& editor)
+    void TypeEditUIService::RegisterTypeEditor(schema::TypeId typeId, Editor&& editor)
     {
-        if (!HE_VERIFY(he::schema::IsTypeId(typeId)))
+        if (!HE_VERIFY(schema::IsTypeId(typeId)))
             return;
 
         const auto result = m_typeEditors.Emplace(typeId, Move(editor));
@@ -33,7 +33,7 @@ namespace he::editor
             HE_KV(type_id, typeId));
     }
 
-    void TypeEditUIService::RegisterFieldEditor(he::schema::Field::Reader field, Editor&& editor)
+    void TypeEditUIService::RegisterFieldEditor(schema::Field::Reader field, Editor&& editor)
     {
         if (!HE_VERIFY(field.IsValid()))
             return;
@@ -44,15 +44,15 @@ namespace he::editor
             HE_KV(name, field.GetName()));
     }
 
-    const TypeEditUIService::Editor* TypeEditUIService::FindEditor(he::schema::TypeId typeId) const
+    const TypeEditUIService::Editor* TypeEditUIService::FindEditor(schema::TypeId typeId) const
     {
-        if (!he::schema::IsTypeId(typeId))
+        if (!schema::IsTypeId(typeId))
             return nullptr;
 
         return m_typeEditors.Find(typeId);
     }
 
-    const TypeEditUIService::Editor* TypeEditUIService::FindEditor(he::schema::Field::Reader field) const
+    const TypeEditUIService::Editor* TypeEditUIService::FindEditor(schema::Field::Reader field) const
     {
         if (!field.IsValid())
             return nullptr;
@@ -61,7 +61,7 @@ namespace he::editor
         if (editor)
             return editor;
 
-        const he::schema::TypeId typeId = GetFieldTypeId(field);
+        const schema::TypeId typeId = GetFieldTypeId(field);
         return FindEditor(typeId);
     }
 }

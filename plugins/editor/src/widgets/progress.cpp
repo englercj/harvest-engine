@@ -1,6 +1,6 @@
 // Copyright Chad Engler
 
-#include "progress.h"
+#include "he/editor/widgets/progress.h"
 
 #include "he/core/assert.h"
 #include "he/core/utils.h"

@@ -60,7 +60,7 @@ namespace he::assets
 
     bool AssetTypeRegistry::RegisterAssetType(
         StringView assetTypeName,
-        const he::schema::DeclInfo& declInfo,
+        const schema::DeclInfo& declInfo,
         const TypeInfo& compilerInfo,
         UniquePtr<AssetCompiler> compiler)
     {
@@ -74,14 +74,14 @@ namespace he::assets
             return false;
         }
 
-        const he::schema::Declaration::Reader decl = GetSchema(declInfo);
-        const he::schema::List<he::schema::Attribute>::Reader attributes = decl.GetAttributes();
+        const schema::Declaration::Reader decl = GetSchema(declInfo);
+        const schema::List<schema::Attribute>::Reader attributes = decl.GetAttributes();
 
         Entry& entry = result.entry.value;
         entry.declInfo = &declInfo;
         entry.compilerInfo = compilerInfo;
         entry.compiler = Move(compiler);
-        entry.importOnly = HasAttribute<schema::Display::ImportOnly>(attributes);
+        entry.importOnly = HasAttribute<assets::Display::ImportOnly>(attributes);
 
         return true;
     }

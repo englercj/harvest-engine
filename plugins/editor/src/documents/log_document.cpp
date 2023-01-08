@@ -1,6 +1,6 @@
 // Copyright Chad Engler
 
-#include "log_document.h"
+#include "he/editor/documents/log_document.h"
 
 #include "he/core/appender.h"
 #include "he/core/clock_fmt.h"

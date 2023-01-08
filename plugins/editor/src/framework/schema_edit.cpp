@@ -1,6 +1,6 @@
 // Copyright Chad Engler
 
-#include "schema_edit.h"
+#include "he/editor/framework/schema_edit.h"
 
 #include "he/core/appender.h"
 #include "he/core/assert.h"
@@ -14,24 +14,24 @@
 namespace he::editor
 {
     // --------------------------------------------------------------------------------------------
-    static he::schema::DynamicValue::Builder ResolveAnyPointer(const he::schema::DynamicValue::Builder& data, const SchemaEditPathEntry& entry)
+    static schema::DynamicValue::Builder ResolveAnyPointer(const schema::DynamicValue::Builder& data, const SchemaEditPathEntry& entry)
     {
-        if (data.GetKind() != he::schema::DynamicValue::Kind::AnyPointer)
+        if (data.GetKind() != schema::DynamicValue::Kind::AnyPointer)
             return data;
 
         HE_ASSERT(entry.info, HE_MSG("Editing an AnyPointer field requires DeclInfo to be set."));
-        const he::schema::AnyPointer::Builder dataPtr = data.As<he::schema::AnyPointer>();
-        const he::schema::StructBuilder builder = dataPtr.TryGetStruct();
-        return he::schema::DynamicStruct::Builder(*entry.info, builder);
+        const schema::AnyPointer::Builder dataPtr = data.As<schema::AnyPointer>();
+        const schema::StructBuilder builder = dataPtr.TryGetStruct();
+        return schema::DynamicStruct::Builder(*entry.info, builder);
     }
 
-    static bool HasByPath(const he::schema::DynamicValue::Builder& data, const SchemaEditPathEntry& entry)
+    static bool HasByPath(const schema::DynamicValue::Builder& data, const SchemaEditPathEntry& entry)
     {
         switch (data.GetKind())
         {
-            case he::schema::DynamicValue::Kind::Array: return data.As<schema::DynamicArray>().Has(static_cast<uint16_t>(entry.index));
-            case he::schema::DynamicValue::Kind::List: return data.As<schema::DynamicList>().Has(entry.index);
-            case he::schema::DynamicValue::Kind::Struct: return data.As<schema::DynamicStruct>().Has(entry.field);
+            case schema::DynamicValue::Kind::Array: return data.As<schema::DynamicArray>().Has(static_cast<uint16_t>(entry.index));
+            case schema::DynamicValue::Kind::List: return data.As<schema::DynamicList>().Has(entry.index);
+            case schema::DynamicValue::Kind::Struct: return data.As<schema::DynamicStruct>().Has(entry.field);
             default:
                 HE_VERIFY(false,
                     HE_MSG("Path is invalid, it indexes into a field that is not an array, list, or struct."),
@@ -40,28 +40,28 @@ namespace he::editor
         }
     }
 
-    static he::schema::DynamicValue::Builder GetByPath(const he::schema::DynamicValue::Builder& data, const SchemaEditPathEntry& entry)
+    static schema::DynamicValue::Builder GetByPath(const schema::DynamicValue::Builder& data, const SchemaEditPathEntry& entry)
     {
         switch (data.GetKind())
         {
-            case he::schema::DynamicValue::Kind::Array: return data.As<schema::DynamicArray>().Get(static_cast<uint16_t>(entry.index));
-            case he::schema::DynamicValue::Kind::List: return data.As<schema::DynamicList>().Get(entry.index);
-            case he::schema::DynamicValue::Kind::Struct: return data.As<schema::DynamicStruct>().Get(entry.field);
+            case schema::DynamicValue::Kind::Array: return data.As<schema::DynamicArray>().Get(static_cast<uint16_t>(entry.index));
+            case schema::DynamicValue::Kind::List: return data.As<schema::DynamicList>().Get(entry.index);
+            case schema::DynamicValue::Kind::Struct: return data.As<schema::DynamicStruct>().Get(entry.field);
             default:
                 HE_VERIFY(false,
                     HE_MSG("Path is invalid, it indexes into a field that is not an array, list, or struct."),
                     HE_KV(kind, data.GetKind()));
-                return he::schema::DynamicValue::Builder{};
+                return schema::DynamicValue::Builder{};
         }
     }
 
-    static void SetByPath(schema::DynamicValue::Builder& data, const SchemaEditPathEntry& entry, const he::schema::DynamicValue::Reader& value)
+    static void SetByPath(schema::DynamicValue::Builder& data, const SchemaEditPathEntry& entry, const schema::DynamicValue::Reader& value)
     {
         switch (data.GetKind())
         {
-            case he::schema::DynamicValue::Kind::Array: data.As<schema::DynamicArray>().Set(static_cast<uint16_t>(entry.index), value); break;
-            case he::schema::DynamicValue::Kind::List: data.As<schema::DynamicList>().Set(entry.index, value); break;
-            case he::schema::DynamicValue::Kind::Struct: data.As<schema::DynamicStruct>().Set(entry.field, value); break;
+            case schema::DynamicValue::Kind::Array: data.As<schema::DynamicArray>().Set(static_cast<uint16_t>(entry.index), value); break;
+            case schema::DynamicValue::Kind::List: data.As<schema::DynamicList>().Set(entry.index, value); break;
+            case schema::DynamicValue::Kind::Struct: data.As<schema::DynamicStruct>().Set(entry.field, value); break;
             default:
                 HE_VERIFY(false,
                     HE_MSG("Path is invalid, it indexes into a field that is not an array, list, or struct."),
@@ -69,33 +69,33 @@ namespace he::editor
         }
     }
 
-    static he::schema::DynamicValue::Builder InitByPath(schema::DynamicValue::Builder& data, const SchemaEditPathEntry& entry)
+    static schema::DynamicValue::Builder InitByPath(schema::DynamicValue::Builder& data, const SchemaEditPathEntry& entry)
     {
         switch (data.GetKind())
         {
-            case he::schema::DynamicValue::Kind::Array: return data.As<schema::DynamicArray>().Init(static_cast<uint16_t>(entry.index));
-            case he::schema::DynamicValue::Kind::List: return data.As<schema::DynamicList>().Get(entry.index); // No init necessary for lists of structs
-            case he::schema::DynamicValue::Kind::Struct: return data.As<schema::DynamicStruct>().Init(entry.field);
+            case schema::DynamicValue::Kind::Array: return data.As<schema::DynamicArray>().Init(static_cast<uint16_t>(entry.index));
+            case schema::DynamicValue::Kind::List: return data.As<schema::DynamicList>().Get(entry.index); // No init necessary for lists of structs
+            case schema::DynamicValue::Kind::Struct: return data.As<schema::DynamicStruct>().Init(entry.field);
             default:
                 HE_VERIFY(false,
                     HE_MSG("Path is invalid, it indexes into a field that is not an array, list, or struct."),
                     HE_KV(kind, data.GetKind()));
-                return he::schema::DynamicValue::Builder{};
+                return schema::DynamicValue::Builder{};
         }
     }
 
-    //static he::schema::DynamicValue::Builder InitByPath(schema::DynamicValue::Builder& data, const SchemaEditPathEntry& entry, uint32_t size)
+    //static schema::DynamicValue::Builder InitByPath(schema::DynamicValue::Builder& data, const SchemaEditPathEntry& entry, uint32_t size)
     //{
     //    switch (data.GetKind())
     //    {
-    //        case he::schema::DynamicValue::Kind::Array: return data.As<schema::DynamicArray>().Init(static_cast<uint16_t>(entry.index), size);
-    //        case he::schema::DynamicValue::Kind::List: return data.As<schema::DynamicList>().Init(entry.index, size);
-    //        case he::schema::DynamicValue::Kind::Struct: return data.As<schema::DynamicStruct>().Init(entry.field, size);
+    //        case schema::DynamicValue::Kind::Array: return data.As<schema::DynamicArray>().Init(static_cast<uint16_t>(entry.index), size);
+    //        case schema::DynamicValue::Kind::List: return data.As<schema::DynamicList>().Init(entry.index, size);
+    //        case schema::DynamicValue::Kind::Struct: return data.As<schema::DynamicStruct>().Init(entry.field, size);
     //        default:
     //            HE_VERIFY(false,
     //                HE_MSG("Path is invalid, it indexes into a field that is not an array, list, or struct."),
     //                HE_KV(kind, data.GetKind()));
-    //            return he::schema::DynamicValue::Builder{};
+    //            return schema::DynamicValue::Builder{};
     //    }
     //}
 
@@ -103,9 +103,9 @@ namespace he::editor
     {
         switch (data.GetKind())
         {
-            case he::schema::DynamicValue::Kind::Array: data.As<schema::DynamicArray>().Clear(static_cast<uint16_t>(entry.index)); break;
-            case he::schema::DynamicValue::Kind::List: data.As<schema::DynamicList>().Clear(entry.index); break;
-            case he::schema::DynamicValue::Kind::Struct: data.As<schema::DynamicStruct>().Clear(entry.field); break;
+            case schema::DynamicValue::Kind::Array: data.As<schema::DynamicArray>().Clear(static_cast<uint16_t>(entry.index)); break;
+            case schema::DynamicValue::Kind::List: data.As<schema::DynamicList>().Clear(entry.index); break;
+            case schema::DynamicValue::Kind::Struct: data.As<schema::DynamicStruct>().Clear(entry.field); break;
             default:
                 HE_VERIFY(false,
                     HE_MSG("Path is invalid, it indexes into a field that is not an array, list, or struct."),
@@ -113,30 +113,30 @@ namespace he::editor
         }
     }
 
-    static he::schema::DynamicValue::Builder CopyByPath(schema::Builder& builder, const he::schema::DynamicValue::Builder& data, const SchemaEditPathEntry& entry)
+    static schema::DynamicValue::Builder CopyByPath(schema::Builder& builder, const schema::DynamicValue::Builder& data, const SchemaEditPathEntry& entry)
     {
-        const he::schema::DynamicValue::Builder& value = GetByPath(data, entry);
+        const schema::DynamicValue::Builder& value = GetByPath(data, entry);
 
         switch (value.GetKind())
         {
-            case he::schema::DynamicValue::Kind::Unknown: return {};
-            case he::schema::DynamicValue::Kind::Void: return he::schema::Void{};
-            case he::schema::DynamicValue::Kind::Bool: return value.As<bool>();
-            case he::schema::DynamicValue::Kind::Int: return value.As<int64_t>();
-            case he::schema::DynamicValue::Kind::Uint: return value.As<uint64_t>();
-            case he::schema::DynamicValue::Kind::Float: return value.As<double>();
-            case he::schema::DynamicValue::Kind::Enum: return value.As<schema::DynamicEnum>();
-            case he::schema::DynamicValue::Kind::Blob:
+            case schema::DynamicValue::Kind::Unknown: return {};
+            case schema::DynamicValue::Kind::Void: return schema::Void{};
+            case schema::DynamicValue::Kind::Bool: return value.As<bool>();
+            case schema::DynamicValue::Kind::Int: return value.As<int64_t>();
+            case schema::DynamicValue::Kind::Uint: return value.As<uint64_t>();
+            case schema::DynamicValue::Kind::Float: return value.As<double>();
+            case schema::DynamicValue::Kind::Enum: return value.As<schema::DynamicEnum>();
+            case schema::DynamicValue::Kind::Blob:
             {
-                const he::schema::Blob::Builder src = value.As<schema::Blob>();
+                const schema::Blob::Builder src = value.As<schema::Blob>();
                 return builder.AddBlob(src.AsBytes());
             }
-            case he::schema::DynamicValue::Kind::String:
+            case schema::DynamicValue::Kind::String:
             {
-                const he::schema::String::Builder src = value.As<schema::String>();
+                const schema::String::Builder src = value.As<schema::String>();
                 return builder.AddString(src);
             }
-            case he::schema::DynamicValue::Kind::Array:
+            case schema::DynamicValue::Kind::Array:
             {
                 HE_VERIFY(false,
                     HE_MSG("Arrays cannot be copied for undo operations because you cannot set the value of an array."),
@@ -144,28 +144,28 @@ namespace he::editor
                     HE_KV(parent_kind, data.GetKind()));
                 return {};
             }
-            case he::schema::DynamicValue::Kind::List:
+            case schema::DynamicValue::Kind::List:
             {
-                const he::schema::DynamicList::Builder src = value.As<schema::DynamicList>();
-                const he::schema::ElementSize elementSize = he::schema::GetTypeElementSize(src.ListType().GetElementType());
-                const he::schema::ListBuilder copy = builder.AddList(elementSize, src.Size());
-                return he::schema::DynamicList::Builder(src.Scope(), src.GetType(), copy);
+                const schema::DynamicList::Builder src = value.As<schema::DynamicList>();
+                const schema::ElementSize elementSize = schema::GetTypeElementSize(src.ListType().GetElementType());
+                const schema::ListBuilder copy = builder.AddList(elementSize, src.Size());
+                return schema::DynamicList::Builder(src.Scope(), src.GetType(), copy);
             }
-            case he::schema::DynamicValue::Kind::Struct:
+            case schema::DynamicValue::Kind::Struct:
             {
-                const he::schema::DynamicStruct::Builder src = value.As<schema::DynamicStruct>();
-                const he::schema::Declaration::Data::Struct::Reader structDecl = src.StructSchema();
-                const he::schema::StructBuilder copy = builder.AddStruct(structDecl.GetDataFieldCount(), structDecl.GetDataWordSize(), structDecl.GetPointerCount());
-                return he::schema::DynamicStruct::Builder(src.Decl(), copy);
+                const schema::DynamicStruct::Builder src = value.As<schema::DynamicStruct>();
+                const schema::Declaration::Data::Struct::Reader structDecl = src.StructSchema();
+                const schema::StructBuilder copy = builder.AddStruct(structDecl.GetDataFieldCount(), structDecl.GetDataWordSize(), structDecl.GetPointerCount());
+                return schema::DynamicStruct::Builder(src.Decl(), copy);
             }
-            case he::schema::DynamicValue::Kind::AnyPointer:
+            case schema::DynamicValue::Kind::AnyPointer:
             {
                 // TODO: implement copy for any pointer
                 HE_VERIFY(false,
                     HE_MSG("AnyPointer cannot be copied for undo operations because I just haven't written it yet."),
                     HE_KV(kind, value.GetKind()),
                     HE_KV(parent_kind, data.GetKind()));
-                return he::schema::DynamicValue::Builder();
+                return schema::DynamicValue::Builder();
             }
         }
 
@@ -176,7 +176,7 @@ namespace he::editor
         return {};
     }
 
-    static he::schema::DynamicValue::Builder WalkExistingPath(schema::DynamicValue::Builder data, Span<const SchemaEditPathEntry> path, uint32_t& index)
+    static schema::DynamicValue::Builder WalkExistingPath(schema::DynamicValue::Builder data, Span<const SchemaEditPathEntry> path, uint32_t& index)
     {
         for (; index < (path.Size() - 1); ++index)
         {
@@ -192,10 +192,10 @@ namespace he::editor
     }
 
     // --------------------------------------------------------------------------------------------
-    SchemaEditContext::SchemaEditContext(const he::schema::DynamicStruct::Reader& data)
+    SchemaEditContext::SchemaEditContext(const schema::DynamicStruct::Reader& data)
     {
-        he::schema::Declaration::Data::Struct::Reader decl = data.StructSchema();
-        he::schema::StructBuilder builder = m_builder.AddStruct(decl.GetDataFieldCount(), decl.GetDataWordSize(), decl.GetPointerCount());
+        schema::Declaration::Data::Struct::Reader decl = data.StructSchema();
+        schema::StructBuilder builder = m_builder.AddStruct(decl.GetDataFieldCount(), decl.GetDataWordSize(), decl.GetPointerCount());
         if (data.Struct().IsValid())
             builder.Copy(data.Struct());
         m_data = { data.Decl(), builder };
@@ -217,12 +217,12 @@ namespace he::editor
             }
             for (const SchemaEditPathEntry& entry : action.path)
             {
-                const he::schema::Field::Meta::Reader meta = entry.field.GetMeta();
+                const schema::Field::Meta::Reader meta = entry.field.GetMeta();
                 if (!meta.IsNormal())
                     continue;
 
-                const he::schema::Field::Meta::Normal::Reader norm = meta.GetNormal();
-                const he::schema::Type::Data::Reader typeData = norm.GetType().GetData();
+                const schema::Field::Meta::Normal::Reader norm = meta.GetNormal();
+                const schema::Type::Data::Reader typeData = norm.GetType().GetData();
                 if (typeData.IsAnyPointer() || typeData.IsAnyList() || typeData.IsAnyStruct())
                 {
                     if (!HE_VERIFY(entry.info,
@@ -241,7 +241,7 @@ namespace he::editor
         if (edit.name.IsEmpty() && edit.actions.Size() == 1)
         {
             const SchemaEditAction& action = edit.actions[0];
-            const he::schema::Field::Reader field = action.path.Back().field;
+            const schema::Field::Reader field = action.path.Back().field;
             const StringView fieldName = field.GetName().AsView();
 
             fmt::format_to(Appender(edit.name), "{:s}: {}", action.kind, fieldName);
@@ -301,7 +301,7 @@ namespace he::editor
         // 5. Apply the action on that path
 
         uint32_t index = 0;
-        he::schema::DynamicValue::Builder data = WalkExistingPath(m_data, action.path, index);
+        schema::DynamicValue::Builder data = WalkExistingPath(m_data, action.path, index);
 
         if (action.undoActions.IsEmpty())
         {
@@ -379,7 +379,7 @@ namespace he::editor
             const SchemaEditAction& undo = action.undoActions[i];
 
             uint32_t index = 0;
-            he::schema::DynamicValue::Builder data = WalkExistingPath(m_data, undo.path, index);
+            schema::DynamicValue::Builder data = WalkExistingPath(m_data, undo.path, index);
 
             if (!HE_VERIFY(index == (undo.path.Size() - 1),
                 HE_MSG("Undo stack is invalid, cannot perform undo operations."),
@@ -402,8 +402,8 @@ namespace he::editor
             case SchemaEditAction::Kind::AddListItem:
             case SchemaEditAction::Kind::RemoveListItem:
             {
-                he::schema::DynamicValue::Builder list = GetByPath(data, entry);
-                if (HE_VERIFY(list.GetKind() == he::schema::DynamicValue::Kind::List))
+                schema::DynamicValue::Builder list = GetByPath(data, entry);
+                if (HE_VERIFY(list.GetKind() == schema::DynamicValue::Kind::List))
                 {
                     // TODO: Add/Remove list item
                 }

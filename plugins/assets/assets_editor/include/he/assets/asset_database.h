@@ -15,7 +15,7 @@ namespace he::assets
     class AssetDatabase final
     {
     public:
-        using AssetFileBuilder = he::schema::TypedBuilder<schema::AssetFile>;
+        using AssetFileBuilder = schema::TypedBuilder<AssetFile>;
 
         struct LoadResult
         {
@@ -42,7 +42,7 @@ namespace he::assets
 
         LoadResult LoadAssetFile(const char* path);
         LoadResult LoadAssetFile(const AssetFileUuid& fileUuid);
-        bool SaveAssetFile(const char* path, schema::AssetFile::Reader assetFile);
+        bool SaveAssetFile(const char* path, AssetFile::Reader assetFile);
 
         void OnAssetFileDeleted(const char* path);
         void OnAssetFileUpdated(const char* path);
@@ -73,7 +73,7 @@ namespace he::assets
 
         String MakeResourcePath(const AssetUuid& assetUuid, ResourceId resourceId) const;
 
-        void AssetFileUpdateInternal(const char* path, schema::AssetFile::Reader assetFile);
+        void AssetFileUpdateInternal(const char* path, AssetFile::Reader assetFile);
 
     private:
         struct LoadRequest

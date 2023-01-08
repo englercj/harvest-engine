@@ -23,6 +23,51 @@ struct Uuid
     value @0 :uint8[16] $Toml.HexString;
 }
 
+struct Vec2f
+{
+    x @0 :float32;
+    y @1 :float32;
+}
+
+struct Vec3f
+{
+    x @0 :float32;
+    y @1 :float32;
+    z @2 :float32;
+}
+
+struct Vec4f
+{
+    x @0 :float32;
+    y @1 :float32;
+    z @2 :float32;
+    w @3 :float32;
+}
+
+struct ScalarRange
+{
+    data :union
+    {
+        int :group
+        {
+            min @0 :int64;
+            max @1 :int64;
+        }
+
+        uint :group
+        {
+            min @2 :uint64;
+            max @3 :uint64;
+        }
+
+        float :group
+        {
+            min @4 :float64;
+            max @5 :float64;
+        }
+    }
+}
+
 // ------------------------------------------------------------------------------------------------
 // Schema Structures
 

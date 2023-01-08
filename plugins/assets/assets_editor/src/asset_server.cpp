@@ -31,7 +31,7 @@ namespace he::assets
         m_db.LoadAssetFileAsync(path, cb);
     }
 
-    void AssetServer::StartImport(const char* path, he::schema::Builder&& importSettings)
+    void AssetServer::StartImport(const char* path, schema::Builder&& importSettings)
     {
         ImportTaskData* data = Allocator::GetDefault().New<ImportTaskData>(this);
         data->path = path;
@@ -135,7 +135,7 @@ namespace he::assets
                 return;
             }
 
-            schema::AssetFile::Builder assetFile = data->assetFile.AddStruct<schema::AssetFile>();
+            AssetFile::Builder assetFile = data->assetFile.AddStruct<AssetFile>();
             FillUuidV4(assetFile.InitUuid());
             assetFile.InitSource(data->path);
 
@@ -144,7 +144,7 @@ namespace he::assets
         }
 
         data->assetFile = Move(load.builder.builder);
-        data->ctx.assetFile = data->assetFile.Root().TryGetStruct<schema::AssetFile>();
+        data->ctx.assetFile = data->assetFile.Root().TryGetStruct<AssetFile>();
 
         String taskName = "Importing file '";
         taskName += GetBaseName(data->path);
@@ -196,23 +196,23 @@ namespace he::assets
             HE_LOG_WARN(he_assets, HE_MSG("No importer found that can handle this asset source."), HE_KV(path, data->path));
         }
 
-        Vector<schema::Asset::Reader> needsCompile;
+        Vector<Asset::Reader> needsCompile;
 
         if (success)
         {
             String assetFilePath = data->path;
             assetFilePath += AssetFileExtension;
 
-            schema::AssetFile::Builder assetFile = data->assetFile.Root().TryGetStruct<schema::AssetFile>();
+            AssetFile::Builder assetFile = data->assetFile.Root().TryGetStruct<AssetFile>();
 
             const uint32_t prevSize = assetFile.GetAssets().Size();
             const uint32_t newListSize = prevSize + data->result.m_updated.Size();
-            he::schema::List<schema::Asset>::Builder assets = data->assetFile.AddList<schema::Asset>(newListSize);
+            schema::List<Asset>::Builder assets = data->assetFile.AddList<Asset>(newListSize);
 
             // copy over existing and updated assets, preserving the order.
             for (uint32_t i = 0; i < prevSize; ++i)
             {
-                schema::Asset::Reader asset = assetFile.GetAssets()[i];
+                Asset::Reader asset = assetFile.GetAssets()[i];
 
                 bool foundUpdated = false;
                 for (auto&& updated : data->result.m_updated)
@@ -233,7 +233,7 @@ namespace he::assets
             // copy over new assets
             for (uint32_t i = prevSize; i < newListSize; ++i)
             {
-                schema::Asset::Reader asset = data->result.m_new[i - prevSize];
+                Asset::Reader asset = data->result.m_new[i - prevSize];
                 assets.Set(i, asset);
             }
 
@@ -251,7 +251,7 @@ namespace he::assets
         }
 
         sqlite::Transaction t = data->server->m_db.BeginTransaction();
-        for (const schema::Asset::Reader asset : data->ctx.assetFile.GetAssets())
+        for (const Asset::Reader asset : data->ctx.assetFile.GetAssets())
         {
             AssetUuid assetUuid{ asset.GetUuid() };
 

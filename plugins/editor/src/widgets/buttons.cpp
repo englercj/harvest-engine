@@ -1,9 +1,10 @@
 // Copyright Chad Engler
 
-#include "buttons.h"
+#include "he/editor/widgets/buttons.h"
 
-#include "menu.h"
-#include "misc.h"
+#include "he/editor/commands/command.h"
+#include "he/editor/widgets/menu.h"
+#include "he/editor/widgets/misc.h"
 
 #include "imgui.h"
 #include "imgui_internal.h"

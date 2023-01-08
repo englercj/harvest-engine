@@ -1,11 +1,10 @@
 // Copyright Chad Engler
 
-#include "menu.h"
-
-#include "fonts/icons_material_design.h"
-#include "services/imgui_service.h"
+#include "he/editor/widgets/menu.h"
 
 #include "he/core/assert.h"
+#include "he/editor/icons/icons_material_design.h"
+#include "he/editor/services/imgui_service.h"
 
 #define IMGUI_DEFINE_MATH_OPERATORS
 #include "imgui.h"

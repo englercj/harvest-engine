@@ -33,7 +33,7 @@ namespace he::assets
 
     bool ImageImporter::Import(const ImportContext& ctx, ImportResult& result)
     {
-        constexpr ResourceId Texture2DPixelsId{ schema::Texture2D::PixelsResourceName };
+        constexpr ResourceId Texture2DPixelsId{ Texture2D::PixelsResourceName };
 
         // Load and validate the image is good to be used
         basisu::image img;
@@ -58,10 +58,10 @@ namespace he::assets
             return false;
         }
 
-        constexpr StringView assetTypeName = schema::Texture2D::AssetTypeName;
+        constexpr StringView assetTypeName = Texture2D::AssetTypeName;
 
         // Update or create a texture 2d asset for this image
-        schema::Asset::Builder asset;
+        Asset::Builder asset;
         for (auto&& existing : ctx.assetFile.GetAssets())
         {
             if (existing.GetType() == assetTypeName)
@@ -82,14 +82,14 @@ namespace he::assets
         // Create a resource to store the pixels of the image, which can be used later by the compiler
         const Span<const uint8_t> rgbaBytes = Span<const basisu::color_rgba>(img.get_pixels()).AsBytes();
 
-        he::schema::Builder builder;
-        schema::Texture2D::PixelsResource::Builder pixelResource = builder.AddStruct<schema::Texture2D::PixelsResource>();
+        schema::Builder builder;
+        Texture2D::PixelsResource::Builder pixelResource = builder.AddStruct<Texture2D::PixelsResource>();
         pixelResource.SetWidth(img.get_width());
         pixelResource.SetHeight(img.get_height());
         pixelResource.SetSource(builder.AddBlob(rgbaBytes));
         builder.SetRoot(pixelResource);
 
-        const Span<const uint8_t> resourceBytes = Span<const he::schema::Word>(builder).AsBytes();
+        const Span<const uint8_t> resourceBytes = Span<const schema::Word>(builder).AsBytes();
         Result r = ctx.db.AddResource(asset.GetUuid(), Texture2DPixelsId, resourceBytes);
         if (!r)
         {

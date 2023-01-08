@@ -1,9 +1,9 @@
 // Copyright Chad Engler
 
-#include "close_document_command.h"
+#include "he/editor/commands/close_document_command.h"
 
-#include "dialogs/choice_dialog.h"
-#include "documents/document.h"
+#include "he/editor/dialogs/choice_dialog.h"
+#include "he/editor/documents/document.h"
 
 namespace he::editor
 {

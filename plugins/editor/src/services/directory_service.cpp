@@ -1,6 +1,6 @@
 // Copyright Chad Engler
 
-#include "directory_service.h"
+#include "he/editor/services/directory_service.h"
 
 #include "he/core/directory.h"
 #include "he/core/log.h"

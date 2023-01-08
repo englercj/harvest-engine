@@ -1,14 +1,13 @@
 // Copyright Chad Engler
 
-#include "imgui_debug_document.h"
-
-#include "services/asset_edit_service.h"
-#include "widgets/buttons.h"
-#include "widgets/progress.h"
-#include "widgets/property_grid.h"
-#include "widgets/misc.h"
+#include "he/editor/documents/imgui_debug_document.h"
 
 #include "he/assets/types.h"
+#include "he/editor/services/asset_edit_service.h"
+#include "he/editor/widgets/buttons.h"
+#include "he/editor/widgets/progress.h"
+#include "he/editor/widgets/property_grid.h"
+#include "he/editor/widgets/misc.h"
 #include "he/schema/types.h"
 
 #include "imgui.h"
@@ -125,16 +124,16 @@ namespace he::editor
 
     void ImGuiDebugDocument::ShowPropertyGridTab()
     {
-        static SchemaEditContext s_ctx{ assets::schema::Asset::Reader{} };
+        static SchemaEditContext s_ctx{ assets::Asset::Reader{} };
 
-        assets::schema::Asset::Builder asset = s_ctx.Data().As<assets::schema::Asset>();
+        assets::Asset::Builder asset = s_ctx.Data().As<assets::Asset>();
         if (asset.GetData().IsNull())
         {
             FillUuidV4(asset.InitUuid());
-            asset.InitType(assets::schema::Texture2D::AssetTypeName);
+            asset.InitType(assets::Texture2D::AssetTypeName);
             asset.InitName("Test Texture");
 
-            assets::schema::Texture2D::Builder tex = asset.GetBuilder()->AddStruct<assets::schema::Texture2D>();
+            assets::Texture2D::Builder tex = asset.GetBuilder()->AddStruct<assets::Texture2D>();
             asset.GetData().Set(tex);
 
             asset.GetBuilder()->SetRoot(asset);

@@ -1,6 +1,6 @@
 // Copyright Chad Engler
 
-#include "log_service.h"
+#include "he/editor/services/log_service.h"
 
 #include "he/core/appender.h"
 #include "he/core/enum_fmt.h"

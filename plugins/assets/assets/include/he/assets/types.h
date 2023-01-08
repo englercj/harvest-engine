@@ -31,10 +31,10 @@ namespace he::assets
     {
         _UuidWrapper() noexcept : val() {}
         _UuidWrapper(const Uuid& uuid) noexcept : val(uuid) {}
-        _UuidWrapper(he::schema::Uuid::Builder uuid) noexcept { *this = uuid.AsReader(); }
-        _UuidWrapper(he::schema::Uuid::Reader uuid) noexcept { *this = uuid; }
+        _UuidWrapper(schema::Uuid::Builder uuid) noexcept { *this = uuid.AsReader(); }
+        _UuidWrapper(schema::Uuid::Reader uuid) noexcept { *this = uuid; }
 
-        _UuidWrapper& operator=(const he::schema::Uuid::Reader uuid) noexcept
+        _UuidWrapper& operator=(const schema::Uuid::Reader uuid) noexcept
         {
             Span<const uint8_t> value = uuid.GetValue();
             HE_ASSERT(value.Size() == sizeof(Uuid::m_bytes));
@@ -46,26 +46,26 @@ namespace he::assets
         constexpr bool operator!=(const _UuidWrapper& x) const { return val != x.val; }
         constexpr bool operator<(const _UuidWrapper& x) const { return val < x.val; }
 
-        inline bool operator==(const he::schema::Uuid::Reader& x) const
+        inline bool operator==(const schema::Uuid::Reader& x) const
         {
             Span<const uint8_t> value = x.GetValue();
             return value.Size() == sizeof(Uuid::m_bytes) && MemEqual(val.m_bytes, value.Data(), sizeof(Uuid::m_bytes));
         }
-        inline bool operator==(const he::schema::Uuid::Builder& x) const { return *this == x.AsReader(); }
+        inline bool operator==(const schema::Uuid::Builder& x) const { return *this == x.AsReader(); }
 
-        inline bool operator!=(const he::schema::Uuid::Reader& x) const
+        inline bool operator!=(const schema::Uuid::Reader& x) const
         {
             Span<const uint8_t> value = x.GetValue();
             return value.Size() != sizeof(Uuid::m_bytes) || !MemEqual(val.m_bytes, value.Data(), sizeof(Uuid::m_bytes));
         }
-        inline bool operator!=(const he::schema::Uuid::Builder& x) const { return *this != x.AsReader(); }
+        inline bool operator!=(const schema::Uuid::Builder& x) const { return *this != x.AsReader(); }
 
-        inline bool operator<(const he::schema::Uuid::Reader& x) const
+        inline bool operator<(const schema::Uuid::Reader& x) const
         {
             Span<const uint8_t> value = x.GetValue();
             return value.Size() == sizeof(Uuid::m_bytes) && MemLess(val.m_bytes, value.Data(), sizeof(Uuid::m_bytes));
         }
-        inline bool operator<(const he::schema::Uuid::Builder& x) const { return *this < x.AsReader(); }
+        inline bool operator<(const schema::Uuid::Builder& x) const { return *this < x.AsReader(); }
 
         [[nodiscard]] uint64_t HashCode() const noexcept { return val.HashCode(); }
 

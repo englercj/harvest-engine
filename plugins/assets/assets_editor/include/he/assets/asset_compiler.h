@@ -18,10 +18,10 @@ namespace he::assets
         AssetDatabase& db;
 
         /// The asset file which contains the asset being compiled.
-        schema::AssetFile::Reader assetFile;
+        AssetFile::Reader assetFile;
 
         /// The asset which is being compiled.
-        schema::Asset::Reader asset;
+        Asset::Reader asset;
     };
 
     // --------------------------------------------------------------------------------------------

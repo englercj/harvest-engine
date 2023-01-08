@@ -1,6 +1,6 @@
 // Copyright Chad Engler
 
-#include "animations.h"
+#include "he/editor/widgets/animations.h"
 
 #include "he/math/float.h"
 

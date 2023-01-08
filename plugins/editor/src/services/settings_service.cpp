@@ -1,6 +1,6 @@
 // Copyright Chad Engler
 
-#include "settings_service.h"
+#include "he/editor/services/settings_service.h"
 
 #include "he/core/file.h"
 #include "he/core/log.h"
@@ -49,7 +49,7 @@ namespace he::editor
         m_settings = {};
         m_builder.Clear();
 
-        if (!he::schema::FromToml<Settings>(m_builder, buf.Data()))
+        if (!schema::FromToml<Settings>(m_builder, buf.Data()))
         {
             Reset();
             HE_LOG_ERROR(editor, HE_MSG("Failed to deserialize settings file, settings will reset to default. Is it valid TOML?"),
@@ -68,7 +68,7 @@ namespace he::editor
         ConcatPath(path, SettingsFileName);
 
         StringBuilder buf;
-        if (!he::schema::ToToml<Settings>(buf, m_settings))
+        if (!schema::ToToml<Settings>(buf, m_settings))
         {
             HE_LOG_ERROR(editor, HE_MSG("Failed to serialize settings file. This is likely an editor bug."));
             return false;

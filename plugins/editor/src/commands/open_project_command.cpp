@@ -1,6 +1,6 @@
 // Copyright Chad Engler
 
-#include "open_project_command.h"
+#include "he/editor/commands/open_project_command.h"
 
 namespace he::editor
 {

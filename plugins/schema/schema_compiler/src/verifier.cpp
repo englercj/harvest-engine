@@ -447,7 +447,7 @@ namespace he::schema
         {
             if (ordinal.value != expectedOrdinal)
             {
-                m_context->AddError(ordinal.loc, "Encountered gap in ordinal values, expected {} but got {}", expectedOrdinal, ordinal.value);
+                m_context->AddError(ordinal.loc, "Unexpected ordinal value. Expected {} but got {}", expectedOrdinal, ordinal.value);
                 return false;
             }
 

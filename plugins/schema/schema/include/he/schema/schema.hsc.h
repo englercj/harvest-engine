@@ -17,6 +17,14 @@ namespace he::schema
     HE_SCHEMA_DECL_INFO_FOR_ID(0xc218a66445285bb8); // Toml::HexString
     HE_SCHEMA_DECL_INFO_FOR_ID(0xc2fc1f39cbc0264f); // Toml::Base64
     HE_SCHEMA_DECL_INFO_FOR_ID(0xef69d825c0ea441b); // Uuid
+    HE_SCHEMA_DECL_INFO_FOR_ID(0xeeda74fc55d7c1ba); // Vec2f
+    HE_SCHEMA_DECL_INFO_FOR_ID(0xeedd56fc55d9c497); // Vec3f
+    HE_SCHEMA_DECL_INFO_FOR_ID(0xeeee54fc55e83464); // Vec4f
+    HE_SCHEMA_DECL_INFO_FOR_ID(0xafa7d6e2c2e387b9); // ScalarRange
+    HE_SCHEMA_DECL_INFO_FOR_ID(0x88e2403fc4707149); // ScalarRange::Data
+    HE_SCHEMA_DECL_INFO_FOR_ID(0x843cbab9bf76957a); // ScalarRange::Data::Int
+    HE_SCHEMA_DECL_INFO_FOR_ID(0xfda4f589aba4978d); // ScalarRange::Data::Uint
+    HE_SCHEMA_DECL_INFO_FOR_ID(0x9ef9f0d6b256c431); // ScalarRange::Data::Float
     HE_SCHEMA_DECL_INFO_FOR_ID(0xa66eff5acba76a75); // Brand
     HE_SCHEMA_DECL_INFO_FOR_ID(0xac8f534465c8369b); // Brand::Scope
     HE_SCHEMA_DECL_INFO_FOR_ID(0xdd2b0f1a9d06a3b0); // Type
@@ -90,6 +98,80 @@ namespace he::schema
 
         class Reader;
         class Builder;
+    };
+    struct Vec2f final
+    {
+        Vec2f() = delete;
+        HE_SCHEMA_DECL_STRUCT(0xeeda74fc55d7c1ba, 0x979e892c449bc4d8, 2, 2, 0);
+
+        class Reader;
+        class Builder;
+    };
+    struct Vec3f final
+    {
+        Vec3f() = delete;
+        HE_SCHEMA_DECL_STRUCT(0xeedd56fc55d9c497, 0x979e892c449bc4d8, 3, 3, 0);
+
+        class Reader;
+        class Builder;
+    };
+    struct Vec4f final
+    {
+        Vec4f() = delete;
+        HE_SCHEMA_DECL_STRUCT(0xeeee54fc55e83464, 0x979e892c449bc4d8, 4, 3, 0);
+
+        class Reader;
+        class Builder;
+    };
+    struct ScalarRange final
+    {
+        ScalarRange() = delete;
+        HE_SCHEMA_DECL_STRUCT(0xafa7d6e2c2e387b9, 0x979e892c449bc4d8, 6, 4, 0);
+
+        class Reader;
+        class Builder;
+
+        struct Data final
+        {
+            Data() = delete;
+            HE_SCHEMA_DECL_STRUCT(0x88e2403fc4707149, 0xafa7d6e2c2e387b9, 6, 4, 0);
+
+            class Reader;
+            class Builder;
+
+            struct Int final
+            {
+                Int() = delete;
+                HE_SCHEMA_DECL_STRUCT(0x843cbab9bf76957a, 0x88e2403fc4707149, 6, 4, 0);
+
+                class Reader;
+                class Builder;
+            };
+
+            struct Uint final
+            {
+                Uint() = delete;
+                HE_SCHEMA_DECL_STRUCT(0xfda4f589aba4978d, 0x88e2403fc4707149, 6, 4, 0);
+
+                class Reader;
+                class Builder;
+            };
+
+            struct Float final
+            {
+                Float() = delete;
+                HE_SCHEMA_DECL_STRUCT(0x9ef9f0d6b256c431, 0x88e2403fc4707149, 6, 4, 0);
+
+                class Reader;
+                class Builder;
+            };
+            enum class UnionTag : uint16_t
+            {
+                Int = 0,
+                Uint = 1,
+                Float = 2,
+            };
+        };
     };
     struct Brand final
     {
@@ -422,6 +504,7 @@ namespace he::schema
         using StructType = Uuid;
         using SuperType = ::he::schema::StructReader;
 
+        static constexpr bool IsSchemaReader = true;
         bool HasValue() const;
         ::he::Span<const uint8_t> GetValue() const;
 
@@ -438,12 +521,285 @@ namespace he::schema
         bool HasValue() const;
         ::he::Span<uint8_t> GetValue();
     };
+    class Vec2f::Reader final : public ::he::schema::StructReader
+    {
+    public:
+        using StructType = Vec2f;
+        using SuperType = ::he::schema::StructReader;
+
+        static constexpr bool IsSchemaReader = true;
+        bool HasX() const;
+        float GetX() const;
+
+        bool HasY() const;
+        float GetY() const;
+
+    };
+    class Vec2f::Builder final : public ::he::schema::StructBuilder
+    {
+    public:
+        using StructType = Vec2f;
+        using SuperType = ::he::schema::StructBuilder;
+
+        StructType::Reader AsReader() const { return StructType::Reader(SuperType::AsReader()); }
+        operator StructType::Reader() const { return AsReader(); }
+
+        bool HasX() const;
+        float GetX() const;
+        void SetX(float value);
+
+        bool HasY() const;
+        float GetY() const;
+        void SetY(float value);
+    };
+    class Vec3f::Reader final : public ::he::schema::StructReader
+    {
+    public:
+        using StructType = Vec3f;
+        using SuperType = ::he::schema::StructReader;
+
+        static constexpr bool IsSchemaReader = true;
+        bool HasX() const;
+        float GetX() const;
+
+        bool HasY() const;
+        float GetY() const;
+
+        bool HasZ() const;
+        float GetZ() const;
+
+    };
+    class Vec3f::Builder final : public ::he::schema::StructBuilder
+    {
+    public:
+        using StructType = Vec3f;
+        using SuperType = ::he::schema::StructBuilder;
+
+        StructType::Reader AsReader() const { return StructType::Reader(SuperType::AsReader()); }
+        operator StructType::Reader() const { return AsReader(); }
+
+        bool HasX() const;
+        float GetX() const;
+        void SetX(float value);
+
+        bool HasY() const;
+        float GetY() const;
+        void SetY(float value);
+
+        bool HasZ() const;
+        float GetZ() const;
+        void SetZ(float value);
+    };
+    class Vec4f::Reader final : public ::he::schema::StructReader
+    {
+    public:
+        using StructType = Vec4f;
+        using SuperType = ::he::schema::StructReader;
+
+        static constexpr bool IsSchemaReader = true;
+        bool HasX() const;
+        float GetX() const;
+
+        bool HasY() const;
+        float GetY() const;
+
+        bool HasZ() const;
+        float GetZ() const;
+
+        bool HasW() const;
+        float GetW() const;
+
+    };
+    class Vec4f::Builder final : public ::he::schema::StructBuilder
+    {
+    public:
+        using StructType = Vec4f;
+        using SuperType = ::he::schema::StructBuilder;
+
+        StructType::Reader AsReader() const { return StructType::Reader(SuperType::AsReader()); }
+        operator StructType::Reader() const { return AsReader(); }
+
+        bool HasX() const;
+        float GetX() const;
+        void SetX(float value);
+
+        bool HasY() const;
+        float GetY() const;
+        void SetY(float value);
+
+        bool HasZ() const;
+        float GetZ() const;
+        void SetZ(float value);
+
+        bool HasW() const;
+        float GetW() const;
+        void SetW(float value);
+    };
+    class ScalarRange::Data::Int::Reader final : public ::he::schema::StructReader
+    {
+    public:
+        using StructType = ScalarRange::Data::Int;
+        using SuperType = ::he::schema::StructReader;
+
+        static constexpr bool IsSchemaReader = true;
+        bool HasMin() const;
+        int64_t GetMin() const;
+
+        bool HasMax() const;
+        int64_t GetMax() const;
+
+    };
+    class ScalarRange::Data::Int::Builder final : public ::he::schema::StructBuilder
+    {
+    public:
+        using StructType = ScalarRange::Data::Int;
+        using SuperType = ::he::schema::StructBuilder;
+
+        StructType::Reader AsReader() const { return StructType::Reader(SuperType::AsReader()); }
+        operator StructType::Reader() const { return AsReader(); }
+
+        bool HasMin() const;
+        int64_t GetMin() const;
+        void SetMin(int64_t value);
+
+        bool HasMax() const;
+        int64_t GetMax() const;
+        void SetMax(int64_t value);
+    };
+    class ScalarRange::Data::Uint::Reader final : public ::he::schema::StructReader
+    {
+    public:
+        using StructType = ScalarRange::Data::Uint;
+        using SuperType = ::he::schema::StructReader;
+
+        static constexpr bool IsSchemaReader = true;
+        bool HasMin() const;
+        uint64_t GetMin() const;
+
+        bool HasMax() const;
+        uint64_t GetMax() const;
+
+    };
+    class ScalarRange::Data::Uint::Builder final : public ::he::schema::StructBuilder
+    {
+    public:
+        using StructType = ScalarRange::Data::Uint;
+        using SuperType = ::he::schema::StructBuilder;
+
+        StructType::Reader AsReader() const { return StructType::Reader(SuperType::AsReader()); }
+        operator StructType::Reader() const { return AsReader(); }
+
+        bool HasMin() const;
+        uint64_t GetMin() const;
+        void SetMin(uint64_t value);
+
+        bool HasMax() const;
+        uint64_t GetMax() const;
+        void SetMax(uint64_t value);
+    };
+    class ScalarRange::Data::Float::Reader final : public ::he::schema::StructReader
+    {
+    public:
+        using StructType = ScalarRange::Data::Float;
+        using SuperType = ::he::schema::StructReader;
+
+        static constexpr bool IsSchemaReader = true;
+        bool HasMin() const;
+        double GetMin() const;
+
+        bool HasMax() const;
+        double GetMax() const;
+
+    };
+    class ScalarRange::Data::Float::Builder final : public ::he::schema::StructBuilder
+    {
+    public:
+        using StructType = ScalarRange::Data::Float;
+        using SuperType = ::he::schema::StructBuilder;
+
+        StructType::Reader AsReader() const { return StructType::Reader(SuperType::AsReader()); }
+        operator StructType::Reader() const { return AsReader(); }
+
+        bool HasMin() const;
+        double GetMin() const;
+        void SetMin(double value);
+
+        bool HasMax() const;
+        double GetMax() const;
+        void SetMax(double value);
+    };
+    class ScalarRange::Data::Reader final : public ::he::schema::StructReader
+    {
+    public:
+        using StructType = ScalarRange::Data;
+        using SuperType = ::he::schema::StructReader;
+
+        static constexpr bool IsSchemaReader = true;
+        UnionTag GetUnionTag() const { return SuperType::GetDataField<UnionTag>(8); }
+
+        bool IsInt() const;
+        Int::Reader GetInt() const;
+
+        bool IsUint() const;
+        Uint::Reader GetUint() const;
+
+        bool IsFloat() const;
+        Float::Reader GetFloat() const;
+
+    };
+    class ScalarRange::Data::Builder final : public ::he::schema::StructBuilder
+    {
+    public:
+        using StructType = ScalarRange::Data;
+        using SuperType = ::he::schema::StructBuilder;
+
+        StructType::Reader AsReader() const { return StructType::Reader(SuperType::AsReader()); }
+        operator StructType::Reader() const { return AsReader(); }
+
+        UnionTag GetUnionTag() const { return SuperType::GetDataField<UnionTag>(8); }
+
+        void SetUnionTag(UnionTag t) { SuperType::SetDataField(8, t); }
+
+        bool IsInt() const;
+        Int::Builder GetInt() const;
+        Int::Builder InitInt();
+
+        bool IsUint() const;
+        Uint::Builder GetUint() const;
+        Uint::Builder InitUint();
+
+        bool IsFloat() const;
+        Float::Builder GetFloat() const;
+        Float::Builder InitFloat();
+    };
+    class ScalarRange::Reader final : public ::he::schema::StructReader
+    {
+    public:
+        using StructType = ScalarRange;
+        using SuperType = ::he::schema::StructReader;
+
+        static constexpr bool IsSchemaReader = true;
+        Data::Reader GetData() const;
+
+    };
+    class ScalarRange::Builder final : public ::he::schema::StructBuilder
+    {
+    public:
+        using StructType = ScalarRange;
+        using SuperType = ::he::schema::StructBuilder;
+
+        StructType::Reader AsReader() const { return StructType::Reader(SuperType::AsReader()); }
+        operator StructType::Reader() const { return AsReader(); }
+
+        Data::Builder GetData() const;
+    };
     class Brand::Scope::Reader final : public ::he::schema::StructReader
     {
     public:
         using StructType = Brand::Scope;
         using SuperType = ::he::schema::StructReader;
 
+        static constexpr bool IsSchemaReader = true;
         bool HasScopeId() const;
         uint64_t GetScopeId() const;
 
@@ -475,6 +831,7 @@ namespace he::schema
         using StructType = Brand;
         using SuperType = ::he::schema::StructReader;
 
+        static constexpr bool IsSchemaReader = true;
         bool HasScopes() const;
         ::he::schema::List<Scope>::Reader GetScopes() const;
 
@@ -499,6 +856,7 @@ namespace he::schema
         using StructType = Type::Data::Array;
         using SuperType = ::he::schema::StructReader;
 
+        static constexpr bool IsSchemaReader = true;
         bool HasElementType() const;
         Type::Reader GetElementType() const;
 
@@ -530,6 +888,7 @@ namespace he::schema
         using StructType = Type::Data::List;
         using SuperType = ::he::schema::StructReader;
 
+        static constexpr bool IsSchemaReader = true;
         bool HasElementType() const;
         Type::Reader GetElementType() const;
 
@@ -554,6 +913,7 @@ namespace he::schema
         using StructType = Type::Data::Enum;
         using SuperType = ::he::schema::StructReader;
 
+        static constexpr bool IsSchemaReader = true;
         bool HasId() const;
         uint64_t GetId() const;
 
@@ -585,6 +945,7 @@ namespace he::schema
         using StructType = Type::Data::Struct;
         using SuperType = ::he::schema::StructReader;
 
+        static constexpr bool IsSchemaReader = true;
         bool HasId() const;
         uint64_t GetId() const;
 
@@ -616,6 +977,7 @@ namespace he::schema
         using StructType = Type::Data::Interface;
         using SuperType = ::he::schema::StructReader;
 
+        static constexpr bool IsSchemaReader = true;
         bool HasId() const;
         uint64_t GetId() const;
 
@@ -647,6 +1009,7 @@ namespace he::schema
         using StructType = Type::Data::Parameter;
         using SuperType = ::he::schema::StructReader;
 
+        static constexpr bool IsSchemaReader = true;
         bool HasScopeId() const;
         uint64_t GetScopeId() const;
 
@@ -677,6 +1040,7 @@ namespace he::schema
         using StructType = Type::Data;
         using SuperType = ::he::schema::StructReader;
 
+        static constexpr bool IsSchemaReader = true;
         UnionTag GetUnionTag() const { return SuperType::GetDataField<UnionTag>(0); }
 
         bool IsVoid() const;
@@ -894,6 +1258,7 @@ namespace he::schema
         using StructType = Type;
         using SuperType = ::he::schema::StructReader;
 
+        static constexpr bool IsSchemaReader = true;
         Data::Reader GetData() const;
 
     };
@@ -914,6 +1279,7 @@ namespace he::schema
         using StructType = Value::Data;
         using SuperType = ::he::schema::StructReader;
 
+        static constexpr bool IsSchemaReader = true;
         UnionTag GetUnionTag() const { return SuperType::GetDataField<UnionTag>(0); }
 
         bool IsVoid() const;
@@ -1093,6 +1459,7 @@ namespace he::schema
         using StructType = Value;
         using SuperType = ::he::schema::StructReader;
 
+        static constexpr bool IsSchemaReader = true;
         Data::Reader GetData() const;
 
     };
@@ -1113,6 +1480,7 @@ namespace he::schema
         using StructType = Attribute;
         using SuperType = ::he::schema::StructReader;
 
+        static constexpr bool IsSchemaReader = true;
         bool HasId() const;
         uint64_t GetId() const;
 
@@ -1144,6 +1512,7 @@ namespace he::schema
         using StructType = Enumerator;
         using SuperType = ::he::schema::StructReader;
 
+        static constexpr bool IsSchemaReader = true;
         bool HasName() const;
         ::he::schema::String::Reader GetName() const;
 
@@ -1190,6 +1559,7 @@ namespace he::schema
         using StructType = Field::Meta::Normal;
         using SuperType = ::he::schema::StructReader;
 
+        static constexpr bool IsSchemaReader = true;
         bool HasOrdinal() const;
         uint16_t GetOrdinal() const;
 
@@ -1243,6 +1613,7 @@ namespace he::schema
         using StructType = Field::Meta::Group;
         using SuperType = ::he::schema::StructReader;
 
+        static constexpr bool IsSchemaReader = true;
         bool HasTypeId() const;
         uint64_t GetTypeId() const;
 
@@ -1266,6 +1637,7 @@ namespace he::schema
         using StructType = Field::Meta::Union;
         using SuperType = ::he::schema::StructReader;
 
+        static constexpr bool IsSchemaReader = true;
         bool HasTypeId() const;
         uint64_t GetTypeId() const;
 
@@ -1289,6 +1661,7 @@ namespace he::schema
         using StructType = Field::Meta;
         using SuperType = ::he::schema::StructReader;
 
+        static constexpr bool IsSchemaReader = true;
         UnionTag GetUnionTag() const { return SuperType::GetDataField<UnionTag>(6); }
 
         bool IsNormal() const;
@@ -1332,6 +1705,7 @@ namespace he::schema
         using StructType = Field;
         using SuperType = ::he::schema::StructReader;
 
+        static constexpr bool IsSchemaReader = true;
         bool HasName() const;
         ::he::schema::String::Reader GetName() const;
 
@@ -1382,6 +1756,7 @@ namespace he::schema
         using StructType = Method;
         using SuperType = ::he::schema::StructReader;
 
+        static constexpr bool IsSchemaReader = true;
         bool HasName() const;
         ::he::schema::String::Reader GetName() const;
 
@@ -1450,6 +1825,7 @@ namespace he::schema
         using StructType = SourceInfo;
         using SuperType = ::he::schema::StructReader;
 
+        static constexpr bool IsSchemaReader = true;
         bool HasDocComment() const;
         ::he::schema::String::Reader GetDocComment() const;
 
@@ -1496,6 +1872,7 @@ namespace he::schema
         using StructType = Declaration::Data::File;
         using SuperType = ::he::schema::StructReader;
 
+        static constexpr bool IsSchemaReader = true;
         bool HasImports() const;
         ::he::schema::List<::he::schema::String>::Reader GetImports() const;
 
@@ -1520,6 +1897,7 @@ namespace he::schema
         using StructType = Declaration::Data::Attribute;
         using SuperType = ::he::schema::StructReader;
 
+        static constexpr bool IsSchemaReader = true;
         bool HasType() const;
         Type::Reader GetType() const;
 
@@ -1614,6 +1992,7 @@ namespace he::schema
         using StructType = Declaration::Data::Constant;
         using SuperType = ::he::schema::StructReader;
 
+        static constexpr bool IsSchemaReader = true;
         bool HasType() const;
         Type::Reader GetType() const;
 
@@ -1646,6 +2025,7 @@ namespace he::schema
         using StructType = Declaration::Data::Enum;
         using SuperType = ::he::schema::StructReader;
 
+        static constexpr bool IsSchemaReader = true;
         bool HasEnumerators() const;
         ::he::schema::List<Enumerator>::Reader GetEnumerators() const;
 
@@ -1670,6 +2050,7 @@ namespace he::schema
         using StructType = Declaration::Data::Interface;
         using SuperType = ::he::schema::StructReader;
 
+        static constexpr bool IsSchemaReader = true;
         bool HasSuper() const;
         Type::Reader GetSuper() const;
 
@@ -1702,6 +2083,7 @@ namespace he::schema
         using StructType = Declaration::Data::Struct;
         using SuperType = ::he::schema::StructReader;
 
+        static constexpr bool IsSchemaReader = true;
         bool HasDataFieldCount() const;
         uint16_t GetDataFieldCount() const;
 
@@ -1782,6 +2164,7 @@ namespace he::schema
         using StructType = Declaration::Data;
         using SuperType = ::he::schema::StructReader;
 
+        static constexpr bool IsSchemaReader = true;
         UnionTag GetUnionTag() const { return SuperType::GetDataField<UnionTag>(8); }
 
         bool IsFile() const;
@@ -1846,6 +2229,7 @@ namespace he::schema
         using StructType = Declaration;
         using SuperType = ::he::schema::StructReader;
 
+        static constexpr bool IsSchemaReader = true;
         bool HasName() const;
         ::he::schema::String::Reader GetName() const;
 
@@ -1920,6 +2304,7 @@ namespace he::schema
         using StructType = SchemaFile;
         using SuperType = ::he::schema::StructReader;
 
+        static constexpr bool IsSchemaReader = true;
         bool HasRoot() const;
         Declaration::Reader GetRoot() const;
 
@@ -1947,6 +2332,136 @@ namespace he::schema
 
     inline bool Uuid::Builder::HasValue() const { return SuperType::HasDataField(0); }
     inline ::he::Span<uint8_t> Uuid::Builder::GetValue() { return SuperType::GetAndMarkDataArrayField<uint8_t>(0, 0, 16); }
+
+    inline bool Vec2f::Reader::HasX() const { return SuperType::HasDataField(0); }
+    inline float Vec2f::Reader::GetX() const { return SuperType::TryGetDataField<float>(0, 0); }
+
+    inline bool Vec2f::Reader::HasY() const { return SuperType::HasDataField(1); }
+    inline float Vec2f::Reader::GetY() const { return SuperType::TryGetDataField<float>(1, 1); }
+
+    inline bool Vec2f::Builder::HasX() const { return SuperType::HasDataField(0); }
+    inline float Vec2f::Builder::GetX() const { return SuperType::TryGetDataField<float>(0, 0); }
+    inline void Vec2f::Builder::SetX(float value) { SuperType::SetAndMarkDataField<float>(0, 0, value); }
+
+    inline bool Vec2f::Builder::HasY() const { return SuperType::HasDataField(1); }
+    inline float Vec2f::Builder::GetY() const { return SuperType::TryGetDataField<float>(1, 1); }
+    inline void Vec2f::Builder::SetY(float value) { SuperType::SetAndMarkDataField<float>(1, 1, value); }
+
+    inline bool Vec3f::Reader::HasX() const { return SuperType::HasDataField(0); }
+    inline float Vec3f::Reader::GetX() const { return SuperType::TryGetDataField<float>(0, 0); }
+
+    inline bool Vec3f::Reader::HasY() const { return SuperType::HasDataField(1); }
+    inline float Vec3f::Reader::GetY() const { return SuperType::TryGetDataField<float>(1, 1); }
+
+    inline bool Vec3f::Reader::HasZ() const { return SuperType::HasDataField(2); }
+    inline float Vec3f::Reader::GetZ() const { return SuperType::TryGetDataField<float>(2, 2); }
+
+    inline bool Vec3f::Builder::HasX() const { return SuperType::HasDataField(0); }
+    inline float Vec3f::Builder::GetX() const { return SuperType::TryGetDataField<float>(0, 0); }
+    inline void Vec3f::Builder::SetX(float value) { SuperType::SetAndMarkDataField<float>(0, 0, value); }
+
+    inline bool Vec3f::Builder::HasY() const { return SuperType::HasDataField(1); }
+    inline float Vec3f::Builder::GetY() const { return SuperType::TryGetDataField<float>(1, 1); }
+    inline void Vec3f::Builder::SetY(float value) { SuperType::SetAndMarkDataField<float>(1, 1, value); }
+
+    inline bool Vec3f::Builder::HasZ() const { return SuperType::HasDataField(2); }
+    inline float Vec3f::Builder::GetZ() const { return SuperType::TryGetDataField<float>(2, 2); }
+    inline void Vec3f::Builder::SetZ(float value) { SuperType::SetAndMarkDataField<float>(2, 2, value); }
+
+    inline bool Vec4f::Reader::HasX() const { return SuperType::HasDataField(0); }
+    inline float Vec4f::Reader::GetX() const { return SuperType::TryGetDataField<float>(0, 0); }
+
+    inline bool Vec4f::Reader::HasY() const { return SuperType::HasDataField(1); }
+    inline float Vec4f::Reader::GetY() const { return SuperType::TryGetDataField<float>(1, 1); }
+
+    inline bool Vec4f::Reader::HasZ() const { return SuperType::HasDataField(2); }
+    inline float Vec4f::Reader::GetZ() const { return SuperType::TryGetDataField<float>(2, 2); }
+
+    inline bool Vec4f::Reader::HasW() const { return SuperType::HasDataField(3); }
+    inline float Vec4f::Reader::GetW() const { return SuperType::TryGetDataField<float>(3, 3); }
+
+    inline bool Vec4f::Builder::HasX() const { return SuperType::HasDataField(0); }
+    inline float Vec4f::Builder::GetX() const { return SuperType::TryGetDataField<float>(0, 0); }
+    inline void Vec4f::Builder::SetX(float value) { SuperType::SetAndMarkDataField<float>(0, 0, value); }
+
+    inline bool Vec4f::Builder::HasY() const { return SuperType::HasDataField(1); }
+    inline float Vec4f::Builder::GetY() const { return SuperType::TryGetDataField<float>(1, 1); }
+    inline void Vec4f::Builder::SetY(float value) { SuperType::SetAndMarkDataField<float>(1, 1, value); }
+
+    inline bool Vec4f::Builder::HasZ() const { return SuperType::HasDataField(2); }
+    inline float Vec4f::Builder::GetZ() const { return SuperType::TryGetDataField<float>(2, 2); }
+    inline void Vec4f::Builder::SetZ(float value) { SuperType::SetAndMarkDataField<float>(2, 2, value); }
+
+    inline bool Vec4f::Builder::HasW() const { return SuperType::HasDataField(3); }
+    inline float Vec4f::Builder::GetW() const { return SuperType::TryGetDataField<float>(3, 3); }
+    inline void Vec4f::Builder::SetW(float value) { SuperType::SetAndMarkDataField<float>(3, 3, value); }
+
+    inline bool ScalarRange::Data::Int::Reader::HasMin() const { return SuperType::HasDataField(0); }
+    inline int64_t ScalarRange::Data::Int::Reader::GetMin() const { return SuperType::TryGetDataField<int64_t>(0, 0); }
+
+    inline bool ScalarRange::Data::Int::Reader::HasMax() const { return SuperType::HasDataField(1); }
+    inline int64_t ScalarRange::Data::Int::Reader::GetMax() const { return SuperType::TryGetDataField<int64_t>(1, 1); }
+
+    inline bool ScalarRange::Data::Int::Builder::HasMin() const { return SuperType::HasDataField(0); }
+    inline int64_t ScalarRange::Data::Int::Builder::GetMin() const { return SuperType::TryGetDataField<int64_t>(0, 0); }
+    inline void ScalarRange::Data::Int::Builder::SetMin(int64_t value) { SuperType::SetAndMarkDataField<int64_t>(0, 0, value); }
+
+    inline bool ScalarRange::Data::Int::Builder::HasMax() const { return SuperType::HasDataField(1); }
+    inline int64_t ScalarRange::Data::Int::Builder::GetMax() const { return SuperType::TryGetDataField<int64_t>(1, 1); }
+    inline void ScalarRange::Data::Int::Builder::SetMax(int64_t value) { SuperType::SetAndMarkDataField<int64_t>(1, 1, value); }
+
+    inline bool ScalarRange::Data::Uint::Reader::HasMin() const { return SuperType::HasDataField(2); }
+    inline uint64_t ScalarRange::Data::Uint::Reader::GetMin() const { return SuperType::TryGetDataField<uint64_t>(2, 0); }
+
+    inline bool ScalarRange::Data::Uint::Reader::HasMax() const { return SuperType::HasDataField(3); }
+    inline uint64_t ScalarRange::Data::Uint::Reader::GetMax() const { return SuperType::TryGetDataField<uint64_t>(3, 1); }
+
+    inline bool ScalarRange::Data::Uint::Builder::HasMin() const { return SuperType::HasDataField(2); }
+    inline uint64_t ScalarRange::Data::Uint::Builder::GetMin() const { return SuperType::TryGetDataField<uint64_t>(2, 0); }
+    inline void ScalarRange::Data::Uint::Builder::SetMin(uint64_t value) { SuperType::SetAndMarkDataField<uint64_t>(2, 0, value); }
+
+    inline bool ScalarRange::Data::Uint::Builder::HasMax() const { return SuperType::HasDataField(3); }
+    inline uint64_t ScalarRange::Data::Uint::Builder::GetMax() const { return SuperType::TryGetDataField<uint64_t>(3, 1); }
+    inline void ScalarRange::Data::Uint::Builder::SetMax(uint64_t value) { SuperType::SetAndMarkDataField<uint64_t>(3, 1, value); }
+
+    inline bool ScalarRange::Data::Float::Reader::HasMin() const { return SuperType::HasDataField(4); }
+    inline double ScalarRange::Data::Float::Reader::GetMin() const { return SuperType::TryGetDataField<double>(4, 0); }
+
+    inline bool ScalarRange::Data::Float::Reader::HasMax() const { return SuperType::HasDataField(5); }
+    inline double ScalarRange::Data::Float::Reader::GetMax() const { return SuperType::TryGetDataField<double>(5, 1); }
+
+    inline bool ScalarRange::Data::Float::Builder::HasMin() const { return SuperType::HasDataField(4); }
+    inline double ScalarRange::Data::Float::Builder::GetMin() const { return SuperType::TryGetDataField<double>(4, 0); }
+    inline void ScalarRange::Data::Float::Builder::SetMin(double value) { SuperType::SetAndMarkDataField<double>(4, 0, value); }
+
+    inline bool ScalarRange::Data::Float::Builder::HasMax() const { return SuperType::HasDataField(5); }
+    inline double ScalarRange::Data::Float::Builder::GetMax() const { return SuperType::TryGetDataField<double>(5, 1); }
+    inline void ScalarRange::Data::Float::Builder::SetMax(double value) { SuperType::SetAndMarkDataField<double>(5, 1, value); }
+
+    inline bool ScalarRange::Data::Reader::IsInt() const { return GetUnionTag() == UnionTag::Int; }
+    inline ScalarRange::Data::Int::Reader ScalarRange::Data::Reader::GetInt() const { HE_ASSERT(IsInt()); return Int::Reader(*this); }
+
+    inline bool ScalarRange::Data::Reader::IsUint() const { return GetUnionTag() == UnionTag::Uint; }
+    inline ScalarRange::Data::Uint::Reader ScalarRange::Data::Reader::GetUint() const { HE_ASSERT(IsUint()); return Uint::Reader(*this); }
+
+    inline bool ScalarRange::Data::Reader::IsFloat() const { return GetUnionTag() == UnionTag::Float; }
+    inline ScalarRange::Data::Float::Reader ScalarRange::Data::Reader::GetFloat() const { HE_ASSERT(IsFloat()); return Float::Reader(*this); }
+
+    inline bool ScalarRange::Data::Builder::IsInt() const { return GetUnionTag() == UnionTag::Int; }
+    inline ScalarRange::Data::Int::Builder ScalarRange::Data::Builder::GetInt() const { HE_ASSERT(IsInt()); return Int::Builder(*this); }
+    inline ScalarRange::Data::Int::Builder ScalarRange::Data::Builder::InitInt() { SetUnionTag(UnionTag::Int); SuperType::ClearDataField(0); SuperType::ClearDataField(1); return Int::Builder(*this); }
+
+    inline bool ScalarRange::Data::Builder::IsUint() const { return GetUnionTag() == UnionTag::Uint; }
+    inline ScalarRange::Data::Uint::Builder ScalarRange::Data::Builder::GetUint() const { HE_ASSERT(IsUint()); return Uint::Builder(*this); }
+    inline ScalarRange::Data::Uint::Builder ScalarRange::Data::Builder::InitUint() { SetUnionTag(UnionTag::Uint); SuperType::ClearDataField(2); SuperType::ClearDataField(3); return Uint::Builder(*this); }
+
+    inline bool ScalarRange::Data::Builder::IsFloat() const { return GetUnionTag() == UnionTag::Float; }
+    inline ScalarRange::Data::Float::Builder ScalarRange::Data::Builder::GetFloat() const { HE_ASSERT(IsFloat()); return Float::Builder(*this); }
+    inline ScalarRange::Data::Float::Builder ScalarRange::Data::Builder::InitFloat() { SetUnionTag(UnionTag::Float); SuperType::ClearDataField(4); SuperType::ClearDataField(5); return Float::Builder(*this); }
+
+    inline ScalarRange::Data::Reader ScalarRange::Reader::GetData() const { return Data::Reader(*this); }
+
+    inline ScalarRange::Data::Builder ScalarRange::Builder::GetData() const { return Data::Builder(*this); }
 
     inline bool Brand::Scope::Reader::HasScopeId() const { return SuperType::HasDataField(0); }
     inline uint64_t Brand::Scope::Reader::GetScopeId() const { return SuperType::TryGetDataField<uint64_t>(0, 0); }

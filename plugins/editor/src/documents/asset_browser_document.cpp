@@ -1,6 +1,6 @@
 // Copyright Chad Engler
 
-#include "asset_browser_document.h"
+#include "he/editor/documents/asset_browser_document.h"
 
 #include "imgui.h"
 

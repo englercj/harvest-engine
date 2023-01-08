@@ -1,10 +1,9 @@
 // Copyright Chad Engler
 
-#include "choice_dialog.h"
-
-#include "widgets/buttons.h"
+#include "he/editor/dialogs/choice_dialog.h"
 
 #include "he/core/enum_ops.h"
+#include "he/editor/widgets/buttons.h"
 
 #include "imgui.h"
 

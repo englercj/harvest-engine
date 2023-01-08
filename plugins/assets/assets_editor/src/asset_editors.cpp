@@ -8,124 +8,17 @@
 #include "he/core/appender.h"
 #include "he/core/module_registry.h"
 
-#define IMGUI_DEFINE_MATH_OPERATORS
 #include "imgui.h"
-#include "imgui_internal.h"
 
 namespace he::assets
 {
     extern Module* g_assetEditorModule;
 
-    struct FieldName_X { static constexpr StringView Name = "x"; };
-    struct FieldName_Y { static constexpr StringView Name = "y"; };
-    struct FieldName_Z { static constexpr StringView Name = "z"; };
-
-    constexpr ImU32 ColorX = IM_COL32(168, 46, 2, 255);
-    constexpr ImU32 ColorY = IM_COL32(112, 162, 22, 255);
-    constexpr ImU32 ColorZ = IM_COL32(51, 122, 210, 255);
-
-    template <typename T, typename F>
-    const he::schema::Field::Reader GetField()
-    {
-        static he::schema::Field::Reader s_field{};
-        if (s_field.IsValid())
-            return s_field;
-
-        const he::schema::Declaration::Reader decl = GetSchema(T::DeclInfo);
-        s_field = FindFieldByName(F::Name, decl.GetData().GetStruct());
-        return s_field;
-    }
-
-    static bool VecFloatEditor(float& value, const char* name, ImU32 color)
-    {
-        const ImVec2 startPos = ImGui::GetCursorScreenPos();
-        const float dpiScale = ImGui::GetWindowDpiScale();
-
-        ImGui::PushItemWidth(65.0f * dpiScale);
-        ImGui::PushID(static_cast<int>(ImGui::GetCursorPosX() + ImGui::GetCursorPosY()));
-        const bool changed = ImGui::InputFloat("##vec-float", &value, 0, 0, "%.5f", ImGuiInputTextFlags_EnterReturnsTrue);
-        const bool hovered = ImGui::IsItemHovered();
-        ImGui::PopID();
-        ImGui::PopItemWidth();
-
-        const ImVec2 offset{ 4.0f * dpiScale, 3.0f * dpiScale };
-        const ImVec2 size{ 4.0f * dpiScale, ImGui::GetFrameHeight() - (offset.y * 2.0f) };
-
-        const ImRect colorRect
-        {
-            startPos.x + offset.x,
-            startPos.y + offset.y,
-            startPos.x + offset.x + size.x,
-            startPos.y + offset.y + size.y,
-        };
-        ImGui::GetWindowDrawList()->AddRectFilled(colorRect.Min, colorRect.Max, color);
-
-        if (hovered)
-        {
-            ImGui::SetTooltip("%s = %f", name, value);
-        }
-
-        return changed;
-    }
-
-    void Vec2fEditor(const void*, const he::schema::DynamicValue::Reader& value, editor::TypeEditUIService::Context& ctx)
-    {
-        const schema::Vec2f::Reader vec = value.As<he::schema::DynamicStruct>().As<schema::Vec2f>();
-
-        float x = vec.GetX();
-        if (VecFloatEditor(x, "X", ColorX))
-        {
-            editor::SchemaEditAction& action = ctx.edit.EmplaceAction(editor::SchemaEditAction::Kind::SetValue);
-            action.path.PushBack({ GetField<schema::Vec2f, FieldName_X>() });
-            action.value = x;
-        }
-
-        float y = vec.GetY();
-        ImGui::SameLine();
-        if (VecFloatEditor(y, "Y", ColorY))
-        {
-            editor::SchemaEditAction& action = ctx.edit.EmplaceAction(editor::SchemaEditAction::Kind::SetValue);
-            action.path.PushBack({ GetField<schema::Vec2f, FieldName_Y>() });
-            action.value = y;
-        }
-    }
-
-    void Vec3fEditor(const void*, const he::schema::DynamicValue::Reader& value, editor::TypeEditUIService::Context& ctx)
-    {
-        const schema::Vec3f::Reader vec = value.As<he::schema::DynamicStruct>().As<schema::Vec3f>();
-
-        float x = vec.GetX();
-        if (VecFloatEditor(x, "X", ColorX))
-        {
-            editor::SchemaEditAction& action = ctx.edit.EmplaceAction(editor::SchemaEditAction::Kind::SetValue);
-            action.path.PushBack({ GetField<schema::Vec3f, FieldName_X>() });
-            action.value = x;
-        }
-
-        float y = vec.GetY();
-        ImGui::SameLine();
-        if (VecFloatEditor(y, "Y", ColorY))
-        {
-            editor::SchemaEditAction& action = ctx.edit.EmplaceAction(editor::SchemaEditAction::Kind::SetValue);
-            action.path.PushBack({ GetField<schema::Vec3f, FieldName_Y>() });
-            action.value = y;
-        }
-
-        float z = vec.GetZ();
-        ImGui::SameLine();
-        if (VecFloatEditor(z, "Z", ColorZ))
-        {
-            editor::SchemaEditAction& action = ctx.edit.EmplaceAction(editor::SchemaEditAction::Kind::SetValue);
-            action.path.PushBack({ GetField<schema::Vec3f, FieldName_Z>() });
-            action.value = z;
-        }
-    }
-
-    void AssetUuidFieldEditor(const void*, const he::schema::DynamicValue::Reader& value, editor::TypeEditUIService::Context& ctx)
+    void AssetUuidFieldEditor(const void*, const schema::DynamicValue::Reader& value, editor::TypeEditUIService::Context& ctx)
     {
         HE_UNUSED(ctx);
 
-        const he::schema::Uuid::Reader uuid = value.As<he::schema::DynamicStruct>().As<he::schema::Uuid>();
+        const schema::Uuid::Reader uuid = value.As<schema::DynamicStruct>().As<schema::Uuid>();
         const AssetUuid assetUuid(uuid);
 
         static String s_buf;
@@ -141,17 +34,17 @@ namespace he::assets
             ImGui::SetTooltip("This field is read-only.");
     }
 
-    void AssetDataFieldEditor(const void*, const he::schema::DynamicValue::Reader& value, editor::TypeEditUIService::Context& ctx)
+    void AssetDataFieldEditor(const void*, const schema::DynamicValue::Reader& value, editor::TypeEditUIService::Context& ctx)
     {
         ModuleRegistry& registry = g_assetEditorModule->Registry();
         AssetTypeRegistry& types = registry.GetApi<AssetTypeRegistry>();
 
         // This field must be a pointer, it can be null though.
-        if (!HE_VERIFY(value.GetKind() == he::schema::DynamicValue::Kind::AnyPointer))
+        if (!HE_VERIFY(value.GetKind() == schema::DynamicValue::Kind::AnyPointer))
             return;
 
         // If the type is empty we have no way to edit this data.
-        const he::schema::String::Reader typeName = ctx.data.As<he::schema::DynamicStruct>().Get("type").As<he::schema::String>();
+        const schema::String::Reader typeName = ctx.data.As<schema::DynamicStruct>().Get("type").As<schema::String>();
         if (!HE_VERIFY(typeName.IsValid() && !typeName.IsEmpty()))
             return;
 
@@ -166,9 +59,9 @@ namespace he::assets
         }
 
         // Visit the asset data using the decl info from the asset type.
-        const he::schema::AnyPointer::Reader assetDataPtr = value.As<he::schema::AnyPointer>();
-        const he::schema::StructReader assetDataStruct = assetDataPtr.TryGetStruct();
-        const he::schema::DynamicStruct::Reader assetData(*assetType->declInfo, assetDataStruct);
+        const schema::AnyPointer::Reader assetDataPtr = value.As<schema::AnyPointer>();
+        const schema::StructReader assetDataStruct = assetDataPtr.TryGetStruct();
+        const schema::DynamicStruct::Reader assetData(*assetType->declInfo, assetDataStruct);
         ctx.edit.path.Back().info = assetType->declInfo;
         ctx.visitor.VisitValue(assetData);
     }

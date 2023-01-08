@@ -1,15 +1,14 @@
 // Copyright Chad Engler
 
-#include "di.h"
-#include "editor_app.h"
-#include "editor_data.h"
-#include "services/directory_service.h"
-#include "services/log_service.h"
-
 #include "he/core/log.h"
 #include "he/core/log_sinks.h"
 #include "he/core/macros.h"
 #include "he/core/module_registry.h"
+#include "he/editor/di.h"
+#include "he/editor/editor_app.h"
+#include "he/editor/editor_data.h"
+#include "he/editor/services/directory_service.h"
+#include "he/editor/services/log_service.h"
 #include "he/window/view.h"
 
 #include "he/core/main.inl"

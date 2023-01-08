@@ -103,7 +103,7 @@ namespace he::assets
         model.compilerVersion = stmt.GetColumn(10).GetUint();
     }
 
-    bool AssetFileModel::AddOrUpdate(AssetDatabase& db, schema::AssetFile::Reader file, const AssetFileModel& model)
+    bool AssetFileModel::AddOrUpdate(AssetDatabase& db, AssetFile::Reader file, const AssetFileModel& model)
     {
         HE_ASSERT(model.uuid == file.GetUuid());
 
@@ -227,7 +227,7 @@ namespace he::assets
         }
 
         // Add or update each existing asset in the file
-        for (const schema::Asset::Reader asset : file.GetAssets())
+        for (const Asset::Reader asset : file.GetAssets())
         {
             AssetModel::AddOrUpdate(db, model.uuid, asset);
 
@@ -433,7 +433,7 @@ namespace he::assets
         return stmt->Step() == sqlite::StepResult::Done;
     }
 
-    bool AssetModel::AddOrUpdate(AssetDatabase& db, const AssetFileUuid& fileUuid, schema::Asset::Reader asset)
+    bool AssetModel::AddOrUpdate(AssetDatabase& db, const AssetFileUuid& fileUuid, Asset::Reader asset)
     {
         sqlite::ScopedStatement stmt = db.StatementLiteral(R"(
             INSERT INTO asset
@@ -461,7 +461,7 @@ namespace he::assets
         if (!stmt->Bind(5, static_cast<uint16_t>(AssetState::Unknown)))
             return false;
 
-        he::schema::AnyStruct::Reader ptr = asset.GetImportData();
+        schema::AnyStruct::Reader ptr = asset.GetImportData();
         const uint32_t importDataHash = ptr.IsNull() ? 0 : FNV32::HashData(ptr.Target(), ptr.StructWordSize());
         if (!stmt->Bind(6, importDataHash))
             return false;

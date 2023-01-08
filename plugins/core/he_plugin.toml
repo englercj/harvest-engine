@@ -13,7 +13,7 @@ homepage = ""
     type = "static"
     group = "engine/libs"
     files = ["include/**", "src/**", "debugger/**"]
-    public_dependson = ["fmt", "concurrentqueue"]
+    public_dependson = ["fmt"]
     public_includedirs = ["include"]
     private_includedirs = ["src"]
 

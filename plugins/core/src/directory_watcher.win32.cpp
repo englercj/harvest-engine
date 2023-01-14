@@ -43,7 +43,7 @@ namespace he
         const BOOL result = ::ReadDirectoryChangesExW(
             impl->handle,
             impl->buf,
-            sizeof(impl->buf),
+            EventBufferSize,
             true,
             WatchFlags,
             nullptr,
@@ -76,7 +76,10 @@ namespace he
             return Win32Result(ERROR_INSUFFICIENT_BUFFER);
         }
 
-        const DWORD requiredBytes = impl->offset + sizeof(FILE_NOTIFY_INFORMATION);
+        // We can't use sizeof(FILE_NOTIFY_INFORMATION) here because we only actually require the
+        // first 3 DWORD values in that structure to continue.
+        constexpr DWORD FileNotifySize = sizeof(DWORD) * 3;
+        const DWORD requiredBytes = impl->offset + FileNotifySize;
 
         if (!HE_VERIFY(validBytes >= requiredBytes,
             HE_KV(required_bytes, requiredBytes),
@@ -90,8 +93,7 @@ namespace he
 
         const auto* info = reinterpret_cast<const FILE_NOTIFY_INFORMATION*>(impl->buf);
 
-        // The -1 for this is because the structure size includes 1 character of the file name
-        if (!HE_VERIFY(validBytes >= (requiredBytes + info->FileNameLength - 1),
+        if (!HE_VERIFY(validBytes >= (requiredBytes + info->FileNameLength),
             HE_KV(required_bytes, requiredBytes),
             HE_KV(struct_size, sizeof(FILE_NOTIFY_INFORMATION)),
             HE_KV(file_name_length, info->FileNameLength),
@@ -172,6 +174,8 @@ namespace he
         if (impl->overlap.hEvent == nullptr)
             return Result::FromLastError();
 
+        // MSDN says this buffer should be aligned to size of DWORD, which is why that is used here
+        // instead of alignof(FILE_NOTIFY_INFORMATION) as you might expect.
         impl->buf = static_cast<uint8_t*>(m_allocator.Malloc(EventBufferSize, sizeof(DWORD)));
 
         const Result r = RequestNextChanges(impl);

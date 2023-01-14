@@ -31,6 +31,7 @@ namespace he::editor
         void OnTick() override;
 
         window::ViewHitArea OnHitTest(window::View* view, const Vec2i& point) override;
+        window::ViewDropEffect OnDragging(window::View* view) override;
 
     private:
         bool OnViewInitialized(window::View* view);

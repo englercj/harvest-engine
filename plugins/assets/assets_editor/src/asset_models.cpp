@@ -116,7 +116,7 @@ namespace he::assets
         // Read existing items to see what kind of operation we need to perform.
         {
             sqlite::ScopedStatement stmt = db.StatementLiteral(R"(
-                SELECT uuid, path FROM asset_file WHERE uuid = ? OR path = ?
+                SELECT uuid, file_path FROM asset_file WHERE uuid = ? OR file_path = ?
             )");
 
             if (!stmt->Bind(1, model.uuid.val.m_bytes))
@@ -169,7 +169,7 @@ namespace he::assets
             sqlite::ScopedStatement stmt = db.StatementLiteral(R"(
                 INSERT INTO asset_file
                     (uuid, file_path, file_write_time, file_size, source_path, source_write_time, source_size)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT (uuid) DO UPDATE SET
                     file_path = excluded.file_path,
                     file_write_time = excluded.file_write_time,
@@ -266,7 +266,7 @@ namespace he::assets
     bool AssetFileModel::FindOne(AssetDatabase& db, const char* path, AssetFileModel& model)
     {
         sqlite::ScopedStatement stmt = db.StatementLiteral(R"(
-            SELECT * FROM asset_file WHERE path = ?
+            SELECT * FROM asset_file WHERE file_path = ?
         )");
 
         if (!stmt->Bind(1, path))
@@ -288,6 +288,24 @@ namespace he::assets
         )");
 
         if (!stmt->Bind(1, assetUuid.val.m_bytes))
+            return false;
+
+        if (stmt->Step() == sqlite::StepResult::Row)
+        {
+            Read(*stmt, model);
+            return HE_VERIFY(stmt->Step() == sqlite::StepResult::Done);
+        }
+
+        return false;
+    }
+
+    bool AssetFileModel::FindOne(AssetDatabase& db, const char* source, AssetFileModel& model, AssetFileSourcePathTag)
+    {
+        sqlite::ScopedStatement stmt = db.StatementLiteral(R"(
+            SELECT * FROM asset_file WHERE source_path = ?
+        )");
+
+        if (!stmt->Bind(1, source))
             return false;
 
         if (stmt->Step() == sqlite::StepResult::Row)

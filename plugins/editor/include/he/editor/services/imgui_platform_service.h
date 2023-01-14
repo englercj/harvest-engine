@@ -18,14 +18,12 @@ namespace he::editor
     class ImGuiPlatformService
     {
     public:
-        using StyleSetupDelegate = Delegate<void(ImGuiStyle& style, ImPlotStyle& plotStyle, float dpiScale)>;
         using FontsSetupDelegate = Delegate<void(ImFontAtlas& atlas, float dpiScale)>;
 
     public:
         bool Initialize(
             window::Device* device,
             window::View* view,
-            StyleSetupDelegate setupStyle,
             FontsSetupDelegate setupFonts);
 
         void Terminate();
@@ -62,7 +60,6 @@ namespace he::editor
         window::Device* m_device{ nullptr };
         window::View* m_view{ nullptr };
 
-        StyleSetupDelegate m_setupStyle{};
         FontsSetupDelegate m_setupFonts{};
 
         ImGuiMouseCursor m_lastCursor{ ImGuiMouseCursor_COUNT };

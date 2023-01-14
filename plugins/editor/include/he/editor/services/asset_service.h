@@ -38,9 +38,11 @@ namespace he::editor
     public:
         using ImportCompleteSignal = assets::AssetServer::ImportCompleteSignal;
         using CompileCompleteSignal = assets::AssetServer::CompileCompleteSignal;
+        using DbInitSignal = Signal<void(bool initialized)>;
 
         ImportCompleteSignal& OnImport() { return m_server.OnImport(); }
         CompileCompleteSignal& OnCompile() { return m_server.OnCompile(); }
+        DbInitSignal& OnDbInit() { return m_onDbInitSignal; }
 
     private:
         void OnProjectLoaded();
@@ -59,5 +61,6 @@ namespace he::editor
         assets::AssetDatabaseUpdater::OnReadySignal::Binding m_onDbReadyBinding{};
 
         std::atomic<bool> m_dbReady{ false };
+        DbInitSignal m_onDbInitSignal{};
     };
 }

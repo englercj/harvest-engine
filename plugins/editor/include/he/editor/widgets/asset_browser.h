@@ -7,6 +7,7 @@
 #include "he/core/types.h"
 #include "he/core/vector.h"
 #include "he/editor/services/asset_service.h"
+#include "he/editor/services/dialog_service.h"
 #include "he/editor/services/imgui_service.h"
 
 namespace he::editor
@@ -23,6 +24,7 @@ namespace he::editor
     public:
         AssetBrowser(
             AssetService& assetService,
+            DialogService& dialogService,
             ImGuiService& imguiService) noexcept;
 
         void Show();
@@ -51,10 +53,15 @@ namespace he::editor
 
         void ListDirectory(TreeNode& node);
         void QueryAssets(TreeNode& node);
+        void HandleDbInitialized(bool initialized);
+
+        bool FileDragDrop();
 
     private:
         AssetService& m_assetService;
+        DialogService& m_dialogService;
         ImGuiService& m_imguiService;
+
         TreeNode m_root{};
         String m_selectedPath{};
 

@@ -4,8 +4,8 @@
 
 #include "he/core/string.h"
 #include "he/editor/dialogs/choice_dialog.h"
+#include "he/editor/framework/imgui_theme.h"
 #include "he/editor/services/project_service.h"
-#include "he/editor/services/imgui_service.h"
 #include "he/editor/widgets/buttons.h"
 #include "he/editor/widgets/input_text.h"
 #include "he/editor/widgets/misc.h"

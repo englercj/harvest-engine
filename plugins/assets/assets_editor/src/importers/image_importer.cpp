@@ -31,7 +31,7 @@ namespace he::assets
             || ext.EqualToI(JfifExt);
     }
 
-    bool ImageImporter::Import(const ImportContext& ctx, ImportResult& result)
+    ImportError ImageImporter::Import(const ImportContext& ctx, ImportResult& result)
     {
         constexpr ResourceId Texture2DPixelsId{ Texture2D::PixelsResourceName };
 
@@ -42,7 +42,7 @@ namespace he::assets
             HE_LOG_ERROR(he_assets,
                 HE_MSG("Failed to decode image data."),
                 HE_KV(path, ctx.file));
-            return false;
+            return ImportError::Failure;
         }
 
         if (img.get_width() > basisu::BASISU_MAX_SUPPORTED_TEXTURE_DIMENSION
@@ -55,7 +55,7 @@ namespace he::assets
                 HE_KV(max_width, basisu::BASISU_MAX_SUPPORTED_TEXTURE_DIMENSION),
                 HE_KV(max_height, basisu::BASISU_MAX_SUPPORTED_TEXTURE_DIMENSION),
                 HE_KV(path, ctx.file));
-            return false;
+            return ImportError::Failure;
         }
 
         constexpr StringView assetTypeName = Texture2D::AssetTypeName;
@@ -99,9 +99,9 @@ namespace he::assets
                 HE_KV(asset_name, asset.GetName()),
                 HE_KV(result, r),
                 HE_KV(path, ctx.file));
-            return false;
+            return ImportError::Failure;
         }
 
-        return true;
+        return ImportError::Success;
     }
 }

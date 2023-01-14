@@ -10,9 +10,9 @@ CREATE TABLE asset_file (
     source_write_time       INTEGER DEFAULT 0,      -- Last "write time" we read from the import source on disk.
     source_size             INTEGER DEFAULT 0,      -- Last size of the file we read from the import source on disk.
     scan_token              INTEGER DEFAULT 0,      -- An identifier from the last file scanner that checked this entry.
-    UNIQUE (id),
+    UNIQUE (uuid),
     UNIQUE (file_path)
-) WITHOUT ROWID;
+);
 CREATE INDEX idx_asset_file_source_path ON asset_file (source_path);
 
 CREATE TABLE asset (
@@ -30,7 +30,7 @@ CREATE TABLE asset (
     compiler_version        INTEGER DEFAULT 0,      -- Version of the compiler that processed this asset.
     UNIQUE (uuid),
     FOREIGN KEY (asset_file_id) REFERENCES asset_file (id) ON DELETE CASCADE
-) WITHOUT ROWID;
+);
 CREATE INDEX idx_asset_fk_asset_file_id ON asset (asset_file_id);
 CREATE INDEX idx_asset_state ON asset (state);
 
@@ -39,13 +39,13 @@ CREATE TABLE config (
     key                     TEXT NOT NULL,          -- The key for the config entry.
     value                   BLOB DEFAULT NULL,      -- The value of the config entry.
     UNIQUE (key)
-) WITHOUT ROWID;
+);
 
 CREATE TABLE tag (
     id                      INTEGER PRIMARY KEY,    -- Primary key for a row.
     name                    TEXT NOT NULL,          -- The name of this tag entry.
     UNIQUE (name)
-) WITHOUT ROWID;
+);
 
 CREATE TABLE asset_tag (
     id                      INTEGER PRIMARY KEY,    -- Primary key for a row.
@@ -53,7 +53,7 @@ CREATE TABLE asset_tag (
     tag_id                  INTEGER NOT NULL,       -- The id of the tag attached to the asset.
     FOREIGN KEY (asset_id) REFERENCES asset (id) ON DELETE CASCADE,
     FOREIGN KEY (tag_id) REFERENCES tag (id) ON DELETE CASCADE
-) WITHOUT ROWID;
+);
 CREATE INDEX idx_asset_tag_fk_asset_id ON asset_tag (asset_id);
 CREATE INDEX idx_asset_tag_fk_tag_id ON asset_tag (tag_id);
 
@@ -63,7 +63,7 @@ CREATE TABLE asset_reference (
     to_id                   INTEGER NOT NULL,       -- Asset that the reference is to.
     FOREIGN KEY (from_id) REFERENCES asset (id) ON DELETE CASCADE,
     FOREIGN KEY (to_id) REFERENCES asset (id) ON DELETE CASCADE
-) WITHOUT ROWID;
+);
 CREATE INDEX idx_asset_reference_fk_from_id ON asset_reference (from_id);
 CREATE INDEX idx_asset_reference_fk_to_id ON asset_reference (to_id);
 
@@ -76,7 +76,7 @@ CREATE TABLE compiler_reference (
     resource_key_type       INTEGER,                -- Type of the resource key for the resource that was requested.
     resource_key_hash       INTEGER,                -- The hash of the resource key that was requested.
     FOREIGN KEY (asset_id) REFERENCES asset (id) ON DELETE CASCADE
-) WITHOUT ROWID;
+);
 CREATE INDEX idx_compiler_reference_fk_asset_id ON compiler_reference (asset_id);
 
 CREATE TABLE message (
@@ -86,7 +86,7 @@ CREATE TABLE message (
     message                 TEXT NOT NULL,          -- The text of the message.
     timestamp               INTEGER NOT NULL,       -- Nanosecond timestamp of the message.
     source                  INTEGER NOT NULL        -- `MessageMode::Source` enum value.
-) WITHOUT ROWID;
+);
 CREATE INDEX idx_message_ref_id ON message (ref_id);
 
 -- Full-Text searching of the asset table.

@@ -12,6 +12,6 @@ namespace he::assets
 
     public:
         bool CanImport(const char* file) override;
-        bool Import(const ImportContext& ctx, ImportResult& result) override;
+        ImportError Import(const ImportContext& ctx, ImportResult& result) override;
     };
 }

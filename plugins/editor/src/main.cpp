@@ -33,6 +33,7 @@ int he::AppMain(int argc, char* argv[])
     // Create and startup the static modules that were registered by any linked libraries.
     ModuleRegistry& moduleRegistry = editor::DICreate<ModuleRegistry&>();
     moduleRegistry.LoadStaticModules();
+    // TODO: load dynamic modules
 
     if (!moduleRegistry.StartupAllModules())
         return -1;

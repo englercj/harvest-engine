@@ -4,6 +4,7 @@
 
 #include "he/editor/documents/document.h"
 #include "he/editor/services/asset_service.h"
+#include "he/editor/services/dialog_service.h"
 #include "he/editor/services/imgui_service.h"
 #include "he/editor/widgets/asset_browser.h"
 
@@ -14,6 +15,7 @@ namespace he::editor
     public:
         AssetBrowserDocument(
             AssetService& assetService,
+            DialogService& dialogService,
             ImGuiService& imguiService) noexcept;
 
         void Show() override;

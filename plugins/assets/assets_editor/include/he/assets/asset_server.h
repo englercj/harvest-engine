@@ -28,7 +28,7 @@ namespace he::assets
         void StartPendingCompiles();
 
     public:
-        using ImportCompleteSignal = Signal<void(bool success, const ImportContext& ctx, const ImportResult& result)>;
+        using ImportCompleteSignal = Signal<void(ImportError error, const ImportContext& ctx, const ImportResult& result)>;
         using CompileCompleteSignal = Signal<void(bool success, const CompileContext& ctx, const CompileResult& result)>;
 
         ImportCompleteSignal& OnImport() { return m_onImportCompleteSignal; }
@@ -51,7 +51,9 @@ namespace he::assets
             ImportContext ctx;
             ImportResult result;
         };
+        void StartImport(ImportTaskData* data);
         static void Import_OnAssetFileLoad(ImportTaskData* data, AssetDatabase::LoadResult result);
+        static void Import_StartTask(ImportTaskData* data);
         static void Import_Task(ImportTaskData* data);
 
         struct CompileTaskData

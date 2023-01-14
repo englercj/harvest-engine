@@ -6,6 +6,7 @@
 #include "he/core/assert.h"
 #include "he/core/enum_ops.h"
 #include "he/core/memory_ops.h"
+#include "he/editor/framework/imgui_theme.h"
 #include "he/math/vec2.h"
 
 #include "imgui_internal.h"
@@ -146,12 +147,10 @@ namespace he::editor
     bool ImGuiPlatformService::Initialize(
         window::Device* device,
         window::View* view,
-        StyleSetupDelegate setupStyle,
         FontsSetupDelegate setupFonts)
     {
         m_device = device;
         m_view = view;
-        m_setupStyle = setupStyle;
         m_setupFonts = setupFonts;
         m_time = MonotonicClock::Now();
 
@@ -494,7 +493,7 @@ namespace he::editor
         m_lastDpiScale = dpiScale;
 
         // Set the style to the scaled value
-        m_setupStyle(g.Style, ImPlot::GetStyle(), dpiScale);
+        SetThemeStyle(g.Style, ImPlot::GetStyle(), dpiScale);
 
         // Get or create the font atlas for this DPI scale
         UniquePtr<ImFontAtlas>& atlas = m_dpiFontAtlas[dpiScale];

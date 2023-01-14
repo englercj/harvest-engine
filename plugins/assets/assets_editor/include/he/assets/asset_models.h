@@ -15,6 +15,10 @@ namespace he::assets
 {
     class AssetDatabase;
 
+    struct AssetFilePathTag {};
+    struct AssetFileSourcePathTag {};
+
+
     enum class AssetState : uint8_t
     {
         Unknown = 0,
@@ -44,6 +48,7 @@ namespace he::assets
         static bool FindOne(AssetDatabase& db, const AssetFileUuid& fileUuid, AssetFileModel& outModel);
         static bool FindOne(AssetDatabase& db, const char* path, AssetFileModel& outModel);
         static bool FindOne(AssetDatabase& db, const AssetUuid& assetUuid, AssetFileModel& outModel);
+        static bool FindOne(AssetDatabase& db, const char* source, AssetFileModel& outModel, AssetFileSourcePathTag);
         static bool FindAll(AssetDatabase& db, const char* pathPrefix, Vector<AssetFileModel>& models);
         static bool RemoveOne(AssetDatabase& db, const AssetFileUuid& fileUuid);
         static bool RemoveOne(AssetDatabase& db, const char* path);
@@ -53,7 +58,6 @@ namespace he::assets
         static bool UpdateScanToken(AssetDatabase& db, const char* path, uint32_t scanToken);
     };
 
-    struct AssetFilePathTag {};
     struct AssetModel final
     {
         AssetUuid uuid;

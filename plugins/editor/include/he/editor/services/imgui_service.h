@@ -19,21 +19,6 @@ struct ImPlotStyle;
 
 namespace he::editor
 {
-    enum class Font : uint8_t
-    {
-        Regular,
-        RegularHeader,
-        RegularTitle,
-        Monospace,
-
-        _Count,
-    };
-
-    struct Colors
-    {
-        static constexpr ImVec4 Error{ 1.00f, 0.60f, 0.00f, 1.00f };
-    };
-
     class ImGuiService
     {
     public:
@@ -55,20 +40,12 @@ namespace he::editor
 
         void OnEvent(const window::Event& ev);
 
-        ImFont* GetFont(Font f) const;
-        void PushFont(Font f) const;
-        void PopFont() const;
-
+        window::ViewDropEffect GetDropEffect(window::View* view) const;
         Span<const String> DragDropPaths() const { return m_dndPaths; }
         void ClearDragDropPaths() { m_dndPaths.Clear(); }
 
     private:
-        static void SetupColors();
-
-        void SetupStyle(ImGuiStyle& style, ImPlotStyle& plotStyle, float dpiScale);
         void SetupFonts(ImFontAtlas& atlas, float dpiScale);
-
-        static void MergeMaterialDesignIcons(ImFontAtlas& atlas, float fontSize);
 
     private:
         EditorData& m_editorData;

@@ -2,20 +2,22 @@
 
 #include "he/editor/commands/import_asset_command.h"
 
+#include "he/editor/dialogs/import_asset_dialog.h"
+
 namespace he::editor
 {
     ImportAssetCommand::ImportAssetCommand(
-        AssetService& assetService,
         DialogService& dialogService,
-        PlatformService& platformService) noexcept
-        : m_assetService(assetService)
-        , m_dialogService(dialogService)
+        PlatformService& platformService,
+        ProjectService& projectService) noexcept
+        : m_dialogService(dialogService)
         , m_platformService(platformService)
+        , m_projectService(projectService)
     {}
 
     bool ImportAssetCommand::CanRun() const
     {
-        return true;
+        return m_projectService.IsOpen();
     }
 
     void ImportAssetCommand::Run()
@@ -25,7 +27,7 @@ namespace he::editor
         String path;
         if (m_platformService.OpenFileDialog(path, config))
         {
-            m_assetService.StartImport(path.Data());
+            m_dialogService.Open<ImportAssetDialog>().Configure(path.Data());
         }
     }
 }

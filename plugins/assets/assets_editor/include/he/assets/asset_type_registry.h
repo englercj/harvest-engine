@@ -38,8 +38,6 @@ namespace he::assets
         };
 
     public:
-        static AssetTypeRegistry& Get();
-
         template <typename T>
         bool RegisterImporter();
 

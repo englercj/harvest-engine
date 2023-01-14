@@ -37,7 +37,7 @@ namespace he::assets
             return false;
 
         // Ensure the cache root, and the resources directory both exist
-        m_resourceRoot = GetDirectory(cacheRoot);
+        m_resourceRoot = cacheRoot;
         ConcatPath(m_resourceRoot, "resources");
         if (!HE_VERIFY(Directory::Create(m_resourceRoot.Data(), true), HE_KV(resource_root, m_resourceRoot)))
             return false;
@@ -428,7 +428,9 @@ namespace he::assets
     String AssetDatabase::MakeResourcePath(const AssetUuid& assetUuid, ResourceId resourceId) const
     {
         String path = m_resourceRoot;
-        fmt::format_to(Appender(path), "/{}/{}", assetUuid, resourceId);
+        fmt::format_to(Appender(path), "/{}", assetUuid);
+        Directory::Create(path.Data(), true);
+        fmt::format_to(Appender(path), "/{}", resourceId);
         return path;
     }
 

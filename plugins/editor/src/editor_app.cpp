@@ -69,10 +69,18 @@ namespace he::editor
 
     window::ViewHitArea EditorApp::OnHitTest(window::View* view, const Vec2i& point)
     {
-        if (m_mainWindowService.GetView() != view || !m_initialized)
+        if (!m_initialized || m_mainWindowService.GetView() != view)
             return window::ViewHitArea::Normal;
 
         return m_workspaceService.GetHitArea(point);
+    }
+
+    window::ViewDropEffect EditorApp::OnDragging(window::View* view)
+    {
+        if (!m_initialized)
+            return window::ViewDropEffect::Reject;
+
+        return m_imguiService.GetDropEffect(view);
     }
 
     bool EditorApp::OnViewInitialized(window::View* view)

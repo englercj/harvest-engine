@@ -190,6 +190,8 @@ namespace he::window::linux
         Atom m_atomXdndPosition{ X11_None };
         Atom m_atomXdndStatus{ X11_None };
         Atom m_atomXdndActionCopy{ X11_None };
+        Atom m_atomXdndActionMove{ X11_None };
+        Atom m_atomXdndActionLink{ X11_None };
         Atom m_atomXdndDrop{ X11_None };
         Atom m_atomXdndFinished{ X11_None };
         Atom m_atomXdndSelection{ X11_None };

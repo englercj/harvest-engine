@@ -8,8 +8,9 @@ namespace he::editor
 {
     AssetBrowserDocument::AssetBrowserDocument(
         AssetService& assetService,
+        DialogService& dialogService,
         ImGuiService& imguiService) noexcept
-        : m_browser(assetService, imguiService)
+        : m_browser(assetService, dialogService, imguiService)
     {
         m_title = "Asset Browser";
     }

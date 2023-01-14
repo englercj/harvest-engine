@@ -340,6 +340,8 @@ namespace he::window::linux
         m_atomXdndPosition = m_XInternAtom(m_display, "XdndPosition", False);
         m_atomXdndStatus = m_XInternAtom(m_display, "XdndStatus", False);
         m_atomXdndActionCopy = m_XInternAtom(m_display, "XdndActionCopy", False);
+        m_atomXdndActionMove = m_XInternAtom(m_display, "XdndActionMove", False);
+        m_atomXdndActionLink = m_XInternAtom(m_display, "XdndActionLink", False);
         m_atomXdndDrop = m_XInternAtom(m_display, "XdndDrop", False);
         m_atomXdndFinished = m_XInternAtom(m_display, "XdndFinished", False);
         m_atomXdndSelection = m_XInternAtom(m_display, "XdndSelection", False);
@@ -1064,10 +1066,22 @@ namespace he::window::linux
 
                     if (m_dndFormat)
                     {
-                        // Reply that we are ready to copy the dragged data
-                        reply.xclient.data.l[1] = 1; // Accept with no rectangle
-                        if (m_dndVersion >= 2)
-                            reply.xclient.data.l[4] = m_atomXdndActionCopy;
+                        const ViewDropEffect effect = m_app->OnDragging(view);
+                        Atom action = X11_None;
+                        switch (effect)
+                        {
+                            case ViewDropEffect::Reject: break;
+                            case ViewDropEffect::Copy: action = m_atomXdndActionCopy; break;
+                            case ViewDropEffect::Move: action = m_atomXdndActionMove; break;
+                            case ViewDropEffect::Link: action = m_atomXdndActionLink; break;
+                        }
+
+                        if (action != X11_None)
+                        {
+                            reply.xclient.data.l[1] = 1; // Accept with no rectangle
+                            if (m_dndVersion >= 2)
+                                reply.xclient.data.l[4] = action;
+                        }
                     }
 
                     m_XSendEvent(m_display, m_dndSource, False, NoEventMask, &reply);
@@ -1306,13 +1320,23 @@ namespace he::window::linux
 
                 if (m_dndVersion >= 2)
                 {
+                    const ViewDropEffect effect = m_app->OnDragging(view);
+                    Atom action = X11_None;
+                    switch (effect)
+                    {
+                        case ViewDropEffect::Reject: break;
+                        case ViewDropEffect::Copy: action = m_atomXdndActionCopy; break;
+                        case ViewDropEffect::Move: action = m_atomXdndActionMove; break;
+                        case ViewDropEffect::Link: action = m_atomXdndActionLink; break;
+                    }
+
                     XEvent reply = { ClientMessage };
                     reply.xclient.window = m_dndSource;
                     reply.xclient.message_type = m_atomXdndFinished;
                     reply.xclient.format = 32;
                     reply.xclient.data.l[0] = view->m_window;
                     reply.xclient.data.l[1] = result;
-                    reply.xclient.data.l[2] = m_atomXdndActionCopy;
+                    reply.xclient.data.l[2] = action;
 
                     m_XSendEvent(m_display, m_dndSource, False, NoEventMask, &reply);
                     m_XFlush(m_display);

@@ -12,26 +12,28 @@
 #include "he/core/path.h"
 #include "he/core/result_fmt.h"
 #include "he/core/string_fmt.h"
+#include "he/editor/dialogs/import_asset_dialog.h"
 #include "he/editor/icons/icons_material_design.h"
 #include "he/editor/widgets/buttons.h"
 #include "he/editor/widgets/menu.h"
 
+#define IMGUI_DEFINE_MATH_OPERATORS
 #include "imgui.h"
+#include "imgui_internal.h"
 #include "fmt/format.h"
 
 namespace he::editor
 {
     AssetBrowser::AssetBrowser(
         AssetService& assetService,
+        DialogService& dialogService,
         ImGuiService& imguiService) noexcept
         : m_assetService(assetService)
+        , m_dialogService(dialogService)
         , m_imguiService(imguiService)
     {
-        const assets::AssetDatabase& db = m_assetService.AssetDB();
-        const String& assetRoot = db.AssetRoot();
-
-        m_root.name = "assets";
-        m_root.path = assetRoot;
+        m_assetService.OnDbInit().Attach<&AssetBrowser::HandleDbInitialized>(this);
+        HandleDbInitialized(m_assetService.AssetDB().IsInitialized());
     }
 
     void AssetBrowser::Show()
@@ -59,33 +61,6 @@ namespace he::editor
             else
             {
                 ShowNoAssets();
-            }
-
-            // TODO: This is using the label as the area right now, need to do better! Maybe `InvisibleButton`?
-            if (const ImGuiPayload* payload = ImGui::GetDragDropPayload())
-            {
-                if (payload->IsDataType(ImGuiService::DndPayloadId))
-                {
-                    ImGui::GetWindowDrawList()->AddRect(
-                        ImGui::GetItemRectMin(),
-                        ImGui::GetItemRectMax(),
-                        ImGui::GetColorU32(ImGuiCol_DragDropTarget),
-                        0.0f,
-                        ImDrawFlags_None,
-                        2.0f);
-                }
-            }
-
-            if (ImGui::BeginDragDropTarget())
-            {
-                if (ImGui::AcceptDragDropPayload(ImGuiService::DndPayloadId, ImGuiDragDropFlags_AcceptNoDrawDefaultRect | ImGuiDragDropFlags_AcceptNoPreviewTooltip))
-                {
-                    Span<const String> files = m_imguiService.DragDropPaths();
-                    HE_LOGF_INFO(he_editor, "FILES DROPPED: {}", fmt::join(files.begin(), files.end(), " | "));
-                    m_imguiService.ClearDragDropPaths();
-                    // TODO: imports
-                }
-                ImGui::EndDragDropTarget();
             }
 
             ImGui::EndTable();
@@ -137,7 +112,7 @@ namespace he::editor
 
     void AssetBrowser::ShowTreeNode(TreeNode& node, TreeNode*& selected)
     {
-        ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_None;
+        ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_FramePadding;
         if (m_selectedPath == node.path)
         {
             selected = &node;
@@ -149,6 +124,16 @@ namespace he::editor
         {
             selected = &node;
             m_selectedPath = node.path;
+        }
+
+        if (FileDragDrop())
+        {
+            Span<const String> files = m_imguiService.DragDropPaths();
+            for (const String& file : files)
+            {
+                m_dialogService.Open<ImportAssetDialog>().Configure(file.Data(), node.path);
+            }
+            m_imguiService.ClearDragDropPaths();
         }
 
         if (open)
@@ -181,11 +166,26 @@ namespace he::editor
             ImGui::TableSetupColumn("File UUID");
             ImGui::TableHeadersRow();
 
-            if (node.assets.IsEmpty())
+            for (const TreeNode& child : node.children)
             {
-                ImGui::EndTable();
-                ShowNoAssets();
-                return;
+                // Name
+                ImGui::TableNextColumn();
+                ImGui::TextUnformatted(ICON_MDI_FOLDER);
+                ImGui::SameLine();
+                ImGui::TextUnformatted(child.name.Begin(), child.name.End());
+
+                // Type
+                ImGui::TableNextColumn();
+                ImGui::TextUnformatted("folder");
+
+                // UUID
+                ImGui::TableNextColumn();
+
+                // State
+                ImGui::TableNextColumn();
+
+                // File UUID
+                ImGui::TableNextColumn();
             }
 
             for (const assets::AssetModel& asset : node.assets)
@@ -256,6 +256,9 @@ namespace he::editor
 
     void AssetBrowser::ListDirectory(TreeNode& node)
     {
+        if (node.path.IsEmpty())
+            return;
+
         DirectoryScanner scanner;
         Result r = scanner.Open(node.path.Data());
         if (!r)
@@ -299,5 +302,40 @@ namespace he::editor
                 HE_MSG("Failed to query for assets in path."),
                 HE_KV(path, node.path));
         }
+    }
+
+    void AssetBrowser::HandleDbInitialized(bool initialized)
+    {
+        if (m_root.name.IsEmpty())
+            m_root.name = "assets";
+
+        if (initialized)
+        {
+            const assets::AssetDatabase& db = m_assetService.AssetDB();
+            const String& assetRoot = db.AssetRoot();
+
+            m_root.path = assetRoot;
+        }
+        else
+        {
+            m_root.path.Clear();
+            m_root.children.Clear();
+            m_root.assets.Clear();
+            m_root.listedAt = { 0 };
+            m_root.queriedAt = { 0 };
+        }
+    }
+
+    bool AssetBrowser::FileDragDrop()
+    {
+        bool accepted = false;
+
+        if (ImGui::BeginDragDropTarget())
+        {
+            accepted = ImGui::AcceptDragDropPayload(ImGuiService::DndPayloadId, ImGuiDragDropFlags_AcceptNoDrawDefaultRect | ImGuiDragDropFlags_AcceptNoPreviewTooltip);
+            ImGui::EndDragDropTarget();
+        }
+
+        return accepted;
     }
 }

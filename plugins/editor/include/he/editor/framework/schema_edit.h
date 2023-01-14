@@ -65,10 +65,16 @@ namespace he::editor
     class SchemaEditContext
     {
     public:
-        SchemaEditContext(const schema::DynamicStruct::Reader& data);
+        SchemaEditContext() = default;
+        SchemaEditContext(const schema::DynamicStruct::Reader& data) noexcept;
+
+        void SetData(const schema::DynamicStruct::Reader& data);
 
         schema::DynamicStruct::Builder& Data() { return m_data; }
         const schema::DynamicStruct::Builder& Data() const { return m_data; }
+
+        schema::Builder& Builder() { return m_builder; }
+        const schema::Builder& Builder() const { return m_builder; }
 
         Span<const SchemaEdit> Edits() const { return m_edits; }
 
@@ -76,6 +82,7 @@ namespace he::editor
 
         void Redo();
         void Undo();
+        void Clear();
 
     private:
         void RedoEdit(SchemaEdit& edit);

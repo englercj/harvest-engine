@@ -62,19 +62,22 @@ namespace he::window::win32
         ViewDndStartEvent ev(m_view);
         m_view->m_device->m_app->OnEvent(ev);
 
-        *pdwEffect &= DROPEFFECT_COPY;
+        SetDropEffect(*pdwEffect);
         return S_OK;
     }
 
     HRESULT DropTarget::DragOver(DWORD grfKeyState, POINTL pt, DWORD* pdwEffect)
     {
-        HE_UNUSED(grfKeyState);
+        HE_UNUSED(grfKeyState, pt);
+
+        if (!pdwEffect)
+            return E_INVALIDARG;
 
         ViewDndMoveEvent ev(m_view);
         ev.pos = { static_cast<float>(pt.x), static_cast<float>(pt.y) };
         m_view->m_device->m_app->OnEvent(ev);
 
-        *pdwEffect &= DROPEFFECT_COPY;
+        SetDropEffect(*pdwEffect);
         return S_OK;
     }
 
@@ -88,6 +91,11 @@ namespace he::window::win32
     HRESULT DropTarget::Drop(IDataObject* pDataObj, DWORD grfKeyState, POINTL pt, DWORD* pdwEffect)
     {
         HE_UNUSED(grfKeyState, pt);
+
+        if (!pdwEffect)
+            return E_INVALIDARG;
+
+        SetDropEffect(*pdwEffect);
 
         FORMATETC fmte{ CF_HDROP, nullptr, DVASPECT_CONTENT, -1, TYMED_HGLOBAL };
         STGMEDIUM stgm;
@@ -121,8 +129,23 @@ namespace he::window::win32
             m_view->m_device->m_app->OnEvent(ev);
         }
 
-        *pdwEffect &= DROPEFFECT_COPY;
         return S_OK;
+    }
+
+    void DropTarget::SetDropEffect(DWORD& dwEffect) const
+    {
+        const ViewDropEffect effect = m_view->m_device->m_app->OnDragging(m_view);
+
+        DWORD effectValue = DROPEFFECT_NONE;
+        switch (effect)
+        {
+            case ViewDropEffect::Reject: break;
+            case ViewDropEffect::Copy: effectValue = DROPEFFECT_COPY; break;
+            case ViewDropEffect::Move: effectValue = DROPEFFECT_MOVE; break;
+            case ViewDropEffect::Link: effectValue = DROPEFFECT_LINK; break;
+        }
+
+        dwEffect &= effectValue;
     }
 }
 

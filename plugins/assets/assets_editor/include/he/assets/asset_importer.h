@@ -11,6 +11,14 @@
 namespace he::assets
 {
     // --------------------------------------------------------------------------------------------
+    enum class ImportError : uint8_t
+    {
+        Success,
+        NeedSettings,
+        Failure,
+    };
+
+    // --------------------------------------------------------------------------------------------
     /// Input context for an import process.
     struct ImportContext
     {
@@ -93,6 +101,9 @@ namespace he::assets
             return data;
         }
 
+
+        schema::DynamicStruct::Reader RequestedSettings() const { return m_reqSettings.AsReader(); }
+
     private:
         friend class AssetServer;
 
@@ -139,7 +150,7 @@ namespace he::assets
         virtual bool CanImport(const char* file) = 0;
 
         /// Function to import a source, may be called from any thread.
-        virtual bool Import(const ImportContext& ctx, ImportResult& result) = 0;
+        virtual ImportError Import(const ImportContext& ctx, ImportResult& result) = 0;
     };
 }
 

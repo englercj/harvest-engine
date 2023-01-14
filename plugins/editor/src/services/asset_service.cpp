@@ -30,6 +30,9 @@ namespace he::editor
 
     void AssetService::Terminate()
     {
+        if (m_db.IsInitialized())
+            m_onDbInitSignal.Dispatch(false);
+
         m_onDbReadyBinding.Detach();
         m_updater.Stop();
 
@@ -74,6 +77,7 @@ namespace he::editor
         }
 
         failGuard.Dismiss();
+        m_onDbInitSignal.Dispatch(true);
     }
 
     void AssetService::OnDbReady()

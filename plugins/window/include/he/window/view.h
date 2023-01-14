@@ -30,6 +30,15 @@ namespace he::window
         SystemMenu,                 ///< The app system menu button.
     };
 
+    /// A view drop effect is which effect to 
+    enum class ViewDropEffect : uint8_t
+    {
+        Reject,     ///< Reject the drop operation.
+        Copy,       ///< Dropping the data will result in a copy.
+        Move,       ///< Dropping the data will result in a move.
+        Link,       ///< Dropping the data will result in a link.
+    };
+
     /// Flags controlling the behavior of a view.
     enum class ViewFlag : uint32_t
     {

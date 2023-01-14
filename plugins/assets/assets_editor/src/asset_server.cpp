@@ -8,6 +8,7 @@
 #include "he/assets/types.h"
 #include "he/core/hash_table.h"
 #include "he/core/log.h"
+#include "he/core/module_registry.h"
 #include "he/core/path.h"
 #include "he/core/result_fmt.h"
 #include "he/core/span.h"
@@ -16,6 +17,8 @@
 
 namespace he::assets
 {
+    extern Module* g_assetEditorModule;
+
     AssetServer::AssetServer(AssetDatabase& db, TaskExecutor& executor)
         : m_db(db)
         , m_executor(executor)
@@ -25,10 +28,8 @@ namespace he::assets
     {
         ImportTaskData* data = Allocator::GetDefault().New<ImportTaskData>(this);
         data->path = path;
-        data->server = this;
-
-        AssetDatabase::LoadDelegate cb = AssetDatabase::LoadDelegate::Make<&AssetServer::Import_OnAssetFileLoad>(data);
-        m_db.LoadAssetFileAsync(path, cb);
+        data->ctx.file = data->path.Data();
+        StartImport(data);
     }
 
     void AssetServer::StartImport(const char* path, schema::Builder&& importSettings)
@@ -38,9 +39,26 @@ namespace he::assets
         data->importSettings = Move(importSettings);
         data->ctx.file = data->path.Data();
         data->ctx.settings = data->importSettings.Root().TryGetStruct();
+        StartImport(data);
+    }
 
-        AssetDatabase::LoadDelegate cb = AssetDatabase::LoadDelegate::Make<&AssetServer::Import_OnAssetFileLoad>(data);
-        m_db.LoadAssetFileAsync(path, cb);
+    void AssetServer::StartImport(ImportTaskData* data)
+    {
+        HE_LOG_INFO(he_assets,
+            HE_MSG("Starting asset import."),
+            HE_KV(source_path, data->path),
+            HE_KV(has_import_settings, data->ctx.settings.IsValid()));
+
+        AssetFileModel model;
+        if (AssetFileModel::FindOne(m_db, data->path.Data(), model, AssetFileSourcePathTag{}))
+        {
+            AssetDatabase::LoadDelegate cb = AssetDatabase::LoadDelegate::Make<&AssetServer::Import_OnAssetFileLoad>(data);
+            m_db.LoadAssetFileAsync(model.file.path.Data(), cb);
+        }
+        else
+        {
+            Import_StartTask(data);
+        }
     }
 
     void AssetServer::StartPendingImports()
@@ -103,14 +121,14 @@ namespace he::assets
     {
         Vector<AssetModel> pending;
 
-        if (!AssetModel::FindAll(m_db, AssetState::NeedsImport, pending))
+        if (!AssetModel::FindAll(m_db, AssetState::NeedsCompile, pending))
         {
-            HE_LOG_ERROR(he_editor, HE_MSG("Failed to query assets needing import."));
+            HE_LOG_ERROR(he_editor, HE_MSG("Failed to query assets needing compilation."));
         }
 
-        if (!AssetModel::FindAll(m_db, AssetState::ImportFailed, pending))
+        if (!AssetModel::FindAll(m_db, AssetState::CompileFailed, pending))
         {
-            HE_LOG_ERROR(he_editor, HE_MSG("Failed to query assets needing import."));
+            HE_LOG_ERROR(he_editor, HE_MSG("Failed to query assets needing compilation."));
         }
 
         for (const AssetModel& asset : pending)
@@ -121,31 +139,33 @@ namespace he::assets
 
     void AssetServer::Import_OnAssetFileLoad(ImportTaskData* data, AssetDatabase::LoadResult load)
     {
-        if (!load.result)
+        if (load.result)
         {
-            if (GetFileResult(load.result) != FileResult::NotFound)
-            {
-                HE_LOG_ERROR(he_assets,
-                    HE_MSG("Failed to load existing asset file during import."),
-                    HE_KV(path, data->path),
-                    HE_KV(result, load.result));
+            data->assetFile = Move(load.builder.builder);
+            data->ctx.assetFile = data->assetFile.Root().TryGetStruct<AssetFile>();
 
-                data->server->m_onImportCompleteSignal.Dispatch(false, data->ctx, data->result);
-                Allocator::GetDefault().Delete(data);
-                return;
-            }
+            HE_LOG_INFO(he_assets,
+                HE_MSG("Using existing asset file for import."),
+                HE_KV(source_path, data->path),
+                HE_KV(asset_file_uuid, AssetFileUuid(data->ctx.assetFile.GetUuid())));
+        }
+        else if (GetFileResult(load.result) != FileResult::NotFound)
+        {
+            HE_LOG_ERROR(he_assets,
+                HE_MSG("Failed to load existing asset file during import."),
+                HE_KV(source_path, data->path),
+                HE_KV(result, load.result));
 
-            AssetFile::Builder assetFile = data->assetFile.AddStruct<AssetFile>();
-            FillUuidV4(assetFile.InitUuid());
-            assetFile.InitSource(data->path);
-
-            data->assetFile.SetRoot(assetFile);
-            data->ctx.assetFile = assetFile;
+            data->server->m_onImportCompleteSignal.Dispatch(ImportError::Failure, data->ctx, data->result);
+            Allocator::GetDefault().Delete(data);
+            return;
         }
 
-        data->assetFile = Move(load.builder.builder);
-        data->ctx.assetFile = data->assetFile.Root().TryGetStruct<AssetFile>();
+        Import_StartTask(data);
+    }
 
+    void AssetServer::Import_StartTask(ImportTaskData* data)
+    {
         String taskName = "Importing file '";
         taskName += GetBaseName(data->path);
         taskName += "'";
@@ -156,10 +176,25 @@ namespace he::assets
 
     void AssetServer::Import_Task(ImportTaskData* data)
     {
-        AssetTypeRegistry& registry = AssetTypeRegistry::Get();
+        const AssetTypeRegistry& registry = g_assetEditorModule->Registry().GetApi<AssetTypeRegistry>();
+
+        if (data->assetFile.Root().IsNull())
+        {
+            AssetFile::Builder assetFile = data->assetFile.AddStruct<AssetFile>();
+            FillUuidV4(assetFile.InitUuid());
+            assetFile.InitSource(data->path);
+
+            data->assetFile.SetRoot(assetFile);
+            data->ctx.assetFile = assetFile;
+
+            HE_LOG_INFO(he_assets,
+                HE_MSG("Creating new asset file for import."),
+                HE_KV(source_path, data->path),
+                HE_KV(asset_file_uuid, AssetFileUuid(data->ctx.assetFile.GetUuid())));
+        }
 
         bool found = false;
-        bool success = false;
+        ImportError error = ImportError::Success;
 
         // Run through each importer and attempt to import the file.
         for (const AssetTypeRegistry::ImporterEntry& entry : registry.Importers())
@@ -173,32 +208,36 @@ namespace he::assets
                     HE_KV(importer_id, importer.Id()),
                     HE_KV(importer_version, importer.Version()),
                     HE_KV(asset_file_uuid, AssetFileUuid(data->ctx.assetFile.GetUuid())),
-                    HE_KV(path, data->ctx.file));
+                    HE_KV(source_path, data->ctx.file));
 
                 found = true;
-                success = importer.Import(data->ctx, data->result);
+                error = importer.Import(data->ctx, data->result);
 
-                if (!success)
+                if (error == ImportError::Failure)
                 {
                     HE_LOG_ERROR(he_assets,
-                        HE_MSG("Failed to import asset source."),
+                        HE_MSG("Failed to import asset source file."),
                         HE_KV(importer_id, importer.Id()),
                         HE_KV(importer_version, importer.Version()),
                         HE_KV(asset_file_uuid, AssetFileUuid(data->ctx.assetFile.GetUuid())),
-                        HE_KV(path, data->path));
-                    break;
+                        HE_KV(source_path, data->path));
                 }
+
+                break;
             }
         }
 
         if (!found)
         {
-            HE_LOG_WARN(he_assets, HE_MSG("No importer found that can handle this asset source."), HE_KV(path, data->path));
+            HE_LOG_WARN(he_assets,
+                HE_MSG("No importer found that can handle this asset source."),
+                HE_KV(asset_file_uuid, AssetFileUuid(data->ctx.assetFile.GetUuid())),
+                HE_KV(source_path, data->path));
         }
 
         Vector<Asset::Reader> needsCompile;
 
-        if (success)
+        if (error == ImportError::Success)
         {
             String assetFilePath = data->path;
             assetFilePath += AssetFileExtension;
@@ -239,14 +278,15 @@ namespace he::assets
 
             assetFile.SetAssets(assets);
 
-            success = data->server->m_db.SaveAssetFile(assetFilePath.Data(), assetFile);
-            if (!success)
+            bool saved = data->server->m_db.SaveAssetFile(assetFilePath.Data(), assetFile);
+            if (!saved)
             {
                 HE_LOG_ERROR(he_assets,
                     HE_MSG("Failed to save asset file after import."),
                     HE_KV(asset_file_path, assetFilePath),
                     HE_KV(asset_file_uuid, AssetFileUuid(assetFile.GetUuid())),
                     HE_KV(source_path, data->path));
+                error = ImportError::Failure;
             }
         }
 
@@ -255,7 +295,7 @@ namespace he::assets
         {
             AssetUuid assetUuid{ asset.GetUuid() };
 
-            if (success)
+            if (error == ImportError::Success)
             {
                 AssetModel::UpdateState(data->server->m_db, assetUuid, AssetState::NeedsCompile);
                 data->server->StartCompile(assetUuid);
@@ -267,7 +307,7 @@ namespace he::assets
         }
         t.Commit();
 
-        data->server->m_onImportCompleteSignal.Dispatch(success, data->ctx, data->result);
+        data->server->m_onImportCompleteSignal.Dispatch(error, data->ctx, data->result);
         Allocator::GetDefault().Delete(data);
     }
 
@@ -279,7 +319,8 @@ namespace he::assets
         if (AssetModel::FindOne(data->server->m_db, data->assetUuid, model))
         {
             const AssetTypeId typeId{ model.type };
-            const AssetTypeRegistry::Entry* assetType = AssetTypeRegistry::Get().FindAssetType(typeId);
+            const AssetTypeRegistry& registry = g_assetEditorModule->Registry().GetApi<AssetTypeRegistry>();
+            const AssetTypeRegistry::Entry* assetType = registry.FindAssetType(typeId);
 
             if (assetType)
             {

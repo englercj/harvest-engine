@@ -9,12 +9,6 @@
 
 namespace he::assets
 {
-    AssetTypeRegistry& AssetTypeRegistry::Get()
-    {
-        static AssetTypeRegistry s_registry;
-        return s_registry;
-    }
-
     const AssetTypeRegistry::ImporterEntry* AssetTypeRegistry::FindImporter(const TypeInfo& info)
     {
         for (const ImporterEntry& entry : m_importers)

@@ -2,6 +2,8 @@
 
 #include "he/assets/asset_importer.h"
 
+#include "he/core/enum_ops.h"
+
 namespace he::assets
 {
     Asset::Builder ImportResult::CreateAsset(StringView assetTypeName, StringView name)
@@ -33,5 +35,21 @@ namespace he::assets
         builder.Copy(asset);
         m_updated.PushBack(builder);
         return builder;
+    }
+}
+
+namespace he
+{
+    template <>
+    const char* AsString(assets::ImportError x)
+    {
+        switch (x)
+        {
+            case assets::ImportError::Success: return "Success";
+            case assets::ImportError::NeedSettings: return "Need Settings";
+            case assets::ImportError::Failure: return "Failure";
+        }
+
+        return "<unknown>";
     }
 }

@@ -192,8 +192,15 @@ namespace he::editor
     }
 
     // --------------------------------------------------------------------------------------------
-    SchemaEditContext::SchemaEditContext(const schema::DynamicStruct::Reader& data)
+    SchemaEditContext::SchemaEditContext(const schema::DynamicStruct::Reader& data) noexcept
     {
+        SetData(data);
+    }
+
+    void SchemaEditContext::SetData(const schema::DynamicStruct::Reader& data)
+    {
+        Clear();
+
         schema::Declaration::Data::Struct::Reader decl = data.StructSchema();
         schema::StructBuilder builder = m_builder.AddStruct(decl.GetDataFieldCount(), decl.GetDataWordSize(), decl.GetPointerCount());
         if (data.Struct().IsValid())
@@ -281,6 +288,14 @@ namespace he::editor
 
         --m_activeEditCount;
         UndoEdit(m_edits[m_activeEditCount]);
+    }
+
+    void SchemaEditContext::Clear()
+    {
+        m_edits.Clear();
+        m_activeEditCount = 0;
+        m_builder.Clear();
+        m_data = {};
     }
 
     void SchemaEditContext::RedoEdit(SchemaEdit& edit)

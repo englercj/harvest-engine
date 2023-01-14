@@ -12,7 +12,7 @@
             HE_KV(check_expr, #expr), \
             HE_KV(result, r_), \
             HE_KV(result_str, sqlite3_errstr(r_)), \
-            HE_KV(result_msg, sqlite3_errmsg(m_db)), ##__VA_ARGS__)) { \
+            HE_KV(last_db_msg, sqlite3_errmsg(m_db)), ##__VA_ARGS__)) { \
             return false; \
         } \
     } while (0)

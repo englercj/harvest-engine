@@ -2,11 +2,10 @@
 
 #pragma once
 
-#include "he/editor/dialogs/dialog.h"
-
 #include "he/core/delegate.h"
 #include "he/core/enum_ops.h"
 #include "he/core/string.h"
+#include "he/editor/dialogs/dialog.h"
 
 namespace he::editor
 {

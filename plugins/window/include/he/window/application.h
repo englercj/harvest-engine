@@ -28,9 +28,17 @@ namespace he::window
         /// for controling the view, but still allow the OS to handle the behavior of interacting
         /// with that custom UI.
         ///
-        /// \param[in] view The client view that is being hit test against.
-        /// \param[in] point The client-relative point of the hit to test.
+        /// \param[in] view The view that is being hit test against.
+        /// \param[in] point The view-relative point of the hit to test.
         /// \return The area of the hit in the view.
         virtual ViewHitArea OnHitTest(View* view, const Vec2i& point);
+
+        /// Allows the application to control the effect shown a user while performing a
+        /// drag-and-drop operation.
+        ///
+        /// \param view[in] The view the operation is in.
+        /// \param point[in] The view-relative point of the pointer.
+        /// \return The effect to display for this drag-and-drop operation.
+        virtual ViewDropEffect OnDragging(View* view);
     };
 }

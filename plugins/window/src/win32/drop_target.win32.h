@@ -29,6 +29,9 @@ namespace he::window::win32
         HRESULT STDMETHODCALLTYPE Drop(IDataObject* pDataObj, DWORD grfKeyState, POINTL pt, DWORD* pdwEffect) override;
 
     private:
+        void SetDropEffect(DWORD& dwEffect) const;
+
+    private:
         LONG m_refCount{ 1 };
         ViewImpl* m_view{ nullptr };
     };

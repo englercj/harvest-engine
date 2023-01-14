@@ -6,6 +6,7 @@
 #include "he/core/vector.h"
 #include "he/editor/dialogs/choice_dialog.h"
 #include "he/editor/dialogs/create_project_dialog.h"
+#include "he/editor/framework/imgui_theme.h"
 #include "he/editor/icons/icons_material_design.h"
 #include "he/editor/widgets/menu.h"
 #include "he/editor/widgets/buttons.h"
@@ -16,13 +17,11 @@ namespace he::editor
 {
     WelcomeDocument::WelcomeDocument(
         DialogService& dialogService,
-        ImGuiService& imguiService,
         ProjectService& projectService,
         SettingsService& settingsService,
         UniquePtr<OpenProjectCommand> openProjectCommand,
         UniquePtr<OpenProjectFileCommand> openProjectFileCommand) noexcept
         : m_dialogService(dialogService)
-        , m_imguiService(imguiService)
         , m_projectService(projectService)
         , m_settingsService(settingsService)
         , m_openProjectCommand(Move(openProjectCommand))
@@ -38,9 +37,9 @@ namespace he::editor
 
         if (ImGui::BeginChild("welcome_padding", ImVec2(0, 0), false, ImGuiWindowFlags_AlwaysUseWindowPadding))
         {
-            m_imguiService.PushFont(Font::RegularTitle);
+            PushFont(Font::RegularTitle);
             ImGui::TextUnformatted("Harvest Editor");
-            m_imguiService.PopFont();
+            PopFont();
 
             ImGui::NewLine();
             ImGui::NewLine();
@@ -60,9 +59,9 @@ namespace he::editor
 
     void WelcomeDocument::ShowStartSection()
     {
-        m_imguiService.PushFont(Font::RegularHeader);
+        PushFont(Font::RegularHeader);
         ImGui::TextUnformatted("Start");
-        m_imguiService.PopFont();
+        PopFont();
         ImGui::NewLine();
 
         if (CommandButton(ICON_MDI_FOLDER_OPEN " Open Project", *m_openProjectCommand))
@@ -80,9 +79,9 @@ namespace he::editor
 
     void WelcomeDocument::ShowRecentSection()
     {
-        m_imguiService.PushFont(Font::RegularHeader);
+        PushFont(Font::RegularHeader);
         ImGui::TextUnformatted("Recent");
-        m_imguiService.PopFont();
+        PopFont();
         ImGui::NewLine();
 
         Settings::Builder& settings = m_settingsService.GetSettings();

@@ -15,4 +15,10 @@ namespace he::window
 
         return ViewHitArea::Normal;
     }
+
+    ViewDropEffect Application::OnDragging(View* view)
+    {
+        HE_UNUSED(view);
+        return ViewDropEffect::Reject;
+    }
 }

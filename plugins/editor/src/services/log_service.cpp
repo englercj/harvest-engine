@@ -54,28 +54,28 @@ namespace he::editor
         return m_entriesHash.load();
     }
 
-    static void HashEntry(CRC32C& crc, const LogService::Entry& entry)
+    static void HashEntry(Hash<CRC32C>& crc, const LogService::Entry& entry)
     {
-        crc.Scalar(entry.timestamp.val);
-        crc.Scalar(AsUnderlyingType(entry.source.level));
-        crc.Scalar(entry.source.line);
-        crc.String(entry.source.file);
-        crc.String(entry.source.funcName);
-        crc.String(entry.source.category);
+        crc.Update(entry.timestamp.val);
+        crc.Update(entry.source.level);
+        crc.Update(entry.source.line);
+        crc.Update(entry.source.file);
+        crc.Update(entry.source.funcName);
+        crc.Update(entry.source.category);
 
         for (const KeyValue& kv : entry.kvs)
         {
             switch (kv.Kind())
             {
-                case he::KeyValue::ValueKind::Bool: crc.Scalar(kv.GetBool()); break;
-                case he::KeyValue::ValueKind::Enum: crc.Scalar(kv.GetEnumValue()); break;
-                case he::KeyValue::ValueKind::Int: crc.Scalar(kv.GetInt()); break;
-                case he::KeyValue::ValueKind::Uint: crc.Scalar(kv.GetUint()); break;
-                case he::KeyValue::ValueKind::Double: crc.Scalar(kv.GetDouble()); break;
+                case he::KeyValue::ValueKind::Bool: crc.Update(kv.GetBool()); break;
+                case he::KeyValue::ValueKind::Enum: crc.Update(kv.GetEnumValue()); break;
+                case he::KeyValue::ValueKind::Int: crc.Update(kv.GetInt()); break;
+                case he::KeyValue::ValueKind::Uint: crc.Update(kv.GetUint()); break;
+                case he::KeyValue::ValueKind::Double: crc.Update(kv.GetDouble()); break;
                 case he::KeyValue::ValueKind::String:
                 {
                     const String& str = kv.GetString();
-                    crc.Data(str.Data(), str.Size());
+                    crc.Update(str.Data(), str.Size());
                     break;
                 }
             }
@@ -98,7 +98,7 @@ namespace he::editor
         HashEntry(m_entriesCrc, entry);
 
         GetLevelCount(entry.source.level).fetch_add(1);
-        m_entriesHash.store(m_entriesCrc.Done());
+        m_entriesHash.store(m_entriesCrc.Value());
     }
 
     const std::atomic<uint32_t>& LogService::GetLevelCount(LogLevel level) const

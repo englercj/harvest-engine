@@ -34,6 +34,7 @@
 #include "he/core/hash.h"
 
 #include "he/core/compiler.h"
+#include "he/core/cpu.h"
 #include "he/core/macros.h"
 #include "he/core/memory_ops.h"
 #include "he/core/simd.h"
@@ -44,14 +45,14 @@
 #endif
 
 #if !defined(HE_ENABLE_HARDWARE_CRC32C)
-    #define HE_ENABLE_HARDWARE_CRC32C   (HE_CPU_X86 || HE_CPU_ARM_64)
+    #define HE_ENABLE_HARDWARE_CRC32C       (HE_CPU_X86 || HE_CPU_ARM_64)
 #endif
 
 namespace he
 {
-    // There are some assumptions in this file that `uintptr_t` will be 32 or 64 bits as we need
-    // and for all platforms Harvest supports this is true. These static asserts live here as
-    // documentation of the assumption we rely upon.
+    // There are some assumptions in this file that `uintptr_t` will be 32 or 64 bits, same as the
+    // pointer size, and for all platforms Harvest supports this is true. These static asserts live
+    // here as documentation of the assumption we rely upon.
 #if HE_CPU_64_BIT
     static_assert(sizeof(uintptr_t) == sizeof(uint64_t));
 #else
@@ -402,13 +403,7 @@ namespace he
 #endif
 
     // --------------------------------------------------------------------------------------------
-    CRC32C::ValueType CRC32C::HashString(const char* str, ValueType seed)
-    {
-        const uint32_t len = String::Length(str);
-        return HashData(str, len, seed);
-    }
-
-    CRC32C::ValueType CRC32C::HashData(const void* data, uint32_t len, ValueType seed)
+    uint32_t CRC32C::Mem(const void* data, uint32_t len, uint32_t seed)
     {
     #if !HE_ENABLE_HARDWARE_CRC32C
         return Crc32c_SW(data, len, seed);

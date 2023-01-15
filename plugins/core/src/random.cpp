@@ -78,43 +78,42 @@ namespace he
 
     uint64_t Random64::Next()
     {
-        m_state += 0xa0761d6478bd642full;
-        return wyhash::Mix(m_state, m_state ^ 0xe7037ed1a0b428dbull);
+        return wyhash::Rand(m_state);
     }
 
     uint64_t Random64::Next(uint64_t min, uint64_t max)
     {
         HE_ASSERT(max > min);
-        uint64_t r = Next();
-        uint64_t value = max - min;
-        wyhash::Mum(r, value);
-        return value + min;
+        const uint64_t r = Next();
+        const uint64_t k = max - min;
+        return wyhash::Rand0K(r, k) + min;
     }
 
     double Random64::Real()
     {
-        constexpr double Norm = 1.0 / (1ull << 52);
         const uint64_t r = Next();
-        return (r >> 12) * Norm;
+        return wyhash::Rand01(r);
     }
 
     double Random64::Real(double min, double max)
     {
         HE_ASSERT(max > min);
-        return (Real() * (max - min)) + min;
+        const double r = Real();
+        const double k = max - min;
+        return (r * k) + min;
     }
 
     double Random64::Gauss()
     {
-        constexpr double Norm = 1.0 / (1ull << 20);
         const uint64_t r = Next();
-        return ((r & 0x1fffff) + ((r >> 21) & 0x1fffff) + ((r >> 42) & 0x1fffff)) * Norm - 3.0;
+        return wyhash::Gauss(r);
     }
 
     double Random64::Gauss(double mean, double std)
     {
         HE_ASSERT(std > 0);
-        return Gauss() * std + mean;
+        const double r = Gauss();
+        return (r * std) + mean;
     }
 
     void Random64::Bytes(uint8_t* dst, uint32_t count)

@@ -8,6 +8,6 @@ namespace he
 {
     uint64_t StringView::HashCode() const noexcept
     {
-        return WyHash::HashData(Data(), Size());
+        return WyHash::Mem(Data(), Size());
     }
 }

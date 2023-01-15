@@ -156,7 +156,7 @@ namespace he::sqlite
             stmt.Bind(2, migration.description);
             stmt.Bind(3, static_cast<int64_t>(SystemClock::Now().val));
             stmt.Bind(4, time.val);
-            stmt.Bind(5, static_cast<int64_t>(FNV32::HashString(migration.sql)));
+            stmt.Bind(5, static_cast<int64_t>(FNV32::String(migration.sql)));
             stmt.Bind(6, success ? 1 : 0);
 
             if (!HE_VERIFY(stmt.Step() == StepResult::Done))

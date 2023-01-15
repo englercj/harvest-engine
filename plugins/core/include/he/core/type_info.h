@@ -43,7 +43,7 @@ namespace he
         [[nodiscard]] static constexpr TypeInfo Get()
         {
             constexpr StringView name = _GetTypeName<std::remove_cv_t<std::remove_reference_t<T>>>();
-            return { FNV64::HashStringN(name.Data(), name.Size()), name };
+            return { FNV64::String(name), name };
         }
 
     public:

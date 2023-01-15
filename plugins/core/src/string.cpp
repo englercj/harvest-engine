@@ -293,7 +293,7 @@ namespace he
 
     uint64_t String::HashCode() const noexcept
     {
-        return WyHash::HashData(Data(), Size());
+        return WyHash::Mem(Data(), Size());
     }
 
     int32_t String::CompareTo(const char* str, uint32_t len) const

@@ -19,7 +19,7 @@ namespace he::schema
     inline TypeId MakeTypeId(StringView name, TypeId parentId)
     {
         HE_ASSERT(HasFlag(parentId, TypeIdFlag));
-        return FNV64::HashData(name.Data(), name.Size(), parentId) | TypeIdFlag;
+        return FNV64::String(name, parentId) | TypeIdFlag;
     }
 
     constexpr bool IsTypeId(TypeId id)

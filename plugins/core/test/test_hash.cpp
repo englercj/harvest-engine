@@ -11,15 +11,15 @@ using namespace he;
 template <typename H>
 static void TestHashBool(bool value)
 {
-    H a, b;
+    Hash<H> a, b;
     typename H::ValueType v0, v1;
 
-    a.Scalar(value);
-    v0 = a.Done();
+    a.Update(value);
+    v0 = a.Value();
 
     uint8_t expected = value ? 1 : 0;
-    b.Data(&expected, sizeof(expected));
-    v1 = b.Done();
+    b.Update(&expected, sizeof(expected));
+    v1 = b.Value();
 
     HE_EXPECT_EQ(v0, v1);
 }
@@ -28,14 +28,14 @@ static void TestHashBool(bool value)
 template <typename H, typename T>
 static void TestHashScalar(T value)
 {
-    H a, b;
+    Hash<H> a, b;
     typename H::ValueType v0, v1;
 
-    a.Scalar(value);
-    v0 = a.Done();
+    a.Update(value);
+    v0 = a.Value();
 
-    b.Data(&value, sizeof(value));
-    v1 = b.Done();
+    b.Update(&value, sizeof(value));
+    v1 = b.Value();
 
     HE_EXPECT_EQ(v0, v1);
 }
@@ -44,14 +44,14 @@ static void TestHashScalar(T value)
 template <typename H>
 static void TestHashString(const char* value)
 {
-    H a, b;
+    Hash<H> a, b;
     typename H::ValueType v0, v1;
 
-    a.String(value);
-    v0 = a.Done();
+    a.Update(value);
+    v0 = a.Value();
 
-    b.Data(value, String::Length(value));
-    v1 = b.Done();
+    b.Update(value, String::Length(value));
+    v1 = b.Value();
 
     HE_EXPECT_EQ(v0, v1);
 }
@@ -80,20 +80,19 @@ static void TestHashAlgorithm()
     TestHashString<H>("foobarabcdefghiglmnop");
 
     // Reset allows for reuse
-    {
-        H a;
-        typename H::ValueType v0, v1;
+    Hash<H> a;
+    typename H::ValueType v0, v1;
 
-        const char* x = "foobar";
-        a.String(x);
-        v0 = a.Done();
+    const char* x = "foobar";
+    a.Update(x);
+    v0 = a.Value();
 
-        a.Reset();
-        a.String(x);
-        v1 = a.Done();
+    a.Reset();
 
-        HE_EXPECT_EQ(v0, v1);
-    }
+    a.Update(x);
+    v1 = a.Value();
+
+    HE_EXPECT_EQ(v0, v1);
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -113,23 +112,23 @@ HE_TEST(core, hash, FNV32)
 {
     TestHashAlgorithm<FNV32>();
 
-    HE_EXPECT_EQ(FNV32::HashString(""), 0x811c9dc5);
-    HE_EXPECT_EQ(FNV32::HashString("a"), 0xe40c292c);
-    HE_EXPECT_EQ(FNV32::HashString("foobar"), 0xbf9cf968);
-    HE_EXPECT_EQ(FNV32::HashString("foobarabcdefghiglmnop"), 0xaec8b08c);
-    HE_EXPECT_EQ(FNV32::HashString("\200"), 0x850b939f);
+    HE_EXPECT_EQ(FNV32::String(""), 0x811c9dc5);
+    HE_EXPECT_EQ(FNV32::String("a"), 0xe40c292c);
+    HE_EXPECT_EQ(FNV32::String("foobar"), 0xbf9cf968);
+    HE_EXPECT_EQ(FNV32::String("foobarabcdefghiglmnop"), 0xaec8b08c);
+    HE_EXPECT_EQ(FNV32::String("\200"), 0x850b939f);
 
-    HE_EXPECT_EQ(FNV32::HashData("foobar", 6), 0xbf9cf968);
-    HE_EXPECT_EQ(FNV32::HashScalar('\200'), 0x850b939f);
+    HE_EXPECT_EQ(FNV32::Mem("foobar", 6), 0xbf9cf968);
+    HE_EXPECT_EQ(FNV32::Mem("\200", 1), 0x850b939f);
 
-    static_assert(FNV32::HashString("foobar") == 0xbf9cf968, "");
-    static_assert(FNV32::HashString("foobarabcdefghiglmnop") == 0xaec8b08c, "");
-    static_assert(FNV32::HashString("\200") == 0x850b939f, "");
-    static_assert(FNV32::HashStringN("apple", 1) == 0xe40c292c, "");
+    static_assert(FNV32::String("foobar") == 0xbf9cf968, "");
+    static_assert(FNV32::String("foobarabcdefghiglmnop") == 0xaec8b08c, "");
+    static_assert(FNV32::String("\200") == 0x850b939f, "");
+    static_assert(FNV32::String({ "apple", 1 }) == 0xe40c292c, "");
 
-    uint32_t h = FNV32::HashString("abc");
-    h = FNV32::HashString("def", h);
-    HE_EXPECT_EQ(h, FNV32::HashString("abcdef"));
+    uint32_t h = FNV32::String("abc");
+    h = FNV32::String("def", h);
+    HE_EXPECT_EQ(h, FNV32::String("abcdef"));
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -137,23 +136,23 @@ HE_TEST(core, hash, FNV64)
 {
     TestHashAlgorithm<FNV64>();
 
-    HE_EXPECT_EQ(FNV64::HashString(""), 0xcbf29ce484222325);
-    HE_EXPECT_EQ(FNV64::HashString("a"), 0xaf63dc4c8601ec8c);
-    HE_EXPECT_EQ(FNV64::HashString("foobar"), 0x85944171f73967e8);
-    HE_EXPECT_EQ(FNV64::HashString("foobarabcdefghiglmnop"), 0x9c6beb459f40f26c);
-    HE_EXPECT_EQ(FNV64::HashString("\200"), 0xaf643d4c8602915f);
+    HE_EXPECT_EQ(FNV64::String(""), 0xcbf29ce484222325);
+    HE_EXPECT_EQ(FNV64::String("a"), 0xaf63dc4c8601ec8c);
+    HE_EXPECT_EQ(FNV64::String("foobar"), 0x85944171f73967e8);
+    HE_EXPECT_EQ(FNV64::String("foobarabcdefghiglmnop"), 0x9c6beb459f40f26c);
+    HE_EXPECT_EQ(FNV64::String("\200"), 0xaf643d4c8602915f);
 
-    HE_EXPECT_EQ(FNV64::HashData("foobar", 6), 0x85944171f73967e8);
-    HE_EXPECT_EQ(FNV64::HashScalar('\200'), 0xaf643d4c8602915f);
+    HE_EXPECT_EQ(FNV64::Mem("foobar", 6), 0x85944171f73967e8);
+    HE_EXPECT_EQ(FNV64::Mem("\200", 1), 0xaf643d4c8602915f);
 
-    static_assert(FNV64::HashString("foobar") == 0x85944171f73967e8, "");
-    static_assert(FNV64::HashString("foobarabcdefghiglmnop") == 0x9c6beb459f40f26c, "");
-    static_assert(FNV64::HashString("\200") == 0xaf643d4c8602915f, "");
-    static_assert(FNV64::HashStringN("apple", 1) == 0xaf63dc4c8601ec8c, "");
+    static_assert(FNV64::String("foobar") == 0x85944171f73967e8, "");
+    static_assert(FNV64::String("foobarabcdefghiglmnop") == 0x9c6beb459f40f26c, "");
+    static_assert(FNV64::String("\200") == 0xaf643d4c8602915f, "");
+    static_assert(FNV64::String({ "apple", 1 }) == 0xaf63dc4c8601ec8c, "");
 
-    uint64_t h = FNV64::HashString("abc");
-    h = FNV64::HashString("def", h);
-    HE_EXPECT_EQ(h, FNV64::HashString("abcdef"));
+    uint64_t h = FNV64::String("abc");
+    h = FNV64::String("def", h);
+    HE_EXPECT_EQ(h, FNV64::String("abcdef"));
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -161,18 +160,15 @@ HE_TEST(core, hash, CRC32C)
 {
     TestHashAlgorithm<CRC32C>();
 
-    HE_EXPECT_EQ(CRC32C::HashString(""), 0);
-    HE_EXPECT_EQ(CRC32C::HashString("a"), 0xc1d04330);
-    HE_EXPECT_EQ(CRC32C::HashString("foobar"), 0x0d5f5c7f);
-    HE_EXPECT_EQ(CRC32C::HashString("foobarabcdefghiglmnop"), 0xfef874d9);
-    HE_EXPECT_EQ(CRC32C::HashString("\200"), 0xd08b6829);
+    HE_EXPECT_EQ(CRC32C::Mem("", 0), 0);
+    HE_EXPECT_EQ(CRC32C::Mem("a", 1), 0xc1d04330);
+    HE_EXPECT_EQ(CRC32C::Mem("foobar", 6), 0x0d5f5c7f);
+    HE_EXPECT_EQ(CRC32C::Mem("foobarabcdefghiglmnop", 21), 0xfef874d9);
+    HE_EXPECT_EQ(CRC32C::Mem("\200", 1), 0xd08b6829);
 
-    HE_EXPECT_EQ(CRC32C::HashData("foobar", 6), 0x0d5f5c7f);
-    HE_EXPECT_EQ(CRC32C::HashScalar('\200'), 0xd08b6829);
-
-    uint32_t h = CRC32C::HashString("abc");
-    h = CRC32C::HashString("def", h);
-    HE_EXPECT_EQ(h, CRC32C::HashString("abcdef"));
+    uint32_t h = CRC32C::Mem("abc", 3);
+    h = CRC32C::Mem("def", 3, h);
+    HE_EXPECT_EQ(h, CRC32C::Mem("abcdef", 6));
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -180,14 +176,14 @@ HE_TEST(core, hash, WyHash)
 {
     TestHashAlgorithm<WyHash>();
 
-    HE_EXPECT_EQ(WyHash::HashString(""), 0x0409638ee2bde459);
-    HE_EXPECT_EQ(WyHash::HashString("a"), 0x28d2053309d28531);
-    HE_EXPECT_EQ(WyHash::HashString("foobar"), 0x0b9d35b96e1f6fe2);
-    HE_EXPECT_EQ(WyHash::HashString("foobarabcdefghiglmnop"), 0x698f1bc80e749f46);
-    HE_EXPECT_EQ(WyHash::HashString("\200"), 0x26f0dff3757426db);
+    HE_EXPECT_EQ(WyHash::Mem("", 0), 0x0409638ee2bde459);
+    HE_EXPECT_EQ(WyHash::Mem("a", 1), 0x28d2053309d28531);
+    HE_EXPECT_EQ(WyHash::Mem("foobar", 6), 0x0b9d35b96e1f6fe2);
+    HE_EXPECT_EQ(WyHash::Mem("foobarabcdefghiglmnop", 21), 0x698f1bc80e749f46);
+    HE_EXPECT_EQ(WyHash::Mem("\200", 1), 0x26f0dff3757426db);
 
-    HE_EXPECT_EQ(WyHash::HashData("foobar", 6), 0x0b9d35b96e1f6fe2);
-    HE_EXPECT_EQ(WyHash::HashScalar('\200'), 0x26f0dff3757426db);
+    HE_EXPECT_EQ(WyHash::Mem("foobar", 6), 0x0b9d35b96e1f6fe2);
+    HE_EXPECT_EQ(WyHash::Mem("\200", 1), 0x26f0dff3757426db);
 }
 
 // ------------------------------------------------------------------------------------------------

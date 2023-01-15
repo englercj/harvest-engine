@@ -25,7 +25,7 @@ namespace he
         ///
         /// \param str The string to refer to.
         constexpr StringView(const char* str) noexcept
-            : m_span(str, String::LengthConst(str))
+            : m_span(str, std::is_constant_evaluated() ? String::LengthConst(str) : String::Length(str))
         {}
 
         /// Construct a string view from the range `[begin, end)`.

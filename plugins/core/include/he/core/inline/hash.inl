@@ -5,244 +5,50 @@ namespace he
     // --------------------------------------------------------------------------------------------
     // FNV32
 
-    constexpr uint32_t _FNV32Prime = 0x1000193ul;
-
-    constexpr FNV32::ValueType FNV32::HashString(const char* str, ValueType h)
-    {
-        while (char ch = *str++)
-            h = _FNV32Prime * (h ^ static_cast<uint8_t>(ch));
-        return h;
-    }
-
-    constexpr FNV32::ValueType FNV32::HashStringN(const char* str, uint32_t len, ValueType h)
-    {
-        while (len-- > 0)
-            h = _FNV32Prime * (h ^ static_cast<uint8_t>(*str++));
-        return h;
-    }
-
-    inline FNV32::ValueType FNV32::HashData(const void* data, uint32_t len, ValueType h)
+    inline uint32_t FNV32::Mem(const void* data, uint32_t len, uint32_t h)
     {
         const uint8_t* s = static_cast<const uint8_t*>(data);
         while (len-- > 0)
-            h = _FNV32Prime * (h ^ *s++);
+            h = Prime * (h ^ *s++);
         return h;
     }
 
-    template <>
-    inline FNV32::ValueType FNV32::HashScalar(const bool& b, ValueType h)
+    constexpr uint32_t FNV32::String(const char* str, uint32_t h)
     {
-        h = _FNV32Prime * (h ^ static_cast<uint8_t>(b));
+        while (const char ch = *str++)
+            h = Prime * (h ^ static_cast<uint8_t>(ch));
         return h;
     }
 
-    template <Arithmetic T>
-    inline FNV32::ValueType FNV32::HashScalar(const T& obj, ValueType h)
+    constexpr uint32_t FNV32::String(StringView str, uint32_t h)
     {
-        const uint8_t* s = reinterpret_cast<const uint8_t*>(&obj);
-        for (uint32_t i = 0; i < sizeof(T); ++i)
-            h = _FNV32Prime * (h ^ *s++);
+        for (const char ch : str)
+            h = Prime * (h ^ static_cast<uint8_t>(ch));
         return h;
-    }
-
-    inline FNV32::FNV32(ValueType seed)
-    {
-        Reset(seed);
-    }
-
-    template <Arithmetic T>
-    inline FNV32& FNV32::Scalar(const T& obj)
-    {
-        m_state = HashScalar(obj, m_state);
-        return *this;
-    }
-
-    inline FNV32& FNV32::String(const char* str)
-    {
-        m_state = HashString(str, m_state);
-        return *this;
-    }
-
-    inline FNV32& FNV32::Data(const void* data, uint32_t len)
-    {
-        m_state = HashData(data, len, m_state);
-        return *this;
-    }
-
-    inline FNV32& FNV32::Reset(ValueType seed)
-    {
-        m_state = seed;
-        return *this;
-    }
-
-    inline FNV32::ValueType FNV32::Done()
-    {
-        return m_state;
     }
 
     // --------------------------------------------------------------------------------------------
     // FNV64
 
-    constexpr uint64_t _FNV64Prime = 0x100000001b3ull;
-
-    constexpr FNV64::ValueType FNV64::HashString(const char* s, ValueType h)
-    {
-        while (char ch = *s++)
-            h = _FNV64Prime * (h ^ static_cast<uint8_t>(ch));
-        return h;
-    }
-
-    constexpr FNV64::ValueType FNV64::HashStringN(const char* str, uint32_t len, ValueType h)
-    {
-        while (len-- > 0)
-            h = _FNV64Prime * (h ^ static_cast<uint8_t>(*str++));
-        return h;
-    }
-
-    inline FNV64::ValueType FNV64::HashData(const void* data, uint32_t len, ValueType h)
+    inline uint64_t FNV64::Mem(const void* data, uint32_t len, uint64_t h)
     {
         const uint8_t* s = static_cast<const uint8_t*>(data);
         while (len-- > 0)
-            h = _FNV64Prime * (h ^ *s++);
+            h = Prime * (h ^ *s++);
         return h;
     }
 
-    template <>
-    inline FNV64::ValueType FNV64::HashScalar(const bool& b, ValueType h)
+    constexpr uint64_t FNV64::String(const char* s, uint64_t h)
     {
-        h = _FNV64Prime * (h ^ static_cast<uint8_t>(b));
+        while (const char ch = *s++)
+            h = Prime * (h ^ static_cast<uint8_t>(ch));
         return h;
     }
 
-    template <Arithmetic T>
-    inline FNV64::ValueType FNV64::HashScalar(const T& obj, ValueType h)
+    constexpr uint64_t FNV64::String(StringView str, uint64_t h)
     {
-        const uint8_t* s = reinterpret_cast<const uint8_t*>(&obj);
-        for (uint32_t i = 0; i < sizeof(T); ++i)
-            h = _FNV64Prime * (h ^ *s++);
+        for (const char ch : str)
+            h = Prime * (h ^ static_cast<uint8_t>(ch));
         return h;
-    }
-
-    inline FNV64::FNV64(ValueType seed)
-    {
-        Reset(seed);
-    }
-
-    template <Arithmetic T>
-    inline FNV64& FNV64::Scalar(const T& obj)
-    {
-        m_state = HashScalar(obj, m_state);
-        return *this;
-    }
-
-    inline FNV64& FNV64::String(const char* str)
-    {
-        m_state = HashString(str, m_state);
-        return *this;
-    }
-
-    inline FNV64& FNV64::Data(const void* data, uint32_t len)
-    {
-        m_state = HashData(data, len, m_state);
-        return *this;
-    }
-
-    inline FNV64& FNV64::Reset(ValueType seed)
-    {
-        m_state = seed;
-        return *this;
-    }
-
-    inline FNV64::ValueType FNV64::Done()
-    {
-        return m_state;
-    }
-
-    // --------------------------------------------------------------------------------------------
-    // CRC32C
-
-    template <Arithmetic T>
-    inline CRC32C::ValueType CRC32C::HashScalar(const T& obj, ValueType seed)
-    {
-        return HashData(&obj, sizeof(T), seed);
-    }
-
-    inline CRC32C::CRC32C(ValueType seed)
-    {
-        Reset(seed);
-    }
-
-    template <Arithmetic T>
-    inline CRC32C& CRC32C::Scalar(const T& obj)
-    {
-        m_state = HashScalar(obj, m_state);
-        return *this;
-    }
-
-    inline CRC32C& CRC32C::String(const char* str)
-    {
-        m_state = HashString(str, m_state);
-        return *this;
-    }
-
-    inline CRC32C& CRC32C::Data(const void* data, uint32_t len)
-    {
-        m_state = HashData(data, len, m_state);
-        return *this;
-    }
-
-    inline CRC32C& CRC32C::Reset(ValueType seed)
-    {
-        m_state = seed;
-        return *this;
-    }
-
-    inline CRC32C::ValueType CRC32C::Done()
-    {
-        return m_state;
-    }
-
-    // --------------------------------------------------------------------------------------------
-    // WyHash
-
-    template <Arithmetic T>
-    inline WyHash::ValueType WyHash::HashScalar(const T& obj, ValueType seed)
-    {
-        return HashData(&obj, sizeof(T), seed);
-    }
-
-    inline WyHash::WyHash(ValueType seed)
-    {
-        Reset(seed);
-    }
-
-    template <Arithmetic T>
-    inline WyHash& WyHash::Scalar(const T& obj)
-    {
-        m_state = HashScalar(obj, m_state);
-        return *this;
-    }
-
-    inline WyHash& WyHash::String(const char* str)
-    {
-        m_state = HashString(str, m_state);
-        return *this;
-    }
-
-    inline WyHash& WyHash::Data(const void* data, uint32_t len)
-    {
-        m_state = HashData(data, len, m_state);
-        return *this;
-    }
-
-    inline WyHash& WyHash::Reset(ValueType seed)
-    {
-        m_state = seed;
-        return *this;
-    }
-
-    inline WyHash::ValueType WyHash::Done()
-    {
-        return m_state;
     }
 }

@@ -129,20 +129,6 @@ namespace he
     // --------------------------------------------------------------------------------------------
     // Concepts
 
-    template <typename T, typename E>
-    concept ContiguousRange = requires(T& t)
-    {
-        { t.Data() } -> std::convertible_to<std::add_pointer_t<E>>;
-        { t.Size() } -> std::convertible_to<uint32_t>;
-    };
-
-    template <typename T, typename E>
-    concept StdContiguousRange = requires(T& t)
-    {
-        { t.data() } -> std::convertible_to<std::add_pointer_t<E>>;
-        { t.size() } -> std::convertible_to<size_t>;
-    };
-
     template <typename T>
     concept Arithmetic = std::is_arithmetic_v<T>;
 
@@ -154,4 +140,35 @@ namespace he
 
     template <typename T, typename... U>
     concept AnyOf = (std::same_as<T, U> || ...);
+
+    template <typename T, typename E>
+    concept ContiguousRange = requires(T & t)
+    {
+        { t.Data() } -> std::convertible_to<std::add_pointer_t<E>>;
+        { t.Size() } -> std::convertible_to<uint32_t>;
+    };
+
+    template <typename T, typename E>
+    concept StdContiguousRange = requires(T & t)
+    {
+        { t.data() } -> std::convertible_to<std::add_pointer_t<E>>;
+        { t.size() } -> std::convertible_to<size_t>;
+    };
+
+    template <typename T>
+    concept ArithmeticRangePtr = std::is_pointer_v<T> && std::is_arithmetic_v<std::remove_pointer_t<T>>;
+
+    template <typename T>
+    concept ArithmeticRange = requires(T & t)
+    {
+        { t.Data() } -> ArithmeticRangePtr;
+        { t.Size() } -> std::convertible_to<uint32_t>;
+    };
+
+    template <typename T>
+    concept StdArithmeticRange = requires(T & t)
+    {
+        { t.data() } -> ArithmeticRangePtr;
+        { t.size() } -> std::convertible_to<size_t>;
+    };
 }

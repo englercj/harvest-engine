@@ -4,6 +4,8 @@
 
 #include "he/core/compiler.h"
 #include "he/core/memory_ops.h"
+#include "he/core/string.h"
+#include "he/core/string_view.h"
 #include "he/core/type_traits.h"
 #include "he/core/types.h"
 #include "he/core/utils.h"
@@ -60,133 +62,86 @@ namespace he
     }
 
     // --------------------------------------------------------------------------------------------
-    // Fowler–Noll–Vo (FNV-1a) 32-bit non-cryptographic hash
-    class FNV32
+    // Streaming hash implementation that allows for incremental updates and a final value.
+    template <typename Algo>
+    class Hash
     {
     public:
-        using ValueType = uint32_t;
-        static constexpr ValueType Seed{ 0x811c9dc5 };
-
-        static constexpr ValueType HashString(const char* str, ValueType seed = Seed);
-        static constexpr ValueType HashStringN(const char* str, uint32_t len, ValueType seed = Seed);
-
-        static ValueType HashData(const void* data, uint32_t len, ValueType seed = Seed);
-
-        template <Arithmetic T>
-        static ValueType HashScalar(const T& obj, ValueType seed = Seed);
+        using ValueType = typename Algo::ValueType;
 
     public:
-        FNV32(ValueType seed = Seed);
+        explicit Hash(ValueType seed = Algo::DefaultSeed) noexcept : m_state(seed) {}
 
-        template <Arithmetic T>
-        FNV32& Scalar(const T& obj);
+        inline void Reset(ValueType seed = Algo::DefaultSeed) { m_state = seed; }
 
-        FNV32& String(const char* str);
-        FNV32& Data(const void* data, uint32_t len);
+        template <typename T> requires(Arithmetic<T> || Enum<T>)
+        inline Hash& Update(const T& value) { m_state = Algo::Mem(&value, sizeof(T), m_state); return *this; }
 
-        FNV32& Reset(ValueType seed = Seed);
+        template <ArithmeticRange R>
+        inline Hash& Update(const R& range) { m_state = Algo::Mem(range.Data(), range.Size(), m_state); return *this; }
 
-        ValueType Done();
+        template <StdArithmeticRange R>
+        inline Hash& Update(const R& range) { m_state = Algo::Mem(range.data(), range.size(), m_state); return *this; }
+
+        inline Hash& Update(const char* str) { m_state = Algo::Mem(str, String::Length(str), m_state); return *this; }
+
+        inline Hash& Update(const void* data, uint32_t len) { m_state = Algo::Mem(data, len, m_state); return *this; }
+
+        inline ValueType Value() { return m_state; }
 
     private:
         ValueType m_state;
+    };
+
+    // --------------------------------------------------------------------------------------------
+    // Fowler–Noll–Vo (FNV-1a) 32-bit non-cryptographic hash
+    struct FNV32
+    {
+        using ValueType = uint32_t;
+
+        static constexpr uint32_t DefaultSeed{ 0x811c9dc5 };
+        static constexpr uint32_t Prime{ 0x1000193 };
+
+        static uint32_t Mem(const void* data, uint32_t len, uint32_t seed = DefaultSeed);
+        static constexpr uint32_t String(const char* str, uint32_t seed = DefaultSeed);
+        static constexpr uint32_t String(StringView view, uint32_t seed = DefaultSeed);
     };
 
     // --------------------------------------------------------------------------------------------
     // Fowler–Noll–Vo (FNV-1a) 64-bit non-cryptographic hash
-    class FNV64
+    struct FNV64
     {
-    public:
         using ValueType = uint64_t;
-        static constexpr ValueType Seed{ 0xcbf29ce484222325 };
 
-        static constexpr ValueType HashString(const char* str, ValueType seed = Seed);
-        static constexpr ValueType HashStringN(const char* str, uint32_t len, ValueType seed = Seed);
+        static constexpr uint64_t DefaultSeed{ 0xcbf29ce484222325 };
+        static constexpr uint64_t Prime{ 0x100000001b3 };
 
-        static ValueType HashData(const void* data, uint32_t len, ValueType seed = Seed);
-
-        template <Arithmetic T>
-        static ValueType HashScalar(const T& obj, ValueType seed = Seed);
-
-    public:
-        FNV64(ValueType seed = Seed);
-
-        template <Arithmetic T>
-        FNV64& Scalar(const T& obj);
-
-        FNV64& String(const char* str);
-        FNV64& Data(const void* data, uint32_t len);
-
-        FNV64& Reset(ValueType seed = Seed);
-
-        ValueType Done();
-
-    private:
-        ValueType m_state;
+        static uint64_t Mem(const void* data, uint32_t len, uint64_t seed = DefaultSeed);
+        static constexpr uint64_t String(const char* str, uint64_t seed = DefaultSeed);
+        static constexpr uint64_t String(StringView view, uint64_t seed = DefaultSeed);
     };
 
     // --------------------------------------------------------------------------------------------
     // CRC-32C (Castagnoli) 32-bit non-cryptographic cyclic redundancy check
-    class CRC32C
+    struct CRC32C
     {
-    public:
         using ValueType = uint32_t;
-        static constexpr ValueType Seed{ 0 };
 
-        static ValueType HashString(const char* str, ValueType seed = Seed);
-        static ValueType HashData(const void* data, uint32_t len, ValueType seed = Seed);
+        static constexpr uint32_t DefaultSeed{ 0 };
 
-        template <Arithmetic T>
-        static ValueType HashScalar(const T& obj, ValueType seed = Seed);
-
-    public:
-        CRC32C(ValueType seed = Seed);
-
-        template <Arithmetic T>
-        CRC32C& Scalar(const T& obj);
-
-        CRC32C& String(const char* str);
-        CRC32C& Data(const void* data, uint32_t len);
-
-        CRC32C& Reset(ValueType seed = Seed);
-
-        ValueType Done();
-
-    private:
-        ValueType m_state;
+        static uint32_t Mem(const void* data, uint32_t len, uint32_t seed = DefaultSeed);
     };
 
     // --------------------------------------------------------------------------------------------
     // WyHash 64-bit non-cryptographic avalanching hash by Wang Yi
     // See: https://github.com/wangyi-fudan/wyhash
-    class WyHash
+    struct WyHash
     {
-    public:
         using ValueType = uint64_t;
-        static constexpr ValueType Seed{ 0 };
 
-        static ValueType HashString(const char* str, ValueType seed = Seed);
-        static ValueType HashData(const void* data, uint32_t len, ValueType seed = Seed);
+        static constexpr uint32_t DefaultSeed{ 0 };
 
-        template <Arithmetic T>
-        static ValueType HashScalar(const T& obj, ValueType seed = Seed);
-
-    public:
-        WyHash(ValueType seed = Seed);
-
-        template <Arithmetic T>
-        WyHash& Scalar(const T& obj);
-
-        WyHash& String(const char* str);
-        WyHash& Data(const void* data, uint32_t len);
-
-        WyHash& Reset(ValueType seed = Seed);
-
-        ValueType Done();
-
-    private:
-        uint64_t m_state;
-        uint64_t m_secret[4];
+        static uint64_t Mem(const void* data, uint32_t len, uint64_t seed = DefaultSeed);
     };
 
     // --------------------------------------------------------------------------------------------

@@ -480,7 +480,7 @@ namespace he::assets
             return false;
 
         schema::AnyStruct::Reader ptr = asset.GetImportData();
-        const uint32_t importDataHash = ptr.IsNull() ? 0 : FNV32::HashData(ptr.Target(), ptr.StructWordSize());
+        const uint32_t importDataHash = ptr.IsNull() ? 0 : FNV32::Mem(ptr.Target(), ptr.StructWordSize());
         if (!stmt->Bind(6, importDataHash))
             return false;
 

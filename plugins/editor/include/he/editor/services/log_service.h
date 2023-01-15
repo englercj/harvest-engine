@@ -68,6 +68,6 @@ namespace he::editor
 
         Mutex m_mutex{};
         std::deque<Entry> m_entries{};
-        CRC32C m_entriesCrc{};
+        Hash<CRC32C> m_entriesCrc{};
     };
 }

@@ -1,6 +1,6 @@
 // Copyright Chad Engler
 
-// This is a reduced and cleaned up implementation of wyhash by Wang Yi.
+// This is a simplified implementation of wyhash by Wang Yi.
 // https://github.com/wangyi-fudan/wyhash
 //
 // License:
@@ -17,18 +17,13 @@
 #include "he/core/memory_ops.h"
 #include "he/core/types.h"
 
-#if HE_COMPILER_MSVC
+#if HE_COMPILER_MSVC && HE_CPU_X86_64
     extern "C" unsigned __int64 _umul128(unsigned __int64, unsigned __int64, unsigned __int64*);
     #pragma intrinsic(_umul128)
 #endif
 
 namespace he::wyhash
 {
-    HE_FORCE_INLINE uint64_t Rot(uint64_t x)
-    {
-        return (x >> 32) | (x << 32);
-    }
-
     HE_FORCE_INLINE void Mum(uint64_t& a, uint64_t& b)
     {
     #if defined(__SIZEOF_INT128__)
@@ -79,6 +74,30 @@ namespace he::wyhash
     [[nodiscard]] HE_FORCE_INLINE uint64_t R3(const uint8_t* p, size_t k)
     {
         return (static_cast<uint64_t>(p[0]) << 16) | (static_cast<uint64_t>(p[k >> 1]) << 8) | p[k - 1];
+    }
+
+    [[nodiscard]] HE_FORCE_INLINE uint64_t Rand(uint64_t& seed)
+    {
+        seed += 0xa0761d6478bd642full;
+        return Mix(seed, seed ^ 0xe7037ed1a0b428dbull);
+    }
+
+    [[nodiscard]] HE_FORCE_INLINE uint64_t Rand0K(uint64_t r, uint64_t k)
+    {
+        Mum(r, k);
+        return k;
+    }
+
+    [[nodiscard]] HE_FORCE_INLINE double Rand01(uint64_t r)
+    {
+        constexpr double Norm = 1.0 / (1ull << 52);
+        return (r >> 12) * Norm;
+    }
+
+    [[nodiscard]] HE_FORCE_INLINE double Gauss(uint64_t r)
+    {
+        constexpr double Norm = 1.0 / (1ull << 20);
+        return ((r & 0x1fffff) + ((r >> 21) & 0x1fffff) + ((r >> 42) & 0x1fffff)) * Norm - 3.0;
     }
 
     [[nodiscard]] inline uint64_t Hash(const void* key, size_t len, uint64_t seed)

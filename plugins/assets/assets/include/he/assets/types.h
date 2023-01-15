@@ -89,8 +89,8 @@ namespace he::assets
     {
         constexpr _HashId() : val(0) {}
         constexpr explicit _HashId(uint32_t v) : val(v) {}
-        constexpr explicit _HashId(const char* s) : val(FNV32::HashString(s)) {}
-        constexpr explicit _HashId(StringView s) : val(FNV32::HashStringN(s.Data(), s.Size())) {}
+        constexpr explicit _HashId(const char* s) : val(FNV32::String(s)) {}
+        constexpr explicit _HashId(StringView s) : val(FNV32::String(s)) {}
 
         constexpr bool operator==(const _HashId& x) const { return val == x.val; }
         constexpr bool operator!=(const _HashId& x) const { return val != x.val; }

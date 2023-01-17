@@ -1351,7 +1351,30 @@ namespace he::schema
                 HE_ASSERT(type.GetData().IsString());
 
                 const String::Reader str = value.GetData().GetString();
-                m_writer.Write("\"{}\"", str.AsView());
+                m_writer.Write('"');
+                for (char ch : str)
+                {
+                    switch (ch)
+                    {
+                        case '\'': m_writer.Write("\\\'"); break;
+                        case '\"': m_writer.Write("\\\""); break;
+                        case '\?': m_writer.Write("\\?"); break;
+                        case '\\': m_writer.Write("\\\\"); break;
+                        case '\a': m_writer.Write("\\a"); break;
+                        case '\b': m_writer.Write("\\b"); break;
+                        case '\f': m_writer.Write("\\f"); break;
+                        case '\n': m_writer.Write("\\n"); break;
+                        case '\r': m_writer.Write("\\r"); break;
+                        case '\t': m_writer.Write("\\t"); break;
+                        case '\v': m_writer.Write("\\v"); break;
+                        default:
+                            if (IsPrint(ch))
+                                m_writer.Write(ch);
+                            else
+                                m_writer.Write("\\x{:02x}", static_cast<uint8_t>(ch));
+                    }
+                }
+                m_writer.Write('"');
                 break;
             }
             case Value::Data::UnionTag::Enum:

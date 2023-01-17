@@ -32,12 +32,25 @@ namespace he::editor
         , m_dialogService(dialogService)
         , m_imguiService(imguiService)
     {
-        m_assetService.OnDbInit().Attach<&AssetBrowser::HandleDbInitialized>(this);
+        m_dbInitBinding = m_assetService.OnDbInit().Attach<&AssetBrowser::HandleDbInitialized>(this);
         HandleDbInitialized(m_assetService.AssetDB().IsInitialized());
+    }
+
+    AssetBrowser::~AssetBrowser() noexcept
+    {
+        m_dbInitBinding.Detach();
     }
 
     void AssetBrowser::Show()
     {
+        assets::AssetDatabase& db = m_assetService.AssetDB();
+
+        if (!db.IsInitialized())
+        {
+            ImGui::TextUnformatted("No project is currently open.");
+            return;
+        }
+
         ShowActionBar();
 
         if (ImGui::BeginTable("##asset_browser_layout", 2, ImGuiTableFlags_Resizable))
@@ -77,20 +90,40 @@ namespace he::editor
         ImGui::SameLine();
         ImGui::Button(ICON_MDI_ARROW_RIGHT);
 
-        // TODO: breadcrumb
         ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(style.ItemSpacing.x / 2, style.ItemSpacing.y / 2));
         ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(style.FramePadding.y / 2, style.FramePadding.y));
+        ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0);
         ImGui::PushStyleColor(ImGuiCol_Button, ImVec4());
         ImGui::SameLine(0.0f, 16.0f * dpiScale);
         ImGui::TextUnformatted(ICON_MDI_FOLDER);
+
         ImGui::SameLine();
-        ImGui::Button("assets");
-        ImGui::SameLine();
-        ImGui::TextUnformatted(ICON_MDI_CHEVRON_RIGHT);
-        ImGui::SameLine();
-        ImGui::Button("test");
+        if (ImGui::Button(m_root.name.Data()))
+            m_selectedPath.Clear();
+
+        if (!m_selectedPath.IsEmpty())
+        {
+            const char* begin = m_selectedPath.Data();
+            do
+            {
+                const char* end = String::Find(begin, '/');
+                if (end == nullptr)
+                    end = m_selectedPath.End();
+
+                ImGui::SameLine();
+                ImGui::TextUnformatted(ICON_MDI_CHEVRON_RIGHT);
+
+                m_buffer.Assign(begin, end);
+                ImGui::SameLine();
+                if (ImGui::Button(m_buffer.Data()))
+                    m_selectedPath.Resize(static_cast<uint32_t>(end - m_selectedPath.Begin()));
+
+                begin = end + 1;
+            } while (begin < m_selectedPath.End());
+        }
+
         ImGui::PopStyleColor();
-        ImGui::PopStyleVar(2);
+        ImGui::PopStyleVar(3);
 
         const char* settingsBtnText = ICON_MDI_COG " Settings " ICON_MDI_CHEVRON_DOWN;
         const float btnWidth = ImGui::CalcTextSize(settingsBtnText).x;
@@ -112,7 +145,7 @@ namespace he::editor
 
     void AssetBrowser::ShowTreeNode(TreeNode& node, TreeNode*& selected)
     {
-        ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_FramePadding;
+        ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_FramePadding | ImGuiTreeNodeFlags_OpenOnDoubleClick;
         if (m_selectedPath == node.path)
         {
             selected = &node;
@@ -156,21 +189,38 @@ namespace he::editor
             QueryAssets(node);
 
         // TODO: Sorting
+        const ImGuiTableFlags flags = ImGuiTableFlags_RowBg | ImGuiTableFlags_Resizable;
 
-        if (ImGui::BeginTable("##asset_grid", 5, ImGuiTableFlags_Resizable))
+        if (ImGui::BeginTable("##asset_grid", 4, flags))
         {
             ImGui::TableSetupColumn("Name");
             ImGui::TableSetupColumn("Type");
             ImGui::TableSetupColumn("UUID");
             ImGui::TableSetupColumn("State");
-            ImGui::TableSetupColumn("File UUID");
             ImGui::TableHeadersRow();
+
+            const ImGuiSelectableFlags selectFlags = ImGuiSelectableFlags_SpanAllColumns | ImGuiSelectableFlags_AllowItemOverlap | ImGuiSelectableFlags_AllowDoubleClick;
 
             for (const TreeNode& child : node.children)
             {
+                ImGui::PushID(child.name.Begin(), child.name.End());
+
                 // Name
                 ImGui::TableNextColumn();
-                ImGui::TextUnformatted(ICON_MDI_FOLDER);
+                bool selected = false;
+                if (ImGui::Selectable("##folder_select", &selected, selectFlags))
+                {
+                    if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
+                    {
+                        ConcatPath(m_selectedPath, child.name);
+                    }
+                    else
+                    {
+                        m_selectedAsset = assets::AssetUuid{};
+                    }
+                }
+                ImGui::SameLine();
+                ImGui::TextUnformatted(ICON_MDI_FOLDER " ");
                 ImGui::SameLine();
                 ImGui::TextUnformatted(child.name.Begin(), child.name.End());
 
@@ -184,14 +234,33 @@ namespace he::editor
                 // State
                 ImGui::TableNextColumn();
 
-                // File UUID
-                ImGui::TableNextColumn();
+                ImGui::PopID();
             }
 
             for (const assets::AssetModel& asset : node.assets)
             {
+                const char* uuidBytes = reinterpret_cast<const char*>(asset.uuid.val.m_bytes);
+                constexpr uint32_t UuidBytesLen = sizeof(asset.uuid.val.m_bytes);
+                ImGui::PushID(uuidBytes, uuidBytes + UuidBytesLen);
+
                 // Name
                 ImGui::TableNextColumn();
+                bool selected = m_selectedAsset == asset.uuid;
+                if (ImGui::Selectable("##asset_select", &selected, selectFlags))
+                {
+                    if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
+                    {
+                        HE_LOGF_INFO(he_editor, "TODO: open asset {}", asset.uuid);
+                    }
+                    else
+                    {
+                        m_selectedAsset = asset.uuid;
+                    }
+                }
+                // TODO: Asset context menu.
+                ImGui::SameLine();
+                ImGui::TextUnformatted(ICON_MDI_FILE_DOCUMENT " "); // TODO: asset type icons
+                ImGui::SameLine();
                 ImGui::TextUnformatted(asset.name.Begin(), asset.name.End());
 
                 // Type
@@ -208,11 +277,7 @@ namespace he::editor
                 ImGui::TableNextColumn();
                 ImGui::TextUnformatted(AsString(asset.state));
 
-                // File UUID
-                m_buffer.Clear();
-                fmt::format_to(Appender(m_buffer), "{}", asset.fileUuid);
-                ImGui::TableNextColumn();
-                ImGui::TextUnformatted(m_buffer.Begin(), m_buffer.End());
+                ImGui::PopID();
             }
 
             ImGui::EndTable();
@@ -240,7 +305,7 @@ namespace he::editor
 
     bool AssetBrowser::ShouldListDirectory(const TreeNode& node)
     {
-        constexpr Duration UpdateFrequency = FromPeriod<Seconds>(60);
+        constexpr Duration UpdateFrequency = FromPeriod<Seconds>(30);
         const MonotonicTime now = MonotonicClock::Now();
         const Duration diff = now - node.listedAt;
         return diff > UpdateFrequency;
@@ -248,7 +313,7 @@ namespace he::editor
 
     bool AssetBrowser::ShouldQueryAssets(const TreeNode& node)
     {
-        constexpr Duration UpdateFrequency = FromPeriod<Seconds>(30);
+        constexpr Duration UpdateFrequency = FromPeriod<Seconds>(10);
         const MonotonicTime now = MonotonicClock::Now();
         const Duration diff = now - node.queriedAt;
         return diff > UpdateFrequency;
@@ -256,16 +321,21 @@ namespace he::editor
 
     void AssetBrowser::ListDirectory(TreeNode& node)
     {
-        if (node.path.IsEmpty())
+        assets::AssetDatabase& db = m_assetService.AssetDB();
+
+        if (!db.IsInitialized())
             return;
 
+        String path = db.AssetRoot();
+        ConcatPath(path, node.path);
+
         DirectoryScanner scanner;
-        Result r = scanner.Open(node.path.Data());
+        Result r = scanner.Open(path.Data());
         if (!r)
         {
             HE_LOG_ERROR(he_editor,
                 HE_MSG("Failed to open directory for scanning."),
-                HE_KV(path, node.path),
+                HE_KV(path, path),
                 HE_KV(result, r));
             return;
         }
@@ -306,19 +376,16 @@ namespace he::editor
 
     void AssetBrowser::HandleDbInitialized(bool initialized)
     {
-        if (m_root.name.IsEmpty())
-            m_root.name = "assets";
+        m_root.name = "assets";
+        m_root.path.Clear();
 
         if (initialized)
         {
-            const assets::AssetDatabase& db = m_assetService.AssetDB();
-            const String& assetRoot = db.AssetRoot();
-
-            m_root.path = assetRoot;
+            ListDirectory(m_root);
+            QueryAssets(m_root);
         }
         else
         {
-            m_root.path.Clear();
             m_root.children.Clear();
             m_root.assets.Clear();
             m_root.listedAt = { 0 };

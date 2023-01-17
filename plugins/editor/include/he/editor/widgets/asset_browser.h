@@ -27,6 +27,8 @@ namespace he::editor
             DialogService& dialogService,
             ImGuiService& imguiService) noexcept;
 
+        ~AssetBrowser() noexcept;
+
         void Show();
 
     private:
@@ -68,5 +70,8 @@ namespace he::editor
         ViewType m_viewType{ ViewType::List };
 
         String m_buffer{};
+
+        AssetService::DbInitSignal::Binding m_dbInitBinding{};
+        assets::AssetUuid m_selectedAsset{};
     };
 }

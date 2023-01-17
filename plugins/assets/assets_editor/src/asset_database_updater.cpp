@@ -17,7 +17,7 @@
 
 namespace he::assets
 {
-    constexpr char NextUsnConfigKey[] = "he.assets.next_usn";
+    constexpr StringView NextUsnConfigKey = "he.assets.next_usn";
 
     bool AssetDatabaseUpdater::Start()
     {

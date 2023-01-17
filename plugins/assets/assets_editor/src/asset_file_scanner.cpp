@@ -90,7 +90,7 @@ namespace he::assets
                     }
                     else
                     {
-                        AssetFileModel::UpdateScanToken(m_db, assetFilePath, m_token);
+                        AssetFileModel::UpdateScanToken(m_db, fullPath, m_token);
                     }
                 }
             }

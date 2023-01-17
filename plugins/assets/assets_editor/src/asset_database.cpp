@@ -365,7 +365,7 @@ namespace he::assets
         if (!PrepareRelativePath(path, relPath))
             return;
 
-        AssetFileModel::RemoveOne(*this, relPath.Data());
+        AssetFileModel::RemoveOne(*this, relPath);
     }
 
     void AssetDatabase::OnAssetFileUpdated(const char* path)

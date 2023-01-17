@@ -7,6 +7,7 @@
 #include "he/core/log.h"
 #include "he/core/memory_ops.h"
 #include "he/core/string.h"
+#include "he/core/string_view.h"
 #include "he/core/types.h"
 #include "he/core/vector.h"
 #include "he/core/uuid.h"
@@ -45,23 +46,24 @@ namespace he::assets
         FileProperties source{};
 
         static bool AddOrUpdate(AssetDatabase& db, AssetFile::Reader file, const AssetFileModel& model);
+        static bool FindOne(AssetDatabase& db, uint32_t fileId, AssetFileModel& outModel);
         static bool FindOne(AssetDatabase& db, const AssetFileUuid& fileUuid, AssetFileModel& outModel);
-        static bool FindOne(AssetDatabase& db, const char* path, AssetFileModel& outModel);
+        static bool FindOne(AssetDatabase& db, StringView path, AssetFileModel& outModel);
         static bool FindOne(AssetDatabase& db, const AssetUuid& assetUuid, AssetFileModel& outModel);
-        static bool FindOne(AssetDatabase& db, const char* source, AssetFileModel& outModel, AssetFileSourcePathTag);
-        static bool FindAll(AssetDatabase& db, const char* pathPrefix, Vector<AssetFileModel>& models);
+        static bool FindOne(AssetDatabase& db, StringView source, AssetFileModel& outModel, AssetFileSourcePathTag);
+        static bool FindAll(AssetDatabase& db, StringView pathPrefix, Vector<AssetFileModel>& models);
         static bool RemoveOne(AssetDatabase& db, const AssetFileUuid& fileUuid);
-        static bool RemoveOne(AssetDatabase& db, const char* path);
+        static bool RemoveOne(AssetDatabase& db, StringView path);
         static bool RemoveOutdated(AssetDatabase& db, uint32_t scanToken);
 
         static bool UpdateScanToken(AssetDatabase& db, const AssetFileUuid& fileUuid, uint32_t scanToken);
-        static bool UpdateScanToken(AssetDatabase& db, const char* path, uint32_t scanToken);
+        static bool UpdateScanToken(AssetDatabase& db, StringView path, uint32_t scanToken);
     };
 
     struct AssetModel final
     {
         AssetUuid uuid;
-        AssetFileUuid fileUuid;
+        uint32_t fileId;
         String type;
         String name;
         AssetState state{ AssetState::Unknown };
@@ -77,12 +79,12 @@ namespace he::assets
         static bool FindOne(AssetDatabase& db, const AssetUuid& assetUuid, AssetModel& model);
         static bool FindAll(AssetDatabase& db, const AssetFileUuid& fileUuid, Vector<AssetModel>& models);
         static bool FindAll(AssetDatabase& db, AssetState state, Vector<AssetModel>& models);
-        static bool FindAll(AssetDatabase& db, const char* search, Vector<AssetModel>& models);
-        static bool FindAll(AssetDatabase& db, const char* pathPrefix, Vector<AssetModel>& models, AssetFilePathTag);
+        static bool FindAll(AssetDatabase& db, StringView search, Vector<AssetModel>& models);
+        static bool FindAll(AssetDatabase& db, StringView pathPrefix, Vector<AssetModel>& models, AssetFilePathTag);
         static bool RemoveOne(AssetDatabase& db, const AssetUuid& assetUuid);
 
-        static bool AddTag(AssetDatabase& db, const AssetUuid& assetUuid, const char* tag);
-        static bool RemoveTag(AssetDatabase& db, const AssetUuid& assetUuid, const char* tag);
+        static bool AddTag(AssetDatabase& db, const AssetUuid& assetUuid, StringView tag);
+        static bool RemoveTag(AssetDatabase& db, const AssetUuid& assetUuid, StringView tag);
         static bool RemoveAllTags(AssetDatabase& db, const AssetUuid& assetUuid);
 
         static bool UpdateState(AssetDatabase& db, const AssetUuid& assetUuid, AssetState state);
@@ -101,7 +103,7 @@ namespace he::assets
         }
 
         static bool AddOrUpdate(AssetDatabase& db, const ConfigModel& model);
-        static bool FindOne(AssetDatabase& db, const char* key, ConfigModel& outModel);
+        static bool FindOne(AssetDatabase& db, StringView key, ConfigModel& outModel);
     };
 
     // TODO

@@ -50,7 +50,7 @@ namespace he::assets
             HE_KV(has_import_settings, data->ctx.settings.IsValid()));
 
         AssetFileModel model;
-        if (AssetFileModel::FindOne(m_db, data->path.Data(), model, AssetFileSourcePathTag{}))
+        if (AssetFileModel::FindOne(m_db, data->path, model, AssetFileSourcePathTag{}))
         {
             AssetDatabase::LoadDelegate cb = AssetDatabase::LoadDelegate::Make<&AssetServer::Import_OnAssetFileLoad>(data);
             m_db.LoadAssetFileAsync(model.file.path.Data(), cb);
@@ -75,15 +75,15 @@ namespace he::assets
             HE_LOG_ERROR(he_editor, HE_MSG("Failed to query assets needing import."));
         }
 
-        HashSet<AssetFileUuid> fileUuids;
+        HashSet<uint32_t> fileIds;
 
         for (const AssetModel& asset : pending)
         {
-            const auto result = fileUuids.Insert(asset.fileUuid);
+            const auto result = fileIds.Insert(asset.fileId);
             if (result.inserted)
             {
                 AssetFileModel assetFile;
-                if (AssetFileModel::FindOne(m_db, asset.fileUuid, assetFile))
+                if (AssetFileModel::FindOne(m_db, asset.fileId, assetFile))
                 {
                     StartImport(assetFile.file.path.Data());
                 }
@@ -245,7 +245,7 @@ namespace he::assets
             AssetFile::Builder assetFile = data->assetFile.Root().TryGetStruct<AssetFile>();
 
             const uint32_t prevSize = assetFile.GetAssets().Size();
-            const uint32_t newListSize = prevSize + data->result.m_updated.Size();
+            const uint32_t newListSize = prevSize + data->result.m_new.Size();
             schema::List<Asset>::Builder assets = data->assetFile.AddList<Asset>(newListSize);
 
             // copy over existing and updated assets, preserving the order.

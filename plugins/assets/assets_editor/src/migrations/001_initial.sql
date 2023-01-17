@@ -4,6 +4,7 @@ CREATE TABLE asset_file (
     id                      INTEGER PRIMARY KEY,    -- Primary key for a row.
     uuid                    BLOB(16) NOT NULL,      -- Globally unique ID of the Asset File.
     file_path               TEXT NOT NULL,          -- On-disk path to the *.assets file, relative to the project root.
+    file_path_depth         INTEGER NOT NULL,
     file_write_time         INTEGER DEFAULT 0,      -- Last "write time" we read from the file on disk.
     file_size               INTEGER DEFAULT 0,      -- Last size of the file we read from disk.
     source_path             TEXT DEFAULT NULL,      -- On-disk path to the source data for assets, relative to the asset file.
@@ -22,8 +23,8 @@ CREATE TABLE asset (
     asset_type_name         TEXT NOT NULL,          -- Type of the Asset.
     name                    TEXT NOT NULL,          -- Friendly name of the Asset.
     state                   INTEGER NOT NULL,       -- `he::assets::AssetState` enum value.
-    data_hash               INTEGER DEFAULT 0,      -- Last recorded Fnv32 hash of the asset's data bytes.
-    import_data_hash        INTEGER DEFAULT 0,      -- Last recorded Fnv32 hash of the asset's import data bytes.
+    data_hash               INTEGER DEFAULT 0,      -- Last recorded hash of the asset's data bytes.
+    import_data_hash        INTEGER DEFAULT 0,      -- Last recorded hash of the asset's import data bytes.
     importer_id             INTEGER DEFAULT 0,      -- ID of the last importer to process this asset.
     importer_version        INTEGER DEFAULT 0,      -- Version of the importer that processed this asset.
     compiler_id             INTEGER DEFAULT 0,      -- ID of the last compiler to process this asset.

@@ -99,6 +99,7 @@ struct AssetFile
 struct Texture2D $AssetType $Display.ImportOnly $Display.Description("A two dimensional texture.")
 {
     const AssetTypeName :String = "he.asset.texture2d";
+    const AssetTypeIcon :String = "\xf3\xb0\x8b\xa9"; // ICON_MDI_IMAGE
     const PixelsResourceName :String = "he.asset.texture.pixels";
     const Ktx2ResourceName :String = "he.asset.texture.ktx2";
 

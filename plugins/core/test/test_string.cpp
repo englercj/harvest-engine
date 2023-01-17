@@ -1413,6 +1413,13 @@ HE_TEST(core, string, Insert)
     s.Insert(3, "12345", 2);
     HE_EXPECT_EQ(s.Size(), 6);
     HE_EXPECT_EQ_STR(s.Data(), "azx12b");
+
+    constexpr char Test[] = "possible";
+    constexpr uint32_t TestLen = HE_LENGTH_OF(Test) - 1;
+
+    s.Insert(0, Test, Test + TestLen);
+    HE_EXPECT_EQ(s.Size(), TestLen);
+    HE_EXPECT_EQ_STR(s.Data(), Test);
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -1530,6 +1537,13 @@ HE_TEST(core, string, Append)
     s.Append(s2);
     HE_EXPECT_EQ(s.Size(), 10);
     HE_EXPECT_EQ_STR(s.Data(), "abc12hello");
+
+    constexpr char Test[] = "possible";
+    constexpr uint32_t TestLen = HE_LENGTH_OF(Test) - 1;
+
+    s.Append(Test, Test + TestLen);
+    HE_EXPECT_EQ(s.Size(), TestLen);
+    HE_EXPECT_EQ_STR(s.Data(), "abc12hellopossible");
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -1549,6 +1563,13 @@ HE_TEST(core, string, Assign)
     s.Assign(s2);
     HE_EXPECT_EQ(s.Size(), 5);
     HE_EXPECT_EQ_STR(s.Data(), "hello");
+
+    constexpr char Test[] = "possible";
+    constexpr uint32_t TestLen = HE_LENGTH_OF(Test) - 1;
+
+    s.Assign(Test, Test + TestLen);
+    HE_EXPECT_EQ(s.Size(), TestLen);
+    HE_EXPECT_EQ_STR(s.Data(), Test);
 }
 
 // ------------------------------------------------------------------------------------------------

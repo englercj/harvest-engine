@@ -348,6 +348,14 @@ namespace he
         return 0;
     }
 
+    void String::Insert(uint32_t index, const char* begin, const char* end)
+    {
+        if (end > begin)
+        {
+            Insert(index, begin, static_cast<uint32_t>(end - begin));
+        }
+    }
+
     void String::Insert(uint32_t index, const char* str, uint32_t len)
     {
         if (len == 0)

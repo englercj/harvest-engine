@@ -732,6 +732,14 @@ namespace he
         /// \param str The string to insert.
         void Insert(uint32_t index, const char* str) { Insert(index, str, Length(str)); }
 
+        /// Inserts the characters in the range `[begin, end)` into the string at `index`.
+        /// Asserts if `index` is out of range.
+        ///
+        /// \param index The index in the string to insert at.
+        /// \param begin The beginning, inclusive, of the character range to copy from.
+        /// \param end The end, exclusive, of the character range to copy from.
+        void Insert(uint32_t index, const char* begin, const char* end);
+
         /// Inserts `len` characters of a string into the string at index.
         /// Asserts if `index` is out of range.
         ///
@@ -773,6 +781,12 @@ namespace he
         /// \param str The string to append.
         void Append(const char* str) { Insert(Size(), str, Length(str)); }
 
+        /// Appends the characters in the range `[begin, end)` to the end of this string.
+        ///
+        /// \param begin The beginning, inclusive, of the character range to append.
+        /// \param end The end, exclusive, of the character range to append.
+        void Append(const char* begin, const char* end) { Insert(Size(), begin, end); }
+
         /// Appends `len` characters of the string to the end of this string.
         ///
         /// \param str The string to append.
@@ -788,6 +802,13 @@ namespace he
         ///
         /// \param str The string source to copy from.
         void Assign(const char* str) { Clear(); Append(str); }
+
+        /// Replaces the contents of this string with a copy of the characters in the range
+        /// `[begin, end)`.
+        ///
+        /// \param begin The beginning, inclusive, of the character range to copy from.
+        /// \param end The end, exclusive, of the character range to copy from.
+        void Assign(const char* begin, const char* end) { Clear(); Append(begin, end); }
 
         /// Replaces the contents of this string with a copy of `len` characters of the string `str`.
         ///

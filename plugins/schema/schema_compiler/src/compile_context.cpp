@@ -199,7 +199,6 @@ namespace he::schema
                     break;
                 case '\\':
                     decodedIsTrivial = false;
-                    s++;
 
                     if (unicodeHighSurrogate != -1 && *s != 'u')
                     {

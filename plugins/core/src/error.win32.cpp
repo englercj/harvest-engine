@@ -321,9 +321,13 @@ namespace he
 
         switch (result)
         {
-            case IDABORT: ::ExitProcess(255); return true; // exit immediately
-            case IDRETRY: return true; // debug break
-            case IDIGNORE: return false; // continue
+            case IDABORT: // exit immediately
+                ::TerminateProcess(::GetCurrentProcess(), 255);
+                return true;
+            case IDRETRY: // debug break
+                return true;
+            case IDIGNORE: // continue
+                return false;
         }
 
         // Unknown result type...what

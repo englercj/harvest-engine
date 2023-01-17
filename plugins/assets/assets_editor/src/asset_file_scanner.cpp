@@ -45,6 +45,12 @@ namespace he::assets
         if (!ClearScanHeader())
             return false;
 
+        // Wait for our pending async operations to complete.
+        while (m_pendingOps)
+        {
+            HE_SPIN_WAIT_PAUSE();
+        }
+
         return true;
     }
 
@@ -79,6 +85,7 @@ namespace he::assets
                     if (!m_db.IsFileUpToDate(assetFilePath))
                     {
                         auto callback = AssetDatabase::LoadDelegate::Make<&AssetFileScanner::OnUpdateComplete>(this);
+                        ++m_pendingOps;
                         m_db.UpdateAssetFileAsync(assetFilePath, callback);
                     }
                     else
@@ -115,5 +122,6 @@ namespace he::assets
     {
         const AssetFileUuid assetFileUuid{ result.builder.Root().GetUuid() };
         AssetFileModel::UpdateScanToken(m_db, assetFileUuid, m_token);
+        --m_pendingOps;
     }
 }

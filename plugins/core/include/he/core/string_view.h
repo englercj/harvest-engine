@@ -48,8 +48,8 @@ namespace he
         ///
         /// \param str The string to refer to.
         template <typename T>
-        constexpr StringView(const T& str) noexcept
             requires(!std::is_same_v<std::remove_cv_t<T>, StringView> && (StdContiguousRange<T, const char> || ContiguousRange<T, const char>))
+        constexpr StringView(const T& str) noexcept
             : m_span(str)
         {}
 
@@ -303,4 +303,19 @@ namespace he
 
         Span<const char> m_span;
     };
+
+    /// User-defined literal that creates a StringView object from a string literal.
+    ///
+    /// Example:
+    /// ```cpp
+    /// constexpr StringView value = "test"_sv;
+    /// ```
+    ///
+    /// \param[in] str A pointer to the string literal.
+    /// \param[in] len The length of the string literal, not including the null terminator.
+    /// \return A constructed StringView object pointing to the string literal.
+    [[nodiscard]] constexpr StringView operator"" _sv(const char* str, size_t len) noexcept
+    {
+        return StringView(str, static_cast<uint32_t>(len));
+    }
 }

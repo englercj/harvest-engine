@@ -1418,8 +1418,8 @@ HE_TEST(core, string, Insert)
     constexpr uint32_t TestLen = HE_LENGTH_OF(Test) - 1;
 
     s.Insert(0, Test, Test + TestLen);
-    HE_EXPECT_EQ(s.Size(), TestLen);
-    HE_EXPECT_EQ_STR(s.Data(), Test);
+    HE_EXPECT_EQ(s.Size(), 14);
+    HE_EXPECT_EQ_STR(s.Data(), "possibleazx12b");
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -1542,7 +1542,7 @@ HE_TEST(core, string, Append)
     constexpr uint32_t TestLen = HE_LENGTH_OF(Test) - 1;
 
     s.Append(Test, Test + TestLen);
-    HE_EXPECT_EQ(s.Size(), TestLen);
+    HE_EXPECT_EQ(s.Size(), 18);
     HE_EXPECT_EQ_STR(s.Data(), "abc12hellopossible");
 }
 
@@ -1582,4 +1582,20 @@ HE_TEST(core, string, fmt)
     String s2;
     fmt::format_to(Appender(s2), "{}", s1);
     HE_EXPECT_EQ(s1, s2);
+}
+
+// ------------------------------------------------------------------------------------------------
+HE_TEST(core, string, literals)
+{
+    {
+        const String value = "abc\0\0def";
+        HE_EXPECT_EQ(value.Size(), 3);
+        HE_EXPECT_EQ(value, "abc");
+    }
+
+    {
+        const String value = "abc\0\0def"_s;
+        HE_EXPECT_EQ(value.Size(), 8);
+        HE_EXPECT_EQ_MEM(value.Data(), "abc\0\0def", 8);
+    }
 }

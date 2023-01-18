@@ -872,6 +872,22 @@ namespace he
             Heap m_heap;
         };
     };
+
+    /// User-defined literal that creates a String object from a string literal.
+    ///
+    /// Example:
+    /// ```cpp
+    /// const String value1 = "abc\0\0def";     // "abc" (size = 3)
+    /// const String value2 = "abc\0\0def"_s;   // "abc\0\0def" (size = 8)
+    /// ```
+    ///
+    /// \param[in] str A pointer to the string literal.
+    /// \param[in] len The length of the string literal, not including the null terminator.
+    /// \return A constructed String object holding an equivalent value to the literal.
+    [[nodiscard]] inline String operator"" _s(const char* str, size_t len) noexcept
+    {
+        return String(str, static_cast<uint32_t>(len));
+    }
 }
 
 #include "he/core/inline/string.inl"

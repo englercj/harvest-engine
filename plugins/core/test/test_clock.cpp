@@ -307,7 +307,7 @@ HE_TEST(core, clock, PosixTimeFromSystemTime)
 }
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST(core, clock, Formatting)
+HE_TEST(core, clock, fmt_time)
 {
     SystemTime time{ 1652973325730225600 }; // 8:15 AM, Thursday, May 19, 2022 (PDT)
     String actual;
@@ -332,8 +332,77 @@ HE_TEST(core, clock, Formatting)
     fmt::format_to(Appender(actual), "{:%A %b %d, %y %T %p}", time);
     HE_EXPECT_EQ(actual, "Thursday May 19, 22 08:15:25 AM");
 
-    // Custom Format 2
+    // Custom Format UTC
     actual.Clear();
     fmt::format_to(Appender(actual), "{:%D %F %R}", FmtUtcTime(time));
     HE_EXPECT_EQ(actual, "05/19/22 2022-05-19 15:15");
+}
+
+// ------------------------------------------------------------------------------------------------
+HE_TEST(core, clock, fmt_duration)
+{
+    constexpr Duration duration = 1_week + 2_day + 4_hour + 8_min + 16_sec + 32_ms + 64_us + 128_ns;
+    String actual;
+
+    // Default
+    actual.Clear();
+    fmt::format_to(Appender(actual), "{}", duration);
+    HE_EXPECT_EQ(actual, "792496032064128ns");
+
+    // All the specs
+    actual.Clear();
+    fmt::format_to(Appender(actual), "{:%W %D %H %M %S %m %u %n %%}", duration);
+    HE_EXPECT_EQ(actual, "1 2 4 8 16 32 64 128 %");
+}
+
+// ------------------------------------------------------------------------------------------------
+HE_TEST(core, clock, literals)
+{
+    {
+        constexpr Duration value = 1_ns;
+        static_assert(value.val == 1);
+        HE_EXPECT_EQ(value.val, 1);
+    }
+
+    {
+        constexpr Duration value = 1_us;
+        static_assert(value.val == 1000);
+        HE_EXPECT_EQ(value.val, 1000);
+    }
+
+    {
+        constexpr Duration value = 1_ms;
+        static_assert(value.val == 1000000);
+        HE_EXPECT_EQ(value.val, 1000000);
+    }
+
+    {
+        constexpr Duration value = 1_sec;
+        static_assert(value.val == 1000000000);
+        HE_EXPECT_EQ(value.val, 1000000000);
+    }
+
+    {
+        constexpr Duration value = 1_min;
+        static_assert(value.val == 60000000000);
+        HE_EXPECT_EQ(value.val, 60000000000);
+    }
+
+    {
+        constexpr Duration value = 1_hour;
+        static_assert(value.val == 3600000000000);
+        HE_EXPECT_EQ(value.val, 3600000000000);
+    }
+
+    {
+        constexpr Duration value = 1_day;
+        static_assert(value.val == 86400000000000);
+        HE_EXPECT_EQ(value.val, 86400000000000);
+    }
+
+    {
+        constexpr Duration value = 1_week;
+        static_assert(value.val == 604800000000000);
+        HE_EXPECT_EQ(value.val, 604800000000000);
+    }
 }

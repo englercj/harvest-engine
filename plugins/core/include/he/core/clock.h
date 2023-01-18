@@ -39,7 +39,7 @@ namespace he
     // --------------------------------------------------------------------------------------------
     // Implementations
 
-    // Nanoseconds that have passed since the Unix epoch (Jan 1 1970 00:00:00).
+    // Nanoseconds that have passed since the Unix epoch (Jan 1 1970 00:00:00 UTC).
     // These values are pulled from the system's clock which is not monotonic.
     using SystemClock = Clock<struct SystemClockTag>;
     using SystemTime = SystemClock::Time;
@@ -184,5 +184,120 @@ namespace he
     #else
         #error "No CycleClock implementation for this architecture"
     #endif
+    }
+
+    // --------------------------------------------------------------------------------------------
+    // User-defined literals
+
+    /// User-defined literal that creates a Duration of nanoseconds from an integer literal.
+    ///
+    /// Example:
+    /// ```cpp
+    /// const Duration value = 125_ns;
+    /// ```
+    ///
+    /// \param[in] value The integer literal.
+    /// \return A Duration of `value` nanoseconds.
+    [[nodiscard]] constexpr Duration operator"" _ns(unsigned long long value) noexcept
+    {
+        return FromPeriod<Nanoseconds>(value);
+    }
+
+    /// User-defined literal that creates a Duration of microseconds from an integer literal.
+    ///
+    /// Example:
+    /// ```cpp
+    /// const Duration value = 125_us;
+    /// ```
+    ///
+    /// \param[in] value The integer literal.
+    /// \return A Duration of `value` microseconds.
+    [[nodiscard]] constexpr Duration operator"" _us(unsigned long long value) noexcept
+    {
+        return FromPeriod<Microseconds>(value);
+    }
+
+    /// User-defined literal that creates a Duration of milliseconds from an integer literal.
+    ///
+    /// Example:
+    /// ```cpp
+    /// const Duration value = 125_ms;
+    /// ```
+    ///
+    /// \param[in] value The integer literal.
+    /// \return A Duration of `value` milliseconds.
+    [[nodiscard]] constexpr Duration operator"" _ms(unsigned long long value) noexcept
+    {
+        return FromPeriod<Milliseconds>(value);
+    }
+
+    /// User-defined literal that creates a Duration of seconds from an integer literal.
+    ///
+    /// Example:
+    /// ```cpp
+    /// const Duration value = 125_sec;
+    /// ```
+    ///
+    /// \param[in] value The integer literal.
+    /// \return A Duration of `value` seconds.
+    [[nodiscard]] constexpr Duration operator"" _sec(unsigned long long value) noexcept
+    {
+        return FromPeriod<Seconds>(value);
+    }
+
+    /// User-defined literal that creates a Duration of minutes from an integer literal.
+    ///
+    /// Example:
+    /// ```cpp
+    /// const Duration value = 125_min;
+    /// ```
+    ///
+    /// \param[in] value The integer literal.
+    /// \return A Duration of `value` minutes.
+    [[nodiscard]] constexpr Duration operator"" _min(unsigned long long value) noexcept
+    {
+        return FromPeriod<Minutes>(value);
+    }
+
+    /// User-defined literal that creates a Duration of hours from an integer literal.
+    ///
+    /// Example:
+    /// ```cpp
+    /// const Duration value = 125_hour;
+    /// ```
+    ///
+    /// \param[in] value The integer literal.
+    /// \return A Duration of `value` hours.
+    [[nodiscard]] constexpr Duration operator"" _hour(unsigned long long value) noexcept
+    {
+        return FromPeriod<Hours>(value);
+    }
+
+    /// User-defined literal that creates a Duration of days from an integer literal.
+    ///
+    /// Example:
+    /// ```cpp
+    /// const Duration value = 125_day;
+    /// ```
+    ///
+    /// \param[in] value The integer literal.
+    /// \return A Duration of `value` days.
+    [[nodiscard]] constexpr Duration operator"" _day(unsigned long long value) noexcept
+    {
+        return FromPeriod<Days>(value);
+    }
+
+    /// User-defined literal that creates a Duration of weeks from an integer literal.
+    ///
+    /// Example:
+    /// ```cpp
+    /// const Duration value = 125_week;
+    /// ```
+    ///
+    /// \param[in] value The integer literal.
+    /// \return A Duration of `value` weeks.
+    [[nodiscard]] constexpr Duration operator"" _week(unsigned long long value) noexcept
+    {
+        return FromPeriod<Weeks>(value);
     }
 }

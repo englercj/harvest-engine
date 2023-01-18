@@ -137,7 +137,9 @@ namespace fmt
     template <>
     struct formatter<he::Duration>
     {
-        he::StringView spec;
+        static constexpr he::StringView DefaultSpec = "%nns";
+
+        he::StringView spec{ DefaultSpec };
 
         constexpr auto parse(format_parse_context& ctx) -> decltype(ctx.begin())
         {
@@ -177,12 +179,10 @@ namespace fmt
                 switch (*s++)
                 {
                     case '%': *out++ = '%'; break;
-                    case 'n': *out++ = '\n'; break;
-                    case 't': *out++ = '\t'; break;
-                    case 'N': out = WritePeriod<he::Nanoseconds>(out, duration); break;
+                    case 'n': out = WritePeriod<he::Nanoseconds>(out, duration); break;
                     case 'u': out = WritePeriod<he::Microseconds>(out, duration); break;
                     case 'm': out = WritePeriod<he::Milliseconds>(out, duration); break;
-                    case 's': out = WritePeriod<he::Seconds>(out, duration); break;
+                    case 'S': out = WritePeriod<he::Seconds>(out, duration); break;
                     case 'M': out = WritePeriod<he::Minutes>(out, duration); break;
                     case 'H': out = WritePeriod<he::Hours>(out, duration); break;
                     case 'D': out = WritePeriod<he::Days>(out, duration); break;

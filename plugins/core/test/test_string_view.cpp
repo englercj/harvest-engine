@@ -429,3 +429,24 @@ HE_TEST(core, string_view, fmt)
     fmt::format_to(Appender(s2), "{}", s1);
     HE_EXPECT_EQ(s1, s2);
 }
+
+// ------------------------------------------------------------------------------------------------
+HE_TEST(core, string_view, literals)
+{
+    {
+        constexpr StringView value = "abc\0\0def";
+        static_assert(value.Size() == 3);
+        static_assert(value[0] == 'a' && value[1] == 'b' && value[2] == 'c');
+        HE_EXPECT_EQ(value.Size(), 3);
+        HE_EXPECT_EQ(value, "abc");
+    }
+
+    {
+        constexpr StringView value = "abc\0\0def"_sv;
+        static_assert(value.Size() == 8);
+        static_assert(value[0] == 'a' && value[1] == 'b' && value[2] == 'c' && value[3] == '\0');
+        static_assert(value[4] == '\0' && value[5] == 'd' && value[6] == 'e' && value[7] == 'f');
+        HE_EXPECT_EQ(value.Size(), 8);
+        HE_EXPECT_EQ_MEM(value.Data(), "abc\0\0def", 8);
+    }
+}

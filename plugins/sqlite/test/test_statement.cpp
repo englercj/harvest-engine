@@ -8,7 +8,7 @@
 using namespace he::sqlite;
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST(sqlite, Statement, Basic)
+HE_TEST(sqlite, statement, test)
 {
     Database db;
     HE_EXPECT(db.Open(":memory:"));

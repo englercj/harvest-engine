@@ -11,6 +11,7 @@
 #include "he/core/types.h"
 #include "he/core/vector.h"
 #include "he/core/uuid.h"
+#include "he/sqlite/orm.h"
 
 namespace he::assets
 {
@@ -32,7 +33,7 @@ namespace he::assets
         CompileFailed = 5,
     };
 
-    struct FileProperties
+    struct FileProperties final
     {
         String path{};
         SystemTime writeTime{ 0 };
@@ -137,5 +138,19 @@ namespace he::assets
         static bool FindAllFrom(AssetDatabase& db, const AssetUuid& fromAssetUuid);
         static bool FindAllTo(AssetDatabase& db, const AssetUuid& toAssetUuid);
         static bool RemoveAllFrom(AssetDatabase& db, const AssetUuid& fromAssetUuid);
+    };
+}
+
+namespace he::sqlite
+{
+    // AssetFileUuid
+    template <>
+    struct sqlite::DataTypeTraits<assets::AssetFileUuid>
+    {
+        static constexpr StringView DDLType = "BLOB";
+        static constexpr uint16_t TypeLength = 16;
+        static constexpr bool IsNullable = false;
+        static bool Bind(sqlite::Statement& stmt, int32_t index, const assets::AssetFileUuid& value) { return stmt.Bind(index, value.val.m_bytes); }
+        static void Read(const sqlite::Column& column, assets::AssetFileUuid& value) { column.ReadBlob(value.val.m_bytes); }
     };
 }

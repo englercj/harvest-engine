@@ -46,6 +46,8 @@ static const char InsertSchemaVersionSql[] = R"(
 
 namespace he::sqlite
 {
+    static_assert(SQLITE_VERSION_NUMBER >= 3031000, "Expected SQLite v3.31+");
+
     bool Database::Execute(sqlite3* m_db, const char* query)
     {
         HE_SQLITE_CHECK(OK, sqlite3_exec(m_db, query, nullptr, nullptr, nullptr));

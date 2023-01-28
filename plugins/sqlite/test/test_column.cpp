@@ -10,7 +10,7 @@
 using namespace he::sqlite;
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST(sqlite, Column, Basic)
+HE_TEST(sqlite, column, test)
 {
     Database db;
     HE_EXPECT(db.Open(":memory:"));

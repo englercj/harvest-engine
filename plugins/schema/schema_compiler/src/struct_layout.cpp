@@ -3,11 +3,11 @@
 #include "struct_layout.h"
 
 #include "he/core/assert.h"
+#include "he/core/limits.h"
 #include "he/core/hash_table.h"
 
 #include <algorithm>
 #include <cmath>
-#include <limits>
 
 namespace he::schema
 {
@@ -572,7 +572,7 @@ namespace he::schema
 
                 if (IsPointer(fieldType))
                 {
-                    HE_ASSERT((fieldSize / BitsPerWord) < std::numeric_limits<uint16_t>::max());
+                    HE_ASSERT((fieldSize / BitsPerWord) < Limits<uint16_t>::Max);
                     const uint16_t count = static_cast<uint16_t>(fieldSize / BitsPerWord);
                     norm.SetIndex(member.placer->PlacePointer(count));
                 }
@@ -737,7 +737,7 @@ namespace he::schema
         const uint32_t bitSize = m_fieldPlacer->DataOffset() + (MetadataWordSize() * BitsPerWord);
         const uint32_t alignedBitSize = AlignUp(bitSize, BitsPerWord);
         const uint32_t wordSize = alignedBitSize / BitsPerWord;
-        HE_ASSERT(wordSize < std::numeric_limits<uint16_t>::max());
+        HE_ASSERT(wordSize < Limits<uint16_t>::Max);
         return static_cast<uint16_t>(wordSize);
     }
 

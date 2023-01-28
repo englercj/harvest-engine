@@ -2,10 +2,9 @@
 
 #pragma once
 
+#include "he/core/concepts.h"
+#include "he/core/type_traits.h"
 #include "he/core/types.h"
-
-#include <concepts>
-#include <type_traits>
 
 namespace he
 {
@@ -16,7 +15,7 @@ namespace he
     /// \param value The value to check for alignment.
     /// \param alignment The alignment to check value for. Must be a power of two.
     /// \return True if the value is aligned, false otherwise.
-    template <std::unsigned_integral T>
+    template <UnsignedIntegral T>
     [[nodiscard]] constexpr bool IsAligned(T value, size_t alignment) noexcept
     {
         return (value & (alignment - 1)) == 0;
@@ -41,7 +40,7 @@ namespace he
     /// \param value The value to be aligned down.
     /// \param alignment The alignment to match.
     /// \return The aligned value.
-    template <std::unsigned_integral T>
+    template <UnsignedIntegral T>
     [[nodiscard]] constexpr T AlignDown(T value, size_t alignment) noexcept
     {
         return static_cast<T>(value & ~(alignment - 1));
@@ -67,7 +66,7 @@ namespace he
     /// \param value The value to be aligned up.
     /// \param alignment The alignment to match.
     /// \return The aligned value.
-    template <std::unsigned_integral T>
+    template <UnsignedIntegral T>
     [[nodiscard]] constexpr inline T AlignUp(T value, size_t alignment) noexcept
     {
         return static_cast<T>((value + (alignment - 1)) & ~(alignment - 1));
@@ -90,7 +89,7 @@ namespace he
     ///
     /// \param value The value to check.
     /// \return True if the value is a power of two, false otherwise.
-    template <std::unsigned_integral T>
+    template <UnsignedIntegral T>
     [[nodiscard]] constexpr inline bool IsPowerOf2(T value) noexcept
     {
         return value > 0 && (value & (value - 1)) == 0;
@@ -145,7 +144,7 @@ namespace he
     /// \param value The value to check against.
     /// \param search The flag to search for.
     /// \return True if `value` has the flag `search`.
-    template <typename T, typename U = T> requires(std::is_convertible_v<U, T>)
+    template <typename T, typename U = T> requires(IsConvertible<U, T>)
     [[nodiscard]] constexpr bool HasFlag(T value, U search)
     {
         return (value & static_cast<T>(search)) == static_cast<T>(search);
@@ -156,7 +155,7 @@ namespace he
     /// \param value The value to check against.
     /// \param search The flags to search for.
     /// \return True if `value` has the flags `search`.
-    template <typename T, typename U = T> requires(std::is_convertible_v<U, T>)
+    template <typename T, typename U = T> requires(IsConvertible<U, T>)
     [[nodiscard]] constexpr bool HasFlags(T value, U search)
     {
         return (value & static_cast<T>(search)) == static_cast<T>(search);
@@ -167,7 +166,7 @@ namespace he
     /// \param value The value to check against.
     /// \param search The flags to search for.
     /// \return True if `value` has the flags `search`.
-    template <typename T, typename U = T> requires(std::is_convertible_v<U, T>)
+    template <typename T, typename U = T> requires(IsConvertible<U, T>)
     [[nodiscard]] constexpr bool HasAnyFlags(T value, U search)
     {
         return (value & static_cast<T>(search)) != static_cast<T>(0);
@@ -180,7 +179,7 @@ namespace he
     /// \tparam U The type to cast from, usually this is just deduced from the parameter.
     /// \param src The value to cast to another type.
     /// \return The same bits as a different type.
-    template <typename T, class U> requires(sizeof(T) == sizeof(U) && std::is_trivially_copyable_v<T> && std::is_trivially_copyable_v<U>)
+    template <typename T, class U> requires(sizeof(T) == sizeof(U) && IsTriviallyCopyable<T> && IsTriviallyCopyable<U>)
     [[nodiscard]] constexpr T BitCast(const U& src) noexcept
     {
         return __builtin_bit_cast(T, src);
@@ -191,8 +190,19 @@ namespace he
     /// \param x The object to be forwarded.
     /// \return Cast of the object to an lvalue or rvalue reference.
     template <typename T>
-    [[nodiscard]] constexpr T&& Forward(std::remove_reference_t<T>& x) noexcept
+    [[nodiscard]] constexpr T&& Forward(RemoveReference<T>& x) noexcept
     {
+        return static_cast<T&&>(x);
+    }
+
+    /// Forwards rvalues as rvalues.
+    ///
+    /// \param x The object to be forwarded.
+    /// \return Cast of the object to an lvalue or rvalue reference.
+    template <typename T>
+    [[nodiscard]] constexpr T&& Forward(RemoveReference<T>&& x) noexcept
+    {
+        static_assert(IsLValueReference<T>, "Bad forward call.");
         return static_cast<T&&>(x);
     }
 
@@ -201,9 +211,9 @@ namespace he
     /// \param x The object to be moved.
     /// \return Cast of the object to an rvalue reference.
     template <typename T>
-    [[nodiscard]] constexpr std::remove_reference_t<T>&& Move(T&& x) noexcept
+    [[nodiscard]] constexpr RemoveReference<T>&& Move(T&& x) noexcept
     {
-        return static_cast<std::remove_reference_t<T>&&>(x);
+        return static_cast<RemoveReference<T>&&>(x);
     }
 
     /// Exchange the value of `obj` with `newVal` and returns the original value of `obj`.
@@ -214,8 +224,8 @@ namespace he
     template <typename T, typename U = T>
     constexpr T Exchange(T& obj, U&& newVal) noexcept
     {
-        T old = Move(obj);
-        obj = Forward<U>(newVal);
+        T old = static_cast<T&&>(obj);
+        obj = static_cast<U&&>(newVal);
         return old;
     }
 

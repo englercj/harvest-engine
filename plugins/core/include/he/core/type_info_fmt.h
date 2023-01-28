@@ -2,45 +2,47 @@
 
 #pragma once
 
+#include "he/core/fmt.h"
 #include "he/core/type_info.h"
-#include "he/core/string_view_fmt.h"
 
-#include "fmt/core.h"
-
-namespace fmt
+namespace he
 {
     template <>
-    struct formatter<he::TypeInfo>
+    struct Formatter<TypeInfo>
     {
-        char spec = '\0';
+        using Type = TypeInfo;
 
-        constexpr auto parse(format_parse_context& ctx) -> decltype(ctx.begin())
+        char spec{};
+
+        constexpr const char* Parse(const FmtParseCtx& ctx)
         {
-            auto it = ctx.begin();
-            if (it != ctx.end() && *it == ':')
+            const char* it = ctx.Begin();
+            if (it != ctx.End() && *it == ':')
                 ++it;
 
-            auto end = it;
-            while (end != ctx.end() && *end != '}')
+            const char* end = it;
+            while (end != ctx.End() && *end != '}')
                 ++end;
 
             if (it < end)
                 spec = *it;
 
+            if (spec != 's' && spec != 'd')
+                ctx.OnError("Unknown type specifier");
+
             return end;
         }
 
-        template <typename FormatContext>
-        auto format(const he::TypeInfo& info, FormatContext& ctx) const -> decltype(ctx.out())
+        void Format(String& out, const TypeInfo& info) const
         {
             switch (spec)
             {
-                case 'v':
-                    return fmt::format_to(ctx.out(), "{}", info.Hash());
                 case 's':
-                    return fmt::format_to(ctx.out(), "{}", info.Name());
+                    return FormatTo(out, "{}", info.Name());
+                case 'd':
+                    return FormatTo(out, "{}", info.Hash());
                 default:
-                    return fmt::format_to(ctx.out(), "({}){}", info.Hash(), info.Name());
+                    return FormatTo(out, "({}){}", info.Hash(), info.Name());
             }
         }
     };

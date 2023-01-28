@@ -112,6 +112,26 @@ namespace he
             HE_EXPECT_EQ(s_dtorCount, 1);
         }
 
+        // New -> Delete overaligned
+        {
+            static uint32_t s_ctorCount = 0;
+            static uint32_t s_dtorCount = 0;
+            struct alignas(128) OverAligned { OverAligned(uint32_t x) { s_ctorCount += x; } ~OverAligned() { ++s_dtorCount; } char x[128]; };
+
+            s_ctorCount = 0;
+            s_dtorCount = 0;
+
+            OverAligned* mem = alloc.New<OverAligned>(16);
+            HE_EXPECT(mem);
+            HE_EXPECT(IsAligned(mem, alignof(OverAligned)));
+            HE_EXPECT_EQ(s_ctorCount, 16);
+            HE_EXPECT_EQ(s_dtorCount, 0);
+
+            alloc.Delete(mem);
+            HE_EXPECT_EQ(s_ctorCount, 16);
+            HE_EXPECT_EQ(s_dtorCount, 1);
+        }
+
         // NewArray -> DeleteArray trivial
         {
             uint32_t* mem = alloc.NewArray<uint32_t>(16);
@@ -133,6 +153,26 @@ namespace he
             CtorTest* mem = alloc.NewArray<CtorTest>(16, 2);
             HE_EXPECT(mem);
             HE_EXPECT(IsAligned(mem, alignof(CtorTest)));
+            HE_EXPECT_EQ(s_ctorCount, 32);
+            HE_EXPECT_EQ(s_dtorCount, 0);
+
+            alloc.DeleteArray(mem);
+            HE_EXPECT_EQ(s_ctorCount, 32);
+            HE_EXPECT_EQ(s_dtorCount, 16);
+        }
+
+        // NewArray -> DeleteArray overaligned
+        {
+            static uint32_t s_ctorCount = 0;
+            static uint32_t s_dtorCount = 0;
+            struct alignas(128) OverAligned { OverAligned(uint32_t x) { s_ctorCount += x; } ~OverAligned() { ++s_dtorCount; } char x[128]; };
+
+            s_ctorCount = 0;
+            s_dtorCount = 0;
+
+            OverAligned* mem = alloc.NewArray<OverAligned>(16, 2);
+            HE_EXPECT(mem);
+            HE_EXPECT(IsAligned(mem, alignof(OverAligned)));
             HE_EXPECT_EQ(s_ctorCount, 32);
             HE_EXPECT_EQ(s_dtorCount, 0);
 

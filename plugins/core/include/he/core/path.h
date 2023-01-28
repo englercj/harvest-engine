@@ -18,7 +18,7 @@
 #include "he/core/string_view.h"
 #include "he/core/types.h"
 
-#include <iterator>
+namespace std { struct forward_iterator_tag; }
 
 namespace he
 {
@@ -125,6 +125,8 @@ namespace he
     class PathIterator
     {
     public:
+        using ElementType = StringView;
+
         using difference_type   = uint32_t;
         using value_type        = StringView;
         using pointer           = const value_type*;

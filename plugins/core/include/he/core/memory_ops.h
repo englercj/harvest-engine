@@ -11,8 +11,8 @@
         void* __cdecl memcpy(void*, const void*, size_t);
         int __cdecl memcmp(const void*, const void*, size_t);
         void* __cdecl memset(void*, int, size_t);
-        _VCRTIMP void* __cdecl memmove(void*, const void*, size_t);
-        _VCRTIMP const void* __cdecl memchr(const void*, int, size_t);
+        void* __cdecl memmove(void*, const void*, size_t);
+        const void* __cdecl memchr(const void*, int, size_t);
     }
 #pragma intrinsic(memcpy)
 #pragma intrinsic(memcmp)

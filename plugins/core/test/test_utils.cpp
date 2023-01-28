@@ -8,8 +8,7 @@
 #include "he/core/enum_ops.h"
 #include "he/core/macros.h"
 #include "he/core/test.h"
-
-#include <type_traits>
+#include "he/core/type_traits.h"
 
 using namespace he;
 
@@ -238,10 +237,10 @@ HE_TEST(core, utils, Forward)
     int x;
     HE_UNUSED(x);
 
-    static_assert(std::is_same_v<decltype(Forward<int>(x)), int&&>);
-    static_assert(std::is_same_v<decltype(Forward<const int&>(x)), const int&>);
-    static_assert(std::is_same_v<decltype(Forward<int&>(x)), int&>);
-    static_assert(std::is_same_v<decltype(Forward<int&&>(x)), int&&>);
+    static_assert(IsSame<decltype(Forward<int>(x)), int&&>);
+    static_assert(IsSame<decltype(Forward<const int&>(x)), const int&>);
+    static_assert(IsSame<decltype(Forward<int&>(x)), int&>);
+    static_assert(IsSame<decltype(Forward<int&&>(x)), int&&>);
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -251,8 +250,8 @@ HE_TEST(core, utils, Move)
     int& rx(x);
     HE_UNUSED(rx);
 
-    static_assert(std::is_same_v<decltype(Move(x)), int&&>);
-    static_assert(std::is_same_v<decltype(Move(rx)), int&&>);
+    static_assert(IsSame<decltype(Move(x)), int&&>);
+    static_assert(IsSame<decltype(Move(rx)), int&&>);
 }
 
 // ------------------------------------------------------------------------------------------------

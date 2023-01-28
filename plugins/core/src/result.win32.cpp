@@ -2,11 +2,9 @@
 
 #include "he/core/result.h"
 
-#include "he/core/appender.h"
+#include "he/core/fmt.h"
 #include "he/core/string.h"
 #include "he/core/wstr.h"
-
-#include "fmt/core.h"
 
 #if defined(HE_PLATFORM_API_WIN32)
 
@@ -39,7 +37,7 @@ namespace he
 
         if (srcLen == 0 || src == nullptr)
         {
-            fmt::format_to(Appender(out), "Unknown error: {}", m_code);
+            FormatTo(out, "Unknown error: {}", m_code);
         }
 
         // Remove a trailing period & \r\n for consistency with posix messages.

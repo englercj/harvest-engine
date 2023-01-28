@@ -7,16 +7,13 @@
 #include "struct_layout.h"
 
 #include "he/core/ascii.h"
-#include "he/core/enum_fmt.h"
 #include "he/core/enum_ops.h"
 #include "he/core/file.h"
+#include "he/core/limits.h"
 #include "he/core/log.h"
 #include "he/core/string_fmt.h"
-#include "he/core/string_view_fmt.h"
+#include "he/core/type_traits.h"
 #include "he/core/vector.h"
-
-#include <limits>
-#include <type_traits>
 
 namespace he::schema
 {
@@ -597,7 +594,7 @@ namespace he::schema
         return brand;
     }
 
-    template <typename T> requires(std::is_same_v<T, uint64_t> || std::is_same_v<T, int64_t>)
+    template <typename T> requires(IsSame<T, uint64_t> || IsSame<T, int64_t>)
     void Compiler::SetInt(const AstFileLocation& location, T value, Type::Data::Builder type, Value::Data::Builder data)
     {
         if (type.IsInt8())
@@ -1254,9 +1251,9 @@ namespace he::schema
             return ReadFloatValue<T>(valueNode->constant.value, *valueNode->parent);
         }
 
-        if constexpr (std::is_same_v<T, float>)
+        if constexpr (IsSame<T, float>)
         {
-            if (ast.floatingPoint < std::numeric_limits<float>::lowest() || ast.floatingPoint > std::numeric_limits<float>::max())
+            if (ast.floatingPoint < Limits<float>::Min || ast.floatingPoint > Limits<float>::Max)
             {
                 m_context->AddError(ast.location, "Floating-pointer value out of range for type.");
                 m_valid = false;

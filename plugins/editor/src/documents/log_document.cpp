@@ -2,14 +2,12 @@
 
 #include "he/editor/documents/log_document.h"
 
-#include "he/core/appender.h"
+#include "he/core/fmt.h"
 #include "he/core/clock_fmt.h"
-#include "he/core/enum_fmt.h"
 #include "he/core/key_value_fmt.h"
 #include "he/core/string_fmt.h"
 
 #include "imgui.h"
-#include "fmt/format.h"
 
 namespace he::editor
 {
@@ -47,9 +45,9 @@ namespace he::editor
                 && entry.kvs[0].Kind() == KeyValue::ValueKind::String
                 && String::Equal(entry.kvs[0].Key(), HE_MSG_KEY))
             {
-                fmt::format_to(
-                    Appender(m_buffer),
-                    FMT_STRING("[{:%Y-%m-%d_%H-%M-%S}{:.04f}] [{:s}]({}) {}\n"),
+                FormatTo(
+                    m_buffer,
+                    "[{:%Y-%m-%d_%H-%M-%S}{:.04f}] [{:s}]({}) {}\n",
                     FmtLocalTime(entry.timestamp),
                     fractionalSeconds,
                     entry.source.level,
@@ -58,14 +56,14 @@ namespace he::editor
             }
             else
             {
-                fmt::format_to(
-                    Appender(m_buffer),
-                    FMT_STRING("[{:%Y-%m-%d_%H-%M-%S}{:.04f}] [{:s}]({}) {}\n"),
+                FormatTo(
+                    m_buffer,
+                    "[{:%Y-%m-%d_%H-%M-%S}{:.04f}] [{:s}]({}) {}\n",
                     FmtLocalTime(entry.timestamp),
                     fractionalSeconds,
                     entry.source.level,
                     entry.source.category,
-                    fmt::join(entry.kvs.Begin(), entry.kvs.End(), ", "));
+                    FmtJoin(entry.kvs, ", "));
             }
 
             return true;

@@ -3,7 +3,7 @@
 #pragma once
 
 #include "he/core/debug.h"
-#include "he/core/enum_fmt.h"
+#include "he/core/fmt.h"
 #include "he/core/key_value.h"
 #include "he/core/log.h"
 #include "he/core/macros.h"
@@ -13,8 +13,6 @@
 #include "he/core/string_fmt.h"
 #include "he/core/types.h"
 #include "he/core/utils.h"
-
-#include "fmt/format.h"
 
 #include <atomic>
 
@@ -89,10 +87,10 @@
 #define HE_EXPECT_NE_MEM(a, b, len) HE_EXPECT(!::he::MemEqual((a), (b), len))
 
 /// Check the expectation that the pointer `a` points to the same memory as `b`.
-#define HE_EXPECT_EQ_PTR(a, b) HE_EXPECT((a) == (b), ::fmt::ptr(a), ::fmt::ptr(b))
+#define HE_EXPECT_EQ_PTR(a, b) HE_EXPECT((a) == (b), ::he::FmtPtr(a), ::he::FmtPtr(b))
 
 /// Check the expectation that the pointer `a` does not point to the same memory as `b`.
-#define HE_EXPECT_NE_PTR(a, b) HE_EXPECT((a) != (b), ::fmt::ptr(a), ::fmt::ptr(b))
+#define HE_EXPECT_NE_PTR(a, b) HE_EXPECT((a) != (b), ::he::FmtPtr(a), ::he::FmtPtr(b))
 
 /// Check the expectation that the value `a` and the value `b` are within `diff` floating point steps from eachother.
 #define HE_EXPECT_EQ_ULP(a, b, diff) HE_EXPECT(::he::EqualUlp(a, b, diff), a, b)

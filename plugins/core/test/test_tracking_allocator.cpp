@@ -8,8 +8,6 @@
 #include "he/core/stack_trace.h"
 #include "he/core/test.h"
 
-#include "fmt/format.h"
-
 #include <iostream>
 
 using namespace he;
@@ -30,10 +28,9 @@ HE_TEST(core, tracking_allocator, ActiveAllocations)
     void* p = a.Malloc(1024);
     HE_EXPECT_EQ(a.ActiveAllocationCount(), 1);
 
-    a.ForEachActiveAllocation([&](size_t size, size_t align, Span<const uintptr_t> frames)
+    a.ForEachActiveAllocation([&](size_t size, Span<const uintptr_t> frames)
     {
         HE_EXPECT_EQ(size, 1024);
-        HE_EXPECT_EQ(align, Allocator::DefaultAlignment);
         HE_EXPECT_GT(frames.Size(), 2);
 
         SymbolInfo info;

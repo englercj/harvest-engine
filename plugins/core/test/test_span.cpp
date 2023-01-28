@@ -41,21 +41,6 @@ HE_TEST(core, span, Construct)
     }
 
     {
-        struct TestStdRange
-        {
-            uint8_t values[10];
-
-            const uint8_t* data() const { return values; }
-            uint8_t* data() { return values; }
-            size_t size() const { return HE_LENGTH_OF(values); }
-        };
-
-        TestStdRange arr{ { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 } };
-        Span<uint8_t> s(arr);
-        SpanTestAttorney::Test(s, arr.values, HE_LENGTH_OF(arr.values));
-    }
-
-    {
         struct TestRange
         {
             uint8_t values[10];

@@ -2,12 +2,11 @@
 
 #include "file_helpers.posix.h"
 
+#include "he/core/fmt.h"
 #include "he/core/string_view.h"
 #include "he/core/path.h"
 #include "he/core/utils.h"
 #include "he/core/wstr.h"
-
-#include "fmt/core.h"
 
 #if defined(HE_PLATFORM_API_POSIX) && !defined(HE_PLATFORM_EMSCRIPTEN)
 
@@ -87,22 +86,25 @@ namespace he
 
         // path.Resize(sb.st_size + 1);
 
-        path.Resize(String::MaxEmbedCharacters, he::DefaultInit);
+        const uint32_t offset = out.Size();
+        uint32_t size = String::MaxEmbedCharacters;
+        path.Resize(path.Size() + size, DefaultInit);
 
         do
         {
-            ssize_t r = readlink(linkPath, path.Data(), path.Size());
+            ssize_t r = readlink(linkPath, path.Data() + offset, size);
             if (r < 0)
                 return Result::FromLastError();
 
-            if (r < path.Size())
+            if (r < size)
             {
                 // resize to properly null terminate
-                path.Resize(r);
+                path.Resize(offset + r);
                 return Result::Success;
             }
 
-            path.Resize(he::Max(512u, path.Size() * 2), he::DefaultInit);
+            size = Max(512u, size * 2);
+            path.Resize(offset + size, DefaultInit);
         } while (true);
 
         return PosixResult(ENAMETOOLONG);
@@ -169,17 +171,14 @@ namespace he
 
     Result PosixFileGetPath(int fd, String& outPath)
     {
-        char buf[64];
-        auto res = fmt::format_to_n(buf, HE_LENGTH_OF(buf), "/proc/self/fd/{}", fd);
-        buf[res.size] = '\0';
-
-        Result r = ReadLink(buf, outPath);
+        const String linkPath = Format("/proc/self/fd/{}", fd);
+        Result r = ReadLink(linkPath.Data(), outPath);
 
         // Size of link name changed between lstate and readlink, and it got larger. Try reading
         // it one more time before giving up.
         if (!r)
         {
-            r = ReadLink(buf, outPath);
+            r = ReadLink(linkPath.Data(), outPath);
         }
 
         return r;

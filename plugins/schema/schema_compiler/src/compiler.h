@@ -5,14 +5,10 @@
 #include "parser.h"
 
 #include "he/core/string.h"
+#include "he/core/type_traits.h"
 #include "he/core/types.h"
 #include "he/core/vector.h"
 #include "he/schema/schema.h"
-
-#include "fmt/core.h"
-
-#include <concepts>
-#include <type_traits>
 
 namespace he::schema
 {
@@ -55,7 +51,7 @@ namespace he::schema
 
         uint16_t GetArraySize(const AstExpression& ast, const AstNode& scope) const;
 
-        template <typename T> requires(std::is_same_v<T, uint64_t> || std::is_same_v<T, int64_t>)
+        template <typename T> requires(IsSame<T, uint64_t> || IsSame<T, int64_t>)
         void SetInt(const AstFileLocation& location, T value, Type::Data::Builder type, Value::Data::Builder data);
 
         ListBuilder CreateListValue(const Type::Builder elementType, const AstExpression& ast, const AstNode& scope);

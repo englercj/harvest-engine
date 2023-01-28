@@ -3,10 +3,13 @@
 #pragma once
 
 #include "he/core/memory_ops.h"
+#include "he/core/type_traits.h"
 #include "he/core/types.h"
 #include "he/core/utils.h"
 
-#include <type_traits>
+// Forward declare placement new. Doing this instead of including <new> has a major impact
+// on reducing compile times, espcially since this file is included everywhere.
+[[nodiscard]] inline void* __cdecl operator new(size_t, void* ptr) noexcept;
 
 namespace he
 {
@@ -88,10 +91,10 @@ namespace he
         /// \tparam The type to allocate and construct.
         /// \param args optional arguments for the constructor.
         template <typename T, class... Args>
-        [[nodiscard]] T* New(Args&&... args) noexcept(std::is_nothrow_constructible_v<T, Args...>)
+        [[nodiscard]] T* New(Args&&... args) noexcept
         {
             void* p = Malloc<T>(1);
-            return new(p) T(Forward<Args>(args)...);
+            return ::new(p) T(Forward<Args>(args)...);
         }
 
         /// Allocates and constructs a new array of `T`.
@@ -99,7 +102,7 @@ namespace he
         /// \tparam The type to allocate and construct.
         /// \param count The number of array elements to allocate and construct.
         /// \param args optional arguments for the constructor.
-        template <typename T> requires(std::is_trivially_constructible_v<T> && std::is_trivially_destructible_v<T>)
+        template <typename T> requires(IsTriviallyConstructible<T> && IsTriviallyDestructible<T>)
         [[nodiscard]] T* NewArray(uint32_t count) noexcept
         {
             T* mem = Malloc<T>(count);
@@ -113,14 +116,17 @@ namespace he
         /// \param count The number of array elements to allocate and construct.
         /// \param args optional arguments for the constructor.
         template <typename T, class... Args>
-        [[nodiscard]] T* NewArray(uint32_t count, Args&&... args) noexcept(std::is_nothrow_constructible_v<T, Args...>)
+        [[nodiscard]] T* NewArray(uint32_t count, Args&&... args) noexcept
         {
-            constexpr size_t Align = alignof(T);
+            constexpr size_t Align = AlignUp(alignof(T), sizeof(void*));
             constexpr size_t Offset = AlignUp<size_t>(sizeof(size_t), Align);
+
+            // We're going to put a size_t at the allocated location, so it must be size_t aligned.
+            static_assert(IsAligned(Align, alignof(size_t)));
 
             const size_t size = Offset + (sizeof(T) * count);
 
-            char* ptr = static_cast<char*>(Malloc(size, Align));
+            uint8_t* ptr = static_cast<uint8_t*>(Malloc(size, Align));
             if (ptr == nullptr)
                 return nullptr;
 
@@ -131,7 +137,7 @@ namespace he
             T* p = reinterpret_cast<T*>(ptr + Offset);
             for (size_t i = 0; i < count; ++i)
             {
-                new(p + i) T(Forward<Args>(args)...);
+                ::new(p + i) T(Forward<Args>(args)...);
             }
 
             return p;
@@ -140,7 +146,7 @@ namespace he
         /// Deletes `p` which must have been allocated with New.
         ///
         /// \param p The pointer to destruct and deallocate.
-        template <typename T> requires(std::is_trivially_destructible_v<T>)
+        template <typename T> requires(IsTriviallyDestructible<T>)
         void Delete(const T* p) noexcept
         {
             Free(const_cast<T*>(p));
@@ -149,8 +155,8 @@ namespace he
         /// Deletes `p` which must have been allocated with New.
         ///
         /// \param p The pointer to destruct and deallocate.
-        template <typename T> requires(!std::is_trivially_destructible_v<T>)
-        void Delete(const T* p) noexcept(std::is_nothrow_destructible_v<T>)
+        template <typename T> requires(!IsTriviallyDestructible<T>)
+        void Delete(const T* p) noexcept
         {
             if (p)
             {
@@ -162,7 +168,7 @@ namespace he
         /// Deletes `p` which must have been allocated with NewArray.
         ///
         /// \param p The pointer to destruct and deallocate.
-        template <typename T> requires(std::is_trivially_destructible_v<T>)
+        template <typename T> requires(IsTriviallyDestructible<T>)
         void DeleteArray(const T* p) noexcept
         {
             Free(const_cast<T*>(p));
@@ -171,17 +177,17 @@ namespace he
         /// Deletes `p` which must have been allocated with NewArray.
         ///
         /// \param p The pointer to destruct and deallocate.
-        template <typename T> requires(!std::is_trivially_destructible_v<T>)
-        void DeleteArray(const T* p) noexcept(std::is_nothrow_destructible_v<T>)
+        template <typename T> requires(!IsTriviallyDestructible<T>)
+        void DeleteArray(const T* p) noexcept
         {
             if (!p)
                 return;
 
-            constexpr size_t Align = alignof(T);
+            constexpr size_t Align = AlignUp(alignof(T), sizeof(void*));
             constexpr size_t Offset = AlignUp<size_t>(sizeof(size_t), Align);
 
             // Read the array length from the header
-            const char* ptr = reinterpret_cast<const char*>(p) - Offset;
+            const uint8_t* ptr = reinterpret_cast<const uint8_t*>(p) - Offset;
             const size_t count = *reinterpret_cast<const size_t*>(ptr);
 
             // Destruct each of the array items
@@ -191,7 +197,7 @@ namespace he
             }
 
             // Free the memory
-            Free(const_cast<char*>(ptr));
+            Free(const_cast<uint8_t*>(ptr));
         }
     };
 

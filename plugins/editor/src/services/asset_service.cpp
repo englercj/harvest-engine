@@ -7,7 +7,6 @@
 #include "he/core/path.h"
 #include "he/core/scope_guard.h"
 #include "he/core/string_fmt.h"
-#include "he/core/string_view_fmt.h"
 
 namespace he::editor
 {

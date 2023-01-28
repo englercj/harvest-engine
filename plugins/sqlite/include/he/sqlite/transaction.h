@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include "he/core/string.h"
 #include "he/core/types.h"
 
 struct sqlite3;
@@ -31,6 +32,6 @@ namespace he::sqlite
     private:
         sqlite3* m_db;
         bool m_finalized;
-        char m_id[16];
+        String m_id;
     };
 }

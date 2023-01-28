@@ -3,14 +3,15 @@
 #include "he/schema/dynamic.h"
 
 #include "he/core/assert.h"
+#include "he/core/concepts.h"
 #include "he/core/enum_ops.h"
+#include "he/core/limits.h"
 #include "he/core/log.h"
 #include "he/core/type_info.h"
+#include "he/core/type_traits.h"
 #include "he/schema/layout.h"
 
 #include <algorithm>
-#include <concepts>
-#include <limits>
 
 namespace he
 {
@@ -120,11 +121,11 @@ namespace he::schema
         return result;
     }
 
-    template <typename T, std::floating_point U>
+    template <typename T, FloatingPoint U>
     T CoerceFloat(U value)
     {
-        constexpr T min = std::numeric_limits<T>::lowest();
-        constexpr T max = std::numeric_limits<T>::max();
+        constexpr T min = Limits<T>::Min;
+        constexpr T max = Limits<T>::Max;
         HE_VERIFY(value >= static_cast<U>(min) && value <= static_cast<U>(max),
             HE_MSG("Value out of range for requested type."),
             HE_KV(requested_type, TypeInfo::Get<T>().Name()),

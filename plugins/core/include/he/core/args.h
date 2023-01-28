@@ -2,14 +2,14 @@
 
 #pragma once
 
+#include "he/core/concepts.h"
 #include "he/core/enum_ops.h"
 #include "he/core/span.h"
 #include "he/core/string.h"
+#include "he/core/type_traits.h"
 #include "he/core/types.h"
 #include "he/core/utils.h"
 #include "he/core/vector.h"
-
-#include <type_traits>
 
 namespace he
 {
@@ -37,11 +37,11 @@ namespace he
     template <typename T, typename U = decltype(nullptr)> struct ArgTypeOf;
     template <> struct ArgTypeOf<bool> { static constexpr ArgType Value = ArgType::Boolean; };
     template <> struct ArgTypeOf<const char*> { static constexpr ArgType Value = ArgType::String; };
-    template <std::integral T> struct ArgTypeOf<T> { static constexpr ArgType Value = ArgType::Integer; };
-    template <std::floating_point T> struct ArgTypeOf<T> { static constexpr ArgType Value = ArgType::Float; };
+    template <Integral T> struct ArgTypeOf<T> { static constexpr ArgType Value = ArgType::Integer; };
+    template <FloatingPoint T> struct ArgTypeOf<T> { static constexpr ArgType Value = ArgType::Float; };
 
     // Gives the signed flag if T is signed.
-    template <typename T> struct ArgSignedFlag { static constexpr ArgFlag Value = (std::is_signed_v<T> ? InternalSignedFlag : ArgFlag::None); };
+    template <typename T> struct ArgSignedFlag { static constexpr ArgFlag Value = (IsSigned<T> ? InternalSignedFlag : ArgFlag::None); };
 
     // Represents the result of parsing arguments.
     struct ArgResult

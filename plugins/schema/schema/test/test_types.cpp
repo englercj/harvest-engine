@@ -3,15 +3,14 @@
 #include "he/schema/types.h"
 
 #include "he/core/test.h"
-
-#include <type_traits>
+#include "he/core/type_traits.h"
 
 using namespace he::schema;
 
 // ------------------------------------------------------------------------------------------------
 HE_TEST(schema, types, TypeId)
 {
-    static_assert(std::is_same_v<TypeId, uint64_t>);
+    static_assert(he::IsSame<TypeId, uint64_t>);
     static_assert(TypeIdFlag == (1ull << 63));
 
     TypeIdHasher h;
@@ -21,7 +20,7 @@ HE_TEST(schema, types, TypeId)
 // ------------------------------------------------------------------------------------------------
 HE_TEST(schema, types, Word)
 {
-    static_assert(std::is_same_v<Word, uint64_t>);
+    static_assert(he::IsSame<Word, uint64_t>);
 }
 
 // ------------------------------------------------------------------------------------------------

@@ -6,6 +6,7 @@
 #include "parser.h"
 #include "verifier.h"
 
+#include "he/core/fmt.h"
 #include "he/core/log.h"
 #include "he/core/string.h"
 #include "he/core/types.h"
@@ -13,8 +14,6 @@
 #include "he/schema/ast.h"
 #include "he/schema/compile_session.h"
 #include "he/schema/schema.h"
-
-#include "fmt/core.h"
 
 namespace he::schema
 {
@@ -63,13 +62,13 @@ namespace he::schema
         Span<CompileContext*> Imports() { return m_imports; }
 
         template <typename... Args>
-        void AddError(const AstFileLocation& loc, fmt::format_string<Args...> fmt, Args&&... args)
+        void AddError(const AstFileLocation& loc, FmtString<Args...> fmt, Args&&... args)
         {
             AddError(loc.line, loc.column, fmt, Forward<Args>(args)...);
         }
 
         template <typename... Args>
-        void AddError(uint32_t line, uint32_t column, fmt::format_string<Args...> fmt, Args&&... args)
+        void AddError(uint32_t line, uint32_t column, FmtString<Args...> fmt, Args&&... args)
         {
             HE_LOG_ERROR(schema_compiler,
                 HE_MSG(fmt, Forward<Args>(args)...),

@@ -13,8 +13,6 @@
 #include "boost/di.hpp"
 #include "boost/di/extension/injector.hpp"
 
-#include <type_traits>
-
 namespace di = boost::di;
 
 namespace he::editor
@@ -24,7 +22,7 @@ namespace he::editor
     {
         using scope = ScopeType;
 
-        template <typename I> requires(std::is_convertible_v<T, I>)
+        template <typename I> requires(IsConvertible<T, I>)
         inline operator I() const noexcept { return object; }
 
         inline operator T&&() noexcept { return static_cast<T&&>(object); }
@@ -41,20 +39,20 @@ namespace he::editor
         explicit DIUniqueWrapper(T* object) : object(object) {}
     #endif
 
-        template <typename I> requires(std::is_convertible_v<T, I>)
+        template <typename I> requires(IsConvertible<T, I>)
         inline operator I() const noexcept
         {
             UniquePtr<T> ptr{ object };
             return static_cast<T&&>(*ptr);
         }
 
-        template <typename I> requires(std::is_convertible_v<T*, I*>)
+        template <typename I> requires(IsConvertible<T*, I*>)
         inline operator I*() const noexcept { return object; }
 
-        template <typename I> requires(std::is_convertible_v<T*, const I*>)
+        template <typename I> requires(IsConvertible<T*, const I*>)
         inline operator const I*() const noexcept { return object; }
 
-        template <typename I> requires(std::is_convertible_v<T*, I*>)
+        template <typename I> requires(IsConvertible<T*, I*>)
         inline operator UniquePtr<I>() const noexcept { return UniquePtr<I>{ object }; }
 
         T* object{ nullptr };
@@ -71,7 +69,7 @@ namespace he::editor
             using is_referable = std::false_type;
 
         #define HE_DI_PROVIDER_VAL(T, ProviderType) \
-            std::declval<ProviderType>().get(typename ProviderType::config::template memory_traits<T>::type{})
+            DeclVal<ProviderType>().get(typename ProviderType::config::template memory_traits<T>::type{})
 
             template <typename T, typename ProviderType>
             using ProviderGetType = decltype(HE_DI_PROVIDER_VAL(T, ProviderType));
@@ -140,7 +138,7 @@ namespace he::editor
         template <class T> struct memory_traits<const T&> { using type = typename memory_traits<T>::type; };
         template <class T> struct memory_traits<UniquePtr<T>> { using type = typename di::type_traits::heap; };
 
-        template <class T> requires(std::is_polymorphic_v<T>)
+        template <class T> requires(IsPolymorphic<T>)
         struct memory_traits<T> { using type = typename di::type_traits::heap; };
 
         template <typename InjectorType>

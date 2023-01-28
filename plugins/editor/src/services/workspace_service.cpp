@@ -2,7 +2,7 @@
 
 #include "he/editor/services/workspace_service.h"
 
-#include "he/core/appender.h"
+#include "he/core/fmt.h"
 #include "he/editor/di.h"
 #include "he/editor/dialogs/choice_dialog.h"
 #include "he/editor/documents/asset_browser_document.h"
@@ -20,7 +20,6 @@
 #define IMGUI_DEFINE_MATH_OPERATORS
 #include "imgui.h"
 #include "imgui_internal.h"
-#include "fmt/core.h"
 
 namespace he::editor
 {
@@ -298,7 +297,7 @@ namespace he::editor
             const bool isLogOpen = m_panelService.IsOpen<LogDocument>();
             static String s_buf;
             s_buf.Clear();
-            fmt::format_to(Appender(s_buf), ICON_MDI_ALERT_OCTAGON " {} " ICON_MDI_ALERT " {} " ICON_MDI_INFORMATION " {} {}",
+            FormatTo(s_buf, ICON_MDI_ALERT_OCTAGON " {} " ICON_MDI_ALERT " {} " ICON_MDI_INFORMATION " {} {}",
                 m_logService.GetNumEntries(LogLevel::Error),
                 m_logService.GetNumEntries(LogLevel::Warn),
                 m_logService.GetNumEntries(LogLevel::Info),
@@ -320,7 +319,7 @@ namespace he::editor
                 const uint32_t running = m_taskService.RunningSize();
 
                 showSpinner = true;
-                fmt::format_to(Appender(s_buf), "Running {} tasks ({} pending)...", running, pending);
+                FormatTo(s_buf, "Running {} tasks ({} pending)...", running, pending);
             }
             else
             {

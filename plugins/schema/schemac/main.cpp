@@ -3,7 +3,6 @@
 #include "he/core/args.h"
 #include "he/core/directory.h"
 #include "he/core/file.h"
-#include "he/core/enum_fmt.h"
 #include "he/core/log.h"
 #include "he/core/log_sinks.h"
 #include "he/core/path.h"
@@ -11,8 +10,6 @@
 #include "he/core/vector.h"
 #include "he/schema/codegen.h"
 #include "he/schema/compile_session.h"
-
-#include "fmt/format.h"
 
 #include <filesystem>
 #include <iostream>

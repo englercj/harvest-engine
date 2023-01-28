@@ -6,6 +6,7 @@
 #include "he/core/compiler.h"
 #include "he/core/clock.h"
 #include "he/core/cpu.h"
+#include "he/core/cpu_info.h"
 #include "he/core/macros.h"
 #include "he/core/memory_ops.h"
 

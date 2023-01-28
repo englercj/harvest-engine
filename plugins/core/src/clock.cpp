@@ -2,6 +2,10 @@
 
 #include "he/core/clock.h"
 
+#include "he/core/assert.h"
+#include "he/core/compiler.h"
+#include "he/core/string.h"
+
 #include <ctime>
 
 namespace he

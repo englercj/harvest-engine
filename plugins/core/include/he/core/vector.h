@@ -4,14 +4,12 @@
 
 #include "he/core/allocator.h"
 #include "he/core/assert.h"
+#include "he/core/concepts.h"
 #include "he/core/macros.h"
 #include "he/core/memory_ops.h"
 #include "he/core/type_traits.h"
 #include "he/core/types.h"
 #include "he/core/utils.h"
-
-#include <algorithm>
-#include <new>
 
 namespace he
 {
@@ -91,26 +89,20 @@ namespace he
         ///
         /// \param x The vector to check against.
         /// \return True if the vectors are equal, false otherwise.
-        template <typename U> requires(std::is_convertible_v<U(*)[], T(*)[]>)
+        template <typename U> requires(IsConvertible<U(*)[], T(*)[]>)
         bool operator==(const Vector<U>& x) const;
 
         /// Checks if this vector is not equal to another vector.
         ///
         /// \param x The vector to check against.
         /// \return True if the vectors are not equal, false otherwise.
-        template <typename U> requires(std::is_convertible_v<U(*)[], T(*)[]>)
+        template <typename U> requires(IsConvertible<U(*)[], T(*)[]>)
         bool operator!=(const Vector<U>& x) const { return !this->operator==(x); }
 
         /// Replaces the contents of this string with a copy of the characters in `range`.
         ///
         /// \param str The string source to copy from.
-        template <typename R> requires(!std::is_same_v<R, Vector<T>> && StdContiguousRange<R, const T>)
-        Vector& operator=(const R& range) { Clear(); Insert(0, range.data(), static_cast<uint32_t>(range.size())); return *this; }
-
-        /// Replaces the contents of this string with a copy of the characters in `range`.
-        ///
-        /// \param str The string source to copy from.
-        template <typename R> requires(!std::is_same_v<R, Vector<T>> && ContiguousRange<R, const T>)
+        template <typename R> requires(!IsSame<R, Vector<T>> && ContiguousRange<R, const T>)
         Vector& operator=(const R& range) { Clear(); Insert(0, range.Data(), range.Size()); return *this; }
 
         // ----------------------------------------------------------------------------------------

@@ -8,8 +8,6 @@
 #include "he/core/sync.h"
 #include "he/core/types.h"
 
-#include <iterator>
-
 /// \def HE_ALLOC_TRACKING_FRAME_COUNT
 /// This define controls the number of stack frames that are captured to track each allocation
 /// made by the \ref TrackingAllocator. Each frame tracked adds a cost of sizeof(uintptr_t)
@@ -55,7 +53,6 @@ namespace he
         struct AllocHeader
         {
             size_t size{ 0 };
-            size_t alignment{ 0 };
             void* mem{ nullptr };
             uintptr_t frames[HE_ALLOC_TRACKING_FRAME_COUNT]{};
             AllocHeader* next{ nullptr };
@@ -89,7 +86,7 @@ namespace he
                 ++count;
 
             const Span<const uintptr_t> frames(header->frames, count);
-            iterator(header->size, header->alignment, frames);
+            iterator(header->size, frames);
             header = header->next;
         }
     }

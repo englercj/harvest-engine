@@ -37,7 +37,7 @@ static void TestLock(F&& func)
     for (uint32_t i = 0; i < ThreadsCount; ++i)
         threads[i].join();
 
-    if constexpr (!IsSpecialization<T, LockGuard> && !std::is_same_v<T, ReadLockGuard>)
+    if constexpr (!IsSpecialization<T, LockGuard> && !IsSame<T, ReadLockGuard>)
     {
         HE_EXPECT(lock.TryAcquire());
         lock.Release();

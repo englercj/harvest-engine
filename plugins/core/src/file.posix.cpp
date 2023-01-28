@@ -4,16 +4,13 @@
 
 #include "he/core/allocator.h"
 #include "he/core/assert.h"
+#include "he/core/limits.h"
 #include "he/core/macros.h"
 #include "he/core/path.h"
 #include "he/core/scope_guard.h"
 #include "he/core/string.h"
 #include "he/core/system.h"
 #include "he/core/utils.h"
-
-#include "fmt/core.h"
-
-#include <limits>
 
 #if defined(HE_PLATFORM_API_POSIX) && !defined(HE_PLATFORM_EMSCRIPTEN)
 
@@ -358,7 +355,7 @@ namespace he
         if (size == 0)
         {
             const uint64_t fileSize = file.GetSize();
-            HE_ASSERT(fileSize <= std::numeric_limits<uint32_t>::max());
+            HE_ASSERT(fileSize <= Limits<uint32_t>::Max);
             size = static_cast<uint32_t>(file.GetSize());
         }
 

@@ -9,7 +9,7 @@
 #include "he/core/types.h"
 #include "he/schema/types.h"
 
-#include <iterator>
+namespace std { struct bidirectional_iterator_tag; }
 
 namespace he::schema
 {

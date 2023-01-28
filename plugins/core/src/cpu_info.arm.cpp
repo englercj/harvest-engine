@@ -1,8 +1,9 @@
 // Copyright Chad Engler
 
-#include "he/core/cpu.h"
+#include "he/core/cpu_info.h"
 
 #include "he/core/compiler.h"
+#include "he/core/cpu.h"
 #include "he/core/string.h"
 
 #if HE_CPU_ARM

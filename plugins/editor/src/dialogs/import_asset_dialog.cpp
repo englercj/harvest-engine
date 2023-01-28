@@ -3,7 +3,6 @@
 #include "he/editor/dialogs/import_asset_dialog.h"
 
 #include "he/assets/asset_importer.h"
-#include "he/core/enum_fmt.h"
 #include "he/core/enum_ops.h"
 #include "he/core/file.h"
 #include "he/core/path.h"

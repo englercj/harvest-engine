@@ -2,6 +2,7 @@
 
 #include "he/window/gamepad.h"
 
+#include "he/core/assert.h"
 #include "he/core/enum_ops.h"
 #include "he/window/event.h"
 #include "he/window/application.h"

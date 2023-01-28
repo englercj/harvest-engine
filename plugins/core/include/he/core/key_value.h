@@ -3,13 +3,12 @@
 #pragma once
 
 #include "he/core/allocator.h"
-#include "he/core/appender.h"
+#include "he/core/concepts.h"
 #include "he/core/enum_ops.h"
+#include "he/core/fmt.h"
 #include "he/core/type_traits.h"
 #include "he/core/string.h"
 #include "he/core/utils.h"
-
-#include "fmt/core.h"
 
 /// \def HE_MSG_KEY
 /// Defines the quoted string to use as the key for the special "message" pair that is
@@ -23,9 +22,9 @@
 ///
 /// \param k The unquoted name of the key. By convention these are snake_case.
 /// \param v The value of the pair, which can any arithmetic type or anything convertable to a
-///     string via fmt. Make sure to include the "*_fmt.h" header for the type you use. You can
-///     also specify a format string followed by arguments to format. If there are no format
-///     arguments a string will be used as-is, without formatting.
+///     string via \ref Format. Make sure to include the "*_fmt.h" header for the type you use.
+///     You can also specify a format string followed by arguments to format. If there are no
+///     format arguments a string will be used as-is, without formatting.
 /// \param ... The format arguments if `v` is a format string specifier.
 #define HE_KV(k, v, ...) (::he::KeyValue{ #k, (v), ##__VA_ARGS__ })
 
@@ -101,7 +100,7 @@ namespace he
             m_value.s.Assign(v, N);
         }
 
-        template <typename T> requires(!Enum<T> && (StdContiguousRange<T, const char> || ContiguousRange<T, const char>))
+        template <typename T> requires(!IsEnum<T> && ContiguousRange<T, const char>)
         KeyValue(const char* k, const T& v) noexcept
             : m_key(k)
             , m_kind(ValueKind::String)
@@ -110,19 +109,19 @@ namespace he
         }
 
         template <typename... Args>
-        KeyValue(const char* k, fmt::format_string<Args...> fmt, Args&&... args) noexcept
+        KeyValue(const char* k, FmtString<Args...> fmt, Args&&... args) noexcept
             : m_key(k)
             , m_kind(ValueKind::String)
         {
-            fmt::format_to(Appender(m_value.s), fmt, Forward<Args>(args)...);
+            FormatTo(m_value.s, fmt, Forward<Args>(args)...);
         }
 
-        template <typename T> requires(!Enum<T> && !StdContiguousRange<T, const char> && !ContiguousRange<T, const char>)
+        template <typename T> requires(!IsEnum<T> && !ContiguousRange<T, const char>)
         KeyValue(const char* k, const T& v) noexcept
             : m_key(k)
             , m_kind(ValueKind::String)
         {
-            fmt::format_to(Appender(m_value.s), "{}", v);
+            FormatTo(m_value.s, "{}", v);
         }
 
         KeyValue(const KeyValue& x) noexcept { *this = x; }

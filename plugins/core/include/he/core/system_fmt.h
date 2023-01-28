@@ -2,26 +2,22 @@
 
 #pragma once
 
+#include "he/core/fmt.h"
 #include "he/core/system.h"
 #include "he/core/string_fmt.h"
 
-#include "fmt/core.h"
-
-namespace fmt
+namespace he
 {
-
     template <>
-    struct formatter<he::SystemInfo>
+    struct Formatter<SystemInfo>
     {
-        constexpr auto parse(format_parse_context& ctx) -> decltype(ctx.begin())
-        {
-            return ctx.begin();
-        }
+        using Type = SystemInfo;
 
-        template <typename FormatContext>
-        auto format(const he::SystemInfo& info, FormatContext& ctx) -> decltype(ctx.out())
+        constexpr const char* Parse(const FmtParseCtx& ctx) const { return ctx.Begin(); }
+
+        void Format(String& out, const SystemInfo& info) const
         {
-            return fmt::format_to(ctx.out(), "{} ({}.{}.{}.{})",
+            return FormatTo(out, "{} ({}.{}.{}.{})",
                 info.platform, info.version.major, info.version.minor, info.version.patch, info.version.build);
         }
     };

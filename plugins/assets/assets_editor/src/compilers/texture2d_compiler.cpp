@@ -233,7 +233,7 @@ namespace he::assets
         }
 
         const basisu::uint8_vec& data = compressor.get_output_ktx2_file();
-        ctx.db.AddResource(ctx.asset.GetUuid(), Texture2DKtx2Id, data);
+        ctx.db.AddResource(ctx.asset.GetUuid(), Texture2DKtx2Id, { data.begin(), data.end() });
         return true;
     }
 }

@@ -7,12 +7,13 @@
 #include "he/assets/asset_models.h"
 #include "he/assets/types.h"
 #include "he/assets/types_fmt.h"
-#include "he/core/appender.h"
 #include "he/core/async_file.h"
 #include "he/core/clock.h"
 #include "he/core/clock_fmt.h"
 #include "he/core/directory.h"
+#include "he/core/fmt.h"
 #include "he/core/file.h"
+#include "he/core/limits.h"
 #include "he/core/log.h"
 #include "he/core/path.h"
 #include "he/core/result.h"
@@ -22,10 +23,6 @@
 #include "he/core/string_builder.h"
 #include "he/core/string_fmt.h"
 #include "he/schema/toml.h"
-
-#include "fmt/core.h"
-
-#include <limits>
 
 namespace he::assets
 {
@@ -202,7 +199,7 @@ namespace he::assets
         }
 
         const uint64_t size = file.GetSize();
-        if (size > std::numeric_limits<uint32_t>::max())
+        if (size > Limits<uint32_t>::Max)
         {
             HE_LOG_ERROR(he_assets,
                 HE_MSG("Asset file size is larger than UINT32_MAX"),
@@ -428,9 +425,9 @@ namespace he::assets
     String AssetDatabase::MakeResourcePath(const AssetUuid& assetUuid, ResourceId resourceId) const
     {
         String path = m_resourceRoot;
-        fmt::format_to(Appender(path), "/{}", assetUuid);
+        FormatTo(path, "/{}", assetUuid);
         Directory::Create(path.Data(), true);
-        fmt::format_to(Appender(path), "/{}", resourceId);
+        FormatTo(path, "/{}", resourceId);
         return path;
     }
 

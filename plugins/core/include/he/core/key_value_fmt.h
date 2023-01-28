@@ -2,33 +2,29 @@
 
 #pragma once
 
+#include "he/core/fmt.h"
 #include "he/core/key_value.h"
 
-#include "fmt/core.h"
-
-namespace fmt
+namespace he
 {
     template <>
-    struct formatter<he::KeyValue>
+    struct Formatter<KeyValue>
     {
-        constexpr auto parse(format_parse_context& ctx) const -> decltype(ctx.begin())
-        {
-            return ctx.begin();
-        }
+        using Type = KeyValue;
 
-        template <typename FormatContext>
-        auto format(const he::KeyValue& kv, FormatContext& ctx) const -> decltype(ctx.out())
+        constexpr const char* Parse(const FmtParseCtx& ctx) const { return ctx.Begin(); }
+
+        void Format(String& out, const KeyValue& kv) const
         {
             switch (kv.Kind())
             {
-                case he::KeyValue::ValueKind::Bool: return fmt::format_to(ctx.out(), "{} = {}", kv.Key(), kv.GetBool());
-                case he::KeyValue::ValueKind::Enum: return fmt::format_to(ctx.out(), "{} = {}({})", kv.Key(), kv.GetEnumString(), kv.GetEnumValue());
-                case he::KeyValue::ValueKind::Int: return fmt::format_to(ctx.out(), "{} = {}", kv.Key(), kv.GetInt());
-                case he::KeyValue::ValueKind::Uint: return fmt::format_to(ctx.out(), "{} = {}", kv.Key(), kv.GetUint());
-                case he::KeyValue::ValueKind::Double: return fmt::format_to(ctx.out(), "{} = {}", kv.Key(), kv.GetDouble());
-                case he::KeyValue::ValueKind::String: return fmt::format_to(ctx.out(), "{} = {}", kv.Key(), kv.GetString().Data());
+                case KeyValue::ValueKind::Bool: FormatTo(out, "{} = {}", kv.Key(), kv.GetBool()); break;
+                case KeyValue::ValueKind::Enum: FormatTo(out, "{} = {}({})", kv.Key(), kv.GetEnumString(), kv.GetEnumValue()); break;
+                case KeyValue::ValueKind::Int: FormatTo(out, "{} = {}", kv.Key(), kv.GetInt()); break;
+                case KeyValue::ValueKind::Uint: FormatTo(out, "{} = {}", kv.Key(), kv.GetUint()); break;
+                case KeyValue::ValueKind::Double: FormatTo(out, "{} = {}", kv.Key(), kv.GetDouble()); break;
+                case KeyValue::ValueKind::String: FormatTo(out, "{} = {}", kv.Key(), kv.GetString().Data()); break;
             }
-            return ctx.out();
         }
     };
 }

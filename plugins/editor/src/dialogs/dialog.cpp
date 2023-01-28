@@ -2,12 +2,11 @@
 
 #include "he/editor/dialogs/dialog.h"
 
-#include "he/core/appender.h"
+#include "he/core/fmt.h"
 #include "he/core/string.h"
 #include "he/core/string_fmt.h"
 
 #include "imgui.h"
-#include "fmt/core.h"
 
 namespace he::editor
 {
@@ -18,7 +17,7 @@ namespace he::editor
         // TODO: We can cache this with some API changes if it is too slow.
         static String s_label;
         s_label.Clear();
-        fmt::format_to(Appender(s_label), "{} ##dialog-id-{}", m_title, m_counter);
+        FormatTo(s_label, "{} ##dialog-id-{}", m_title, m_counter);
         return s_label.Data();
     }
 }

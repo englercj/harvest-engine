@@ -3,7 +3,7 @@
 #include "he/core/async_file.h"
 
 #include "he/core/assert.h"
-#include "he/core/cpu.h"
+#include "he/core/cpu_info.h"
 #include "he/core/result_fmt.h"
 #include "he/core/scope_guard.h"
 #include "he/core/sync.h"

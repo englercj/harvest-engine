@@ -2,6 +2,7 @@
 
 #include "he/editor/services/task_service.h"
 
+#include "he/core/cpu_info.h"
 #include "he/core/thread.h"
 #include "he/core/unique_ptr.h"
 #include "he/core/utils.h"

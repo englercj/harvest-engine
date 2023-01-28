@@ -86,7 +86,7 @@
     using Simd128i = int32x4_t;
 #else
     struct alignas(16) Simd128 { float x, y, z, w; };
-    struct alignas(16) Simd128i { int32_t x, y, z, w; };
+    struct alignas(16) Simd128i { int x, y, z, w; };
 #endif
 
 constexpr Simd128 MakeSimd128(float x, float y, float z, float w) noexcept
@@ -100,7 +100,7 @@ constexpr Simd128 MakeSimd128(float x, float y, float z, float w) noexcept
     #endif
 }
 
-constexpr Simd128i MakeSimd128i(int32_t x, int32_t y, int32_t z, int32_t w) noexcept
+constexpr Simd128i MakeSimd128i(int x, int y, int z, int w) noexcept
 {
     #if HE_SIMD_SSE2 && HE_COMPILER_MSVC
         return Simd128i{ .m128i_i32 = { x, y, z, w } };

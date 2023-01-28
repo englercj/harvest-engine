@@ -5,8 +5,6 @@
 #include "he/core/enum_ops.h"
 #include "he/core/vector.h"
 
-#include "fmt/core.h"
-
 namespace he
 {
     static Vector<LogDelegate>& GetSinks()

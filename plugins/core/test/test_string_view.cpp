@@ -3,16 +3,11 @@
 #include "fixtures.h"
 
 #include "he/core/string_view.h"
-#include "he/core/string_view_fmt.h"
 
-#include "he/core/appender.h"
+#include "he/core/fmt.h"
 #include "he/core/allocator.h"
 #include "he/core/string.h"
 #include "he/core/test.h"
-
-#include "fmt/format.h"
-
-#include <string>
 
 using namespace he;
 
@@ -37,13 +32,6 @@ HE_TEST(core, string_view, Construct)
 
         StringView s(str);
         StringViewTestAttorney::Test(s, str.Data(), str.Size());
-    }
-
-    {
-        std::string str(TestString);
-
-        StringView s(str);
-        StringViewTestAttorney::Test(s, str.data(), static_cast<uint32_t>(str.size()));
     }
 
     {
@@ -425,8 +413,7 @@ HE_TEST(core, string_view, fmt)
 
     const StringView s1(TestString);
 
-    String s2;
-    fmt::format_to(Appender(s2), "{}", s1);
+    const String s2 = Format("{}", s1);
     HE_EXPECT_EQ(s1, s2);
 }
 

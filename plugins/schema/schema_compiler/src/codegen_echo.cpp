@@ -2,11 +2,8 @@
 
 #include "codegen_echo.h"
 
+#include "he/core/fmt.h"
 #include "he/core/string_fmt.h"
-#include "he/core/string_view_fmt.h"
-
-#include "fmt/format.h"
-#include "fmt/ranges.h"
 
 #include <iostream>
 
@@ -550,7 +547,7 @@ namespace he::schema
             case Value::Data::UnionTag::Blob:
             {
                 const Blob::Reader bytes = valueData.GetBlob();
-                m_writer.Write("0x\"{:02x}\"", fmt::join(bytes, ""));
+                m_writer.Write("0x\"{:02x}\"", FmtJoin(bytes, ""));
                 break;
             }
             case Value::Data::UnionTag::String:
@@ -618,7 +615,7 @@ namespace he::schema
             case Type::Data::UnionTag::Blob:
             {
                 const Blob::Reader bytes = value.GetPointerField(index).TryGetBlob();
-                m_writer.Write("0x\"{:02x}\"", fmt::join(bytes, ""));
+                m_writer.Write("0x\"{:02x}\"", FmtJoin(bytes, ""));
                 break;
             }
             case Type::Data::UnionTag::String:
@@ -705,7 +702,7 @@ namespace he::schema
             case Type::Data::UnionTag::Blob:
             {
                 const Blob::Reader bytes = value.GetPointerElement(index).TryGetBlob();
-                m_writer.Write("0x\"{:02x}\"", fmt::join(bytes, ""));
+                m_writer.Write("0x\"{:02x}\"", FmtJoin(bytes, ""));
                 break;
             }
             case Type::Data::UnionTag::String:

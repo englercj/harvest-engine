@@ -3,7 +3,6 @@
 #include "he/core/virtual_memory.h"
 
 #include "he/core/assert.h"
-#include "he/core/enum_fmt.h"
 #include "he/core/log.h"
 #include "he/core/system.h"
 #include "he/core/utils.h"

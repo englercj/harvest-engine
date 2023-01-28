@@ -15,6 +15,8 @@
 #include "he/core/thread.h"
 #include "he/core/types.h"
 
+#include <functional>
+
 namespace he::assets
 {
     constexpr StringView NextUsnConfigKey = "he.assets.next_usn";

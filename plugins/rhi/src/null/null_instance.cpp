@@ -6,6 +6,7 @@
 #include "null_cmd_list.h"
 #include "null_instance.h"
 
+#include "he/core/assert.h"
 #include "he/rhi/config.h"
 #include "he/rhi/types.h"
 

@@ -1,6 +1,6 @@
 // Copyright Chad Engler
 
-#include "he/core/cpu.h"
+#include "he/core/cpu_info.h"
 
 #if defined(HE_PLATFORM_API_POSIX)
 

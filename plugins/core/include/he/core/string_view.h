@@ -3,7 +3,7 @@
 #pragma once
 
 #include "he/core/ascii.h"
-#include "he/core/span.h"
+#include "he/core/memory_ops.h"
 #include "he/core/string.h"
 #include "he/core/type_traits.h"
 #include "he/core/utils.h"
@@ -15,6 +15,9 @@ namespace he
     class StringView final
     {
     public:
+        /// The type of elements in the string view. Always `char`.
+        using ElementType = char;
+
         // ----------------------------------------------------------------------------------------
         // Construction
 
@@ -25,7 +28,8 @@ namespace he
         ///
         /// \param str The string to refer to.
         constexpr StringView(const char* str) noexcept
-            : m_span(str, std::is_constant_evaluated() ? String::LengthConst(str) : String::Length(str))
+            : m_data(str)
+            , m_size(IsConstantEvaluated() ? String::LengthConst(str) : String::Length(str))
         {}
 
         /// Construct a string view from the range `[begin, end)`.
@@ -33,7 +37,8 @@ namespace he
         /// \param begin The start of the range for the string view to refer to.
         /// \param end The end of the range for the string view to refer to.
         constexpr StringView(const char* begin, const char* end) noexcept
-            : m_span(begin, end)
+            : m_data(begin)
+            , m_size(static_cast<uint32_t>(end - begin))
         {}
 
         /// Construct a string view from `len` chracters of a string.
@@ -41,23 +46,27 @@ namespace he
         /// \param str The string to refer to.
         /// \param len The number of characters to refer to.
         constexpr StringView(const char* str, uint32_t len) noexcept
-            : m_span(str, len)
+            : m_data(str)
+            , m_size(len)
         {}
 
-        /// Construct a string view from a string range provider, such as he::String or std::string.
+        /// Construct a string view from a string range provider, such as \ref String or
+        /// \ref Vector<char>
         ///
         /// \param str The string to refer to.
         template <typename T>
-            requires(!std::is_same_v<std::remove_cv_t<T>, StringView> && (StdContiguousRange<T, const char> || ContiguousRange<T, const char>))
+            requires(!IsSame<RemoveCV<T>, StringView> && ContiguousRange<T, const char>)
         constexpr StringView(const T& str) noexcept
-            : m_span(str)
+            : m_data(str.Data())
+            , m_size(str.Size())
         {}
 
-        /// Construct a span from another span object.
+        /// Construct a string view from another string view object.
         ///
         /// \param x The string view to refer to.
         constexpr StringView(const StringView& x) noexcept
-            : m_span(x.m_span)
+            : m_data(x.m_data)
+            , m_size(x.m_size)
         {}
 
         // ----------------------------------------------------------------------------------------
@@ -66,14 +75,18 @@ namespace he
         /// Copy the pointer and size of string view `x`.
         ///
         /// \param x The string view to copy from.
-        constexpr StringView& operator=(const StringView& x) noexcept { m_span = x.m_span; return *this; }
+        constexpr StringView& operator=(const StringView& x) noexcept
+        {
+            m_data = x.m_data;
+            m_size = x.m_size;
+            return *this;
+        }
 
-        /// Gets a reference to the character at `index`. Asserts if `index` is not less
-        /// than \see Size().
+        /// Gets a reference to the character at `index`.
         ///
         /// \param index The index of the character to return.
         /// \return A reference to the character at `index`.
-        constexpr const char& operator[](uint32_t index) const { return m_span[index]; }
+        constexpr char operator[](uint32_t index) const { return m_data[index]; }
 
         /// Checks if this string is equal to `x`.
         ///
@@ -117,12 +130,12 @@ namespace he
         /// Checks if the string this view refers to is empty.
         ///
         /// \return Returns true if this refers to an empty string.
-        constexpr bool IsEmpty() const { return m_span.IsEmpty(); }
+        constexpr bool IsEmpty() const { return m_size == 0; }
 
         /// The length of the string that is refered to.
         ///
         /// \return Number of characters in the view.
-        constexpr uint32_t Size() const { return m_span.Size(); }
+        constexpr uint32_t Size() const { return m_size; }
 
         // ----------------------------------------------------------------------------------------
         // Data Access
@@ -130,22 +143,44 @@ namespace he
         /// Gets a pointer to the start of the string view.
         ///
         /// \return A pointer to the string view's first character.
-        constexpr const char* Data() const { return m_span.Data(); }
+        constexpr const char* Data() const { return m_data; }
 
         /// Gets a reference to the first character in the string view.
         ///
         /// \return A reference to the first character in the view's range.
-        constexpr const char& Front() const { return m_span.Front(); }
+        constexpr const char& Front() const { return *m_data; }
 
         /// Gets a reference to the last character in the string view.
         ///
         /// \return A reference to the last character in the view's range.
-        constexpr const char& Back() const { return m_span.Back(); }
+        constexpr const char& Back() const { return m_data[m_size - 1]; }
 
         /// Returns a non-cryptographic hash of the string contents.
         ///
         /// \return The hash value.
         [[nodiscard]] uint64_t HashCode() const noexcept;
+
+        /// Searches the string view for a character.
+        ///
+        /// \param ch The character to search for.
+        /// \return A pointer to the found character in the view, or nullptr if not found.
+        constexpr const char* Find(char ch) const
+        {
+            if (IsConstantEvaluated())
+            {
+                for (const char* p = Begin(); p != End(); ++p)
+                {
+                    if (*p == ch)
+                        return p;
+                }
+
+                return nullptr;
+            }
+            else
+            {
+                return static_cast<const char*>(MemChr(m_data, ch, m_size));
+            }
+        }
 
         // ----------------------------------------------------------------------------------------
         // Converters
@@ -159,10 +194,7 @@ namespace he
         /// \param[in] base Optional. The numerical base of the value being parsed.
         /// \return The parsed number.
         template <typename T>
-        T ToInteger(int32_t base = 10)
-        {
-            return String::ToInteger<T>(m_span.Begin(), m_span.End(), base);
-        }
+        T ToInteger(int32_t base = 10) { return String::ToInteger<T>(Begin(), End(), base); }
 
         /// Parses the string into a floating point value.
         /// If successful, a floating point value corresponding to the contents of str is returned.
@@ -172,10 +204,7 @@ namespace he
         ///
         /// \return The parsed number.
         template <typename T = float>
-        T ToFloat()
-        {
-            return String::ToFloat<T>(m_span.Begin(), m_span.End());
-        }
+        T ToFloat() { return String::ToFloat<T>(Begin(), End()); }
 
         // ----------------------------------------------------------------------------------------
         // Comparison
@@ -245,34 +274,39 @@ namespace he
         /// \return True if they are equal, false otherwise.
         constexpr bool EqualToI(const StringView& x) const { return CompareToI(x) == 0; }
 
+        /// Checks if this string view starts with the value of `x`.
+        ///
+        /// @param x The view to check if this starts with.
+        /// @return True if this string view starts with the value of `x`, false otherwise.
+        constexpr bool StartsWith(const StringView& x) const
+        {
+            return Size() >= x.Size() ? CompareInternal(Data(), x.Data(), x.Size()) == 0 : false;
+        }
+
         // ----------------------------------------------------------------------------------------
         // Iterators
 
         /// Gets a pointer to the first character in the string view.
         ///
         /// \return A pointer to the first character.
-        constexpr const char* Begin() const { return m_span.Begin(); }
+        constexpr const char* Begin() const { return m_data; }
 
         /// Gets a pointer to one past the last character in the string view.
         ///
         /// \return A pointer to one past the last character.
-        constexpr const char* End() const { return m_span.End(); }
+        constexpr const char* End() const { return m_data + m_size; }
 
         /// \copydoc Begin()
-        constexpr const char* begin() const { return m_span.begin(); }
+        constexpr const char* begin() const { return Begin(); }
 
         /// \copydoc End()
-        constexpr const char* end() const { return m_span.end(); }
+        constexpr const char* end() const { return End(); }
 
     private:
         /// Compares two strings of known length.
         static constexpr int32_t CompareInternal(const char* a, const char* b, uint32_t len)
         {
-            if (!std::is_constant_evaluated())
-            {
-                return MemCmp(a, b, len);
-            }
-            else
+            if (IsConstantEvaluated())
             {
                 for (; len > 0; --len, ++a, ++b)
                 {
@@ -281,6 +315,10 @@ namespace he
                 }
 
                 return 0;
+            }
+            else
+            {
+                return MemCmp(a, b, len);
             }
         }
 
@@ -301,7 +339,8 @@ namespace he
     private:
         friend class StringViewTestAttorney;
 
-        Span<const char> m_span;
+        const char* m_data{ nullptr };
+        uint32_t m_size{ 0 };
     };
 
     /// User-defined literal that creates a StringView object from a string literal.

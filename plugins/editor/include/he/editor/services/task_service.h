@@ -11,7 +11,6 @@
 #include "he/core/vector.h"
 
 #include <deque>
-#include <functional>
 
 namespace he::editor
 {

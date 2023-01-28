@@ -2,13 +2,11 @@
 
 #include "he/core/test.h"
 
-#include "he/core/appender.h"
+#include "he/core/fmt.h"
 #include "he/core/clock.h"
 #include "he/core/error.h"
 #include "he/core/string.h"
 #include "he/core/vector.h"
-
-#include "fmt/core.h"
 
 #include <algorithm>
 #include <atomic>
@@ -124,7 +122,7 @@ namespace internal
             if (!String::IsEmpty(filter))
             {
                 testFqn.Clear();
-                fmt::format_to(Appender(testFqn), "{}:{}:{}", info.moduleName, info.suiteName, info.testName);
+                FormatTo(testFqn, "{}:{}:{}", info.moduleName, info.suiteName, info.testName);
                 if (String::Find(testFqn.Data(), filter) == nullptr)
                     continue;
             }

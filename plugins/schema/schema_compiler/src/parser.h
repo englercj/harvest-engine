@@ -4,15 +4,13 @@
 
 #include "lexer.h"
 
+#include "he/core/concepts.h"
+#include "he/core/fmt.h"
 #include "he/core/span.h"
 #include "he/core/string.h"
 #include "he/core/string_view.h"
 #include "he/core/vector.h"
 #include "he/schema/ast.h"
-
-#include "fmt/core.h"
-
-#include <concepts>
 
 namespace he::schema
 {
@@ -76,10 +74,10 @@ namespace he::schema
         bool ConsumeStructField(AstNode& parent, AstList<AstNode>& list, bool requireOrdinal);
 
         template <typename... Args>
-        void AddError(fmt::format_string<Args...> fmt, Args&&... args);
+        void AddError(FmtString<Args...> fmt, Args&&... args);
         void AddLexerError();
 
-        template <std::integral T>
+        template <Integral T>
         bool DecodeInt(StringView s, T& out);
 
         template <typename T> T* AstCreate();

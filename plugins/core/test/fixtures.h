@@ -116,7 +116,7 @@ namespace he
         template <typename T>
         static void Test(const Span<T>& s, const void* expectedPtr, uint32_t expectedSize)
         {
-            HE_EXPECT(s.m_ptr == expectedPtr);
+            HE_EXPECT(s.m_data == expectedPtr);
             HE_EXPECT_EQ(s.m_size, expectedSize);
         }
     };
@@ -127,7 +127,8 @@ namespace he
     public:
         static void Test(const StringView& s, const void* expectedPtr, uint32_t expectedSize)
         {
-            SpanTestAttorney::Test(s.m_span, expectedPtr, expectedSize);
+            HE_EXPECT(s.m_data == expectedPtr);
+            HE_EXPECT_EQ(s.m_size, expectedSize);
         }
     };
 

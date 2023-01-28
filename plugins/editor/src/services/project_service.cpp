@@ -2,7 +2,7 @@
 
 #include "he/editor/services/project_service.h"
 
-#include "he/core/appender.h"
+#include "he/core/fmt.h"
 #include "he/core/assert.h"
 #include "he/core/directory.h"
 #include "he/core/file.h"
@@ -11,13 +11,11 @@
 #include "he/core/path.h"
 #include "he/core/result_fmt.h"
 #include "he/core/span.h"
+#include "he/core/span_fmt.h"
 #include "he/core/string_fmt.h"
 #include "he/core/uuid.h"
 #include "he/core/vector.h"
 #include "he/schema/toml.h"
-
-#include "fmt/format.h"
-#include "fmt/ranges.h"
 
 namespace he::editor
 {
@@ -164,7 +162,7 @@ namespace he::editor
         const Span<const uint8_t> projId = m_project.GetId().GetValue();
         HE_ASSERT(projId.Size() == sizeof(Uuid));
 
-        fmt::format_to(Appender(appDir), "{:02x}", fmt::join(projId, ""));
+        FormatTo(appDir, "{:02x}", FmtJoin(projId, ""));
         return appDir;
     }
 }

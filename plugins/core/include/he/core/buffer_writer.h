@@ -3,8 +3,7 @@
 #pragma once
 
 #include "he/core/allocator.h"
-
-#include <type_traits>
+#include "he/core/type_traits.h"
 
 namespace he
 {
@@ -167,7 +166,7 @@ namespace he
         /// but exists to support generic programming on containers.
         ///
         /// \param[in] data The value to copy.
-        template <typename T> requires(std::is_trivially_copyable_v<T>)
+        template <typename T> requires(IsTriviallyCopyable<T>)
         void PushBack(const T& value) { Write(&value, sizeof(T)); }
 
         /// Copies `len` bytes from `data` into the buffer.
@@ -207,7 +206,7 @@ namespace he
         /// Copies a trivially copyable type into the buffer.
         ///
         /// \param[in] value The value to copy.
-        template <typename T> requires(std::is_trivially_copyable_v<T>)
+        template <typename T> requires(IsTriviallyCopyable<T>)
         void Write(const T& value) { Write(&value, sizeof(T)); }
 
         /// Copies a trivially copyable type into the buffer at a previously allocated offset.
@@ -216,7 +215,7 @@ namespace he
         ///
         /// \param[in] offset The offset within the buffer to write to. Must fit within Size().
         /// \param[in] value The value to copy.
-        template <typename T> requires(std::is_trivially_copyable_v<T>)
+        template <typename T> requires(IsTriviallyCopyable<T>)
         void WriteAt(uint32_t offset, const T& value) { WriteAt(offset, &value, sizeof(T)); }
 
         /// Writes a byte repeatedly to the buffer. This is equivalent to growing the buffer

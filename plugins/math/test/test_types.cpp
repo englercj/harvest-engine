@@ -12,15 +12,15 @@ using namespace he;
 HE_TEST(math, types, Vec2)
 {
     static_assert(IsSpecialization<Vec2f, Vec2>);
-    static_assert(std::is_same_v<Vec2f::Type, float>);
+    static_assert(IsSame<Vec2f::Type, float>);
     static_assert(Vec2f::Size == 2);
 
     static_assert(IsSpecialization<Vec2i, Vec2>);
-    static_assert(std::is_same_v<Vec2i::Type, int32_t>);
+    static_assert(IsSame<Vec2i::Type, int32_t>);
     static_assert(Vec2i::Size == 2);
 
     static_assert(IsSpecialization<Vec2u, Vec2>);
-    static_assert(std::is_same_v<Vec2u::Type, uint32_t>);
+    static_assert(IsSame<Vec2u::Type, uint32_t>);
     static_assert(Vec2u::Size == 2);
 
     static_assert(sizeof(Vec2f) == 8);
@@ -39,15 +39,15 @@ HE_TEST(math, types, Vec2)
 HE_TEST(math, types, Vec3)
 {
     static_assert(IsSpecialization<Vec3f, Vec3>);
-    static_assert(std::is_same_v<Vec3f::Type, float>);
+    static_assert(IsSame<Vec3f::Type, float>);
     static_assert(Vec3f::Size == 3);
 
     static_assert(IsSpecialization<Vec3i, Vec3>);
-    static_assert(std::is_same_v<Vec3i::Type, int32_t>);
+    static_assert(IsSame<Vec3i::Type, int32_t>);
     static_assert(Vec3i::Size == 3);
 
     static_assert(IsSpecialization<Vec3u, Vec3>);
-    static_assert(std::is_same_v<Vec3u::Type, uint32_t>);
+    static_assert(IsSame<Vec3u::Type, uint32_t>);
     static_assert(Vec3u::Size == 3);
 
     static_assert(sizeof(Vec3f) == 12);
@@ -68,15 +68,15 @@ HE_TEST(math, types, Vec3)
 HE_TEST(math, types, Vec4)
 {
     static_assert(IsSpecialization<Vec4f, Vec4>);
-    static_assert(std::is_same_v<Vec4f::Type, float>);
+    static_assert(IsSame<Vec4f::Type, float>);
     static_assert(Vec4f::Size == 4);
 
     static_assert(IsSpecialization<Vec4i, Vec4>);
-    static_assert(std::is_same_v<Vec4i::Type, int32_t>);
+    static_assert(IsSame<Vec4i::Type, int32_t>);
     static_assert(Vec4i::Size == 4);
 
     static_assert(IsSpecialization<Vec4u, Vec4>);
-    static_assert(std::is_same_v<Vec4u::Type, uint32_t>);
+    static_assert(IsSame<Vec4u::Type, uint32_t>);
     static_assert(Vec4u::Size == 4);
 
     static_assert(sizeof(Vec4f) == 16);

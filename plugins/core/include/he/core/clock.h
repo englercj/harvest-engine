@@ -4,9 +4,9 @@
 
 #include "he/core/compiler.h"
 #include "he/core/cpu.h"
+#include "he/core/limits.h"
+#include "he/core/type_traits.h"
 #include "he/core/types.h"
-
-#include <type_traits>
 
 #if HE_COMPILER_MSVC && HE_CPU_X86
     extern "C" unsigned __int64 __rdtsc();
@@ -61,8 +61,8 @@ namespace he
     struct Duration { int64_t val; };
 
     constexpr Duration Duration_Zero{ 0 };
-    constexpr Duration Duration_Min{ INT64_MIN };
-    constexpr Duration Duration_Max{ INT64_MAX };
+    constexpr Duration Duration_Min{ Limits<int64_t>::Min };
+    constexpr Duration Duration_Max{ Limits<int64_t>::Max };
 
     // --------------------------------------------------------------------------------------------
     // Duration periods
@@ -77,10 +77,10 @@ namespace he
     using Days = DurationPeriod<86400000000000>;
     using Weeks = DurationPeriod<604800000000000>;
 
-    template <typename T, typename U = int64_t> requires(std::is_integral_v<U>)
+    template <typename T, typename U = int64_t> requires(IsIntegral<U>)
     constexpr U ToPeriod(Duration d) { return static_cast<U>(d.val / T::Ratio); }
 
-    template <typename T, typename U> requires(std::is_floating_point_v<U>)
+    template <typename T, typename U> requires(IsFloatingPoint<U>)
     constexpr U ToPeriod(Duration d) { return static_cast<U>(d.val / static_cast<double>(T::Ratio)); }
 
     template <typename T, typename U>

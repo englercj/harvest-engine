@@ -115,7 +115,10 @@ TODO:
 - Start with copyright header & `#pragma once`
 - Forward declare when possible to reduce include tree depth
     * Exception: Don't need to forward declare templates, unless they are very simple (like `std::hash` for example)
--
+- Try to avoid inclusion of STL headers in Harvest headers.
+    * STL headers can have a big impact on compilation times.
+    * When included into engine headers used throughout projects, this can really add up to a lot of time.
+    * Harvest has some lightweight alternatives to many STL headers in the core library that can be used instead.
 
 In general, every `.cpp` file should have an associated `.h` file. There are a few notable exceptions to this rule:
 
@@ -389,7 +392,7 @@ Example `allocator.cpp` file:
 #include "he/core/config.h"
 #include "he/core/utils.h"
 
-#include "fmt/core.h"
+#include "zlib.h"
 
 #include <new>
 ```

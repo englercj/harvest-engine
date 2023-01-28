@@ -1,56 +1,60 @@
 // Copyright Chad Engler
 
+// Forward declare placement new. Doing this instead of including <new> has a major impact
+// on reducing compile times, espcially since this file is included everywhere.
+[[nodiscard]] inline void* __cdecl operator new(size_t, void* ptr) noexcept;
+
 namespace he
 {
     // Performs value initialization of trivially constructible elements.
-    template <typename T> requires(std::is_trivially_constructible_v<T>)
+    template <typename T> requires(IsTriviallyConstructible<T>)
     void _VectorConstruct(T* p, uint32_t n)
     {
         MemZero(p, n * sizeof(T));
     }
 
     // Performs value initialization of trivially constructible elements.
-    template <typename T, typename... Args> requires(std::is_trivially_constructible_v<T>)
+    template <typename T, typename... Args> requires(IsTriviallyConstructible<T>)
     void _VectorConstruct(T* p, uint32_t n, Args&&... args)
     {
         for (uint32_t i = 0; i < n; ++i)
         {
-            new(p + i) T(Forward<Args>(args)...);
+            ::new(p + i) T(Forward<Args>(args)...);
         }
     }
 
     // Performs construction non-trivially constructible elements.
-    template <typename T, typename... Args> requires(!std::is_trivially_constructible_v<T>)
+    template <typename T, typename... Args> requires(!IsTriviallyConstructible<T>)
     void _VectorConstruct(T* p, uint32_t n, Args&&... args)
     {
         for (uint32_t i = 0; i < n; ++i)
         {
-            new(p + i) T(Forward<Args>(args)...);
+            ::new(p + i) T(Forward<Args>(args)...);
         }
     }
 
     // Performs default initialization of trivially constructible elements.
-    template <typename T> requires(std::is_trivially_constructible_v<T>)
+    template <typename T> requires(IsTriviallyConstructible<T>)
     void _VectorConstruct_DefaultInit(T*, uint32_t)
     { }
 
     // Performs construction non-trivially constructible elements.
-    template <typename T> requires(!std::is_trivially_constructible_v<T>)
+    template <typename T> requires(!IsTriviallyConstructible<T>)
     void _VectorConstruct_DefaultInit(T* p, uint32_t n)
     {
         for (uint32_t i = 0; i < n; ++i)
         {
-            new(p + i) T;
+            ::new(p + i) T;
         }
     }
 
     // Performs destruction of trivially destructable elements.
-    template <typename T> requires(std::is_trivially_destructible_v<T>)
+    template <typename T> requires(IsTriviallyDestructible<T>)
     void _VectorDestruct(T*, uint32_t)
     { }
 
     // Performs destruction of non-trivially destructable elements.
-    template <typename T> requires(!std::is_trivially_destructible_v<T>)
+    template <typename T> requires(!IsTriviallyDestructible<T>)
     void _VectorDestruct(T* p, uint32_t n)
     {
         for (uint32_t i = 0; i < n; ++i)
@@ -60,31 +64,31 @@ namespace he
     }
 
     // Performs a copy of trivially copyable elements.
-    template <typename T> requires(std::is_trivially_copyable_v<T>)
+    template <typename T> requires(IsTriviallyCopyable<T>)
     void _VectorCopyConstruct(T* dst, const T* src, uint32_t n)
     {
         MemCopy(dst, src, n * sizeof(T));
     }
 
     // Performs a copy of non-trivially copyable elements.
-    template <typename T> requires(!std::is_trivially_copyable_v<T>)
+    template <typename T> requires(!IsTriviallyCopyable<T>)
     void _VectorCopyConstruct(T* dst, const T* src, uint32_t n)
     {
         for (uint32_t i = 0; i < n; ++i)
         {
-            new(dst + i) T(src[i]);
+            ::new(dst + i) T(src[i]);
         }
     }
 
     // Performs a copy of trivially copyable elements.
-    template <typename T> requires(std::is_trivially_copyable_v<T>)
+    template <typename T> requires(IsTriviallyCopyable<T>)
     void _VectorCopyAssign(T* dst, const T* src, uint32_t n)
     {
         MemCopy(dst, src, n * sizeof(T));
     }
 
     // Performs a copy of non-trivially copyable elements.
-    template <typename T> requires(!std::is_trivially_copyable_v<T>)
+    template <typename T> requires(!IsTriviallyCopyable<T>)
     void _VectorCopyAssign(T* dst, const T* src, uint32_t n)
     {
         for (uint32_t i = 0; i < n; ++i)
@@ -94,41 +98,41 @@ namespace he
     }
 
     // Performs a move of trivially copyable elements.
-    template <typename T> requires(std::is_trivially_copyable_v<T>)
+    template <typename T> requires(IsTriviallyCopyable<T>)
     void _VectorMoveConstruct(T* dst, T* src, uint32_t n)
     {
         MemMove(dst, src, n * sizeof(T));
     }
 
     // Performs a move of non-trivially copyable elements.
-    template <typename T> requires(!std::is_trivially_copyable_v<T> && std::is_move_constructible_v<T>)
+    template <typename T> requires(!IsTriviallyCopyable<T> && IsMoveConstructible<T>)
     void _VectorMoveConstruct(T* dst, T* src, uint32_t n)
     {
         for (uint32_t i = 0; i < n; ++i)
         {
-            new(dst + i) T(Move(src[i]));
+            ::new(dst + i) T(Move(src[i]));
         }
     }
 
     // Performs a move of non-trivially copyable elements.
-    template <typename T> requires(!std::is_trivially_copyable_v<T> && !std::is_move_constructible_v<T>)
+    template <typename T> requires(!IsTriviallyCopyable<T> && !IsMoveConstructible<T>)
     void _VectorMoveConstruct(T* dst, T* src, uint32_t n)
     {
         for (uint32_t i = 0; i < n; ++i)
         {
-            new(dst + i) T(src[i]);
+            ::new(dst + i) T(src[i]);
         }
     }
 
     // Performs a move of trivially copyable elements.
-    template <typename T> requires(std::is_trivially_copyable_v<T>)
+    template <typename T> requires(IsTriviallyCopyable<T>)
     void _VectorMoveAssign(T* dst, T* src, uint32_t n)
     {
         MemMove(dst, src, n * sizeof(T));
     }
 
     // Performs a move of non-trivially copyable elements.
-    template <typename T> requires(!std::is_trivially_copyable_v<T> && std::is_move_assignable_v<T>)
+    template <typename T> requires(!IsTriviallyCopyable<T> && IsMoveAssignable<T>)
     void _VectorMoveAssign(T* dst, T* src, uint32_t n)
     {
         for (uint32_t i = 0; i < n; ++i)
@@ -138,7 +142,7 @@ namespace he
     }
 
     // Performs a copy of non-trivially copyable elements.
-    template <typename T> requires(!std::is_trivially_copyable_v<T> && !std::is_move_assignable_v<T>)
+    template <typename T> requires(!IsTriviallyCopyable<T> && !IsMoveAssignable<T>)
     void _VectorMoveAssign(T* dst, T* src, uint32_t n)
     {
         for (uint32_t i = 0; i < n; ++i)
@@ -148,14 +152,14 @@ namespace he
     }
 
     // Performs a move of trivially copyable elements.
-    template <typename T> requires(std::is_trivially_copyable_v<T>)
+    template <typename T> requires(IsTriviallyCopyable<T>)
     void _VectorReverseMoveAssign(T* dst, T* src, uint32_t n)
     {
         MemMove(dst, src, n * sizeof(T));
     }
 
     // Performs a move of non-trivially copyable elements. Starting from the last and iterating to the first.
-    template <typename T> requires(!std::is_trivially_copyable_v<T> && std::is_move_assignable_v<T>)
+    template <typename T> requires(!IsTriviallyCopyable<T> && IsMoveAssignable<T>)
     void _VectorReverseMoveAssign(T* dst, T* src, uint32_t n)
     {
         T* srcEnd = src + n;
@@ -168,7 +172,7 @@ namespace he
     }
 
     // Performs a copy of non-trivially copyable elements. Starting from the last and iterating to the first.
-    template <typename T> requires(!std::is_trivially_copyable_v<T> && !std::is_move_assignable_v<T>)
+    template <typename T> requires(!IsTriviallyCopyable<T> && !IsMoveAssignable<T>)
     void _VectorReverseMoveAssign(T* dst, T* src, uint32_t n)
     {
         const T* srcEnd = src + n;
@@ -182,7 +186,7 @@ namespace he
 
     // Reallocates vector memory for trivially copyable types by letting the allocator handle it.
     // This can result in better performing resizes since we may not copy at all.
-    template <typename T> requires(std::is_trivially_copyable_v<T>)
+    template <typename T> requires(IsTriviallyCopyable<T>)
     T* _VectorRealloc(Allocator& allocator, T* p, uint32_t size, uint32_t newSize)
     {
         HE_UNUSED(size);
@@ -190,7 +194,7 @@ namespace he
     }
 
     // Performs an allocate and move operation for non-trivially copyable elements.
-    template <typename T> requires(!std::is_trivially_copyable_v<T> && std::is_move_constructible_v<T>)
+    template <typename T> requires(!IsTriviallyCopyable<T> && IsMoveConstructible<T>)
     T* _VectorRealloc(Allocator& allocator, T* p, uint32_t size, uint32_t newSize)
     {
         T* mem = allocator.Malloc<T>(newSize);
@@ -204,7 +208,7 @@ namespace he
     }
 
     // Performs an allocate and copy operation for non-trivially copyable elements.
-    template <typename T> requires(!std::is_trivially_copyable_v<T> && !std::is_move_constructible_v<T>)
+    template <typename T> requires(!IsTriviallyCopyable<T> && !IsMoveConstructible<T>)
     T* _VectorRealloc(Allocator& allocator, T* p, uint32_t size, uint32_t newSize)
     {
         T* mem = allocator.Malloc<T>(newSize);
@@ -215,6 +219,24 @@ namespace he
         }
         allocator.Free(p);
         return mem;
+    }
+
+    template <typename T, typename U> requires(IsTriviallyCopyable<T> && IsTriviallyCopyable<U>)
+    bool _VectorEqual(const T* a, const U* b, uint32_t len)
+    {
+        return MemCmp(a, b, len) == 0;
+    }
+
+    template <typename T, typename U> requires(!IsTriviallyCopyable<T> || !IsTriviallyCopyable<U>)
+    bool _VectorEqual(const T* a, const U* b, uint32_t len)
+    {
+        for (uint32_t i = 0; i < len; ++i)
+        {
+            if (*a != *b)
+                return false;
+        }
+
+        return true;
     }
 
     template <typename T>
@@ -278,16 +300,16 @@ namespace he
     }
 
     template <typename T>
-    template <typename U> requires(std::is_convertible_v<U(*)[], T(*)[]>)
+    template <typename U> requires(IsConvertible<U(*)[], T(*)[]>)
     bool Vector<T>::operator==(const Vector<U>& x) const
     {
         if (this == &x)
             return true;
 
-        if (Size() != x.Size())
+        if (m_size != x.m_size)
             return false;
 
-        return std::equal(x.Begin(), x.End(), Begin(), End());
+        return _VectorEqual(m_data, x.m_data, m_size);
     }
 
     template <typename T>

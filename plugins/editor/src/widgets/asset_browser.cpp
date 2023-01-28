@@ -5,9 +5,9 @@
 #include "he/assets/asset_database.h"
 #include "he/assets/types.h"
 #include "he/assets/types_fmt.h"
-#include "he/core/appender.h"
 #include "he/core/directory.h"
 #include "he/core/enum_ops.h"
+#include "he/core/fmt.h"
 #include "he/core/log.h"
 #include "he/core/path.h"
 #include "he/core/result_fmt.h"
@@ -20,7 +20,6 @@
 #define IMGUI_DEFINE_MATH_OPERATORS
 #include "imgui.h"
 #include "imgui_internal.h"
-#include "fmt/format.h"
 
 namespace he::editor
 {
@@ -269,7 +268,7 @@ namespace he::editor
 
                 // UUID
                 m_buffer.Clear();
-                fmt::format_to(Appender(m_buffer), "{}", asset.uuid);
+                FormatTo(m_buffer, "{}", asset.uuid);
                 ImGui::TableNextColumn();
                 ImGui::TextUnformatted(m_buffer.Begin(), m_buffer.End());
 

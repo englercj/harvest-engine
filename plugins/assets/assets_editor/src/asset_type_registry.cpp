@@ -3,7 +3,6 @@
 #include "he/assets/asset_type_registry.h"
 
 #include "he/schema/schema.h"
-#include "he/core/string_view_fmt.h"
 
 #include <algorithm>
 

@@ -2,13 +2,12 @@
 
 #pragma once
 
+#include "he/core/type_traits.h"
 #include "he/core/utils.h"
 #include "he/core/unique_ptr.h"
 #include "he/core/vector.h"
 #include "he/editor/di.h"
 #include "he/editor/documents/document.h"
-
-#include <type_traits>
 
 namespace he::editor
 {
@@ -27,7 +26,7 @@ namespace he::editor
             return *m_documents.Back();
         }
 
-        template <typename T> requires(std::is_base_of_v<Document, T>)
+        template <typename T> requires(IsBaseOf<Document, T>)
         T& Open()
         {
             Document& doc = Open(DICreateUnique<T>());

@@ -5,17 +5,14 @@
 #include "he/core/string.h"
 #include "he/core/string_fmt.h"
 
-#include "he/core/appender.h"
+#include "he/core/fmt.h"
 #include "he/core/allocator.h"
 #include "he/core/memory_ops.h"
 #include "he/core/string_view.h"
 #include "he/core/test.h"
+#include "he/core/type_traits.h"
 #include "he/core/utils.h"
 #include "he/core/vector.h"
-
-#include "fmt/format.h"
-
-#include <type_traits>
 
 using namespace he;
 
@@ -383,7 +380,7 @@ HE_TEST(core, string, Static_ToFloat)
 HE_TEST(core, string, Constants)
 {
     // Changing these are potentially breaking so checking them here so a change is made with thoughtfulness.
-    static_assert(std::is_same_v<String::ElementType, char>);
+    static_assert(IsSame<String::ElementType, char>);
     static_assert(String::MaxEmbedCharacters == 31);
     static_assert(String::MaxHeapCharacters == 0x7ffffffe);
 }
@@ -1579,8 +1576,7 @@ HE_TEST(core, string, fmt)
 
     const String s1(TestString);
 
-    String s2;
-    fmt::format_to(Appender(s2), "{}", s1);
+    const String s2 = Format("{}", s1);
     HE_EXPECT_EQ(s1, s2);
 }
 

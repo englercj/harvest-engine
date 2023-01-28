@@ -3,19 +3,16 @@
 #include "he/core/clock.h"
 #include "he/core/clock_fmt.h"
 
-#include "he/core/appender.h"
+#include "he/core/fmt.h"
+#include "he/core/type_traits.h"
 #include "he/core/test.h"
-
-#include "fmt/format.h"
-
-#include <type_traits>
 
 using namespace he;
 
 // ------------------------------------------------------------------------------------------------
 HE_TEST(core, clock, SystemClock)
 {
-    static_assert(std::is_same_v<SystemClock::Time, SystemTime>);
+    static_assert(IsSame<SystemClock::Time, SystemTime>);
     SystemTime t = SystemClock::Now();
     HE_EXPECT_GT(t.val, 0);
 }
@@ -23,7 +20,7 @@ HE_TEST(core, clock, SystemClock)
 // ------------------------------------------------------------------------------------------------
 HE_TEST(core, clock, MonotonicClock)
 {
-    static_assert(std::is_same_v<MonotonicClock::Time, MonotonicTime>);
+    static_assert(IsSame<MonotonicClock::Time, MonotonicTime>);
     MonotonicTime t = MonotonicClock::Now();
     HE_EXPECT_GT(t.val, 0);
 }
@@ -31,7 +28,7 @@ HE_TEST(core, clock, MonotonicClock)
 // ------------------------------------------------------------------------------------------------
 HE_TEST(core, clock, CycleClock)
 {
-    static_assert(std::is_same_v<CycleClock::Time, CycleCount>);
+    static_assert(IsSame<CycleClock::Time, CycleCount>);
     CycleCount t = CycleClock::Now();
     HE_EXPECT_GT(t.val, 0);
 }
@@ -314,27 +311,27 @@ HE_TEST(core, clock, fmt_time)
 
     // Default
     actual.Clear();
-    fmt::format_to(Appender(actual), "{}", time);
+    FormatTo(actual, "{}", time);
     HE_EXPECT_EQ(actual, "2022-05-19 08:15:25");
 
     // Local Default
     actual.Clear();
-    fmt::format_to(Appender(actual), "{}", FmtLocalTime(time));
+    FormatTo(actual, "{}", FmtLocalTime(time));
     HE_EXPECT_EQ(actual, "2022-05-19 08:15:25");
 
     // UTC Default
     actual.Clear();
-    fmt::format_to(Appender(actual), "{}", FmtUtcTime(time));
+    FormatTo(actual, "{}", FmtUtcTime(time));
     HE_EXPECT_EQ(actual, "2022-05-19 15:15:25");
 
     // Custom Format
     actual.Clear();
-    fmt::format_to(Appender(actual), "{:%A %b %d, %y %T %p}", time);
+    FormatTo(actual, "{:%A %b %d, %y %T %p}", time);
     HE_EXPECT_EQ(actual, "Thursday May 19, 22 08:15:25 AM");
 
     // Custom Format UTC
     actual.Clear();
-    fmt::format_to(Appender(actual), "{:%D %F %R}", FmtUtcTime(time));
+    FormatTo(actual, "{:%D %F %R}", FmtUtcTime(time));
     HE_EXPECT_EQ(actual, "05/19/22 2022-05-19 15:15");
 }
 
@@ -346,12 +343,12 @@ HE_TEST(core, clock, fmt_duration)
 
     // Default
     actual.Clear();
-    fmt::format_to(Appender(actual), "{}", duration);
+    FormatTo(actual, "{}", duration);
     HE_EXPECT_EQ(actual, "792496032064128ns");
 
     // All the specs
     actual.Clear();
-    fmt::format_to(Appender(actual), "{:%W %D %H %M %S %m %u %n %%}", duration);
+    FormatTo(actual, "{:%W %D %H %M %S %m %u %n %%}", duration);
     HE_EXPECT_EQ(actual, "1 2 4 8 16 32 64 128 %");
 }
 

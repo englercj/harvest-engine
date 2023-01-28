@@ -5,23 +5,19 @@
 #include "compile_context.h"
 #include "keywords.h"
 
-#include "he/core/appender.h"
+#include "he/core/fmt.h"
 #include "he/core/assert.h"
-#include "he/core/enum_fmt.h"
 #include "he/core/hash.h"
+#include "he/core/limits.h"
 #include "he/core/path.h"
 #include "he/core/random.h"
 #include "he/core/span.h"
 #include "he/core/string.h"
 #include "he/core/string_fmt.h"
 #include "he/core/string_view.h"
-#include "he/core/string_view_fmt.h"
+#include "he/core/type_traits.h"
 #include "he/core/utils.h"
 #include "he/schema/schema.h"
-
-#include "fmt/core.h"
-
-#include <limits>
 
 namespace he::schema
 {
@@ -1027,7 +1023,7 @@ namespace he::schema
     }
 
     template <typename... Args>
-    void Parser::AddError(fmt::format_string<Args...> fmt, Args&&... args)
+    void Parser::AddError(FmtString<Args...> fmt, Args&&... args)
     {
         m_context->AddError(m_token.line, m_token.column, fmt, Forward<Args>(args)...);
     }
@@ -1035,10 +1031,10 @@ namespace he::schema
     void Parser::AddLexerError()
     {
         HE_ASSERT(m_token.type == Lexer::TokenType::Error);
-        m_context->AddError(m_token.line, m_token.column, fmt::runtime(m_token.error));
+        m_context->AddError(m_token.line, m_token.column, FmtRuntime(m_token.error));
     }
 
-    template <std::integral T>
+    template <Integral T>
     bool Parser::DecodeInt(StringView s, T& out)
     {
         const char* begin = s.begin();
@@ -1069,12 +1065,12 @@ namespace he::schema
             }
         }
 
-        using LargestType = std::conditional_t<std::is_signed_v<T>, int64_t, uint64_t>;
+        using LargestType = Conditional<IsSigned<T>, int64_t, uint64_t>;
         LargestType value = he::String::ToInteger<T>(begin, end, base);
 
         if (isSigned)
         {
-            if constexpr (std::is_signed_v<T>)
+            if constexpr (IsSigned<T>)
             {
                 value *= -1;
             }
@@ -1094,7 +1090,7 @@ namespace he::schema
             }
         }
 
-        if (value > std::numeric_limits<T>::max() || value < std::numeric_limits<T>::min())
+        if (value > Limits<T>::Max || value < Limits<T>::Min)
         {
             AddError("Integer value out of range");
             return false;

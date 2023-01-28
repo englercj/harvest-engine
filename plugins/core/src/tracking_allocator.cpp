@@ -19,6 +19,7 @@ namespace he
         // Calculate aligned pointers to our header and the user's pointer
         uint8_t* headPtr = static_cast<uint8_t*>(mem);
         uint8_t* userPtr = AlignUp(headPtr + sizeof(AllocHeader), alignment);
+        HE_ASSERT(userPtr + size <= headPtr + allocSize);
 
         // Now shift the header pointer as close to the user pointer as possible.
         // This makes it easy for us to find the header pointer from the user pointer.
@@ -26,9 +27,8 @@ namespace he
         HE_ASSERT(GetHeader(userPtr) == reinterpret_cast<AllocHeader*>(headPtr));
 
         // Setup the header
-        AllocHeader* header = new(headPtr) AllocHeader();
+        AllocHeader* header = ::new(headPtr) AllocHeader();
         header->size = size;
-        header->alignment = alignment;
         header->mem = mem;
 
         uint32_t count = HE_LENGTH_OF(header->frames);

@@ -4,10 +4,10 @@
 
 #include "he/core/compiler.h"
 #include "he/core/hash.h"
+#include "he/core/macros.h"
 #include "he/core/string_view.h"
+#include "he/core/type_traits.h"
 #include "he/core/types.h"
-
-#include <type_traits>
 
 namespace he
 {
@@ -42,7 +42,7 @@ namespace he
         template <typename T>
         [[nodiscard]] static constexpr TypeInfo Get()
         {
-            constexpr StringView name = _GetTypeName<std::remove_cv_t<std::remove_reference_t<T>>>();
+            constexpr StringView name = _GetTypeName<RemoveCV<RemoveReference<T>>>();
             return { FNV64::String(name), name };
         }
 

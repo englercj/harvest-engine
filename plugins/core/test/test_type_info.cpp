@@ -2,11 +2,9 @@
 
 #include "he/core/type_info.h"
 
-#include "he/core/string_view_fmt.h"
 #include "he/core/test.h"
+#include "he/core/type_traits.h"
 #include "he/core/type_info_fmt.h"
-
-#include <type_traits>
 
 using namespace he;
 
@@ -47,10 +45,10 @@ HE_TEST(core, type_info, _GetTypeName)
 // ------------------------------------------------------------------------------------------------
 HE_TEST(core, type_info, TypeInfo)
 {
-    static_assert(std::is_copy_constructible_v<TypeInfo>);
-    static_assert(std::is_move_constructible_v<TypeInfo>);
-    static_assert(std::is_copy_assignable_v<TypeInfo>);
-    static_assert(std::is_move_assignable_v<TypeInfo>);
+    static_assert(IsCopyConstructible<TypeInfo>);
+    static_assert(IsMoveConstructible<TypeInfo>);
+    static_assert(IsCopyAssignable<TypeInfo>);
+    static_assert(IsMoveAssignable<TypeInfo>);
 }
 
 // ------------------------------------------------------------------------------------------------

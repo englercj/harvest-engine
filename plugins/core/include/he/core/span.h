@@ -3,6 +3,7 @@
 #pragma once
 
 #include "he/core/assert.h"
+#include "he/core/concepts.h"
 #include "he/core/types.h"
 #include "he/core/type_traits.h"
 
@@ -27,7 +28,7 @@ namespace he
         /// \param ptr The pointer to the start of the range.
         /// \param size The length of the range.
         constexpr Span(T* ptr, uint32_t size) noexcept
-            : m_ptr(ptr)
+            : m_data(ptr)
             , m_size(size)
         {}
 
@@ -36,9 +37,9 @@ namespace he
         ///
         /// \param begin The pointer to the start of the range.
         /// \param end the pointer to one past the last element of the range.
-        template <typename P> requires(std::convertible_to<P, T*>)
+        template <typename P> requires(IsConvertible<P, T*>)
         constexpr Span(T* begin, P end) noexcept
-            : m_ptr(begin)
+            : m_data(begin)
             , m_size(static_cast<uint32_t>(static_cast<T*>(end) - begin))
         {}
 
@@ -47,38 +48,26 @@ namespace he
         /// \param arr The array to have the span point to.
         template <uint32_t N>
         constexpr Span(T (&arr)[N]) noexcept
-            : m_ptr(arr)
+            : m_data(arr)
             , m_size(N)
         {}
-
-        /// Construct a span from an object that provides a STL-style contiguous range. That is,
-        /// it has `.data()` and `.size()` members.
-        ///
-        /// \param range The object that provides the range.
-        template <typename R> requires(!IsSpecialization<std::remove_cv_t<R>, Span> && StdContiguousRange<R, T>)
-        constexpr Span(R& range) noexcept
-            : m_ptr(range.data())
-            , m_size(static_cast<uint32_t>(range.size()))
-        {
-            HE_ASSERT(range.size() <= 0xffffffff);
-        }
 
         /// Construct a span from an object that provides a Harvest-style contiguous range. That is,
         /// it has `.Data()` and `.Size()` members.
         ///
         /// \param range The object that provides the range.
-        template <typename R> requires(!IsSpecialization<std::remove_cv_t<R>, Span> && ContiguousRange<R, T>)
+        template <typename R> requires(!IsSpecialization<RemoveCV<R>, Span> && ContiguousRange<R, T>)
         constexpr Span(R& range) noexcept
-            : m_ptr(range.Data())
+            : m_data(range.Data())
             , m_size(range.Size())
         {}
 
         /// Construct a span from another span object.
         ///
         /// \param s The span to construct from.
-        template <typename U> requires(std::is_convertible_v<U(*)[], T(*)[]>)
+        template <typename U> requires(IsConvertible<U(*)[], T(*)[]>)
         constexpr Span(const Span<U>& s) noexcept
-            : m_ptr(s.m_ptr)
+            : m_data(s.m_data)
             , m_size(s.m_size)
         {}
 
@@ -88,10 +77,10 @@ namespace he
         /// Copy the pointer and size of span `x`.
         ///
         /// \param x The span to copy from.
-        template <typename U> requires(std::is_convertible_v<U(*)[], T(*)[]>)
+        template <typename U> requires(IsConvertible<U(*)[], T(*)[]>)
         constexpr Span<T>& operator=(const Span<U>& x) noexcept
         {
-            m_ptr = x.m_ptr;
+            m_data = x.m_data;
             m_size = x.m_size;
             return *this;
         }
@@ -101,7 +90,7 @@ namespace he
         ///
         /// \param index The index of the element to return.
         /// \return A reference to the element at `index`.
-        constexpr T& operator[](uint32_t index) const { HE_ASSERT(index < m_size); return m_ptr[index]; }
+        constexpr T& operator[](uint32_t index) const { HE_ASSERT(index < m_size); return m_data[index]; }
 
         // ----------------------------------------------------------------------------------------
         // Capacity
@@ -122,22 +111,22 @@ namespace he
         /// Gets the span's pointer to the start of the range.
         ///
         /// \return A pointer to the start of the span's range.
-        constexpr T* Data() const { return m_ptr; }
+        constexpr T* Data() const { return m_data; }
 
         /// Gets a reference to the first element in the span.
         ///
         /// \return A reference to the first element in the span's range.
-        constexpr T& Front() const { HE_ASSERT(m_size > 0); return *m_ptr; }
+        constexpr T& Front() const { HE_ASSERT(m_size > 0); return *m_data; }
 
         /// Gets a reference to the last element in the span.
         ///
         /// \return A reference to the last element in the span's range.
-        constexpr T& Back() const { HE_ASSERT(m_size > 0); return m_ptr[m_size - 1]; }
+        constexpr T& Back() const { HE_ASSERT(m_size > 0); return m_data[m_size - 1]; }
 
         /// Creates a span that refers to the bytes of this span.
         Span<const uint8_t> AsBytes() const
         {
-            return Span<const uint8_t>(reinterpret_cast<const uint8_t*>(m_ptr), m_size * sizeof(T));
+            return Span<const uint8_t>(reinterpret_cast<const uint8_t*>(m_data), m_size * sizeof(T));
         }
 
         // ----------------------------------------------------------------------------------------
@@ -146,12 +135,12 @@ namespace he
         /// Gets a pointer to the first element in the span.
         ///
         /// \return A pointer to the first element.
-        constexpr T* Begin() const { return m_ptr; }
+        constexpr T* Begin() const { return m_data; }
 
         /// Gets a pointer to one past the last element in the span.
         ///
         /// \return A pointer to one past the last element.
-        constexpr T* End() const { return m_ptr + m_size; }
+        constexpr T* End() const { return m_data + m_size; }
 
         /// \copydoc Begin()
         constexpr T* begin() const { return Begin(); }
@@ -165,7 +154,7 @@ namespace he
 
         friend class SpanTestAttorney;
 
-        T* m_ptr{ nullptr };
+        T* m_data{ nullptr };
         uint32_t m_size{ 0 };
     };
 

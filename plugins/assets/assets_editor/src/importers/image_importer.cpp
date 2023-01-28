@@ -80,7 +80,8 @@ namespace he::assets
         HE_ASSERT(asset.IsValid());
 
         // Create a resource to store the pixels of the image, which can be used later by the compiler
-        const Span<const uint8_t> rgbaBytes = Span<const basisu::color_rgba>(img.get_pixels()).AsBytes();
+        const basisu::color_rgba_vec& pixels = img.get_pixels();
+        const Span<const uint8_t> rgbaBytes = Span(pixels.begin(), pixels.end()).AsBytes();
 
         schema::Builder builder;
         Texture2D::PixelsResource::Builder pixelResource = builder.AddStruct<Texture2D::PixelsResource>();

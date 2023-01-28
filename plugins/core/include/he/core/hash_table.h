@@ -344,8 +344,8 @@ namespace he
         static constexpr float DefaultMaxLoadFactor = 0.8f;
 
         using Bucket = HashTableBucket;
-        static_assert(std::is_trivially_destructible_v<Bucket>);
-        static_assert(std::is_trivially_copyable_v<Bucket>);
+        static_assert(IsTriviallyDestructible<Bucket>);
+        static_assert(IsTriviallyCopyable<Bucket>);
 
         [[nodiscard]] uint32_t Next(uint32_t bucketIndex) const;
 

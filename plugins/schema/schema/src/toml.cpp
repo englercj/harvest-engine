@@ -6,16 +6,14 @@
 
 #include "he/core/ascii.h"
 #include "he/core/assert.h"
-#include "he/core/enum_fmt.h"
+#include "he/core/fmt.h"
+#include "he/core/limits.h"
 #include "he/core/log.h"
 #include "he/core/string.h"
 #include "he/core/string_fmt.h"
 #include "he/core/string_builder.h"
-#include "he/core/string_view_fmt.h"
 #include "he/core/types.h"
 
-#include "fmt/format.h"
-#include "fmt/ranges.h"
 #include "toml++/toml.h"
 
 namespace he::schema
@@ -198,9 +196,10 @@ namespace he::schema
             if (!result)
             {
                 const toml::parse_error& err = result.error();
+                const StringView desc(err.description().data(), static_cast<uint32_t>(err.description().size()));
                 HE_LOG_ERROR(he_schema,
                     HE_MSG("Failed to parse TOML string."),
-                    HE_KV(error, err.description()),
+                    HE_KV(error, desc),
                     HE_KV(line, err.source().begin.line),
                     HE_KV(column, err.source().begin.column));
                  return false;
@@ -222,7 +221,8 @@ namespace he::schema
 
             for (auto&& [key, value] : table)
             {
-                const Field::Reader field = FindFieldByName(key.str(), st);
+                StringView keyName{ key.str().data(), static_cast<uint32_t>(key.str().size()) };
+                const Field::Reader field = FindFieldByName(keyName, st);
 
                 if (field.IsValid())
                 {
@@ -233,7 +233,7 @@ namespace he::schema
                     // TODO: Handle unknown fields
                     HE_LOG_WARN(he_schema,
                         HE_MSG("Encountered unknown field name. Skipping deserialization of field."),
-                        HE_KV(field_name, key.str()),
+                        HE_KV(field_name, keyName),
                         HE_KV(decl_name, decl.GetName()),
                         HE_KV(decl_id, decl.GetId()));
                 }
@@ -345,9 +345,10 @@ namespace he::schema
 
                 const toml::key& firstFieldName = data->begin()->first;
 
+                StringView expected{ firstFieldName.str().data(), static_cast<uint32_t>(firstFieldName.str().size()) };
                 for (Field::Reader f : unionStruct.GetFields())
                 {
-                    if (f.GetName().AsView() == firstFieldName.str())
+                    if (f.GetName().AsView() == expected)
                     {
                         activeField = f;
                         break;
@@ -454,7 +455,8 @@ namespace he::schema
                 case Type::Data::UnionTag::String:
                 {
                     const std::string& str = value.as_string()->get();
-                    String::Builder strBuilder = m_dst.AddString(str);
+                    const StringView strValue{ str.data(), static_cast<uint32_t>(str.size()) };
+                    String::Builder strBuilder = m_dst.AddString(strValue);
                     builder.GetPointerField(index).Set(strBuilder);
                     break;
                 }
@@ -465,7 +467,8 @@ namespace he::schema
                 }
                 case Type::Data::UnionTag::Enum:
                 {
-                    const StringView enumName = value.as_string()->get();
+                    const std::string& str = value.as_string()->get();
+                    const StringView enumName{ str.data(), static_cast<uint32_t>(str.size()) };
                     const Type::Data::Enum::Reader enumType = typeData.GetEnum();
 
                     PushGroup(enumType.GetId());
@@ -653,7 +656,8 @@ namespace he::schema
                     case Type::Data::UnionTag::String:
                     {
                         const std::string& str = elmValue.as_string()->get();
-                        String::Builder strBuilder = m_dst.AddString(str);
+                        const StringView strValue{ str.data(), static_cast<uint32_t>(str.size()) };
+                        String::Builder strBuilder = m_dst.AddString(strValue);
                         builder.GetPointerArrayField(index, size).SetPointerElement(i, strBuilder);
                         break;
                     }
@@ -676,14 +680,15 @@ namespace he::schema
                     }
                     case Type::Data::UnionTag::Enum:
                     {
-                        const StringView enumName = elmValue.as_string()->get();
+                        const std::string& str = elmValue.as_string()->get();
+                        const StringView strValue{ str.data(), static_cast<uint32_t>(str.size()) };
                         const Type::Data::Enum::Reader enumType = elementType.GetData().GetEnum();
                         PushGroup(enumType.GetId());
                         Declaration::Data::Enum::Reader enumDecl = m_stack.Back().decl.GetData().GetEnum();
 
                         for (Enumerator::Reader e : enumDecl.GetEnumerators())
                         {
-                            if (e.GetName() == enumName)
+                            if (e.GetName() == strValue)
                             {
                                 Span<uint16_t> values = builder.GetAndMarkDataArrayField<uint16_t>(index, dataOffset, size);
                                 values[i] = e.GetOrdinal();
@@ -700,7 +705,7 @@ namespace he::schema
                                 HE_KV(parent_id, m_stack.Back().decl.GetId()),
                                 HE_KV(parent_name, m_stack.Back().decl.GetName().AsView()),
                                 HE_KV(field_name, field.GetName().AsView()),
-                                HE_KV(enum_name, enumName),
+                                HE_KV(enum_name, strValue),
                                 HE_KV(index, index),
                                 HE_KV(data_offset, dataOffset));
                             return;
@@ -797,7 +802,7 @@ namespace he::schema
                 return;
             }
 
-            if (arrSize > std::numeric_limits<uint16_t>::max())
+            if (arrSize > Limits<uint16_t>::Max)
             {
                 HE_LOG_ERROR(he_schema,
                     HE_MSG("Toml array length is too long to fit into a list. Skipping deserialization of field."),
@@ -860,7 +865,8 @@ namespace he::schema
                     case Type::Data::UnionTag::String:
                     {
                         const std::string& str = elmValue.as_string()->get();
-                        String::Builder strBuilder = m_dst.AddString(str);
+                        const StringView strValue{ str.data(), static_cast<uint32_t>(str.size()) };
+                        String::Builder strBuilder = m_dst.AddString(strValue);
                         list.SetPointerElement(i, strBuilder);
                         break;
                     }
@@ -889,7 +895,8 @@ namespace he::schema
                     }
                     case Type::Data::UnionTag::Enum:
                     {
-                        const StringView enumName = elmValue.as_string()->get();
+                        const std::string& str = elmValue.as_string()->get();
+                        const StringView strValue{ str.data(), static_cast<uint32_t>(str.size()) };
                         const Type::Data::Enum::Reader enumType = elementType.GetData().GetEnum();
                         PushGroup(enumType.GetId());
                         Declaration::Data::Enum::Reader enumDecl = m_stack.Back().decl.GetData().GetEnum();
@@ -897,7 +904,7 @@ namespace he::schema
                         bool found = false;
                         for (Enumerator::Reader e : enumDecl.GetEnumerators())
                         {
-                            if (e.GetName() == enumName)
+                            if (e.GetName() == strValue)
                             {
                                 found = true;
                                 list.SetDataElement(i, e.GetOrdinal());
@@ -914,7 +921,7 @@ namespace he::schema
                                 HE_KV(parent_id, m_stack.Back().decl.GetId()),
                                 HE_KV(parent_name, m_stack.Back().decl.GetName().AsView()),
                                 HE_KV(field_name, field.GetName().AsView()),
-                                HE_KV(enum_name, enumName),
+                                HE_KV(enum_name, strValue),
                                 HE_KV(index, index),
                                 HE_KV(data_offset, dataOffset));
                             return;
@@ -1382,7 +1389,7 @@ namespace he::schema
             using Helper = SchemaValueHelper<ReaderType>;
 
             const bool asHex = HasAttribute<Toml::Hex>(attributes);
-            const auto dataValueFmt = fmt::runtime(asHex ? "{:#x}" : "{}");
+            const auto dataValueFmt = FmtRuntime(asHex ? "{:#x}" : "{}");
 
             const Type::Data::Reader typeData = type.GetData();
             const Type::Data::UnionTag typeDataTag = typeData.GetUnionTag();
@@ -1418,14 +1425,14 @@ namespace he::schema
                     const Type::Reader elementType = arrayType.GetElementType();
                     const uint16_t size = arrayType.GetSize();
 
-                    if constexpr (std::is_same_v<ReaderType, StructReader>)
+                    if constexpr (IsSame<ReaderType, StructReader>)
                     {
                         if (asHexString && elementType.GetData().IsUint8())
                         {
                             // TODO: Need to support this in the reader
                             const Span<const uint8_t> bytes = data.template TryGetDataArrayField<uint8_t>(static_cast<uint16_t>(index), dataOffset, size);
                             m_writer.WriteIndent();
-                            m_writer.Write("{} = \"{:02x}\"", name, fmt::join(bytes, ""));
+                            m_writer.Write("{} = \"{:02x}\"", name, FmtJoin(bytes, ""));
                         }
                         else
                         {
@@ -1444,7 +1451,7 @@ namespace he::schema
                     // TODO: Hex as array, Base64 as string, if attributes are set.
                     // HexString is the default output format, so that attribute has no effect.
                     const List<uint8_t>::Reader bytes = Helper::GetPointer(data, index).template TryGetList<uint8_t>();
-                    m_writer.Write("\"{:02x}\"", fmt::join(bytes, ""));
+                    m_writer.Write("\"{:02x}\"", FmtJoin(bytes, ""));
                     break;
                 }
                 case Type::Data::UnionTag::String:
@@ -1462,14 +1469,14 @@ namespace he::schema
                     const ElementSize elementSize = GetTypeElementSize(elementType);
                     const ListReader list = Helper::GetPointer(data, index).TryGetList(elementSize);
 
-                    if constexpr (std::is_same_v<ReaderType, StructReader>)
+                    if constexpr (IsSame<ReaderType, StructReader>)
                     {
                         if (asHexString && elementType.GetData().IsUint8())
                         {
                             // TODO: Need to support this in the reader
                             List<uint8_t>::Reader bytes = data.GetPointerField(static_cast<uint16_t>(index)).template TryGetList<uint8_t>();
                             m_writer.WriteIndent();
-                            m_writer.Write("{} = \"{:02x}\"", name, fmt::join(bytes, ""));
+                            m_writer.Write("{} = \"{:02x}\"", name, FmtJoin(bytes, ""));
                         }
                         else
                         {

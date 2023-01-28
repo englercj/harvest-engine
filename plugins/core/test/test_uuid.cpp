@@ -5,11 +5,9 @@
 #include "he/core/uuid.h"
 #include "he/core/uuid_fmt.h"
 
-#include "he/core/appender.h"
+#include "he/core/fmt.h"
 #include "he/core/hash.h"
 #include "he/core/test.h"
-
-#include "fmt/format.h"
 
 using namespace he;
 
@@ -150,34 +148,27 @@ HE_TEST(core, uuid, fmt)
     String str;
 
     // Test formatting each of the well-known UUIDs
-    str.Clear();
-    fmt::format_to(Appender(str), "{}", Uuid_Zero);
+    str = Format("{}", Uuid_Zero);
     HE_EXPECT_EQ(str, "00000000-0000-0000-0000-000000000000");
 
-    str.Clear();
-    fmt::format_to(Appender(str), "{}", Uuid_NamespaceDNS);
+    str = Format("{}", Uuid_NamespaceDNS);
     HE_EXPECT_EQ(str, "6ba7b810-9dad-11d1-80b4-00c04fd430c8");
 
-    str.Clear();
-    fmt::format_to(Appender(str), "{}", Uuid_NamespaceURL);
+    str = Format("{}", Uuid_NamespaceURL);
     HE_EXPECT_EQ(str, "6ba7b811-9dad-11d1-80b4-00c04fd430c8");
 
-    str.Clear();
-    fmt::format_to(Appender(str), "{}", Uuid_NamespaceOID);
+    str = Format("{}", Uuid_NamespaceOID);
     HE_EXPECT_EQ(str, "6ba7b812-9dad-11d1-80b4-00c04fd430c8");
 
-    str.Clear();
-    fmt::format_to(Appender(str), "{}", Uuid_NamespaceX500);
+    str = Format("{}", Uuid_NamespaceX500);
     HE_EXPECT_EQ(str, "6ba7b814-9dad-11d1-80b4-00c04fd430c8");
 
     // Test formatting with the lower specifier.
-    str.Clear();
-    fmt::format_to(Appender(str), "{:x}", Uuid_NamespaceX500);
+    str = Format("{:x}", Uuid_NamespaceX500);
     HE_EXPECT_EQ(str, "6ba7b814-9dad-11d1-80b4-00c04fd430c8");
 
     // Test formatting with the upper specifier.
-    str.Clear();
-    fmt::format_to(Appender(str), "{:X}", Uuid_NamespaceX500);
+    str = Format("{:X}", Uuid_NamespaceX500);
     HE_EXPECT_EQ(str, "6BA7B814-9DAD-11D1-80B4-00C04FD430C8");
 }
 
@@ -186,21 +177,18 @@ HE_TEST(core, uuid, Uuid_String_Roundtrip)
 {
     const Uuid uuid = Uuid::CreateV4();
 
-    String str;
-    fmt::format_to(Appender(str), "{}", uuid);
+    const String str = Format("{}", uuid);
 
     const Uuid uuid2 = Uuid::FromString(str);
     HE_EXPECT_EQ(uuid, uuid2);
 
-    String str2;
-    fmt::format_to(Appender(str2), "{:x}", uuid2);
+    const String str2 = Format("{:x}", uuid2);
     HE_EXPECT_EQ(str, str2);
 
     const Uuid uuid3 = Uuid::FromString(str2);
     HE_EXPECT_EQ(uuid, uuid3);
 
-    String str3;
-    fmt::format_to(Appender(str3), "{:X}", uuid3);
+    const String str3 = Format("{:X}", uuid3);
     // HE_EXPECT_EQ(str, str3); // case mismatch
 
     const Uuid uuid4 = Uuid::FromString(str3);

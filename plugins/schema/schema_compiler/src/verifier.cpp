@@ -6,18 +6,13 @@
 #include "keywords.h"
 
 #include "he/core/ascii.h"
-#include "he/core/enum_fmt.h"
 #include "he/core/enum_ops.h"
 #include "he/core/hash.h"
 #include "he/core/hash_table.h"
+#include "he/core/limits.h"
 #include "he/core/random.h"
-#include "he/core/string_fmt.h"
-#include "he/core/string_view_fmt.h"
 #include "he/schema/schema.h"
 
-#include "fmt/format.h"
-
-#include <limits>
 #include <set>
 
 namespace he::schema
@@ -78,9 +73,9 @@ namespace he::schema
         if (!VerifyAttributes(node))
             return false;
 
-        if (node.children.Size() > std::numeric_limits<uint16_t>::max())
+        if (node.children.Size() > Limits<uint16_t>::Max)
         {
-            m_context->AddError(node.location, "{:s} has too many members. Max is UINT16_MAX ({})", node.kind, std::numeric_limits<uint16_t>::max());
+            m_context->AddError(node.location, "{:s} has too many members. Max is UINT16_MAX ({})", node.kind, Limits<uint16_t>::Max);
             return false;
         }
 
@@ -295,9 +290,9 @@ namespace he::schema
 
     bool Verifier::VerifyAttributes(const AstNode& node)
     {
-        if (node.attributes.Size() > std::numeric_limits<uint16_t>::max())
+        if (node.attributes.Size() > Limits<uint16_t>::Max)
         {
-            m_context->AddError(node.location, "Number of applied attributes is too large. Max is UINT16_MAX ({})", std::numeric_limits<uint16_t>::max());
+            m_context->AddError(node.location, "Number of applied attributes is too large. Max is UINT16_MAX ({})", Limits<uint16_t>::Max);
             return false;
         }
 
@@ -429,7 +424,7 @@ namespace he::schema
         if (!VerifyMembersOf(node, kind, ordinals))
             return false;
 
-        if (ordinals.Size() > std::numeric_limits<uint16_t>::max())
+        if (ordinals.Size() > Limits<uint16_t>::Max)
         {
             m_context->AddError(node.location, "Declaration contains too many members");
             return false;
@@ -478,9 +473,9 @@ namespace he::schema
             if (child.kind != kind)
                 continue;
 
-            if (child.id > std::numeric_limits<uint16_t>::max())
+            if (child.id > Limits<uint16_t>::Max)
             {
-                m_context->AddError(child.location, "Ordinal value is too large. Max is UINT16_MAX ({})", std::numeric_limits<uint16_t>::max());
+                m_context->AddError(child.location, "Ordinal value is too large. Max is UINT16_MAX ({})", Limits<uint16_t>::Max);
                 return false;
             }
 
@@ -601,9 +596,9 @@ namespace he::schema
 
     bool Verifier::VerifyOrdinal(const AstNode& node)
     {
-        if (node.id > std::numeric_limits<uint16_t>::max())
+        if (node.id > Limits<uint16_t>::Max)
         {
-            m_context->AddError(node.location, "Ordinal value is too large. Max is UINT16_MAX ({})", std::numeric_limits<uint16_t>::max());
+            m_context->AddError(node.location, "Ordinal value is too large. Max is UINT16_MAX ({})", Limits<uint16_t>::Max);
             return false;
         }
 
@@ -818,9 +813,9 @@ namespace he::schema
                     m_context->AddError(ast.location, "Array size is too small. Must have at least 2 elements.");
                     return false;
                 }
-                if (ast.unsignedInt > std::numeric_limits<uint16_t>::max())
+                if (ast.unsignedInt > Limits<uint16_t>::Max)
                 {
-                    m_context->AddError(ast.location, "Array size is too large. Max is UINT16_MAX ({})", std::numeric_limits<uint16_t>::max());
+                    m_context->AddError(ast.location, "Array size is too large. Max is UINT16_MAX ({})", Limits<uint16_t>::Max);
                     return false;
                 }
                 break;
@@ -832,9 +827,9 @@ namespace he::schema
                     m_context->AddError(ast.location, "Array size is too small. Must have at least 2 elements.");
                     return false;
                 }
-                if (ast.signedInt > std::numeric_limits<uint16_t>::max())
+                if (ast.signedInt > Limits<uint16_t>::Max)
                 {
-                    m_context->AddError(ast.location, "Array size is too large. Max is UINT16_MAX ({})", std::numeric_limits<uint16_t>::max());
+                    m_context->AddError(ast.location, "Array size is too large. Max is UINT16_MAX ({})", Limits<uint16_t>::Max);
                     return false;
                 }
                 break;

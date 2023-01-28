@@ -17,7 +17,7 @@
             <Item Name="[size]">m_size</Item>
             <ArrayItems>
                 <Size>m_size</Size>
-                <ValuePointer>m_ptr</ValuePointer>
+                <ValuePointer>m_data</ValuePointer>
             </ArrayItems>
         </Expand>
     </Type>
@@ -35,7 +35,7 @@
         </Expand>
     </Type>
     <Type Name="he::StringView">
-        <DisplayString>{m_span.m_ptr,[m_span.m_size]s}</DisplayString>
-        <StringView>m_span.m_ptr,[m_span.m_size]s</StringView>
+        <DisplayString>{m_data,[m_size]s}</DisplayString>
+        <StringView>m_data,[m_size]s</StringView>
     </Type>
 </AutoVisualizer>

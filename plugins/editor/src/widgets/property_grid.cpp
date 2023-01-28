@@ -4,6 +4,7 @@
 
 #include "he/assets/types.h"
 #include "he/core/ascii.h"
+#include "he/core/limits.h"
 #include "he/core/scope_guard.h"
 #include "he/core/string.h"
 #include "he/core/vector.h"
@@ -359,8 +360,8 @@ namespace he::editor
             T v = value;
             if (slider.IsValid())
             {
-                T min = std::numeric_limits<T>::lowest();
-                T max = std::numeric_limits<T>::max();
+                T min = Limits<T>::Min;
+                T max = Limits<T>::Max;
                 ReadScalarRange(slider.GetValue(), min, max);
 
                 if (ImGui::SliderScalar("##scalar-slider", DataType, &v, &min, &max, nullptr, ImGuiSliderFlags_AlwaysClamp))
@@ -517,12 +518,11 @@ namespace he::editor
         template <AnyOf<schema::DynamicArray::Reader, schema::DynamicList::Reader> T, AnyOf<uint16_t, uint32_t> U>
         void ShowEditorRow(const T& data, U index)
         {
-            String name;
-            fmt::format_to(Appender(name), "[{}]", index);
+            const String name = Format("[{}]", index);
 
             const schema::Type::Reader elementType = [&]()
             {
-                if constexpr (std::is_same_v<T, schema::DynamicArray::Reader>)
+                if constexpr (IsSame<T, schema::DynamicArray::Reader>)
                     return data.ArrayType().GetElementType();
                 else
                     return data.ListType().GetElementType();
@@ -596,7 +596,7 @@ namespace he::editor
                             ImGui::SetTooltip("Add new element");
                     }
 
-                    if (IsPointer(elementType) && data.Has(index))
+                    if (schema::IsPointer(elementType) && data.Has(index))
                     {
                         if (ImGui::Button(ICON_MDI_UNDO_VARIANT))
                         {

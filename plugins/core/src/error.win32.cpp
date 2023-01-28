@@ -3,7 +3,7 @@
 #include "he/core/error.h"
 
 #include "he/core/alloca.h"
-#include "he/core/appender.h"
+#include "he/core/fmt.h"
 #include "he/core/buffer_writer.h"
 #include "he/core/debugger.h"
 #include "he/core/key_value_fmt.h"
@@ -14,8 +14,6 @@
 #include "he/core/utils.h"
 #include "he/core/vector.h"
 #include "he/core/wstr.h"
-
-#include "fmt/format.h"
 
 #if defined(HE_PLATFORM_API_WIN32)
 
@@ -273,8 +271,8 @@ namespace he
             0xffff);
 
         String errorMsg;
-        fmt::format_to(Appender(errorMsg), "{}", fmt::join(kvs, kvs + count, "\r\n"));
-        fmt::format_to(Appender(errorMsg), "\r\nsource.file = {}\r\nsource.line = {}\r\nsource.funcName = {}", source.file, source.line, source.funcName);
+        FormatTo(errorMsg, "{}", FmtJoin(kvs, kvs + count, "\r\n"));
+        FormatTo(errorMsg, "\r\nsource.file = {}\r\nsource.line = {}\r\nsource.funcName = {}", source.file, source.line, source.funcName);
         temp.AddEditBox(
             HE_TO_WCSTR(errorMsg.Data()),
             WS_CHILD | WS_VISIBLE | WS_BORDER | WS_VSCROLL | WS_HSCROLL | ES_READONLY | ES_MULTILINE,

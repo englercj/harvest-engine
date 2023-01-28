@@ -7,10 +7,8 @@
 #include "he/core/scope_guard.h"
 #include "he/core/string.h"
 #include "he/core/string_view.h"
+#include "he/core/type_traits.h"
 #include "he/core/utils.h"
-
-#include <concepts>
-#include <type_traits>
 
 #if defined(HE_PLATFORM_API_POSIX)
 
@@ -61,15 +59,15 @@ namespace he
         while (valueEnd < dataEnd && *valueEnd != '\n')
             ++valueEnd;
 
-        if constexpr (std::is_same_v<T, bool>)
+        if constexpr (IsSame<T, bool>)
         {
             value.Set(valueStart[0] != '0');
         }
-        else if constexpr (std::is_integral_v<T>)
+        else if constexpr (IsIntegral<T>)
         {
             value.Set(String::ToInteger<T>(valueStart, valueEnd));
         }
-        else if constexpr (std::is_floating_point_v<T>)
+        else if constexpr (IsFloatingPoint<T>)
         {
             value.Set(String::ToFloat<T>(valueStart, valueEnd));
         }
@@ -112,26 +110,29 @@ namespace he
 
     Result GetSystemName(String& outName)
     {
-        outName.Resize(String::MaxEmbedCharacters, he::DefaultInit);
+        const uint32_t offset = out.Size();
+        uint32_t size = String::MaxEmbedCharacters;
+        outName.Resize(offset + size, DefaultInit);
 
         do
         {
-            const int rc = gethostname(outName.Data(), outName.Size());
+            const int rc = gethostname(outName.Data() + offset, size);
             if (rc < 0)
             {
-                outName.Clear();
+                outName.Resize(offset);
                 return Result::FromLastError();
             }
 
-            const uint32_t len = String::Length(outName.Data());
-            if (len < outName.Size())
+            const uint32_t len = String::Length(outName.Data() + offset);
+            if (len < size)
             {
                 // resize to properly null terminate
-                outName.Resize(len);
+                outName.Resize(offset + len);
                 break;
             }
 
-            outName.Resize(Max(256u, outName.Size() * 2), he::DefaultInit);
+            size = Max(256u, size * 2);
+            outName.Resize(offset + size, DefaultInit);
         } while (true);
 
         return Result::Success;

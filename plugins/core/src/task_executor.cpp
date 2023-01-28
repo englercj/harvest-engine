@@ -2,7 +2,7 @@
 
 #include "he/core/task_executor.h"
 
-#include "he/core/cpu.h"
+#include "he/core/cpu_info.h"
 #include "he/core/thread.h"
 #include "he/core/utils.h"
 

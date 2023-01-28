@@ -12,7 +12,7 @@
 #include "he/core/vector.h"
 #include "he/schema/types.h"
 
-#include <iterator>
+namespace std { struct random_access_iterator_tag; }
 
 namespace he::schema
 {
@@ -41,7 +41,7 @@ namespace he::schema
     constexpr uint32_t BitsPerWord = BytesPerWord * BitsPerByte;
 
     // --------------------------------------------------------------------------------------------
-    template <typename T> concept DataType = std::is_arithmetic_v<T> || std::is_enum_v<T> || std::is_same_v<T, Void>;
+    template <typename T> concept DataType = IsArithmetic<T> || IsEnum<T> || IsSame<T, Void>;
 
     template <typename T>
     struct LayoutTraits
@@ -79,7 +79,7 @@ namespace he::schema
     template <> struct ElementSizeOfType<Void> { static constexpr ElementSize Value = ElementSize::Void; };
     template <> struct ElementSizeOfType<bool> { static constexpr ElementSize Value = ElementSize::Bit; };
 
-    template <Arithmetic T> requires(!std::is_same_v<T, bool>)
+    template <Arithmetic T> requires(!IsSame<T, bool>)
     struct ElementSizeOfType<T> { static constexpr ElementSize Value = ElementSizeForByteSize<sizeof(T)>::Value; };
 
     template <Enum T>
@@ -911,11 +911,11 @@ namespace he::schema
         void SetDataField(uint32_t dataOffset, T value)
         {
             HE_ASSERT(IsValid());
-            if constexpr (std::is_same_v<bool, T>)
+            if constexpr (IsSame<bool, T>)
             {
                 HE_ASSERT(dataOffset < (static_cast<uint64_t>(m_dataWordSize - m_metaWordSize) * BitsPerWord));
             }
-            else if constexpr (!std::is_same_v<Void, T>)
+            else if constexpr (!IsSame<Void, T>)
             {
                 HE_ASSERT(((dataOffset + 1) * (sizeof(T) * BitsPerByte)) <= (static_cast<uint64_t>(m_dataWordSize - m_metaWordSize) * BitsPerWord));
             }
@@ -925,7 +925,7 @@ namespace he::schema
         template <DataType T>
         void SetAndMarkDataField(uint16_t index, uint32_t dataOffset, T value)
         {
-            if constexpr (!std::is_same_v<Void, T>)
+            if constexpr (!IsSame<Void, T>)
             {
                 SetDataField(dataOffset, value);
                 MarkHasDataField(index, true);
@@ -947,7 +947,7 @@ namespace he::schema
         {
             HE_ASSERT(elementCount > 0);
             typename _ReadDataArrayReturnType<T>::Type ret = _ReadDataArrayField<T>(DataFields(), m_dataWordSize, dataOffset, elementCount);
-            if constexpr (!std::is_same_v<decltype(ret), Void>)
+            if constexpr (!IsSame<decltype(ret), Void>)
             {
                 if (!ret.IsEmpty())
                 {
@@ -1150,7 +1150,7 @@ namespace he::schema
             HE_ASSERT(index < Size());
             if constexpr (DataType<T>)
                 return GetDataElement<T>(index);
-            else if constexpr (std::is_same_v<T, String>)
+            else if constexpr (IsSame<T, String>)
                 return GetPointerElement(index).TryGetString();
             else if constexpr (IsSpecialization<T, List>)
                 return GetPointerElement(index).TryGetList<typename T::ElementType>();
@@ -1185,7 +1185,7 @@ namespace he::schema
             HE_ASSERT(index < Size());
             if constexpr (DataType<T>)
                 return GetDataElement<T>(index);
-            else if constexpr (std::is_same_v<T, String>)
+            else if constexpr (IsSame<T, String>)
                 return GetPointerElement(index).TryGetString();
             else if constexpr (IsSpecialization<T, List>)
                 return GetPointerElement(index).TryGetList<typename T::ElementType>();

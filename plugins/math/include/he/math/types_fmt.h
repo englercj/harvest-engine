@@ -2,123 +2,113 @@
 
 #pragma once
 
+#include "he/core/fmt.h"
+#include "he/core/type_traits.h"
 #include "he/math/types.h"
 #include "he/math/vec4a.h"
-
-#include "fmt/core.h"
-
-#include <type_traits>
 
 namespace he
 {
     template <typename T>
-    struct _VecTFormatter
+    struct Formatter<Vec2<T>>
     {
-        constexpr auto parse(fmt::format_parse_context& ctx) const -> decltype(ctx.begin())
-        {
-            return ctx.begin();
-        }
+        using Type = Vec2<T>;
 
-        template <typename FormatContext>
-        auto format(const T& vec, FormatContext& ctx) const
-            -> std::enable_if_t<std::is_floating_point_v<typename T::Type>, decltype(ctx.out())>
-        {
-            static_assert(T::Size > 0 && T::Size < 5);
+        constexpr const char* Parse(const FmtParseCtx& ctx) const { return ctx.Begin(); }
 
-            if constexpr (T::Size == 4)
-                return fmt::format_to(ctx.out(), "({:.1f}, {:.1f}, {:.1f}, {:.1f})", vec.x, vec.y, vec.z, vec.w);
-            else if constexpr (T::Size == 3)
-                return fmt::format_to(ctx.out(), "({:.1f}, {:.1f}, {:.1f})", vec.x, vec.y, vec.z);
-            else if constexpr (T::Size == 2)
-                return fmt::format_to(ctx.out(), "({:.1f}, {:.1f})", vec.x, vec.y);
+        void Format(String& out, const Vec2<T>& vec) const
+        {
+            if constexpr (IsFloatingPoint<T>)
+                return FormatTo(out, "({:.1f}, {:.1f})", vec.x, vec.y);
             else
-                return fmt::format_to(ctx.out(), "({:.1f})", vec.x);
-        }
-
-        template <typename FormatContext>
-        auto format(const T& vec, FormatContext& ctx) const
-            -> std::enable_if_t<std::is_integral_v<typename T::Type>, decltype(ctx.out())>
-        {
-            static_assert(T::Size > 0 && T::Size < 5);
-
-            if constexpr (T::Size == 4)
-                return fmt::format_to(ctx.out(), "({}, {}, {}, {})", vec.x, vec.y, vec.z, vec.w);
-            else if constexpr (T::Size == 3)
-                return fmt::format_to(ctx.out(), "({}, {}, {})", vec.x, vec.y, vec.z);
-            else if constexpr (T::Size == 2)
-                return fmt::format_to(ctx.out(), "({}, {})", vec.x, vec.y);
-            else
-                return fmt::format_to(ctx.out(), "({})", vec.x);
+                return FormatTo(out, "({}, {})", vec.x, vec.y);
         }
     };
-}
 
-namespace fmt
-{
-    template <typename T> struct formatter<he::Vec2<T>> : he::_VecTFormatter<he::Vec2<T>> {};
-    template <typename T> struct formatter<he::Vec3<T>> : he::_VecTFormatter<he::Vec3<T>> {};
-    template <typename T> struct formatter<he::Vec4<T>> : he::_VecTFormatter<he::Vec4<T>> {};
+    template <typename T>
+    struct Formatter<Vec3<T>>
+    {
+        using Type = Vec3<T>;
+
+        constexpr const char* Parse(const FmtParseCtx& ctx) const { return ctx.Begin(); }
+
+        void Format(String& out, const Vec3<T>& vec) const
+        {
+            if constexpr (IsFloatingPoint<T>)
+                return FormatTo(out, "({:.1f}, {:.1f}, {:.1f})", vec.x, vec.y, vec.z);
+            else
+                return FormatTo(out, "({}, {}, {})", vec.x, vec.y, vec.z);
+        }
+    };
+
+    template <typename T>
+    struct Formatter<Vec4<T>>
+    {
+        using Type = Vec4<T>;
+
+        constexpr const char* Parse(const FmtParseCtx& ctx) const { return ctx.Begin(); }
+
+        void Format(String& out, const Vec4<T>& vec) const
+        {
+            if constexpr (IsFloatingPoint<T>)
+                return FormatTo(out, "({:.1f}, {:.1f}, {:.1f}, {:.1f})", vec.x, vec.y, vec.z, vec.w);
+            else
+                return FormatTo(out, "({}, {}, {}, {})", vec.x, vec.y, vec.z, vec.w);
+        }
+    };
 
     template <>
-    struct formatter<he::Vec4a>
+    struct Formatter<Vec4a>
     {
-        constexpr auto parse(format_parse_context& ctx) const -> decltype(ctx.begin())
-        {
-            return ctx.begin();
-        }
+        using Type = Vec4a;
 
-        template <typename FormatContext>
-        auto format(const he::Vec4a& vec, FormatContext& ctx) const -> decltype(ctx.out())
+        constexpr const char* Parse(const FmtParseCtx& ctx) const { return ctx.Begin(); }
+
+        void Format(String& out, const Vec4a& vec) const
         {
             alignas(16) float p[]{ 0, 0, 0, 0 };
-            he::Store(p, vec);
+            Store(p, vec);
 
-            return fmt::format_to(ctx.out(), "({:.1f}, {:.1f}, {:.1f}, {:.1f})", p[0], p[1], p[2], p[3]);
+            return FormatTo(out, "({:.1f}, {:.1f}, {:.1f}, {:.1f})", p[0], p[1], p[2], p[3]);
         }
     };
 
     template <>
-    struct formatter<he::Quat>
+    struct Formatter<Quat>
     {
-        constexpr auto parse(format_parse_context& ctx) const -> decltype(ctx.begin())
-        {
-            return ctx.begin();
-        }
+        using Type = Quat;
 
-        template <typename FormatContext>
-        auto format(const he::Quat& q, FormatContext& ctx) const -> decltype(ctx.out())
+        constexpr const char* Parse(const FmtParseCtx& ctx) const { return ctx.Begin(); }
+
+        void Format(String& out, const Quat& q) const
         {
-            return fmt::format_to(ctx.out(), "({:.1f}, {:.1f}, {:.1f}, {:.1f})", q.x, q.y, q.z, q.w);
+            return FormatTo(out, "({:.1f}, {:.1f}, {:.1f}, {:.1f})", q.x, q.y, q.z, q.w);
         }
     };
 
     template <>
-    struct formatter<he::Quata>
+    struct Formatter<Quata>
     {
-        constexpr auto parse(format_parse_context& ctx) const -> decltype(ctx.begin())
-        {
-            return ctx.begin();
-        }
+        using Type = Quata;
 
-        template <typename FormatContext>
-        auto format(const he::Quata& q, FormatContext& ctx) const -> decltype(ctx.out())
+        constexpr const char* Parse(const FmtParseCtx& ctx) const { return ctx.Begin(); }
+
+        void Format(String& out, const Quata& q) const
         {
-            return fmt::format_to(ctx.out(), "{}", q.v);
+            return FormatTo(out, "{}", q.v);
         }
     };
 
     template <>
-    struct formatter<he::Mat44>
+    struct Formatter<Mat44>
     {
-        constexpr auto parse(format_parse_context& ctx) const -> decltype(ctx.begin())
-        {
-            return ctx.begin();
-        }
+        using Type = Mat44;
 
-        template <typename FormatContext>
-        auto format(const he::Mat44& mat, FormatContext& ctx) const -> decltype(ctx.out())
+        constexpr const char* Parse(const FmtParseCtx& ctx) const { return ctx.Begin(); }
+
+        void Format(String& out, const Mat44& mat) const
         {
-            return fmt::format_to(ctx.out(), "(cx{}, cy{}, cz{}, cw{})", mat.cx, mat.cy, mat.cz, mat.cw);
+            return FormatTo(out, "(cx{}, cy{}, cz{}, cw{})", mat.cx, mat.cy, mat.cz, mat.cw);
         }
     };
 }

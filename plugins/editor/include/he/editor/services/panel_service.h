@@ -4,14 +4,13 @@
 
 #include "he/core/hash_table.h"
 #include "he/core/type_info.h"
+#include "he/core/type_traits.h"
 #include "he/core/utils.h"
 #include "he/core/unique_ptr.h"
 #include "he/core/vector.h"
 #include "he/editor/di.h"
 #include "he/editor/documents/document.h"
 #include "he/editor/services/document_service.h"
-
-#include <type_traits>
 
 namespace he::editor
 {
@@ -24,7 +23,7 @@ namespace he::editor
 
         void ShowPanels();
 
-        template <typename T> requires(std::is_base_of_v<Document, T>)
+        template <typename T> requires(IsBaseOf<Document, T>)
         void Open()
         {
             constexpr TypeInfo Info = TypeInfo::Get<T>();
@@ -44,7 +43,7 @@ namespace he::editor
             }
         }
 
-        template <typename T> requires(std::is_base_of_v<Document, T>)
+        template <typename T> requires(IsBaseOf<Document, T>)
         bool IsOpen()
         {
             constexpr TypeInfo Info = TypeInfo::Get<T>();

@@ -4,10 +4,10 @@
 
 #include "he/math/float.h"
 
+#include "he/core/limits.h"
 #include "he/core/test.h"
 
 #include <cmath>
-#include <limits>
 
 using namespace he;
 
@@ -24,50 +24,50 @@ HE_TEST(math, float, UlpDiff)
 // ------------------------------------------------------------------------------------------------
 HE_TEST(math, float, IsNan)
 {
-    static_assert(!IsNan(std::numeric_limits<float>::lowest()));
-    static_assert(!IsNan(std::numeric_limits<float>::max()));
-    static_assert(!IsNan(std::numeric_limits<float>::epsilon()));
-    static_assert(IsNan(std::numeric_limits<float>::quiet_NaN()));
-    static_assert(IsNan(std::numeric_limits<float>::signaling_NaN()));
+    static_assert(!IsNan(Limits<float>::Min));
+    static_assert(!IsNan(Limits<float>::Max));
+    static_assert(!IsNan(Limits<float>::Epsilon));
+    static_assert(IsNan(Limits<float>::NaN));
+    static_assert(IsNan(Limits<float>::SignalingNaN));
     static_assert(IsNan(Float_AllBits));
 
-    HE_EXPECT(!IsNan(std::numeric_limits<float>::lowest()));
-    HE_EXPECT(!IsNan(std::numeric_limits<float>::max()));
-    HE_EXPECT(!IsNan(std::numeric_limits<float>::epsilon()));
-    HE_EXPECT(IsNan(std::numeric_limits<float>::quiet_NaN()));
-    HE_EXPECT(IsNan(std::numeric_limits<float>::signaling_NaN()));
+    HE_EXPECT(!IsNan(Limits<float>::Min));
+    HE_EXPECT(!IsNan(Limits<float>::Max));
+    HE_EXPECT(!IsNan(Limits<float>::Epsilon));
+    HE_EXPECT(IsNan(Limits<float>::NaN));
+    HE_EXPECT(IsNan(Limits<float>::SignalingNaN));
     HE_EXPECT(IsNan(Float_AllBits));
 }
 
 // ------------------------------------------------------------------------------------------------
 HE_TEST(math, float, IsInfinite)
 {
-    static_assert(!IsInfinite(std::numeric_limits<float>::lowest()));
-    static_assert(!IsInfinite(std::numeric_limits<float>::max()));
-    static_assert(!IsInfinite(std::numeric_limits<float>::epsilon()));
-    static_assert(IsInfinite(std::numeric_limits<float>::infinity()));
+    static_assert(!IsInfinite(Limits<float>::Min));
+    static_assert(!IsInfinite(Limits<float>::Max));
+    static_assert(!IsInfinite(Limits<float>::Epsilon));
+    static_assert(IsInfinite(Limits<float>::Infinity));
     static_assert(IsInfinite(Float_Infinity));
 
-    HE_EXPECT(!IsInfinite(std::numeric_limits<float>::lowest()));
-    HE_EXPECT(!IsInfinite(std::numeric_limits<float>::max()));
-    HE_EXPECT(!IsInfinite(std::numeric_limits<float>::epsilon()));
-    HE_EXPECT(IsInfinite(std::numeric_limits<float>::infinity()));
+    HE_EXPECT(!IsInfinite(Limits<float>::Min));
+    HE_EXPECT(!IsInfinite(Limits<float>::Max));
+    HE_EXPECT(!IsInfinite(Limits<float>::Epsilon));
+    HE_EXPECT(IsInfinite(Limits<float>::Infinity));
     HE_EXPECT(IsInfinite(Float_Infinity));
 }
 
 // ------------------------------------------------------------------------------------------------
 HE_TEST(math, float, IsFinite)
 {
-    static_assert(IsFinite(std::numeric_limits<float>::lowest()));
-    static_assert(IsFinite(std::numeric_limits<float>::max()));
-    static_assert(IsFinite(std::numeric_limits<float>::epsilon()));
-    static_assert(!IsFinite(std::numeric_limits<float>::infinity()));
+    static_assert(IsFinite(Limits<float>::Min));
+    static_assert(IsFinite(Limits<float>::Max));
+    static_assert(IsFinite(Limits<float>::Epsilon));
+    static_assert(!IsFinite(Limits<float>::Infinity));
     static_assert(!IsFinite(Float_Infinity));
 
-    HE_EXPECT(IsFinite(std::numeric_limits<float>::lowest()));
-    HE_EXPECT(IsFinite(std::numeric_limits<float>::max()));
-    HE_EXPECT(IsFinite(std::numeric_limits<float>::epsilon()));
-    HE_EXPECT(!IsFinite(std::numeric_limits<float>::infinity()));
+    HE_EXPECT(IsFinite(Limits<float>::Min));
+    HE_EXPECT(IsFinite(Limits<float>::Max));
+    HE_EXPECT(IsFinite(Limits<float>::Epsilon));
+    HE_EXPECT(!IsFinite(Limits<float>::Infinity));
     HE_EXPECT(!IsFinite(Float_Infinity));
 }
 

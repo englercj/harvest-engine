@@ -2,12 +2,11 @@
 
 #pragma once
 
-#include "he/core/appender.h"
+#include "he/core/assert.h"
+#include "he/core/fmt.h"
 #include "he/core/string.h"
 #include "he/core/string_view.h"
 #include "he/core/utils.h"
-
-#include "fmt/core.h"
 
 namespace he
 {
@@ -109,13 +108,6 @@ namespace he
         /// \param c The character to append.
         StringBuilder& operator+=(char c) { m_str += c; return *this; }
 
-        /// Appends a series of characters from an object that provides a STL-style
-        /// contiguous range. That is, it has `.data()` and `.size()` members.
-        ///
-        /// \param range The object that provides the range.
-        template <typename R> requires(StdContiguousRange<R, const char>)
-        StringBuilder& operator+=(const R& range) { m_str += range; return *this; }
-
         /// Appends a series of characters from an object that provides a Harvest-style
         /// contiguous range. That is, it has `.Data()` and `.Size()` members.
         ///
@@ -206,9 +198,9 @@ namespace he
         /// \param[in] fmt The string format specifier.
         /// \param[in] args The arguments to use in formatting.
         template <typename... Args>
-        void Write(fmt::format_string<Args...> fmt, Args&&... args)
+        void Write(FmtString<Args...> fmt, Args&&... args)
         {
-            fmt::format_to(he::Appender(m_str), fmt, Forward<Args>(args)...);
+            FormatTo(m_str, fmt, Forward<Args>(args)...);
         }
 
         /// Writes the current indentation to the code builder.
@@ -237,10 +229,10 @@ namespace he
         /// \param[in] fmt The string format specifier.
         /// \param[in] args The arguments to use in formatting.
         template <typename... Args>
-        void WriteLine(fmt::format_string<Args...> fmt, Args&&... args)
+        void WriteLine(FmtString<Args...> fmt, Args&&... args)
         {
             WriteIndent();
-            fmt::format_to(he::Appender(m_str), fmt, Forward<Args>(args)...);
+            FormatTo(m_str, fmt, Forward<Args>(args)...);
             m_str.PushBack('\n');
         }
 

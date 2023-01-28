@@ -1,7 +1,7 @@
 // Copyright Chad Engler
 
 #include "he/core/args.h"
-#include "he/core/appender.h"
+#include "he/core/fmt.h"
 #include "he/core/assert.h"
 #include "he/core/clock.h"
 #include "he/core/debugger.h"
@@ -13,8 +13,6 @@
 #include "he/core/string.h"
 #include "he/core/string_fmt.h"
 #include "he/core/test.h"
-
-#include "fmt/format.h"
 
 #include <iostream>
 
@@ -71,8 +69,7 @@ static bool HandleTestLibLogEntry(const LogSource& source, const KeyValue* kvs, 
         // First two keys are `error_kind` and `error_expr` so skip those and log the rest
         if (count > 2)
         {
-            String buf;
-            fmt::format_to(Appender(buf), "    {}", fmt::join(kvs + 2, kvs + count, "\n    "));
+            const String buf = Format("    {}", FmtJoin(kvs + 2, kvs + count, "\n    "));
             std::cout << buf.Data() << std::endl;
         }
 

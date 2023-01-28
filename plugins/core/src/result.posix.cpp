@@ -2,11 +2,9 @@
 
 #include "he/core/result.h"
 
-#include "he/core/appender.h"
+#include "he/core/fmt.h"
 #include "he/core/string.h"
 #include "he/core/utils.h"
-
-#include "fmt/core.h"
 
 #if defined(HE_PLATFORM_API_POSIX)
 
@@ -27,10 +25,12 @@ namespace he
     void Result::ToString(String& out) const
     {
         // Try to fit the message into the string's embedded buffer. In English glibc error
-        // strings cap out at like 50 chracters, so they should all fit in the embedded buffer.
+        // strings cap out at like 50 characters, so they should all fit in the embedded buffer.
         // If we can't fit in the embedded buffer then we jump to 512 characters and grow from
         // there as needed. The jump in size is to make it very likely we only ever allocate once.
-        out.Resize(String::MaxEmbedCharacters, DefaultInit);
+        const uint32_t offset = out.Size();
+        uint32_t size = String::MaxEmbedCharacters;
+        out.Resize(offset + size, DefaultInit);
 
         int e = 0;
 
@@ -42,36 +42,38 @@ namespace he
                 #error "glibc in versions before 2.13 incorrectly returned error codes from POSIX strerror_r"
             #endif
 
-            e = strerror_r(m_code, out.Data(), out.Size());
+            e = strerror_r(m_code, out.Data() + offset, size);
         #else
             errno = 0;
-            char* msg = strerror_r(m_code, out.Data(), out.Size());
+            char* msg = strerror_r(m_code, out.Data() + offset, size);
             e = errno;
 
             // GNU version is allowed to return a static string rather than copying to our buffer.
-            if (msg != out.Data())
+            if (msg != (out.Data() + offset))
             {
-                out = msg;
+                out.Resize(offset);
+                out.Append(msg);
             }
         #endif
             if (e == ERANGE)
             {
-                // A size of 512 is a reasonable large string buffer that almost certainly
+                // A size of 512 is a reasonably large string buffer that almost certainly
                 // means we'll only allocate once and not have to double it.
-                out.Resize(Max(512u, out.Size() * 2));
+                size = Max(512u, size * 2);
+                out.Resize(offset + size, DefaultInit);
             }
         } while (e == ERANGE);
 
         if (e == EINVAL)
         {
-            fmt::format_to(Appender(out), "Unknown error: {}", m_code);
+            FormatTo(out, "Unknown error: {}", m_code);
         }
         else
         {
             // Resizing is necessary here because we used the string like a buffer so Size()
             // doesn't accurately represent the length of the string.
-            const uint32_t len = String::Length(out.Data());
-            out.Resize(len);
+            const uint32_t len = String::Length(out.Data() + offset);
+            out.Resize(offset + len);
         }
     }
 }

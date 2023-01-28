@@ -4,6 +4,7 @@
 
 #include "he/core/assert.h"
 #include "he/core/string_view.h"
+#include "he/core/type_traits.h"
 #include "he/core/types.h"
 #include "he/schema/layout.h"
 #include "he/schema/schema.h"
@@ -629,13 +630,13 @@ namespace he::schema
     class DynamicStructVisitorT
     {
     public:
-        static constexpr bool IsReader = std::is_same_v<T, DynamicStruct::Reader>;
-        static constexpr bool IsBuilder = std::is_same_v<T, DynamicStruct::Builder>;
+        static constexpr bool IsReader = IsSame<T, DynamicStruct::Reader>;
+        static constexpr bool IsBuilder = IsSame<T, DynamicStruct::Builder>;
 
         static_assert(IsReader || IsBuilder, "DynamicStructVisitor is intended for DynamicStruct::Reader and DynamicStruct::Builder types.");
 
         template <typename U>
-        using Access = std::conditional_t<IsReader, const typename U::Reader, typename U::Builder>;
+        using Access = Conditional<IsReader, const typename U::Reader, typename U::Builder>;
 
     public:
         virtual ~DynamicStructVisitorT() = default;
@@ -731,24 +732,24 @@ namespace he::schema
         const Type::Data::Reader elementTypeData = elementType.GetData();
         switch (elementTypeData.GetUnionTag())
         {
-            case Type::Data::UnionTag::Void: return std::is_same_v<T, Void>;
-            case Type::Data::UnionTag::Bool: return std::is_same_v<T, bool>;
-            case Type::Data::UnionTag::Int8: return std::is_same_v<T, int8_t>;
-            case Type::Data::UnionTag::Int16: return std::is_same_v<T, int16_t>;
-            case Type::Data::UnionTag::Int32: return std::is_same_v<T, int32_t>;
-            case Type::Data::UnionTag::Int64: return std::is_same_v<T, int64_t>;
-            case Type::Data::UnionTag::Uint8: return std::is_same_v<T, uint8_t>;
-            case Type::Data::UnionTag::Uint16: return std::is_same_v<T, uint16_t>;
-            case Type::Data::UnionTag::Uint32: return std::is_same_v<T, uint32_t>;
-            case Type::Data::UnionTag::Uint64: return std::is_same_v<T, uint64_t>;
-            case Type::Data::UnionTag::Float32: return std::is_same_v<T, float>;
-            case Type::Data::UnionTag::Float64: return std::is_same_v<T, double>;
-            case Type::Data::UnionTag::Blob: return std::is_same_v<T, schema::Blob>;
-            case Type::Data::UnionTag::String: return std::is_same_v<T, schema::String>;
-            case Type::Data::UnionTag::AnyPointer: return std::is_same_v<T, schema::AnyPointer>;
-            case Type::Data::UnionTag::AnyStruct: return std::is_same_v<T, schema::AnyStruct>;
-            case Type::Data::UnionTag::AnyList: return std::is_same_v<T, schema::AnyList>;
-            case Type::Data::UnionTag::Enum: return std::is_enum_v<T>;
+            case Type::Data::UnionTag::Void: return IsSame<T, Void>;
+            case Type::Data::UnionTag::Bool: return IsSame<T, bool>;
+            case Type::Data::UnionTag::Int8: return IsSame<T, int8_t>;
+            case Type::Data::UnionTag::Int16: return IsSame<T, int16_t>;
+            case Type::Data::UnionTag::Int32: return IsSame<T, int32_t>;
+            case Type::Data::UnionTag::Int64: return IsSame<T, int64_t>;
+            case Type::Data::UnionTag::Uint8: return IsSame<T, uint8_t>;
+            case Type::Data::UnionTag::Uint16: return IsSame<T, uint16_t>;
+            case Type::Data::UnionTag::Uint32: return IsSame<T, uint32_t>;
+            case Type::Data::UnionTag::Uint64: return IsSame<T, uint64_t>;
+            case Type::Data::UnionTag::Float32: return IsSame<T, float>;
+            case Type::Data::UnionTag::Float64: return IsSame<T, double>;
+            case Type::Data::UnionTag::Blob: return IsSame<T, schema::Blob>;
+            case Type::Data::UnionTag::String: return IsSame<T, schema::String>;
+            case Type::Data::UnionTag::AnyPointer: return IsSame<T, schema::AnyPointer>;
+            case Type::Data::UnionTag::AnyStruct: return IsSame<T, schema::AnyStruct>;
+            case Type::Data::UnionTag::AnyList: return IsSame<T, schema::AnyList>;
+            case Type::Data::UnionTag::Enum: return IsEnum<T>;
             case Type::Data::UnionTag::Struct: return T::Kind == DeclKind::Struct;
             case Type::Data::UnionTag::Interface: return false;
             case Type::Data::UnionTag::Parameter: return false;

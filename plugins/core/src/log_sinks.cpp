@@ -3,18 +3,15 @@
 #include "he/core/log_sinks.h"
 
 #include "he/core/assert.h"
-#include "he/core/appender.h"
+#include "he/core/fmt.h"
 #include "he/core/clock.h"
 #include "he/core/clock_fmt.h"
 #include "he/core/debugger.h"
 #include "he/core/directory.h"
-#include "he/core/enum_fmt.h"
 #include "he/core/key_value_fmt.h"
 #include "he/core/log.h"
 #include "he/core/path.h"
 #include "he/core/string_fmt.h"
-
-#include "fmt/format.h"
 
 #include <cstdio>
 
@@ -28,9 +25,9 @@ namespace he
 
         if (count == 1 && kvs[0].Kind() == KeyValue::ValueKind::String && String::Equal(kvs[0].Key(), HE_MSG_KEY))
         {
-            fmt::format_to(
-                Appender(out),
-                FMT_STRING("[{:%Y-%m-%d_%H-%M-%S}{:.04f}] [{:s}]({}) {}\n"),
+            FormatTo(
+                out,
+                "[{:%Y-%m-%d_%H-%M-%S}{:.04f}] [{:s}]({}) {}\n",
                 TimeFmt(now),
                 fractionalSeconds,
                 source.level,
@@ -39,14 +36,14 @@ namespace he
         }
         else
         {
-            fmt::format_to(
-                Appender(out),
-                FMT_STRING("[{:%Y-%m-%d_%H-%M-%S}{:.04f}] [{:s}]({}) {}\n"),
+            FormatTo(
+                out,
+                "[{:%Y-%m-%d_%H-%M-%S}{:.04f}] [{:s}]({}) {}\n",
                 TimeFmt(now),
                 fractionalSeconds,
                 source.level,
                 source.category,
-                fmt::join(kvs, kvs + count, ", "));
+                FmtJoin(kvs, kvs + count, ", "));
         }
     }
 
@@ -54,11 +51,7 @@ namespace he
     static void FormatFileName(String& out)
     {
         SystemTime now = SystemClock::Now();
-
-        fmt::format_to(
-            Appender(out),
-            FMT_STRING("_{:%Y-%m-%d_%H-%M-%S}.log"),
-            TimeFmt(now));
+        FormatTo(out, "_{:%Y-%m-%d_%H-%M-%S}.log", TimeFmt(now));
     }
 
     FileSink::FileSink(Allocator& allocator) noexcept
@@ -124,8 +117,8 @@ namespace he
 
         if (count == 1 && kvs[0].Kind() == KeyValue::ValueKind::String && String::Equal(kvs[0].Key(), HE_MSG_KEY))
         {
-            fmt::format_to(
-                Appender(msg),
+            FormatTo(
+                msg,
                 "{}({}): [{:s}]({}) {}\n",
                 source.file,
                 source.line,
@@ -135,14 +128,14 @@ namespace he
         }
         else
         {
-            fmt::format_to(
-                Appender(msg),
+            FormatTo(
+                msg,
                 "{}({}): [{:s}]({}) {}\n",
                 source.file,
                 source.line,
                 source.level,
                 source.category,
-                fmt::join(kvs, kvs + count, ", "));
+                FmtJoin(kvs, kvs + count, ", "));
         }
 
         PrintToDebugger(msg.Data());
@@ -154,21 +147,11 @@ namespace he
 
         if (count == 1 && kvs[0].Kind() == KeyValue::ValueKind::String && String::Equal(kvs[0].Key(), HE_MSG_KEY))
         {
-            fmt::format_to(
-                Appender(msg),
-                "[{:s}]({}) {}\n",
-                source.level,
-                source.category,
-                kvs[0].GetString());
+            FormatTo(msg, "[{:s}]({}) {}\n", source.level, source.category, kvs[0].GetString());
         }
         else
         {
-            fmt::format_to(
-                Appender(msg),
-                "[{:s}]({}) {}\n",
-                source.level,
-                source.category,
-                fmt::join(kvs, kvs + count, ", "));
+            FormatTo(msg, "[{:s}]({}) {}\n", source.level, source.category, FmtJoin(kvs, kvs + count, ", "));
         }
 
         auto* stream = source.level >= LogLevel::Warn ? stderr : stdout;

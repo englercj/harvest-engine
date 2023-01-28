@@ -10,10 +10,9 @@
 #include "he/core/macros.h"
 #include "he/core/memory_ops.h"
 #include "he/core/scope_guard.h"
+#include "he/core/type_traits.h"
 #include "he/math/vec4.h"
 #include "he/rhi/utils.h"
-
-#include <type_traits>
 
 #if HE_RHI_ENABLE_D3D12
 
@@ -689,7 +688,7 @@ namespace he::rhi::d3d12
         HE_ASSERT(table->ranges.Size() > rangeIndex);
         HE_ASSERT(table->ranges[rangeIndex].count >= (descIndex + count));
 
-        constexpr bool IsSampler = std::is_same_v<T, SamplerImpl>;
+        constexpr bool IsSampler = IsSame<T, SamplerImpl>;
         DescriptorPool& pool = IsSampler ? m_gpuSamplerPool : m_gpuGeneralPool;
 
         uint32_t offset = 0;
@@ -1170,7 +1169,7 @@ namespace he::rhi::d3d12
         D3D12_SAMPLER_DESC d3dDesc;
         FillSamplerDesc(d3dDesc, desc);
 
-        static_assert(sizeof(d3dDesc.BorderColor) == sizeof(decltype(ToDxBorderColor(std::declval<BorderColor>()))), "");
+        static_assert(sizeof(d3dDesc.BorderColor) == sizeof(decltype(ToDxBorderColor(DeclVal<BorderColor>()))), "");
         MemCopy(d3dDesc.BorderColor, ToDxBorderColor(desc.borderColor), sizeof(d3dDesc.BorderColor));
 
         SamplerImpl* sampler = m_instance->m_allocator.New<SamplerImpl>();

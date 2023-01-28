@@ -3,11 +3,10 @@
 #include "he/core/key_value.h"
 #include "he/core/key_value_fmt.h"
 
-#include "he/core/appender.h"
 #include "he/core/enum_ops.h"
+#include "he/core/fmt.h"
+#include "he/core/type_traits.h"
 #include "he/core/test.h"
-
-#include <type_traits>
 
 using namespace he;
 
@@ -155,8 +154,7 @@ HE_TEST(core, log_sinks, FormatKVsTo)
         { "str", "test" },
     };
 
-    String values;
-    fmt::format_to(Appender(values), "{}", fmt::join(kvs, kvs + HE_LENGTH_OF(kvs), ", "));
+    const String values = Format("{}", FmtJoin(kvs, kvs + HE_LENGTH_OF(kvs), ", "));
 
     HE_EXPECT_EQ(values, "bool = true, enum = Bool(0), int = 10, uint = 20, double = 50.12, str = test");
 }

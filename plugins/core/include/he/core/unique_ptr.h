@@ -4,10 +4,9 @@
 
 #include "he/core/allocator.h"
 #include "he/core/compiler.h"
+#include "he/core/type_traits.h"
 #include "he/core/types.h"
 #include "he/core/utils.h"
-
-#include <type_traits>
 
 namespace he
 {
@@ -21,15 +20,15 @@ namespace he
         constexpr UniquePtr(nullptr_t) noexcept : m_ptr(nullptr) {}
         explicit UniquePtr(T* p) noexcept : m_ptr(p) {}
 
-        template <typename U> requires(!std::is_array_v<U> && std::is_convertible_v<U*, T*>)
+        template <typename U> requires(!IsArray<U> && IsConvertible<U*, T*>)
         UniquePtr(UniquePtr<U>&& x) noexcept : m_ptr(Exchange(x.m_ptr, nullptr)) {}
 
-        ~UniquePtr() noexcept(std::is_nothrow_destructible_v<T>) { Reset(); }
+        ~UniquePtr() noexcept { Reset(); }
 
         [[nodiscard]] T* Get() const { return m_ptr; }
         T* Release() { T* p = m_ptr; m_ptr = nullptr; return p; }
 
-        void Reset(T* p = nullptr) noexcept(std::is_nothrow_destructible_v<T>)
+        void Reset(T* p = nullptr) noexcept
         {
             Allocator::GetDefault().Delete(m_ptr);
             m_ptr = p;
@@ -40,10 +39,10 @@ namespace he
 
         [[nodiscard]] explicit operator bool() const { return m_ptr != nullptr; }
 
-        UniquePtr& operator=(nullptr_t) noexcept(std::is_nothrow_destructible_v<T>) { Reset(); return *this; }
+        UniquePtr& operator=(nullptr_t) noexcept { Reset(); return *this; }
 
-        template <typename U> requires(!std::is_array_v<U> && std::is_convertible_v<U*, T*>)
-        UniquePtr& operator=(UniquePtr<U>&& x) noexcept(std::is_nothrow_destructible_v<T>) { Reset(x.Release()); return *this; }
+        template <typename U> requires(!IsArray<U> && IsConvertible<U*, T*>)
+        UniquePtr& operator=(UniquePtr<U>&& x) noexcept { Reset(x.Release()); return *this; }
 
         template <typename U>
         [[nodiscard]] bool operator==(const UniquePtr<U>& x) const { return m_ptr == x.m_ptr; }
@@ -76,10 +75,10 @@ namespace he
         explicit UniquePtr(T* p) noexcept : m_ptr(p) {}
 
         template <typename U, typename E = typename UniquePtr<U>::ElementType>
-            requires(std::is_array_v<U> && std::is_convertible_v<E(*)[], T(*)[]>)
+            requires(IsArray<U> && IsConvertible<E(*)[], T(*)[]>)
         UniquePtr(UniquePtr<U>&& x) noexcept : m_ptr(Exchange(x.m_ptr, nullptr)) {}
 
-        ~UniquePtr() noexcept(std::is_nothrow_destructible_v<T>) { Reset(); }
+        ~UniquePtr() noexcept { Reset(); }
 
         [[nodiscard]] T* Get() const { return m_ptr; }
         T* Release() const { T* p = m_ptr; m_ptr = nullptr; return p; }
@@ -90,11 +89,11 @@ namespace he
 
         [[nodiscard]] explicit operator bool() const { return m_ptr != nullptr; }
 
-        UniquePtr& operator=(nullptr_t) noexcept(std::is_nothrow_destructible_v<T>) { Reset(); return *this; }
+        UniquePtr& operator=(nullptr_t) noexcept { Reset(); return *this; }
 
         template <typename U, typename E = typename UniquePtr<U>::ElementType>
-            requires(std::is_array_v<U> && std::is_convertible_v<E(*)[], T(*)[]>)
-        UniquePtr& operator=(UniquePtr<U>&& x) noexcept(std::is_nothrow_destructible_v<T>) { Reset(x.Release()); return *this; }
+            requires(IsArray<U> && IsConvertible<E(*)[], T(*)[]>)
+        UniquePtr& operator=(UniquePtr<U>&& x) noexcept { Reset(x.Release()); return *this; }
 
         template <typename U>
         [[nodiscard]] bool operator==(const UniquePtr<U>& x) const { return m_ptr == x.m_ptr; }
@@ -115,25 +114,25 @@ namespace he
         T* m_ptr;
     };
 
-    template <typename T, typename... Args> requires(!std::is_array_v<T>)
-    [[nodiscard]] UniquePtr<T> MakeUnique(Args&&... args) noexcept(std::is_nothrow_constructible_v<T, Args...>)
+    template <typename T, typename... Args> requires(!IsArray<T>)
+    [[nodiscard]] UniquePtr<T> MakeUnique(Args&&... args) noexcept
     {
         return UniquePtr<T>(Allocator::GetDefault().New<T>(Forward<Args>(args)...));
     }
 
-    template <typename T> requires(std::is_array_v<T> && std::extent_v<T> == 0)
-    [[nodiscard]] UniquePtr<T> MakeUnique(uint32_t size) noexcept(std::is_nothrow_constructible_v<T>)
+    template <typename T> requires(IsArray<T> && Extent<T> == 0)
+    [[nodiscard]] UniquePtr<T> MakeUnique(uint32_t size) noexcept
     {
         return UniquePtr<T>(Allocator::GetDefault().NewArray<T>(size));
     }
 
-    template <typename T> requires(!std::is_array_v<T>)
+    template <typename T> requires(!IsArray<T>)
     [[nodiscard]] UniquePtr<T> MakeUnique(DefaultInitTag) noexcept
     {
         return UniquePtr<T>(Allocator::GetDefault().Malloc<T>(1));
     }
 
-    template <typename T> requires(std::is_array_v<T> && std::extent_v<T> == 0)
+    template <typename T> requires(IsArray<T> && Extent<T> == 0)
     [[nodiscard]] UniquePtr<T> MakeUnique(uint32_t size, DefaultInitTag) noexcept
     {
         return UniquePtr<T>(Allocator::GetDefault().Malloc<T>(size));

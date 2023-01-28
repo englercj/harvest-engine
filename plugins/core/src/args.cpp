@@ -130,7 +130,7 @@ namespace he
 
         for (const ArgDesc* desc : sortedDescs)
         {
-            if ((ss.Size() - lineStart) >= std::streamoff(MaxHelpLineLen))
+            if ((ss.Size() - lineStart) >= MaxHelpLineLen)
             {
                 ss += '\n';
                 lineStart = ss.Size();
@@ -485,6 +485,7 @@ namespace he
 
         WriteUsageString(ss, descs, arg0, result);
 
+        // TODO: This business is completely broken, needs a rewrite.
         uint32_t longestHelpLen = 0;
         {
             String buf;

@@ -11,7 +11,6 @@
 #include "he/core/file.h"
 #include "he/core/result_fmt.h"
 #include "he/core/string.h"
-#include "he/core/string_view_fmt.h"
 #include "he/core/test.h"
 
 using namespace he;
@@ -473,7 +472,7 @@ HE_TEST(core, path, MakeRelative)
         { "cat", "..\\..\\..\\meow\\.\\.\\.\\.\\.", "cat", false },
         { "a\\b\\c\\x\\y\\z", "a\\b\\c\\d\\.\\e\\..\\f\\g", "../../../x\\y\\z", true },
         { "a\\b\\c\\x\\y\\z", "a\\b\\c\\d\\.\\e\\..\\f\\g\\..\\..\\..", "x\\y\\z", true },
-        { "\\a:\\b:", "\\a:\\c:", "../b:", true }, // NOTE: Harvest 
+        { "\\a:\\b:", "\\a:\\c:", "../b:", true }, // NOTE: Harvest
     };
 
     String buf;

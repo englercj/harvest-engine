@@ -3,7 +3,7 @@
 #include "he/core/system.h"
 #include "he/core/system_fmt.h"
 
-#include "he/core/appender.h"
+#include "he/core/fmt.h"
 #include "he/core/result_fmt.h"
 #include "he/core/test.h"
 
@@ -35,9 +35,7 @@ HE_TEST(core, system, SystemInfo_Fmt)
 {
     const SystemInfo& info = GetSystemInfo();
 
-    String infoStr;
-    fmt::format_to(Appender(infoStr), "{}", info);
-
+    const String infoStr = Format("{}", info);
     std::cout << "    System Info = " << infoStr.Data() << std::endl;
 }
 

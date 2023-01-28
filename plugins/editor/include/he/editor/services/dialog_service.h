@@ -2,14 +2,13 @@
 
 #pragma once
 
+#include "he/core/type_traits.h"
 #include "he/core/types.h"
 #include "he/core/utils.h"
 #include "he/core/unique_ptr.h"
 #include "he/core/vector.h"
 #include "he/editor/di.h"
 #include "he/editor/dialogs/dialog.h"
-
-#include <type_traits>
 
 namespace he::editor
 {
@@ -20,7 +19,7 @@ namespace he::editor
 
         void ShowDialogs();
 
-        template <typename T> requires(std::is_base_of_v<Dialog, T>)
+        template <typename T> requires(IsBaseOf<Dialog, T>)
         T& Open()
         {
             m_dialogs.PushBack(DICreateUnique<T>());

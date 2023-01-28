@@ -5,7 +5,6 @@
 #include "he/assets/asset_type_registry.h"
 #include "he/assets/types.h"
 #include "he/assets/types_fmt.h"
-#include "he/core/appender.h"
 #include "he/core/module_registry.h"
 
 #include "imgui.h"
@@ -23,7 +22,7 @@ namespace he::assets
 
         static String s_buf;
         s_buf.Clear();
-        fmt::format_to(Appender(s_buf), "{}", assetUuid);
+        FormatTo(s_buf, "{}", assetUuid);
 
         ImGui::BeginDisabled(true);
         ImGui::PushItemWidth(-1.0f);

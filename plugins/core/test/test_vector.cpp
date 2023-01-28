@@ -3,10 +3,9 @@
 #include "fixtures.h"
 
 #include "he/core/vector.h"
+#include "he/core/vector_fmt.h"
 
 #include "he/core/test.h"
-
-#include "fmt/ranges.h"
 
 using namespace he;
 
@@ -14,8 +13,8 @@ using namespace he;
 HE_TEST(core, vector, Constants)
 {
     // Changing these are potentially breaking so checking them here so any changes are made with thoughtfulness.
-    static_assert(std::is_same_v<Vector<int>::ElementType, int>);
-    static_assert(std::is_same_v<Vector<CopyAndMove>::ElementType, CopyAndMove>);
+    static_assert(IsSame<Vector<int>::ElementType, int>);
+    static_assert(IsSame<Vector<CopyAndMove>::ElementType, CopyAndMove>);
     static_assert(Vector<int>::MinElements == 8);
     static_assert(Vector<int>::MaxElements == 0xffffffff);
 }

@@ -80,9 +80,6 @@ namespace he
         template <ArithmeticRange R>
         inline Hash& Update(const R& range) { m_state = Algo::Mem(range.Data(), range.Size(), m_state); return *this; }
 
-        template <StdArithmeticRange R>
-        inline Hash& Update(const R& range) { m_state = Algo::Mem(range.data(), range.size(), m_state); return *this; }
-
         inline Hash& Update(const char* str) { m_state = Algo::Mem(str, String::Length(str), m_state); return *this; }
 
         inline Hash& Update(const void* data, uint32_t len) { m_state = Algo::Mem(data, len, m_state); return *this; }
@@ -177,7 +174,7 @@ namespace he
     };
 
     /// Hasher specialization for integral and enum values.
-    template <typename T> requires(std::is_integral_v<T> || std::is_enum_v<T>)
+    template <typename T> requires(IsIntegral<T> || IsEnum<T>)
     struct Hasher<T>
     {
         [[nodiscard]] constexpr uint64_t operator()(const T& value) const noexcept
@@ -189,7 +186,7 @@ namespace he
     };
 
     /// Hasher specialization for floating point values.
-    template <typename T> requires(std::is_floating_point_v<T>)
+    template <typename T> requires(IsFloatingPoint<T>)
     struct Hasher<T>
     {
         [[nodiscard]] uint64_t operator()(const T& value) const noexcept
@@ -221,7 +218,7 @@ namespace he
     template <typename T>
     concept HasHashCode = requires(const T& t)
     {
-        { t.HashCode() } -> std::same_as<uint64_t>;
+        { t.HashCode() } -> SameAs<uint64_t>;
     };
 
     /// Hasher specialization for objects which define a `HashCode()` function.
@@ -235,16 +232,16 @@ namespace he
     };
 
     /// \internal
-    template <typename T, typename = std::void_t<>>
-    struct _IsHashable : std::false_type {};
+    template <typename T>
+    struct _IsHashable : FalseType {};
 
     /// \internal
-    template <typename T>
-    struct _IsHashable<T, std::void_t<decltype(std::declval<Hasher<T>>()(std::declval<T>()))>> : std::true_type {};
+    template <typename T> requires(IsSame<decltype(DeclVal<Hasher<T>>()(DeclVal<const T&>())), uint64_t>)
+    struct _IsHashable<T> : TrueType {};
 
     /// Concept for a type that can be hashed using a \ref Hasher specialization.
     template <typename T>
-    concept Hashable = _IsHashable<T>::value;
+    concept Hashable = _IsHashable<T>::Value;
 
     /// Helper function to get the hash code of a value. This function dispatches to the proper
     /// \ref Hasher specialization for the type.

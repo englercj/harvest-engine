@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include "he/core/concepts.h"
 #include "he/core/types.h"
 #include "he/core/type_traits.h"
 
@@ -25,9 +26,9 @@ namespace he
     {
     public:
         using EnumType = T;
-        using IntType = std::underlying_type_t<T>;
+        using IntType = UnderlyingType<T>;
 
-        static_assert(std::is_unsigned_v<IntType>, "The underlying type of an EnumBitset must be unsigned.");
+        static_assert(IsUnsigned<IntType>, "The underlying type of an EnumBitset must be unsigned.");
 
     public:
         EnumBitset() = default;
@@ -40,8 +41,8 @@ namespace he
         /// Sets each bit corresponding to each enumeration value.
         ///
         /// \param[in] v The value to set.
-        /// \param[in] ... Additional values to set.
-        void Set(T v, std::same_as<T> auto... v2) { Set(v); Set(v2...); }
+        /// \param[in] ...v2 Additional values to set.
+        void Set(T v, SameAs<T> auto... v2) { Set(v); Set(v2...); }
 
         /// Unsets the bit corresponding to the enumeration value.
         ///
@@ -51,8 +52,8 @@ namespace he
         /// Unsets each bit corresponding to each enumeration value.
         ///
         /// \param[in] v The value to clear.
-        /// \param[in] ... Additional values to clear.
-        void Unset(T v, std::same_as<T> auto... v2) { Unset(v); Unset(v2...); }
+        /// \param[in] ...v2 Additional values to clear.
+        void Unset(T v, SameAs<T> auto... v2) { Unset(v); Unset(v2...); }
 
         /// Clears all bits in the bitset.
         ///
@@ -68,16 +69,16 @@ namespace he
         /// Tests if any of the bits corresponding to the enumeration values are set.
         ///
         /// \param[in] v The value to test.
-        /// \param[in] ... Additional values to test.
+        /// \param[in] ...v2 Additional values to test.
         /// \return True if any of the values are set, false otherwise.
-        bool AreAnySet(T v, std::same_as<T> auto... v2) const { return IsSet(v) || AreAnySet(v2...); }
+        bool AreAnySet(T v, SameAs<T> auto... v2) const { return IsSet(v) || AreAnySet(v2...); }
 
         /// Tests if all of the bits corresponding to the enumeration values are set.
         ///
         /// \param[in] v The value to test.
-        /// \param[in] ... Additional values to test.
+        /// \param[in] ...v2 Additional values to test.
         /// \return True if all of the values are set, false otherwise.
-        bool AreAllSet(T v, std::same_as<T> auto... v2) const { return IsSet(v) && AreAllSet(v2...); }
+        bool AreAllSet(T v, SameAs<T> auto... v2) const { return IsSet(v) && AreAllSet(v2...); }
 
         /// Gets the raw underlying value of the bitset.
         ///

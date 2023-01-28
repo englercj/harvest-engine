@@ -1,8 +1,8 @@
 #include "test_app.h"
 
 #include "he/core/debugger.h"
-#include "he/core/enum_fmt.h"
-#include "he/core/string_view_fmt.h"
+#include "he/core/string_fmt.h"
+#include "he/core/wstr.h"
 #include "he/math/types_fmt.h"
 #include "he/window/event.h"
 
@@ -63,7 +63,10 @@ namespace he
             case window::EventKind::Text:
             {
                 const auto& evt = static_cast<const window::TextEvent&>(ev);
-                PrintToDebugger("{{ ch={} }}", static_cast<wchar_t>(evt.ch));
+                const wchar_t ch = static_cast<wchar_t>(evt.ch);
+                String str;
+                WCToMBStr(str, &ch, 1);
+                PrintToDebugger("{{ ch={} }}", str);
                 break;
             }
             case window::EventKind::GamepadAxis:

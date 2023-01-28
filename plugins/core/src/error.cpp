@@ -6,8 +6,6 @@
 #include "he/core/log.h"
 #include "he/core/sync.h"
 
-#include "fmt/core.h"
-
 #include <cstdlib>
 
 namespace he

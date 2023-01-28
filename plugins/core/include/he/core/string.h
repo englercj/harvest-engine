@@ -4,6 +4,7 @@
 
 #include "he/core/allocator.h"
 #include "he/core/compiler.h"
+#include "he/core/concepts.h"
 #include "he/core/types.h"
 #include "he/core/type_traits.h"
 
@@ -304,24 +305,12 @@ namespace he
         /// \param allocator Optional. The allocator to use.
         String(const char* str, uint32_t len, Allocator& allocator = Allocator::GetDefault()) noexcept;
 
-        /// Construct a string from an object that provides a STL-style contiguous range of characters.
-        /// That is, it has `.data()` and `.size()` members.
-        ///
-        /// \param range The object that provides the range.
-        /// \param allocator Optional. The allocator to use.
-        template <typename R> requires(!std::is_same_v<R, String> && StdContiguousRange<R, const char>)
-        String(const R& range, Allocator& allocator = Allocator::GetDefault()) noexcept
-            : String(range.data(), static_cast<uint32_t>(range.size()), allocator)
-        {
-            HE_ASSERT(range.size() <= MaxHeapCharacters);
-        }
-
         /// Construct a string from an object that provides a Harvest-style contiguous range of
         /// characters. That is, it has `.Data()` and `.Size()` members.
         ///
         /// \param range The object that provides the range.
         /// \param allocator Optional. The allocator to use.
-        template <typename R> requires(!std::is_same_v<R, String> && ContiguousRange<R, const char>)
+        template <typename R> requires(!IsSame<R, String> && ContiguousRange<R, const char>)
         String(const R& range, Allocator& allocator = Allocator::GetDefault()) noexcept
             : String(range.Data(), range.Size(), allocator)
         {}
@@ -374,13 +363,7 @@ namespace he
         /// Replaces the contents of this string with a copy of the characters in `range`.
         ///
         /// \param str The string source to copy from.
-        template <typename R> requires(!std::is_same_v<R, String> && StdContiguousRange<R, const char>)
-        String& operator=(const R& range) noexcept { Assign(range.data(), static_cast<uint32_t>(range.size())); return *this; }
-
-        /// Replaces the contents of this string with a copy of the characters in `range`.
-        ///
-        /// \param str The string source to copy from.
-        template <typename R> requires(!std::is_same_v<R, String> && ContiguousRange<R, const char>)
+        template <typename R> requires(!IsSame<R, String> && ContiguousRange<R, const char>)
         String& operator=(const R& range) noexcept { Assign(range.Data(), range.Size()); return *this; }
 
         /// Gets a reference to the character at `index`. Asserts if `index` is not less
@@ -403,17 +386,6 @@ namespace he
         /// \param c The character to append.
         String& operator+=(char c) { Insert(Size(), &c, 1); return *this; }
 
-        /// Appends a series of characters from an object that provides a STL-style
-        /// contiguous range. That is, it has `.data()` and `.size()` members.
-        ///
-        /// \param range The object that provides the range.
-        template <typename R> requires(StdContiguousRange<R, const char>)
-        String& operator+=(const R& range)
-        {
-            Insert(Size(), range.data(), static_cast<uint32_t>(range.size()));
-            return *this;
-        }
-
         /// Appends a series of characters from an object that provides a Harvest-style
         /// contiguous range. That is, it has `.Data()` and `.Size()` members.
         ///
@@ -435,13 +407,6 @@ namespace he
         ///
         /// \param range The characters to check against.
         /// \return True if the strings are equal, false otherwise.
-        template <typename R> requires(StdContiguousRange<R, const char>)
-        bool operator==(const R& range) const { return range.size() == Size() && CompareTo(range) == 0; }
-
-        /// Checks if this string is equal to a character range.
-        ///
-        /// \param range The characters to check against.
-        /// \return True if the strings are equal, false otherwise.
         template <typename R> requires(ContiguousRange<R, const char>)
         bool operator==(const R& range) const { return range.Size() == Size() && CompareTo(range) == 0; }
 
@@ -455,8 +420,8 @@ namespace he
         ///
         /// \param range The characters to check against.
         /// \return True if the string is not equal to `range`, false otherwise.
-        template <typename R> requires(StdContiguousRange<R, const char> || ContiguousRange<R, const char>)
-        bool operator!=(const R& range) const { return !this->operator==(range); }
+        template <typename R> requires(ContiguousRange<R, const char>)
+        bool operator!=(const R & range) const { return !this->operator==(range); }
 
         /// Checks if this string is less than the null terminated string `x`.
         ///
@@ -468,7 +433,7 @@ namespace he
         ///
         /// \param range The characters to check against.
         /// \return True if the string is less than `range`, false otherwise.
-        template <typename R> requires(StdContiguousRange<R, const char> || ContiguousRange<R, const char>)
+        template <typename R> requires(ContiguousRange<R, const char>)
         bool operator<(const R& range) const { return CompareTo(range) < 0; }
 
         /// Checks if this string is less than or equal to the null terminated string `x`.
@@ -481,7 +446,7 @@ namespace he
         ///
         /// \param range The characters to check against.
         /// \return True if the string is less than or equal to `range`, false otherwise.
-        template <typename R> requires(StdContiguousRange<R, const char> || ContiguousRange<R, const char>)
+        template <typename R> requires(ContiguousRange<R, const char>)
         bool operator<=(const R& range) const { return CompareTo(range) <= 0; }
 
         /// Checks if this string is greater than the null terminated string `x`.
@@ -494,7 +459,7 @@ namespace he
         ///
         /// \param range The characters to check against.
         /// \return True if the string is greater than `range`, false otherwise.
-        template <typename R> requires(StdContiguousRange<R, const char> || ContiguousRange<R, const char>)
+        template <typename R> requires(ContiguousRange<R, const char>)
         bool operator>(const R& range) const { return CompareTo(range) > 0; }
 
         /// Checks if this string is greater than or equal to the null terminated string `x`.
@@ -507,7 +472,7 @@ namespace he
         ///
         /// \param range The characters to check against.
         /// \return True if the string is greater than or equal to `range`, false otherwise.
-        template <typename R> requires(StdContiguousRange<R, const char> || ContiguousRange<R, const char>)
+        template <typename R> requires(ContiguousRange<R, const char>)
         bool operator>=(const R& range) const { return CompareTo(range) >= 0; }
 
         // ----------------------------------------------------------------------------------------
@@ -627,16 +592,6 @@ namespace he
         ///     If the values are equal, zero is returned.
         ///     If this string is less than `x`, a negative value is returned.
         ///     If this string is greater than `x`, a positive value is returned.
-        template <typename R> requires(StdContiguousRange<R, const char>)
-        int32_t CompareTo(const R& range) const { return CompareTo(range.data(), range.size()); }
-
-        /// Compares this string to a range of characters.
-        ///
-        /// \param range The range of characters to compare against.
-        /// \return The result of the comparison.
-        ///     If the values are equal, zero is returned.
-        ///     If this string is less than `x`, a negative value is returned.
-        ///     If this string is greater than `x`, a positive value is returned.
         template <typename R> requires(ContiguousRange<R, const char>)
         int32_t CompareTo(const R& range) const { return CompareTo(range.Data(), range.Size()); }
 
@@ -659,16 +614,6 @@ namespace he
         ///     If this string is less than `x`, a negative value is returned.
         ///     If this string is greater than `x`, a positive value is returned.
         int32_t CompareToI(const char* str) const { return CompareToI(str, String::Length(str)); }
-
-        /// Compares this string to a range of characters.
-        ///
-        /// \param range The range of characters to compare against.
-        /// \return The result of the comparison.
-        ///     If the values are equal, zero is returned.
-        ///     If this string is less than `x`, a negative value is returned.
-        ///     If this string is greater than `x`, a positive value is returned.
-        template <typename R> requires(StdContiguousRange<R, const char>)
-        int32_t CompareToI(const R& range) const { return CompareToI(range.data(), range.size()); }
 
         /// Compares this string to a range of characters.
         ///

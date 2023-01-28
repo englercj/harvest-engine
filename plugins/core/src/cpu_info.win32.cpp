@@ -1,6 +1,6 @@
 // Copyright Chad Engler
 
-#include "he/core/cpu.h"
+#include "he/core/cpu_info.h"
 
 #include "he/core/alloca.h"
 

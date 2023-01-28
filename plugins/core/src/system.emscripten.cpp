@@ -54,7 +54,7 @@ namespace he
             // See: https://www.w3.org/TR/battery-status/#idl-def-batterymanager
             bool hasNoBattery = batteryStatus.charging == true
                 && batteryStatus.chargingTime == 0
-                && batteryStatus.dischargingTime == std::numeric_limits<double>::infinity()
+                && batteryStatus.dischargingTime == Limits<double>::Infinity
                 && batteryStatus.level == 1.0;
 
             status.onACPower.Set(batteryStatus.charging);
@@ -63,7 +63,7 @@ namespace he
             if (batteryStatus.level >= 0.0 && batteryStatus.level <= 1.0)
                 status.batteryLife.Set(static_cast<uint8_t>(batteryStatus.level * 100.0));
 
-            if (batteryStatus.dischargingTime != std::numeric_limits<double>::infinity())
+            if (batteryStatus.dischargingTime != Limits<double>::Infinity)
                 status.batteryLifeTime.Set(FromPeriod<Seconds>(batteryStatus.dischargingTime));
         }
 

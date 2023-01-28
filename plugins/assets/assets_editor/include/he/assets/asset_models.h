@@ -95,7 +95,7 @@ namespace he::assets
         String key;
         Vector<uint8_t> value;
 
-        template <typename T> requires(std::is_trivially_copyable_v<T>)
+        template <typename T> requires(IsTriviallyCopyable<T>)
         void SetValue(const T& v)
         {
             value.Resize(sizeof(T), DefaultInit);

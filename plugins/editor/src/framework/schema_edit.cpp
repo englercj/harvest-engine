@@ -2,14 +2,10 @@
 
 #include "he/editor/framework/schema_edit.h"
 
-#include "he/core/appender.h"
+#include "he/core/fmt.h"
 #include "he/core/assert.h"
 #include "he/core/enum_ops.h"
-#include "he/core/enum_fmt.h"
-#include "he/core/string_view_fmt.h"
 #include "he/core/types.h"
-
-#include "fmt/format.h"
 
 namespace he::editor
 {
@@ -251,7 +247,7 @@ namespace he::editor
             const schema::Field::Reader field = action.path.Back().field;
             const StringView fieldName = field.GetName().AsView();
 
-            fmt::format_to(Appender(edit.name), "{:s}: {}", action.kind, fieldName);
+            FormatTo(edit.name, "{:s}: {}", action.kind, fieldName);
         }
 
         if (m_activeEditCount < m_edits.Size())

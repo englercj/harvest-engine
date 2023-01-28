@@ -3,13 +3,13 @@
 #pragma once
 
 #include "he/core/compiler.h"
+#include "he/core/concepts.h"
 #include "he/core/config.h"
 #include "he/core/delegate.h"
 #include "he/core/key_value.h"
 #include "he/core/macros.h"
+#include "he/core/type_traits.h"
 #include "he/core/types.h"
-
-#include <type_traits>
 
 #define HE_LOG_LEVEL_TRACE  0   ///< Detailed tracing for a system, usually disabled unless tracking a bug.
 #define HE_LOG_LEVEL_DEBUG  1   ///< Debug information useful for developers, usually disabled in non-internal builds.
@@ -178,7 +178,7 @@ namespace he
     template <typename T>
     concept LogHandler = requires(T& t)
     {
-        { t.OnLogEntry(std::declval<const LogSource&>(), std::declval<const KeyValue*>(), std::declval<uint32_t>()) } -> std::convertible_to<void>;
+        { t.OnLogEntry(DeclVal<const LogSource&>(), DeclVal<const KeyValue*>(), DeclVal<uint32_t>()) } -> ConvertibleTo<void>;
     };
 
     /// Stores the sink to be called when a log entry is dispatched. The sink object must have a

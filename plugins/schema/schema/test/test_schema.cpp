@@ -5,7 +5,6 @@
 #include "he/core/allocator.h"
 #include "he/core/test.h"
 
-using namespace he;
 using namespace he::schema;
 
 // ------------------------------------------------------------------------------------------------

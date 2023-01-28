@@ -5,7 +5,6 @@
 #include "he/core/log.h"
 #include "he/core/macros.h"
 #include "he/core/string.h"
-#include "he/core/string_view_fmt.h"
 #include "he/editor/framework/imgui_theme.h"
 #include "he/math/float.h"
 #include "he/math/types_fmt.h"

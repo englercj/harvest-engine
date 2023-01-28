@@ -2,12 +2,9 @@
 
 #pragma once
 
-#include "he/core/allocator.h"
-#include "he/core/appender.h"
+#include "he/core/fmt.h"
 #include "he/core/string.h"
 #include "he/core/utils.h"
-
-#include "fmt/core.h"
 
 namespace he
 {
@@ -22,10 +19,9 @@ namespace he
     /// \param fmt The format string.
     /// \param args The arguments for the format string.
     template <typename... Args>
-    void PrintToDebugger(fmt::format_string<Args...> fmt, Args&&... args)
+    void PrintToDebugger(FmtString<Args...> fmt, Args&&... args)
     {
-        String buf;
-        fmt::format_to(Appender(buf), fmt, Forward<Args>(args)...);
+        const String buf = Format(fmt, Forward<Args>(args)...);
         return PrintToDebugger(buf.Data());
     }
 

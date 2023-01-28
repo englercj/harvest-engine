@@ -14,6 +14,7 @@
 #include "he/core/result.h"
 #include "he/core/result_fmt.h"
 #include "he/core/string.h"
+#include "he/core/string_fmt.h"
 #include "he/core/vector.h"
 #include "he/schema/ast.h"
 

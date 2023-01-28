@@ -4,12 +4,11 @@
 
 #include "he/core/allocator.h"
 #include "he/core/assert.h"
+#include "he/core/invoke.h"
+#include "he/core/tuple.h"
 #include "he/core/type_traits.h"
 #include "he/core/types.h"
 #include "he/core/utils.h"
-
-#include <functional>
-#include <type_traits>
 
 namespace he
 {
@@ -18,28 +17,25 @@ namespace he
 
     // Deduces the function type for a delegate to call
     template <typename R, typename... Args>
-    constexpr auto _DelegateFunctionPointerHelper(R(*)(Args...))->R(*)(Args...);
+    constexpr auto _AsFunctionPtr(R(*)(Args...)) -> R(*)(Args...);
 
     template <typename R, typename T, typename... Args, typename Rest>
-    constexpr auto _DelegateFunctionPointerHelper(R(*)(T, Args...), Rest&&)->R(*)(Args...);
+    constexpr auto _AsFunctionPtr(R(*)(T, Args...), Rest&&) -> R(*)(Args...);
 
     template <typename T, typename R, typename... Args, typename... Rest>
-    constexpr auto _DelegateFunctionPointerHelper(R(T::*)(Args...), Rest&&...)->R(*)(Args...);
+    constexpr auto _AsFunctionPtr(R(T::*)(Args...), Rest&&...) -> R(*)(Args...);
 
     template <typename T, typename R, typename... Args, typename... Rest>
-    constexpr auto _DelegateFunctionPointerHelper(R(T::*)(Args...) const, Rest&&...)->R(*)(Args...);
+    constexpr auto _AsFunctionPtr(R(T::*)(Args...) const, Rest&&...) -> R(*)(Args...);
 
     template <typename T, typename R, typename... Rest>
-    constexpr auto _DelegateFunctionPointerHelper(R T::*, Rest&&...)->R(*)();
+    constexpr auto _AsFunctionPtr(R T::*, Rest&&...) -> R(*)();
 
     template <typename... T>
-    using _DelegateFunctionPointer = decltype(_DelegateFunctionPointerHelper(std::declval<T>()...));
+    using AsFunctionPtr = decltype(_AsFunctionPtr(DeclVal<T>()...));
 
     template <typename... T, typename R, typename... Args>
-    [[nodiscard]] constexpr auto _IndexSequenceForFunction(R(*)(Args...))
-    {
-        return std::index_sequence_for<T..., Args...>{};
-    }
+    [[nodiscard]] constexpr decltype(auto) _IndexSequenceForFunction(R(*)(Args...)) { return IndexSequenceFor<T..., Args...>{}; }
 
     // --------------------------------------------------------------------------------------------
     // Delegate implementation
@@ -52,6 +48,7 @@ namespace he
     {
     public:
         using ReturnType = R;
+        using ArgumentTypes = TypeList<Args...>;
         using FunctionType = R(const void*, Args...);
 
     public:
@@ -89,20 +86,20 @@ namespace he
         {
             m_payload = nullptr;
 
-            if constexpr (std::is_invocable_r_v<R, decltype(F), Args...>)
+            if constexpr (IsInvocableR<R, decltype(F), Args...>)
             {
                 m_func = [](const void*, Args... args) -> R
                 {
-                    return R(std::invoke(F, Forward<Args>(args)...));
+                    return R(Invoke(F, Forward<Args>(args)...));
                 };
             }
-            else if constexpr (std::is_member_pointer_v<decltype(F)>)
+            else if constexpr (IsMemberPointer<decltype(F)>)
             {
-                m_func = Wrap<F>(_IndexSequenceForFunction<TypeListElement<0, TypeList<Args...>>>(_DelegateFunctionPointer<decltype(F)>{}));
+                m_func = Wrap<F>(_IndexSequenceForFunction<TypeListElement<0, ArgumentTypes>>(AsFunctionPtr<decltype(F)>{}));
             }
             else
             {
-                m_func = Wrap<F>(_IndexSequenceForFunction(_DelegateFunctionPointer<decltype(F)>{}));
+                m_func = Wrap<F>(_IndexSequenceForFunction(AsFunctionPtr<decltype(F)>{}));
             }
         }
 
@@ -111,17 +108,17 @@ namespace he
         {
             m_payload = &payload;
 
-            if constexpr (std::is_invocable_r_v<R, decltype(F), T&, Args...>)
+            if constexpr (IsInvocableR<R, decltype(F), T&, Args...>)
             {
                 m_func = [](const void* payload, Args... args) -> R
                 {
                     T* t = static_cast<T*>(const_cast<ConstnessAs<void, T>*>(payload));
-                    return R(std::invoke(F, *t, Forward<Args>(args)...));
+                    return R(Invoke(F, *t, Forward<Args>(args)...));
                 };
             }
             else
             {
-                m_func = Wrap<F>(payload, _IndexSequenceForFunction(_DelegateFunctionPointer<decltype(F), T>{}));
+                m_func = Wrap<F>(payload, _IndexSequenceForFunction(AsFunctionPtr<decltype(F), T>{}));
             }
         }
 
@@ -130,17 +127,17 @@ namespace he
         {
             m_payload = payload;
 
-            if constexpr (std::is_invocable_r_v<R, decltype(F), T*, Args...>)
+            if constexpr (IsInvocableR<R, decltype(F), T*, Args...>)
             {
                 m_func = [](const void* payload, Args... args) -> R
                 {
                     T* t = static_cast<T*>(const_cast<ConstnessAs<void, T>*>(payload));
-                    return R(std::invoke(F, t, Forward<Args>(args)...));
+                    return R(Invoke(F, t, Forward<Args>(args)...));
                 };
             }
             else
             {
-                m_func = Wrap<F>(payload, _IndexSequenceForFunction(_DelegateFunctionPointer<decltype(F), T>{}));
+                m_func = Wrap<F>(payload, _IndexSequenceForFunction(AsFunctionPtr<decltype(F), T>{}));
             }
         }
 
@@ -169,35 +166,35 @@ namespace he
         [[nodiscard]] bool operator!=(const Delegate& x) const noexcept { return m_func != x.m_func || m_payload != x.m_payload; }
 
     private:
-        template<auto F, size_t... Index>
-        [[nodiscard]] static auto Wrap(std::index_sequence<Index...>) noexcept
+        template<auto F, uint32_t... Index>
+        [[nodiscard]] static auto Wrap(IndexSequence<Index...>) noexcept
         {
             return [](const void*, Args... args) -> R
             {
-                [[maybe_unused]] const auto arguments = std::forward_as_tuple(Forward<Args>(args)...);
-                return static_cast<R>(std::invoke(F, Forward<TypeListElement<Index, TypeList<Args...>>>(std::get<Index>(arguments))...));
+                [[maybe_unused]] const auto arguments = ForwardAsTuple(Forward<Args>(args)...);
+                return static_cast<R>(Invoke(F, Forward<TypeListElement<Index, ArgumentTypes>>(TupleGet<Index>(arguments))...));
             };
         }
 
-        template<auto F, typename T, size_t... Index>
-        [[nodiscard]] static auto Wrap(T&, std::index_sequence<Index...>) noexcept
+        template<auto F, typename T, uint32_t... Index>
+        [[nodiscard]] static auto Wrap(T&, IndexSequence<Index...>) noexcept
         {
             return [](const void* payload, Args... args) -> R
             {
-                [[maybe_unused]] const auto arguments = std::forward_as_tuple(Forward<Args>(args)...);
+                [[maybe_unused]] const auto arguments = ForwardAsTuple(Forward<Args>(args)...);
                 T* t = static_cast<T*>(const_cast<ConstnessAs<void, T>*>(payload));
-                return static_cast<R>(std::invoke(F, *t, Forward<TypeListElement<Index, TypeList<Args...>>>(std::get<Index>(arguments))...));
+                return static_cast<R>(Invoke(F, *t, Forward<TypeListElement<Index, ArgumentTypes>>(TupleGet<Index>(arguments))...));
             };
         }
 
-        template<auto F, typename T, size_t... Index>
-        [[nodiscard]] static auto Wrap(T*, std::index_sequence<Index...>) noexcept
+        template<auto F, typename T, uint32_t... Index>
+        [[nodiscard]] static auto Wrap(T*, IndexSequence<Index...>) noexcept
         {
             return [](const void* payload, Args... args) -> R
             {
-                [[maybe_unused]] const auto arguments = std::forward_as_tuple(Forward<Args>(args)...);
+                [[maybe_unused]] const auto arguments = ForwardAsTuple(Forward<Args>(args)...);
                 T* t = static_cast<T*>(const_cast<ConstnessAs<void, T>*>(payload));
-                return static_cast<R>(std::invoke(F, t, Forward<TypeListElement<Index, TypeList<Args...>>>(std::get<Index>(arguments))...));
+                return static_cast<R>(Invoke(F, t, Forward<TypeListElement<Index, ArgumentTypes>>(TupleGet<Index>(arguments))...));
             };
         }
 

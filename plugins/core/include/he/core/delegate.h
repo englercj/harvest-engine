@@ -13,12 +13,36 @@
 
 namespace he
 {
-    /// \internal
+    // --------------------------------------------------------------------------------------------
+    // Helpful type traits
+
+    // Deduces the function type for a delegate to call
+    template <typename R, typename... Args>
+    constexpr auto _DelegateFunctionPointerHelper(R(*)(Args...))->R(*)(Args...);
+
+    template <typename R, typename T, typename... Args, typename Rest>
+    constexpr auto _DelegateFunctionPointerHelper(R(*)(T, Args...), Rest&&)->R(*)(Args...);
+
+    template <typename T, typename R, typename... Args, typename... Rest>
+    constexpr auto _DelegateFunctionPointerHelper(R(T::*)(Args...), Rest&&...)->R(*)(Args...);
+
+    template <typename T, typename R, typename... Args, typename... Rest>
+    constexpr auto _DelegateFunctionPointerHelper(R(T::*)(Args...) const, Rest&&...)->R(*)(Args...);
+
+    template <typename T, typename R, typename... Rest>
+    constexpr auto _DelegateFunctionPointerHelper(R T::*, Rest&&...)->R(*)();
+
+    template <typename... T>
+    using _DelegateFunctionPointer = decltype(_DelegateFunctionPointerHelper(std::declval<T>()...));
+
     template <typename... T, typename R, typename... Args>
     [[nodiscard]] constexpr auto _IndexSequenceForFunction(R(*)(Args...))
     {
         return std::index_sequence_for<T..., Args...>{};
     }
+
+    // --------------------------------------------------------------------------------------------
+    // Delegate implementation
 
     template <typename>
     class Delegate;
@@ -74,11 +98,11 @@ namespace he
             }
             else if constexpr (std::is_member_pointer_v<decltype(F)>)
             {
-                m_func = Wrap<F>(_IndexSequenceForFunction<TypeListElement<0, TypeList<Args...>>>(FunctionPointer<decltype(F)>{}));
+                m_func = Wrap<F>(_IndexSequenceForFunction<TypeListElement<0, TypeList<Args...>>>(_DelegateFunctionPointer<decltype(F)>{}));
             }
             else
             {
-                m_func = Wrap<F>(_IndexSequenceForFunction(FunctionPointer<decltype(F)>{}));
+                m_func = Wrap<F>(_IndexSequenceForFunction(_DelegateFunctionPointer<decltype(F)>{}));
             }
         }
 
@@ -97,7 +121,7 @@ namespace he
             }
             else
             {
-                m_func = Wrap<F>(payload, _IndexSequenceForFunction(FunctionPointer<decltype(F), T>{}));
+                m_func = Wrap<F>(payload, _IndexSequenceForFunction(_DelegateFunctionPointer<decltype(F), T>{}));
             }
         }
 
@@ -116,7 +140,7 @@ namespace he
             }
             else
             {
-                m_func = Wrap<F>(payload, _IndexSequenceForFunction(FunctionPointer<decltype(F), T>{}));
+                m_func = Wrap<F>(payload, _IndexSequenceForFunction(_DelegateFunctionPointer<decltype(F), T>{}));
             }
         }
 

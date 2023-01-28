@@ -41,7 +41,7 @@ namespace he
         ///
         /// \param[in] v The value to set.
         /// \param[in] ... Additional values to set.
-        void Set(T v, Exactly<T> auto... v2) { Set(v); Set(v2...); }
+        void Set(T v, std::same_as<T> auto... v2) { Set(v); Set(v2...); }
 
         /// Unsets the bit corresponding to the enumeration value.
         ///
@@ -52,7 +52,7 @@ namespace he
         ///
         /// \param[in] v The value to clear.
         /// \param[in] ... Additional values to clear.
-        void Unset(T v, Exactly<T> auto... v2) { Unset(v); Unset(v2...); }
+        void Unset(T v, std::same_as<T> auto... v2) { Unset(v); Unset(v2...); }
 
         /// Clears all bits in the bitset.
         ///
@@ -70,14 +70,14 @@ namespace he
         /// \param[in] v The value to test.
         /// \param[in] ... Additional values to test.
         /// \return True if any of the values are set, false otherwise.
-        bool AreAnySet(T v, Exactly<T> auto... v2) const { return IsSet(v) || AreAnySet(v2...); }
+        bool AreAnySet(T v, std::same_as<T> auto... v2) const { return IsSet(v) || AreAnySet(v2...); }
 
         /// Tests if all of the bits corresponding to the enumeration values are set.
         ///
         /// \param[in] v The value to test.
         /// \param[in] ... Additional values to test.
         /// \return True if all of the values are set, false otherwise.
-        bool AreAllSet(T v, Exactly<T> auto... v2) const { return IsSet(v) && AreAllSet(v2...); }
+        bool AreAllSet(T v, std::same_as<T> auto... v2) const { return IsSet(v) && AreAllSet(v2...); }
 
         /// Gets the raw underlying value of the bitset.
         ///

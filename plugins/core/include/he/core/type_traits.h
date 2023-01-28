@@ -19,12 +19,15 @@ namespace he
     ///
     /// \tparam Len The number of bytes to provide storage for.
     /// \tparam Align The alignment the bytes must satisfy.
-    template <uint32_t Len, uint32_t Align>
+    template <uint32_t Size_, uint32_t Align>
     struct AlignedStorage
     {
-        static constexpr uint32_t Length = Len;
+        static_assert(Size_ > 0, "Size must be greater than zero.");
+        static_assert(Align > 0 && (Align & (Align - 1)) == 0, "Alignment must be a power of two.");
+
+        static constexpr uint32_t Size = Size_;
         static constexpr uint32_t Alignment = Align;
-        alignas(Alignment) uint8_t data[Len];
+        alignas(Alignment) uint8_t data[Size];
     };
 
     /// A trivial standard-layout type suitable for use as uninitialized storage for an object
@@ -80,33 +83,12 @@ namespace he
     using ConstnessAs = std::conditional_t<std::is_const_v<From>, std::add_const_t<To>, std::remove_const_t<To>>;
 
     // --------------------------------------------------------------------------------------------
-    // Function pointer type deduction
-
-    template <typename R, typename... Args>
-    constexpr auto _FunctionPointer(R(*)(Args...)) -> R(*)(Args...);
-
-    template <typename R, typename T, typename... Args, typename Rest>
-    constexpr auto _FunctionPointer(R(*)(T, Args...), Rest&&) -> R(*)(Args...);
-
-    template <typename T, typename R, typename... Args, typename... Rest>
-    constexpr auto _FunctionPointer(R(T::*)(Args...), Rest&&...) -> R(*)(Args...);
-
-    template <typename T, typename R, typename... Args, typename... Rest>
-    constexpr auto _FunctionPointer(R(T::*)(Args...) const, Rest&&...) -> R(*)(Args...);
-
-    template <typename T, typename R, typename... Rest>
-    constexpr auto _FunctionPointer(R T::*, Rest&&...) -> R(*)();
-
-    template <typename... T>
-    using FunctionPointer = decltype(_FunctionPointer(std::declval<T>()...));
-
-    // --------------------------------------------------------------------------------------------
-    // Structure for passing around types
+    // Structure for passing around types, kind of like a std::tuple but types only (no values)
 
     template <typename... T>
     struct TypeList
     {
-        using Type = TypeList;
+        using Type = TypeList<T...>;
         static constexpr auto Size = sizeof...(T);
     };
 
@@ -135,40 +117,40 @@ namespace he
     template <typename T>
     concept Enum = std::is_enum_v<T>;
 
-    template <typename T, typename U>
-    concept Exactly = std::is_same_v<T, U>;
+    template <typename T, typename... U>
+    concept AllSame = (std::same_as<T, U> && ...);
 
     template <typename T, typename... U>
     concept AnyOf = (std::same_as<T, U> || ...);
 
     template <typename T, typename E>
-    concept ContiguousRange = requires(T & t)
+    concept ContiguousRange = requires(T& t)
     {
         { t.Data() } -> std::convertible_to<std::add_pointer_t<E>>;
         { t.Size() } -> std::convertible_to<uint32_t>;
     };
 
     template <typename T, typename E>
-    concept StdContiguousRange = requires(T & t)
+    concept StdContiguousRange = requires(T& t)
     {
         { t.data() } -> std::convertible_to<std::add_pointer_t<E>>;
         { t.size() } -> std::convertible_to<size_t>;
     };
 
     template <typename T>
-    concept ArithmeticRangePtr = std::is_pointer_v<T> && std::is_arithmetic_v<std::remove_pointer_t<T>>;
+    concept _ArithmeticRangePtr = std::is_pointer_v<T> && std::is_arithmetic_v<std::remove_pointer_t<T>>;
 
     template <typename T>
-    concept ArithmeticRange = requires(T & t)
+    concept ArithmeticRange = requires(T& t)
     {
-        { t.Data() } -> ArithmeticRangePtr;
+        { t.Data() } -> _ArithmeticRangePtr;
         { t.Size() } -> std::convertible_to<uint32_t>;
     };
 
     template <typename T>
-    concept StdArithmeticRange = requires(T & t)
+    concept StdArithmeticRange = requires(T& t)
     {
-        { t.data() } -> ArithmeticRangePtr;
+        { t.data() } -> _ArithmeticRangePtr;
         { t.size() } -> std::convertible_to<size_t>;
     };
 }

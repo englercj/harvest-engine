@@ -221,7 +221,7 @@ namespace he
     template <typename T>
     concept HasHashCode = requires(const T& t)
     {
-        { t.HashCode() } -> Exactly<uint64_t>;
+        { t.HashCode() } -> std::same_as<uint64_t>;
     };
 
     /// Hasher specialization for objects which define a `HashCode()` function.

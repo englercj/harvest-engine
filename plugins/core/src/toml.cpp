@@ -1,5 +1,15 @@
 // Copyright Chad Engler
 
+// TODO: Unreleased features as of v1.0.0 that are not yet supported:
+// - Clarify Unicode and UTF-8 references.
+// - Relax comment parsing; most control characters are again permitted.
+// - Clarify where and how dotted keys define tables.
+// - Add new \e shorthand for the escape character.
+// - Add \x00 notation to basic strings.
+// - Seconds in Date-Time and Time values are now optional.
+// - Allow non-English scripts in unquoted (bare) keys
+// - Clarify newline normalization in multi-line literal strings.
+
 #include "he/core/toml.h"
 
 #include "he/core/ascii.h"
@@ -7,6 +17,7 @@
 #include "he/core/enum_fmt.h"
 #include "he/core/string_fmt.h"
 #include "he/core/string_view_fmt.h"
+#include "he/core/vector.h"
 
 namespace he
 {
@@ -559,32 +570,30 @@ namespace he
             return true;
         }
 
-        [[nodiscard]] void ConsumeRootTable()
+        [[nodiscard]] bool ConsumeKeyPath()
         {
-            if (!m_handler->StartTable())
+            m_pathBuffer.Clear();
+            do
             {
-                SetError(TomlError::Cancelled);
-                return;
-            }
+                if (At(TomlToken::Identifier) || At(TomlToken::String))
+                    m_pathBuffer.PushBack(m_token.text);
+                else
+                    return SetError(TomlError::InvalidToken);
 
-            uint32_t entryCount = 0;
+            } while (TryConsume(TomlToken::Dot));
 
+            return true;
+        }
+
+        [[nodiscard]] bool ConsumeRootTable()
+        {
             while (!AtEnd())
             {
                 if (!ConsumeTableEntry())
-                    return;
-
-                ++entryCount;
-
-                if (!NextDecl())
-                    return;
+                    return false;
             }
 
-            if (!m_handler->EndTable(entryCount))
-            {
-                SetError(TomlError::Cancelled);
-                return;
-            }
+            return true;
         }
 
         [[nodiscard]] bool ConsumeTableEntry()
@@ -594,28 +603,126 @@ namespace he
                 case TomlToken::String:
                 case TomlToken::Identifier:
                 {
-                    if (!m_handler->Key(m_token.text))
-                        return SetError(TomlError::Cancelled);
-
-                    if (!Next(TomlToken::Equals))
+                    if (!ConsumeKeyPath())
                         return false;
 
-                    if (!NextDecl())
+                    if (!m_handler->Key(m_pathBuffer))
+                        return SetError(TomlError::Cancelled);
+
+                    if (!Consume(TomlToken::Equals))
                         return false;
 
                     return ConsumeValue();
                 }
                 case TomlToken::OpenSquareBracket:
                 {
-                    // TODO: loop through dotted identifier and compare against the current state
-                    // 1. start any tables necessary to get to the current path
-                    // 2. start array if this is the first entry
-                    // 3. start the table for the end of path, and return
-                    return false;
+                    return ConsumeTable();
                 }
                 default:
                     return SetError(TomlError::InvalidToken);
             }
+        }
+
+        [[nodiscard]] bool ConsumeTable()
+        {
+            if (!Consume(TomlToken::OpenSquareBracket))
+                return false;
+
+            const bool isArray = TryConsume(TomlToken::OpenSquareBracket);
+
+            if (!ConsumeKeyPath())
+                return false;
+
+            if (!m_handler->StartTable(m_pathBuffer, isArray))
+                return SetError(TomlError::Cancelled);
+
+            uint32_t keyCount = 0;
+            while (!AtEnd() && !At(TomlToken::OpenSquareBracket))
+            {
+                if (!ConsumeTableEntry())
+                    return false;
+                ++keyCount;
+            }
+
+            if (!m_handler->EndTable(keyCount))
+                return SetError(TomlError::Cancelled);
+
+            return true;
+        }
+
+        [[nodiscard]] bool ConsumeInlineTable()
+        {
+            if (!Consume(TomlToken::OpenCurlyBracket))
+                return false;
+
+            if (!m_handler->StartTable({}, false))
+                return SetError(TomlError::Cancelled);
+
+            uint32_t keyCount = 0;
+            do
+            {
+                if (TryConsume(TomlToken::CloseCurlyBracket))
+                    break;
+
+                if (!ConsumeInlineTableEntry())
+                    return false;
+
+                ++keyCount;
+            } while (TryConsume(TomlToken::Comma));
+
+            if (!m_handler->EndTable(keyCount))
+                return SetError(TomlError::Cancelled);
+
+            return true;
+        }
+
+        [[nodiscard]] bool ConsumeInlineTableEntry()
+        {
+            switch (m_token.kind)
+            {
+                case TomlToken::String:
+                case TomlToken::Identifier:
+                {
+                    if (!ConsumeKeyPath())
+                        return false;
+
+                    if (!m_handler->Key(m_pathBuffer))
+                        return SetError(TomlError::Cancelled);
+
+                    if (!Consume(TomlToken::Equals))
+                        return false;
+
+                    return ConsumeValue();
+                }
+                default:
+                    return SetError(TomlError::InvalidToken);
+            }
+        }
+
+        [[nodiscard]] bool ConsumeInlineArray()
+        {
+            if (!Consume(TomlToken::OpenSquareBracket))
+                return false;
+
+            if (!m_handler->StartArray())
+                return SetError(TomlError::Cancelled);
+
+            uint32_t count = 0;
+            do
+            {
+                if (TryConsume(TomlToken::CloseSquareBracket))
+                    break;
+
+                if (!ConsumeValue())
+                    return false;
+
+                ++count;
+            } while (!AtEnd() && TryConsume(TomlToken::Comma));
+
+            if (!m_handler->EndArray(count))
+                return SetError(TomlError::Cancelled);
+
+            return true;
         }
 
         [[nodiscard]] bool ConsumeValue()
@@ -623,13 +730,88 @@ namespace he
             switch (m_token.kind)
             {
                 case TomlToken::Float:
+                {
+                    const double value = m_token.text.ToFloat<double>();
+
+                    if (!m_handler->Float(value))
+                        return SetError(TomlError::Cancelled);
+
+                    return NextDecl();
+                }
                 case TomlToken::Integer:
+                {
+                    if (m_token.text[0] == '-')
+                    {
+                        const int64_t value = m_token.text.ToInteger<int64_t>();
+                        if (!m_handler->Int(value))
+                            return SetError(TomlError::Cancelled);
+                    }
+                    else
+                    {
+                        const char* begin = m_token.text.Begin();
+                        const char* end = m_token.text.End();
+                        int32_t base = 10;
+                        if (*begin == '0' && m_token.text.Size() > 1)
+                        {
+                            ++begin;
+                            switch (*begin)
+                            {
+                                case 'x':
+                                    ++begin;
+                                    base = 16;
+                                    break;
+                                case 'o':
+                                    ++begin;
+                                    base = 8;
+                                    break;
+                                case 'b':
+                                    ++begin;
+                                    base = 2;
+                                    break;
+                            }
+                        }
+                        const uint64_t value = String::ToInteger<uint64_t>(begin, end, base);
+                        if (!m_handler->Uint(value))
+                            return SetError(TomlError::Cancelled);
+                    }
+
+                    return NextDecl();
+                }
                 case TomlToken::OpenCurlyBracket:
+                {
+                    return ConsumeInlineTable();
+                }
                 case TomlToken::OpenSquareBracket:
+                {
+                    return ConsumeInlineArray();
+                }
+                case TomlToken::Identifier:
+                {
+                    if (m_token.text == "false")
+                    {
+                        if (!m_handler->Bool(false))
+                            return SetError(TomlError::Cancelled);
+                        return NextDecl();
+                    }
+
+                    if (m_token.text == "true")
+                    {
+                        if (!m_handler->Bool(true))
+                            return SetError(TomlError::Cancelled);
+                        return NextDecl();
+                    }
+
+                    return SetError(TomlError::InvalidToken);
+                }
                 case TomlToken::String:
+                {
                     if (!m_handler->String(m_token.text))
                         return SetError(TomlError::Cancelled);
-                    return true;
+
+                    return NextDecl();
+                }
+                default:
+                    return SetError(TomlError::InvalidToken);
             }
         }
 
@@ -638,6 +820,7 @@ namespace he
         TomlLexer::Token m_token{};
         TomlResult m_result{};
         TomlReader::Handler* m_handler{ nullptr };
+        Vector<StringView> m_pathBuffer{};
     };
 
     // --------------------------------------------------------------------------------------------

@@ -3,6 +3,8 @@
 #pragma once
 
 #include "he/core/allocator.h"
+#include "he/core/clock.h"
+#include "he/core/span.h"
 #include "he/core/string_builder.h"
 #include "he/core/string_view.h"
 #include "he/core/string.h"
@@ -47,11 +49,11 @@ namespace he
             virtual bool Uint(uint64_t value) = 0;
             virtual bool Float(double value) = 0;
             virtual bool String(StringView value) = 0;
-            // TODO: Date, Time, DateTime
+            // TODO: DateTime
 
             // Tables
-            virtual bool StartTable() = 0;
-            virtual bool Key(StringView name) = 0;
+            virtual bool StartTable(Span<const StringView> path, bool isArray) = 0;
+            virtual bool Key(Span<const StringView> path)= 0;
             virtual bool EndTable(uint32_t keyCount) = 0;
 
             // Arrays
@@ -104,7 +106,7 @@ namespace he
         void Uint(uint64_t value, IntFormat format = IntFormat::Decimal);
         void Float(double value, uint32_t precision = 32, FloatFormat format = FloatFormat::Fixed);
         void String(StringView value, bool multiline = false, bool literal = false);
-        // TODO: Date, Time, DateTime
+        // TODO: DateTime
 
         void Key(StringView name);
 

@@ -3,100 +3,46 @@
 #pragma once
 
 #include "he/core/clock.h"
-#include "he/core/enum_ops.h"
-#include "he/core/span.h"
-#include "he/core/string_builder.h"
+#include "he/core/concepts.h"
+#include "he/core/string.h"
 #include "he/core/string_view.h"
+#include "he/core/tuple.h"
 #include "he/core/type_traits.h"
 #include "he/core/types.h"
 #include "he/core/utils.h"
-#include "he/core/uuid.h"
 #include "he/core/vector.h"
-#include "he/sqlite/column.h"
-#include "he/sqlite/database.h"
-#include "he/sqlite/statement.h"
-
-#include "fmt/format.h"
-
-#include <concepts>
-#include <initializer_list>
-#include <tuple>
 
 namespace he::sqlite
 {
     // --------------------------------------------------------------------------------------------
     // Forward declarations
 
-    template <typename T>
-    struct DataTypeTraits;
-
     template <typename T, typename... Elements>
-    class Model;
+    class TableDef;
 
     // --------------------------------------------------------------------------------------------
     // Useful type traits
 
-    // Tuple filtering
-    template <typename T, template <typename...> typename Pred>
-    constexpr auto _FilterTuple(T t)
+    template <template <typename> typename Pred, typename>
+    struct _CountTupleHelper;
+
+    template <template <typename> typename Pred, typename... Ts>
+    struct _CountTupleHelper<Pred, Tuple<Ts...>>
     {
-        return std::apply([](auto... ts)
-        {
-            return std::tuple_cat(
-                std::conditional_t<Pred<decltype(ts)>::Value,
-                std::tuple<decltype(ts)>,
-                std::tuple<>>{}...);
-        }, t);
-    }
+        static constexpr uint32_t Value = (0 + ... + (Pred<Ts>::Value ? 1 : 0));
+    };
 
-    template <typename T, template <typename...> typename Pred>
-    inline constexpr uint32_t CountTuple = std::tuple_size_v<decltype(_FilterTuple<T, Pred>(std::declval<T>()))>;
-
-    // Tuple iteration
-    template <typename T, typename F>
-    constexpr void IterateTuple(T&& t, F&& iterator)
-    {
-        std::apply([&](auto... ts)
-        {
-            uint32_t index = 0;
-            (iterator(ts, index++), ...);
-        }, t);
-    }
-
-    template <template <typename...> typename Pred, typename T, typename F>
-    constexpr void IterateTuple(T&& t, F&& iterator)
-    {
-        std::apply([&](auto... ts)
-        {
-            uint32_t index = 0;
-            auto func = [&](const auto& x)
-            {
-                if constexpr (Pred<std::decay_t<decltype(x)>>::Value)
-                {
-                    iterator(x, index++);
-                }
-            };
-
-            (func(ts), ...);
-        }, t);
-    }
-
-    // Get object type from a member pointer
-    template <typename T> struct _MemberObjectType;
-    template <typename T, typename U> struct _MemberObjectType<U T::*> { using Type = T; };
-
-    template <typename T>
-    using MemberObjectType = typename _MemberObjectType<T>::Type;
+    template <typename T, template <typename> typename Pred>
+    inline constexpr uint32_t _CountTuple = _CountTupleHelper<Pred, T>::Value;
 
     // Get the object type of a series of columns
     template <typename... Columns>
     struct _ColumnsObjectType
     {
-        static_assert((std::is_member_object_pointer_v<Columns> && ...), "All columns must be pointers to object members.");
-        static_assert(AllSame<MemberObjectType<Columns>...>, "All columns must refer to members of the same object type.");
-        using Type = MemberObjectType<std::tuple_element_t<0, std::tuple<Columns...>>>;
+        static_assert((IsMemberObjectPointer<Columns> && ...), "All columns must be pointers to object members.");
+        static_assert(IsAllSame<MemberPointerObjectType<Columns>...>, "All columns must refer to members of the same object type.");
+        using Type = MemberPointerObjectType<TupleElement<0, Tuple<Columns...>>>;
     };
-
 
     template <>
     struct _ColumnsObjectType<>
@@ -107,105 +53,41 @@ namespace he::sqlite
     template <typename... Columns>
     using ColumnsObjectType = typename _ColumnsObjectType<Columns...>::Type;
 
-    // Check if a type is setup to be a proper DataTable
-    template <typename T>
-    concept DataType = requires(Statement& stmt, const Column& column, StringBuilder& sb, int32_t index, const T& constValue, T& value)
-    {
-        std::same_as<decltype(T::Sql), StringView>;
-        { T::Bind(stmt, index, constValue) } -> std::same_as<bool>;
-        { T::Read(column, value) } -> std::same_as<void>;
-        { T::Write(sb, value) } -> std::same_as<void>;
-    };
+    // Helpers to select table types from schema elements based on the ObjectType
+    template <typename T, typename U>
+    inline constexpr bool _TableIsObjectType = false;
 
-    // --------------------------------------------------------------------------------------------
-    // Data Types
+    template <typename T, typename U, typename... Elements>
+    inline constexpr bool _TableIsObjectType<T, TableDef<U, Elements...>> = IsSame<T, U>;
 
-    // Integers
-    template <std::integral T>
-    struct DataTypeTraits<T>
+    template <typename T, typename... Ts>
+    static constexpr uint32_t _FindTableIndexForObjectType()
     {
-        static constexpr StringView Sql = "INTEGER";
-        static bool Bind(Statement& stmt, int32_t index, const T& value) { stmt.Bind(index, value); }
-        static void Read(const Column& column, T& value) { value = BitCast<T>(column.GetInt64()); }
-        static void Write(StringBuilder& sql, const T& value) { sql.Write("{}", value); }
-    };
+        constexpr uint32_t size = sizeof...(Ts);
+        constexpr bool found[size] = { _TableIsObjectType<T, Ts>... };
+        uint32_t n = size;
+        for (uint32_t i = 0; i < size; ++i)
+        {
+            if (found[i])
+            {
+                if (n < size)
+                    return size;
+                n = i;
+            }
+        }
+        return n;
+    }
 
-    template <Enum T>
-    struct DataTypeTraits<T>
-    {
-        static constexpr StringView Sql = "INTEGER";
-        static bool Bind(Statement& stmt, int32_t index, const T& value) { stmt.Bind(index, AsUnderlyingType(value)); }
-        static void Read(const Column& column, T& value) { value = BitCast<T>(column.GetInt64()); }
-        static void Write(StringBuilder& sql, const T& value) { sql.Write("{}", AsUnderlyingType(value)); }
-    };
+    template <typename T, typename MTuple>
+    struct _PickTable;
 
-    // Floats
-    template <std::floating_point T>
-    struct DataTypeTraits<T>
+    template <typename T, typename... Ts>
+    struct _PickTable<T, Tuple<Ts...>>
     {
-        static constexpr StringView Sql = "REAL";
-        static bool Bind(Statement& stmt, int32_t index, const T& value) { stmt.Bind(index, value); }
-        static void Read(const Column& column, T& value) { value = static_cast<T>(column.GetDouble()); }
-        static void Write(StringBuilder& sql, const T& value) { sql.Write("{:.15}", value); }
-    };
+        static constexpr uint32_t TableIndex = _FindTableIndexForObjectType<T, Ts...>();
+        static_assert(TableIndex != sizeof...(Ts), "No table, or multiple tables, found with T as object type.");
 
-    // String
-    template <ContiguousRange<const char> T>
-    struct DataTypeTraits<T>
-    {
-        static constexpr StringView Sql = "TEXT";
-        static bool Bind(Statement& stmt, int32_t index, const T& value) { stmt.Bind(index, StringView(value)); }
-        static void Read(const Column& column, T& value) { value = column.GetText(); }
-        static void Write(StringBuilder& sql, const T& value) { sql.Write("\"{}\"", value); }
-    };
-
-    template <>
-    struct DataTypeTraits<const char*>
-    {
-        static constexpr StringView Sql = "TEXT";
-        static bool Bind(Statement& stmt, int32_t index, const char* value) { stmt.Bind(index, value); }
-        static void Read(const Column& column, const char*& value) { value = column.GetText().Data(); }
-        static void Write(StringBuilder& sql, const char* value) { sql.Write("\"{}\"", value); }
-    };
-
-    // Blob
-    template <typename T> requires(ContiguousRange<T, const uint8_t>)
-    struct DataTypeTraits<T>
-    {
-        static constexpr StringView Sql = "BLOB";
-        static bool Bind(Statement& stmt, int32_t index, const T& value) { stmt.Bind(index, value); }
-        static void Read(const Column& column, T& value) { value = column.GetBlob(); }
-        static void Write(StringBuilder& sql, const T& value) { sql.Write("X\"{:02x}\"", fmt::join(value.Data(), value.Data() + value.Size(), "")); }
-    };
-
-    // Time
-    template <typename T>
-    struct DataTypeTraits<Time<T>>
-    {
-        static constexpr StringView Sql = "INTEGER";
-        static bool Bind(Statement& stmt, int32_t index, const T& value) { stmt.Bind(index, BitCast<int64_t>(value.val)); }
-        static void Read(const Column& column, T& value) { value.val = BitCast<uint64_t>(column.GetInt64()); }
-        static void Write(StringBuilder& sql, const T& value) { sql.Write("{}", BitCast<int64_t>(value.val)); }
-    };
-
-    // Duration
-    template <>
-    struct DataTypeTraits<Duration>
-    {
-        static constexpr StringView Sql = "INTEGER";
-        static bool Bind(Statement& stmt, int32_t index, const Duration& value) { stmt.Bind(index, value.val); }
-        static void Read(const Column& column, Duration& value) { value.val = column.GetInt64(); }
-        static void Write(StringBuilder& sql, const Duration& value) { sql.Write("{}", value.val); }
-    };
-
-    // Uuid
-    template <>
-    struct DataTypeTraits<Uuid>
-    {
-        static constexpr StringView Sql = "BLOB(16)";
-        static bool Bind(Statement& stmt, int32_t index, const Uuid& value) { stmt.Bind(index, value.m_bytes); }
-        static void Read(const Column& column, Uuid& value) { column.ReadBlob(value.m_bytes); }
-        static void Write(StringBuilder& sql, const Uuid& value) { sql.Write("X\"{:02x}\"", fmt::join(value.m_bytes, value.m_bytes + sizeof(value.m_bytes), "")); }
+        using Type = TupleElement<TableIndex, Tuple<Ts...>>;
     };
 
     // --------------------------------------------------------------------------------------------
@@ -242,10 +124,9 @@ namespace he::sqlite
     template <typename... Columns>
     struct PrimaryKeyConstraint : PrimaryKeyConstraintBase
     {
-        using ColumnsType = std::tuple<Columns...>;
+        using ColumnsType = Tuple<Columns...>;
         using ObjectType = ColumnsObjectType<Columns...>;
 
-        constexpr PrimaryKeyConstraint() = default;
         constexpr PrimaryKeyConstraint(ColumnsType columns) : columns(Move(columns)) {}
 
         constexpr PrimaryKeyConstraint Asc() { auto r = *this; r.orderBy = OrderByKind::Asc; return r; }
@@ -269,10 +150,9 @@ namespace he::sqlite
     template <typename... Columns>
     struct UniqueConstraint : UniqueConstraintBase
     {
-        using ColumnsType = std::tuple<Columns...>;
+        using ColumnsType = Tuple<Columns...>;
         using ObjectType = ColumnsObjectType<Columns...>;
 
-        constexpr UniqueConstraint() = default;
         constexpr UniqueConstraint(ColumnsType columns) : columns(Move(columns)) {}
 
         constexpr UniqueConstraint OnConflictRollback() { auto r = *this; r.onConflict = OnConflictKind::Rollback; return r; }
@@ -304,18 +184,16 @@ namespace he::sqlite
     struct ForeignKeyConstraint;
 
     template <typename... Columns, typename... References>
-    struct ForeignKeyConstraint<std::tuple<Columns...>, std::tuple<References...>> : ForeignKeyConstraintBase
+    struct ForeignKeyConstraint<Tuple<Columns...>, Tuple<References...>> : ForeignKeyConstraintBase
     {
-        using ColumnsType = std::tuple<Columns...>;
-        using ReferencesType = std::tuple<References...>;
+        using ColumnsType = Tuple<Columns...>;
+        using ReferencesType = Tuple<References...>;
 
         using ObjectType = ColumnsObjectType<Columns...>;
         using ReferencedObjectType = ColumnsObjectType<References...>;
 
-        static_assert(std::tuple_size_v<ColumnsType> == std::tuple_size_v<ReferencesType>, "The number of source columns and referenced columns must be the same.");
-        static_assert(std::is_same_v<ObjectType, ReferencedObjectType>, "The referenced column types must refer to the same object type as the model.");
+        static_assert(ColumnsType::Size == ReferencesType::Size, "The number of source columns and referenced columns must be the same.");
 
-        constexpr ForeignKeyConstraint() = default;
         constexpr ForeignKeyConstraint(ColumnsType columns, ReferencesType references)
             : columns(Move(columns))
             , references(Move(references))
@@ -340,12 +218,12 @@ namespace he::sqlite
     template <typename... Columns>
     struct ForeignKeyConstraintHelper
     {
-        using ColumnsType = std::tuple<Columns...>;
+        using ColumnsType = Tuple<Columns...>;
 
-        template <typename... References> requires((std::is_member_object_pointer_v<References> && ...))
-        constexpr ForeignKeyConstraint<ColumnsType, std::tuple<References...>> References(References... references)
+        template <typename... References> requires((IsMemberObjectPointer<References> && ...))
+        constexpr ForeignKeyConstraint<ColumnsType, Tuple<References...>> References(References... references)
         {
-            return { Move(this->columns), std::make_tuple(Forward<References>(references)...) };
+            return { Move(this->columns), MakeTuple(Forward<References>(references)...) };
         }
 
         ColumnsType columns;
@@ -356,7 +234,6 @@ namespace he::sqlite
     {
         using ValueType = T;
 
-        constexpr DefaultConstraint() = default;
         constexpr DefaultConstraint(ValueType&& value) : value(Move(value)) {}
 
         ValueType value;
@@ -364,8 +241,6 @@ namespace he::sqlite
 
     struct NotNullConstraint : _Constraint
     {
-        constexpr NotNullConstraint() = default;
-
         constexpr NotNullConstraint OnConflictRollback() { auto r = *this; r.onConflict = OnConflictKind::Rollback; return r; }
         constexpr NotNullConstraint OnConflictAbort() { auto r = *this; r.onConflict = OnConflictKind::Abort; return r; }
         constexpr NotNullConstraint OnConflictFail() { auto r = *this; r.onConflict = OnConflictKind::Fail; return r; }
@@ -379,7 +254,7 @@ namespace he::sqlite
     concept ColumnConstraint = IsSpecialization<T, PrimaryKeyConstraint>
         || IsSpecialization<T, UniqueConstraint>
         || IsSpecialization<T, DefaultConstraint>
-        || std::is_same_v<T, NotNullConstraint>;
+        || IsSame<T, NotNullConstraint>;
 
     template <typename T>
     concept TableConstraint = IsSpecialization<T, PrimaryKeyConstraint>
@@ -401,22 +276,22 @@ namespace he::sqlite
     template <typename T>
     struct IsPrimaryKeyConstraint { static constexpr bool Value = IsSpecialization<T, PrimaryKeyConstraint>; };
 
-    template <typename... Columns> requires(std::is_member_object_pointer_v<Columns> && ...)
+    template <typename... Columns> requires(IsMemberObjectPointer<Columns> && ...)
     constexpr PrimaryKeyConstraint<Columns...> PrimaryKey(Columns... columns)
     {
-        return { std::make_tuple(Forward<Columns>(columns)...) };
+        return { MakeTuple(Forward<Columns>(columns)...) };
     }
 
-    template <typename... Columns> requires(std::is_member_object_pointer_v<Columns> && ...)
+    template <typename... Columns> requires(IsMemberObjectPointer<Columns> && ...)
     constexpr UniqueConstraint<Columns...> Unique(Columns... columns)
     {
-        return { std::make_tuple(Forward<Columns>(columns)...) };
+        return { MakeTuple(Forward<Columns>(columns)...) };
     }
 
-    template <typename... Columns> requires(std::is_member_object_pointer_v<Columns> && ...)
+    template <typename... Columns> requires(IsMemberObjectPointer<Columns> && ...)
     constexpr ForeignKeyConstraintHelper<Columns...> ForeignKey(Columns... columns)
     {
-        return { std::make_tuple(Forward<Columns>(columns)...) };
+        return { MakeTuple(Forward<Columns>(columns)...) };
     }
 
     template <typename T>
@@ -443,10 +318,8 @@ namespace he::sqlite
     {
         using ObjectType = T;
         using ValueType = U;
-        using Traits = DataTypeTraits<ValueType>;
-        using ConstraintsType = std::tuple<Constraints...>;
+        using ConstraintsType = Tuple<Constraints...>;
 
-        constexpr ColumnDef() = default;
         constexpr ColumnDef(StringView name, ValueType ObjectType::* member, ConstraintsType constraints)
             : ColumnDefBase(name)
             , member(member)
@@ -460,16 +333,10 @@ namespace he::sqlite
     template <typename T>
     struct IsColumnDef { static constexpr bool Value = IsSpecialization<T, ColumnDef>; };
 
-    template <typename T, template <typename...> typename Pred>
-    struct ColumnHas { static constexpr bool Value = CountTuple<typename T::ConstraintsType, Pred> > 0; };
-
-    template <typename T>
-    using ColumnHasPrimaryKey = ColumnHas<T, IsPrimaryKeyConstraint>;
-
     template <typename T, typename U, ColumnConstraint... Constraints>
-    constexpr ColumnDef<T, U, Constraints...> DefineColumn(StringView name, U T::* member, Constraints... constraints)
+    constexpr ColumnDef<T, U, Constraints...> Column(StringView name, U T::* member, Constraints... constraints)
     {
-        return { name, member, std::make_tuple(Forward<Constraints>(constraints)...) };
+        return { name, member, MakeTuple(Forward<Constraints>(constraints)...) };
     }
 
     // --------------------------------------------------------------------------------------------
@@ -484,10 +351,9 @@ namespace he::sqlite
     template <typename... Columns>
     struct IndexDef : IndexDefBase
     {
-        using ColumnsType = std::tuple<Columns...>;
+        using ColumnsType = Tuple<Columns...>;
         using ObjectType = ColumnsObjectType<Columns...>;
 
-        constexpr IndexDef() = default;
         constexpr IndexDef(StringView name, bool unique, ColumnsType columns)
             : IndexDefBase(name, unique)
             , columns(Move(columns))
@@ -502,16 +368,43 @@ namespace he::sqlite
     template <typename T>
     struct IsIndexDef { static constexpr bool Value = IsSpecialization<T, IndexDef>; };
 
-    template <typename... Columns> requires(std::is_member_object_pointer_v<Columns> && ...)
+    template <typename... Columns> requires(IsMemberObjectPointer<Columns> && ...)
     constexpr IndexDef<Columns...> Index(StringView name, Columns... columns)
     {
-        return { name, false, std::make_tuple(Forward<Columns>(columns)...) };
+        return { name, false, MakeTuple(Forward<Columns>(columns)...) };
     }
 
-    template <typename... Columns> requires(std::is_member_object_pointer_v<Columns> && ...)
+    template <typename... Columns> requires(IsMemberObjectPointer<Columns> && ...)
     constexpr IndexDef<Columns...> UniqueIndex(StringView name, Columns... columns)
     {
-        return { name, true, std::make_tuple(Forward<Columns>(columns)...) };
+        return { name, true, MakeTuple(Forward<Columns>(columns)...) };
+    }
+
+    // --------------------------------------------------------------------------------------------
+    // Pragma Definition
+
+    struct PragmaDefBase
+    {
+        StringView name;
+    };
+
+    template <typename T>
+    struct PragmaDef : PragmaDefBase
+    {
+        using ValueType = T;
+
+        constexpr PragmaDef(StringView name, T&& value) : value(Move(value)) {}
+
+        T value;
+    };
+
+    template <typename T>
+    struct IsPragmaDef { static constexpr bool Value = IsSpecialization<T, PragmaDef>; };
+
+    template <typename T>
+    constexpr PragmaDef<T> Pragma(StringView name, T&& value)
+    {
+        return { name, Forward<T>(value) };
     }
 
     // --------------------------------------------------------------------------------------------
@@ -536,11 +429,10 @@ namespace he::sqlite
     {
         using LimitType = T;
         using OffsetType = U;
-        using OffsetStorageType = std::conditional_t<std::is_same_v<U, void>, int, U>;
+        using OffsetStorageType = Conditional<IsSame<U, void>, int, U>;
 
-        static constexpr bool HasOffset = !std::is_same_v<OffsetType, void>;
+        static constexpr bool HasOffset = !IsSame<OffsetType, void>;
 
-        constexpr LimitExpr() = default;
         constexpr LimitExpr(LimitType limit) : limit(Move(limit)), offset() {}
         constexpr LimitExpr(LimitType limit, OffsetStorageType offset) : limit(Move(limit)), offset(Move(offset)) {}
 
@@ -554,7 +446,6 @@ namespace he::sqlite
     {
         using ValueType = T;
 
-        constexpr _UnaryExpr() = default;
         constexpr _UnaryExpr(T value) : value(Move(value)) {}
 
         T value;
@@ -578,13 +469,34 @@ namespace he::sqlite
         using _UnaryExpr<T>::_UnaryExpr;
     };
 
+    template <typename... Args>
+    struct GroupByExpr
+    {
+        using ArgsType = Tuple<Args...>;
+
+        constexpr GroupByExpr(ArgsType&& value) : value(Move(value)) {}
+
+        // TODO: HAVING
+
+        ArgsType args;
+    };
+
+    template <typename... Args>
+    struct OrderByExpr
+    {
+        using ArgsType = Tuple<Args...>;
+
+        constexpr OrderByExpr(ArgsType&& value) : value(Move(value)) {}
+
+        ArgsType args;
+    };
+
     // Condition Expressions
     struct _ConditionBase {};
 
     template <typename T>
     struct NotExpr : _ConditionBase
     {
-        constexpr NotExpr() = default;
         constexpr NotExpr(T cond) : cond(Move(cond)) {}
 
         T cond;
@@ -595,7 +507,6 @@ namespace he::sqlite
     {
         static constexpr StringView Sql = S::Sql;
 
-        constexpr _BinaryCondition() = default;
         constexpr _BinaryCondition(L lhs, R rhs) : lhs(Move(lhs)), rhs(Move(rhs)) {}
 
         L lhs;
@@ -634,7 +545,6 @@ namespace he::sqlite
     {
         static constexpr StringView Sql = S::Sql;
 
-        constexpr _BinaryOperator() = default;
         constexpr _BinaryOperator(L lhs, R rhs) : lhs(Move(lhs)), rhs(Move(rhs)) {}
 
         L lhs;
@@ -662,8 +572,14 @@ namespace he::sqlite
     // Some traits to help detect types
 
     template <typename T> inline constexpr bool IsColumnRef = IsSpecialization<T, ColumnRef>;
-    template <typename T> inline constexpr bool IsCondition = std::is_base_of_v<_ConditionBase, T>;
+    template <typename T> inline constexpr bool IsCondition = IsBaseOf<_ConditionBase, T>;
     template <typename T> inline constexpr bool IsOperator = IsSpecialization<_OperatorBase, T>;
+
+    template <typename T>
+    concept QueryCondition = IsSpecialization<T, WhereExpr>
+        || IsSpecialization<T, GroupByExpr>
+        || IsSpecialization<T, OrderByExpr>
+        || IsSpecialization<T, LimitExpr>;
 
     // Helper functions and operators
 
@@ -685,16 +601,22 @@ namespace he::sqlite
     template <typename T>
     constexpr WhereExpr<T> Where(T expr) { return { Move(expr) }; }
 
+    template <typename... Args>
+    constexpr GroupByExpr<Tuple<Args...>> GroupBy(Args&&... args) { return { MakeTuple(Forward<Args>(args)...) }; }
+
+    template <typename... Args>
+    constexpr OrderByExpr<Tuple<Args...>> OrderBy(Args&&... args) { return { MakeTuple(Forward<Args>(args)...) }; }
+
     template <typename L, typename R>
     constexpr ConcatExpr<L, R> Concat(L lhs, R rhs) { return { Move(lhs), Move(rhs) }; }
 
-    template <typename T> requires(std::is_base_of_v<_ConditionBase, T>)
+    template <typename T> requires(IsBaseOf<_ConditionBase, T>)
     constexpr NotExpr<T> operator!(T arg) { return { Move(arg) }; }
 
-    template <typename L, typename R> requires(std::is_base_of_v<_ConditionBase, L> || std::is_base_of_v<_ConditionBase, R>)
+    template <typename L, typename R> requires(IsBaseOf<_ConditionBase, L> || IsBaseOf<_ConditionBase, R>)
     constexpr AndExpr<L, R> operator&&(L lhs, R rhs) { return { Move(lhs), Move(rhs) }; }
 
-    template <typename L, typename R> requires(std::is_base_of_v<_ConditionBase, L> || std::is_base_of_v<_ConditionBase, R>)
+    template <typename L, typename R> requires(IsBaseOf<_ConditionBase, L> || IsBaseOf<_ConditionBase, R>)
     constexpr OrExpr<L, R> operator||(L lhs, R rhs) { return { Move(lhs), Move(rhs) }; }
 
     template <typename L, typename R> requires(IsSpecialization<L, ColumnRef> || IsSpecialization<R, ColumnRef>)
@@ -731,12 +653,12 @@ namespace he::sqlite
     constexpr ModExpr<L, R> operator%(L lhs, R rhs) { return { Move(lhs), Move(rhs) }; }
 
     // --------------------------------------------------------------------------------------------
-    // Model
+    // Table Definition
 
-    class ModelBase
+    class TableDefBase
     {
     public:
-        explicit constexpr ModelBase(StringView name) : m_name(name) {}
+        constexpr explicit TableDefBase(StringView name) : m_name(name) {}
 
         constexpr const StringView& Name() const { return m_name; }
 
@@ -745,133 +667,119 @@ namespace he::sqlite
     };
 
     template <typename T, typename... Elements>
-    class Model : public ModelBase
+    class TableDef : public TableDefBase
     {
     public:
         using ObjectType = T;
-        using ElementsType = std::tuple<Elements...>;
+        using ElementsType = Tuple<Elements...>;
 
-        static constexpr size_t ColumnsCount = CountTuple<ElementsType, IsColumnDef>;
-        static constexpr size_t ConstraintsCount = CountTuple<ElementsType, IsTableConstraint>;
+        static constexpr uint32_t ColumnsCount = _CountTuple<ElementsType, IsColumnDef>;
+        static constexpr uint32_t ConstraintsCount = _CountTuple<ElementsType, IsTableConstraint>;
 
-    public:
-        template <typename U> struct ElementIsPrimaryKey;
+    private:
+        template <typename U>
+        struct IsElementPrimaryKey { static constexpr bool Value = IsPrimaryKeyConstraint<U>::Value; };
 
-        template <typename U> requires(IsSpecialization<U, ColumnDef>)
-        struct ElementIsPrimaryKey<U> { static constexpr bool Value = ColumnHasPrimaryKey<U>::Value; };
+        template <SpecializationOf<ColumnDef> U>
+        struct IsElementPrimaryKey<U> { static constexpr bool Value = _CountTuple<typename U::ConstraintsType, IsPrimaryKeyConstraint> != 0; };
 
-        template <typename U> requires(!IsSpecialization<U, ColumnDef>)
-        struct ElementIsPrimaryKey<U> { static constexpr bool Value = IsPrimaryKeyConstraint<U>::Value; };
+        static constexpr uint32_t PrimaryKeyCount = _CountTuple<ElementsType, IsElementPrimaryKey>;
+        static_assert(PrimaryKeyCount == 0 || PrimaryKeyCount == 1, "There can only be one PrimaryKey constraint on a table.");
 
         template <typename U>
-        struct ElementIsObjectType { static constexpr bool Value = std::is_same_v<typename U::ObjectType, ObjectType>; };
+        struct IsElementSameObjectType { static constexpr bool Value = IsSame<typename U::ObjectType, ObjectType>; };
 
-        static_assert(CountTuple<ElementsType, ElementIsPrimaryKey> == 0 || CountTuple<ElementsType, ElementIsPrimaryKey> == 1,
-            "There can only be one PrimaryKey constraint on a table.");
-
-        static_assert(CountTuple<ElementsType, ElementIsObjectType> == std::tuple_size_v<ElementsType>,
+        static_assert(_CountTuple<ElementsType, IsElementSameObjectType> == ElementsType::Size,
             "All columns and constraints must refer to the same object type.");
 
     public:
-        constexpr Model(StringView name, ElementsType elements)
-            : ModelBase(name)
+        constexpr TableDef(StringView name, ElementsType elements)
+            : TableDefBase(name)
             , m_elements(Move(elements))
         {}
 
         constexpr const ElementsType& Elements() const { return m_elements; }
 
-        template <typename U> requires(std::is_member_object_pointer_v<U>)
+        template <typename U> requires(IsMemberObjectPointer<U>)
         constexpr StringView GetColumnName(U column) const;
-
-        template <typename... Args>
-        bool FindOne(Database& db, ObjectType& value, Args... args) const;
-
-        template <typename... Args>
-        bool FindAll(Database& db, Vector<ObjectType>& values, Args... args) const;
-
-        template <typename... Args>
-        bool Update(Database& db, const ObjectType& value, Args... args) const;
-
-        template <typename... Args>
-        bool Upsert(Database& db, const ObjectType& value, Args... args) const;
-
-        template <typename... Args>
-        bool Delete(Database& db, Args... args) const;
 
     private:
         ElementsType m_elements;
     };
 
     template <typename T>
-    concept ModelArg = IsColumnDef<T>::Value || IsTableConstraint<T>::Value;
+    struct IsTableDef { static constexpr bool Value = IsSpecialization<T, TableDef>; };
 
-    template <ModelArg... Args, typename T = std::tuple_element_t<0, std::tuple<Args...>>::ObjectType>
-    constexpr Model<T, Args...> DefineModel(StringView name, Args... args)
+    template <typename T>
+    concept TableElement = IsColumnDef<T>::Value || IsTableConstraint<T>::Value;
+
+    template <TableElement... Args, typename T = TupleElement<0, Tuple<Args...>>::ObjectType>
+    constexpr TableDef<T, Args...> Table(StringView name, Args... args)
     {
-        return { name, std::make_tuple<Args...>(Forward<Args>(args)...) };
+        return { name, MakeTuple(Forward<Args>(args)...) };
+    }
+
+    // --------------------------------------------------------------------------------------------
+    // Schema Definition
+
+    template <typename... Elements>
+    class SchemaDef
+    {
+    public:
+        using ElementsType = Tuple<Elements...>;
+
+        template <typename T>
+        using TableTypeFor = typename _PickTable<T, ElementsType>::Type;
+
+        static constexpr uint32_t TablesCount = _CountTuple<ElementsType, IsTableDef>;
+        static constexpr uint32_t IndexesCount = _CountTuple<ElementsType, IsIndexDef>;
+
+    public:
+        constexpr SchemaDef(ElementsType elements)
+            : m_elements(Move(elements))
+        {}
+
+        constexpr const ElementsType& Elements() const { return m_elements; }
+
+        template <typename T>
+        constexpr const auto& TableFor() const
+        {
+            using TableType = TableTypeFor<T>;
+            return TupleGet<TableType>(m_elements);
+        }
+
+    private:
+        ElementsType m_elements;
+    };
+
+    template <typename T>
+    concept SchemaElement = IsPragmaDef<T>::Value || IsIndexDef<T>::Value || IsTableDef<T>::Value;
+
+    template <SchemaElement... Args>
+    constexpr SchemaDef<Args...> DefineSchema(Args... args)
+    {
+        return { MakeTuple(Forward<Args>(args)...) };
     }
 
     // --------------------------------------------------------------------------------------------
     // Inline definitions
 
     template <typename T, typename... Elements>
-    template <typename U> requires(std::is_member_object_pointer_v<U>)
-    constexpr StringView Model<T, Elements...>::GetColumnName(U column) const
+    template <typename U> requires(IsMemberObjectPointer<U>)
+    constexpr StringView TableDef<T, Elements...>::GetColumnName(U column) const
     {
         StringView name;
-        IterateTuple<IsColumnDef>(m_elements, [&](const auto& c, uint32_t)
+        TupleForEach(m_elements, [&](const auto& c)
         {
-            if constexpr (std::is_same_v<decltype(c.member), U>)
+            if constexpr (IsColumnDef<Decay<decltype(c)>>::Value)
             {
-                if (c.member == column)
-                    name = c.name;
+                if constexpr (IsSame<U, decltype(c.member)>)
+                {
+                    if (c.member == column)
+                        name = c.name;
+                }
             }
         });
         return name;
-    }
-
-    template <typename T, typename... Elements>
-    template <typename... Args>
-    inline bool Model<T, Elements...>::FindOne(Database& db, ObjectType& value, Args... args) const
-    {
-        // TODO
-        HE_UNUSED(db, value, args...);
-        return false;
-    }
-
-    template <typename T, typename... Elements>
-    template <typename... Args>
-    inline bool Model<T, Elements...>::FindAll(Database& db, Vector<ObjectType>& values, Args... args) const
-    {
-        // TODO
-        HE_UNUSED(db, values, args...);
-        return false;
-    }
-
-    template <typename T, typename... Elements>
-    template <typename... Args>
-    inline bool Model<T, Elements...>::Update(Database& db, const ObjectType& value, Args... args) const
-    {
-        // TODO
-        HE_UNUSED(db, value, args...);
-        return false;
-    }
-
-    template <typename T, typename... Elements>
-    template <typename... Args>
-    inline bool Model<T, Elements...>::Upsert(Database& db, const ObjectType& value, Args... args) const
-    {
-        // TODO
-        HE_UNUSED(db, value, args...);
-        return false;
-    }
-
-    template <typename T, typename... Elements>
-    template <typename... Args>
-    inline bool Model<T, Elements...>::Delete(Database& db, Args... args) const
-    {
-        // TODO
-        HE_UNUSED(db, args...);
-        return false;
     }
 }

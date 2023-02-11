@@ -46,7 +46,8 @@ static const char InsertSchemaVersionSql[] = R"(
 
 namespace he::sqlite
 {
-    static_assert(SQLITE_VERSION_NUMBER >= 3031000, "Expected SQLite v3.31+");
+    // We use ALTER TABLE DROP COLUMN, which was added in 3.35.0
+    static_assert(SQLITE_VERSION_NUMBER >= 3035000, "Expected SQLite v3.35+");
 
     bool Database::Execute(sqlite3* m_db, const char* query)
     {
@@ -136,7 +137,7 @@ namespace he::sqlite
                 return false;
 
             if (r == StepResult::Row)
-                latestVersion = stmt.GetColumn(0).GetInt();
+                latestVersion = stmt.GetColumn(0).AsInt();
         }
 
         latestVersion++;

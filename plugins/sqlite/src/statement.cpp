@@ -191,7 +191,7 @@ namespace he::sqlite
         }
     }
 
-    Column Statement::GetColumn(int32_t index) const
+    ColumnReader Statement::GetColumn(int32_t index) const
     {
         return { m_stmt, index };
     }

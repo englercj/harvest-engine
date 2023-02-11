@@ -266,11 +266,16 @@ namespace he
     /// \tparam T The first type to check.
     /// \tparam T The second type to check.
     template <typename T, typename U>
-    inline constexpr bool IsSame = false;
+    inline constexpr bool IsSame
+#if HE_HAS_BUILTIN(__is_same)
+        = __is_same(T, U);
+#else
+        = false;
 
     /// \ignore
     template <typename T>
     inline constexpr bool IsSame<T, T> = true;
+#endif
 
     /// Evaluates to `true` if all types passed as template parameters are the same.
     ///
@@ -804,15 +809,60 @@ namespace he
         static constexpr auto Size = sizeof...(T);
     };
 
-    template <size_t, typename>
+    /// \internal
+    template <uint32_t, typename>
     struct _TypeListElement;
 
-    template <size_t Index, typename First, typename... Rest>
+    // Maybe one day on Visual Studio we'll get this too (probably not)
+    // See: https://developercommunity.visualstudio.com/t/add-support-for-clangs-type-pack-element-to-improv/1439235
+#if HE_HAS_BUILTIN(__type_pack_element)
+    template <uint32_t I, typename... Ts>
+    struct _TypeListElement<I, TypeList<Ts...>> { using Type = __type_pack_element<I, Ts...>; };
+#else
+    template <uint32_t Index, typename First, typename... Rest>
     struct _TypeListElement<Index, TypeList<First, Rest...>> : _TypeListElement<Index - 1u, TypeList<Rest...>> {};
 
     template <typename First, typename... Rest>
     struct _TypeListElement<0u, TypeList<First, Rest...>> { using Type = First; };
+#endif
 
-    template <size_t Index, typename List>
+    // Hopefully we'll get a replacement intrinsic for this one day...
+    // See: https://gcc.gnu.org/bugzilla/show_bug.cgi?id=100157
+    template <typename T, typename... Ts>
+    constexpr uint32_t _FindUniqueTypeInPack()
+    {
+        constexpr uint32_t size = sizeof...(Ts);
+        constexpr bool found[size] = { IsSame<T, Ts>... };
+        uint32_t n = size;
+        for (uint32_t i = 0; i < size; ++i)
+        {
+            if (found[i])
+            {
+                if (n < size)
+                    return size;
+                n = i;
+            }
+        }
+        return n;
+    }
+
+    template <typename T, typename List>
+    struct _TypeListIndex;
+
+    template <typename T, typename... Ts>
+    struct _TypeListIndex<T, TypeList<Ts...>>
+    {
+        static constexpr uint32_t Value = _FindUniqueTypeInPack<T, Ts...>();
+        static_assert(Value < sizeof...(Ts), "The type T must exist in the list exactly once.");
+    };
+    /// \endinternal
+
+    template <uint32_t Index, typename List>
     using TypeListElement = typename _TypeListElement<Index, List>::Type;
+
+    template <typename T, typename List>
+    inline constexpr uint32_t TypeListIndex = _TypeListIndex<T, List>::Value;
+
+    template <typename... Ls, typename... Rs>
+    constexpr auto operator+(TypeList<Ls...>, TypeList<Rs...>) { return TypeList<Ls..., Rs...>{}; }
 }

@@ -951,7 +951,7 @@ namespace he
             : m_ctx{ fmt, ArgCount, 0, errorHandler }
             , m_parseFuncs{ &CheckParseThunk<Args>... }
         {
-            static_assert((HasFormatter<Args> && ...), "Missing Formatter<T> for argument type.");
+            static_assert((HasFormatter<Args> && ...), "Missing Formatter<T> for argument type. Are you missing an include?");
         }
 
         constexpr void OnText(StringView) {}

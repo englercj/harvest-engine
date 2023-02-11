@@ -32,7 +32,7 @@ namespace he::editor
         void Terminate();
 
         template <typename F>
-        void ForEach(F&& itr)
+        void ForEach(F&& itr) const
         {
             LockGuard lock(m_mutex);
             for (const Entry& entry : m_entries)
@@ -66,7 +66,7 @@ namespace he::editor
         std::atomic<uint32_t> m_levelCounts[5]{};
         std::atomic<uint32_t> m_entriesHash{};
 
-        Mutex m_mutex{};
+        mutable Mutex m_mutex{};
         std::deque<Entry> m_entries{};
         Hash<CRC32C> m_entriesCrc{};
     };

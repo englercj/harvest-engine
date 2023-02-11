@@ -858,10 +858,35 @@ HE_TEST(core, type_traits, AlignedStorageFor)
 // ------------------------------------------------------------------------------------------------
 HE_TEST(core, type_traits, TypeList)
 {
-    static_assert(TypeList<int, char, double>::Size == 3);
-    static_assert(IsSame<TypeListElement<0, TypeList<int, char, double>>, int>);
-    static_assert(IsSame<TypeListElement<1, TypeList<int, char, double>>, char>);
-    static_assert(IsSame<TypeListElement<2, TypeList<int, char, double>>, double>);
+    using T = TypeList<int, char, double>;
+    static_assert(T::Size == 3);
+    static_assert(IsSame<T, typename T::Type>);
+}
+
+// ------------------------------------------------------------------------------------------------
+HE_TEST(core, type_traits, TypeListElement)
+{
+    using T = TypeList<int, char, double>;
+    static_assert(IsSame<TypeListElement<0, T>, int>);
+    static_assert(IsSame<TypeListElement<1, T>, char>);
+    static_assert(IsSame<TypeListElement<2, T>, double>);
+}
+
+// ------------------------------------------------------------------------------------------------
+HE_TEST(core, type_traits, TypeListIndex)
+{
+    using T = TypeList<int, char, double>;
+    static_assert(TypeListIndex<int, T> == 0);
+    static_assert(TypeListIndex<char, T> == 1);
+    static_assert(TypeListIndex<double, T> == 2);
+}
+
+// ------------------------------------------------------------------------------------------------
+HE_TEST(core, type_traits, operator_plus)
+{
+    using T = TypeList<int, char, double>;
+    using U = TypeList<int, char, double>;
+    static_assert(IsSame<decltype(T{} + U{}), TypeList<int, char, double, int, char, double>>);
 }
 
 // ------------------------------------------------------------------------------------------------

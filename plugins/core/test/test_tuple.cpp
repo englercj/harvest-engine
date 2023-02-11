@@ -279,9 +279,21 @@ HE_TEST(core, tuple, TupleGet)
     static_assert(TupleGet<0>(t1) == "Hello!"_sv);
     static_assert(TupleGet<1>(t1) == 3.141592);
     static_assert(TupleGet<2>(t1) == 5ul);
+    static_assert(TupleGet<StringView>(t1) == "Hello!"_sv);
+    static_assert(TupleGet<double>(t1) == 3.141592);
+    static_assert(TupleGet<unsigned long>(t1) == 5ul);
     HE_EXPECT_EQ(TupleGet<0>(t1), "Hello!");
     HE_EXPECT_EQ(TupleGet<1>(t1), 3.141592);
     HE_EXPECT_EQ(TupleGet<2>(t1), 5ul);
+    HE_EXPECT_EQ(TupleGet<StringView>(t1), "Hello!");
+    HE_EXPECT_EQ(TupleGet<double>(t1), 3.141592);
+    HE_EXPECT_EQ(TupleGet<unsigned long>(t1), 5ul);
+
+    using T2 = Tuple<int, char, double, StringView>;
+    T2 t2;
+    static_assert(IsSame<decltype(TupleGet<int>(static_cast<const T2&>(t2))), const int&>);
+    static_assert(IsSame<decltype(TupleGet<int>(static_cast<T2&>(t2))), int&>);
+    static_assert(IsSame<decltype(TupleGet<int>(static_cast<T2&&>(t2))), int&&>);
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -420,6 +432,79 @@ HE_TEST(core, tuple, TupleApply)
         HE_EXPECT_EQ(TupleGet<0>(t), 1);
         HE_EXPECT_EQ(TupleGet<1>(t), 2);
         HE_EXPECT_EQ(TupleGet<2>(t), "Hello!");
+    }
+}
+
+// ------------------------------------------------------------------------------------------------
+HE_TEST(core, tuple, TupleCat)
+{
+    static_assert(IsSame<decltype(TupleCat()), Tuple<>>);
+    static_assert(IsSame<decltype(TupleCat(Tuple<>())), Tuple<>>);
+    static_assert(IsSame<decltype(TupleCat(Tuple<int>())), Tuple<int>>);
+    static_assert(IsSame<decltype(TupleCat(Tuple<int, char>())), Tuple<int, char>>);
+    static_assert(IsSame<decltype(TupleCat(Tuple<char>(), Tuple<int>())), Tuple<char, int>>);
+    static_assert(IsSame<decltype(TupleCat(Tuple<char>(), Tuple<int>(), Tuple<String>())), Tuple<char, int, String>>);
+
+    Tuple<UniquePtr<int>, String, char, char, char> tup = TupleCat(
+        Tuple{ MakeUnique<int>(69420) },
+        Tuple{ String{ "Hello, world!" } },
+        Tuple{ 'a', 'b', 'c' });
+
+    HE_EXPECT_EQ(*TupleGet<0>(tup), 69420);
+    HE_EXPECT_EQ(TupleGet<1>(tup), "Hello, world!");
+    HE_EXPECT_EQ(TupleGet<2>(tup), 'a');
+    HE_EXPECT_EQ(TupleGet<3>(tup), 'b');
+    HE_EXPECT_EQ(TupleGet<4>(tup), 'c');
+}
+
+// ------------------------------------------------------------------------------------------------
+HE_TEST(core, tuple, TupleMap)
+{
+    // Basic
+    {
+        Tuple t{ 10, 20.4, "Hello!" };
+        Tuple actual = TupleMap(t, [](auto v) { return Format("{}", v); });
+        Tuple expected{ String("10"), String("20.4"), String("Hello!") };
+        HE_EXPECT_EQ(actual, expected);
+    }
+
+    // Forwarding
+    {
+        Tuple t0{ 10 };
+        Tuple t1 = TupleMap(t0, [](auto& x) -> decltype(auto) { return x; });
+        Tuple t2 = TupleMap(t0, [](auto& x) -> decltype(auto) { return Move(x); });
+
+        static_assert(IsSame<decltype(t1), Tuple<int&>>);
+        static_assert(IsSame<decltype(t2), Tuple<int&&>>);
+    }
+
+    // Move
+    {
+        Tuple t{ 10, 20.4, "Hello!"_sv, MakeUnique<int>(5) };
+        Tuple actual = TupleMap(Move(t), [](auto v) { return v; });
+        Tuple expected{ 10, 20.4, "Hello!"_sv, MakeUnique<int>(5) };
+
+        static_assert(IsSame<decltype(actual), decltype(expected)>);
+
+        HE_EXPECT(!TupleGet<3>(t));
+        HE_EXPECT(TupleGet<3>(actual));
+        HE_EXPECT_EQ(*TupleGet<3>(actual), *TupleGet<3>(expected));
+        HE_EXPECT(actual == expected);
+    }
+}
+
+// ------------------------------------------------------------------------------------------------
+HE_TEST(core, tuple, TupleReduce)
+{
+    // Basic
+    {
+        Tuple t{ 10, 20.4, 50ull };
+        const bool r0 = TupleReduce<bool>(t, [](bool prev, auto item) { return prev && item < 100; });
+        const bool r1 = TupleReduce<bool>(t, [](bool prev, auto item) { return prev && item > 100; });
+        const double sum = TupleReduce<double>(t, [](double prev, auto item) { return prev + item; });
+        HE_EXPECT(r0);
+        HE_EXPECT(!r1);
+        HE_EXPECT_EQ(sum, 80.4);
     }
 }
 

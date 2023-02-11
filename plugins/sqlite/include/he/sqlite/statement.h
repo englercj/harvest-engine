@@ -7,7 +7,7 @@
 #include "he/core/string_view.h"
 #include "he/core/types.h"
 #include "he/core/utils.h"
-#include "he/sqlite/column.h"
+#include "he/sqlite/column_reader.h"
 
 struct sqlite3;
 struct sqlite3_stmt;
@@ -73,7 +73,7 @@ namespace he::sqlite
         template <typename F>
         bool EachRow(F&& func) const;
 
-        Column GetColumn(int32_t index) const;
+        ColumnReader GetColumn(int32_t index) const;
 
     private:
         sqlite3* m_db{ nullptr };

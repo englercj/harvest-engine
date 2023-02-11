@@ -39,6 +39,9 @@
 
 namespace he
 {
+    template <typename... T>
+    class Tuple;
+
     // --------------------------------------------------------------------------------------------
     // Internal implementation details
 
@@ -129,18 +132,18 @@ namespace he
     };
 
     template <typename... Bases>
-    struct _TupleMap : Bases...
+    struct _TupleCombiner : Bases...
     {
         using BaseList = TypeList<Bases...>;
         using Bases::operator[]...;
         using Bases::DeclElement...;
 
-        constexpr bool operator==(const _TupleMap& x) const noexcept { return _TupleEqual(*this, x, BaseList{}, BaseList{}); }
-        constexpr bool operator!=(const _TupleMap& x) const noexcept { return !(*this == x); }
-        constexpr bool operator<(const _TupleMap& x) const noexcept { return _TupleLess(*this, x, BaseList{}, BaseList{}); }
-        constexpr bool operator<=(const _TupleMap& x) const noexcept { return _TupleLessEqual(*this, x, BaseList{}, BaseList{}); }
-        constexpr bool operator>(const _TupleMap& x) const noexcept { return _TupleLess(x, *this, BaseList{}, BaseList{}); }
-        constexpr bool operator>=(const _TupleMap& x) const noexcept { return _TupleLessEqual(x, *this, BaseList{}, BaseList{}); }
+        constexpr bool operator==(const _TupleCombiner& x) const noexcept { return _TupleEqual(*this, x, BaseList{}, BaseList{}); }
+        constexpr bool operator!=(const _TupleCombiner& x) const noexcept { return !(*this == x); }
+        constexpr bool operator<(const _TupleCombiner& x) const noexcept { return _TupleLess(*this, x, BaseList{}, BaseList{}); }
+        constexpr bool operator<=(const _TupleCombiner& x) const noexcept { return _TupleLessEqual(*this, x, BaseList{}, BaseList{}); }
+        constexpr bool operator>(const _TupleCombiner& x) const noexcept { return _TupleLess(x, *this, BaseList{}, BaseList{}); }
+        constexpr bool operator>=(const _TupleCombiner& x) const noexcept { return _TupleLessEqual(x, *this, BaseList{}, BaseList{}); }
     };
 
     template <typename I, typename... T>
@@ -149,14 +152,11 @@ namespace he
     template <uint32_t... I, typename... T>
     struct _TupleBaseHelper<IndexSequence<I...>, T...>
     {
-        using Type = _TupleMap<_TupleStorage<I, T>...>;
+        using Type = _TupleCombiner<_TupleStorage<I, T>...>;
     };
 
     template <typename... T>
     using _TupleBase = typename _TupleBaseHelper<IndexSequenceFor<T...>, T...>::Type;
-
-    template <typename T>
-    concept _HasBaseList = requires { typename Decay<T>::BaseList; };
 
     template <typename T, typename F, typename... B>
     constexpr bool _TupleAny(T&& tuple, F&& func, TypeList<B...>)
@@ -201,6 +201,40 @@ namespace he
     #else
         (void(func(Forward<T>(tuple).IdentityType<B>::value)), ...);
     #endif
+    }
+
+    template <typename T, typename...>
+    using _First = T;
+
+    template <typename T>
+    using _Type = typename T::Type;
+
+    template <typename T>
+    using _BaseList = typename Decay<T>::BaseList;
+
+    template <typename T, typename... Q>
+    constexpr auto _RepeatType(TypeList<Q...>)
+    {
+        return TypeList<_First<T, Q>...>{};
+    }
+
+    template <typename... Outer>
+    constexpr auto _GetOuterBases(TypeList<Outer...>)
+    {
+        return (_RepeatType<Outer>(_BaseList<_Type<Outer>>{}) + ...);
+    }
+
+    template <typename... Outer>
+    constexpr auto _GetInnerBases(TypeList<Outer...>)
+    {
+        return (_BaseList<_Type<Outer>>{} + ...);
+    }
+
+    template <typename T, typename F, typename... B>
+    constexpr auto _TupleMap(T&& tuple, F&& func, TypeList<B...>)
+        -> Tuple<decltype(func(Forward<T>(tuple).IdentityType<B>::value))...>
+    {
+        return { func(Forward<T>(tuple).IdentityType<B>::value)... };
     }
     /// \endinternal
 
@@ -317,8 +351,19 @@ namespace he
     template <uint32_t I, typename T> requires(IsSpecialization<Decay<T>, Tuple>)
     using TupleElement = decltype(T::DeclElement(_TupleTag<I>{}));
 
-    template <uint32_t I, typename T> requires(IsSpecialization<Decay<T>, Tuple> && I < Decay<T>::Size)
-    [[nodiscard]] constexpr decltype(auto) TupleGet(T&& t) { return Forward<T>(t)[_TupleTag<I>{}]; }
+    template <uint32_t I, typename T> requires(IsSpecialization<Decay<T>, Tuple>)
+    [[nodiscard]] constexpr decltype(auto) TupleGet(T&& t)
+    {
+        static_assert(I < Decay<T>::Size, "Index our of range in call to TupleGet<I>(tuple)");
+        return Forward<T>(t)[_TupleTag<I>{}];
+    }
+
+    template <typename T, typename U> requires(IsSpecialization<Decay<U>, Tuple>)
+    constexpr decltype(auto) TupleGet(U&& t)
+    {
+        constexpr uint32_t Index = TypeListIndex<T, typename Decay<U>::ElementList>;
+        return Forward<U>(t)[_TupleTag<Index>{}];
+    }
 
     template <typename... T>
     [[nodiscard]] constexpr Tuple<T&...> Tie(T&... t) { return { t... }; }
@@ -372,5 +417,52 @@ namespace he
     {
         using BaseList = typename Decay<T>::BaseList;
         return _TupleApply(Forward<T>(tuple), Forward<F>(func), BaseList{});
+    }
+
+    /// \internal
+    template <typename T, typename... Outer, typename... Inner>
+    constexpr Tuple<_Type<Inner>...> _TupleCat(T&& tuple, TypeList<Outer...>, TypeList<Inner...>)
+    {
+        return { static_cast<_Type<Outer>&&>(tuple.IdentityType<Outer>::value).IdentityType<Inner>::value... };
+    }
+
+    template <typename... T> requires(IsSpecialization<Decay<T>, Tuple> && ...)
+    constexpr auto TupleCat(T&&... ts)
+    {
+        if constexpr (sizeof...(T) == 0)
+        {
+            return Tuple<>();
+        }
+        else
+        {
+            // See: https://github.com/codeinred/tuplet/discussions/14
+        #if HE_COMPILER_CLANG
+            using BigTuple = Tuple<T&&...>;
+        #else
+            using BigTuple = Tuple<Decay<T>...>;
+        #endif
+            using OuterBases = typename Decay<BigTuple>::BaseList;
+            constexpr auto outer = _GetOuterBases(OuterBases{});
+            constexpr auto inner = _GetInnerBases(OuterBases{});
+            return _TupleCat(BigTuple{ static_cast<T&&>(ts)... }, outer, inner);
+        }
+    }
+
+    template <typename T, typename F> requires(IsSpecialization<Decay<T>, Tuple>)
+    constexpr auto TupleMap(T&& tuple, F&& func)
+    {
+        using Bases = typename Decay<T>::BaseList;
+        return _TupleMap(Forward<T>(tuple), Forward<F>(func), Bases{});
+    }
+
+    template <typename R, typename T, typename F> requires(IsSpecialization<Decay<T>, Tuple>)
+    constexpr R TupleReduce(T&& tuple, F&& func)
+    {
+        R value{};
+        TupleForEach(Forward<T>(tuple), [&](const auto& item)
+        {
+            value = func(value, item);
+        });
+        return value;
     }
 }

@@ -43,6 +43,9 @@ namespace he
     template <typename T>
     concept SignedIntegral = IsIntegral<T> && IsSigned<T>;
 
+    template <typename T, template <typename...> typename Template>
+    concept SpecializationOf = IsSpecialization<T, Template>;
+
     template <typename T>
     concept UnsignedIntegral = IsIntegral<T> && IsUnsigned<T>;
 

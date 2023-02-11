@@ -1,6 +1,6 @@
 // Copyright Chad Engler
 
-#include "he/sqlite/column.h"
+#include "he/sqlite/column_reader.h"
 #include "he/sqlite/database.h"
 
 #include "he/core/memory_ops.h"
@@ -10,7 +10,7 @@
 using namespace he::sqlite;
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST(sqlite, column, test)
+HE_TEST(sqlite, column_reader, test)
 {
     Database db;
     HE_EXPECT(db.Open(":memory:"));
@@ -27,36 +27,36 @@ HE_TEST(sqlite, column, test)
         HE_EXPECT(s.GetColumn(1).IsNull());
         HE_EXPECT(s.GetColumn(2).IsNull());
         HE_EXPECT(s.GetColumn(3).IsNull());
-        HE_EXPECT_EQ(s.GetColumn(0).GetInt(), 0);
-        HE_EXPECT_EQ(s.GetColumn(0).GetInt64(), 0);
-        HE_EXPECT_EQ(s.GetColumn(1).GetDouble(), 0);
-        HE_EXPECT_EQ(s.GetColumn(2).GetText().Size(), 0);
-        HE_EXPECT_EQ(s.GetColumn(3).GetBlob().Size(), 0);
+        HE_EXPECT_EQ(s.GetColumn(0).AsInt(), 0);
+        HE_EXPECT_EQ(s.GetColumn(0).AsInt64(), 0);
+        HE_EXPECT_EQ(s.GetColumn(1).AsDouble(), 0);
+        HE_EXPECT_EQ(s.GetColumn(2).AsText().Size(), 0);
+        HE_EXPECT_EQ(s.GetColumn(3).AsBlob().Size(), 0);
 
         HE_EXPECT_EQ(s.Step(), StepResult::Row);
         HE_EXPECT(!s.GetColumn(0).IsNull());
         HE_EXPECT(!s.GetColumn(1).IsNull());
         HE_EXPECT(!s.GetColumn(2).IsNull());
         HE_EXPECT(!s.GetColumn(3).IsNull());
-        HE_EXPECT_EQ(s.GetColumn(0).GetInt(), 10);
-        HE_EXPECT_EQ(s.GetColumn(0).GetInt64(), 10);
-        HE_EXPECT_EQ(s.GetColumn(1).GetDouble(), 1.25);
-        HE_EXPECT_EQ_STR(s.GetColumn(2).GetText().Data(), "This is text");
-        HE_EXPECT_EQ(s.GetColumn(2).GetText().Size(), he::String::Length("This is text"));
+        HE_EXPECT_EQ(s.GetColumn(0).AsInt(), 10);
+        HE_EXPECT_EQ(s.GetColumn(0).AsInt64(), 10);
+        HE_EXPECT_EQ(s.GetColumn(1).AsDouble(), 1.25);
+        HE_EXPECT_EQ_STR(s.GetColumn(2).AsText().Data(), "This is text");
+        HE_EXPECT_EQ(s.GetColumn(2).AsText().Size(), he::String::Length("This is text"));
         uint8_t bytes[] = { 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89 };
-        HE_EXPECT_EQ(s.GetColumn(3).GetBlob().Size(), HE_LENGTH_OF(bytes));
-        HE_EXPECT(he::MemEqual(s.GetColumn(3).GetBlob().Data(), bytes, HE_LENGTH_OF(bytes)));
+        HE_EXPECT_EQ(s.GetColumn(3).AsBlob().Size(), HE_LENGTH_OF(bytes));
+        HE_EXPECT(he::MemEqual(s.GetColumn(3).AsBlob().Data(), bytes, HE_LENGTH_OF(bytes)));
 
         HE_EXPECT_EQ(s.Step(), StepResult::Row);
         HE_EXPECT(!s.GetColumn(0).IsNull());
         HE_EXPECT(!s.GetColumn(1).IsNull());
         HE_EXPECT(s.GetColumn(2).IsNull());
         HE_EXPECT(s.GetColumn(3).IsNull());
-        HE_EXPECT_EQ(s.GetColumn(0).GetInt(), -2045911175);
-        HE_EXPECT_EQ(s.GetColumn(0).GetInt64(), 123456789012345ll);
-        HE_EXPECT_EQ(s.GetColumn(1).GetDouble(), 54321.12345);
-        HE_EXPECT_EQ(s.GetColumn(2).GetText().Size(), 0);
-        HE_EXPECT_EQ(s.GetColumn(3).GetBlob().Size(), 0);
+        HE_EXPECT_EQ(s.GetColumn(0).AsInt(), -2045911175);
+        HE_EXPECT_EQ(s.GetColumn(0).AsInt64(), 123456789012345ll);
+        HE_EXPECT_EQ(s.GetColumn(1).AsDouble(), 54321.12345);
+        HE_EXPECT_EQ(s.GetColumn(2).AsText().Size(), 0);
+        HE_EXPECT_EQ(s.GetColumn(3).AsBlob().Size(), 0);
 
         HE_EXPECT_EQ(s.Step(), StepResult::Done);
     }

@@ -17,7 +17,7 @@ HE_TEST(sqlite, transaction, test)
     Statement s = db.PrepareStatement("SELECT count(*) FROM test");
 
     HE_EXPECT_EQ(s.Step(), StepResult::Row);
-    HE_EXPECT_EQ(s.GetColumn(0).GetInt(), 0);
+    HE_EXPECT_EQ(s.GetColumn(0).AsInt(), 0);
     HE_EXPECT_EQ(s.Step(), StepResult::Done);
     HE_EXPECT(s.Reset());
 
@@ -27,7 +27,7 @@ HE_TEST(sqlite, transaction, test)
     }
 
     HE_EXPECT_EQ(s.Step(), StepResult::Row);
-    HE_EXPECT_EQ(s.GetColumn(0).GetInt(), 0);
+    HE_EXPECT_EQ(s.GetColumn(0).AsInt(), 0);
     HE_EXPECT_EQ(s.Step(), StepResult::Done);
     HE_EXPECT(s.Reset());
 
@@ -38,7 +38,7 @@ HE_TEST(sqlite, transaction, test)
     }
 
     HE_EXPECT_EQ(s.Step(), StepResult::Row);
-    HE_EXPECT_EQ(s.GetColumn(0).GetInt(), 0);
+    HE_EXPECT_EQ(s.GetColumn(0).AsInt(), 0);
     HE_EXPECT_EQ(s.Step(), StepResult::Done);
     HE_EXPECT(s.Reset());
 
@@ -49,7 +49,7 @@ HE_TEST(sqlite, transaction, test)
     }
 
     HE_EXPECT_EQ(s.Step(), StepResult::Row);
-    HE_EXPECT_EQ(s.GetColumn(0).GetInt(), 1);
+    HE_EXPECT_EQ(s.GetColumn(0).AsInt(), 1);
     HE_EXPECT_EQ(s.Step(), StepResult::Done);
     HE_EXPECT(s.Reset());
 }

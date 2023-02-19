@@ -38,7 +38,7 @@ namespace he::sqlite
         m_db = db;
 
         uint32_t flagValues = 0;
-        if (!HasFlag(flags, PrepareFlags::Temporary))
+        if (HasFlag(flags, PrepareFlags::Persistent))
             flagValues |= SQLITE_PREPARE_PERSISTENT;
         if (HasFlag(flags, PrepareFlags::NoVTables))
             flagValues |= SQLITE_PREPARE_NO_VTAB;

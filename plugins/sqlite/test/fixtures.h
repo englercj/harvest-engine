@@ -7,6 +7,8 @@
 
 namespace he::sqlite
 {
+    template <typename T> struct SqlDataTypeTraits;
+
     struct OrmCustomValue { uint64_t val; };
 
     template <>

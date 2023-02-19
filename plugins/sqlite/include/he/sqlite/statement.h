@@ -24,7 +24,7 @@ namespace he::sqlite
     enum class PrepareFlags : uint32_t
     {
         None = 0,
-        Temporary = 1 << 0,     ///< This statement is expected to be short-lived.
+        Persistent = 1 << 0,    ///< This statement is expected to be long-lived.
         NoVTables = 1 << 1,     ///< Prevents the statement from using any virtual tables.
     };
     HE_ENUM_FLAGS(PrepareFlags);

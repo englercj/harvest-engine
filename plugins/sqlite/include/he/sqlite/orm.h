@@ -114,6 +114,13 @@ namespace he::sqlite
         Desc,
     };
 
+    enum class OrderNullsByKind : uint8_t
+    {
+        None,
+        NullsFirst,
+        NullsLast,
+    };
+
     struct PrimaryKeyConstraintBase : _Constraint
     {
         bool autoIncrement{ false };
@@ -129,15 +136,15 @@ namespace he::sqlite
 
         constexpr PrimaryKeyConstraint(ColumnsType columns) : columns(Move(columns)) {}
 
-        constexpr PrimaryKeyConstraint Asc() { auto r = *this; r.orderBy = OrderByKind::Asc; return r; }
-        constexpr PrimaryKeyConstraint Desc() { auto r = *this; r.orderBy = OrderByKind::Desc; return r; }
-        constexpr PrimaryKeyConstraint AutoIncrement() { auto r = *this; r.autoIncrement = true; return r; }
+        constexpr PrimaryKeyConstraint Asc() const { auto r = *this; r.orderBy = OrderByKind::Asc; return r; }
+        constexpr PrimaryKeyConstraint Desc() const { auto r = *this; r.orderBy = OrderByKind::Desc; return r; }
+        constexpr PrimaryKeyConstraint AutoIncrement() const { auto r = *this; r.autoIncrement = true; return r; }
 
-        constexpr PrimaryKeyConstraint OnConflictRollback() { auto r = *this; r.onConflict = OnConflictKind::Rollback; return r; }
-        constexpr PrimaryKeyConstraint OnConflictAbort() { auto r = *this; r.onConflict = OnConflictKind::Abort; return r; }
-        constexpr PrimaryKeyConstraint OnConflictFail() { auto r = *this; r.onConflict = OnConflictKind::Fail; return r; }
-        constexpr PrimaryKeyConstraint OnConflictIgnore() { auto r = *this; r.onConflict = OnConflictKind::Ignore; return r; }
-        constexpr PrimaryKeyConstraint OnConflictReplace() { auto r = *this; r.onConflict = OnConflictKind::Replace; return r; }
+        constexpr PrimaryKeyConstraint OnConflictRollback() const { auto r = *this; r.onConflict = OnConflictKind::Rollback; return r; }
+        constexpr PrimaryKeyConstraint OnConflictAbort() const { auto r = *this; r.onConflict = OnConflictKind::Abort; return r; }
+        constexpr PrimaryKeyConstraint OnConflictFail() const { auto r = *this; r.onConflict = OnConflictKind::Fail; return r; }
+        constexpr PrimaryKeyConstraint OnConflictIgnore() const { auto r = *this; r.onConflict = OnConflictKind::Ignore; return r; }
+        constexpr PrimaryKeyConstraint OnConflictReplace() const { auto r = *this; r.onConflict = OnConflictKind::Replace; return r; }
 
         ColumnsType columns;
     };
@@ -155,11 +162,11 @@ namespace he::sqlite
 
         constexpr UniqueConstraint(ColumnsType columns) : columns(Move(columns)) {}
 
-        constexpr UniqueConstraint OnConflictRollback() { auto r = *this; r.onConflict = OnConflictKind::Rollback; return r; }
-        constexpr UniqueConstraint OnConflictAbort() { auto r = *this; r.onConflict = OnConflictKind::Abort; return r; }
-        constexpr UniqueConstraint OnConflictFail() { auto r = *this; r.onConflict = OnConflictKind::Fail; return r; }
-        constexpr UniqueConstraint OnConflictIgnore() { auto r = *this; r.onConflict = OnConflictKind::Ignore; return r; }
-        constexpr UniqueConstraint OnConflictReplace() { auto r = *this; r.onConflict = OnConflictKind::Replace; return r; }
+        constexpr UniqueConstraint OnConflictRollback() const { auto r = *this; r.onConflict = OnConflictKind::Rollback; return r; }
+        constexpr UniqueConstraint OnConflictAbort() const { auto r = *this; r.onConflict = OnConflictKind::Abort; return r; }
+        constexpr UniqueConstraint OnConflictFail() const { auto r = *this; r.onConflict = OnConflictKind::Fail; return r; }
+        constexpr UniqueConstraint OnConflictIgnore() const { auto r = *this; r.onConflict = OnConflictKind::Ignore; return r; }
+        constexpr UniqueConstraint OnConflictReplace() const { auto r = *this; r.onConflict = OnConflictKind::Replace; return r; }
 
         ColumnsType columns;
     };
@@ -199,17 +206,17 @@ namespace he::sqlite
             , references(Move(references))
         {}
 
-        constexpr ForeignKeyConstraint OnDeleteCascade() { auto r = *this; r.onDelete = FkActionKind::Cascade; return r; }
-        constexpr ForeignKeyConstraint OnDeleteNoAction() { auto r = *this; r.onDelete = FkActionKind::NoAction; return r; }
-        constexpr ForeignKeyConstraint OnDeleteRestrict() { auto r = *this; r.onDelete = FkActionKind::Restrict; return r; }
-        constexpr ForeignKeyConstraint OnDeleteSetDefault() { auto r = *this; r.onDelete = FkActionKind::SetDefault; return r; }
-        constexpr ForeignKeyConstraint OnDeleteSetNull() { auto r = *this; r.onDelete = FkActionKind::SetNull; return r; }
+        constexpr ForeignKeyConstraint OnDeleteCascade() const { auto r = *this; r.onDelete = FkActionKind::Cascade; return r; }
+        constexpr ForeignKeyConstraint OnDeleteNoAction() const { auto r = *this; r.onDelete = FkActionKind::NoAction; return r; }
+        constexpr ForeignKeyConstraint OnDeleteRestrict() const { auto r = *this; r.onDelete = FkActionKind::Restrict; return r; }
+        constexpr ForeignKeyConstraint OnDeleteSetDefault() const { auto r = *this; r.onDelete = FkActionKind::SetDefault; return r; }
+        constexpr ForeignKeyConstraint OnDeleteSetNull() const { auto r = *this; r.onDelete = FkActionKind::SetNull; return r; }
 
-        constexpr ForeignKeyConstraint OnUpdateCascade() { auto r = *this; r.onDelete = FkActionKind::Cascade; return r; }
-        constexpr ForeignKeyConstraint OnUpdateNoAction() { auto r = *this; r.onDelete = FkActionKind::NoAction; return r; }
-        constexpr ForeignKeyConstraint OnUpdateRestrict() { auto r = *this; r.onDelete = FkActionKind::Restrict; return r; }
-        constexpr ForeignKeyConstraint OnUpdateSetDefault() { auto r = *this; r.onDelete = FkActionKind::SetDefault; return r; }
-        constexpr ForeignKeyConstraint OnUpdateSetNull() { auto r = *this; r.onDelete = FkActionKind::SetNull; return r; }
+        constexpr ForeignKeyConstraint OnUpdateCascade() const { auto r = *this; r.onDelete = FkActionKind::Cascade; return r; }
+        constexpr ForeignKeyConstraint OnUpdateNoAction() const { auto r = *this; r.onDelete = FkActionKind::NoAction; return r; }
+        constexpr ForeignKeyConstraint OnUpdateRestrict() const { auto r = *this; r.onDelete = FkActionKind::Restrict; return r; }
+        constexpr ForeignKeyConstraint OnUpdateSetDefault() const { auto r = *this; r.onDelete = FkActionKind::SetDefault; return r; }
+        constexpr ForeignKeyConstraint OnUpdateSetNull() const { auto r = *this; r.onDelete = FkActionKind::SetNull; return r; }
 
         ColumnsType columns;
         ReferencesType references;
@@ -241,11 +248,11 @@ namespace he::sqlite
 
     struct NotNullConstraint : _Constraint
     {
-        constexpr NotNullConstraint OnConflictRollback() { auto r = *this; r.onConflict = OnConflictKind::Rollback; return r; }
-        constexpr NotNullConstraint OnConflictAbort() { auto r = *this; r.onConflict = OnConflictKind::Abort; return r; }
-        constexpr NotNullConstraint OnConflictFail() { auto r = *this; r.onConflict = OnConflictKind::Fail; return r; }
-        constexpr NotNullConstraint OnConflictIgnore() { auto r = *this; r.onConflict = OnConflictKind::Ignore; return r; }
-        constexpr NotNullConstraint OnConflictReplace() { auto r = *this; r.onConflict = OnConflictKind::Replace; return r; }
+        constexpr NotNullConstraint OnConflictRollback() const { auto r = *this; r.onConflict = OnConflictKind::Rollback; return r; }
+        constexpr NotNullConstraint OnConflictAbort() const { auto r = *this; r.onConflict = OnConflictKind::Abort; return r; }
+        constexpr NotNullConstraint OnConflictFail() const { auto r = *this; r.onConflict = OnConflictKind::Fail; return r; }
+        constexpr NotNullConstraint OnConflictIgnore() const { auto r = *this; r.onConflict = OnConflictKind::Ignore; return r; }
+        constexpr NotNullConstraint OnConflictReplace() const { auto r = *this; r.onConflict = OnConflictKind::Replace; return r; }
 
         OnConflictKind onConflict{ OnConflictKind::None };
     };
@@ -469,24 +476,45 @@ namespace he::sqlite
         using _UnaryExpr<T>::_UnaryExpr;
     };
 
+    struct OrderByExprBase
+    {
+        OrderByKind orderBy{ OrderByKind::None };
+        OrderNullsByKind orderNullsBy{ OrderNullsByKind::None };
+        StringView collateName{};
+    };
+
+    template <typename T>
+    struct OrderByExpr : OrderByExprBase, _UnaryExpr<T>
+    {
+        using _UnaryExpr<T>::_UnaryExpr;
+
+        constexpr OrderByExpr Asc() const { auto r = *this; r.orderBy = OrderByKind::Asc; return r; }
+        constexpr OrderByExpr Desc() const { auto r = *this; r.orderBy = OrderByKind::Desc; return r; }
+
+        constexpr OrderByExpr NullsFirst() const { auto r = *this; r.orderNullsBy = OrderNullsByKind::NullsFirst; return r; }
+        constexpr OrderByExpr NullsLast() const { auto r = *this; r.orderNullsBy = OrderNullsByKind::NullsLast; return r; }
+
+        constexpr OrderByExpr Collate(StringView name) const { auto r = *this; r.collateName = name; return r; }
+    };
+
     template <typename... Args>
-    struct GroupByExpr
+    struct MultiOrderByExpr
     {
         using ArgsType = Tuple<Args...>;
 
-        constexpr GroupByExpr(ArgsType&& value) : value(Move(value)) {}
-
-        // TODO: HAVING
+        constexpr MultiOrderByExpr(ArgsType&& args) : args(Move(args)) {}
 
         ArgsType args;
     };
 
     template <typename... Args>
-    struct OrderByExpr
+    struct GroupByExpr
     {
         using ArgsType = Tuple<Args...>;
 
-        constexpr OrderByExpr(ArgsType&& value) : value(Move(value)) {}
+        constexpr GroupByExpr(ArgsType&& args) : args(Move(args)) {}
+
+        // TODO: HAVING
 
         ArgsType args;
     };
@@ -601,11 +629,14 @@ namespace he::sqlite
     template <typename T>
     constexpr WhereExpr<T> Where(T expr) { return { Move(expr) }; }
 
-    template <typename... Args>
-    constexpr GroupByExpr<Tuple<Args...>> GroupBy(Args&&... args) { return { MakeTuple(Forward<Args>(args)...) }; }
+    template <typename T>
+    constexpr OrderByExpr<T> OrderBy(T expr) { return { Move(expr) }; }
 
     template <typename... Args>
-    constexpr OrderByExpr<Tuple<Args...>> OrderBy(Args&&... args) { return { MakeTuple(Forward<Args>(args)...) }; }
+    constexpr MultiOrderByExpr<Args...> MultiOrderBy(Args&&... args) { return { MakeTuple(Forward<Args>(args)...) }; }
+
+    template <typename... Args>
+    constexpr GroupByExpr<Args...> GroupBy(Args&&... args) { return { MakeTuple(Forward<Args>(args)...) }; }
 
     template <typename L, typename R>
     constexpr ConcatExpr<L, R> Concat(L lhs, R rhs) { return { Move(lhs), Move(rhs) }; }
@@ -651,6 +682,75 @@ namespace he::sqlite
 
     template <typename L, typename R> requires(IsSpecialization<L, ColumnRef> || IsSpecialization<R, ColumnRef>)
     constexpr ModExpr<L, R> operator%(L lhs, R rhs) { return { Move(lhs), Move(rhs) }; }
+
+    // --------------------------------------------------------------------------------------------
+    // Queries
+
+    struct _QueryBase {};
+
+    template <typename T>
+    struct InsertObjectQuery : _QueryBase
+    {
+        using ObjectType = T;
+
+        const ObjectType& value;
+    };
+
+    template <typename T, typename Columns, typename Values>
+    struct InsertQuery : _QueryBase
+    {
+        using ObjectType = T;
+        using ColumnsType = Columns;
+        using ValuesType = Values;
+
+        static_assert(!IsSpecialization<ValuesType, Tuple> || ColumnsType::Size == ValuesType::Size, "The number of columns and values must be the same.");
+
+        ColumnsTypes columns;
+        ValuesType values;
+    };
+
+    template <typename... Columns>
+    struct InsertQueryHelper
+    {
+        using ObjectType = ColumnsObjectType<Columns...>;
+        using ColumnsType = Tuple<Columns...>;
+
+        constexpr InsertQuery<ObjectType, ColumnsType, const ObjectType&> Values(const ObjectType& object)
+        {
+            return { Move(this->columns), object } };
+        }
+
+        template <typename... Values>
+        constexpr InsertQuery<ObjectType, ColumnsType, Tuple<Values...>> Values(Values&&... values)
+        {
+            return { Move(this->columns), MakeTuple(Forward<Values>(values)...) };
+        }
+
+        ColumnsType columns;
+    };
+
+    // struct SelectQuery : _QueryBase
+    // {
+
+    // };
+
+    // struct DeleteQuery : _QueryBase
+    // {
+
+    // };
+
+    // struct UpdateQuery : _QueryBase
+    // {
+
+    // };
+
+    template <typename T> inline constexpr bool IsQuery = IsBaseOf<_QueryBase, T>;
+
+    template <typename T>
+    constexpr InsertObjectQuery<T> Insert(const T& obj) { return { obj }; }
+
+    template <typename... Columns> requires((IsMemberObjectPointer<Columns> && ...))
+    constexpr InsertQueryHelper<Columns...> Insert(Columns... columns) { return { MakeTuple(Forward<Columns>(columns)...) }; }
 
     // --------------------------------------------------------------------------------------------
     // Table Definition
@@ -699,6 +799,12 @@ namespace he::sqlite
         {}
 
         constexpr const ElementsType& Elements() const { return m_elements; }
+
+        template <typename F>
+        constexpr void ForEachColumn(F&& func) const;
+
+        template <typename F>
+        constexpr void ForEachConstraint(F&& func) const;
 
         template <typename U> requires(IsMemberObjectPointer<U>)
         constexpr StringView GetColumnName(U column) const;
@@ -765,19 +871,42 @@ namespace he::sqlite
     // Inline definitions
 
     template <typename T, typename... Elements>
+    template <typename F>
+    constexpr void TableDef<T, Elements...>::ForEachColumn(F&& func) const
+    {
+        TupleForEach(m_elements, [&](const auto& item)
+        {
+            if constexpr (IsColumnDef<Decay<decltype(item)>>::Value)
+            {
+                func(item);
+            }
+        });
+    }
+
+    template <typename T, typename... Elements>
+    template <typename F>
+    constexpr void TableDef<T, Elements...>::ForEachConstraint(F&& func) const
+    {
+        TupleForEach(m_elements, [&](const auto& item)
+        {
+            if constexpr (IsTableConstraint<Decay<decltype(item)>>::Value)
+            {
+                func(item);
+            }
+        });
+    }
+
+    template <typename T, typename... Elements>
     template <typename U> requires(IsMemberObjectPointer<U>)
     constexpr StringView TableDef<T, Elements...>::GetColumnName(U column) const
     {
         StringView name;
-        TupleForEach(m_elements, [&](const auto& c)
+        ForEachColumn([&](const auto& c)
         {
-            if constexpr (IsColumnDef<Decay<decltype(c)>>::Value)
+            if constexpr (IsSame<U, decltype(c.member)>)
             {
-                if constexpr (IsSame<U, decltype(c.member)>)
-                {
-                    if (c.member == column)
-                        name = c.name;
-                }
+                if (c.member == column)
+                    name = c.name;
             }
         });
         return name;

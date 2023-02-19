@@ -139,6 +139,15 @@ HE_TEST(sqlite, orm_sql, ToSql)
     // IsNotNullExpr
     TestToSql(ctx, IsNotNull(Col(&OrmTestParent::id)), "(id) IS NOT NULL");
 
+    // GroupByExpr
+    TestToSql(ctx, GroupBy(Col(&OrmTestParent::id)), "GROUP BY ((id))");
+
+    // OrderByExpr
+    TestToSql(ctx, OrderBy(Col(&OrmTestParent::id)), "ORDER BY ((id))");
+
+    // MultiOrderByExpr
+    TestToSql(ctx, MultiOrderBy(OrderBy(Col(&OrmTestParent::id)).Collate("ccc"), OrderBy(Col(&OrmTestParent::filePath)).Asc()), "ORDER BY (((id) COLLATE ccc), ((file_path) ASC))");
+
     // WhereExpr
     TestToSql(ctx, Where(Col(&OrmTestParent::id) == 15), "WHERE ((id) = (15))");
 
@@ -189,7 +198,7 @@ HE_TEST(sqlite, orm_sql, ToSql)
 
     // Table
     TestToSql(ctx, Table("table", Column("id", &OrmTestParent::id, PrimaryKey())), R"(CREATE TABLE table (
-    id INTEGER PRIMARY KEY,
+    id INTEGER PRIMARY KEY
 ))");
 
     // Schema

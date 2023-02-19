@@ -96,7 +96,7 @@ namespace he::sqlite
         Statement& stmt = m_statementCache[sql];
         if (!stmt.IsPrepared())
         {
-            const bool r = stmt.Prepare(m_db, sql);
+            const bool r = stmt.Prepare(m_db, sql, PrepareFlags::Persistent);
             HE_ASSERT(r);
             HE_UNUSED(r);
         }
@@ -129,7 +129,7 @@ namespace he::sqlite
 
         {
             Statement stmt;
-            if (!HE_VERIFY(stmt.Prepare(m_db, GetLatestSchemaVersionSql, PrepareFlags::Temporary)))
+            if (!HE_VERIFY(stmt.Prepare(m_db, GetLatestSchemaVersionSql)))
                 return false;
 
             const StepResult r = stmt.Step();
@@ -143,7 +143,7 @@ namespace he::sqlite
         latestVersion++;
 
         Statement stmt;
-        if (!HE_VERIFY(stmt.Prepare(m_db, InsertSchemaVersionSql, PrepareFlags::Temporary)))
+        if (!HE_VERIFY(stmt.Prepare(m_db, InsertSchemaVersionSql)))
             return false;
 
         const int32_t size = static_cast<int32_t>(migrations.Size());

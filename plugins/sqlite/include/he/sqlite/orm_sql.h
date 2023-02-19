@@ -20,6 +20,8 @@ namespace he::sqlite
     // --------------------------------------------------------------------------------------------
     // Data Type Traits
 
+    template <typename T> struct SqlDataTypeTraits;
+
     // INTEGER
     template <Integral T>
     struct SqlDataTypeTraits<T>
@@ -158,8 +160,8 @@ namespace he::sqlite
 
     struct SqlWriterContextBase
     {
-        bool writeRawValues{ false };
-        bool ddlIfNotExists{ false };   ///< Add IF NOT EXISTS to CREATE statements
+        bool writeRawValues{ false };   ///< When true writes values directly into the query. Default is to use a placeholder (`?`).
+        bool ddlIfNotExists{ false };   ///< When true adds `IF NOT EXISTS` to CREATE statements
     };
 
     template <SpecializationOf<SchemaDef> T>
@@ -168,6 +170,12 @@ namespace he::sqlite
         using SchemaType = T;
 
         constexpr explicit SqlWriterContext(const T& schema) : schema(schema) {}
+
+        template <typename T>
+        constexpr decltype(auto) GetTable() const
+        {
+            return schema.TableFor<T>();
+        }
 
         template <typename T>
         constexpr StringView GetTableName() const
@@ -290,6 +298,24 @@ namespace he::sqlite
     };
 
     template <>
+    struct SqlWriter<OrderNullsByKind>
+    {
+        using Type = OrderNullsByKind;
+
+        template <typename Ctx>
+        void Write(StringBuilder& sql, const OrderNullsByKind& value, const Ctx& ctx) const
+        {
+            HE_UNUSED(ctx);
+            switch (value)
+            {
+                case OrderNullsByKind::None: break;
+                case OrderNullsByKind::NullsFirst: sql.Write("NULLS FIRST"); break;
+                case OrderNullsByKind::NullsLast: sql.Write("NULLS LAST"); break;
+            }
+        }
+    };
+
+    template <>
     struct SqlWriter<FkActionKind>
     {
         using Type = FkActionKind;
@@ -324,7 +350,7 @@ namespace he::sqlite
             {
                 sql.Write(" (");
                 WriteColumnNames(sql, value.columns, ctx);
-                sql.Write(")");
+                sql.Write(')');
 
                 if (value.onConflict != OnConflictKind::None)
                 {
@@ -368,7 +394,7 @@ namespace he::sqlite
             {
                 sql.Write(" (");
                 WriteColumnNames(sql, value.columns, ctx);
-                sql.Write(")");
+                sql.Write(')');
             }
 
             if (value.onConflict != OnConflictKind::None)
@@ -391,7 +417,7 @@ namespace he::sqlite
             WriteColumnNames(sql, value.columns, ctx);
             sql.Write(") REFERENCES {} (", ctx.GetTableName<typename Type::ReferencedObjectType>());
             WriteColumnNames(sql, value.references, ctx);
-            sql.Write(")");
+            sql.Write(')');
 
             if (value.onDelete != FkActionKind::None)
             {
@@ -470,7 +496,7 @@ namespace he::sqlite
 
             sql.Write("CREATE {}INDEX {}{} ON {} (", uniqueStr, ddlINEStr, value.name, tableName);
             WriteColumnNames(sql, value.columns, ctx);
-            sql.Write(")");
+            sql.Write(')');
         }
     };
 
@@ -557,31 +583,28 @@ namespace he::sqlite
         {
             sql.Write("WHERE (");
             ToSql(sql, value.value, ctx);
-            sql.Write(")");
-        }
-    };
-
-    template <typename T>
-    struct SqlWriter<GroupByExpr<T>>
-    {
-        using Type = GroupByExpr<T>;
-
-        template <typename Ctx>
-        void Write(StringBuilder& sql, const Type& value, const Ctx& ctx) const
-        {
-            sql.Write("GROUP BY (");
-            uint32_t index = 0;
-            TupleForEach(value.Elements(), [&](const auto& item)
-            {
-                if (index++ > 0)
-                    sql.Write(",");
-                sql.Write('(');
-                ToSql(sql, item, ctx);
-                sql.Write(')');
-            });
             sql.Write(')');
         }
     };
+
+    template <typename Ctx>
+    static void WriteOrderByExprBase(StringBuilder& sql, const OrderByExprBase& item, const Ctx& ctx)
+    {
+        if (!item.collateName.IsEmpty())
+            sql.Write(" COLLATE {}", item.collateName);
+
+        if (item.orderBy != OrderByKind::None)
+        {
+            sql.Write(' ');
+            ToSql(sql, item.orderBy, ctx);
+        }
+
+        if (item.orderNullsBy != OrderNullsByKind::None)
+        {
+            sql.Write(' ');
+            ToSql(sql, item.orderNullsBy, ctx);
+        }
+    }
 
     template <typename T>
     struct SqlWriter<OrderByExpr<T>>
@@ -592,11 +615,64 @@ namespace he::sqlite
         void Write(StringBuilder& sql, const Type& value, const Ctx& ctx) const
         {
             sql.Write("ORDER BY (");
+
+            sql.Write('(');
+            ToSql(sql, value.value, ctx);
+            sql.Write(')');
+
+            WriteOrderByExprBase(sql, value, ctx);
+
+            sql.Write(')');
+        }
+    };
+
+    template <typename... Args>
+    struct SqlWriter<MultiOrderByExpr<Args...>>
+    {
+        using Type = MultiOrderByExpr<Args...>;
+
+        template <typename Ctx>
+        void Write(StringBuilder& sql, const Type& value, const Ctx& ctx) const
+        {
+            sql.Write("ORDER BY (");
             uint32_t index = 0;
-            TupleForEach(value.Elements(), [&](const auto& item)
+            TupleForEach(value.args, [&](const auto& item)
             {
                 if (index++ > 0)
-                    sql.Write(",");
+                    sql.Write(", ");
+                sql.Write('(');
+                if constexpr (IsSpecialization<Decay<decltype(item)>, OrderByExpr>)
+                {
+                    sql.Write('(');
+                    ToSql(sql, item.value, ctx);
+                    sql.Write(')');
+
+                    WriteOrderByExprBase(sql, item, ctx);
+                }
+                else
+                {
+                    ToSql(sql, item, ctx);
+                }
+                sql.Write(')');
+            });
+            sql.Write(')');
+        }
+    };
+
+    template <typename... Args>
+    struct SqlWriter<GroupByExpr<Args...>>
+    {
+        using Type = GroupByExpr<Args...>;
+
+        template <typename Ctx>
+        void Write(StringBuilder& sql, const Type& value, const Ctx& ctx) const
+        {
+            sql.Write("GROUP BY (");
+            uint32_t index = 0;
+            TupleForEach(value.args, [&](const auto& item)
+            {
+                if (index++ > 0)
+                    sql.Write(", ");
                 sql.Write('(');
                 ToSql(sql, item, ctx);
                 sql.Write(')');
@@ -615,7 +691,7 @@ namespace he::sqlite
         {
             sql.Write("NOT (");
             ToSql(sql, value.cond, ctx);
-            sql.Write(")");
+            sql.Write(')');
         }
     };
 
@@ -631,7 +707,7 @@ namespace he::sqlite
             ToSql(sql, value.lhs, ctx);
             sql.Write(") {} (", Type::Sql);
             ToSql(sql, value.rhs, ctx);
-            sql.Write(")");
+            sql.Write(')');
         }
     };
 
@@ -647,6 +723,79 @@ namespace he::sqlite
             ToSql(sql, value.lhs, ctx);
             sql.Write(") {} (", Type::Sql);
             ToSql(sql, value.rhs, ctx);
+            sql.Write(')');
+        }
+    };
+
+    template <typename T>
+    struct SqlWriter<InsertObjectQuery<T>>
+    {
+        using Type = InsertObjectQuery<T>;
+
+        template <typename Ctx>
+        void Write(StringBuilder& sql, const Type& value, const Ctx& ctx) const
+        {
+            const auto& table = ctx.GetTable<typename Type::ObjectType>();
+            const StringView tableName = table.Name();
+            sql.Write("INSERT INTO {} (", tableName);
+
+            uint32_t index = 0;
+            table.ForEachColumn([&](const auto& column)
+            {
+                const StringView name = ctx.GetColumnName(column);
+                sql.Write("{}{}", index++ > 0 ? ", " : "", name);
+            });
+            sql.Write(") VALUES (");
+
+            index = 0;
+            table.ForEachColumn([&](const auto& column)
+            {
+                if (index++ > 0)
+                    sql.Write(", ");
+                ToSql(sql, value.value.*column, ctx);
+            });
+            sql.Write(")");
+        }
+    };
+
+    template <typename T, typename C, typename V>
+    struct SqlWriter<InsertQuery<T, C, V>>
+    {
+        using Type = InsertQuery<T, C, V>;
+
+        template <typename Ctx>
+        void Write(StringBuilder& sql, const Type& value, const Ctx& ctx) const
+        {
+            const StringView tableName = ctx.GetTableName<typename Type::ObjectType>();
+            sql.Write("INSERT INTO {} (", tableName);
+
+            uint32_t index = 0;
+            TupleForEach(value.columns, [&](const auto& column)
+            {
+                const StringView name = ctx.GetColumnName(column);
+                sql.Write("{}{}", index++ > 0 ? ", " : "", name);
+            });
+            sql.Write(") VALUES (");
+
+            index = 0;
+            if constexpr (IsSpecialization<typename Type::ValuesType, Tuple>)
+            {
+                TupleForEach(value.values, [&](const auto& item)
+                {
+                    if (index++ > 0)
+                        sql.Write(", ");
+                    ToSql(sql, item, ctx);
+                });
+            }
+            else
+            {
+                TupleForEach(value.columns, [&](const auto& column)
+                {
+                    if (index++ > 0)
+                        sql.Write(", ");
+                    ToSql(sql, value.values.*column, ctx);
+                });
+            }
             sql.Write(")");
         }
     };
@@ -665,26 +814,20 @@ namespace he::sqlite
             sql.IncreaseIndent();
 
             uint32_t index = 0;
-            TupleForEach(value.Elements(), [&](const auto& item)
+            value.ForEachColumn([&](const auto& item)
             {
-                if constexpr (IsColumnDef<Decay<decltype(item)>>::Value)
-                {
-                    if (index++ > 0)
-                        sql.Write(",\n");
-                    sql.WriteIndent();
-                    ToSql(sql, item, ctx);
-                }
+                if (index++ > 0)
+                    sql.Write(",\n");
+                sql.WriteIndent();
+                ToSql(sql, item, ctx);
             });
 
-            TupleForEach(value.Elements(), [&](const auto& item)
+            value.ForEachConstraint([&](const auto& item)
             {
-                if constexpr (IsTableConstraint<Decay<decltype(item)>>::Value)
-                {
-                    if (index++ > 0)
-                        sql.Write(",\n");
-                    sql.WriteIndent();
-                    ToSql(sql, item, ctx);
-                }
+                if (index++ > 0)
+                    sql.Write(",\n");
+                sql.WriteIndent();
+                ToSql(sql, item, ctx);
             });
 
             sql.Write('\n');
@@ -753,14 +896,35 @@ namespace he::sqlite
         }
     };
 
-    template <typename T>
-    struct SqlBinder<GroupByExpr<T>>
+    template <typename... Args>
+    struct SqlBinder<MultiOrderByExpr<Args...>>
     {
-        using Type = GroupByExpr<T>;
+        using Type = MultiOrderByExpr<Args...>;
 
         bool Bind(Statement& stmt, const Type& value, SqlBinderContext& ctx) const
         {
-            return BindSql(stmt, value.value, ctx);
+            bool result = true;
+            TupleForEach(value.args, [&](const auto& arg)
+            {
+                result &= BindSql(stmt, arg, ctx);
+            });
+            return result;
+        }
+    };
+
+    template <typename... Args>
+    struct SqlBinder<GroupByExpr<Args...>>
+    {
+        using Type = GroupByExpr<Args...>;
+
+        bool Bind(Statement& stmt, const Type& value, SqlBinderContext& ctx) const
+        {
+            bool result = true;
+            TupleForEach(value.args, [&](const auto& arg)
+            {
+                result &= BindSql(stmt, arg, ctx);
+            });
+            return result;
         }
     };
 
@@ -806,6 +970,52 @@ namespace he::sqlite
                 return false;
 
             return true;
+        }
+    };
+
+    template <typename T>
+    struct SqlBinder<InsertObjectQuery<T>>
+    {
+        using Type = InsertObjectQuery<T>;
+
+        bool Bind(Statement& stmt, const Type& value, SqlBinderContext& ctx) const
+        {
+            const auto& table = ctx.GetTable<typename Type::ObjectType>();
+
+            bool result = true;
+            table.ForEachColumn([&](const auto& column)
+            {
+                result &= BindSql(stmt, value.value.*column, ctx);
+            });
+
+            return result;
+        }
+    };
+
+    template <typename T, typename C, typename V>
+    struct SqlBinder<InsertQuery<T, C, V>>
+    {
+        using Type = InsertQuery<T, C, V>;
+
+        bool Bind(Statement& stmt, const Type& value, SqlBinderContext& ctx) const
+        {
+            bool result = true;
+            if constexpr (IsSpecialization<typename Type::ValuesType, Tuple>)
+            {
+                TupleForEach(value.values, [&](const auto& item)
+                {
+                    result &= BindSql(stmt, item, ctx);
+                });
+            }
+            else
+            {
+                TupleForEach(value.columns, [&](const auto& column)
+                {
+                    result &= BindSql(stmt, value.values.*column, ctx);
+                });
+            }
+
+            return result;
         }
     };
 }

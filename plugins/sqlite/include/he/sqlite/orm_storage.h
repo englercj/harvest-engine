@@ -9,6 +9,7 @@
 #include "he/sqlite/database.h"
 #include "he/sqlite/orm.h"
 #include "he/sqlite/orm_sql.h"
+#include "he/sqlite/statement.h"
 
 namespace he::sqlite
 {
@@ -44,29 +45,26 @@ namespace he::sqlite
         bool Sync();
 
     public:
-        template <typename T, QueryCondition... U>
-        bool Create(const T& obj, U&&... query);
-
-        template <typename T, QueryCondition... U>
-        bool Destroy(U&&... query);
-
-        template <typename T, QueryCondition... U>
-        bool FindAll(Vector<T>& out, U&&... query);
-
-        template <typename T, QueryCondition... U>
-        bool FindOne(T& out, U&&... query);
-
         template <typename T>
-        bool FindByPk(T& out, uint64_t pk);
+        bool Create(const T& obj);
 
-        template <typename T, QueryCondition... U>
-        bool FindOrCreate(T& out, U&&... query);
+        template <typename T, typename U>
+        bool Destroy(const WhereExpr<U>& where = {});
 
-        template <typename T, QueryCondition... U>
-        bool Update(const T& obj, U&&... query);
+        template <typename T, typename U>
+        bool FindAll(Vector<T>& out, const WhereExpr<U>& where = {});
 
-        template <typename T, QueryCondition... U>
-        bool Upsert(const T& obj, U&&... query);
+        template <typename T, typename U>
+        bool FindOne(T& out, const WhereExpr<U>& where = {});
+
+        template <typename T, typename U>
+        bool FindOrCreate(T& out, const WhereExpr<U>& where = {});
+
+        template <typename T, typename U>
+        bool Update(const T& obj, const WhereExpr<U>& where = {});
+
+        template <typename T, typename U>
+        bool Upsert(const T& obj, const WhereExpr<U>& where = {});
 
     private:
 
@@ -92,7 +90,7 @@ namespace he::sqlite
 
     template <typename S>
     template <typename T>
-    bool Storage<S>::DropTable()
+    inline bool Storage<S>::DropTable()
     {
         const auto& table = m_schema.TableFor<T>();
         String sql = "DROP TABLE IF EXISTS ";
@@ -101,63 +99,68 @@ namespace he::sqlite
     }
 
     template <typename S>
-    bool Storage<S>::Sync()
+    inline bool Storage<S>::Sync()
     {
-
-    }
-
-    template <typename S>
-    template <typename T, QueryCondition... U>
-    bool Storage<S>::Create(const T& obj, U&&... query)
-    {
-
-    }
-
-    template <typename S>
-    template <typename T, QueryCondition... U>
-    bool Storage<S>::Destroy(U&&... query)
-    {
-
-    }
-
-    template <typename S>
-    template <typename T, QueryCondition... U>
-    bool Storage<S>::FindAll(Vector<T>& out, U&&... query)
-    {
-
-    }
-
-    template <typename S>
-    template <typename T, QueryCondition... U>
-    bool Storage<S>::FindOne(T& out, U&&... query)
-    {
-
+        // TODO
     }
 
     template <typename S>
     template <typename T>
-    bool Storage<S>::FindByPk(T& out, uint64_t pk)
+    inline bool Storage<S>::Create(const T& obj)
+    {
+        const auto query = Insert(obj);
+
+        StringBuilder sql;
+        ToSql(sql, query);
+
+        Statement stmt;
+        if (!HE_VERIFY(stmt.Prepare(m_db, sql.Data())))
+            return false;
+
+        if (!HE_VERIFY(BindSql(stmt, query)))
+            return false;
+
+        return stmt.Step() != StepResult::Error;
+    }
+
+    template <typename S>
+    template <typename T, typename U>
+    inline bool Storage<S>::Destroy(const WhereExpr<U>& where)
     {
 
     }
 
     template <typename S>
-    template <typename T, QueryCondition... U>
-    bool Storage<S>::FindOrCreate(T& out, U&&... query)
+    template <typename T, typename U>
+    inline bool Storage<S>::FindAll(Vector<T>& out, const WhereExpr<U>& where)
     {
 
     }
 
     template <typename S>
-    template <typename T, QueryCondition... U>
-    bool Storage<S>::Update(const T& obj, U&&... query)
+    template <typename T, typename U>
+    inline bool Storage<S>::FindOne(T& out, const WhereExpr<U>& where)
     {
 
     }
 
     template <typename S>
-    template <typename T, QueryCondition... U>
-    bool Storage<S>::Upsert(const T& obj, U&&... query)
+    template <typename T, typename U>
+    inline bool Storage<S>::FindOrCreate(T& out, const WhereExpr<U>& where)
+    {
+
+    }
+
+    template <typename S>
+    template <typename T, typename U>
+    inline bool Storage<S>::Update(const T& obj, const WhereExpr<U>& where)
+    {
+
+    }
+
+    template <typename S>
+    template <typename T, typename U>
+    inline bool Storage<S>::Upsert(const T& obj, const WhereExpr<U>& where)
     {
 
     }

@@ -120,7 +120,7 @@
 
 /// Defines a test case for `module` using `fixture` called `name`. The name of the `fixture`
 /// class is also used as the suite name.
-#define HE_TEST_F(module, fixture, name) HE_TEST_(module, fixture, name, fixture)
+#define HE_TEST_F(module, suite, name, fixture) HE_TEST_(module, suite, name, fixture)
 
 namespace he
 {
@@ -161,6 +161,7 @@ namespace he
         /// Implement this function if you have clean up work to perform after the test case runs.
         virtual void After() {}
 
+    public:
         /// Runs the test case.
         ///
         /// This is used internally to run the test.
@@ -169,8 +170,7 @@ namespace he
         /// Returns the metadata about this test case.
         ///
         /// There is no need to implement this function manually because the
-        /// #HE_TEST(module, suite, name) and #HE_TEST_F(module, suite, name) macros will
-        /// do it for you.
+        /// \ref HE_TEST and \ref HE_TEST_F macros will do it for you.
         virtual const TestInfo& GetTestInfo() const { return EmptyTestInfo; }
 
         /// The body of the test case that contains expectations.

@@ -42,7 +42,7 @@ public:
 };
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST_F(core, AsyncFileFixture, Open_Close)
+HE_TEST_F(core, async_file, Open_Close, AsyncFileFixture)
 {
     constexpr const char TestPath[] = "0219db88-7616-48ed-b274-404cbeff336f";
 
@@ -58,7 +58,7 @@ HE_TEST_F(core, AsyncFileFixture, Open_Close)
 }
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST_F(core, AsyncFileFixture, GetSize)
+HE_TEST_F(core, async_file, GetSize, AsyncFileFixture)
 {
     constexpr const char TestPath[] = "b33d1c82-af5d-493d-876f-781d5d3ecadb";
 
@@ -79,7 +79,7 @@ HE_TEST_F(core, AsyncFileFixture, GetSize)
 }
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST_F(core, AsyncFileFixture, Read_Write)
+HE_TEST_F(core, async_file, Read_Write, AsyncFileFixture)
 {
     constexpr const char TestPath[] = "777738a7-1db4-4644-a04f-2f2667843dd2";
 
@@ -113,7 +113,7 @@ HE_TEST_F(core, AsyncFileFixture, Read_Write)
 }
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST_F(core, AsyncFileFixture, GetAttributes)
+HE_TEST_F(core, async_file, GetAttributes, AsyncFileFixture)
 {
     constexpr const char TestPath[] = "5a0c50d8-7918-47a3-9d00-24d955f48680";
     TouchTestFile(TestPath);
@@ -146,7 +146,7 @@ HE_TEST_F(core, AsyncFileFixture, GetAttributes)
 }
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST_F(core, AsyncFileFixture, GetPath)
+HE_TEST_F(core, async_file, GetPath, AsyncFileFixture)
 {
     constexpr const char TestPath[] = "8c6a85bc-7b50-41b2-bf0f-8b5b8081d143";
 

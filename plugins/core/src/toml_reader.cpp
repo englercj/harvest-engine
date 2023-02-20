@@ -10,65 +10,16 @@
 // - Allow non-English scripts in unquoted (bare) keys
 // - Clarify newline normalization in multi-line literal strings.
 
-#include "he/core/toml.h"
+#include "he/core/toml_reader.h"
 
 #include "he/core/ascii.h"
 #include "he/core/assert.h"
-#include "he/core/enum_fmt.h"
 #include "he/core/string_fmt.h"
-#include "he/core/string_view_fmt.h"
 #include "he/core/vector.h"
 
 namespace he
 {
     // --------------------------------------------------------------------------------------------
-    static void WriteEscaped(StringBuilder& builder, StringView value)
-    {
-        for (char ch : value)
-        {
-            switch (ch)
-            {
-                case '\b': builder.Write("\\b"); break;
-                case '\t': builder.Write("\\t"); break;
-                case '\n': builder.Write("\\n"); break;
-                case '\f': builder.Write("\\f"); break;
-                case '\r': builder.Write("\\r"); break;
-                case '"': builder.Write("\\\""); break;
-                case '\\': builder.Write("\\\\"); break;
-                default:
-                    if (static_cast<uint32_t>(ch) <= 0x001fu)
-                        builder.Write("\\u{:04x}", static_cast<uint32_t>(ch));
-                    else
-                        builder.Write(ch);
-            }
-        }
-    }
-
-    static void WriteEscapedMultiline(StringBuilder& builder, StringView value)
-    {
-        for (char ch : value)
-        {
-            switch (ch)
-            {
-                case '\b': builder.Write("\\b"); break;
-                case '"': builder.Write("\\\""); break;
-                case '\\': builder.Write("\\\\"); break;
-                // write out whitespace as-is for multiline strings
-                case '\t':
-                case '\n':
-                case '\f':
-                case '\r':
-                    builder.Write(ch);
-                    break;
-                default:
-                    if (static_cast<uint32_t>(ch) <= 0x001fu)
-                        builder.Write("\\u{:04x}", static_cast<uint32_t>(ch));
-                    else
-                        builder.Write(ch);
-            }
-        }
-    }
-
     static bool IsIdentifier(char ch)
     {
         return IsAlpha(ch) || IsNumeric(ch) || ch == '_';
@@ -107,27 +58,27 @@ namespace he
         {
             TomlToken kind{ TomlToken::None };
             StringView text{};
-            TomlError error{};
+            TomlReadError error{};
             uint32_t line{ 0 };
             uint32_t column{ 0 };
         };
 
     public:
-        TomlError Reset(StringView src)
+        TomlReadError Reset(StringView src)
         {
             m_end = src.End();
             m_cursor = src.Begin();
             m_nextTokenStart = m_cursor;
             m_lineStart = m_cursor;
             m_nextLineStart = m_cursor;
-            m_nextError = TomlError::None;
+            m_nextError = TomlReadError::None;
             m_nextToken = TomlToken::None;
 
             if (src.IsEmpty())
-                return TomlError::EmptyFile;
+                return TomlReadError::EmptyFile;
 
             if (!SkipBOM())
-                return TomlError::InvalidBom;
+                return TomlReadError::InvalidBom;
 
             // hydrate the first token
             NextToken();
@@ -135,12 +86,12 @@ namespace he
             Token firstToken = PeekNextToken();
 
             if (firstToken.kind == TomlToken::Eof)
-                return TomlError::EmptyFile;
+                return TomlReadError::EmptyFile;
 
             if (firstToken.kind == TomlToken::Error)
                 return firstToken.error;
 
-            return TomlError::None;
+            return TomlReadError::None;
         }
 
         Token NextToken()
@@ -149,7 +100,7 @@ namespace he
 
             m_lineStart = m_nextLineStart;
             m_nextTokenStart = m_cursor;
-            m_nextError = TomlError::None;
+            m_nextError = TomlReadError::None;
             m_nextToken = LexToken();
             return token;
         }
@@ -159,7 +110,7 @@ namespace he
             HE_ASSERT(m_nextTokenStart >= m_nextLineStart);
 
             Token token;
-            token.kind = m_nextError == TomlError::None ? m_nextToken : TomlToken::Error;
+            token.kind = m_nextError == TomlReadError::None ? m_nextToken : TomlToken::Error;
             token.text = { m_nextTokenStart, m_cursor };
             token.line = m_line;
             token.column = static_cast<uint32_t>(m_nextTokenStart - m_nextLineStart) + 1;
@@ -172,7 +123,7 @@ namespace he
         {
             if (m_cursor >= m_end)
             {
-                m_nextError = TomlError::Eof;
+                m_nextError = TomlReadError::Eof;
                 return false;
             }
             return true;
@@ -237,10 +188,12 @@ namespace he
                         if (IsIdentifier(ch))
                             return LexIdentifier();
 
-                        m_nextError = TomlError::InvalidToken;
+                        m_nextError = TomlReadError::InvalidToken;
                         return TomlToken::Error;
                 }
             }
+
+            return TomlToken::Eof;
         }
 
         TomlToken LexLeadingZero()
@@ -293,7 +246,7 @@ namespace he
                     // When true there are multiple dots which is not valid
                     if (hasDot)
                     {
-                        m_nextError = TomlError::InvalidToken;
+                        m_nextError = TomlReadError::InvalidToken;
                         return TomlToken::Error;
                     }
 
@@ -360,7 +313,7 @@ namespace he
 
                 if (ch < ' ' && ch != '\t' && (ch != '\n' || isMultiline) && (ch != '\r' || isMultiline))
                 {
-                    m_nextError = TomlError::InvalidToken;
+                    m_nextError = TomlReadError::InvalidToken;
                     return TomlToken::Error;
                 }
 
@@ -445,14 +398,14 @@ namespace he
             ++m_cursor;
             if (static_cast<uint8_t>(*m_cursor) != 0xbb)
             {
-                m_nextError = TomlError::InvalidBom;
+                m_nextError = TomlReadError::InvalidBom;
                 return false;
             }
 
             ++m_cursor;
             if (static_cast<uint8_t>(*m_cursor) != 0xbf)
             {
-                m_nextError = TomlError::InvalidBom;
+                m_nextError = TomlReadError::InvalidBom;
                 return false;
             }
 
@@ -469,7 +422,7 @@ namespace he
         const char* m_lineStart{ nullptr };
         const char* m_nextLineStart{ nullptr };
 
-        TomlError m_nextError{ TomlError::None };
+        TomlReadError m_nextError{ TomlReadError::None };
 
         uint32_t m_line{ 1 };
         TomlToken m_nextToken{ TomlToken::None };
@@ -479,11 +432,11 @@ namespace he
     class TomlParser
     {
     public:
-        TomlResult Parse(StringView src, TomlReader::Handler& handler)
+        TomlReadResult Parse(StringView src, TomlReader::Handler& handler)
         {
             m_handler = &handler;
 
-            if (m_lexer.Reset(src) == TomlError::None)
+            if (m_lexer.Reset(src) == TomlReadError::None)
             {
                 ConsumeRootTable();
             }
@@ -492,15 +445,15 @@ namespace he
         }
 
     private:
-        TomlResult MakeResult() const
+        TomlReadResult MakeResult() const
         {
-            if (m_token.error != TomlError::None)
-                return TomlResult{ m_token.error, m_token.line, m_token.column };
+            if (m_token.error != TomlReadError::None)
+                return TomlReadResult{ m_token.error, m_token.line, m_token.column };
 
             return m_result;
         }
 
-        bool SetError(TomlError error)
+        bool SetError(TomlReadError error)
         {
             m_result = { error, m_token.line, m_token.column };
             return false;
@@ -525,7 +478,7 @@ namespace he
         [[nodiscard]] bool Expect(TomlToken expected)
         {
             if (!At(expected))
-                return SetError(TomlError::InvalidToken);
+                return SetError(TomlReadError::InvalidToken);
 
             return true;
         }
@@ -557,8 +510,7 @@ namespace he
             if (!At(expected))
                 return false;
 
-            NextDecl();
-            return true;
+            return NextDecl();
         }
 
         [[nodiscard]] bool Consume(TomlToken expected)
@@ -566,8 +518,7 @@ namespace he
             if (!Expect(expected))
                 return false;
 
-            NextDecl();
-            return true;
+            return NextDecl();
         }
 
         [[nodiscard]] bool ConsumeKeyPath()
@@ -578,14 +529,14 @@ namespace he
                 if (At(TomlToken::Identifier) || At(TomlToken::String))
                     m_pathBuffer.PushBack(m_token.text);
                 else
-                    return SetError(TomlError::InvalidToken);
+                    return SetError(TomlReadError::InvalidToken);
 
             } while (TryConsume(TomlToken::Dot));
 
             return true;
         }
 
-        [[nodiscard]] bool ConsumeRootTable()
+        bool ConsumeRootTable()
         {
             while (!AtEnd())
             {
@@ -607,7 +558,7 @@ namespace he
                         return false;
 
                     if (!m_handler->Key(m_pathBuffer))
-                        return SetError(TomlError::Cancelled);
+                        return SetError(TomlReadError::Cancelled);
 
                     if (!Consume(TomlToken::Equals))
                         return false;
@@ -619,7 +570,7 @@ namespace he
                     return ConsumeTable();
                 }
                 default:
-                    return SetError(TomlError::InvalidToken);
+                    return SetError(TomlReadError::InvalidToken);
             }
         }
 
@@ -634,7 +585,7 @@ namespace he
                 return false;
 
             if (!m_handler->StartTable(m_pathBuffer, isArray))
-                return SetError(TomlError::Cancelled);
+                return SetError(TomlReadError::Cancelled);
 
             uint32_t keyCount = 0;
             while (!AtEnd() && !At(TomlToken::OpenSquareBracket))
@@ -645,7 +596,7 @@ namespace he
             }
 
             if (!m_handler->EndTable(keyCount))
-                return SetError(TomlError::Cancelled);
+                return SetError(TomlReadError::Cancelled);
 
             return true;
         }
@@ -656,7 +607,7 @@ namespace he
                 return false;
 
             if (!m_handler->StartTable({}, false))
-                return SetError(TomlError::Cancelled);
+                return SetError(TomlReadError::Cancelled);
 
             uint32_t keyCount = 0;
             do
@@ -671,7 +622,7 @@ namespace he
             } while (TryConsume(TomlToken::Comma));
 
             if (!m_handler->EndTable(keyCount))
-                return SetError(TomlError::Cancelled);
+                return SetError(TomlReadError::Cancelled);
 
             return true;
         }
@@ -687,7 +638,7 @@ namespace he
                         return false;
 
                     if (!m_handler->Key(m_pathBuffer))
-                        return SetError(TomlError::Cancelled);
+                        return SetError(TomlReadError::Cancelled);
 
                     if (!Consume(TomlToken::Equals))
                         return false;
@@ -695,7 +646,7 @@ namespace he
                     return ConsumeValue();
                 }
                 default:
-                    return SetError(TomlError::InvalidToken);
+                    return SetError(TomlReadError::InvalidToken);
             }
         }
 
@@ -705,7 +656,7 @@ namespace he
                 return false;
 
             if (!m_handler->StartArray())
-                return SetError(TomlError::Cancelled);
+                return SetError(TomlReadError::Cancelled);
 
             uint32_t count = 0;
             do
@@ -720,7 +671,7 @@ namespace he
             } while (!AtEnd() && TryConsume(TomlToken::Comma));
 
             if (!m_handler->EndArray(count))
-                return SetError(TomlError::Cancelled);
+                return SetError(TomlReadError::Cancelled);
 
             return true;
         }
@@ -734,7 +685,7 @@ namespace he
                     const double value = m_token.text.ToFloat<double>();
 
                     if (!m_handler->Float(value))
-                        return SetError(TomlError::Cancelled);
+                        return SetError(TomlReadError::Cancelled);
 
                     return NextDecl();
                 }
@@ -744,7 +695,7 @@ namespace he
                     {
                         const int64_t value = m_token.text.ToInteger<int64_t>();
                         if (!m_handler->Int(value))
-                            return SetError(TomlError::Cancelled);
+                            return SetError(TomlReadError::Cancelled);
                     }
                     else
                     {
@@ -772,7 +723,7 @@ namespace he
                         }
                         const uint64_t value = String::ToInteger<uint64_t>(begin, end, base);
                         if (!m_handler->Uint(value))
-                            return SetError(TomlError::Cancelled);
+                            return SetError(TomlReadError::Cancelled);
                     }
 
                     return NextDecl();
@@ -790,250 +741,43 @@ namespace he
                     if (m_token.text == "false")
                     {
                         if (!m_handler->Bool(false))
-                            return SetError(TomlError::Cancelled);
+                            return SetError(TomlReadError::Cancelled);
                         return NextDecl();
                     }
 
                     if (m_token.text == "true")
                     {
                         if (!m_handler->Bool(true))
-                            return SetError(TomlError::Cancelled);
+                            return SetError(TomlReadError::Cancelled);
                         return NextDecl();
                     }
 
-                    return SetError(TomlError::InvalidToken);
+                    return SetError(TomlReadError::InvalidToken);
                 }
                 case TomlToken::String:
                 {
                     if (!m_handler->String(m_token.text))
-                        return SetError(TomlError::Cancelled);
+                        return SetError(TomlReadError::Cancelled);
 
                     return NextDecl();
                 }
                 default:
-                    return SetError(TomlError::InvalidToken);
+                    return SetError(TomlReadError::InvalidToken);
             }
         }
 
     private:
         TomlLexer m_lexer{};
         TomlLexer::Token m_token{};
-        TomlResult m_result{};
+        TomlReadResult m_result{};
         TomlReader::Handler* m_handler{ nullptr };
         Vector<StringView> m_pathBuffer{};
     };
 
     // --------------------------------------------------------------------------------------------
-    TomlResult TomlReader::Read(StringView data, Handler& handler)
+    TomlReadResult TomlReader::Read(StringView data, Handler& handler)
     {
         TomlParser parser;
         return parser.Parse(data, handler);
-    }
-
-    bool TomlReader::Next()
-    {
-    }
-
-    bool TomlReader::Next(TomlToken expected)
-    {
-        Next();
-        return Expect(expected);
-    }
-
-    // --------------------------------------------------------------------------------------------
-    void TomlWriter::Bool(bool value)
-    {
-        InlineArrayComma();
-        m_builder.Write(value ? "true" : "false");
-    }
-
-    void TomlWriter::Int(int64_t value, IntFormat format)
-    {
-        InlineArrayComma();
-
-        switch (format)
-        {
-            case IntFormat::Decimal: m_builder.Write("{:d}", value); return;
-            case IntFormat::Hex: m_builder.Write("0x{:x}", value); return;
-            case IntFormat::Octal: m_builder.Write("0o{:o}", value); return;
-            case IntFormat::Binary: m_builder.Write("0b{:b}", value); return;
-        }
-        HE_VERIFY(false, HE_MSG("Unknown integer format."), HE_KV(format, format));
-    }
-
-    void TomlWriter::Uint(uint64_t value, IntFormat format)
-    {
-        InlineArrayComma();
-
-        switch (format)
-        {
-            case IntFormat::Decimal: m_builder.Write("{:d}", value); return;
-            case IntFormat::Hex: m_builder.Write("0x{:x}", value); return;
-            case IntFormat::Octal: m_builder.Write("0o{:o}", value); return;
-            case IntFormat::Binary: m_builder.Write("0b{:b}", value); return;
-        }
-        HE_VERIFY(false, HE_MSG("Unknown integer format."), HE_KV(format, format));
-    }
-
-    void TomlWriter::Float(double value, uint32_t precision, FloatFormat format)
-    {
-        InlineArrayComma();
-
-        switch (format)
-        {
-            case FloatFormat::Fixed: m_builder.Write("{1:.{0}f}", precision, value); return;
-            case FloatFormat::Exponent: m_builder.Write("{1:.{0}e}", precision, value); return;
-        }
-        HE_VERIFY(false, HE_MSG("Unknown float format."), HE_KV(format, format), HE_KV(precision, precision));
-    }
-
-    void TomlWriter::String(StringView value, bool multiline, bool literal)
-    {
-        InlineArrayComma();
-
-        if (multiline)
-        {
-            if (literal)
-            {
-                m_builder.Write("'''{}'''", value);
-            }
-            else
-            {
-                m_builder.Write("\"\"\"");
-                WriteEscapedMultiline(m_builder, value);
-                m_builder.Write("\"\"\"");
-            }
-        }
-        else
-        {
-            if (literal)
-            {
-                m_builder.Write("'{}'", value);
-            }
-            else
-            {
-                m_builder.Write('"');
-                WriteEscaped(m_builder, value);
-                m_builder.Write('"');
-            }
-        }
-    }
-
-    void TomlWriter::Key(StringView name)
-    {
-        InlineTableComma();
-
-        bool needsQuotes = false;
-        for (char ch : name)
-        {
-            if (!IsAlphaNum(ch) && ch != '_' && ch != '-')
-            {
-                needsQuotes = true;
-                break;
-            }
-        }
-
-        m_builder.WriteIndent();
-
-        if (needsQuotes)
-            m_builder.Write("\"{}\" = ", name);
-        else
-            m_builder.Write("{} = ", name);
-    }
-
-    void TomlWriter::StartTable(StringView name)
-    {
-        if (!m_path.IsEmpty())
-            m_path += '.';
-
-        m_path += name;
-
-        m_builder.WriteIndent();
-
-        if (m_arrayCount > m_tableCount)
-            m_builder.Write("[[{}]]", m_path);
-        else
-            m_builder.Write("[{}]", m_path);
-
-        m_builder.IncreaseIndent();
-        ++m_tableCount;
-    }
-
-    void TomlWriter::EndTable()
-    {
-        if (!HE_VERIFY(m_tableCount > 0))
-            return;
-
-        m_builder.DecreaseIndent();
-        --m_tableCount;
-    }
-
-    void TomlWriter::StartInlineTable()
-    {
-        if (m_inlineTableCount == 0)
-            m_firstInlineTableKey = true;
-
-        InlineArrayComma();
-        m_builder.Write("{ ");
-        ++m_inlineTableCount;
-    }
-
-    void TomlWriter::EndInlineTable()
-    {
-        if (!HE_VERIFY(m_inlineTableCount > 0))
-            return;
-
-        m_builder.Write(" }");
-        --m_inlineTableCount;
-    }
-
-    void TomlWriter::StartArray()
-    {
-        ++m_arrayCount;
-    }
-
-    void TomlWriter::EndArray()
-    {
-        if (!HE_VERIFY(m_arrayCount > 0))
-            return;
-
-        --m_arrayCount;
-    }
-
-    void TomlWriter::StartInlineArray()
-    {
-        if (m_inlineArrayCount == 0)
-            m_firstInlineArrayItem = true;
-
-        InlineArrayComma();
-        m_builder.Write("[");
-        ++m_inlineArrayCount;
-    }
-
-    void TomlWriter::EndInlineArray()
-    {
-        if (!HE_VERIFY(m_inlineArrayCount > 0))
-            return;
-
-        m_builder.Write("]");
-        --m_inlineArrayCount;
-    }
-
-    void TomlWriter::InlineArrayComma()
-    {
-        if (m_firstInlineArrayItem)
-            return;
-
-        m_builder.Write(", ");
-        m_firstInlineArrayItem = false;
-    }
-
-    void TomlWriter::InlineTableComma()
-    {
-        if (m_firstInlineTableKey)
-            return;
-
-        m_builder.Write(", ");
-        m_firstInlineTableKey = false;
     }
 }

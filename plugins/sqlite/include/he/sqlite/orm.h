@@ -746,6 +746,8 @@ namespace he::sqlite
 
     template <typename T> inline constexpr bool IsQuery = IsBaseOf<_QueryBase, T>;
 
+    template <typename T> concept Query = IsQuery<T>;
+
     template <typename T>
     constexpr InsertObjectQuery<T> Insert(const T& obj) { return { obj }; }
 

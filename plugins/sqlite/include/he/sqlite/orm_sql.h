@@ -225,6 +225,24 @@ namespace he::sqlite
     }
 
     // --------------------------------------------------------------------------------------------
+    // ReadSql
+
+    template <typename T>
+    struct SqlReader;
+
+    struct SqlReaderContext
+    {
+        int32_t index{ 0 };
+    };
+
+    template <typename T>
+    void ReadSql(const ColumnReader& column, T& value)
+    {
+        using Traits = SqlDataTypeTraits<T>;
+        Traits::Read(column, value);
+    }
+
+    // --------------------------------------------------------------------------------------------
     // SqlWriter implementations
 
     template <typename T, typename Ctx>

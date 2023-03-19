@@ -48,8 +48,8 @@ namespace he::sqlite
         template <typename T>
         bool Create(const T& obj);
 
-        template <typename T, typename U>
-        bool Destroy(const WhereExpr<U>& where = {});
+        template <typename T, QueryCondition... U>
+        bool Destroy(U&&... query);
 
         template <typename T, typename U>
         bool FindAll(Vector<T>& out, const WhereExpr<U>& where = {});
@@ -66,7 +66,8 @@ namespace he::sqlite
         template <typename T, typename U>
         bool Upsert(const T& obj, const WhereExpr<U>& where = {});
 
-    private:
+        template <Query T, QueryCondition... U>
+        bool Query(const T& query, U&&... conditions);
 
     private:
         Database m_db;
@@ -124,24 +125,79 @@ namespace he::sqlite
     }
 
     template <typename S>
-    template <typename T, typename U>
-    inline bool Storage<S>::Destroy(const WhereExpr<U>& where)
+    template <typename T, QueryCondition... U>
+    inline bool Storage<S>::Destroy(U&&... query)
     {
-
+        const auto& table = m_schema.TableFor<T>();
+        StringBuilder sql;
+        sql.Write("DELETE FROM {}", table.Name());
+        if constexpr (sizeof...(U) > 0)
+            ToSql(sql, query);
+        return m_db.Execute(sql.Data());
     }
 
     template <typename S>
     template <typename T, typename U>
     inline bool Storage<S>::FindAll(Vector<T>& out, const WhereExpr<U>& where)
     {
+        const auto& table = m_schema.TableFor<T>();
+        StringBuilder sql;
+        sql.Write("SELECT * FROM {}", table.Name());
+        if constexpr (sizeof...(U) > 0)
+            ToSql(sql, query);
 
+        Statement stmt;
+        if (!HE_VERIFY(stmt.Prepare(m_db, sql.Data())))
+            return false;
+
+        if (!HE_VERIFY(BindSql(stmt, query)))
+            return false;
+
+        stmt.EachRow([&](Statement& stmt)
+        {
+            int i = 0;
+            T& obj = out.EmplaceBack();
+            table.ForEachColumn([&](const auto& col)
+            {
+                const ColumnReader reader = stmt.GetColumn(i);
+                ReadSql(reader, obj.*(col.member));
+            });
+        });
+
+        return true;
     }
 
     template <typename S>
     template <typename T, typename U>
     inline bool Storage<S>::FindOne(T& out, const WhereExpr<U>& where)
     {
+        const auto& table = m_schema.TableFor<T>();
+        StringBuilder sql;
+        sql.Write("SELECT * FROM {}", table.Name());
+        if constexpr (sizeof...(U) > 0)
+            ToSql(sql, query);
+        sql.Write(" LIMIT 1");
 
+        Statement stmt;
+        if (!HE_VERIFY(stmt.Prepare(m_db, sql.Data())))
+            return false;
+
+        if (!HE_VERIFY(BindSql(stmt, query)))
+            return false;
+
+        StepResult result = stmt.Step();
+        if (result == StepResult::Row)
+        {
+            int i = 0;
+            table.ForEachColumn([&](const auto& col)
+            {
+                const ColumnReader reader = stmt.GetColumn(i);
+                ReadSql(reader, out.*(col.member));
+            });
+            result = stmt.Step();
+        }
+
+        return HE_VERIFY(result == StepResult::Done);
     }
 
     template <typename S>

@@ -745,6 +745,59 @@ namespace he::sqlite
         }
     };
 
+    template <typename T, typename... Args>
+    struct SqlWriter<SelectObjectQuery<T, Args...>>
+    {
+        using Type = SelectObjectQuery<T, Args...>;
+
+        template <typename Ctx>
+        void Write(StringBuilder& sql, const Type& value, const Ctx& ctx) const
+        {
+            const auto& table = ctx.GetTable<typename Type::ObjectType>();
+            const StringView tableName = table.Name();
+            sql.Write("SELECT * FROM {} ", tableName);
+            ToSql(sql, value.args, ctx);
+        }
+    };
+
+    template <typename T, typename Columns, typename Args>
+    struct SqlWriter<SelectQuery<T, Columns, Args>>
+    {
+        using Type = SelectQuery<T, Columns, Args>;
+
+        template <typename Ctx>
+        void Write(StringBuilder& sql, const Type& value, const Ctx& ctx) const
+        {
+            const auto& table = ctx.GetTable<typename Type::ObjectType>();
+            const StringView tableName = table.Name();
+            sql.Write("SELECT ");
+            TupleForEach(value.columns, [&](const auto& column)
+            {
+                if (index++ > 0)
+                    sql.Write(", ");
+                const StringView name = ctx.GetColumnName(column);
+                sql.Write(name);
+            });
+            sql.Write("FROM {} ", tableName);
+            ToSql(sql, value.args, ctx);
+        }
+    };
+
+    template <typename T, typename U>
+    struct SqlWriter<DeleteQuery<T, U>>
+    {
+        using Type = DeleteQuery<T, U>;
+
+        template <typename Ctx>
+        void Write(StringBuilder& sql, const Type& value, const Ctx& ctx) const
+        {
+            const auto& table = ctx.GetTable<typename Type::ObjectType>();
+            const StringView tableName = table.Name();
+            sql.Write("DELETE FROM {} ", tableName);
+            ToSql(sql, value.where, ctx);
+        }
+    };
+
     template <typename T>
     struct SqlWriter<InsertObjectQuery<T>>
     {
@@ -815,6 +868,97 @@ namespace he::sqlite
                 });
             }
             sql.Write(")");
+        }
+    };
+
+    template <typename T>
+    struct SqlWriter<UpdateObjectQuery<T>>
+    {
+        using Type = UpdateObjectQuery<T>;
+
+        template <typename Ctx>
+        void Write(StringBuilder& sql, const Type& value, const Ctx& ctx) const
+        {
+            const auto& table = ctx.GetTable<typename Type::ObjectType>();
+            const StringView tableName = table.Name();
+            sql.Write("UPDATE {} SET ", tableName);
+
+            index = 0;
+            table.ForEachColumn([&](const auto& column)
+            {
+                if (index++ > 0)
+                    sql.Write(", ");
+
+                const StringView name = ctx.GetColumnName(column);
+                sql.Write("{} = ", name);
+                ToSql(sql, value.values.*(column.member), ctx);
+            });
+        }
+    };
+
+    template <typename I, typename Columns, typename Values>
+    struct _UpdatePairWriter;
+
+    template <uint32_t... I, typename Columns, typename Values>
+    struct _UpdatePairWriter<IndexSequence<I...>, Columns, Values>
+    {
+        template <typename Ctx>
+        static void Write(StringBuilder& sql, const Columns& columns, const Values& values, const Ctx& ctx)
+        {
+            uint32_t index = 0;
+            (((index++ > 0 ? sql.Write(", ") : void()), WritePair(sql, TupleGet<I>(columns), TupleGet<I>(values), ctx)), ...);
+        }
+
+        template <typename Ctx, typename C, typename V>
+        static void WritePair(StringBuilder& sql, const C& column, const V& value, const Ctx& ctx)
+        {
+            ;
+            ToSql(sql, value, ctx);
+        }
+    };
+
+    template <typename T, typename U, typename Columns, typename Values>
+    struct SqlWriter<UpdateQuery<T, U, Columns, Values>>
+    {
+        using Type = UpdateQuery<T, U, Columns, Values>;
+
+        template <typename Ctx>
+        void Write(StringBuilder& sql, const Type& value, const Ctx& ctx) const
+        {
+            const StringView tableName = ctx.GetTableName<typename Type::ObjectType>();
+            sql.Write("UPDATE {} SET ", tableName);
+
+            if constexpr (IsSpecialization<typename Type::ValuesType, Tuple>)
+            {
+                using PairSequence = MakeIndexSequence<TupleSize<Columns>>;
+                using UpdateWriter = _UpdatePairWriter<PairSequence, typename Type::ColumnsType, typename Type::ValuesType>;
+                UpdateWriter::Write(sql, value.columns, value.values, ctx);
+            }
+            else
+            {
+                uint32_t index = 0;
+                TupleForEach(value.columns, [&](const auto& column)
+                {
+                    if (index++ > 0)
+                        sql.Write(", ");
+
+                    const StringView name = ctx.GetColumnName(column);
+                    sql.Write("{} = ", name);
+                    ToSql(sql, value.values.*(column.member), ctx);
+                });
+            }
+        }
+    };
+
+    template <>
+    struct SqlWriter<RawSqlQuery>
+    {
+        using Type = RawSqlQuery;
+
+        template <typename Ctx>
+        void Write(StringBuilder& sql, const Type& value, const Ctx& ctx) const
+        {
+            sql.Write(value.query);
         }
     };
 
@@ -991,6 +1135,39 @@ namespace he::sqlite
         }
     };
 
+    template <typename T, typename... Args>
+    struct SqlBinder<SelectObjectQuery<T, Args...>>
+    {
+        using Type = SelectObjectQuery<T, Args...>;
+
+        bool Bind(Statement& stmt, const Type& value, SqlBinderContext& ctx) const
+        {
+            return BindSql(stmt, value.where, ctx);
+        }
+    };
+
+    template <typename T, typename Columns, typename Args>
+    struct SqlBinder<SelectQuery<T, Columns, Args>>
+    {
+        using Type = SelectQuery<T, Columns, Args>;
+
+        bool Bind(Statement& stmt, const Type& value, SqlBinderContext& ctx) const
+        {
+            return BindSql(stmt, value.args, ctx);
+        }
+    };
+
+    template <typename T, typename U>
+    struct SqlBinder<DeleteQuery<T, U>>
+    {
+        using Type = DeleteQuery<T, U>;
+
+        bool Bind(Statement& stmt, const Type& value, SqlBinderContext& ctx) const
+        {
+            return BindSql(stmt, value.where, ctx);
+        }
+    };
+
     template <typename T>
     struct SqlBinder<InsertObjectQuery<T>>
     {
@@ -1014,6 +1191,52 @@ namespace he::sqlite
     struct SqlBinder<InsertQuery<T, C, V>>
     {
         using Type = InsertQuery<T, C, V>;
+
+        bool Bind(Statement& stmt, const Type& value, SqlBinderContext& ctx) const
+        {
+            bool result = true;
+            if constexpr (IsSpecialization<typename Type::ValuesType, Tuple>)
+            {
+                TupleForEach(value.values, [&](const auto& item)
+                {
+                    result &= BindSql(stmt, item, ctx);
+                });
+            }
+            else
+            {
+                TupleForEach(value.columns, [&](const auto& column)
+                {
+                    result &= BindSql(stmt, value.values.*column, ctx);
+                });
+            }
+
+            return result;
+        }
+    };
+
+    template <typename T>
+    struct SqlBinder<UpdateObjectQuery<T>>
+    {
+        using Type = UpdateObjectQuery<T>;
+
+        bool Bind(Statement& stmt, const Type& value, SqlBinderContext& ctx) const
+        {
+            const auto& table = ctx.GetTable<typename Type::ObjectType>();
+
+            bool result = true;
+            table.ForEachColumn([&](const auto& column)
+            {
+                result &= BindSql(stmt, value.value.*column, ctx);
+            });
+
+            return result;
+        }
+    };
+
+    template <typename T, typename U, typename Columns, typename Values>
+    struct SqlBinder<UpdateQuery<T, U, Columns, Values>>
+    {
+        using Type = UpdateQuery<T, U, Columns, Values>;
 
         bool Bind(Statement& stmt, const Type& value, SqlBinderContext& ctx) const
         {

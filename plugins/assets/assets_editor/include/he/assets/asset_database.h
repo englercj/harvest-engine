@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include "he/assets/asset_models.h"
 #include "he/assets/types.h"
 #include "he/core/async_file.h"
 #include "he/core/delegate.h"
@@ -9,12 +10,14 @@
 #include "he/core/types.h"
 #include "he/schema/layout.h"
 #include "he/sqlite/database.h"
+#include "he/sqlite/orm_storage.h"
 
 namespace he::assets
 {
     class AssetDatabase final
     {
     public:
+        using StorageType = sqlite::Storage<decltype(AssetDbSchema)>;
         using AssetFileBuilder = schema::TypedBuilder<AssetFile>;
 
         struct LoadResult
@@ -31,7 +34,9 @@ namespace he::assets
         bool Initialize(const char* cacheRoot, const char* assetRoot);
         bool Terminate();
 
-        bool IsInitialized() const { return m_db.IsOpen(); }
+        bool IsInitialized() const { return m_storage.IsOpen(); }
+
+        StorageType& Storage() { return m_storage; }
 
         // TODO: Audit the path handling in these.
         // All of these should work with absolute paths, or asset root relative paths.
@@ -96,7 +101,7 @@ namespace he::assets
         static void HandleLoadForUpdateComplete(UpdateRequest* req, LoadResult load);
 
     private:
-        sqlite::Database m_db;
+        StorageType m_storage;
         String m_assetRoot;
         String m_resourceRoot;
     };

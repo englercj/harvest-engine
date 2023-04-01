@@ -7,6 +7,7 @@
 #include "he/core/log.h"
 #include "he/core/memory_ops.h"
 #include "he/core/string.h"
+#include "he/core/string_builder.h"
 #include "he/core/string_view.h"
 #include "he/core/types.h"
 #include "he/core/vector.h"
@@ -15,12 +16,6 @@
 
 namespace he::assets
 {
-    class AssetDatabase;
-
-    struct AssetFilePathTag {};
-    struct AssetFileSourcePathTag {};
-
-
     enum class AssetState : uint8_t
     {
         Unknown = 0,
@@ -33,40 +28,30 @@ namespace he::assets
         CompileFailed = 5,
     };
 
-    struct FileProperties final
-    {
-        String path{};
-        SystemTime writeTime{ 0 };
-        uint32_t size{ 0 };
-    };
-
     struct AssetFileModel final
     {
+        uint32_t id{ 0 };
         AssetFileUuid uuid{};
-        FileProperties file{};
-        FileProperties source{};
 
-        static bool AddOrUpdate(AssetDatabase& db, AssetFile::Reader file, const AssetFileModel& model);
-        static bool FindOne(AssetDatabase& db, uint32_t fileId, AssetFileModel& outModel);
-        static bool FindOne(AssetDatabase& db, const AssetFileUuid& fileUuid, AssetFileModel& outModel);
-        static bool FindOne(AssetDatabase& db, StringView path, AssetFileModel& outModel);
-        static bool FindOne(AssetDatabase& db, const AssetUuid& assetUuid, AssetFileModel& outModel);
-        static bool FindOne(AssetDatabase& db, StringView source, AssetFileModel& outModel, AssetFileSourcePathTag);
-        static bool FindAll(AssetDatabase& db, StringView pathPrefix, Vector<AssetFileModel>& models);
-        static bool RemoveOne(AssetDatabase& db, const AssetFileUuid& fileUuid);
-        static bool RemoveOne(AssetDatabase& db, StringView path);
-        static bool RemoveOutdated(AssetDatabase& db, uint32_t scanToken);
+        String filePath{};
+        uint32_t filePathDepth{ 0 };
+        SystemTime fileWriteTime{ 0 };
+        uint32_t fileSize{ 0 };
 
-        static bool UpdateScanToken(AssetDatabase& db, const AssetFileUuid& fileUuid, uint32_t scanToken);
-        static bool UpdateScanToken(AssetDatabase& db, StringView path, uint32_t scanToken);
+        String sourcePath{};
+        SystemTime sourceWriteTime{ 0 };
+        uint32_t sourceSize{ 0 };
+
+        uint32_t scanToken{ 0 };
     };
 
     struct AssetModel final
     {
-        AssetUuid uuid;
-        uint32_t fileId;
-        String type;
-        String name;
+        uint32_t id{ 0 };
+        AssetUuid uuid{};
+        uint32_t assetFileId{ 0 };
+        String assetTypeName{};
+        String name{};
         AssetState state{ AssetState::Unknown };
         uint32_t dataHash{ 0 };
         uint32_t importDataHash{ 0 };
@@ -74,83 +59,135 @@ namespace he::assets
         uint32_t importerVersion{ 0 };
         uint32_t compilerId{ 0 };
         uint32_t compilerVersion{ 0 };
-
-        static bool AddOrUpdate(AssetDatabase& db, const AssetModel& model);
-        static bool AddOrUpdate(AssetDatabase& db, const AssetFileUuid& fileUuid, Asset::Reader asset);
-        static bool FindOne(AssetDatabase& db, const AssetUuid& assetUuid, AssetModel& model);
-        static bool FindAll(AssetDatabase& db, const AssetFileUuid& fileUuid, Vector<AssetModel>& models);
-        static bool FindAll(AssetDatabase& db, AssetState state, Vector<AssetModel>& models);
-        static bool FindAll(AssetDatabase& db, StringView search, Vector<AssetModel>& models);
-        static bool FindAll(AssetDatabase& db, StringView pathPrefix, Vector<AssetModel>& models, AssetFilePathTag);
-        static bool RemoveOne(AssetDatabase& db, const AssetUuid& assetUuid);
-
-        static bool AddTag(AssetDatabase& db, const AssetUuid& assetUuid, StringView tag);
-        static bool RemoveTag(AssetDatabase& db, const AssetUuid& assetUuid, StringView tag);
-        static bool RemoveAllTags(AssetDatabase& db, const AssetUuid& assetUuid);
-
-        static bool UpdateState(AssetDatabase& db, const AssetUuid& assetUuid, AssetState state);
     };
 
     struct ConfigModel final
     {
-        String key;
-        Vector<uint8_t> value;
-
-        template <typename T> requires(IsTriviallyCopyable<T>)
-        void SetValue(const T& v)
-        {
-            value.Resize(sizeof(T), DefaultInit);
-            MemCopy(value.Data(), &v, sizeof(T));
-        }
-
-        static bool AddOrUpdate(AssetDatabase& db, const ConfigModel& model);
-        static bool FindOne(AssetDatabase& db, StringView key, ConfigModel& outModel);
+        uint32_t id{ 0 };
+        String key{};
+        Vector<uint8_t> value{};
     };
 
-    // TODO
+    struct TagModel final
+    {
+        uint32_t id{ 0 };
+        String name{};
+    };
+
+    struct AssetTagModel final
+    {
+        uint32_t id{ 0 };
+        uint32_t assetId{ 0 };
+        uint32_t tagId{ 0 };
+    };
+
     struct AssetReferenceModel final
     {
-        enum class Kind : uint8_t
-        {
-            Asset = 0,
-            Resource = 1,
-            File = 2,
-        };
-
-        Kind kind{ Kind::Asset };
+        uint32_t id{ 0 };
 
         /// Source asset the reference is from.
-        AssetUuid fromAssetUuid{};
+        uint32_t fromAssetId{ 0 };
 
         /// Destination asset the reference is to.
         /// Only valid when `kind` is `Asset` or `Resource`.
-        AssetUuid toAssetUuid{};
-
-        /// Destination resource the reference is to.
-        /// Only valid when `kind` is `Resource`.
-        ResourceId resourceId{};
-
-        /// Relative path to the file of this reference.
-        /// Only valid when `kind` is `File`.
-        String filePath{};
-
-        static bool Add(AssetDatabase& db, const AssetReferenceModel& model);
-        static bool FindAllFrom(AssetDatabase& db, const AssetUuid& fromAssetUuid);
-        static bool FindAllTo(AssetDatabase& db, const AssetUuid& toAssetUuid);
-        static bool RemoveAllFrom(AssetDatabase& db, const AssetUuid& fromAssetUuid);
+        uint32_t toAssetId{ 0 };
     };
+
+    constexpr auto AssetDbSchema = sqlite::DefineSchema(
+        sqlite::Table("asset_file",
+            sqlite::Column("id", &AssetFileModel::id, sqlite::PrimaryKey()),
+            sqlite::Column("uuid", &AssetFileModel::uuid, sqlite::Unique()),
+            sqlite::Column("file_path", &AssetFileModel::filePath, sqlite::Unique()),
+            sqlite::Column("file_path_depth", &AssetFileModel::filePathDepth),
+            sqlite::Column("file_write_time", &AssetFileModel::fileWriteTime),
+            sqlite::Column("file_size", &AssetFileModel::fileSize),
+            sqlite::Column("source_path", &AssetFileModel::sourcePath),
+            sqlite::Column("source_write_time", &AssetFileModel::sourceWriteTime),
+            sqlite::Column("source_size", &AssetFileModel::sourceSize),
+            sqlite::Column("scan_token", &AssetFileModel::scanToken)),
+        sqlite::Table("asset",
+            sqlite::Column("id", &AssetModel::id, sqlite::PrimaryKey()),
+            sqlite::Column("uuid", &AssetModel::uuid, sqlite::Unique()),
+            sqlite::Column("asset_file_id", &AssetModel::assetFileId),
+            sqlite::Column("asset_type_name", &AssetModel::assetTypeName),
+            sqlite::Column("name", &AssetModel::name),
+            sqlite::Column("state", &AssetModel::state),
+            sqlite::Column("data_hash", &AssetModel::dataHash),
+            sqlite::Column("import_data_hash", &AssetModel::importDataHash),
+            sqlite::Column("importer_id", &AssetModel::importerId),
+            sqlite::Column("importer_version", &AssetModel::importerVersion),
+            sqlite::Column("compiler_id", &AssetModel::compilerId),
+            sqlite::Column("compiler_version", &AssetModel::compilerVersion),
+            sqlite::ForeignKey(&AssetModel::assetFileId).References(&AssetFileModel::id)),
+        sqlite::Table("config",
+            sqlite::Column("id", &ConfigModel::id, sqlite::PrimaryKey()),
+            sqlite::Column("key", &ConfigModel::key, sqlite::Unique()),
+            sqlite::Column("value", &ConfigModel::value)),
+        sqlite::Table("tag",
+            sqlite::Column("id", &TagModel::id, sqlite::PrimaryKey()),
+            sqlite::Column("name", &TagModel::name, sqlite::Unique())),
+        sqlite::Table("asset_tag",
+            sqlite::Column("id", &AssetTagModel::id, sqlite::PrimaryKey()),
+            sqlite::Column("asset_id", &AssetTagModel::assetId),
+            sqlite::Column("tag_id", &AssetTagModel::tagId),
+            sqlite::ForeignKey(&AssetTagModel::assetId).References(&AssetModel::id),
+            sqlite::ForeignKey(&AssetTagModel::tagId).References(&TagModel::id)),
+        sqlite::Index("idx_asset_tag_fk_asset_id", &AssetTagModel::assetId),
+        sqlite::Index("idx_asset_tag_fk_tag_id", &AssetTagModel::tagId),
+        sqlite::Table("asset_reference",
+            sqlite::Column("id", &AssetReferenceModel::id, sqlite::PrimaryKey()),
+            sqlite::Column("from_asset_id", &AssetReferenceModel::fromAssetId),
+            sqlite::Column("to_asset_id", &AssetReferenceModel::toAssetId),
+            sqlite::ForeignKey(&AssetReferenceModel::fromAssetId).References(&AssetModel::id),
+            sqlite::ForeignKey(&AssetReferenceModel::toAssetId).References(&AssetModel::id)),
+        sqlite::Index("idx_asset_reference_fk_from_asset_id", &AssetReferenceModel::fromAssetId),
+        sqlite::Index("idx_asset_reference_fk_to_asset_id", &AssetReferenceModel::toAssetId),
+        sqlite::RawSql(R"(
+            -- Full-Text searching of the asset table.
+            CREATE VIRTUAL TABLE fts_asset USING fts5(name, content='asset', content_rowid='id');
+
+            CREATE TRIGGER asset_ai AFTER INSERT ON asset BEGIN
+                INSERT INTO fts_asset(rowid, name) VALUES (new.id, new.name);
+            END;
+
+            CREATE TRIGGER asset_ad AFTER DELETE ON asset BEGIN
+                INSERT INTO fts_asset(fts_asset, rowid, name) VALUES ('delete', old.id, old.name);
+            END;
+
+            CREATE TRIGGER asset_au AFTER UPDATE ON asset BEGIN
+                INSERT INTO fts_asset(fts_asset, rowid, name) VALUES ('delete', old.id, old.name);
+                INSERT INTO fts_asset(rowid, name) VALUES (new.id, new.name);
+            END;
+
+            -- Full-Text searching of the tag table.
+            CREATE VIRTUAL TABLE fts_tag USING fts5(name, content='tag', content_rowid='id');
+
+            CREATE TRIGGER tag_ai AFTER INSERT ON tag BEGIN
+                INSERT INTO fts_tag(rowid, name) VALUES (new.id, new.name);
+            END;
+
+            CREATE TRIGGER tag_ad AFTER DELETE ON tag BEGIN
+                INSERT INTO fts_tag(fts_tag, rowid, name) VALUES ('delete', old.id, old.name);
+            END;
+
+            CREATE TRIGGER tag_au AFTER UPDATE ON tag BEGIN
+                INSERT INTO fts_tag(fts_tag, rowid, name) VALUES ('delete', old.id, old.name);
+                INSERT INTO fts_tag(rowid, name) VALUES (new.id, new.name);
+            END;
+        )"));
 }
 
 namespace he::sqlite
 {
+    template <typename T> struct SqlDataTypeTraits;
+
     // AssetFileUuid
     template <>
-    struct sqlite::DataTypeTraits<assets::AssetFileUuid>
+    struct sqlite::SqlDataTypeTraits<assets::AssetFileUuid>
     {
-        static constexpr StringView DDLType = "BLOB";
-        static constexpr uint16_t TypeLength = 16;
-        static constexpr bool IsNullable = false;
-        static bool Bind(sqlite::Statement& stmt, int32_t index, const assets::AssetFileUuid& value) { return stmt.Bind(index, value.val.m_bytes); }
-        static void Read(const sqlite::Column& column, assets::AssetFileUuid& value) { column.ReadBlob(value.val.m_bytes); }
+        static constexpr StringView Sql = "BLOB(16)";
+        static bool Bind(Statement& stmt, int32_t index, const assets::AssetFileUuid& value) { stmt.Bind(index, value.val.m_bytes); }
+        static void Read(const ColumnReader& column, assets::AssetFileUuid& value) { column.ReadBlob(value.val.m_bytes); }
+        static void Write(StringBuilder& sql, const assets::AssetFileUuid& value) { sql.Write("X'{:02x}'", FmtJoin(value.val.m_bytes, value.val.m_bytes + sizeof(value.val.m_bytes), "")); }
     };
 }

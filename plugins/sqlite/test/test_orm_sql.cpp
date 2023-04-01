@@ -196,6 +196,28 @@ HE_TEST(sqlite, orm_sql, ToSql)
     // ModExpr
     TestToSql(ctx, Col(&OrmTestParent::id) % 15, "(id) % (15)");
 
+    // SelectObjectQuery
+    TestToSql(ctx, Select<OrmTestParent>(), "SELECT * FROM parent");
+
+    // SelectQuery
+    TestToSql(ctx, Select(&OrmTestParent::id, &OrmTestParent::filePath), "SELECT id, file_path FROM parent");
+
+    // DeleteQuery
+    TestToSql(ctx, Delete<OrmTestParent>(), "DELETE FROM parent");
+    TestToSql(ctx, Delete<OrmTestParent>(Where(Col(&OrmTestParent::id) == 15)), "DELETE FROM parent WHERE id = 15");
+
+    // InsertObjectQuery
+    TestToSql(ctx, Insert(OrmTestParent{}), "INSERT INTO parent (id, file_path, file_path_depth, file_write_time, file_size, source_path, source_write_time, source_size, scan_token) VALUES (0, '', 0, 0, 0, '', 0, 0, 0, 0)");
+
+    // InsertQuery
+    TestToSql(ctx, Insert(&OrmTestParent::id, &OrmTestParent::filePath).Values(10, "hello"), "INSERT INTO parent (id, file_path) VALUES (10, 'hello')");
+
+    // UpdateObjectQuery
+    TestToSql(ctx, Update(OrmTestParent{}), "UPDATE parent SET id = 0, file_path = '', file_path_depth = 0, file_write_time = 0, file_size = 0, source_path = '', source_write_time = 0, source_size = 0, scan_token = 0");
+
+    // UpdateQuery
+    TestToSql(ctx, Update(&OrmTestParent::id, &OrmTestParent::filePath).Set(10, "hello"), "UPDATE parent SET id = 10, file_path = 'hello'");
+
     // Table
     TestToSql(ctx, Table("table", Column("id", &OrmTestParent::id, PrimaryKey())), R"(CREATE TABLE table (
     id INTEGER PRIMARY KEY

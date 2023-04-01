@@ -602,6 +602,7 @@ namespace he::sqlite
     template <typename T> inline constexpr bool IsColumnRef = IsSpecialization<T, ColumnRef>;
     template <typename T> inline constexpr bool IsCondition = IsBaseOf<_ConditionBase, T>;
     template <typename T> inline constexpr bool IsOperator = IsSpecialization<_OperatorBase, T>;
+    template <typename T> inline constexpr bool IsLimitExpr = IsSpecialization<LimitExpr, T>;
 
     template <typename T>
     concept QueryCondition = IsSpecialization<T, WhereExpr>
@@ -688,6 +689,35 @@ namespace he::sqlite
 
     struct _QueryBase {};
 
+    template <typename T, typename... Args>
+    struct SelectObjectQuery : _QueryBase
+    {
+        using ObjectType = T;
+        using ArgsType = Tuple<Args...>;
+
+        ArgsType args;
+    };
+
+    template <typename T, typename Columns, typename Args>
+    struct SelectQuery : _QueryBase
+    {
+        using ObjectType = T;
+        using ColumnsType = Columns;
+        using ArgsType = Args;
+
+        ColumnsType columns;
+        ArgsType args;
+    };
+
+    template <typename T, typename U>
+    struct DeleteQuery : _QueryBase
+    {
+        using ObjectType = T;
+        using WhereType = WhereExpr<U>;
+
+        WhereType where;
+    };
+
     template <typename T>
     struct InsertObjectQuery : _QueryBase
     {
@@ -703,7 +733,9 @@ namespace he::sqlite
         using ColumnsType = Columns;
         using ValuesType = Values;
 
-        static_assert(!IsSpecialization<ValuesType, Tuple> || ColumnsType::Size == ValuesType::Size, "The number of columns and values must be the same.");
+        static_assert(IsSame<Decay<ValuesType>, ObjectType> || ColumnsType::Size == ValuesType::Size, "The number of columns and values must be the same.");
+
+        InsertQuery
 
         ColumnsTypes columns;
         ValuesType values;
@@ -717,7 +749,7 @@ namespace he::sqlite
 
         constexpr InsertQuery<ObjectType, ColumnsType, const ObjectType&> Values(const ObjectType& object)
         {
-            return { Move(this->columns), object } };
+            return { Move(this->columns), object };
         }
 
         template <typename... Values>
@@ -729,30 +761,79 @@ namespace he::sqlite
         ColumnsType columns;
     };
 
-    // struct SelectQuery : _QueryBase
-    // {
+    template <typename T>
+    struct UpdateObjectQuery : _QueryBase
+    {
+        using ObjectType = T;
 
-    // };
+        const ObjectType& value;
+    };
 
-    // struct DeleteQuery : _QueryBase
-    // {
+    template <typename T, typename U, typename Columns, typename Values>
+    struct UpdateQuery : _QueryBase
+    {
+        using ObjectType = T;
+        using ColumnsType = Columns;
+        using ValuesType = Values;
 
-    // };
+        static_assert(IsSame<Decay<ValuesType>, ObjectType> || ColumnsType::Size == ValuesType::Size, "The number of columns and values must be the same.");
+        // TODO: Where clause
 
-    // struct UpdateQuery : _QueryBase
-    // {
+        ColumnsTypes columns;
+        ValuesType values;
+    };
 
-    // };
+    template <typename... Columns>
+    struct UpdateQueryHelper
+    {
+        using ObjectType = ColumnsObjectType<Columns...>;
+        using ColumnsType = Tuple<Columns...>;
+
+        constexpr UpdateQuery<ObjectType, ColumnsType, const ObjectType&> Set(const ObjectType& object)
+        {
+            return { Move(this->columns), object };
+        }
+
+        template <typename... Values>
+        constexpr UpdateQuery<ObjectType, ColumnsType, Tuple<Values...>> Set(Values&&... values)
+        {
+            return { Move(this->columns), MakeTuple(Forward<Values>(values)...) };
+        }
+
+        ColumnsType columns;
+    };
+
+    struct RawSqlQuery : _QueryBase
+    {
+        StringView query;
+    };
 
     template <typename T> inline constexpr bool IsQuery = IsBaseOf<_QueryBase, T>;
 
     template <typename T> concept Query = IsQuery<T>;
+
+    template <typename T, QueryCondition... Args>
+    constexpr SelectObjectQuery<T, Args...> Select(Args&&... args) { return { MakeTuple(Forward<Args>(args)...) }; }
+
+    template <typename... Columns, QueryCondition... Args, typename T = ColumnsObjectType<Columns...>> requires((IsMemberObjectPointer<Columns> && ...))
+    constexpr SelectQuery<T, Tuple<Columns...>, Tuple<Args...>> Select(Columns... columns, Args&&... args) { return { MakeTuple(Forward<Columns>(columns)...), MakeTuple(Forward<Args>(args)...) }; }
+
+    template <typename T, typename U>
+    constexpr DeleteQuery<T, U> Delete(Where<U>&& where) { return { Move(where) }; }
 
     template <typename T>
     constexpr InsertObjectQuery<T> Insert(const T& obj) { return { obj }; }
 
     template <typename... Columns> requires((IsMemberObjectPointer<Columns> && ...))
     constexpr InsertQueryHelper<Columns...> Insert(Columns... columns) { return { MakeTuple(Forward<Columns>(columns)...) }; }
+
+    template <typename T>
+    constexpr UpdateObjectQuery<T> Update(const T& obj) { return { obj }; }
+
+    template <typename... Columns> requires((IsMemberObjectPointer<Columns> && ...))
+    constexpr UpdateQueryHelper<Columns...> Update(Columns... columns) { return { MakeTuple(Forward<Columns>(columns)...) }; }
+
+    constexpr RawSqlQuery RawSql(StringView query) { return { query }; }
 
     // --------------------------------------------------------------------------------------------
     // Table Definition
@@ -861,7 +942,7 @@ namespace he::sqlite
     };
 
     template <typename T>
-    concept SchemaElement = IsPragmaDef<T>::Value || IsIndexDef<T>::Value || IsTableDef<T>::Value;
+    concept SchemaElement = IsPragmaDef<T>::Value || IsIndexDef<T>::Value || IsTableDef<T>::Value || IsSame<T, RawSqlQuery>;
 
     template <SchemaElement... Args>
     constexpr SchemaDef<Args...> DefineSchema(Args... args)

@@ -21,20 +21,19 @@ namespace he::sqlite
         static_assert(IsSpecialization<S, SchemaDef>, "Storage expects a SchemaDef object.");
 
     public:
-        explicit Storage(StringView path, SchemaType&& schema)
+        explicit Storage(SchemaType&& schema)
             : m_db()
-            , m_path(path)
             , m_schema(Move(schema))
         {}
 
+        // Storage state getters
     public:
-        bool Open() { return m_db.Open(m_path.Data()); }
+        bool Open(const char* path) { return m_db.Open(path); }
         bool Close() { return m_db.Close(); }
 
         bool IsOpen() const { return m_db.IsOpen(); }
 
-        const String& Path() const { return m_path; }
-
+        // Table functions
     public:
         template <typename T>
         bool CreateTable();
@@ -44,6 +43,15 @@ namespace he::sqlite
 
         bool Sync();
 
+        // Query functions
+    public:
+        template <typename T>
+        bool Query(const T& query);
+
+        template <typename T, typename F>
+        bool Query(const T& query, F&& rowIterator);
+
+        // Model functions
     public:
         template <typename T>
         bool Create(const T& obj);
@@ -51,27 +59,21 @@ namespace he::sqlite
         template <typename T, QueryCondition... U>
         bool Destroy(U&&... query);
 
-        template <typename T, typename U>
-        bool FindAll(Vector<T>& out, const WhereExpr<U>& where = {});
+        template <typename T, QueryCondition... U>
+        bool FindAll(Vector<T>& out, U&&... conditions);
 
-        template <typename T, typename U>
-        bool FindOne(T& out, const WhereExpr<U>& where = {});
+        template <typename T, QueryCondition... U>
+        bool FindOne(T& out, U&&... conditions);
 
-        template <typename T, typename U>
-        bool FindOrCreate(T& out, const WhereExpr<U>& where = {});
+        template <typename T>
+        bool Update(const T& obj);
 
-        template <typename T, typename U>
-        bool Update(const T& obj, const WhereExpr<U>& where = {});
-
-        template <typename T, typename U>
-        bool Upsert(const T& obj, const WhereExpr<U>& where = {});
-
-        template <Query T, QueryCondition... U>
-        bool Query(const T& query, U&&... conditions);
+    private:
+        template <typename T>
+        bool PrepareQuery(Statement& stmt, const T& query);
 
     private:
         Database m_db;
-        String m_path;
         SchemaType m_schema;
     };
 
@@ -107,117 +109,97 @@ namespace he::sqlite
 
     template <typename S>
     template <typename T>
-    inline bool Storage<S>::Create(const T& obj)
+    inline bool Storage<S>::Query(const T& query)
     {
-        const auto query = Insert(obj);
-
-        StringBuilder sql;
-        ToSql(sql, query);
-
         Statement stmt;
-        if (!HE_VERIFY(stmt.Prepare(m_db, sql.Data())))
-            return false;
-
-        if (!HE_VERIFY(BindSql(stmt, query)))
+        if (!PrepareQuery(stmt, query))
             return false;
 
         return stmt.Step() != StepResult::Error;
     }
 
     template <typename S>
-    template <typename T, QueryCondition... U>
-    inline bool Storage<S>::Destroy(U&&... query)
+    template <typename T, typename F>
+    inline bool Storage<S>::Query(const T& query, F&& rowIterator)
     {
-        const auto& table = m_schema.TableFor<T>();
-        StringBuilder sql;
-        sql.Write("DELETE FROM {}", table.Name());
-        if constexpr (sizeof...(U) > 0)
-            ToSql(sql, query);
-        return m_db.Execute(sql.Data());
+        Statement stmt;
+        if (!PrepareQuery(stmt, query))
+            return false;
+
+        return stmt.EachRow(rowIterator);
     }
 
     template <typename S>
-    template <typename T, typename U>
-    inline bool Storage<S>::FindAll(Vector<T>& out, const WhereExpr<U>& where)
+    template <typename T>
+    inline bool Storage<S>::Create(const T& obj)
     {
-        const auto& table = m_schema.TableFor<T>();
-        StringBuilder sql;
-        sql.Write("SELECT * FROM {}", table.Name());
-        if constexpr (sizeof...(U) > 0)
-            ToSql(sql, query);
+        const auto query = Insert(obj);
+        return Query(query);
+    }
 
-        Statement stmt;
-        if (!HE_VERIFY(stmt.Prepare(m_db, sql.Data())))
-            return false;
+    template <typename S>
+    template <typename T, QueryCondition... U>
+    inline bool Storage<S>::Destroy(U&&... query)
+    {
+        const auto query = Delete<T>(Forward<U>(query)...);
+        return Query(query);
+    }
 
-        if (!HE_VERIFY(BindSql(stmt, query)))
-            return false;
-
-        stmt.EachRow([&](Statement& stmt)
+    template <typename S>
+    template <typename T, QueryCondition... U>
+    inline bool Storage<S>::FindAll(Vector<T>& out, U&&... conditions)
+    {
+        const auto query = Select<T>(conditions);
+        return Query(query, [&](Statement& stmt)
         {
             int i = 0;
             T& obj = out.EmplaceBack();
             table.ForEachColumn([&](const auto& col)
             {
-                const ColumnReader reader = stmt.GetColumn(i);
+                const ColumnReader reader = stmt.GetColumn(i++);
                 ReadSql(reader, obj.*(col.member));
             });
         });
-
-        return true;
     }
 
     template <typename S>
-    template <typename T, typename U>
-    inline bool Storage<S>::FindOne(T& out, const WhereExpr<U>& where)
+    template <typename T, QueryCondition... U>
+    inline bool Storage<S>::FindOne(T& out, U&&... conditions)
     {
-        const auto& table = m_schema.TableFor<T>();
-        StringBuilder sql;
-        sql.Write("SELECT * FROM {}", table.Name());
-        if constexpr (sizeof...(U) > 0)
-            ToSql(sql, query);
-        sql.Write(" LIMIT 1");
+        const auto query = Select<T>(conditions, Limit(1));
+        return Query(query, [&](Statement& stmt)
+        {
+            int i = 0;
+            table.ForEachColumn([&](const auto& col)
+            {
+                const ColumnReader reader = stmt.GetColumn(i++);
+                ReadSql(reader, out.*(col.member));
+            });
+        });
+    }
 
-        Statement stmt;
+    template <typename S>
+    template <typename T>
+    inline bool Storage<S>::Update(const T& obj)
+    {
+        const auto query = Update(obj);
+        return Query(query);
+    }
+
+    template <typename S>
+    template <typename T>
+    inline bool Storage<S>::PrepareQuery(Statement& stmt, const T& query)
+    {
+        SqlWriterContext ctx(m_schema);
+        StringBuilder sql;
+        ToSql(sql, query, ctx);
+
         if (!HE_VERIFY(stmt.Prepare(m_db, sql.Data())))
             return false;
 
         if (!HE_VERIFY(BindSql(stmt, query)))
             return false;
 
-        StepResult result = stmt.Step();
-        if (result == StepResult::Row)
-        {
-            int i = 0;
-            table.ForEachColumn([&](const auto& col)
-            {
-                const ColumnReader reader = stmt.GetColumn(i);
-                ReadSql(reader, out.*(col.member));
-            });
-            result = stmt.Step();
-        }
-
-        return HE_VERIFY(result == StepResult::Done);
-    }
-
-    template <typename S>
-    template <typename T, typename U>
-    inline bool Storage<S>::FindOrCreate(T& out, const WhereExpr<U>& where)
-    {
-
-    }
-
-    template <typename S>
-    template <typename T, typename U>
-    inline bool Storage<S>::Update(const T& obj, const WhereExpr<U>& where)
-    {
-
-    }
-
-    template <typename S>
-    template <typename T, typename U>
-    inline bool Storage<S>::Upsert(const T& obj, const WhereExpr<U>& where)
-    {
-
+        return true;
     }
 }

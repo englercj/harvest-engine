@@ -41,10 +41,10 @@ namespace he::assets
         // Open the sqlite database and migrate the schema
         String dbPath = cacheRoot;
         ConcatPath(dbPath, "asset_cache.db");
-        if (!m_db.Open(dbPath.Data()))
+        if (!m_storage.Open(dbPath.Data()))
             return false;
 
-        if (!m_db.MigrateSchema(AssetDatabase_Migrations))
+        if (!m_storage.Sync())
             return false;
 
         return true;
@@ -52,7 +52,7 @@ namespace he::assets
 
     bool AssetDatabase::Terminate()
     {
-        return m_db.Close();
+        return m_storage.Close();
     }
 
     bool AssetDatabase::IsFileUpToDate(const char* path)

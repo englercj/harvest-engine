@@ -359,10 +359,18 @@ namespace he
     }
 
     template <typename T, typename U> requires(IsSpecialization<Decay<U>, Tuple>)
-    constexpr decltype(auto) TupleGet(U&& t)
+    [[nodiscard]] constexpr decltype(auto) TupleGet(U&& t)
     {
         constexpr uint32_t Index = TypeListIndex<T, typename Decay<U>::ElementList>;
+        static_assert(Index < U::Size, "The type T must exist in the tuple exactly once.");
         return Forward<U>(t)[_TupleTag<Index>{}];
+    }
+
+    template <typename T, typename U> requires(IsSpecialization<Decay<U>, Tuple>)
+    [[nodiscard]] constexpr bool TupleHas(U&& t)
+    {
+        constexpr uint32_t Index = TypeListIndex<T, typename Decay<U>::ElementList>;
+        return Index < U::Size;
     }
 
     template <typename... T>

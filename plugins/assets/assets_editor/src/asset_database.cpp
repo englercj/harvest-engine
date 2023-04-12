@@ -19,12 +19,27 @@
 #include "he/core/result.h"
 #include "he/core/result_fmt.h"
 #include "he/core/scope_guard.h"
+#include "he/core/stopwatch.h"
 #include "he/core/string.h"
 #include "he/core/string_fmt.h"
 #include "he/schema/toml.h"
 
+using namespace he::sqlite;
+
 namespace he::assets
 {
+    static const char AssetDbStartupSql[] = R"(
+        PRAGMA automatic_index = true;
+        PRAGMA encoding = 'UTF-8';
+        PRAGMA foreign_keys = true;
+        PRAGMA journal_mode = WAL;
+        PRAGMA page_size = 4096;
+        PRAGMA recursive_triggers = true;
+        PRAGMA synchronous = normal;
+        PRAGMA temp_store = memory;
+        VACUUM;
+    )";
+
     bool AssetDatabase::Initialize(const char* cacheRoot, const char* assetRoot)
     {
         // Asset root needs to be an absolute path for us to utilize it correctly
@@ -38,14 +53,28 @@ namespace he::assets
         if (!HE_VERIFY(Directory::Create(m_resourceRoot.Data(), true), HE_KV(resource_root, m_resourceRoot)))
             return false;
 
+        HE_LOG_INFO(he_assets,
+            HE_MSG("Initializing asset database"),
+            HE_KV(cache_root, cacheRoot),
+            HE_KV(asset_root, assetRoot));
+
+        Stopwatch timer;
+
         // Open the sqlite database and migrate the schema
         String dbPath = cacheRoot;
         ConcatPath(dbPath, "asset_cache.db");
         if (!m_storage.Open(dbPath.Data()))
             return false;
 
+        if (!m_storage.Db().Execute(AssetDbStartupSql))
+            return false;
+
         if (!m_storage.Sync())
             return false;
+
+        HE_LOG_INFO(he_assets,
+            HE_MSG("Asset database initialization complete"),
+            HE_KV(time, timer.Elapsed()));
 
         return true;
     }
@@ -62,7 +91,7 @@ namespace he::assets
             return false;
 
         AssetFileModel model;
-        if (!AssetFileModel::FindOne(*this, path, model))
+        if (!m_storage.FindOne(model, Where(Col(&AssetFileModel::filePath) == path)))
             return false;
 
         // Check the asset file's attributes to see if it has changed since last time we've scanned it
@@ -78,32 +107,32 @@ namespace he::assets
         }
 
         const uint32_t fileSize = static_cast<uint32_t>(attributes.size);
-        if (model.file.size != fileSize)
+        if (model.fileSize != fileSize)
         {
             HE_LOG_DEBUG(he_assets,
                 HE_MSG("Asset file size has changed, update required."),
                 HE_KV(path, path),
-                HE_KV(last_file_size, model.file.size),
+                HE_KV(last_file_size, model.fileSize),
                 HE_KV(file_size, fileSize));
             return false;
         }
 
-        if (model.file.writeTime != attributes.writeTime)
+        if (model.fileWriteTime != attributes.writeTime)
         {
             HE_LOG_DEBUG(he_assets,
                 HE_MSG("Asset file write time has changed, update required."),
                 HE_KV(path, path),
-                HE_KV(last_write_time, model.file.writeTime),
+                HE_KV(last_write_time, model.fileWriteTime),
                 HE_KV(write_time, attributes.writeTime));
             return false;
         }
 
         // Check the asset file's source to see if it has changed since last time we've scanned it
         // If this is true, we probably want to re-run the importer to ensure import resources exist.
-        if (!model.source.path.IsEmpty())
+        if (!model.sourcePath.IsEmpty())
         {
             // TODO: Modify for when we support sparse checkout of source files.
-            res = File::GetAttributes(model.source.path.Data(), attributes);
+            res = File::GetAttributes(model.sourcePath.Data(), attributes);
             if (!res)
             {
                 HE_LOG_ERROR(he_assets,
@@ -114,22 +143,22 @@ namespace he::assets
             }
 
             const uint32_t sourceFileSize = static_cast<uint32_t>(attributes.size);
-            if (model.source.size != sourceFileSize)
+            if (model.sourceSize != sourceFileSize)
             {
                 HE_LOG_DEBUG(he_assets,
                     HE_MSG("Source file size has changed, update required."),
                     HE_KV(path, path),
-                    HE_KV(last_file_size, model.source.size),
+                    HE_KV(last_file_size, model.sourceSize),
                     HE_KV(file_size, sourceFileSize));
                 return false;
             }
 
-            if (model.source.writeTime != attributes.writeTime)
+            if (model.sourceWriteTime != attributes.writeTime)
             {
                 HE_LOG_DEBUG(he_assets,
                     HE_MSG("Source file write time has changed, update required."),
                     HE_KV(path, path),
-                    HE_KV(last_write_time, model.source.writeTime),
+                    HE_KV(last_write_time, model.sourceWriteTime),
                     HE_KV(write_time, attributes.writeTime));
                 return false;
             }
@@ -238,13 +267,13 @@ namespace he::assets
         }
 
         AssetFileModel model;
-        if (!AssetFileModel::FindOne(*this, fileUuid, model))
+        if (!m_storage.FindOne(model, Where(Col(&AssetFileModel::uuid) == fileUuid)))
         {
             callback({ Result::InvalidParameter });
             return false;
         }
 
-        return LoadAssetFileAsync(model.file.path.Data(), Move(callback));
+        return LoadAssetFileAsync(model.filePath.Data(), Move(callback));
     }
 
     AssetDatabase::LoadResult AssetDatabase::LoadAssetFile(const char* path)

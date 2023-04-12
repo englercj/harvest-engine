@@ -95,8 +95,6 @@ namespace he
         noexcept(noexcept(_Invoker<T, Arg1>::Call(static_cast<T&&>(obj), static_cast<Arg1&&>(arg1), static_cast<Args&&>(args)...)))
         -> decltype(_Invoker<T, Arg1>::Call(static_cast<T&&>(obj), static_cast<Arg1&&>(arg1), static_cast<Args&&>(args)...))
     {
-        //return _Invoker<T, Arg1>::Call(static_cast<T&&>(obj), static_cast<Arg1&&>(arg1), static_cast<Args&&>(args)...);
-
         if constexpr (IsBaseOf<_Invoke_Functor, _Invoker<T, Arg1>>)
         {
             return static_cast<T&&>(obj)(static_cast<Arg1&&>(arg1), static_cast<Args&&>(args)...);

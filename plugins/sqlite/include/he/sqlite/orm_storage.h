@@ -10,6 +10,7 @@
 #include "he/sqlite/orm.h"
 #include "he/sqlite/orm_sql.h"
 #include "he/sqlite/statement.h"
+#include "he/sqlite/transaction.h"
 
 namespace he::sqlite
 {
@@ -32,6 +33,9 @@ namespace he::sqlite
         bool Close() { return m_db.Close(); }
 
         bool IsOpen() const { return m_db.IsOpen(); }
+
+        Database& Db() { return m_db; }
+        sqlite3* Handle() const { return m_db.Handle(); }
 
         // Table functions
     public:
@@ -194,7 +198,7 @@ namespace he::sqlite
         StringBuilder sql;
         ToSql(sql, query, ctx);
 
-        if (!HE_VERIFY(stmt.Prepare(m_db, sql.Data())))
+        if (!HE_VERIFY(stmt.Prepare(m_db.Handle(), sql.Data())))
             return false;
 
         if (!HE_VERIFY(BindSql(stmt, query)))

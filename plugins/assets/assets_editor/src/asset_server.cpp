@@ -6,6 +6,7 @@
 #include "he/assets/asset_type_registry.h"
 #include "he/assets/types_fmt.h"
 #include "he/assets/types.h"
+#include "he/assets/types_fmt.h"
 #include "he/core/hash_table.h"
 #include "he/core/log.h"
 #include "he/core/module_registry.h"
@@ -14,6 +15,10 @@
 #include "he/core/span.h"
 #include "he/core/string.h"
 #include "he/core/string_fmt.h"
+#include "he/sqlite/orm.h"
+#include "he/sqlite/transaction.h"
+
+using namespace he::sqlite;
 
 namespace he::assets
 {
@@ -50,10 +55,10 @@ namespace he::assets
             HE_KV(has_import_settings, data->ctx.settings.IsValid()));
 
         AssetFileModel model;
-        if (AssetFileModel::FindOne(m_db, data->path, model, AssetFileSourcePathTag{}))
+        if (m_db.Storage().FindOne(model, Where(Col(&AssetFileModel::sourcePath) == data->path)))
         {
             AssetDatabase::LoadDelegate cb = AssetDatabase::LoadDelegate::Make<&AssetServer::Import_OnAssetFileLoad>(data);
-            m_db.LoadAssetFileAsync(model.file.path.Data(), cb);
+            m_db.LoadAssetFileAsync(model.filePath.Data(), cb);
         }
         else
         {
@@ -65,27 +70,27 @@ namespace he::assets
     {
         Vector<AssetModel> pending;
 
-        if (!AssetModel::FindAll(m_db, AssetState::NeedsImport, pending))
+        if (!m_db.Storage().FindAll(pending, Where(Col(&AssetModel::state) == AssetState::NeedsImport)))
         {
             HE_LOG_ERROR(he_editor, HE_MSG("Failed to query assets needing import."));
         }
 
-        if (!AssetModel::FindAll(m_db, AssetState::ImportFailed, pending))
+        if (!m_db.Storage().FindAll(pending, Where(Col(&AssetModel::state) == AssetState::ImportFailed)))
         {
-            HE_LOG_ERROR(he_editor, HE_MSG("Failed to query assets needing import."));
+            HE_LOG_ERROR(he_editor, HE_MSG("Failed to query assets where importing had previously failed."));
         }
 
         HashSet<uint32_t> fileIds;
 
         for (const AssetModel& asset : pending)
         {
-            const auto result = fileIds.Insert(asset.fileId);
+            const auto result = fileIds.Insert(asset.assetFileId);
             if (result.inserted)
             {
                 AssetFileModel assetFile;
-                if (AssetFileModel::FindOne(m_db, asset.fileId, assetFile))
+                if (m_db.Storage().FindOne(assetFile, Where(Col(&AssetFileModel::id) == asset.assetFileId)))
                 {
-                    StartImport(assetFile.file.path.Data());
+                    StartImport(assetFile.sourcePath.Data());
                 }
             }
         }
@@ -94,9 +99,9 @@ namespace he::assets
     void AssetServer::StartCompile(const AssetUuid& assetUuid)
     {
         AssetModel asset;
-        if (!AssetModel::FindOne(m_db, assetUuid, asset))
+        if (!m_db.Storage().FindOne(asset, Where(Col(&AssetModel::uuid) == assetUuid)))
         {
-            HE_LOG_ERROR(he_editor, HE_MSG("Failed to query assets needing import."));
+            HE_LOG_ERROR(he_editor, HE_MSG("Failed to find asset for compile request."), HE_KV(asset_uuid, assetUuid));
             return;
         }
 
@@ -121,14 +126,14 @@ namespace he::assets
     {
         Vector<AssetModel> pending;
 
-        if (!AssetModel::FindAll(m_db, AssetState::NeedsCompile, pending))
+        if (!m_db.Storage().FindAll(pending, Where(Col(&AssetModel::state) == AssetState::NeedsCompile)))
         {
             HE_LOG_ERROR(he_editor, HE_MSG("Failed to query assets needing compilation."));
         }
 
-        if (!AssetModel::FindAll(m_db, AssetState::CompileFailed, pending))
+        if (!m_db.Storage().FindAll(pending, Where(Col(&AssetModel::state) == AssetState::CompileFailed)))
         {
-            HE_LOG_ERROR(he_editor, HE_MSG("Failed to query assets needing compilation."));
+            HE_LOG_ERROR(he_editor, HE_MSG("Failed to query assets where compilation had previously failed."));
         }
 
         for (const AssetModel& asset : pending)
@@ -290,19 +295,25 @@ namespace he::assets
             }
         }
 
-        sqlite::Transaction t = data->server->m_db.BeginTransaction();
+        Transaction t(data->server->m_db.Handle());
         for (const Asset::Reader asset : data->ctx.assetFile.GetAssets())
         {
-            AssetUuid assetUuid{ asset.GetUuid() };
+            const AssetUuid assetUuid{ asset.GetUuid() };
 
             if (error == ImportError::Success)
             {
-                AssetModel::UpdateState(data->server->m_db, assetUuid, AssetState::NeedsCompile);
+                const auto query = Update(
+                    Where(Col(&AssetModel::uuid) == assetUuid),
+                    Set(&AssetModel::state, AssetState::NeedsCompile));
+                data->server->m_db.Storage().Query(query);
                 data->server->StartCompile(assetUuid);
             }
             else
             {
-                AssetModel::UpdateState(data->server->m_db, assetUuid, AssetState::ImportFailed);
+                const auto query = Update(
+                    Where(Col(&AssetModel::uuid) == assetUuid),
+                    Set(&AssetModel::state, AssetState::ImportFailed));
+                data->server->m_db.Storage().Query(query);
             }
         }
         t.Commit();
@@ -318,9 +329,10 @@ namespace he::assets
         AssetModel model;
         if (AssetModel::FindOne(data->server->m_db, data->assetUuid, model))
         {
-            const AssetTypeId typeId{ model.type };
+            const AssetTypeId typeId{ model.assetTypeName };
             const AssetTypeRegistry& registry = g_assetEditorModule->Registry().GetApi<AssetTypeRegistry>();
             const AssetTypeRegistry::Entry* assetType = registry.FindAssetType(typeId);
+            const AssetUuid assetUuid{ data->ctx.asset.GetUuid() };
 
             if (assetType)
             {
@@ -332,9 +344,13 @@ namespace he::assets
                         HE_MSG("Compiling asset."),
                         HE_KV(compiler_id, assetType->compiler->Id()),
                         HE_KV(compiler_version, assetType->compiler->Version()),
-                        HE_KV(asset_uuid, AssetUuid(data->ctx.asset.GetUuid())),
-                        HE_KV(asset_type, model.type));
-                    AssetModel::UpdateState(data->server->m_db, data->ctx.asset.GetUuid(), AssetState::Ready);
+                        HE_KV(asset_uuid, assetUuid),
+                        HE_KV(asset_type, model.assetTypeName));
+
+                    const auto query = Update(
+                        Where(Col(&AssetModel::uuid) == assetUuid),
+                        Set(&AssetModel::state, AssetState::Ready));
+                    data->server->m_db.Storage().Query(query);
                 }
                 else
                 {
@@ -342,17 +358,21 @@ namespace he::assets
                         HE_MSG("Failed to compile asset."),
                         HE_KV(compiler_id, assetType->compiler->Id()),
                         HE_KV(compiler_version, assetType->compiler->Version()),
-                        HE_KV(asset_uuid, AssetUuid(data->ctx.asset.GetUuid())),
-                        HE_KV(asset_type, model.type));
-                    AssetModel::UpdateState(data->server->m_db, data->ctx.asset.GetUuid(), AssetState::CompileFailed);
+                        HE_KV(asset_uuid, assetUuid),
+                        HE_KV(asset_type, model.assetTypeName));
+
+                    const auto query = Update(
+                        Where(Col(&AssetModel::uuid) == assetUuid),
+                        Set(&AssetModel::state, AssetState::CompileFailed));
+                    data->server->m_db.Storage().Query(query);
                 }
             }
             else
             {
                 HE_LOG_WARN(he_assets,
-                    HE_MSG("Unknown asset type, no compiler is registered."),
-                    HE_KV(asset_uuid, AssetUuid(data->ctx.asset.GetUuid())),
-                    HE_KV(asset_type, model.type));
+                    HE_MSG("Unknown asset type, no such type has been registered by any modules."),
+                    HE_KV(asset_uuid, assetUuid),
+                    HE_KV(asset_type, model.assetTypeName));
             }
         }
         else

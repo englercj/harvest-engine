@@ -813,7 +813,7 @@ namespace he
     template <uint32_t, typename>
     struct _TypeListElement;
 
-    // Maybe one day on Visual Studio we'll get this too (probably not)
+    // Maybe one day Visual Studio will have this intrinsic too (probably not)
     // See: https://developercommunity.visualstudio.com/t/add-support-for-clangs-type-pack-element-to-improv/1439235
 #if HE_HAS_BUILTIN(__type_pack_element)
     template <uint32_t I, typename... Ts>
@@ -853,7 +853,6 @@ namespace he
     struct _TypeListIndex<T, TypeList<Ts...>>
     {
         static constexpr uint32_t Value = _FindUniqueTypeInPack<T, Ts...>();
-        static_assert(Value < sizeof...(Ts), "The type T must exist in the list exactly once.");
     };
     /// \endinternal
 

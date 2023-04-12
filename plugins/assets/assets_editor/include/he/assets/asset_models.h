@@ -50,7 +50,7 @@ namespace he::assets
         uint32_t id{ 0 };
         AssetUuid uuid{};
         uint32_t assetFileId{ 0 };
-        String assetTypeName{};
+        String assetTypeName{}; // TODO: Change this to store only the hash value. We can create a join table that maps IDs -> string names for debugging.
         String name{};
         AssetState state{ AssetState::Unknown };
         uint32_t dataHash{ 0 };

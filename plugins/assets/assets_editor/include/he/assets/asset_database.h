@@ -2,7 +2,6 @@
 
 #pragma once
 
-#include "he/assets/asset_models.h"
 #include "he/assets/types.h"
 #include "he/core/async_file.h"
 #include "he/core/delegate.h"
@@ -37,6 +36,8 @@ namespace he::assets
         bool IsInitialized() const { return m_storage.IsOpen(); }
 
         StorageType& Storage() { return m_storage; }
+        Database& Db() { return m_storage.Db(); }
+        sqlite3* Handle() const { return m_storage.Handle(); }
 
         // TODO: Audit the path handling in these.
         // All of these should work with absolute paths, or asset root relative paths.
@@ -54,9 +55,6 @@ namespace he::assets
 
     public:
         const String& AssetRoot() const { return m_assetRoot; }
-
-        sqlite::Transaction BeginTransaction() const { return m_db.BeginTransaction(); }
-        const sqlite::Statement& StatementLiteral(const char* sql) { return m_db.StatementLiteral(sql); }
 
     public:
         Result AddResource(const AssetUuid& assetUuid, ResourceId resourceId, Span<const uint8_t> data) const

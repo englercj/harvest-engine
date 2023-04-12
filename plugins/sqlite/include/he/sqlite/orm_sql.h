@@ -7,6 +7,7 @@
 #include "he/core/concepts.h"
 #include "he/core/enum_ops.h"
 #include "he/core/fmt.h"
+#include "he/core/invoke.h"
 #include "he/core/string_fmt.h"
 #include "he/core/string_builder.h"
 #include "he/core/type_traits.h"
@@ -813,8 +814,7 @@ namespace he::sqlite
             uint32_t index = 0;
             table.ForEachColumn([&](const auto& column)
             {
-                const StringView name = ctx.GetColumnName(column);
-                sql.Write("{}{}", index++ > 0 ? ", " : "", name);
+                sql.Write("{}{}", index++ > 0 ? ", " : "", column.name);
             });
             sql.Write(") VALUES (");
 
@@ -823,7 +823,7 @@ namespace he::sqlite
             {
                 if (index++ > 0)
                     sql.Write(", ");
-                ToSql(sql, value.value.*column, ctx);
+                ToSql(sql, Invoke(column.member, value.value), ctx);
             });
             sql.Write(")");
         }
@@ -864,7 +864,7 @@ namespace he::sqlite
                 {
                     if (index++ > 0)
                         sql.Write(", ");
-                    ToSql(sql, value.values.*column, ctx);
+                    ToSql(sql, Invoke(column, value.value), ctx);
                 });
             }
             sql.Write(")");
@@ -883,37 +883,32 @@ namespace he::sqlite
             const StringView tableName = table.Name();
             sql.Write("UPDATE {} SET ", tableName);
 
-            index = 0;
+            uint32_t index = 0;
             table.ForEachColumn([&](const auto& column)
             {
+                if (table.IsPrimaryKeyColumn(column.member))
+                    return;
+
                 if (index++ > 0)
                     sql.Write(", ");
 
-                const StringView name = ctx.GetColumnName(column);
-                sql.Write("{} = ", name);
-                ToSql(sql, value.values.*(column.member), ctx);
+                sql.Write("{} = ", column.name);
+                ToSql(sql, Invoke(column.member, value.value), ctx);
             });
-        }
-    };
 
-    template <typename I, typename Columns, typename Values>
-    struct _UpdatePairWriter;
+            sql.Write(" WHERE ");
+            index = 0;
+            table.ForEachColumn([&](const auto& column)
+            {
+                if (!table.IsPrimaryKeyColumn(column.member))
+                    return;
 
-    template <uint32_t... I, typename Columns, typename Values>
-    struct _UpdatePairWriter<IndexSequence<I...>, Columns, Values>
-    {
-        template <typename Ctx>
-        static void Write(StringBuilder& sql, const Columns& columns, const Values& values, const Ctx& ctx)
-        {
-            uint32_t index = 0;
-            (((index++ > 0 ? sql.Write(", ") : void()), WritePair(sql, TupleGet<I>(columns), TupleGet<I>(values), ctx)), ...);
-        }
+                if (index++ > 0)
+                    sql.Write(" AND ");
 
-        template <typename Ctx, typename C, typename V>
-        static void WritePair(StringBuilder& sql, const C& column, const V& value, const Ctx& ctx)
-        {
-            ;
-            ToSql(sql, value, ctx);
+                sql.Write("{} = ", column.name);
+                ToSql(sql, Invoke(column.member, value.value), ctx);
+            });
         }
     };
 
@@ -928,25 +923,19 @@ namespace he::sqlite
             const StringView tableName = ctx.GetTableName<typename Type::ObjectType>();
             sql.Write("UPDATE {} SET ", tableName);
 
-            if constexpr (IsSpecialization<typename Type::ValuesType, Tuple>)
+            uint32_t index = 0;
+            TupleForEach(value.setters, [&](const auto& setter)
             {
-                using PairSequence = MakeIndexSequence<TupleSize<Columns>>;
-                using UpdateWriter = _UpdatePairWriter<PairSequence, typename Type::ColumnsType, typename Type::ValuesType>;
-                UpdateWriter::Write(sql, value.columns, value.values, ctx);
-            }
-            else
-            {
-                uint32_t index = 0;
-                TupleForEach(value.columns, [&](const auto& column)
-                {
-                    if (index++ > 0)
-                        sql.Write(", ");
+                if (index++ > 0)
+                    sql.Write(", ");
 
-                    const StringView name = ctx.GetColumnName(column);
-                    sql.Write("{} = ", name);
-                    ToSql(sql, value.values.*(column.member), ctx);
-                });
-            }
+                const StringView name = ctx.GetColumnName(setter.column);
+                sql.Write("{} = ", name);
+                ToSql(sql, setter.value, ctx);
+            });
+
+            sql.Write(' ');
+            ToSql(sql, value.where, ctx);
         }
     };
 
@@ -1180,7 +1169,7 @@ namespace he::sqlite
             bool result = true;
             table.ForEachColumn([&](const auto& column)
             {
-                result &= BindSql(stmt, value.value.*column, ctx);
+                result &= BindSql(stmt, Invoke(column.member, value.value), ctx);
             });
 
             return result;
@@ -1206,7 +1195,7 @@ namespace he::sqlite
             {
                 TupleForEach(value.columns, [&](const auto& column)
                 {
-                    result &= BindSql(stmt, value.values.*column, ctx);
+                    result &= BindSql(stmt, Invoke(column, value.value), ctx);
                 });
             }
 
@@ -1226,7 +1215,7 @@ namespace he::sqlite
             bool result = true;
             table.ForEachColumn([&](const auto& column)
             {
-                result &= BindSql(stmt, value.value.*column, ctx);
+                result &= BindSql(stmt, Invoke(column.member, value.value), ctx);
             });
 
             return result;
@@ -1252,7 +1241,7 @@ namespace he::sqlite
             {
                 TupleForEach(value.columns, [&](const auto& column)
                 {
-                    result &= BindSql(stmt, value.values.*column, ctx);
+                    result &= BindSql(stmt, Invoke(column, value.value), ctx);
                 });
             }
 

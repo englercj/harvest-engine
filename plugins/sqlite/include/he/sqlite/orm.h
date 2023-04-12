@@ -302,9 +302,9 @@ namespace he::sqlite
     }
 
     template <typename T>
-    constexpr DefaultConstraint<T> Default(T value)
+    constexpr DefaultConstraint<T> Default(T&& value)
     {
-        return { Move(value) };
+        return { Forward<T>(value) };
     }
 
     constexpr NotNullConstraint NotNull()
@@ -409,9 +409,9 @@ namespace he::sqlite
     struct IsPragmaDef { static constexpr bool Value = IsSpecialization<T, PragmaDef>; };
 
     template <typename T>
-    constexpr PragmaDef<T> Pragma(StringView name, T&& value)
+    constexpr PragmaDef<T> Pragma(StringView name, T value)
     {
-        return { name, Forward<T>(value) };
+        return { name, Move(value) };
     }
 
     // --------------------------------------------------------------------------------------------
@@ -453,7 +453,7 @@ namespace he::sqlite
     {
         using ValueType = T;
 
-        constexpr _UnaryExpr(T value) : value(Move(value)) {}
+        constexpr _UnaryExpr(T&& value) : value(Move(value)) {}
 
         T value;
     };
@@ -535,7 +535,7 @@ namespace he::sqlite
     {
         static constexpr StringView Sql = S::Sql;
 
-        constexpr _BinaryCondition(L lhs, R rhs) : lhs(Move(lhs)), rhs(Move(rhs)) {}
+        constexpr _BinaryCondition(L&& lhs, R&& rhs) : lhs(Move(lhs)), rhs(Move(rhs)) {}
 
         L lhs;
         R rhs;
@@ -573,7 +573,7 @@ namespace he::sqlite
     {
         static constexpr StringView Sql = S::Sql;
 
-        constexpr _BinaryOperator(L lhs, R rhs) : lhs(Move(lhs)), rhs(Move(rhs)) {}
+        constexpr _BinaryOperator(L&& lhs, R&& rhs) : lhs(Move(lhs)), rhs(Move(rhs)) {}
 
         L lhs;
         R rhs;
@@ -769,38 +769,24 @@ namespace he::sqlite
         const ObjectType& value;
     };
 
-    template <typename T, typename U, typename Columns, typename Values>
-    struct UpdateQuery : _QueryBase
+    template <typename T, typename U>
+    struct UpdateQuerySetter
     {
         using ObjectType = T;
-        using ColumnsType = Columns;
-        using ValuesType = Values;
+        using ValueType = U;
 
-        static_assert(IsSame<Decay<ValuesType>, ObjectType> || ColumnsType::Size == ValuesType::Size, "The number of columns and values must be the same.");
-        // TODO: Where clause
-
-        ColumnsTypes columns;
-        ValuesType values;
+        ValueType ObjectType::* column;
+        ValueType value;
     };
 
-    template <typename... Columns>
-    struct UpdateQueryHelper
+    template <typename T, typename U>
+    struct UpdateQuery : _QueryBase
     {
-        using ObjectType = ColumnsObjectType<Columns...>;
-        using ColumnsType = Tuple<Columns...>;
+        using SettersType = T;
+        using WhereType = U;
 
-        constexpr UpdateQuery<ObjectType, ColumnsType, const ObjectType&> Set(const ObjectType& object)
-        {
-            return { Move(this->columns), object };
-        }
-
-        template <typename... Values>
-        constexpr UpdateQuery<ObjectType, ColumnsType, Tuple<Values...>> Set(Values&&... values)
-        {
-            return { Move(this->columns), MakeTuple(Forward<Values>(values)...) };
-        }
-
-        ColumnsType columns;
+        SettersType setters;
+        WhereType where;
     };
 
     struct RawSqlQuery : _QueryBase
@@ -830,8 +816,14 @@ namespace he::sqlite
     template <typename T>
     constexpr UpdateObjectQuery<T> Update(const T& obj) { return { obj }; }
 
-    template <typename... Columns> requires((IsMemberObjectPointer<Columns> && ...))
-    constexpr UpdateQueryHelper<Columns...> Update(Columns... columns) { return { MakeTuple(Forward<Columns>(columns)...) }; }
+    template <typename T, typename U>
+    constexpr UpdateQuerySetter<T, U> Set(U T::* member, U value) { return { member, Move(value) }; }
+
+    template <typename... T> requires((IsSpecialization<T, UpdateQuerySetter> && ...))
+    constexpr UpdateQuery<Tuple<T...>, WhereExpr<EqualExpr<int, int>>> Update(T... sets) { return { MakeTuple(Forward<T>(sets)...), Where(EqualExpr<int, int>{ 1, 1 }) }; }
+
+    template <typename T, typename... U> requires((IsSpecialization<U, UpdateQuerySetter> && ...))
+    constexpr UpdateQuery<Tuple<T...>, WhereExpr<T>> Update(WhereExpr<T> where, U... sets) { return { MakeTuple(Forward<U>(sets)...), Move(where) }; }
 
     constexpr RawSqlQuery RawSql(StringView query) { return { query }; }
 
@@ -891,6 +883,9 @@ namespace he::sqlite
 
         template <typename U> requires(IsMemberObjectPointer<U>)
         constexpr StringView GetColumnName(U column) const;
+
+        template <typename U> requires(IsMemberObjectPointer<U>)
+        constexpr bool IsPrimaryKeyColumn(U column) const;
 
     private:
         ElementsType m_elements;
@@ -959,7 +954,9 @@ namespace he::sqlite
     {
         TupleForEach(m_elements, [&](const auto& item)
         {
-            if constexpr (IsColumnDef<Decay<decltype(item)>>::Value)
+            using ItemType = Decay<decltype(item)>;
+
+            if constexpr (IsColumnDef<ItemType>::Value)
             {
                 func(item);
             }
@@ -972,7 +969,9 @@ namespace he::sqlite
     {
         TupleForEach(m_elements, [&](const auto& item)
         {
-            if constexpr (IsTableConstraint<Decay<decltype(item)>>::Value)
+            using ItemType = Decay<decltype(item)>;
+
+            if constexpr (IsTableConstraint<ItemType>::Value)
             {
                 func(item);
             }
@@ -993,5 +992,48 @@ namespace he::sqlite
             }
         });
         return name;
+    }
+
+    template <typename T, typename... Elements>
+    template <typename U> requires(IsMemberObjectPointer<U>)
+    constexpr bool TableDef<T, Elements...>::IsPrimaryKeyColumn(U column) const
+    {
+        bool result = false;
+        TupleForEach(m_elements, [&](const auto& item)
+        {
+            using ItemType = Decay<decltype(item)>;
+
+            if constexpr (IsPrimaryKeyConstraint<ItemType>::Value)
+            {
+                TupleForEach(item.columns, [&](const auto& c)
+                {
+                    if constexpr (IsSame<U, decltype(c.member)>)
+                    {
+                        if (c.member == column)
+                            result = true;
+                    }
+                });
+            }
+            else if constexpr (IsColumnDef<ItemType>::Value)
+            {
+                if constexpr (IsSame<U, decltype(item.member)>)
+                {
+                    if (item.member == column)
+                    {
+                        TupleForEach(item.constraints, [&](const auto& c)
+                        {
+                            using ColumnType = Decay<decltype(c)>;
+
+                            if constexpr (IsPrimaryKeyConstraint<ColumnType>::Value)
+                            {
+                                result = true;
+                            }
+                        });
+                    }
+                }
+            }
+        });
+
+        return result;
     }
 }

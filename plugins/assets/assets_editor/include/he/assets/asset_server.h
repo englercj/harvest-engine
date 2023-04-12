@@ -5,7 +5,6 @@
 #include "he/assets/asset_compiler.h"
 #include "he/assets/asset_database.h"
 #include "he/assets/asset_importer.h"
-#include "he/assets/asset_models.h"
 #include "he/assets/types.h"
 #include "he/core/signal.h"
 #include "he/core/task_executor.h"
@@ -14,6 +13,8 @@
 
 namespace he::assets
 {
+    class AssetModel;
+
     class AssetServer
     {
     public:

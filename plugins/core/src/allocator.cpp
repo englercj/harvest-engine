@@ -17,13 +17,12 @@ namespace he
     }
 #endif
 
+    // Since we don't know static destruction order this ensures the allocator never actually
+    // destructs and therefore will always outlive any static allocations.
+    alignas(CrtAllocator) static uint8_t s_crtAllocatorMem[sizeof(CrtAllocator)];
     CrtAllocator& CrtAllocator::Get()
     {
-        // Since we don't know static destruction order this ensures the allocator never actually
-        // destructs and therefore will always outlive any static allocations.
-        constexpr size_t Alignment = Max<size_t>(alignof(CrtAllocator), 8);
-        alignas(Alignment) static uint8_t s_mem[sizeof(CrtAllocator)];
-        static CrtAllocator* s_allocator = new(s_mem) CrtAllocator();
+        static CrtAllocator* s_allocator = ::new(s_crtAllocatorMem) CrtAllocator();
         return *s_allocator;
     }
 }

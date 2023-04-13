@@ -51,6 +51,7 @@
     #define HE_LIKELY(x)                    static_cast<bool>(__builtin_expect(!!(x), 1))
     #define HE_UNLIKELY(x)                  static_cast<bool>(__builtin_expect(!!(x), 0))
     #define HE_UNREACHABLE()                __builtin_unreachable()
+    #define HE_PREFETCH(x)                  __builtin_prefetch(static_cast<const char*>(x))
 
     #define HE_PUSH_WARNINGS()              _Pragma("clang diagnostic push")
     #define HE_POP_WARNINGS()               _Pragma("clang diagnostic pop")
@@ -77,6 +78,7 @@
     #define HE_LIKELY(x)                    static_cast<bool>(__builtin_expect(!!(x), 1))
     #define HE_UNLIKELY(x)                  static_cast<bool>(__builtin_expect(!!(x), 0))
     #define HE_UNREACHABLE()                __builtin_unreachable()
+    #define HE_PREFETCH(x)                  __builtin_prefetch(static_cast<const char*>(x))
 
     #define HE_PUSH_WARNINGS()              _Pragma("GCC diagnostic push")
     #define HE_POP_WARNINGS()               _Pragma("GCC diagnostic pop")
@@ -104,6 +106,7 @@
     #define HE_LIKELY(x)                    (!!(x))
     #define HE_UNLIKELY(x)                  (!!(x))
     #define HE_UNREACHABLE()                __assume(0)
+    #define HE_PREFETCH(x)                  _mm_prefetch(reinterpret_cast<const char*>(x), _MM_HINT_T0)
 
     #define HE_PUSH_WARNINGS()              __pragma(warning(push))
     #define HE_POP_WARNINGS()               __pragma(warning(pop))

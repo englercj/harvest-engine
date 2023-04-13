@@ -18,6 +18,7 @@ HE_TEST(core, cpu_info, Report)
     std::cout << "    vendorName: '" << info.vendorName << "'" << std::endl;
     std::cout << "    core count: " << info.coreCount << std::endl;
     std::cout << "    thread count: " << info.threadCount << std::endl;
+    std::cout << "    cache line size: " << info.cacheLineSize << std::endl;
 
     std::cout << "    x86:" << std::endl;
     std::cout << "        sse: " << info.x86.sse << std::endl;

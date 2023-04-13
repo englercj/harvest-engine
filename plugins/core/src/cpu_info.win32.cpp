@@ -3,6 +3,7 @@
 #include "he/core/cpu_info.h"
 
 #include "he/core/alloca.h"
+#include "he/core/utils.h"
 
 #if defined(HE_PLATFORM_API_WIN32)
 
@@ -42,17 +43,35 @@ namespace he
             {
                 info.coreCount = 0;
                 info.threadCount = 0;
+                info.cacheLineSize = 64;
 
                 for (uint32_t i = 0; i < count; ++i)
                 {
-                    if (buffer[i].Relationship == RelationProcessorCore)
+                    SYSTEM_LOGICAL_PROCESSOR_INFORMATION& proc = buffer[i];
+
+                    switch (proc.Relationship)
                     {
-                        ++info.coreCount;
-                        info.threadCount += CountSetBits(buffer[i].ProcessorMask);
+                        case RelationProcessorCore:
+                        {
+                            ++info.coreCount;
+                            info.threadCount += CountSetBits(buffer[i].ProcessorMask);
+                            break;
+                        }
+                        case RelationCache:
+                        {
+                            if (proc.Cache.Level == 1)
+                            {
+                                info.cacheLineSize = proc.Cache.LineSize;
+                            }
+                            break;
+                        }
                     }
                 }
             }
         }
+
+        info.coreCount = Max(info.coreCount, 1u);
+        info.threadCount = Max(info.threadCount, 1u);
     }
 }
 

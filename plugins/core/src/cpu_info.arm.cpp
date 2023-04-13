@@ -103,6 +103,8 @@ namespace he
                     vendorId = CpuVendorId::Unknown;
                     break;
             }
+
+            _FillPlatformCpuInfo(*this);
         }
     };
 

@@ -69,6 +69,9 @@ namespace he
         /// Number of logical cores the system reported for the CPU.
         uint32_t threadCount{ 1 };
 
+        /// Size (in bytes) of a single cache line of the CPU.
+        uint32_t cacheLineSize{ 64 };
+
         /// Availability of various x86 instructions
         struct
         {

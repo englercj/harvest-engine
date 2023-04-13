@@ -2,7 +2,9 @@
 
 #include "he/core/cpu_info.h"
 
-#if defined(HE_PLATFORM_API_POSIX)
+#include "he/core/utils.h"
+
+#if defined(HE_PLATFORM_API_POSIX) && !defined(HE_PLATFORM_LINUX)
 
 #include <unistd.h>
 
@@ -10,12 +12,9 @@ namespace he
 {
     void _FillPlatformCpuInfo(CpuInfo& info)
     {
-    #if !defined(_SC_NPROCESSORS_ONLN)
-        #error "Posix CPU info relies on _SC_NPROCESSORS_ONLN"
-    #endif
-
-        info.coreCount = sysconf(_SC_NPROCESSORS_ONLN);
+        info.coreCount = Max(1u, sysconf(_SC_NPROCESSORS_ONLN));
         info.threadCount = info.coreCount;
+        info.cacheLineSize = sysconf(_SC_LEVEL1_DCACHE_LINESIZE);
     }
 }
 

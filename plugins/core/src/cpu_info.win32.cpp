@@ -47,7 +47,7 @@ namespace he
 
                 for (uint32_t i = 0; i < count; ++i)
                 {
-                    SYSTEM_LOGICAL_PROCESSOR_INFORMATION& proc = buffer[i];
+                    const SYSTEM_LOGICAL_PROCESSOR_INFORMATION& proc = buffer[i];
 
                     switch (proc.Relationship)
                     {

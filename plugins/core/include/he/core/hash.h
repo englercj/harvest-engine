@@ -152,7 +152,7 @@ namespace he
     /// where small changes to the input should result in very different outputs. When implementing
     /// specializations of this functor, keep in mind that the \ref Mix64 function and \ref WyHash
     /// algorithm can be helpful to satisfy these requirements. Also note that \ref FNV32 and
-    /// \ref FNV64 do *not* exhibit avalanche behavior, and therefore are not suitable.
+    /// \ref FNV64 do *not* exhibit avalanche behavior, and therefore are not suitable alone.
     ///
     /// Rather than specializing this functor, an object may instead define a constant non-static
     /// member function called `HashCode` which takes no arguments and returns a `uint64_t`.  The

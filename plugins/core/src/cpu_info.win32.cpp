@@ -49,22 +49,14 @@ namespace he
                 {
                     const SYSTEM_LOGICAL_PROCESSOR_INFORMATION& proc = buffer[i];
 
-                    switch (proc.Relationship)
+                    if (proc.Relationship == RelationProcessorCore)
                     {
-                        case RelationProcessorCore:
-                        {
-                            ++info.coreCount;
-                            info.threadCount += CountSetBits(buffer[i].ProcessorMask);
-                            break;
-                        }
-                        case RelationCache:
-                        {
-                            if (proc.Cache.Level == 1)
-                            {
-                                info.cacheLineSize = proc.Cache.LineSize;
-                            }
-                            break;
-                        }
+                        ++info.coreCount;
+                        info.threadCount += CountSetBits(buffer[i].ProcessorMask);
+                    }
+                    else if (proc.Relationship == RelationCache && proc.Cache.Level == 1)
+                    {
+                        info.cacheLineSize = proc.Cache.LineSize;
                     }
                 }
             }

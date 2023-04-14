@@ -9,7 +9,7 @@
 #include "he/core/result_fmt.h"
 #include "he/core/utils.h"
 
-void WriteFileData(he::File& file, he::StringView name, const uint8_t* data, size_t size, bool asText)
+void WriteFileData(he::File& file, he::StringView name, const he::uint8_t* data, size_t size, bool asText)
 {
     constexpr size_t HexBytesPerLine = 16;
     constexpr size_t HexByteStrLen = HE_LENGTH_OF("0x00, ") - 1;
@@ -61,10 +61,10 @@ void WriteFileData(he::File& file, he::StringView name, const uint8_t* data, siz
                 asciiBuf[i] = he::IsPrint(data[i]) && data[i] != '\\' ? data[i] : '.';
             asciiBuf[size] = '\0';
 
-            const uint32_t lenBefore = buf.Size();
+            const he::uint32_t lenBefore = buf.Size();
             he::FormatTo(buf, "    {:#04x},", he::FmtJoin(data, data + size, ", "));
 
-            const uint32_t lineLength = buf.Size() - lenBefore;
+            const he::uint32_t lineLength = buf.Size() - lenBefore;
             if (lineLength < HexLineStrLen)
                 buf.Resize(buf.Size() + (HexLineStrLen - lineLength) + 3, ' ');
 

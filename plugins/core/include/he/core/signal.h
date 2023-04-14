@@ -79,7 +79,7 @@ namespace he
             return AddAttachment(DelegateType::template Make(func, payload), true);
         }
 
-        bool Detach(const Binding& binding)
+        bool Detach(Binding& binding)
         {
             if (binding.m_signal != this)
                 return false;
@@ -89,6 +89,7 @@ namespace he
                 if (m_attachments[i].token == binding.m_token)
                 {
                     m_attachments.Erase(i, 1);
+                    binding = {}; // reset the bindings to a default "detached" state
                     return true;
                 }
             }

@@ -79,17 +79,21 @@ HE_TEST(core, signal, Detach)
 
     {
         Signal<void()>::Binding bind = s.Attach([](const void*) {});
+        HE_EXPECT(bind.IsValid());
         HE_EXPECT(!s.IsEmpty());
 
         s.Detach(bind);
+        HE_EXPECT(!bind.IsValid());
         HE_EXPECT(s.IsEmpty());
     }
 
     {
         Signal<void()>::Binding bind = s.Attach([](const void*) {});
+        HE_EXPECT(bind.IsValid());
         HE_EXPECT(!s.IsEmpty());
 
         bind.Detach();
+        HE_EXPECT(!bind.IsValid());
         HE_EXPECT(s.IsEmpty());
     }
 }

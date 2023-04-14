@@ -87,10 +87,10 @@ namespace he::editor
         ImGuiKey_Insert,            // Insert
         ImGuiKey_Delete,            // Delete
         ImGuiKey_End,               // End
-        ImGuiKey_ModAlt,            // Alt
-        ImGuiKey_ModCtrl,           // Control
-        ImGuiKey_ModShift,          // Shift
-        ImGuiKey_ModSuper,          // Super
+        ImGuiMod_Alt,               // Alt
+        ImGuiMod_Ctrl,              // Control
+        ImGuiMod_Shift,             // Shift
+        ImGuiMod_Super,             // Super
         ImGuiKey_ScrollLock,        // ScrollLock
         ImGuiKey_NumLock,           // NumLock
         ImGuiKey_CapsLock,          // CapsLock
@@ -371,10 +371,10 @@ namespace he::editor
                     default: break;
                 }
 
-                io.AddKeyEvent(ImGuiKey_ModCtrl, m_isModifierDown[0]);
-                io.AddKeyEvent(ImGuiKey_ModShift, m_isModifierDown[1]);
-                io.AddKeyEvent(ImGuiKey_ModAlt, m_isModifierDown[2]);
-                io.AddKeyEvent(ImGuiKey_ModSuper, m_isModifierDown[3]);
+                io.AddKeyEvent(ImGuiMod_Ctrl, m_isModifierDown[0]);
+                io.AddKeyEvent(ImGuiMod_Shift, m_isModifierDown[1]);
+                io.AddKeyEvent(ImGuiMod_Alt, m_isModifierDown[2]);
+                io.AddKeyEvent(ImGuiMod_Super, m_isModifierDown[3]);
                 io.AddKeyEvent(key, down);
                 break;
             }

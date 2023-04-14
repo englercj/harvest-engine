@@ -13,11 +13,13 @@ namespace he::editor
         ImGui::TextDisabled(" " ICON_MDI_HELP_CIRCLE " ");
         if (ImGui::IsItemHovered())
         {
-            ImGui::BeginTooltip();
-            ImGui::PushTextWrapPos(450.0f);
-            ImGui::TextUnformatted(helpText);
-            ImGui::PopTextWrapPos();
-            ImGui::EndTooltip();
+            if (ImGui::BeginTooltip())
+            {
+                ImGui::PushTextWrapPos(450.0f);
+                ImGui::TextUnformatted(helpText);
+                ImGui::PopTextWrapPos();
+                ImGui::EndTooltip();
+            }
         }
     }
 

@@ -1,15 +1,15 @@
 # Copyright Chad Engler
 
 id = "ocornut.imgui"
+version = "1.89.5"
 name = "Dear ImGUI"
 description = "Dear ImGui is a bloat-free graphical user interface library for C++."
-version = "docking"
 author = "Omar Cornut <contact@dearimgui.com>"
 license = "MIT"
 homepage = "https://github.com/ocornut/imgui"
 
 [install]
-    github = "ocornut/imgui#250333d895b1067533533dcfab137512745b9689" # latest docking branch (post v1.87)
+    github = "ocornut/imgui#0ea3b87bd63ecbf359585b7c235839146e84dedb" # latest docking branch (as of v1.89.5)
 
 [[modules]]
     name = "imgui"
@@ -17,7 +17,6 @@ homepage = "https://github.com/ocornut/imgui"
     group = "engine/contrib"
     files = [
         "%{path.getdirectory(he.get_plugin('ocornut.imgui')._file_path)}/imgui_user_config.h",
-        "imgui_demo.cpp",
         "imgui_draw.cpp",
         "imgui_internal.h",
         "imgui_tables.cpp",
@@ -26,7 +25,6 @@ homepage = "https://github.com/ocornut/imgui"
         "imgui.h",
         "imstb_rectpack.h",
         "imstb_textedit.h",
-        "imstb_truetype.h",
         "misc/debuggers/imgui.natstepfilter",
         "misc/debuggers/imgui.natvis",
         "misc/freetype/imgui_freetype.cpp",
@@ -34,8 +32,14 @@ homepage = "https://github.com/ocornut/imgui"
     ]
     public_defines = ["IMGUI_USER_CONFIG=\"imgui_user_config.h\""]
     public_dependson = ["freetype", "he_core"]
-    public_dependson_include = ["he_math"]
+    public_dependson_include = ["he_math"] # Need the types for the ImVec2 class extras
     public_includedirs = [
         ".",
         "%{path.getdirectory(he.get_plugin('ocornut.imgui')._file_path)}",
     ]
+
+    [[modules.variants]]
+        conditions = ["tags:internal"]
+        files = [
+            "imgui_demo.cpp",
+        ]

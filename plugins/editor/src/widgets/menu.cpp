@@ -26,14 +26,19 @@ namespace he::editor
         if ((g.OpenPopupStack.Size <= g.BeginPopupStack.Size) || (window->Flags & ImGuiWindowFlags_ChildMenu))
             return false;
 
-        // Initially we used 'OpenParentId' to differentiate multiple menu sets from each others (e.g. inside menu bar vs loose menu items) based on parent ID.
+        // Initially we used 'upper_popup->OpenParentId == window->IDStack.back()' to differentiate multiple menu sets from each others
+        // (e.g. inside menu bar vs loose menu items) based on parent ID.
         // This would however prevent the use of e.g. PuhsID() user code submitting menus.
         // Previously this worked between popup and a first child menu because the first child menu always had the _ChildWindow flag,
         // making  hovering on parent popup possible while first child menu was focused - but this was generally a bug with other side effects.
         // Instead we don't treat Popup specifically (in order to consistently support menu features in them), maybe the first child menu of a Popup
-        // doesn't have the _ChildWindow flag, and we rely on this IsRootOfOpenMenuSet() check to allow hovering between root window/popup and first chilld menu.
+        // doesn't have the _ChildWindow flag, and we rely on this IsRootOfOpenMenuSet() check to allow hovering between root window/popup and first child menu.
+        // In the end, lack of ID check made it so we could no longer differentiate between separate menu sets. To compensate for that, we at least check parent window nav layer.
+        // This fixes the most common case of menu opening on hover when moving between window content and menu bar. Multiple different menu sets in same nav layer would still
+        // open on hover, but that should be a lesser problem, because if such menus are close in proximity in window content then it won't feel weird and if they are far apart
+        // it likely won't be a problem anyone runs into.
         const ImGuiPopupData* upper_popup = &g.OpenPopupStack[g.BeginPopupStack.Size];
-        return (/*upper_popup->OpenParentId == window->IDStack.back() &&*/ upper_popup->Window && (upper_popup->Window->Flags & ImGuiWindowFlags_ChildMenu));
+        return (window->DC.NavLayerCurrent == upper_popup->ParentNavLayer && upper_popup->Window && (upper_popup->Window->Flags & ImGuiWindowFlags_ChildMenu));
     }
 
     static bool ImGuiBeginMenuEx(const char* label, const char* icon, bool enabled)
@@ -55,10 +60,10 @@ namespace he::editor
         bool menu_is_open = IsPopupOpen(id, ImGuiPopupFlags_None);
 
         // Sub-menus are ChildWindow so that mouse can be hovering across them (otherwise top-most popup menu would steal focus and not allow hovering on parent menu)
-        // The first menu in a hierarchy isn't so hovering doesn't get accross (otherwise e.g. resizing borders with ImGuiButtonFlags_FlattenChildren would react), but top-most BeginMenu() will bypass that limitation.
-        ImGuiWindowFlags flags = ImGuiWindowFlags_ChildMenu | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoNavFocus;
-        if (window->Flags & (ImGuiWindowFlags_Popup | ImGuiWindowFlags_ChildMenu))
-            flags |= ImGuiWindowFlags_ChildWindow;
+        // The first menu in a hierarchy isn't so hovering doesn't get across (otherwise e.g. resizing borders with ImGuiButtonFlags_FlattenChildren would react), but top-most BeginMenu() will bypass that limitation.
+        ImGuiWindowFlags window_flags = ImGuiWindowFlags_ChildMenu | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoNavFocus;
+        if (window->Flags & ImGuiWindowFlags_ChildMenu)
+            window_flags |= ImGuiWindowFlags_ChildWindow;
 
         // If a menu with same the ID was already submitted, we will append to it, matching the behavior of Begin().
         // We are relying on a O(N) search - so O(N log N) over the frame - which seems like the most efficient for the expected small amount of BeginMenu() calls per frame.
@@ -66,7 +71,7 @@ namespace he::editor
         if (g.MenusIdSubmittedThisFrame.contains(id))
         {
             if (menu_is_open)
-                menu_is_open = BeginPopupEx(id, flags); // menu_is_open can be 'false' when the popup is completely clipped (e.g. zero size display)
+                menu_is_open = BeginPopupEx(id, window_flags); // menu_is_open can be 'false' when the popup is completely clipped (e.g. zero size display)
             else
                 g.NextWindowData.ClearFlags();          // we behave like Begin() and need to consume those values
             return menu_is_open;
@@ -78,10 +83,15 @@ namespace he::editor
         ImVec2 label_size = CalcTextSize(label, NULL, true);
 
         // Odd hack to allow hovering across menus of a same menu-set (otherwise we wouldn't be able to hover parent without always being a Child window)
+        // This is only done for items for the menu set and not the full parent window.
+        //////////
+        // HARVEST CHANGE START
+        //const bool menuset_is_open = IsRootOfOpenMenuSet();
         const bool menuset_is_open = ImGuiIsRootOfOpenMenuSet();
-        ImGuiWindow* backed_nav_window = g.NavWindow;
+        // HARVEST CHANGE END
+        //////////
         if (menuset_is_open)
-            g.NavWindow = window;
+            PushItemFlag(ImGuiItemFlags_NoWindowHoverableCheck, true);
 
         // The reference position stored in popup_pos will be used by Begin() to find a suitable position for the child menu,
         // However the final position is going to be different! It is chosen by FindBestWindowPosForPopup().
@@ -92,7 +102,9 @@ namespace he::editor
             BeginDisabled();
         const ImGuiMenuColumns* offsets = &window->DC.MenuColumns;
         bool pressed;
-        const ImGuiSelectableFlags selectable_flags = ImGuiSelectableFlags_NoHoldingActiveID | ImGuiSelectableFlags_SelectOnClick | ImGuiSelectableFlags_DontClosePopups;
+
+        // We use ImGuiSelectableFlags_NoSetKeyOwner to allow down on one menu item, move, up on another.
+        const ImGuiSelectableFlags selectable_flags = ImGuiSelectableFlags_NoHoldingActiveID | ImGuiSelectableFlags_NoSetKeyOwner | ImGuiSelectableFlags_SelectOnClick | ImGuiSelectableFlags_DontClosePopups;
         if (window->DC.LayoutType == ImGuiLayoutType_Horizontal)
         {
             // Menu inside an horizontal menu bar
@@ -103,7 +115,7 @@ namespace he::editor
             PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(style.ItemSpacing.x * 2.0f, style.ItemSpacing.y));
             float w = label_size.x;
             ImVec2 text_pos(window->DC.CursorPos.x + offsets->OffsetLabel, window->DC.CursorPos.y + window->DC.CurrLineTextBaseOffset);
-            pressed = Selectable("", menu_is_open, selectable_flags, ImVec2(w, 0.0f));
+            pressed = Selectable("", menu_is_open, selectable_flags, ImVec2(w, label_size.y));
             RenderText(text_pos, label);
             PopStyleVar();
             window->DC.CursorPos.x += IM_FLOOR(style.ItemSpacing.x * (-1.0f + 0.5f)); // -1 spacing to compensate the spacing added when Selectable() did a SameLine(). It would also work to call SameLine() ourselves after the PopStyleVar().
@@ -126,9 +138,9 @@ namespace he::editor
             ImVec2 text_pos(window->DC.CursorPos.x + offsets->OffsetLabel, window->DC.CursorPos.y + window->DC.CurrLineTextBaseOffset);
             //////////
             // HARVEST CHANGE START
-            //pressed = Selectable("", menu_is_open, selectable_flags | ImGuiSelectableFlags_SpanAvailWidth, ImVec2(min_w, 0.0f));
+            //pressed = Selectable("", menu_is_open, selectable_flags | ImGuiSelectableFlags_SpanAvailWidth, ImVec2(min_w, label_size.y));
             window->ParentWorkRect.Min.x -= 2;
-            pressed = Selectable("", menu_is_open, selectable_flags | ImGuiSelectableFlags_SpanAvailWidth | ImGuiSelectableFlags_SpanAllColumns, ImVec2(min_w, 0.0f));
+            pressed = Selectable("", menu_is_open, selectable_flags | ImGuiSelectableFlags_SpanAvailWidth | ImGuiSelectableFlags_SpanAllColumns, ImVec2(min_w, label_size.y));
             window->ParentWorkRect.Min.x += 2;
             // HARVEST CHANGE END
             //////////
@@ -147,7 +159,7 @@ namespace he::editor
 
         const bool hovered = (g.HoveredId == id) && enabled && !g.NavDisableMouseHover;
         if (menuset_is_open)
-            g.NavWindow = backed_nav_window;
+            PopItemFlag();
 
         bool want_open = false;
         bool want_close = false;
@@ -156,26 +168,30 @@ namespace he::editor
             // Close menu when not hovering it anymore unless we are moving roughly in the direction of the menu
             // Implement http://bjk5.com/post/44698559168/breaking-down-amazons-mega-dropdown to avoid using timers, so menus feels more reactive.
             bool moving_toward_child_menu = false;
-            ImGuiWindow* child_menu_window = (g.BeginPopupStack.Size < g.OpenPopupStack.Size && g.OpenPopupStack[g.BeginPopupStack.Size].SourceWindow == window) ? g.OpenPopupStack[g.BeginPopupStack.Size].Window : NULL;
-            if (g.HoveredWindow == window && child_menu_window != NULL && !(window->Flags & ImGuiWindowFlags_MenuBar))
+            ImGuiPopupData* child_popup = (g.BeginPopupStack.Size < g.OpenPopupStack.Size) ? &g.OpenPopupStack[g.BeginPopupStack.Size] : NULL; // Popup candidate (testing below)
+            ImGuiWindow* child_menu_window = (child_popup && child_popup->Window && child_popup->Window->ParentWindow == window) ? child_popup->Window : NULL;
+            if (g.HoveredWindow == window && child_menu_window != NULL)
             {
                 float ref_unit = g.FontSize; // FIXME-DPI
+                float child_dir = (window->Pos.x < child_menu_window->Pos.x) ? 1.0f : -1.0f;
                 ImRect next_window_rect = child_menu_window->Rect();
                 ImVec2 ta = (g.IO.MousePos - g.IO.MouseDelta);
-                ImVec2 tb = (window->Pos.x < child_menu_window->Pos.x) ? next_window_rect.GetTL() : next_window_rect.GetTR();
-                ImVec2 tc = (window->Pos.x < child_menu_window->Pos.x) ? next_window_rect.GetBL() : next_window_rect.GetBR();
+                ImVec2 tb = (child_dir > 0.0f) ? next_window_rect.GetTL() : next_window_rect.GetTR();
+                ImVec2 tc = (child_dir > 0.0f) ? next_window_rect.GetBL() : next_window_rect.GetBR();
                 float extra = ImClamp(ImFabs(ta.x - tb.x) * 0.30f, ref_unit * 0.5f, ref_unit * 2.5f);   // add a bit of extra slack.
-                ta.x += (window->Pos.x < child_menu_window->Pos.x) ? -0.5f : +0.5f;                     // to avoid numerical issues (FIXME: ??)
+                ta.x += child_dir * -0.5f;
+                tb.x += child_dir * ref_unit;
+                tc.x += child_dir * ref_unit;
                 tb.y = ta.y + ImMax((tb.y - extra) - ta.y, -ref_unit * 8.0f);                           // triangle has maximum height to limit the slope and the bias toward large sub-menus
                 tc.y = ta.y + ImMin((tc.y + extra) - ta.y, +ref_unit * 8.0f);
                 moving_toward_child_menu = ImTriangleContainsPoint(ta, tb, tc, g.IO.MousePos);
-                //GetForegroundDrawList()->AddTriangleFilled(ta, tb, tc, moving_toward_other_child_menu ? IM_COL32(0,128,0,128) : IM_COL32(128,0,0,128)); // [DEBUG]
+                //GetForegroundDrawList()->AddTriangleFilled(ta, tb, tc, moving_toward_child_menu ? IM_COL32(0,128,0,128) : IM_COL32(128,0,0,128)); // [DEBUG]
             }
 
             // The 'HovereWindow == window' check creates an inconsistency (e.g. moving away from menu slowly tends to hit same window, whereas moving away fast does not)
             // But we also need to not close the top-menu menu when moving over void. Perhaps we should extend the triangle check to a larger polygon.
             // (Remember to test this on BeginPopup("A")->BeginMenu("B") sequence which behaves slightly differently as B isn't a Child of A and hovering isn't shared.)
-            if (menu_is_open && !hovered && g.HoveredWindow == window && !moving_toward_child_menu)
+            if (menu_is_open && !hovered && g.HoveredWindow == window && !moving_toward_child_menu && !g.NavDisableMouseHover)
                 want_close = true;
 
             // Open
@@ -216,23 +232,32 @@ namespace he::editor
         IMGUI_TEST_ENGINE_ITEM_INFO(id, label, g.LastItemData.StatusFlags | ImGuiItemStatusFlags_Openable | (menu_is_open ? ImGuiItemStatusFlags_Opened : 0));
         PopID();
 
-        if (!menu_is_open && want_open && g.OpenPopupStack.Size > g.BeginPopupStack.Size)
+        if (want_open && !menu_is_open && g.OpenPopupStack.Size > g.BeginPopupStack.Size)
         {
-            // Don't recycle same menu level in the same frame, first close the other menu and yield for a frame.
+            // Don't reopen/recycle same menu level in the same frame, first close the other menu and yield for a frame.
             OpenPopup(label);
-            return false;
         }
-
-        menu_is_open |= want_open;
-        if (want_open)
+        else if (want_open)
+        {
+            menu_is_open = true;
             OpenPopup(label);
+        }
 
         if (menu_is_open)
         {
-            SetNextWindowPos(popup_pos, ImGuiCond_Always); // Note: this is super misleading! The value will serve as reference for FindBestWindowPosForPopup(), not actual pos.
+            ImGuiLastItemData last_item_in_parent = g.LastItemData;
+            SetNextWindowPos(popup_pos, ImGuiCond_Always);                  // Note: misleading: the value will serve as reference for FindBestWindowPosForPopup(), not actual pos.
             PushStyleVar(ImGuiStyleVar_ChildRounding, style.PopupRounding); // First level will use _PopupRounding, subsequent will use _ChildRounding
-            menu_is_open = BeginPopupEx(id, flags); // menu_is_open can be 'false' when the popup is completely clipped (e.g. zero size display)
+            menu_is_open = BeginPopupEx(id, window_flags);                  // menu_is_open can be 'false' when the popup is completely clipped (e.g. zero size display)
             PopStyleVar();
+            if (menu_is_open)
+            {
+                // Restore LastItemData so IsItemXXXX functions can work after BeginMenu()/EndMenu()
+                // (This fixes using IsItemClicked() and IsItemHovered(), but IsItemHovered() also relies on its support for ImGuiItemFlags_NoWindowHoverableCheck)
+                g.LastItemData = last_item_in_parent;
+                if (g.HoveredWindow == window)
+                    g.LastItemData.StatusFlags |= ImGuiItemStatusFlags_HoveredWindow;
+            }
         }
         else
         {
@@ -260,10 +285,15 @@ namespace he::editor
         ImVec2 pos = window->DC.CursorPos;
         ImVec2 label_size = CalcTextSize(label, NULL, true);
 
+        // See BeginMenuEx() for comments about this.
+        //////////
+        // HARVEST CHANGE START
+        //const bool menuset_is_open = IsRootOfOpenMenuSet();
         const bool menuset_is_open = ImGuiIsRootOfOpenMenuSet();
-        ImGuiWindow* backed_nav_window = g.NavWindow;
+        // HARVEST CHANGE END
+        //////////
         if (menuset_is_open)
-            g.NavWindow = window;
+            PushItemFlag(ImGuiItemFlags_NoWindowHoverableCheck, true);
 
         // We've been using the equivalent of ImGuiSelectableFlags_SetNavIdOnHover on all Selectable() since early Nav system days (commit 43ee5d73),
         // but I am unsure whether this should be kept at all. For now moved it to be an opt-in feature used by menus only.
@@ -272,7 +302,8 @@ namespace he::editor
         if (!enabled)
             BeginDisabled();
 
-        const ImGuiSelectableFlags selectable_flags = ImGuiSelectableFlags_SelectOnRelease | ImGuiSelectableFlags_SetNavIdOnHover;
+        // We use ImGuiSelectableFlags_NoSetKeyOwner to allow down on one menu item, move, up on another.
+        const ImGuiSelectableFlags selectable_flags = ImGuiSelectableFlags_SelectOnRelease | ImGuiSelectableFlags_NoSetKeyOwner | ImGuiSelectableFlags_SetNavIdOnHover;
         const ImGuiMenuColumns* offsets = &window->DC.MenuColumns;
         if (window->DC.LayoutType == ImGuiLayoutType_Horizontal)
         {
@@ -284,7 +315,8 @@ namespace he::editor
             PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(style.ItemSpacing.x * 2.0f, style.ItemSpacing.y));
             pressed = Selectable("", selected, selectable_flags, ImVec2(w, 0.0f));
             PopStyleVar();
-            RenderText(text_pos, label);
+            if (g.LastItemData.StatusFlags & ImGuiItemStatusFlags_Visible)
+                RenderText(text_pos, label);
             window->DC.CursorPos.x += IM_FLOOR(style.ItemSpacing.x * (-1.0f + 0.5f)); // -1 spacing to compensate the spacing added when Selectable() did a SameLine(). It would also work to call SameLine() ourselves after the PopStyleVar().
         }
         else
@@ -297,46 +329,51 @@ namespace he::editor
             //////////
             // HARVEST CHANGE START
             //float checkmark_w = IM_FLOOR(g.FontSize * 1.20f);
-            //float min_w = window->DC.MenuColumns.DeclColumns(icon_w, label_size.x, shortcut_w, checkmark_w); // Feedback for next frame
-            //float stretch_w = ImMax(0.0f, GetContentRegionAvail().x - min_w);
-            //pressed = Selectable("", false, selectable_flags | ImGuiSelectableFlags_SpanAvailWidth, ImVec2(min_w, 0.0f));
             float checkmark_w = style.ItemInnerSpacing.x + CalcTextSize(ICON_MDI_CHECK, NULL).x;
+            // HARVEST CHANGE END
+            //////////
             float min_w = window->DC.MenuColumns.DeclColumns(icon_w, label_size.x, shortcut_w, checkmark_w); // Feedback for next frame
             float stretch_w = ImMax(0.0f, GetContentRegionAvail().x - min_w);
+            //////////
+            // HARVEST CHANGE START
+            //pressed = Selectable("", false, selectable_flags | ImGuiSelectableFlags_SpanAvailWidth, ImVec2(min_w, label_size.y));
             window->ParentWorkRect.Min.x -= 2;
-            pressed = Selectable("", false, selectable_flags | ImGuiSelectableFlags_SpanAvailWidth | ImGuiSelectableFlags_SpanAllColumns, ImVec2(min_w, 0.0f));
+            pressed = Selectable("", false, selectable_flags | ImGuiSelectableFlags_SpanAvailWidth | ImGuiSelectableFlags_SpanAllColumns, ImVec2(min_w, label_size.y));
             window->ParentWorkRect.Min.x += 2;
             // HARVEST CHANGE END
             //////////
-            RenderText(pos + ImVec2(offsets->OffsetLabel, 0.0f), label);
-            if (icon_w > 0.0f)
-                RenderText(pos + ImVec2(offsets->OffsetIcon, 0.0f), icon);
-            if (shortcut_w > 0.0f)
+            if (g.LastItemData.StatusFlags & ImGuiItemStatusFlags_Visible)
             {
-                PushStyleColor(ImGuiCol_Text, style.Colors[ImGuiCol_TextDisabled]);
+                RenderText(pos + ImVec2(offsets->OffsetLabel, 0.0f), label);
+                if (icon_w > 0.0f)
+                    RenderText(pos + ImVec2(offsets->OffsetIcon, 0.0f), icon);
+                if (shortcut_w > 0.0f)
+                {
+                    PushStyleColor(ImGuiCol_Text, style.Colors[ImGuiCol_TextDisabled]);
+                    //////////
+                    // HARVEST CHANGE START
+                    //RenderText(pos + ImVec2(offsets->OffsetShortcut + stretch_w, 0.0f), shortcut, NULL, false);
+                    RenderText(pos + ImVec2(min_w - shortcut_w - checkmark_w - style.ItemInnerSpacing.x + stretch_w, 0.0f), shortcut, nullptr, false);
+                    // HARVEST CHANGE END
+                    //////////
+                    PopStyleColor();
+                }
                 //////////
                 // HARVEST CHANGE START
-                //RenderText(pos + ImVec2(offsets->OffsetShortcut + stretch_w, 0.0f), shortcut, NULL, false);
-                RenderText(pos + ImVec2(min_w - shortcut_w - checkmark_w - style.ItemInnerSpacing.x + stretch_w, 0.0f), shortcut, nullptr, false);
+                //if (selected)
+                //    RenderCheckMark(window->DrawList, pos + ImVec2(offsets->OffsetMark + stretch_w + g.FontSize * 0.40f, g.FontSize * 0.134f * 0.5f), GetColorU32(ImGuiCol_Text), g.FontSize * 0.866f);
+                if (selected)
+                    RenderText(pos + ImVec2(min_w - checkmark_w + stretch_w, 0), ICON_MDI_CHECK, nullptr, false);
                 // HARVEST CHANGE END
                 //////////
-                PopStyleColor();
             }
-            //////////
-            // HARVEST CHANGE START
-            //if (selected)
-            //    RenderCheckMark(window->DrawList, pos + ImVec2(offsets->OffsetMark + stretch_w + g.FontSize * 0.40f, g.FontSize * 0.134f * 0.5f), GetColorU32(ImGuiCol_Text), g.FontSize  * 0.866f);
-            if (selected)
-                RenderText(pos + ImVec2(min_w - checkmark_w + stretch_w, 0), ICON_MDI_CHECK, nullptr, false);
-            // HARVEST CHANGE END
-            //////////
         }
         IMGUI_TEST_ENGINE_ITEM_INFO(g.LastItemData.ID, label, g.LastItemData.StatusFlags | ImGuiItemStatusFlags_Checkable | (selected ? ImGuiItemStatusFlags_Checked : 0));
         if (!enabled)
             EndDisabled();
         PopID();
         if (menuset_is_open)
-            g.NavWindow = backed_nav_window;
+            PopItemFlag();
 
         return pressed;
     }

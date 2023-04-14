@@ -2,18 +2,40 @@
 
 TODO: `import_plugins`, `extend.modules`, `copy_files`
 
-All keys are optional unless otherwise specified.
+TODO: Explain that plugins are specified by a TOML file, often called `he_plugin.toml` in the root of the plugin.
 
-All paths can contain globs and are relative to the he_plugin file, or the install directory if the plugin is installed from a remote source. That is, if you use "install.github", "install.bitbucket", "install.nuget", or "install.archive" to install the plugin then paths are relative to the extracted files location.
+TODO: A more formal definition of the plugin file to better differentiate the objects involved (Plugin, Module, Variant, etc)?
+
+TODO: Make it clear that all keys are optional unless otherwise specified.
+
+## Paths
+
+All keys that accept paths can contain globs, and are relative to the plugin's install location. For plugins without an `[install]` block, this is the same directory where the `he_plugin.toml` file is located. For plugins *with* an `[install]` block, the install location is the extracted files location in the `build/` directory.
+
+If you have an installed plugin and need to refer to the location of the `he_plugin.toml` file, you can get it with `he.get_plugin('my_plugin_id')._file_path`. For example, the ImGui plugin does the following to include the `imgui_user_config.h` file which lives next to the `he_plugin.toml` file:
+
+```toml
+id = "ocornut.imgui"
+# ...
+
+[[modules]]
+    name = "imgui"
+    type = "static"
+    files = [
+        "%{path.getdirectory(he.get_plugin('ocornut.imgui')._file_path)}/imgui_user_config.h",
+        "imgui.cpp",
+        # ...
+    ]
+```
 
 ## Plugin Keys
 
 |      Key      |       Value Type      | Description |
 | ------------- | --------------------- | ----------- |
 | id            | String                | Required. Globally unique identifier for the plugin. |
+| version       | String                | Required. An arbitrary version string identifying the version of the plugin. |
 | name          | String                | Friendly name of the plugin meant for humans. |
 | description   | String                | Short description fo the plugin meant for humans. |
-| version       | String                | An arbitrary version string identifying the version of the plugin. |
 | author        | String|Array<String>  | The plugin's author name and email, in the format "Name <email>". |
 | license       | String                | An SPDX license identifier (https://spdx.org/licenses/), or "UNLICENSED", or "SEE LICENSE IN <filename>". If this is not specified it is treated as "UNLICENSED". |
 | warnings      | String                | Desired level of warning: "Off", "Default", or "Extra". The default is "Extra" |
@@ -42,9 +64,9 @@ All paths can contain globs and are relative to the he_plugin file, or the insta
 | ------------------------- | ----------------- | ----------- |
 | name                      | String            | Required. Globally unique name of the module. Also used as the project name. |
 | type                      | String            | See the Module Types section for valid values. |
-| group                     | String            | Name of the group this module belongs to. This will be a virtual folder in the solution tree. |
+| group                     | String            | Name of the group this module belongs to. This will be a virtual folder in the solution tree, and can include folder separators (`/`) |
 | language                  | String            | Language of the source to be compiled in the module project. Default is "C++" if not specified. |
-| files                     | Array<String>     | File paths to include in the module project. |
+| files                     | Array<Path>       | File paths to include in the module project. |
 | post_build_commands       | Array<String>     | Commands to run after the module is built. |
 | pre_build_commands        | Array<String>     | Commands to run before the module is built. |
 | dependson_runtime         | Array<String>     | Module names this module will use at runtime, but are not required to build. See the Module Dependencies section for more details. |
@@ -58,7 +80,7 @@ The following keys must be prefixed with "public" or "private". The former means
 | *_defines           | Array<String>     | Symbols to define. Use the syntax "SYMBOL=X" to define the symbol with a value. |
 | *_dependson         | Array<String>     | Module names this module requires to build. See the Module Dependencies section for more details. |
 | *_dependson_include | Array<String>     | Module names this module requires include-only access to. See the Module Dependencies section for more details. |
-| *_includedirs       | Array<String>     | Include paths required for this module to build. |
+| *_includedirs       | Array<Path>       | Include paths required for this module to build. |
 
 ### Module Variant Keys
 

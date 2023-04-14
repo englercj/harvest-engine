@@ -4,12 +4,12 @@ id = "epezent.implot"
 name = "ImPlot"
 description = "ImPlot is an immediate mode, GPU accelerated plotting library for Dear ImGui."
 version = "0.14"
-author = "Evan Pezent"
+author = "Evan Pezent <epezent16@gmail.com>"
 license = "MIT"
 homepage = "https://github.com/epezent/implot"
 
 [install]
-    github = "epezent/implot#v0.14"
+    github = "epezent/implot#33c5a965f55f80057f197257d1d1cdb06523e963" # latest master (post v0.14)
 
 [[modules]]
     name = "implot"
@@ -18,9 +18,14 @@ homepage = "https://github.com/epezent/implot"
     files = [
         "implot.cpp",
         "implot.h",
-        "implot_demo.cpp",
         "implot_internal.h",
         "implot_items.cpp",
     ]
     public_dependson = ["imgui"]
     public_includedirs = ["."]
+
+    [[modules.variants]]
+        conditions = ["tags:internal"]
+        files = [
+            "implot_demo.cpp",
+        ]

@@ -68,14 +68,14 @@ namespace he::editor
             template <typename...>
             using is_referable = std::false_type;
 
-        #define HE_DI_PROVIDER_VAL(T, ProviderType) \
+        #define HE_DI_PROVIDER_VAL \
             DeclVal<ProviderType>().get(typename ProviderType::config::template memory_traits<T>::type{})
 
             template <typename T, typename ProviderType>
-            using ProviderGetType = decltype(HE_DI_PROVIDER_VAL(T, ProviderType));
+            using ProviderGetType = decltype(HE_DI_PROVIDER_VAL);
 
             template <typename T, typename ProviderType>
-            using WrapperType = decltype(DIUniqueWrapper<DIUniqueScope, ProviderGetType<T, ProviderType>>{ HE_DI_PROVIDER_VAL(T, ProviderType) });
+            using WrapperType = decltype(DIUniqueWrapper<DIUniqueScope, ProviderGetType<T, ProviderType>>{ HE_DI_PROVIDER_VAL });
 
             template <typename T, typename, typename ProviderType>
             static WrapperType<T, ProviderType> try_create(const ProviderType&);
@@ -128,24 +128,32 @@ namespace he::editor
         }
     };
 
-    struct DIConfig : di::config
+    struct DIConfig
     {
-        template <class T> struct scope_traits { using type = DIUniqueScope; };
-        template <class T> struct scope_traits<T&> { using type = typename di::scopes::singleton; };
+        template <typename T>
+        auto provider(T*) noexcept { return DIProvider{}; }
 
-        template <class T> struct memory_traits { using type = typename di::type_traits::stack; };
-        template <class T> struct memory_traits<T*> { using type = typename di::type_traits::heap; };
-        template <class T> struct memory_traits<const T&> { using type = typename memory_traits<T>::type; };
-        template <class T> struct memory_traits<UniquePtr<T>> { using type = typename di::type_traits::heap; };
+        template <typename T>
+        auto policies(T*) noexcept { return di::make_policies(); }
 
-        template <class T> requires(IsPolymorphic<T>)
+        template <typename T> struct scope_traits { using type = DIUniqueScope; };
+        template <typename T> struct scope_traits<T&> { using type = typename di::scopes::singleton; };
+        // TODO: singleton scope uses static lifetime for storage, which leaves destruction order ambiguous
+        // We need a well-ordered version of this scope.
+
+        template <typename T> struct memory_traits { using type = typename di::type_traits::stack; };
+        template <typename T> struct memory_traits<T*> { using type = typename di::type_traits::heap; };
+        template <typename T> struct memory_traits<const T&> { using type = typename memory_traits<T>::type; };
+        template <typename T> struct memory_traits<UniquePtr<T>> { using type = typename di::type_traits::heap; };
+
+        template <typename T> requires(IsPolymorphic<T>)
         struct memory_traits<T> { using type = typename di::type_traits::heap; };
-
-        template <typename InjectorType>
-        static auto provider(const InjectorType&) { return DIProvider{}; }
     };
 
-    inline const auto g_appInjector = di::make_injector<DIConfig>();
+    #define HE_DI_MAKE_INJECTOR() di::make_injector<::he::editor::DIConfig>()
+
+    using DIInjectorType = decltype(HE_DI_MAKE_INJECTOR());
+    extern const DIInjectorType g_appInjector;
 
     template <typename T>
     auto DICreate() -> decltype(g_appInjector.template create<T>())
@@ -163,13 +171,13 @@ namespace he::editor
 BOOST_DI_NAMESPACE_BEGIN
 namespace aux
 {
-    template <class T>
+    template <typename T>
     struct remove_smart_ptr<he::UniquePtr<T>>
     {
         using type = T;
     };
 
-    template <class T>
+    template <typename T>
     struct deref_type<he::UniquePtr<T>>
     {
         using type = remove_qualifiers_t<typename deref_type<T>::type>;
@@ -178,13 +186,19 @@ namespace aux
 
 namespace type_traits
 {
-    template <class T, class U>
+    template <typename T>
+    struct memory_traits<he::UniquePtr<T>>
+    {
+        using type = heap;
+    };
+
+    template <typename T, typename U>
     struct rebind_traits<he::UniquePtr<T>, U>
     {
         using type = he::UniquePtr<U>;
     };
 
-    template <class T, class TName, class _>
+    template <typename T, typename TName, typename _>
     struct rebind_traits<he::UniquePtr<T>, named<TName, _>>
     {
         using type = named<TName, he::UniquePtr<T>>;

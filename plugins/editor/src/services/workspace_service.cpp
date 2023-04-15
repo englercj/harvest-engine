@@ -62,6 +62,20 @@ namespace he::editor
         m_panelService.ShowPanels();
     }
 
+    bool WorkspaceService::RequestClose()
+    {
+        // TODO: Don't close documents which have pending changes.
+        m_documentService.CloseAll();
+        m_documentService.DestroyClosedDocuments();
+
+        m_dialogService.CloseAll();
+        m_dialogService.DestroyClosedDialogs();
+
+        m_panelService.Close();
+        m_panelService.DestroyClosedPanels();
+        return true;
+    }
+
     window::ViewHitArea WorkspaceService::GetHitArea(const Vec2i& point) const
     {
         // Gather the window size so we can hit test for resize areas

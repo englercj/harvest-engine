@@ -18,6 +18,7 @@ namespace he::editor
         void DestroyClosedDialogs();
 
         void ShowDialogs();
+        void CloseAll();
 
         template <typename T> requires(IsBaseOf<Dialog, T>)
         T& Open()

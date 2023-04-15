@@ -128,6 +128,9 @@ namespace he::editor
         if (m_mainWindowService.GetView() != view)
             return;
 
+        if (!m_workspaceService.RequestClose())
+            return;
+
         m_initialized = false;
 
         m_settingsService.Save();

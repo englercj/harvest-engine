@@ -66,4 +66,12 @@ namespace he::editor
         ImGui::PopStyleColor();
         ImGui::PopStyleVar();
     }
+
+    void DialogService::CloseAll()
+    {
+        for (UniquePtr<Dialog>& dialog : m_dialogs)
+        {
+            dialog->Close();
+        }
+    }
 }

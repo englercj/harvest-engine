@@ -37,6 +37,7 @@ namespace he::editor
             UniquePtr<OpenProjectCommand> openProjectCommand) noexcept;
 
         void Show();
+        bool RequestClose();
 
         window::ViewHitArea GetHitArea(const Vec2i& point) const;
 

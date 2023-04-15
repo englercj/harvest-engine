@@ -17,6 +17,7 @@ namespace he::editor
         void DestroyClosedDocuments();
 
         void ShowDocuments();
+        void CloseAll();
 
         Document* ActiveDocument() const { return m_activeDocument; }
 

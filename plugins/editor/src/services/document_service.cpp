@@ -71,4 +71,12 @@ namespace he::editor
             ImGui::End();
         }
     }
+
+    void DocumentService::CloseAll()
+    {
+        for (UniquePtr<Document>& doc : m_documents)
+        {
+            doc->Close();
+        }
+    }
 }

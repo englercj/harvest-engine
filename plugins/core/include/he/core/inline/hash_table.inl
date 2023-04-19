@@ -87,7 +87,7 @@ namespace he
     }
 
     template <typename T>
-    bool HashTable<T>::operator==(const HashTable<T>& x) const
+    bool HashTable<T>::operator==(const HashTable& x) const
     {
         if (this == &x)
             return true;

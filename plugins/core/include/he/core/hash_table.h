@@ -1,7 +1,6 @@
 // Copyright Chad Engler
 
-// This HashTable implementation was originally based on Martin Leitner-Ankerl's hash table,
-// which was licensed under the MIT license as of December 2022.
+// This HashTable implementation was originally based on Martin Leitner-Ankerl's hash table.
 // https://github.com/martinus/unordered_dense
 //
 // License:
@@ -40,6 +39,7 @@
 #include "he/core/span.h"
 #include "he/core/types.h"
 #include "he/core/type_traits.h"
+#include "he/core/utils.h"
 #include "he/core/vector.h"
 
 #include <algorithm>
@@ -97,6 +97,8 @@ namespace he
 
         /// Construct an empty table.
         ///
+        /// \param hash Optional. The hasher object to use.
+        /// \param equal Optional. The equality checker to use.
         /// \param allocator Optional. The allocator to use.
         explicit HashTable(
             const HasherType& hash = HasherType(),
@@ -152,13 +154,13 @@ namespace he
         ///
         /// \param x The table to check against.
         /// \return True if the tables are equal, false otherwise.
-        [[nodiscard]] bool operator==(const HashTable<T>& x) const;
+        [[nodiscard]] bool operator==(const HashTable& x) const;
 
         /// Checks if this table is not equal to another table.
         ///
         /// \param x The table to check against.
         /// \return True if the tables are not equal, false otherwise.
-        [[nodiscard]] bool operator!=(const HashTable<T>& x) const { return !this->operator==(x); }
+        [[nodiscard]] bool operator!=(const HashTable& x) const { return !this->operator==(x); }
 
         // ----------------------------------------------------------------------------------------
         // Capacity

@@ -3,58 +3,87 @@
 #pragma once
 
 #include "he/core/allocator.h"
-#include "he/core/string_view.h"
+#include "he/core/rb_tree.h"
 #include "he/core/sync.h"
 #include "he/core/types.h"
 
+namespace std { struct forward_iterator_tag; }
+
 namespace he
 {
-    /// A reference to a string in a StringPool.
-    class StringPoolRef final
+    /// A unique identifier of a string that has been interned in a StringPool.
+    struct StringPoolId final
     {
-    public:
-        constexpr StringPoolRef() = default;
-        constexpr StringPoolRef(uint32_t number, uint32_t index) noexcept : m_value(index < IndexMax ? ((number << IndexBits) | index) : InvalidValue) {}
-        constexpr StringPoolRef(const StringPoolRef& x) noexcept : m_value(x.m_value) {}
+        uint32_t val{ 0 };
 
-        constexpr uint32_t Number() const { return m_value >> IndexBits; }
-        constexpr uint32_t Index() const { return m_value & IndexMask; }
-        constexpr bool IsValid() const { return m_value != InvalidValue; }
-
-        constexpr explicit operator bool() const { return m_value != InvalidValue; }
-
-        constexpr StringPoolRef& operator=(const StringPoolRef& x) noexcept { m_value = x.m_value; return *this; };
-        constexpr bool operator==(const StringPoolRef& x) const { return m_value == x.m_value; }
-        constexpr bool operator!=(const StringPoolRef& x) const { return m_value != x.m_value; }
-        constexpr bool operator<(const StringPoolRef& x) const { return m_value < x.m_value; }
-
-    private:
-        static constexpr uint32_t IndexBits = 8;
-        static constexpr uint32_t IndexMax = 1 << IndexBits;
-        static constexpr uint32_t IndexMask = (1 << IndexBits) - 1;
-
-        //static constexpr uint32_t NumberBits = sizeof(uint32_t) - IndexBits;
-        //static constexpr uint32_t NumberMax = 1 << NumberBits;
-
-        static constexpr uint32_t InvalidValue = static_cast<uint32_t>(-1);
-
-    private:
-        uint32_t m_value{ InvalidValue };
+        constexpr explicit operator bool() const { return val != 0; }
+        constexpr bool operator==(const StringPoolId& x) const { return val == x.val; }
+        constexpr bool operator!=(const StringPoolId& x) const { return val != x.val; }
+        constexpr bool operator<(const StringPoolId& x) const { return val < x.val; }
     };
 
-    /// A thread safe, and lock free, pool of interned strings.
+    /// A threadsafe pool of interned strings.
     ///
     /// Strings interned in the pool are immutable and cannot be removed once added.
     class StringPool final
     {
     public:
-        static constexpr uint32_t PageSize = 2 * 1024 * 1024; // 2MB
+        static constexpr uint32_t DefaultPageSize = 4096;
 
         static StringPool& GetDefault();
 
+    private:
+        class Block;
+
     public:
-        StringPool(Allocator& allocator = Allocator::GetDefault()) noexcept : m_allocator(allocator) {}
-        ~StringPool() noexcept;
+        class Iterator final
+        {
+        public:
+            using ElementType = const char*;
+
+            using difference_type = uint32_t;
+            using value_type = ElementType;
+            using container_type = StringPool;
+            using iterator_category = std::forward_iterator_tag;
+            using _Unchecked_type = Iterator; // Mark iterator as checked.
+
+        public:
+            Iterator() = default;
+            Iterator(const Block* strings) noexcept;
+
+            const char* String() const;
+            StringPoolId Id() const { return { m_id }; }
+
+            const char* operator*() const { return String(); }
+
+            Iterator& operator++() { Next(); return *this; }
+            Iterator operator++(int) { Iterator x(*this); Next(); return x; }
+
+            [[nodiscard]] Iterator operator+(uint32_t n) const
+            {
+                Iterator x(*this);
+                for (uint32_t i = 0; i < n; ++i)
+                    x.Next();
+                return x;
+            }
+
+            [[nodiscard]] bool operator==(const Iterator& x) const { return m_strings == x.m_strings && m_id == x.m_id; }
+            [[nodiscard]] bool operator!=(const Iterator& x) const { return m_strings != x.m_strings || m_id != x.m_id; }
+
+            [[nodiscard]] explicit operator bool() const { return m_strings != nullptr; }
+
+        private:
+            void Next();
+
+        private:
+            const Block* m_strings{ nullptr };
+            uint32_t m_page{ 0 };
+            uint32_t m_offset{ 0 };
+            uint32_t m_id{ 0 };
+        };
+
+    public:
+        StringPool(Allocator& allocator = Allocator::GetDefault(), uint32_t pageSize = DefaultPageSize) noexcept;
 
         StringPool(const StringPool&) = delete;
         StringPool(StringPool&&) = delete;
@@ -62,23 +91,79 @@ namespace he
         StringPool& operator=(const StringPool&) = delete;
         StringPool& operator=(StringPool&&) = delete;
 
-        StringPoolRef Add(StringView str);
+        [[nodiscard]] Allocator& GetAllocator() const { return m_allocator; }
 
-        StringView Get(StringPoolRef ref) const;
+        StringPoolId Add(const char* str);
+        StringPoolId Find(const char* str) const;
 
-        //uint32_t Size() const { return m_entryCount; }
+        const char* Get(StringPoolId id) const;
+
+        uint32_t PageSize() const { return m_pageSize; }
+        uint32_t Size() const { return m_total; }
+
+        uint32_t AllocatedBytes() const;
+
+    public:
+        Iterator begin() const { return Iterator(&m_strings); }
+        Iterator end() const { return Iterator(); }
 
     private:
-        StringPoolRef Add(StringView str, uint64_t hash);
+        class Block final
+        {
+        public:
+            Block(Allocator& allocator, uint32_t pageSize) noexcept;
+            ~Block() noexcept;
+
+            void* Alloc(uint32_t size);
+            template <typename T> T* Alloc() { return static_cast<T*>(Alloc(sizeof(T))); }
+
+            uint32_t AllocatedBytes() const;
+
+            void* GetPage(uint32_t index) const { return m_pages[index]; }
+            uint32_t GetOffset(uint32_t page) const { return m_offsets[page]; }
+
+            uint32_t Size() const { return m_size; }
+            uint32_t Capacity() const { return m_capacity; }
+
+        private:
+            void* AddPage();
+            void Grow(uint32_t newCapacity);
+
+        private:
+            Allocator& m_allocator;
+            void** m_pages{ nullptr };
+            uint32_t* m_offsets{ nullptr };
+            uint32_t m_pageSize{ 0 };
+            uint32_t m_size{ 0 };
+            uint32_t m_capacity{ 0 };
+        };
+
+        struct Entry final
+        {
+            uint32_t hash;
+            uint32_t id;
+            const char* value;
+
+            RBTreeLink<Entry> link;
+            Entry* next;
+        };
+
+        using EntryMap = RBTree<Entry, &Entry::link, uint32_t, &Entry::hash>;
+
+    private:
+        static uint32_t Hash(const char* str);
+        Entry* AllocEntry(uint32_t hash, const char* str);
 
     private:
         Allocator& m_allocator;
 
-        RWLock m_lock;
-        class Node* m_head{ nullptr };
-        uint32_t m_noItems{ 0 };
-        uint32_t m_noBuckets{ 0 };
-        uint32_t m_nextResize{ 0 };
-        double m_maxLoadFactor{ 0.0 };
+        mutable RWLock m_lock;
+        uint32_t m_pageSize;
+        uint32_t m_total;
+
+        Block m_hashes;
+        Block m_strings;
+        Block m_index;
+        EntryMap m_map;
     };
 }

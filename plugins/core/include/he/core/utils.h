@@ -239,4 +239,15 @@ namespace he
             return a == b;
         }
     };
+
+    /// Functor template for performing less-than comparisons. The base template simply invokes
+    /// `operator<` on type `T`.
+    template <typename T>
+    struct LessThan
+    {
+        [[nodiscard]] constexpr bool operator()(const T& a, const T& b) const
+        {
+            return a < b;
+        }
+    };
 }

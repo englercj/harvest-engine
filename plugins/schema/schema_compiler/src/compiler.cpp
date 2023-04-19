@@ -41,6 +41,7 @@ namespace he::schema
                 // then the verifier must have found a valid node.
                 const AstNode* structDeclNode = m_context->FindNodeById(typeData.GetStruct().GetId());
                 HE_ASSERT(structDeclNode && structDeclNode->kind == AstNode::Kind::Struct);
+                HE_UNUSED(structDeclNode);
 
                 const Type::Data::Struct::Builder structType = typeData.GetStruct();
                 StructBuilder st = CreateStructValue(structType, *pending.ast, *pending.scope);

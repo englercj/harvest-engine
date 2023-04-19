@@ -587,8 +587,9 @@ namespace he::schema
         const Declaration::Reader decl = GetSchema(scope);
 
         const Field::Meta::Reader meta = field.GetMeta();
-        const char* kindName = meta.IsGroup() ? "group" : "union";
         const TypeId id = meta.IsGroup() ? meta.GetGroup().GetTypeId() : meta.GetUnion().GetTypeId();
+        const char* kindName = meta.IsGroup() ? "group" : "union";
+        HE_UNUSED(kindName);
 
         Declaration::Reader groupChild;
         for (const Declaration::Reader child : decl.GetChildren())

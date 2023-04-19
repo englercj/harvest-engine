@@ -84,6 +84,7 @@ namespace he::sqlite
 
         const uint32_t len = String::Length(cmd);
         HE_ASSERT(len <= QueryMaxLen);
+        HE_UNUSED(QueryMaxLen);
 
         char query[BufferLen];
         MemCopy(query, cmd, len);

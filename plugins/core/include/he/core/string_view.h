@@ -92,7 +92,19 @@ namespace he
         ///
         /// \param x The string to check against.
         /// \return True if the strings are equal, false otherwise.
+        bool operator==(const char* x) const { return String::EqualN(m_data, x, m_size); }
+
+        /// Checks if this string is equal to `x`.
+        ///
+        /// \param x The string to check against.
+        /// \return True if the strings are equal, false otherwise.
         constexpr bool operator==(const StringView& x) const { return Size() == x.Size() && CompareInternal(Data(), x.Data(), Size()) == 0; }
+
+        /// Checks if this string is not equal to `x`.
+        ///
+        /// \param x The string to check against.
+        /// \return True if the strings are not equal, false otherwise.
+        bool operator!=(const char* x) const { return !this->operator==(x); }
 
         /// Checks if this string is not equal to `x`.
         ///
@@ -104,7 +116,19 @@ namespace he
         ///
         /// \param x The string to check against.
         /// \return True if this string is less than `x`, false otherwise.
+        bool operator<(const char* x) const { return String::CompareN(m_data, x, m_size) < 0; }
+
+        /// Checks if this string is less than `x`.
+        ///
+        /// \param x The string to check against.
+        /// \return True if this string is less than `x`, false otherwise.
         constexpr bool operator<(const StringView& x) const { return CompareTo(x) < 0; }
+
+        /// Checks if this string is less than or equal to `x`.
+        ///
+        /// \param x The string to check against.
+        /// \return True if this string is less than or equal to `x`, false otherwise.
+        bool operator<=(const char* x) const { return String::CompareN(m_data, x, m_size) <= 0; }
 
         /// Checks if this string is less than or equal to `x`.
         ///
@@ -116,7 +140,19 @@ namespace he
         ///
         /// \param x The string to check against.
         /// \return True if this string is greater than `x`, false otherwise.
+        bool operator>(const char* x) const { return String::CompareN(m_data, x, m_size) > 0; }
+
+        /// Checks if this string is greater than `x`.
+        ///
+        /// \param x The string to check against.
+        /// \return True if this string is greater than `x`, false otherwise.
         constexpr bool operator>(const StringView& x) const { return CompareTo(x) > 0; }
+
+        /// Checks if this string is greater than or equal to `x`.
+        ///
+        /// \param x The string to check against.
+        /// \return True if this string is greater than or equal to `x`, false otherwise.
+        bool operator>=(const char* x) const { return String::CompareN(m_data, x, m_size) >= 0; }
 
         /// Checks if this string is greater than or equal to `x`.
         ///

@@ -12,33 +12,37 @@ using namespace he;
 HE_TEST(core, type_info, _GetTypeName)
 {
     {
-        constexpr StringView name = _GetTypeName<int>();
+        constexpr StringView Name = _GetTypeName<int>();
+        constexpr StringView Expected = "int";
 
-        static_assert(name == "int");
-        HE_EXPECT_EQ(name, "int");
+        static_assert(Name == Expected);
+        HE_EXPECT_EQ(Name, Expected);
     }
 
     {
-        constexpr StringView name = _GetTypeName<uint32_t>();
+        constexpr StringView Name = _GetTypeName<uint32_t>();
+        constexpr StringView Expected = "unsigned int";
 
-        static_assert(name == "unsigned int");
-        HE_EXPECT_EQ(name, "unsigned int");
+        static_assert(Name == Expected);
+        HE_EXPECT_EQ(Name, Expected);
     }
 
     {
-        constexpr StringView name = _GetTypeName<TestFixture>();
+        constexpr StringView Name = _GetTypeName<TestFixture>();
+        constexpr StringView Expected = "class he::TestFixture";
 
-        static_assert(name == "class he::TestFixture");
-        HE_EXPECT_EQ(name, "class he::TestFixture");
+        static_assert(Name == Expected);
+        HE_EXPECT_EQ(Name, Expected);
     }
 
     {
         struct Test {};
 
-        constexpr StringView name = _GetTypeName<Test>();
+        constexpr StringView Name = _GetTypeName<Test>();
+        constexpr StringView Expected = "struct _heTestClass_core_type_info__GetTypeName::TestBody::Test";
 
-        static_assert(name == "struct _heTestClass_core_type_info__GetTypeName::TestBody::Test");
-        HE_EXPECT_EQ(name, "struct _heTestClass_core_type_info__GetTypeName::TestBody::Test");
+        static_assert(Name == Expected);
+        HE_EXPECT_EQ(Name, Expected);
     }
 }
 
@@ -69,44 +73,48 @@ HE_TEST(core, type_info, Operators)
 HE_TEST(core, type_info, Name_Hash)
 {
     {
-        constexpr TypeInfo info = TypeInfo::Get<int>();
+        constexpr TypeInfo Info = TypeInfo::Get<int>();
+        constexpr StringView ExpectedName = "int";
 
-        static_assert(info.Name() == "int");
-        HE_EXPECT_EQ(info.Name(), "int");
+        static_assert(Info.Name() == ExpectedName);
+        HE_EXPECT_EQ(Info.Name(), ExpectedName);
 
-        static_assert(info.Hash() == 0x2b9fff192bd4c83e);
-        HE_EXPECT_EQ(info.Hash(), 0x2b9fff192bd4c83e);
+        static_assert(Info.Hash() == 0x2b9fff192bd4c83e);
+        HE_EXPECT_EQ(Info.Hash(), 0x2b9fff192bd4c83e);
     }
 
     {
-        constexpr TypeInfo info = TypeInfo::Get<uint32_t>();
+        constexpr TypeInfo Info = TypeInfo::Get<uint32_t>();
+        constexpr StringView ExpectedName = "unsigned int";
 
-        static_assert(info.Name() == "unsigned int");
-        HE_EXPECT_EQ(info.Name(), "unsigned int");
+        static_assert(Info.Name() == ExpectedName);
+        HE_EXPECT_EQ(Info.Name(), ExpectedName);
 
-        static_assert(info.Hash() == 0xbaaedcff023465cb);
-        HE_EXPECT_EQ(info.Hash(), 0xbaaedcff023465cb);
+        static_assert(Info.Hash() == 0xbaaedcff023465cb);
+        HE_EXPECT_EQ(Info.Hash(), 0xbaaedcff023465cb);
     }
 
     {
-        constexpr TypeInfo info = TypeInfo::Get<TestFixture>();
+        constexpr TypeInfo Info = TypeInfo::Get<TestFixture>();
+        constexpr StringView ExpectedName = "class he::TestFixture";
 
-        static_assert(info.Name() == "class he::TestFixture");
-        HE_EXPECT_EQ(info.Name(), "class he::TestFixture");
+        static_assert(Info.Name() == ExpectedName);
+        HE_EXPECT_EQ(Info.Name(), ExpectedName);
 
-        static_assert(info.Hash() == 0x84cc2492ffe3cb3f);
-        HE_EXPECT_EQ(info.Hash(), 0x84cc2492ffe3cb3f);
+        static_assert(Info.Hash() == 0x84cc2492ffe3cb3f);
+        HE_EXPECT_EQ(Info.Hash(), 0x84cc2492ffe3cb3f);
     }
 
     {
         struct Test {};
 
-        constexpr TypeInfo info = TypeInfo::Get<Test>();
+        constexpr TypeInfo Info = TypeInfo::Get<Test>();
+        constexpr StringView ExpectedName = "struct _heTestClass_core_type_info_Name_Hash::TestBody::Test";
 
-        static_assert(info.Name() == "struct _heTestClass_core_type_info_Name_Hash::TestBody::Test");
-        HE_EXPECT_EQ(info.Name(), "struct _heTestClass_core_type_info_Name_Hash::TestBody::Test");
+        static_assert(Info.Name() == ExpectedName);
+        HE_EXPECT_EQ(Info.Name(), ExpectedName);
 
-        static_assert(info.Hash() == 0x8d098f6678e7c781);
-        HE_EXPECT_EQ(info.Hash(), 0x8d098f6678e7c781);
+        static_assert(Info.Hash() == 0x8d098f6678e7c781);
+        HE_EXPECT_EQ(Info.Hash(), 0x8d098f6678e7c781);
     }
 }

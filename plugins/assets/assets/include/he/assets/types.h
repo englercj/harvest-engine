@@ -21,8 +21,7 @@ namespace he::assets
     constexpr StringView AssetFileExtension{ ".he_asset" };
 
     /// A Uuid wrapper to provide a type-safe expression of an Asset's Uuid or Asset File's Uuid.
-    /// The tag template param is used to make the type unique, but the base class here exists
-    /// to reduce code duplication.
+    /// The tag template param is used to generate a unique type, but is otherwise unused.
     ///
     /// \internal
     /// @tparam Tag A tag type used to make the type unique.

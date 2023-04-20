@@ -23,6 +23,11 @@ namespace he
         , m_committedPages(Exchange(x.m_committedPages, 0))
     {}
 
+    ArenaAllocator::~ArenaAllocator() noexcept
+    {
+        Clear();
+    }
+
     void* ArenaAllocator::Malloc(size_t size, size_t alignment) noexcept
     {
         alignment = AlignUp(alignment, sizeof(void*));

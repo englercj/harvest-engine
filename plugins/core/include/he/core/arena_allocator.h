@@ -31,6 +31,10 @@ namespace he
         /// Constructs an arena allocator by moving the data from `x`.
         ArenaAllocator(ArenaAllocator&& x) noexcept;
 
+        /// Invalidates all issued pointers and releases all memory pages that have been
+        /// committed by this allocator.
+        ~ArenaAllocator() noexcept;
+
         /// \copydoc Allocator::Malloc(size_t, size_t)
         [[nodiscard]] void* Malloc(size_t size, size_t alignment = DefaultAlignment) noexcept override;
 
@@ -41,10 +45,10 @@ namespace he
         ///
         /// \note This method does not actually release any memory pages and the free'd allocation
         /// does not get reused until \ref Clear is called. Instead, this function can be useful to
-        /// detecct unexpected use-after-free errors from ASAN.
-        void Free(void*) noexcept override;
+        /// detect unexpected use-after-free errors from ASAN.
+        void Free(void* ptr) noexcept override;
 
-        /// Invalidates all issued pointers and resets the state for reuse. Previously allocated
+        /// Invalidates all issued pointers and resets the state for reuse. Previously committed
         /// pages are kept for reuse.
         void Clear() noexcept;
 

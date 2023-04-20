@@ -57,7 +57,7 @@ namespace he
     class RBTree final
     {
     public:
-        using Pfn_ClearHandler = bool(*)(T*, void*);
+        using Pfn_ClearHandler = void(*)(T*, void*);
 
         static constexpr uint32_t MaxDepth = sizeof(void*) << 4;
 
@@ -139,6 +139,7 @@ namespace he
             V value;
 
         private:
+            friend RBTreeMap;
             RBTreeLink<Node> link;
         };
 

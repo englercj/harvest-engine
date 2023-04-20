@@ -756,7 +756,7 @@ namespace he
         if (entry)
             return { *entry, false };
 
-        entry = m_allocator.New<Node>(Forward<K>(key), Forward<Args>(args)...);
+        entry = m_allocator.New<Node>(Forward<U>(key), Forward<Args>(args)...);
         m_tree.Insert(entry);
         ++m_size;
         return { *entry, true };

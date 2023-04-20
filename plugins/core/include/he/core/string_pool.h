@@ -4,6 +4,7 @@
 
 #include "he/core/allocator.h"
 #include "he/core/rb_tree.h"
+#include "he/core/string_view.h"
 #include "he/core/sync.h"
 #include "he/core/types.h"
 
@@ -94,7 +95,9 @@ namespace he
         [[nodiscard]] Allocator& GetAllocator() const { return m_allocator; }
 
         StringPoolId Add(const char* str);
+        StringPoolId Add(StringView str);
         StringPoolId Find(const char* str) const;
+        StringPoolId Find(StringView str) const;
 
         const char* Get(StringPoolId id) const;
 
@@ -152,7 +155,9 @@ namespace he
 
     private:
         static uint32_t Hash(const char* str);
-        Entry* AllocEntry(uint32_t hash, const char* str);
+        static uint32_t Hash(StringView str);
+
+        Entry* AllocEntry(uint32_t hash, StringView str);
 
     private:
         Allocator& m_allocator;

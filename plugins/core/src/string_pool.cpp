@@ -152,6 +152,53 @@ namespace he
 
     StringPoolId StringPool::Add(const char* str)
     {
+        if (String::IsEmpty(str))
+            return {};
+
+        const uint32_t hash = Hash(str);
+
+        LockGuard lock(m_lock);
+
+        Entry* entry = m_map.Find(hash);
+
+        // No existing entry, create a new one and insert it
+        if (!entry)
+        {
+            entry = AllocEntry(hash, { str, String::Length(str) });
+
+            if (!entry) [[unlikely]]
+                return {};
+
+            m_map.Insert(entry);
+            return { entry->id };
+        }
+
+        // There is an existing entry, we need to check for a hash collision.
+        // In the unlikely case that the hash collides, each entry has a linked-list.
+        while (!String::Equal(str, entry->value)) [[unlikely]]
+        {
+            if (!entry->next) [[likely]]
+            {
+                entry->next = AllocEntry(hash, { str, String::Length(str) });
+                entry = entry->next;
+
+                if (!entry) [[unlikely]]
+                    return {};
+
+                break;
+            }
+
+            entry = entry->next;
+        }
+
+        return { entry->id };
+    }
+
+    StringPoolId StringPool::Add(StringView str)
+    {
+        if (str.IsEmpty())
+            return {};
+
         const uint32_t hash = Hash(str);
 
         LockGuard lock(m_lock);
@@ -172,26 +219,20 @@ namespace he
 
         // There is an existing entry, we need to check for a hash collision.
         // In the unlikely case that the hash collides, each entry has a linked-list.
-        if (!String::Equal(str, entry->value)) [[unlikely]]
+        while (str != entry->value) [[unlikely]]
         {
-            while (true)
+            if (!entry->next) [[likely]]
             {
-                if (!entry->next) [[likely]]
-                {
-                    entry->next = AllocEntry(hash, str);
-                    entry = entry->next;
-
-                    if (!entry) [[unlikely]]
-                        return {};
-
-                    break;
-                }
-
+                entry->next = AllocEntry(hash, str);
                 entry = entry->next;
 
-                if (String::Equal(str, entry->value))
-                    break;
+                if (!entry) [[unlikely]]
+                    return {};
+
+                break;
             }
+
+            entry = entry->next;
         }
 
         return { entry->id };
@@ -215,12 +256,30 @@ namespace he
         return {};
     }
 
+    StringPoolId StringPool::Find(StringView str) const
+    {
+        const uint32_t hash = Hash(str);
+
+        ReadLockGuard lock(m_lock);
+
+        const Entry* entry = m_map.Find(hash);
+        while (entry)
+        {
+            if (str == entry->value) [[likely]]
+                return { entry->id };
+
+            entry = entry->next;
+        }
+
+        return {};
+    }
+
     const char* StringPool::Get(StringPoolId id) const
     {
         ReadLockGuard lock(m_lock);
 
         if (id.val == 0 || id.val > m_total) [[unlikely]]
-            return {};
+            return nullptr;
 
         const uint32_t hashesPerPage = m_pageSize / sizeof(uint32_t);
         const uint32_t offset = (id.val - 1);
@@ -256,7 +315,17 @@ namespace he
         return hash;
     }
 
-    StringPool::Entry* StringPool::AllocEntry(uint32_t hash, const char* str)
+    uint32_t StringPool::Hash(StringView str)
+    {
+        uint32_t hash = 5381;
+        for (const char c : str)
+        {
+            hash = ((hash << 5) + hash) + (uint32_t)c;
+        }
+        return hash;
+    }
+
+    StringPool::Entry* StringPool::AllocEntry(uint32_t hash, StringView str)
     {
         Entry* entry = m_index.Alloc<Entry>();
         if (!entry) [[unlikely]]
@@ -270,13 +339,13 @@ namespace he
         if (entry->id == 0) [[unlikely]]
             return nullptr;
 
-        const uint32_t len = String::Length(str);
-        void* strMem = m_strings.Alloc(len + 1);
+        char* strMem = static_cast<char*>(m_strings.Alloc(str.Size() + 1));
         if (!strMem) [[unlikely]]
             return nullptr;
 
-        MemCopy(strMem, str, len + 1);
-        entry->value = static_cast<const char*>(strMem);
+        MemCopy(strMem, str.Data(), str.Size());
+        strMem[str.Size()] = '\0';
+        entry->value = strMem;
 
         uint32_t* hashMem = m_hashes.Alloc<uint32_t>();
         if (!hashMem) [[unlikely]]

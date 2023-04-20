@@ -75,7 +75,7 @@ HE_TEST(core, string_pool, basic_usage)
 
     const StringPoolId id = p.Add(TestString);
     HE_EXPECT(id);
-    HE_EXPECT(id.val > 0);
+    HE_EXPECT_GT(id.val, 0);
     HE_EXPECT_EQ(p.Size(), 1);
 
     const StringPoolId id2 = p.Find(TestString);
@@ -138,12 +138,31 @@ HE_TEST(core, string_pool, stress_usage)
     }
     HE_EXPECT_EQ(p.Size(), StringCount);
 
+    // test idempotency of add the same strings again, but as StringViews
+    for (uint32_t i = 1; i <= StringCount; ++i)
+    {
+        buf.Clear();
+        FormatTo(buf, "{}", i);
+        StringPoolId id = p.Add(buf);
+        HE_EXPECT_EQ(id.val, i);
+    }
+    HE_EXPECT_EQ(p.Size(), StringCount);
+
     // Find each of the strings in the pool
     for (uint32_t i = 1; i <= StringCount; ++i)
     {
         buf.Clear();
         FormatTo(buf, "{}", i);
         StringPoolId id = p.Find(buf.Data());
+        HE_EXPECT_EQ(id.val, i);
+    }
+
+    // Find each of the strings in the pool, but as StringViews
+    for (uint32_t i = 1; i <= StringCount; ++i)
+    {
+        buf.Clear();
+        FormatTo(buf, "{}", i);
+        StringPoolId id = p.Find(buf);
         HE_EXPECT_EQ(id.val, i);
     }
 
@@ -200,6 +219,61 @@ HE_TEST(core, string_pool, larger_than_page_size)
     }
 
     Allocator::GetDefault().Free(largeStr);
+}
+
+// ------------------------------------------------------------------------------------------------
+HE_TEST(core, string_pool, add_str_view)
+{
+    StringPool p;
+
+    const StringPoolId id1 = p.Add("Hello!");
+    HE_EXPECT(id1);
+
+    const StringPoolId id2 = p.Add(StringView("Hello!"));
+    HE_EXPECT(id2);
+    HE_EXPECT_EQ(id1, id2);
+
+    const char* str1 = p.Get(id1);
+    HE_EXPECT(str1);
+
+    const char* str2 = p.Get(id2);
+    HE_EXPECT(str2);
+    HE_EXPECT_EQ_STR(str1, str2);
+}
+
+// ------------------------------------------------------------------------------------------------
+HE_TEST(core, string_pool, find_str_view)
+{
+    StringPool p;
+
+    p.Add("Hello!");
+
+    const StringPoolId id1 = p.Find("Hello!");
+    HE_EXPECT(id1);
+
+    const StringPoolId id2 = p.Find(StringView("Hello!"));
+    HE_EXPECT(id2);
+    HE_EXPECT_EQ(id1, id2);
+
+    const StringPoolId id3 = p.Find("nope");
+    HE_EXPECT(!id3);
+
+    const StringPoolId id4 = p.Find(StringView("nope"));
+    HE_EXPECT(!id4);
+    HE_EXPECT_EQ(id3, id4);
+
+    const char* str1 = p.Get(id1);
+    HE_EXPECT(str1);
+
+    const char* str2 = p.Get(id2);
+    HE_EXPECT(str2);
+    HE_EXPECT_EQ_STR(str1, str2);
+
+    const char* str3 = p.Get(id3);
+    HE_EXPECT_EQ(str3, nullptr);
+
+    const char* str4 = p.Get(id4);
+    HE_EXPECT_EQ(str4, nullptr);
 }
 
 // ------------------------------------------------------------------------------------------------

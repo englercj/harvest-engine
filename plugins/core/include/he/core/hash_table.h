@@ -61,15 +61,20 @@ namespace he
         uint32_t entryIndex;
     };
 
-    /// A densely stored hash table based on robin-hood hasing with backwards shift deletion.
+    /// A densely stored hash table based on robin-hood hashing with backwards shift deletion.
     /// Because the entries in the table are stored in a vector it has a lot of the same properties
     /// as a vector, while also providing for fast lookups and insertions based on hashes of keys.
-    /// Removals are a bit slower than other strategies because it requires two lookups.
+    /// Removals are a bit slower than other strategies because it requires two lookups. Keys are
+    /// expected to support comparisons with `==` and `!=`
+    ///
+    /// \note There are no ordering guarantees of entries during iteration.
+    ///
+    /// \note Pointers to entries should be considered invalid whenever the container is modified.
     ///
     /// \note Usually you don't want to use this class directly, try using \ref HashSet or
     /// \ref HashMap instead.
     ///
-    /// \tparam T The hash table traits
+    /// \tparam T The hash table traits.
     template <typename T>
     class HashTable
     {
@@ -78,7 +83,6 @@ namespace he
         using KeyType = typename T::KeyType;
         using EntryType = typename T::EntryType;
         using HasherType = typename T::HasherType;
-        using EqualType = typename T::EqualType;
 
         /// An object that provides the result of an insertion operation.
         struct EmplaceResult
@@ -98,11 +102,9 @@ namespace he
         /// Construct an empty table.
         ///
         /// \param hash Optional. The hasher object to use.
-        /// \param equal Optional. The equality checker to use.
         /// \param allocator Optional. The allocator to use.
         explicit HashTable(
             const HasherType& hash = HasherType(),
-            const EqualType& equal = EqualType(),
             Allocator& allocator = Allocator::GetDefault()) noexcept;
 
         /// Construct an empty table.
@@ -366,7 +368,6 @@ namespace he
         [[nodiscard]] static constexpr uint32_t CalculateBucketCount(uint8_t shifts);
         [[nodiscard]] constexpr uint8_t CalculateShiftsForSize(uint32_t size) const;
 
-        void CopyBuckets(const HashTable& x);
         [[nodiscard]] bool IsFull() const;
 
         void DeallocateBuckets();
@@ -377,8 +378,8 @@ namespace he
 
         void DoErase(uint32_t bucketIndex);
 
-        template <typename K>
-        [[nodiscard]] uint32_t FindIndex(const K& key, uint32_t& distanceAndFingerprint, uint32_t& bucketIndex) const;
+        void CopyFrom(const HashTable& x);
+        void MoveFrom(HashTable&& x);
 
     protected:
         friend class HashTableTestAttorney;
@@ -389,53 +390,7 @@ namespace he
         uint32_t m_bucketCapacity{ 0 };
         float m_maxLoadFactor{ DefaultMaxLoadFactor };
         HasherType m_hash{};
-        EqualType m_equal{};
         uint8_t m_shifts{ InitialShifts };
-    };
-
-    // --------------------------------------------------------------------------------------------
-    /// Traits used by the \ref HashTable to implement a \ref HashSet
-    ///
-    /// \internal
-    template <typename T, typename H, typename E>
-    struct HashSetTraits
-    {
-        using KeyType = T;
-        using HasherType = H;
-        using EqualType = E;
-        using EntryType = KeyType;
-
-        [[nodiscard]] static constexpr const KeyType& GetKey(const EntryType& entry)
-        {
-            return entry;
-        }
-    };
-
-    /// A dense hash set based on \ref HashTable.
-    ///
-    /// \tparam T The type of data in this set.
-    /// \tparam H Optional. The type of the key hasher functor for this set.
-    /// \tparam E Optional. The type of the key equality functor for this set.
-    template <typename T, typename H = Hasher<T>, typename E = EqualTo<T>>
-    class HashSet : public HashTable<HashSetTraits<T, H, E>>
-    {
-    public:
-        using Super = HashTable<HashSetTraits<T, H, E>>;
-        using Traits = typename Super::Traits;
-        using KeyType = typename Super::KeyType;
-        using EntryType = typename Super::EntryType;
-        using HasherType = typename Super::HasherType;
-        using EqualType = typename Super::EqualType;
-        using InsertResult = typename Super::EmplaceResult;
-
-        using ValueType = T;
-
-    public:
-        InsertResult Insert(KeyType&& key) { return Super::Emplace(Move(key)); }
-        InsertResult Insert(const KeyType& key) { return Super::Emplace(key); }
-
-    private:
-        using Super::Emplace;
     };
 
     // --------------------------------------------------------------------------------------------
@@ -459,12 +414,11 @@ namespace he
     /// Traits used by the \ref HashTable to implement a \ref HashMap
     ///
     /// \internal
-    template <typename K, typename V, typename H, typename E>
+    template <typename K, typename V, typename H>
     struct HashMapTraits
     {
         using KeyType = K;
         using HasherType = H;
-        using EqualType = E;
         using EntryType = HashMapEntry<K, V>;
 
         [[nodiscard]] static constexpr const KeyType& GetKey(const EntryType& entry)
@@ -473,22 +427,25 @@ namespace he
         }
     };
 
-    /// A dense hash map based on \ref HashTable.
+    /// A dense hash map based on \ref HashTable. Keys are expected to support comparisons with
+    /// `==` and `!=`.
+    ///
+    /// \note There are no ordering guarantees of entries during iteration.
+    ///
+    /// \note Pointers to entries should be considered invalid whenever the container is modified.
     ///
     /// \tparam K The type of keys in this map.
     /// \tparam V The type of values in the map.
     /// \tparam H Optional. The type of the key hasher functor for this map.
-    /// \tparam E Optional. The type of the key equality functor for this map.
-    template <typename K, typename V, typename H = Hasher<K>, typename E = EqualTo<K>>
-    class HashMap : public HashTable<HashMapTraits<K, V, H, E>>
+    template <typename K, typename V, typename H = Hasher<K>>
+    class HashMap : public HashTable<HashMapTraits<K, V, H>>
     {
     public:
-        using Super = HashTable<HashMapTraits<K, V, H, E>>;
+        using Super = HashTable<HashMapTraits<K, V, H>>;
         using Traits = typename Super::Traits;
         using KeyType = typename Super::KeyType;
         using EntryType = typename Super::EntryType;
         using HasherType = typename Super::HasherType;
-        using EqualType = typename Super::EqualType;
         using EmplaceResult = typename Super::EmplaceResult;
 
         using ValueType = V;
@@ -524,6 +481,49 @@ namespace he
         /// \copydoc HashTable::Get
         template <typename U>
         [[nodiscard]] ValueType& Get(const U& key) { return Super::Get(key).value; }
+    };
+
+    // --------------------------------------------------------------------------------------------
+    /// Traits used by the \ref HashTable to implement a \ref HashSet
+    ///
+    /// \internal
+    template <typename T, typename H>
+    struct HashSetTraits
+    {
+        using KeyType = T;
+        using HasherType = H;
+        using EntryType = KeyType;
+
+        [[nodiscard]] static constexpr const KeyType& GetKey(const EntryType& entry)
+        {
+            return entry;
+        }
+    };
+
+    /// A dense hash set based on \ref HashTable. Values are expected to support comparisons with
+    /// `==` and `!=`.
+    ///
+    /// \tparam T The type of data in this set.
+    /// \tparam H Optional. The type of the key hasher functor for this set.
+    template <typename T, typename H = Hasher<T>>
+    class HashSet : public HashTable<HashSetTraits<T, H>>
+    {
+    public:
+        using Super = HashTable<HashSetTraits<T, H>>;
+        using Traits = typename Super::Traits;
+        using KeyType = typename Super::KeyType;
+        using EntryType = typename Super::EntryType;
+        using HasherType = typename Super::HasherType;
+        using InsertResult = typename Super::EmplaceResult;
+
+        using ValueType = T;
+
+    public:
+        InsertResult Insert(KeyType&& key) { return Super::Emplace(Move(key)); }
+        InsertResult Insert(const KeyType& key) { return Super::Emplace(key); }
+
+    private:
+        using Super::Emplace;
     };
 }
 

@@ -24,17 +24,23 @@ HE_TEST(sqlite, Database, Negative)
 {
     Database db;
 
-    he::ScopedErrorHandler err([](void*, const he::ErrorSource&, const he::KeyValue*, uint32_t) { return false; });
-
-    // Execute can't work without an open db
-    HE_EXPECT(!db.Execute("CREATE TABLE test(col0 INTEGER);"));
+    HE_EXPECT_VERIFY({
+        // Execute can't work without an open db
+        HE_EXPECT(!db.Execute("CREATE TABLE test(col0 INTEGER);"));
+    });
 
     // Invalid SQL should fail on an open db
     HE_EXPECT(db.Open(":memory:"));
-    HE_EXPECT(!db.Execute("THIS IS NOT A QUERY"));
-    HE_EXPECT(!db.Execute("SELECT * FROM not_a_table;"));
-    HE_EXPECT(db.Execute("CREATE TABLE test(col0 INTEGER);"));
-    HE_EXPECT(!db.Execute("SELECT col1 FROM test;"));
+    HE_EXPECT_VERIFY({
+        HE_EXPECT(!db.Execute("THIS IS NOT A QUERY"));
+    });
+    HE_EXPECT_VERIFY({
+        HE_EXPECT(!db.Execute("SELECT * FROM not_a_table;"));
+    });
+    HE_EXPECT(db.Execute("CREATE TABLE real_table(real_column INTEGER);"));
+    HE_EXPECT_VERIFY({
+        HE_EXPECT(!db.Execute("SELECT not_a_column FROM real_table;"));
+    });
     HE_EXPECT(db.Close());
 
     // Calling close multiple times is OK

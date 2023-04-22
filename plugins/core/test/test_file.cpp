@@ -1,5 +1,7 @@
 // Copyright Chad Engler
 
+#include "fixtures.h"
+
 #include "he/core/file.h"
 
 #include "he/core/allocator.h"
@@ -18,22 +20,6 @@ using namespace he;
 #elif defined(HE_PLATFORM_API_POSIX)
     #include <errno.h>
 #endif
-
-// ------------------------------------------------------------------------------------------------
-static void TouchTestFile(const char* path, const void* data = nullptr, uint32_t len = 0)
-{
-    File f;
-    Result r = f.Open(path, FileOpenMode::WriteTruncate);
-    HE_EXPECT(r, r);
-
-    if (data && len > 0)
-    {
-        r = f.Write(data, len);
-        HE_EXPECT(r, r);
-    }
-
-    f.Close();
-}
 
 // ------------------------------------------------------------------------------------------------
 HE_TEST(core, file, GetFileResult)

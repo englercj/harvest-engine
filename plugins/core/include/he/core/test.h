@@ -3,6 +3,7 @@
 #pragma once
 
 #include "he/core/debug.h"
+#include "he/core/error.h"
 #include "he/core/fmt.h"
 #include "he/core/key_value.h"
 #include "he/core/log.h"
@@ -29,6 +30,25 @@
         } \
         HE_POP_WARNINGS() \
     } while(0)
+
+/// Checks that the provided block of code will trigger an error. Only checks for a single error
+/// to occur, and only with an \ref ErrorKind of `kind`.
+///
+/// This macro works by overriding the global error handler until an error of the proper kind has
+/// happened, or until the code completes without error.
+#define HE_EXPECT_ERROR(Kind, ...) \
+    do { \
+        ::he::internal::ScopedExpectErrorHandler _expectErrorHandler(::he::ErrorKind::Kind); \
+        __VA_ARGS__ \
+        _expectErrorHandler.Release(); \
+        HE_EXPECT(_expectErrorHandler.IsTriggered()); \
+    } while (0)
+
+/// Checks that the provided block of code will trigger an assertion.
+#define HE_EXPECT_ASSERT(...) HE_EXPECT_ERROR(Assert, __VA_ARGS__)
+
+/// Checks that the provided block of code will trigger an verification.
+#define HE_EXPECT_VERIFY(...) HE_EXPECT_ERROR(Verify, __VA_ARGS__)
 
 /// Checks the expectation that `a` is equal to `b`.
 ///
@@ -107,6 +127,7 @@ namespace he
     /// Type enum passed along to test logs to indicate what type of event it is.
     enum class TestEventKind : uint8_t
     {
+        TestFailure,
         TestTiming,
     };
 
@@ -232,6 +253,26 @@ namespace internal
     extern std::atomic<uint64_t> g_totalTestRuns;
     extern std::atomic<uint64_t> g_totalTestExpects;
     extern std::atomic<uint64_t> g_totalTestFailures;
+
+    class ScopedExpectErrorHandler
+    {
+    public:
+        ScopedExpectErrorHandler(ErrorKind kind);
+        ~ScopedExpectErrorHandler() { Release(); }
+
+        void Release();
+        bool IsTriggered() const { return m_isTriggered; }
+
+    private:
+        static bool HandleError(void* ptr, const ErrorSource& source, const KeyValue* kvs, uint32_t count);
+
+    private:
+        Pfn_ErrorHandler m_old{ nullptr };
+        void* m_oldUser{ nullptr };
+        ErrorKind m_expectedKind{};
+        bool m_handlerReset{ false };
+        bool m_isTriggered{ false };
+    };
 }
 }
 

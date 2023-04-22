@@ -37,6 +37,7 @@
 
 #include "he/core/allocator.h"
 #include "he/core/assert.h"
+#include "he/core/type_traits.h"
 #include "he/core/types.h"
 #include "he/core/utils.h"
 
@@ -45,6 +46,18 @@ namespace std { struct bidirectional_iterator_tag; }
 namespace he
 {
     // --------------------------------------------------------------------------------------------
+    /// A link that is used in node structures for the left-leaning red-black tree.
+    ///
+    /// Example usage:
+    /// ```cpp
+    /// struct MyEntry
+    /// {
+    ///     uint32_t data;
+    ///     RBTreeLink<MyEntry> link;
+    /// };
+    /// ```
+    ///
+    /// \tparam T The containing type this link tracks.
     template <typename T>
     struct RBTreeLink
     {
@@ -53,28 +66,54 @@ namespace he
     };
 
     // --------------------------------------------------------------------------------------------
+    /// A left-leaning red-black tree which tracks nodes that are allocated outside the container.
+    /// Node structures are user-defined, but must have a \ref RBTreeLink member, a pointer to
+    /// which is the second template parameter. Keys are expected to be well-ordered, and support
+    /// comparisons with `==` and `<`. Uniqueness of keys is determined by comparing them with `==`.
+    ///
+    /// \note Entries are guaranteed to be ordered by their key during iteration.
+    ///
+    /// Example usage:
+    /// ```cpp
+    /// struct MyEntry
+    /// {
+    ///     uint32_t key;
+    ///     RBTreeLink<MyEntry> link;
+    /// };
+    /// RBTree<MyEntry, &MyEntry::link, uint32_t, &MyEntry::key> myTree;
+    /// ```
+    ///
+    /// \tparam T The node type for entries in the tree.
+    /// \tparam Link Pointer to member data for the link in the node type.
+    /// \tparam K The key type for entries in the tree, must be well-ordered.
+    /// \tparam Key Pointer to member data for the key in the node type.
     template <typename T, RBTreeLink<T> T::*Link, typename K, K T::*Key>
     class RBTree final
     {
     public:
+        using EntryType = T;
+        using KeyType = K;
+        using TreeType = RBTree<T, Link, K, Key>;
+
         using Pfn_ClearHandler = void(*)(T*, void*);
+        using Pfn_AllocNodeCopy = T*(*)(const T*, void*);
 
         static constexpr uint32_t MaxDepth = sizeof(void*) << 4;
-
-        static T* Next(T* node);
-        static T* Prev(T* node);
 
     public:
         RBTree() = default;
         RBTree(const RBTree&) = delete;
         RBTree(RBTree&& x) : m_root(Exchange(x.m_root, nullptr)) {}
 
-        RBTree& operator=(const RBTree&) = delete;
+        RBTree& operator=(const RBTree& x) = delete;
         RBTree& operator=(RBTree&& x);
 
-        bool IsEmpty() { return m_root == nullptr; }
+        bool IsEmpty() const { return m_root == nullptr; }
         T* First() const { return First(m_root); }
         T* Last() const { return Last(m_root); }
+
+        T* Next(T* node) const;
+        T* Prev(T* node) const;
 
         void Clear(Pfn_ClearHandler handler = nullptr, void* userData = nullptr);
         T* Find(const K& key) const;
@@ -82,8 +121,11 @@ namespace he
         void Insert(T* node);
         T* Remove(const K& key);
 
+        void CopyFrom(const RBTree& other, Pfn_AllocNodeCopy alloc, void* userData = nullptr);
+
     private:
         void ClearInternal(T* node, Pfn_ClearHandler handler, void* userData);
+        void CopyNode(T* to, T* from, Pfn_AllocNodeCopy alloc, void* userData);
 
     private:
         struct PathEntry
@@ -94,6 +136,8 @@ namespace he
 
         static constexpr uintptr_t RedFlag = 1;
         static constexpr uintptr_t RedMask = ~RedFlag;
+
+        static void Init(T* node);
 
         static T* Left(const T* node);
         static void SetLeft(T* node, T* left);
@@ -116,171 +160,181 @@ namespace he
         T* m_root{ nullptr };
     };
 
+
     // --------------------------------------------------------------------------------------------
-    template <typename K, typename V>
-    class RBTreeMap final
+    /// Base class for containers build atop the left-leaning red-black tree. The traits template
+    /// parameter is expected to define types for keys, entry structures, and the RB tree to use.
+    /// Keys for the tree are expected to be well-ordered, and support comparisons with `==` and `<`.
+    ///
+    /// \note Entries are guaranteed to be ordered by their key during iteration.
+    ///
+    /// \note Pointers to entries are valid for the lifetime of that entry, even if the container
+    /// is modified. This is because entries are individually allocated.
+    ///
+    /// \note Usually you don't want to use this class directly, try using \ref RBTreeSet or
+    /// \ref RBTreeMap instead.
+    ///
+    /// \tparam T The tree container traits.
+    template <typename T>
+    class RBTreeContainerBase
     {
     public:
-        using EntryType = struct Node;
-        using KeyType = K;
-        using ValueType = V;
-        using TreeType = RBTree<Node, &Node::link, KeyType, &Node::key>;
+        // ----------------------------------------------------------------------------------------
+        // Types
 
-    public:
-        struct Node final
-        {
-            template <typename U>
-            explicit Node(U&& k) : key(Forward<U>(k)), value() {}
+        using Traits = T;
+        using KeyType = typename T::KeyType;
+        using EntryType = typename T::EntryType;
+        using TreeType = typename T::TreeType;
 
-            template <typename U, typename... Args>
-            explicit Node(U&& k, Args&&... args) : key(Forward<U>(k)), value(Forward<Args>(args)...) {}
-
-            K key;
-            V value;
-
-        private:
-            friend RBTreeMap;
-            RBTreeLink<Node> link;
-        };
-
+        /// An object that provides the result of an insertion operation.
         struct EmplaceResult final
         {
             /// A reference to the newly created, or previously existing, entry.
-            Node& entry;
+            EntryType& entry;
 
             /// True if `entry` refers to a newly constructed entry, and false if `entry` points
             /// to an entry that already existed.
             bool inserted;
         };
 
-        class Iterator final
+        // ----------------------------------------------------------------------------------------
+        // Iterator
+
+        template <bool Const>
+        class IteratorBase final
         {
         public:
-            using ElementType = Node;
+            using ElementType = Conditional<Const, const EntryType, EntryType>;
 
             using difference_type = uint32_t;
             using value_type = ElementType;
-            using container_type = RBTreeMap;
+            using container_type = RBTreeContainerBase;
             using iterator_category = std::bidirectional_iterator_tag;
-            using _Unchecked_type = Iterator; // Mark iterator as checked.
+            using _Unchecked_type = IteratorBase; // Mark iterator as checked.
 
         public:
-            Iterator() = default;
-            Iterator(const TreeType& tree) noexcept : m_tree(&tree), m_node(tree.First()) {}
+            IteratorBase() = default;
+            IteratorBase(const TreeType& tree) noexcept : m_tree(&tree), m_node(tree.First()) {}
 
-            Node& operator*() const { return *m_node; }
-            Node* operator->() const { return m_node; }
+            ElementType& operator*() const { return *m_node; }
+            ElementType* operator->() const { return m_node; }
 
-            Iterator& operator++() { m_node = m_tree->Next(m_node); return *this; }
-            Iterator operator++(int) { Iterator x(*this); m_node = m_tree->Next(m_node); return x; }
+            IteratorBase& operator++() { m_node = m_tree->Next(m_node); return *this; }
+            IteratorBase operator++(int) { IteratorBase x(*this); m_node = m_tree->Next(m_node); return x; }
 
-            Iterator& operator--() { m_node = m_tree->Prev(m_node); return *this; }
-            Iterator operator--(int) { Iterator x(*this); m_node = m_tree->Prev(m_node); return x; }
+            IteratorBase& operator--() { m_node = m_tree->Prev(m_node); return *this; }
+            IteratorBase operator--(int) { IteratorBase x(*this); m_node = m_tree->Prev(m_node); return x; }
 
-            [[nodiscard]] Iterator operator+(uint32_t n) const
+            [[nodiscard]] IteratorBase operator+(uint32_t n) const
             {
-                Iterator x(*this);
+                IteratorBase x(*this);
                 for (uint32_t i = 0; i < n; ++i)
                     x.m_node = x.m_tree->Next(x.m_node);
                 return x;
             }
 
-            [[nodiscard]] Iterator operator-(uint32_t n) const
+            [[nodiscard]] IteratorBase operator-(uint32_t n) const
             {
-                Iterator x(*this);
+                IteratorBase x(*this);
                 for (uint32_t i = 0; i < n; ++i)
                     x.m_node = x.m_tree->Prev(x.m_node);
                 return x;
             }
 
-            [[nodiscard]] bool operator==(const Iterator& x) const { return m_node == x.m_node; }
-            [[nodiscard]] bool operator!=(const Iterator& x) const { return m_node != x.m_node; }
+            [[nodiscard]] bool operator==(const IteratorBase& x) const { return m_node == x.m_node; }
+            [[nodiscard]] bool operator!=(const IteratorBase& x) const { return m_node != x.m_node; }
 
             [[nodiscard]] explicit operator bool() const { return m_node != nullptr; }
 
         private:
             const TreeType* m_tree{ nullptr };
-            Node* m_node{ nullptr };
+            EntryType* m_node{ nullptr };
         };
+
+        using Iterator = IteratorBase<false>;
+        using ConstIterator = IteratorBase<true>;
 
     public:
         // ----------------------------------------------------------------------------------------
         // Construction
 
-        /// Construct an empty map.
+        /// Construct an empty container.
         ///
         /// \param allocator Optional. The allocator to use.
-        explicit RBTreeMap(Allocator& allocator = Allocator::GetDefault()) noexcept;
+        explicit RBTreeContainerBase(Allocator& allocator = Allocator::GetDefault()) noexcept;
 
-        /// Construct a table by copying `x`, and using `allocator` for this table's allocations.
+        /// Construct a container by copying `x`, and using `allocator` for this container's
+        /// allocations.
         ///
-        /// \param x The table to copy from.
+        /// \param x The container to copy from.
         /// \param allocator The allocator to use for any allocations.
-        RBTreeMap(const RBTreeMap& x, Allocator& allocator) noexcept;
+        RBTreeContainerBase(const RBTreeContainerBase& x, Allocator& allocator) noexcept;
 
-        /// Construct a table by moving `x`, and using `allocator` for this table's allocations.
+        /// Construct a container by moving `x`, and using `allocator` for this container's
+        /// allocations.
         /// If the allocators do not match then a copy operation will be performed.
         ///
-        /// \param x The table to move from.
+        /// \param x The container to move from.
         /// \param allocator The allocator to use for any allocations.
-        RBTreeMap(RBTreeMap&& x, Allocator& allocator) noexcept;
+        RBTreeContainerBase(RBTreeContainerBase&& x, Allocator& allocator) noexcept;
 
-        /// Construct a table by copying `x`, using the allocator from `x`.
+        /// Construct a container by copying `x`, using the allocator from `x`.
         ///
-        /// \param x The table to copy from.
-        RBTreeMap(const RBTreeMap& x) noexcept;
+        /// \param x The container to copy from.
+        RBTreeContainerBase(const RBTreeContainerBase& x) noexcept;
 
-        /// Construct a table by moving `x`, using the allocator from `x`.
+        /// Construct a container by moving `x`, using the allocator from `x`.
         ///
-        /// \param x The table to move from.
-        RBTreeMap(RBTreeMap&& x) noexcept;
+        /// \param x The container to move from.
+        RBTreeContainerBase(RBTreeContainerBase&& x) noexcept;
 
-        /// Destructs the table, freeing any memory allocations.
-        ~RBTreeMap() noexcept;
+        /// Destructs the container, freeing any memory allocations.
+        ~RBTreeContainerBase() noexcept;
 
         // ----------------------------------------------------------------------------------------
         // Operators
 
-        /// Copy the table `x` into this table.
+        /// Copy the container `x` into this container.
         ///
-        /// \param x The table to copy from.
-        RBTreeMap& operator=(const RBTreeMap& x) noexcept;
+        /// \param x The container to copy from.
+        RBTreeContainerBase& operator=(const RBTreeContainerBase& x) noexcept;
 
-        /// Move the table `x` into this table.
+        /// Move the container `x` into this container.
         /// If the allocators do not match then a copy operation will be performed.
         ///
-        /// \param x The table to move from.
-        RBTreeMap& operator=(RBTreeMap&& x) noexcept;
+        /// \param x The container to move from.
+        RBTreeContainerBase& operator=(RBTreeContainerBase&& x) noexcept;
 
-        /// Checks if this table is equal to another table.
+        /// Checks if this container is equal to another container.
         ///
-        /// \param x The table to check against.
-        /// \return True if the tables are equal, false otherwise.
-        [[nodiscard]] bool operator==(const RBTreeMap& x) const;
+        /// \param x The container to check against.
+        /// \return True if the containers are equal, false otherwise.
+        [[nodiscard]] bool operator==(const RBTreeContainerBase& x) const;
 
-        /// Checks if this table is not equal to another table.
+        /// Checks if this container is not equal to another container.
         ///
-        /// \param x The table to check against.
-        /// \return True if the tables are not equal, false otherwise.
-        [[nodiscard]] bool operator!=(const RBTreeMap& x) const { return !this->operator==(x); }
+        /// \param x The container to check against.
+        /// \return True if the containers are not equal, false otherwise.
+        [[nodiscard]] bool operator!=(const RBTreeContainerBase& x) const { return !this->operator==(x); }
 
         // ----------------------------------------------------------------------------------------
         // Capacity
 
-        /// Checks if this table is empty.
+        /// Checks if this container is empty.
         ///
-        /// \return Returns true if this is an empty table.
+        /// \return Returns true if this is an empty container.
         [[nodiscard]] bool IsEmpty() const { return m_tree.IsEmpty(); }
 
-        /// The length of the table that is currently stored.
+        /// The length of the container that is currently stored.
         ///
-        /// \return Number of entries in the table.
+        /// \return Number of entries in the container.
         [[nodiscard]] uint32_t Size() const { return m_size; }
 
         // ----------------------------------------------------------------------------------------
         // Data Access
 
-        /// Checks if a key is contained within the table.
+        /// Checks if a key is contained within the container.
         ///
         /// \return Returns true if the key was found, or false otherwise.
         template <typename U>
@@ -292,11 +346,11 @@ namespace he
         ///
         /// \return A pointer to the found entry, or nullptr if no entry was found.
         template <typename U>
-        [[nodiscard]] const ValueType* Find(const U& key) const;
+        [[nodiscard]] const EntryType* Find(const U& key) const;
 
         /// \copydoc Find
         template <typename U>
-        [[nodiscard]] ValueType* Find(const U& key) { return const_cast<ValueType*>(const_cast<const RBTreeMap*>(this)->Find(key)); }
+        [[nodiscard]] EntryType* Find(const U& key) { return const_cast<EntryType*>(const_cast<const RBTreeContainerBase*>(this)->Find(key)); }
 
         /// Search for an entry by key.
         ///
@@ -304,56 +358,56 @@ namespace he
         ///
         /// \return A pointer to the found entry, or nullptr if no entry was found.
         template <typename U>
-        [[nodiscard]] const ValueType& Get(const U& key) const;
+        [[nodiscard]] const EntryType& Get(const U& key) const;
 
         /// \copydoc Get
         template <typename U>
-        [[nodiscard]] ValueType& Get(const U& key) { return const_cast<ValueType&>(const_cast<const RBTreeMap*>(this)->Get(key)); }
+        [[nodiscard]] EntryType& Get(const U& key) { return const_cast<EntryType&>(const_cast<const RBTreeContainerBase*>(this)->Get(key)); }
 
-        /// Returns a reference to the allocator object used by the table.
+        /// Returns a reference to the allocator object used by the container.
         ///
-        /// \return The allocator object this table uses.
+        /// \return The allocator object this container uses.
         [[nodiscard]] Allocator& GetAllocator() const { return m_allocator; }
 
         // ----------------------------------------------------------------------------------------
         // Iterators
 
-        /// Gets a pointer to the first element in the table.
+        /// Gets a pointer to the first element in the container.
         ///
         /// \return A pointer to the first element.
-        [[nodiscard]] const Iterator* Begin() const { return Iterator(m_tree); }
+        [[nodiscard]] ConstIterator Begin() const { return ConstIterator(m_tree); }
 
         /// \copydoc Begin()
-        [[nodiscard]] Iterator* Begin() { return Iterator(m_tree); }
+        [[nodiscard]] Iterator Begin() { return Iterator(m_tree); }
 
-        /// Gets a pointer to one past the last element in the table.
+        /// Gets a pointer to one past the last element in the container.
         ///
         /// \return A pointer to one past the last element.
-        [[nodiscard]] const Iterator* End() const { return Iterator(); }
+        [[nodiscard]] ConstIterator End() const { return ConstIterator(); }
 
         /// \copydoc End()
-        [[nodiscard]] Iterator* End() { return Iterator(); }
+        [[nodiscard]] Iterator End() { return Iterator(); }
 
         /// \copydoc Begin()
-        [[nodiscard]] const Iterator* begin() const { return Iterator(m_tree); }
+        [[nodiscard]] ConstIterator begin() const { return ConstIterator(m_tree); }
 
         /// \copydoc Begin()
-        [[nodiscard]] Iterator* begin() { return Iterator(m_tree); }
+        [[nodiscard]] Iterator begin() { return Iterator(m_tree); }
 
         /// \copydoc End()
-        [[nodiscard]] const Iterator* end() const { return Iterator(); }
+        [[nodiscard]] ConstIterator end() const { return ConstIterator(); }
 
         /// \copydoc End()
-        [[nodiscard]] Iterator* end() { return Iterator(); }
+        [[nodiscard]] Iterator end() { return Iterator(); }
 
         // ----------------------------------------------------------------------------------------
         // Mutators
 
-        /// Sets the size of the table to zero, and destructs elements as necessary.
+        /// Sets the size of the container to zero, and destructs elements as necessary.
         /// Does not affect memory allocation.
         void Clear();
 
-        /// Erase an entry from the table using the key of that entry.
+        /// Erase an entry from the container using the key of that entry.
         ///
         /// \param[in] key The of the entry to erase.
         /// \return True if an entry was erased, false otherwise.
@@ -377,12 +431,152 @@ namespace he
         EmplaceResult Emplace(U&& key, Args&&... args);
 
     private:
-        void CopyFrom(const RBTreeMap& x);
+        void CopyFrom(const RBTreeContainerBase& x);
+        void MoveFrom(RBTreeContainerBase&& x);
 
     private:
         Allocator& m_allocator;
         TreeType m_tree{};
         uint32_t m_size{ 0 };
+    };
+
+    // --------------------------------------------------------------------------------------------
+    /// Traits used by the \ref RBTreeContainerBase to implement an \ref RBTreeMap
+    ///
+    /// \internal
+    template <typename K, typename V>
+    struct RBTreeMapTraits
+    {
+        struct Node final
+        {
+            template <typename U>
+            explicit Node(U&& k) : key(Forward<U>(k)), value() {}
+
+            template <typename U, typename... Args>
+            explicit Node(U&& k, Args&&... args) : key(Forward<U>(k)), value(Forward<Args>(args)...) {}
+
+            K key;
+            V value;
+
+        private:
+            friend RBTreeMapTraits;
+            RBTreeLink<Node> link;
+        };
+
+        using KeyType = K;
+        using EntryType = Node;
+        using TreeType = RBTree<Node, &Node::link, KeyType, &Node::key>;
+    };
+
+    /// An associative map that maintains strong ordering of entries by using a left-leaning
+    /// red-black tree for lookups. Keys are expected to be well-ordered, and support comparisons
+    /// with `==` and `<`. Uniqueness of keys is determined by comparing them with `==`.
+    ///
+    /// \note Entries are guaranteed to be ordered by their key during iteration.
+    ///
+    /// \note Pointers to entries are valid for the lifetime of that entry, even if the container
+    /// is modified. This is because entries are individually allocated.
+    ///
+    /// \tparam K The type of keys in this map.
+    /// \tparam V The type of values in the map.
+    template <typename K, typename V>
+    class RBTreeMap final : public RBTreeContainerBase<RBTreeMapTraits<K, V>>
+    {
+    public:
+        using Super = RBTreeContainerBase<RBTreeMapTraits<K, V>>;
+        using Traits = typename Super::Traits;
+        using KeyType = typename Super::KeyType;
+        using EntryType = typename Super::EntryType;
+        using EmplaceResult = typename Super::EmplaceResult;
+
+        using ValueType = V;
+
+    public:
+        using Super::Super;
+        using Super::Emplace;
+
+        /// Accesses or inserts an entry with the specified `key`.
+        ///
+        /// \param[in] key The key of the entry to find or insert.
+        /// \return A reference to the entry.
+        template <typename U>
+        ValueType& operator[](U&& key) { return Emplace(Forward<U>(key)).entry.value; }
+
+        /// \copydoc HashTable::Emplace
+        template <typename U, typename X>
+        EmplaceResult EmplaceOrAssign(U&& key, X&& value);
+
+        /// \copydoc HashTable::Find
+        template <typename U>
+        [[nodiscard]] const ValueType* Find(const U& key) const;
+
+        /// \copydoc HashTable::Find
+        template <typename U>
+        [[nodiscard]] ValueType* Find(const U& key);
+
+        /// \copydoc HashTable::Get
+        template <typename U>
+        [[nodiscard]] const ValueType& Get(const U& key) const { return Super::Get(key).value; }
+
+        /// \copydoc HashTable::Get
+        template <typename U>
+        [[nodiscard]] ValueType& Get(const U& key) { return Super::Get(key).value; }
+    };
+
+    // --------------------------------------------------------------------------------------------
+    /// Traits used by the \ref RBTreeContainerBase to implement an \ref RBTreeMap
+    ///
+    /// \internal
+    template <typename T>
+    struct RBTreeSetTraits
+    {
+        struct Node final
+        {
+            template <typename U>
+            explicit Node(U&& v) : value(Forward<U>(v)) {}
+
+            T value;
+
+        private:
+            friend RBTreeSetTraits;
+            RBTreeLink<Node> link;
+        };
+
+        using KeyType = T;
+        using EntryType = Node;
+        using TreeType = RBTree<Node, &Node::link, KeyType, &Node::value>;
+    };
+
+    /// An set of unique entries that maintains strong ordering of entries by using a left-leaning
+    /// red-black tree for lookups. Values are expected to be well-ordered, and support comparisons
+    /// with `==` and `<`. Uniqueness is determined by comparing values with `==`.
+    ///
+    /// \note Entries are guaranteed to be ordered during iteration.
+    ///
+    /// \note Pointers to entries are valid for the lifetime of that entry, even if the container
+    /// is modified. This is because entries are individually allocated.
+    ///
+    /// \tparam T The type data to store in the set.
+    template <typename T>
+    class RBTreeSet final : public RBTreeContainerBase<RBTreeSetTraits<T>>
+    {
+    public:
+        using Super = RBTreeContainerBase<RBTreeSetTraits<T>>;
+        using Traits = typename Super::Traits;
+        using KeyType = typename Super::KeyType;
+        using EntryType = typename Super::EntryType;
+        using InsertResult = typename Super::EmplaceResult;
+
+        using ValueType = T;
+
+    public:
+        using Super::Super;
+
+        InsertResult Insert(KeyType&& key) { return Super::Emplace(Move(key)); }
+        InsertResult Insert(const KeyType& key) { return Super::Emplace(key); }
+
+    private:
+        using Super::Emplace;
     };
 }
 

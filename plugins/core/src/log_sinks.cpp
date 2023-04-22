@@ -23,28 +23,14 @@ namespace he
         double fractionalSeconds = now.val / static_cast<double>(he::Seconds::Ratio);
         fractionalSeconds -= static_cast<uint64_t>(fractionalSeconds);
 
-        if (count == 1 && kvs[0].Kind() == KeyValue::ValueKind::String && String::Equal(kvs[0].Key(), HE_MSG_KEY))
-        {
-            FormatTo(
-                out,
-                "[{:%Y-%m-%d_%H-%M-%S}{:.04f}] [{:s}]({}) {}\n",
-                TimeFmt(now),
-                fractionalSeconds,
-                source.level,
-                source.category,
-                kvs[0].GetString());
-        }
-        else
-        {
-            FormatTo(
-                out,
-                "[{:%Y-%m-%d_%H-%M-%S}{:.04f}] [{:s}]({}) {}\n",
-                TimeFmt(now),
-                fractionalSeconds,
-                source.level,
-                source.category,
-                FmtJoin(kvs, kvs + count, ", "));
-        }
+        FormatTo(
+            out,
+            "[{:%Y-%m-%d_%H-%M-%S}{:.04f}] [{:s}]({}) {}\n",
+            TimeFmt(now),
+            fractionalSeconds,
+            source.level,
+            source.category,
+            FmtJoin(kvs, kvs + count, ", "));
     }
 
     template <typename TimeFmt>
@@ -113,46 +99,20 @@ namespace he
 
     void DebuggerSink(const void*, const LogSource& source, const KeyValue* kvs, uint32_t count)
     {
-        String msg;
-
-        if (count == 1 && kvs[0].Kind() == KeyValue::ValueKind::String && String::Equal(kvs[0].Key(), HE_MSG_KEY))
-        {
-            FormatTo(
-                msg,
-                "{}({}): [{:s}]({}) {}\n",
-                source.file,
-                source.line,
-                source.level,
-                source.category,
-                kvs[0].GetString());
-        }
-        else
-        {
-            FormatTo(
-                msg,
-                "{}({}): [{:s}]({}) {}\n",
-                source.file,
-                source.line,
-                source.level,
-                source.category,
-                FmtJoin(kvs, kvs + count, ", "));
-        }
+        const String msg = Format(
+            "{}({}): [{:s}]({}) {}\n",
+            source.file,
+            source.line,
+            source.level,
+            source.category,
+            FmtJoin(kvs, kvs + count, ", "));
 
         PrintToDebugger(msg.Data());
     }
 
     void ConsoleSink(const void*, const LogSource& source, const KeyValue* kvs, uint32_t count)
     {
-        String msg;
-
-        if (count == 1 && kvs[0].Kind() == KeyValue::ValueKind::String && String::Equal(kvs[0].Key(), HE_MSG_KEY))
-        {
-            FormatTo(msg, "[{:s}]({}) {}\n", source.level, source.category, kvs[0].GetString());
-        }
-        else
-        {
-            FormatTo(msg, "[{:s}]({}) {}\n", source.level, source.category, FmtJoin(kvs, kvs + count, ", "));
-        }
+        const String msg = Format("[{:s}]({}) {}\n", source.level, source.category, FmtJoin(kvs, kvs + count, ", "));
 
         auto* stream = source.level >= LogLevel::Warn ? stderr : stdout;
         fputs(msg.Data(), stream);

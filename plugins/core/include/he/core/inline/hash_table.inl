@@ -2,39 +2,33 @@
 
 namespace he
 {
+    // --------------------------------------------------------------------------------------------
+    // HashTable
+
     template <typename T>
-    HashTable<T>::HashTable(const HasherType& hash, const EqualType& equal, Allocator& allocator) noexcept
+    HashTable<T>::HashTable(const HasherType& hash, Allocator& allocator) noexcept
         : m_entries(allocator)
         , m_hash(hash)
-        , m_equal(equal)
     {}
 
     template <typename T>
     HashTable<T>::HashTable(Allocator& allocator) noexcept
-        : HashTable(HasherType(), EqualType(), allocator)
+        : HashTable(HasherType(), allocator)
     {}
 
     template <typename T>
     HashTable<T>::HashTable(const HashTable& x, Allocator& allocator) noexcept
-        : m_entries(x.m_entries, allocator)
-        , m_maxLoadFactor(x.m_maxLoadFactor)
-        , m_hash(x.m_hash)
-        , m_equal(x.m_equal)
+        : HashTable(allocator)
     {
-        CopyBuckets(x);
+        CopyFrom(x);
     }
 
     template <typename T>
     HashTable<T>::HashTable(HashTable&& x, Allocator& allocator) noexcept
-        : m_entries(Move(x.m_entries), allocator)
-        , m_buckets(Exchange(x.m_buckets, nullptr))
-        , m_bucketCount(Exchange(x.m_bucketCount, 0))
-        , m_bucketCapacity(Exchange(x.m_bucketCapacity, 0))
-        , m_maxLoadFactor(Exchange(x.m_maxLoadFactor, DefaultMaxLoadFactor))
-        , m_hash(Exchange(x.m_hash, {}))
-        , m_equal(Exchange(x.m_equal, {}))
-        , m_shifts(Exchange(x.m_shifts, InitialShifts))
-    {}
+        : HashTable(allocator)
+    {
+        MoveFrom(Move(x));
+    }
 
     template <typename T>
     HashTable<T>::HashTable(const HashTable& x) noexcept
@@ -55,34 +49,14 @@ namespace he
     template <typename T>
     HashTable<T>& HashTable<T>::operator=(const HashTable& x) noexcept
     {
-        if (this != &x)
-        {
-            DeallocateBuckets();
-            m_entries = x.m_entries;
-            m_maxLoadFactor = x.m_maxLoadFactor;
-            m_hash = x.m_hash;
-            m_equal = x.m_equal;
-            m_shifts = x.m_shifts;
-            CopyBuckets(x);
-        }
+        CopyFrom(x);
         return *this;
     }
 
     template <typename T>
     HashTable<T>& HashTable<T>::operator=(HashTable&& x) noexcept
     {
-        if (this != &x)
-        {
-            DeallocateBuckets();
-            m_entries = Move(x.m_entries);
-            m_buckets = Exchange(x.m_buckets, nullptr);
-            m_bucketCount = Exchange(x.m_bucketCount, 0);
-            m_bucketCapacity = Exchange(x.m_bucketCapacity, 0);
-            m_maxLoadFactor = Exchange(x.m_maxLoadFactor, DefaultMaxLoadFactor);
-            m_hash = Exchange(x.m_hash, {});
-            m_equal = Exchange(x.m_equal, {});
-            m_shifts = Exchange(x.m_shifts, InitialShifts);
-        }
+        MoveFrom(Move(x));
         return *this;
     }
 
@@ -153,7 +127,8 @@ namespace he
         // We check a couple buckets outside the loop first because this manual loop unroll
         // results in an improved lookup time on average. This is because the loop is actually
         // the degenerate case where an entry has been overflowed multiple times.
-        if (distanceAndFingerprint == bucket->distanceAndFingerprint && m_equal(key, Traits::GetKey(m_entries[bucket->entryIndex])))
+        if (distanceAndFingerprint == bucket->distanceAndFingerprint
+            && key == Traits::GetKey(m_entries[bucket->entryIndex]))
         {
             return Begin() + bucket->entryIndex;
         }
@@ -162,7 +137,8 @@ namespace he
         bucketIndex = Next(bucketIndex);
         bucket = m_buckets + bucketIndex;
 
-        if (distanceAndFingerprint == bucket->distanceAndFingerprint && m_equal(key, Traits::GetKey(m_entries[bucket->entryIndex])))
+        if (distanceAndFingerprint == bucket->distanceAndFingerprint
+            && key == Traits::GetKey(m_entries[bucket->entryIndex]))
         {
             return Begin() + bucket->entryIndex;
         }
@@ -175,7 +151,7 @@ namespace he
 
             if (distanceAndFingerprint == bucket->distanceAndFingerprint)
             {
-                if (m_equal(key, Traits::GetKey(m_entries[bucket->entryIndex])))
+                if (key == Traits::GetKey(m_entries[bucket->entryIndex]))
                 {
                     return Begin() + bucket->entryIndex;
                 }
@@ -232,7 +208,7 @@ namespace he
                     break;
 
                 if (distanceAndFingerprint == bucket.distanceAndFingerprint
-                    && m_equal(key, Traits::GetKey(m_entries[bucket.entryIndex])))
+                    && key == Traits::GetKey(m_entries[bucket.entryIndex]))
                 {
                     found = true;
                     break;
@@ -267,7 +243,7 @@ namespace he
         auto [distanceAndFingerprint, bucketIndex] = NextWhileLess(key);
 
         while (distanceAndFingerprint == m_buckets[bucketIndex].distanceAndFingerprint
-            && !m_equal(key, Traits::GetKey(m_entries[m_buckets[bucketIndex].entryIndex])))
+            && key != Traits::GetKey(m_entries[m_buckets[bucketIndex].entryIndex]))
         {
             distanceAndFingerprint = DistAdd(distanceAndFingerprint);
             bucketIndex = Next(bucketIndex);
@@ -295,7 +271,7 @@ namespace he
         {
             const Bucket& bucket = m_buckets[bucketIndex];
             if (distanceAndFingerprint == bucket.distanceAndFingerprint
-                && m_equal(key, Traits::GetKey(m_entries[bucket.entryIndex])))
+                && key == Traits::GetKey(m_entries[bucket.entryIndex]))
             {
                 return { m_entries[bucket.entryIndex], false };
             }
@@ -393,17 +369,6 @@ namespace he
         while (shifts > 0 && static_cast<uint32_t>(CalculateBucketCount(shifts) * m_maxLoadFactor) < size)
             --shifts;
         return shifts;
-    }
-
-    template <typename T>
-    void HashTable<T>::CopyBuckets(const HashTable& x)
-    {
-        if (!IsEmpty())
-        {
-            m_shifts = x.m_shifts;
-            AllocateBucketsFromShift();
-            MemCopy(m_buckets, x.m_buckets, sizeof(Bucket) * m_bucketCount);
-        }
     }
 
     template <typename T>
@@ -512,9 +477,57 @@ namespace he
         m_entries.PopBack();
     }
 
-    template <typename K, typename V, typename H, typename E>
+    template <typename T>
+    void HashTable<T>::CopyFrom(const HashTable& x)
+    {
+        if (this == &x)
+            return;
+
+        DeallocateBuckets();
+
+        m_entries = x.m_entries;
+        m_maxLoadFactor = x.m_maxLoadFactor;
+        m_hash = x.m_hash;
+        m_shifts = x.m_shifts;
+        AllocateBucketsFromShift();
+        HE_ASSERT(m_bucketCount >= x.m_bucketCount);
+        MemCopy(m_buckets, x.m_buckets, sizeof(Bucket) * m_bucketCount);
+    }
+
+    template <typename T>
+    void HashTable<T>::MoveFrom(HashTable&& x)
+    {
+        if (this == &x)
+            return;
+
+        DeallocateBuckets();
+
+        m_entries = Move(x.m_entries);
+        m_maxLoadFactor = Exchange(x.m_maxLoadFactor, DefaultMaxLoadFactor);
+        m_hash = Exchange(x.m_hash, {});
+
+        if (&GetAllocator() != &x.GetAllocator())
+        {
+            m_shifts = x.m_shifts;
+            AllocateBucketsFromShift();
+            HE_ASSERT(m_bucketCount >= x.m_bucketCount);
+            MemCopy(m_buckets, x.m_buckets, sizeof(Bucket) * m_bucketCount);
+        }
+        else
+        {
+            m_buckets = Exchange(x.m_buckets, nullptr);
+            m_bucketCount = Exchange(x.m_bucketCount, 0);
+            m_bucketCapacity = Exchange(x.m_bucketCapacity, 0);
+            m_shifts = Exchange(x.m_shifts, InitialShifts);
+        }
+    }
+
+    // --------------------------------------------------------------------------------------------
+    // HashMap
+
+    template <typename K, typename V, typename H>
     template <typename U, typename X>
-    typename HashMap<K, V, H, E>::EmplaceResult HashMap<K, V, H, E>::EmplaceOrAssign(U&& key, X&& value)
+    typename HashMap<K, V, H>::EmplaceResult HashMap<K, V, H>::EmplaceOrAssign(U&& key, X&& value)
     {
         const EmplaceResult result = Super::Emplace(Forward<U>(key), Forward<X>(value));
         if (!result.inserted)
@@ -524,17 +537,17 @@ namespace he
         return result;
     }
 
-    template <typename K, typename V, typename H, typename E>
+    template <typename K, typename V, typename H>
     template <typename U>
-    typename const HashMap<K, V, H, E>::ValueType* HashMap<K, V, H, E>::Find(const U& key) const
+    const typename HashMap<K, V, H>::ValueType* HashMap<K, V, H>::Find(const U& key) const
     {
         const EntryType* v = Super::Find(key);
         return v ? &v->value : nullptr;
     }
 
-    template <typename K, typename V, typename H, typename E>
+    template <typename K, typename V, typename H>
     template <typename U>
-    typename HashMap<K, V, H, E>::ValueType* HashMap<K, V, H, E>::Find(const U& key)
+    typename HashMap<K, V, H>::ValueType* HashMap<K, V, H>::Find(const U& key)
     {
         EntryType* v = Super::Find(key);
         return v ? &v->value : nullptr;

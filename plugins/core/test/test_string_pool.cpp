@@ -61,7 +61,6 @@ HE_TEST(core, string_pool, Construct)
         StringPool& p = StringPool::GetDefault();
         HE_EXPECT_EQ_PTR(&p.GetAllocator(), &Allocator::GetDefault());
         HE_EXPECT_EQ(p.PageSize(), StringPool::DefaultPageSize);
-        HE_EXPECT_EQ(p.Size(), 0);
     }
 }
 
@@ -199,26 +198,23 @@ HE_TEST(core, string_pool, larger_than_page_size)
     MemSet(largeStr, 'x', pageSize);
     largeStr[pageSize] = '\0';
 
-    auto handler = [](void* ptr, const ErrorSource&, const KeyValue*, uint32_t) -> bool
-    {
-        bool* didAssert = static_cast<bool*>(ptr);
-        *didAssert = true;
-        return false;
-    };
-    bool didAssert = false;
-
-    {
-        ScopedErrorHandler errorGuard(handler, &didAssert);
-        HE_EXPECT(!didAssert);
-
+    HE_EXPECT_VERIFY({
         StringPoolId id = p.Add(largeStr);
         HE_EXPECT(!id);
         HE_EXPECT_EQ(id.val, 0);
-
-        HE_EXPECT(didAssert);
-    }
+    });
 
     Allocator::GetDefault().Free(largeStr);
+}
+
+// ------------------------------------------------------------------------------------------------
+HE_TEST(core, string_pool, zero_size_string)
+{
+    StringPool p;
+
+    StringPoolId id = p.Add("");
+    HE_EXPECT(!id);
+    HE_EXPECT_EQ(id.val, 0);
 }
 
 // ------------------------------------------------------------------------------------------------

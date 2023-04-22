@@ -110,7 +110,7 @@ namespace he
 
     // --------------------------------------------------------------------------------------------
     /// A mutually exclusive lock that supports recursion and multi-process sharing.
-    /// 
+    ///
     /// \note Lock ordering is not guaranteed, but recursion and multi-process locking is supported.
     class RecursiveMutex
     {
@@ -331,8 +331,8 @@ namespace he
         /// and the count of the semaphore is decreased by one (1).
         void Wait();
 
-        /// Waits indefinitely for the semaphore to be notified. When it is the thread is awoken
-        /// and the count of the semaphore is decreased by one (1).
+        /// Waits up to the `timeout` duration for the semaphore to be notified. When it is the
+        /// thread is awoken and the count of the semaphore is decreased by one (1).
         ///
         /// \param[in] timeout The maximum time to wait for the semaphore to be signaled.
         /// \return Returns true if the semaphore was signaled, and false if it timed out.
@@ -375,7 +375,8 @@ namespace he
         /// Waits indefinitely for the event to enter the signaled state.
         void Wait();
 
-        /// Waits indefinitely for the event to enter the signaled state.
+        /// Waits up to the `timeout` duration for the event to enter the signaled state.
+        /// Returns immediately if the event is already signaled.
         ///
         /// \param[in] timeout The maximum time to wait for the event to be signaled.
         /// \return Returns true if the event was signaled, and false if it timed out.

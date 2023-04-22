@@ -32,6 +32,7 @@
 
 #include "he/core/fmt.h"
 
+#include "he/core/assert.h"
 #include "he/core/compiler.h"
 #include "he/core/concepts.h"
 #include "he/core/config.h"
@@ -1176,7 +1177,7 @@ namespace he
 
     void Formatter<const char*>::Format(String& out, const char* value) const
     {
-        if (value) // TODO: HE_VERIFY
+        if (HE_VERIFY(value, HE_MSG("Null pointer passed to string formatter")))
         {
             Formatter<StringView> f;
             f.spec = spec;

@@ -58,34 +58,43 @@ static const KeyValue& GetKV(const char* key, const KeyValue* kvs, uint32_t coun
 
 static bool HandleTestLibLogEntry(const LogSource& source, const KeyValue* kvs, uint32_t count)
 {
-    // Handle errors from the test framework
-    if (source.level == LogLevel::Error)
-    {
-        // Log the initial failure line
-        const ErrorKind kind = kvs[0].GetEnum<ErrorKind>(); // error_kind
-        const String& expr = kvs[1].GetString(); // error_expr
-        std::cout << AsString(kind) << " failed: " << expr.Data() << " [" << source.file << '(' << source.line << ")]" << std::endl;
-
-        // First two keys are `error_kind` and `error_expr` so skip those and log the rest
-        if (count > 2)
-        {
-            const String buf = Format("    {}", FmtJoin(kvs + 2, kvs + count, "\n    "));
-            std::cout << buf.Data() << std::endl;
-        }
-
-        return true;
-    }
-
-    // Check for the test_kind key which is a sentinel for special handling of test events
-    // If we don't find it, we consider this a "normal" log and don't handle it here.
-    const KeyValue* kvKind = FindKV("test_event_kind", kvs, count);
-    if (!kvKind)
+    if (count == 0)
         return false;
 
-    // Special handling of test lifecycle events
-    const TestEventKind kind = kvKind->GetEnum<TestEventKind>();
-    switch (kind)
+    // Check for the "test_event_kind" key which is a sentinel for special handling of test events.
+    // If we don't find it, we consider this a normal log message and don't handle it here.
+    const KeyValue& kvKind = kvs[0];
+    if (!String::Equal(kvKind.Key(), "test_event_kind"))
+        return false;
+
+    const TestEventKind testKind = kvKind.GetEnum<TestEventKind>();
+    switch (testKind)
     {
+        case TestEventKind::TestFailure:
+        {
+            // Failures should be error logs and contain at least 3 key-value pairs, which are:
+            // "test_event_kind", "error_kind", and "error_expr"
+            if (source.level != LogLevel::Error || count < 3)
+                return false;
+
+            const KeyValue& kvErrorKind = kvs[1];
+            const KeyValue& kvErrorExpr = kvs[2];
+            if (!String::Equal(kvErrorKind.Key(), "error_kind") || !String::Equal(kvErrorExpr.Key(), "error_expr"))
+                return false;
+
+            // Log the initial failure line
+            const ErrorKind errorKind = kvErrorKind.GetEnum<ErrorKind>();
+            const String& errorExpr = kvErrorExpr.GetString();
+            std::cout << AsString(errorKind) << " failed: " << errorExpr.Data() << " [" << source.file << '(' << source.line << ")]" << std::endl;
+
+            // First three keys are "test_event_kind",  `error_kind` and `error_expr` so skip those and log the rest
+            if (count > 3)
+            {
+                const String buf = Format("    {}", FmtJoin(kvs + 3, kvs + count, "\n    "));
+                std::cout << buf.Data() << std::endl;
+            }
+            break;
+        }
         case TestEventKind::TestTiming:
         {
             if (s_args.timings)

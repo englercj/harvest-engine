@@ -98,13 +98,45 @@ static void TestHashAlgorithm()
 // ------------------------------------------------------------------------------------------------
 HE_TEST(core, hash, CombineHash)
 {
-    // TODO
+    {
+        uint16_t a = 0x1234;
+        uint16_t b = 0x5678;
+        uint16_t c = CombineHash16(a, b);
+        HE_EXPECT_NE(a, c);
+        HE_EXPECT_NE(b, c);
+    }
+
+    {
+        uint32_t a = 0x12345678;
+        uint32_t b = 0x87654321;
+        uint32_t c = CombineHash32(a, b);
+        HE_EXPECT_NE(a, c);
+        HE_EXPECT_NE(b, c);
+    }
+
+    {
+        uint64_t a = 0x1234567890123456;
+        uint64_t b = 0x8765432187654321;
+        uint64_t c = CombineHash64(a, b);
+        HE_EXPECT_NE(a, c);
+        HE_EXPECT_NE(b, c);
+    }
 }
 
 // ------------------------------------------------------------------------------------------------
 HE_TEST(core, hash, Mix)
 {
-    // TODO
+    {
+        uint32_t a = 0x12345678;
+        uint32_t b = Mix32(a);
+        HE_EXPECT_NE(a, b);
+    }
+
+    {
+        uint64_t a = 0x1234567890123456;
+        uint64_t b = Mix64(a);
+        HE_EXPECT_NE(a, b);
+    }
 }
 
 // ------------------------------------------------------------------------------------------------

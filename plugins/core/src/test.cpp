@@ -2,6 +2,7 @@
 
 #include "he/core/test.h"
 
+#include "he/core/alloca.h"
 #include "he/core/fmt.h"
 #include "he/core/clock.h"
 #include "he/core/error.h"
@@ -19,6 +20,42 @@ namespace internal
     std::atomic<uint64_t> g_totalTestRuns{ 0 };
     std::atomic<uint64_t> g_totalTestExpects{ 0 };
     std::atomic<uint64_t> g_totalTestFailures{ 0 };
+
+    ScopedExpectErrorHandler::ScopedExpectErrorHandler(ErrorKind kind)
+        : m_expectedKind(kind)
+    {
+        m_old = GetErrorHandler(m_oldUser);
+        SetErrorHandler(&ScopedExpectErrorHandler::HandleError, this);
+    }
+
+    void ScopedExpectErrorHandler::Release()
+    {
+        if (!m_handlerReset)
+        {
+            m_handlerReset = true;
+            SetErrorHandler(m_old, m_oldUser);
+        }
+    }
+
+    bool ScopedExpectErrorHandler::HandleError(void* ptr, const ErrorSource& source, const KeyValue* kvs, uint32_t count)
+    {
+        ScopedExpectErrorHandler* self = static_cast<ScopedExpectErrorHandler*>(ptr);
+        if (source.kind == self->m_expectedKind)
+        {
+            self->m_handlerReset = true;
+            self->m_isTriggered = true;
+            SetErrorHandler(self->m_old, self->m_oldUser);
+            return false;
+        }
+        else if (self->m_old)
+        {
+            return self->m_old(self->m_oldUser, source, kvs, count);
+        }
+        else
+        {
+            return DefaultErrorHandler(nullptr, source, kvs, count);
+        }
+    }
 }
 
     template <>
@@ -26,6 +63,7 @@ namespace internal
     {
         switch (x)
         {
+            case TestEventKind::TestFailure: return "TestFailure";
             case TestEventKind::TestTiming: return "TestTiming";
         }
 
@@ -82,8 +120,7 @@ namespace internal
 
     static bool TestLibErrorHandler(void*, const ErrorSource& source, const KeyValue* kvs, uint32_t count)
     {
-        ErrorKind kind = kvs[0].GetEnum<ErrorKind>();
-        switch (kind)
+        switch (source.kind)
         {
             case ErrorKind::Assert:
             case ErrorKind::Except:
@@ -93,6 +130,13 @@ namespace internal
                 break;
         }
 
+        KeyValue* newKVs = Allocator::GetDefault().NewArray<KeyValue>(count + 1);
+        newKVs[0] = KeyValue("test_event_kind", TestEventKind::TestFailure);
+        for (uint32_t i = 1; i <= count; ++i)
+        {
+            newKVs[i] = Move(kvs[i - 1]);
+        }
+
         LogSource logSource;
         logSource.level = LogLevel::Error;
         logSource.line = source.line;
@@ -100,7 +144,9 @@ namespace internal
         logSource.funcName = source.funcName;
         logSource.category = "he_test";
 
-        Log(logSource, kvs, count);
+        Log(logSource, newKVs, count + 1);
+
+        Allocator::GetDefault().DeleteArray(newKVs);
 
         return true;
     }
@@ -147,7 +193,10 @@ namespace internal
 
             HE_LOG_INFO(he_test,
                 HE_KV(test_event_kind, TestEventKind::TestTiming),
-                HE_KV(test_time_ns, (end - start).val));
+                HE_KV(test_time_ns, (end - start).val),
+                HE_KV(test_module_name, info.moduleName),
+                HE_KV(test_suite_name, info.suiteName),
+                HE_KV(test_name, info.testName));
         }
 
         MonotonicTime endAll = MonotonicClock::Now();

@@ -7,12 +7,15 @@
 
 #include "he/core/sync.h"
 
+#include "he/core/thread.h"
 #include "he/core/test.h"
 
+#include <atomic>
 #include <thread>
 
 using namespace he;
 
+// ------------------------------------------------------------------------------------------------
 constexpr uint32_t RoundsCount = 5000;
 constexpr uint32_t ThreadsCount = 8;
 
@@ -42,6 +45,67 @@ static void TestLock(F&& func)
         HE_EXPECT(lock.TryAcquire());
         lock.Release();
     }
+}
+
+struct TestCVPred
+{
+    uint32_t& counter;
+    bool operator()()
+    {
+        switch (counter)
+        {
+            case 0: return false;
+            case 1: counter = 2; return true;
+            default: HE_ASSERT(false); return false;
+        }
+    }
+};
+
+static void TestCV(bool useTimeout, uint32_t sleeperIndex)
+{
+    constexpr Duration Delay = FromPeriod<Milliseconds>(100);
+
+    ConditionVariable cv;
+    Mutex lock;
+    uint32_t counter = 0;
+
+    std::thread t0([&]()
+    {
+        if (sleeperIndex == 0)
+            SleepCurrentThread(Delay);
+
+        constexpr Duration Timeout = FromPeriod<Seconds>(5);
+        {
+            LockGuard guard(lock);
+
+            if (useTimeout)
+            {
+                HE_EXPECT(cv.Wait(lock, TestCVPred{ counter }, Timeout));
+            }
+            else
+            {
+                cv.Wait(lock, TestCVPred{ counter });
+            }
+
+            HE_EXPECT_EQ(counter, 2);
+        }
+    });
+
+    std::thread t1([&]()
+    {
+        if (sleeperIndex == 1)
+            SleepCurrentThread(Delay);
+
+        {
+            LockGuard guard(lock);
+            HE_EXPECT_EQ(counter, 0);
+            counter = 1;
+        }
+        cv.WakeOne();
+    });
+
+    t0.join();
+    t1.join();
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -122,27 +186,77 @@ HE_TEST(core, sync, ReadLockGuard)
 // ------------------------------------------------------------------------------------------------
 HE_TEST(core, sync, ConditionVariable)
 {
-    // TODO
-    ConditionVariable cv;
-    cv.WakeAll();
+    // Test that condition variables properly wake and wait
+    for (uint32_t i = 0; i < 3; ++i)
+    {
+        TestCV(true, i);
+        TestCV(false, i);
+    }
 }
 
 // ------------------------------------------------------------------------------------------------
 HE_TEST(core, sync, Semaphore)
 {
-    // TODO
+    constexpr Duration DelayShort = FromPeriod<Milliseconds>(100);
+    constexpr Duration DelayMedium = FromPeriod<Milliseconds>(100 * 3);
+    constexpr Duration DelayLong = FromPeriod<Milliseconds>(100 * 6);
+
+    std::atomic<uint32_t> counter{ 2 };
+
     Semaphore sem;
+    std::thread t([&]()
+    {
+        --counter;
+        while (counter > 0) { HE_SPIN_WAIT_PAUSE(); }
+
+        HE_EXPECT(sem.Wait(DelayShort));
+        HE_EXPECT(!sem.Wait(DelayLong));
+    });
+
+    --counter;
+    while (counter > 0) { HE_SPIN_WAIT_PAUSE(); }
+
     sem.Notify();
+    SleepCurrentThread(DelayMedium);
+    t.join();
 }
 
 // ------------------------------------------------------------------------------------------------
 HE_TEST(core, sync, SyncEvent)
 {
-    // TODO
-    SyncEvent evt;
-    HE_EXPECT(!evt.Wait(Duration_Zero));
-    evt.Signal();
-    HE_EXPECT(evt.Wait(Duration_Zero));
-    evt.Reset();
-    HE_EXPECT(!evt.Wait(Duration_Zero));
+    // Works on one thread
+    {
+        SyncEvent evt;
+        HE_EXPECT(!evt.Wait(Duration_Zero));
+        evt.Signal();
+        HE_EXPECT(evt.Wait(Duration_Zero));
+        evt.Reset();
+        HE_EXPECT(!evt.Wait(Duration_Zero));
+    }
+
+    // Works on multiple threads
+    {
+        constexpr Duration DelayShort = FromPeriod<Milliseconds>(100);
+        constexpr Duration DelayMedium = FromPeriod<Milliseconds>(100 * 3);
+        constexpr Duration DelayLong = FromPeriod<Milliseconds>(100 * 6);
+
+        std::atomic<uint32_t> counter{ 2 };
+
+        SyncEvent evt;
+        std::thread t([&]()
+        {
+            --counter;
+            while (counter > 0) { HE_SPIN_WAIT_PAUSE(); }
+
+            HE_EXPECT(evt.Wait(DelayShort));
+            HE_EXPECT(evt.Wait(DelayLong));
+        });
+
+        --counter;
+        while (counter > 0) { HE_SPIN_WAIT_PAUSE(); }
+
+        evt.Signal();
+        SleepCurrentThread(DelayMedium);
+        t.join();
+    }
 }

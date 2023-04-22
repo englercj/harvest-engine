@@ -1,11 +1,5 @@
 // Copyright Chad Engler
 
-// TODO: Test custom Hasher template param
-// TODO: Test custom Hasher instance constructor param
-// TODO: Test custom EqualTo template param
-// TODO: Test custom EqualTo instance constructor param
-// TODO: Test EmplaceOrAssign
-
 #include "fixtures.h"
 
 #include "he/core/hash_table.h"
@@ -17,8 +11,8 @@
 using namespace he;
 
 // ------------------------------------------------------------------------------------------------
-template <typename T> struct _SetTraits : HashSetTraits<T, Hasher<T>, EqualTo<T>> {};
-template <typename K, typename V> struct _MapTraits : HashMapTraits<K, V, Hasher<K>, EqualTo<K>> {};
+template <typename T> struct _SetTraits : HashSetTraits<T, Hasher<T>> {};
+template <typename K, typename V> struct _MapTraits : HashMapTraits<K, V, Hasher<K>> {};
 
 static Random64 s_randHashCode;
 
@@ -109,7 +103,7 @@ HE_TEST(core, hash_table, Construct_Copy)
         HashTable<_SetTraits<int>> copy(v);
         HE_EXPECT_EQ(copy.Size(), ExpectedSize);
         HE_EXPECT_EQ_MEM(copy.Data(), v.Data(), v.Size() * sizeof(int));
-        HE_EXPECT_EQ_PTR(&copy.GetAllocator(), &Allocator::GetDefault());
+        HE_EXPECT_EQ_PTR(&copy.GetAllocator(), &v.GetAllocator());
     }
 
     {
@@ -118,13 +112,6 @@ HE_TEST(core, hash_table, Construct_Copy)
         HE_EXPECT_EQ(copy.Size(), ExpectedSize);
         HE_EXPECT_EQ_MEM(copy.Data(), v.Data(), v.Size() * sizeof(int));
         HE_EXPECT_EQ_PTR(&copy.GetAllocator(), &a2);
-    }
-
-    {
-        HashTable<_SetTraits<int>> copy(v);
-        HE_EXPECT_EQ(copy.Size(), ExpectedSize);
-        HE_EXPECT_EQ_MEM(copy.Data(), v.Data(), v.Size() * sizeof(int));
-        HE_EXPECT_EQ_PTR(&copy.GetAllocator(), &v.GetAllocator());
     }
 
     {
@@ -277,20 +264,6 @@ HE_TEST(core, hash_table, Construct_Move)
         HE_EXPECT(moved.Data());
         HE_EXPECT_EQ_PTR(&moved.GetAllocator(), &a2);
         HE_EXPECT(v.Data());
-        HE_EXPECT_EQ(v.Size(), 0);
-    }
-
-    {
-        HashTable<_SetTraits<int>> v;
-        for (int i = 0; i < ExpectedSize; ++i)
-            v.Emplace(i);
-        HE_EXPECT_EQ(v.Size(), ExpectedSize);
-
-        HashTable<_SetTraits<int>> moved(Move(v));
-        HE_EXPECT_EQ(moved.Size(), ExpectedSize);
-        HE_EXPECT(moved.Data());
-        HE_EXPECT_EQ_PTR(&moved.GetAllocator(), &Allocator::GetDefault());
-        HE_EXPECT(!v.Data());
         HE_EXPECT_EQ(v.Size(), 0);
     }
 
@@ -954,7 +927,7 @@ HE_TEST(core, hash_table, LoadFactor)
     HE_EXPECT_EQ(v.LoadFactor(), 0.0f);
 
     const float maxLoad = v.MaxLoadFactor();
-    for (uint32_t i = 0; i < 1024; ++i)
+    for (int i = 0; i < 1024; ++i)
     {
         HE_EXPECT_LT(v.LoadFactor(), maxLoad);
         v.Emplace(i);
@@ -1036,23 +1009,11 @@ HE_TEST(core, hash_table, Get)
 {
     HashTable<_SetTraits<int>> v;
 
-    {
-        auto handler = [](void* ptr, const ErrorSource&, const KeyValue*, uint32_t) -> bool
-        {
-            bool* didAssert = static_cast<bool*>(ptr);
-            *didAssert = true;
-            return false;
-        };
-
-        bool didAssert = false;
-        ScopedErrorHandler errorGuard(handler, &didAssert);
-        HE_EXPECT(!didAssert);
-
+    HE_EXPECT_ASSERT({
         // this will assert because it does not exist
         int& i = v.Get(1);
-        HE_EXPECT(didAssert);
         HE_UNUSED(i);
-    }
+    });
 
     // this should not assert
     v.Emplace(1);
@@ -1113,22 +1074,18 @@ HE_TEST(core, hash_table, Adopt_Release)
 }
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST(core, hash_table, Begin)
+HE_TEST(core, hash_table, Begin_End)
 {
     HashTable<_SetTraits<int>> v;
     HE_EXPECT(!v.Begin());
-
-    v.Emplace(1);
-    HE_EXPECT_EQ_PTR(v.Begin(), HashTableTestAttorney::GetVector(v).Begin());
-}
-
-// ------------------------------------------------------------------------------------------------
-HE_TEST(core, hash_table, End)
-{
-    HashTable<_SetTraits<int>> v;
     HE_EXPECT(!v.End());
+    HE_EXPECT(v.Begin() == v.End());
 
     v.Emplace(1);
+    HE_EXPECT(v.Begin());
+    HE_EXPECT(v.End());
+    HE_EXPECT(v.Begin() != v.End());
+    HE_EXPECT_EQ_PTR(v.Begin(), HashTableTestAttorney::GetVector(v).Begin());
     HE_EXPECT_EQ_PTR(v.End(), HashTableTestAttorney::GetVector(v).End());
 }
 
@@ -1182,14 +1139,15 @@ HE_TEST(core, hash_table, Clear)
             bool operator==(const TestObj& x) const { return h == x.h; }
             uint64_t h;
         };
+        const TestObj value{};
 
         HashTable<_SetTraits<TestObj>> v;
-        v.Emplace(TestObj{});
-        HE_EXPECT_EQ(s_destructed, 1);
+        v.Emplace(value);
+        HE_EXPECT_EQ(s_destructed, 0);
         HE_EXPECT_EQ(v.Size(), 1);
 
         v.Clear();
-        HE_EXPECT_EQ(s_destructed, 2);
+        HE_EXPECT_EQ(s_destructed, 1);
         HE_EXPECT_EQ(v.Size(), 0);
     }
 }
@@ -1197,44 +1155,69 @@ HE_TEST(core, hash_table, Clear)
 // ------------------------------------------------------------------------------------------------
 HE_TEST(core, hash_table, Erase)
 {
-    const int expected[]{ 1, 2, 60, 3 };
-
-    HashTable<_SetTraits<int>> v;
-    for (uint32_t i = 0; i < HE_LENGTH_OF(expected); ++i)
-        v.Emplace(expected[i]);
-
-    HE_EXPECT_EQ(v.Size(), HE_LENGTH_OF(expected));
-    for (int i : expected)
     {
-        HE_EXPECT(v.Contains(i));
-    }
+        const int expected[]{ 1, 2, 60, 3 };
 
-    v.Erase(1);
-    HE_EXPECT_EQ(v.Size(), HE_LENGTH_OF(expected) - 1);
-    for (int i : expected)
-    {
-        if (i == 1)
-        {
-            HE_EXPECT(!v.Contains(i));
-        }
-        else
+        HashTable<_SetTraits<int>> v;
+        for (uint32_t i = 0; i < HE_LENGTH_OF(expected); ++i)
+            v.Emplace(expected[i]);
+
+        HE_EXPECT_EQ(v.Size(), HE_LENGTH_OF(expected));
+        for (int i : expected)
         {
             HE_EXPECT(v.Contains(i));
         }
+
+        v.Erase(1);
+        HE_EXPECT_EQ(v.Size(), HE_LENGTH_OF(expected) - 1);
+        for (int i : expected)
+        {
+            if (i == 1)
+            {
+                HE_EXPECT(!v.Contains(i));
+            }
+            else
+            {
+                HE_EXPECT(v.Contains(i));
+            }
+        }
+
+        v.Erase(60);
+        HE_EXPECT_EQ(v.Size(), HE_LENGTH_OF(expected) - 2);
+        for (int i : expected)
+        {
+            if (i == 1 || i == 60)
+            {
+                HE_EXPECT(!v.Contains(i));
+            }
+            else
+            {
+                HE_EXPECT(v.Contains(i));
+            }
+        }
     }
 
-    v.Erase(60);
-    HE_EXPECT_EQ(v.Size(), HE_LENGTH_OF(expected) - 2);
-    for (int i : expected)
     {
-        if (i == 1 || i == 60)
+        static uint32_t s_destructed = 0;
+
+        struct TestObj
         {
-            HE_EXPECT(!v.Contains(i));
-        }
-        else
-        {
-            HE_EXPECT(v.Contains(i));
-        }
+            TestObj() : h(s_randHashCode.Next()) {}
+            ~TestObj() { ++s_destructed; }
+            uint64_t HashCode() const { return h; }
+            bool operator==(const TestObj& x) const { return h == x.h; }
+            uint64_t h;
+        };
+        const TestObj value{};
+
+        HashTable<_SetTraits<TestObj>> v;
+        v.Emplace(value);
+        HE_EXPECT_EQ(s_destructed, 0);
+        HE_EXPECT_EQ(v.Size(), 1);
+
+        v.Erase(value);
+        HE_EXPECT_EQ(s_destructed, 1);
+        HE_EXPECT_EQ(v.Size(), 0);
     }
 }
 
@@ -1244,24 +1227,35 @@ HE_TEST(core, hash_table, Emplace)
     HashTable<_SetTraits<int>> v;
     HE_EXPECT_EQ(v.Size(), 0);
 
-    v.Emplace(25);
-    HE_EXPECT_EQ(v.Size(), 1);
-    HE_EXPECT_EQ(*v.Data(), 25);
+    {
+        auto result = v.Emplace(25);
+        HE_EXPECT(result.inserted);
+        HE_EXPECT_EQ(result.entry, 25);
+        HE_EXPECT_EQ(v.Size(), 1);
+        HE_EXPECT_EQ(*v.Data(), 25);
+    }
 
-    v.Emplace(50);
-    HE_EXPECT_EQ(v.Size(), 2);
+    {
+        auto result = v.Emplace(50);
+        HE_EXPECT(result.inserted);
+        HE_EXPECT_EQ(result.entry, 50);
+        HE_EXPECT_EQ(v.Size(), 2);
+    }
+
+    {
+        auto result = v.Emplace(25);
+        HE_EXPECT(!result.inserted);
+        HE_EXPECT_EQ(result.entry, 25);
+        HE_EXPECT_EQ(v.Size(), 2);
+    }
 }
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST(core, hash_table, HashSet)
+HE_TEST(core, hash_table, HashMap_Construct)
 {
-    // TODO
-}
-
-// ------------------------------------------------------------------------------------------------
-HE_TEST(core, hash_table, HashMap)
-{
-    // TODO
+    HashMap<int, uint32_t> v;
+    HE_EXPECT(v.IsEmpty());
+    HE_EXPECT_EQ(v.Size(), 0);
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -1274,29 +1268,83 @@ HE_TEST(core, hash_table, HashMap_operator_index)
     HE_EXPECT_EQ(v[1], 500);
     HE_EXPECT_EQ(v.Size(), 1);
 
+    v[1] = 256;
+    HE_EXPECT_EQ(v[1], 256);
+    HE_EXPECT_EQ(v.Size(), 1);
+
     HE_EXPECT_EQ(v[10], 0);
     HE_EXPECT_EQ(v.Size(), 2);
 }
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST(core, hash_table, HashMap_Emplace)
+HE_TEST(core, hash_table, HashMap_EmplaceOrAssign)
 {
     HashMap<int, uint32_t> v;
     HE_EXPECT_EQ(v.Size(), 0);
 
-    v.Emplace(1, 500);
+    v.EmplaceOrAssign(1, 500);
     HE_EXPECT_EQ(v.Size(), 1);
     HE_EXPECT_EQ(v.Get(1), 500);
+
+    v.EmplaceOrAssign(1, 100);
+    HE_EXPECT_EQ(v.Size(), 1);
+    HE_EXPECT_EQ(v.Get(1), 100);
 }
 
 // ------------------------------------------------------------------------------------------------
 HE_TEST(core, hash_table, HashMap_Find)
 {
-    // TODO
+    HashMap<int, uint32_t> v;
+
+    uint32_t* p = v.Find(1);
+    HE_EXPECT(p == nullptr);
+
+    v.Emplace(1, 10);
+    p = v.Find(1);
+    HE_EXPECT(p != nullptr);
+    HE_EXPECT_EQ(*p, 10);
 }
 
 // ------------------------------------------------------------------------------------------------
 HE_TEST(core, hash_table, HashMap_Get)
 {
-    // TODO
+    HashMap<int, uint32_t> v;
+
+    HE_EXPECT_ASSERT({
+        // this will assert because it does not exist
+        uint32_t& i = v.Get(1);
+        HE_UNUSED(i);
+    });
+
+    // this should not assert
+    v.Emplace(1, 10);
+    uint32_t& j = v.Get(1);
+    HE_EXPECT_EQ(j, 10);
+}
+
+// ------------------------------------------------------------------------------------------------
+HE_TEST(core, hash_table, HashSet_Construct)
+{
+    HashSet<int> v;
+    HE_EXPECT(v.IsEmpty());
+    HE_EXPECT_EQ(v.Size(), 0);
+}
+
+// ------------------------------------------------------------------------------------------------
+HE_TEST(core, hash_table, HashSet_Insert)
+{
+    HashSet<int> v;
+    HE_EXPECT_EQ(v.Size(), 0);
+
+    v.Insert(10);
+    HE_EXPECT_EQ(v.Size(), 1);
+
+    v.Insert(10);
+    HE_EXPECT_EQ(v.Size(), 1);
+
+    v.Insert(20);
+    HE_EXPECT_EQ(v.Size(), 2);
+
+    v.Insert(10);
+    HE_EXPECT_EQ(v.Size(), 2);
 }

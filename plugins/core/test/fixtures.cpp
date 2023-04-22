@@ -2,6 +2,8 @@
 
 #include "fixtures.h"
 
+#include "he/core/file.h"
+#include "he/core/result_fmt.h"
 #include "he/core/test.h"
 
 namespace he
@@ -180,5 +182,20 @@ namespace he
             HE_EXPECT_EQ(s_ctorCount, 32);
             HE_EXPECT_EQ(s_dtorCount, 16);
         }
+    }
+
+    void TouchTestFile(const char* path, const void* data, uint32_t len)
+    {
+        File f;
+        Result r = f.Open(path, FileOpenMode::WriteTruncate);
+        HE_EXPECT(r, r);
+
+        if (data && len > 0)
+        {
+            r = f.Write(data, len);
+            HE_EXPECT(r, r);
+        }
+
+        f.Close();
     }
 }

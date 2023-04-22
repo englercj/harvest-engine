@@ -334,7 +334,12 @@ HE_TEST(core, string_builder, Reserve)
 // ------------------------------------------------------------------------------------------------
 HE_TEST(core, string_builder, Str)
 {
-    // TODO
+    StringBuilder buf;
+
+    buf.PushBack('a');
+    buf += "bc";
+    buf.Write("def");
+    HE_EXPECT_EQ(buf.Str(), "abcdef");
 }
 
 // ------------------------------------------------------------------------------------------------

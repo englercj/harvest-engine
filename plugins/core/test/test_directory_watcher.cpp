@@ -7,7 +7,7 @@
 using namespace he;
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST(core, directory_watcher, TODO)
+HE_TEST(core, directory_watcher, Test)
 {
     // TODO
 }

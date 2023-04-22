@@ -62,6 +62,7 @@ namespace he
         };
 
     public:
+        KeyValue() = default;
         KeyValue(const char* k, bool v) noexcept : m_key(k), m_kind(ValueKind::Bool), m_value{ .b = v } {}
         KeyValue(const char* k, signed char v) noexcept : m_key(k), m_kind(ValueKind::Int), m_value{ .i = v } {}
         KeyValue(const char* k, signed short v) noexcept : m_key(k), m_kind(ValueKind::Int), m_value{ .i = v } {}

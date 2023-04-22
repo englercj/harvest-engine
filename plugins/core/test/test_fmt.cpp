@@ -805,7 +805,11 @@ HE_TEST(core, fmt, strings)
     HE_EXPECT_EQ(Format("{}", s), "S Test");
     HE_EXPECT_EQ(Format("{}", cs), "CS Test");
     HE_EXPECT_EQ(Format("{}", ca), "CA Test");
-    HE_EXPECT_EQ(Format("{}", static_cast<const char*>(nullptr)), "");
+
+    HE_EXPECT_VERIFY({
+        // this will verify the pointer is non-null
+        HE_EXPECT_EQ(Format("{}", static_cast<const char*>(nullptr)), "");
+    });
 
     HE_EXPECT_EQ(Format("{:*^8}", "test"), "**test**");
 

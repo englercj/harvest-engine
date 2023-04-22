@@ -395,13 +395,15 @@ HE_TEST(schema, layout, PointerBuilder)
         HE_EXPECT_EQ(ptr.ListElementSize(), list.GetElementSize());
         HE_EXPECT_EQ(ptr.ListSize(), list.Size());
 
-        {
-            he::ScopedErrorHandler ignore([](void*, const he::ErrorSource&, const he::KeyValue*, uint32_t) { return false; });
-
+        HE_EXPECT_VERIFY({
             HE_EXPECT(!ptr.TryGetStruct().IsValid());
+        });
+        HE_EXPECT_VERIFY({
             HE_EXPECT(!ptr.TryGetList(ElementSize::TwoBytes).IsValid());
+        });
+        HE_EXPECT_VERIFY({
             HE_EXPECT(!ptr.TryGetList(ElementSize::Composite).IsValid());
-        }
+        });
 
         ListBuilder list2 = ptr.TryGetList(ElementSize::Byte);
         HE_EXPECT(list2.IsValid());
@@ -441,12 +443,12 @@ HE_TEST(schema, layout, PointerBuilder)
         HE_EXPECT_EQ(ptr.StructDataWordSize(), st.DataWordSize());
         HE_EXPECT_EQ(ptr.StructPointerCount(), st.PointerCount());
 
-        {
-            he::ScopedErrorHandler ignore([](void*, const he::ErrorSource&, const he::KeyValue*, uint32_t) { return false; });
-
+        HE_EXPECT_VERIFY({
             HE_EXPECT(!ptr.TryGetList(ElementSize::Byte).IsValid());
+        });
+        HE_EXPECT_VERIFY({
             HE_EXPECT(!ptr.TryGetList(ElementSize::Composite).IsValid());
-        }
+        });
 
         StructReader st2 = ptr.TryGetStruct();
         HE_EXPECT(st2.IsValid());

@@ -10,7 +10,7 @@
 
 #define HE_ERROR_IF(kind, expr, ...) \
     (HE_LIKELY(expr) || ([&](const char* errorFuncName_) -> bool { \
-        const ::he::ErrorSource errorSource_{ HE_LINE, HE_FILE, errorFuncName_ }; \
+        const ::he::ErrorSource errorSource_{ ::he::ErrorKind::kind, HE_LINE, HE_FILE, errorFuncName_ }; \
         const ::he::KeyValue errorKvList_[]{ HE_KV(error_kind, ::he::ErrorKind::kind), HE_KV(error_expr, #expr), __VA_ARGS__ }; \
         return ::he::HandleError(errorSource_, errorKvList_, HE_LENGTH_OF(errorKvList_)); \
     }(HE_FUNC_SIG) && HE_DEBUG_BREAK()))
@@ -31,6 +31,7 @@ namespace he
     /// This structure is not meant to be created directly. Use the assertion macros instead.
     struct ErrorSource
     {
+        ErrorKind kind;         ///< The kind of error has occurred.
         uint32_t line;          ///< The line of the file the error comes from.
         const char* file;       ///< The name of the file the error comes from.
         const char* funcName;   ///< The name of the function the error comes from.

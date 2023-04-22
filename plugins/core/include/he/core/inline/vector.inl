@@ -260,17 +260,13 @@ namespace he
 
     template <typename T>
     Vector<T>::Vector(const Vector& x) noexcept
-        : Vector(x.m_allocator)
-    {
-        CopyFrom(x);
-    }
+        : Vector(x, x.m_allocator)
+    {}
 
     template <typename T>
     Vector<T>::Vector(Vector&& x) noexcept
-        : Vector(x.m_allocator)
-    {
-        MoveFrom(Move(x));
-    }
+        : Vector(Move(x), x.m_allocator)
+    {}
 
     template <typename T>
     Vector<T>::~Vector() noexcept

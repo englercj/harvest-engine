@@ -13,7 +13,8 @@ HE_TEST(core, assert, ASSERT)
 {
     auto handler = [](void*, const ErrorSource& source, const KeyValue* kvs, uint32_t count) -> bool
     {
-        HE_EXPECT_EQ(source.line, 43);
+        HE_EXPECT_EQ(source.kind, ErrorKind::Assert);
+        HE_EXPECT_EQ(source.line, 44);
         HE_EXPECT_EQ(GetBaseName(source.file), "test_assert.cpp");
     #if HE_COMPILER_MSVC
         HE_EXPECT_EQ_STR(source.funcName, "void __cdecl _heTestClass_core_assert_ASSERT::TestBody(void)");
@@ -48,7 +49,8 @@ HE_TEST(core, assert, VERIFY)
 {
     auto handler = [](void*, const ErrorSource& source, const KeyValue* kvs, uint32_t count) -> bool
     {
-        HE_EXPECT_EQ(source.line, 79);
+        HE_EXPECT_EQ(source.kind, ErrorKind::Verify);
+        HE_EXPECT_EQ(source.line, 81);
         HE_EXPECT_EQ(GetBaseName(source.file), "test_assert.cpp");
     #if HE_COMPILER_MSVC
         HE_EXPECT_EQ_STR(source.funcName, "void __cdecl _heTestClass_core_assert_VERIFY::TestBody(void)");

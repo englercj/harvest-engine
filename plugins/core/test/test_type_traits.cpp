@@ -67,7 +67,12 @@ HE_TEST(core, type_traits, Conditional)
 // ------------------------------------------------------------------------------------------------
 HE_TEST(core, type_traits, EnableIf)
 {
-    // TODO
+    static_assert(IsSame<EnableIf<true>, void>);
+    static_assert(IsSame<EnableIf<true, int>, int>);
+    static_assert(IsSame<EnableIf<true, double>, double>);
+
+    // Does not compile when false
+    // static_assert(IsSame<EnableIf<false, int>, int>);
 }
 
 // ------------------------------------------------------------------------------------------------

@@ -5,8 +5,17 @@ namespace he
     // --------------------------------------------------------------------------------------------
     // RBTree
 
-    template <typename T, RBTreeLink<T> T::*Link, typename K, K T::*Key>
-    T* RBTree<T, Link, K, Key>::Next(T* node)
+    template <typename T, RBTreeLink<T> T::* Link, typename K, K T::* Key>
+    RBTree<T, Link, K, Key>& RBTree<T, Link, K, Key>::operator=(RBTree&& x)
+    {
+        // Has to already be empty because this class doesn't actually know how to destroy nodes
+        HE_ASSERT(IsEmpty());
+        m_root = Exchange(x.m_root, nullptr);
+        return *this;
+    }
+
+    template <typename T, RBTreeLink<T> T::* Link, typename K, K T::* Key>
+    T* RBTree<T, Link, K, Key>::Next(T* node) const
     {
         if (IsEmpty() || !node)
             return nullptr;
@@ -27,13 +36,13 @@ namespace he
                     ret = tnode;
                     tnode = Left(tnode);
                 }
-                else if ((node->*Key) > (tnode->*Key))
-                {
-                    tnode = Right(tnode);
-                }
-                else
+                else if ((node->*Key) == (tnode->*Key))
                 {
                     break;
+                }
+                else // greater-than
+                {
+                    tnode = Right(tnode);
                 }
                 HE_ASSERT(tnode != nullptr);
             }
@@ -41,8 +50,8 @@ namespace he
         return ret;
     }
 
-    template <typename T, RBTreeLink<T> T::*Link, typename K, K T::*Key>
-    T* RBTree<T, Link, K, Key>::Prev(T* node)
+    template <typename T, RBTreeLink<T> T::* Link, typename K, K T::* Key>
+    T* RBTree<T, Link, K, Key>::Prev(T* node) const
     {
         if (IsEmpty() || !node)
             return nullptr;
@@ -62,27 +71,19 @@ namespace he
                 {
                     tnode = Left(tnode);
                 }
-                else if ((node->*Key) > (tnode->*Key))
+                else if ((node->*Key) == (tnode->*Key))
+                {
+                    break;
+                }
+                else // greater-than
                 {
                     ret = tnode;
                     tnode = Right(tnode);
-                }
-                else
-                {
-                    break;
                 }
                 HE_ASSERT(tnode != nullptr);
             }
         }
         return ret;
-    }
-
-    template <typename T, RBTreeLink<T> T::* Link, typename K, K T::* Key>
-    RBTree<T, Link, K, Key>& RBTree<T, Link, K, Key>::operator=(RBTree&& x)
-    {
-        HE_ASSERT(IsEmpty());
-        m_root = Exchange(x.m_root, nullptr);
-        return *this;
     }
 
     template <typename T, RBTreeLink<T> T::* Link, typename K, K T::* Key>
@@ -119,15 +120,12 @@ namespace he
         PathEntry path[MaxDepth];
         PathEntry* pathp = nullptr;
 
-        HE_ASSERT((reinterpret_cast<uintptr_t>(node) & RedFlag) == 0);
-        SetLeft(node, nullptr);
-        SetRight(node, nullptr);
-        SetRed(node);
+        Init(node);
 
         path->node = m_root;
         for (pathp = path; pathp->node != nullptr; ++pathp)
         {
-            int cmp = pathp->cmp = (node->*Key) < ((pathp->node)->*Key) ? -1 : ((node->*Key) > ((pathp->node)->*Key) ? 1 : 0);
+            int cmp = pathp->cmp = (node->*Key) == ((pathp->node)->*Key) ? 0 : ((node->*Key) < ((pathp->node)->*Key) ? -1 : 1);
             HE_ASSERT(cmp != 0);
 
             if (cmp < 0)
@@ -205,14 +203,14 @@ namespace he
         path[0].node = m_root;
         for (pathp = path; pathp->node != nullptr; ++pathp)
         {
-            int cmp = pathp->cmp = key < ((pathp->node)->*Key) ? -1 : (key > ((pathp->node)->*Key) ? 1 : 0);
+            int cmp = pathp->cmp = key == ((pathp->node)->*Key) ? 0 : (key < ((pathp->node)->*Key) ? -1 : 1);
             if (cmp < 0)
             {
-                pathp[1].node = Left(*pathp);
+                pathp[1].node = Left(pathp->node);
             }
             else
             {
-                pathp[1].node = Right(*pathp);
+                pathp[1].node = Right(pathp->node);
 
                 if (cmp == 0)
                 {
@@ -319,7 +317,7 @@ namespace he
                         SetBlack(pathp->node);
                         tnode = RotateRight(right);
                         SetRight(pathp->node, tnode);
-                        tnode = RotateLeft(pathp->node, tnode);
+                        tnode = RotateLeft(pathp->node);
                     }
                     else
                     {
@@ -525,6 +523,19 @@ namespace he
     }
 
     template <typename T, RBTreeLink<T> T::*Link, typename K, K T::*Key>
+    void RBTree<T, Link, K, Key>::CopyFrom(const RBTree& other, Pfn_AllocNodeCopy alloc, void* userData)
+    {
+        // Has to already be empty because this class doesn't actually know how to destroy nodes
+        HE_ASSERT(IsEmpty());
+
+        if (other.IsEmpty())
+            return;
+
+        m_root = alloc(other.m_root, userData);
+        CopyNode(m_root, other.m_root, alloc, userData);
+    }
+
+    template <typename T, RBTreeLink<T> T::*Link, typename K, K T::*Key>
     void RBTree<T, Link, K, Key>::ClearInternal(T* node, Pfn_ClearHandler handler, void* userData)
     {
         if (!node)
@@ -538,6 +549,45 @@ namespace he
 
         if (handler)
             handler(node, userData);
+    }
+
+    template <typename T, RBTreeLink<T> T::*Link, typename K, K T::*Key>
+    void RBTree<T, Link, K, Key>::CopyNode(T* to, T* from, Pfn_AllocNodeCopy alloc, void* userData)
+    {
+        T* left = Left(from);
+        if (left)
+        {
+            T* newLeft = alloc(left, userData);
+            SetLeft(to, newLeft);
+            CopyNode(newLeft, left, alloc, userData);
+        }
+        else
+        {
+            SetLeft(to, nullptr);
+        }
+
+        T* right = Right(from);
+        if (right)
+        {
+            T* newRight = alloc(right, userData);
+            SetRight(to, newRight);
+            CopyNode(newRight, right, alloc, userData);
+        }
+        else
+        {
+            SetRight(to, nullptr);
+        }
+
+        SetColor(to, IsRed(from));
+    }
+
+    template <typename T, RBTreeLink<T> T::*Link, typename K, K T::*Key>
+    void RBTree<T, Link, K, Key>::Init(T* node)
+    {
+        HE_ASSERT((reinterpret_cast<uintptr_t>(node) & RedFlag) == 0);
+        SetLeft(node, nullptr);
+        SetRight(node, nullptr);
+        SetRed(node);
     }
 
     template <typename T, RBTreeLink<T> T::*Link, typename K, K T::*Key>
@@ -635,63 +685,68 @@ namespace he
     }
 
     // --------------------------------------------------------------------------------------------
-    // RBTreeMap
+    // RBTreeContainerBase
 
-    template <typename K, typename V>
-    RBTreeMap<K, V>::RBTreeMap(Allocator& allocator) noexcept
+    template <typename T>
+    RBTreeContainerBase<T>::RBTreeContainerBase(Allocator& allocator) noexcept
         : m_allocator(allocator)
     {}
 
-    template <typename K, typename V>
-    RBTreeMap<K, V>::RBTreeMap(const RBTreeMap& x, Allocator& allocator) noexcept
-        : m_allocator(allocator)
+    template <typename T>
+    RBTreeContainerBase<T>::RBTreeContainerBase(const RBTreeContainerBase& x, Allocator& allocator) noexcept
+        : RBTreeContainerBase(allocator)
     {
         CopyFrom(x);
     }
 
-    template <typename K, typename V>
-    RBTreeMap<K, V>::RBTreeMap(RBTreeMap&& x, Allocator& allocator) noexcept
-        : m_allocator(allocator)
-        , m_tree(Move(x.m_tree))
+    template <typename T>
+    RBTreeContainerBase<T>::RBTreeContainerBase(RBTreeContainerBase&& x, Allocator& allocator) noexcept
+        : RBTreeContainerBase(allocator)
+    {
+        MoveFrom(Move(x));
+    }
+
+    template <typename T>
+    RBTreeContainerBase<T>::RBTreeContainerBase(const RBTreeContainerBase& x) noexcept
+        : RBTreeContainerBase(x, x.m_allocator)
     {}
 
-    template <typename K, typename V>
-    RBTreeMap<K, V>::RBTreeMap(const RBTreeMap& x) noexcept
-        : RBTreeMap(x, x.m_allocator)
+    template <typename T>
+    RBTreeContainerBase<T>::RBTreeContainerBase(RBTreeContainerBase&& x) noexcept
+        : RBTreeContainerBase(Move(x), x.m_allocator)
     {}
 
-    template <typename K, typename V>
-    RBTreeMap<K, V>::RBTreeMap(RBTreeMap&& x) noexcept
-        : RBTreeMap(Move(x), x.m_allocator)
-    {}
-
-    template <typename K, typename V>
-    RBTreeMap<K, V>::~RBTreeMap() noexcept
+    template <typename T>
+    RBTreeContainerBase<T>::~RBTreeContainerBase() noexcept
     {
         Clear();
     }
 
-    template <typename K, typename V>
-    RBTreeMap<K, V>& RBTreeMap<K, V>::operator=(const RBTreeMap& x) noexcept
+    template <typename T>
+    RBTreeContainerBase<T>& RBTreeContainerBase<T>::operator=(const RBTreeContainerBase& x) noexcept
     {
         CopyFrom(x);
+        return *this;
     }
 
-    template <typename K, typename V>
-    RBTreeMap<K, V>& RBTreeMap<K, V>::operator=(RBTreeMap&& x) noexcept
+    template <typename T>
+    RBTreeContainerBase<T>& RBTreeContainerBase<T>::operator=(RBTreeContainerBase&& x) noexcept
     {
-        Clear();
-        m_tree = Move(x.m_tree);
+        MoveFrom(Move(x));
+        return *this;
     }
 
-    template <typename K, typename V>
-    bool RBTreeMap<K, V>::operator==(const RBTreeMap& x) const
+    template <typename T>
+    bool RBTreeContainerBase<T>::operator==(const RBTreeContainerBase& x) const
     {
+        if (this == &x)
+            return true;
+
         if (m_size != x.m_size)
             return false;
 
-        Iterator itA = Begin();
-        Iterator itB = x.Begin();
+        ConstIterator itA = Begin();
+        ConstIterator itB = x.Begin();
         for (; itA != End() && itB != x.End(); ++itA, ++itB)
         {
             if (!itA || !itB)
@@ -704,42 +759,41 @@ namespace he
         return true;
     }
 
-    template <typename K, typename V>
+    template <typename T>
     template <typename U>
-    const typename RBTreeMap<K, V>::ValueType* RBTreeMap<K, V>::Find(const U& key) const
+    const typename RBTreeContainerBase<T>::EntryType* RBTreeContainerBase<T>::Find(const U& key) const
     {
-        Node* entry = m_tree.Find(key);
-        return entry ? &entry->value : nullptr;
+        return m_tree.Find(key);
     }
 
-    template <typename K, typename V>
+    template <typename T>
     template <typename U>
-    const typename RBTreeMap<K, V>::ValueType& RBTreeMap<K, V>::Get(const U& key) const
+    const typename RBTreeContainerBase<T>::EntryType& RBTreeContainerBase<T>::Get(const U& key) const
     {
-        const ValueType* entry = Find(key);
+        const EntryType* entry = Find(key);
         HE_ASSERT(entry);
         return *entry;
     }
 
-    template <typename K, typename V>
-    void RBTreeMap<K, V>::Clear()
+    template <typename T>
+    void RBTreeContainerBase<T>::Clear()
     {
-        m_tree.Clear([](Node* node, void* userData)
+        m_tree.Clear([](EntryType* entry, void* userData)
         {
-            if (node)
+            if (entry)
             {
-                RBTreeMap* self = static_cast<RBTreeMap*>(userData);
-                self->m_allocator.Delete(node);
+                RBTreeContainerBase* self = static_cast<RBTreeContainerBase*>(userData);
+                self->m_allocator.Delete(entry);
             }
         }, this);
         m_size = 0;
     }
 
-    template <typename K, typename V>
+    template <typename T>
     template <typename U>
-    bool RBTreeMap<K, V>::Erase(const U& key)
+    bool RBTreeContainerBase<T>::Erase(const U& key)
     {
-        Node* entry = m_tree.Remove(entry);
+        EntryType* entry = m_tree.Remove(key);
         if (!entry)
             return false;
 
@@ -748,30 +802,81 @@ namespace he
         return true;
     }
 
-    template <typename K, typename V>
+    template <typename T>
     template <typename U, typename... Args>
-    RBTreeMap<K, V>::EmplaceResult RBTreeMap<K, V>::Emplace(U&& key, Args&&... args)
+    RBTreeContainerBase<T>::EmplaceResult RBTreeContainerBase<T>::Emplace(U&& key, Args&&... args)
     {
-        Node* entry = m_tree.Find(key);
+        EntryType* entry = m_tree.Find(key);
         if (entry)
             return { *entry, false };
 
-        entry = m_allocator.New<Node>(Forward<U>(key), Forward<Args>(args)...);
+        entry = m_allocator.New<EntryType>(Forward<U>(key), Forward<Args>(args)...);
         m_tree.Insert(entry);
         ++m_size;
         return { *entry, true };
     }
 
-    template <typename K, typename V>
-    void RBTreeMap<K, V>::CopyFrom(const RBTreeMap& x)
+    template <typename T>
+    void RBTreeContainerBase<T>::CopyFrom(const RBTreeContainerBase& x)
     {
+        if (this == &x)
+            return;
+
         Clear();
 
-        // TODO: This may rebalance a bunch while we copy. Instead, this should just walk down
-        // the tree from root and allocate along the way.
-        for (const Node& node : x)
+        m_tree.CopyFrom(x.m_tree, [](const EntryType* entry, void* userData)
         {
-            Emplace(node.key, node.value);
+            RBTreeContainerBase* self = static_cast<RBTreeContainerBase*>(userData);
+            return self->m_allocator.New<EntryType>(*entry);
+        }, this);
+    }
+
+    template <typename T>
+    void RBTreeContainerBase<T>::MoveFrom(RBTreeContainerBase&& x)
+    {
+        if (this == &x)
+            return;
+
+        Clear();
+
+        if (&m_allocator != &x.m_allocator)
+        {
+            CopyFrom(x);
+            x.Clear();
+            return;
         }
+
+        m_tree = Move(x.m_tree);
+    }
+
+    // --------------------------------------------------------------------------------------------
+    // RBTreeMap
+
+    template <typename K, typename V>
+    template <typename U, typename X>
+    typename RBTreeMap<K, V>::EmplaceResult RBTreeMap<K, V>::EmplaceOrAssign(U&& key, X&& value)
+    {
+        const EmplaceResult result = Super::Emplace(Forward<U>(key), Forward<X>(value));
+        if (!result.inserted)
+        {
+            result.entry.value = Forward<X>(value);
+        }
+        return result;
+    }
+
+    template <typename K, typename V>
+    template <typename U>
+    const typename RBTreeMap<K, V>::ValueType* RBTreeMap<K, V>::Find(const U& key) const
+    {
+        const EntryType* v = Super::Find(key);
+        return v ? &v->value : nullptr;
+    }
+
+    template <typename K, typename V>
+    template <typename U>
+    typename RBTreeMap<K, V>::ValueType* RBTreeMap<K, V>::Find(const U& key)
+    {
+        EntryType* v = Super::Find(key);
+        return v ? &v->value : nullptr;
     }
 }

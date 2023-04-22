@@ -41,30 +41,14 @@ namespace he::editor
             double fractionalSeconds = entry.timestamp.val / static_cast<double>(he::Seconds::Ratio);
             fractionalSeconds -= static_cast<uint64_t>(fractionalSeconds);
 
-            if (entry.kvs.Size() == 1
-                && entry.kvs[0].Kind() == KeyValue::ValueKind::String
-                && String::Equal(entry.kvs[0].Key(), HE_MSG_KEY))
-            {
-                FormatTo(
-                    m_buffer,
-                    "[{:%Y-%m-%d_%H-%M-%S}{:.04f}] [{:s}]({}) {}\n",
-                    FmtLocalTime(entry.timestamp),
-                    fractionalSeconds,
-                    entry.source.level,
-                    entry.source.category,
-                    entry.kvs[0].GetString());
-            }
-            else
-            {
-                FormatTo(
-                    m_buffer,
-                    "[{:%Y-%m-%d_%H-%M-%S}{:.04f}] [{:s}]({}) {}\n",
-                    FmtLocalTime(entry.timestamp),
-                    fractionalSeconds,
-                    entry.source.level,
-                    entry.source.category,
-                    FmtJoin(entry.kvs, ", "));
-            }
+            FormatTo(
+                m_buffer,
+                "[{:%Y-%m-%d_%H-%M-%S}{:.04f}] [{:s}]({}) {}\n",
+                FmtLocalTime(entry.timestamp),
+                fractionalSeconds,
+                entry.source.level,
+                entry.source.category,
+                FmtJoin(entry.kvs, ", "));
 
             return true;
         });

@@ -241,13 +241,12 @@ namespace he
         const short dlgHeight = 150;
         const short dlgWidth = 400;
 
-        const ErrorKind errorKind = kvs[0].GetEnum<ErrorKind>();
-        const wchar_t* title = GetErrorDialogTitle(errorKind);
+        const wchar_t* title = GetErrorDialogTitle(source.kind);
         const DWORD style = WS_CAPTION | DS_FIXEDSYS | DS_SETFONT | DS_MODALFRAME | DS_CENTER;
 
         DialogTemplate temp(title, style, 32, 32, dlgWidth, dlgHeight);
 
-        const LPCWSTR icon = errorKind == ErrorKind::Assert ? IDI_ERROR : IDI_WARNING;
+        const LPCWSTR icon = source.kind == ErrorKind::Assert ? IDI_ERROR : IDI_WARNING;
         temp.AddStaticIcon(
             icon,
             WS_CHILD | WS_VISIBLE | SS_ICON | SS_REALSIZECONTROL | SS_CENTERIMAGE,
@@ -258,7 +257,7 @@ namespace he
             itemHeight,
             0xffff);
 
-        String errorTitle = AsString(errorKind);
+        String errorTitle = AsString(source.kind);
         errorTitle += " Details:";
         temp.AddStaticText(
             HE_TO_WCSTR(errorTitle.Data()),

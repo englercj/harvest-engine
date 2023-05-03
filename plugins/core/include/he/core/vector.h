@@ -109,7 +109,7 @@ namespace he
         /// Replaces the contents of this string with a copy of the characters in `range`.
         ///
         /// \param str The string source to copy from.
-        template <typename R> requires(!IsSame<R, Vector<T>> && ContiguousRange<R, const T>)
+        template <ContiguousRangeOf<const T> R> requires(!IsSame<R, Vector<T>>)
         Vector& operator=(const R& range) { Clear(); Insert(0, range.Data(), range.Size()); return *this; }
 
         // ----------------------------------------------------------------------------------------

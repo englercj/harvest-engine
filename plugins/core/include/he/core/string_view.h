@@ -54,8 +54,7 @@ namespace he
         /// \ref Vector<char>
         ///
         /// \param str The string to refer to.
-        template <typename T>
-            requires(!IsSame<RemoveCV<T>, StringView> && ContiguousRange<T, const char>)
+        template <ContiguousRangeOf<const char> T> requires(!IsSame<RemoveCV<T>, StringView>)
         constexpr StringView(const T& str) noexcept
             : m_data(str.Data())
             , m_size(str.Size())

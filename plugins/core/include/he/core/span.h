@@ -37,7 +37,7 @@ namespace he
         ///
         /// \param begin The pointer to the start of the range.
         /// \param end the pointer to one past the last element of the range.
-        template <typename P> requires(IsConvertible<P, T*>)
+        template <ConvertibleTo<T*> P>
         constexpr Span(T* begin, P end) noexcept
             : m_data(begin)
             , m_size(static_cast<uint32_t>(static_cast<T*>(end) - begin))
@@ -56,7 +56,7 @@ namespace he
         /// it has `.Data()` and `.Size()` members.
         ///
         /// \param range The object that provides the range.
-        template <typename R> requires(!IsSpecialization<RemoveCV<R>, Span> && ContiguousRange<R, T>)
+        template <ContiguousRangeOf<T> R> requires(!IsSpecialization<RemoveCV<R>, Span>)
         constexpr Span(R& range) noexcept
             : m_data(range.Data())
             , m_size(range.Size())

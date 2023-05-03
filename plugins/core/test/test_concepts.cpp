@@ -235,14 +235,14 @@ HE_TEST(core, concepts, EqualityComparable)
 }
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST(core, concepts, ContiguousRange)
+HE_TEST(core, concepts, ContiguousRangeOf)
 {
-    static_assert(ContiguousRange<String, char>);
-    static_assert(ContiguousRange<StringView, const char>);
-    static_assert(ContiguousRange<Vector<int>, int>);
-    static_assert(!ContiguousRange<String, int>);
-    static_assert(!ContiguousRange<StringView, char>);
-    static_assert(!ContiguousRange<Vector<int>, char>);
+    static_assert(ContiguousRangeOf<String, char>);
+    static_assert(ContiguousRangeOf<StringView, const char>);
+    static_assert(ContiguousRangeOf<Vector<int>, int>);
+    static_assert(!ContiguousRangeOf<String, int>);
+    static_assert(!ContiguousRangeOf<StringView, char>);
+    static_assert(!ContiguousRangeOf<Vector<int>, char>);
 }
 
 // ------------------------------------------------------------------------------------------------

@@ -101,7 +101,7 @@ namespace he
             m_value.s.Assign(v, N);
         }
 
-        template <typename T> requires(!IsEnum<T> && ContiguousRange<T, const char>)
+        template <typename T> requires(!IsEnum<T> && ContiguousRangeOf<T, const char>)
         KeyValue(const char* k, const T& v) noexcept
             : m_key(k)
             , m_kind(ValueKind::String)
@@ -117,7 +117,7 @@ namespace he
             FormatTo(m_value.s, fmt, Forward<Args>(args)...);
         }
 
-        template <typename T> requires(!IsEnum<T> && !ContiguousRange<T, const char>)
+        template <typename T> requires(!IsEnum<T> && !ContiguousRangeOf<T, const char>)
         KeyValue(const char* k, const T& v) noexcept
             : m_key(k)
             , m_kind(ValueKind::String)

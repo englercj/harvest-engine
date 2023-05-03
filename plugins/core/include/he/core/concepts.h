@@ -22,6 +22,15 @@ namespace he
     template <typename T, typename U>
     concept ConvertibleTo = IsConvertible<T, U>;
 
+    template <typename T, typename U>
+    concept AssignableTo = IsAssignable<U, T>;
+
+    template <typename T, typename U>
+    concept CopyAssignableTo = IsCopyAssignable<U, T>;
+
+    template <typename T, typename U>
+    concept MoveAssignableTo = IsMoveAssignable<U, T>;
+
     template <typename Derived, typename Base>
     concept DerivedFrom = IsBaseOf<Base, Derived> && IsConvertible<const volatile Derived*, const volatile Base*>;
 
@@ -68,8 +77,15 @@ namespace he
         { t != t } -> SameAs<bool>;
     };
 
-    template <typename T, typename E>
+    template <typename T>
     concept ContiguousRange = requires(T& t)
+    {
+        { t.Data() } -> Pointer;
+        { t.Size() } -> ConvertibleTo<uint32_t>;
+    };
+
+    template <typename T, typename E>
+    concept ContiguousRangeOf = requires(T& t)
     {
         { t.Data() } -> ConvertibleTo<E*>;
         { t.Size() } -> ConvertibleTo<uint32_t>;
@@ -85,7 +101,7 @@ namespace he
         { t.Size() } -> ConvertibleTo<uint32_t>;
     };
 
-    // TODO: Generalize ContiguousRange with a concept like this:
+    // TODO: Generalize ContiguousRangeOf / ArithmeticRange with a concept like this:
     //
     // template <typename T, template <typename> typename Test>
     // concept Matches = Test<T>;

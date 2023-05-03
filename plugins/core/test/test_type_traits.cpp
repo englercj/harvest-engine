@@ -185,6 +185,30 @@ HE_TEST(core, type_traits, ConstnessAs)
 }
 
 // ------------------------------------------------------------------------------------------------
+HE_TEST(core, type_traits, UnwrapEnum)
+{
+    static_assert(IsSame<UnwrapEnum<char>, char>);
+    static_assert(IsSame<UnwrapEnum<int>, int>);
+    static_assert(IsSame<UnwrapEnum<NonTrivial>, NonTrivial>);
+
+    enum Unscoped {};
+    enum UnscopedU8 : uint8_t {};
+    enum UnscopedI64 : int64_t {};
+
+    static_assert(IsSame<UnwrapEnum<Unscoped>, int>);
+    static_assert(IsSame<UnwrapEnum<UnscopedU8>, uint8_t>);
+    static_assert(IsSame<UnwrapEnum<UnscopedI64>, int64_t>);
+
+    enum class Scoped {};
+    enum class ScopedU8 : uint8_t {};
+    enum class ScopedI64 : int64_t {};
+
+    static_assert(IsSame<UnwrapEnum<Scoped>, int>);
+    static_assert(IsSame<UnwrapEnum<ScopedU8>, uint8_t>);
+    static_assert(IsSame<UnwrapEnum<ScopedI64>, int64_t>);
+}
+
+// ------------------------------------------------------------------------------------------------
 // Type relationships
 // ------------------------------------------------------------------------------------------------
 

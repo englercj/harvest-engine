@@ -621,6 +621,24 @@ namespace he
     template <typename T, typename U>
     using ConstnessAs = Conditional<IsConst<U>, const T, RemoveConst<T>>;
 
+    /// Forms lvalue reference to const type of t.
+    ///
+    /// \tparam T The type to modify.
+    /// \param[in] t The value to return a const ref to.
+    template <typename T> constexpr const T& AsConst(T& t) noexcept { return t; }
+
+    /// \internal
+    template <typename T> void AsConst(const T&&) = delete;
+    /// \endinternal
+
+    /// \internal
+    template <typename T, bool Enum> struct _UnwrapEnum { using Type = T; };
+    template <typename T> struct _UnwrapEnum<T, true> { using Type = UnderlyingType<T>; };
+    /// \endinternal
+
+    template <typename T>
+    using UnwrapEnum = _UnwrapEnum<T, IsEnum<T>>::Type;
+
     // --------------------------------------------------------------------------------------------
     // Supported operations
 
@@ -659,17 +677,19 @@ namespace he
     template <typename T, typename U>
     inline constexpr bool IsAssignable = __is_assignable(T, U);
 
-    /// Evaluates to `true` if `T` can be copy assigned. Same as `IsAssignable<T&, const T&>`.
+    /// Evaluates to `true` if `T` can be copy assigned from `U`. Same as `IsAssignable<T&, const U&>`.
     ///
-    /// \tparam T The type to check.
-    template <typename T>
-    inline constexpr bool IsCopyAssignable = __is_assignable(AddLValueReference<T>, AddLValueReference<const T>);
+    /// \tparam T The type to assign to.
+    /// \tparam U The type to assign from. Defaults to T.
+    template <typename T, typename U = T>
+    inline constexpr bool IsCopyAssignable = __is_assignable(AddLValueReference<T>, AddLValueReference<const U>);
 
-    /// Evaluates to `true` if `T` can be move assigned. Same as `IsAssignable<T&, T&&>`.
+    /// Evaluates to `true` if `T` can be move assigned from `U`. Same as `IsAssignable<T&, U&&>`.
     ///
-    /// \tparam T The type to check.
-    template <typename T>
-    inline constexpr bool IsMoveAssignable = __is_assignable(AddLValueReference<T>, AddRValueReference<T>);
+    /// \tparam T The type to assign to.
+    /// \tparam U The type to assign from. Defaults to T.
+    template <typename T, typename U = T>
+    inline constexpr bool IsMoveAssignable = __is_assignable(AddLValueReference<T>, AddRValueReference<U>);
 
     /// Evaluates to `true` if `T` can be destructed, otherwise evaluates to `false`.
     ///

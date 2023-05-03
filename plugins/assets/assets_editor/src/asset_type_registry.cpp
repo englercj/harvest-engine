@@ -4,8 +4,6 @@
 
 #include "he/schema/schema.h"
 
-#include <algorithm>
-
 namespace he::assets
 {
     const AssetTypeRegistry::ImporterEntry* AssetTypeRegistry::FindImporter(const TypeInfo& info)
@@ -46,7 +44,7 @@ namespace he::assets
         if (existing != nullptr)
         {
             const ImporterEntry* begin = m_importers.begin();
-            const uint32_t index = static_cast<uint32_t>(std::distance(begin, existing));
+            const uint32_t index = static_cast<uint32_t>(existing - begin);
             m_importers.Erase(index, 1);
         }
     }

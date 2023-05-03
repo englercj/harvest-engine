@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include "he/assets/asset_models.h"
 #include "he/assets/types.h"
 #include "he/core/async_file.h"
 #include "he/core/delegate.h"
@@ -16,7 +17,6 @@ namespace he::assets
     class AssetDatabase final
     {
     public:
-        using StorageType = sqlite::Storage<decltype(AssetDbSchema)>;
         using AssetFileBuilder = schema::TypedBuilder<AssetFile>;
 
         struct LoadResult
@@ -35,8 +35,8 @@ namespace he::assets
 
         bool IsInitialized() const { return m_storage.IsOpen(); }
 
-        StorageType& Storage() { return m_storage; }
-        Database& Db() { return m_storage.Db(); }
+        AssetDbStorage& Storage() { return m_storage; }
+        sqlite::Database& Db() { return m_storage.Db(); }
         sqlite3* Handle() const { return m_storage.Handle(); }
 
         // TODO: Audit the path handling in these.
@@ -99,7 +99,7 @@ namespace he::assets
         static void HandleLoadForUpdateComplete(UpdateRequest* req, LoadResult load);
 
     private:
-        StorageType m_storage;
+        AssetDbStorage m_storage;
         String m_assetRoot;
         String m_resourceRoot;
     };

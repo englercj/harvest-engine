@@ -15,31 +15,31 @@ namespace he::assets
 {
     static void Read(const sqlite::Statement& stmt, AssetFileModel& model)
     {
-        // column 0: id
-        stmt.GetColumn(1).ReadBlob(model.uuid.val.m_bytes);
-        model.file.path = stmt.GetColumn(2).GetText();
-        // column 3: file_path_depth
-        model.file.writeTime.val = BitCast<uint64_t>(stmt.GetColumn(4).GetInt64());
-        model.file.size = stmt.GetColumn(5).GetUint();
-        model.source.path = stmt.GetColumn(6).GetText();
-        model.source.writeTime.val = BitCast<uint64_t>(stmt.GetColumn(7).GetInt64());
-        model.source.size = stmt.GetColumn(8).GetUint();
+       // column 0: id
+       stmt.GetColumn(1).ReadBlob(model.uuid.val.m_bytes);
+       model.file.path = stmt.GetColumn(2).GetText();
+       // column 3: file_path_depth
+       model.file.writeTime.val = BitCast<uint64_t>(stmt.GetColumn(4).GetInt64());
+       model.file.size = stmt.GetColumn(5).GetUint();
+       model.source.path = stmt.GetColumn(6).GetText();
+       model.source.writeTime.val = BitCast<uint64_t>(stmt.GetColumn(7).GetInt64());
+       model.source.size = stmt.GetColumn(8).GetUint();
     }
 
     static void Read(const sqlite::Statement& stmt, AssetModel& model)
     {
-        // column 0: id
-        stmt.GetColumn(1).ReadBlob(model.uuid.val.m_bytes);
-        model.fileId = stmt.GetColumn(2).GetUint();
-        model.type = stmt.GetColumn(3).GetText();
-        model.name = stmt.GetColumn(4).GetText();
-        model.state = AssetState(stmt.GetColumn(5).GetUint());
-        model.dataHash = stmt.GetColumn(6).GetUint();
-        model.importDataHash = stmt.GetColumn(7).GetUint();
-        model.importerId = stmt.GetColumn(8).GetUint();
-        model.importerVersion = stmt.GetColumn(9).GetUint();
-        model.compilerId = stmt.GetColumn(10).GetUint();
-        model.compilerVersion = stmt.GetColumn(11).GetUint();
+       // column 0: id
+       stmt.GetColumn(1).ReadBlob(model.uuid.val.m_bytes);
+       model.fileId = stmt.GetColumn(2).GetUint();
+       model.type = stmt.GetColumn(3).GetText();
+       model.name = stmt.GetColumn(4).GetText();
+       model.state = AssetState(stmt.GetColumn(5).GetUint());
+       model.dataHash = stmt.GetColumn(6).GetUint();
+       model.importDataHash = stmt.GetColumn(7).GetUint();
+       model.importerId = stmt.GetColumn(8).GetUint();
+       model.importerVersion = stmt.GetColumn(9).GetUint();
+       model.compilerId = stmt.GetColumn(10).GetUint();
+       model.compilerVersion = stmt.GetColumn(11).GetUint();
     }
 
     static uint32_t GetPathDepth(StringView path)
@@ -60,7 +60,7 @@ namespace he::assets
         return depth;
     }
 
-    bool AssetFileModel::AddOrUpdate(AssetDatabase& db, AssetFile::Reader file, const AssetFileModel& model)
+    bool AddOrUpdateAssetFile(AssetDatabase& db, AssetFile::Reader file, const AssetFileModel& model)
     {
         HE_ASSERT(model.uuid == file.GetUuid());
 

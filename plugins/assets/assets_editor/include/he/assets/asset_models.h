@@ -6,6 +6,7 @@
 #include "he/core/clock.h"
 #include "he/core/log.h"
 #include "he/core/memory_ops.h"
+#include "he/core/name.h"
 #include "he/core/string.h"
 #include "he/core/string_builder.h"
 #include "he/core/string_view.h"
@@ -13,6 +14,7 @@
 #include "he/core/vector.h"
 #include "he/core/uuid.h"
 #include "he/sqlite/orm.h"
+#include "he/sqlite/orm_storage.h"
 
 namespace he::assets
 {
@@ -50,7 +52,7 @@ namespace he::assets
         uint32_t id{ 0 };
         AssetUuid uuid{};
         uint32_t assetFileId{ 0 };
-        String assetTypeName{}; // TODO: Change this to store only the hash value. We can create a join table that maps IDs -> string names for debugging.
+        Name assetType{};
         String name{};
         AssetState state{ AssetState::Unknown };
         uint32_t dataHash{ 0 };
@@ -109,7 +111,7 @@ namespace he::assets
             sqlite::Column("id", &AssetModel::id, sqlite::PrimaryKey()),
             sqlite::Column("uuid", &AssetModel::uuid, sqlite::Unique()),
             sqlite::Column("asset_file_id", &AssetModel::assetFileId),
-            sqlite::Column("asset_type_name", &AssetModel::assetTypeName),
+            sqlite::Column("asset_type_name", &AssetModel::assetType),
             sqlite::Column("name", &AssetModel::name),
             sqlite::Column("state", &AssetModel::state),
             sqlite::Column("data_hash", &AssetModel::dataHash),
@@ -144,50 +146,63 @@ namespace he::assets
         sqlite::Index("idx_asset_reference_fk_to_asset_id", &AssetReferenceModel::toAssetId),
         sqlite::RawSql(R"(
             -- Full-Text searching of the asset table.
-            CREATE VIRTUAL TABLE fts_asset USING fts5(name, content='asset', content_rowid='id');
+            CREATE VIRTUAL TABLE IF NOT EXISTS fts_asset USING fts5(name, content='asset', content_rowid='id');
 
-            CREATE TRIGGER asset_ai AFTER INSERT ON asset BEGIN
+            CREATE TRIGGER IF NOT EXISTS asset_ai AFTER INSERT ON asset BEGIN
                 INSERT INTO fts_asset(rowid, name) VALUES (new.id, new.name);
             END;
 
-            CREATE TRIGGER asset_ad AFTER DELETE ON asset BEGIN
+            CREATE TRIGGER IF NOT EXISTS asset_ad AFTER DELETE ON asset BEGIN
                 INSERT INTO fts_asset(fts_asset, rowid, name) VALUES ('delete', old.id, old.name);
             END;
 
-            CREATE TRIGGER asset_au AFTER UPDATE ON asset BEGIN
+            CREATE TRIGGER IF NOT EXISTS asset_au AFTER UPDATE ON asset BEGIN
                 INSERT INTO fts_asset(fts_asset, rowid, name) VALUES ('delete', old.id, old.name);
                 INSERT INTO fts_asset(rowid, name) VALUES (new.id, new.name);
             END;
 
             -- Full-Text searching of the tag table.
-            CREATE VIRTUAL TABLE fts_tag USING fts5(name, content='tag', content_rowid='id');
+            CREATE VIRTUAL TABLE IF NOT EXISTS fts_tag USING fts5(name, content='tag', content_rowid='id');
 
-            CREATE TRIGGER tag_ai AFTER INSERT ON tag BEGIN
+            CREATE TRIGGER IF NOT EXISTS tag_ai AFTER INSERT ON tag BEGIN
                 INSERT INTO fts_tag(rowid, name) VALUES (new.id, new.name);
             END;
 
-            CREATE TRIGGER tag_ad AFTER DELETE ON tag BEGIN
+            CREATE TRIGGER IF NOT EXISTS tag_ad AFTER DELETE ON tag BEGIN
                 INSERT INTO fts_tag(fts_tag, rowid, name) VALUES ('delete', old.id, old.name);
             END;
 
-            CREATE TRIGGER tag_au AFTER UPDATE ON tag BEGIN
+            CREATE TRIGGER IF NOT EXISTS tag_au AFTER UPDATE ON tag BEGIN
                 INSERT INTO fts_tag(fts_tag, rowid, name) VALUES ('delete', old.id, old.name);
                 INSERT INTO fts_tag(rowid, name) VALUES (new.id, new.name);
             END;
         )"));
+
+    using AssetDbStorage = sqlite::Storage<Decay<decltype(AssetDbSchema)>>;
+
+    bool AddOrUpdateAssetFile(AssetDbStorage& storage, AssetFile::Reader file, const AssetFileModel& model);
 }
 
 namespace he::sqlite
 {
     template <typename T> struct SqlDataTypeTraits;
 
-    // AssetFileUuid
-    template <>
-    struct sqlite::SqlDataTypeTraits<assets::AssetFileUuid>
+    template <typename T>
+    struct SqlDataTypeTraits<assets::_UuidWrapper<T>>
     {
-        static constexpr StringView Sql = "BLOB(16)";
-        static bool Bind(Statement& stmt, int32_t index, const assets::AssetFileUuid& value) { stmt.Bind(index, value.val.m_bytes); }
-        static void Read(const ColumnReader& column, assets::AssetFileUuid& value) { column.ReadBlob(value.val.m_bytes); }
-        static void Write(StringBuilder& sql, const assets::AssetFileUuid& value) { sql.Write("X'{:02x}'", FmtJoin(value.val.m_bytes, value.val.m_bytes + sizeof(value.val.m_bytes), "")); }
+        static constexpr StringView SqlType = "BLOB(16)";
+        static bool Bind(Statement& stmt, int32_t index, const assets::_UuidWrapper<T>& value) { return stmt.Bind(index, value.val.m_bytes); }
+        static void Read(const ColumnReader& column, assets::_UuidWrapper<T>& value) { column.ReadBlob(value.val.m_bytes); }
+        static void Write(StringBuilder& sql, const assets::_UuidWrapper<T>& value) { sql.Write("X'{:02x}'", FmtJoin(value.val.m_bytes, value.val.m_bytes + sizeof(value.val.m_bytes), "")); }
     };
+
+    template <>
+    struct SqlDataTypeTraits<Name>
+    {
+        static constexpr StringView SqlType = "TEXT";
+        static bool Bind(Statement& stmt, int32_t index, const Name& value) { return stmt.Bind(index, value.String()); }
+        static void Read(const ColumnReader& column, Name& value) { value = column.AsText(); }
+        static void Write(StringBuilder& sql, const Name& value) { sql.Write("'{}'", value.String()); }
+    };
+
 }

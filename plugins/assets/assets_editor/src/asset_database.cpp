@@ -330,12 +330,12 @@ namespace he::assets
     AssetDatabase::LoadResult AssetDatabase::LoadAssetFile(const AssetFileUuid& fileUuid)
     {
         AssetFileModel model;
-        if (!AssetFileModel::FindOne(*this, fileUuid, model))
+        if (!m_storage.FindOne(model, Where(Col(&AssetFileModel::uuid) == fileUuid)))
         {
             return { Result::InvalidParameter };
         }
 
-        return LoadAssetFile(model.file.path.Data());
+        return LoadAssetFile(model.filePath.Data());
     }
 
     bool AssetDatabase::SaveAssetFile(const char* path, AssetFile::Reader assetFile)
@@ -383,7 +383,7 @@ namespace he::assets
         if (!PrepareRelativePath(path, relPath))
             return;
 
-        AssetFileModel::RemoveOne(*this, relPath);
+        m_storage.Destroy<AssetFileModel>(Where(Col(&AssetFileModel::filePath) == relPath));
     }
 
     void AssetDatabase::OnAssetFileUpdated(const char* path)
@@ -475,26 +475,25 @@ namespace he::assets
 
         AssetFileModel model;
         model.uuid = assetFile.GetUuid();
-        model.file.path = relPath;
-        model.file.writeTime = attrs.writeTime;
-        model.file.size = static_cast<uint32_t>(attrs.size);
-        model.source = {};
+        model.filePath = relPath;
+        model.fileWriteTime = attrs.writeTime;
+        model.fileSize = static_cast<uint32_t>(attrs.size);
 
         if (assetFile.HasSource() && !assetFile.GetSource().IsEmpty())
         {
             const schema::String::Reader sourcePath = assetFile.GetSource();
 
-            model.source.path = sourcePath;
+            model.sourcePath = sourcePath;
 
             // TODO: Modify for when we support sparse checkout of source files.
             String sourceAbsPath;
-            if (PrepareAbsolutePath(model.source.path.Data(), sourceAbsPath))
+            if (PrepareAbsolutePath(model.sourcePath.Data(), sourceAbsPath))
             {
                 res = File::GetAttributes(sourceAbsPath.Data(), attrs);
                 if (res)
                 {
-                    model.source.writeTime = attrs.writeTime;
-                    model.source.size = static_cast<uint32_t>(attrs.size);
+                    model.sourceWriteTime = attrs.writeTime;
+                    model.sourceSize = static_cast<uint32_t>(attrs.size);
                 }
                 else
                 {
@@ -507,7 +506,7 @@ namespace he::assets
             }
         }
 
-        if (!AssetFileModel::AddOrUpdate(*this, assetFile, model))
+        if (!AddOrUpdateAssetFile(m_storage, assetFile, model))
         {
             HE_LOG_WARN(he_assets,
                 HE_MSG("Failed to update asset cached DB with asset file data. Check the logs above this for additional details."),

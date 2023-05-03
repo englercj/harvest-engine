@@ -19,16 +19,10 @@ static void TestToSql(const SqlWriterContext<U>& ctx, const T& obj, StringView e
 }
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST(sqlite, orm_sql, PickModel)
-{
-}
-
-// ------------------------------------------------------------------------------------------------
 HE_TEST(sqlite, orm_sql, SqlDataTypeTraits)
 {
     enum class TestEnum {};
 
-    static_assert(SqlDataTypeTraits<char>::SqlType == StringView("INTEGER"));
     static_assert(SqlDataTypeTraits<signed char>::SqlType == StringView("INTEGER"));
     static_assert(SqlDataTypeTraits<short>::SqlType == StringView("INTEGER"));
     static_assert(SqlDataTypeTraits<int>::SqlType == StringView("INTEGER"));
@@ -39,6 +33,7 @@ HE_TEST(sqlite, orm_sql, SqlDataTypeTraits)
     static_assert(SqlDataTypeTraits<unsigned int>::SqlType == StringView("INTEGER"));
     static_assert(SqlDataTypeTraits<unsigned long>::SqlType == StringView("INTEGER"));
     static_assert(SqlDataTypeTraits<unsigned long long>::SqlType == StringView("INTEGER"));
+    static_assert(SqlDataTypeTraits<char>::SqlType == StringView("INTEGER"));
     static_assert(SqlDataTypeTraits<TestEnum>::SqlType == StringView("INTEGER"));
     static_assert(SqlDataTypeTraits<SystemTime>::SqlType == StringView("INTEGER"));
     static_assert(SqlDataTypeTraits<MonotonicTime>::SqlType == StringView("INTEGER"));
@@ -53,15 +48,11 @@ HE_TEST(sqlite, orm_sql, SqlDataTypeTraits)
     static_assert(SqlDataTypeTraits<StringView>::SqlType == StringView("TEXT"));
     static_assert(SqlDataTypeTraits<Span<char>>::SqlType == StringView("TEXT"));
     static_assert(SqlDataTypeTraits<const char*>::SqlType == StringView("TEXT"));
+    static_assert(SqlDataTypeTraits<char[5]>::SqlType == StringView("TEXT"));
 
     static_assert(SqlDataTypeTraits<Vector<uint8_t>>::SqlType == StringView("BLOB"));
     static_assert(SqlDataTypeTraits<Uuid>::SqlType == StringView("BLOB(16)"));
     static_assert(SqlDataTypeTraits<Span<uint8_t>>::SqlType == StringView("BLOB"));
-}
-
-// ------------------------------------------------------------------------------------------------
-HE_TEST(sqlite, orm_sql, SqlWriterContext)
-{
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -255,6 +246,12 @@ HE_TEST(sqlite, orm_sql, ToSql_Queries)
 
 // ------------------------------------------------------------------------------------------------
 HE_TEST(sqlite, orm_sql, BindSql)
+{
+    // TODO
+}
+
+// ------------------------------------------------------------------------------------------------
+HE_TEST(sqlite, orm_sql, ReadSql)
 {
     // TODO
 }

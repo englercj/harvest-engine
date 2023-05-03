@@ -33,6 +33,12 @@ HE_TEST(sqlite, orm, ColumnsObjectType)
 }
 
 // ------------------------------------------------------------------------------------------------
+HE_TEST(sqlite, orm_sql, _PickTable)
+{
+    // TODO
+}
+
+// ------------------------------------------------------------------------------------------------
 HE_TEST(sqlite, orm, PrimaryKeyConstraint)
 {
     constexpr auto m = Table("test",
@@ -175,6 +181,17 @@ HE_TEST(sqlite, orm, IndexDef_Unique)
 }
 
 // ------------------------------------------------------------------------------------------------
+HE_TEST(sqlite, orm, PragmaDef)
+{
+    constexpr auto c = Pragma("foreign_keys", true);
+
+    using T = Decay<decltype(c)>;
+
+    static_assert(IsSpecialization<T, PragmaDef>);
+    static_assert(IsSame<T::ValueType, bool>);
+}
+
+// ------------------------------------------------------------------------------------------------
 HE_TEST(sqlite, orm, ColumnRef)
 {
     constexpr auto c = Col(&OrmTestParent::id);
@@ -184,6 +201,33 @@ HE_TEST(sqlite, orm, ColumnRef)
     static_assert(IsSame<T::ObjectType, OrmTestParent>);
     static_assert(IsSame<T::ValueType, uint32_t>);
     static_assert(c.member == &OrmTestParent::id);
+}
+
+// ------------------------------------------------------------------------------------------------
+HE_TEST(sqlite, orm, ColumnRefCollection)
+{
+    constexpr auto c = Cols(&OrmTestParent::id, &OrmTestParent::sourcePath);
+
+    using T = Decay<decltype(c)>;
+
+    static_assert(IsSame<T::ObjectType, OrmTestParent>);
+    static_assert(IsSame<T::ColumnsType, Tuple<uint32_t OrmTestParent::*, String OrmTestParent::*>>);
+    static_assert(T::ColumnsType::Size == 2);
+    static_assert(TupleGet<0>(c.columns) == &OrmTestParent::id);
+    static_assert(TupleGet<1>(c.columns) == &OrmTestParent::sourcePath);
+}
+
+// ------------------------------------------------------------------------------------------------
+HE_TEST(sqlite, orm, ColumnRefAndValue)
+{
+    constexpr auto c = Set(&OrmTestParent::id, 10);
+
+    using T = Decay<decltype(c)>;
+
+    static_assert(IsSame<T::ObjectType, OrmTestParent>);
+    static_assert(IsSame<T::ValueType, int>);
+    static_assert(c.column == &OrmTestParent::id);
+    static_assert(c.value == 10);
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -345,7 +389,55 @@ HE_TEST(sqlite, orm, ModExpr)
 }
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST(sqlite, orm, TableDefBase_Construct)
+HE_TEST(sqlite, orm, SelectObjectQuery)
+{
+    // TODO
+}
+
+// ------------------------------------------------------------------------------------------------
+HE_TEST(sqlite, orm, SelectQuery)
+{
+    // TODO
+}
+
+// ------------------------------------------------------------------------------------------------
+HE_TEST(sqlite, orm, DeleteQuery)
+{
+    // TODO
+}
+
+// ------------------------------------------------------------------------------------------------
+HE_TEST(sqlite, orm, InsertObjectQuery)
+{
+    // TODO
+}
+
+// ------------------------------------------------------------------------------------------------
+HE_TEST(sqlite, orm, InsertQuery)
+{
+    // TODO
+}
+
+// ------------------------------------------------------------------------------------------------
+HE_TEST(sqlite, orm, UpdateObjectQuery)
+{
+    // TODO
+}
+
+// ------------------------------------------------------------------------------------------------
+HE_TEST(sqlite, orm, UpdateQuery)
+{
+    // TODO
+}
+
+// ------------------------------------------------------------------------------------------------
+HE_TEST(sqlite, orm, RawSqlQuery)
+{
+    // TODO
+}
+
+// ------------------------------------------------------------------------------------------------
+HE_TEST(sqlite, orm, TableDefBase)
 {
     TableDefBase m{ "test" };
     HE_UNUSED(m);
@@ -353,6 +445,12 @@ HE_TEST(sqlite, orm, TableDefBase_Construct)
 
 // ------------------------------------------------------------------------------------------------
 HE_TEST(sqlite, orm, TableDef)
+{
+    // TODO
+}
+
+// ------------------------------------------------------------------------------------------------
+HE_TEST(sqlite, orm, SchemaDef)
 {
     // TODO
 }

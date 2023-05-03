@@ -58,10 +58,11 @@ namespace he::sqlite
     {
         if (m_db)
         {
+            Execute("pragma optimize;");
+
             sqlite3* db = m_db;
             m_db = nullptr;
 
-            Execute("pragma optimize;");
             HE_SQLITE_CHECK(OK, sqlite3_close(db));
         }
 

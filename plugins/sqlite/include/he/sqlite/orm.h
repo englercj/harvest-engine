@@ -400,7 +400,7 @@ namespace he::sqlite
     {
         using ValueType = T;
 
-        constexpr PragmaDef(StringView name, T&& value) : value(Move(value)) {}
+        constexpr PragmaDef(StringView name, T&& value) : PragmaDefBase(name), value(Move(value)) {}
 
         T value;
     };

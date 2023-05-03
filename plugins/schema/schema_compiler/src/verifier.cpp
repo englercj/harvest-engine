@@ -432,9 +432,9 @@ namespace he::schema
             return true;
 
         uint16_t expectedOrdinal = 0;
-        for (auto&& node : ordinals)
+        for (auto&& it : ordinals)
         {
-            const MemberOrdinal& ordinal = node.value;
+            const MemberOrdinal& ordinal = it.value;
 
             if (ordinal.value != expectedOrdinal)
             {

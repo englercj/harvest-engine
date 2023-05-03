@@ -5,6 +5,7 @@
 #include "he/core/delegate.h"
 
 #include "he/core/test.h"
+#include "he/core/type_traits.h"
 
 using namespace he;
 
@@ -170,7 +171,7 @@ HE_TEST(core, delegate, Static_Make)
         Delegate<void(int)> d2 = Delegate<void(int)>::Make<&_TestFunctor::operator()>(f);
         HE_EXPECT(d2);
 
-        Delegate<void(int)> d3 = Delegate<void(int)>::Make<&_TestFunctor::MemberFunc>(std::as_const(f));
+        Delegate<void(int)> d3 = Delegate<void(int)>::Make<&_TestFunctor::MemberFunc>(AsConst(f));
         HE_EXPECT(d3);
     }
 }
@@ -360,7 +361,7 @@ HE_TEST(core, delegate, Set)
         HE_EXPECT(d2);
 
         Delegate<void(int)> d3;
-        d3.Set<&_TestFunctor::MemberFunc>(std::as_const(f));
+        d3.Set<&_TestFunctor::MemberFunc>(AsConst(f));
         HE_EXPECT(d3);
     }
 }

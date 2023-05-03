@@ -69,7 +69,7 @@ namespace he
         if (Size() != x.Size())
             return false;
 
-        return std::equal(x.Begin(), x.End(), Begin(), End());
+        return RangeEqual(Begin(), x.Begin(), Size());
     }
 
     template <typename T>

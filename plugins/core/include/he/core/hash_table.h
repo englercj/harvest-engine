@@ -36,13 +36,12 @@
 #include "he/core/assert.h"
 #include "he/core/hash.h"
 #include "he/core/memory_ops.h"
+#include "he/core/range_ops.h"
 #include "he/core/span.h"
 #include "he/core/types.h"
 #include "he/core/type_traits.h"
 #include "he/core/utils.h"
 #include "he/core/vector.h"
-
-#include <algorithm>
 
 namespace he
 {

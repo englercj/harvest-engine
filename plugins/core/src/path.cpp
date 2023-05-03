@@ -6,6 +6,7 @@
 #include "he/core/assert.h"
 #include "he/core/directory.h"
 #include "he/core/memory_ops.h"
+#include "he/core/range_ops.h"
 
 #include <algorithm>
 
@@ -81,7 +82,7 @@ namespace he
         if ((path.Size() - 1) == parent.Size() && _IsSlash(path.Back()))
             return false;
 
-        // If we got here the paths are not equal, and path goes 
+        // If we got here the paths are not equal, and path goes
         return true;
     }
 
@@ -93,8 +94,8 @@ namespace he
         const StringView baseName = GetBaseName(path);
 
         const char* begin = baseName.Begin();
-        const char* end = std::find(begin, baseName.End(), ':'); // Handle NTFS Alternate Data Streams
-        const char* ext = end;
+        const char* end = RangeFind(begin, baseName.Size(), ':'); // Handle NTFS Alternate Data Streams
+        const char* ext = end ? end : baseName.End();
 
         // empty
         if (begin >= ext)
@@ -170,8 +171,8 @@ namespace he
         if (ext.IsEmpty())
         {
             const StringView baseName = GetBaseName(path);
-            const char* end = std::find(baseName.Begin(), baseName.End(), ':'); // Handle NTFS Alternate Data Streams
-            return { path.Begin(), end };
+            const char* end = RangeFind(baseName.Begin(), baseName.Size(), ':'); // Handle NTFS Alternate Data Streams
+            return { path.Begin(), end ? end : path.End() };
         }
 
         HE_ASSERT(ext.Data() >= path.Data());

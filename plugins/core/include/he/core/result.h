@@ -51,7 +51,7 @@ namespace he
         /// Looks up the error string for the system code using platform-specific APIs. The
         /// current system locale is used for the lookup.
         ///
-        /// \param[out] out The string to format the error message into.
+        /// \param[out] out The string to format the result message into.
         void ToString(String& out) const;
 
         /// Converts the Result to a boolean. This value is the same as \ref IsOK().

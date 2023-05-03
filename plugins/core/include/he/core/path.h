@@ -5,7 +5,7 @@
 /// There a couple differences between these path utilities and the C++ std::filesystem utilities.
 /// Some choices and compromises were made here to unify the behavior across platforms:
 /// 1. All these function work with both forward and backward slashes as directory separators.
-/// 2. We consider forward slashes cannonical, so normalized paths use forward slashes.
+/// 2. We consider forward slashes canonical, so normalized paths use forward slashes.
 /// 3. Strange Windows paths (like UNC paths) are supported, on all platforms.
 /// 4. Any path starting with a slash is considered absolute.
 ///     On windows `/anything` is not an absolute path, it is a "root-relative" path, however

@@ -14,7 +14,7 @@ namespace he
         using ClockType = T;
 
     public:
-        Timer() noexcept { Restart(); }
+        Stopwatch() noexcept { Restart(); }
 
         void Restart() { m_start = T::Now(); }
         [[nodiscard]] Duration Elapsed() const { return T::Now() - m_start; }

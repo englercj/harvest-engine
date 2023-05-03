@@ -1,18 +1,154 @@
 <?xml version="1.0" encoding="utf-8"?>
 <AutoVisualizer xmlns="http://schemas.microsoft.com/vstudio/debugger/natvis/2010">
-    <Type Name="he::Vector&lt;*&gt;">
-        <DisplayString>{{Size={m_size} Capacity={m_capacity}}}</DisplayString>
+    <!-- bitset.h -->
+    <Type Name="he::BitReference&lt;*&gt;::reference">
+        <DisplayString>{(m_container-&gt;m_data[m_index / m_container-&gt;BitsPerElement] &gt;&gt; (m_index % m_container-&gt;BitsPerElement)) &amp; 1,d}</DisplayString>
         <Expand>
-            <Item Name="[size]">m_size</Item>
-            <Item Name="[capacity]">m_capacity</Item>
-            <ArrayItems>
-                <Size>m_size</Size>
-                <ValuePointer>m_data</ValuePointer>
-            </ArrayItems>
+            <Item Name="[container]">m_container</Item>
+            <Item Name="[index]">m_index</Item>
         </Expand>
     </Type>
+    <Type Name="he::BitSet&lt;*&gt;">
+        <DisplayString>{{ size={$T1} }}</DisplayString>
+        <Expand>
+            <IndexListItems>
+                <Size>$T1</Size>
+                <ValueNode>(m_data[$i / BitsPerElement] &gt;&gt; ($i % BitsPerElement)) &amp; 1,d</ValueNode>
+            </IndexListItems>
+        </Expand>
+    </Type>
+    <Type Name="he::BitSpan">
+        <DisplayString>{{ size={m_size * BitsPerElement} }}</DisplayString>
+        <Expand>
+            <IndexListItems>
+                <Size>m_size * BitsPerElement</Size>
+                <ValueNode>(m_data[$i / BitsPerElement] &gt;&gt; ($i % BitsPerElement)) &amp; 1,d</ValueNode>
+            </IndexListItems>
+        </Expand>
+    </Type>
+    <Type Name="he::EnumBitSet&lt;*&gt;">
+        <DisplayString>{{ size={BitSize} }}</DisplayString>
+        <Expand>
+            <IndexListItems>
+                <Size>BitSize</Size>
+                <ValueNode>(m_data &gt;&gt; IntType($i)) &amp; 1,d</ValueNode>
+            </IndexListItems>
+        </Expand>
+    </Type>
+
+    <!-- clock.h -->
+    <Type Name="he::Duration">
+        <DisplayString>{val} nanoseconds</DisplayString>
+        <Expand/>
+    </Type>
+    <Type Name="he::Time&lt;*&gt;">
+        <DisplayString>{val} nanoseconds</DisplayString>
+        <Expand/>
+    </Type>
+
+    <!-- hash_table.h -->
+    <Type Name="he::HashTable&lt;*&gt;">
+        <AlternativeType Name="he::HashSet&lt;*&gt;" />
+        <DisplayString>{m_entries}</DisplayString>
+        <Expand>
+            <Item Name="[bucket_count]">m_bucketCount</Item>
+            <Item Name="[load_factor]">m_bucketCount ? float(m_entries.m_size) / m_bucketCount : 0.0f</Item>
+            <Item Name="[max_load_factor]">m_maxLoadFactor</Item>
+            <ExpandedItem>m_entries</ExpandedItem>
+        </Expand>
+    </Type>
+    <Type Name="he::HashMap&lt;*&gt;">
+        <DisplayString>{m_entries}</DisplayString>
+        <Expand>
+            <Item Name="[bucket_count]">m_bucketCount</Item>
+            <Item Name="[load_factor]">m_bucketCount ? float(m_entries.m_size) / m_bucketCount : 0.0f</Item>
+            <Item Name="[max_load_factor]">m_maxLoadFactor</Item>
+            <ExpandedItem>m_entries</ExpandedItem>
+        </Expand>
+    </Type>
+    <Type Name="he::HashMapEntry&lt;*&gt;">
+        <DisplayString>{{ key={key}, value={value} }}</DisplayString>
+        <Expand>
+            <Item Name="[key]">key</Item>
+            <Item Name="[value]">value</Item>
+        </Expand>
+    </Type>
+
+    <!-- key_value.h -->
+    <Type Name="he::KeyValue">
+        <DisplayString Condition="m_kind == ValueKind::Bool">{m_key,sb}={m_value.b}</DisplayString>
+        <DisplayString Condition="m_kind == ValueKind::Enum">{m_key,sb}={m_value.e.value} ({m_value.e.toString(m_value.e.value),sb})</DisplayString>
+        <DisplayString Condition="m_kind == ValueKind::Int">{m_key,sb}={m_value.i}</DisplayString>
+        <DisplayString Condition="m_kind == ValueKind::Uint">{m_key,sb}={m_value.u}</DisplayString>
+        <DisplayString Condition="m_kind == ValueKind::Double">{m_key,sb}={m_value.d}</DisplayString>
+        <DisplayString Condition="m_kind == ValueKind::String">{m_key,sb}={m_value.s}</DisplayString>
+        <Expand>
+            <Item Name="[key]">m_key,s</Item>
+            <Item Name="[value]" Condition="m_kind == ValueKind::Bool">m_value.b</Item>
+            <Item Name="[value]" Condition="m_kind == ValueKind::Enum">m_value.e.value</Item>
+            <Item Name="[value]" Condition="m_kind == ValueKind::Int">m_value.i</Item>
+            <Item Name="[value]" Condition="m_kind == ValueKind::Uint">m_value.u</Item>
+            <Item Name="[value]" Condition="m_kind == ValueKind::Double">m_value.d</Item>
+            <Item Name="[value]" Condition="m_kind == ValueKind::String">m_value.s</Item>
+            <Synthetic Name="hint">
+                <DisplayString>Enable "Allow Function Calls In Value Formatting" if you see "???" here</DisplayString>
+            </Synthetic>
+        </Expand>
+    </Type>
+
+    <!-- name.h -->
+    <Type Name="he::Name">
+        <DisplayString>{String(),sb}</DisplayString>
+        <Expand>
+            <Item Name="[id]">m_id</Item>
+            <Item Name="[string]">String(),sb</Item>
+            <Synthetic Name="hint">
+                <DisplayString>Enable "Allow Function Calls In Value Formatting" if you see "???" here</DisplayString>
+            </Synthetic>
+        </Expand>
+    </Type>
+
+    <!-- rb_tree.h -->
+    <Type Name="he::RBTree&lt;*&gt;">
+        <DisplayString>{{ root={m_root} }}</DisplayString>
+        <Expand>
+            <TreeItems>
+                <!-- <Size>m_size</Size> -->
+                <HeadPointer>m_root</HeadPointer>
+                <LeftPointer>link.left</LeftPointer>
+                <RightPointer>($T1*)(uintptr_t(link.rightRed) &amp; ~uintptr_t(1))</RightPointer>
+                <ValueNode>this</ValueNode>
+            </TreeItems>
+        </Expand>
+    </Type>
+    <Type Name="he::RBTreeSet&lt;*&gt;">
+        <DisplayString>{{ size={m_size} }}</DisplayString>
+        <Expand>
+            <TreeItems>
+                <Size>m_size</Size>
+                <HeadPointer>m_tree.m_root</HeadPointer>
+                <LeftPointer>link.left</LeftPointer>
+                <RightPointer>(RBTreeSetTraits&lt;$T1&gt;::Node*)(uintptr_t(link.rightRed) &amp; ~uintptr_t(1))</RightPointer>
+                <ValueNode>value</ValueNode>
+            </TreeItems>
+        </Expand>
+    </Type>
+    <Type Name="he::RBTreeMap&lt;*&gt;">
+        <DisplayString>{{ size={m_size} }}</DisplayString>
+        <Expand>
+            <TreeItems>
+                <Size>m_size</Size>
+                <HeadPointer>m_tree.m_root</HeadPointer>
+                <LeftPointer>link.left</LeftPointer>
+                <RightPointer>(RBTreeMapTraits&lt;$T1,$T2&gt;::Node*)(uintptr_t(link.rightRed) &amp; ~uintptr_t(1))</RightPointer>
+                <ValueNode Name="[{key}]">value</ValueNode>
+            </TreeItems>
+        </Expand>
+    </Type>
+
+    <!-- span.h -->
     <Type Name="he::Span&lt;*&gt;">
-        <DisplayString>{{Size={m_size}}}</DisplayString>
+        <DisplayString>{{ size={m_size} }}</DisplayString>
         <Expand>
             <Item Name="[size]">m_size</Item>
             <ArrayItems>
@@ -21,6 +157,8 @@
             </ArrayItems>
         </Expand>
     </Type>
+
+    <!-- string.h -->
     <Type Name="he::String">
         <DisplayString Condition="m_embed[EmbedSize - 1] != HeapFlag">{m_embed,s}</DisplayString>
         <DisplayString Condition="m_embed[EmbedSize - 1] == HeapFlag">{m_heap.data,s}</DisplayString>
@@ -34,10 +172,82 @@
             <Item Condition="m_embed[EmbedSize - 1] == HeapFlag" Name="[capacity]">m_heap.capacity</Item>
         </Expand>
     </Type>
+
+    <!-- string_builder.h -->
+    <Type Name="he::StringBuilder">
+        <DisplayString>{m_str}</DisplayString>
+        <StringView>m_str</StringView>
+    </Type>
+
+    <!-- string_pool.h -->
+    <Type Name="he::StringPoolId">
+        <DisplayString>{val}</DisplayString>
+    </Type>
+    <Type Name="he::StringPool">
+        <DisplayString>{{ size={m_total} }}</DisplayString>
+        <Expand>
+            <Item Name="[size]">m_total</Item>
+            <TreeItems>
+                <Size>m_total</Size>
+                <HeadPointer>m_map.m_root</HeadPointer>
+                <LeftPointer>link.left</LeftPointer>
+                <RightPointer>(StringPool::Entry*)(uintptr_t(link.rightRed) &amp; ~uintptr_t(1))</RightPointer>
+                <ValueNode>*this</ValueNode>
+            </TreeItems>
+        </Expand>
+    </Type>
+    <Type Name="he::StringPool::Entry">
+        <DisplayString>{{ id={id}, value={value,s} }}</DisplayString>
+    </Type>
+
+    <!-- string_view.h -->
     <Type Name="he::StringView">
         <DisplayString>{m_data,[m_size]s}</DisplayString>
         <StringView>m_data,[m_size]s</StringView>
     </Type>
+
+    <!-- tuple.h -->
+    <Type Name="he::Tuple&lt;&gt;">
+        <DisplayString>()</DisplayString>
+        <Expand/>
+    </Type>
+    <Type Name="he::Tuple&lt;*&gt;">
+        <DisplayString Condition="Size == 1">({((_TupleStorage&lt;0,$T1&gt;*)this)-&gt;value})</DisplayString>
+        <DisplayString Condition="Size == 2" Optional="true">({((_TupleStorage&lt;0,$T1&gt;*)this)-&gt;value}, {((_TupleStorage&lt;1,$T2&gt;*)this)-&gt;value})</DisplayString>
+        <DisplayString Condition="Size == 3" Optional="true">({((_TupleStorage&lt;0,$T1&gt;*)this)-&gt;value}, {((_TupleStorage&lt;1,$T2&gt;*)this)-&gt;value}, {((_TupleStorage&lt;2,$T3&gt;*)this)-&gt;value})</DisplayString>
+        <DisplayString Condition="Size == 4" Optional="true">({((_TupleStorage&lt;0,$T1&gt;*)this)-&gt;value}, {((_TupleStorage&lt;1,$T2&gt;*)this)-&gt;value}, {((_TupleStorage&lt;2,$T3&gt;*)this)-&gt;value}, {((_TupleStorage&lt;3,$T4&gt;*)this)-&gt;value})</DisplayString>
+        <DisplayString Condition="Size == 5" Optional="true">({((_TupleStorage&lt;0,$T1&gt;*)this)-&gt;value}, {((_TupleStorage&lt;1,$T2&gt;*)this)-&gt;value}, {((_TupleStorage&lt;2,$T3&gt;*)this)-&gt;value}, {((_TupleStorage&lt;3,$T4&gt;*)this)-&gt;value})</DisplayString>
+        <DisplayString Condition="Size == 5" Optional="true">({((_TupleStorage&lt;0,$T1&gt;*)this)-&gt;value}, {((_TupleStorage&lt;1,$T2&gt;*)this)-&gt;value}, {((_TupleStorage&lt;2,$T3&gt;*)this)-&gt;value}, {((_TupleStorage&lt;3,$T4&gt;*)this)-&gt;value}, {((_TupleStorage&lt;4,$T5&gt;*)this)-&gt;value})</DisplayString>
+        <DisplayString Condition="Size >= 6" Optional="true">({((_TupleStorage&lt;0,$T1&gt;*)this)-&gt;value}, {((_TupleStorage&lt;1,$T2&gt;*)this)-&gt;value}, {((_TupleStorage&lt;2,$T3&gt;*)this)-&gt;value}, {((_TupleStorage&lt;3,$T4&gt;*)this)-&gt;value}, {((_TupleStorage&lt;4,$T5&gt;*)this)-&gt;value}, {((_TupleStorage&lt;5,$T6&gt;*)this)-&gt;value}, ...)</DisplayString>
+        <Expand>
+            <Item Name="[0]" Condition="Size >= 1">((_TupleStorage&lt;0,$T1&gt;*)this)-&gt;value</Item>
+            <Item Name="[1]" Condition="Size >= 2" Optional="true">((_TupleStorage&lt;1,$T2&gt;*)this)-&gt;value</Item>
+            <Item Name="[2]" Condition="Size >= 3" Optional="true">((_TupleStorage&lt;2,$T3&gt;*)this)-&gt;value</Item>
+            <Item Name="[3]" Condition="Size >= 4" Optional="true">((_TupleStorage&lt;3,$T4&gt;*)this)-&gt;value</Item>
+            <Item Name="[4]" Condition="Size >= 5" Optional="true">((_TupleStorage&lt;4,$T5&gt;*)this)-&gt;value</Item>
+            <Item Name="[5]" Condition="Size >= 6" Optional="true">((_TupleStorage&lt;5,$T6&gt;*)this)-&gt;value</Item>
+            <Item Name="[6]" Condition="Size >= 7" Optional="true">((_TupleStorage&lt;6,$T7&gt;*)this)-&gt;value</Item>
+            <Item Name="[7]" Condition="Size >= 8" Optional="true">((_TupleStorage&lt;7,$T8&gt;*)this)-&gt;value</Item>
+            <Item Name="[8]" Condition="Size >= 9" Optional="true">((_TupleStorage&lt;8,$T9&gt;*)this)-&gt;value</Item>
+            <Item Name="[9]" Condition="Size >= 10" Optional="true" >((_TupleStorage&lt;9,$T10&gt;*)this)-&gt;value</Item>
+            <Synthetic Name="[...]" Condition="Size > 10" Optional="true">
+                <DisplayString>{Size - 9} additional elements</DisplayString>
+            </Synthetic>
+        </Expand>
+    </Type>
+
+    <!-- uuid.h -->
+    <Type Name="he::Uuid">
+        <DisplayString>{m_bytes[0],nvoxb}{m_bytes[1],nvoxb}{m_bytes[2],nvoxb}{m_bytes[3],nvoxb}-{m_bytes[4],nvoxb}{m_bytes[5],nvoxb}-{m_bytes[6],nvoxb}{m_bytes[7],nvoxb}-{m_bytes[8],nvoxb}{m_bytes[9],nvoxb}-{m_bytes[10],nvoxb}{m_bytes[11],nvoxb}{m_bytes[12],nvoxb}{m_bytes[13],nvoxb}{m_bytes[14],nvoxb}{m_bytes[15],nvoxb}</DisplayString>
+        <Expand>
+            <ArrayItems>
+                <Size>16</Size>
+                <ValuePointer>m_bytes,nvox</ValuePointer>
+            </ArrayItems>
+        </Expand>
+    </Type>
+
+    <!-- variant.h -->
     <Type Name="he::Variant&lt;*&gt;">
         <DisplayString Condition="m_index == InvalidIndex">[empty]</DisplayString>
         <DisplayString Condition="m_index ==  0" Optional="true">{{ index = 0, value={*($T1*)(m_storage.data)} }}</DisplayString>
@@ -106,6 +316,19 @@
             <Item Name="[value]" Condition="m_index == 29" Optional="true">*($T30*)(m_storage.data)</Item>
             <Item Name="[value]" Condition="m_index == 30" Optional="true">*($T31*)(m_storage.data)</Item>
             <Item Name="[value]" Condition="m_index == 31" Optional="true">*($T32*)(m_storage.data)</Item>
+        </Expand>
+    </Type>
+
+    <!-- vector.h -->
+    <Type Name="he::Vector&lt;*&gt;">
+        <DisplayString>{{ size={m_size}, capacity={m_capacity} }}</DisplayString>
+        <Expand>
+            <Item Name="[size]">m_size</Item>
+            <Item Name="[capacity]">m_capacity</Item>
+            <ArrayItems>
+                <Size>m_size</Size>
+                <ValuePointer>m_data</ValuePointer>
+            </ArrayItems>
         </Expand>
     </Type>
 </AutoVisualizer>

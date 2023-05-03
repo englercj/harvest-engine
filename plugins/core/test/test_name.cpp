@@ -99,7 +99,26 @@ HE_TEST(core, name, Id)
 }
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST(core, name, operators)
+HE_TEST(core, name, operator_assign)
+{
+    Name name;
+    HE_EXPECT(!name);
+
+    name = "foo";
+    HE_EXPECT(name);
+    HE_EXPECT_EQ_STR(name.String(), "foo");
+
+    name = StringView("bar");
+    HE_EXPECT(name);
+    HE_EXPECT_EQ_STR(name.String(), "bar");
+
+    name = Name("foobar");
+    HE_EXPECT(name);
+    HE_EXPECT_EQ_STR(name.String(), "foobar");
+}
+
+// ------------------------------------------------------------------------------------------------
+HE_TEST(core, name, operator_compare)
 {
     {
         Name n1;

@@ -27,6 +27,10 @@ namespace he
         explicit Name(StringView str) : m_id(StringPool::GetDefault().Add(str)) {}
         explicit Name(StringPoolId id) : m_id(id) {}
 
+        Name& operator=(const char* str) { m_id = StringPool::GetDefault().Add(str); return *this; }
+        Name& operator=(StringView str) { m_id = StringPool::GetDefault().Add(str); return *this; }
+        Name& operator=(StringPoolId id) { m_id = id; return *this; }
+
         [[nodiscard]] const char* String() const { return StringPool::GetDefault().Get(m_id); }
         [[nodiscard]] StringPoolId Id() const { return m_id; }
 

@@ -2,6 +2,7 @@
 
 #include "he/core/stopwatch.h"
 
+#include "he/core/clock_fmt.h"
 #include "he/core/thread.h"
 #include "he/core/test.h"
 

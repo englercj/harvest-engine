@@ -13,8 +13,6 @@
 #include "he/core/random.h"
 #include "he/schema/schema.h"
 
-#include <set>
-
 namespace he::schema
 {
     struct BuiltinType { const StringView name; const Type::Data::UnionTag kind; };
@@ -420,7 +418,7 @@ namespace he::schema
 
     bool Verifier::VerifyMembers(const AstNode& node, AstNode::Kind kind)
     {
-        HashSet<MemberOrdinal> ordinals;
+        RBTreeSet<MemberOrdinal> ordinals;
         if (!VerifyMembersOf(node, kind, ordinals))
             return false;
 
@@ -433,13 +431,11 @@ namespace he::schema
         if (ordinals.IsEmpty())
             return true;
 
-        Vector<MemberOrdinal> sortedOrdinals;
-        sortedOrdinals.Insert(0, ordinals.Begin(), ordinals.End());
-        std::sort(sortedOrdinals.Begin(), sortedOrdinals.End(), [](const auto& a, const auto& b) { return a.value < b.value; });
-
         uint16_t expectedOrdinal = 0;
-        for (const MemberOrdinal& ordinal : sortedOrdinals)
+        for (auto&& node : ordinals)
         {
+            const MemberOrdinal& ordinal = node.value;
+
             if (ordinal.value != expectedOrdinal)
             {
                 m_context->AddError(ordinal.loc, "Unexpected ordinal value. Expected {} but got {}", expectedOrdinal, ordinal.value);
@@ -452,7 +448,7 @@ namespace he::schema
         return true;
     }
 
-    bool Verifier::VerifyMembersOf(const AstNode& node, AstNode::Kind kind, HashSet<MemberOrdinal>& ordinals)
+    bool Verifier::VerifyMembersOf(const AstNode& node, AstNode::Kind kind, RBTreeSet<MemberOrdinal>& ordinals)
     {
         HashSet<StringView> names;
         names.Reserve(node.children.Size());

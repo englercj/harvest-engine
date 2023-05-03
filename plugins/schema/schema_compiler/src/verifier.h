@@ -3,6 +3,7 @@
 #pragma once
 
 #include "he/core/hash_table.h"
+#include "he/core/rb_tree.h"
 #include "he/core/types.h"
 #include "he/core/vector.h"
 #include "he/schema/ast.h"
@@ -31,7 +32,7 @@ namespace he::schema
 
         bool VerifyAttributes(const AstNode& node);
         bool VerifyMembers(const AstNode& node, AstNode::Kind kind);
-        bool VerifyMembersOf(const AstNode& node, AstNode::Kind kind, HashSet<MemberOrdinal>& ordinals);
+        bool VerifyMembersOf(const AstNode& node, AstNode::Kind kind, RBTreeSet<MemberOrdinal>& ordinals);
         bool VerifyMethodParams(const AstNode& node, const AstMethodParams& params);
         bool VerifyDeclName(const AstNode& node);
         bool VerifyFieldName(const AstNode& node);

@@ -362,19 +362,26 @@ namespace he
     [[nodiscard]] constexpr decltype(auto) TupleGet(U&& t)
     {
         constexpr uint32_t Index = TypeListIndex<T, typename Decay<U>::ElementList>;
-        static_assert(Index < U::Size, "The type T must exist in the tuple exactly once.");
+        static_assert(Index < Decay<U>::Size, "The type T must exist in the tuple exactly once.");
         return Forward<U>(t)[_TupleTag<Index>{}];
     }
 
     template <typename T, typename U> requires(IsSpecialization<Decay<U>, Tuple>)
-    [[nodiscard]] constexpr bool TupleHas(U&& t)
+    [[nodiscard]] constexpr bool TupleHas(U&&)
     {
         constexpr uint32_t Index = TypeListIndex<T, typename Decay<U>::ElementList>;
-        return Index < U::Size;
+        return Index < Decay<U>::Size;
+    }
+
+    template <typename T, typename U> requires(IsSpecialization<Decay<U>, Tuple>)
+    [[nodiscard]] constexpr bool TupleHas()
+    {
+        constexpr uint32_t Index = TypeListIndex<T, typename Decay<U>::ElementList>;
+        return Index < Decay<U>::Size;
     }
 
     template <typename... T>
-    [[nodiscard]] constexpr Tuple<T&...> Tie(T&... t) { return { t... }; }
+    [[nodiscard]] constexpr Tuple<T&...> TupleTie(T&... t) { return { t... }; }
 
     template <typename... Args>
     [[nodiscard]] constexpr auto MakeTuple(Args&&... args)
@@ -464,13 +471,18 @@ namespace he
     }
 
     template <typename R, typename T, typename F> requires(IsSpecialization<Decay<T>, Tuple>)
-    constexpr R TupleReduce(T&& tuple, F&& func)
+    constexpr R TupleReduce(T&& tuple, F&& func, R value = {})
     {
-        R value{};
         TupleForEach(Forward<T>(tuple), [&](const auto& item)
         {
             value = func(value, item);
         });
         return value;
+    }
+
+    template <typename T> requires(IsSpecialization<Decay<T>, Tuple>)
+    constexpr uint32_t TupleSize(T&& tuple)
+    {
+        return Decay<T>::Size;
     }
 }

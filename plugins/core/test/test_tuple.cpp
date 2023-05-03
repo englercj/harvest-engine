@@ -12,6 +12,7 @@
 #include "he/core/type_traits.h"
 #include "he/core/test.h"
 #include "he/core/unique_ptr.h"
+#include "he/core/unique_ptr_fmt.h"
 #include "he/core/utils.h"
 
 using namespace he;
@@ -297,6 +298,35 @@ HE_TEST(core, tuple, TupleGet)
 }
 
 // ------------------------------------------------------------------------------------------------
+HE_TEST(core, tuple, TupleHas)
+{
+    constexpr Tuple t{ "Hello!"_sv, 3.141592, 5ul };
+    static_assert(TupleHas<StringView>(t));
+    static_assert(TupleHas<double>(t));
+    static_assert(TupleHas<unsigned long>(t));
+    static_assert(!TupleHas<short>(t));
+    static_assert(!TupleHas<bool>(t));
+    static_assert(!TupleHas<String>(t));
+    static_assert(!TupleHas<float>(t));
+    static_assert(!TupleHas<Vector<double>>(t));
+
+    static_assert(TupleHas<StringView, decltype(t)>());
+    static_assert(TupleHas<double, decltype(t)>());
+    static_assert(TupleHas<unsigned long, decltype(t)>());
+    static_assert(!TupleHas<short, decltype(t)>());
+    static_assert(!TupleHas<bool, decltype(t)>());
+    static_assert(!TupleHas<String, decltype(t)>());
+    static_assert(!TupleHas<float, decltype(t)>());
+    static_assert(!TupleHas<Vector<double>, decltype(t)>());
+}
+
+// ------------------------------------------------------------------------------------------------
+HE_TEST(core, tuple, TupleTie)
+{
+    // TODO
+}
+
+// ------------------------------------------------------------------------------------------------
 HE_TEST(core, tuple, MakeTuple)
 {
     static_assert(IsSame<decltype(MakeTuple(1, 2.0, ""_sv)), Tuple<int, double, StringView>>);
@@ -488,8 +518,12 @@ HE_TEST(core, tuple, TupleMap)
 
         HE_EXPECT(!TupleGet<3>(t));
         HE_EXPECT(TupleGet<3>(actual));
+
+        HE_EXPECT_EQ(TupleGet<0>(actual), TupleGet<0>(expected));
+        HE_EXPECT_EQ(TupleGet<1>(actual), TupleGet<1>(expected));
+        HE_EXPECT_EQ(TupleGet<2>(actual), TupleGet<2>(expected));
+        HE_EXPECT_NE(TupleGet<3>(actual), TupleGet<3>(expected));
         HE_EXPECT_EQ(*TupleGet<3>(actual), *TupleGet<3>(expected));
-        HE_EXPECT(actual == expected);
     }
 }
 
@@ -499,8 +533,8 @@ HE_TEST(core, tuple, TupleReduce)
     // Basic
     {
         Tuple t{ 10, 20.4, 50ull };
-        const bool r0 = TupleReduce<bool>(t, [](bool prev, auto item) { return prev && item < 100; });
-        const bool r1 = TupleReduce<bool>(t, [](bool prev, auto item) { return prev && item > 100; });
+        const bool r0 = TupleReduce<bool>(t, [](bool prev, auto item) { return prev && item < 100; }, true);
+        const bool r1 = TupleReduce<bool>(t, [](bool prev, auto item) { return prev && item > 100; }, true);
         const double sum = TupleReduce<double>(t, [](double prev, auto item) { return prev + item; });
         HE_EXPECT(r0);
         HE_EXPECT(!r1);

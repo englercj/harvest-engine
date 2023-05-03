@@ -1,8 +1,8 @@
 // Copyright Chad Engler
 
 #include "he/sqlite/statement.h"
-#include "he/sqlite/database.h"
 
+#include "he/sqlite/database.h"
 #include "he/core/test.h"
 
 using namespace he::sqlite;
@@ -19,7 +19,8 @@ HE_TEST(sqlite, statement, test)
     HE_EXPECT(db.Execute("INSERT INTO test VALUES (50, X'EF');"));
 
     {
-        Statement s = db.PrepareStatement("SELECT * FROM test WHERE rowid = ?");
+        Statement s;
+        HE_EXPECT(s.Prepare(db.Handle(), "SELECT * FROM test WHERE rowid = ?"));
 
         HE_EXPECT(s.Bind(1, 1));
         HE_EXPECT_EQ(s.Step(), StepResult::Row);
@@ -36,7 +37,8 @@ HE_TEST(sqlite, statement, test)
     }
 
     {
-        Statement s = db.PrepareStatement("SELECT * FROM test WHERE i = ?");
+        Statement s;
+        HE_EXPECT(s.Prepare(db.Handle(), "SELECT * FROM test WHERE i = ?"));
 
         HE_EXPECT(s.Bind(1, 50));
         HE_EXPECT_EQ(s.Step(), StepResult::Row);

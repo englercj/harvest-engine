@@ -2,7 +2,10 @@
 
 #pragma once
 
+#include "he/core/alloca.h"
+#include "he/core/bitset.h"
 #include "he/core/fmt.h"
+#include "he/core/log.h"
 #include "he/core/string_builder.h"
 #include "he/core/string.h"
 #include "he/core/types.h"
@@ -14,20 +17,11 @@
 
 namespace he::sqlite
 {
-    template <typename S>
-    class Storage
+    class StorageBase
     {
     public:
-        using SchemaType = S;
-        static_assert(IsSpecialization<S, SchemaDef>, "Storage expects a SchemaDef object.");
+        StorageBase() = default;
 
-    public:
-        explicit Storage(SchemaType&& schema)
-            : m_db()
-            , m_schema(Move(schema))
-        {}
-
-        // Storage state getters
     public:
         bool Open(const char* path) { return m_db.Open(path); }
         bool Close() { return m_db.Close(); }
@@ -36,6 +30,57 @@ namespace he::sqlite
 
         Database& Db() { return m_db; }
         sqlite3* Handle() const { return m_db.Handle(); }
+
+    public:
+        template <typename T>
+        bool Query(const T& query);
+
+        template <typename T, typename F>
+        bool Query(const T& query, F&& rowIterator);
+
+    protected:
+        bool DropColumn(StringView tableName, StringView columnName);
+
+    protected:
+        struct ColumnInfo
+        {
+            int32_t cid{ 0 };
+            String name{};
+            String type{};
+            String defaultValue{};
+            int32_t pk{ 0 };
+            bool notnull{ false };
+            bool hidden{ false };
+        };
+
+        struct TableInfo
+        {
+            bool exists{ false };
+            Vector<ColumnInfo> columns{};
+        };
+
+        template <typename T, typename U> requires(IsTableDef<T>::Value && IsColumnDef<U>::Value)
+        ColumnInfo ColumnInfoFromDef(const T& table, const U& column);
+
+        bool QueryTableExists(StringView tableName);
+        bool QueryTableInfo(StringView tableName, TableInfo& info);
+
+    protected:
+        Database m_db{};
+    };
+
+    template <typename S>
+    class Storage : public StorageBase
+    {
+    public:
+        using SchemaType = S;
+        static_assert(IsSpecialization<S, SchemaDef>, "Storage expects a SchemaDef specialization as the template parameter.");
+
+    public:
+        explicit Storage(SchemaType&& schema)
+            : StorageBase()
+            , m_schema(Move(schema))
+        {}
 
         // Table functions
     public:
@@ -47,21 +92,13 @@ namespace he::sqlite
 
         bool Sync();
 
-        // Query functions
-    public:
-        template <typename T>
-        bool Query(const T& query);
-
-        template <typename T, typename F>
-        bool Query(const T& query, F&& rowIterator);
-
         // Model functions
     public:
         template <typename T>
         bool Create(const T& obj);
 
         template <typename T, QueryCondition... U>
-        bool Destroy(U&&... query);
+        bool Destroy(U&&... conditions);
 
         template <typename T, QueryCondition... U>
         bool FindAll(Vector<T>& out, U&&... conditions);
@@ -73,137 +110,24 @@ namespace he::sqlite
         bool Update(const T& obj);
 
     private:
+        using ColumnInfo = StorageBase::ColumnInfo;
+        using TableInfo = StorageBase::TableInfo;
+
         template <typename T>
         bool PrepareQuery(Statement& stmt, const T& query);
 
+        template <typename T, typename... Elements>
+        bool SyncTable(const TableDef<T, Elements...>& table);
+
+        template <typename T, typename U> requires(IsTableDef<T>::Value && IsColumnDef<U>::Value)
+        bool SyncColumn(const T& table, const TableInfo& tableInfo, const U& column, const ColumnInfo* columnInfo, bool& columnModified);
+
+        template <typename T, typename U, typename... Constraints>
+        bool AddColumn(StringView tableName, const ColumnDef<T, U, Constraints...>& column);
+
     private:
-        Database m_db;
         SchemaType m_schema;
     };
-
-    // --------------------------------------------------------------------------------------------
-    // Inline definitions
-
-    template <typename S>
-    template <typename T>
-    inline bool Storage<S>::CreateTable()
-    {
-        const auto& table = m_schema.TableFor<T>();
-        SqlWriterContext ctx(m_schema);
-        StringBuilder sql;
-        ToSql(sql, obj, ctx);
-        return m_db.Execute(sql.Str().Data());
-    }
-
-    template <typename S>
-    template <typename T>
-    inline bool Storage<S>::DropTable()
-    {
-        const auto& table = m_schema.TableFor<T>();
-        String sql = "DROP TABLE IF EXISTS ";
-        sql += table.Name();
-        return m_db.Execute(sql.Data());
-    }
-
-    template <typename S>
-    inline bool Storage<S>::Sync()
-    {
-        // TODO
-    }
-
-    template <typename S>
-    template <typename T>
-    inline bool Storage<S>::Query(const T& query)
-    {
-        Statement stmt;
-        if (!PrepareQuery(stmt, query))
-            return false;
-
-        return stmt.Step() != StepResult::Error;
-    }
-
-    template <typename S>
-    template <typename T, typename F>
-    inline bool Storage<S>::Query(const T& query, F&& rowIterator)
-    {
-        Statement stmt;
-        if (!PrepareQuery(stmt, query))
-            return false;
-
-        return stmt.EachRow(rowIterator);
-    }
-
-    template <typename S>
-    template <typename T>
-    inline bool Storage<S>::Create(const T& obj)
-    {
-        const auto query = Insert(obj);
-        return Query(query);
-    }
-
-    template <typename S>
-    template <typename T, QueryCondition... U>
-    inline bool Storage<S>::Destroy(U&&... query)
-    {
-        const auto query = Delete<T>(Forward<U>(query)...);
-        return Query(query);
-    }
-
-    template <typename S>
-    template <typename T, QueryCondition... U>
-    inline bool Storage<S>::FindAll(Vector<T>& out, U&&... conditions)
-    {
-        const auto query = Select<T>(conditions);
-        return Query(query, [&](Statement& stmt)
-        {
-            int i = 0;
-            T& obj = out.EmplaceBack();
-            table.ForEachColumn([&](const auto& col)
-            {
-                const ColumnReader reader = stmt.GetColumn(i++);
-                ReadSql(reader, obj.*(col.member));
-            });
-        });
-    }
-
-    template <typename S>
-    template <typename T, QueryCondition... U>
-    inline bool Storage<S>::FindOne(T& out, U&&... conditions)
-    {
-        const auto query = Select<T>(conditions, Limit(1));
-        return Query(query, [&](Statement& stmt)
-        {
-            int i = 0;
-            table.ForEachColumn([&](const auto& col)
-            {
-                const ColumnReader reader = stmt.GetColumn(i++);
-                ReadSql(reader, out.*(col.member));
-            });
-        });
-    }
-
-    template <typename S>
-    template <typename T>
-    inline bool Storage<S>::Update(const T& obj)
-    {
-        const auto query = Update(obj);
-        return Query(query);
-    }
-
-    template <typename S>
-    template <typename T>
-    inline bool Storage<S>::PrepareQuery(Statement& stmt, const T& query)
-    {
-        SqlWriterContext ctx(m_schema);
-        StringBuilder sql;
-        ToSql(sql, query, ctx);
-
-        if (!HE_VERIFY(stmt.Prepare(m_db.Handle(), sql.Data())))
-            return false;
-
-        if (!HE_VERIFY(BindSql(stmt, query)))
-            return false;
-
-        return true;
-    }
 }
+
+#include "he/sqlite/inline/orm_storage.inl"

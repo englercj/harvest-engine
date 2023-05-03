@@ -28,35 +28,35 @@ HE_TEST(sqlite, orm_sql, SqlDataTypeTraits)
 {
     enum class TestEnum {};
 
-    static_assert(SqlDataTypeTraits<char>::Sql == "INTEGER");
-    static_assert(SqlDataTypeTraits<signed char>::Sql == "INTEGER");
-    static_assert(SqlDataTypeTraits<short>::Sql == "INTEGER");
-    static_assert(SqlDataTypeTraits<int>::Sql == "INTEGER");
-    static_assert(SqlDataTypeTraits<long>::Sql == "INTEGER");
-    static_assert(SqlDataTypeTraits<long long>::Sql == "INTEGER");
-    static_assert(SqlDataTypeTraits<unsigned char>::Sql == "INTEGER");
-    static_assert(SqlDataTypeTraits<unsigned short>::Sql == "INTEGER");
-    static_assert(SqlDataTypeTraits<unsigned int>::Sql == "INTEGER");
-    static_assert(SqlDataTypeTraits<unsigned long>::Sql == "INTEGER");
-    static_assert(SqlDataTypeTraits<unsigned long long>::Sql == "INTEGER");
-    static_assert(SqlDataTypeTraits<TestEnum>::Sql == "INTEGER");
-    static_assert(SqlDataTypeTraits<SystemTime>::Sql == "INTEGER");
-    static_assert(SqlDataTypeTraits<MonotonicTime>::Sql == "INTEGER");
-    static_assert(SqlDataTypeTraits<CycleCount>::Sql == "INTEGER");
-    static_assert(SqlDataTypeTraits<Duration>::Sql == "INTEGER");
+    static_assert(SqlDataTypeTraits<char>::SqlType == StringView("INTEGER"));
+    static_assert(SqlDataTypeTraits<signed char>::SqlType == StringView("INTEGER"));
+    static_assert(SqlDataTypeTraits<short>::SqlType == StringView("INTEGER"));
+    static_assert(SqlDataTypeTraits<int>::SqlType == StringView("INTEGER"));
+    static_assert(SqlDataTypeTraits<long>::SqlType == StringView("INTEGER"));
+    static_assert(SqlDataTypeTraits<long long>::SqlType == StringView("INTEGER"));
+    static_assert(SqlDataTypeTraits<unsigned char>::SqlType == StringView("INTEGER"));
+    static_assert(SqlDataTypeTraits<unsigned short>::SqlType == StringView("INTEGER"));
+    static_assert(SqlDataTypeTraits<unsigned int>::SqlType == StringView("INTEGER"));
+    static_assert(SqlDataTypeTraits<unsigned long>::SqlType == StringView("INTEGER"));
+    static_assert(SqlDataTypeTraits<unsigned long long>::SqlType == StringView("INTEGER"));
+    static_assert(SqlDataTypeTraits<TestEnum>::SqlType == StringView("INTEGER"));
+    static_assert(SqlDataTypeTraits<SystemTime>::SqlType == StringView("INTEGER"));
+    static_assert(SqlDataTypeTraits<MonotonicTime>::SqlType == StringView("INTEGER"));
+    static_assert(SqlDataTypeTraits<CycleCount>::SqlType == StringView("INTEGER"));
+    static_assert(SqlDataTypeTraits<Duration>::SqlType == StringView("INTEGER"));
 
-    static_assert(SqlDataTypeTraits<float>::Sql == "REAL");
-    static_assert(SqlDataTypeTraits<double>::Sql == "REAL");
+    static_assert(SqlDataTypeTraits<float>::SqlType == StringView("REAL"));
+    static_assert(SqlDataTypeTraits<double>::SqlType == StringView("REAL"));
 
-    static_assert(SqlDataTypeTraits<String>::Sql == "TEXT");
-    static_assert(SqlDataTypeTraits<Vector<char>>::Sql == "TEXT");
-    static_assert(SqlDataTypeTraits<StringView>::Sql == "TEXT");
-    static_assert(SqlDataTypeTraits<Span<char>>::Sql == "TEXT");
-    static_assert(SqlDataTypeTraits<const char*>::Sql == "TEXT");
+    static_assert(SqlDataTypeTraits<String>::SqlType == StringView("TEXT"));
+    static_assert(SqlDataTypeTraits<Vector<char>>::SqlType == StringView("TEXT"));
+    static_assert(SqlDataTypeTraits<StringView>::SqlType == StringView("TEXT"));
+    static_assert(SqlDataTypeTraits<Span<char>>::SqlType == StringView("TEXT"));
+    static_assert(SqlDataTypeTraits<const char*>::SqlType == StringView("TEXT"));
 
-    static_assert(SqlDataTypeTraits<Vector<uint8_t>>::Sql == "BLOB");
-    static_assert(SqlDataTypeTraits<Uuid>::Sql == "BLOB(16)");
-    static_assert(SqlDataTypeTraits<Span<uint8_t>>::Sql == "BLOB");
+    static_assert(SqlDataTypeTraits<Vector<uint8_t>>::SqlType == StringView("BLOB"));
+    static_assert(SqlDataTypeTraits<Uuid>::SqlType == StringView("BLOB(16)"));
+    static_assert(SqlDataTypeTraits<Span<uint8_t>>::SqlType == StringView("BLOB"));
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -197,26 +197,26 @@ HE_TEST(sqlite, orm_sql, ToSql)
     TestToSql(ctx, Col(&OrmTestParent::id) % 15, "(id) % (15)");
 
     // SelectObjectQuery
-    TestToSql(ctx, Select<OrmTestParent>(), "SELECT * FROM parent");
+    TestToSql(ctx, SelectObj<OrmTestParent>(), "SELECT * FROM parent");
 
     // SelectQuery
-    TestToSql(ctx, Select(&OrmTestParent::id, &OrmTestParent::filePath), "SELECT id, file_path FROM parent");
+    TestToSql(ctx, Select(Cols(&OrmTestParent::id, &OrmTestParent::filePath)), "SELECT id, file_path FROM parent");
 
     // DeleteQuery
-    TestToSql(ctx, Delete<OrmTestParent>(), "DELETE FROM parent");
-    TestToSql(ctx, Delete<OrmTestParent>(Where(Col(&OrmTestParent::id) == 15)), "DELETE FROM parent WHERE id = 15");
+    TestToSql(ctx, Delete<OrmTestParent>(), "DELETE FROM parent WHERE ((1) = (1))");
+    TestToSql(ctx, Delete<OrmTestParent>(Where(Col(&OrmTestParent::id) == 15)), "DELETE FROM parent WHERE ((id) = (15))");
 
     // InsertObjectQuery
-    TestToSql(ctx, Insert(OrmTestParent{}), "INSERT INTO parent (id, file_path, file_path_depth, file_write_time, file_size, source_path, source_write_time, source_size, scan_token) VALUES (0, '', 0, 0, 0, '', 0, 0, 0, 0)");
+    TestToSql(ctx, InsertObj(OrmTestParent{}), "INSERT INTO parent (file_path, file_path_depth, file_write_time, file_size, source_path, source_write_time, source_size, scan_token) VALUES ('', 0, 0, 0, '', 0, 0, 0)");
 
     // InsertQuery
     TestToSql(ctx, Insert(&OrmTestParent::id, &OrmTestParent::filePath).Values(10, "hello"), "INSERT INTO parent (id, file_path) VALUES (10, 'hello')");
 
     // UpdateObjectQuery
-    TestToSql(ctx, Update(OrmTestParent{}), "UPDATE parent SET id = 0, file_path = '', file_path_depth = 0, file_write_time = 0, file_size = 0, source_path = '', source_write_time = 0, source_size = 0, scan_token = 0");
+    TestToSql(ctx, UpdateObj(OrmTestParent{}), "UPDATE parent SET file_path = '', file_path_depth = 0, file_write_time = 0, file_size = 0, source_path = '', source_write_time = 0, source_size = 0, scan_token = 0 WHERE id = 0");
 
     // UpdateQuery
-    TestToSql(ctx, Update(&OrmTestParent::id, &OrmTestParent::filePath).Set(10, "hello"), "UPDATE parent SET id = 10, file_path = 'hello'");
+    TestToSql(ctx, Update(Set(&OrmTestParent::id, 10), Set(&OrmTestParent::filePath, "hello")), "UPDATE parent SET id = 10, file_path = 'hello' WHERE ((1) = (1))");
 
     // Table
     TestToSql(ctx, Table("table", Column("id", &OrmTestParent::id, PrimaryKey())), R"(CREATE TABLE table (

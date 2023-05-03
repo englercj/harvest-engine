@@ -14,8 +14,8 @@ namespace he::sqlite
     template <>
     struct SqlDataTypeTraits<OrmCustomValue>
     {
-        static constexpr StringView Sql = "FAKE_TYPE";
-        static bool Bind(Statement& stmt, int32_t index, const OrmCustomValue& value) { stmt.Bind(index, BitCast<int64_t>(value.val)); }
+        static constexpr StringView SqlType = "FAKE_TYPE";
+        static bool Bind(Statement& stmt, int32_t index, const OrmCustomValue& value) { return stmt.Bind(index, BitCast<int64_t>(value.val)); }
         static void Read(const ColumnReader& column, OrmCustomValue& value) { value.val = BitCast<uint64_t>(column.AsInt64()); }
     };
 

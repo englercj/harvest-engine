@@ -1,8 +1,9 @@
 // Copyright Chad Engler
 
 #include "he/sqlite/column_reader.h"
-#include "he/sqlite/database.h"
 
+#include "he/sqlite/database.h"
+#include "he/sqlite/statement.h"
 #include "he/core/memory_ops.h"
 #include "he/core/string.h"
 #include "he/core/test.h"
@@ -20,7 +21,9 @@ HE_TEST(sqlite, column_reader, test)
     HE_EXPECT(db.Execute("INSERT INTO test VALUES (123456789012345, 54321.12345, NULL, NULL);"));
 
     {
-        Statement s = db.PrepareStatement("SELECT * FROM test");
+        Statement s;
+
+        HE_EXPECT(s.Prepare(db.Handle(), "SELECT * FROM test"));
 
         HE_EXPECT_EQ(s.Step(), StepResult::Row);
         HE_EXPECT(s.GetColumn(0).IsNull());

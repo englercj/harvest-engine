@@ -4,6 +4,8 @@
 
 #include "he/sqlite/orm.h"
 
+#include "he/core/clock.h"
+#include "he/core/compiler.h"
 #include "he/core/concepts.h"
 #include "he/core/enum_ops.h"
 #include "he/core/fmt.h"
@@ -24,11 +26,54 @@ namespace he::sqlite
     template <typename T> struct SqlDataTypeTraits;
 
     // INTEGER
-    template <Integral T>
+#if HE_SIZEOF_LONG == 4
+    template <AnyOf<signed char, short, int, long> T>
+#else
+    template <AnyOf<signed char, short, int> T>
+#endif
     struct SqlDataTypeTraits<T>
     {
-        static constexpr StringView Sql = "INTEGER";
-        static bool Bind(Statement& stmt, int32_t index, const T& value) { stmt.Bind(index, value); }
+        static constexpr StringView SqlType = "INTEGER";
+        static bool Bind(Statement& stmt, int32_t index, const T& value) { return stmt.Bind(index, static_cast<int32_t>(value)); }
+        static void Read(const ColumnReader& column, T& value) { value = static_cast<T>(column.AsInt()); }
+        static void Write(StringBuilder& sql, const T& value) { sql.Write("{}", value); }
+    };
+
+#if HE_SIZEOF_LONG == 4
+    template <AnyOf<unsigned char, unsigned short, unsigned int, unsigned long> T>
+#else
+    template <AnyOf<unsigned char, unsigned short, unsigned int> T>
+#endif
+    struct SqlDataTypeTraits<T>
+    {
+        static constexpr StringView SqlType = "INTEGER";
+        static bool Bind(Statement& stmt, int32_t index, const T& value) { return stmt.Bind(index, static_cast<uint32_t>(value)); }
+        static void Read(const ColumnReader& column, T& value) { value = static_cast<T>(column.AsUint()); }
+        static void Write(StringBuilder& sql, const T& value) { sql.Write("{}", value); }
+    };
+
+#if HE_SIZEOF_LONG == 8
+    template <AnyOf<long long, long> T>
+#else
+    template <AnyOf<long long> T>
+#endif
+    struct SqlDataTypeTraits<T>
+    {
+        static constexpr StringView SqlType = "INTEGER";
+        static bool Bind(Statement& stmt, int32_t index, const T& value) { return stmt.Bind(index, static_cast<int64_t>(value)); }
+        static void Read(const ColumnReader& column, T& value) { value = static_cast<T>(column.AsInt64()); }
+        static void Write(StringBuilder& sql, const T& value) { sql.Write("{}", value); }
+    };
+
+#if HE_SIZEOF_LONG == 8
+    template <AnyOf<unsigned long long, unsigned long> T>
+#else
+    template <AnyOf<unsigned long long> T>
+#endif
+    struct SqlDataTypeTraits<T>
+    {
+        static constexpr StringView SqlType = "INTEGER";
+        static bool Bind(Statement& stmt, int32_t index, const T& value) { return stmt.Bind(index, BitCast<int64_t>(value)); }
         static void Read(const ColumnReader& column, T& value) { value = BitCast<T>(column.AsInt64()); }
         static void Write(StringBuilder& sql, const T& value) { sql.Write("{}", value); }
     };
@@ -36,8 +81,8 @@ namespace he::sqlite
     template <>
     struct SqlDataTypeTraits<char>
     {
-        static constexpr StringView Sql = "INTEGER";
-        static bool Bind(Statement& stmt, int32_t index, char value) { stmt.Bind(index, value); }
+        static constexpr StringView SqlType = "INTEGER";
+        static bool Bind(Statement& stmt, int32_t index, char value) { return stmt.Bind(index, value); }
         static void Read(const ColumnReader& column, char& value) { value = static_cast<char>(column.AsInt64()); }
         static void Write(StringBuilder& sql, char value) { sql.Write("'{}'", value); }
     };
@@ -45,26 +90,29 @@ namespace he::sqlite
     template <Enum T>
     struct SqlDataTypeTraits<T>
     {
-        static constexpr StringView Sql = "INTEGER";
-        static bool Bind(Statement& stmt, int32_t index, const T& value) { stmt.Bind(index, AsUnderlyingType(value)); }
-        static void Read(const ColumnReader& column, T& value) { value = BitCast<T>(column.AsInt64()); }
-        static void Write(StringBuilder& sql, const T& value) { sql.Write("{}", AsUnderlyingType(value)); }
+        using U = UnderlyingType<T>;
+        using Traits = SqlDataTypeTraits<U>;
+
+        static constexpr StringView SqlType = "INTEGER";
+        static bool Bind(Statement& stmt, int32_t index, const T& value) { return Traits::Bind(stmt, index, AsUnderlyingType(value)); }
+        static void Read(const ColumnReader& column, T& value) { U v; Traits::Read(column, v); value = static_cast<T>(v); }
+        static void Write(StringBuilder& sql, const T& value) { Traits::Write(sql, AsUnderlyingType(value)); }
     };
 
     template <typename T>
     struct SqlDataTypeTraits<Time<T>>
     {
-        static constexpr StringView Sql = "INTEGER";
-        static bool Bind(Statement& stmt, int32_t index, const T& value) { stmt.Bind(index, BitCast<int64_t>(value.val)); }
-        static void Read(const ColumnReader& column, T& value) { value.val = BitCast<uint64_t>(column.AsInt64()); }
-        static void Write(StringBuilder& sql, const T& value) { sql.Write("{}", BitCast<int64_t>(value.val)); }
+        static constexpr StringView SqlType = "INTEGER";
+        static bool Bind(Statement& stmt, int32_t index, const Time<T>& value) { return stmt.Bind(index, BitCast<int64_t>(value.val)); }
+        static void Read(const ColumnReader& column, Time<T>& value) { value.val = BitCast<uint64_t>(column.AsInt64()); }
+        static void Write(StringBuilder& sql, const Time<T>& value) { sql.Write("{}", BitCast<int64_t>(value.val)); }
     };
 
     template <>
     struct SqlDataTypeTraits<Duration>
     {
-        static constexpr StringView Sql = "INTEGER";
-        static bool Bind(Statement& stmt, int32_t index, const Duration& value) { stmt.Bind(index, value.val); }
+        static constexpr StringView SqlType = "INTEGER";
+        static bool Bind(Statement& stmt, int32_t index, const Duration& value) { return stmt.Bind(index, value.val); }
         static void Read(const ColumnReader& column, Duration& value) { value.val = column.AsInt64(); }
         static void Write(StringBuilder& sql, const Duration& value) { sql.Write("{}", value.val); }
     };
@@ -73,8 +121,8 @@ namespace he::sqlite
     template <FloatingPoint T>
     struct SqlDataTypeTraits<T>
     {
-        static constexpr StringView Sql = "REAL";
-        static bool Bind(Statement& stmt, int32_t index, const T& value) { stmt.Bind(index, value); }
+        static constexpr StringView SqlType = "REAL";
+        static bool Bind(Statement& stmt, int32_t index, const T& value) { return stmt.Bind(index, value); }
         static void Read(const ColumnReader& column, T& value) { value = static_cast<T>(column.AsDouble()); }
         static void Write(StringBuilder& sql, const T& value) { sql.Write("{:.15}", value); }
     };
@@ -83,8 +131,8 @@ namespace he::sqlite
     template <>
     struct SqlDataTypeTraits<String>
     {
-        static constexpr StringView Sql = "TEXT";
-        static bool Bind(Statement& stmt, int32_t index, const String& value) { stmt.Bind(index, value); }
+        static constexpr StringView SqlType = "TEXT";
+        static bool Bind(Statement& stmt, int32_t index, const String& value) { return stmt.Bind(index, value); }
         static void Read(const ColumnReader& column, String& value) { value = column.AsText(); }
         static void Write(StringBuilder& sql, const String& value) { sql.Write("'{}'", value); }
     };
@@ -92,8 +140,8 @@ namespace he::sqlite
     template <>
     struct SqlDataTypeTraits<Vector<char>>
     {
-        static constexpr StringView Sql = "TEXT";
-        static bool Bind(Statement& stmt, int32_t index, const Vector<char>& value) { stmt.Bind(index, value); }
+        static constexpr StringView SqlType = "TEXT";
+        static bool Bind(Statement& stmt, int32_t index, const Vector<char>& value) { return stmt.Bind(index, value); }
         static void Read(const ColumnReader& column, Vector<char>& value) { value = column.AsText(); }
         static void Write(StringBuilder& sql, const Vector<char>& value) { sql.Write("'{}'", FmtJoin(value.Begin(), value.End(), "")); }
     };
@@ -101,8 +149,8 @@ namespace he::sqlite
     template <>
     struct SqlDataTypeTraits<StringView>
     {
-        static constexpr StringView Sql = "TEXT";
-        static bool Bind(Statement& stmt, int32_t index, const StringView& value) { stmt.Bind(index, value); }
+        static constexpr StringView SqlType = "TEXT";
+        static bool Bind(Statement& stmt, int32_t index, const StringView& value) { return stmt.Bind(index, value); }
         static void Write(StringBuilder& sql, const StringView& value) { sql.Write("'{}'", value); }
         // Note: No Read() because `StringView` is non-owning, and reading a value into it would be unsafe.
     };
@@ -110,8 +158,8 @@ namespace he::sqlite
     template <>
     struct SqlDataTypeTraits<Span<char>>
     {
-        static constexpr StringView Sql = "TEXT";
-        static bool Bind(Statement& stmt, int32_t index, const Span<char>& value) { stmt.Bind(index, value); }
+        static constexpr StringView SqlType = "TEXT";
+        static bool Bind(Statement& stmt, int32_t index, const Span<char>& value) { return stmt.Bind(index, value); }
         static void Write(StringBuilder& sql, const Span<char>& value) { sql.Write("'{}'", FmtJoin(value.Begin(), value.End(), "")); }
         // Note: No Read() because `Span<char>` is non-owning, and reading a value into it would be unsafe.
     };
@@ -119,9 +167,18 @@ namespace he::sqlite
     template <>
     struct SqlDataTypeTraits<const char*>
     {
-        static constexpr StringView Sql = "TEXT";
-        static bool Bind(Statement& stmt, int32_t index, const char* value) { stmt.Bind(index, value); }
+        static constexpr StringView SqlType = "TEXT";
+        static bool Bind(Statement& stmt, int32_t index, const char* value) { return stmt.Bind(index, value); }
         static void Write(StringBuilder& sql, const char* value) { sql.Write("'{}'", value); }
+        // Note: No Read() because `const char*` is non-owning, and reading a value into it would be unsafe.
+    };
+
+    template <size_t N>
+    struct SqlDataTypeTraits<char[N]>
+    {
+        static constexpr StringView SqlType = "TEXT";
+        static bool Bind(Statement& stmt, int32_t index, const char (&value)[N]) { return stmt.Bind(index, value); }
+        static void Write(StringBuilder& sql, const char (&value)[N]) { sql.Write("'{}'", value); }
         // Note: No Read() because `const char*` is non-owning, and reading a value into it would be unsafe.
     };
 
@@ -129,8 +186,8 @@ namespace he::sqlite
     template <>
     struct SqlDataTypeTraits<Vector<uint8_t>>
     {
-        static constexpr StringView Sql = "BLOB";
-        static bool Bind(Statement& stmt, int32_t index, const Vector<uint8_t>& value) { stmt.Bind(index, value); }
+        static constexpr StringView SqlType = "BLOB";
+        static bool Bind(Statement& stmt, int32_t index, const Vector<uint8_t>& value) { return stmt.Bind(index, value); }
         static void Read(const ColumnReader& column, Vector<uint8_t>& value) { value = column.AsBlob(); }
         static void Write(StringBuilder& sql, const Vector<uint8_t>& value) { sql.Write("X'{:02x}'", FmtJoin(value.Begin(), value.End(), "")); }
     };
@@ -138,8 +195,8 @@ namespace he::sqlite
     template <>
     struct SqlDataTypeTraits<Uuid>
     {
-        static constexpr StringView Sql = "BLOB(16)";
-        static bool Bind(Statement& stmt, int32_t index, const Uuid& value) { stmt.Bind(index, value.m_bytes); }
+        static constexpr StringView SqlType = "BLOB(16)";
+        static bool Bind(Statement& stmt, int32_t index, const Uuid& value) { return stmt.Bind(index, value.m_bytes); }
         static void Read(const ColumnReader& column, Uuid& value) { column.ReadBlob(value.m_bytes); }
         static void Write(StringBuilder& sql, const Uuid& value) { sql.Write("X'{:02x}'", FmtJoin(value.m_bytes, value.m_bytes + sizeof(value.m_bytes), "")); }
     };
@@ -147,8 +204,8 @@ namespace he::sqlite
     template <>
     struct SqlDataTypeTraits<Span<uint8_t>>
     {
-        static constexpr StringView Sql = "BLOB";
-        static bool Bind(Statement& stmt, int32_t index, const Span<uint8_t>& value) { stmt.Bind(index, value); }
+        static constexpr StringView SqlType = "BLOB";
+        static bool Bind(Statement& stmt, int32_t index, const Span<uint8_t>& value) { return stmt.Bind(index, value); }
         static void Write(StringBuilder& sql, const Span<uint8_t>& value) { sql.Write("X'{:02x}'", FmtJoin(value.Begin(), value.End(), "")); }
         // Note: No Read() because `Span<uint8_t>` is non-owning, and reading a value into it would be unsafe.
     };
@@ -206,20 +263,32 @@ namespace he::sqlite
     template <typename T>
     struct SqlBinder;
 
+    template <SpecializationOf<SchemaDef> T>
     struct SqlBinderContext
     {
+        using SchemaType = T;
+
+        constexpr explicit SqlBinderContext(const T& schema) : schema(schema) {}
+
+        template <typename T>
+        constexpr decltype(auto) GetTable() const
+        {
+            return schema.TableFor<T>();
+        }
+
+        const SchemaType& schema;
         int32_t index{ 1 };
     };
 
-    template <typename T>
-    void BindSql(Statement& stmt, const T& t, SqlBinderContext& ctx)
+    template <typename T, typename U>
+    bool BindSql(Statement& stmt, const T& t, SqlBinderContext<U>& ctx)
     {
         SqlBinder<T> binder;
         return binder.Bind(stmt, t, ctx);
     }
 
     template <typename T>
-    void BindSql(Statement& stmt, const T& t)
+    bool BindSql(Statement& stmt, const T& t)
     {
         SqlBinderContext ctx;
         return BindSql(stmt, t, ctx);
@@ -447,7 +516,7 @@ namespace he::sqlite
             if (value.onUpdate != FkActionKind::None)
             {
                 sql.Write(" ON UPDATE ");
-                ToSql(sql, value.onDelete, ctx);
+                ToSql(sql, value.onUpdate, ctx);
             }
         }
     };
@@ -492,7 +561,7 @@ namespace he::sqlite
         template <typename Ctx>
         void Write(StringBuilder& sql, const Type& value, const Ctx& ctx) const
         {
-            sql.Write("{} {}", value.name, Traits::Sql);
+            sql.Write("{} {}", value.name, Traits::SqlType);
             TupleForEach(value.constraints, [&](const auto& constraint)
             {
                 sql.Write(' ');
@@ -756,8 +825,12 @@ namespace he::sqlite
         {
             const auto& table = ctx.GetTable<typename Type::ObjectType>();
             const StringView tableName = table.Name();
-            sql.Write("SELECT * FROM {} ", tableName);
-            ToSql(sql, value.args, ctx);
+            sql.Write("SELECT * FROM {}", tableName);
+            TupleForEach(value.args, [&](const auto& arg)
+            {
+                sql.Write(" ", tableName);
+                ToSql(sql, arg, ctx);
+            });
         }
     };
 
@@ -772,6 +845,7 @@ namespace he::sqlite
             const auto& table = ctx.GetTable<typename Type::ObjectType>();
             const StringView tableName = table.Name();
             sql.Write("SELECT ");
+            uint32_t index = 0;
             TupleForEach(value.columns, [&](const auto& column)
             {
                 if (index++ > 0)
@@ -779,8 +853,12 @@ namespace he::sqlite
                 const StringView name = ctx.GetColumnName(column);
                 sql.Write(name);
             });
-            sql.Write("FROM {} ", tableName);
-            ToSql(sql, value.args, ctx);
+            sql.Write(" FROM {}", tableName);
+            TupleForEach(value.args, [&](const auto& arg)
+            {
+                sql.Write(" ", tableName);
+                ToSql(sql, arg, ctx);
+            });
         }
     };
 
@@ -809,20 +887,48 @@ namespace he::sqlite
         {
             const auto& table = ctx.GetTable<typename Type::ObjectType>();
             const StringView tableName = table.Name();
-            sql.Write("INSERT INTO {} (", tableName);
+            sql.Write("INSERT INTO {} ", tableName);
+
+            uint32_t columnCount = 0;
+            table.ForEachColumn([&](const auto& column)
+            {
+                if (table.IsPrimaryKeyColumn(column.member))
+                    return;
+
+                ++columnCount;
+            });
+
+            if (columnCount == 0)
+            {
+                sql.Write("DEFAULT VALUES");
+                return;
+            }
+
+            sql.Write("(");
 
             uint32_t index = 0;
             table.ForEachColumn([&](const auto& column)
             {
-                sql.Write("{}{}", index++ > 0 ? ", " : "", column.name);
+                if (table.IsPrimaryKeyColumn(column.member))
+                    return;
+
+                if (index++ > 0)
+                    sql.Write(", ");
+
+                sql.Write("{}", column.name);
             });
+
             sql.Write(") VALUES (");
 
             index = 0;
             table.ForEachColumn([&](const auto& column)
             {
+                if (table.IsPrimaryKeyColumn(column.member))
+                    return;
+
                 if (index++ > 0)
                     sql.Write(", ");
+
                 ToSql(sql, Invoke(column.member, value.value), ctx);
             });
             sql.Write(")");
@@ -912,10 +1018,10 @@ namespace he::sqlite
         }
     };
 
-    template <typename T, typename U, typename Columns, typename Values>
-    struct SqlWriter<UpdateQuery<T, U, Columns, Values>>
+    template <typename T, typename U>
+    struct SqlWriter<UpdateQuery<T, U>>
     {
-        using Type = UpdateQuery<T, U, Columns, Values>;
+        using Type = UpdateQuery<T, U>;
 
         template <typename Ctx>
         void Write(StringBuilder& sql, const Type& value, const Ctx& ctx) const
@@ -1013,9 +1119,171 @@ namespace he::sqlite
         using Type = T;
         using Traits = SqlDataTypeTraits<T>;
 
-        bool Bind(Statement& stmt, const T& value, SqlBinderContext& ctx) const
+        template <typename Ctx>
+        bool Bind(Statement& stmt, const T& value, Ctx& ctx) const
         {
             return Traits::Bind(stmt, ctx.index++, value);
+        }
+    };
+
+    template <AnyOf<FkActionKind, OrderNullsByKind, OrderByKind, OnConflictKind> T>
+    struct SqlBinder<T>
+    {
+        using Type = T;
+
+        template <typename Ctx>
+        bool Bind(Statement& stmt, const Type& value, Ctx& ctx) const
+        {
+            return true;
+        }
+    };
+
+    template <typename... Columns>
+    struct SqlBinder<PrimaryKeyConstraint<Columns...>>
+    {
+        using Type = PrimaryKeyConstraint<Columns...>;
+
+        template <typename Ctx>
+        bool Bind(Statement& stmt, const Type& value, Ctx& ctx) const
+        {
+            bool result = true;
+            if constexpr (Type::ColumnsType::Size > 0)
+            {
+                if (value.onConflict != OnConflictKind::None)
+                {
+                    result &= BindSql(stmt, value.onConflict, ctx);
+                }
+            }
+            else
+            {
+                if (value.orderBy != OrderByKind::None)
+                {
+                    result &= BindSql(stmt, value.orderBy, ctx);
+                }
+
+                if (value.onConflict != OnConflictKind::None)
+                {
+                    result &= BindSql(stmt, value.onConflict, ctx);
+                }
+            }
+            return result;
+        }
+    };
+
+    template <typename... Columns>
+    struct SqlBinder<UniqueConstraint<Columns...>>
+    {
+        using Type = UniqueConstraint<Columns...>;
+
+        template <typename Ctx>
+        bool Bind(Statement& stmt, const Type& value, Ctx& ctx) const
+        {
+            bool result = true;
+            if (value.onConflict != OnConflictKind::None)
+            {
+                result &= BindSql(stmt, value.onConflict, ctx);
+            }
+            return result;
+        }
+    };
+
+    template <typename... Columns, typename... References>
+    struct SqlBinder<ForeignKeyConstraint<Tuple<Columns...>, Tuple<References...>>>
+    {
+        using Type = ForeignKeyConstraint<Tuple<Columns...>, Tuple<References...>>;
+
+        template <typename Ctx>
+        bool Bind(Statement& stmt, const Type& value, Ctx& ctx) const
+        {
+            bool result = true;
+            if (value.onDelete != FkActionKind::None)
+            {
+                result &= BindSql(stmt, value.onDelete, ctx);
+            }
+
+            if (value.onUpdate != FkActionKind::None)
+            {
+                result &= BindSql(stmt, value.onUpdate, ctx);
+            }
+            return result;
+        }
+    };
+
+    template <typename T>
+    struct SqlBinder<DefaultConstraint<T>>
+    {
+        using Type = DefaultConstraint<T>;
+
+        template <typename Ctx>
+        bool Bind(Statement& stmt, const Type& value, Ctx& ctx) const
+        {
+            return BindSql(stmt, value.value, ctx);
+        }
+    };
+
+    template <>
+    struct SqlBinder<NotNullConstraint>
+    {
+        using Type = NotNullConstraint;
+
+        template <typename Ctx>
+        bool Bind(Statement& stmt, const Type& value, Ctx& ctx) const
+        {
+            return BindSql(stmt, value.onConflict, ctx);
+        }
+    };
+
+    template <typename T, typename U, typename... Constraints>
+    struct SqlBinder<ColumnDef<T, U, Constraints...>>
+    {
+        using Type = ColumnDef<T, U, Constraints...>;
+
+        template <typename Ctx>
+        bool Bind(Statement& stmt, const Type& value, Ctx& ctx) const
+        {
+            bool result = true;
+            TupleForEach(value.constraints, [&](const auto& constraint)
+            {
+                result &= BindSql(stmt, constraint, ctx);
+            });
+            return result;
+        }
+    };
+
+    template <typename... Columns>
+    struct SqlBinder<IndexDef<Columns...>>
+    {
+        using Type = IndexDef<Columns...>;
+
+        template <typename Ctx>
+        bool Bind(Statement& stmt, const Type& value, Ctx& ctx) const
+        {
+            return true;
+        }
+    };
+
+    template <typename T>
+    struct SqlBinder<PragmaDef<T>>
+    {
+        using Type = PragmaDef<T>;
+
+        template <typename Ctx>
+        bool Bind(Statement& stmt, const Type& value, Ctx& ctx) const
+        {
+            return BindSql(stmt, value.value, ctx);
+        }
+    };
+
+    template <typename T, typename U>
+    struct SqlBinder<ColumnRef<T, U>>
+    {
+        using Type = ColumnRef<T, U>;
+
+        template <typename Ctx>
+        bool Bind(Statement& stmt, const Type& value, Ctx& ctx) const
+        {
+            HE_UNUSED(stmt, value, ctx);
+            return true;
         }
     };
 
@@ -1024,7 +1292,8 @@ namespace he::sqlite
     {
         using Type = LimitExpr<T, U>;
 
-        bool Bind(Statement& stmt, const Type& value, SqlBinderContext& ctx) const
+        template <typename Ctx>
+        bool Bind(Statement& stmt, const Type& value, Ctx& ctx) const
         {
             if (!BindSql(stmt, value.limit, ctx))
                 return false;
@@ -1037,11 +1306,48 @@ namespace he::sqlite
     };
 
     template <typename T>
-    struct SqlBinder<_UnaryExpr<T>>
+    struct SqlBinder<IsNullExpr<T>>
     {
-        using Type = _UnaryExpr<T>;
+        using Type = IsNullExpr<T>;
 
-        bool Bind(Statement& stmt, const Type& value, SqlBinderContext& ctx) const
+        template <typename Ctx>
+        bool Bind(Statement& stmt, const Type& value, Ctx& ctx) const
+        {
+            return BindSql(stmt, value.value, ctx);
+        }
+    };
+
+    template <typename T>
+    struct SqlBinder<IsNotNullExpr<T>>
+    {
+        using Type = IsNotNullExpr<T>;
+
+        template <typename Ctx>
+        bool Bind(Statement& stmt, const Type& value, Ctx& ctx) const
+        {
+            return BindSql(stmt, value.value, ctx);
+        }
+    };
+
+    template <typename T>
+    struct SqlBinder<WhereExpr<T>>
+    {
+        using Type = WhereExpr<T>;
+
+        template <typename Ctx>
+        bool Bind(Statement& stmt, const Type& value, Ctx& ctx) const
+        {
+            return BindSql(stmt, value.value, ctx);
+        }
+    };
+
+    template <typename T>
+    struct SqlBinder<OrderByExpr<T>>
+    {
+        using Type = OrderByExpr<T>;
+
+        template <typename Ctx>
+        bool Bind(Statement& stmt, const Type& value, Ctx& ctx) const
         {
             return BindSql(stmt, value.value, ctx);
         }
@@ -1052,7 +1358,8 @@ namespace he::sqlite
     {
         using Type = MultiOrderByExpr<Args...>;
 
-        bool Bind(Statement& stmt, const Type& value, SqlBinderContext& ctx) const
+        template <typename Ctx>
+        bool Bind(Statement& stmt, const Type& value, Ctx& ctx) const
         {
             bool result = true;
             TupleForEach(value.args, [&](const auto& arg)
@@ -1068,7 +1375,8 @@ namespace he::sqlite
     {
         using Type = GroupByExpr<Args...>;
 
-        bool Bind(Statement& stmt, const Type& value, SqlBinderContext& ctx) const
+        template <typename Ctx>
+        bool Bind(Statement& stmt, const Type& value, Ctx& ctx) const
         {
             bool result = true;
             TupleForEach(value.args, [&](const auto& arg)
@@ -1084,7 +1392,8 @@ namespace he::sqlite
     {
         using Type = NotExpr<T>;
 
-        bool Bind(Statement& stmt, const Type& value, SqlBinderContext& ctx) const
+        template <typename Ctx>
+        bool Bind(Statement& stmt, const Type& value, Ctx& ctx) const
         {
             return BindSql(stmt, value.value, ctx);
         }
@@ -1095,7 +1404,8 @@ namespace he::sqlite
     {
         using Type = _BinaryCondition<L, R, S>;
 
-        bool Bind(Statement& stmt, const Type& value, SqlBinderContext& ctx) const
+        template <typename Ctx>
+        bool Bind(Statement& stmt, const Type& value, Ctx& ctx) const
         {
             if (!BindSql(stmt, value.lhs, ctx))
                 return false;
@@ -1112,7 +1422,8 @@ namespace he::sqlite
     {
         using Type = _BinaryOperator<L, R, S>;
 
-        bool Bind(Statement& stmt, const Type& value, SqlBinderContext& ctx) const
+        template <typename Ctx>
+        bool Bind(Statement& stmt, const Type& value, Ctx& ctx) const
         {
             if (!BindSql(stmt, value.lhs, ctx))
                 return false;
@@ -1129,9 +1440,15 @@ namespace he::sqlite
     {
         using Type = SelectObjectQuery<T, Args...>;
 
-        bool Bind(Statement& stmt, const Type& value, SqlBinderContext& ctx) const
+        template <typename Ctx>
+        bool Bind(Statement& stmt, const Type& value, Ctx& ctx) const
         {
-            return BindSql(stmt, value.where, ctx);
+            bool result = true;
+            TupleForEach(value.args, [&](const auto& arg)
+            {
+                result &= BindSql(stmt, arg, ctx);
+            });
+            return result;
         }
     };
 
@@ -1140,9 +1457,15 @@ namespace he::sqlite
     {
         using Type = SelectQuery<T, Columns, Args>;
 
-        bool Bind(Statement& stmt, const Type& value, SqlBinderContext& ctx) const
+        template <typename Ctx>
+        bool Bind(Statement& stmt, const Type& value, Ctx& ctx) const
         {
-            return BindSql(stmt, value.args, ctx);
+            bool result = true;
+            TupleForEach(value.args, [&](const auto& arg)
+            {
+                result &= BindSql(stmt, arg, ctx);
+            });
+            return result;
         }
     };
 
@@ -1151,7 +1474,8 @@ namespace he::sqlite
     {
         using Type = DeleteQuery<T, U>;
 
-        bool Bind(Statement& stmt, const Type& value, SqlBinderContext& ctx) const
+        template <typename Ctx>
+        bool Bind(Statement& stmt, const Type& value, Ctx& ctx) const
         {
             return BindSql(stmt, value.where, ctx);
         }
@@ -1162,7 +1486,8 @@ namespace he::sqlite
     {
         using Type = InsertObjectQuery<T>;
 
-        bool Bind(Statement& stmt, const Type& value, SqlBinderContext& ctx) const
+        template <typename Ctx>
+        bool Bind(Statement& stmt, const Type& value, Ctx& ctx) const
         {
             const auto& table = ctx.GetTable<typename Type::ObjectType>();
 
@@ -1181,7 +1506,8 @@ namespace he::sqlite
     {
         using Type = InsertQuery<T, C, V>;
 
-        bool Bind(Statement& stmt, const Type& value, SqlBinderContext& ctx) const
+        template <typename Ctx>
+        bool Bind(Statement& stmt, const Type& value, Ctx& ctx) const
         {
             bool result = true;
             if constexpr (IsSpecialization<typename Type::ValuesType, Tuple>)
@@ -1208,7 +1534,8 @@ namespace he::sqlite
     {
         using Type = UpdateObjectQuery<T>;
 
-        bool Bind(Statement& stmt, const Type& value, SqlBinderContext& ctx) const
+        template <typename Ctx>
+        bool Bind(Statement& stmt, const Type& value, Ctx& ctx) const
         {
             const auto& table = ctx.GetTable<typename Type::ObjectType>();
 
@@ -1222,12 +1549,13 @@ namespace he::sqlite
         }
     };
 
-    template <typename T, typename U, typename Columns, typename Values>
-    struct SqlBinder<UpdateQuery<T, U, Columns, Values>>
+    template <typename T, typename U>
+    struct SqlBinder<UpdateQuery<T, U>>
     {
-        using Type = UpdateQuery<T, U, Columns, Values>;
+        using Type = UpdateQuery<T, U>;
 
-        bool Bind(Statement& stmt, const Type& value, SqlBinderContext& ctx) const
+        template <typename Ctx>
+        bool Bind(Statement& stmt, const Type& value, Ctx& ctx) const
         {
             bool result = true;
             if constexpr (IsSpecialization<typename Type::ValuesType, Tuple>)

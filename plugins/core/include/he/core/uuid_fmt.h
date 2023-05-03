@@ -13,6 +13,7 @@ namespace he
         using Type = Uuid;
 
         bool lower = true;
+        bool dashed = true;
 
         constexpr const char* Parse(const FmtParseCtx& ctx)
         {
@@ -32,6 +33,8 @@ namespace he
                 {
                     case 'x': lower = true; break;
                     case 'X': lower = false; break;
+                    case 'd': dashed = true; break; // d = dashed
+                    case 's': dashed = false; break; // s = simple
                     default:
                         ctx.OnError("invalid format specifier");
                         return it;
@@ -47,10 +50,14 @@ namespace he
             constexpr char LowerFmt[] = "{:02x}-{:02x}-{:02x}-{:02x}-{:02x}";
             constexpr char UpperFmt[] = "{:02X}-{:02X}-{:02X}-{:02X}-{:02X}";
 
+            // 00000000000000000000000000000000
+            constexpr char LowerNoDashFmt[] = "{:02x}{:02x}{:02x}{:02x}{:02x}";
+            constexpr char UpperNoDashFmt[] = "{:02X}{:02X}{:02X}{:02X}{:02X}";
+
             static_assert(sizeof(uuid.m_bytes) == 16);
             const uint8_t* b = uuid.m_bytes;
 
-            const char* fmtStr = lower ? LowerFmt : UpperFmt;
+            const char* fmtStr = lower ? (dashed ? LowerFmt : LowerNoDashFmt) : (dashed ? UpperFmt : UpperNoDashFmt);
             return FormatTo(out, FmtRuntime(fmtStr),
                 FmtJoin(b + 0, b + 4, ""),
                 FmtJoin(b + 4, b + 6, ""),

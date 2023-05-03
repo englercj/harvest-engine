@@ -167,9 +167,28 @@ HE_TEST(core, uuid, fmt)
     str = Format("{:x}", Uuid_NamespaceX500);
     HE_EXPECT_EQ(str, "6ba7b814-9dad-11d1-80b4-00c04fd430c8");
 
+    str = Format("{:sx}", Uuid_NamespaceX500);
+    HE_EXPECT_EQ(str, "6ba7b8149dad11d180b400c04fd430c8");
+
+    str = Format("{:dx}", Uuid_NamespaceX500);
+    HE_EXPECT_EQ(str, "6ba7b814-9dad-11d1-80b4-00c04fd430c8");
+
     // Test formatting with the upper specifier.
     str = Format("{:X}", Uuid_NamespaceX500);
     HE_EXPECT_EQ(str, "6BA7B814-9DAD-11D1-80B4-00C04FD430C8");
+
+    str = Format("{:sX}", Uuid_NamespaceX500);
+    HE_EXPECT_EQ(str, "6BA7B8149DAD11D180B400C04FD430C8");
+
+    str = Format("{:dX}", Uuid_NamespaceX500);
+    HE_EXPECT_EQ(str, "6BA7B814-9DAD-11D1-80B4-00C04FD430C8");
+
+    // Test formatting with simple/dashed specifiers.
+    str = Format("{:s}", Uuid_NamespaceX500);
+    HE_EXPECT_EQ(str, "6ba7b8149dad11d180b400c04fd430c8");
+
+    str = Format("{:d}", Uuid_NamespaceX500);
+    HE_EXPECT_EQ(str, "6ba7b814-9dad-11d1-80b4-00c04fd430c8");
 }
 
 // ------------------------------------------------------------------------------------------------

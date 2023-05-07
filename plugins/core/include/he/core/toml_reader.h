@@ -47,7 +47,7 @@ namespace he
             virtual bool Uint(uint64_t value) = 0;
             virtual bool Float(double value) = 0;
             virtual bool String(StringView value) = 0;
-            // TODO: DateTime
+            virtual bool DateTime(StringView value) = 0;
 
             // Tables
             virtual bool StartTable(Span<const StringView> path, bool isArray) = 0;

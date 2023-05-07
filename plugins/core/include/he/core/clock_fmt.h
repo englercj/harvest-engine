@@ -28,6 +28,9 @@ namespace he
 
     struct _TimeFormatter
     {
+        // TODO: RFC3339 format. UTC has Z suffix, local has offset suffix.
+        // Need to make the formatter function take spec as a param, so we can
+        // change default spec based on type.
         static constexpr StringView DefaultSpec = "%Y-%m-%d %H:%M:%S";
 
         StringView spec{ DefaultSpec };

@@ -120,71 +120,46 @@ namespace he
     // --------------------------------------------------------------------------------------------
     // System time converters
 
-    // Converts to and from a windows file times
+    /// Converts a Win32 file time to a \ref SystemTime value that represents the same moment
+    /// in time.
+    ///
+    /// \param[in] systemTime The \ref SystemTime to convert.
+    /// \return The converted \ref SystemTime value.
     SystemTime Win32FileTimeToSystemTime(uint64_t fileTime);
+
+    /// Converts a \ref SystemTime to a Win32 file time value that represents the same moment
+    /// in time.
+    ///
+    /// \param[in] systemTime The \ref SystemTime to convert.
+    /// \return The converted Win32 file time value.
     uint64_t Win32FileTimeFromSystemTime(SystemTime systemTime);
 
-    // Converts to and from posix times
+    /// Converts a Posix timespec to a \ref SystemTime value that represents the same moment
+    /// in time.
+    ///
+    /// \param[in] posixTime The Posix timespec to convert.
+    /// \return The converted \ref SystemTime value.
     SystemTime PosixTimeToSystemTime(timespec posixTime);
+
+    /// Converts a \ref SystemTime to a Posix timespec value that represents the same moment
+    /// in time.
+    ///
+    /// \param[in] systemTime The \ref SystemTime to convert.
+    /// \return The converted Posix timespec value.
     timespec PosixTimeFromSystemTime(SystemTime systemTime);
+
+    /// Converts a \ref Duration to a Posix timespec value that represents the same duration.
+    ///
+    /// \param[in] duration The \ref Duration to convert.
+    /// \return The converted Posix timespec value.
     timespec PosixTimeFromDuration(Duration duration);
 
-    // --------------------------------------------------------------------------------------------
-    // CycleClock inline implementation
-
-    template <>
-    HE_FORCE_INLINE CycleCount CycleClock::Now()
-    {
-    #if defined(HE_PLATFORM_EMSCRIPTEN)
-        return MonotonicClock::Now();
-    #elif HE_COMPILER_MSVC && HE_CPU_X86
-        return { __rdtsc() };
-    #elif HE_COMPILER_MSVC && HE_CPU_ARM
-        return { _ReadStatusReg(ARM64_CNTVCT) };
-    #elif HE_CPU_X86_32
-        int64_t ret;
-        asm volatile("rdtsc" : "=A"(ret));
-        return { ret };
-    #elif HE_CPU_X86_64
-        uint64_t low;
-        uint64_t high;
-        asm volatile("rdtsc" : "=a"(low), "=d"(high));
-        return { ((high << 32) | low) };
-    #elif HE_CPU_ARM_64
-        int64_t vct;
-        asm volatile("mrs %0, CNTVCT_EL0" : "=r"(vct));
-        return { vct };
-    #elif HE_CPU_ARM
-        static_assert(__ARM_ARCH >= 6, "ARMv6 is required for reading cycle counter.");
-
-        uint32_t pmccntr;
-        uint32_t pmuseren;
-        uint32_t pmcntenset;
-
-        // Read the user mode perf monitor counter access permissions.
-        asm volatile("mrc p15, 0, %0, c9, c14, 0" : "=r"(pmuseren));
-
-        // Allows reading perfmon counters for user mode code.
-        if (pmuseren & 1)
-        {
-            asm volatile("mrc p15, 0, %0, c9, c12, 1" : "=r"(pmcntenset));
-
-            // Is it counting?
-            if (pmcntenset & 0x80000000ul)
-            {
-                asm volatile("mrc p15, 0, %0, c9, c13, 0" : "=r"(pmccntr));
-
-                // The counter is set up to count every 64th cycle
-                return static_cast<CycleCount>(pmccntr) * 64;
-            }
-        }
-
-        // Fallback for ARM CPUs that don't let us read the cycle counter.
-        return MonotonicClock::Now();
-    #else
-        #error "No CycleClock implementation for this architecture"
-    #endif
-    }
+    /// Converts a date-time string to a \ref SystemTime value.
+    ///
+    /// \param[in] format The format string to use for parsing.
+    /// \param[in] value The date-time string to parse.
+    /// \return The converted \ref SystemTime value.
+    SystemTime SystemTimeFromString(const char* format, const char* value);
 
     // --------------------------------------------------------------------------------------------
     // User-defined literals
@@ -301,3 +276,5 @@ namespace he
         return FromPeriod<Weeks>(value);
     }
 }
+
+#include "he/core/inline/clock.inl"

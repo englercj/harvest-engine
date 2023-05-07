@@ -1033,3 +1033,9 @@ HE_TEST(schema, layout, Builder_Roundtrip)
 {
     // TODO
 }
+
+// ------------------------------------------------------------------------------------------------
+HE_TEST(schema, layout, CalculateHash)
+{
+    // TODO
+}

@@ -31,13 +31,6 @@ namespace he::sqlite
         Database& Db() { return m_db; }
         sqlite3* Handle() const { return m_db.Handle(); }
 
-    public:
-        template <typename T>
-        bool Query(const T& query);
-
-        template <typename T, typename F>
-        bool Query(const T& query, F&& rowIterator);
-
     protected:
         bool DropColumn(StringView tableName, StringView columnName);
 
@@ -82,6 +75,13 @@ namespace he::sqlite
             , m_schema(Move(schema))
         {}
 
+    public:
+        template <typename T>
+        bool Execute(const T& query);
+
+        template <typename T, typename F>
+        bool Execute(const T& query, F&& rowIterator);
+
         // Table functions
     public:
         template <typename T>
@@ -97,17 +97,20 @@ namespace he::sqlite
         template <typename T>
         bool Create(const T& obj);
 
-        template <typename T, QueryCondition... U>
-        bool Destroy(U&&... conditions);
+        template <typename T, typename U>
+        bool Destroy(WhereExpr<U>&& cond);
 
-        template <typename T, QueryCondition... U>
+        template <typename T, SelectQueryArg... U>
         bool FindAll(Vector<T>& out, U&&... conditions);
 
-        template <typename T, QueryCondition... U>
+        template <typename T, SelectQueryArg... U>
         bool FindOne(T& out, U&&... conditions);
 
         template <typename T>
         bool Update(const T& obj);
+
+        template <typename T>
+        bool CreateOrUpdate(const T& obj);
 
     private:
         using ColumnInfo = StorageBase::ColumnInfo;

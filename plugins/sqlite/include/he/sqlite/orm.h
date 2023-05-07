@@ -44,6 +44,14 @@ namespace he::sqlite
         using Type = MemberPointerObjectType<TupleElement<0, Tuple<Columns...>>>;
     };
 
+    template <typename... Columns>
+    struct _ColumnsObjectType<Tuple<Columns...>>
+    {
+        static_assert((IsMemberObjectPointer<Columns> && ...), "All columns must be pointers to object members.");
+        static_assert(IsAllSame<MemberPointerObjectType<Columns>...>, "All columns must refer to members of the same object type.");
+        using Type = MemberPointerObjectType<TupleElement<0, Tuple<Columns...>>>;
+    };
+
     template <>
     struct _ColumnsObjectType<>
     {
@@ -52,6 +60,9 @@ namespace he::sqlite
 
     template <typename... Columns>
     using ColumnsObjectType = typename _ColumnsObjectType<Columns...>::Type;
+
+    template <typename T> requires(IsSpecialization<Decay<T>, Tuple>)
+    using ColumnsTupleObjectType = typename _ColumnsObjectType<Decay<T>>::Type;
 
     // Helpers to select table types from schema elements based on the ObjectType
     template <typename T, typename U>
@@ -271,17 +282,10 @@ namespace he::sqlite
     template <typename T>
     concept Constraint = ColumnConstraint<T> || TableConstraint<T>;
 
-    template <typename T>
-    struct IsColumnConstraint { static constexpr bool Value = ColumnConstraint<T>; };
-
-    template <typename T>
-    struct IsTableConstraint { static constexpr bool Value = TableConstraint<T>; };
-
-    template <typename T>
-    struct IsConstraint { static constexpr bool Value = Constraint<T>; };
-
-    template <typename T>
-    struct IsPrimaryKeyConstraint { static constexpr bool Value = IsSpecialization<T, PrimaryKeyConstraint>; };
+    template <typename T> struct IsColumnConstraint { static constexpr bool Value = ColumnConstraint<T>; };
+    template <typename T> struct IsTableConstraint { static constexpr bool Value = TableConstraint<T>; };
+    template <typename T> struct IsConstraint { static constexpr bool Value = Constraint<T>; };
+    template <typename T> struct IsPrimaryKeyConstraint { static constexpr bool Value = IsSpecialization<T, PrimaryKeyConstraint>; };
 
     template <typename... Columns> requires(IsMemberObjectPointer<Columns> && ...)
     constexpr PrimaryKeyConstraint<Columns...> PrimaryKey(Columns... columns)
@@ -337,8 +341,7 @@ namespace he::sqlite
         ConstraintsType constraints;
     };
 
-    template <typename T>
-    struct IsColumnDef { static constexpr bool Value = IsSpecialization<T, ColumnDef>; };
+    template <typename T> struct IsColumnDef { static constexpr bool Value = IsSpecialization<T, ColumnDef>; };
 
     template <typename T, typename U, ColumnConstraint... Constraints>
     constexpr ColumnDef<T, U, Constraints...> Column(StringView name, U T::* member, Constraints... constraints)
@@ -372,8 +375,7 @@ namespace he::sqlite
         ColumnsType columns;
     };
 
-    template <typename T>
-    struct IsIndexDef { static constexpr bool Value = IsSpecialization<T, IndexDef>; };
+    template <typename T> struct IsIndexDef { static constexpr bool Value = IsSpecialization<T, IndexDef>; };
 
     template <typename... Columns> requires(IsMemberObjectPointer<Columns> && ...)
     constexpr IndexDef<Columns...> Index(StringView name, Columns... columns)
@@ -390,26 +392,25 @@ namespace he::sqlite
     // --------------------------------------------------------------------------------------------
     // Pragma Definition
 
-    struct PragmaDefBase
+    struct PragmaExprBase
     {
         StringView name;
     };
 
     template <typename T>
-    struct PragmaDef : PragmaDefBase
+    struct PragmaExpr : PragmaExprBase
     {
         using ValueType = T;
 
-        constexpr PragmaDef(StringView name, T&& value) : PragmaDefBase(name), value(Move(value)) {}
+        constexpr PragmaExpr(StringView name, T&& value) : PragmaExprBase(name), value(Move(value)) {}
 
         T value;
     };
 
-    template <typename T>
-    struct IsPragmaDef { static constexpr bool Value = IsSpecialization<T, PragmaDef>; };
+    template <typename T> struct IsPragmaExpr { static constexpr bool Value = IsSpecialization<T, PragmaExpr>; };
 
     template <typename T>
-    constexpr PragmaDef<T> Pragma(StringView name, T value)
+    constexpr PragmaExpr<T> Pragma(StringView name, T value)
     {
         return { name, Move(value) };
     }
@@ -436,7 +437,9 @@ namespace he::sqlite
     template <typename... Columns>
     struct ColumnRefCollection
     {
-        using ObjectType = ColumnsObjectType<Columns...>;;
+        // We can store values in here too, not just column member pointers
+        // This is to support queries like `SELECT 10 FROM sqlite_master;`
+        //using ObjectType = ColumnsObjectType<Columns...>;
         using ColumnsType = Tuple<Columns...>;
 
         constexpr ColumnRefCollection(ColumnsType&& columns) : columns(Move(columns)) {}
@@ -444,16 +447,28 @@ namespace he::sqlite
         ColumnsType columns;
     };
 
+    // Same as a column ref, but marking this reference as referring to the excluded column (for upsert)
+    template <typename T, typename U>
+    struct ExcludedColumnRef
+    {
+        using ObjectType = T;
+        using ValueType = U;
+
+        constexpr ExcludedColumnRef(ValueType ObjectType::* member) : member(member) {}
+
+        ValueType ObjectType::* member;
+    };
+
     // Mapping of column ref and value
-    template <typename T, typename U, ConvertibleTo<U> V>
+    template <typename T, typename U, typename V> requires(IsConvertible<V, U> || IsSpecialization<V, ExcludedColumnRef>)
     struct ColumnRefAndValue
     {
         using ObjectType = T;
         using ValueType = V;
 
-        constexpr ColumnRefAndValue(U ObjectType::* column, ValueType&& value) : column(column), value(Move(value)) {}
+        constexpr ColumnRefAndValue(U ObjectType::* member, ValueType&& value) : member(member), value(Move(value)) {}
 
-        U ObjectType::* column;
+        U ObjectType::* member;
         ValueType value;
     };
 
@@ -552,6 +567,8 @@ namespace he::sqlite
     template <typename T>
     struct NotExpr : _ConditionBase
     {
+        using ValueType = T;
+
         constexpr NotExpr(T cond) : cond(Move(cond)) {}
 
         T cond;
@@ -561,6 +578,8 @@ namespace he::sqlite
     struct _BinaryCondition : _ConditionBase
     {
         static constexpr StringView Sql = S::Sql;
+        using LhsType = L;
+        using RhsType = R;
 
         constexpr _BinaryCondition(L&& lhs, R&& rhs) : lhs(Move(lhs)), rhs(Move(rhs)) {}
 
@@ -599,6 +618,8 @@ namespace he::sqlite
     struct _BinaryOperator : _OperatorBase
     {
         static constexpr StringView Sql = S::Sql;
+        using LhsType = L;
+        using RhsType = R;
 
         constexpr _BinaryOperator(L&& lhs, R&& rhs) : lhs(Move(lhs)), rhs(Move(rhs)) {}
 
@@ -626,23 +647,23 @@ namespace he::sqlite
 
     // Some traits to help detect types
 
-    template <typename T> inline constexpr bool IsColumnRef = IsSpecialization<T, ColumnRef>;
-    template <typename T> inline constexpr bool IsCondition = IsBaseOf<_ConditionBase, T>;
-    template <typename T> inline constexpr bool IsOperator = IsSpecialization<_OperatorBase, T>;
-    template <typename T> inline constexpr bool IsLimitExpr = IsSpecialization<LimitExpr, T>;
+    template <typename T> struct IsColumnRef { static constexpr bool Value = IsSpecialization<T, ColumnRef>; };
+    template <typename T> struct IsColumnRefCollection { static constexpr bool Value = IsSpecialization<T, ColumnRefCollection>; };
+    template <typename T> struct IsCondition { static constexpr bool Value = IsBaseOf<_ConditionBase, T>; };
+    template <typename T> struct IsOperator { static constexpr bool Value = IsSpecialization<_OperatorBase, T>; };
 
-    template <typename T>
-    concept QueryCondition = IsSpecialization<T, WhereExpr>
-        || IsSpecialization<T, GroupByExpr>
-        || IsSpecialization<T, OrderByExpr>
-        || IsSpecialization<T, LimitExpr>;
+    template <typename T> struct IsLimit { static constexpr bool Value = IsSpecialization<T, LimitExpr>; };
+    template <typename T> struct IsWhere { static constexpr bool Value = IsSpecialization<T, WhereExpr>; };
+    template <typename T> struct IsOrderBy { static constexpr bool Value = IsSpecialization<T, OrderByExpr>; };
+    template <typename T> struct IsMultiOrderBy { static constexpr bool Value = IsSpecialization<T, MultiOrderByExpr>; };
+    template <typename T> struct IsGroupBy { static constexpr bool Value = IsSpecialization<T, GroupByExpr>; };
 
     // Helper functions and operators
 
     template <typename T, typename U>
     constexpr ColumnRef<T, U> Col(U T::* member) { return { member }; }
 
-    template <typename... Columns> requires((IsMemberObjectPointer<Columns> && ...))
+    template <typename... Columns>
     constexpr ColumnRefCollection<Columns...> Cols(Columns... columns) { return { MakeTuple(Forward<Columns>(columns)...) }; }
 
     template <typename T>
@@ -764,41 +785,92 @@ namespace he::sqlite
         const ObjectType& value;
     };
 
-    template <typename T, typename Columns, typename Values>
+    template <typename T>
+    struct UpsertObjectQuery : _QueryBase
+    {
+        using ObjectType = T;
+
+        constexpr UpsertObjectQuery(const ObjectType& value) : value(value) {}
+
+        const ObjectType& value;
+    };
+
+    enum class InsertOrKind : uint8_t
+    {
+        None,
+        Abort,
+        Fail,
+        Ignore,
+        Replace,
+        Rollback,
+    };
+
+    struct InsertOrExpr
+    {
+        constexpr InsertOrExpr(InsertOrKind kind) : kind(kind) {}
+
+        InsertOrKind kind;
+    };
+
+    struct InsertDefaultValuesExpr {};
+
+    template <typename... Values>
+    struct InsertValuesExpr
+    {
+        using ValuesType = Tuple<Values...>;
+
+        constexpr InsertValuesExpr(ValuesType&& values) : values(Move(values)) {}
+
+        ValuesType values;
+    };
+
+    template <typename T, typename A>
+    struct UpsertExpr;
+
+    template <typename... TargetArgs, typename... Actions>
+    struct UpsertExpr<Tuple<TargetArgs...>, Tuple<Actions...>>
+    {
+        using ObjectType = ColumnsObjectType<TargetArgs...>;
+        using TargetArgsType = Tuple<TargetArgs...>;
+        using ActionsType = Tuple<Actions...>;
+
+        constexpr UpsertExpr(TargetArgsType targetArgs, ActionsType actions) : targetArgs(Move(targetArgs)), actions(Move(actions)) {}
+
+        TargetArgsType targetArgs;
+        ActionsType actions;
+    };
+
+    template <typename... Args>
+    struct UpsertConflictTarget
+    {
+        using ArgsType = Tuple<Args...>;
+
+        constexpr UpsertConflictTarget(ArgsType&& args) : args(Move(args)) {}
+
+        constexpr UpsertExpr<ArgsType, Tuple<>> DoNothing() const { return { Move(args), {} }; }
+
+        template <typename... Actions>
+        constexpr UpsertExpr<ArgsType, Tuple<Actions...>> DoUpdate(Actions... actions) const
+        {
+            return { Move(args), MakeTuple(Forward<Actions>(actions)...) };
+        }
+
+        ArgsType args;
+    };
+
+    template <typename T, typename Columns, typename Args>
     struct InsertQuery : _QueryBase
     {
         using ObjectType = T;
         using ColumnsType = Columns;
-        using ValuesType = Values;
+        using ArgsType = Args;
 
-        static_assert(IsSame<Decay<ValuesType>, ObjectType> || ColumnsType::Size == ValuesType::Size, "The number of columns and values must be the same.");
+        static_assert(IsSame<ColumnsTupleObjectType<ColumnsType>, ObjectType>, "The columns must match the object type.");
 
-        constexpr InsertQuery(ColumnsType&& columns, ValuesType&& values) : columns(Move(columns)), values(Move(values)) {}
-
-        ColumnsType columns;
-        ValuesType values;
-    };
-
-    template <typename... Columns>
-    struct InsertQueryHelper
-    {
-        using ObjectType = ColumnsObjectType<Columns...>;
-        using ColumnsType = Tuple<Columns...>;
-
-        constexpr InsertQueryHelper(ColumnsType&& columns) : columns(Move(columns)) {}
-
-        constexpr InsertQuery<ObjectType, ColumnsType, const ObjectType&> Values(const ObjectType& object)
-        {
-            return { Move(this->columns), object };
-        }
-
-        template <typename... Values>
-        constexpr InsertQuery<ObjectType, ColumnsType, Tuple<Values...>> Values(Values... values)
-        {
-            return { Move(this->columns), MakeTuple(Forward<Values>(values)...) };
-        }
+        constexpr InsertQuery(ColumnsType&& columns, ArgsType&& args) : columns(Move(columns)), args(Move(args)) {}
 
         ColumnsType columns;
+        ArgsType args;
     };
 
     template <typename T>
@@ -838,15 +910,57 @@ namespace he::sqlite
         StringView query;
     };
 
-    template <typename T> inline constexpr bool IsQuery = IsBaseOf<_QueryBase, T>;
+    // Some traits to help detect types
 
-    template <typename T> concept Query = IsQuery<T>;
+    template <typename T> struct IsQuery { static constexpr bool Value = IsBaseOf<_QueryBase, T>; };
+    template <typename T> struct IsSelectQuery { static constexpr bool Value = IsSpecialization<T, SelectQuery>; };
+    template <typename T> struct IsInsertOr { static constexpr bool Value = IsSame<T, InsertOrExpr>; };
+    template <typename T> struct IsInsertValues { static constexpr bool Value = IsSpecialization<T, InsertValuesExpr>; };
+    template <typename T> struct IsInsertDefaultValues { static constexpr bool Value = IsSame<T, InsertDefaultValuesExpr>; };
+    template <typename T> struct IsUpsert { static constexpr bool Value = IsSpecialization<T, UpsertExpr>; };
+    template <typename T> struct IsExcludedColumnRef { static constexpr bool Value = IsSpecialization<T, ExcludedColumnRef>; };
 
-    template <typename T, QueryCondition... Args>
+    template <typename T> concept Query = IsQuery<T>::Value;
+
+    template <typename T>
+    concept SelectQueryArg = IsWhere<T>::Value
+        || IsGroupBy<T>::Value
+        || IsOrderBy<T>::Value
+        || IsMultiOrderBy<T>::Value
+        || IsLimit<T>::Value;
+
+    template <typename T> concept InsertQueryArg = IsInsertOr<T>::Value
+        || IsInsertValues<T>::Value
+        || IsInsertDefaultValues<T>::Value
+        || IsSelectQuery<T>::Value
+        || IsUpsert<T>::Value;
+
+    // Helper functions and operators
+
+    template <typename T, SelectQueryArg... Args>
     constexpr SelectObjectQuery<T, Args...> SelectObj(Args&&... args) { return { MakeTuple(Forward<Args>(args)...) }; }
 
-    template <typename... Columns, QueryCondition... Args, typename T = ColumnsObjectType<Columns...>>
-    constexpr SelectQuery<T, Tuple<Columns...>, Tuple<Args...>> Select(ColumnRefCollection<Columns...> columns, Args&&... args) { return { Move(columns.columns), MakeTuple(Forward<Args>(args)...) }; }
+    template <typename T, typename... Columns, SelectQueryArg... Args>
+    constexpr SelectQuery<T, Tuple<Columns...>, Tuple<Args...>> Select(ColumnRefCollection<Columns...> columns, Args&&... args)
+    {
+        using ArgsTuple = Tuple<Args...>;
+
+        constexpr uint32_t WhereArgsCount = _CountTuple<ArgsTuple, IsWhere>;
+        static_assert(WhereArgsCount < 2, "Only one Where() argument is allowed in a select query.");
+
+        constexpr uint32_t GroupByArgsCount = _CountTuple<ArgsTuple, IsGroupBy>;
+        static_assert(GroupByArgsCount < 2, "Only one GroupBy() argument is allowed in a select query.");
+
+        constexpr uint32_t OrderByArgsCount = _CountTuple<ArgsTuple, IsOrderBy> + _CountTuple<ArgsTuple, IsMultiOrderBy>;
+        static_assert(OrderByArgsCount < 2, "Only one OrderBy() or MultiOrderBy() argument is allowed in a select query.");
+
+        constexpr uint32_t LimitArgsCount = _CountTuple<ArgsTuple, IsLimit>;
+        static_assert(LimitArgsCount < 2, "Only one Limit() argument is allowed in a select query.");
+
+        static_assert(ArgsTuple::Size == WhereArgsCount + GroupByArgsCount + OrderByArgsCount + LimitArgsCount, "Select has invalid arguments");
+
+        return { Move(columns.columns), MakeTuple(Forward<Args>(args)...) };
+    }
 
     template <typename T>
     constexpr DeleteQuery<T, EqualExpr<int, int>> Delete() { return { Where(EqualExpr<int, int>{ 1, 1 }) }; }
@@ -857,14 +971,53 @@ namespace he::sqlite
     template <typename T>
     constexpr InsertObjectQuery<T> InsertObj(const T& obj) { return { obj }; }
 
-    template <typename... Columns> requires((IsMemberObjectPointer<Columns> && ...))
-    constexpr InsertQueryHelper<Columns...> Insert(Columns... columns) { return { MakeTuple(Forward<Columns>(columns)...) }; }
+    template <typename T>
+    constexpr UpsertObjectQuery<T> UpsertObj(const T& obj) { return { obj }; }
+
+    template <typename T, typename... Columns, InsertQueryArg... Args>
+    constexpr InsertQuery<T, Tuple<Columns...>, Tuple<Args...>> Insert(ColumnRefCollection<Columns...> columns, Args&&... args)
+    {
+        using ArgsTuple = Tuple<Args...>;
+
+        constexpr uint32_t OrArgsCount = _CountTuple<ArgsTuple, IsInsertOr>;
+        static_assert(OrArgsCount < 2, "Only one OrAbort(), OrFail(), OrIgnore(), OrReplace(), or OrRollback() argument is allowed in an insert query.");
+
+        constexpr uint32_t ValuesArgsCount = _CountTuple<ArgsTuple, IsInsertValues> + _CountTuple<ArgsTuple, IsInsertDefaultValues> +_CountTuple<ArgsTuple, IsSelectQuery>;
+        static_assert(ValuesArgsCount < 2, "Only one Values(...), DefaultValues(), or Select(...) argument is allowed in an insert query.");
+
+        constexpr uint32_t UpsertCount = _CountTuple<ArgsTuple, IsUpsert>;
+        static_assert(UpsertCount <= 2, "A maximum of 2 instances of upsert clauses are allowed in an insert query.");
+
+        static_assert(ArgsTuple::Size == OrArgsCount + ValuesArgsCount + UpsertCount, "Insert has invalid arguments");
+
+        return { Move(columns.columns), MakeTuple(Forward<Args>(args)...) };
+    }
+
+    constexpr InsertOrExpr OrAbort() { return { InsertOrKind::Abort }; }
+    constexpr InsertOrExpr OrFail() { return { InsertOrKind::Fail }; }
+    constexpr InsertOrExpr OrIgnore() { return { InsertOrKind::Ignore }; }
+    constexpr InsertOrExpr OrReplace() { return { InsertOrKind::Replace }; }
+    constexpr InsertOrExpr OrRollback() { return { InsertOrKind::Rollback }; }
+
+    template <typename... Args>
+    constexpr InsertValuesExpr<Args...> Values(Args... args) { return { MakeTuple(Forward<Args>(args)...) }; }
+
+    constexpr InsertDefaultValuesExpr DefaultValues() { return {}; }
+
+    template <typename... Args>
+    constexpr UpsertConflictTarget<Args...> OnConflict(Args... args) { return { MakeTuple(Forward<Args>(args)...) }; }
+
+    template <typename T, typename U>
+    constexpr ExcludedColumnRef<T, U> Excluded(U T::* member) { return { member }; }
 
     template <typename T>
     constexpr UpdateObjectQuery<T> UpdateObj(const T& obj) { return { obj }; }
 
     template <typename T, typename U, ConvertibleTo<U> V>
     constexpr ColumnRefAndValue<T, U, V> Set(U T::* member, V value) { return { member, Move(value) }; }
+
+    template <typename T, typename U>
+    constexpr ColumnRefAndValue<T, U, ExcludedColumnRef<T, U>> Set(U T::* member, ExcludedColumnRef<T, U> value) { return { member, Move(value) }; }
 
     template <typename... T> requires((IsSpecialization<T, ColumnRefAndValue> && ...))
     constexpr UpdateQuery<Tuple<T...>, WhereExpr<EqualExpr<int, int>>> Update(T... sets) { return { MakeTuple(Forward<T>(sets)...), Where(EqualExpr<int, int>{ 1, 1 }) }; }
@@ -906,7 +1059,8 @@ namespace he::sqlite
         struct IsElementPrimaryKey<U> { static constexpr bool Value = _CountTuple<typename U::ConstraintsType, IsPrimaryKeyConstraint> != 0; };
 
         static constexpr uint32_t PrimaryKeyCount = _CountTuple<ElementsType, IsElementPrimaryKey>;
-        static_assert(PrimaryKeyCount == 0 || PrimaryKeyCount == 1, "There can only be one PrimaryKey constraint on a table.");
+        static_assert(PrimaryKeyCount == 0 || PrimaryKeyCount == 1,
+            "There can only be one PrimaryKey constraint on a table.");
 
         template <typename U>
         struct IsElementSameObjectType { static constexpr bool Value = IsSame<typename U::ObjectType, ObjectType>; };
@@ -941,8 +1095,7 @@ namespace he::sqlite
         ElementsType m_elements;
     };
 
-    template <typename T>
-    struct IsTableDef { static constexpr bool Value = IsSpecialization<T, TableDef>; };
+    template <typename T> struct IsTableDef { static constexpr bool Value = IsSpecialization<T, TableDef>; };
 
     template <typename T>
     concept TableElement = IsColumnDef<T>::Value || IsTableConstraint<T>::Value;
@@ -987,7 +1140,7 @@ namespace he::sqlite
     };
 
     template <typename T>
-    concept SchemaElement = IsPragmaDef<T>::Value || IsIndexDef<T>::Value || IsTableDef<T>::Value || IsSame<T, RawSqlQuery>;
+    concept SchemaElement = IsPragmaExpr<T>::Value || IsIndexDef<T>::Value || IsTableDef<T>::Value || IsSame<T, RawSqlQuery>;
 
     template <SchemaElement... Args>
     constexpr SchemaDef<Args...> DefineSchema(Args... args)

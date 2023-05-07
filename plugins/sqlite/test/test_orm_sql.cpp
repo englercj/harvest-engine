@@ -191,7 +191,8 @@ HE_TEST(sqlite, orm_sql, ToSql)
     TestToSql(ctx, SelectObj<OrmTestParent>(), "SELECT * FROM parent");
 
     // SelectQuery
-    TestToSql(ctx, Select(Cols(&OrmTestParent::id, &OrmTestParent::filePath)), "SELECT id, file_path FROM parent");
+    TestToSql(ctx, Select<OrmTestParent>(Cols(&OrmTestParent::id, &OrmTestParent::filePath)), "SELECT id, file_path FROM parent");
+    TestToSql(ctx, Select<OrmTestParent>(Cols(&OrmTestParent::id, 15)), "SELECT id, 15 FROM parent");
 
     // DeleteQuery
     TestToSql(ctx, Delete<OrmTestParent>(), "DELETE FROM parent WHERE ((1) = (1))");
@@ -200,8 +201,32 @@ HE_TEST(sqlite, orm_sql, ToSql)
     // InsertObjectQuery
     TestToSql(ctx, InsertObj(OrmTestParent{}), "INSERT INTO parent (file_path, file_path_depth, file_write_time, file_size, source_path, source_write_time, source_size, scan_token) VALUES ('', 0, 0, 0, '', 0, 0, 0)");
 
+    // UpsertObjectQuery
+    TestToSql(ctx, UpsertObj(OrmTestParent{}), "INSERT INTO parent (file_path, file_path_depth, file_write_time, file_size, source_path, source_write_time, source_size, scan_token) VALUES ('', 0, 0, 0, '', 0, 0, 0) ON CONFLICT (id) DO UPDATE SET file_path = excluded.file_path, file_path_depth = excluded.file_path_depth, file_write_time = excluded.file_write_time, file_size = excluded.file_size, source_path = excluded.source_path, source_write_time = excluded.source_write_time, source_size = excluded.source_size, scan_token = excluded.scan_token");
+
     // InsertQuery
-    TestToSql(ctx, Insert(&OrmTestParent::id, &OrmTestParent::filePath).Values(10, "hello"), "INSERT INTO parent (id, file_path) VALUES (10, 'hello')");
+    TestToSql(ctx, Insert<OrmTestParent>(Cols(&OrmTestParent::id, &OrmTestParent::filePath), Values(10, "hello")), "INSERT INTO parent (id, file_path) VALUES (10, 'hello')");
+    TestToSql(ctx, Insert<OrmTestParent>(Cols(&OrmTestParent::id, &OrmTestParent::filePath), DefaultValues()), "INSERT INTO parent (id, file_path) DEFAULT VALUES");
+
+    TestToSql(ctx, Insert<OrmTestParent>(
+        Cols(&OrmTestParent::id, &OrmTestParent::filePath),
+        Values(10, "hello"),
+        OnConflict(&OrmTestParent::id).DoNothing()),
+        "INSERT INTO parent (id, file_path) VALUES (10, 'hello') ON CONFLICT (id) DO NOTHING");
+
+    TestToSql(ctx, Insert<OrmTestParent>(
+        Cols(&OrmTestParent::id, &OrmTestParent::filePath),
+        Values(10, "hello"),
+        OnConflict(&OrmTestParent::id).DoUpdate(Set(&OrmTestParent::filePath, "excl"), Set(&OrmTestParent::filePathDepth, Excluded(&OrmTestParent::filePathDepth)))),
+        "INSERT INTO parent (id, file_path) VALUES (10, 'hello') ON CONFLICT (id) DO UPDATE SET file_path = 'excl', file_path_depth = excluded.file_path_depth");
+
+    TestToSql(ctx, Insert<OrmTestChild>(
+        Cols(&OrmTestChild::parentId, &OrmTestChild::name),
+        Select<OrmTestParent>(
+            Cols(&OrmTestParent::id, "child_name"),
+            Limit(1)),
+        OnConflict(&OrmTestParent::id).DoNothing()),
+        "INSERT INTO child (parent_id, name) SELECT parent.id, 'child_name' FROM parent LIMIT 1 ON CONFLICT (id) DO NOTHING");
 
     // UpdateObjectQuery
     TestToSql(ctx, UpdateObj(OrmTestParent{}), "UPDATE parent SET file_path = '', file_path_depth = 0, file_write_time = 0, file_size = 0, source_path = '', source_write_time = 0, source_size = 0, scan_token = 0 WHERE id = 0");

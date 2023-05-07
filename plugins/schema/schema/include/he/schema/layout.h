@@ -1281,4 +1281,90 @@ namespace he::schema
         T::Builder operator*() const { return Root(); }
         T::Builder operator->() const { return Root(); }
     };
+
+    // --------------------------------------------------------------------------------------------
+    template <typename T>
+    inline typename T::ValueType CalculateHash(const PointerReader& reader, typename T::ValueType seed = T::DefaultSeed)
+    {
+        using U = typename T::ValueType;
+
+        if (reader.IsNull())
+            return seed;
+
+        switch (reader.Kind())
+        {
+            case PointerKind::List:
+            {
+                const ListReader src = reader.TryGetList(reader.ListElementSize());
+                return CalculateHash<T>(src, seed);
+            }
+            case PointerKind::Struct:
+            {
+                const StructReader src = reader.TryGetStruct();
+                return CalculateHash<T>(src, seed);
+            }
+            case PointerKind::_Count:
+                HE_VERIFY(reader.Kind() != PointerKind::_Count, HE_MSG("Encountered invalid pointer kind."));
+                break;
+        }
+
+        return seed;
+    }
+
+    template <typename T>
+    inline typename T::ValueType CalculateHash(const ListReader& reader, typename T::ValueType seed = T::DefaultSeed)
+    {
+        if (!reader.IsValid())
+            return seed;
+
+        if (reader.GetElementSize() == ElementSize::Composite)
+        {
+            for (uint32_t i = 0; i < reader.Size(); ++i)
+            {
+                const StructReader src = reader.GetCompositeElement(i);
+                seed = CalculateHash<T>(src, seed);
+            }
+        }
+        else if (reader.GetElementSize() == ElementSize::Pointer)
+        {
+            for (uint32_t i = 0; i < reader.Size(); ++i)
+            {
+                const PointerReader src = reader.GetPointerElement(i);
+                seed = CalculateHash<T>(src, seed);
+            }
+        }
+        else
+        {
+            const uint64_t byteSize = (static_cast<uint64_t>(reader.Size()) * reader.StepSize()) / BitsPerByte;
+            seed = T::Mem(reader.Data(), static_cast<uint32_t>(byteSize), seed);
+
+            const uint64_t leftoverBits = (static_cast<uint64_t>(reader.Size()) * reader.StepSize()) % BitsPerByte;
+            if (leftoverBits > 0)
+            {
+                const uint8_t mask = (1 << leftoverBits) - 1;
+                const uint8_t* readerData = reinterpret_cast<const uint8_t*>(reader.Data());
+                const uint8_t value = mask & *(readerData + byteSize);
+                seed = T::Mem(&value, 1, seed);
+            }
+        }
+
+        return seed;
+    }
+
+    template <typename T>
+    inline typename T::ValueType CalculateHash(const StructReader& reader, typename T::ValueType seed = T::DefaultSeed)
+    {
+        if (!reader.IsValid())
+            return seed;
+
+        seed = T::Mem(reader.Data(), reader.DataWordSize() * BytesPerWord, seed);
+
+        for (uint16_t i = 0; i < reader.PointerCount(); ++i)
+        {
+            const PointerReader src = reader.GetPointerField(i);
+            seed = CalculateHash<T>(src, seed);
+        }
+
+        return seed;
+    }
 }

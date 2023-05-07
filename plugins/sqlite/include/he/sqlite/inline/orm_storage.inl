@@ -5,26 +5,6 @@ namespace he::sqlite
     // --------------------------------------------------------------------------------------------
     // StorageBase
 
-    template <typename T>
-    inline bool StorageBase::Query(const T& query)
-    {
-        Statement stmt;
-        if (!PrepareQuery(stmt, query))
-            return false;
-
-        return stmt.Step() != StepResult::Error;
-    }
-
-    template <typename T, typename F>
-    inline bool StorageBase::Query(const T& query, F&& rowIterator)
-    {
-        Statement stmt;
-        if (!PrepareQuery(stmt, query))
-            return false;
-
-        return stmt.EachRow(rowIterator);
-    }
-
     inline bool StorageBase::DropColumn(StringView tableName, StringView columnName)
     {
         StringBuilder sql;
@@ -112,6 +92,28 @@ namespace he::sqlite
 
     template <typename S>
     template <typename T>
+    bool Storage<S>::Execute(const T& query)
+    {
+        Statement stmt;
+        if (!PrepareQuery(stmt, query))
+            return false;
+
+        return stmt.Step() != StepResult::Error;
+    }
+
+    template <typename S>
+    template <typename T, typename F>
+    bool Storage<S>::Execute(const T& query, F&& rowIterator)
+    {
+        Statement stmt;
+        if (!PrepareQuery(stmt, query))
+            return false;
+
+        return stmt.EachRow(rowIterator);
+    }
+
+    template <typename S>
+    template <typename T>
     bool Storage<S>::CreateTable()
     {
         const auto& table = m_schema.TableFor<T>();
@@ -185,25 +187,25 @@ namespace he::sqlite
     template <typename T>
     bool Storage<S>::Create(const T& obj)
     {
-        const auto query = Insert(obj);
-        return Query(query);
+        const auto query = InsertObj(obj);
+        return Execute(query);
     }
 
     template <typename S>
-    template <typename T, QueryCondition... U>
-    bool Storage<S>::Destroy(U&&... conditions)
+    template <typename T, typename U>
+    bool Storage<S>::Destroy(WhereExpr<U>&& cond)
     {
-        const auto query = Delete<T>(Forward<U>(conditions)...);
-        return Query(query);
+        const auto query = Delete<T>(Move(cond));
+        return Execute(query);
     }
 
     template <typename S>
-    template <typename T, QueryCondition... U>
+    template <typename T, SelectQueryArg... U>
     bool Storage<S>::FindAll(Vector<T>& out, U&&... conditions)
     {
         const auto& table = m_schema.TableFor<T>();
         const auto query = SelectObj<T>(Forward<U>(conditions)...);
-        return Query(query, [&](const Statement& stmt)
+        return Execute(query, [&](const Statement& stmt)
         {
             int i = 0;
             T& obj = out.EmplaceBack();
@@ -216,12 +218,12 @@ namespace he::sqlite
     }
 
     template <typename S>
-    template <typename T, QueryCondition... U>
+    template <typename T, SelectQueryArg... U>
     bool Storage<S>::FindOne(T& out, U&&... conditions)
     {
         const auto& table = m_schema.TableFor<T>();
         const auto query = SelectObj<T>(Forward<U>(conditions)..., Limit(1));
-        return Query(query, [&](const Statement& stmt)
+        return Execute(query, [&](const Statement& stmt)
         {
             int i = 0;
             table.ForEachColumn([&](const auto& col)
@@ -237,7 +239,14 @@ namespace he::sqlite
     bool Storage<S>::Update(const T& obj)
     {
         const auto query = Update(obj);
-        return Query(query);
+        return Execute(query);
+    }
+
+    template <typename S>
+    template <typename T>
+    bool Storage<S>::CreateOrUpdate(const T& obj)
+    {
+        // TODO
     }
 
     template <typename S>

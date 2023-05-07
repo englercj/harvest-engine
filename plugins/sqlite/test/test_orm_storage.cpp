@@ -22,7 +22,7 @@ HE_TEST(sqlite, orm_storage, Open_Close)
 }
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST(sqlite, orm_storage, Query)
+HE_TEST(sqlite, orm_storage, Execute)
 {
     // TODO
 }
@@ -71,6 +71,12 @@ HE_TEST(sqlite, orm_storage, FindOne)
 
 // ------------------------------------------------------------------------------------------------
 HE_TEST(sqlite, orm_storage, Update)
+{
+    // TODO
+}
+
+// ------------------------------------------------------------------------------------------------
+HE_TEST(sqlite, orm_storage, CreateOrUpdate)
 {
     // TODO
 }

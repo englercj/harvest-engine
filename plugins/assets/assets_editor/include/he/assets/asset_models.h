@@ -18,6 +18,8 @@
 
 namespace he::assets
 {
+    class AssetDatabase;
+
     enum class AssetState : uint8_t
     {
         Unknown = 0,
@@ -38,11 +40,11 @@ namespace he::assets
         String filePath{};
         uint32_t filePathDepth{ 0 };
         SystemTime fileWriteTime{ 0 };
-        uint32_t fileSize{ 0 };
+        uint64_t fileSize{ 0 };
 
         String sourcePath{};
         SystemTime sourceWriteTime{ 0 };
-        uint32_t sourceSize{ 0 };
+        uint64_t sourceSize{ 0 };
 
         uint32_t scanToken{ 0 };
     };
@@ -180,7 +182,7 @@ namespace he::assets
 
     using AssetDbStorage = sqlite::Storage<Decay<decltype(AssetDbSchema)>>;
 
-    bool AddOrUpdateAssetFile(AssetDbStorage& storage, AssetFile::Reader file, const AssetFileModel& model);
+    bool AddOrUpdateAssetFile(AssetDatabase& db, AssetFile::Reader file, const AssetFileModel& model);
 }
 
 namespace he::sqlite

@@ -2,8 +2,6 @@
 
 #include "he/assets/asset_database.h"
 
-#include "migrations.h"
-
 #include "he/assets/asset_models.h"
 #include "he/assets/types.h"
 #include "he/assets/types_fmt.h"
@@ -60,7 +58,7 @@ namespace he::assets
 
         Stopwatch timer;
 
-        // Open the sqlite database and migrate the schema
+        // Open the sqlite database and sync the schema
         String dbPath = cacheRoot;
         ConcatPath(dbPath, "asset_cache.db");
         if (!m_storage.Open(dbPath.Data()))

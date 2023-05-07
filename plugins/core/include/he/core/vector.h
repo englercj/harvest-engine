@@ -35,6 +35,13 @@ namespace he
         /// \param allocator Optional. The allocator to use.
         explicit Vector(Allocator& allocator = Allocator::GetDefault()) noexcept;
 
+        /// Construct a vector from a series of values. Each will be forwarded to \ref EmplaceBack.
+        ///
+        /// @tparam ...Args The types of the values.
+        /// @param ...args The values to construct the vector with.
+        template <typename... Args> requires(IsConstructible<T, Args> && ...)
+        Vector(Args&&... args) noexcept;
+
         /// Construct a vector by copying `x`, and using `allocator` for this vector's allocations.
         ///
         /// \param x The vector to copy from.

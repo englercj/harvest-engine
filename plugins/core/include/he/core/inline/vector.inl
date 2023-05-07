@@ -245,6 +245,16 @@ namespace he
     {}
 
     template <typename T>
+    template <typename... Args> requires(IsConstructible<T, Args> && ...)
+    Vector<T>::Vector(Args&&... args) noexcept
+        : Vector()
+    {
+        constexpr uint32_t Size = sizeof...(Args);
+        Reserve(Size);
+        (EmplaceBack(Forward<Args>(args)), ...);
+    }
+
+    template <typename T>
     Vector<T>::Vector(const Vector& x, Allocator& allocator) noexcept
         : Vector(allocator)
     {

@@ -36,6 +36,11 @@ namespace he
         public:
             virtual ~Handler() = default;
 
+            virtual bool StartDocument() = 0;
+            virtual bool EndDocument() = 0;
+
+            virtual bool Comment(StringView value) = 0;
+
             // Primative values
             virtual bool Bool(bool value) = 0;
             virtual bool Int(int64_t value) = 0;

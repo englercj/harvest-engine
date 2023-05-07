@@ -25,6 +25,13 @@ namespace he
         return IsAlpha(ch) || IsNumeric(ch) || ch == '_';
     }
 
+    static bool IsControlChar(char ch)
+    {
+        return (ch >= '\x00' && ch <= '\x08')
+            || (ch >= '\x0a' && ch <= '\x1F')
+            || ch == '\x7F';
+    }
+
     // --------------------------------------------------------------------------------------------
     // Kinds of tokens the lexer will emit while parsing a toml string
     enum class TomlToken : uint8_t
@@ -377,7 +384,14 @@ namespace he
         TomlToken LexComment()
         {
             while (*m_cursor && *m_cursor != '\n' && *m_cursor != '\r')
+            {
+                if (IsControlChar(*m_cursor))
+                {
+                    m_nextError = TomlReadError::InvalidToken;
+                    return TomlToken::Error;
+                }
                 ++m_cursor;
+            }
 
             return TomlToken::Comment;
         }
@@ -498,6 +512,11 @@ namespace he
         {
             do
             {
+                if (At(TomlToken::Comment))
+                {
+                    m_handler->Comment(m_token.text);
+                }
+
                 if (!Next())
                     return false;
             } while (At(TomlToken::Comment));
@@ -538,12 +557,15 @@ namespace he
 
         bool ConsumeRootTable()
         {
+            m_handler->StartDocument();
+
             while (!AtEnd())
             {
                 if (!ConsumeTableEntry())
                     return false;
             }
 
+            m_handler->EndDocument();
             return true;
         }
 
@@ -551,6 +573,8 @@ namespace he
         {
             switch (m_token.kind)
             {
+                case TomlToken::Comment:
+                    return NextDecl();
                 case TomlToken::String:
                 case TomlToken::Identifier:
                 {

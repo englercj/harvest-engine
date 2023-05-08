@@ -304,52 +304,112 @@ HE_TEST(core, clock, PosixTimeFromSystemTime)
 }
 
 // ------------------------------------------------------------------------------------------------
+HE_TEST(core, clock, PosixTimeFromDuration)
+{
+    Duration systemTime{ 60000000123 };
+    auto test = PosixTimeFromDuration(systemTime);
+    HE_EXPECT_EQ(test.tv_nsec, 123);
+    HE_EXPECT_EQ(test.tv_sec, 60);
+}
+
+// ------------------------------------------------------------------------------------------------
+HE_TEST(core, clock, SystemTimeFromString)
+{
+    // 8:15 AM, Thursday, May 19, 2022 (PDT)
+    // Truncated to seconds.
+    SystemTime expect{ 1652973325000000000 };
+
+    // ISO 8601 format - utc
+    {
+        const char* value = "2022-05-19T15:15:25Z";
+        const char* format = "%Y-%m-%dT%H:%M:%SZ";
+        SystemTime actual = SystemTimeFromString(format, value, true);
+        HE_EXPECT(actual == expect, value, format, actual, expect);
+    }
+
+    // ISO 8601 format - local
+    {
+        const char* value = "2022-05-19T08:15:25-0700";
+        const char* format = "%Y-%m-%dT%H:%M:%S%z";
+        SystemTime actual = SystemTimeFromString(format, value, false);
+        HE_EXPECT(actual == expect, value, format, actual, expect);
+    }
+
+    // Custom format - utc
+    {
+        const char* value = "05/19/22 15:15:25";
+        const char* format = "%D %T";
+        SystemTime actual = SystemTimeFromString(format, value, true);
+        HE_EXPECT(actual == expect, value, format, actual, expect);
+    }
+
+    // Custom format - local
+    {
+        const char* value = "Thursday May 19, 22 08:15:25 AM";
+        const char* format = "%A %b %d, %y %T %p";
+        SystemTime actual = SystemTimeFromString(format, value, false);
+        HE_EXPECT(actual == expect, value, format, actual, expect);
+    }
+}
+
+// ------------------------------------------------------------------------------------------------
 HE_TEST(core, clock, fmt_time)
 {
     SystemTime time{ 1652973325730225600 }; // 8:15 AM, Thursday, May 19, 2022 (PDT)
-    String actual;
 
-    // Default
-    actual.Clear();
-    FormatTo(actual, "{}", time);
-    HE_EXPECT_EQ(actual, "2022-05-19 08:15:25");
+    // Default format
+    {
+        String actual = Format("{}", time);
+        HE_EXPECT_EQ(actual, "2022-05-19T15:15:25Z");
+    }
 
-    // Local Default
-    actual.Clear();
-    FormatTo(actual, "{}", FmtLocalTime(time));
-    HE_EXPECT_EQ(actual, "2022-05-19 08:15:25");
+    // Default format - utc
+    {
+        String actual = Format("{}", FmtUtcTime(time));
+        HE_EXPECT_EQ(actual, "2022-05-19T15:15:25Z");
+    }
 
-    // UTC Default
-    actual.Clear();
-    FormatTo(actual, "{}", FmtUtcTime(time));
-    HE_EXPECT_EQ(actual, "2022-05-19 15:15:25");
+    // Default format - local
+    {
+        String actual = Format("{}", FmtLocalTime(time));
+        HE_EXPECT_EQ(actual, "2022-05-19T08:15:25-0700");
+    }
 
-    // Custom Format
-    actual.Clear();
-    FormatTo(actual, "{:%A %b %d, %y %T %p}", time);
-    HE_EXPECT_EQ(actual, "Thursday May 19, 22 08:15:25 AM");
+    // Custom format
+    {
+        String actual = Format("{:%A %b %d, %y %T %p}", time);
+        HE_EXPECT_EQ(actual, "Thursday May 19, 22 15:15:25 PM");
+    }
 
-    // Custom Format UTC
-    actual.Clear();
-    FormatTo(actual, "{:%D %F %R}", FmtUtcTime(time));
-    HE_EXPECT_EQ(actual, "05/19/22 2022-05-19 15:15");
+    // Custom format - utc
+    {
+        String actual = Format("{:%A %b %d, %y %T %p}", FmtUtcTime(time));
+        HE_EXPECT_EQ(actual, "Thursday May 19, 22 15:15:25 PM");
+    }
+
+    // Custom format - local
+    {
+        String actual = Format("{:%D %R}", FmtLocalTime(time));
+        HE_EXPECT_EQ(actual, "05/19/22 08:15");
+    }
 }
 
 // ------------------------------------------------------------------------------------------------
 HE_TEST(core, clock, fmt_duration)
 {
     constexpr Duration duration = 1_week + 2_day + 4_hour + 8_min + 16_sec + 32_ms + 64_us + 128_ns;
-    String actual;
 
     // Default
-    actual.Clear();
-    FormatTo(actual, "{}", duration);
-    HE_EXPECT_EQ(actual, "792496032064128ns");
+    {
+        String actual = Format("{}", duration);
+        HE_EXPECT_EQ(actual, "792496032064128ns");
+    }
 
     // All the specs
-    actual.Clear();
-    FormatTo(actual, "{:%W %D %H %M %S %m %u %n %%}", duration);
-    HE_EXPECT_EQ(actual, "1 2 4 8 16 32 64 128 %");
+    {
+        String actual = Format("{:%W %D %H %M %S %m %u %n %%}", duration);
+        HE_EXPECT_EQ(actual, "1 2 4 8 16 32 64 128 %");
+    }
 }
 
 // ------------------------------------------------------------------------------------------------

@@ -6,7 +6,13 @@
 #include "he/core/compiler.h"
 #include "he/core/string.h"
 
-#include <ctime>
+#include <iomanip>
+#include <time.h>
+#include <sstream>
+
+#if HE_COMPILER_MSVC
+    #define timegm _mkgmtime
+#endif
 
 namespace he
 {
@@ -43,26 +49,33 @@ namespace he
         return ts;
     }
 
-    SystemTime SystemTimeFromString(StringView format, StringView value)
+    SystemTime SystemTimeFromString(const char* format, const char* value, bool isUtc)
     {
-        // Let's consider we are getting all the input in
-        // this format: '2014-07-25T20:17:22Z' (T denotes
-        // start of Time part, Z denotes UTC zone).
-        // A better approach would be to pass in the format as well.
-        static const std::wstring dateTimeFormat{ L"%Y-%m-%dT%H:%M:%SZ" };
+        struct tm tm{};
+        tm.tm_isdst = -1;
 
-        // Create a stream which we will use to parse the string,
-        // which we provide to constructor of stream to fill the buffer.
-        std::wistringstream ss{ dateTime };
+        std::istringstream ss(value);
+        ss >> std::get_time(&tm, format);
 
-        // Create a tm object to store the parsed date and time.
-        std::tm dt;
+        const time_t timeValue = isUtc ? timegm(&tm) : mktime(&tm);
 
-        // Now we read from buffer using get_time manipulator
-        // and formatting the input appropriately.
-        ss >> std::get_time(&dt, dateTimeFormat.c_str());
+        SystemTime time{};
+        if (timeValue > 0)
+        {
+            time.val = static_cast<uint64_t>(timeValue) * Seconds::Ratio;
+        }
+        return time;
+    }
 
-        // Convert the tm structure to time_t value and return.
-        return std::mktime(&dt);
+    bool IsDaylightSavingTimeActive()
+    {
+        const time_t t = time(nullptr);
+        struct tm tm{};
+    #if HE_COMPILER_MSVC
+        localtime_s(&tm, &t);
+    #else
+        localtime_r(&t, &tm);
+    #endif
+        return tm.tm_isdst > 0;
     }
 }

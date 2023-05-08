@@ -28,14 +28,8 @@ namespace he
 
     struct _TimeFormatter
     {
-        // TODO: RFC3339 format. UTC has Z suffix, local has offset suffix.
-        // Need to make the formatter function take spec as a param, so we can
-        // change default spec based on type.
-        static constexpr StringView DefaultSpec = "%Y-%m-%d %H:%M:%S";
-
-        StringView spec{ DefaultSpec };
-
-        constexpr const char* Parse(const FmtParseCtx& ctx)
+    protected:
+        constexpr const char* ParseInternal(const FmtParseCtx& ctx, StringView& spec)
         {
             const char* it = ctx.Begin();
             if (it != ctx.End() && *it == ':')
@@ -51,8 +45,10 @@ namespace he
             return end;
         }
 
-        void Format(String& out, const struct tm& tm) const
+        void FormatInternal(String& out, StringView spec, const struct tm& tm) const
         {
+            // TODO: Fractional seconds, strftime doesn't support it.
+
             // By appending an extra space we can distinguish an empty result that
             // indicates insufficient buffer size from a guaranteed non-empty result
             // https://github.com/fmtlib/fmt/issues/2238
@@ -76,54 +72,68 @@ namespace he
         }
     };
 
-    template <>
-    struct Formatter<SystemTime> : _TimeFormatter
-    {
-        void Format(String& out, const SystemTime& t) const
-        {
-            const time_t time = t.val / Seconds::Ratio;
-            struct tm tm;
-        #if HE_COMPILER_MSVC
-            localtime_s(&tm, &time);
-        #else
-            localtime_r(&time, &tm);
-        #endif
-
-            return _TimeFormatter::Format(out, tm);
-        }
-    };
+    // TODO: RFC3339 format. UTC has Z suffix, local has offset suffix.
+    // Need to make the formatter function take spec as a param, so we can
+    // change default spec based on type.
 
     template <>
     struct Formatter<FmtLocalTime> : _TimeFormatter
     {
+        static constexpr StringView DefaultSpec = "%Y-%m-%dT%H:%M:%S%z";
+
+        StringView spec{ DefaultSpec };
+
+        constexpr const char* Parse(const FmtParseCtx& ctx)
+        {
+            return ParseInternal(ctx, spec);
+        }
+
         void Format(String& out, const FmtLocalTime& t) const
         {
             const time_t time = t.time.val / Seconds::Ratio;
-            struct tm tm;
+            struct tm tm{};
         #if HE_COMPILER_MSVC
             localtime_s(&tm, &time);
         #else
             localtime_r(&time, &tm);
         #endif
 
-            return _TimeFormatter::Format(out, tm);
+            return FormatInternal(out, spec, tm);
         }
     };
 
     template <>
-    struct Formatter<FmtUtcTime> : _TimeFormatter
+    struct Formatter<SystemTime> : _TimeFormatter
     {
-        void Format(String& out, const FmtUtcTime& t) const
+        static constexpr StringView DefaultSpec = "%Y-%m-%dT%H:%M:%SZ";
+
+        StringView spec{ DefaultSpec };
+
+        constexpr const char* Parse(const FmtParseCtx& ctx)
         {
-            const time_t time = t.time.val / Seconds::Ratio;
-            struct tm tm;
+            return ParseInternal(ctx, spec);
+        }
+
+        void Format(String& out, const SystemTime& t) const
+        {
+            const time_t time = t.val / Seconds::Ratio;
+            struct tm tm{};
         #if HE_COMPILER_MSVC
             gmtime_s(&tm, &time);
         #else
             gmtime_r(&time, &tm);
         #endif
 
-            return _TimeFormatter::Format(out, tm);
+            return FormatInternal(out, spec, tm);
+        }
+    };
+
+    template <>
+    struct Formatter<FmtUtcTime> : Formatter<SystemTime>
+    {
+        void Format(String& out, const FmtUtcTime& t) const
+        {
+            Formatter<SystemTime>::Format(out, t.time);
         }
     };
 

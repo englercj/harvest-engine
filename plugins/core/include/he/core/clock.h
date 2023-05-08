@@ -23,35 +23,69 @@ namespace he
     // --------------------------------------------------------------------------------------------
     // Base types
 
+    /// Base time template that represents a single time value from a clock.
+    ///
+    /// \note This is not a time implementation. It is a template that can be specialized to
+    /// represent a time value from a clock. You probably don't want to use this directly, try using
+    /// \ref SystemTime, \ref MonotonicTime, or \ref CycleCount instead.
+    ///
+    /// \tparam Tag A unique tag type that identifies this time.
     template <typename Tag>
     struct Time
     {
         uint64_t val;
     };
 
+    /// Base clock template that represents a clock that can be queried.
+    ///
+    /// \note This is not a clock implementation. It is a template that can be specialized to
+    /// provide a clock implementation. You probably don't want to use this directly, try using
+    /// \ref SystemClock, \ref MonotonicClock, or \ref CycleClock instead.
+    ///
+    /// \tparam Tag A unique tag type that identifies this clock.
     template <typename Tag>
     struct Clock
     {
+        /// The type of time that this clock returns.
         using Time = he::Time<Tag>;
+
+        /// Gets the current time according to this clock.
+        ///
+        /// \return The current time according to this clock.
         static Time Now();
     };
 
     // --------------------------------------------------------------------------------------------
     // Implementations
 
-    // Nanoseconds that have passed since the Unix epoch (Jan 1 1970 00:00:00 UTC).
-    // These values are pulled from the system's clock which is not monotonic.
+    /// Nanoseconds that have passed since the Unix epoch (Jan 1 1970 00:00:00 UTC).
+    ///
+    /// These values are pulled from the system's clock which is not guaranteed to be monotonic.
+    /// This clock is suitable for displaying the current time to the user.
     using SystemClock = Clock<struct SystemClockTag>;
+
+    /// \copydoc SystemClock
     using SystemTime = SystemClock::Time;
 
-    // Nanoseconds that have passed since an OS-defined epoch (usually boot time).
-    // This clock is guaranteed to be monotonic.
+    /// Nanoseconds that have passed since an OS-defined epoch (usually boot time).
+    ///
+    /// This clock is guaranteed to be monotonic. This clock is suitable for measuring precise time
+    /// intervals, such as performance counters.
     using MonotonicClock = Clock<struct MonotonicClockTag>;
+
+    /// \copydoc MonotonicClock
     using MonotonicTime = MonotonicClock::Time;
 
-    // Number of cycles since the last CPU reset.
-    // This clock is not guaranteed to be monotonic.
+    /// Number of cycles since the last CPU reset.
+    ///
+    /// This clock is not guaranteed to be monotonic, though it is under certain circumstances.
+    /// Values are pulled from RDTSC on x86 and CNTVCT on ARM. This means that any kind of
+    /// interrupt (including scheduling preemption) can result in unexpected values.
+    /// This clock is suitable for measuring very precise time intervals, such as performance
+    /// counters, with the caveats mentioned before.
     using CycleClock = Clock<struct CycleClockTag>;
+
+    /// \copydoc CycleClock
     using CycleCount = CycleClock::Time;
 
     // --------------------------------------------------------------------------------------------
@@ -154,12 +188,19 @@ namespace he
     /// \return The converted Posix timespec value.
     timespec PosixTimeFromDuration(Duration duration);
 
-    /// Converts a date-time string to a \ref SystemTime value.
+    /// Converts a UTC date-time string to a \ref SystemTime value. The string is parsed using the
+    /// specified format string. The format string is the same as the one used by the C++ standard
+    /// library function [`get_time`](https://en.cppreference.com/w/cpp/io/manip/get_time).
     ///
     /// \param[in] format The format string to use for parsing.
     /// \param[in] value The date-time string to parse.
     /// \return The converted \ref SystemTime value.
-    SystemTime SystemTimeFromString(const char* format, const char* value);
+    SystemTime SystemTimeFromString(const char* format, const char* value, bool isUtc);
+
+    /// Checks if Daylight Saving Time is active right now in the current locale.
+    ///
+    /// \return `true` if Daylight Saving Time is active, `false` otherwise.
+    bool IsDaylightSavingTimeActive();
 
     // --------------------------------------------------------------------------------------------
     // User-defined literals

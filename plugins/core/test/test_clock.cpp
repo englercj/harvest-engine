@@ -315,8 +315,7 @@ HE_TEST(core, clock, PosixTimeFromDuration)
 // ------------------------------------------------------------------------------------------------
 HE_TEST(core, clock, SystemTimeFromString)
 {
-    // 8:15 AM, Thursday, May 19, 2022 (PDT)
-    // Truncated to seconds.
+    // 8:15 AM, Thursday, May 19, 2022 (PDT), truncated to seconds.
     SystemTime expect{ 1652973325000000000 };
 
     // ISO 8601 format - utc
@@ -355,7 +354,8 @@ HE_TEST(core, clock, SystemTimeFromString)
 // ------------------------------------------------------------------------------------------------
 HE_TEST(core, clock, fmt_time)
 {
-    SystemTime time{ 1652973325730225600 }; // 8:15 AM, Thursday, May 19, 2022 (PDT)
+    // 8:15 AM, Thursday, May 19, 2022 (PDT)
+    SystemTime time{ 1652973325730225600 };
 
     // Default format
     {

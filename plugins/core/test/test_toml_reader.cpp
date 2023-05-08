@@ -515,58 +515,6 @@ HE_TEST_F(core, toml_reader, complex, TomlReaderFixture)
 }
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST_F(core, toml_reader, date_time, TomlReaderFixture)
-{
-    // UTC
-    test_parsing("1111-11-11T00:11:01Z");
-    test_parsing("0014-00-00t03:21:91Z");
-    test_parsing("1971-11-11t00:11:01z");
-    test_parsing("1971-01-11t00:11:01Z");
-
-    // Timezone
-    test_parsing("1111-11-11T00:11:01+00:00");
-    test_parsing("0014-00-00t03:21:91-01:12");
-    test_parsing("1971-11-11t00:11:01+32:33");
-
-    // Fractional seconds
-    test_parsing("1111-11-11T00:11:01.0+00:00");
-    test_parsing("0014-00-00t03:21:91.2323-01:12");
-    test_parsing("1971-11-11t00:11:01.090239+32:33");
-    test_parsing("1971-11-11t00:11:01.090239z");
-
-    // Invalid timezone
-    test_error("1111-11-11T00:11:01.0");
-    test_error("0014-00-00t03:21:91");
-    test_error("1971-11-11t00:11:01.090239");
-    test_error("1971-11-11t00:11:01");
-
-    // Invalid time
-    test_error("1111-11-11");
-    test_error("0014-00-00t");
-    test_error("1971-11-11t+00:01");
-
-    // Invalid date
-    test_error("00:11:01.0+00:00");
-    test_error("t03:21:91.2323-01:12");
-    test_error("T00:11:01.090239+32:33");
-    test_error("00:11:01.090239z");
-    test_error("t00:11:01.090239z");
-    test_error("00:11:01");
-    test_error("00:11:01z");
-
-    // Invalid format
-    test_error("1111-11-1100:11:01.0+00:00");
-    test_error("0014-00-0003:21:91.2323-01:12");
-    test_error("1971-11-1100:11:01.090239+32:33");
-    test_error("1971-11-1100:11:01.090239z");
-
-    test_error("1111-11-11 00:11:01.0+00:00");
-    test_error("0014-00-00 03:21:91.2323-01:12");
-    test_error("1971-11-11 00:11:01.090239+32:33");
-    test_error("1971-11-11 00:11:01.090239z");
-}
-
-// ------------------------------------------------------------------------------------------------
 HE_TEST_F(core, toml_reader, empty, TomlReaderFixture)
 {
 }

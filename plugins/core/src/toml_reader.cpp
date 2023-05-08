@@ -14,6 +14,7 @@
 
 #include "he/core/ascii.h"
 #include "he/core/assert.h"
+#include "he/core/enum_ops.h"
 #include "he/core/string_fmt.h"
 #include "he/core/vector.h"
 
@@ -803,5 +804,23 @@ namespace he
     {
         TomlParser parser;
         return parser.Parse(data, handler);
+    }
+
+    // --------------------------------------------------------------------------------------------
+    template <>
+    const char* AsString(TomlReadError x)
+    {
+        switch (x)
+        {
+            case TomlReadError::None: return "None";
+            case TomlReadError::Cancelled: return "Cancelled";
+            case TomlReadError::EmptyFile: return "EmptyFile";
+            case TomlReadError::Eof: return "Eof";
+            case TomlReadError::InvalidBom: return "InvalidBom";
+            case TomlReadError::InvalidToken: return "InvalidToken";
+            case TomlReadError::InvalidValue: return "InvalidValue";
+        }
+
+        return "<unknown>";
     }
 }

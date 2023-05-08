@@ -2,7 +2,6 @@
 
 // TODO: Unreleased features as of v1.0.0 that are not yet supported:
 // - Clarify Unicode and UTF-8 references.
-// - Relax comment parsing; most control characters are again permitted.
 // - Clarify where and how dotted keys define tables.
 // - Add new \e shorthand for the escape character.
 // - Add \x00 notation to basic strings.
@@ -26,11 +25,9 @@ namespace he
         return IsAlpha(ch) || IsNumeric(ch) || ch == '_';
     }
 
-    static bool IsControlChar(char ch)
+    static bool IsInvalidInComment(char ch)
     {
-        return (ch >= '\x00' && ch <= '\x08')
-            || (ch >= '\x0a' && ch <= '\x1F')
-            || ch == '\x7F';
+        return ch == '\x00' || (ch >= '\x0a' && ch <= '\x0d')
     }
 
     // --------------------------------------------------------------------------------------------
@@ -386,7 +383,7 @@ namespace he
         {
             while (*m_cursor && *m_cursor != '\n' && *m_cursor != '\r')
             {
-                if (IsControlChar(*m_cursor))
+                if (IsInvalidInComment(*m_cursor))
                 {
                     m_nextError = TomlReadError::InvalidToken;
                     return TomlToken::Error;

@@ -27,7 +27,7 @@ namespace he
 
     static bool IsInvalidInComment(char ch)
     {
-        return ch == '\x00' || (ch >= '\x0a' && ch <= '\x0d')
+        return ch == '\x00' || (ch >= '\x0a' && ch <= '\x0d');
     }
 
     // --------------------------------------------------------------------------------------------
@@ -543,11 +543,13 @@ namespace he
             m_pathBuffer.Clear();
             do
             {
-                if (At(TomlToken::Identifier) || At(TomlToken::String))
-                    m_pathBuffer.PushBack(m_token.text);
-                else
+                if (!At(TomlToken::Identifier) && !At(TomlToken::String))
                     return SetError(TomlReadError::InvalidToken);
 
+                m_pathBuffer.PushBack(m_token.text);
+
+                if (!NextDecl())
+                    return false;
             } while (TryConsume(TomlToken::Dot));
 
             return true;
@@ -556,6 +558,9 @@ namespace he
         bool ConsumeRootTable()
         {
             m_handler->StartDocument();
+
+            if (!NextDecl())
+                return false;
 
             while (!AtEnd())
             {

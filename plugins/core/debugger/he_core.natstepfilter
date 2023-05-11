@@ -8,4 +8,12 @@
         <Name>(Vector|Span).*::operator.+</Name>
         <Action>NoStepInto</Action>
     </Function>
+    <Function>
+        <Name>(HashTable|HashMap|HashSet).*::.+</Name>
+        <Action>NoStepInto</Action>
+    </Function>
+    <Function>
+        <Name>(RBTree|RBTreeMap|RBTreeSet).*::.+</Name>
+        <Action>NoStepInto</Action>
+    </Function>
 </StepFilter>

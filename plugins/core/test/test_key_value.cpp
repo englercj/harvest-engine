@@ -142,7 +142,7 @@ HE_TEST(core, key_value, KeyValue)
 }
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST(core, log_sinks, FormatKVsTo)
+HE_TEST(core, key_value, fmt)
 {
     const KeyValue kvs[] =
     {

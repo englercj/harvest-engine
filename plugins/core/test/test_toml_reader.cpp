@@ -5,9 +5,11 @@
 #include "he/core/enum_ops.h"
 #include "he/core/limits.h"
 #include "he/core/string.h"
+#include "he/core/string_fmt.h"
 #include "he/core/test.h"
 #include "he/core/utils.h"
 #include "he/core/vector.h"
+#include "he/core/vector_fmt.h"
 
 using namespace he;
 
@@ -67,6 +69,60 @@ struct TomlEvent
     bool operator!=(const TomlEvent& x) const { return !(*this == x); }
 };
 
+template <>
+const char* he::AsString(TomlEvent::Kind x)
+{
+    switch (x)
+    {
+        case TomlEvent::Kind::DocumentStart: return "DocumentStart";
+        case TomlEvent::Kind::DocumentEnd: return "DocumentEnd";
+        case TomlEvent::Kind::Comment: return "Comment";
+        case TomlEvent::Kind::Bool: return "Bool";
+        case TomlEvent::Kind::Int: return "Int";
+        case TomlEvent::Kind::Uint: return "Uint";
+        case TomlEvent::Kind::Float: return "Float";
+        case TomlEvent::Kind::String: return "String";
+        case TomlEvent::Kind::StartTable: return "StartTable";
+        case TomlEvent::Kind::Key: return "Key";
+        case TomlEvent::Kind::EndTable: return "EndTable";
+        case TomlEvent::Kind::StartArray: return "StartArray";
+        case TomlEvent::Kind::EndArray: return "EndArray";
+    }
+
+    return "<unknown>";
+}
+
+template <>
+struct he::Formatter<TomlEvent>
+{
+    using Type = TomlEvent;
+
+    constexpr const char* Parse(const FmtParseCtx& ctx) const { return ctx.Begin(); }
+
+    void Format(String& out, const TomlEvent& evt) const
+    {
+        switch (evt.kind)
+        {
+            case TomlEvent::Kind::DocumentStart:
+            case TomlEvent::Kind::DocumentEnd:
+            case TomlEvent::Kind::StartArray:
+                FormatTo(out, "{}", evt.kind);
+                break;
+
+            case TomlEvent::Kind::Comment: FormatTo(out, "{} ({})", evt.kind, evt.s); break;
+            case TomlEvent::Kind::Bool: FormatTo(out, "{} ({})", evt.kind, evt.b); break;
+            case TomlEvent::Kind::Int: FormatTo(out, "{} ({})", evt.kind, evt.i); break;
+            case TomlEvent::Kind::Uint: FormatTo(out, "{} ({})", evt.kind, evt.u); break;
+            case TomlEvent::Kind::Float: FormatTo(out, "{} ({})", evt.kind, evt.f); break;
+            case TomlEvent::Kind::String: FormatTo(out, "{} ({})", evt.kind, evt.s); break;
+            case TomlEvent::Kind::StartTable: FormatTo(out, "{} ({}, {})", evt.kind, evt.p, evt.b); break;
+            case TomlEvent::Kind::Key: FormatTo(out, "{} ({})", evt.kind, evt.p); break;
+            case TomlEvent::Kind::EndTable: FormatTo(out, "{} ({})", evt.kind, evt.u); break;
+            case TomlEvent::Kind::EndArray: FormatTo(out, "{} ({})", evt.kind, evt.u); break;
+        }
+    }
+};
+
 // ------------------------------------------------------------------------------------------------
 class TomlReaderEventHandler : public TomlReader::Handler
 {
@@ -77,7 +133,7 @@ public:
 
         for (uint32_t i = 0; i < expected.Size(); ++i)
         {
-            HE_EXPECT(m_events[i] == expected[i]);
+            HE_EXPECT_EQ(m_events[i], expected[i]);
         }
     }
 
@@ -130,20 +186,18 @@ private:
         return true;
     }
 
-    bool StartTable(Span<const StringView> path, bool isArray) override
+    bool StartTable(Span<const he::String> path, bool isArray) override
     {
         Vector<he::String> p;
-        for (auto& s : path)
-            p.EmplaceBack(s);
+        p.Insert(0, path.Data(), path.Size());
         m_events.PushBack({ .kind = TomlEvent::Kind::StartTable, .p = Move(p), .b = isArray});
         return true;
     }
 
-    bool Key(Span<const StringView> path) override
+    bool Key(Span<const he::String> path) override
     {
         Vector<he::String> p;
-        for (auto& s : path)
-            p.EmplaceBack(s);
+        p.Insert(0, path.Data(), path.Size());
         m_events.PushBack({ .kind = TomlEvent::Kind::Key, .p = Move(p) });
         return true;
     }
@@ -177,7 +231,7 @@ public:
     void Validate(StringView input, Span<const TomlEvent> events)
     {
         const TomlReadResult result = reader.Read(input, handler);
-        HE_EXPECT(result);
+        HE_EXPECT(result, result.error, result.line, result.column, input);
         handler.Validate(events);
     }
 
@@ -303,7 +357,7 @@ HE_TEST_F(core, toml_reader, array_one_item, TomlReaderFixture)
         { .kind = TomlEvent::Kind::DocumentStart },
         { .kind = TomlEvent::Kind::Key, .p = { "key" } },
         { .kind = TomlEvent::Kind::StartArray },
-        { .kind = TomlEvent::Kind::Int,.i = 6 },
+        { .kind = TomlEvent::Kind::Uint, .u = 6 },
         { .kind = TomlEvent::Kind::EndArray, .u = 1},
         { .kind = TomlEvent::Kind::DocumentEnd },
     };
@@ -318,10 +372,10 @@ HE_TEST_F(core, toml_reader, array_multiple_items, TomlReaderFixture)
         { .kind = TomlEvent::Kind::DocumentStart },
         { .kind = TomlEvent::Kind::Key, .p = { "key" } },
         { .kind = TomlEvent::Kind::StartArray },
-        { .kind = TomlEvent::Kind::Int, .i = 1 },
-        { .kind = TomlEvent::Kind::Int, .i = 2 },
+        { .kind = TomlEvent::Kind::Uint, .u = 1 },
+        { .kind = TomlEvent::Kind::Uint, .u = 2 },
         { .kind = TomlEvent::Kind::Comment, .s = " this is a comment" },
-        { .kind = TomlEvent::Kind::Int, .i = 3 },
+        { .kind = TomlEvent::Kind::Uint, .u = 3 },
         { .kind = TomlEvent::Kind::EndArray, .u = 3 },
         { .kind = TomlEvent::Kind::DocumentEnd },
     };
@@ -336,14 +390,14 @@ HE_TEST_F(core, toml_reader, array_multiple_heterogenous, TomlReaderFixture)
         { .kind = TomlEvent::Kind::DocumentStart },
         { .kind = TomlEvent::Kind::Key, .p = { "key" } },
         { .kind = TomlEvent::Kind::StartArray },
-        { .kind = TomlEvent::Kind::Int, .i = 1 },
+        { .kind = TomlEvent::Kind::Uint, .u = 1 },
         { .kind = TomlEvent::Kind::Uint, .u = 0x9ffffffe },
         { .kind = TomlEvent::Kind::String, .s = "literal" },
         { .kind = TomlEvent::Kind::String, .s = "basic" },
         { .kind = TomlEvent::Kind::Float, .f = 1.5 },
         { .kind = TomlEvent::Kind::Bool, .b = true },
-        { .kind = TomlEvent::Kind::String, .s = "multiline\n\r\n\nLiteral" },
-        { .kind = TomlEvent::Kind::String, .s = "multiline\n\r\n\nBasic" },
+        { .kind = TomlEvent::Kind::String, .s = "multiline\n\n\nLiteral" },
+        { .kind = TomlEvent::Kind::String, .s = "multiline\n\n\nBasic" },
         { .kind = TomlEvent::Kind::EndArray, .u = 8 },
         { .kind = TomlEvent::Kind::DocumentEnd },
     };
@@ -358,10 +412,10 @@ HE_TEST_F(core, toml_reader, array_nested, TomlReaderFixture)
         { .kind = TomlEvent::Kind::DocumentStart },
         { .kind = TomlEvent::Kind::Key, .p = { "key" } },
         { .kind = TomlEvent::Kind::StartArray },
-        { .kind = TomlEvent::Kind::Int, .i = 1 },
+        { .kind = TomlEvent::Kind::Uint, .u = 1 },
         { .kind = TomlEvent::Kind::StartArray },
-        { .kind = TomlEvent::Kind::Int, .i = 2 },
-        { .kind = TomlEvent::Kind::Int, .i = 3 },
+        { .kind = TomlEvent::Kind::Uint, .u = 2 },
+        { .kind = TomlEvent::Kind::Uint, .u = 3 },
         { .kind = TomlEvent::Kind::EndArray, .u= 2 },
         { .kind = TomlEvent::Kind::String, .s = "4" },
         { .kind = TomlEvent::Kind::StartArray },
@@ -397,8 +451,8 @@ HE_TEST_F(core, toml_reader, array_trailing_comma, TomlReaderFixture)
         { .kind = TomlEvent::Kind::DocumentStart },
         { .kind = TomlEvent::Kind::Key, .p = { "key" } },
         { .kind = TomlEvent::Kind::StartArray },
-        { .kind = TomlEvent::Kind::Int, .i = 1 },
-        { .kind = TomlEvent::Kind::Int, .i = 2 },
+        { .kind = TomlEvent::Kind::Uint, .u = 1 },
+        { .kind = TomlEvent::Kind::Uint, .u = 2 },
         { .kind = TomlEvent::Kind::EndArray, .u = 2 },
         { .kind = TomlEvent::Kind::DocumentEnd },
     };
@@ -428,7 +482,7 @@ HE_TEST_F(core, toml_reader, array_table_num, TomlReaderFixture)
         { .kind = TomlEvent::Kind::EndTable, .u = 0 },
         { .kind = TomlEvent::Kind::DocumentEnd },
     };
-    Validate("[[123]]", expected);
+    Validate("[ [123]]", expected);
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -479,11 +533,22 @@ HE_TEST_F(core, toml_reader, array_table_invalid, TomlReaderFixture)
     Validate("[[test.\n123.\"space\\nname\"]]\n", TomlReadError::InvalidToken);
     Validate("[[test.123\n.\"space\\nname\"]]\n", TomlReadError::InvalidToken);
 
+    // Multiple dots in sequence
+    Validate("[[test..123.\"space\\nname\"]]\n", TomlReadError::InvalidToken);
+    Validate("[[test.123..\"space\\nname\"]]\n", TomlReadError::InvalidToken);
+    Validate("[[..test.123.\"space\\nname\"]]\n", TomlReadError::InvalidToken);
+    Validate("[[test.123.\"space\\nname\"..]]\n", TomlReadError::InvalidToken);
+
+    // Leading/trailing dots
+    Validate("[[.test.123.\"space\\nname\"]]\n", TomlReadError::InvalidToken);
+    Validate("[[test.123.\"space\\nname\".]]\n", TomlReadError::InvalidToken);
+    Validate("[[.test.123.\"space\\nname\".]]\n", TomlReadError::InvalidToken);
+
     // At least one non-whitespace character is required
     Validate("[[  ]]\n", TomlReadError::InvalidToken);
 
     // Whitespace is not allowed between opening braces
-    Validate("[ [  ]]\n", TomlReadError::InvalidToken);
+    Validate("[ [name]]\n", TomlReadError::InvalidToken);
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -890,7 +955,7 @@ HE_TEST_F(core, toml_reader, inline_table_with_multiline_string, TomlReaderFixtu
         { .kind = TomlEvent::Kind::Key, .p = { "key", "value" } },
         { .kind = TomlEvent::Kind::Uint, .u = 123 },
         { .kind = TomlEvent::Kind::Key, .p = { "key", "str" } },
-        { .kind = TomlEvent::Kind::String, .s = " first line\r\nsecond line\nanother!" },
+        { .kind = TomlEvent::Kind::String, .s = " first line\nsecond line\nanother!" },
         { .kind = TomlEvent::Kind::EndTable, .u = 2 },
         { .kind = TomlEvent::Kind::DocumentEnd },
     };

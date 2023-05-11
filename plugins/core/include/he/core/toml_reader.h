@@ -3,6 +3,7 @@
 #pragma once
 
 #include "he/core/span.h"
+#include "he/core/string.h"
 #include "he/core/string_view.h"
 #include "he/core/types.h"
 
@@ -16,7 +17,6 @@ namespace he
         Eof,            ///< The input ended unexpectedly.
         InvalidBom,     ///< The utf-8 Byte Order Mark (BOM) of the file is not valid.
         InvalidToken,   ///< Encountered an unexpected token in the file.
-        InvalidValue,   ///< A value was invalid, or out of range.
     };
 
     struct TomlReadResult
@@ -50,8 +50,8 @@ namespace he
             // TODO: DateTime support
 
             // Tables
-            virtual bool StartTable(Span<const StringView> path, bool isArray) = 0;
-            virtual bool Key(Span<const StringView> path)= 0;
+            virtual bool StartTable(Span<const he::String> path, bool isArray) = 0;
+            virtual bool Key(Span<const he::String> path)= 0;
             virtual bool EndTable(uint32_t keyCount) = 0;
 
             // Arrays

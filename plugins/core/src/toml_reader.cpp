@@ -27,7 +27,7 @@ namespace he
 
     static bool IsInvalidInComment(char ch)
     {
-        return ch == '\x00' || (ch >= '\x0a' && ch <= '\x0d');
+        return ch == '\x00' || (ch >= '\x0A' && ch <= '\x0D');
     }
 
     // --------------------------------------------------------------------------------------------
@@ -62,7 +62,7 @@ namespace he
         struct Token
         {
             TomlToken kind{ TomlToken::None };
-            StringView text{};
+            String text{};
             TomlReadError error{};
             uint32_t line{ 0 };
             uint32_t column{ 0 };
@@ -78,6 +78,7 @@ namespace he
             m_nextLineStart = m_cursor;
             m_nextError = TomlReadError::None;
             m_nextToken = TomlToken::None;
+            m_decodedString.Clear();
 
             if (src.IsEmpty())
                 return TomlReadError::EmptyFile;
@@ -116,17 +117,25 @@ namespace he
 
             Token token;
             token.kind = m_nextError == TomlReadError::None ? m_nextToken : TomlToken::Error;
-            token.text = { m_nextTokenStart, m_cursor };
+
+            if (token.kind == TomlToken::String)
+                token.text = m_decodedString;
+            else
+                token.text.Assign(m_nextTokenStart, m_cursor);
+
             token.line = m_line;
             token.column = static_cast<uint32_t>(m_nextTokenStart - m_nextLineStart) + 1;
             token.error = m_nextError;
             return token;
         }
 
+        void PushNewlinesInvalid() { ++m_newlinesAreInvalid; }
+        void PopNewlinesInvalid() { HE_ASSERT(m_newlinesAreInvalid > 0); --m_newlinesAreInvalid; }
+
     private:
-        bool CheckEof()
+        bool CheckEof(uint32_t offset = 1)
         {
-            if (m_cursor >= m_end)
+            if (m_cursor > (m_end - offset))
             {
                 m_nextError = TomlReadError::Eof;
                 return false;
@@ -144,15 +153,16 @@ namespace he
                     case '\0':
                         --m_cursor;
                         return TomlToken::Eof;
+                    case '\r':
                     case '\n':
-                        ++m_line;
-                        m_nextLineStart = m_cursor;
-                        [[fallthrough]];
+                        --m_cursor;
+                        if (!SkipNewline())
+                            return TomlToken::Error;
+                        break;
                     case ' ':
                     case '\t':
                     case '\v':
                     case '\f':
-                    case '\r':
                         ++m_nextTokenStart;
                         break; // continue the loop to search for the next token
                     case '0':
@@ -174,6 +184,7 @@ namespace he
                     case '\'':
                         return LexLiteralString();
                     case '#':
+                        ++m_nextTokenStart;
                         return LexComment();
                     case '{':
                         return TomlToken::OpenCurlyBracket;
@@ -288,14 +299,28 @@ namespace he
 
         TomlToken LexBasicString()
         {
+            return LexGenericString('"', true);
+        }
+
+        TomlToken LexLiteralString()
+        {
+            return LexGenericString('\'', false);
+        }
+
+        TomlToken LexGenericString(char quote, bool decodeEscapeCharacters)
+        {
             if (!CheckEof())
                 return TomlToken::Error;
 
+            m_decodedString.Clear();
+
+            // Check opening quotes for multiline string. We've already consumed one quote to get
+            // here, so we check for a second and third quote.
             bool isMultiline = false;
-            if (*m_cursor == '"')
+            if (*m_cursor == quote)
             {
                 ++m_cursor;
-                if (m_cursor < m_end && *m_cursor == '"')
+                if (m_cursor < m_end && *m_cursor == quote)
                 {
                     ++m_cursor;
                     isMultiline = true;
@@ -307,76 +332,224 @@ namespace he
                 }
             }
 
-            uint32_t quoteCount = 0;
-            char lastCh = '\0';
+            if (!CheckEof())
+                return TomlToken::Error;
+
+            // Skip a single newline if it immediately follows the opening of a multiline string
+            if (isMultiline)
+            {
+                if (!SkipNewline())
+                    return TomlToken::Error;
+            }
+
+            // Decode the string into our buffer
             while (true)
             {
                 if (!CheckEof())
                     return TomlToken::Error;
 
+                // Unescaped newlines are allowed in multiline strings.
+                // Here we also normalize `\r\n` sequences to `\n`.
+                if (isMultiline && (*m_cursor == '\r' || *m_cursor == '\n'))
+                {
+                    if (!SkipNewline())
+                        return TomlToken::Error;
+
+                    m_decodedString.PushBack('\n');
+                    continue;
+                }
+
                 char ch = *m_cursor++;
 
-                if (ch < ' ' && ch != '\t' && (ch != '\n' || isMultiline) && (ch != '\r' || isMultiline))
+                // Tab characters are explicitly allowed.
+                if (ch == '\t')
+                {
+                    m_decodedString.PushBack('\t');
+                    continue;
+                }
+
+                // Unescaped control characters, except for the special cases handled above, are
+                // not allowed in strings.
+                if (ch < '\x20' || ch == '\x7F')
                 {
                     m_nextError = TomlReadError::InvalidToken;
                     return TomlToken::Error;
                 }
 
-                if (ch == '"' && lastCh != '\\')
+                // Check for string ending quotes. For multiline strings you can actually put
+                // literal quotes in the string. Only a series of three quotes (""") ends it.
+                if (ch == quote)
                 {
-                    ++quoteCount;
-                    if (!isMultiline || quoteCount == 3)
+                    if (!isMultiline)
                         return TomlToken::String;
-                }
-                else
-                {
-                    quoteCount = 0;
+
+                    if (m_cursor < m_end && *m_cursor == quote)
+                    {
+                        ++m_cursor;
+
+                        if (m_cursor < m_end && *m_cursor == quote)
+                        {
+                            ++m_cursor;
+                            return TomlToken::String;
+                        }
+                        m_decodedString.PushBack(quote);
+                    }
+                    m_decodedString.PushBack(quote);
+                    continue;
                 }
 
-                lastCh = ch;
+                // Handle escaped characters
+                if (decodeEscapeCharacters && ch == '\\')
+                {
+                    if (!CheckEof())
+                        return TomlToken::Error;
+
+                    switch (*m_cursor)
+                    {
+                        case 'b': m_decodedString.PushBack('\b'); ++m_cursor; break;
+                        case 't': m_decodedString.PushBack('\t'); ++m_cursor; break;
+                        case 'n': m_decodedString.PushBack('\n'); ++m_cursor; break;
+                        case 'f': m_decodedString.PushBack('\f'); ++m_cursor; break;
+                        case 'r': m_decodedString.PushBack('\r'); ++m_cursor; break;
+                        case 'e': m_decodedString.PushBack('\x1B'); ++m_cursor; break;
+                        case '"': m_decodedString.PushBack('"'); ++m_cursor; break;
+                        case '\\': m_decodedString.PushBack('\\'); ++m_cursor; break;
+                        case '\r':
+                        case '\n':
+                        {
+                            // Escaped newlines indicate that we ignore all whitespace until the
+                            // next non-whitespace character
+                            while (m_cursor < m_end && IsWhitespace(*m_cursor))
+                            {
+                                if (*m_cursor == '\r' || *m_cursor == '\n')
+                                {
+                                    if (!SkipNewline())
+                                        return TomlToken::Error;
+                                }
+                                else
+                                {
+                                    ++m_cursor;
+                                }
+                            }
+                            break;
+                        }
+                        case 'x':
+                        {
+                            if (!LexUnicodeCodePoint(2))
+                                return TomlToken::Error;
+                            break;
+                        }
+                        case 'u':
+                        {
+                            if (!LexUnicodeCodePoint(4))
+                                return TomlToken::Error;
+                            break;
+                        }
+                        case 'U':
+                        {
+                            if (!LexUnicodeCodePoint(8))
+                                return TomlToken::Error;
+                            break;
+                        }
+                        default:
+                            m_nextError = TomlReadError::InvalidToken;
+                            return TomlToken::Error;
+                    }
+
+                    continue;
+                }
+
+                // Totally normal character that just gets pushed into our decode buffer
+                m_decodedString.PushBack(ch);
             }
         }
 
-        TomlToken LexLiteralString()
+        bool LexUnicodeCodePoint(uint32_t len)
         {
-            if (!CheckEof())
-                return TomlToken::Error;
+            if (!CheckEof(len))
+                return false;
 
-            bool isMultiline = false;
-            if (*m_cursor == '\'')
+            // Validate each of the characters and read their values into codepoint
+            uint32_t codepoint = 0;
+            for (uint32_t i = 0; i < len; ++i)
             {
+                if (!IsHex(m_cursor[i]))
+                {
+                    m_nextError = TomlReadError::InvalidToken;
+                    return false;
+                }
+                codepoint = (codepoint << 4) + HexToNibble(m_cursor[i]);
+            }
+
+            // Surrogate pairs are not allowed
+            if (codepoint >= 0xD800 && codepoint <= 0xDFFF)
+            {
+                m_nextError = TomlReadError::InvalidToken;
+                return false;
+            }
+
+            // Valid Unicode range for TOML is <= 0x10FFFF
+            if (codepoint > 0x10FFFF)
+            {
+                m_nextError = TomlReadError::InvalidToken;
+                return false;
+            }
+
+            m_cursor += len;
+
+            if (codepoint <= 0x7F)
+            {
+                m_decodedString.PushBack(static_cast<uint8_t>(codepoint));
+            }
+            else if (codepoint <= 0x7FF)
+            {
+                m_decodedString.PushBack(static_cast<uint8_t>(0xC0 | (codepoint >> 6)));
+                m_decodedString.PushBack(static_cast<uint8_t>(0x80 | (codepoint & 0x3F)));
+            }
+            else if (codepoint <= 0xFFFF)
+            {
+                m_decodedString.PushBack(static_cast<uint8_t>(0xE0 | (codepoint >> 12)));
+                m_decodedString.PushBack(static_cast<uint8_t>(0x80 | ((codepoint >> 6) & 0x3F)));
+                m_decodedString.PushBack(static_cast<uint8_t>(0x80 | (codepoint & 0x3F)));
+            }
+            else
+            {
+                m_decodedString.PushBack(static_cast<uint8_t>(0xF0 | (codepoint >> 18)));
+                m_decodedString.PushBack(static_cast<uint8_t>(0x80 | ((codepoint >> 12) & 0x3F)));
+                m_decodedString.PushBack(static_cast<uint8_t>(0x80 | ((codepoint >> 6) & 0x3F)));
+                m_decodedString.PushBack(static_cast<uint8_t>(0x80 | (codepoint & 0x3F)));
+            }
+
+            return true;
+        }
+
+        bool SkipNewline()
+        {
+            if (*m_cursor == '\r')
+            {
+                ++m_cursor; // skip '\r'
+                if (!CheckEof() || *m_cursor != '\n')
+                {
+                    m_nextError = TomlReadError::InvalidToken;
+                    return false;
+                }
+            }
+
+            if (*m_cursor == '\n')
+            {
+                if (m_newlinesAreInvalid)
+                {
+                    m_nextError = TomlReadError::InvalidToken;
+                    return false;
+                }
+
                 ++m_cursor;
-                if (m_cursor < m_end && *m_cursor == '\'')
-                {
-                    ++m_cursor;
-                    isMultiline = true;
-                }
-                else
-                {
-                    // empty string
-                    return TomlToken::String;
-                }
+                ++m_line;
+                m_nextLineStart = m_cursor;
+                m_nextTokenStart = m_cursor;
             }
 
-            uint32_t quoteCount = 0;
-            while (true)
-            {
-                if (!CheckEof())
-                    return TomlToken::Error;
-
-                char ch = *m_cursor++;
-
-                if (ch == '\'')
-                {
-                    ++quoteCount;
-                    if (!isMultiline || quoteCount == 3)
-                        return TomlToken::String;
-                }
-                else
-                {
-                    quoteCount = 0;
-                }
-            }
+            return true;
         }
 
         TomlToken LexComment()
@@ -434,10 +607,13 @@ namespace he
         const char* m_lineStart{ nullptr };
         const char* m_nextLineStart{ nullptr };
 
+        uint32_t m_newlinesAreInvalid{ 0 };
+
         TomlReadError m_nextError{ TomlReadError::None };
 
         uint32_t m_line{ 1 };
         TomlToken m_nextToken{ TomlToken::None };
+        String m_decodedString{};
     };
 
     // --------------------------------------------------------------------------------------------
@@ -530,6 +706,14 @@ namespace he
             return NextDecl();
         }
 
+        [[nodiscard]] bool TryConsumeOnly(TomlToken expected)
+        {
+            if (!At(expected))
+                return false;
+
+            return Next();
+        }
+
         [[nodiscard]] bool Consume(TomlToken expected)
         {
             if (!Expect(expected))
@@ -538,21 +722,67 @@ namespace he
             return NextDecl();
         }
 
+        [[nodiscard]] bool ConsumeOnly(TomlToken expected)
+        {
+            if (!Expect(expected))
+                return false;
+
+            return Next();
+        }
+
         [[nodiscard]] bool ConsumeKeyPath()
         {
+            m_lexer.PushNewlinesInvalid();
+
             m_pathBuffer.Clear();
-            do
+            while (!AtEnd())
             {
-                if (!At(TomlToken::Identifier) && !At(TomlToken::String))
+                if (!At(TomlToken::Identifier) && !At(TomlToken::String) && !At(TomlToken::Integer) && !At(TomlToken::Float))
                     return SetError(TomlReadError::InvalidToken);
 
-                m_pathBuffer.PushBack(m_token.text);
+                if ((At(TomlToken::Integer) || At(TomlToken::Float)) && m_token.text[0] == '-')
+                    return SetError(TomlReadError::InvalidToken);
 
-                if (!NextDecl())
-                    return false;
-            } while (TryConsume(TomlToken::Dot));
+                // Sometimes key names like `[[123.456]]` will lex as floats, so we have to
+                // tokenize the dots manually in that case.
+                if (At(TomlToken::Float))
+                {
+                    HE_ASSERT(!m_token.text.IsEmpty());
 
-            return true;
+                    // Tokenizes based on the dot
+                    const char* begin = m_token.text.Begin();
+                    const char* end = begin;
+                    while (begin < m_token.text.End())
+                    {
+                        end = String::Find(begin, '.');
+                        end = end ? end : m_token.text.End();
+
+                        m_pathBuffer.PushBack(StringView(begin, end));
+                        begin = end + 1;
+                    }
+
+                    const bool endsWithDot = m_token.text.Back() == '.';
+
+                    if (!NextDecl())
+                        return false;
+
+                    if (!endsWithDot && !TryConsume(TomlToken::Dot))
+                        break;
+                }
+                else
+                {
+                    m_pathBuffer.PushBack(m_token.text);
+
+                    if (!NextDecl())
+                        return false;
+
+                    if (!TryConsume(TomlToken::Dot))
+                        break;
+                }
+            }
+            m_lexer.PopNewlinesInvalid();
+
+            return !AtEnd();
         }
 
         bool ConsumeRootTable()
@@ -603,13 +833,23 @@ namespace he
 
         [[nodiscard]] bool ConsumeTable()
         {
-            if (!Consume(TomlToken::OpenSquareBracket))
+            m_lexer.PushNewlinesInvalid();
+
+            if (!ConsumeOnly(TomlToken::OpenSquareBracket))
                 return false;
 
             const bool isArray = TryConsume(TomlToken::OpenSquareBracket);
 
             if (!ConsumeKeyPath())
                 return false;
+
+            if (!ConsumeOnly(TomlToken::CloseSquareBracket))
+                return false;
+
+            if (isArray && !ConsumeOnly(TomlToken::CloseSquareBracket))
+                return false;
+
+            m_lexer.PopNewlinesInvalid();
 
             if (!m_handler->StartTable(m_pathBuffer, isArray))
                 return SetError(TomlReadError::Cancelled);
@@ -637,16 +877,19 @@ namespace he
                 return SetError(TomlReadError::Cancelled);
 
             uint32_t keyCount = 0;
-            do
+            while (!AtEnd() && !At(TomlToken::CloseCurlyBracket))
             {
-                if (TryConsume(TomlToken::CloseCurlyBracket))
-                    break;
-
                 if (!ConsumeInlineTableEntry())
                     return false;
 
                 ++keyCount;
-            } while (TryConsume(TomlToken::Comma));
+
+                if (!TryConsume(TomlToken::Comma))
+                    break;
+            }
+
+            if (!Consume(TomlToken::CloseCurlyBracket))
+                return false;
 
             if (!m_handler->EndTable(keyCount))
                 return SetError(TomlReadError::Cancelled);
@@ -686,16 +929,19 @@ namespace he
                 return SetError(TomlReadError::Cancelled);
 
             uint32_t count = 0;
-            do
+            while (!AtEnd() && !At(TomlToken::CloseSquareBracket))
             {
-                if (TryConsume(TomlToken::CloseSquareBracket))
-                    break;
-
                 if (!ConsumeValue())
                     return false;
 
                 ++count;
-            } while (!AtEnd() && TryConsume(TomlToken::Comma));
+
+                if (!TryConsume(TomlToken::Comma))
+                    break;
+            };
+
+            if (!Consume(TomlToken::CloseSquareBracket))
+                return false;
 
             if (!m_handler->EndArray(count))
                 return SetError(TomlReadError::Cancelled);
@@ -709,7 +955,7 @@ namespace he
             {
                 case TomlToken::Float:
                 {
-                    const double value = m_token.text.ToFloat<double>();
+                    const double value = String::ToFloat<double>(m_token.text.Begin(), m_token.text.End());
 
                     if (!m_handler->Float(value))
                         return SetError(TomlReadError::Cancelled);
@@ -720,7 +966,7 @@ namespace he
                 {
                     if (m_token.text[0] == '-')
                     {
-                        const int64_t value = m_token.text.ToInteger<int64_t>();
+                        const int64_t value = String::ToInteger<int64_t>(m_token.text.Begin(), m_token.text.End());
                         if (!m_handler->Int(value))
                             return SetError(TomlReadError::Cancelled);
                     }
@@ -798,7 +1044,8 @@ namespace he
         TomlLexer::Token m_token{};
         TomlReadResult m_result{};
         TomlReader::Handler* m_handler{ nullptr };
-        Vector<StringView> m_pathBuffer{};
+
+        Vector<String> m_pathBuffer{};
     };
 
     // --------------------------------------------------------------------------------------------
@@ -820,7 +1067,6 @@ namespace he
             case TomlReadError::Eof: return "Eof";
             case TomlReadError::InvalidBom: return "InvalidBom";
             case TomlReadError::InvalidToken: return "InvalidToken";
-            case TomlReadError::InvalidValue: return "InvalidValue";
         }
 
         return "<unknown>";

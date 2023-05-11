@@ -1345,3 +1345,19 @@ HE_TEST(core, vector, EmplaceBack)
         //v.EmplaceBack();
     }
 }
+
+// ------------------------------------------------------------------------------------------------
+HE_TEST(core, vector, fmt)
+{
+    {
+        Vector<int> v{ 1, 2, 3, 4, 5 };
+        const String str = Format("{}", v);
+        HE_EXPECT_EQ(str, "(1, 2, 3, 4, 5)");
+    }
+
+    {
+        Vector<String> v{ "Hello", "there", "partner" };
+        const String str = Format("{}", v);
+        HE_EXPECT_EQ(str, "(Hello, there, partner)");
+    }
+}

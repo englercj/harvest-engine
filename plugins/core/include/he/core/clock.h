@@ -56,7 +56,7 @@ namespace he
     };
 
     // --------------------------------------------------------------------------------------------
-    // Implementations
+    // Clock Types
 
     /// Nanoseconds that have passed since the Unix epoch (Jan 1 1970 00:00:00 UTC).
     ///
@@ -188,19 +188,15 @@ namespace he
     /// \return The converted Posix timespec value.
     timespec PosixTimeFromDuration(Duration duration);
 
-    /// Converts a UTC date-time string to a \ref SystemTime value. The string is parsed using the
-    /// specified format string. The format string is the same as the one used by the C++ standard
-    /// library function [`get_time`](https://en.cppreference.com/w/cpp/io/manip/get_time).
-    ///
-    /// \param[in] format The format string to use for parsing.
-    /// \param[in] value The date-time string to parse.
-    /// \return The converted \ref SystemTime value.
-    SystemTime SystemTimeFromString(const char* format, const char* value, bool isUtc);
-
     /// Checks if Daylight Saving Time is active right now in the current locale.
     ///
     /// \return `true` if Daylight Saving Time is active, `false` otherwise.
     bool IsDaylightSavingTimeActive();
+
+    /// Gets the local timezone offset as a \ref Duration.
+    ///
+    /// \return The local timezone offset \ref Duration.
+    Duration GetLocalTimezoneOffset();
 
     // --------------------------------------------------------------------------------------------
     // User-defined literals

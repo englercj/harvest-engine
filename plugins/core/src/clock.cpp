@@ -6,13 +6,7 @@
 #include "he/core/compiler.h"
 #include "he/core/string.h"
 
-#include <iomanip>
 #include <time.h>
-#include <sstream>
-
-#if HE_COMPILER_MSVC
-    #define timegm _mkgmtime
-#endif
 
 namespace he
 {
@@ -47,35 +41,5 @@ namespace he
         ts.tv_nsec = duration.val % 1000000000;
         ts.tv_sec = static_cast<time_t>(duration.val / 1000000000);
         return ts;
-    }
-
-    SystemTime SystemTimeFromString(const char* format, const char* value, bool isUtc)
-    {
-        struct tm tm{};
-        tm.tm_isdst = -1;
-
-        std::istringstream ss(value);
-        ss >> std::get_time(&tm, format);
-
-        const time_t timeValue = isUtc ? timegm(&tm) : mktime(&tm);
-
-        SystemTime time{};
-        if (timeValue > 0)
-        {
-            time.val = static_cast<uint64_t>(timeValue) * Seconds::Ratio;
-        }
-        return time;
-    }
-
-    bool IsDaylightSavingTimeActive()
-    {
-        const time_t t = time(nullptr);
-        struct tm tm{};
-    #if HE_COMPILER_MSVC
-        localtime_s(&tm, &t);
-    #else
-        localtime_r(&t, &tm);
-    #endif
-        return tm.tm_isdst > 0;
     }
 }

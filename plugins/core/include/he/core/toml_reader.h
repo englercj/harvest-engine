@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include "he/core/clock.h"
 #include "he/core/span.h"
 #include "he/core/string.h"
 #include "he/core/string_view.h"
@@ -11,12 +12,18 @@ namespace he
 {
     enum class TomlReadError : uint8_t
     {
-        None,           ///< No error.
-        Cancelled,      ///< The read was cancelled by the handler.
-        EmptyFile,      ///< The input TOML data was empty.
-        Eof,            ///< The input ended unexpectedly.
-        InvalidBom,     ///< The utf-8 Byte Order Mark (BOM) of the file is not valid.
-        InvalidToken,   ///< Encountered an unexpected token in the file.
+        None,                   ///< No error.
+        Cancelled,              ///< The read was cancelled by the handler.
+        UnexpectedEof,          ///< The input ended unexpectedly.
+        InvalidBom,             ///< The utf-8 Byte Order Mark (BOM) of the file is not valid.
+        InvalidNewline,         ///< A carriage return without a following newline (`\r` with no subsequent `\n`).
+        InvalidUnicode,         ///< A unicode sequence (`\x12`, `\u1234`, `\U12345678`) was invalid.
+        InvalidEscapeSequence,  ///< An escape sequence (`\n`, `\t`, `\"`, etc) was invalid.
+        InvalidControlChar,     ///< A control character was encountered somewhere it wasn't expected (like in a string).
+        InvalidKey,             ///< The name of a key contains invalid characters.
+        InvalidDateTime,        ///< The format of a date or time value is invalid.
+
+        InvalidToken,           ///< Encountered an unexpected token in the file.
     };
 
     struct TomlReadResult
@@ -24,6 +31,10 @@ namespace he
         TomlReadError error{ TomlReadError::None };
         uint32_t line{ 0 };
         uint32_t column{ 0 };
+
+        /// When error is InvalidToken, this was the character that was expected instead.
+        /// Otherwise this value is just '\0'.
+        char expected{ '\0' };
 
         [[nodiscard]] explicit operator bool() const { return error == TomlReadError::None; }
     };
@@ -47,7 +58,8 @@ namespace he
             virtual bool Uint(uint64_t value) = 0;
             virtual bool Float(double value) = 0;
             virtual bool String(StringView value) = 0;
-            // TODO: DateTime support
+            virtual bool DateTime(SystemTime value) = 0;
+            virtual bool Time(Duration value) = 0;
 
             // Tables
             virtual bool StartTable(Span<const he::String> path, bool isArray) = 0;

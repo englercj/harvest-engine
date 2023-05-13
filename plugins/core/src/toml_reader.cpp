@@ -1,20 +1,13 @@
 // Copyright Chad Engler
 
-// TODO: Unreleased features as of v1.0.0 that are not yet supported:
-// - Clarify Unicode and UTF-8 references.
-// - Clarify where and how dotted keys define tables.
-// - Add new \e shorthand for the escape character.
-// - Add \x00 notation to basic strings.
-// - Seconds in Date-Time and Time values are now optional.
-// - Allow non-English scripts in unquoted (bare) keys
-// - Clarify newline normalization in multi-line literal strings.
-
 #include "he/core/toml_reader.h"
 
 #include "he/core/ascii.h"
 #include "he/core/assert.h"
 #include "he/core/enum_ops.h"
+#include "he/core/limits.h"
 #include "he/core/string_fmt.h"
+#include "he/core/utf8.h"
 #include "he/core/vector.h"
 
 #include <time.h>
@@ -118,11 +111,6 @@ namespace he
             }
         }
 
-        // [[nodiscard]] bool At(char ch) const
-        // {
-        //     return !AtEnd() && *m_cursor == ch;
-        // }
-
         [[nodiscard]] bool Consume(char ch)
         {
             if (AtEnd())
@@ -153,9 +141,15 @@ namespace he
             return SetError(TomlReadError::InvalidToken);
         }
 
-        [[nodiscard]] static bool IsValidInKey(char ch)
+        [[nodiscard]] static bool IsOneOf(char ch, const char* chars)
         {
-            return IsAlphaNum(ch) || ch == '_' || ch == '-';
+            while (*chars)
+            {
+                if (ch == *chars++)
+                    return true;
+            }
+
+            return false;
         }
 
     private:
@@ -212,25 +206,31 @@ namespace he
             {
                 case '\r':
                 case '\n':
-                    return;
+                    return true;
                 case '#':
                     return ParseComment();
                 case '[':
                 {
                     if (!ParseTableHeader())
                         return false;
+
                     SkipSpaces();
+
                     if (!AtEnd() && *m_cursor == '#')
                         return ParseComment();
-                    break;
+
+                    return true;
                 }
                 default:
                     if (!ParseKeyValuePair())
                         return false;
 
                     SkipSpaces();
+
                     if (!AtEnd() && *m_cursor == '#')
                         return ParseComment();
+
+                    return true;
             }
         }
 
@@ -261,7 +261,7 @@ namespace he
                     return false;
             }
 
-            m_handler->StartTable(m_pathBuffer, isArray);
+            m_handler->Table(m_pathBuffer, isArray);
             return true;
         }
 
@@ -311,8 +311,45 @@ namespace he
                 {
                     const char* begin = m_cursor;
 
-                    while (!AtEnd() && IsValidInKey(*m_cursor))
-                        ++m_cursor;
+                    while (!AtEnd() && !IsWhitespace(*m_cursor) && !IsOneOf(*m_cursor, "].="))
+                    {
+                        const uint32_t ucc = FromUTF8(m_cursor);
+
+                        if (ucc == static_cast<uint32_t>(-1))
+                            return SetError(TomlReadError::InvalidKey);
+
+                        const bool isValid =
+                            // a-z A-Z 0-9 - _
+                            (ucc >= 'a' && ucc <= 'z')
+                            || (ucc >= 'A' && ucc <= 'Z')
+                            || (ucc >= '0' && ucc <= '9')
+                            || (ucc == '_' || ucc == '-')
+                            // non-symbol chars in Latin block
+                            || (ucc >= 0xC0 && ucc <= 0xD6)
+                            || (ucc >= 0xD8 && ucc <= 0xF6)
+                            || (ucc >= 0xF8 && ucc <= 0xFF)
+                            // this excludes GREEK QUESTION MARK, which is basically a semi-colon
+                            || (ucc >= 0x0100 && ucc <= 0x02FF)
+                            || (ucc >= 0x0300 && ucc <= 0x037D)
+                            || (ucc >= 0x037F && ucc <= 0x1FFF)
+                            // include combining chars used in some languages
+                            || (ucc >= 0x200C && ucc <= 0x200D)
+                            || (ucc >= 0x203F && ucc <= 0x2040)
+                            // this excludes arrows, blocks and the like
+                            || (ucc >= 0x2070 && ucc <= 0x218F)
+                            || (ucc >= 0x2C00 && ucc <= 0x2FEF)
+                            // skip 2FF0-3000 ideographic up/down markers and spaces
+                            || (ucc >= 0x3001 && ucc <= 0xD7FF)
+                            // skip D800-D999 surrogate block, E000-F8FF Private Use area,
+                            // FDD0-FDEF intended for process-internal use (unicode)
+                            || (ucc >= 0xF900 && ucc <= 0xFDCF)
+                            || (ucc >= 0xFDF0 && ucc <= 0xFFFD)
+                            // all chars outside BMP range, excluding Private Use planes
+                            || (ucc >= 0x10000 && ucc <= 0xEFFFF);
+
+                        if (!isValid)
+                            return SetError(TomlReadError::InvalidKey);
+                    }
 
                     if (begin == m_cursor)
                         return SetError(TomlReadError::InvalidKey);
@@ -325,8 +362,11 @@ namespace he
 
                 SkipSpaces();
 
+                if (!AtEnd() && IsWhitespace(*m_cursor))
+                    return SetError(TomlReadError::InvalidKey);
+
                 if (AtEnd() || *m_cursor != '.')
-                    break;
+                    return true;
 
                 if (!Consume('.'))
                     return false;
@@ -341,7 +381,7 @@ namespace he
             switch (*m_cursor)
             {
                 case '[':
-                    return ParseInlineArray();
+                    return ParseArray();
                 case '{':
                     return ParseInlineTable();
                 case '"':
@@ -371,80 +411,83 @@ namespace he
                     return ParseDateTimeOrNum();
                 case '+':
                 case '-':
+                case 'i':
+                case 'n':
                     return ParseNum();
                 default:
                     return SetError(TomlReadError::InvalidToken);
             }
         }
 
-        bool ParseInlineArray()
+        template <bool IsArray>
+        bool ParseInlineStructure()
         {
-            if (!Consume('['))
+            constexpr char OpenBrace = IsArray ? '[' : '{';
+            constexpr char CloseBrace = IsArray ? ']' : '}';
+
+            if (!Consume(OpenBrace))
                 return false;
 
-            m_handler->StartArray();
+            if constexpr (IsArray)
+                m_handler->StartArray();
+            else
+                m_handler->StartInlineTable();
 
             SkipSpacesAndNewlines();
 
             uint32_t count = 0;
             while (!AtEnd())
             {
-                if (*m_cursor == ']')
+                if (*m_cursor == CloseBrace)
                 {
-                    if (!Consume(']'))
+                    if (!Consume(CloseBrace))
                         return false;
 
-                    m_handler->EndArray(count);
+                    if constexpr (IsArray)
+                        m_handler->EndArray(count);
+                    else
+                        m_handler->EndInlineTable(count);
+
                     return true;
                 }
 
-                if (!ParseValue())
-                    return false;
+                if constexpr (IsArray)
+                {
+                    if (!ParseValue())
+                        return false;
+                }
+                else
+                {
+                    if (!ParseKeyValuePair())
+                        return false;
+                }
 
                 ++count;
                 SkipSpacesAndNewlines();
 
-                if (*m_cursor != ',' && *m_cursor != ']')
+                if (*m_cursor != ',' && *m_cursor != CloseBrace)
                     return SetError(TomlReadError::InvalidToken);
 
                 if (*m_cursor == ',')
+                {
+                    if (!Consume(','))
+                        return false;
+
                     SkipSpacesAndNewlines();
+                }
             }
+
+            return SetError(TomlReadError::UnexpectedEof);
+        }
+
+        bool ParseArray()
+        {
+            return ParseInlineStructure<true>();
         }
 
         bool ParseInlineTable()
         {
-            if (!Consume('{'))
-                return false;
-
-            m_handler->StartTable(m_pathBuffer, false);
-
-            SkipSpacesAndNewlines();
-
-            uint32_t count = 0;
-            while (!AtEnd())
-            {
-                if (*m_cursor == '}')
-                {
-                    if (!Consume('}'))
-                        return false;
-
-                    m_handler->EndTable(count);
-                    return true;
-                }
-
-                if (!ParseKeyValuePair())
-                    return false;
-
-                ++count;
-                SkipSpacesAndNewlines();
-
-                if (*m_cursor != ',' && *m_cursor != '}')
-                    return SetError(TomlReadError::InvalidToken);
-
-                if (*m_cursor == ',')
-                    SkipSpacesAndNewlines();
-            }
+            return ParseInlineStructure<false>();
         }
 
         bool ParseBasicString(String& dst, bool allowMultiline)
@@ -470,7 +513,7 @@ namespace he
             if (*m_cursor == quote)
             {
                 ++m_cursor;
-                if (allowMultiline && m_cursor < m_end && *m_cursor == quote)
+                if (allowMultiline && !AtEnd() && *m_cursor == quote)
                 {
                     ++m_cursor;
                     isMultiline = true;
@@ -530,11 +573,11 @@ namespace he
                     if (!isMultiline)
                         return true;
 
-                    if (m_cursor < m_end && *m_cursor == quote)
+                    if (!AtEnd() && *m_cursor == quote)
                     {
                         ++m_cursor;
 
-                        if (m_cursor < m_end && *m_cursor == quote)
+                        if (!AtEnd() && *m_cursor == quote)
                         {
                             ++m_cursor;
                             return true;
@@ -582,20 +625,32 @@ namespace he
                         }
                         case 'x':
                         {
+                            if (!Consume('x'))
+                                return false;
+
                             if (!ParseUnicodeCodePoint(dst, 2))
                                 return false;
+
                             break;
                         }
                         case 'u':
                         {
+                            if (!Consume('u'))
+                                return false;
+
                             if (!ParseUnicodeCodePoint(dst, 4))
                                 return false;
+
                             break;
                         }
                         case 'U':
                         {
+                            if (!Consume('U'))
+                                return false;
+
                             if (!ParseUnicodeCodePoint(dst, 8))
                                 return false;
+
                             break;
                         }
                         default:
@@ -902,7 +957,7 @@ namespace he
             }
 
             const bool isLeapYear = (year % 4 == 0) && ((year % 100 != 0) || (year % 400 == 0));
-            const auto maxDay = (month == 2)
+            const uint32_t maxDay = (month == 2)
                 ? (isLeapYear ? 29 : 28)
                 : ((month == 4 || month == 6 || month == 9 || month == 11) ? 30 : 31);
 
@@ -931,7 +986,7 @@ namespace he
             if (time == -1)
                 return SetError(TomlReadError::InvalidDateTime);
 
-            SystemTime dt{ (time + subseconds) * Seconds::Ratio };
+            SystemTime dt{ static_cast<uint64_t>((time + subseconds) * Seconds::Ratio) };
 
             // `mktime` gives us a value in local timezone, so we only need to modify it if the
             // timezone specified by the string is different than local. If we do need to adjust
@@ -969,41 +1024,83 @@ namespace he
             if (AtEnd())
                 return SetError(TomlReadError::UnexpectedEof);
 
-            // Check for special value formats
-            if (*m_cursor == '0')
+            switch (*m_cursor)
             {
-                if (!Consume('0'))
-                    return false;
-
-                if (AtEnd())
-                    return SetError(TomlReadError::UnexpectedEof);
-
-                if (*m_cursor == 'x')
+                case 'i': // inf
                 {
-                    if (!Consume('x'))
+                    const uint32_t slack = static_cast<uint32_t>(m_end - m_cursor);
+                    if (slack < 3)
+                        return SetError(TomlReadError::UnexpectedEof);
+
+                    if (m_cursor[1] == 'n' && m_cursor[2] == 'f')
+                    {
+                        const double value = Limits<double>::Infinity;
+                        m_handler->Float(isSigned ? -value : value);
+                        m_cursor += 3;
+                        return true;
+                    }
+
+                    return SetError(TomlReadError::InvalidToken);
+                }
+                case 'n': // nan
+                {
+                    const uint32_t slack = static_cast<uint32_t>(m_end - m_cursor);
+                    if (slack < 3)
+                        return SetError(TomlReadError::UnexpectedEof);
+
+                    if (m_cursor[1] == 'a' && m_cursor[2] == 'n')
+                    {
+                        const double value = Limits<double>::NaN;
+                        m_handler->Float(isSigned ? -value : value);
+                        m_cursor += 3;
+                        return true;
+                    }
+
+                    return SetError(TomlReadError::InvalidToken);
+                }
+                case '0': // 0x, 0o, 0b
+                {
+                    if (!Consume('0'))
                         return false;
 
-                    return ParseHexNum(isSigned);
+                    if (AtEnd())
+                    {
+                        if (isSigned)
+                            m_handler->Int(-0);
+                        else
+                            m_handler->Uint(0);
+                        return true;
+                    }
+
+                    if (*m_cursor == 'x')
+                    {
+                        if (!Consume('x'))
+                            return false;
+
+                        return ParseHexNum(isSigned);
+                    }
+
+                    if (*m_cursor == 'o')
+                    {
+                        if (!Consume('o'))
+                            return false;
+
+                        return ParseOctNum(isSigned);
+                    }
+
+                    if (*m_cursor == 'b')
+                    {
+                        if (!Consume('b'))
+                            return false;
+
+                        return ParseBinNum(isSigned);
+                    }
+
+                    [[fallthrough]]; // Fall through to decimal number parsing
                 }
-
-                if (*m_cursor == 'o')
-                {
-                    if (!Consume('o'))
-                        return false;
-
-                    return ParseOctNum(isSigned);
-                }
-
-                if (*m_cursor == 'b')
-                {
-                    if (!Consume('b'))
-                        return false;
-
-                    return ParseBinNum(isSigned);
-                }
+                default:
+                    return ParseDecNum(isSigned);
             }
-
-            return ParseDecNum(isSigned);
         }
 
         bool ParseDecNum(bool isSigned)
@@ -1012,37 +1109,97 @@ namespace he
                 return SetError(TomlReadError::UnexpectedEof);
 
             const char* begin = m_cursor;
+            const char* dot = nullptr;
+            const char* exp = nullptr;
+            const char* expSign = nullptr;
 
-            bool hasDot = false;
-            while (m_cursor < m_end && (IsNumeric(*m_cursor) || *m_cursor == '.'))
+            while (!AtEnd() && (IsNumeric(*m_cursor) || IsOneOf(*m_cursor, ".eE-+")))
             {
-                if (*m_cursor == '.')
+                switch (*m_cursor)
                 {
-                    // When true there are multiple dots which is not valid
-                    if (hasDot)
-                        return SetError(TomlReadError::InvalidNumber);
+                    case '.':
+                    {
+                        if (dot)
+                            return SetError(TomlReadError::InvalidNumber);
 
-                    hasDot = true;
+                        dot = m_cursor;
+                        break;
+                    }
+                    case 'e':
+                    case 'E':
+                    {
+                        if (exp)
+                            return SetError(TomlReadError::InvalidNumber);
+
+                        exp = m_cursor;
+                        break;
+                    }
+                    case '-':
+                    case '+':
+                    {
+                        if (!exp || expSign)
+                            return SetError(TomlReadError::InvalidNumber);
+
+                        expSign = m_cursor;
+                        break;
+                    }
                 }
 
                 ++m_cursor;
             }
 
-            if (hasDot)
+            if (dot || exp)
             {
+                // Include the leading zero for parsing to a float.
+                if (begin[-1] == '0')
+                    --begin;
+
+                // Cannot start with a dot or exponent
+                if (dot == begin || exp == begin)
+                    return SetError(TomlReadError::InvalidNumber);
+
+                // Leading zeroes only allowed when followed by a decimal or exponent
+                if (*begin == '0' && dot != (begin + 1) && exp != (begin + 1))
+                    return SetError(TomlReadError::InvalidNumber);
+
+                // The integral part of the float cannot be empty
+                if (!IsNumeric(*begin) && dot == (begin + 1))
+                    return SetError(TomlReadError::InvalidNumber);
+
+                // The number cannot end with the dot, exponent, or sign
+                if (dot == (m_cursor - 1) || exp == (m_cursor - 1) || expSign == (m_cursor - 1))
+                    return SetError(TomlReadError::InvalidNumber);
+
+                // exponent cannot be before the dot, and the dot cannot be next to the exponent
+                if (exp && (exp < dot || (dot + 1) == exp))
+                    return SetError(TomlReadError::InvalidNumber);
+
                 const double sign = isSigned ? -1.0 : 1.0;
                 const double value = String::ToFloat<double>(begin, m_cursor);
                 m_handler->Float(sign * value);
             }
-            else if (isSigned)
-            {
-                const int64_t value = String::ToInteger<int64_t>(begin, m_cursor);
-                m_handler->Int(-value);
-            }
             else
             {
-                const uint64_t value = String::ToInteger<uint64_t>(begin, m_cursor);
-                m_handler->Uint(value);
+                if (begin[-1] == '0')
+                {
+                    // Leading zeroes are not allowed for integers
+                    if (begin != m_cursor)
+                        return SetError(TomlReadError::InvalidNumber);
+
+                    --begin;
+                }
+
+                if (isSigned)
+                {
+                    --begin;
+                    const int64_t value = String::ToInteger<int64_t>(begin, m_cursor);
+                    m_handler->Int(value);
+                }
+                else
+                {
+                    const uint64_t value = String::ToInteger<uint64_t>(begin, m_cursor);
+                    m_handler->Uint(value);
+                }
             }
 
             return true;

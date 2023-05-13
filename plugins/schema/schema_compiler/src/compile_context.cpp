@@ -2,7 +2,6 @@
 
 #include "compile_context.h"
 
-#include "utf8_helpers.h"
 
 #include "he/core/ascii.h"
 #include "he/core/assert.h"
@@ -13,6 +12,7 @@
 #include "he/core/string.h"
 #include "he/core/string_fmt.h"
 #include "he/core/types.h"
+#include "he/core/utf8.h"
 
 namespace he::schema
 {

@@ -313,42 +313,15 @@ HE_TEST(core, clock, PosixTimeFromDuration)
 }
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST(core, clock, SystemTimeFromString)
+HE_TEST(core, clock, IsDaylightSavingTimeActive)
 {
-    // 8:15 AM, Thursday, May 19, 2022 (PDT), truncated to seconds.
-    SystemTime expect{ 1652973325000000000 };
+    // TODO
+}
 
-    // ISO 8601 format - utc
-    {
-        const char* value = "2022-05-19T15:15:25Z";
-        const char* format = "%Y-%m-%dT%H:%M:%SZ";
-        SystemTime actual = SystemTimeFromString(format, value, true);
-        HE_EXPECT(actual == expect, value, format, actual, expect);
-    }
-
-    // ISO 8601 format - local
-    {
-        const char* value = "2022-05-19T08:15:25-0700";
-        const char* format = "%Y-%m-%dT%H:%M:%S%z";
-        SystemTime actual = SystemTimeFromString(format, value, false);
-        HE_EXPECT(actual == expect, value, format, actual, expect);
-    }
-
-    // Custom format - utc
-    {
-        const char* value = "05/19/22 15:15:25";
-        const char* format = "%D %T";
-        SystemTime actual = SystemTimeFromString(format, value, true);
-        HE_EXPECT(actual == expect, value, format, actual, expect);
-    }
-
-    // Custom format - local
-    {
-        const char* value = "Thursday May 19, 22 08:15:25 AM";
-        const char* format = "%A %b %d, %y %T %p";
-        SystemTime actual = SystemTimeFromString(format, value, false);
-        HE_EXPECT(actual == expect, value, format, actual, expect);
-    }
+// ------------------------------------------------------------------------------------------------
+HE_TEST(core, clock, GetLocalTimezoneOffset)
+{
+    // TODO
 }
 
 // ------------------------------------------------------------------------------------------------

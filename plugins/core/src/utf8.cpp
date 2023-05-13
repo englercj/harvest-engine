@@ -1,19 +1,20 @@
 // Copyright Chad Engler
 
-#include "utf8_helpers.h"
+#include "he/core/utf8.h"
 
 #include "he/core/assert.h"
 #include "he/core/compiler.h"
 
-namespace he::schema
+namespace he
 {
-    int ToUTF8(he::String& dst, uint32_t ucc)
+    uint32_t ToUTF8(he::String& dst, uint32_t ucc)
     {
         // Top bit can't be set.
-        HE_ASSERT((ucc & 0x80000000) == 0);
+        if (!HE_VERIFY((ucc & 0x80000000) == 0, HE_MSG("Invalid unicode code point")))
+            return 0;
 
         // 6 possible encodings: http://en.wikipedia.org/wiki/UTF-8
-        for (int i = 0; i < 6; ++i)
+        for (uint32_t i = 0; i < 6; ++i)
         {
             // Max bits this encoding can represent.
             uint32_t max_bits = 6 + (i * 5) + static_cast<uint32_t>(!i);
@@ -25,7 +26,7 @@ namespace he::schema
 
                 // Store bytes
                 dst += static_cast<char>((0xFE << (max_bits - remain_bits)) | (ucc >> remain_bits));
-                for (int j = i - 1; j >= 0; --j)
+                for (uint32_t j = i - 1; j >= 0; --j)
                 {
                     dst += static_cast<char>(((ucc >> (j * 6)) & 0x3F) | 0x80);
                 }
@@ -35,13 +36,15 @@ namespace he::schema
             }
         }
 
-        HE_ASSERT(false, HE_MSG("Invalid unicode code point"));
-        HE_UNREACHABLE();
+        HE_VERIFY(false, HE_MSG("Invalid unicode code point"));
+        return 0;
     }
 
-    int FromUTF8(const char*& in)
+    uint32_t FromUTF8(const char*& in)
     {
-        int len = 0;
+        constexpr uint32_t InvalidCodePoint = static_cast<uint32_t>(-1);
+
+        uint32_t len = 0;
 
         // Count leading 1 bits.
         for (uint32_t mask = 0x80; mask >= 0x04; mask >>= 1)
@@ -54,23 +57,23 @@ namespace he::schema
 
         // Bit after leading 1's must be 0.
         if ((static_cast<uint8_t>(*in) << len) & 0x80)
-            return -1;
+            return InvalidCodePoint;
 
         if (!len)
-            return *in++;
+            return static_cast<uint32_t>(*in++);
 
         // UTF-8 encoded values with a length are between 2 and 4 bytes.
         if (len < 2 || len > 4)
-            return -1;
+            return InvalidCodePoint;
 
         // Grab initial bits of the code.
-        int ucc = *in++ & ((1 << (7 - len)) - 1);
+        uint32_t ucc = *in++ & ((1 << (7 - len)) - 1);
 
-        for (int i = 0; i < len - 1; i++)
+        for (uint32_t i = 0; i < len - 1; i++)
         {
             // Upper bits must 1 0.
             if ((*in & 0xC0) != 0x80)
-                return -1;
+                return InvalidCodePoint;
 
             ucc <<= 6;
             ucc |= *in++ & 0x3F; // Grab 6 more bits of the code.
@@ -78,7 +81,7 @@ namespace he::schema
 
         // UTF-8 cannot encode values between 0xD800 and 0xDFFF (reserved for UTF-16 surrogate pairs).
         if (ucc >= 0xD800 && ucc <= 0xDFFF)
-            return -1;
+            return InvalidCodePoint;
 
         // UTF-8 must represent code points in their shortest possible encoding.
         switch (len)
@@ -86,17 +89,17 @@ namespace he::schema
             case 2:
                 // Two bytes of UTF-8 can represent code points from U+0080 to U+07FF.
                 if (ucc < 0x0080 || ucc > 0x07FF)
-                    return -1;
+                    return InvalidCodePoint;
                 break;
             case 3:
                 // Three bytes of UTF-8 can represent code points from U+0800 to U+FFFF.
                 if (ucc < 0x0800 || ucc > 0xFFFF)
-                    return -1;
+                    return InvalidCodePoint;
                 break;
             case 4:
                 // Four bytes of UTF-8 can represent code points from U+10000 to U+10FFFF.
                 if (ucc < 0x10000 || ucc > 0x10FFFF)
-                    return -1;
+                    return InvalidCodePoint;
                 break;
         }
 
@@ -107,7 +110,7 @@ namespace he::schema
     {
         while (*str)
         {
-            if (FromUTF8(str) < 0)
+            if (FromUTF8(str) == static_cast<uint32_t>(-1))
                 return false;
         }
 

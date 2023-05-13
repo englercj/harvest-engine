@@ -62,9 +62,12 @@ namespace he
             virtual bool Time(Duration value) = 0;
 
             // Tables
-            virtual bool StartTable(Span<const he::String> path, bool isArray) = 0;
+            virtual bool Table(Span<const he::String> path, bool isArray) = 0;
             virtual bool Key(Span<const he::String> path)= 0;
-            virtual bool EndTable(uint32_t keyCount) = 0;
+
+            // Inline Tables
+            virtual bool StartInlineTable() = 0;
+            virtual bool EndInlineTable(uint32_t length) = 0;
 
             // Arrays
             virtual bool StartArray() = 0;

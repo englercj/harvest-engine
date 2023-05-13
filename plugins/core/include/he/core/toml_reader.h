@@ -22,7 +22,7 @@ namespace he
         InvalidControlChar,     ///< A control character was encountered somewhere it wasn't expected (like in a string).
         InvalidKey,             ///< The name of a key contains invalid characters.
         InvalidDateTime,        ///< The format of a date or time value is invalid.
-
+        InvalidNumber,          ///< Format of a number is invalid. For example, a negative hex number.
         InvalidToken,           ///< Encountered an unexpected token in the file.
     };
 

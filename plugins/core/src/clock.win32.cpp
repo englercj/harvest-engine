@@ -64,7 +64,7 @@ namespace he
             return FromPeriod<Seconds>(0);
 
         const LONG bias = tzInfo.Bias + (rc == TIME_ZONE_ID_DAYLIGHT ? tzInfo.DaylightBias : tzInfo.StandardBias);
-        return FromPeriod<Minutes>(bias);
+        return FromPeriod<Minutes>(-bias);
     }
 }
 

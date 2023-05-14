@@ -321,7 +321,9 @@ HE_TEST(core, clock, IsDaylightSavingTimeActive)
 // ------------------------------------------------------------------------------------------------
 HE_TEST(core, clock, GetLocalTimezoneOffset)
 {
-    // TODO
+    // TODO: set the local timezone to -07:00 for these to pass
+    const Duration tzOffset = GetLocalTimezoneOffset();
+    HE_EXPECT_EQ(tzOffset, FromPeriod<Hours>(-7));
 }
 
 // ------------------------------------------------------------------------------------------------

@@ -986,7 +986,8 @@ namespace he
             if (time == -1)
                 return SetError(TomlReadError::InvalidDateTime);
 
-            SystemTime dt{ static_cast<uint64_t>((time + subseconds) * Seconds::Ratio) };
+            SystemTime dt{ static_cast<uint64_t>(time) * Seconds::Ratio };
+            dt.val += static_cast<uint64_t>(subseconds * Seconds::Ratio);
 
             // `mktime` gives us a value in local timezone, so we only need to modify it if the
             // timezone specified by the string is different than local. If we do need to adjust
@@ -1065,7 +1066,10 @@ namespace he
 
                     if (AtEnd())
                     {
-                        m_handler->Uint(0);
+                        if (isSigned)
+                            m_handler->Int(-0);
+                        else
+                            m_handler->Uint(0);
                         return true;
                     }
 

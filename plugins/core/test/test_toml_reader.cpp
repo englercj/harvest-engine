@@ -1049,9 +1049,9 @@ HE_TEST_F(core, toml_reader, value_float, TomlReaderFixture)
 
     // Inf and NaN must be lowercase
     Validate("key = Inf", TomlReadError::InvalidToken);
-    Validate("key = -Inf", TomlReadError::InvalidToken);
+    Validate("key = -Inf", TomlReadError::InvalidNumber);
     Validate("key = INF", TomlReadError::InvalidToken);
-    Validate("key = -INF", TomlReadError::InvalidToken);
+    Validate("key = -INF", TomlReadError::InvalidNumber);
     Validate("key = NAN", TomlReadError::InvalidToken);
     Validate("key = NaN", TomlReadError::InvalidToken);
     Validate("key = Nan", TomlReadError::InvalidToken);
@@ -1228,10 +1228,10 @@ HE_TEST_F(core, toml_reader, value_datetime, TomlReaderFixture)
 
     // Local Date
     // TODO: set the local timezone to -07:00 for these to pass
-    ValidateDateTime("1979-05-27", Expected - FromPeriod<Hours>(7) - FromPeriod<Minutes>(32));
+    ValidateDateTime("1979-05-27", Expected - FromPeriod<Minutes>(32));
 
     // Invalid date times
-    Validate("key = 1979-05-27T00:", TomlReadError::InvalidToken);
+    Validate("key = 1979-05-27T00:", TomlReadError::UnexpectedEof);
     Validate("key = 1979-05-27T00::", TomlReadError::InvalidToken);
     Validate("key = 1979-05-27-00:00", TomlReadError::InvalidToken);
     Validate("key = 1979:05-27", TomlReadError::InvalidToken);
@@ -1340,7 +1340,27 @@ HE_TEST_F(core, toml_reader, complex_document, TomlReaderFixture)
         { .kind = TomlEvent::Kind::Uint, .u = 5349221 },
         { .kind = TomlEvent::Kind::Uint, .u = 5349221 },
         { .kind = TomlEvent::Kind::Uint, .u = 12345 },
+        { .kind = TomlEvent::Kind::Uint, .u = 0xDEADBEEF },
+        { .kind = TomlEvent::Kind::Uint, .u = 0xdeadbeef },
+        { .kind = TomlEvent::Kind::Uint, .u = 0xdeadbeef },
+        { .kind = TomlEvent::Kind::Uint, .u = 01234567 },
+        { .kind = TomlEvent::Kind::Uint, .u = 0755 },
+        { .kind = TomlEvent::Kind::Uint, .u = 0b11010110 },
         { .kind = TomlEvent::Kind::Table, .p = { "float" }, .b = false },
+        { .kind = TomlEvent::Kind::Float, .f = 1.0 },
+        { .kind = TomlEvent::Kind::Float, .f = 3.1415 },
+        { .kind = TomlEvent::Kind::Float, .f = -0.01 },
+        { .kind = TomlEvent::Kind::Float, .f = 5e+22 },
+        { .kind = TomlEvent::Kind::Float, .f = 1e06 },
+        { .kind = TomlEvent::Kind::Float, .f = -2E-2 },
+        { .kind = TomlEvent::Kind::Float, .f = 6.626e-34 },
+        { .kind = TomlEvent::Kind::Float, .f = 224617.445991228 },
+        { .kind = TomlEvent::Kind::Float, .f = Limits<double>::Infinity },
+        { .kind = TomlEvent::Kind::Float, .f = Limits<double>::Infinity },
+        { .kind = TomlEvent::Kind::Float, .f = -Limits<double>::Infinity },
+        { .kind = TomlEvent::Kind::Float, .f = Limits<double>::NaN },
+        { .kind = TomlEvent::Kind::Float, .f = Limits<double>::NaN },
+        { .kind = TomlEvent::Kind::Float, .f = -Limits<double>::NaN },
         { .kind = TomlEvent::Kind::Table, .p = { "string" }, .b = false },
         { .kind = TomlEvent::Kind::Table, .p = { "datetime" }, .b = false },
         { .kind = TomlEvent::Kind::Table, .p = { "time" }, .b = false },

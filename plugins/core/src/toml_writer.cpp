@@ -3,6 +3,7 @@
 #include "he/core/toml_writer.h"
 
 #include "he/core/ascii.h"
+#include "he/core/clock_fmt.h"
 #include "he/core/fmt.h"
 #include "he/core/string_fmt.h"
 #include "he/core/vector.h"
@@ -141,6 +142,49 @@ namespace he
                 m_writer.Write('"');
             }
         }
+    }
+
+    void TomlWriter::DateTime(SystemTime value, bool utc)
+    {
+        InlineArrayComma();
+
+        // RFC3339 UTC date time format
+        if (utc)
+        {
+            m_writer.Write("{:%Y-%m-%dT%H:%M:%SZ}", FmtUtcTime(value));
+            return;
+        }
+
+        // Ideally we'd be able to use the format: {:%Y-%m-%dT%H:%M:%S%z}
+        // Unfortunately, strftime gives us the ISO 8601 format of the local time zone which looks
+        // like `-0700` instead of the RFC3339 format of `-07:00`. So we have to do it manually.
+        m_writer.Write("{:%Y-%m-%dT%H:%M:%S}", FmtLocalTime(value));
+
+        Duration tzOffset = GetLocalTimezoneOffset();
+        if (tzOffset.val < 0)
+        {
+            m_writer.Write('-');
+            tzOffset.val = -tzOffset.val;
+        }
+        else
+        {
+            m_writer.Write('+');
+        }
+
+        const int64_t hours = tzOffset.val / Hours::Ratio;
+        const int64_t minutes = (tzOffset.val % Hours::Ratio) / Minutes::Ratio;
+        m_writer.Write("{:02}:{:02}", hours, minutes);
+    }
+
+    void TomlWriter::Time(Duration value)
+    {
+        InlineArrayComma();
+
+        const int64_t hours = value.val / Hours::Ratio;
+        const int64_t minutes = (value.val % Hours::Ratio) / Minutes::Ratio;
+        const int64_t seconds = (value.val % Minutes::Ratio) / Seconds::Ratio;
+        const int64_t nanoseconds = value.val % Seconds::Ratio;
+        m_writer.Write("{:02}:{:02}:{:02}.{:09}", hours, minutes, seconds, nanoseconds);
     }
 
     void TomlWriter::Key(StringView name)

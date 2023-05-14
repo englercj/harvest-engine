@@ -561,9 +561,8 @@ namespace he
                     continue;
                 }
 
-                // Unescaped control characters, except for the special cases handled above, are
-                // not allowed in strings.
-                if (ch < '\x20' || ch == '\x7F')
+                // Unescaped control characters are not allowed in strings.
+                if ((ch >= '\x00' && ch <= '\x1F') || ch == '\x7F')
                     return SetError(TomlReadError::InvalidControlChar);
 
                 // Check for string ending quotes. For multiline strings you can actually put
@@ -839,27 +838,27 @@ namespace he
             // 4 digit year
             const char* begin = m_cursor;
             if (!ConsumeOneOf(Nums) || !ConsumeOneOf(Nums) || !ConsumeOneOf(Nums) || !ConsumeOneOf(Nums))
-                return SetError(TomlReadError::InvalidDateTime);
+                return false;
 
             year = String::ToInteger<uint32_t>(begin, m_cursor);
 
             if (!Consume('-'))
-                return SetError(TomlReadError::InvalidDateTime);
+                return false;
 
             // 2 digit month
             begin = m_cursor;
             if (!ConsumeOneOf(Nums) || !ConsumeOneOf(Nums))
-                 return SetError(TomlReadError::InvalidDateTime);
+                 return false;
 
             month = String::ToInteger<uint32_t>(begin, m_cursor);
 
             if (!Consume('-'))
-                 return SetError(TomlReadError::InvalidDateTime);
+                 return false;
 
             // 2 digit day
             begin = m_cursor;
             if (!ConsumeOneOf(Nums) || !ConsumeOneOf(Nums))
-                 return SetError(TomlReadError::InvalidDateTime);
+                 return false;
 
             day = String::ToInteger<uint32_t>(begin, m_cursor);
 
@@ -867,22 +866,22 @@ namespace he
             if (!AtEnd() && (*m_cursor == 'T' || *m_cursor == 't' || *m_cursor == ' '))
             {
                 if (!ConsumeOneOf("tT "))
-                    return SetError(TomlReadError::InvalidDateTime);
+                    return false;
 
                 // 2 digit hour
                 begin = m_cursor;
                 if (!ConsumeOneOf(Nums) || !ConsumeOneOf(Nums))
-                    return SetError(TomlReadError::InvalidDateTime);
+                    return false;
 
                 hours = String::ToInteger<uint32_t>(begin, m_cursor);
 
                 if (!Consume(':'))
-                    return SetError(TomlReadError::InvalidDateTime);
+                    return false;
 
                 // 2 digit minute
                 begin = m_cursor;
                 if (!ConsumeOneOf(Nums) || !ConsumeOneOf(Nums))
-                    return SetError(TomlReadError::InvalidDateTime);
+                    return false;
 
                 minutes = String::ToInteger<uint32_t>(begin, m_cursor);
 
@@ -890,11 +889,11 @@ namespace he
                 if (!AtEnd() && *m_cursor == ':')
                 {
                     if (!Consume(':'))
-                            return SetError(TomlReadError::InvalidDateTime);
+                            return false;
 
                     begin = m_cursor;
                     if (!ConsumeOneOf(Nums) || !ConsumeOneOf(Nums))
-                        return SetError(TomlReadError::InvalidDateTime);
+                        return false;
 
                     // Optional fractional seconds
                     if (!AtEnd() && *m_cursor == '.')
@@ -902,7 +901,7 @@ namespace he
                         ++m_cursor;
 
                         if (!ConsumeOneOf(Nums))
-                            return SetError(TomlReadError::InvalidDateTime);
+                            return false;
 
                         while (!AtEnd() && IsNumeric(*m_cursor))
                             ++m_cursor;
@@ -925,17 +924,17 @@ namespace he
                     // 2 digit hour offset
                     begin = m_cursor;
                     if (!ConsumeOneOf(Nums) || !ConsumeOneOf(Nums))
-                        return SetError(TomlReadError::InvalidDateTime);
+                        return false;
 
                     const uint32_t tzOffsetHours = String::ToInteger<uint32_t>(begin, m_cursor);
 
                     if (!Consume(':'))
-                        return SetError(TomlReadError::InvalidDateTime);
+                        return false;
 
                     // 2 digit minute offset
                     begin = m_cursor;
                     if (!ConsumeOneOf(Nums) || !ConsumeOneOf(Nums))
-                        return SetError(TomlReadError::InvalidDateTime);
+                        return false;
 
                     const uint32_t tzOffsetMinutes = String::ToInteger<uint32_t>(begin, m_cursor);
 
@@ -956,12 +955,13 @@ namespace he
                 tzOffset = localTzOffset;
             }
 
+            // Some very basic validation of the number of days allowed in a month
             const bool isLeapYear = (year % 4 == 0) && ((year % 100 != 0) || (year % 400 == 0));
             const uint32_t maxDay = (month == 2)
                 ? (isLeapYear ? 29 : 28)
                 : ((month == 4 || month == 6 || month == 9 || month == 11) ? 30 : 31);
 
-            // year = [0, 9999], month = [1, 12], day = [1, 31]
+            // year = [0, 9999], month = [1, 12], day = [1, maxDay]
             if (year == 0 || month < 1 || month > 12 || day < 1 || day > maxDay)
                 return SetError(TomlReadError::InvalidDateTime);
 
@@ -1065,10 +1065,7 @@ namespace he
 
                     if (AtEnd())
                     {
-                        if (isSigned)
-                            m_handler->Int(-0);
-                        else
-                            m_handler->Uint(0);
+                        m_handler->Uint(0);
                         return true;
                     }
 
@@ -1096,7 +1093,10 @@ namespace he
                         return ParseBinNum(isSigned);
                     }
 
-                    [[fallthrough]]; // Fall through to decimal number parsing
+                    // Back up the cursor so the leading zero is restored, and fall through to
+                    // decimal number parsing in the `default` case.
+                    --m_cursor;
+                    [[fallthrough]];
                 }
                 default:
                     return ParseDecNum(isSigned);
@@ -1108,26 +1108,38 @@ namespace he
             if (AtEnd())
                 return SetError(TomlReadError::UnexpectedEof);
 
-            const char* begin = m_cursor;
             const char* dot = nullptr;
             const char* exp = nullptr;
             const char* expSign = nullptr;
+            uint32_t dotIndex = 0;
 
-            while (!AtEnd() && (IsNumeric(*m_cursor) || IsOneOf(*m_cursor, ".eE-+")))
+            m_stringBuffer.Clear();
+
+            if (isSigned)
+                m_stringBuffer.PushBack('-');
+
+            while (!AtEnd() && (IsNumeric(*m_cursor) || IsOneOf(*m_cursor, ".eE-+_")))
             {
                 switch (*m_cursor)
                 {
                     case '.':
                     {
+                        if (!IsNumeric(m_cursor[-1]))
+                            return SetError(TomlReadError::InvalidNumber);
+
                         if (dot)
                             return SetError(TomlReadError::InvalidNumber);
 
                         dot = m_cursor;
+                        dotIndex = m_stringBuffer.Size();
                         break;
                     }
                     case 'e':
                     case 'E':
                     {
+                        if (!IsNumeric(m_cursor[-1]))
+                            return SetError(TomlReadError::InvalidNumber);
+
                         if (exp)
                             return SetError(TomlReadError::InvalidNumber);
 
@@ -1145,59 +1157,56 @@ namespace he
                     }
                 }
 
+                if (*m_cursor != '_')
+                    m_stringBuffer.PushBack(*m_cursor);
+
                 ++m_cursor;
             }
 
+            if (m_stringBuffer.IsEmpty() || (m_stringBuffer.Size() == 1 && m_stringBuffer[0] == '-'))
+                return SetError(TomlReadError::InvalidNumber);
+
+            const char* begin = m_stringBuffer.Begin();
+            if (*begin == '-')
+                ++begin;
+
             if (dot || exp)
             {
-                // Include the leading zero for parsing to a float.
-                if (begin[-1] == '0')
-                    --begin;
+                const char* end = m_stringBuffer.End();
 
                 // Cannot start with a dot or exponent
-                if (dot == begin || exp == begin)
+                if (*begin == '.' || *begin == 'e' || *begin == 'E')
+                    return SetError(TomlReadError::InvalidNumber);
+
+                // Cannot end with a dot, exponent, or sign
+                if (end[-1] == '.' || end[-1] == 'e' || end[-1] == 'E' || end[-1] == '-' || end[-1] == '+')
                     return SetError(TomlReadError::InvalidNumber);
 
                 // Leading zeroes only allowed when followed by a decimal or exponent
-                if (*begin == '0' && dot != (begin + 1) && exp != (begin + 1))
+                if (*begin == '0' && begin[1] != '.' && begin[1] != 'e' && begin[1] != 'E')
                     return SetError(TomlReadError::InvalidNumber);
 
-                // The integral part of the float cannot be empty
-                if (!IsNumeric(*begin) && dot == (begin + 1))
+                // exponent cannot be before the dot
+                if (exp && exp < dot)
                     return SetError(TomlReadError::InvalidNumber);
 
-                // The number cannot end with the dot, exponent, or sign
-                if (dot == (m_cursor - 1) || exp == (m_cursor - 1) || expSign == (m_cursor - 1))
-                    return SetError(TomlReadError::InvalidNumber);
-
-                // exponent cannot be before the dot, and the dot cannot be next to the exponent
-                if (exp && (exp < dot || (dot + 1) == exp))
-                    return SetError(TomlReadError::InvalidNumber);
-
-                const double sign = isSigned ? -1.0 : 1.0;
-                const double value = String::ToFloat<double>(begin, m_cursor);
-                m_handler->Float(sign * value);
+                const double value = String::ToFloat<double>(m_stringBuffer.Begin(), m_stringBuffer.End());
+                m_handler->Float(value);
             }
             else
             {
-                if (begin[-1] == '0')
-                {
-                    // Leading zeroes are not allowed for integers
-                    if (begin != m_cursor)
-                        return SetError(TomlReadError::InvalidNumber);
-
-                    --begin;
-                }
+                // Leading zeroes are not allowed for integers
+                if (*begin == '0')
+                    return SetError(TomlReadError::InvalidNumber);
 
                 if (isSigned)
                 {
-                    --begin;
-                    const int64_t value = String::ToInteger<int64_t>(begin, m_cursor);
+                    const int64_t value = String::ToInteger<int64_t>(m_stringBuffer.Begin(), m_stringBuffer.End());
                     m_handler->Int(value);
                 }
                 else
                 {
-                    const uint64_t value = String::ToInteger<uint64_t>(begin, m_cursor);
+                    const uint64_t value = String::ToInteger<uint64_t>(m_stringBuffer.Begin(), m_stringBuffer.End());
                     m_handler->Uint(value);
                 }
             }
@@ -1213,11 +1222,15 @@ namespace he
             if (isSigned)
                 return SetError(TomlReadError::InvalidNumber);
 
-            const char* begin = m_cursor;
-            while (!AtEnd() && IsHex(*m_cursor))
+            m_stringBuffer.Clear();
+            while (!AtEnd() && (IsHex(*m_cursor) || *m_cursor == '_'))
+            {
+                if (*m_cursor != '_')
+                    m_stringBuffer.PushBack(*m_cursor);
                 ++m_cursor;
+            }
 
-            m_handler->Uint(String::ToInteger<uint64_t>(begin, m_cursor, 16));
+            m_handler->Uint(String::ToInteger<uint64_t>(m_stringBuffer.Begin(), m_stringBuffer.End(), 16));
             return true;
         }
 
@@ -1229,11 +1242,15 @@ namespace he
             if (isSigned)
                 return SetError(TomlReadError::InvalidNumber);
 
-            const char* begin = m_cursor;
-            while (!AtEnd() && *m_cursor >= '0' && *m_cursor <= '7')
+            m_stringBuffer.Clear();
+            while (!AtEnd() && ((*m_cursor >= '0' && *m_cursor <= '7') || *m_cursor == '_'))
+            {
+                if (*m_cursor != '_')
+                    m_stringBuffer.PushBack(*m_cursor);
                 ++m_cursor;
+            }
 
-            m_handler->Uint(String::ToInteger<uint64_t>(begin, m_cursor, 8));
+            m_handler->Uint(String::ToInteger<uint64_t>(m_stringBuffer.Begin(), m_stringBuffer.End(), 8));
             return true;
         }
 
@@ -1245,11 +1262,15 @@ namespace he
             if (isSigned)
                 return SetError(TomlReadError::InvalidNumber);
 
-            const char* begin = m_cursor;
-            while (!AtEnd() && (*m_cursor == '0' || *m_cursor == '1'))
+            m_stringBuffer.Clear();
+            while (!AtEnd() && (*m_cursor == '0' || *m_cursor == '1' || *m_cursor == '_'))
+            {
+                if (*m_cursor != '_')
+                    m_stringBuffer.PushBack(*m_cursor);
                 ++m_cursor;
+            }
 
-            m_handler->Uint(String::ToInteger<uint64_t>(begin, m_cursor, 2));
+            m_handler->Uint(String::ToInteger<uint64_t>(m_stringBuffer.Begin(), m_stringBuffer.End(), 2));
             return true;
         }
 

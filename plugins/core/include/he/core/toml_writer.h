@@ -3,6 +3,7 @@
 #pragma once
 
 #include "he/core/allocator.h"
+#include "he/core/clock.h"
 #include "he/core/string.h"
 #include "he/core/string_view.h"
 #include "he/core/string_writer.h"
@@ -42,7 +43,8 @@ namespace he
         void Uint(uint64_t value, TomlIntFormat format = TomlIntFormat::Decimal);
         void Float(double value, int32_t precision = -1, TomlFloatFormat format = TomlFloatFormat::General);
         void String(StringView value, bool multiline = false, bool literal = false);
-        // TODO: DateTime
+        void DateTime(SystemTime value, bool utc = true);
+        void Time(Duration value);
 
         void Key(StringView name);
 

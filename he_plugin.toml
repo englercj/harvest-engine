@@ -5,3 +5,9 @@
 
 id = "he.engine-root"
 import_plugins = ["contrib/*", "plugins/*"]
+
+[[modules]]
+    name = "he_engine_root"
+    type = "header"
+    group = "engine/libs"
+    files = [".editorconfig"]

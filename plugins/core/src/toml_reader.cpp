@@ -56,7 +56,7 @@ namespace he
     private:
         bool SetError(TomlReadError error, char expected = '\0')
         {
-            const uint32_t column = static_cast<uint32_t>(m_cursor - m_lineStart);
+            const uint32_t column = static_cast<uint32_t>(m_cursor - m_lineStart) + 1;
             m_result = { error, m_line, column, expected };
             return false;
         }
@@ -150,6 +150,25 @@ namespace he
             }
 
             return false;
+        }
+
+        [[nodiscard]] bool ReadCodePoint(uint32_t len, uint32_t& codepoint)
+        {
+            codepoint = 0;
+            while (len--)
+            {
+                if (AtEnd())
+                    return SetError(TomlReadError::UnexpectedEof);
+
+                const char ch = *m_cursor++;
+
+                if (!IsHex(ch))
+                    return SetError(TomlReadError::InvalidUnicode);
+
+                codepoint = (codepoint << 4) + HexToNibble(ch);
+            }
+
+            return true;
         }
 
     private:
@@ -579,7 +598,59 @@ namespace he
                         if (!AtEnd() && *m_cursor == quote)
                         {
                             ++m_cursor;
-                            return true;
+
+                            // Basic strings are simple, any series of double-quotes ends the string.
+                            // If we get here, we've seen three of our quotes and can exit happily.
+                            if (quote == '"')
+                                return true;
+
+                            // Literal strings are slightly more complex. A series of three quotes
+                            // ends literal strings string as well, but because single quotes are
+                            // allowed in the string unescaped there are degenerate cases to check
+                            // for. For example, if you end your string with a single quote, you'll
+                            // have four quotes at the end of the string:
+                            // ```
+                            // '''she said, 'Hello!''''
+                            // ```
+                            // Up to two quotes are allowed within the string so the string may end
+                            // with up to five quotes, two of which are part of the string itself.
+                            //
+                            // At this point we've seen three quotes. We need to check if there are
+                            // up to two more before we can decide to end the string.
+                            const uint32_t slack = static_cast<uint32_t>(m_end - m_cursor);
+                            switch (slack)
+                            {
+                                // No slack, we're at end. This means our string is done.
+                                case 0: return true;
+                                // One slack, so there is another character in the stream.
+                                case 1:
+                                {
+                                    if (*m_cursor == quote)
+                                    {
+                                        ++m_cursor;
+                                        dst.PushBack(quote);
+                                    }
+                                    return true;
+                                }
+                                // Two or more slack
+                                default:
+                                {
+                                    if (*m_cursor == quote)
+                                    {
+                                        ++m_cursor;
+                                        dst.PushBack(quote);
+                                    }
+                                    if (*m_cursor == quote)
+                                    {
+                                        ++m_cursor;
+                                        dst.PushBack(quote);
+                                    }
+                                    if (!AtEnd() && *m_cursor == quote)
+                                        return SetError(TomlReadError::InvalidToken);
+                                    return true;
+                                }
+                            }
+
                         }
                         dst.PushBack(quote);
                     }
@@ -627,9 +698,14 @@ namespace he
                             if (!Consume('x'))
                                 return false;
 
-                            if (!ParseUnicodeCodePoint(dst, 2))
+                            uint32_t codepoint = 0;
+                            if (!ReadCodePoint(2, codepoint))
                                 return false;
 
+                            if (codepoint > 0xff)
+                                return SetError(TomlReadError::InvalidUnicode);
+
+                            dst.PushBack(static_cast<uint8_t>(codepoint));
                             break;
                         }
                         case 'u':
@@ -671,13 +747,8 @@ namespace he
 
             // Validate each of the characters and read their values into codepoint
             uint32_t codepoint = 0;
-            for (uint32_t i = 0; i < len; ++i)
-            {
-                if (!IsHex(m_cursor[i]))
-                    return SetError(TomlReadError::InvalidUnicode);
-
-                codepoint = (codepoint << 4) + HexToNibble(m_cursor[i]);
-            }
+            if (!ReadCodePoint(len, codepoint))
+                return false;
 
             // Surrogate pairs are not allowed
             if (codepoint >= 0xD800 && codepoint <= 0xDFFF)
@@ -687,18 +758,16 @@ namespace he
             if (codepoint > 0x10FFFF)
                 return SetError(TomlReadError::InvalidUnicode);
 
-            m_cursor += len;
-
-            if (codepoint <= 0x7F)
+            if (codepoint < 0x80)
             {
                 dst.PushBack(static_cast<uint8_t>(codepoint));
             }
-            else if (codepoint <= 0x7FF)
+            else if (codepoint < 0x800)
             {
                 dst.PushBack(static_cast<uint8_t>(0xC0 | (codepoint >> 6)));
                 dst.PushBack(static_cast<uint8_t>(0x80 | (codepoint & 0x3F)));
             }
-            else if (codepoint <= 0xFFFF)
+            else if (codepoint < 0x10000)
             {
                 dst.PushBack(static_cast<uint8_t>(0xE0 | (codepoint >> 12)));
                 dst.PushBack(static_cast<uint8_t>(0x80 | ((codepoint >> 6) & 0x3F)));
@@ -1064,37 +1133,31 @@ namespace he
                     if (!Consume('0'))
                         return false;
 
-                    if (AtEnd())
+                    if (!AtEnd())
                     {
-                        if (isSigned)
-                            m_handler->Int(-0);
-                        else
-                            m_handler->Uint(0);
-                        return true;
-                    }
+                        if (*m_cursor == 'x')
+                        {
+                            if (!Consume('x'))
+                                return false;
 
-                    if (*m_cursor == 'x')
-                    {
-                        if (!Consume('x'))
-                            return false;
+                            return ParseHexNum(isSigned);
+                        }
 
-                        return ParseHexNum(isSigned);
-                    }
+                        if (*m_cursor == 'o')
+                        {
+                            if (!Consume('o'))
+                                return false;
 
-                    if (*m_cursor == 'o')
-                    {
-                        if (!Consume('o'))
-                            return false;
+                            return ParseOctNum(isSigned);
+                        }
 
-                        return ParseOctNum(isSigned);
-                    }
+                        if (*m_cursor == 'b')
+                        {
+                            if (!Consume('b'))
+                                return false;
 
-                    if (*m_cursor == 'b')
-                    {
-                        if (!Consume('b'))
-                            return false;
-
-                        return ParseBinNum(isSigned);
+                            return ParseBinNum(isSigned);
+                        }
                     }
 
                     // Back up the cursor so the leading zero is restored, and fall through to
@@ -1199,9 +1262,12 @@ namespace he
             }
             else
             {
-                // Leading zeroes are not allowed for integers
                 if (*begin == '0')
-                    return SetError(TomlReadError::InvalidNumber);
+                {
+                    const bool isLeadingZeroAllowed = isSigned ? m_stringBuffer.Size() == 2 : m_stringBuffer.Size() == 1;
+                    if (!isLeadingZeroAllowed)
+                        return SetError(TomlReadError::InvalidNumber);
+                }
 
                 if (isSigned)
                 {

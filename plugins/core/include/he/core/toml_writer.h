@@ -12,7 +12,7 @@
 
 namespace he
 {
-    enum class TomlIntFormat : uint8_t
+    enum class TomlUintFormat : uint8_t
     {
         Decimal,
         Hex,
@@ -22,9 +22,9 @@ namespace he
 
     enum class TomlFloatFormat : uint8_t
     {
+        General,
         Fixed,
         Exponent,
-        General,
     };
 
     enum class TomlStringFormat : uint8_t
@@ -46,7 +46,7 @@ namespace he
             : m_writer(dst)
         {}
 
-        void Clear() { m_writer.Clear(); }
+        void Clear();
         void Reserve(uint32_t size) { m_writer.Reserve(size); }
 
     public:
@@ -59,8 +59,8 @@ namespace he
 
         // Primitive values
         void Bool(bool value);
-        void Int(int64_t value, TomlIntFormat format = TomlIntFormat::Decimal);
-        void Uint(uint64_t value, TomlIntFormat format = TomlIntFormat::Decimal);
+        void Int(int64_t value);
+        void Uint(uint64_t value, TomlUintFormat format = TomlUintFormat::Decimal);
         void Float(double value, TomlFloatFormat format = TomlFloatFormat::General, int32_t precision = -1);
         void String(StringView value, TomlStringFormat format = TomlStringFormat::Basic);
         void DateTime(SystemTime value, TomlDateTimeFormat format = TomlDateTimeFormat::Utc);

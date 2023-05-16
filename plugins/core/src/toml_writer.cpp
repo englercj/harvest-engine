@@ -24,10 +24,6 @@ namespace he
         {
             writer.Write("\\u00{}{}", ToHex(ucc >> 4), ToHex(ucc & 0xf));
         }
-        else if (ucc > 0x7F)
-        {
-            writer.Write("\\x{}{}", ToHex(ucc >> 4), ToHex(ucc & 0xf));
-        }
         else
         {
             writer.Write(ch);
@@ -71,6 +67,14 @@ namespace he
             }
         }
     }
+    void TomlWriter::Clear()
+    {
+        m_firstInlineTableKey = true;
+        m_firstArrayItem = true;
+        MemZero(m_inlineStack, sizeof(m_inlineStack));
+        m_inlineStackSize = 0;
+        m_writer.Clear();
+    }
 
     void TomlWriter::Comment(StringView value)
     {
@@ -104,30 +108,22 @@ namespace he
         m_writer.Write(value ? "true" : "false");
     }
 
-    void TomlWriter::Int(int64_t value, TomlIntFormat format)
+    void TomlWriter::Int(int64_t value)
     {
         ArrayComma();
-
-        switch (format)
-        {
-            case TomlIntFormat::Decimal: m_writer.Write("{:d}", value); return;
-            case TomlIntFormat::Hex: m_writer.Write("0x{:x}", value); return;
-            case TomlIntFormat::Octal: m_writer.Write("0o{:o}", value); return;
-            case TomlIntFormat::Binary: m_writer.Write("0b{:b}", value); return;
-        }
-        HE_VERIFY(false, HE_MSG("Unknown integer format."), HE_KV(format, format));
+        m_writer.Write("{:d}", value);
     }
 
-    void TomlWriter::Uint(uint64_t value, TomlIntFormat format)
+    void TomlWriter::Uint(uint64_t value, TomlUintFormat format)
     {
         ArrayComma();
 
         switch (format)
         {
-            case TomlIntFormat::Decimal: m_writer.Write("{:d}", value); return;
-            case TomlIntFormat::Hex: m_writer.Write("0x{:x}", value); return;
-            case TomlIntFormat::Octal: m_writer.Write("0o{:o}", value); return;
-            case TomlIntFormat::Binary: m_writer.Write("0b{:b}", value); return;
+            case TomlUintFormat::Decimal: m_writer.Write("{:d}", value); return;
+            case TomlUintFormat::Hex: m_writer.Write("0x{:x}", value); return;
+            case TomlUintFormat::Octal: m_writer.Write("0o{:o}", value); return;
+            case TomlUintFormat::Binary: m_writer.Write("0b{:b}", value); return;
         }
         HE_VERIFY(false, HE_MSG("Unknown integer format."), HE_KV(format, format));
     }
@@ -159,9 +155,9 @@ namespace he
         char type = 'g';
         switch (format)
         {
+            case TomlFloatFormat::General: type = 'g'; break;
             case TomlFloatFormat::Fixed: type = 'f'; break;
             case TomlFloatFormat::Exponent: type = 'e'; break;
-            case TomlFloatFormat::General: type = 'g'; break;
         }
 
         he::String fmt;
@@ -270,7 +266,11 @@ namespace he
         const int64_t minutes = (value.val % Hours::Ratio) / Minutes::Ratio;
         const int64_t seconds = (value.val % Minutes::Ratio) / Seconds::Ratio;
         const int64_t nanoseconds = value.val % Seconds::Ratio;
-        m_writer.Write("{:02}:{:02}:{:02}.{:09}", hours, minutes, seconds, nanoseconds);
+
+        if (nanoseconds)
+            m_writer.Write("{:02}:{:02}:{:02}.{:09}", hours, minutes, seconds, nanoseconds);
+        else
+            m_writer.Write("{:02}:{:02}:{:02}", hours, minutes, seconds);
     }
 
     void TomlWriter::Table(StringView name, bool isArray)
@@ -287,7 +287,9 @@ namespace he
             return;
         }
 
-        m_writer.Write('\n');
+        if (!m_writer.Str().IsEmpty())
+            m_writer.Write('\n');
+
         m_writer.WriteIndent();
         m_writer.Write('[');
         if (isArray)
@@ -308,8 +310,10 @@ namespace he
     void TomlWriter::Key(Span<StringView> names)
     {
         InlineTableComma();
-        if (m_inlineStackSize == 0)
+
+        if (m_inlineStackSize == 0 && !m_writer.Str().IsEmpty())
             m_writer.Write('\n');
+
         m_writer.WriteIndent();
         WriteKeyNames(names);
         m_writer.Write(" = ");
@@ -458,14 +462,14 @@ namespace he
     }
 
     template <>
-    const char* AsString(TomlIntFormat x)
+    const char* AsString(TomlUintFormat x)
     {
         switch (x)
         {
-            case TomlIntFormat::Decimal: return "Decimal";
-            case TomlIntFormat::Hex: return "Hex";
-            case TomlIntFormat::Octal: return "Octal";
-            case TomlIntFormat::Binary: return "Binary";
+            case TomlUintFormat::Decimal: return "Decimal";
+            case TomlUintFormat::Hex: return "Hex";
+            case TomlUintFormat::Octal: return "Octal";
+            case TomlUintFormat::Binary: return "Binary";
         }
 
         return "<unknown>";
@@ -476,9 +480,9 @@ namespace he
     {
         switch (x)
         {
+            case TomlFloatFormat::General: return "General";
             case TomlFloatFormat::Fixed: return "Fixed";
             case TomlFloatFormat::Exponent: return "Exponent";
-            case TomlFloatFormat::General: return "General";
         }
 
         return "<unknown>";

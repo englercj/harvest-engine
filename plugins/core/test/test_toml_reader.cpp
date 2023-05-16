@@ -490,7 +490,7 @@ HE_TEST_F(core, toml_reader, array_nested, TomlReaderFixture)
 }
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST_F(core, toml_reader, array_tables, TomlReaderFixture)
+HE_TEST_F(core, toml_reader, array_comment, TomlReaderFixture)
 {
     const TomlEvent expected[] =
     {
@@ -1199,6 +1199,8 @@ HE_TEST_F(core, toml_reader, value_string_literal, TomlReaderFixture)
     ValidateString("''' '' '''", " '' ");
     ValidateString("'''' '''", "' ");
     ValidateString("''''' '''", "'' ");
+    ValidateString("''' ''''", " '");
+    ValidateString("''' '''''", " ''");
     ValidateString("'''test'''", "test");
     ValidateString("'''test\ntest'''", "test\ntest");
     ValidateString("'''Fuß'''", "Fuß");

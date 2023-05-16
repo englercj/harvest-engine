@@ -2,6 +2,7 @@
 
 #include "he/core/toml_writer.h"
 
+#include "he/core/limits.h"
 #include "he/core/string.h"
 #include "he/core/string_fmt.h"
 #include "he/core/string_view.h"
@@ -10,13 +11,408 @@
 using namespace he;
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST(core, toml_writer, complex_document)
+class TomlWriterFixture : public TestFixture
+{
+public:
+    void Validate(StringView expected)
+    {
+        HE_EXPECT_EQ(output, expected);
+    }
+
+    void ValidateKey(StringView input, StringView expected)
+    {
+        writer.Clear();
+        writer.Key(input);
+        writer.Uint(123);
+
+        String doc = expected;
+        doc += " = 123";
+        Validate(doc);
+    }
+
+    void ValidateKey(Span<StringView> inputs, StringView expected)
+    {
+        writer.Clear();
+        writer.Key(inputs);
+        writer.Uint(123);
+
+        String doc = expected;
+        doc += " = 123";
+        Validate(doc);
+    }
+
+    template <typename F>
+    void ValidateValue(StringView expected, F&& func)
+    {
+        writer.Clear();
+        writer.Key("key");
+        func();
+
+        String doc = "key = ";
+        doc += expected;
+        Validate(doc);
+    }
+
+    void ValidateBool(bool input, StringView expected)
+    {
+        ValidateValue(expected, [&]() { writer.Bool(input); });
+    }
+
+    void ValidateInt(int64_t input, StringView expected)
+    {
+        ValidateValue(expected, [&]() { writer.Int(input); });
+    }
+
+    void ValidateUint(uint64_t input, TomlUintFormat format, StringView expected)
+    {
+        ValidateValue(expected, [&]() { writer.Uint(input, format); });
+    }
+
+    void ValidateFloat(double input, TomlFloatFormat format, int32_t precision, StringView expected)
+    {
+        ValidateValue(expected, [&]() { writer.Float(input, format, precision); });
+    }
+
+    void ValidateBasicString(StringView input, StringView expected)
+    {
+        ValidateValue(expected, [&]() { writer.String(input, TomlStringFormat::Basic); });
+    }
+
+    void ValidateLiteralString(StringView input, StringView expected)
+    {
+        ValidateValue(expected, [&]() { writer.String(input, TomlStringFormat::Literal); });
+    }
+
+    void ValidateDateTime(SystemTime input, TomlDateTimeFormat format, StringView expected)
+    {
+        ValidateValue(expected, [&]() { writer.DateTime(input, format); });
+    }
+
+    void ValidateTime(Duration input, StringView expected)
+    {
+        ValidateValue(expected, [&]() { writer.Time(input); });
+    }
+
+    String output;
+    TomlWriter writer{ output };
+};
+
+// ------------------------------------------------------------------------------------------------
+HE_TEST_F(core, toml_writer, array_empty, TomlWriterFixture)
+{
+    writer.Key("key");
+    writer.StartArray();
+    writer.EndArray();
+    Validate("key = []");
+}
+
+// ------------------------------------------------------------------------------------------------
+HE_TEST_F(core, toml_writer, array_items, TomlWriterFixture)
+{
+    writer.Key("key");
+    writer.StartArray();
+    writer.Uint(1);
+    writer.Uint(0x9ffffffe, TomlUintFormat::Hex);
+    writer.Comment(" this is a comment");
+    writer.String("literal", TomlStringFormat::Literal);
+    writer.String("basic", TomlStringFormat::Basic);
+    writer.Float(1.5);
+    writer.Bool(true);
+    writer.String("multiline\n\r\n\nliteral", TomlStringFormat::Literal);
+    writer.String("multiline\n\r\n\nbasic", TomlStringFormat::Basic);
+    writer.EndArray();
+    Validate("key = [1, 0x9ffffffe# this is a comment, 'literal', \"basic\", 1.5, true, '''\nmultiline\n\r\n\nliteral''', \"\"\"\nmultiline\n\r\n\nbasic\"\"\"]");
+}
+
+// ------------------------------------------------------------------------------------------------
+HE_TEST_F(core, toml_writer, array_nested, TomlWriterFixture)
+{
+    writer.Key("key");
+    writer.StartArray();
+    writer.Uint(1);
+    writer.StartArray();
+    writer.Uint(2);
+    writer.Uint(3);
+    writer.EndArray();
+    writer.String("4", TomlStringFormat::Literal);
+    writer.StartArray();
+    writer.String("5");
+    writer.String("6");
+    writer.EndArray();
+    writer.EndArray();
+    Validate("key = [1, [2, 3], '4', [\"5\", \"6\"]]");
+}
+
+// ------------------------------------------------------------------------------------------------
+HE_TEST_F(core, toml_writer, table, TomlWriterFixture)
+{
+    writer.Table("key");
+    Validate("[key]");
+}
+
+// ------------------------------------------------------------------------------------------------
+HE_TEST_F(core, toml_writer, table_quoted, TomlWriterFixture)
+{
+    StringView keys[] = { "test", "123", "name with spaces" };
+    writer.Table(keys);
+    Validate("[test.123.\"name with spaces\"]");
+}
+
+// ------------------------------------------------------------------------------------------------
+HE_TEST_F(core, toml_writer, table_array, TomlWriterFixture)
+{
+    writer.Table("key", true);
+    Validate("[[key]]");
+}
+
+// ------------------------------------------------------------------------------------------------
+HE_TEST_F(core, toml_writer, table_array_quoted, TomlWriterFixture)
+{
+    StringView keys[] = { "test", "123", "name with spaces" };
+    writer.Table(keys, true);
+    Validate("[[test.123.\"name with spaces\"]]");
+}
+
+// ------------------------------------------------------------------------------------------------
+HE_TEST_F(core, toml_writer, inline_table_empty, TomlWriterFixture)
+{
+    writer.Key("key");
+    writer.StartInlineTable();
+    writer.EndInlineTable();
+    Validate("key = {}");
+}
+
+// ------------------------------------------------------------------------------------------------
+HE_TEST_F(core, toml_writer, inline_table, TomlWriterFixture)
+{
+    writer.Key("key");
+    writer.StartInlineTable();
+    writer.Key("value");
+    writer.Uint(123);
+    writer.Key("key\tkey");
+    writer.Uint(456);
+    writer.EndInlineTable();
+    Validate("key = {value = 123, \"key\\tkey\" = 456}");
+}
+
+// ------------------------------------------------------------------------------------------------
+HE_TEST_F(core, toml_writer, inline_table_with_array, TomlWriterFixture)
+{
+    writer.Key("key");
+    writer.StartInlineTable();
+    writer.Key("value");
+    writer.Uint(123);
+    writer.Key("arr");
+    writer.StartArray();
+    writer.Uint(1);
+    writer.Uint(2);
+    writer.Uint(3);
+    writer.EndArray();
+    writer.EndInlineTable();
+    Validate("key = {value = 123, arr = [1, 2, 3]}");
+}
+
+// ------------------------------------------------------------------------------------------------
+HE_TEST_F(core, toml_writer, value_boolean, TomlWriterFixture)
+{
+    ValidateBool(true, "true");
+    ValidateBool(false, "false");
+}
+
+// ------------------------------------------------------------------------------------------------
+HE_TEST_F(core, toml_writer, value_int, TomlWriterFixture)
+{
+    ValidateInt(0, "0");
+    ValidateInt(-1, "-1");
+    ValidateInt(-456789, "-456789");
+    ValidateInt(Limits<int64_t>::Min, "-9223372036854775808");
+}
+
+// ------------------------------------------------------------------------------------------------
+HE_TEST_F(core, toml_writer, value_uint, TomlWriterFixture)
+{
+    // Decimal
+    ValidateUint(0, TomlUintFormat::Decimal, "0");
+    ValidateUint(1, TomlUintFormat::Decimal, "1");
+    ValidateUint(456789, TomlUintFormat::Decimal, "456789");
+    ValidateUint(Limits<int64_t>::Max, TomlUintFormat::Decimal, "9223372036854775807");
+    ValidateUint(Limits<uint64_t>::Max, TomlUintFormat::Decimal, "18446744073709551615");
+
+    // Hex
+    ValidateUint(0x0, TomlUintFormat::Hex, "0x0");
+    ValidateUint(0xdeadbeef, TomlUintFormat::Hex, "0xdeadbeef");
+    ValidateUint(Limits<uint32_t>::Max, TomlUintFormat::Hex, "0xffffffff");
+    ValidateUint(Limits<uint64_t>::Max, TomlUintFormat::Hex, "0xffffffffffffffff");
+
+    // Octal
+    ValidateUint(0, TomlUintFormat::Octal, "0o0");
+    ValidateUint(0755, TomlUintFormat::Octal, "0o755");
+    ValidateUint(0644, TomlUintFormat::Octal, "0o644");
+
+    // Bin
+    ValidateUint(0, TomlUintFormat::Binary, "0b0");
+    ValidateUint(0b1, TomlUintFormat::Binary, "0b1");
+    ValidateUint(0b11, TomlUintFormat::Binary, "0b11");
+    ValidateUint(0b111, TomlUintFormat::Binary, "0b111");
+    ValidateUint(0b1111, TomlUintFormat::Binary, "0b1111");
+    ValidateUint(0b1010101, TomlUintFormat::Binary, "0b1010101");
+    ValidateUint(0b01010101, TomlUintFormat::Binary, "0b1010101");
+}
+
+// ------------------------------------------------------------------------------------------------
+HE_TEST_F(core, toml_writer, value_float, TomlWriterFixture)
+{
+    // Zeroes
+    ValidateFloat(0.0, TomlFloatFormat::General, -1, "0");
+    ValidateFloat(0.0, TomlFloatFormat::Fixed, -1, "0.000000");
+    ValidateFloat(0.0, TomlFloatFormat::Exponent, -1, "0.000000e+00");
+
+    // Fixed
+    ValidateFloat(14.1345, TomlFloatFormat::Fixed, 6, "14.134500");
+    ValidateFloat(-14.0001345, TomlFloatFormat::Fixed, 7, "-14.0001345");
+    ValidateFloat(0.0001345, TomlFloatFormat::Fixed, 12, "0.000134500000");
+    ValidateFloat(10.0, TomlFloatFormat::Fixed, 3, "10.000");
+
+    // Exponent
+    ValidateFloat(2000, TomlFloatFormat::Exponent, -1, "2.000000e+03");
+    ValidateFloat(0.002, TomlFloatFormat::Exponent, 1, "2.0e-03");
+    ValidateFloat(2, TomlFloatFormat::Exponent, 2, "2.00e+00");
+    ValidateFloat(2, TomlFloatFormat::Exponent, 4, "2.0000e+00");
+    ValidateFloat(0.2, TomlFloatFormat::Exponent, 1, "2.0e-01");
+    ValidateFloat(-0.2, TomlFloatFormat::Exponent, 1, "-2.0e-01");
+    ValidateFloat(1e123, TomlFloatFormat::Exponent, 1, "1.0e+123");
+    ValidateFloat(1e-123, TomlFloatFormat::Exponent, 1, "1.0e-123");
+
+    // Special float values
+    ValidateFloat(Limits<double>::Infinity, TomlFloatFormat::General, -1, "inf");
+    ValidateFloat(-Limits<double>::Infinity, TomlFloatFormat::General, -1, "-inf");
+    ValidateFloat(Limits<double>::NaN, TomlFloatFormat::General, -1, "nan");
+    ValidateFloat(-Limits<double>::NaN, TomlFloatFormat::General, -1, "-nan");
+}
+
+// ------------------------------------------------------------------------------------------------
+HE_TEST_F(core, toml_writer, value_string_basic, TomlWriterFixture)
+{
+    // Basic encodings
+    ValidateBasicString("", "\"\"");
+    ValidateBasicString("test", "\"test\"");
+    ValidateBasicString("\x01", "\"\\u0001\"");
+    ValidateBasicString("é", "\"é\"");
+    ValidateBasicString("test\xed\x9f\xbftest", "\"test\xed\x9f\xbftest\"");
+    ValidateBasicString("test\xee\x80\x80test", "\"test\xee\x80\x80test\"");
+    ValidateBasicString("test\xf4\x8f\xbf\xbftest", "\"test\xf4\x8f\xbf\xbftest\"");
+    ValidateBasicString("Fuß", "\"Fuß\"");
+    ValidateBasicString("😂", "\"😂\"");
+    ValidateBasicString("汉语大字典", "\"汉语大字典\"");
+    ValidateBasicString("辭源", "\"辭源\"");
+    ValidateBasicString("பெண்டிரேம்", "\"பெண்டிரேம்\"");
+
+    // Multiline basic strings
+    ValidateBasicString("test\ntest", "\"\"\"\ntest\ntest\"\"\"");
+    ValidateBasicString("test\b\t\n\f\r\n\"\\", "\"\"\"\ntest\\b\\t\n\\f\r\n\\\"\\\\\"\"\"");
+    ValidateBasicString("test  \n   test \n   ", "\"\"\"\ntest  \n   test \n   \"\"\"");
+    ValidateBasicString("test  xxx\nyyy\nzzz", "\"\"\"\ntest  xxx\nyyy\nzzz\"\"\"");
+
+    // Escape
+    ValidateBasicString("test\b\t\n\f\r\n\"\\", "\"\"\"\ntest\\b\\t\n\\f\r\n\\\"\\\\\"\"\"");
+    ValidateBasicString("\x01\n", "\"\"\"\n\\u0001\n\"\"\"");
+    ValidateBasicString("é\n", "\"\"\"\né\n\"\"\"");
+    ValidateBasicString("test\xed\x9f\xbf\ntest", "\"\"\"\ntest\xed\x9f\xbf\ntest\"\"\"");
+    ValidateBasicString("test\xee\x80\x80\ntest", "\"\"\"\ntest\xee\x80\x80\ntest\"\"\"");
+    ValidateBasicString("test\xf4\x8f\xbf\xbf\ntest", "\"\"\"\ntest\xf4\x8f\xbf\xbf\ntest\"\"\"");
+    ValidateBasicString("Fuß\n", "\"\"\"\nFuß\n\"\"\"");
+    ValidateBasicString("😂\n", "\"\"\"\n😂\n\"\"\"");
+    ValidateBasicString("汉语大字典\n", "\"\"\"\n汉语大字典\n\"\"\"");
+    ValidateBasicString("辭源\n", "\"\"\"\n辭源\n\"\"\"");
+    ValidateBasicString("பெண்டிரேம்\n", "\"\"\"\nபெண்டிரேம்\n\"\"\"");
+}
+
+// ------------------------------------------------------------------------------------------------
+HE_TEST_F(core, toml_writer, value_string_literal, TomlWriterFixture)
+{
+    ValidateLiteralString("", "''");
+    ValidateLiteralString("test", "'test'");
+    ValidateLiteralString("  \t test \\test\"test", "'  \t test \\test\"test'");
+    ValidateLiteralString("Fuß", "'Fuß'");
+    ValidateLiteralString("😂", "'😂'");
+    ValidateLiteralString("汉语大字典", "'汉语大字典'");
+    ValidateLiteralString("辭源", "'辭源'");
+    ValidateLiteralString("பெண்டிரேம்", "'பெண்டிரேம்'");
+
+    ValidateLiteralString(" ' ", "'''\n ' '''");
+    ValidateLiteralString(" '' ", "'''\n '' '''");
+    ValidateLiteralString("' ", "'''\n' '''");
+    ValidateLiteralString("'' ", "'''\n'' '''");
+    ValidateLiteralString(" '", "'''\n ''''");
+    ValidateLiteralString(" ''", "'''\n '''''");
+    ValidateLiteralString("test\ntest", "'''\ntest\ntest'''");
+    ValidateLiteralString("Fuß\n", "'''\nFuß\n'''");
+    ValidateLiteralString("😂\n", "'''\n😂\n'''");
+    ValidateLiteralString("汉语大字典\n", "'''\n汉语大字典\n'''");
+    ValidateLiteralString("辭源\n", "'''\n辭源\n'''");
+    ValidateLiteralString("பெண்டிரேம்\n", "'''\nபெண்டிரேம்\n'''");
+
+    ValidateLiteralString("  test\ntest", "'''\n  test\ntest'''");
+    ValidateLiteralString("test\ntest", "'''\ntest\ntest'''");
+
+    ValidateLiteralString("'That,' she said, 'is still pointless.'", "'''\n'That,' she said, 'is still pointless.''''");
+    ValidateLiteralString("''That,' she said, 'is still pointless.''", "'''\n''That,' she said, 'is still pointless.'''''");
+
+    ValidateLiteralString("  \t test \\test\"test\\\n  test\\\n  test", "'''\n  \t test \\test\"test\\\n  test\\\n  test'''");
+}
+
+// ------------------------------------------------------------------------------------------------
+HE_TEST_F(core, toml_writer, value_datetime, TomlWriterFixture)
+{
+    // Sun, 27 May 1979 07:32:00 GMT
+    constexpr SystemTime Expected{ 296638320000ull * Milliseconds::Ratio };
+
+    // TODO: set the local timezone to -07:00 for these to pass
+    ValidateDateTime(Expected, TomlDateTimeFormat::Utc, "1979-05-27T07:32:00Z");
+    ValidateDateTime(Expected + FromPeriod<Microseconds>(999999), TomlDateTimeFormat::Utc, "1979-05-27T07:32:00.999999000Z");
+    ValidateDateTime(Expected, TomlDateTimeFormat::Local, "1979-05-27T00:32:00-07:00");
+    ValidateDateTime(Expected + FromPeriod<Microseconds>(999999), TomlDateTimeFormat::Local, "1979-05-27T00:32:00.999999000-07:00");
+}
+
+// ------------------------------------------------------------------------------------------------
+HE_TEST_F(core, toml_writer, value_time, TomlWriterFixture)
+{
+    ValidateTime(FromPeriod<Hours>(7) + FromPeriod<Minutes>(32), "07:32:00");
+    ValidateTime(FromPeriod<Minutes>(32) + FromPeriod<Microseconds>(999999), "00:32:00.999999000");
+    ValidateTime(FromPeriod<Hours>(20) + FromPeriod<Minutes>(30) + FromPeriod<Seconds>(40), "20:30:40");
+}
+
+// ------------------------------------------------------------------------------------------------
+HE_TEST_F(core, toml_writer, keys, TomlWriterFixture)
+{
+    // Bare keys
+    ValidateKey("key", "key");
+    ValidateKey("bare_key", "bare_key");
+    ValidateKey("bare-key", "bare-key");
+    ValidateKey("1234", "1234");
+    ValidateKey("Fuß", "Fuß");
+    ValidateKey("😂", "😂");
+    ValidateKey("汉语大字典", "汉语大字典");
+    ValidateKey("辭源", "辭源");
+    ValidateKey("பெண்டிரேம்", "பெண்டிரேம்");
+    ValidateKey("key_-23_-", "key_-23_-");
+
+    // Basic string quoted keys
+    ValidateKey("127.0.0.1", "\"127.0.0.1\"");
+    ValidateKey("character encoding", "\"character encoding\"");
+    ValidateKey("╠═╣", "\"╠═╣\"");
+    ValidateKey("⋰∫∬∭⋱", "\"⋰∫∬∭⋱\"");
+    ValidateKey("", "\"\"");
+
+    // Whitespace
+    ValidateKey("key\n\t123", "\"key\\n\\t123\"");
+}
+
+// ------------------------------------------------------------------------------------------------
+HE_TEST_F(core, toml_writer, complex_document, TomlWriterFixture)
 {
     // Sun, 27 May 1979 07:32:00 GMT
     constexpr SystemTime ExpectedDateTime{ 296638320000ull * Milliseconds::Ratio };
-
-    String output;
-    TomlWriter writer(output);
 
     writer.Comment(" Copyright Chad Engler");
     writer.Table("boolean");
@@ -32,11 +428,11 @@ HE_TEST(core, toml_writer, complex_document)
     writer.Key("int3");
     writer.Uint(5349221);
     writer.Key("hex");
-    writer.Uint(0xdeadbeef, TomlIntFormat::Hex);
+    writer.Uint(0xdeadbeef, TomlUintFormat::Hex);
     writer.Key("oct");
-    writer.Uint(0755, TomlIntFormat::Octal);
+    writer.Uint(0755, TomlUintFormat::Octal);
     writer.Key("bin");
-    writer.Uint(0b11010110, TomlIntFormat::Binary);
+    writer.Uint(0b11010110, TomlUintFormat::Binary);
     writer.Table("float");
     writer.Key("flt1");
     writer.Float(3.1415);
@@ -58,7 +454,7 @@ HE_TEST(core, toml_writer, complex_document)
     writer.Float(-Limits<double>::NaN);
     writer.Table("string");
     writer.Key("str");
-    writer.String("I'm a string. \"You can quote me\". Name\tJos\xe9\nLocation\tSF.");
+    writer.String("I'm a string. \"You can quote me\". Name\tJosé\nLocation\tSF.");
     writer.Key("str1");
     writer.String("Roses are red\nViolets are blue");
     writer.Key("str2");
@@ -173,7 +569,7 @@ HE_TEST(core, toml_writer, complex_document)
     writer.EndInlineTable();
     writer.EndArray();
 
-    const StringView expected = R"(# Copyright Chad Engler
+    Validate(R"(# Copyright Chad Engler
 [boolean]
 bool1 = true
 bool2 = false
@@ -196,7 +592,7 @@ sf3 = nan
 sf4 = -nan
 [string]
 str = """
-I'm a string. \"You can quote me\". Name\tJos\xe9
+I'm a string. \"You can quote me\". Name\tJosé
 Location\tSF."""
 str1 = """
 Roses are red
@@ -219,7 +615,7 @@ odt2 = 1979-05-27T07:32:00.999999000Z
 odt3 = 1979-05-27T00:32:00-07:00
 odt4 = 1979-05-27T00:32:00.999999000-07:00
 [time]
-lt1 = 07:32:00.000000000
+lt1 = 07:32:00
 lt2 = 00:32:00.999999000
 [array]
 integers = [1, 2, 3]
@@ -236,7 +632,5 @@ sku = 738594937
 name = "Nail"
 sku = 284758393
 color = "gray"
-points = [{x = 1, y = 2, z = 3}, {x = 7, y = 8, z = 9}, {x = 2, y = 4, z = 8}])";
-
-    HE_EXPECT_EQ(output, expected);
+points = [{x = 1, y = 2, z = 3}, {x = 7, y = 8, z = 9}, {x = 2, y = 4, z = 8}])");
 }

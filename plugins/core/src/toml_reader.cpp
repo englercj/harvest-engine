@@ -2,6 +2,8 @@
 
 #include "he/core/toml_reader.h"
 
+#include "toml_internal.h"
+
 #include "he/core/ascii.h"
 #include "he/core/assert.h"
 #include "he/core/enum_ops.h"
@@ -18,6 +20,11 @@ namespace he
     class TomlParser
     {
     public:
+        explicit TomlParser(Allocator& allocator) noexcept
+            : m_stringBuffer(allocator)
+            , m_pathBuffer(allocator)
+        {}
+
         TomlReadResult Parse(StringView src, TomlReader::Handler& handler)
         {
             m_result = {};
@@ -30,7 +37,7 @@ namespace he
 
             if (!SkipBOM())
             {
-                SetError(TomlReadError::InvalidBom);
+                (void)SetError(TomlReadError::InvalidBom);
                 return m_result;
             }
 
@@ -54,7 +61,7 @@ namespace he
         }
 
     private:
-        bool SetError(TomlReadError error, char expected = '\0')
+        [[nodiscard]] bool SetError(TomlReadError error, char expected = '\0')
         {
             const uint32_t column = static_cast<uint32_t>(m_cursor - m_lineStart) + 1;
             m_result = { error, m_line, column, expected };
@@ -86,7 +93,7 @@ namespace he
                 ++m_cursor;
         }
 
-        void SkipSpacesAndNewlines()
+        [[nodiscard]] bool SkipSpacesAndNewlines()
         {
             while (!AtEnd())
             {
@@ -97,18 +104,24 @@ namespace he
 
                 if (*m_cursor == '#')
                 {
-                    ParseComment();
-                    ParseNewLine();
+                    if (!ParseComment())
+                        return false;
+
+                    if (!ParseNewLine())
+                        return false;
                 }
                 else if (*m_cursor == '\r' || *m_cursor == '\n')
                 {
-                    ParseNewLine();
+                    if (!ParseNewLine())
+                        return false;
                 }
                 else
                 {
                     break;
                 }
             }
+
+            return true;
         }
 
         [[nodiscard]] bool Consume(char ch)
@@ -172,7 +185,7 @@ namespace he
         }
 
     private:
-        bool ParseNewLine()
+        [[nodiscard]] bool ParseNewLine()
         {
             if (AtEnd())
                 return SetError(TomlReadError::UnexpectedEof);
@@ -195,7 +208,7 @@ namespace he
             return true;
         }
 
-        bool ParseComment()
+        [[nodiscard]] bool ParseComment()
         {
             if (!Consume('#'))
                 return false;
@@ -214,7 +227,7 @@ namespace he
             return true;
         }
 
-        bool ParseExpression()
+        [[nodiscard]] bool ParseExpression()
         {
             SkipSpaces();
 
@@ -253,7 +266,7 @@ namespace he
             }
         }
 
-        bool ParseTableHeader()
+        [[nodiscard]] bool ParseTableHeader()
         {
             if (!Consume('['))
                 return false;
@@ -284,8 +297,10 @@ namespace he
             return true;
         }
 
-        bool ParseKeyValuePair()
+        [[nodiscard]] bool ParseKeyValuePair()
         {
+            const uint32_t pathLen = m_pathBuffer.Size();
+
             if (!ParseKey())
                 return false;
 
@@ -301,11 +316,11 @@ namespace he
             if (!ParseValue())
                 return false;
 
-            m_pathBuffer.PopBack();
+            m_pathBuffer.Resize(pathLen);
             return true;
         }
 
-        bool ParseKey()
+        [[nodiscard]] bool ParseKey()
         {
             while (true)
             {
@@ -314,7 +329,7 @@ namespace he
                 if (AtEnd())
                     return SetError(TomlReadError::UnexpectedEof);
 
-                String& dst = m_pathBuffer.EmplaceBack();
+                String& dst = m_pathBuffer.EmplaceBack(m_pathBuffer.GetAllocator());
 
                 if (*m_cursor == '"')
                 {
@@ -334,39 +349,7 @@ namespace he
                     {
                         const uint32_t ucc = FromUTF8(m_cursor);
 
-                        if (ucc == static_cast<uint32_t>(-1))
-                            return SetError(TomlReadError::InvalidKey);
-
-                        const bool isValid =
-                            // a-z A-Z 0-9 - _
-                            (ucc >= 'a' && ucc <= 'z')
-                            || (ucc >= 'A' && ucc <= 'Z')
-                            || (ucc >= '0' && ucc <= '9')
-                            || (ucc == '_' || ucc == '-')
-                            // non-symbol chars in Latin block
-                            || (ucc >= 0xC0 && ucc <= 0xD6)
-                            || (ucc >= 0xD8 && ucc <= 0xF6)
-                            || (ucc >= 0xF8 && ucc <= 0xFF)
-                            // this excludes GREEK QUESTION MARK, which is basically a semi-colon
-                            || (ucc >= 0x0100 && ucc <= 0x02FF)
-                            || (ucc >= 0x0300 && ucc <= 0x037D)
-                            || (ucc >= 0x037F && ucc <= 0x1FFF)
-                            // include combining chars used in some languages
-                            || (ucc >= 0x200C && ucc <= 0x200D)
-                            || (ucc >= 0x203F && ucc <= 0x2040)
-                            // this excludes arrows, blocks and the like
-                            || (ucc >= 0x2070 && ucc <= 0x218F)
-                            || (ucc >= 0x2C00 && ucc <= 0x2FEF)
-                            // skip 2FF0-3000 ideographic up/down markers and spaces
-                            || (ucc >= 0x3001 && ucc <= 0xD7FF)
-                            // skip D800-D999 surrogate block, E000-F8FF Private Use area,
-                            // FDD0-FDEF intended for process-internal use (unicode)
-                            || (ucc >= 0xF900 && ucc <= 0xFDCF)
-                            || (ucc >= 0xFDF0 && ucc <= 0xFFFD)
-                            // all chars outside BMP range, excluding Private Use planes
-                            || (ucc >= 0x10000 && ucc <= 0xEFFFF);
-
-                        if (!isValid)
+                        if (!IsValidTomlKeyCodePoint(ucc))
                             return SetError(TomlReadError::InvalidKey);
                     }
 
@@ -392,7 +375,7 @@ namespace he
             }
         }
 
-        bool ParseValue()
+        [[nodiscard]] bool ParseValue()
         {
             if (AtEnd())
                 return SetError(TomlReadError::UnexpectedEof);
@@ -439,7 +422,7 @@ namespace he
         }
 
         template <bool IsArray>
-        bool ParseInlineStructure()
+        [[nodiscard]] bool ParseInlineStructure()
         {
             constexpr char OpenBrace = IsArray ? '[' : '{';
             constexpr char CloseBrace = IsArray ? ']' : '}';
@@ -452,7 +435,8 @@ namespace he
             else
                 m_handler->StartInlineTable();
 
-            SkipSpacesAndNewlines();
+            if (!SkipSpacesAndNewlines())
+                return false;
 
             uint32_t count = 0;
             while (!AtEnd())
@@ -472,8 +456,13 @@ namespace he
 
                 if constexpr (IsArray)
                 {
+                    String indexKey = m_pathBuffer.EmplaceBack(m_pathBuffer.GetAllocator());
+                    FormatTo(indexKey, "{}", count);
+
                     if (!ParseValue())
                         return false;
+
+                    m_pathBuffer.PopBack();
                 }
                 else
                 {
@@ -482,7 +471,8 @@ namespace he
                 }
 
                 ++count;
-                SkipSpacesAndNewlines();
+                if (!SkipSpacesAndNewlines())
+                    return false;
 
                 if (*m_cursor != ',' && *m_cursor != CloseBrace)
                     return SetError(TomlReadError::InvalidToken);
@@ -492,34 +482,35 @@ namespace he
                     if (!Consume(','))
                         return false;
 
-                    SkipSpacesAndNewlines();
+                    if (!SkipSpacesAndNewlines())
+                        return false;
                 }
             }
 
             return SetError(TomlReadError::UnexpectedEof);
         }
 
-        bool ParseArray()
+        [[nodiscard]] bool ParseArray()
         {
             return ParseInlineStructure<true>();
         }
 
-        bool ParseInlineTable()
+        [[nodiscard]] bool ParseInlineTable()
         {
             return ParseInlineStructure<false>();
         }
 
-        bool ParseBasicString(String& dst, bool allowMultiline)
+        [[nodiscard]] bool ParseBasicString(String& dst, bool allowMultiline)
         {
             return ParseGenericString(dst, '"', true, allowMultiline);
         }
 
-        bool ParseLiteralString(String& dst, bool allowMultiline)
+        [[nodiscard]] bool ParseLiteralString(String& dst, bool allowMultiline)
         {
             return ParseGenericString(dst, '\'', false, allowMultiline);
         }
 
-        bool ParseGenericString(String& dst, char quote, bool decodeEscapeCharacters, bool allowMultiline)
+        [[nodiscard]] bool ParseGenericString(String& dst, char quote, bool decodeEscapeCharacters, bool allowMultiline)
         {
             dst.Clear();
 
@@ -740,7 +731,7 @@ namespace he
             }
         }
 
-        bool ParseUnicodeCodePoint(String& dst, uint32_t len)
+        [[nodiscard]] bool ParseUnicodeCodePoint(String& dst, uint32_t len)
         {
             if (AtEnd())
                 return SetError(TomlReadError::UnexpectedEof);
@@ -751,11 +742,11 @@ namespace he
                 return false;
 
             // Surrogate pairs are not allowed
-            if (codepoint >= 0xD800 && codepoint <= 0xDFFF)
+            if (codepoint >= 0xd800 && codepoint <= 0xdfff)
                 return SetError(TomlReadError::InvalidUnicode);
 
-            // Valid Unicode range for TOML is <= 0x10FFFF
-            if (codepoint > 0x10FFFF)
+            // Valid Unicode range for TOML is <= 0x10ffff
+            if (codepoint > 0x10ffff)
                 return SetError(TomlReadError::InvalidUnicode);
 
             if (codepoint < 0x80)
@@ -764,27 +755,27 @@ namespace he
             }
             else if (codepoint < 0x800)
             {
-                dst.PushBack(static_cast<uint8_t>(0xC0 | (codepoint >> 6)));
-                dst.PushBack(static_cast<uint8_t>(0x80 | (codepoint & 0x3F)));
+                dst.PushBack(static_cast<uint8_t>(0xc0 | (codepoint >> 6)));
+                dst.PushBack(static_cast<uint8_t>(0x80 | (codepoint & 0x3f)));
             }
             else if (codepoint < 0x10000)
             {
-                dst.PushBack(static_cast<uint8_t>(0xE0 | (codepoint >> 12)));
-                dst.PushBack(static_cast<uint8_t>(0x80 | ((codepoint >> 6) & 0x3F)));
-                dst.PushBack(static_cast<uint8_t>(0x80 | (codepoint & 0x3F)));
+                dst.PushBack(static_cast<uint8_t>(0xe0 | (codepoint >> 12)));
+                dst.PushBack(static_cast<uint8_t>(0x80 | ((codepoint >> 6) & 0x3f)));
+                dst.PushBack(static_cast<uint8_t>(0x80 | (codepoint & 0x3f)));
             }
             else
             {
-                dst.PushBack(static_cast<uint8_t>(0xF0 | (codepoint >> 18)));
-                dst.PushBack(static_cast<uint8_t>(0x80 | ((codepoint >> 12) & 0x3F)));
-                dst.PushBack(static_cast<uint8_t>(0x80 | ((codepoint >> 6) & 0x3F)));
-                dst.PushBack(static_cast<uint8_t>(0x80 | (codepoint & 0x3F)));
+                dst.PushBack(static_cast<uint8_t>(0xf0 | (codepoint >> 18)));
+                dst.PushBack(static_cast<uint8_t>(0x80 | ((codepoint >> 12) & 0x3f)));
+                dst.PushBack(static_cast<uint8_t>(0x80 | ((codepoint >> 6) & 0x3f)));
+                dst.PushBack(static_cast<uint8_t>(0x80 | (codepoint & 0x3f)));
             }
 
             return true;
         }
 
-        bool ParseTrue()
+        [[nodiscard]] bool ParseTrue()
         {
             if (!Consume('t') || !Consume('r') || !Consume('u') || !Consume('e'))
                 return false;
@@ -793,7 +784,7 @@ namespace he
             return true;
         }
 
-        bool ParseFalse()
+        [[nodiscard]] bool ParseFalse()
         {
             if (!Consume('f') || !Consume('a') || !Consume('l') || !Consume('s') || !Consume('e'))
                 return false;
@@ -802,7 +793,7 @@ namespace he
             return true;
         }
 
-        bool ParseDateTimeOrNum()
+        [[nodiscard]] bool ParseDateTimeOrNum()
         {
             const uint32_t slack = static_cast<uint32_t>(m_end - m_cursor);
 
@@ -833,7 +824,7 @@ namespace he
             return ParseNum();
         }
 
-        bool ParseTime()
+        [[nodiscard]] bool ParseTime()
         {
             constexpr const char Nums[] = "0123456789";
 
@@ -891,7 +882,7 @@ namespace he
             return true;
         }
 
-        bool ParseDateTime()
+        [[nodiscard]] bool ParseDateTime()
         {
             constexpr const char Nums[] = "0123456789";
             const Duration localTzOffset = GetLocalTimezoneOffset();
@@ -1072,7 +1063,7 @@ namespace he
             return true;
         }
 
-        bool ParseNum()
+        [[nodiscard]] bool ParseNum()
         {
             if (AtEnd())
                 return SetError(TomlReadError::UnexpectedEof);
@@ -1170,7 +1161,7 @@ namespace he
             }
         }
 
-        bool ParseDecNum(bool isSigned)
+        [[nodiscard]] bool ParseDecNum(bool isSigned)
         {
             if (AtEnd())
                 return SetError(TomlReadError::UnexpectedEof);
@@ -1284,7 +1275,7 @@ namespace he
             return true;
         }
 
-        bool ParseHexNum(bool isSigned)
+        [[nodiscard]] bool ParseHexNum(bool isSigned)
         {
             if (AtEnd())
                 return SetError(TomlReadError::UnexpectedEof);
@@ -1304,7 +1295,7 @@ namespace he
             return true;
         }
 
-        bool ParseOctNum(bool isSigned)
+        [[nodiscard]] bool ParseOctNum(bool isSigned)
         {
             if (AtEnd())
                 return SetError(TomlReadError::UnexpectedEof);
@@ -1324,7 +1315,7 @@ namespace he
             return true;
         }
 
-        bool ParseBinNum(bool isSigned)
+        [[nodiscard]] bool ParseBinNum(bool isSigned)
         {
             if (AtEnd())
                 return SetError(TomlReadError::UnexpectedEof);
@@ -1353,14 +1344,18 @@ namespace he
         const char* m_lineStart{ nullptr };
         uint32_t m_line{ 1 };
 
-        String m_stringBuffer{};
-        Vector<String> m_pathBuffer{};
+        String m_stringBuffer;
+        Vector<String> m_pathBuffer;
     };
 
     // --------------------------------------------------------------------------------------------
+    TomlReader::TomlReader(Allocator& allocator) noexcept
+        : m_allocator(allocator)
+    {}
+
     TomlReadResult TomlReader::Read(StringView data, Handler& handler)
     {
-        TomlParser parser;
+        TomlParser parser(m_allocator);
         return parser.Parse(data, handler);
     }
 

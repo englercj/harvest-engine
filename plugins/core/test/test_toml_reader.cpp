@@ -10,6 +10,7 @@
 #include "he/core/path.h"
 #include "he/core/string.h"
 #include "he/core/string_fmt.h"
+#include "he/core/string_view.h"
 #include "he/core/test.h"
 #include "he/core/utils.h"
 #include "he/core/vector.h"
@@ -225,7 +226,7 @@ private:
     {
         Vector<he::String> p;
         p.Insert(0, path.Data(), path.Size());
-        m_events.PushBack({ .kind = TomlEvent::Kind::Table, .p = Move(p), .b = isArray});
+        m_events.PushBack({ .kind = TomlEvent::Kind::Table, .p = Move(p), .b = isArray });
         return true;
     }
 
@@ -1079,6 +1080,11 @@ HE_TEST_F(core, toml_reader, value_string_basic, TomlReaderFixture)
     ValidateString("\"test\\U0000E000test\"", "test\xee\x80\x80test");
     ValidateString("\"test\\U0010fffftest\"", "test\xf4\x8f\xbf\xbftest");
     ValidateString("\"test\\U0010FFFFtest\"", "test\xf4\x8f\xbf\xbftest");
+    ValidateString("\"Fuß\"", "Fuß");
+    ValidateString("\"😂\"", "😂");
+    ValidateString("\"汉语大字典\"", "汉语大字典");
+    ValidateString("\"辭源\"", "辭源");
+    ValidateString("\"பெண்டிரேம்\"", "பெண்டிரேம்");
 
     // Unescaped control characters
     Validate("key = \"test\ntest\"", TomlReadError::InvalidControlChar);
@@ -1142,6 +1148,11 @@ HE_TEST_F(core, toml_reader, value_string_basic, TomlReaderFixture)
     ValidateString("\"\"\"test\\U0000E000test\"\"\"", "test\xee\x80\x80test");
     ValidateString("\"\"\"test\\U0010fffftest\"\"\"", "test\xf4\x8f\xbf\xbftest");
     ValidateString("\"\"\"test\\U0010FFFFtest\"\"\"", "test\xf4\x8f\xbf\xbftest");
+    ValidateString("\"\"\"Fuß\"\"\"", "Fuß");
+    ValidateString("\"\"\"😂\"\"\"", "😂");
+    ValidateString("\"\"\"汉语大字典\"\"\"", "汉语大字典");
+    ValidateString("\"\"\"辭源\"\"\"", "辭源");
+    ValidateString("\"\"\"பெண்டிரேம்\"\"\"", "பெண்டிரேம்");
 
     // Control characters must be escaped
     Validate("key = \"\"\"test\0test\"\"\"", TomlReadError::UnexpectedEof);
@@ -1177,6 +1188,11 @@ HE_TEST_F(core, toml_reader, value_string_literal, TomlReaderFixture)
     ValidateString("''", "");
     ValidateString("'test'", "test");
     ValidateString("'  \t test \\test\"test'", "  \t test \\test\"test");
+    ValidateString("'Fuß'", "Fuß");
+    ValidateString("'😂'", "😂");
+    ValidateString("'汉语大字典'", "汉语大字典");
+    ValidateString("'辭源'", "辭源");
+    ValidateString("'பெண்டிரேம்'", "பெண்டிரேம்");
 
     ValidateString("''''''", "");
     ValidateString("''' ' '''", " ' ");
@@ -1185,6 +1201,11 @@ HE_TEST_F(core, toml_reader, value_string_literal, TomlReaderFixture)
     ValidateString("''''' '''", "'' ");
     ValidateString("'''test'''", "test");
     ValidateString("'''test\ntest'''", "test\ntest");
+    ValidateString("'''Fuß'''", "Fuß");
+    ValidateString("'''😂'''", "😂");
+    ValidateString("'''汉语大字典'''", "汉语大字典");
+    ValidateString("'''辭源'''", "辭源");
+    ValidateString("'''பெண்டிரேம்'''", "பெண்டிரேம்");
 
     ValidateString("'''\n  test\ntest'''", "  test\ntest");
     ValidateString("'''\r\n  test\ntest'''", "  test\ntest");
@@ -1549,11 +1570,11 @@ HE_TEST_F(core, toml_reader, complex_document, TomlReaderFixture)
         { .kind = TomlEvent::Kind::StartArray },
         { .kind = TomlEvent::Kind::String, .s = "Foo Bar <foo@example.com>" },
         { .kind = TomlEvent::Kind::StartInlineTable },
-        { .kind = TomlEvent::Kind::Key, .p = { "array", "contributors", "name" } },
+        { .kind = TomlEvent::Kind::Key, .p = { "array", "contributors", "1", "name" } },
         { .kind = TomlEvent::Kind::String, .s = "Baz Qux" },
-        { .kind = TomlEvent::Kind::Key, .p = { "array", "contributors", "email" } },
+        { .kind = TomlEvent::Kind::Key, .p = { "array", "contributors", "1", "email" } },
         { .kind = TomlEvent::Kind::String, .s = "bazqux@example.com" },
-        { .kind = TomlEvent::Kind::Key, .p = { "array", "contributors", "url" } },
+        { .kind = TomlEvent::Kind::Key, .p = { "array", "contributors", "1", "url" } },
         { .kind = TomlEvent::Kind::String, .s = "https://example.com/bazqux" },
         { .kind = TomlEvent::Kind::EndInlineTable, .u = 3 },
         { .kind = TomlEvent::Kind::EndArray, .u = 2 },
@@ -1661,27 +1682,27 @@ HE_TEST_F(core, toml_reader, complex_document, TomlReaderFixture)
         { .kind = TomlEvent::Kind::Key, .p = { "product", "points" } },
         { .kind = TomlEvent::Kind::StartArray },
         { .kind = TomlEvent::Kind::StartInlineTable },
-        { .kind = TomlEvent::Kind::Key, .p = { "product", "points", "x" } },
+        { .kind = TomlEvent::Kind::Key, .p = { "product", "points", "0", "x" } },
         { .kind = TomlEvent::Kind::Uint, .u = 1 },
-        { .kind = TomlEvent::Kind::Key, .p = { "product", "points", "y" } },
+        { .kind = TomlEvent::Kind::Key, .p = { "product", "points", "0", "y" } },
         { .kind = TomlEvent::Kind::Uint, .u = 2 },
-        { .kind = TomlEvent::Kind::Key, .p = { "product", "points", "z" } },
+        { .kind = TomlEvent::Kind::Key, .p = { "product", "points", "0", "z" } },
         { .kind = TomlEvent::Kind::Uint, .u = 3 },
         { .kind = TomlEvent::Kind::EndInlineTable, .u = 3 },
         { .kind = TomlEvent::Kind::StartInlineTable },
-        { .kind = TomlEvent::Kind::Key, .p = { "product", "points", "x" } },
+        { .kind = TomlEvent::Kind::Key, .p = { "product", "points", "1", "x" } },
         { .kind = TomlEvent::Kind::Uint, .u = 7 },
-        { .kind = TomlEvent::Kind::Key, .p = { "product", "points", "y" } },
+        { .kind = TomlEvent::Kind::Key, .p = { "product", "points", "1", "y" } },
         { .kind = TomlEvent::Kind::Uint, .u = 8 },
-        { .kind = TomlEvent::Kind::Key, .p = { "product", "points", "z" } },
+        { .kind = TomlEvent::Kind::Key, .p = { "product", "points", "1", "z" } },
         { .kind = TomlEvent::Kind::Uint, .u = 9 },
         { .kind = TomlEvent::Kind::EndInlineTable, .u = 3 },
         { .kind = TomlEvent::Kind::StartInlineTable },
-        { .kind = TomlEvent::Kind::Key, .p = { "product", "points", "x" } },
+        { .kind = TomlEvent::Kind::Key, .p = { "product", "points", "2", "x" } },
         { .kind = TomlEvent::Kind::Uint, .u = 2 },
-        { .kind = TomlEvent::Kind::Key, .p = { "product", "points", "y" } },
+        { .kind = TomlEvent::Kind::Key, .p = { "product", "points", "2", "y" } },
         { .kind = TomlEvent::Kind::Uint, .u = 4 },
-        { .kind = TomlEvent::Kind::Key, .p = { "product", "points", "z" } },
+        { .kind = TomlEvent::Kind::Key, .p = { "product", "points", "2", "z" } },
         { .kind = TomlEvent::Kind::Uint, .u = 8 },
         { .kind = TomlEvent::Kind::EndInlineTable, .u = 3 },
         { .kind = TomlEvent::Kind::EndArray, .u = 3 },

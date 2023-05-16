@@ -42,6 +42,8 @@ namespace he
     class TomlReader
     {
     public:
+        explicit TomlReader(Allocator& allocator = Allocator::GetDefault()) noexcept;
+
         class Handler
         {
         public:
@@ -52,7 +54,7 @@ namespace he
 
             virtual bool Comment(StringView value) = 0;
 
-            // Primative values
+            // Primitive values
             virtual bool Bool(bool value) = 0;
             virtual bool Int(int64_t value) = 0;
             virtual bool Uint(uint64_t value) = 0;
@@ -76,5 +78,8 @@ namespace he
 
     public:
         TomlReadResult Read(StringView data, Handler& handler);
+
+    private:
+        Allocator& m_allocator;
     };
 }

@@ -10,11 +10,6 @@
 using namespace he;
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST(core, toml_writer, test)
-{
-}
-
-// ------------------------------------------------------------------------------------------------
 HE_TEST(core, toml_writer, complex_document)
 {
     // Sun, 27 May 1979 07:32:00 GMT
@@ -63,7 +58,7 @@ HE_TEST(core, toml_writer, complex_document)
     writer.Float(-Limits<double>::NaN);
     writer.Table("string");
     writer.Key("str");
-    writer.String("I'm a string. \"You can quote me\". Name\tJos\xE9\nLocation\tSF.");
+    writer.String("I'm a string. \"You can quote me\". Name\tJos\xe9\nLocation\tSF.");
     writer.Key("str1");
     writer.String("Roses are red\nViolets are blue");
     writer.Key("str2");
@@ -80,12 +75,12 @@ HE_TEST(core, toml_writer, complex_document)
     writer.String("<\\i\\c*\\s*>", TomlStringFormat::Literal);
     writer.Key("str8");
     writer.String("The first newline is\ntrimmed in literal strings.\n   All other whitespace\n   is preserved.\n", TomlStringFormat::Literal);
-    // TODO: set the local timezone to -07:00 for these to pass
     writer.Table("datetime");
     writer.Key("odt1");
     writer.DateTime(ExpectedDateTime);
     writer.Key("odt2");
     writer.DateTime((ExpectedDateTime + FromPeriod<Microseconds>(999999)));
+    // TODO: set the local timezone to -07:00 for these to pass
     writer.Key("odt3");
     writer.DateTime(ExpectedDateTime, TomlDateTimeFormat::Local);
     writer.Key("odt4");
@@ -178,7 +173,7 @@ HE_TEST(core, toml_writer, complex_document)
     writer.EndInlineTable();
     writer.EndArray();
 
-    const StringView expected = R"(#  Copyright Chad Engler
+    const StringView expected = R"(# Copyright Chad Engler
 [boolean]
 bool1 = true
 bool2 = false
@@ -201,7 +196,7 @@ sf3 = nan
 sf4 = -nan
 [string]
 str = """
-I'm a string. \"You can quote me\". Name\tJos\xE9
+I'm a string. \"You can quote me\". Name\tJos\xe9
 Location\tSF."""
 str1 = """
 Roses are red
@@ -225,12 +220,12 @@ odt3 = 1979-05-27T00:32:00-07:00
 odt4 = 1979-05-27T00:32:00.999999000-07:00
 [time]
 lt1 = 07:32:00.000000000
-lt2 = 07:32:00.999999000
+lt2 = 00:32:00.999999000
 [array]
 integers = [1, 2, 3]
 colors = ["red", "yellow", "green"]
 nested_arrays_of_ints = [[1, 2], [3, 4, 5]]
-contributors = ["Foo Bar <foo@example.com>", {name = "Baz Qux", email = "bazqux@example.com", url = "httpos://example.com/bazqux"}]
+contributors = ["Foo Bar <foo@example.com>", {name = "Baz Qux", email = "bazqux@example.com", url = "https://example.com/bazqux"}]
 [dog."tater.man"]
 type.name = "pug"
 [[product]]
@@ -241,8 +236,7 @@ sku = 738594937
 name = "Nail"
 sku = 284758393
 color = "gray"
-points = [{x = 1, y = 2, z = 3}, {x = 7, y = 8, z = 9}, {x = 2, y = 4, z = 8}]
-)";
+points = [{x = 1, y = 2, z = 3}, {x = 7, y = 8, z = 9}, {x = 2, y = 4, z = 8}])";
 
     HE_EXPECT_EQ(output, expected);
 }

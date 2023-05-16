@@ -16,6 +16,24 @@
 
 namespace he
 {
+    static void WriteCharacter(StringWriter& writer, const char ch)
+    {
+        const uint8_t ucc = static_cast<uint8_t>(ch);
+
+        if ((0x00 <= ucc && ucc <= 0x08) || (0x0A <= ucc && ucc <= 0x1F) || ucc == 0x7F)
+        {
+            writer.Write("\\u00{}{}", ToHex(ucc >> 4), ToHex(ucc & 0xf));
+        }
+        else if (ucc > 0x7F)
+        {
+            writer.Write("\\x{}{}", ToHex(ucc >> 4), ToHex(ucc & 0xf));
+        }
+        else
+        {
+            writer.Write(ch);
+        }
+    }
+
     static void WriteEscaped(StringWriter& writer, StringView value)
     {
         for (const char ch : value)
@@ -30,19 +48,7 @@ namespace he
                 case '"': writer.Write("\\\""); break;
                 case '\\': writer.Write("\\\\"); break;
                 case '\x1B': writer.Write("\\e"); break;
-                default:
-                    if ((ch >= 0x00 && ch <= 0x08) || (ch >= 0x0A && ch <= 0x1F) || ch == 0x7F)
-                    {
-                        writer.Write("\\u00{}{}", char(48 + (ch / 16)), char((ch % 16 < 10 ? 48 : 55) + (ch % 16)));
-                    }
-                    else if (ch > 0x7F)
-                    {
-                        writer.Write("\\x{}{}", char(48 + (ch / 16)), char((ch % 16 < 10 ? 48 : 55) + (ch % 16)));
-                    }
-                    else
-                    {
-                        writer.Write(ch);
-                    }
+                default: WriteCharacter(writer, ch); break;
             }
         }
     }
@@ -61,15 +67,7 @@ namespace he
                 case '"': writer.Write("\\\""); break;
                 case '\\': writer.Write("\\\\"); break;
                 case '\x1B': writer.Write("\\e"); break;
-                default:
-                    if ((0x00 <= ch && ch <= 0x08) || (0x0A <= ch && ch <= 0x1F) || ch == 0x7F)
-                    {
-                        writer.Write("\\u00{}{}", char(48 + (ch / 16)), char((ch % 16 < 10 ? 48 : 55) + (ch % 16)));
-                    }
-                    else
-                    {
-                        writer.Write(ch);
-                    }
+                default: WriteCharacter(writer, ch); break;
             }
         }
     }

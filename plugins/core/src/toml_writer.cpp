@@ -282,9 +282,9 @@ namespace he
 
     void TomlWriter::Table(Span<StringView> names, bool isArray)
     {
-        if (!HE_VERIFY(m_inlineIndex == 0,
+        if (!HE_VERIFY(m_inlineStackSize == 0,
             HE_MSG("Tried to start a table inside an inline table or array."),
-            HE_KV(inline_depth, m_inlineIndex)))
+            HE_KV(inline_depth, m_inlineStackSize)))
         {
             return;
         }
@@ -310,7 +310,7 @@ namespace he
     void TomlWriter::Key(Span<StringView> names)
     {
         InlineTableComma();
-        if (m_inlineIndex == 0)
+        if (m_inlineStackSize == 0)
             m_writer.Write('\n');
         m_writer.WriteIndent();
         WriteKeyNames(names);
@@ -420,36 +420,42 @@ namespace he
 
     void TomlWriter::PushInline(InlineKind kind)
     {
-        if (!HE_VERIFY(m_inlineIndex < MaxInlineDepth))
+        if (!HE_VERIFY(m_inlineStackSize < MaxInlineDepth))
             return;
 
-        const uint8_t shift = m_inlineIndex % StatesPerByte;
+        const uint32_t index = m_inlineStackSize;
+        const uint8_t shift = (index % StatesPerByte) * BitsPerState;
         const uint8_t flag = static_cast<uint8_t>(kind) << shift;
-        uint8_t* b = m_inlineStack + (m_inlineIndex / StatesPerByte);
+        uint8_t* b = m_inlineStack + (index / StatesPerByte);
         *b |= flag;
-        ++m_inlineIndex;
+        ++m_inlineStackSize;
     }
 
     void TomlWriter::PopInline(InlineKind kind)
     {
-        if (!HE_VERIFY(m_inlineIndex > 0))
+        if (!HE_VERIFY(m_inlineStackSize > 0))
             return;
 
         if (!HE_VERIFY(IsIn(kind)))
             return;
 
-        const uint8_t shift = m_inlineIndex % StatesPerByte;
+        const uint32_t index = m_inlineStackSize - 1;
+        const uint8_t shift = (index % StatesPerByte) * BitsPerState;
         const uint8_t flag = static_cast<uint8_t>(InlineKind::All) << shift;
-        uint8_t* b = m_inlineStack + (m_inlineIndex / StatesPerByte);
+        uint8_t* b = m_inlineStack + (index / StatesPerByte);
         *b &= ~flag;
-        --m_inlineIndex;
+        --m_inlineStackSize;
     }
 
     bool TomlWriter::IsIn(InlineKind kind)
     {
-        const uint32_t shift = m_inlineIndex % StatesPerByte;
+        if (m_inlineStackSize == 0)
+            return false;
+
+        const uint32_t index = m_inlineStackSize - 1;
+        const uint8_t shift = (index % StatesPerByte) * BitsPerState;
         const uint8_t flag = static_cast<uint8_t>(kind) << shift;
-        const uint8_t* b = m_inlineStack + (m_inlineIndex / StatesPerByte);
+        const uint8_t* b = m_inlineStack + (index / StatesPerByte);
         return (*b & flag) != 0;
     }
 

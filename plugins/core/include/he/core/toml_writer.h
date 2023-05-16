@@ -88,7 +88,8 @@ namespace he
 
     private:
         static constexpr uint32_t MaxInlineDepth = 128;
-        static constexpr uint32_t StatesPerByte = 4;
+        static constexpr uint32_t BitsPerState = 2;
+        static constexpr uint32_t StatesPerByte = 8 / BitsPerState;
         static constexpr uint32_t InlineStackBytes = MaxInlineDepth / StatesPerByte;
 
         enum class InlineKind : uint8_t
@@ -110,6 +111,6 @@ namespace he
         bool m_firstArrayItem{ true };
 
         uint8_t m_inlineStack[InlineStackBytes]{};
-        uint32_t m_inlineIndex{ 0 };
+        uint32_t m_inlineStackSize{ 0 };
     };
 }

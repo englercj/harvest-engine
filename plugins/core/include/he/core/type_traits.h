@@ -38,6 +38,13 @@ namespace he
     template <bool Val>
     using BoolConstant = IntegralConstant<bool, Val>;
 
+    /// A helper alias template defined for the common case where you want an IntegralConstant
+    /// that is a `uint32_t` index.
+    ///
+    /// \tparam Val The value to hold.
+    template <uint32_t Val>
+    using IndexConstant = IntegralConstant<uint32_t, Val>;
+
     /// A helper alias for a BoolConstant that holds `true`.
     using TrueType = BoolConstant<true>;
 
@@ -769,13 +776,13 @@ namespace he
     ///
     /// \tparam Len The number of bytes to provide storage for.
     /// \tparam Align The alignment the bytes must satisfy.
-    template <uint32_t Size_, uint32_t Align>
+    template <uint32_t Len, uint32_t Align>
     struct AlignedStorage
     {
-        static_assert(Size_ > 0, "Size must be greater than zero.");
+        static_assert(Len > 0, "Size must be greater than zero.");
         static_assert(Align > 0 && (Align & (Align - 1)) == 0, "Alignment must be a power of two.");
 
-        static constexpr uint32_t Size = Size_;
+        static constexpr uint32_t Size = Len;
         static constexpr uint32_t Alignment = Align;
         alignas(Alignment) uint8_t data[Size];
     };

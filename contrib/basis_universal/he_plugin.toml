@@ -28,7 +28,6 @@ homepage = "http://www.binomial.info/"
         "BASISD_SUPPORT_KTX2=1",
         "BASISD_SUPPORT_KTX2_ZSTD=1",
     ]
-    public_dependson = ["zstd"]
 
     [[modules.variants]]
         conditions = ["system:posix"]

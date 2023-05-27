@@ -9,10 +9,16 @@ namespace he.schema;
 
 struct Toml
 {
+    enum Compression
+    {
+        None @0;
+        Zstd @1;
+    }
+
     attribute Name(field, enumerator) :String;
     attribute Hex(field) :void;
-    attribute HexString(field) :void;
-    attribute Base64(field) :void;
+    attribute Base64(field) :Compression;
+    attribute StringLiteral(field) :void;
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -20,7 +26,7 @@ struct Toml
 
 struct Uuid
 {
-    value @0 :uint8[16] $Toml.HexString;
+    value @0 :uint8[16] $Toml.Hex;
 }
 
 struct Vec2f

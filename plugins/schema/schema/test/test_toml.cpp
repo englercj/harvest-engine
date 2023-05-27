@@ -2,6 +2,7 @@
 
 #include "he/schema/toml.h"
 
+#include "he/core/string.h"
 #include "he/core/test.h"
 #include "he/schema/schema.h"
 
@@ -14,14 +15,14 @@ HE_TEST(schema, toml, Roundtrip)
 {
     Declaration::Reader schema = GetSchema(Declaration::DeclInfo);
 
-    he::StringBuilder toml;
-    HE_EXPECT(ToToml<Declaration>(toml, schema));
+    he::String toml;
+    ToToml<Declaration>(toml, schema);
 
     Builder builder;
-    HE_EXPECT(FromToml<Declaration>(builder, toml.Str().Data()));
+    HE_EXPECT(FromToml<Declaration>(builder, toml));
 
-    he::StringBuilder toml2;
-    HE_EXPECT(ToToml<Declaration>(toml2, builder.Root().TryGetStruct<Declaration>()));
+    he::String toml2;
+    ToToml<Declaration>(toml2, builder.Root().TryGetStruct<Declaration>());
 
-    HE_EXPECT_EQ(toml.Str(), toml2.Str());
+    HE_EXPECT_EQ(toml, toml2);
 }

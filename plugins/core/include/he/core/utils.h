@@ -100,10 +100,13 @@ namespace he
     /// \param a The first value to compare.
     /// \param b The second value to compare.
     /// \return The smaller value.
-    template <typename T>
-    [[nodiscard]] constexpr T Min(T a, T b) noexcept
+    template <typename T, typename... Args>
+    [[nodiscard]] constexpr T Min(T a, T b, Args... args) noexcept
     {
-        return a < b ? a : b;
+        if constexpr (sizeof...(args) == 0)
+            return a < b ? a : b;
+        else
+            return Min(Min(a, b), args...);
     }
 
     /// Returns the larger value between `a` and `b`.
@@ -111,10 +114,13 @@ namespace he
     /// \param a The first value to compare.
     /// \param b The second value to compare.
     /// \return The larger value.
-    template <typename T>
-    [[nodiscard]] constexpr T Max(T a, T b) noexcept
+    template <typename T, typename... Args>
+    [[nodiscard]] constexpr T Max(T a, T b, Args... args) noexcept
     {
-        return a > b ? a : b;
+        if constexpr (sizeof...(args) == 0)
+            return a > b ? a : b;
+        else
+            return Max(Max(a, b), args...);
     }
 
     /// Returns a clamped value between [`min`, `max`].
@@ -234,10 +240,15 @@ namespace he
     template <typename T>
     struct EqualTo
     {
-        [[nodiscard]] constexpr bool operator()(const T& a, const T& b) const
-        {
-            return a == b;
-        }
+        [[nodiscard]] constexpr bool operator()(const T& a, const T& b) const { return a == b; }
+    };
+
+    /// Functor template for performing equality comparisons. The base template simply invokes
+    /// `operator!=` on type `T`.
+    template <typename T>
+    struct NotEqualTo
+    {
+        [[nodiscard]] constexpr bool operator()(const T& a, const T& b) const { return a != b; }
     };
 
     /// Functor template for performing less-than comparisons. The base template simply invokes
@@ -245,9 +256,30 @@ namespace he
     template <typename T>
     struct LessThan
     {
-        [[nodiscard]] constexpr bool operator()(const T& a, const T& b) const
-        {
-            return a < b;
-        }
+        [[nodiscard]] constexpr bool operator()(const T& a, const T& b) const { return a < b; }
+    };
+
+    /// Functor template for performing less-than-or-equal comparisons. The base template simply
+    /// invokes `operator<=` on type `T`.
+    template <typename T>
+    struct LessThanOrEqual
+    {
+        [[nodiscard]] constexpr bool operator()(const T& a, const T& b) const { return a <= b; }
+    };
+
+    /// Functor template for performing greater-than comparisons. The base template simply invokes
+    /// `operator>` on type `T`.
+    template <typename T>
+    struct GreaterThan
+    {
+        [[nodiscard]] constexpr bool operator()(const T& a, const T& b) const { return a > b; }
+    };
+
+    /// Functor template for performing greater-than-or-equal comparisons. The base template simply
+    /// invokes `operator>=` on type `T`.
+    template <typename T>
+    struct GreaterThanOrEqual
+    {
+        [[nodiscard]] constexpr bool operator()(const T& a, const T& b) const { return a >= b; }
     };
 }

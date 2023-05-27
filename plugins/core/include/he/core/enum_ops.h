@@ -32,5 +32,5 @@ namespace he
     /// \param[in] x The value to get the value as the underlying type.
     /// \return The enum value as the underlying type.
     template <Enum T>
-    UnderlyingType<T> AsUnderlyingType(T x) { return static_cast<UnderlyingType<T>>(x); }
+    constexpr UnderlyingType<T> AsUnderlyingType(T x) { return static_cast<UnderlyingType<T>>(x); }
 }

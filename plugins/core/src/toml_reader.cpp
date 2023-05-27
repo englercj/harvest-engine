@@ -1291,7 +1291,8 @@ namespace he
                 ++m_cursor;
             }
 
-            m_handler->Uint(String::ToInteger<uint64_t>(m_stringBuffer.Begin(), m_stringBuffer.End(), 16));
+            const uint64_t value = String::ToInteger<uint64_t>(m_stringBuffer.Begin(), m_stringBuffer.End(), 16);
+            m_handler->Uint(value);
             return true;
         }
 
@@ -1311,7 +1312,8 @@ namespace he
                 ++m_cursor;
             }
 
-            m_handler->Uint(String::ToInteger<uint64_t>(m_stringBuffer.Begin(), m_stringBuffer.End(), 8));
+            const uint64_t value = String::ToInteger<uint64_t>(m_stringBuffer.Begin(), m_stringBuffer.End(), 8);
+            m_handler->Uint(value);
             return true;
         }
 
@@ -1331,7 +1333,8 @@ namespace he
                 ++m_cursor;
             }
 
-            m_handler->Uint(String::ToInteger<uint64_t>(m_stringBuffer.Begin(), m_stringBuffer.End(), 2));
+            const uint64_t value = String::ToInteger<uint64_t>(m_stringBuffer.Begin(), m_stringBuffer.End(), 2);
+            m_handler->Uint(value);
             return true;
         }
 
@@ -1377,6 +1380,7 @@ namespace he
             case TomlReadError::InvalidDateTime: return "InvalidDateTime";
             case TomlReadError::InvalidNumber: return "InvalidNumber";
             case TomlReadError::InvalidToken: return "InvalidToken";
+            case TomlReadError::InvalidDocument: return "InvalidDocument";
         }
 
         return "<unknown>";

@@ -256,6 +256,26 @@ namespace he
         SetSize(len);
     }
 
+    void String::Expand(uint32_t len, DefaultInitTag)
+    {
+        GrowBy(len);
+        SetSize(len);
+    }
+
+    void String::Expand(uint32_t len, char c)
+    {
+        GrowBy(len);
+
+        const uint32_t size = Size();
+
+        if (len > size)
+        {
+            MemSet(Data() + size, c, (len - size));
+        }
+
+        SetSize(len);
+    }
+
     void String::ShrinkToFit()
     {
         if (IsEmbedded())

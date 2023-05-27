@@ -1,0 +1,30 @@
+# Copyright Chad Engler
+
+id = "aklomp.base64"
+name = "Fast Base64 Encoder/Decoder"
+description = "Fast Base64 stream encoder/decoder in C99, with SIMD acceleration"
+version = "0.5.0"
+author = "Alfred Klomp"
+license = "BSD-2-Clause"
+homepage = "https://github.com/aklomp/base64"
+
+[install]
+    github = "aklomp/base64#v0.5.0"
+
+[[modules]]
+    name = "libbase64"
+    type = "static"
+    group = "engine/contrib"
+    warnings = "Off"
+    files = [
+        "include/*.h",
+        "lib/codec_choose.c",
+        "lib/lib.c",
+        "lib/arch/*/codec.c",
+        "lib/tables/tables.c",
+    ]
+    public_includedirs = ["include"]
+    private_includedirs = [
+        "lib",
+        "%{path.getdirectory(he.get_plugin('aklomp.base64')._file_path)}",
+    ]

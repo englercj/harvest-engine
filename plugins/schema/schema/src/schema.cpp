@@ -557,7 +557,7 @@ namespace he::schema
         //const Declaration::Reader decl = m_request.GetDecl(group.GetTypeId());
         //const Declaration::Data::Struct::Reader structDecl = decl.GetData().GetStruct();
 
-        //return data.HasDataField(structDecl.GetUnionTagOffset());
+        //return data.HasDataField(structDecl.GetUnionTagIndex());
 
         HE_UNUSED(data, field, scope);
         return true;

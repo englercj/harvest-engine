@@ -19,5 +19,10 @@ homepage = "http://www.zstd.net/"
         "lib/common/**",
         "lib/compress/**",
         "lib/decompress/**",
+        "zdict.h",
+        "zstd.h",
+        "zstd_errors.h",
     ]
-    public_includedirs = ["include"]
+    public_externalincludedirs = ["lib"]
+    public_defines = ["ZSTD_STATIC_LINKING_ONLY", "ZSTD_MULTITHREAD"]
+    public_dependson = ["sys:pthread"]

@@ -55,9 +55,11 @@ he.workspace = function ()
     -- Platform setup
     filter { "platforms:x64" }
         vectorextensions "SSE4.1"
+        tags { "simd_SSE4.1" }
 
     filter { "platforms:ARM64" }
         vectorextensions "NEON"
+        tags { "simd_NEON" }
 
     -- Compiler setup
     filter { "toolset:msc-*" }
@@ -71,6 +73,7 @@ he.workspace = function ()
 
     filter { "toolset:msc-*", "platforms:x64" }
         vectorextensions "AVX"  -- MSVC has no sse4.1 arch, so we enable AVX
+        tags { "simd_AVX" }
 
     filter { "toolset:gcc or clang" }
         buildoptions {

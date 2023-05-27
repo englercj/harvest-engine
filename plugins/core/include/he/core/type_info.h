@@ -43,7 +43,7 @@ namespace he
         [[nodiscard]] static constexpr TypeInfo Get()
         {
             constexpr StringView name = _GetTypeName<RemoveCV<RemoveReference<T>>>();
-            return { FNV64::String(name), name };
+            return { FNV32::String(name), name };
         }
 
     public:
@@ -53,18 +53,18 @@ namespace he
         [[nodiscard]] constexpr bool operator!=(const TypeInfo& x) const { return m_hash != x.m_hash; }
         [[nodiscard]] constexpr bool operator<(const TypeInfo& x) const { return m_hash < x.m_hash; }
 
-        [[nodiscard]] constexpr uint64_t Hash() const { return m_hash; }
+        [[nodiscard]] constexpr uint32_t Hash() const { return m_hash; }
         [[nodiscard]] constexpr const StringView& Name() const { return m_name; }
 
         [[nodiscard]] constexpr uint64_t HashCode() const noexcept { return Mix64(Hash()); }
 
     private:
-        constexpr TypeInfo(uint64_t hash, const StringView& name)
+        constexpr TypeInfo(uint32_t hash, const StringView& name)
             : m_hash(hash)
             , m_name(name)
         {}
 
-        uint64_t m_hash{ 0 };
         StringView m_name{};
+        uint32_t m_hash{ 0 };
     };
 }

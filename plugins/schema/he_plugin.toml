@@ -17,9 +17,10 @@ homepage = ""
     type = "static"
     group = "engine/libs"
     files = ["schema/include/**", "schema/src/**"]
-    public_dependson = ["he_core", "toml++"]
+    public_dependson = ["he_core"]
     public_includedirs = ["schema/include"]
     private_includedirs = ["schema/src"]
+    private_dependson = ["zstd"]
 
 # Schema compiler library
 [[modules]]

@@ -12,10 +12,17 @@ namespace he::schema
 {
     HE_SCHEMA_DECL_INFO_FOR_ID(0x979e892c449bc4d8); // file
     HE_SCHEMA_DECL_INFO_FOR_ID(0xc209341a45619228); // Toml
+    HE_SCHEMA_DECL_INFO_FOR_ID(0xf55645f7c07a1c72); // Toml::Compression
+    enum class Compression_f55645f7c07a1c72 : uint16_t
+    {
+        None = 0,
+        Zstd = 1,
+    };
+    HE_SCHEMA_DECL_ENUM(Compression_f55645f7c07a1c72, 0xf55645f7c07a1c72, 0xc209341a45619228);
     HE_SCHEMA_DECL_INFO_FOR_ID(0xc5144765ef1b906b); // Toml::Name
     HE_SCHEMA_DECL_INFO_FOR_ID(0xadd3e5b7bc72e8a5); // Toml::Hex
-    HE_SCHEMA_DECL_INFO_FOR_ID(0xc218a66445285bb8); // Toml::HexString
     HE_SCHEMA_DECL_INFO_FOR_ID(0xc2fc1f39cbc0264f); // Toml::Base64
+    HE_SCHEMA_DECL_INFO_FOR_ID(0xff0bfeffbd2f5ff8); // Toml::StringLiteral
     HE_SCHEMA_DECL_INFO_FOR_ID(0xef69d825c0ea441b); // Uuid
     HE_SCHEMA_DECL_INFO_FOR_ID(0xeeda74fc55d7c1ba); // Vec2f
     HE_SCHEMA_DECL_INFO_FOR_ID(0xeedd56fc55d9c497); // Vec3f
@@ -67,6 +74,8 @@ namespace he::schema
         Toml() = delete;
         HE_SCHEMA_DECL_STRUCT(0xc209341a45619228, 0x979e892c449bc4d8, 0, 0, 0);
 
+        using Compression = ::he::schema::Compression_f55645f7c07a1c72;
+
         struct Name
         {
             Name() = delete;
@@ -79,16 +88,16 @@ namespace he::schema
             HE_SCHEMA_DECL_ATTRIBUTE(0xadd3e5b7bc72e8a5, 0xc209341a45619228);
         };
 
-        struct HexString
-        {
-            HexString() = delete;
-            HE_SCHEMA_DECL_ATTRIBUTE(0xc218a66445285bb8, 0xc209341a45619228);
-        };
-
         struct Base64
         {
             Base64() = delete;
             HE_SCHEMA_DECL_ATTRIBUTE(0xc2fc1f39cbc0264f, 0xc209341a45619228);
+        };
+
+        struct StringLiteral
+        {
+            StringLiteral() = delete;
+            HE_SCHEMA_DECL_ATTRIBUTE(0xff0bfeffbd2f5ff8, 0xc209341a45619228);
         };
     };
     struct Uuid final

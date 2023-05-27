@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include "he/core/allocator.h"
 #include "he/core/clock.h"
 #include "he/core/span.h"
 #include "he/core/string.h"
@@ -24,6 +25,7 @@ namespace he
         InvalidDateTime,        ///< The format of a date or time value is invalid.
         InvalidNumber,          ///< Format of a number is invalid. For example, a negative hex number.
         InvalidToken,           ///< Encountered an unexpected token in the file.
+        InvalidDocument,        ///< The document is semantically invalid.
     };
 
     struct TomlReadResult
@@ -36,6 +38,7 @@ namespace he
         /// Otherwise this value is just '\0'.
         char expected{ '\0' };
 
+        [[nodiscard]] bool IsValid() const { return error == TomlReadError::None; }
         [[nodiscard]] explicit operator bool() const { return error == TomlReadError::None; }
     };
 
@@ -65,7 +68,7 @@ namespace he
 
             // Tables
             virtual bool Table(Span<const he::String> path, bool isArray) = 0;
-            virtual bool Key(Span<const he::String> path)= 0;
+            virtual bool Key(Span<const he::String> path) = 0;
 
             // Inline Tables
             virtual bool StartInlineTable() = 0;
@@ -77,6 +80,12 @@ namespace he
         };
 
     public:
+        /// Reads a TOML document from the given data and calls the handler for each element
+        /// encountered during parsing.
+        ///
+        /// \param[in] data The TOML document string data.
+        /// \param[in] handler The handler to call for each element.
+        /// \return The result of the read.
         TomlReadResult Read(StringView data, Handler& handler);
 
     private:

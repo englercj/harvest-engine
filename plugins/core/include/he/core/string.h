@@ -520,6 +520,26 @@ namespace he
         /// \param c The character to use to copy to new entries in the string.
         void Resize(uint32_t len, char c = '\0');
 
+        /// Resizes the string to be `len` characters longer. The new characters are default
+        /// initialized.
+        ///
+        /// \note This is different than `Resize(Size() + len)` in that it will use normal growth
+        /// rules to expand the storage. There will likely be slack in the capacity after calling
+        /// `Expand(len)`, a property that `Resize(Size() + len)` does not have.
+        ///
+        /// \param len The number of characters to expand the string size by.
+        void Expand(uint32_t len, DefaultInitTag);
+
+        /// Resizes the string to be `len` characters longer. The new characters are set to `c`.
+        ///
+        /// \note This is different than `Resize(Size() + len)` in that it will use normal growth
+        /// rules to expand the storage. There will likely be slack in the capacity after calling
+        /// `Expand(len)`, a property that `Resize(Size() + len)` does not have.
+        ///
+        /// \param len The number of characters to expand the string size by.
+        /// \param c The character to use to copy to new entries in the string.
+        void Expand(uint32_t len, char c = '\0');
+
         /// Shrinks the memory allocation to fit the current size of the string. If the string
         /// is allocated on the heap and shrinking would let it fit into the embedded data it
         /// will copy the string into the embedded data and deallocate the heap string.

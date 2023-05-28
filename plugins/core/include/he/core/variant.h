@@ -39,7 +39,7 @@ namespace he
         constexpr Variant(IndexConstant<Index>, Args&&... args) noexcept
             : m_index(Index)
         {
-            Create<Index>(Forward<Args>(args)...);
+            new (m_storage.data) ElementType<Index>(Forward<Args>(args)...);
         }
 
         constexpr Variant(const Variant& other) noexcept
@@ -104,7 +104,7 @@ namespace he
         {
             Clear();
             m_index = Index;
-            return *Create<Index>(Forward<Args>(args)...);
+            return *(new (m_storage.data) ElementType<Index>(Forward<Args>(args)...));
         }
 
         template <uint32_t Index>
@@ -170,14 +170,6 @@ namespace he
             if (m_index == Index)
                 return visitor(Get<Index>(), IndexConstant<Index>{});
             return VisitInternal<V, I...>(visitor, IndexSequence<I...>{});
-        }
-
-        template <uint32_t Index, typename... Args>
-        ElementType<Index>* Create(Args&&... args)
-        {
-            static_assert(Index < Size, "Index out of range.");
-            HE_ASSERT(!IsValid());
-            return new (m_storage.data) ElementType<Index>(Forward<Args>(args)...);
         }
 
     private:

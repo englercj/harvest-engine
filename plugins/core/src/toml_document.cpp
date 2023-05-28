@@ -186,14 +186,12 @@ namespace he
         {
             const he::String& name = path[i];
 
+            if (m_value->IsArray())
+                m_value = &m_value->Array().Back();
+
             if (m_value->IsTable())
             {
                 m_value = &m_value->Table()[name];
-            }
-            else if (m_value->IsArray())
-            {
-                const uint32_t index = he::String::ToInteger<uint32_t>(name.Begin(), name.End());
-                m_value = &m_value->Array()[index];
             }
             else if (!m_value->IsValid())
             {

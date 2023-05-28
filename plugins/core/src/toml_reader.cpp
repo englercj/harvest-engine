@@ -456,13 +456,8 @@ namespace he
 
                 if constexpr (IsArray)
                 {
-                    String indexKey = m_pathBuffer.EmplaceBack(m_pathBuffer.GetAllocator());
-                    FormatTo(indexKey, "{}", count);
-
                     if (!ParseValue())
                         return false;
-
-                    m_pathBuffer.PopBack();
                 }
                 else
                 {

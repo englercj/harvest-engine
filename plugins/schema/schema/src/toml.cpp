@@ -1022,12 +1022,6 @@ namespace he::schema
             const Field::Meta::Normal::Reader norm = field.GetMeta().GetNormal();
             Type::Data::Reader typeData = norm.GetType().GetData();
 
-            if (typeData.IsArray() || typeData.IsList())
-            {
-                const Type::Reader elementType = typeData.IsArray() ? typeData.GetArray().GetElementType() : typeData.GetList().GetElementType();
-                typeData = elementType.GetData();
-            }
-
             if (!typeData.IsStruct())
                 m_writer.Key(field.GetName());
 
@@ -1116,42 +1110,7 @@ namespace he::schema
         void VisitValue(Blob::Reader value, Type::Reader type, const DeclInfo& scope) override
         {
             HE_UNUSED(type, scope);
-            const Attribute::Reader b64Attr = FindAttribute<Toml::Base64>(m_currentField.GetAttributes());
-            const Attribute::Reader hexAttr = FindAttribute<Toml::Hex>(m_currentField.GetAttributes());
-
-            if (hexAttr.IsValid() && !b64Attr.IsValid())
-            {
-                he::String str = Format("{:02x}", FmtJoin(value, ""));
-                m_writer.String(str);
-                return;
-            }
-            const bool useZstd = b64Attr.IsValid() ? b64Attr.GetValue().GetData().GetEnum() == AsUnderlyingType(Toml::Compression::Zstd) : false;
-
-            if (!useZstd)
-            {
-                he::String str = Base64Encode(value);
-                m_writer.String(str);
-                return;
-            }
-
-            const size_t maxSize = ZSTD_compressBound(value.Size());
-
-            Vector<uint8_t> compressed;
-            compressed.Resize(static_cast<uint32_t>(maxSize), DefaultInit);
-
-            const size_t result = ZSTD_compress(compressed.Data(), compressed.Size(), value.Data(), value.Size(), ZSTD_CLEVEL_DEFAULT);
-            if (!HE_VERIFY(!ZSTD_isError(result),
-                HE_MSG("Failed to compress blob bytes using zstd"),
-                HE_KV(field_name, m_currentField.GetName()),
-                HE_KV(field_type, m_currentField.GetMeta().GetNormal().GetType().GetData().GetUnionTag()),
-                HE_KV(zstd_result, result)))
-            {
-                m_writer.String("");
-                return;
-            }
-
-            he::String str = Base64Encode(compressed);
-            m_writer.String(str);
+            WriteBlobValue(value);
         }
 
         void VisitValue(String::Reader value, Type::Reader type, const DeclInfo& scope) override
@@ -1206,7 +1165,16 @@ namespace he::schema
 
         void VisitArrayValue(StructReader data, Type::Reader elementType, uint16_t index, uint32_t dataOffset, uint16_t size, const DeclInfo& scope)
         {
-            // TODO: Support uint8 arrays serializing to hex or base64 strings.
+            if (elementType.GetData().IsUint8())
+            {
+                const List<Attribute>::Reader attributes = m_currentField.GetAttributes();
+                if (HasAttribute<Toml::Base64>(attributes) || HasAttribute<Toml::Hex>(attributes))
+                {
+                    const Span<const uint8_t> value = data.TryGetDataArrayField<uint8_t>(index, dataOffset, size);
+                    WriteBlobValue(value);
+                    return;
+                }
+            }
 
             const bool isPointer = IsPointer(elementType);
 
@@ -1239,7 +1207,16 @@ namespace he::schema
 
         void VisitListValue(ListReader data, Type::Reader elementType, const DeclInfo& scope)
         {
-            // TODO: Support uint8 lists serializing to hex or base64 strings.
+            if (elementType.GetData().IsUint8())
+            {
+                const List<Attribute>::Reader attributes = m_currentField.GetAttributes();
+                if (HasAttribute<Toml::Base64>(attributes) || HasAttribute<Toml::Hex>(attributes))
+                {
+                    const uint8_t* value = reinterpret_cast<const uint8_t*>(data.Data());
+                    WriteBlobValue({ value, data.Size() });
+                    return;
+                }
+            }
 
             const uint32_t size = data.Size();
 
@@ -1300,6 +1277,47 @@ namespace he::schema
                 HE_KV(parent_id, decl.GetId()),
                 HE_KV(parent_name, decl.GetName()),
                 HE_KV(key_stack, m_keyStack));
+        }
+
+    private:
+        void WriteBlobValue(Span<const uint8_t> value)
+        {
+            const Attribute::Reader b64Attr = FindAttribute<Toml::Base64>(m_currentField.GetAttributes());
+            const Attribute::Reader hexAttr = FindAttribute<Toml::Hex>(m_currentField.GetAttributes());
+
+            if (hexAttr.IsValid() && !b64Attr.IsValid())
+            {
+                he::String str = Format("{:02x}", FmtJoin(value, ""));
+                m_writer.String(str);
+                return;
+            }
+            const bool useZstd = b64Attr.IsValid() ? b64Attr.GetValue().GetData().GetEnum() == AsUnderlyingType(Toml::Compression::Zstd) : false;
+
+            if (!useZstd)
+            {
+                he::String str = Base64Encode(value);
+                m_writer.String(str);
+                return;
+            }
+
+            const size_t maxSize = ZSTD_compressBound(value.Size());
+
+            Vector<uint8_t> compressed;
+            compressed.Resize(static_cast<uint32_t>(maxSize), DefaultInit);
+
+            const size_t result = ZSTD_compress(compressed.Data(), compressed.Size(), value.Data(), value.Size(), ZSTD_CLEVEL_DEFAULT);
+            if (!HE_VERIFY(!ZSTD_isError(result),
+                HE_MSG("Failed to compress blob bytes using zstd"),
+                HE_KV(field_name, m_currentField.GetName()),
+                HE_KV(field_type, m_currentField.GetMeta().GetNormal().GetType().GetData().GetUnionTag()),
+                HE_KV(zstd_result, result)))
+            {
+                m_writer.String("");
+                return;
+            }
+
+            he::String str = Base64Encode(compressed);
+            m_writer.String(str);
         }
 
     private:

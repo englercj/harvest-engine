@@ -245,7 +245,7 @@ namespace he::schema
         {
             if (unionField.GetUnionTag() == activeFieldTag)
             {
-                VisitField(data, unionField, scope);
+                VisitField(data, unionField, *info);
                 break;
             }
         }

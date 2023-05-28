@@ -24,5 +24,4 @@ homepage = "http://www.zstd.net/"
         "zstd_errors.h",
     ]
     public_externalincludedirs = ["lib"]
-    public_defines = ["ZSTD_STATIC_LINKING_ONLY", "ZSTD_MULTITHREAD"]
-    public_dependson = ["sys:pthread"]
+    public_defines = ["ZSTD_STATIC_LINKING_ONLY"]

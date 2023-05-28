@@ -6,12 +6,29 @@ local p = premake
 -- Proxies for built-in premake functions
 
 he.add_module_key {
+    key = "cdialect",
+    scope = "private",
+    type = "string",
+    desc = "string identifier of the C dialect to use",
+    handler = function (ctx, values) cdialect(values) end,
+}
+
+he.add_module_key {
+    key = "cppdialect",
+    scope = "private",
+    type = "string",
+    desc = "string identifier of the C++ dialect to use",
+    handler = function (ctx, values) cppdialect(values) end,
+}
+
+he.add_module_key {
     key = "defines",
     scope = "include",
     type = "table",
     desc = "an array of strings",
     handler = function (ctx, values) defines(values) end,
 }
+
 he.add_module_key {
     key = "disablewarnings",
     scope = "private",

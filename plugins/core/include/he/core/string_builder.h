@@ -28,41 +28,49 @@ namespace he
         ///
         /// \param x The writer to move from.
         StringBuilder(const StringBuilder& x, Allocator& allocator) noexcept
-            : StringWriter(x)
+            : StringWriter(m_buf)
             , m_buf(x.m_buf, allocator)
-        {}
+        {
+            m_indentDepth = x.m_indentDepth;
+        }
 
         /// Construct a builder by copying `x`, using `allocator` for all allocations.
         ///
         /// \param x The writer to move from.
         StringBuilder(StringBuilder&& x, Allocator& allocator) noexcept
-            : StringWriter(Move(x))
+            : StringWriter(m_buf)
             , m_buf(Move(x.m_buf), allocator)
-        {}
+        {
+            m_indentDepth = Exchange(x.m_indentDepth, 0);
+        }
 
         /// Construct a builder by copying `x`, using the allocator from `x`.
         ///
         /// \param x The writer to move from.
         StringBuilder(const StringBuilder& x) noexcept
-            : StringWriter(x)
+            : StringWriter(m_buf)
             , m_buf(x.m_buf)
-        {}
+        {
+            m_indentDepth = x.m_indentDepth;
+        }
 
         /// Construct a builder by moving `x`, using the allocator from `x`.
         ///
         /// \param x The builder to move from.
         StringBuilder(StringBuilder&& x) noexcept
-            : StringWriter(Move(x))
+            : StringWriter(m_buf)
             , m_buf(Move(x.m_buf))
-        {}
+        {
+            m_indentDepth = Exchange(x.m_indentDepth, 0);
+        }
 
         /// Copy the builder `x` into this builder.
         ///
         /// \param x The builder to copy from.
         StringBuilder& operator=(const StringBuilder& x) noexcept
         {
-            StringWriter::operator=(x);
             m_buf = x.m_buf;
+            m_indentDepth = x.m_indentDepth;
             return *this;
         }
 
@@ -72,8 +80,8 @@ namespace he
         /// \param x The builder to move from.
         StringBuilder& operator=(StringBuilder&& x) noexcept
         {
-            StringWriter::operator=(Move(x));
             m_buf = Move(x.m_buf);
+            m_indentDepth = Exchange(x.m_indentDepth, 0);
             return *this;
         }
 

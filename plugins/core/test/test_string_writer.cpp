@@ -61,11 +61,10 @@ HE_TEST(core, string_writer, Construct_Move)
 
         StringWriter moved(Move(writer));
         HE_EXPECT_EQ(moved.Size(), TestStrLen);
-        HE_EXPECT_NE_PTR(moved.Str().Data(), ptr);
+        HE_EXPECT_EQ_PTR(moved.Str().Data(), ptr);
         HE_EXPECT_EQ(moved.Str(), TestStr);
 
-        HE_EXPECT(!writer.IsEmpty());
-        HE_EXPECT_EQ_PTR(writer.Str().Data(), ptr);
+        HE_EXPECT(writer.IsEmpty());
     }
 
     {
@@ -78,11 +77,10 @@ HE_TEST(core, string_writer, Construct_Move)
 
         StringWriter moved = Move(writer);
         HE_EXPECT_EQ(moved.Size(), TestStrLen);
-        HE_EXPECT_NE_PTR(moved.Str().Data(), ptr);
+        HE_EXPECT_EQ_PTR(moved.Str().Data(), ptr);
         HE_EXPECT_EQ(moved.Str(), TestStr);
 
-        HE_EXPECT(!writer.IsEmpty());
-        HE_EXPECT_EQ_PTR(writer.Str().Data(), ptr);
+        HE_EXPECT(writer.IsEmpty());
     }
 }
 
@@ -119,7 +117,7 @@ HE_TEST(core, string_writer, operator_assign_move)
     StringWriter moved(buf);
     moved = Move(writer);
     HE_EXPECT_EQ(moved.Size(), TestStrLen);
-    HE_EXPECT_NE_PTR(moved.Str().Data(), buf.Data());
+    HE_EXPECT_EQ_PTR(moved.Str().Data(), buf.Data());
     HE_EXPECT_EQ(moved.Str(), TestStr);
 
     HE_EXPECT(writer.IsEmpty());
@@ -131,7 +129,8 @@ HE_TEST(core, string_writer, operator_index)
     constexpr char TestStr[] = "Hello";
     constexpr uint32_t TestStrLen = HE_LENGTH_OF(TestStr) - 1;
 
-    StringWriter writer;
+    String buf;
+    StringWriter writer(buf);
     writer.Write(TestStr);
     HE_EXPECT_EQ(writer.Size(), TestStrLen);
 
@@ -144,7 +143,8 @@ HE_TEST(core, string_writer, operator_index)
 // ------------------------------------------------------------------------------------------------
 HE_TEST(core, string_writer, operator_plus_equal)
 {
-    StringWriter s;
+    String buf;
+    StringWriter s(buf);
     HE_EXPECT_EQ(s.Size(), 0);
     HE_EXPECT_EQ(s.Str(), "");
 
@@ -188,7 +188,8 @@ HE_TEST(core, string_writer, operator_plus_equal)
 // ------------------------------------------------------------------------------------------------
 HE_TEST(core, string_writer, IsEmpty)
 {
-    StringWriter writer;
+    String buf;
+    StringWriter writer(buf);
     HE_EXPECT(writer.IsEmpty());
 
     writer.Write('a');
@@ -201,7 +202,8 @@ HE_TEST(core, string_writer, IsEmpty)
 // ------------------------------------------------------------------------------------------------
 HE_TEST(core, string_writer, Capacity)
 {
-    StringWriter s;
+    String buf;
+    StringWriter s(buf);
     HE_EXPECT_EQ(s.Capacity(), String::MaxEmbedCharacters);
 
     char embedSizedStr[String::MaxEmbedCharacters + 1];
@@ -222,7 +224,8 @@ HE_TEST(core, string_writer, Capacity)
 // ------------------------------------------------------------------------------------------------
 HE_TEST(core, string_writer, Size)
 {
-    StringWriter s;
+    String buf;
+    StringWriter s(buf);
     HE_EXPECT_EQ(s.Size(), 0);
 
     char embedSizedStr[String::MaxEmbedCharacters + 1];
@@ -243,7 +246,8 @@ HE_TEST(core, string_writer, Size)
 // ------------------------------------------------------------------------------------------------
 HE_TEST(core, string_writer, Reserve)
 {
-    StringWriter s;
+    String buf;
+    StringWriter s(buf);
     HE_EXPECT_EQ(s.Size(), 0);
 
     char embedSizedStr[String::MaxEmbedCharacters + 1];
@@ -272,7 +276,8 @@ HE_TEST(core, string_writer, Str)
 // ------------------------------------------------------------------------------------------------
 HE_TEST(core, string_writer, Clear)
 {
-    StringWriter writer;
+    String buf;
+    StringWriter writer(buf);
     HE_EXPECT(writer.IsEmpty());
 
     writer.Clear();
@@ -291,7 +296,8 @@ HE_TEST(core, string_writer, Clear)
 // ------------------------------------------------------------------------------------------------
 HE_TEST(core, string_writer, PushBack)
 {
-    StringWriter writer;
+    String buf;
+    StringWriter writer(buf);
 
     writer.Clear();
     writer.PushBack('a');
@@ -302,7 +308,8 @@ HE_TEST(core, string_writer, PushBack)
 // ------------------------------------------------------------------------------------------------
 HE_TEST(core, string_writer, Write)
 {
-    StringWriter writer;
+    String buf;
+    StringWriter writer(buf);
 
     // char
     writer.Clear();
@@ -335,7 +342,8 @@ HE_TEST(core, string_writer, WriteIndent)
 {
     #define TEST_INDENT "    "
 
-    StringWriter writer;
+    String buf;
+    StringWriter writer(buf);
 
     HE_EXPECT(writer.IsEmpty());
     writer.WriteIndent();
@@ -361,7 +369,8 @@ HE_TEST(core, string_writer, WriteIndent)
 // ------------------------------------------------------------------------------------------------
 HE_TEST(core, string_writer, WriteLine)
 {
-    StringWriter writer;
+    String buf;
+    StringWriter writer(buf);
 
     writer.WriteLine("line one");
     HE_EXPECT_EQ(writer.Str(), "line one\n");

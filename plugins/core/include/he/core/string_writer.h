@@ -20,8 +20,6 @@ namespace he
         // ----------------------------------------------------------------------------------------
         // Construction
 
-        StringWriter() = default;
-
         /// Constructs a new writer.
         ///
         /// \param[in] allocator Optional. The allocator to use.
@@ -212,7 +210,7 @@ namespace he
             m_str->PushBack('\n');
         }
 
-    private:
+    protected:
         String* m_str{ nullptr };
         uint32_t m_indentDepth{ 0 };
     };

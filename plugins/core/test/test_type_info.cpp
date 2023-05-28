@@ -79,8 +79,8 @@ HE_TEST(core, type_info, Name_Hash)
         static_assert(Info.Name() == ExpectedName);
         HE_EXPECT_EQ(Info.Name(), ExpectedName);
 
-        static_assert(Info.Hash() == 0x2b9fff192bd4c83e);
-        HE_EXPECT_EQ(Info.Hash(), 0x2b9fff192bd4c83e);
+        static_assert(Info.Hash() == 0x95e97e5e);
+        HE_EXPECT_EQ(Info.Hash(), 0x95e97e5e);
     }
 
     {
@@ -90,8 +90,8 @@ HE_TEST(core, type_info, Name_Hash)
         static_assert(Info.Name() == ExpectedName);
         HE_EXPECT_EQ(Info.Name(), ExpectedName);
 
-        static_assert(Info.Hash() == 0xbaaedcff023465cb);
-        HE_EXPECT_EQ(Info.Hash(), 0xbaaedcff023465cb);
+        static_assert(Info.Hash() == 0xf0981eeb);
+        HE_EXPECT_EQ(Info.Hash(), 0xf0981eeb);
     }
 
     {
@@ -101,8 +101,8 @@ HE_TEST(core, type_info, Name_Hash)
         static_assert(Info.Name() == ExpectedName);
         HE_EXPECT_EQ(Info.Name(), ExpectedName);
 
-        static_assert(Info.Hash() == 0x84cc2492ffe3cb3f);
-        HE_EXPECT_EQ(Info.Hash(), 0x84cc2492ffe3cb3f);
+        static_assert(Info.Hash() == 0xf7116a3f);
+        HE_EXPECT_EQ(Info.Hash(), 0xf7116a3f);
     }
 
     {
@@ -114,7 +114,7 @@ HE_TEST(core, type_info, Name_Hash)
         static_assert(Info.Name() == ExpectedName);
         HE_EXPECT_EQ(Info.Name(), ExpectedName);
 
-        static_assert(Info.Hash() == 0x8d098f6678e7c781);
-        HE_EXPECT_EQ(Info.Hash(), 0x8d098f6678e7c781);
+        static_assert(Info.Hash() == 0xc818af81);
+        HE_EXPECT_EQ(Info.Hash(), 0xc818af81);
     }
 }

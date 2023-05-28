@@ -13,7 +13,7 @@ using namespace he::schema;
 // ------------------------------------------------------------------------------------------------
 HE_TEST(schema, toml, Roundtrip)
 {
-    Declaration::Reader schema = GetSchema(Declaration::DeclInfo);
+    Declaration::Reader schema = GetSchema(SourceInfo::DeclInfo);
 
     he::String toml;
     ToToml<Declaration>(toml, schema);

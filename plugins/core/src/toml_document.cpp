@@ -14,6 +14,8 @@ namespace he
     public:
         explicit TomlDocumentReadHandler(TomlDocument& doc) noexcept
             : m_doc(doc)
+            , m_visitedPaths(doc.GetAllocator())
+            , m_valueStack(doc.GetAllocator())
         {}
 
         TomlReadResult Result() const { return m_result; }
@@ -110,7 +112,7 @@ namespace he
 
         bool Table(Span<const he::String> path, bool isArray) override
         {
-            if (!WalkPath(path))
+            if (!WalkPath(path, isArray))
                 return false;
 
             if (isArray)
@@ -121,44 +123,58 @@ namespace he
                 m_value = &m_value->Array().EmplaceBack();
             }
 
+            if (!m_value->IsTable())
+                m_value->SetTable(m_doc.GetAllocator());
             return true;
         }
 
         bool Key(Span<const he::String> path) override
         {
-            return WalkPath(path);
+            return WalkPath(path, false);
         }
 
         bool StartInlineTable() override
         {
             HE_ASSERT(m_value);
+            m_valueStack.PushBack(m_value);
+
+            if (m_value->IsArray())
+                m_value = &m_value->Array().EmplaceBack();
+
             m_value->SetTable(m_doc.GetAllocator());
             return true;
         }
 
         bool EndInlineTable(uint32_t length) override
         {
-            HE_ASSERT(m_value && m_value->IsTable());
-            HE_ASSERT(m_value->Table().Size() == length);
+            HE_UNUSED(length);
+            m_value = m_valueStack.Back();
+            m_valueStack.PopBack();
             return true;
         }
 
         bool StartArray() override
         {
             HE_ASSERT(m_value);
+            m_valueStack.PushBack(m_value);
+
+            if (m_value->IsArray())
+                m_value = &m_value->Array().EmplaceBack();
+
             m_value->SetArray(m_doc.GetAllocator());
             return true;
         }
 
         bool EndArray(uint32_t length) override
         {
-            HE_ASSERT(m_value && m_value->IsArray());
-            HE_ASSERT(m_value->Array().Size() == length);
+            HE_UNUSED(length);
+            m_value = m_valueStack.Back();
+            m_valueStack.PopBack();
             return true;
         }
 
     private:
-        bool WalkPath(Span<const he::String> path)
+        bool WalkPath(Span<const he::String> path, bool isArrayTableHeader)
         {
             m_value = &m_doc.Root();
 
@@ -186,12 +202,22 @@ namespace he
                 }
             }
 
-            if (m_value->IsValid())
+            he::String visitedPath;
+            for (const he::String& part : path)
             {
-                // If we get here it means the path refers a value that is already set. Keys are not
-                // allowed to be set multiple times by the same document. Tables are also not allowed
-                // to be defined multiple times.
-                // TODO: Return error code because this table is not valid.
+                if (!visitedPath.IsEmpty())
+                    visitedPath += ".";
+
+                visitedPath += part;
+            }
+
+            const auto result = m_visitedPaths.Insert(Move(visitedPath));
+
+            // If the value exists, and this isn't an array table header, then we might be
+            // setting the same key path twice. We use the visited paths set to check if this
+            // exact path has been visited before.
+            if (m_value->IsValid() && !isArrayTableHeader && !result.inserted)
+            {
                 m_result = { TomlReadError::InvalidDocument, 0, 0 };
                 return false;
             }
@@ -201,6 +227,9 @@ namespace he
 
     private:
         TomlDocument& m_doc;
+        HashSet<he::String> m_visitedPaths;
+        Vector<TomlValue*> m_valueStack;
+
         TomlValue* m_value{ nullptr };
         TomlReadResult m_result{};
     };

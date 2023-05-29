@@ -108,6 +108,9 @@ namespace he
         TomlValue& operator[](StringView key) { HE_ASSERT(IsTable()); return Table()[key]; }
         TomlValue& operator[](uint32_t index) { HE_ASSERT(IsArray()); return Array()[index]; }
 
+        bool Contains(StringView key) const { HE_ASSERT(IsTable()); return Table().Contains(key); }
+        bool Contains(uint32_t index) const { HE_ASSERT(IsArray()); return index < Array().Size(); }
+
     private:
         VariantType m_value;
     };
@@ -132,6 +135,7 @@ namespace he
         Allocator& GetAllocator() const { return m_allocator; }
 
         TomlValue& operator[](StringView key) { return Root()[key]; }
+        bool Contains(StringView key) const { return Root().Contains(key); }
 
     private:
         Allocator& m_allocator;

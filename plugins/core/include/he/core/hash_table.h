@@ -518,6 +518,8 @@ namespace he
         using ValueType = T;
 
     public:
+        using Super::Super;
+
         InsertResult Insert(KeyType&& key) { return Super::Emplace(Move(key)); }
         InsertResult Insert(const KeyType& key) { return Super::Emplace(key); }
 

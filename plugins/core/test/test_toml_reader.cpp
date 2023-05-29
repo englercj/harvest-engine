@@ -1,5 +1,7 @@
 // Copyright Chad Engler
 
+#include "fixtures.h"
+
 #include "he/core/toml_reader.h"
 
 #include "he/core/clock.h"
@@ -1346,16 +1348,6 @@ HE_TEST_F(core, toml_reader, complex_document, TomlReaderFixture)
     // Sun, 27 May 1979 07:32:00 GMT
     constexpr SystemTime ExpectedDateTime{ 296638320000ull * Milliseconds::Ratio };
 
-    // TODO: This only works if build in the same place it runs. Need a better approach.
-    constexpr StringView FilePath = __FILE__;
-    const StringView DirName = GetDirectory(FilePath);
-
-    String docPath = DirName;
-    ConcatPath(docPath, "test_toml_document.toml");
-
-    String tomlDoc;
-    HE_EXPECT(File::ReadAll(tomlDoc, docPath.Data()));
-
     const TomlEvent expected[] =
     {
         { .kind = TomlEvent::Kind::DocumentStart },
@@ -1711,5 +1703,6 @@ HE_TEST_F(core, toml_reader, complex_document, TomlReaderFixture)
         { .kind = TomlEvent::Kind::DocumentEnd },
     };
 
+    const StringView tomlDoc = GetTestTomlDocument();
     Validate(tomlDoc, expected);
 }

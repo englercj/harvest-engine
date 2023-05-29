@@ -18,6 +18,7 @@ namespace he
     // --------------------------------------------------------------------------------------------
     void TestAllocator(Allocator& alloc);
     void TouchTestFile(const char* path, const void* data = nullptr, uint32_t len = 0);
+    StringView GetTestTomlDocument();
 
     // --------------------------------------------------------------------------------------------
     struct Trivial { uint32_t a; };

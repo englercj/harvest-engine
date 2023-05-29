@@ -198,4 +198,216 @@ namespace he
 
         f.Close();
     }
+
+    StringView GetTestTomlDocument()
+    {
+        static const StringView s_document = R"(# Copyright Chad Engler
+
+[boolean]
+bool1 = true
+bool2 = false
+
+[integer]
+int1 = +99
+int2 = 42
+int3 = 0
+int4 = -17
+int5 = 1_000
+int6 = 5_349_221
+int7 = 53_49_221
+int8 = 1_2_3_4_5     # valid but inadvisable
+
+# hexadecimal with prefix `0x`
+hex1 = 0xDEADBEEF
+hex2 = 0xdeadbeef
+hex3 = 0xdead_beef
+
+# octal with prefix `0o`
+oct1 = 0o01234567
+oct2 = 0o755 # useful for Unix file permissions
+
+# binary with prefix `0b`
+bin1 = 0b11010110
+
+[float]
+# fractional
+flt1 = +1.0
+flt2 = 3.1415
+flt3 = -0.01
+
+# exponent
+flt4 = 5e+22
+flt5 = 1e06
+flt6 = -2E-2
+
+# both
+flt7 = 6.626e-34
+flt8 = 224_617.445_991_228
+
+# infinity
+sf1 = inf  # positive infinity
+sf2 = +inf # positive infinity
+sf3 = -inf # negative infinity
+
+# not a number
+sf4 = nan  # actual sNaN/qNaN encoding is implementation-specific
+sf5 = +nan # same as `nan`
+sf6 = -nan # valid, actual encoding is implementation-specific
+
+[string]
+str = "I'm a string. \"You can quote me\". Name\tJos\xE9\nLocation\tSF."
+str1 = """
+Roses are red
+Violets are blue"""
+
+# On a Unix system, the above multi-line string will most likely be the same as:
+str2 = "Roses are red\nViolets are blue"
+
+# On a Windows system, it will most likely be equivalent to:
+str3 = "Roses are red\r\nViolets are blue"
+
+# The following strings are byte-for-byte equivalent:
+str4 = "The quick brown fox jumps over the lazy dog."
+
+str5 = """
+The quick brown \
+
+
+  fox jumps over \
+    the lazy dog."""
+
+str6 = """\
+       The quick brown \
+       fox jumps over \
+       the lazy dog.\
+       """
+
+str7 = """Here are two quotation marks: "". Simple enough."""
+str8 = """Here are three quotation marks: ""\"."""
+str9 = """Here are fifteen quotation marks: ""\"""\"""\"""\"""\"."""
+
+# What you see is what you get.
+winpath  = 'C:\Users\nodejs\templates'
+winpath2 = '\\ServerX\admin$\system32\'
+quoted   = 'Tom "Dubs" Preston-Werner'
+regex    = '<\i\c*\s*>'
+regex2 = '''I [dw]on't need \d{2} apples'''
+lines  = '''
+The first newline is
+trimmed in literal strings.
+   All other whitespace
+   is preserved.
+'''
+quot15 = '''Here are fifteen quotation marks: """""""""""""""'''
+apos15 = "Here are fifteen apostrophes: '''''''''''''''"
+
+# 'That,' she said, 'is still pointless.'
+str11 = ''''That,' she said, 'is still pointless.''''
+str12 = ''''That,' she said, 'is still pointless.'''''
+
+[datetime]
+odt1 = 1979-05-27T07:32:00Z
+odt2 = 1979-05-27T00:32:00-07:00
+odt3 = 1979-05-27T00:32:00.999999-07:00
+odt4 = 1979-05-27 07:32:00Z
+odt5 = 1979-05-27 07:32Z
+odt6 = 1979-05-27 00:32-07:00
+
+ldt1 = 1979-05-27T00:32:00
+ldt2 = 1979-05-27T00:32:00.999999
+ldt3 = 1979-05-27T00:32
+
+ld1 = 1979-05-27
+
+[time]
+lt1 = 07:32:00
+lt2 = 00:32:00.999999
+lt3 = 07:32
+
+[array]
+integers = [ 1, 2, 3 ]
+colors = [ "red", "yellow", "green" ]
+nested_arrays_of_ints = [ [ 1, 2 ], [3, 4, 5] ]
+nested_mixed_array = [ [ 1, 2 ], ["a", "b", "c"] ]
+string_array = [ "all", 'strings', """are the same""", '''type''' ]
+
+# Mixed-type arrays are allowed
+numbers = [ 0.1, 0.2, 0.5, 1, 2, 5 ]
+contributors = [
+    "Foo Bar <foo@example.com>",
+    { name = "Baz Qux", email = "bazqux@example.com", url = "https://example.com/bazqux" }
+]
+integers2 = [
+  1, 2, 3
+]
+
+integers3 = [
+  1,
+  2, # this is ok
+]
+
+[table]
+[table-1]
+key1 = "some string"
+key2 = 123
+
+[table-2]
+key1 = "another string"
+key2 = 456
+
+[dog."tater.man"]
+type.name = "pug"
+
+[a.b.c]            # this is best practice
+[ d.e.f ]          # same as [d.e.f]
+[ g .  h  . i ]    # same as [g.h.i]
+[ j . "ʞ" . 'l' ]  # same as [j."ʞ".'l']
+
+# [x] you
+# [x.y] don't
+# [x.y.z] need these
+[x.y.z.w] # for this to work
+
+[x] # defining a super-table afterward is ok
+
+[fruit]
+apple.color = "red"
+apple.taste.sweet = true
+
+[fruit.apple.texture]  # you can add sub-tables
+smooth = true
+
+[inline.table]
+name = { first = "Tom", last = "Preston-Werner" }
+point = {x=1, y=2}
+animal = { type.name = "pug" }
+contact = {
+    personal = {
+        name = "Donald Duck",
+        email = "donald@duckburg.com",
+    },
+    work = {
+        name = "Coin cleaner",
+        email = "donald@ScroogeCorp.com",
+    },
+}
+
+[[product]]
+name = "Hammer"
+sku = 738594937
+
+[[product]]  # empty table within the array
+
+[[product]]
+name = "Nail"
+sku = 284758393
+
+color = "gray"
+
+points = [ { x = 1, y = 2, z = 3 },
+           { x = 7, y = 8, z = 9 },
+           { x = 2, y = 4, z = 8 } ]
+)";
+        return s_document;
+    }
 }

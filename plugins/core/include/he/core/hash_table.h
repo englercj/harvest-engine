@@ -62,14 +62,13 @@ namespace he
     };
 
     /// A densely stored hash table based on robin-hood hashing with backwards shift deletion.
-    /// Because the entries in the table are stored in a vector it has a lot of the same properties
-    /// as a vector, while also providing for fast lookups and insertions based on hashes of keys.
-    /// Removals are a bit slower than other strategies because it requires two lookups. Keys are
-    /// expected to support comparisons with `==` and `!=`
+    /// Because the entries in the table are stored in a contiguous block of memory the hash table
+    /// has a few interesting properties: fast entry iteration, and a guarantee that iteration of
+    /// entries will be in insertion order.
     ///
-    /// \note There are no ordering guarantees of entries during iteration.
-    ///
-    /// \note Pointers to entries should be considered invalid whenever the container is modified.
+    /// Removals are a bit slower than other hash table strategies because it requires two lookups.
+    /// Keys are expected to support comparisons with `==` and `!=`. Pointers to entries should be
+    /// considered invalid whenever the container is modified.
     ///
     /// \note Usually you don't want to use this class directly, try using \ref HashSet or
     /// \ref HashMap instead.

@@ -24,7 +24,7 @@ namespace he
         using TableType = HashMap<String, TomlValue>;
         using VariantType = Variant<bool, int64_t, uint64_t, double, String, SystemTime, Duration, TableType, ArrayType>;
 
-        enum class Kind : uint32_t
+        enum class Kind : uint8_t
         {
             Bool,
             Int,
@@ -71,8 +71,8 @@ namespace he
         void SetString(StringView v) { Set<Kind::String>() = v; }
         void SetDateTime(SystemTime v) { Set<Kind::DateTime>() = v; }
         void SetTime(Duration v) { Set<Kind::Time>() = v; }
-        void SetTable(Allocator& allocator) { m_value.Emplace<AsUnderlyingType(Kind::Table)>(allocator); }
-        void SetArray(Allocator& allocator) { m_value.Emplace<AsUnderlyingType(Kind::Array)>(allocator); }
+        TableType& SetTable(Allocator& allocator = Allocator::GetDefault()) { return m_value.Emplace<AsUnderlyingType(Kind::Table)>(allocator); }
+        ArrayType& SetArray(Allocator& allocator = Allocator::GetDefault()) { return m_value.Emplace<AsUnderlyingType(Kind::Array)>(allocator); }
 
         template <Kind K> decltype(auto) Get() { return m_value.Get<AsUnderlyingType(K)>(); }
         template <Kind K> decltype(auto) Get() const { return m_value.Get<AsUnderlyingType(K)>(); }
@@ -88,21 +88,25 @@ namespace he
         ArrayType& Array() { return Get<Kind::Array>(); }
         const ArrayType& Array() const { return Get<Kind::Array>(); }
 
-        template <typename T>
-        T As() const
-        {
-            switch (GetKind())
-            {
-                case Kind::Bool: return static_cast<T>(Bool());
-                case Kind::Int: return static_cast<T>(Int());
-                case Kind::Uint: return static_cast<T>(Uint());
-                case Kind::Float: return static_cast<T>(Float());
-                case Kind::String: return static_cast<T>(String());
-                case Kind::DateTime: return static_cast<T>(DateTime());
-                case Kind::Time: return static_cast<T>(Time());
-                default: return T();
-            }
-        }
+        TomlValue& operator=(bool v) { SetBool(v); return *this; }
+        TomlValue& operator=(signed char v) { SetInt(v); return *this; }
+        TomlValue& operator=(short v) { SetInt(v); return *this; }
+        TomlValue& operator=(int v) { SetInt(v); return *this; }
+        TomlValue& operator=(long v) { SetInt(v); return *this; }
+        TomlValue& operator=(long long v) { SetInt(v); return *this; }
+        TomlValue& operator=(unsigned char v) { SetUint(v); return *this; }
+        TomlValue& operator=(unsigned short v) { SetUint(v); return *this; }
+        TomlValue& operator=(unsigned int v) { SetUint(v); return *this; }
+        TomlValue& operator=(unsigned long v) { SetUint(v); return *this; }
+        TomlValue& operator=(unsigned long long v) { SetUint(v); return *this; }
+        TomlValue& operator=(double v) { SetFloat(v); return *this; }
+        TomlValue& operator=(const char* v) { SetString(v); return *this; }
+        TomlValue& operator=(StringView v) { SetString(v); return *this; }
+        TomlValue& operator=(SystemTime v) { SetDateTime(v); return *this; }
+        TomlValue& operator=(Duration v) { SetTime(v); return *this; }
+
+        TomlValue& operator[](StringView key) { HE_ASSERT(IsTable()); return Table()[key]; }
+        TomlValue& operator[](uint32_t index) { HE_ASSERT(IsArray()); return Array()[index]; }
 
     private:
         VariantType m_value;
@@ -118,57 +122,16 @@ namespace he
         explicit TomlDocument(Allocator& allocator = Allocator::GetDefault()) noexcept;
 
         TomlReadResult Read(StringView data);
-        void Write(String& dst);
+        void Write(String& dst) const;
+
+        String ToString() const;
 
         const TomlValue& Root() const { return m_root; }
         TomlValue& Root() { return m_root; }
 
         Allocator& GetAllocator() const { return m_allocator; }
 
-    private:
-        class ReadHandler : public TomlReader::Handler
-        {
-        public:
-            explicit ReadHandler(TomlDocument& doc) noexcept;
-
-            bool StartDocument() override;
-            bool EndDocument() override;
-            bool Comment(StringView value) override;
-            bool Bool(bool value) override;
-            bool Int(int64_t value) override;
-            bool Uint(uint64_t value) override;
-            bool Float(double value) override;
-            bool String(StringView value) override;
-            bool DateTime(SystemTime value) override;
-            bool Time(Duration value) override;
-            bool Table(Span<const he::String> path, bool isArray) override;
-            bool Key(Span<const he::String> path) override;
-            bool StartInlineTable() override;
-            bool EndInlineTable(uint32_t length) override;
-            bool StartArray() override;
-            bool EndArray(uint32_t length) override;
-
-            bool WalkPath(Span<const he::String> path);
-
-            TomlDocument& m_doc;
-            TomlValue* m_value{ nullptr };
-            TomlReadResult m_result{};
-        };
-
-        class WriteHandler
-        {
-        public:
-            void WriteValue(TomlWriter& writer, const TomlValue& value);
-
-        private:
-            void WriteTable(TomlWriter& writer, const TomlValue& value);
-            void WriteArray(TomlWriter& writer, const TomlValue& value);
-
-        private:
-            Vector<StringView> m_keys;
-            uint32_t m_arrayDepth{ 0 };
-            bool m_nextTableIsArray{ false };
-        };
+        TomlValue& operator[](StringView key) { return Root()[key]; }
 
     private:
         Allocator& m_allocator;

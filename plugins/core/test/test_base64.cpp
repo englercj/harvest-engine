@@ -3,28 +3,36 @@
 #include "he/core/base64.h"
 
 #include "he/core/test.h"
+#include "he/core/vector.h"
 
 using namespace he;
 
 // ------------------------------------------------------------------------------------------------
-static void TestB64(StringView input, StringView expected)
+HE_TEST(core, base64, Base64EncodedSize)
 {
-    const String result = Base64Encode(reinterpret_cast<const uint8_t*>(input.Data()), input.Size());
-    HE_EXPECT_EQ(result, expected);
+    static_assert(Base64EncodedSize(1111) == 1484);
 }
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST(core, base64, test)
+HE_TEST(core, base64, Base64MaxDecodedSize)
 {
-    TestB64("", "");
-    TestB64("f", "Zg==");
-    TestB64("fo", "Zm8=");
-    TestB64("foo", "Zm9v");
-    TestB64("foob", "Zm9vYg==");
-    TestB64("fooba", "Zm9vYmE=");
-    TestB64("foobar", "Zm9vYmFy");
+    static_assert(Base64MaxDecodedSize(1484) == 1113);
+}
 
-    TestB64(
+// ------------------------------------------------------------------------------------------------
+HE_TEST(core, base64, Base64Encode)
+{
+    // Validate the test vectors from RFC4648
+    HE_EXPECT_EQ(Base64Encode(""), "");
+    HE_EXPECT_EQ(Base64Encode("f"), "Zg==");
+    HE_EXPECT_EQ(Base64Encode("fo"), "Zm8=");
+    HE_EXPECT_EQ(Base64Encode("foo"), "Zm9v");
+    HE_EXPECT_EQ(Base64Encode("foob"), "Zm9vYg==");
+    HE_EXPECT_EQ(Base64Encode("fooba"), "Zm9vYmE=");
+    HE_EXPECT_EQ(Base64Encode("foobar"), "Zm9vYmFy");
+
+    // Larger encode from the beginning of Moby Dick
+    HE_EXPECT_EQ(Base64Encode(
         "Call me Ishmael. Some years ago--never mind how long precisely--having\n"
         "little or no money in my purse, and nothing particular to interest me on\n"
         "shore, I thought I would sail about a little and see the watery part of\n"
@@ -40,7 +48,7 @@ HE_TEST(core, base64, test)
         "philosophical flourish Cato throws himself upon his sword; I quietly\n"
         "take to the ship. There is nothing surprising in this. If they but knew\n"
         "it, almost all men in their degree, some time or other, cherish very\n"
-        "nearly the same feelings towards the ocean with me.\n",
+        "nearly the same feelings towards the ocean with me.\n"),
         "Q2FsbCBtZSBJc2htYWVsLiBTb21lIHllYXJzIGFnby0tbmV2ZXIgbWluZCBob3cgbG9uZ"
         "yBwcmVjaXNlbHktLWhhdmluZwpsaXR0bGUgb3Igbm8gbW9uZXkgaW4gbXkgcHVyc2UsIG"
         "FuZCBub3RoaW5nIHBhcnRpY3VsYXIgdG8gaW50ZXJlc3QgbWUgb24Kc2hvcmUsIEkgdGh"
@@ -63,4 +71,130 @@ HE_TEST(core, base64, test)
         "0IGtuZXcKaXQsIGFsbW9zdCBhbGwgbWVuIGluIHRoZWlyIGRlZ3JlZSwgc29tZSB0aW1l"
         "IG9yIG90aGVyLCBjaGVyaXNoIHZlcnkKbmVhcmx5IHRoZSBzYW1lIGZlZWxpbmdzIHRvd"
         "2FyZHMgdGhlIG9jZWFuIHdpdGggbWUuCg==");
+}
+
+// ------------------------------------------------------------------------------------------------
+HE_TEST(core, base64, Base64Encode_Container)
+{
+    String str;
+
+    // Validate the test vectors from RFC4648
+    str.Clear();
+    Base64Encode(str, "");
+    HE_EXPECT_EQ(str, "");
+
+    str.Clear();
+    Base64Encode(str, "f");
+    HE_EXPECT_EQ(str, "Zg==");
+
+    str.Clear();
+    Base64Encode(str, "fo");
+    HE_EXPECT_EQ(str, "Zm8=");
+
+    str.Clear();
+    Base64Encode(str, "foo");
+    HE_EXPECT_EQ(str, "Zm9v");
+
+    str.Clear();
+    Base64Encode(str, "foob");
+    HE_EXPECT_EQ(str, "Zm9vYg==");
+
+    str.Clear();
+    Base64Encode(str, "fooba");
+    HE_EXPECT_EQ(str, "Zm9vYmE=");
+
+    str.Clear();
+    Base64Encode(str, "foobar");
+    HE_EXPECT_EQ(str, "Zm9vYmFy");
+}
+
+// ------------------------------------------------------------------------------------------------
+HE_TEST(core, base64, Base64Decode)
+{
+    // Validate the test vectors from RFC4648
+    const StringView inputStrings[] =
+    {
+        "",
+        "Zg==",
+        "Zm8=",
+        "Zm9v",
+        "Zm9vYg==",
+        "Zm9vYmE=",
+        "Zm9vYmFy",
+    };
+    const char expected[] = "foobar";
+    static_assert(HE_LENGTH_OF(expected) == HE_LENGTH_OF(inputStrings));
+
+    uint8_t bytes[64];
+    for (uint32_t i = 0; i < HE_LENGTH_OF(expected); ++i)
+    {
+        const uint32_t len = Base64Decode(bytes, sizeof(bytes), inputStrings[i]);
+        HE_EXPECT_EQ(len, i);
+
+        if (len > 0)
+        {
+            HE_EXPECT_EQ_MEM(bytes, expected, len);
+        }
+    }
+
+    // Invalid decodes
+    uint32_t len = 0;
+    len = Base64Decode(bytes, sizeof(bytes), "Zm9vYg=");
+    HE_EXPECT_EQ(len, 0);
+    len = Base64Decode(bytes, sizeof(bytes), "Zm9vYg");
+    HE_EXPECT_EQ(len, 0);
+    len = Base64Decode(bytes, sizeof(bytes), "Zm9vY");
+    HE_EXPECT_EQ(len, 0);
+    len = Base64Decode(bytes, sizeof(bytes), "Zm9vYmF=Zm9v");
+    HE_EXPECT_EQ(len, 0);
+}
+
+// ------------------------------------------------------------------------------------------------
+HE_TEST(core, base64, Base64Decode_Container)
+{
+    // Validate the test vectors from RFC4648
+    const StringView inputStrings[] =
+    {
+        "",
+        "Zg==",
+        "Zm8=",
+        "Zm9v",
+        "Zm9vYg==",
+        "Zm9vYmE=",
+        "Zm9vYmFy",
+    };
+    const char expected[] = "foobar";
+    static_assert(HE_LENGTH_OF(expected) == HE_LENGTH_OF(inputStrings));
+
+    Vector<uint8_t> bytes;
+    for (uint32_t i = 0; i < HE_LENGTH_OF(expected); ++i)
+    {
+        bytes.Clear();
+        HE_EXPECT(Base64Decode(bytes, inputStrings[i]));
+        HE_EXPECT_EQ(bytes.Size(), i);
+
+        if (i > 0)
+        {
+            HE_EXPECT_EQ_MEM(bytes.Data(), expected, bytes.Size());
+        }
+    }
+
+    // Invalid decodes
+    HE_EXPECT(!Base64Decode(bytes, "Zm9vYg="));
+    HE_EXPECT(!Base64Decode(bytes, "Zm9vYg"));
+    HE_EXPECT(!Base64Decode(bytes, "Zm9vY"));
+    HE_EXPECT(!Base64Decode(bytes, "Zm9vYmF=Zm9v"));
+}
+
+// ------------------------------------------------------------------------------------------------
+HE_TEST(core, base64, Roundtrip)
+{
+    constexpr StringView SourceMessage = "This is a test message for the base64 encoder & decoder.";
+
+    String encoded = Base64Encode(SourceMessage);
+
+    Vector<uint8_t> bytes;
+    HE_EXPECT(Base64Decode(bytes, encoded));
+    HE_EXPECT_EQ(bytes.Size(), SourceMessage.Size());
+    HE_EXPECT_EQ_MEM(bytes.Data(), SourceMessage.Data(), SourceMessage.Size());
 }

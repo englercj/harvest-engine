@@ -983,9 +983,9 @@ namespace he::schema
         }
 
     private:
-        void BeginTable(const Declaration::Reader& decl)
+        void BeginTable()
         {
-            m_keyStack.PushBack(decl.GetName());
+            m_keyStack.PushBack(m_currentField.GetName());
 
             if (m_arrayDepth > 0)
             {
@@ -1012,7 +1012,7 @@ namespace he::schema
         {
             const Declaration::Reader decl = GetSchema(info);
 
-            BeginTable(decl);
+            BeginTable();
             StructVisitor::VisitStruct(data, info);
             EndTable();
         }
@@ -1021,6 +1021,9 @@ namespace he::schema
         {
             const Field::Meta::Normal::Reader norm = field.GetMeta().GetNormal();
             Type::Data::Reader typeData = norm.GetType().GetData();
+
+            if (typeData.IsArray() || typeData.IsList())
+                typeData = typeData.IsArray() ? typeData.GetArray().GetElementType().GetData() : typeData.GetList().GetElementType().GetData();
 
             if (!typeData.IsStruct())
                 m_writer.Key(field.GetName());
@@ -1036,9 +1039,20 @@ namespace he::schema
                 return;
 
             const Declaration::Reader decl = GetSchema(*info);
-            BeginTable(decl);
-            StructVisitor::VisitUnionField(data, field, scope);
-            EndTable();
+            const Declaration::Data::Struct::Reader structDecl = decl.GetData().GetStruct();
+            const List<Field>::Reader fields = structDecl.GetFields();
+
+            const uint16_t activeFieldTag = data.GetDataField<uint16_t>(structDecl.GetUnionTagOffset());
+
+            for (const Field::Reader unionField : fields)
+            {
+                if (unionField.GetUnionTag() == activeFieldTag)
+                {
+                    m_currentField = unionField;
+                    VisitField(data, unionField, *info);
+                    break;
+                }
+            }
         }
 
         void VisitValue(bool value, Type::Reader type, const DeclInfo& scope) override

@@ -558,7 +558,7 @@ namespace he::schema
                 MemberRef& parent = m_members[maybeUnionMember->parentIndex];
                 if (maybeUnionMember->isInUnion)
                 {
-                    maybeUnionMember->field.SetUnionTag(parent.unionTagCount++);
+                    maybeUnionMember->field.SetUnionTag(++parent.unionTagCount);
                     maybeUnionMember->isInUnion = false; // only consider this for setting the tag once
                 }
                 maybeUnionMember = &parent;

@@ -86,6 +86,8 @@ A pointer to a struct of zero-size is stored as an all-zero pointer, with the ex
 
 Fields in a union are encoded just as they otherwise would be in addition to a "tag" value which represents which union field is set. Note that since structs have data and pointer sections unions that contain both primitive and pointer types will have their values encodes across both sections. The tag is always stored in the data section of the struct, before the second member of the union.
 
+Unions also support an unset state where the union tag value is zero. Each member in the union is identified with a unique non-zero tag. Unions default to being in the unset state.
+
 For example, consider this struct:
 
 ```

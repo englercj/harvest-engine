@@ -11,14 +11,54 @@ struct Toml
 {
     enum Compression
     {
+        // Applies no compression
         None @0;
+
+        // Applies ZStandard compression
         Zstd @1;
     }
 
+    // Overrides the name used for this field when serializing to TOML
     attribute Name(field, enumerator) :String;
-    attribute Hex(field) :void;
+
+    // Formats Blobs, Lists of uint8, and Arrays of uint8 as base64 strings. The compression
+    // method is applied to the data before being encoded into base64. Base64 encoding without
+    // any compression is the default behavior for Blobs, Lists of uint8, and Arrays of uint8.
     attribute Base64(field) :Compression;
-    attribute StringLiteral(field) :void;
+
+    // Formats unsigned integral values using decimal representation (`12345`).
+    // This is the default behavior.
+    attribute Decimal(field) :void;
+
+    // Formats unsigned integral values using hex representation (`0xabcdef`)
+    // Also will format Blobs, Lists of uint8, and Arrays of uint8 as strings of hex characters.
+    // Base64 encoding without any compression is the default behavior for Blobs, Lists of uint8,
+    // and Arrays of uint8.
+    attribute Hex(field) :void;
+
+    // Formats unsigned integral values using octal representation (`0o755`).
+    attribute Octal(field) :void;
+
+    // Formats unsigned integral values using binary representation (`0b010101`)
+    attribute Binary(field) :void;
+
+    // Formats floating point values using general representation. This is the default behavior.
+    attribute General(field) :void;
+
+    // Formats floating point values using fixed representation (`0.123`).
+    attribute Fixed(field) :void;
+
+    // Formats floating point values using fixed representation (`123e-3`).
+    attribute Exponent(field) :void;
+
+    // Specified the precision of floating point values when serializing.
+    attribute Precision(field) :int32;
+
+    // Formats strings as basic strings (`"abc"`). This is the default behavior for strings.
+    attribute Basic(field) :void;
+
+    // Formats strings as literal strings (`'abc'`).
+    attribute Literal(field) :void;
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -81,7 +121,7 @@ struct Brand
 {
     struct Scope
     {
-        scopeId @0 :uint64;
+        scopeId @0 :uint64 $Toml.Hex;
         params @1 :Type[];
     }
 
@@ -123,25 +163,25 @@ struct Type
 
         enum :group
         {
-            id @17 :uint64;
+            id @17 :uint64 $Toml.Hex;
             brand @18 :Brand;
         }
 
         struct :group
         {
-            id @19 :uint64;
+            id @19 :uint64 $Toml.Hex;
             brand @20 :Brand;
         }
 
         interface :group
         {
-            id @21 :uint64;
+            id @21 :uint64 $Toml.Hex;
             brand @22 :Brand;
         }
 
         parameter :group
         {
-            scopeId @23 :uint64;
+            scopeId @23 :uint64 $Toml.Hex;
             index @24 :uint16;
         }
     }
@@ -173,7 +213,7 @@ struct Value
 
 struct Attribute
 {
-    id @0 :uint64;
+    id @0 :uint64 $Toml.Hex;
     value @1 :Value;
 }
 
@@ -213,12 +253,12 @@ struct Field
 
         group :group
         {
-            typeId @9 :uint64; // Id of the type that defines the group's structure
+            typeId @9 :uint64 $Toml.Hex; // Id of the type that defines the group's structure
         }
 
         union :group
         {
-            typeId @10 :uint64; // Id of the type that defines the union's structure
+            typeId @10 :uint64 $Toml.Hex; // Id of the type that defines the union's structure
         }
     }
 }

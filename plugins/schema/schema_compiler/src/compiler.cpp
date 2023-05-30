@@ -255,8 +255,12 @@ namespace he::schema
     void Compiler::CompileStruct(const AstNode& node, Declaration::Builder decl)
     {
         Declaration::Data::Struct::Builder data = decl.GetData().InitStruct();
-        data.SetIsGroup(node.kind == AstNode::Kind::Group);
-        data.SetIsUnion(node.kind == AstNode::Kind::Union);
+
+        if (node.kind == AstNode::Kind::Group)
+            data.SetIsGroup(true);
+
+        if (node.kind == AstNode::Kind::Union)
+            data.SetIsUnion(true);
 
         uint16_t fieldCount = 0;
         uint16_t childCount = 0;
@@ -290,7 +294,7 @@ namespace he::schema
                     Field::Builder field = members[fieldIndex];
                     field.InitName(child.name);
                     field.SetDeclOrder(fieldIndex);
-                    field.SetUnionTag(0); // Set during struct layout
+                    // field.SetUnionTag(0); // Set during struct layout
                     field.SetAttributes(CreateAttributes(child.attributes, node));
 
                     Declaration::Builder groupStruct = children[childIndex];
@@ -315,7 +319,7 @@ namespace he::schema
                     Field::Builder field = members[fieldIndex];
                     field.InitName(child.name);
                     field.SetDeclOrder(fieldIndex);
-                    field.SetUnionTag(0); // Set during struct layout
+                    // field.SetUnionTag(0); // Set during struct layout
                     field.SetAttributes(CreateAttributes(child.attributes, node));
 
                     Declaration::Builder unionStruct = children[childIndex];
@@ -361,7 +365,7 @@ namespace he::schema
         HE_ASSERT(node.kind == AstNode::Kind::Field);
         field.InitName(node.name);
         field.SetDeclOrder(index);
-        field.SetUnionTag(0); // Set during struct layout
+        // field.SetUnionTag(0); // Set during struct layout
         field.SetAttributes(attributes);
 
         Field::Meta::Normal::Builder normal = field.GetMeta().InitNormal();

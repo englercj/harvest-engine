@@ -552,15 +552,14 @@ namespace he::schema
 
     bool StructVisitor::IsUnionFieldSet(StructReader data, Field::Reader field, const DeclInfo& scope)
     {
-        // TODO: This doesn't actually work. We need to allocate a field index for the union tag to make this work.
-        //const Field::Meta::Group::Reader group = field.GetMeta().GetGroup();
-        //const Declaration::Reader decl = m_request.GetDecl(group.GetTypeId());
-        //const Declaration::Data::Struct::Reader structDecl = decl.GetData().GetStruct();
+        const DeclInfo* info = FindGroupOrUnionInfo(field, scope);
+        if (!info)
+            return false;
 
-        //return data.HasDataField(structDecl.GetUnionTagIndex());
-
-        HE_UNUSED(data, field, scope);
-        return true;
+        const Declaration::Reader decl = GetSchema(*info);
+        const Declaration::Data::Struct::Reader structDecl = decl.GetData().GetStruct();
+        const uint16_t unionTag = data.GetDataField<uint16_t>(structDecl.GetUnionTagOffset());
+        return unionTag != 0;
     }
 
     bool StructVisitor::IsNormalFieldSet(StructReader data, Field::Reader field, const DeclInfo& scope)

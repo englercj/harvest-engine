@@ -985,7 +985,9 @@ namespace he::schema
     private:
         void BeginTable()
         {
-            m_keyStack.PushBack(m_currentField.GetName());
+            const Attribute::Reader tomlName = FindAttribute<Toml::Name>(m_currentField.GetAttributes());
+            const StringView name = tomlName.IsValid() ? tomlName.GetValue().GetData().GetString() : m_currentField.GetName();
+            m_keyStack.PushBack(name);
 
             if (m_arrayDepth > 0)
             {
@@ -1006,6 +1008,8 @@ namespace he::schema
                 m_writer.EndInlineTable();
             else
                 m_writer.DecreaseIndent();
+
+            m_keyStack.PopBack();
         }
 
         void VisitStruct(StructReader data, const DeclInfo& info)
@@ -1026,10 +1030,20 @@ namespace he::schema
                 typeData = typeData.IsArray() ? typeData.GetArray().GetElementType().GetData() : typeData.GetList().GetElementType().GetData();
 
             if (!typeData.IsStruct())
-                m_writer.Key(field.GetName());
+            {
+                const Attribute::Reader tomlName = FindAttribute<Toml::Name>(field.GetAttributes());
+                const StringView name = tomlName.IsValid() ? tomlName.GetValue().GetData().GetString() : field.GetName();
+                m_writer.Key(name);
+            }
 
             m_currentField = field;
             StructVisitor::VisitNormalField(data, field, scope);
+        }
+
+        void VisitGroupField(StructReader data, Field::Reader field, const DeclInfo& scope) override
+        {
+            m_currentField = field;
+            StructVisitor::VisitGroupField(data, field, scope);
         }
 
         void VisitUnionField(StructReader data, Field::Reader field, const DeclInfo& scope) override
@@ -1044,6 +1058,11 @@ namespace he::schema
 
             const uint16_t activeFieldTag = data.GetDataField<uint16_t>(structDecl.GetUnionTagOffset());
 
+            m_currentField = field;
+            BeginTable();
+            m_writer.Key("__schema_union_tag");
+            m_writer.Uint(activeFieldTag);
+
             for (const Field::Reader unionField : fields)
             {
                 if (unionField.GetUnionTag() == activeFieldTag)
@@ -1053,6 +1072,8 @@ namespace he::schema
                     break;
                 }
             }
+
+            EndTable();
         }
 
         void VisitValue(bool value, Type::Reader type, const DeclInfo& scope) override
@@ -1061,76 +1082,22 @@ namespace he::schema
             m_writer.Bool(value);
         }
 
-        void VisitValue(int8_t value, Type::Reader type, const DeclInfo& scope) override
-        {
-            HE_UNUSED(type, scope);
-            m_writer.Int(value);
-        }
-
-        void VisitValue(int16_t value, Type::Reader type, const DeclInfo& scope) override
-        {
-            HE_UNUSED(type, scope);
-            m_writer.Int(value);
-        }
-
-        void VisitValue(int32_t value, Type::Reader type, const DeclInfo& scope) override
-        {
-            HE_UNUSED(type, scope);
-            m_writer.Int(value);
-        }
-
-        void VisitValue(int64_t value, Type::Reader type, const DeclInfo& scope) override
-        {
-            HE_UNUSED(type, scope);
-            m_writer.Int(value);
-        }
-
-        void VisitValue(uint8_t value, Type::Reader type, const DeclInfo& scope) override
-        {
-            HE_UNUSED(type, scope);
-            m_writer.Uint(value);
-        }
-
-        void VisitValue(uint16_t value, Type::Reader type, const DeclInfo& scope) override
-        {
-            HE_UNUSED(type, scope);
-            m_writer.Uint(value);
-        }
-
-        void VisitValue(uint32_t value, Type::Reader type, const DeclInfo& scope) override
-        {
-            HE_UNUSED(type, scope);
-            m_writer.Uint(value);
-        }
-
-        void VisitValue(uint64_t value, Type::Reader type, const DeclInfo& scope) override
-        {
-            HE_UNUSED(type, scope);
-            m_writer.Uint(value);
-        }
-
-        void VisitValue(float value, Type::Reader type, const DeclInfo& scope) override
-        {
-            HE_UNUSED(type, scope);
-            m_writer.Float(value);
-        }
-
-        void VisitValue(double value, Type::Reader type, const DeclInfo& scope) override
-        {
-            HE_UNUSED(type, scope);
-            m_writer.Float(value);
-        }
-
-        void VisitValue(Blob::Reader value, Type::Reader type, const DeclInfo& scope) override
-        {
-            HE_UNUSED(type, scope);
-            WriteBlobValue(value);
-        }
+        void VisitValue(int8_t value, Type::Reader, const DeclInfo&) override { WriteIntValue(value); }
+        void VisitValue(int16_t value, Type::Reader, const DeclInfo&) override { WriteIntValue(value); }
+        void VisitValue(int32_t value, Type::Reader, const DeclInfo&) override { WriteIntValue(value); }
+        void VisitValue(int64_t value, Type::Reader, const DeclInfo&) override { WriteIntValue(value); }
+        void VisitValue(uint8_t value, Type::Reader, const DeclInfo&) override { WriteUintValue(value); }
+        void VisitValue(uint16_t value, Type::Reader, const DeclInfo&) override { WriteUintValue(value); }
+        void VisitValue(uint32_t value, Type::Reader, const DeclInfo&) override { WriteUintValue(value); }
+        void VisitValue(uint64_t value, Type::Reader, const DeclInfo&) override { WriteUintValue(value); }
+        void VisitValue(float value, Type::Reader, const DeclInfo&) override { WriteFloatValue(value); }
+        void VisitValue(double value, Type::Reader, const DeclInfo&) override { WriteFloatValue(value); }
+        void VisitValue(Blob::Reader value, Type::Reader, const DeclInfo&) override { WriteBlobValue(value); }
 
         void VisitValue(String::Reader value, Type::Reader type, const DeclInfo& scope) override
         {
             HE_UNUSED(type, scope);
-            const bool useLiteral = HasAttribute<Toml::StringLiteral>(m_currentField.GetAttributes());
+            const bool useLiteral = HasAttribute<Toml::Literal>(m_currentField.GetAttributes());
             const TomlStringFormat format = useLiteral ? TomlStringFormat::Literal : TomlStringFormat::Basic;
             m_writer.String(value, format);
         }
@@ -1175,6 +1142,7 @@ namespace he::schema
                 HE_KV(parent_name, decl.GetName()),
                 HE_KV(key_stack, m_keyStack),
                 HE_KV(enum_value, value));
+            m_writer.String("");
         }
 
         void VisitArrayValue(StructReader data, Type::Reader elementType, uint16_t index, uint32_t dataOffset, uint16_t size, const DeclInfo& scope)
@@ -1192,6 +1160,7 @@ namespace he::schema
 
             const bool isPointer = IsPointer(elementType);
 
+
             if (!elementType.GetData().IsStruct())
             {
                 m_writer.StartArray();
@@ -1200,6 +1169,7 @@ namespace he::schema
 
             for (uint16_t i = 0; i < size; ++i)
             {
+                Field::Reader oldField = m_currentField;
                 m_nextTableIsArray = true;
                 if (isPointer)
                 {
@@ -1210,6 +1180,7 @@ namespace he::schema
                     StructVisitor::VisitValue(data, elementType, index, dataOffset + i, scope);
                 }
                 m_nextTableIsArray = false;
+                m_currentField = oldField;
             }
 
             if (!elementType.GetData().IsStruct())
@@ -1217,6 +1188,7 @@ namespace he::schema
                 --m_arrayDepth;
                 m_writer.EndArray();
             }
+
         }
 
         void VisitListValue(ListReader data, Type::Reader elementType, const DeclInfo& scope)
@@ -1242,9 +1214,11 @@ namespace he::schema
 
             for (uint32_t i = 0; i < size; ++i)
             {
+                Field::Reader oldField = m_currentField;
                 m_nextTableIsArray = true;
                 StructVisitor::VisitValue(data, elementType, i, scope);
                 m_nextTableIsArray = false;
+                m_currentField = oldField;
             }
 
             if (!elementType.GetData().IsStruct())
@@ -1294,6 +1268,42 @@ namespace he::schema
         }
 
     private:
+        void WriteIntValue(int64_t value)
+        {
+            m_writer.Int(value);
+        }
+
+        void WriteUintValue(uint64_t value)
+        {
+            const List<Attribute>::Reader attributes = m_currentField.GetAttributes();
+
+            TomlUintFormat format = TomlUintFormat::Decimal;
+            if (HasAttribute<Toml::Binary>(attributes))
+                format = TomlUintFormat::Binary;
+            else if (HasAttribute<Toml::Hex>(attributes))
+                format = TomlUintFormat::Hex;
+            else if (HasAttribute<Toml::Octal>(attributes))
+                format = TomlUintFormat::Octal;
+
+            m_writer.Uint(value, format);
+        }
+
+        void WriteFloatValue(double value)
+        {
+            const List<Attribute>::Reader attributes = m_currentField.GetAttributes();
+
+            TomlFloatFormat format = TomlFloatFormat::General;
+            if (HasAttribute<Toml::Fixed>(attributes))
+                format = TomlFloatFormat::Fixed;
+            else if (HasAttribute<Toml::Exponent>(attributes))
+                format = TomlFloatFormat::Exponent;
+
+            const Attribute::Reader precisionAttr = FindAttribute<Toml::Precision>(attributes);
+            const int32_t precision = precisionAttr.IsValid() ? precisionAttr.GetValue().GetData().GetInt32() : -1;
+
+            m_writer.Float(value, format, precision);
+        }
+
         void WriteBlobValue(Span<const uint8_t> value)
         {
             const Attribute::Reader b64Attr = FindAttribute<Toml::Base64>(m_currentField.GetAttributes());

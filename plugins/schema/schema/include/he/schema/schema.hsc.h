@@ -20,9 +20,17 @@ namespace he::schema
     };
     HE_SCHEMA_DECL_ENUM(Compression_f55645f7c07a1c72, 0xf55645f7c07a1c72, 0xc209341a45619228);
     HE_SCHEMA_DECL_INFO_FOR_ID(0xc5144765ef1b906b); // Toml::Name
-    HE_SCHEMA_DECL_INFO_FOR_ID(0xadd3e5b7bc72e8a5); // Toml::Hex
     HE_SCHEMA_DECL_INFO_FOR_ID(0xc2fc1f39cbc0264f); // Toml::Base64
-    HE_SCHEMA_DECL_INFO_FOR_ID(0xff0bfeffbd2f5ff8); // Toml::StringLiteral
+    HE_SCHEMA_DECL_INFO_FOR_ID(0xb0d56279aa2c71ef); // Toml::Decimal
+    HE_SCHEMA_DECL_INFO_FOR_ID(0xadd3e5b7bc72e8a5); // Toml::Hex
+    HE_SCHEMA_DECL_INFO_FOR_ID(0xa016bb8987b759ff); // Toml::Octal
+    HE_SCHEMA_DECL_INFO_FOR_ID(0xf203fea0d6464afd); // Toml::Binary
+    HE_SCHEMA_DECL_INFO_FOR_ID(0x8593cc0465546740); // Toml::General
+    HE_SCHEMA_DECL_INFO_FOR_ID(0xe8285b31d29c0312); // Toml::Fixed
+    HE_SCHEMA_DECL_INFO_FOR_ID(0xd19fa40fd70081cf); // Toml::Exponent
+    HE_SCHEMA_DECL_INFO_FOR_ID(0xff2a0d89a1f2e014); // Toml::Precision
+    HE_SCHEMA_DECL_INFO_FOR_ID(0xbf88a9098c65a6be); // Toml::Basic
+    HE_SCHEMA_DECL_INFO_FOR_ID(0xe8e7a16e4f77ee27); // Toml::Literal
     HE_SCHEMA_DECL_INFO_FOR_ID(0xef69d825c0ea441b); // Uuid
     HE_SCHEMA_DECL_INFO_FOR_ID(0xeeda74fc55d7c1ba); // Vec2f
     HE_SCHEMA_DECL_INFO_FOR_ID(0xeedd56fc55d9c497); // Vec3f
@@ -82,22 +90,70 @@ namespace he::schema
             HE_SCHEMA_DECL_ATTRIBUTE(0xc5144765ef1b906b, 0xc209341a45619228);
         };
 
-        struct Hex
-        {
-            Hex() = delete;
-            HE_SCHEMA_DECL_ATTRIBUTE(0xadd3e5b7bc72e8a5, 0xc209341a45619228);
-        };
-
         struct Base64
         {
             Base64() = delete;
             HE_SCHEMA_DECL_ATTRIBUTE(0xc2fc1f39cbc0264f, 0xc209341a45619228);
         };
 
-        struct StringLiteral
+        struct Decimal
         {
-            StringLiteral() = delete;
-            HE_SCHEMA_DECL_ATTRIBUTE(0xff0bfeffbd2f5ff8, 0xc209341a45619228);
+            Decimal() = delete;
+            HE_SCHEMA_DECL_ATTRIBUTE(0xb0d56279aa2c71ef, 0xc209341a45619228);
+        };
+
+        struct Hex
+        {
+            Hex() = delete;
+            HE_SCHEMA_DECL_ATTRIBUTE(0xadd3e5b7bc72e8a5, 0xc209341a45619228);
+        };
+
+        struct Octal
+        {
+            Octal() = delete;
+            HE_SCHEMA_DECL_ATTRIBUTE(0xa016bb8987b759ff, 0xc209341a45619228);
+        };
+
+        struct Binary
+        {
+            Binary() = delete;
+            HE_SCHEMA_DECL_ATTRIBUTE(0xf203fea0d6464afd, 0xc209341a45619228);
+        };
+
+        struct General
+        {
+            General() = delete;
+            HE_SCHEMA_DECL_ATTRIBUTE(0x8593cc0465546740, 0xc209341a45619228);
+        };
+
+        struct Fixed
+        {
+            Fixed() = delete;
+            HE_SCHEMA_DECL_ATTRIBUTE(0xe8285b31d29c0312, 0xc209341a45619228);
+        };
+
+        struct Exponent
+        {
+            Exponent() = delete;
+            HE_SCHEMA_DECL_ATTRIBUTE(0xd19fa40fd70081cf, 0xc209341a45619228);
+        };
+
+        struct Precision
+        {
+            Precision() = delete;
+            HE_SCHEMA_DECL_ATTRIBUTE(0xff2a0d89a1f2e014, 0xc209341a45619228);
+        };
+
+        struct Basic
+        {
+            Basic() = delete;
+            HE_SCHEMA_DECL_ATTRIBUTE(0xbf88a9098c65a6be, 0xc209341a45619228);
+        };
+
+        struct Literal
+        {
+            Literal() = delete;
+            HE_SCHEMA_DECL_ATTRIBUTE(0xe8e7a16e4f77ee27, 0xc209341a45619228);
         };
     };
     struct Uuid final
@@ -176,9 +232,9 @@ namespace he::schema
             };
             enum class UnionTag : uint16_t
             {
-                Int = 0,
-                Uint = 1,
-                Float = 2,
+                Int = 1,
+                Uint = 2,
+                Float = 3,
             };
         };
     };
@@ -270,29 +326,29 @@ namespace he::schema
             };
             enum class UnionTag : uint16_t
             {
-                Void = 0,
-                Bool = 1,
-                Int8 = 2,
-                Int16 = 3,
-                Int32 = 4,
-                Int64 = 5,
-                Uint8 = 6,
-                Uint16 = 7,
-                Uint32 = 8,
-                Uint64 = 9,
-                Float32 = 10,
-                Float64 = 11,
-                Blob = 12,
-                String = 13,
-                AnyPointer = 20,
-                AnyStruct = 21,
-                AnyList = 22,
-                Array = 14,
-                List = 15,
-                Enum = 16,
-                Struct = 17,
-                Interface = 18,
-                Parameter = 19,
+                Void = 1,
+                Bool = 2,
+                Int8 = 3,
+                Int16 = 4,
+                Int32 = 5,
+                Int64 = 6,
+                Uint8 = 7,
+                Uint16 = 8,
+                Uint32 = 9,
+                Uint64 = 10,
+                Float32 = 11,
+                Float64 = 12,
+                Blob = 13,
+                String = 14,
+                AnyPointer = 21,
+                AnyStruct = 22,
+                AnyList = 23,
+                Array = 15,
+                List = 16,
+                Enum = 17,
+                Struct = 18,
+                Interface = 19,
+                Parameter = 20,
             };
         };
     };
@@ -313,23 +369,23 @@ namespace he::schema
             class Builder;
             enum class UnionTag : uint16_t
             {
-                Void = 0,
-                Bool = 1,
-                Int8 = 2,
-                Int16 = 3,
-                Int32 = 4,
-                Int64 = 5,
-                Uint8 = 6,
-                Uint16 = 7,
-                Uint32 = 8,
-                Uint64 = 9,
-                Float32 = 10,
-                Float64 = 11,
-                Blob = 12,
-                String = 13,
-                List = 14,
-                Enum = 15,
-                Struct = 16,
+                Void = 1,
+                Bool = 2,
+                Int8 = 3,
+                Int16 = 4,
+                Int32 = 5,
+                Int64 = 6,
+                Uint8 = 7,
+                Uint16 = 8,
+                Uint32 = 9,
+                Uint64 = 10,
+                Float32 = 11,
+                Float64 = 12,
+                Blob = 13,
+                String = 14,
+                List = 15,
+                Enum = 16,
+                Struct = 17,
             };
         };
     };
@@ -393,9 +449,9 @@ namespace he::schema
             };
             enum class UnionTag : uint16_t
             {
-                Normal = 0,
-                Group = 1,
-                Union = 2,
+                Normal = 1,
+                Group = 2,
+                Union = 3,
             };
         };
     };
@@ -486,12 +542,12 @@ namespace he::schema
             };
             enum class UnionTag : uint16_t
             {
-                File = 0,
-                Attribute = 1,
-                Constant = 2,
-                Enum = 3,
-                Interface = 4,
-                Struct = 5,
+                File = 1,
+                Attribute = 2,
+                Constant = 3,
+                Enum = 4,
+                Interface = 5,
+                Struct = 6,
             };
         };
     };

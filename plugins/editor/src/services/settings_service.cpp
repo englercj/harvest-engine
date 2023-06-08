@@ -67,14 +67,10 @@ namespace he::editor
         String path = m_directoryService.GetAppDirectory(DirectoryService::DirType::Data);
         ConcatPath(path, SettingsFileName);
 
-        StringBuilder buf;
-        if (!schema::ToToml<Settings>(buf, m_settings))
-        {
-            HE_LOG_ERROR(editor, HE_MSG("Failed to serialize settings file. This is likely an editor bug."));
-            return false;
-        }
+        String buf;
+        schema::ToToml<Settings>(buf, m_settings);
 
-        Result r = File::WriteAll(buf.Str().Data(), buf.Size(), path.Data());
+        Result r = File::WriteAll(buf.Data(), buf.Size(), path.Data());
         if (!r)
         {
             HE_LOG_ERROR(editor, HE_MSG("Failed to write settings file."),

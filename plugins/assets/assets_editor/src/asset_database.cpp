@@ -20,7 +20,6 @@
 #include "he/core/result_fmt.h"
 #include "he/core/scope_guard.h"
 #include "he/core/string.h"
-#include "he/core/string_builder.h"
 #include "he/core/string_fmt.h"
 #include "he/schema/toml.h"
 
@@ -324,16 +323,9 @@ namespace he::assets
         if (!HE_VERIFY(PrepareAbsolutePath(path, absPath)))
             return false;
 
-        StringBuilder stringBuilder;
-        if (!HE_VERIFY(schema::ToToml<AssetFile>(stringBuilder, assetFile)))
-        {
-            HE_LOG_ERROR(he_assets,
-                HE_MSG("Failed to serialize asset file. Is it valid?"),
-                HE_KV(path, path));
-            return false;
-        }
+        String str;
+        schema::ToToml<AssetFile>(str, assetFile);
 
-        const String& str = stringBuilder.Str();
         const Result r = File::WriteAll(str.Data(), str.Size(), path);
         if (!r)
         {

@@ -252,7 +252,7 @@ Notes:
 - Unions are named, but do not have an ordinal value. That is because they aren't a "real" field but instead just a namespace that fields are collected in.
 - Fields in a union are numbered in the same space as fields of the containing struct. This informs the system of the union field's evolution relative to other fields of the struct.
 - In this example, the void type is used as a member. This field stores no information, but the tag can let us know that `empty` is the set field which can be useful.
-- By default, when a struct is initialized the first union field (that is the field with the lowest ordinal) is considered "set".
+- By default, when a struct is initialized the union is in an unset state.
 
 ### Enums
 

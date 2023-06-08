@@ -12,6 +12,7 @@
 #include "he/core/result_fmt.h"
 #include "he/core/span.h"
 #include "he/core/span_fmt.h"
+#include "he/core/string.h"
 #include "he/core/string_fmt.h"
 #include "he/core/uuid.h"
 #include "he/core/vector.h"
@@ -129,14 +130,10 @@ namespace he::editor
         if (!HE_VERIFY(IsOpen()))
             return false;
 
-        StringBuilder buf;
-        if (!schema::ToToml<Project>(buf, m_project))
-        {
-            HE_LOG_ERROR(editor, HE_MSG("Failed to serialize project file. This is likely an editor bug."));
-            return false;
-        }
+        String buf;
+        schema::ToToml<Project>(buf, m_project);
 
-        Result r = File::WriteAll(buf.Str().Data(), buf.Size(), m_projectPath.Data());
+        Result r = File::WriteAll(buf.Data(), buf.Size(), m_projectPath.Data());
         if (!r)
         {
             HE_LOG_ERROR(editor,

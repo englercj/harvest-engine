@@ -23,6 +23,8 @@
 namespace he::schema
 {
     // --------------------------------------------------------------------------------------------
+    constexpr StringView SchemaUnionTagName = "__schema_union_tag";
+
     static bool ParseBlobHexString(Vector<uint8_t>& out, const Field::Reader& field, const StringView& value)
     {
         // Reserve the maximum possible byte size. Because we allow spaces this may over-allocate
@@ -251,8 +253,6 @@ namespace he::schema
                     return true;
 
                 case Field::Meta::UnionTag::Union:
-                    // TODO: How do we set the correct field as active?
-                    // builder.SetDataField(unionStruct.GetUnionTagOffset(), activeField.GetUnionTag());
                     PushGroup(m_currentField.GetMeta().GetUnion());
                     return true;
             }
@@ -294,6 +294,11 @@ namespace he::schema
                     // Normal primitive fields do not push a new group on the stack.
                     return false;
 
+                case Type::Data::UnionTag::Array:
+                case Type::Data::UnionTag::List:
+                    // List and array fields do not push a new group on the stack.
+                    return false;
+
                 case Type::Data::UnionTag::Void:
                 case Type::Data::UnionTag::Interface:
                 case Type::Data::UnionTag::Parameter:
@@ -325,20 +330,6 @@ namespace he::schema
                         HE_KV(decl_name, decl.GetName()),
                         HE_KV(decl_id, decl.GetId()));
                     m_currentField = {};
-                    return false;
-                }
-
-                case Type::Data::UnionTag::Array:
-                {
-                    // const Type::Data::Array::Reader arrayType = type.GetData().GetArray();
-                    // const Type::Reader elementType = arrayType.GetElementType();
-                    // const Type::Data::UnionTag elementTypeDataTag = elementType.GetData().GetUnionTag();
-                    // TODO
-                    return false;
-                }
-                case Type::Data::UnionTag::List:
-                {
-                    // TODO
                     return false;
                 }
             }
@@ -556,36 +547,42 @@ namespace he::schema
             if (!m_currentField.IsValid())
                 return;
 
-            if (!m_currentField.GetMeta().IsNormal())
+            switch (m_currentField.GetMeta().GetUnionTag())
             {
-                HE_LOG_WARN(he_schema,
-                    HE_MSG("Encountered group or union when setting a value. Skipping deserialization of field."),
-                    HE_KV(value_type, value.GetKind()),
-                    HE_KV(field_name, m_currentField.GetName()),
-                    HE_KV(field_kind, m_currentField.GetMeta().GetUnionTag()),
-                    HE_KV(parent_id, m_stack.Back().decl.GetId()),
-                    HE_KV(parent_name, m_stack.Back().decl.GetName()));
-                return;
+                case Field::Meta::UnionTag::Normal:
+                {
+                    const Field::Meta::Normal::Reader norm = m_currentField.GetMeta().GetNormal();
+                    const Type::Reader type = norm.GetType();
+                    const Type::Data::Reader typeData = type.GetData();
+                    const Type::Data::UnionTag typeDataTag = typeData.GetUnionTag();
+
+                    if (CanConvertTomlValue(type, value))
+                    {
+                        SetNormalValue(builder, type, norm.GetIndex(), norm.GetDataOffset(), value);
+                    }
+                    else
+                    {
+                        HE_LOG_WARN(he_schema,
+                            HE_MSG("Skipping field when parsing TOML because the value type cannot be converted to field type."),
+                            HE_KV(value_type, value.GetKind()),
+                            HE_KV(field_name, m_currentField.GetName()),
+                            HE_KV(field_type, typeDataTag),
+                            HE_KV(parent_id, m_stack.Back().decl.GetId()),
+                            HE_KV(parent_name, m_stack.Back().decl.GetName()));
+                    }
+                    break;
+                }
+                case Field::Meta::UnionTag::Group:
+                {
+                    SetStructValue(builder, value);
+                    break;
+                }
+                case Field::Meta::UnionTag::Union:
+                {
+                    SetUnionValue(builder, value);
+                    break;
+                }
             }
-
-            const Field::Meta::Normal::Reader norm = m_currentField.GetMeta().GetNormal();
-            const Type::Reader type = norm.GetType();
-            const Type::Data::Reader typeData = type.GetData();
-            const Type::Data::UnionTag typeDataTag = typeData.GetUnionTag();
-
-            if (!CanConvertTomlValue(type, value))
-            {
-                HE_LOG_WARN(he_schema,
-                    HE_MSG("Skipping field when parsing TOML because the value type cannot be converted to field type."),
-                    HE_KV(value_type, value.GetKind()),
-                    HE_KV(field_name, m_currentField.GetName()),
-                    HE_KV(field_type, typeDataTag),
-                    HE_KV(parent_id, m_stack.Back().decl.GetId()),
-                    HE_KV(parent_name, m_stack.Back().decl.GetName()));
-                return;
-            }
-
-            SetNormalValue(builder, type, norm.GetIndex(), norm.GetDataOffset(), value);
         }
 
         template <typename B>
@@ -599,16 +596,16 @@ namespace he::schema
             {
                 case Type::Data::UnionTag::Void: break;
                 case Type::Data::UnionTag::Bool: SetDataValue(builder, index, dataOffset, ConvertToBool(value)); break;
-                case Type::Data::UnionTag::Int8: SetDataValue(builder, index, dataOffset, ConvertToNumber<int8_t>(value));
-                case Type::Data::UnionTag::Int16: SetDataValue(builder, index, dataOffset, ConvertToNumber<int16_t>(value));
-                case Type::Data::UnionTag::Int32: SetDataValue(builder, index, dataOffset, ConvertToNumber<int32_t>(value));
-                case Type::Data::UnionTag::Int64: SetDataValue(builder, index, dataOffset, ConvertToNumber<int64_t>(value));
-                case Type::Data::UnionTag::Uint8: SetDataValue(builder, index, dataOffset, ConvertToNumber<uint8_t>(value));
-                case Type::Data::UnionTag::Uint16: SetDataValue(builder, index, dataOffset, ConvertToNumber<uint16_t>(value));
-                case Type::Data::UnionTag::Uint32: SetDataValue(builder, index, dataOffset, ConvertToNumber<uint32_t>(value));
-                case Type::Data::UnionTag::Uint64: SetDataValue(builder, index, dataOffset, ConvertToNumber<uint64_t>(value));
-                case Type::Data::UnionTag::Float32: SetDataValue(builder, index, dataOffset, ConvertToNumber<float>(value));
-                case Type::Data::UnionTag::Float64: SetDataValue(builder, index, dataOffset, ConvertToNumber<double>(value));
+                case Type::Data::UnionTag::Int8: SetDataValue(builder, index, dataOffset, ConvertToNumber<int8_t>(value)); break;
+                case Type::Data::UnionTag::Int16: SetDataValue(builder, index, dataOffset, ConvertToNumber<int16_t>(value)); break;
+                case Type::Data::UnionTag::Int32: SetDataValue(builder, index, dataOffset, ConvertToNumber<int32_t>(value)); break;
+                case Type::Data::UnionTag::Int64: SetDataValue(builder, index, dataOffset, ConvertToNumber<int64_t>(value)); break;
+                case Type::Data::UnionTag::Uint8: SetDataValue(builder, index, dataOffset, ConvertToNumber<uint8_t>(value)); break;
+                case Type::Data::UnionTag::Uint16: SetDataValue(builder, index, dataOffset, ConvertToNumber<uint16_t>(value)); break;
+                case Type::Data::UnionTag::Uint32: SetDataValue(builder, index, dataOffset, ConvertToNumber<uint32_t>(value)); break;
+                case Type::Data::UnionTag::Uint64: SetDataValue(builder, index, dataOffset, ConvertToNumber<uint64_t>(value)); break;
+                case Type::Data::UnionTag::Float32: SetDataValue(builder, index, dataOffset, ConvertToNumber<float>(value)); break;
+                case Type::Data::UnionTag::Float64: SetDataValue(builder, index, dataOffset, ConvertToNumber<double>(value)); break;
                 case Type::Data::UnionTag::String: SetPointerValue(builder, index, ConvertToString(m_dst, value)); break;
                 case Type::Data::UnionTag::Array:
                 {
@@ -712,6 +709,58 @@ namespace he::schema
                         HE_KV(parent_name, m_stack.Back().decl.GetName()),
                         HE_KV(index, index),
                         HE_KV(data_offset, dataOffset));
+                    break;
+                }
+            }
+        }
+
+        void SetUnionValue(StructBuilder& builder, const TomlValue& value)
+        {
+            HE_ASSERT(m_currentField.IsValid());
+            const Declaration::Reader decl = m_stack.Back().decl;
+            const Declaration::Data::Struct::Reader structDecl = decl.GetData().GetStruct();
+
+            if (!value.IsTable())
+            {
+                HE_LOG_WARN(he_schema,
+                    HE_MSG("Encountered union field that isn't a table. Deserialization of field is not possible."),
+                    HE_KV(field_name, m_currentField.GetName()),
+                    HE_KV(decl_name, decl.GetName()),
+                    HE_KV(decl_id, decl.GetId()));
+                return;
+            }
+
+            const TomlValue* unionTagValue = value.Table().Find(SchemaUnionTagName);
+            if (!unionTagValue || !unionTagValue->IsUint())
+            {
+                HE_LOG_WARN(he_schema,
+                    HE_MSG("Encountered union field without a schema tag. Deserialization of field is not possible."),
+                    HE_KV(field_name, m_currentField.GetName()),
+                    HE_KV(decl_name, decl.GetName()),
+                    HE_KV(decl_id, decl.GetId()));
+                return;
+            }
+
+            const uint16_t unionTag = static_cast<uint16_t>(unionTagValue->Uint());
+            builder.SetDataField<uint16_t>(structDecl.GetUnionTagOffset(), unionTag);
+
+            for (Field::Reader field : structDecl.GetFields())
+            {
+                if (field.GetUnionTag() == unionTag)
+                {
+                    const StringView name = field.GetName();
+                    const TomlValue* fieldValue = value.Table().Find(name);
+
+                    if (fieldValue)
+                    {
+                        const bool newGroup = PushField(name);
+
+                        if (m_currentField.IsValid())
+                            SetValue(builder, *fieldValue);
+
+                        if (newGroup)
+                            PopGroup();
+                    }
                     break;
                 }
             }
@@ -1060,7 +1109,7 @@ namespace he::schema
 
             m_currentField = field;
             BeginTable();
-            m_writer.Key("__schema_union_tag");
+            m_writer.Key(SchemaUnionTagName);
             m_writer.Uint(activeFieldTag);
 
             for (const Field::Reader unionField : fields)

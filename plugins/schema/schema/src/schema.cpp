@@ -25,6 +25,9 @@ namespace he::schema
 
     const DeclInfo* FindDependency(const DeclInfo& info, TypeId id)
     {
+        if (info.id == id)
+            return &info;
+
         const DeclInfo* const* begin = info.dependencies;
         const DeclInfo* const* end = info.dependencies + info.dependencyCount;
         const DeclInfo* const* lower = std::lower_bound(begin, end, id, DeclInfoComp);

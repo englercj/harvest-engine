@@ -13,7 +13,7 @@
 
 namespace he::assets
 {
-    class AssetModel;
+    struct AssetModel;
 
     class AssetServer
     {

@@ -56,6 +56,9 @@ namespace he
     concept SpecializationOf = IsSpecialization<T, Template>;
 
     template <typename T>
+    concept TriviallyCopyable = IsTriviallyCopyable<T>;
+
+    template <typename T>
     concept UnsignedIntegral = IsIntegral<T> && IsUnsigned<T>;
 
     // --------------------------------------------------------------------------------------------

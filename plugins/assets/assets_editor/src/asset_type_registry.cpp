@@ -3,6 +3,8 @@
 #include "he/assets/asset_type_registry.h"
 
 #include "he/schema/schema.h"
+#include "he/core/name.h"
+#include "he/core/name_fmt.h"
 
 namespace he::assets
 {
@@ -50,13 +52,12 @@ namespace he::assets
     }
 
     bool AssetTypeRegistry::RegisterAssetType(
-        StringView assetTypeName,
+        Name assetTypeName,
         const schema::DeclInfo& declInfo,
         const TypeInfo& compilerInfo,
         UniquePtr<AssetCompiler> compiler)
     {
-        const AssetTypeId assetTypeId{ assetTypeName };
-        const auto result = m_assetTypes.Emplace(assetTypeId);
+        const auto result = m_assetTypes.Emplace(assetTypeName);
         if (!result.inserted)
         {
             HE_LOG_ERROR(he_assets,
@@ -77,9 +78,8 @@ namespace he::assets
         return true;
     }
 
-    void AssetTypeRegistry::UnregisterAssetType(StringView assetTypeName)
+    void AssetTypeRegistry::UnregisterAssetType(Name assetTypeName)
     {
-        const AssetTypeId assetTypeId{ assetTypeName };
-        m_assetTypes.Erase(assetTypeId);
+        m_assetTypes.Erase(assetTypeName);
     }
 }

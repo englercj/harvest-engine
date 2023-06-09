@@ -3,6 +3,7 @@
 #pragma once
 
 #include "he/core/assert.h"
+#include "he/core/concepts.h"
 #include "he/core/fmt.h"
 #include "he/core/string.h"
 #include "he/core/string_view.h"
@@ -91,7 +92,7 @@ namespace he
         /// contiguous range. That is, it has `.Data()` and `.Size()` members.
         ///
         /// \param range The object that provides the range.
-        template <typename R> requires(ContiguousRange<R, const char>)
+        template <typename R> requires(ContiguousRangeOf<R, const char>)
         StringWriter& operator+=(const R& range) { *m_str += range; return *this; }
 
         // ----------------------------------------------------------------------------------------

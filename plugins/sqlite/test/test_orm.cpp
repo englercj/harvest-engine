@@ -732,7 +732,7 @@ HE_TEST(sqlite, orm, RawSqlQuery)
     using T = Decay<decltype(c)>;
 
     static_assert(IsSame<T, RawSqlQuery>);
-    static_assert(c.query == StringView("SELECT * FROM test"));
+    static_assert(StringView(c.query) == StringView("SELECT * FROM test"));
 }
 
 // ------------------------------------------------------------------------------------------------

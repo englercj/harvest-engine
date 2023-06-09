@@ -10,6 +10,7 @@
 #include "he/core/uuid_fmt.h"
 #include "he/schema/layout.h"
 #include "he/sqlite/database.h"
+#include "he/sqlite/orm.h"
 #include "he/sqlite/statement.h"
 
 using namespace he::sqlite;

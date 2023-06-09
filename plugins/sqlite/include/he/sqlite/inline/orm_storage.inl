@@ -271,7 +271,9 @@ namespace he::sqlite
     template <typename T, typename... Elements>
     bool Storage<S>::SyncTable(const TableDef<T, Elements...>& table)
     {
-        const TableInfo tableInfo = QueryTableInfo(table.Name());
+        TableInfo tableInfo;
+        if (!QueryTableInfo(table.Name(), tableInfo))
+            return false;
 
         // Create the table, if it does not exist
         if (!tableInfo.exists)
@@ -289,9 +291,9 @@ namespace he::sqlite
         Vector<const ColumnInfo*> existingColumns;
         existingColumns.Reserve(TupleSize(table.Elements()));
 
-        const uint32_t columnsBitsetSize = BitSpan::RequiredSize(tableInfo.columns.Size());
-        BitSpan::ElementType* columnsBitsetData = HE_ALLOCA(BitSpan::ElementType, columnsBitsetSize);
-        BitSpan visitedColumnsBitset(columnsBitsetData, columnsBitsetSize);
+        const uint32_t bitsetElementCount = BitSpan::RequiredElements(tableInfo.columns.Size());
+        BitSpan::ElementType* columnsBitsetData = HE_ALLOCA(BitSpan::ElementType, bitsetElementCount);
+        BitSpan visitedColumnsBitset(columnsBitsetData, bitsetElementCount);
 
         uint32_t colIndex = 0;
         table.ForEachColumn([&](const auto& col)
@@ -317,7 +319,7 @@ namespace he::sqlite
 
             if (!columnModified)
             {
-                result &= SyncColumn(table, tableInfo, col, columnInfo, columnModified);
+                result &= SyncColumn(table, col, columnInfo, columnModified);
             }
         });
 
@@ -346,7 +348,7 @@ namespace he::sqlite
             {
                 const ColumnInfo* columnInfo = existingColumns[colIndex++];
                 if (!columnInfo)
-                    continue;
+                    return;
 
                 if (i++ > 0)
                     sql.Write(", ");
@@ -362,12 +364,12 @@ namespace he::sqlite
             {
                 const ColumnInfo* columnInfo = existingColumns[colIndex++];
                 if (!columnInfo)
-                    continue;
+                    return;
 
                 if (i++ > 0)
                     sql.Write(", ");
 
-                using Traits = SqlDataTypeTraits<Decay<decltype(col)>>;
+                using Traits = SqlDataTypeTraits<Decay<decltype(col)>::ValueType>;
                 sql.Write("CAST({} AS {})", col.name, Traits::SqlType);
             });
             sql.Write(") FROM {};\n", table.Name());
@@ -402,7 +404,7 @@ namespace he::sqlite
 
     template <typename S>
     template <typename T, typename U> requires(IsTableDef<T>::Value && IsColumnDef<U>::Value)
-    bool Storage<S>::SyncColumn(const T& table, const TableInfo& tableInfo, const U& column, const ColumnInfo* columnInfo, bool& columnModified)
+    bool Storage<S>::SyncColumn(const T& table, const U& column, const ColumnInfo* columnInfo, bool& columnModified)
     {
         if (!columnInfo)
         {

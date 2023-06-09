@@ -905,9 +905,9 @@ namespace he::sqlite
     /// each time the schema is synchronized. Be sure your scripts are idempotent.
     struct RawSqlQuery : _QueryBase
     {
-        constexpr RawSqlQuery(StringView q) : query(q) {}
+        constexpr RawSqlQuery(const char* q) : query(q) {}
 
-        StringView query;
+        const char* query;
     };
 
     // Some traits to help detect types
@@ -1025,7 +1025,7 @@ namespace he::sqlite
     template <typename T, typename... U> requires((IsSpecialization<U, ColumnRefAndValue> && ...))
     constexpr UpdateQuery<Tuple<U...>, WhereExpr<T>> Update(WhereExpr<T> cond, U... sets) { return { MakeTuple(Forward<U>(sets)...), Move(cond) }; }
 
-    constexpr RawSqlQuery RawSql(StringView query) { return { query }; }
+    constexpr RawSqlQuery RawSql(const char* query) { return { query }; }
 
     // --------------------------------------------------------------------------------------------
     // Table Definition

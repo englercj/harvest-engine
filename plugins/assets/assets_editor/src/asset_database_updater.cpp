@@ -14,8 +14,12 @@
 #include "he/core/string_fmt.h"
 #include "he/core/thread.h"
 #include "he/core/types.h"
+#include "he/sqlite/orm.h"
+#include "he/sqlite/orm_storage.h"
 
 #include <functional>
+
+using namespace he::sqlite;
 
 namespace he::assets
 {
@@ -54,7 +58,8 @@ namespace he::assets
         if (m_useJournal)
         {
             ConfigModel config;
-            if (ConfigModel::FindOne(m_db, NextUsnConfigKey, config) && config.value.Size() == sizeof(int64_t))
+            const bool found = m_db.Storage().FindOne(config, Where(Col(&ConfigModel::key) == NextUsnConfigKey));
+            if (found && config.value.Size() == sizeof(int64_t))
             {
                 int64_t startUsn;
                 MemCopy(&startUsn, config.value.Data(), sizeof(int64_t));
@@ -166,7 +171,12 @@ namespace he::assets
                 config.key = NextUsnConfigKey;
                 config.SetValue(m_journalWatcher.NextUsn());
 
-                ConfigModel::AddOrUpdate(m_db, config);
+                const auto query = Insert<ConfigModel>(
+                    Cols(&ConfigModel::key, &ConfigModel::value),
+                    Values(config.key, config.value),
+                    OnConflict(&ConfigModel::key).DoUpdate(Set(&ConfigModel::value, Excluded(&ConfigModel::value))));
+
+                m_db.Storage().Execute(query);
 
                 if (m_startJournalMax != 0 && m_journalWatcher.NextUsn() >= m_startJournalMax)
                 {

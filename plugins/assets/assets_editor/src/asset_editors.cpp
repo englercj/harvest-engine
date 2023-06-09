@@ -43,17 +43,16 @@ namespace he::assets
             return;
 
         // If the type is empty we have no way to edit this data.
-        const schema::String::Reader typeName = ctx.data.As<schema::DynamicStruct>().Get("type").As<schema::String>();
-        if (!HE_VERIFY(typeName.IsValid() && !typeName.IsEmpty()))
+        const schema::String::Reader assetTypeStr = ctx.data.As<schema::DynamicStruct>().Get("type").As<schema::String>();
+        if (!HE_VERIFY(assetTypeStr.IsValid() && !assetTypeStr.IsEmpty()))
             return;
 
-        const AssetTypeId typeId(typeName);
-        const AssetTypeRegistry::Entry* assetType = types.FindAssetType(typeId);
+        const AssetTypeRegistry::Entry* assetType = types.FindAssetType(assetTypeStr.AsView());
 
         // If the asset type is unknown we have no way to edit this data.
         if (!HE_VERIFY(assetType))
         {
-            ImGui::Text("Unknown asset type: %s", typeName.Data());
+            ImGui::Text("Unknown asset type: %s", assetTypeStr.Data());
             return;
         }
 

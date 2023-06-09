@@ -102,9 +102,6 @@ namespace he::assets
         uint32_t val;
     };
 
-    /// Unique identifier of an asset type. This is a hash of a unique asset type string.
-    using AssetTypeId = _HashId<struct AssetTypeIdTag>;
-
     /// Unique identifier for an asset importer class. Usually a hash of a unique string.
     /// \see AssetImporter::Id()
     using ImporterId = _HashId<struct ImporterIdTag>;

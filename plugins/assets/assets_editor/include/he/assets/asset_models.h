@@ -3,6 +3,7 @@
 #pragma once
 
 #include "he/assets/types.h"
+#include "he/core/concepts.h"
 #include "he/core/clock.h"
 #include "he/core/log.h"
 #include "he/core/memory_ops.h"
@@ -70,6 +71,13 @@ namespace he::assets
         uint32_t id{ 0 };
         String key{};
         Vector<uint8_t> value{};
+
+        template <TriviallyCopyable T>
+        void SetValue(const T& v)
+        {
+            value.Resize(sizeof(T), DefaultInit);
+            MemCopy(value.Data(), &v, sizeof(T));
+        }
     };
 
     struct TagModel final

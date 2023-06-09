@@ -6,11 +6,12 @@
 #include "he/assets/asset_compiler.h"
 #include "he/assets/types.h"
 #include "he/core/hash_table.h"
+#include "he/core/name.h"
 #include "he/core/type_info.h"
 #include "he/core/types.h"
 #include "he/core/unique_ptr.h"
-#include "he/core/vector.h"
 #include "he/core/utils.h"
+#include "he/core/vector.h"
 #include "he/schema/types.h"
 
 namespace he::assets
@@ -55,8 +56,8 @@ namespace he::assets
         template <typename AssetType>
         void UnregisterAssetType();
 
-        const Entry* FindAssetType(AssetTypeId typeId) const { return m_assetTypes.Find(typeId); }
-        const Entry& GetAssetType(AssetTypeId typeId) const { return m_assetTypes.Get(typeId); }
+        const Entry* FindAssetType(Name assetTypeName) const { return m_assetTypes.Find(assetTypeName); }
+        const Entry& GetAssetType(Name assetTypeName) const { return m_assetTypes.Get(assetTypeName); }
 
     private:
         const ImporterEntry* FindImporter(const TypeInfo& info);
@@ -64,12 +65,12 @@ namespace he::assets
         bool RegisterImporter(const TypeInfo& info, UniquePtr<AssetImporter> importer);
         void UnregisterImporter(const TypeInfo& info);
 
-        bool RegisterAssetType(StringView assetTypeName, const schema::DeclInfo& declInfo, const TypeInfo& compilerInfo, UniquePtr<AssetCompiler> compiler);
-        void UnregisterAssetType(StringView assetTypeName);
+        bool RegisterAssetType(Name assetTypeName, const schema::DeclInfo& declInfo, const TypeInfo& compilerInfo, UniquePtr<AssetCompiler> compiler);
+        void UnregisterAssetType(Name assetTypeName);
 
     private:
         Vector<ImporterEntry> m_importers;
-        HashMap<AssetTypeId, Entry> m_assetTypes;
+        HashMap<Name, Entry> m_assetTypes;
     };
 
     // --------------------------------------------------------------------------------------------

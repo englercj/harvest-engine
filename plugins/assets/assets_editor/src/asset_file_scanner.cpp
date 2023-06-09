@@ -18,6 +18,9 @@
 #include "he/core/string_fmt.h"
 #include "he/core/string_view.h"
 #include "he/schema/toml.h"
+#include "he/sqlite/orm.h"
+
+using namespace he::sqlite;
 
 namespace he::assets
 {
@@ -38,7 +41,7 @@ namespace he::assets
             return false;
 
         // Remove anything from the DB that we didn't find in the scan
-        if (!AssetFileModel::RemoveOutdated(m_db, m_token))
+        if (!m_db.Storage().Destroy<AssetFileModel>(Where(Col(&AssetFileModel::scanToken) != m_token)))
             return false;
 
         // Remove our sentinel so other processes know they can do work.
@@ -90,7 +93,12 @@ namespace he::assets
                     }
                     else
                     {
-                        AssetFileModel::UpdateScanToken(m_db, fullPath, m_token);
+                        const auto query = Update(
+                            Where(Col(&AssetFileModel::filePath) == fullPath),
+                            Set(&AssetFileModel::scanToken, m_token));
+
+                        if (!m_db.Storage().Execute(query))
+                            return false;
                     }
                 }
             }
@@ -121,7 +129,12 @@ namespace he::assets
     void AssetFileScanner::OnUpdateComplete(AssetDatabase::LoadResult result)
     {
         const AssetFileUuid assetFileUuid{ result.builder.Root().GetUuid() };
-        AssetFileModel::UpdateScanToken(m_db, assetFileUuid, m_token);
+
+        const auto query = Update(
+            Where(Col(&AssetFileModel::uuid) == assetFileUuid),
+            Set(&AssetFileModel::scanToken, m_token));
+
+        m_db.Storage().Execute(query);
         --m_pendingOps;
     }
 }

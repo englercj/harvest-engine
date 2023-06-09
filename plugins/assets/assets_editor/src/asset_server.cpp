@@ -10,6 +10,8 @@
 #include "he/core/hash_table.h"
 #include "he/core/log.h"
 #include "he/core/module_registry.h"
+#include "he/core/name.h"
+#include "he/core/name_fmt.h"
 #include "he/core/path.h"
 #include "he/core/result_fmt.h"
 #include "he/core/span.h"
@@ -305,7 +307,7 @@ namespace he::assets
                 const auto query = Update(
                     Where(Col(&AssetModel::uuid) == assetUuid),
                     Set(&AssetModel::state, AssetState::NeedsCompile));
-                data->server->m_db.Storage().Query(query);
+                data->server->m_db.Storage().Execute(query);
                 data->server->StartCompile(assetUuid);
             }
             else
@@ -313,7 +315,7 @@ namespace he::assets
                 const auto query = Update(
                     Where(Col(&AssetModel::uuid) == assetUuid),
                     Set(&AssetModel::state, AssetState::ImportFailed));
-                data->server->m_db.Storage().Query(query);
+                data->server->m_db.Storage().Execute(query);
             }
         }
         t.Commit();
@@ -327,11 +329,10 @@ namespace he::assets
         bool success = false;
 
         AssetModel model;
-        if (AssetModel::FindOne(data->server->m_db, data->assetUuid, model))
+        if (data->server->m_db.Storage().FindOne(model, Where(Col(&AssetModel::uuid) == data->assetUuid)))
         {
-            const AssetTypeId typeId{ model.assetTypeName };
             const AssetTypeRegistry& registry = g_assetEditorModule->Registry().GetApi<AssetTypeRegistry>();
-            const AssetTypeRegistry::Entry* assetType = registry.FindAssetType(typeId);
+            const AssetTypeRegistry::Entry* assetType = registry.FindAssetType(model.assetType);
             const AssetUuid assetUuid{ data->ctx.asset.GetUuid() };
 
             if (assetType)
@@ -345,12 +346,12 @@ namespace he::assets
                         HE_KV(compiler_id, assetType->compiler->Id()),
                         HE_KV(compiler_version, assetType->compiler->Version()),
                         HE_KV(asset_uuid, assetUuid),
-                        HE_KV(asset_type, model.assetTypeName));
+                        HE_KV(asset_type, model.assetType));
 
                     const auto query = Update(
                         Where(Col(&AssetModel::uuid) == assetUuid),
                         Set(&AssetModel::state, AssetState::Ready));
-                    data->server->m_db.Storage().Query(query);
+                    data->server->m_db.Storage().Execute(query);
                 }
                 else
                 {
@@ -359,12 +360,12 @@ namespace he::assets
                         HE_KV(compiler_id, assetType->compiler->Id()),
                         HE_KV(compiler_version, assetType->compiler->Version()),
                         HE_KV(asset_uuid, assetUuid),
-                        HE_KV(asset_type, model.assetTypeName));
+                        HE_KV(asset_type, model.assetType));
 
                     const auto query = Update(
                         Where(Col(&AssetModel::uuid) == assetUuid),
                         Set(&AssetModel::state, AssetState::CompileFailed));
-                    data->server->m_db.Storage().Query(query);
+                    data->server->m_db.Storage().Execute(query);
                 }
             }
             else
@@ -372,7 +373,7 @@ namespace he::assets
                 HE_LOG_WARN(he_assets,
                     HE_MSG("Unknown asset type, no such type has been registered by any modules."),
                     HE_KV(asset_uuid, assetUuid),
-                    HE_KV(asset_type, model.assetTypeName));
+                    HE_KV(asset_type, model.assetType));
             }
         }
         else

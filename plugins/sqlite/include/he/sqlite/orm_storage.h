@@ -6,6 +6,7 @@
 #include "he/core/bitset.h"
 #include "he/core/fmt.h"
 #include "he/core/log.h"
+#include "he/core/scope_guard.h"
 #include "he/core/string_builder.h"
 #include "he/core/string.h"
 #include "he/core/types.h"
@@ -123,7 +124,7 @@ namespace he::sqlite
         bool SyncTable(const TableDef<T, Elements...>& table);
 
         template <typename T, typename U> requires(IsTableDef<T>::Value && IsColumnDef<U>::Value)
-        bool SyncColumn(const T& table, const TableInfo& tableInfo, const U& column, const ColumnInfo* columnInfo, bool& columnModified);
+        bool SyncColumn(const T& table, const U& column, const ColumnInfo* columnInfo, bool& columnModified);
 
         template <typename T, typename U, typename... Constraints>
         bool AddColumn(StringView tableName, const ColumnDef<T, U, Constraints...>& column);

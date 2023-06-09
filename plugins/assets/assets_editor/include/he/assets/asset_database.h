@@ -28,6 +28,7 @@ namespace he::assets
         using LoadDelegate = Delegate<void(LoadResult)>;
 
     public:
+        AssetDatabase() = default;
         ~AssetDatabase() noexcept { Terminate(); }
 
         bool Initialize(const char* cacheRoot, const char* assetRoot);

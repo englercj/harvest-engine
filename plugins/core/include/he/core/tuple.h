@@ -33,6 +33,7 @@
 
 #include "he/core/compiler.h"
 #include "he/core/concepts.h"
+#include "he/core/macros.h"
 #include "he/core/type_traits.h"
 #include "he/core/types.h"
 #include "he/core/utils.h"
@@ -483,6 +484,7 @@ namespace he
     template <typename T> requires(IsSpecialization<Decay<T>, Tuple>)
     constexpr uint32_t TupleSize(T&& tuple)
     {
+        HE_UNUSED(tuple);
         return Decay<T>::Size;
     }
 }

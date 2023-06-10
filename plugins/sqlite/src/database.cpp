@@ -18,6 +18,7 @@ namespace he::sqlite
 
     bool Database::Execute(sqlite3* m_db, const char* query)
     {
+        HE_LOG_TRACE(he_sqlite, HE_MSG("Executing sqlite query."), HE_VAL(query));
         HE_SQLITE_CHECK(OK, sqlite3_exec(m_db, query, nullptr, nullptr, nullptr));
         return true;
     }

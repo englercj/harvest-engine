@@ -869,6 +869,12 @@ namespace he
     template <typename T, typename List>
     struct _TypeListIndex;
 
+    template <typename T>
+    struct _TypeListIndex<T, TypeList<>>
+    {
+        static constexpr uint32_t Value = 0;
+    };
+
     template <typename T, typename... Ts>
     struct _TypeListIndex<T, TypeList<Ts...>>
     {

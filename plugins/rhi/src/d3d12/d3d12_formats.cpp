@@ -628,6 +628,21 @@ namespace he
 
         return "<unknown>";
     }
+
+    template <>
+    const char* AsString(DXGI_MODE_ROTATION x)
+    {
+        switch (x)
+        {
+            case DXGI_MODE_ROTATION_UNSPECIFIED: return "DXGI_MODE_ROTATION_UNSPECIFIED";
+            case DXGI_MODE_ROTATION_IDENTITY: return "DXGI_MODE_ROTATION_IDENTITY";
+            case DXGI_MODE_ROTATION_ROTATE90: return "DXGI_MODE_ROTATION_ROTATE90";
+            case DXGI_MODE_ROTATION_ROTATE180: return "DXGI_MODE_ROTATION_ROTATE180";
+            case DXGI_MODE_ROTATION_ROTATE270: return "DXGI_MODE_ROTATION_ROTATE270";
+        }
+
+        return "<unknown>";
+    }
 }
 
 #endif

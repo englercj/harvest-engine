@@ -264,7 +264,7 @@ namespace he::editor
 
                 // Type
                 ImGui::TableNextColumn();
-                ImGui::TextUnformatted(asset.type.Begin(), asset.type.End());
+                ImGui::TextUnformatted(asset.assetType.String());
 
                 // UUID
                 m_buffer.Clear();
@@ -365,7 +365,7 @@ namespace he::editor
         node.queriedAt = MonotonicClock::Now();
         node.assets.Clear();
 
-        if (!assets::AssetModel::FindAll(db, node.path.Data(), node.assets, assets::AssetFilePathTag{}))
+        if (!db.Storage().FindAll(node.assets, sqlite::Where(sqlite::Col(&assets::AssetFileModel::sourcePath) == node.path)))
         {
             HE_LOG_ERROR(he_editor,
                 HE_MSG("Failed to query for assets in path."),

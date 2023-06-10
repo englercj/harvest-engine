@@ -7,6 +7,8 @@
 #include "he/core/string_fmt.h"
 #include "he/core/uuid_fmt.h"
 
+using namespace he::sqlite;
+
 namespace he::editor
 {
     struct AssetLoadResult
@@ -20,7 +22,9 @@ namespace he::editor
     {
         AssetLoadResult result;
 
-        if (!HE_VERIFY(assets::AssetFileModel::FindOne(db, assetUuid, result.fileModel),
+        const auto selectFileId = Select<assets::AssetModel>(Cols(&assets::AssetModel::assetFileId), Where(Col(&assets::AssetModel::uuid) == assetUuid));
+        const bool findResult = db.Storage().FindOne(result.fileModel, Where(Col(&assets::AssetFileModel::id) == selectFileId));
+        if (!HE_VERIFY(findResult,
             HE_MSG("Unable to find the asset file associated with the asset."),
             HE_KV(asset_uuid, assetUuid)))
         {
@@ -30,9 +34,9 @@ namespace he::editor
         assets::AssetDatabase::LoadResult assetLoad = db.LoadAssetFile(result.fileModel.uuid);
         if (!HE_VERIFY(assetLoad.result,
             HE_MSG("Failed to load asset file."),
-            HE_KV(path, result.fileModel.file.path),
+            HE_KV(path, result.fileModel.filePath),
             HE_KV(uuid, result.fileModel.uuid),
-            HE_KV(asset_file_path, result.fileModel.file.path)))
+            HE_KV(asset_file_path, result.fileModel.filePath)))
         {
             return result;
         }
@@ -53,7 +57,7 @@ namespace he::editor
             HE_MSG("Couldn't find asset in file that DB said it was in."),
             HE_KV(asset_uuid, assetUuid),
             HE_KV(asset_file_uuid, result.fileModel.uuid),
-            HE_KV(asset_file_path, result.fileModel.file.path));
+            HE_KV(asset_file_path, result.fileModel.filePath));
 
         return result;
     }
@@ -101,7 +105,7 @@ namespace he::editor
 
         result.asset.Copy(entry->ctx->Data().Struct());
 
-        return db.SaveAssetFile(result.fileModel.file.path.Data(), result.file.Root());
+        return db.SaveAssetFile(result.fileModel.filePath.Data(), result.file.Root());
     }
 
     void AssetEditService::CloseAsset(SchemaEditContext* ctx)

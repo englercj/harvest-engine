@@ -7,8 +7,9 @@
 #include "he/core/fmt.h"
 #include "he/core/log.h"
 #include "he/core/scope_guard.h"
-#include "he/core/string_builder.h"
 #include "he/core/string.h"
+#include "he/core/string_builder.h"
+#include "he/core/string_fmt.h"
 #include "he/core/types.h"
 #include "he/sqlite/database.h"
 #include "he/sqlite/orm.h"
@@ -33,9 +34,6 @@ namespace he::sqlite
         sqlite3* Handle() const { return m_db.Handle(); }
 
     protected:
-        bool DropColumn(StringView tableName, StringView columnName);
-
-    protected:
         struct ColumnInfo
         {
             int32_t cid{ 0 };
@@ -45,6 +43,13 @@ namespace he::sqlite
             int32_t pk{ 0 };
             bool notnull{ false };
             bool hidden{ false };
+        };
+
+        struct IndexInfo
+        {
+            bool exists{ false };
+            String name{};
+            String sql{};
         };
 
         struct TableInfo
@@ -58,6 +63,7 @@ namespace he::sqlite
 
         bool QueryTableExists(StringView tableName);
         bool QueryTableInfo(StringView tableName, TableInfo& info);
+        bool QueryIndexInfo(StringView indexName, IndexInfo& info);
 
     protected:
         Database m_db{};
@@ -71,9 +77,9 @@ namespace he::sqlite
         static_assert(IsSpecialization<S, SchemaDef>, "Storage expects a SchemaDef specialization as the template parameter.");
 
     public:
-        explicit Storage(SchemaType&& schema)
+        explicit Storage(const SchemaType& schema)
             : StorageBase()
-            , m_schema(Move(schema))
+            , m_schema(schema)
         {}
 
     public:
@@ -123,6 +129,9 @@ namespace he::sqlite
         template <typename T, typename... Elements>
         bool SyncTable(const TableDef<T, Elements...>& table);
 
+        template <typename... Columns>
+        bool SyncIndex(const IndexDef<Columns...>& index);
+
         template <typename T, typename U> requires(IsTableDef<T>::Value && IsColumnDef<U>::Value)
         bool SyncColumn(const T& table, const U& column, const ColumnInfo* columnInfo, bool& columnModified);
 
@@ -130,7 +139,7 @@ namespace he::sqlite
         bool AddColumn(StringView tableName, const ColumnDef<T, U, Constraints...>& column);
 
     private:
-        SchemaType m_schema;
+        const SchemaType& m_schema;
     };
 }
 

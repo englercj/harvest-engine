@@ -19,11 +19,11 @@
 
 /// \def HE_LOG_ENABLE_LEVEL
 /// Defines the log level enabled at compile time. Any level less than this defined value
-/// is compiled out of the application. This defaults to Debug for internal builds and
+/// is compiled out of the application. This defaults to Trace for internal builds and
 /// Info for non-internal builds.
 #if !defined(HE_LOG_ENABLE_LEVEL)
     #if HE_INTERNAL_BUILD
-        #define HE_LOG_ENABLE_LEVEL HE_LOG_LEVEL_DEBUG
+        #define HE_LOG_ENABLE_LEVEL HE_LOG_LEVEL_TRACE
     #else
         #define HE_LOG_ENABLE_LEVEL HE_LOG_LEVEL_INFO
     #endif

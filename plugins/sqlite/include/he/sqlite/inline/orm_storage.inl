@@ -5,13 +5,6 @@ namespace he::sqlite
     // --------------------------------------------------------------------------------------------
     // StorageBase
 
-    inline bool StorageBase::DropColumn(StringView tableName, StringView columnName)
-    {
-        StringBuilder sql;
-        sql.Write("ALTER TABLE '{}' DROP COLUMN '{}'", tableName, columnName);
-        return m_db.Execute(sql.Str().Data());
-    }
-
     template <typename T, typename U> requires(IsTableDef<T>::Value && IsColumnDef<U>::Value)
     StorageBase::ColumnInfo StorageBase::ColumnInfoFromDef(const T& table, const U& column)
     {
@@ -27,24 +20,29 @@ namespace he::sqlite
         info.notnull = TupleHas<NotNullConstraint, ColumnConstraints>();
         info.hidden = false;
 
-        if constexpr (TupleHas<DefaultConstraint, ColumnConstraints>())
+        TupleForEach(column.constraints, [&](const auto& constraint)
         {
-            const auto& value = TupleGet<DefaultConstraint>(column.constraints).value;
-            StringBuilder valueStr;
-            Traits::Write(valueStr, value);
-            info.defaultValue = valueStr.Str();
-        }
+            using ConstraintType = Decay<decltype(constraint)>;
+            if constexpr (IsSpecialization<ConstraintType, DefaultConstraint>)
+            {
+                StringBuilder valueStr;
+                Traits::Write(valueStr, constraint.value);
+                info.defaultValue = valueStr.Str();
+            }
+        });
 
         return info;
     }
 
     inline bool StorageBase::QueryTableExists(StringView tableName)
     {
-        StringBuilder sql;
-        sql.Write("SELECT count(*) FROM sqlite_master WHERE type = 'table' AND name = '{}'", tableName);
+        constexpr const char* SqlQuery = "SELECT count(*) FROM sqlite_master WHERE type = 'table' AND name = ?";
 
         Statement stmt;
-        if (!HE_VERIFY(stmt.Prepare(m_db.Handle(), sql.Str().Data())))
+        if (!HE_VERIFY(stmt.Prepare(m_db.Handle(), SqlQuery)))
+            return false;
+
+        if (!HE_VERIFY(stmt.Bind(1, tableName)))
             return false;
 
         if (!HE_VERIFY(stmt.Step() == sqlite::StepResult::Row))
@@ -64,11 +62,27 @@ namespace he::sqlite
 
         if (info.exists)
         {
-            StringBuilder sql;
-            sql.Write("PRAGMA table_xinfo('{}');", tableName);
+            // Escape the table name, just to be safe.
+            constexpr const char* EscapeSqlQuery = "SELECT quote(?)";
+
+            Statement escapeStmt;
+            if (!HE_VERIFY(escapeStmt.Prepare(m_db.Handle(), EscapeSqlQuery)))
+                return false;
+
+            if (!HE_VERIFY(escapeStmt.Bind(1, tableName)))
+                return false;
+
+            if (!HE_VERIFY(escapeStmt.Step() == sqlite::StepResult::Row))
+                return false;
+
+            const StringView escapedTableName = escapeStmt.GetColumn(0).AsText();
+
+            String sql = "PRAGMA table_xinfo(";
+            sql += escapedTableName;
+            sql += ");";
 
             Statement stmt;
-            if (!HE_VERIFY(stmt.Prepare(m_db.Handle(), sql.Str().Data())))
+            if (!HE_VERIFY(stmt.Prepare(m_db.Handle(), sql.Data())))
                 return false;
 
             return stmt.EachRow([&](const Statement& stmt)
@@ -83,6 +97,31 @@ namespace he::sqlite
                 cinfo.hidden = stmt.GetColumn(6).AsInt() != 0;
             });
         }
+
+        return true;
+    }
+
+    inline bool StorageBase::QueryIndexInfo(StringView indexName, IndexInfo& info)
+    {
+        constexpr const char* SqlQuery = "SELECT name, sql FROM sqlite_master WHERE type = 'index' AND name = ?";
+
+        Statement stmt;
+        if (!HE_VERIFY(stmt.Prepare(m_db.Handle(), SqlQuery)))
+            return false;
+
+        if (!HE_VERIFY(stmt.Bind(1, indexName)))
+            return false;
+
+        info.exists = stmt.Step() == sqlite::StepResult::Row;
+
+        if (info.exists)
+        {
+            info.name = stmt.GetColumn(0).AsText();
+            info.sql = stmt.GetColumn(1).AsText();
+        }
+
+        if (!HE_VERIFY(stmt.Step() == sqlite::StepResult::Done))
+            return false;
 
         return true;
     }
@@ -167,15 +206,22 @@ namespace he::sqlite
 
             if constexpr (IsTableDef<ItemType>::Value)
             {
-                HE_LOG_DEBUG(he_sqlite, HE_MSG("Starting sync of table"), HE_KV(table_name, item.Name()));
-
+                HE_LOG_DEBUG(he_sqlite, HE_MSG("Starting sync of table"), HE_KV(name, item.Name()));
                 result &= SyncTable(item);
+            }
+            else if constexpr (IsIndexDef<ItemType>)
+            {
+                HE_LOG_DEBUG(he_sqlite, HE_MSG("Starting sync of index"), HE_KV(name, item.Name()));
+                result &= SyncIndex(item);
             }
             else if constexpr (IsSame<ItemType, RawSqlQuery>)
             {
                 result &= m_db.Execute(item.query);
             }
         });
+
+        // TODO: Drop table that are no longer in the schema
+        // TODO: Drop indexes that are no longer in the schema
 
         if (result)
             t.Commit();
@@ -264,6 +310,7 @@ namespace he::sqlite
         if (!HE_VERIFY(BindSql(stmt, query, bindCtx)))
             return false;
 
+        HE_LOG_TRACE(he_sqlite, HE_MSG("Executing sqlite prepared query."), HE_KV(query, sql.Str()));
         return true;
     }
 
@@ -289,7 +336,7 @@ namespace he::sqlite
 
         // Create a lookup table for the existing columns based on index of new columns
         Vector<const ColumnInfo*> existingColumns;
-        existingColumns.Reserve(TupleSize(table.Elements()));
+        existingColumns.Resize(TupleSize(table.Elements()));
 
         const uint32_t bitsetElementCount = BitSpan::RequiredElements(tableInfo.columns.Size());
         BitSpan::ElementType* columnsBitsetData = HE_ALLOCA(BitSpan::ElementType, bitsetElementCount);
@@ -303,103 +350,118 @@ namespace he::sqlite
                 const ColumnInfo& candidate = tableInfo.columns[i];
                 if (candidate.name == col.name)
                 {
-                    existingColumns[colIndex++] = &candidate;
+                    existingColumns[colIndex] = &candidate;
                     visitedColumnsBitset.Set(i, true);
                     break;
                 }
             }
+            ++colIndex;
         });
 
-        bool result = true;
-        bool columnModified = false;
-        colIndex = 0;
-        table.ForEachColumn([&](const auto& col)
-        {
-            const ColumnInfo* columnInfo = existingColumns[colIndex++];
-
-            if (!columnModified)
-            {
-                result &= SyncColumn(table, col, columnInfo, columnModified);
-            }
-        });
-
-        if (!result)
-            return false;
-
-        // At least one column has been modified, so we need to rebuild the table.
-        if (columnModified)
-        {
-            SqlWriterContext ctx(m_schema);
-            StringBuilder ddl;
-            ToSql(ddl, table, ctx);
-
-            const char* ddlStart = String::FindN(ddl.Str().Data(), ddl.Str().Size(), '\n');
-
-            StringBuilder sql;
-            sql.Write(R"(
-                CREATE TABLE __he_temp__{0}{1};
-                INSERT INTO __he_temp__{0}(
-            )", table.Name(), ddlStart);
-
-            // Write the column names we're inserting into
-            colIndex = 0;
-            uint32_t i = 0;
-            table.ForEachColumn([&](const auto& col)
-            {
-                const ColumnInfo* columnInfo = existingColumns[colIndex++];
-                if (!columnInfo)
-                    return;
-
-                if (i++ > 0)
-                    sql.Write(", ");
-
-                sql.Write(col.name);
-            });
-            sql.Write(") SELECT (");
-
-            // Write the cast expressions from previous columns to the new types
-            colIndex = 0;
-            i = 0;
-            table.ForEachColumn([&](const auto& col)
-            {
-                const ColumnInfo* columnInfo = existingColumns[colIndex++];
-                if (!columnInfo)
-                    return;
-
-                if (i++ > 0)
-                    sql.Write(", ");
-
-                using Traits = SqlDataTypeTraits<Decay<decltype(col)>::ValueType>;
-                sql.Write("CAST({} AS {})", col.name, Traits::SqlType);
-            });
-            sql.Write(") FROM {};\n", table.Name());
-
-            sql.Write(R"(
-                DROP TABLE {0};
-                ALTER TABLE __he_temp__{0} RENAME TO {0};
-            )", table.Name());
-
-            return m_db.Execute(sql.Str().Data());
-        }
-
-        // If no existing columns were modified then we can drop any columns that were removed.
+        // If any columns were removed then we need to rebuild the table. This is because
+        // DROP COLUMN can fail for many reasons if the column is used elsewhere in the schema.
+        bool tableRebuildRequired = false;
         for (uint32_t i = 0; i < tableInfo.columns.Size(); ++i)
         {
-            if (visitedColumnsBitset.IsSet(i))
-                continue;
+            if (!visitedColumnsBitset.IsSet(i))
+            {
+                tableRebuildRequired = true;
+                break;
+            }
+        }
 
-            const ColumnInfo& col = tableInfo.columns[i];
+        // Sync individual columns by adding them if they're missing, and checking if they've
+        // changed. We only need to do this if we haven't detected a reason to rebuild the
+        // table yet.
+        if (!tableRebuildRequired)
+        {
+            bool result = true;
+            colIndex = 0;
+            table.ForEachColumn([&](const auto& col)
+            {
+                const ColumnInfo* columnInfo = existingColumns[colIndex++];
 
-            HE_LOG_INFO(he_sqlite,
-                HE_MSG("Dropping removed column from table."),
-                HE_KV(column_name, col.name),
-                HE_KV(table_name, table.Name()));
+                if (!tableRebuildRequired)
+                {
+                    result &= SyncColumn(table, col, columnInfo, tableRebuildRequired);
+                }
+            });
 
-            if (!DropColumn(table.Name(), col.name))
+            if (!result)
                 return false;
         }
 
-        return true;
+        // If no rebuild is required then we were no changes, or we were able to handle those
+        // changes without a table rebuild.
+        if (!tableRebuildRequired)
+            return true;
+
+        SqlWriterContext ctx(m_schema);
+        StringBuilder ddl;
+        ToSql(ddl, table, ctx);
+
+        const char* ddlStart = String::FindN(ddl.Str().Data(), ddl.Str().Size(), '(');
+
+        StringBuilder sql;
+        sql.Write(R"(
+            CREATE TABLE __he_temp__{0}{1};
+            INSERT INTO __he_temp__{0}(
+        )", table.Name(), ddlStart);
+
+        // Write the column names we're inserting into
+        colIndex = 0;
+        uint32_t i = 0;
+        table.ForEachColumn([&](const auto& col)
+        {
+            const ColumnInfo* columnInfo = existingColumns[colIndex++];
+            if (!columnInfo)
+                return;
+
+            if (i++ > 0)
+                sql.Write(", ");
+
+            sql.Write(col.name);
+        });
+        sql.Write(") SELECT ");
+
+        // Write the cast expressions from previous columns to the new types
+        colIndex = 0;
+        i = 0;
+        table.ForEachColumn([&](const auto& col)
+        {
+            const ColumnInfo* columnInfo = existingColumns[colIndex++];
+            if (!columnInfo)
+                return;
+
+            if (i++ > 0)
+                sql.Write(", ");
+
+            using Traits = SqlDataTypeTraits<Decay<decltype(col)>::ValueType>;
+            if (columnInfo->type == Traits::SqlType)
+                sql.Write(col.name);
+            else
+                sql.Write("CAST({} AS {})", col.name, Traits::SqlType);
+        });
+        sql.Write(" FROM {};\n", table.Name());
+
+        sql.Write(R"(
+            DROP TABLE {0};
+            ALTER TABLE __he_temp__{0} RENAME TO {0};
+        )", table.Name());
+
+        return m_db.Execute(sql.Str().Data());
+    }
+
+    template <typename S>
+    template <typename... Columns>
+    bool Storage<S>::SyncIndex(const IndexDef<Columns...>& index)
+    {
+        IndexInfo info;
+        if (!QueryIndexInfo(index.name, info))
+            return false;
+
+        // TODO
+        return false;
     }
 
     template <typename S>

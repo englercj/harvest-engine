@@ -38,6 +38,10 @@ namespace he::assets
         VACUUM;
     )";
 
+    AssetDatabase::AssetDatabase()
+        : m_storage(AssetDbSchema)
+    {}
+
     bool AssetDatabase::Initialize(const char* cacheRoot, const char* assetRoot)
     {
         // Asset root needs to be an absolute path for us to utilize it correctly

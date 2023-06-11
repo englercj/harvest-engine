@@ -3,13 +3,13 @@
 id = "binomial.basis_universal"
 name = "Basis Universal"
 description = "Basis Universal Supercompressed GPU Texture Codec"
-version = "1.16.3"
+version = "1.16.4"
 author = "Binomial LLC"
 license = "Apache-2.0"
 homepage = "http://www.binomial.info/"
 
 [install]
-    github = "BinomialLLC/basis_universal#1.16.3"
+    github = "BinomialLLC/basis_universal#1.16.4"
 
 [[modules]]
     name = "basis_universal"

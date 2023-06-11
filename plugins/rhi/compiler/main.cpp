@@ -7,6 +7,7 @@
 #include "he/core/file.h"
 #include "he/core/fmt.h"
 #include "he/core/log.h"
+#include "he/core/log_sinks.h"
 #include "he/core/path.h"
 #include "he/core/result_fmt.h"
 #include "he/core/scope_guard.h"
@@ -30,7 +31,7 @@ struct AppArgs
 
 static void SlangDiagHandler(const char* msg, void*)
 {
-    std::cout << msg << std::endl;
+    HE_LOG_ERROR(he_schemac, HE_MSG(msg), HE_KV(slang_diag, true));
 }
 
 void WriteFileData(he::File& file, he::StringView name, const uint8_t* data, size_t size, bool asText);
@@ -38,6 +39,8 @@ void WriteFileData(he::File& file, he::StringView name, const uint8_t* data, siz
 #include "he/core/main.inl"
 int he::AppMain(int argc, char* argv[])
 {
+    AddLogSink(ConsoleSink);
+
     AppArgs args;
 
     ArgDesc ArgDescriptors[] =
@@ -85,7 +88,7 @@ int he::AppMain(int argc, char* argv[])
 
     request->setDiagnosticCallback(SlangDiagHandler, nullptr);
     request->setMatrixLayoutMode(SLANG_MATRIX_LAYOUT_COLUMN_MAJOR);
-    request->setOptimizationLevel(args.optLevel);
+    request->setOptimizationLevel(static_cast<SlangOptimizationLevel>(args.optLevel));
     request->setOutputContainerFormat(SLANG_CONTAINER_FORMAT_NONE);
 
     Vector<String> defineNamesStorage;
@@ -159,9 +162,15 @@ int he::AppMain(int argc, char* argv[])
     r = request->compile();
     if (SLANG_FAILED(r))
     {
-        HE_LOG_ERROR(he_shaderc,
-            HE_MSG("Failed to compile shader."),
-            HE_KV(result, r));
+        HE_LOG_ERROR(he_shaderc, HE_MSG("Failed to compile shader"), HE_KV(result, r));
+        return -1;
+    }
+
+    Slang::ComPtr<slang::IComponentType> program;
+    r = request->getProgramWithEntryPoints(program.writeRef());
+    if (SLANG_FAILED(r))
+    {
+        HE_LOG_ERROR(he_shaderc, HE_MSG("Failed to retrieve linked program"), HE_KV(result, r));
         return -1;
     }
 
@@ -181,16 +190,12 @@ int he::AppMain(int argc, char* argv[])
     String constName;
     for (uint32_t entryIndex = 0; entryIndex < entryCount; ++entryIndex)
     {
-        // A bit awkward of an interface, but if I don't add the entry point here we will fail to
-        // get it inside the target loop. Seems like there is a disconnect between what the
-        // reflection knows to exist in the file and what the request thinks is there.
         slang::EntryPointReflection* entry = reflection->getEntryPointByIndex(entryIndex);
-        request->addEntryPoint(0, entry->getName(), entry->getStage());
 
         for (uint32_t targetIndex = 0; targetIndex < args.targets.Size(); ++targetIndex)
         {
             Slang::ComPtr<slang::IBlob> entryBlob;
-            r = request->getEntryPointCodeBlob(entryIndex, targetIndex, entryBlob.writeRef());
+            r = program->getEntryPointCode(entryIndex, targetIndex, entryBlob.writeRef());
             if (!entryBlob || SLANG_FAILED(r))
             {
                 HE_LOG_ERROR(he_shaderc,
@@ -328,4 +333,32 @@ void WriteFileData(he::File& file, he::StringView name, const uint8_t* data, siz
 
     buf.Append("};\n");
     flush();
+}
+
+namespace he
+{
+    template <>
+    const char* AsString(SlangStage x)
+    {
+        switch (x)
+        {
+            case SLANG_STAGE_NONE: return "SLANG_STAGE_NONE";
+            case SLANG_STAGE_VERTEX: return "SLANG_STAGE_VERTEX";
+            case SLANG_STAGE_HULL: return "SLANG_STAGE_HULL";
+            case SLANG_STAGE_DOMAIN: return "SLANG_STAGE_DOMAIN";
+            case SLANG_STAGE_GEOMETRY: return "SLANG_STAGE_GEOMETRY";
+            case SLANG_STAGE_FRAGMENT: return "SLANG_STAGE_FRAGMENT";
+            case SLANG_STAGE_COMPUTE: return "SLANG_STAGE_COMPUTE";
+            case SLANG_STAGE_RAY_GENERATION: return "SLANG_STAGE_RAY_GENERATION";
+            case SLANG_STAGE_INTERSECTION: return "SLANG_STAGE_INTERSECTION";
+            case SLANG_STAGE_ANY_HIT: return "SLANG_STAGE_ANY_HIT";
+            case SLANG_STAGE_CLOSEST_HIT: return "SLANG_STAGE_CLOSEST_HIT";
+            case SLANG_STAGE_MISS: return "SLANG_STAGE_MISS";
+            case SLANG_STAGE_CALLABLE: return "SLANG_STAGE_CALLABLE";
+            case SLANG_STAGE_MESH: return "SLANG_STAGE_MESH";
+            case SLANG_STAGE_AMPLIFICATION: return "SLANG_STAGE_AMPLIFICATION";
+        }
+
+        return "<unknown>";
+    }
 }

@@ -3,15 +3,15 @@
 id = "nvidia.slang"
 name = "slang"
 description = "Slang is a shading language that makes it easier to build and maintain large shader codebases in a modular and extensible fashion."
-version = "0.19.6"
+version = "0.28.2"
 author = "Carnegie Mellon University and NVIDIA Corporation"
 license = "MIT"
 homepage = "https://github.com/shader-slang/slang"
 
 [install]
     [install.archive]
-        linux = "https://github.com/shader-slang/slang/releases/download/v0.19.6/slang-0.19.6-linux-x86_64.zip"
-        windows = "https://github.com/shader-slang/slang/releases/download/v0.19.6/slang-0.19.6-win64.zip"
+        linux = "https://github.com/shader-slang/slang/releases/download/v0.28.2/slang-0.28.2-linux-x86_64.zip"
+        windows = "https://github.com/shader-slang/slang/releases/download/v0.28.2/slang-0.28.2-win64.zip"
 
 [[modules]]
     name = "slang"

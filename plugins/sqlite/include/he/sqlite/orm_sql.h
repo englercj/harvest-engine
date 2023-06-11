@@ -225,9 +225,6 @@ namespace he::sqlite
         /// When true writes values directly into the query.
         /// Default (false) is to use a placeholder tokens (`?`).
         bool writeRawValues{ false };
-
-        /// When true adds `IF NOT EXISTS` to CREATE statements.
-        bool ddlIfNotExists{ false };
     };
 
     template <SpecializationOf<SchemaDef> T>

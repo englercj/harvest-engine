@@ -202,25 +202,10 @@ namespace he::sqlite
         bool result = true;
         TupleForEach(m_schema.Elements(), [&](const auto& item)
         {
-            using ItemType = Decay<decltype(item)>;
-
-            if constexpr (IsTableDef<ItemType>::Value)
-            {
-                HE_LOG_DEBUG(he_sqlite, HE_MSG("Starting sync of table"), HE_KV(name, item.Name()));
-                result &= SyncTable(item);
-            }
-            else if constexpr (IsIndexDef<ItemType>)
-            {
-                HE_LOG_DEBUG(he_sqlite, HE_MSG("Starting sync of index"), HE_KV(name, item.Name()));
-                result &= SyncIndex(item);
-            }
-            else if constexpr (IsSame<ItemType, RawSqlQuery>)
-            {
-                result &= m_db.Execute(item.query);
-            }
+            result &= Sync(item);
         });
 
-        // TODO: Drop table that are no longer in the schema
+        // TODO: Drop tables that are no longer in the schema
         // TODO: Drop indexes that are no longer in the schema
 
         if (result)
@@ -316,8 +301,10 @@ namespace he::sqlite
 
     template <typename S>
     template <typename T, typename... Elements>
-    bool Storage<S>::SyncTable(const TableDef<T, Elements...>& table)
+    bool Storage<S>::Sync(const TableDef<T, Elements...>& table)
     {
+        HE_LOG_DEBUG(he_sqlite, HE_MSG("Starting sync of table"), HE_KV(name, table.Name()));
+
         TableInfo tableInfo;
         if (!QueryTableInfo(table.Name(), tableInfo))
             return false;
@@ -359,7 +346,8 @@ namespace he::sqlite
         });
 
         // If any columns were removed then we need to rebuild the table. This is because
-        // DROP COLUMN can fail for many reasons if the column is used elsewhere in the schema.
+        // DROP COLUMN can fail for many reasons if the column is used elsewhere in the table's
+        // schema (like in a foreign key clause).
         bool tableRebuildRequired = false;
         for (uint32_t i = 0; i < tableInfo.columns.Size(); ++i)
         {
@@ -454,14 +442,17 @@ namespace he::sqlite
 
     template <typename S>
     template <typename... Columns>
-    bool Storage<S>::SyncIndex(const IndexDef<Columns...>& index)
+    bool Storage<S>::Sync(const IndexDef<Columns...>& index)
     {
-        IndexInfo info;
-        if (!QueryIndexInfo(index.name, info))
-            return false;
+        HE_LOG_DEBUG(he_sqlite, HE_MSG("Starting sync of index"), HE_KV(name, index.name), HE_KV(unique, index.unique));
+        return Execute(index);
+    }
 
-        // TODO
-        return false;
+    template <typename S>
+    bool Storage<S>::Sync(const RawSqlQuery& query)
+    {
+        HE_LOG_DEBUG(he_sqlite, HE_MSG("Starting sync of raw query"));
+        return m_db.Execute(query.query);
     }
 
     template <typename S>

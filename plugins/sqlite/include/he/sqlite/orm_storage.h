@@ -127,10 +127,12 @@ namespace he::sqlite
         bool PrepareQuery(Statement& stmt, const T& query);
 
         template <typename T, typename... Elements>
-        bool SyncTable(const TableDef<T, Elements...>& table);
+        bool Sync(const TableDef<T, Elements...>& table);
 
         template <typename... Columns>
-        bool SyncIndex(const IndexDef<Columns...>& index);
+        bool Sync(const IndexDef<Columns...>& index);
+
+        bool Sync(const RawSqlQuery& query);
 
         template <typename T, typename U> requires(IsTableDef<T>::Value && IsColumnDef<U>::Value)
         bool SyncColumn(const T& table, const U& column, const ColumnInfo* columnInfo, bool& columnModified);

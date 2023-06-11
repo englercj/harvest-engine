@@ -35,7 +35,33 @@ namespace he::assets
         return depth;
     }
 
-    bool AddOrUpdateAssetFile(AssetDatabase& db, AssetFile::Reader file, const AssetFileModel& model)
+    static int64_t GetAssetRowId(AssetDatabase& db, const AssetUuid& assetUuid)
+    {
+        const auto query = Select<AssetModel>(Cols(&AssetModel::id), Where(Col(&AssetModel::uuid) == assetUuid));
+
+        int64_t assetId = 0;
+        db.Storage().Execute(query, [&](const Statement& stmt)
+        {
+            ReadSql(stmt.GetColumn(0), assetId);
+        });
+
+        return assetId;
+    }
+
+    static int64_t GetTagRowId(AssetDatabase& db, StringView tag)
+    {
+        const auto query = Select<TagModel>(Cols(&TagModel::id), Where(Col(&TagModel::name) == tag));
+
+        int64_t tagId = 0;
+        db.Storage().Execute(query, [&](const Statement& stmt)
+        {
+            ReadSql(stmt.GetColumn(0), tagId);
+        });
+
+        return tagId;
+    }
+
+    bool AssetFileModel::AddOrUpdate(AssetDatabase& db, AssetFile::Reader file, const AssetFileModel& model)
     {
         HE_ASSERT(model.uuid == file.GetUuid());
 
@@ -148,7 +174,6 @@ namespace he::assets
             const uint32_t dataHash = CalculateHash<CRC32C>(asset.GetData());
             const uint32_t importDataHash = CalculateHash<CRC32C>(asset.GetData());
 
-            // TODO: Cols() doesn't support
             const auto query = Insert<AssetModel>(
                 Cols(&AssetModel::uuid, &AssetModel::assetFileId, &AssetModel::assetType, &AssetModel::name, &AssetModel::state, &AssetModel::dataHash, &AssetModel::importDataHash),
                 Select<AssetFileModel>(
@@ -174,6 +199,143 @@ namespace he::assets
             if (!db.Storage().Destroy<AssetModel>(Where(Col(&AssetModel::uuid) == uuid)))
                 return false;
         }
+
+        transaction.Commit();
+        return true;
+    }
+
+    bool AssetModel::FindAllByAssetFilePath(AssetDatabase& db, Vector<AssetModel>& models, StringView pathPrefix)
+    {
+        // TODO: JOIN support in ORM so these queries don't need to be raw.
+
+        Statement stmt;
+
+        // Special case handling for the root. The LIKE search on path is omitted here because it
+        // would always be true when searching the root path.
+        if (pathPrefix.IsEmpty() || pathPrefix == "/")
+        {
+            constexpr const char SqlQueryRoot[] = R"(
+                SELECT * FROM asset
+                JOIN asset_file ON asset_file.id = asset.asset_file_id
+                WHERE asset_file.file_path_depth = ?
+            )";
+
+            if (!stmt.Prepare(db.Handle(), SqlQueryRoot))
+                return false;
+
+            if (!stmt.Bind(1, 0))
+                return false;
+        }
+        else
+        {
+            constexpr char SqlQueryPathWithSlash[] = R"(
+                SELECT * FROM asset
+                JOIN asset_file ON asset_file.id = asset.asset_file_id
+                WHERE asset_file.file_path_depth = ? AND asset_file.file_path LIKE ? || '%'
+            )";
+
+            constexpr char SqlQueryPathWithoutSlash[] = R"(
+                SELECT * FROM asset
+                JOIN asset_file ON asset_file.id = asset.asset_file_id
+                WHERE asset_file.file_path_depth = ? AND asset_file.file_path LIKE ? || '/%'
+            )";
+
+            const bool hasSlash = pathPrefix.Back() == '/';
+            const char* query = hasSlash ? SqlQueryPathWithSlash : SqlQueryPathWithoutSlash;
+
+            if (!stmt.Prepare(db.Handle(), query))
+                return false;
+
+            if (!stmt.Bind(1, GetPathDepth(pathPrefix)))
+                return false;
+
+            if (!stmt.Bind(2, pathPrefix))
+                return false;
+        }
+
+        return stmt.EachRow([&](const sqlite::Statement& stmt)
+        {
+            AssetModel& model = models.EmplaceBack();
+
+            ReadSql(stmt.GetColumn(0), model.id);
+            ReadSql(stmt.GetColumn(1), model.uuid);
+            ReadSql(stmt.GetColumn(2), model.assetFileId);
+            ReadSql(stmt.GetColumn(3), model.assetType);
+            ReadSql(stmt.GetColumn(4), model.name);
+            ReadSql(stmt.GetColumn(5), model.state);
+            ReadSql(stmt.GetColumn(6), model.dataHash);
+            ReadSql(stmt.GetColumn(7), model.importDataHash);
+            ReadSql(stmt.GetColumn(8), model.importerId);
+            ReadSql(stmt.GetColumn(9), model.importerVersion);
+            ReadSql(stmt.GetColumn(10), model.compilerId);
+            ReadSql(stmt.GetColumn(11), model.compilerVersion);
+        });
+    }
+
+    bool AssetTagModel::Add(AssetDatabase& db, const AssetUuid& assetUuid, StringView tag)
+    {
+        Transaction transaction(db.Handle());
+
+        int64_t assetId = GetAssetRowId(db, assetUuid);
+        if (assetId == 0)
+            return false;
+
+        const auto tagInsert = Insert<TagModel>(Cols(&TagModel::name), Values(tag), OnConflict(&TagModel::name).DoNothing());
+
+        if (!db.Storage().Execute(tagInsert))
+            return false;
+
+        // We have to query this value instead of using `sqlite3_last_insert_rowid()` or a
+        // RETURNING clause on the insert because those won't give us the right value if we
+        // hit the conflict clause on the insertion above.
+        const int64_t tagId = GetTagRowId(db, tag);
+        if (tagId == 0)
+            return false;
+
+        const auto linkInsert = Insert<AssetTagModel>(
+            Cols(&AssetTagModel::assetId, &AssetTagModel::tagId),
+            Values(assetId, tagId));
+
+        if (!db.Storage().Execute(linkInsert))
+            return false;
+
+        transaction.Commit();
+        return true;
+    }
+
+    bool AssetTagModel::Remove(AssetDatabase& db, const AssetUuid& assetUuid, StringView tag)
+    {
+        Transaction transaction(db.Handle());
+
+        const int64_t assetId = GetAssetRowId(db, assetUuid);
+        if (assetId == 0)
+            return false;
+
+        const int64_t tagId = GetTagRowId(db, tag);
+        if (tagId == 0)
+            return false;
+
+        auto constraint = Where(Col(&AssetTagModel::assetId) == assetId && Col(&AssetTagModel::tagId) == tagId);
+
+        if (!db.Storage().Destroy<AssetTagModel>(Move(constraint)))
+            return false;
+
+        transaction.Commit();
+        return true;
+    }
+
+    bool AssetTagModel::RemoveAll(AssetDatabase& db, const AssetUuid& assetUuid)
+    {
+        Transaction transaction(db.Handle());
+
+        int64_t assetId = GetAssetRowId(db, assetUuid);
+        if (assetId == 0)
+            return false;
+
+        auto constraint = Where(Col(&AssetTagModel::assetId) == assetId);
+
+        if (!db.Storage().Destroy<AssetTagModel>(Move(constraint)))
+            return false;
 
         transaction.Commit();
         return true;

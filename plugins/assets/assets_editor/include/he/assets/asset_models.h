@@ -35,41 +35,98 @@ namespace he::assets
 
     struct AssetFileModel final
     {
+        /// RowID of the model in the database.
         uint32_t id{ 0 };
+
+        /// Unique ID of the asset file.
         AssetFileUuid uuid{};
 
+        /// Asset-root-relative path to the asset file on disk.
         String filePath{};
+
+        /// Counter for the number of path components in the asset-root-relative path to this file.
+        /// This is used to quickly perform searches of assets within particular directories.
         uint32_t filePathDepth{ 0 };
+
+        /// The last-modified time of the asset file when it was last read from disk. Used to
+        /// detect changes to the file that happened while the Harvest Editor was closed.
         SystemTime fileWriteTime{ 0 };
+
+        /// The byte size of the asset file when it was last read from disk. Used to
+        /// detect changes to the file that happened while the Harvest Editor was closed.
         uint64_t fileSize{ 0 };
 
+        /// Asset-root-relative path to the source data file on disk.
+        /// The source data file is an arbitrary file that is associated with the assets in this
+        /// asset file. Usually, this is the source file that assets are imported from.
         String sourcePath{};
+
+        /// The last-modified time of the source file when it was last read from disk. Used to
+        /// detect changes to the file that happened while the Harvest Editor was closed.
         SystemTime sourceWriteTime{ 0 };
+
+        /// The byte size of the source file when it was last read from disk. Used to
+        /// detect changes to the file that happened while the Harvest Editor was closed.
         uint64_t sourceSize{ 0 };
 
+        /// A token value representing the last scanner to update this row in the database.
+        /// This is used to detect files listed in the database that are missing from disk.
         uint32_t scanToken{ 0 };
+
+        static bool AddOrUpdate(AssetDatabase& db, AssetFile::Reader file, const AssetFileModel& model);
     };
 
     struct AssetModel final
     {
+        /// RowID of the model in the database.
         uint32_t id{ 0 };
+
+        /// Unique ID of the asset.
         AssetUuid uuid{};
+
+        /// RowID of the asset file this asset is contained within.
         uint32_t assetFileId{ 0 };
+
+        /// The asset type of the asset.
         Name assetType{};
+
+        /// User-defined string name for the asset. This often matches the file name, but is
+        /// not required to.
         String name{};
+
+        /// State of the asset in the processing pipeline.
         AssetState state{ AssetState::Unknown };
+
+        /// A crc32c hash of the asset's data that is stored in the asset file.
         uint32_t dataHash{ 0 };
+
+        /// A crc32c hash of the asset's import data that is stored in the asset file.
         uint32_t importDataHash{ 0 };
+
+        /// The ID of the importer which processed this asset.
         uint32_t importerId{ 0 };
+
+        /// The version of the importer which processed this asset.
         uint32_t importerVersion{ 0 };
+
+        /// The ID of the compiler which processed this asset.
         uint32_t compilerId{ 0 };
+
+        /// The version of the compiler which processed this asset.
         uint32_t compilerVersion{ 0 };
+
+        static bool FindAllByAssetFilePath(AssetDatabase& db, Vector<AssetModel>& models, StringView pathPrefix);
     };
 
     struct ConfigModel final
     {
+        /// RowID of the model in the database.
         uint32_t id{ 0 };
+
+        // The unique key of this config.
         String key{};
+
+        /// The byte data of the config value.
         Vector<uint8_t> value{};
 
         template <TriviallyCopyable T>
@@ -82,19 +139,32 @@ namespace he::assets
 
     struct TagModel final
     {
+        /// RowID of the model in the database.
         uint32_t id{ 0 };
+
+        /// The text content of the tag entry.
         String name{};
     };
 
     struct AssetTagModel final
     {
+        /// RowID of the model in the database.
         uint32_t id{ 0 };
+
+        /// RowID of the asset this association references.
         uint32_t assetId{ 0 };
+
+        /// RowID of the tag this association references.
         uint32_t tagId{ 0 };
+
+        static bool Add(AssetDatabase& db, const AssetUuid& assetUuid, StringView tag);
+        static bool Remove(AssetDatabase& db, const AssetUuid& assetUuid, StringView tag);
+        static bool RemoveAll(AssetDatabase& db, const AssetUuid& assetUuid);
     };
 
     struct AssetReferenceModel final
     {
+        /// RowID of the model in the database.
         uint32_t id{ 0 };
 
         /// Source asset the reference is from.
@@ -192,8 +262,6 @@ namespace he::assets
         )"));
 
     using AssetDbStorage = sqlite::Storage<Decay<decltype(AssetDbSchema)>>;
-
-    bool AddOrUpdateAssetFile(AssetDatabase& db, AssetFile::Reader file, const AssetFileModel& model);
 }
 
 namespace he::sqlite

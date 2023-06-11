@@ -508,7 +508,7 @@ namespace he::assets
             }
         }
 
-        if (!AddOrUpdateAssetFile(*this, assetFile, model))
+        if (!AssetFileModel::AddOrUpdate(*this, assetFile, model))
         {
             HE_LOG_WARN(he_assets,
                 HE_MSG("Failed to update asset cached DB with asset file data. Check the logs above this for additional details."),

@@ -147,6 +147,7 @@ namespace he::sqlite
         template <typename Ctx>
         bool Bind(Statement& stmt, const Type& value, Ctx& ctx) const
         {
+            HE_UNUSED(stmt, value, ctx);
             return true;
         }
     };

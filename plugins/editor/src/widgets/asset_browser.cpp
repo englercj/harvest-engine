@@ -365,7 +365,12 @@ namespace he::editor
         node.queriedAt = MonotonicClock::Now();
         node.assets.Clear();
 
-        if (!db.Storage().FindAll(node.assets, sqlite::Where(sqlite::Col(&assets::AssetFileModel::sourcePath) == node.path)))
+        constexpr sqlite::RawSqlQuery raw
+        {
+            "SELECT * FROM asset JOIN asset_file",
+        };
+
+        if (!assets::AssetModel::FindAllByAssetFilePath(db, node.assets, node.path))
         {
             HE_LOG_ERROR(he_editor,
                 HE_MSG("Failed to query for assets in path."),

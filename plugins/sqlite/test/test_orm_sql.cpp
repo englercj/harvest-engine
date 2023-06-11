@@ -112,8 +112,8 @@ HE_TEST(sqlite, orm_sql, ToSql)
     TestToSql(ctx, Column("custom", &OrmTestParent::custom), "custom FAKE_TYPE");
 
     // IndexDef
-    TestToSql(ctx, Index("idx_test", &OrmTestParent::sourcePath, &OrmTestParent::sourceSize), "CREATE INDEX idx_test ON parent (source_path, source_size)");
-    TestToSql(ctx, UniqueIndex("idx_test", &OrmTestParent::sourcePath, &OrmTestParent::sourceSize), "CREATE UNIQUE INDEX idx_test ON parent (source_path, source_size)");
+    TestToSql(ctx, Index("idx_test", &OrmTestParent::sourcePath, &OrmTestParent::sourceSize), "CREATE INDEX IF NOT EXISTS idx_test ON parent (source_path, source_size)");
+    TestToSql(ctx, UniqueIndex("idx_test", &OrmTestParent::sourcePath, &OrmTestParent::sourceSize), "CREATE UNIQUE INDEX IF NOT EXISTS idx_test ON parent (source_path, source_size)");
 
     // ColumnRef
     TestToSql(ctx, Col(&OrmTestParent::id), "id");
@@ -258,7 +258,7 @@ CREATE TABLE child (
     UNIQUE (name),
     FOREIGN KEY (parent_id) REFERENCES parent (id)
 );
-CREATE INDEX idx_test ON parent (source_path, source_size);
+CREATE INDEX IF NOT EXISTS idx_test ON parent (source_path, source_size);
 )";
     TestToSql(ctx, TestSchema, ExpectedSchemaDDL);
 }

@@ -11,7 +11,7 @@
 #include "he/core/type_traits.h"
 #include "he/core/types.h"
 
-#define HE_LOG_LEVEL_TRACE  0   ///< Detailed tracing for a system, usually disabled unless tracking a bug.
+#define HE_LOG_LEVEL_TRACE  0   ///< Detailed tracing for a system, very noisy, usually disabled in non-internal builds.
 #define HE_LOG_LEVEL_DEBUG  1   ///< Debug information useful for developers, usually disabled in non-internal builds.
 #define HE_LOG_LEVEL_INFO   2   ///< Informational logging useful for general users, usually enabled.
 #define HE_LOG_LEVEL_WARN   3   ///< Warning that something has gone wrong, but behavior should remain correct.

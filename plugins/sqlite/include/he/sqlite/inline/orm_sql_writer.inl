@@ -293,9 +293,8 @@ namespace he::sqlite
         {
             const StringView tableName = ctx.GetTableName<typename Type::ObjectType>();
             const StringView uniqueStr = value.unique ? "UNIQUE " : "";
-            const StringView ddlINEStr = ctx.ddlIfNotExists ? "IF NOT EXISTS " : "";
 
-            sql.Write("CREATE {}INDEX {}{} ON {} (", uniqueStr, ddlINEStr, value.name, tableName);
+            sql.Write("CREATE {}INDEX IF NOT EXISTS {} ON {} (", uniqueStr, value.name, tableName);
             WriteColumnNames(sql, tableName, value.columns, ctx);
             sql.Write(')');
         }
@@ -988,9 +987,7 @@ namespace he::sqlite
         template <typename Ctx>
         void Write(StringBuilder& sql, const Type& value, const Ctx& ctx) const
         {
-            const StringView ddlINEStr = ctx.ddlIfNotExists ? "IF NOT EXISTS " : "";
-
-            sql.WriteLine("CREATE TABLE {}{} (", ddlINEStr, value.Name());
+            sql.WriteLine("CREATE TABLE {} (", value.Name());
             sql.IncreaseIndent();
 
             uint32_t index = 0;

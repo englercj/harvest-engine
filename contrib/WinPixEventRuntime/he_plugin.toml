@@ -3,13 +3,13 @@
 id = "WinPixEventRuntime"
 name = "WinPixEventRuntime"
 description = "Allows applications to be instrumented with marker events, for use with Microsoft PIX."
-version = "1.0.220124001"
+version = "1.0.230302001"
 author = "Microsoft"
 license = "SEE LICENSE IN license.txt"
 homepage = "https://devblogs.microsoft.com/pix/winpixeventruntime/"
 
 [install]
-    nuget = "WinPixEventRuntime#1.0.220124001"
+    nuget = "WinPixEventRuntime#1.0.230302001"
     valid_targets = ["windows"]
 
 [[modules]]

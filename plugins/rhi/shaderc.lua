@@ -22,7 +22,7 @@ return function (plugin)
 
                 if options.include_dirs then
                     for _, dir in ipairs(options.include_dirs) do
-                        opt = opt .. "-I " .. dir .. " "
+                        opt = opt .. "-I \"" .. dir .. "\" "
                     end
                 end
 
@@ -33,7 +33,7 @@ return function (plugin)
                 end
 
                 local exe = he.target_bin_dir .. "/he_shaderc" .. iif(os.istarget("win32"), ".exe", "")
-                local buildCmd = exe .. " " .. opt .. "-o " .. he.file_gen_dir .. " %{file.abspath}"
+                local buildCmd = exe .. " " .. opt .. "-o " .. he.file_gen_dir .. " \"%{file.abspath}\""
 
                 files(options.files)
                 dependson { "he_shaderc" }

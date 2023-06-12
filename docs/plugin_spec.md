@@ -163,7 +163,7 @@ return function (plugin)
             dependson { "mytool" }
 
             local mytool = he.target_bin_dir .. "/mytool" .. iif(os.istarget("win32"), ".exe", "")
-            local buildCmd = mytool .. " -o " .. he.file_gen_dir .. " %{file.abspath}"
+            local buildCmd = mytool .. " -o \"" .. he.file_gen_dir .. "\" \"%{file.abspath}\""
 
             -- It is important to use filter_push_combine as that will push a filter on the stack
             -- that combines the files filter with the current active filter. Not doing this will

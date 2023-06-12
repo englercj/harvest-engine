@@ -236,7 +236,7 @@ local function _handle_copy_files(ctx, values)
         he.filter_push_combine { "files:" .. file_path }
             compilebuildoutputs "off"
             buildmessage "Copying file(s) %{file.abspath}"
-            buildcommands { "{COPYFILE} %{file.abspath} %{cfg.targetdir}" }
+            buildcommands { "{COPYFILE} \"%{file.abspath}\" %{cfg.targetdir}" }
             buildoutputs { "%{cfg.targetdir}/%{file.name}" }
         he.filter_pop()
     end

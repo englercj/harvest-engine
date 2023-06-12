@@ -18,7 +18,7 @@ return function (plugin)
 
                 if options.includedirs then
                     for _, dir in ipairs(options.includedirs) do
-                        opt = opt .. "-I " .. dir .. " "
+                        opt = opt .. "-I \"" .. dir .. "\" "
                     end
                 end
 
@@ -35,7 +35,7 @@ return function (plugin)
                                 -- cpp files will require the generated files from `mod` to be able to compile correctly.
                                 dependson { mod.name }
                                 for _, dir in ipairs(mod.public_includedirs) do
-                                    opt = opt .. "-I " .. path.join(mod._plugin._install_dir, dir) .. " "
+                                    opt = opt .. "-I \"" .. path.join(mod._plugin._install_dir, dir) .. "\" "
                                 end
                             end
                         end
@@ -43,7 +43,7 @@ return function (plugin)
                 end
 
                 local exe = he.target_bin_dir .. "/he_schemac" .. iif(os.istarget("win32"), ".exe", "")
-                local buildCmd = exe .. " " .. opt .. "-o " .. he.file_gen_dir .. " %{file.abspath}"
+                local buildCmd = exe .. " " .. opt .. "-o " .. he.file_gen_dir .. " \"%{file.abspath}\""
 
                 files(options.files)
                 dependson { "he_schemac" }

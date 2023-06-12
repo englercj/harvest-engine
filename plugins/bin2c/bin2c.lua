@@ -18,7 +18,7 @@ return function (plugin)
                 end
 
                 local exe = he.target_bin_dir .. "/he_bin2c" .. iif(os.istarget("win32"), ".exe", "")
-                local buildCmd = exe .. " " .. opt .. "-n c_%{file.name:gsub('[%.-]', '_')} -f %{file.abspath} -o " .. he.file_gen_dir .. "/%{file.name}.h"
+                local buildCmd = exe .. " " .. opt .. "-n c_%{file.name:gsub('[%.-]', '_')} -f \"%{file.abspath}\" -o " .. he.file_gen_dir .. "/%{file.name}.h"
 
                 files(options.files)
                 dependson { "he_bin2c" }

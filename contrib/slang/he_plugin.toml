@@ -28,6 +28,8 @@ homepage = "https://github.com/shader-slang/slang"
             "bin/windows-x64/release/gfx.dll",
             "bin/windows-x64/release/slang.dll",
             "bin/windows-x64/release/slang-glslang.dll",
+            "$(WindowsSdkDir)Redist/D3D/x64/dxcompiler.dll",
+            "$(WindowsSdkDir)Redist/D3D/x64/dxil.dll",
         ]
 
     [[modules.variants]]

@@ -851,8 +851,6 @@ namespace he::rhi
     enum class ShaderModel
     {
         None,
-        Sm_5_0,     ///< Shader Model 5.0, DX 11, Radeon HD 5000 and GeForce 400
-        Sm_5_1,     ///< Shader Model 5.1, DX 12, GCN 1+, Fermi+, with WDDM 2.0.
         Sm_6_0,     ///< Shader Model 6.0, DX 12, GCN 1+, Kepler+, with WDDM 2.1.
         Sm_6_1,     ///< Shader Model 6.1, DX 12, GCN 1+, Kepler+, with WDDM 2.3.
         Sm_6_2,     ///< Shader Model 6.2, DX 12, GCN 1+, Kepler+, with WDDM 2.4.

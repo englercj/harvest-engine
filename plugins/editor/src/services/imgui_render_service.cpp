@@ -22,19 +22,6 @@
 
 namespace he::editor
 {
-    //static float SRGBToLinear(float value)
-    //{
-    //    if (value <= 0.04045f)
-    //        return value / 12.92f;
-    //    else
-    //        return powf((value + 0.055f) / 1.055f, 2.4f);
-    //}
-
-    //static Vec4f SRGBToLinear3(Vec4f value)
-    //{
-    //    return Vec4f{ SRGBToLinear(value.x), SRGBToLinear(value.y), SRGBToLinear(value.z), value.w };
-    //}
-
     ImGuiRenderService::ImGuiRenderService(RenderService& renderService) noexcept
         : m_renderService(renderService)
     {}
@@ -545,8 +532,8 @@ namespace he::editor
             rhi::ShaderDesc desc{};
             desc.stage = rhi::ShaderStage::Vertex;
         #if defined(HE_PLATFORM_API_WIN32)
-            desc.code = c_imgui_vs_dxbc;
-            desc.codeSize = sizeof(c_imgui_vs_dxbc);
+            desc.code = c_imgui_vs_dxil;
+            desc.codeSize = sizeof(c_imgui_vs_dxil);
         #else
             desc.code = c_imgui_vs_spv;
             desc.codeSize = sizeof(c_imgui_vs_spv);
@@ -564,8 +551,8 @@ namespace he::editor
             rhi::ShaderDesc desc{};
             desc.stage = rhi::ShaderStage::Pixel;
         #if defined(HE_PLATFORM_API_WIN32)
-            desc.code = c_imgui_ps_dxbc;
-            desc.codeSize = sizeof(c_imgui_ps_dxbc);
+            desc.code = c_imgui_ps_dxil;
+            desc.codeSize = sizeof(c_imgui_ps_dxil);
         #else
             desc.code = c_imgui_ps_spv;
             desc.codeSize = sizeof(c_imgui_ps_spv);

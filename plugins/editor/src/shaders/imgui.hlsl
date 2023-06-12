@@ -1,6 +1,6 @@
 // Copyright Chad Engler
 
-cbuffer vertexCB
+cbuffer vertexCB : register(b0)
 {
     float4x4 ProjectionMatrix;
 };
@@ -19,27 +19,8 @@ struct PS_INPUT
     float2 uv  : TEXCOORD0;
 };
 
-SamplerState sampler0;
-Texture2D texture0;
-
-// http://chilliant.blogspot.com/2012/08/srgb-approximations-for-hlsl.html
-//float3 SRGBToLinear(float3 value)
-//{
-//    return value * (value * (value * 0.305306011 + 0.682171111) + 0.012522878);
-//}
-
-//float SRGBToLinear(float value)
-//{
-//    if (value <= 0.04045)
-//        return value / 12.92;
-//    else
-//        return pow((value + 0.055) / 1.055, 2.4);
-//}
-//
-//float3 SRGBToLinear3(float3 value)
-//{
-//    return float3(SRGBToLinear(value.r), SRGBToLinear(value.g), SRGBToLinear(value.b));
-//}
+SamplerState sampler0 : register(s0);
+Texture2D texture0 : register(t0);
 
 [shader("vertex")]
 PS_INPUT vs_main(VS_INPUT input)

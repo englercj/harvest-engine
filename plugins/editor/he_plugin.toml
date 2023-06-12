@@ -44,7 +44,7 @@ homepage = ""
 
         [[modules.variants.shader_compile]]
             files = ["src/shaders/*.hlsl"]
-            targets = ["sm_5_1"]
+            targets = ["sm_6_0"]
 
     [[modules.variants]]
         conditions = ["system:linux"]

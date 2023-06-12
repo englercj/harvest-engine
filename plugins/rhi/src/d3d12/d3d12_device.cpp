@@ -7,6 +7,7 @@
 #include "d3d12_formats.h"
 
 #include "he/core/assert.h"
+#include "he/core/log.h"
 #include "he/core/macros.h"
 #include "he/core/memory_ops.h"
 #include "he/core/scope_guard.h"
@@ -47,7 +48,6 @@ namespace he::rhi::d3d12
         { D3D_SHADER_MODEL_6_1, ShaderModel::Sm_6_1 },
     #endif
         { D3D_SHADER_MODEL_6_0, ShaderModel::Sm_6_0 },
-        { D3D_SHADER_MODEL_5_1, ShaderModel::Sm_5_1 },
     };
 
     template <typename T>
@@ -106,23 +106,23 @@ namespace he::rhi::d3d12
         m_info.api = Api_D3D12;
         m_info.adapter = adapter->info;
 
-        auto SupportShaderModel = [&](ShaderModel shaderModel)
-        {
-            m_info.supportedShaderModels[static_cast<uint32_t>(shaderModel)] = true;
-
-            if (m_info.preferredShaderModel < shaderModel)
-                m_info.preferredShaderModel = shaderModel;
-        };
-
-        SupportShaderModel(ShaderModel::Sm_5_0);
         for (ShaderModelPair pair : ShaderModelPairs)
         {
             D3D12_FEATURE_DATA_SHADER_MODEL data;
             data.HighestShaderModel = pair.d3dSm;
             if (SUCCEEDED(m_d3dDevice->CheckFeatureSupport(D3D12_FEATURE_SHADER_MODEL, &data, sizeof(data))))
             {
-                SupportShaderModel(pair.sm);
+                m_info.supportedShaderModels[static_cast<uint32_t>(pair.sm)] = true;
+
+                if (m_info.preferredShaderModel < pair.sm)
+                    m_info.preferredShaderModel = pair.sm;
             }
+        }
+
+        if (m_info.preferredShaderModel == ShaderModel::None)
+        {
+            HE_LOGF_ERROR(he_rhi, "No desired shader model is supported by this GPU. Are the drivers up-to-date?");
+            return Result::NotSupported;
         }
 
         m_info.uploadDataAlignment = D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT;

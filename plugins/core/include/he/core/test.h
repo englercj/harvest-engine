@@ -14,6 +14,7 @@
 #include "he/core/string_fmt.h"
 #include "he/core/types.h"
 #include "he/core/utils.h"
+#include "he/core/vector.h"
 
 #include <atomic>
 
@@ -145,8 +146,8 @@ namespace he
     class TestFixture
     {
     public:
-        /// Constructs the test case and adds it to the global test list.
-        TestFixture();
+        /// Constructs the test case.
+        TestFixture() = default;
 
         /// Destructs the test case.
         virtual ~TestFixture() = default;
@@ -165,7 +166,7 @@ namespace he
         /// Runs the test case.
         ///
         /// This is used internally to run the test.
-        void Run();
+        void Run() { TestBody(); }
 
         /// Returns the metadata about this test case.
         ///
@@ -181,6 +182,8 @@ namespace he
     private:
         static const TestInfo EmptyTestInfo;
     };
+
+    Vector<TestFixture*>& GetAllTests();
 
     /// Runs all the registered tests.
     ///
@@ -273,45 +276,49 @@ namespace internal
         bool m_handlerReset{ false };
         bool m_isTriggered{ false };
     };
-}
-}
 
-/// Internal macro that generates the code for a test case.
-/// \internal
-#define HE_TEST_(module, suite, name, fixture) \
-    static_assert(sizeof(HE_STRINGIFY(module)) > 1, "Test module name must not be empty"); \
-    static_assert(sizeof(HE_STRINGIFY(suite)) > 1, "Test suite name must not be empty"); \
-    static_assert(sizeof(HE_STRINGIFY(name)) > 1, "Test name must not be empty"); \
-    class HE_TEST_CLASS_NAME_(module, suite, name) : public fixture { \
-    public: \
-        HE_TEST_CLASS_BODY_(HE_TEST_CLASS_NAME_(module, suite, name)); \
-    private: \
-        static const ::he::TestInfo TestInfo; \
-        const ::he::TestInfo& GetTestInfo() const override { return TestInfo; } \
-        void TestBody() override; \
-    }; \
-    const ::he::TestInfo HE_TEST_CLASS_NAME_(module, suite, name)::TestInfo{ HE_STRINGIFY(module), HE_STRINGIFY(suite), HE_STRINGIFY(name), __FILE__, __LINE__ }; \
-    static HE_TEST_CLASS_NAME_(module, suite, name) HE_TEST_VARIABLE_NAME_(module, suite, name){}; \
-    void HE_TEST_CLASS_NAME_(module, suite, name)::TestBody()
+    template <typename T>
+    static bool RegisterTest()
+    {
+        static T s_instance{};
+        GetAllTests().PushBack(&s_instance);
+        return true;
+    }
+}
+}
 
 /// Internal macro that generates the name of a test case class.
 /// \internal
 #define HE_TEST_CLASS_NAME_(module, suite, name) _heTestClass_ ## module ## _ ## suite ## _ ## name
 
-/// Internal macro that generates the name of a test case variable.
-/// \internal
-#define HE_TEST_VARIABLE_NAME_(module, suite, name) g_heTestInstance_ ## module ## _ ## suite ## _ ## name
-
 /// Internal macro that generates the body of the test case class. Since the name is reused
-/// so often, this makes it  abit more convenient.
+/// so often, this makes it a bit more convenient.
 /// \internal
-#define HE_TEST_CLASS_BODY_(Class) \
-    Class() = default; \
-    ~Class() override = default; \
-    Class(const Class&) = delete; \
-    Class(Class&&) = delete; \
-    Class& operator=(const Class&) = delete; \
-    Class& operator=(Class&&) = delete
+#define HE_TEST_DECL_(ClassName, ModuleNameStr, SuiteNameStr, TestNameStr, FixtureClassName) \
+    static_assert(sizeof(ModuleNameStr) > 1, "Test module name must not be empty"); \
+    static_assert(sizeof(SuiteNameStr) > 1, "Test suite name must not be empty"); \
+    static_assert(sizeof(TestNameStr) > 1, "Test name must not be empty"); \
+    class ClassName : public FixtureClassName { \
+    public: \
+        ClassName() = default; \
+        ~ClassName() override = default; \
+        static inline bool s_registered = ::he::internal::RegisterTest<ClassName>(); \
+    private: \
+        ClassName(const ClassName&) = delete; \
+        ClassName(ClassName&&) = delete; \
+        ClassName& operator=(const ClassName&) = delete; \
+        ClassName& operator=(ClassName&&) = delete; \
+        static const ::he::TestInfo TestInfo; \
+        const ::he::TestInfo& GetTestInfo() const override { return TestInfo; } \
+        void TestBody() override; \
+    }; \
+    const ::he::TestInfo ClassName::TestInfo{ ModuleNameStr, SuiteNameStr, TestNameStr, __FILE__, __LINE__ }; \
+    void ClassName::TestBody()
+
+/// Internal macro that generates the code for a test case.
+/// \internal
+#define HE_TEST_(module, suite, name, fixture) \
+    HE_TEST_DECL_(HE_TEST_CLASS_NAME_(module, suite, name), HE_STRINGIFY(module), HE_STRINGIFY(suite), HE_STRINGIFY(name), fixture) \
 
 /// Internal macro used in the format loop for HE_EXPECT params
 /// \internal

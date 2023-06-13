@@ -7,7 +7,6 @@
 #include "he/core/clock.h"
 #include "he/core/error.h"
 #include "he/core/string.h"
-#include "he/core/vector.h"
 
 #include <algorithm>
 #include <atomic>
@@ -72,32 +71,11 @@ namespace internal
 
     const TestInfo TestFixture::EmptyTestInfo{};
 
-    struct _TestRunner
-    {
-        static _TestRunner& Get()
-        {
-            static _TestRunner s_runner{};
-            return s_runner;
-        }
-
-        Vector<TestFixture*> tests{};
-    };
-
-    TestFixture::TestFixture()
-    {
-        _TestRunner::Get().tests.PushBack(this);
-    }
-
-    void TestFixture::Run()
-    {
-        TestBody();
-    }
-
     static void SortTests()
     {
-        _TestRunner& runner = _TestRunner::Get();
+        Vector<TestFixture*>& tests = GetAllTests();
 
-        std::sort(runner.tests.begin(), runner.tests.end(), [](const TestFixture* a, const TestFixture* b)
+        std::sort(tests.begin(), tests.end(), [](const TestFixture* a, const TestFixture* b)
         {
             const TestInfo& infoA = a->GetTestInfo();
             const TestInfo& infoB = b->GetTestInfo();
@@ -151,17 +129,21 @@ namespace internal
         return true;
     }
 
+    Vector<TestFixture*>& GetAllTests()
+    {
+        static Vector<TestFixture*> s_tests{};
+        return s_tests;
+    }
+
     uint64_t RunAllTests(const char* filter)
     {
         SortTests();
-
-        _TestRunner& runner = _TestRunner::Get();
 
         String testFqn;
 
         MonotonicTime startAll = MonotonicClock::Now();
 
-        for (TestFixture* fixture : runner.tests)
+        for (TestFixture* fixture : GetAllTests())
         {
             const TestInfo& info = fixture->GetTestInfo();
 

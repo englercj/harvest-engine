@@ -186,14 +186,14 @@ Now another module can use the new `mytool` key and it will execute the `handler
 
 A module dependency handler is a function that is called for each dependency a module has. This can be useful when you have a module key that doesn't effect the module it is declared in, but instead affects other modules that include it.
 
-For example, the `exports_module_interface` key doesn't change the module itself, but informs modules that link it to perform custom setup. This looks like:
+For example, here is a key that doesn't change the module itself, but informs modules that link it to perform custom setup.
 
 ```lua
 he.add_module_key {
-    key = "exports_module_interface",
+    key = "my_deferred_key",
     scope = "private",
     type = "boolean",
-    desc = "a boolean describing if the module uses the HE_EXPORT_MODULE() macro to export a module class",
+    desc = "a boolean that when set will do things to linked projects",
     -- Notice there is no handler, because we don't actually do anything with the value on the module itself
 }
 
@@ -201,9 +201,8 @@ he.add_module_dependency_handler(function (ctx, mod)
     -- ctx = The module that we're currently setting up
     -- mod = The module that ctx depends on
 
-    if mod.exports_module_interface == true then
+    if mod.my_deferred_key == true then
         -- Here we can modify the project for `ctx` based on data in `mod`
     end
 end)
-
 ```

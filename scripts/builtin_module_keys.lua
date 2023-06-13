@@ -278,32 +278,9 @@ he.add_module_key {
 }
 
 he.add_module_key {
-    key = "exports_module_interface",
-    scope = "private",
-    type = "boolean",
-    desc = "a boolean describing if the module uses the HE_EXPORT_MODULE() macro to export a module class",
-}
-
-he.add_module_key {
     key = "copy_files",
     scope = "private",
     type = "table",
     desc = "an array of files to copy to the output directory on build",
     handler = _handle_copy_files,
 }
-
--- Handler to implement "exports_module_interface" key
-he.add_module_dependency_handler(function (ctx, mod)
-    -- Modules exported from static libraries are stripped by the linker because their
-    -- symbols aren't used anywhere. On GCC/Clang this is easily fixed by adding the "used" and
-    -- "retain" attributes to the static module registrar variable. However, MSVC has no such
-    -- equivalent. Instead we have to tell the linker to include the symbols explicitly in the
-    -- options of the executable that links the library.
-    if (ctx.type == "console_app" or ctx.type == "windowed_app") then
-        if mod.type == "static" and mod.exports_module_interface == true then
-            he.filter_push { "toolset:msc-*", "language:C++" }
-                linkoptions { "/INCLUDE:" .. mod.name .. "_ModuleRegistrar" }
-            he.filter_pop()
-        end
-    end
-end)

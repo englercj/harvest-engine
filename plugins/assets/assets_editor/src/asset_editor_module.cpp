@@ -17,6 +17,9 @@ namespace he::assets
 
     class AssetEditorModule : public Module
     {
+        HE_DECL_MODULE(AssetEditorModule);
+
+    private:
         void Register() override
         {
             ModuleRegistry& registry = Registry();
@@ -49,8 +52,8 @@ namespace he::assets
             //}
 
             editor::TypeEditUIService& editors = registry.GetApi<editor::TypeEditUIService>();
-            editors.RegisterFieldEditor<Asset>("uuid", { true, &AssetUuidFieldEditor });
-            editors.RegisterFieldEditor<Asset>("data", { false, &AssetDataFieldEditor });
+            editors.RegisterFieldEditor<Asset>("uuid", { &AssetUuidFieldEditor, editor::TypeEditUIService::EditorFlag::Inline });
+            editors.RegisterFieldEditor<Asset>("data", { &AssetDataFieldEditor });
 
             basisu::basisu_encoder_init();
 
@@ -64,8 +67,8 @@ namespace he::assets
             ModuleRegistry& registry = Registry();
 
             //editor::TypeEditUIService& editors = registry.GetApi<editor::TypeEditUIService>();
-            //editors.UnregisterFieldEditor(schema::FindFieldByName<Asset>("uuid"), { true, &AssetUuidFieldEditor });
-            //editors.UnregisterFieldEditor(schema::FindFieldByName<Asset>("data"), { true, &AssetDataFieldEditor });
+            //editors.UnregisterFieldEditor(schema::FindFieldByName<Asset>("uuid"), { &AssetUuidFieldEditor, editor::TypeEditUIService::EditorFlag::Inline });
+            //editors.UnregisterFieldEditor(schema::FindFieldByName<Asset>("data"), { &AssetDataFieldEditor, editor::TypeEditUIService::EditorFlag::Inline });
 
             //EditorDocumentRegistry* editor = registry.FindApi<EditorDocumentRegistry>();
             //if (editor)
@@ -82,5 +85,3 @@ namespace he::assets
         }
     };
 }
-
-HE_EXPORT_MODULE(he::assets::AssetEditorModule);

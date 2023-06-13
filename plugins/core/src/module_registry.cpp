@@ -9,6 +9,12 @@
 
 namespace he
 {
+    bool ModuleRegistry::RegisterStaticModule(const char* name, TypeInfo type, Pfn_CreateHarvestModule create, Pfn_DestroyHarvestModule destroy)
+    {
+        StaticModules().EmplaceBack(StaticModule{ name, type, create, destroy });
+        return true;
+    }
+
     Vector<ModuleRegistry::StaticModule>& ModuleRegistry::StaticModules()
     {
         static Vector<ModuleRegistry::StaticModule> s_staticModules{};

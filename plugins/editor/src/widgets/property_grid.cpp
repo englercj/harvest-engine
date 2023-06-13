@@ -544,8 +544,8 @@ namespace he::editor
 
                 const bool isSequenceValue = typeData.IsArray() || typeData.IsList();
                 const bool isStructValue = typeData.IsStruct();
-                const bool hasCustomInlineEditor = customValueEditor && customValueEditor->isInline;
-                const bool hasCustomFullEditor = customValueEditor && !customValueEditor->isInline;
+                const bool hasCustomInlineEditor = customValueEditor && HasFlag(customValueEditor->flags, TypeEditUIService::EditorFlag::Inline);
+                const bool hasCustomFullEditor = customValueEditor && !HasFlag(customValueEditor->flags, TypeEditUIService::EditorFlag::Inline);
                 const bool isExpandable = isSequenceValue || hasCustomFullEditor || (isStructValue && !hasCustomInlineEditor);
 
                 if (isExpandable)
@@ -567,7 +567,7 @@ namespace he::editor
                 ImGui::TableNextColumn();
                 if (customValueEditor)
                 {
-                    if (customValueEditor->isInline)
+                    if (HasFlag(customValueEditor->flags, TypeEditUIService::EditorFlag::Inline))
                     {
                         schema::DynamicValue::Reader value = data.Get(index);
                         TypeEditUIService::Context ctx{ data, {}, index, m_edit, *this };
@@ -616,7 +616,7 @@ namespace he::editor
 
                 if (customValueEditor)
                 {
-                    if (!customValueEditor->isInline)
+                    if (!HasFlag(customValueEditor->flags, TypeEditUIService::EditorFlag::Inline))
                     {
                         schema::DynamicValue::Reader value = data.Get(index);
                         TypeEditUIService::Context ctx{ data, {}, index, m_edit, *this };
@@ -662,8 +662,8 @@ namespace he::editor
 
                 const bool isSequenceValue = typeData.IsValid() && (typeData.IsArray() || typeData.IsList());
                 const bool isStructValue = (typeData.IsValid() && typeData.IsStruct()) || (field.IsValid() && field.GetMeta().IsGroup());
-                const bool hasCustomInlineEditor = customValueEditor && customValueEditor->isInline;
-                const bool hasCustomFullEditor = customValueEditor && !customValueEditor->isInline;
+                const bool hasCustomInlineEditor = customValueEditor && HasFlag(customValueEditor->flags, TypeEditUIService::EditorFlag::Inline);;
+                const bool hasCustomFullEditor = customValueEditor && !HasFlag(customValueEditor->flags, TypeEditUIService::EditorFlag::Inline);;
                 const bool isExpandable = isSequenceValue || hasCustomFullEditor || (isStructValue && !hasCustomInlineEditor);
 
                 if (isModified)
@@ -700,7 +700,7 @@ namespace he::editor
                 ImGui::TableNextColumn();
 
                 // custom inline editor for this field
-                if (customValueEditor && customValueEditor->isInline)
+                if (customValueEditor && HasFlag(customValueEditor->flags, TypeEditUIService::EditorFlag::Inline))
                 {
                     schema::DynamicValue::Reader value = data.Get(field);
                     TypeEditUIService::Context ctx{ data, field, 0, m_edit, *this };
@@ -774,7 +774,7 @@ namespace he::editor
 
                 if (customValueEditor)
                 {
-                    HE_ASSERT(!customValueEditor->isInline);
+                    HE_ASSERT(!HasFlag(customValueEditor->flags, TypeEditUIService::EditorFlag::Inline));
                     schema::DynamicValue::Reader value = data.Get(field);
                     TypeEditUIService::Context ctx{ data, field, 0, m_edit, *this };
                     customValueEditor->func(value, ctx);

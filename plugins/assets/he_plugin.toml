@@ -26,7 +26,6 @@ homepage = ""
     name = "he_assets_editor"
     type = "static"
     group = "engine/libs"
-    exports_module_interface = true
     files = ["assets_editor/include/**", "assets_editor/src/**"]
     public_dependson = ["he_assets", "he_core", "he_schema", "he_sqlite", "basis_universal"]
     private_dependson = ["imgui"]

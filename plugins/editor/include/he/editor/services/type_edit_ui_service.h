@@ -29,10 +29,16 @@ namespace he::editor
 
         using EditorDelegate = Delegate<void(const schema::DynamicValue::Reader& value, Context& ctx)>;
 
+        enum class EditorFlag
+        {
+            None        = 0,
+            Inline      = 1 << 0,
+        };
+
         struct Editor
         {
-            bool isInline{ false };
             EditorDelegate func{};
+            EditorFlag flags{ EditorFlag::None };
         };
 
     public:
@@ -53,4 +59,6 @@ namespace he::editor
         HashMap<schema::TypeId, Editor> m_typeEditors{};
         HashMap<const schema::Word*, Editor> m_fieldEditors{};
     };
+
+    HE_ENUM_FLAGS(TypeEditUIService::EditorFlag);
 }

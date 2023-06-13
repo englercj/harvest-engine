@@ -302,12 +302,12 @@ namespace internal
     public: \
         ClassName() = default; \
         ~ClassName() override = default; \
-        static inline bool s_registered = ::he::internal::RegisterTest<ClassName>(); \
     private: \
         ClassName(const ClassName&) = delete; \
         ClassName(ClassName&&) = delete; \
         ClassName& operator=(const ClassName&) = delete; \
         ClassName& operator=(ClassName&&) = delete; \
+        static inline bool s_registered = ::he::internal::RegisterTest<ClassName>(); \
         static const ::he::TestInfo TestInfo; \
         const ::he::TestInfo& GetTestInfo() const override { return TestInfo; } \
         void TestBody() override; \

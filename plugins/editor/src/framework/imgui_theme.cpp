@@ -6,6 +6,7 @@
 #include "fonts/NotoSans-Regular.ttf.h"
 #include "fonts/NotoMono-Regular.ttf.h"
 
+#include "he/core/string_ops.h"
 #include "he/editor/icons/icons_material_design.h"
 #include "he/math/float.h"
 
@@ -40,7 +41,7 @@ namespace he::editor
         static const ImWchar IconRanges[] { ICON_MIN_MDI, ICON_MAX_MDI, 0 };
 
         ImFontConfig config{};
-        String::Copy(config.Name, FONT_ICON_FILE_NAME_MDI);
+        StrCopy(config.Name, FONT_ICON_FILE_NAME_MDI);
         config.MergeMode = true;
         config.GlyphMinAdvanceX = Floor(fontSize / 2.0f);
         config.OversampleH = 1;
@@ -61,7 +62,7 @@ namespace he::editor
             const float fontSize = Floor(14.0f * dpiScale);
 
             ImFontConfig config{};
-            String::Copy(config.Name, "NotoSans-Regular.ttf");
+            StrCopy(config.Name, "NotoSans-Regular.ttf");
             atlas.AddFontFromMemoryCompressedTTF(c_NotoSans_Regular_ttf, HE_LENGTH_OF(c_NotoSans_Regular_ttf), fontSize, &config);
 
             MergeMaterialDesignIcons(atlas, fontSize);
@@ -73,7 +74,7 @@ namespace he::editor
             const float fontSize = Floor(28.0f * dpiScale);
 
             ImFontConfig config{};
-            String::Copy(config.Name, "NotoSans-Regular.ttf");
+            StrCopy(config.Name, "NotoSans-Regular.ttf");
             atlas.AddFontFromMemoryCompressedTTF(c_NotoSans_Regular_ttf, HE_LENGTH_OF(c_NotoSans_Regular_ttf), fontSize, &config);
         }
 
@@ -83,7 +84,7 @@ namespace he::editor
             const float fontSize = Floor(56.0f * dpiScale);
 
             ImFontConfig config{};
-            String::Copy(config.Name, "NotoSans-Regular.ttf");
+            StrCopy(config.Name, "NotoSans-Regular.ttf");
             atlas.AddFontFromMemoryCompressedTTF(c_NotoSans_Regular_ttf, HE_LENGTH_OF(c_NotoSans_Regular_ttf), fontSize, &config);
         }
 
@@ -93,7 +94,7 @@ namespace he::editor
             const float fontSize = Floor(14.0f * dpiScale);
 
             ImFontConfig config{};
-            String::Copy(config.Name, "NotoMono-Regular.ttf");
+            StrCopy(config.Name, "NotoMono-Regular.ttf");
             atlas.AddFontFromMemoryCompressedTTF(c_NotoMono_Regular_ttf, HE_LENGTH_OF(c_NotoMono_Regular_ttf), fontSize, &config);
         }
     }

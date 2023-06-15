@@ -16,6 +16,7 @@
 #include "he/core/scope_guard.h"
 #include "he/core/string.h"
 #include "he/core/string_fmt.h"
+#include "he/core/string_ops.h"
 #include "he/core/string_view.h"
 #include "he/schema/toml.h"
 #include "he/sqlite/orm.h"
@@ -64,7 +65,7 @@ namespace he::assets
         if (!scanner.Open(dir))
             return false;
 
-        const uint32_t dirLen = String::Length(dir);
+        const uint32_t dirLen = StrLen(dir);
         String fullPath;
 
         DirectoryScanner::Entry entry;

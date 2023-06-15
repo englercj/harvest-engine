@@ -4,6 +4,7 @@
 
 #include "he/core/fmt.h"
 #include "he/core/string.h"
+#include "he/core/string_ops.h"
 #include "he/core/utils.h"
 
 #if defined(HE_PLATFORM_API_POSIX)
@@ -72,7 +73,7 @@ namespace he
         {
             // Resizing is necessary here because we used the string like a buffer so Size()
             // doesn't accurately represent the length of the string.
-            const uint32_t len = String::Length(out.Data() + offset);
+            const uint32_t len = StrLen(out.Data() + offset);
             out.Resize(offset + len);
         }
     }

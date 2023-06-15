@@ -20,6 +20,7 @@
 #include "he/core/stopwatch.h"
 #include "he/core/string.h"
 #include "he/core/string_fmt.h"
+#include "he/core/string_ops.h"
 #include "he/schema/toml.h"
 
 using namespace he::sqlite;
@@ -172,7 +173,7 @@ namespace he::assets
 
     bool AssetDatabase::UpdateAssetFileAsync(const char* path, LoadDelegate callback)
     {
-        if (!HE_VERIFY(!String::IsEmpty(path)))
+        if (!HE_VERIFY(!StrEmpty(path)))
         {
             HE_LOG_WARN(he_assets,
                 HE_MSG("UpdateAssetFileAsync called with an empty path, ignoring update request."),
@@ -198,7 +199,7 @@ namespace he::assets
             return false;
         }
 
-        if (!HE_VERIFY(!String::IsEmpty(path)))
+        if (!HE_VERIFY(!StrEmpty(path)))
         {
             HE_LOG_WARN(he_assets,
                 HE_MSG("LoadAssetFileAsync called with an empty path, ignoring load request."),
@@ -280,7 +281,7 @@ namespace he::assets
 
     AssetDatabase::LoadResult AssetDatabase::LoadAssetFile(const char* path)
     {
-        if (!HE_VERIFY(!String::IsEmpty(path)))
+        if (!HE_VERIFY(!StrEmpty(path)))
         {
             HE_LOG_WARN(he_assets,
                 HE_MSG("LoadAssetFile called with an empty path, ignoring load request."),
@@ -342,7 +343,7 @@ namespace he::assets
 
     bool AssetDatabase::SaveAssetFile(const char* path, AssetFile::Reader assetFile)
     {
-        if (!HE_VERIFY(!String::IsEmpty(path)))
+        if (!HE_VERIFY(!StrEmpty(path)))
         {
             HE_LOG_ERROR(he_assets,
                 HE_MSG("SaveAssetFile called with an empty path."),
@@ -373,7 +374,7 @@ namespace he::assets
 
     void AssetDatabase::OnAssetFileDeleted(const char* path)
     {
-        if (!HE_VERIFY(!String::IsEmpty(path)))
+        if (!HE_VERIFY(!StrEmpty(path)))
         {
             HE_LOG_WARN(he_assets,
                 HE_MSG("OnAssetFileDeleted called with an empty path, ignoring delete notification."),
@@ -390,7 +391,7 @@ namespace he::assets
 
     void AssetDatabase::OnAssetFileUpdated(const char* path)
     {
-        if (!HE_VERIFY(!String::IsEmpty(path)))
+        if (!HE_VERIFY(!StrEmpty(path)))
         {
             HE_LOG_WARN(he_assets,
                 HE_MSG("OnAssetFileUpdated called with an empty path, ignoring update notification."),

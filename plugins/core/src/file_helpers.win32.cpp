@@ -5,6 +5,7 @@
 #include "he/core/ascii.h"
 #include "he/core/scope_guard.h"
 #include "he/core/string.h"
+#include "he/core/string_ops.h"
 #include "he/core/string_view.h"
 #include "he/core/utils.h"
 #include "he/core/wstr.h"
@@ -194,7 +195,7 @@ namespace he
 
             // Check if path starts with a \\?\X: prefix, and if so remove the \\?\ prefix
             if (outPath.Size() >= 6
-                && String::EqualN(outPath.Data(), Prefix.Data(), Prefix.Size())
+                && StrEqualN(outPath.Data(), Prefix.Data(), Prefix.Size())
                 && IsAlpha(outPath[4])
                 && outPath[5] == ':'
                 && outPath[6] == '\\')
@@ -202,7 +203,7 @@ namespace he
                 outPath.Erase(0, Prefix.Size());
             }
             // Check if path starts with a \\?\UNC\ prefix, and if so replace it with simpler \\ prefix
-            else if (String::EqualN(outPath.Data(), UNCPrefix.Data(), UNCPrefix.Size()))
+            else if (StrEqualN(outPath.Data(), UNCPrefix.Data(), UNCPrefix.Size()))
             {
                 outPath.Erase(2, 6);
             }

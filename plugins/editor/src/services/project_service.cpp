@@ -14,6 +14,7 @@
 #include "he/core/span_fmt.h"
 #include "he/core/string.h"
 #include "he/core/string_fmt.h"
+#include "he/core/string_ops.h"
 #include "he/core/uuid.h"
 #include "he/core/vector.h"
 #include "he/schema/toml.h"
@@ -45,7 +46,7 @@ namespace he::editor
 
         // Assign the project root if it was explicitly set, otherwise we assume the
         // same directory as the project file itself.
-        if (!String::IsEmpty(assetRoot))
+        if (!StrEmpty(assetRoot))
             m_project.InitAssetRoot(assetRoot);
 
         // Store off the path to project file and save it out

@@ -3,6 +3,8 @@
 #include "he/core/wstr.h"
 
 #include "he/core/alloca.h"
+#include "he/core/string.h"
+#include "he/core/string_ops.h"
 #include "he/core/test.h"
 
 #include <cstring>
@@ -51,7 +53,7 @@ HE_TEST(core, wstr, TO_MBSTR)
     const char ExpectedStr[] = "z\u00df\u6c34\U0001f34c";
     const char* mbs = HE_TO_MBSTR(L"zß水🍌");
 
-    HE_EXPECT(String::Compare(mbs, ExpectedStr) == 0);
+    HE_EXPECT(StrEqual(mbs, ExpectedStr));
     HE_EXPECT_EQ_MEM(mbs, ExpectedStr, sizeof(ExpectedStr));
 }
 

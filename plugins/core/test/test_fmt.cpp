@@ -4,6 +4,7 @@
 
 #include "he/core/string.h"
 #include "he/core/string_fmt.h"
+#include "he/core/string_ops.h"
 #include "he/core/test.h"
 #include "he/core/vector.h"
 
@@ -34,7 +35,7 @@ void TestFmtStringForError(StringView fmt, Args&&...)
     s_testFmtErrorMsg = nullptr; \
     TestFmtStringForError(fmt, __VA_ARGS__); \
     HE_EXPECT(s_testFmtErrorMsg != nullptr); \
-    HE_EXPECT(String::Equal(s_testFmtErrorMsg, msg), fmt, s_testFmtErrorMsg, msg)
+    HE_EXPECT(StrEqual(s_testFmtErrorMsg, msg), fmt, s_testFmtErrorMsg, msg)
 
 // ------------------------------------------------------------------------------------------------
 template <typename T>
@@ -45,7 +46,7 @@ static void TestUnknownSpecTypes(const T& value, const char* types)
     for (int i = CHAR_MIN; i <= CHAR_MAX; ++i)
     {
         const char ch = static_cast<char>(i);
-        if (String::Find(types, ch) || String::Find(special, ch) || !ch)
+        if (StrFind(types, ch) || StrFind(special, ch) || !ch)
             continue;
 
         std::snprintf(buf, sizeof(buf), "{0:10%c}", ch);
@@ -53,7 +54,7 @@ static void TestUnknownSpecTypes(const T& value, const char* types)
         s_testFmtErrorMsg = nullptr;
         TestFmtStringForError(buf, value);
         HE_EXPECT(s_testFmtErrorMsg != nullptr);
-        HE_EXPECT(String::Equal(s_testFmtErrorMsg, "Invalid type specifier") || String::Equal(s_testFmtErrorMsg, "Unknown format specifier"), s_testFmtErrorMsg, ch, buf);
+        HE_EXPECT(StrEqual(s_testFmtErrorMsg, "Invalid type specifier") || StrEqual(s_testFmtErrorMsg, "Unknown format specifier"), s_testFmtErrorMsg, ch, buf);
     }
 }
 

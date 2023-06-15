@@ -7,6 +7,7 @@
 #include "he/core/enum_ops.h"
 #include "he/core/hash.h"
 #include "he/core/hash_table.h"
+#include "he/core/string_ops.h"
 #include "he/core/uuid_fmt.h"
 #include "he/schema/layout.h"
 #include "he/sqlite/database.h"
@@ -20,7 +21,7 @@ namespace he::assets
     static uint32_t GetPathDepth(StringView path)
     {
         uint32_t depth = 0;
-        const char* p = String::FindN(path.Data(), path.Size(), '/');
+        const char* p = StrFindN(path.Data(), path.Size(), '/');
         while (p)
         {
             ++depth;
@@ -29,7 +30,7 @@ namespace he::assets
             if (p >= path.End())
                 break;
 
-            p = String::FindN(p, static_cast<uint32_t>(path.End() - p), '/');
+            p = StrFindN(p, static_cast<uint32_t>(path.End() - p), '/');
         }
 
         return depth;

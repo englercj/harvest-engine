@@ -2,7 +2,7 @@
 
 #include "he/core/ascii.h"
 
-#include "he/core/string.h"
+#include "he/core/string_ops.h"
 #include "he/core/test.h"
 
 using namespace he;
@@ -313,7 +313,7 @@ HE_TEST(core, ascii, ToUpper)
     constexpr char expected[] = "THIS IS A TEST!!!";
 
     char buffer[260];
-    String::Copy(buffer, input);
+    StrCopy(buffer, input);
     ToUpper(buffer);
     HE_EXPECT_EQ_STR(buffer, expected);
 
@@ -342,7 +342,7 @@ HE_TEST(core, ascii, ToLower)
     constexpr char expected[] = "this is a test!!!";
 
     char buffer[260];
-    String::Copy(buffer, input);
+    StrCopy(buffer, input);
     ToLower(buffer);
     HE_EXPECT_EQ_STR(buffer, expected);
 

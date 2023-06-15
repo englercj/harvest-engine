@@ -9,6 +9,7 @@
 #include "he/core/result_fmt.h"
 #include "he/core/scope_guard.h"
 #include "he/core/string.h"
+#include "he/core/string_ops.h"
 #include "he/core/wstr.h"
 
 #if defined(HE_PLATFORM_API_WIN32)
@@ -82,7 +83,7 @@ namespace he::editor
         {
             const FileDialogFilter& filter = filters[i];
 
-            if (String::IsEmpty(filter.name) || String::IsEmpty(filter.spec))
+            if (StrEmpty(filter.name) || StrEmpty(filter.spec))
             {
                 HE_LOG_WARN(editor,
                     HE_MSG("Invalid filter spec for file dialog. Missing name or spec."),
@@ -110,7 +111,7 @@ namespace he::editor
 
     static void SetDefaultPath(IFileDialog* dialog, const char* defaultPath)
     {
-        if (String::IsEmpty(defaultPath))
+        if (StrEmpty(defaultPath))
             return;
 
         wchar_t* defaultPathW = HE_TO_WCSTR(defaultPath);
@@ -449,7 +450,7 @@ namespace he::editor
         if (!pidl)
             return false;
 
-        if (String::IsEmpty(selectItem))
+        if (StrEmpty(selectItem))
             return ShowInExplorer(pidl, nullptr, 0);
 
         String path;

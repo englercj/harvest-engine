@@ -5,6 +5,7 @@
 #include "he/core/enum_ops.h"
 #include "he/core/file.h"
 #include "he/core/path.h"
+#include "he/core/string_ops.h"
 
 namespace he
 {
@@ -20,7 +21,7 @@ namespace he
         if (!result)
             return result;
 
-        const uint32_t pathLen = String::Length(path);
+        const uint32_t pathLen = StrLen(path);
         String fullPath(allocator);
 
         DirectoryScanner::Entry entry(allocator);

@@ -2,6 +2,7 @@
 
 #include "he/core/hash.h"
 
+#include "he/core/string_ops.h"
 #include "he/core/random.h"
 #include "he/core/test.h"
 
@@ -50,7 +51,7 @@ static void TestHashString(const char* value)
     a.Update(value);
     v0 = a.Value();
 
-    b.Update(value, String::Length(value));
+    b.Update(value, StrLen(value));
     v1 = b.Value();
 
     HE_EXPECT_EQ(v0, v1);

@@ -8,6 +8,8 @@
 #include "he/core/hash_table.h"
 #include "he/core/path.h"
 #include "he/core/scope_guard.h"
+#include "he/core/string.h"
+#include "he/core/string_ops.h"
 #include "he/core/utils.h"
 
 #include <algorithm>
@@ -56,7 +58,7 @@ namespace he
         if (!scanner.Open(path))
             return false;
 
-        const uint32_t pathLen = String::Length(path);
+        const uint32_t pathLen = StrLen(path);
         String fullPath;
 
         DirectoryScanner::Entry entry;

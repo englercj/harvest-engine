@@ -4,7 +4,7 @@
 
 #include "he/core/compiler.h"
 #include "he/core/cpu.h"
-#include "he/core/string.h"
+#include "he/core/string_ops.h"
 
 #if HE_CPU_ARM
 
@@ -47,59 +47,59 @@ namespace he
             switch (vendor)
             {
                 case 0xC0:
-                    String::Copy(vendorName, "Ampere Computing");
+                    StrCopy(vendorName, "Ampere Computing");
                     vendorId = CpuVendorId::Ampere;
                     break;
                 case 0x41:
-                    String::Copy(vendorName, "Arm Limited");
+                    StrCopy(vendorName, "Arm Limited");
                     vendorId = CpuVendorId::ARM;
                     break;
                 case 0x42:
-                    String::Copy(vendorName, "Broadcom Corporation");
+                    StrCopy(vendorName, "Broadcom Corporation");
                     vendorId = CpuVendorId::Broadcom;
                     break;
                 case 0x43:
-                    String::Copy(vendorName, "Cavium Inc");
+                    StrCopy(vendorName, "Cavium Inc");
                     vendorId = CpuVendorId::Cavium;
                     break;
                 case 0x44:
-                    String::Copy(vendorName, "Digital Equipment Corporation");
+                    StrCopy(vendorName, "Digital Equipment Corporation");
                     vendorId = CpuVendorId::DEC;
                     break;
                 case 0x46:
-                    String::Copy(vendorName, "Fujitsu Ltd");
+                    StrCopy(vendorName, "Fujitsu Ltd");
                     vendorId = CpuVendorId::Fujitsu;
                     break;
                 case 0x49:
-                    String::Copy(vendorName, "Infineon Technologies AG");
+                    StrCopy(vendorName, "Infineon Technologies AG");
                     vendorId = CpuVendorId::Infineon;
                     break;
                 case 0x4D:
-                    String::Copy(vendorName, "Motorola or Freescale Semiconductor Inc");
+                    StrCopy(vendorName, "Motorola or Freescale Semiconductor Inc");
                     vendorId = CpuVendorId::Motorola;
                     break;
                 case 0x4E:
-                    String::Copy(vendorName, "NVIDIA Corporation");
+                    StrCopy(vendorName, "NVIDIA Corporation");
                     vendorId = CpuVendorId::NVIDIA;
                     break;
                 case 0x50:
-                    String::Copy(vendorName, "Applied Micro Circuits Corporation");
+                    StrCopy(vendorName, "Applied Micro Circuits Corporation");
                     vendorId = CpuVendorId::AMCC;
                     break;
                 case 0x51:
-                    String::Copy(vendorName, "Qualcomm Inc");
+                    StrCopy(vendorName, "Qualcomm Inc");
                     vendorId = CpuVendorId::Qualcomm;
                     break;
                 case 0x56:
-                    String::Copy(vendorName, "Marvell International Ltd");
+                    StrCopy(vendorName, "Marvell International Ltd");
                     vendorId = CpuVendorId::Marvell;
                     break;
                 case 0x69:
-                    String::Copy(vendorName, "Intel Corporation");
+                    StrCopy(vendorName, "Intel Corporation");
                     vendorId = CpuVendorId::Intel;
                     break;
                 default:
-                    String::Copy(vendorName, "Unknown");
+                    StrCopy(vendorName, "Unknown");
                     vendorId = CpuVendorId::Unknown;
                     break;
             }

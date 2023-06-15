@@ -8,7 +8,9 @@
 #include "he/core/assert.h"
 #include "he/core/enum_ops.h"
 #include "he/core/limits.h"
+#include "he/core/string.h"
 #include "he/core/string_fmt.h"
+#include "he/core/string_ops.h"
 #include "he/core/utf8.h"
 #include "he/core/vector.h"
 
@@ -832,7 +834,7 @@ namespace he
             if (!ConsumeOneOf(Nums) || !ConsumeOneOf(Nums))
                  return false;
 
-            hours = String::ToInteger<uint32_t>(begin, m_cursor);
+            hours = StrToInt<uint32_t>(begin, &m_cursor);
 
             if (!Consume(':'))
                  return false;
@@ -842,7 +844,7 @@ namespace he
             if (!ConsumeOneOf(Nums) || !ConsumeOneOf(Nums))
                  return false;
 
-            minutes = String::ToInteger<uint32_t>(begin, m_cursor);
+            minutes = StrToInt<uint32_t>(begin, &m_cursor);
 
             // 2 digit seconds are optional
             if (!AtEnd() && *m_cursor == ':')
@@ -866,7 +868,7 @@ namespace he
                         ++m_cursor;
                 }
 
-                seconds = String::ToFloat<double>(begin, m_cursor);
+                seconds = StrToFloat<double>(begin, &m_cursor);
             }
 
             if (hours >= 23 || minutes >= 60 || seconds >= 60.0)
@@ -895,7 +897,7 @@ namespace he
             if (!ConsumeOneOf(Nums) || !ConsumeOneOf(Nums) || !ConsumeOneOf(Nums) || !ConsumeOneOf(Nums))
                 return false;
 
-            year = String::ToInteger<uint32_t>(begin, m_cursor);
+            year = StrToInt<uint32_t>(begin, &m_cursor);
 
             if (!Consume('-'))
                 return false;
@@ -905,7 +907,7 @@ namespace he
             if (!ConsumeOneOf(Nums) || !ConsumeOneOf(Nums))
                  return false;
 
-            month = String::ToInteger<uint32_t>(begin, m_cursor);
+            month = StrToInt<uint32_t>(begin, &m_cursor);
 
             if (!Consume('-'))
                  return false;
@@ -915,7 +917,7 @@ namespace he
             if (!ConsumeOneOf(Nums) || !ConsumeOneOf(Nums))
                  return false;
 
-            day = String::ToInteger<uint32_t>(begin, m_cursor);
+            day = StrToInt<uint32_t>(begin, &m_cursor);
 
             // Check if this include time information
             if (!AtEnd() && (*m_cursor == 'T' || *m_cursor == 't' || *m_cursor == ' '))
@@ -928,7 +930,7 @@ namespace he
                 if (!ConsumeOneOf(Nums) || !ConsumeOneOf(Nums))
                     return false;
 
-                hours = String::ToInteger<uint32_t>(begin, m_cursor);
+                hours = StrToInt<uint32_t>(begin, &m_cursor);
 
                 if (!Consume(':'))
                     return false;
@@ -938,7 +940,7 @@ namespace he
                 if (!ConsumeOneOf(Nums) || !ConsumeOneOf(Nums))
                     return false;
 
-                minutes = String::ToInteger<uint32_t>(begin, m_cursor);
+                minutes = StrToInt<uint32_t>(begin, &m_cursor);
 
                 // 2 digit seconds are optional in TOML
                 if (!AtEnd() && *m_cursor == ':')
@@ -962,7 +964,7 @@ namespace he
                             ++m_cursor;
                     }
 
-                    seconds = String::ToFloat<double>(begin, m_cursor);
+                    seconds = StrToFloat<double>(begin, &m_cursor);
                 }
 
                 // Optional timezone
@@ -981,7 +983,7 @@ namespace he
                     if (!ConsumeOneOf(Nums) || !ConsumeOneOf(Nums))
                         return false;
 
-                    const uint32_t tzOffsetHours = String::ToInteger<uint32_t>(begin, m_cursor);
+                    const uint32_t tzOffsetHours = StrToInt<uint32_t>(begin, &m_cursor);
 
                     if (!Consume(':'))
                         return false;
@@ -991,7 +993,7 @@ namespace he
                     if (!ConsumeOneOf(Nums) || !ConsumeOneOf(Nums))
                         return false;
 
-                    const uint32_t tzOffsetMinutes = String::ToInteger<uint32_t>(begin, m_cursor);
+                    const uint32_t tzOffsetMinutes = StrToInt<uint32_t>(begin, &m_cursor);
 
                     if (tzOffsetHours > 23 || tzOffsetMinutes > 59)
                         return SetError(TomlReadError::InvalidDateTime);
@@ -1243,7 +1245,7 @@ namespace he
                 if (exp && exp < dot)
                     return SetError(TomlReadError::InvalidNumber);
 
-                const double value = String::ToFloat<double>(m_stringBuffer.Begin(), m_stringBuffer.End());
+                const double value = StrToFloat<double>(m_stringBuffer.Begin(), &end);
                 m_handler->Float(value);
             }
             else
@@ -1257,12 +1259,14 @@ namespace he
 
                 if (isSigned)
                 {
-                    const int64_t value = String::ToInteger<int64_t>(m_stringBuffer.Begin(), m_stringBuffer.End());
+                    const char* end = m_stringBuffer.End();
+                    const int64_t value = StrToInt<int64_t>(m_stringBuffer.Begin(), &end);
                     m_handler->Int(value);
                 }
                 else
                 {
-                    const uint64_t value = String::ToInteger<uint64_t>(m_stringBuffer.Begin(), m_stringBuffer.End());
+                    const char* end = m_stringBuffer.End();
+                    const uint64_t value = StrToInt<uint64_t>(m_stringBuffer.Begin(), &end);
                     m_handler->Uint(value);
                 }
             }
@@ -1286,7 +1290,8 @@ namespace he
                 ++m_cursor;
             }
 
-            const uint64_t value = String::ToInteger<uint64_t>(m_stringBuffer.Begin(), m_stringBuffer.End(), 16);
+            const char* end = m_stringBuffer.End();
+            const uint64_t value = StrToInt<uint64_t>(m_stringBuffer.Begin(), &end, 16);
             m_handler->Uint(value);
             return true;
         }
@@ -1307,7 +1312,8 @@ namespace he
                 ++m_cursor;
             }
 
-            const uint64_t value = String::ToInteger<uint64_t>(m_stringBuffer.Begin(), m_stringBuffer.End(), 8);
+            const char* end = m_stringBuffer.End();
+            const uint64_t value = StrToInt<uint64_t>(m_stringBuffer.Begin(), &end, 8);
             m_handler->Uint(value);
             return true;
         }
@@ -1328,7 +1334,8 @@ namespace he
                 ++m_cursor;
             }
 
-            const uint64_t value = String::ToInteger<uint64_t>(m_stringBuffer.Begin(), m_stringBuffer.End(), 2);
+            const char* end = m_stringBuffer.End();
+            const uint64_t value = StrToInt<uint64_t>(m_stringBuffer.Begin(), &end, 2);
             m_handler->Uint(value);
             return true;
         }

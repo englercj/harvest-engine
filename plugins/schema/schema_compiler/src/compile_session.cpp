@@ -15,6 +15,7 @@
 #include "he/core/result_fmt.h"
 #include "he/core/string.h"
 #include "he/core/string_fmt.h"
+#include "he/core/string_ops.h"
 #include "he/core/vector.h"
 #include "he/schema/ast.h"
 
@@ -73,7 +74,7 @@ namespace he::schema
 
     bool CompileSession::GenerateCode()
     {
-        if (!he::String::IsEmpty(m_config.codegenOutDir))
+        if (!StrEmpty(m_config.codegenOutDir))
         {
             Directory::Create(m_config.codegenOutDir, true);
         }

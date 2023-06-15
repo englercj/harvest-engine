@@ -4,6 +4,8 @@
 
 #include "he/core/assert.h"
 #include "he/core/path.h"
+#include "he/core/string.h"
+#include "he/core/string_ops.h"
 #include "he/core/utils.h"
 
 #if defined(HE_PLATFORM_API_POSIX)
@@ -77,7 +79,7 @@ namespace he
             case SpecialDirectory::LocalAppData:
             {
                 const char* xdgDataHome = getenv("XDG_DATA_HOME");
-                if (!String::IsEmpty(xdgDataHome) && IsAbsolutePath(xdgDataHome))
+                if (!StrEmpty(xdgDataHome) && IsAbsolutePath(xdgDataHome))
                 {
                     dst = xdgDataHome;
                     return Result::Success;
@@ -96,7 +98,7 @@ namespace he
             {
                 const char* xdgDataDirs = getenv("XDG_DATA_DIR");
 
-                if (String::IsEmpty(xdgDataDirs))
+                if (StrEmpty(xdgDataDirs))
                 {
                     xdgDataDirs = "/usr/local/share/:/usr/share/";
                 }
@@ -105,7 +107,7 @@ namespace he
                 const char* start = xdgDataDirs;
                 while (*start)
                 {
-                    const char* end = String::Find(start, ':');
+                    const char* end = StrFind(start, ':');
 
                     if (end)
                         dst.Assign(start, (end - start));
@@ -119,7 +121,7 @@ namespace he
                 }
 
                 // Nothing exists, so just return the first one.
-                const char* end = String::Find(xdgDataDirs, ':');
+                const char* end = StrFind(xdgDataDirs, ':');
 
                 if (end)
                     dst.Assign(start, (end - start));
@@ -166,7 +168,7 @@ namespace he
         if (!getcwd(dst.Data(), dst.Size()))
             return Result::FromLastError();
 
-        dst.Resize(String::Length(dst.Data()));
+        dst.Resize(StrLen(dst.Data()));
         return Result::Success;
     }
 
@@ -197,7 +199,7 @@ namespace he
         if (parents)
         {
             char parentDirs[PATH_MAX];
-            String::Copy(parentDirs, path);
+            StrCopy(parentDirs, path);
 
             for (char* p = parentDirs + 1; *p; ++p)
             {

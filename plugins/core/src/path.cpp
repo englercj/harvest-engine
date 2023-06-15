@@ -7,6 +7,8 @@
 #include "he/core/directory.h"
 #include "he/core/memory_ops.h"
 #include "he/core/range_ops.h"
+#include "he/core/string.h"
+#include "he/core/string_ops.h"
 
 #include <algorithm>
 
@@ -19,7 +21,7 @@ namespace he
 
     bool IsAbsolutePath(const char* path)
     {
-        if (String::IsEmpty(path))
+        if (StrEmpty(path))
             return false;
 
         // Leading slash is an absolute path

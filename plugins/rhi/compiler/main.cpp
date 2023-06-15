@@ -11,6 +11,8 @@
 #include "he/core/path.h"
 #include "he/core/result_fmt.h"
 #include "he/core/scope_guard.h"
+#include "he/core/string.h"
+#include "he/core/string_ops.h"
 #include "he/core/string_view.h"
 #include "he/core/vector.h"
 
@@ -95,8 +97,8 @@ int he::AppMain(int argc, char* argv[])
     defineNamesStorage.Reserve(args.defines.Size());
     for (const char* d : args.defines)
     {
-        const char* valueStart = String::Find(d, '=');
-        const uint32_t nameLen = valueStart ? static_cast<uint32_t>(valueStart - d) : String::Length(d);
+        const char* valueStart = StrFind(d, '=');
+        const uint32_t nameLen = valueStart ? static_cast<uint32_t>(valueStart - d) : StrLen(d);
 
         String& name = defineNamesStorage.EmplaceBack();
         name.Assign(d, nameLen);
@@ -119,11 +121,11 @@ int he::AppMain(int argc, char* argv[])
     for (const char* target : args.targets)
     {
         SlangCompileTarget codegenTarget;
-        if (String::Find(target, "sm_") == target)
+        if (StrFind(target, "sm_") == target)
         {
             codegenTarget = SLANG_DXIL;
         }
-        else if (String::Find(target, "glsl_") == target)
+        else if (StrFind(target, "glsl_") == target)
         {
             codegenTarget = SLANG_SPIRV;
         }
@@ -271,11 +273,11 @@ int he::AppMain(int argc, char* argv[])
             //}
 
             const char* target = args.targets[targetIndex];
-            if (String::Find(target, "sm_") == target)
+            if (StrFind(target, "sm_") == target)
             {
                 constName += "_dxil";
             }
-            else if (String::Find(target, "glsl_") == target)
+            else if (StrFind(target, "glsl_") == target)
             {
                 constName += "_spv";
             }

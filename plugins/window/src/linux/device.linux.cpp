@@ -7,6 +7,7 @@
 
 #include "he/core/log.h"
 #include "he/core/memory_ops.h"
+#include "he/core/string_ops.h"
 #include "he/math/vec2.h"
 #include "he/window/application.h"
 #include "he/window/event.h"
@@ -152,11 +153,11 @@ namespace he::window::linux
             return nullptr;
 
         // If the uri specifies the file:// scheme then we want to verify the hostname
-        if (String::EqualN(uri, FilePrefix, FilePrefixLen))
+        if (StrEqualN(uri, FilePrefix, FilePrefixLen))
         {
             uri += FilePrefixLen;
 
-            const char* hostEnd = String::Find(uri, '/');
+            const char* hostEnd = StrFind(uri, '/');
             if (hostEnd)
             {
                 char host[257];
@@ -164,7 +165,7 @@ namespace he::window::linux
                 {
                     host[256] = '\0';
                     const uint32_t hostLen = hostEnd - uri;
-                    if (!String::EqualN(uri, host, hostLen))
+                    if (!StrEqualN(uri, host, hostLen))
                         return nullptr;
 
                     uri = const_cast<char*>(hostEnd + 1);
@@ -172,13 +173,13 @@ namespace he::window::linux
             }
         }
         // If a uri scheme is specified, but its not file:// then we can't handle this
-        else if (String::Find(uri, ":/"))
+        else if (StrFind(uri, ":/"))
         {
             return nullptr;
         }
 
         // Decode the URI in-place
-        const char* end = uri + String::Length(uri);
+        const char* end = uri + StrLen(uri);
         const char* read = uri;
         char* write = uri;
 
@@ -187,7 +188,7 @@ namespace he::window::linux
             if (read[0] == '%' && read[1] && read[2])
             {
                 const char digits[3]{ read[1], read[2], '\0' };
-                *write++ = static_cast<char>(String::ToInteger<uint8_t>(digits, nullptr, 16));
+                *write++ = static_cast<char>(StrToInt<uint8_t>(digits, nullptr, 16));
                 read += 3;
             }
             else

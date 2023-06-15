@@ -388,7 +388,7 @@ namespace he::sqlite
         StringBuilder ddl;
         ToSql(ddl, table, ctx);
 
-        const char* ddlStart = String::FindN(ddl.Str().Data(), ddl.Str().Size(), '(');
+        const char* ddlStart = StrFindN(ddl.Str().Data(), ddl.Str().Size(), '(');
 
         StringBuilder sql;
         sql.Write(R"(

@@ -5,7 +5,7 @@
 #include "he/core/assert.h"
 #include "he/core/enum_ops.h"
 #include "he/core/memory_ops.h"
-#include "he/core/string.h"
+#include "he/core/string_ops.h"
 #include "he/core/utils.h"
 
 namespace he
@@ -141,13 +141,13 @@ namespace he
 
     void BufferWriter::Write(const char* str)
     {
-        const uint32_t len = String::Length(str);
+        const uint32_t len = StrLen(str);
         Write(str, len);
     }
 
     void BufferWriter::WriteAt(uint32_t offset, const char* str)
     {
-        const uint32_t len = String::Length(str);
+        const uint32_t len = StrLen(str);
         WriteAt(offset, str, len);
     }
 

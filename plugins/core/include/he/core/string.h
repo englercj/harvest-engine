@@ -5,6 +5,7 @@
 #include "he/core/allocator.h"
 #include "he/core/compiler.h"
 #include "he/core/concepts.h"
+#include "he/core/string_ops.h"
 #include "he/core/types.h"
 #include "he/core/type_traits.h"
 
@@ -12,264 +13,6 @@ namespace he
 {
     class String final
     {
-    public:
-        // ----------------------------------------------------------------------------------------
-        // Raw String Algorithms
-
-        /// Checks if a string is nullptr or the first character is a null terminator.
-        ///
-        /// \param s The string to check.
-        /// \return True when `s` is null or empty.
-        static constexpr bool IsEmpty(const char* s);
-
-        /// Gets the length of a null terminated string using a constexpr algorithm. This may be
-        /// slower than \see Length(const char*) for cases that are not calculated at compile time.
-        ///
-        /// \param s The string to get the length of.
-        /// \return The length of the string.
-        static constexpr uint32_t LengthConst(const char* s);
-
-        /// Gets the length of a null terminated string.
-        ///
-        /// \param s The string to get the length of.
-        /// \return The length of the string.
-        static uint32_t Length(const char* s);
-
-        /// Gets the length of a null terminated string, up to `len`.
-        ///
-        /// \param s The string to get the length of.
-        /// \param len The maximum length of the string to check.
-        /// \return The length of the string.
-        static uint32_t LengthN(const char* s, uint32_t len);
-
-        /// Compares the null terminated strings and returns the result of the comparison.
-        ///
-        /// \param a The left-hand side of the comparison operation.
-        /// \param b The right-hand side of the comparison operation.
-        /// \return The result of the comparison.
-        ///     If the values are equal, zero is returned.
-        ///     If this string is less than `x`, a negative value is returned.
-        ///     If this string is greater than `x`, a positive value is returned.
-        static int32_t Compare(const char* a, const char* b);
-
-        /// Compares the null terminated strings, up to `len`, and returns the result of the
-        /// comparison.
-        ///
-        /// \param a The left-hand side of the comparison operation.
-        /// \param b The right-hand side of the comparison operation.
-        /// \param len The maximum length of the string to check.
-        /// \return The result of the comparison.
-        ///     If the values are equal, zero is returned.
-        ///     If this string is less than `x`, a negative value is returned.
-        ///     If this string is greater than `x`, a positive value is returned.
-        static int32_t CompareN(const char* a, const char* b, uint32_t len);
-
-        /// Compares the null terminated strings in a case-insensitive manner and returns the
-        /// result of the comparison.
-        ///
-        /// \param a The left-hand side of the comparison operation.
-        /// \param b The right-hand side of the comparison operation.
-        /// \return The result of the comparison.
-        ///     If the values are equal, zero is returned.
-        ///     If this string is less than `x`, a negative value is returned.
-        ///     If this string is greater than `x`, a positive value is returned.
-        static int32_t CompareI(const char* a, const char* b);
-
-        /// Compares the null terminated strings, up to `len`, in a case-insensitive manner and
-        /// returns the result of the comparison.
-        ///
-        /// \param a The left-hand side of the comparison operation.
-        /// \param b The right-hand side of the comparison operation.
-        /// \param len The maximum length of the string to check.
-        /// \return The result of the comparison.
-        ///     If the values are equal, zero is returned.
-        ///     If this string is less than `x`, a negative value is returned.
-        ///     If this string is greater than `x`, a positive value is returned.
-        static int32_t CompareNI(const char* a, const char* b, uint32_t len);
-
-        /// Duplicate the null terminated source string using the provided allocator. The
-        /// resulting string must be freed by calling \ref Allocator::Free with the same
-        /// allocator used here.
-        ///
-        /// \param[in] allocator The allocator to use for creating the new string.
-        /// \param[in] src The source string to duplicate.
-        /// \return The newly allocated string.
-        static char* Duplicate(const char* src, Allocator& allocator = Allocator::GetDefault());
-
-        /// Duplicate `len` characters of the source string using the provided allocator. The
-        /// resulting string must be freed by calling \ref Allocator::Free with the same
-        /// allocator used here.
-        ///
-        /// \param[in] allocator The allocator to use for creating the new string.
-        /// \param[in] src The source string to duplicate.
-        /// \param[in] len The length of the source string to duplicate.
-        /// \return The newly allocated string.
-        static char* DuplicateN(const char* src, uint32_t len, Allocator& allocator = Allocator::GetDefault());
-
-        /// Compares the null terminated strings and returns true if they are equal.
-        ///
-        /// \param a The left-hand side of the comparison operation.
-        /// \param b The right-hand side of the comparison operation.
-        /// \return True if the strings are equal, false otherwise.
-        static bool Equal(const char* a, const char* b) { return Compare(a, b) == 0; }
-
-        /// Compares the null terminated strings, up to `len`, and returns true if they are equal.
-        ///
-        /// \param a The left-hand side of the comparison operation.
-        /// \param b The right-hand side of the comparison operation.
-        /// \return True if the strings are equal, false otherwise.
-        static bool EqualN(const char* a, const char* b, uint32_t len) { return CompareN(a, b, len) == 0; }
-
-        /// Compares the null terminated strings in a case-insensitive manner and
-        /// returns true if they are equal.
-        ///
-        /// \param a The left-hand side of the comparison operation.
-        /// \param b The right-hand side of the comparison operation.
-        /// \return True if the strings are equal, false otherwise.
-        static bool EqualI(const char* a, const char* b) { return CompareI(a, b) == 0; }
-
-        /// Compares the null terminated strings, up to `len`, in a case-insensitive manner and
-        /// returns true if they are equal.
-        ///
-        /// \param a The left-hand side of the comparison operation.
-        /// \param b The right-hand side of the comparison operation.
-        /// \return True if the strings are equal, false otherwise.
-        static bool EqualNI(const char* a, const char* b, uint32_t len) { return CompareNI(a, b, len) == 0; }
-
-        /// Compares the null terminated strings and returns true if `a` is less than `b`.
-        ///
-        /// \param a The left-hand side of the comparison operation.
-        /// \param b The right-hand side of the comparison operation.
-        /// \return True if `a` is less than `b`, false otherwise.
-        static bool Less(const char* a, const char* b) { return Compare(a, b) < 0; }
-
-        /// Compares the null terminated strings, up to `len`, and returns true if `a` is less than `b`.
-        ///
-        /// \param a The left-hand side of the comparison operation.
-        /// \param b The right-hand side of the comparison operation.
-        /// \return True if `a` is less than `b`, false otherwise.
-        static bool LessN(const char* a, const char* b, uint32_t len) { return CompareN(a, b, len) < 0; }
-
-        /// Copies the source string into the destination buffer, including the null terminator.
-        /// The destination buffer is guaranteed to be null terminated if `dstLen > 0`.
-        ///
-        /// \param dst The destination buffer to copy into.
-        /// \param dstLen The size of the destination buffer.
-        /// \param src The string to copy from.
-        /// \return The number of characters copied into `dst`, excluding the null terminator.
-        static uint32_t Copy(char* dst, uint32_t dstLen, const char* src);
-
-        /// \copydoc Copy(char*, uint32_t, const char*)
-        template <uint32_t N>
-        static uint32_t Copy(char (&dst)[N], const char* src) { return Copy(dst, N, src); }
-
-        /// Copies up to `srcLen` characters from the source string into the destination buffer,
-        /// including the null terminator. The destination buffer is guaranteed to be null
-        /// terminated if `dstLen > 0`.
-        ///
-        /// \param dst The destination buffer to copy into.
-        /// \param dstLen The size of the destination buffer.
-        /// \param src The string to copy from.
-        /// \param srcLen The maximum number of characters to copy.
-        /// \return The number of characters copied into `dst`, excluding the null terminator.
-        static uint32_t CopyN(char* dst, uint32_t dstLen, const char* src, uint32_t srcLen);
-
-        /// \copydoc CopyN(char*, uint32_t, const char*, uint32_t)
-        template <uint32_t N>
-        static uint32_t CopyN(char (&dst)[N], const char* src, uint32_t srcLen) { return CopyN(dst, N, src, srcLen); }
-
-        /// Copies the source string to the end of the destination string.
-        /// The destination buffer is guaranteed to be null terminated if `dstLen > 0`.
-        ///
-        /// \param dst The destination buffer to copy into.
-        /// \param dstLen The size of the destination buffer.
-        /// \param src The string to copy from.
-        /// \return The length of the `dst` string after the concatenation completes.
-        static uint32_t Cat(char* dst, uint32_t dstLen, const char* src);
-
-        /// \copydoc Cat(char*, uint32_t, const char*)
-        template <uint32_t N>
-        static uint32_t Cat(char (&dst)[N], const char* src) { return Cat(dst, N, src); }
-
-        /// Copies up to `srcLen` characters from the source string to the end of the destination
-        /// string. The destination buffer is guaranteed to be null terminated if `dstLen > 0`.
-        ///
-        /// \param dst The destination buffer to copy into.
-        /// \param dstLen The size of the destination buffer.
-        /// \param src The string to copy from.
-        /// \param srcLen The maximum number of characters to copy.
-        /// \return The length of the `dst` string after the concatenation completes.
-        static uint32_t CatN(char* dst, uint32_t dstLen, const char* src, uint32_t srcLen);
-
-        /// \copydoc CatN(char*, uint32_t, const char*, uint32_t)
-        template <uint32_t N>
-        static uint32_t CatN(char (&dst)[N], const char* src, uint32_t srcLen) { return CatN(dst, N, src, srcLen); }
-
-        /// Searches the null terminated string for a character. Behavior is undefined if `str`
-        /// is nullptr.
-        ///
-        /// \param str The string to search within.
-        /// \param search The character to search for.
-        /// \return A pointer to the found character in `str`, or nullptr if not found.
-        static const char* Find(const char* str, char search);
-
-        /// Searches the null terminated string for a substring. Behavior is undefined if `str`
-        /// or `search` are nullptr.
-        ///
-        /// \param str The string to search within.
-        /// \param search The string to search for.
-        /// \return A pointer to the start of the found substring in `str`, or nullptr if
-        /// not found. If `str` is empty, then `search` is returned.
-        static const char* Find(const char* str, const char* search);
-
-        /// Searches up to `len` characters from the string for a character. It is assumed that
-        /// `str` is at least `len` characters long. That is, null characters are not treated
-        /// as the end of the string. Behavior is undefined if `str` is nullptr.
-        ///
-        /// \param str The string to search within.
-        /// \param len The maximum number of characters to check in `str`
-        /// \param search The character to search for.
-        /// \return A pointer to the found character in `str`, or nullptr if not found.
-        static const char* FindN(const char* str, uint32_t len, char search);
-
-        /// Searches up to `len` characters from the string for a substring. It is assumed that
-        /// `str` is at least `len` characters long. That is, null characters are not treated
-        /// as the end of the string. Behavior is undefined if `str` or `search` are nullptr.
-        ///
-        /// \param str The string to search within.
-        /// \param len The maximum number of characters to check in `str`
-        /// \param search The string to search for.
-        /// \return A pointer to the start of the found substring in `str`, or nullptr if
-        /// not found. If `str` is empty, then `search` is returned.
-        static const char* FindN(const char* str, uint32_t len, const char* search);
-
-        /// Parses the string into a integral value.
-        /// If successful, an integer value corresponding to the contents of str is returned.
-        /// If the converted value falls out of range of corresponding return type, a range error
-        /// occurs (setting errno to ERANGE) and LONG_MAX, LONG_MIN, LLONG_MAX or LLONG_MIN is
-        /// returned. If no conversion can be performed, zero is returned.
-        ///
-        /// \param[in] str The string to parse.
-        /// \param[in] end Optional. A pointer to the end of the string to stop parsing. If
-        ///     nullptr (default) the string is parsed until a null terminator is reached.
-        /// \param[in] base Optional. The numerical base of the value being parsed.
-        /// \return The parsed number.
-        template <typename T>
-        static T ToInteger(const char* str, const char* end = nullptr, int32_t base = 10);
-
-        /// Parses the string into a floating point value.
-        /// If successful, a floating point value corresponding to the contents of str is returned.
-        /// If the converted value falls out of range of corresponding return type, a range error
-        /// occurs (setting errno to ERANGE) and LONG_MAX, LONG_MIN, LLONG_MAX or LLONG_MIN is
-        /// returned. If no conversion can be performed, zero is returned.
-        ///
-        /// \param[in] str The string to parse.
-        /// \param[in] end Optional. A pointer to the end of the string to stop parsing. If
-        ///     nullptr (default) the string is parsed until a null terminator is reached.
-        /// \return The parsed number.
-        template <typename T = float>
-        static T ToFloat(const char* str, const char* end = nullptr);
-
     public:
         // ----------------------------------------------------------------------------------------
         // Constants
@@ -371,15 +114,15 @@ namespace he
         ///
         /// \param index The index of the character to return.
         /// \return A reference to the character at `index`.
-        const char& operator[](uint32_t index) const;
+        [[nodiscard]] const char& operator[](uint32_t index) const;
 
         /// \copydoc operator[](uint32_t)
-        char& operator[](uint32_t index) { return const_cast<char&>(const_cast<const String&>(*this)[index]); }
+        [[nodiscard]] char& operator[](uint32_t index) { return const_cast<char&>(const_cast<const String&>(*this)[index]); }
 
         /// Appends the null terminated string to the end of this string.
         ///
         /// \param str The string to append.
-        String& operator+=(const char* str) { Insert(Size(), str, Length(str)); return *this; }
+        String& operator+=(const char* str) { Insert(Size(), str, StrLen(str)); return *this; }
 
         /// Appends the character to the end of this string.
         ///
@@ -401,79 +144,79 @@ namespace he
         ///
         /// \param x The string to check against.
         /// \return True if the strings are equal, false otherwise.
-        bool operator==(const char* x) const { return CompareTo(x) == 0; }
+        [[nodiscard]] bool operator==(const char* x) const { return CompareTo(x) == 0; }
 
         /// Checks if this string is equal to a character range.
         ///
         /// \param range The characters to check against.
         /// \return True if the strings are equal, false otherwise.
         template <ContiguousRangeOf<const char> R>
-        bool operator==(const R& range) const { return range.Size() == Size() && CompareTo(range) == 0; }
+        [[nodiscard]] bool operator==(const R& range) const { return range.Size() == Size() && CompareTo(range) == 0; }
 
         /// Checks if this string is not equal to the null terminated string `x`.
         ///
         /// \param x The string to check against.
         /// \return True if the strings are not equal, false otherwise.
-        bool operator!=(const char* x) const { return !this->operator==(x); }
+        [[nodiscard]] bool operator!=(const char* x) const { return !this->operator==(x); }
 
         /// Checks if this string is equal to a character range.
         ///
         /// \param range The characters to check against.
         /// \return True if the string is not equal to `range`, false otherwise.
         template <ContiguousRangeOf<const char> R>
-        bool operator!=(const R & range) const { return !this->operator==(range); }
+        [[nodiscard]] bool operator!=(const R & range) const { return !this->operator==(range); }
 
         /// Checks if this string is less than the null terminated string `x`.
         ///
         /// \param x The string to check against.
         /// \return True if this string is less than `x`, false otherwise.
-        bool operator<(const char* x) const { return CompareTo(x) < 0; }
+        [[nodiscard]] bool operator<(const char* x) const { return CompareTo(x) < 0; }
 
         /// Checks if this string is less than a character range.
         ///
         /// \param range The characters to check against.
         /// \return True if the string is less than `range`, false otherwise.
         template <ContiguousRangeOf<const char> R>
-        bool operator<(const R& range) const { return CompareTo(range) < 0; }
+        [[nodiscard]] bool operator<(const R& range) const { return CompareTo(range) < 0; }
 
         /// Checks if this string is less than or equal to the null terminated string `x`.
         ///
         /// \param x The string to check against.
         /// \return True if this string is less than or equal to `x`, false otherwise.
-        bool operator<=(const char* x) const { return CompareTo(x) <= 0; }
+        [[nodiscard]] bool operator<=(const char* x) const { return CompareTo(x) <= 0; }
 
         /// Checks if this string is less than or equal to a character range.
         ///
         /// \param range The characters to check against.
         /// \return True if the string is less than or equal to `range`, false otherwise.
         template <ContiguousRangeOf<const char> R>
-        bool operator<=(const R& range) const { return CompareTo(range) <= 0; }
+        [[nodiscard]] bool operator<=(const R& range) const { return CompareTo(range) <= 0; }
 
         /// Checks if this string is greater than the null terminated string `x`.
         ///
         /// \param x The string to check against.
         /// \return True if this string is greater than `x`, false otherwise.
-        bool operator>(const char* x) const { return CompareTo(x) > 0; }
+        [[nodiscard]] bool operator>(const char* x) const { return CompareTo(x) > 0; }
 
         /// Checks if this string is greater than a character range.
         ///
         /// \param range The characters to check against.
         /// \return True if the string is greater than `range`, false otherwise.
         template <ContiguousRangeOf<const char> R>
-        bool operator>(const R& range) const { return CompareTo(range) > 0; }
+        [[nodiscard]] bool operator>(const R& range) const { return CompareTo(range) > 0; }
 
         /// Checks if this string is greater than or equal to the null terminated string `x`.
         ///
         /// \param x The string to check against.
         /// \return True if this string is greater than or equal to `x`, false otherwise.
-        bool operator>=(const char* x) const { return CompareTo(x) >= 0; }
+        [[nodiscard]] bool operator>=(const char* x) const { return CompareTo(x) >= 0; }
 
         /// Checks if this string is greater than or equal to a character range.
         ///
         /// \param range The characters to check against.
         /// \return True if the string is greater than or equal to `range`, false otherwise.
         template <ContiguousRangeOf<const char> R>
-        bool operator>=(const R& range) const { return CompareTo(range) >= 0; }
+        [[nodiscard]] bool operator>=(const R& range) const { return CompareTo(range) >= 0; }
 
         // ----------------------------------------------------------------------------------------
         // Capacity
@@ -481,12 +224,12 @@ namespace he
         /// Checks if this string is using embedded storage for the string data.
         ///
         /// \return Returns true if no heap allocation is being used.
-        bool IsEmbedded() const { return m_embed[EmbedSize - 1] != HeapFlag; }
+        [[nodiscard]] bool IsEmbedded() const { return m_embed[EmbedSize - 1] != HeapFlag; }
 
         /// Checks if this string is empty.
         ///
         /// \return Returns true if this is an empty string.
-        bool IsEmpty() const { return Size() == 0; }
+        [[nodiscard]] bool IsEmpty() const { return Size() == 0; }
 
         /// The capacity the string has for characters.
         ///
@@ -494,12 +237,12 @@ namespace he
         /// characters the string can hold before having to reallocate.
         ///
         /// \return Number of total chracters this string can store.
-        uint32_t Capacity() const { return (IsEmbedded() ? EmbedSize : m_heap.capacity) - 1; }
+        [[nodiscard]] uint32_t Capacity() const { return (IsEmbedded() ? EmbedSize : m_heap.capacity) - 1; }
 
         /// The length of the string that is currently stored.
         ///
         /// \return Number of characters in the string, not including the null terminator.
-        uint32_t Size() const { return IsEmbedded() ? GetSizeEmbed() : m_heap.size; }
+        [[nodiscard]] uint32_t Size() const { return IsEmbedded() ? GetSizeEmbed() : m_heap.size; }
 
         /// Reserves capacity for `len` characters. \see Capacity() is guaranteed to return
         /// at least `len` after this operation.
@@ -551,36 +294,68 @@ namespace he
         /// Gets a pointer to the string's character buffer.
         ///
         /// \return A pointer to the character buffer.
-        const char* Data() const { return IsEmbedded() ? m_embed : m_heap.data; }
+        [[nodiscard]] const char* Data() const { return IsEmbedded() ? m_embed : m_heap.data; }
 
         /// \copydoc Data()
-        char* Data() { return IsEmbedded() ? m_embed : m_heap.data; }
+        [[nodiscard]] char* Data() { return IsEmbedded() ? m_embed : m_heap.data; }
 
         /// Gets a reference to the string's first character. The string must not be empty.
         ///
         /// \return A reference to the first character.
-        const char& Front() const;
+        [[nodiscard]] const char& Front() const;
 
         /// \copydoc Front()
-        char& Front() { return const_cast<char&>(const_cast<const String*>(this)->Front()); }
+        [[nodiscard]] char& Front() { return const_cast<char&>(const_cast<const String*>(this)->Front()); }
 
         /// Gets a reference to the string's last character. The string must not be empty.
         ///
         /// \return A reference to the last character.
-        const char& Back() const;
+        [[nodiscard]] const char& Back() const;
 
         /// \copydoc Back()
-        char& Back() { return const_cast<char&>(const_cast<const String*>(this)->Back()); }
+        [[nodiscard]] char& Back() { return const_cast<char&>(const_cast<const String*>(this)->Back()); }
 
         /// Returns a reference to the allocator object used by the string.
         ///
         /// \return The allocator object this string uses.
-        Allocator& GetAllocator() const { return m_allocator; }
+        [[nodiscard]] Allocator& GetAllocator() const { return m_allocator; }
 
         /// Returns a non-cryptographic hash of the string contents.
         ///
         /// \return The hash value.
         [[nodiscard]] uint64_t HashCode() const noexcept;
+
+        // ----------------------------------------------------------------------------------------
+        // Converters
+
+        /// Parses the string into a integral value.
+        /// If successful, an integer value corresponding to the contents of str is returned.
+        /// If the converted value falls out of range of corresponding return type, a range error
+        /// occurs (setting errno to ERANGE) and LONG_MAX, LONG_MIN, LLONG_MAX or LLONG_MIN is
+        /// returned. If no conversion can be performed, zero is returned.
+        ///
+        /// \param[in] base Optional. The numerical base of the value being parsed.
+        /// \return The parsed number.
+        template <typename T>
+        [[nodiscard]] T ToInteger(int32_t base = 10) const
+        {
+            const char* end = End();
+            return StrToInt<T>(Begin(), &end, base);
+        }
+
+        /// Parses the string into a floating point value.
+        /// If successful, a floating point value corresponding to the contents of str is returned.
+        /// If the converted value falls out of range of corresponding return type, a range error
+        /// occurs (setting errno to ERANGE) and LONG_MAX, LONG_MIN, LLONG_MAX or LLONG_MIN is
+        /// returned. If no conversion can be performed, zero is returned.
+        ///
+        /// \return The parsed number.
+        template <typename T = float>
+        [[nodiscard]] T ToFloat() const
+        {
+            const char* end = End();
+            return StrToFloat<T>(Begin(), &end);
+        }
 
         // ----------------------------------------------------------------------------------------
         // Comparison
@@ -594,7 +369,7 @@ namespace he
         ///     If the values are equal, zero is returned.
         ///     If this string is less than `x`, a negative value is returned.
         ///     If this string is greater than `x`, a positive value is returned.
-        int32_t CompareTo(const char* str, uint32_t len) const;
+        [[nodiscard]] int32_t CompareTo(const char* str, uint32_t len) const;
 
         /// Compares this string to the null terminated string `str` and returns the result of the comparison.
         ///
@@ -603,7 +378,7 @@ namespace he
         ///     If the values are equal, zero is returned.
         ///     If this string is less than `x`, a negative value is returned.
         ///     If this string is greater than `x`, a positive value is returned.
-        int32_t CompareTo(const char* str) const { return CompareTo(str, String::Length(str)); }
+        [[nodiscard]] int32_t CompareTo(const char* str) const { return CompareTo(str, StrLen(str)); }
 
         /// Compares this string to a range of characters.
         ///
@@ -613,7 +388,7 @@ namespace he
         ///     If this string is less than `x`, a negative value is returned.
         ///     If this string is greater than `x`, a positive value is returned.
         template <ContiguousRangeOf<const char> R>
-        int32_t CompareTo(const R& range) const { return CompareTo(range.Data(), range.Size()); }
+        [[nodiscard]] int32_t CompareTo(const R& range) const { return CompareTo(range.Data(), range.Size()); }
 
         /// Compares this string to `len` characters of `str` and returns the result of the comparison.
         ///
@@ -624,7 +399,7 @@ namespace he
         ///     If the values are equal, zero is returned.
         ///     If this string is less than `x`, a negative value is returned.
         ///     If this string is greater than `x`, a positive value is returned.
-        int32_t CompareToI(const char* str, uint32_t len) const;
+        [[nodiscard]] int32_t CompareToI(const char* str, uint32_t len) const;
 
         /// Compares this string to the null terminated string `str` and returns the result of the comparison.
         ///
@@ -633,7 +408,7 @@ namespace he
         ///     If the values are equal, zero is returned.
         ///     If this string is less than `x`, a negative value is returned.
         ///     If this string is greater than `x`, a positive value is returned.
-        int32_t CompareToI(const char* str) const { return CompareToI(str, String::Length(str)); }
+        [[nodiscard]] int32_t CompareToI(const char* str) const { return CompareToI(str, StrLen(str)); }
 
         /// Compares this string to a range of characters.
         ///
@@ -643,7 +418,7 @@ namespace he
         ///     If this string is less than `x`, a negative value is returned.
         ///     If this string is greater than `x`, a positive value is returned.
         template <ContiguousRangeOf<const char> R>
-        int32_t CompareToI(const R& range) const { return CompareToI(range.Data(), range.Size()); }
+        [[nodiscard]] int32_t CompareToI(const R& range) const { return CompareToI(range.Data(), range.Size()); }
 
         // ----------------------------------------------------------------------------------------
         // Iterators
@@ -651,31 +426,31 @@ namespace he
         /// Gets a pointer to the first character in the string.
         ///
         /// \return A pointer to the first character.
-        const char* Begin() const { return Data(); }
+        [[nodiscard]] const char* Begin() const { return Data(); }
 
         /// \copydoc Begin()
-        char* Begin() { return Data(); }
+        [[nodiscard]] char* Begin() { return Data(); }
 
         /// Gets a pointer to one past the last character in the string.
         /// This always points to the null terminator.
         ///
         /// \return A pointer to one past the last character.
-        const char* End() const { return Data() + Size(); }
+        [[nodiscard]] const char* End() const { return Data() + Size(); }
 
         /// \copydoc End()
-        char* End() { return Data() + Size(); }
+        [[nodiscard]] char* End() { return Data() + Size(); }
 
         /// \copydoc Begin()
-        const char* begin() const { return Begin(); }
+        [[nodiscard]] const char* begin() const { return Begin(); }
 
         /// \copydoc Begin()
-        char* begin() { return Begin(); }
+        [[nodiscard]] char* begin() { return Begin(); }
 
         /// \copydoc End()
-        const char* end() const { return End(); }
+        [[nodiscard]] const char* end() const { return End(); }
 
         /// \copydoc End()
-        char* end() { return End(); }
+        [[nodiscard]] char* end() { return End(); }
 
         // ----------------------------------------------------------------------------------------
         // Mutators
@@ -695,7 +470,7 @@ namespace he
         ///
         /// \param index The index in the string to insert at.
         /// \param str The string to insert.
-        void Insert(uint32_t index, const char* str) { Insert(index, str, Length(str)); }
+        void Insert(uint32_t index, const char* str) { Insert(index, str, StrLen(str)); }
 
         /// Inserts the characters in the range `[begin, end)` into the string at `index`.
         /// Asserts if `index` is out of range.
@@ -744,7 +519,7 @@ namespace he
         /// Appends the null terminated string to the end of this string.
         ///
         /// \param str The string to append.
-        void Append(const char* str) { Insert(Size(), str, Length(str)); }
+        void Append(const char* str) { Insert(Size(), str, StrLen(str)); }
 
         /// Appends the characters in the range `[begin, end)` to the end of this string.
         ///
@@ -854,5 +629,3 @@ namespace he
         return String(str, static_cast<uint32_t>(len));
     }
 }
-
-#include "he/core/inline/string.inl"

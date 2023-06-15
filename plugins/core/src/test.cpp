@@ -7,6 +7,7 @@
 #include "he/core/clock.h"
 #include "he/core/error.h"
 #include "he/core/string.h"
+#include "he/core/string_ops.h"
 
 #include <algorithm>
 #include <atomic>
@@ -80,15 +81,15 @@ namespace internal
             const TestInfo& infoA = a->GetTestInfo();
             const TestInfo& infoB = b->GetTestInfo();
 
-            const int32_t moduleNameCmp = String::CompareI(infoA.moduleName, infoB.moduleName);
+            const int32_t moduleNameCmp = StrCompI(infoA.moduleName, infoB.moduleName);
             if (moduleNameCmp != 0)
                 return moduleNameCmp < 0;
 
-            const int32_t suiteNameCmp = String::CompareI(infoA.suiteName, infoB.suiteName);
+            const int32_t suiteNameCmp = StrCompI(infoA.suiteName, infoB.suiteName);
             if (suiteNameCmp != 0)
                 return suiteNameCmp < 0;
 
-            const int32_t testNameCmp = String::CompareI(infoA.testName, infoB.testName);
+            const int32_t testNameCmp = StrCompI(infoA.testName, infoB.testName);
             if (testNameCmp != 0)
                 return testNameCmp < 0;
 
@@ -147,11 +148,11 @@ namespace internal
         {
             const TestInfo& info = fixture->GetTestInfo();
 
-            if (!String::IsEmpty(filter))
+            if (!StrEmpty(filter))
             {
                 testFqn.Clear();
                 FormatTo(testFqn, "{}:{}:{}", info.moduleName, info.suiteName, info.testName);
-                if (String::Find(testFqn.Data(), filter) == nullptr)
+                if (StrFind(testFqn.Data(), filter) == nullptr)
                     continue;
             }
 

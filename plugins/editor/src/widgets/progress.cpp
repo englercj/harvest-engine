@@ -3,6 +3,7 @@
 #include "he/editor/widgets/progress.h"
 
 #include "he/core/assert.h"
+#include "he/core/string_ops.h"
 #include "he/core/utils.h"
 #include "he/math/float.h"
 
@@ -157,7 +158,7 @@ namespace he::editor
         }
 
         // Render the string if it is not empty
-        if (!String::IsEmpty(overlay))
+        if (!StrEmpty(overlay))
         {
 
             const ImVec2 overlaySize = ImGui::CalcTextSize(overlay, NULL);

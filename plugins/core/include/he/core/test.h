@@ -10,7 +10,7 @@
 #include "he/core/macros.h"
 #include "he/core/memory_ops.h"
 #include "he/core/span.h"
-#include "he/core/string.h"
+#include "he/core/string_ops.h"
 #include "he/core/string_fmt.h"
 #include "he/core/types.h"
 #include "he/core/utils.h"
@@ -92,14 +92,14 @@
 ///
 /// Automatically passes `a` and `b` as context to be logged. Be careful, this macro may cause
 /// the expressions to be evaluated more than once.
-#define HE_EXPECT_EQ_STR(a, b) HE_EXPECT(::he::String::Equal((a), (b)), a, b)
+#define HE_EXPECT_EQ_STR(a, b) HE_EXPECT(::he::StrEqual((a), (b)), a, b)
 
 /// Check the expectation that the null terminated string `a` is not equal to the null terminated
 /// string `b`.
 ///
 /// Automatically passes `a` and `b` as context to be logged. Be careful, this macro may cause
 /// the expressions to be evaluated more than once.
-#define HE_EXPECT_NE_STR(a, b) HE_EXPECT(!::he::String::Equal((a), (b)), a, b)
+#define HE_EXPECT_NE_STR(a, b) HE_EXPECT(!::he::StrEqual((a), (b)), a, b)
 
 /// Check the expectation that the memory `a` is equal to the memory `b`.
 #define HE_EXPECT_EQ_MEM(a, b, len) HE_EXPECT(::he::MemEqual((a), (b), len))

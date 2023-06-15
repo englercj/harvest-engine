@@ -7,6 +7,8 @@
 #include "he/core/log_sinks.h"
 #include "he/core/path.h"
 #include "he/core/result_fmt.h"
+#include "he/core/string.h"
+#include "he/core/string_ops.h"
 #include "he/core/vector.h"
 #include "he/schema/codegen.h"
 #include "he/schema/compile_session.h"
@@ -36,11 +38,11 @@ static bool CompileFile(const char* path, const AppArgs& args)
 
     for (const char* target : args.targets)
     {
-        if (String::Equal(target, "cpp") || String::Equal(target, "c++"))
+        if (StrEqual(target, "cpp") || StrEqual(target, "c++"))
         {
             config.codegenTargets |= schema::CodegenTarget::Cpp;
         }
-        else if (String::Equal(target, "echo"))
+        else if (StrEqual(target, "echo"))
         {
             config.codegenTargets |= schema::CodegenTarget::Echo;
         }
@@ -65,7 +67,7 @@ static bool CompileFile(const char* path, const AppArgs& args)
 static void LogToStdOut(const void*, const LogSource& source, const KeyValue* kvs, uint32_t count)
 {
     // We specially format the schema_compiler output so it gets picked up by the error window.
-    if (String::Equal(source.category, "schema_compiler") && count >= 4)
+    if (StrEqual(source.category, "schema_compiler") && count >= 4)
     {
         uint64_t line = 0;
         uint64_t column = 0;
@@ -75,13 +77,13 @@ static void LogToStdOut(const void*, const LogSource& source, const KeyValue* kv
         for (uint32_t i = 0; i < count; ++i)
         {
             const KeyValue& kv = kvs[i];
-            if (String::Equal(kv.Key(), HE_MSG_KEY))
+            if (StrEqual(kv.Key(), HE_MSG_KEY))
                 msg = &kv.GetString();
-            else if (String::Equal(kv.Key(), "file"))
+            else if (StrEqual(kv.Key(), "file"))
                 file = &kv.GetString();
-            else if (String::Equal(kv.Key(), "line"))
+            else if (StrEqual(kv.Key(), "line"))
                 line = kv.GetUint();
-            else if (String::Equal(kv.Key(), "column"))
+            else if (StrEqual(kv.Key(), "column"))
                 column = kv.GetUint();
         }
 

@@ -10,6 +10,7 @@
 #include "he/core/macros.h"
 #include "he/core/memory_ops.h"
 #include "he/core/string.h"
+#include "he/core/string_ops.h"
 #include "he/core/utils.h"
 
 #include <algorithm>
@@ -95,7 +96,7 @@ namespace he
             ss += '\n';
         }
 
-        const uint32_t usagePaddingLen = HE_LENGTH_OF(UsageMsg) + String::Length(arg0);
+        const uint32_t usagePaddingLen = HE_LENGTH_OF(UsageMsg) + StrLen(arg0);
         char* usagePadding = HE_ALLOCA(char, usagePaddingLen);
         MemSet(usagePadding, ' ', usagePaddingLen);
 
@@ -123,7 +124,7 @@ namespace he
                 return a->shortArg < b->shortArg;
 
             if (a->longArg && b->longArg)
-                return String::Less(a->longArg, b->longArg);
+                return StrLess(a->longArg, b->longArg);
 
             return !!a->longArg;
         });
@@ -177,7 +178,7 @@ namespace he
             if (shortArg != '\0' && desc.shortArg == shortArg)
                 return &desc;
 
-            if (longArg != nullptr && String::Equal(desc.longArg, longArg))
+            if (longArg != nullptr && StrEqual(desc.longArg, longArg))
                 return &desc;
         }
 
@@ -233,12 +234,12 @@ namespace he
             case 8:
                 if (isSigned)
                 {
-                    const int64_t val = String::ToInteger<int64_t>(value, nullptr, b);
+                    const int64_t val = StrToInt<int64_t>(value, nullptr, b);
                     SetOrPushValue(desc.buffer, isVector, val);
                 }
                 else
                 {
-                    const uint64_t val = String::ToInteger<uint64_t>(value, nullptr, b);
+                    const uint64_t val = StrToInt<uint64_t>(value, nullptr, b);
                     SetOrPushValue(desc.buffer, isVector, val);
                 }
                 desc.hasValue = true;
@@ -246,12 +247,12 @@ namespace he
             case 4:
                 if (isSigned)
                 {
-                    const int32_t val = String::ToInteger<int32_t>(value, nullptr, b);
+                    const int32_t val = StrToInt<int32_t>(value, nullptr, b);
                     SetOrPushValue(desc.buffer, isVector, val);
                 }
                 else
                 {
-                    const uint32_t val = String::ToInteger<uint32_t>(value, nullptr, b);
+                    const uint32_t val = StrToInt<uint32_t>(value, nullptr, b);
                     SetOrPushValue(desc.buffer, isVector, val);
                 }
                 desc.hasValue = true;
@@ -259,12 +260,12 @@ namespace he
             case 2:
                 if (isSigned)
                 {
-                    const int16_t val = String::ToInteger<int16_t>(value, nullptr, b);
+                    const int16_t val = StrToInt<int16_t>(value, nullptr, b);
                     SetOrPushValue(desc.buffer, isVector, val);
                 }
                 else
                 {
-                    const uint16_t val = String::ToInteger<uint16_t>(value, nullptr, b);
+                    const uint16_t val = StrToInt<uint16_t>(value, nullptr, b);
                     SetOrPushValue(desc.buffer, isVector, val);
                 }
                 desc.hasValue = true;
@@ -272,12 +273,12 @@ namespace he
             case 1:
                 if (isSigned)
                 {
-                    const int8_t val = String::ToInteger<int8_t>(value, nullptr, b);
+                    const int8_t val = StrToInt<int8_t>(value, nullptr, b);
                     SetOrPushValue(desc.buffer, isVector, val);
                 }
                 else
                 {
-                    const uint8_t val = String::ToInteger<uint8_t>(value, nullptr, b);
+                    const uint8_t val = StrToInt<uint8_t>(value, nullptr, b);
                     SetOrPushValue(desc.buffer, isVector, val);
                 }
                 desc.hasValue = true;
@@ -312,13 +313,13 @@ namespace he
         {
             case 8:
             {
-                const double val = String::ToFloat<double>(value);
+                const double val = StrToFloat<double>(value);
                 SetOrPushValue(desc.buffer, isVector, val);
                 desc.hasValue = true;
                 break;
             }
             case 4:
-            {                const float val = String::ToFloat<float>(value);
+            {                const float val = StrToFloat<float>(value);
                 SetOrPushValue(desc.buffer, isVector, val);
                 desc.hasValue = true;
                 break;

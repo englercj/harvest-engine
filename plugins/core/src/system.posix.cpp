@@ -6,6 +6,7 @@
 #include "he/core/macros.h"
 #include "he/core/scope_guard.h"
 #include "he/core/string.h"
+#include "he/core/string_ops.h"
 #include "he/core/string_view.h"
 #include "he/core/type_traits.h"
 #include "he/core/utils.h"
@@ -42,7 +43,7 @@ namespace he
     template <typename T>
     static void GetPowerSupplyValue(const char* data, uint32_t dataLen, StringView key, PowerStatus::Value<T>& value)
     {
-        const char* p = String::Find(key);
+        const char* p = StrFind(key);
         if (!p)
             return;
 
@@ -65,11 +66,11 @@ namespace he
         }
         else if constexpr (IsIntegral<T>)
         {
-            value.Set(String::ToInteger<T>(valueStart, valueEnd));
+            value.Set(StrToInt<T>(valueStart, valueEnd));
         }
         else if constexpr (IsFloatingPoint<T>)
         {
-            value.Set(String::ToFloat<T>(valueStart, valueEnd));
+            value.Set(StrToFloat<T>(valueStart, valueEnd));
         }
     }
 
@@ -90,15 +91,15 @@ namespace he
             platform = data.sysname;
 
             const char* major = data.release;
-            const char* majorEnd = String::Find(major, '.');
-            version.major = String::ToInteger<uint32_t>(major, majorEnd);
+            const char* majorEnd = StrFind(major, '.');
+            version.major = StrToInt<uint32_t>(major, majorEnd);
 
             const char* minor = majorEnd + 1;
-            const char* minorEnd = String::Find(minor, '.');
-            version.minor = String::ToInteger<uint32_t>(minor, minorEnd);
+            const char* minorEnd = StrFind(minor, '.');
+            version.minor = StrToInt<uint32_t>(minor, minorEnd);
 
             const char* patch = minorEnd + 1;
-            version.patch = String::ToInteger<uint32_t>(patch);
+            version.patch = StrToInt<uint32_t>(patch);
         }
     };
 
@@ -123,7 +124,7 @@ namespace he
                 return Result::FromLastError();
             }
 
-            const uint32_t len = String::Length(outName.Data() + offset);
+            const uint32_t len = StrLen(outName.Data() + offset);
             if (len < size)
             {
                 // resize to properly null terminate

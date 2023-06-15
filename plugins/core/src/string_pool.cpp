@@ -5,7 +5,7 @@
 #include "he/core/allocator.h"
 #include "he/core/assert.h"
 #include "he/core/memory_ops.h"
-#include "he/core/string.h"
+#include "he/core/string_ops.h"
 
 namespace he
 {
@@ -34,7 +34,7 @@ namespace he
         if (m_id > 0)
         {
             const char* value = String();
-            m_offset += String::Length(value) + 1;
+            m_offset += StrLen(value) + 1;
             if (m_offset >= m_strings->GetOffset(m_page))
             {
                 m_page++;
@@ -152,7 +152,7 @@ namespace he
 
     StringPoolId StringPool::Add(const char* str)
     {
-        if (String::IsEmpty(str))
+        if (StrEmpty(str))
             return {};
 
         const uint32_t hash = Hash(str);
@@ -164,7 +164,7 @@ namespace he
         // No existing entry, create a new one and insert it
         if (!entry)
         {
-            entry = AllocEntry(hash, { str, String::Length(str) });
+            entry = AllocEntry(hash, { str, StrLen(str) });
 
             if (!entry) [[unlikely]]
                 return {};
@@ -175,11 +175,11 @@ namespace he
 
         // There is an existing entry, we need to check for a hash collision.
         // In the unlikely case that the hash collides, each entry has a linked-list.
-        while (!String::Equal(str, entry->value)) [[unlikely]]
+        while (!StrEqual(str, entry->value)) [[unlikely]]
         {
             if (!entry->next) [[likely]]
             {
-                entry->next = AllocEntry(hash, { str, String::Length(str) });
+                entry->next = AllocEntry(hash, { str, StrLen(str) });
                 entry = entry->next;
 
                 if (!entry) [[unlikely]]
@@ -247,7 +247,7 @@ namespace he
         const Entry* entry = m_map.Find(hash);
         while (entry)
         {
-            if (String::Equal(str, entry->value)) [[likely]]
+            if (StrEqual(str, entry->value)) [[likely]]
                 return { entry->id };
 
             entry = entry->next;

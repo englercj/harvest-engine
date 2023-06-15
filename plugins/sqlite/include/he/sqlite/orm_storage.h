@@ -10,6 +10,7 @@
 #include "he/core/string.h"
 #include "he/core/string_builder.h"
 #include "he/core/string_fmt.h"
+#include "he/core/string_ops.h"
 #include "he/core/types.h"
 #include "he/sqlite/database.h"
 #include "he/sqlite/orm.h"

@@ -2,8 +2,6 @@
 
 #pragma once
 
-#include "he/core/allocator.h"
-#include "he/core/string.h"
 #include "he/core/string_view.h"
 #include "he/core/types.h"
 

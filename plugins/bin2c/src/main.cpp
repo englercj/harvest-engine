@@ -18,6 +18,7 @@
 #include "he/core/result_fmt.h"
 #include "he/core/scope_guard.h"
 #include "he/core/string.h"
+#include "he/core/string_ops.h"
 #include "he/core/vector.h"
 
 #include <iostream>
@@ -58,7 +59,7 @@ int he::AppMain(int argc, char* argv[])
         return -1;
     }
 
-    if (String::IsEmpty(args.name))
+    if (StrEmpty(args.name))
         args.name = "c_data";
 
     Vector<uint8_t> fileData;

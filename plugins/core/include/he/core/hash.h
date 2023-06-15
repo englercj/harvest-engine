@@ -4,7 +4,7 @@
 
 #include "he/core/compiler.h"
 #include "he/core/memory_ops.h"
-#include "he/core/string.h"
+#include "he/core/string_ops.h"
 #include "he/core/string_view.h"
 #include "he/core/type_traits.h"
 #include "he/core/types.h"
@@ -80,7 +80,7 @@ namespace he
         template <ArithmeticRange R>
         inline Hash& Update(const R& range) { m_state = Algo::Mem(range.Data(), range.Size(), m_state); return *this; }
 
-        inline Hash& Update(const char* str) { m_state = Algo::Mem(str, String::Length(str), m_state); return *this; }
+        inline Hash& Update(const char* str) { m_state = Algo::Mem(str, StrLen(str), m_state); return *this; }
 
         inline Hash& Update(const void* data, uint32_t len) { m_state = Algo::Mem(data, len, m_state); return *this; }
 

@@ -5,6 +5,7 @@
 #include "he/core/ascii.h"
 #include "he/core/assert.h"
 #include "he/core/enum_ops.h"
+#include "he/core/string_ops.h"
 #include "he/core/types.h"
 
 namespace he::schema
@@ -28,7 +29,7 @@ namespace he::schema
         m_nextError = nullptr;
         m_nextToken = TokenType::None;
 
-        if (String::IsEmpty(src))
+        if (StrEmpty(src))
         {
             m_nextError = "Input schema is empty";
             return false;

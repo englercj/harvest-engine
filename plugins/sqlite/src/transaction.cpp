@@ -7,7 +7,7 @@
 #include "he/core/fmt.h"
 #include "he/core/memory_ops.h"
 #include "he/core/span.h"
-#include "he/core/string.h"
+#include "he/core/string_ops.h"
 #include "he/core/utils.h"
 #include "he/core/random.h"
 #include "he/sqlite/database.h"
@@ -82,7 +82,7 @@ namespace he::sqlite
         constexpr uint32_t QueryMaxLen = BufferLen - (16 + 1); // 16 for id bytes, +1 for the ' ' character
         HE_ASSERT(m_id.Size() == 16);
 
-        const uint32_t len = String::Length(cmd);
+        const uint32_t len = StrLen(cmd);
         HE_ASSERT(len <= QueryMaxLen);
         HE_UNUSED(QueryMaxLen);
 

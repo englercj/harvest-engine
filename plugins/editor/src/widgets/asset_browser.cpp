@@ -11,7 +11,9 @@
 #include "he/core/log.h"
 #include "he/core/path.h"
 #include "he/core/result_fmt.h"
+#include "he/core/string.h"
 #include "he/core/string_fmt.h"
+#include "he/core/string_ops.h"
 #include "he/editor/dialogs/import_asset_dialog.h"
 #include "he/editor/icons/icons_material_design.h"
 #include "he/editor/widgets/buttons.h"
@@ -105,7 +107,7 @@ namespace he::editor
             const char* begin = m_selectedPath.Data();
             do
             {
-                const char* end = String::Find(begin, '/');
+                const char* end = StrFind(begin, '/');
                 if (end == nullptr)
                     end = m_selectedPath.End();
 

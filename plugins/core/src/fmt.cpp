@@ -38,6 +38,8 @@
 #include "he/core/config.h"
 #include "he/core/cpu.h"
 #include "he/core/limits.h"
+#include "he/core/string.h"
+#include "he/core/string_ops.h"
 #include "he/core/utils.h"
 #include "he/core/wstr.h"
 
@@ -1181,7 +1183,7 @@ namespace he
         {
             Formatter<StringView> f;
             f.spec = spec;
-            f.Format(out, { value, String::Length(value) });
+            f.Format(out, { value, StrLen(value) });
         }
     }
 

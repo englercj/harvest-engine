@@ -14,6 +14,7 @@
 #include "he/core/span.h"
 #include "he/core/string.h"
 #include "he/core/string_fmt.h"
+#include "he/core/string_ops.h"
 #include "he/core/string_view.h"
 #include "he/core/type_traits.h"
 #include "he/core/utils.h"
@@ -1065,7 +1066,7 @@ namespace he::schema
         }
 
         using LargestType = Conditional<IsSigned<T>, int64_t, uint64_t>;
-        LargestType value = he::String::ToInteger<LargestType>(begin, end, base);
+        LargestType value = StrToInt<LargestType>(begin, &end, base);
 
         if (isSigned)
         {

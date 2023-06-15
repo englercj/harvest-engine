@@ -12,6 +12,7 @@
 #include "he/core/macros.h"
 #include "he/core/string.h"
 #include "he/core/string_fmt.h"
+#include "he/core/string_ops.h"
 #include "he/core/test.h"
 
 #include <iostream>
@@ -42,7 +43,7 @@ static const KeyValue* FindKV(const char* key, const KeyValue* kvs, uint32_t cou
     {
         const KeyValue* kv = kvs + i;
 
-        if (String::Equal(key, kv->Key()))
+        if (StrEqual(key, kv->Key()))
             return kv;
     }
 
@@ -64,7 +65,7 @@ static bool HandleTestLibLogEntry(const LogSource& source, const KeyValue* kvs, 
     // Check for the "test_event_kind" key which is a sentinel for special handling of test events.
     // If we don't find it, we consider this a normal log message and don't handle it here.
     const KeyValue& kvKind = kvs[0];
-    if (!String::Equal(kvKind.Key(), "test_event_kind"))
+    if (!StrEqual(kvKind.Key(), "test_event_kind"))
         return false;
 
     const TestEventKind testKind = kvKind.GetEnum<TestEventKind>();
@@ -79,7 +80,7 @@ static bool HandleTestLibLogEntry(const LogSource& source, const KeyValue* kvs, 
 
             const KeyValue& kvErrorKind = kvs[1];
             const KeyValue& kvErrorExpr = kvs[2];
-            if (!String::Equal(kvErrorKind.Key(), "error_kind") || !String::Equal(kvErrorExpr.Key(), "error_expr"))
+            if (!StrEqual(kvErrorKind.Key(), "error_kind") || !StrEqual(kvErrorExpr.Key(), "error_expr"))
                 return false;
 
             // Log the initial failure line
@@ -112,7 +113,7 @@ static bool HandleTestLibLogEntry(const LogSource& source, const KeyValue* kvs, 
 
 static void TestRunnerLogSink(const void*, const LogSource& source, const KeyValue* kvs, uint32_t count)
 {
-    if (String::Equal(source.category, "he_test"))
+    if (StrEqual(source.category, "he_test"))
     {
         if (HandleTestLibLogEntry(source, kvs, count))
             return;

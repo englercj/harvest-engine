@@ -5,7 +5,7 @@
 #include "he/sqlite/database.h"
 #include "he/sqlite/statement.h"
 #include "he/core/memory_ops.h"
-#include "he/core/string.h"
+#include "he/core/string_ops.h"
 #include "he/core/test.h"
 
 using namespace he::sqlite;
@@ -45,7 +45,7 @@ HE_TEST(sqlite, column_reader, test)
         HE_EXPECT_EQ(s.GetColumn(0).AsInt64(), 10);
         HE_EXPECT_EQ(s.GetColumn(1).AsDouble(), 1.25);
         HE_EXPECT_EQ_STR(s.GetColumn(2).AsText().Data(), "This is text");
-        HE_EXPECT_EQ(s.GetColumn(2).AsText().Size(), he::String::Length("This is text"));
+        HE_EXPECT_EQ(s.GetColumn(2).AsText().Size(), he::StrLen("This is text"));
         uint8_t bytes[] = { 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89 };
         HE_EXPECT_EQ(s.GetColumn(3).AsBlob().Size(), HE_LENGTH_OF(bytes));
         HE_EXPECT(he::MemEqual(s.GetColumn(3).AsBlob().Data(), bytes, HE_LENGTH_OF(bytes)));

@@ -187,7 +187,7 @@ namespace he
         /// Copies the null terminated string into the buffer, excluding the null terminating
         /// character itself.
         ///
-        /// \note This is equivalent to `Write(str, String::Length(str));`
+        /// \note This is equivalent to `Write(str, StrLen(str));`
         ///
         /// \param[in] str The null terminated string to copy.
         void Write(const char* str);
@@ -195,7 +195,7 @@ namespace he
         /// Copies the null terminated string into the buffer at a previously allocated offset,
         /// excluding the null terminating character itself.
         ///
-        /// \note This is equivalent to `WriteAt(offset, str, String::Length(str));`
+        /// \note This is equivalent to `WriteAt(offset, str, StrLen(str));`
         ///
         /// \note The buffer size and capacity are not affected by this function.
         ///

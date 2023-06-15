@@ -7,6 +7,8 @@
 #include "he/core/memory_ops.h"
 #include "he/core/path.h"
 #include "he/core/scope_guard.h"
+#include "he/core/string.h"
+#include "he/core/string_ops.h"
 #include "he/core/utils.h"
 #include "he/core/wstr.h"
 
@@ -190,7 +192,7 @@ namespace he
         if (parents)
         {
             wchar_t* start = IsAbsolutePath(path) ? widePath + 3 : widePath;
-            const bool isUNC = String::EqualN(path, "\\\\", 2) || String::EqualN(path, "//", 2);
+            const bool isUNC = StrEqualN(path, "\\\\", 2) || StrEqualN(path, "//", 2);
             bool first = true;
 
             for (wchar_t* p = start; *p; ++p)

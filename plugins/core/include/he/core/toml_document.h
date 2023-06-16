@@ -24,7 +24,7 @@ namespace he
         using TableType = HashMap<String, TomlValue>;
         using VariantType = Variant<bool, int64_t, uint64_t, double, String, SystemTime, Duration, TableType, ArrayType>;
 
-        enum class Kind : uint8_t
+        enum class Kind : VariantType::IndexType
         {
             Bool,
             Int,

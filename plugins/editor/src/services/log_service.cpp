@@ -62,17 +62,19 @@ namespace he::editor
         {
             switch (kv.Kind())
             {
-                case he::KeyValue::ValueKind::Bool: crc.Update(kv.GetBool()); break;
-                case he::KeyValue::ValueKind::Enum: crc.Update(kv.GetEnumValue()); break;
-                case he::KeyValue::ValueKind::Int: crc.Update(kv.GetInt()); break;
-                case he::KeyValue::ValueKind::Uint: crc.Update(kv.GetUint()); break;
-                case he::KeyValue::ValueKind::Double: crc.Update(kv.GetDouble()); break;
+                case he::KeyValue::ValueKind::Bool: crc.Update(kv.Bool()); break;
+                case he::KeyValue::ValueKind::Enum: crc.Update(kv.Enum().value); break;
+                case he::KeyValue::ValueKind::Int: crc.Update(kv.Int()); break;
+                case he::KeyValue::ValueKind::Uint: crc.Update(kv.Uint()); break;
+                case he::KeyValue::ValueKind::Double: crc.Update(kv.Double()); break;
                 case he::KeyValue::ValueKind::String:
                 {
-                    const String& str = kv.GetString();
+                    const String& str = kv.String();
                     crc.Update(str.Data(), str.Size());
                     break;
                 }
+                case he::KeyValue::ValueKind::Empty:
+                    break;
             }
         }
     }

@@ -26,15 +26,15 @@ HE_TEST(core, assert, ASSERT)
 
         HE_EXPECT_EQ_STR(kvs[0].Key(), "error_kind");
         HE_EXPECT_EQ(kvs[0].Kind(), KeyValue::ValueKind::Enum);
-        HE_EXPECT_EQ(kvs[0].GetEnum<ErrorKind>(), ErrorKind::Assert);
+        HE_EXPECT_EQ(kvs[0].Enum().As<ErrorKind>(), ErrorKind::Assert);
 
         HE_EXPECT_EQ_STR(kvs[1].Key(), "error_expr");
         HE_EXPECT_EQ(kvs[1].Kind(), KeyValue::ValueKind::String);
-        HE_EXPECT_EQ(kvs[1].GetString(), "false");
+        HE_EXPECT_EQ(kvs[1].String(), "false");
 
         HE_EXPECT_EQ_STR(kvs[2].Key(), HE_MSG_KEY);
         HE_EXPECT_EQ(kvs[2].Kind(), KeyValue::ValueKind::String);
-        HE_EXPECT_EQ(kvs[2].GetString(), "testing 10");
+        HE_EXPECT_EQ(kvs[2].String(), "testing 10");
 
         return false;
     };
@@ -63,15 +63,15 @@ HE_TEST(core, assert, VERIFY)
         HE_EXPECT_EQ(count, 3);
         HE_EXPECT_EQ_STR(kvs[0].Key(), "error_kind");
         HE_EXPECT_EQ(kvs[0].Kind(), KeyValue::ValueKind::Enum);
-        HE_EXPECT_EQ(kvs[0].GetEnum<ErrorKind>(), ErrorKind::Verify);
+        HE_EXPECT_EQ(kvs[0].Enum().As<ErrorKind>(), ErrorKind::Verify);
 
         HE_EXPECT_EQ_STR(kvs[1].Key(), "error_expr");
         HE_EXPECT_EQ(kvs[1].Kind(), KeyValue::ValueKind::String);
-        HE_EXPECT_EQ(kvs[1].GetString(), "false");
+        HE_EXPECT_EQ(kvs[1].String(), "false");
 
         HE_EXPECT_EQ_STR(kvs[2].Key(), HE_MSG_KEY);
         HE_EXPECT_EQ(kvs[2].Kind(), KeyValue::ValueKind::String);
-        HE_EXPECT_EQ(kvs[2].GetString(), "testing 20");
+        HE_EXPECT_EQ(kvs[2].String(), "testing 20");
 
         return false;
     };

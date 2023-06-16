@@ -78,13 +78,13 @@ static void LogToStdOut(const void*, const LogSource& source, const KeyValue* kv
         {
             const KeyValue& kv = kvs[i];
             if (StrEqual(kv.Key(), HE_MSG_KEY))
-                msg = &kv.GetString();
+                msg = &kv.String();
             else if (StrEqual(kv.Key(), "file"))
-                file = &kv.GetString();
+                file = &kv.String();
             else if (StrEqual(kv.Key(), "line"))
-                line = kv.GetUint();
+                line = kv.Uint();
             else if (StrEqual(kv.Key(), "column"))
-                column = kv.GetUint();
+                column = kv.Uint();
         }
 
         if (msg && file)

@@ -2,7 +2,6 @@
 
 #pragma once
 
-#include "he/core/assert.h"
 #include "he/core/concepts.h"
 #include "he/core/limits.h"
 #include "he/core/type_traits.h"
@@ -42,21 +41,21 @@ namespace he
             new (m_storage.data) ElementType<Index>(Forward<Args>(args)...);
         }
 
-        constexpr Variant(const Variant& other) noexcept
-            : m_index(other.m_index)
+        constexpr Variant(const Variant& x) noexcept
+            : m_index(x.m_index)
         {
             if (IsValid())
             {
-                Visit(_CopyConstructVisitor{ other });
+                Visit(_CopyConstructVisitor{ x });
             }
         }
 
-        constexpr Variant(Variant&& other) noexcept
-            : m_index(other.m_index)
+        constexpr Variant(Variant&& x) noexcept
+            : m_index(x.m_index)
         {
             if (IsValid())
             {
-                Visit(_MoveConstructVisitor{ other });
+                Visit(_MoveConstructVisitor{ x });
             }
         }
 
@@ -69,7 +68,10 @@ namespace he
         {
             Clear();
             m_index = x.m_index;
-            Visit(_CopyAssignVisitor{ x });
+            if (IsValid())
+            {
+                Visit(_CopyConstructVisitor{ x });
+            }
             return *this;
         }
 
@@ -77,15 +79,26 @@ namespace he
         {
             Clear();
             m_index = x.m_index;
-            Visit(_MoveAssignVisitor{ x });
+            if (IsValid())
+            {
+                Visit(_MoveConstructVisitor{ x });
+            }
             return *this;
         }
 
-        // TODO: Assignment once we have the type list utils merged that enable it
-        // template <AnyOf<T...> U>
-        // constexpr Variant& operator=(U&& value)
-        // {
-        // }
+        template <AnyOf<T...> U>
+        constexpr Variant& operator=(const U& value)
+        {
+            constexpr IndexType Index = TypeListIndex<U, ElementList>;
+            Emplace<Index>(value);
+        }
+
+         template <AnyOf<T...> U>
+         constexpr Variant& operator=(U&& value)
+         {
+             constexpr IndexType Index = TypeListIndex<U, ElementList>;
+             Emplace<Index>(Move(value));
+         }
 
         constexpr bool IsValid() const { return m_index != InvalidIndex; }
         constexpr uint32_t Index() const { return m_index; }
@@ -111,7 +124,7 @@ namespace he
         [[nodiscard]] constexpr const ElementType<Index>& Get() const&
         {
             static_assert(Index < Size, "Index out of range.");
-            HE_ASSERT(m_index == Index);
+            //HE_ASSERT(m_index == Index);
             return *reinterpret_cast<const ElementType<Index>*>(m_storage.data);
         }
 
@@ -143,7 +156,7 @@ namespace he
         template <typename V>
         constexpr decltype(auto) Visit(V&& visitor)
         {
-            HE_ASSERT(IsValid());
+            //HE_ASSERT(IsValid());
             return VisitInternal(visitor, MakeIndexSequence<Size>{});
         }
 
@@ -160,7 +173,7 @@ namespace he
         template <typename V, uint32_t Index>
         constexpr decltype(auto) VisitInternal(V&& visitor, IndexSequence<Index>)
         {
-            HE_ASSERT(m_index == Index);
+            //HE_ASSERT(m_index == Index);
             return visitor(Get<Index>(), IndexConstant<Index>{});
         }
 
@@ -217,17 +230,6 @@ namespace he
             }
         };
 
-        struct _CopyAssignVisitor
-        {
-            const Variant& other;
-
-            template <typename T, uint32_t Index>
-            [[nodiscard]] constexpr void operator()(T& value, IndexConstant<Index>)
-            {
-                value = other.template Get<Index>();
-            }
-        };
-
         struct _MoveConstructVisitor
         {
             Variant& other;
@@ -236,17 +238,6 @@ namespace he
             [[nodiscard]] constexpr void operator()(T& value, IndexConstant<Index>)
             {
                 new (&value) ElementType<Index>(Move(other).template Get<Index>());
-            }
-        };
-
-        struct _MoveAssignVisitor
-        {
-            Variant& other;
-
-            template <typename T, uint32_t Index>
-            [[nodiscard]] constexpr void operator()(T& value, IndexConstant<Index>)
-            {
-                value = Move(other).template Get<Index>();
             }
         };
 

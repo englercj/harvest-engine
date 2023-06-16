@@ -30,33 +30,38 @@ template <KeyValue::ValueKind V> struct TestKeyValueType;
 
 template <> struct TestKeyValueType<KeyValue::ValueKind::Bool>
 {
-    static void Test(const KeyValue& kv, bool value) { HE_EXPECT_EQ(kv.GetBool(), value); }
+    static void Test(const KeyValue& kv, bool value) { HE_EXPECT_EQ(kv.Bool(), value); }
 };
 
 template <> struct TestKeyValueType<KeyValue::ValueKind::Enum>
 {
     template <Enum T>
-    static void Test(const KeyValue& kv, T value) { HE_EXPECT_EQ(kv.GetEnum<T>(), value); }
+    static void Test(const KeyValue& kv, T value) { HE_EXPECT_EQ(kv.Enum().As<T>(), value); }
 };
 
 template <> struct TestKeyValueType<KeyValue::ValueKind::Int>
 {
-    static void Test(const KeyValue& kv, int64_t value) { HE_EXPECT_EQ(kv.GetInt(), value); }
+    static void Test(const KeyValue& kv, int64_t value) { HE_EXPECT_EQ(kv.Int(), value); }
 };
 
 template <> struct TestKeyValueType<KeyValue::ValueKind::Uint>
 {
-    static void Test(const KeyValue& kv, uint64_t value) { HE_EXPECT_EQ(kv.GetUint(), value); }
+    static void Test(const KeyValue& kv, uint64_t value) { HE_EXPECT_EQ(kv.Uint(), value); }
 };
 
 template <> struct TestKeyValueType<KeyValue::ValueKind::Double>
 {
-    static void Test(const KeyValue& kv, double value) { HE_EXPECT_EQ(kv.GetDouble(), value); }
+    static void Test(const KeyValue& kv, double value) { HE_EXPECT_EQ(kv.Double(), value); }
 };
 
 template <> struct TestKeyValueType<KeyValue::ValueKind::String>
 {
-    static void Test(const KeyValue& kv, const char* value) { HE_EXPECT_EQ(kv.GetString(), value); }
+    static void Test(const KeyValue& kv, const char* value) { HE_EXPECT_EQ(kv.String(), value); }
+};
+
+template <> struct TestKeyValueType<KeyValue::ValueKind::Empty>
+{
+    static void Test(const KeyValue& kv) { HE_EXPECT(kv.IsEmpty()); }
 };
 
 template <typename T>
@@ -103,7 +108,7 @@ HE_TEST(core, key_value, MSG)
     KeyValue msg = HE_MSG("Testing {}", true);
     HE_EXPECT_EQ_STR(msg.Key(), HE_MSG_KEY);
     HE_EXPECT_EQ(msg.Kind(), KeyValue::ValueKind::String);
-    HE_EXPECT_EQ(msg.GetString(), "Testing true");
+    HE_EXPECT_EQ(msg.String(), "Testing true");
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -113,7 +118,7 @@ HE_TEST(core, key_value, VAL)
     KeyValue msg = HE_VAL(test);
     HE_EXPECT_EQ_STR(msg.Key(), "test");
     HE_EXPECT_EQ(msg.Kind(), KeyValue::ValueKind::Bool);
-    HE_EXPECT_EQ(msg.GetBool(), true);
+    HE_EXPECT_EQ(msg.Bool(), true);
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -138,7 +143,7 @@ HE_TEST(core, key_value, KeyValue)
     KeyValue fmtKv = HE_KV(key16, "testing {}", 5);
     HE_EXPECT_EQ_STR(fmtKv.Key(), "key16");
     HE_EXPECT_EQ(fmtKv.Kind(), KeyValue::ValueKind::String);
-    HE_EXPECT_EQ(fmtKv.GetString(), "testing 5");
+    HE_EXPECT_EQ(fmtKv.String(), "testing 5");
 }
 
 // ------------------------------------------------------------------------------------------------

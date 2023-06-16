@@ -68,7 +68,7 @@ static bool HandleTestLibLogEntry(const LogSource& source, const KeyValue* kvs, 
     if (!StrEqual(kvKind.Key(), "test_event_kind"))
         return false;
 
-    const TestEventKind testKind = kvKind.GetEnum<TestEventKind>();
+    const TestEventKind testKind = kvKind.Enum().As<TestEventKind>();
     switch (testKind)
     {
         case TestEventKind::TestFailure:
@@ -84,8 +84,8 @@ static bool HandleTestLibLogEntry(const LogSource& source, const KeyValue* kvs, 
                 return false;
 
             // Log the initial failure line
-            const ErrorKind errorKind = kvErrorKind.GetEnum<ErrorKind>();
-            const String& errorExpr = kvErrorExpr.GetString();
+            const ErrorKind errorKind = kvErrorKind.Enum().As<ErrorKind>();
+            const String& errorExpr = kvErrorExpr.String();
             std::cout << AsString(errorKind) << " failed: " << errorExpr.Data() << " [" << source.file << '(' << source.line << ")]" << std::endl;
 
             // First three keys are "test_event_kind",  `error_kind` and `error_expr` so skip those and log the rest
@@ -100,7 +100,7 @@ static bool HandleTestLibLogEntry(const LogSource& source, const KeyValue* kvs, 
         {
             if (s_args.timings)
             {
-                const int64_t timeNs = GetKV("test_time_ns", kvs, count).GetInt();
+                const int64_t timeNs = GetKV("test_time_ns", kvs, count).Int();
                 const double timeMs = ToPeriod<Milliseconds, double>({ timeNs });
                 std::cout << "    -> test took " << timeMs << " ms" << std::endl;
             }

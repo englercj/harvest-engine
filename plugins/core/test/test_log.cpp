@@ -45,7 +45,7 @@ static void TestLogHandler(const void*, const LogSource& source, const KeyValue*
     HE_EXPECT_EQ(count, 1);
     HE_EXPECT_EQ_STR(kvs[0].Key(), HE_MSG_KEY);
     HE_EXPECT_EQ(kvs[0].Kind(), KeyValue::ValueKind::String);
-    HE_EXPECT_EQ(kvs[0].GetString(), "testing");
+    HE_EXPECT_EQ(kvs[0].String(), "testing");
 }
 
 // ------------------------------------------------------------------------------------------------

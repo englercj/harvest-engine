@@ -22,11 +22,11 @@ HE_TEST(core, error, ErrorHandler)
 
         HE_EXPECT_EQ_STR(kvs[0].Key(), "a");
         HE_EXPECT_EQ(kvs[0].Kind(), KeyValue::ValueKind::String);
-        HE_EXPECT_EQ(kvs[0].GetString(), "a");
+        HE_EXPECT_EQ(kvs[0].String(), "a");
 
         HE_EXPECT_EQ_STR(kvs[1].Key(), "b");
         HE_EXPECT_EQ(kvs[1].Kind(), KeyValue::ValueKind::String);
-        HE_EXPECT_EQ(kvs[1].GetString(), "b");
+        HE_EXPECT_EQ(kvs[1].String(), "b");
 
         return false;
     };

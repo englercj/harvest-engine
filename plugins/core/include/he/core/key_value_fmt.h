@@ -18,12 +18,21 @@ namespace he
         {
             switch (kv.Kind())
             {
-                case KeyValue::ValueKind::Bool: FormatTo(out, "{} = {}", kv.Key(), kv.GetBool()); break;
-                case KeyValue::ValueKind::Enum: FormatTo(out, "{} = {}({})", kv.Key(), kv.GetEnumString(), kv.GetEnumValue()); break;
-                case KeyValue::ValueKind::Int: FormatTo(out, "{} = {}", kv.Key(), kv.GetInt()); break;
-                case KeyValue::ValueKind::Uint: FormatTo(out, "{} = {}", kv.Key(), kv.GetUint()); break;
-                case KeyValue::ValueKind::Double: FormatTo(out, "{} = {}", kv.Key(), kv.GetDouble()); break;
-                case KeyValue::ValueKind::String: FormatTo(out, "{} = {}", kv.Key(), kv.GetString().Data()); break;
+                case KeyValue::ValueKind::Bool: FormatTo(out, "{} = {}", kv.Key(), kv.Bool()); break;
+                case KeyValue::ValueKind::Int: FormatTo(out, "{} = {}", kv.Key(), kv.Int()); break;
+                case KeyValue::ValueKind::Uint: FormatTo(out, "{} = {}", kv.Key(), kv.Uint()); break;
+                case KeyValue::ValueKind::Double: FormatTo(out, "{} = {}", kv.Key(), kv.Double()); break;
+                case KeyValue::ValueKind::String: FormatTo(out, "{} = {}", kv.Key(), kv.String().Data()); break;
+
+                case KeyValue::ValueKind::Enum:
+                {
+                    const KeyValue::EnumStorage& e = kv.Enum();
+                    FormatTo(out, "{} = {}({})", kv.Key(), e.String(), e.value);
+                    break;
+                }
+
+                case KeyValue::ValueKind::Empty:
+                    break;
             }
         }
     };

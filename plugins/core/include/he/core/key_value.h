@@ -9,6 +9,7 @@
 #include "he/core/type_traits.h"
 #include "he/core/string.h"
 #include "he/core/utils.h"
+#include "he/core/variant.h"
 
 /// \def HE_MSG_KEY
 /// Defines the quoted string to use as the key for the special "message" pair that is
@@ -51,7 +52,20 @@ namespace he
     class KeyValue
     {
     public:
-        enum class ValueKind
+        struct EnumStorage
+        {
+            uint64_t value;
+            const char* (*toString)(uint64_t value);
+
+            template <Enum T>
+            T As() const { return static_cast<T>(value); }
+
+            const char* String() const { return toString(value); }
+        };
+
+        using VariantType = Variant<bool, EnumStorage, int64_t, uint64_t, double, String>;
+
+        enum class ValueKind : VariantType::IndexType
         {
             Bool,
             Enum,
@@ -59,86 +73,79 @@ namespace he
             Uint,
             Double,
             String,
+            Empty,
         };
 
+        template <ValueKind K, VariantType::IndexType I = AsUnderlyingType(K)>
+        constexpr IndexConstant<I> AsIndex() { return IndexConstant<I>{}; }
+
     public:
-        KeyValue() = default;
-        KeyValue(const char* k, bool v) noexcept : m_key(k), m_kind(ValueKind::Bool), m_value{ .b = v } {}
-        KeyValue(const char* k, signed char v) noexcept : m_key(k), m_kind(ValueKind::Int), m_value{ .i = v } {}
-        KeyValue(const char* k, signed short v) noexcept : m_key(k), m_kind(ValueKind::Int), m_value{ .i = v } {}
-        KeyValue(const char* k, signed int v) noexcept : m_key(k), m_kind(ValueKind::Int), m_value{ .i = v } {}
-        KeyValue(const char* k, signed long v) noexcept : m_key(k), m_kind(ValueKind::Int), m_value{ .i = v } {}
-        KeyValue(const char* k, signed long long v) noexcept : m_key(k), m_kind(ValueKind::Int), m_value{ .i = v } {}
-        KeyValue(const char* k, unsigned char v) noexcept : m_key(k), m_kind(ValueKind::Uint), m_value{ .u = v } {}
-        KeyValue(const char* k, unsigned short v) noexcept : m_key(k), m_kind(ValueKind::Uint), m_value{ .u = v } {}
-        KeyValue(const char* k, unsigned int v) noexcept : m_key(k), m_kind(ValueKind::Uint), m_value{ .u = v } {}
-        KeyValue(const char* k, unsigned long v) noexcept : m_key(k), m_kind(ValueKind::Uint), m_value{ .u = v } {}
-        KeyValue(const char* k, unsigned long long v) noexcept : m_key(k), m_kind(ValueKind::Uint), m_value{ .u = v } {}
-        KeyValue(const char* k, float v) noexcept : m_key(k), m_kind(ValueKind::Double), m_value{ .d = v } {}
-        KeyValue(const char* k, double v) noexcept : m_key(k), m_kind(ValueKind::Double), m_value{ .d = v } {}
+        KeyValue() noexcept : m_key(""), m_value() {}
+        KeyValue(const char* k, bool v) noexcept : m_key(k), m_value(IndexConstant<AsUnderlyingType(ValueKind::Bool)>{}, v) {}
+        KeyValue(const char* k, char v) noexcept : m_key(k), m_value(IndexConstant<AsUnderlyingType(ValueKind::Int)>{}, v) {}
+        KeyValue(const char* k, signed char v) noexcept : m_key(k), m_value(IndexConstant<AsUnderlyingType(ValueKind::Int)>{}, v) {}
+        KeyValue(const char* k, short v) noexcept : m_key(k), m_value(IndexConstant<AsUnderlyingType(ValueKind::Int)>{}, v) {}
+        KeyValue(const char* k, int v) noexcept : m_key(k), m_value(IndexConstant<AsUnderlyingType(ValueKind::Int)>{}, v) {}
+        KeyValue(const char* k, long v) noexcept : m_key(k), m_value(IndexConstant<AsUnderlyingType(ValueKind::Int)>{}, v) {}
+        KeyValue(const char* k, long long v) noexcept : m_key(k), m_value(IndexConstant<AsUnderlyingType(ValueKind::Int)>{}, v) {}
+        KeyValue(const char* k, unsigned char v) noexcept : m_key(k), m_value(IndexConstant<AsUnderlyingType(ValueKind::Uint)>{}, v) {}
+        KeyValue(const char* k, unsigned short v) noexcept : m_key(k), m_value(IndexConstant<AsUnderlyingType(ValueKind::Uint)>{}, v) {}
+        KeyValue(const char* k, unsigned int v) noexcept : m_key(k), m_value(IndexConstant<AsUnderlyingType(ValueKind::Uint)>{}, v) {}
+        KeyValue(const char* k, unsigned long v) noexcept : m_key(k), m_value(IndexConstant<AsUnderlyingType(ValueKind::Uint)>{}, v) {}
+        KeyValue(const char* k, unsigned long long v) noexcept : m_key(k), m_value(IndexConstant<AsUnderlyingType(ValueKind::Uint)>{}, v) {}
+        KeyValue(const char* k, float v) noexcept : m_key(k), m_value(IndexConstant<AsUnderlyingType(ValueKind::Double)>{}, v) {}
+        KeyValue(const char* k, double v) noexcept : m_key(k), m_value(IndexConstant<AsUnderlyingType(ValueKind::Double)>{}, v) {}
 
         template <Enum T>
         constexpr KeyValue(const char* k, T v) noexcept
             : m_key(k)
-            , m_kind(ValueKind::Enum)
+            , m_value(IndexConstant<AsUnderlyingType(ValueKind::Enum)>{})
         {
-            m_value.e.value = static_cast<uint64_t>(v);
-            m_value.e.toString = [](uint64_t val) { return AsString(static_cast<T>(val)); };
+            EnumStorage& e = m_value.Get<AsUnderlyingType(ValueKind::Enum)>();
+            e.value = static_cast<uint64_t>(v);
+            e.toString = [](uint64_t val) { return AsString(static_cast<T>(val)); };
         }
 
         KeyValue(const char* k, const char* v) noexcept
             : m_key(k)
-            , m_kind(ValueKind::String)
-        {
-            m_value.s = v;
-        }
+            , m_value(IndexConstant<AsUnderlyingType(ValueKind::String)>{}, v)
+        {}
 
-        template <size_t N>
+        template <uint32_t N>
         KeyValue(const char* k, const char (&v)[N]) noexcept
             : m_key(k)
-            , m_kind(ValueKind::String)
-        {
-            m_value.s.Assign(v, N);
-        }
+            , m_value(IndexConstant<AsUnderlyingType(ValueKind::String)>{}, v, N)
+        {}
 
         template <typename T> requires(!IsEnum<T> && ContiguousRangeOf<T, const char>)
         KeyValue(const char* k, const T& v) noexcept
             : m_key(k)
-            , m_kind(ValueKind::String)
-        {
-            m_value.s = v;
-        }
+            , m_value(IndexConstant<AsUnderlyingType(ValueKind::String)>{}, v)
+        {}
 
         template <typename... Args>
         KeyValue(const char* k, FmtString<Args...> fmt, Args&&... args) noexcept
             : m_key(k)
-            , m_kind(ValueKind::String)
+            , m_value(IndexConstant<AsUnderlyingType(ValueKind::String)>{})
         {
-            FormatTo(m_value.s, fmt, Forward<Args>(args)...);
+            he::String& s = m_value.Get<AsUnderlyingType(ValueKind::String)>();
+            FormatTo(s, fmt, Forward<Args>(args)...);
         }
 
         template <typename T> requires(!IsEnum<T> && !ContiguousRangeOf<T, const char>)
         KeyValue(const char* k, const T& v) noexcept
             : m_key(k)
-            , m_kind(ValueKind::String)
+            , m_value(IndexConstant<AsUnderlyingType(ValueKind::String)>{})
         {
-            FormatTo(m_value.s, "{}", v);
+            he::String& s = m_value.Get<AsUnderlyingType(ValueKind::String)>();
+            FormatTo(s, "{}", v);
         }
 
         KeyValue(const KeyValue& x) noexcept { *this = x; }
         KeyValue& operator=(const KeyValue& x) noexcept
         {
             m_key = x.m_key;
-            m_kind = x.m_kind;
-            switch (m_kind)
-            {
-                case ValueKind::Bool: m_value.b = x.m_value.b; break;
-                case ValueKind::Enum: m_value.e = x.m_value.e; break;
-                case ValueKind::Int: m_value.i = x.m_value.i; break;
-                case ValueKind::Uint: m_value.u = x.m_value.u; break;
-                case ValueKind::Double: m_value.d = x.m_value.d; break;
-                case ValueKind::String: m_value.s = x.m_value.s; break;
-            }
+            m_value = x.m_value;
             return *this;
         }
 
@@ -146,53 +153,51 @@ namespace he
         KeyValue& operator=(KeyValue&& x) noexcept
         {
             m_key = x.m_key;
-            m_kind = x.m_kind;
-            switch (m_kind)
-            {
-                case ValueKind::Bool: m_value.b = x.m_value.b; break;
-                case ValueKind::Enum: m_value.e = x.m_value.e; break;
-                case ValueKind::Int: m_value.i = x.m_value.i; break;
-                case ValueKind::Uint: m_value.u = x.m_value.u; break;
-                case ValueKind::Double: m_value.d = x.m_value.d; break;
-                case ValueKind::String: m_value.s = Move(x.m_value.s); break;
-            }
+            m_value = Move(x.m_value);
             return *this;
         }
 
     public:
+        ValueKind Kind() const { return m_value.IsValid() ? static_cast<ValueKind>(m_value.Index()) : ValueKind::Empty; }
+        bool IsEmpty() const { return !m_value.IsValid(); }
+        void Clear() { m_value.Clear(); }
+
         const char* Key() const { return m_key; }
-        ValueKind Kind() const { return m_kind; }
 
-        bool GetBool() const;
-        int64_t GetInt() const;
-        uint64_t GetUint() const;
-        double GetDouble() const;
-        const String& GetString() const;
+        template <ValueKind K> bool Is() const { return m_value.Index() == AsUnderlyingType(K); }
+        bool IsBool() const { return Is<ValueKind::Bool>(); }
+        bool IsEnum() const { return Is<ValueKind::Enum>(); }
+        bool IsInt() const { return Is<ValueKind::Int>(); }
+        bool IsUint() const { return Is<ValueKind::Uint>(); }
+        bool IsDouble() const { return Is<ValueKind::Double>(); }
+        bool IsString() const { return Is<ValueKind::String>(); }
 
-        uint64_t GetEnumValue() const;
-        template <Enum T> T GetEnum() const { return static_cast<T>(GetEnumValue()); }
-        const char* GetEnumString() const;
+        template <ValueKind K> decltype(auto) Set() { return m_value.Emplace<AsUnderlyingType(K)>(); }
+        void SetBool(bool v) { Set<ValueKind::Bool>() = v; }
+        void SetInt(int64_t v) { Set<ValueKind::Int>() = v; }
+        void SetUint(uint64_t v) { Set<ValueKind::Uint>() = v; }
+        void Setdouble(double v) { Set<ValueKind::Double>() = v; }
+        void SetString(StringView v) { Set<ValueKind::String>() = v; }
+
+        template <Enum T>
+        void SetEnum(T v)
+        {
+            EnumStorage& e = Set<ValueKind::Enum>();
+            e.value = static_cast<uint64_t>(v);
+            e.toString = [](uint64_t val) { return AsString(static_cast<T>(val)); };
+        }
+
+        template <ValueKind K> decltype(auto) Get() { return m_value.Get<AsUnderlyingType(K)>(); }
+        template <ValueKind K> decltype(auto) Get() const { return m_value.Get<AsUnderlyingType(K)>(); }
+        bool Bool() const { return Get<ValueKind::Bool>(); }
+        const EnumStorage& Enum() const { return Get<ValueKind::Enum>(); }
+        int64_t Int() const { return Get<ValueKind::Int>(); }
+        uint64_t Uint() const { return Get<ValueKind::Uint>(); }
+        double Double() const { return Get<ValueKind::Double>(); }
+        const he::String& String() const { return Get<ValueKind::String>(); }
 
     private:
-        const char* m_key{ nullptr };
-        ValueKind m_kind{ ValueKind::Bool };
-
-        struct
-        {
-            union
-            {
-                bool b{ false };
-                int64_t i;
-                uint64_t u;
-                double d;
-
-                struct
-                {
-                    uint64_t value;
-                    const char* (*toString)(uint64_t value);
-                } e;
-            };
-            String s{ Allocator::GetDefault() };
-        } m_value;
+        const char* m_key;
+        VariantType m_value;
     };
 }

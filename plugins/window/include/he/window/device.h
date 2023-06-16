@@ -78,7 +78,7 @@ namespace he::window
         /// Returns true if high definition mouse tracking is available.
         ///
         /// \return True if the feature is available, false otherwise.
-        virtual const DeviceInfo& GetInfo() const = 0;
+        virtual const DeviceInfo& GetDeviceInfo() const = 0;
 
         /// Creates a platform view using the descriptor.
         ///
@@ -94,12 +94,12 @@ namespace he::window
         /// Returns a pointer to the focused view, or nullptr if no view is focused.
         ///
         /// \return The focused view, or nullptr if no view is focused.
-        virtual View* GetFocusedView() const = 0;
+        virtual View* FocusedView() const = 0;
 
         /// Returns a pointer to the hovered view, or nullptr if no view is hovered.
         ///
         /// \return The hovered view, or nullptr if no view is hovered.
-        virtual View* GetHoveredView() const = 0;
+        virtual View* HoveredView() const = 0;
 
         /// Gets the current cursor position. Passing a view pointer will return the coordinates
         /// relative to that view.
@@ -130,10 +130,10 @@ namespace he::window
         /// Returns the number of monitors available to the device.
         ///
         /// \return The number of available monitors.
-        virtual uint32_t GetMonitorCount() const = 0;
+        virtual uint32_t MonitorCount() const = 0;
 
         /// Queries the monitor information for the available monitors. You can use
-        /// \ref GetMonitorCount to preallocate the monitors array for input here.
+        /// \ref MonitorCount to preallocate the monitors array for input here.
         ///
         /// \param[in] monitors Array of \ref Monitor structures that will be filled in.
         /// \param[in] maxCount Number of \ref Monitor structures in the array that can be written to.

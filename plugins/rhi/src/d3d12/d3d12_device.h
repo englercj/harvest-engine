@@ -116,7 +116,7 @@ namespace he::rhi::d3d12
         Result CreateVertexBufferFormat(const VertexBufferFormatDesc& desc, VertexBufferFormat*& out) override;
         void DestroyVertexBufferFormat(VertexBufferFormat* vbf) override;
 
-        const DeviceInfo& GetInfo() override { return m_info; }
+        const DeviceInfo& GetDeviceInfo() override { return m_info; }
         Result GetSwapChainFormats(void* nvh, SwapChainFormat* formats, uint32_t& count) override;
 
     private:

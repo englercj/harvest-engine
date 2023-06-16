@@ -656,7 +656,7 @@ namespace he::editor
 
         // Upload pixels to the texture
         {
-            uint32_t alignment = device->GetInfo().uploadDataPitchAlignment;
+            uint32_t alignment = device->GetDeviceInfo().uploadDataPitchAlignment;
             uint32_t uploadPitch = AlignUp<uint32_t>(fontPixelsWidth * 4, alignment);
             uint32_t uploadSize = fontPixelsHeight * uploadPitch;
 

@@ -547,7 +547,7 @@ namespace he::window::linux
         m_running.store(false);
     }
 
-    const DeviceInfo& DeviceImpl::GetInfo() const
+    const DeviceInfo& DeviceImpl::GetDeviceInfo() const
     {
         return m_deviceInfo;
     }
@@ -563,7 +563,7 @@ namespace he::window::linux
         m_allocator.Delete(view);
     }
 
-    View* DeviceImpl::GetFocusedView() const
+    View* DeviceImpl::FocusedView() const
     {
         Window focused = X11_None;
         int revertTo = RevertToNone;
@@ -572,7 +572,7 @@ namespace he::window::linux
         return GetViewFromWindow(focused);
     }
 
-    View* DeviceImpl::GetHoveredView() const
+    View* DeviceImpl::HoveredView() const
     {
         Window rootWin = X11_None;
         Window childWin = X11_None;
@@ -646,14 +646,14 @@ namespace he::window::linux
         }
     }
 
-    uint32_t DeviceImpl::GetMonitorCount() const
+    uint32_t DeviceImpl::MonitorCount() const
     {
         return static_cast<uint32_t>(ScreenCount(m_display));
     }
 
     uint32_t DeviceImpl::GetMonitors(Monitor* monitors, uint32_t maxCount) const
     {
-        const uint32_t count = GetMonitorCount();
+        const uint32_t count = MonitorCount();
 
         uint32_t i = 0;
         for (; i < count && i < maxCount; ++i)
@@ -693,7 +693,7 @@ namespace he::window::linux
 
     void DeviceImpl::CenterCursor()
     {
-        View* view = GetFocusedView();
+        View* view = FocusedView();
         if (!view)
             return;
 
@@ -781,7 +781,7 @@ namespace he::window::linux
                 if (!absolute && pos.x == 0 && pos.y == 0)
                     break;
 
-                PointerMoveEvent ev(GetFocusedView());
+                PointerMoveEvent ev(FocusedView());
                 ev.pointerId = PointerId_Mouse;
                 ev.pointerKind = PointerKind::Mouse;
                 ev.isPrimary = true;

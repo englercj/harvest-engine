@@ -811,7 +811,7 @@ namespace he::window::win32
         m_running.store(false);
     }
 
-    const DeviceInfo& DeviceImpl::GetInfo() const
+    const DeviceInfo& DeviceImpl::GetDeviceInfo() const
     {
         return m_deviceInfo;
     }
@@ -826,7 +826,7 @@ namespace he::window::win32
         m_allocator.Delete(view);
     }
 
-    View* DeviceImpl::GetFocusedView() const
+    View* DeviceImpl::FocusedView() const
     {
         HWND hWnd = ::GetForegroundWindow();
         if (!hWnd || reinterpret_cast<HINSTANCE>(::GetWindowLongPtrW(hWnd, GWLP_HINSTANCE)) != m_hInstance)
@@ -835,7 +835,7 @@ namespace he::window::win32
         return reinterpret_cast<View*>(::GetWindowLongPtrW(hWnd, GWLP_USERDATA));
     }
 
-    View* DeviceImpl::GetHoveredView() const
+    View* DeviceImpl::HoveredView() const
     {
         POINT pos;
         if (!::GetCursorPos(&pos))
@@ -910,7 +910,7 @@ namespace he::window::win32
         return TRUE;
     }
 
-    uint32_t DeviceImpl::GetMonitorCount() const
+    uint32_t DeviceImpl::MonitorCount() const
     {
         uint32_t count = 0;
         ::EnumDisplayMonitors(nullptr, nullptr, CountMonitorsCallback, reinterpret_cast<LPARAM>(&count));
@@ -980,7 +980,7 @@ namespace he::window::win32
 
     void DeviceImpl::CenterCursor()
     {
-        View* view = GetFocusedView();
+        View* view = FocusedView();
         if (!view)
             return;
 

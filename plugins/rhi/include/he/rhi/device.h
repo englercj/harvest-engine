@@ -505,7 +505,7 @@ namespace he::rhi
         /// Gets the capabilities of the device.
         ///
         /// \return The device capabilities.
-        virtual const DeviceInfo& GetInfo() = 0;
+        virtual const DeviceInfo& GetDeviceInfo() = 0;
 
         /// Gets the valid swap chain formats the output device supports.
         ///

@@ -58,13 +58,13 @@ namespace he::window::win32
         int Run(Application& app, const ViewDesc& desc) override;
         void Quit(int rc) override;
 
-        const DeviceInfo& GetInfo() const override;
+        const DeviceInfo& GetDeviceInfo() const override;
 
         View* CreateView(const ViewDesc& desc) override;
         void DestroyView(View* view) override;
 
-        View* GetFocusedView() const override;
-        View* GetHoveredView() const override;
+        View* FocusedView() const override;
+        View* HoveredView() const override;
 
         Vec2f GetCursorPos(View* view) const override;
         void SetCursorPos(View* view, const Vec2f& pos) override;
@@ -73,7 +73,7 @@ namespace he::window::win32
 
         void SetCursorRelativeMode(bool relativeMode) override;
 
-        uint32_t GetMonitorCount() const override;
+        uint32_t MonitorCount() const override;
         uint32_t GetMonitors(Monitor* monitors, uint32_t maxCount) const override;
 
         Gamepad& GetGamepad(uint32_t index) override;

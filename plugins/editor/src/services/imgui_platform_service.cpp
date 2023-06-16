@@ -387,7 +387,7 @@ namespace he::editor
     {
         m_needToUpdateMonitors = false;
 
-        uint32_t count = m_device->GetMonitorCount();
+        uint32_t count = m_device->MonitorCount();
         if (count == 0)
             return;
 
@@ -423,7 +423,7 @@ namespace he::editor
         HE_ASSERT(m_view != nullptr);
 
         const bool isViewportsEnabled = HasFlag(io.ConfigFlags, ImGuiConfigFlags_ViewportsEnable);
-        const bool isAppFocused = m_view->IsChildFocused() || ImGui::FindViewportByPlatformHandle(m_device->GetFocusedView());
+        const bool isAppFocused = m_view->IsChildFocused() || ImGui::FindViewportByPlatformHandle(m_device->FocusedView());
         if (isAppFocused)
         {
             // (Optional) Set OS mouse position from Dear ImGui if requested (rarely used, only
@@ -456,7 +456,7 @@ namespace he::editor
         // is not set by the backend, Dear imGui will ignore this field and infer the information
         // using its flawed heuristic.
         ImGuiID mouseViewportId = 0;
-        window::View* hoveredView = m_device->GetHoveredView();
+        window::View* hoveredView = m_device->HoveredView();
         if (hoveredView)
         {
             ImGuiViewport* viewport = ImGui::FindViewportByPlatformHandle(hoveredView);

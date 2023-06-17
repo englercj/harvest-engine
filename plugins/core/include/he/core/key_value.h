@@ -176,7 +176,7 @@ namespace he
         void SetBool(bool v) { Set<ValueKind::Bool>() = v; }
         void SetInt(int64_t v) { Set<ValueKind::Int>() = v; }
         void SetUint(uint64_t v) { Set<ValueKind::Uint>() = v; }
-        void Setdouble(double v) { Set<ValueKind::Double>() = v; }
+        void SetDouble(double v) { Set<ValueKind::Double>() = v; }
         void SetString(StringView v) { Set<ValueKind::String>() = v; }
 
         template <Enum T>

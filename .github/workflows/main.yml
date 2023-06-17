@@ -17,10 +17,7 @@ jobs:
     - name: Install Dependencies
       run: |
         sudo apt update
-        sudo apt install -y libx11-dev libxi-dev
-        sudo update-alternatives --set clang /usr/bin/clang-11
-        sudo update-alternatives --set clang++ /usr/bin/clang++-11
-        sudo update-alternatives --install /usr/bin/llvm-ar llvm-ar /usr/bin/llvm-ar-11 100
+        sudo apt install -y build-essential binutils-dev libdw-dev libx11-dev libxi-dev liburing-dev
     - name: Checkout
       uses: actions/checkout@v2
     - name: Bootstrap

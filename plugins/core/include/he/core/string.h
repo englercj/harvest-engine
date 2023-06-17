@@ -153,19 +153,6 @@ namespace he
         template <ContiguousRangeOf<const char> R>
         [[nodiscard]] bool operator==(const R& range) const { return range.Size() == Size() && CompareTo(range) == 0; }
 
-        /// Checks if this string is not equal to the null terminated string `x`.
-        ///
-        /// \param x The string to check against.
-        /// \return True if the strings are not equal, false otherwise.
-        [[nodiscard]] bool operator!=(const char* x) const { return !this->operator==(x); }
-
-        /// Checks if this string is equal to a character range.
-        ///
-        /// \param range The characters to check against.
-        /// \return True if the string is not equal to `range`, false otherwise.
-        template <ContiguousRangeOf<const char> R>
-        [[nodiscard]] bool operator!=(const R & range) const { return !this->operator==(range); }
-
         /// Checks if this string is less than the null terminated string `x`.
         ///
         /// \param x The string to check against.

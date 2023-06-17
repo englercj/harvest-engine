@@ -104,6 +104,17 @@ he.add_module_key {
 -- ------------------------------------------------------------------------------------------------
 -- Harvest functions useful for our module system
 
+local function _prepare_variants(ctx, values)
+    for _, variant in ipairs(values) do
+        he.filter_push(variant.conditions)
+
+        for key, value in he.ordered_pairs(variant) do
+            he.try_prepare_module_key(ctx, key, value)
+        end
+
+        he.filter_pop()
+    end
+end
 
 local function _handle_variant_key(ctx, key, value)
     if table.contains(he.variant_disallow_keys, key) then
@@ -203,6 +214,10 @@ local function _handle_dependson(ctx, values)
             end
         end
 
+        if mod._requires_build_order_dependency == true then
+            dependson { mod.name }
+        end
+
         for _, handler in ipairs(he.module_dependency_handlers) do
             handler(ctx, mod)
         end
@@ -274,6 +289,7 @@ he.add_module_key {
     scope = "private",
     type = "table",
     desc = "an array of variant objects",
+    prepare = _prepare_variants,
     handler = _handle_variants,
 }
 

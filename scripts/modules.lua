@@ -34,7 +34,6 @@ local kind_by_module_type = {
 -- Most of these are handled explicitly, or are private, so we don't want to warn
 -- about missing handlers for them.
 local module_ignore_keys = {
-    "_plugin",
     "conditions",
     "name",
     "type",
@@ -61,23 +60,24 @@ he.module_key_infos = {}
 
 he.module_dependency_handlers = {}
 
-local function _try_handle_key(ctx, key, value)
+local function _try_run_module_key_handler(ctx, key, value, handler_name)
     if key == nil or value == nil then
         return
     end
 
-    if table.contains(module_ignore_keys, key) then
+    if key:sub(1, 1) == "_" or table.contains(module_ignore_keys, key) then
         return
     end
 
     local info = he.module_key_infos[key]
     if info == nil then
         p.warn("Module '" .. ctx.name .. "' contains unknown key '" .. key .. "'.")
-    else
-        assert(type(value) == info.type, "Unexpected type for '" .. key .. "' in module '" .. ctx.name .. "', expected " .. info.desc)
-        if info.handler ~= nil then
-            info.handler(ctx, value)
-        end
+        return
+    end
+
+    assert(type(value) == info.type, "Unexpected type for '" .. key .. "' in module '" .. ctx.name .. "', expected " .. info.desc)
+    if info[handler_name] ~= nil then
+        info[handler_name](ctx, value)
     end
 end
 
@@ -104,7 +104,17 @@ local function _system_tag_file_excludes()
     filter { }
 end
 
-local function _msvc_module_links(mod)
+local function _module_prepare(mod)
+    if mod._plugin._install_valid == false then
+        verbosef("Skipping prepare for module '%s' in group '%s', not installed.", mod.name, mod.group)
+        return
+    end
+
+    verbosef("Running prepare for module '%s' in group '%s'", mod.name, mod.group)
+
+    for key, value in he.ordered_pairs(mod) do
+        he.try_prepare_module_key(mod, key, value)
+    end
 end
 
 local function _module_project(mod)
@@ -143,11 +153,10 @@ local function _module_project(mod)
         }
 
         for key, value in he.ordered_pairs(mod) do
-            _try_handle_key(mod, key, value)
+            he.try_handle_module_key(mod, key, value)
         end
 
         _system_tag_file_excludes()
-        _msvc_module_links()
 
     os.chdir(oldcwd)
 end
@@ -220,15 +229,8 @@ local function _import_plugin(plugin_path, options)
 
     -- Import modules provided by this plugin
     for _, mod in ipairs(plugin.modules) do
-        verbosef("Importing plugin module '%s'...", mod.name)
-        mod._plugin = plugin
-
-        local existing = he.imported_modules[mod.name]
-        assert(existing == nil, "Module '" .. mod.name .. "' was already provided by plugin '" .. (existing and existing._plugin.id or "") .. "', but plugin '" .. plugin.id .. "' also provides it.")
-
         if _should_include_module(mod, options) then
-            he.imported_modules[mod.name] = mod
-            he.imported_modules_count = he.imported_modules_count + 1
+            he.add_module(plugin, mod)
         end
     end
 
@@ -281,6 +283,10 @@ end
 
 he.generate_projects = function ()
     for mod_name, mod in pairs(he.imported_modules) do
+        _module_prepare(mod)
+    end
+
+    for mod_name, mod in pairs(he.imported_modules) do
         _module_project(mod)
     end
 end
@@ -318,10 +324,26 @@ he.get_module = function (name)
     return he.imported_modules[name]
 end
 
+he.add_module = function (plugin, mod)
+    verbosef("Importing plugin module '%s'...", mod.name)
+
+    mod._plugin = plugin
+
+    local existing = he.imported_modules[mod.name]
+    assert(existing == nil, "Module '" .. mod.name .. "' was already provided by plugin '" .. (existing and existing._plugin.id or "") .. "', but plugin '" .. plugin.id .. "' also provides it.")
+
+    he.imported_modules[mod.name] = mod
+    he.imported_modules_count = he.imported_modules_count + 1
+end
+
 he.get_plugin = function (id)
     return he.imported_plugins[id]
 end
 
 he.try_handle_module_key = function (mod, key, value)
-    _try_handle_key(mod, key, value)
+    return _try_run_module_key_handler(mod, key, value, "handler")
+end
+
+he.try_prepare_module_key = function (mod, key, value)
+    return _try_run_module_key_handler(mod, key, value, "prepare")
 end

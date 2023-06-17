@@ -1049,6 +1049,12 @@ namespace he::schema
 
         const char* begin() const { return Data(); }
         const char* end() const { return Data() + Size(); }
+
+        bool operator==(const String::Reader& x) const { return Size() == x.Size() && MemEqual(Data(), x.Data(), Size()); }
+        bool operator!=(const String::Reader& x) const { return Size() != x.Size() || !MemEqual(Data(), x.Data(), Size()); }
+
+        bool operator==(StringView x) const { return Size() == x.Size() && MemEqual(Data(), x.Data(), Size()); }
+        bool operator!=(StringView x) const { return Size() != x.Size() || !MemEqual(Data(), x.Data(), Size()); }
     };
 
     class String::Builder : public ListBuilder
@@ -1086,9 +1092,6 @@ namespace he::schema
         char* end() { return Data() + Size(); }
         const char* end() const { return Data() + Size(); }
     };
-
-    inline bool operator==(const String::Reader a, const String::Reader b) { return a.Size() == b.Size() && MemEqual(a.Data(), b.Data(), a.Size()); }
-    inline bool operator!=(const String::Reader a, const String::Reader b) { return a.Size() != b.Size() || !MemEqual(a.Data(), b.Data(), a.Size()); }
 
     // --------------------------------------------------------------------------------------------
     template <typename T>

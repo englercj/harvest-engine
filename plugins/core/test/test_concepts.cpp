@@ -206,14 +206,14 @@ HE_TEST(core, concepts, UnsignedIntegral)
 // ------------------------------------------------------------------------------------------------
 HE_TEST(core, concepts, EqualityComparableWith)
 {
-    struct EqInt { bool operator==(const int&) const; bool operator!=(const int&) const; };
+    struct EqInt { bool operator==(const int&) const; };
     struct EqOnly { bool operator==(const EqOnly&) const; };
 
     static_assert(EqualityComparableWith<int, int>);
     static_assert(EqualityComparableWith<int, short>);
     static_assert(EqualityComparableWith<int, unsigned>);
     static_assert(EqualityComparableWith<EqOnly, EqOnly>);
-    static_assert(EqualityComparableWith<int, EqInt>);
+    static_assert(EqualityComparableWith<EqInt, int>);
     static_assert(!EqualityComparableWith<void, void>);
     static_assert(!EqualityComparableWith<int, Trivial>);
     static_assert(!EqualityComparableWith<int, NonTrivial>);

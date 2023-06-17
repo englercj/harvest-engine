@@ -73,7 +73,7 @@ namespace he::assets
         entry.declInfo = &declInfo;
         entry.compilerInfo = compilerInfo;
         entry.compiler = Move(compiler);
-        entry.importOnly = HasAttribute<assets::Display::ImportOnly>(attributes);
+        entry.importOnly = HasAttribute<editor::Display::ImportOnly>(attributes);
 
         return true;
     }

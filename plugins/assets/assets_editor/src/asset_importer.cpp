@@ -20,7 +20,7 @@ namespace he::assets
     {
         for (auto&& asset : m_ctx.assetFile.GetAssets())
         {
-            if (asset.GetUuid() == assetUuid)
+            if (assetUuid == asset.GetUuid())
             {
                 return UpdateAsset(asset);
             }

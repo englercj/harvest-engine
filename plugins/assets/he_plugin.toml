@@ -14,13 +14,15 @@ homepage = ""
     group = "engine/libs"
     files = ["assets/include/**", "assets/src/**"]
     public_dependson = ["he_core", "he_schema"]
-    public_includedirs = ["assets/include", "%{he.get_generated_dir('he_assets')}/assets/include"]
-    private_includedirs = ["assets/src", "%{he.get_generated_dir('he_assets')}/assets/src"]
+    public_includedirs = ["assets/include"]
+    private_includedirs = ["assets/src"]
 
     [[modules.schema_compile]]
-        files = ["**.hsc"]
+        scope = "public"
+        files = ["assets/include/**.hsc"]
+        includedirs = ["assets/include"]
         targets = ["c++"]
-        dependson_include = ["he_schema"]
+        dependson = ["he_editor"]
 
 [[modules]]
     name = "he_assets_editor"
@@ -30,12 +32,8 @@ homepage = ""
     public_dependson = ["he_assets", "he_core", "he_schema", "he_sqlite", "basis_universal"]
     private_dependson = ["imgui"]
     private_dependson_include = ["he_editor"]
-    public_includedirs = ["assets_editor/include", "%{he.get_generated_dir('he_assets_editor')}/assets_editor/include"]
-    private_includedirs = ["assets_editor/src", "%{he.get_generated_dir('he_assets_editor')}/assets_editor/src"]
-
-    [[modules.bin2c_compile]]
-        files = ["**.sql"]
-        text = true
+    public_includedirs = ["assets_editor/include"]
+    private_includedirs = ["assets_editor/src"]
 
     [[modules.variants]]
         conditions = ["system:windows"]

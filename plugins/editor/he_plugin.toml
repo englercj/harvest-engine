@@ -29,13 +29,16 @@ homepage = ""
     ]
 
     [[modules.bin2c_compile]]
+        scope = "private"
         files = ["src/fonts/**.ttf"]
+        includedirs = ["src"]
         compress = true
 
     [[modules.schema_compile]]
-        files = ["include/**.hsc", "src/**.hsc"]
+        scope = "public"
+        files = ["include/**.hsc"]
+        includedirs = ["include"]
         targets = ["c++"]
-        dependson_include = ["he_assets", "he_schema"]
 
     [[modules.variants]]
         conditions = ["system:windows"]
@@ -43,12 +46,16 @@ homepage = ""
         public_dependson = ["sys:Shlwapi"]
 
         [[modules.variants.shader_compile]]
-            files = ["src/shaders/*.hlsl"]
+            scope = "private"
+            files = ["src/shaders/*.slang"]
+            includedirs = ["src/shaders"]
             targets = ["sm_6_0"]
 
     [[modules.variants]]
         conditions = ["system:linux"]
 
         [[modules.variants.shader_compile]]
-            files = ["src/shaders/*.hlsl"]
+            scope = "private"
+            files = ["src/shaders/*.slang"]
+            includedirs = ["src/shaders"]
             targets = ["glsl_450"]

@@ -118,7 +118,7 @@ namespace he
 
             for (uint32_t i = 0; i < HE_LENGTH_OF(VendorIdMap); ++i)
             {
-                if (vendorName == VendorIdMap[i].name)
+                if (VendorIdMap[i].name == vendorName)
                 {
                     vendorId = VendorIdMap[i].id;
                     break;

@@ -12,6 +12,7 @@
 #include "he/editor/icons/icons_material_design.h"
 #include "he/editor/framework/schema_edit.h"
 #include "he/editor/services/type_edit_ui_service.h"
+#include "he/editor/schema/editor_attributes.hsc.h"
 #include "he/schema/schema.h"
 
 namespace he::editor
@@ -186,21 +187,21 @@ namespace he::editor
         bool ShouldVisitNormalField(const schema::DynamicStruct::Reader& data, schema::Field::Reader field) override
         {
             HE_UNUSED(data);
-            const bool hidden = schema::HasAttribute<assets::Display::Hidden>(field.GetAttributes());
+            const bool hidden = schema::HasAttribute<editor::Display::Hidden>(field.GetAttributes());
             return !hidden;
         }
 
         bool ShouldVisitGroupField(const schema::DynamicStruct::Reader& data, schema::Field::Reader field) override
         {
             HE_UNUSED(data);
-            const bool hidden = schema::HasAttribute<assets::Display::Hidden>(field.GetAttributes());
+            const bool hidden = schema::HasAttribute<editor::Display::Hidden>(field.GetAttributes());
             return !hidden;
         }
 
         bool ShouldVisitUnionField(const schema::DynamicStruct::Reader& data, schema::Field::Reader field) override
         {
             HE_UNUSED(data);
-            const bool hidden = schema::HasAttribute<assets::Display::Hidden>(field.GetAttributes());
+            const bool hidden = schema::HasAttribute<editor::Display::Hidden>(field.GetAttributes());
             return !hidden;
         }
 
@@ -208,7 +209,7 @@ namespace he::editor
         void RevertActionButton(const schema::DynamicStruct::Reader& data)
         {
             const schema::Field::Reader field = m_edit.path.Back().field;
-            const bool readOnly = schema::HasAttribute<assets::Display::ReadOnly>(field.GetAttributes());
+            const bool readOnly = schema::HasAttribute<editor::Display::ReadOnly>(field.GetAttributes());
 
             if (!readOnly && data.Has(field))
             {
@@ -251,8 +252,8 @@ namespace he::editor
 
         void GetNameAndDescription(StringView& name, StringView& desc, schema::List<schema::Attribute>::Reader attributes)
         {
-            const schema::Attribute::Reader displayNameAttr = schema::FindAttribute<assets::Display::Name>(attributes);
-            const schema::Attribute::Reader descriptionAttr = schema::FindAttribute<assets::Display::Description>(attributes);
+            const schema::Attribute::Reader displayNameAttr = schema::FindAttribute<editor::Display::Name>(attributes);
+            const schema::Attribute::Reader descriptionAttr = schema::FindAttribute<editor::Display::Description>(attributes);
 
             if (displayNameAttr.IsValid())
                 name = displayNameAttr.GetValue().GetData().GetString();
@@ -322,7 +323,7 @@ namespace he::editor
         void ShowValueEditor(bool value)
         {
             const schema::Field::Reader field = m_edit.path.Back().field;
-            const bool readOnly = schema::HasAttribute<assets::Display::ReadOnly>(field.GetAttributes());
+            const bool readOnly = schema::HasAttribute<editor::Display::ReadOnly>(field.GetAttributes());
 
             bool v = value;
 
@@ -348,9 +349,9 @@ namespace he::editor
             constexpr ImGuiDataType DataType = _ImGuiDataTypeForType<T>::Value;
 
             const schema::Field::Reader field = m_edit.path.Back().field;
-            const bool readOnly = schema::HasAttribute<assets::Display::ReadOnly>(field.GetAttributes());
-            const schema::Attribute::Reader slider = schema::FindAttribute<assets::Display::Slider>(field.GetAttributes());
-            const schema::Attribute::Reader clamp = schema::FindAttribute<assets::Display::Clamp>(field.GetAttributes());
+            const bool readOnly = schema::HasAttribute<editor::Display::ReadOnly>(field.GetAttributes());
+            const schema::Attribute::Reader slider = schema::FindAttribute<editor::Display::Slider>(field.GetAttributes());
+            const schema::Attribute::Reader clamp = schema::FindAttribute<editor::Display::Clamp>(field.GetAttributes());
 
             bool changed = false;
 
@@ -411,7 +412,7 @@ namespace he::editor
         {
             const schema::Field::Reader field = m_edit.path.Back().field;
 
-            const bool readOnly = schema::HasAttribute<assets::Display::ReadOnly>(field.GetAttributes());
+            const bool readOnly = schema::HasAttribute<editor::Display::ReadOnly>(field.GetAttributes());
 
             static String v;
             v = value;
@@ -475,7 +476,7 @@ namespace he::editor
             }
 
             const schema::Field::Reader field = m_edit.path.Back().field;
-            const bool readOnly = schema::HasAttribute<assets::Display::ReadOnly>(field.GetAttributes());
+            const bool readOnly = schema::HasAttribute<editor::Display::ReadOnly>(field.GetAttributes());
 
             ImGui::BeginDisabled(readOnly);
             ImGui::PushItemWidth(-1.0f);
@@ -583,7 +584,7 @@ namespace he::editor
                 // Actions column
                 ImGui::TableNextColumn();
                 const schema::Field::Reader field = m_edit.path.Back().field;
-                const bool readOnly = schema::HasAttribute<assets::Display::ReadOnly>(field.GetAttributes());
+                const bool readOnly = schema::HasAttribute<editor::Display::ReadOnly>(field.GetAttributes());
                 if (!readOnly)
                 {
                     if (typeData.IsList())
@@ -657,7 +658,7 @@ namespace he::editor
                 ImGui::TableNextColumn();
                 ImGui::AlignTextToFramePadding();
 
-                const bool isReadOnly = schema::HasAttribute<assets::Display::ReadOnly>(field.GetAttributes());
+                const bool isReadOnly = schema::HasAttribute<editor::Display::ReadOnly>(field.GetAttributes());
                 const bool isModified = !isReadOnly && data.Has(field);
 
                 const bool isSequenceValue = typeData.IsValid() && (typeData.IsArray() || typeData.IsList());

@@ -128,7 +128,7 @@ namespace he
         // results in an improved lookup time on average. This is because the loop is actually
         // the degenerate case where an entry has been overflowed multiple times.
         if (distanceAndFingerprint == bucket->distanceAndFingerprint
-            && key == Traits::GetKey(m_entries[bucket->entryIndex]))
+            && Traits::GetKey(m_entries[bucket->entryIndex]) == key)
         {
             return Begin() + bucket->entryIndex;
         }
@@ -138,7 +138,7 @@ namespace he
         bucket = m_buckets + bucketIndex;
 
         if (distanceAndFingerprint == bucket->distanceAndFingerprint
-            && key == Traits::GetKey(m_entries[bucket->entryIndex]))
+            && Traits::GetKey(m_entries[bucket->entryIndex]) == key)
         {
             return Begin() + bucket->entryIndex;
         }
@@ -151,7 +151,7 @@ namespace he
 
             if (distanceAndFingerprint == bucket->distanceAndFingerprint)
             {
-                if (key == Traits::GetKey(m_entries[bucket->entryIndex]))
+                if (Traits::GetKey(m_entries[bucket->entryIndex]) == key)
                 {
                     return Begin() + bucket->entryIndex;
                 }
@@ -208,7 +208,7 @@ namespace he
                     break;
 
                 if (distanceAndFingerprint == bucket.distanceAndFingerprint
-                    && key == Traits::GetKey(m_entries[bucket.entryIndex]))
+                    && Traits::GetKey(m_entries[bucket.entryIndex]) == key)
                 {
                     found = true;
                     break;
@@ -271,7 +271,7 @@ namespace he
         {
             const Bucket& bucket = m_buckets[bucketIndex];
             if (distanceAndFingerprint == bucket.distanceAndFingerprint
-                && key == Traits::GetKey(m_entries[bucket.entryIndex]))
+                && Traits::GetKey(m_entries[bucket.entryIndex]) == key)
             {
                 return { m_entries[bucket.entryIndex], false };
             }

@@ -17,18 +17,16 @@ jobs:
     - name: Install Dependencies
       run: |
         sudo apt update
-        sudo apt install -y build-essential binutils-dev libdw-dev libx11-dev libxi-dev liburing-dev
-        sudo update-alternatives --set gcc /usr/bin/gcc-12
-        sudo update-alternatives --set g++ /usr/bin/g++-12
-        sudo update-alternatives --set clang /usr/bin/clang-12
-        sudo update-alternatives --set clang++ /usr/bin/clang++-12
-        sudo update-alternatives --install /usr/bin/llvm-ar llvm-ar /usr/bin/llvm-ar-12 100
+        sudo apt install -y build-essential binutils-dev libdw-dev libx11-dev libxi-dev liburing-dev gcc-12 g++-12
     - name: Checkout
       uses: actions/checkout@v2
     - name: Bootstrap
       run: ./bootstrap.sh
     - name: Build
       run: cd build && make -j$(nproc) config=${{ matrix.config }}_${{ matrix.arch }}
+      env:
+        CC: gcc-12
+        CXX: g++-12
     - name: Test
       run: ./build/bin/linux-${{ matrix.config }}_${{ matrix.arch }}/he_test_runner
   windows:

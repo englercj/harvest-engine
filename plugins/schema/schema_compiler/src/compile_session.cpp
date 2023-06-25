@@ -96,7 +96,10 @@ namespace he::schema
 
         if (HasFlag(m_config.codegenTargets, CodegenTarget::Cpp))
         {
-            if (!GenerateCpp(req))
+            if (!GenerateCppNative(req))
+                return false;
+
+            if (!GenerateCppBuffer(req))
                 return false;
         }
 

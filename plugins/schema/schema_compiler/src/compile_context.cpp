@@ -95,7 +95,7 @@ namespace he::schema
     bool CompileContext::LoadFile()
     {
         Result r = File::ReadAll(m_input, m_path.Data());
-        if (!HE_VERIFY(r))
+        if (!HE_VERIFY(r, HE_KV(result, r), HE_KV(path, m_path)))
         {
             HE_LOG_ERROR(schema_compiler, HE_MSG("Failed to read file"), HE_KV(result, r), HE_KV(path, m_path));
             return false;

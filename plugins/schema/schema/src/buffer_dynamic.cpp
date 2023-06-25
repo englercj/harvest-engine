@@ -1,6 +1,6 @@
 // Copyright Chad Engler
 
-#include "he/schema/dynamic.h"
+#include "he/schema/buffer_dynamic.h"
 
 #include "he/core/assert.h"
 #include "he/core/concepts.h"
@@ -9,7 +9,7 @@
 #include "he/core/log.h"
 #include "he/core/type_info.h"
 #include "he/core/type_traits.h"
-#include "he/schema/layout.h"
+#include "he/schema/buffer_layout.h"
 
 #include <algorithm>
 

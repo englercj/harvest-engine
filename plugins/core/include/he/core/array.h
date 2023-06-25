@@ -6,6 +6,7 @@
 #include "he/core/range_ops.h"
 #include "he/core/types.h"
 #include "he/core/utils.h"
+#include "he/core/types.h"
 
 namespace he
 {
@@ -45,24 +46,9 @@ namespace he
         /// \param x The array to move from.
         constexpr Array(Array&& x) noexcept { RangeMove(m_data, x.m_data, N); }
 
+    public:
         // ----------------------------------------------------------------------------------------
         // Operators
-
-        /// Copy the array elements from `x` into this array.
-        ///
-        /// \param x The array to copy from.
-        Array& operator=(const Array& x) noexcept { RangeCopy(m_data, x.m_data, N); return *this; }
-
-        /// Move the array elements from `x` into this array.
-        ///
-        /// \param x The array to move from.
-        Array& operator=(Array&& x) noexcept { RangeMove(m_data, x.m_data, N); return *this; }
-
-        /// Copies the elements of `range` into this array.
-        ///
-        /// \param str The array source to copy from.
-        template <ContiguousRangeOf<T> R> requires(!IsSame<R, Array<T, N>>)
-        Array& operator=(const R& range) { RangeCopy(*this, range); return *this; }
 
         /// Gets a reference to the element at `index`. Asserts if `index` is not less than
         /// \see Size().
@@ -87,6 +73,22 @@ namespace he
         /// \return True if the arrays are not equal, false otherwise.
         template <typename U> requires(IsConvertible<U(*)[], T(*)[]>)
         constexpr bool operator!=(const Array<U, N>& x) const { return !this->operator==(x); }
+
+        /// Copy the array elements from `x` into this array.
+        ///
+        /// \param x The array to copy from.
+        Array& operator=(const Array& x) noexcept { RangeCopy(m_data, x.m_data, N); return *this; }
+
+        /// Move the array elements from `x` into this array.
+        ///
+        /// \param x The array to move from.
+        Array& operator=(Array&& x) noexcept { RangeMove(m_data, x.m_data, N); return *this; }
+
+        /// Copies the elements of `range` into this array.
+        ///
+        /// \param str The array source to copy from.
+        template <ContiguousRangeOf<T> R> requires(!IsSame<R, Array<T, N>>)
+        Array& operator=(const R& range) { RangeCopy(*this, range); return *this; }
 
         // ----------------------------------------------------------------------------------------
         // Capacity

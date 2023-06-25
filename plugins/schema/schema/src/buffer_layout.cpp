@@ -1,6 +1,6 @@
 // Copyright Chad Engler
 
-#include "he/schema/layout.h"
+#include "he/schema/buffer_layout.h"
 
 #include "he/core/macros.h"
 
@@ -14,7 +14,7 @@ namespace he::schema
         16, // TwoBytes
         32, // FourBytes
         64, // EightBytes
-        64,  // Pointer
+        64, // Pointer
         0,  // Composite
     };
     static_assert(HE_LENGTH_OF(BitsPerElementSize) == static_cast<uint32_t>(ElementSize::_Count));

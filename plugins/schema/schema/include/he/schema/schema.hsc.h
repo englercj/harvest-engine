@@ -5,7 +5,7 @@
 #include "he/core/assert.h"
 #include "he/core/string_view.h"
 #include "he/core/types.h"
-#include "he/schema/layout.h"
+#include "he/schema/buffer_layout.h"
 #include "he/schema/types.h"
 
 namespace he::schema
@@ -3524,4 +3524,3 @@ namespace he::schema
     inline void SchemaFile::Builder::SetRoot(Declaration::Reader value) { SuperType::GetPointerField(0).Set(value); }
     inline Declaration::Builder SchemaFile::Builder::InitRoot() { auto v = m_builder->AddStruct<Declaration>(); SuperType::GetPointerField(0).Set(v); return v; }
 }
-

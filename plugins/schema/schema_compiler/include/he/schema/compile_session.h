@@ -9,7 +9,7 @@
 #include "he/schema/ast.h"
 #include "he/schema/codegen.h"
 #include "he/schema/compile_types.h"
-#include "he/schema/layout.h"
+#include "he/schema/buffer_layout.h"
 #include "he/schema/schema.h"
 
 namespace he::schema

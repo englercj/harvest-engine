@@ -6,7 +6,7 @@
 #include "he/core/string_view.h"
 #include "he/core/type_traits.h"
 #include "he/core/types.h"
-#include "he/schema/layout.h"
+#include "he/schema/buffer_layout.h"
 #include "he/schema/schema.h"
 
 namespace he::schema

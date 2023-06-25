@@ -40,5 +40,6 @@ namespace he::schema
     };
 
     bool GenerateEcho(const CodeGenRequest& request);
-    bool GenerateCpp(const CodeGenRequest& request);
+    bool GenerateCppBuffer(const CodeGenRequest& request);
+    bool GenerateCppNative(const CodeGenRequest& request);
 }

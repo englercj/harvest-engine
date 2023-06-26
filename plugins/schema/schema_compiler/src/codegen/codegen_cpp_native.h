@@ -30,17 +30,20 @@ namespace he::schema
         void WriteInterfaceDecl(Declaration::Reader decl, Declaration::Reader scope);
         void WriteStructDecl(Declaration::Reader decl, Declaration::Reader scope);
 
-        void WriteFieldFunctions(Field::Reader field, Declaration::Reader decl);
+        void WriteDeclInfo(Declaration::Reader decl);
 
     private:
         void GenSource();
 
-        void WriteRawSchemaData();
+        void WriteDeclSrc(Declaration::Reader decl);
+        void WriteConstDeclSrc(Declaration::Reader decl);
+        void WriteStructDeclSrc(Declaration::Reader decl);
+
         void WriteDeclInfoSrc(Declaration::Reader decl);
         void WriteEnumStrings(Declaration::Reader decl);
+        void WriteRawSchemaData();
 
     private:
-        void WriteDeclInfo(Declaration::Reader decl);
         void WriteName(Declaration::Reader decl, Declaration::Reader scope, Brand::Reader brand);
         void WriteTemplate(Declaration::Reader decl);
         void WriteType(Type::Reader type, Declaration::Reader scope, bool isStorage = true);

@@ -82,6 +82,16 @@ namespace he::schema
         _Count,
     };
 
+    /// The FieldInfo structure stores information about a schema struct field in generated code.
+    struct FieldInfo
+    {
+        /// Offset of the field in the C++ structure.
+        const uint32_t nativeOffset;
+
+        /// Pointer to the raw schema words for this field.
+        const Word* const schema;
+    };
+
     /// The DeclInfo structure stores information about a schema declaration in generated code.
     struct DeclInfo
     {
@@ -107,10 +117,16 @@ namespace he::schema
         const Word* const schema;
 
         /// Array of pointers to types that are used by this declaration, in order of their IDs.
-        const DeclInfo* const* dependencies;
+        const DeclInfo* const* const dependencies;
 
         /// Number of dependencies in the `dependencies` array.
         const uint32_t dependencyCount;
+
+        /// Array of field info structures.
+        const FieldInfo* fields;
+
+        /// Number of field info structures in the `fields` array.
+        const uint32_t fieldCount;
     };
 
     template <TypeId Id>

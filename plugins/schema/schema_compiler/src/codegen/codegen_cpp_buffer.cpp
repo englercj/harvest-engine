@@ -225,25 +225,6 @@ namespace he::schema
             WriteDecl(child, decl);
         }
 
-        if (structDecl.GetIsUnion())
-        {
-            m_writer.WriteLine("enum class UnionTag : uint16_t");
-            m_writer.WriteLine("{");
-            m_writer.IncreaseIndent();
-
-            he::String upperCamelName;
-            for (Field::Reader field : structDecl.GetFields())
-            {
-                upperCamelName = field.GetName();
-                upperCamelName[0] = ToUpper(upperCamelName[0]);
-
-                m_writer.WriteLine("{} = {},", upperCamelName, field.GetUnionTag());
-            }
-
-            m_writer.DecreaseIndent();
-            m_writer.WriteLine("};");
-        }
-
         m_writer.DecreaseIndent();
         m_writer.WriteLine("};");
     }

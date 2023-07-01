@@ -85,11 +85,29 @@ namespace he::schema
     /// The FieldInfo structure stores information about a schema struct field in generated code.
     struct FieldInfo
     {
-        /// Offset of the field in the C++ structure.
-        const uint32_t nativeOffset;
-
         /// Pointer to the raw schema words for this field.
         const Word* const schema;
+
+        /// Get a pointer to the value of this field.
+        const void* (*getValue)(const void* instance);
+
+        /// Set the value of this field.
+        void (*setValue)(void* instance, const void* value);
+
+        /// Get a pointer to an element of this field. Only valid for lists an arrays.
+        const void* (*getElement)(const void* instance, uint32_t index);
+
+        /// Set the value of an element of this field. Only valid for lists an arrays.
+        void (*setElement)(void* instance, uint32_t index, const void* value);
+
+        /// Move an element from one index to another. Only valid for lists and arrays.
+        void (*moveElement)(void* instance, uint32_t fromIndex, uint32_t toIndex);
+
+        /// Add a new element to the end of the list. Only valid for lists.
+        void (*addElement)(void* instance);
+
+        /// Remove an element from the list. Only valid for lists.
+        void (*removeElement)(void* instance, uint32_t index);
     };
 
     /// The DeclInfo structure stores information about a schema declaration in generated code.

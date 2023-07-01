@@ -275,8 +275,6 @@ namespace he::schema
             WriteDecl(child, decl);
         }
 
-        m_writer.WriteLine("{}() noexcept;", decl.GetName().AsView());
-
         if (structDecl.GetIsUnion())
         {
             m_writer.WriteLine("enum class UnionTag : uint16_t");
@@ -295,8 +293,8 @@ namespace he::schema
 
             m_writer.DecreaseIndent();
             m_writer.WriteLine("};");
-            m_writer.WriteLine("UnionTag GetUnionTag() const { return value.IsValid() ? static_cast<UnionTag>(value.Index()) : UnionTag::_Unset; }\n");
-            m_writer.WriteLine("void SetUnionTag(UnionTag t);");
+            m_writer.WriteLine("UnionTag GetUnionTag() const { return value.IsValid() ? static_cast<UnionTag>(value.Index() + 1) : UnionTag::_Unset; }");
+            m_writer.WriteLine("void SetUnionTag(UnionTag t);\n");
 
             m_writer.WriteIndent();
             m_writer.Write("::he::Variant<");
@@ -332,11 +330,10 @@ namespace he::schema
                     }
                 }
             }
-            m_writer.Write("> value;");
+            m_writer.Write("> value;\n");
         }
         else
         {
-            bool needCtor = false;
             for (const Field::Reader field : structDecl.GetFields())
             {
                 m_writer.WriteIndent();
@@ -345,15 +342,11 @@ namespace he::schema
                     case Field::Meta::UnionTag::Normal:
                     {
                         const Field::Meta::Normal::Reader norm = field.GetMeta().GetNormal();
-                        const bool hasDefault = norm.HasDefaultValue();
-                        const bool isPointer = IsPointer(norm.GetType());
-
-                        needCtor |= hasDefault && isPointer;
 
                         WriteType(norm.GetType(), decl);
                         m_writer.Write(' ');
                         m_writer.Write(field.GetName().AsView());
-                        if (hasDefault && !isPointer)
+                        if (norm.HasDefaultValue() && !IsPointer(norm.GetType()))
                         {
                             m_writer.Write("{ ");
                             WriteDataValue(norm.GetType(), decl, norm.GetDefaultValue());
@@ -366,6 +359,7 @@ namespace he::schema
                         const Field::Meta::Group::Reader fieldGroup = field.GetMeta().GetGroup();
                         const Declaration::Reader groupDecl = m_request.GetDecl(fieldGroup.GetTypeId());
                         m_writer.Write(groupDecl.GetName().AsView());
+                        m_writer.Write(' ');
                         m_writer.Write(field.GetName().AsView());
                         break;
                     }
@@ -374,6 +368,7 @@ namespace he::schema
                         const Field::Meta::Union::Reader fieldUnion = field.GetMeta().GetUnion();
                         const Declaration::Reader unionDecl = m_request.GetDecl(fieldUnion.GetTypeId());
                         m_writer.Write(unionDecl.GetName().AsView());
+                        m_writer.Write(' ');
                         m_writer.Write(field.GetName().AsView());
                         break;
                     }
@@ -381,7 +376,7 @@ namespace he::schema
                 m_writer.Write(";\n");
             }
 
-            if (needCtor)
+            if (NeedsConstructor(structDecl))
             {
                 m_writer.WriteLine("{}() noexcept;", decl.GetName().AsView());
             }
@@ -507,8 +502,6 @@ namespace he::schema
         if (isInline)
             return;
 
-        const bool isStatic = decl.GetParentId() != m_root.GetId();
-
         m_writer.WriteIndent();
         m_writer.Write("const ");
         WriteType(type, m_root);
@@ -528,33 +521,62 @@ namespace he::schema
         HE_ASSERT(decl.GetData().IsStruct());
         const Declaration::Data::Struct::Reader structDecl = decl.GetData().GetStruct();
 
-        bool needCtor = false;
-        for (const Field::Reader field : structDecl.GetFields())
+        for (const Declaration::Reader child : decl.GetChildren())
         {
-            if (field.GetMeta().IsNormal())
-            {
-                const Field::Meta::Normal::Reader norm = field.GetMeta().GetNormal();
-                if (norm.HasDefaultValue() && IsPointer(norm.GetType()))
-                {
-                    needCtor = true;
-                    break;
-                }
-            }
+            WriteDeclSrc(child);
         }
 
-        if (!needCtor)
-            return;
+        // TODO: Nested templates and generic brands.
+        // Maybe a WriteSrcName or something that handles this?
+        // Need it here for ctor and functions, but also in const definitions when they're in classes.
+        //
+        // For example:
+        // ```
+        // template <typename T>
+        // template <typename U, typename V>
+        // ::he::some::Class<T>::Nested<U, V>::Nested() noexcept {}
+        // ```
 
-        WriteTemplate(decl);
-        m_writer.WriteIndent();
-        WriteName(decl, m_root, {});
-        // TODO: template brand
-        m_writer.Write("::{}() noexcept\n", decl.GetName().AsView());
-        m_writer.WriteLine("{");
-        m_writer.IncreaseIndent();
-        // TODO: default value initialization
-        m_writer.DecreaseIndent();
-        m_writer.WriteLine("}");
+        if (NeedsConstructor(structDecl))
+        {
+            m_writer.WriteIndent();
+            WriteName(decl, m_root, {});
+            m_writer.Write("::{}() noexcept\n", decl.GetName().AsView());
+            m_writer.WriteLine("{");
+            m_writer.IncreaseIndent();
+            // TODO: default value initialization
+            m_writer.DecreaseIndent();
+            m_writer.WriteLine("}");
+        }
+
+        if (structDecl.GetIsUnion())
+        {
+            m_writer.WriteIndent();
+            m_writer.Write("void ");
+            WriteName(decl, m_root, {});
+            m_writer.Write("::SetUnionTag(UnionTag t)\n");
+            m_writer.WriteLine("{");
+            m_writer.IncreaseIndent();
+            m_writer.WriteLine("switch (t)");
+            m_writer.WriteLine("{");
+            m_writer.IncreaseIndent();
+
+            he::String upperCamelName;
+            for (const Field::Reader field : structDecl.GetFields())
+            {
+                upperCamelName = field.GetName();
+                upperCamelName[0] = ToUpper(upperCamelName[0]);
+
+                m_writer.WriteLine("case UnionTag::{}: value.Emplace<{}>(); break;", upperCamelName, field.GetUnionTag() - 1);
+            }
+
+            m_writer.WriteLine("default: value.Clear(); break;");
+
+            m_writer.DecreaseIndent();
+            m_writer.WriteLine("}");
+            m_writer.DecreaseIndent();
+            m_writer.WriteLine("}");
+        }
     }
 
     void CodeGenCppNative::WriteDeclInfoSrc(Declaration::Reader decl)
@@ -600,9 +622,14 @@ namespace he::schema
         if (isStruct)
         {
             const Declaration::Data::Struct::Reader structDecl = decl.GetData().GetStruct();
-            if (structDecl.GetFields().IsEmpty())
+            if (!structDecl.GetFields().IsEmpty())
             {
                 hasFields = true;
+
+                const uint32_t len = m_writer.Str().Size();
+                WriteName(decl, {}, {});
+                he::String className = m_writer.Str().Data() + len;
+                m_writer.Str().Resize(len);
 
                 m_writer.WriteLine("static const FieldInfo Fields_{:016x}[] =", decl.GetId());
                 m_writer.WriteLine("{");
@@ -611,12 +638,37 @@ namespace he::schema
                 {
                     const Word* defaultValuePtrWords = field.Data();
                     const uint64_t offset = defaultValuePtrWords - m_request.schemaData.Data();
+                    const StringView fieldName = field.GetName().AsView();
 
-                    m_writer.WriteIndent();
-                    m_writer.Write("{ offsetof(");
-                    WriteName(decl, m_root, {});
-                    m_writer.Write(", {}), RawFileSchema_{:016x} + {} }},\n",
-                        field.GetName().AsView(), m_root.GetId(), offset);
+                    m_writer.WriteLine("// {}", field.GetName().AsView());
+                    m_writer.WriteLine("{");
+                    m_writer.IncreaseIndent();
+
+                    m_writer.WriteLine("RawFileSchema_{:016x} + {},", m_root.GetId(), offset);
+                    // TODO
+                    if (structDecl.GetIsUnion())
+                    {
+                        m_writer.WriteLine("nullptr, // getValue");
+                        m_writer.WriteLine("nullptr, // setValue");
+                        m_writer.WriteLine("nullptr, // getElement");
+                        m_writer.WriteLine("nullptr, // setElement");
+                        m_writer.WriteLine("nullptr, // moveElement");
+                        m_writer.WriteLine("nullptr, // addElement");
+                        m_writer.WriteLine("nullptr, // removeElement");
+                    }
+                    else
+                    {
+                        m_writer.WriteLine("[](const void* instance) -> const void* {{ return &static_cast<const {}*>(instance)->{}; }},", className, fieldName);
+                        m_writer.WriteLine("[](void* instance, const void* value) -> void {{ return static_cast<const {}*>(instance)->{} = *static_cast<const {}*>(value); }},", className, fieldName, "bool");
+                        m_writer.WriteLine("nullptr, // getElement");
+                        m_writer.WriteLine("nullptr, // setElement");
+                        m_writer.WriteLine("nullptr, // moveElement");
+                        m_writer.WriteLine("nullptr, // addElement");
+                        m_writer.WriteLine("nullptr, // removeElement");
+                    }
+
+                    m_writer.DecreaseIndent();
+                    m_writer.WriteLine("},");
                 }
                 m_writer.DecreaseIndent();
                 m_writer.WriteLine("};");
@@ -824,12 +876,32 @@ namespace he::schema
         m_writer.Write(">\n");
     }
 
-    void CodeGenCppNative::WriteType(Type::Reader type, Declaration::Reader scope, bool isStorage)
+    void CodeGenCppNative::WriteTemplateBrand(Declaration::Reader decl)
+    {
+        const List<String>::Reader typeParams = decl.GetTypeParams();
+
+        if (typeParams.IsEmpty())
+            return;
+
+        m_writer.Write("<");
+        for (uint32_t i = 0; i < typeParams.Size(); ++i)
+        {
+            m_writer.Write(typeParams[i]);
+            if (i < (typeParams.Size() - 1))
+                m_writer.Write(", ");
+        }
+        m_writer.Write(">");
+    }
+
+    void CodeGenCppNative::WriteType(Type::Reader type, Declaration::Reader scope)
     {
         const bool isArray = type.GetData().IsArray();
+        const bool isList = type.GetData().IsList();
+        const bool isString = type.GetData().IsString();
         const bool isPointer = IsPointer(type);
+        const bool wrapWithUniquePtr = isPointer && !isArray && !isList && !isString;
 
-        if (isPointer && !isArray && isStorage)
+        if (wrapWithUniquePtr)
         {
             m_writer.Write("::he::UniquePtr<");
         }
@@ -854,15 +926,15 @@ namespace he::schema
             {
                 const Type::Data::Array::Reader arrayType = type.GetData().GetArray();
                 m_writer.Write("::he::Array<");
-                WriteType(arrayType.GetElementType(), scope, true);
-                m_writer.Write(", {}>{}", arrayType.GetSize(), isStorage ? "" : "&");
+                WriteType(arrayType.GetElementType(), scope);
+                m_writer.Write(", {}>", arrayType.GetSize());
                 break;
             }
             case Type::Data::UnionTag::List:
             {
                 const Type::Data::List::Reader listType = type.GetData().GetList();
                 m_writer.Write("::he::Vector<");
-                WriteType(listType.GetElementType(), scope, true);
+                WriteType(listType.GetElementType(), scope);
                 m_writer.Write(">");
                 break;
             }
@@ -901,29 +973,26 @@ namespace he::schema
             case Type::Data::UnionTag::AnyPointer:
             {
                 // TODO
-                m_writer.Write("void");
+                m_writer.Write("int");
                 break;
             }
             case Type::Data::UnionTag::AnyStruct:
             {
                 // TODO
-                m_writer.Write("void");
+                m_writer.Write("int");
                 break;
             }
             case Type::Data::UnionTag::AnyList:
             {
                 // TODO
-                m_writer.Write("void");
+                m_writer.Write("int");
                 break;
             }
         }
 
-        if (isPointer && !isArray)
+        if (wrapWithUniquePtr)
         {
-            if (isStorage)
-                m_writer.Write('>');
-            else
-                m_writer.Write('*');
+            m_writer.Write('>');
         }
     }
 
@@ -1017,6 +1086,23 @@ namespace he::schema
                 m_writer.Write(ch);
             }
         }
+    }
+
+    bool CodeGenCppNative::NeedsConstructor(Declaration::Data::Struct::Reader structDecl)
+    {
+        for (const Field::Reader field : structDecl.GetFields())
+        {
+            if (field.GetMeta().IsNormal())
+            {
+                const Field::Meta::Normal::Reader norm = field.GetMeta().GetNormal();
+                if (norm.HasDefaultValue() && IsPointer(norm.GetType()))
+                {
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 
     bool CodeGenCppNative::FlushToFile(const char* suffix)

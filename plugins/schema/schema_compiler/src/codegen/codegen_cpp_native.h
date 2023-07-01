@@ -46,9 +46,12 @@ namespace he::schema
     private:
         void WriteName(Declaration::Reader decl, Declaration::Reader scope, Brand::Reader brand);
         void WriteTemplate(Declaration::Reader decl);
-        void WriteType(Type::Reader type, Declaration::Reader scope, bool isStorage = true);
+        void WriteTemplateBrand(Declaration::Reader decl);
+        void WriteType(Type::Reader type, Declaration::Reader scope);
         void WriteDataValue(Type::Reader type, Declaration::Reader scope, Value::Reader value);
         void WriteWithReplace(StringView input, char what, StringView with);
+
+        bool NeedsConstructor(Declaration::Data::Struct::Reader structDecl);
 
         bool FlushToFile(const char* suffix);
         void FindAllDependencies(Type::Reader type, RBTreeSet<TypeId>& out);

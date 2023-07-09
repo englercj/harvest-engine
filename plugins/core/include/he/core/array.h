@@ -6,7 +6,6 @@
 #include "he/core/range_ops.h"
 #include "he/core/types.h"
 #include "he/core/utils.h"
-#include "he/core/types.h"
 
 namespace he
 {
@@ -46,7 +45,6 @@ namespace he
         /// \param x The array to move from.
         constexpr Array(Array&& x) noexcept { RangeMove(m_data, x.m_data, N); }
 
-    public:
         // ----------------------------------------------------------------------------------------
         // Operators
 

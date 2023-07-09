@@ -104,10 +104,10 @@ namespace he::schema
         template <he::Enum T>
         T As() const
         {
-            HE_VERIFY(EnumInfo<T>::Id = Schema().GetId(),
+            HE_VERIFY(EnumDeclInfo<T>::Id = Schema().GetId(),
                 HE_MSG("DynamicEnum requested as a type that doesn't match the schema."),
-                HE_KV(requested_type_name, GetSchema(EnumInfo<T>::DeclInfo).GetName()),
-                HE_KV(requested_type_id, EnumInfo<T>::Id),
+                HE_KV(requested_type_name, GetSchema(EnumDeclInfo<T>::DeclInfo).GetName()),
+                HE_KV(requested_type_id, EnumDeclInfo<T>::Id),
                 HE_KV(actual_type_name, Schema().GetName()),
                 HE_KV(actual_type_id, Schema().GetId()));
             return static_cast<T>(m_value);

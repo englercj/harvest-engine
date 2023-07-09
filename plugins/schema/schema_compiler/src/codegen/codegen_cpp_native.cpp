@@ -429,6 +429,7 @@ namespace he::schema
         m_writer.WriteLine("#include \"{}.hsc.h\"\n", baseName);
         m_writer.WriteLine("#include \"he/core/enum_ops.h\"", baseName);
         m_writer.WriteLine("#include \"he/core/types.h\"\n", baseName);
+        m_writer.WriteLine("#include \"he/schema/dynamic_value.h\"\n", baseName);
 
         // Schema data
         m_writer.WriteLine("namespace he::schema");
@@ -631,6 +632,16 @@ namespace he::schema
                 he::String className = m_writer.Str().Data() + len;
                 m_writer.Str().Resize(len);
 
+                if (!structDecl.GetIsUnion())
+                {
+                    for (const Field::Reader field : structDecl.GetFields())
+                    {
+                        const StringView fieldName = field.GetName().AsView();
+                        m_writer.WriteLine("static DynamicValueImpl<decltype({}::{})> FieldDynamic_{:016x}_{}{{}};",
+                            className, fieldName, decl.GetId(), fieldName);
+                    }
+                }
+
                 m_writer.WriteLine("static const FieldInfo Fields_{:016x}[] =", decl.GetId());
                 m_writer.WriteLine("{");
                 m_writer.IncreaseIndent();
@@ -640,32 +651,24 @@ namespace he::schema
                     const uint64_t offset = defaultValuePtrWords - m_request.schemaData.Data();
                     const StringView fieldName = field.GetName().AsView();
 
-                    m_writer.WriteLine("// {}", field.GetName().AsView());
+                    m_writer.WriteLine("// {}", fieldName);
                     m_writer.WriteLine("{");
                     m_writer.IncreaseIndent();
 
-                    m_writer.WriteLine("RawFileSchema_{:016x} + {},", m_root.GetId(), offset);
-                    // TODO
+                    m_writer.WriteLine(".schema = RawFileSchema_{:016x} + {},", m_root.GetId(), offset);
+
                     if (structDecl.GetIsUnion())
                     {
-                        m_writer.WriteLine("nullptr, // getValue");
-                        m_writer.WriteLine("nullptr, // setValue");
-                        m_writer.WriteLine("nullptr, // getElement");
-                        m_writer.WriteLine("nullptr, // setElement");
-                        m_writer.WriteLine("nullptr, // moveElement");
-                        m_writer.WriteLine("nullptr, // addElement");
-                        m_writer.WriteLine("nullptr, // removeElement");
+                        // TODO
+                        m_writer.WriteLine(".dynamic = nullptr,");
+                        m_writer.WriteLine(".getPointer = nullptr,");
                     }
                     else
                     {
-                        m_writer.WriteLine("[](const void* instance) -> const void* {{ return &static_cast<const {}*>(instance)->{}; }},", className, fieldName);
-                        m_writer.WriteLine("[](void* instance, const void* value) -> void {{ return static_cast<const {}*>(instance)->{} = *static_cast<const {}*>(value); }},", className, fieldName, "bool");
-                        m_writer.WriteLine("nullptr, // getElement");
-                        m_writer.WriteLine("nullptr, // setElement");
-                        m_writer.WriteLine("nullptr, // moveElement");
-                        m_writer.WriteLine("nullptr, // addElement");
-                        m_writer.WriteLine("nullptr, // removeElement");
+                        m_writer.WriteLine(".dynamic = &FieldDynamic_{:016x}_{},", decl.GetId(), fieldName);
+                        m_writer.WriteLine(".getPointer = [](void* instance) -> void* {{ return &static_cast<{}*>(instance)->{}; }},", className, fieldName);
                     }
+                    //WriteFieldGetValue(field, structDecl, className);
 
                     m_writer.DecreaseIndent();
                     m_writer.WriteLine("},");
@@ -679,18 +682,35 @@ namespace he::schema
         m_writer.WriteLine("{");
         m_writer.IncreaseIndent();
 
-        m_writer.WriteLine(HE_ID_FMT ", " HE_ID_FMT ", DeclKind::{:s}, {}, {}, {}, (RawFileSchema_{:016x} + {}),",
-            decl.GetId(), decl.GetParentId(), decl.GetData().GetUnionTag(), dataFieldCount, dataWordSize, pointerCount, m_root.GetId(), schemaOffset);
+        m_writer.WriteLine(".id = " HE_ID_FMT ",", decl.GetId());
+        m_writer.WriteLine(".parentId = " HE_ID_FMT ",", decl.GetParentId());
+        m_writer.WriteLine(".kind = DeclKind::{:s},", decl.GetData().GetUnionTag());
+        m_writer.WriteLine(".dataFieldCount = {},", dataFieldCount);
+        m_writer.WriteLine(".dataWordSize = {},", dataWordSize);
+        m_writer.WriteLine(".pointerCount = {},", pointerCount);
+        m_writer.WriteLine(".schema = (RawFileSchema_{:016x} + {}),", m_root.GetId(), schemaOffset);
 
         if (!dependencies.IsEmpty())
-            m_writer.WriteLine("Dependencies_{0:016x}, HE_LENGTH_OF(Dependencies_{0:016x}),", decl.GetId());
+        {
+            m_writer.WriteLine(".dependencies = Dependencies_{0:016x},", decl.GetId());
+            m_writer.WriteLine(".dependencyCount = HE_LENGTH_OF(Dependencies_{0:016x}),", decl.GetId());
+        }
         else
-            m_writer.WriteLine("nullptr, 0,");
+        {
+            m_writer.WriteLine(".dependencies = nullptr,");
+            m_writer.WriteLine(".dependencyCount = 0,");
+        }
 
         if (hasFields)
-            m_writer.WriteLine("Fields_{0:016x}, HE_LENGTH_OF(Fields_{0:016x}),", decl.GetId());
+        {
+            m_writer.WriteLine(".fields = Fields_{0:016x},", decl.GetId());
+            m_writer.WriteLine(".fieldCount = HE_LENGTH_OF(Fields_{0:016x}),", decl.GetId());
+        }
         else
-            m_writer.WriteLine("nullptr, 0,");
+        {
+            m_writer.WriteLine(".fields = nullptr,");
+            m_writer.WriteLine(".fieldCount = 0,");
+        }
 
         m_writer.DecreaseIndent();
         m_writer.WriteLine("};\n");
@@ -755,6 +775,11 @@ namespace he::schema
             m_writer.WriteLine("{");
             m_writer.IncreaseIndent();
 
+            m_writer.WriteIndent();
+            m_writer.Write("case ");
+            WriteName(decl, {}, {});
+            m_writer.Write("::UnionTag::_Unset: return \"_Unset\";\n");
+
             he::String upperCamelName;
             for (const Field::Reader f : structDecl.GetFields())
             {
@@ -808,6 +833,98 @@ namespace he::schema
         m_writer.Write('\n');
         m_writer.DecreaseIndent();
         m_writer.WriteLine("};\n");
+    }
+
+    void CodeGenCppNative::WriteFieldGetValue(Field::Reader field, Declaration::Data::Struct::Reader structDecl, const he::String& className)
+    {
+        const StringView fieldName = field.GetName().AsView();
+
+        // TODO: This doesn't work. Can't return a pointer to a dynamic stored as static.
+        // It would only construct once and return the first instance each time.
+        // Instead, can we make DynamicStruct, DynamicList, etc like buffer_dynamic.h but for structs?
+        // Maybe we can instantiate the dynamic field instances here or something to make it easier?
+
+        if (structDecl.GetIsUnion())
+        {
+            // TODO
+            m_writer.WriteLine(".getPointer = nullptr,");
+            m_writer.WriteLine(".getDynamic = nullptr,");
+        }
+        else
+        {
+            m_writer.WriteLine(".getPointer = [](void* instance) -> void* {{ return &static_cast<{}*>(instance)->{}); }},", className, fieldName);
+            m_writer.WriteLine(".getDynamic = [](void* instance) -> void* {{ static auto s_value = MakeDynamicValue(&static_cast<{}*>(instance)->{}); return &s_value; }},", className, fieldName);
+
+            //switch (field.GetMeta().GetUnionTag())
+            //{
+            //    case Field::Meta::UnionTag::Normal:
+            //    case Field::Meta::UnionTag::Group:
+            //        m_writer.WriteLine(".getValue = [](void* instance) -> DynamicValue2* {{ static auto s_value = MakeDynamicValue(&static_cast<{}*>(instance)->{}); return &s_value; }},", className, fieldName);
+            //        break;
+            //    case Field::Meta::UnionTag::Union:
+            //        // TODO
+            //        m_writer.WriteLine(".getValue = nullptr,");
+            //        break;
+            //}
+        }
+
+
+
+        //// getValue
+        //m_writer.WriteLine("[](const void* instance) -> const void* {{ return &static_cast<const {}*>(instance)->{}; }},", className, fieldName);
+
+        //if (structDecl.GetIsUnion())
+        //{
+        //    // TODO
+        //    m_writer.WriteLine("nullptr, // setValue");
+        //    m_writer.WriteLine("nullptr, // allocValue");
+        //    m_writer.WriteLine("nullptr, // getElement");
+        //    m_writer.WriteLine("nullptr, // setElement");
+        //    m_writer.WriteLine("nullptr, // moveElement");
+        //    m_writer.WriteLine("nullptr, // addElement");
+        //    m_writer.WriteLine("nullptr, // removeElement");
+        //}
+        //else if (field.GetMeta().IsGroup() || field.GetMeta().IsUnion())
+        //{
+        //    // TODO
+        //    m_writer.WriteLine("nullptr, // setValue");
+        //    m_writer.WriteLine("nullptr, // allocValue");
+        //    m_writer.WriteLine("nullptr, // getElement");
+        //    m_writer.WriteLine("nullptr, // setElement");
+        //    m_writer.WriteLine("nullptr, // moveElement");
+        //    m_writer.WriteLine("nullptr, // addElement");
+        //    m_writer.WriteLine("nullptr, // removeElement");
+        //}
+        //else
+        //{
+        //    const Field::Meta::Normal::Reader norm = field.GetMeta().GetNormal();
+        //    const bool isPointer = IsPointer(norm.GetType());
+
+        //    if (isPointer)
+        //    {
+        //        // TODO
+        //        m_writer.WriteLine("nullptr, // setValue");
+        //        m_writer.WriteLine("nullptr, // allocValue");
+        //        m_writer.WriteLine("nullptr, // getElement");
+        //        m_writer.WriteLine("nullptr, // setElement");
+        //        m_writer.WriteLine("nullptr, // moveElement");
+        //        m_writer.WriteLine("nullptr, // addElement");
+        //        m_writer.WriteLine("nullptr, // removeElement");
+        //    }
+        //    else
+        //    {
+        //        // setValue
+        //        m_writer.WriteLine("[](void* instance, const void* value) -> void {{ return static_cast<const {}*>(instance)->{} = *static_cast<const {}*>(value); }},", className, fieldName, "bool");
+        //        // allocValue
+        //        m_writer.WriteLine("[](void* instance) -> void {{ return static_cast<const {}*>(instance)->{} = *static_cast<const {}*>(value); }},", className, fieldName, "bool");
+        //        m_writer.WriteLine("nullptr, // allocValue");
+        //        m_writer.WriteLine("nullptr, // getElement");
+        //        m_writer.WriteLine("nullptr, // setElement");
+        //        m_writer.WriteLine("nullptr, // moveElement");
+        //        m_writer.WriteLine("nullptr, // addElement");
+        //        m_writer.WriteLine("nullptr, // removeElement");
+        //    }
+        //}
     }
 
     void CodeGenCppNative::WriteName(Declaration::Reader decl, Declaration::Reader scope, Brand::Reader brand)

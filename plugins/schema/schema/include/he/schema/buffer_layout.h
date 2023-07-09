@@ -45,8 +45,6 @@ namespace he::schema
     constexpr uint32_t BitsPerWord = BytesPerWord * BitsPerByte;
 
     // --------------------------------------------------------------------------------------------
-    template <typename T> concept DataType = IsArithmetic<T> || IsEnum<T> || IsSame<T, Void>;
-
     template <typename T>
     struct LayoutTraits
     {

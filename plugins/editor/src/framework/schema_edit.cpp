@@ -82,17 +82,17 @@ namespace he::editor
 
     static schema::DynamicValue::Builder InitByPath(schema::DynamicValue::Builder& data, const SchemaEditPathEntry& entry, uint32_t size)
     {
-       switch (data.GetKind())
-       {
-           case schema::DynamicValue::Kind::Array: return data.As<schema::DynamicArray>().Init(static_cast<uint16_t>(entry.index), size);
-           case schema::DynamicValue::Kind::List: return data.As<schema::DynamicList>().Init(entry.index, size);
-           case schema::DynamicValue::Kind::Struct: return data.As<schema::DynamicStruct>().Init(entry.field, size);
-           default:
-               HE_VERIFY(false,
-                   HE_MSG("Path is invalid, it indexes into a field that is not an array, list, or struct."),
-                   HE_KV(kind, data.GetKind()));
-               return schema::DynamicValue::Builder{};
-       }
+        switch (data.GetKind())
+        {
+            case schema::DynamicValue::Kind::Array: return data.As<schema::DynamicArray>().Init(static_cast<uint16_t>(entry.index), size);
+            case schema::DynamicValue::Kind::List: return data.As<schema::DynamicList>().Init(entry.index, size);
+            case schema::DynamicValue::Kind::Struct: return data.As<schema::DynamicStruct>().Init(entry.field, size);
+            default:
+                HE_VERIFY(false,
+                    HE_MSG("Path is invalid, it indexes into a field that is not an array, list, or struct."),
+                    HE_KV(kind, data.GetKind()));
+                return schema::DynamicValue::Builder{};
+        }
     }
 
     static void ClearByPath(schema::DynamicValue::Builder& data, const SchemaEditPathEntry& entry)

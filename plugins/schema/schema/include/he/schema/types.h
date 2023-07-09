@@ -39,6 +39,10 @@ namespace he::schema
         constexpr bool operator!=(Void) const { return false; }
     };
 
+    /// A data type is all types that aren't stored as pointers in schema buffers.
+    template <typename T>
+    concept DataType = he::IsArithmetic<T> || IsEnum<T> || IsSame<T, Void>;
+
     /// Enumeration of the kinds of pointers that exists in the schema binary format.
     ///
     /// @note The numeric values of these enums are used in persisted binary data, changing
@@ -88,26 +92,13 @@ namespace he::schema
         /// Pointer to the raw schema words for this field.
         const Word* const schema;
 
+        /// Get a pointer to the dynamic value class that can be used to modify this field.
+        class DynamicValue2* dynamic;
+
         /// Get a pointer to the value of this field.
-        const void* (*getValue)(const void* instance);
-
-        /// Set the value of this field.
-        void (*setValue)(void* instance, const void* value);
-
-        /// Get a pointer to an element of this field. Only valid for lists an arrays.
-        const void* (*getElement)(const void* instance, uint32_t index);
-
-        /// Set the value of an element of this field. Only valid for lists an arrays.
-        void (*setElement)(void* instance, uint32_t index, const void* value);
-
-        /// Move an element from one index to another. Only valid for lists and arrays.
-        void (*moveElement)(void* instance, uint32_t fromIndex, uint32_t toIndex);
-
-        /// Add a new element to the end of the list. Only valid for lists.
-        void (*addElement)(void* instance);
-
-        /// Remove an element from the list. Only valid for lists.
-        void (*removeElement)(void* instance, uint32_t index);
+        ///
+        /// \param[in] instance The instance of the struct to get this field value from.
+        void* (*getPointer)(void* instance);
     };
 
     /// The DeclInfo structure stores information about a schema declaration in generated code.
@@ -151,7 +142,7 @@ namespace he::schema
     struct DeclInfoForId;
 
     template <Enum T>
-    struct EnumInfo;
+    struct EnumDeclInfo;
 
     #define HE_SCHEMA_DECL_INFO_FOR_ID(id) \
         template <> struct DeclInfoForId<id> { static const DeclInfo Value; }
@@ -163,7 +154,7 @@ namespace he::schema
         static constexpr const ::he::schema::DeclInfo& DeclInfo = ::he::schema::DeclInfoForId<id>::Value
 
     #define HE_SCHEMA_DECL_ENUM(type, id, parentId) \
-        template <> struct EnumInfo<type> { HE_SCHEMA_DECL_(id, parentId, Enum); };
+        template <> struct EnumDeclInfo<type> { HE_SCHEMA_DECL_(id, parentId, Enum); };
 
     #define HE_SCHEMA_DECL_ATTRIBUTE(id, parentId) \
         HE_SCHEMA_DECL_(id, parentId, Attribute)

@@ -42,6 +42,7 @@ namespace he::schema
         void WriteDeclInfoSrc(Declaration::Reader decl);
         void WriteEnumStrings(Declaration::Reader decl);
         void WriteRawSchemaData();
+        void WriteFieldGetValue(Field::Reader field, Declaration::Data::Struct::Reader structDecl, const he::String& className);
 
     private:
         void WriteName(Declaration::Reader decl, Declaration::Reader scope, Brand::Reader brand);

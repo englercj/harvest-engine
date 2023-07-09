@@ -493,9 +493,13 @@ namespace he
         void PushFront(char c) { Insert(0, &c, 1); }
 
         /// Removes the last character from the end of the string.
+        ///
+        /// \return Returns the character that was removed.
         char PopBack();
 
         /// Removes the first character from the end of the string.
+        ///
+        /// \return Returns the character that was removed.
         char PopFront();
 
         /// Appends the character to the end of this string.

@@ -190,7 +190,7 @@ namespace he
     /// \param[in] filter A string filter to limit the tests that are run. The filter string is
     ///     tested against the "fully qualified" test name, which looks like "module:suite:test".
     ///     If the filter string is contained anywhere within that string, it is included.
-    /// \return Zero if all tests pass, or a non-zero value if there was a failure.
+    /// \return The number of tests that failed.
     uint64_t RunAllTests(const char* filter = nullptr);
 
     /// Checks if two floating point values are within `maxUlpDiff` floating point steps of eachother.

@@ -82,6 +82,12 @@ namespace he
         /// \param x The vector to move from.
         Vector& operator=(Vector&& x) noexcept;
 
+        /// Replaces the contents of this vector with a copy of the elements in `range`.
+        ///
+        /// \param str The range source to copy from.
+        template <ContiguousRangeOf<T> R> requires(!IsSame<R, Vector<T>>)
+        Vector& operator=(const R& range) { Clear(); Insert(0, range.Data(), range.Size()); return *this; }
+
         /// Gets a reference to the element at `index`. Asserts if `index` is not less than
         /// \see Size().
         ///
@@ -105,12 +111,6 @@ namespace he
         /// \return True if the vectors are not equal, false otherwise.
         template <typename U> requires(IsConvertible<U(*)[], T(*)[]>)
         bool operator!=(const Vector<U>& x) const { return !this->operator==(x); }
-
-        /// Replaces the contents of this string with a copy of the characters in `range`.
-        ///
-        /// \param str The string source to copy from.
-        template <ContiguousRangeOf<const T> R> requires(!IsSame<R, Vector<T>>)
-        Vector& operator=(const R& range) { Clear(); Insert(0, range.Data(), range.Size()); return *this; }
 
         // ----------------------------------------------------------------------------------------
         // Capacity

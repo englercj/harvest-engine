@@ -528,6 +528,7 @@ namespace he
         if (count == 0)
             return;
 
+        HE_ASSERT(index < m_size);
         HE_ASSERT((index + count) <= m_size);
 
         const uint32_t moveCount = m_size - count - index;
@@ -546,6 +547,7 @@ namespace he
         if (count == 0)
             return;
 
+        HE_ASSERT(index < m_size);
         HE_ASSERT((index + count) <= m_size);
 
         // Move over as many tail elements as we can into the erased elements

@@ -85,7 +85,7 @@ namespace he
         /// Replaces the contents of this vector with a copy of the elements in `range`.
         ///
         /// \param str The range source to copy from.
-        template <ContiguousRangeOf<T> R> requires(!IsSame<R, Vector<T>>)
+        template <ContiguousRangeOf<const T> R> requires(!IsSame<R, Vector<T>>)
         Vector& operator=(const R& range) { Clear(); Insert(0, range.Data(), range.Size()); return *this; }
 
         /// Gets a reference to the element at `index`. Asserts if `index` is not less than

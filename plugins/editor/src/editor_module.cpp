@@ -37,6 +37,7 @@ namespace he::editor
             editors.RegisterTypeEditor<schema::Vec2f>({ &Vec2fEditor, editor::TypeEditUIService::EditorFlag::Inline });
             editors.RegisterTypeEditor<schema::Vec3f>({ &Vec3fEditor, editor::TypeEditUIService::EditorFlag::Inline });
             editors.RegisterTypeEditor<schema::Vec4f>({ &Vec4fEditor, editor::TypeEditUIService::EditorFlag::Inline });
+            editors.RegisterTypeEditor<schema::Uuid>({ &UuidEditor, editor::TypeEditUIService::EditorFlag::Inline });
 
             return true;
         }

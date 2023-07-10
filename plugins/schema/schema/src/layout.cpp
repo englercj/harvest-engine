@@ -292,7 +292,7 @@ namespace he::schema
             return;
         }
 
-        HE_ASSERT(value.Data() >= m_builder->Data() && value.Data() <= m_builder->Data() + m_builder->Size());
+        HE_ASSERT(m_builder->Contains(value));
 
         if ((value.DataWordSize() + value.PointerCount()) == 0)
         {
@@ -316,7 +316,7 @@ namespace he::schema
             return;
         }
 
-        HE_ASSERT(value.Data() >= m_builder->Data() && value.Data() <= m_builder->Data() + m_builder->Size());
+        HE_ASSERT(m_builder->Contains(value));
 
         const Word* target = value.Data();
         uint32_t listSize = value.Size();
@@ -409,7 +409,7 @@ namespace he::schema
         if (!reader.IsValid())
             return ListBuilder();
 
-        HE_ASSERT(reader.Data() >= m_builder->Data() && reader.Data() < m_builder->Data() + m_builder->Size());
+        HE_ASSERT(m_builder->Contains(reader));
         const uint32_t wordOffset = static_cast<uint32_t>(reader.Data() - m_builder->Data());
 
         if (reader.GetElementSize() == ElementSize::Composite)
@@ -424,7 +424,7 @@ namespace he::schema
         if (!reader.IsValid())
             return StructBuilder();
 
-        HE_ASSERT(reader.Data() >= m_builder->Data() && reader.Data() < m_builder->Data() + m_builder->Size());
+        HE_ASSERT(m_builder->Contains(reader));
         const uint32_t wordOffset = static_cast<uint32_t>(reader.Data() - m_builder->Data());
         return StructBuilder(m_builder, wordOffset, reader.DataFieldCount(), reader.DataWordSize(), reader.PointerCount());
     }
@@ -434,38 +434,57 @@ namespace he::schema
         if (Location() == reader.Data())
             return;
 
-        HE_ASSERT(m_size == reader.Size());
         HE_ASSERT(m_step == reader.StepSize());
         HE_ASSERT(m_elementSize == reader.GetElementSize());
+
+        const uint32_t size = Min(m_size, reader.Size());
 
         if (m_elementSize == ElementSize::Composite)
         {
             HE_ASSERT(StructDataWordSize() == reader.StructDataWordSize());
             HE_ASSERT(StructPointerCount() == reader.StructPointerCount());
 
-            for (uint32_t i = 0; i < m_size; ++i)
+            for (uint32_t i = 0; i < size; ++i)
             {
                 StructReader src = reader.GetCompositeElement(i);
                 StructBuilder dst = GetCompositeElement(i);
                 dst.Copy(src);
             }
+
+            for (uint32_t i = size; i < m_size; ++i)
+            {
+                StructBuilder dst = GetCompositeElement(i);
+                dst.ClearAllFields();
+            }
         }
         else if (m_elementSize == ElementSize::Pointer)
         {
-            for (uint32_t i = 0; i < m_size; ++i)
+            for (uint32_t i = 0; i < size; ++i)
             {
                 PointerReader src = reader.GetPointerElement(i);
                 PointerBuilder dst = GetPointerElement(i);
                 dst.Copy(src);
             }
+
+            for (uint32_t i = size; i < m_size; ++i)
+            {
+                PointerBuilder dst = GetPointerElement(i);
+                dst.SetNull();
+            }
         }
         else
         {
-            const uint64_t byteSize = (static_cast<uint64_t>(reader.Size()) * reader.StepSize()) / BitsPerByte;
+            const uint64_t byteSize = (static_cast<uint64_t>(size) * m_step) / BitsPerByte;
             //  TODO: Confirm that byteSize is reasonable
             MemCopy(Data(), reader.Data(), byteSize);
 
-            const uint64_t leftoverBits = (static_cast<uint64_t>(reader.Size()) * reader.StepSize()) % BitsPerByte;
+            if (m_size > size)
+            {
+                const uint64_t remainingBytes = (static_cast<uint64_t>(m_size - size) * m_step) / BitsPerByte;
+                MemZero(Data() + byteSize, remainingBytes);
+            }
+
+            const uint64_t leftoverBits = (static_cast<uint64_t>(size) * m_step) % BitsPerByte;
             if (leftoverBits > 0)
             {
                 const uint8_t mask = (1 << leftoverBits) - 1;

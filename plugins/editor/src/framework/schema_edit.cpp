@@ -82,17 +82,17 @@ namespace he::editor
 
     //static schema::DynamicValue::Builder InitByPath(schema::DynamicValue::Builder& data, const SchemaEditPathEntry& entry, uint32_t size)
     //{
-    //    switch (data.GetKind())
-    //    {
-    //        case schema::DynamicValue::Kind::Array: return data.As<schema::DynamicArray>().Init(static_cast<uint16_t>(entry.index), size);
-    //        case schema::DynamicValue::Kind::List: return data.As<schema::DynamicList>().Init(entry.index, size);
-    //        case schema::DynamicValue::Kind::Struct: return data.As<schema::DynamicStruct>().Init(entry.field, size);
-    //        default:
-    //            HE_VERIFY(false,
-    //                HE_MSG("Path is invalid, it indexes into a field that is not an array, list, or struct."),
-    //                HE_KV(kind, data.GetKind()));
-    //            return schema::DynamicValue::Builder{};
-    //    }
+    //   switch (data.GetKind())
+    //   {
+    //       case schema::DynamicValue::Kind::Array: return data.As<schema::DynamicArray>().Init(static_cast<uint16_t>(entry.index), size);
+    //       case schema::DynamicValue::Kind::List: return data.As<schema::DynamicList>().Init(entry.index, size);
+    //       case schema::DynamicValue::Kind::Struct: return data.As<schema::DynamicStruct>().Init(entry.field, size);
+    //       default:
+    //           HE_VERIFY(false,
+    //               HE_MSG("Path is invalid, it indexes into a field that is not an array, list, or struct."),
+    //               HE_KV(kind, data.GetKind()));
+    //           return schema::DynamicValue::Builder{};
+    //   }
     //}
 
     static void ClearByPath(schema::DynamicValue::Builder& data, const SchemaEditPathEntry& entry)
@@ -109,68 +109,68 @@ namespace he::editor
         }
     }
 
-    static schema::DynamicValue::Builder CopyByPath(schema::Builder& builder, const schema::DynamicValue::Builder& data, const SchemaEditPathEntry& entry)
-    {
-        const schema::DynamicValue::Builder& value = GetByPath(data, entry);
+    // static schema::DynamicValue::Builder CopyByPath(schema::Builder& builder, const schema::DynamicValue::Builder& data, const SchemaEditPathEntry& entry)
+    // {
+    //     const schema::DynamicValue::Builder& value = GetByPath(data, entry);
 
-        switch (value.GetKind())
-        {
-            case schema::DynamicValue::Kind::Unknown: return {};
-            case schema::DynamicValue::Kind::Void: return schema::Void{};
-            case schema::DynamicValue::Kind::Bool: return value.As<bool>();
-            case schema::DynamicValue::Kind::Int: return value.As<int64_t>();
-            case schema::DynamicValue::Kind::Uint: return value.As<uint64_t>();
-            case schema::DynamicValue::Kind::Float: return value.As<double>();
-            case schema::DynamicValue::Kind::Enum: return value.As<schema::DynamicEnum>();
-            case schema::DynamicValue::Kind::Blob:
-            {
-                const schema::Blob::Builder src = value.As<schema::Blob>();
-                return builder.AddBlob(src.AsBytes());
-            }
-            case schema::DynamicValue::Kind::String:
-            {
-                const schema::String::Builder src = value.As<schema::String>();
-                return builder.AddString(src);
-            }
-            case schema::DynamicValue::Kind::Array:
-            {
-                HE_VERIFY(false,
-                    HE_MSG("Arrays cannot be copied for undo operations because you cannot set the value of an array."),
-                    HE_KV(kind, value.GetKind()),
-                    HE_KV(parent_kind, data.GetKind()));
-                return {};
-            }
-            case schema::DynamicValue::Kind::List:
-            {
-                const schema::DynamicList::Builder src = value.As<schema::DynamicList>();
-                const schema::ElementSize elementSize = schema::GetTypeElementSize(src.ListType().GetElementType());
-                const schema::ListBuilder copy = builder.AddList(elementSize, src.Size());
-                return schema::DynamicList::Builder(src.Scope(), src.GetType(), copy);
-            }
-            case schema::DynamicValue::Kind::Struct:
-            {
-                const schema::DynamicStruct::Builder src = value.As<schema::DynamicStruct>();
-                const schema::Declaration::Data::Struct::Reader structDecl = src.StructSchema();
-                const schema::StructBuilder copy = builder.AddStruct(structDecl.GetDataFieldCount(), structDecl.GetDataWordSize(), structDecl.GetPointerCount());
-                return schema::DynamicStruct::Builder(src.Decl(), copy);
-            }
-            case schema::DynamicValue::Kind::AnyPointer:
-            {
-                // TODO: implement copy for any pointer
-                HE_VERIFY(false,
-                    HE_MSG("AnyPointer cannot be copied for undo operations because I just haven't written it yet."),
-                    HE_KV(kind, value.GetKind()),
-                    HE_KV(parent_kind, data.GetKind()));
-                return schema::DynamicValue::Builder();
-            }
-        }
+    //     switch (value.GetKind())
+    //     {
+    //         case schema::DynamicValue::Kind::Unknown: return {};
+    //         case schema::DynamicValue::Kind::Void: return schema::Void{};
+    //         case schema::DynamicValue::Kind::Bool: return value.As<bool>();
+    //         case schema::DynamicValue::Kind::Int: return value.As<int64_t>();
+    //         case schema::DynamicValue::Kind::Uint: return value.As<uint64_t>();
+    //         case schema::DynamicValue::Kind::Float: return value.As<double>();
+    //         case schema::DynamicValue::Kind::Enum: return value.As<schema::DynamicEnum>();
+    //         case schema::DynamicValue::Kind::Blob:
+    //         {
+    //             const schema::Blob::Builder src = value.As<schema::Blob>();
+    //             return builder.AddBlob(src.AsBytes());
+    //         }
+    //         case schema::DynamicValue::Kind::String:
+    //         {
+    //             const schema::String::Builder src = value.As<schema::String>();
+    //             return builder.AddString(src);
+    //         }
+    //         case schema::DynamicValue::Kind::Array:
+    //         {
+    //             HE_VERIFY(false,
+    //                 HE_MSG("Arrays cannot be copied for undo operations because you cannot set the value of an array."),
+    //                 HE_KV(kind, value.GetKind()),
+    //                 HE_KV(parent_kind, data.GetKind()));
+    //             return {};
+    //         }
+    //         case schema::DynamicValue::Kind::List:
+    //         {
+    //             const schema::DynamicList::Builder src = value.As<schema::DynamicList>();
+    //             const schema::ElementSize elementSize = schema::GetTypeElementSize(src.ListType().GetElementType());
+    //             const schema::ListBuilder copy = builder.AddList(elementSize, src.Size());
+    //             return schema::DynamicList::Builder(src.Scope(), src.GetType(), copy);
+    //         }
+    //         case schema::DynamicValue::Kind::Struct:
+    //         {
+    //             const schema::DynamicStruct::Builder src = value.As<schema::DynamicStruct>();
+    //             const schema::Declaration::Data::Struct::Reader structDecl = src.StructSchema();
+    //             const schema::StructBuilder copy = builder.AddStruct(structDecl.GetDataFieldCount(), structDecl.GetDataWordSize(), structDecl.GetPointerCount());
+    //             return schema::DynamicStruct::Builder(src.Decl(), copy);
+    //         }
+    //         case schema::DynamicValue::Kind::AnyPointer:
+    //         {
+    //             // TODO: implement copy for any pointer
+    //             HE_VERIFY(false,
+    //                 HE_MSG("AnyPointer cannot be copied for undo operations because I just haven't written it yet."),
+    //                 HE_KV(kind, value.GetKind()),
+    //                 HE_KV(parent_kind, data.GetKind()));
+    //             return schema::DynamicValue::Builder();
+    //         }
+    //     }
 
-        HE_VERIFY(false,
-            HE_MSG("Value to copy is invalid, it is not of a valid kind."),
-            HE_KV(kind, value.GetKind()),
-            HE_KV(parent_kind, data.GetKind()));
-        return {};
-    }
+    //     HE_VERIFY(false,
+    //         HE_MSG("Value to copy is invalid, it is not of a valid kind."),
+    //         HE_KV(kind, value.GetKind()),
+    //         HE_KV(parent_kind, data.GetKind()));
+    //     return {};
+    // }
 
     static schema::DynamicValue::Builder WalkExistingPath(schema::DynamicValue::Builder data, Span<const SchemaEditPathEntry> path, uint32_t& index)
     {
@@ -298,11 +298,11 @@ namespace he::editor
     {
         for (SchemaEditAction& action : edit.actions)
         {
-            RedoAction(action, edit);
+            RedoAction(action);
         }
     }
 
-    void SchemaEditContext::RedoAction(SchemaEditAction& action, SchemaEdit& edit)
+    void SchemaEditContext::RedoAction(SchemaEditAction& action)
     {
         // The flow for playing forward an action is:
         // 1. Walk the existing items of the path
@@ -316,59 +316,14 @@ namespace he::editor
 
         if (action.undoActions.IsEmpty())
         {
-            // if walking the existing path didn't bring us to the end
-            for (uint32_t i = index; i < (action.path.Size() - 1); ++i)
-            {
-                SchemaEditAction undo;
-                undo.kind = SchemaEditAction::Kind::ClearValue;
-                undo.path.Insert(0, action.path.Begin(), action.path.Begin() + i);
-                action.undoActions.PushBack(Move(undo));
-            }
-
-            const SchemaEditPathEntry& entry = action.path.Back();
-
-            switch (action.kind)
-            {
-                case SchemaEditAction::Kind::AddListItem:
-                case SchemaEditAction::Kind::RemoveListItem:
-                    // TODO: Copy list elements so we can restore them
-                    break;
-                case SchemaEditAction::Kind::SetValue:
-                {
-                    SchemaEditAction& undo = action.undoActions.EmplaceBack();
-                    undo.kind = SchemaEditAction::Kind::ClearValue;
-                    undo.path = action.path;
-                    if (HasByPath(data, entry))
-                    {
-                        undo.kind = SchemaEditAction::Kind::SetValue;
-                        undo.value = CopyByPath(edit.m_builder, data, entry);
-                    }
-                    break;
-                }
-                case SchemaEditAction::Kind::InitValue:
-                {
-                    SchemaEditAction& undo = action.undoActions.EmplaceBack();
-                    undo.kind = SchemaEditAction::Kind::ClearValue;
-                    undo.path = action.path;
-                    break;
-                }
-                case SchemaEditAction::Kind::ClearValue:
-                {
-                    HE_ASSERT(index == (action.path.Size() - 1));
-                    HE_ASSERT(HasByPath(data, entry));
-                    SchemaEditAction& undo = action.undoActions.EmplaceBack();
-                    undo.kind = SchemaEditAction::Kind::SetValue;
-                    undo.path = action.path;
-                    undo.value = CopyByPath(edit.m_builder, data, entry);
-                    break;
-                }
-            }
+            MakeUndoActions(data, action, index);
         }
 
         for (uint32_t i = index; i < (action.path.Size() - 1); ++i)
         {
-            InitByPath(data, action.path[i]);
+            data = InitByPath(data, action.path[i]);
         }
+
         ApplyAction(data, action);
     }
 
@@ -404,6 +359,52 @@ namespace he::editor
         }
     }
 
+    void SchemaEditContext::MakeUndoActions(schema::DynamicValue::Builder& data, SchemaEditAction& action, uint32_t index)
+    {
+        // If walking the existing path didn't bring us to the end then we need to create a
+        // 'ClearValue' action for each non-existant path. This is so that when this edit is
+        // undone we can restore the original state of the object.
+        for (uint32_t i = index; i < (action.path.Size() - 1); ++i)
+        {
+            SchemaEditAction& undo = action.undoActions.EmplaceBack();
+            undo.kind = SchemaEditAction::Kind::ClearValue;
+            undo.path.Insert(0, action.path.Begin(), action.path.Begin() + i);
+        }
+
+        const SchemaEditPathEntry& entry = action.path.Back();
+
+        switch (action.kind)
+        {
+            case SchemaEditAction::Kind::AddListItem:
+            case SchemaEditAction::Kind::EraseListItem:
+            case SchemaEditAction::Kind::SetValue:
+            {
+                SchemaEditAction& undo = action.undoActions.EmplaceBack();
+                undo.kind = SchemaEditAction::Kind::SetValue;
+                undo.path = action.path;
+                undo.value = GetByPath(data, entry);
+                break;
+            }
+            case SchemaEditAction::Kind::InitValue:
+            {
+                SchemaEditAction& undo = action.undoActions.EmplaceBack();
+                undo.kind = SchemaEditAction::Kind::ClearValue;
+                undo.path = action.path;
+                break;
+            }
+            case SchemaEditAction::Kind::ClearValue:
+            {
+                HE_ASSERT(index == (action.path.Size() - 1));
+                HE_ASSERT(HasByPath(data, entry));
+                SchemaEditAction& undo = action.undoActions.EmplaceBack();
+                undo.kind = SchemaEditAction::Kind::SetValue;
+                undo.path = action.path;
+                undo.value = GetByPath(data, entry);
+                break;
+            }
+        }
+    }
+
     void SchemaEditContext::ApplyAction(schema::DynamicValue::Builder& data, const SchemaEditAction& action)
     {
         const SchemaEditPathEntry& entry = action.path.Back();
@@ -411,12 +412,28 @@ namespace he::editor
         switch (action.kind)
         {
             case SchemaEditAction::Kind::AddListItem:
-            case SchemaEditAction::Kind::RemoveListItem:
             {
-                schema::DynamicValue::Builder list = GetByPath(data, entry);
-                if (HE_VERIFY(list.GetKind() == schema::DynamicValue::Kind::List))
+                // TODO: Redo of this action creates a new list each time.
+                // Ideally we'd only create the new list once, then undo/redo just switches between
+                // pointers to the two lists. Maybe change the action kind after creating the list?
+                // Same for `EraseListItem`.
+                schema::DynamicValue::Builder listData = GetByPath(data, entry);
+                if (HE_VERIFY(listData.GetKind() == schema::DynamicValue::Kind::List))
                 {
-                    // TODO: Add/Remove list item
+                    schema::DynamicList::Builder list = listData.As<schema::DynamicList>();
+                    schema::DynamicList::Builder newList = list.Insert(list.Size(), action.value.AsReader());
+                    SetByPath(data, entry, newList.AsReader());
+                }
+                break;
+            }
+            case SchemaEditAction::Kind::EraseListItem:
+            {
+                schema::DynamicValue::Builder listData = GetByPath(data, entry);
+                if (HE_VERIFY(listData.GetKind() == schema::DynamicValue::Kind::List))
+                {
+                    schema::DynamicList::Builder list = listData.As<schema::DynamicList>();
+                    schema::DynamicList::Builder newList = list.Erase(entry.index, 1);
+                    SetByPath(data, entry, newList.AsReader());
                 }
                 break;
             }
@@ -448,7 +465,7 @@ namespace he
         switch (x)
         {
             case editor::SchemaEditAction::Kind::AddListItem: return "Add List Item";
-            case editor::SchemaEditAction::Kind::RemoveListItem: return "Remove List Item";
+            case editor::SchemaEditAction::Kind::EraseListItem: return "Erase List Item";
             case editor::SchemaEditAction::Kind::SetValue: return "Set Value";
             case editor::SchemaEditAction::Kind::InitValue: return "Init Value";
             case editor::SchemaEditAction::Kind::ClearValue: return "Clear Value";

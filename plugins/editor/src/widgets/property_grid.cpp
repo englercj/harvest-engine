@@ -365,14 +365,16 @@ namespace he::editor
                 T max = Limits<T>::Max;
                 ReadScalarRange(slider.GetValue(), min, max);
 
-                if (ImGui::SliderScalar("##scalar-slider", DataType, &v, &min, &max, nullptr, ImGuiSliderFlags_AlwaysClamp))
+                ImGui::SliderScalar("##scalar-slider", DataType, &v, &min, &max, nullptr, ImGuiSliderFlags_AlwaysClamp);
+                if (ImGui::IsItemDeactivatedAfterEdit())
                 {
                     changed = true;
                 }
             }
             else
             {
-                if (ImGui::InputScalar("##scalar-value", DataType, &v, nullptr, nullptr, nullptr, ImGuiInputTextFlags_EnterReturnsTrue))
+                ImGui::InputScalar("##scalar-value", DataType, &v, nullptr, nullptr, nullptr, ImGuiInputTextFlags_None);
+                if (ImGui::IsItemDeactivatedAfterEdit())
                 {
                     changed = true;
                 }
@@ -417,17 +419,17 @@ namespace he::editor
             static String v;
             v = value;
 
-            const ImGuiInputTextFlags flags = ImGuiInputTextFlags_EnterReturnsTrue
-                | ImGuiInputTextFlags_NoUndoRedo
+            const ImGuiInputTextFlags flags = ImGuiInputTextFlags_NoUndoRedo
                 | (readOnly ? ImGuiInputTextFlags_ReadOnly : ImGuiInputTextFlags_None);
 
             ImGui::BeginDisabled(readOnly);
             ImGui::PushItemWidth(-1.0f);
 
-            if (InputText("##string-value", v, flags))
+            InputText("##string-value", v, flags);
+            if (ImGui::IsItemDeactivatedAfterEdit())
             {
                 SchemaEditAction& action = m_edit.EmplaceAction(SchemaEditAction::Kind::SetValue);
-                action.value = m_edit.m_builder.AddString(v);
+                action.value = m_edit.ctx->Builder().AddString(v);
             }
 
             ImGui::PopItemWidth();

@@ -133,13 +133,13 @@ namespace he::editor
             asset.InitType(assets::Texture2D::AssetTypeName);
             asset.InitName("Test Texture");
 
-            assets::Texture2D::Builder tex = asset.GetBuilder()->AddStruct<assets::Texture2D>();
+            const assets::Texture2D::Builder tex = asset.GetBuilder()->AddStruct<assets::Texture2D>();
             asset.GetData().Set(tex);
 
             asset.GetBuilder()->SetRoot(asset);
         }
 
-        SchemaEdit edit;
+        SchemaEdit edit(s_ctx);
         PropertyGrid(s_ctx.Data().AsReader(), m_editUIService, edit);
 
         s_ctx.PushEdit(Move(edit));

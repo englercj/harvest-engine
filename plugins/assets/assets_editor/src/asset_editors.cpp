@@ -5,6 +5,7 @@
 #include "he/assets/asset_type_registry.h"
 #include "he/assets/types.h"
 #include "he/assets/types_fmt.h"
+#include "he/core/fmt.h"
 #include "he/core/module_registry.h"
 
 #include "imgui.h"

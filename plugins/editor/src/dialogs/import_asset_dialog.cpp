@@ -141,7 +141,7 @@ namespace he::editor
             case State::EditSettings:
             {
                 HE_ASSERT(m_editCtx.Data().Struct().IsValid());
-                SchemaEdit edit;
+                SchemaEdit edit(m_editCtx);
                 PropertyGrid(m_editCtx.Data().AsReader(), m_typeEditUIService, edit);
                 m_editCtx.PushEdit(Move(edit));
                 break;

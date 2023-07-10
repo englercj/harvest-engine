@@ -19,8 +19,8 @@ namespace he::editor
     struct SchemaEditPathEntry
     {
         schema::Field::Reader field{};              ///< The field being edited.
-        uint32_t index{ 0 };                            ///< Index for an array or list field.
-        const schema::DeclInfo* info{ nullptr };    ///< Type of the field when it is AnyPointer/AnyStruct
+        uint32_t index{ 0 };                        ///< Index for an element of the field when it is a List or Array.
+        const schema::DeclInfo* info{ nullptr };    ///< Type of the field when it is AnyPointer or AnyStruct.
     };
 
     // --------------------------------------------------------------------------------------------
@@ -29,7 +29,7 @@ namespace he::editor
         enum class Kind
         {
             AddListItem,
-            RemoveListItem,
+            EraseListItem,
             SetValue,
             InitValue,
             ClearValue,
@@ -47,6 +47,8 @@ namespace he::editor
     // --------------------------------------------------------------------------------------------
     struct SchemaEdit
     {
+        explicit SchemaEdit(SchemaEditContext& ctx) : ctx(&ctx) {}
+
         SchemaEditAction& EmplaceAction(SchemaEditAction::Kind kind)
         {
             SchemaEditAction& action = actions.EmplaceBack();
@@ -55,7 +57,7 @@ namespace he::editor
             return action;
         }
 
-        schema::Builder m_builder{};
+        SchemaEditContext* ctx;
         String name{};
         Vector<SchemaEditPathEntry> path{};
         Vector<SchemaEditAction> actions{};
@@ -86,11 +88,12 @@ namespace he::editor
 
     private:
         void RedoEdit(SchemaEdit& edit);
-        void RedoAction(SchemaEditAction& action, SchemaEdit& edit);
+        void RedoAction(SchemaEditAction& action);
 
         void UndoEdit(const SchemaEdit& edit);
         void UndoAction(const SchemaEditAction& action);
 
+        void MakeUndoActions(schema::DynamicValue::Builder& data, SchemaEditAction& action, uint32_t index);
         void ApplyAction(schema::DynamicValue::Builder& data, const SchemaEditAction& action);
 
     private:

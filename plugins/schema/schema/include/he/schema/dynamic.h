@@ -488,6 +488,26 @@ namespace he::schema
         void Clear(uint32_t index);
         bool Has(uint32_t index) const;
 
+        /// Creates a copy of this list at the new size.
+        ///
+        /// \param[in] count The size of the new list.
+        /// \return A copy of this list at the new size.
+        DynamicList::Builder Resize(uint32_t count);
+
+        /// Creates a copy of this list with `value` inserted at `index`.
+        ///
+        /// \param[in] index The index at which to insert the element.
+        /// \param[in] value The value to insert.
+        /// \return A copy of this list with `value` inserted at `index`.
+        DynamicList::Builder Insert(uint32_t index, const DynamicValue::Reader& value);
+
+        /// Creates a copy of this list with `count` elements removed starting at `index`.
+        ///
+        /// \param[in] index The index at which to start removing elements.
+        /// \param[in] count The number of elements to remove.
+        /// \return A copy of this list with `count` elements removed starting at `index`.
+        DynamicList::Builder Erase(uint32_t index, uint32_t count);
+
         DynamicValue::Builder operator[](uint32_t index) const;
 
         template <typename T>
@@ -505,6 +525,9 @@ namespace he::schema
 
         IteratorType begin() const { return IteratorType(this, 0); }
         IteratorType end() const { return IteratorType(this, Size()); }
+
+    private:
+        ListBuilder MakeResizedList(uint32_t count);
 
     private:
         const DeclInfo* m_scope{ nullptr };

@@ -598,6 +598,10 @@ namespace he::schema
         List<uint8_t>::Builder AddBlob(Span<const uint8_t> data);
         String::Builder AddString(StringView str);
 
+        bool Contains(const ListReader& value) const { return (value.Data() >= Data() && value.Data() <= Data() + Size()); }
+        bool Contains(const PointerReader& value) const { return (value.Data() >= Data() && value.Data() <= Data() + Size()); }
+        bool Contains(const StructReader& value) const { return (value.Data() >= Data() && value.Data() <= Data() + Size()); }
+
         template <typename T>
         typename T::Builder AddStruct()
         {

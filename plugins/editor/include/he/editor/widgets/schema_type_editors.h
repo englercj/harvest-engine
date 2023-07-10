@@ -11,4 +11,5 @@ namespace he::editor
     void Vec2fEditor(const void*, const schema::DynamicValue::Reader& value, TypeEditUIService::Context& ctx);
     void Vec3fEditor(const void*, const schema::DynamicValue::Reader& value, TypeEditUIService::Context& ctx);
     void Vec4fEditor(const void*, const schema::DynamicValue::Reader& value, TypeEditUIService::Context& ctx);
+    void UuidEditor(const void*, const schema::DynamicValue::Reader& value, TypeEditUIService::Context& ctx);
 }

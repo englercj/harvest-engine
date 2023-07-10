@@ -66,9 +66,9 @@ namespace he::assets
 
             ModuleRegistry& registry = Registry();
 
-            //editor::TypeEditUIService& editors = registry.GetApi<editor::TypeEditUIService>();
-            //editors.UnregisterFieldEditor(schema::FindFieldByName<Asset>("uuid"), { &AssetUuidFieldEditor, editor::TypeEditUIService::EditorFlag::Inline });
-            //editors.UnregisterFieldEditor(schema::FindFieldByName<Asset>("data"), { &AssetDataFieldEditor, editor::TypeEditUIService::EditorFlag::Inline });
+            editor::TypeEditUIService& editors = registry.GetApi<editor::TypeEditUIService>();
+            editors.UnregisterFieldEditor<Asset>("uuid");
+            editors.UnregisterFieldEditor<Asset>("data");
 
             //EditorDocumentRegistry* editor = registry.FindApi<EditorDocumentRegistry>();
             //if (editor)

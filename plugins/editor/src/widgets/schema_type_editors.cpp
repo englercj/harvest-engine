@@ -2,6 +2,8 @@
 
 #include "he/editor/widgets/schema_type_editors.h"
 
+#include "he/core/fmt.h"
+#include "he/core/string.h"
 #include "he/schema/types.h"
 
 #define IMGUI_DEFINE_MATH_OPERATORS
@@ -155,5 +157,30 @@ namespace he::editor
             action.path.PushBack({ GetField<schema::Vec4f, FieldName_W>() });
             action.value = w;
         }
+    }
+
+    void UuidEditor(const void*, const schema::DynamicValue::Reader& value, TypeEditUIService::Context& ctx)
+    {
+        HE_UNUSED(ctx);
+
+        const schema::Uuid::Reader uuid = value.As<schema::DynamicStruct>().As<schema::Uuid>();
+        const uint8_t* b = uuid.GetValue().Data();
+
+        static String s_buf;
+        s_buf.Clear();
+        FormatTo(s_buf, "{:02x}-{:02x}-{:02x}-{:02x}-{:02x}",
+            FmtJoin(b + 0, b + 4, ""),
+            FmtJoin(b + 4, b + 6, ""),
+            FmtJoin(b + 6, b + 8, ""),
+            FmtJoin(b + 8, b + 10, ""),
+            FmtJoin(b + 10, b + 16, ""));
+
+        ImGui::BeginDisabled(true);
+        ImGui::PushItemWidth(-1.0f);
+        ImGui::InputText("##uuid", s_buf.Data(), s_buf.Capacity() + 1, ImGuiInputTextFlags_ReadOnly);
+        ImGui::PopItemWidth();
+        ImGui::EndDisabled();
+        if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+            ImGui::SetTooltip("This field is read-only.");
     }
 }

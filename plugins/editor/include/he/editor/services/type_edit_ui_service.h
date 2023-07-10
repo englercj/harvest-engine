@@ -42,18 +42,28 @@ namespace he::editor
         };
 
     public:
+        const Editor* FindEditor(schema::TypeId typeId) const;
+        const Editor* FindEditor(schema::Field::Reader field) const;
+
+    public:
         void RegisterTypeEditor(schema::TypeId typeId, Editor&& editor);
+        void UnregisterTypeEditor(schema::TypeId typeId);
 
         template <typename T>
         void RegisterTypeEditor(Editor&& editor) { RegisterTypeEditor(T::Id, Move(editor)); }
 
+        template <typename T>
+        void UnregisterTypeEditor() { UnregisterTypeEditor(T::Id); }
+
+    public:
         void RegisterFieldEditor(schema::Field::Reader field, Editor&& editor);
+        void UnregisterFieldEditor(schema::Field::Reader field);
 
         template <typename T>
         void RegisterFieldEditor(StringView name, Editor&& editor) { RegisterFieldEditor(schema::FindFieldByName<T>(name), Move(editor)); }
 
-        const Editor* FindEditor(schema::TypeId typeId) const;
-        const Editor* FindEditor(schema::Field::Reader field) const;
+        template <typename T>
+        void UnregisterFieldEditor(StringView name) { UnregisterFieldEditor(schema::FindFieldByName<T>(name)); }
 
     private:
         HashMap<schema::TypeId, Editor> m_typeEditors{};

@@ -22,28 +22,6 @@ namespace he::editor
         return 0;
     }
 
-    void TypeEditUIService::RegisterTypeEditor(schema::TypeId typeId, Editor&& editor)
-    {
-        if (!HE_VERIFY(schema::IsTypeId(typeId)))
-            return;
-
-        const auto result = m_typeEditors.Emplace(typeId, Move(editor));
-        HE_VERIFY(result.inserted,
-            HE_MSG("An editor for this type has already been registered."),
-            HE_KV(type_id, typeId));
-    }
-
-    void TypeEditUIService::RegisterFieldEditor(schema::Field::Reader field, Editor&& editor)
-    {
-        if (!HE_VERIFY(field.IsValid()))
-            return;
-
-        const auto result = m_fieldEditors.Emplace(field.Data(), Move(editor));
-        HE_VERIFY(result.inserted,
-            HE_MSG("An editor for this field has already been registered."),
-            HE_KV(name, field.GetName()));
-    }
-
     const TypeEditUIService::Editor* TypeEditUIService::FindEditor(schema::TypeId typeId) const
     {
         if (!schema::IsTypeId(typeId))
@@ -63,5 +41,49 @@ namespace he::editor
 
         const schema::TypeId typeId = GetFieldTypeId(field);
         return FindEditor(typeId);
+    }
+
+    void TypeEditUIService::RegisterTypeEditor(schema::TypeId typeId, Editor&& editor)
+    {
+        if (!HE_VERIFY(schema::IsTypeId(typeId)))
+            return;
+
+        const auto result = m_typeEditors.Emplace(typeId, Move(editor));
+        HE_VERIFY(result.inserted,
+            HE_MSG("An editor for this type has already been registered."),
+            HE_KV(type_id, typeId));
+    }
+
+    void TypeEditUIService::UnregisterTypeEditor(schema::TypeId typeId)
+    {
+        if (!HE_VERIFY(schema::IsTypeId(typeId)))
+            return;
+
+        const bool result = m_typeEditors.Erase(typeId);
+        HE_VERIFY(result,
+            HE_MSG("No editor for this type has been registered."),
+            HE_KV(type_id, typeId));
+    }
+
+    void TypeEditUIService::RegisterFieldEditor(schema::Field::Reader field, Editor&& editor)
+    {
+        if (!HE_VERIFY(field.IsValid()))
+            return;
+
+        const auto result = m_fieldEditors.Emplace(field.Data(), Move(editor));
+        HE_VERIFY(result.inserted,
+            HE_MSG("An editor for this field has already been registered."),
+            HE_KV(name, field.GetName()));
+    }
+
+    void TypeEditUIService::UnregisterFieldEditor(schema::Field::Reader field)
+    {
+        if (!HE_VERIFY(field.IsValid()))
+            return;
+
+        const bool result = m_fieldEditors.Erase(field.Data());
+        HE_VERIFY(result,
+            HE_MSG("No editor for this field has been registered."),
+            HE_KV(name, field.GetName()));
     }
 }

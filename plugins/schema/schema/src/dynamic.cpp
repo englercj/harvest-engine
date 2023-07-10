@@ -744,27 +744,58 @@ namespace he::schema
                     case Type::Data::UnionTag::Blob:
                     {
                         const Blob::Reader src = value.As<Blob>();
-                        Blob::Builder dst = Init(field, src.Size()).As<Blob>();
-                        dst.Copy(src);
+                        if (m_builder.GetBuilder()->Contains(src))
+                        {
+                            m_builder.GetPointerField(index).Set(src);
+                        }
+                        else
+                        {
+                            Blob::Builder dst = Init(field, src.Size()).As<Blob>();
+                            dst.Copy(src);
+                        }
                         break;
                     }
                     case Type::Data::UnionTag::String:
                     {
                         const String::Reader src = value.As<String>();
-                        String::Builder dst = Init(field, src.Size()).As<String>();
-                        dst.Copy(src);
+                        if (m_builder.GetBuilder()->Contains(src))
+                        {
+                            m_builder.GetPointerField(index).Set(src);
+                        }
+                        else
+                        {
+                            String::Builder dst = Init(field, src.Size()).As<String>();
+                            dst.Copy(src);
+                        }
                         break;
                     }
                     case Type::Data::UnionTag::AnyStruct:
                     {
-                        PointerBuilder ptr = Init(field).As<AnyPointer>();
                         if (value.GetKind() == DynamicValue::Kind::Struct)
                         {
-                            ptr.Copy(value.As<DynamicStruct>().Struct());
+                            const StructReader v = value.As<DynamicStruct>().Struct();
+                            if (m_builder.GetBuilder()->Contains(v))
+                            {
+                                m_builder.GetPointerField(index).Set(v);
+                            }
+                            else
+                            {
+                                PointerBuilder ptr = Init(field).As<AnyPointer>();
+                                ptr.Copy(v);
+                            }
                         }
                         else if (value.GetKind() == DynamicValue::Kind::AnyPointer && value.As<AnyPointer>().Kind() == PointerKind::Struct)
                         {
-                            ptr.Copy(value.As<AnyPointer>());
+                            const AnyPointer::Reader v = value.As<AnyPointer>();
+                            if (m_builder.GetBuilder()->Contains(v))
+                            {
+                                m_builder.GetPointerField(index).Set(v);
+                            }
+                            else
+                            {
+                                PointerBuilder ptr = Init(field).As<AnyPointer>();
+                                ptr.Copy(v);
+                            }
                         }
                         else
                         {
@@ -776,17 +807,64 @@ namespace he::schema
                     }
                     case Type::Data::UnionTag::AnyList:
                     {
-                        PointerBuilder ptr = Init(field).As<AnyPointer>();
                         switch (value.GetKind())
                         {
-                            case DynamicValue::Kind::Blob: ptr.Copy(value.As<Blob>()); break;
-                            case DynamicValue::Kind::String: ptr.Copy(value.As<String>()); break;
-                            case DynamicValue::Kind::List: ptr.Copy(value.As<DynamicList>().List()); break;
+                            case DynamicValue::Kind::Blob:
+                            {
+                                const Blob::Reader v = value.As<Blob>();
+                                if (m_builder.GetBuilder()->Contains(v))
+                                {
+                                    m_builder.GetPointerField(index).Set(v);
+                                }
+                                else
+                                {
+                                    PointerBuilder ptr = Init(field).As<AnyPointer>();
+                                    ptr.Copy(v);
+                                }
+                                break;
+                            }
+                            case DynamicValue::Kind::String:
+                            {
+                                const String::Reader v = value.As<String>();
+                                if (m_builder.GetBuilder()->Contains(v))
+                                {
+                                    m_builder.GetPointerField(index).Set(v);
+                                }
+                                else
+                                {
+                                    PointerBuilder ptr = Init(field).As<AnyPointer>();
+                                    ptr.Copy(v);
+                                }
+                                break;
+                            }
+                            case DynamicValue::Kind::List:
+                            {
+                                const ListReader v = value.As<DynamicList>().List();
+                                if (m_builder.GetBuilder()->Contains(v))
+                                {
+                                    m_builder.GetPointerField(index).Set(v);
+                                }
+                                else
+                                {
+                                    PointerBuilder ptr = Init(field).As<AnyPointer>();
+                                    ptr.Copy(v);
+                                }
+                                break;
+                            }
                             case DynamicValue::Kind::AnyPointer:
                             {
                                 if (HE_VERIFY(value.As<AnyPointer>().Kind() == PointerKind::List))
                                 {
-                                    ptr.Copy(value.As<AnyPointer>());
+                                    const AnyPointer::Reader v = value.As<AnyPointer>();
+                                    if (m_builder.GetBuilder()->Contains(v))
+                                    {
+                                        m_builder.GetPointerField(index).Set(v);
+                                    }
+                                    else
+                                    {
+                                        PointerBuilder ptr = Init(field).As<AnyPointer>();
+                                        ptr.Copy(v);
+                                    }
                                     break;
                                 }
                                 [[fallthrough]]; // Fall through to error case below
@@ -801,14 +879,78 @@ namespace he::schema
                     case Type::Data::UnionTag::AnyPointer:
                     case Type::Data::UnionTag::Parameter:
                     {
-                        PointerBuilder ptr = Init(field).As<AnyPointer>();
                         switch (value.GetKind())
                         {
-                            case DynamicValue::Kind::Blob: ptr.Copy(value.As<Blob>()); break;
-                            case DynamicValue::Kind::String: ptr.Copy(value.As<String>()); break;
-                            case DynamicValue::Kind::List: ptr.Copy(value.As<DynamicList>().List()); break;
-                            case DynamicValue::Kind::Struct: ptr.Copy(value.As<DynamicStruct>().Struct()); break;
-                            case DynamicValue::Kind::AnyPointer: ptr.Copy(value.As<AnyPointer>()); break;
+                            case DynamicValue::Kind::Blob:
+                            {
+                                const Blob::Reader v = value.As<Blob>();
+                                if (m_builder.GetBuilder()->Contains(v))
+                                {
+                                    m_builder.GetPointerField(index).Set(v);
+                                }
+                                else
+                                {
+                                    PointerBuilder ptr = Init(field).As<AnyPointer>();
+                                    ptr.Copy(v);
+                                }
+                                break;
+                            }
+                            case DynamicValue::Kind::String:
+                            {
+                                const String::Reader v = value.As<String>();
+                                if (m_builder.GetBuilder()->Contains(v))
+                                {
+                                    m_builder.GetPointerField(index).Set(v);
+                                }
+                                else
+                                {
+                                    PointerBuilder ptr = Init(field).As<AnyPointer>();
+                                    ptr.Copy(v);
+                                }
+                                break;
+                            }
+                            case DynamicValue::Kind::List:
+                            {
+                                const ListReader v = value.As<DynamicList>().List();
+                                if (m_builder.GetBuilder()->Contains(v))
+                                {
+                                    m_builder.GetPointerField(index).Set(v);
+                                }
+                                else
+                                {
+                                    PointerBuilder ptr = Init(field).As<AnyPointer>();
+                                    ptr.Copy(v);
+                                }
+                                break;
+                            }
+                            case DynamicValue::Kind::Struct:
+                            {
+                                const StructReader v = value.As<DynamicStruct>().Struct();
+                                if (m_builder.GetBuilder()->Contains(v))
+                                {
+                                    m_builder.GetPointerField(index).Set(v);
+                                }
+                                else
+                                {
+                                    PointerBuilder ptr = Init(field).As<AnyPointer>();
+                                    ptr.Copy(v);
+                                }
+                                break;
+                            }
+                            case DynamicValue::Kind::AnyPointer:
+                            {
+                                const AnyPointer::Reader v = value.As<AnyPointer>();
+                                if (m_builder.GetBuilder()->Contains(v))
+                                {
+                                    m_builder.GetPointerField(index).Set(v);
+                                }
+                                else
+                                {
+                                    PointerBuilder ptr = Init(field).As<AnyPointer>();
+                                    ptr.Copy(v);
+                                }
+                                break;
+                            }
                             default:
                                 HE_VERIFY(false,
                                     HE_MSG("Expected a pointer value when setting an AnyPointer field."),
@@ -818,8 +960,7 @@ namespace he::schema
                     }
                     case Type::Data::UnionTag::Array:
                     {
-                        HE_VERIFY(false,
-                            HE_MSG("Setting an array field via DynamicStruct::Builder::Set is not supported. Use DynamicStruct::Builder::Get() to get a DynamicArray::Builder object any set an element instead."));
+                        HE_VERIFY(false, HE_MSG("Setting an array field via DynamicStruct::Builder::Set is not supported. Use DynamicStruct::Builder::Get() to get a DynamicArray::Builder object any set an element instead."));
                         break;
                     }
                     case Type::Data::UnionTag::List:
@@ -827,8 +968,16 @@ namespace he::schema
                         const DynamicList::Reader src = value.As<DynamicList>();
                         if (HE_VERIFY(src.GetType() == type))
                         {
-                            DynamicList::Builder dst = Init(field, src.Size()).As<DynamicList>();
-                            dst.List().Copy(src.List());
+                            const ListReader v = src.List();
+                            if (m_builder.GetBuilder()->Contains(v))
+                            {
+                                m_builder.GetPointerField(index).Set(v);
+                            }
+                            else
+                            {
+                                DynamicList::Builder dst = Init(field, src.Size()).As<DynamicList>();
+                                dst.List().Copy(v);
+                            }
                         }
                         break;
                     }
@@ -855,8 +1004,16 @@ namespace he::schema
 
                         if (HE_VERIFY(&src.Decl() == info))
                         {
-                            DynamicStruct::Builder dst = Init(field).As<DynamicStruct>();
-                            dst.Struct().Copy(src.Struct());
+                            const StructReader v = src.Struct();
+                            if (m_builder.GetBuilder()->Contains(v))
+                            {
+                                m_builder.GetPointerField(index).Set(v);
+                            }
+                            else
+                            {
+                                DynamicStruct::Builder dst = Init(field).As<DynamicStruct>();
+                                dst.Struct().Copy(v);
+                            }
                         }
                         break;
                     }
@@ -1933,15 +2090,29 @@ namespace he::schema
             case Type::Data::UnionTag::Blob:
             {
                 const Blob::Reader src = value.As<Blob>();
-                Blob::Builder dst = Init(index, src.Size()).As<Blob>();
-                dst.Copy(src);
+                if (m_builder.GetBuilder()->Contains(src))
+                {
+                    m_builder.SetPointerElement(index, src);
+                }
+                else
+                {
+                    Blob::Builder dst = Init(index, src.Size()).As<Blob>();
+                    dst.Copy(src);
+                }
                 break;
             }
             case Type::Data::UnionTag::String:
             {
                 const String::Reader src = value.As<String>();
-                String::Builder dst = Init(index, src.Size()).As<String>();
-                dst.Copy(src);
+                if (m_builder.GetBuilder()->Contains(src))
+                {
+                    m_builder.SetPointerElement(index, src);
+                }
+                else
+                {
+                    String::Builder dst = Init(index, src.Size()).As<String>();
+                    dst.Copy(src);
+                }
                 break;
             }
             case Type::Data::UnionTag::AnyStruct:
@@ -1949,11 +2120,19 @@ namespace he::schema
                 PointerBuilder ptr = m_builder.GetPointerElement(index);
                 if (value.GetKind() == DynamicValue::Kind::Struct)
                 {
-                    ptr.Copy(value.As<DynamicStruct>().Struct());
+                    const StructReader v = value.As<DynamicStruct>().Struct();
+                    if (m_builder.GetBuilder()->Contains(v))
+                        ptr.Set(v);
+                    else
+                        ptr.Copy(v);
                 }
                 else if (value.GetKind() == DynamicValue::Kind::AnyPointer && value.As<AnyPointer>().Kind() == PointerKind::Struct)
                 {
-                    ptr.Copy(value.As<AnyPointer>());
+                    const AnyPointer::Reader v = value.As<AnyPointer>();
+                    if (m_builder.GetBuilder()->Contains(v))
+                        ptr.Set(v);
+                    else
+                        ptr.Copy(v);
                 }
                 else
                 {
@@ -1968,14 +2147,42 @@ namespace he::schema
                 PointerBuilder ptr = m_builder.GetPointerElement(index);
                 switch (value.GetKind())
                 {
-                    case DynamicValue::Kind::Blob: ptr.Copy(value.As<Blob>()); break;
-                    case DynamicValue::Kind::String: ptr.Copy(value.As<String>()); break;
-                    case DynamicValue::Kind::List: ptr.Copy(value.As<DynamicList>().List()); break;
+                    case DynamicValue::Kind::Blob:
+                    {
+                        const Blob::Reader v = value.As<Blob>();
+                        if (m_builder.GetBuilder()->Contains(v))
+                            ptr.Set(v);
+                        else
+                            ptr.Copy(v);
+                        break;
+                    }
+                    case DynamicValue::Kind::String:
+                    {
+                        const String::Reader v = value.As<String>();
+                        if (m_builder.GetBuilder()->Contains(v))
+                            ptr.Set(v);
+                        else
+                            ptr.Copy(v);
+                        break;
+                    }
+                    case DynamicValue::Kind::List:
+                    {
+                        const ListReader v = value.As<DynamicList>().List();
+                        if (m_builder.GetBuilder()->Contains(v))
+                            ptr.Set(v);
+                        else
+                            ptr.Copy(v);
+                        break;
+                    }
                     case DynamicValue::Kind::AnyPointer:
                     {
                         if (HE_VERIFY(value.As<AnyPointer>().Kind() == PointerKind::List))
                         {
-                            ptr.Copy(value.As<AnyPointer>());
+                            const AnyPointer::Reader v = value.As<AnyPointer>();
+                            if (m_builder.GetBuilder()->Contains(v))
+                                ptr.Set(v);
+                            else
+                                ptr.Copy(v);
                             break;
                         }
                         [[fallthrough]]; // Fall through to error case below
@@ -1993,11 +2200,51 @@ namespace he::schema
                 PointerBuilder ptr = m_builder.GetPointerElement(index);
                 switch (value.GetKind())
                 {
-                    case DynamicValue::Kind::Blob: ptr.Copy(value.As<Blob>()); break;
-                    case DynamicValue::Kind::String: ptr.Copy(value.As<String>()); break;
-                    case DynamicValue::Kind::List: ptr.Copy(value.As<DynamicList>().List()); break;
-                    case DynamicValue::Kind::Struct: ptr.Copy(value.As<DynamicStruct>().Struct()); break;
-                    case DynamicValue::Kind::AnyPointer: ptr.Copy(value.As<AnyPointer>()); break;
+                    case DynamicValue::Kind::Blob:
+                    {
+                        const Blob::Reader v = value.As<Blob>();
+                        if (m_builder.GetBuilder()->Contains(v))
+                            ptr.Set(v);
+                        else
+                            ptr.Copy(v);
+                        break;
+                    }
+                    case DynamicValue::Kind::String:
+                    {
+                        const String::Reader v = value.As<String>();
+                        if (m_builder.GetBuilder()->Contains(v))
+                            ptr.Set(v);
+                        else
+                            ptr.Copy(v);
+                        break;
+                    }
+                    case DynamicValue::Kind::List:
+                    {
+                        const ListReader v = value.As<DynamicList>().List();
+                        if (m_builder.GetBuilder()->Contains(v))
+                            ptr.Set(v);
+                        else
+                            ptr.Copy(v);
+                        break;
+                    }
+                    case DynamicValue::Kind::Struct:
+                    {
+                        const StructReader v = value.As<DynamicStruct>().Struct();
+                        if (m_builder.GetBuilder()->Contains(v))
+                            ptr.Set(v);
+                        else
+                            ptr.Copy(v);
+                        break;
+                    }
+                    case DynamicValue::Kind::AnyPointer:
+                    {
+                        const AnyPointer::Reader v = value.As<AnyPointer>();
+                        if (m_builder.GetBuilder()->Contains(v))
+                            ptr.Set(v);
+                        else
+                            ptr.Copy(v);
+                        break;
+                    }
                     default:
                         HE_VERIFY(false,
                             HE_MSG("Expected a pointer value when setting an AnyPointer field."),
@@ -2015,8 +2262,16 @@ namespace he::schema
                 const DynamicList::Reader src = value.As<DynamicList>();
                 if (HE_VERIFY(src.GetType() == elementType))
                 {
-                    DynamicList::Builder dst = Init(index, src.Size()).As<DynamicList>();
-                    dst.List().Copy(src.List());
+                    const ListReader v = src.List();
+                    if (m_builder.GetBuilder()->Contains(v))
+                    {
+                        m_builder.GetPointerElement(index).Set(v);
+                    }
+                    else
+                    {
+                        DynamicList::Builder dst = Init(index, src.Size()).As<DynamicList>();
+                        dst.List().Copy(src.List());
+                    }
                 }
                 break;
             }
@@ -2042,7 +2297,8 @@ namespace he::schema
 
                 if (HE_VERIFY(&src.Decl() == info))
                 {
-                    m_builder.GetCompositeElement(index).Copy(src.Struct());
+                    const StructReader v = src.Struct();
+                    m_builder.GetCompositeElement(index).Copy(v);
                 }
                 break;
             }
@@ -2177,6 +2433,96 @@ namespace he::schema
                 break;
             }
         }
+    }
+
+    ListBuilder DynamicList::Builder::MakeResizedList(uint32_t count)
+    {
+        if (count == 0)
+            return ListBuilder{};
+
+        const Type::Reader elementType = ListType().GetElementType();
+        const ElementSize elementSize = GetTypeElementSize(elementType);
+
+        if (elementSize != ElementSize::Composite)
+            return m_builder.GetBuilder()->AddList(elementSize, count);
+
+        const Type::Data::Struct::Reader structType = elementType.GetData().GetStruct();
+        const DeclInfo* info = FindDependency(*m_scope, structType.GetId());
+        if (!HE_VERIFY(info,
+            HE_MSG("Element requested from DynamicList is a list of structs that has a missing type."),
+            HE_KV(struct_name, GetSchema(*m_scope).GetName()),
+            HE_KV(requested_type_id, structType.GetId())))
+        {
+            return ListBuilder{};
+        }
+
+        const Declaration::Reader decl = GetSchema(*info);
+        const Declaration::Data::Struct::Reader structDecl = decl.GetData().GetStruct();
+        return m_builder.GetBuilder()->AddStructList(count, structDecl.GetDataFieldCount(), structDecl.GetDataWordSize(), structDecl.GetPointerCount());
+    }
+
+    DynamicList::Builder DynamicList::Builder::Resize(uint32_t count)
+    {
+        ListBuilder list = MakeResizedList(count);
+        if (list.IsValid())
+            list.Copy(m_builder);
+
+        const Type::Reader elementType = ListType().GetElementType();
+        return DynamicList::Builder(*m_scope, elementType, list);
+    }
+
+    DynamicList::Builder DynamicList::Builder::Insert(uint32_t index, const DynamicValue::Reader& value)
+    {
+        const uint32_t size = Size();
+        if (!HE_VERIFY(index <= size))
+            return DynamicList::Builder{};
+
+        const Type::Reader elementType = ListType().GetElementType();
+
+        ListBuilder list = MakeResizedList(size + 1);
+        DynamicList::Builder builder(*m_scope, elementType, list);
+
+        if (list.IsValid())
+        {
+            for (uint32_t i = 0, j = 0; i < list.Size() && j < size; ++i, ++j)
+            {
+                if (i == index)
+                {
+                    builder.Set(i, value);
+                    --j;
+                }
+                else
+                {
+                    builder.Set(i, Get(j).AsReader());
+                }
+            }
+        }
+
+        return DynamicList::Builder(*m_scope, elementType, list);
+    }
+
+    DynamicList::Builder DynamicList::Builder::Erase(uint32_t index, uint32_t count)
+    {
+        const uint32_t size = Size();
+        if (!HE_VERIFY(index < size && (index + count) <= size))
+            return DynamicList::Builder{};
+
+        const Type::Reader elementType = ListType().GetElementType();
+
+        ListBuilder list = MakeResizedList(size - count);
+        DynamicList::Builder builder(*m_scope, elementType, list);
+
+        if (list.IsValid())
+        {
+            for (uint32_t i = 0, j = 0; i < list.Size() && j < size; ++i, ++j)
+            {
+                if (i == index)
+                    j += count;
+                builder.Set(i, Get(j).AsReader());
+            }
+        }
+
+        return builder;
     }
 
     bool DynamicList::Builder::Has(uint32_t index) const

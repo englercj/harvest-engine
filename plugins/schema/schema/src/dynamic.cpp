@@ -1215,13 +1215,13 @@ namespace he::schema
             {
                 Blob::Builder blob = m_builder.GetBuilder()->AddList<uint8_t>(size);
                 m_builder.GetPointerField(index).Set(blob);
-                return DynamicList::Builder(*m_info, type, blob);
+                return blob;
             }
             case Type::Data::UnionTag::String:
             {
                 String::Builder str = String::Builder(m_builder.GetBuilder()->AddList<char>(size));
                 m_builder.GetPointerField(index).Set(str);
-                return DynamicList::Builder(*m_info, type, str);
+                return str;
             }
             case Type::Data::UnionTag::List:
             {
@@ -1789,13 +1789,13 @@ namespace he::schema
             {
                 Blob::Builder blob = m_list.GetBuilder()->AddList<uint8_t>(size);
                 m_list.GetPointerElement(index).Set(blob);
-                return DynamicList::Builder(*m_scope, elementType, blob);
+                return blob;
             }
             case Type::Data::UnionTag::String:
             {
                 String::Builder str = String::Builder(m_list.GetBuilder()->AddList<char>(size));
                 m_list.GetPointerElement(index).Set(str);
-                return DynamicList::Builder(*m_scope, elementType, str);
+                return str;
             }
             case Type::Data::UnionTag::List:
             {
@@ -2325,13 +2325,13 @@ namespace he::schema
             {
                 Blob::Builder blob = m_builder.GetBuilder()->AddList<uint8_t>(size);
                 m_builder.GetPointerElement(index).Set(blob);
-                return DynamicList::Builder(*m_scope, elementType, blob);
+                return blob;
             }
             case Type::Data::UnionTag::String:
             {
                 String::Builder str = String::Builder(m_builder.GetBuilder()->AddList<char>(size));
                 m_builder.GetPointerElement(index).Set(str);
-                return DynamicList::Builder(*m_scope, elementType, str);
+                return str;
             }
             case Type::Data::UnionTag::List:
             {
@@ -2467,8 +2467,7 @@ namespace he::schema
         if (list.IsValid())
             list.Copy(m_builder);
 
-        const Type::Reader elementType = ListType().GetElementType();
-        return DynamicList::Builder(*m_scope, elementType, list);
+        return DynamicList::Builder(*m_scope, GetType(), list);
     }
 
     DynamicList::Builder DynamicList::Builder::Insert(uint32_t index, const DynamicValue::Reader& value)
@@ -2477,10 +2476,8 @@ namespace he::schema
         if (!HE_VERIFY(index <= size))
             return DynamicList::Builder{};
 
-        const Type::Reader elementType = ListType().GetElementType();
-
         ListBuilder list = MakeResizedList(size + 1);
-        DynamicList::Builder builder(*m_scope, elementType, list);
+        DynamicList::Builder builder(*m_scope, GetType(), list);
 
         if (list.IsValid())
         {
@@ -2498,7 +2495,7 @@ namespace he::schema
             }
         }
 
-        return DynamicList::Builder(*m_scope, elementType, list);
+        return builder;
     }
 
     DynamicList::Builder DynamicList::Builder::Erase(uint32_t index, uint32_t count)
@@ -2507,10 +2504,8 @@ namespace he::schema
         if (!HE_VERIFY(index < size && (index + count) <= size))
             return DynamicList::Builder{};
 
-        const Type::Reader elementType = ListType().GetElementType();
-
         ListBuilder list = MakeResizedList(size - count);
-        DynamicList::Builder builder(*m_scope, elementType, list);
+        DynamicList::Builder builder(*m_scope, GetType(), list);
 
         if (list.IsValid())
         {

@@ -473,6 +473,7 @@ namespace he::schema
         {
             HE_ASSERT(GetSchema(scope).GetData().IsStruct());
             HE_ASSERT(type.GetData().IsList());
+            HE_ASSERT(type.GetData().GetList().GetElementType().GetData().IsArray() == false); // Lists of Arrays are not supported.
         }
 
     public:

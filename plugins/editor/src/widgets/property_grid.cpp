@@ -206,19 +206,96 @@ namespace he::editor
         }
 
     private:
-        void RevertActionButton(const schema::DynamicStruct::Reader& data)
+        void ActionButtons(const schema::DynamicStruct::Reader& data, const schema::Type::Data::Reader typeData)
         {
             const schema::Field::Reader field = m_edit.path.Back().field;
             const bool readOnly = schema::HasAttribute<editor::Display::ReadOnly>(field.GetAttributes());
 
-            if (!readOnly && data.Has(field))
+            bool needSameLine = false;
+
+            if (!readOnly)
             {
-                if (ImGui::Button(ICON_MDI_UNDO_VARIANT))
+                if (typeData.IsValid() && typeData.IsList())
                 {
-                    m_edit.EmplaceAction(SchemaEditAction::Kind::ClearValue);
+                    needSameLine = true;
+                    if (ImGui::Button(ICON_MDI_PLUS))
+                    {
+                        m_edit.EmplaceAction(SchemaEditAction::Kind::AddListItem);
+                    }
+                    if (ImGui::IsItemHovered())
+                        ImGui::SetTooltip("Add new element");
+                }
+
+                if (data.Has(field))
+                {
+                    if (needSameLine)
+                    {
+                        ImGui::SameLine();
+                    }
+                    needSameLine = true;
+
+                    if (ImGui::Button(ICON_MDI_UNDO_VARIANT))
+                    {
+                        m_edit.EmplaceAction(SchemaEditAction::Kind::ClearValue);
+                    }
+                    if (ImGui::IsItemHovered())
+                        ImGui::SetTooltip("Reset to default");
+                }
+            }
+        }
+
+        template <AnyOf<schema::DynamicArray::Reader, schema::DynamicList::Reader> T, AnyOf<uint16_t, uint32_t> U>
+        void ActionButtons(const T& data, U index, const schema::Type::Reader elementType)
+        {
+            const schema::Field::Reader field = m_edit.path.Back().field;
+            const bool readOnly = schema::HasAttribute<editor::Display::ReadOnly>(field.GetAttributes());
+            const bool isPointer = schema::IsPointer(elementType);
+
+            bool needSameLine = false;
+
+            if (!readOnly)
+            {
+                if (elementType.IsValid() && elementType.GetData().IsList())
+                {
+                    needSameLine = true;
+                    if (ImGui::Button(ICON_MDI_PLUS))
+                    {
+                        m_edit.EmplaceAction(SchemaEditAction::Kind::AddListItem);
+                    }
+                    if (ImGui::IsItemHovered())
+                        ImGui::SetTooltip("Add new element");
+                }
+
+                if (needSameLine)
+                {
+                    ImGui::SameLine();
+                }
+                needSameLine = true;
+                if (ImGui::Button(ICON_MDI_MINUS))
+                {
+                    m_edit.EmplaceAction(SchemaEditAction::Kind::EraseListItem);
                 }
                 if (ImGui::IsItemHovered())
-                    ImGui::SetTooltip("Reset to default");
+                    ImGui::SetTooltip("Remove element");
+
+                // TODO: If we track default per index for data types in lists/arrays (we should)
+                // then this logic becomes the same as the other ActionButtons function and we might
+                // be able to have a single template function for the revert button.
+                if (isPointer && data.Has(index))
+                {
+                    if (needSameLine)
+                    {
+                        ImGui::SameLine();
+                    }
+                    needSameLine = true;
+
+                    if (ImGui::Button(ICON_MDI_UNDO_VARIANT))
+                    {
+                        m_edit.EmplaceAction(SchemaEditAction::Kind::ClearValue);
+                    }
+                    if (ImGui::IsItemHovered())
+                        ImGui::SetTooltip("Reset to default");
+                }
             }
         }
 
@@ -585,28 +662,7 @@ namespace he::editor
 
                 // Actions column
                 ImGui::TableNextColumn();
-                const schema::Field::Reader field = m_edit.path.Back().field;
-                const bool readOnly = schema::HasAttribute<editor::Display::ReadOnly>(field.GetAttributes());
-                if (!readOnly)
-                {
-                    if (typeData.IsList())
-                    {
-                        if (ImGui::Button(ICON_MDI_PLUS))
-                        {
-                            m_edit.EmplaceAction(SchemaEditAction::Kind::AddListItem);
-                        }
-                        if (ImGui::IsItemHovered())
-                            ImGui::SetTooltip("Add new element");
-                    }
-
-                    if (schema::IsPointer(elementType) && data.Has(index))
-                    {
-                        if (ImGui::Button(ICON_MDI_UNDO_VARIANT))
-                        {
-                            m_edit.EmplaceAction(SchemaEditAction::Kind::ClearValue);
-                        }
-                    }
-                }
+                ActionButtons(data, index, elementType);
 
                 EndPropertyGridRow();
             }
@@ -755,16 +811,7 @@ namespace he::editor
 
                 // Actions column
                 ImGui::TableNextColumn();
-                if (typeData.IsValid() && typeData.IsList())
-                {
-                    if (ImGui::Button(ICON_MDI_PLUS))
-                    {
-                        m_edit.EmplaceAction(SchemaEditAction::Kind::AddListItem);
-                    }
-                    if (ImGui::IsItemHovered())
-                        ImGui::SetTooltip("Add new element");
-                }
-                RevertActionButton(data);
+                ActionButtons(data, typeData);
 
                 EndPropertyGridRow();
             }

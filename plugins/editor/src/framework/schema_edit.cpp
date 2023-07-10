@@ -80,20 +80,20 @@ namespace he::editor
         }
     }
 
-    //static schema::DynamicValue::Builder InitByPath(schema::DynamicValue::Builder& data, const SchemaEditPathEntry& entry, uint32_t size)
-    //{
-    //   switch (data.GetKind())
-    //   {
-    //       case schema::DynamicValue::Kind::Array: return data.As<schema::DynamicArray>().Init(static_cast<uint16_t>(entry.index), size);
-    //       case schema::DynamicValue::Kind::List: return data.As<schema::DynamicList>().Init(entry.index, size);
-    //       case schema::DynamicValue::Kind::Struct: return data.As<schema::DynamicStruct>().Init(entry.field, size);
-    //       default:
-    //           HE_VERIFY(false,
-    //               HE_MSG("Path is invalid, it indexes into a field that is not an array, list, or struct."),
-    //               HE_KV(kind, data.GetKind()));
-    //           return schema::DynamicValue::Builder{};
-    //   }
-    //}
+    static schema::DynamicValue::Builder InitByPath(schema::DynamicValue::Builder& data, const SchemaEditPathEntry& entry, uint32_t size)
+    {
+       switch (data.GetKind())
+       {
+           case schema::DynamicValue::Kind::Array: return data.As<schema::DynamicArray>().Init(static_cast<uint16_t>(entry.index), size);
+           case schema::DynamicValue::Kind::List: return data.As<schema::DynamicList>().Init(entry.index, size);
+           case schema::DynamicValue::Kind::Struct: return data.As<schema::DynamicStruct>().Init(entry.field, size);
+           default:
+               HE_VERIFY(false,
+                   HE_MSG("Path is invalid, it indexes into a field that is not an array, list, or struct."),
+                   HE_KV(kind, data.GetKind()));
+               return schema::DynamicValue::Builder{};
+       }
+    }
 
     static void ClearByPath(schema::DynamicValue::Builder& data, const SchemaEditPathEntry& entry)
     {
@@ -376,7 +376,30 @@ namespace he::editor
         switch (action.kind)
         {
             case SchemaEditAction::Kind::AddListItem:
+            {
+                if (HasByPath(data, entry))
+                {
+                    SchemaEditAction& undo = action.undoActions.EmplaceBack();
+                    undo.kind = SchemaEditAction::Kind::SetValue;
+                    undo.path = action.path;
+                    undo.value = GetByPath(data, entry);
+                }
+                else
+                {
+                    SchemaEditAction& undo = action.undoActions.EmplaceBack();
+                    undo.kind = SchemaEditAction::Kind::ClearValue;
+                    undo.path = action.path;
+                }
+                break;
+            }
             case SchemaEditAction::Kind::EraseListItem:
+            {
+                SchemaEditAction& undo = action.undoActions.EmplaceBack();
+                undo.kind = SchemaEditAction::Kind::SetValue;
+                undo.path = action.path;
+                undo.value = GetByPath(data, entry);
+                break;
+            }
             case SchemaEditAction::Kind::SetValue:
             {
                 SchemaEditAction& undo = action.undoActions.EmplaceBack();
@@ -417,22 +440,30 @@ namespace he::editor
                 // Ideally we'd only create the new list once, then undo/redo just switches between
                 // pointers to the two lists. Maybe change the action kind after creating the list?
                 // Same for `EraseListItem`.
-                schema::DynamicValue::Builder listData = GetByPath(data, entry);
-                if (HE_VERIFY(listData.GetKind() == schema::DynamicValue::Kind::List))
+
+                if (HasByPath(data, entry))
                 {
-                    schema::DynamicList::Builder list = listData.As<schema::DynamicList>();
-                    schema::DynamicList::Builder newList = list.Insert(list.Size(), action.value.AsReader());
-                    SetByPath(data, entry, newList.AsReader());
+                    schema::DynamicValue::Builder listData = GetByPath(data, entry);
+                    if (HE_VERIFY(listData.GetKind() == schema::DynamicValue::Kind::List))
+                    {
+                        schema::DynamicList::Builder list = listData.As<schema::DynamicList>();
+                        schema::DynamicList::Builder newList = list.Insert(list.Size(), action.value.AsReader());
+                        SetByPath(data, entry, newList.AsReader());
+                    }
+                }
+                else
+                {
+                    InitByPath(data, entry, 1);
                 }
                 break;
             }
             case SchemaEditAction::Kind::EraseListItem:
             {
-                schema::DynamicValue::Builder listData = GetByPath(data, entry);
-                if (HE_VERIFY(listData.GetKind() == schema::DynamicValue::Kind::List))
+                if (HE_VERIFY(data.GetKind() == schema::DynamicValue::Kind::List))
                 {
-                    schema::DynamicList::Builder list = listData.As<schema::DynamicList>();
+                    schema::DynamicList::Builder list = data.As<schema::DynamicList>();
                     schema::DynamicList::Builder newList = list.Erase(entry.index, 1);
+                    // TODO: I need to set data here, not the entry. This needs to be backed up the stack one.
                     SetByPath(data, entry, newList.AsReader());
                 }
                 break;

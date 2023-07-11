@@ -8,18 +8,18 @@
 #include "he/core/scope_guard.h"
 #include "he/core/string.h"
 #include "he/core/vector.h"
-#include "he/editor/widgets/input_text.h"
 #include "he/editor/icons/icons_material_design.h"
 #include "he/editor/framework/schema_edit.h"
 #include "he/editor/services/type_edit_ui_service.h"
 #include "he/editor/schema/editor_attributes.hsc.h"
+#include "he/editor/widgets/input_text.h"
+#include "he/editor/widgets/menu.h"
 #include "he/schema/schema.h"
 
 namespace he::editor
 {
     static int s_sectionIndex{ 0 };
     static int s_tableIndex{ 0 };
-    static int s_rowIndex{ 0 };
 
     bool BeginPropertyGrid(ImGuiID id)
     {
@@ -27,7 +27,6 @@ namespace he::editor
         ImGui::PushID("##pg");
         s_sectionIndex = 0;
         s_tableIndex = 0;
-        s_rowIndex = 0;
         return true;
     }
 
@@ -78,7 +77,6 @@ namespace he::editor
         if (ImGui::BeginTable("##pg-table", 3, flags))
         {
             ImGui::PushID(s_tableIndex++);
-            s_rowIndex = 0;
 
             ImGui::TableSetupColumn("##pg-col-name", ImGuiTableColumnFlags_WidthFixed);
             ImGui::TableSetupColumn("##pg-col-value", ImGuiTableColumnFlags_WidthStretch);
@@ -95,9 +93,9 @@ namespace he::editor
         ImGui::EndTable();
     }
 
-    bool BeginPropertyGridRow()
+    bool BeginPropertyGridRow(StringView name)
     {
-        ImGui::PushID(s_rowIndex++);
+        ImGui::PushID(name.Begin(), name.End());
         ImGui::TableNextRow();
         return true;
     }
@@ -206,7 +204,7 @@ namespace he::editor
         }
 
     private:
-        void ActionButtons(const schema::DynamicStruct::Reader& data, const schema::Type::Data::Reader typeData)
+        void ActionButtons(const schema::DynamicStruct::Reader&, const schema::Type::Data::Reader typeData)
         {
             const schema::Field::Reader field = m_edit.path.Back().field;
             const bool readOnly = schema::HasAttribute<editor::Display::ReadOnly>(field.GetAttributes());
@@ -226,30 +224,30 @@ namespace he::editor
                         ImGui::SetTooltip("Add new element");
                 }
 
-                if (data.Has(field))
-                {
-                    if (needSameLine)
-                    {
-                        ImGui::SameLine();
-                    }
-                    needSameLine = true;
+                //if (data.Has(field))
+                //{
+                //    if (needSameLine)
+                //    {
+                //        ImGui::SameLine();
+                //    }
+                //    needSameLine = true;
 
-                    if (ImGui::Button(ICON_MDI_UNDO_VARIANT))
-                    {
-                        m_edit.EmplaceAction(SchemaEditAction::Kind::ClearValue);
-                    }
-                    if (ImGui::IsItemHovered())
-                        ImGui::SetTooltip("Reset to default");
-                }
+                //    if (ImGui::Button(ICON_MDI_UNDO_VARIANT))
+                //    {
+                //        m_edit.EmplaceAction(SchemaEditAction::Kind::ClearValue);
+                //    }
+                //    if (ImGui::IsItemHovered())
+                //        ImGui::SetTooltip("Reset to default");
+                //}
             }
         }
 
         template <AnyOf<schema::DynamicArray::Reader, schema::DynamicList::Reader> T, AnyOf<uint16_t, uint32_t> U>
-        void ActionButtons(const T& data, U index, const schema::Type::Reader elementType)
+        void ActionButtons(const T&, U, const schema::Type::Reader elementType)
         {
             const schema::Field::Reader field = m_edit.path.Back().field;
             const bool readOnly = schema::HasAttribute<editor::Display::ReadOnly>(field.GetAttributes());
-            const bool isPointer = schema::IsPointer(elementType);
+            //const bool isPointer = schema::IsPointer(elementType);
 
             bool needSameLine = false;
 
@@ -278,24 +276,24 @@ namespace he::editor
                 if (ImGui::IsItemHovered())
                     ImGui::SetTooltip("Remove element");
 
-                // TODO: If we track default per index for data types in lists/arrays (we should)
-                // then this logic becomes the same as the other ActionButtons function and we might
-                // be able to have a single template function for the revert button.
-                if (isPointer && data.Has(index))
-                {
-                    if (needSameLine)
-                    {
-                        ImGui::SameLine();
-                    }
-                    needSameLine = true;
+                //// TODO: If we track default per index for data types in lists/arrays (we should)
+                //// then this logic becomes the same as the other ActionButtons function and we might
+                //// be able to have a single template function for the revert button.
+                //if (isPointer && data.Has(index))
+                //{
+                //    if (needSameLine)
+                //    {
+                //        ImGui::SameLine();
+                //    }
+                //    needSameLine = true;
 
-                    if (ImGui::Button(ICON_MDI_UNDO_VARIANT))
-                    {
-                        m_edit.EmplaceAction(SchemaEditAction::Kind::ClearValue);
-                    }
-                    if (ImGui::IsItemHovered())
-                        ImGui::SetTooltip("Reset to default");
-                }
+                //    if (ImGui::Button(ICON_MDI_UNDO_VARIANT))
+                //    {
+                //        m_edit.EmplaceAction(SchemaEditAction::Kind::ClearValue);
+                //    }
+                //    if (ImGui::IsItemHovered())
+                //        ImGui::SetTooltip("Reset to default");
+                //}
             }
         }
 
@@ -616,17 +614,28 @@ namespace he::editor
             }
 
             bool open = false;
-            if (BeginPropertyGridRow())
+            if (BeginPropertyGridRow(name))
             {
                 // Name column
                 ImGui::TableNextColumn();
                 ImGui::AlignTextToFramePadding();
+
+                const schema::Field::Reader field = m_edit.path.Back().field;
+                const bool isReadOnly = schema::HasAttribute<editor::Display::ReadOnly>(field.GetAttributes());
+                const bool isModified = !isReadOnly && schema::IsPointer(elementType) && data.Has(index);
 
                 const bool isSequenceValue = typeData.IsArray() || typeData.IsList();
                 const bool isStructValue = typeData.IsStruct();
                 const bool hasCustomInlineEditor = customValueEditor && HasFlag(customValueEditor->flags, TypeEditUIService::EditorFlag::Inline);
                 const bool hasCustomFullEditor = customValueEditor && !HasFlag(customValueEditor->flags, TypeEditUIService::EditorFlag::Inline);
                 const bool isExpandable = isSequenceValue || hasCustomFullEditor || (isStructValue && !hasCustomInlineEditor);
+
+                if (isModified)
+                {
+                    // TODO: Move this color into a theme palette somewhere
+                    const ImVec4 color(166 / 255.0f, 255 / 255.0f, 161 / 255.0f, 1.0f); // Mint Green
+                    ImGui::PushStyleColor(ImGuiCol_Text, color);
+                }
 
                 if (isExpandable)
                 {
@@ -641,6 +650,20 @@ namespace he::editor
                     ImGui::Dummy(ImVec2{ fontSize + (framePaddingX * 2) - itemSpacing, 0 });
                     ImGui::SameLine();
                     ImGui::TextUnformatted(name.Begin(), name.End());
+                }
+
+                if (isModified)
+                {
+                    ImGui::PopStyleColor();
+                }
+
+                if (ImGui::BeginPopupContextItem("list-row-context", ImGuiPopupFlags_MouseButtonRight))
+                {
+                    if (MenuItem("Revert to default", ICON_MDI_UNDO_VARIANT, nullptr, false, isModified))
+                    {
+                        m_edit.EmplaceAction(SchemaEditAction::Kind::ClearValue);
+                    }
+                    ImGui::EndPopup();
                 }
 
                 // Value column
@@ -710,7 +733,7 @@ namespace he::editor
             const TypeEditUIService::Editor* customValueEditor = m_editUIService.FindEditor(field);
 
             bool open = false;
-            if (BeginPropertyGridRow())
+            if (BeginPropertyGridRow(name))
             {
                 // Name column
                 ImGui::TableNextColumn();
@@ -750,6 +773,19 @@ namespace he::editor
                 if (isModified)
                 {
                     ImGui::PopStyleColor();
+                }
+
+                // TODO: This only shows the context menu if you click the actual text of the property name.
+                // I'd like this to work for clicking anywhere in the name cell. See ImGui demo "Tables/Context menus"
+                // in the [2.3] section for how to do a column-based one. Maybe, we can do something similar here?
+                // Maybe I need a 'full sized' selectable or invisible button in the cell to target?
+                if (ImGui::BeginPopupContextItem("row-context", ImGuiPopupFlags_MouseButtonRight))
+                {
+                    if (MenuItem("Reset to default", ICON_MDI_UNDO_VARIANT, nullptr, false, isModified))
+                    {
+                        m_edit.EmplaceAction(SchemaEditAction::Kind::ClearValue);
+                    }
+                    ImGui::EndPopup();
                 }
 
                 if (!desc.IsEmpty() && ImGui::IsItemHovered())

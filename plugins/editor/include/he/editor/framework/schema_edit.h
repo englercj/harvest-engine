@@ -93,7 +93,7 @@ namespace he::editor
         void UndoEdit(const SchemaEdit& edit);
         void UndoAction(const SchemaEditAction& action);
 
-        void MakeUndoActions(schema::DynamicValue::Builder& data, SchemaEditAction& action, uint32_t index);
+        void MakeUndoActions(schema::DynamicValue::Builder data, SchemaEditAction& action, uint32_t index);
         void ApplyAction(schema::DynamicValue::Builder& data, const SchemaEditAction& action);
 
     private:

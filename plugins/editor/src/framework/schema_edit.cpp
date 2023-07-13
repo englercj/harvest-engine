@@ -330,7 +330,7 @@ namespace he::editor
     void SchemaEditContext::UndoEdit(const SchemaEdit& edit)
     {
         const uint32_t len = edit.actions.Size();
-        for (uint32_t i = (len - 1); i < len; --i)
+        for (uint32_t i = (len - 1); i != static_cast<uint32_t>(-1); --i)
         {
             const SchemaEditAction& action = edit.actions[i];
             UndoAction(action);
@@ -340,7 +340,7 @@ namespace he::editor
     void SchemaEditContext::UndoAction(const SchemaEditAction& action)
     {
         const uint32_t len = action.undoActions.Size();
-        for (uint32_t i = (len - 1); i < len; --i)
+        for (uint32_t i = (len - 1); i != static_cast<uint32_t>(-1); --i)
         {
             const SchemaEditAction& undo = action.undoActions[i];
 
@@ -359,7 +359,7 @@ namespace he::editor
         }
     }
 
-    void SchemaEditContext::MakeUndoActions(schema::DynamicValue::Builder& data, SchemaEditAction& action, uint32_t index)
+    void SchemaEditContext::MakeUndoActions(schema::DynamicValue::Builder data, SchemaEditAction& action, uint32_t index)
     {
         // If walking the existing path didn't bring us to the end then we need to create a
         // 'ClearValue' action for each non-existant path. This is so that when this edit is
@@ -369,6 +369,8 @@ namespace he::editor
             SchemaEditAction& undo = action.undoActions.EmplaceBack();
             undo.kind = SchemaEditAction::Kind::ClearValue;
             undo.path.Insert(0, action.path.Begin(), action.path.Begin() + i);
+
+            data = GetByPath(data, action.path[i]);
         }
 
         const SchemaEditPathEntry& entry = action.path.Back();
@@ -394,18 +396,24 @@ namespace he::editor
             }
             case SchemaEditAction::Kind::EraseListItem:
             {
-                SchemaEditAction& undo = action.undoActions.EmplaceBack();
-                undo.kind = SchemaEditAction::Kind::SetValue;
-                undo.path = action.path;
-                undo.value = GetByPath(data, entry);
+                if (HE_VERIFY(HasByPath(data, entry)))
+                {
+                    SchemaEditAction& undo = action.undoActions.EmplaceBack();
+                    undo.kind = SchemaEditAction::Kind::SetValue;
+                    undo.path = action.path;
+                    undo.value = GetByPath(data, entry);
+                }
                 break;
             }
             case SchemaEditAction::Kind::SetValue:
             {
-                SchemaEditAction& undo = action.undoActions.EmplaceBack();
-                undo.kind = SchemaEditAction::Kind::SetValue;
-                undo.path = action.path;
-                undo.value = GetByPath(data, entry);
+                if (HasByPath(data, entry))
+                {
+                    SchemaEditAction& undo = action.undoActions.EmplaceBack();
+                    undo.kind = SchemaEditAction::Kind::SetValue;
+                    undo.path = action.path;
+                    undo.value = GetByPath(data, entry);
+                }
                 break;
             }
             case SchemaEditAction::Kind::InitValue:
@@ -418,11 +426,13 @@ namespace he::editor
             case SchemaEditAction::Kind::ClearValue:
             {
                 HE_ASSERT(index == (action.path.Size() - 1));
-                HE_ASSERT(HasByPath(data, entry));
-                SchemaEditAction& undo = action.undoActions.EmplaceBack();
-                undo.kind = SchemaEditAction::Kind::SetValue;
-                undo.path = action.path;
-                undo.value = GetByPath(data, entry);
+                if (HE_VERIFY(HasByPath(data, entry)))
+                {
+                    SchemaEditAction& undo = action.undoActions.EmplaceBack();
+                    undo.kind = SchemaEditAction::Kind::SetValue;
+                    undo.path = action.path;
+                    undo.value = GetByPath(data, entry);
+                }
                 break;
             }
         }

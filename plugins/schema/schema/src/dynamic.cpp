@@ -366,7 +366,7 @@ namespace he::schema
                     {
                         const Type::Data::Enum::Reader enumType = typeData.GetEnum();
                         const DeclInfo* info = FindDependency(*m_info, enumType.GetId());
-                        const uint16_t value = defaultValue.IsValid() && defaultValue.IsEnum() ? defaultValue.GetEnum() : 0;
+                        const uint16_t value = m_reader.TryGetDataField<uint16_t>(index, dataOffset, defaultValue.IsValid() && defaultValue.IsEnum() ? defaultValue.GetEnum() : 0);
                         const bool valid = HE_VERIFY(info,
                             HE_MSG("Field requested from DynamicStruct is an enum that has a missing type."),
                             HE_KV(struct_name, Schema().GetName()),
@@ -628,7 +628,7 @@ namespace he::schema
                     {
                         const Type::Data::Enum::Reader enumType = typeData.GetEnum();
                         const DeclInfo* info = FindDependency(*m_info, enumType.GetId());
-                        const uint16_t value = defaultValue.IsValid() && defaultValue.IsEnum() ? defaultValue.GetEnum() : 0;
+                        const uint16_t value = m_builder.TryGetDataField<uint16_t>(index, dataOffset, defaultValue.IsValid() && defaultValue.IsEnum() ? defaultValue.GetEnum() : 0);
                         const bool valid = HE_VERIFY(info,
                             HE_MSG("Field requested from DynamicStruct is an enum that has a missing type."),
                             HE_KV(struct_name, Schema().GetName()),

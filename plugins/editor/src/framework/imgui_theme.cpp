@@ -148,8 +148,8 @@ namespace he::editor
         colors[ImGuiCol_PlotHistogram]          = ImVec4(0.90f, 0.70f, 0.00f, 1.00f);
         colors[ImGuiCol_PlotHistogramHovered]   = ImVec4(1.00f, 0.60f, 0.00f, 1.00f);
         colors[ImGuiCol_TableHeaderBg]          = ImVec4(0.27f, 0.27f, 0.38f, 1.00f);
-        colors[ImGuiCol_TableBorderStrong]      = ImVec4(0.31f, 0.31f, 0.45f, 1.00f);
-        colors[ImGuiCol_TableBorderLight]       = ImVec4(0.26f, 0.26f, 0.28f, 1.00f);
+        colors[ImGuiCol_TableBorderStrong]      = ImVec4(0.20f, 0.20f, 0.20f, 1.00f);
+        colors[ImGuiCol_TableBorderLight]       = ImVec4(0.20f, 0.20f, 0.20f, 1.00f);
         colors[ImGuiCol_TableRowBg]             = ImVec4(0.00f, 0.00f, 0.00f, 0.00f);
         colors[ImGuiCol_TableRowBgAlt]          = ImVec4(1.00f, 1.00f, 1.00f, 0.07f);
         colors[ImGuiCol_TextSelectedBg]         = ImVec4(0.73f, 0.73f, 0.73f, 0.35f);
@@ -205,7 +205,7 @@ namespace he::editor
         style.FrameBorderSize                   = 1.0f;                     // Thickness of border around frames. Generally set to 0.0f or 1.0f. Other values not well tested.
         style.ItemSpacing                       = HE_DPI(ImVec2(4, 2));     // Horizontal and vertical spacing between widgets/lines
         style.ItemInnerSpacing                  = HE_DPI(ImVec2(4, 4));     // Horizontal and vertical spacing between within elements of a composed widget (e.g. a slider and its label)
-        style.CellPadding                       = HE_DPI(ImVec2(14, 8));     // Padding within a table cell
+        style.CellPadding                       = HE_DPI(ImVec2(6, 6));     // Padding within a table cell
         style.TouchExtraPadding                 = HE_DPI(ImVec2(0, 0));     // Expand reactive bounding box for touch-based system where touch position is not accurate enough. Unfortunately we don't sort widgets so priority on overlap will always be given to the first widget. So don't grow this too much!
         style.IndentSpacing                     = HE_DPI(21.0f);            // Horizontal spacing when e.g. entering a tree node. Generally == (FontSize + FramePadding.x*2).
         style.ColumnsMinSpacing                 = HE_DPI(6.0f);             // Minimum horizontal spacing between two columns. Preferably > (FramePadding.x + 1).

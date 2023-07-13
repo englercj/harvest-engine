@@ -16,6 +16,8 @@
 #include "he/editor/widgets/menu.h"
 #include "he/schema/schema.h"
 
+#include "imgui.h"
+
 namespace he::editor
 {
     static int s_sectionIndex{ 0 };
@@ -712,7 +714,7 @@ namespace he::editor
                 }
 
                 ImGui::PopID();
-                ImGui::Unindent();
+                ImGui::Unindent(padding.x);
             }
         }
 
@@ -755,6 +757,8 @@ namespace he::editor
                     ImGui::PushStyleColor(ImGuiCol_Text, color);
                 }
 
+                const ImVec2 pos = ImGui::GetCursorPos();
+
                 if (isExpandable)
                 {
                     const ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_SpanFullWidth | ImGuiTreeNodeFlags_NoTreePushOnOpen;
@@ -775,21 +779,32 @@ namespace he::editor
                     ImGui::PopStyleColor();
                 }
 
-                // TODO: This only shows the context menu if you click the actual text of the property name.
-                // I'd like this to work for clicking anywhere in the name cell. See ImGui demo "Tables/Context menus"
-                // in the [2.3] section for how to do a column-based one. Maybe, we can do something similar here?
-                // Maybe I need a 'full sized' selectable or invisible button in the cell to target?
-                if (ImGui::BeginPopupContextItem("row-context", ImGuiPopupFlags_MouseButtonRight))
+                ImGuiStyle& style = ImGui::GetStyle();
+                const ImVec2 size(ImGui::GetColumnWidth(), ImGui::GetFontSize() + style.FramePadding.y * 2.0f);
+                if (size.x > 0 && size.y > 0)
                 {
-                    if (MenuItem("Reset to default", ICON_MDI_UNDO_VARIANT, nullptr, false, isModified))
-                    {
-                        m_edit.EmplaceAction(SchemaEditAction::Kind::ClearValue);
-                    }
-                    ImGui::EndPopup();
-                }
+                    ImGui::SetCursorPos(pos);
+                    ImGui::InvisibleButton("##pg-item-ctx-menu-hitbox", size, ImGuiButtonFlags_None);
 
-                if (!desc.IsEmpty() && ImGui::IsItemHovered())
-                    ImGui::SetTooltip("%s", desc.Data());
+                    if (!desc.IsEmpty() && ImGui::IsItemHovered())
+                        ImGui::SetTooltip("%s", desc.Data());
+
+                    // TODO: This only shows the context menu if you click the actual text of the property name.
+                    // I'd like this to work for clicking anywhere in the name cell. See ImGui demo "Tables/Context menus"
+                    // in the [2.3] section for how to do a column-based one. Maybe, we can do something similar here?
+                    // Maybe I need a 'full sized' selectable or invisible button in the cell to target?
+                    if (ImGui::IsMouseReleased(ImGuiMouseButton_Right) && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup))
+                        ImGui::OpenPopup("##pg-item-ctx-menu");
+
+                    if (BeginPopupMenu("##pg-item-ctx-menu"))
+                    {
+                        if (MenuItem("Reset to default", ICON_MDI_UNDO_VARIANT, nullptr, false, isModified))
+                        {
+                            m_edit.EmplaceAction(SchemaEditAction::Kind::ClearValue);
+                        }
+                        EndPopupMenu();
+                    }
+                }
 
                 // Value column
                 ImGui::TableNextColumn();
@@ -872,7 +887,7 @@ namespace he::editor
                 }
 
                 ImGui::PopID();
-                ImGui::Unindent();
+                ImGui::Unindent(padding.x);
             }
         }
 

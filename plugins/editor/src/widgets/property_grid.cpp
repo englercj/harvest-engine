@@ -789,10 +789,6 @@ namespace he::editor
                     if (!desc.IsEmpty() && ImGui::IsItemHovered())
                         ImGui::SetTooltip("%s", desc.Data());
 
-                    // TODO: This only shows the context menu if you click the actual text of the property name.
-                    // I'd like this to work for clicking anywhere in the name cell. See ImGui demo "Tables/Context menus"
-                    // in the [2.3] section for how to do a column-based one. Maybe, we can do something similar here?
-                    // Maybe I need a 'full sized' selectable or invisible button in the cell to target?
                     if (ImGui::IsMouseReleased(ImGuiMouseButton_Right) && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup))
                         ImGui::OpenPopup("##pg-item-ctx-menu");
 

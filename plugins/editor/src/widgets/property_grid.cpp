@@ -694,6 +694,19 @@ namespace he::editor
 
                 if (BeginPropertyContextMenu(pos))
                 {
+                    if (MenuItem("Copy name", ICON_MDI_CONTENT_COPY))
+                    {
+                        ImGui::SetClipboardText(name.Data());
+                    }
+
+                    if (MenuItem("Copy value", ICON_MDI_CONTENT_COPY))
+                    {
+                        // TODO: Serialize the value to TOML and copy to clipboard.
+                        ImGui::SetClipboardText(name.Data());
+                    }
+
+                    MenuSeparator();
+
                     if (MenuItem("Reset to default", ICON_MDI_UNDO_VARIANT, nullptr, false, isModified))
                     {
                         m_edit.EmplaceAction(SchemaEditAction::Kind::ClearValue);
@@ -814,6 +827,19 @@ namespace he::editor
 
                 if (BeginPropertyContextMenu(pos))
                 {
+                    if (MenuItem("Copy name", ICON_MDI_CONTENT_COPY))
+                    {
+                        ImGui::SetClipboardText(name.Data());
+                    }
+
+                    if (MenuItem("Copy value", ICON_MDI_CONTENT_COPY))
+                    {
+                        // TODO: Serialize the value to TOML and copy to clipboard.
+                        ImGui::SetClipboardText(name.Data());
+                    }
+
+                    MenuSeparator();
+
                     if (MenuItem("Reset to default", ICON_MDI_UNDO_VARIANT, nullptr, false, isModified))
                     {
                         m_edit.EmplaceAction(SchemaEditAction::Kind::ClearValue);

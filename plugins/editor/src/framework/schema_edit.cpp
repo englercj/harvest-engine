@@ -288,10 +288,20 @@ namespace he::editor
 
     void SchemaEditContext::Clear()
     {
-        m_edits.Clear();
-        m_activeEditCount = 0;
+        ClearData();
+        ClearEdits();
+    }
+
+    void SchemaEditContext::ClearData()
+    {
         m_builder.Clear();
         m_data = {};
+    }
+
+    void SchemaEditContext::ClearEdits()
+    {
+        m_edits.Clear();
+        m_activeEditCount = 0;
     }
 
     void SchemaEditContext::RedoEdit(SchemaEdit& edit)
@@ -304,12 +314,17 @@ namespace he::editor
 
     void SchemaEditContext::RedoAction(SchemaEditAction& action)
     {
-        // The flow for playing forward an action is:
-        // 1. Walk the existing items of the path
-        // 2. Build a 'ClearValue' undo operation for each non-existant path
-        // 3. Build the undo action for the item we're actually modifying
-        // 4. Init each non-existant item in the path, until we reach path[-1]
-        // 5. Apply the action on that path
+        // Pop off the element we're erasing so we can operate on the list itself. Erasing an
+        // element actually creates a new list, so we want to set the original list pointer.
+        SchemaEditPathEntry eraseElement;
+        if (action.kind == SchemaEditAction::Kind::EraseListItem)
+        {
+            eraseElement = Move(action.path.Back());
+            action.path.PopBack();
+        }
+
+        if (!HE_VERIFY(!action.path.IsEmpty()))
+            return;
 
         uint32_t index = 0;
         schema::DynamicValue::Builder data = WalkExistingPath(m_data, action.path, index);
@@ -322,6 +337,12 @@ namespace he::editor
         for (uint32_t i = index; i < (action.path.Size() - 1); ++i)
         {
             data = InitByPath(data, action.path[i]);
+        }
+
+        // Put the element back on the path right before we apply so we know which element to remove.
+        if (action.kind == SchemaEditAction::Kind::EraseListItem)
+        {
+            action.path.PushBack(Move(eraseElement));
         }
 
         ApplyAction(data, action);
@@ -414,6 +435,12 @@ namespace he::editor
                     undo.path = action.path;
                     undo.value = GetByPath(data, entry);
                 }
+                else
+                {
+                    SchemaEditAction& undo = action.undoActions.EmplaceBack();
+                    undo.kind = SchemaEditAction::Kind::ClearValue;
+                    undo.path = action.path;
+                }
                 break;
             }
             case SchemaEditAction::Kind::InitValue:
@@ -469,12 +496,14 @@ namespace he::editor
             }
             case SchemaEditAction::Kind::EraseListItem:
             {
-                if (HE_VERIFY(data.GetKind() == schema::DynamicValue::Kind::List))
+                const SchemaEditPathEntry& listEntry = action.path[action.path.Size() - 2];
+
+                if (HE_VERIFY(HasByPath(data, listEntry)))
                 {
-                    schema::DynamicList::Builder list = data.As<schema::DynamicList>();
+                    schema::DynamicValue::Builder listValue = GetByPath(data, listEntry);
+                    schema::DynamicList::Builder list = listValue.As<schema::DynamicList>();
                     schema::DynamicList::Builder newList = list.Erase(entry.index, 1);
-                    // TODO: I need to set data here, not the entry. This needs to be backed up the stack one.
-                    SetByPath(data, entry, newList.AsReader());
+                    SetByPath(data, listEntry, newList.AsReader());
                 }
                 break;
             }

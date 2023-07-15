@@ -126,6 +126,7 @@ namespace he::editor
     {
         static SchemaEditContext s_ctx{ assets::Asset::Reader{} };
 
+        // Initialize the asset to be edited in the debug UI
         assets::Asset::Builder asset = s_ctx.Data().As<assets::Asset>();
         if (asset.GetData().IsNull())
         {
@@ -139,9 +140,79 @@ namespace he::editor
             asset.GetBuilder()->SetRoot(asset);
         }
 
-        SchemaEdit edit(s_ctx);
-        PropertyGrid(s_ctx.Data().AsReader(), m_editUIService, edit);
+        const ImGuiTableFlags flags = ImGuiTableFlags_Borders | ImGuiTableFlags_Resizable;
+        if (ImGui::BeginTable("##debug-doc-pg-layout", 2, flags))
+        {
+            ImGui::TableSetupColumn("##debug-doc-pg-col", ImGuiTableColumnFlags_WidthStretch);
+            ImGui::TableSetupColumn("##debug-doc-undo-col", ImGuiTableColumnFlags_WidthFixed);
+            ImGui::TableNextRow();
 
-        s_ctx.PushEdit(Move(edit));
+            // Property grid column
+            ImGui::TableNextColumn();
+            SchemaEdit edit(s_ctx);
+            PropertyGrid(s_ctx.Data().AsReader(), m_editUIService, edit);
+            s_ctx.PushEdit(Move(edit));
+
+            // Undo/Redo stack column
+            Span<const SchemaEdit> edits = s_ctx.Edits();
+            ImGui::TableNextColumn();
+            ImGui::BeginDisabled(s_ctx.ActiveEditCount() == 0);
+            if (ImGui::Button(ICON_MDI_UNDO))
+                s_ctx.Undo();
+            if (ImGui::IsItemHovered())
+                ImGui::SetTooltip("Undo last edit");
+            ImGui::EndDisabled();
+            ImGui::SameLine();
+            ImGui::BeginDisabled(s_ctx.ActiveEditCount() == edits.Size());
+            if (ImGui::Button(ICON_MDI_REDO))
+                s_ctx.Redo();
+            if (ImGui::IsItemHovered())
+                ImGui::SetTooltip("Redo last edit");
+            ImGui::EndDisabled();
+            ImGui::SameLine();
+            ImGui::BeginDisabled(edits.IsEmpty());
+            if (ImGui::Button(ICON_MDI_LAYERS_OFF))
+                s_ctx.ClearEdits();
+            if (ImGui::IsItemHovered())
+                ImGui::SetTooltip("Clear edit history");
+            ImGui::EndDisabled();
+
+            if (ImGui::BeginListBox("##debug-edit-stack", ImVec2(-FLT_MIN, 0)))
+            {
+                ImGuiListClipper clipper;
+                clipper.Begin(edits.Size(), ImGui::GetTextLineHeightWithSpacing());
+
+                while (clipper.Step())
+                {
+                    for (int32_t i = clipper.DisplayStart; i < clipper.DisplayEnd; ++i)
+                    {
+                        const uint32_t index = edits.Size() - i - 1;
+                        const char* label = edits[index].name.Data();
+
+                        ImGui::PushID(i);
+                        if (ImGui::Selectable("##undo-item-select"))
+                        {
+                            while ((index + 1) < s_ctx.ActiveEditCount())
+                                s_ctx.Undo();
+                            while ((index + 1) > s_ctx.ActiveEditCount())
+                                s_ctx.Redo();
+                        }
+                        ImGui::SameLine();
+                        ImGui::BeginDisabled(index >= s_ctx.ActiveEditCount());
+                        if (index == (s_ctx.ActiveEditCount() - 1))
+                        {
+                            ImGui::TextUnformatted(ICON_MDI_ARROW_RIGHT);
+                            ImGui::SameLine();
+                        }
+                        ImGui::TextUnformatted(label);
+                        ImGui::EndDisabled();
+                        ImGui::PopID();
+                    }
+                }
+                ImGui::EndListBox();
+            }
+
+            ImGui::EndTable();
+        }
     }
 }

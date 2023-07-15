@@ -79,12 +79,15 @@ namespace he::editor
         const schema::Builder& Builder() const { return m_builder; }
 
         Span<const SchemaEdit> Edits() const { return m_edits; }
+        uint32_t ActiveEditCount() const { return m_activeEditCount; }
 
         void PushEdit(SchemaEdit&& edit);
 
         void Redo();
         void Undo();
         void Clear();
+        void ClearData();
+        void ClearEdits();
 
     private:
         void RedoEdit(SchemaEdit& edit);

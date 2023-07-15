@@ -17,6 +17,7 @@
 #include "he/schema/schema.h"
 
 #include "imgui.h"
+#include "imgui_internal.h"
 
 namespace he::editor
 {
@@ -206,7 +207,7 @@ namespace he::editor
         }
 
     private:
-        void ActionButtons(const schema::DynamicStruct::Reader&, const schema::Type::Data::Reader typeData)
+        void ShowActionButtons(const schema::DynamicStruct::Reader&, const schema::Type::Data::Reader typeData)
         {
             const schema::Field::Reader field = m_edit.path.Back().field;
             const bool readOnly = schema::HasAttribute<editor::Display::ReadOnly>(field.GetAttributes());
@@ -245,7 +246,7 @@ namespace he::editor
         }
 
         template <AnyOf<schema::DynamicArray::Reader, schema::DynamicList::Reader> T, AnyOf<uint16_t, uint32_t> U>
-        void ActionButtons(const T&, U, const schema::Type::Reader elementType)
+        void ShowActionButtons(const T&, U, const schema::Type::Reader elementType)
         {
             const schema::Field::Reader field = m_edit.path.Back().field;
             const bool readOnly = schema::HasAttribute<editor::Display::ReadOnly>(field.GetAttributes());
@@ -297,6 +298,36 @@ namespace he::editor
                 //        ImGui::SetTooltip("Reset to default");
                 //}
             }
+        }
+
+        bool BeginPropertyContextMenu(const ImVec2&)
+        {
+            ImGuiStyle& style = ImGui::GetStyle();
+            ImGuiWindow* window = ImGui::GetCurrentWindow();
+            const ImVec2 pos = window->WorkRect.Min - window->Pos + window->Scroll - style.CellPadding;
+            const ImVec2 size(
+                window->WorkRect.GetSize().x + (style.CellPadding.x * 2.0f),
+                ImGui::GetFontSize() + (style.FramePadding.y * 2.0f) + (style.CellPadding.y * 2.0f));
+
+            bool open = false;
+
+            if (size.x > 0 && size.y > 0)
+            {
+                const ImVec2 rectMin = pos + window->Pos;
+                const ImVec2 rectMax = rectMin + size;
+
+                if (ImGui::IsMouseReleased(ImGuiMouseButton_Right) && ImGui::IsMouseHoveringRect(rectMin, rectMax, false))
+                    ImGui::OpenPopup("##pg-item-ctx-menu");
+
+                open = BeginPopupMenu("##pg-item-ctx-menu");
+            }
+
+            return open;
+        }
+
+        void EndPropertyContextMenu()
+        {
+            EndPopupMenu();
         }
 
         StringView FormatName(StringView name)
@@ -639,6 +670,8 @@ namespace he::editor
                     ImGui::PushStyleColor(ImGuiCol_Text, color);
                 }
 
+                const ImVec2 pos = ImGui::GetCursorPos();
+
                 if (isExpandable)
                 {
                     const ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_SpanFullWidth | ImGuiTreeNodeFlags_NoTreePushOnOpen;
@@ -659,13 +692,13 @@ namespace he::editor
                     ImGui::PopStyleColor();
                 }
 
-                if (ImGui::BeginPopupContextItem("list-row-context", ImGuiPopupFlags_MouseButtonRight))
+                if (BeginPropertyContextMenu(pos))
                 {
-                    if (MenuItem("Revert to default", ICON_MDI_UNDO_VARIANT, nullptr, false, isModified))
+                    if (MenuItem("Reset to default", ICON_MDI_UNDO_VARIANT, nullptr, false, isModified))
                     {
                         m_edit.EmplaceAction(SchemaEditAction::Kind::ClearValue);
                     }
-                    ImGui::EndPopup();
+                    EndPropertyContextMenu();
                 }
 
                 // Value column
@@ -687,7 +720,7 @@ namespace he::editor
 
                 // Actions column
                 ImGui::TableNextColumn();
-                ActionButtons(data, index, elementType);
+                ShowActionButtons(data, index, elementType);
 
                 EndPropertyGridRow();
             }
@@ -779,27 +812,13 @@ namespace he::editor
                     ImGui::PopStyleColor();
                 }
 
-                ImGuiStyle& style = ImGui::GetStyle();
-                const ImVec2 size(ImGui::GetColumnWidth(), ImGui::GetFontSize() + style.FramePadding.y * 2.0f);
-                if (size.x > 0 && size.y > 0)
+                if (BeginPropertyContextMenu(pos))
                 {
-                    ImGui::SetCursorPos(pos);
-                    ImGui::InvisibleButton("##pg-item-ctx-menu-hitbox", size, ImGuiButtonFlags_None);
-
-                    if (!desc.IsEmpty() && ImGui::IsItemHovered())
-                        ImGui::SetTooltip("%s", desc.Data());
-
-                    if (ImGui::IsMouseReleased(ImGuiMouseButton_Right) && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup))
-                        ImGui::OpenPopup("##pg-item-ctx-menu");
-
-                    if (BeginPopupMenu("##pg-item-ctx-menu"))
+                    if (MenuItem("Reset to default", ICON_MDI_UNDO_VARIANT, nullptr, false, isModified))
                     {
-                        if (MenuItem("Reset to default", ICON_MDI_UNDO_VARIANT, nullptr, false, isModified))
-                        {
-                            m_edit.EmplaceAction(SchemaEditAction::Kind::ClearValue);
-                        }
-                        EndPopupMenu();
+                        m_edit.EmplaceAction(SchemaEditAction::Kind::ClearValue);
                     }
+                    EndPropertyContextMenu();
                 }
 
                 // Value column
@@ -858,7 +877,7 @@ namespace he::editor
 
                 // Actions column
                 ImGui::TableNextColumn();
-                ActionButtons(data, typeData);
+                ShowActionButtons(data, typeData);
 
                 EndPropertyGridRow();
             }

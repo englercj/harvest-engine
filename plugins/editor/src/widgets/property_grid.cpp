@@ -15,6 +15,7 @@
 #include "he/editor/widgets/input_text.h"
 #include "he/editor/widgets/menu.h"
 #include "he/schema/schema.h"
+#include "he/schema/toml.h"
 
 #include "imgui.h"
 #include "imgui_internal.h"
@@ -300,11 +301,10 @@ namespace he::editor
             }
         }
 
-        bool BeginPropertyContextMenu(const ImVec2&)
+        bool BeginPropertyContextMenu()
         {
             ImGuiStyle& style = ImGui::GetStyle();
             ImGuiWindow* window = ImGui::GetCurrentWindow();
-            const ImVec2 pos = window->WorkRect.Min - window->Pos + window->Scroll - style.CellPadding;
             const ImVec2 size(
                 window->WorkRect.GetSize().x + (style.CellPadding.x * 2.0f),
                 ImGui::GetFontSize() + (style.FramePadding.y * 2.0f) + (style.CellPadding.y * 2.0f));
@@ -313,7 +313,7 @@ namespace he::editor
 
             if (size.x > 0 && size.y > 0)
             {
-                const ImVec2 rectMin = pos + window->Pos;
+                const ImVec2 rectMin = window->WorkRect.Min - style.CellPadding;
                 const ImVec2 rectMax = rectMin + size;
 
                 if (ImGui::IsMouseReleased(ImGuiMouseButton_Right) && ImGui::IsMouseHoveringRect(rectMin, rectMax, false))
@@ -670,8 +670,6 @@ namespace he::editor
                     ImGui::PushStyleColor(ImGuiCol_Text, color);
                 }
 
-                const ImVec2 pos = ImGui::GetCursorPos();
-
                 if (isExpandable)
                 {
                     const ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_SpanFullWidth | ImGuiTreeNodeFlags_NoTreePushOnOpen;
@@ -692,7 +690,7 @@ namespace he::editor
                     ImGui::PopStyleColor();
                 }
 
-                if (BeginPropertyContextMenu(pos))
+                if (BeginPropertyContextMenu())
                 {
                     if (MenuItem("Copy name", ICON_MDI_CONTENT_COPY))
                     {
@@ -701,8 +699,9 @@ namespace he::editor
 
                     if (MenuItem("Copy value", ICON_MDI_CONTENT_COPY))
                     {
-                        // TODO: Serialize the value to TOML and copy to clipboard.
-                        ImGui::SetClipboardText(name.Data());
+                        String str;
+                        ToToml(str, data.Get(index));
+                        ImGui::SetClipboardText(str.Data());
                     }
 
                     MenuSeparator();
@@ -803,8 +802,6 @@ namespace he::editor
                     ImGui::PushStyleColor(ImGuiCol_Text, color);
                 }
 
-                const ImVec2 pos = ImGui::GetCursorPos();
-
                 if (isExpandable)
                 {
                     const ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_SpanFullWidth | ImGuiTreeNodeFlags_NoTreePushOnOpen;
@@ -825,7 +822,7 @@ namespace he::editor
                     ImGui::PopStyleColor();
                 }
 
-                if (BeginPropertyContextMenu(pos))
+                if (BeginPropertyContextMenu())
                 {
                     if (MenuItem("Copy name", ICON_MDI_CONTENT_COPY))
                     {
@@ -834,8 +831,9 @@ namespace he::editor
 
                     if (MenuItem("Copy value", ICON_MDI_CONTENT_COPY))
                     {
-                        // TODO: Serialize the value to TOML and copy to clipboard.
-                        ImGui::SetClipboardText(name.Data());
+                        String str;
+                        ToToml(str, data.Get(field));
+                        ImGui::SetClipboardText(str.Data());
                     }
 
                     MenuSeparator();

@@ -49,6 +49,8 @@ namespace he::schema
         using Reader = typename T::Reader;
         using Builder = typename T::Builder;
         static constexpr bool IsList = false;
+        static constexpr bool IsStruct = true;
+        static constexpr bool IsDataType = false;
     };
 
     template <DataType T>
@@ -57,6 +59,8 @@ namespace he::schema
         using Reader = T;
         using Builder = T;
         static constexpr bool IsList = false;
+        static constexpr bool IsStruct = false;
+        static constexpr bool IsDataType = true;
     };
 
     template <typename T>
@@ -65,6 +69,8 @@ namespace he::schema
         using Reader = typename List<T>::Reader;
         using Builder = typename List<T>::Builder;
         static constexpr bool IsList = true;
+        static constexpr bool IsStruct = false;
+        static constexpr bool IsDataType = false;
     };
 
     // --------------------------------------------------------------------------------------------

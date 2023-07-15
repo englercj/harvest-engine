@@ -3,6 +3,7 @@
 #pragma once
 
 #include "he/core/types.h"
+#include "he/schema/dynamic.h"
 #include "he/schema/schema.h"
 
 namespace he { class String; }
@@ -23,6 +24,12 @@ namespace he::schema
     /// \param[in] data The reader to read data from.
     template <typename T>
     void ToToml(he::String& dst, typename T::Reader data) { ToToml(dst, data, T::DeclInfo); }
+
+    /// Serializes a schema value into a TOML string.
+    ///
+    /// \param[in] dst The destination string to write to.
+    /// \param[in] data The reader to read data from.
+    void ToToml(he::String& dst, DynamicValue::Reader data);
 
     /// Deserializes a schema buffer structure from a TOML string.
     ///

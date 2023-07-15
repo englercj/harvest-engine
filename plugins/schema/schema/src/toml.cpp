@@ -1031,6 +1031,11 @@ namespace he::schema
             StructVisitor::VisitStruct(data, info);
         }
 
+        void Write(DynamicValue::Reader data)
+        {
+            WriteDynamicValue(data);
+        }
+
     private:
         void BeginTable()
         {
@@ -1125,12 +1130,7 @@ namespace he::schema
             EndTable();
         }
 
-        void VisitValue(bool value, Type::Reader type, const DeclInfo& scope) override
-        {
-            HE_UNUSED(type, scope);
-            m_writer.Bool(value);
-        }
-
+        void VisitValue(bool value, Type::Reader, const DeclInfo&) override { m_writer.Bool(value); }
         void VisitValue(int8_t value, Type::Reader, const DeclInfo&) override { WriteIntValue(value); }
         void VisitValue(int16_t value, Type::Reader, const DeclInfo&) override { WriteIntValue(value); }
         void VisitValue(int32_t value, Type::Reader, const DeclInfo&) override { WriteIntValue(value); }
@@ -1169,32 +1169,23 @@ namespace he::schema
                 return;
             }
 
-            const Declaration::Data::Enum::Reader enumDecl = decl.GetData().GetEnum();
-
-            bool found = false;
-            for (Enumerator::Reader e : enumDecl.GetEnumerators())
-            {
-                if (e.GetOrdinal() == value)
-                {
-                    found = true;
-                    m_writer.String(e.GetName());
-                    break;
-                }
-            }
+            const bool found = WriteEnumValue(value, *enumInfo);
 
             // Should never happen
-            HE_VERIFY(found,
+            if (!HE_VERIFY(found,
                 HE_MSG("Invalid enum value. No enumerator exists in the schema with that value."),
                 HE_KV(field_name, m_currentField.GetName()),
                 HE_KV(field_type, m_currentField.GetMeta().GetNormal().GetType().GetData().GetUnionTag()),
                 HE_KV(parent_id, decl.GetId()),
                 HE_KV(parent_name, decl.GetName()),
                 HE_KV(key_stack, m_keyStack),
-                HE_KV(enum_value, value));
-            m_writer.String("");
+                HE_KV(enum_value, value)))
+            {
+                m_writer.String("");
+            }
         }
 
-        void VisitArrayValue(StructReader data, Type::Reader elementType, uint16_t index, uint32_t dataOffset, uint16_t size, const DeclInfo& scope)
+        void VisitArrayValue(StructReader data, Type::Reader elementType, uint16_t index, uint32_t dataOffset, uint16_t size, const DeclInfo& scope) override
         {
             if (elementType.GetData().IsUint8())
             {
@@ -1208,9 +1199,9 @@ namespace he::schema
             }
 
             const bool isPointer = IsPointer(elementType);
+            const bool isStruct = elementType.GetData().IsStruct();
 
-
-            if (!elementType.GetData().IsStruct())
+            if (!isStruct)
             {
                 m_writer.StartArray();
                 ++m_arrayDepth;
@@ -1232,7 +1223,7 @@ namespace he::schema
                 m_currentField = oldField;
             }
 
-            if (!elementType.GetData().IsStruct())
+            if (!isStruct)
             {
                 --m_arrayDepth;
                 m_writer.EndArray();
@@ -1240,7 +1231,7 @@ namespace he::schema
 
         }
 
-        void VisitListValue(ListReader data, Type::Reader elementType, const DeclInfo& scope)
+        void VisitListValue(ListReader data, Type::Reader elementType, const DeclInfo& scope) override
         {
             if (elementType.GetData().IsUint8())
             {
@@ -1393,6 +1384,138 @@ namespace he::schema
             m_writer.String(str);
         }
 
+        bool WriteEnumValue(uint16_t value, const DeclInfo& enumInfo)
+        {
+            const Declaration::Data::Enum::Reader enumDecl = GetSchema(enumInfo).GetData().GetEnum();
+
+            for (Enumerator::Reader e : enumDecl.GetEnumerators())
+            {
+                if (e.GetOrdinal() == value)
+                {
+                    m_writer.String(e.GetName());
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        void WriteDynamicValue(DynamicValue::Reader data)
+        {
+            switch (data.GetKind())
+            {
+                case DynamicValue::Kind::Unknown: break;
+                case DynamicValue::Kind::Void: break;
+                case DynamicValue::Kind::Bool: m_writer.Bool(data.As<bool>()); break;
+                case DynamicValue::Kind::Int: WriteIntValue(data.As<int64_t>()); break;
+                case DynamicValue::Kind::Uint: WriteUintValue(data.As<uint64_t>()); break;
+                case DynamicValue::Kind::Float: WriteFloatValue(data.As<double>()); break;
+                case DynamicValue::Kind::String: m_writer.String(data.As<String>(), TomlStringFormat::Basic); break;
+                case DynamicValue::Kind::Blob:
+                {
+                    const Blob::Reader value = data.As<Blob>();
+                    WriteBlobValue({ value.Data(), value.Size() });
+                    break;
+                }
+                case DynamicValue::Kind::Array:
+                {
+
+                    const DynamicArray::Reader value = data.As<DynamicArray>();
+                    const Type::Data::Array::Reader arrayType = value.ArrayType();
+                    const Type::Reader elementType = arrayType.GetElementType();
+
+                    if (elementType.GetData().IsUint8())
+                    {
+                        const Span<const uint8_t> bytes = value.AsSpanOf<uint8_t>();
+                        WriteBlobValue(bytes);
+                    }
+                    else
+                    {
+                        const bool isStruct = elementType.GetData().IsStruct();
+
+                        if (!isStruct)
+                        {
+                            m_writer.StartArray();
+                            ++m_arrayDepth;
+                        }
+
+                        for (uint16_t i = 0; i < arrayType.GetSize(); ++i)
+                        {
+                            Field::Reader oldField = m_currentField;
+                            m_nextTableIsArray = true;
+                            WriteDynamicValue(value.Get(i));
+                            m_nextTableIsArray = false;
+                            m_currentField = oldField;
+                        }
+
+                        if (!isStruct)
+                        {
+                            --m_arrayDepth;
+                            m_writer.EndArray();
+                        }
+                    }
+                    break;
+                }
+                case DynamicValue::Kind::List:
+                {
+                    const DynamicList::Reader value = data.As<DynamicList>();
+                    const Type::Data::List::Reader listType = value.ListType();
+                    const Type::Reader elementType = listType.GetElementType();
+
+                    if (elementType.GetData().IsUint8())
+                    {
+                        const List<const uint8_t>::Reader bytes = value.AsListOf<const uint8_t>();
+                        WriteBlobValue(bytes);
+                    }
+                    else
+                    {
+                        const uint32_t size = value.Size();
+                        const bool isStruct = elementType.GetData().IsStruct();
+
+                        if (!isStruct)
+                        {
+                            m_writer.StartArray();
+                            ++m_arrayDepth;
+                        }
+
+                        for (uint32_t i = 0; i < size; ++i)
+                        {
+                            Field::Reader oldField = m_currentField;
+                            m_nextTableIsArray = true;
+                            StructVisitor::VisitValue(value.List(), elementType, i, value.Scope());
+                            m_nextTableIsArray = false;
+                            m_currentField = oldField;
+                        }
+
+                        if (!isStruct)
+                        {
+                            --m_arrayDepth;
+                            m_writer.EndArray();
+                        }
+                    }
+                    break;
+                }
+                case DynamicValue::Kind::Enum:
+                {
+                    const DynamicEnum value = data.As<DynamicEnum>();
+                    WriteEnumValue(value.Value(), value.Decl());
+                    break;
+                }
+                case DynamicValue::Kind::Struct:
+                {
+                    const DynamicStruct::Reader value = data.As<DynamicStruct>();
+                    StructVisitor::VisitStruct(value.Struct(), value.Decl());
+                    break;
+                }
+                case DynamicValue::Kind::AnyPointer:
+                {
+                    // TODO!
+                    const AnyPointer::Reader value = data.As<AnyPointer>();
+                    VisitAnyPointer(value, {}, {});
+                    break;
+                }
+            }
+        }
+
     private:
         TomlWriter m_writer;
         Vector<StringView> m_keyStack;
@@ -1407,6 +1530,12 @@ namespace he::schema
     {
        SchemaTomlWriter writer(dst);
        return writer.Write(data, info);
+    }
+
+    void ToToml(he::String& dst, DynamicValue::Reader data)
+    {
+        SchemaTomlWriter writer(dst);
+        return writer.Write(data);
     }
 
      bool FromToml(Builder& dst, StringView data, const DeclInfo& info)

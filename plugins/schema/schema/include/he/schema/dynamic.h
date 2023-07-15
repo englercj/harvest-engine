@@ -290,7 +290,7 @@ namespace he::schema
         {
             const bool valid = HE_VERIFY(!IsPointer(ArrayType().GetElementType()), HE_MSG("DynamicArray requested as a Span with a pointer element type."))
                 && HE_VERIFY(IsValidElementType<T>(ArrayType().GetElementType()), HE_MSG("DynamicArray requested as a Span with an element type that doesn't match the schema."));
-            return valid ? Span<const T>(static_cast<const T*>(m_array), Size()) : Span<const T>{};
+            return valid ? Span<const T>(reinterpret_cast<const T*>(m_array.data), Size()) : Span<const T>{};
         }
 
         IteratorType begin() const { return IteratorType(this, 0); }
@@ -774,9 +774,16 @@ namespace he::schema
             case Type::Data::UnionTag::AnyStruct: return IsSame<T, schema::AnyStruct>;
             case Type::Data::UnionTag::AnyList: return IsSame<T, schema::AnyList>;
             case Type::Data::UnionTag::Enum: return IsEnum<T>;
-            case Type::Data::UnionTag::Struct: return T::Kind == DeclKind::Struct;
             case Type::Data::UnionTag::Interface: return false;
             case Type::Data::UnionTag::Parameter: return false;
+
+            case Type::Data::UnionTag::Struct:
+            {
+                if constexpr (LayoutTraits<T>::IsStruct)
+                    return T::Kind == DeclKind::Struct;
+                else
+                    return false;
+            }
 
             case Type::Data::UnionTag::Array:
             {

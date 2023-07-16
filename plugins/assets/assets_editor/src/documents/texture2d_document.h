@@ -2,13 +2,13 @@
 
 #pragma once
 
-#include "documents/asset_document.h"
+#include "he/editor/documents/asset_document.h"
 
 #include "he/core/types.h"
 
-namespace he::editor
+namespace he::assets
 {
-    class Texture2DDocument : public AssetDocument
+    class Texture2DDocument : public editor::AssetDocument
     {
     public:
         void Show() override;

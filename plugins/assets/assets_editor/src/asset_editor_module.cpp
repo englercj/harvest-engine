@@ -1,5 +1,7 @@
 // Copyright Chad Engler
 
+#include "documents/texture2d_document.h"
+
 #include "he/assets/asset_editors.h"
 #include "he/assets/asset_type_registry.h"
 #include "he/assets/types.h"
@@ -7,6 +9,7 @@
 #include "he/assets/importers/image_importer.h"
 #include "he/core/module_registry.h"
 #include "he/core/types.h"
+#include "he/editor/services/asset_document_service.h"
 #include "he/editor/services/type_edit_ui_service.h"
 
 #include "encoder/basisu_enc.h"
@@ -45,11 +48,8 @@ namespace he::assets
             types.RegisterAssetType<Texture2D, Texture2DCompiler>();
             types.RegisterImporter<ImageImporter>();
 
-            AssetDocumentService* docs = registry.FindApi<AssetDocumentService>();
-            if (docs)
-            {
-                docs->RegisterAssetDocument<schema::Texture2D, Texture2DDocument>();
-            }
+            editor::AssetDocumentService& docs = registry.GetApi<editor::AssetDocumentService>();
+            docs.RegisterAssetDocument<Texture2D, Texture2DDocument>();
 
             editor::TypeEditUIService& editors = registry.GetApi<editor::TypeEditUIService>();
             editors.RegisterFieldEditor<Asset>("uuid", { &AssetUuidFieldEditor, editor::TypeEditUIService::EditorFlag::Inline });
@@ -62,6 +62,9 @@ namespace he::assets
 
         void Shutdown() override
         {
+            HE_ASSERT(g_assetEditorModule);
+            g_assetEditorModule = nullptr;
+
             basisu::basisu_encoder_deinit();
 
             ModuleRegistry& registry = Registry();
@@ -70,31 +73,12 @@ namespace he::assets
             editors.UnregisterFieldEditor<Asset>("uuid");
             editors.UnregisterFieldEditor<Asset>("data");
 
-            //EditorDocumentRegistry* editor = registry.FindApi<EditorDocumentRegistry>();
-            //if (editor)
-            //{
-            //    editor->UnregisterAssetDocument<schema::Texture, TextureDocument>();
-            //}
+            editor::AssetDocumentService& docs = registry.GetApi<editor::AssetDocumentService>();
+            docs.UnregisterAssetDocument<Texture2D>();
 
             AssetTypeRegistry& types = registry.GetApi<AssetTypeRegistry>();
             types.UnregisterAssetType<Texture2D>();
             types.UnregisterImporter<ImageImporter>();
-
-            AssetDocumentService* docs = registry.FindApi<AssetDocumentService>();
-            if (docs)
-            {
-                docs->UnregisterAssetDocument<schema::Texture2D, Texture2DDocument>();
-            }
-
-            editor::TypeEditUIService& editors = registry.GetApi<editor::TypeEditUIService>();
-            editors.UnregisterTypeEditor<schema::Vec2f>({ true, &Vec2fEditor });
-            editors.UnregisterTypeEditor<schema::Vec3f>({ true, &Vec3fEditor });
-
-            editors.UnregisterFieldEditor(he::schema::FindFieldByName<schema::Asset>("uuid"), { true, &AssetUuidFieldEditor });
-            editors.UnregisterFieldEditor(he::schema::FindFieldByName<schema::Asset>("data"), { true, &AssetDataFieldEditor });
-
-            HE_ASSERT(g_assetEditorModule);
-            g_assetEditorModule = nullptr;
         }
     };
 }

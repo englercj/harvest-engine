@@ -5,6 +5,7 @@
 #include "he/core/module_registry.h"
 #include "he/core/types.h"
 #include "he/editor/services/app_args_service.h"
+#include "he/editor/services/asset_document_service.h"
 #include "he/editor/services/type_edit_ui_service.h"
 #include "he/editor/widgets/schema_type_editors.h"
 #include "he/schema/types.h"
@@ -21,6 +22,7 @@ namespace he::editor
             ModuleRegistry& registry = Registry();
 
             registry.RegisterApi(DICreate<AppArgsService&>());
+            registry.RegisterApi(DICreate<AssetDocumentService&>());
             registry.RegisterApi(DICreate<TypeEditUIService&>());
         }
 
@@ -30,6 +32,7 @@ namespace he::editor
 
             registry.UnregisterApi<TypeEditUIService>();
             registry.UnregisterApi<AppArgsService>();
+            registry.UnregisterApi<AssetDocumentService>();
         }
 
         bool Startup() override

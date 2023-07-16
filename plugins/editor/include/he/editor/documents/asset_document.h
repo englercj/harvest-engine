@@ -3,7 +3,7 @@
 #pragma once
 
 #include "he/editor/documents/document.h"
-#include "framework/schema_edit.h"
+#include "he/editor/framework/schema_edit.h"
 
 #include "he/core/assert.h"
 #include "he/core/types.h"

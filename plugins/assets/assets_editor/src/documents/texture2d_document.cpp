@@ -6,6 +6,6 @@ namespace he::assets
 {
     void Texture2DDocument::Show()
     {
-        ImGui::Image
+        // TODO
     }
 }

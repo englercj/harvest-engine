@@ -14,8 +14,6 @@ namespace he::editor
     class AssetDocumentService
     {
     public:
-        explicit AssetDocumentService() noexcept;
-
         template <typename T, DerivedFrom<AssetDocument> DocType>
         bool RegisterAssetDocument();
 
@@ -43,19 +41,19 @@ namespace he::editor
     template <typename T, DerivedFrom<AssetDocument> DocType>
     inline bool AssetDocumentService::RegisterAssetDocument()
     {
-        constexpr const schema::DeclInfo& DeclInfo = T::DeclInfo;
-        return RegisterAssetDocument(T::AssetTypeName, DeclInfo, []() { DICreateUnique<DocType>() });
+        const auto createFunc = []() -> UniquePtr<AssetDocument> { return DICreateUnique<DocType>(); };
+        return RegisterAssetDocument(Name(T::AssetTypeName), createFunc);
     }
 
     template <typename T>
     inline void AssetDocumentService::UnregisterAssetDocument()
     {
-        return UnregisterAssetDocument(T::AssetTypeName);
+        return UnregisterAssetDocument(Name(T::AssetTypeName));
     }
 
     template <typename T>
-    inline UniquePtr<AssetDocument> AssetDocumentService::CreateAssetDocument();
+    inline UniquePtr<AssetDocument> AssetDocumentService::CreateAssetDocument()
     {
-        return FindAssetDocument(T::AssetTypeName);
+        return FindAssetDocument(Name(T::AssetTypeName));
     }
 }

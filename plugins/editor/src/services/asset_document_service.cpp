@@ -2,6 +2,8 @@
 
 #include "he/editor/services/asset_document_service.h"
 
+#include "he/core/name_fmt.h"
+
 namespace he::editor
 {
     bool AssetDocumentService::RegisterAssetDocument(Name assetTypeName, Pfn_CreateAssetDocument createDoc)

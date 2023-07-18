@@ -96,12 +96,13 @@ Variants are treated as additive and will have the effect of adding new keys to 
 
 | Type | Description |
 | ---- | ----------- |
-| static | Built as a static library. |
-| shared | Built as a shared library (dll/so). |
-| console_app | Built as a console application. |
-| windowed_app | Built as a windowed application. |
+| console_app | Code built as a console application. |
+| content | Assets, configuration, and other content to be edited. |
+| custom | Utility project which contains only custom build scripts. For example, copying prebuilt binaries. Depending on a module of this type doesn't generate any link commands, but does create a build-order dependency. |
 | header | Header-only module that does not generate any symbols to be linked. |
-| custom | Only contains custom build scripts. For example, copying prebuilt binaries. Depending on a module of this type doesn't generate any link commands, but does create a build-order dependency. |
+| static | Code built as a static library. |
+| shared | Code built as a shared library (dll/so). |
+| windowed_app | Code built as a windowed application. |
 
 ## Module Dependencies
 

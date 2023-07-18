@@ -89,6 +89,24 @@ he.filter_get_active = function ()
 end
 
 -- ------------------------------------------------------------------------------------------------
+-- CWD Stack
+
+local cwd_stack = {}
+
+-- Pushes a directory onto the CWD stack
+he.cwd_push = function (dir)
+    table.insert(cwd_stack, os.getcwd())
+    os.chdir(dir)
+end
+
+he.cwd_pop = function ()
+    local dir = table.remove(cwd_stack)
+    if dir then
+        os.chdir(dir)
+    end
+end
+
+-- ------------------------------------------------------------------------------------------------
 -- Table extensions
 
 -- Returns true if this table looks like it is an array.

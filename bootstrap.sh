@@ -1,9 +1,17 @@
 #!/usr/bin/env bash
 # Copyright Chad Engler
 
+if [[ $# -eq 0 ]]; then
+    echo "The path to the project file must be the first argument."
+fi
+
 BUILD_DIR="build"
 #PREMAKE_VERSION="nightly"
 PREMAKE_VERSION="5.0.0-beta2"
+ENGINE_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &> /dev/null && pwd)
+PROJECT_PATH=$(realpath $1)
+
+shift # remove the project path argument
 
 OS_NAME="$(uname -s)"
 case $OS_NAME in
@@ -71,7 +79,7 @@ if [[ ! -f "$PREMAKE_DIR/$PREMAKE_EXE" ]]; then
 fi
 
 if [[ $# -eq 0 ]]; then
-    "$PREMAKE_DIR/$PREMAKE_EXE" $PREMAKE_ACTION
+    "$PREMAKE_DIR/$PREMAKE_EXE" $PREMAKE_ACTION --file="$ENGINE_DIR/premake5.lua" --he_project="$PROJECT_PATH"
 else
-    "$PREMAKE_DIR/$PREMAKE_EXE" $@
+    "$PREMAKE_DIR/$PREMAKE_EXE" $@ --file="$ENGINE_DIR/premake5.lua" --he_project="$PROJECT_PATH"
 fi

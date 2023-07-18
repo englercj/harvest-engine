@@ -904,7 +904,10 @@ TOML.encode = function(tbl)
 				toml = toml .. k .. " = " .. quote .. v .. quote .. "\n"
 			elseif type(v) == "table" and getmetatable(v) == date_metatable then
 				toml = toml .. k .. " = " .. tostring(v) .. "\n"
-			elseif type(v) == "table" then
+			end
+		end
+		for k, v in pairs(tbl) do
+			if type(v) == "table" and getmetatable(v) ~= date_metatable then
 				local array, arrayTable = true, true
 				local first = {}
 				for kk, vv in pairs(v) do

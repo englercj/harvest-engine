@@ -1,13 +1,38 @@
 -- Copyright Chad Engler
 
+local TOML = dofile("toml.lua")
+
 -- Root directory of the project
 he.root_dir = path.getabsolute(_MAIN_SCRIPT_DIR)
 
 -- Name of the solution file (and workspace)
-he.sln_name = _OPTIONS.slnfilename
+he.sln_name = _OPTIONS["he_slnfilename"]
 
-if #he.sln_name == 0 then
+if not he.sln_name or #he.sln_name == 0 then
     he.sln_name = path.getbasename(he.root_dir) .. "_" .. os.target()
+end
+
+-- Load the project file we're operating on
+if not _OPTIONS.help then
+    he.project_filename = _OPTIONS["he_project"]
+
+    if not he.project_filename or #he.project_filename == 0 then
+        he.project_filename = path.join(he.root_dir, "he_project.toml")
+    end
+
+    local project_str = io.readfile(he.project_filename)
+
+    if not project_str or #project_str == 0 then
+        error("Project file does not exist, or is empty: " .. he.project_filename)
+    end
+
+    he.project = TOML.parse(project_str)
+
+    if not he.project then
+        error("Failed to parse project file: " .. he.project_filename)
+    end
+
+    printf("Loaded project '%s' from file: %s", he.project.name, he.project_filename)
 end
 
 -- Detect the build dir

@@ -1,8 +1,8 @@
 -- Copyright Chad Engler
 
 local p = premake
-local TOML = include("toml.lua")
-local install_plugin = include("install_plugin.lua")
+local TOML = dofile("toml.lua")
+local install_plugin = dofile("install_plugin.lua")
 
 local target_dir_by_kind = {
     ConsoleApp = he.target_bin_dir,
@@ -21,12 +21,11 @@ local module_type_by_kind = {
 }
 
 local kind_by_module_type = {
+    console_app = "ConsoleApp",
     custom = "Utility",
+    header = "StaticLib",
     static = "StaticLib",
     shared = "SharedLib",
-    header = "StaticLib",
-    test = "StaticLib",
-    console_app = "ConsoleApp",
     windowed_app = "WindowedApp",
 }
 
@@ -123,12 +122,16 @@ local function _module_project(mod)
         return
     end
 
+    assert(type(mod.type) == "string", "Module type must be a string.")
+
+    if mod.type == "content" then
+        verbosef("Skipping project for module '%s' in group '%s', it is a content module.", mod.name, mod.group)
+        return
+    end
+
     verbosef("Generating project for module '%s' in group '%s'", mod.name, mod.group)
 
-    local oldcwd = os.getcwd()
-    os.chdir(mod._plugin._install_dir)
-
-    assert(type(mod.type) == "string", "Module type must be a string.")
+    he.cwd_push(mod._plugin._install_dir)
 
     local kindname = kind_by_module_type[mod.type]
     assert(kindname, "Unknown module type: '" .. mod.type .. "'.")
@@ -158,7 +161,7 @@ local function _module_project(mod)
 
         _system_tag_file_excludes()
 
-    os.chdir(oldcwd)
+    he.cwd_pop()
 end
 
 local function _should_include_module(mod, options)
@@ -180,7 +183,7 @@ local function _import_plugin(plugin_path, options)
     local plugin_file = plugin_path
 
     if not path.hasextension(plugin_file, ".toml") then
-        plugin_file = path.join(plugin_file, "he_plugin.toml")
+        plugin_file = path.join(plugin_path, "he_plugin.toml")
     end
 
     plugin_file = path.getabsolute(plugin_file);
@@ -199,8 +202,7 @@ local function _import_plugin(plugin_path, options)
         return nil
     end
 
-    local oldcwd = os.getcwd()
-    os.chdir(path.getdirectory(plugin_file))
+    he.cwd_push(path.getdirectory(plugin_file))
 
     -- Mark the plugin as imported and install
     assert(type(plugin.id) == "string", "Plugins that provide modules must specify an 'id' key.")
@@ -223,7 +225,7 @@ local function _import_plugin(plugin_path, options)
     -- Check if the plugin provides any modules, and warn if it doesn't.
     if plugin.modules == nil or table.isempty(plugin.modules) then
         verbosef("No modules listed in plugin '%s'", plugin.id)
-        os.chdir(oldcwd)
+        he.cwd_pop()
         return {}
     end
 
@@ -247,7 +249,7 @@ local function _import_plugin(plugin_path, options)
         end
     end
 
-    os.chdir(oldcwd)
+    he.cwd_pop()
 end
 
 local function _get_scope_table(scope)
@@ -281,7 +283,7 @@ he.import_plugins = function (plugins, options)
     end
 end
 
-he.generate_projects = function ()
+he.generate_module_projects = function ()
     for mod_name, mod in pairs(he.imported_modules) do
         _module_prepare(mod)
     end

@@ -4,7 +4,7 @@
 
 ### Windows
 
-Install Visual Studio 2022 and .
+Install Visual Studio 2022 (v17.6.2+ recommended).
 
 Then run `boostrap.sh` using Git Bash from within the cloned folder.
 
@@ -12,9 +12,13 @@ Then run `boostrap.sh` using Git Bash from within the cloned folder.
 
 For WASM support you'll also need to install [LLVM 17](https://github.com/llvm/llvm-project/releases/download/llvmorg-17.0.6/LLVM-17.0.6-win64.exe) and re-run `bootstrap.sh`.
 
+#### Vulkan SDK
+
+If you're planning to do Vulkan development on Windows, you'll also need the [Vulkan SDK](https://vulkan.lunarg.com/sdk/home) (v1.3.250.1).
+
 ### Linux
 
-Install system dependencies: `apt install build-essential binutils-dev libdw-dev libx11-dev libxi-dev liburing-dev`
+Install system dependencies: `apt install build-essential binutils-dev libdw-dev libx11-dev libxi-dev liburing-dev vulkan-sdk`
 
 Then run `bootstrap.sh` from within the cloned folder.
 
@@ -28,6 +32,17 @@ For WASM support you'll also need to install LLVM 17:
 wget https://apt.llvm.org/llvm.sh
 chmod +x llvm.sh
 sudo ./llvm.sh 17
+```
+
+#### Vulkan SDK
+
+You may need to add the Vulkan SDK apt repository for the install to work correctly. You can find details on the [Vulkan SDK](https://vulkan.lunarg.com/sdk/home) page.
+
+For example, for Ubuntu 22.04 (Jammy Jellyfish) you'll need the following:
+
+```sh
+wget -qO- https://packages.lunarg.com/lunarg-signing-key-pub.asc | sudo tee /etc/apt/trusted.gpg.d/lunarg.asc
+sudo wget -qO /etc/apt/sources.list.d/lunarg-vulkan-1.3.250-jammy.list https://packages.lunarg.com/vulkan/1.3.250/lunarg-vulkan-1.3.250-jammy.list
 ```
 
 ## Compiler Support

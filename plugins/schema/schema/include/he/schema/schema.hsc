@@ -18,7 +18,7 @@ struct Toml
         Zstd @1;
     }
 
-    // Overrides the name used for this field when serializing to TOML
+    // Overrides the name used for this field when serializing to and from TOML.
     attribute Name(field, enumerator) :String;
 
     // Formats Blobs, Lists of uint8, and Arrays of uint8 as base64 strings. The compression

@@ -1,9 +1,30 @@
 #!/usr/bin/env bash
 # Copyright Chad Engler
 
-if [[ $# -eq 0 ]]; then
-    echo "The path to the project file must be the first argument."
+function show_help()
+{
+    echo "Usage: bootstrap.sh <project_path> [premake_args]"
+    exit 1
+}
+
+if [ $# -eq 0 ]; then
+    show_help
 fi
+
+for arg in "$@"; do
+    case $arg in
+        # Capture the --to="" arg so we use the same build directory that premake will use
+        --to=*)
+            BUILD_DIR="${arg#*=}"
+            ;;
+        # Show help text and exit the script
+        -h*)
+            ;&
+        --help*)
+            show_help
+            ;;
+    esac
+done
 
 BUILD_DIR="build"
 #PREMAKE_VERSION="nightly"
@@ -11,7 +32,8 @@ PREMAKE_VERSION="5.0.0-beta2"
 ENGINE_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &> /dev/null && pwd)
 PROJECT_PATH=$(realpath $1)
 
-shift # remove the project path argument
+# Remove the first argument from the arg list, which is the project path.
+shift
 
 OS_NAME="$(uname -s)"
 case $OS_NAME in
@@ -60,7 +82,7 @@ PREMAKE_PATH="$PREMAKE_DIR/$PREMAKE_DL_FILE"
 
 mkdir -p $PREMAKE_DIR
 
-if [[ ! -f "$PREMAKE_PATH" ]]; then
+if [ ! -f "$PREMAKE_PATH" ]; then
     echo "Downloading premake..."
     if command -v "curl" &> /dev/null; then
         curl -L -s -o $PREMAKE_PATH $PREMAKE_DL_URL
@@ -72,13 +94,13 @@ if [[ ! -f "$PREMAKE_PATH" ]]; then
     fi
 fi
 
-if [[ ! -f "$PREMAKE_DIR/$PREMAKE_EXE" ]]; then
+if [ ! -f "$PREMAKE_DIR/$PREMAKE_EXE" ]; then
     echo "Extracting premake..."
     $EXTRACT_CMD "$PREMAKE_PATH" $EXTRACT_FLAG "$PREMAKE_DIR"
     chmod +x "$PREMAKE_DIR/$PREMAKE_EXE"
 fi
 
-if [[ $# -eq 0 ]]; then
+if [ $# -eq 0 ]; then
     "$PREMAKE_DIR/$PREMAKE_EXE" $PREMAKE_ACTION --file="$ENGINE_DIR/premake5.lua" --he_project="$PROJECT_PATH"
 else
     "$PREMAKE_DIR/$PREMAKE_EXE" $@ --file="$ENGINE_DIR/premake5.lua" --he_project="$PROJECT_PATH"

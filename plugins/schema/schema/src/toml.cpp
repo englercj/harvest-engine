@@ -229,7 +229,19 @@ namespace he::schema
         {
             const Declaration::Reader decl = m_stack.Back().decl;
             const Declaration::Data::Struct::Reader structDecl = decl.GetData().GetStruct();
-            m_currentField = FindFieldByName(name, structDecl);
+
+            m_currentField = {};
+            for (const Field::Reader field : structDecl.GetFields())
+            {
+                const Attribute::Reader nameAttr = FindAttribute<Toml::Name>(field.GetAttributes());
+                const String::Reader fieldName = nameAttr.IsValid() ? nameAttr.GetValue().GetData().GetString() : field.GetName();
+
+                if (fieldName == name)
+                {
+                    m_currentField = field;
+                    break;
+                }
+            }
 
             if (!m_currentField.IsValid())
             {
@@ -954,7 +966,10 @@ namespace he::schema
                 bool found = false;
                 for (Enumerator::Reader e : enumDecl.GetEnumerators())
                 {
-                    if (e.GetName() == enumName)
+                    const Attribute::Reader nameAttr = FindAttribute<Toml::Name>(e.GetAttributes());
+                    const String::Reader name = nameAttr.IsValid() ? nameAttr.GetValue().GetData().GetString() : e.GetName();
+
+                    if (name == enumName)
                     {
                         SetDataValue(builder, index, dataOffset, e.GetOrdinal());
                         found = true;
@@ -1085,8 +1100,8 @@ namespace he::schema
 
             if (!typeData.IsStruct())
             {
-                const Attribute::Reader tomlName = FindAttribute<Toml::Name>(field.GetAttributes());
-                const StringView name = tomlName.IsValid() ? tomlName.GetValue().GetData().GetString() : field.GetName();
+                const Attribute::Reader nameAttr = FindAttribute<Toml::Name>(field.GetAttributes());
+                const StringView name = nameAttr.IsValid() ? nameAttr.GetValue().GetData().GetString() : field.GetName();
                 m_writer.Key(name);
             }
 
@@ -1392,7 +1407,11 @@ namespace he::schema
             {
                 if (e.GetOrdinal() == value)
                 {
-                    m_writer.String(e.GetName());
+                    const Attribute::Reader nameAttr = FindAttribute<Toml::Name>(e.GetAttributes());
+                    if (nameAttr.IsValid())
+                        m_writer.String(nameAttr.GetValue().GetData().GetString());
+                    else
+                        m_writer.String(e.GetName());
                     return true;
                 }
             }

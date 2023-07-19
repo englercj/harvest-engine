@@ -4,7 +4,7 @@ id = "he.math"
 name = "Harvest Math"
 description = "Collection of common math funcitons and accelerated vector/matrix structures."
 version = "0.1.0"
-author = "Chad Engler <englercj@live.com>"
+authors = ["Chad Engler <englercj@live.com>"]
 license = "UNLICENSED"
 homepage = ""
 

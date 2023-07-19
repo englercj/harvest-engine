@@ -4,7 +4,7 @@ id = "WinPixEventRuntime"
 name = "WinPixEventRuntime"
 description = "Allows applications to be instrumented with marker events, for use with Microsoft PIX."
 version = "1.0.230302001"
-author = "Microsoft"
+authors = ["Microsoft"]
 license = "SEE LICENSE IN license.txt"
 homepage = "https://devblogs.microsoft.com/pix/winpixeventruntime/"
 

@@ -4,7 +4,7 @@ id = "nvidia.slang"
 name = "slang"
 description = "Slang is a shading language that makes it easier to build and maintain large shader codebases in a modular and extensible fashion."
 version = "0.28.2"
-author = "Carnegie Mellon University and NVIDIA Corporation"
+authors = ["Carnegie Mellon University", "NVIDIA Corporation"]
 license = "MIT"
 homepage = "https://github.com/shader-slang/slang"
 

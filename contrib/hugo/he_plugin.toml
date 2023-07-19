@@ -4,7 +4,7 @@ id = "gohugoio.hugo"
 name = "Hugo"
 description = "A Fast and Flexible Static Site Generator."
 version = "0.104.2"
-author = ["Bjørn Erik Pedersen <bjorn.erik.pedersen@gmail.com>", "Steve Francia <steve.francia@gmail.com>"]
+authors = ["Bjørn Erik Pedersen <bjorn.erik.pedersen@gmail.com>", "Steve Francia <steve.francia@gmail.com>"]
 license = "Apache-2.0"
 homepage = "https://gohugo.io/"
 

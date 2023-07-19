@@ -4,7 +4,7 @@ id = "freetype"
 name = "Freetype"
 description = "Dear ImGui is a bloat-free graphical user interface library for C++."
 version = "2.12.1"
-author = "Werner Lemberg <wl@gnu.org>"
+authors = ["Werner Lemberg <wl@gnu.org>"]
 license = "FTL"
 homepage = "https://freetype.org/"
 

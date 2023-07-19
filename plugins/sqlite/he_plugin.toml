@@ -4,7 +4,7 @@ id = "he.sqlite"
 name = "Harvest SQLite"
 description = "SQLite wrappers for easily and safely using SQLite3 in C++."
 version = "0.1.0"
-author = "Chad Engler <englercj@live.com>"
+authors = ["Chad Engler <englercj@live.com>"]
 license = "UNLICENSED"
 homepage = ""
 

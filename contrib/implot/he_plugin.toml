@@ -4,7 +4,7 @@ id = "epezent.implot"
 name = "ImPlot"
 description = "ImPlot is an immediate mode, GPU accelerated plotting library for Dear ImGui."
 version = "0.14"
-author = "Evan Pezent <epezent16@gmail.com>"
+authors = ["Evan Pezent <epezent16@gmail.com>"]
 license = "MIT"
 homepage = "https://github.com/epezent/implot"
 

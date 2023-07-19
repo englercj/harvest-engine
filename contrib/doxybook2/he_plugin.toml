@@ -4,7 +4,7 @@ id = "matusnovak.doxybook2"
 name = "Doxybook2"
 description = "Doxygen XML to Markdown (or JSON) converter."
 version = "1.4.0"
-author = "Matus Novak <email@matusnovak.com>"
+authors = ["Matus Novak <email@matusnovak.com>"]
 license = "MIT"
 homepage = "https://matusnovak.github.io/doxybook2/"
 

@@ -4,7 +4,7 @@ id = "ocornut.imgui"
 version = "1.89.6"
 name = "Dear ImGUI"
 description = "Dear ImGui is a bloat-free graphical user interface library for C++."
-author = "Omar Cornut <contact@dearimgui.com>"
+authors = ["Omar Cornut <contact@dearimgui.com>"]
 license = "MIT"
 homepage = "https://github.com/ocornut/imgui"
 

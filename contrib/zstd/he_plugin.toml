@@ -4,7 +4,7 @@ id = "facebook.zstd"
 name = "Zstandard"
 description = "Zstandard is a fast compression algorithm, providing high compression ratios."
 version = "1.5.5"
-author = "Facebook"
+authors = ["Facebook"]
 license = "BSD-3-Clause"
 homepage = "http://www.zstd.net/"
 

@@ -4,7 +4,7 @@ id = "he.editor"
 name = "Harvest Editor"
 description = "Harvest Editor application."
 version = "0.1.0"
-author = "Chad Engler <englercj@live.com>"
+authors = ["Chad Engler <englercj@live.com>"]
 license = "UNLICENSED"
 homepage = ""
 

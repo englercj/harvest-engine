@@ -4,7 +4,7 @@ id = "binomial.basis_universal"
 name = "Basis Universal"
 description = "Basis Universal Supercompressed GPU Texture Codec"
 version = "1.16.4"
-author = "Binomial LLC"
+authors = ["Binomial LLC"]
 license = "Apache-2.0"
 homepage = "http://www.binomial.info/"
 

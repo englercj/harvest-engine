@@ -4,7 +4,7 @@ id = "he.rhi"
 name = "Harvest RHI"
 description = "The Rendering Hardware Interface (RHI) abstracts low level platform rendering APIs."
 version = "0.1.0"
-author = "Chad Engler <englercj@live.com>"
+authors = ["Chad Engler <englercj@live.com>"]
 license = "UNLICENSED"
 homepage = ""
 

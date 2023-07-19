@@ -4,7 +4,7 @@ id = "aklomp.base64"
 name = "Fast Base64 Encoder/Decoder"
 description = "Fast Base64 stream encoder/decoder in C99, with SIMD acceleration"
 version = "0.5.0"
-author = "Alfred Klomp"
+authors = ["Alfred Klomp"]
 license = "BSD-2-Clause"
 homepage = "https://github.com/aklomp/base64"
 

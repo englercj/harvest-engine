@@ -4,7 +4,7 @@ id = "madler.zlib"
 name = "Zlib Data Compression Library"
 description = "Zlib is a general purpose data compression library."
 version = "1.2.13"
-author = "Mark Adler <madler@alumni.caltech.edu>"
+authors = ["Mark Adler <madler@alumni.caltech.edu>"]
 license = "Zlib"
 homepage = "https://zlib.net/"
 

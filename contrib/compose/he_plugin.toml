@@ -4,7 +4,7 @@ id = "onweru.compose"
 name = "Compose"
 description = "Compose is a Hugo theme for documentation websites."
 version = "823b5de743db69a764f2d7be33d940f0d674fead"
-author = "Weru <fromweru@gmail.com>"
+authors = ["Weru <fromweru@gmail.com>"]
 license = "MIT"
 homepage = "https://github.com/onweru/compose/"
 

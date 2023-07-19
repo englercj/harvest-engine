@@ -36,9 +36,8 @@ id = "ocornut.imgui"
 | version       | String                | Required. An arbitrary version string identifying the version of the plugin. |
 | name          | String                | Friendly name of the plugin meant for humans. |
 | description   | String                | Short description fo the plugin meant for humans. |
-| author        | String|Array<String>  | The plugin's author name and email, in the format "Name <email>". |
 | license       | String                | An SPDX license identifier (https://spdx.org/licenses/), or "UNLICENSED", or "SEE LICENSE IN <filename>". If this is not specified it is treated as "UNLICENSED". |
-| warnings      | String                | Desired level of warning: "Off", "Default", or "Extra". The default is "Extra" |
+| authors       | Array<String>         | An array of plugin author names and emails, in the format "Name <email>". |
 | tags          | Array<String>         | An array of string identifiers used as search tags. |
 | modules       | Array<Module>         | An array of modules that this plugin provides. See the Module Keys section. |
 | install       | Install               | Description of how to install the plugin. |
@@ -71,6 +70,7 @@ id = "ocornut.imgui"
 | pre_build_commands        | Array<String>     | Commands to run before the module is built. |
 | dependson_runtime         | Array<String>     | Module names this module will use at runtime, but are not required to build. See the Module Dependencies section for more details. |
 | variants                  | Array<Variant>    | Variations of the module's properties activated by a filter. See the Variant Keys section. |
+| warnings                  | String            | Desired level of warning: "Off", "Default", or "Extra". The default is "Extra" |
 | exec                      | String            | Path to a lua file that returns a function for execution when the module is being setup. Use as an entry point for advanced module project functionality. |
 
 ### Prefixed Module Keys

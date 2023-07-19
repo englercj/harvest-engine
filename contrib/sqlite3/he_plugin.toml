@@ -4,7 +4,7 @@ id = "sqlite3"
 name = "SQLite"
 description = "SQLite is a C-language library that implements a small, fast, self-contained, high-reliability, full-featured, SQL database engine."
 version = "3.42.0"
-author = "Dwayne Hipp"
+authors = ["Dwayne Hipp"]
 license = "blessing"
 homepage = "https://www.sqlite.org/index.html"
 

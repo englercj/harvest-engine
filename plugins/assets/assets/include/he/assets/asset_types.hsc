@@ -39,7 +39,7 @@ struct Asset
     name @2 :String;                                    // user-defined human-friendly name
     tags @3 :String[];                                  // user-defined search & filter strings
     references @4 :AssetReference[] $Display.Hidden;    // outgoing references to other assets and data files
-    data @5 :AnyStruct;                                 // Data for the asset, structure type is deduced based on the value of the `type` member above
+    data @5 :AnyStruct $Display.ShowOnlyChildren;       // Data for the asset, structure type is deduced based on the value of the `type` member above
     importData @6 :AnyStruct $Display.Hidden;           // Any data the importer would like to attach to the asset
 }
 
@@ -58,8 +58,8 @@ struct Texture2D $AssetType $Display.ImportOnly $Display.Description("A two dime
 {
     const AssetTypeName :String = "he.asset.texture2d";
     const AssetTypeIcon :String = "\xf3\xb0\x8b\xa9"; // ICON_MDI_IMAGE
-    const PixelsResourceName :String = "he.asset.texture.pixels";
-    const Ktx2ResourceName :String = "he.asset.texture.ktx2";
+    const PixelsResourceName :String = "he.asset.texture2d.pixels";
+    const Ktx2ResourceName :String = "he.asset.texture2d.ktx2";
 
     struct PixelsResource
     {

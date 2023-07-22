@@ -301,28 +301,35 @@ namespace he::editor
             }
         }
 
-        bool BeginPropertyContextMenu()
+        bool IsPropertyCellHovered()
         {
+            if (ImGui::IsPopupOpen(ImGuiID{}, ImGuiPopupFlags_AnyPopupId))
+                return false;
+
             ImGuiStyle& style = ImGui::GetStyle();
             ImGuiWindow* window = ImGui::GetCurrentWindow();
             const ImVec2 size(
                 window->WorkRect.GetSize().x + (style.CellPadding.x * 2.0f),
                 ImGui::GetFontSize() + (style.FramePadding.y * 2.0f) + (style.CellPadding.y * 2.0f));
 
-            bool open = false;
-
             if (size.x > 0 && size.y > 0)
             {
                 const ImVec2 rectMin = window->WorkRect.Min - style.CellPadding;
                 const ImVec2 rectMax = rectMin + size;
-
-                if (ImGui::IsMouseReleased(ImGuiMouseButton_Right) && ImGui::IsMouseHoveringRect(rectMin, rectMax, false))
-                    ImGui::OpenPopup("##pg-item-ctx-menu");
-
-                open = BeginPopupMenu("##pg-item-ctx-menu");
+                return ImGui::IsMouseHoveringRect(rectMin, rectMax, false);
             }
 
-            return open;
+            return false;
+        }
+
+        bool BeginPropertyContextMenu()
+        {
+            constexpr char PopupId[] = "##pg-item-ctx-menu";
+
+            if (ImGui::IsMouseReleased(ImGuiMouseButton_Right) && IsPropertyCellHovered())
+                ImGui::OpenPopup(PopupId);
+
+            return BeginPopupMenu(PopupId);
         }
 
         void EndPropertyContextMenu()
@@ -779,21 +786,43 @@ namespace he::editor
 
             const TypeEditUIService::Editor* customValueEditor = m_editUIService.FindEditor(field);
 
+            const bool isPromoted = schema::HasAttribute<editor::Display::ShowOnlyChildren>(field.GetAttributes());
+            const bool isReadOnly = schema::HasAttribute<editor::Display::ReadOnly>(field.GetAttributes());
+            const bool isModified = !isReadOnly && data.Has(field);
+
+            const bool isSequenceValue = typeData.IsValid() && (typeData.IsArray() || typeData.IsList());
+            const bool isStructValue = (typeData.IsValid() && typeData.IsStruct()) || (field.IsValid() && field.GetMeta().IsGroup());
+            const bool hasCustomInlineEditor = customValueEditor && HasFlag(customValueEditor->flags, TypeEditUIService::EditorFlag::Inline);
+            const bool hasCustomFullEditor = customValueEditor && !HasFlag(customValueEditor->flags, TypeEditUIService::EditorFlag::Inline);
+            const bool isExpandable = isSequenceValue || hasCustomFullEditor || (isStructValue && !hasCustomInlineEditor);
+
+            if (isPromoted && isExpandable && !isSequenceValue)
+            {
+                ImGui::PushID(name.Data());
+
+                if (customValueEditor)
+                {
+                    HE_ASSERT(!HasFlag(customValueEditor->flags, TypeEditUIService::EditorFlag::Inline));
+                    schema::DynamicValue::Reader value = data.Get(field);
+                    TypeEditUIService::Context ctx{ data, field, 0, m_edit, *this };
+                    customValueEditor->func(value, ctx);
+                }
+                else
+                {
+                    schema::DynamicValue::Reader value = data.Get(field);
+                    VisitValue(value);
+                }
+
+                ImGui::PopID();
+                return;
+            }
+
             bool open = false;
             if (BeginPropertyGridRow(name))
             {
                 // Name column
                 ImGui::TableNextColumn();
                 ImGui::AlignTextToFramePadding();
-
-                const bool isReadOnly = schema::HasAttribute<editor::Display::ReadOnly>(field.GetAttributes());
-                const bool isModified = !isReadOnly && data.Has(field);
-
-                const bool isSequenceValue = typeData.IsValid() && (typeData.IsArray() || typeData.IsList());
-                const bool isStructValue = (typeData.IsValid() && typeData.IsStruct()) || (field.IsValid() && field.GetMeta().IsGroup());
-                const bool hasCustomInlineEditor = customValueEditor && HasFlag(customValueEditor->flags, TypeEditUIService::EditorFlag::Inline);;
-                const bool hasCustomFullEditor = customValueEditor && !HasFlag(customValueEditor->flags, TypeEditUIService::EditorFlag::Inline);;
-                const bool isExpandable = isSequenceValue || hasCustomFullEditor || (isStructValue && !hasCustomInlineEditor);
 
                 if (isModified)
                 {
@@ -822,6 +851,9 @@ namespace he::editor
                     ImGui::PopStyleColor();
                 }
 
+                if (!desc.IsEmpty() && IsPropertyCellHovered())
+                    ImGui::SetTooltip("%s", desc.Data());
+
                 if (BeginPropertyContextMenu())
                 {
                     if (MenuItem("Copy name", ICON_MDI_CONTENT_COPY))
@@ -849,7 +881,7 @@ namespace he::editor
                 ImGui::TableNextColumn();
 
                 // custom inline editor for this field
-                if (customValueEditor && HasFlag(customValueEditor->flags, TypeEditUIService::EditorFlag::Inline))
+                if (hasCustomInlineEditor)
                 {
                     schema::DynamicValue::Reader value = data.Get(field);
                     TypeEditUIService::Context ctx{ data, field, 0, m_edit, *this };

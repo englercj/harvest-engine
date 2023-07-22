@@ -20,7 +20,7 @@ namespace he.editor;
 // in editor modules.
 struct Display
 {
-    // hides an asset type from the list of types that the editor can create directly.
+    // Hides an asset type from the list of types that the editor can create directly.
     attribute ImportOnly(struct) :void;
 
     // Hides the field from display. The data is still persisted and available to code.
@@ -29,6 +29,11 @@ struct Display
 
     // Shows the field, but does not allow it to be edited. The data can still be changed by code.
     attribute ReadOnly(field) :void;
+
+    // Promotes the child properties of a struct up a level so that you don't need to expand this
+    // property to see them. Effectively, this struct property is replaced by its children.
+    // Has no effect on array or list properties.
+    attribute ShowOnlyChildren(field) :void;
 
     // Human-friendly display name for the target.
     // The editor uses this value as an override for the name during display.

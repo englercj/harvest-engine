@@ -142,7 +142,8 @@ namespace he
         /// \note You must call \ref GetResult with the token returned here, or passed into the
         /// callback, in order to check if the loads succeeded and to cleanup internal resources.
         ///
-        /// \note It is safe to close a file while there is a pending read operation in progress.
+        /// \note It is safe to close a file while there is a pending read operation in progress,
+        /// but you still must call GetResult on the token eventually.
         ///
         /// \param[out] dst The destination buffer to write data into.
         /// \param[in] offset The offset, in bytes, at which to begin reading the file.
@@ -153,12 +154,13 @@ namespace he
 
         /// Starts an asynchronous write of the open file and returns a token that can be used to
         /// poll the status of the pending operation. An optional callback can also be passed
-        /// which will be invoked when the read has completed.
+        /// which will be invoked when the write has completed.
         ///
         /// \note You must call \ref GetResult with the token returned here, or passed into the
         /// callback, in order to check if the loads succeeded and to cleanup internal resources.
         ///
-        /// \note It is safe to close a file while there is a pending read operation in progress.
+        /// \note It is safe to close a file while there is a pending write operation in progress,
+        /// but you still must call GetResult on the token eventually.
         ///
         /// \param[in] src The source buffer to write into the file.
         /// \param[in] offset The offset, in bytes, at which to begin writing into the file.

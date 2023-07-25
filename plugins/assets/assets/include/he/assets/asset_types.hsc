@@ -3,7 +3,7 @@
 @0xc6d3b56c92a52ec3;
 
 import "he/schema/schema.hsc";
-import "he/editor/schema/editor_attributes.hsc";
+import "he/editor/schema/display_attributes.hsc";
 
 namespace he.assets;
 

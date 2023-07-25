@@ -11,7 +11,7 @@
 #include "he/editor/icons/icons_material_design.h"
 #include "he/editor/framework/schema_edit.h"
 #include "he/editor/services/type_edit_ui_service.h"
-#include "he/editor/schema/editor_attributes.hsc.h"
+#include "he/editor/schema/display_attributes.hsc.h"
 #include "he/editor/widgets/input_text.h"
 #include "he/editor/widgets/menu.h"
 #include "he/schema/schema.h"

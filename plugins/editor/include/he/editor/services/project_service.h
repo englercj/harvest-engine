@@ -22,17 +22,16 @@ namespace he::editor
     public:
         ProjectService(DirectoryService& directoryService) noexcept;
 
-        bool Create(const char* name, const char* path, const char* assetRoot);
         bool Open(const char* path);
         bool Close();
 
         bool Reload();
-        bool Save();
+        bool Save() const;
 
-        bool IsOpen() const { return !m_projectPath.IsEmpty() && m_project.IsValid(); }
+        bool IsOpen() const { return !m_projectPath.IsEmpty() && m_builder.Root().IsValid(); }
 
-        Project::Builder& GetProject() { return m_project; }
-        const Project::Builder& GetProject() const { return m_project; }
+        Project::Builder Project() { return m_builder.Root(); }
+        Project::Reader Project() const { return m_builder.Root(); }
 
         const String& ProjectPath() const { return m_projectPath; }
         String DataDir() const;
@@ -47,8 +46,7 @@ namespace he::editor
     private:
         DirectoryService& m_directoryService;
 
-        schema::Builder m_builder{};
-        Project::Builder m_project{};
+        schema::TypedBuilder<editor::Project> m_builder{};
         String m_projectPath{};
 
         OnLoadSignal m_onLoadSignal{};

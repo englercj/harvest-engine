@@ -25,42 +25,6 @@ namespace he::editor
         : m_directoryService(directoryService)
     {}
 
-    bool ProjectService::Create(const char* name, const char* path, const char* assetRoot)
-    {
-        if (!HE_VERIFY(!IsOpen()))
-            return false;
-
-        // Create a new project structure and set it as the root
-        m_builder.Clear();
-        m_project = m_builder.AddStruct<Project>();
-        m_builder.SetRoot(m_project);
-
-        // Generate the ID
-        const Uuid projId = Uuid::CreateV4();
-        Span<uint8_t> idData = m_project.InitId().GetValue();
-        HE_ASSERT(idData.Size() == sizeof(projId.m_bytes));
-        MemCopy(idData.Data(), projId.m_bytes, sizeof(projId.m_bytes));
-
-        // Assign the name
-        m_project.InitName(name);
-
-        // Assign the project root if it was explicitly set, otherwise we assume the
-        // same directory as the project file itself.
-        if (!StrEmpty(assetRoot))
-            m_project.InitAssetRoot(assetRoot);
-
-        // Store off the path to project file and save it out
-        m_projectPath = path;
-
-        if (!Save())
-        {
-            m_projectPath.Clear();
-            return false;
-        }
-
-        return true;
-    }
-
     bool ProjectService::Open(const char* path)
     {
         if (!HE_VERIFY(!IsOpen()))
@@ -98,7 +62,7 @@ namespace he::editor
 
         Close();
 
-        if (!schema::FromToml<Project>(m_builder, buf.Data()))
+        if (!schema::FromToml(m_builder, buf))
         {
             HE_LOG_ERROR(editor,
                 HE_MSG("Failed to deserialize project file. Is it valid TOML?"),
@@ -106,7 +70,14 @@ namespace he::editor
             return false;
         }
 
-        m_project = m_builder.Root().TryGetStruct<Project>();
+        // Generate the ID if missing
+        if (!Project().HasId())
+        {
+            const Uuid projId = Uuid::CreateV4();
+            Span<uint8_t> idData = Project().InitId().GetValue();
+            HE_ASSERT(idData.Size() == sizeof(projId.m_bytes));
+            MemCopy(idData.Data(), projId.m_bytes, sizeof(projId.m_bytes));
+        }
 
         // ensure the directory exists
         const String dataDir = DataDir();
@@ -115,8 +86,8 @@ namespace he::editor
         {
             HE_LOG_ERROR(editor,
                 HE_MSG("Failed to create resource directory for newly opened project."),
-                HE_KV(project_id, m_project.GetId().GetValue()),
-                HE_KV(project_name, m_project.GetName().AsView()),
+                HE_KV(project_id, Project().GetId().GetValue()),
+                HE_KV(project_name, Project().GetName().AsView()),
                 HE_KV(path, dataDir),
                 HE_KV(result, r));
             return false;
@@ -126,13 +97,13 @@ namespace he::editor
         return true;
     }
 
-    bool ProjectService::Save()
+    bool ProjectService::Save() const
     {
         if (!HE_VERIFY(IsOpen()))
             return false;
 
         String buf;
-        schema::ToToml<Project>(buf, m_project);
+        schema::ToToml<editor::Project>(buf, Project());
 
         Result r = File::WriteAll(buf.Data(), buf.Size(), m_projectPath.Data());
         if (!r)
@@ -157,7 +128,7 @@ namespace he::editor
         if (!appDir.IsEmpty() && appDir.Back() != '/' && appDir.Back() != '\\')
             appDir.PushBack('/');
 
-        const Span<const uint8_t> projId = m_project.GetId().GetValue();
+        const Span<const uint8_t> projId = Project().GetId().GetValue();
         HE_ASSERT(projId.Size() == sizeof(Uuid));
 
         FormatTo(appDir, "{:02x}", FmtJoin(projId, ""));

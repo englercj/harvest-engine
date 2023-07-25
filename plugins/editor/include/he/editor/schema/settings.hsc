@@ -2,7 +2,7 @@
 
 @0xea67347ea000c22e;
 
-import "he/editor/schema/editor_attributes.hsc";
+import "he/editor/schema/display_attributes.hsc";
 import "he/schema/schema.hsc";
 
 namespace he.editor;

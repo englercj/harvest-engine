@@ -46,7 +46,7 @@ namespace he::editor
         if (!m_projectService.IsOpen())
             return;
 
-        const schema::String::Reader relativeAssetRoot = m_projectService.GetProject().GetAssetRoot();
+        const schema::String::Reader relativeAssetRoot = m_projectService.Project();
 
         const String& cacheRoot = m_projectService.DataDir();
         String assetRoot = GetDirectory(m_projectService.ProjectPath());

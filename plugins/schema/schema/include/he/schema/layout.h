@@ -1283,6 +1283,12 @@ namespace he::schema
             return ptr.TryGetStruct<T>();
         }
 
+        T::Reader Root() const
+        {
+            PointerReader ptr = builder.Root();
+            return ptr.TryGetStruct<T>();
+        }
+
         T::Builder AddRoot()
         {
             PointerBuilder ptr = builder.Root();

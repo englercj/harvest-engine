@@ -7,6 +7,7 @@
 
 #include "he/core/assert.h"
 #include "he/core/enum_ops.h"
+#include "he/core/log.h"
 #include "he/core/string.h"
 #include "he/core/vector.h"
 #include "he/core/wstr.h"
@@ -735,8 +736,13 @@ namespace he::window::win32
     int DeviceImpl::Run(Application& app, const ViewDesc& desc)
     {
         m_app = &app;
+        m_returnCode.store(0);
+        m_running.store(true);
 
-        ::OleInitialize(nullptr);
+        // Initialize the COM library as STA which enables clipboard and drag & drop functionality.
+        const HRESULT hr = ::OleInitialize(nullptr);
+        if (!HE_VERIFY(SUCCEEDED(hr), HE_MSG("Failed to initialize COM apartment."), HE_VAL(hr)))
+            return -1;
 
         // Create root window
         ViewImpl view(this, desc);
@@ -798,7 +804,7 @@ namespace he::window::win32
             app.OnEvent(ev);
         }
 
-
+        // Terminate our COM initialization.
         ::OleUninitialize();
 
         m_app = nullptr;

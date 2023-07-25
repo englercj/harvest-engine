@@ -25,19 +25,22 @@ namespace he
 
     void Result::ToString(String& out) const
     {
+        const DWORD code = HRESULT_FACILITY(m_code) == FACILITY_WIN32 ? HRESULT_CODE(m_code) : m_code;
+
         wchar_t src[4096];
         DWORD srcLen = ::FormatMessageW(
             FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
             nullptr,
-            m_code,
+            HRESULT_CODE(m_code),
             MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
             src,
             HE_LENGTH_OF(src),
             nullptr);
 
-        if (srcLen == 0 || src == nullptr)
+        if (srcLen == 0)
         {
-            FormatTo(out, "Unknown error: {}", m_code);
+            FormatTo(out, "Unknown error: {0:#010x} ({0})", m_code);
+            return;
         }
 
         // Remove a trailing period & \r\n for consistency with posix messages.

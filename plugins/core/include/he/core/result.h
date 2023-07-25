@@ -71,11 +71,11 @@ namespace he
         uint32_t m_code{ 0 };
     };
 
-    /// Helper to create a Result from a win32 error code (not an HRESULT).
+    /// Helper to create a Result from a win32 error code or HRESULT.
     ///
     /// \param[in] err The Win32 error code.
     /// \return A Result storing the Win32 error code.
-    inline Result Win32Result(unsigned long err) { return Result(static_cast<uint32_t>(err)); }
+    inline Result Win32Result(long err) { return Result(static_cast<uint32_t>(err)); }
 
     /// Helper to create a Result from a posix error code.
     ///

@@ -4,7 +4,7 @@ id = "he.assets"
 name = "Harvest Assets"
 description = "Harvest asset system including editing utilities, built-in asset types, and runtime resource management."
 version = "0.1.0"
-author = "Chad Engler <englercj@live.com>"
+authors = ["Chad Engler <englercj@live.com>"]
 license = "UNLICENSED"
 homepage = ""
 

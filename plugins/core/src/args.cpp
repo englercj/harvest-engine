@@ -42,22 +42,19 @@ namespace he
 
     static void WriteArgHelpName(String& ss, const ArgDesc& desc, ArgHelpFormat format)
     {
-        const bool required = HasFlags(desc.flags, ArgFlag::Required);
+        const bool required = desc.IsRequired();
 
         if (!required && format != ArgHelpFormat::Help)
             ss += '[';
 
-        if (desc.shortArg)
+        if (desc.ShortName())
         {
             ss += '-';
-            ss += desc.shortArg;
-            if (desc.longArg)
+            ss += desc.ShortName();
+            switch (format)
             {
-                switch (format)
-                {
-                    case ArgHelpFormat::Help: ss += ", "; break;
-                    case ArgHelpFormat::Usage: ss += '|'; break;
-                }
+                case ArgHelpFormat::Help: ss += ", "; break;
+                case ArgHelpFormat::Usage: ss += '|'; break;
             }
         }
         else if (format == ArgHelpFormat::Help)
@@ -65,13 +62,13 @@ namespace he
             ss += "    ";
         }
 
-        if (desc.longArg)
+        if (desc.LongName())
         {
             ss += "--";
-            ss += desc.longArg;
+            ss += desc.LongName();
         }
 
-        switch (desc.type)
+        switch (desc.Type())
         {
             case ArgType::Boolean:
                 break;
@@ -86,7 +83,7 @@ namespace he
             ss += ']';
     }
 
-    static void WriteUsageString(String& ss, Span<ArgDesc> descs, const char* arg0, const ArgResult* result)
+    static void WriteUsageString(String& ss, Span<const ArgDesc> descs, const char* arg0, const ArgResult* result)
     {
         constexpr const char UsageMsg[] = "Usage: ";
 
@@ -114,19 +111,19 @@ namespace he
 
         std::sort(sortedDescs.begin(), sortedDescs.end(), [](const ArgDesc* a, const ArgDesc* b)
         {
-            const bool aRequired = HasFlags(a->flags, InternalSignedFlag);
-            const bool bRequired = HasFlags(b->flags, InternalSignedFlag);
+            const bool aRequired = a->IsSignedValue();
+            const bool bRequired = b->IsSignedValue();
 
             if (aRequired != bRequired)
                 return aRequired;
 
-            if (a->shortArg != 0 && b->shortArg != 0)
-                return a->shortArg < b->shortArg;
+            if (a->ShortName() != 0 && b->ShortName() != 0)
+                return a->ShortName() < b->ShortName();
 
-            if (a->longArg && b->longArg)
-                return StrLess(a->longArg, b->longArg);
+            if (a->LongName() && b->LongName())
+                return StrLess(a->LongName(), b->LongName());
 
-            return !!a->longArg;
+            return !!a->LongName();
         });
 
         for (const ArgDesc* desc : sortedDescs)
@@ -144,7 +141,7 @@ namespace he
 
     static void WriteDescription(String& ss, const ArgDesc& desc, uint32_t startPos)
     {
-        if (!desc.description)
+        if (!desc.Description())
             return;
 
         const uint32_t maxLen = MaxHelpLineLen - startPos;
@@ -155,7 +152,7 @@ namespace he
 
         uint32_t len = 0;
 
-        for (const char* s = desc.description; *s; ++s)
+        for (const char* s = desc.Description(); *s; ++s)
         {
             if (*s == ' ' && len >= maxLen)
             {
@@ -175,10 +172,10 @@ namespace he
     {
         for (auto& desc : descs)
         {
-            if (shortArg != '\0' && desc.shortArg == shortArg)
+            if (shortArg != '\0' && desc.ShortName() == shortArg)
                 return &desc;
 
-            if (longArg != nullptr && StrEqual(desc.longArg, longArg))
+            if (longArg != nullptr && StrEqual(desc.LongName(), longArg))
                 return &desc;
         }
 
@@ -198,188 +195,7 @@ namespace he
         }
     }
 
-    template <typename T>
-    static void SetOrPushValue(void* dst, bool isVector, const T& value)
-    {
-        if (isVector)
-            static_cast<Vector<T>*>(dst)->PushBack(value);
-        else
-            *static_cast<T*>(dst) = value;
-    }
-
-    static ArgResult ReadIntValue(ArgDesc& desc, const char* value)
-    {
-        const bool isSigned = HasFlag(desc.flags, InternalSignedFlag);
-        const bool isVector = HasFlag(desc.flags, InternalVectorFlag);
-        const uint32_t b = DetectBase(value);
-        const char* originalValue = value;
-
-        // Go past leading zero
-        if (b != 10)
-            value++;
-
-        // Go past the leading b (0b..) or x (0x..)
-        if (b == 2 || b == 16)
-            value++;
-
-        if ((b == 16 && !IsHex(value)) || (b != 16 && !IsInteger(value)))
-        {
-            ArgResult result(ArgResult::InvalidValue, "Failed to parse value as integer: ");
-            result.msg += originalValue;
-            return result;
-        }
-
-        switch (desc.size)
-        {
-            case 8:
-                if (isSigned)
-                {
-                    const int64_t val = StrToInt<int64_t>(value, nullptr, b);
-                    SetOrPushValue(desc.buffer, isVector, val);
-                }
-                else
-                {
-                    const uint64_t val = StrToInt<uint64_t>(value, nullptr, b);
-                    SetOrPushValue(desc.buffer, isVector, val);
-                }
-                desc.hasValue = true;
-                break;
-            case 4:
-                if (isSigned)
-                {
-                    const int32_t val = StrToInt<int32_t>(value, nullptr, b);
-                    SetOrPushValue(desc.buffer, isVector, val);
-                }
-                else
-                {
-                    const uint32_t val = StrToInt<uint32_t>(value, nullptr, b);
-                    SetOrPushValue(desc.buffer, isVector, val);
-                }
-                desc.hasValue = true;
-                break;
-            case 2:
-                if (isSigned)
-                {
-                    const int16_t val = StrToInt<int16_t>(value, nullptr, b);
-                    SetOrPushValue(desc.buffer, isVector, val);
-                }
-                else
-                {
-                    const uint16_t val = StrToInt<uint16_t>(value, nullptr, b);
-                    SetOrPushValue(desc.buffer, isVector, val);
-                }
-                desc.hasValue = true;
-                break;
-            case 1:
-                if (isSigned)
-                {
-                    const int8_t val = StrToInt<int8_t>(value, nullptr, b);
-                    SetOrPushValue(desc.buffer, isVector, val);
-                }
-                else
-                {
-                    const uint8_t val = StrToInt<uint8_t>(value, nullptr, b);
-                    SetOrPushValue(desc.buffer, isVector, val);
-                }
-                desc.hasValue = true;
-                break;
-            default:
-                HE_VERIFY(false,
-                    HE_MSG("Unknown integer size for argument."),
-                    HE_KV(arg_type, desc.type),
-                    HE_KV(arg_size, desc.size),
-                    HE_KV(arg_short_name, desc.shortArg),
-                    HE_KV(arg_long_name, desc.longArg),
-                    HE_KV(arg_description, desc.description));
-
-                return ArgResult(ArgResult::InvalidArgDesc, "Argument descriptor is invalid: unknown integer size. See log for more info.");
-        }
-
-        return ArgResult(ArgResult::Success);
-    }
-
-    static ArgResult ReadFloatValue(ArgDesc& desc, const char* value)
-    {
-        if (!IsFloat(value))
-        {
-            ArgResult result(ArgResult::InvalidValue, "Failed to parse value as float: ");
-            result.msg += value;
-            return result;
-        }
-
-        const bool isVector = HasFlag(desc.flags, InternalVectorFlag);
-
-        switch (desc.size)
-        {
-            case 8:
-            {
-                const double val = StrToFloat<double>(value);
-                SetOrPushValue(desc.buffer, isVector, val);
-                desc.hasValue = true;
-                break;
-            }
-            case 4:
-            {                const float val = StrToFloat<float>(value);
-                SetOrPushValue(desc.buffer, isVector, val);
-                desc.hasValue = true;
-                break;
-            }
-            default:
-                HE_VERIFY(false,
-                    HE_MSG("Unknown float size for argument."),
-                    HE_KV(arg_type, desc.type),
-                    HE_KV(arg_size, desc.size),
-                    HE_KV(arg_short_name, desc.shortArg),
-                    HE_KV(arg_long_name, desc.longArg),
-                    HE_KV(arg_description, desc.description));
-
-                return ArgResult(ArgResult::InvalidArgDesc, "Argument descriptor is invalid: unknown float size. See log for more info.");
-        }
-
-        return ArgResult(ArgResult::Success);
-    }
-
-    static ArgResult ReadValue(ArgDesc& desc, const char* value)
-    {
-        if (!HE_VERIFY(desc.buffer))
-            return ArgResult(ArgResult::Success);
-
-        const bool isVector = HasFlag(desc.flags, InternalVectorFlag);
-
-        switch (desc.type)
-        {
-            case ArgType::Boolean:
-            {
-                HE_ASSERT(desc.size == sizeof(bool));
-                SetOrPushValue(desc.buffer, isVector, true);
-                desc.hasValue = true;
-                break;
-            }
-            case ArgType::Integer:
-            {
-                const ArgResult r = ReadIntValue(desc, value);
-                if (!r) return r;
-                break;
-            }
-            case ArgType::Float:
-            {
-                const ArgResult r = ReadFloatValue(desc, value);
-                if (!r) return r;
-                break;
-            }
-            case ArgType::String:
-            {
-                HE_ASSERT(desc.size == sizeof(const char*));
-                SetOrPushValue(desc.buffer, isVector, value);
-                desc.hasValue = true;
-                break;
-            }
-        }
-
-        return ArgResult(ArgResult::Success);
-    }
-
-    static ArgResult ReadFlag(Span<ArgDesc>& descs, const char* arg, ArgDesc*& desc)
+    ArgResult ArgDesc::ReadFlag(Span<ArgDesc>& descs, const char* arg, ArgDesc*& desc)
     {
         if (!HE_VERIFY(*arg == '-'))
             return ArgResult(ArgResult::InvalidFormat, "Flag did not start with a dash ('-').");
@@ -404,9 +220,9 @@ namespace he
                 return result;
             }
 
-            if (desc->type == ArgType::Boolean)
+            if (desc->Type() == ArgType::Boolean)
             {
-                const ArgResult r = ReadValue(*desc, nullptr);
+                const ArgResult r = desc->ReadValue(nullptr);
                 if (!r) return r;
                 desc = nullptr;
 
@@ -424,7 +240,7 @@ namespace he
                     arg++;
                     if (*arg != '\0')
                     {
-                        const ArgResult r = ReadValue(*desc, arg);
+                        const ArgResult r = desc->ReadValue(arg);
                         if (!r) return r;
                         desc = nullptr;
                     }
@@ -435,6 +251,190 @@ namespace he
         }
 
         return ArgResult(ArgResult::Success);
+    }
+
+    ArgResult ArgDesc::ReadIntValue(const char* value)
+    {
+        const uint32_t b = DetectBase(value);
+        const char* originalValue = value;
+
+        // Go past leading zero
+        if (b != 10)
+            value++;
+
+        // Go past the leading b (0b..) or x (0x..)
+        if (b == 2 || b == 16)
+            value++;
+
+        if ((b == 16 && !IsHex(value)) || (b != 16 && !IsInteger(value)))
+        {
+            ArgResult result(ArgResult::InvalidValue, "Failed to parse value as integer: ");
+            result.msg += originalValue;
+            return result;
+        }
+
+        switch (m_size)
+        {
+            case 8:
+            {
+                if (IsSignedValue())
+                {
+                    const int64_t val = StrToInt<int64_t>(value, nullptr, b);
+                    SetOrPushValue(val);
+                }
+                else
+                {
+                    const uint64_t val = StrToInt<uint64_t>(value, nullptr, b);
+                    SetOrPushValue(val);
+                }
+                m_hasValue = true;
+                break;
+            }
+            case 4:
+            {
+                if (IsSignedValue())
+                {
+                    const int32_t val = StrToInt<int32_t>(value, nullptr, b);
+                    SetOrPushValue(val);
+                }
+                else
+                {
+                    const uint32_t val = StrToInt<uint32_t>(value, nullptr, b);
+                    SetOrPushValue(val);
+                }
+                m_hasValue = true;
+                break;
+            }
+            case 2:
+            {
+                if (IsSignedValue())
+                {
+                    const int16_t val = StrToInt<int16_t>(value, nullptr, b);
+                    SetOrPushValue(val);
+                }
+                else
+                {
+                    const uint16_t val = StrToInt<uint16_t>(value, nullptr, b);
+                    SetOrPushValue(val);
+                }
+                m_hasValue = true;
+                break;
+            }
+            case 1:
+            {
+                if (IsSignedValue())
+                {
+                    const int8_t val = StrToInt<int8_t>(value, nullptr, b);
+                    SetOrPushValue(val);
+                }
+                else
+                {
+                    const uint8_t val = StrToInt<uint8_t>(value, nullptr, b);
+                    SetOrPushValue(val);
+                }
+                m_hasValue = true;
+                break;
+            }
+            default:
+            {
+                HE_VERIFY(false,
+                    HE_MSG("Unknown integer size for argument."),
+                    HE_KV(arg_type, m_type),
+                    HE_KV(arg_size, m_size),
+                    HE_KV(arg_short_name, m_shortArg),
+                    HE_KV(arg_long_name, m_longArg),
+                    HE_KV(arg_description, m_description));
+
+                return ArgResult(ArgResult::InvalidArgDesc, "Argument descriptor is invalid: unknown integer size. See log for more info.");
+            }
+        }
+
+        return ArgResult(ArgResult::Success);
+    }
+
+    ArgResult ArgDesc::ReadFloatValue(const char* value)
+    {
+        if (!IsFloat(value))
+        {
+            ArgResult result(ArgResult::InvalidValue, "Failed to parse value as float: ");
+            result.msg += value;
+            return result;
+        }
+
+        switch (m_size)
+        {
+            case 8:
+            {
+                const double val = StrToFloat<double>(value);
+                SetOrPushValue(val);
+                m_hasValue = true;
+                break;
+            }
+            case 4:
+            {
+                const float val = StrToFloat<float>(value);
+                SetOrPushValue(val);
+                m_hasValue = true;
+                break;
+            }
+            default:
+            {
+                HE_VERIFY(false,
+                    HE_MSG("Unknown float size for argument."),
+                    HE_KV(arg_type, m_type),
+                    HE_KV(arg_size, m_size),
+                    HE_KV(arg_short_name, m_shortArg),
+                    HE_KV(arg_long_name, m_longArg),
+                    HE_KV(arg_description, m_description));
+
+                return ArgResult(ArgResult::InvalidArgDesc, "Argument descriptor is invalid: unknown float size. See log for more info.");
+            }
+        }
+
+        return ArgResult(ArgResult::Success);
+    }
+
+    ArgResult ArgDesc::ReadValue(const char* value)
+    {
+        if (!HE_VERIFY(m_buffer))
+            return ArgResult(ArgResult::Success);
+
+        switch (m_type)
+        {
+            case ArgType::Boolean:
+            {
+                HE_ASSERT(m_size == sizeof(bool));
+                SetOrPushValue<bool>(true);
+                m_hasValue = true;
+                break;
+            }
+            case ArgType::Integer:
+            {
+                return ReadIntValue(value);
+            }
+            case ArgType::Float:
+            {
+                return ReadFloatValue(value);
+            }
+            case ArgType::String:
+            {
+                HE_ASSERT(m_size == sizeof(const char*));
+                SetOrPushValue<const char*>(value);
+                m_hasValue = true;
+                break;
+            }
+        }
+
+        return ArgResult(ArgResult::Success);
+    }
+
+    template <typename T>
+    void ArgDesc::SetOrPushValue<T>(const T& value)
+    {
+        if (IsVectorValue())
+            static_cast<Vector<T>*>(m_buffer)->PushBack(value);
+        else
+            *static_cast<T*>(m_buffer) = value;
     }
 
     ArgResult ParseArgs(Span<ArgDesc> descs, int32_t argc, const char* const* argv)
@@ -448,14 +448,14 @@ namespace he
 
             if (flagDesc)
             {
-                ArgResult r = ReadValue(*flagDesc, arg);
+                ArgResult r = flagDesc->ReadValue(arg);
                 if (!r)
                     return r;
                 flagDesc = nullptr;
             }
             else if (*arg == '-')
             {
-                ArgResult r = ReadFlag(descs, arg, flagDesc);
+                ArgResult r = ArgDesc::ReadFlag(descs, arg, flagDesc);
                 if (!r)
                     return r;
             }
@@ -467,7 +467,7 @@ namespace he
 
         for (const ArgDesc& desc : descs)
         {
-            if (!desc.hasValue && HasFlags(desc.flags, ArgFlag::Required))
+            if (!desc.HasValue() && desc.IsRequired())
             {
                 result.code = ArgResult::MissingRequiredArg;
                 result.msg = "Required argument missing: ";
@@ -479,7 +479,7 @@ namespace he
         return result;
     }
 
-    String MakeHelpString(Span<ArgDesc> descs, const char* arg0, const ArgResult* result)
+    String MakeHelpString(Span<const ArgDesc> descs, const char* arg0, const ArgResult* result)
     {
         String ss;
         ss.Reserve(1024);

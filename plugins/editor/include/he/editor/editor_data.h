@@ -2,6 +2,9 @@
 
 #pragma once
 
+#include "he/core/args.h"
+#include "he/core/vector.h"
+
 namespace he::window { class Device; }
 
 namespace he::editor
@@ -9,10 +12,6 @@ namespace he::editor
     struct EditorData
     {
         EditorData() = default;
-
-        int argc{ 0 };
-        char** argv{ nullptr };
-
         window::Device* device{ nullptr };
     };
 }

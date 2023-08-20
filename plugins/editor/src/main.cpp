@@ -7,9 +7,12 @@
 #include "he/editor/di.h"
 #include "he/editor/editor_app.h"
 #include "he/editor/editor_data.h"
+#include "he/editor/services/app_args_service.h"
 #include "he/editor/services/directory_service.h"
 #include "he/editor/services/log_service.h"
 #include "he/window/view.h"
+
+#include <iostream>
 
 #include "he/core/main.inl"
 int he::AppMain(int argc, char* argv[])
@@ -38,10 +41,16 @@ int he::AppMain(int argc, char* argv[])
     if (!moduleRegistry.StartupAllModules())
         return -1;
 
+    editor::AppArgsService& appArgs = editor::DICreate<editor::AppArgsService&>();
+    if (!appArgs.Initialize(argc, argv) || appArgs.Flags().help)
+    {
+        const String help = appArgs.Help();
+        std::cerr << help.Data() << std::endl;
+        return -1;
+    }
+
     // Now that modules are started Create the editor data necessary to run the application and kick off the app.
     editor::EditorData& data = editor::DICreate<editor::EditorData&>();
-    data.argc = argc;
-    data.argv = argv;
     data.device = window::Device::Create();
     if (!data.device)
         return -1;

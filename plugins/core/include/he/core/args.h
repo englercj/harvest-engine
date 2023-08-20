@@ -34,7 +34,7 @@ namespace he
     constexpr ArgFlag InternalVectorFlag = ArgFlag(static_cast<uint32_t>(1) << 30);
 
     // Gives the ArgType value based on T.
-    template <typename T, typename U = decltype(nullptr)> struct ArgTypeOf;
+    template <typename T> struct ArgTypeOf;
     template <> struct ArgTypeOf<bool> { static constexpr ArgType Value = ArgType::Boolean; };
     template <> struct ArgTypeOf<const char*> { static constexpr ArgType Value = ArgType::String; };
     template <Integral T> struct ArgTypeOf<T> { static constexpr ArgType Value = ArgType::Integer; };
@@ -68,8 +68,9 @@ namespace he
         [[nodiscard]] explicit operator bool() const { return code == Success; }
     };
 
-    struct ArgDesc
+    class ArgDesc
     {
+    public:
         template <typename T>
         ArgDesc(T& v, char shortArg, const char* longArg = nullptr, const char* description = nullptr, ArgFlag flags = ArgFlag::None) noexcept
             : ArgDesc(ArgTypeOf<T>::Value, &v, sizeof(T), shortArg, longArg, description, flags | ArgSignedFlag<T>::Value) { }
@@ -86,29 +87,140 @@ namespace he
         ArgDesc(Vector<T>& v, const char* longArg, const char* description = nullptr, ArgFlag flags = ArgFlag::None) noexcept
             : ArgDesc(ArgTypeOf<T>::Value, &v, sizeof(T), 0, longArg, description, flags | InternalVectorFlag | ArgSignedFlag<T>::Value) { }
 
-        ArgType type;
-        void* buffer;
-        size_t size;
+        bool HasValue() const { return m_hasValue; }
 
-        char shortArg;
-        const char* longArg;
-        const char* description;
-        ArgFlag flags;
+        ArgType Type() const { return m_type; }
+        uint8_t TypeSize() const { return m_size; }
 
-        bool hasValue{ false };
+        bool IsRequired() const { return HasFlag(m_flags, ArgFlag::Required); }
+        bool IsSignedValue() const { return HasFlag(m_flags, InternalSignedFlag); }
+        bool IsVectorValue() const { return HasFlag(m_flags, InternalVectorFlag); }
+
+        char ShortName() const { return m_shortArg; }
+        const char* LongName() const { return m_longArg; }
+        const char* Description() const { return m_description; }
+
+        template <typename T> T Value(T defaultValue = T{}) const;
+        template <typename T> Span<const T> Values() const;
+
+        Span<const bool> Bools() const;
+        Span<const int64_t> Ints() const;
+        Span<const uint64_t> Uints() const;
+        Span<const double> Floats() const;
+        Span<const char* const> Strings() const;
+
+    private:
+        friend ArgResult ParseArgs(Span<ArgDesc> descs, int32_t argc, const char* const* argv);
+
+        static ArgResult ReadFlag(Span<ArgDesc>& descs, const char* arg, ArgDesc*& desc);
+
+        ArgResult ReadIntValue(const char* value);
+        ArgResult ReadFloatValue(const char* value);
+        ArgResult ReadValue(const char* value);
+
+        template <typename T>
+        void SetOrPushValue(const T& value);
+
+    private:
+        ArgType m_type;
+        void* m_buffer;
+        uint8_t m_size;
+
+        char m_shortArg;
+        const char* m_longArg;
+        const char* m_description;
+        ArgFlag m_flags;
+
+        bool m_hasValue{ false };
 
     private:
         ArgDesc(ArgType type, void* buffer, size_t size, char shortArg, const char* longArg, const char* description, ArgFlag flags) noexcept
-            : type(type)
-            , buffer(buffer)
-            , size(size)
-            , shortArg(shortArg)
-            , longArg(longArg)
-            , description(description)
-            , flags(flags)
+            : m_type(type)
+            , m_buffer(buffer)
+            , m_size(static_cast<uint8_t>(size))
+            , m_shortArg(shortArg)
+            , m_longArg(longArg)
+            , m_description(description)
+            , m_flags(flags)
         { }
     };
 
     ArgResult ParseArgs(Span<ArgDesc> descs, int32_t argc, const char* const* argv);
-    String MakeHelpString(Span<ArgDesc> descs, const char* arg0, const ArgResult* result = nullptr);
+    String MakeHelpString(Span<const ArgDesc> descs, const char* arg0, const ArgResult* result = nullptr);
+
+    // --------------------------------------------------------------------------------------------
+    // Inline Definitions
+
+    template <typename T>
+    T ArgDesc::Value<T>(T defaultValue) const
+    {
+        const bool isVector = HasFlag(m_flags, InternalVectorFlag);
+
+        if (!HasValue() || isVector)
+            return defaultValue;
+
+        if constexpr (IsSame<RemoveCV<T>, bool>)
+        {
+            if (m_type != ArgType::Boolean || m_size != sizeof(bool))
+                return defaultValue;
+
+            return *static_cast<const bool*>(m_buffer);
+        }
+        else if constexpr (IsSame<RemoveCV<T>, const char*>)
+        {
+            if (m_type != ArgType::String || m_size != sizeof(const char*))
+                return defaultValue;
+
+            return *static_cast<const char**>(m_buffer);
+        }
+        else if constexpr (IsIntegral<T> || IsFloatingPoint<T>)
+        {
+            switch (m_type)
+            {
+                case ArgType::Integer:
+                {
+                    switch (m_size)
+                    {
+                        case 8: return static_cast<T>(*static_cast<const uint64_t*>(m_buffer));
+                        case 4: return static_cast<T>(*static_cast<const uint32_t*>(m_buffer));
+                        case 2: return static_cast<T>(*static_cast<const uint16_t*>(m_buffer));
+                        case 1: return static_cast<T>(*static_cast<const uint8_t*>(m_buffer));
+                    }
+                    break;
+                }
+                case ArgType::Float:
+                {
+                    switch (m_size)
+                    {
+                        case 8: return static_cast<T>(*static_cast<const double*>(m_buffer));
+                        case 4: return static_cast<T>(*static_cast<const float*>(m_buffer));
+                    }
+                    break;
+                }
+            }
+            return defaultValue;
+        }
+    }
+
+    template <typename T>
+    Span<const T> ArgDesc::Values<T>() const
+    {
+        const bool isVector = HasFlag(m_flags, InternalVectorFlag);
+
+        if (!HasValue() || !isVector || m_type != ArgTypeOf<T>::Value || m_size != sizeof(T))
+            return {};
+
+        if constexpr (IsSame<RemoveCV<T>, bool>)
+        {
+            return *static_cast<const Vector<bool>*>(m_buffer);
+        }
+        else if constexpr (IsSame<RemoveCV<T>, const char*>)
+        {
+            return *static_cast<const Vector<const char*>*>(m_buffer);
+        }
+        else if constexpr (IsIntegral<T> || IsFloatingPoint<T>)
+        {
+            return *static_cast<const Vector<T>*>(m_buffer);
+        }
+    }
 }

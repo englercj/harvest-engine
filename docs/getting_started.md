@@ -1,5 +1,7 @@
 # Getting Started
 
+TODO: This document needs to be updated.
+
 ## Setup Your Workspace
 
 The recommended file structure is:

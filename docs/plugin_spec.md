@@ -1,6 +1,6 @@
 # Plugin File Spec
 
-TODO: `import_plugins`, `extend.modules`, `copy_files`
+TODO: `plugins`, `extend.modules`, `copy_files`
 
 TODO: Explain that plugins are specified by a TOML file, often called `he_plugin.toml` in the root of the plugin.
 

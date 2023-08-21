@@ -1289,7 +1289,7 @@ namespace he::schema
             return ptr.TryGetStruct<T>();
         }
 
-        T::Builder AddRoot()
+        T::Builder GetOrAddRoot()
         {
             PointerBuilder ptr = builder.Root();
             if (ptr.IsNull())

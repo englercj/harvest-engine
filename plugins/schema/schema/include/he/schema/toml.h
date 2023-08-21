@@ -52,5 +52,5 @@ namespace he::schema
     /// \param[in] dst The destination buffer to write the structure to.
     /// \param[in] data The TOML string to read from.
     template <typename T>
-    bool FromToml(TypedBuilder<T>& dst, StringView data) { return FromToml<T>(dst.builder, data); }
+    bool FromToml(TypedBuilder<T>& dst, StringView data) { return FromToml(dst.builder, data, T::DeclInfo); }
 }

@@ -103,12 +103,6 @@ namespace he
         template <typename T> T Value(T defaultValue = T{}) const;
         template <typename T> Span<const T> Values() const;
 
-        Span<const bool> Bools() const;
-        Span<const int64_t> Ints() const;
-        Span<const uint64_t> Uints() const;
-        Span<const double> Floats() const;
-        Span<const char* const> Strings() const;
-
     private:
         friend ArgResult ParseArgs(Span<ArgDesc> descs, int32_t argc, const char* const* argv);
 
@@ -152,7 +146,7 @@ namespace he
     // Inline Definitions
 
     template <typename T>
-    T ArgDesc::Value<T>(T defaultValue) const
+    T ArgDesc::Value(T defaultValue) const
     {
         const bool isVector = HasFlag(m_flags, InternalVectorFlag);
 
@@ -203,7 +197,7 @@ namespace he
     }
 
     template <typename T>
-    Span<const T> ArgDesc::Values<T>() const
+    Span<const T> ArgDesc::Values() const
     {
         const bool isVector = HasFlag(m_flags, InternalVectorFlag);
 

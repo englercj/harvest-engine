@@ -6,6 +6,7 @@
 #include "he/core/string.h"
 #include "he/editor/services/directory_service.h"
 #include "he/editor/services/platform_service.h"
+#include "he/editor/schema/plugin.hsc.h"
 #include "he/editor/schema/project.hsc.h"
 #include "he/schema/layout.h"
 
@@ -32,6 +33,7 @@ namespace he::editor
 
         Project::Builder Project() { return m_builder.Root(); }
         Project::Reader Project() const { return m_builder.Root(); }
+        Span<const schema::TypedBuilder<editor::Plugin>> Plugins() const { return m_plugins; }
 
         const String& ProjectPath() const { return m_projectPath; }
         String DataDir() const;
@@ -44,10 +46,15 @@ namespace he::editor
         OnUnloadSignal& OnUnload() { return m_onUnloadSignal; }
 
     private:
+        void ReadPluginFiles();
+
+    private:
         DirectoryService& m_directoryService;
 
         schema::TypedBuilder<editor::Project> m_builder{};
         String m_projectPath{};
+
+        Vector<schema::TypedBuilder<editor::Plugin>> m_plugins{};
 
         OnLoadSignal m_onLoadSignal{};
         OnUnloadSignal m_onUnloadSignal{};

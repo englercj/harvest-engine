@@ -429,7 +429,7 @@ namespace he
     }
 
     template <typename T>
-    void ArgDesc::SetOrPushValue<T>(const T& value)
+    void ArgDesc::SetOrPushValue(const T& value)
     {
         if (IsVectorValue())
             static_cast<Vector<T>*>(m_buffer)->PushBack(value);

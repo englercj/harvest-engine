@@ -12,5 +12,6 @@ struct Project
 {
     id @0 :he.schema.Uuid $Display.ReadOnly;                // unique identifier of the project
     name @1 :String;                                        // user-defined human-friendly name
-    plugins @2 :String[] $Toml.Name("import_plugins");      // plugins this project imports
+    plugins @2 :String[];                                   // plugins this project imports
+    startProject @3 :String $Toml.Name("start_project");    // project to set as the startup project for Visual Studio
 }

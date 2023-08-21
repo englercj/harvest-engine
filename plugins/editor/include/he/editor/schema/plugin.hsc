@@ -18,7 +18,7 @@ struct Plugin
     tags @6 :String[];
     modules @7 :Module[];
     install @8 :Install;
-    import_plugins @9 :String[];
+    plugins @9 :String[];
     extend @10 :Extension;
 
     enum ModuleType

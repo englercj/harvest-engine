@@ -216,10 +216,10 @@ local function _import_plugin(plugin_path, options)
     -- Check if the plugin imports additional plugins, and if so import them first
     local imports_other_plugins = false
 
-    if plugin.import_plugins ~= nil then
+    if plugin.plugins ~= nil then
         imports_other_plugins = true
-        assert(type(plugin.import_plugins) == "table", "Plugin at '" .. plugin_path .. "' incorrectly specifies the 'import_plugins' key. It must be an array of string paths.")
-        he.import_plugins(plugin.import_plugins, options)
+        assert(type(plugin.plugins) == "table", "Plugin at '" .. plugin_path .. "' incorrectly specifies the 'plugins' key. It must be an array of string paths.")
+        he.import_plugins(plugin.plugins, options)
     end
 
     -- Check if the plugin provides any modules, and warn if it doesn't.
@@ -265,7 +265,7 @@ local function _get_scope_table(scope)
 end
 
 he.import_plugins = function (plugins, options)
-    assert(type(plugins) == "table", "import_plugins expects a table of plugins to import")
+    assert(type(plugins) == "table", "he.import_plugins() expects a table of plugins to import")
 
     if options == nil then
         options = {}

@@ -42,7 +42,9 @@ namespace he::editor
         if (!Save())
             return false;
 
+        m_builder.builder.Clear();
         m_projectPath.Clear();
+        m_plugins.Clear();
         m_onUnloadSignal.Dispatch();
         return true;
     }
@@ -77,9 +79,10 @@ namespace he::editor
             Span<uint8_t> idData = Project().InitId().GetValue();
             HE_ASSERT(idData.Size() == sizeof(projId.m_bytes));
             MemCopy(idData.Data(), projId.m_bytes, sizeof(projId.m_bytes));
+            Save();
         }
 
-        // ensure the directory exists
+        // ensure the data directory exists
         const String dataDir = DataDir();
         r = Directory::Create(dataDir.Data(), true);
         if (!r)
@@ -92,6 +95,9 @@ namespace he::editor
                 HE_KV(result, r));
             return false;
         }
+
+        // read plugins
+        ReadPluginFiles();
 
         m_onLoadSignal.Dispatch();
         return true;
@@ -133,5 +139,75 @@ namespace he::editor
 
         FormatTo(appDir, "{:02x}", FmtJoin(projId, ""));
         return appDir;
+    }
+
+    static void AddPluginToLoad(StringView plugin, StringView cwd, Vector<String>& pluginsToLoad)
+    {
+        String& pluginPath = pluginsToLoad.EmplaceBack();
+        pluginPath = cwd;
+        ConcatPath(pluginPath, plugin);
+
+        if (GetExtension(plugin) == ".toml")
+        {
+            ConcatPath(pluginPath, "he_plugin.toml");
+        }
+    }
+
+    void ProjectService::ReadPluginFiles()
+    {
+        // Initialize some buffers we use throughout the loop to reduce allocations
+        Vector<String> pluginsToLoad;
+        pluginsToLoad.Reserve(32);
+
+        String fullPath;
+        fullPath.Reserve(1024);
+
+        String fileData;
+        fileData.Reserve(1024);
+
+        // Add the plugins listed in the project file to the list
+        {
+            String cwd = GetDirectory(m_projectPath);
+            for (auto&& plugin : Project().GetPlugins())
+            {
+                AddPluginToLoad(plugin, cwd, pluginsToLoad);
+            }
+        }
+
+        // Loop through the list of plugins to load and parse each one
+        while (!pluginsToLoad.IsEmpty())
+        {
+            // Get the full path to the plugin we want to load
+            fullPath = pluginsToLoad.Back();
+            pluginsToLoad.PopBack();
+
+            // Read the plugin file into memory
+            Result r = File::ReadAll(fileData, fullPath.Data());
+            if (!r)
+            {
+                HE_LOG_ERROR(he_editor,
+                    HE_MSG("Failed to load plugin file."),
+                    HE_KV(path, fullPath),
+                    HE_KV(result, r));
+                continue;
+            }
+
+            // Parse the plugin file into a schema structure
+            schema::TypedBuilder<editor::Plugin>& pluginBuilder = m_plugins.EmplaceBack();
+            if (!schema::FromToml(pluginBuilder, fileData))
+            {
+                HE_LOG_ERROR(editor,
+                    HE_MSG("Failed to deserialize plugin file. Is it valid TOML?"),
+                    HE_KV(path, m_projectPath));
+                continue;
+            }
+
+            // Add any additionally imported plugins to the list to be loaded
+            String cwd = GetDirectory(fullPath);
+            for (auto&& plugin : pluginBuilder.Root().GetPlugins())
+            {
+                AddPluginToLoad(plugin, cwd, pluginsToLoad);
+            }
+        }
     }
 }

@@ -4,7 +4,7 @@
 # This plugin acts as an easy way to import the entire engine.
 
 id = "he.engine-root"
-import_plugins = ["contrib/*", "plugins/*"]
+plugins = ["contrib/*", "plugins/*"]
 
 [[modules]]
     name = "he_engine_root"

@@ -65,6 +65,8 @@ namespace he
         Random64() noexcept;
 
         /// Construct the random state with a predetermined seed.
+        ///
+        /// \param[in] seed The seed to use for the random number generator.
         explicit Random64(uint64_t seed) noexcept;
 
         /// Generate a random unsigned integer value in the range [0, UINT64_MAX]
@@ -74,6 +76,8 @@ namespace he
 
         /// Generate a random unsigned integer value in the range [min, max)
         ///
+        /// \param[in] min The minimum (inclusive) value of the value range.
+        /// \param[in] max The maximum (exclusive) value of the value range.
         /// \return The random value.
         uint64_t Next(uint64_t min, uint64_t max);
 
@@ -84,6 +88,8 @@ namespace he
 
         /// Generate a random floating point value in the range [min, max)
         ///
+        /// \param[in] min The minimum (inclusive) value of the value range.
+        /// \param[in] max The maximum (exclusive) value of the value range.
         /// \return The random value.
         double Real(double min, double max);
 
@@ -94,6 +100,8 @@ namespace he
 
         /// Generate a random value from an approximate Gaussian distribution
         ///
+        /// \param[in] mean The mean of the distribution.
+        /// \param[in] std The standard deviation of the distribution.
         /// \return The random value.
         double Gauss(double mean, double std);
 

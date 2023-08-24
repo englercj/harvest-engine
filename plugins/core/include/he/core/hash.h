@@ -72,19 +72,19 @@ namespace he
     public:
         explicit Hash(ValueType seed = Algo::DefaultSeed) noexcept : m_state(seed) {}
 
-        inline void Reset(ValueType seed = Algo::DefaultSeed) { m_state = seed; }
+        void Reset(ValueType seed = Algo::DefaultSeed) { m_state = seed; }
 
         template <typename T> requires(Arithmetic<T> || Enum<T>)
-        inline Hash& Update(const T& value) { m_state = Algo::Mem(&value, sizeof(T), m_state); return *this; }
+        Hash& Update(const T& value) { m_state = Algo::Mem(&value, sizeof(T), m_state); return *this; }
 
         template <ArithmeticRange R>
-        inline Hash& Update(const R& range) { m_state = Algo::Mem(range.Data(), range.Size(), m_state); return *this; }
+        Hash& Update(const R& range) { m_state = Algo::Mem(range.Data(), range.Size(), m_state); return *this; }
 
-        inline Hash& Update(const char* str) { m_state = Algo::Mem(str, StrLen(str), m_state); return *this; }
+        Hash& Update(const char* str) { m_state = Algo::Mem(str, StrLen(str), m_state); return *this; }
 
-        inline Hash& Update(const void* data, uint32_t len) { m_state = Algo::Mem(data, len, m_state); return *this; }
+        Hash& Update(const void* data, uint32_t len) { m_state = Algo::Mem(data, len, m_state); return *this; }
 
-        inline ValueType Value() { return m_state; }
+        ValueType Finalize() { return m_state; }
 
     private:
         ValueType m_state;
@@ -139,6 +139,55 @@ namespace he
         static constexpr uint32_t DefaultSeed{ 0 };
 
         static uint64_t Mem(const void* data, uint32_t len, uint64_t seed = DefaultSeed);
+    };
+
+    // --------------------------------------------------------------------------------------------
+    // Secure Hash Algorithm 1 (SHA1) 160-bit cryptographic hash
+    struct SHA1
+    {
+        struct Value
+        {
+            uint8_t bytes[20];
+            bool operator==(const Value& x);
+            bool operator!=(const Value& x);
+        };
+
+        using ValueType = Value;
+
+        static Value Mem(const void* data, uint32_t len, uint64_t = 0);
+    };
+
+    template <>
+    class Hash<SHA1>
+    {
+    public:
+        using ValueType = typename SHA1::ValueType;
+
+    public:
+        explicit Hash() noexcept;
+
+        void Reset();
+
+        template <typename T> requires(Arithmetic<T> || Enum<T>)
+        Hash& Update(const T& value) { Update(&value, sizeof(T)); return *this; }
+
+        template <ArithmeticRange R>
+        Hash& Update(const R& range) { Update(range.Data(), range.Size()); return *this; }
+
+        Hash& Update(const char* str) { Update(str, StrLen(str)); return *this; }
+
+        Hash& Update(const void* data, uint32_t len);
+
+        ValueType Finalize();
+
+    private:
+        void Block(const uint8_t* data);
+
+    private:
+        uint64_t m_length;
+        uint32_t m_state[5];
+        uint32_t m_curlen;
+        uint8_t m_buf[64];
     };
 
     // --------------------------------------------------------------------------------------------

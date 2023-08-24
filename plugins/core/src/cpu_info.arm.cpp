@@ -35,13 +35,14 @@ namespace he
             asm volatile("mrs %0, MIDR_EL1" : "=r"(midr));
         #endif
 
-            arm.rndr = ((aa64isar0 >> 60) & 0xf) != 0;
             arm.aes = ((aa64isar0 >> 4) & 0xf) != 0;
             arm.sha1 = ((aa64isar0 >> 8) & 0xf) != 0;
-            arm.sha2 = arm.sha1 && ((aa64isar0 >> 12) & 0xf) != 0;
-            arm.sha3 = arm.sha1 && ((aa64isar0 >> 12) & 0xf) == 2 && (aa64isar0 >> 32) & 0xf) != 0;
+            arm.sha256 = ((aa64isar0 >> 12) & 0xf) != 0;
+            arm.sha512 = ((aa64isar0 >> 12) & 0xf) > 1;
             arm.crc32 = ((aa64isar0 >> 16) & 0xf) != 0;
-            arm.atomic = ((aa64isar0 >> 20) & 0xf) != 0;
+            arm.atomic = ((aa64isar0 >> 20) & 0xf) > 1;
+            arm.rdm = ((aa64isar0 >> 28) & 0xf) != 0;
+            arm.rndr = ((aa64isar0 >> 60) & 0xf) != 0;
 
             const uint64_t vendor = (midr >> 24) & 0xff;
             switch (vendor)

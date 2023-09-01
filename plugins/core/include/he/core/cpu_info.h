@@ -101,10 +101,14 @@ namespace he
             bool sha1 : 1{ false };
             bool sha256 : 1{ false };
             bool sha512 : 1{ false };
+            bool sha3 : 1{ false };
             bool crc32 : 1{ false };
             bool atomic : 1{ false };
             bool rdm : 1{ false };
-            bool
+            bool sm3 : 1{ false };
+            bool sm4 : 1{ false };
+            bool dp : 1{ false };
+            bool fhm : 1{ false };
             bool rndr : 1{ false };
         } arm;
     };

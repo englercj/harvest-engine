@@ -162,6 +162,7 @@ namespace he
     {
     public:
         using ValueType = typename SHA1::ValueType;
+        static constexpr uint32_t BlockSize = 64;
 
     public:
         explicit Hash() noexcept;
@@ -181,12 +182,66 @@ namespace he
         ValueType Finalize();
 
     private:
-        void Block(const uint8_t* data);
+        void Process_SW(const uint8_t* data, uint32_t len);
+        void Process_SSE41(const uint8_t* data, uint32_t len);
+        void Process_NEON(const uint8_t* data, uint32_t len);
 
     private:
         uint64_t m_length;
         uint32_t m_state[5];
-        uint32_t m_curlen;
+        uint32_t m_bufLen;
+        uint8_t m_buf[64];
+    };
+
+    // --------------------------------------------------------------------------------------------
+    // Secure Hash Algorithm 2 (SHA256) 256-bit cryptographic hash
+    struct SHA256
+    {
+        struct Value
+        {
+            uint8_t bytes[32];
+            bool operator==(const Value& x);
+            bool operator!=(const Value& x);
+        };
+
+        using ValueType = Value;
+
+        static Value Mem(const void* data, uint32_t len, uint64_t = 0);
+    };
+
+    template <>
+    class Hash<SHA256>
+    {
+    public:
+        using ValueType = typename SHA1::ValueType;
+        static constexpr uint32_t BlockSize = 64;
+
+    public:
+        explicit Hash() noexcept;
+
+        void Reset();
+
+        template <typename T> requires(Arithmetic<T> || Enum<T>)
+        Hash& Update(const T& value) { Update(&value, sizeof(T)); return *this; }
+
+        template <ArithmeticRange R>
+        Hash& Update(const R& range) { Update(range.Data(), range.Size()); return *this; }
+
+        Hash& Update(const char* str) { Update(str, StrLen(str)); return *this; }
+
+        Hash& Update(const void* data, uint32_t len);
+
+        ValueType Finalize();
+
+    private:
+        void Process_SW(const uint8_t* data, uint32_t len);
+        void Process_SSE41(const uint8_t* data, uint32_t len);
+        void Process_NEON(const uint8_t* data, uint32_t len);
+
+    private:
+        uint64_t m_length;
+        uint32_t m_state[5];
+        uint32_t m_bufLen;
         uint8_t m_buf[64];
     };
 

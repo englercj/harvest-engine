@@ -23,8 +23,8 @@ namespace he
             arm.neon = true;
         #endif
 
-            // https://developer.arm.com/documentation/ddi0595/2021-06/AArch64-Registers/ID-AA64ISAR0-EL1--AArch64-Instruction-Set-Attribute-Register-0
-            // https://developer.arm.com/documentation/ddi0595/2021-06/AArch64-Registers/MIDR-EL1--Main-ID-Register
+            // https://developer.arm.com/documentation/ddi0595/2021-12/AArch64-Registers/ID-AA64ISAR0-EL1--AArch64-Instruction-Set-Attribute-Register-0
+            // https://developer.arm.com/documentation/ddi0595/2021-12/AArch64-Registers/MIDR-EL1--Main-ID-Register
             uint64_t aa64isar0;
             uint64_t midr;
         #if HE_COMPILER_MSVC
@@ -35,22 +35,26 @@ namespace he
             asm volatile("mrs %0, MIDR_EL1" : "=r"(midr));
         #endif
 
+            const uint64_t sha2 = ;
+            const uint64_t sha3 = ((aa64isar0 >> 32) & 0xf);
+
             arm.aes = ((aa64isar0 >> 4) & 0xf) != 0;
             arm.sha1 = ((aa64isar0 >> 8) & 0xf) != 0;
-            arm.sha256 = ((aa64isar0 >> 12) & 0xf) != 0;
-            arm.sha512 = ((aa64isar0 >> 12) & 0xf) > 1;
+            arm.sha256 = arm.sha1 && ((aa64isar0 >> 12) & 0xf) != 0;
+            arm.sha512 = arm.sha1 && ((aa64isar0 >> 12) & 0xf) > 1;
+            arm.sha3 = arm.sha1 && ((aa64isar0 >> 12) & 0xf) > 1 && ((aa64isar0 >> 32) & 0xf) != 0;
             arm.crc32 = ((aa64isar0 >> 16) & 0xf) != 0;
             arm.atomic = ((aa64isar0 >> 20) & 0xf) > 1;
             arm.rdm = ((aa64isar0 >> 28) & 0xf) != 0;
+            arm.sm3 = ((aa64isar0 >> 36) & 0xf) != 0;
+            arm.sm4 = ((aa64isar0 >> 40) & 0xf) != 0;
+            arm.dp = ((aa64isar0 >> 44) & 0xf) != 0;
+            arm.fhm = ((aa64isar0 >> 48) & 0xf) != 0;
             arm.rndr = ((aa64isar0 >> 60) & 0xf) != 0;
 
             const uint64_t vendor = (midr >> 24) & 0xff;
             switch (vendor)
             {
-                case 0xC0:
-                    StrCopy(vendorName, "Ampere Computing");
-                    vendorId = CpuVendorId::Ampere;
-                    break;
                 case 0x41:
                     StrCopy(vendorName, "Arm Limited");
                     vendorId = CpuVendorId::ARM;
@@ -98,6 +102,10 @@ namespace he
                 case 0x69:
                     StrCopy(vendorName, "Intel Corporation");
                     vendorId = CpuVendorId::Intel;
+                    break;
+                case 0xC0:
+                    StrCopy(vendorName, "Ampere Computing");
+                    vendorId = CpuVendorId::Ampere;
                     break;
                 default:
                     StrCopy(vendorName, "Unknown");

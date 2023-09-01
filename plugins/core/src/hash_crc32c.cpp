@@ -411,7 +411,7 @@ namespace he
     #elif HE_SIMD_SSE4_2
         // When compiled to require SSE4.2 we can skip the runtime dispatch
         return Crc32c_SSE42(data, len, seed);
-    #elif HE_SIMD_NEON && HE_CPU_ARM_64
+    #elif HE_SIMD_NEON
         // When compiled to require NEON we can skip the runtime dispatch
         return Crc32c_NEON(data, len, seed);
     #elif HE_CPU_X86

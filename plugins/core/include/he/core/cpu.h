@@ -34,9 +34,11 @@
 /// Set to one (1) when the target is any 64-bit platform, and zero (0) otherwise.
 #define HE_CPU_64_BIT               0
 
-#if defined(__BIG_ENDIAN__) || defined(__ARMEB__) || (defined(__BYTE_ORDER__) && __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__)
-    #error "Big endian systems are not supported by the Harvest engine."
-#endif
+/// Set to one (1) when the target is big endian.
+#define HE_CPU_BIG_ENDIAN           0
+
+/// Set to one (1) when the target is little endian.
+#define HE_CPU_LITTLE_ENDIAN        0
 
 #if defined(_M_ARM) || defined(__arm__)
     #undef  HE_CPU_ARM_32
@@ -74,6 +76,15 @@
 #if HE_CPU_ARM_64 || HE_CPU_WASM_64 || HE_CPU_X86_64
     #undef  HE_CPU_64_BIT
     #define HE_CPU_64_BIT           1
+#endif
+
+#if defined(__BIG_ENDIAN__) || defined(__ARMEB__) || (defined(__BYTE_ORDER__) && __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__)
+    #undef HE_CPU_BIG_ENDIAN
+    #define HE_CPU_BIG_ENDIAN       1
+    #error "Big endian systems are not supported by the Harvest engine."
+#else
+    #undef HE_CPU_LITTLE_ENDIAN
+    #define HE_CPU_LITTLE_ENDIAN    1
 #endif
 
 /// \def HE_SPIN_WAIT_PAUSE

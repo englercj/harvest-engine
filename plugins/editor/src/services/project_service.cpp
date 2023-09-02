@@ -159,11 +159,8 @@ namespace he::editor
         Vector<String> pluginsToLoad;
         pluginsToLoad.Reserve(32);
 
-        String fullPath;
-        fullPath.Reserve(1024);
-
         String fileData;
-        fileData.Reserve(1024);
+        fileData.Reserve(4096);
 
         // Add the plugins listed in the project file to the list
         {
@@ -178,7 +175,7 @@ namespace he::editor
         while (!pluginsToLoad.IsEmpty())
         {
             // Get the full path to the plugin we want to load
-            fullPath = pluginsToLoad.Back();
+            String fullPath = Move(pluginsToLoad.Back());
             pluginsToLoad.PopBack();
 
             // Read the plugin file into memory

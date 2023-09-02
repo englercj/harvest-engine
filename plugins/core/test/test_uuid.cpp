@@ -54,27 +54,73 @@ HE_TEST(core, uuid, FromString)
 }
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST(core, uuid, CreateUuidV4)
+HE_TEST(core, uuid, CreateV3)
+{
+    {
+        const Uuid uuid = Uuid::CreateV3("hello.example.com", Uuid_NamespaceDNS);
+        HE_EXPECT_EQ(uuid.Version(), 3);
+        HE_EXPECT_EQ(Format("{}", uuid), "9125a8dc-52ee-365b-a5aa-81b0b3681cf6");
+    }
+
+    {
+        const Uuid uuid = Uuid::CreateV3("http://example.com/hello", Uuid_NamespaceURL);
+        HE_EXPECT_EQ(uuid.Version(), 3);
+        HE_EXPECT_EQ(Format("{}", uuid), "c6235813-3ba4-3801-ae84-e0a6ebb7d138");
+    }
+
+    {
+        const Uuid customNamespace{ { 0x0f, 0x5a, 0xbc, 0xd1, 0xc1, 0x94, 0x47, 0xf3, 0x90, 0x5b, 0x2d, 0xf7, 0x26, 0x3a, 0x08, 0x4b } };
+        const Uuid uuid = Uuid::CreateV3("hello", customNamespace);
+        HE_EXPECT_EQ(uuid.Version(), 3);
+        HE_EXPECT_EQ(Format("{}", uuid), "a981a0c2-68b1-35dc-bcfc-296e52ab01ec");
+    }
+}
+
+// ------------------------------------------------------------------------------------------------
+HE_TEST(core, uuid, CreateV4)
 {
     Uuid uuid = Uuid::CreateV4();
 
     HE_EXPECT_NE(uuid, Uuid_Zero);
-    HE_EXPECT_EQ(uuid.GetVersion(), 4);
+    HE_EXPECT_EQ(uuid.Version(), 4);
 }
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST(core, uuid, GetVersion)
+HE_TEST(core, uuid, CreateV5)
 {
-    HE_EXPECT_EQ(Uuid_Zero.GetVersion(), 0);
-    HE_EXPECT_EQ(Uuid_NamespaceDNS.GetVersion(), 1);
-    HE_EXPECT_EQ(Uuid_NamespaceURL.GetVersion(), 1);
-    HE_EXPECT_EQ(Uuid_NamespaceOID.GetVersion(), 1);
-    HE_EXPECT_EQ(Uuid_NamespaceX500.GetVersion(), 1);
+    {
+        const Uuid uuid = Uuid::CreateV5("hello.example.com", Uuid_NamespaceDNS);
+        HE_EXPECT_EQ(uuid.Version(), 5);
+        HE_EXPECT_EQ(Format("{}", uuid), "fdda765f-fc57-5604-a269-52a7df8164ec");
+    }
+
+    {
+        const Uuid uuid = Uuid::CreateV5("http://example.com/hello", Uuid_NamespaceURL);
+        HE_EXPECT_EQ(uuid.Version(), 5);
+        HE_EXPECT_EQ(Format("{}", uuid), "3bbcee75-cecc-5b56-8031-b6641c1ed1f1");
+    }
+
+    {
+        const Uuid customNamespace{ { 0x0f, 0x5a, 0xbc, 0xd1, 0xc1, 0x94, 0x47, 0xf3, 0x90, 0x5b, 0x2d, 0xf7, 0x26, 0x3a, 0x08, 0x4b } };
+        const Uuid uuid = Uuid::CreateV5("hello", customNamespace);
+        HE_EXPECT_EQ(uuid.Version(), 5);
+        HE_EXPECT_EQ(Format("{}", uuid), "90123e1c-7512-523e-bb28-76fab9f2f73d");
+    }
+}
+
+// ------------------------------------------------------------------------------------------------
+HE_TEST(core, uuid, Version)
+{
+    HE_EXPECT_EQ(Uuid_Zero.Version(), 0);
+    HE_EXPECT_EQ(Uuid_NamespaceDNS.Version(), 1);
+    HE_EXPECT_EQ(Uuid_NamespaceURL.Version(), 1);
+    HE_EXPECT_EQ(Uuid_NamespaceOID.Version(), 1);
+    HE_EXPECT_EQ(Uuid_NamespaceX500.Version(), 1);
 
     for (uint32_t i = 0; i < 32; ++i)
     {
         const Uuid id = Uuid::CreateV4();
-        HE_EXPECT_EQ(id.GetVersion(), 4);
+        HE_EXPECT_EQ(id.Version(), 4);
     }
 }
 
@@ -102,11 +148,11 @@ HE_TEST(core, uuid, Operators)
 // ------------------------------------------------------------------------------------------------
 HE_TEST(core, uuid, Constants)
 {
-    static_assert(Uuid_Zero.GetVersion() == 0);
-    static_assert(Uuid_NamespaceDNS.GetVersion() == 1);
-    static_assert(Uuid_NamespaceURL.GetVersion() == 1);
-    static_assert(Uuid_NamespaceOID.GetVersion() == 1);
-    static_assert(Uuid_NamespaceX500.GetVersion() == 1);
+    static_assert(Uuid_Zero.Version() == 0);
+    static_assert(Uuid_NamespaceDNS.Version() == 1);
+    static_assert(Uuid_NamespaceURL.Version() == 1);
+    static_assert(Uuid_NamespaceOID.Version() == 1);
+    static_assert(Uuid_NamespaceX500.Version() == 1);
 
     uint8_t zero[16]{};
     HE_EXPECT_EQ_MEM(Uuid_Zero.m_bytes, zero, 16);
@@ -125,7 +171,7 @@ HE_TEST(core, uuid, Constants)
 }
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST(core, uuid, Hash)
+HE_TEST(core, uuid, Hasher)
 {
     HE_EXPECT_EQ(Hasher<Uuid>()(Uuid_Zero), 0x00000000);
 

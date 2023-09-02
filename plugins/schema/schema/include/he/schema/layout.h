@@ -3,6 +3,7 @@
 #pragma once
 
 #include "he/core/assert.h"
+#include "he/core/hash.h"
 #include "he/core/memory_ops.h"
 #include "he/core/span.h"
 #include "he/core/string_view.h"
@@ -1297,45 +1298,45 @@ namespace he::schema
 
     // --------------------------------------------------------------------------------------------
     template <typename T>
-    inline typename T::ValueType CalculateHash(const PointerReader& reader, typename T::ValueType seed = T::DefaultSeed)
+    inline void CalculateHash(Hash<T>& hash, const PointerReader& reader)
     {
-        using U = typename T::ValueType;
-
         if (reader.IsNull())
-            return seed;
+            return;
 
         switch (reader.Kind())
         {
             case PointerKind::List:
             {
                 const ListReader src = reader.TryGetList(reader.ListElementSize());
-                return CalculateHash<T>(src, seed);
+                CalculateHash<T>(hash, src);
+                break;
             }
             case PointerKind::Struct:
             {
                 const StructReader src = reader.TryGetStruct();
-                return CalculateHash<T>(src, seed);
+                CalculateHash<T>(hash, src);
+                break;
             }
             case PointerKind::_Count:
+            {
                 HE_VERIFY(reader.Kind() != PointerKind::_Count, HE_MSG("Encountered invalid pointer kind."));
                 break;
+            }
         }
-
-        return seed;
     }
 
     template <typename T>
-    inline typename T::ValueType CalculateHash(const ListReader& reader, typename T::ValueType seed = T::DefaultSeed)
+    inline void CalculateHash(Hash<T>& hash, const ListReader& reader)
     {
         if (!reader.IsValid())
-            return seed;
+            return;
 
         if (reader.GetElementSize() == ElementSize::Composite)
         {
             for (uint32_t i = 0; i < reader.Size(); ++i)
             {
                 const StructReader src = reader.GetCompositeElement(i);
-                seed = CalculateHash<T>(src, seed);
+                CalculateHash<T>(hash, src);
             }
         }
         else if (reader.GetElementSize() == ElementSize::Pointer)
@@ -1343,13 +1344,13 @@ namespace he::schema
             for (uint32_t i = 0; i < reader.Size(); ++i)
             {
                 const PointerReader src = reader.GetPointerElement(i);
-                seed = CalculateHash<T>(src, seed);
+                CalculateHash<T>(hash, src);
             }
         }
         else
         {
             const uint64_t byteSize = (static_cast<uint64_t>(reader.Size()) * reader.StepSize()) / BitsPerByte;
-            seed = T::Mem(reader.Data(), static_cast<uint32_t>(byteSize), seed);
+            hash.Update(reader.Data(), static_cast<uint32_t>(byteSize));
 
             const uint64_t leftoverBits = (static_cast<uint64_t>(reader.Size()) * reader.StepSize()) % BitsPerByte;
             if (leftoverBits > 0)
@@ -1357,27 +1358,23 @@ namespace he::schema
                 const uint8_t mask = (1 << leftoverBits) - 1;
                 const uint8_t* readerData = reinterpret_cast<const uint8_t*>(reader.Data());
                 const uint8_t value = mask & *(readerData + byteSize);
-                seed = T::Mem(&value, 1, seed);
+                hash.Update(&value, 1);
             }
         }
-
-        return seed;
     }
 
     template <typename T>
-    inline typename T::ValueType CalculateHash(const StructReader& reader, typename T::ValueType seed = T::DefaultSeed)
+    inline void CalculateHash(Hash<T>& hash, const StructReader& reader)
     {
         if (!reader.IsValid())
-            return seed;
+            return;
 
-        seed = T::Mem(reader.Data(), reader.DataWordSize() * BytesPerWord, seed);
+        hash.Update(reader.Data(), reader.DataWordSize() * BytesPerWord);
 
         for (uint16_t i = 0; i < reader.PointerCount(); ++i)
         {
             const PointerReader src = reader.GetPointerField(i);
-            seed = CalculateHash<T>(src, seed);
+            CalculateHash<T>(hash, src);
         }
-
-        return seed;
     }
 }

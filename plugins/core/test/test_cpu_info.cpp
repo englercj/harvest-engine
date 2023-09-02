@@ -32,7 +32,11 @@ HE_TEST(core, cpu_info, Report)
     std::cout << "        popcnt: " << info.x86.popcnt << std::endl;
     std::cout << "        fma3: " << info.x86.fma3 << std::endl;
     std::cout << "        aesni: " << info.x86.aesni << std::endl;
-    std::cout << "        sha: " << info.x86.sha << std::endl;
+    std::cout << "        sha1: " << info.x86.sha1 << std::endl;
+    std::cout << "        sha256: " << info.x86.sha256 << std::endl;
+    std::cout << "        sha512: " << info.x86.sha512 << std::endl;
+    std::cout << "        sm3: " << info.x86.sm3 << std::endl;
+    std::cout << "        sm4: " << info.x86.sm4 << std::endl;
     std::cout << "        rdrand: " << info.x86.rdrand << std::endl;
     std::cout << "        osxsave: " << info.x86.osxsave << std::endl;
     std::cout << "        hypervisor: " << info.x86.hypervisor << std::endl;
@@ -40,11 +44,17 @@ HE_TEST(core, cpu_info, Report)
 
     std::cout << "    arm:" << std::endl;
     std::cout << "        neon: " << info.arm.neon << std::endl;
-    std::cout << "        rndr: " << info.arm.rndr << std::endl;
     std::cout << "        aes: " << info.arm.aes << std::endl;
     std::cout << "        sha1: " << info.arm.sha1 << std::endl;
-    std::cout << "        sha2: " << info.arm.sha2 << std::endl;
+    std::cout << "        sha256: " << info.arm.sha256 << std::endl;
+    std::cout << "        sha512: " << info.arm.sha512 << std::endl;
     std::cout << "        sha3: " << info.arm.sha3 << std::endl;
     std::cout << "        crc32: " << info.arm.crc32 << std::endl;
     std::cout << "        atomic: " << info.arm.atomic << std::endl;
+    std::cout << "        rdm: " << info.arm.rdm << std::endl;
+    std::cout << "        sm3: " << info.arm.sm3 << std::endl;
+    std::cout << "        sm4: " << info.arm.sm4 << std::endl;
+    std::cout << "        dp: " << info.arm.dp << std::endl;
+    std::cout << "        fhm: " << info.arm.fhm << std::endl;
+    std::cout << "        rndr: " << info.arm.rndr << std::endl;
 }

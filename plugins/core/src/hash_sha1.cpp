@@ -15,18 +15,6 @@
 namespace he
 {
     //-------------------------------------------------------------------------------------------------
-    #define HE_SHA1_ROTL32(x, r)    ((x << r) | (x >> (32 - r)))
-
-    #define HE_SHA1_F0(x, y, z)     (z ^ (x & (y ^ z)))
-    #define HE_SHA1_F1(x, y, z)     (x ^ y ^ z)
-    #define HE_SHA1_F2(x, y, z)     ((x & y) | (z & (x | y)))
-    #define HE_SHA1_F3(x, y, z)     (x ^ y ^ z)
-
-    #define HE_SHA1_FF0(a, b, c, d, e, i) e = (HE_SHA1_ROTL32(a, 5) + HE_SHA1_F0(b, c, d) + e + W[i] + 0x5a827999UL); b = HE_SHA1_ROTL32(b, 30);
-    #define HE_SHA1_FF1(a, b, c, d, e, i) e = (HE_SHA1_ROTL32(a, 5) + HE_SHA1_F1(b, c, d) + e + W[i] + 0x6ed9eba1UL); b = HE_SHA1_ROTL32(b, 30);
-    #define HE_SHA1_FF2(a, b, c, d, e, i) e = (HE_SHA1_ROTL32(a, 5) + HE_SHA1_F2(b, c, d) + e + W[i] + 0x8f1bbcdcUL); b = HE_SHA1_ROTL32(b, 30);
-    #define HE_SHA1_FF3(a, b, c, d, e, i) e = (HE_SHA1_ROTL32(a, 5) + HE_SHA1_F3(b, c, d) + e + W[i] + 0xca62c1d6UL); b = HE_SHA1_ROTL32(b, 30);
-
     [[maybe_unused]] HE_FORCE_INLINE void Sha1Block_SW(uint32_t state[5], const uint8_t* data)
     {
         uint32_t W[80];
@@ -43,29 +31,61 @@ namespace he
 
         for (uint32_t i = 16; i < 80; ++i)
         {
-            W[i] = HE_SHA1_ROTL32(W[i - 3] ^ W[i - 8] ^ W[i - 14] ^ W[i - 16], 1);
+            W[i] = Rotl32(W[i - 3] ^ W[i - 8] ^ W[i - 14] ^ W[i - 16], 1);
         }
 
         uint32_t i = 0;
         uint32_t t = 0;
         for (; i < 20; ++i)
         {
-            HE_SHA1_FF0(a, b, c, d, e, i); t = e; e = d; d = c; c = b; b = a; a = t;
+            const uint32_t z = d ^ (b & (c ^ d));
+            e = (Rotl32(a, 5) + z + e + W[i] + 0x5a827999UL);
+            b = Rotl32(b, 30);
+            t = e;
+            e = d;
+            d = c;
+            c = b;
+            b = a;
+            a = t;
         }
 
         for (; i < 40; ++i)
         {
-            HE_SHA1_FF1(a, b, c, d, e, i); t = e; e = d; d = c; c = b; b = a; a = t;
+            const uint32_t z = b ^ c ^ d;
+            e = (Rotl32(a, 5) + z + e + W[i] + 0x6ed9eba1UL);
+            b = Rotl32(b, 30);
+            t = e;
+            e = d;
+            d = c;
+            c = b;
+            b = a;
+            a = t;
         }
 
         for (; i < 60; ++i)
         {
-            HE_SHA1_FF2(a, b, c, d, e, i); t = e; e = d; d = c; c = b; b = a; a = t;
+            const uint32_t z = (b & c) | (d & (b | c));
+            e = (Rotl32(a, 5) + z + e + W[i] + 0x8f1bbcdcUL);
+            b = Rotl32(b, 30);
+            t = e;
+            e = d;
+            d = c;
+            c = b;
+            b = a;
+            a = t;
         }
 
         for (; i < 80; ++i)
         {
-            HE_SHA1_FF3(a, b, c, d, e, i); t = e; e = d; d = c; c = b; b = a; a = t;
+            const uint32_t z = b ^ c ^ d;
+            e = (Rotl32(a, 5) + z + e + W[i] + 0xca62c1d6UL);
+            b = Rotl32(b, 30);
+            t = e;
+            e = d;
+            d = c;
+            c = b;
+            b = a;
+            a = t;
         }
 
         state[0] += a;
@@ -80,24 +100,20 @@ namespace he
 #if HE_CPU_X86
     HE_FORCE_INLINE void Sha1Block_SSE41(__m128i& ABCD, __m128i& E0, const uint8_t* data)
     {
-        const __m128i MASK = _mm_set_epi64x(0x0001020304050607ULL, 0x08090a0b0c0d0e0fULL);
+        const __m128i MASK = _mm_set_epi64x(0x0001020304050607ull, 0x08090a0b0c0d0e0full);
         __m128i ABCD_SAVE = ABCD;
         __m128i E0_SAVE = E0;
-
-        __m128i MSG0 = _mm_loadu_si128(reinterpret_cast<const __m128i*>(data));
-        __m128i MSG1 = _mm_loadu_si128(reinterpret_cast<const __m128i*>(data + 16));
-        __m128i MSG2 = _mm_loadu_si128(reinterpret_cast<const __m128i*>(data + 32));
-        __m128i MSG3 = _mm_loadu_si128(reinterpret_cast<const __m128i*>(data + 48));
-
         __m128i E1;
 
         // Rounds 0-3
+        __m128i MSG0 = _mm_loadu_si128(reinterpret_cast<const __m128i*>(data));
         MSG0 = _mm_shuffle_epi8(MSG0, MASK);
         E0 = _mm_add_epi32(E0, MSG0);
         E1 = ABCD;
         ABCD = _mm_sha1rnds4_epu32(ABCD, E0, 0);
 
         // Rounds 4-7
+        __m128i MSG1 = _mm_loadu_si128(reinterpret_cast<const __m128i*>(data + 16));
         MSG1 = _mm_shuffle_epi8(MSG1, MASK);
         E1 = _mm_sha1nexte_epu32(E1, MSG1);
         E0 = ABCD;
@@ -105,6 +121,7 @@ namespace he
         MSG0 = _mm_sha1msg1_epu32(MSG0, MSG1);
 
         // Rounds 8-11
+        __m128i MSG2 = _mm_loadu_si128(reinterpret_cast<const __m128i*>(data + 32));
         MSG2 = _mm_shuffle_epi8(MSG2, MASK);
         E0 = _mm_sha1nexte_epu32(E0, MSG2);
         E1 = ABCD;
@@ -113,6 +130,7 @@ namespace he
         MSG0 = _mm_xor_si128(MSG0, MSG2);
 
         // Rounds 12-15
+        __m128i MSG3 = _mm_loadu_si128(reinterpret_cast<const __m128i*>(data + 48));
         MSG3 = _mm_shuffle_epi8(MSG3, MASK);
         E1 = _mm_sha1nexte_epu32(E1, MSG3);
         E0 = ABCD;
@@ -416,16 +434,11 @@ namespace he
 #endif
 
     //-------------------------------------------------------------------------------------------------
-    SHA1::Value SHA1::Mem(const void* data, uint32_t len, uint64_t)
+    SHA1::Value SHA1::Mem(const void* data, uint32_t len)
     {
         Hash<SHA1> hash;
         hash.Update(data, len);
-        return hash.Finalize();
-    }
-
-    Hash<SHA1>::Hash() noexcept
-    {
-        Reset();
+        return hash.Final();
     }
 
     void Hash<SHA1>::Reset()
@@ -451,7 +464,7 @@ namespace he
     #if !HE_ENABLE_HARDWARE_SHA1
         Process_SW(bytes, len);
     #elif HE_CPU_X86
-        if (GetCpuInfo().x86.sha)
+        if (GetCpuInfo().x86.sha1)
             Process_SSE41(bytes, len);
         else
             Process_SW(bytes, len);
@@ -461,7 +474,7 @@ namespace he
         else
             Process_SW(bytes, len);
     #else
-        #error "Unknown CRC32C implementation for this configuration"
+        #error "Unknown SHA1 implementation for this configuration"
     #endif
 
         return *this;
@@ -480,7 +493,7 @@ namespace he
             }
             else
             {
-                const uint32_t n = Max(len, (BlockSize - m_bufLen));
+                const uint32_t n = Min(len, (BlockSize - m_bufLen));
 
                 MemCopy(m_buf + m_bufLen, data, n);
                 m_bufLen += n;
@@ -500,10 +513,11 @@ namespace he
     void Hash<SHA1>::Process_SSE41(const uint8_t* data, uint32_t len)
     {
         HE_UNUSED(data, len);
-    #if HE_ENABLE_HARDWARE_SHA1 && HE_CPU_x86
-        __m128i ABCD = _mm_loadu_si128(reinterpret_cast<const __m128i*>(m_state));
+    #if HE_ENABLE_HARDWARE_SHA1 && HE_CPU_X86
+        const __m128i STATE0 = _mm_loadu_si128(reinterpret_cast<const __m128i*>(m_state));
+
         __m128i E0 = _mm_set_epi32(m_state[4], 0, 0, 0);
-        ABCD = _mm_shuffle_epi32(ABCD, 0x1B);
+        __m128i ABCD = _mm_shuffle_epi32(STATE0, 0x1B);
 
         while (len > 0)
         {
@@ -516,7 +530,7 @@ namespace he
             }
             else
             {
-                const uint32_t n = Max(len, (BlockSize - m_bufLen));
+                const uint32_t n = Min(len, (BlockSize - m_bufLen));
 
                 MemCopy(m_buf + m_bufLen, data, n);
                 m_bufLen += n;
@@ -556,7 +570,7 @@ namespace he
             }
             else
             {
-                const uint32_t n = Max(len, (BlockSize - m_bufLen));
+                const uint32_t n = Min(len, (BlockSize - m_bufLen));
 
                 MemCopy(m_buf + m_bufLen, data, n);
                 m_bufLen += n;
@@ -577,7 +591,7 @@ namespace he
     #endif
     }
 
-    Hash<SHA1>::ValueType Hash<SHA1>::Finalize()
+    Hash<SHA1>::ValueType Hash<SHA1>::Final()
     {
         HE_ASSERT(m_bufLen < sizeof(m_buf));
 
@@ -616,7 +630,7 @@ namespace he
 
         // store hash
         ValueType hash;
-        for (size_t i = 0; i < 5; ++i)
+        for (size_t i = 0; i < HE_LENGTH_OF(m_state); ++i)
         {
             StoreBE(*reinterpret_cast<uint32_t*>(hash.bytes + (4 * i)), m_state[i]);
         }

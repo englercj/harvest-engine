@@ -31,7 +31,7 @@ namespace he
         DWORD srcLen = ::FormatMessageW(
             FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
             nullptr,
-            HRESULT_CODE(m_code),
+            HRESULT_CODE(code),
             MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
             src,
             HE_LENGTH_OF(src),

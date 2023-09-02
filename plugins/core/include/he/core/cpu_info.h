@@ -86,7 +86,11 @@ namespace he
             bool popcnt : 1{ false };
             bool fma3 : 1{ false };
             bool aesni : 1{ false };
-            bool sha : 1{ false };
+            bool sha1 : 1{ false };
+            bool sha256 : 1{ false };
+            bool sha512 : 1{ false };
+            bool sm3 : 1{ false };
+            bool sm4 : 1{ false };
             bool rdrand : 1{ false };
             bool osxsave : 1{ false };
             bool hypervisor : 1{ false };

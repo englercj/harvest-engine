@@ -41,10 +41,24 @@ namespace he
         /// \return The newly constructed UUID. If `src` is not valid, then \see UuidZero is returned.
         static Uuid FromString(StringView src);
 
+        /// Creates a version 3 (MD5) UUID from a name and namespace ID.
+        ///
+        /// \param[in] name The name to use.
+        /// \param[in] nsid The UUID of the namespace to use.
+        /// \return The newly constructed UUID.
+        static Uuid CreateV3(StringView name, const Uuid& nsid);
+
         /// Creates a version 4 (random) UUID.
         ///
         /// \return The newly constructed UUID.
         static Uuid CreateV4();
+
+        /// Creates a version 5 (SHA-1) UUID from a name and namespace ID.
+        ///
+        /// \param[in] name The name to use.
+        /// \param[in] nsid The UUID of the namespace to use.
+        /// \return The newly constructed UUID.
+        static Uuid CreateV5(StringView name, const Uuid& nsid);
 
         /// Returns a non-cryptographic hash of the uuid.
         /// Since uuids are already either random or hashed bits this simply returns a well
@@ -57,7 +71,7 @@ namespace he
         /// Gets the version number of a Uuid. This is usually a value in the range [0, 5].
         ///
         /// \return The version number of the UUID.
-        constexpr uint8_t GetVersion() const { return (m_bytes[6] & 0xf0) >> 4; }
+        constexpr uint8_t Version() const { return (m_bytes[6] & 0xf0) >> 4; }
 
         /// Checks if two UUIDs are the same.
         ///

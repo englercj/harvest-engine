@@ -85,17 +85,31 @@ namespace he
         return false;
     }
 
-    HE_FORCE_INLINE void cpuid(uint32_t reg, uint32_t& eax, uint32_t& ebx, uint32_t& ecx, uint32_t& edx)
+    HE_FORCE_INLINE void CpuId(uint32_t leaf, uint32_t& eax, uint32_t& ebx, uint32_t& ecx, uint32_t& edx)
     {
     #if HE_COMPILER_MSVC
         int32_t regs[4];
-        __cpuid(regs, reg);
+        __cpuid(regs, leaf);
         eax = regs[0];
         ebx = regs[1];
         ecx = regs[2];
         edx = regs[3];
     #else
-        __cpuid(reg, eax, ebx, ecx, edx);
+        __cpuid(leaf, eax, ebx, ecx, edx);
+    #endif
+    }
+
+    HE_FORCE_INLINE void CpuIdEx(uint32_t leaf, uint32_t subleaf, uint32_t& eax, uint32_t& ebx, uint32_t& ecx, uint32_t& edx)
+    {
+    #if HE_COMPILER_MSVC
+        int32_t regs[4];
+        __cpuidex(regs, leaf, subleaf);
+        eax = regs[0];
+        ebx = regs[1];
+        ecx = regs[2];
+        edx = regs[3];
+    #else
+        __cpuid_count(leaf, subleaf, eax, ebx, ecx, edx);
     #endif
     }
 
@@ -109,7 +123,7 @@ namespace he
             uint32_t edx = 0;
 
             // Function Id 0 = Highest Function Parameter and Manufacturer ID
-            cpuid(0, eax, ebx, ecx, edx);
+            CpuId(0, eax, ebx, ecx, edx);
 
             const uint32_t highestFuncId = eax;
             MemCopy(vendorName + 0, &ebx, 4);
@@ -128,7 +142,7 @@ namespace he
             // Function Id 1 = Processor Info and Feature Bits
             if (highestFuncId >= 1)
             {
-                cpuid(1, eax, ebx, ecx, edx);
+                CpuId(1, eax, ebx, ecx, edx);
 
                 x86.sse = (edx & (1 << 25)) != 0;
                 x86.sse2 = (edx & (1 << 26)) != 0;
@@ -167,23 +181,29 @@ namespace he
             // Function Id 7 = Extended Features
             if (highestFuncId >= 7)
             {
-                cpuid(7, eax, ebx, ecx, edx);
+                CpuId(7, eax, ebx, ecx, edx);
 
                 x86.avx2 = (ebx & (1 << 5)) != 0;
-                x86.sha = (ebx & (1 << 29)) != 0;
+                x86.sha1 = (ebx & (1 << 29)) != 0;
+                x86.sha256 = x86.sha1;
 
                 if (!x86.avx)
                     x86.avx2 = false;
+
+                CpuIdEx(7, 1, eax, ebx, ecx, edx);
+                x86.sha512 = (eax & (1 << 0)) != 0;
+                x86.sm3 = (eax & (1 << 1)) != 0;
+                x86.sm4 = (eax & (1 << 2)) != 0;
             }
 
             // Function Id 80000000h = Get Highest Extended Function Implemented
-            cpuid(0x80000000, eax, ebx, ecx, edx);
+            CpuId(0x80000000, eax, ebx, ecx, edx);
             const uint32_t highestExFuncId = eax;
 
             // Function Id 80000007h = Advanced Power Management Information
             if (highestExFuncId >= 0x80000007)
             {
-                cpuid(0x80000007, eax, ebx, ecx, edx);
+                CpuId(0x80000007, eax, ebx, ecx, edx);
                 x86.tscInvariant = (edx & (1 << 8)) != 0;
             }
 

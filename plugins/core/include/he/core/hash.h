@@ -75,16 +75,16 @@ namespace he
         void Reset(ValueType seed = Algo::DefaultSeed) { m_state = seed; }
 
         template <typename T> requires(Arithmetic<T> || Enum<T>)
-        Hash& Update(const T& value) { m_state = Algo::Mem(&value, sizeof(T), m_state); return *this; }
+        Hash& Update(const T& value) { Update(&value, sizeof(T)); return *this; }
 
         template <ArithmeticRange R>
-        Hash& Update(const R& range) { m_state = Algo::Mem(range.Data(), range.Size(), m_state); return *this; }
+        Hash& Update(const R& range) { Update(range.Data(), range.Size()); return *this; }
 
-        Hash& Update(const char* str) { m_state = Algo::Mem(str, StrLen(str), m_state); return *this; }
+        Hash& Update(const char* str) { Update(str, StrLen(str)); return *this; }
 
         Hash& Update(const void* data, uint32_t len) { m_state = Algo::Mem(data, len, m_state); return *this; }
 
-        ValueType Finalize() { return m_state; }
+        ValueType Final() { return m_state; }
 
     private:
         ValueType m_state;
@@ -142,30 +142,30 @@ namespace he
     };
 
     // --------------------------------------------------------------------------------------------
-    // Secure Hash Algorithm 1 (SHA1) 160-bit cryptographic hash
-    struct SHA1
+    // Message-Digest 5 (MD5) 128-bit non-cryptographic hash
+    struct MD5
     {
         struct Value
         {
-            uint8_t bytes[20];
-            bool operator==(const Value& x);
-            bool operator!=(const Value& x);
+            uint8_t bytes[16];
+            bool operator==(const Value& x) { return MemEqual(bytes, x.bytes, sizeof(bytes)); }
+            bool operator!=(const Value& x) { return !(*this == x); }
         };
 
         using ValueType = Value;
 
-        static Value Mem(const void* data, uint32_t len, uint64_t = 0);
+        static Value Mem(const void* data, uint32_t len);
     };
 
     template <>
-    class Hash<SHA1>
+    class Hash<MD5>
     {
     public:
-        using ValueType = typename SHA1::ValueType;
+        using ValueType = typename MD5::ValueType;
         static constexpr uint32_t BlockSize = 64;
 
     public:
-        explicit Hash() noexcept;
+        explicit Hash() noexcept { Reset(); }
 
         void Reset();
 
@@ -179,7 +179,57 @@ namespace he
 
         Hash& Update(const void* data, uint32_t len);
 
-        ValueType Finalize();
+        ValueType Final();
+
+    private:
+        void Block(const uint8_t* data);
+
+    private:
+        uint64_t m_length;
+        uint32_t m_state[4];
+        uint32_t m_bufLen;
+        uint8_t m_buf[64];
+    };
+
+    // --------------------------------------------------------------------------------------------
+    // Secure Hash Algorithm 1 (SHA1) 160-bit cryptographic hash
+    struct SHA1
+    {
+        struct Value
+        {
+            uint8_t bytes[20];
+            bool operator==(const Value& x) { return MemEqual(bytes, x.bytes, sizeof(bytes)); }
+            bool operator!=(const Value& x) { return !(*this == x); }
+        };
+
+        using ValueType = Value;
+
+        static Value Mem(const void* data, uint32_t len);
+    };
+
+    template <>
+    class Hash<SHA1>
+    {
+    public:
+        using ValueType = typename SHA1::ValueType;
+        static constexpr uint32_t BlockSize = 64;
+
+    public:
+        explicit Hash() noexcept { Reset(); }
+
+        void Reset();
+
+        template <typename T> requires(Arithmetic<T> || Enum<T>)
+        Hash& Update(const T& value) { Update(&value, sizeof(T)); return *this; }
+
+        template <ArithmeticRange R>
+        Hash& Update(const R& range) { Update(range.Data(), range.Size()); return *this; }
+
+        Hash& Update(const char* str) { Update(str, StrLen(str)); return *this; }
+
+        Hash& Update(const void* data, uint32_t len);
+
+        ValueType Final();
 
     private:
         void Process_SW(const uint8_t* data, uint32_t len);
@@ -200,24 +250,24 @@ namespace he
         struct Value
         {
             uint8_t bytes[32];
-            bool operator==(const Value& x);
-            bool operator!=(const Value& x);
+            bool operator==(const Value& x) { return MemEqual(bytes, x.bytes, sizeof(bytes)); }
+            bool operator!=(const Value& x) { return !(*this == x); }
         };
 
         using ValueType = Value;
 
-        static Value Mem(const void* data, uint32_t len, uint64_t = 0);
+        static Value Mem(const void* data, uint32_t len);
     };
 
     template <>
     class Hash<SHA256>
     {
     public:
-        using ValueType = typename SHA1::ValueType;
+        using ValueType = typename SHA256::ValueType;
         static constexpr uint32_t BlockSize = 64;
 
     public:
-        explicit Hash() noexcept;
+        explicit Hash() noexcept { Reset(); }
 
         void Reset();
 
@@ -231,7 +281,7 @@ namespace he
 
         Hash& Update(const void* data, uint32_t len);
 
-        ValueType Finalize();
+        ValueType Final();
 
     private:
         void Process_SW(const uint8_t* data, uint32_t len);
@@ -240,7 +290,7 @@ namespace he
 
     private:
         uint64_t m_length;
-        uint32_t m_state[5];
+        uint32_t m_state[8];
         uint32_t m_bufLen;
         uint8_t m_buf[64];
     };

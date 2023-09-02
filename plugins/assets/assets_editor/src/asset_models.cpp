@@ -172,13 +172,16 @@ namespace he::assets
         // Add or update each existing asset in the file
         for (const Asset::Reader asset : file.GetAssets())
         {
-            const uint32_t dataHash = CalculateHash<CRC32C>(asset.GetData());
-            const uint32_t importDataHash = CalculateHash<CRC32C>(asset.GetData());
+            Hash<CRC32C> dataHash;
+            CalculateHash<CRC32C>(dataHash, asset.GetData());
+
+            Hash<CRC32C> importDataHash;
+            CalculateHash<CRC32C>(importDataHash, asset.GetData());
 
             const auto query = Insert<AssetModel>(
                 Cols(&AssetModel::uuid, &AssetModel::assetFileId, &AssetModel::assetType, &AssetModel::name, &AssetModel::state, &AssetModel::dataHash, &AssetModel::importDataHash),
                 Select<AssetFileModel>(
-                    Cols(AssetUuid(asset.GetUuid()), &AssetFileModel::id, asset.GetType().AsView(), asset.GetName().AsView(), AssetState::Unknown, dataHash, importDataHash),
+                    Cols(AssetUuid(asset.GetUuid()), &AssetFileModel::id, asset.GetType().AsView(), asset.GetName().AsView(), AssetState::Unknown, dataHash.Final(), importDataHash.Final()),
                     Where(Col(&AssetFileModel::uuid) == model.uuid)),
                 OnConflict(&AssetModel::uuid).DoUpdate(
                     Set(&AssetModel::assetFileId, Excluded(&AssetModel::assetFileId)),

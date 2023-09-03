@@ -116,12 +116,14 @@ namespace he
             case FILE_ACTION_RENAMED_OLD_NAME: outEntry.reason = FileChangeReason::Renamed_OldName; break;
             case FILE_ACTION_RENAMED_NEW_NAME: outEntry.reason = FileChangeReason::Renamed_NewName; break;
             default:
+            {
                 HE_LOG_WARN(he_core,
                     HE_MSG("Encountered unknown file action in DirectoryWatcher, assuming Modified reason."),
                     HE_KV(file_path, outEntry.path),
                     HE_KV(file_action, info->Action));
                 outEntry.reason = FileChangeReason::Modified;
                 break;
+            }
         }
 
         // Update our offset into the buffer or reset if we reached the end
@@ -143,8 +145,7 @@ namespace he
         {
             case ERROR_SUCCESS: return FileWatchResult::Success;
             case ERROR_TIMEOUT: return FileWatchResult::Timeout;
-            default:
-                return FileWatchResult::Failure;
+            default: return FileWatchResult::Failure;
         }
     }
 

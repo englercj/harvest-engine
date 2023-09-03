@@ -126,18 +126,21 @@ namespace he::editor
 
     String ProjectService::DataDir() const
     {
-        if (!HE_VERIFY(IsOpen()))
-            return "";
+        String appDir;
 
-        String appDir = m_directoryService.GetAppDirectory(DirectoryService::DirType::Projects);
+        if (HE_VERIFY(IsOpen()))
+        {
+            appDir = m_directoryService.GetAppDirectory(DirectoryService::DirType::Projects);
 
-        if (!appDir.IsEmpty() && appDir.Back() != '/' && appDir.Back() != '\\')
-            appDir.PushBack('/');
+            if (!appDir.IsEmpty() && appDir.Back() != '/' && appDir.Back() != '\\')
+                appDir.PushBack('/');
 
-        const Span<const uint8_t> projId = Project().GetId().GetValue();
-        HE_ASSERT(projId.Size() == sizeof(Uuid));
+            const Span<const uint8_t> projId = Project().GetId().GetValue();
+            HE_ASSERT(projId.Size() == sizeof(Uuid));
 
-        FormatTo(appDir, "{:02x}", FmtJoin(projId, ""));
+            FormatTo(appDir, "{:02x}", FmtJoin(projId, ""));
+        }
+
         return appDir;
     }
 
@@ -190,8 +193,9 @@ namespace he::editor
             }
 
             // Parse the plugin file into a schema structure
-            schema::TypedBuilder<editor::Plugin>& pluginBuilder = m_plugins.EmplaceBack();
-            if (!schema::FromToml(pluginBuilder, fileData))
+            PluginEntry& entry = m_plugins.EmplaceBack();
+            entry.filePath = fullPath;
+            if (!schema::FromToml(entry.plugin, fileData))
             {
                 HE_LOG_ERROR(editor,
                     HE_MSG("Failed to deserialize plugin file. Is it valid TOML?"),
@@ -201,7 +205,7 @@ namespace he::editor
 
             // Add any additionally imported plugins to the list to be loaded
             String cwd = GetDirectory(fullPath);
-            for (auto&& plugin : pluginBuilder.Root().GetPlugins())
+            for (auto&& plugin : entry.plugin.Root().GetPlugins())
             {
                 AddPluginToLoad(plugin, cwd, pluginsToLoad);
             }

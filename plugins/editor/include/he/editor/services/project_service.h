@@ -21,6 +21,13 @@ namespace he::editor
     class ProjectService
     {
     public:
+        struct PluginEntry
+        {
+            String filePath;
+            schema::TypedBuilder<editor::Plugin> plugin;
+        };
+
+    public:
         ProjectService(DirectoryService& directoryService) noexcept;
 
         bool Open(const char* path);
@@ -33,7 +40,7 @@ namespace he::editor
 
         Project::Builder Project() { return m_builder.Root(); }
         Project::Reader Project() const { return m_builder.Root(); }
-        Span<const schema::TypedBuilder<editor::Plugin>> Plugins() const { return m_plugins; }
+        Span<const PluginEntry> Plugins() const { return m_plugins; }
 
         const String& ProjectPath() const { return m_projectPath; }
         String DataDir() const;
@@ -49,12 +56,13 @@ namespace he::editor
         void ReadPluginFiles();
 
     private:
+
         DirectoryService& m_directoryService;
 
         schema::TypedBuilder<editor::Project> m_builder{};
         String m_projectPath{};
 
-        Vector<schema::TypedBuilder<editor::Plugin>> m_plugins{};
+        Vector<PluginEntry> m_plugins{};
 
         OnLoadSignal m_onLoadSignal{};
         OnUnloadSignal m_onUnloadSignal{};

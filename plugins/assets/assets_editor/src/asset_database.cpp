@@ -43,23 +43,35 @@ namespace he::assets
         : m_storage(AssetDbSchema)
     {}
 
-    bool AssetDatabase::Initialize(const char* cacheRoot, const char* assetRoot)
+    bool AssetDatabase::Initialize(StringView cacheRoot, Span<String> contentRoots)
     {
-        // Asset root needs to be an absolute path for us to utilize it correctly
-        m_assetRoot = assetRoot;
-        if (!HE_VERIFY(IsAbsolutePath(assetRoot), HE_KV(asset_root, assetRoot)))
-            return false;
+        // Collect the content root paths
+        for (const String& root : m_contentRoots)
+        {
+            if (!HE_VERIFY(IsAbsolutePath(root),
+                HE_MSG("Content root path must be absolute."),
+                HE_KV(content_root, root)))
+            {
+                return false;
+            }
+
+            m_contentRoots.EmplaceBack(root);
+        }
 
         // Ensure the cache root, and the resources directory both exist
         m_resourceRoot = cacheRoot;
         ConcatPath(m_resourceRoot, "resources");
-        if (!HE_VERIFY(Directory::Create(m_resourceRoot.Data(), true), HE_KV(resource_root, m_resourceRoot)))
+        if (!HE_VERIFY(Directory::Create(m_resourceRoot.Data(), true),
+            HE_MSG("Failed to create resources directory."),
+            HE_KV(resource_root, m_resourceRoot)))
+        {
             return false;
+        }
 
         HE_LOG_INFO(he_assets,
             HE_MSG("Initializing asset database"),
             HE_KV(cache_root, cacheRoot),
-            HE_KV(asset_root, assetRoot));
+            HE_KV(content_root_count, m_contentRoots.Size()));
 
         Stopwatch timer;
 

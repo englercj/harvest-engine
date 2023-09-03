@@ -46,24 +46,42 @@ namespace he::editor
         if (!m_projectService.IsOpen())
             return;
 
-        const schema::String::Reader relativeAssetRoot = m_projectService.Project();
-
-        const String& cacheRoot = m_projectService.DataDir();
-        String assetRoot = GetDirectory(m_projectService.ProjectPath());
-        ConcatPath(assetRoot, relativeAssetRoot);
-        NormalizePath(assetRoot);
-
         auto failGuard = MakeScopeGuard([&]() { Terminate(); });
 
-        if (!m_db.Initialize(cacheRoot.Data(), assetRoot.Data()))
+        // Collect the content directories for each of the content modules
+        Vector<String> contentRoots;
+        for (const ProjectService::PluginEntry& entry : m_projectService.Plugins())
+        {
+            const StringView pluginDir = GetDirectory(entry.filePath);
+            for (const editor::Plugin::Module::Reader mod : entry.plugin.Root().GetModules())
+            {
+                if (mod.GetType() != editor::Plugin::ModuleType::Content)
+                    continue;
+
+                for (const schema::String::Reader dir : mod.GetContentDirs())
+                {
+                    if (dir.IsEmpty())
+                        continue;
+
+                    String& root = contentRoots.EmplaceBack(pluginDir);
+                    ConcatPath(root, dir.AsView());
+                    NormalizePath(root);
+                }
+            }
+        }
+
+        // Initialize the database
+        const String cacheRoot = m_projectService.DataDir();
+        if (!m_db.Initialize(cacheRoot.Data(), contentRoots))
         {
             HE_LOG_ERROR(he_editor,
                 HE_MSG("Failed to initialize asset cache DB."),
                 HE_KV(cache_root, cacheRoot),
-                HE_KV(asset_root, assetRoot));
+                HE_KV(content_root_count, contentRoots.Size()));
             return;
         }
 
+        // Startup the updater to ensure the DB is correct
         m_onDbReadyBinding = m_updater.OnReady().Attach<&AssetService::OnDbReady>(this);
 
         if (!m_updater.Start())
@@ -71,7 +89,7 @@ namespace he::editor
             HE_LOG_ERROR(he_editor,
                 HE_MSG("Failed to start asset DB updater."),
                 HE_KV(cache_root, cacheRoot),
-                HE_KV(asset_root, assetRoot));
+                HE_KV(content_root_count, contentRoots.Size()));
             return;
         }
 

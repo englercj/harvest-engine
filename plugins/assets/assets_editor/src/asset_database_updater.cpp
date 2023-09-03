@@ -127,7 +127,7 @@ namespace he::assets
             DirectoryWatcher::Entry entry;
             const Result r = m_dirWatcher.WaitForEntry(entry, FromPeriod<Seconds>(1));
 
-            FileWatchResult wait = GetFileWatchResult(r);
+            const FileWatchResult wait = GetFileWatchResult(r);
 
             switch (wait)
             {

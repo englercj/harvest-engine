@@ -31,7 +31,7 @@ namespace he::assets
         AssetDatabase();
         ~AssetDatabase() noexcept { Terminate(); }
 
-        bool Initialize(const char* cacheRoot, const char* assetRoot);
+        bool Initialize(StringView cacheRoot, Span<String> contentRoots);
         bool Terminate();
 
         bool IsInitialized() const { return m_storage.IsOpen(); }
@@ -55,7 +55,7 @@ namespace he::assets
         void OnAssetFileUpdated(const char* path);
 
     public:
-        const String& AssetRoot() const { return m_assetRoot; }
+        Span<const String> ContentRoots() const { return m_contentRoots; }
 
     public:
         Result AddResource(const AssetUuid& assetUuid, ResourceId resourceId, Span<const uint8_t> data) const
@@ -101,7 +101,7 @@ namespace he::assets
 
     private:
         AssetDbStorage m_storage;
-        String m_assetRoot;
         String m_resourceRoot;
+        Vector<String> m_contentRoots;
     };
 }

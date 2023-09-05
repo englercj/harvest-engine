@@ -328,10 +328,10 @@ namespace he::window
     };
 
     /// \copydoc EventKind::Initialized
-    struct InitializedEvent : ViewEvent
+    struct InitializedEvent : Event
     {
-        explicit InitializedEvent(View* v) noexcept
-            : ViewEvent(EventKind::Initialized, v) {}
+        explicit InitializedEvent() noexcept
+            : Event(EventKind::Initialized) {}
     };
 
     /// \copydoc EventKind::Terminating

@@ -55,7 +55,7 @@ namespace he::window::win32
 
         bool Initialize() override;
 
-        int Run(Application& app, const ViewDesc& desc) override;
+        int Run(Application& app) override;
         void Quit(int rc) override;
 
         const DeviceInfo& GetDeviceInfo() const override;
@@ -71,7 +71,8 @@ namespace he::window::win32
 
         void SetCursor(PointerCursor cursor) override;
 
-        void SetCursorRelativeMode(bool relativeMode) override;
+        void EnableRelativeCursor(View* view) override;
+        void DisableRelativeCursor() override;
 
         uint32_t MonitorCount() const override;
         uint32_t GetMonitors(Monitor* monitors, uint32_t maxCount) const override;
@@ -100,10 +101,10 @@ namespace he::window::win32
     public:
         Application* m_app{ nullptr };
         HINSTANCE m_hInstance{ nullptr };
+        ViewImpl* m_cursorRelativeView{ nullptr };
         PointerCursor m_cursor{ PointerCursor::Arrow };
         std::atomic<int32_t> m_returnCode{ 0 };
         std::atomic<bool> m_running{ true };
-        bool m_cursorRelativeMode{ false };
         bool m_cursorVisible{ true };
         bool m_viewClipped{ false };
         Vec2f m_cursorRestorePosition{ 0, 0 };

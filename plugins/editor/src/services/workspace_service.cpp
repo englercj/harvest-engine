@@ -27,9 +27,9 @@ namespace he::editor
         AssetService& assetService,
         DialogService& dialogService,
         DocumentService& documentService,
+        EditorView& editorView,
         ImGuiService& imguiService,
         LogService& logService,
-        MainWindowService& mainWindowService,
         PanelService& panelService,
         PlatformService& platformService,
         ProjectService& projectService,
@@ -38,9 +38,9 @@ namespace he::editor
         : m_assetService(assetService)
         , m_dialogService(dialogService)
         , m_documentService(documentService)
+        , m_editorView(editorView)
         , m_imguiService(imguiService)
         , m_logService(logService)
-        , m_mainWindowService(mainWindowService)
         , m_panelService(panelService)
         , m_platformService(platformService)
         , m_projectService(projectService)
@@ -79,7 +79,11 @@ namespace he::editor
     window::ViewHitArea WorkspaceService::GetHitArea(const Vec2i& point) const
     {
         // Gather the window size so we can hit test for resize areas
-        window::View* view = m_mainWindowService.GetView();
+        window::View* view = m_editorView.GetView();
+
+        if (!view)
+            return window::ViewHitArea::NotInView;
+
         Vec2i size = view->GetSize();
 
         // Check if the point is outside the window
@@ -124,7 +128,10 @@ namespace he::editor
     void WorkspaceService::ShowAppMenuBar()
     {
         ImGuiStyle& style = ImGui::GetStyle();
-        window::View* view = m_mainWindowService.GetView();
+        window::View* view = m_editorView.GetView();
+
+        if (!view)
+            return;
 
         m_menuHitArea = window::ViewHitArea::Normal;
 

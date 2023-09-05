@@ -4,144 +4,157 @@
 
 #include "he/core/async_file.h"
 
+#include "he/window/event.h"
+
+#include <iostream>
+
 namespace he::editor
 {
     EditorApp::EditorApp(
-        AssetService& assetService,
-        ImGuiService& imguiService,
-        MainWindowService& mainWindowService,
-        RenderService& renderService,
-        SettingsService& settingsService,
-        TaskService& taskService,
-        WorkspaceService& workspaceService) noexcept
-        : m_assetService(assetService)
-        , m_imguiService(imguiService)
-        , m_mainWindowService(mainWindowService)
-        , m_renderService(renderService)
-        , m_settingsService(settingsService)
+        AppArgsService& appArgsService,
+        DirectoryService& directoryService,
+        EditorData& editorData,
+        EditorView& editorView,
+        LogService& logService,
+        ModuleRegistry& moduleRegistry,
+        ProjectService& projectService,
+        ProjectView& projectView,
+        TaskService& taskService) noexcept
+        : m_appArgsService(appArgsService)
+        , m_directoryService(directoryService)
+        , m_editorData(editorData)
+        , m_editorView(editorView)
+        , m_logService(logService)
+        , m_moduleRegistry(moduleRegistry)
+        , m_projectService(projectService)
+        , m_projectView(projectView)
         , m_taskService(taskService)
-        , m_workspaceService(workspaceService)
     {}
+
+    bool EditorApp::Initialize(int argc, char* argv[])
+    {
+        // Initialize the directory service first so that the log service has existing directories
+        // to write data into.
+        if (!m_directoryService.CreateAll())
+            return false;
+
+        // Initialize the log service as early as possible, so we can capture as many logs as possible.
+        // In particular we want to capture any failed module loads to the log file.
+        if (!m_logService.Initialize())
+            return false;
+
+        // Create and startup the static modules that were registered by any linked libraries.
+        // TODO: load dynamic modules
+        m_moduleRegistry.LoadStaticModules();
+        if (!m_moduleRegistry.StartupAllModules())
+            return false;
+
+        // Create and initialize the application args service so our editor app can read them.
+        if (!m_appArgsService.Initialize(argc, argv) || m_appArgsService.Flags().help)
+        {
+            const String help = m_appArgsService.Help();
+            std::cerr << help.Data() << std::endl;
+            return false;
+        }
+
+        // Now that modules are started create the editor data necessary to run the application and
+        // kick off the app.
+        m_editorData.device = window::Device::Create();
+        if (!m_editorData.device)
+            return false;
+
+        // Start the task service so the async file IO system can use it.
+        if (!m_taskService.Initialize())
+            return false;
+
+        // Startup the async file io system for the the application to use.
+        AsyncFileIOConfig config{};
+        config.threadpool.executor = &m_taskService;
+        const Result r = StartupAsyncFileIO(config);
+        if (!r)
+        {
+            HE_LOG_ERROR(he_editor, HE_MSG("Failed to startup async file IO system."), HE_KV(result, r));
+            return false;
+        }
+
+        m_onProjectLoadedBinding = m_projectService.OnLoad().Attach<&EditorApp::OnProjectLoaded>(this);
+        m_onProjectUnloadedBinding = m_projectService.OnUnload().Attach<&EditorApp::OnProjectUnloaded>(this);
+        return true;
+    }
+
+    void EditorApp::Terminate()
+    {
+        m_onProjectLoadedBinding.Detach();
+        m_onProjectUnloadedBinding.Detach();
+
+        m_projectView.Terminate();
+        m_editorView.Terminate();
+
+        ShutdownAsyncFileIO();
+
+        m_taskService.Terminate();
+        window::Device::Destroy(m_editorData.device);
+        m_editorData.device = nullptr;
+        m_moduleRegistry.ShutdownAllModules();
+        m_moduleRegistry.UnloadAllModules();
+        m_logService.Terminate();
+    }
+
+    int EditorApp::Run()
+    {
+        return m_editorData.device->Run(*this);
+    }
 
     void EditorApp::OnEvent(const window::Event& ev)
     {
-        if (m_initialized)
-            m_imguiService.OnEvent(ev);
-
-        switch (ev.kind)
+        if (ev.kind == window::EventKind::Initialized)
         {
-            case window::EventKind::Initialized:
-            {
-                const auto& evt = static_cast<const window::InitializedEvent&>(ev);
-                if (!OnViewInitialized(evt.view))
-                    m_mainWindowService.Quit(1);
-                break;
-            }
-            case window::EventKind::ViewRequestClose:
-            {
-                const auto& evt = static_cast<const window::ViewRequestCloseEvent&>(ev);
-                OnViewTerminated(evt.view);
-                break;
-            }
-            case window::EventKind::ViewResized:
-            {
-                const auto& evt = static_cast<const window::ViewResizedEvent&>(ev);
-                OnViewResized(evt.view, evt.size);
-                break;
-            }
-            default:
-                break;
+            m_projectView.Initialize();
+        }
+        else
+        {
+            m_editorView.OnEvent(ev);
+            m_projectView.OnEvent(ev);
         }
     }
 
     void EditorApp::OnTick()
     {
-        // Update the application UI
-        m_imguiService.NewFrame();
-        m_workspaceService.Show();
-        m_imguiService.Update();
-
-        // Perform rendering pass
-        m_renderService.BeginFrame();
-        m_imguiService.Render();
-        m_renderService.EndFrame();
+        m_editorView.Show();
+        m_projectView.Show();
     }
 
     window::ViewHitArea EditorApp::OnHitTest(window::View* view, const Vec2i& point)
     {
-        if (!m_initialized || m_mainWindowService.GetView() != view)
-            return window::ViewHitArea::Normal;
-
-        return m_workspaceService.GetHitArea(point);
+        if (view == m_editorView.GetView())
+            return m_editorView.HitTest(point);
+        else if (view == m_projectView.GetView())
+            return m_projectView.HitTest(point);
+        else
+            return window::ViewHitArea::NotInView;
     }
 
     window::ViewDropEffect EditorApp::OnDragging(window::View* view)
     {
-        if (!m_initialized)
+        if (view == m_editorView.GetView())
+            return m_editorView.GetDropEffect();
+        else if (view == m_projectView.GetView())
+            return m_projectView.GetDropEffect();
+        else
             return window::ViewDropEffect::Reject;
-
-        return m_imguiService.GetDropEffect(view);
     }
 
-    bool EditorApp::OnViewInitialized(window::View* view)
+    void EditorApp::OnProjectLoaded()
     {
-        if (m_initialized)
-            return true;
-
-        m_initialized = true;
-
-        m_mainWindowService.SetView(view);
-
-        // Initialize required services
-        if (!m_taskService.Initialize())
-            return false;
-
-        if (!m_assetService.Initialize())
-            return false;
-
-        // Startup rendering
-        if (!m_renderService.Initialize(view))
-            return false;
-
-        if (!m_imguiService.Initialize(view))
-            return false;
-
-        AsyncFileIOConfig config;
-        config.threadpool.executor = &m_taskService;
-        StartupAsyncFileIO(config);
-
-        // Failing to load settings is OK, we'll run with defaults and have an error in the log
-        m_settingsService.Reload();
-        return true;
+        m_projectView.Terminate();
+        m_editorView.Initialize();
     }
 
-    void EditorApp::OnViewResized(window::View* view, const Vec2i& size)
+    void EditorApp::OnProjectUnloaded()
     {
-        if (m_mainWindowService.GetView() != view)
-            return;
-
-        m_renderService.SetSize(size);
-    }
-
-    void EditorApp::OnViewTerminated(window::View* view)
-    {
-        if (m_mainWindowService.GetView() != view)
-            return;
-
-        if (!m_workspaceService.RequestClose())
-            return;
-
-        m_initialized = false;
-
-        m_settingsService.Save();
-
-        ShutdownAsyncFileIO();
-
-        m_imguiService.Terminate();
-        m_renderService.Terminate();
-        m_assetService.Terminate();
-        m_taskService.Terminate();
-
-        m_mainWindowService.Quit(0);
+        // TODO: This may happen when we're closing the app, in which case we don't want to
+        // re-initialize the project view.
+        m_editorView.Terminate();
+        m_projectView.Initialize();
     }
 }

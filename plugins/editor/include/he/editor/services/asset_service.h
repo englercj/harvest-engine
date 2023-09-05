@@ -42,7 +42,6 @@ namespace he::editor
 
         ImportCompleteSignal& OnImport() { return m_server.OnImport(); }
         CompileCompleteSignal& OnCompile() { return m_server.OnCompile(); }
-        DbInitSignal& OnDbInit() { return m_onDbInitSignal; }
 
     private:
         void OnProjectLoaded();
@@ -61,6 +60,5 @@ namespace he::editor
         assets::AssetDatabaseUpdater::OnReadySignal::Binding m_onDbReadyBinding{};
 
         std::atomic<bool> m_dbReady{ false };
-        DbInitSignal m_onDbInitSignal{};
     };
 }

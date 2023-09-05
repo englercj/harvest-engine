@@ -67,7 +67,7 @@ namespace he::window
         /// \param[in] app The application instance to run.
         /// \param[in] desc The descriptor for the default view that will be created.
         /// \return The exit code of the application.
-        virtual int Run(Application& app, const ViewDesc& desc) = 0;
+        virtual int Run(Application& app) = 0;
 
         /// Stores the exit code, dispatches a \ref TerminatingEvent, and causes the next event
         /// loop that runs to exit.
@@ -120,12 +120,19 @@ namespace he::window
         /// \param[in] cursor The type of cursor to set it to.
         virtual void SetCursor(PointerCursor cursor) = 0;
 
-        /// Enables or disabled Relative Mode for the cursor.
-        /// When enabled Relative Mode hides the cursor and moves it to the center of the screen.
-        /// When disabled Relative Mode shows the cursor and restores it to its original position.
+        /// Enables a relative cursor for a view. When enabled this will hide the cursor and keep
+        /// it at the center of the screen.
         ///
-        /// \param[in] relativeMode True to enable relative mode, false to disable.
-        virtual void SetCursorRelativeMode(bool relativeMode) = 0;
+        /// \note Only one view can have relative cursor enabled at a time. If another view
+        /// currently has relative cursor enabled, it will first be disabled before making the
+        /// cursor relative to the new view.
+        ///
+        /// \param[in] view The view to make the cursor relative to. Passing nullptr here is
+        ///     equivalent to calling \ref DisableRelativeCursor
+        virtual void EnableRelativeCursor(View* view) = 0;
+
+        /// Disables relative cursor handling. \see EnableRelativeCursor
+        virtual void DisableRelativeCursor() = 0;
 
         /// Returns the number of monitors available to the device.
         ///

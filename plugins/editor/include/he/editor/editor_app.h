@@ -2,16 +2,19 @@
 
 #pragma once
 
+#include "he/core/module_registry.h"
+#include "he/core/types.h"
 #include "he/editor/editor_data.h"
-#include "he/editor/services/asset_service.h"
-#include "he/editor/services/imgui_service.h"
-#include "he/editor/services/main_window_service.h"
-#include "he/editor/services/render_service.h"
-#include "he/editor/services/settings_service.h"
+#include "he/editor/editor_view.h"
+#include "he/editor/project_view.h"
+#include "he/editor/services/app_args_service.h"
+#include "he/editor/services/directory_service.h"
+#include "he/editor/services/log_service.h"
+#include "he/editor/services/project_service.h"
 #include "he/editor/services/task_service.h"
-#include "he/editor/services/workspace_service.h"
 #include "he/window/application.h"
-#include "he/window/view.h"
+
+namespace he::window { struct Event; class View; }
 
 namespace he::editor
 {
@@ -19,34 +22,43 @@ namespace he::editor
     {
     public:
         EditorApp(
-            AssetService& assetService,
-            ImGuiService& imguiService,
-            MainWindowService& mainWindowService,
-            RenderService& renderService,
-            SettingsService& settingsService,
-            TaskService& taskService,
-            WorkspaceService& workspaceService) noexcept;
+            AppArgsService& appArgsService,
+            DirectoryService& directoryService,
+            EditorData& editorData,
+            EditorView& editorView,
+            LogService& logService,
+            ModuleRegistry& moduleRegistry,
+            ProjectService& projectService,
+            ProjectView& projectView,
+            TaskService& taskService) noexcept;
 
+        bool Initialize(int argc, char* argv[]);
+        void Terminate();
+
+        int Run();
+
+    private:
         void OnEvent(const window::Event& ev) override;
         void OnTick() override;
 
         window::ViewHitArea OnHitTest(window::View* view, const Vec2i& point) override;
         window::ViewDropEffect OnDragging(window::View* view) override;
 
-    private:
-        bool OnViewInitialized(window::View* view);
-        void OnViewResized(window::View* view, const Vec2i& size);
-        void OnViewTerminated(window::View* view);
+        void OnProjectLoaded();
+        void OnProjectUnloaded();
 
     private:
-        AssetService& m_assetService;
-        ImGuiService& m_imguiService;
-        MainWindowService& m_mainWindowService;
-        RenderService& m_renderService;
-        SettingsService& m_settingsService;
+        AppArgsService& m_appArgsService;
+        DirectoryService& m_directoryService;
+        EditorData& m_editorData;
+        EditorView& m_editorView;
+        LogService& m_logService;
+        ModuleRegistry& m_moduleRegistry;
+        ProjectService& m_projectService;
+        ProjectView& m_projectView;
         TaskService& m_taskService;
-        WorkspaceService& m_workspaceService;
 
-        bool m_initialized{ false };
+        ProjectService::OnLoadSignal::Binding m_onProjectLoadedBinding;
+        ProjectService::OnUnloadSignal::Binding m_onProjectUnloadedBinding;
     };
 }

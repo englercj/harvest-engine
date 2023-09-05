@@ -2,71 +2,25 @@
 
 #include "he/core/log.h"
 #include "he/core/log_sinks.h"
-#include "he/core/macros.h"
-#include "he/core/module_registry.h"
+#include "he/core/types.h"
 #include "he/editor/di.h"
 #include "he/editor/editor_app.h"
-#include "he/editor/editor_data.h"
-#include "he/editor/services/app_args_service.h"
-#include "he/editor/services/directory_service.h"
-#include "he/editor/services/log_service.h"
-#include "he/window/view.h"
-
-#include <iostream>
 
 #include "he/core/main.inl"
 int he::AppMain(int argc, char* argv[])
 {
-    // Initialize logging and add the debug sink as early as possible.
-    // The application will add the file sink later in LogService.
+    // Add the debug sink as early as possible.
+    // A file sink is added later during LogService initialization.
     AddLogSink(DebuggerSink);
 
-    // Initialize the directory service first so that the log service has existing directories
-    // to write data into.
-    editor::DirectoryService& directoryService = editor::DICreate<editor::DirectoryService&>();
-    if (!directoryService.CreateAll())
-        return -1;
-
-    // Initialize the log service as early as possible, so we can capture as many logs as possible.
-    // In particular we want to capture any failed module loads to the log file.
-    editor::LogService& logService = editor::DICreate<editor::LogService&>();
-    if (!logService.Initialize())
-        return -1;
-
-    // Create and startup the static modules that were registered by any linked libraries.
-    ModuleRegistry& moduleRegistry = editor::DICreate<ModuleRegistry&>();
-    moduleRegistry.LoadStaticModules();
-    // TODO: load dynamic modules
-
-    if (!moduleRegistry.StartupAllModules())
-        return -1;
-
-    editor::AppArgsService& appArgs = editor::DICreate<editor::AppArgsService&>();
-    if (!appArgs.Initialize(argc, argv) || appArgs.Flags().help)
-    {
-        const String help = appArgs.Help();
-        std::cerr << help.Data() << std::endl;
-        return -1;
-    }
-
-    // Now that modules are started Create the editor data necessary to run the application and kick off the app.
-    editor::EditorData& data = editor::DICreate<editor::EditorData&>();
-    data.device = window::Device::Create();
-    if (!data.device)
-        return -1;
-
-    window::ViewDesc desc{};
-    desc.title = "Harvest Editor";
-    desc.flags = window::ViewFlag::Default | window::ViewFlag::Borderless | window::ViewFlag::AcceptFiles;
-
+    // Create our application and run it. This starts the main loop, which continues until the
+    // application decides to quit.
     editor::EditorApp& app = editor::DICreate<editor::EditorApp&>();
-    const int rc = data.device->Run(app, desc);
+    if (!app.Initialize(argc, argv))
+        return -1;
 
-    // Destroy all the things in reverse order that we initialized them in.
-    window::Device::Destroy(data.device);
-    logService.Terminate();
-    moduleRegistry.ShutdownAllModules();
-    moduleRegistry.UnloadAllModules();
+    const int rc = app.Run();
 
+    app.Terminate();
     return rc;
 }

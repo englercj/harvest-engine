@@ -56,7 +56,6 @@ namespace he::editor
         void ReadPluginFiles();
 
     private:
-
         DirectoryService& m_directoryService;
 
         schema::TypedBuilder<editor::Project> m_builder{};

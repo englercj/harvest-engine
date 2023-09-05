@@ -3,10 +3,10 @@
 #pragma once
 
 #include "he/math/types.h"
-#include "he/window/view.h"
 
 namespace he::window
 {
+    class View;
     struct Event;
 
     /// Interface for a windowed application. Handles the application event loop and tick.

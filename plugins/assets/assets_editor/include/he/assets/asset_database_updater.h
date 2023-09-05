@@ -2,8 +2,6 @@
 
 #pragma once
 
-#include "change_journal_watcher.h"
-
 #include "he/assets/asset_database.h"
 #include "he/core/signal.h"
 #include "he/core/directory_watcher.h"

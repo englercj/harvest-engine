@@ -22,29 +22,11 @@ namespace he::editor
 
     bool AssetService::Initialize()
     {
-        m_projectService.OnLoad().Attach<&AssetService::OnProjectLoaded>(this);
-        OnProjectLoaded();
-        return true;
-    }
-
-    void AssetService::Terminate()
-    {
-        if (m_db.IsInitialized())
-            m_onDbInitSignal.Dispatch(false);
-
-        m_onDbReadyBinding.Detach();
-        m_updater.Stop();
-
-        m_db.Terminate();
-        m_dbReady = false;
-    }
-
-    void AssetService::OnProjectLoaded()
-    {
-        Terminate();
-
-        if (!m_projectService.IsOpen())
-            return;
+        if (!HE_VERIFY(m_projectService.IsOpen(),
+            HE_MSG("A project must be open for the asset service to initialize.")))
+        {
+            return false;
+        }
 
         auto failGuard = MakeScopeGuard([&]() { Terminate(); });
 
@@ -94,7 +76,16 @@ namespace he::editor
         }
 
         failGuard.Dismiss();
-        m_onDbInitSignal.Dispatch(true);
+        return true;
+    }
+
+    void AssetService::Terminate()
+    {
+        m_onDbReadyBinding.Detach();
+        m_updater.Stop();
+
+        m_db.Terminate();
+        m_dbReady = false;
     }
 
     void AssetService::OnDbReady()

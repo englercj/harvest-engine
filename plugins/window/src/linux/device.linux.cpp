@@ -480,19 +480,12 @@ namespace he::window::linux
         return true;
     }
 
-    int DeviceImpl::Run(Application& app, const ViewDesc& desc)
+    int DeviceImpl::Run(Application& app)
     {
         m_app = &app;
 
-        // Create root window
-        ViewImpl view(this, desc);
-        view.SetVisible(true, true);
-
         // Dispatch the Initialized event before we start the loop
-        {
-            InitializedEvent ev(&view);
-            app.OnEvent(ev);
-        }
+        app.OnEvent(InitializedEvent{});
 
         // Event loop
         while (m_running.load())
@@ -513,14 +506,14 @@ namespace he::window::linux
             }
 
             // Handle view clipping
-            if (m_viewClipped == false && m_cursorRelativeMode)
+            if (!m_viewClipped && m_cursorRelativeView)
             {
                 uint32_t mask = ButtonPressMask | ButtonReleaseMask | PointerMotionMask;
-                m_XGrabPointer(m_display, view.m_window, True, mask, GrabModeAsync, GrabModeAsync, view.m_window, m_hiddenCursor, CurrentTime);
+                m_XGrabPointer(m_display, m_cursorRelativeView->m_window, True, mask, GrabModeAsync, GrabModeAsync, m_cursorRelativeView->m_window, m_hiddenCursor, CurrentTime);
                 m_XFlush(m_display);
                 m_viewClipped = true;
             }
-            else if (m_viewClipped && m_cursorRelativeMode == false)
+            else if (m_viewClipped && !m_cursorRelativeView)
             {
                 m_XUngrabPointer(m_display, CurrentTime);
                 m_XFlush(m_display);
@@ -532,10 +525,7 @@ namespace he::window::linux
         }
 
         // Dispatch the Terminating event now that we've exited the event loop
-        {
-            TerminatingEvent ev;
-            app.OnEvent(ev);
-        }
+        app.OnEvent(TerminatingEvent{});
 
         m_app = nullptr;
         return m_returnCode.load();

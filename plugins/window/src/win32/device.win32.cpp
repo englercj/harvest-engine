@@ -475,7 +475,7 @@ namespace he::window::win32
                 ev.pos = pos;
                 ev.absolute = absolute;
 
-                if (device->m_cursorRelativeMode)
+                if (device->m_cursorRelativeView)
                     device->CenterCursor();
 
                 app->OnEvent(ev);
@@ -733,7 +733,7 @@ namespace he::window::win32
         return true;
     }
 
-    int DeviceImpl::Run(Application& app, const ViewDesc& desc)
+    int DeviceImpl::Run(Application& app)
     {
         m_app = &app;
         m_returnCode.store(0);
@@ -744,15 +744,8 @@ namespace he::window::win32
         if (!HE_VERIFY(SUCCEEDED(hr), HE_MSG("Failed to initialize COM apartment."), HE_VAL(hr)))
             return -1;
 
-        // Create root window
-        ViewImpl view(this, desc);
-        view.SetVisible(true, true);
-
         // Dispatch the Initialized event before we start the loop
-        {
-            InitializedEvent ev(&view);
-            app.OnEvent(ev);
-        }
+        app.OnEvent(InitializedEvent{});
 
         // Event loop
         while (m_running.load())
@@ -776,18 +769,18 @@ namespace he::window::win32
             }
 
             // Handle cursor clipping
-            if (m_viewClipped == false && m_cursorRelativeMode)
+            if (!m_viewClipped && m_cursorRelativeView)
             {
                 RECT rect =
                 {
-                    view.GetPosition().x, view.GetPosition().y,
-                    view.GetPosition().x + view.GetSize().x, view.GetPosition().y + view.GetSize().y
+                    m_cursorRelativeView->GetPosition().x, m_cursorRelativeView->GetPosition().y,
+                    m_cursorRelativeView->GetPosition().x + m_cursorRelativeView->GetSize().x, m_cursorRelativeView->GetPosition().y + m_cursorRelativeView->GetSize().y
                 };
 
                 ::ClipCursor(&rect);
                 m_viewClipped = true;
             }
-            else if (m_viewClipped && m_cursorRelativeMode == false)
+            else if (m_viewClipped && !m_cursorRelativeView)
             {
                 ::ClipCursor(nullptr);
                 m_viewClipped = false;
@@ -799,10 +792,7 @@ namespace he::window::win32
         }
 
         // Dispatch the Terminating event now that we've exited the event loop
-        {
-            TerminatingEvent ev;
-            app.OnEvent(ev);
-        }
+        app.OnEvent(TerminatingEvent{});
 
         // Terminate our COM initialization.
         ::OleUninitialize();
@@ -889,24 +879,26 @@ namespace he::window::win32
         }
     }
 
-    void DeviceImpl::SetCursorRelativeMode(bool relativeMode)
+    void DeviceImpl::EnableRelativeCursor(View* view)
     {
-        if (m_cursorRelativeMode == relativeMode)
-            return;
-        m_cursorRelativeMode = relativeMode;
+        DisableRelativeCursor();
 
-        ShowCursor(!m_cursorRelativeMode);
 
-        if (m_cursorRelativeMode)
+        if (view)
         {
+            m_cursorRelativeView = static_cast<ViewImpl*>(view);
             m_cursorRestorePosition = GetCursorPos(nullptr);
+            ShowCursor(false);
             CenterCursor();
         }
-        else
-        {
-            SetCursorPos(nullptr, m_cursorRestorePosition);
-            m_cursorRestorePosition = { 0, 0 };
-        }
+    }
+
+    void DeviceImpl::DisableRelativeCursor()
+    {
+        ShowCursor(true);
+        SetCursorPos(nullptr, m_cursorRestorePosition);
+        m_cursorRelativeView = nullptr;
+        m_cursorRestorePosition = { 0, 0 };
     }
 
     static BOOL CALLBACK CountMonitorsCallback(HMONITOR, HDC, LPRECT, LPARAM dwData)
@@ -986,12 +978,11 @@ namespace he::window::win32
 
     void DeviceImpl::CenterCursor()
     {
-        View* view = FocusedView();
-        if (!view)
+        if (!m_cursorRelativeView)
             return;
 
-        const Vec2f pos = MakeVec2<float>(view->GetSize()) / 2.0f;
-        SetCursorPos(view, pos);
+        const Vec2f pos = MakeVec2<float>(m_cursorRelativeView->GetSize()) / 2.0f;
+        SetCursorPos(m_cursorRelativeView, pos);
     }
 
     static PointerButton GetPointerButton(POINTER_BUTTON_CHANGE_TYPE buttonType, PEN_FLAGS penFlags)
@@ -1074,9 +1065,6 @@ namespace he::window::win32
         }
         else if (HasFlag(info.pointerFlags, POINTER_FLAG_UPDATE))
         {
-            if (data.pointerKind == PointerKind::Mouse && m_deviceInfo.hasHighDefMouse)
-                return;
-
             PointerMoveEvent ev = MakeAndCopyPointerEvent<PointerMoveEvent>(data);
             ev.pos = { static_cast<float>(info.ptPixelLocation.x), static_cast<float>(info.ptPixelLocation.y) };
             ev.absolute = true;
@@ -1137,6 +1125,11 @@ namespace he::window::win32
 
     bool DeviceImpl::HandlePointerFrameMouse(View* view, PointerId pointerId)
     {
+        // Don't actually process mouse events if we have high-def mouse input.
+        // Instead, just pretend we handled them so they get skipped.
+        if (m_deviceInfo.hasHighDefMouse)
+            return true;
+
         if (!m_GetPointerFrameInfo)
             return false;
 
@@ -1164,6 +1157,11 @@ namespace he::window::win32
 
     bool DeviceImpl::HandlePointerFrameHistoryMouse(View* view, PointerId pointerId)
     {
+        // Don't actually process mouse events if we have high-def mouse input.
+        // Instead, just pretend we handled them so they get skipped.
+        if (m_deviceInfo.hasHighDefMouse)
+            return true;
+
         if (!m_GetPointerFrameInfoHistory)
             return false;
 

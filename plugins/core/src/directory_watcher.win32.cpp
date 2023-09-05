@@ -29,13 +29,15 @@ namespace he
 
     static Result RequestNextChanges(DirectoryWatcherImpl* impl)
     {
+        // FILE_NOTIFY_CHANGE_FILE_NAME = renaming, creating, or deleting a file
+        // FILE_NOTIFY_CHANGE_LAST_WRITE = change to the last write-time of a file
         constexpr DWORD WatchFlags = FILE_NOTIFY_CHANGE_FILE_NAME
             // | FILE_NOTIFY_CHANGE_DIR_NAME
             // | FILE_NOTIFY_CHANGE_ATTRIBUTES
             // | FILE_NOTIFY_CHANGE_SIZE
             | FILE_NOTIFY_CHANGE_LAST_WRITE
             // | FILE_NOTIFY_CHANGE_LAST_ACCESS
-            | FILE_NOTIFY_CHANGE_CREATION
+            // | FILE_NOTIFY_CHANGE_CREATION
             // | FILE_NOTIFY_CHANGE_SECURITY
             ;
 
@@ -54,7 +56,7 @@ namespace he
         return result ? Result::Success : Result::FromLastError();
     }
 
-    static Result ReadEntry(DirectoryWatcherImpl* impl, DirectoryWatcher::Entry& outEntry)
+    static Result ReadEntry(DirectoryWatcherImpl* impl, DirectoryWatcher::Event& outEvent)
     {
         DWORD validBytes = 0;
         const BOOL result = ::GetOverlappedResult(impl->handle, &impl->overlap, &validBytes, false);
@@ -105,23 +107,23 @@ namespace he
         }
 
         // Read the path name from the end of the
-        WCToMBStr(outEntry.path, info->FileName, info->FileNameLength);
+        WCToMBStr(outEvent.path, info->FileName, info->FileNameLength);
 
         // Convert the action into a change reason
         switch (info->Action)
         {
-            case FILE_ACTION_ADDED: outEntry.reason = FileChangeReason::Added; break;
-            case FILE_ACTION_REMOVED: outEntry.reason = FileChangeReason::Removed; break;
-            case FILE_ACTION_MODIFIED: outEntry.reason = FileChangeReason::Modified; break;
-            case FILE_ACTION_RENAMED_OLD_NAME: outEntry.reason = FileChangeReason::Renamed_OldName; break;
-            case FILE_ACTION_RENAMED_NEW_NAME: outEntry.reason = FileChangeReason::Renamed_NewName; break;
+            case FILE_ACTION_ADDED: outEvent.reason = FileChangeReason::Added; break;
+            case FILE_ACTION_REMOVED: outEvent.reason = FileChangeReason::Removed; break;
+            case FILE_ACTION_MODIFIED: outEvent.reason = FileChangeReason::Modified; break;
+            case FILE_ACTION_RENAMED_OLD_NAME: outEvent.reason = FileChangeReason::Renamed_OldName; break;
+            case FILE_ACTION_RENAMED_NEW_NAME: outEvent.reason = FileChangeReason::Renamed_NewName; break;
             default:
             {
                 HE_LOG_WARN(he_core,
                     HE_MSG("Encountered unknown file action in DirectoryWatcher, assuming Modified reason."),
-                    HE_KV(file_path, outEntry.path),
+                    HE_KV(file_path, outEvent.path),
                     HE_KV(file_action, info->Action));
-                outEntry.reason = FileChangeReason::Modified;
+                outEvent.reason = FileChangeReason::Modified;
                 break;
             }
         }
@@ -139,13 +141,13 @@ namespace he
         return Result::Success;
     }
 
-    FileWatchResult GetFileWatchResult(Result result)
+    DirectoryWatchResult GetDirectoryWatchResult(Result result)
     {
         switch (result.GetCode())
         {
-            case ERROR_SUCCESS: return FileWatchResult::Success;
-            case ERROR_TIMEOUT: return FileWatchResult::Timeout;
-            default: return FileWatchResult::Failure;
+            case ERROR_SUCCESS: return DirectoryWatchResult::Success;
+            case ERROR_TIMEOUT: return DirectoryWatchResult::Timeout;
+            default: return DirectoryWatchResult::Failure;
         }
     }
 
@@ -210,10 +212,10 @@ namespace he
         m_impl = nullptr;
     }
 
-    Result DirectoryWatcher::WaitForEntry(Entry& outEntry, Duration timeout)
+    Result DirectoryWatcher::WaitForEvent(Event& outEvent, Duration timeout)
     {
         if (!HE_VERIFY(m_impl))
-            return false;
+            return Result::InvalidParameter;
 
         DirectoryWatcherImpl* impl = static_cast<DirectoryWatcherImpl*>(m_impl);
 
@@ -229,7 +231,7 @@ namespace he
         if (!HE_VERIFY(r == WAIT_OBJECT_0, HE_KV(result, r)))
             return Win32Result(ERROR_INVALID_DATA);
 
-        return ReadEntry(impl, outEntry);
+        return ReadEntry(impl, outEvent);
     }
 }
 

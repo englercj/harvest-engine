@@ -101,9 +101,12 @@ namespace he::assets
 
     bool AssetDatabase::IsFileUpToDate(const char* path)
     {
-        String relPath;
-        if (!PrepareRelativePath(path, relPath))
+        if (!HE_VERIFY(IsAbsolutePath(path),
+            HE_MSG("The AssetDatabase can only handle absolute paths."),
+            HE_KV(file_path, path)))
+        {
             return false;
+        }
 
         AssetFileModel model;
         if (!m_storage.FindOne(model, Where(Col(&AssetFileModel::filePath) == path)))
@@ -185,11 +188,10 @@ namespace he::assets
 
     bool AssetDatabase::UpdateAssetFileAsync(const char* path, LoadDelegate callback)
     {
-        if (!HE_VERIFY(!StrEmpty(path)))
+        if (!HE_VERIFY(IsAbsolutePath(path),
+            HE_MSG("The AssetDatabase can only handle absolute paths."),
+            HE_KV(file_path, path)))
         {
-            HE_LOG_WARN(he_assets,
-                HE_MSG("UpdateAssetFileAsync called with an empty path, ignoring update request."),
-                HE_KV(file_path, path));
             return false;
         }
 
@@ -211,30 +213,20 @@ namespace he::assets
             return false;
         }
 
-        if (!HE_VERIFY(!StrEmpty(path)))
+        if (!HE_VERIFY(IsAbsolutePath(path),
+            HE_MSG("The AssetDatabase can only handle absolute paths."),
+            HE_KV(file_path, path)))
         {
-            HE_LOG_WARN(he_assets,
-                HE_MSG("LoadAssetFileAsync called with an empty path, ignoring load request."),
-                HE_KV(file_path, path));
-
-            callback({ Result::InvalidParameter });
-            return false;
-        }
-
-        String absPath;
-        if (!PrepareAbsolutePath(path, absPath))
-        {
-            callback({ Result::InvalidParameter });
             return false;
         }
 
         AsyncFile file;
-        Result r = file.Open(absPath.Data(), FileOpenMode::ReadExisting, FileOpenFlag::SequentialScan);
+        const Result r = file.Open(path, FileOpenMode::ReadExisting, FileOpenFlag::SequentialScan);
         if (!r)
         {
             HE_LOG_ERROR(he_assets,
                 HE_MSG("Failed to open asset file."),
-                HE_KV(file_path, absPath),
+                HE_KV(file_path, path),
                 HE_KV(result, r));
 
             callback({ r });
@@ -247,7 +239,7 @@ namespace he::assets
             HE_LOG_ERROR(he_assets,
                 HE_MSG("Asset file size is larger than UINT32_MAX"),
                 HE_KV(file_size, size),
-                HE_KV(file_path, absPath));
+                HE_KV(file_path, path));
 
             callback({ Result::InvalidParameter });
             return false;
@@ -256,15 +248,15 @@ namespace he::assets
         const uint32_t fileByteSize = static_cast<uint32_t>(size);
 
         LoadRequest* load = Allocator::GetDefault().New<LoadRequest>();
-        load->path = absPath;
+        load->path = path;
         load->content.Resize(fileByteSize, DefaultInit);
         load->db = this;
         load->callback = callback;
 
         file.ReadAsync(load->content.Data(), 0, fileByteSize, AsyncFile::CompleteDelegate::Make([](const void* l, AsyncFileOp token)
         {
-            Result r = AsyncFile::GetResult(token);
-            HandleFileReadComplete(static_cast<LoadRequest*>(const_cast<void*>(l)), r);
+            const Result rc = AsyncFile::GetResult(token);
+            HandleFileReadComplete(static_cast<LoadRequest*>(const_cast<void*>(l)), rc);
         }, load));
 
         file.Close();
@@ -291,55 +283,117 @@ namespace he::assets
         return LoadAssetFileAsync(model.filePath.Data(), Move(callback));
     }
 
-    AssetDatabase::LoadResult AssetDatabase::LoadAssetFile(const char* path)
+    bool AssetDatabase::UpdateAssetFile(const char* path)
     {
-        if (!HE_VERIFY(!StrEmpty(path)))
+        if (!HE_VERIFY(IsAbsolutePath(path),
+            HE_MSG("The AssetDatabase can only handle absolute paths."),
+            HE_KV(file_path, path)))
+        {
+            return false;
+        }
+
+        const AssetDatabase::LoadResult load = LoadAssetFile(path);
+        if (!load.result)
         {
             HE_LOG_WARN(he_assets,
-                HE_MSG("LoadAssetFile called with an empty path, ignoring load request."),
+                HE_MSG("Failed to read asset file data from disk, cannot update database."),
+                HE_KV(file_path, path),
+                HE_KV(result, load.result));
+            return false;
+        }
+
+        return UpdateAssetFile(path, load.builder.Root());
+    }
+
+    bool AssetDatabase::UpdateAssetFile(const char* path, AssetFile::Reader assetFile)
+    {
+        if (!HE_VERIFY(IsAbsolutePath(path),
+            HE_MSG("The AssetDatabase can only handle absolute paths."),
+            HE_KV(file_path, path)))
+        {
+            return false;
+        }
+
+        // Otherwise lets prepare the file model and update the DB
+        FileAttributes attrs{};
+        const Result r = File::GetAttributes(path, attrs);
+        if (!r)
+        {
+            HE_LOG_WARN(he_assets,
+                HE_MSG("Failed to read asset file attributes from disk, write time and size will be incorrect."),
+                HE_KV(file_path, path),
+                HE_KV(result, r));
+            return false;
+        }
+
+        AssetFileModel model;
+        model.uuid = assetFile.GetUuid();
+        model.filePath = path;
+        model.fileWriteTime = attrs.writeTime;
+        model.fileSize = static_cast<uint32_t>(attrs.size);
+
+        if (assetFile.HasSource() && !assetFile.GetSource().IsEmpty())
+        {
+            const schema::String::Reader sourcePath = assetFile.GetSource();
+            model.sourcePath = sourcePath;
+
+            const Result rc = File::GetAttributes(model.sourcePath.Data(), attrs);
+            if (rc)
+            {
+                model.sourceWriteTime = attrs.writeTime;
+                model.sourceSize = static_cast<uint32_t>(attrs.size);
+            }
+            else
+            {
+                HE_LOG_WARN(he_assets,
+                    HE_MSG("Failed to read source file attributes from disk, write time and size will be incorrect."),
+                    HE_KV(asset_file_path, model.filePath),
+                    HE_KV(asset_source_path, model.sourcePath),
+                    HE_KV(result, rc));
+            }
+        }
+
+        if (!AssetFileModel::AddOrUpdate(*this, assetFile, model))
+        {
+            HE_LOG_WARN(he_assets,
+                HE_MSG("Failed to update asset cached DB with asset file data. Check the logs above this for additional details."),
+                HE_KV(file_uuid, AssetFileUuid(assetFile.GetUuid())),
+                HE_KV(file_path, model.filePath));
+        }
+    }
+
+    AssetDatabase::LoadResult AssetDatabase::LoadAssetFile(const char* path)
+    {
+        if (!HE_VERIFY(IsAbsolutePath(path),
+            HE_MSG("The AssetDatabase can only handle absolute paths."),
+            HE_KV(file_path, path)))
+        {
+            return { Result::InvalidParameter };
+        }
+
+        LoadResult load;
+        String content;
+        load.result = File::ReadAll(content, path);
+        if (!load.result)
+        {
+            HE_LOG_ERROR(he_assets,
+                HE_MSG("Failed to load asset file."),
+                HE_KV(file_path, path),
+                HE_KV(result, load.result));
+
+            return load;
+        }
+
+        if (!schema::FromToml(load.builder, content.Data()))
+        {
+            HE_LOG_ERROR(he_assets,
+                HE_MSG("Failed to parse asset file. Is it valid TOML?"),
                 HE_KV(file_path, path));
 
             return { Result::InvalidParameter };
         }
 
-        String absPath;
-        if (!PrepareAbsolutePath(path, absPath))
-        {
-            return { Result::InvalidParameter };
-        }
-
-        LoadResult loadResult;
-        String content;
-        Result r = File::ReadAll(content, absPath.Data());
-        if (!r)
-        {
-            HE_LOG_ERROR(he_assets,
-                HE_MSG("Failed to load asset file."),
-                HE_KV(file_path, absPath),
-                HE_KV(result, r));
-
-            return { r };
-        }
-
-        if (!schema::FromToml(loadResult.builder, content.Data()))
-        {
-            HE_LOG_ERROR(he_assets,
-                HE_MSG("Failed to parse asset file. Is it valid TOML?"),
-                HE_KV(file_path, absPath));
-
-            return { Result::InvalidParameter };
-        }
-
-        if (loadResult.builder.Root().IsValid())
-        {
-            HE_LOG_ERROR(he_assets,
-                HE_MSG("Failed to parse asset file. The root struct is not an AssetFile."),
-                HE_KV(file_path, absPath));
-
-            return { Result::InvalidParameter };
-        }
-
-        return loadResult;
+        return load;
     }
 
     AssetDatabase::LoadResult AssetDatabase::LoadAssetFile(const AssetFileUuid& fileUuid)
@@ -355,17 +409,12 @@ namespace he::assets
 
     bool AssetDatabase::SaveAssetFile(const char* path, AssetFile::Reader assetFile)
     {
-        if (!HE_VERIFY(!StrEmpty(path)))
+        if (!HE_VERIFY(IsAbsolutePath(path),
+            HE_MSG("The AssetDatabase can only handle absolute paths."),
+            HE_KV(file_path, path)))
         {
-            HE_LOG_ERROR(he_assets,
-                HE_MSG("SaveAssetFile called with an empty path."),
-                HE_KV(path, path));
             return false;
         }
-
-        String absPath;
-        if (!HE_VERIFY(PrepareAbsolutePath(path, absPath)))
-            return false;
 
         String str;
         schema::ToToml<AssetFile>(str, assetFile);
@@ -380,34 +429,28 @@ namespace he::assets
             return false;
         }
 
-        AssetFileUpdateInternal(path, assetFile);
+        UpdateAssetFile(path, assetFile);
         return true;
     }
 
     void AssetDatabase::OnAssetFileDeleted(const char* path)
     {
-        if (!HE_VERIFY(!StrEmpty(path)))
+        if (!HE_VERIFY(IsAbsolutePath(path),
+            HE_MSG("The AssetDatabase can only handle absolute paths."),
+            HE_KV(file_path, path)))
         {
-            HE_LOG_WARN(he_assets,
-                HE_MSG("OnAssetFileDeleted called with an empty path, ignoring delete notification."),
-                HE_KV(file_path, path));
             return;
         }
 
-        String relPath;
-        if (!PrepareRelativePath(path, relPath))
-            return;
-
-        m_storage.Destroy<AssetFileModel>(Where(Col(&AssetFileModel::filePath) == relPath));
+        m_storage.Destroy<AssetFileModel>(Where(Col(&AssetFileModel::filePath) == path));
     }
 
     void AssetDatabase::OnAssetFileUpdated(const char* path)
     {
-        if (!HE_VERIFY(!StrEmpty(path)))
+        if (!HE_VERIFY(IsAbsolutePath(path),
+            HE_MSG("The AssetDatabase can only handle absolute paths."),
+            HE_KV(file_path, path)))
         {
-            HE_LOG_WARN(he_assets,
-                HE_MSG("OnAssetFileUpdated called with an empty path, ignoring update notification."),
-                HE_KV(file_path, path));
             return;
         }
 
@@ -419,43 +462,7 @@ namespace he::assets
             return;
         }
 
-        UpdateAssetFileAsync(path, {});
-    }
-
-    bool AssetDatabase::PrepareRelativePath(const char* path, String& relPath) const
-    {
-        relPath = path;
-        if (IsAbsolutePath(relPath))
-        {
-            if (!MakeRelative(relPath, m_assetRoot))
-            {
-                HE_LOG_WARN(he_assets,
-                    HE_MSG("Absolute path does not refer to a file in the asset root directory, ignoring."),
-                    HE_KV(file_path, relPath),
-                    HE_KV(root_dir, m_assetRoot));
-                return false;
-            }
-        }
-
-        NormalizePath(relPath);
-        return true;
-    }
-
-    bool AssetDatabase::PrepareAbsolutePath(const char* path, String& absPath) const
-    {
-        if (IsAbsolutePath(path) && !IsChildPath(path, m_assetRoot))
-        {
-            HE_LOG_WARN(he_assets,
-                HE_MSG("Absolute path does not refer to a file in the asset root directory, ignoring."),
-                HE_KV(file_path, path),
-                HE_KV(root_dir, m_assetRoot));
-            return false;
-        }
-
-        absPath = m_assetRoot;
-        ConcatPath(absPath, path);
-        NormalizePath(absPath);
-        return true;
+        UpdateAssetFile(path);
     }
 
     String AssetDatabase::MakeResourcePath(const AssetUuid& assetUuid, ResourceId resourceId) const
@@ -465,69 +472,6 @@ namespace he::assets
         Directory::Create(path.Data(), true);
         FormatTo(path, "/{}", resourceId);
         return path;
-    }
-
-    void AssetDatabase::AssetFileUpdateInternal(const char* path, AssetFile::Reader assetFile)
-    {
-        String relPath;
-        if (!HE_VERIFY(PrepareRelativePath(path, relPath)))
-            return;
-
-        String absPath;
-        if (!HE_VERIFY(PrepareAbsolutePath(path, absPath)))
-            return;
-
-        // Otherwise lets prepare the file model and update the DB
-        FileAttributes attrs{};
-        Result res = File::GetAttributes(absPath.Data(), attrs);
-        if (!res)
-        {
-            HE_LOG_WARN(he_assets,
-                HE_MSG("Failed to read asset file attributes from disk, write time and size will be incorrect."),
-                HE_KV(result, res),
-                HE_KV(file_path, absPath));
-        }
-
-        AssetFileModel model;
-        model.uuid = assetFile.GetUuid();
-        model.filePath = relPath;
-        model.fileWriteTime = attrs.writeTime;
-        model.fileSize = static_cast<uint32_t>(attrs.size);
-
-        if (assetFile.HasSource() && !assetFile.GetSource().IsEmpty())
-        {
-            const schema::String::Reader sourcePath = assetFile.GetSource();
-
-            model.sourcePath = sourcePath;
-
-            // TODO: Modify for when we support sparse checkout of source files.
-            String sourceAbsPath;
-            if (PrepareAbsolutePath(model.sourcePath.Data(), sourceAbsPath))
-            {
-                res = File::GetAttributes(sourceAbsPath.Data(), attrs);
-                if (res)
-                {
-                    model.sourceWriteTime = attrs.writeTime;
-                    model.sourceSize = static_cast<uint32_t>(attrs.size);
-                }
-                else
-                {
-                    HE_LOG_WARN(he_assets,
-                        HE_MSG("Failed to read source file attributes from disk, write time and size will be incorrect."),
-                        HE_KV(result, res),
-                        HE_KV(file_path, absPath),
-                        HE_KV(source_path, sourceAbsPath));
-                }
-            }
-        }
-
-        if (!AssetFileModel::AddOrUpdate(*this, assetFile, model))
-        {
-            HE_LOG_WARN(he_assets,
-                HE_MSG("Failed to update asset cached DB with asset file data. Check the logs above this for additional details."),
-                HE_KV(file_uuid, AssetFileUuid(assetFile.GetUuid())),
-                HE_KV(file_path, absPath));
-        }
     }
 
     void AssetDatabase::HandleFileReadComplete(LoadRequest* load, Result result)
@@ -552,19 +496,6 @@ namespace he::assets
             return;
         }
 
-        // Root() of TypeBuilder will add it if it doesn't exist, so we check the underlying raw
-        // builder if the root was properly set.
-        schema::PointerBuilder root = loadResult.builder.builder.Root();
-        if (root.IsNull() || !root.TryGetStruct<AssetFile>().IsValid())
-        {
-           HE_LOG_ERROR(he_assets,
-               HE_MSG("Failed to parse asset file. The root struct is not an AssetFile."),
-               HE_KV(file_path, load->path));
-
-           load->callback({ Result::InvalidParameter });
-           return;
-        }
-
         load->callback(Move(loadResult));
     }
 
@@ -577,7 +508,7 @@ namespace he::assets
         HE_AT_SCOPE_EXIT([&]() { Allocator::GetDefault().Delete(req); });
 
         if (load.result)
-            db.AssetFileUpdateInternal(path.Data(), load.builder.Root());
+            db.UpdateAssetFile(path.Data(), load.builder.Root());
 
         if (callback)
             callback(Move(load));

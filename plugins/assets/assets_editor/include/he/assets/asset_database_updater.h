@@ -7,6 +7,7 @@
 #include "he/assets/asset_database.h"
 #include "he/core/signal.h"
 #include "he/core/directory_watcher.h"
+#include "he/core/vector.h"
 
 #include <atomic>
 #include <thread>
@@ -28,25 +29,17 @@ namespace he::assets
 
     private:
         void ScanThreadFunc();
-
         void FileWatchThreadFunc();
-        void HandleFileEntry(const DirectoryWatcher::Entry& entry);
-
-        void JournalWatchThreadFunc();
-        void HandleJournalEntry(const ChangeJournalWatcher::Entry& entry);
 
     private:
         AssetDatabase& m_db;
 
-        ChangeJournalWatcher m_journalWatcher{};
-        DirectoryWatcher m_dirWatcher{};
-
-        int64_t m_startJournalMax{ 0 };
-        bool m_useJournal{ false };
+        uint32_t m_scanToken{ 0 };
         std::atomic<bool> m_running{ false };
 
-        std::thread m_watchThread{};
         std::thread m_scanThread{};
+        std::thread m_watchThread{};
+        Vector<DirectoryWatcher> m_dirWatchers{};
 
         OnReadySignal m_onReadySignal{};
     };

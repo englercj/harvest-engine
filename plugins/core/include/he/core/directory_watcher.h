@@ -20,7 +20,7 @@ namespace he
         Renamed_NewName,
     };
 
-    enum class FileWatchResult : uint8_t
+    enum class DirectoryWatchResult : uint8_t
     {
         Success,
         Failure,
@@ -28,15 +28,15 @@ namespace he
         Timeout,
     };
 
-    FileWatchResult GetFileWatchResult(Result result);
+    DirectoryWatchResult GetDirectoryWatchResult(Result result);
 
     class DirectoryWatcher
     {
     public:
-        /// Structure representing an entry in a recursive directory scan.
-        struct Entry
+        /// Structure representing an event during a directory watch.
+        struct Event
         {
-            Entry(Allocator& allocator = Allocator::GetDefault()) noexcept
+            Event(Allocator& allocator = Allocator::GetDefault()) noexcept
                 : path(allocator)
                 , reason(FileChangeReason::Added)
             {}
@@ -66,7 +66,7 @@ namespace he
 
         void Close();
 
-        Result WaitForEntry(Entry& outEntry, Duration timeout = Duration_Max);
+        Result WaitForEvent(Event& outEvent, Duration timeout = Duration_Max);
 
     private:
         Allocator& m_allocator;

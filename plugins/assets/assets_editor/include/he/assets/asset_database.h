@@ -40,13 +40,13 @@ namespace he::assets
         sqlite::Database& Db() { return m_storage.Db(); }
         sqlite3* Handle() const { return m_storage.Handle(); }
 
-        // TODO: Audit the path handling in these.
-        // All of these should work with absolute paths, or asset root relative paths.
         bool IsFileUpToDate(const char* path);
         bool UpdateAssetFileAsync(const char* path, LoadDelegate callback);
         bool LoadAssetFileAsync(const char* path, LoadDelegate callback);
         bool LoadAssetFileAsync(const AssetFileUuid& fileUuid, LoadDelegate callback);
 
+        bool UpdateAssetFile(const char* path);
+        bool UpdateAssetFile(const char* path, AssetFile::Reader assetFile);
         LoadResult LoadAssetFile(const char* path);
         LoadResult LoadAssetFile(const AssetFileUuid& fileUuid);
         bool SaveAssetFile(const char* path, AssetFile::Reader assetFile);
@@ -72,12 +72,7 @@ namespace he::assets
         }
 
     private:
-        bool PrepareRelativePath(const char* path, String& relPath) const;
-        bool PrepareAbsolutePath(const char* path, String& absPath) const;
-
         String MakeResourcePath(const AssetUuid& assetUuid, ResourceId resourceId) const;
-
-        void AssetFileUpdateInternal(const char* path, AssetFile::Reader assetFile);
 
     private:
         struct LoadRequest

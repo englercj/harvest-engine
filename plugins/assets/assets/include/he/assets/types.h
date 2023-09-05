@@ -18,7 +18,7 @@
 namespace he::assets
 {
     /// The file extension used by Harvest asset files.
-    constexpr StringView AssetFileExtension{ ".he_asset" };
+    inline constexpr StringView AssetFileExtension{ ".he_asset" };
 
     /// A Uuid wrapper to provide a type-safe expression of an Asset's Uuid or Asset File's Uuid.
     /// The tag template param is used to generate a unique type, but is otherwise unused.

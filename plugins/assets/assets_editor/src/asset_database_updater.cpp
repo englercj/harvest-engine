@@ -2,12 +2,14 @@
 
 #include "he/assets/asset_database_updater.h"
 
-#include "he/assets/asset_file_scanner.h"
 #include "he/assets/asset_models.h"
+#include "he/assets/types.h"
 #include "he/core/assert.h"
 #include "he/core/delegate.h"
+#include "he/core/directory.h"
 #include "he/core/log.h"
 #include "he/core/path.h"
+#include "he/core/random.h"
 #include "he/core/result.h"
 #include "he/core/result_fmt.h"
 #include "he/core/string.h"
@@ -30,63 +32,28 @@ namespace he::assets
         if (!HE_VERIFY(!m_running))
             return true;
 
-        const char* path = m_db.AssetRoot().Data();
+        GetSecureRandomBytes(reinterpret_cast<uint8_t*>(&m_scanToken), sizeof(m_scanToken));
 
-        // We want to use the Change Journal if possible because it is much more efficient than
-        // scanning the filesystem and watching for changes. We are also much less likely to
-        // miss change events when using the journal vs the directory watcher.
-        //
-        // Unfortunately, access to the Change Journal requires Admin privileges. The directory
-        // watcher is used as a fallback in the cases where we fail to access the journal.
-        m_useJournal = true;
-        if (!m_journalWatcher.Initialize(path))
+        const Span<const String> paths = m_db.ContentRoots();
+        for (const String& path : paths)
         {
-            m_useJournal = false;
-            const Result r = m_dirWatcher.Open(path);
+            DirectoryWatcher& watcher = m_dirWatchers.EmplaceBack();
+            const Result r = watcher.Open(path.Data());
             if (!r)
             {
                 HE_LOG_ERROR(he_assets,
                     HE_MSG("Failed to open path for watching."),
                     HE_KV(path, path),
                     HE_KV(result, r));
+                Stop();
                 return false;
             }
         }
 
-        bool needsFullScan = true;
-
-        if (m_useJournal)
-        {
-            ConfigModel config;
-            const bool found = m_db.Storage().FindOne(config, Where(Col(&ConfigModel::key) == NextUsnConfigKey));
-            if (found && config.value.Size() == sizeof(int64_t))
-            {
-                int64_t startUsn;
-                MemCopy(&startUsn, config.value.Data(), sizeof(int64_t));
-
-                m_startJournalMax = m_journalWatcher.NextUsn();
-
-                // If our starting USN is valid we can scan the journal instead of the file system
-                if (m_journalWatcher.SetNextUsn(startUsn))
-                    needsFullScan = false;
-            }
-        }
-
         m_running = true;
+        m_scanThread = std::thread(std::bind(&AssetDatabaseUpdater::ScanThreadFunc, this));
+        m_watchThread = std::thread(std::bind(&AssetDatabaseUpdater::FileWatchThreadFunc, this));
 
-        if (needsFullScan)
-        {
-            m_scanThread = std::thread(std::bind(&AssetDatabaseUpdater::ScanThreadFunc, this));
-        }
-
-        if (m_useJournal)
-        {
-            m_watchThread = std::thread(std::bind(&AssetDatabaseUpdater::JournalWatchThreadFunc, this));
-        }
-        else
-        {
-            m_watchThread = std::thread(std::bind(&AssetDatabaseUpdater::FileWatchThreadFunc, this));
-        }
         return true;
     }
 
@@ -99,20 +66,79 @@ namespace he::assets
 
         if (m_scanThread.joinable())
             m_scanThread.join();
+
+        m_dirWatchers.Clear();
     }
 
     void AssetDatabaseUpdater::ScanThreadFunc()
     {
         SetCurrentThreadName("[HE] Asset File Scanner");
 
-        const String& assetRoot = m_db.AssetRoot();
+        const Span<const String> paths = m_db.ContentRoots();
 
-        AssetFileScanner scanner(m_db);
-        if (!scanner.Run(assetRoot.Data()))
+        Vector<String> directoriesToScan;
+        directoriesToScan = paths;
+
+        String fileData;
+        fileData.Reserve(8192);
+
+        String fullPath;
+        fullPath.Reserve(1024);
+
+        while (!directoriesToScan.IsEmpty())
         {
-            HE_LOG_ERROR(he_assets,
-                HE_MSG("Asset file scan failed, check the log for additional info."),
-                HE_KV(asset_root, assetRoot));
+            String dirPath = Move(directoriesToScan.Back());
+            directoriesToScan.PopBack();
+
+            DirectoryScanner scanner;
+
+            const Result r = scanner.Open(dirPath.Data());
+            if (!r)
+            {
+                HE_LOG_ERROR(he_assets,
+                    HE_MSG("Failed to open directory for asset scan."),
+                    HE_KV(directory_name, dirPath),
+                    HE_KV(result, r));
+                continue;
+            }
+
+            DirectoryScanner::Entry entry;
+            while (scanner.NextEntry(entry))
+            {
+                fullPath = dirPath;
+                ConcatPath(fullPath, entry.name);
+
+                if (entry.isDirectory)
+                {
+                    directoriesToScan.PushBack(fullPath);
+                    continue;
+                }
+
+                const StringView ext = GetExtension(fullPath);
+                if (ext != AssetFileExtension)
+                    continue;
+
+                if (!m_db.UpdateAssetFile(fullPath.Data()))
+                {
+                    HE_LOG_ERROR(he_assets,
+                        HE_MSG("Failed to update database entries for asset file."),
+                        HE_KV(asset_file_path, fullPath.Data()));
+                    continue;
+                }
+
+                const auto query = sqlite::Update(
+                    sqlite::Where(sqlite::Col(&AssetFileModel::filePath) == fullPath),
+                    sqlite::Set(&AssetFileModel::scanToken, m_scanToken));
+
+                if (!m_db.Storage().Execute(query))
+                {
+                    HE_LOG_ERROR(he_assets,
+                        HE_MSG("Failed to update asset in DB to latest scan token. Asset metadata may be removed from DB."),
+                        HE_KV(asset_file_path, fullPath),
+                        HE_KV(result, r));
+                    continue;
+                }
+            }
         }
 
         m_onReadySignal.Dispatch();
@@ -124,84 +150,46 @@ namespace he::assets
 
         while (m_running)
         {
-            DirectoryWatcher::Entry entry;
-            const Result r = m_dirWatcher.WaitForEntry(entry, FromPeriod<Seconds>(1));
-
-            const FileWatchResult wait = GetFileWatchResult(r);
-
-            switch (wait)
+            for (DirectoryWatcher& watcher : m_dirWatchers)
             {
-                case FileWatchResult::Success: HandleFileEntry(entry); break;
-                case FileWatchResult::Timeout: break;
-                case FileWatchResult::Failure:
-                    HE_LOG_ERROR(he_assets, HE_MSG("Failed to wait for file watch entry."), HE_KV(result, r));
-                    break;
-            }
-        }
-    }
+                DirectoryWatcher::Event evt;
+                const Result r = watcher.WaitForEvent(evt, Duration_Zero);
+                const DirectoryWatchResult waitResult = GetDirectoryWatchResult(r);
 
-    void AssetDatabaseUpdater::HandleFileEntry(const DirectoryWatcher::Entry& entry)
-    {
-        if (GetExtension(entry.path) != AssetFileExtension)
-            return;
-
-        if (entry.reason == FileChangeReason::Removed || entry.reason == FileChangeReason::Renamed_OldName)
-        {
-            m_db.OnAssetFileDeleted(entry.path.Data());
-        }
-        else if (!m_db.IsFileUpToDate(entry.path.Data()))
-        {
-            m_db.OnAssetFileUpdated(entry.path.Data());
-        }
-    }
-
-    void AssetDatabaseUpdater::JournalWatchThreadFunc()
-    {
-        SetCurrentThreadName("[HE] Asset File Watcher");
-
-        auto journalEntryDelegate = ChangeJournalWatcher::EntryDelegate::Make<&AssetDatabaseUpdater::HandleJournalEntry>(this);
-
-        while (m_running)
-        {
-            const bool r = m_journalWatcher.GetEntries(journalEntryDelegate);
-
-            if (r)
-            {
-                ConfigModel config;
-                config.key = NextUsnConfigKey;
-                config.SetValue(m_journalWatcher.NextUsn());
-
-                const auto query = Insert<ConfigModel>(
-                    Cols(&ConfigModel::key, &ConfigModel::value),
-                    Values(config.key, config.value),
-                    OnConflict(&ConfigModel::key).DoUpdate(Set(&ConfigModel::value, Excluded(&ConfigModel::value))));
-
-                m_db.Storage().Execute(query);
-
-                if (m_startJournalMax != 0 && m_journalWatcher.NextUsn() >= m_startJournalMax)
+                switch (waitResult)
                 {
-                    m_startJournalMax = 0;
-                    m_onReadySignal.Dispatch();
+                    case DirectoryWatchResult::Success:
+                    {
+                        if (GetExtension(evt.path) != AssetFileExtension)
+                            return;
+
+                        if (evt.reason == FileChangeReason::Removed || evt.reason == FileChangeReason::Renamed_OldName)
+                        {
+                            m_db.OnAssetFileDeleted(evt.path.Data());
+                        }
+                        else
+                        {
+                            m_db.OnAssetFileUpdated(evt.path.Data());
+                        }
+                        break;
+                    }
+                    case DirectoryWatchResult::Timeout:
+                    {
+                        // Timeout is fine, just means we didn't get any events
+                        break;
+                    }
+                    case DirectoryWatchResult::Failure:
+                    {
+                        HE_LOG_ERROR(he_assets, HE_MSG("Failed to get file watch event status."), HE_KV(result, r));
+                        break;
+                    }
                 }
             }
-        }
-    }
 
-    void AssetDatabaseUpdater::HandleJournalEntry(const ChangeJournalWatcher::Entry& entry)
-    {
-        if (!IsChildPath(entry.path, m_db.AssetRoot()))
-            return;
-
-        if (GetExtension(entry.path) != AssetFileExtension)
-            return;
-
-        if (HasAnyFlags(entry.reasonFlags, ChangeJournalReasonFlag::Removed | ChangeJournalReasonFlag::Renamed_OldName))
-        {
-            m_db.OnAssetFileDeleted(entry.path.Data());
-        }
-        else if (!m_db.IsFileUpToDate(entry.path.Data()))
-        {
-            m_db.OnAssetFileUpdated(entry.path.Data());
+            if (m_running)
+            {
+                SleepCurrentThread(FromPeriod<Seconds>(1));
+            }
         }
     }
 }

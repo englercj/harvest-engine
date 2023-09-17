@@ -192,7 +192,7 @@ namespace he
     };
 
     // --------------------------------------------------------------------------------------------
-    // Secure Hash Algorithm 1 (SHA1) 160-bit cryptographic hash
+    // Secure Hash Algorithm 1 (SHA-1) 160-bit cryptographic hash
     struct SHA1
     {
         struct Value
@@ -244,7 +244,7 @@ namespace he
     };
 
     // --------------------------------------------------------------------------------------------
-    // Secure Hash Algorithm 2 (SHA256) 256-bit cryptographic hash
+    // Secure Hash Algorithm 2 (SHA-256) 256-bit cryptographic hash
     struct SHA256
     {
         struct Value

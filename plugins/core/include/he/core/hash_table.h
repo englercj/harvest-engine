@@ -61,9 +61,9 @@ namespace he
     };
 
     /// A densely stored hash table based on robin-hood hashing with backwards shift deletion.
-    /// Because the entries in the table are stored in a contiguous block of memory the hash table
-    /// has a few interesting properties: fast entry iteration, and a guarantee that iteration of
-    /// entries will be in insertion order.
+    /// Because the entries in the table are stored in a contiguous block of memory iteration
+    /// of entries is very fast. Entries are stored in insertion order, however removals may
+    /// change the order of entries.
     ///
     /// Removals are a bit slower than other hash table strategies because it requires two lookups.
     /// Keys are expected to support comparisons with `==` and `!=`. Pointers to entries should be

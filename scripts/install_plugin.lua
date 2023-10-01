@@ -220,7 +220,7 @@ return function (plugin)
         end
         assert(type(url) == "string" and url ~= "", "Bad source when installing archive of '" .. plugin.id .. "' for '" .. target .. "'.")
 
-        local extract_dir = i.basepath == nil and path.getbasename(url) or ""
+        local extract_dir = i.base_path == nil and path.getbasename(url) or ""
         install_dir = _install_from_archive(plugin.id, url, path.getname(url), extract_dir)
     elseif i.source ~= nil then
         install_dir = path.join(install_dir, i.source)
@@ -228,8 +228,8 @@ return function (plugin)
         verbosef("Plugin '%s' has no install source, nothing will be downloaded.", plugin.id)
     end
 
-    if i.basepath ~= nil then
-        install_dir = path.join(install_dir, i.basepath)
+    if i.base_path ~= nil then
+        install_dir = path.join(install_dir, i.base_path)
     end
 
     -- Run the install scripts if specified

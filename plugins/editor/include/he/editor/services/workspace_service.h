@@ -14,6 +14,7 @@
 #include "he/editor/services/panel_service.h"
 #include "he/editor/services/platform_service.h"
 #include "he/editor/services/task_service.h"
+#include "he/editor/widgets/app_frame.h"
 #include "he/window/view.h"
 
 namespace he::editor
@@ -27,14 +28,17 @@ namespace he::editor
             AssetService& assetService,
             DialogService& dialogService,
             DocumentService& documentService,
-            EditorView& editorView,
             ImGuiService& imguiService,
             LogService& logService,
             PanelService& panelService,
             PlatformService& platformService,
             ProjectService& projectService,
             TaskService& taskService,
+            UniquePtr<AppFrame> appFrame,
             UniquePtr<OpenProjectCommand> openProjectCommand) noexcept;
+
+        bool Initialize(window::View* view);
+        void Terminate();
 
         void Show();
         bool RequestClose();
@@ -49,7 +53,6 @@ namespace he::editor
         AssetService& m_assetService;
         DialogService& m_dialogService;
         DocumentService& m_documentService;
-        EditorView& m_editorView;
         ImGuiService& m_imguiService;
         LogService& m_logService;
         PanelService& m_panelService;
@@ -57,8 +60,9 @@ namespace he::editor
         ProjectService& m_projectService;
         TaskService& m_taskService;
 
+        UniquePtr<AppFrame> m_appFrame;
         UniquePtr<OpenProjectCommand> m_openProjectCommand;
 
-        window::ViewHitArea m_menuHitArea{ window::ViewHitArea::Normal };
+        window::View* m_view{ nullptr };
     };
 }

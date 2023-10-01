@@ -95,7 +95,7 @@ struct Plugin
         github @6 :String;
         bitbucket @7 :String;
         nuget @8 :String;
-        basepath @9 :String;
+        basePath @9 :String $Toml.Name("base_path");
     }
 
     struct Extension

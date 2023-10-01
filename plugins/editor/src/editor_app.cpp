@@ -19,6 +19,7 @@ namespace he::editor
         ModuleRegistry& moduleRegistry,
         ProjectService& projectService,
         ProjectView& projectView,
+        SettingsService& settingsService,
         TaskService& taskService) noexcept
         : m_appArgsService(appArgsService)
         , m_directoryService(directoryService)
@@ -28,6 +29,7 @@ namespace he::editor
         , m_moduleRegistry(moduleRegistry)
         , m_projectService(projectService)
         , m_projectView(projectView)
+        , m_settingsService(settingsService)
         , m_taskService(taskService)
     {}
 
@@ -120,8 +122,8 @@ namespace he::editor
 
     void EditorApp::OnTick()
     {
-        m_editorView.Show();
-        m_projectView.Show();
+        m_editorView.Tick();
+        m_projectView.Tick();
     }
 
     window::ViewHitArea EditorApp::OnHitTest(window::View* view, const Vec2i& point)

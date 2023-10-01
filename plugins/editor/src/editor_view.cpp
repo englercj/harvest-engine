@@ -13,14 +13,12 @@ namespace he::editor
         EditorData& editorData,
         ImGuiService& imguiService,
         RenderService& renderService,
-        SettingsService& settingsService,
         WorkspaceService& workspaceService) noexcept
         : m_appArgsService(appArgsService)
         , m_assetService(assetService)
         , m_editorData(editorData)
         , m_imguiService(imguiService)
         , m_renderService(renderService)
-        , m_settingsService(settingsService)
         , m_workspaceService(workspaceService)
     {}
 
@@ -33,8 +31,6 @@ namespace he::editor
     void EditorView::Terminate()
     {
         m_initialized = false;
-
-        m_settingsService.Save();
 
         m_imguiService.Terminate();
         m_renderService.Terminate();
@@ -80,7 +76,7 @@ namespace he::editor
         }
     }
 
-    void EditorView::Show()
+    void EditorView::Tick()
     {
         if (!m_initialized)
             return;
@@ -116,9 +112,10 @@ namespace he::editor
         desc.flags = window::ViewFlag::Default | window::ViewFlag::Borderless | window::ViewFlag::AcceptFiles;
 
         m_view = m_editorData.device->CreateView(desc);
+        m_view->SetVisible(true, true);
+
         m_initialized = true;
 
-        // Initialize required services
         if (!m_assetService.Initialize())
             return false;
 
@@ -128,8 +125,9 @@ namespace he::editor
         if (!m_imguiService.Initialize(m_view))
             return false;
 
-        // Failing to load settings is OK, we'll run with defaults and have an error in the log
-        m_settingsService.Reload();
+        if (!m_workspaceService.Initialize(m_view))
+            return false;
+
         return true;
     }
 

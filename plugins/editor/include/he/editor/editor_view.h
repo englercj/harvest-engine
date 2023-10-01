@@ -5,7 +5,6 @@
 #include "he/editor/services/asset_service.h"
 #include "he/editor/services/imgui_service.h"
 #include "he/editor/services/render_service.h"
-#include "he/editor/services/settings_service.h"
 #include "he/editor/services/workspace_service.h"
 
 namespace he::window { struct Event; class View; }
@@ -21,7 +20,6 @@ namespace he::editor
             EditorData& editorData,
             ImGuiService& imguiService,
             RenderService& renderService,
-            SettingsService& settingsService,
             WorkspaceService& workspaceService) noexcept;
 
         bool Initialize();
@@ -30,7 +28,7 @@ namespace he::editor
         bool TryTerminate();
 
         void OnEvent(const window::Event& ev);
-        void Show();
+        void Tick();
 
         window::ViewHitArea HitTest(const Vec2i& point);
         window::ViewDropEffect GetDropEffect();
@@ -49,7 +47,6 @@ namespace he::editor
         EditorData& m_editorData;
         ImGuiService& m_imguiService;
         RenderService& m_renderService;
-        SettingsService& m_settingsService;
         WorkspaceService& m_workspaceService;
 
         bool m_initialized{ false };

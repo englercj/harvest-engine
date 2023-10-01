@@ -11,6 +11,7 @@
 #include "he/editor/services/directory_service.h"
 #include "he/editor/services/log_service.h"
 #include "he/editor/services/project_service.h"
+#include "he/editor/services/settings_service.h"
 #include "he/editor/services/task_service.h"
 #include "he/window/application.h"
 
@@ -30,6 +31,7 @@ namespace he::editor
             ModuleRegistry& moduleRegistry,
             ProjectService& projectService,
             ProjectView& projectView,
+            SettingsService& settingsService,
             TaskService& taskService) noexcept;
 
         bool Initialize(int argc, char* argv[]);
@@ -46,6 +48,7 @@ namespace he::editor
 
         void OnProjectLoaded();
         void OnProjectUnloaded();
+        void OnEditorViewTerminated();
 
     private:
         AppArgsService& m_appArgsService;
@@ -56,6 +59,7 @@ namespace he::editor
         ModuleRegistry& m_moduleRegistry;
         ProjectService& m_projectService;
         ProjectView& m_projectView;
+        SettingsService& m_settingsService;
         TaskService& m_taskService;
 
         ProjectService::OnLoadSignal::Binding m_onProjectLoadedBinding;

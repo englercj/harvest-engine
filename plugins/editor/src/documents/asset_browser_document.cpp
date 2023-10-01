@@ -6,17 +6,14 @@
 
 namespace he::editor
 {
-    AssetBrowserDocument::AssetBrowserDocument(
-        AssetService& assetService,
-        DialogService& dialogService,
-        ImGuiService& imguiService) noexcept
-        : m_browser(assetService, dialogService, imguiService)
+    AssetBrowserDocument::AssetBrowserDocument(UniquePtr<AssetBrowser> browser) noexcept
+        : m_browser(Move(browser))
     {
         m_title = "Asset Browser";
     }
 
     void AssetBrowserDocument::Show()
     {
-        m_browser.Show();
+        m_browser->Show();
     }
 }

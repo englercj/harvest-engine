@@ -10,7 +10,7 @@ homepage = "https://www.sqlite.org/index.html"
 
 [install]
     archive = "https://www.sqlite.org/2023/sqlite-amalgamation-3420000.zip"
-    basepath = "sqlite-amalgamation-3420000"
+    base_path = "sqlite-amalgamation-3420000"
 
 [[modules]]
     name = "sqlite3"

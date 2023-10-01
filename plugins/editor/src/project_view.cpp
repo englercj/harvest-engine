@@ -2,25 +2,29 @@
 
 #include "he/editor/project_view.h"
 
+#include "he/editor/dialogs/about_dialog.h"
+#include "he/editor/icons/icons_material_design.h"
+#include "he/editor/widgets/menu.h"
+
 namespace he::editor
 {
     ProjectView::ProjectView(
         AppArgsService& appArgsService,
-        AssetService& assetService,
+        DialogService& dialogService,
         EditorData& editorData,
         ImGuiService& imguiService,
         RenderService& renderService,
         SettingsService& settingsService,
         TaskService& taskService,
-        WorkspaceService& workspaceService) noexcept
+        UniquePtr<AppFrame> appFrame) noexcept
         : m_appArgsService(appArgsService)
-        , m_assetService(assetService)
+        , m_dialogService(dialogService)
         , m_editorData(editorData)
         , m_imguiService(imguiService)
         , m_renderService(renderService)
         , m_settingsService(settingsService)
         , m_taskService(taskService)
-        , m_workspaceService(workspaceService)
+        , m_appFrame(Move(appFrame))
     {}
 
     bool ProjectView::Initialize()
@@ -33,13 +37,8 @@ namespace he::editor
     {
         m_initialized = false;
 
-        m_settingsService.Save();
-
-        ShutdownAsyncFileIO();
-
         m_imguiService.Terminate();
         m_renderService.Terminate();
-        m_assetService.Terminate();
         m_taskService.Terminate();
 
         m_editorData.device->Quit(0);
@@ -71,14 +70,14 @@ namespace he::editor
         }
     }
 
-    void ProjectView::Show()
+    void ProjectView::Tick()
     {
         if (!m_initialized)
             return;
 
         // Update the application UI
         m_imguiService.NewFrame();
-        m_workspaceService.Show();
+        Show();
         m_imguiService.Update();
 
         // Perform rendering pass
@@ -89,12 +88,94 @@ namespace he::editor
 
     window::ViewHitArea ProjectView::HitTest(const Vec2i& point)
     {
-        return m_initialized ? m_workspaceService.GetHitArea(point) : window::ViewHitArea::Normal;
+        return m_initialized ? m_appFrame->GetHitArea(point) : window::ViewHitArea::Normal;
     }
 
-    window::ViewDropEffect EditorView::GetDropEffect()
+    window::ViewDropEffect ProjectView::GetDropEffect()
     {
         return m_initialized ? m_imguiService.GetDropEffect(m_view) :  window::ViewDropEffect::Reject;
+    }
+
+    void ProjectView::Show()
+    {
+        if (!m_view)
+            return;
+
+        ShowMainMenu();
+
+        // TODO: Big font
+        ImGui::TextUnformatted("Projects");
+        ImGui::SameLine();
+        ImGui::Button("Add Existing");
+        ImGui::SameLine();
+        ImGui::Button("Create New"); // Primary button color
+
+        const ImGuiTableFlags flags = ImGuiTableFlags_RowBg | ImGuiTableFlags_Resizable;
+        if (ImGui::BeginTable("##project_list", 2, flags))
+        {
+            ImGui::TableSetupColumn("Project Name");
+            ImGui::TableSetupColumn("Path");
+            ImGui::TableHeadersRow();
+
+            const ImGuiSelectableFlags selectFlags = ImGuiSelectableFlags_SpanAllColumns | ImGuiSelectableFlags_AllowItemOverlap | ImGuiSelectableFlags_AllowDoubleClick;
+
+            const schema::List<RecentProject>::Reader recentProjects = m_settingsService.GetSettings().GetRecentProjects();
+            for (const RecentProject::Reader project : recentProjects)
+            {
+                ImGui::PushID(project.GetPath().Data());
+
+                // Project Name
+                ImGui::TableNextColumn();
+                bool selected = false;
+                if (ImGui::Selectable("##project_select", &selected, selectFlags))
+                {
+                    if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
+                    {
+                        // TODO: Open project
+                    }
+                }
+                ImGui::SameLine();
+                ImGui::TextUnformatted(ICON_MDI_NOTEBOOK_EDIT " ");
+                ImGui::SameLine();
+                ImGui::TextUnformatted(project.GetName().Data());
+
+                // path
+                ImGui::TableNextColumn();
+                ImGui::TextUnformatted(project.GetPath().Data());
+            }
+        }
+    }
+
+    void ProjectView::ShowMainMenu()
+    {
+        if (!m_appFrame->BeginAppMainMenuBar())
+            return;
+
+        if (BeginTopLevelMenu("Help"))
+        {
+            MenuSeparator("Documentation");
+
+            // TODO
+            MenuItem("API Reference  " ICON_MDI_OPEN_IN_NEW, ICON_MDI_BOOK_OPEN);
+            MenuItem("Tutorials  " ICON_MDI_OPEN_IN_NEW, ICON_MDI_BOOK_OPEN_VARIANT);
+            MenuItem("Report Bug  " ICON_MDI_OPEN_IN_NEW, ICON_MDI_BUG);
+
+            MenuSeparator("Application");
+
+            if (MenuItem("Licenses"))
+            {
+                // TODO
+            }
+
+            if (MenuItem("About", ICON_MDI_HELP_CIRCLE))
+            {
+                m_dialogService.Open<AboutDialog>();
+            }
+
+            EndTopLevelMenu();
+        }
+
+        m_appFrame->EndAppMainMenuBar();
     }
 
     bool ProjectView::CreateView()
@@ -107,25 +188,17 @@ namespace he::editor
         desc.flags = window::ViewFlag::Default | window::ViewFlag::Borderless | window::ViewFlag::AcceptFiles;
 
         m_view = m_editorData.device->CreateView(desc);
+        m_view->SetVisible(true, true);
+
         m_initialized = true;
 
-        // Initialize required services
-        if (!m_assetService.Initialize())
-            return false;
-
-        // Startup rendering
         if (!m_renderService.Initialize(m_view))
             return false;
 
         if (!m_imguiService.Initialize(m_view))
             return false;
 
-        AsyncFileIOConfig config;
-        config.threadpool.executor = &m_taskService;
-        StartupAsyncFileIO(config);
-
-        // Failing to load settings is OK, we'll run with defaults and have an error in the log
-        m_settingsService.Reload();
+        m_appFrame->SetView(m_view);
         return true;
     }
 
@@ -140,9 +213,6 @@ namespace he::editor
     void ProjectView::OnViewRequestClose(window::View* view)
     {
         if (m_view != view)
-            return;
-
-        if (!m_workspaceService.RequestClose())
             return;
 
         Terminate();

@@ -55,7 +55,7 @@ id = "ocornut.imgui"
 | github        | String        | A string repository specifier in the form "<user>/<repo>#<commit-ish>" |
 | bitbucket     | String        | A string repository specifier in the form "<user>/<repo>#<commit-ish>" |
 | nuget         | String        | A string with the package name and version in the form "<package>#<version>" |
-| basepath      | String        | A path relative to the install directory to append to the install path returned by any of the other install sources. |
+| base_path      | String        | A path relative to the install directory to append to the install path returned by any of the other install sources. |
 
 ## Module Keys
 

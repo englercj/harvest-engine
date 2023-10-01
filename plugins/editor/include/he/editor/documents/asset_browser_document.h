@@ -13,14 +13,11 @@ namespace he::editor
     class AssetBrowserDocument : public Document
     {
     public:
-        AssetBrowserDocument(
-            AssetService& assetService,
-            DialogService& dialogService,
-            ImGuiService& imguiService) noexcept;
+        AssetBrowserDocument(UniquePtr<AssetBrowser> browser) noexcept;
 
         void Show() override;
 
     private:
-        AssetBrowser m_browser;
+        UniquePtr<AssetBrowser> m_browser;
     };
 }

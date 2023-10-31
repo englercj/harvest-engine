@@ -156,6 +156,12 @@ namespace he
             {
                 const auto& evt = static_cast<const window::InitializedEvent&>(ev);
                 HE_UNUSED(evt);
+
+                window::ViewDesc desc;
+                desc.title = "HE Window Test App";
+
+                m_view = m_device->CreateView(desc);
+                m_view->SetVisible(true, true);
                 break;
             }
             case window::EventKind::Terminating:

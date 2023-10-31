@@ -1065,6 +1065,11 @@ namespace he::window::win32
         }
         else if (HasFlag(info.pointerFlags, POINTER_FLAG_UPDATE))
         {
+            // Don't actually process mouse move events if we have high-def mouse input.
+            // Instead, just pretend we handled them so they get skipped.
+            if (m_deviceInfo.hasHighDefMouse && data.pointerKind == PointerKind::Mouse)
+                return;
+
             PointerMoveEvent ev = MakeAndCopyPointerEvent<PointerMoveEvent>(data);
             ev.pos = { static_cast<float>(info.ptPixelLocation.x), static_cast<float>(info.ptPixelLocation.y) };
             ev.absolute = true;
@@ -1125,11 +1130,6 @@ namespace he::window::win32
 
     bool DeviceImpl::HandlePointerFrameMouse(View* view, PointerId pointerId)
     {
-        // Don't actually process mouse events if we have high-def mouse input.
-        // Instead, just pretend we handled them so they get skipped.
-        if (m_deviceInfo.hasHighDefMouse)
-            return true;
-
         if (!m_GetPointerFrameInfo)
             return false;
 
@@ -1157,11 +1157,6 @@ namespace he::window::win32
 
     bool DeviceImpl::HandlePointerFrameHistoryMouse(View* view, PointerId pointerId)
     {
-        // Don't actually process mouse events if we have high-def mouse input.
-        // Instead, just pretend we handled them so they get skipped.
-        if (m_deviceInfo.hasHighDefMouse)
-            return true;
-
         if (!m_GetPointerFrameInfoHistory)
             return false;
 

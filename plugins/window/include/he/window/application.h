@@ -6,6 +6,8 @@
 
 namespace he::window
 {
+    enum class ViewHitArea : uint8_t;
+    enum class ViewDropEffect : uint8_t;
     class View;
     struct Event;
 

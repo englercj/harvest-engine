@@ -47,6 +47,8 @@ namespace he::window::win32
     using Pfn_XInputSetState = DWORD(WINAPI*)(_In_ DWORD dwUserIndex, _In_ XINPUT_VIBRATION* pVibration);
     using Pfn_XInputEnable = VOID(WINAPI*)(_In_ BOOL enable);
 
+    class ViewImpl;
+
     class DeviceImpl final : public Device
     {
     public:

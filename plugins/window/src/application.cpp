@@ -3,6 +3,7 @@
 #include "he/window/application.h"
 
 #include "he/core/alloca.h"
+#include "he/window/view.h"
 
 namespace he::window
 {

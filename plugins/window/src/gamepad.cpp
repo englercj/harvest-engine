@@ -4,8 +4,8 @@
 
 #include "he/core/assert.h"
 #include "he/core/enum_ops.h"
-#include "he/window/event.h"
 #include "he/window/application.h"
+#include "he/window/event.h"
 
 namespace he::window
 {

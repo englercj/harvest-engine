@@ -16,11 +16,8 @@ int he::AppMain(int argc, char* argv[])
     if (!device)
         return -1;
 
-    window::ViewDesc desc;
-    desc.title = "HE Window Test App";
-
     TestApp app(device);
-    int rc = device->Run(app, desc);
+    int rc = device->Run(app);
 
     window::Device::Destroy(device);
 

@@ -14,6 +14,7 @@ namespace he
         void OnTick() override;
 
     private:
-        window::Device* m_device;
+        window::Device* m_device{ nullptr };
+        window::View* m_view{ nullptr };
     };
 }

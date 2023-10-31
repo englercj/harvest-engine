@@ -11,7 +11,7 @@ he.workspace()
 
     if he.project and he.project.plugins then
         he.cwd_push(path.getdirectory(he.project_filename))
-        he.import_plugins(he.project.plugins)
+        he.import_plugins(he.project.plugins, he.project.plugin_import_options)
         he.cwd_pop()
     end
 

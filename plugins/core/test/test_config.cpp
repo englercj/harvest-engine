@@ -17,16 +17,16 @@ HE_TEST(core, config, Report)
     std::cout << "    HE_CFG_DEBUG not defined" << std::endl;
 #endif
 
+#if defined(HE_CFG_DEVELOPMENT)
+    std::cout << "    HE_CFG_DEVELOPMENT = " << HE_CFG_DEVELOPMENT << std::endl;
+#else
+    std::cout << "    HE_CFG_DEVELOPMENT not defined" << std::endl;
+#endif
+
 #if defined(HE_CFG_RELEASE)
     std::cout << "    HE_CFG_RELEASE = " << HE_CFG_RELEASE << std::endl;
 #else
     std::cout << "    HE_CFG_RELEASE not defined" << std::endl;
-#endif
-
-#if defined(HE_CFG_SHIPPING)
-    std::cout << "    HE_CFG_SHIPPING = " << HE_CFG_SHIPPING << std::endl;
-#else
-    std::cout << "    HE_CFG_SHIPPING not defined" << std::endl;
 #endif
 
 #if defined(HE_PLATFORM_EMSCRIPTEN)

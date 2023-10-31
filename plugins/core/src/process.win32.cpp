@@ -67,6 +67,22 @@ namespace he
         ::CloseHandle(process);
         return r == WAIT_TIMEOUT;
     }
+
+    Result GetCurrentProcessFilename(String& out)
+    {
+        wchar_t wcPath[MAX_PATH];
+        DWORD rc = ::GetModuleFileNameW(NULL, wcPath, MAX_PATH);
+
+        if (rc == 0 || rc == MAX_PATH)
+        {
+            // TODO: Handle ERROR_INSUFFICIENT_BUFFER and increase buffer size accordingly.
+            out.Clear();
+            return Result::FromLastError();
+        }
+
+        WCToMBStr(out, wcPath, rc);
+        return Result::Success;
+    }
 }
 
 #endif

@@ -103,6 +103,9 @@ HE_TEST(core, string_view, operator_eq)
     HE_EXPECT(!(c == a), c, a);
     HE_EXPECT(!(c == b), c, b);
     HE_EXPECT((c == c), c, c);
+
+    const StringView e(".ex");
+    HE_EXPECT(!(e == ".exe"));
 }
 
 // ------------------------------------------------------------------------------------------------

@@ -43,7 +43,7 @@ namespace he
         const int32_t len = ::WideCharToMultiByte(CP_UTF8, 0, src, -1, dst.Data(), dst.Size(), nullptr, nullptr);
 
         if (len > 0)
-            dst.Resize(len - 1);
+            dst.Resize(len - 1); // -1 for null
         else
             dst.Clear();
     }
@@ -64,7 +64,7 @@ namespace he
         const int32_t len = ::WideCharToMultiByte(CP_UTF8, 0, src, srcLen, dst.Data(), dst.Size(), nullptr, nullptr);
 
         if (len > 0)
-            dst.Resize(len - 1);
+            dst.Resize(len); // no -1 because no null is written
         else
             dst.Clear();
     }

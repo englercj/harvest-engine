@@ -97,7 +97,11 @@ namespace he
 
         const char* begin = baseName.Begin();
         const char* end = RangeFind(begin, baseName.Size(), ':'); // Handle NTFS Alternate Data Streams
-        const char* ext = end ? end : baseName.End();
+
+        if (end == nullptr)
+            end = baseName.End();
+
+        const char* ext = end;
 
         // empty
         if (begin >= ext)
@@ -350,6 +354,14 @@ namespace he
         HE_ASSERT(withoutExt.Data() == path.Data());
         HE_ASSERT(withoutExt.Size() <= path.Size());
         path.Resize(withoutExt.Size());
+    }
+
+    void RemoveBaseName(String& path)
+    {
+        const StringView baseName = GetBaseName(path);
+        HE_ASSERT(baseName.IsEmpty() || baseName.End() == path.End());
+        HE_ASSERT(baseName.Size() <= path.Size());
+        path.Resize(path.Size() - baseName.Size());
     }
 
     bool MakeRelative(String& path, StringView base)

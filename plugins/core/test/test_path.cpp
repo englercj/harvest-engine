@@ -439,6 +439,34 @@ HE_TEST(core, path, RemoveExtension)
 }
 
 // ------------------------------------------------------------------------------------------------
+HE_TEST(core, path, RemoveBaseName)
+{
+    struct TestCase
+    {
+        const char* s;
+        const char* exp;
+    } tests[] =
+    {
+        { "", "" },
+        { "a", "" },
+        { "a.b", "" },
+        { "a.b.c", "" },
+        { "/a.c", "/" },
+        { "a/b.c", "a/" },
+        { "a/b", "a/" },
+        { "a/b/", "a/b/" },
+    };
+
+    String buf;
+    for (TestCase tc : tests)
+    {
+        buf = tc.s;
+        RemoveBaseName(buf);
+        HE_EXPECT_EQ_STR(buf.Data(), tc.exp);
+    }
+}
+
+// ------------------------------------------------------------------------------------------------
 HE_TEST(core, path, MakeRelative)
 {
     struct TestCase

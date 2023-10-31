@@ -77,39 +77,6 @@ namespace he
         return fd;
     }
 
-    static Result ReadLink(const char* linkPath, String& path)
-    {
-        // POSIX says we should be able to read the size of the link here
-        // but linux isn't POSIX compliant in the /proc filesystem.
-        // if (lstat(linkPath, &sb) == -1)
-        //     return Result::FromLastError();
-
-        // path.Resize(sb.st_size + 1);
-
-        const uint32_t offset = out.Size();
-        uint32_t size = String::MaxEmbedCharacters;
-        path.Resize(path.Size() + size, DefaultInit);
-
-        do
-        {
-            ssize_t r = readlink(linkPath, path.Data() + offset, size);
-            if (r < 0)
-                return Result::FromLastError();
-
-            if (r < size)
-            {
-                // resize to properly null terminate
-                path.Resize(offset + r);
-                return Result::Success;
-            }
-
-            size = Max(512u, size * 2);
-            path.Resize(offset + size, DefaultInit);
-        } while (true);
-
-        return PosixResult(ENAMETOOLONG);
-    }
-
     void PosixFileGatherAttributes(const struct stat& sb, const char* path, FileAttributes& attribs)
     {
         attribs.flags = FileAttributeFlag::None;
@@ -172,16 +139,49 @@ namespace he
     Result PosixFileGetPath(int fd, String& outPath)
     {
         const String linkPath = Format("/proc/self/fd/{}", fd);
-        Result r = ReadLink(linkPath.Data(), outPath);
+        Result r = PosixReadLink(linkPath.Data(), outPath);
 
         // Size of link name changed between lstate and readlink, and it got larger. Try reading
         // it one more time before giving up.
         if (!r)
         {
-            r = ReadLink(linkPath.Data(), outPath);
+            r = PosixReadLink(linkPath.Data(), outPath);
         }
 
         return r;
+    }
+
+    Result PosixReadLink(const char* linkPath, String& outPath)
+    {
+        // POSIX says we should be able to read the size of the link here
+        // but linux isn't POSIX compliant in the /proc filesystem.
+        // if (lstat(linkPath, &sb) == -1)
+        //     return Result::FromLastError();
+
+        // outPath.Resize(sb.st_size + 1);
+
+        const uint32_t offset = out.Size();
+        uint32_t size = String::MaxEmbedCharacters;
+        outPath.Resize(outPath.Size() + size, DefaultInit);
+
+        do
+        {
+            ssize_t r = readlink(linkPath, outPath.Data() + offset, size);
+            if (r < 0)
+                return Result::FromLastError();
+
+            if (r < size)
+            {
+                // resize to properly null terminate
+                outPath.Resize(offset + r);
+                return Result::Success;
+            }
+
+            size = Max(512u, size * 2);
+            outPath.Resize(offset + size, DefaultInit);
+        } while (true);
+
+        return PosixResult(ENAMETOOLONG);
     }
 }
 

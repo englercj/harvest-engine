@@ -16,6 +16,8 @@ namespace he
     void PosixFileGatherAttributes(const stat& sb, const char* path, FileAttributes& attribs);
     Result PosixFileGetAttributes(int fd, FileAttributes& outAttributes);
     Result PosixFileGetPath(int fd, String& outPath);
+
+    Result PosixReadLink(const char* linkPath, String& outPath);
 }
 
 #endif

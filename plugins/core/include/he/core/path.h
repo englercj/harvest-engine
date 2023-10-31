@@ -101,6 +101,12 @@ namespace he
     /// \param[in,out] path The path to remove the extension of.
     void RemoveExtension(String& path);
 
+    /// Removes the extension from the end of the path.
+    /// For example, removing the extension of "/home/human/file.cpp" results in "/home/human/file".
+    ///
+    /// \param[in,out] path The path to remove the extension of.
+    void RemoveBaseName(String& path);
+
     /// Makes `path` relative to `parent`.
     ///
     /// \param[in,out] path The path absolute path to made relative.

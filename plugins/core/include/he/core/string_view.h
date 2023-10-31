@@ -91,7 +91,7 @@ namespace he
         ///
         /// \param x The string to check against.
         /// \return True if the strings are equal, false otherwise.
-        [[nodiscard]] bool operator==(const char* x) const { return StrEqualN(m_data, x, m_size); }
+        [[nodiscard]] bool operator==(const char* x) const { const uint32_t len = StrLen(x); return len == m_size && StrEqualN(m_data, x, m_size); }
 
         /// Checks if this string is equal to `x`.
         ///

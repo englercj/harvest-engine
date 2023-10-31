@@ -2,6 +2,7 @@
 
 #include "he/core/process.h"
 
+#include "he/core/path.h"
 #include "he/core/result_fmt.h"
 #include "he/core/test.h"
 
@@ -47,4 +48,16 @@ HE_TEST(core, process, IsProcessRunning)
 {
     const uint32_t pid = GetCurrentProcessId();
     HE_EXPECT(IsProcessRunning(pid));
+}
+
+// ------------------------------------------------------------------------------------------------
+HE_TEST(core, process, GetCurrentProcessFilename)
+{
+    String path;
+    const Result r = GetCurrentProcessFilename(path);
+    HE_EXPECT(r);
+    HE_EXPECT(!path.IsEmpty());
+#if defined(HE_PLATFORM_WINDOWS)
+    HE_EXPECT_EQ(GetExtension(path), ".exe");
+#endif
 }

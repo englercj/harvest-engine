@@ -4,9 +4,12 @@
 
 #include "he/core/alloca.h"
 #include "he/core/allocator.h"
+#include "he/core/file.h"
 #include "he/core/wstr.h"
 
 #if defined(HE_PLATFORM_API_POSIX)
+
+#include "file_helpers.posix.h"
 
 #include <signal.h>
 #include <stdlib.h>
@@ -48,6 +51,25 @@ namespace he
     {
         const int rc = kill(static_cast<pid_t>(pid), 0);
         return rc == 0;
+    }
+
+    Result GetCurrentProcessFilename(String& out)
+    {
+    #if defined(HE_PLATFORM_LINUX)
+        static constexpr const char ProcSelfExe[] = "/proc/self/exe";
+        Result r = PosixReadLink(ProcSelfExe, out);
+
+        // Size of link name changed between lstate and readlink, and it got larger. Try reading
+        // it one more time before giving up.
+        if (!r)
+        {
+            r = PosixReadLink(ProcSelfExe, outPath);
+        }
+
+        return r;
+    #else
+        return Result::NotSupported;
+    #endif
     }
 }
 

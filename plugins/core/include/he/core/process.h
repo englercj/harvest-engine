@@ -36,4 +36,10 @@ namespace he
     /// \param[in] pid The process ID to check.
     /// \return True if a process is running under `pid`, false otherwise.
     bool IsProcessRunning(uint32_t pid);
+
+    /// Gets the filename of the executable that started the calling process.
+    ///
+    /// \param[out] out The absolute path to the process executable file.
+    /// \return The result of the operation from the OS.
+    Result GetCurrentProcessFilename(String& out);
 }

@@ -5,11 +5,11 @@
 /// \def HE_CFG_DEBUG
 /// Defined when the current configuration is Debug.
 
+/// \def HE_CFG_DEVELOPMENT
+/// Defined when the current configuration is Development.
+
 /// \def HE_CFG_RELEASE
 /// Defined when the current configuration is Release.
-
-/// \def HE_CFG_SHIPPING
-/// Defined when the current configuration is Shipping.
 
 /// \def HE_PLATFORM_EMSCRIPTEN
 /// Defined when the target platform is Emscripten.
@@ -27,10 +27,10 @@
 /// Defined when the target platform implements Win32 APIs.
 
 /// \def HE_INTERNAL_BUILD
-/// Controls if this build is considered Internal. By default this is enabled for non-Shipping
+/// Controls if this build is considered Internal. By default this is enabled for non-Release
 /// configurations.
 #if !defined(HE_INTERNAL_BUILD)
-    #if defined(HE_CFG_SHIPPING)
+    #if defined(HE_CFG_RELEASE)
         #define HE_INTERNAL_BUILD       0
     #else
         #define HE_INTERNAL_BUILD       1

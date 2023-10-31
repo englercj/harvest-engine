@@ -99,6 +99,7 @@ he.cwd_push = function (dir)
     os.chdir(dir)
 end
 
+-- Pops a directory off the CWD stack
 he.cwd_pop = function ()
     local dir = table.remove(cwd_stack)
     if dir then

@@ -142,7 +142,7 @@ local function _module_project(mod)
     local module_type = module_type_by_kind[kindname];
     local language_type = iif(mod.language ~= nil, mod.language, "C++")
 
-    group(mod.group)
+    group(mod.group or "")
     project(mod.name)
         language(language_type)
         kind(kindname)

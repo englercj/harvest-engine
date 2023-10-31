@@ -1,7 +1,14 @@
 -- Copyright Chad Engler
 
-local p = premake
 local last_download_progress = 0
+
+local function _hex_to_char(x)
+    return string.char(tonumber(x, 16))
+end
+
+local function _unescape_url(url)
+    return url:gsub("%%(%x%x)", _hex_to_char)
+end
 
 local function _download_progress(total, current)
     local ratio = current / total;
@@ -27,60 +34,66 @@ local function _download_file(url, fpath)
     return result_str, response_code
 end
 
-local function _download_archive(name, url, dir, archiveName)
+local function _download_archive(name, url, dir, archive_name)
     os.mkdir(dir)
 
     printf("Downloading archive for %s (%s)", name, url)
 
-    local fpath = path.join(dir, archiveName)
+    local fpath = path.join(dir, archive_name)
 
     local result_str, response_code = _download_file(url, fpath)
     return result_str == "OK"
 end
 
-local function _install_from_archive(name, url, archiveName, extractDirName)
+local function _install_from_archive(name, url, archive_name, extract_dir_name)
     local digest = string.sha1(name .. url)
-    local archiveDir = path.join(he.plugin_install_dir, name)
+    local archive_dir = path.join(he.plugin_install_dir, name)
 
-    local vfile = path.join(archiveDir, ".plugin_digest")
+    local vfile = path.join(archive_dir, ".plugin_digest")
     local installed_version = io.readfile(vfile);
 
-    local extractDir = ""
-    if extractDirName == nil then
-        extractDir = archiveDir
+    local extract_dir = ""
+    if extract_dir_name == nil then
+        extract_dir = archive_dir
     else
-        extractDir = path.join(archiveDir, extractDirName)
+        extract_dir = path.join(archive_dir, extract_dir_name)
     end
+
+    extract_dir = _unescape_url(extract_dir)
 
     if installed_version == digest then
         verbosef("Plugin '%s' matches local digest, skipping.", name)
-    else
-        verbosef("Installing plugin '%s' from archive '%s'", name, url)
-
-        if _download_archive(name, url, archiveDir, archiveName) == false then
-            p.error("Failed to install archive for " .. name .. " from " .. url)
-            return
-        end
-
-        printf("Extracting %s...", archiveName)
-
-        os.mkdir(extractDir)
-
-        local fpath = path.join(archiveDir, archiveName)
-
-        if archiveName:find(".zip") ~= nil then
-            zip.extract(fpath, extractDir)
-        elseif archiveName:find(".tar") ~= nil then
-            os.executef("tar xf \"%s\" -C \"%s\"", fpath, extractDir)
-        else
-            p.error("Failed to extract %s, unrecognized extension.", archiveName)
-            return false
-        end
-
-        io.writefile(vfile, digest)
+        return extract_dir
     end
 
-    return extractDir
+    verbosef("Installing plugin '%s' from archive '%s'", name, url)
+
+    if _download_archive(name, url, archive_dir, archive_name) == false then
+        premake.error("Failed to install archive for " .. name .. " from " .. url)
+        return
+    end
+
+    printf("Extracting %s...", archive_name)
+
+    os.mkdir(extract_dir)
+
+    local fpath = path.join(archive_dir, archive_name)
+
+    if os.host() == "windows" then
+        -- zip.extract() chokes on large files so invoke a system utility instead
+        os.executef("%%WINDIR%%/system32/tar.exe -xf \"%s\" -C \"%s\"", fpath, extract_dir)
+    elseif archive_name:find(".zip") ~= nil then
+        -- zip.extract() chokes on large files so invoke a system utility instead
+        os.executef("unzip \"%s\" -d \"%s\"", fpath, extract_dir)
+    elseif archive_name:find(".tar") ~= nil then
+        os.executef("tar xf \"%s\" -C \"%s\"", fpath, extract_dir)
+    else
+        premake.error("Failed to extract %s, unrecognized extension.", archive_name)
+        return false
+    end
+
+    io.writefile(vfile, digest)
+    return extract_dir
 end
 
 local function _install_from_github(name, source)
@@ -107,8 +120,8 @@ local function _install_from_github(name, source)
     end
 
     local url = "https://github.com/" .. org .. "/" .. repo .. "/archive/" .. version .. ".zip"
-    local archiveName = org .. "_" .. repo .. "_" .. version .. ".zip"
-    local install_dir = _install_from_archive(name, url, archiveName)
+    local archive_name = org .. "_" .. repo .. "_" .. version .. ".zip"
+    local install_dir = _install_from_archive(name, url, archive_name)
 
     return path.join(install_dir, repo .. "-" .. trimmed_version)
 end
@@ -131,8 +144,8 @@ local function _install_from_bitbucket(name, source)
     end
 
     local url = "https://bitbucket.org/" .. org .. "/" .. repo .. "/get/" .. version .. ".zip"
-    local archiveName = org .. "_" .. repo .. "_" .. version .. ".zip"
-    local install_dir = _install_from_archive(name, url, archiveName)
+    local archive_name = org .. "_" .. repo .. "_" .. version .. ".zip"
+    local install_dir = _install_from_archive(name, url, archive_name)
 
     local dirs = os.matchdirs(path.join(install_dir, org .. "-" .. repo .. "-*"))
     assert(type(dirs[1]) == "string", "Failed to find install directory for bitbucket install of: " .. name)
@@ -157,9 +170,9 @@ local function _install_from_nuget(name, source)
     end
 
     local url = "https://www.nuget.org/api/v2/package/" .. package_name .. "/" .. version
-    local archiveName = package_name .. "_" .. version .. ".zip"
-    local extractDirName = package_name .. "-" .. version
-    local install_dir = _install_from_archive(name, url, archiveName, extractDirName)
+    local archive_name = package_name .. "_" .. version .. ".zip"
+    local extract_dir_name = package_name .. "-" .. version
+    local install_dir = _install_from_archive(name, url, archive_name, extract_dir_name)
 
     return install_dir
 end

@@ -1,10 +1,18 @@
 -- Copyright Chad Engler
 
+he._workspace_extension_funcs = {}
+
+he.add_workspace_extension = function (extension_func)
+    table.insert(he._workspace_extension_funcs, extension_func)
+end
+
 he.workspace = function ()
     workspace(he.sln_name)
 
     -- Shared project setup
-    configurations      { "Debug", "Release", "Shipping" }
+    configurations      { "Debug", "Development", "Release" }
+    platforms           (he.get_platforms())
+    defaultplatform     (he.get_default_platform())
     cppdialect          "C++20"
     cdialect            "C11"
     editandcontinue     "Off"
@@ -26,15 +34,15 @@ he.workspace = function ()
         sanitize { "Address" }
     end
 
+    -- Platform setup
+    he.define_platforms()
+
     -- System setup
     filter { "system:emscripten" }
         defines { "HE_PLATFORM_EMSCRIPTEN", "HE_PLATFORM_API_POSIX" }
-        platforms { "emscripten" }
-        flags { "EmSSE" }
 
     filter { "system:linux" }
         defines { "HE_PLATFORM_LINUX", "HE_PLATFORM_API_POSIX" }
-        platforms { "x64" }
 
     filter { "system:windows" }
         defines {
@@ -44,22 +52,7 @@ he.workspace = function ()
             "_WIN32_WINNT=0x0A00",      -- require minimum of windows 10
             "_ITERATOR_DEBUG_LEVEL=0",  -- Improve debug performance by disabling iterator checks
         }
-        platforms { "x64", "ARM64" }
         systemversion(_OPTIONS.windows_systemversion)
-
-    filter { "system:windows", "platforms:x64" }
-        if _OPTIONS.asan == nil then
-            editandcontinue "On"
-        end
-
-    -- Platform setup
-    filter { "platforms:x64" }
-        vectorextensions "SSE4.1"
-        tags { "simd_SSE4.1" }
-
-    filter { "platforms:ARM64" }
-        vectorextensions "NEON"
-        tags { "simd_NEON" }
 
     -- Compiler setup
     filter { "toolset:msc-*" }
@@ -70,10 +63,6 @@ he.workspace = function ()
             "/w44062",      -- An enumerator has no associated case handler in a switch statement, and there's no default label that can catch it.
             "/wd6255",      -- _alloca indicates failure by raising a stack overflow exception. Consider using _malloca instead.
         }
-
-    filter { "toolset:msc-*", "platforms:x64" }
-        vectorextensions "AVX"  -- MSVC has no sse4.1 arch, so we enable AVX
-        tags { "simd_AVX" }
 
     filter { "toolset:gcc or clang" }
         buildoptions {
@@ -106,18 +95,18 @@ he.workspace = function ()
         runtime "Debug"
         symbols "FastLink"
 
-    filter { "configurations:Release" }
-        defines { "NDEBUG", "HE_CFG_RELEASE" }
-        tags { "release", "internal" }
+    filter { "configurations:Development" }
+        defines { "NDEBUG", "HE_CFG_DEVELOPMENT" }
+        tags { "development", "internal" }
         flags { "LinkTimeOptimization" }
         inlining "Auto"
         optimize "Speed"
         runtime "Release"
         symbols "On"
 
-    filter { "configurations:Shipping" }
-        defines { "NDEBUG", "HE_CFG_SHIPPING" }
-        tags { "shipping", "external" }
+    filter { "configurations:Release" }
+        defines { "NDEBUG", "HE_CFG_RELEASE" }
+        tags { "release", "external" }
         flags { "LinkTimeOptimization" }
         inlining "Auto"
         optimize "Speed"
@@ -125,4 +114,10 @@ he.workspace = function ()
         symbols "Off"
 
     filter { }
+
+    for _, func in ipairs(he._workspace_extension_funcs) do
+        if func ~= nil then
+            func()
+        end
+    end
 end

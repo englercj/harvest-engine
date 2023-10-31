@@ -346,6 +346,8 @@ namespace he::rhi::d3d12
             case Format::RGBA8Unorm_sRGB: return DXGI_FORMAT_R8G8B8A8_UNORM;
             case Format::BGRA8Unorm: return DXGI_FORMAT_B8G8R8A8_UNORM;
             case Format::BGRA8Unorm_sRGB: return DXGI_FORMAT_B8G8R8A8_UNORM;
+            case Format::BGRX8Unorm: return DXGI_FORMAT_B8G8R8X8_UNORM;
+            case Format::BGRX8Unorm_sRGB: return DXGI_FORMAT_B8G8R8X8_UNORM;
             case Format::RGBA16Float: return DXGI_FORMAT_R16G16B16A16_FLOAT;
             case Format::RGB10A2Unorm: return DXGI_FORMAT_R10G10B10A2_UNORM;
             default:
@@ -362,6 +364,8 @@ namespace he::rhi::d3d12
             case Format::RGBA8Unorm_sRGB: return DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
             case Format::BGRA8Unorm: return DXGI_FORMAT_B8G8R8A8_UNORM;
             case Format::BGRA8Unorm_sRGB: return DXGI_FORMAT_B8G8R8A8_UNORM_SRGB;
+            case Format::BGRX8Unorm: return DXGI_FORMAT_B8G8R8X8_UNORM;
+            case Format::BGRX8Unorm_sRGB: return DXGI_FORMAT_B8G8R8X8_UNORM_SRGB;
             case Format::RGBA16Float: return DXGI_FORMAT_R16G16B16A16_FLOAT;
             case Format::RGB10A2Unorm: return DXGI_FORMAT_R10G10B10A2_UNORM;
             default:
@@ -378,6 +382,8 @@ namespace he::rhi::d3d12
             case DXGI_FORMAT_R8G8B8A8_UNORM_SRGB: return Format::RGBA8Unorm_sRGB;
             case DXGI_FORMAT_B8G8R8A8_UNORM: return Format::BGRA8Unorm;
             case DXGI_FORMAT_B8G8R8A8_UNORM_SRGB: return Format::BGRA8Unorm_sRGB;
+            case DXGI_FORMAT_B8G8R8X8_UNORM: return Format::BGRX8Unorm;
+            case DXGI_FORMAT_B8G8R8X8_UNORM_SRGB: return Format::BGRX8Unorm_sRGB;
             case DXGI_FORMAT_R16G16B16A16_FLOAT: return Format::RGBA16Float;
             case DXGI_FORMAT_R10G10B10A2_UNORM: return Format::RGB10A2Unorm;
             default:
@@ -410,6 +416,7 @@ namespace he::rhi::d3d12
 
         // 16-bit packed formats
         DXGI_FORMAT_B4G4R4A4_UNORM,         // BGRA4Unorm
+        DXGI_FORMAT_B5G6R5_UNORM,           // B5G6R5Unorm
 
         // 32-bit formats
         DXGI_FORMAT_R32_UINT,               // R32Uint
@@ -427,6 +434,8 @@ namespace he::rhi::d3d12
         DXGI_FORMAT_R8G8B8A8_SINT,          // RGBA8Sint
         DXGI_FORMAT_B8G8R8A8_UNORM,         // BGRA8Unorm
         DXGI_FORMAT_B8G8R8A8_UNORM_SRGB,    // BGRA8Unorm_sRGB
+        DXGI_FORMAT_B8G8R8X8_UNORM,         // BGRX8Unorm
+        DXGI_FORMAT_B8G8R8X8_UNORM_SRGB,    // BGRX8Unorm_sRGB
 
         // 32-bit packed formats
         DXGI_FORMAT_R10G10B10A2_UNORM,      // RGB10A2Unorm

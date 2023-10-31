@@ -41,6 +41,7 @@ namespace he
             case rhi::Format::RG8Uint: return "RG8Uint";
             case rhi::Format::RG8Sint: return "RG8Sint";
             case rhi::Format::BGRA4Unorm: return "BGRA4Unorm";
+            case rhi::Format::B5G6R5Unorm: return "B5G6R5Unorm";
             case rhi::Format::R32Uint: return "R32Uint";
             case rhi::Format::R32Sint: return "R32Sint";
             case rhi::Format::R32Float: return "R32Float";
@@ -56,6 +57,8 @@ namespace he
             case rhi::Format::RGBA8Sint: return "RGBA8Sint";
             case rhi::Format::BGRA8Unorm: return "BGRA8Unorm";
             case rhi::Format::BGRA8Unorm_sRGB: return "BGRA8Unorm_sRGB";
+            case rhi::Format::BGRX8Unorm: return "BGRX8Unorm";
+            case rhi::Format::BGRX8Unorm_sRGB: return "BGRX8Unorm_sRGB";
             case rhi::Format::RGB10A2Unorm: return "RGB10A2Unorm";
             case rhi::Format::RGB10A2Uint: return "RGB10A2Uint";
             case rhi::Format::RG11B10Float: return "RG11B10Float";

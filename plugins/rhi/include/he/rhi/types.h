@@ -106,6 +106,7 @@ namespace he::rhi
 
         // 16-bit packed formats
         BGRA4Unorm,
+        B5G6R5Unorm,
 
         // 32-bit formats
         R32Uint,
@@ -123,6 +124,8 @@ namespace he::rhi
         RGBA8Sint,
         BGRA8Unorm,
         BGRA8Unorm_sRGB,
+        BGRX8Unorm,
+        BGRX8Unorm_sRGB,
 
         // 32-bit packed formats
         RGB10A2Unorm,

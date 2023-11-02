@@ -29,7 +29,7 @@
 #if HE_INTERNAL_BUILD
     #define IM_ASSERT_USER_ERROR(_EXP,_MSG)     HE_VERIFY(_EXP, HE_MSG(_MSG))
 #else
-    #define IM_ASSERT_USER_ERROR(_EXP,_MSG)
+    #define IM_ASSERT_USER_ERROR(_EXP,_MSG)     {}
 #endif
 
 //---- Define attributes of all API symbols declarations, e.g. for DLL under Windows

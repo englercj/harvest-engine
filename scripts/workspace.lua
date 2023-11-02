@@ -93,7 +93,7 @@ he.workspace = function ()
         inlining "Explicit"
         optimize "Off"
         runtime "Debug"
-        symbols "FastLink"
+        symbols "Full"
 
     filter { "configurations:Development" }
         defines { "NDEBUG", "HE_CFG_DEVELOPMENT" }
@@ -111,7 +111,7 @@ he.workspace = function ()
         inlining "Auto"
         optimize "Speed"
         runtime "Release"
-        symbols "Off"
+        symbols "On"
 
     filter { }
 

@@ -7,7 +7,7 @@
 
 namespace he::editor
 {
-    AppArgsService::AppArgsService()
+    AppArgsService::AppArgsService() noexcept
     {
         m_descs.EmplaceBack(m_flags.help, 'h', "help", "Prints this help message");
     }

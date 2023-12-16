@@ -2,11 +2,12 @@
 
 he = {}
 
+include "utils.lua"
+
 include "options.lua"
 include "globals.lua"
 include "platforms.lua"
 include "modules.lua"
-include "utils.lua"
 include "workspace.lua"
 
 include "builtin_module_keys.lua"

@@ -131,8 +131,6 @@ local function _module_project(mod)
 
     verbosef("Generating project for module '%s' in group '%s'", mod.name, mod.group)
 
-    he.cwd_push(mod._plugin._install_dir)
-
     local kindname = kind_by_module_type[mod.type]
     assert(kindname, "Unknown module type: '" .. mod.type .. "'.")
 
@@ -141,6 +139,9 @@ local function _module_project(mod)
 
     local module_type = module_type_by_kind[kindname];
     local language_type = iif(mod.language ~= nil, mod.language, "C++")
+
+    assert(mod._plugin._install_valid, "Cannot generated module project for '" .. mod.name .. "' because the plugin that provides it ('" .. mod._plugin.id .. "') is not installed.")
+    local install_dirs = mod._plugin._install_dirs
 
     group(mod.group or "")
     project(mod.name)
@@ -155,13 +156,24 @@ local function _module_project(mod)
             "HE_CFG_MODULE_TYPE=" .. module_type,
         }
 
-        for key, value in he.ordered_pairs(mod) do
-            he.try_handle_module_key(mod, key, value)
-        end
-
         _system_tag_file_excludes()
 
-    he.cwd_pop()
+        for system, install_dir in pairs(install_dirs) do
+            he.cwd_push(install_dir)
+            if system ~= "*" then
+                printf("Pushing filter for system: %s in module: %s", system, mod.name)
+                he.filter_push { "system:" .. system }
+            end
+
+            for key, value in he.ordered_pairs(mod) do
+                he.try_handle_module_key(mod, key, value)
+            end
+
+            if system ~= "*" then
+                he.filter_pop()
+            end
+            he.cwd_pop()
+        end
 end
 
 local function _should_include_module(mod, options)
@@ -211,7 +223,7 @@ local function _import_plugin(plugin_path, options)
     he.imported_plugins_count = he.imported_plugins_count + 1
 
     plugin._file_path = plugin_file
-    plugin._install_valid, plugin._install_dir = install_plugin(plugin)
+    plugin._install_valid, plugin._install_dirs = install_plugin(plugin)
 
     -- Check if the plugin imports additional plugins, and if so import them first
     local imports_other_plugins = false

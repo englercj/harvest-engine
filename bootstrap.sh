@@ -8,7 +8,10 @@ function show_help()
 }
 
 if [ $# -eq 0 ]; then
-    show_help
+    PROJECT_PATH=$(realpath "he_project.toml")
+else
+    PROJECT_PATH=$(realpath $1)
+    shift
 fi
 
 for arg in "$@"; do
@@ -30,10 +33,6 @@ BUILD_DIR="build"
 #PREMAKE_VERSION="nightly"
 PREMAKE_VERSION="5.0.0-beta2"
 ENGINE_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &> /dev/null && pwd)
-PROJECT_PATH=$(realpath $1)
-
-# Remove the first argument from the arg list, which is the project path.
-shift
 
 OS_NAME="$(uname -s)"
 case $OS_NAME in

@@ -7,12 +7,13 @@ he.add_workspace_extension = function (extension_func)
 end
 
 he.workspace = function ()
+    verbosef("Creating workspace: " .. he.sln_name)
     workspace(he.sln_name)
 
     -- Shared project setup
     configurations      { "Debug", "Development", "Release" }
-    platforms           (he.get_platforms())
-    defaultplatform     (he.get_default_platform())
+    platforms           (he.get_platform_names())
+    defaultplatform     (he.get_default_platform_name())
     cppdialect          "C++20"
     cdialect            "C11"
     editandcontinue     "Off"

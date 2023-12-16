@@ -12,7 +12,7 @@ TODO: Make it clear that all keys are optional unless otherwise specified.
 
 All keys that accept paths can contain globs, and are relative to the plugin's install location. For plugins without an `[install]` block, this is the same directory where the `he_plugin.toml` file is located. For plugins *with* an `[install]` block, the install location is the extracted files location in the `build/` directory.
 
-If you have an installed plugin and need to refer to the location of the `he_plugin.toml` file, you can get it with `he.get_plugin('my_plugin_id')._file_path`. For example, the ImGui plugin does the following to include the `imgui_user_config.h` file which lives next to the `he_plugin.toml` file:
+If you have an installed plugin and need to refer to the location of the `he_plugin.toml` file, you can get it with `he.get_module_file_dir(prj.name)`. For example, the ImGui plugin does the following to include the `imgui_user_config.h` file which lives next to the `he_plugin.toml` file:
 
 ```toml
 id = "ocornut.imgui"
@@ -22,7 +22,7 @@ id = "ocornut.imgui"
     name = "imgui"
     type = "static"
     files = [
-        "%{path.getdirectory(he.get_plugin('ocornut.imgui')._file_path)}/imgui_user_config.h",
+        "%{he.get_module_file_dir(prj.name)}/imgui_user_config.h",
         "imgui.cpp",
         # ...
     ]
@@ -47,10 +47,10 @@ id = "ocornut.imgui"
 |      Key      |   Value Type  | Description |
 | ------------- | ------------- | ----------- |
 | exec          | String        | Path to a lua file that returns a function for execution when the plugin is imported. Use as an entry point for build system extension. |
-| valid_targets | Array<String> | List of target system tags this plugin is valid to be installed on. |
-| valid_hosts   | Array<String> | List of host system tags this plugin is valid to be installed on. |
+| valid_targets | Array<String> | List of target systems this plugin is valid to be installed on. |
+| valid_hosts   | Array<String> | List of host systems this plugin is valid to be installed on. |
 | archive       | mixed         | Either a string URL of the archive to download, or an object where the key is a system name and the value is a string URL of the archive to download for that system. |
-| index_archive_by_host | Boolean | Tells the installer to index the archive object by *host* system rather than *target* system. This can be useful for plugins that provide only executables and should be downloaded based on the host system that will run them, rather than the target system being built for. |
+| index_archive_by_host | Boolean | Tells the plugin installer to index the archive object by *host* system rather than *target* system. This can be useful for plugins that provide only executables and should be downloaded based on the host system that will run them, rather than the target system being built for. |
 | source        | String        | Path relative to the install directory to the plugin. This is useful if the plugin's contents are in a different location than the he_plugin file. |
 | github        | String        | A string repository specifier in the form "<user>/<repo>#<commit-ish>" |
 | bitbucket     | String        | A string repository specifier in the form "<user>/<repo>#<commit-ish>" |

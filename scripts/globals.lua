@@ -32,7 +32,7 @@ he.root_dir = path.getdirectory(path.getabsolute(he.project_filename))
 he.sln_name = _OPTIONS["he_slnfilename"]
 
 if not he.sln_name or #he.sln_name == 0 then
-    he.sln_name = he.project.name:gsub(" ", "_") .. "_" .. os.target()
+    he.sln_name = he.slugify(he.project.name)
 end
 
 -- Detect the build dir
@@ -44,21 +44,41 @@ end
 
 -- Build directories
 he.build_dir            = path.join(he.root_dir, to_dir)
-he.plugin_install_dir   = path.join(he.build_dir, "plugins")
-he.projects_dir         = path.join(he.build_dir, "projects/%{os.target()}")
+he.plugins_install_dir  = path.join(he.build_dir, "plugins")
+he.projects_dir         = path.join(he.build_dir, "projects")
 he.gen_dir              = path.join(he.build_dir, "generated")
 
 -- Build directories based on target & configuration
-he.target_build_dir     = path.join(he.build_dir, "%{os.target()}-%{cfg.architecture}-%{cfg.buildcfg:lower()}")
+he.target_build_dir     = path.join(he.build_dir, "%{cfg.platform:lower()}-%{cfg.buildcfg:lower()}")
 he.target_bin_dir       = path.join(he.target_build_dir, "bin")
 he.target_lib_dir       = path.join(he.target_build_dir, "lib/%{prj.name}")
 he.target_obj_dir       = path.join(he.target_build_dir, "obj/%{prj.name}")
 he.target_gen_dir       = path.join(he.target_build_dir, "generated")
 
 -- Generated file paths
-he.file_gen_dir = "%{he.get_generated_dir(prj.name)}/%{path.getrelative(he.get_module(prj.name)._plugin._install_dir, file.directory)}"
-he.get_generated_dir = function (project_name)
-    local plugin = he.get_module(project_name)._plugin
-    local plugin_dir_name = plugin.id:gsub("%.", "_")
+he.file_gen_dir = "%{he.get_generated_dir(prj.name)}/%{path.getrelative(he.get_module_install_dir(prj.name, cfg.system), file.directory)}"
+he.get_generated_dir = function (module_name)
+    local plugin = he.get_module(module_name)._plugin
+    local plugin_dir_name = he.slugify(plugin.id)
     return path.join(he.gen_dir, plugin_dir_name)
+end
+
+-- Module file paths
+he.get_module_file_path = function (module_name)
+    return he.get_module(module_name)._plugin._file_path
+end
+
+he.get_module_file_dir = function (module_name)
+    return path.getdirectory(he.get_module_file_path(module_name))
+end
+
+-- Module install paths
+he.get_module_install_dirs = function (module_name)
+    local plugin = he.get_module(module_name)._plugin
+    return plugin._install_dirs
+end
+
+he.get_module_install_dir = function (module_name, system)
+    local install_dirs = he.get_module_install_dirs(module_name)
+    return iif(install_dirs["*"] ~= nil, install_dirs["*"], install_dirs[system])
 end

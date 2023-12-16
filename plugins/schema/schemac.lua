@@ -21,8 +21,11 @@ local function _collect_schema_include_args(ctx, args, dep_name)
 
     for _, options in ipairs(dep_mod.schema_compile) do
         for _, dir in ipairs(options.includedirs or {}) do
-            table.insert(args, "-I")
-            table.insert(args, "\"" .. path.join(dep_mod._plugin._install_dir, dir) .. "\"")
+            local install_dirs = dep_mod._plugin._install_dirs
+            for system, install_dir in pairs(install_dirs) do
+                table.insert(args, "-I")
+                table.insert(args, "\"" .. path.join(install_dir, dir) .. "\"")
+            end
         end
 
         for _, mod_name in ipairs(options.dependson or {}) do
@@ -132,8 +135,11 @@ return function (plugin)
             end
 
             for _, dir in ipairs(options.includedirs or {}) do
-                table.insert(args, "-I")
-                table.insert(args, "\"" .. path.join(ctx._plugin._install_dir, dir) .. "\"")
+                local install_dirs = ctx._plugin._install_dirs
+                for system, install_dir in pairs(install_dirs) do
+                    table.insert(args, "-I")
+                    table.insert(args, "\"" .. path.join(install_dir, dir) .. "\"")
+                end
             end
 
             for _, mod_name in ipairs(options.dependson or {}) do
@@ -143,8 +149,11 @@ return function (plugin)
             -- Always add the he_schema include directory
             local schema_mod = he.get_module("he_schema")
             for _, dir in ipairs(schema_mod.public_includedirs or {}) do
-                table.insert(args, "-I")
-                table.insert(args, "\"" .. path.join(he.get_module("he_schema")._plugin._install_dir, dir) .. "\"")
+                local install_dirs = schema_mod._plugin._install_dirs
+                for system, install_dir in pairs(install_dirs) do
+                    table.insert(args, "-I")
+                    table.insert(args, "\"" .. path.join(install_dir, dir) .. "\"")
+                end
             end
 
             -- output directory

@@ -147,3 +147,23 @@ function table.deep_merge(...)
 
     return result
 end
+
+function table.length(t)
+    local count = 0
+    for _ in pairs(t) do
+        count = count + 1
+    end
+    return count
+ end
+
+-- ------------------------------------------------------------------------------------------------
+-- Slugify
+
+he.slugify = function (str)
+    return str:lower()
+        :gsub("%s+", '-')       -- Replace spaces with -
+        :gsub("[^%w-]+", '')    -- Remove all non-word chars
+        :gsub("--+", '-')       -- Replace multiple - with single -
+        :gsub("^-+", '')        -- Trim - from start of text
+        :gsub("-+$", '')        -- Trim - from end of text
+end

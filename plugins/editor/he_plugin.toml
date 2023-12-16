@@ -13,8 +13,8 @@ homepage = ""
     type = "windowed_app"
     group = "engine/tools"
     files = ["include/**", "src/**"]
-    public_includedirs = ["include", "%{he.get_generated_dir('he_editor')}/include"]
-    private_includedirs = ["src", "%{he.get_generated_dir('he_editor')}/src"]
+    public_includedirs = ["include", "%{he.get_generated_dir(prj.name)}/include"]
+    private_includedirs = ["src", "%{he.get_generated_dir(prj.name)}/src"]
     public_dependson = [
         "boost_di",
         "he_assets",

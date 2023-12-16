@@ -101,6 +101,15 @@ he.add_module_key {
     handler = function (ctx, values) prebuildcommands(values) end,
 }
 
+he.add_module_key {
+    key = "contentdirs",
+    scope = "private",
+    type = "table",
+    desc = "an array of strings",
+    -- Does nothing, this data is used by the editor not the module system
+    handler = function (ctx, values) end,
+}
+
 -- ------------------------------------------------------------------------------------------------
 -- Harvest functions useful for our module system
 
@@ -160,21 +169,24 @@ local function _handle_dependson_include(ctx, values)
             return
         end
 
-        local oldcwd = os.getcwd()
-        os.chdir(mod._plugin._install_dir)
+        for system, install_dir in pairs(mod._plugin._install_dirs) do
+            he.cwd_push(install_dir)
+            he.filter_push_combine { "system:" .. system }
 
-        for _, key in ipairs(he.module_dependency_include_keys) do
-            he.try_handle_module_key(ctx, key, mod[key])
+            for _, key in ipairs(he.module_dependency_include_keys) do
+                he.try_handle_module_key(ctx, key, mod[key])
+            end
+
+            -- Propagate the `public_dependson` key as if it was the include variant
+            he.try_handle_module_key(ctx, "public_dependson_include", mod.public_dependson)
+
+            if mod.variants ~= nil then
+                _handle_variants(ctx, mod.variants, he.module_dependency_include_keys)
+            end
+
+            he.filter_pop()
+            he.cwd_pop()
         end
-
-        -- Propagate the `public_dependson` key as if it was the include variant
-        he.try_handle_module_key(ctx, "public_dependson_include", mod.public_dependson)
-
-        if mod.variants ~= nil then
-            _handle_variants(ctx, mod.variants, he.module_dependency_include_keys)
-        end
-
-        os.chdir(oldcwd)
     end
 end
 
@@ -222,26 +234,29 @@ local function _handle_dependson(ctx, values)
             handler(ctx, mod)
         end
 
-        local oldcwd = os.getcwd()
-        os.chdir(mod._plugin._install_dir)
+        for system, install_dir in pairs(mod._plugin._install_dirs) do
+            he.cwd_push(install_dir)
+            he.filter_push_combine { "system:" .. system }
 
-        for _, key in ipairs(he.module_dependency_include_keys) do
-            he.try_handle_module_key(ctx, key, mod[key])
+            for _, key in ipairs(he.module_dependency_include_keys) do
+                he.try_handle_module_key(ctx, key, mod[key])
+            end
+
+            -- Propagate the `public_dependson` key as if it was the include variant
+            he.try_handle_module_key(ctx, "public_dependson_include", mod.public_dependson)
+
+            for _, key in ipairs(he.module_dependency_link_keys) do
+                he.try_handle_module_key(ctx, key, mod[key])
+            end
+
+            if mod.variants ~= nil then
+                _handle_variants(ctx, mod.variants, he.module_dependency_include_keys)
+                _handle_variants(ctx, mod.variants, he.module_dependency_link_keys)
+            end
+
+            he.filter_pop()
+            he.cwd_pop()
         end
-
-        -- Propagate the `public_dependson` key as if it was the include variant
-        he.try_handle_module_key(ctx, "public_dependson_include", mod.public_dependson)
-
-        for _, key in ipairs(he.module_dependency_link_keys) do
-            he.try_handle_module_key(ctx, key, mod[key])
-        end
-
-        if mod.variants ~= nil then
-            _handle_variants(ctx, mod.variants, he.module_dependency_include_keys)
-            _handle_variants(ctx, mod.variants, he.module_dependency_link_keys)
-        end
-
-        os.chdir(oldcwd)
     end
 end
 
@@ -279,7 +294,7 @@ he.add_module_key {
     type = "string",
     desc = "a string file path",
     handler = function (ctx, value)
-        local func = include(value)
+        local func = dofile(value)
         func(ctx)
     end,
 }

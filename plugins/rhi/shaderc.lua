@@ -81,8 +81,11 @@ return function (plugin)
             end
 
             for _, dir in ipairs(options.includedirs or {}) do
-                table.insert(args, "-I")
-                table.insert(args, "\"" .. path.join(ctx._plugin._install_dir, dir) .. "\"")
+                local install_dirs = ctx._plugin._install_dirs
+                for system, install_dir in pairs(install_dirs) do
+                    table.insert(args, "-I")
+                    table.insert(args, "\"" .. path.join(install_dir, dir) .. "\"")
+                end
             end
 
             for _, def in ipairs(options.defines or {}) do

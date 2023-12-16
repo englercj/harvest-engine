@@ -7,7 +7,7 @@ local m = p.modules.docgen
 
 m._VERSION = p._VERSION
 
-local bin_extension = iif(os.istarget("windows"), ".exe", "")
+local bin_extension = iif(os.ishost("windows"), ".exe", "")
 m.config = {
     output_directory = path.join(he.build_dir, "docs"),
 
@@ -43,7 +43,7 @@ local hugo = m.config.hugo
 local function get_exe_path(plugin_id, exe_file)
     local plugin = he.get_plugin(plugin_id)
     assert(plugin ~= nil, "No plugin found from plugin id: '%s'", plugin_id)
-    return path.join(plugin._install_dir, exe_file)
+    return path.join(plugin._install_dirs[os.host()], exe_file)
 end
 
 local function ensure_out_dir(out_dir)

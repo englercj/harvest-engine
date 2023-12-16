@@ -47,7 +47,7 @@ end
 
 local function _install_from_archive(name, url, archive_name, extract_dir_name)
     local digest = string.sha1(name .. url)
-    local archive_dir = path.join(he.plugin_install_dir, name)
+    local archive_dir = path.join(he.plugins_install_dir, name)
 
     local vfile = path.join(archive_dir, ".plugin_digest")
     local installed_version = io.readfile(vfile);
@@ -154,7 +154,6 @@ local function _install_from_bitbucket(name, source)
 end
 
 local function _install_from_nuget(name, source)
-    -- https://www.nuget.org/api/v2/package/WinPixEventRuntime/1.0.210818001
     local package_name
     local version
 
@@ -169,6 +168,7 @@ local function _install_from_nuget(name, source)
         t = t + 1
     end
 
+    -- Example:  https://www.nuget.org/api/v2/package/WinPixEventRuntime/1.0.210818001
     local url = "https://www.nuget.org/api/v2/package/" .. package_name .. "/" .. version
     local archive_name = package_name .. "_" .. version .. ".zip"
     local extract_dir_name = package_name .. "-" .. version
@@ -179,77 +179,141 @@ end
 
 return function (plugin)
     local i = plugin.install
-    local install_dir = path.getdirectory(plugin._file_path)
+    local plugin_dir = path.getdirectory(plugin._file_path)
+
+    -- Gather the valid systems for the platforms we can build on the current host
+    local platforms = he.get_platforms()
+    local systems = {}
+
+    for _, platform in ipairs(platforms) do
+        if table.contains(systems, platform.system) == false then
+            table.insert(systems, platform.system)
+        end
+    end
+
+    -- Set the default install directories for each system
+    local install_dirs = { ["*"] = plugin_dir }
 
     -- If the plugin doesn't specify an install block then use the he_plugin file's path as
     -- the install path and return that it is enabled.
     if i == nil then
         verbosef("Plugin '%s' has no install block, skipping installation.", plugin.id)
-        return true, install_dir
+        return true, install_dirs
     end
 
-    -- Check if the target system is valid for this plugin to be imported on, by default plugins
-    -- are assumed to work on all systems
-    local valid_targets = iif(i.valid_targets, i.valid_targets, { os.target() })
-    local is_valid_target = false
-    for _, v in ipairs(valid_targets) do
-        if os.istarget(v) then
-            is_valid_target = true
-            break
+    -- Check if the target system is valid for this plugin to be imported on.
+    -- By default, plugins are assumed to work for all target systems.
+    if i.valid_targets ~= nil then
+        local is_valid_target = false
+        for _, v in ipairs(i.valid_targets) do
+            if table.contains(systems, v) then
+                is_valid_target = true
+                break
+            end
+        end
+
+        if not is_valid_target then
+            verbosef("Skipping install of plugin '%s', current target is not listed in its 'valid_targets' key.", plugin.id)
+            return false, install_dirs
         end
     end
 
-    if not is_valid_target then
-        verbosef("Skipping install of plugin '%s', current target is not listed in its 'valid_targets' key.", plugin.id)
-        return false, install_dir
-    end
-
-    local valid_hosts = iif(i.valid_hosts, i.valid_hosts, { os.host() })
-    local is_valid_host = false
-    for _, v in ipairs(valid_hosts) do
-        if os.ishost(v) then
-            is_valid_host = true
-            break
+    -- Check if the host system is valid for this plugin to be imported on.
+    -- By default, plugins are assumed to work for all host systems.
+    if i.valid_hosts ~= nil then
+        local is_valid_host = false
+        for _, v in ipairs(valid_hosts) do
+            if os.ishost(v) then
+                is_valid_host = true
+                break
+            end
         end
-    end
 
-    if not is_valid_host then
-        verbosef("Skipping install of plugin '%s', current host is not listed in its 'valid_hosts' key.", plugin.id)
-        return false, install_dir
+        if not is_valid_host then
+            verbosef("Skipping install of plugin '%s', current host is not listed in its 'valid_hosts' key.", plugin.id)
+            return false, install_dirs
+        end
     end
 
     -- Check for install sources and perform the install
     if i.github ~= nil then
-        install_dir = _install_from_github(plugin.id, i.github)
+        local install_dir = _install_from_github(plugin.id, i.github)
+        install_dirs["*"] = install_dir
     elseif i.bitbucket ~= nil then
-        install_dir = _install_from_bitbucket(plugin.id, i.bitbucket)
+        local install_dir = _install_from_bitbucket(plugin.id, i.bitbucket)
+        install_dirs["*"] = install_dir
     elseif i.nuget ~= nil then
-        install_dir = _install_from_nuget(plugin.id, i.nuget)
-    elseif i.archive ~= nil then
-        local target = iif(i.index_archive_by_host, os.host(), os.target())
-        local url = i.archive
-        if type(url) == "table" then
-            url = url[target]
-        end
-        assert(type(url) == "string" and url ~= "", "Bad source when installing archive of '" .. plugin.id .. "' for '" .. target .. "'.")
-
-        local extract_dir = i.base_path == nil and path.getbasename(url) or ""
-        install_dir = _install_from_archive(plugin.id, url, path.getname(url), extract_dir)
+        local install_dir = _install_from_nuget(plugin.id, i.nuget)
+        install_dirs["*"] = install_dir
     elseif i.source ~= nil then
-        install_dir = path.join(install_dir, i.source)
+        local install_dir = path.join(install_dir, i.source)
+        install_dirs["*"] = install_dir
+    elseif i.archive ~= nil then
+        local archive_systems = systems
+        if i.index_archive_by_host then
+            archive_systems = { os.host() }
+        end
+
+        local url = i.archive
+
+        -- If there is only a single valid system entry we treat it as a single url.
+        -- This will mean the plugin has only a single install directory, and not one per system.
+        if type(url) == "table" then
+            local valid_sys_count = 0
+            local valid_sys_name = nil
+            for sys, sys_url in pairs(url) do
+                if table.contains(archive_systems, sys) then
+                    valid_sys_count = valid_sys_count + 1
+                    valid_sys_name = sys
+                end
+            end
+
+            if valid_sys_count == 1 then
+                url = url[valid_sys_name]
+            end
+        end
+
+        -- If url is a table here then there are multiple valid system entries so the
+        -- plugin will need multiple install directories, one per system.
+        if type(url) == "table" then
+            install_dirs["*"] = nil
+
+            local valid_target_found = false
+            for _, system in ipairs(archive_systems) do
+                if url[system] ~= nil then
+                    local install_url = url[system]
+                    assert(type(install_url) == "string" and install_url ~= "", "Bad source when installing archive of '" .. plugin.id .. "' for '" .. system .. "'.")
+                    install_dirs[system] = _install_from_archive_url(url, plugin, i)
+                    valid_target_found = true
+                end
+            end
+
+            if not valid_target_found then
+                verbosef("Skipping install of plugin '%s', current target is not listed in its 'archive' key.", plugin.id)
+                return false, default_install_dirs
+            end
+        else
+            assert(type(url) == "string" and url ~= "", "Bad archive source when installing archive of '" .. plugin.id .. "'.")
+            local extract_dir = iif(i.base_path == nil, path.getbasename(url), "")
+            local install_dir = _install_from_archive(plugin.id, url, path.getname(url), extract_dir)
+            install_dirs["*"] = install_dir
+        end
     else
         verbosef("Plugin '%s' has no install source, nothing will be downloaded.", plugin.id)
     end
 
+    -- Append the base path to each of the install dirs
     if i.base_path ~= nil then
-        install_dir = path.join(install_dir, i.base_path)
+        for sys, sys_dir in pairs(install_dirs) do
+            install_dirs[sys] = path.join(sys_dir, i.base_path)
+        end
     end
 
     -- Run the install scripts if specified
     if i.exec ~= nil then
-        local func = include(i.exec)
-        func(plugin)
+        local func = dofile(i.exec)
+        func(plugin, install_dirs)
     end
 
-    return true, install_dir
+    return true, install_dirs
 end

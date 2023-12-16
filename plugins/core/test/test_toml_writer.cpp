@@ -367,11 +367,14 @@ HE_TEST_F(core, toml_writer, value_datetime, TomlWriterFixture)
     // Sun, 27 May 1979 07:32:00 GMT
     constexpr SystemTime Expected{ 296638320000ull * Milliseconds::Ratio };
 
-    // TODO: set the local timezone to -07:00 for these to pass
-    ValidateDateTime(Expected, TomlDateTimeFormat::Utc, "1979-05-27T07:32:00Z");
-    ValidateDateTime(Expected + FromPeriod<Microseconds>(999999), TomlDateTimeFormat::Utc, "1979-05-27T07:32:00.999999000Z");
-    ValidateDateTime(Expected, TomlDateTimeFormat::Local, "1979-05-27T00:32:00-07:00");
-    ValidateDateTime(Expected + FromPeriod<Microseconds>(999999), TomlDateTimeFormat::Local, "1979-05-27T00:32:00.999999000-07:00");
+    ValidateDateTime(Expected, TomlDateTimeFormat::OffsetUtc, "1979-05-27T07:32:00Z");
+    ValidateDateTime(Expected + FromPeriod<Microseconds>(999999), TomlDateTimeFormat::OffsetUtc, "1979-05-27T07:32:00.999999000Z");
+
+    ValidateDateTime(Expected, TomlDateTimeFormat::OffsetLocal, "1979-05-27T00:32:00-07:00");
+    ValidateDateTime(Expected + FromPeriod<Microseconds>(999999), TomlDateTimeFormat::OffsetLocal, "1979-05-27T00:32:00.999999000-07:00");
+
+    ValidateDateTime(Expected, TomlDateTimeFormat::Local, "1979-05-27T00:32:00");
+    ValidateDateTime(Expected + FromPeriod<Microseconds>(999999), TomlDateTimeFormat::Local, "1979-05-27T00:32:00.999999000");
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -476,10 +479,13 @@ HE_TEST_F(core, toml_writer, complex_document, TomlWriterFixture)
     writer.DateTime(ExpectedDateTime);
     writer.Key("odt2");
     writer.DateTime((ExpectedDateTime + FromPeriod<Microseconds>(999999)));
-    // TODO: set the local timezone to -07:00 for these to pass
     writer.Key("odt3");
-    writer.DateTime(ExpectedDateTime, TomlDateTimeFormat::Local);
+    writer.DateTime(ExpectedDateTime, TomlDateTimeFormat::OffsetLocal);
     writer.Key("odt4");
+    writer.DateTime((ExpectedDateTime + FromPeriod<Microseconds>(999999)), TomlDateTimeFormat::OffsetLocal);
+    writer.Key("ldt1");
+    writer.DateTime(ExpectedDateTime, TomlDateTimeFormat::Local);
+    writer.Key("ldt2");
     writer.DateTime((ExpectedDateTime + FromPeriod<Microseconds>(999999)), TomlDateTimeFormat::Local);
     writer.Table("time");
     writer.Key("lt1");
@@ -614,6 +620,8 @@ odt1 = 1979-05-27T07:32:00Z
 odt2 = 1979-05-27T07:32:00.999999000Z
 odt3 = 1979-05-27T00:32:00-07:00
 odt4 = 1979-05-27T00:32:00.999999000-07:00
+ldt1 = 1979-05-27T00:32:00
+ldt2 = 1979-05-27T00:32:00.999999000
 [time]
 lt1 = 07:32:00
 lt2 = 00:32:00.999999000

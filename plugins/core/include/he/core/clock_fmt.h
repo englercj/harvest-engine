@@ -72,10 +72,6 @@ namespace he
         }
     };
 
-    // TODO: RFC3339 format. UTC has Z suffix, local has offset suffix.
-    // Need to make the formatter function take spec as a param, so we can
-    // change default spec based on type.
-
     template <>
     struct Formatter<FmtLocalTime> : _TimeFormatter
     {

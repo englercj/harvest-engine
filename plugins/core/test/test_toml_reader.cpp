@@ -1251,13 +1251,11 @@ HE_TEST_F(core, toml_reader, value_datetime, TomlReaderFixture)
     ValidateDateTime("1979-05-27t00:32-07:00", Expected);
 
     // Local Date-Time
-    // TODO: set the local timezone to -07:00 for these to pass
     ValidateDateTime("1979-05-27T00:32:00", Expected);
     ValidateDateTime("1979-05-27T00:32:00.999999", Expected + FromPeriod<Microseconds>(999999));
     ValidateDateTime("1979-05-27T00:32", Expected);
 
     // Local Date
-    // TODO: set the local timezone to -07:00 for these to pass
     ValidateDateTime("1979-05-27", Expected - FromPeriod<Minutes>(32));
 
     // Invalid date times
@@ -1477,7 +1475,6 @@ HE_TEST_F(core, toml_reader, complex_document, TomlReaderFixture)
         { .kind = TomlEvent::Kind::String, .s = "'That,' she said, 'is still pointless.'" },
         { .kind = TomlEvent::Kind::Key, .p = { "string", "str12" } },
         { .kind = TomlEvent::Kind::String, .s = "'That,' she said, 'is still pointless.''" },
-        // TODO: set the local timezone to -07:00 for these to pass
         { .kind = TomlEvent::Kind::Table, .p = { "datetime" }, .b = false },
         { .kind = TomlEvent::Kind::Key, .p = { "datetime", "odt1" } },
         { .kind = TomlEvent::Kind::DateTime, .d = ExpectedDateTime },

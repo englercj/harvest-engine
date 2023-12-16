@@ -16,6 +16,11 @@
 
 #include <time.h>
 
+// MSVC doesn't expose timegm, but it has _mkgmtime which is equivalent.
+#if HE_COMPILER_MSVC
+    #define timegm(...) _mkgmtime(__VA_ARGS__)
+#endif
+
 namespace he
 {
     // --------------------------------------------------------------------------------------------
@@ -882,7 +887,7 @@ namespace he
         [[nodiscard]] bool ParseDateTime()
         {
             constexpr const char Nums[] = "0123456789";
-            const Duration localTzOffset = GetLocalTimezoneOffset();
+            bool isLocalTime = false;
 
             uint32_t year = 0;
             uint32_t month = 0;
@@ -1003,13 +1008,13 @@ namespace he
                 else
                 {
                     // When no offset is specified we must assume local timezone
-                    tzOffset = localTzOffset;
+                    isLocalTime = true;
                 }
             }
             else
             {
                 // When there is no time information specified we must assume local timezone
-                tzOffset = localTzOffset;
+                isLocalTime = true;
             }
 
             // Some very basic validation of the number of days allowed in a month
@@ -1035,26 +1040,18 @@ namespace he
             t.tm_year = static_cast<int>(year) - 1900;
             t.tm_wday = 0; // the value will be ignored
             t.tm_yday = 0; // the value will be ignored
-            t.tm_isdst = -1;
+            t.tm_isdst = isLocalTime ? -1 : 0;
 
             const double subseconds = seconds - t.tm_sec;
 
-            const time_t time = mktime(&t);
+            const time_t time = isLocalTime ? mktime(&t) : timegm(&t);
+
             if (time == -1)
                 return SetError(TomlReadError::InvalidDateTime);
 
             SystemTime dt{ static_cast<uint64_t>(time) * Seconds::Ratio };
             dt.val += static_cast<uint64_t>(subseconds * Seconds::Ratio);
-
-            // `mktime` gives us a value in local timezone, so we only need to modify it if the
-            // timezone specified by the string is different than local. If we do need to adjust
-            // we first convert the local time to UTC. Once that's done, we can offset it by the
-            // timezone offset specified in the string.
-            if (localTzOffset != tzOffset)
-            {
-                dt += localTzOffset;
-                dt -= tzOffset;
-            }
+            dt -= tzOffset;
 
             m_handler->DateTime(dt);
             return true;

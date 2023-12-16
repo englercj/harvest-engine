@@ -224,38 +224,57 @@ namespace he
         const uint64_t seconds = value.val / Seconds::Ratio;
         const uint64_t nanoseconds = value.val - (seconds * Seconds::Ratio);
 
-        if (format == TomlDateTimeFormat::Utc)
+        switch (format)
         {
-            // RFC3339 UTC date time format
-            m_writer.Write("{:%Y-%m-%dT%H:%M:%S}", FmtUtcTime(value));
-            if (nanoseconds)
-                m_writer.Write(".{}", nanoseconds);
-            m_writer.Write('Z');
-            return;
+            case TomlDateTimeFormat::OffsetUtc:
+            {
+                m_writer.Write("{:%Y-%m-%dT%H:%M:%S}", FmtUtcTime(value));
+
+                if (nanoseconds)
+                    m_writer.Write(".{:09d}", nanoseconds);
+
+                m_writer.Write('Z');
+                break;
+            }
+            case TomlDateTimeFormat::OffsetLocal:
+            {
+                m_writer.Write("{:%Y-%m-%dT%H:%M:%S%z}", FmtLocalTime(value));
+
+                // Copy out, and erase, the last 5 characters of the string. These are the
+                // ISO 8601 formatted local time zone (e.g. "-0700"), but we want them to be
+                // in RFC3339 format (e.g. "-07:00").
+                //
+                // It is important we copy these out here and don't use the local time zone
+                // from the system because the time zone in the output string needs to be based
+                // on the date time of the input, not the state of the world when writing it, to
+                // ensure proper handling of daylight saving time.
+                he::String& str = m_writer.Str();
+                constexpr uint32_t TzLen = 5;
+                char tzBuf[TzLen];
+                MemCopy(tzBuf, str.End() - TzLen, TzLen);
+                str.Erase(str.Size() - TzLen, TzLen);
+
+                if (nanoseconds)
+                    m_writer.Write(".{:09d}", nanoseconds);
+
+                m_writer.Write(tzBuf[0]);
+                m_writer.Write(tzBuf[1]);
+                m_writer.Write(tzBuf[2]);
+                m_writer.Write(':');
+                m_writer.Write(tzBuf[3]);
+                m_writer.Write(tzBuf[4]);
+                break;
+            }
+            case TomlDateTimeFormat::Local:
+            {
+                m_writer.Write("{:%Y-%m-%dT%H:%M:%S}", FmtLocalTime(value));
+
+                if (nanoseconds)
+                    m_writer.Write(".{:09d}", nanoseconds);
+
+                break;
+            }
         }
-
-        // Ideally we'd be able to use the format: {:%Y-%m-%dT%H:%M:%S%z}
-        // Unfortunately, strftime gives us the ISO 8601 format of the local time zone which looks
-        // like `-0700` instead of the RFC3339 format of `-07:00`. So we have to do it manually.
-        m_writer.Write("{:%Y-%m-%dT%H:%M:%S}", FmtLocalTime(value));
-
-        if (nanoseconds)
-            m_writer.Write(".{}", nanoseconds);
-
-        Duration tzOffset = GetLocalTimezoneOffset();
-        if (tzOffset.val < 0)
-        {
-            m_writer.Write('-');
-            tzOffset.val = -tzOffset.val;
-        }
-        else
-        {
-            m_writer.Write('+');
-        }
-
-        const int64_t hours = tzOffset.val / Hours::Ratio;
-        const int64_t minutes = (tzOffset.val % Hours::Ratio) / Minutes::Ratio;
-        m_writer.Write("{:02}:{:02}", hours, minutes);
     }
 
     void TomlWriter::Time(Duration value)
@@ -505,7 +524,8 @@ namespace he
     {
         switch (x)
         {
-            case TomlDateTimeFormat::Utc: return "Utc";
+            case TomlDateTimeFormat::OffsetUtc: return "OffsetUtc";
+            case TomlDateTimeFormat::OffsetLocal: return "OffsetLocal";
             case TomlDateTimeFormat::Local: return "Local";
         }
 

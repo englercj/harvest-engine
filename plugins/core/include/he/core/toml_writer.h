@@ -35,8 +35,9 @@ namespace he
 
     enum class TomlDateTimeFormat : uint8_t
     {
-        Utc,
-        Local,
+        OffsetUtc,      ///< Standard UTC with offset
+        OffsetLocal,    ///< Local timezone with offset
+        Local,          ///< Local timezone without an offset specified (discouraged)
     };
 
     class TomlWriter
@@ -63,7 +64,7 @@ namespace he
         void Uint(uint64_t value, TomlUintFormat format = TomlUintFormat::Decimal);
         void Float(double value, TomlFloatFormat format = TomlFloatFormat::General, int32_t precision = -1);
         void String(StringView value, TomlStringFormat format = TomlStringFormat::Basic);
-        void DateTime(SystemTime value, TomlDateTimeFormat format = TomlDateTimeFormat::Utc);
+        void DateTime(SystemTime value, TomlDateTimeFormat format = TomlDateTimeFormat::OffsetUtc);
         void Time(Duration value);
 
         // Tables

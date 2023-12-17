@@ -9,12 +9,15 @@
 
 /// Causes execution to break to an attached debugger. If no debugger is attached the
 /// application may exit.
+/// This macro is a noop for non-internal builds.
 #define HE_DEBUG_BREAK() (false)
 
-/// The current file name. This value is always empty for non-internal builds.
+/// The current file name.
+/// This value is always empty for non-internal builds.
 #define HE_FILE ""
 
-/// The current line number. This value is always zero for non-internal builds.
+/// The current line number.
+/// This value is always zero for non-internal builds.
 #define HE_LINE 0u
 
 #if HE_INTERNAL_BUILD

@@ -88,7 +88,7 @@ namespace he::schema
             return false;
         }
 
-        if (useZstd && out.Size() >= ZSTD_STATIC_LINKING_ONLY)
+        if (useZstd && !out.IsEmpty())
         {
             const uint64_t maxSize = ZSTD_getFrameContentSize(out.Data(), out.Size());
 

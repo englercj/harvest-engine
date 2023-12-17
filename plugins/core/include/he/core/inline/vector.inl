@@ -1,9 +1,5 @@
 // Copyright Chad Engler
 
-// Forward declare placement new. Doing this instead of including <new> has a major impact
-// on reducing compile times, espcially since this file is included everywhere.
-[[nodiscard]] inline void* __cdecl operator new(size_t, void* ptr) noexcept;
-
 namespace he
 {
     // Performs value initialization of trivially constructible elements.

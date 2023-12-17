@@ -91,7 +91,7 @@ he.workspace = function ()
     filter { "configurations:Debug" }
         defines { "_DEBUG", "DEBUG", "HE_CFG_DEBUG" }
         tags { "debug", "internal" }
-        inlining "Explicit"
+        inlining "Disabled"
         optimize "Off"
         runtime "Debug"
         symbols "Full"
@@ -99,9 +99,8 @@ he.workspace = function ()
     filter { "configurations:Development" }
         defines { "NDEBUG", "HE_CFG_DEVELOPMENT" }
         tags { "development", "internal" }
-        flags { "LinkTimeOptimization" }
-        inlining "Auto"
-        optimize "Speed"
+        inlining "Explicit"
+        optimize "On"
         runtime "Release"
         symbols "On"
 

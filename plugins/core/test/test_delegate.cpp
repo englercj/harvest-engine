@@ -13,13 +13,13 @@ using namespace he;
 // Fixtures
 
 static int _TestConstRef(const int& i) { return i * i; }
-static int _TestConstPtr(const int* i) { return (*i) * (*i); }
-static int _TestConstRefPayload(const int& i, int j) { return i + j; }
+static int _TestConstPtr(const int* i) { return (*i) + (*i); }
+static int _TestConstRefPayload(const int& i, int j) { return i * j; }
 static int _TestConstPtrPayload(const int* i, int j) { return (*i) + j; }
 
 static int _TestRef(int& i) { return i * i; }
-static int _TestPtr(int* i) { return (*i) * (*i); }
-static int _TestRefPayload(int& i, int j) { return i + j; }
+static int _TestPtr(int* i) { return (*i) + (*i); }
+static int _TestRefPayload(int& i, int j) { return i * j; }
 static int _TestPtrPayload(int* i, int j) { return (*i) + j; }
 
 static bool _TestMoveOnly(MoveOnly x) { return x.moveConstructed; }
@@ -54,7 +54,7 @@ HE_TEST(core, delegate, Static_Make)
         int v = 3;
         Delegate<int(int*)> d = Delegate<int(int*)>::Make<&_TestConstPtr>();
         HE_EXPECT(d);
-        HE_EXPECT_EQ(d(&v), 9);
+        HE_EXPECT_EQ(d(&v), 6);
     }
 
     // Free function, const ref payload
@@ -62,7 +62,7 @@ HE_TEST(core, delegate, Static_Make)
         int v = 5;
         D d = D::Make<&_TestConstRefPayload>(v);
         HE_EXPECT(d);
-        HE_EXPECT_EQ(d(3), 8);
+        HE_EXPECT_EQ(d(3), 15);
     }
 
     // Free function, const ptr payload
@@ -86,7 +86,7 @@ HE_TEST(core, delegate, Static_Make)
         int v = 3;
         Delegate<int(int*)> d = Delegate<int(int*)>::Make<&_TestPtr>();
         HE_EXPECT(d);
-        HE_EXPECT_EQ(d(&v), 9);
+        HE_EXPECT_EQ(d(&v), 6);
     }
 
     // Free function, non-const ref payload
@@ -94,7 +94,7 @@ HE_TEST(core, delegate, Static_Make)
         int v = 5;
         D d = D::Make<&_TestRefPayload>(v);
         HE_EXPECT(d);
-        HE_EXPECT_EQ(d(3), 8);
+        HE_EXPECT_EQ(d(3), 15);
     }
 
     // Free function, non-const ptr payload
@@ -220,7 +220,7 @@ HE_TEST(core, delegate, Set)
         Delegate<int(int*)> d;
         d.Set<&_TestConstPtr>();
         HE_EXPECT(d);
-        HE_EXPECT_EQ(d(&v), 9);
+        HE_EXPECT_EQ(d(&v), 6);
     }
 
     // Free function, const ref payload
@@ -230,7 +230,7 @@ HE_TEST(core, delegate, Set)
         HE_EXPECT(!d);
         d.Set<&_TestConstRefPayload>(v);
         HE_EXPECT(d);
-        HE_EXPECT_EQ(d(3), 8);
+        HE_EXPECT_EQ(d(3), 15);
     }
 
     // Free function, const ptr payload
@@ -259,7 +259,7 @@ HE_TEST(core, delegate, Set)
         Delegate<int(int*)> d;
         d.Set<&_TestPtr>();
         HE_EXPECT(d);
-        HE_EXPECT_EQ(d(&v), 9);
+        HE_EXPECT_EQ(d(&v), 6);
     }
 
     // Free function, non-const ref payload
@@ -269,7 +269,7 @@ HE_TEST(core, delegate, Set)
         HE_EXPECT(!d);
         d.Set<&_TestRefPayload>(v);
         HE_EXPECT(d);
-        HE_EXPECT_EQ(d(3), 8);
+        HE_EXPECT_EQ(d(3), 15);
     }
 
     // Free function, non-const ptr payload

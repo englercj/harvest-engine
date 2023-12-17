@@ -36,7 +36,7 @@ static void TestLogHandler(const void*, const LogSource& source, const KeyValue*
     HE_EXPECT(source.line == 0);
     HE_EXPECT_EQ_STR(source.file, "");
 #else
-    HE_EXPECT(source.line == 56 || source.line == 57);
+    HE_EXPECT(source.line == 64 || source.line == 65);
     HE_EXPECT_EQ(GetBaseName(source.file), "test_log.cpp");
 #endif
 

@@ -7,9 +7,10 @@
 #include "he/core/types.h"
 #include "he/core/utils.h"
 
-// Forward declare placement new. Doing this instead of including <new> has a major impact
+// Define placement new manually. Doing this instead of including <new> has a major impact
 // on reducing compile times, especially since this file is included everywhere.
-[[nodiscard]] inline void* __cdecl operator new(size_t, void* ptr) noexcept;
+#define __PLACEMENT_NEW_INLINE
+[[nodiscard]] constexpr inline void* operator new(size_t, void* ptr) noexcept { return ptr; }
 
 namespace he
 {

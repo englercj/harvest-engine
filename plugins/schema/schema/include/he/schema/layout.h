@@ -194,7 +194,8 @@ namespace he::schema
     inline T _ReadDataField(const Word* data, uint64_t dataFieldsWordSize, uint32_t dataOffset, T defaultValue)
     {
         constexpr uint64_t BitsInType = sizeof(T) * BitsPerByte;
-        if (((dataOffset + 1) * BitsInType) <= (dataFieldsWordSize * BitsPerWord)) [[likely]]
+        const uint64_t dataOffset64 = static_cast<uint64_t>(dataOffset);
+        if (((dataOffset64 + 1) * BitsInType) <= (dataFieldsWordSize * BitsPerWord)) [[likely]]
             return _ReadDataFieldUnsafe<T>(data, dataOffset);
 
         return defaultValue;
@@ -277,7 +278,9 @@ namespace he::schema
     inline typename _ReadDataArrayReturnType<T>::Type _ReadDataArrayField(Word* data, uint32_t dataWordSize, uint32_t dataOffset, uint16_t elementCount)
     {
         constexpr uint64_t BitsInType = sizeof(T) * BitsPerByte;
-        if (((dataOffset + elementCount) * BitsInType) <= (dataWordSize * BitsPerWord)) [[likely]]
+        const uint64_t dataOffset64 = static_cast<uint64_t>(dataOffset);
+        const uint64_t dataWordSize64 = static_cast<uint64_t>(dataWordSize);
+        if (((dataOffset64 + elementCount) * BitsInType) <= (dataWordSize64 * BitsPerWord)) [[likely]]
         {
             T* b = reinterpret_cast<T*>(data) + dataOffset;
             return { b, elementCount };
@@ -949,7 +952,7 @@ namespace he::schema
         void ClearDataFields()
         {
             Word* data = DataSection();
-            MemZero(data, m_metaWordSize * BytesPerWord);
+            MemZero(data, static_cast<size_t>(m_metaWordSize) * BytesPerWord);
             *data |= static_cast<Word>(m_dataFieldCount);
         }
 

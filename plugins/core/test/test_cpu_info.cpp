@@ -21,6 +21,10 @@ HE_TEST(core, cpu_info, Report)
     std::cout << "    cache line size: " << info.cacheLineSize << std::endl;
 
     std::cout << "    x86:" << std::endl;
+    std::cout << "        brandName: '" << info.x86.brandName << "'" << std::endl;
+    std::cout << "        steppingId: " << uint32_t(info.x86.steppingId) << std::endl;
+    std::cout << "        modelId: " << info.x86.modelId << std::endl;
+    std::cout << "        familyId: " << info.x86.familyId << std::endl;
     std::cout << "        sse: " << info.x86.sse << std::endl;
     std::cout << "        sse2: " << info.x86.sse2 << std::endl;
     std::cout << "        sse3: " << info.x86.sse3 << std::endl;

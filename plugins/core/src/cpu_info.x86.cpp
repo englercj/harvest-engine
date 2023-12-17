@@ -144,6 +144,16 @@ namespace he
             {
                 CpuId(1, eax, ebx, ecx, edx);
 
+                x86.steppingId = eax & 0xf;
+
+                const uint16_t modelId = (eax >> 4) & 0xf;
+                const uint16_t familyId = (eax >> 8) & 0xf;
+                const uint16_t modelExId = (eax >> 16) & 0xf;
+                const uint16_t familyExId = (eax >> 20) & 0xff;
+
+                x86.modelId = modelId + (familyId == 6 || familyId == 15 ? (modelExId << 4) : 0);
+                x86.familyId = familyId + (familyId == 15 ? familyExId : 0);
+
                 x86.sse = (edx & (1 << 25)) != 0;
                 x86.sse2 = (edx & (1 << 26)) != 0;
 
@@ -199,6 +209,28 @@ namespace he
             // Function Id 80000000h = Get Highest Extended Function Implemented
             CpuId(0x80000000, eax, ebx, ecx, edx);
             const uint32_t highestExFuncId = eax;
+
+            // Function Id 80000002h,80000003h,80000004h = Processor Brand String
+            if (highestExFuncId >= 0x80000004)
+            {
+                CpuId(0x80000002, eax, ebx, ecx, edx);
+                MemCopy(x86.brandName + 0, &eax, 4);
+                MemCopy(x86.brandName + 4, &ebx, 4);
+                MemCopy(x86.brandName + 8, &ecx, 4);
+                MemCopy(x86.brandName + 12, &edx, 4);
+
+                CpuId(0x80000003, eax, ebx, ecx, edx);
+                MemCopy(x86.brandName + 16, &eax, 4);
+                MemCopy(x86.brandName + 20, &ebx, 4);
+                MemCopy(x86.brandName + 24, &ecx, 4);
+                MemCopy(x86.brandName + 28, &edx, 4);
+
+                CpuId(0x80000004, eax, ebx, ecx, edx);
+                MemCopy(x86.brandName + 32, &eax, 4);
+                MemCopy(x86.brandName + 36, &ebx, 4);
+                MemCopy(x86.brandName + 40, &ecx, 4);
+                MemCopy(x86.brandName + 44, &edx, 4);
+            }
 
             // Function Id 80000007h = Advanced Power Management Information
             if (highestExFuncId >= 0x80000007)

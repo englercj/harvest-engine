@@ -60,8 +60,8 @@ namespace he
         /// the value is \ref CpuVendorId::Unknown.
         CpuVendorId vendorId{ CpuVendorId::Unknown };
 
-        /// The name of the vendor as reported by the CPU itself.
-        char vendorName[64]{};
+        /// The name of the vendor as reported by the CPU.
+        char vendorName[48]{};
 
         /// Number of physical cores the system reported for the CPU.
         uint32_t coreCount{ 1 };
@@ -75,6 +75,18 @@ namespace he
         /// Availability of various x86 instructions
         struct
         {
+            /// The brand of the CPU.
+            char brandName[64]{};
+
+            /// A product revision number assigned to the CPU.
+            uint8_t steppingId{ 0 };
+
+            /// Model ID of the CPU.
+            uint16_t modelId{ 0 };
+
+            /// Family ID of the CPU.
+            uint16_t familyId{ 0 };
+
             bool sse : 1{ false };
             bool sse2 : 1{ false };
             bool sse3 : 1{ false };

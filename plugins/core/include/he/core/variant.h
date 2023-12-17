@@ -64,7 +64,7 @@ namespace he
             Clear();
         }
 
-        constexpr Variant& operator=(const Variant& x)
+        constexpr Variant& operator=(const Variant& x) noexcept
         {
             Clear();
             m_index = x.m_index;
@@ -75,7 +75,7 @@ namespace he
             return *this;
         }
 
-        constexpr Variant& operator=(Variant&& x)
+        constexpr Variant& operator=(Variant&& x) noexcept
         {
             Clear();
             m_index = x.m_index;
@@ -87,14 +87,14 @@ namespace he
         }
 
         template <AnyOf<T...> U>
-        constexpr Variant& operator=(const U& value)
+        constexpr Variant& operator=(const U& value) noexcept
         {
             constexpr IndexType Index = TypeListIndex<U, ElementList>;
             Emplace<Index>(value);
         }
 
          template <AnyOf<T...> U>
-         constexpr Variant& operator=(U&& value)
+         constexpr Variant& operator=(U&& value) noexcept
          {
              constexpr IndexType Index = TypeListIndex<U, ElementList>;
              Emplace<Index>(Move(value));
@@ -246,6 +246,6 @@ namespace he
         static constexpr uint32_t MaxAlign = static_cast<uint32_t>(Max(alignof(T)...));
 
         IndexType m_index{ 0 };
-        AlignedStorage<MaxSize, MaxAlign> m_storage;
+        AlignedStorage<MaxSize, MaxAlign> m_storage; // intentionally uninitialized
     };
 }

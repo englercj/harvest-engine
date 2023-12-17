@@ -32,14 +32,22 @@ HE_TEST(core, log, LogLevel)
 static void TestLogHandler(const void*, const LogSource& source, const KeyValue* kvs, uint32_t count)
 {
     HE_EXPECT_EQ(source.level, LogLevel::Info);
+#if !HE_INTERNAL_BUILD
+    HE_EXPECT(source.line == 0);
+    HE_EXPECT_EQ_STR(source.file, "");
+#else
     HE_EXPECT(source.line == 56 || source.line == 57);
     HE_EXPECT_EQ(GetBaseName(source.file), "test_log.cpp");
+#endif
+
 #if HE_COMPILER_MSVC
     HE_EXPECT_EQ_STR(source.funcName, "void __cdecl _heTestClass_core_log_AddLogSink_RemoveLogSink::TestBody(void)");
 #elif HE_COMPILER_GCC
     HE_EXPECT_EQ_STR(source.funcName, "virtual void _heTestClass_core_log_AddLogSink_RemoveLogSink::TestBody()");
 #else
+    #error "No func sig test for this compiler"
 #endif
+
     HE_EXPECT_EQ_STR(source.category, "log_test");
 
     HE_EXPECT_EQ(count, 1);

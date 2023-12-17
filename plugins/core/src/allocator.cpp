@@ -31,17 +31,17 @@ namespace he
 
 // replaceable allocation functions
 
-[[nodiscard]] void* operator new(size_t n) { return he::Allocator::GetDefault().Malloc(static_cast<uint32_t>(n)); }
-[[nodiscard]] void* operator new[](size_t n) { return he::Allocator::GetDefault().Malloc(static_cast<uint32_t>(n)); }
+[[nodiscard]] void* operator new(size_t n) { return he::Allocator::GetDefault().Malloc(n); }
+[[nodiscard]] void* operator new[](size_t n) { return he::Allocator::GetDefault().Malloc(n); }
 
-[[nodiscard]] void* operator new(size_t count, std::align_val_t al) { return he::Allocator::GetDefault().Malloc(static_cast<uint32_t>(count), static_cast<uint32_t>(al)); }
-[[nodiscard]] void* operator new[](size_t count, std::align_val_t al) { return he::Allocator::GetDefault().Malloc(static_cast<uint32_t>(count), static_cast<uint32_t>(al)); }
+[[nodiscard]] void* operator new(size_t count, std::align_val_t al) { return he::Allocator::GetDefault().Malloc(count, static_cast<size_t>(al)); }
+[[nodiscard]] void* operator new[](size_t count, std::align_val_t al) { return he::Allocator::GetDefault().Malloc(count, static_cast<size_t>(al)); }
 
-[[nodiscard]] void* operator new(size_t n, const std::nothrow_t&) noexcept { return he::Allocator::GetDefault().Malloc(static_cast<uint32_t>(n)); }
-[[nodiscard]] void* operator new[](size_t n, const std::nothrow_t&) noexcept { return he::Allocator::GetDefault().Malloc(static_cast<uint32_t>(n)); }
+[[nodiscard]] void* operator new(size_t n, const std::nothrow_t&) noexcept { return he::Allocator::GetDefault().Malloc(n); }
+[[nodiscard]] void* operator new[](size_t n, const std::nothrow_t&) noexcept { return he::Allocator::GetDefault().Malloc(n); }
 
-[[nodiscard]] void* operator new(size_t count, std::align_val_t al, const std::nothrow_t&) noexcept { return he::Allocator::GetDefault().Malloc(static_cast<uint32_t>(count), static_cast<uint32_t>(al)); }
-[[nodiscard]] void* operator new[](size_t count, std::align_val_t al, const std::nothrow_t&) noexcept { return he::Allocator::GetDefault().Malloc(static_cast<uint32_t>(count), static_cast<uint32_t>(al)); }
+[[nodiscard]] void* operator new(size_t count, std::align_val_t al, const std::nothrow_t&) noexcept { return he::Allocator::GetDefault().Malloc(count, static_cast<size_t>(al)); }
+[[nodiscard]] void* operator new[](size_t count, std::align_val_t al, const std::nothrow_t&) noexcept { return he::Allocator::GetDefault().Malloc(count, static_cast<size_t>(al)); }
 
 // replaceable usual deallocation functions
 

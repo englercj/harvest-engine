@@ -46,7 +46,7 @@ namespace he::assets
     bool AssetDatabase::Initialize(StringView cacheRoot, Span<String> contentRoots)
     {
         // Collect the content root paths
-        for (const String& root : m_contentRoots)
+        for (const String& root : contentRoots)
         {
             if (!HE_VERIFY(IsAbsolutePath(root),
                 HE_MSG("Content root path must be absolute."),

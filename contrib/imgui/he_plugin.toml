@@ -16,7 +16,7 @@ homepage = "https://github.com/ocornut/imgui"
     type = "static"
     group = "engine/contrib"
     files = [
-        "%{he.get_module_file_dir(prj.name)}/imgui_user_config.h",
+        "%{he.get_module_file_dir('imgui')}/imgui_user_config.h",
         "imgui_draw.cpp",
         "imgui_internal.h",
         "imgui_tables.cpp",
@@ -35,7 +35,7 @@ homepage = "https://github.com/ocornut/imgui"
     public_dependson_include = ["he_math"] # Need the types for the ImVec2 class extras
     public_includedirs = [
         ".",
-        "%{he.get_module_file_dir(prj.name)}",
+        "%{he.get_module_file_dir('imgui')}",
     ]
 
     [[modules.variants]]

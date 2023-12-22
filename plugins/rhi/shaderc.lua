@@ -100,7 +100,7 @@ return function (plugin)
 
             -- output directory
             table.insert(args, "-o")
-            table.insert(args, he.file_gen_dir)
+            table.insert(args, he.get_file_gen_dir(ctx.name))
 
             -- input file
             table.insert(args, "\"%{file.abspath}\"")
@@ -115,7 +115,7 @@ return function (plugin)
                     buildmessage "Compiling shader file %{file.abspath}"
                     buildcommands { "{ECHO} " .. cmd, cmd }
                     buildinputs { exe }
-                    buildoutputs { he.file_gen_dir .. "/%{file.basename}.shaders.h" }
+                    buildoutputs { he.get_file_gen_dir(ctx.name) .. "/%{file.basename}.shaders.h" }
                 he.filter_pop()
             end
         end,

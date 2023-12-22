@@ -56,11 +56,14 @@ he.target_obj_dir       = path.join(he.target_build_dir, "obj/%{prj.name}")
 he.target_gen_dir       = path.join(he.target_build_dir, "generated")
 
 -- Generated file paths
-he.file_gen_dir = "%{he.get_generated_dir(prj.name)}/%{path.getrelative(he.get_module_install_dir(prj.name, cfg.system), file.directory)}"
 he.get_generated_dir = function (module_name)
     local plugin = he.get_module(module_name)._plugin
     local plugin_dir_name = he.slugify(plugin.id)
     return path.join(he.gen_dir, plugin_dir_name)
+end
+
+he.get_file_gen_dir = function (module_name)
+    return "%{he.get_generated_dir('" .. module_name .. "')}/%{path.getrelative(he.get_module_install_dir('" .. module_name .. "', cfg.system), file.directory)}"
 end
 
 -- Module file paths

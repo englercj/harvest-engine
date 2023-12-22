@@ -12,7 +12,7 @@ TODO: Make it clear that all keys are optional unless otherwise specified.
 
 All keys that accept paths can contain globs, and are relative to the plugin's install location. For plugins without an `[install]` block, this is the same directory where the `he_plugin.toml` file is located. For plugins *with* an `[install]` block, the install location is the extracted files location in the `build/` directory.
 
-If you have an installed plugin and need to refer to the location of the `he_plugin.toml` file, you can get it with `he.get_module_file_dir(prj.name)`. For example, the ImGui plugin does the following to include the `imgui_user_config.h` file which lives next to the `he_plugin.toml` file:
+Sometimes it can be useful to reference the path to the `he_plugin.toml` file in your module. To do this you can look up the file path by plugin using `he.get_plugin('plugin.id')._file_path`. It is also common to want to refer to files that live near the `he_plugin.toml` file, particularly when the plugin is installed from an external source. To do this you can use `he.get_module_file_dir('module_name')`. For example, the ImGui plugin does the following to include the `imgui_user_config.h` file which lives next to the `he_plugin.toml` file:
 
 ```toml
 id = "ocornut.imgui"
@@ -22,7 +22,7 @@ id = "ocornut.imgui"
     name = "imgui"
     type = "static"
     files = [
-        "%{he.get_module_file_dir(prj.name)}/imgui_user_config.h",
+        "%{he.get_module_file_dir('imgui')}/imgui_user_config.h",
         "imgui.cpp",
         # ...
     ]
@@ -164,7 +164,7 @@ return function (plugin)
             dependson { "mytool" }
 
             local mytool = he.target_bin_dir .. "/mytool" .. iif(os.istarget("win32"), ".exe", "")
-            local buildCmd = mytool .. " -o \"" .. he.file_gen_dir .. "\" \"%{file.abspath}\""
+            local buildCmd = mytool .. " -o \"" .. he.get_file_gen_dir('mytool') .. "\" \"%{file.abspath}\""
 
             -- It is important to use filter_push_combine as that will push a filter on the stack
             -- that combines the files filter with the current active filter. Not doing this will
@@ -174,7 +174,7 @@ return function (plugin)
                 buildmessage "Running mytool on file %{file.abspath}"
                 buildcommands { "{ECHO} " .. buildCmd, buildCmd } -- echo the command in the build log
                 buildinputs { mytool } -- when the tool changes, this file needs to be recompiled
-                buildoutputs { he.file_gen_dir .. "/%{file.basename}.mytool.h" }
+                buildoutputs { he.get_file_gen_dir('mytool') .. "/%{file.basename}.mytool.h" }
             he.filter_pop()
         end,
     }

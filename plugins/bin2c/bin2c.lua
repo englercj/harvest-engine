@@ -98,7 +98,7 @@ return function (plugin)
 
             -- output file
             table.insert(args, "-o")
-            table.insert(args, he.file_gen_dir .. "/%{file.name}.h")
+            table.insert(args, he.get_file_gen_dir(ctx.name) .. "/%{file.name}.h")
 
             local cmd = table.concat(args, " ")
 
@@ -110,7 +110,7 @@ return function (plugin)
                     buildmessage "Creating C header for file %{file.abspath}"
                     buildcommands { "{ECHO} " .. cmd, cmd }
                     buildinputs { exe }
-                    buildoutputs { he.file_gen_dir .. "/%{file.name}.h" }
+                    buildoutputs { he.get_file_gen_dir(ctx.name) .. "/%{file.name}.h" }
                 he.filter_pop()
             end
         end,

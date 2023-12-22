@@ -158,7 +158,7 @@ return function (plugin)
 
             -- output directory
             table.insert(args, "-o")
-            table.insert(args, he.file_gen_dir)
+            table.insert(args, he.get_file_gen_dir(ctx.name))
 
             -- input file
             table.insert(args, "\"%{file.abspath}\"")
@@ -174,8 +174,8 @@ return function (plugin)
                     buildcommands { "{ECHO} " .. cmd, cmd }
                     buildinputs { exe }
                     buildoutputs {
-                        he.file_gen_dir .. "/%{file.basename}.hsc.h",
-                        he.file_gen_dir .. "/%{file.basename}.hsc.cpp",
+                        he.get_file_gen_dir(ctx.name) .. "/%{file.basename}.hsc.h",
+                        he.get_file_gen_dir(ctx.name) .. "/%{file.basename}.hsc.cpp",
                     }
                 he.filter_pop()
             end

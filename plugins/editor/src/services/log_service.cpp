@@ -12,6 +12,39 @@
 
 namespace he::editor
 {
+    static CRC32C::ValueType HashEntry(CRC32C::ValueType seed, const LogService::Entry& entry)
+    {
+        Hash<CRC32C> crc(seed);
+        crc.Update(entry.timestamp.val);
+        crc.Update(entry.source.level);
+        crc.Update(entry.source.line);
+        crc.Update(entry.source.file);
+        crc.Update(entry.source.funcName);
+        crc.Update(entry.source.category);
+
+        for (const KeyValue& kv : entry.kvs)
+        {
+            switch (kv.Kind())
+            {
+                case he::KeyValue::ValueKind::Bool: crc.Update(kv.Bool()); break;
+                case he::KeyValue::ValueKind::Enum: crc.Update(kv.Enum().value); break;
+                case he::KeyValue::ValueKind::Int: crc.Update(kv.Int()); break;
+                case he::KeyValue::ValueKind::Uint: crc.Update(kv.Uint()); break;
+                case he::KeyValue::ValueKind::Double: crc.Update(kv.Double()); break;
+                case he::KeyValue::ValueKind::String:
+                {
+                    const String& str = kv.String();
+                    crc.Update(str.Data(), str.Size());
+                    break;
+                }
+                case he::KeyValue::ValueKind::Empty:
+                    break;
+            }
+        }
+
+        return crc.Final();
+    }
+
     LogService::LogService(DirectoryService& directoryService) noexcept
         : m_directoryService(directoryService)
     {}
@@ -49,36 +82,6 @@ namespace he::editor
         return m_entriesHash.load();
     }
 
-    static void HashEntry(Hash<CRC32C>& crc, const LogService::Entry& entry)
-    {
-        crc.Update(entry.timestamp.val);
-        crc.Update(entry.source.level);
-        crc.Update(entry.source.line);
-        crc.Update(entry.source.file);
-        crc.Update(entry.source.funcName);
-        crc.Update(entry.source.category);
-
-        for (const KeyValue& kv : entry.kvs)
-        {
-            switch (kv.Kind())
-            {
-                case he::KeyValue::ValueKind::Bool: crc.Update(kv.Bool()); break;
-                case he::KeyValue::ValueKind::Enum: crc.Update(kv.Enum().value); break;
-                case he::KeyValue::ValueKind::Int: crc.Update(kv.Int()); break;
-                case he::KeyValue::ValueKind::Uint: crc.Update(kv.Uint()); break;
-                case he::KeyValue::ValueKind::Double: crc.Update(kv.Double()); break;
-                case he::KeyValue::ValueKind::String:
-                {
-                    const String& str = kv.String();
-                    crc.Update(str.Data(), str.Size());
-                    break;
-                }
-                case he::KeyValue::ValueKind::Empty:
-                    break;
-            }
-        }
-    }
-
     void LogService::OnLogEntry(const LogSource& source, const KeyValue* kvs, uint32_t count)
     {
         LockGuard lock(m_mutex);
@@ -92,10 +95,11 @@ namespace he::editor
         Entry& entry = m_entries.emplace_back();
         entry.source = source;
         entry.kvs.Insert(0, kvs, kvs + count);
-        HashEntry(m_entriesCrc, entry);
+
+        m_entriesCrc = HashEntry(m_entriesCrc, entry);
 
         GetLevelCount(entry.source.level).fetch_add(1);
-        m_entriesHash.store(m_entriesCrc.Value());
+        m_entriesHash.store(m_entriesCrc);
     }
 
     const std::atomic<uint32_t>& LogService::GetLevelCount(LogLevel level) const

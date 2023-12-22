@@ -68,6 +68,6 @@ namespace he::editor
 
         mutable Mutex m_mutex{};
         std::deque<Entry> m_entries{};
-        Hash<CRC32C> m_entriesCrc{};
+        CRC32C::ValueType m_entriesCrc{ CRC32C::DefaultSeed };
     };
 }

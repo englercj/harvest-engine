@@ -60,7 +60,7 @@ namespace he::editor
                 HE_MSG("Failed to initialize asset cache DB."),
                 HE_KV(cache_root, cacheRoot),
                 HE_KV(content_root_count, contentRoots.Size()));
-            return;
+            return false;
         }
 
         // Startup the updater to ensure the DB is correct
@@ -72,7 +72,7 @@ namespace he::editor
                 HE_MSG("Failed to start asset DB updater."),
                 HE_KV(cache_root, cacheRoot),
                 HE_KV(content_root_count, contentRoots.Size()));
-            return;
+            return false;
         }
 
         failGuard.Dismiss();

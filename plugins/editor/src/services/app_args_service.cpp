@@ -62,7 +62,7 @@ namespace he::editor
 
     const ArgDesc* AppArgsService::FindArg(char shortName) const
     {
-        const uint32_t* index = m_descsByLongName.Find(shortName);
+        const uint32_t* index = m_descsByShortName.Find(shortName);
         return index ? &m_descs[*index] : nullptr;
     }
 }

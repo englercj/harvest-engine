@@ -62,28 +62,58 @@ namespace he
     }
 
     // --------------------------------------------------------------------------------------------
-    // Streaming hash implementation that allows for incremental updates and a final value.
+    /// Streaming hash implementation that allows for incremental updates and a final value.
+    ///
+    /// \tparam Algo The algorithm to use for generating the hash.
     template <typename Algo>
     class Hash
     {
     public:
+        /// The type of the hash result. This is returned from \ref Final()
         using ValueType = typename Algo::ValueType;
 
     public:
+        /// Construct a streaming hash. Optionally can provide a seed to initialize the state.
+        ///
+        /// \param[in] seed Optional. A seed to initialize the hash state.
         explicit Hash(ValueType seed = Algo::DefaultSeed) noexcept : m_state(seed) {}
 
-        void Reset(ValueType seed = Algo::DefaultSeed) { m_state = seed; }
+        /// Resets the streaming hash to the initial state.
+        ///
+        /// \param[in] seed Optional. A seed to initialize the hash state.
+        /// \return Returns the updated streaming hash.
+        Hash& Reset(ValueType seed = Algo::DefaultSeed) { m_state = seed; return *this; }
 
+        /// Update the hash state by processing an arithmetic or enum value.
+        ///
+        /// \param[in] value The value to hash.
+        /// \return Returns the updated streaming hash.
         template <typename T> requires(Arithmetic<T> || Enum<T>)
-        Hash& Update(const T& value) { Update(&value, sizeof(T)); return *this; }
+        Hash& Update(const T& value) { return Update(&value, sizeof(T)); }
 
+        /// Update the hash state by processing a range of arithmetic or enum values.
+        ///
+        /// \param[in] range The range of values to hash.
+        /// \return Returns the updated streaming hash.
         template <ArithmeticRange R>
-        Hash& Update(const R& range) { Update(range.Data(), range.Size()); return *this; }
+        Hash& Update(const R& range) { return Update(range.Data(), range.Size()); }
 
-        Hash& Update(const char* str) { Update(str, StrLen(str)); return *this; }
+        /// Update the hash state by processing a null-terminated string of characters.
+        ///
+        /// \param[in] str The string to hash.
+        /// \return Returns the updated streaming hash.
+        Hash& Update(const char* str) { return Update(str, StrLen(str)); }
 
+        /// Update the hash state by processing a block of memory.
+        ///
+        /// \param[in] data The pointer to the data to hash.
+        /// \param[in] len The number of bytes to hash.
+        /// \return Returns the updated streaming hash.
         Hash& Update(const void* data, uint32_t len) { m_state = Algo::Mem(data, len, m_state); return *this; }
 
+        /// Complete the hash and return the resulting value.
+        ///
+        /// \return The resulting value of the hash.
         ValueType Final() { return m_state; }
 
     private:

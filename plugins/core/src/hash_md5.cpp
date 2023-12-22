@@ -100,7 +100,7 @@ namespace he
         m_buf[m_bufLen++] = 0x80;
 
         // if the length is currently above 56 bytes we append zeros
-        // then compress.  Then we can fall back to padding zeros and length
+        // then compress. Then we can fall back to padding zeros and length
         // encoding like normal.
         constexpr uint32_t FullBufSize = BlockSize - 8;
         if (m_bufLen > FullBufSize)

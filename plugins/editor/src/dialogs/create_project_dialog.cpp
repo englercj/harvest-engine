@@ -99,6 +99,9 @@ namespace he::editor
         ImGui::BeginDisabled(!canSave);
         if (DialogButton("Save"))
         {
+            schema::TypedBuilder<editor::Project> builder;
+            builder.GetOrAddRoot();
+
             if (!m_projectService.Create(m_name.Data(), m_path.Data(), m_assetRoot.Data()))
             {
                 m_dialogService.Open<ChoiceDialog>().Configure(

@@ -56,7 +56,7 @@ namespace he::editor
 
     void ImportAssetDialog::Configure(StringView path, StringView moveHint, const schema::DynamicStruct::Reader& data)
     {
-        const String& assetRoot = m_assetService.AssetDB().AssetRoot();
+        const Span<const String> contentRoots = m_assetService.AssetDB().ContentRoots();
 
         HE_LOG_DEBUG(he_editor,
             HE_MSG("ImportAssetDialog opened."),
@@ -76,7 +76,9 @@ namespace he::editor
         CheckImportDst();
 
         if (!HE_VERIFY(moveHint.IsEmpty() || m_importDstValid))
+        {
             Close();
+        }
 
         if (data.Struct().IsValid())
         {
@@ -86,7 +88,7 @@ namespace he::editor
 
         if (m_importDst.IsEmpty())
         {
-            if (!IsChildPath(m_path, assetRoot))
+            if (!IsPathInContentRoots(m_path))
             {
                 m_state = State::CopyOrMove;
             }
@@ -127,7 +129,7 @@ namespace he::editor
                 if (!m_importDstValid)
                 {
                     ImGui::PushStyleColor(ImGuiCol_Text, Colors::Error);
-                    ImGui::TextUnformatted("The import destination must be specified, and must be within the asset directory.");
+                    ImGui::TextUnformatted("The import destination must be specified, and must be within a module's content root.");
                     ImGui::PopStyleColor();
                 }
                 break;
@@ -205,12 +207,25 @@ namespace he::editor
         }
     }
 
+    bool ImportAssetDialog::IsPathInContentRoots(const String& path)
+    {
+        const Span<const String> contentRoots = m_assetService.AssetDB().ContentRoots();
+
+        for (const String& root : contentRoots)
+        {
+            if (path == root || IsChildPath(path, root))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     void ImportAssetDialog::CheckImportDst()
     {
-        const String& assetRoot = m_assetService.AssetDB().AssetRoot();
-
         NormalizePath(m_importDst);
-        m_importDstValid = !m_importDst.IsEmpty() && (m_importDst == assetRoot || !IsChildPath(m_importDst, assetRoot));
+        m_importDstValid = !m_importDst.IsEmpty() && IsPathInContentRoots(m_importDst);
     }
 
     void ImportAssetDialog::HandleCopyOrMove(bool copy)

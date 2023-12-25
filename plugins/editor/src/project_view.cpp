@@ -30,7 +30,12 @@ namespace he::editor
     bool ProjectView::Initialize()
     {
         if (!CreateView())
+        {
             m_editorData.device->Quit(1);
+            return false;
+        }
+
+        return true;
     }
 
     void ProjectView::Terminate()
@@ -108,7 +113,7 @@ namespace he::editor
         ImGui::SameLine();
         ImGui::Button("Add Existing");
         ImGui::SameLine();
-        ImGui::Button("Create New"); // Primary button color
+        ImGui::Button("Create New"); // TODO: Primary button color
 
         const ImGuiTableFlags flags = ImGuiTableFlags_RowBg | ImGuiTableFlags_Resizable;
         if (ImGui::BeginTable("##project_list", 2, flags))

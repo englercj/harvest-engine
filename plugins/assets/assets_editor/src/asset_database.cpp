@@ -359,7 +359,10 @@ namespace he::assets
                 HE_MSG("Failed to update asset cached DB with asset file data. Check the logs above this for additional details."),
                 HE_KV(file_uuid, AssetFileUuid(assetFile.GetUuid())),
                 HE_KV(file_path, model.filePath));
+            return false;
         }
+
+        return true;
     }
 
     AssetDatabase::LoadResult AssetDatabase::LoadAssetFile(const char* path)

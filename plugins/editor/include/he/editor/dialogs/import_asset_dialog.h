@@ -40,6 +40,7 @@ namespace he::editor
         void ShowButtons() override;
 
     private:
+        bool IsPathInContentRoots(const String& path);
         void CheckImportDst();
         void HandleCopyOrMove(bool copy);
         void StartImport();

@@ -1,5 +1,7 @@
 // Copyright Chad Engler
 
+#pragma once
+
 #include "he/core/types.h"
 #include "he/editor/services/app_args_service.h"
 #include "he/editor/services/asset_service.h"

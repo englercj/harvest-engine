@@ -24,6 +24,7 @@ namespace he
 
         // Read chunks of no more than 32MB since that's all it will return anyway.
         // See: https://man7.org/linux/man-pages/man4/random.4.html
+        // > Since Linux 3.16, a read(2) from /dev/urandom will return at most 32 MB.
         constexpr size_t ChunkSize = 32 * 1024 * 1024;
 
         while (count > ChunkSize)

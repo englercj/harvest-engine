@@ -40,11 +40,11 @@
         HE_DLL_EXPORT friend ::he::TypeInfo GetHarvestModuleTypeInfo() { return ::he::TypeInfo::Get<Impl>(); } \
         HE_DLL_EXPORT friend ::he::Module* CreateHarvestModule() { return Impl::CreateModule(); } \
         HE_DLL_EXPORT friend void DestroyHarvestModule(::he::Module* m) { Impl::DestroyModule(m); } \
-        static inline bool s_isStaticModule = false
+        static const bool s_isStaticModule = false
 #else
     #define HE_DECL_MODULE(Impl) \
         HE_DECL_MODULE_(Impl) \
-        static inline bool s_isStaticModule = ::he::ModuleRegistry::RegisterStaticModule<Impl>()
+        static const bool s_isStaticModule = ::he::ModuleRegistry::RegisterStaticModule<Impl>()
 #endif
 
 namespace he

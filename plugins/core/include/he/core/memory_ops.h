@@ -6,8 +6,6 @@
 #include "he/core/cpu.h"
 #include "he/core/types.h"
 
-#include <intrin.h>
-
 #if HE_COMPILER_MSVC
     extern "C"
     {

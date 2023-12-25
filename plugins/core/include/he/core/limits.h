@@ -67,8 +67,8 @@ namespace he
         static constexpr uint32_t ExponentBits = 8;
         static constexpr uint32_t MantissaBits = 24;
 
-        static constexpr float Min = -3.402823466e+38F;
-        static constexpr float Max = 3.402823466e+38F;
+        static constexpr float Min = -3.402823466e+38f;
+        static constexpr float Max = 3.402823466e+38f;
 
         static constexpr float MinPos = 1.175494351e-38f;
         static constexpr float Epsilon = 1.192092896e-07f;

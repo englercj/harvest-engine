@@ -44,7 +44,7 @@
 #else
     #define HE_DECL_MODULE(Impl) \
         HE_DECL_MODULE_(Impl) \
-        static const bool s_isStaticModule = ::he::ModuleRegistry::RegisterStaticModule<Impl>()
+        static inline bool s_isStaticModule = ::he::ModuleRegistry::RegisterStaticModule<Impl>()
 #endif
 
 namespace he

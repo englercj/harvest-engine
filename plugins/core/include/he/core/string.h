@@ -134,11 +134,27 @@ namespace he
         ///
         /// \param range The object that provides the range.
         template <ContiguousRangeOf<const char> R>
-        String& operator+=(const R& range)
-        {
-            Insert(Size(), range.Data(), range.Size());
-            return *this;
-        }
+        String& operator+=(const R& range) { Insert(Size(), range.Data(), range.Size()); return *this; }
+
+        /// Creates a new string that is the concatenation of this string and the null terminated
+        /// string parameter.
+        ///
+        /// \param str The string to concatenate.
+        String operator+(const char* str) const { String copy(*this); copy += str; return copy; }
+
+        /// Creates a new string that is the concatenation of this string and the character
+        /// parameter.
+        ///
+        /// \param c The character to concatenate.
+        String operator+(char c) const { String copy(*this); copy += c; return copy; }
+
+        /// Creates a new string that is the concatenation of this string and a series of
+        /// characters from an object that provides a Harvest-style contiguous range.
+        /// That is, it has `.Data()` and `.Size()` members.
+        ///
+        /// \param range The object that provides the range.
+        template <ContiguousRangeOf<const char> R>
+        String operator+(const R& range) const { String copy(*this); copy += range; return copy; }
 
         /// Checks if this string is equal to the null terminated string `x`.
         ///

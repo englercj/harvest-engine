@@ -490,6 +490,50 @@ HE_TEST(core, string, operator_plus_equal)
 }
 
 // ------------------------------------------------------------------------------------------------
+HE_TEST(core, string, operator_plus)
+{
+    const String s;
+    HE_EXPECT_EQ(s.Size(), 0);
+    HE_EXPECT_EQ_STR(s.Data(), "");
+
+    const String s0 = s + "Hello";
+    HE_EXPECT_EQ(s0.Size(), 5);
+    HE_EXPECT_EQ_STR(s0.Data(), "Hello");
+
+    const String s1 = s0 + ", ";
+    HE_EXPECT_EQ(s1.Size(), 7);
+    HE_EXPECT_EQ_STR(s1.Data(), "Hello, ");
+
+    const String s2 = s1 + "world!";
+    HE_EXPECT_EQ(s2.Size(), 13);
+    HE_EXPECT_EQ_STR(s2.Data(), "Hello, world!");
+
+    const String s3 = s2 + ' ';
+    HE_EXPECT_EQ(s3.Size(), 14);
+    HE_EXPECT_EQ_STR(s3.Data(), "Hello, world! ");
+
+    const String s4 = s3 + "This is really long to force reallocation onto the heap space of the string object we're testing.";
+    HE_EXPECT_GE(s4.Capacity(), 111);
+    HE_EXPECT_EQ(s4.Size(), 111);
+    HE_EXPECT_EQ_STR(s4.Data(), "Hello, world! This is really long to force reallocation onto the heap space of the string object we're testing.");
+
+    const StringView view = "Testing view!";
+    const String s5 = s4 + view;
+    HE_EXPECT_GE(s5.Capacity(), 124);
+    HE_EXPECT_EQ(s5.Size(), 124);
+    HE_EXPECT_EQ_STR(s5.Data(), "Hello, world! This is really long to force reallocation onto the heap space of the string object we're testing.Testing view!");
+
+    Vector<char> vec;
+    vec.PushBack('a');
+    vec.PushBack('o');
+    vec.PushBack('c');
+    const String s6 = s5 + s4;
+    HE_EXPECT_GE(s6.Capacity(), 127);
+    HE_EXPECT_EQ(s6.Size(), 127);
+    HE_EXPECT_EQ_STR(s6.Data(), "Hello, world! This is really long to force reallocation onto the heap space of the string object we're testing.Testing view!aoc");
+}
+
+// ------------------------------------------------------------------------------------------------
 HE_TEST(core, string, operator_eq)
 {
     const String a("Hello, world!");

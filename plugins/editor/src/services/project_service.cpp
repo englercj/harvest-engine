@@ -21,11 +21,124 @@
 
 namespace he::editor
 {
+    static void AddPluginToLoad(StringView plugin, StringView cwd, Vector<String>& pluginsToLoad)
+    {
+        String& pluginPath = pluginsToLoad.EmplaceBack();
+        pluginPath = cwd;
+        ConcatPath(pluginPath, plugin);
+
+        if (GetExtension(plugin) == ".toml")
+        {
+            ConcatPath(pluginPath, "he_plugin.toml");
+        }
+    }
+
     ProjectService::ProjectService(DirectoryService& directoryService) noexcept
         : m_directoryService(directoryService)
     {}
 
-    bool ProjectService::Open(const char* path)
+    bool ProjectService::CreateAndOpen(StringView projectName, StringView projectDir, StringView enginePath)
+    {
+        if (!Close())
+            return false;
+
+        m_projectPath = projectDir;
+
+        // Ensure the project directory exists.
+        Result rc = Directory::Create(m_projectPath.Data(), true);
+        if (!rc)
+        {
+            HE_LOG_ERROR(editor,
+                HE_MSG("Failed to create project directory."),
+                HE_KV(path, m_projectPath),
+                HE_KV(result, rc));
+            return false;
+        }
+
+        ConcatPath(m_projectPath, "he_project.toml");
+
+        const String slugName = projectName; // TODO: slugify
+        const String moduleName = slugName + "_content";
+
+        String contentDir = projectDir;
+        ConcatPath(contentDir, moduleName);
+
+        // Ensure the content directory exists
+        rc = Directory::Create(contentDir.Data());
+        if (!rc)
+        {
+            HE_LOG_ERROR(editor,
+                HE_MSG("Failed to create content directory in project directory."),
+                HE_KV(path, contentDir),
+                HE_KV(result, rc));
+            return false;
+        }
+
+        // Build plugin file and save it out
+        {
+            schema::TypedBuilder<Plugin> plugin;
+            Plugin::Builder pluginBuilder = plugin.GetOrAddRoot();
+            schema::String::Builder nameStr = plugin.builder.AddString(projectName);
+            schema::String::Builder slugNameStr = plugin.builder.AddString(slugName);
+            schema::String::Builder moduleNameStr = plugin.builder.AddString(moduleName);
+
+            pluginBuilder.SetId(slugNameStr);
+            pluginBuilder.SetName(nameStr);
+            pluginBuilder.SetDescription(nameStr);
+            pluginBuilder.SetVersion(plugin.builder.AddString("1.0.0"));
+            pluginBuilder.SetLicense(plugin.builder.AddString("UNLICENSED"));
+
+            schema::List<Plugin::Module>::Builder moduleList = plugin.builder.AddList<Plugin::Module>(1);
+            Plugin::Module::Builder moduleBuilder = moduleList[0];
+            moduleBuilder.SetName(moduleNameStr);
+            moduleBuilder.SetType(Plugin::ModuleType::Content);
+            moduleBuilder.SetGroup(plugin.builder.AddString("game"));
+
+            schema::List<schema::String>::Builder contentDirList = plugin.builder.AddList<schema::String>(1);
+            contentDirList.Set(0, moduleNameStr);
+            moduleBuilder.SetContentDirs(contentDirList);
+
+            String buf;
+            schema::ToToml<editor::Project>(buf, Project());
+
+            String pluginPath = projectDir;
+            ConcatPath(pluginPath, "he_plugin.toml");
+            rc = File::WriteAll(buf.Data(), buf.Size(), pluginPath.Data());
+            if (!rc)
+            {
+                HE_LOG_ERROR(editor,
+                    HE_MSG("Failed to write content plugin file."),
+                    HE_KV(path, pluginPath),
+                    HE_KV(result, rc));
+                return false;
+            }
+        }
+
+        // Build project file and save
+        {
+            Project::Builder builder = m_builder.GetOrAddRoot();
+
+            GenerateProjectId();
+            builder.SetName(m_builder.builder.AddString(projectName));
+
+            String relEnginePath = enginePath;
+            MakeRelative(relEnginePath, projectDir);
+            schema::String::Builder enginePluginPath = m_builder.builder.AddString(relEnginePath);
+            schema::String::Builder localPluginPath = m_builder.builder.AddString(".");
+            schema::List<schema::String>::Builder pluginList = m_builder.builder.AddList<schema::String>(2);
+            pluginList.Set(0, enginePluginPath);
+            pluginList.Set(1, localPluginPath);
+            builder.SetPlugins(pluginList);
+
+            if (!Save())
+                return false;
+        }
+
+        // Setup the project as loaded now that we've saved the files.
+        return LoadProjectInternal();
+    }
+
+    bool ProjectService::Open(StringView path)
     {
         if (!HE_VERIFY(!IsOpen()))
             return false;
@@ -62,7 +175,8 @@ namespace he::editor
             return false;
         }
 
-        Close();
+        if (!Close())
+            return false;
 
         if (!schema::FromToml(m_builder, buf))
         {
@@ -75,31 +189,11 @@ namespace he::editor
         // Generate the ID if missing
         if (!Project().HasId())
         {
-            const Uuid projId = Uuid::CreateV4();
-            Span<uint8_t> idData = Project().InitId().GetValue();
-            HE_ASSERT(idData.Size() == sizeof(projId.m_bytes));
-            MemCopy(idData.Data(), projId.m_bytes, sizeof(projId.m_bytes));
-            Save();
+            GenerateProjectId();
+            Save(); // even if we fail, we still continue with the reload
         }
 
-        // ensure the data directory exists
-        const String dataDir = DataDir();
-        r = Directory::Create(dataDir.Data(), true);
-        if (!r)
-        {
-            HE_LOG_ERROR(editor,
-                HE_MSG("Failed to create resource directory for newly opened project."),
-                HE_KV(project_id, Project().GetId().GetValue()),
-                HE_KV(project_name, Project().GetName().AsView()),
-                HE_KV(path, dataDir),
-                HE_KV(result, r));
-            return false;
-        }
-
-        // read plugins
-        ReadPluginFiles();
-
-        m_onLoadSignal.Dispatch();
+        LoadProjectInternal();
         return true;
     }
 
@@ -144,19 +238,46 @@ namespace he::editor
         return appDir;
     }
 
-    static void AddPluginToLoad(StringView plugin, StringView cwd, Vector<String>& pluginsToLoad)
+    bool ProjectService::LoadProjectInternal()
     {
-        String& pluginPath = pluginsToLoad.EmplaceBack();
-        pluginPath = cwd;
-        ConcatPath(pluginPath, plugin);
+        HE_ASSERT(IsOpen());
 
-        if (GetExtension(plugin) == ".toml")
+        // ensure the data directory exists
+        const String dataDir = DataDir();
+        const Result rc = Directory::Create(dataDir.Data(), true);
+        if (!rc)
         {
-            ConcatPath(pluginPath, "he_plugin.toml");
+            HE_LOG_ERROR(editor,
+                HE_MSG("Failed to create resource directory for newly opened project."),
+                HE_KV(project_id, Project().GetId().GetValue()),
+                HE_KV(project_name, Project().GetName().AsView()),
+                HE_KV(path, dataDir),
+                HE_KV(result, rc));
+            return false;
         }
+
+        if (!ReadPluginFiles())
+        {
+            HE_LOG_WARN(editor,
+                HE_MSG("Failed to load one or more plugin files. Project may be in an invalid state."),
+                HE_KV(project_id, Project().GetId().GetValue()),
+                HE_KV(project_name, Project().GetName().AsView()));
+            // we continue with the load even if a plugin fails
+        }
+
+        m_onLoadSignal.Dispatch();
+        return true;
     }
 
-    void ProjectService::ReadPluginFiles()
+    void ProjectService::GenerateProjectId()
+    {
+        const Uuid projId = Uuid::CreateV4();
+        Span<uint8_t> idData = Project().InitId().GetValue();
+        HE_ASSERT(idData.Size() == sizeof(projId.m_bytes));
+        MemCopy(idData.Data(), projId.m_bytes, sizeof(projId.m_bytes));
+    }
+
+    bool ProjectService::ReadPluginFiles()
     {
         // Initialize some buffers we use throughout the loop to reduce allocations
         Vector<String> pluginsToLoad;
@@ -178,18 +299,18 @@ namespace he::editor
         while (!pluginsToLoad.IsEmpty())
         {
             // Get the full path to the plugin we want to load
-            String fullPath = Move(pluginsToLoad.Back());
+            const String fullPath = Move(pluginsToLoad.Back());
             pluginsToLoad.PopBack();
 
             // Read the plugin file into memory
             Result r = File::ReadAll(fileData, fullPath.Data());
             if (!r)
             {
-                HE_LOG_ERROR(he_editor,
+                HE_LOG_WARN(he_editor,
                     HE_MSG("Failed to load plugin file."),
                     HE_KV(path, fullPath),
                     HE_KV(result, r));
-                continue;
+                return false;
             }
 
             // Parse the plugin file into a schema structure
@@ -197,10 +318,10 @@ namespace he::editor
             entry.filePath = fullPath;
             if (!schema::FromToml(entry.plugin, fileData))
             {
-                HE_LOG_ERROR(editor,
+                HE_LOG_WARN(editor,
                     HE_MSG("Failed to deserialize plugin file. Is it valid TOML?"),
-                    HE_KV(path, m_projectPath));
-                continue;
+                    HE_KV(path, fullPath));
+                return false;
             }
 
             // Add any additionally imported plugins to the list to be loaded
@@ -210,5 +331,7 @@ namespace he::editor
                 AddPluginToLoad(plugin, cwd, pluginsToLoad);
             }
         }
+
+        return true;
     }
 }

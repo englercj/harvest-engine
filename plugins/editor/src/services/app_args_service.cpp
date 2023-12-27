@@ -7,9 +7,17 @@
 
 namespace he::editor
 {
+    AppArgsService::ValueEntry::~ValueEntry() noexcept
+    {
+        if (valueDeleteFunc)
+        {
+            valueDeleteFunc(valueMem);
+        }
+    }
+
     AppArgsService::AppArgsService() noexcept
     {
-        m_descs.EmplaceBack(m_flags.help, 'h', "help", "Prints this help message");
+        RegisterArg<bool>('h', "help", "Prints this help message");
     }
 
     String AppArgsService::Help() const
@@ -25,8 +33,30 @@ namespace he::editor
         return m_args.code == ArgResult::Success;
     }
 
-    bool AppArgsService::RegisterArg(ArgDesc&& desc)
+    bool AppArgsService::UnregisterArg(const char* longName)
     {
+        // Technically this leaks the descs and values since they stay in the vector.
+        // However, since register/unregister pairs should primarily be at module load/unload
+        // boundaries - which are called very rarely - this is probably fine. We'll still
+        // cleanup the memory when we destruct.
+        // If this becomes a problem, we can make a new strategy.
+        return m_descsByLongName.Erase(longName);
+    }
+
+    bool AppArgsService::UnregisterArg(char shortName)
+    {
+        // Technically this leaks the descs and values since they stay in the vector.
+        // However, since register/unregister pairs should primarily be at module load/unload
+        // boundaries - which are called very rarely - this is probably fine. We'll still
+        // cleanup the memory when we destruct.
+        // If this becomes a problem, we can make a new strategy.
+        return m_descsByShortName.Erase(shortName);
+    }
+
+    bool AppArgsService::RegisterArg(ArgDesc&& desc, ValueEntry&& value)
+    {
+        HE_ASSERT(m_descs.Size() == m_values.Size());
+
         const uint32_t index = m_descs.Size();
 
         auto resultLong = m_descsByLongName.Emplace(desc.LongName(), index);
@@ -39,30 +69,23 @@ namespace he::editor
             return false;
         }
 
-        auto resultShort = m_descsByShortName.Emplace(desc.ShortName(), index);
-        if (!resultShort.inserted)
+        if (desc.ShortName() != '\0')
         {
-            m_descsByLongName.Erase(desc.LongName());
-            HE_LOG_ERROR(he_editor,
-                HE_MSG("An argument with that short name is already registered."),
-                HE_KV(short_name, desc.ShortName()),
-                HE_KV(long_name, desc.LongName()));
-            return false;
+            auto resultShort = m_descsByShortName.Emplace(desc.ShortName(), index);
+            if (!resultShort.inserted)
+            {
+                m_descsByLongName.Erase(desc.LongName());
+                HE_LOG_ERROR(he_editor,
+                    HE_MSG("An argument with that short name is already registered."),
+                    HE_KV(short_name, desc.ShortName()),
+                    HE_KV(long_name, desc.LongName()));
+                return false;
+
+            }
         }
 
         m_descs.PushBack(Move(desc));
+        m_values.PushBack(Move(value));
         return true;
-    }
-
-    const ArgDesc* AppArgsService::FindArg(const char* longName) const
-    {
-        const uint32_t* index = m_descsByLongName.Find(longName);
-        return index ? &m_descs[*index] : nullptr;
-    }
-
-    const ArgDesc* AppArgsService::FindArg(char shortName) const
-    {
-        const uint32_t* index = m_descsByShortName.Find(shortName);
-        return index ? &m_descs[*index] : nullptr;
     }
 }

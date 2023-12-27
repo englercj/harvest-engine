@@ -42,9 +42,6 @@ namespace he::editor
             editors.RegisterTypeEditor<schema::Vec4f>({ &Vec4fEditor, TypeEditUIService::EditorFlag::Inline });
             editors.RegisterTypeEditor<schema::Uuid>({ &UuidEditor, TypeEditUIService::EditorFlag::Inline });
 
-            AppArgsService& appArgs = registry.GetApi<AppArgsService>();
-            appArgs.RegisterArg(ArgDesc{ "help", "Prints this help message", ArgType::Flag, 'h' });
-
             return true;
         }
     };

@@ -157,7 +157,7 @@ function table.length(t)
  end
 
 -- ------------------------------------------------------------------------------------------------
--- Slugify
+-- Transform a string into a URL & filesystem safe slug
 
 he.slugify = function (str)
     return str:lower()

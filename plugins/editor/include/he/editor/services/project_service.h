@@ -4,6 +4,7 @@
 
 #include "he/core/signal.h"
 #include "he/core/string.h"
+#include "he/core/string_view.h"
 #include "he/editor/services/directory_service.h"
 #include "he/editor/services/platform_service.h"
 #include "he/editor/schema/plugin.hsc.h"
@@ -30,7 +31,9 @@ namespace he::editor
     public:
         ProjectService(DirectoryService& directoryService) noexcept;
 
-        bool Open(const char* path);
+        bool CreateAndOpen(StringView projectName, StringView projectDir, StringView enginePath);
+
+        bool Open(StringView path);
         bool Close();
 
         bool Reload();
@@ -53,7 +56,9 @@ namespace he::editor
         OnUnloadSignal& OnUnload() { return m_onUnloadSignal; }
 
     private:
-        void ReadPluginFiles();
+        bool LoadProjectInternal();
+        void GenerateProjectId();
+        bool ReadPluginFiles();
 
     private:
         DirectoryService& m_directoryService;

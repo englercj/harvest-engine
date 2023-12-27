@@ -3,7 +3,8 @@
 #include "he/editor/editor_app.h"
 
 #include "he/core/async_file.h"
-
+#include "he/core/result.h"
+#include "he/core/result_fmt.h"
 #include "he/window/event.h"
 
 #include <iostream>
@@ -72,10 +73,10 @@ namespace he::editor
         // Startup the async file io system for the the application to use.
         AsyncFileIOConfig config{};
         config.threadpool.executor = &m_taskService;
-        const Result r = StartupAsyncFileIO(config);
-        if (!r)
+        const Result rc = StartupAsyncFileIO(config);
+        if (!rc)
         {
-            HE_LOG_ERROR(he_editor, HE_MSG("Failed to startup async file IO system."), HE_KV(result, r));
+            HE_LOG_ERROR(he_editor, HE_MSG("Failed to startup async file IO system."), HE_KV(result, rc));
             return false;
         }
 

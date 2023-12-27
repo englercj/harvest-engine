@@ -28,81 +28,33 @@ namespace he::editor
     void CreateProjectDialog::ShowContent()
     {
         ImGui::TextUnformatted("Project Name");
-        InputText("##project_name", m_name);
-
-        ImGui::NewLine();
-
-        ImGui::TextUnformatted("Project Path");
-        if (InputSaveFile("##project_path", m_path, m_platformService, ProjectFilters))
-        {
-            StringView ext = GetExtension(m_path);
-            if (ext.IsEmpty() || ext != ProjectExtension)
-            {
-                m_path += ProjectExtension;
-            }
-            m_assetRoot.Clear();
-        }
-
-        ImGui::NewLine();
-
-        if (ImGui::Checkbox("Override Asset Root Directory", &m_overrideAssetRoot))
-        {
-            m_assetRoot.Clear();
-            m_errorMessage.Clear();
-        }
         ImGui::SameLine();
-        ShowHelpMarker(
-            "By default assets live in the same directory as the project file.\n\n"
-            "Because this value is stored in the project file and shared between all "
-            "users of the project, it is stored a relative path to the project file. "
-            "This means the path must be at or below the directory of the project file.");
+        ShowHelpMarker("The human-readable name of your project.");
+        InputText("##project_name", m_projectName);
 
-        if (m_overrideAssetRoot)
-        {
-            if (m_path.IsEmpty())
-            {
-                ImGui::BeginDisabled();
-            }
+        ImGui::NewLine();
 
-            ImGui::TextUnformatted("Asset Root");
-            if (InputOpenFolder("##asset_root", m_assetRoot, m_platformService))
-            {
-                m_errorMessage.Clear();
+        ImGui::TextUnformatted("Project Directory");
+        ImGui::SameLine();
+        ShowHelpMarker("This is the directory where your new project will be generated.");
+        InputOpenFolder("##project_path", m_projectPath, m_platformService);
 
-                StringView parentDir = GetDirectory(m_path);
-                const bool isSameOrChild = m_assetRoot == parentDir || IsChildPath(m_assetRoot, parentDir);
-                if (!isSameOrChild || !MakeRelative(m_assetRoot, parentDir))
-                {
-                    m_errorMessage = "Asset root directory must be below the project file's directory.";
-                    m_assetRoot.Clear();
-                }
-            }
+        ImGui::NewLine();
 
-            if (m_path.IsEmpty())
-            {
-                ImGui::EndDisabled();
-            }
-        }
-
-        if (!m_errorMessage.IsEmpty())
-        {
-            ImGui::PushStyleColor(ImGuiCol_Text, Colors::Error);
-            ImGui::TextUnformatted(m_errorMessage.Data());
-            ImGui::PopStyleColor();
-        }
+        ImGui::TextUnformatted("Engine Directory");
+        ImGui::SameLine();
+        ShowHelpMarker("This is the directory where the Harvest Engine lives.");
+        InputOpenFolder("##engine_path", m_enginePath, m_platformService);
     }
 
     void CreateProjectDialog::ShowButtons()
     {
-        const bool canSave = !m_name.IsEmpty() && !m_path.IsEmpty();
+        const bool canSave = !m_projectName.IsEmpty() && !m_projectPath.IsEmpty() && !m_enginePath.IsEmpty();
 
         ImGui::BeginDisabled(!canSave);
-        if (DialogButton("Save"))
+        if (DialogButton("Create & Open"))
         {
-            schema::TypedBuilder<editor::Project> builder;
-            builder.GetOrAddRoot();
-
-            if (!m_projectService.Create(m_name.Data(), m_path.Data(), m_assetRoot.Data()))
+            if (!m_projectService.CreateAndOpen(m_projectName, m_projectPath, m_enginePath))
             {
                 m_dialogService.Open<ChoiceDialog>().Configure(
                     "Error",
@@ -112,6 +64,8 @@ namespace he::editor
             Close();
         }
         ImGui::EndDisabled();
+        if (!canSave && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+            ImGui::SetTooltip("All fields are required to create a project.");
 
         ImGui::SameLine();
 

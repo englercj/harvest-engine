@@ -26,11 +26,8 @@ namespace he::editor
         PlatformService& m_platformService;
         ProjectService& m_projectService;
 
-        String m_name{};
-        String m_path{};
-        String m_assetRoot{};
-        String m_errorMessage{};
-
-        bool m_overrideAssetRoot{ false };
+        String m_projectName{};
+        String m_projectPath{};
+        String m_enginePath{};
     };
 }

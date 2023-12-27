@@ -77,7 +77,7 @@ namespace he
 
         template <typename T>
         ArgDesc(T& v, const char* longArg, const char* description = nullptr, ArgFlag flags = ArgFlag::None) noexcept
-            : ArgDesc(ArgTypeOf<T>::Value, &v, sizeof(T), 0, longArg, description, flags | ArgSignedFlag<T>::Value) { }
+            : ArgDesc(ArgTypeOf<T>::Value, &v, sizeof(T), '\0', longArg, description, flags | ArgSignedFlag<T>::Value) { }
 
         template <typename T>
         ArgDesc(Vector<T>& v, char shortArg, const char* longArg = nullptr, const char* description = nullptr, ArgFlag flags = ArgFlag::None) noexcept
@@ -85,7 +85,7 @@ namespace he
 
         template <typename T>
         ArgDesc(Vector<T>& v, const char* longArg, const char* description = nullptr, ArgFlag flags = ArgFlag::None) noexcept
-            : ArgDesc(ArgTypeOf<T>::Value, &v, sizeof(T), 0, longArg, description, flags | InternalVectorFlag | ArgSignedFlag<T>::Value) { }
+            : ArgDesc(ArgTypeOf<T>::Value, &v, sizeof(T), '\0', longArg, description, flags | InternalVectorFlag | ArgSignedFlag<T>::Value) { }
 
         bool HasValue() const { return m_hasValue; }
 

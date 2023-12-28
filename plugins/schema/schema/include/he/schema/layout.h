@@ -478,7 +478,8 @@ namespace he::schema
             {
                 constexpr uint64_t BitsInType = sizeof(T) * BitsPerByte;
                 const uint64_t dataFieldsWordSize = m_dataWordSize - m_metaWordSize;
-                if (((dataOffset + elementCount) * BitsInType) <= (dataFieldsWordSize * BitsPerWord)) [[likely]]
+                const uint64_t dataOffset64 = static_cast<uint64_t>(dataOffset);
+                if (((dataOffset64 + elementCount) * BitsInType) <= (dataFieldsWordSize * BitsPerWord)) [[likely]]
                 {
                     const T * data = reinterpret_cast<const T*>(DataFields()) + dataOffset;
                     return { data, elementCount };

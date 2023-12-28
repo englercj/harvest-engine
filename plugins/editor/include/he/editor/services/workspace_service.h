@@ -4,7 +4,6 @@
 
 #include "he/core/types.h"
 #include "he/core/unique_ptr.h"
-#include "he/editor/editor_view.h"
 #include "he/editor/commands/open_project_command.h"
 #include "he/editor/services/asset_service.h"
 #include "he/editor/services/dialog_service.h"

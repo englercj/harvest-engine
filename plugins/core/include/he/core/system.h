@@ -141,7 +141,7 @@ namespace he
 
         DynamicLib& operator=(const DynamicLib&) = delete;
 
-        DynamicLib& operator=(DynamicLib&& x)
+        DynamicLib& operator=(DynamicLib&& x) noexcept
         {
             Close();
             m_handle = Exchange(x.m_handle, nullptr);

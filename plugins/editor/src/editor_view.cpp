@@ -25,18 +25,16 @@ namespace he::editor
     bool EditorView::Initialize()
     {
         if (!CreateView())
+        {
             m_editorData.device->Quit(1);
+            return false;
+        }
+        return true;
     }
 
     void EditorView::Terminate()
     {
-        m_initialized = false;
-
-        m_imguiService.Terminate();
-        m_renderService.Terminate();
-        m_assetService.Terminate();
-
-        m_editorData.device->Quit(0);
+        DestroyView();
     }
 
     bool EditorView::TryTerminate()
@@ -52,7 +50,7 @@ namespace he::editor
 
     void EditorView::OnEvent(const window::Event& ev)
     {
-        if (!m_initialized)
+        if (!m_view)
             return;
 
         m_imguiService.OnEvent(ev);
@@ -78,7 +76,7 @@ namespace he::editor
 
     void EditorView::Tick()
     {
-        if (!m_initialized)
+        if (!m_view)
             return;
 
         // Update the application UI
@@ -94,17 +92,17 @@ namespace he::editor
 
     window::ViewHitArea EditorView::HitTest(const Vec2i& point)
     {
-        return m_initialized ? m_workspaceService.GetHitArea(point) : window::ViewHitArea::Normal;
+        return m_view ? m_workspaceService.GetHitArea(point) : window::ViewHitArea::Normal;
     }
 
     window::ViewDropEffect EditorView::GetDropEffect()
     {
-        return m_initialized ? m_imguiService.GetDropEffect(m_view) :  window::ViewDropEffect::Reject;
+        return m_view ? m_imguiService.GetDropEffect(m_view) :  window::ViewDropEffect::Reject;
     }
 
     bool EditorView::CreateView()
     {
-        if (m_initialized)
+        if (m_view)
             return true;
 
         window::ViewDesc desc{};
@@ -113,8 +111,6 @@ namespace he::editor
 
         m_view = m_editorData.device->CreateView(desc);
         m_view->SetVisible(true, true);
-
-        m_initialized = true;
 
         if (!m_assetService.Initialize())
             return false;
@@ -131,6 +127,17 @@ namespace he::editor
         return true;
     }
 
+    void EditorView::DestroyView()
+    {
+        m_workspaceService.Terminate();
+        m_imguiService.Terminate();
+        m_renderService.Terminate();
+        m_assetService.Terminate();
+
+        m_editorData.device->DestroyView(m_view);
+        m_view = nullptr;
+    }
+
     void EditorView::OnViewResized(window::View* view, const Vec2i& size)
     {
         if (m_view != view)
@@ -144,6 +151,9 @@ namespace he::editor
         if (m_view != view)
             return;
 
-        TryTerminate();
+        if (TryTerminate())
+        {
+            m_editorData.device->Quit(0);
+        }
     }
 }

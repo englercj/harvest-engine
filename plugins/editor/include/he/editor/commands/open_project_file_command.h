@@ -3,6 +3,7 @@
 #pragma once
 
 #include "he/core/string.h"
+#include "he/core/string_view.h"
 #include "he/core/types.h"
 #include "he/editor/commands/command.h"
 #include "he/editor/icons/icons_material_design.h"
@@ -25,7 +26,7 @@ namespace he::editor
         const char* Icon() const override { return ICON_MDI_FOLDER_OPEN; }
 
         const String& Path() const { return m_path; }
-        void SetPath(const char* path) { m_path = path; }
+        void SetPath(StringView path) { m_path = path; }
 
     private:
         DialogService& m_dialogService;

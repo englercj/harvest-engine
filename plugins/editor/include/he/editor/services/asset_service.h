@@ -18,6 +18,13 @@ namespace he::editor
     class AssetService
     {
     public:
+        struct ContentModule
+        {
+            editor::Plugin::Module::Reader mod;
+            String rootPath;
+        };
+
+    public:
         AssetService(
             ProjectService& projectService,
             TaskService& taskService) noexcept;
@@ -35,6 +42,8 @@ namespace he::editor
 
         bool IsAssetDBReady() const { return m_dbReady; }
 
+        Span<const ContentModule> ContentModules() const { return m_contentModules; }
+
     public:
         using ImportCompleteSignal = assets::AssetServer::ImportCompleteSignal;
         using CompileCompleteSignal = assets::AssetServer::CompileCompleteSignal;
@@ -44,10 +53,11 @@ namespace he::editor
         CompileCompleteSignal& OnCompile() { return m_server.OnCompile(); }
 
     private:
-        void OnProjectLoaded();
         void OnDbReady();
 
         void ProcessPendingAssetsTask();
+
+    private:
 
     private:
         ProjectService& m_projectService;
@@ -59,6 +69,7 @@ namespace he::editor
 
         assets::AssetDatabaseUpdater::OnReadySignal::Binding m_onDbReadyBinding{};
 
+        Vector<ContentModule> m_contentModules{};
         std::atomic<bool> m_dbReady{ false };
     };
 }

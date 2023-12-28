@@ -93,10 +93,7 @@ namespace he::editor
             moduleBuilder.SetName(moduleNameStr);
             moduleBuilder.SetType(Plugin::ModuleType::Content);
             moduleBuilder.SetGroup(plugin.builder.AddString("game"));
-
-            schema::List<schema::String>::Builder contentDirList = plugin.builder.AddList<schema::String>(1);
-            contentDirList.Set(0, moduleNameStr);
-            moduleBuilder.SetContentDirs(contentDirList);
+            moduleBuilder.SetContentDir(moduleNameStr);
 
             String buf;
             schema::ToToml<editor::Project>(buf, Project());

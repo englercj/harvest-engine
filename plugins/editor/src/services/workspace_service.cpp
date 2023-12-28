@@ -57,6 +57,7 @@ namespace he::editor
 
     void WorkspaceService::Terminate()
     {
+        m_appFrame->SetView(nullptr);
         m_view = nullptr;
     }
 

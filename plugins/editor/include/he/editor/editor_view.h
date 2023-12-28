@@ -39,6 +39,7 @@ namespace he::editor
 
     private:
         bool CreateView();
+        void DestroyView();
 
         void OnViewResized(window::View* view, const Vec2i& size);
         void OnViewRequestClose(window::View* view);
@@ -51,7 +52,6 @@ namespace he::editor
         RenderService& m_renderService;
         WorkspaceService& m_workspaceService;
 
-        bool m_initialized{ false };
         window::View* m_view{ nullptr };
     };
 }

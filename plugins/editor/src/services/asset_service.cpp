@@ -30,25 +30,23 @@ namespace he::editor
 
         auto failGuard = MakeScopeGuard([&]() { Terminate(); });
 
-        // Collect the content directories for each of the content modules
+        // Collect the content modules & root directories
         Vector<String> contentRoots;
         for (const ProjectService::PluginEntry& entry : m_projectService.Plugins())
         {
             const StringView pluginDir = GetDirectory(entry.filePath);
             for (const editor::Plugin::Module::Reader mod : entry.plugin.Root().GetModules())
             {
-                if (mod.GetType() != editor::Plugin::ModuleType::Content)
+                if (mod.GetType() != editor::Plugin::ModuleType::Content || mod.GetContentDir().IsEmpty())
                     continue;
 
-                for (const schema::String::Reader dir : mod.GetContentDirs())
-                {
-                    if (dir.IsEmpty())
-                        continue;
+                ContentModule& content = m_contentModules.EmplaceBack();
+                content.mod = mod;
+                content.rootPath = pluginDir;
+                ConcatPath(content.rootPath, mod.GetContentDir());
+                NormalizePath(content.rootPath);
 
-                    String& root = contentRoots.EmplaceBack(pluginDir);
-                    ConcatPath(root, dir.AsView());
-                    NormalizePath(root);
-                }
+                contentRoots.PushBack(content.rootPath);
             }
         }
 

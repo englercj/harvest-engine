@@ -46,7 +46,7 @@ struct Plugin
         warnings @9 :String;
         exec @10 :String;
         copyFiles @11 :String[] $Toml.Name("copy_files");
-        contentDirs @20 :String[] $Toml.Name("contentdirs");
+        contentDir @20 :String $Toml.Name("contentdir");
 
         publicDefines @12 :String[] $Toml.Name("public_defines");
         publicDependson @13 :String[] $Toml.Name("public_dependson");

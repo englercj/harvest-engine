@@ -18,6 +18,7 @@
 #include "he/editor/icons/icons_material_design.h"
 #include "he/editor/widgets/buttons.h"
 #include "he/editor/widgets/menu.h"
+#include "he/editor/widgets/progress.h"
 
 #define IMGUI_DEFINE_MATH_OPERATORS
 #include "imgui.h"
@@ -32,10 +33,7 @@ namespace he::editor
         : m_assetService(assetService)
         , m_dialogService(dialogService)
         , m_imguiService(imguiService)
-    {
-        m_dbInitBinding = m_assetService.OnDbInit().Attach<&AssetBrowser::HandleDbInitialized>(this);
-        HandleDbInitialized(m_assetService.AssetDB().IsInitialized());
-    }
+    {}
 
     AssetBrowser::~AssetBrowser() noexcept
     {
@@ -44,12 +42,25 @@ namespace he::editor
 
     void AssetBrowser::Show()
     {
-        assets::AssetDatabase& db = m_assetService.AssetDB();
-
-        if (!db.IsInitialized())
+        if (!m_assetService.IsAssetDBReady())
         {
-            ImGui::TextUnformatted("No project is currently open.");
+            ImGui::TextUnformatted("Scanning assets files...");
+            ProgressBar(-1.0f);
             return;
+        }
+
+        if (m_roots.IsEmpty())
+        {
+            const Span<const AssetService::ContentModule> contents = m_assetService.ContentModules();
+            for (const AssetService::ContentModule& content : contents)
+            {
+                TreeNode& root = m_roots.EmplaceBack();
+                root.name = content.mod.GetName();
+                root.rootIndex = m_roots.Size() - 1;
+
+                ListDirectory(root);
+                QueryAssets(root);
+            }
         }
 
         ShowActionBar();
@@ -61,7 +72,11 @@ namespace he::editor
 
             TreeNode* selected = nullptr;
             ImGui::TableNextColumn();
-            ShowTreeNode(m_root, selected);
+
+            for (TreeNode& root : m_roots)
+            {
+                ShowTreeNode(root, selected);
+            }
 
             ImGui::TableNextColumn();
             if (selected)
@@ -99,8 +114,11 @@ namespace he::editor
         ImGui::TextUnformatted(ICON_MDI_FOLDER);
 
         ImGui::SameLine();
-        if (ImGui::Button(m_root.name.Data()))
+        const TreeNode& root = m_roots[m_selectedRootIndex];
+        if (ImGui::Button(root.name.Data()))
+        {
             m_selectedPath.Clear();
+        }
 
         if (!m_selectedPath.IsEmpty())
         {
@@ -117,7 +135,9 @@ namespace he::editor
                 m_buffer.Assign(begin, end);
                 ImGui::SameLine();
                 if (ImGui::Button(m_buffer.Data()))
+                {
                     m_selectedPath.Resize(static_cast<uint32_t>(end - m_selectedPath.Begin()));
+                }
 
                 begin = end + 1;
             } while (begin < m_selectedPath.End());
@@ -135,10 +155,14 @@ namespace he::editor
             MenuSeparator("View");
 
             if (MenuItem("Details", ICON_MDI_VIEW_HEADLINE, nullptr, m_viewType == ViewType::List))
+            {
                 m_viewType = ViewType::List;
+            }
 
             if (MenuItem("Icon Grid", ICON_MDI_VIEW_MODULE, nullptr, m_viewType == ViewType::Grid))
+            {
                 m_viewType = ViewType::Grid;
+            }
 
             EndPopupMenuButton();
         }
@@ -147,7 +171,7 @@ namespace he::editor
     void AssetBrowser::ShowTreeNode(TreeNode& node, TreeNode*& selected)
     {
         ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_FramePadding | ImGuiTreeNodeFlags_OpenOnDoubleClick;
-        if (m_selectedPath == node.path)
+        if (m_selectedPath == node.path && m_selectedRootIndex == node.rootIndex)
         {
             selected = &node;
             flags |= ImGuiTreeNodeFlags_Selected;
@@ -158,6 +182,7 @@ namespace he::editor
         {
             selected = &node;
             m_selectedPath = node.path;
+            m_selectedRootIndex = node.rootIndex;
         }
 
         if (FileDragDrop())
@@ -301,7 +326,7 @@ namespace he::editor
 
     void AssetBrowser::ShowNoAssets()
     {
-        ImGui::TextUnformatted("No assets in directory.");
+        ImGui::TextUnformatted("No assets in selected directory.");
     }
 
     bool AssetBrowser::ShouldListDirectory(const TreeNode& node)
@@ -327,7 +352,8 @@ namespace he::editor
         if (!db.IsInitialized())
             return;
 
-        String path = db.AssetRoot();
+        const AssetService::ContentModule& content = m_assetService.ContentModules()[node.rootIndex];
+        String path = content.rootPath;
         ConcatPath(path, node.path);
 
         DirectoryScanner scanner;
@@ -352,6 +378,7 @@ namespace he::editor
                 TreeNode& child = node.children.EmplaceBack();
                 child.name = entry.name;
                 child.path = node.path;
+                child.rootIndex = node.rootIndex;
                 ConcatPath(child.path, entry.name);
             }
         }
@@ -377,25 +404,6 @@ namespace he::editor
             HE_LOG_ERROR(he_editor,
                 HE_MSG("Failed to query for assets in path."),
                 HE_KV(path, node.path));
-        }
-    }
-
-    void AssetBrowser::HandleDbInitialized(bool initialized)
-    {
-        m_root.name = "assets";
-        m_root.path.Clear();
-
-        if (initialized)
-        {
-            ListDirectory(m_root);
-            QueryAssets(m_root);
-        }
-        else
-        {
-            m_root.children.Clear();
-            m_root.assets.Clear();
-            m_root.listedAt = { 0 };
-            m_root.queriedAt = { 0 };
         }
     }
 

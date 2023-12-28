@@ -16,7 +16,8 @@ namespace he::editor
         RenderService& renderService,
         SettingsService& settingsService,
         TaskService& taskService,
-        UniquePtr<AppFrame> appFrame) noexcept
+        UniquePtr<AppFrame> appFrame,
+        UniquePtr<OpenProjectFileCommand> openProjectFileCommand) noexcept
         : m_appArgsService(appArgsService)
         , m_dialogService(dialogService)
         , m_editorData(editorData)
@@ -25,6 +26,7 @@ namespace he::editor
         , m_settingsService(settingsService)
         , m_taskService(taskService)
         , m_appFrame(Move(appFrame))
+        , m_openProjectFileCommand(Move(openProjectFileCommand))
     {}
 
     bool ProjectView::Initialize()
@@ -34,24 +36,17 @@ namespace he::editor
             m_editorData.device->Quit(1);
             return false;
         }
-
         return true;
     }
 
     void ProjectView::Terminate()
     {
-        m_initialized = false;
-
-        m_imguiService.Terminate();
-        m_renderService.Terminate();
-        m_taskService.Terminate();
-
-        m_editorData.device->Quit(0);
+        DestroyView();
     }
 
     void ProjectView::OnEvent(const window::Event& ev)
     {
-        if (!m_initialized)
+        if (!m_view)
             return;
 
         m_imguiService.OnEvent(ev);
@@ -77,7 +72,7 @@ namespace he::editor
 
     void ProjectView::Tick()
     {
-        if (!m_initialized)
+        if (!m_view)
             return;
 
         // Update the application UI
@@ -93,12 +88,12 @@ namespace he::editor
 
     window::ViewHitArea ProjectView::HitTest(const Vec2i& point)
     {
-        return m_initialized ? m_appFrame->GetHitArea(point) : window::ViewHitArea::Normal;
+        return m_view ? m_appFrame->GetHitArea(point) : window::ViewHitArea::Normal;
     }
 
     window::ViewDropEffect ProjectView::GetDropEffect()
     {
-        return m_initialized ? m_imguiService.GetDropEffect(m_view) :  window::ViewDropEffect::Reject;
+        return m_view ? m_imguiService.GetDropEffect(m_view) :  window::ViewDropEffect::Reject;
     }
 
     void ProjectView::Show()
@@ -129,14 +124,18 @@ namespace he::editor
             {
                 ImGui::PushID(project.GetPath().Data());
 
-                // Project Name
+                // Project Name & selectable row
                 ImGui::TableNextColumn();
                 bool selected = false;
                 if (ImGui::Selectable("##project_select", &selected, selectFlags))
                 {
                     if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
                     {
-                        // TODO: Open project
+                        m_openProjectFileCommand->SetPath(project.GetPath());
+                        if (m_openProjectFileCommand->CanRun())
+                        {
+                            m_openProjectFileCommand->Run();
+                        }
                     }
                 }
                 ImGui::SameLine();
@@ -144,7 +143,7 @@ namespace he::editor
                 ImGui::SameLine();
                 ImGui::TextUnformatted(project.GetName().Data());
 
-                // path
+                // Project Path
                 ImGui::TableNextColumn();
                 ImGui::TextUnformatted(project.GetPath().Data());
             }
@@ -185,7 +184,7 @@ namespace he::editor
 
     bool ProjectView::CreateView()
     {
-        if (m_initialized)
+        if (m_view)
             return true;
 
         window::ViewDesc desc{};
@@ -195,8 +194,6 @@ namespace he::editor
         m_view = m_editorData.device->CreateView(desc);
         m_view->SetVisible(true, true);
 
-        m_initialized = true;
-
         if (!m_renderService.Initialize(m_view))
             return false;
 
@@ -205,6 +202,17 @@ namespace he::editor
 
         m_appFrame->SetView(m_view);
         return true;
+    }
+
+    void ProjectView::DestroyView()
+    {
+        m_appFrame->SetView(nullptr);
+
+        m_imguiService.Terminate();
+        m_renderService.Terminate();
+
+        m_editorData.device->DestroyView(m_view);
+        m_view = nullptr;
     }
 
     void ProjectView::OnViewResized(window::View* view, const Vec2i& size)
@@ -221,5 +229,6 @@ namespace he::editor
             return;
 
         Terminate();
+        m_editorData.device->Quit(0);
     }
 }

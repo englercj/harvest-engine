@@ -2,6 +2,7 @@
 
 #include "he/core/signal.h"
 #include "he/core/types.h"
+#include "he/editor/commands/open_project_file_command.h"
 #include "he/editor/services/app_args_service.h"
 #include "he/editor/services/dialog_service.h"
 #include "he/editor/services/imgui_service.h"
@@ -25,7 +26,8 @@ namespace he::editor
             RenderService& renderService,
             SettingsService& settingsService,
             TaskService& taskService,
-            UniquePtr<AppFrame> appFrame) noexcept;
+            UniquePtr<AppFrame> appFrame,
+            UniquePtr<OpenProjectFileCommand> openProjectFileCommand) noexcept;
 
         bool Initialize();
         void Terminate();
@@ -42,6 +44,7 @@ namespace he::editor
         void Show();
         void ShowMainMenu();
         bool CreateView();
+        void DestroyView();
 
         void OnViewResized(window::View* view, const Vec2i& size);
         void OnViewRequestClose(window::View* view);
@@ -56,8 +59,8 @@ namespace he::editor
         TaskService& m_taskService;
 
         UniquePtr<AppFrame> m_appFrame;
+        UniquePtr<OpenProjectFileCommand> m_openProjectFileCommand;
 
-        bool m_initialized{ false };
         window::View* m_view{ nullptr };
     };
 }

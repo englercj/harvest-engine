@@ -39,6 +39,7 @@ namespace he::editor
             Vector<TreeNode> children{};
             Vector<assets::AssetModel> assets{};
 
+            uint32_t rootIndex{ 0 };
             MonotonicTime listedAt{ 0 };
             MonotonicTime queriedAt{ 0 };
         };
@@ -55,7 +56,6 @@ namespace he::editor
 
         void ListDirectory(TreeNode& node);
         void QueryAssets(TreeNode& node);
-        void HandleDbInitialized(bool initialized);
 
         bool FileDragDrop();
 
@@ -64,8 +64,9 @@ namespace he::editor
         DialogService& m_dialogService;
         ImGuiService& m_imguiService;
 
-        TreeNode m_root{};
+        Vector<TreeNode> m_roots{};
         String m_selectedPath{};
+        uint32_t m_selectedRootIndex{ 0 };
 
         ViewType m_viewType{ ViewType::List };
 

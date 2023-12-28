@@ -84,6 +84,14 @@ namespace he::editor
         m_renderService.BeginFrame();
         m_imguiService.Render();
         m_renderService.EndFrame();
+
+        // Run project open at the end of the frame, if the user selected a project to open.
+        // We do this here because opening the project will cause the editor app to terminate
+        // this view, which terminates our services.
+        if (m_openProjectFileCommand->CanRun())
+        {
+            m_openProjectFileCommand->Run();
+        }
     }
 
     window::ViewHitArea ProjectView::HitTest(const Vec2i& point)
@@ -110,6 +118,8 @@ namespace he::editor
         ImGui::SameLine();
         ImGui::Button("Create New"); // TODO: Primary button color
 
+        m_openProjectFileCommand->SetPath("");
+
         const ImGuiTableFlags flags = ImGuiTableFlags_RowBg | ImGuiTableFlags_Resizable;
         if (ImGui::BeginTable("##project_list", 2, flags))
         {
@@ -132,10 +142,6 @@ namespace he::editor
                     if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
                     {
                         m_openProjectFileCommand->SetPath(project.GetPath());
-                        if (m_openProjectFileCommand->CanRun())
-                        {
-                            m_openProjectFileCommand->Run();
-                        }
                     }
                 }
                 ImGui::SameLine();
@@ -146,7 +152,11 @@ namespace he::editor
                 // Project Path
                 ImGui::TableNextColumn();
                 ImGui::TextUnformatted(project.GetPath().Data());
+
+                ImGui::PopID();
             }
+
+            ImGui::EndTable();
         }
     }
 
@@ -191,21 +201,25 @@ namespace he::editor
         desc.title = "Harvest Editor";
         desc.flags = window::ViewFlag::Default | window::ViewFlag::Borderless | window::ViewFlag::AcceptFiles;
 
-        m_view = m_editorData.device->CreateView(desc);
-        m_view->SetVisible(true, true);
+        window::View* view = m_editorData.device->CreateView(desc);
+        view->SetVisible(true, true);
 
-        if (!m_renderService.Initialize(m_view))
+        if (!m_renderService.Initialize(view))
             return false;
 
-        if (!m_imguiService.Initialize(m_view))
+        if (!m_imguiService.Initialize(view))
             return false;
 
-        m_appFrame->SetView(m_view);
+        m_appFrame->SetView(view);
+        m_view = view;
         return true;
     }
 
     void ProjectView::DestroyView()
     {
+        if (!m_view)
+            return;
+
         m_appFrame->SetView(nullptr);
 
         m_imguiService.Terminate();

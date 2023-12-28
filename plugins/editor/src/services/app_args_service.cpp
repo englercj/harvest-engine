@@ -4,14 +4,27 @@
 
 #include "he/core/log.h"
 #include "he/core/string_ops.h"
+#include "he/core/utils.h"
 
 namespace he::editor
 {
+    AppArgsService::ValueEntry::ValueEntry(ValueEntry&& x) noexcept
+        : valueType(Exchange(x.valueType, {}))
+        , valueMem(Exchange(x.valueMem, nullptr))
+        , valueDeleter(Exchange(x.valueDeleter, nullptr))
+    {}
+
+    AppArgsService::ValueEntry::ValueEntry(const TypeInfo& type, void* mem, Pfn_Deleter deleter) noexcept
+        : valueType(type)
+        , valueMem(mem)
+        , valueDeleter(deleter)
+    {}
+
     AppArgsService::ValueEntry::~ValueEntry() noexcept
     {
-        if (valueDeleteFunc)
+        if (valueDeleter)
         {
-            valueDeleteFunc(valueMem);
+            valueDeleter(valueMem);
         }
     }
 

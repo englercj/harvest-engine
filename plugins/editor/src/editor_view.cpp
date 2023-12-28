@@ -109,26 +109,30 @@ namespace he::editor
         desc.title = "Harvest Editor";
         desc.flags = window::ViewFlag::Default | window::ViewFlag::Borderless | window::ViewFlag::AcceptFiles;
 
-        m_view = m_editorData.device->CreateView(desc);
-        m_view->SetVisible(true, true);
+        window::View* view = m_editorData.device->CreateView(desc);
+        view->SetVisible(true, true);
 
         if (!m_assetService.Initialize())
             return false;
 
-        if (!m_renderService.Initialize(m_view))
+        if (!m_renderService.Initialize(view))
             return false;
 
-        if (!m_imguiService.Initialize(m_view))
+        if (!m_imguiService.Initialize(view))
             return false;
 
-        if (!m_workspaceService.Initialize(m_view))
+        if (!m_workspaceService.Initialize(view))
             return false;
 
+        m_view = view;
         return true;
     }
 
     void EditorView::DestroyView()
     {
+        if (!m_view)
+            return;
+
         m_workspaceService.Terminate();
         m_imguiService.Terminate();
         m_renderService.Terminate();

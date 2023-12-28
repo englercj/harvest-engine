@@ -51,10 +51,17 @@ namespace he::editor
     private:
         struct ValueEntry
         {
+            using Pfn_Deleter = void(*)(void*);
+
+            ValueEntry() = default;
+            ValueEntry(const ValueEntry&) = delete;
+            ValueEntry(ValueEntry&& x) noexcept;
+            ValueEntry(const TypeInfo& type, void* mem, Pfn_Deleter deleter) noexcept;
             ~ValueEntry() noexcept;
+
             TypeInfo valueType;
             void* valueMem{ nullptr };
-            void (*valueDeleteFunc)(void*){ nullptr };
+            Pfn_Deleter valueDeleter{ nullptr };
         };
         bool RegisterArg(ArgDesc&& desc, ValueEntry&& value);
 
@@ -78,7 +85,7 @@ namespace he::editor
         auto deleter = [](void* mem) { Allocator::GetDefault().Delete(static_cast<const T*>(mem)); };
 
         ArgDesc arg(*value, shortArg, longArg, description, flags);
-        ValueEntry entry{ TypeInfo::Get<T>(), value, deleter };
+        ValueEntry entry(TypeInfo::Get<T>(), value, deleter);
         return RegisterArg(Move(arg), Move(entry));
     }
 
@@ -89,7 +96,7 @@ namespace he::editor
         auto deleter = [](void* mem) { Allocator::GetDefault().Delete(static_cast<const T*>(mem)); };
 
         ArgDesc arg(*value, longArg, description, flags);
-        ValueEntry entry{ TypeInfo::Get<T>(), value, deleter };
+        ValueEntry entry(TypeInfo::Get<T>(), value, deleter);
         return RegisterArg(Move(arg), Move(entry));
     }
 

@@ -100,9 +100,6 @@ namespace he
         const char* LongName() const { return m_longArg; }
         const char* Description() const { return m_description; }
 
-        template <typename T> T Value(T defaultValue = T{}) const;
-        template <typename T> Span<const T> Values() const;
-
     private:
         friend ArgResult ParseArgs(Span<ArgDesc> descs, int32_t argc, const char* const* argv);
 
@@ -141,80 +138,4 @@ namespace he
 
     ArgResult ParseArgs(Span<ArgDesc> descs, int32_t argc, const char* const* argv);
     String MakeHelpString(Span<const ArgDesc> descs, const char* arg0, const ArgResult* result = nullptr);
-
-    // --------------------------------------------------------------------------------------------
-    // Inline Definitions
-
-    template <typename T>
-    T ArgDesc::Value(T defaultValue) const
-    {
-        const bool isVector = HasFlag(m_flags, InternalVectorFlag);
-
-        if (!HasValue() || isVector)
-            return defaultValue;
-
-        if constexpr (IsSame<RemoveCV<T>, bool>)
-        {
-            if (m_type != ArgType::Boolean || m_size != sizeof(bool))
-                return defaultValue;
-
-            return *static_cast<const bool*>(m_buffer);
-        }
-        else if constexpr (IsSame<RemoveCV<T>, const char*>)
-        {
-            if (m_type != ArgType::String || m_size != sizeof(const char*))
-                return defaultValue;
-
-            return *static_cast<const char**>(m_buffer);
-        }
-        else if constexpr (IsIntegral<T> || IsFloatingPoint<T>)
-        {
-            switch (m_type)
-            {
-                case ArgType::Integer:
-                {
-                    switch (m_size)
-                    {
-                        case 8: return static_cast<T>(*static_cast<const uint64_t*>(m_buffer));
-                        case 4: return static_cast<T>(*static_cast<const uint32_t*>(m_buffer));
-                        case 2: return static_cast<T>(*static_cast<const uint16_t*>(m_buffer));
-                        case 1: return static_cast<T>(*static_cast<const uint8_t*>(m_buffer));
-                    }
-                    break;
-                }
-                case ArgType::Float:
-                {
-                    switch (m_size)
-                    {
-                        case 8: return static_cast<T>(*static_cast<const double*>(m_buffer));
-                        case 4: return static_cast<T>(*static_cast<const float*>(m_buffer));
-                    }
-                    break;
-                }
-            }
-            return defaultValue;
-        }
-    }
-
-    template <typename T>
-    Span<const T> ArgDesc::Values() const
-    {
-        const bool isVector = HasFlag(m_flags, InternalVectorFlag);
-
-        if (!HasValue() || !isVector || m_type != ArgTypeOf<T>::Value || m_size != sizeof(T))
-            return {};
-
-        if constexpr (IsSame<RemoveCV<T>, bool>)
-        {
-            return *static_cast<const Vector<bool>*>(m_buffer);
-        }
-        else if constexpr (IsSame<RemoveCV<T>, const char*>)
-        {
-            return *static_cast<const Vector<const char*>*>(m_buffer);
-        }
-        else if constexpr (IsIntegral<T> || IsFloatingPoint<T>)
-        {
-            return *static_cast<const Vector<T>*>(m_buffer);
-        }
-    }
 }

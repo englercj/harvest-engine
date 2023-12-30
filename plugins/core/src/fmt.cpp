@@ -89,14 +89,14 @@
 #if HE_ENABLE_ASSERTIONS
     #define HE_FMT_ASSERT(expr, msg) (HE_LIKELY(expr) ? void(0) : FmtError(msg))
 #else
-    #define HE_FMT_ASSERT(expr, msg) HE_UNUSED((expr), (msg));
+    #define HE_FMT_ASSERT(expr, msg)
 #endif
 
 namespace he
 {
     // An optimization by Kendall Willets from https://bit.ly/3uOIQrB.
     // This increments the upper 32 bits (log10(T) - 1) when >= T is added.
-    #define HE_INC(T) (((sizeof(#  T) - 1ull) << 32) - T)
+    #define HE_INC(T) (((sizeof(#T) - 1ull) << 32) - T)
     static constexpr uint64_t DigitCountLookup[] =
     {
         HE_INC(0),          HE_INC(0),          HE_INC(0),          // 8
@@ -127,7 +127,7 @@ namespace he
         (factor)*100000000, (factor)*1000000000
     static constexpr const uint64_t ZeroOrPowersOf10[] =
     {
-        0, 0, HE_POWERS_OF_10(1U), HE_POWERS_OF_10(1000000000ULL), 10000000000000000000ULL,
+        0, 0, HE_POWERS_OF_10(1u), HE_POWERS_OF_10(1000000000ull), 10000000000000000000ull,
     };
     #undef HE_POWERS_OF_10
 
@@ -757,7 +757,7 @@ namespace he
         // function as if we had only written the non-null characters.
         WritePadded<FmtSpecAlign::Right>(out, spec, requiredSize, [=](char* it)
         {
-            const int result = spec.precision >= 0
+            [[maybe_unused]] const int result = spec.precision >= 0
                 ? std::snprintf(it, requiredSize + 1, format, spec.precision, value)
                 : std::snprintf(it, requiredSize + 1, format, value);
             HE_FMT_ASSERT(result == requiredSize, "Formatting must succeed here.");

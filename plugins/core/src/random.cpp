@@ -14,6 +14,8 @@
 
 #if HE_CPU_X86
     #include "rdrand.x86.h"
+#elif HE_CPU_ARM
+    #include "rndr.arm.h"
 #endif
 
 namespace he

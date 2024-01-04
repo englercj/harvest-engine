@@ -60,7 +60,7 @@ namespace he
     public:
         /// Construct the random state from a random seed.
         ///
-        /// This will attempt to use secure random to fill the seed if available, and falls back
+        /// This will attempt to use \ref GetSecureRandomBytes to fill the seed, and falls back
         /// to using the Monotonic clock if that fails.
         Random64() noexcept;
 
@@ -116,6 +116,7 @@ namespace he
         template <uint32_t N>
         void Bytes(uint8_t (&dst)[N]) { Bytes(dst, N); }
 
+    public:
         /// The current state value used for the pseudo random generation.
         ///
         /// If this value is used to seed another Random64 generator, then it will generate the

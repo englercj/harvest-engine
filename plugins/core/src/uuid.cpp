@@ -60,7 +60,7 @@ namespace he
 
         typename Algo::ValueType value = hash.Final();
 
-        // Per section 4.4, set bits for version and `clock_seq_hi_and_reserved`
+        // Per section 4.4, set bits for version and variant in `clock_seq_hi_and_reserved`
         value.bytes[6] = (value.bytes[6] & 0x0f) | Version;
         value.bytes[8] = (value.bytes[8] & 0x3f) | 0x80;
 
@@ -77,9 +77,17 @@ namespace he
     Uuid Uuid::CreateV4()
     {
         Uuid id;
-        GetSecureRandomBytes(id.m_bytes);
 
-        // Per section 4.4, set bits for version and `clock_seq_hi_and_reserved`
+        // Try to use a secure random number generator for the UUID bytes. If that fails, we fall
+        // back to using a pseudo random number generator. RFC 4122 doesn't require the randomness
+        // to be cryptographically secure, but it is preferred.
+        if (!GetSecureRandomBytes(id.m_bytes))
+        {
+            Random64 random;
+            random.Bytes(id.m_bytes);
+        }
+
+        // Per section 4.4, set bits for version and variant in `clock_seq_hi_and_reserved`
         id.m_bytes[6] = (id.m_bytes[6] & 0x0f) | 0x40;
         id.m_bytes[8] = (id.m_bytes[8] & 0x3f) | 0x80;
 

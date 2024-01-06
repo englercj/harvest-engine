@@ -9,14 +9,14 @@
 
 namespace he
 {
-    HE_PUSH_WARNINGS()
-    HE_DISABLE_MSVC_WARNING(4701) // potentially uninitialized local variable 'id' used
+    Uuid::Uuid(const uint8_t bytes[Size]) noexcept
+    {
+        MemCopy(m_bytes, bytes, Size);
+    }
 
     Uuid Uuid::FromString(StringView src)
     {
         Uuid id;
-
-        constexpr uint32_t ByteLen = HE_LENGTH_OF(id.m_bytes);
 
         uint32_t byteIndex = 0;
         char first = 0;
@@ -26,7 +26,7 @@ namespace he
             if (c == '-')
                 continue;
 
-            if (!IsHex(c) || byteIndex == ByteLen)
+            if (!IsHex(c) || byteIndex == Size)
                 break;
 
             if (first == 0)
@@ -41,18 +41,16 @@ namespace he
             }
         }
 
-        if (byteIndex != ByteLen)
-            MemZero(id.m_bytes, ByteLen);
+        if (byteIndex != Size)
+            MemZero(id.m_bytes, Size);
 
         return id;
     }
 
-    HE_POP_WARNINGS()
-
     template <typename Algo, uint8_t Version>
     static Uuid CreateUuidV35(StringView name, const Uuid& nsid)
     {
-        static_assert(sizeof(Algo::ValueType::bytes) >= sizeof(Uuid::m_bytes));
+        static_assert(sizeof(Algo::ValueType::bytes) >= Uuid::Size);
 
         Hash<Algo> hash;
         hash.Update(nsid.m_bytes, HE_LENGTH_OF(nsid.m_bytes));
@@ -60,13 +58,13 @@ namespace he
 
         typename Algo::ValueType value = hash.Final();
 
-        // Per section 4.4, set bits for version and variant in `clock_seq_hi_and_reserved`
+        // Per section 4.4, set bits for the version in `time_hi_and_version`
         value.bytes[6] = (value.bytes[6] & 0x0f) | Version;
+
+        // Per section 4.4, set bits for the variant in `clock_seq_hi_and_reserved`
         value.bytes[8] = (value.bytes[8] & 0x3f) | 0x80;
 
-        Uuid id;
-        MemCopy(id.m_bytes, value.bytes, sizeof(id.m_bytes));
-        return id;
+        return Uuid(value.bytes);
     }
 
     Uuid Uuid::CreateV3(StringView name, const Uuid& nsid)
@@ -87,8 +85,10 @@ namespace he
             random.Bytes(id.m_bytes);
         }
 
-        // Per section 4.4, set bits for version and variant in `clock_seq_hi_and_reserved`
+        // Per section 4.4, set bits for the version in `time_hi_and_version`
         id.m_bytes[6] = (id.m_bytes[6] & 0x0f) | 0x40;
+
+        // Per section 4.4, set bits for the variant in `clock_seq_hi_and_reserved`
         id.m_bytes[8] = (id.m_bytes[8] & 0x3f) | 0x80;
 
         return id;
@@ -101,7 +101,7 @@ namespace he
 
     uint64_t Uuid::HashCode() const noexcept
     {
-        static_assert(sizeof(Uuid::m_bytes) > sizeof(uint64_t));
+        static_assert(Size > sizeof(uint64_t));
         uint64_t h;
         he::MemCopy(&h, m_bytes, sizeof(uint64_t));
         return h;
@@ -109,16 +109,16 @@ namespace he
 
     bool Uuid::operator==(const Uuid& x) const
     {
-        return MemEqual(this, &x, sizeof(x));
+        return MemEqual(m_bytes, x.m_bytes, Size);
     }
 
     bool Uuid::operator!=(const Uuid& x) const
     {
-        return !MemEqual(this, &x, sizeof(x));
+        return !MemEqual(m_bytes, x.m_bytes, Size);
     }
 
     bool Uuid::operator<(const Uuid& x) const
     {
-        return MemLess(this, &x, sizeof(x));
+        return MemLess(m_bytes, x.m_bytes, Size);
     }
 }

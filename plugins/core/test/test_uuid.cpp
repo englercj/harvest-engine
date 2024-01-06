@@ -69,7 +69,7 @@ HE_TEST(core, uuid, CreateV3)
     }
 
     {
-        const Uuid customNamespace{ { 0x0f, 0x5a, 0xbc, 0xd1, 0xc1, 0x94, 0x47, 0xf3, 0x90, 0x5b, 0x2d, 0xf7, 0x26, 0x3a, 0x08, 0x4b } };
+        const Uuid customNamespace{ 0x0f, 0x5a, 0xbc, 0xd1, 0xc1, 0x94, 0x47, 0xf3, 0x90, 0x5b, 0x2d, 0xf7, 0x26, 0x3a, 0x08, 0x4b };
         const Uuid uuid = Uuid::CreateV3("hello", customNamespace);
         HE_EXPECT_EQ(uuid.Version(), 3);
         HE_EXPECT_EQ(Format("{}", uuid), "a981a0c2-68b1-35dc-bcfc-296e52ab01ec");
@@ -101,10 +101,64 @@ HE_TEST(core, uuid, CreateV5)
     }
 
     {
-        const Uuid customNamespace{ { 0x0f, 0x5a, 0xbc, 0xd1, 0xc1, 0x94, 0x47, 0xf3, 0x90, 0x5b, 0x2d, 0xf7, 0x26, 0x3a, 0x08, 0x4b } };
+        const Uuid customNamespace{ 0x0f, 0x5a, 0xbc, 0xd1, 0xc1, 0x94, 0x47, 0xf3, 0x90, 0x5b, 0x2d, 0xf7, 0x26, 0x3a, 0x08, 0x4b };
         const Uuid uuid = Uuid::CreateV5("hello", customNamespace);
         HE_EXPECT_EQ(uuid.Version(), 5);
         HE_EXPECT_EQ(Format("{}", uuid), "90123e1c-7512-523e-bb28-76fab9f2f73d");
+    }
+}
+
+// ------------------------------------------------------------------------------------------------
+HE_TEST(core, uuid, Construct)
+{
+    // Default constructs to all zeroes
+    {
+        const uint8_t zeroes[16]{};
+        static_assert(sizeof(Uuid::m_bytes) == sizeof(zeroes));
+
+        const Uuid uuid;
+        HE_EXPECT_EQ(uuid.Version(), 0);
+        HE_EXPECT_EQ_MEM(uuid.m_bytes, zeroes, sizeof(zeroes));
+    }
+
+    // Default constructor is constexpr
+    {
+        constexpr Uuid uuid;
+        static_assert(uuid.Version() == 0);
+        static_assert(uuid.m_bytes[0] == 0 && uuid.m_bytes[1] == 0 && uuid.m_bytes[2] == 0 && uuid.m_bytes[3] == 0);
+        static_assert(uuid.m_bytes[4] == 0 && uuid.m_bytes[5] == 0 && uuid.m_bytes[6] == 0 && uuid.m_bytes[7] == 0);
+        static_assert(uuid.m_bytes[8] == 0 && uuid.m_bytes[9] == 0 && uuid.m_bytes[10] == 0 && uuid.m_bytes[11] == 0);
+        static_assert(uuid.m_bytes[12] == 0 && uuid.m_bytes[13] == 0 && uuid.m_bytes[14] == 0 && uuid.m_bytes[15] == 0);
+    }
+
+    // Constructs with individual byte values
+    {
+        const uint8_t iota[16]{ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16 };
+        static_assert(sizeof(Uuid::m_bytes) == sizeof(iota));
+
+        const Uuid uuid(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16);
+        HE_EXPECT_EQ(uuid.Version(), 0);
+        HE_EXPECT_EQ_MEM(uuid.m_bytes, iota, sizeof(iota));
+    }
+
+    // Individual bytes constructor is constexpr
+    {
+        constexpr Uuid uuid(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16);
+        static_assert(uuid.Version() == 0);
+        static_assert(uuid.m_bytes[0] == 1 && uuid.m_bytes[1] == 2 && uuid.m_bytes[2] == 3 && uuid.m_bytes[3] == 4);
+        static_assert(uuid.m_bytes[4] == 5 && uuid.m_bytes[5] == 6 && uuid.m_bytes[6] == 7 && uuid.m_bytes[7] == 8);
+        static_assert(uuid.m_bytes[8] == 9 && uuid.m_bytes[9] == 10 && uuid.m_bytes[10] == 11 && uuid.m_bytes[11] == 12);
+        static_assert(uuid.m_bytes[12] == 13 && uuid.m_bytes[13] == 14 && uuid.m_bytes[14] == 15 && uuid.m_bytes[15] == 16);
+    }
+
+    // Constructs from a byte array
+    {
+        const uint8_t iota[16]{ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16 };
+        static_assert(sizeof(Uuid::m_bytes) == sizeof(iota));
+
+        const Uuid uuid(iota);
+        HE_EXPECT_EQ(uuid.Version(), 0);
+        HE_EXPECT_EQ_MEM(uuid.m_bytes, iota, sizeof(iota));
     }
 }
 
@@ -127,7 +181,7 @@ HE_TEST(core, uuid, Version)
 // ------------------------------------------------------------------------------------------------
 HE_TEST(core, uuid, Operators)
 {
-    constexpr Uuid UuidOne{ { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 } };
+    constexpr Uuid UuidOne{ 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 };
 
     HE_EXPECT(Uuid_Zero == Uuid_Zero);
     HE_EXPECT(UuidOne == UuidOne);

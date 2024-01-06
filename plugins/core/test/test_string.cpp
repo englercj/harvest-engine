@@ -527,7 +527,7 @@ HE_TEST(core, string, operator_plus)
     vec.PushBack('a');
     vec.PushBack('o');
     vec.PushBack('c');
-    const String s6 = s5 + s4;
+    const String s6 = s5 + vec;
     HE_EXPECT_GE(s6.Capacity(), 127);
     HE_EXPECT_EQ(s6.Size(), 127);
     HE_EXPECT_EQ_STR(s6.Data(), "Hello, world! This is really long to force reallocation onto the heap space of the string object we're testing.Testing view!aoc");

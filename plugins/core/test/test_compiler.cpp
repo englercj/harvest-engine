@@ -12,7 +12,7 @@
 using namespace he;
 
 // ------------------------------------------------------------------------------------------------
-extern "C" HE_DLL_EXPORT void _HeTestingDllExport()
+extern "C" HE_EXPORT void _HeTestingDllExport()
 {
     const char* funcSig = HE_FUNC_SIG;
 #if HE_COMPILER_MSVC

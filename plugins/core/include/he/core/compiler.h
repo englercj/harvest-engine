@@ -47,7 +47,7 @@
     #define HE_FORCE_INLINE                 __attribute__((always_inline)) inline
     #define HE_NO_INLINE                    __attribute__((noinline))
     #define HE_RETAIN                       __attribute__((used, retain))
-    #define HE_DLL_EXPORT                   __attribute__((visibility("default")))
+    #define HE_EXPORT                       __attribute__((visibility("default")))
     #define HE_LIKELY(x)                    static_cast<bool>(__builtin_expect(!!(x), 1))
     #define HE_UNLIKELY(x)                  static_cast<bool>(__builtin_expect(!!(x), 0))
     #define HE_UNREACHABLE()                __builtin_unreachable()
@@ -75,7 +75,7 @@
     #define HE_FORCE_INLINE                 __attribute__((always_inline)) inline
     #define HE_NO_INLINE                    __attribute__((noinline))
     #define HE_RETAIN                       __attribute__((used, retain))
-    #define HE_DLL_EXPORT                   __attribute__((visibility("default")))
+    #define HE_EXPORT                       __attribute__((visibility("default")))
     #define HE_LIKELY(x)                    static_cast<bool>(__builtin_expect(!!(x), 1))
     #define HE_UNLIKELY(x)                  static_cast<bool>(__builtin_expect(!!(x), 0))
     #define HE_UNREACHABLE()                __builtin_unreachable()
@@ -104,7 +104,7 @@
     #define HE_FORCE_INLINE                 __forceinline
     #define HE_NO_INLINE                    __declspec(noinline)
     #define HE_RETAIN                       extern "C"
-    #define HE_DLL_EXPORT                   __declspec(dllexport)
+    #define HE_EXPORT                       __declspec(dllexport)
     #define HE_LIKELY(x)                    (!!(x))
     #define HE_UNLIKELY(x)                  (!!(x))
     #define HE_UNREACHABLE()                __assume(0)
@@ -139,8 +139,8 @@ static_assert(HE_SIZEOF_LONG == sizeof(long));
 /// Attribute for a symbol that tells the compiler not to strip it during link.
 /// Note: This only work son GCC/Clang currently.
 
-/// \def HE_DLL_EXPORT
-/// Marks as symbol as exported from a shared library.
+/// \def HE_EXPORT
+/// Marks as symbol as exported so it is available in the symbols table.
 
 /// \def HE_LIKELY
 /// Marks a condition as likely to occur.

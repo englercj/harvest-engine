@@ -46,7 +46,6 @@
     #define HE_FUNC_SIG                     __PRETTY_FUNCTION__
     #define HE_FORCE_INLINE                 __attribute__((always_inline)) inline
     #define HE_NO_INLINE                    __attribute__((noinline))
-    #define HE_RETAIN                       __attribute__((used, retain))
     #define HE_EXPORT                       __attribute__((visibility("default")))
     #define HE_LIKELY(x)                    static_cast<bool>(__builtin_expect(!!(x), 1))
     #define HE_UNLIKELY(x)                  static_cast<bool>(__builtin_expect(!!(x), 0))
@@ -74,7 +73,6 @@
     #define HE_FUNC_SIG                     __PRETTY_FUNCTION__
     #define HE_FORCE_INLINE                 __attribute__((always_inline)) inline
     #define HE_NO_INLINE                    __attribute__((noinline))
-    #define HE_RETAIN                       __attribute__((used, retain))
     #define HE_EXPORT                       __attribute__((visibility("default")))
     #define HE_LIKELY(x)                    static_cast<bool>(__builtin_expect(!!(x), 1))
     #define HE_UNLIKELY(x)                  static_cast<bool>(__builtin_expect(!!(x), 0))
@@ -103,7 +101,6 @@
     #define HE_FUNC_SIG                     __FUNCSIG__
     #define HE_FORCE_INLINE                 __forceinline
     #define HE_NO_INLINE                    __declspec(noinline)
-    #define HE_RETAIN                       extern "C"
     #define HE_EXPORT                       __declspec(dllexport)
     #define HE_LIKELY(x)                    (!!(x))
     #define HE_UNLIKELY(x)                  (!!(x))
@@ -135,20 +132,16 @@ static_assert(HE_SIZEOF_LONG == sizeof(long));
 /// \def HE_NO_INLINE
 /// Attribute for a function that tells the compiler to never inline it.
 
-/// \def HE_RETAIN
-/// Attribute for a symbol that tells the compiler not to strip it during link.
-/// Note: This only work son GCC/Clang currently.
-
 /// \def HE_EXPORT
 /// Marks as symbol as exported so it is available in the symbols table.
 
 /// \def HE_LIKELY
 /// Marks a condition as likely to occur.
-/// Note: Prefer the C++20 [[likely]] attribute whenever possible.
+/// \note Prefer the C++20 [[likely]] attribute whenever possible.
 
 /// \def HE_UNLIKELY
 /// Marks a condition as unlikely to occur.
-/// Note: Prefer the C++20 [[unlikely]] attribute whenever possible.
+/// \note Prefer the C++20 [[unlikely]] attribute whenever possible.
 
 /// \def HE_UNREACHABLE
 /// Informs the compiler that this line of code cannot be reached.

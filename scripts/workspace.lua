@@ -6,7 +6,7 @@ he.add_workspace_extension = function (extension_func)
     table.insert(he._workspace_extension_funcs, extension_func)
 end
 
-he.workspace = function ()
+he.generate_workspace = function (options)
     verbosef("Creating workspace: " .. he.sln_name)
     workspace(he.sln_name)
 
@@ -29,6 +29,8 @@ he.workspace = function ()
 
     preferredtoolarchitecture "x86_64"
 
+    startproject(options.start_project)
+
     -- Address Sanitizer setup
     if _OPTIONS.asan ~= nil then
         flags { "NoIncrementalLink" }
@@ -39,11 +41,11 @@ he.workspace = function ()
     he.define_platforms()
 
     -- System setup
-    filter { "system:emscripten" }
-        defines { "HE_PLATFORM_EMSCRIPTEN", "HE_PLATFORM_API_POSIX" }
-
     filter { "system:linux" }
         defines { "HE_PLATFORM_LINUX", "HE_PLATFORM_API_POSIX" }
+
+    filter { "system:wasm" }
+        defines { "HE_PLATFORM_WASM" }
 
     filter { "system:windows" }
         defines {
@@ -65,26 +67,21 @@ he.workspace = function ()
             "/wd6255",      -- _alloca indicates failure by raising a stack overflow exception. Consider using _malloca instead.
         }
 
-    filter { "toolset:gcc or clang" }
+    filter { "toolset:gcc or clang or wasmcc" }
         buildoptions {
-            "-mcx16",                       -- Enable use of CMPXCHG16B for 16-byte aligned 128-bit objects
-            "-mxsave",                      -- Enable use of xsave/xrstor instructions
-            "-fPIC",                        -- Generate position-independent code
-            "-fvisibility=hidden",          -- Mark all symbols as hidden by default
-            "-Wundef",                      -- A symbol that was not defined was used with a preprocessor directive.
-            "-Wswitch",                     -- An enumerator has no associated case handler in a switch statement, and there's no default label that can catch it.
+            "-mcx16",               -- Enable use of CMPXCHG16B for 16-byte aligned 128-bit objects
+            "-mxsave",              -- Enable use of xsave/xrstor instructions
+            "-fPIC",                -- Generate position-independent code
+            "-fvisibility=hidden",  -- Mark all symbols as hidden by default
+            "-Wundef",              -- A symbol that was not defined was used with a preprocessor directive.
+            "-Wswitch",             -- An enumerator has no associated case handler in a switch statement, and there's no default label that can catch it.
         }
 
     -- Should really be using "language:c++" here instead of the file filter,
     -- but doing so still includes this in CFLAGS which causes an error.
-    filter { "toolset:gcc or clang", "files:**.cpp or **.cc" }
+    filter { "toolset:gcc or clang or wasmcc", "files:**.cpp or **.cc" }
         buildoptions {
             "-fvisibility-inlines-hidden",  -- Hide inlines from the symbol table
-        }
-
-    filter { "toolset:emcc" }
-        em_options {
-            "ALLOW_MEMORY_GROWTH=1",        -- Enable dynamic memory growth of the WASM memory buffer
         }
 
     -- Configuration setup

@@ -7,7 +7,7 @@ he._platform_defs = {}
 he._platform_names_by_host = {}
 he._default_platform_by_host = {}
 
-he.get_platform_names = function (host)
+function he.get_platform_names(host)
     if host == nil then
         host = os.host()
     end
@@ -15,7 +15,7 @@ he.get_platform_names = function (host)
     return he._platform_names_by_host[host]
 end
 
-he.get_platforms = function (host)
+function he.get_platforms(host)
     local platform_names = he.get_platform_names(host)
     local platforms = {}
 
@@ -28,7 +28,7 @@ he.get_platforms = function (host)
     return platforms
 end
 
-he.add_platform = function (options)
+function he.add_platform(options)
     assert(type(options.name) == "string", "Platform must have a valid name")
     assert(type(options.system) == "string", "Platform must have a valid system name")
     assert(type(options.architecture) == "string", "Platform must have a valid architecture name")
@@ -39,21 +39,23 @@ he.add_platform = function (options)
     verbosef("Adding platform '" .. options.name .. "' to hosts: " .. table.concat(options.hosts, ", "))
 
     he._platform_defs[options.name] = options
-
-    for _, host in ipairs(options.hosts) do
-        he.enable_platform(host, options.name)
-    end
 end
 
-he.enable_platform = function (host, platform_name)
-    verbosef("Enabling platform '" .. platform_name .. "' for host '" .. host .. "'")
+function he.enable_platform(host, platform_name)
     assert(he._platform_defs[platform_name] ~= nil, "No platform named '" .. platform_name .. "' has been added.")
-
     local platform = he._platform_defs[platform_name]
+
     if not table.contains(platform.hosts, host) then
         verbosef("Platform '" .. platform_name .. "' cannot be enabled for host '" .. host .. "' because it is not supported.")
         return
     end
+
+    if platform.can_enable ~= nil and not platform.can_enable(host) then
+        verbosef("Platform '" .. platform_name .. "' returned false for can_enable().")
+        return
+    end
+
+    verbosef("Enabling platform '" .. platform_name .. "' for host '" .. host .. "'")
 
     local platform_names = he._platform_names_by_host[host]
 
@@ -68,7 +70,17 @@ he.enable_platform = function (host, platform_name)
     he._platform_names_by_host[host] = platform_names
 end
 
-he.disable_platform = function (host, platform_name)
+function he.enable_all_platforms(host)
+    verbosef("Enabling all platforms for host '" .. host .. "'")
+
+    for name, platform in pairs(he._platform_defs) do
+        if table.contains(platform.hosts, host) then
+            he.enable_platform(host, name)
+        end
+    end
+end
+
+function he.disable_platform(host, platform_name)
     verbosef("Disabling platform '" .. platform_name .. "' for host '" .. host .. "'")
 
     local platform_names = he._platform_names_by_host[host]
@@ -83,12 +95,12 @@ he.disable_platform = function (host, platform_name)
     end
 end
 
-he.disable_all_platforms = function (host)
+function he.disable_all_platforms(host)
     verbosef("Disabling all platforms for host '" .. host .. "'")
     he._platform_names_by_host[host] = {}
 end
 
-he.define_platform = function (platform_name)
+function he.define_platform(platform_name)
     verbosef("Defining platform '" .. platform_name .. "'")
 
     local options = he._platform_defs[platform_name]
@@ -103,19 +115,19 @@ he.define_platform = function (platform_name)
     end
 end
 
-he.define_platforms = function (host)
+function he.define_platforms(host)
     local platform_names = he.get_platform_names(host)
     for _, platform_name in ipairs(platform_names) do
         he.define_platform(platform_name)
     end
 end
 
-he.set_default_platform_name = function (host, platform_name)
+function he.set_default_platform_name(host, platform_name)
     verbosef("Setting default platform for host '" .. host .. "' to '" .. platform_name .. "'")
     he._default_platform_by_host[host] = platform_name
 end
 
-he.get_default_platform_name = function (host)
+function he.get_default_platform_name(host)
     if host == nil then
         host = os.host()
     end
@@ -152,13 +164,36 @@ he.add_platform {
     end,
 }
 
+-- TODO: WASM platform
+-- TODO: Test to see if required clang binaries are available
+--      If not, download them (https://releases.llvm.org/download.html, only need `clang.exe` and `wasm-ld.exe`)
+-- TODO: Need to fetch system libraries for WASM (https://github.com/emscripten-core/emscripten/archive/master.zip, only need `System` directory)
+-- TODO: Need to fetch wasm-opt from Binaryen (https://github.com/WebAssembly/binaryen/releases, only need `wasm-opt.exe`)
+--
 he.add_platform {
-    name = "Em32",
+    name = "Wasm32",
     hosts = { "windows", "linux" },
-    system = "emscripten",
-    architecture = "x86",
+    system = "wasm",
+    architecture = "wasm32",
     on_define = function ()
-        flags { "EmSSE" }
+        vectorextensions "SSE4.1"
+        tags { "simd_SSE4.1" }
+    end,
+    can_enable = function (host)
+        local clang_path = he.whereis("clang")
+        local clangpp_path = he.whereis("clang++")
+        local wasm_ld_path = he.whereis("wasm-ld")
+        local supported = clang_path ~= nil and clangpp_path ~= nil and wasm_ld_path ~= nil
+
+        if not supported then
+            premake.warn("Wasm32 platform cannot be enabled because clang, clang++, and/or wasm-ld could not be found.")
+            premake.warn("To enable this platform install LLVM: https://releases.llvm.org/download.html")
+        end
+
+        return supported
+    end,
+    setup = function ()
+        local emscripten_url = "https://github.com/emscripten-core/emscripten/archive/refs/tags/3.1.51.zip"
     end,
 }
 

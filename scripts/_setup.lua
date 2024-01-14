@@ -2,18 +2,19 @@
 
 he = {}
 
+-- Core utilities come first, they are used everywhere
 include "utils.lua"
 
+-- Foundational functionality for the rest of the system
 include "options.lua"
 include "globals.lua"
 include "platforms.lua"
 include "modules.lua"
 include "workspace.lua"
-
 include "builtin_module_keys.lua"
 
-include "emscripten/_preload.lua"
-include "emscripten/emscripten.lua"
+-- Add custom actions
+include "actions/docs.lua"
 
-include "docgen/_preload.lua"
-include "docgen/docgen.lua"
+-- Add custom systems
+include "systems/wasm.lua"

@@ -40,7 +40,7 @@ local function _orderedNext(t, state)
 end
 
 -- Equivalent of the pairs() function on tables, but iterates keys in alphabetical order.
-he.ordered_pairs = function (t)
+function he.ordered_pairs(t)
     return _orderedNext, t, nil
 end
 
@@ -50,7 +50,7 @@ end
 local filter_stack = {}
 
 -- Pushes a filter onto the stack
-he.filter_push = function (f)
+function he.filter_push(f)
     if f == nil then
         filter { }
     else
@@ -61,7 +61,7 @@ end
 
 -- Pushes a new filter onto the stack that is the combination of the provided filter values and
 -- the currently active filter.
-he.filter_push_combine = function (f)
+function he.filter_push_combine(f)
     local active_filter = he.filter_get_active()
 
     if active_filter == nil then
@@ -73,7 +73,7 @@ he.filter_push_combine = function (f)
 end
 
 -- Pops the active filter off the stack and restores the state to the next filter
-he.filter_pop = function ()
+function he.filter_pop()
     table.remove(filter_stack)
     local prev_filter = he.filter_get_active()
     if prev_filter == nil then
@@ -84,7 +84,7 @@ he.filter_pop = function ()
 end
 
 -- Gets the currently active filter on the stack (possibly nil)
-he.filter_get_active = function ()
+function he.filter_get_active()
     return filter_stack[#filter_stack]
 end
 
@@ -94,13 +94,13 @@ end
 local cwd_stack = {}
 
 -- Pushes a directory onto the CWD stack
-he.cwd_push = function (dir)
+function he.cwd_push(dir)
     table.insert(cwd_stack, os.getcwd())
     os.chdir(dir)
 end
 
 -- Pops a directory off the CWD stack
-he.cwd_pop = function ()
+function he.cwd_pop()
     local dir = table.remove(cwd_stack)
     if dir then
         os.chdir(dir)
@@ -154,16 +154,60 @@ function table.length(t)
         count = count + 1
     end
     return count
- end
+end
 
 -- ------------------------------------------------------------------------------------------------
 -- Transform a string into a URL & filesystem safe slug
 
-he.slugify = function (str)
+function he.slugify(str)
     return str:lower()
-        :gsub("%s+", '-')       -- Replace spaces with -
-        :gsub("[^%w-]+", '')    -- Remove all non-word chars
-        :gsub("--+", '-')       -- Replace multiple - with single -
-        :gsub("^-+", '')        -- Trim - from start of text
-        :gsub("-+$", '')        -- Trim - from end of text
+        :gsub("%s+", "-")       -- Replace spaces with -
+        :gsub("[^%w-]+", "")    -- Remove all non-word chars
+        :gsub("--+", "-")       -- Replace multiple - with single -
+        :gsub("^-+", "")        -- Trim - from start of text
+        :gsub("-+$", "")        -- Trim - from end of text
+end
+
+-- ------------------------------------------------------------------------------------------------
+-- OS Extensions
+
+-- Executes a command and returns the exit code and output
+function he.execute(cmd)
+    cmd = os.translateCommands(cmd)
+    local file = io.popen(cmd, "r")
+    local output = file:read("*all")
+    local rc = { file:close() }
+
+    -- rc[1] will be true, false or nil
+    -- rc[3] will be the signal
+    return rc[3], output
+end
+
+-- Same as he.execute, but formats the command string with the provided arguments
+function he.executef(cmd, ...)
+    cmd = string.format(cmd, ...)
+    return he.execute(cmd)
+end
+
+-- Searches the system PATH variable to find the full path to the given program
+function he.whereis(program)
+    local is_windows = os.ishost("windows")
+    local sep = iif(is_windows, ";", ":")
+    local path_split = "[^" .. sep .. "]+"
+    local env_path = os.getenv("PATH")
+    if env_path then
+        for dir in env_path:gmatch(path_split) do
+            local fullpath = path.join(dir, program)
+            if os.isfile(fullpath) then
+                return fullpath
+            end
+            if is_windows and not program:match(".exe$") then
+                local fullpath_exe = fullpath .. ".exe"
+                if os.isfile(fullpath_exe) then
+                    return fullpath_exe
+                end
+            end
+        end
+    end
+    return nil
 end

@@ -2,31 +2,31 @@
 
 include "scripts/_setup.lua"
 
-if he.project then
-    if he.project.plugins then
-        he.cwd_push(path.getdirectory(he.project_filename))
-        he.import_plugins(he.project.plugins, he.project.plugin_import_options)
-        he.cwd_pop()
-    end
-
-    if he.platforms then
-        local host = os.host()
-        local platform_names = he.get_platform_names(host)
-
-        he.disable_all_platforms(host)
-        for _, platform_name in ipairs(platform_names) do
-            he.enable_platform(host, platform_name)
-        end
-    end
+-- Import the plugins that are referenced by the project, if any
+if he.project and he.project.plugins then
+    he.cwd_push(path.getdirectory(he.project_filename))
+    he.import_plugins(he.project.plugins, he.project.plugin_import_options)
+    he.cwd_pop()
 end
 
-he.workspace()
-    if he.project then
-        if he.project.start_project then
-            startproject(he.project.start_project)
-        else
-            startproject "he_editor"
-        end
+-- Enable only the platforms listed by the project, if any
+if he.project and he.project.platforms then
+    local host = os.host()
+    for _, platform_name in ipairs(he.project.platforms) do
+        he.enable_platform(host, platform_name)
     end
+else
+    he.enable_all_platforms(os.host())
+end
 
-    he.generate_module_projects()
+-- Choose the default startup project
+local start_project = "he_editor"
+if he.project and he.project.start_project then
+    start_project = he.project.start_project
+end
+
+-- Generate the workspace and project
+he.generate_workspace {
+    start_project = start_project,
+}
+he.generate_module_projects()

@@ -4,9 +4,9 @@
 
 #include "he/core/macros.h"
 
-#if defined(HE_PLATFORM_EMSCRIPTEN)
+#if defined(HE_PLATFORM_WASM)
 
-#include <emscripten/html5.h>
+#include "wasm_core.js.h"
 
 namespace he
 {
@@ -17,10 +17,17 @@ namespace he
             // wasm has a constant page size of 64KiB
             allocationGranularity = 65536;
             pageSize = 65536;
-            platform = "Emscripten";
-            version.major = __EMSCRIPTEN_major__;
-            version.minor = __EMSCRIPTEN_minor__;
-            version.patch = __EMSCRIPTEN_tiny__;
+
+            // Use the user agent string as the platform name
+            const uint32_t len = heWASM_GetUserAgentLength();
+            platform.Resize(len);
+            heWASM_GetUserAgent(platform.Data(), platform.Size());
+
+            // TODO: What should the version be? Browser or OS version? Might be nice to know both?
+            version.major = 0;
+            version.minor = 0;
+            version.patch = 0;
+            version.build = 0;
         }
     };
 
@@ -32,7 +39,7 @@ namespace he
 
     Result GetSystemName(String& outName)
     {
-        outName = "Emscripten";
+        outName = "WASM";
         return Result::Success;
     }
 
@@ -46,10 +53,8 @@ namespace he
     {
         PowerStatus status;
 
-        EmscriptenBatteryEvent batteryStatus;
-        EMSCRIPTEN_RESULT result = emscripten_get_battery_status(&batteryStatus);
-
-        if (result == EMSCRIPTEN_RESULT_SUCCESS)
+        heWASM_BatteryStatus batteryStatus;
+        if (heWASM_GetBatteryStatus(&batteryStatus))
         {
             // See: https://www.w3.org/TR/battery-status/#idl-def-batterymanager
             bool hasNoBattery = batteryStatus.charging == true

@@ -70,7 +70,7 @@ namespace he
 
     private:
         friend class ConditionVariable;
-        alignas(8) uint8_t m_opaque[HE_PLATFORM_RWLOCK_SIZE];
+        alignas(8) uint8_t m_opaque[HE_IMPL_PLATFORM_RWLOCK_SIZE];
     };
 
     // --------------------------------------------------------------------------------------------
@@ -105,7 +105,7 @@ namespace he
 
     private:
         friend class ConditionVariable;
-        alignas(8) uint8_t m_opaque[HE_PLATFORM_MUTEX_SIZE];
+        alignas(8) uint8_t m_opaque[HE_IMPL_PLATFORM_MUTEX_SIZE];
     };
 
     // --------------------------------------------------------------------------------------------
@@ -139,7 +139,7 @@ namespace he
 
     private:
         friend class ConditionVariable;
-        alignas(8) uint8_t m_opaque[HE_PLATFORM_RECURSIVE_MUTEX_SIZE];
+        alignas(8) uint8_t m_opaque[HE_IMPL_PLATFORM_RECURSIVE_MUTEX_SIZE];
     };
 
     // --------------------------------------------------------------------------------------------
@@ -303,7 +303,7 @@ namespace he
         bool WaitMutex(T& mutex, Duration timeout);
 
     private:
-        alignas(8) uint8_t m_opaque[HE_PLATFORM_CONDITION_VARIABLE_SIZE];
+        alignas(8) uint8_t m_opaque[HE_IMPL_PLATFORM_CONDITION_VARIABLE_SIZE];
     };
 
     // --------------------------------------------------------------------------------------------
@@ -339,7 +339,7 @@ namespace he
         bool Wait(Duration timeout);
 
     private:
-        alignas(8) uint8_t m_opaque[HE_PLATFORM_SEMAPHORE_SIZE];
+        alignas(8) uint8_t m_opaque[HE_IMPL_PLATFORM_SEMAPHORE_SIZE];
     };
 
     // --------------------------------------------------------------------------------------------
@@ -383,6 +383,6 @@ namespace he
         bool Wait(Duration timeout);
 
     private:
-        alignas(8) uint8_t m_opaque[HE_PLATFORM_SYNC_EVENT_SIZE];
+        alignas(8) uint8_t m_opaque[HE_IMPL_PLATFORM_SYNC_EVENT_SIZE];
     };
 }

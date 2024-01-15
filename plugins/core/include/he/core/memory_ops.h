@@ -23,7 +23,6 @@
         unsigned __int64 __cdecl _rotl64(unsigned __int64, int);
         unsigned int __cdecl _rotr(unsigned int, int);
         unsigned __int64 __cdecl _rotr64(unsigned __int64, int);
-
     }
     #pragma intrinsic(memcpy, memcmp, memset, memmove, memchr)
     #pragma intrinsic(_byteswap_uint64, _byteswap_ulong, _byteswap_ushort)
@@ -32,7 +31,13 @@
 
 namespace he
 {
-#if HE_COMPILER_MSVC
+#if defined(HE_PLATFORM_WASM)
+    void* MemCopy(void* dst, const void* src, size_t len) { return __builtin_memcpy(dst, src, len); }
+    void* MemMove(void* dst, const void* src, size_t len) { return __builtin_memmove(dst, src, len); }
+    int32_t MemCmp(const void* a, const void* b, size_t len);
+    void* MemSet(void* mem, int ch, size_t len) { return __builtin_memset(mem, ch, len); }
+    const void* MemChr(const void* mem, int ch, size_t len);
+#elif HE_COMPILER_MSVC
     HE_FORCE_INLINE void* MemCopy(void* dst, const void* src, size_t len) { return memcpy(dst, src, len); }
     HE_FORCE_INLINE void* MemMove(void* dst, const void* src, size_t len) { return memmove(dst, src, len); }
     HE_FORCE_INLINE int32_t MemCmp(const void* a, const void* b, size_t len) { return memcmp(a, b, len); }

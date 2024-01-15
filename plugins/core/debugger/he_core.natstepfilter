@@ -5,7 +5,7 @@
         <Action>NoStepInto</Action>
     </Function>
     <Function>
-        <Name>(Vector|Span).*::operator.+</Name>
+        <Name>(Vector|Span).*::.+</Name>
         <Action>NoStepInto</Action>
     </Function>
     <Function>

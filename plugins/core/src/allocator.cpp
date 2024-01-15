@@ -10,7 +10,7 @@
 
 namespace he
 {
-#if !HE_USER_DEFINED_DEFAULT_ALLOCATOR
+#if HE_ENABLE_DEFAULT_ALLOCATOR
     Allocator& Allocator::GetDefault()
     {
         return CrtAllocator::Get();

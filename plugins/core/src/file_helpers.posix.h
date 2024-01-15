@@ -5,7 +5,7 @@
 #include "he/core/file.h"
 #include "he/core/string.h"
 
-#if defined(HE_PLATFORM_API_POSIX) && !defined(HE_PLATFORM_EMSCRIPTEN)
+#if defined(HE_PLATFORM_API_POSIX)
 
 struct stat;
 

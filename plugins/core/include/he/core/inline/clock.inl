@@ -5,7 +5,7 @@ namespace he
     template <>
     HE_FORCE_INLINE CycleCount CycleClock::Now()
     {
-    #if defined(HE_PLATFORM_EMSCRIPTEN)
+    #if defined(HE_PLATFORM_WASM)
         return MonotonicClock::Now();
     #elif HE_COMPILER_MSVC && HE_CPU_X86
         return { __rdtsc() };

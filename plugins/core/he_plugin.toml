@@ -24,35 +24,35 @@ homepage = ""
         conditions = ["system:linux"]
         public_dependson = ["sys:dl", "sys:dw", "sys:pthread", "sys:unwind", "sys:uring"]
         public_defines = [
-            "HE_PLATFORM_RWLOCK_SIZE=56",
-            "HE_PLATFORM_MUTEX_SIZE=40",
-            "HE_PLATFORM_RECURSIVE_MUTEX_SIZE=40",
-            "HE_PLATFORM_CONDITION_VARIABLE_SIZE=48",
-            "HE_PLATFORM_SEMAPHORE_SIZE=32",
-            "HE_PLATFORM_SYNC_EVENT_SIZE=12",
+            "HE_IMPL_PLATFORM_RWLOCK_SIZE=56",
+            "HE_IMPL_PLATFORM_MUTEX_SIZE=40",
+            "HE_IMPL_PLATFORM_RECURSIVE_MUTEX_SIZE=40",
+            "HE_IMPL_PLATFORM_CONDITION_VARIABLE_SIZE=48",
+            "HE_IMPL_PLATFORM_SEMAPHORE_SIZE=32",
+            "HE_IMPL_PLATFORM_SYNC_EVENT_SIZE=12",
         ]
 
     [[modules.variants]]
         conditions = ["system:posix", "system:not linux"]
         public_dependson = ["sys:dl", "sys:pthread"]
         public_defines = [
-            "HE_PLATFORM_RWLOCK_SIZE=56",
-            "HE_PLATFORM_MUTEX_SIZE=40",
-            "HE_PLATFORM_RECURSIVE_MUTEX_SIZE=40",
-            "HE_PLATFORM_CONDITION_VARIABLE_SIZE=48",
-            "HE_PLATFORM_SEMAPHORE_SIZE=32",
-            "HE_PLATFORM_SYNC_EVENT_SIZE=92",
+            "HE_IMPL_PLATFORM_RWLOCK_SIZE=56",
+            "HE_IMPL_PLATFORM_MUTEX_SIZE=40",
+            "HE_IMPL_PLATFORM_RECURSIVE_MUTEX_SIZE=40",
+            "HE_IMPL_PLATFORM_CONDITION_VARIABLE_SIZE=48",
+            "HE_IMPL_PLATFORM_SEMAPHORE_SIZE=32",
+            "HE_IMPL_PLATFORM_SYNC_EVENT_SIZE=92",
         ]
 
     [[modules.variants]]
         conditions = ["system:win32"]
         public_defines = [
-            "HE_PLATFORM_RWLOCK_SIZE=8",
-            "HE_PLATFORM_MUTEX_SIZE=8",
-            "HE_PLATFORM_RECURSIVE_MUTEX_SIZE=40",
-            "HE_PLATFORM_CONDITION_VARIABLE_SIZE=8",
-            "HE_PLATFORM_SEMAPHORE_SIZE=8",
-            "HE_PLATFORM_SYNC_EVENT_SIZE=8",
+            "HE_IMPL_PLATFORM_RWLOCK_SIZE=8",
+            "HE_IMPL_PLATFORM_MUTEX_SIZE=8",
+            "HE_IMPL_PLATFORM_RECURSIVE_MUTEX_SIZE=40",
+            "HE_IMPL_PLATFORM_CONDITION_VARIABLE_SIZE=8",
+            "HE_IMPL_PLATFORM_SEMAPHORE_SIZE=8",
+            "HE_IMPL_PLATFORM_SYNC_EVENT_SIZE=8",
         ]
 
     [[modules.variants]]

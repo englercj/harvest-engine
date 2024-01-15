@@ -8,7 +8,7 @@
 #include "he/core/utils.h"
 #include "he/core/wstr.h"
 
-#if defined(HE_PLATFORM_API_POSIX) && !defined(HE_PLATFORM_EMSCRIPTEN)
+#if defined(HE_PLATFORM_API_POSIX)
 
 #include <errno.h>
 #include <fcntl.h>

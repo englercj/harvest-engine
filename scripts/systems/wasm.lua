@@ -8,13 +8,10 @@ local config = p.config
 -- Register the WASM extensions
 --
 
-p.WASM = "wasm"
-p.WASMCC = "wasmcc"
-p.WASM32 = "wasm32"
-
-api.addAllowed("system", { p.WASM })
-api.addAllowed("architecture", { p.WASM32 })
-api.addAllowed("toolset", { p.WASMCC })
+api.addAllowed("system", { "wasm" })
+api.addAllowed("architecture", { "wasm32" })
+api.addAllowed("toolset", { "wasmcc" })
+api.addAllowed("vectorextensions", { "SIMD128" })
 
 -- Path to the wasm-opt executable used for optimizing the final binary.
 -- Can also specify this in the environment variable "WASM_OPT_PATH".
@@ -27,40 +24,50 @@ api.register {
 
 -- Path to search for libc/libcxx prepared for Wasm.
 api.register {
-    name = "wasmlibpath",
+    name = "wasmsyspath",
     scope = "config",
     kind = "path",
     tokens = true,
 }
 
+api.register {
+    name = "wasmfeatures",
+    scope = "config",
+    kind = "list:string",
+    allowed = {
+        "Atomics",
+        "BulkMemory",
+    },
+}
+
 local os_option = p.option.get("os")
 if os_option ~= nil then
-    table.insert(os_option.allowed, { p.WASM })
+    table.insert(os_option.allowed, { "wasm" })
 end
 
-os.systemTags[p.WASM] = { p.WASM, "web" }
+os.systemTags["wasm"] = { "wasm", "web" }
 
 --
 -- Setup some sane defaults for WASM system
 --
 
-filter { "system:" .. p.WASM }
-    architecture(p.WASM32)
-    toolset(p.WASMCC)
+filter { "system:wasm" }
+    architecture("wasm32")
+    toolset("wasmcc")
 
-filter { "system:" .. p.WASM, "kind:StaticLib" }
+filter { "system:wasm", "kind:StaticLib" }
     targetextension ".bc"
 
-filter { "system:" .. p.WASM, "kind:SharedLib" }
+filter { "system:wasm", "kind:SharedLib" }
     targetextension ".bc"
 
-filter { "system:" .. p.WASM, "kind:ConsoleApp" }
+filter { "system:wasm", "kind:ConsoleApp" }
     targetextension ".js"
 
-filter { "system:" .. p.WASM, "kind:WindowedApp" }
+filter { "system:wasm", "kind:WindowedApp" }
     targetextension ".html"
 
-filter { "system:" .. p.WASM, "kind:ConsoleApp or WindowedApp" }
+filter { "system:wasm", "kind:ConsoleApp or WindowedApp" }
     -- Run the optimizer on the final binary
     postbuildmessage "Optimizing wasm binary file %{cfg.linktarget.name}"
     postbuildcommands {
@@ -82,6 +89,13 @@ wasmcc.getrunpathdirs = clang.getrunpathdirs
 wasmcc.shared = table.merge(clang.shared, {
     architecture = {
         wasm32 = "-target wasm32",
+    },
+    wasmfeatures = {
+        Atomics = "-matomics",
+        BulkMemory = "-mbulk-memory",
+    },
+    vectorextensions = {
+        SIMD128 = "-msimd128",
     },
 })
 
@@ -125,7 +139,7 @@ end
 
 function wasmcc.getdefines(defines)
     local flags = clang.getdefines(defines)
-    -- table.insert(flags, "-D__WASM__")
+    table.insert(flags, "-D__WASM__")
     -- table.insert(flags, "-D_LIBCPP_ABI_VERSION=2")
     return flags
 end
@@ -148,10 +162,11 @@ end
 function wasmcc.getldflags(cfg)
     local flags = clang.getldflags(cfg)
     table.insert(flags, "-fuse-ld=wasm-ld")
-    table.insert(flags, "-Wl,--no-entry")
     table.insert(flags, "-Wl,--export-dynamic")
+    table.insert(flags, "-Wl,--fatal-warnings")
     table.insert(flags, "-Wl,--import-memory")
     -- table.insert(flags, "-Wl,--import-undefined")
+    table.insert(flags, "-Wl,--no-entry")
     -- table.insert(flags, "-Wl,--unresolved-symbols=report-all")
     return flags
 end
@@ -176,7 +191,7 @@ function wasmcc.gettoolname(cfg, tool)
     return name
 end
 
-premake.tools[p.WASMCC] = wasmcc
+premake.tools["wasmcc"] = wasmcc
 
 --
 -- Private helper functions

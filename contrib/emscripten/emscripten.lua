@@ -5,6 +5,5 @@ return function (plugin, install_dirs)
     local install_dir = install_dirs["*"]
     assert(install_dir ~= nil, "No install directory found for plugin: " .. plugin.id)
 
-    print("EMSCRIPTEN PATH: " .. path.join(install_dir, "system", "lib"))
-    wasmlibpath(path.join(install_dir, "system", "lib"))
+    wasmsyspath(path.join(install_dir, "system"))
 end

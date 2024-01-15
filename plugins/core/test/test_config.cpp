@@ -29,10 +29,10 @@ HE_TEST(core, config, Report)
     std::cout << "    HE_CFG_RELEASE not defined" << std::endl;
 #endif
 
-#if defined(HE_PLATFORM_EMSCRIPTEN)
-    std::cout << "    HE_PLATFORM_EMSCRIPTEN = " << HE_PLATFORM_EMSCRIPTEN << std::endl;
+#if defined(HE_PLATFORM_WASM)
+    std::cout << "    HE_PLATFORM_WASM = " << HE_PLATFORM_WASM << std::endl;
 #else
-    std::cout << "    HE_PLATFORM_EMSCRIPTEN not defined" << std::endl;
+    std::cout << "    HE_PLATFORM_WASM not defined" << std::endl;
 #endif
 
 #if defined(HE_PLATFORM_LINUX)

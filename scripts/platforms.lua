@@ -144,8 +144,8 @@ he.add_platform {
     system = "windows",
     architecture = "x86_64",
     on_define = function ()
-        vectorextensions "AVX"  -- MSVC has no sse4.1 arch, so we enable AVX
-        tags { "simd_AVX" }
+        vectorextensions "AVX"
+        defines { "HE_PLATFORM_WINDOWS", "HE_PLATFORM_API_WIN32" }
 
         if _OPTIONS.asan == nil then
             editandcontinue "On"
@@ -160,7 +160,7 @@ he.add_platform {
     architecture = "ARM64",
     on_define = function ()
         vectorextensions "NEON"
-        tags { "simd_NEON" }
+        defines { "HE_PLATFORM_WINDOWS", "HE_PLATFORM_API_WIN32" }
     end,
 }
 
@@ -176,8 +176,9 @@ he.add_platform {
     system = "wasm",
     architecture = "wasm32",
     on_define = function ()
-        vectorextensions "SSE4.1"
-        tags { "simd_SSE4.1" }
+        vectorextensions "SIMD128"
+        wasmfeatures { "Atomics", "BulkMemory" }
+        defines { "HE_PLATFORM_WASM" }
     end,
     can_enable = function (host)
         local clang_path = he.whereis("clang")
@@ -203,8 +204,8 @@ he.add_platform {
     system = "linux",
     architecture = "x86_64",
     on_define = function ()
-        vectorextensions "SSE4.1"
-        tags { "simd_SSE4.1" }
+        vectorextensions "SSE4.2"
+        defines { "HE_PLATFORM_LINUX", "HE_PLATFORM_API_POSIX" }
     end,
 }
 

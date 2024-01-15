@@ -35,22 +35,15 @@ he.generate_workspace = function (options)
     if _OPTIONS.asan ~= nil then
         flags { "NoIncrementalLink" }
         sanitize { "Address" }
+        tags { "asan" }
     end
 
     -- Platform setup
     he.define_platforms()
 
     -- System setup
-    filter { "system:linux" }
-        defines { "HE_PLATFORM_LINUX", "HE_PLATFORM_API_POSIX" }
-
-    filter { "system:wasm" }
-        defines { "HE_PLATFORM_WASM" }
-
     filter { "system:windows" }
         defines {
-            "HE_PLATFORM_WINDOWS",
-            "HE_PLATFORM_API_WIN32",
             "WINVER=0x0A00",            -- require minimum of windows 10
             "_WIN32_WINNT=0x0A00",      -- require minimum of windows 10
             "_ITERATOR_DEBUG_LEVEL=0",  -- Improve debug performance by disabling iterator checks

@@ -12,7 +12,7 @@
 #include "he/core/system.h"
 #include "he/core/utils.h"
 
-#if defined(HE_PLATFORM_API_POSIX) && !defined(HE_PLATFORM_EMSCRIPTEN)
+#if defined(HE_PLATFORM_API_POSIX)
 
 #include "file_helpers.posix.h"
 

@@ -11,8 +11,8 @@
 /// \def HE_CFG_RELEASE
 /// Defined when the current configuration is Release.
 
-/// \def HE_PLATFORM_EMSCRIPTEN
-/// Defined when the target platform is Emscripten.
+/// \def HE_PLATFORM_WASM
+/// Defined when the target platform is Wasm32.
 
 /// \def HE_PLATFORM_LINUX
 /// Defined when the target platform is Linux.
@@ -43,8 +43,9 @@
     #define HE_ENABLE_ASSERTIONS        HE_INTERNAL_BUILD
 #endif
 
-/// \def HE_USER_DEFINED_DEFAULT_ALLOCATOR
-/// Controls if the user is responsible for defining the \ref Allocator::GetDefault function.
-#if !defined(HE_USER_DEFINED_DEFAULT_ALLOCATOR)
-    #define HE_USER_DEFINED_DEFAULT_ALLOCATOR 0
+/// \def HE_ENABLE_DEFAULT_ALLOCATOR
+/// When true (default) defines the \ref Allocator::GetDefault function. Otherwise, the user is
+/// responsible for defining that function.
+#if !defined(HE_ENABLE_DEFAULT_ALLOCATOR)
+    #define HE_ENABLE_DEFAULT_ALLOCATOR     1
 #endif

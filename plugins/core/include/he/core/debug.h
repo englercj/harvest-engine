@@ -27,9 +27,9 @@
 
     #if defined(__INTELLISENSE__)
         #define HE_DEBUG_BREAK() (false)
-    #elif defined(HE_PLATFORM_EMSCRIPTEN)
-        extern "C" void emscripten_debugger(void);
-        #define HE_DEBUG_BREAK() (emscripten_debugger(), false)
+    #elif defined(HE_PLATFORM_WASM)
+        extern "C" void heWASM_Debugger();
+        #define HE_DEBUG_BREAK() (heWASM_Debugger(), false)
     #elif HE_COMPILER_CLANG
         #define HE_DEBUG_BREAK() (__builtin_debugtrap(), false)
     #elif HE_COMPILER_MSVC

@@ -2,15 +2,15 @@
 
 #include "he/core/debug.h"
 
-#if defined(HE_PLATFORM_EMSCRIPTEN)
+#if defined(HE_PLATFORM_WASM)
 
-#include <emscripten/emscripten.h>
+#include "wasm_core.js.h"
 
 namespace he
 {
     void PrintToDebugger(const char* s)
     {
-        emscripten_log(EM_LOG_CONSOLE, s);
+        heWASM_ConsoleLog(heWASM_ConsoleLogLevel::Log, s);
     }
 
     bool IsDebuggerAttached()

@@ -1,0 +1,73 @@
+# Copyright Chad Engler
+
+id = "microsoft.mimalloc"
+name = "mimalloc"
+description = "mimalloc is a compact general purpose allocator with excellent performance."
+version = "2.1.2"
+authors = ["Microsoft"]
+license = "MIT"
+homepage = "https://github.com/microsoft/mimalloc"
+
+[install]
+    github = "microsoft/mimalloc#v2.1.2"
+
+[[modules]]
+    name = "mimalloc"
+    type = "static"
+    group = "engine/contrib"
+    warnings = "Off"
+    cdialect = "C11"
+    files = [
+        "include/**.h",
+        "src/alloc.c",
+        "src/alloc-aligned.c",
+        "src/alloc-posix.c",
+        "src/arena.c",
+        "src/bitmap.c",
+        "src/heap.c",
+        "src/init.c",
+        "src/options.c",
+        "src/os.c",
+        "src/page.c",
+        "src/random.c",
+        "src/segment.c",
+        "src/segment-map.c",
+        "src/stats.c",
+
+        # Override their prim.c with our own so we can detect WASM
+        # "src/prim/prim.c",
+        "%{he.get_module_file_dir('mimalloc')}/prim.c"
+    ]
+    public_includedirs = ["include"]
+    private_includedirs = [
+        "src",
+        "%{he.get_module_file_dir('mimalloc')}",
+    ]
+
+    [[modules.variants]]
+        conditions = ["tags:asan"]
+        private_defines = ["MI_TRACK_ASAN=1"]
+
+    [[modules.variants]]
+        conditions = ["tags:debug"]
+        private_defines = ["MI_DEBUG=3"]
+
+    [[modules.variants]]
+        conditions = ["tags:debug", "system:windows"]
+        private_defines = ["MI_TRACK_ETW=1"]
+
+    [[modules.variants]]
+        conditions = ["toolset:gcc or clang or wasmcc"]
+        buildoptions = ["-Wstrict-prototypes", "-ftls-model=initial-exec"]
+
+    [[modules.variants]]
+        conditions = ["toolset:clang or wasmcc"]
+        buildoptions = ["-Wpedantic", "-Wno-static-in-inline"]
+
+    [[modules.variants]]
+        conditions = ["system:win32"]
+        public_dependson = ["sys:psapi", "sys:shell32", "sys:user32", "sys:advapi32", "sys:bcrypt"]
+
+    [[modules.variants]]
+        conditions = ["system:linux"]
+        public_dependson = ["sys:pthreads", "sys:rt"]

@@ -2,7 +2,7 @@
 
 #include "he/core/clock.h"
 
-#if defined(HE_PLATFORM_API_POSIX)
+#if defined(HE_PLATFORM_LINUX)
 
 #include <time.h>
 

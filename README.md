@@ -4,9 +4,13 @@
 
 ### Windows
 
-Install Visual Studio 2022.
+Install Visual Studio 2022 and .
 
 Then run `boostrap.sh` using Git Bash from within the cloned folder.
+
+#### WASM Targets
+
+For WASM support you'll also need to install [LLVM 17](https://github.com/llvm/llvm-project/releases/download/llvmorg-17.0.1/LLVM-17.0.1-win64.exe) and re-run `bootstrap.sh`.
 
 ### Linux
 
@@ -14,8 +18,17 @@ Install system dependencies: `apt install build-essential binutils-dev libdw-dev
 
 Then run `bootstrap.sh` from within the cloned folder.
 
-Note: If you want to use clang instead, then run `boostrap.sh gmake2 --cc=clang`
-Note: v2.2 of liburing is required,
+Note: v2.2 of liburing is required
+
+#### WASM Targets
+
+For WASM support you'll also need to install LLVM 17:
+
+```sh
+wget https://apt.llvm.org/llvm.sh
+chmod +x llvm.sh
+sudo ./llvm.sh 17
+```
 
 ## Compiler Support
 
@@ -40,6 +53,7 @@ The recommended version is the version that is actively used for development and
 | ---------------- | ---------------------- | ------------- | ----- |
 | Windows          | :last_quarter_moon:    | 10.0.18362.0  | Win 10 1909+ or Win 11 required |
 | Linux            | :waning_crescent_moon: | kernel 5.18   | glibc 2.30+, liburing v2.2+ required |
+| WebAssembly      | :waning_crescent_moon: | LLVM 17       | WebGL2 and WASM Threads support required |
 | macOS            | :new_moon:             | ?             | |
 | Android          | :new_moon:             | ?             | |
 | iOS              | :new_moon:             | ?             | |

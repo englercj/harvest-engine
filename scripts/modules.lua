@@ -71,6 +71,11 @@ local function _try_run_module_key_handler(ctx, key, value, handler_name)
     local info = he.module_key_infos[key]
     if info == nil then
         p.warn("Module '" .. ctx.name .. "' contains unknown key '" .. key .. "'.")
+
+        if he.module_key_infos["public_" .. key] ~= nil then
+            p.warn("    Did you mean 'public_" .. key .. "' or 'private_" .. key .. "'?")
+        end
+
         return
     end
 

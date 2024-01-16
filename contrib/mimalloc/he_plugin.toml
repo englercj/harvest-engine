@@ -58,11 +58,11 @@ homepage = "https://github.com/microsoft/mimalloc"
 
     [[modules.variants]]
         conditions = ["toolset:gcc or clang or wasmcc"]
-        buildoptions = ["-Wstrict-prototypes", "-ftls-model=initial-exec"]
+        private_buildoptions = ["-Wstrict-prototypes", "-ftls-model=initial-exec"]
 
     [[modules.variants]]
         conditions = ["toolset:clang or wasmcc"]
-        buildoptions = ["-Wpedantic", "-Wno-static-in-inline"]
+        private_buildoptions = ["-Wpedantic", "-Wno-static-in-inline"]
 
     [[modules.variants]]
         conditions = ["system:win32"]

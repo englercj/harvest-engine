@@ -22,10 +22,11 @@ extern "C"
     extern void HE_WASM_IMPORT(heWASM_Eval)(const char* code);
     extern uint32_t HE_WASM_IMPORT(heWASM_GetDateNow)();
     extern uint32_t HE_WASM_IMPORT(heWASM_GetDateTzOffset)();
-    extern bool HE_WASM_IMPORT(heWASM_IsDaylightSavingTimeActive)();
     extern double HE_WASM_IMPORT(heWASM_GetPerformanceNow)();
     extern uint32_t HE_WASM_IMPORT(heWASM_GetHardwareConcurrency)();
     extern void HE_WASM_IMPORT(heWASM_GetRandomBytes)(uint8_t* dst, uint32_t dstLen);
+    extern bool HE_WASM_IMPORT(heWASM_IsDaylightSavingTimeActive)();
+    extern bool HE_WASM_IMPORT(heWASM_IsWeb)();
 
     extern uint32_t HE_WASM_IMPORT(heWASM_GetUserAgentLength)();
     extern void HE_WASM_IMPORT(heWASM_GetUserAgent)(char* dst, uint32_t dstLen);

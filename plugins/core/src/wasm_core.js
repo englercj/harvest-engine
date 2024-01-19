@@ -271,10 +271,9 @@
 
         // TODO: Shared memory between workers.
         const memory = new WebAssembly.Memory({
-            initial: wasmMemInitial >> 16,
-            shared: true,
-            // TODO: Memory64
-            // index: 'i64',
+            initial: size >> 16, // convert from bytes to pages
+            shared: true, // use SharedArrayBuffer so we can spawn threads
+            // index: 'i64', // TODO: Memory64
         });
         HE.heap.memory = memory;
         HE.heap.i8 = new Int8Array(memory.buffer);
@@ -348,15 +347,6 @@
         return new Date().getTimezoneOffset();
     };
 
-    HE.env.heWASM_IsDaylightSavingTimeActive = function ()
-    {
-        const today = new Date();
-        const jan = new Date(today.getFullYear(), 0, 1);
-        const jul = new Date(today.getFullYear(), 6, 1);
-        const std = Math.max(jan.getTimezoneOffset(), jul.getTimezoneOffset());
-        return today.getTimezoneOffset() < std;
-    };
-
     HE.env.heWASM_GetPerformanceNow = function ()
     {
         return performance.now();
@@ -396,5 +386,19 @@
         HE.ptr.writeFloat64(level, batteryManager.level);
         HE.ptr.writeBool(charging, batteryManager.charging);
         return true;
+    };
+
+    HE.env.heWASM_IsDaylightSavingTimeActive = function ()
+    {
+        const today = new Date();
+        const jan = new Date(today.getFullYear(), 0, 1);
+        const jul = new Date(today.getFullYear(), 6, 1);
+        const std = Math.max(jan.getTimezoneOffset(), jul.getTimezoneOffset());
+        return today.getTimezoneOffset() < std;
+    };
+
+    HE.env.heWASM_IsWeb = function ()
+    {
+        return typeof window === "object";
     };
 })();

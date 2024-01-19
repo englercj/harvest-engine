@@ -15,6 +15,7 @@ namespace he
 
     bool IsDebuggerAttached()
     {
+        // Detecting this is unreliable at best, so just assume it isn't.
         return false;
     }
 }

@@ -17,7 +17,7 @@ namespace he
     Result Result::InvalidParameter{ EINVAL };
     Result Result::NotSupported{ ENOTSUP };
 
-    static const struct ErrorMsgStrTable
+    struct ErrorMsgStrTable
     {
         #define E(n, s) char str##n[sizeof(s)];
         #include "errno_str.inl"
@@ -51,8 +51,9 @@ namespace he
             return;
         }
 
-        const char* errorStr = reinterpret_cast<const char*>(&s_errorStrings) + s_errorOffsets[m_code];
-        out = errorStr;
+        const char* errorStrings = reinterpret_cast<const char*>(&s_errorStrings);
+        const char* message = errorStrings + s_errorOffsets[m_code];
+        out = message;
     }
 }
 

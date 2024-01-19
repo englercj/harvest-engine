@@ -2,7 +2,6 @@
 
 #include "he/core/process.h"
 
-
 #if defined(HE_PLATFORM_WASM)
 
 #include "wasm_core.js.h"
@@ -11,12 +10,14 @@ namespace he
 {
     Result GetEnv(const char* name, String& outValue)
     {
+        // TODO: Should we implement some kind of env storage?
         HE_UNUSED(name, outValue);
         return Result::NotSupported;
     }
 
     Result SetEnv(const char* name, const char* value)
     {
+        // TODO: Should we implement some kind of env storage?
         HE_UNUSED(name, value);
         return Result::NotSupported;
     }
@@ -35,6 +36,7 @@ namespace he
 
     Result GetCurrentProcessFilename(String& out)
     {
+        // No such thing as process names in wasm.
         return Result::NotSupported;
     }
 }

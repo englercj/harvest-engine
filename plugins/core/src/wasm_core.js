@@ -332,6 +332,12 @@
         debugger;
     };
 
+    HE.env.heWASM_Eval = function (code)
+    {
+        const str = HE.ptr.readString(code);
+        eval(str);
+    };
+
     HE.env.heWASM_GetDateNow = function ()
     {
         return Date.now();
@@ -359,6 +365,15 @@
     HE.env.heWASM_GetHardwareConcurrency = function ()
     {
         return navigator.hardwareConcurrency;
+    };
+
+    HE.env.heWASM_GetRandomBytes = function (dst, dstLen)
+    {
+        const heap = HE.heap.u8;
+        const view = heap.subarray(dst, dst + dstLen);
+        // Can't operate on the heap directly because it is a SharedArrayBuffer.
+        // So generate the random bytes into a temporary buffer and copy them over.
+        view.set(crypto.getRandomValues(new Uint8Array(dstLen)));
     };
 
     HE.env.heWASM_GetUserAgentLength = function ()

@@ -18,8 +18,6 @@
 
 namespace he
 {
-    constexpr uint32_t MaxStackLen = 2048;
-
     Result GetEnv(const char* name, String& outValue)
     {
         const char* v = getenv(name);

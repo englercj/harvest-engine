@@ -9,7 +9,7 @@ local config = p.config
 --
 
 api.addAllowed("system", { "wasm" })
-api.addAllowed("architecture", { "wasm32" })
+api.addAllowed("architecture", { "wasm32", "wasm64" })
 api.addAllowed("toolset", { "wasmcc" })
 api.addAllowed("vectorextensions", { "SIMD128" })
 
@@ -35,8 +35,18 @@ api.register {
     scope = "config",
     kind = "list:string",
     allowed = {
-        "Atomics",
+        "RelaxedSIMD",
+        "NontrappingFPToInt",
+        "SignExt",
+        "ExceptionHandling",
         "BulkMemory",
+        "Atomics",
+        "MutableGlobals",
+        "Multivalue",
+        "TailCall",
+        "ReferenceTypes",
+        "ExtendedConst",
+        "MultiMemory",
     },
 }
 
@@ -88,11 +98,22 @@ wasmcc.getrunpathdirs = clang.getrunpathdirs
 
 wasmcc.shared = table.merge(clang.shared, {
     architecture = {
-        wasm32 = "-target wasm32",
+        wasm32 = "-target wasm32 -D__WASM32__",
+        wasm64 = "-target wasm64 -D__WASM64__",
     },
     wasmfeatures = {
-        Atomics = "-matomics",
+        RelaxedSIMD = "-mrelaxed-simd",
+        NontrappingFPToInt = "-mnontrapping-fptoint",
+        SignExt = "-msign-ext",
+        ExceptionHandling = "-mexception-handling",
         BulkMemory = "-mbulk-memory",
+        Atomics = "-matomics",
+        MutableGlobals = "-mmutable-globals",
+        Multivalue = "-mmultivalue",
+        TailCall = "-mtail-call",
+        ReferenceTypes = "-mreference-types",
+        ExtendedConst = "-mextended-const",
+        MultiMemory = "-mmultimemory",
     },
     vectorextensions = {
         SIMD128 = "-msimd128",
@@ -115,7 +136,7 @@ end
 
 function wasmcc.getcppflags(cfg)
     local flags = clang.getcppflags(cfg)
-    table.insert(flags, "-nostdinc")
+    table.insert(flags, "-nostdlib")
     return flags
 end
 
@@ -140,6 +161,7 @@ end
 function wasmcc.getdefines(defines)
     local flags = clang.getdefines(defines)
     table.insert(flags, "-D__WASM__")
+    table.insert(flags, "-D__wasi__")
     -- table.insert(flags, "-D_LIBCPP_ABI_VERSION=2")
     return flags
 end

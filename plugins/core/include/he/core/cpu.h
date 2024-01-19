@@ -46,10 +46,10 @@
 #elif defined(_M_ARM64) || defined(__aarch64__)
     #undef  HE_CPU_ARM_64
     #define HE_CPU_ARM_64           1
-#elif defined(__wasm32)
+#elif defined(__WASM32__)
     #undef  HE_CPU_WASM_32
     #define HE_CPU_WASM_32          1
-#elif defined(__wasm64)
+#elif defined(__WASM64__)
     #undef  HE_CPU_WASM_64
     #define HE_CPU_WASM_64          1
 #elif defined(_M_IX86) || defined(__i386__)

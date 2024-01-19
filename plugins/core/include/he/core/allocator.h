@@ -203,13 +203,30 @@ namespace he
     };
 
     // --------------------------------------------------------------------------------------------
-    /// Allocator that forwards memory requests to the CRT. This is the default allocator that
-    /// the engine will use if \ref HE_USER_DEFINED_DEFAULT_ALLOCATOR is defined as zero (default).
+    /// Allocator that uses the CRT directly for allocations.
     class CrtAllocator : public Allocator
     {
     public:
         /// Returns the singleton instance of the CrtAllocator.
         static CrtAllocator& Get();
+
+        /// \copydoc Allocator::Malloc(size_t, size_t)
+        [[nodiscard]] void* Malloc(size_t size, size_t alignment = DefaultAlignment) noexcept override;
+
+        /// \copydoc Allocator::Realloc(void*, size_t, size_t)
+        void* Realloc(void* ptr, size_t newSize, size_t alignment = DefaultAlignment) noexcept override;
+
+        /// \copydoc Allocator::Free(void*)
+        void Free(void* ptr) noexcept override;
+    };
+
+    // --------------------------------------------------------------------------------------------
+    /// Allocator that uses mi_malloc for allocations.
+    class MiMallocAllocator : public Allocator
+    {
+    public:
+        /// Returns the singleton instance of the MiMallocAllocator.
+        static MiMallocAllocator& Get();
 
         /// \copydoc Allocator::Malloc(size_t, size_t)
         [[nodiscard]] void* Malloc(size_t size, size_t alignment = DefaultAlignment) noexcept override;

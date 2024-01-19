@@ -164,12 +164,20 @@ he.add_platform {
     end,
 }
 
--- TODO: WASM platform
--- TODO: Test to see if required clang binaries are available
---      If not, download them (https://releases.llvm.org/download.html, only need `clang.exe` and `wasm-ld.exe`)
--- TODO: Need to fetch system libraries for WASM (https://github.com/emscripten-core/emscripten/archive/master.zip, only need `System` directory)
--- TODO: Need to fetch wasm-opt from Binaryen (https://github.com/WebAssembly/binaryen/releases, only need `wasm-opt.exe`)
---
+local function _can_enable_wasm()
+    local clang_path = he.whereis("clang")
+    local clangpp_path = he.whereis("clang++")
+    local wasm_ld_path = he.whereis("wasm-ld")
+    local supported = clang_path ~= nil and clangpp_path ~= nil and wasm_ld_path ~= nil
+
+    if not supported then
+        premake.warn("WASM platforms cannot be enabled because clang, clang++, and/or wasm-ld could not be found.")
+        premake.warn("To enable this platform install LLVM: https://releases.llvm.org/download.html")
+    end
+
+    return supported
+end
+
 he.add_platform {
     name = "Wasm32",
     hosts = { "windows", "linux" },
@@ -177,25 +185,23 @@ he.add_platform {
     architecture = "wasm32",
     on_define = function ()
         vectorextensions "SIMD128"
-        wasmfeatures { "Atomics", "BulkMemory" }
+        wasmfeatures { "Atomics", "BulkMemory", "NontrappingFPToInt" }
         defines { "HE_PLATFORM_WASM" }
     end,
-    can_enable = function (host)
-        local clang_path = he.whereis("clang")
-        local clangpp_path = he.whereis("clang++")
-        local wasm_ld_path = he.whereis("wasm-ld")
-        local supported = clang_path ~= nil and clangpp_path ~= nil and wasm_ld_path ~= nil
+    can_enable = _can_enable_wasm,
+}
 
-        if not supported then
-            premake.warn("Wasm32 platform cannot be enabled because clang, clang++, and/or wasm-ld could not be found.")
-            premake.warn("To enable this platform install LLVM: https://releases.llvm.org/download.html")
-        end
-
-        return supported
+he.add_platform {
+    name = "Wasm64",
+    hosts = { "windows", "linux" },
+    system = "wasm",
+    architecture = "wasm64",
+    on_define = function ()
+        vectorextensions "SIMD128"
+        wasmfeatures { "Atomics", "BulkMemory", "NontrappingFPToInt" }
+        defines { "HE_PLATFORM_WASM" }
     end,
-    setup = function ()
-        local emscripten_url = "https://github.com/emscripten-core/emscripten/archive/refs/tags/3.1.51.zip"
-    end,
+    can_enable = _can_enable_wasm,
 }
 
 he.add_platform {

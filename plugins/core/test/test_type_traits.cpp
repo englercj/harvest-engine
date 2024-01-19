@@ -445,6 +445,7 @@ HE_TEST(core, type_traits, IsFunction)
     static_assert(!IsFunction<int>);
     static_assert(!IsFunction<Trivial>);
     static_assert(!IsFunction<NonTrivial>);
+    static_assert(!IsFunction<decltype(&TestAllocator)>);
 }
 
 // ------------------------------------------------------------------------------------------------

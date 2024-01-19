@@ -89,17 +89,14 @@ namespace he
     using CycleCount = CycleClock::Time;
 
     // --------------------------------------------------------------------------------------------
-    // Durations
+    // Duration Types
 
     // A span of time in nanoseconds
     struct Duration { int64_t val; };
 
-    constexpr Duration Duration_Zero{ 0 };
-    constexpr Duration Duration_Min{ Limits<int64_t>::Min };
-    constexpr Duration Duration_Max{ Limits<int64_t>::Max };
-
-    // --------------------------------------------------------------------------------------------
-    // Duration periods
+    inline constexpr Duration Duration_Zero{ 0 };
+    inline constexpr Duration Duration_Min{ Limits<int64_t>::Min };
+    inline constexpr Duration Duration_Max{ Limits<int64_t>::Max };
 
     template <int64_t N> struct DurationPeriod { static constexpr int64_t Ratio = N; };
     using Nanoseconds = DurationPeriod<1>;

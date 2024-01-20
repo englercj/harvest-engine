@@ -97,7 +97,7 @@ namespace he
     void YieldCurrentThread()
     {
         static int32_t s_dummy = 0;
-        _AtomicWaitCurrentThread(&s_dummy, 0, 1);
+        _AtomicWaitCurrentThread(&s_dummy, 0, 100);
     }
 }
 

@@ -213,10 +213,10 @@ namespace he
         HE_UNUSED(r);
     }
 
-    void Semaphore::Notify()
+    void Semaphore::Notify(uint32_t count)
     {
         HANDLE& h = *reinterpret_cast<HANDLE*>(&m_opaque);
-        const BOOL r = ::ReleaseSemaphore(h, 1, nullptr);
+        const BOOL r = ::ReleaseSemaphore(h, static_cast<LONG>(count), nullptr);
         HE_ASSERT(r != 0, HE_KV(result, Result::FromLastError()));
         HE_UNUSED(r);
     }

@@ -3,6 +3,7 @@
 #include "he/core/thread.h"
 
 #include "he/core/assert.h"
+#include "he/core/utils.h"
 #include "he/core/wstr.h"
 
 #include <thread>
@@ -13,15 +14,20 @@
 
 namespace he
 {
-    static_assert(sizeof(ThreadHandle) >= sizeof(HANDLE));
-    static_assert(alignof(ThreadHandle) >= alignof(HANDLE));
-
-    ThreadHandle GetCurrentThreadHandle()
+    uintptr_t GetCurrentThreadHandle()
     {
-        return reinterpret_cast<ThreadHandle>(::GetCurrentThread());
+        static_assert(sizeof(uintptr_t) >= sizeof(HANDLE));
+        static_assert(IsAligned(alignof(uintptr_t), alignof(HANDLE)));
+        return reinterpret_cast<uintptr_t>(::GetCurrentThread());
     }
 
-    Result SetThreadAffinity(ThreadHandle thread, uint64_t mask)
+    uint32_t GetCurrentThreadId()
+    {
+        static_assert(sizeof(uint32_t) >= sizeof(DWORD));
+        return static_cast<uint32_t>(::GetCurrentThreadId());
+    }
+
+    Result SetThreadAffinity(uintptr_t thread, uint64_t mask)
     {
         DWORD_PTR processMask = 0;
         DWORD_PTR systemMask = 0;

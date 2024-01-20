@@ -8,16 +8,20 @@
 
 namespace he
 {
-    struct WasmThreadState
+    struct _WasmThreadState
     {
-        IntrusiveListLink<WasmThreadState> link{};
+        IntrusiveListLink<_WasmThreadState> link{};
 
         String name{};
+        uint32_t id{ 0 };
         bool isMain : 1{ false };
-        bool canBlock : 1{ false };
+        bool canWait : 1{ false };
     };
 
     void _SetMainThreadState();
-    void _SetWorkerThreadState(WasmThreadState* state);
-    void _SetThreadState(WasmThreadState* state, bool isMain, bool canBlock);
+    void _SetWorkerThreadState(_WasmThreadState* state);
+    void _SetThreadState(_WasmThreadState* state, bool isMain, bool canWait);
+
+    bool _CanCurentThreadWait();
+    int32_t _AtomicWaitCurrentThread(int32_t* value, int32_t expected, int64_t timeoutNs);
 }

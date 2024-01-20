@@ -8,10 +8,10 @@
 
 namespace he
 {
-    using ThreadHandle = uintptr_t;
+    uintptr_t GetCurrentThreadHandle();
+    uint32_t GetCurrentThreadId();
 
-    ThreadHandle GetCurrentThreadHandle();
-    Result SetThreadAffinity(ThreadHandle thread, uint64_t mask);
+    Result SetThreadAffinity(uintptr_t thread, uint64_t mask);
     void SetCurrentThreadName(const char* name);
 
     void SleepCurrentThread(Duration amount);

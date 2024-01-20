@@ -45,6 +45,17 @@ homepage = ""
         ]
 
     [[modules.variants]]
+        conditions = ["system:wasm"]
+        public_defines = [
+            "HE_IMPL_PLATFORM_RWLOCK_SIZE=4",
+            "HE_IMPL_PLATFORM_MUTEX_SIZE=4",
+            "HE_IMPL_PLATFORM_RECURSIVE_MUTEX_SIZE=8",
+            "HE_IMPL_PLATFORM_CONDITION_VARIABLE_SIZE=8",
+            "HE_IMPL_PLATFORM_SEMAPHORE_SIZE=4",
+            "HE_IMPL_PLATFORM_SYNC_EVENT_SIZE=16",
+        ]
+
+    [[modules.variants]]
         conditions = ["system:win32"]
         public_defines = [
             "HE_IMPL_PLATFORM_RWLOCK_SIZE=8",

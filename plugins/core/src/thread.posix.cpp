@@ -12,19 +12,34 @@
 #include <unistd.h>
 #include <sched.h>
 #include <time.h>
-#include <sys/prctl.h>
+
+#if defined(HE_PLATFORM_LINUX)
+    #include <sys/prctl.h>
+    #include <sys/syscall.h>
+    #include <sys/types.h>
+#endif
 
 namespace he
 {
-    static_assert(sizeof(ThreadHandle) >= sizeof(pthread_t));
-    static_assert(alignof(ThreadHandle) >= alignof(pthread_t));
-
-    ThreadHandle GetCurrentThreadHandle()
+    uintptr_t GetCurrentThreadHandle()
     {
-        return reinterpret_cast<ThreadHandle>(pthread_self());
+        static_assert(sizeof(uintptr_t) >= sizeof(pthread_t));
+        static_assert(IsAligned(alignof(uintptr_t) >= alignof(pthread_t)));
+        return reinterpret_cast<uintptr_t>(pthread_self());
     }
 
-    Result SetThreadAffinity(ThreadHandle thread, uint64_t mask)
+    uint32_t GetCurrentThreadId()
+    {
+    #if defined(HE_PLATFORM_LINUX)
+        static_assert(sizeof(uint32_t) >= sizeof(pid_t));
+        return static_cast<uint32_t>(syscall(SYS_gettid));
+    #else
+        static_assert(sizeof(uint32_t) >= sizeof(pthread_id_np_t));
+        return static_cast<uint32_t>(pthread_getthreadid_np());
+    #endif
+    }
+
+    Result SetThreadAffinity(uintptr_t thread, uint64_t mask)
     {
         static_assert(__CPU_SETSIZE >= (sizeof(mask) * 8));
 

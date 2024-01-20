@@ -17,8 +17,11 @@ int __stdcall wWinMain(struct HINSTANCE__*, struct HINSTANCE__*, wchar_t*, int) 
 
 #elif defined(HE_PLATFORM_WASM)
 
+namespace he { void _SetMainThreadState(); }
+
 int main(int argc, char* argv[])
 {
+    he::_SetMainThreadState();
     return he::AppMain(argc, argv);
 }
 

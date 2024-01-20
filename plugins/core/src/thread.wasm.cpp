@@ -3,6 +3,9 @@
 #include "he/core/thread.h"
 
 #include "he/core/clock.h"
+#include "he/core/sync.h"
+
+#include <atomic>
 
 #if defined(HE_PLATFORM_WASM)
 
@@ -11,39 +14,67 @@
 
 namespace he
 {
-    static WasmThreadState s_mainThreadState{};
-    static IntrusiveList<WasmThreadState, &WasmThreadState::link> s_threadStates{};
+    static std::atomic<uint32_t> s_nextThreadId{ 1 };
+    static _WasmThreadState s_mainThreadState{};
+    static IntrusiveList<_WasmThreadState, &_WasmThreadState::link> s_threadStates{};
+    static Mutex s_threadStatesMutex{};
 
-    static thread_local WasmThreadState* s_localThreadState = nullptr;
+    static thread_local _WasmThreadState* s_localThreadState = nullptr;
 
     void _SetMainThreadState()
     {
-        // Main thread cannot block on the web, but on Node it can.
+        // Main thread cannot wait on the web, but on Node it can.
         _SetThreadState(&s_mainThreadState, true, !heWASM_IsWeb());
     }
 
-    void _SetWorkerThreadState(WasmThreadState* state)
+    void _SetWorkerThreadState(_WasmThreadState* state)
     {
-        // Worker threads can always block.
+        // Worker threads can always wait.
         _SetThreadState(state, false, true);
     }
 
-    void _SetThreadState(WasmThreadState* state, bool isMain, bool canBlock)
+    void _SetThreadState(_WasmThreadState* state, bool isMain, bool canWait)
     {
         s_localThreadState = state;
+        state->id = s_nextThreadId.fetch_add(1);
         state->isMain = isMain;
-        state->canBlock = canBlock;
+        state->canWait = canWait;
 
-        // TODO: lock access here.
+        s_threadStatesMutex.Lock();
         s_threadStates.PushBack(state);
+        s_threadStatesMutex.Unlock();
     }
 
-    ThreadHandle GetCurrentThreadHandle()
+    bool _CanCurentThreadWait()
     {
-        return reinterpret_cast<ThreadHandle>(s_localThreadState);
+        return s_localThreadState && s_localThreadState->canWait;
     }
 
-    Result SetThreadAffinity(ThreadHandle thread, uint64_t mask)
+    int32_t _AtomicWaitCurrentThread(int32_t* value, int32_t expected, int64_t timeoutNs)
+    {
+        // memory.atomic.wait32 returns:
+        //   0 => "ok", woken by another agent.
+        //   1 => "not-equal", loaded value != expected value
+        //   2 => "timed-out", the timeout expired
+        if (_CanCurentThreadWait())
+        {
+            return __builtin_wasm_atomic_wait_i32(value, expected, timeoutNs);
+        }
+
+        return *value == expected ? 0 : 1;
+    }
+
+    uintptr_t GetCurrentThreadHandle()
+    {
+        return reinterpret_cast<uintptr_t>(s_localThreadState);
+    }
+
+    uint32_t GetCurrentThreadId()
+    {
+        return s_localThreadState ? s_localThreadState->id : 0;
+    }
+
+    Result SetThreadAffinity(uintptr_t thread, uint64_t mask)
     {
         // Wasm doesn't have thread affinity support.
         return Result::NotSupported;
@@ -59,16 +90,14 @@ namespace he
 
     void SleepCurrentThread(Duration amount)
     {
-        if (s_localThreadState && s_localThreadState->canBlock)
-        {
-            static int s_dummy = 0;
-            __builtin_wasm_memory_atomic_wait32(&s_dummy, 0, amount.val);
-        }
+        static int32_t s_dummy = 0;
+        _AtomicWaitCurrentThread(&s_dummy, 0, amount.val);
     }
 
     void YieldCurrentThread()
     {
-        // Wasm doesn't really have a concept of yielding.
+        static int32_t s_dummy = 0;
+        _AtomicWaitCurrentThread(&s_dummy, 0, 1);
     }
 }
 

@@ -52,6 +52,8 @@ namespace he
 
     RWLock::~RWLock() noexcept
     {
+        HE_ASSERT(TryAcquireWrite() && (ReleaseWrite(), true));
+
         pthread_rwlock_t* rwlock = reinterpret_cast<pthread_rwlock_t*>(m_opaque);
         HE_ASSERT_PTHREAD(pthread_rwlock_destroy(rwlock));
     }
@@ -119,6 +121,8 @@ namespace he
 
     Mutex::~Mutex() noexcept
     {
+        HE_ASSERT(TryAcquire() && (Release(), true));
+
         pthread_mutex_t* mutex = reinterpret_cast<pthread_mutex_t*>(m_opaque);
         HE_ASSERT_PTHREAD(pthread_mutex_destroy(mutex));
     }
@@ -267,10 +271,14 @@ namespace he
         HE_ASSERT_ERRNO(sem_destroy(sem));
     }
 
-    void Semaphore::Notify()
+    void Semaphore::Notify(uint32_t count)
     {
         sem_t* sem = reinterpret_cast<sem_t*>(m_opaque);
-        HE_ASSERT_ERRNO(sem_post(sem));
+        while (count > 0)
+        {
+            --count;
+            HE_ASSERT_ERRNO(sem_post(sem));
+        }
     }
 
     void Semaphore::Wait()

@@ -24,6 +24,8 @@ namespace he
         RWLock() noexcept;
 
         /// Destruct a reader-writer lock.
+        ///
+        /// \note Behavior is undefined if the lock is held when destructed.
         ~RWLock() noexcept;
 
         RWLock(const RWLock&) = delete;
@@ -85,6 +87,8 @@ namespace he
         Mutex() noexcept;
 
         /// Destruct a mutually exclusive lock.
+        ///
+        /// \note Behavior is undefined if the lock is held when destructed.
         ~Mutex() noexcept;
 
         Mutex(const Mutex&) = delete;
@@ -118,7 +122,9 @@ namespace he
         /// Construct a recursive, mutually exclusive, lock.
         RecursiveMutex() noexcept;
 
-        /// Destructa recursive, mutually exclusive, lock.
+        /// Destruct a recursive, mutually exclusive, lock.
+        ///
+        /// \note Behavior is undefined if the lock is held when destructed.
         ~RecursiveMutex() noexcept;
 
         RecursiveMutex(const RecursiveMutex&) = delete;
@@ -324,8 +330,8 @@ namespace he
         Semaphore& operator=(const Semaphore&) = delete;
         Semaphore& operator=(Semaphore&&) = delete;
 
-        /// Increases the count of the semaphore by one (1).
-        void Notify();
+        /// Increases the count of the semaphore by `count` and notifies waiting threads.
+        void Notify(uint32_t count = 1);
 
         /// Waits indefinitely for the semaphore to be notified. When it is the thread is awoken
         /// and the count of the semaphore is decreased by one (1).

@@ -4,10 +4,10 @@
 
 #include "he/core/assert.h"
 
-#if defined(HE_PLATFORM_API_POSIX)
-
 #include <cwchar>
 #include <string>
+
+#if defined(HE_PLATFORM_API_POSIX)
 
 namespace he
 {
@@ -57,8 +57,29 @@ namespace he
     void WCToMBStr(String& dst, const wchar_t* src, uint32_t srcLen)
     {
         HE_ASSERT(src);
-        std::wstring wsrc(src, srcLen);
-        WCToMBStr(dst, wsrc.c_str());
+
+        std::mbstate_t state{};
+        const size_t requiredLen = std::wcsnrtombs(nullptr, &src, srcLen, 0, &state);
+
+        if (requiredLen == 0 || requiredLen == static_cast<size_t>(-1))
+        {
+            dst.Clear();
+            return;
+        }
+
+        dst.Resize(static_cast<uint32_t>(requiredLen), DefaultInit);
+
+        const size_t len = std::wcsnrtombs(dst.Data(), &src, srcLen, dst.Size(), &state);
+
+        if (len > 0)
+            dst.Resize(len);
+        else
+            dst.Clear();
+    }
+
+    int32_t WCStrCmp(const wchar_t* a, const wchar_t* b)
+    {
+        return std::wcscmp(a, b);
     }
 }
 

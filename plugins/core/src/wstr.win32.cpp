@@ -8,6 +8,8 @@
 
 #include "he/core/win32_min.h"
 
+#include <shlwapi.h>
+
 namespace he
 {
     uint32_t MBToWCStr(wchar_t* dst, uint32_t dstLen, const char* src)
@@ -67,6 +69,11 @@ namespace he
             dst.Resize(len); // no -1 because no null is written
         else
             dst.Clear();
+    }
+
+    int32_t WCStrCmp(const wchar_t* a, const wchar_t* b)
+    {
+        return ::StrCmpW(a, b);
     }
 }
 

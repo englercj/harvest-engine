@@ -52,7 +52,6 @@ namespace he
         using ListType = IntrusiveList<T, Link>;
 
     public:
-
         class Iterator
         {
         public:
@@ -74,8 +73,8 @@ namespace he
 
             Iterator& operator++() { m_node = m_list->Next(m_node); return *this; }
             Iterator operator++(int) { Iterator x(m_list, m_node); m_node = m_list->Next(m_node); return x; }
-            Iterator& operator--() { m_node = m_list->Previous(m_node); return *this; }
-            Iterator operator--(int) { Iterator x(m_list, m_node); m_node = m_list->Previous(m_node); return x; }
+            Iterator& operator--() { m_node = m_list->Prev(m_node); return *this; }
+            Iterator operator--(int) { Iterator x(m_list, m_node); m_node = m_list->Prev(m_node); return x; }
 
             Iterator operator+(uint32_t n) const
             {
@@ -109,6 +108,7 @@ namespace he
         IntrusiveList(IntrusiveList&& x)
             : m_head(Exchange(x.m_head, nullptr))
             , m_tail(Exchange(x.m_tail, nullptr))
+            , m_size(Exchange(x.m_size, 0))
         {}
 
         IntrusiveList& operator=(const IntrusiveList& x) = delete;
@@ -116,17 +116,35 @@ namespace he
         {
             m_head = Exchange(x.m_head, nullptr);
             m_tail = Exchange(x.m_tail, nullptr);
+            m_size = Exchange(x.m_size, 0);
         }
 
         bool IsEmpty() const { return m_size == 0; }
-        void Clear() { m_head = m_tail = nullptr; m_size = 0; }
-
         uint32_t Size() const { return m_size; }
+
+        void Clear()
+        {
+            if (m_size == 0)
+                return;
+
+            T* node = m_head;
+            while (node)
+            {
+                T* next = node->*Link.next;
+                node->*Link.prev = nullptr;
+                node->*Link.next = nullptr;
+                node = next;
+            }
+
+            m_head = nullptr;
+            m_tail = nullptr;
+            m_size = 0;
+        }
 
         T* Front() const { return m_head; }
         T* Back() const { return m_tail; }
         T* Next(const T* node) const { return node ? node->*Link.next : nullptr; }
-        T* Previous(const T* node) const { return node ? node->*Link.prev : nullptr; }
+        T* Prev(const T* node) const { return node ? node->*Link.prev : nullptr; }
 
         void PushBack(T* node)
         {

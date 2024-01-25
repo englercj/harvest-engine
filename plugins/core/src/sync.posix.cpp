@@ -10,6 +10,8 @@
 #include "he/core/result_fmt.h"
 #include "he/core/utils.h"
 
+#include <new>
+
 #if defined(HE_PLATFORM_API_POSIX)
 
 #if defined(__linux__)
@@ -323,7 +325,7 @@ namespace he
     }
 
     // --------------------------------------------------------------------------------------------
-    struct SyncEventData
+    struct _SyncEventData
     {
     #if defined(__linux__)
         int eventFd{ -1 };
@@ -338,10 +340,10 @@ namespace he
 
     SyncEvent::SyncEvent(bool manualReset, bool initiallySignaled) noexcept
     {
-        static_assert(sizeof(m_opaque) == sizeof(SyncEventData));
-        HE_ASSERT(IsAligned(m_opaque, alignof(SyncEventData)));
+        static_assert(sizeof(m_opaque) == sizeof(_SyncEventData));
+        HE_ASSERT(IsAligned(m_opaque, alignof(_SyncEventData)));
 
-        SyncEventData* data = new(m_opaque) SyncEventData();
+        _SyncEventData* data = ::new(m_opaque) _SyncEventData();
         data->manualReset = manualReset;
 
     #if defined(__linux__)
@@ -366,7 +368,7 @@ namespace he
 
     SyncEvent::~SyncEvent() noexcept
     {
-        SyncEventData* data = reinterpret_cast<SyncEventData*>(m_opaque);
+        _SyncEventData* data = reinterpret_cast<_SyncEventData*>(m_opaque);
 
     #if defined(__linux__)
         HE_ASSERT_ERRNO(close(data->eventFd));
@@ -375,12 +377,12 @@ namespace he
         // Destructor is sufficient for this impl
     #endif
 
-        data->~SyncEventData();
+        data->~_SyncEventData();
     }
 
     void SyncEvent::Signal()
     {
-        SyncEventData* data = reinterpret_cast<SyncEventData*>(m_opaque);
+        _SyncEventData* data = reinterpret_cast<_SyncEventData*>(m_opaque);
 
     #if defined(__linux__)
         uint64_t value = 1;
@@ -399,7 +401,7 @@ namespace he
 
     void SyncEvent::Reset()
     {
-        SyncEventData* data = reinterpret_cast<SyncEventData*>(m_opaque);
+        _SyncEventData* data = reinterpret_cast<_SyncEventData*>(m_opaque);
 
     #if defined(__linux__)
         struct epoll_event ev;
@@ -431,7 +433,7 @@ namespace he
     #else
         LockGuard lock(data->mutex);
 
-        SyncEventData* data = reinterpret_cast<SyncEventData*>(m_opaque);
+        _SyncEventData* data = reinterpret_cast<_SyncEventData*>(m_opaque);
         data->cv.Wait(data->mutex, [data]() { return data->state; });
         if (!data->manualReset)
             data->state = false;
@@ -440,7 +442,7 @@ namespace he
 
     bool SyncEvent::Wait(Duration timeout)
     {
-        SyncEventData* data = reinterpret_cast<SyncEventData*>(m_opaque);
+        _SyncEventData* data = reinterpret_cast<_SyncEventData*>(m_opaque);
 
     #if defined(__linux__)
         // When timeout < 0, epoll_wait() will wait indefinitely, but pthread_cond_timedwait()

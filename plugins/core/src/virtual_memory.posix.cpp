@@ -2,7 +2,6 @@
 
 #include "he/core/virtual_memory.h"
 
-
 #if defined(HE_PLATFORM_API_POSIX)
 
 #include <sys/mman.h>

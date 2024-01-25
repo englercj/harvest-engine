@@ -28,7 +28,9 @@ int _mi_prim_free(void* addr, size_t size)
 {
     MI_UNUSED(addr);
     MI_UNUSED(size);
-    // wasm heap cannot be shrunk
+    mi_assert_internal(size > 0 && (size % _mi_os_page_size()) == 0);
+    // size_t pageCount = size / _mi_os_page_size();
+    // __builtin_wasm_memory_discard(addr, pageCount);
     return 0;
 }
 
@@ -66,9 +68,7 @@ static void* mi_prim_mem_grow(size_t size, size_t try_alignment)
             // Spin until we can get the lock to avoid thread interaction between getting the
             // current size and actual allocation.
             uint32_t expected = 0;
-            __c11_atomic_compare_exchange_weak(&mi_heap_grow_mutex, &expected, 1, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST);
-
-            if (expected != 0)
+            if (!__c11_atomic_compare_exchange_weak(&mi_heap_grow_mutex, &expected, 1, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST))
                 continue;
 
             void* current = mi_memory_grow(0);  // get current size

@@ -7,6 +7,8 @@
 #include "he/core/thread.h"
 #include "he/core/utils.h"
 
+#include <new>
+
 #if defined(HE_PLATFORM_WASM)
 
 #include "thread_internal.wasm.h"
@@ -120,17 +122,19 @@ namespace he
 
     bool Mutex::TryAcquire()
     {
+        const int32_t tid = BitCast<int32_t>(GetCurrentThreadId());
         int32_t* mutex = reinterpret_cast<int32_t*>(m_opaque);
         int32_t expected = 0;
-        return __atomic_compare_exchange_n(mutex, &expected, 1, true, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST);
+        return __atomic_compare_exchange_n(mutex, &expected, tid, true, __ATOMIC_ACQUIRE, __ATOMIC_RELAXED);
     }
 
     void Mutex::Acquire()
     {
+        const int32_t tid = BitCast<int32_t>(GetCurrentThreadId());
         int32_t* mutex = reinterpret_cast<int32_t*>(m_opaque);
         while (!TryAcquire())
         {
-            _AtomicWaitCurrentThread(mutex, 1, -1);
+            _AtomicWaitCurrentThread(mutex, tid, -1);
         }
     }
 
@@ -139,9 +143,9 @@ namespace he
         int32_t* mutex = reinterpret_cast<int32_t*>(m_opaque);
 
     #if HE_ENABLE_ASSERTIONS
-        // When assertions are enabled we want to verify that unlocking was legit so do an exchange.
+        // When assertions are enabled we want to verify that we're releasing a lock that we hold.
         const int32_t value = __atomic_exchange_n(mutex, 0, __ATOMIC_RELEASE);
-        HE_ASSERT(value == 1, HE_MSG("Mutex::Release() called on a lock that was not held"));
+        HE_ASSERT(value == GetCurrentThreadId(), HE_MSG("Mutex::Release() called on a lock that was not held by this thread"));
     #else
         // When assertions are disabled we don't care about the existing value, so just do a store.
         __atomic_store_n(mutex, 0, __ATOMIC_RELEASE);
@@ -180,7 +184,7 @@ namespace he
         static constexpr uint64_t TidMask = 0x00000000ffffffffull;
         static constexpr uint64_t CountIncrement = 0x0000000100000000ull;
 
-        static thread_local const uint32_t tid = GetCurrentThreadId();
+        const uint32_t tid = GetCurrentThreadId();
 
         uint64_t* mutex = reinterpret_cast<uint64_t*>(m_opaque);
         uint64_t expected = 0;
@@ -231,64 +235,279 @@ namespace he
     }
 
     // --------------------------------------------------------------------------------------------
-    // TODO: CV still needs to be written.
+    enum _CVWaiterState : int32_t
+    {
+        _CVWaiterState_Waiting,
+        _CVWaiterState_Signaled,
+        _CVWaiterState_Leaving,
+    };
+
+    struct _CVWaiter
+    {
+        _CVWaiter* prev{ nullptr };
+        _CVWaiter* next{ nullptr };
+        volatile int32_t* notify{ nullptr };
+        volatile int32_t state{ _CVWaiterState_Waiting };
+        volatile int32_t barrier{ 0 };
+    };
+
+    struct _CVData
+    {
+        _CVData* head{ nullptr };
+        _CVData* tail{ nullptr };
+        volatile int32_t lock{ 0 };
+    };
+
+    static void _ConditionVariable_LockInt(volatile int* lock)
+    {
+        int32_t expected = 0;
+        if (!__atomic_compare_exchange_n(lock, &expected, 1, true, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST))
+        {
+            expected = 1;
+            __atomic_compare_exchange_n(lock, &expected, 2, true, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST)
+
+            expected = 0;
+            do
+            {
+                _AtomicWaitCurrentThread(lock, 2, -1);
+            }
+            while (!__atomic_compare_exchange_n(lock, &expected, 2, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST));
+        }
+    }
+
+    static void _ConditionVariable_UnlockInt(volatile int* lock)
+    {
+        if (__atomic_exchange_n(lock, 0, __ATOMIC_SEQ_CST) == 2)
+        {
+            __builtin_wasm_memory_atomic_notify(lock, 1);
+        }
+    }
+
+    static void _ConditionVariable_UnlockIntRequeue(volatile int* lock)
+    {
+        __atomic_store_n(lock, 0, __ATOMIC_SEQ_CST);
+        // Here the intent is to wake one waiter, and requeue all other waiters from waiting on
+        // address 'lock' to wait on a new lock address instead. This is not possible at the
+        // moment with SharedArrayBuffer Atomics, as it does not have a "wake X waiters and
+        // requeue the rest" primitive. However this kind of primitive is strictly not needed,
+        // since it is more like an optimization to avoid spuriously waking all waiters, just
+        // to make them wait on another location immediately afterwards. Here we do exactly that:
+        // wake every waiter.
+        __builtin_wasm_memory_atomic_notify(lock, 0xffffffff);
+    }
+
+    static void _ConditionVariable_Signal(_CVData* data, uint32_t count)
+    {
+        _CVWaiter* p = nullptr;
+        _CVWaiter* first = nullptr;
+        volatile int32_t ref = 0;
+
+        _ConditionVariable_LockInt(&data->lock);
+
+        // Mark `count` waiters as signaled.
+        for (_CVWaiter* p = data->tail; count && p; p = p->prev)
+        {
+            int32_t expected = _CVWaiterState_Waiting;
+            if (!__atomic_compare_exchange_n(&p->state, &expected, _CVWaiterState_Signaled, true, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST))
+            {
+                ++ref;
+                p->notify = &ref;
+            }
+            else
+            {
+                --count;
+                if (!first)
+                {
+                    first = p;
+                }
+            }
+        }
+
+        // Split the list, leaving any remainder on the cv.
+        if (p)
+        {
+            if (p->next)
+                p->next->prev = nullptr;
+            p->next = nullptr;
+        }
+        else
+        {
+            data->head = nullptr;
+        }
+        data->tail = p;
+
+        _ConditionVariable_UnlockInt(&data->lock);
+
+        // Wait for any waiters in the leaving state to remove themselves from the list before
+        // allowing signaled threads to proceed.
+        while (int32_t cur = __atomic_load_n(&ref))
+        {
+            _AtomicWaitCurrentThread(&ref, cur, -1);
+        }
+
+        // Allow first signaled waiter, if any, to proceed.
+        if (first)
+        {
+            _ConditionVariable_UnlockInt(&first->barrier);
+        }
+    }
+
+    template <typename T>
+    void _ConditionVariable_WaitMutex(_CVData* data, T& mutex, Duration timeout)
+    {
+        // Setup the waiter list by creating a new node and making it the head.
+        _ConditionVariable_LockInt(&data->lock);
+
+        _CVWaiter node{};
+        node.barrier = 2;
+        node.state = _CVWaiterState_Waiting;
+        node.next = data->head;
+
+        data->head = &node;
+
+        if (!data->tail)
+            data->tail = &node;
+        else
+            node.next->prev = &node;
+
+        int32_t seq = node.barrier;
+        volatile int32_t* fut = &node.barrier;
+
+        _ConditionVariable_UnlockInt(&data->lock);
+
+        // Release the mutex and wait for a signal.
+        mutex.Release();
+
+        YieldCurrentThread(); // Maybe not needed?
+
+        const MonotonicTime waitEnd = MonotonicClock::Now() + timeout;
+        bool timedOut = false;
+        do
+        {
+            // Calculate how much wait time is left, and if it has expired we've timed out.
+            const Duration wait = end - MonotonicClock::Now();
+            if (wait <= Duration_Zero)
+            {
+                timedOut = true;
+                break;
+            }
+
+            // Wait for a signal or timeout.
+            const int32_t rc = _AtomicWaitCurrentThread(fut, seq, wait.val);
+
+            // the timeout expired during the wait
+            if (rc == 2)
+            {
+                timedOut = true;
+                break;
+            }
+        } while (__atomic_load_n(fut, __ATOMIC_SEQ_CST) == seq);
+
+        _CVWaiterState oldState = _CVWaiterState_Waiting;
+        __atomic_compare_exchange_n(&node.state, &oldState, _CVWaiterState_Leaving, true, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST);
+
+        if (oldState == _CVWaiterState_Waiting)
+        {
+            // Remove the node from the list.
+            _ConditionVariable_LockInt(&data->lock);
+
+            if (data->head == &node)
+                data->head = node.next;
+            else if (node.prev)
+                node.prev->next = node.next;
+
+            if (data->tail == &node)
+                data->tail = node.prev;
+            else if (node.next)
+                node.next->prev = node.prev;
+
+            _ConditionVariable_UnlockInt(&data->lock);
+
+            // If the node was not signaled, wake the next waiter.
+            if (node.notify)
+            {
+                if (__atomic_fetch_sub(node.notify, 1, __ATOMIC_SEQ_CST) == 1)
+                {
+                    __builtin_wasm_memory_atomic_notify(node.notify, 1);
+                }
+            }
+        }
+        else
+        {
+            // Lock barrier first to control wake order.
+            _ConditionVariable_LockInt(&node.barrier);
+        }
+
+        mutex.Acquire();
+
+        // Unlock the barrier that's holding back the next waiters. This make them fall into the
+        // mutex.Acquire() above effectively requeueing them to wait on the mutex.
+        if (oldState != _CVWaiterState_Waiting && node.prev)
+        {
+            _ConditionVariable_UnlockIntRequeue(&node.prev->barrier);
+        }
+    }
+
     ConditionVariable::ConditionVariable() noexcept
     {
-        static_assert(sizeof(m_opaque) == sizeof(uint32_t));
-        HE_ASSERT(IsAligned(m_opaque, alignof(uint32_t)));
+        static_assert(sizeof(m_opaque) == sizeof(_CVData));
+        HE_ASSERT(IsAligned(m_opaque, alignof(_CVData)));
 
-        uint32_t* cv = reinterpret_cast<uint32_t*>(m_opaque);
-        *cv = 0;
+        ::new(m_opaque) _CVData();
     }
 
     ConditionVariable::~ConditionVariable() noexcept
     {
+        _CVData* data = reinterpret_cast<_CVData*>(m_opaque);
+        data->~_CVData();
     }
 
     void ConditionVariable::WakeOne()
     {
-        uint32_t* cv = reinterpret_cast<uint32_t*>(m_opaque);
-        // __atomic_fetch_sub(sem, 1, __ATOMIC_RELEASE);
-        __builtin_wasm_memory_atomic_notify(cv, 1);
+        _CVData* data = reinterpret_cast<_CVData*>(m_opaque);
+        return _ConditionVariable_Signal(data, 1);
     }
 
     void ConditionVariable::WakeAll()
     {
-        uint32_t* cv = reinterpret_cast<uint32_t*>(m_opaque);
-        // __atomic_store_n(sem, 0, __ATOMIC_RELEASE);
-        __builtin_wasm_memory_atomic_notify(cv, 0xffffffff);
+        _CVData* data = reinterpret_cast<_CVData*>(m_opaque);
+        return _ConditionVariable_Signal(data, 0xffffffff);
     }
 
     template <>
     void ConditionVariable::WaitMutex<Mutex>(Mutex& mutex)
     {
-        mutex.Release();
-
-        uint32_t* cv = reinterpret_cast<uint32_t*>(m_opaque);
-        _AtomicWaitCurrentThread(cv, 0, -1);
-
-        mutex.Acquire();
+        WaitMutex(mutex, Duration_Max);
     }
 
     template <>
     void ConditionVariable::WaitMutex<RecursiveMutex>(RecursiveMutex& mutex)
     {
-        mutex.Release();
-
-        uint32_t* cv = reinterpret_cast<uint32_t*>(m_opaque);
-        _AtomicWaitCurrentThread(cv, 0, -1);
-
-        mutex.Acquire();
+        WaitMutex(mutex, Duration_Max);
     }
 
     template <>
     bool ConditionVariable::WaitMutex<Mutex>(Mutex& mutex, Duration timeout)
     {
+        // Trying to await a condition variable on a thread that cannot block is not yet supported.
+        // I'm skeptical this feature is even needed, but if it is it will require some work to
+        // implement a special scheme that doesn't block but still waits.
+        HE_ASSERT(_CanCurentThreadWait());
+
+        _CVData* data = reinterpret_cast<_CVData*>(m_opaque);
+        _ConditionVariable_WaitMutex(data, mutex, timeout);
     }
 
     template <>
     bool ConditionVariable::WaitMutex<RecursiveMutex>(RecursiveMutex& mutex, Duration timeout)
     {
+        // Trying to await a condition variable on a thread that cannot block is not yet supported.
+        // I'm skeptical this feature is even needed, but if it is it will require some work to
+        // implement a special scheme that doesn't block but still waits.
+        HE_ASSERT(_CanCurentThreadWait());
+
+        _CVData* data = reinterpret_cast<_CVData*>(m_opaque);
+        _ConditionVariable_WaitMutex(data, mutex, timeout);
     }
 
     // --------------------------------------------------------------------------------------------
@@ -312,7 +531,7 @@ namespace he
         __builtin_wasm_memory_atomic_notify(sem, count);
     }
 
-    static bool Semaphore_TryAcquire(uint32_t* sem)
+    static bool _Semaphore_TryAcquire(uint32_t* sem)
     {
         uint32_t expected = __atomic_load_n(sem, __ATOMIC_ACQUIRE);
         while (expected > 0)
@@ -327,7 +546,7 @@ namespace he
     {
         uint32_t* sem = reinterpret_cast<uint32_t*>(m_opaque);
 
-        while (!Semaphore_TryAcquire(sem))
+        while (!_Semaphore_TryAcquire(sem))
         {
             _AtomicWaitCurrentThread(sem, 0, -1);
         }
@@ -339,39 +558,32 @@ namespace he
 
         if (timeout == Duration_Zero)
         {
-            return Semaphore_TryAcquire(sem);
+            return _Semaphore_TryAcquire(sem);
         }
 
-        while (timeout.val > 0)
+        const MonotonicTime end = MonotonicClock::Now() + timeout;
+        while (true)
         {
-            if (Semaphore_TryAcquire(sem))
+            if (_Semaphore_TryAcquire(sem))
                 return true;
 
-            const MonotonicTime start = MonotonicClock::now();
-            const int32_t rc = _AtomicWaitCurrentThread(sem, 0, timeout.val);
-            const MonotonicTime end = MonotonicClock::now();
+            // Calculate how much wait time is left, and if it has expired we've timed out.
+            const Duration wait = end - MonotonicClock::Now();
+            if (wait <= Duration_Zero)
+                return false;
+
+            const int32_t rc = _AtomicWaitCurrentThread(sem, 0, wait.val);
 
             // the timeout expired during the wait
             if (rc == 2)
                 return false;
-
-            // Normal wait completed, subtract the time waited from the timeout.
-            if (rc == 0)
-            {
-                // Never let timeout go to zero here because we should always try one more time
-                // when the wait doesn't give us a timeout return value.
-                const int64_t elapsed = (end - start).val;
-                const int64_t maxDiff = timeout.val - 1;
-                timeout.val -= Min(elapsed, maxDiff);
-                HE_ASSERT(timeout.val > 0);
-            }
         }
 
         return false;
     }
 
     // --------------------------------------------------------------------------------------------
-    struct SyncEventData
+    struct _SyncEventData
     {
         Mutex mutex{};
         ConditionVariable cv{};
@@ -381,23 +593,23 @@ namespace he
 
     SyncEvent::SyncEvent(bool manualReset, bool initiallySignaled) noexcept
     {
-        static_assert(sizeof(m_opaque) == sizeof(SyncEventData));
-        HE_ASSERT(IsAligned(m_opaque, alignof(SyncEventData)));
+        static_assert(sizeof(m_opaque) == sizeof(_SyncEventData));
+        HE_ASSERT(IsAligned(m_opaque, alignof(_SyncEventData)));
 
-        SyncEventData* data = new(m_opaque) SyncEventData();
+        _SyncEventData* data = ::new(m_opaque) _SyncEventData();
         data->manualReset = manualReset;
         data->state = initiallySignaled;
     }
 
     SyncEvent::~SyncEvent() noexcept
     {
-        SyncEventData* data = reinterpret_cast<SyncEventData*>(m_opaque);
-        data->~SyncEventData();
+        _SyncEventData* data = reinterpret_cast<_SyncEventData*>(m_opaque);
+        data->~_SyncEventData();
     }
 
     void SyncEvent::Signal()
     {
-        SyncEventData* data = reinterpret_cast<SyncEventData*>(m_opaque);
+        _SyncEventData* data = reinterpret_cast<_SyncEventData*>(m_opaque);
 
         LockGuard lock(data->mutex);
 
@@ -407,7 +619,7 @@ namespace he
 
     void SyncEvent::Reset()
     {
-        SyncEventData* data = reinterpret_cast<SyncEventData*>(m_opaque);
+        _SyncEventData* data = reinterpret_cast<_SyncEventData*>(m_opaque);
 
         LockGuard lock(data->mutex);
 
@@ -418,7 +630,7 @@ namespace he
     {
         LockGuard lock(data->mutex);
 
-        SyncEventData* data = reinterpret_cast<SyncEventData*>(m_opaque);
+        _SyncEventData* data = reinterpret_cast<_SyncEventData*>(m_opaque);
         data->cv.Wait(data->mutex, [data]() { return data->state; });
         if (!data->manualReset)
             data->state = false;
@@ -426,7 +638,7 @@ namespace he
 
     bool SyncEvent::Wait(Duration timeout)
     {
-        SyncEventData* data = reinterpret_cast<SyncEventData*>(m_opaque);
+        _SyncEventData* data = reinterpret_cast<_SyncEventData*>(m_opaque);
 
         LockGuard lock(data->mutex);
 

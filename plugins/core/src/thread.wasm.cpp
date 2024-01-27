@@ -10,7 +10,7 @@
 #if defined(HE_PLATFORM_WASM)
 
 #include "thread_internal.wasm.h"
-#include "wasm_core.js.h"
+#include "wasm/lib_core.wasm.h"
 
 namespace he
 {

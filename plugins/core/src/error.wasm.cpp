@@ -5,7 +5,7 @@
 
 #if defined(HE_PLATFORM_WASM)
 
-#include "wasm_core.js.h"
+#include "wasm/lib_core.wasm.h"
 
 namespace he
 {

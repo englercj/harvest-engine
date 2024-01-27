@@ -71,3 +71,7 @@ homepage = "https://github.com/microsoft/mimalloc"
     [[modules.variants]]
         conditions = ["system:linux"]
         public_dependson = ["sys:pthreads", "sys:rt"]
+
+    [[modules.variants]]
+        conditions = ["system:wasm"]
+        public_defines = ["__wasi__"] # pretend to be wasi for mimalloc

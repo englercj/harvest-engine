@@ -10,7 +10,7 @@ Then run `boostrap.sh` using Git Bash from within the cloned folder.
 
 #### WASM Targets
 
-For WASM support you'll also need to install [LLVM 17](https://github.com/llvm/llvm-project/releases/download/llvmorg-17.0.1/LLVM-17.0.1-win64.exe) and re-run `bootstrap.sh`.
+For WASM support you'll also need to install [LLVM 17](https://github.com/llvm/llvm-project/releases/download/llvmorg-17.0.6/LLVM-17.0.6-win64.exe) and re-run `bootstrap.sh`.
 
 ### Linux
 

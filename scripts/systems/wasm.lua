@@ -13,6 +13,13 @@ api.addAllowed("architecture", { "wasm32", "wasm64" })
 api.addAllowed("toolset", { "wasmcc" })
 api.addAllowed("vectorextensions", { "SIMD128" })
 
+local os_option = p.option.get("os")
+if os_option ~= nil then
+    table.insert(os_option.allowed, { "wasm" })
+end
+
+os.systemTags["wasm"] = { "wasm", "web" }
+
 -- Path to the wasm-opt executable used for optimizing the final binary.
 -- Can also specify this in the environment variable "WASM_OPT_PATH".
 api.register {
@@ -22,14 +29,7 @@ api.register {
     tokens = true,
 }
 
--- Path to search for libc/libcxx prepared for Wasm.
-api.register {
-    name = "wasmsyspath",
-    scope = "config",
-    kind = "path",
-    tokens = true,
-}
-
+-- Individual features to enable for the wasmcc toolset.
 api.register {
     name = "wasmfeatures",
     scope = "config",
@@ -50,13 +50,6 @@ api.register {
     },
 }
 
-local os_option = p.option.get("os")
-if os_option ~= nil then
-    table.insert(os_option.allowed, { "wasm" })
-end
-
-os.systemTags["wasm"] = { "wasm", "web" }
-
 --
 -- Setup some sane defaults for WASM system
 --
@@ -65,19 +58,12 @@ filter { "system:wasm" }
     architecture("wasm32")
     toolset("wasmcc")
 
-filter { "system:wasm", "kind:StaticLib" }
+filter { "system:wasm", "kind:StaticLib or SharedLib" }
     targetextension ".bc"
-
-filter { "system:wasm", "kind:SharedLib" }
-    targetextension ".bc"
-
-filter { "system:wasm", "kind:ConsoleApp" }
-    targetextension ".js"
-
-filter { "system:wasm", "kind:WindowedApp" }
-    targetextension ".html"
 
 filter { "system:wasm", "kind:ConsoleApp or WindowedApp" }
+    targetextension ".wasm"
+
     -- Run the optimizer on the final binary
     postbuildmessage "Optimizing wasm binary file %{cfg.linktarget.name}"
     postbuildcommands {
@@ -136,7 +122,6 @@ end
 
 function wasmcc.getcppflags(cfg)
     local flags = clang.getcppflags(cfg)
-    table.insert(flags, "-nostdlib")
     return flags
 end
 
@@ -161,8 +146,6 @@ end
 function wasmcc.getdefines(defines)
     local flags = clang.getdefines(defines)
     table.insert(flags, "-D__WASM__")
-    table.insert(flags, "-D__wasi__")
-    -- table.insert(flags, "-D_LIBCPP_ABI_VERSION=2")
     return flags
 end
 
@@ -184,12 +167,6 @@ end
 function wasmcc.getldflags(cfg)
     local flags = clang.getldflags(cfg)
     table.insert(flags, "-fuse-ld=wasm-ld")
-    table.insert(flags, "-Wl,--export-dynamic")
-    table.insert(flags, "-Wl,--fatal-warnings")
-    table.insert(flags, "-Wl,--import-memory")
-    -- table.insert(flags, "-Wl,--import-undefined")
-    table.insert(flags, "-Wl,--no-entry")
-    -- table.insert(flags, "-Wl,--unresolved-symbols=report-all")
     return flags
 end
 
@@ -257,3 +234,55 @@ function wasmcc._get_wasm_opt_path(cfg)
 
     return wasm_opt_path
 end
+
+--
+-- Harvest extensions
+--
+
+local function _can_enable_wasm_platform()
+    local clang_path = he.whereis("clang")
+    local clangpp_path = he.whereis("clang++")
+    local wasm_ld_path = he.whereis("wasm-ld")
+    local supported = clang_path ~= nil and clangpp_path ~= nil and wasm_ld_path ~= nil
+
+    if not supported then
+        premake.warn("WASM platforms cannot be enabled because clang, clang++, and/or wasm-ld could not be found.")
+        premake.warn("To enable this platform install LLVM: https://releases.llvm.org/download.html")
+    end
+
+    return supported
+end
+
+he.add_module_key {
+    key = "wasmfeatures",
+    scope = "include",
+    type = "table",
+    desc = "an array of wasm features to enable",
+    handler = function (ctx, values) wasmfeatures(values) end,
+}
+
+he.add_platform {
+    name = "Wasm32",
+    hosts = { "windows", "linux" },
+    system = "wasm",
+    architecture = "wasm32",
+    on_define = function ()
+        vectorextensions "SIMD128"
+        defines { "HE_PLATFORM_WASM" }
+    end,
+    can_enable = _can_enable_wasm_platform,
+}
+
+-- No browsers with wasm64 support in their public versions yet
+
+-- he.add_platform {
+--     name = "Wasm64",
+--     hosts = { "windows", "linux" },
+--     system = "wasm",
+--     architecture = "wasm64",
+--     on_define = function ()
+--         vectorextensions "SIMD128"
+--         defines { "HE_PLATFORM_WASM" }
+--     end,
+--     can_enable = _can_enable_wasm_platform,
+-- }

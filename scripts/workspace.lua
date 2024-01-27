@@ -41,7 +41,7 @@ he.generate_workspace = function (options)
     -- Platform setup
     he.define_platforms()
 
-    -- System setup
+    -- Windows system setup
     filter { "system:windows" }
         defines {
             "WINVER=0x0A00",            -- require minimum of windows 10
@@ -49,6 +49,13 @@ he.generate_workspace = function (options)
             "_ITERATOR_DEBUG_LEVEL=0",  -- Improve debug performance by disabling iterator checks
         }
         systemversion(_OPTIONS.windows_systemversion)
+
+    -- WASM system setup
+    filter { "system:wasm" }
+        -- Set the path to the wasm-opt executable, which is provided via a plugin
+        local binaryen_path = he.get_plugin("WebAssembly.binaryen")._install_dirs["*"]
+        local wasm_opt_path = path.join(binaryen, "bin", "wasm-opt" .. iif(os.ishost("windows"), ".exe", ""))
+        wasmoptpath(wasm_opt_path)
 
     -- Compiler setup
     filter { "toolset:msc-*" }
@@ -69,6 +76,25 @@ he.generate_workspace = function (options)
             "-Wundef",              -- A symbol that was not defined was used with a preprocessor directive.
             "-Wswitch",             -- An enumerator has no associated case handler in a switch statement, and there's no default label that can catch it.
         }
+
+    filter { "toolset:wasmcc" }
+        local libcxx_path = he.get_plugin("llvm.libcxx")._install_dirs["*"]
+        buildoptions {
+            "-nostdlib",                -- Do not use the standard system startup files or libraries when linking.
+            "--sysroot=" .. libcxx_path -- Use the specified directory as the root directory for headers and libraries.
+        }
+        linkoptions {
+            "-Wl,--export-dynamic", -- Export any non-hidden symbols.
+            "-Wl,--fatal-warnings", -- Emit an error when any warning is encountered.
+            "-Wl,--import-memory",  -- Import memory from the environment.
+            "-Wl,--no-entry",       -- Don’t search for the entry point symbol (by default _start).
+        }
+
+    filter { "toolset:wasmcc", "files:**tsconfig.json" }
+        local node_path = path.join(he.get_plugin("nodejs.nodejs")._install_dirs["*"], "node")
+        local tsc_path = path.join(he.get_plugin("microsoft.typescript")._install_dirs["*"], "tools/tsc/tsc.js")
+        buildmessage "Building TypeScript project: %{file.relpath}"
+        buildcommands { node_path .. " " .. tsc_path .. " --build %{file.abspath}" }
 
     -- Should really be using "language:c++" here instead of the file filter,
     -- but doing so still includes this in CFLAGS which causes an error.

@@ -1,0 +1,17 @@
+{
+    "compilerOptions": {
+        "target": "ES2020",
+        "module": "ES2020",
+        "lib": ["es2020", "dom"],
+        "composite": true,
+        "declaration": true,
+        "declarationMap": true,
+        "inlineSourceMap": false,
+        "noEmitOnError": true,
+        "noImplicitAny": true,
+        "removeComments": true,
+        "sourceMap": false,
+        "strict": true
+    },
+    "include": ["*.ts"]
+}

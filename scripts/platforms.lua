@@ -164,46 +164,6 @@ he.add_platform {
     end,
 }
 
-local function _can_enable_wasm()
-    local clang_path = he.whereis("clang")
-    local clangpp_path = he.whereis("clang++")
-    local wasm_ld_path = he.whereis("wasm-ld")
-    local supported = clang_path ~= nil and clangpp_path ~= nil and wasm_ld_path ~= nil
-
-    if not supported then
-        premake.warn("WASM platforms cannot be enabled because clang, clang++, and/or wasm-ld could not be found.")
-        premake.warn("To enable this platform install LLVM: https://releases.llvm.org/download.html")
-    end
-
-    return supported
-end
-
-he.add_platform {
-    name = "Wasm32",
-    hosts = { "windows", "linux" },
-    system = "wasm",
-    architecture = "wasm32",
-    on_define = function ()
-        vectorextensions "SIMD128"
-        wasmfeatures { "Atomics", "BulkMemory", "NontrappingFPToInt" }
-        defines { "HE_PLATFORM_WASM" }
-    end,
-    can_enable = _can_enable_wasm,
-}
-
-he.add_platform {
-    name = "Wasm64",
-    hosts = { "windows", "linux" },
-    system = "wasm",
-    architecture = "wasm64",
-    on_define = function ()
-        vectorextensions "SIMD128"
-        wasmfeatures { "Atomics", "BulkMemory", "NontrappingFPToInt" }
-        defines { "HE_PLATFORM_WASM" }
-    end,
-    can_enable = _can_enable_wasm,
-}
-
 he.add_platform {
     name = "Linux64",
     hosts = { "linux" },

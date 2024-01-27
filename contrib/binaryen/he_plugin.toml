@@ -9,7 +9,6 @@ license = "Apache-2.0"
 homepage = "https://github.com/WebAssembly/binaryen"
 
 [install]
-    exec = "binaryen.lua"
     base_path = "binaryen-version_116"
     index_archive_by_host = true
 

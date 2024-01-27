@@ -12,7 +12,7 @@ homepage = ""
     name = "he_core"
     type = "static"
     group = "engine/libs"
-    files = ["include/**", "src/**", "debugger/**"]
+    files = ["include/**", "src/**", "debugger/**", "typescript/**"]
     public_dependson = ["dragonbox", "libbase64", "mimalloc"]
     public_includedirs = ["include"]
     private_includedirs = ["src"]
@@ -46,6 +46,7 @@ homepage = ""
 
     [[modules.variants]]
         conditions = ["system:wasm"]
+        public_wasmfeatures = ["Atomics", "BulkMemory", "NontrappingFPToInt"]
         public_defines = [
             "HE_IMPL_PLATFORM_RWLOCK_SIZE=4",
             "HE_IMPL_PLATFORM_MUTEX_SIZE=4",

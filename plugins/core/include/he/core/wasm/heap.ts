@@ -1,5 +1,7 @@
 // Copyright Chad Engler
 
+import { lib } from './lib';
+
 export class Heap
 {
     memory: WebAssembly.Memory;
@@ -47,4 +49,6 @@ export function getDefaultHeap(): Heap
 export function createDefaultHeap(desc: WebAssembly.MemoryDescriptor)
 {
     heap = new Heap(desc);
+
+    lib.addImports('env', { memory: heap.memory });
 }

@@ -8,11 +8,14 @@ authors = ["Chad Engler <englercj@live.com>"]
 license = "UNLICENSED"
 homepage = ""
 
+[install]
+    exec = "install.lua"
+
 [[modules]]
     name = "he_window"
     type = "static"
     group = "engine/libs"
-    files = ["include/**", "src/**", "typescript/**"]
+    files = ["include/**", "src/**", "wasm/**"]
     public_dependson = ["he_core", "he_math"]
     public_includedirs = ["include"]
     private_includedirs = ["src"]

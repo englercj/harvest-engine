@@ -66,8 +66,8 @@ id = "ocornut.imgui"
 | group                     | String            | Name of the group this module belongs to. This will be a virtual folder in the solution tree, and can include folder separators (`/`) |
 | language                  | String            | Language of the source to be compiled in the module project. Default is "C++" if not specified. |
 | files                     | Array<Path>       | File paths to include in the module project. |
-| post_build_commands       | Array<String>     | Commands to run after the module is built. |
-| pre_build_commands        | Array<String>     | Commands to run before the module is built. |
+| postbuild_commands        | Array<String>     | Commands to run after the module is built. |
+| prebuild_commands         | Array<String>     | Commands to run before the module is built. |
 | dependson_runtime         | Array<String>     | Module names this module will use at runtime, but are not required to build. See the Module Dependencies section for more details. |
 | variants                  | Array<Variant>    | Variations of the module's properties activated by a filter. See the Variant Keys section. |
 | warnings                  | String            | Desired level of warning: "Off", "Default", or "Extra". The default is "Extra" |

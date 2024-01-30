@@ -24,14 +24,15 @@ module.exports = env => {
             ],
         },
         output: {
-            filename: env.moduleName ? env.moduleName + ".js" : "bundle.js",
+            filename: "he_window_test_app.js",
             path: env.outPath ? env.outPath : path.resolve(__dirname, "../../../build/js"),
         },
         plugins: [
             new HtmlWebpackPlugin({
+                filename: "he_window_test_app.html",
                 template: "./index.ejs",
                 templateParameters: {
-                    moduleName: env.moduleName ? env.moduleName : "harvest",
+                    title: "Harvest Windowed Test App",
                 },
             }),
         ]

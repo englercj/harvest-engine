@@ -81,7 +81,7 @@ local function _install_from_archive(name, url, archive_name, extract_dir_name)
 
     if os.host() == "windows" then
         -- zip.extract() chokes on large files so invoke a system utility instead
-        os.executef("%%WINDIR%%/system32/tar.exe -xf \"%s\" -C \"%s\"", fpath, extract_dir)
+        os.executef("%%WINDIR%%\\system32\\tar.exe -xf \"%s\" -C \"%s\"", fpath, extract_dir)
     elseif archive_name:find(".zip") ~= nil then
         -- zip.extract() chokes on large files so invoke a system utility instead
         os.executef("unzip \"%s\" -d \"%s\"", fpath, extract_dir)

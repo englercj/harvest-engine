@@ -39,8 +39,8 @@ struct Plugin
         group @2 :String;
         language @3 :String;
         files @4 :String[];
-        postBuildCommands @5 :String[] $Toml.Name("post_build_commands");
-        preBuildCommands @6 :String[] $Toml.Name("pre_build_commands");
+        postBuildCommands @5 :String[] $Toml.Name("postbuild_commands");
+        preBuildCommands @6 :String[] $Toml.Name("prebuild_commands");
         dependsonRuntime @7 :String[] $Toml.Name("dependson_runtime");
         variants @8 :Variant[];
         warnings @9 :String;
@@ -65,8 +65,8 @@ struct Plugin
             group @1 :String;
             language @2 :String;
             files @3 :String[];
-            postBuildCommands @4 :String[] $Toml.Name("post_build_commands");
-            preBuildCommands @5 :String[] $Toml.Name("pre_build_commands");
+            postBuildCommands @4 :String[] $Toml.Name("postbuild_commands");
+            preBuildCommands @5 :String[] $Toml.Name("prebuild_commands");
             dependsonRuntime @6 :String[] $Toml.Name("dependson_runtime");
             warnings @7 :String;
             exec @8 :String;

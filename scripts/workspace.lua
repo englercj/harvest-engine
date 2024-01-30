@@ -92,11 +92,6 @@ he.generate_workspace = function (options)
             "-Wl,-export=main",                 -- Export the main function so we can invoke it as the entry point.
         }
 
-    filter { "toolset:wasmcc", "files:**webpack.config.js" }
-        local node_path = he.get_nodejs_path()
-        buildmessage "Building webpack project: %{file.relpath}"
-        buildcommands { "cd %{file.directory} && " .. node_path .. " webpack --env moduleName=%{prj.name} --env outPath=" .. he.target_bin_dir }
-
     -- Should really be using "language:c++" here instead of the file filter,
     -- but doing so still includes this in CFLAGS which causes an error.
     filter { "toolset:gcc or clang or wasmcc", "files:**.cpp or **.cc" }

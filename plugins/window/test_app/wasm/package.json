@@ -3,6 +3,9 @@
     "version": "1.0.0",
     "description": "A windowed app",
     "private": true,
+    "scripts": {
+        "build": "webpack --mode production --no-color"
+    },
     "devDependencies": {
         "html-webpack-plugin": "^5.6.0",
         "ts-loader": "^9.5.1",

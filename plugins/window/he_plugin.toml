@@ -8,9 +8,6 @@ authors = ["Chad Engler <englercj@live.com>"]
 license = "UNLICENSED"
 homepage = ""
 
-[install]
-    exec = "install.lua"
-
 [[modules]]
     name = "he_window"
     type = "static"
@@ -29,4 +26,23 @@ homepage = ""
     type = "windowed_app"
     group = "engine/tests"
     files = ["test_app/**"]
+    removefiles = ["test_app/wasm/node_modules/**"]
     private_dependson = ["he_core", "he_window"]
+
+    [[modules.variants]]
+        conditions = ["system:wasm", "files:test_app/wasm/webpack.config.js"]
+        buildmessage = "Building webpack project..."
+        buildcommands = [
+            "cd %{file.directory} && %{!he.get_npmjs_path()} install --quiet && cd %{file.directory} && %{!he.get_npmjs_path()} run build -- --env outPath=\"%{!cfg.linktarget.directory}\"",
+        ]
+        buildinputs = [
+            "test_app/wasm/index.ts",
+            "test_app/wasm/index.ejs",
+            "test_app/wasm/package.json",
+            "test_app/wasm/tsconfig.json",
+            "test_app/wasm/webpack.config.js",
+        ]
+        buildoutputs = [
+            "%{cfg.linktarget.directory}/he_window_test_app.js",
+            "%{cfg.linktarget.directory}/he_window_test_app.html",
+        ]

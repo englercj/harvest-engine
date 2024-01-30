@@ -78,6 +78,14 @@ he.add_module_key {
 }
 
 he.add_module_key {
+    key = "removefiles",
+    scope = "private",
+    type = "table",
+    desc = "a table of strings",
+    handler = function (ctx, values) removefiles(values) end,
+}
+
+he.add_module_key {
     key = "warnings",
     scope = "private",
     type = "string",
@@ -86,7 +94,7 @@ he.add_module_key {
 }
 
 he.add_module_key {
-    key = "post_build_commands",
+    key = "postbuild_commands",
     scope = "private",
     type = "table",
     desc = "an array of strings",
@@ -94,7 +102,7 @@ he.add_module_key {
 }
 
 he.add_module_key {
-    key = "pre_build_commands",
+    key = "prebuild_commands",
     scope = "private",
     type = "table",
     desc = "an array of strings",
@@ -102,11 +110,43 @@ he.add_module_key {
 }
 
 he.add_module_key {
-    key = "contentdirs",
+    key = "buildmessage",
+    scope = "private",
+    type = "string",
+    desc = "a string message to display when building",
+    handler = function (ctx, value) buildmessage(value) end,
+}
+
+he.add_module_key {
+    key = "buildcommands",
     scope = "private",
     type = "table",
     desc = "an array of strings",
-    -- Does nothing, this data is used by the editor not the module system
+    handler = function (ctx, values) buildcommands(values) end,
+}
+
+he.add_module_key {
+    key = "buildinputs",
+    scope = "private",
+    type = "table",
+    desc = "an array of strings",
+    handler = function (ctx, values) buildinputs(values) end,
+}
+
+he.add_module_key {
+    key = "buildoutputs",
+    scope = "private",
+    type = "table",
+    desc = "an array of strings",
+    handler = function (ctx, values) buildoutputs(values) end,
+}
+
+he.add_module_key {
+    key = "contentdir",
+    scope = "private",
+    type = "string",
+    desc = "a string directory path",
+    -- Does nothing, this data is used by the editor not the premake module system
     handler = function (ctx, values) end,
 }
 

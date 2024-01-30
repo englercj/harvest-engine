@@ -163,7 +163,7 @@ local function _module_project(mod)
 
         _system_tag_file_excludes()
 
-        for system, install_dir in pairs(install_dirs) do
+        for system, install_dir in he.ordered_pairs(install_dirs) do
             he.cwd_push(install_dir)
             if system ~= "*" then
                 printf("Pushing filter for system: %s in module: %s", system, mod.name)
@@ -301,11 +301,11 @@ he.import_plugins = function (plugins, options)
 end
 
 he.generate_module_projects = function ()
-    for mod_name, mod in pairs(he.imported_modules) do
+    for mod_name, mod in he.ordered_pairs(he.imported_modules) do
         _module_prepare(mod)
     end
 
-    for mod_name, mod in pairs(he.imported_modules) do
+    for mod_name, mod in he.ordered_pairs(he.imported_modules) do
         _module_project(mod)
     end
 end

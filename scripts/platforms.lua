@@ -73,7 +73,7 @@ end
 function he.enable_all_platforms(host)
     verbosef("Enabling all platforms for host '" .. host .. "'")
 
-    for name, platform in pairs(he._platform_defs) do
+    for name, platform in he.ordered_pairs(he._platform_defs) do
         if table.contains(platform.hosts, host) then
             he.enable_platform(host, name)
         end

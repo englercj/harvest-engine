@@ -169,7 +169,7 @@ local function _handle_dependson_include(ctx, values)
             return
         end
 
-        for system, install_dir in pairs(mod._plugin._install_dirs) do
+        for system, install_dir in he.ordered_pairs(mod._plugin._install_dirs) do
             he.cwd_push(install_dir)
             he.filter_push_combine { "system:" .. system }
 

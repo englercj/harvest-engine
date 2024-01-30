@@ -261,7 +261,7 @@ return function (plugin)
         if type(url) == "table" then
             local valid_sys_count = 0
             local valid_sys_name = nil
-            for sys, sys_url in pairs(url) do
+            for sys, sys_url in he.ordered_pairs(url) do
                 if table.contains(archive_systems, sys) then
                     valid_sys_count = valid_sys_count + 1
                     valid_sys_name = sys
@@ -304,7 +304,7 @@ return function (plugin)
 
     -- Append the base path to each of the install dirs
     if i.base_path ~= nil then
-        for sys, sys_dir in pairs(install_dirs) do
+        for sys, sys_dir in he.ordered_pairs(install_dirs) do
             install_dirs[sys] = path.join(sys_dir, i.base_path)
         end
     end

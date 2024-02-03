@@ -40,7 +40,7 @@ export class Pointer
     ///
     /// \param[in] ptr The pointer to read from.
     /// \param[in] len The number of bytes to read. If len is -1, the string is assumed to be null-terminated.
-    static readString(heap: Heap, ptr: const_ptr<char>, len: number)
+    static readString(ptr: const_ptr<char>, len: number)
     {
         if (len == 0 || !ptr)
             return '';
@@ -48,13 +48,13 @@ export class Pointer
         if (len < 0)
         {
             len = 0;
-            while (heap.u8[ptr + len])
+            while (Heap.u8[ptr + len])
                 ++len;
         }
 
         // TextDecoder.decode() doesn't work with a view of a ShredArrayBuffer, so make a copy.
         // See: https://github.com/whatwg/encoding/issues/172
-        const array = heap.buffer instanceof SharedArrayBuffer ? heap.u8.slice(ptr, ptr + len) : heap.u8.subarray(ptr, ptr + len);
+        const array = Heap.buffer instanceof SharedArrayBuffer ? Heap.u8.slice(ptr, ptr + len) : Heap.u8.subarray(ptr, ptr + len);
         const decoder = new TextDecoder('utf-8');
         return decoder.decode(array);
     };
@@ -65,14 +65,14 @@ export class Pointer
     /// \param[in] dst The destination buffer to write to.
     /// \param[in] dstLen The length of the destination buffer.
     /// \return The number of bytes written to the destination buffer.
-    static writeString(heap: Heap, str: string, dst: ptr<char>, dstLen: u32)
+    static writeString(str: string, dst: ptr<char>, dstLen: u32)
     {
         if (dstLen <= 0)
             return 0;
 
         const start = dst;
 
-        if (heap.buffer instanceof SharedArrayBuffer)
+        if (Heap.buffer instanceof SharedArrayBuffer)
         {
             // TextEncoder.encodeInto() doesn't work with a view of a ShredArrayBuffer, so encode directly.
             // See: https://github.com/whatwg/encoding/issues/172
@@ -84,40 +84,40 @@ export class Pointer
                 {
                     if (dst >= end)
                         break;
-                    heap.u8[dst++] = c;
+                    Heap.u8[dst++] = c;
                 }
                 else if (c <= 0x7ff)
                 {
                     if (dst + 1 >= end)
                         break;
-                    heap.u8[dst++] = 0xc0 | (c >> 6);
-                    heap.u8[dst++] = 0x80 | (c & 0x3f);
+                    Heap.u8[dst++] = 0xc0 | (c >> 6);
+                    Heap.u8[dst++] = 0x80 | (c & 0x3f);
                 }
                 else if (c >= 0xd800 && c <= 0xdfff)
                 {
                     if (dst + 3 >= end)
                         break;
                     c = ((c - 0xd800) << 10) + (str.charCodeAt(++i) - 0xdc00) + 0x10000;
-                    heap.u8[dst++] = 0xf0 | (c >> 18);
-                    heap.u8[dst++] = 0x80 | ((c >> 12) & 0x3f);
-                    heap.u8[dst++] = 0x80 | ((c >> 6) & 0x3f);
-                    heap.u8[dst++] = 0x80 | (c & 0x3f);
+                    Heap.u8[dst++] = 0xf0 | (c >> 18);
+                    Heap.u8[dst++] = 0x80 | ((c >> 12) & 0x3f);
+                    Heap.u8[dst++] = 0x80 | ((c >> 6) & 0x3f);
+                    Heap.u8[dst++] = 0x80 | (c & 0x3f);
                 }
                 else
                 {
                     if (dst + 2 >= end)
                         break;
-                    heap.u8[dst++] = 0xe0 | (c >> 12);
-                    heap.u8[dst++] = 0x80 | ((c >> 6) & 0x3f);
-                    heap.u8[dst++] = 0x80 | (c & 0x3f);
+                    Heap.u8[dst++] = 0xe0 | (c >> 12);
+                    Heap.u8[dst++] = 0x80 | ((c >> 6) & 0x3f);
+                    Heap.u8[dst++] = 0x80 | (c & 0x3f);
                 }
             }
-            heap.u8[dst] = 0;
+            Heap.u8[dst] = 0;
             return dst - start;
         }
 
         const encoder = new TextEncoder();
-        const result = encoder.encodeInto(str, heap.u8.subarray(dst, dst + dstLen));
+        const result = encoder.encodeInto(str, Heap.u8.subarray(dst, dst + dstLen));
         return result.written;
     };
 
@@ -125,131 +125,131 @@ export class Pointer
     ///
     /// \param[in] ptr The pointer to read from.
     /// \return The value read from the heap.
-    static readBool(heap: Heap, ptr: ptr<boolean> | const_ptr<boolean>): boolean { return !!heap.u8[ptr]; };
+    static readBool(ptr: ptr<boolean> | const_ptr<boolean>): boolean { return !!Heap.u8[ptr]; };
 
     /// Writes a JavaScript boolean value to the heap.
     ///
     /// \param[in] ptr The pointer to write to.
     /// \param[in] value The value to write to the heap.
-    static writeBool(heap: Heap, ptr: ptr<boolean>, value: boolean) { heap.u8[ptr] = value ? 1 : 0; };
+    static writeBool(ptr: ptr<boolean>, value: boolean) { Heap.u8[ptr] = value ? 1 : 0; };
 
     /// Reads an 8-bit signed integer from the heap.
     ///
     /// \param[in] ptr The pointer to read from.
     /// \return The value read from the heap.
-    static readInt8(heap: Heap, ptr: ptr<i8> | const_ptr<i8>): i8 { return heap.i8[ptr] as i8; };
+    static readInt8(ptr: ptr<i8> | const_ptr<i8>): i8 { return Heap.i8[ptr] as i8; };
 
     /// Writes a JavaScript number value as an 8-bit signed integer to the heap.
     ///
     /// \param[in] ptr The pointer to write to.
     /// \param[in] value The value to write to the heap.
-    static writeInt8(heap: Heap, ptr: ptr<i8>, value: i8) { heap.i8[ptr] = value; };
+    static writeInt8(ptr: ptr<i8>, value: i8) { Heap.i8[ptr] = value; };
 
     /// Reads a 16-bit signed integer from the heap.
     ///
     /// \param[in] ptr The pointer to read from.
     /// \return The value read from the heap.
-    static readInt16(heap: Heap, ptr: ptr<i16> | const_ptr<i16>): i16 { return heap.i16[ptr] as i16; };
+    static readInt16(ptr: ptr<i16> | const_ptr<i16>): i16 { return Heap.i16[ptr] as i16; };
 
     /// Writes a JavaScript number value as a 16-bit signed integer to the heap.
     ///
     /// \param[in] ptr The pointer to write to.
     /// \param[in] value The value to write to the heap.
-    static writeInt16(heap: Heap, ptr: ptr<i16>, value: i16) { heap.i16[ptr] = value; };
+    static writeInt16(ptr: ptr<i16>, value: i16) { Heap.i16[ptr] = value; };
 
     /// Reads a 32-bit signed integer from the heap.
     ///
     /// \param[in] ptr The pointer to read from.
     /// \return The value read from the heap.
-    static readInt32(heap: Heap, ptr: ptr<i32> | const_ptr<i32>): i32 { return heap.i32[ptr] as i32; };
+    static readInt32(ptr: ptr<i32> | const_ptr<i32>): i32 { return Heap.i32[ptr] as i32; };
 
     /// Writes a JavaScript number value as a 32-bit signed integer to the heap.
     ///
     /// \param[in] ptr The pointer to write to.
     /// \param[in] value The value to write to the heap.
-    static writeInt32(heap: Heap, ptr: ptr<i32>, value: i32) { heap.i32[ptr] = value; };
+    static writeInt32(ptr: ptr<i32>, value: i32) { Heap.i32[ptr] = value; };
 
     /// Reads a 64-bit signed integer from the heap.
     ///
     /// \param[in] ptr The pointer to read from.
     /// \return The value read from the heap.
-    static readInt64(heap: Heap, ptr: ptr<i64> | const_ptr<i64>): i64 { return heap.i64[ptr] as i64; };
+    static readInt64(ptr: ptr<i64> | const_ptr<i64>): i64 { return Heap.i64[ptr] as i64; };
 
     /// Writes a JavaScript BigInt value as a 64-bit signed integer to the heap.
     ///
     /// \param[in] ptr The pointer to write to.
     /// \param[in] value The value to write to the heap.
-    static writeInt64(heap: Heap, ptr: ptr<i32>, value: i64) { heap.i64[ptr] = value; };
+    static writeInt64(ptr: ptr<i32>, value: i64) { Heap.i64[ptr] = value; };
 
     /// Reads an 8-bit unsigned integer from the heap.
     ///
     /// \param[in] ptr The pointer to read from.
     /// \return The value read from the heap.
-    static readUint8(heap: Heap, ptr: ptr<u8> | const_ptr<u8>): u8 { return heap.u8[ptr] as u8; };
+    static readUint8(ptr: ptr<u8> | const_ptr<u8>): u8 { return Heap.u8[ptr] as u8; };
 
     /// Writes a JavaScript number value as an 8-bit unsigned integer to the heap.
     ///
     /// \param[in] ptr The pointer to write to.
     /// \param[in] value The value to write to the heap.
-    static writeUint8(heap: Heap, ptr: ptr<u8>, value: u8) { heap.u8[ptr] = value; };
+    static writeUint8(ptr: ptr<u8>, value: u8) { Heap.u8[ptr] = value; };
 
     /// Reads a 16-bit unsigned integer from the heap.
     ///
     /// \param[in] ptr The pointer to read from.
     /// \return The value read from the heap.
-    static readUint16(heap: Heap, ptr: ptr<u16> | const_ptr<u16>): u16 { return heap.u16[ptr] as u16; };
+    static readUint16(ptr: ptr<u16> | const_ptr<u16>): u16 { return Heap.u16[ptr] as u16; };
 
     /// Writes a JavaScript number value as a 16-bit unsigned integer to the heap.
     ///
     /// \param[in] ptr The pointer to write to.
     /// \param[in] value The value to write to the heap.
-    static writeUint16(heap: Heap, ptr: ptr<u16>, value: u16) { heap.u16[ptr] = value; };
+    static writeUint16(ptr: ptr<u16>, value: u16) { Heap.u16[ptr] = value; };
 
     /// Reads a 32-bit unsigned integer from the heap.
     ///
     /// \param[in] ptr The pointer to read from.
     /// \return The value read from the heap.
-    static readUint32(heap: Heap, ptr: ptr<u32> | const_ptr<u32>): u32 { return heap.u32[ptr] as u32; };
+    static readUint32(ptr: ptr<u32> | const_ptr<u32>): u32 { return Heap.u32[ptr] as u32; };
 
     /// Writes a JavaScript number value as a 32-bit unsigned integer to the heap.
     ///
     /// \param[in] ptr The pointer to write to.
     /// \param[in] value The value to write to the heap.
-    static writeUint32(heap: Heap, ptr: ptr<u32>, value: u32) { heap.u32[ptr] = value; };
+    static writeUint32(ptr: ptr<u32>, value: u32) { Heap.u32[ptr] = value; };
 
     /// Reads a 64-bit unsigned integer from the heap.
     ///
     /// \param[in] ptr The pointer to read from.
     /// \return The value read from the heap.
-    static readUint64(heap: Heap, ptr: ptr<u64> | const_ptr<u64>): u64 { return heap.u64[ptr] as u64; };
+    static readUint64(ptr: ptr<u64> | const_ptr<u64>): u64 { return Heap.u64[ptr] as u64; };
 
     /// Writes a JavaScript BigUint value as a 64-bit unsigned integer to the heap.
     ///
     /// \param[in] ptr The pointer to write to.
     /// \param[in] value The value to write to the heap.
-    static writeUint64(heap: Heap, ptr: ptr<u64>, value: u64) { heap.u64[ptr] = value; };
+    static writeUint64(ptr: ptr<u64>, value: u64) { Heap.u64[ptr] = value; };
 
     /// Reads a 32-bit floating point number from the heap.
     ///
     /// \param[in] ptr The pointer to read from.
     /// \return The value read from the heap.
-    static readFloat32(heap: Heap, ptr: ptr<f32> | const_ptr<f32>): f32 { return heap.f32[ptr] as f32; };
+    static readFloat32(ptr: ptr<f32> | const_ptr<f32>): f32 { return Heap.f32[ptr] as f32; };
 
     /// Writes a JavaScript number value as a 32-bit floating point number to the heap.
     ///
     /// \param[in] ptr The pointer to write to.
     /// \param[in] value The value to write to the heap.
-    static writeFloat32(heap: Heap, ptr: ptr<f32>, value: f32) { heap.f32[ptr] = value; };
+    static writeFloat32(ptr: ptr<f32>, value: f32) { Heap.f32[ptr] = value; };
 
     /// Reads a 64-bit floating point number from the heap.
     ///
     /// \param[in] ptr The pointer to read from.
     /// \return The value read from the heap.
-    static readFloat64(heap: Heap, ptr: ptr<f64> | const_ptr<f64>): f64 { return heap.f64[ptr] as f64; };
+    static readFloat64(ptr: ptr<f64> | const_ptr<f64>): f64 { return Heap.f64[ptr] as f64; };
 
     /// Writes a JavaScript number value as a 64-bit floating point number to the heap.
     ///
     /// \param[in] ptr The pointer to write to.
     /// \param[in] value The value to write to the heap.
-    static writeFloat64(heap: Heap, ptr: ptr<f64>, value: f64) { heap.f64[ptr] = value; };
+    static writeFloat64(ptr: ptr<f64>, value: f64) { Heap.f64[ptr] = value; };
 }

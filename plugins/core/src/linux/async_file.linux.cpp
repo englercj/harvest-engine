@@ -14,8 +14,6 @@
 #include "he/core/thread.h"
 #include "he/core/utils.h"
 
-#include <thread>
-
 #if defined(HE_PLATFORM_LINUX)
 
 #include "file_helpers.posix.h"
@@ -33,7 +31,7 @@ namespace he
     static Mutex s_ioStartupMutex{};
     static uint32_t s_ioStartupCount{ 0 };
     static io_uring s_ring{};
-    static std::thread s_cqThread{};
+    static Thread s_cqThread{};
 
     // --------------------------------------------------------------------------------------------
     struct RequiredIORingOp { int value; const char* name; };
@@ -187,7 +185,9 @@ namespace he
         if (rc < 0)
             return PosixResult(-rc);
 
-        s_cqThread = std::thread(&CompletionQueueThread);
+        const Result r = s_cqThread.Start({ &CompletionQueueThread });
+        if (!r)
+            return r;
 
         failGuard.Dismiss();
         return Result::Success;
@@ -203,8 +203,8 @@ namespace he
         io_uring_sqe* sqe = GetNextSqe();
         io_uring_prep_msg_ring(sqe, s_ring.ring_fd, 0, 0, 0);
 
-        if (s_cqThread.joinable())
-            s_cqThread.join();
+        if (s_cqThread.IsJoinable())
+            s_cqThread.Join();
 
         io_uring_queue_exit(&s_ring);
     }
@@ -346,9 +346,9 @@ namespace he
     }
 
     // --------------------------------------------------------------------------------------------
-    static void CompletionQueueThread()
+    static void CompletionQueueThread(void*)
     {
-        SetCurrentThreadName("[HE] Async File io_uring CQ Thread");
+        Thread::SetName("[HE] Async File io_uring CQ Thread");
 
         while (s_ioStartupCount > 0)
         {

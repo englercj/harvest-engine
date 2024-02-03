@@ -1,0 +1,13 @@
+# Copyright Chad Engler
+
+id = "emscripten-core.emscripten"
+name = "emscripten"
+description = "An LLVM-to-WebAssembly Compiler"
+version = "3.1.51"
+authors = ["See: AUTHORS"]
+license = "MIT"
+homepage = "https://github.com/emscripten-core/emscripten"
+
+[install]
+    exec = "emscripten.lua"
+    github = "emscripten-core/emscripten#3.1.51"

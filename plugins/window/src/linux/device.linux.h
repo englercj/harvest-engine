@@ -4,12 +4,11 @@
 
 #include "gamepad.linux.h"
 
+#include "he/core/atomic.h"
 #include "he/math/types.h"
 #include "he/window/device.h"
 #include "he/window/event.h"
 #include "he/window/pointer.h"
-
-#include <atomic>
 
 #if defined(HE_PLATFORM_LINUX)
 
@@ -155,8 +154,8 @@ namespace he::window::linux
         ViewImpl* m_cursorRelativeView{ nullptr };
         Cursor m_hiddenCursor{ X11_None };
         Pixmap m_hiddenCursorBitmap{ X11_None };
-        std::atomic<int32_t> m_returnCode{ 0 };
-        std::atomic<bool> m_running{ true };
+        Atomic<int32_t> m_returnCode{ 0 };
+        Atomic<bool> m_running{ true };
         bool m_cursorVisible{ true };
         bool m_hasDetectableAutoRepeat{ false };
         bool m_viewClipped{ false };

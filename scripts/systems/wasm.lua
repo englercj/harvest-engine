@@ -264,6 +264,7 @@ he.add_module_key {
 he.add_platform {
     name = "Wasm32",
     hosts = { "windows", "linux" },
+    actions = { "gmake2" },
     system = "wasm",
     architecture = "wasm32",
     on_define = function ()

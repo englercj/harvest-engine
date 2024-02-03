@@ -23,8 +23,8 @@ namespace he
     // --------------------------------------------------------------------------------------------
     static Mutex s_ioStartupMutex{};
     static uint32_t s_ioStartupCount{ 0 };
-    static HANDLE s_ioThread{ nullptr };
     static HANDLE s_ioPort{ nullptr };
+    static Thread s_ioThread{};
 
     constexpr ULONG_PTR CK_Shutdown = 1;
     constexpr ULONG_PTR CK_FileComplete = 2;
@@ -107,8 +107,7 @@ namespace he
     };
 
     // --------------------------------------------------------------------------------------------
-    static DWORD IOCompletionThread(LPVOID);
-
+    static void IOCompletionThread(void*);
     static void UnlockedShutdownAsyncFileIO();
 
     // --------------------------------------------------------------------------------------------
@@ -124,23 +123,17 @@ namespace he
 
         // Create the completion port
         s_ioPort = ::CreateIoCompletionPort(INVALID_HANDLE_VALUE, nullptr, 0, 1);
-
         if (s_ioPort == nullptr)
             return Result::FromLastError();
 
         // Create the thread for handling competion events
-        s_ioThread = ::CreateThread(nullptr, 0, IOCompletionThread, s_ioPort, 0, nullptr);
-        if (s_ioThread == nullptr)
-            return Result::FromLastError();
-
-        if (config.iocp.threadAffinity > 0)
-        {
-            Result affinityResult = SetThreadAffinity(reinterpret_cast<ThreadHandle>(s_ioThread), config.iocp.threadAffinity);
-            if (!affinityResult)
-                return affinityResult;
-        }
-
-        ::SetThreadDescription(s_ioThread, L"[HE] Async File IOCP Thread");
+        ThreadDesc desc;
+        desc.proc = &IOCompletionThread;
+        desc.data = s_ioPort;
+        desc.affinity = config.iocp.threadAffinity;
+        const Result rc = s_ioThread.Start(desc);
+        if (!rc)
+            return rc;
 
         failGuard.Dismiss();
         return Result::Success;
@@ -153,14 +146,12 @@ namespace he
         if (count > 0)
             return;
 
-        if (s_ioThread)
+        if (s_ioThread.IsJoinable())
         {
             HE_ASSERT(s_ioPort);
 
             ::PostQueuedCompletionStatus(s_ioPort, 0, CK_Shutdown, nullptr);
-            ::WaitForSingleObject(s_ioThread, INFINITE);
-            ::CloseHandle(s_ioThread);
-            s_ioThread = nullptr;
+            s_ioThread.Join();
         }
 
         if (s_ioPort)
@@ -299,9 +290,11 @@ namespace he
     }
 
     // --------------------------------------------------------------------------------------------
-    static DWORD IOCompletionThread(LPVOID)
+    static void IOCompletionThread(void*)
     {
         HE_ASSERT(s_ioPort);
+
+        Thread::SetName("[HE] Async File IOCP Thread");
 
         OVERLAPPED_ENTRY entries[16];
 
@@ -330,7 +323,7 @@ namespace he
                     case CK_Shutdown:
                     {
                         // Wake event to tell us to shutdown. Return out of the thread function.
-                        return 0;
+                        return;
                     }
                     case CK_FileComplete:
                     {
@@ -359,8 +352,6 @@ namespace he
                 }
             }
         }
-
-        return 0;
     }
 }
 

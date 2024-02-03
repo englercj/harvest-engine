@@ -1,5 +1,8 @@
 // Copyright Chad Engler
 
+// TODO: More documentation in this file
+// TODO: Rename FromPeriod -> MakeDuration & ToPeriod -> ???
+
 #pragma once
 
 #include "he/core/compiler.h"
@@ -7,14 +10,6 @@
 #include "he/core/limits.h"
 #include "he/core/type_traits.h"
 #include "he/core/types.h"
-
-#if HE_COMPILER_MSVC && HE_CPU_X86
-    extern "C" unsigned __int64 __rdtsc();
-    #pragma intrinsic(__rdtsc)
-#elif HE_COMPILER_MSVC && HE_CPU_ARM
-    extern "C" __int64 _ReadStatusReg(int);
-    #pragma intrinsic(_ReadStatusReg)
-#endif
 
 struct timespec;
 
@@ -34,6 +29,7 @@ namespace he
     struct Time
     {
         uint64_t val;
+        auto operator<=>(const Time&) const = default;
     };
 
     /// Base clock template that represents a clock that can be queried.
@@ -92,7 +88,11 @@ namespace he
     // Duration Types
 
     // A span of time in nanoseconds
-    struct Duration { int64_t val; };
+    struct Duration
+    {
+        int64_t val;
+        auto operator<=>(const Duration&) const = default;
+    };
 
     inline constexpr Duration Duration_Zero{ 0 };
     inline constexpr Duration Duration_Min{ Limits<int64_t>::Min };
@@ -133,20 +133,6 @@ namespace he
 
     inline Duration& operator-=(Duration& x, Duration y) { x.val -= y.val; return x; }
     constexpr Duration operator-(Duration x, Duration y) { return { x.val - y.val }; }
-
-    template <typename Tag> constexpr bool operator==(Time<Tag> x, Time<Tag> y) { return x.val == y.val; }
-    template <typename Tag> constexpr bool operator!=(Time<Tag> x, Time<Tag> y) { return x.val != y.val; }
-    template <typename Tag> constexpr bool operator<(Time<Tag> x, Time<Tag> y)  { return x.val <  y.val; }
-    template <typename Tag> constexpr bool operator<=(Time<Tag> x, Time<Tag> y) { return x.val <= y.val; }
-    template <typename Tag> constexpr bool operator>(Time<Tag> x, Time<Tag> y)  { return x.val >  y.val; }
-    template <typename Tag> constexpr bool operator>=(Time<Tag> x, Time<Tag> y) { return x.val >= y.val; }
-
-    constexpr bool operator==(Duration x, Duration y)   { return x.val == y.val; }
-    constexpr bool operator!=(Duration x, Duration y)   { return x.val != y.val; }
-    constexpr bool operator<(Duration x, Duration y)    { return x.val <  y.val; }
-    constexpr bool operator<=(Duration x, Duration y)   { return x.val <= y.val; }
-    constexpr bool operator>(Duration x, Duration y)    { return x.val >  y.val; }
-    constexpr bool operator>=(Duration x, Duration y)   { return x.val >= y.val; }
 
     // --------------------------------------------------------------------------------------------
     // System time converters

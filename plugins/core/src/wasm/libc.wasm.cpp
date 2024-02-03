@@ -17,7 +17,7 @@ extern "C"
     // https://man7.org/linux/man-pages/man2/sched_yield.2.html
     int sched_yield()
     {
-        he::YieldCurrentThread();
+        he::Thread::Yield();
         return 0;
     }
 }

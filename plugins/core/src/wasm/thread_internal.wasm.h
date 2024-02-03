@@ -14,14 +14,16 @@ namespace he
 
         String name{};
         uint32_t id{ 0 };
-        bool isMain : 1{ false };
-        bool canWait : 1{ false };
-    };
+        bool isMain{ false };
+        bool canWait{ false };
 
-    void _SetMainThreadState();
-    void _SetWorkerThreadState(_WasmThreadState* state);
-    void _SetThreadState(_WasmThreadState* state, bool isMain, bool canWait);
+        void* memBase{ nullptr };
+        void* tlsBase{ nullptr };
+        void* stackBase{ nullptr };
+        size_t memSize{ 0 };
+    };
 
     bool _CanCurentThreadWait();
     int32_t _AtomicWaitCurrentThread(int32_t* value, int32_t expected, int64_t timeoutNs);
+    int32_t _AtomicWaitCurrentThread64(int64_t* value, int64_t expected, int64_t timeoutNs);
 }

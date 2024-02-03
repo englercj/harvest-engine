@@ -5,6 +5,7 @@
 #include "he/core/bulk_file_loader.h"
 
 #include "he/core/assert.h"
+#include "he/core/atomic.h"
 #include "he/core/cpu.h"
 #include "he/core/result.h"
 #include "he/core/scope_guard.h"
@@ -13,8 +14,6 @@
 #include "he/core/types.h"
 #include "he/core/utils.h"
 #include "he/core/wstr.h"
-
-#include <atomic>
 
 #if defined(HE_PLATFORM_API_WIN32)
 
@@ -231,7 +230,7 @@ namespace he
 
         IDStorageQueue1* m_queue{ nullptr };
         IDStorageStatusArray* m_status{ nullptr };
-        std::atomic<uint64_t> m_index{ 0 };
+        Atomic<uint64_t> m_index{ 0 };
 
         uint16_t m_capacity{ 0 };
     };

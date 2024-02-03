@@ -14,6 +14,11 @@ else
     shift
 fi
 
+BUILD_DIR="build"
+#PREMAKE_VERSION="nightly"
+PREMAKE_VERSION="5.0.0-beta2"
+ENGINE_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &> /dev/null && pwd)
+
 for arg in "$@"; do
     case $arg in
         # Capture the --to="" arg so we use the same build directory that premake will use
@@ -28,11 +33,6 @@ for arg in "$@"; do
             ;;
     esac
 done
-
-BUILD_DIR="build"
-#PREMAKE_VERSION="nightly"
-PREMAKE_VERSION="5.0.0-beta2"
-ENGINE_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &> /dev/null && pwd)
 
 OS_NAME="$(uname -s)"
 case $OS_NAME in

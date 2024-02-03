@@ -3,12 +3,11 @@
 #pragma once
 
 #include "he/assets/asset_database.h"
+#include "he/core/atomic.h"
 #include "he/core/signal.h"
 #include "he/core/directory_watcher.h"
+#include "he/core/thread.h"
 #include "he/core/vector.h"
-
-#include <atomic>
-#include <thread>
 
 namespace he::assets
 {
@@ -26,17 +25,17 @@ namespace he::assets
         OnReadySignal& OnReady() { return m_onReadySignal; }
 
     private:
-        void ScanThreadFunc();
-        void FileWatchThreadFunc();
+        static void ScanThreadFunc(void* instance);
+        static void FileWatchThreadFunc(void* instance);
 
     private:
         AssetDatabase& m_db;
 
         uint32_t m_scanToken{ 0 };
-        std::atomic<bool> m_running{ false };
+        Atomic<bool> m_running{ false };
 
-        std::thread m_scanThread{};
-        std::thread m_watchThread{};
+        Thread m_scanThread{};
+        Thread m_watchThread{};
         Vector<DirectoryWatcher> m_dirWatchers{};
 
         OnReadySignal m_onReadySignal{};

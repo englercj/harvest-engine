@@ -1,12 +1,20 @@
 // Copyright Chad Engler
 
+#if HE_COMPILER_MSVC && HE_CPU_X86
+    extern "C" unsigned __int64 __rdtsc();
+    #pragma intrinsic(__rdtsc)
+#elif HE_COMPILER_MSVC && HE_CPU_ARM
+    extern "C" __int64 _ReadStatusReg(int);
+    #pragma intrinsic(_ReadStatusReg)
+#endif
+
 namespace he
 {
     template <>
     HE_FORCE_INLINE CycleCount CycleClock::Now()
     {
     #if defined(HE_PLATFORM_WASM)
-        return MonotonicClock::Now();
+        return { MonotonicClock::Now().val };
     #elif HE_COMPILER_MSVC && HE_CPU_X86
         return { __rdtsc() };
     #elif HE_COMPILER_MSVC && HE_CPU_ARM

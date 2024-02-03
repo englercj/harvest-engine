@@ -1,8 +1,8 @@
 {
     "compilerOptions": {
         "target": "ES5",
-        "module": "ES6",
-        "lib": ["ES2020", "DOM"],
+        "module": "ES2020",
+        "lib": ["ES2020", "DOM", "WebWorker"],
         "moduleResolution": "node",
         "declaration": false,
         "declarationMap": false,

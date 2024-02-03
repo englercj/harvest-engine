@@ -5,11 +5,11 @@
 #include "he/core/delegate.h"
 #include "he/core/result.h"
 #include "he/core/sync.h"
+#include "he/core/thread.h"
 #include "he/core/types.h"
 #include "he/core/vector.h"
 
 #include <deque>
-#include <thread>
 
 namespace he
 {
@@ -48,10 +48,10 @@ namespace he
     private:
         bool Pump();
 
-        static void PumpThread(ThreadPoolExecutor* executor);
+        static void PumpThread(void* instance);
 
     protected:
-        Vector<std::thread> m_threads{};
+        Vector<Thread> m_threads{};
         String m_threadName{};
 
         bool m_running{ false };

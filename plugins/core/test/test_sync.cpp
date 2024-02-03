@@ -7,11 +7,9 @@
 
 #include "he/core/sync.h"
 
+#include "he/core/atomic.h"
 #include "he/core/thread.h"
 #include "he/core/test.h"
-
-#include <atomic>
-#include <thread>
 
 using namespace he;
 
@@ -25,20 +23,23 @@ static void TestLock(F&& func)
     T lock;
     bool value = false;
 
-    auto TestFunc = [](F& func, T& lock, bool& value)
+    Thread threads[ThreadsCount];
+    for (uint32_t i = 0; i < ThreadsCount; ++i)
     {
-        for (uint32_t i = 0; i < RoundsCount; ++i)
+        threads[i] = Thread::Run([&]()
         {
-            func(lock, value);
-        }
-    };
+            for (uint32_t i = 0; i < RoundsCount; ++i)
+            {
+                func(lock, value);
+            }
+        });
+        HE_EXPECT(threads[i].IsJoinable());
+    }
 
-    std::thread threads[ThreadsCount];
     for (uint32_t i = 0; i < ThreadsCount; ++i)
-        threads[i] = std::thread(TestFunc, std::ref(func), std::ref(lock), std::ref(value));
-
-    for (uint32_t i = 0; i < ThreadsCount; ++i)
-        threads[i].join();
+    {
+        threads[i].Join();
+    }
 
     if constexpr (!IsSpecialization<T, LockGuard> && !IsSame<T, ReadLockGuard>)
     {
@@ -69,10 +70,10 @@ static void TestCV(bool useTimeout, uint32_t sleeperIndex)
     Mutex lock;
     uint32_t counter = 0;
 
-    std::thread t0([&]()
+    Thread t0 = Thread::Run([&]()
     {
         if (sleeperIndex == 0)
-            SleepCurrentThread(Delay);
+            Thread::Sleep(Delay);
 
         constexpr Duration Timeout = FromPeriod<Seconds>(5);
         {
@@ -91,10 +92,10 @@ static void TestCV(bool useTimeout, uint32_t sleeperIndex)
         }
     });
 
-    std::thread t1([&]()
+    Thread t1 = Thread::Run([&]()
     {
         if (sleeperIndex == 1)
-            SleepCurrentThread(Delay);
+            Thread::Sleep(Delay);
 
         {
             LockGuard guard(lock);
@@ -104,8 +105,8 @@ static void TestCV(bool useTimeout, uint32_t sleeperIndex)
         cv.WakeOne();
     });
 
-    t0.join();
-    t1.join();
+    t0.Join();
+    t1.Join();
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -201,10 +202,10 @@ HE_TEST(core, sync, Semaphore)
     constexpr Duration DelayMedium = FromPeriod<Milliseconds>(100 * 3);
     constexpr Duration DelayLong = FromPeriod<Milliseconds>(100 * 6);
 
-    std::atomic<uint32_t> counter{ 2 };
+    Atomic<uint32_t> counter{ 2 };
 
     Semaphore sem;
-    std::thread t([&]()
+    Thread t = Thread::Run([&]()
     {
         --counter;
         while (counter > 0) { HE_SPIN_WAIT_PAUSE(); }
@@ -217,8 +218,8 @@ HE_TEST(core, sync, Semaphore)
     while (counter > 0) { HE_SPIN_WAIT_PAUSE(); }
 
     sem.Notify();
-    SleepCurrentThread(DelayMedium);
-    t.join();
+    Thread::Sleep(DelayMedium);
+    t.Join();
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -240,10 +241,10 @@ HE_TEST(core, sync, SyncEvent)
         constexpr Duration DelayMedium = FromPeriod<Milliseconds>(100 * 3);
         constexpr Duration DelayLong = FromPeriod<Milliseconds>(100 * 6);
 
-        std::atomic<uint32_t> counter{ 2 };
+        Atomic<uint32_t> counter{ 2 };
 
         SyncEvent evt;
-        std::thread t([&]()
+        Thread t = Thread::Run([&]()
         {
             --counter;
             while (counter > 0) { HE_SPIN_WAIT_PAUSE(); }
@@ -256,7 +257,7 @@ HE_TEST(core, sync, SyncEvent)
         while (counter > 0) { HE_SPIN_WAIT_PAUSE(); }
 
         evt.Signal();
-        SleepCurrentThread(DelayMedium);
-        t.join();
+        Thread::Sleep(DelayMedium);
+        t.Join();
     }
 }

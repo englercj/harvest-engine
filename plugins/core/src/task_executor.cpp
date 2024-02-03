@@ -20,18 +20,22 @@ namespace he
         m_threads.Reserve(count);
         for (uint32_t i = 0; i < count; ++i)
         {
-            m_threads.PushBack(std::thread(PumpThread, this));
-            ThreadHandle handle = reinterpret_cast<ThreadHandle>(m_threads.Back().native_handle());
+            ThreadDesc desc;
+            desc.proc = &PumpThread;
+            desc.data = this;
+            desc.affinity = config.affinity;
 
-            if (config.affinity > 0)
+            Thread t;
+            const Result rc = t.Start(desc);
+            if (!HE_VERIFY(rc,
+                HE_MSG("Failed to create thread pool thread."),
+                HE_KV(result, rc)))
             {
-                Result r = SetThreadAffinity(handle, config.affinity);
-                if (!r)
-                {
-                    Shutdown();
-                    return r;
-                }
+                Shutdown();
+                return rc;
             }
+
+            m_threads.PushBack(Move(t));
         }
 
         return Result::Success;
@@ -49,8 +53,10 @@ namespace he
 
         m_cv.WakeAll();
 
-        for (std::thread& t : m_threads)
-            t.join();
+        for (Thread& t : m_threads)
+        {
+            t.Join();
+        }
 
         m_threads.Clear();
     }
@@ -92,9 +98,10 @@ namespace he
         return true;
     }
 
-    void ThreadPoolExecutor::PumpThread(ThreadPoolExecutor* executor)
+    void ThreadPoolExecutor::PumpThread(void* instance)
     {
-        SetCurrentThreadName(executor->m_threadName.Data());
+        ThreadPoolExecutor* executor = static_cast<ThreadPoolExecutor*>(instance);
+        Thread::SetName(executor->m_threadName.Data());
 
         while (executor->Pump()) {}
     }

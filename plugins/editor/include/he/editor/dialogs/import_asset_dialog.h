@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include "he/core/atomic.h"
 #include "he/core/string.h"
 #include "he/core/sync.h"
 #include "he/core/types.h"
@@ -13,8 +14,6 @@
 #include "he/editor/services/platform_service.h"
 #include "he/editor/services/type_edit_ui_service.h"
 #include "he/schema/dynamic.h"
-
-#include <atomic>
 
 namespace he::assets
 {
@@ -72,6 +71,6 @@ namespace he::editor
 
         bool m_hasMoveHint{ false };
         bool m_importDstValid{ true };
-        std::atomic<State> m_state{ State::Done };
+        Atomic<State> m_state{ State::Done };
     };
 }

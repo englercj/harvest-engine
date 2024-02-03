@@ -87,7 +87,7 @@ namespace he
             }(t2.IdentityType<B2>::value...);
         }(t1.IdentityType<B1>::value...);
     #else
-        ((_TuplePartialCompare(t1.IdentityType<B1>::value, t2.IdentityType<B2>::value, isLess) && ...);
+        (_TuplePartialCompare(t1.IdentityType<B1>::value, t2.IdentityType<B2>::value, isLess) && ...);
     #endif
         return isLess;
     }
@@ -105,7 +105,7 @@ namespace he
             }(t2.IdentityType<B2>::value...);
         }(t1.IdentityType<B1>::value...);
     #else
-        const bool isEqual = ((_TuplePartialCompare(t1.IdentityType<B1>::value, t2.IdentityType<B2>::value, isLess) && ...);
+        const bool isEqual = (_TuplePartialCompare(t1.IdentityType<B1>::value, t2.IdentityType<B2>::value, isLess) && ...);
     #endif
         return isLess || isEqual;
     }

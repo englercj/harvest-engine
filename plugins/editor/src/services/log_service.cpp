@@ -74,12 +74,12 @@ namespace he::editor
 
     uint32_t LogService::GetNumEntries(LogLevel level) const
     {
-        return GetLevelCount(level).load();
+        return GetLevelCount(level).Load();
     }
 
     uint32_t LogService::GetEntriesHash() const
     {
-        return m_entriesHash.load();
+        return m_entriesHash.Load();
     }
 
     void LogService::OnLogEntry(const LogSource& source, const KeyValue* kvs, uint32_t count)
@@ -88,7 +88,7 @@ namespace he::editor
 
         if (m_entries.size() == MaxEntries)
         {
-            GetLevelCount(m_entries.front().source.level).fetch_sub(1);
+            GetLevelCount(m_entries.front().source.level).FetchSub(1);
             m_entries.pop_front();
         }
 
@@ -98,11 +98,11 @@ namespace he::editor
 
         m_entriesCrc = HashEntry(m_entriesCrc, entry);
 
-        GetLevelCount(entry.source.level).fetch_add(1);
-        m_entriesHash.store(m_entriesCrc);
+        GetLevelCount(entry.source.level).FetchAdd(1);
+        m_entriesHash = m_entriesCrc;
     }
 
-    const std::atomic<uint32_t>& LogService::GetLevelCount(LogLevel level) const
+    const Atomic<uint32_t>& LogService::GetLevelCount(LogLevel level) const
     {
         const uint32_t index = static_cast<uint32_t>(level);
         HE_ASSERT(index < HE_LENGTH_OF(m_levelCounts));

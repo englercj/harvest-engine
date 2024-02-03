@@ -9,5 +9,6 @@ license = "Apache-2.0 WITH LLVM-exception"
 homepage = "https://github.com/llvm/llvm-project"
 
 [install]
+    exec = "libcxx.lua"
     base_path = "libcxx-17.0.6.src.tar/libcxx-17.0.6.src"
     archive = "https://github.com/llvm/llvm-project/releases/download/llvmorg-17.0.6/libcxx-17.0.6.src.tar.xz"

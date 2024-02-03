@@ -75,7 +75,11 @@ namespace he
     void ShutdownAsyncFileIO();
 
     /// Token for tracking the status of a single asynchronous file operation.
-    struct AsyncFileOp { uintptr_t val; };
+    struct AsyncFileOp
+    {
+        uintptr_t val;
+        bool operator==(const AsyncFileOp&) const = default;
+    };
 
     /// Represents a file on disk that can be read from or written to asynchronously.
     class AsyncFile

@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include "he/assets/atomic.h"
 #include "he/assets/asset_database.h"
 #include "he/assets/asset_database_updater.h"
 #include "he/assets/asset_server.h"
@@ -10,8 +11,6 @@
 #include "he/core/types.h"
 #include "he/editor/services/project_service.h"
 #include "he/editor/services/task_service.h"
-
-#include <atomic>
 
 namespace he::editor
 {
@@ -70,6 +69,6 @@ namespace he::editor
         assets::AssetDatabaseUpdater::OnReadySignal::Binding m_onDbReadyBinding{};
 
         Vector<ContentModule> m_contentModules{};
-        std::atomic<bool> m_dbReady{ false };
+        Atomic<bool> m_dbReady{ false };
     };
 }

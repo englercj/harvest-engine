@@ -122,7 +122,7 @@ namespace he
 
     bool Mutex::TryAcquire()
     {
-        const int32_t tid = BitCast<int32_t>(GetCurrentThreadId());
+        const int32_t tid = BitCast<int32_t>(Thread::GetId());
         int32_t* mutex = reinterpret_cast<int32_t*>(m_opaque);
         int32_t expected = 0;
         return __atomic_compare_exchange_n(mutex, &expected, tid, true, __ATOMIC_ACQUIRE, __ATOMIC_RELAXED);
@@ -130,7 +130,7 @@ namespace he
 
     void Mutex::Acquire()
     {
-        const int32_t tid = BitCast<int32_t>(GetCurrentThreadId());
+        const int32_t tid = BitCast<int32_t>(Thread::GetId());
         int32_t* mutex = reinterpret_cast<int32_t*>(m_opaque);
         while (!TryAcquire())
         {
@@ -145,7 +145,7 @@ namespace he
     #if HE_ENABLE_ASSERTIONS
         // When assertions are enabled we want to verify that we're releasing a lock that we hold.
         const int32_t value = __atomic_exchange_n(mutex, 0, __ATOMIC_RELEASE);
-        HE_ASSERT(value == GetCurrentThreadId(), HE_MSG("Mutex::Release() called on a lock that was not held by this thread"));
+        HE_ASSERT(value == Thread::GetId(), HE_MSG("Mutex::Release() called on a lock that was not held by this thread"));
     #else
         // When assertions are disabled we don't care about the existing value, so just do a store.
         __atomic_store_n(mutex, 0, __ATOMIC_RELEASE);
@@ -184,7 +184,7 @@ namespace he
         static constexpr uint64_t TidMask = 0x00000000ffffffffull;
         static constexpr uint64_t CountIncrement = 0x0000000100000000ull;
 
-        const uint32_t tid = GetCurrentThreadId();
+        const uint32_t tid = Thread::GetId();
 
         uint64_t* mutex = reinterpret_cast<uint64_t*>(m_opaque);
         uint64_t expected = 0;
@@ -224,7 +224,7 @@ namespace he
     #if HE_ENABLE_ASSERTIONS
         // When assertions are enabled we want to verify that unlocking was legit so do an exchange.
         const uint64_t value = __atomic_exchange_n(mutex, 0, __ATOMIC_RELEASE);
-        HE_ASSERT((value & 0xffffffff) == GetCurrentThreadId(), HE_MSG("RecursiveMutex::Release() called on a lock that is held by another thread."));
+        HE_ASSERT((value & 0xffffffff) == Thread::GetId(), HE_MSG("RecursiveMutex::Release() called on a lock that is held by another thread."));
     #else
         // When assertions are disabled we don't care about the existing value, so just do a store.
         __atomic_store_n(mutex, 0, __ATOMIC_RELEASE);
@@ -246,19 +246,19 @@ namespace he
     {
         _CVWaiter* prev{ nullptr };
         _CVWaiter* next{ nullptr };
-        volatile int32_t* notify{ nullptr };
-        volatile int32_t state{ _CVWaiterState_Waiting };
-        volatile int32_t barrier{ 0 };
+        int32_t* notify{ nullptr };
+        int32_t state{ _CVWaiterState_Waiting };
+        int32_t barrier{ 0 };
     };
 
     struct _CVData
     {
         _CVData* head{ nullptr };
         _CVData* tail{ nullptr };
-        volatile int32_t lock{ 0 };
+        int32_t lock{ 0 };
     };
 
-    static void _ConditionVariable_LockInt(volatile int* lock)
+    static void _ConditionVariable_LockInt(int* lock)
     {
         int32_t expected = 0;
         if (!__atomic_compare_exchange_n(lock, &expected, 1, true, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST))
@@ -275,7 +275,7 @@ namespace he
         }
     }
 
-    static void _ConditionVariable_UnlockInt(volatile int* lock)
+    static void _ConditionVariable_UnlockInt(int* lock)
     {
         if (__atomic_exchange_n(lock, 0, __ATOMIC_SEQ_CST) == 2)
         {
@@ -283,7 +283,7 @@ namespace he
         }
     }
 
-    static void _ConditionVariable_UnlockIntRequeue(volatile int* lock)
+    static void _ConditionVariable_UnlockIntRequeue(int* lock)
     {
         __atomic_store_n(lock, 0, __ATOMIC_SEQ_CST);
         // Here the intent is to wake one waiter, and requeue all other waiters from waiting on
@@ -300,7 +300,7 @@ namespace he
     {
         _CVWaiter* p = nullptr;
         _CVWaiter* first = nullptr;
-        volatile int32_t ref = 0;
+        int32_t ref = 0;
 
         _ConditionVariable_LockInt(&data->lock);
 
@@ -371,14 +371,14 @@ namespace he
             node.next->prev = &node;
 
         int32_t seq = node.barrier;
-        volatile int32_t* fut = &node.barrier;
+        int32_t* fut = &node.barrier;
 
         _ConditionVariable_UnlockInt(&data->lock);
 
         // Release the mutex and wait for a signal.
         mutex.Release();
 
-        YieldCurrentThread(); // Maybe not needed?
+        Thread::Yield(); // Maybe not needed?
 
         const MonotonicTime waitEnd = MonotonicClock::Now() + timeout;
         bool timedOut = false;

@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include "he/core/atomic.h"
 #include "he/core/debug.h"
 #include "he/core/error.h"
 #include "he/core/fmt.h"
@@ -15,8 +16,6 @@
 #include "he/core/types.h"
 #include "he/core/utils.h"
 #include "he/core/vector.h"
-
-#include <atomic>
 
 /// Checks the expectation that `expr` evaluates to true.
 ///
@@ -253,9 +252,9 @@ namespace he
 
 namespace internal
 {
-    extern std::atomic<uint64_t> g_totalTestRuns;
-    extern std::atomic<uint64_t> g_totalTestExpects;
-    extern std::atomic<uint64_t> g_totalTestFailures;
+    extern Atomic<uint64_t> g_totalTestRuns;
+    extern Atomic<uint64_t> g_totalTestExpects;
+    extern Atomic<uint64_t> g_totalTestFailures;
 
     class ScopedExpectErrorHandler
     {

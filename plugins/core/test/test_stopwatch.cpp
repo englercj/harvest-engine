@@ -12,10 +12,10 @@ using namespace he;
 HE_TEST(core, stopwatch, Test)
 {
     Stopwatch timer;
-    SleepCurrentThread(FromPeriod<Milliseconds>(10));
+    Thread::Sleep(FromPeriod<Milliseconds>(10));
     HE_EXPECT_GT(timer.Elapsed(), FromPeriod<Milliseconds>(10));
 
     timer.Restart();
-    SleepCurrentThread(FromPeriod<Milliseconds>(50));
+    Thread::Sleep(FromPeriod<Milliseconds>(50));
     HE_EXPECT_GT(timer.Elapsed(), FromPeriod<Milliseconds>(50));
 }

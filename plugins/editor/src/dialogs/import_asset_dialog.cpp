@@ -63,7 +63,7 @@ namespace he::editor
             HE_KV(path, path),
             HE_KV(move_hint, moveHint),
             HE_KV(has_data, data.Struct().IsValid()),
-            HE_KV(state, m_state.load()));
+            HE_KV(state, m_state.Load()));
 
         if (!HE_VERIFY(m_state == State::Done))
             Close();

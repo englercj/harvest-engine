@@ -3,6 +3,7 @@
 #include "he/core/test.h"
 
 #include "he/core/alloca.h"
+#include "he/core/atomic.h"
 #include "he/core/fmt.h"
 #include "he/core/clock.h"
 #include "he/core/error.h"
@@ -10,16 +11,15 @@
 #include "he/core/string_ops.h"
 
 #include <algorithm>
-#include <atomic>
 #include <cstdlib>
 
 namespace he
 {
 namespace internal
 {
-    std::atomic<uint64_t> g_totalTestRuns{ 0 };
-    std::atomic<uint64_t> g_totalTestExpects{ 0 };
-    std::atomic<uint64_t> g_totalTestFailures{ 0 };
+    Atomic<uint64_t> g_totalTestRuns{ 0 };
+    Atomic<uint64_t> g_totalTestExpects{ 0 };
+    Atomic<uint64_t> g_totalTestFailures{ 0 };
 
     ScopedExpectErrorHandler::ScopedExpectErrorHandler(ErrorKind kind)
         : m_expectedKind(kind)
@@ -185,12 +185,12 @@ namespace internal
         MonotonicTime endAll = MonotonicClock::Now();
 
         HE_LOGF_INFO(he_test, "Ran {} tests with {} expectations. {} tests failed.",
-            internal::g_totalTestRuns.load(), internal::g_totalTestExpects.load(), internal::g_totalTestFailures.load());
+            internal::g_totalTestRuns.Load(), internal::g_totalTestExpects.Load(), internal::g_totalTestFailures.Load());
 
         HE_LOG_INFO(he_test,
             HE_KV(test_event_kind, TestEventKind::TestTiming),
             HE_KV(test_time_ns, (endAll - startAll).val));
 
-        return internal::g_totalTestFailures.load();
+        return internal::g_totalTestFailures.Load();
     }
 }

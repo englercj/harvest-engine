@@ -488,7 +488,7 @@ namespace he::window::linux
         app.OnEvent(InitializedEvent{});
 
         // Event loop
-        while (m_running.load())
+        while (m_running)
         {
             // Update gamepads
             for (GamepadImpl& pad : m_gamepads)
@@ -528,13 +528,13 @@ namespace he::window::linux
         app.OnEvent(TerminatingEvent{});
 
         m_app = nullptr;
-        return m_returnCode.load();
+        return m_returnCode;
     }
 
     void DeviceImpl::Quit(int rc)
     {
-        m_returnCode.store(rc);
-        m_running.store(false);
+        m_returnCode = rc;
+        m_running = false;
     }
 
     const DeviceInfo& DeviceImpl::GetDeviceInfo() const

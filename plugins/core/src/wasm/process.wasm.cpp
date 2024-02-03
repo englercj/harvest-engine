@@ -25,7 +25,7 @@ namespace he
     uint32_t GetCurrentProcessId()
     {
         // Arbitrary value to identify our process.
-        return 0x3eb;
+        return 1u;
     }
 
     bool IsProcessRunning(uint32_t pid)

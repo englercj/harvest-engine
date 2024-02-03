@@ -77,29 +77,29 @@ namespace he
         };
 
         template <ValueKind K, VariantType::IndexType I = AsUnderlyingType(K)>
-        constexpr IndexConstant<I> AsIndex() { return IndexConstant<I>{}; }
+        static consteval IndexConstant<I> AsIndex() { return IndexConstant<I>{}; }
 
     public:
         KeyValue() noexcept : m_key(""), m_value() {}
-        KeyValue(const char* k, bool v) noexcept : m_key(k), m_value(IndexConstant<AsUnderlyingType(ValueKind::Bool)>{}, v) {}
-        KeyValue(const char* k, char v) noexcept : m_key(k), m_value(IndexConstant<AsUnderlyingType(ValueKind::Int)>{}, v) {}
-        KeyValue(const char* k, signed char v) noexcept : m_key(k), m_value(IndexConstant<AsUnderlyingType(ValueKind::Int)>{}, v) {}
-        KeyValue(const char* k, short v) noexcept : m_key(k), m_value(IndexConstant<AsUnderlyingType(ValueKind::Int)>{}, v) {}
-        KeyValue(const char* k, int v) noexcept : m_key(k), m_value(IndexConstant<AsUnderlyingType(ValueKind::Int)>{}, v) {}
-        KeyValue(const char* k, long v) noexcept : m_key(k), m_value(IndexConstant<AsUnderlyingType(ValueKind::Int)>{}, v) {}
-        KeyValue(const char* k, long long v) noexcept : m_key(k), m_value(IndexConstant<AsUnderlyingType(ValueKind::Int)>{}, v) {}
-        KeyValue(const char* k, unsigned char v) noexcept : m_key(k), m_value(IndexConstant<AsUnderlyingType(ValueKind::Uint)>{}, v) {}
-        KeyValue(const char* k, unsigned short v) noexcept : m_key(k), m_value(IndexConstant<AsUnderlyingType(ValueKind::Uint)>{}, v) {}
-        KeyValue(const char* k, unsigned int v) noexcept : m_key(k), m_value(IndexConstant<AsUnderlyingType(ValueKind::Uint)>{}, v) {}
-        KeyValue(const char* k, unsigned long v) noexcept : m_key(k), m_value(IndexConstant<AsUnderlyingType(ValueKind::Uint)>{}, v) {}
-        KeyValue(const char* k, unsigned long long v) noexcept : m_key(k), m_value(IndexConstant<AsUnderlyingType(ValueKind::Uint)>{}, v) {}
-        KeyValue(const char* k, float v) noexcept : m_key(k), m_value(IndexConstant<AsUnderlyingType(ValueKind::Double)>{}, v) {}
-        KeyValue(const char* k, double v) noexcept : m_key(k), m_value(IndexConstant<AsUnderlyingType(ValueKind::Double)>{}, v) {}
+        KeyValue(const char* k, bool v) noexcept : m_key(k), m_value(AsIndex<ValueKind::Bool>(), v) {}
+        KeyValue(const char* k, char v) noexcept : m_key(k), m_value(AsIndex<ValueKind::Int>(), v) {}
+        KeyValue(const char* k, signed char v) noexcept : m_key(k), m_value(AsIndex<ValueKind::Int>(), v) {}
+        KeyValue(const char* k, short v) noexcept : m_key(k), m_value(AsIndex<ValueKind::Int>(), v) {}
+        KeyValue(const char* k, int v) noexcept : m_key(k), m_value(AsIndex<ValueKind::Int>(), v) {}
+        KeyValue(const char* k, long v) noexcept : m_key(k), m_value(AsIndex<ValueKind::Int>(), v) {}
+        KeyValue(const char* k, long long v) noexcept : m_key(k), m_value(AsIndex<ValueKind::Int>(), v) {}
+        KeyValue(const char* k, unsigned char v) noexcept : m_key(k), m_value(AsIndex<ValueKind::Uint>(), v) {}
+        KeyValue(const char* k, unsigned short v) noexcept : m_key(k), m_value(AsIndex<ValueKind::Uint>(), v) {}
+        KeyValue(const char* k, unsigned int v) noexcept : m_key(k), m_value(AsIndex<ValueKind::Uint>(), v) {}
+        KeyValue(const char* k, unsigned long v) noexcept : m_key(k), m_value(AsIndex<ValueKind::Uint>(), v) {}
+        KeyValue(const char* k, unsigned long long v) noexcept : m_key(k), m_value(AsIndex<ValueKind::Uint>(), v) {}
+        KeyValue(const char* k, float v) noexcept : m_key(k), m_value(AsIndex<ValueKind::Double>(), v) {}
+        KeyValue(const char* k, double v) noexcept : m_key(k), m_value(AsIndex<ValueKind::Double>(), v) {}
 
         template <Enum T>
         constexpr KeyValue(const char* k, T v) noexcept
             : m_key(k)
-            , m_value(IndexConstant<AsUnderlyingType(ValueKind::Enum)>{})
+            , m_value(AsIndex<ValueKind::Enum>())
         {
             EnumStorage& e = m_value.Get<AsUnderlyingType(ValueKind::Enum)>();
             e.value = static_cast<uint64_t>(v);
@@ -108,25 +108,25 @@ namespace he
 
         KeyValue(const char* k, const char* v) noexcept
             : m_key(k)
-            , m_value(IndexConstant<AsUnderlyingType(ValueKind::String)>{}, v)
+            , m_value(AsIndex<ValueKind::String>(), v)
         {}
 
         template <uint32_t N>
         KeyValue(const char* k, const char (&v)[N]) noexcept
             : m_key(k)
-            , m_value(IndexConstant<AsUnderlyingType(ValueKind::String)>{}, v, N)
+            , m_value(AsIndex<ValueKind::String>(), v, N)
         {}
 
         template <typename T> requires(!IsEnum<T> && ContiguousRangeOf<T, const char>)
         KeyValue(const char* k, const T& v) noexcept
             : m_key(k)
-            , m_value(IndexConstant<AsUnderlyingType(ValueKind::String)>{}, v)
+            , m_value(AsIndex<ValueKind::String>(), v)
         {}
 
         template <typename... Args>
         KeyValue(const char* k, FmtString<Args...> fmt, Args&&... args) noexcept
             : m_key(k)
-            , m_value(IndexConstant<AsUnderlyingType(ValueKind::String)>{})
+            , m_value(AsIndex<ValueKind::String>())
         {
             he::String& s = m_value.Get<AsUnderlyingType(ValueKind::String)>();
             FormatTo(s, fmt, Forward<Args>(args)...);
@@ -135,7 +135,7 @@ namespace he
         template <typename T> requires(!IsEnum<T> && !ContiguousRangeOf<T, const char>)
         KeyValue(const char* k, const T& v) noexcept
             : m_key(k)
-            , m_value(IndexConstant<AsUnderlyingType(ValueKind::String)>{})
+            , m_value(AsIndex<ValueKind::String>())
         {
             he::String& s = m_value.Get<AsUnderlyingType(ValueKind::String)>();
             FormatTo(s, "{}", v);

@@ -4,12 +4,11 @@
 
 #include "gamepad.win32.h"
 
+#include "he/core/atomic.h"
 #include "he/core/types.h"
 #include "he/window/device.h"
 #include "he/window/event.h"
 #include "he/window/pointer.h"
-
-#include <atomic>
 
 #if defined(HE_PLATFORM_API_WIN32)
 
@@ -105,8 +104,8 @@ namespace he::window::win32
         HINSTANCE m_hInstance{ nullptr };
         ViewImpl* m_cursorRelativeView{ nullptr };
         PointerCursor m_cursor{ PointerCursor::Arrow };
-        std::atomic<int32_t> m_returnCode{ 0 };
-        std::atomic<bool> m_running{ true };
+        Atomic<int32_t> m_returnCode{ 0 };
+        Atomic<bool> m_running{ true };
         bool m_cursorVisible{ true };
         bool m_viewClipped{ false };
         Vec2f m_cursorRestorePosition{ 0, 0 };

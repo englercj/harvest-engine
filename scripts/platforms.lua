@@ -50,6 +50,11 @@ function he.enable_platform(host, platform_name)
         return
     end
 
+    if not table.contains(platform.actions, _ACTION) then
+        verbosef("Platform '" .. platform_name .. "' cannot be enabled for host '" .. host .. "' because it is not supported.")
+        return
+    end
+
     if platform.can_enable ~= nil and not platform.can_enable(host) then
         verbosef("Platform '" .. platform_name .. "' returned false for can_enable().")
         return
@@ -74,9 +79,7 @@ function he.enable_all_platforms(host)
     verbosef("Enabling all platforms for host '" .. host .. "'")
 
     for name, platform in he.ordered_pairs(he._platform_defs) do
-        if table.contains(platform.hosts, host) then
-            he.enable_platform(host, name)
-        end
+        he.enable_platform(host, name)
     end
 end
 
@@ -141,6 +144,7 @@ end
 he.add_platform {
     name = "Win64",
     hosts = { "windows" },
+    actions = { "vs2022" },
     system = "windows",
     architecture = "x86_64",
     on_define = function ()
@@ -156,6 +160,7 @@ he.add_platform {
 he.add_platform {
     name = "WinARM64",
     hosts = { "windows" },
+    actions = { "vs2022" },
     system = "windows",
     architecture = "ARM64",
     on_define = function ()
@@ -167,6 +172,7 @@ he.add_platform {
 he.add_platform {
     name = "Linux64",
     hosts = { "linux" },
+    actions = { "gmake2" },
     system = "linux",
     architecture = "x86_64",
     on_define = function ()

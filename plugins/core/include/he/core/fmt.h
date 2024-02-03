@@ -108,7 +108,7 @@ namespace he
             return Limits<uint32_t>::Max;
 
         uint32_t value = 0;
-        uint32_t prev = 0;
+        [[maybe_unused]] uint32_t prev = 0;
 
         const char* p = begin;
         do

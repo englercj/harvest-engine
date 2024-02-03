@@ -1,7 +1,7 @@
 // Copyright Chad Engler
 
-import { createDefaultHeap, getDefaultHeap } from "he/core/heap";
-import { lib } from "he/core/lib";
+import { Heap } from "./heap";
+import { lib } from "./lib";
 
 class _BufferReader
 {
@@ -41,9 +41,9 @@ class _BufferReader
 
 export class Loader
 {
-    static async loadModule(moduleName: string): Promise<WebAssembly.Module>
+    static async loadModule(source: URL | string): Promise<WebAssembly.Instance>
     {
-        const res = await fetch(moduleName);
+        const res = await fetch(source);
         const buffer = await res.arrayBuffer();
         const reader = new _BufferReader(buffer);
 
@@ -79,29 +79,24 @@ export class Loader
         const initialDataSize = ((heapBase + 65535) >> 16) << 16;
         const initialHeapSize = 64 * 1024 * 1024;
         const maximumHeapSize = 3 * 1024 * 1024 * 1024;
-        createDefaultHeap({
+        Heap.create({
             initial: (initialDataSize + initialHeapSize) >> 16,
             maximum: maximumHeapSize >> 16,
             shared: true,
         });
 
-        // Instantiate the wasm module by passing the prepared import from our libraries
         const module = await WebAssembly.instantiate(buffer, lib.imports);
-        const exports = module.instance.exports;
 
-        // If function '__wasm_call_ctors' (global C++ constructors) exists, call it.
-        // This function is created by wasm-ld for static initialization.
-        if (exports.__wasm_call_ctors)
-        {
-            (exports.__wasm_call_ctors as Function)();
-        }
+        lib.setExports(module.instance.exports);
+        lib.setModule(module.module);
+        return module.instance;
+    }
 
-        // If function 'main' exists, call it with dummy arguments
-        if (exports.main)
-        {
-            (exports.main as Function)(0, 0);
-        }
+    static async instantiateModule(source: WebAssembly.Module): Promise<WebAssembly.Instance>
+    {
+        const instance = await WebAssembly.instantiate(source, lib.imports);
 
-        return module.module;
+        lib.setExports(instance.exports);
+        return instance;
     }
 }

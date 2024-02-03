@@ -1,9 +1,10 @@
 // Copyright Chad Engler
 
 import { char, const_ptr, f64, ptr, u32, u8 } from './ctypes';
-import { getDefaultHeap } from './heap';
+import { Heap } from './heap';
 import { lib } from './lib';
 import { Pointer } from './pointer';
+import { EMessageType, ThreadPool } from './thread_pool';
 
 let batteryManager: any = null;
 
@@ -16,6 +17,8 @@ else if ((navigator as any).getBattery)
     (navigator as any).getBattery().then(function (b: any) { batteryManager = b; });
 }
 
+const isWorkerThread = typeof WorkerGlobalScope !== 'undefined' && self instanceof WorkerGlobalScope;
+
 const enum heWASM_ConsoleLogLevel
 {
     Log = 0,
@@ -25,18 +28,16 @@ const enum heWASM_ConsoleLogLevel
     Error = 4,
 }
 
-lib.addImports("core", {
+lib.addImports('core', {
     heWASM_Alert: function (msg: const_ptr<char>): void
     {
-        const heap = getDefaultHeap();
-        const str = Pointer.readString(heap, msg, -1);
+        const str = Pointer.readString(msg, -1);
         alert(str);
     },
 
     heWASM_ConsoleLog: function (level: heWASM_ConsoleLogLevel, msg: const_ptr<char>): void
     {
-        const heap = getDefaultHeap();
-        const str = Pointer.readString(heap, msg, -1);
+        const str = Pointer.readString(msg, -1);
         switch (level)
         {
             case heWASM_ConsoleLogLevel.Debug:
@@ -65,8 +66,7 @@ lib.addImports("core", {
 
     heWASM_Eval: function (code: const_ptr<char>): void
     {
-        const heap = getDefaultHeap();
-        const str = Pointer.readString(heap, code, -1);
+        const str = Pointer.readString(code, -1);
         eval(str);
     },
 
@@ -92,8 +92,7 @@ lib.addImports("core", {
 
     heWASM_GetRandomBytes: function (dst: ptr<u8>, dstLen: u32): void
     {
-        const heap = getDefaultHeap();
-        const view = heap.u8.subarray(dst, dst + dstLen);
+        const view = Heap.u8.subarray(dst, dst + dstLen);
         // Can't operate on the heap directly because it is a SharedArrayBuffer.
         // So generate the random bytes into a temporary buffer and copy them over.
         view.set(crypto.getRandomValues(new Uint8Array(dstLen)));
@@ -120,8 +119,7 @@ lib.addImports("core", {
 
     heWASM_GetUserAgent: function (dst: ptr<char>, dstLen: u32): void
     {
-        const heap = getDefaultHeap();
-        Pointer.writeString(heap, navigator.userAgent, dst, dstLen);
+        Pointer.writeString(navigator.userAgent, dst, dstLen);
     },
 
     heWASM_GetBatteryStatus: function (chargingTime: ptr<f64>, dischargingTime: ptr<f64>, level: ptr<f64>, charging: ptr<boolean>): boolean
@@ -129,11 +127,23 @@ lib.addImports("core", {
         if (!batteryManager)
             return false;
 
-        const heap = getDefaultHeap();
-        Pointer.writeFloat64(heap, chargingTime, batteryManager.chargingTime);
-        Pointer.writeFloat64(heap, dischargingTime, batteryManager.dischargingTime);
-        Pointer.writeFloat64(heap, level, batteryManager.level);
-        Pointer.writeBool(heap, charging, batteryManager.charging);
+        Pointer.writeFloat64(chargingTime, batteryManager.chargingTime);
+        Pointer.writeFloat64(dischargingTime, batteryManager.dischargingTime);
+        Pointer.writeFloat64(level, batteryManager.level);
+        Pointer.writeBool(charging, batteryManager.charging);
         return true;
     },
+
+    heWASM_CreateThread: function (state: ptr<void>, proc: ptr<void>, arg: ptr<void>): boolean
+    {
+        if (isWorkerThread)
+        {
+            ThreadPool.sendToMain({ type: EMessageType.CallImport, module: 'core', name: 'heWASM_CreateThread', args: [state, proc, arg] });
+            return true;
+        }
+
+        const worker = ThreadPool.getOrCreateWorker();
+        ThreadPool.sendToWorker(worker, { type: EMessageType.CallExport, name: '_heRunThread', args: [state, proc, arg] });
+        return true;
+    }
 });

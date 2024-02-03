@@ -41,3 +41,6 @@ export type ptr<T> = number & { __brand__: 'ptr', __ptr__: T };
 
 /// A pointer to a constant value: `const T*`
 export type const_ptr<T> = number & { __brand__: 'const_ptr', __ptr__: T };
+
+/// The main entry point for a WASM module.
+export type IMainEntry = (argc: i32, argv: ptr<ptr<char>>) => i32;

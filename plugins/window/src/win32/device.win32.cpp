@@ -736,8 +736,8 @@ namespace he::window::win32
     int DeviceImpl::Run(Application& app)
     {
         m_app = &app;
-        m_returnCode.store(0);
-        m_running.store(true);
+        m_returnCode = 0;
+        m_running = true;
 
         // Initialize the COM library as STA which enables clipboard and drag & drop functionality.
         const HRESULT hr = ::OleInitialize(nullptr);
@@ -748,7 +748,7 @@ namespace he::window::win32
         app.OnEvent(InitializedEvent{});
 
         // Event loop
-        while (m_running.load())
+        while (m_running)
         {
             // Update gamepads
             if (m_XInputGetState)
@@ -787,7 +787,7 @@ namespace he::window::win32
             }
 
             // Tick the application after updates have completed
-            if (m_running.load())
+            if (m_running)
                 app.OnTick();
         }
 
@@ -798,13 +798,13 @@ namespace he::window::win32
         ::OleUninitialize();
 
         m_app = nullptr;
-        return m_returnCode.load();
+        return m_returnCode;
     }
 
     void DeviceImpl::Quit(int rc)
     {
-        m_returnCode.store(rc);
-        m_running.store(false);
+        m_returnCode = rc;
+        m_running = false;
     }
 
     const DeviceInfo& DeviceImpl::GetDeviceInfo() const

@@ -26,7 +26,7 @@ namespace he
         using ElementList = TypeList<T...>;
         using IndexType = Conditional<Size < Limits<uint8_t>::Max, uint8_t, Conditional<Size < Limits<uint16_t>::Max, uint16_t, uint32_t>>;
 
-        template <IndexType Index>
+        template <uint32_t Index>
         using ElementType = TypeListElement<Index, ElementList>;
 
         static constexpr IndexType InvalidIndex = Limits<IndexType>::Max;
@@ -34,7 +34,7 @@ namespace he
     public:
         constexpr Variant() noexcept : m_index(InvalidIndex) {}
 
-        template <IndexType Index, typename... Args>
+        template <uint32_t Index, typename... Args>
         constexpr Variant(IndexConstant<Index>, Args&&... args) noexcept
             : m_index(Index)
         {
@@ -160,24 +160,24 @@ namespace he
             return VisitInternal(visitor, MakeIndexSequence<Size>{});
         }
 
-        [[nodiscard]] constexpr bool operator==(const Variant& x) const { return m_index == x.m_index && Visit(_CompareVisitor<EqualTo<>>{ x }); }
-        [[nodiscard]] constexpr bool operator!=(const Variant& x) const { return m_index != x.m_index || Visit(_CompareVisitor<NotEqualTo<>>{ x }); }
-        [[nodiscard]] constexpr bool operator<(const Variant& x) const { return m_index < x.m_index || (m_index == x.m_index && Visit(_CompareVisitor<LessThan<>>{ x })); }
-        [[nodiscard]] constexpr bool operator<=(const Variant& x) const { return m_index < x.m_index || (m_index == x.m_index && Visit(_CompareVisitor<LessThanOrEqual<>>{ x })); }
-        [[nodiscard]] constexpr bool operator>(const Variant& x) const { return m_index > x.m_index || (m_index == x.m_index && Visit(_CompareVisitor<GreaterThan<>>{ x })); }
-        [[nodiscard]] constexpr bool operator>=(const Variant& x) const { return m_index > x.m_index || (m_index == x.m_index && Visit(_CompareVisitor<GreaterThanOrEqual<>>{ x })); }
+        [[nodiscard]] constexpr bool operator==(const Variant& x) const { return m_index == x.m_index && Visit(_CompareVisitor<EqualTo<Variant>>{ x }); }
+        [[nodiscard]] constexpr bool operator!=(const Variant& x) const { return m_index != x.m_index || Visit(_CompareVisitor<NotEqualTo<Variant>>{ x }); }
+        [[nodiscard]] constexpr bool operator<(const Variant& x) const { return m_index < x.m_index || (m_index == x.m_index && Visit(_CompareVisitor<LessThan<Variant>>{ x })); }
+        [[nodiscard]] constexpr bool operator<=(const Variant& x) const { return m_index < x.m_index || (m_index == x.m_index && Visit(_CompareVisitor<LessThanOrEqual<Variant>>{ x })); }
+        [[nodiscard]] constexpr bool operator>(const Variant& x) const { return m_index > x.m_index || (m_index == x.m_index && Visit(_CompareVisitor<GreaterThan<Variant>>{ x })); }
+        [[nodiscard]] constexpr bool operator>=(const Variant& x) const { return m_index > x.m_index || (m_index == x.m_index && Visit(_CompareVisitor<GreaterThanOrEqual<Variant>>{ x })); }
 
         [[nodiscard]] constexpr uint64_t HashCode() const { return IsValid() ? Visit(_HashVisitor{}) : 0; }
 
     private:
-        template <typename V, IndexType Index>
+        template <typename V, uint32_t Index>
         constexpr decltype(auto) VisitInternal(V&& visitor, IndexSequence<Index>)
         {
             //HE_ASSERT(m_index == Index);
             return visitor(Get<Index>(), IndexConstant<Index>{});
         }
 
-        template <typename V, IndexType Index, IndexType... I>
+        template <typename V, uint32_t Index, uint32_t... I>
         constexpr decltype(auto) VisitInternal(V&& visitor, IndexSequence<Index, I...>)
         {
             if (m_index == Index)
@@ -191,8 +191,8 @@ namespace he
         {
             const Variant& other;
 
-            template <typename T, IndexType Index>
-            [[nodiscard]] constexpr bool operator()(const T& value, IndexConstant<Index>)
+            template <typename U, uint32_t Index>
+            [[nodiscard]] constexpr bool operator()(const U& value, IndexConstant<Index>)
             {
                 return Op{}(value, other.template Get<Index>());
             }
@@ -200,21 +200,21 @@ namespace he
 
         struct _HashVisitor
         {
-            template <typename T, IndexType Index>
-            [[nodiscard]] constexpr uint64_t operator()(const T& value, IndexConstant<Index>)
+            template <typename U, uint32_t Index>
+            [[nodiscard]] constexpr uint64_t operator()(const U& value, IndexConstant<Index>)
             {
-                return Hasher<T>{}(value);
+                return Hasher<U>{}(value);
             }
         };
 
         struct _DestructVisitor
         {
-            template <typename T, IndexType Index>
-            [[nodiscard]] constexpr void operator()(T& value, IndexConstant<Index>)
+            template <typename U, uint32_t Index>
+            constexpr void operator()(U& value, IndexConstant<Index>)
             {
-                if constexpr (!IsTriviallyDestructible<T>)
+                if constexpr (!IsTriviallyDestructible<U>)
                 {
-                    value.~T();
+                    value.~U();
                 }
             }
         };
@@ -223,8 +223,8 @@ namespace he
         {
             const Variant& other;
 
-            template <typename T, IndexType Index>
-            [[nodiscard]] constexpr void operator()(T& value, IndexConstant<Index>)
+            template <typename U, uint32_t Index>
+            constexpr void operator()(U& value, IndexConstant<Index>)
             {
                 new (&value) ElementType<Index>(other.template Get<Index>());
             }
@@ -234,8 +234,8 @@ namespace he
         {
             Variant& other;
 
-            template <typename T, IndexType Index>
-            [[nodiscard]] constexpr void operator()(T& value, IndexConstant<Index>)
+            template <typename U, uint32_t Index>
+            constexpr void operator()(U& value, IndexConstant<Index>)
             {
                 new (&value) ElementType<Index>(Move(other).template Get<Index>());
             }

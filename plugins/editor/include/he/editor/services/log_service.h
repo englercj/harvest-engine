@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include "he/core/atomic.h"
 #include "he/core/clock.h"
 #include "he/core/hash.h"
 #include "he/core/key_value.h"
@@ -10,7 +11,6 @@
 #include "he/core/vector.h"
 #include "he/editor/services/directory_service.h"
 
-#include <atomic>
 #include <deque>
 
 namespace he::editor
@@ -48,11 +48,11 @@ namespace he::editor
         void OnLogEntry(const LogSource& source, const KeyValue* kvs, uint32_t count);
 
     private:
-        const std::atomic<uint32_t>& GetLevelCount(LogLevel level) const;
+        const Atomic<uint32_t>& GetLevelCount(LogLevel level) const;
 
-        std::atomic<uint32_t>& GetLevelCount(LogLevel level)
+        Atomic<uint32_t>& GetLevelCount(LogLevel level)
         {
-            return const_cast<std::atomic<uint32_t>&>(const_cast<const LogService*>(this)->GetLevelCount(level));
+            return const_cast<Atomic<uint32_t>&>(const_cast<const LogService*>(this)->GetLevelCount(level));
         }
 
     private:
@@ -63,8 +63,8 @@ namespace he::editor
 
         FileSink m_fileSink{};
 
-        std::atomic<uint32_t> m_levelCounts[5]{};
-        std::atomic<uint32_t> m_entriesHash{};
+        Atomic<uint32_t> m_levelCounts[5]{};
+        Atomic<uint32_t> m_entriesHash{};
 
         mutable Mutex m_mutex{};
         std::deque<Entry> m_entries{};

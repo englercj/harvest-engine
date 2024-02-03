@@ -19,8 +19,6 @@
 #include "he/sqlite/orm.h"
 #include "he/sqlite/orm_storage.h"
 
-#include <functional>
-
 using namespace he::sqlite;
 
 namespace he::assets
@@ -38,21 +36,36 @@ namespace he::assets
         for (const String& path : paths)
         {
             DirectoryWatcher& watcher = m_dirWatchers.EmplaceBack();
-            const Result r = watcher.Open(path.Data());
-            if (!r)
+            const Result rc = watcher.Open(path.Data());
+            if (!HE_VERIFY(rc,
+                HE_MSG("Failed to open path for watching."),
+                HE_KV(path, path),
+                HE_KV(result, r)))
             {
-                HE_LOG_ERROR(he_assets,
-                    HE_MSG("Failed to open path for watching."),
-                    HE_KV(path, path),
-                    HE_KV(result, r));
                 Stop();
                 return false;
             }
         }
 
         m_running = true;
-        m_scanThread = std::thread(std::bind(&AssetDatabaseUpdater::ScanThreadFunc, this));
-        m_watchThread = std::thread(std::bind(&AssetDatabaseUpdater::FileWatchThreadFunc, this));
+
+        Result rc = m_scanThread.Start({ &AssetDatabaseUpdater::ScanThreadFunc, this });
+        if (!HE_VERIFY(rc,
+            HE_MSG("Failed to create asset scan thread."),
+            HE_KV(result, rc)))
+        {
+            Stop();
+            return false;
+        }
+
+        rc = m_watchThread.Start({ &AssetDatabaseUpdater::FileWatchThreadFunc, this });
+        if (!HE_VERIFY(rc,
+            HE_MSG("Failed to create asset watch thread."),
+            HE_KV(result, rc)))
+        {
+            Stop();
+            return false;
+        }
 
         return true;
     }
@@ -61,20 +74,22 @@ namespace he::assets
     {
         m_running = false;
 
-        if (m_watchThread.joinable())
-            m_watchThread.join();
+        if (m_watchThread.IsJoinable())
+            m_watchThread.Join();
 
-        if (m_scanThread.joinable())
-            m_scanThread.join();
+        if (m_scanThread.IsJoinable())
+            m_scanThread.Join();
 
         m_dirWatchers.Clear();
     }
 
-    void AssetDatabaseUpdater::ScanThreadFunc()
+    void AssetDatabaseUpdater::ScanThreadFunc(void* instance)
     {
-        SetCurrentThreadName("[HE] Asset File Scanner");
+        Thread::SetName("[HE] Asset File Scanner");
 
-        const Span<const String> paths = m_db.ContentRoots();
+        AssetDatabaseUpdater* updater = static_cast<AssetDatabaseUpdater*>(instance);
+
+        const Span<const String> paths = updater->m_db.ContentRoots();
 
         Vector<String> directoriesToScan;
         directoriesToScan = paths;
@@ -118,7 +133,7 @@ namespace he::assets
                 if (ext != AssetFileExtension)
                     continue;
 
-                if (!m_db.UpdateAssetFile(fullPath.Data()))
+                if (!updater->m_db.UpdateAssetFile(fullPath.Data()))
                 {
                     HE_LOG_ERROR(he_assets,
                         HE_MSG("Failed to update database entries for asset file."),
@@ -130,7 +145,7 @@ namespace he::assets
                     sqlite::Where(sqlite::Col(&AssetFileModel::filePath) == fullPath),
                     sqlite::Set(&AssetFileModel::scanToken, m_scanToken));
 
-                if (!m_db.Storage().Execute(query))
+                if (!updater->m_db.Storage().Execute(query))
                 {
                     HE_LOG_ERROR(he_assets,
                         HE_MSG("Failed to update asset in DB to latest scan token. Asset metadata may be removed from DB."),
@@ -144,13 +159,15 @@ namespace he::assets
         m_onReadySignal.Dispatch();
     }
 
-    void AssetDatabaseUpdater::FileWatchThreadFunc()
+    void AssetDatabaseUpdater::FileWatchThreadFunc(void* instance)
     {
-        SetCurrentThreadName("[HE] Asset File Watcher");
+        Thread::SetName("[HE] Asset File Watcher");
 
-        while (m_running)
+        AssetDatabaseUpdater* updater = static_cast<AssetDatabaseUpdater*>(instance);
+
+        while (updater->m_running)
         {
-            for (DirectoryWatcher& watcher : m_dirWatchers)
+            for (DirectoryWatcher& watcher : updater->m_dirWatchers)
             {
                 DirectoryWatcher::Event evt;
                 const Result r = watcher.WaitForEvent(evt, Duration_Zero);
@@ -165,11 +182,11 @@ namespace he::assets
 
                         if (evt.reason == FileChangeReason::Removed || evt.reason == FileChangeReason::Renamed_OldName)
                         {
-                            m_db.OnAssetFileDeleted(evt.path.Data());
+                            updater->m_db.OnAssetFileDeleted(evt.path.Data());
                         }
                         else
                         {
-                            m_db.OnAssetFileUpdated(evt.path.Data());
+                            updater->m_db.OnAssetFileUpdated(evt.path.Data());
                         }
                         break;
                     }
@@ -188,7 +205,7 @@ namespace he::assets
 
             if (m_running)
             {
-                SleepCurrentThread(FromPeriod<Seconds>(1));
+                Thread::Sleep(FromPeriod<Seconds>(1));
             }
         }
     }

@@ -1,8 +1,9 @@
 -- Copyright Chad Engler
 
-return function (plugin)
+return function (plugin, install_dirs)
     function he.get_nodejs_path()
-        local node_path = path.join(he.get_plugin("nodejs.nodejs")._install_dirs["*"], "node")
+        local install_dir = install_dirs["*"]
+        local node_path = path.join(install_dir, "node")
 
         if os.ishost("windows") then
             node_path = node_path .. ".exe"
@@ -12,7 +13,8 @@ return function (plugin)
     end
 
     function he.get_npmjs_path()
-        local npm_path = path.join(he.get_plugin("nodejs.nodejs")._install_dirs["*"], "npm")
+        local install_dir = install_dirs["*"]
+        local npm_path = path.join(install_dir, "npm")
 
         if os.ishost("windows") then
             npm_path = npm_path .. ".cmd"

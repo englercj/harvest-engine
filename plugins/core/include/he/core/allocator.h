@@ -9,8 +9,12 @@
 
 // Define placement new manually. Doing this instead of including <new> has a major impact
 // on reducing compile times, especially since this file is included everywhere.
-#define __PLACEMENT_NEW_INLINE
-[[nodiscard]] constexpr inline void* operator new(size_t, void* ptr) noexcept { return ptr; }
+#if HE_COMPILER_MSVC
+    #define __PLACEMENT_NEW_INLINE
+    [[nodiscard]] inline void* operator new(size_t, void* ptr) noexcept { return ptr; }
+#else
+    #include <new>
+#endif
 
 namespace he
 {
@@ -26,7 +30,7 @@ namespace he
     {
     public:
         /// The default alignment value that all allocations will use.
-        static constexpr size_t DefaultAlignment = alignof(max_align_t);
+        static constexpr size_t DefaultAlignment = alignof(MaxAlign);
 
         /// Gets an allocator used for general allocations throughout the engine.
         /// Most places in the engine that allocate also take an allocator parameter, which

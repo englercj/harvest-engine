@@ -58,6 +58,7 @@ homepage = ""
 
     [[modules.variants]]
         conditions = ["system:win32"]
+        public_dependson = ["sys:Shlwapi", "sys:User32", "sys:Kernel32"]
         public_defines = [
             "HE_IMPL_PLATFORM_RWLOCK_SIZE=8",
             "HE_IMPL_PLATFORM_MUTEX_SIZE=8",

@@ -117,6 +117,7 @@ namespace he
             m_head = Exchange(x.m_head, nullptr);
             m_tail = Exchange(x.m_tail, nullptr);
             m_size = Exchange(x.m_size, 0);
+            return *this;
         }
 
         bool IsEmpty() const { return m_size == 0; }
@@ -130,9 +131,9 @@ namespace he
             T* node = m_head;
             while (node)
             {
-                T* next = node->*Link.next;
-                node->*Link.prev = nullptr;
-                node->*Link.next = nullptr;
+                T* next = (node->*Link).next;
+                (node->*Link).prev = nullptr;
+                (node->*Link).next = nullptr;
                 node = next;
             }
 
@@ -143,8 +144,8 @@ namespace he
 
         T* Front() const { return m_head; }
         T* Back() const { return m_tail; }
-        T* Next(const T* node) const { return node ? node->*Link.next : nullptr; }
-        T* Prev(const T* node) const { return node ? node->*Link.prev : nullptr; }
+        T* Next(const T* node) const { return node ? (node->*Link).next : nullptr; }
+        T* Prev(const T* node) const { return node ? (node->*Link).prev : nullptr; }
 
         void PushBack(T* node)
         {
@@ -155,8 +156,8 @@ namespace he
             }
             else
             {
-                node->*Link.prev = m_tail;
-                m_tail->*Link.next = node;
+                (node->*Link).prev = m_tail;
+                (m_tail->*Link).next = node;
                 m_tail = node;
             }
             ++m_size;
@@ -171,8 +172,8 @@ namespace he
             }
             else
             {
-                node->*Link.next = m_head;
-                m_head->*Link.prev = node;
+                (node->*Link).next = m_head;
+                (m_head->*Link).prev = node;
                 m_head = node;
             }
             ++m_size;
@@ -180,21 +181,21 @@ namespace he
 
         void Remove(T* node)
         {
-            T* prev = node->*Link.prev;
-            T* next = node->*Link.next;
+            T* prev = (node->*Link).prev;
+            T* next = (node->*Link).next;
 
             if (prev)
-                prev->*Link.next = next;
+                (prev->*Link).next = next;
             else
                 m_head = next;
 
             if (next)
-                next->*Link.prev = prev;
+                (next->*Link).prev = prev;
             else
                 m_tail = prev;
 
-            node->*Link.prev = nullptr;
-            node->*Link.next = nullptr;
+            (node->*Link).prev = nullptr;
+            (node->*Link).next = nullptr;
 
             --m_size;
         }

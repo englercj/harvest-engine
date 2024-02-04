@@ -636,8 +636,27 @@ namespace he
     template <typename T> struct _UnwrapEnum<T, true> { using Type = UnderlyingType<T>; };
     /// \endinternal
 
+    /// Resolves a type `T` to the underlying type if it is an enum, or to `T` if it is not.
+    ///
+    /// \tparam T The type to modify.
     template <typename T>
     using UnwrapEnum = _UnwrapEnum<T, IsEnum<T>>::Type;
+
+#if HE_HAS_BUILTIN(__make_unsigned)
+    template <typename T>
+    using MakeUnsigned = __make_unsigned(T);
+#else
+    /// \internal
+    template <size_t> struct _MakeUnsigned;
+    template <> struct _MakeUnsigned<1> { template <typename T> using Type = EnableIf<!IsSame<T, bool>, unsigned char>; };
+    template <> struct _MakeUnsigned<2> { template <typename T> using Type = unsigned short; };
+    template <> struct _MakeUnsigned<4> { template <typename T> using Type = Conditional<IsSame<T, long> || IsSame<T, unsigned long>, unsigned long, unsigned int>; };
+    template <> struct _MakeUnsigned<8> { template <typename T> using Type = Conditional<IsSame<T, long> || IsSame<T, unsigned long>, unsigned long, unsigned long long>; };
+    /// \endinternal
+
+    template <typename T>
+    using MakeUnsigned = _MakeUnsigned<sizeof(T)>::template Type<T>;
+#endif
 
     // --------------------------------------------------------------------------------------------
     // Supported operations

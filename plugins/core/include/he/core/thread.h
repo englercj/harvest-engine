@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include "he/core/allocator.h"
 #include "he/core/clock.h"
 #include "he/core/invoke.h"
 #include "he/core/result.h"
@@ -145,7 +146,7 @@ namespace he
 
     /// \internal
     template <typename T, uint32_t... Indices>
-    [[nodiscard]] static constexpr auto _GetThreadInvoker() noexcept
+    [[nodiscard]] static constexpr auto _GetThreadInvoker(IndexSequence<Indices...>) noexcept
     {
         return &_ThreadInvoker<T, Indices...>;
     }
@@ -155,7 +156,7 @@ namespace he
     {
         using DataTuple = Tuple<Decay<F>, Decay<Args>...>;
 
-        DataTuple* copiedData = Allocator::GetDefault().New<Tuple>(Forward<F>(func), Forward<Args>(args)...);
+        DataTuple* copiedData = Allocator::GetDefault().New<DataTuple>(Forward<F>(func), Forward<Args>(args)...);
 
         ThreadDesc desc;
         desc.proc = _GetThreadInvoker<DataTuple>(MakeIndexSequence<1 + sizeof...(Args)>{});

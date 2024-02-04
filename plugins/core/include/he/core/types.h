@@ -8,43 +8,59 @@
 using int8_t = signed char;
 using int16_t = short;
 using int32_t = int;
-using int64_t = long long;
 
 using uint8_t = unsigned char;
 using uint16_t = unsigned short;
 using uint32_t = unsigned int;
-using uint64_t = unsigned long long;
 
 using nullptr_t = decltype(nullptr);
 
+// 64-bit types
+#if defined(__INT64_TYPE__)
+    using int64_t = __INT64_TYPE__;
+    using uint64_t = unsigned __INT64_TYPE__;
+#else
+    using int64_t = long long;
+    using uint64_t = unsigned long long;
+#endif
+
+// size type
 #if defined(__SIZE_TYPE__)
     using size_t = __SIZE_TYPE__;
+#elif HE_COMPILER_MSVC
+    #if HE_CPU_64_BIT
+        using size_t = unsigned __int64;
+    #else
+        using size_t = unsigned int;
+    #endif
 #else
     using size_t = decltype(sizeof(0));
 #endif
 
+// ptr diff types
 #if defined(__PTRDIFF_TYPE__)
     using ptrdiff_t = __PTRDIFF_TYPE__;
     using intptr_t = __PTRDIFF_TYPE__;
     using uintptr_t = unsigned __PTRDIFF_TYPE__;
+#elif 0&& HE_COMPILER_MSVC
+    #if HE_CPU_64_BIT
+        using ptrdiff_t = __int64;
+        using intptr_t = __int64;
+        using uintptr_t = unsigned __int64;
+    #else
+        using ptrdiff_t = int;
+        using intptr_t = int;
+        using uintptr_t = unsigned int;
+    #endif
 #else
     using ptrdiff_t = decltype(reinterpret_cast<char*>(0) - reinterpret_cast<char*>(0));
-    using intptr_t = ptrdiff_t;
-
-    #if HE_HAS_BUILTIN(__make_unsigned)
-        using uintptr_t = __make_unsigned(ptrdiff_t);
+    #if HE_CPU_64_BIT
+        using intptr_t = long long;
+        using uintptr_t = unsigned long long;
     #else
-        using uintptr_t = sizeof(ptrdiff_t) == 8 ? unsigned long long
-            : sizeof(ptrdiff_t) == 4 ? unsigned long
-            : sizeof(ptrdiff_t) == 2 ? unsigned short
-            : sizeof(ptrdiff_t) == 1 ? unsigned char;
+        using intptr_t = int;
+        using uintptr_t = unsigned int;
     #endif
-#endif
-
-#if defined(__WINT_TYPE__)
-    using wint_t = __WINT_TYPE__;
-#else
-    using wint_t = int;
 #endif
 
 namespace he

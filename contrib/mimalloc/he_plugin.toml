@@ -36,7 +36,7 @@ homepage = "https://github.com/microsoft/mimalloc"
 
         # Override their prim.c with our own so we can detect WASM
         # "src/prim/prim.c",
-        "%{he.get_module_file_dir('mimalloc')}/prim.c"
+        "%{he.get_module_file_dir('mimalloc')}/prim/prim.c"
     ]
     public_includedirs = ["include"]
     private_includedirs = [

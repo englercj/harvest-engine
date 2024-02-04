@@ -13,7 +13,7 @@
 #include "he/core/path.h"
 #include "he/core/string_fmt.h"
 
-#if HE_PLATFORM_WASM
+#if defined(HE_PLATFORM_WASM)
     #include "wasm/lib_core.wasm.h"
 #else
     #include <cstdio>
@@ -118,7 +118,7 @@ namespace he
     {
         const String msg = Format("[{:s}]({}) {}\n", source.level, source.category, FmtJoin(kvs, kvs + count, ", "));
 
-    #if HE_PLATFORM_WASM
+    #if defined(HE_PLATFORM_WASM)
         heWASM_ConsoleLogLevel level = heWASM_ConsoleLogLevel::Log;
         switch (source.level)
         {

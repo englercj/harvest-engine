@@ -36,8 +36,8 @@ HE_TEST(core, intrusive_list, Construct_Move)
     FixtureEntry node2{ 2 };
 
     FixtureList v;
-    v.PushBack(node1);
-    v.PushBack(node2);
+    v.PushBack(&node1);
+    v.PushBack(&node2);
     HE_EXPECT_EQ(v.Size(), 2);
 
     FixtureList v2{ Move(v) };
@@ -98,13 +98,13 @@ HE_TEST(core, intrusive_list, Clear)
 
     v.PushBack(&node1);
     HE_EXPECT(!v.IsEmpty());
-    HE_EXPECT_NE_PTR(node1.link.next, nullptr);
-    HE_EXPECT_NE_PTR(node1.link.prev, nullptr);
+    HE_EXPECT_NE_PTR(v.Front(), nullptr);
+    HE_EXPECT_NE_PTR(v.Back(), nullptr);
 
     v.Clear();
     HE_EXPECT(v.IsEmpty());
-    HE_EXPECT_EQ_PTR(node1.link.next, nullptr);
-    HE_EXPECT_EQ_PTR(node1.link.prev, nullptr);
+    HE_EXPECT_EQ_PTR(v.Front(), nullptr);
+    HE_EXPECT_EQ_PTR(v.Back(), nullptr);
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -195,7 +195,7 @@ HE_TEST(core, intrusive_list, PushFront)
 }
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST(core, intrusive_list, PushFront)
+HE_TEST(core, intrusive_list, Remove)
 {
     FixtureEntry node1{ 1 };
     FixtureEntry node2{ 2 };
@@ -263,7 +263,7 @@ HE_TEST(core, intrusive_list, PushFront)
 }
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST(core, intrusive_list, PushFront)
+HE_TEST(core, intrusive_list, RangeBasedFor)
 {
     FixtureEntry node1{ 1 };
     FixtureEntry node2{ 2 };

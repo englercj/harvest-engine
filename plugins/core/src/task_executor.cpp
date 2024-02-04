@@ -3,6 +3,8 @@
 #include "he/core/task_executor.h"
 
 #include "he/core/cpu_info.h"
+#include "he/core/result.h"
+#include "he/core/result_fmt.h"
 #include "he/core/thread.h"
 #include "he/core/utils.h"
 

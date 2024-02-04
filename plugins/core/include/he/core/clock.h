@@ -29,7 +29,13 @@ namespace he
     struct Time
     {
         uint64_t val;
-        auto operator<=>(const Time&) const = default;
+
+        constexpr bool operator==(const Time& x) const { return val == x.val; }
+        constexpr bool operator!=(const Time& x) const { return val != x.val; }
+        constexpr bool operator<(const Time& x) const { return val < x.val; }
+        constexpr bool operator<=(const Time& x) const { return val <= x.val; }
+        constexpr bool operator>(const Time& x) const { return val > x.val; }
+        constexpr bool operator>=(const Time& x) const { return val >= x.val; }
     };
 
     /// Base clock template that represents a clock that can be queried.
@@ -91,7 +97,13 @@ namespace he
     struct Duration
     {
         int64_t val;
-        auto operator<=>(const Duration&) const = default;
+
+        constexpr bool operator==(const Duration& x) const { return val == x.val; }
+        constexpr bool operator!=(const Duration& x) const { return val != x.val; }
+        constexpr bool operator<(const Duration& x) const { return val < x.val; }
+        constexpr bool operator<=(const Duration& x) const { return val <= x.val; }
+        constexpr bool operator>(const Duration& x) const { return val > x.val; }
+        constexpr bool operator>=(const Duration& x) const { return val >= x.val; }
     };
 
     inline constexpr Duration Duration_Zero{ 0 };

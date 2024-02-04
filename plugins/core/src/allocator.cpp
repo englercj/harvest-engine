@@ -44,6 +44,15 @@ namespace he
 
     void* MiMallocAllocator::Realloc(void* ptr, size_t newSize, size_t alignment) noexcept
     {
+        if (ptr == nullptr)
+            return mi_malloc_aligned(newSize, alignment);
+
+        if (newSize == 0)
+        {
+            mi_free(ptr);
+            return nullptr;
+        }
+
         return mi_realloc_aligned(ptr, newSize, alignment);
     }
 
@@ -57,18 +66,18 @@ namespace he
 
 #if defined(_MSC_VER) && defined(_Ret_notnull_) && defined(_Post_writable_byte_size_)
     // stay consistent with VCRT definitions
-    #define HE_DECL_NEW(n)          __declspec(restrict) _Ret_notnull_ _Post_writable_byte_size_(n)
-    #define HE_DECL_NEW_NOTHROW(n)  __declspec(restrict) _Ret_maybenull_ _Success_(return != NULL) _Post_writable_byte_size_(n)
+    #define HE_DECL_NEW(n)          __declspec(allocator) _Ret_notnull_ _Post_writable_byte_size_(n)
+    #define HE_DECL_NEW_NOTHROW(n)  __declspec(allocator) _Ret_maybenull_ _Success_(return != NULL) _Post_writable_byte_size_(n)
 #else
     #define HE_DECL_NEW(n)
     #define HE_DECL_NEW_NOTHROW(n)
 #endif
 
-[[nodiscard]] HE_DECL_NEW(n) void* operator new(std::size_t n) noexcept(false) { return he::Allocator::GetDefault().Malloc(n); }
-[[nodiscard]] HE_DECL_NEW(n) void* operator new[](std::size_t n) noexcept(false) { return he::Allocator::GetDefault().Malloc(n); }
+[[nodiscard]] void* operator new(std::size_t n) noexcept(false) { return he::Allocator::GetDefault().Malloc(n); }
+[[nodiscard]] void* operator new[](std::size_t n) noexcept(false) { return he::Allocator::GetDefault().Malloc(n); }
 
-[[nodiscard]] HE_DECL_NEW_NOTHROW(n) void* operator new(std::size_t n, const std::nothrow_t&) noexcept { return he::Allocator::GetDefault().Malloc(n); }
-[[nodiscard]] HE_DECL_NEW_NOTHROW(n) void* operator new[](std::size_t n, const std::nothrow_t&) noexcept { return he::Allocator::GetDefault().Malloc(n); }
+[[nodiscard]] void* operator new(std::size_t n, const std::nothrow_t&) noexcept { return he::Allocator::GetDefault().Malloc(n); }
+[[nodiscard]] void* operator new[](std::size_t n, const std::nothrow_t&) noexcept { return he::Allocator::GetDefault().Malloc(n); }
 
 [[nodiscard]] void* operator new(std::size_t n, std::align_val_t al) noexcept(false) { return he::Allocator::GetDefault().Malloc(n, static_cast<size_t>(al)); }
 [[nodiscard]] void* operator new[](std::size_t n, std::align_val_t al) noexcept(false) { return he::Allocator::GetDefault().Malloc(n, static_cast<size_t>(al)); }

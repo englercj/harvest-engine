@@ -2,12 +2,12 @@
 
 #pragma once
 
+#include "he/core/assert.h"
 #include "he/core/compiler.h"
 #include "he/core/cpu.h"
+#include "he/core/memory_ops.h"
 #include "he/core/type_traits.h"
 #include "he/core/types.h"
-
-#include <atomic>
 
 namespace he
 {
@@ -48,7 +48,8 @@ namespace he
     class Atomic
     {
         static_assert(!IsReference<T>, "Reference types are not supported by Atomic<T>.");
-        static_assert(IsIntegral<T> || IsEnum<T>, "Only integral, enum, and pointer types are supported by Atomic<T>.");
+        static_assert(IsIntegral<T> || IsEnum<T> || IsPointer<T>, "Only integral, enum, and pointer types are supported by Atomic<T>.");
+        static_assert(!IsPointer<T> || !IsFunction<RemovePointer<T>>, "Function pointers are not supported by Atomic<T>.");
         static_assert(sizeof(T) == 1 || sizeof(T) == 2 || sizeof(T) == 4 || sizeof(T) == 8, "Unsupported atomic type size.");
 
     public:
@@ -120,13 +121,13 @@ namespace he
         ///
         /// \param[in] amount The amount to add.
         /// \return The value after the addition.
-        T operator+=(T amount) noexcept requires(SupportsArithmetic) { return FetchAdd(amount) + amount; }
+        T operator+=(DiffType amount) noexcept requires(SupportsArithmetic) { return FetchAdd(amount) + amount; }
 
         /// Atomically subtracts `amount` from the current value. Equivalent to `FetchSub(amount) - amount`.
         ///
         /// \param[in] amount The amount to subtract.
         /// \return The value after the subtraction.
-        T operator-=(T amount) noexcept requires(SupportsArithmetic) { return FetchSub(amount) - amount; }
+        T operator-=(DiffType amount) noexcept requires(SupportsArithmetic) { return FetchSub(amount) - amount; }
 
         /// Atomically bitwise ANDs `operand` with the current value. Equivalent to `FetchAnd(operand) & operand`.
         ///

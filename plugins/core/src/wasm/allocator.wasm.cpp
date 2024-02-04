@@ -21,6 +21,15 @@ namespace he
 
     void* CrtAllocator::Realloc(void* ptr, size_t newSize, size_t alignment) noexcept
     {
+        if (ptr == nullptr)
+            return mi_malloc_aligned(newSize, alignment);
+
+        if (newSize == 0)
+        {
+            mi_free(ptr);
+            return nullptr;
+        }
+
         return mi_realloc_aligned(ptr, newSize, alignment);
     }
 

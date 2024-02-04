@@ -24,7 +24,7 @@ HE_TEST(core, log, LogLevel)
     static_assert(static_cast<uint8_t>(LogLevel::Warn) == HE_LOG_LEVEL_WARN);
     static_assert(static_cast<uint8_t>(LogLevel::Error) == HE_LOG_LEVEL_ERROR);
 
-    static_assert(IsSame<std::underlying_type_t<LogLevel>, uint8_t>);
+    static_assert(IsSame<UnderlyingType<LogLevel>, uint8_t>);
 
     static_assert(HE_LOG_ENABLE_LEVEL >= HE_LOG_LEVEL_TRACE && HE_LOG_ENABLE_LEVEL <= HE_LOG_LEVEL_ERROR);
 }

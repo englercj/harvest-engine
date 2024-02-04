@@ -698,8 +698,12 @@ namespace he
     }
 
     // --------------------------------------------------------------------------------------------
-    template <Pointer T>
-    const void* FmtPtr(T p) { return BitCast<const void*>(p); }
+    template <typename T> struct _FmtPtr;
+    template <typename T> struct _FmtPtr<T*> { static const void* Apply(T* p) { return static_cast<const void*>(p); } };
+    template <> struct _FmtPtr<nullptr_t> { static const void* Apply(nullptr_t) { return reinterpret_cast<const void*>(static_cast<uintptr_t>(0)); } };
+
+    template <typename T>
+    const void* FmtPtr(T p) { return _FmtPtr<T>::Apply(p); }
 
     template <typename It>
     struct FmtJoinView

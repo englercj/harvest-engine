@@ -99,7 +99,7 @@ namespace he
         [[nodiscard]] T* New(Args&&... args) noexcept
         {
             void* p = Malloc<T>(1);
-            return ::new(p) T(Forward<Args>(args)...);
+            return ::new(p) T{ Forward<Args>(args)... };
         }
 
         /// Allocates and constructs a new array of `T`.
@@ -142,7 +142,7 @@ namespace he
             T* p = reinterpret_cast<T*>(ptr + Offset);
             for (size_t i = 0; i < count; ++i)
             {
-                ::new(p + i) T(Forward<Args>(args)...);
+                ::new(p + i) T{ Forward<Args>(args)... };
             }
 
             return p;

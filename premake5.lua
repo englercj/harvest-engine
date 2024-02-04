@@ -2,13 +2,6 @@
 
 include "scripts/_setup.lua"
 
--- Import the plugins that are referenced by the project, if any
-if he.project and he.project.plugins then
-    he.cwd_push(path.getdirectory(he.project_filename))
-    he.import_plugins(he.project.plugins, he.project.plugin_import_options)
-    he.cwd_pop()
-end
-
 -- Enable only the platforms listed by the project, if any
 if he.project and he.project.platforms then
     local host = os.host()
@@ -17,6 +10,13 @@ if he.project and he.project.platforms then
     end
 else
     he.enable_all_platforms(os.host())
+end
+
+-- Import the plugins that are referenced by the project, if any
+if he.project and he.project.plugins then
+    he.cwd_push(path.getdirectory(he.project_filename))
+    he.import_plugins(he.project.plugins, he.project.plugin_import_options)
+    he.cwd_pop()
 end
 
 -- Choose the default startup project

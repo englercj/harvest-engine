@@ -209,6 +209,29 @@ HE_TEST(core, type_traits, UnwrapEnum)
 }
 
 // ------------------------------------------------------------------------------------------------
+HE_TEST(core, type_traits, MakeUnsigned)
+{
+    static_assert(IsSame<MakeUnsigned<char>, unsigned char>);
+    static_assert(IsSame<MakeUnsigned<short>, unsigned short>);
+    static_assert(IsSame<MakeUnsigned<int>, unsigned int>);
+    static_assert(IsSame<MakeUnsigned<long>, unsigned long>);
+    static_assert(IsSame<MakeUnsigned<long long>, unsigned long long>);
+
+    static_assert(IsSame<MakeUnsigned<unsigned char>, unsigned char>);
+    static_assert(IsSame<MakeUnsigned<unsigned short>, unsigned short>);
+    static_assert(IsSame<MakeUnsigned<unsigned int>, unsigned int>);
+    static_assert(IsSame<MakeUnsigned<unsigned long>, unsigned long>);
+    static_assert(IsSame<MakeUnsigned<unsigned long long>, unsigned long long>);
+
+    static_assert(IsSame<MakeUnsigned<intptr_t>, uintptr_t>);
+
+    // Doesn't compile
+    //static_assert(IsSame<MakeUnsigned<bool>, void>);
+    //static_assert(IsSame<MakeUnsigned<void>, void>);
+    //static_assert(IsSame<MakeUnsigned<void*>, void>);
+}
+
+// ------------------------------------------------------------------------------------------------
 // Type relationships
 // ------------------------------------------------------------------------------------------------
 

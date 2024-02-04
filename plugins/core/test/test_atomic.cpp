@@ -8,6 +8,27 @@
 using namespace he;
 
 // ------------------------------------------------------------------------------------------------
+template <typename T>
+struct AtomicVal
+{
+    static constexpr T Zero{};
+    static constexpr T Value{ static_cast<T>(-1) };
+};
+
+template <typename T>
+struct AtomicVal<T*>
+{
+    static T* Zero;
+    static T* Value;
+};
+
+template <typename T>
+T* AtomicVal<T*>::Zero{ nullptr };
+
+template <typename T>
+T* AtomicVal<T*>::Value{ reinterpret_cast<T*>(static_cast<uintptr_t>(0xffffffff)) };
+
+// ------------------------------------------------------------------------------------------------
 template <template <typename> typename TestType>
 void ApplyAtomicTest_Integral()
 {
@@ -54,31 +75,28 @@ struct TestAtomicCtor
 {
     static void Run()
     {
-        constexpr T Zero{};
-        constexpr T Value{ -1 };
-
         // Default construction
         {
             Atomic<T> a;
-            HE_EXPECT_EQ(a.Load(), Zero);
+            HE_EXPECT_EQ(a.Load(), AtomicVal<T>::Zero);
         }
 
         // Aggregate construction
         {
-            Atomic<T> a{ Value };
-            HE_EXPECT_EQ(a.Load(), Value);
+            Atomic<T> a{ AtomicVal<T>::Value };
+            HE_EXPECT_EQ(a.Load(), AtomicVal<T>::Value);
         }
 
         // Value construction
         {
-            Atomic<T> a = Value;
-            HE_EXPECT_EQ(a.Load(), Value);
+            Atomic<T> a = AtomicVal<T>::Value;
+            HE_EXPECT_EQ(a.Load(), AtomicVal<T>::Value);
         }
 
         // Value construction
         {
-            Atomic<T> a = { Value };
-            HE_EXPECT_EQ(a.Load(), Value);
+            Atomic<T> a = { AtomicVal<T>::Value };
+            HE_EXPECT_EQ(a.Load(), AtomicVal<T>::Value);
         }
     }
 };
@@ -96,13 +114,10 @@ struct TestAtomicLoad
 {
     static void Run()
     {
-        constexpr T Zero{};
-        constexpr T Value{ -1 };
-
         Atomic<T> a;
-        HE_EXPECT_EQ(a.Load(), Zero);
-        HE_EXPECT_EQ(a.Load(MemoryOrder::Relaxed), Zero);
-        HE_EXPECT_EQ(static_cast<T>(a), Zero);
+        HE_EXPECT_EQ(a.Load(), AtomicVal<T>::Zero);
+        HE_EXPECT_EQ(a.Load(MemoryOrder::Relaxed), AtomicVal<T>::Zero);
+        HE_EXPECT_EQ(static_cast<T>(a), AtomicVal<T>::Zero);
     }
 };
 
@@ -119,15 +134,12 @@ struct TestAtomicStore
 {
     static void Run()
     {
-        constexpr T Zero{};
-        constexpr T Value{ -1 };
-
         Atomic<T> a;
-        HE_EXPECT_EQ(a.Load(), Zero);
-        a.Store(Value);
-        HE_EXPECT_EQ(a.Load(), Value);
-        a.Store(Zero, MemoryOrder::SeqCst);
-        HE_EXPECT_EQ(a.Load(), Zero);
+        HE_EXPECT_EQ(a.Load(), AtomicVal<T>::Zero);
+        a.Store(AtomicVal<T>::Value);
+        HE_EXPECT_EQ(a.Load(), AtomicVal<T>::Value);
+        a.Store(AtomicVal<T>::Zero, MemoryOrder::SeqCst);
+        HE_EXPECT_EQ(a.Load(), AtomicVal<T>::Zero);
     }
 };
 
@@ -144,15 +156,12 @@ struct TestAtomicExchange
 {
     static void Run()
     {
-        constexpr T Zero{};
-        constexpr T Value{ -1 };
-
         Atomic<T> a;
-        HE_EXPECT_EQ(a.Load(), Zero);
-        HE_EXPECT_EQ(a.Exchange(Value), Zero);
-        HE_EXPECT_EQ(a.Load(), Value);
-        HE_EXPECT_EQ(a.Exchange(Zero, MemoryOrder::Relaxed), Value);
-        HE_EXPECT_EQ(a.Load(), Zero);
+        HE_EXPECT_EQ(a.Load(), AtomicVal<T>::Zero);
+        HE_EXPECT_EQ(a.Exchange(AtomicVal<T>::Value), AtomicVal<T>::Zero);
+        HE_EXPECT_EQ(a.Load(), AtomicVal<T>::Value);
+        HE_EXPECT_EQ(a.Exchange(AtomicVal<T>::Zero, MemoryOrder::Relaxed), AtomicVal<T>::Value);
+        HE_EXPECT_EQ(a.Load(), AtomicVal<T>::Zero);
     }
 };
 
@@ -169,27 +178,24 @@ struct TestAtomicCASWeak
 {
     static void Run()
     {
-        constexpr T Zero{};
-        constexpr T Value{ -1 };
-
         Atomic<T> a;
-        T expected = Zero;
-        HE_EXPECT_EQ(a.Load(), Zero);
-        HE_EXPECT_EQ(a.CompareExchangeWeak(expected, Value), true);
-        HE_EXPECT_EQ(expected, Zero);
-        HE_EXPECT_EQ(a.Load(), Value);
-        HE_EXPECT_EQ(a.CompareExchangeWeak(expected, Zero), false);
-        HE_EXPECT_EQ(expected, Value);
-        HE_EXPECT_EQ(a.Load(), Value);
+        T expected = AtomicVal<T>::Zero;
+        HE_EXPECT_EQ(a.Load(), AtomicVal<T>::Zero);
+        HE_EXPECT_EQ(a.CompareExchangeWeak(expected, AtomicVal<T>::Value), true);
+        HE_EXPECT_EQ(expected, AtomicVal<T>::Zero);
+        HE_EXPECT_EQ(a.Load(), AtomicVal<T>::Value);
+        HE_EXPECT_EQ(a.CompareExchangeWeak(expected, AtomicVal<T>::Zero), false);
+        HE_EXPECT_EQ(expected, AtomicVal<T>::Value);
+        HE_EXPECT_EQ(a.Load(), AtomicVal<T>::Value);
 
-        expected = Zero;
-        a = Zero;
-        HE_EXPECT_EQ(a.CompareExchangeWeak(expected, Value, MemoryOrder::SeqCst), true);
-        HE_EXPECT_EQ(expected, Zero);
-        HE_EXPECT_EQ(a.Load(), Value);
-        HE_EXPECT_EQ(a.CompareExchangeWeak(expected, Zero, MemoryOrder::Relaxed, MemoryOrder::Relaxed), false);
-        HE_EXPECT_EQ(expected, Value);
-        HE_EXPECT_EQ(a.Load(), Value);
+        expected = AtomicVal<T>::Zero;
+        a = AtomicVal<T>::Zero;
+        HE_EXPECT_EQ(a.CompareExchangeWeak(expected, AtomicVal<T>::Value, MemoryOrder::SeqCst), true);
+        HE_EXPECT_EQ(expected, AtomicVal<T>::Zero);
+        HE_EXPECT_EQ(a.Load(), AtomicVal<T>::Value);
+        HE_EXPECT_EQ(a.CompareExchangeWeak(expected, AtomicVal<T>::Zero, MemoryOrder::Relaxed, MemoryOrder::Relaxed), false);
+        HE_EXPECT_EQ(expected, AtomicVal<T>::Value);
+        HE_EXPECT_EQ(a.Load(), AtomicVal<T>::Value);
     }
 };
 
@@ -206,27 +212,24 @@ struct TestAtomicCASStrong
 {
     static void Run()
     {
-        constexpr T Zero{};
-        constexpr T Value{ -1 };
-
         Atomic<T> a;
-        T expected = Zero;
-        HE_EXPECT_EQ(a.Load(), Zero);
-        HE_EXPECT_EQ(a.CompareExchangeStrong(expected, Value), true);
-        HE_EXPECT_EQ(expected, Zero);
-        HE_EXPECT_EQ(a.Load(), Value);
-        HE_EXPECT_EQ(a.CompareExchangeStrong(expected, Zero), false);
-        HE_EXPECT_EQ(expected, Value);
-        HE_EXPECT_EQ(a.Load(), Value);
+        T expected = AtomicVal<T>::Zero;
+        HE_EXPECT_EQ(a.Load(), AtomicVal<T>::Zero);
+        HE_EXPECT_EQ(a.CompareExchangeStrong(expected, AtomicVal<T>::Value), true);
+        HE_EXPECT_EQ(expected, AtomicVal<T>::Zero);
+        HE_EXPECT_EQ(a.Load(), AtomicVal<T>::Value);
+        HE_EXPECT_EQ(a.CompareExchangeStrong(expected, AtomicVal<T>::Zero), false);
+        HE_EXPECT_EQ(expected, AtomicVal<T>::Value);
+        HE_EXPECT_EQ(a.Load(), AtomicVal<T>::Value);
 
-        expected = Zero;
-        a = Zero;
-        HE_EXPECT_EQ(a.CompareExchangeStrong(expected, Value, MemoryOrder::SeqCst), true);
-        HE_EXPECT_EQ(expected, Zero);
-        HE_EXPECT_EQ(a.Load(), Value);
-        HE_EXPECT_EQ(a.CompareExchangeStrong(expected, Zero, MemoryOrder::Relaxed, MemoryOrder::Relaxed), false);
-        HE_EXPECT_EQ(expected, Value);
-        HE_EXPECT_EQ(a.Load(), Value);
+        expected = AtomicVal<T>::Zero;
+        a = AtomicVal<T>::Zero;
+        HE_EXPECT_EQ(a.CompareExchangeStrong(expected, AtomicVal<T>::Value, MemoryOrder::SeqCst), true);
+        HE_EXPECT_EQ(expected, AtomicVal<T>::Zero);
+        HE_EXPECT_EQ(a.Load(), AtomicVal<T>::Value);
+        HE_EXPECT_EQ(a.CompareExchangeStrong(expected, AtomicVal<T>::Zero, MemoryOrder::Relaxed, MemoryOrder::Relaxed), false);
+        HE_EXPECT_EQ(expected, AtomicVal<T>::Value);
+        HE_EXPECT_EQ(a.Load(), AtomicVal<T>::Value);
     }
 };
 
@@ -257,13 +260,13 @@ struct TestAtomicFetchAdd<T*>
 {
     static void Run()
     {
-        typename T data[2]{};
+        T data[2]{};
         Atomic<T*> a{ data };
-        HE_EXPECT_EQ(a.Load(), data);
-        HE_EXPECT_EQ(a.FetchAdd(1), data);
-        HE_EXPECT_EQ(a.Load(), data + 1);
-        HE_EXPECT_EQ(a.FetchAdd(1, MemoryOrder::Relaxed), data + 1);
-        HE_EXPECT_EQ(a.Load(), data + 2);
+        HE_EXPECT_EQ_PTR(a.Load(), data);
+        HE_EXPECT_EQ_PTR(a.FetchAdd(1), data);
+        HE_EXPECT_EQ_PTR(a.Load(), data + 1);
+        HE_EXPECT_EQ_PTR(a.FetchAdd(1, MemoryOrder::Relaxed), data + 1);
+        HE_EXPECT_EQ_PTR(a.Load(), data + 2);
     }
 };
 
@@ -294,13 +297,13 @@ struct TestAtomicFetchSub<T*>
 {
     static void Run()
     {
-        typename T data[2]{};
+        T data[2]{};
         Atomic<T*> a{ data + 2 };
-        HE_EXPECT_EQ(a.Load(), data + 2);
-        HE_EXPECT_EQ(a.FetchSub(1), data + 2);
-        HE_EXPECT_EQ(a.Load(), data + 1);
-        HE_EXPECT_EQ(a.FetchSub(1, MemoryOrder::Relaxed), data + 1);
-        HE_EXPECT_EQ(a.Load(), data);
+        HE_EXPECT_EQ_PTR(a.Load(), data + 2);
+        HE_EXPECT_EQ_PTR(a.FetchSub(1), data + 2);
+        HE_EXPECT_EQ_PTR(a.Load(), data + 1);
+        HE_EXPECT_EQ_PTR(a.FetchSub(1, MemoryOrder::Relaxed), data + 1);
+        HE_EXPECT_EQ_PTR(a.Load(), data);
     }
 };
 
@@ -377,15 +380,12 @@ struct TestAtomicOperatorAssign
 {
     static void Run()
     {
-        constexpr T Zero{};
-        constexpr T Value{ -1 };
-
         Atomic<T> a;
-        HE_EXPECT_EQ(a.Load(), Zero);
-        a = Value;
-        HE_EXPECT_EQ(a.Load(), Value);
-        a = Zero;
-        HE_EXPECT_EQ(a.Load(), Zero);
+        HE_EXPECT_EQ(a.Load(), AtomicVal<T>::Zero);
+        a = AtomicVal<T>::Value;
+        HE_EXPECT_EQ(a.Load(), AtomicVal<T>::Value);
+        a = AtomicVal<T>::Zero;
+        HE_EXPECT_EQ(a.Load(), AtomicVal<T>::Zero);
     }
 };
 
@@ -414,12 +414,12 @@ struct TestAtomicOperatorInc<T*>
 {
     static void Run()
     {
-        typename T data[2]{};
+        T data[2]{};
         Atomic<T*> a{ data };
-        HE_EXPECT_EQ(a++, data);
-        HE_EXPECT_EQ(a.Load(), data + 1);
-        HE_EXPECT_EQ(++a, data + 2);
-        HE_EXPECT_EQ(a.Load(), data + 2);
+        HE_EXPECT_EQ_PTR(a++, data);
+        HE_EXPECT_EQ_PTR(a.Load(), data + 1);
+        HE_EXPECT_EQ_PTR(++a, data + 2);
+        HE_EXPECT_EQ_PTR(a.Load(), data + 2);
     }
 };
 
@@ -449,12 +449,12 @@ struct TestAtomicOperatorDec<T*>
 {
     static void Run()
     {
-        typename T data[2]{};
+        T data[2]{};
         Atomic<T*> a{ data + 2 };
-        HE_EXPECT_EQ(a--, data + 2);
-        HE_EXPECT_EQ(a.Load(), data + 1);
-        HE_EXPECT_EQ(--a, data);
-        HE_EXPECT_EQ(a.Load(), data);
+        HE_EXPECT_EQ_PTR(a--, data + 2);
+        HE_EXPECT_EQ_PTR(a.Load(), data + 1);
+        HE_EXPECT_EQ_PTR(--a, data);
+        HE_EXPECT_EQ_PTR(a.Load(), data);
     }
 };
 
@@ -484,12 +484,12 @@ struct TestAtomicOperatorAddEq<T*>
 {
     static void Run()
     {
-        typename T data[2]{};
+        T data[2]{};
         Atomic<T*> a{ data };
-        HE_EXPECT_EQ(a += 1, data + 1);
-        HE_EXPECT_EQ(a.Load(), data + 1);
-        HE_EXPECT_EQ(a += 1, data + 2);
-        HE_EXPECT_EQ(a.Load(), data + 2);
+        HE_EXPECT_EQ_PTR(a += 1, data + 1);
+        HE_EXPECT_EQ_PTR(a.Load(), data + 1);
+        HE_EXPECT_EQ_PTR(a += 1, data + 2);
+        HE_EXPECT_EQ_PTR(a.Load(), data + 2);
     }
 };
 
@@ -519,12 +519,12 @@ struct TestAtomicOperatorSubEq<T*>
 {
     static void Run()
     {
-        typename T data[2]{};
+        T data[2]{};
         Atomic<T*> a{ data + 2 };
-        HE_EXPECT_EQ(a -= 1, data + 1);
-        HE_EXPECT_EQ(a.Load(), data + 1);
-        HE_EXPECT_EQ(a -= 1, data);
-        HE_EXPECT_EQ(a.Load(), data);
+        HE_EXPECT_EQ_PTR(a -= 1, data + 1);
+        HE_EXPECT_EQ_PTR(a.Load(), data + 1);
+        HE_EXPECT_EQ_PTR(a -= 1, data);
+        HE_EXPECT_EQ_PTR(a.Load(), data);
     }
 };
 

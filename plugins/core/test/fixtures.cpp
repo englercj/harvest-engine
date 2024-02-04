@@ -103,7 +103,7 @@ namespace he
             s_ctorCount = 0;
             s_dtorCount = 0;
 
-            CtorTest* mem = alloc.New<CtorTest>(16);
+            CtorTest* mem = alloc.New<CtorTest>(16u);
             HE_EXPECT(mem);
             HE_EXPECT(IsAligned(mem, alignof(CtorTest)));
             HE_EXPECT_EQ(s_ctorCount, 16);
@@ -123,7 +123,7 @@ namespace he
             s_ctorCount = 0;
             s_dtorCount = 0;
 
-            OverAligned* mem = alloc.New<OverAligned>(16);
+            OverAligned* mem = alloc.New<OverAligned>(16u);
             HE_EXPECT(mem);
             HE_EXPECT(IsAligned(mem, alignof(OverAligned)));
             HE_EXPECT_EQ(s_ctorCount, 16);
@@ -152,7 +152,7 @@ namespace he
             s_ctorCount = 0;
             s_dtorCount = 0;
 
-            CtorTest* mem = alloc.NewArray<CtorTest>(16, 2);
+            CtorTest* mem = alloc.NewArray<CtorTest>(16, 2u);
             HE_EXPECT(mem);
             HE_EXPECT(IsAligned(mem, alignof(CtorTest)));
             HE_EXPECT_EQ(s_ctorCount, 32);
@@ -172,7 +172,7 @@ namespace he
             s_ctorCount = 0;
             s_dtorCount = 0;
 
-            OverAligned* mem = alloc.NewArray<OverAligned>(16, 2);
+            OverAligned* mem = alloc.NewArray<OverAligned>(16, 2u);
             HE_EXPECT(mem);
             HE_EXPECT(IsAligned(mem, alignof(OverAligned)));
             HE_EXPECT_EQ(s_ctorCount, 32);

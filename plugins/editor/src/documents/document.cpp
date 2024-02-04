@@ -13,7 +13,7 @@
 
 namespace he::editor
 {
-    std::atomic<uint32_t> Document::s_nextId = 1;
+    Atomic<uint32_t> Document::s_nextId = 1;
 
     Document::Document()
         // Using DICreate here so every document doesn't have to manually pass this through.

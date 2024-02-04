@@ -3,6 +3,8 @@
 #include "he/editor/services/task_service.h"
 
 #include "he/core/cpu_info.h"
+#include "he/core/result.h"
+#include "he/core/result_fmt.h"
 #include "he/core/thread.h"
 #include "he/core/unique_ptr.h"
 #include "he/core/utils.h"
@@ -35,7 +37,21 @@ namespace he::editor
         m_threads.Reserve(threadCount);
         for (uint32_t i = 0; i < threadCount; ++i)
         {
-            m_threads.PushBack(std::thread(PumpThread, this));
+            ThreadDesc desc;
+            desc.proc = &PumpThread;
+            desc.data = this;
+
+            Thread t;
+            const Result rc = t.Start(desc);
+            if (!HE_VERIFY(rc,
+                HE_MSG("Failed to create task service thread."),
+                HE_KV(result, rc)))
+            {
+                Terminate();
+                return false;
+            }
+
+            m_threads.PushBack(Move(t));
         }
 
         return true;
@@ -53,8 +69,10 @@ namespace he::editor
 
         m_cv.WakeAll();
 
-        for (std::thread& t : m_threads)
-            t.join();
+        for (Thread& t : m_threads)
+        {
+            t.Join();
+        }
 
         m_threads.Clear();
     }
@@ -115,8 +133,9 @@ namespace he::editor
         return true;
     }
 
-    void TaskService::PumpThread(TaskService* service)
+    void TaskService::PumpThread(void* data)
     {
+        TaskService* service = static_cast<TaskService*>(data);
         Thread::SetName("[HE] Editor Task Service Thread");
 
         while (service->Pump()) {}

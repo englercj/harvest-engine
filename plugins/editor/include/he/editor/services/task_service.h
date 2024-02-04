@@ -2,10 +2,12 @@
 
 #pragma once
 
+#include "he/core/atomic.h"
 #include "he/core/delegate.h"
 #include "he/core/string_view.h"
 #include "he/core/sync.h"
 #include "he/core/task_executor.h"
+#include "he/core/thread.h"
 #include "he/core/types.h"
 #include "he/core/unique_ptr.h"
 #include "he/core/vector.h"
@@ -28,7 +30,7 @@ namespace he::editor
     protected:
         friend class TaskService;
 
-        std::atomic<bool> m_taskIsRunning{ false };
+        Atomic<bool> m_taskIsRunning{ false };
     };
 
     class TaskService : public TaskExecutor
@@ -74,10 +76,10 @@ namespace he::editor
     private:
         bool Pump();
 
-        static void PumpThread(TaskService* service);
+        static void PumpThread(void* data);
 
     private:
-        Vector<std::thread> m_threads{};
+        Vector<Thread> m_threads{};
 
         std::deque<UniquePtr<Task>> m_runningTasks{};
         std::deque<UniquePtr<Task>> m_pendingTasks{};

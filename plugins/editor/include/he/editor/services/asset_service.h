@@ -2,11 +2,11 @@
 
 #pragma once
 
-#include "he/assets/atomic.h"
 #include "he/assets/asset_database.h"
 #include "he/assets/asset_database_updater.h"
 #include "he/assets/asset_server.h"
 #include "he/assets/types.h"
+#include "he/core/atomic.h"
 #include "he/core/signal.h"
 #include "he/core/types.h"
 #include "he/editor/services/project_service.h"

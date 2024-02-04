@@ -48,7 +48,7 @@ namespace he
     private:
         bool Pump();
 
-        static void PumpThread(void* instance);
+        static void PumpThread(void* data);
 
     protected:
         Vector<Thread> m_threads{};

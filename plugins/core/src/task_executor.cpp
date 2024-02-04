@@ -100,9 +100,9 @@ namespace he
         return true;
     }
 
-    void ThreadPoolExecutor::PumpThread(void* instance)
+    void ThreadPoolExecutor::PumpThread(void* data)
     {
-        ThreadPoolExecutor* executor = static_cast<ThreadPoolExecutor*>(instance);
+        ThreadPoolExecutor* executor = static_cast<ThreadPoolExecutor*>(data);
         Thread::SetName(executor->m_threadName.Data());
 
         while (executor->Pump()) {}

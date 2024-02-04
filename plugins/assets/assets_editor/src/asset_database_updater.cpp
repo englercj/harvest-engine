@@ -19,8 +19,6 @@
 #include "he/sqlite/orm.h"
 #include "he/sqlite/orm_storage.h"
 
-using namespace he::sqlite;
-
 namespace he::assets
 {
     constexpr StringView NextUsnConfigKey = "he.assets.next_usn";
@@ -40,7 +38,7 @@ namespace he::assets
             if (!HE_VERIFY(rc,
                 HE_MSG("Failed to open path for watching."),
                 HE_KV(path, path),
-                HE_KV(result, r)))
+                HE_KV(result, rc)))
             {
                 Stop();
                 return false;
@@ -143,20 +141,19 @@ namespace he::assets
 
                 const auto query = sqlite::Update(
                     sqlite::Where(sqlite::Col(&AssetFileModel::filePath) == fullPath),
-                    sqlite::Set(&AssetFileModel::scanToken, m_scanToken));
+                    sqlite::Set(&AssetFileModel::scanToken, updater->m_scanToken));
 
                 if (!updater->m_db.Storage().Execute(query))
                 {
                     HE_LOG_ERROR(he_assets,
                         HE_MSG("Failed to update asset in DB to latest scan token. Asset metadata may be removed from DB."),
-                        HE_KV(asset_file_path, fullPath),
-                        HE_KV(result, r));
+                        HE_KV(asset_file_path, fullPath));
                     continue;
                 }
             }
         }
 
-        m_onReadySignal.Dispatch();
+        updater->m_onReadySignal.Dispatch();
     }
 
     void AssetDatabaseUpdater::FileWatchThreadFunc(void* instance)
@@ -203,7 +200,7 @@ namespace he::assets
                 }
             }
 
-            if (m_running)
+            if (updater->m_running)
             {
                 Thread::Sleep(FromPeriod<Seconds>(1));
             }

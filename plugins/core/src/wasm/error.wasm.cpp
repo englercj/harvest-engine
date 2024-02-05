@@ -17,6 +17,7 @@ namespace he
         String errorMsg = AsString(source.kind);
         FormatTo(errorMsg, "\n{}", FmtJoin(kvs, kvs + count, "\n"));
         FormatTo(errorMsg, "\nsource.file = {}\nsource.line = {}\nsource.funcName = {}", source.file, source.line, source.funcName);
+        heWASM_ConsoleLog(heWASM_ConsoleLogLevel::Error, errorMsg.Data());
         heWASM_Alert(errorMsg.Data());
         heWASM_Debugger();
         return true;

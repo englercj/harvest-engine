@@ -61,14 +61,14 @@ namespace he
     }
 
     template <typename T>
-    inline T Atomic<T>::FetchAdd(T amount, MemoryOrder order) noexcept requires(SupportsArithmetic)
+    inline T Atomic<T>::FetchAdd(DiffType amount, MemoryOrder order) noexcept requires(SupportsArithmetic)
     {
         HE_ASSERT(order != MemoryOrder::Consume && order != MemoryOrder::Acquire && order != MemoryOrder::AcqRel);
         return __atomic_fetch_add(&m_value, amount, _ToGccOrder(order));
     }
 
     template <typename T>
-    inline T Atomic<T>::FetchSub(T amount, MemoryOrder order) noexcept requires(SupportsArithmetic)
+    inline T Atomic<T>::FetchSub(DiffType amount, MemoryOrder order) noexcept requires(SupportsArithmetic)
     {
         HE_ASSERT(order != MemoryOrder::Consume && order != MemoryOrder::Acquire && order != MemoryOrder::AcqRel);
         return __atomic_fetch_sub(&m_value, amount, _ToGccOrder(order));

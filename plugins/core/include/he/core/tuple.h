@@ -280,7 +280,7 @@ namespace he
         constexpr bool operator!=(const Tuple<U...>& x) const requires(EqualityComparableWith<T, U> && ...)
         {
             using OtherBaseList = typename Tuple<U...>::BaseList;
-            return !(*this == x);
+            return !_TupleEqual(*this, x, BaseList{}, OtherBaseList{});
         }
 
         template <typename... U>

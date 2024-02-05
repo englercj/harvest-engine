@@ -258,7 +258,7 @@ namespace he
                     return;
                 p += end - bufPtr;
                 bufPtr = end;
-            } while (bufPtr - buf < charsLeftCount);
+            } while (static_cast<uint32_t>(bufPtr - buf) < charsLeftCount);
         }
     }
 

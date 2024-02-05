@@ -6,6 +6,8 @@
 #elif HE_COMPILER_MSVC && HE_CPU_ARM
     extern "C" __int64 _ReadStatusReg(int);
     #pragma intrinsic(_ReadStatusReg)
+#elif defined(HE_PLATFORM_WASM)
+    #include "he/core/wasm/lib_core.wasm.h"
 #endif
 
 namespace he
@@ -14,7 +16,8 @@ namespace he
     HE_FORCE_INLINE CycleCount CycleClock::Now()
     {
     #if defined(HE_PLATFORM_WASM)
-        return { MonotonicClock::Now().val };
+        const double nowMs = heWASM_GetPerformanceNow();
+        return { static_cast<uint64_t>(nowMs * 1000000ull) };
     #elif HE_COMPILER_MSVC && HE_CPU_X86
         return { __rdtsc() };
     #elif HE_COMPILER_MSVC && HE_CPU_ARM

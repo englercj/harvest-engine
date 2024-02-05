@@ -15,7 +15,6 @@
 
 namespace he
 {
-    template <>
     const char* AsString(schema::DynamicValue::Kind x)
     {
         switch (x)

@@ -6,7 +6,6 @@
 
 namespace he
 {
-    template <>
     const char* AsString(CpuVendorId x)
     {
         switch (x)

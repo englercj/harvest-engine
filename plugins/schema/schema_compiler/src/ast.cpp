@@ -6,7 +6,6 @@
 
 namespace he
 {
-    template <>
     const char* AsString(schema::AstExpression::Kind x)
     {
         switch (x)
@@ -29,7 +28,6 @@ namespace he
         return "<unknown>";
     }
 
-    template <>
     const char* AsString(schema::AstMethodParams::Kind x)
     {
         switch (x)
@@ -40,7 +38,6 @@ namespace he
         return "<unknown>";
     }
 
-    template <>
     const char* AsString(schema::AstNode::Kind x)
     {
         switch (x)

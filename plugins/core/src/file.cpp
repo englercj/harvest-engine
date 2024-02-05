@@ -16,7 +16,6 @@ namespace he
         return f.WriteAt(src, 0, size, bytesWritten);
     }
 
-    template <>
     const char* AsString(FileResult x)
     {
         switch (x)

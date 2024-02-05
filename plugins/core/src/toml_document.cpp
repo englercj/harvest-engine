@@ -382,7 +382,6 @@ namespace he
     }
 
     // --------------------------------------------------------------------------------------------
-    template <>
     const char* AsString(TomlValue::Kind kind)
     {
         switch (kind)

@@ -331,7 +331,6 @@ namespace he::schema
 
 namespace he
 {
-    template <>
     const char* AsString(schema::Lexer::TokenType type)
     {
         switch (type)

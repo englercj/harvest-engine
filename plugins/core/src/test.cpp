@@ -58,7 +58,6 @@ namespace internal
     }
 }
 
-    template <>
     const char* AsString(TestEventKind x)
     {
         switch (x)

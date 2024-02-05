@@ -50,7 +50,6 @@ namespace he
         return Result::Success;
     }
 
-    template <>
     const char* AsString(SpecialDirectory x)
     {
         switch (x)

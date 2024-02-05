@@ -506,7 +506,6 @@ namespace he::rhi::d3d12
 
 namespace he
 {
-    template <>
     const char* AsString(DXGI_FORMAT x)
     {
         switch (x)
@@ -638,7 +637,6 @@ namespace he
         return "<unknown>";
     }
 
-    template <>
     const char* AsString(DXGI_MODE_ROTATION x)
     {
         switch (x)

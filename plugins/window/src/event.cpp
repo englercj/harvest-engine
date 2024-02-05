@@ -6,7 +6,6 @@
 
 namespace he
 {
-    template <>
     const char* AsString(window::EventKind x)
     {
         switch (x)

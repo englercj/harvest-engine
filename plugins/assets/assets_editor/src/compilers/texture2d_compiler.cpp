@@ -240,7 +240,6 @@ namespace he::assets
 
 namespace he
 {
-    template <>
     const char* AsString(basisu::basis_compressor::error_code x)
     {
         switch (x)

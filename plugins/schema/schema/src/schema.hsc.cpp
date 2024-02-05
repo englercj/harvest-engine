@@ -940,7 +940,6 @@ namespace he::schema
 }
 namespace he
 {
-    template <>
     const char* AsString(::he::schema::Toml::Compression x)
     {
         switch (x)
@@ -950,7 +949,6 @@ namespace he
         }
         return "<unknown>";
     }
-    template <>
     const char* AsString(::he::schema::ScalarRange::Data::UnionTag x)
     {
         switch (x)
@@ -961,7 +959,6 @@ namespace he
         }
         return "<unknown>";
     }
-    template <>
     const char* AsString(::he::schema::Type::Data::UnionTag x)
     {
         switch (x)
@@ -992,7 +989,6 @@ namespace he
         }
         return "<unknown>";
     }
-    template <>
     const char* AsString(::he::schema::Value::Data::UnionTag x)
     {
         switch (x)
@@ -1017,7 +1013,6 @@ namespace he
         }
         return "<unknown>";
     }
-    template <>
     const char* AsString(::he::schema::Field::Meta::UnionTag x)
     {
         switch (x)
@@ -1028,7 +1023,6 @@ namespace he
         }
         return "<unknown>";
     }
-    template <>
     const char* AsString(::he::schema::Declaration::Data::UnionTag x)
     {
         switch (x)

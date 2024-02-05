@@ -6,7 +6,6 @@
 
 namespace he
 {
-    template <>
     const char* AsString(window::Key x)
     {
         switch (x)

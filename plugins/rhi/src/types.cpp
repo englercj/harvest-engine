@@ -5,7 +5,6 @@
 
 namespace he
 {
-    template <>
     const char* AsString(rhi::ApiResult x)
     {
         switch (x)
@@ -20,7 +19,6 @@ namespace he
         return "<unknown>";
     }
 
-    template <>
     const char* AsString(rhi::Format x)
     {
         switch (x)

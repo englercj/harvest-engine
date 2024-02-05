@@ -26,7 +26,6 @@ namespace he
         Usage,
     };
 
-    template <>
     const char* AsString(ArgType x)
     {
         switch (x)

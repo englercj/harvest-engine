@@ -42,7 +42,6 @@ namespace he
         }
     }
 
-    template <>
     const char* AsString(LogLevel x)
     {
         switch (x)

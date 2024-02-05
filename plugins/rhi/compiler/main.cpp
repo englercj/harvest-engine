@@ -373,7 +373,6 @@ void WriteFileData(he::File& file, he::StringView name, const uint8_t* data, siz
 
 namespace he
 {
-    template <>
     const char* AsString(SlangStage x)
     {
         switch (x)

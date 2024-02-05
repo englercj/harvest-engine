@@ -773,7 +773,6 @@ namespace he
 {
     enum class Color { Red, Green, Blue };
 
-    template <>
     const char* AsString(Color c)
     {
         switch (c)

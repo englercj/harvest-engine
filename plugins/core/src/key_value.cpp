@@ -7,7 +7,6 @@
 
 namespace he
 {
-    template <>
     const char* AsString(KeyValue::ValueKind x)
     {
         switch (x)

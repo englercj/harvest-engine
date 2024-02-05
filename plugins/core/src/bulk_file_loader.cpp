@@ -32,7 +32,6 @@ namespace he
         }
     }
 
-    template <>
     const char* AsString(BulkReadRequest::CompressionFormat x)
     {
         switch (x)
@@ -44,7 +43,6 @@ namespace he
         return "<unknown>";
     }
 
-    template <>
     const char* AsString(BulkFileQueue::Config::Priority x)
     {
         switch (x)

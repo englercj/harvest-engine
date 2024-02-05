@@ -348,7 +348,6 @@ namespace he::assets
 
 namespace he
 {
-    template <>
     const char* AsString(assets::AssetState x)
     {
         switch (x)

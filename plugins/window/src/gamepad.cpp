@@ -109,7 +109,6 @@ namespace he::window
 
 namespace he
 {
-    template <>
     const char* AsString(window::GamepadAxis x)
     {
         switch (x)
@@ -126,7 +125,6 @@ namespace he
         return "<unknown>";
     }
 
-    template <>
     const char* AsString(window::GamepadButton x)
     {
         switch (x)

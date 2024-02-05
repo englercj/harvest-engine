@@ -1362,7 +1362,6 @@ namespace he
     }
 
     // --------------------------------------------------------------------------------------------
-    template <>
     const char* AsString(TomlReadError x)
     {
         switch (x)

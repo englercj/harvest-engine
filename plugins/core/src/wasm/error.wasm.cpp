@@ -1,11 +1,14 @@
 // Copyright Chad Engler
 
 #include "he/core/error.h"
+
+#include "he/core/key_value_fmt.h"
+#include "he/core/fmt.h"
 #include "he/core/types.h"
 
 #if defined(HE_PLATFORM_WASM)
 
-#include "wasm/lib_core.wasm.h"
+#include "he/core/wasm/lib_core.wasm.h"
 
 namespace he
 {

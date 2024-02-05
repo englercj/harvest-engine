@@ -14,7 +14,7 @@
 #if defined(HE_PLATFORM_WASM)
 
 #include "thread_internal.wasm.h"
-#include "wasm/lib_core.wasm.h"
+#include "he/core/wasm/lib_core.wasm.h"
 
 namespace he
 {

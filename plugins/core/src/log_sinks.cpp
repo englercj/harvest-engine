@@ -14,7 +14,7 @@
 #include "he/core/string_fmt.h"
 
 #if defined(HE_PLATFORM_WASM)
-    #include "wasm/lib_core.wasm.h"
+    #include "he/core/wasm/lib_core.wasm.h"
 #else
     #include <cstdio>
 #endif

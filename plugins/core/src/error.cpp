@@ -65,6 +65,7 @@ namespace he
         return DefaultErrorHandler(nullptr, source, kvs, count);
     }
 
+    template <>
     const char* AsString(ErrorKind x)
     {
         switch (x)

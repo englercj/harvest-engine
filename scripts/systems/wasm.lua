@@ -159,8 +159,13 @@ function wasmcc.getforceincludes(cfg)
     return flags
 end
 
-function wasmcc.getincludedirs(cfg, dirs)
-    local flags = clang.getincludedirs(cfg, dirs)
+function wasmcc.getincludedirs(cfg, dirs, extdirs, frameworkdirs, includedirsafter)
+    local flags = clang.getincludedirs(cfg, dirs, extdirs, frameworkdirs, includedirsafter)
+    return flags
+end
+
+function wasmcc.getsharedlibarg(cfg)
+    local flags = clang.getsharedlibarg(cfg)
     return flags
 end
 
@@ -175,8 +180,8 @@ function wasmcc.getLibraryDirectories(cfg)
     return flags
 end
 
-function wasmcc.getlinks(cfg, systemOnly)
-    local flags = clang.getlinks(cfg, systemOnly)
+function wasmcc.getlinks(cfg, systemonly, nogroups)
+    local flags = clang.getlinks(cfg, systemonly, nogroups)
     return flags
 end
 

@@ -40,6 +40,7 @@ namespace he::assets
 
 namespace he
 {
+    template <>
     const char* AsString(assets::ImportError x)
     {
         switch (x)

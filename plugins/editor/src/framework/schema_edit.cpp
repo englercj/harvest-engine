@@ -529,6 +529,7 @@ namespace he::editor
 namespace he
 {
     // --------------------------------------------------------------------------------------------
+    template <>
     const char* AsString(editor::SchemaEditAction::Kind x)
     {
         switch (x)

@@ -81,6 +81,11 @@ namespace he
         WCToMBStr(out, wcPath, rc);
         return Result::Success;
     }
+
+    [[noreturn]] void TerminateProcess()
+    {
+        ::TerminateProcess(::GetCurrentProcess(), 1);
+    }
 }
 
 #endif

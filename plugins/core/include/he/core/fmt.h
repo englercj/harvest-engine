@@ -739,26 +739,13 @@ namespace he
     // --------------------------------------------------------------------------------------------
     template <typename T> struct Formatter { Formatter() = delete; };
 
-    // Disable long double formatting explicitly because it is not implemented.
-    // Without this you get a link error rather than a compilation error.
-    template <> struct Formatter<long double> { Formatter() = delete; };
-
-    template <Integral T>
-    struct Formatter<T>
+    template <>
+    struct Formatter<bool>
     {
-        using Type = T;
+        using Type = bool;
         constexpr const char* Parse(const FmtParseCtx& ctx) { return CheckIntFmtSpec(ParseFmtSpec(ctx, spec), ctx, spec); }
-        void Format(String& out, T value) const;
+        void Format(String& out, Type value) const;
         FmtSpecInt spec{};
-    };
-
-    template <FloatingPoint T>
-    struct Formatter<T>
-    {
-        using Type = T;
-        constexpr const char* Parse(const FmtParseCtx& ctx) { return ParseFmtSpec(ctx, spec); }
-        void Format(String& out, T value) const;
-        FmtSpecFloat spec{};
     };
 
     template <>
@@ -766,8 +753,161 @@ namespace he
     {
         using Type = char;
         constexpr const char* Parse(const FmtParseCtx& ctx) { return CheckCharFmtSpec(ParseFmtSpec(ctx, spec), ctx, spec); }
-        void Format(String& out, char value) const;
+        void Format(String& out, Type value) const;
         FmtSpecInt spec{};
+    };
+
+    template <>
+    struct Formatter<wchar_t>
+    {
+        using Type = wchar_t;
+        constexpr const char* Parse(const FmtParseCtx& ctx) { return CheckIntFmtSpec(ParseFmtSpec(ctx, spec), ctx, spec); }
+        void Format(String& out, Type value) const;
+        FmtSpecInt spec{};
+    };
+
+    template <>
+    struct Formatter<char8_t>
+    {
+        using Type = char8_t;
+        constexpr const char* Parse(const FmtParseCtx& ctx) { return CheckIntFmtSpec(ParseFmtSpec(ctx, spec), ctx, spec); }
+        void Format(String& out, Type value) const;
+        FmtSpecInt spec{};
+    };
+
+    template <>
+    struct Formatter<char16_t>
+    {
+        using Type = char16_t;
+        constexpr const char* Parse(const FmtParseCtx& ctx) { return CheckIntFmtSpec(ParseFmtSpec(ctx, spec), ctx, spec); }
+        void Format(String& out, Type value) const;
+        FmtSpecInt spec{};
+    };
+
+    template <>
+    struct Formatter<char32_t>
+    {
+        using Type = char32_t;
+        constexpr const char* Parse(const FmtParseCtx& ctx) { return CheckIntFmtSpec(ParseFmtSpec(ctx, spec), ctx, spec); }
+        void Format(String& out, Type value) const;
+        FmtSpecInt spec{};
+    };
+
+    template <>
+    struct Formatter<signed char>
+    {
+        using Type = signed char;
+        constexpr const char* Parse(const FmtParseCtx& ctx) { return CheckIntFmtSpec(ParseFmtSpec(ctx, spec), ctx, spec); }
+        void Format(String& out, Type value) const;
+        FmtSpecInt spec{};
+    };
+
+    template <>
+    struct Formatter<short>
+    {
+        using Type = short;
+        constexpr const char* Parse(const FmtParseCtx& ctx) { return CheckIntFmtSpec(ParseFmtSpec(ctx, spec), ctx, spec); }
+        void Format(String& out, Type value) const;
+        FmtSpecInt spec{};
+    };
+
+    template <>
+    struct Formatter<int>
+    {
+        using Type = int;
+        constexpr const char* Parse(const FmtParseCtx& ctx) { return CheckIntFmtSpec(ParseFmtSpec(ctx, spec), ctx, spec); }
+        void Format(String& out, Type value) const;
+        FmtSpecInt spec{};
+    };
+
+    template <>
+    struct Formatter<long>
+    {
+        using Type = long;
+        constexpr const char* Parse(const FmtParseCtx& ctx) { return CheckIntFmtSpec(ParseFmtSpec(ctx, spec), ctx, spec); }
+        void Format(String& out, Type value) const;
+        FmtSpecInt spec{};
+    };
+
+    template <>
+    struct Formatter<long long>
+    {
+        using Type = long long;
+        constexpr const char* Parse(const FmtParseCtx& ctx) { return CheckIntFmtSpec(ParseFmtSpec(ctx, spec), ctx, spec); }
+        void Format(String& out, Type value) const;
+        FmtSpecInt spec{};
+    };
+
+    template <>
+    struct Formatter<unsigned char>
+    {
+        using Type = unsigned char;
+        constexpr const char* Parse(const FmtParseCtx& ctx) { return CheckIntFmtSpec(ParseFmtSpec(ctx, spec), ctx, spec); }
+        void Format(String& out, Type value) const;
+        FmtSpecInt spec{};
+    };
+
+    template <>
+    struct Formatter<unsigned short>
+    {
+        using Type = unsigned short;
+        constexpr const char* Parse(const FmtParseCtx& ctx) { return CheckIntFmtSpec(ParseFmtSpec(ctx, spec), ctx, spec); }
+        void Format(String& out, Type value) const;
+        FmtSpecInt spec{};
+    };
+
+    template <>
+    struct Formatter<unsigned int>
+    {
+        using Type = unsigned int;
+        constexpr const char* Parse(const FmtParseCtx& ctx) { return CheckIntFmtSpec(ParseFmtSpec(ctx, spec), ctx, spec); }
+        void Format(String& out, Type value) const;
+        FmtSpecInt spec{};
+    };
+
+    template <>
+    struct Formatter<unsigned long>
+    {
+        using Type = unsigned long;
+        constexpr const char* Parse(const FmtParseCtx& ctx) { return CheckIntFmtSpec(ParseFmtSpec(ctx, spec), ctx, spec); }
+        void Format(String& out, Type value) const;
+        FmtSpecInt spec{};
+    };
+
+    template <>
+    struct Formatter<unsigned long long>
+    {
+        using Type = unsigned long long;
+        constexpr const char* Parse(const FmtParseCtx& ctx) { return CheckIntFmtSpec(ParseFmtSpec(ctx, spec), ctx, spec); }
+        void Format(String& out, Type value) const;
+        FmtSpecInt spec{};
+    };
+
+    template <>
+    struct Formatter<float>
+    {
+        using Type = float;
+        constexpr const char* Parse(const FmtParseCtx& ctx) { return ParseFmtSpec(ctx, spec); }
+        void Format(String& out, Type value) const;
+        FmtSpecFloat spec{};
+    };
+
+    template <>
+    struct Formatter<double>
+    {
+        using Type = double;
+        constexpr const char* Parse(const FmtParseCtx& ctx) { return ParseFmtSpec(ctx, spec); }
+        void Format(String& out, Type value) const;
+        FmtSpecFloat spec{};
+    };
+
+    template <>
+    struct Formatter<long double>
+    {
+        using Type = long double;
+        constexpr const char* Parse(const FmtParseCtx& ctx) { return ParseFmtSpec(ctx, spec); }
+        void Format(String& out, Type value) const;
+        FmtSpecFloat spec{};
     };
 
     template <>
@@ -775,7 +915,7 @@ namespace he
     {
         using Type = const void*;
         constexpr const char* Parse(const FmtParseCtx& ctx) { return CheckPointerFmtSpec(ParseFmtSpec(ctx, spec), ctx, spec); }
-        void Format(String& out, const void* value) const;
+        void Format(String& out, Type value) const;
         FmtSpec spec{};
     };
 
@@ -787,7 +927,7 @@ namespace he
     {
         using Type = StringView;
         constexpr const char* Parse(const FmtParseCtx& ctx) { return ParseFmtSpec(ctx, spec); }
-        void Format(String& out, const StringView& value) const;
+        void Format(String& out, const Type& value) const;
         FmtSpec spec{};
     };
 
@@ -796,7 +936,7 @@ namespace he
     {
         using Type = const char*;
         constexpr const char* Parse(const FmtParseCtx& ctx) { return ParseFmtSpec(ctx, spec); }
-        void Format(String& out, const char* value) const;
+        void Format(String& out, Type value) const;
         FmtSpec spec{};
     };
 
@@ -821,7 +961,7 @@ namespace he
     {
         using Type = T;
         constexpr const char* Parse(const FmtParseCtx& ctx) { return ParseFmtSpec(ctx, spec); }
-        void Format(String& out, T value) const
+        void Format(String& out, Type value) const
         {
             if (spec.type == FmtSpecEnumType::None || spec.type == FmtSpecEnumType::String)
             {
@@ -866,7 +1006,7 @@ namespace he
 
         constexpr const char* Parse(const FmtParseCtx& ctx) { return valueFormatter.Parse(ctx); }
 
-        void Format(String& out, const FmtJoinView<T>& value) const
+        void Format(String& out, const Type& value) const
         {
             T it = value.begin;
             if (it != value.end)

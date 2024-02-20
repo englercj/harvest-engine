@@ -2,7 +2,13 @@
 
 #pragma once
 
-void* memcpy(void* dst, const void* src, size_t len) { __builtin_memcpy(dst, src, len); }
+#include "alltypes.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+void* memcpy(void* __restrict dst, const void* __restrict src, size_t len) { __builtin_memcpy(dst, src, len); }
 void* memmove(void* dst, const void* src, size_t len) { return __builtin_memmove(dst, src, len); }
 void* memset(void* mem, int ch, size_t len) { return __builtin_memset(mem, ch, len); }
 
@@ -40,3 +46,7 @@ inline const void* memchr(const void* mem, int ch, size_t len)
 
     return nullptr;
 }
+
+#ifdef __cplusplus
+}
+#endif

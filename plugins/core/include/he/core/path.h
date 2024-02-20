@@ -13,12 +13,15 @@
 
 #pragma once
 
+#include "he/core/compiler.h"
 #include "he/core/result.h"
 #include "he/core/string.h"
 #include "he/core/string_view.h"
 #include "he/core/types.h"
 
-namespace std { struct forward_iterator_tag; }
+HE_BEGIN_NAMESPACE_STD
+struct forward_iterator_tag;
+HE_END_NAMESPACE_STD
 
 namespace he
 {

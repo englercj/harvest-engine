@@ -231,6 +231,7 @@ namespace he
         m_growth = x.m_growth;
     }
 
+    template <>
     const char* AsString(BufferWriter::GrowthStrategy x)
     {
         switch (x)

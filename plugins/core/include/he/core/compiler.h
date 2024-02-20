@@ -14,7 +14,7 @@
 #define HE_COMPILER_MSVC                    0
 
 /// \def HE_HAS_BUILTIN
-/// Checks if a builtin exists and evaluates to one if it does, otherwise zero
+/// Checks if a builtin exists and evaluates to one if it does, otherwise zero.
 ///
 /// \param[in] x The builtin to check for.
 /// \return Evaluates to 1 or 0 depending on if the builtin is available.
@@ -22,6 +22,17 @@
     #define HE_HAS_BUILTIN(x) __has_builtin(x)
 #else
     #define HE_HAS_BUILTIN(x) 0
+#endif
+
+/// \def HE_HAS_INCLUDE
+/// Checks if an include exists in the search path and evaluates to one if it does, otherwise zero.
+///
+/// \param[in] x The include to check for.
+/// \return Evaluates to 1 or 0 depending on if the include is available.
+#if defined(__has_include)
+    #define HE_HAS_INCLUDE(x) __has_include(x)
+#else
+    #define HE_HAS_INCLUDE(x) 0
 #endif
 
 /// \def HE_HAS_FEATURE
@@ -52,6 +63,7 @@
     #define HE_UNREACHABLE()                __builtin_unreachable()
     #define HE_PREFETCH(x)                  __builtin_prefetch(static_cast<const char*>(x))
     #define HE_SIZEOF_LONG                  __SIZEOF_LONG__
+    #define HE_CHAR_BIT                     __CHAR_BIT__
 
     #define HE_PUSH_WARNINGS()              _Pragma("clang diagnostic push")
     #define HE_POP_WARNINGS()               _Pragma("clang diagnostic pop")
@@ -79,6 +91,7 @@
     #define HE_UNREACHABLE()                __builtin_unreachable()
     #define HE_PREFETCH(x)                  __builtin_prefetch(static_cast<const char*>(x))
     #define HE_SIZEOF_LONG                  __SIZEOF_LONG__
+    #define HE_CHAR_BIT                     __CHAR_BIT__
 
     #define HE_PUSH_WARNINGS()              _Pragma("GCC diagnostic push")
     #define HE_POP_WARNINGS()               _Pragma("GCC diagnostic pop")
@@ -107,6 +120,7 @@
     #define HE_UNREACHABLE()                __assume(0)
     #define HE_PREFETCH(x)                  _mm_prefetch(reinterpret_cast<const char*>(x), _MM_HINT_T0)
     #define HE_SIZEOF_LONG                  4
+    #define HE_CHAR_BIT                     8
 
     #define HE_PUSH_WARNINGS()              __pragma(warning(push))
     #define HE_POP_WARNINGS()               __pragma(warning(pop))
@@ -119,6 +133,14 @@
     #define HE_DISABLE_OPTIMIZE_END()       __pragma(optimize("", on))
 #else
     #error "Unknown compiler"
+#endif
+
+#if defined(HE_LIBCPP_ABI_NAMESPACE)
+    #define HE_BEGIN_NAMESPACE_STD namespace std { inline namespace HE_LIBCPP_ABI_NAMESPACE {
+    #define HE_END_NAMESPACE_STD }}
+#else
+    #define HE_BEGIN_NAMESPACE_STD namespace std {
+    #define HE_END_NAMESPACE_STD }
 #endif
 
 static_assert(HE_SIZEOF_LONG == sizeof(long));

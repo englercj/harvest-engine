@@ -8,6 +8,7 @@ authors = ["Chad Engler <englercj@live.com>"]
 license = "UNLICENSED"
 homepage = ""
 
+# Base core module that provides commonly used utilities and platform abstractions.
 [[modules]]
     name = "he_core"
     type = "static"
@@ -46,6 +47,7 @@ homepage = ""
 
     [[modules.variants]]
         conditions = ["system:wasm"]
+        public_dependson = ["he_core_wasm_libc"]
         public_wasmfeatures = ["Atomics", "BulkMemory", "NontrappingFPToInt"]
         public_defines = [
             "HE_IMPL_PLATFORM_RWLOCK_SIZE=4",
@@ -72,6 +74,27 @@ homepage = ""
         conditions = ["system:windows"]
         public_dependson = ["DirectStorage"]
 
+# Minimal libc implementation for wasm.
+[[modules]]
+    name = "he_core_wasm_libc"
+    type = "static"
+    group = "engine/libs"
+
+    [[modules.variants]]
+        conditions = ["system:wasm"]
+        files = ["wasm_libc/include/**", "wasm_libc/src/**"]
+        public_dependson_include = ["he_core"]
+        public_externalincludedirs = [
+            # Libcxx headers must come before wasm_libc headers.
+            "%{he.get_plugin('llvm.libcxx')._install_dirs['*']}/include",
+            "wasm_libc/include"
+        ]
+        public_defines = [
+            "HE_LIBCPP_ABI_NAMESPACE=__%{he.get_libcxx_abi_version()}",
+        ]
+        private_includedirs = ["wasm_libc/src"]
+
+# Tests for the core module.
 [[modules]]
     name = "he_core_tests"
     type = "static"
@@ -80,6 +103,7 @@ homepage = ""
     public_dependson = ["he_core"]
     private_includedirs = ["src"]
 
+# This is a console app that links all test projects and runs them.
 [[modules]]
     name = "he_test_runner"
     type = "console_app"

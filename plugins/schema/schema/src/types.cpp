@@ -7,6 +7,7 @@
 
 namespace he
 {
+    template <>
     const char* AsString(schema::PointerKind x)
     {
         switch (x)
@@ -19,6 +20,7 @@ namespace he
         return "<unknown>";
     }
 
+    template <>
     const char* AsString(schema::ElementSize x)
     {
         switch (x)
@@ -37,6 +39,7 @@ namespace he
         return "<unknown>";
     }
 
+    template <>
     const char* AsString(schema::DeclKind x)
     {
         switch (x)

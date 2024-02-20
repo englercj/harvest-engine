@@ -282,8 +282,7 @@ HE_TEST(core, fmt, left_align)
     HE_EXPECT_EQ(Format("{0:<5}", -42ll), "-42  ");
     HE_EXPECT_EQ(Format("{0:<5}", 42ull), "42   ");
     HE_EXPECT_EQ(Format("{0:<5}", -42.0), "-42  ");
-    // TODO: long double support
-    //HE_EXPECT_EQ(Format("{0:<5}", -42.0l), "-42  ");
+    HE_EXPECT_EQ(Format("{0:<5}", -42.0l), "-42  ");
     HE_EXPECT_EQ(Format("{0:<5}", 'c'), "c    ");
     HE_EXPECT_EQ(Format("{0:<5}", "abc"), "abc  ");
     HE_EXPECT_EQ(Format("{0:<8}", reinterpret_cast<void*>(0xface)), "0xface  ");
@@ -302,8 +301,7 @@ HE_TEST(core, fmt, right_align)
     HE_EXPECT_EQ(Format("{0:>5}", -42ll), "  -42");
     HE_EXPECT_EQ(Format("{0:>5}", 42ull), "   42");
     HE_EXPECT_EQ(Format("{0:>5}", -42.0), "  -42");
-    // TODO: long double support
-    //HE_EXPECT_EQ(Format("{0:>5}", -42.0l), "  -42");
+    HE_EXPECT_EQ(Format("{0:>5}", -42.0l), "  -42");
     HE_EXPECT_EQ(Format("{0:>5}", 'c'), "    c");
     HE_EXPECT_EQ(Format("{0:>5}", "abc"), "  abc");
     HE_EXPECT_EQ(Format("{0:>8}", reinterpret_cast<void*>(0xface)), "  0xface");
@@ -322,8 +320,7 @@ HE_TEST(core, fmt, center_align)
     HE_EXPECT_EQ(Format("{0:^5}", -42ll), " -42 ");
     HE_EXPECT_EQ(Format("{0:^5}", 42ull), " 42  ");
     HE_EXPECT_EQ(Format("{0:^5}", -42.0), " -42 ");
-    // TODO: long double support
-    //HE_EXPECT_EQ(Format("{0:^5}", -42.0l), " -42 ");
+    HE_EXPECT_EQ(Format("{0:^5}", -42.0l), " -42 ");
     HE_EXPECT_EQ(Format("{0:^5}", 'c'), "  c  ");
     HE_EXPECT_EQ(Format("{0:^6}", "abc"), " abc  ");
     HE_EXPECT_EQ(Format("{0:^8}", reinterpret_cast<void*>(0xface)), " 0xface ");
@@ -341,8 +338,7 @@ HE_TEST(core, fmt, fill)
     HE_EXPECT_EQ(Format("{0:*>5}", -42ll), "**-42");
     HE_EXPECT_EQ(Format("{0:*>5}", 42ull), "***42");
     HE_EXPECT_EQ(Format("{0:*>5}", -42.0), "**-42");
-    // TODO: long double support
-    //HE_EXPECT_EQ(Format("{0:*>5}", -42.0l), "**-42");
+    HE_EXPECT_EQ(Format("{0:*>5}", -42.0l), "**-42");
     HE_EXPECT_EQ(Format("{0:*<5}", 'c'), "c****");
     HE_EXPECT_EQ(Format("{0:*<5}", "abc"), "abc**");
     HE_EXPECT_EQ(Format("{0:*>8}", reinterpret_cast<void*>(0xface)), "**0xface");
@@ -359,8 +355,7 @@ HE_TEST(core, fmt, plus_sign)
     HE_EXPECT_EQ(Format("{0:+}", 42l), "+42");
     HE_EXPECT_EQ(Format("{0:+}", 42ll), "+42");
     HE_EXPECT_EQ(Format("{0:+}", 42.0), "+42");
-    // TODO: long double support
-    //HE_EXPECT_EQ(Format("{0:+}", 42.0l), "+42");
+    HE_EXPECT_EQ(Format("{0:+}", 42.0l), "+42");
 
     HE_EXPECT_FMT_ERR("{0:+", "Invalid format specifier for char", 'a');
     HE_EXPECT_FMT_ERR("{0:+}", "Invalid format specifier for char", 'a');
@@ -375,8 +370,7 @@ HE_TEST(core, fmt, minus_sign)
     HE_EXPECT_EQ(Format("{0:-}", 42l), "42");
     HE_EXPECT_EQ(Format("{0:-}", 42ll), "42");
     HE_EXPECT_EQ(Format("{0:-}", 42.0), "42");
-    // TODO: long double support
-    //HE_EXPECT_EQ(Format("{0:-}", 42.0l), "42");
+    HE_EXPECT_EQ(Format("{0:-}", 42.0l), "42");
 
     HE_EXPECT_FMT_ERR("{0:-", "Invalid format specifier for char", 'a');
     HE_EXPECT_FMT_ERR("{0:-}", "Invalid format specifier for char", 'a');
@@ -391,8 +385,7 @@ HE_TEST(core, fmt, space_sign)
     HE_EXPECT_EQ(Format("{0: }", 42l), " 42");
     HE_EXPECT_EQ(Format("{0: }", 42ll), " 42");
     HE_EXPECT_EQ(Format("{0: }", 42.0), " 42");
-    // TODO: long double support
-    //HE_EXPECT_EQ(Format("{0: }", 42.0l), " 42");
+    HE_EXPECT_EQ(Format("{0: }", 42.0l), " 42");
 
     HE_EXPECT_FMT_ERR("{0: ", "Invalid format specifier for char", 'a');
     HE_EXPECT_FMT_ERR("{0: }", "Invalid format specifier for char", 'a');
@@ -435,8 +428,7 @@ HE_TEST(core, fmt, alt_flag)
     HE_EXPECT_EQ(Format("{0:#o}", 042ull), "042");
 
     HE_EXPECT_EQ(Format("{0:#}", -42.0), "-42.0");
-    // TODO: long double support
-    //HE_EXPECT_EQ(Format("{0:#}", -42.0l), "-42.0");
+    HE_EXPECT_EQ(Format("{0:#}", -42.0l), "-42.0");
     HE_EXPECT_EQ(Format("{:#.0e}", 42.0), "4.e+01");
     HE_EXPECT_EQ(Format("{:#.0f}", 0.01), "0.");
     HE_EXPECT_EQ(Format("{:#.2g}", 0.5), "0.50");
@@ -457,8 +449,7 @@ HE_TEST(core, fmt, zero_flag)
     HE_EXPECT_EQ(Format("{0:05}", -42ll), "-0042");
     HE_EXPECT_EQ(Format("{0:05}", 42ull), "00042");
     HE_EXPECT_EQ(Format("{0:07}", -42.0), "-000042");
-    // TODO: long double support
-    //HE_EXPECT_EQ(Format("{0:07}", -42.0l), "-000042");
+    HE_EXPECT_EQ(Format("{0:07}", -42.0l), "-000042");
 
     HE_EXPECT_FMT_ERR("{0:0", "Invalid format specifier for char", 'a');
     HE_EXPECT_FMT_ERR("{0:05}", "Invalid format specifier for char", 'a');
@@ -474,8 +465,7 @@ HE_TEST(core, fmt, width)
     HE_EXPECT_EQ(Format("{0:6}", -42ll), "   -42");
     HE_EXPECT_EQ(Format("{0:7}", 42ull), "     42");
     HE_EXPECT_EQ(Format("{0:8}", -1.23), "   -1.23");
-    // TODO: long double support
-    //HE_EXPECT_EQ(Format("{0:9}", -1.23l), "    -1.23");
+    HE_EXPECT_EQ(Format("{0:9}", -1.23l), "    -1.23");
     HE_EXPECT_EQ(Format("{0:10}", reinterpret_cast<void*>(0xcafe)), "    0xcafe");
     HE_EXPECT_EQ(Format("{0:11}", 'x'), "x          ");
     HE_EXPECT_EQ(Format("{0:12}", "str"), "str         ");
@@ -498,21 +488,21 @@ HE_TEST(core, fmt, width)
 HE_TEST(core, fmt, precision)
 {
     HE_EXPECT_EQ(Format("{0:.2}", 1.2345), "1.2");
-    // TODO: long double support
-    //HE_EXPECT_EQ(Format("{0:.2}", 1.2345l), "1.2");
+    HE_EXPECT_EQ(Format("{0:.2}", 1.2345l), "1.2");
     HE_EXPECT_EQ(Format("{:.2}", 1.234e56), "1.2e+56");
     HE_EXPECT_EQ(Format("{0:.3}", 1.1), "1.1");
-    HE_EXPECT_EQ(Format("{:.0e}", 1.0), "1e+00");
+    HE_EXPECT_EQ(Format("{:.0e}", 1.0), "1.e+00");
     HE_EXPECT_EQ(Format("{:9.1e}", 0.0), "  0.0e+00");
+    HE_EXPECT_EQ(Format("{:.7f}", 0.0000000000000071054273576010018587L), "0.0000000");
 
     HE_EXPECT_EQ(Format("{:#.0f}", 123.0), "123.");
     HE_EXPECT_EQ(Format("{:.02f}", 1.234), "1.23");
     HE_EXPECT_EQ(Format("{:.1g}", 0.001), "0.001");
     HE_EXPECT_EQ(Format("{}", 1019666432.0f), "1019666400");
-    HE_EXPECT_EQ(Format("{:.0e}", 9.5), "1e+01");
+    HE_EXPECT_EQ(Format("{:.0e}", 9.5), "1.e+01");
     HE_EXPECT_EQ(Format("{:.1e}", 1e-34), "1.0e-34");
 
-    HE_EXPECT_EQ(Format("{:.494}", 4.9406564584124654E-324),
+    HE_EXPECT_EQ(Format("{:.494}", 4.9406564584124654e-324),
         "4.9406564584124654417656879286822137236505980261432476442558568250067550"
         "727020875186529983636163599237979656469544571773092665671035593979639877"
         "479601078187812630071319031140452784581716784898210368871863605699873072"
@@ -536,7 +526,7 @@ HE_TEST(core, fmt, precision)
         "530961756787819847850302379672357738807808384667004752163416921762619527"
         "462847642037420991432005657440259928195996762610375541867198059294212446"
         "81962777939941034720757232455434770912461317493580281734466552734375");
-    HE_EXPECT_EQ(Format("{:.838A}", -2.14001164E+38),
+    HE_EXPECT_EQ(Format("{:.838A}", -2.14001164e+38),
         "-0X1.41FE3FFE71C9E000000000000000000000000000000000000000000000000000000"
         "000000000000000000000000000000000000000000000000000000000000000000000000"
         "000000000000000000000000000000000000000000000000000000000000000000000000"
@@ -549,8 +539,22 @@ HE_TEST(core, fmt, precision)
         "000000000000000000000000000000000000000000000000000000000000000000000000"
         "000000000000000000000000000000000000000000000000000000000000000000000000"
         "000000000000000000000000000000000000000000000000000P+127");
+
+    if constexpr (Limits<long double>::Digits == 64)
+    {
+        HE_EXPECT_EQ(Format("{:.0}", Limits<long double>::MinPos), "3e-4932");
+        HE_EXPECT_EQ(Format("{:0g}", Limits<long double>::DenormMin), "3.6452e-4951");
+    }
+
+    HE_EXPECT_EQ(Format("{:#.0f}", 123.0), "123.");
+    HE_EXPECT_EQ(Format("{:.02f}", 1.234), "1.23");
+    HE_EXPECT_EQ(Format("{:.1g}", 0.001), "0.001");
+    HE_EXPECT_EQ(Format("{}", 1019666432.0f), "1019666400");
+    HE_EXPECT_EQ(Format("{:.0e}", 9.5), "1.e+01");
+    HE_EXPECT_EQ(Format("{:.1e}", 1e-34), "1.0e-34");
+
     HE_EXPECT_EQ(Format("{:.0}", Limits<double>::MinPos), "2e-308");
-    HE_EXPECT_EQ(Format("{:0g}", 4.9406564584124654e-324), "4.94066e-324");
+    HE_EXPECT_EQ(Format("{:0g}", Limits<double>::DenormMin), "4.94066e-324");
 
     HE_EXPECT_EQ(Format("{0:.2}", "str"), "st");
     HE_EXPECT_EQ(Format("{0:.5}", "вожыкі"), "вожык");
@@ -678,6 +682,57 @@ HE_TEST(core, fmt, ints)
 }
 
 // ------------------------------------------------------------------------------------------------
+template <typename T>
+static void TestNanAndInf()
+{
+    const T nan = Limits<T>::NaN;
+    HE_EXPECT(std::signbit(-nan), "Checking that the compiler handles negative NaN correctly.");
+    HE_EXPECT_EQ(Format("{}", nan), "nan");
+    HE_EXPECT_EQ(Format("{:+}", nan), "+nan");
+    HE_EXPECT_EQ(Format("{:+06}", nan), "  +nan");
+    HE_EXPECT_EQ(Format("{:<+06}", nan), "+nan  ");
+    HE_EXPECT_EQ(Format("{:^+06}", nan), " +nan ");
+    HE_EXPECT_EQ(Format("{:>+06}", nan), "  +nan");
+    HE_EXPECT_EQ(Format("{}", -nan), "-nan");
+    HE_EXPECT_EQ(Format("{:+06}", -nan), "  -nan");
+    HE_EXPECT_EQ(Format("{: }", nan), " nan");
+    HE_EXPECT_EQ(Format("{:F}", nan), "NAN");
+    HE_EXPECT_EQ(Format("{:<7}", nan), "nan    ");
+    HE_EXPECT_EQ(Format("{:^7}", nan), "  nan  ");
+    HE_EXPECT_EQ(Format("{:>7}", nan), "    nan");
+
+    const T snan = Limits<T>::SignalingNaN;
+    HE_EXPECT(std::signbit(-snan), "Checking that the compiler handles negative NaN correctly.");
+    HE_EXPECT_EQ(Format("{}", snan), "nan");
+    HE_EXPECT_EQ(Format("{:+}", snan), "+nan");
+    HE_EXPECT_EQ(Format("{:+06}", snan), "  +nan");
+    HE_EXPECT_EQ(Format("{:<+06}", snan), "+nan  ");
+    HE_EXPECT_EQ(Format("{:^+06}", snan), " +nan ");
+    HE_EXPECT_EQ(Format("{:>+06}", snan), "  +nan");
+    HE_EXPECT_EQ(Format("{}", -snan), "-nan");
+    HE_EXPECT_EQ(Format("{:+06}", -snan), "  -nan");
+    HE_EXPECT_EQ(Format("{: }", snan), " nan");
+    HE_EXPECT_EQ(Format("{:F}", snan), "NAN");
+    HE_EXPECT_EQ(Format("{:<7}", snan), "nan    ");
+    HE_EXPECT_EQ(Format("{:^7}", snan), "  nan  ");
+    HE_EXPECT_EQ(Format("{:>7}", snan), "    nan");
+
+    const T inf = Limits<T>::Infinity;
+    HE_EXPECT_EQ(Format("{}", inf), "inf");
+    HE_EXPECT_EQ(Format("{:+}", inf), "+inf");
+    HE_EXPECT_EQ(Format("{}", -inf), "-inf");
+    HE_EXPECT_EQ(Format("{:+06}", inf), "  +inf");
+    HE_EXPECT_EQ(Format("{:+06}", -inf), "  -inf");
+    HE_EXPECT_EQ(Format("{:<+06}", inf), "+inf  ");
+    HE_EXPECT_EQ(Format("{:^+06}", inf), " +inf ");
+    HE_EXPECT_EQ(Format("{:>+06}", inf), "  +inf");
+    HE_EXPECT_EQ(Format("{: }", inf), " inf");
+    HE_EXPECT_EQ(Format("{:F}", inf), "INF");
+    HE_EXPECT_EQ(Format("{:<7}", inf), "inf    ");
+    HE_EXPECT_EQ(Format("{:^7}", inf), "  inf  ");
+    HE_EXPECT_EQ(Format("{:>7}", inf), "    inf");
+}
+
 HE_TEST(core, fmt, floats)
 {
     HE_EXPECT_EQ(Format("{}", 0.0f), "0");
@@ -692,14 +747,43 @@ HE_TEST(core, fmt, floats)
     HE_EXPECT_EQ(Format("{:g}", 4.9014e6), "4.9014e+06");
     HE_EXPECT_EQ(Format("{:f}", 392.65), "392.650000");
     HE_EXPECT_EQ(Format("{:F}", 392.65), "392.650000");
+    // TODO: Locale handling for separators
+    //HE_EXPECT_EQ(Format("{:L}", 42.0), "42.0");
     HE_EXPECT_EQ(Format("{:24a}", 4.2), "    0x1.0cccccccccccdp+2");
     HE_EXPECT_EQ(Format("{:<24a}", 4.2), "0x1.0cccccccccccdp+2    ");
     HE_EXPECT_EQ(Format("{0:e}", 392.65), "3.926500e+02");
     HE_EXPECT_EQ(Format("{0:E}", 392.65), "3.926500E+02");
     HE_EXPECT_EQ(Format("{0:+010.4g}", 392.65), "+0000392.6");
 
-    HE_EXPECT_EQ(Format("{:a}", -42.0), "-0x1.5000000000000p+5");
-    HE_EXPECT_EQ(Format("{:A}", -42.0), "-0X1.5000000000000P+5");
+    double xd = 0x1.ffffffffffp+2;
+    HE_EXPECT_EQ(Format("{:.10a}", xd), "0x1.ffffffffffp+2");
+    HE_EXPECT_EQ(Format("{:.9a}", xd), "0x2.000000000p+2");
+
+    if constexpr (Limits<long double>::Digits == 64)
+    {
+        auto ld = 0xf.ffffffffffp-3l;
+        HE_EXPECT_EQ(Format("{:a}", ld), "0xf.ffffffffffp-3");
+        HE_EXPECT_EQ(Format("{:.10a}", ld), "0xf.ffffffffffp-3");
+        HE_EXPECT_EQ(Format("{:.9a}", ld), "0x1.000000000p+1");
+    }
+
+    HE_EXPECT_EQ(Format("{:a}", Limits<double>::Min), "0x1p-1022");
+    HE_EXPECT_EQ(Format("{:#a}", Limits<double>::Min), "0x1.p-1022");
+
+    HE_EXPECT_EQ(Format("{:a}", Limits<double>::Max), "0x1.fffffffffffffp+1023");
+    HE_EXPECT_EQ(Format("{:a}", Limits<double>::DenormMin), "0x0.0000000000001p-1022");
+
+    if constexpr (Limits<long double>::Digits == 64)
+    {
+        HE_EXPECT_EQ(Format("{:a}", Limits<long double>::Min), "0x8p-16385");
+        HE_EXPECT_EQ(Format("{:a}", Limits<long double>::Max), "0xf.fffffffffffffffp+16380");
+        HE_EXPECT_EQ(Format("{:a}", Limits<long double>::DenormMin), "0x0.000000000000001p-16382");
+    }
+
+    HE_EXPECT_EQ(Format("{:.10a}", 4.2), "0x1.0ccccccccdp+2");
+
+    HE_EXPECT_EQ(Format("{:a}", -42.0), "-0x1.5p+5");
+    HE_EXPECT_EQ(Format("{:A}", -42.0), "-0X1.5P+5");
     HE_EXPECT_EQ(Format("{:f}", 9223372036854775807.0), "9223372036854775808.000000");
 
     HE_EXPECT_EQ(Format("{}", 1e-4), "0.0001");
@@ -716,38 +800,39 @@ HE_TEST(core, fmt, floats)
     HE_EXPECT_EQ(Format("{}", double(0.1f)), "0.10000000149011612");
     HE_EXPECT_EQ(Format("{}", 1.35631564e-19f), "1.3563156e-19");
 
-    const double nan = Limits<double>::NaN;
-    HE_EXPECT_EQ(Format("{}", nan), "nan");
-    HE_EXPECT_EQ(Format("{:+}", nan), "+nan");
-    HE_EXPECT_EQ(Format("{:+06}", nan), "  +nan");
-    HE_EXPECT_EQ(Format("{:<+06}", nan), "+nan  ");
-    HE_EXPECT_EQ(Format("{:^+06}", nan), " +nan ");
-    HE_EXPECT_EQ(Format("{:>+06}", nan), "  +nan");
-    HE_EXPECT(std::signbit(-nan), "Checking that the compiler handles negative NaN correctly.");
-    HE_EXPECT_EQ(Format("{}", -nan), "-nan");
-    HE_EXPECT_EQ(Format("{:+06}", -nan), "  -nan");
-    HE_EXPECT_EQ(Format("{: }", nan), " nan");
-    HE_EXPECT_EQ(Format("{:F}", nan), "NAN");
-    HE_EXPECT_EQ(Format("{:<7}", nan), "nan    ");
-    HE_EXPECT_EQ(Format("{:^7}", nan), "  nan  ");
-    HE_EXPECT_EQ(Format("{:>7}", nan), "    nan");
+    HE_EXPECT_EQ(Format("{0:}", 0.0l), "0");
+    HE_EXPECT_EQ(Format("{0:f}", 0.0l), "0.000000");
+    HE_EXPECT_EQ(Format("{:.1f}", 0.000000001l), "0.0");
+    HE_EXPECT_EQ(Format("{:.2f}", 0.099l), "0.10");
+    HE_EXPECT_EQ(Format("{0:}", 392.65l), "392.65");
+    HE_EXPECT_EQ(Format("{0:g}", 392.65l), "392.65");
+    HE_EXPECT_EQ(Format("{0:G}", 392.65l), "392.65");
+    HE_EXPECT_EQ(Format("{0:f}", 392.65l), "392.650000");
+    HE_EXPECT_EQ(Format("{0:F}", 392.65l), "392.650000");
 
-    const double inf = Limits<double>::Infinity;
-    HE_EXPECT_EQ(Format("{}", inf), "inf");
-    HE_EXPECT_EQ(Format("{:+}", inf), "+inf");
-    HE_EXPECT_EQ(Format("{}", -inf), "-inf");
-    HE_EXPECT_EQ(Format("{:+06}", inf), "  +inf");
-    HE_EXPECT_EQ(Format("{:+06}", -inf), "  -inf");
-    HE_EXPECT_EQ(Format("{:<+06}", inf), "+inf  ");
-    HE_EXPECT_EQ(Format("{:^+06}", inf), " +inf ");
-    HE_EXPECT_EQ(Format("{:>+06}", inf), "  +inf");
-    HE_EXPECT_EQ(Format("{: }", inf), " inf");
-    HE_EXPECT_EQ(Format("{:F}", inf), "INF");
-    HE_EXPECT_EQ(Format("{:<7}", inf), "inf    ");
-    HE_EXPECT_EQ(Format("{:^7}", inf), "  inf  ");
-    HE_EXPECT_EQ(Format("{:>7}", inf), "    inf");
+    //char buffer[256];
+    //std::snprintf(buffer, sizeof(buffer), "%Le", 392.65l);
+    //HE_EXPECT_EQ(Format("{0:e}", 392.65l), buffer);
+    HE_EXPECT_EQ(Format("{0:+010.4g}", 392.64l), "+0000392.6");
 
+    auto ld = 3.31l;
+    if constexpr (Limits<long double>::Format == FloatFormat::DoubleDouble128)
+    {
+        //std::snprintf(buffer, sizeof(buffer), "%a", static_cast<double>(ld));
+        //HE_EXPECT_EQ(Format("{:a}", ld), buffer);
+    }
+    else if constexpr (Limits<long double>::Digits == 64)
+    {
+        HE_EXPECT_EQ(Format("{:a}", ld), "0xd.3d70a3d70a3d70ap-2");
+    }
+
+    TestNanAndInf<float>();
+    TestNanAndInf<double>();
+    TestNanAndInf<long double>();
+
+    TestUnknownSpecTypes<float>(1.2f, "aAeEfFgG");
     TestUnknownSpecTypes<double>(1.2, "aAeEfFgG");
+    TestUnknownSpecTypes<long double>(1.2, "aAeEfFgG");
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -773,6 +858,7 @@ namespace he
 {
     enum class Color { Red, Green, Blue };
 
+    template <>
     const char* AsString(Color c)
     {
         switch (c)

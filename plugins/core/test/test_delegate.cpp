@@ -380,7 +380,7 @@ HE_TEST(core, delegate, Payload)
 {
     auto f1 = +[](const void*, int c) { return c; };
     Delegate d1(f1);
-    HE_EXPECT_EQ(d1.Payload(), nullptr);
+    HE_EXPECT_EQ_PTR(d1.Payload(), nullptr);
 
     Delegate d2(+[](const void*, int c) { return c; }, &d1);
     HE_EXPECT_EQ_PTR(d2.Payload(), &d1);

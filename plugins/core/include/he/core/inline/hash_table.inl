@@ -393,7 +393,7 @@ namespace he
     void HashTable<T>::AllocateBucketsFromShift()
     {
         m_bucketCount = CalculateBucketCount(m_shifts);
-        m_buckets = GetAllocator().Malloc<Bucket>(m_bucketCount);
+        m_buckets = GetAllocator().template Malloc<Bucket>(m_bucketCount);
 
         if (m_bucketCount == MaxBucketCount())
         {

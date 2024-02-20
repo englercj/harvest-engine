@@ -480,6 +480,7 @@ namespace he
         return (*b & flag) != 0;
     }
 
+    template <>
     const char* AsString(TomlUintFormat x)
     {
         switch (x)
@@ -493,6 +494,7 @@ namespace he
         return "<unknown>";
     }
 
+    template <>
     const char* AsString(TomlFloatFormat x)
     {
         switch (x)
@@ -505,6 +507,7 @@ namespace he
         return "<unknown>";
     }
 
+    template <>
     const char* AsString(TomlStringFormat x)
     {
         switch (x)
@@ -516,6 +519,7 @@ namespace he
         return "<unknown>";
     }
 
+    template <>
     const char* AsString(TomlDateTimeFormat x)
     {
         switch (x)

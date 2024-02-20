@@ -99,7 +99,7 @@ HE_TEST(core, string_pool, basic_usage)
     HE_EXPECT_EQ(p.Size(), 1);
 
     const char* str3 = p.Get(id3);
-    HE_EXPECT_EQ(str3, nullptr);
+    HE_EXPECT_EQ_PTR(str3, nullptr);
     HE_EXPECT_EQ(p.Size(), 1);
 
     for (auto it = p.begin(); it != p.end(); ++it)
@@ -266,10 +266,10 @@ HE_TEST(core, string_pool, find_str_view)
     HE_EXPECT_EQ_STR(str1, str2);
 
     const char* str3 = p.Get(id3);
-    HE_EXPECT_EQ(str3, nullptr);
+    HE_EXPECT_EQ_PTR(str3, nullptr);
 
     const char* str4 = p.Get(id4);
-    HE_EXPECT_EQ(str4, nullptr);
+    HE_EXPECT_EQ_PTR(str4, nullptr);
 }
 
 // ------------------------------------------------------------------------------------------------

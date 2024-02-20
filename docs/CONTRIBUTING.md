@@ -114,7 +114,7 @@ TODO:
 TODO:
 - Start with copyright header & `#pragma once`
 - Forward declare when possible to reduce include tree depth
-    * Exception: Don't need to forward declare templates, unless they are very simple (like `std::hash` for example)
+    * Exception: Don't need to forward declare templates, unless they are very simple
 - Try to avoid inclusion of STL headers in Harvest headers.
     * STL headers can have a big impact on compilation times.
     * When included into engine headers used throughout projects, this can really add up to a lot of time.
@@ -366,7 +366,7 @@ TODO:
 - All includes, including from contrib packages, should use quotes (`""`), except for system includes (such as STL) which use angle brackets (`<>`).
 - Include what you use, don't rely on transient includes.
 - Forward declare when possible to reduce include tree depth
-    * Exception: Don't need to forward declare templates, unless they are very simple (like `std::hash` for example)
+    * Exception: Don't need to forward declare templates, unless they are very simple
 
 ### Grouping
 

@@ -75,10 +75,10 @@ HE_TEST(core, system, GetPowerStatus)
 HE_TEST(core, system, DLOpen_DLClose)
 {
     void* handle = DLOpen(TestLibName);
-    HE_EXPECT_NE(handle, nullptr);
+    HE_EXPECT_NE_PTR(handle, nullptr);
 
     void* symbol = DLSymbol(handle, TestSymbol);
-    HE_EXPECT_NE(symbol, nullptr);
+    HE_EXPECT_NE_PTR(symbol, nullptr);
 
     DLClose(handle);
 }
@@ -94,7 +94,7 @@ HE_TEST(core, system, DynamicLib)
 
     void* symbol = lib.Symbol(TestSymbol);
     HE_EXPECT(lib.IsOpen());
-    HE_EXPECT_NE(symbol, nullptr);
+    HE_EXPECT_NE_PTR(symbol, nullptr);
 
     lib.Close();
 }

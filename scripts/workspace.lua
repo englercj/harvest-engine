@@ -81,10 +81,8 @@ he.generate_workspace = function (options)
 
     filter { "toolset:wasmcc" }
         buildoptions {
-            "-nostdlib",                                    -- Do not use the standard system startup files or libraries when linking.
+            "-nostdlib",                -- Do not use the standard system startup files or libraries when linking.
         }
-        -- buildoptions(he.get_emscripten_wasm_include_flags())
-        buildoptions(he.get_libcxx_wasm_include_flags())
         linkoptions {
             "-Wl,--export-dynamic",     -- Export any non-hidden symbols.
             "-Wl,--fatal-warnings",     -- Emit an error when any warning is encountered.

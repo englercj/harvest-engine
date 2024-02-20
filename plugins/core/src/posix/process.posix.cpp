@@ -69,6 +69,11 @@ namespace he
         return Result::NotSupported;
     #endif
     }
+
+    [[noreturn]] void TerminateProcess()
+    {
+        kill(getpid(), SIGKILL);
+    }
 }
 
 #endif

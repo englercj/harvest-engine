@@ -39,6 +39,12 @@ namespace he
         // No such thing as process names in wasm.
         return Result::NotSupported;
     }
+
+    [[noreturn]] void TerminateProcess()
+    {
+        // Cause an unconditional trap to terminate the process.
+        __asm__ volatile("unreachable");
+    }
 }
 
 #endif

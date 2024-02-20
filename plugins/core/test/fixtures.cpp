@@ -3,6 +3,7 @@
 #include "fixtures.h"
 
 #include "he/core/file.h"
+#include "he/core/random.h"
 #include "he/core/result_fmt.h"
 #include "he/core/test.h"
 
@@ -181,6 +182,51 @@ namespace he
             alloc.DeleteArray(mem);
             HE_EXPECT_EQ(s_ctorCount, 32);
             HE_EXPECT_EQ(s_dtorCount, 16);
+        }
+
+        // Soak test the allocator with some randomly sized allocations
+        {
+            Random64 rng;
+
+            static constexpr uint32_t NumAllocs = 5000;
+            static constexpr uint32_t MaxAllocSize = 2048;
+
+            uint8_t expected[MaxAllocSize];
+
+            size_t sizes[NumAllocs];
+            void* ptrs[NumAllocs];
+
+            // Allocate a bunch of memory of random sizes
+            for (uint32_t i = 0; i < NumAllocs; ++i)
+            {
+                sizes[i] = rng.Next(1, MaxAllocSize);
+                ptrs[i] = alloc.Malloc(sizes[i]);
+
+                HE_EXPECT_NE_PTR(ptrs[i], nullptr);
+                MemSet(ptrs[i], i, sizes[i]);
+
+                // There is a small chance to free the allocation immediately
+                if (rng.Real() > 0.95)
+                {
+                    alloc.Free(ptrs[i]);
+                    ptrs[i] = nullptr;
+                    sizes[i] = 0;
+                }
+            }
+
+            // Check & free all the allocations
+            for (uint32_t i = 0; i < NumAllocs; ++i)
+            {
+                // Check if there have been any memory stomps from the allocations
+                if (ptrs[i])
+                {
+                    MemSet(expected, i, sizes[i]);
+                    HE_EXPECT_EQ_MEM(ptrs[i], expected, sizes[i]);
+                }
+
+                // Free it up
+                alloc.Free(ptrs[i]);
+            }
         }
     }
 

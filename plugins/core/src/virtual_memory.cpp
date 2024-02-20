@@ -47,6 +47,7 @@ namespace he
         return static_cast<uint8_t*>(m_block) + PagesToBytes(index);
     }
 
+    template <>
     const char* AsString(MemoryAccess x)
     {
         switch (x)

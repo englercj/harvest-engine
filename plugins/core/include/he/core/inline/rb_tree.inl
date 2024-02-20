@@ -827,7 +827,7 @@ namespace he
         m_tree.CopyFrom(x.m_tree, [](const EntryType* entry, void* userData)
         {
             RBTreeContainerBase* self = static_cast<RBTreeContainerBase*>(userData);
-            return self->m_allocator.New<EntryType>(*entry);
+            return self->m_allocator.template New<EntryType>(*entry);
         }, this);
     }
 

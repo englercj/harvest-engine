@@ -1,6 +1,10 @@
 -- Copyright Chad Engler
 
 return function (plugin, install_dirs)
+    function he.get_libcxx_abi_version()
+        return 2
+    end
+
     local install_dir = install_dirs["*"]
     local config_path = path.join(install_dir, "include", "__config_site")
     local config_lines = {}
@@ -18,8 +22,8 @@ return function (plugin, install_dirs)
 #define _LIBCPP___CONFIG_SITE
 ]])
 
-    table.insert(config_lines, "#define _LIBCPP_ABI_VERSION 1")
-    table.insert(config_lines, "#define _LIBCPP_ABI_NAMESPACE __1")
+    table.insert(config_lines, "#define _LIBCPP_ABI_VERSION " .. he.get_libcxx_abi_version())
+    table.insert(config_lines, "#define _LIBCPP_ABI_NAMESPACE __" .. he.get_libcxx_abi_version())
     -- table.insert(config_lines, "#define _LIBCPP_ABI_FORCE_ITANIUM")
     -- table.insert(config_lines, "#define _LIBCPP_ABI_FORCE_MICROSOFT")
     table.insert(config_lines, "#define _LIBCPP_HAS_NO_THREADS")
@@ -37,10 +41,11 @@ return function (plugin, install_dirs)
     table.insert(config_lines, "#define _LIBCPP_HAS_NO_LOCALIZATION")
     -- table.insert(config_lines, "#define _LIBCPP_HAS_NO_WIDE_CHARACTERS")
     table.insert(config_lines, "#define _LIBCPP_ENABLE_ASSERTIONS_DEFAULT 0")
+    table.insert(config_lines, "#define _LIBCPP_AVAILABILITY_HAS_NO_VERBOSE_ABORT")
 
     table.insert(config_lines, "\n// PSTL backends")
-    -- table.insert(config_lines, "#define _LIBCPP_PSTL_CPU_BACKEND_SERIAL 1")
-    table.insert(config_lines, "#define _LIBCPP_PSTL_CPU_BACKEND_THREAD 1")
+    table.insert(config_lines, "#define _LIBCPP_PSTL_CPU_BACKEND_SERIAL 1")
+    -- table.insert(config_lines, "#define _LIBCPP_PSTL_CPU_BACKEND_THREAD 1")
     -- table.insert(config_lines, "#define _LIBCPP_PSTL_CPU_BACKEND_LIBDISPATCH 1")
 
     table.insert(config_lines, "\n// Hardening.")
@@ -48,21 +53,6 @@ return function (plugin, install_dirs)
     table.insert(config_lines, "#define _LIBCPP_ENABLE_DEBUG_MODE_DEFAULT 0")
 
     table.insert(config_lines, [[
-
-// __USE_MINGW_ANSI_STDIO gets redefined on MinGW
-#ifdef __clang__
-#  pragma clang diagnostic push
-#  pragma clang diagnostic ignored "-Wmacro-redefined"
-#endif
-]])
-
-    -- @_LIBCPP_ABI_DEFINES@
-    -- @_LIBCPP_EXTRA_SITE_DEFINES@
-
-    table.insert(config_lines, [[
-#ifdef __clang__
-#  pragma clang diagnostic pop
-#endif
 
 #endif // _LIBCPP___CONFIG_SITE]])
 
@@ -72,11 +62,4 @@ return function (plugin, install_dirs)
         file:write("\n")
     end
     file:close()
-
-    function he.get_libcxx_wasm_include_flags()
-        return {
-            "-isystem%{he.get_plugin('llvm.libcxx')._install_dirs['*']}/include",
-            "-isystem%{path.getdirectory(he.get_plugin('llvm.libcxx')._file_path)}/compat/wasm/include",
-        }
-    end
 end

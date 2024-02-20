@@ -42,4 +42,7 @@ namespace he
     /// \param[out] out The absolute path to the process executable file.
     /// \return The result of the operation from the OS.
     Result GetCurrentProcessFilename(String& out);
+
+    /// Terminates the calling process immediately.
+    [[noreturn]] void TerminateProcess();
 }

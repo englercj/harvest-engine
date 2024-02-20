@@ -5,51 +5,60 @@
 #include "he/core/arena_allocator.h"
 
 #include "he/core/memory_ops.h"
+#include "he/core/random.h"
 #include "he/core/test.h"
 
 using namespace he;
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST(core, arena_allocator, Test)
+HE_TEST(core, arena_allocator, basic)
 {
     ArenaAllocator a;
     TestAllocator(a);
+}
+
+// ------------------------------------------------------------------------------------------------
+HE_TEST(core, arena_allocator, multipage)
+{
+    ArenaAllocator a;
+
+    static constexpr size_t AllocSize = 1024;
 
     // Allocate enough to cause multiple pages to be committed
-    void* alloc0 = a.Malloc(512);
-    void* alloc1 = a.Malloc(512);
-    void* alloc2 = a.Malloc(512);
-    void* alloc3 = a.Malloc(512);
-    void* alloc4 = a.Malloc(512);
-    void* alloc5 = a.Malloc(512);
-    void* alloc6 = a.Malloc(512);
+    void* alloc0 = a.Malloc(AllocSize);
+    void* alloc1 = a.Malloc(AllocSize);
+    void* alloc2 = a.Malloc(AllocSize);
+    void* alloc3 = a.Malloc(AllocSize);
+    void* alloc4 = a.Malloc(AllocSize);
+    void* alloc5 = a.Malloc(AllocSize);
+    void* alloc6 = a.Malloc(AllocSize);
     HE_EXPECT_GT(ArenaAllocatorTestAttorney::GetCommittedPages(a), 1);
 
     // Write to the allocations
-    MemSet(alloc0, 0, 512);
-    MemSet(alloc1, 1, 512);
-    MemSet(alloc2, 2, 512);
-    MemSet(alloc3, 3, 512);
-    MemSet(alloc4, 4, 512);
-    MemSet(alloc5, 5, 512);
-    MemSet(alloc6, 6, 512);
+    MemSet(alloc0, 0, AllocSize);
+    MemSet(alloc1, 1, AllocSize);
+    MemSet(alloc2, 2, AllocSize);
+    MemSet(alloc3, 3, AllocSize);
+    MemSet(alloc4, 4, AllocSize);
+    MemSet(alloc5, 5, AllocSize);
+    MemSet(alloc6, 6, AllocSize);
 
     // Check that each has the right memory set (e.g.: no memory stomps from overlapping allocs)
-    uint8_t expectedBytes[512];
-    MemSet(expectedBytes, 0, 512);
-    HE_EXPECT_EQ_MEM(alloc0, expectedBytes, 512);
-    MemSet(expectedBytes, 1, 512);
-    HE_EXPECT_EQ_MEM(alloc1, expectedBytes, 512);
-    MemSet(expectedBytes, 2, 512);
-    HE_EXPECT_EQ_MEM(alloc2, expectedBytes, 512);
-    MemSet(expectedBytes, 3, 512);
-    HE_EXPECT_EQ_MEM(alloc3, expectedBytes, 512);
-    MemSet(expectedBytes, 4, 512);
-    HE_EXPECT_EQ_MEM(alloc4, expectedBytes, 512);
-    MemSet(expectedBytes, 5, 512);
-    HE_EXPECT_EQ_MEM(alloc5, expectedBytes, 512);
-    MemSet(expectedBytes, 6, 512);
-    HE_EXPECT_EQ_MEM(alloc6, expectedBytes, 512);
+    uint8_t expectedBytes[AllocSize];
+    MemSet(expectedBytes, 0, AllocSize);
+    HE_EXPECT_EQ_MEM(alloc0, expectedBytes, AllocSize);
+    MemSet(expectedBytes, 1, AllocSize);
+    HE_EXPECT_EQ_MEM(alloc1, expectedBytes, AllocSize);
+    MemSet(expectedBytes, 2, AllocSize);
+    HE_EXPECT_EQ_MEM(alloc2, expectedBytes, AllocSize);
+    MemSet(expectedBytes, 3, AllocSize);
+    HE_EXPECT_EQ_MEM(alloc3, expectedBytes, AllocSize);
+    MemSet(expectedBytes, 4, AllocSize);
+    HE_EXPECT_EQ_MEM(alloc4, expectedBytes, AllocSize);
+    MemSet(expectedBytes, 5, AllocSize);
+    HE_EXPECT_EQ_MEM(alloc5, expectedBytes, AllocSize);
+    MemSet(expectedBytes, 6, AllocSize);
+    HE_EXPECT_EQ_MEM(alloc6, expectedBytes, AllocSize);
 
     // Finally, free it all up
     a.Free(alloc0);

@@ -4,13 +4,16 @@
 
 #include "he/core/assert.h"
 #include "he/core/concepts.h"
+#include "he/core/compiler.h"
 #include "he/core/hash.h"
 #include "he/core/macros.h"
 #include "he/core/memory_ops.h"
 #include "he/core/types.h"
 #include "he/core/type_traits.h"
 
-namespace std { struct bidirectional_iterator_tag; }
+HE_BEGIN_NAMESPACE_STD
+struct bidirectional_iterator_tag;
+HE_END_NAMESPACE_STD
 
 namespace he
 {

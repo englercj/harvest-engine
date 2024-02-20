@@ -37,17 +37,20 @@
 #include "he/core/concepts.h"
 #include "he/core/config.h"
 #include "he/core/cpu.h"
+#include "he/core/debugger.h"
+#include "he/core/inline_allocator.h"
 #include "he/core/limits.h"
+#include "he/core/process.h"
 #include "he/core/string.h"
 #include "he/core/string_ops.h"
 #include "he/core/utils.h"
+#include "he/core/vector.h"
 #include "he/core/wstr.h"
 
 #include "dragonbox/dragonbox.h"
 
 #include <cmath>
 #include <cstdio>
-#include <exception>
 
 #if HE_COMPILER_MSVC
     extern "C" unsigned char _BitScanReverse(unsigned long* Index, unsigned long Mask);
@@ -57,39 +60,15 @@
         extern "C" unsigned char _BitScanReverse64(unsigned long* Index, unsigned __int64 Mask);
         #pragma intrinsic(_BitScanReverse64)
     #endif
-
-    HE_FORCE_INLINE uint32_t _heClz(uint32_t x)
-    {
-        unsigned long r = 0;
-        _BitScanReverse(&r, x);
-        return 31 ^ r;
-    }
-
-    HE_FORCE_INLINE uint32_t _heClzll(uint64_t x)
-    {
-        unsigned long r = 0;
-    #if HE_CPU_64_BIT
-        _BitScanReverse64(&r, x);
-    #else
-        if (_BitScanReverse(&r, static_cast<uint32_t>(x >> 32)))
-            return 63 ^ (r + 32);
-        _BitScanReverse(&r, static_cast<uint32_t>(x));
-    #endif
-        return 63 ^ r;
-    }
-
-    #define HE_CLZ(x)       _heClz(x)
-    #define HE_CLZLL(x)     _heClzll(x)
-#else
-    #define HE_CLZ(x)       __builtin_clz(x)
-    #define HE_CLZLL(x)     __builtin_clzll(x)
 #endif
 
 // Can't use the normal assert flow, because it could come back into Fmt again.
-#if HE_ENABLE_ASSERTIONS
-    #define HE_FMT_ASSERT(expr, msg) (HE_LIKELY(expr) ? void(0) : FmtError(msg))
-#else
+#if defined(_PREFAST_)
+    #define HE_FMT_ASSERT(expr, msg) __assume(expr)
+#elif !HE_ENABLE_ASSERTIONS
     #define HE_FMT_ASSERT(expr, msg)
+#else
+    #define HE_FMT_ASSERT(expr, msg) (HE_LIKELY(expr) ? void(0) : FmtError(msg))
 #endif
 
 namespace he
@@ -131,6 +110,602 @@ namespace he
     };
     #undef HE_POWERS_OF_10
 
+    HE_FORCE_INLINE uint32_t CountLeadingZeroes(uint32_t x)
+    {
+    #if HE_COMPILER_MSVC
+        unsigned long r = 0;
+        _BitScanReverse(&r, x);
+        return 31 ^ r;
+    #else
+        return static_cast<uint32_t>(__builtin_clz(x));
+    #endif
+    }
+
+    HE_FORCE_INLINE uint32_t CountLeadingZeroes(uint64_t x)
+    {
+    #if HE_COMPILER_MSVC
+        unsigned long r = 0;
+    #if HE_CPU_64_BIT
+        _BitScanReverse64(&r, x);
+    #else
+        if (_BitScanReverse(&r, static_cast<uint32_t>(x >> 32)))
+            return 63 ^ (r + 32);
+        _BitScanReverse(&r, static_cast<uint32_t>(x));
+    #endif
+        return 63 ^ r;
+    #else
+        return static_cast<uint32_t>(__builtin_clzll(x));
+    #endif
+    }
+
+#if defined(__INT128_TYPE__)
+    using uint128_t = unsigned __INT128_TYPE__;
+#elif defined(__SIZEOF_INT128__)
+    using uint128_t = unsigned __int128;
+#else
+    #if HE_COMPILER_MSVC
+        extern "C" unsigned char _addcarry_u64(
+            unsigned char Carry,
+            unsigned __int64 Source1,
+            unsigned __int64 Source2,
+            unsigned __int64* Destination);
+        #pragma intrinsic(_addcarry_u64)
+    #endif
+    class uint128_t
+    {
+    private:
+        uint64_t m_lo, m_hi;
+
+    public:
+        constexpr uint128_t(uint64_t hi, uint64_t lo) : m_lo(lo), m_hi(hi) {}
+        constexpr uint128_t(uint64_t value = 0) : m_lo(value), m_hi(0) {}
+
+        constexpr uint64_t high() const noexcept { return m_hi; }
+        constexpr uint64_t low() const noexcept { return m_lo; }
+
+        template <Integral T>
+        constexpr explicit operator T() const { return static_cast<T>(m_lo); }
+
+        constexpr bool operator==(const uint128_t& x) const noexcept { return m_hi == x.m_hi && m_lo == x.m_lo; }
+        constexpr bool operator!=(const uint128_t& x) const noexcept { return m_hi != x.m_hi || m_lo != x.m_lo; }
+        constexpr bool operator>(const uint128_t& x) const noexcept { return m_hi != x.m_hi ? m_hi > x.m_hi : m_lo > x.m_lo; }
+
+        constexpr uint128_t operator|(const uint128_t& x) const noexcept { return { m_hi | x.m_hi, m_lo | x.m_lo }; }
+        constexpr uint128_t operator&(const uint128_t& x) const noexcept { return { m_hi & x.m_hi, m_lo & x.m_lo }; }
+        friend constexpr uint128_t operator~(const uint128_t& x) noexcept { return { ~x.m_hi, ~x.m_lo }; }
+
+        uint128_t operator+(const uint128_t& x) const noexcept { uint128_t result = *this; result += x; return result; }
+        uint128_t operator-(uint64_t x) const noexcept { return { m_hi - (m_lo < x ? 1 : 0), m_lo - x }; }
+        uint128_t operator*(uint32_t x) const noexcept
+        {
+            HE_FMT_ASSERT(m_hi == 0, "");
+            uint64_t hi = (m_lo >> 32) * x;
+            uint64_t lo = (m_lo & ~uint32_t()) * x;
+            uint64_t new_lo = (hi << 32) + lo;
+            return { (hi >> 32) + (new_lo < lo ? 1 : 0), new_lo };
+        }
+
+        constexpr uint128_t operator>>(int shift) const noexcept
+        {
+            if (shift == 64) return {0, m_hi};
+            if (shift > 64) return uint128_t(0, m_hi) >> (shift - 64);
+            return { m_hi >> shift, (m_hi << (64 - shift)) | (m_lo >> shift) };
+        }
+
+        constexpr uint128_t operator<<(int shift) const noexcept
+        {
+            if (shift == 64) return {m_lo, 0};
+            if (shift > 64) return uint128_t(m_lo, 0) << (shift - 64);
+            return { m_hi << shift | (m_lo >> (64 - shift)), (m_lo << shift) };
+        }
+
+        constexpr uint128_t& operator<<=(int shift) noexcept { return *this = *this << shift; }
+        constexpr uint128_t& operator>>=(int shift) noexcept { return *this = *this >> shift; }
+        constexpr void operator&=(uint128_t x) noexcept { m_lo &= x.m_lo; m_hi &= x.m_hi; }
+
+        constexpr void operator+=(uint128_t x) noexcept
+        {
+            uint64_t new_lo = m_lo + x.m_lo;
+            uint64_t new_hi = m_hi + x.m_hi + (new_lo < m_lo ? 1 : 0);
+            HE_FMT_ASSERT(new_hi >= m_hi, "");
+            m_lo = new_lo;
+            m_hi = new_hi;
+        }
+
+        constexpr uint128_t& operator+=(uint64_t x) noexcept
+        {
+            if (__builtin_is_constant_evaluated())
+            {
+                m_lo += x;
+                m_hi += (m_lo < x ? 1 : 0);
+                return *this;
+            }
+        #if HE_HAS_BUILTIN(__builtin_addcll) && !defined(__ibmxl__)
+            unsigned long long carry;
+            m_lo = __builtin_addcll(m_lo, x, 0, &carry);
+            m_hi += carry;
+        #elif HE_HAS_BUILTIN(__builtin_ia32_addcarryx_u64) && !defined(__ibmxl__)
+            unsigned long long result;
+            auto carry = __builtin_ia32_addcarryx_u64(0, m_lo, x, &result);
+            m_lo = result;
+            m_hi += carry;
+        #elif HE_COMPILER_MSVC && HE_CPU_X86_64
+            const unsigned char carry = _addcarry_u64(0, m_lo, x, &m_lo);
+            _addcarry_u64(carry, m_hi, 0, &m_hi);
+        #else
+            m_lo += x;
+            m_hi += (m_lo < x ? 1 : 0);
+        #endif
+            return *this;
+        }
+    };
+#endif
+
+    class BigInt
+    {
+    public:
+        // A BigInt is stored as an array of Bigits (big digits), with Bigit at index
+        // 0 being the least significant one.
+        using Bigit = uint32_t;
+        using DoubleBigit = uint64_t;
+
+        static constexpr uint32_t BigitsCapacity = 32;
+
+    public:
+        BigInt()
+            : m_allocator(Allocator::GetDefault())
+            , m_bigits(m_allocator)
+            , m_exp(0)
+        {
+            m_bigits.Resize(BigitsCapacity);
+        }
+
+        explicit BigInt(uint64_t n) : BigInt() { Assign(n); }
+
+        BigInt(const BigInt&) = delete;
+        void operator=(const BigInt&) = delete;
+
+        void Assign(const BigInt& other)
+        {
+            m_bigits = other.m_bigits;
+            m_exp = other.m_exp;
+        }
+
+        template <typename Int> void operator=(Int n)
+        {
+            HE_FMT_ASSERT(n > 0, "");
+            using UintType = Conditional<Limits<Int>::Bits <= 64, uint64_t, uint128_t>;
+            Assign(static_cast<UintType>(n));
+        }
+
+        int32_t BigitsCount() const
+        {
+            return static_cast<int32_t>(m_bigits.Size()) + m_exp;
+        }
+
+        HE_NO_INLINE constexpr BigInt& operator<<=(int shift)
+        {
+            HE_FMT_ASSERT(shift >= 0, "");
+            m_exp += shift / BigitBits;
+            shift %= BigitBits;
+
+            if (shift == 0)
+                return *this;
+
+            Bigit carry = 0;
+            for (uint32_t i = 0, n = m_bigits.Size(); i < n; ++i)
+            {
+                Bigit c = m_bigits[i] >> (BigitBits - shift);
+                m_bigits[i] = (m_bigits[i] << shift) + carry;
+                carry = c;
+            }
+
+            if (carry != 0)
+                m_bigits.PushBack(carry);
+
+            return *this;
+        }
+
+        template <typename Int>
+        constexpr BigInt& operator*=(Int value)
+        {
+            HE_FMT_ASSERT(value > 0, "");
+            constexpr uint32_t Bits = Limits<Int>::Bits;
+            using UintType = Conditional<Bits <= 32, uint32_t, Conditional<Bits <= 64, uint64_t, uint128_t>>;
+            Multiply(static_cast<UintType>(value));
+            return *this;
+        }
+
+        friend int32_t Compare(const BigInt& lhs, const BigInt& rhs)
+        {
+            const int32_t lhsCount = lhs.BigitsCount();
+            const int32_t rhsCount = rhs.BigitsCount();
+
+            if (lhsCount != rhsCount)
+                return lhsCount > rhsCount ? 1 : -1;
+
+            int32_t i = static_cast<int32_t>(lhs.m_bigits.Size()) - 1;
+            int32_t j = static_cast<int32_t>(rhs.m_bigits.Size()) - 1;
+            int32_t end = i - j;
+
+            if (end < 0)
+                end = 0;
+
+            for (; i >= end; --i, --j)
+            {
+                const Bigit lhsBigit = lhs[i];
+                const Bigit rhsBigit = rhs[j];
+                if (lhsBigit != rhsBigit)
+                    return lhsBigit > rhsBigit ? 1 : -1;
+            }
+
+            if (i != j)
+                return i > j ? 1 : -1;
+
+            return 0;
+        }
+
+        // Returns compare(lhs1 + lhs2, rhs).
+        friend int32_t AddCompare(const BigInt& lhs1, const BigInt& lhs2, const BigInt& rhs)
+        {
+            const int32_t maxLhsBigits = Max(lhs1.BigitsCount(), lhs2.BigitsCount());
+            const int32_t rhsBigitsCount = rhs.BigitsCount();
+
+            if (maxLhsBigits + 1 < rhsBigitsCount)
+                return -1;
+
+            if (maxLhsBigits > rhsBigitsCount)
+                return 1;
+
+            const auto getBigit = [](const BigInt& n, int i) -> Bigit
+            {
+                return i >= n.m_exp && i < n.BigitsCount() ? n[i - n.m_exp] : 0;
+            };
+
+            DoubleBigit borrow = 0;
+            const int32_t min_exp = Min(Min(lhs1.m_exp, lhs2.m_exp), rhs.m_exp);
+            for (int i = rhsBigitsCount - 1; i >= min_exp; --i)
+            {
+                const DoubleBigit sum = static_cast<DoubleBigit>(getBigit(lhs1, i)) + getBigit(lhs2, i);
+                const Bigit rhsBigit = getBigit(rhs, i);
+
+                if (sum > rhsBigit + borrow)
+                    return 1;
+
+                borrow = rhsBigit + borrow - sum;
+
+                if (borrow > 1)
+                    return -1;
+
+                borrow <<= BigitBits;
+            }
+            return borrow != 0 ? -1 : 0;
+        }
+
+        // Assigns pow(10, exp) to this BigInt.
+        void AssignPow10(int32_t exp)
+        {
+            HE_FMT_ASSERT(exp >= 0, "");
+
+            if (exp == 0)
+            {
+                *this = 1;
+                return;
+            }
+
+            // Find the top bit.
+            int bitmask = 1;
+            while (exp >= bitmask)
+            {
+                bitmask <<= 1;
+            }
+
+            bitmask >>= 1;
+            // pow(10, exp) = pow(5, exp) * pow(2, exp). First compute pow(5, exp) by
+            // repeated squaring and multiplication.
+            *this = 5;
+            bitmask >>= 1;
+
+            while (bitmask != 0)
+            {
+                Square();
+                if ((exp & bitmask) != 0)
+                    *this *= 5;
+                bitmask >>= 1;
+            }
+
+            *this <<= exp;  // Multiply by pow(2, exp) by shifting.
+        }
+
+        void Square()
+        {
+            const int32_t bigitsCount = static_cast<int32_t>(m_bigits.Size());
+            const int32_t resultBigitsCount = 2 * bigitsCount;
+
+            InlineAllocator<sizeof(Bigit) * BigitsCapacity> mem(Allocator::GetDefault());
+            Vector<Bigit> n(Move(m_bigits), mem);
+
+            m_bigits.Resize(static_cast<uint32_t>(resultBigitsCount));
+
+            uint128_t sum{ 0 };
+            for (int32_t index = 0; index < bigitsCount; ++index)
+            {
+                // Compute Bigit at position index of the result by adding
+                // cross-product terms n[i] * n[j] such that i + j == index.
+                for (int i = 0, j = index; j >= 0; ++i, --j)
+                {
+                    // Most terms are multiplied twice which can be optimized in the future.
+                    sum += static_cast<DoubleBigit>(n[i]) * n[j];
+                }
+
+                (*this)[index] = static_cast<Bigit>(sum);
+                sum >>= Limits<Bigit>::Bits;  // Compute the carry.
+            }
+
+            // Do the same for the top half.
+            for (int32_t index = bigitsCount; index < resultBigitsCount; ++index)
+            {
+                for (int32_t j = bigitsCount - 1, i = index - j; i < bigitsCount;)
+                {
+                    sum += static_cast<DoubleBigit>(n[i++]) * n[j--];
+                }
+
+                (*this)[index] = static_cast<Bigit>(sum);
+                sum >>= Limits<Bigit>::Bits;
+            }
+
+            RemoveLeadingZeroes();
+            m_exp *= 2;
+        }
+
+        // If this BigInt has a bigger exponent than other, adds trailing zero to make
+        // exponents equal. This simplifies some operations such as subtraction.
+        void Align(const BigInt& other)
+        {
+            const int32_t expDiff = m_exp - other.m_exp;
+            if (expDiff <= 0)
+                return;
+
+            const int32_t BigitsCount = static_cast<int32_t>(m_bigits.Size());
+            m_bigits.Resize(static_cast<uint32_t>(BigitsCount + expDiff));
+
+            for (int32_t i = BigitsCount - 1, j = i + expDiff; i >= 0; --i, --j)
+            {
+                m_bigits[j] = m_bigits[i];
+            }
+
+            MemZero(m_bigits.Data(), static_cast<uint32_t>(expDiff) * sizeof(Bigit));
+            m_exp -= expDiff;
+        }
+
+        // Divides this bignum by divisor, assigning the remainder to this and
+        // returning the quotient.
+        int32_t DivModAssign(const BigInt& divisor)
+        {
+            HE_FMT_ASSERT(this != &divisor, "");
+
+            if (Compare(*this, divisor) < 0)
+                return 0;
+
+            HE_FMT_ASSERT(divisor.m_bigits[divisor.m_bigits.Size() - 1] != 0, "");
+
+            Align(divisor);
+            int32_t quotient = 0;
+            do {
+                SubtractAligned(divisor);
+                ++quotient;
+            } while (Compare(*this, divisor) >= 0);
+
+            return quotient;
+        }
+
+    private:
+        Bigit operator[](int index) const { return m_bigits[index]; }
+        Bigit& operator[](int index) { return m_bigits[static_cast<uint32_t>(index)]; }
+
+        static constexpr const int BigitBits = Limits<Bigit>::Bits;
+
+        void SubtractBigits(int index, Bigit other, Bigit& borrow)
+        {
+            auto result = static_cast<DoubleBigit>((*this)[index]) - other - borrow;
+            (*this)[index] = static_cast<Bigit>(result);
+            borrow = static_cast<Bigit>(result >> (BigitBits * 2 - 1));
+        }
+
+        void RemoveLeadingZeroes()
+        {
+            int BigitsCount = static_cast<int>(m_bigits.Size()) - 1;
+            while (BigitsCount > 0 && (*this)[BigitsCount] == 0)
+            {
+                --BigitsCount;
+            }
+            m_bigits.Resize(static_cast<uint32_t>(BigitsCount + 1));
+        }
+
+        // Computes *this -= other assuming aligned BigInts and *this >= other.
+        void SubtractAligned(const BigInt& other)
+        {
+            HE_FMT_ASSERT(other.m_exp >= m_exp, "unaligned BigInts");
+            HE_FMT_ASSERT(Compare(*this, other) >= 0, "");
+            Bigit borrow = 0;
+            int i = other.m_exp - m_exp;
+            for (uint32_t j = 0, n = other.m_bigits.Size(); j != n; ++i, ++j)
+            {
+                SubtractBigits(i, other.m_bigits[j], borrow);
+            }
+            while (borrow > 0)
+            {
+                SubtractBigits(i, 0, borrow);
+            }
+            RemoveLeadingZeroes();
+        }
+
+        void Multiply(uint32_t value)
+        {
+            const DoubleBigit wide_value = value;
+            Bigit carry = 0;
+            for (uint32_t i = 0, n = m_bigits.Size(); i < n; ++i)
+            {
+                const DoubleBigit result = m_bigits[i] * wide_value + carry;
+                m_bigits[i] = static_cast<Bigit>(result);
+                carry = static_cast<Bigit>(result >> BigitBits);
+            }
+            if (carry != 0)
+            {
+                m_bigits.PushBack(carry);
+            }
+        }
+
+        template <AnyOf<uint64_t, uint128_t> UInt>
+        void Multiply(UInt value)
+        {
+            using HalfUint = Conditional<IsSame<UInt, uint128_t>, uint64_t, uint32_t>;
+            const int shift = Limits<HalfUint>::Bits - BigitBits;
+            const UInt lower = static_cast<HalfUint>(value);
+            const UInt upper = value >> Limits<HalfUint>::Bits;
+            UInt carry = 0;
+            for (uint32_t i = 0, n = m_bigits.Size(); i < n; ++i)
+            {
+                const UInt result = lower * m_bigits[i] + static_cast<Bigit>(carry);
+                carry = (upper * m_bigits[i] << shift) + (result >> BigitBits) + (carry >> BigitBits);
+                m_bigits[i] = static_cast<Bigit>(result);
+            }
+            while (carry != 0)
+            {
+                m_bigits.PushBack(static_cast<Bigit>(carry));
+                carry >>= BigitBits;
+            }
+        }
+
+        template <AnyOf<uint64_t, uint128_t> UInt>
+        void Assign(UInt n)
+        {
+            uint32_t BigitsCount = 0;
+            do
+            {
+                m_bigits[BigitsCount++] = static_cast<Bigit>(n);
+                n >>= BigitBits;
+            } while (n != 0);
+            m_bigits.Resize(BigitsCount);
+            m_exp = 0;
+        }
+
+    private:
+        InlineAllocator<sizeof(Bigit) * BigitsCapacity> m_allocator;
+        Vector<Bigit> m_bigits;
+        int32_t m_exp;
+    };
+
+    template <typename T>
+    using CarrierUint = Conditional<sizeof(T) <= 4, uint32_t, Conditional<sizeof(T) <= 8, uint64_t, uint128_t>>;
+
+    template <>
+    struct Limits<uint128_t>
+    {
+        using Type = uint128_t;
+
+        static constexpr bool IsSigned = false;
+        static constexpr uint32_t Bits = 128;
+        static constexpr uint32_t SignBits = IsSigned ? 1 : 0;
+        static constexpr uint32_t ValueBits = static_cast<uint32_t>(Bits - SignBits);
+
+        static constexpr uint32_t Digits = ValueBits;
+        static constexpr uint32_t Digits10 = static_cast<uint32_t>(Digits * 3 / 10);
+
+        static constexpr uint128_t Min{ 0 };
+        static constexpr uint128_t Max{ 0xffffffffffffffffull, 0xffffffffffffffffull };
+    };
+
+    template <>
+    struct Limits<BigInt>
+    {
+        using Type = BigInt;
+
+        static constexpr bool IsSigned = false;
+        static constexpr uint32_t Bits = 128;
+        static constexpr uint32_t SignBits = IsSigned ? 1 : 0;
+        static constexpr uint32_t ValueBits = static_cast<uint32_t>(Bits - SignBits);
+
+        static constexpr uint32_t Digits = ValueBits;
+        static constexpr uint32_t Digits10 = static_cast<uint32_t>(Digits * 3 / 10);
+
+        static constexpr uint128_t Min{ 0 };
+        static constexpr uint128_t Max{ 0xffffffffffffffffull, 0xffffffffffffffffull };
+    };
+
+    // A floating-point number f * pow(2, e) where T is an unsigned type.
+    template <typename T>
+    struct BasicFP
+    {
+        T f;
+        int32_t e;
+
+        constexpr BasicFP() : f(0), e(0) {}
+        constexpr BasicFP(uint64_t value, int32_t exp) : f(value), e(exp) {}
+
+        template <FloatingPoint F>
+        constexpr BasicFP(F n) { Assign(n); }
+
+        template <FloatingPoint F> requires(Limits<F>::Format != FloatFormat::DoubleDouble128)
+        constexpr bool Assign(F value)
+        {
+            // This function assumes the float is in the format [sign][exponent][significand].
+            using Uint = CarrierUint<F>;
+            using Info = Limits<F>;
+
+            constexpr Uint ImplicitBit = Uint(1) << Info::SignificandBits;
+            constexpr Uint SignificandMask = ImplicitBit - 1;
+            constexpr Uint ExponentMask = ((Uint(1) << Info::ExponentBits) - 1) << Info::SignificandBits;
+
+            const Uint bits = BitCast<Uint>(value);
+            f = static_cast<T>(bits & SignificandMask);
+
+            int32_t biasedExp = static_cast<int32_t>((bits & ExponentMask) >> Info::SignificandBits);
+
+            // The predecessor is closer if n is a normalized power of 2 (f == 0)
+            // other than the smallest normalized number (biased_e > 1).
+            const bool isPredecessorCloser = f == 0 && biasedExp > 1;
+
+            if (biasedExp == 0)
+                biasedExp = 1; // subnormals use biased exponent 1 (min exponent)
+            else if constexpr (Info::HasImplicitBit)
+                f += static_cast<T>(ImplicitBit);
+
+            constexpr Uint ExponentBias = Info::MaxExponent - 1;
+            e = biasedExp - ExponentBias - Info::SignificandBits;
+
+            if constexpr (!Info::HasImplicitBit)
+                ++e;
+
+            return isPredecessorCloser;
+        }
+
+        template <FloatingPoint F> requires(Limits<F>::Format == FloatFormat::DoubleDouble128)
+        constexpr bool Assign(F value)
+        {
+            static_assert(Limits<T>::Format != FloatFormat::DoubleDouble128, "Unsupported floating-point type");
+            return Assign(static_cast<double>(value));
+        }
+    };
+
+    constexpr void AdjustPrecision(int32_t& precision, int32_t exp10)
+    {
+        // Adjust fixed precision by exponent because it is relative to decimal point.
+        HE_FMT_ASSERT(exp10 < 0 || precision < (Limits<int32_t>::Max - exp10), "Number is too big to be formatted.");
+        precision += exp10;
+    }
+
+    constexpr uint32_t FractionPartRoundingThresholds(int32_t index)
+    {
+        // For checking rounding thresholds.
+        // The kth entry is chosen to be the smallest integer such that the upper 32-bits of
+        // 10^(k+1) times it is strictly bigger than 5 * 10^k.
+        // It is equal to ceil(2^31 + 2^32/10^(k + 1)).
+        // These are stored in a string literal because we cannot have static arrays
+        // in constexpr functions and non-static ones are poorly optimized.
+        return U"\x9999999a\x828f5c29\x80418938\x80068db9\x8000a7c6\x800010c7\x800001ae\x8000002b"[index];
+    }
+
     // Converts value in the range [0, 100) to a string.
     constexpr const char* Digits2(uint64_t value)
     {
@@ -143,13 +718,13 @@ namespace he
 
     HE_FORCE_INLINE uint32_t CountDigits(uint64_t x)
     {
-        const uint8_t t = Bsr2Log10[HE_CLZLL(x | 1) ^ 63];
+        const uint8_t t = Bsr2Log10[CountLeadingZeroes(x | 1) ^ 63];
         return t - (x < ZeroOrPowersOf10[t]);
     }
 
     HE_FORCE_INLINE uint32_t CountDigits(uint32_t x)
     {
-        const uint64_t inc = DigitCountLookup[HE_CLZ(x | 1) ^ 31];
+        const uint64_t inc = DigitCountLookup[CountLeadingZeroes(x | 1) ^ 31];
         return static_cast<uint32_t>((x + inc) >> 32);
     }
 
@@ -157,7 +732,7 @@ namespace he
     inline uint32_t CountDigits(T x)
     {
         if constexpr (Limits<T>::ValueBits == 32)
-            return (HE_CLZ(static_cast<uint32_t>(x) | 1) ^ 31) / Bits + 1;
+            return (CountLeadingZeroes(static_cast<uint32_t>(x) | 1) ^ 31) / Bits + 1;
 
         uint32_t count = 0;
         do
@@ -420,7 +995,7 @@ namespace he
 
     static void WriteChar(String& out, char value, const FmtSpecInt& spec)
     {
-        WritePadded(out, spec, 1, [=](char* it)
+        WritePadded(out, spec, 1, [&](char* it)
         {
             *it++ = value;
             return it;
@@ -464,7 +1039,7 @@ namespace he
             padding = spec.precision - digitCount;
         }
 
-        WritePadded<FmtSpecAlign::Right>(out, spec, len, [=](char* it)
+        WritePadded<FmtSpecAlign::Right>(out, spec, len, [&](char* it)
         {
             for (uint32_t p = prefix & 0xffffff; p != 0; p >>= 8)
             {
@@ -498,7 +1073,7 @@ namespace he
             case FmtSpecIntType::Decimal:
             {
                 const uint32_t digitCount = CountDigits(absValue);
-                return WriteInt(out, digitCount, prefix, spec, [=](char* it)
+                return WriteInt(out, digitCount, prefix, spec, [&](char* it)
                 {
                     return FormatDecimal(it, absValue, digitCount).end;
                 });
@@ -515,7 +1090,7 @@ namespace he
                 if (spec.alt && spec.precision <= static_cast<int32_t>(digitCount) && absValue != 0)
                     PrefixAppend(prefix, '0');
 
-                return WriteInt(out, digitCount, prefix, spec, [=](char* it)
+                return WriteInt(out, digitCount, prefix, spec, [&](char* it)
                 {
                     return FormatUint<3>(it, absValue, digitCount);
                 });
@@ -527,7 +1102,7 @@ namespace he
                 if (spec.alt)
                     PrefixAppend(prefix, static_cast<uint32_t>(upper ? 'X' : 'x') << 8 | '0');
                 const uint32_t digitCount = CountDigits<4>(absValue);
-                return WriteInt(out, digitCount, prefix, spec, [=](char* it)
+                return WriteInt(out, digitCount, prefix, spec, [&](char* it)
                 {
                     return FormatUint<4>(it, absValue, digitCount, upper);
                 });
@@ -539,7 +1114,7 @@ namespace he
                 if (spec.alt)
                     PrefixAppend(prefix, static_cast<uint32_t>(upper ? 'B' : 'b') << 8 | '0');
                 const uint32_t digitCount = CountDigits<1>(absValue);
-                return WriteInt(out, digitCount, prefix, spec, [=](char* it)
+                return WriteInt(out, digitCount, prefix, spec, [&](char* it)
                 {
                     return FormatUint<1>(it, absValue, digitCount);
                 });
@@ -622,7 +1197,7 @@ namespace he
     }
 
     template <UnsignedIntegral T>
-    static char* WriteSignificand(char* it, T significand, uint32_t significandSize, int32_t integralSize, char decimalPoint)
+    static char* WriteSignificand(char* it, T significand, uint32_t significandSize, uint32_t integralSize, char decimalPoint)
     {
         if (!decimalPoint)
             return FormatDecimal(it, significand, significandSize).end;
@@ -648,7 +1223,7 @@ namespace he
         return end;
     }
 
-    static char* WriteSignificand(char* it, const char* significand, uint32_t significandSize, int32_t integralSize, char decimalPoint)
+    static char* WriteSignificand(char* it, const char* significand, uint32_t significandSize, uint32_t integralSize, char decimalPoint)
     {
         MemCopy(it, significand, integralSize);
         it += integralSize;
@@ -657,9 +1232,15 @@ namespace he
             return it;
 
         *it++ = decimalPoint;
-        const uint32_t len = significandSize - integralSize;
-        MemCopy(it, significand + integralSize, len);
-        return it + len;
+
+        if (significandSize > integralSize)
+        {
+            const uint32_t len = significandSize - integralSize;
+            MemCopy(it, significand + integralSize, len);
+            return it + len;
+        }
+
+        return it;
     }
 
     static void WriteNonFinite(String& out, bool isnan, const FmtSpecFloat& spec)
@@ -673,7 +1254,7 @@ namespace he
         if (spec.fill.Size() == 1 && spec.fill[0] == '0')
             writeSpec.fill[0] = ' ';
 
-        WritePadded(out, writeSpec, size, [=](char* it)
+        WritePadded(out, writeSpec, size, [&](char* it)
         {
             if (spec.sign != FmtSpecSign::None)
                 *it++ = SignToChar(spec.sign);
@@ -711,64 +1292,112 @@ namespace he
         return it;
     }
 
-    static void WriteFloat_SNPrintf(String& out, double value, const FmtSpecFloat& spec)
+    template <typename T> requires(Limits<T>::Format != FloatFormat::DoubleDouble128)
+    static void WriteFloat_Hex(String& out, T value, const FmtSpecFloat& spec)
     {
-        if (spec.sign != FmtSpecSign::None)
-            out.Append(SignToChar(spec.sign));
+        using Info = Limits<T>;
+        using Uint = CarrierUint<T>;
 
-        char format[8];
-        char* fp = format;
-        *fp++ = '%';
-        if (ShouldShowPoint(spec))
-            *fp++ = '#';
-        if (spec.precision >= 0)
+        HE_FMT_ASSERT(std::isfinite(value), "WriteFloat_Hex got a non-finite value.");
+
+        // TODO: Audit now that I support long double
+
+        BasicFP<Uint> fp(value);
+        fp.e += Info::SignificandBits;
+
+        if constexpr (!Info::HasImplicitBit)
+            --fp.e;
+
+        constexpr Uint FractionBits = Info::SignificandBits + static_cast<Uint>(Info::HasImplicitBit);
+        constexpr Uint DigitsCount = (FractionBits + 3) / 4;
+
+        constexpr Uint LeadingShift = ((DigitsCount - 1) * 4);
+        constexpr Uint LeadingMask = Uint(0xf) << LeadingShift;
+        const uint32_t leadingDigit = static_cast<uint32_t>((fp.f & LeadingMask) >> LeadingShift);
+
+        if (leadingDigit > 1)
+            fp.e -= (32 - CountLeadingZeroes(leadingDigit) - 1);
+
+        int32_t printCount = DigitsCount - 1;
+        if (spec.precision >= 0 && printCount > spec.precision)
         {
-            *fp++ = '.';
-            *fp++ = '*';
+            const int32_t shift = ((printCount - spec.precision - 1) * 4);
+            const Uint mask = Uint(0xf) << shift;
+            const uint32_t v = static_cast<uint32_t>((fp.f & mask) >> shift);
+
+            if (v >= 8)
+            {
+                const Uint inc = Uint(1) << (shift + 4);
+                fp.f += inc;
+                fp.f &= ~(inc - 1);
+            }
+
+            // Check for long double overflow
+            if constexpr (!Info::HasImplicitBit)
+            {
+                constexpr Uint ImplicitBit = Uint(1) << Info::SignificandBits;
+                if ((fp.f & ImplicitBit) == ImplicitBit)
+                {
+                    fp.f >>= 4;
+                    fp.e += 4;
+                }
+            }
+
+            printCount = spec.precision;
         }
-        switch (spec.type)
+
+        char digits[Limits<Uint>::Bits / 4];
+        MemSet(digits, '0', sizeof(digits));
+        FormatUint<4>(digits, fp.f, DigitsCount, IsUpper(spec));
+        static_assert(DigitsCount <= sizeof(digits));
+
+        while (printCount > 0 && digits[printCount] == '0')
+            --printCount;
+
+        const bool isUpper = IsUpper(spec);
+        const bool showPoint = spec.alt || printCount > 0 || printCount < spec.precision;
+        const uint32_t absExp = static_cast<uint32_t>(fp.e < 0 ? -fp.e : fp.e);
+        const uint32_t absExpLen = CountDigits(absExp);
+        const uint32_t pointSize = (showPoint ? 1 : 0);
+        const uint32_t extraPrecision = printCount < spec.precision ? (spec.precision - printCount) : 0;
+        const uint32_t signSize = spec.sign != FmtSpecSign::None ? 1 : 0;
+        const uint32_t size = 5 + pointSize + printCount + extraPrecision + absExpLen + signSize; // 5 = "0xFP+"
+
+        WritePadded<FmtSpecAlign::Right>(out, spec, size, [&](char* it)
         {
-            case FmtSpecFloatType::None: *fp++ = 'g'; break;
-            case FmtSpecFloatType::HexLower: *fp++ = 'a'; break;
-            case FmtSpecFloatType::HexUpper: *fp++ = 'A'; break;
-            case FmtSpecFloatType::ExponentLower: *fp++ = 'e'; break;
-            case FmtSpecFloatType::ExponentUpper: *fp++ = 'E'; break;
-            case FmtSpecFloatType::FixedLower: *fp++ = 'f'; break;
-            case FmtSpecFloatType::FixedUpper: *fp++ = 'F'; break;
-            case FmtSpecFloatType::GeneralLower: *fp++ = 'g'; break;
-            case FmtSpecFloatType::GeneralUpper: *fp++ = 'G'; break;
-        }
-        *fp++ = '\0';
+            if (spec.sign != FmtSpecSign::None)
+                *it++ = SignToChar(spec.sign);
 
-        const int requiredSize = spec.precision >= 0
-            ? std::snprintf(nullptr, 0, format, spec.precision, value)
-            : std::snprintf(nullptr, 0, format, value);
+            *it++ = '0';
+            *it++ = isUpper ? 'X' : 'x';
+            *it++ = digits[0];
+            if (showPoint)
+                *it++ = '.';
 
-        HE_FMT_ASSERT(requiredSize > 0, "Required size must be greater than zero.");
+            MemCopy(it, digits + 1, printCount);
+            it += printCount;
 
-        // The buffer sizes may look a bit weird here at first glance. However, this is correct.
-        // We are using a property of String where any size you set it to will always have one
-        // additional character for the null terminator.
-        //
-        // Because of that, and the fact that `snprintf` returns the number of characters it will
-        // write excluding the null terminator, we resize only to the number of characters.
-        // Technically, snprintf then writes beyond our resized size; but worst case that is into
-        // the extra null character slot String allocated for us. We then return from the writer
-        // function as if we had only written the non-null characters.
-        WritePadded<FmtSpecAlign::Right>(out, spec, requiredSize, [=](char* it)
-        {
-            [[maybe_unused]] const int result = spec.precision >= 0
-                ? std::snprintf(it, requiredSize + 1, format, spec.precision, value)
-                : std::snprintf(it, requiredSize + 1, format, value);
-            HE_FMT_ASSERT(result == requiredSize, "Formatting must succeed here.");
-            return it + requiredSize;
+            for (; printCount < spec.precision; ++printCount)
+                *it++ = '0';
+
+            *it++ = isUpper ? 'P' : 'p';
+            *it++ = fp.e < 0 ? '-' : '+';
+            return FormatDecimal(it, absExp, CountDigits(absExp)).end;
         });
+    }
+
+    template <typename T> requires(Limits<T>::Format == FloatFormat::DoubleDouble128)
+    static void WriteFloat_Hex(String& out, T value, const FmtSpecFloat& spec)
+    {
+        static_assert(Limits<T>::Format != FloatFormat::DoubleDouble128, "Unsupported floating-point type");
+        WriteFloat_Hex(out, static_cast<double>(value), spec);
     }
 
     static void WriteFloat(String& out, StringView significandView, int32_t exponent, const FmtSpecFloat& spec)
     {
         const char* significand = significandView.Data();
         const uint32_t significandSize = significandView.Size();
+
         const int32_t outputExp = exponent + significandSize - 1;
         const bool showPoint = ShouldShowPoint(spec);
 
@@ -914,9 +1543,183 @@ namespace he
         });
     }
 
-    static int32_t FormatFloat_Dragonbox(String& out, double value, int32_t precision, bool isFloat, const FmtSpecFloat& spec)
+    static void FormatFloat_Dragon4(String& out, BasicFP<uint128_t> fp, int32_t precision, int32_t& exp10, bool needsFixup, bool isPredecessorCloser, bool isFixedFormat)
     {
-        if (value <= 0)
+        BigInt numerator;           // 2 * R in (FPP)^2.
+        BigInt denominator;         // 2 * S in (FPP)^2.
+        // lower and upper are differences between value and corresponding boundaries.
+        BigInt lower;               // (M^- in (FPP)^2).
+        BigInt upperStore;          // upper's value if different from lower.
+        BigInt* upper = nullptr;    // (M^+ in (FPP)^2).
+
+        // Shift numerator and denominator by an extra bit or two (if lower boundary is closer)
+        // to make lower and upper integers. This eliminates multiplication by 2 during later
+        // computations.
+        const int32_t shift = isPredecessorCloser ? 2 : 1;
+        if (fp.e >= 0)
+        {
+            numerator = fp.f;
+            numerator <<= fp.e + shift;
+            lower = 1;
+            lower <<= fp.e;
+            if (isPredecessorCloser)
+            {
+                upperStore = 1;
+                upperStore <<= fp.e + 1;
+                upper = &upperStore;
+            }
+            denominator.AssignPow10(exp10);
+            denominator <<= shift;
+        }
+        else if (exp10 < 0)
+        {
+            numerator.AssignPow10(-exp10);
+            lower.Assign(numerator);
+            if (isPredecessorCloser)
+            {
+                upperStore.Assign(numerator);
+                upperStore <<= 1;
+                upper = &upperStore;
+            }
+            numerator *= fp.f;
+            numerator <<= shift;
+            denominator = 1;
+            denominator <<= shift - fp.e;
+        }
+        else
+        {
+            numerator = fp.f;
+            numerator <<= shift;
+            denominator.AssignPow10(exp10);
+            denominator <<= shift - fp.e;
+            lower = 1;
+            if (isPredecessorCloser)
+            {
+                upperStore = 1ULL << 1;
+                upper = &upperStore;
+            }
+        }
+
+        const int32_t even = static_cast<int32_t>((fp.f & 1) == 0);
+
+        if (!upper)
+            upper = &lower;
+
+        const bool shortest = precision < 0;
+        if (needsFixup)
+        {
+            if (AddCompare(numerator, *upper, denominator) + even <= 0)
+            {
+                --exp10;
+                numerator *= 10;
+                if (precision < 0)
+                {
+                    lower *= 10;
+                    if (upper != &lower)
+                        *upper *= 10;
+                }
+            }
+            if (isFixedFormat)
+                AdjustPrecision(precision, exp10 + 1);
+        }
+
+        // Invariant: value == (numerator / denominator) * pow(10, exp10).
+        if (shortest)
+        {
+            // Generate the shortest representation.
+            const uint32_t len = out.Size();
+            char* it = nullptr;
+            precision = 0;
+            for (;;)
+            {
+                if (precision >= static_cast<int32_t>(out.Size() - len))
+                    it = FmtResize(out, 16);
+
+                const int32_t digit = numerator.DivModAssign(denominator);
+                const bool low = Compare(numerator, lower) - even < 0;  // numerator <[=] lower.
+                const bool high = AddCompare(numerator, *upper, denominator) + even > 0; // numerator + upper >[=] pow10:
+
+                *it++ = static_cast<char>('0' + digit);
+                ++precision;
+
+                if (low || high)
+                {
+                    if (!low)
+                    {
+                        ++(it[-1]);
+                    }
+                    else if (high)
+                    {
+                        int result = AddCompare(numerator, numerator, denominator);
+                        // Round half to even.
+                        if (result > 0 || (result == 0 && (digit % 2) != 0))
+                            ++(it[-1]);
+                    }
+                    out.Resize(precision);
+                    exp10 -= precision - 1;
+                    return;
+                }
+                numerator *= 10;
+                lower *= 10;
+                if (upper != &lower) *upper *= 10;
+            }
+        }
+
+        // Generate the given number of digits.
+        exp10 -= precision - 1;
+        if (precision <= 0)
+        {
+            char digit = '0';
+            if (precision == 0)
+            {
+                denominator *= 10;
+                digit = AddCompare(numerator, numerator, denominator) > 0 ? '1' : '0';
+            }
+            out.PushBack(digit);
+            return;
+        }
+
+        out.Resize(precision);
+        for (int32_t i = 0; i < precision - 1; ++i)
+        {
+            const int32_t digit = numerator.DivModAssign(denominator);
+            out[i] = static_cast<char>('0' + digit);
+            numerator *= 10;
+        }
+
+        int32_t digit = numerator.DivModAssign(denominator);
+        const int32_t result = AddCompare(numerator, numerator, denominator);
+        if (result > 0 || (result == 0 && (digit % 2) != 0))
+        {
+            if (digit == 9)
+            {
+                const char overflow = '0' + 10;
+                out[precision - 1] = overflow;
+                // Propagate the carry.
+                for (int i = precision - 1; i > 0 && out[i] == overflow; --i) {
+                    out[i] = '0';
+                    ++(out[i - 1]);
+                }
+                if (out[0] == overflow) {
+                    out[0] = '1';
+                    if (needsFixup)
+                        out.PushBack('0');
+                    else
+                        ++exp10;
+                }
+                return;
+            }
+            ++digit;
+        }
+        out[precision - 1] = static_cast<char>('0' + digit);
+    }
+
+    template <typename T>
+    static int32_t FormatFloat(String& out, T value, int32_t precision, const FmtSpecFloat& spec)
+    {
+        HE_FMT_ASSERT(value >= 0, "FormatFloat: value should always be positive");
+
+        if (value == 0)
         {
             if (precision <= 0 || (spec.type != FmtSpecFloatType::FixedLower && spec.type != FmtSpecFloatType::FixedUpper))
             {
@@ -929,19 +1732,333 @@ namespace he
             return -precision;
         }
 
-        if (isFloat)
+        const bool isFixedFormat = spec.type == FmtSpecFloatType::FixedLower || spec.type == FmtSpecFloatType::FixedUpper;
+
+        int32_t exp = 0;
+        bool useDragon4 = true;
+        bool dragon4Fixup = false;
+        if constexpr (sizeof(T) > sizeof(double) || Limits<T>::Format == FloatFormat::DoubleDouble128)
         {
-            const auto dec = jkj::dragonbox::to_decimal(static_cast<float>(value));
-            WriteInt(out, dec.significand, {});
-            return dec.exponent;
+            const double invLog2Of10 = 0.3010299956639812;  // 1 / log2(10)
+            const BasicFP<CarrierUint<T>> fp(value);
+
+            // Compute exp, an approximate power of 10, such that
+            //   10^(exp - 1) <= value < 10^exp or 10^exp <= value < 10^(exp + 1).
+            // This is based on log10(value) == log2(value) / log2(10) and approximation
+            // of log2(value) by e + num_fraction_bits idea from double-conversion.
+            const double e = (fp.e + CountDigits<1>(fp.f) - 1) * invLog2Of10 - 1e-10;
+            exp = static_cast<int>(e);
+            if (e > exp) ++exp;  // Compute ceil.
+            dragon4Fixup = true;
+        }
+        else if (precision < 0)
+        {
+            // With no precision requirements we use dragonbox to output the shortest format.
+            if constexpr (IsSame<T, float>)
+            {
+                const auto dec = jkj::dragonbox::to_decimal(static_cast<float>(value));
+                WriteInt(out, dec.significand, {});
+                return dec.exponent;
+            }
+            else
+            {
+                const auto dec = jkj::dragonbox::to_decimal(static_cast<double>(value));
+                WriteInt(out, dec.significand, {});
+                return dec.exponent;
+            }
+        }
+        else
+        {
+            using Info = Limits<double>;
+            using Uint = CarrierUint<double>;
+
+            const double dvalue = static_cast<double>(value);
+
+            constexpr Uint ImplicitBit = Uint(1) << Info::SignificandBits;
+            constexpr Uint SignificandMask = ImplicitBit - 1;
+            constexpr Uint ExponentMask = ((Uint(1) << Info::ExponentBits) - 1) << Info::SignificandBits;
+
+            const Uint bits = BitCast<Uint>(dvalue);
+            Uint significand = bits & SignificandMask;
+            int32_t exponent = static_cast<int32_t>((bits & ExponentMask) >> Info::SignificandBits);
+
+            if (exponent != 0)
+            {
+                exponent -= (Info::MaxExponent - 1) + Info::SignificandBits;
+                significand |= ImplicitBit;
+                significand <<= 1;
+            }
+            else
+            {
+                HE_FMT_ASSERT(significand != 0, "Zero significand must be handled before this point");
+                int32_t shift = CountLeadingZeroes(significand);
+                HE_FMT_ASSERT((shift >= Limits<Uint>::Bits - Info::SignificandBits), "Significand must be normalized");
+                shift -= Limits<Uint>::Bits - Info::SignificandBits - 2;
+                exponent = (Info::MinExponent - static_cast<int32_t>(Info::SignificandBits)) - shift;
+                significand <<= shift;
+            }
+
+            // constexpr uint32_t FractionBits = Info::SignificandBits + 1;
+            // constexpr uint32_t DigitsCount = (FractionBits + 3) / 4;
+
+            // Compute the first several nonzero decimal significand digits.
+            // We call the number we get the first segment.
+            static_assert(IsSame<Info, Limits<double>>, "Kappa needs to be updated if Info isn't for double.");
+            constexpr int32_t Kappa = 2; // float = 1, double = 2
+            const int32_t k = Kappa - jkj::dragonbox::detail::log::floor_log10_pow2(exponent);
+            const int32_t beta = exponent + jkj::dragonbox::detail::log::floor_log2_pow10(k);
+            exp = -k;
+
+            uint64_t firstSegment = 0;
+            bool hasMoreSegments = false;
+            int32_t digitsInFirstSegment = 0;
+            {
+                static_assert(IsSame<Info, Limits<double>>, "CacheType needs to be updated if Info isn't for double.");
+                using CacheType = jkj::dragonbox::detail::cache_holder<jkj::dragonbox::ieee754_binary64>;
+
+                const auto r = jkj::dragonbox::detail::wuint::umul192_upper128(
+                    significand << beta,
+                    CacheType::cache[k - CacheType::min_k]);
+
+                firstSegment = r.high();
+                hasMoreSegments = r.low() != 0;
+
+                // The first segment can have 18 ~ 19 digits.
+                if (firstSegment >= 1000000000000000000ull)
+                {
+                    digitsInFirstSegment = 19;
+                }
+                else
+                {
+                    // When it is of 18-digits, we align it to 19-digits by adding a bogus
+                    // zero at the end.
+                    digitsInFirstSegment = 18;
+                    firstSegment *= 10;
+                }
+            }
+
+            // Compute the actual number of decimal digits to print.
+            if (isFixedFormat)
+            {
+                const int32_t exp10 = exp + digitsInFirstSegment;
+                AdjustPrecision(precision, exp10);
+            }
+
+            if (digitsInFirstSegment > precision)
+            {
+                useDragon4 = false;
+
+                if (precision <= 0)
+                {
+                    exp += digitsInFirstSegment;
+                    if (precision < 0)
+                    {
+                        // all we have are leading zeros, so output nothing.
+                        // return exp;
+                        out.Resize(0);
+                    }
+                    else
+                    {
+                        if ((firstSegment | static_cast<uint64_t>(hasMoreSegments)) > 5000000000000000000ull)
+                        {
+                            out.PushBack('1');
+                        }
+                        else
+                        {
+                            out.PushBack('0');
+                        }
+                    }
+                }
+                else
+                {
+                    exp += digitsInFirstSegment - precision;
+
+                    // When precision > 0, we divide the first segment into three
+                    // subsegments, each with 9, 9, and 0 ~ 1 digits so that each fits
+                    // in 32-bits which usually allows faster calculation than in
+                    // 64-bits. Since some compiler (e.g. MSVC) doesn't know how to optimize
+                    // division-by-constant for large 64-bit divisors, we do it here
+                    // manually. The magic number 7922816251426433760 below is equal to
+                    // ceil(2^(64+32) / 10^10).
+                    const uint64_t result = jkj::dragonbox::detail::wuint::umul128_upper64(firstSegment, 7922816251426433760ull);
+                    const uint32_t firstSubsegment = static_cast<uint32_t>(result >> 32);
+                    const uint64_t secondAndThirdSubsegments = firstSegment - (firstSubsegment * 10000000000ull);
+
+                    uint64_t prod = 0;
+                    uint32_t digits = 0;
+                    int32_t digitsToPrint = precision > 9 ? 9 : precision;
+
+                    // Print a 9-digit subsegment.
+                    auto printSubsegment = [&](char* buffer, uint32_t subsegment)
+                    {
+                        int32_t digitsPrinted = 0;
+
+                        // Odd number of digits to be printed
+                        if ((digitsToPrint & 1) != 0)
+                        {
+                            // Conver to 64-bit fixed-point fractional form with 1-digit integer part.
+                            // The magic number 720575941 is a good enough approximation of
+                            // `2^(32 + 24) / 10^8`.
+                            // See: https://jk-jeon.github.io/posts/2022/12/fixed-precision-formatting/#fixed-length-case
+                            prod = ((subsegment * 720575941ull) >> 24) + 1;
+                            digits = static_cast<uint32_t>(prod >> 32);
+                            *buffer = static_cast<char>('0' + digits);
+                            ++digitsPrinted;
+                        }
+                        // Event number of digits to be printed
+                        else
+                        {
+                            // Convert to 64-bit fixed-point fractional form with 2-digits integer part.
+                            // The magic number 450359963 is a good enough approximation of
+                            // `2^(32 + 20) / 10^7`.
+                            // See: https://jk-jeon.github.io/posts/2022/12/fixed-precision-formatting/#fixed-length-case
+                            prod = ((subsegment * 450359963ull) >> 20) + 1;
+                            digits = static_cast<uint32_t>(prod >> 32);
+                            MemCopy(buffer, Digits2(digits), 2);
+                            digitsPrinted += 2;
+                        }
+
+                        // Print all digit pairs.
+                        while (digitsPrinted < digitsToPrint)
+                        {
+                            prod = static_cast<uint32_t>(prod) * static_cast<uint64_t>(100);
+                            digits = static_cast<uint32_t>(prod >> 32);
+                            MemCopy(buffer + digitsPrinted, Digits2(digits), 2);
+                            digitsPrinted += 2;
+                        }
+                    };
+
+                    char* buf = FmtResize(out, digitsToPrint);
+                    printSubsegment(buf, firstSubsegment);
+
+                    // Perform rounding if the first subsegment is the last subsegment to print.
+                    bool shouldRoundUp = false;
+                    if (precision <= 9)
+                    {
+                        // Rounding inside the subsegment.
+                        // We round-up if:
+                        //  - either the fractional part is strictly larger than 1/2, or
+                        //  - the fractional part is exactly 1/2 and the last digit is odd.
+                        // We rely on the following observations:
+                        //  - If `fractional` >= threshold, then the fractional part is
+                        //    strictly larger than 1/2.
+                        //  - If the MSB of `fractional` is set, then the fractional part
+                        //    must be at least 1/2.
+                        //  - When the MSB of `fractional` is set, either
+                        //    `secondAndThirdSubsegments` being nonzero or `hasMoreSegments`
+                        //    being true means there are further digits not printed, so the
+                        //    fractional part is strictly larger than 1/2.
+                        if (precision < 9)
+                        {
+                            const uint32_t fractional = static_cast<uint32_t>(prod);
+                            shouldRoundUp = fractional >= FractionPartRoundingThresholds(8 - digitsToPrint)
+                                || ((fractional >> 31) & ((digits & 1) | (secondAndThirdSubsegments != 0) | hasMoreSegments)) != 0;
+                        }
+                        // Rounding at the subsegment boundary.
+                        // In this case, the fractional part is at least 1/2 if and only if
+                        // `secondAndThirdSubsegments >= 5000000000ull`, and is strictly larger
+                        // than 1/2 if we further have either
+                        // `secondAndThirdSubsegments > 5000000000ull` or `hasMoreSegments == true`.
+                        else
+                        {
+                            shouldRoundUp = secondAndThirdSubsegments > 5000000000ull
+                                || (secondAndThirdSubsegments == 5000000000ull && ((digits & 1) != 0 || hasMoreSegments));
+                        }
+                    }
+                    // Otherwise, print the second subsegment.
+                    else
+                    {
+                        // Compilers are not aware of how to leverage the maximum value of
+                        // `secondAndThirdSubsegments` to find out a better magic number which
+                        // allows us to eliminate an additional shift. 1844674407370955162 =
+                        // ceil(2^64/10) < ceil(2^64*(10^9/(10^10 - 1))).
+                        const uint32_t secondSubsegment = static_cast<uint32_t>(jkj::dragonbox::detail::wuint::umul128_upper64(secondAndThirdSubsegments, 1844674407370955162ull));
+                        const uint32_t thirdSubsegment = static_cast<uint32_t>(secondAndThirdSubsegments) - (secondSubsegment * 10);
+
+                        digitsToPrint = precision - 9;
+                        buf = FmtResize(out, digitsToPrint);
+                        printSubsegment(buf, secondSubsegment);
+
+                        // Rounding inside the subsegment.
+                        if (precision < 18)
+                        {
+                            // The condition third_subsegment != 0 implies that the segment was
+                            // of 19 digits, so in this case the third segment should be
+                            // consisting of a genuine digit from the input.
+                            const uint32_t fractional = static_cast<uint32_t>(prod);
+                            shouldRoundUp = fractional >= FractionPartRoundingThresholds(8 - digitsToPrint)
+                                || ((fractional >> 31) & ((digits & 1) | (thirdSubsegment != 0) | hasMoreSegments)) != 0;
+                        }
+                        // Rounding at the subsegment boundary.
+                        else
+                        {
+                            // In this case, the segment must be of 19 digits, thus
+                            // the third subsegment should be consisting of a genuine digit from
+                            // the input.
+                            shouldRoundUp = thirdSubsegment > 5 || (thirdSubsegment == 5 && ((digits & 1) != 0 || hasMoreSegments));
+                        }
+                    }
+
+                    // Round-up if necessary.
+                    if (shouldRoundUp)
+                    {
+                        ++buf[precision - 1];
+                        for (int32_t i = precision - 1; i > 0 && buf[i] > '9'; --i)
+                        {
+                            buf[i] = '0';
+                            ++buf[i - 1];
+                        }
+
+                        if (buf[0] > '9')
+                        {
+                            buf[0] = '1';
+                            if (isFixedFormat)
+                                buf[precision++] = '0';
+                            else
+                                ++exp;
+                        }
+                    }
+                    out.Resize(static_cast<uint32_t>(precision));
+                }
+            }
+            else
+            {
+                // Adjust the exponent for use with Dragon4
+                exp += digitsInFirstSegment - 1;
+            }
         }
 
-        const auto dec = jkj::dragonbox::to_decimal(value);
-        WriteInt(out, dec.significand, {});
-        return dec.exponent;
+        if (useDragon4)
+        {
+            BasicFP<uint128_t> fp;
+            const bool isPredecessorCloser = fp.Assign(value);
+
+            // Limit precision to the maximum possible number of significant digits in
+            // an IEEE754 double because we don't need to generate zeros.
+            const int maxDoubleDigits = 767;
+            if (precision > maxDoubleDigits)
+                precision = maxDoubleDigits;
+
+            FormatFloat_Dragon4(out, fp, precision, exp, dragon4Fixup, isPredecessorCloser, isFixedFormat);
+        }
+
+        if (!isFixedFormat && !ShouldShowPoint(spec))
+        {
+            // Remove trailing zeros.
+            uint32_t digitCount = out.Size();
+            while (digitCount > 0 && out[digitCount - 1] == '0')
+            {
+                --digitCount;
+                ++exp;
+            }
+            out.Resize(digitCount);
+        }
+
+        return exp;
     }
 
-    static void WriteFloat(String& out, double value, bool isFloat, const FmtSpecFloat& spec_)
+    template <FloatingPoint T>
+    static void WriteFloat(String& out, T value, const FmtSpecFloat& spec_)
     {
         FmtSpecFloat spec = spec_;
         if (std::signbit(value))
@@ -967,7 +2084,7 @@ namespace he
 
         if (spec.type == FmtSpecFloatType::HexLower || spec.type == FmtSpecFloatType::HexUpper)
         {
-            WriteFloat_SNPrintf(out, value, spec);
+            WriteFloat_Hex(out, value, spec);
             return;
         }
 
@@ -975,7 +2092,7 @@ namespace he
 
         if (spec.type == FmtSpecFloatType::ExponentLower || spec.type == FmtSpecFloatType::ExponentUpper)
         {
-            if (precision == Limits<int32_t>::Max)
+            if (precision == Limits<int32_t>::Max) [[unlikely]]
                 FmtError("Float precision is too large.");
             else
                 ++precision;
@@ -985,24 +2102,17 @@ namespace he
             precision = 1;
         }
 
-        // We have precision requirements, fall back to snprintf
-        if (precision >= 0)
-        {
-            WriteFloat_SNPrintf(out, value, spec);
-            return;
-        }
-
         // Very good chance this won't allocate. Almost all floats write out in < 30 characters.
         String buffer;
-        const int32_t exponent = FormatFloat_Dragonbox(buffer, value, precision, isFloat, spec);
+        const int32_t exponent = FormatFloat(buffer, value, precision, spec);
         spec.precision = precision;
         WriteFloat(out, buffer, exponent, spec);
     }
 
     [[noreturn]] void FmtError(const char* msg)
     {
-        std::fprintf(stderr, "Fmt error: %s", msg);
-        std::terminate();
+        PrintToDebugger(msg);
+        TerminateProcess();
     }
 
     void Formatter<bool>::Format(String& out, bool value) const
@@ -1042,7 +2152,7 @@ namespace he
             char str[4]{};
             const uint32_t len = WCToMBStr(str, 4, wstr);
 
-            WritePadded(out, spec, len, [=](char* it)
+            WritePadded(out, spec, len, [&](char* it)
             {
                 for (uint32_t i = 0; i < len; ++i)
                 {
@@ -1134,12 +2244,17 @@ namespace he
 
     void Formatter<float>::Format(String& out, float value) const
     {
-        WriteFloat(out, value, true, spec);
+        WriteFloat(out, value, spec);
     }
 
     void Formatter<double>::Format(String& out, double value) const
     {
-        WriteFloat(out, value, false, spec);
+        WriteFloat(out, value, spec);
+    }
+
+    void Formatter<long double>::Format(String& out, long double value) const
+    {
+        WriteFloat(out, value, spec);
     }
 
     void Formatter<const void*>::Format(String& out, const void* value) const
@@ -1148,7 +2263,7 @@ namespace he
         const uint32_t digitCount = CountDigits<4>(uvalue);
         const uint32_t size = digitCount + 2;
 
-        WritePadded<FmtSpecAlign::Right>(out, spec, size, [=](char* it)
+        WritePadded<FmtSpecAlign::Right>(out, spec, size, [&](char* it)
         {
             *it++ = '0';
             *it++ = 'x';
@@ -1170,7 +2285,7 @@ namespace he
             width = GetWidth({ data, size });
         }
 
-        WritePadded(out, spec, size, width, [=](char* it)
+        WritePadded(out, spec, size, width, [&](char* it)
         {
             MemCopy(it, data, size);
             return it + size;

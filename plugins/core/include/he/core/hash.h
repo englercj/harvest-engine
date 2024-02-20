@@ -440,18 +440,3 @@ namespace he
 }
 
 #include "he/core/inline/hash.inl"
-
-// TODO: remove this when we stop using std containers
-namespace std
-{
-    template <typename> struct hash;
-
-    template <he::Hashable T>
-    struct hash<T>
-    {
-        size_t operator()(const T& value) const
-        {
-            return he::GetHashCode(value);
-        }
-    };
-}

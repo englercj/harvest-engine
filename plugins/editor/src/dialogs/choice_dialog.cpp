@@ -9,6 +9,7 @@
 
 namespace he
 {
+    template <>
     const char* AsString(editor::ChoiceDialog::Choice x)
     {
         switch (x)

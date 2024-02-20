@@ -6,6 +6,7 @@
 
 namespace he
 {
+    template <>
     const char* AsString(window::PointerKind x)
     {
         switch (x)
@@ -19,6 +20,7 @@ namespace he
         return "<unknown>";
     }
 
+    template <>
     const char* AsString(window::PointerButton x)
     {
         switch (x)
@@ -36,6 +38,7 @@ namespace he
         return "<unknown>";
     }
 
+    template <>
     const char* AsString(window::PointerCursor x)
     {
         switch (x)

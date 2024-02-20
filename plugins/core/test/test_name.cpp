@@ -14,7 +14,7 @@ HE_TEST(core, name, Construct)
     {
         Name n;
         HE_EXPECT(!n);
-        HE_EXPECT_EQ(n.String(), nullptr);
+        HE_EXPECT_EQ_PTR(n.String(), nullptr);
         HE_EXPECT_EQ(n.Id(), StringPoolId{});
     }
 
@@ -43,7 +43,7 @@ HE_TEST(core, name, Construct)
     {
         Name n({ 0 });
         HE_EXPECT(!n);
-        HE_EXPECT_EQ(n.String(), nullptr);
+        HE_EXPECT_EQ_PTR(n.String(), nullptr);
         HE_EXPECT_EQ(n.Id(), StringPoolId{});
     }
 }
@@ -53,7 +53,7 @@ HE_TEST(core, name, String)
 {
     {
         Name n;
-        HE_EXPECT_EQ(n.String(), nullptr);
+        HE_EXPECT_EQ_PTR(n.String(), nullptr);
     }
 
     {

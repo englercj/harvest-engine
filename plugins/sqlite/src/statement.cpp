@@ -199,6 +199,7 @@ namespace he::sqlite
 
 namespace he
 {
+    template <>
     const char* AsString(sqlite::StepResult x)
     {
         switch (x)

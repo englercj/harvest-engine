@@ -18,6 +18,7 @@
 
 namespace he
 {
+    template <>
     const char* AsString(editor::ImportAssetDialog::State x)
     {
         switch (x)

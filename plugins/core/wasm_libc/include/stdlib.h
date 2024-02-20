@@ -2,6 +2,10 @@
 
 #pragma once
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 __attribute__((__noreturn__)) void abort(void) {}
 
 typedef struct { int quot, rem; } div_t;
@@ -22,3 +26,7 @@ inline lldiv_t lldiv(long long num, long long den)
 {
     return (lldiv_t){ num/den, num%den };
 }
+
+#ifdef __cplusplus
+}
+#endif

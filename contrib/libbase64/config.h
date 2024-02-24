@@ -14,20 +14,20 @@
 // Define all the instruction set options that could be available for each architecture.
 // The runtime CPUID checks will pick the best instruction for the current CPU.
 #if defined(_M_IX86) || defined(__i386__) || defined(_M_AMD64) || defined(__x86_64__)
-    #undef BASE64_WITH_SSSE3
-    #define BASE64_WITH_SSSE3 1
+    #undef HAVE_SSSE3
+    #define HAVE_SSSE3 1
 
-    #undef BASE64_WITH_SSE41
-    #define BASE64_WITH_SSE41 1
+    #undef HAVE_SSE41
+    #define HAVE_SSE41 1
 
-    #undef BASE64_WITH_SSE42
-    #define BASE64_WITH_SSE42 1
+    #undef HAVE_SSE42
+    #define HAVE_SSE42 1
 
-    #undef BASE64_WITH_AVX
-    #define BASE64_WITH_AVX 1
+    #undef HAVE_AVX
+    #define HAVE_AVX 1
 
-    #undef BASE64_WITH_AVX2
-    #define BASE64_WITH_AVX2 1
+    #undef HAVE_AVX2
+    #define HAVE_AVX2 1
 #elif defined(_M_ARM) || defined(__arm__)
     #undef HAVE_NEON32
     #define HAVE_NEON32 1

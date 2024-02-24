@@ -59,6 +59,9 @@ namespace he
 
     void TrackingAllocator::Free(void* ptr) noexcept
     {
+        if (ptr == nullptr)
+            return;
+
         AllocHeader* header = GetHeader(ptr);
         Remove(header);
         m_allocator.Free(header->mem);

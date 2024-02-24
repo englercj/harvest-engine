@@ -142,7 +142,7 @@ namespace internal
 
         String testFqn;
 
-        MonotonicTime startAll = MonotonicClock::Now();
+        const MonotonicTime startAll = MonotonicClock::Now();
 
         for (TestFixture* fixture : GetAllTests())
         {
@@ -182,14 +182,19 @@ namespace internal
                 HE_KV(test_name, info.testName));
         }
 
-        MonotonicTime endAll = MonotonicClock::Now();
+        const MonotonicTime endAll = MonotonicClock::Now();
+        const Duration testTimeAll = endAll - startAll;
 
-        HE_LOGF_INFO(he_test, "Ran {} tests with {} expectations. {} tests failed.",
-            internal::g_totalTestRuns.Load(), internal::g_totalTestExpects.Load(), internal::g_totalTestFailures.Load());
+
+        HE_LOGF_INFO(he_test, "Ran {} tests with {} expectations in {:.4g} seconds. {} tests failed.",
+            internal::g_totalTestRuns.Load(),
+            internal::g_totalTestExpects.Load(),
+            ToPeriod<Seconds, float>(testTimeAll),
+            internal::g_totalTestFailures.Load());
 
         HE_LOG_INFO(he_test,
             HE_KV(test_event_kind, TestEventKind::TestTiming),
-            HE_KV(test_time_ns, (endAll - startAll).val));
+            HE_KV(test_time_ns, testTimeAll.val));
 
         return internal::g_totalTestFailures.Load();
     }

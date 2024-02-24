@@ -767,15 +767,17 @@ HE_TEST(core, fmt, floats)
         HE_EXPECT_EQ(Format("{:.9a}", ld), "0x1.000000000p+1");
     }
 
-    HE_EXPECT_EQ(Format("{:a}", Limits<double>::Min), "0x1p-1022");
-    HE_EXPECT_EQ(Format("{:#a}", Limits<double>::Min), "0x1.p-1022");
+    HE_EXPECT_EQ(Format("{:a}", Limits<double>::MinPos), "0x1p-1022");
+    HE_EXPECT_EQ(Format("{:#a}", Limits<double>::MinPos), "0x1.p-1022");
 
+    HE_EXPECT_EQ(Format("{:a}", Limits<double>::Min), "-0x1.fffffffffffffp+1023");
     HE_EXPECT_EQ(Format("{:a}", Limits<double>::Max), "0x1.fffffffffffffp+1023");
     HE_EXPECT_EQ(Format("{:a}", Limits<double>::DenormMin), "0x0.0000000000001p-1022");
 
     if constexpr (Limits<long double>::Digits == 64)
     {
-        HE_EXPECT_EQ(Format("{:a}", Limits<long double>::Min), "0x8p-16385");
+        HE_EXPECT_EQ(Format("{:a}", Limits<long double>::MinPos), "0x8p-16385");
+        HE_EXPECT_EQ(Format("{:a}", Limits<long double>::Min), "-0xf.fffffffffffffffp+16380");
         HE_EXPECT_EQ(Format("{:a}", Limits<long double>::Max), "0xf.fffffffffffffffp+16380");
         HE_EXPECT_EQ(Format("{:a}", Limits<long double>::DenormMin), "0x0.000000000000001p-16382");
     }

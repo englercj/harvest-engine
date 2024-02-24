@@ -32,6 +32,9 @@
 
 #include "he/core/fmt.h"
 
+#include "fmt_dragonbox.h"
+#include "fmt_private.h"
+
 #include "he/core/assert.h"
 #include "he/core/compiler.h"
 #include "he/core/concepts.h"
@@ -43,11 +46,10 @@
 #include "he/core/process.h"
 #include "he/core/string.h"
 #include "he/core/string_ops.h"
+#include "he/core/types.h"
 #include "he/core/utils.h"
 #include "he/core/vector.h"
 #include "he/core/wstr.h"
-
-#include "dragonbox/dragonbox.h"
 
 #include <cmath>
 #include <cstdio>
@@ -137,109 +139,6 @@ namespace he
         return static_cast<uint32_t>(__builtin_clzll(x));
     #endif
     }
-
-#if defined(__INT128_TYPE__)
-    using uint128_t = unsigned __INT128_TYPE__;
-#elif defined(__SIZEOF_INT128__)
-    using uint128_t = unsigned __int128;
-#else
-    #if HE_COMPILER_MSVC
-        extern "C" unsigned char _addcarry_u64(
-            unsigned char Carry,
-            unsigned __int64 Source1,
-            unsigned __int64 Source2,
-            unsigned __int64* Destination);
-        #pragma intrinsic(_addcarry_u64)
-    #endif
-    class uint128_t
-    {
-    private:
-        uint64_t m_lo, m_hi;
-
-    public:
-        constexpr uint128_t(uint64_t hi, uint64_t lo) : m_lo(lo), m_hi(hi) {}
-        constexpr uint128_t(uint64_t value = 0) : m_lo(value), m_hi(0) {}
-
-        constexpr uint64_t high() const noexcept { return m_hi; }
-        constexpr uint64_t low() const noexcept { return m_lo; }
-
-        template <Integral T>
-        constexpr explicit operator T() const { return static_cast<T>(m_lo); }
-
-        constexpr bool operator==(const uint128_t& x) const noexcept { return m_hi == x.m_hi && m_lo == x.m_lo; }
-        constexpr bool operator!=(const uint128_t& x) const noexcept { return m_hi != x.m_hi || m_lo != x.m_lo; }
-        constexpr bool operator>(const uint128_t& x) const noexcept { return m_hi != x.m_hi ? m_hi > x.m_hi : m_lo > x.m_lo; }
-
-        constexpr uint128_t operator|(const uint128_t& x) const noexcept { return { m_hi | x.m_hi, m_lo | x.m_lo }; }
-        constexpr uint128_t operator&(const uint128_t& x) const noexcept { return { m_hi & x.m_hi, m_lo & x.m_lo }; }
-        friend constexpr uint128_t operator~(const uint128_t& x) noexcept { return { ~x.m_hi, ~x.m_lo }; }
-
-        uint128_t operator+(const uint128_t& x) const noexcept { uint128_t result = *this; result += x; return result; }
-        uint128_t operator-(uint64_t x) const noexcept { return { m_hi - (m_lo < x ? 1 : 0), m_lo - x }; }
-        uint128_t operator*(uint32_t x) const noexcept
-        {
-            HE_FMT_ASSERT(m_hi == 0, "");
-            uint64_t hi = (m_lo >> 32) * x;
-            uint64_t lo = (m_lo & ~uint32_t()) * x;
-            uint64_t new_lo = (hi << 32) + lo;
-            return { (hi >> 32) + (new_lo < lo ? 1 : 0), new_lo };
-        }
-
-        constexpr uint128_t operator>>(int shift) const noexcept
-        {
-            if (shift == 64) return {0, m_hi};
-            if (shift > 64) return uint128_t(0, m_hi) >> (shift - 64);
-            return { m_hi >> shift, (m_hi << (64 - shift)) | (m_lo >> shift) };
-        }
-
-        constexpr uint128_t operator<<(int shift) const noexcept
-        {
-            if (shift == 64) return {m_lo, 0};
-            if (shift > 64) return uint128_t(m_lo, 0) << (shift - 64);
-            return { m_hi << shift | (m_lo >> (64 - shift)), (m_lo << shift) };
-        }
-
-        constexpr uint128_t& operator<<=(int shift) noexcept { return *this = *this << shift; }
-        constexpr uint128_t& operator>>=(int shift) noexcept { return *this = *this >> shift; }
-        constexpr void operator&=(uint128_t x) noexcept { m_lo &= x.m_lo; m_hi &= x.m_hi; }
-
-        constexpr void operator+=(uint128_t x) noexcept
-        {
-            uint64_t new_lo = m_lo + x.m_lo;
-            uint64_t new_hi = m_hi + x.m_hi + (new_lo < m_lo ? 1 : 0);
-            HE_FMT_ASSERT(new_hi >= m_hi, "");
-            m_lo = new_lo;
-            m_hi = new_hi;
-        }
-
-        constexpr uint128_t& operator+=(uint64_t x) noexcept
-        {
-            if (__builtin_is_constant_evaluated())
-            {
-                m_lo += x;
-                m_hi += (m_lo < x ? 1 : 0);
-                return *this;
-            }
-        #if HE_HAS_BUILTIN(__builtin_addcll) && !defined(__ibmxl__)
-            unsigned long long carry;
-            m_lo = __builtin_addcll(m_lo, x, 0, &carry);
-            m_hi += carry;
-        #elif HE_HAS_BUILTIN(__builtin_ia32_addcarryx_u64) && !defined(__ibmxl__)
-            unsigned long long result;
-            auto carry = __builtin_ia32_addcarryx_u64(0, m_lo, x, &result);
-            m_lo = result;
-            m_hi += carry;
-        #elif HE_COMPILER_MSVC && HE_CPU_X86_64
-            const unsigned char carry = _addcarry_u64(0, m_lo, x, &m_lo);
-            _addcarry_u64(carry, m_hi, 0, &m_hi);
-        #else
-            m_lo += x;
-            m_hi += (m_lo < x ? 1 : 0);
-        #endif
-            return *this;
-        }
-    };
-#endif
 
     class BigInt
     {
@@ -596,9 +495,6 @@ namespace he
         int32_t m_exp;
     };
 
-    template <typename T>
-    using CarrierUint = Conditional<sizeof(T) <= 4, uint32_t, Conditional<sizeof(T) <= 8, uint64_t, uint128_t>>;
-
     template <>
     struct Limits<uint128_t>
     {
@@ -656,6 +552,7 @@ namespace he
             constexpr Uint ImplicitBit = Uint(1) << Info::SignificandBits;
             constexpr Uint SignificandMask = ImplicitBit - 1;
             constexpr Uint ExponentMask = ((Uint(1) << Info::ExponentBits) - 1) << Info::SignificandBits;
+            constexpr Uint ExponentBias = Info::MaxExponent - 1;
 
             const Uint bits = BitCast<Uint>(value);
             f = static_cast<T>(bits & SignificandMask);
@@ -671,7 +568,6 @@ namespace he
             else if constexpr (Info::HasImplicitBit)
                 f += static_cast<T>(ImplicitBit);
 
-            constexpr Uint ExponentBias = Info::MaxExponent - 1;
             e = biasedExp - ExponentBias - Info::SignificandBits;
 
             if constexpr (!Info::HasImplicitBit)
@@ -1756,13 +1652,13 @@ namespace he
             // With no precision requirements we use dragonbox to output the shortest format.
             if constexpr (IsSame<T, float>)
             {
-                const auto dec = jkj::dragonbox::to_decimal(static_cast<float>(value));
+                const auto dec = dragonbox::ToDecimal(static_cast<float>(value));
                 WriteInt(out, dec.significand, {});
                 return dec.exponent;
             }
             else
             {
-                const auto dec = jkj::dragonbox::to_decimal(static_cast<double>(value));
+                const auto dec = dragonbox::ToDecimal(static_cast<double>(value));
                 WriteInt(out, dec.significand, {});
                 return dec.exponent;
             }
@@ -1805,8 +1701,8 @@ namespace he
             // We call the number we get the first segment.
             static_assert(IsSame<Info, Limits<double>>, "Kappa needs to be updated if Info isn't for double.");
             constexpr int32_t Kappa = 2; // float = 1, double = 2
-            const int32_t k = Kappa - jkj::dragonbox::detail::log::floor_log10_pow2(exponent);
-            const int32_t beta = exponent + jkj::dragonbox::detail::log::floor_log2_pow10(k);
+            const int32_t k = Kappa - dragonbox::FloorLog10Pow2(exponent);
+            const int32_t beta = exponent + dragonbox::FloorLog2Pow10(k);
             exp = -k;
 
             uint64_t firstSegment = 0;
@@ -1814,14 +1710,11 @@ namespace he
             int32_t digitsInFirstSegment = 0;
             {
                 static_assert(IsSame<Info, Limits<double>>, "CacheType needs to be updated if Info isn't for double.");
-                using CacheType = jkj::dragonbox::detail::cache_holder<jkj::dragonbox::ieee754_binary64>;
+                using CacheType = dragonbox::CacheAccessor<double>;
 
-                const auto r = jkj::dragonbox::detail::wuint::umul192_upper128(
-                    significand << beta,
-                    CacheType::cache[k - CacheType::min_k]);
-
-                firstSegment = r.high();
-                hasMoreSegments = r.low() != 0;
+                const uint128_t r = dragonbox::UMul192Upper128(significand << beta, CacheType::GetCachedPower(k));
+                firstSegment = HE_UINT128_HIGH64(r);
+                hasMoreSegments = HE_UINT128_LOW64(r) != 0;
 
                 // The first segment can have 18 ~ 19 digits.
                 if (firstSegment >= 1000000000000000000ull)
@@ -1880,7 +1773,7 @@ namespace he
                     // division-by-constant for large 64-bit divisors, we do it here
                     // manually. The magic number 7922816251426433760 below is equal to
                     // ceil(2^(64+32) / 10^10).
-                    const uint64_t result = jkj::dragonbox::detail::wuint::umul128_upper64(firstSegment, 7922816251426433760ull);
+                    const uint64_t result = dragonbox::UMul128Upper64(firstSegment, 7922816251426433760ull);
                     const uint32_t firstSubsegment = static_cast<uint32_t>(result >> 32);
                     const uint64_t secondAndThirdSubsegments = firstSegment - (firstSubsegment * 10000000000ull);
 
@@ -1972,7 +1865,7 @@ namespace he
                         // `secondAndThirdSubsegments` to find out a better magic number which
                         // allows us to eliminate an additional shift. 1844674407370955162 =
                         // ceil(2^64/10) < ceil(2^64*(10^9/(10^10 - 1))).
-                        const uint32_t secondSubsegment = static_cast<uint32_t>(jkj::dragonbox::detail::wuint::umul128_upper64(secondAndThirdSubsegments, 1844674407370955162ull));
+                        const uint32_t secondSubsegment = static_cast<uint32_t>(dragonbox::UMul128Upper64(secondAndThirdSubsegments, 1844674407370955162ull));
                         const uint32_t thirdSubsegment = static_cast<uint32_t>(secondAndThirdSubsegments) - (secondSubsegment * 10);
 
                         digitsToPrint = precision - 9;
@@ -2013,12 +1906,17 @@ namespace he
                         {
                             buf[0] = '1';
                             if (isFixedFormat)
-                                buf[precision++] = '0';
+                            {
+                                buf = FmtResize(out, 1);
+                                buf[0] = '0';
+                                ++precision;
+                            }
                             else
+                            {
                                 ++exp;
+                            }
                         }
                     }
-                    out.Resize(static_cast<uint32_t>(precision));
                 }
             }
             else

@@ -9,15 +9,11 @@
 
 namespace he
 {
-    void TestAllocator(Allocator& alloc)
+    void TestAllocatorNoRealloc(Allocator& alloc)
     {
-        // Malloc -> Realloc -> Free
+        // Malloc
         {
             void* mem = alloc.Malloc(16);
-            HE_EXPECT(mem);
-            HE_EXPECT(IsAligned(mem, Allocator::DefaultAlignment));
-
-            mem = alloc.Realloc(mem, 32);
             HE_EXPECT(mem);
             HE_EXPECT(IsAligned(mem, Allocator::DefaultAlignment));
 
@@ -27,10 +23,6 @@ namespace he
         // Malloc overaligned
         {
             void* mem = alloc.Malloc(16, 128);
-            HE_EXPECT(mem);
-            HE_EXPECT(IsAligned(mem, 128));
-
-            mem = alloc.Realloc(mem, 32, 128);
             HE_EXPECT(mem);
             HE_EXPECT(IsAligned(mem, 128));
 
@@ -45,19 +37,6 @@ namespace he
 
             alloc.Free(mem1);
             alloc.Free(mem2);
-        }
-
-        // Realloc as all 3 operations
-        {
-            void* mem = alloc.Realloc(nullptr, 16);
-            HE_EXPECT(mem);
-            HE_EXPECT(IsAligned(mem, Allocator::DefaultAlignment));
-
-            mem = alloc.Realloc(mem, 32);
-            HE_EXPECT(mem);
-            HE_EXPECT(IsAligned(mem, Allocator::DefaultAlignment));
-
-            alloc.Realloc(mem, 0);
         }
 
         // Malloc<T> trivial
@@ -227,6 +206,50 @@ namespace he
                 // Free it up
                 alloc.Free(ptrs[i]);
             }
+        }
+    }
+
+    void TestAllocator(Allocator& alloc)
+    {
+        TestAllocatorNoRealloc(alloc);
+
+        // Malloc -> Realloc -> Free
+        {
+            void* mem = alloc.Malloc(16);
+            HE_EXPECT(mem);
+            HE_EXPECT(IsAligned(mem, Allocator::DefaultAlignment));
+
+            mem = alloc.Realloc(mem, 32);
+            HE_EXPECT(mem);
+            HE_EXPECT(IsAligned(mem, Allocator::DefaultAlignment));
+
+            alloc.Free(mem);
+        }
+
+        // Malloc -> Realloc -> Free overaligned
+        {
+            void* mem = alloc.Malloc(16, 128);
+            HE_EXPECT(mem);
+            HE_EXPECT(IsAligned(mem, 128));
+
+            mem = alloc.Realloc(mem, 32, 128);
+            HE_EXPECT(mem);
+            HE_EXPECT(IsAligned(mem, 128));
+
+            alloc.Free(mem);
+        }
+
+        // Realloc as all 3 operations
+        {
+            void* mem = alloc.Realloc(nullptr, 16);
+            HE_EXPECT(mem);
+            HE_EXPECT(IsAligned(mem, Allocator::DefaultAlignment));
+
+            mem = alloc.Realloc(mem, 32);
+            HE_EXPECT(mem);
+            HE_EXPECT(IsAligned(mem, Allocator::DefaultAlignment));
+
+            alloc.Realloc(mem, 0);
         }
     }
 

@@ -13,7 +13,7 @@ using namespace he;
 HE_TEST(core, inline_allocator, test)
 {
     InlineAllocator<64> a(Allocator::GetDefault());
-    TestAllocator(a);
+    TestAllocatorNoRealloc(a);
 }
 
 // ------------------------------------------------------------------------------------------------

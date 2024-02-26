@@ -2,9 +2,22 @@
 
 #pragma once
 
+#include "he/core/compiler.h"
 #include "he/core/config.h"
 #include "he/core/concepts.h"
+#include "he/core/limits.h"
+#include "he/core/string.h"
 #include "he/core/types.h"
+
+#if HE_COMPILER_MSVC
+    extern "C" unsigned char _BitScanReverse(unsigned long* Index, unsigned long Mask);
+    #pragma intrinsic(_BitScanReverse)
+
+    #if HE_CPU_64_BIT
+        extern "C" unsigned char _BitScanReverse64(unsigned long* Index, unsigned __int64 Mask);
+        #pragma intrinsic(_BitScanReverse64)
+    #endif
+#endif
 
 // Can't use the normal assert flow, because it could come back into Fmt again.
 #if defined(_PREFAST_)
@@ -19,20 +32,14 @@ namespace he
 {
     [[noreturn]] void FmtError(const char* msg);
 
-#if defined(__INT128_TYPE__)
-    #define HE_HAS_UINT128 1
+#if HE_HAS_INT128
     #define HE_UINT128_HIGH64(x) (static_cast<uint64_t>((x) >> 64))
     #define HE_UINT128_LOW64(x) (static_cast<uint64_t>(x))
-    using uint128_t = unsigned __INT128_TYPE__;
-#elif defined(__SIZEOF_INT128__)
-    #define HE_HAS_UINT128 1
-    #define HE_UINT128_HIGH64(x) (static_cast<uint64_t>((x) >> 64))
-    #define HE_UINT128_LOW64(x) (static_cast<uint64_t>(x))
-    using uint128_t = unsigned __int128;
+    #define HE_UINT128_CONST(high, low) ((static_cast<uint128_t>(high) << 64) | low)
 #else
-    #define HE_HAS_UINT128 0
     #define HE_UINT128_HIGH64(x) ((x).High())
     #define HE_UINT128_LOW64(x) ((x).Low())
+    #define HE_UINT128_CONST(high, low) uint128_t(high, low)
 
     #if HE_COMPILER_MSVC
         extern "C" unsigned char _addcarry_u64(
@@ -134,4 +141,113 @@ namespace he
 
     template <typename T>
     using CarrierUint = Conditional<sizeof(T) <= 4, uint32_t, Conditional<sizeof(T) <= 8, uint64_t, uint128_t>>;
+
+    // Converts value in the range [0, 100) to a string.
+    constexpr const char* Digits2(uint64_t value)
+    {
+        return &"0001020304050607080910111213141516171819"
+            "2021222324252627282930313233343536373839"
+            "4041424344454647484950515253545556575859"
+            "6061626364656667686970717273747576777879"
+            "8081828384858687888990919293949596979899"[value * 2];
+    };
+
+    HE_FORCE_INLINE uint32_t CountLeadingZeroes(uint32_t x)
+    {
+    #if HE_COMPILER_MSVC
+        unsigned long r = 0;
+        _BitScanReverse(&r, x);
+        return 31 ^ r;
+    #else
+        return static_cast<uint32_t>(__builtin_clz(x));
+    #endif
+    }
+
+    HE_FORCE_INLINE uint32_t CountLeadingZeroes(uint64_t x)
+    {
+    #if HE_COMPILER_MSVC
+        unsigned long r = 0;
+    #if HE_CPU_64_BIT
+        _BitScanReverse64(&r, x);
+    #else
+        if (_BitScanReverse(&r, static_cast<uint32_t>(x >> 32)))
+            return 63 ^ (r + 32);
+        _BitScanReverse(&r, static_cast<uint32_t>(x));
+    #endif
+        return 63 ^ r;
+    #else
+        return static_cast<uint32_t>(__builtin_clzll(x));
+    #endif
+    }
+
+    extern const uint64_t DigitCountLookup[32];
+    extern const uint64_t ZeroOrPowersOf10[21];
+    extern const uint8_t Bsr2Log10[64];
+
+    HE_FORCE_INLINE uint32_t CountDigits(uint64_t x)
+    {
+        const uint8_t t = Bsr2Log10[CountLeadingZeroes(x | 1) ^ 63];
+        return t - (x < ZeroOrPowersOf10[t]);
+    }
+
+    HE_FORCE_INLINE uint32_t CountDigits(uint32_t x)
+    {
+        const uint64_t inc = DigitCountLookup[CountLeadingZeroes(x | 1) ^ 31];
+        return static_cast<uint32_t>((x + inc) >> 32);
+    }
+
+    template <uint32_t Bits, typename T>
+    inline uint32_t CountDigits(T x)
+    {
+        if constexpr (Limits<T>::ValueBits == 32)
+            return (CountLeadingZeroes(static_cast<uint32_t>(x) | 1) ^ 31) / Bits + 1;
+
+        uint32_t count = 0;
+        do
+        {
+            ++count;
+        } while ((x >>= Bits) != 0);
+        return count;
+    }
+
+    inline char* FmtResize(String& out, uint32_t len)
+    {
+        const uint32_t size = out.Size();
+        out.Resize(size + len, DefaultInit);
+        return out.Data() + size;
+    }
+
+    struct FormatDecimalResult
+    {
+        char* begin;
+        char* end;
+    };
+
+    template <UnsignedIntegral T>
+    static FormatDecimalResult FormatDecimal(char* it, T value, uint32_t len)
+    {
+        HE_FMT_ASSERT(len >= CountDigits(value), "Invalid digit count");
+
+        it += len;
+        char* end = it;
+        while (value >= 100)
+        {
+            // Integer division is slow so do it for a group of two digits instead
+            // of for every digit. The idea comes from the talk by Alexandrescu
+            // "Three Optimization Tips for C++". See speed-test for a comparison.
+            it -= 2;
+            MemCopy(it, Digits2(value % 100), 2);
+            value /= 100;
+        }
+
+        if (value < 10)
+        {
+            *--it = static_cast<char>('0' + value);
+            return { it, end };
+        }
+
+        it -= 2;
+        MemCopy(it, Digits2(value), 2);
+        return { it, end };
+    }
 }

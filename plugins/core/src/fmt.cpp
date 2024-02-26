@@ -54,92 +54,8 @@
 #include <cmath>
 #include <cstdio>
 
-#if HE_COMPILER_MSVC
-    extern "C" unsigned char _BitScanReverse(unsigned long* Index, unsigned long Mask);
-    #pragma intrinsic(_BitScanReverse)
-
-    #if HE_CPU_64_BIT
-        extern "C" unsigned char _BitScanReverse64(unsigned long* Index, unsigned __int64 Mask);
-        #pragma intrinsic(_BitScanReverse64)
-    #endif
-#endif
-
-// Can't use the normal assert flow, because it could come back into Fmt again.
-#if defined(_PREFAST_)
-    #define HE_FMT_ASSERT(expr, msg) __assume(expr)
-#elif !HE_ENABLE_ASSERTIONS
-    #define HE_FMT_ASSERT(expr, msg)
-#else
-    #define HE_FMT_ASSERT(expr, msg) (HE_LIKELY(expr) ? void(0) : FmtError(msg))
-#endif
-
 namespace he
 {
-    // An optimization by Kendall Willets from https://bit.ly/3uOIQrB.
-    // This increments the upper 32 bits (log10(T) - 1) when >= T is added.
-    #define HE_INC(T) (((sizeof(#T) - 1ull) << 32) - T)
-    static constexpr uint64_t DigitCountLookup[] =
-    {
-        HE_INC(0),          HE_INC(0),          HE_INC(0),          // 8
-        HE_INC(10),         HE_INC(10),         HE_INC(10),         // 64
-        HE_INC(100),        HE_INC(100),        HE_INC(100),        // 512
-        HE_INC(1000),       HE_INC(1000),       HE_INC(1000),       // 4096
-        HE_INC(10000),      HE_INC(10000),      HE_INC(10000),      // 32k
-        HE_INC(100000),     HE_INC(100000),     HE_INC(100000),     // 256k
-        HE_INC(1000000),    HE_INC(1000000),    HE_INC(1000000),    // 2048k
-        HE_INC(10000000),   HE_INC(10000000),   HE_INC(10000000),   // 16M
-        HE_INC(100000000),  HE_INC(100000000),  HE_INC(100000000),  // 128M
-        HE_INC(1000000000), HE_INC(1000000000), HE_INC(1000000000), // 1024M
-        HE_INC(1000000000), HE_INC(1000000000),                     // 4B
-    };
-    #undef HE_INC
-
-    static constexpr uint8_t Bsr2Log10[] =
-    {
-        1,  1,  1,  2,  2,  2,  3,  3,  3,  4,  4,  4,  4,  5,  5,  5,
-        6,  6,  6,  7,  7,  7,  7,  8,  8,  8,  9,  9,  9,  10, 10, 10,
-        10, 11, 11, 11, 12, 12, 12, 13, 13, 13, 13, 14, 14, 14, 15, 15,
-        15, 16, 16, 16, 16, 17, 17, 17, 18, 18, 18, 19, 19, 19, 19, 20,
-    };
-
-    #define HE_POWERS_OF_10(factor)                                 \
-        (factor)*10, (factor)*100, (factor)*1000, (factor)*10000,   \
-        (factor)*100000, (factor)*1000000, (factor)*10000000,       \
-        (factor)*100000000, (factor)*1000000000
-    static constexpr const uint64_t ZeroOrPowersOf10[] =
-    {
-        0, 0, HE_POWERS_OF_10(1u), HE_POWERS_OF_10(1000000000ull), 10000000000000000000ull,
-    };
-    #undef HE_POWERS_OF_10
-
-    HE_FORCE_INLINE uint32_t CountLeadingZeroes(uint32_t x)
-    {
-    #if HE_COMPILER_MSVC
-        unsigned long r = 0;
-        _BitScanReverse(&r, x);
-        return 31 ^ r;
-    #else
-        return static_cast<uint32_t>(__builtin_clz(x));
-    #endif
-    }
-
-    HE_FORCE_INLINE uint32_t CountLeadingZeroes(uint64_t x)
-    {
-    #if HE_COMPILER_MSVC
-        unsigned long r = 0;
-    #if HE_CPU_64_BIT
-        _BitScanReverse64(&r, x);
-    #else
-        if (_BitScanReverse(&r, static_cast<uint32_t>(x >> 32)))
-            return 63 ^ (r + 32);
-        _BitScanReverse(&r, static_cast<uint32_t>(x));
-    #endif
-        return 63 ^ r;
-    #else
-        return static_cast<uint32_t>(__builtin_clzll(x));
-    #endif
-    }
-
     class BigInt
     {
     public:
@@ -509,7 +425,11 @@ namespace he
         static constexpr uint32_t Digits10 = static_cast<uint32_t>(Digits * 3 / 10);
 
         static constexpr uint128_t Min{ 0 };
+    #if HE_HAS_INT128
+        static constexpr uint128_t Max{ ~uint128_t(0) };
+    #else
         static constexpr uint128_t Max{ 0xffffffffffffffffull, 0xffffffffffffffffull };
+    #endif
     };
 
     template <>
@@ -524,9 +444,6 @@ namespace he
 
         static constexpr uint32_t Digits = ValueBits;
         static constexpr uint32_t Digits10 = static_cast<uint32_t>(Digits * 3 / 10);
-
-        static constexpr uint128_t Min{ 0 };
-        static constexpr uint128_t Max{ 0xffffffffffffffffull, 0xffffffffffffffffull };
     };
 
     // A floating-point number f * pow(2, e) where T is an unsigned type.
@@ -600,42 +517,6 @@ namespace he
         // These are stored in a string literal because we cannot have static arrays
         // in constexpr functions and non-static ones are poorly optimized.
         return U"\x9999999a\x828f5c29\x80418938\x80068db9\x8000a7c6\x800010c7\x800001ae\x8000002b"[index];
-    }
-
-    // Converts value in the range [0, 100) to a string.
-    constexpr const char* Digits2(uint64_t value)
-    {
-        return &"0001020304050607080910111213141516171819"
-            "2021222324252627282930313233343536373839"
-            "4041424344454647484950515253545556575859"
-            "6061626364656667686970717273747576777879"
-            "8081828384858687888990919293949596979899"[value * 2];
-    };
-
-    HE_FORCE_INLINE uint32_t CountDigits(uint64_t x)
-    {
-        const uint8_t t = Bsr2Log10[CountLeadingZeroes(x | 1) ^ 63];
-        return t - (x < ZeroOrPowersOf10[t]);
-    }
-
-    HE_FORCE_INLINE uint32_t CountDigits(uint32_t x)
-    {
-        const uint64_t inc = DigitCountLookup[CountLeadingZeroes(x | 1) ^ 31];
-        return static_cast<uint32_t>((x + inc) >> 32);
-    }
-
-    template <uint32_t Bits, typename T>
-    inline uint32_t CountDigits(T x)
-    {
-        if constexpr (Limits<T>::ValueBits == 32)
-            return (CountLeadingZeroes(static_cast<uint32_t>(x) | 1) ^ 31) / Bits + 1;
-
-        uint32_t count = 0;
-        do
-        {
-            ++count;
-        } while ((x >>= Bits) != 0);
-        return count;
     }
 
     // A public domain branchless UTF-8 decoder by Christopher Wellons:
@@ -792,40 +673,6 @@ namespace he
         }
 
         return it;
-    }
-
-    struct FormatDecimalResult
-    {
-        char* begin;
-        char* end;
-    };
-
-    template <UnsignedIntegral T>
-    static FormatDecimalResult FormatDecimal(char* it, T value, uint32_t len)
-    {
-        HE_FMT_ASSERT(len >= CountDigits(value), "Invalid digit count");
-
-        it += len;
-        char* end = it;
-        while (value >= 100)
-        {
-            // Integer division is slow so do it for a group of two digits instead
-            // of for every digit. The idea comes from the talk by Alexandrescu
-            // "Three Optimization Tips for C++". See speed-test for a comparison.
-            it -= 2;
-            MemCopy(it, Digits2(value % 100), 2);
-            value /= 100;
-        }
-
-        if (value < 10)
-        {
-            *--it = static_cast<char>('0' + value);
-            return { it, end };
-        }
-
-        it -= 2;
-        MemCopy(it, Digits2(value), 2);
-        return { it, end };
     }
 
     template <uint32_t Bits, UnsignedIntegral T>
@@ -1687,7 +1534,7 @@ namespace he
             else
             {
                 HE_FMT_ASSERT(significand != 0, "Zero significand must be handled before this point");
-                int32_t shift = CountLeadingZeroes(significand);
+                uint32_t shift = CountLeadingZeroes(significand);
                 HE_FMT_ASSERT((shift >= Limits<Uint>::Bits - Info::SignificandBits), "Significand must be normalized");
                 shift -= Limits<Uint>::Bits - Info::SignificandBits - 2;
                 exponent = (Info::MinExponent - static_cast<int32_t>(Info::SignificandBits)) - shift;
@@ -2009,7 +1856,9 @@ namespace he
 
     [[noreturn]] void FmtError(const char* msg)
     {
+        PrintToDebugger("FmtError: ");
         PrintToDebugger(msg);
+        PrintToDebugger("\n");
         TerminateProcess();
     }
 
@@ -2129,10 +1978,11 @@ namespace he
 
     void Formatter<unsigned long>::Format(String& out, unsigned long value) const
     {
-        if constexpr (sizeof(long) == 4)
-            WriteInt(out, static_cast<uint32_t>(value), spec);
-        else
-            WriteInt(out, static_cast<uint64_t>(value), spec);
+    #if HE_SIZEOF_LONG == 4
+        WriteInt(out, static_cast<uint32_t>(value), spec);
+    #else
+        WriteInt(out, static_cast<uint64_t>(value), spec);
+    #endif
     }
 
     void Formatter<unsigned long long>::Format(String& out, unsigned long long value) const

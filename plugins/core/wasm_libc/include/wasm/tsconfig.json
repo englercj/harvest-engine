@@ -1,0 +1,9 @@
+{
+    "extends": "../../../include/he/core/wasm/tsconfig.json",
+    "include": ["*.ts"],
+    "compilerOptions": {
+        "paths": {
+            "he/core/*": ["../../../include/he/core/wasm/*"]
+        }
+    }
+}

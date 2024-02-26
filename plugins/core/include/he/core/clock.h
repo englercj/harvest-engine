@@ -64,6 +64,11 @@ namespace he
     ///
     /// These values are pulled from the system's clock which is not guaranteed to be monotonic.
     /// This clock is suitable for displaying the current time to the user.
+    ///
+    /// \note Since the system clock returns an epoch time which is stored as a single 64-bit uint
+    /// it can only represent dates in the range [1970-01-01T00:00:00Z, 2554-07-21T23:34:33Z].
+    /// This limitation keeps the storage small, and operations fast. If you are dealing with
+    /// calendar dates and not clock measurements use \ref DateTime and \ref TimeSpan.
     using SystemClock = Clock<struct SystemClockTag>;
 
     /// \copydoc SystemClock
@@ -71,8 +76,8 @@ namespace he
 
     /// Nanoseconds that have passed since an OS-defined epoch (usually boot time).
     ///
-    /// This clock is guaranteed to be monotonic. This clock is suitable for measuring precise time
-    /// intervals, such as performance counters.
+    /// This clock is guaranteed to be monotonic. This clock is suitable for measuring precise
+    /// time intervals, such as performance counters.
     using MonotonicClock = Clock<struct MonotonicClockTag>;
 
     /// \copydoc MonotonicClock
@@ -93,7 +98,11 @@ namespace he
     // --------------------------------------------------------------------------------------------
     // Duration Types
 
-    // A span of time in nanoseconds
+    /// A span of time in nanoseconds.
+    ///
+    /// \note Harvest durations are limited to roughly +-290 years, which allows storage to be
+    /// small and operations to be fast. If you are dealing with calendar dates and not clock
+    /// measurements use \ref DateTime and \ref TimeSpan.
     struct Duration
     {
         int64_t val;
@@ -119,6 +128,8 @@ namespace he
     using Hours = DurationPeriod<3600000000000>;
     using Days = DurationPeriod<86400000000000>;
     using Weeks = DurationPeriod<604800000000000>;
+    using Months = DurationPeriod<2629746000000000>; // 30.436875 days (exactly 1/12 of years)
+    using Years = DurationPeriod<31556952000000000>; // 365.2425 days
 
     template <typename T, typename U = int64_t> requires(IsIntegral<U>)
     constexpr U ToPeriod(Duration d) { return static_cast<U>(d.val / T::Ratio); }

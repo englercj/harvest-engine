@@ -24,6 +24,19 @@ using nullptr_t = decltype(nullptr);
     using uint64_t = unsigned long long;
 #endif
 
+// 128-bit types
+#if defined(__INT128_TYPE__)
+    #define HE_HAS_INT128 1
+    using int128_t = __INT128_TYPE__;
+    using uint128_t = unsigned __INT128_TYPE__;
+#elif defined(__SIZEOF_INT128__)
+    #define HE_HAS_INT128 1
+    using int128_t = __int128;
+    using uint128_t = unsigned __int128;
+#else
+    #define HE_HAS_INT128 0
+#endif
+
 // size type
 #if defined(__SIZE_TYPE__)
     using size_t = __SIZE_TYPE__;

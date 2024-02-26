@@ -67,7 +67,7 @@ namespace he::dragonbox
     // Computes 128-bit result of multiplication of two 64-bit unsigned integers.
     static uint128_t UMul128(uint64_t x, uint64_t y) noexcept
     {
-    #if HE_HAS_UINT128
+    #if HE_HAS_INT128
         return static_cast<uint128_t>(x) * static_cast<uint128_t>(y);
     #elif HE_COMPILER_MSVC
         auto hi = uint64_t();
@@ -98,7 +98,7 @@ namespace he::dragonbox
     // Computes upper 64 bits of multiplication of two 64-bit unsigned integers.
     inline uint64_t UMul128Upper64(uint64_t x, uint64_t y) noexcept
     {
-    #if HE_HAS_UINT128
+    #if HE_HAS_INT128
         const uint128_t p = static_cast<uint128_t>(x) * static_cast<uint128_t>(y);
         return static_cast<uint64_t>(p >> 64);
     #elif HE_COMPILER_MSVC
@@ -122,7 +122,11 @@ namespace he::dragonbox
     inline uint128_t UMul192Lower128(uint64_t x, uint128_t y) noexcept {
         const uint64_t high = x * HE_UINT128_HIGH64(y);
         const uint128_t high_low = UMul128(x, HE_UINT128_LOW64(y));
+    #if HE_HAS_INT128
+        return (uint128_t(high) << 64) + high_low;
+    #else
         return { high + HE_UINT128_HIGH64(high_low), HE_UINT128_LOW64(high_low) };
+    #endif
     }
 
     // Computes upper 64 bits of multiplication of a 32-bit unsigned integer and a

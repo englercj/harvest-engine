@@ -324,7 +324,13 @@ namespace he
     inline constexpr bool IsNullptr = IsSame<RemoveCV<T>, decltype(nullptr)>;
 
     template <typename T>
-    inline constexpr bool IsIntegral = IsAnyOf<RemoveCV<T>, bool, char, signed char, unsigned char, wchar_t, char8_t, char16_t, char32_t, short, unsigned short, int, unsigned int, long, unsigned long, long long, unsigned long long>;
+    inline constexpr bool IsIntegral = IsAnyOf<RemoveCV<T>
+        , bool, char, signed char, unsigned char, wchar_t, char8_t, char16_t, char32_t
+        , short, unsigned short, int, unsigned int, unsigned long, long, long long, unsigned long long
+    #if HE_HAS_INT128
+        , int128_t, uint128_t
+    #endif
+        >;
 
     template <typename T>
     inline constexpr bool IsFloatingPoint = IsAnyOf<RemoveCV<T>, float, double, long double>;

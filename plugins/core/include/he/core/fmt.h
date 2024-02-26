@@ -729,14 +729,6 @@ namespace he
     inline _FmtStringRuntime FmtRuntime(StringView fmt) { return { fmt }; }
 
     // --------------------------------------------------------------------------------------------
-    inline char* FmtResize(String& out, uint32_t len)
-    {
-        const uint32_t size = out.Size();
-        out.Resize(size + len, DefaultInit);
-        return out.Data() + size;
-    }
-
-    // --------------------------------------------------------------------------------------------
     template <typename T> struct Formatter { Formatter() = delete; };
 
     template <>

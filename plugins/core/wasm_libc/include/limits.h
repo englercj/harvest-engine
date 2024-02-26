@@ -26,3 +26,5 @@
 #define LLONG_MIN (-LLONG_MAX - 1)
 #define LLONG_MAX  0x7fffffffffffffffll
 #define ULLONG_MAX ((2ull * LLONG_MAX) + 1)
+
+#define TZNAME_MAX 6

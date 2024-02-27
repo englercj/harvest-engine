@@ -507,7 +507,7 @@ namespace he::rhi::d3d12
 namespace he
 {
     template <>
-    const char* AsString(DXGI_FORMAT x)
+    const char* EnumTraits<DXGI_FORMAT>::ToString(DXGI_FORMAT x) noexcept
     {
         switch (x)
         {
@@ -639,7 +639,7 @@ namespace he
     }
 
     template <>
-    const char* AsString(DXGI_MODE_ROTATION x)
+    const char* EnumTraits<DXGI_MODE_ROTATION>::ToString(DXGI_MODE_ROTATION x) noexcept
     {
         switch (x)
         {

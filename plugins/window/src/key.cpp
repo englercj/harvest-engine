@@ -7,7 +7,7 @@
 namespace he
 {
     template <>
-    const char* AsString(window::Key x)
+    const char* EnumTraits<window::Key>::ToString(window::Key x) noexcept
     {
         switch (x)
         {

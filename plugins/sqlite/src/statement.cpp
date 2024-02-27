@@ -200,7 +200,7 @@ namespace he::sqlite
 namespace he
 {
     template <>
-    const char* AsString(sqlite::StepResult x)
+    const char* EnumTraits<sqlite::StepResult>::ToString(sqlite::StepResult x) noexcept
     {
         switch (x)
         {

@@ -530,7 +530,7 @@ namespace he
 {
     // --------------------------------------------------------------------------------------------
     template <>
-    const char* AsString(editor::SchemaEditAction::Kind x)
+    const char* EnumTraits<editor::SchemaEditAction::Kind>::ToString(editor::SchemaEditAction::Kind x) noexcept
     {
         switch (x)
         {

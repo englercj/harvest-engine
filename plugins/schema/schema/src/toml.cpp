@@ -139,7 +139,7 @@ namespace he::schema
             return ParseBlobHexString(bytes, field, value);
         }
 
-        const bool useZstd = b64Attr.IsValid() ? b64Attr.GetValue().GetData().GetEnum() == AsUnderlyingType(Toml::Compression::Zstd) : false;
+        const bool useZstd = b64Attr.IsValid() ? b64Attr.GetValue().GetData().GetEnum() == EnumToValue(Toml::Compression::Zstd) : false;
         return ParseBlobBase64String(out, field, useZstd, value);
     }
 
@@ -272,7 +272,7 @@ namespace he::schema
             HE_LOG_WARN(he_schema,
                 HE_MSG("Encountered unknown field tag. Deserialization of this field is not possible."),
                 HE_KV(field_name, name),
-                HE_KV(field_tag, AsUnderlyingType(fieldUnionTag)),
+                HE_KV(field_tag, EnumToValue(fieldUnionTag)),
                 HE_KV(decl_name, decl.GetName()),
                 HE_KV(decl_id, decl.GetId()));
             m_currentField = {};
@@ -349,7 +349,7 @@ namespace he::schema
             HE_LOG_WARN(he_schema,
                 HE_MSG("Encountered unknown normal field type. Deserialization of this field is not possible."),
                 HE_KV(field_name, name),
-                HE_KV(field_type, AsUnderlyingType(typeDataTag)),
+                HE_KV(field_type, EnumToValue(typeDataTag)),
                 HE_KV(decl_name, decl.GetName()),
                 HE_KV(decl_id, decl.GetId()));
             m_currentField = {};
@@ -1370,7 +1370,7 @@ namespace he::schema
                 m_writer.String(str);
                 return;
             }
-            const bool useZstd = b64Attr.IsValid() ? b64Attr.GetValue().GetData().GetEnum() == AsUnderlyingType(Toml::Compression::Zstd) : false;
+            const bool useZstd = b64Attr.IsValid() ? b64Attr.GetValue().GetData().GetEnum() == EnumToValue(Toml::Compression::Zstd) : false;
 
             if (!useZstd)
             {

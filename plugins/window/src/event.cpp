@@ -7,7 +7,7 @@
 namespace he
 {
     template <>
-    const char* AsString(window::EventKind x)
+    const char* EnumTraits<window::EventKind>::ToString(window::EventKind x) noexcept
     {
         switch (x)
         {

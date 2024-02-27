@@ -7,7 +7,7 @@
 namespace he
 {
     template <>
-    const char* AsString(window::PointerKind x)
+    const char* EnumTraits<window::PointerKind>::ToString(window::PointerKind x) noexcept
     {
         switch (x)
         {
@@ -21,7 +21,7 @@ namespace he
     }
 
     template <>
-    const char* AsString(window::PointerButton x)
+    const char* EnumTraits<window::PointerButton>::ToString(window::PointerButton x) noexcept
     {
         switch (x)
         {
@@ -39,7 +39,7 @@ namespace he
     }
 
     template <>
-    const char* AsString(window::PointerCursor x)
+    const char* EnumTraits<window::PointerCursor>::ToString(window::PointerCursor x) noexcept
     {
         switch (x)
         {

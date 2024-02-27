@@ -76,7 +76,7 @@ namespace he
             Empty,
         };
 
-        template <ValueKind K, VariantType::IndexType I = AsUnderlyingType(K)>
+        template <ValueKind K, VariantType::IndexType I = EnumToValue(K)>
         static consteval IndexConstant<I> AsIndex() { return IndexConstant<I>{}; }
 
     public:
@@ -101,9 +101,9 @@ namespace he
             : m_key(k)
             , m_value(AsIndex<ValueKind::Enum>())
         {
-            EnumStorage& e = m_value.Get<AsUnderlyingType(ValueKind::Enum)>();
+            EnumStorage& e = m_value.Get<EnumToValue(ValueKind::Enum)>();
             e.value = static_cast<uint64_t>(v);
-            e.toString = [](uint64_t val) { return AsString(static_cast<T>(val)); };
+            e.toString = [](uint64_t val) { return EnumToString(static_cast<T>(val)); };
         }
 
         KeyValue(const char* k, const char* v) noexcept
@@ -128,7 +128,7 @@ namespace he
             : m_key(k)
             , m_value(AsIndex<ValueKind::String>())
         {
-            he::String& s = m_value.Get<AsUnderlyingType(ValueKind::String)>();
+            he::String& s = m_value.Get<EnumToValue(ValueKind::String)>();
             FormatTo(s, fmt, Forward<Args>(args)...);
         }
 
@@ -137,7 +137,7 @@ namespace he
             : m_key(k)
             , m_value(AsIndex<ValueKind::String>())
         {
-            he::String& s = m_value.Get<AsUnderlyingType(ValueKind::String)>();
+            he::String& s = m_value.Get<EnumToValue(ValueKind::String)>();
             FormatTo(s, "{}", v);
         }
 
@@ -164,7 +164,7 @@ namespace he
 
         const char* Key() const { return m_key; }
 
-        template <ValueKind K> bool Is() const { return m_value.Index() == AsUnderlyingType(K); }
+        template <ValueKind K> bool Is() const { return m_value.Index() == EnumToValue(K); }
         bool IsBool() const { return Is<ValueKind::Bool>(); }
         bool IsEnum() const { return Is<ValueKind::Enum>(); }
         bool IsInt() const { return Is<ValueKind::Int>(); }
@@ -172,7 +172,7 @@ namespace he
         bool IsDouble() const { return Is<ValueKind::Double>(); }
         bool IsString() const { return Is<ValueKind::String>(); }
 
-        template <ValueKind K> decltype(auto) Set() { return m_value.Emplace<AsUnderlyingType(K)>(); }
+        template <ValueKind K> decltype(auto) Set() { return m_value.Emplace<EnumToValue(K)>(); }
         void SetBool(bool v) { Set<ValueKind::Bool>() = v; }
         void SetInt(int64_t v) { Set<ValueKind::Int>() = v; }
         void SetUint(uint64_t v) { Set<ValueKind::Uint>() = v; }
@@ -184,11 +184,11 @@ namespace he
         {
             EnumStorage& e = Set<ValueKind::Enum>();
             e.value = static_cast<uint64_t>(v);
-            e.toString = [](uint64_t val) { return AsString(static_cast<T>(val)); };
+            e.toString = [](uint64_t val) { return EnumToString(static_cast<T>(val)); };
         }
 
-        template <ValueKind K> decltype(auto) Get() { return m_value.Get<AsUnderlyingType(K)>(); }
-        template <ValueKind K> decltype(auto) Get() const { return m_value.Get<AsUnderlyingType(K)>(); }
+        template <ValueKind K> decltype(auto) Get() { return m_value.Get<EnumToValue(K)>(); }
+        template <ValueKind K> decltype(auto) Get() const { return m_value.Get<EnumToValue(K)>(); }
         bool Bool() const { return Get<ValueKind::Bool>(); }
         const EnumStorage& Enum() const { return Get<ValueKind::Enum>(); }
         int64_t Int() const { return Get<ValueKind::Int>(); }

@@ -7,7 +7,7 @@
 namespace he
 {
     template <>
-    const char* AsString(schema::AstExpression::Kind x)
+    const char* EnumTraits<schema::AstExpression::Kind>::ToString(schema::AstExpression::Kind x) noexcept
     {
         switch (x)
         {
@@ -30,7 +30,7 @@ namespace he
     }
 
     template <>
-    const char* AsString(schema::AstMethodParams::Kind x)
+    const char* EnumTraits<schema::AstMethodParams::Kind>::ToString(schema::AstMethodParams::Kind x) noexcept
     {
         switch (x)
         {
@@ -41,7 +41,7 @@ namespace he
     }
 
     template <>
-    const char* AsString(schema::AstNode::Kind x)
+    const char* EnumTraits<schema::AstNode::Kind>::ToString(schema::AstNode::Kind x) noexcept
     {
         switch (x)
         {

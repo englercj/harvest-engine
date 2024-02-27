@@ -14,7 +14,7 @@ namespace he
 {
     bool _PlatformErrorHandler(const ErrorSource& source, const KeyValue* kvs, uint32_t count)
     {
-        String errorMsg = AsString(source.kind);
+        String errorMsg = EnumToString(source.kind);
         FormatTo(errorMsg, "\n{}", FmtJoin(kvs, kvs + count, "\n"));
         FormatTo(errorMsg, "\nsource.file = {}\nsource.line = {}\nsource.funcName = {}", source.file, source.line, source.funcName);
         heWASM_ConsoleLog(heWASM_ConsoleLogLevel::Error, errorMsg.Data());

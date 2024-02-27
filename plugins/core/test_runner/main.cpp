@@ -86,7 +86,7 @@ static bool HandleTestLibLogEntry(const LogSource& source, const KeyValue* kvs, 
             // Log the initial failure line
             const ErrorKind errorKind = kvErrorKind.Enum().As<ErrorKind>();
             const String& errorExpr = kvErrorExpr.String();
-            std::cout << AsString(errorKind) << " failed: " << errorExpr.Data() << " [" << source.file << '(' << source.line << ")]" << std::endl;
+            std::cout << EnumToString(errorKind) << " failed: " << errorExpr.Data() << " [" << source.file << '(' << source.line << ")]" << std::endl;
 
             // First three keys are "test_event_kind",  `error_kind` and `error_expr` so skip those and log the rest
             if (count > 3)

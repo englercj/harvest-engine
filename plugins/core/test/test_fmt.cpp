@@ -861,9 +861,9 @@ namespace he
     enum class Color { Red, Green, Blue };
 
     template <>
-    const char* AsString(Color c)
+    const char* EnumTraits<Color>::ToString(Color x) noexcept
     {
-        switch (c)
+        switch (x)
         {
             case Color::Red: return "Red";
             case Color::Green: return "Green";
@@ -874,8 +874,8 @@ namespace he
 }
 HE_TEST(core, fmt, enums)
 {
-    HE_EXPECT_EQ(Format("{}", AsUnderlyingType(Color::Red)), "0");
-    HE_EXPECT_EQ(Format("{}", AsUnderlyingType(Color::Blue)), "2");
+    HE_EXPECT_EQ(Format("{}", EnumToValue(Color::Red)), "0");
+    HE_EXPECT_EQ(Format("{}", EnumToValue(Color::Blue)), "2");
 
     HE_EXPECT_EQ(Format("{}", Color::Red), "Red");
     HE_EXPECT_EQ(Format("{}", Color::Blue), "Blue");

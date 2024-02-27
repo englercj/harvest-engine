@@ -110,7 +110,7 @@ namespace he::window
 namespace he
 {
     template <>
-    const char* AsString(window::GamepadAxis x)
+    const char* EnumTraits<window::GamepadAxis>::ToString(window::GamepadAxis x) noexcept
     {
         switch (x)
         {
@@ -127,7 +127,7 @@ namespace he
     }
 
     template <>
-    const char* AsString(window::GamepadButton x)
+    const char* EnumTraits<window::GamepadButton>::ToString(window::GamepadButton x) noexcept
     {
         switch (x)
         {

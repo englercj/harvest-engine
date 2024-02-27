@@ -41,7 +41,7 @@ namespace he::assets
 namespace he
 {
     template <>
-    const char* AsString(assets::ImportError x)
+    const char* EnumTraits<assets::ImportError>::ToString(assets::ImportError x) noexcept
     {
         switch (x)
         {

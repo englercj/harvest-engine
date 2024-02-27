@@ -94,9 +94,9 @@ namespace he::sqlite
         using Traits = SqlDataTypeTraits<U>;
 
         static constexpr StringView SqlType = "INTEGER";
-        static bool Bind(Statement& stmt, int32_t index, const T& value) { return Traits::Bind(stmt, index, AsUnderlyingType(value)); }
+        static bool Bind(Statement& stmt, int32_t index, const T& value) { return Traits::Bind(stmt, index, EnumToValue(value)); }
         static void Read(const ColumnReader& column, T& value) { U v; Traits::Read(column, v); value = static_cast<T>(v); }
-        static void Write(StringBuilder& sql, const T& value) { Traits::Write(sql, AsUnderlyingType(value)); }
+        static void Write(StringBuilder& sql, const T& value) { Traits::Write(sql, EnumToValue(value)); }
     };
 
     template <typename T>

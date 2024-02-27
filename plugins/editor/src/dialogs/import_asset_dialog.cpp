@@ -19,7 +19,7 @@
 namespace he
 {
     template <>
-    const char* AsString(editor::ImportAssetDialog::State x)
+    const char* EnumTraits<editor::ImportAssetDialog::State>::ToString(editor::ImportAssetDialog::State x) noexcept
     {
         switch (x)
         {

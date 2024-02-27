@@ -6,7 +6,7 @@
 namespace he
 {
     template <>
-    const char* AsString(rhi::ApiResult x)
+    const char* EnumTraits<rhi::ApiResult>::ToString(rhi::ApiResult x) noexcept
     {
         switch (x)
         {
@@ -21,7 +21,7 @@ namespace he
     }
 
     template <>
-    const char* AsString(rhi::Format x)
+    const char* EnumTraits<rhi::Format>::ToString(rhi::Format x) noexcept
     {
         switch (x)
         {

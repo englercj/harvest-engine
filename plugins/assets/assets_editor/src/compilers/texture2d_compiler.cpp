@@ -241,7 +241,7 @@ namespace he::assets
 namespace he
 {
     template <>
-    const char* AsString(basisu::basis_compressor::error_code x)
+    const char* EnumTraits<basisu::basis_compressor::error_code>::ToString(basisu::basis_compressor::error_code x) noexcept
     {
         switch (x)
         {

@@ -301,7 +301,7 @@ namespace he::editor
 
                 // State
                 ImGui::TableNextColumn();
-                ImGui::TextUnformatted(AsString(asset.state));
+                ImGui::TextUnformatted(EnumToString(asset.state));
 
                 ImGui::PopID();
             }

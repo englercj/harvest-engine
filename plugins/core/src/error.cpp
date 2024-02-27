@@ -66,7 +66,7 @@ namespace he
     }
 
     template <>
-    const char* AsString(ErrorKind x)
+    const char* EnumTraits<ErrorKind>::ToString(ErrorKind x) noexcept
     {
         switch (x)
         {

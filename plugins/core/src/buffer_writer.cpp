@@ -232,7 +232,7 @@ namespace he
     }
 
     template <>
-    const char* AsString(BufferWriter::GrowthStrategy x)
+    const char* EnumTraits<BufferWriter::GrowthStrategy>::ToString(BufferWriter::GrowthStrategy x) noexcept
     {
         switch (x)
         {

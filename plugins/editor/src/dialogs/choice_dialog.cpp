@@ -10,7 +10,7 @@
 namespace he
 {
     template <>
-    const char* AsString(editor::ChoiceDialog::Choice x)
+    const char* EnumTraits<editor::ChoiceDialog::Choice>::ToString(editor::ChoiceDialog::Choice x) noexcept
     {
         switch (x)
         {
@@ -63,7 +63,7 @@ namespace he::editor
     {
         if (HasFlag(m_buttons, button))
         {
-            if (DialogButton(AsString(choice)))
+            if (DialogButton(EnumToString(choice)))
             {
                 if (m_callback)
                     m_callback(choice);

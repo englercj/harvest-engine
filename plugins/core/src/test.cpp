@@ -59,7 +59,7 @@ namespace internal
 }
 
     template <>
-    const char* AsString(TestEventKind x)
+    const char* EnumTraits<TestEventKind>::ToString(TestEventKind x) noexcept
     {
         switch (x)
         {

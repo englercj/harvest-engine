@@ -85,7 +85,7 @@ struct TomlEvent
 };
 
 template <>
-const char* he::AsString(TomlEvent::Kind x)
+const char* he::EnumTraits<TomlEvent::Kind>::ToString(TomlEvent::Kind x) noexcept
 {
     switch (x)
     {

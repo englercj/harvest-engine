@@ -33,7 +33,7 @@ namespace he
     }
 
     template <>
-    const char* AsString(BulkReadRequest::CompressionFormat x)
+    const char* EnumTraits<BulkReadRequest::CompressionFormat>::ToString(BulkReadRequest::CompressionFormat x) noexcept
     {
         switch (x)
         {
@@ -45,7 +45,7 @@ namespace he
     }
 
     template <>
-    const char* AsString(BulkFileQueue::Config::Priority x)
+    const char* EnumTraits<BulkFileQueue::Config::Priority>::ToString(BulkFileQueue::Config::Priority x) noexcept
     {
         switch (x)
         {

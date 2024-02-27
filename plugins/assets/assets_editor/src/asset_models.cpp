@@ -349,7 +349,7 @@ namespace he::assets
 namespace he
 {
     template <>
-    const char* AsString(assets::AssetState x)
+    const char* EnumTraits<assets::AssetState>::ToString(assets::AssetState x) noexcept
     {
         switch (x)
         {

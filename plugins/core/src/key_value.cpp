@@ -8,7 +8,7 @@
 namespace he
 {
     template <>
-    const char* AsString(KeyValue::ValueKind x)
+    const char* EnumTraits<KeyValue::ValueKind>::ToString(KeyValue::ValueKind x) noexcept
     {
         switch (x)
         {

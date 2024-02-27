@@ -48,7 +48,7 @@ namespace he
     }
 
     template <>
-    const char* AsString(MemoryAccess x)
+    const char* EnumTraits<MemoryAccess>::ToString(MemoryAccess x) noexcept
     {
         switch (x)
         {

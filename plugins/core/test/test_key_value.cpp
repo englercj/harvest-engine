@@ -83,7 +83,7 @@ static KeyValue TestKeyValueCtor(const char* key, T value)
 enum class TestEnum { A, B, C };
 
 template <>
-const char* he::AsString(TestEnum x)
+const char* he::EnumTraits<TestEnum>::ToString(TestEnum x) noexcept
 {
     switch (x)
     {

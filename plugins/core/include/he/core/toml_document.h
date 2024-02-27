@@ -38,21 +38,24 @@ namespace he
             Invalid,
         };
 
+        template <Kind K, VariantType::IndexType I = EnumToValue(K)>
+        static consteval IndexConstant<I> AsIndex() { return IndexConstant<I>{}; }
+
     public:
         TomlValue() noexcept : m_value() {}
-        TomlValue(bool v) noexcept : m_value(IndexConstant<AsUnderlyingType(Kind::Bool)>{}, v) {}
-        TomlValue(int64_t v) noexcept : m_value(IndexConstant<AsUnderlyingType(Kind::Int)>{}, v) {}
-        TomlValue(uint64_t v) noexcept : m_value(IndexConstant<AsUnderlyingType(Kind::Uint)>{}, v) {}
-        TomlValue(double v) noexcept : m_value(IndexConstant<AsUnderlyingType(Kind::Float)>{}, v) {}
-        TomlValue(StringView v) noexcept : m_value(IndexConstant<AsUnderlyingType(Kind::String)>{}, v) {}
-        TomlValue(SystemTime v) noexcept : m_value(IndexConstant<AsUnderlyingType(Kind::DateTime)>{}, v) {}
-        TomlValue(Duration v) noexcept : m_value(IndexConstant<AsUnderlyingType(Kind::Time)>{}, v) {}
+        TomlValue(bool v) noexcept : m_value(AsIndex<Kind::Bool>(), v) {}
+        TomlValue(int64_t v) noexcept : m_value(AsIndex<Kind::Int>(), v) {}
+        TomlValue(uint64_t v) noexcept : m_value(AsIndex<Kind::Uint>(), v) {}
+        TomlValue(double v) noexcept : m_value(AsIndex<Kind::Float>(), v) {}
+        TomlValue(StringView v) noexcept : m_value(AsIndex<Kind::String>(), v) {}
+        TomlValue(SystemTime v) noexcept : m_value(AsIndex<Kind::DateTime>(), v) {}
+        TomlValue(Duration v) noexcept : m_value(AsIndex<Kind::Time>(), v) {}
 
         Kind GetKind() const { return m_value.IsValid() ? static_cast<Kind>(m_value.Index()) : Kind::Invalid; }
         bool IsValid() const { return m_value.IsValid(); }
         void Clear() { m_value.Clear(); }
 
-        template <Kind K> bool Is() const { return m_value.Index() == AsUnderlyingType(K); }
+        template <Kind K> bool Is() const { return m_value.Index() == EnumToValue(K); }
         bool IsBool() const { return Is<Kind::Bool>(); }
         bool IsInt() const { return Is<Kind::Int>(); }
         bool IsUint() const { return Is<Kind::Uint>(); }
@@ -63,7 +66,7 @@ namespace he
         bool IsTable() const { return Is<Kind::Table>(); }
         bool IsArray() const { return Is<Kind::Array>(); }
 
-        template <Kind K> decltype(auto) Set() { return m_value.Emplace<AsUnderlyingType(K)>(); }
+        template <Kind K> decltype(auto) Set() { return m_value.Emplace<EnumToValue(K)>(); }
         void SetBool(bool v) { Set<Kind::Bool>() = v; }
         void SetInt(int64_t v) { Set<Kind::Int>() = v; }
         void SetUint(uint64_t v) { Set<Kind::Uint>() = v; }
@@ -71,11 +74,11 @@ namespace he
         void SetString(StringView v) { Set<Kind::String>() = v; }
         void SetDateTime(SystemTime v) { Set<Kind::DateTime>() = v; }
         void SetTime(Duration v) { Set<Kind::Time>() = v; }
-        TableType& SetTable(Allocator& allocator = Allocator::GetDefault()) { return m_value.Emplace<AsUnderlyingType(Kind::Table)>(allocator); }
-        ArrayType& SetArray(Allocator& allocator = Allocator::GetDefault()) { return m_value.Emplace<AsUnderlyingType(Kind::Array)>(allocator); }
+        TableType& SetTable(Allocator& allocator = Allocator::GetDefault()) { return m_value.Emplace<EnumToValue(Kind::Table)>(allocator); }
+        ArrayType& SetArray(Allocator& allocator = Allocator::GetDefault()) { return m_value.Emplace<EnumToValue(Kind::Array)>(allocator); }
 
-        template <Kind K> decltype(auto) Get() { return m_value.Get<AsUnderlyingType(K)>(); }
-        template <Kind K> decltype(auto) Get() const { return m_value.Get<AsUnderlyingType(K)>(); }
+        template <Kind K> decltype(auto) Get() { return m_value.Get<EnumToValue(K)>(); }
+        template <Kind K> decltype(auto) Get() const { return m_value.Get<EnumToValue(K)>(); }
         bool Bool() const { return Get<Kind::Bool>(); }
         int64_t Int() const { return Get<Kind::Int>(); }
         uint64_t Uint() const { return Get<Kind::Uint>(); }

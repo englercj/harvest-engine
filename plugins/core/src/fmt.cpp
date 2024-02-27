@@ -807,7 +807,7 @@ namespace he
         else
         {
             static constexpr uint32_t Prefixes[] = { 0, 0, 0x1000000u | '+', 0x1000000u | ' ' };
-            prefix = Prefixes[AsUnderlyingType(spec.sign)];
+            prefix = Prefixes[EnumToValue(spec.sign)];
         }
 
         switch (spec.type)

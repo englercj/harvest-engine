@@ -7,7 +7,7 @@
 namespace he
 {
     template <>
-    const char* AsString(CpuVendorId x)
+    const char* EnumTraits<CpuVendorId>::ToString(CpuVendorId x) noexcept
     {
         switch (x)
         {

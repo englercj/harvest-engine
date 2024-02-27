@@ -14,7 +14,7 @@ HE_TEST(core, cpu_info, Report)
 {
     const CpuInfo& info = GetCpuInfo();
 
-    std::cout << "    vendorId: '" << AsString(info.vendorId) << "' (" << AsUnderlyingType(info.vendorId) << ')' << std::endl;
+    std::cout << "    vendorId: '" << EnumToString(info.vendorId) << "' (" << EnumToValue(info.vendorId) << ')' << std::endl;
     std::cout << "    vendorName: '" << info.vendorName << "'" << std::endl;
     std::cout << "    core count: " << info.coreCount << std::endl;
     std::cout << "    thread count: " << info.threadCount << std::endl;

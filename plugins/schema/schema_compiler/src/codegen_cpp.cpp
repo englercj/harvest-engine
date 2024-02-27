@@ -1039,9 +1039,11 @@ namespace he::schema
             m_writer.WriteLine("template <>");
 
             m_writer.WriteIndent();
-            m_writer.Write("const char* AsString(");
+            m_writer.Write("const char* EnumTraits<");
             WriteName(decl, {}, {}, nullptr);
-            m_writer.Write(" x)\n");
+            m_writer.Write(">::ToString(");
+            WriteName(decl, {}, {}, nullptr);
+            m_writer.Write(" x) noexcept\n");
 
             m_writer.WriteLine("{");
             m_writer.IncreaseIndent();
@@ -1073,9 +1075,11 @@ namespace he::schema
             m_writer.WriteLine("template <>");
 
             m_writer.WriteIndent();
-            m_writer.Write("const char* AsString(");
+            m_writer.Write("const char* EnumTraits<");
             WriteName(decl, {}, {}, nullptr);
-            m_writer.Write("::UnionTag x)\n");
+            m_writer.Write("::UnionTag>::ToString(");
+            WriteName(decl, {}, {}, nullptr);
+            m_writer.Write("::UnionTag x) noexcept\n");
 
             m_writer.WriteLine("{");
             m_writer.IncreaseIndent();

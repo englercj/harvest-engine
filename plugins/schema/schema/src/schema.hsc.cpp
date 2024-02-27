@@ -941,7 +941,7 @@ namespace he::schema
 namespace he
 {
     template <>
-    const char* AsString(::he::schema::Toml::Compression x)
+    const char* EnumTraits<::he::schema::Toml::Compression>::ToString(::he::schema::Toml::Compression x) noexcept
     {
         switch (x)
         {
@@ -952,7 +952,7 @@ namespace he
     }
 
     template <>
-    const char* AsString(::he::schema::ScalarRange::Data::UnionTag x)
+    const char* EnumTraits<::he::schema::ScalarRange::Data::UnionTag>::ToString(::he::schema::ScalarRange::Data::UnionTag x) noexcept
     {
         switch (x)
         {
@@ -964,7 +964,7 @@ namespace he
     }
 
     template <>
-    const char* AsString(::he::schema::Type::Data::UnionTag x)
+    const char* EnumTraits<::he::schema::Type::Data::UnionTag>::ToString(::he::schema::Type::Data::UnionTag x) noexcept
     {
         switch (x)
         {
@@ -996,7 +996,7 @@ namespace he
     }
 
     template <>
-    const char* AsString(::he::schema::Value::Data::UnionTag x)
+    const char* EnumTraits<::he::schema::Value::Data::UnionTag>::ToString(::he::schema::Value::Data::UnionTag x) noexcept
     {
         switch (x)
         {
@@ -1022,7 +1022,7 @@ namespace he
     }
 
     template <>
-    const char* AsString(::he::schema::Field::Meta::UnionTag x)
+    const char* EnumTraits<::he::schema::Field::Meta::UnionTag>::ToString(::he::schema::Field::Meta::UnionTag x) noexcept
     {
         switch (x)
         {
@@ -1034,7 +1034,7 @@ namespace he
     }
 
     template <>
-    const char* AsString(::he::schema::Declaration::Data::UnionTag x)
+    const char* EnumTraits<::he::schema::Declaration::Data::UnionTag>::ToString(::he::schema::Declaration::Data::UnionTag x) noexcept
     {
         switch (x)
         {

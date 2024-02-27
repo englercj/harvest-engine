@@ -190,7 +190,7 @@ int he::AppMain(int argc, char* argv[])
         //    slang::VariableLayoutReflection* parameter = layout->getParameterByIndex(j);
         //    HE_LOGF_DEBUG(he_shaderc, "GParam: {} (category = {}, index = {}, space = {}, stage = {})",
         //        parameter->getName(),
-        //        AsUnderlyingType(parameter->getCategory()),
+        //        EnumToValue(parameter->getCategory()),
         //        parameter->getBindingIndex(),
         //        parameter->getBindingSpace(),
         //        parameter->getStage());
@@ -258,7 +258,7 @@ int he::AppMain(int argc, char* argv[])
             //    slang::VariableLayoutReflection* parameter = entry->getParameterByIndex(j);
             //    HE_LOGF_DEBUG(he_shaderc, "    Param: {} (category = {}, index = {}, space = {}, stage = {})",
             //        parameter->getName(),
-            //        AsUnderlyingType(parameter->getCategory()),
+            //        EnumToValue(parameter->getCategory()),
             //        parameter->getBindingIndex(),
             //        parameter->getBindingSpace(),
             //        parameter->getStage());
@@ -266,7 +266,7 @@ int he::AppMain(int argc, char* argv[])
             //    slang::TypeLayoutReflection* typeLayout = parameter->getTypeLayout();
             //    HE_LOGF_DEBUG(he_shaderc, "    Layout: {} (category = {}, index = {}, space = {}, stage = {})",
             //        typeLayout->get
-            //        AsUnderlyingType(parameter->getCategory()),
+            //        EnumToValue(parameter->getCategory()),
             //        parameter->getBindingIndex(),
             //        parameter->getBindingSpace(),
             //        parameter->getStage());
@@ -374,7 +374,7 @@ void WriteFileData(he::File& file, he::StringView name, const uint8_t* data, siz
 namespace he
 {
     template <>
-    const char* AsString(SlangStage x)
+    const char* EnumTraits<SlangStage>::ToString(SlangStage x) noexcept
     {
         switch (x)
         {

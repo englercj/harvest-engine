@@ -1363,7 +1363,7 @@ namespace he
 
     // --------------------------------------------------------------------------------------------
     template <>
-    const char* AsString(TomlReadError x)
+    const char* EnumTraits<TomlReadError>::ToString(TomlReadError x) noexcept
     {
         switch (x)
         {

@@ -332,9 +332,9 @@ namespace he::schema
 namespace he
 {
     template <>
-    const char* AsString(schema::Lexer::TokenType type)
+    const char* EnumTraits<schema::Lexer::TokenType>::ToString(schema::Lexer::TokenType x) noexcept
     {
-        switch (type)
+        switch (x)
         {
             case schema::Lexer::TokenType::None: return "None";
             case schema::Lexer::TokenType::Error: return "Error";

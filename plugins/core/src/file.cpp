@@ -17,7 +17,7 @@ namespace he
     }
 
     template <>
-    const char* AsString(FileResult x)
+    const char* EnumTraits<FileResult>::ToString(FileResult x) noexcept
     {
         switch (x)
         {

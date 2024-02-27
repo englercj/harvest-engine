@@ -336,7 +336,7 @@ namespace he
     enum class FmtSpecEnumType : uint8_t
     {
         None,       ///< No special formatting.
-        String,     ///< 's' = Print as string using \ref AsString()
+        String,     ///< 's' = Print as string using \ref EnumToString
         Decimal,    ///< 'd' = Print as base 10.
         Char,       ///< 'c' = Print as a character.
         Octal,      ///< 'o' = Print as base 8.
@@ -959,7 +959,7 @@ namespace he
             {
                 Formatter<const char*> f;
                 static_cast<FmtSpec&>(f.spec) = static_cast<const FmtSpec&>(spec);
-                f.Format(out, AsString(value));
+                f.Format(out, EnumToString(value));
             }
             else
             {
@@ -981,7 +981,7 @@ namespace he
                     case FmtSpecEnumType::BinUpper: f.spec.type = FmtSpecIntType::BinUpper; break;
                 }
 
-                f.Format(out, AsUnderlyingType(value));
+                f.Format(out, EnumToValue(value));
             }
         }
         FmtSpecEnum spec{};

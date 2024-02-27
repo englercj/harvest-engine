@@ -8,7 +8,7 @@
 namespace he
 {
     template <>
-    const char* AsString(schema::PointerKind x)
+    const char* EnumTraits<schema::PointerKind>::ToString(schema::PointerKind x) noexcept
     {
         switch (x)
         {
@@ -21,7 +21,7 @@ namespace he
     }
 
     template <>
-    const char* AsString(schema::ElementSize x)
+    const char* EnumTraits<schema::ElementSize>::ToString(schema::ElementSize x) noexcept
     {
         switch (x)
         {
@@ -40,7 +40,7 @@ namespace he
     }
 
     template <>
-    const char* AsString(schema::DeclKind x)
+    const char* EnumTraits<schema::DeclKind>::ToString(schema::DeclKind x) noexcept
     {
         switch (x)
         {

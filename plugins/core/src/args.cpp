@@ -27,7 +27,7 @@ namespace he
     };
 
     template <>
-    const char* AsString(ArgType x)
+    const char* EnumTraits<ArgType>::ToString(ArgType x) noexcept
     {
         switch (x)
         {

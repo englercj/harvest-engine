@@ -481,7 +481,7 @@ namespace he
     }
 
     template <>
-    const char* AsString(TomlUintFormat x)
+    const char* EnumTraits<TomlUintFormat>::ToString(TomlUintFormat x) noexcept
     {
         switch (x)
         {
@@ -495,7 +495,7 @@ namespace he
     }
 
     template <>
-    const char* AsString(TomlFloatFormat x)
+    const char* EnumTraits<TomlFloatFormat>::ToString(TomlFloatFormat x) noexcept
     {
         switch (x)
         {
@@ -508,7 +508,7 @@ namespace he
     }
 
     template <>
-    const char* AsString(TomlStringFormat x)
+    const char* EnumTraits<TomlStringFormat>::ToString(TomlStringFormat x) noexcept
     {
         switch (x)
         {
@@ -520,7 +520,7 @@ namespace he
     }
 
     template <>
-    const char* AsString(TomlDateTimeFormat x)
+    const char* EnumTraits<TomlDateTimeFormat>::ToString(TomlDateTimeFormat x) noexcept
     {
         switch (x)
         {

@@ -16,7 +16,7 @@
 namespace he
 {
     template <>
-    const char* AsString(schema::DynamicValue::Kind x)
+    const char* EnumTraits<schema::DynamicValue::Kind>::ToString(schema::DynamicValue::Kind x) noexcept
     {
         switch (x)
         {

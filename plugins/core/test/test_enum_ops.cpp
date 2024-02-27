@@ -25,7 +25,7 @@ enum class TestStrEnum : uint32_t
 };
 
 template <>
-const char* he::AsString(TestStrEnum x)
+const char* he::EnumTraits<TestStrEnum>::ToString(TestStrEnum x) noexcept
 {
     switch (x)
     {
@@ -79,10 +79,10 @@ HE_TEST(core, enum_ops, Flags)
 }
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST(core, enum_ops, AsString)
+HE_TEST(core, enum_ops, EnumToString)
 {
-    HE_EXPECT_EQ_STR(AsString(TestStrEnum::A), "A");
-    HE_EXPECT_EQ_STR(AsString(TestStrEnum::B), "B");
-    HE_EXPECT_EQ_STR(AsString(TestStrEnum::C), "C");
-    HE_EXPECT_EQ_STR(AsString(static_cast<TestStrEnum>(100)), "<unknown>");
+    HE_EXPECT_EQ_STR(EnumToString(TestStrEnum::A), "A");
+    HE_EXPECT_EQ_STR(EnumToString(TestStrEnum::B), "B");
+    HE_EXPECT_EQ_STR(EnumToString(TestStrEnum::C), "C");
+    HE_EXPECT_EQ_STR(EnumToString(static_cast<TestStrEnum>(100)), "<unknown>");
 }

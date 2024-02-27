@@ -383,9 +383,9 @@ namespace he
 
     // --------------------------------------------------------------------------------------------
     template <>
-    const char* AsString(TomlValue::Kind kind)
+    const char* EnumTraits<TomlValue::Kind>::ToString(TomlValue::Kind x) noexcept
     {
-        switch (kind)
+        switch (x)
         {
             case TomlValue::Kind::Bool: return "Bool";
             case TomlValue::Kind::Int: return "Int";

@@ -14,7 +14,7 @@ namespace he
 
     void TestApp::OnEvent(const window::Event& ev)
     {
-        const char* typeName = AsString(ev.kind);
+        const char* typeName = EnumToString(ev.kind);
         PrintToDebugger(typeName);
         PrintToDebugger(": ");
 

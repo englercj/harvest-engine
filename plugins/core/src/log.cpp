@@ -43,7 +43,7 @@ namespace he
     }
 
     template <>
-    const char* AsString(LogLevel x)
+    const char* EnumTraits<LogLevel>::ToString(LogLevel x) noexcept
     {
         switch (x)
         {

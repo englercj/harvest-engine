@@ -51,7 +51,7 @@ namespace he
     }
 
     template <>
-    const char* AsString(SpecialDirectory x)
+    const char* EnumTraits<SpecialDirectory>::ToString(SpecialDirectory x) noexcept
     {
         switch (x)
         {

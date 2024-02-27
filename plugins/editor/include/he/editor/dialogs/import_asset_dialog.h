@@ -56,7 +56,7 @@ namespace he::editor
         };
 
         template <Enum T>
-        friend const char* he::AsString<T>(T x);
+        friend class he::EnumTraits<T>;
 
     private:
         AssetService& m_assetService;

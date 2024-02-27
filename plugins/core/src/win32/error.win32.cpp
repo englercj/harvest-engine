@@ -257,7 +257,7 @@ namespace he
             itemHeight,
             0xffff);
 
-        String errorTitle = AsString(source.kind);
+        String errorTitle = EnumToString(source.kind);
         errorTitle += " Details:";
         temp.AddStaticText(
             HE_TO_WCSTR(errorTitle.Data()),

@@ -219,24 +219,21 @@ namespace he
         HE_ASSERT_PTHREAD(pthread_cond_broadcast(cv));
     }
 
-    template <>
-    void ConditionVariable::WaitMutex<Mutex>(Mutex& mutex)
+    void ConditionVariable::WaitMutex(Mutex& mutex)
     {
         pthread_mutex_t* m = reinterpret_cast<pthread_mutex_t*>(mutex.m_opaque);
         pthread_cond_t* cv = reinterpret_cast<pthread_cond_t*>(m_opaque);
         HE_ASSERT_PTHREAD(pthread_cond_wait(cv, m));
     }
 
-    template <>
-    void ConditionVariable::WaitMutex<RecursiveMutex>(RecursiveMutex& mutex)
+    void ConditionVariable::WaitMutex(RecursiveMutex& mutex)
     {
         pthread_mutex_t* m = reinterpret_cast<pthread_mutex_t*>(mutex.m_opaque);
         pthread_cond_t* cv = reinterpret_cast<pthread_cond_t*>(m_opaque);
         HE_ASSERT_PTHREAD(pthread_cond_wait(cv, m));
     }
 
-    template <>
-    bool ConditionVariable::WaitMutex<Mutex>(Mutex& mutex, Duration timeout)
+    bool ConditionVariable::WaitMutex(Mutex& mutex, Duration timeout)
     {
         const timespec timeoutSpec = PosixTimeFromDuration(timeout);
         pthread_mutex_t* m = reinterpret_cast<pthread_mutex_t*>(mutex.m_opaque);
@@ -246,8 +243,7 @@ namespace he
         return r == 0;
     }
 
-    template <>
-    bool ConditionVariable::WaitMutex<RecursiveMutex>(RecursiveMutex& mutex, Duration timeout)
+    bool ConditionVariable::WaitMutex(RecursiveMutex& mutex, Duration timeout)
     {
         const timespec timeoutSpec = PosixTimeFromDuration(timeout);
         pthread_mutex_t* m = reinterpret_cast<pthread_mutex_t*>(mutex.m_opaque);

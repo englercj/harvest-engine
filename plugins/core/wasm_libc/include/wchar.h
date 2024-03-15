@@ -14,6 +14,7 @@ extern "C" {
 typedef struct __mbstate_t { unsigned __opaque1, __opaque2; } mbstate_t;
 #define __DEFINED_mbstate_t
 
+struct tm;
 
 wchar_t* wcschr(const wchar_t*, wchar_t);
 wchar_t* wcsrchr(const wchar_t*, wchar_t);

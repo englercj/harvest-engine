@@ -1,3 +1,32 @@
-## Wasm Libc
+# Wasm Libc
 
 A minimal libc implementation that exists only to support compiling Harvest on WASM.
+
+## License
+
+Some of the code in here is based on [musl libc](https://musl.libc.org/) which is MIT licensed.
+
+Below is the license from their repository:
+
+>    musl libc
+>
+>musl, pronounced like the word "mussel", is an MIT-licensed
+>implementation of the standard C library targetting the Linux syscall
+>API, suitable for use in a wide range of deployment environments. musl
+>offers efficient static and dynamic linking support, lightweight code
+>and low runtime overhead, strong fail-safe guarantees under correct
+>usage, and correctness in the sense of standards conformance and
+>safety. musl is built on the principle that these goals are best
+>achieved through simple code that is easy to understand and maintain.
+>
+>The 1.1 release series for musl features coverage for all interfaces
+>defined in ISO C99 and POSIX 2008 base, along with a number of
+>non-standardized interfaces for compatibility with Linux, BSD, and
+>glibc functionality.
+>
+>For basic installation instructions, see the included INSTALL file.
+>Information on full musl-targeted compiler toolchains, system
+>bootstrapping, and Linux distributions built on musl can be found on
+>the project website:
+>
+>    http://www.musl-libc.org/

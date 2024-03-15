@@ -3,8 +3,8 @@
 #pragma once
 
 #include "he/core/assert.h"
+#include "he/core/limits.h"
 #include "he/math/constants.h"
-#include "he/math/float.h"
 #include "he/math/types.h"
 
 namespace he
@@ -81,10 +81,10 @@ namespace he
     template <typename T> constexpr Vec3<T> MulAdd(const Vec3<T>& a, const Vec3<T>& b, const Vec3<T>& c);
 
     // Returns the component-wise linear interpolation between `a` and `b` by `t`.
-    template <typename T> constexpr Vec3<T> Lerp(const Vec3<T>& a, const Vec3<T>& b, float t);
+    template <typename T> constexpr Vec3<T> Lerp(const Vec3<T>& a, const Vec3<T>& b, T t);
 
     // Performs smooth Hermite interpolation between 0 and 1 when `a` < `t` < `b`.
-    template <typename T> constexpr Vec3<T> SmoothStep(float a, float b, const Vec3<T>& t);
+    template <typename T> constexpr Vec3<T> SmoothStep(T a, T b, const Vec3<T>& t);
 
     // Returns the absolute value for each component of `v`.
     template <typename T> constexpr Vec3<T> Abs(const Vec3<T>& v);

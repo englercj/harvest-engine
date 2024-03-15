@@ -7,7 +7,7 @@
 
 #include "mimalloc.h"
 
-#if defined(HE_PLATFORM_WASM)
+#if defined(HE_PLATFORM_API_WASM)
 
 namespace he
 {

@@ -2,7 +2,7 @@
 
 #include "he/core/debug.h"
 
-#if defined(HE_PLATFORM_WASM)
+#if defined(HE_PLATFORM_API_WASM)
 
 #include "he/core/wasm/lib_core.wasm.h"
 

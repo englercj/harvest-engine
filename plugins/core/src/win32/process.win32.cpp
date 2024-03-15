@@ -4,6 +4,7 @@
 
 #include "he/core/alloca.h"
 #include "he/core/allocator.h"
+#include "he/core/string.h"
 #include "he/core/wstr.h"
 
 #if defined(HE_PLATFORM_API_WIN32)

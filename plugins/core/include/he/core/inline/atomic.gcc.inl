@@ -1,5 +1,8 @@
 // Copyright Chad Engler
 
+#include "he/core/assert.h"
+#include "he/core/types.h"
+
 namespace he
 {
     // Discover if any of the atomic types are not lock-free for our targets.

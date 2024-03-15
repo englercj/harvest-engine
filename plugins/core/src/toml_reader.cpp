@@ -1163,7 +1163,6 @@ namespace he
             const char* dot = nullptr;
             const char* exp = nullptr;
             const char* expSign = nullptr;
-            uint32_t dotIndex = 0;
 
             m_stringBuffer.Clear();
 
@@ -1183,7 +1182,6 @@ namespace he
                             return SetError(TomlReadError::InvalidNumber);
 
                         dot = m_cursor;
-                        dotIndex = m_stringBuffer.Size();
                         break;
                     }
                     case 'e':

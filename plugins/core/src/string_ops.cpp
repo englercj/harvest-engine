@@ -2,25 +2,22 @@
 
 #include "he/core/string_ops.h"
 
+#include "he/core/compiler.h"
 #include "he/core/concepts.h"
 #include "he/core/limits.h"
+#include "he/core/memory_ops.h"
 #include "he/core/type_traits.h"
 
-#include <cstdlib>
-#include <cstring>
+HE_PUSH_WARNINGS();
+HE_DISABLE_MSVC_WARNING(4702); // unreachable code
+#include "fast_float/fast_float.h"
+HE_POP_WARNINGS();
+
+#include <stdlib.h>
+#include <string.h>
 
 namespace he
 {
-    uint32_t StrLen(const char* s)
-    {
-        return static_cast<uint32_t>(strlen(s));
-    }
-
-    uint32_t StrLenN(const char* s, uint32_t len)
-    {
-        return static_cast<uint32_t>(strnlen(s, len));
-    }
-
     int32_t StrComp(const char* a, const char* b)
     {
         return strcmp(a, b);
@@ -36,7 +33,7 @@ namespace he
     #if HE_COMPILER_MSVC
         return _stricmp(a, b);
     #else
-        return strcasecmp(a, b);
+        return __builtin_strcasecmp(a, b);
     #endif
     }
 
@@ -45,68 +42,8 @@ namespace he
     #if HE_COMPILER_MSVC
         return _strnicmp(a, b, len);
     #else
-        return strncasecmp(a, b, len);
+        return __builtin_strncasecmp(a, b, len);
     #endif
-    }
-
-    char* StrDup(const char* src, Allocator& allocator)
-    {
-        uint32_t len = StrLen(src);
-        return StrDupN(src, len, allocator);
-    }
-
-    char* StrDupN(const char* src, uint32_t len, Allocator& allocator)
-    {
-        char* dst = allocator.Malloc<char>(len + 1);
-        MemCopy(dst, src, len);
-        dst[len] = '\0';
-        return dst;
-    }
-
-    uint32_t StrCopy(char* dst, uint32_t dstLen, const char* src)
-    {
-        if (dstLen == 0)
-            return 0;
-
-        --dstLen;
-
-        const uint32_t srcLen = StrLen(src);
-        const uint32_t len = srcLen < dstLen ? srcLen : dstLen;
-
-        MemCopy(dst, src, len);
-        dst[len] = '\0';
-
-        return len;
-    }
-
-    uint32_t StrCopyN(char* dst, uint32_t dstLen, const char* src, uint32_t srcLen)
-    {
-        if (dstLen == 0)
-            return 0;
-
-        --dstLen;
-
-        srcLen = StrLenN(src, srcLen);
-        const uint32_t len = srcLen < dstLen ? srcLen : dstLen;
-
-        MemCopy(dst, src, len);
-        dst[len] = '\0';
-
-        return len;
-    }
-
-    uint32_t StrCat(char* dst, uint32_t dstLen, const char* src)
-    {
-        uint32_t n = StrLen(dst);
-        dstLen = dstLen > n ? dstLen - n : 0;
-        return n + StrCopy(dst + n, dstLen, src);
-    }
-
-    uint32_t StrCatN(char* dst, uint32_t dstLen, const char* src, uint32_t srcLen)
-    {
-        uint32_t n = StrLen(dst);
-        dstLen = dstLen > n ? dstLen - n : 0;
-        return n + StrCopyN(dst + n, dstLen, src, srcLen);
     }
 
     const char* StrFind(const char* str, char search)
@@ -138,48 +75,22 @@ namespace he
         return nullptr;
     }
 
-#if HE_COMPILER_MSVC
-    #define HE_STRTOLL _strtoi64
-    #define HE_STRTOULL _strtoui64
-#else
-    #define HE_STRTOLL std::strtoll
-    #define HE_STRTOULL std::strtoull
-#endif
-
-    template <AnyOf<signed char, char, short, int, long, long long> T>
-    static T StrToIntImpl(const char* str, const char** end, int32_t base)
+    template <typename T>
+    HE_FORCE_INLINE T StrToIntImpl(const char* str, const char** end, int32_t base)
     {
-        static_assert(IsSigned<char>, "This function assumes char is signed.");
-        const long long val = HE_STRTOLL(str, const_cast<char**>(end), base);
-        if (val == 0)
-            return 0;
+        const char* strEnd = nullptr;
+        if (end)
+            strEnd = *end;
+        else
+            strEnd = str + StrLen(str);
 
-        if constexpr (sizeof(T) < 8)
-        {
-            if (val < Limits<T>::Min)
-                return Limits<T>::Min;
+        T value = 0;
+        const fast_float::from_chars_result result = fast_float::from_chars(str, strEnd, value, base);
 
-            if (val > Limits<T>::Max)
-                return Limits<T>::Max;
-        }
+        if (end)
+            *end = result.ptr;
 
-        return static_cast<T>(val);
-    }
-
-    template <AnyOf<unsigned char, unsigned short, unsigned int, unsigned long, unsigned long long> T>
-    static T StrToIntImpl(const char* str, const char** end, int32_t base)
-    {
-        const unsigned long long val = HE_STRTOULL(str, const_cast<char**>(end), base);
-        if (val == 0)
-            return 0;
-
-        if constexpr (sizeof(T) < 8)
-        {
-            if (val > Limits<T>::Max)
-                return Limits<T>::Max;
-        }
-
-        return static_cast<T>(val);
+        return value;
     }
 
     template <> signed char StrToInt<signed char>(const char* str, const char** end, int32_t base) { return StrToIntImpl<signed char>(str, end, base); }
@@ -196,15 +107,24 @@ namespace he
     template <> unsigned long StrToInt<unsigned long>(const char* str, const char** end, int32_t base) { return StrToIntImpl<unsigned long>(str, end, base); }
     template <> unsigned long long StrToInt<unsigned long long>(const char* str, const char** end, int32_t base) { return StrToIntImpl<unsigned long long>(str, end, base); }
 
-    template <>
-    float StrToFloat<float>(const char* str, const char** end)
+    template <typename T>
+    HE_FORCE_INLINE T StrToFloatImpl(const char* str, const char** end)
     {
-        return std::strtof(str, const_cast<char**>(end));
+        const char* strEnd = nullptr;
+        if (end)
+            strEnd = *end;
+        else
+            strEnd = str + StrLen(str);
+
+        T value = 0;
+        const fast_float::from_chars_result result = fast_float::from_chars(str, strEnd, value);
+
+        if (end)
+            *end = result.ptr;
+
+        return value;
     }
 
-    template <>
-    double StrToFloat<double>(const char* str, const char** end)
-    {
-        return std::strtod(str, const_cast<char**>(end));
-    }
+    template <> float StrToFloat<float>(const char* str, const char** end) { return StrToFloatImpl<float>(str, end); }
+    template <> double StrToFloat<double>(const char* str, const char** end) { return StrToFloatImpl<double>(str, end); }
 }

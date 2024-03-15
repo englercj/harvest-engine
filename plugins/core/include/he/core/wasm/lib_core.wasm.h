@@ -32,5 +32,5 @@ extern "C"
     extern uint32_t HE_WASM_IMPORT_CORE(heWASM_GetUserAgentLength)();
     extern void HE_WASM_IMPORT_CORE(heWASM_GetUserAgent)(char* dst, uint32_t dstLen);
     extern bool HE_WASM_IMPORT_CORE(heWASM_GetBatteryStatus)(double* chargingTime, double* dischargingTime, double* level, bool* charging);
-    extern bool HE_WASM_IMPORT_CORE(heWASM_CreateThread)(void* proc, void* data);
+    extern bool HE_WASM_IMPORT_CORE(heWASM_CreateThread)(void* state, void(*proc)(void*), void* data);
 }

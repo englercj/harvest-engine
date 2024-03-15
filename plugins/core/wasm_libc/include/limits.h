@@ -2,6 +2,10 @@
 
 #pragma once
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #if '\xff' > 0
 #define CHAR_MIN 0
 #define CHAR_MAX 255
@@ -28,3 +32,7 @@
 #define ULLONG_MAX ((2ull * LLONG_MAX) + 1)
 
 #define TZNAME_MAX 6
+
+#ifdef __cplusplus
+}
+#endif

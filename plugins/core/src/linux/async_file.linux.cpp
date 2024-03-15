@@ -129,7 +129,7 @@ namespace he
             if (sqe)
                 return sqe;
 
-            HE_SPIN_WAIT_PAUSE();
+            HE_CPU_SPIN_WAIT_PAUSE();
         }
 
         return nullptr;

@@ -2,13 +2,12 @@
 
 #include "time.h"
 
+#include "errno.h"
 #include "limits.h"
 
-#include "he/core/sync.h"
-
-#if defined(HE_PLATFORM_WASM)
-
 #include "wasm/libc.wasm.h"
+
+#include "he/core/sync.h"
 
 extern "C"
 {
@@ -97,5 +96,3 @@ extern "C"
         return t;
     }
 }
-
-#endif

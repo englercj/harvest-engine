@@ -74,7 +74,7 @@ filter {}
 
 --
 -- Setup the wasmcc toolset
--- This is just clang, but using wasm-ld for linking and a few extra wasm flags
+-- This is mostly just clang using wasm-ld for linking and a few extra wasm flags
 --
 
 local clang = premake.tools.clang
@@ -111,6 +111,13 @@ wasmcc.cflags = table.merge(clang.cflags, {
 
 wasmcc.cxxflags = table.merge(clang.cxxflags, {
 })
+
+wasmcc.tools = {
+    cc = "clang",
+    cxx = "clang++",
+    ar = "llvm-ar",
+    rc = "windres",
+}
 
 function wasmcc.getcflags(cfg)
     local shared = config.mapFlags(cfg, wasmcc.shared)
@@ -191,8 +198,15 @@ function wasmcc.getmakesettings(cfg)
 end
 
 function wasmcc.gettoolname(cfg, tool)
-    local name = clang.gettoolname(cfg, tool)
-    return name
+    local toolset, version = p.tools.canonical(cfg.toolset or p.CLANG)
+    local value = wasmcc.tools[tool]
+    if type(value) == "function" then
+        value = value(cfg)
+    end
+    if toolset == p.tools.clang and version ~= nil then
+        value = value .. "-" .. version
+    end
+    return value
 end
 
 premake.tools["wasmcc"] = wasmcc
@@ -274,7 +288,7 @@ he.add_platform {
     architecture = "wasm32",
     on_define = function ()
         vectorextensions "SIMD128"
-        defines { "HE_PLATFORM_WASM" }
+        defines { "HE_PLATFORM_WASM32", "HE_PLATFORM_API_WASM" }
     end,
     can_enable = _can_enable_wasm_platform,
 }
@@ -288,7 +302,7 @@ he.add_platform {
 --     architecture = "wasm64",
 --     on_define = function ()
 --         vectorextensions "SIMD128"
---         defines { "HE_PLATFORM_WASM" }
+--         defines { "HE_PLATFORM_WASM64", "HE_PLATFORM_API_WASM" }
 --     end,
 --     can_enable = _can_enable_wasm_platform,
 -- }

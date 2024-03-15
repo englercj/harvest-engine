@@ -1059,7 +1059,7 @@ namespace he
         const uint32_t leadingDigit = static_cast<uint32_t>((fp.f & LeadingMask) >> LeadingShift);
 
         if (leadingDigit > 1)
-            fp.e -= (32 - CountLeadingZeroes(leadingDigit) - 1);
+            fp.e -= (32 - CountLeadingZeros(leadingDigit) - 1);
 
         int32_t printCount = DigitsCount - 1;
         if (spec.precision >= 0 && printCount > spec.precision)
@@ -1534,7 +1534,7 @@ namespace he
             else
             {
                 HE_FMT_ASSERT(significand != 0, "Zero significand must be handled before this point");
-                uint32_t shift = CountLeadingZeroes(significand);
+                uint32_t shift = CountLeadingZeros(significand);
                 HE_FMT_ASSERT((shift >= Limits<Uint>::Bits - Info::SignificandBits), "Significand must be normalized");
                 shift -= Limits<Uint>::Bits - Info::SignificandBits - 2;
                 exponent = (Info::MinExponent - static_cast<int32_t>(Info::SignificandBits)) - shift;

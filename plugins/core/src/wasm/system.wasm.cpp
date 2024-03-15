@@ -4,7 +4,7 @@
 
 #include "he/core/macros.h"
 
-#if defined(HE_PLATFORM_WASM)
+#if defined(HE_PLATFORM_API_WASM)
 
 #include "he/core/wasm/lib_core.wasm.h"
 
@@ -53,23 +53,26 @@ namespace he
     {
         PowerStatus status;
 
-        heWASM_BatteryStatus batteryStatus;
-        if (heWASM_GetBatteryStatus(&batteryStatus))
+        double chargingTime = 0;
+        double dischargingTime = 0;
+        double level = 0;
+        bool charging = false;
+        if (heWASM_GetBatteryStatus(&chargingTime, &dischargingTime, &level, &charging))
         {
             // See: https://www.w3.org/TR/battery-status/#idl-def-batterymanager
-            bool hasNoBattery = batteryStatus.charging == true
-                && batteryStatus.chargingTime == 0
-                && batteryStatus.dischargingTime == Limits<double>::Infinity
-                && batteryStatus.level == 1.0;
+            bool hasNoBattery = charging == true
+                && chargingTime == 0
+                && dischargingTime == Limits<double>::Infinity
+                && level == 1.0;
 
-            status.onACPower.Set(batteryStatus.charging);
+            status.onACPower.Set(charging);
             status.hasBattery.Set(!hasNoBattery);
 
-            if (batteryStatus.level >= 0.0 && batteryStatus.level <= 1.0)
-                status.batteryLife.Set(static_cast<uint8_t>(batteryStatus.level * 100.0));
+            if (level >= 0.0 && level <= 1.0)
+                status.batteryLife.Set(static_cast<uint8_t>(level * 100.0));
 
-            if (batteryStatus.dischargingTime != Limits<double>::Infinity)
-                status.batteryLifeTime.Set(FromPeriod<Seconds>(batteryStatus.dischargingTime));
+            if (dischargingTime != Limits<double>::Infinity)
+                status.batteryLifeTime.Set(FromPeriod<Seconds>(dischargingTime));
         }
 
         return status;

@@ -9,34 +9,27 @@ namespace he
 {
     /// Checks if a string is nullptr or the first character is a null terminator.
     ///
-    /// \param s The string to check.
+    /// \param[in] s The string to check.
     /// \return True when `s` is null or empty.
     [[nodiscard]] constexpr bool StrEmpty(const char* s);
 
-    /// Gets the length of a null terminated string using a constexpr algorithm. This may be
-    /// slower than \see Length(const char*) for cases that are not calculated at compile time.
-    ///
-    /// \param s The string to get the length of.
-    /// \return The length of the string.
-    [[nodiscard]] constexpr uint32_t StrLenConst(const char* s);
-
     /// Gets the length of a null terminated string.
     ///
-    /// \param s The string to get the length of.
+    /// \param[in] s The string to get the length of.
     /// \return The length of the string.
-    [[nodiscard]] uint32_t StrLen(const char* s);
+    [[nodiscard]] constexpr uint32_t StrLen(const char* s);
 
     /// Gets the length of a null terminated string, up to `len`.
     ///
-    /// \param s The string to get the length of.
-    /// \param len The maximum length of the string to check.
+    /// \param[in] s The string to get the length of.
+    /// \param[in] len The maximum length of the string to check.
     /// \return The length of the string.
     [[nodiscard]] uint32_t StrLenN(const char* s, uint32_t len);
 
     /// Compares the null terminated strings and returns the result of the comparison.
     ///
-    /// \param a The left-hand side of the comparison operation.
-    /// \param b The right-hand side of the comparison operation.
+    /// \param[in] a The left-hand side of the comparison operation.
+    /// \param[in] b The right-hand side of the comparison operation.
     /// \return The result of the comparison.
     ///     If the values are equal, zero is returned.
     ///     If this string is less than `x`, a negative value is returned.
@@ -46,9 +39,9 @@ namespace he
     /// Compares the null terminated strings, up to `len`, and returns the result of the
     /// comparison.
     ///
-    /// \param a The left-hand side of the comparison operation.
-    /// \param b The right-hand side of the comparison operation.
-    /// \param len The maximum length of the string to check.
+    /// \param[in] a The left-hand side of the comparison operation.
+    /// \param[in] b The right-hand side of the comparison operation.
+    /// \param[in] len The maximum length of the string to check.
     /// \return The result of the comparison.
     ///     If the values are equal, zero is returned.
     ///     If this string is less than `x`, a negative value is returned.
@@ -58,8 +51,8 @@ namespace he
     /// Compares the null terminated strings in a case-insensitive manner and returns the
     /// result of the comparison.
     ///
-    /// \param a The left-hand side of the comparison operation.
-    /// \param b The right-hand side of the comparison operation.
+    /// \param[in] a The left-hand side of the comparison operation.
+    /// \param[in] b The right-hand side of the comparison operation.
     /// \return The result of the comparison.
     ///     If the values are equal, zero is returned.
     ///     If this string is less than `x`, a negative value is returned.
@@ -69,9 +62,9 @@ namespace he
     /// Compares the null terminated strings, up to `len`, in a case-insensitive manner and
     /// returns the result of the comparison.
     ///
-    /// \param a The left-hand side of the comparison operation.
-    /// \param b The right-hand side of the comparison operation.
-    /// \param len The maximum length of the string to check.
+    /// \param[in] a The left-hand side of the comparison operation.
+    /// \param[in] b The right-hand side of the comparison operation.
+    /// \param[in] len The maximum length of the string to check.
     /// \return The result of the comparison.
     ///     If the values are equal, zero is returned.
     ///     If this string is less than `x`, a negative value is returned.
@@ -99,58 +92,67 @@ namespace he
 
     /// Compares the null terminated strings and returns true if they are equal.
     ///
-    /// \param a The left-hand side of the comparison operation.
-    /// \param b The right-hand side of the comparison operation.
+    /// \param[in] a The left-hand side of the comparison operation.
+    /// \param[in] b The right-hand side of the comparison operation.
     /// \return True if the strings are equal, false otherwise.
     [[nodiscard]] bool StrEqual(const char* a, const char* b);
 
     /// Compares the null terminated strings, up to `len`, and returns true if they are equal.
     ///
-    /// \param a The left-hand side of the comparison operation.
-    /// \param b The right-hand side of the comparison operation.
+    /// \param[in] a The left-hand side of the comparison operation.
+    /// \param[in] b The right-hand side of the comparison operation.
+    /// \param[in] len The maximum length of the string to check.
     /// \return True if the strings are equal, false otherwise.
     [[nodiscard]] bool StrEqualN(const char* a, const char* b, uint32_t len);
 
     /// Compares the null terminated strings in a case-insensitive manner and
     /// returns true if they are equal.
     ///
-    /// \param a The left-hand side of the comparison operation.
-    /// \param b The right-hand side of the comparison operation.
+    /// \param[in] a The left-hand side of the comparison operation.
+    /// \param[in] b The right-hand side of the comparison operation.
     /// \return True if the strings are equal, false otherwise.
     [[nodiscard]] bool StrEqualI(const char* a, const char* b);
 
     /// Compares the null terminated strings, up to `len`, in a case-insensitive manner and
     /// returns true if they are equal.
     ///
-    /// \param a The left-hand side of the comparison operation.
-    /// \param b The right-hand side of the comparison operation.
+    /// \param[in] a The left-hand side of the comparison operation.
+    /// \param[in] b The right-hand side of the comparison operation.
+    /// \param[in] len The maximum length of the string to check.
     /// \return True if the strings are equal, false otherwise.
     [[nodiscard]] bool StrEqualNI(const char* a, const char* b, uint32_t len);
 
     /// Compares the null terminated strings and returns true if `a` is less than `b`.
     ///
-    /// \param a The left-hand side of the comparison operation.
-    /// \param b The right-hand side of the comparison operation.
+    /// \param[in] a The left-hand side of the comparison operation.
+    /// \param[in] b The right-hand side of the comparison operation.
     /// \return True if `a` is less than `b`, false otherwise.
     [[nodiscard]] bool StrLess(const char* a, const char* b);
 
     /// Compares the null terminated strings, up to `len`, and returns true if `a` is less than `b`.
     ///
-    /// \param a The left-hand side of the comparison operation.
-    /// \param b The right-hand side of the comparison operation.
+    /// \param[in] a The left-hand side of the comparison operation.
+    /// \param[in] b The right-hand side of the comparison operation.
+    /// \param[in] len The maximum length of the string to check.
     /// \return True if `a` is less than `b`, false otherwise.
     [[nodiscard]] bool StrLessN(const char* a, const char* b, uint32_t len);
 
     /// Copies the source string into the destination buffer, including the null terminator.
     /// The destination buffer is guaranteed to be null terminated if `dstLen > 0`.
     ///
-    /// \param dst The destination buffer to copy into.
-    /// \param dstLen The size of the destination buffer.
-    /// \param src The string to copy from.
+    /// \param[out] dst The destination buffer to copy into.
+    /// \param[in] dstLen The size of the destination buffer.
+    /// \param[in] src The string to copy from.
     /// \return The number of characters copied into `dst`, excluding the null terminator.
     uint32_t StrCopy(char* dst, uint32_t dstLen, const char* src);
 
-    /// \copydoc Copy(char*, uint32_t, const char*)
+    /// Copies the source string into the destination buffer, including the null terminator.
+    /// The destination buffer is guaranteed to be null terminated if `N > 0`.
+    ///
+    /// \tparam N The size of the destination buffer.
+    /// \param[out] dst The destination buffer to copy into.
+    /// \param[in] src The string to copy from.
+    /// \return The number of characters copied into `dst`, excluding the null terminator.
     template <uint32_t N>
     uint32_t StrCopy(char (&dst)[N], const char* src);
 
@@ -158,57 +160,78 @@ namespace he
     /// including the null terminator. The destination buffer is guaranteed to be null
     /// terminated if `dstLen > 0`.
     ///
-    /// \param dst The destination buffer to copy into.
-    /// \param dstLen The size of the destination buffer.
-    /// \param src The string to copy from.
-    /// \param srcLen The maximum number of characters to copy.
+    /// \param[out] dst The destination buffer to copy into.
+    /// \param[in] dstLen The size of the destination buffer.
+    /// \param[in] src The string to copy from.
+    /// \param[in] srcLen The maximum number of characters to copy.
     /// \return The number of characters copied into `dst`, excluding the null terminator.
     uint32_t StrCopyN(char* dst, uint32_t dstLen, const char* src, uint32_t srcLen);
 
-    /// \copydoc CopyN(char*, uint32_t, const char*, uint32_t)
+    /// Copies up to `srcLen` characters from the source string into the destination buffer,
+    /// including the null terminator. The destination buffer is guaranteed to be null
+    /// terminated if `N > 0`.
+    ///
+    /// \tparam N The size of the destination buffer.
+    /// \param[out] dst The destination buffer to copy into.
+    /// \param[in] src The string to copy from.
+    /// \param[in] srcLen The maximum number of characters to copy.
+    /// \return The number of characters copied into `dst`, excluding the null terminator.
     template <uint32_t N>
     uint32_t StrCopyN(char (&dst)[N], const char* src, uint32_t srcLen);
 
     /// Copies the source string to the end of the destination string.
     /// The destination buffer is guaranteed to be null terminated if `dstLen > 0`.
     ///
-    /// \param dst The destination buffer to copy into.
-    /// \param dstLen The size of the destination buffer.
-    /// \param src The string to copy from.
+    /// \param[out] dst The destination buffer to copy into.
+    /// \param[in] dstLen The size of the destination buffer.
+    /// \param[in] src The string to copy from.
     /// \return The length of the `dst` string after the concatenation completes.
     uint32_t StrCat(char* dst, uint32_t dstLen, const char* src);
 
-    /// \copydoc Cat(char*, uint32_t, const char*)
+    /// Copies the source string to the end of the destination string.
+    /// The destination buffer is guaranteed to be null terminated if `N > 0`.
+    ///
+    /// \tparam N The size of the destination buffer.
+    /// \param[out] dst The destination buffer to copy into.
+    /// \param[in] src The string to copy from.
+    /// \return The length of the `dst` string after the concatenation completes.
     template <uint32_t N>
     uint32_t StrCat(char (&dst)[N], const char* src);
 
     /// Copies up to `srcLen` characters from the source string to the end of the destination
     /// string. The destination buffer is guaranteed to be null terminated if `dstLen > 0`.
     ///
-    /// \param dst The destination buffer to copy into.
-    /// \param dstLen The size of the destination buffer.
-    /// \param src The string to copy from.
-    /// \param srcLen The maximum number of characters to copy.
+    /// \param[out] dst The destination buffer to copy into.
+    /// \param[in] dstLen The size of the destination buffer.
+    /// \param[in] src The string to copy from.
+    /// \param[in] srcLen The maximum number of characters to copy.
     /// \return The length of the `dst` string after the concatenation completes.
     uint32_t StrCatN(char* dst, uint32_t dstLen, const char* src, uint32_t srcLen);
 
-    /// \copydoc CatN(char*, uint32_t, const char*, uint32_t)
+    /// Copies up to `srcLen` characters from the source string to the end of the destination
+    /// string. The destination buffer is guaranteed to be null terminated if `N > 0`.
+    ///
+    /// \tparam N The size of the destination buffer.
+    /// \param[out] dst The destination buffer to copy into.
+    /// \param[in] src The string to copy from.
+    /// \param[in] srcLen The maximum number of characters to copy.
+    /// \return The length of the `dst` string after the concatenation completes.
     template <uint32_t N>
     uint32_t StrCatN(char (&dst)[N], const char* src, uint32_t srcLen);
 
     /// Searches the null terminated string for a character. Behavior is undefined if `str`
     /// is nullptr.
     ///
-    /// \param str The string to search within.
-    /// \param search The character to search for.
+    /// \param[in] str The string to search within.
+    /// \param[in] search The character to search for.
     /// \return A pointer to the found character in `str`, or nullptr if not found.
     [[nodiscard]] const char* StrFind(const char* str, char search);
 
     /// Searches the null terminated string for a substring. Behavior is undefined if `str`
     /// or `search` are nullptr.
     ///
-    /// \param str The string to search within.
-    /// \param search The string to search for.
+    /// \param[in] str The string to search within.
+    /// \param[in] search The string to search for.
     /// \return A pointer to the start of the found substring in `str`, or nullptr if
     /// not found. If `str` is empty, then `search` is returned.
     [[nodiscard]] const char* StrFind(const char* str, const char* search);
@@ -217,9 +240,9 @@ namespace he
     /// `str` is at least `len` characters long. That is, null characters are not treated
     /// as the end of the string. Behavior is undefined if `str` is nullptr.
     ///
-    /// \param str The string to search within.
-    /// \param len The maximum number of characters to check in `str`
-    /// \param search The character to search for.
+    /// \param[in] str The string to search within.
+    /// \param[in] len The maximum number of characters to check in `str`
+    /// \param[in] search The character to search for.
     /// \return A pointer to the found character in `str`, or nullptr if not found.
     [[nodiscard]] const char* StrFindN(const char* str, uint32_t len, char search);
 
@@ -227,9 +250,9 @@ namespace he
     /// `str` is at least `len` characters long. That is, null characters are not treated
     /// as the end of the string. Behavior is undefined if `str` or `search` are nullptr.
     ///
-    /// \param str The string to search within.
-    /// \param len The maximum number of characters to check in `str`
-    /// \param search The string to search for.
+    /// \param[in] str The string to search within.
+    /// \param[in] len The maximum number of characters to check in `str`
+    /// \param[in] search The string to search for.
     /// \return A pointer to the start of the found substring in `str`, or nullptr if
     /// not found. If `str` is empty, then `search` is returned.
     [[nodiscard]] const char* StrFindN(const char* str, uint32_t len, const char* search);
@@ -247,8 +270,8 @@ namespace he
     /// \param[in] str The string to parse.
     /// \param[in,out] end Optional. A pointer to a pointer to the end of the string. If nullptr
     ///     (default) then string is parsed until a null terminator is reached. If not nullptr,
-    ///     then the pointer pointed to by `end` is set to point to the character past the last
-    ///     character interpreted in `str`.
+    ///     then the string will not be parsed beyond `*end` and `*end` is set to point to one
+    ///     character past the last character interpreted in `str`.
     /// \param[in] base Optional. The numerical base of the value being parsed. The set of valid
     ///     values for base is `{0,2,3,...,36}`. If base is zero, the base is determined by the
     ///     format in the sequence: a leading `0x` or `0X` means base 16, a leading `0` means base
@@ -270,8 +293,8 @@ namespace he
     /// \param[in] str The string to parse.
     /// \param[in,out] end Optional. A pointer to a pointer to the end of the string. If nullptr
     ///     (default) then string is parsed until a null terminator is reached. If not nullptr,
-    ///     then the pointer pointed to by `end` is set to point to the character past the last
-    ///     character interpreted in `str`.
+    ///     then the string will not be parsed beyond `*end` and `*end` is set to point to one
+    ///     character past the last character interpreted in `str`.
     /// \return The parsed number.
     template <typename T = float>
     [[nodiscard]] T StrToFloat(const char* str, const char** end = nullptr);

@@ -6,6 +6,8 @@
 #include "he/core/cpu.h"
 #include "he/core/types.h"
 
+#include <bit>
+
 #if HE_COMPILER_MSVC
     extern "C"
     {
@@ -31,7 +33,8 @@
 
 namespace he
 {
-#if defined(HE_PLATFORM_WASM)
+    // --------------------------------------------------------------------------------------------
+#if defined(HE_PLATFORM_API_WASM)
     HE_FORCE_INLINE void* MemCopy(void* dst, const void* src, size_t len) { return __builtin_memcpy(dst, src, len); }
     HE_FORCE_INLINE void* MemMove(void* dst, const void* src, size_t len) { return __builtin_memmove(dst, src, len); }
     int32_t MemCmp(const void* a, const void* b, size_t len);
@@ -55,26 +58,60 @@ namespace he
     HE_FORCE_INLINE bool MemEqual(const void* a, const void* b, size_t count) { return MemCmp(a, b, count) == 0; }
     HE_FORCE_INLINE bool MemLess(const void* a, const void* b, size_t count) { return MemCmp(a, b, count) < 0; }
 
+    // --------------------------------------------------------------------------------------------
+
+    /// Counts the number of consecutive 0 bits in the value of `x`, starting from the
+    /// most significant bit ("left").
+    ///
+    /// \param[in] x The value to count leading zeros bits on.
+    /// \return The count of leading zero bits.
+    uint32_t CountLeadingZeros(uint32_t x);
+
+    /// \copydoc CountLeadingZeros(uint32_t)
+    uint32_t CountLeadingZeros(uint64_t x);
+
+    /// Counts the number of consecutive 0 bits in the value of `x`, starting from the
+    /// least significant bit ("right").
+    ///
+    /// \param[in] x The value to count trailing zeros bits on.
+    /// \return The count of trailing zero bits.
+    uint32_t CountTrailingZeros(uint32_t x);
+
+    /// \copydoc CountTrailingZeros(uint32_t)
+    uint32_t CountTrailingZeros(uint64_t x);
+
+    /// Performs a population count on `x`.
+    /// That is, it counts the number of 1 bits in the value of `x`.
+    ///
+    /// \param[in] x The value to count set bits on.
+    /// \return The count of set bits.
+    uint32_t PopCount(uint32_t x);
+
+    /// \copydoc PopCount(uint32_t)
+    uint32_t PopCount(uint64_t x);
+
+    // --------------------------------------------------------------------------------------------
 #if HE_COMPILER_MSVC
     HE_FORCE_INLINE uint16_t ByteSwap(uint16_t x) { return _byteswap_ushort(x); }
     HE_FORCE_INLINE uint32_t ByteSwap(uint32_t x) { return _byteswap_ulong(x); }
     HE_FORCE_INLINE uint64_t ByteSwap(uint64_t x) { return _byteswap_uint64(x); }
 
-    HE_FORCE_INLINE uint32_t Rotl32(uint32_t x, uint32_t r) { return _rotl(x, r); }
-    HE_FORCE_INLINE uint64_t Rotl64(uint64_t x, uint32_t r) { return _rotl64(x, r); }
-    HE_FORCE_INLINE uint32_t Rotr32(uint32_t x, uint32_t r) { return _rotr(x, r); }
-    HE_FORCE_INLINE uint64_t Rotr64(uint64_t x, uint32_t r) { return _rotr64(x, r); }
+    HE_FORCE_INLINE uint32_t Rotl(uint32_t x, uint32_t r) { return _rotl(x, r); }
+    HE_FORCE_INLINE uint64_t Rotl(uint64_t x, uint32_t r) { return _rotl64(x, r); }
+    HE_FORCE_INLINE uint32_t Rotr(uint32_t x, uint32_t r) { return _rotr(x, r); }
+    HE_FORCE_INLINE uint64_t Rotr(uint64_t x, uint32_t r) { return _rotr64(x, r); }
 #else
     HE_FORCE_INLINE uint16_t ByteSwap(uint16_t x) { return (x >> 8) | (x << 8); }
     HE_FORCE_INLINE uint32_t ByteSwap(uint32_t x) { return __builtin_bswap32(x); }
     HE_FORCE_INLINE uint64_t ByteSwap(uint64_t x) { return __builtin_bswap64(x); }
 
-    HE_FORCE_INLINE uint32_t Rotl32(uint32_t x, uint32_t r) { return (x << r) | (x >> (32 - r)); }
-    HE_FORCE_INLINE uint64_t Rotl64(uint64_t x, uint32_t r) { return (x << r) | (x >> (64 - r)); }
-    HE_FORCE_INLINE uint32_t Rotr32(uint32_t x, uint32_t r) { return (x >> r) | (x << (32 - r)); }
-    HE_FORCE_INLINE uint64_t Rotr64(uint64_t x, uint32_t r) { return (x >> r) | (x << (64 - r)); }
+    HE_FORCE_INLINE uint32_t Rotl(uint32_t x, uint32_t r) { return (x << r) | (x >> (32 - r)); }
+    HE_FORCE_INLINE uint64_t Rotl(uint64_t x, uint32_t r) { return (x << r) | (x >> (64 - r)); }
+    HE_FORCE_INLINE uint32_t Rotr(uint32_t x, uint32_t r) { return (x >> r) | (x << (32 - r)); }
+    HE_FORCE_INLINE uint64_t Rotr(uint64_t x, uint32_t r) { return (x >> r) | (x << (64 - r)); }
 #endif
 
+    // --------------------------------------------------------------------------------------------
 #if HE_CPU_LITTLE_ENDIAN
     HE_FORCE_INLINE uint16_t LoadLE(const uint16_t& p) { return p; }
     HE_FORCE_INLINE uint32_t LoadLE(const uint32_t& p) { return p; }
@@ -109,3 +146,5 @@ namespace he
     HE_FORCE_INLINE void StoreBE(uint64_t& p, uint64_t x) { p = x; }
 #endif
 }
+
+#include "he/core/inline/memory_ops.inl"

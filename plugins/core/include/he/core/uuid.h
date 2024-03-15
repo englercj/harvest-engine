@@ -106,7 +106,7 @@ namespace he
         /// Gets the version number of a Uuid. This is usually a value in the range [0, 5].
         ///
         /// \return The version number of the UUID.
-        constexpr [[nodiscard]] uint8_t Version() const { return (m_bytes[6] & 0xf0) >> 4; }
+        [[nodiscard]] constexpr uint8_t Version() const { return (m_bytes[6] & 0xf0) >> 4; }
 
         /// Checks if two UUIDs are the same.
         ///

@@ -1,5 +1,12 @@
 // Copyright Chad Engler
 
+#include "he/core/allocator.h"
+#include "he/core/assert.h"
+#include "he/core/memory_ops.h"
+#include "he/core/range_ops.h"
+#include "he/core/types.h"
+#include "he/core/utils.h"
+
 namespace he
 {
     // --------------------------------------------------------------------------------------------

@@ -1,5 +1,10 @@
 // Copyright Chad Engler
 
+#include "he/core/assert.h"
+#include "he/core/memory_ops.h"
+#include "he/core/types.h"
+#include "he/core/type_traits.h"
+
 namespace he
 {
     // --------------------------------------------------------------------------------------------

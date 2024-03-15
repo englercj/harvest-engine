@@ -5,8 +5,6 @@
 
 #pragma once
 
-#include "he/core/compiler.h"
-#include "he/core/cpu.h"
 #include "he/core/limits.h"
 #include "he/core/type_traits.h"
 #include "he/core/types.h"

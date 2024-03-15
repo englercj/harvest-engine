@@ -55,7 +55,7 @@ using nullptr_t = decltype(nullptr);
     using ptrdiff_t = __PTRDIFF_TYPE__;
     using intptr_t = __PTRDIFF_TYPE__;
     using uintptr_t = unsigned __PTRDIFF_TYPE__;
-#elif 0&& HE_COMPILER_MSVC
+#elif HE_COMPILER_MSVC
     #if HE_CPU_64_BIT
         using ptrdiff_t = __int64;
         using intptr_t = __int64;
@@ -74,6 +74,20 @@ using nullptr_t = decltype(nullptr);
         using intptr_t = int;
         using uintptr_t = unsigned int;
     #endif
+#endif
+
+// float eval types
+#if HE_FLOAT_EVAL_METHOD == 0 || HE_FLOAT_EVAL_METHOD == -1
+    using float_t = float;
+    using double_t = double;
+#elif HE_FLOAT_EVAL_METHOD == 1
+    using float_t = double;
+    using double_t = double;
+#elif HE_FLOAT_EVAL_METHOD == 2
+    using float_t = long double;
+    using double_t = long double;
+#else
+    #error "Unknown float eval method"
 #endif
 
 namespace he

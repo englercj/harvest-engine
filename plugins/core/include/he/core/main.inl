@@ -15,7 +15,7 @@ namespace he { int _Win32AppMain(); }
 int wmain(int, wchar_t* []) { return he::_Win32AppMain(); }
 int __stdcall wWinMain(struct HINSTANCE__*, struct HINSTANCE__*, wchar_t*, int) { return he::_Win32AppMain(); }
 
-#elif defined(HE_PLATFORM_WASM)
+#elif defined(HE_PLATFORM_API_WASM)
 
 namespace he { void _InitializeMainThread(); void _TerminateMainThread(); }
 

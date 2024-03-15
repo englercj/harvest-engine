@@ -29,7 +29,7 @@ namespace he
         /// \param str The string to refer to.
         constexpr StringView(const char* str) noexcept
             : m_data(str)
-            , m_size(IsConstantEvaluated() ? StrLenConst(str) : StrLen(str))
+            , m_size(StrLen(str))
         {}
 
         /// Construct a string view from the range `[begin, end)`.

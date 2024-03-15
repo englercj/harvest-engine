@@ -1,5 +1,9 @@
 // Copyright Chad Engler
 
+#include "he/core/types.h"
+
+#include "he/core/inline/ascii_table.inl"
+
 namespace he
 {
     template <bool (*fn)(char c)>
@@ -17,7 +21,8 @@ namespace he
 
     constexpr bool IsWhitespace(char c) noexcept
     {
-        return c == ' ' || c == '\t' || c == '\n' || c == '\v' || c == '\f' || c == '\r';
+        const _AsciiCategory category = _AsciiCategoryLookup[static_cast<uint8_t>(c)];
+        return category == _AsciiCategory::Whitespace;
     }
 
     constexpr bool IsWhitespace(const char* str) noexcept
@@ -27,7 +32,8 @@ namespace he
 
     constexpr bool IsUpper(char c) noexcept
     {
-        return c >= 'A' && c <= 'Z';
+        const _AsciiCategory category = _AsciiCategoryLookup[static_cast<uint8_t>(c)];
+        return category == _AsciiCategory::UpperAlpha;
     }
 
     constexpr bool IsUpper(const char* str) noexcept
@@ -37,7 +43,8 @@ namespace he
 
     constexpr bool IsLower(char c) noexcept
     {
-        return c >= 'a' && c <= 'z';
+        const _AsciiCategory category = _AsciiCategoryLookup[static_cast<uint8_t>(c)];
+        return category == _AsciiCategory::LowerAlpha;
     }
 
     constexpr bool IsLower(const char* str) noexcept
@@ -47,7 +54,8 @@ namespace he
 
     constexpr bool IsAlpha(char c) noexcept
     {
-        return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z');
+        const _AsciiCategory category = _AsciiCategoryLookup[static_cast<uint8_t>(c)];
+        return category == _AsciiCategory::LowerAlpha || category == _AsciiCategory::UpperAlpha;
     }
 
     constexpr bool IsAlpha(const char* str) noexcept
@@ -57,7 +65,8 @@ namespace he
 
     constexpr bool IsNumeric(char c) noexcept
     {
-        return c >= '0' && c <= '9';
+        const _AsciiCategory category = _AsciiCategoryLookup[static_cast<uint8_t>(c)];
+        return category == _AsciiCategory::Numeric;
     }
 
     constexpr bool IsNumeric(const char* str) noexcept
@@ -67,7 +76,8 @@ namespace he
 
     constexpr bool IsAlphaNum(char c) noexcept
     {
-        return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9');
+        const _AsciiCategory category = _AsciiCategoryLookup[static_cast<uint8_t>(c)];
+        return category == _AsciiCategory::LowerAlpha || category == _AsciiCategory::UpperAlpha || category == _AsciiCategory::Numeric;
     }
 
     constexpr bool IsAlphaNum(const char* str) noexcept
@@ -123,7 +133,8 @@ namespace he
 
     constexpr bool IsPrint(char c) noexcept
     {
-        return c >= ' ' && c <= '~';
+        const _AsciiCategory category = _AsciiCategoryLookup[static_cast<uint8_t>(c)];
+        return category != _AsciiCategory::None;
     }
 
     constexpr bool IsPrint(const char* str) noexcept

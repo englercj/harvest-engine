@@ -1,0 +1,17 @@
+# Copyright Chad Engler
+
+id = "fastfloat.fast_float"
+version = "6.1.0"
+name = "Fast Float"
+description = "Fast and exact implementation of the C++ from_chars functions for number types."
+authors = ["Daniel Lemire <daniel@lemire.me>", "João Paulo Magalhaes"]
+license = "MIT"
+homepage = "https://github.com/fastfloat/fast_float"
+
+[[modules]]
+    name = "fast_float"
+    type = "header"
+    group = "engine/contrib"
+    warnings = "Off"
+    files = ["%{he.get_module_file_dir('fast_float')}/include/**.h"]
+    public_externalincludedirs = ["%{he.get_module_file_dir('fast_float')}/include"]

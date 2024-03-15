@@ -38,11 +38,13 @@ namespace he
         return Result::Success;
     }
 
-    Result VirtualMemory::Release(void* block)
+    Result VirtualMemory::Release()
     {
-        HE_ASSERT(m_block && m_size > 0);
+        if (!m_block || m_size == 0)
+            return Result::Success;
+
         const size_t size = PagesToBytes(m_size);
-        const int rc = munmap(block, size);
+        const int rc = munmap(m_block, size);
         m_block = nullptr;
         m_size = 0;
         return rc == 0 ? Result::Success : Result::FromLastError();
@@ -60,7 +62,7 @@ namespace he
         return rc == 0 ? start : nullptr;
     }
 
-    Result VirtualMemory::Decommit(void* block, uint32_t index, uint32_t count)
+    Result VirtualMemory::Decommit(uint32_t index, uint32_t count)
     {
         HE_ASSERT(index < m_size);
         HE_ASSERT((index + count) <= m_size);
@@ -83,7 +85,7 @@ namespace he
         const size_t size = PagesToBytes(count);
         const int flags = PosixMemProtection(access);
         const int rc = mprotect(start, size, flags);
-        return rc == 0 ? start : nullptr;
+        return rc == 0 ? Result::Success : Result::FromLastError();
     }
 }
 

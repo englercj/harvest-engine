@@ -32,7 +32,7 @@ namespace he
 
     #define HE_MD5_STEP(f, a, b, c, d, x, s, ac) \
             (a) += f((b), (c), (d)) + (x) + static_cast<uint32_t>(ac); \
-            (a) = Rotl32((a), (s)); \
+            (a) = Rotl(static_cast<uint32_t>(a), (s)); \
             (a) += (b)
 
     //-------------------------------------------------------------------------------------------------

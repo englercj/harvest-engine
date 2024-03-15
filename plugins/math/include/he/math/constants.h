@@ -2,29 +2,14 @@
 
 #pragma once
 
+#include "he/core/limits.h"
 #include "he/core/utils.h"
 #include "he/math/types.h"
 
 namespace he
 {
-    inline constexpr float Float_Pi = 3.14159265358979323846f;
-    inline constexpr float Float_Pi2 = 6.28318530717958647692f;
-    inline constexpr float Float_PiHalf = 1.57079632679489661923f;
-    inline constexpr float Float_PiQuarter = 0.78539816339744830962f;
-    inline constexpr float Float_Sqrt2 = 1.41421356237309504880f;
-
-
-    inline constexpr float Float_Epsilon = 1.192092896e-7f;
-    inline constexpr float Float_Min = 1.175494351e-38f;
-    inline constexpr float Float_Max = 3.402823466e+38f;
-    inline constexpr float Float_AbsMask = BitCast<float>(0x7fffffff);
-    inline constexpr float Float_AllBits = BitCast<float>(0xffffffff);
-    inline constexpr float Float_Infinity = BitCast<float>(0x7f800000);
-    inline constexpr float Float_Nan = BitCast<float>(0x7fc00000);
-    inline constexpr float Float_ZeroSafe = 1000.0f * Float_Min;
-
-    inline constexpr Vec4a Vec4a_AbsMask{ Float_AbsMask, Float_AbsMask, Float_AbsMask, Float_AbsMask };
-    inline constexpr Vec4a Vec4a_Infinity{ Float_Infinity, Float_Infinity, Float_Infinity, Float_Infinity };
+    inline constexpr Vec4a Vec4a_AbsMask{ BitCast<float>(0x7fffffff), BitCast<float>(0x7fffffff), BitCast<float>(0x7fffffff), BitCast<float>(0x7fffffff) };
+    inline constexpr Vec4a Vec4a_Infinity{ Limits<float>::Infinity, Limits<float>::Infinity, Limits<float>::Infinity, Limits<float>::Infinity };
     inline constexpr Vec4a Vec4a_Zero{ 0.0f, 0.0f, 0.0f, 0.0f };
     inline constexpr Vec4a Vec4a_One{ 1.0f, 1.0f, 1.0f, 1.0f };
     inline constexpr Vec4a Vec4a_X{ 1.0f, 0.0f, 0.0f, 0.0f };
@@ -32,20 +17,20 @@ namespace he
     inline constexpr Vec4a Vec4a_Z{ 0.0f, 0.0f, 1.0f, 0.0f };
     inline constexpr Vec4a Vec4a_W{ 0.0f, 0.0f, 0.0f, 1.0f };
 
-    inline constexpr Vec2f Vec2f_Infinity{ Float_Infinity, Float_Infinity };
+    inline constexpr Vec2f Vec2f_Infinity{ Limits<float>::Infinity, Limits<float>::Infinity };
     inline constexpr Vec2f Vec2f_Zero{ 0, 0 };
     inline constexpr Vec2f Vec2f_One{ 1, 1, };
     inline constexpr Vec2f Vec2f_X{ 1, 0 };
     inline constexpr Vec2f Vec2f_Y{ 0, 1 };
 
-    inline constexpr Vec3f Vec3f_Infinity{ Float_Infinity, Float_Infinity, Float_Infinity };
+    inline constexpr Vec3f Vec3f_Infinity{ Limits<float>::Infinity, Limits<float>::Infinity, Limits<float>::Infinity };
     inline constexpr Vec3f Vec3f_Zero{ 0, 0, 0 };
     inline constexpr Vec3f Vec3f_One{ 1, 1, 1 };
     inline constexpr Vec3f Vec3f_X{ 1, 0, 0 };
     inline constexpr Vec3f Vec3f_Y{ 0, 1, 0 };
     inline constexpr Vec3f Vec3f_Z{ 0, 0, 1 };
 
-    inline constexpr Vec4f Vec4f_Infinity{ Float_Infinity, Float_Infinity, Float_Infinity, Float_Infinity };
+    inline constexpr Vec4f Vec4f_Infinity{ Limits<float>::Infinity, Limits<float>::Infinity, Limits<float>::Infinity, Limits<float>::Infinity };
     inline constexpr Vec4f Vec4f_Zero{ 0, 0, 0, 0 };
     inline constexpr Vec4f Vec4f_One{ 1, 1, 1, 1 };
     inline constexpr Vec4f Vec4f_X{ 1, 0, 0, 0 };

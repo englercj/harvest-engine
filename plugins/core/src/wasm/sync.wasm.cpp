@@ -9,7 +9,7 @@
 
 #include <new>
 
-#if defined(HE_PLATFORM_WASM)
+#if defined(HE_PLATFORM_API_WASM)
 
 #include "thread_internal.wasm.h"
 
@@ -35,7 +35,7 @@ namespace he
         int32_t* rwlock = reinterpret_cast<int32_t*>(m_opaque);
         int32_t expected = 0;
 
-        while (!__atomic_compare_exchange_n(&mutex, &expected, expected + 1, true, __ATOMIC_ACQUIRE, __ATOMIC_RELAXED))
+        while (!__atomic_compare_exchange_n(rwlock, &expected, expected + 1, true, __ATOMIC_ACQUIRE, __ATOMIC_RELAXED))
         {
             if (expected == -1)
                 return false;
@@ -63,7 +63,7 @@ namespace he
 
         // Notify only a single agent. Readers won't be waiting on this release, and only one
         // writer will be able to take the lock anyway.
-        __builtin_wasm_memory_atomic_notify(rwlock, 1);
+        _AtomicNotify(rwlock, 1);
     }
 
     bool RWLock::TryAcquireWrite()
@@ -102,16 +102,16 @@ namespace he
     #endif
 
         // Notify all agents. Any number of readers or writers may be waiting on this release.
-        __builtin_wasm_memory_atomic_notify(rwlock, 0xffffffff);
+        _AtomicNotify(rwlock, 0xffffffff);
     }
 
     // --------------------------------------------------------------------------------------------
     Mutex::Mutex() noexcept
     {
-        static_assert(sizeof(m_opaque) == sizeof(int32_t));
-        HE_ASSERT(IsAligned(m_opaque, alignof(int32_t)));
+        static_assert(sizeof(m_opaque) == sizeof(uint32_t));
+        HE_ASSERT(IsAligned(m_opaque, alignof(uint32_t)));
 
-        int32_t* mutex = reinterpret_cast<int32_t*>(m_opaque);
+        uint32_t* mutex = reinterpret_cast<uint32_t*>(m_opaque);
         *mutex = 0;
     }
 
@@ -122,16 +122,16 @@ namespace he
 
     bool Mutex::TryAcquire()
     {
-        const int32_t tid = BitCast<int32_t>(Thread::GetId());
-        int32_t* mutex = reinterpret_cast<int32_t*>(m_opaque);
-        int32_t expected = 0;
+        const uint32_t tid = Thread::GetId();
+        uint32_t* mutex = reinterpret_cast<uint32_t*>(m_opaque);
+        uint32_t expected = 0;
         return __atomic_compare_exchange_n(mutex, &expected, tid, true, __ATOMIC_ACQUIRE, __ATOMIC_RELAXED);
     }
 
     void Mutex::Acquire()
     {
-        const int32_t tid = BitCast<int32_t>(Thread::GetId());
-        int32_t* mutex = reinterpret_cast<int32_t*>(m_opaque);
+        const uint32_t tid = Thread::GetId();
+        uint32_t* mutex = reinterpret_cast<uint32_t*>(m_opaque);
         while (!TryAcquire())
         {
             _AtomicWaitCurrentThread(mutex, tid, -1);
@@ -140,11 +140,11 @@ namespace he
 
     void Mutex::Release()
     {
-        int32_t* mutex = reinterpret_cast<int32_t*>(m_opaque);
+        uint32_t* mutex = reinterpret_cast<uint32_t*>(m_opaque);
 
     #if HE_ENABLE_ASSERTIONS
         // When assertions are enabled we want to verify that we're releasing a lock that we hold.
-        const int32_t value = __atomic_exchange_n(mutex, 0, __ATOMIC_RELEASE);
+        const uint32_t value = __atomic_exchange_n(mutex, 0, __ATOMIC_RELEASE);
         HE_ASSERT(value == Thread::GetId(), HE_MSG("Mutex::Release() called on a lock that was not held by this thread"));
     #else
         // When assertions are disabled we don't care about the existing value, so just do a store.
@@ -152,17 +152,14 @@ namespace he
     #endif
 
         // Notify one agent. Since the lock is exclusive only one of them can acquire it anyway.
-        __builtin_wasm_memory_atomic_notify(mutex, 1);
+        _AtomicNotify(mutex, 1);
     }
 
     // --------------------------------------------------------------------------------------------
     RecursiveMutex::RecursiveMutex() noexcept
     {
-        static_assert(sizeof(m_opaque) == sizeof(int32_t));
+        static_assert(sizeof(m_opaque) == (sizeof(int32_t) * 2));
         HE_ASSERT(IsAligned(m_opaque, alignof(int32_t)));
-
-        static_assert(sizeof(m_opaque + 4) == sizeof(int32_t));
-        HE_ASSERT(IsAligned(m_opaque + 4, alignof(int32_t)));
 
         static_assert(sizeof(m_opaque) == sizeof(uint64_t));
         HE_ASSERT(IsAligned(m_opaque, alignof(uint64_t)));
@@ -186,11 +183,11 @@ namespace he
 
         const uint32_t tid = Thread::GetId();
 
-        uint64_t* mutex = reinterpret_cast<uint64_t*>(m_opaque);
+        uint64_t* mutex = reinterpret_cast<uint64_t*>(opaque);
         uint64_t expected = 0;
         uint64_t desired = CountIncrement | tid;
 
-        while (!__atomic_compare_exchange_n(&mutex, &expected, desired, true, __ATOMIC_ACQUIRE, __ATOMIC_RELAXED))
+        while (!__atomic_compare_exchange_n(mutex, &expected, desired, true, __ATOMIC_ACQUIRE, __ATOMIC_RELAXED))
         {
             const uint32_t lockedTid = static_cast<uint32_t>(expected & TidMask);
             if (lockedTid != tid)
@@ -209,7 +206,7 @@ namespace he
 
     void RecursiveMutex::Acquire()
     {
-        int32_t* threadId = reinterpret_cast<int32_t*>(m_opaque + 4);
+        int32_t* threadId = reinterpret_cast<int32_t*>(m_opaque);
         uint32_t lockedTid = 0;
 
         while ((lockedTid = _RecursiveMutex_TryAcquire(m_opaque)) != 0)
@@ -231,7 +228,8 @@ namespace he
     #endif
 
         // Notify one agent. Since the lock is exclusive only one of them can acquire it anyway.
-        __builtin_wasm_memory_atomic_notify(mutex, 1);
+        int32_t* threadId = reinterpret_cast<int32_t*>(m_opaque);
+        _AtomicNotify(threadId, 1);
     }
 
     // --------------------------------------------------------------------------------------------
@@ -253,8 +251,8 @@ namespace he
 
     struct _CVData
     {
-        _CVData* head{ nullptr };
-        _CVData* tail{ nullptr };
+        _CVWaiter* head{ nullptr };
+        _CVWaiter* tail{ nullptr };
         int32_t lock{ 0 };
     };
 
@@ -264,14 +262,14 @@ namespace he
         if (!__atomic_compare_exchange_n(lock, &expected, 1, true, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST))
         {
             expected = 1;
-            __atomic_compare_exchange_n(lock, &expected, 2, true, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST)
+            __atomic_compare_exchange_n(lock, &expected, 2, true, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST);
 
             expected = 0;
             do
             {
                 _AtomicWaitCurrentThread(lock, 2, -1);
             }
-            while (!__atomic_compare_exchange_n(lock, &expected, 2, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST));
+            while (!__atomic_compare_exchange_n(lock, &expected, 2, false, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST));
         }
     }
 
@@ -279,7 +277,7 @@ namespace he
     {
         if (__atomic_exchange_n(lock, 0, __ATOMIC_SEQ_CST) == 2)
         {
-            __builtin_wasm_memory_atomic_notify(lock, 1);
+            _AtomicNotify(lock, 1);
         }
     }
 
@@ -293,7 +291,7 @@ namespace he
         // since it is more like an optimization to avoid spuriously waking all waiters, just
         // to make them wait on another location immediately afterwards. Here we do exactly that:
         // wake every waiter.
-        __builtin_wasm_memory_atomic_notify(lock, 0xffffffff);
+        _AtomicNotify(lock, 0xffffffff);
     }
 
     static void _ConditionVariable_Signal(_CVData* data, uint32_t count)
@@ -340,7 +338,7 @@ namespace he
 
         // Wait for any waiters in the leaving state to remove themselves from the list before
         // allowing signaled threads to proceed.
-        while (int32_t cur = __atomic_load_n(&ref))
+        while (int32_t cur = __atomic_load_n(&ref, __ATOMIC_SEQ_CST))
         {
             _AtomicWaitCurrentThread(&ref, cur, -1);
         }
@@ -353,7 +351,7 @@ namespace he
     }
 
     template <typename T>
-    void _ConditionVariable_WaitMutex(_CVData* data, T& mutex, Duration timeout)
+    bool _ConditionVariable_WaitMutex(_CVData* data, T& mutex, Duration timeout)
     {
         // Setup the waiter list by creating a new node and making it the head.
         _ConditionVariable_LockInt(&data->lock);
@@ -385,7 +383,7 @@ namespace he
         do
         {
             // Calculate how much wait time is left, and if it has expired we've timed out.
-            const Duration wait = end - MonotonicClock::Now();
+            const Duration wait = waitEnd - MonotonicClock::Now();
             if (wait <= Duration_Zero)
             {
                 timedOut = true;
@@ -403,7 +401,7 @@ namespace he
             }
         } while (__atomic_load_n(fut, __ATOMIC_SEQ_CST) == seq);
 
-        _CVWaiterState oldState = _CVWaiterState_Waiting;
+        int32_t oldState = _CVWaiterState_Waiting;
         __atomic_compare_exchange_n(&node.state, &oldState, _CVWaiterState_Leaving, true, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST);
 
         if (oldState == _CVWaiterState_Waiting)
@@ -428,7 +426,7 @@ namespace he
             {
                 if (__atomic_fetch_sub(node.notify, 1, __ATOMIC_SEQ_CST) == 1)
                 {
-                    __builtin_wasm_memory_atomic_notify(node.notify, 1);
+                    _AtomicNotify(node.notify, 1);
                 }
             }
         }
@@ -446,6 +444,8 @@ namespace he
         {
             _ConditionVariable_UnlockIntRequeue(&node.prev->barrier);
         }
+
+        return !timedOut;
     }
 
     ConditionVariable::ConditionVariable() noexcept
@@ -474,20 +474,17 @@ namespace he
         return _ConditionVariable_Signal(data, 0xffffffff);
     }
 
-    template <>
-    void ConditionVariable::WaitMutex<Mutex>(Mutex& mutex)
+    void ConditionVariable::WaitMutex(Mutex& mutex)
     {
         WaitMutex(mutex, Duration_Max);
     }
 
-    template <>
-    void ConditionVariable::WaitMutex<RecursiveMutex>(RecursiveMutex& mutex)
+    void ConditionVariable::WaitMutex(RecursiveMutex& mutex)
     {
         WaitMutex(mutex, Duration_Max);
     }
 
-    template <>
-    bool ConditionVariable::WaitMutex<Mutex>(Mutex& mutex, Duration timeout)
+    bool ConditionVariable::WaitMutex(Mutex& mutex, Duration timeout)
     {
         // Trying to await a condition variable on a thread that cannot block is not yet supported.
         // I'm skeptical this feature is even needed, but if it is it will require some work to
@@ -495,11 +492,10 @@ namespace he
         HE_ASSERT(_CanCurentThreadWait());
 
         _CVData* data = reinterpret_cast<_CVData*>(m_opaque);
-        _ConditionVariable_WaitMutex(data, mutex, timeout);
+        return _ConditionVariable_WaitMutex(data, mutex, timeout);
     }
 
-    template <>
-    bool ConditionVariable::WaitMutex<RecursiveMutex>(RecursiveMutex& mutex, Duration timeout)
+    bool ConditionVariable::WaitMutex(RecursiveMutex& mutex, Duration timeout)
     {
         // Trying to await a condition variable on a thread that cannot block is not yet supported.
         // I'm skeptical this feature is even needed, but if it is it will require some work to
@@ -507,7 +503,7 @@ namespace he
         HE_ASSERT(_CanCurentThreadWait());
 
         _CVData* data = reinterpret_cast<_CVData*>(m_opaque);
-        _ConditionVariable_WaitMutex(data, mutex, timeout);
+        return _ConditionVariable_WaitMutex(data, mutex, timeout);
     }
 
     // --------------------------------------------------------------------------------------------
@@ -517,7 +513,7 @@ namespace he
         HE_ASSERT(IsAligned(m_opaque, alignof(uint32_t)));
 
         uint32_t* sem = reinterpret_cast<uint32_t*>(m_opaque);
-        *sem = 0;
+        __atomic_store_n(sem, initialCount, __ATOMIC_RELEASE);
     }
 
     Semaphore::~Semaphore() noexcept
@@ -528,7 +524,7 @@ namespace he
     {
         uint32_t* sem = reinterpret_cast<uint32_t*>(m_opaque);
         __atomic_fetch_add(sem, count, __ATOMIC_RELEASE);
-        __builtin_wasm_memory_atomic_notify(sem, count);
+        _AtomicNotify(sem, count);
     }
 
     static bool _Semaphore_TryAcquire(uint32_t* sem)
@@ -628,9 +624,10 @@ namespace he
 
     void SyncEvent::Wait()
     {
+        _SyncEventData* data = reinterpret_cast<_SyncEventData*>(m_opaque);
+
         LockGuard lock(data->mutex);
 
-        _SyncEventData* data = reinterpret_cast<_SyncEventData*>(m_opaque);
         data->cv.Wait(data->mutex, [data]() { return data->state; });
         if (!data->manualReset)
             data->state = false;

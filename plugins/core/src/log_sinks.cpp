@@ -13,10 +13,10 @@
 #include "he/core/path.h"
 #include "he/core/string_fmt.h"
 
-#if defined(HE_PLATFORM_WASM)
+#if defined(HE_PLATFORM_API_WASM)
     #include "he/core/wasm/lib_core.wasm.h"
 #else
-    #include <cstdio>
+    #include <iostream>
 #endif
 
 namespace he
@@ -118,7 +118,7 @@ namespace he
     {
         const String msg = Format("[{:s}]({}) {}\n", source.level, source.category, FmtJoin(kvs, kvs + count, ", "));
 
-    #if defined(HE_PLATFORM_WASM)
+    #if defined(HE_PLATFORM_API_WASM)
         heWASM_ConsoleLogLevel level = heWASM_ConsoleLogLevel::Log;
         switch (source.level)
         {
@@ -130,8 +130,10 @@ namespace he
         }
         heWASM_ConsoleLog(level, msg.Data());
     #else
-        auto* stream = source.level >= LogLevel::Warn ? stderr : stdout;
-        fputs(msg.Data(), stream);
+        if (source.level >= LogLevel::Warn)
+            std::cerr << msg.Data() << std::endl;
+        else
+            std::cout << msg.Data() << std::endl;
     #endif
     }
 }

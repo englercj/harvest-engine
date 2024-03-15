@@ -156,8 +156,7 @@ namespace he
         ::WakeAllConditionVariable(cv);
     }
 
-    template <>
-    void ConditionVariable::WaitMutex<Mutex>(Mutex& mutex)
+    void ConditionVariable::WaitMutex(Mutex& mutex)
     {
         SRWLOCK* srw = reinterpret_cast<SRWLOCK*>(mutex.m_opaque);
         CONDITION_VARIABLE* cv = reinterpret_cast<CONDITION_VARIABLE*>(m_opaque);
@@ -166,8 +165,7 @@ namespace he
         HE_UNUSED(r);
     }
 
-    template <>
-    void ConditionVariable::WaitMutex<RecursiveMutex>(RecursiveMutex& mutex)
+    void ConditionVariable::WaitMutex(RecursiveMutex& mutex)
     {
         CRITICAL_SECTION* cs = reinterpret_cast<CRITICAL_SECTION*>(mutex.m_opaque);
         CONDITION_VARIABLE* cv = reinterpret_cast<CONDITION_VARIABLE*>(m_opaque);
@@ -176,8 +174,7 @@ namespace he
         HE_UNUSED(r);
     }
 
-    template <>
-    bool ConditionVariable::WaitMutex<Mutex>(Mutex& mutex, Duration timeout)
+    bool ConditionVariable::WaitMutex(Mutex& mutex, Duration timeout)
     {
         const uint32_t timeoutMs = ToPeriod<Milliseconds, uint32_t>(timeout);
         SRWLOCK* srw = reinterpret_cast<SRWLOCK*>(mutex.m_opaque);
@@ -185,8 +182,7 @@ namespace he
         return ::SleepConditionVariableSRW(cv, srw, timeoutMs, 0) != 0;
     }
 
-    template <>
-    bool ConditionVariable::WaitMutex<RecursiveMutex>(RecursiveMutex& mutex, Duration timeout)
+    bool ConditionVariable::WaitMutex(RecursiveMutex& mutex, Duration timeout)
     {
         const uint32_t timeoutMs = ToPeriod<Milliseconds, uint32_t>(timeout);
         CRITICAL_SECTION* cs = reinterpret_cast<CRITICAL_SECTION*>(mutex.m_opaque);

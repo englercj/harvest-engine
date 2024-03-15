@@ -263,8 +263,7 @@ namespace he
         /// \param[in] mutex The mutex to unlock while waiting, and re-acquire after waking.
         /// \param[in] timeout The maximum time to spend waiting for a wake event that passes
         ///     the predicate.
-        /// \return Returns true if the thread was woken and the predicate returns true. Otherwise,
-        ///     if the wait times out false is returned.
+        /// \return Returns true if the thread was signaled, or false if the wait times out.
         template <typename T>
         bool Wait(T& mutex, Duration timeout)
         {
@@ -286,8 +285,7 @@ namespace he
         /// \param[in] predicate The predicate to check upon wake to know if waiting should continue.
         /// \param[in] timeout The maximum time to spend waiting for a wake event that passes
         ///     the predicate.
-        /// \return Returns true if the thread was woken and the predicate returns true. Otherwise,
-        ///     if the wait times out false is returned.
+        /// \return Returns the last result of `predicate()`.
         template <typename T, typename F>
         bool Wait(T& mutex, F&& predicate, Duration timeout)
         {
@@ -300,13 +298,11 @@ namespace he
         }
 
     private:
-        // Specializations are defined in the .cpp file for each supported mutex type.
-        template <typename T>
-        void WaitMutex(T& mutex);
+        void WaitMutex(Mutex& mutex);
+        void WaitMutex(RecursiveMutex& mutex);
 
-        // Specializations are defined in the .cpp file for each supported mutex type.
-        template <typename T>
-        bool WaitMutex(T& mutex, Duration timeout);
+        bool WaitMutex(Mutex& mutex, Duration timeout);
+        bool WaitMutex(RecursiveMutex& mutex, Duration timeout);
 
     private:
         alignas(8) uint8_t m_opaque[HE_IMPL_PLATFORM_CONDITION_VARIABLE_SIZE];

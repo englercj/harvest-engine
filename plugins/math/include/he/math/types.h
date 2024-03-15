@@ -20,6 +20,10 @@ namespace he
     using Vec3f = Vec3<float>;
     using Vec4f = Vec4<float>;
 
+    using Vec2d = Vec2<double>;
+    using Vec3d = Vec3<double>;
+    using Vec4d = Vec4<double>;
+
     using Vec2i = Vec2<int32_t>;
     using Vec3i = Vec3<int32_t>;
     using Vec4i = Vec4<int32_t>;

@@ -2,6 +2,10 @@
 
 #pragma once
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define _Addr __PTRDIFF_TYPE__
 #define _Int64 __INT64_TYPE__
 
@@ -26,5 +30,13 @@ typedef _Addr ptrdiff_t;
 
 typedef _Int64 off_t;
 
+#ifndef __cplusplus
+typedef __WCHAR_TYPE__ wchar_t;
+#endif
+
 #undef _Addr
 #undef _Int64
+
+#ifdef __cplusplus
+}
+#endif

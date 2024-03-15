@@ -3,11 +3,12 @@
 #pragma once
 
 #include "he/core/result.h"
-#include "he/core/string.h"
 #include "he/core/types.h"
 
 namespace he
 {
+    class String;
+
     /// Gets the contents of the environment variable of `name` from the environment block of the
     /// calling process. If the variable does not exist in the environment an error is returned.
     ///

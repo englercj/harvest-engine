@@ -152,47 +152,19 @@ namespace he
             "8081828384858687888990919293949596979899"[value * 2];
     };
 
-    HE_FORCE_INLINE uint32_t CountLeadingZeroes(uint32_t x)
-    {
-    #if HE_COMPILER_MSVC
-        unsigned long r = 0;
-        _BitScanReverse(&r, x);
-        return 31 ^ r;
-    #else
-        return static_cast<uint32_t>(__builtin_clz(x));
-    #endif
-    }
-
-    HE_FORCE_INLINE uint32_t CountLeadingZeroes(uint64_t x)
-    {
-    #if HE_COMPILER_MSVC
-        unsigned long r = 0;
-    #if HE_CPU_64_BIT
-        _BitScanReverse64(&r, x);
-    #else
-        if (_BitScanReverse(&r, static_cast<uint32_t>(x >> 32)))
-            return 63 ^ (r + 32);
-        _BitScanReverse(&r, static_cast<uint32_t>(x));
-    #endif
-        return 63 ^ r;
-    #else
-        return static_cast<uint32_t>(__builtin_clzll(x));
-    #endif
-    }
-
     extern const uint64_t DigitCountLookup[32];
     extern const uint64_t ZeroOrPowersOf10[21];
     extern const uint8_t Bsr2Log10[64];
 
     HE_FORCE_INLINE uint32_t CountDigits(uint64_t x)
     {
-        const uint8_t t = Bsr2Log10[CountLeadingZeroes(x | 1) ^ 63];
+        const uint8_t t = Bsr2Log10[CountLeadingZeros(x | 1) ^ 63];
         return t - (x < ZeroOrPowersOf10[t]);
     }
 
     HE_FORCE_INLINE uint32_t CountDigits(uint32_t x)
     {
-        const uint64_t inc = DigitCountLookup[CountLeadingZeroes(x | 1) ^ 31];
+        const uint64_t inc = DigitCountLookup[CountLeadingZeros(x | 1) ^ 31];
         return static_cast<uint32_t>((x + inc) >> 32);
     }
 
@@ -200,7 +172,7 @@ namespace he
     inline uint32_t CountDigits(T x)
     {
         if constexpr (Limits<T>::ValueBits == 32)
-            return (CountLeadingZeroes(static_cast<uint32_t>(x) | 1) ^ 31) / Bits + 1;
+            return (CountLeadingZeros(static_cast<uint32_t>(x) | 1) ^ 31) / Bits + 1;
 
         uint32_t count = 0;
         do

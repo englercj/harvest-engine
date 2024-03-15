@@ -42,7 +42,9 @@ namespace he
 
     Result VirtualMemory::Release()
     {
-        HE_ASSERT(m_block && m_size > 0);
+        if (!m_block || m_size == 0)
+            return Result::Success;
+
         const BOOL r = ::VirtualFree(m_block, 0, MEM_RELEASE);
         m_block = nullptr;
         m_size = 0;

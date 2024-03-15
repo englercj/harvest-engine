@@ -36,12 +36,14 @@
 #pragma once
 
 #include "he/core/allocator.h"
-#include "he/core/assert.h"
+#include "he/core/compiler.h"
 #include "he/core/type_traits.h"
 #include "he/core/types.h"
 #include "he/core/utils.h"
 
-namespace std { struct bidirectional_iterator_tag; }
+HE_BEGIN_NAMESPACE_STD
+struct bidirectional_iterator_tag;
+HE_END_NAMESPACE_STD
 
 namespace he
 {

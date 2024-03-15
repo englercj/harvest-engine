@@ -15,10 +15,10 @@
 namespace he
 {
     //-------------------------------------------------------------------------------------------------
-    HE_FORCE_INLINE uint32_t Sha256_E0(uint32_t x) { return Rotr32(x, 2) ^ Rotr32(x, 13) ^ Rotr32(x, 22); }
-    HE_FORCE_INLINE uint32_t Sha256_E1(uint32_t x) { return Rotr32(x, 6) ^ Rotr32(x, 11) ^ Rotr32(x, 25); }
-    HE_FORCE_INLINE uint32_t Sha256_S0(uint32_t x) { return Rotr32(x, 7) ^ Rotr32(x, 18) ^ (x >> 3); }
-    HE_FORCE_INLINE uint32_t Sha256_S1(uint32_t x) { return Rotr32(x, 17) ^ Rotr32(x, 19) ^ (x >> 10); }
+    HE_FORCE_INLINE uint32_t Sha256_E0(uint32_t x) { return Rotr(x, 2) ^ Rotr(x, 13) ^ Rotr(x, 22); }
+    HE_FORCE_INLINE uint32_t Sha256_E1(uint32_t x) { return Rotr(x, 6) ^ Rotr(x, 11) ^ Rotr(x, 25); }
+    HE_FORCE_INLINE uint32_t Sha256_S0(uint32_t x) { return Rotr(x, 7) ^ Rotr(x, 18) ^ (x >> 3); }
+    HE_FORCE_INLINE uint32_t Sha256_S1(uint32_t x) { return Rotr(x, 17) ^ Rotr(x, 19) ^ (x >> 10); }
     // HE_FORCE_INLINE uint32_t Sha256_Ch(uint32_t x, uint32_t y, uint32_t z) { return (x & y) ^ (~x & z); }
     HE_FORCE_INLINE uint32_t Sha256_Ch(uint32_t x, uint32_t y, uint32_t z) { return z ^ (x & (y ^ z)); }
     HE_FORCE_INLINE uint32_t Sha256_Maj(uint32_t x, uint32_t y, uint32_t z) { return (x & y) ^ (x & z) ^ (y & z); }

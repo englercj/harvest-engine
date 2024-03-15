@@ -11,17 +11,23 @@
 /// \def HE_CFG_RELEASE
 /// Defined when the current configuration is Release.
 
-/// \def HE_PLATFORM_WASM
-/// Defined when the target platform is Wasm32.
-
 /// \def HE_PLATFORM_LINUX
 /// Defined when the target platform is Linux.
+
+/// \def HE_PLATFORM_WASM32
+/// Defined when the target platform is Wasm32.
+
+/// \def HE_PLATFORM_WASM64
+/// Defined when the target platform is Wasm64.
 
 /// \def HE_PLATFORM_WINDOWS
 /// Defined when the target platform is Windows.
 
 /// \def HE_PLATFORM_API_POSIX
 /// Defined when the target platform implements Posix APIs.
+
+/// \def HE_PLATFORM_API_WASM
+/// Defined when the target platform implements WASM APIs.
 
 /// \def HE_PLATFORM_API_WIN32
 /// Defined when the target platform implements Win32 APIs.

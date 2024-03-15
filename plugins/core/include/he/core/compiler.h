@@ -64,6 +64,7 @@
     #define HE_PREFETCH(x)                  __builtin_prefetch(static_cast<const char*>(x))
     #define HE_SIZEOF_LONG                  __SIZEOF_LONG__
     #define HE_CHAR_BIT                     __CHAR_BIT__
+    #define HE_FLOAT_EVAL_METHOD            __FLT_EVAL_METHOD__
 
     #define HE_PUSH_WARNINGS()              _Pragma("clang diagnostic push")
     #define HE_POP_WARNINGS()               _Pragma("clang diagnostic pop")
@@ -92,6 +93,7 @@
     #define HE_PREFETCH(x)                  __builtin_prefetch(static_cast<const char*>(x))
     #define HE_SIZEOF_LONG                  __SIZEOF_LONG__
     #define HE_CHAR_BIT                     __CHAR_BIT__
+    #define HE_FLOAT_EVAL_METHOD            __FLT_EVAL_METHOD__
 
     #define HE_PUSH_WARNINGS()              _Pragma("GCC diagnostic push")
     #define HE_POP_WARNINGS()               _Pragma("GCC diagnostic pop")
@@ -122,6 +124,20 @@
     #define HE_SIZEOF_LONG                  4
     #define HE_CHAR_BIT                     8
 
+    #ifdef _M_FP_FAST
+        #define HE_FLOAT_EVAL_METHOD -1
+    #else
+        #ifdef _M_IX86
+            #if _M_IX86_FP >= 2
+                #define HE_FLOAT_EVAL_METHOD 0
+            #else
+                #define HE_FLOAT_EVAL_METHOD 2
+            #endif
+        #else
+            #define HE_FLOAT_EVAL_METHOD 0
+        #endif
+    #endif
+
     #define HE_PUSH_WARNINGS()              __pragma(warning(push))
     #define HE_POP_WARNINGS()               __pragma(warning(pop))
     #define HE_DISABLE_CLANG_WARNING(n)
@@ -131,6 +147,7 @@
 
     #define HE_DISABLE_OPTIMIZE_START()     __pragma(optimize("", off))
     #define HE_DISABLE_OPTIMIZE_END()       __pragma(optimize("", on))
+
 #else
     #error "Unknown compiler"
 #endif
@@ -173,6 +190,21 @@ static_assert(HE_SIZEOF_LONG == sizeof(long));
 
 /// \def HE_SIZEOF_LONG
 /// Defined as the byte-size of `long` for this compiler.
+
+/// \def HE_CHAR_BIT
+/// Defined as the number of bits in a char for this compiler.
+
+/// \def HE_FLOAT_EVAL_METHOD
+/// Specifies the precision in which all floating-point arithmetic operations other than
+/// assignment and cast are done.
+///
+/// -1 = the default precision is not known
+/// 0 = all operations and constants evaluate in the range and precision of the type used.
+///     Additionally, `float_t` and `double_t` are equivalent to `float` and `double` respectively
+/// 1 = all operations and constants evaluate in the range and precision of `double`.
+///     Additionally, both `float_t` and `double_t` are equivalent to `double`
+/// 2 = all operations and constants evaluate in the range and precision of `long double`.
+///     Additionally, both `float_t` and `double_t` are equivalent to `long double`
 
 /// \def HE_PUSH_WARNINGS
 /// Stores the current warning state for all warnings.

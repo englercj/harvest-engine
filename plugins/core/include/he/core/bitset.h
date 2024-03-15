@@ -2,12 +2,9 @@
 
 #pragma once
 
-#include "he/core/assert.h"
 #include "he/core/concepts.h"
 #include "he/core/compiler.h"
 #include "he/core/hash.h"
-#include "he/core/macros.h"
-#include "he/core/memory_ops.h"
 #include "he/core/types.h"
 #include "he/core/type_traits.h"
 

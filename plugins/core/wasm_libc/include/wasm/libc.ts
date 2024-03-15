@@ -1,6 +1,6 @@
 // Copyright Chad Engler
 
-import { char, const_ptr, i32, ptr, u32 } from 'he/core/ctypes';
+import { char, i32, ptr, u32, f64 } from 'he/core/ctypes';
 import { lib } from 'he/core/lib';
 import { Pointer } from 'he/core/pointer';
 
@@ -196,4 +196,19 @@ lib.addImports('libc', {
         const dst = (summerOffset !== winterOffset && date.getTimezoneOffset() === Math.min(winterOffset, summerOffset));
         value.tm_isdst = (dst ? 1 : 0) as i32;
     },
+    heWASM_Acos: function (x: f64): f64 { return Math.acos(x) as f64; },
+    heWASM_Asin: function (x: f64): f64 { return Math.asin(x) as f64; },
+    heWASM_Atan: function (x: f64): f64 { return Math.atan(x) as f64; },
+    heWASM_Atan2: function (y: f64, x: f64): f64 { return Math.atan2(y, x) as f64; },
+    heWASM_Cos: function (x: f64): f64 { return Math.cos(x) as f64; },
+    heWASM_Exp: function (x: f64): f64 { return Math.exp(x) as f64; },
+    heWASM_Mod: function (x: f64, y: f64): f64 { return (x % y) as f64; },
+    heWASM_Log: function (x: f64): f64 { return Math.log(x) as f64; },
+    heWASM_Log10: function (x: f64): f64 { return Math.log10(x) as f64; },
+    heWASM_Log1p: function (x: f64): f64 { return Math.log1p(x) as f64; },
+    heWASM_Log2: function (x: f64): f64 { return Math.log2(x) as f64; },
+    heWASM_Pow: function (x: f64, y: f64): f64 { return Math.pow(x, y) as f64; },
+    heWASM_Round: function (x: f64): f64 { return Math.round(x) as f64; },
+    heWASM_Sin: function (x: f64): f64 { return Math.sin(x) as f64; },
+    heWASM_Tan: function (x: f64): f64 { return Math.tan(x) as f64; },
 });

@@ -31,7 +31,7 @@ namespace he
 
         for (uint32_t i = 16; i < 80; ++i)
         {
-            W[i] = Rotl32(W[i - 3] ^ W[i - 8] ^ W[i - 14] ^ W[i - 16], 1);
+            W[i] = Rotl(W[i - 3] ^ W[i - 8] ^ W[i - 14] ^ W[i - 16], 1);
         }
 
         uint32_t i = 0;
@@ -39,8 +39,8 @@ namespace he
         for (; i < 20; ++i)
         {
             const uint32_t z = d ^ (b & (c ^ d));
-            e = (Rotl32(a, 5) + z + e + W[i] + 0x5a827999UL);
-            b = Rotl32(b, 30);
+            e = (Rotl(a, 5) + z + e + W[i] + 0x5a827999UL);
+            b = Rotl(b, 30);
             t = e;
             e = d;
             d = c;
@@ -52,8 +52,8 @@ namespace he
         for (; i < 40; ++i)
         {
             const uint32_t z = b ^ c ^ d;
-            e = (Rotl32(a, 5) + z + e + W[i] + 0x6ed9eba1UL);
-            b = Rotl32(b, 30);
+            e = (Rotl(a, 5) + z + e + W[i] + 0x6ed9eba1UL);
+            b = Rotl(b, 30);
             t = e;
             e = d;
             d = c;
@@ -65,8 +65,8 @@ namespace he
         for (; i < 60; ++i)
         {
             const uint32_t z = (b & c) | (d & (b | c));
-            e = (Rotl32(a, 5) + z + e + W[i] + 0x8f1bbcdcUL);
-            b = Rotl32(b, 30);
+            e = (Rotl(a, 5) + z + e + W[i] + 0x8f1bbcdcUL);
+            b = Rotl(b, 30);
             t = e;
             e = d;
             d = c;
@@ -78,8 +78,8 @@ namespace he
         for (; i < 80; ++i)
         {
             const uint32_t z = b ^ c ^ d;
-            e = (Rotl32(a, 5) + z + e + W[i] + 0xca62c1d6UL);
-            b = Rotl32(b, 30);
+            e = (Rotl(a, 5) + z + e + W[i] + 0xca62c1d6UL);
+            b = Rotl(b, 30);
             t = e;
             e = d;
             d = c;

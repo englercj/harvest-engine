@@ -3,13 +3,9 @@
 #pragma once
 
 #include "he/core/allocator.h"
-#include "he/core/assert.h"
 #include "he/core/concepts.h"
-#include "he/core/macros.h"
-#include "he/core/memory_ops.h"
 #include "he/core/type_traits.h"
 #include "he/core/types.h"
-#include "he/core/utils.h"
 
 namespace he
 {
@@ -223,7 +219,7 @@ namespace he
         /// Gets a reference to the vector's first element. The vector must not be empty.
         ///
         /// \return A reference to the first element.
-        const T& Front() const { HE_ASSERT(!IsEmpty()); return m_data[0]; }
+        const T& Front() const;
 
         /// \copydoc Front()
         T& Front() { return const_cast<T&>(const_cast<const Vector*>(this)->Front()); }
@@ -231,7 +227,7 @@ namespace he
         /// Gets a reference to the vector's last element. The vector must not be empty.
         ///
         /// \return A reference to the last element.
-        const T& Back() const { HE_ASSERT(!IsEmpty()); return m_data[m_size - 1]; }
+        const T& Back() const;
 
         /// \copydoc Back()
         T& Back() { return const_cast<T&>(const_cast<const Vector*>(this)->Back()); }

@@ -1,5 +1,12 @@
 // Copyright Chad Engler
 
+#include "he/core/allocator.h"
+#include "he/core/assert.h"
+#include "he/core/memory_ops.h"
+#include "he/core/type_traits.h"
+#include "he/core/types.h"
+#include "he/core/utils.h"
+
 namespace he
 {
     // Performs value initialization of trivially constructible elements.
@@ -183,9 +190,8 @@ namespace he
     // Reallocates vector memory for trivially copyable types by letting the allocator handle it.
     // This can result in better performing resizes since we may not copy at all.
     template <typename T> requires(IsTriviallyCopyable<T>)
-    T* _VectorRealloc(Allocator& allocator, T* p, uint32_t size, uint32_t newSize)
+    T* _VectorRealloc(Allocator& allocator, T* p, [[maybe_unused]] uint32_t size, uint32_t newSize)
     {
-        HE_UNUSED(size);
         return static_cast<T*>(allocator.Realloc(p, newSize * sizeof(T), alignof(T)));
     }
 
@@ -418,6 +424,20 @@ namespace he
         m_size = 0;
         m_capacity = 0;
         return Exchange(m_data, nullptr);
+    }
+
+    template <typename T>
+    const T& Vector<T>::Front() const
+    {
+        HE_ASSERT(!IsEmpty());
+        return m_data[0];
+    }
+
+    template <typename T>
+    const T& Vector<T>::Back() const
+    {
+        HE_ASSERT(!IsEmpty());
+        return m_data[m_size - 1];
     }
 
     template <typename T>

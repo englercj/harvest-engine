@@ -26,6 +26,9 @@ namespace he
 #elif HE_CPU_ARM
     #define HE_HAS_HW_RAND(info) info.arm.rndr
     #define HE_HW_RAND(v) _Rndr(v)
+#else
+    #define HE_HAS_HW_RAND(info) 0
+    #define HE_HW_RAND(v) 0
 #endif
 
     bool GetSecureRandomBytes(uint8_t* dst, size_t count)
@@ -38,7 +41,7 @@ namespace he
 
     bool GetHardwareRandomBytes(uint8_t* dst, size_t count)
     {
-        const CpuInfo& cpuInfo = GetCpuInfo();
+        [[maybe_unused]] const CpuInfo& cpuInfo = GetCpuInfo();
         if (!HE_HAS_HW_RAND(cpuInfo))
             return false;
 

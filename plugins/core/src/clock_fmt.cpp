@@ -670,9 +670,12 @@ namespace he
         #else
             // Extract timezone offset from timezone conversion functions.
             struct tm gtm = t;
-            time_t gt = mktime(&gtm);
-            struct tm ltm = gmtime(gt);
-            time_t lt = mktime(&ltm);
+            const time_t gt = mktime(&gtm);
+
+            struct tm ltm{};
+            gmtime_r(&gt, &ltm);
+
+            const time_t lt = mktime(&ltm);
             const long offset = gt - lt;
             WriteUtcOffset(offset, alt);
         #endif

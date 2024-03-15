@@ -7,36 +7,16 @@
 #include "he/core/string_ops.h"
 #include "he/core/utils.h"
 
-#if defined(HE_PLATFORM_WASM)
+#if defined(HE_PLATFORM_API_WASM)
 
 #include <errno.h>
+#include <string.h>
 
 namespace he
 {
     Result Result::Success{ 0 };
     Result Result::InvalidParameter{ EINVAL };
     Result Result::NotSupported{ ENOTSUP };
-
-    struct ErrorMsgStrTable
-    {
-        #define E(n, s) char str##n[sizeof(s)];
-        #include "errno_str.inl"
-        #undef E
-    };
-
-    static const ErrorMsgStrTable s_errorStrings =
-    {
-        #define E(n, s) s,
-        #include "errno_str.inl"
-        #undef E
-    };
-
-    static const uint16_t s_errorOffsets[] =
-    {
-        #define E(n, s) [n] = offsetof(ErrorMsgStrTable, str##n),
-        #include "errno_str.inl"
-        #undef E
-    };
 
     Result Result::FromLastError()
     {
@@ -45,15 +25,39 @@ namespace he
 
     void Result::ToString(String& out) const
     {
-        if (m_code < 0 || m_code >= HE_LENGTH_OF(s_errorOffsets))
+        // Try to fit the message into the string's embedded buffer. The English error strings
+        // are almost all less than 30 characters which fits in the embedded buffer.
+        // If we can't fit in the embedded buffer then we jump to 128 characters and grow from
+        // there as needed. The jump in size is to make it very likely we only ever allocate once.
+        const uint32_t offset = out.Size();
+        uint32_t size = String::MaxEmbedCharacters;
+        out.Resize(offset + size, DefaultInit);
+
+        int e = 0;
+
+        do
+        {
+            e = strerror_r(m_code, out.Data() + offset, size);
+            if (e == ERANGE)
+            {
+                // The English error strings cap out at like 50 characters, so we should never
+                // have to allocate more than once.
+                size = Max(128u, size * 2);
+                out.Resize(offset + size, DefaultInit);
+            }
+        } while (e == ERANGE);
+
+        if (e == EINVAL)
         {
             FormatTo(out, "Unknown error: {}", m_code);
-            return;
         }
-
-        const char* errorStrings = reinterpret_cast<const char*>(&s_errorStrings);
-        const char* message = errorStrings + s_errorOffsets[m_code];
-        out = message;
+        else
+        {
+            // Resizing is necessary here because we used the string like a buffer so Size()
+            // doesn't accurately represent the length of the string.
+            const uint32_t len = StrLen(out.Data() + offset);
+            out.Resize(offset + len);
+        }
     }
 }
 

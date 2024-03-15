@@ -66,7 +66,7 @@ namespace he
 
     template <typename T> constexpr bool IsZeroSafe(const Vec2<T>& v)
     {
-        return Dot(v, v) > Float_ZeroSafe;
+        return Dot(v, v) > Limits<T>::ZeroSafe;
     }
 
     // --------------------------------------------------------------------------------------------
@@ -122,7 +122,7 @@ namespace he
         return { a.x * b.x + c.x, a.y * b.y + c.y };
     }
 
-    template <typename T> constexpr Vec2<T> Lerp(const Vec2<T>& a, const Vec2<T>& b, float t)
+    template <typename T> constexpr Vec2<T> Lerp(const Vec2<T>& a, const Vec2<T>& b, T t)
     {
         return
         {
@@ -131,7 +131,7 @@ namespace he
         };
     }
 
-    template <typename T> constexpr Vec2<T> SmoothStep(float a, float b, const Vec2<T>& t)
+    template <typename T> constexpr Vec2<T> SmoothStep(T a, T b, const Vec2<T>& t)
     {
         return
         {
@@ -232,7 +232,7 @@ namespace he
 
     template <typename T> inline bool IsNormalized(const Vec2<T>& v)
     {
-        return Abs(Len(v) - 1) < 40.0f * Float_Epsilon;
+        return Abs(Len(v) - 1) < (T(40) * Limits<T>::Epsilon);
     }
 
     // --------------------------------------------------------------------------------------------

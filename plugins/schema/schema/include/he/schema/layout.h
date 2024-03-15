@@ -3,6 +3,7 @@
 #pragma once
 
 #include "he/core/assert.h"
+#include "he/core/compiler.h"
 #include "he/core/hash.h"
 #include "he/core/memory_ops.h"
 #include "he/core/span.h"
@@ -13,7 +14,9 @@
 #include "he/core/vector.h"
 #include "he/schema/types.h"
 
-namespace std { struct random_access_iterator_tag; }
+HE_BEGIN_NAMESPACE_STD
+struct random_access_iterator_tag;
+HE_END_NAMESPACE_STD
 
 namespace he::schema
 {

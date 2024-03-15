@@ -365,7 +365,7 @@ namespace he::dragonbox
 
         while (true)
         {
-            const uint32_t q = Rotr32(n * ModInv25, 2);
+            const uint32_t q = Rotr(n * ModInv25, 2);
             if (q > Limits<uint32_t>::Max / 100)
                 break;
 
@@ -373,7 +373,7 @@ namespace he::dragonbox
             s += 2;
         }
 
-        const uint32_t q = Rotr32(n * ModInv5, 1);
+        const uint32_t q = Rotr(n * ModInv5, 1);
         if (q <= Limits<uint32_t>::Max / 10)
         {
             n = q;
@@ -410,7 +410,7 @@ namespace he::dragonbox
         int s = 0;
         while (true)
         {
-            const uint64_t q = Rotr64(n * ModInv25, 2);
+            const uint64_t q = Rotr(n * ModInv25, 2);
             if (q > Limits<uint64_t>::Max / 100)
                 break;
 
@@ -418,7 +418,7 @@ namespace he::dragonbox
             s += 2;
         }
 
-        const uint64_t q = Rotr64(n * ModInv5, 1);
+        const uint64_t q = Rotr(n * ModInv5, 1);
         if (q <= Limits<uint64_t>::Max / 10)
         {
             n = q;

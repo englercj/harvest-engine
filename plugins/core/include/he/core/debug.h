@@ -27,7 +27,7 @@
 
     #if defined(__INTELLISENSE__)
         #define HE_DEBUG_BREAK() (false)
-    #elif defined(HE_PLATFORM_WASM)
+    #elif defined(HE_PLATFORM_API_WASM)
         extern "C" void heWASM_Debugger();
         #define HE_DEBUG_BREAK() (heWASM_Debugger(), false)
     #elif HE_COMPILER_CLANG

@@ -24,6 +24,10 @@ namespace he
     };
 
     bool _CanCurentThreadWait();
+
     int32_t _AtomicWaitCurrentThread(int32_t* value, int32_t expected, int64_t timeoutNs);
-    int32_t _AtomicWaitCurrentThread64(int64_t* value, int64_t expected, int64_t timeoutNs);
+    int32_t _AtomicWaitCurrentThread(uint32_t* value, uint32_t expected, int64_t timeoutNs);
+
+    void _AtomicNotify(int32_t* value, uint32_t count);
+    void _AtomicNotify(uint32_t* value, uint32_t count);
 }

@@ -208,14 +208,14 @@ HE_TEST(core, sync, Semaphore)
     Thread t = Thread::Run([&]()
     {
         --counter;
-        while (counter > 0) { HE_SPIN_WAIT_PAUSE(); }
+        while (counter > 0) { HE_CPU_SPIN_WAIT_PAUSE(); }
 
         HE_EXPECT(sem.Wait(DelayShort));
         HE_EXPECT(!sem.Wait(DelayLong));
     });
 
     --counter;
-    while (counter > 0) { HE_SPIN_WAIT_PAUSE(); }
+    while (counter > 0) { HE_CPU_SPIN_WAIT_PAUSE(); }
 
     sem.Notify();
     Thread::Sleep(DelayMedium);
@@ -247,14 +247,14 @@ HE_TEST(core, sync, SyncEvent)
         Thread t = Thread::Run([&]()
         {
             --counter;
-            while (counter > 0) { HE_SPIN_WAIT_PAUSE(); }
+            while (counter > 0) { HE_CPU_SPIN_WAIT_PAUSE(); }
 
             HE_EXPECT(evt.Wait(DelayShort));
             HE_EXPECT(evt.Wait(DelayLong));
         });
 
         --counter;
-        while (counter > 0) { HE_SPIN_WAIT_PAUSE(); }
+        while (counter > 0) { HE_CPU_SPIN_WAIT_PAUSE(); }
 
         evt.Signal();
         Thread::Sleep(DelayMedium);

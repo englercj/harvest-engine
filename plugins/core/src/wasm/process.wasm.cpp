@@ -2,23 +2,24 @@
 
 #include "he/core/process.h"
 
-#if defined(HE_PLATFORM_WASM)
+#include "he/core/compiler.h"
+#include "he/core/string.h"
+
+#if defined(HE_PLATFORM_API_WASM)
 
 #include "he/core/wasm/lib_core.wasm.h"
 
 namespace he
 {
-    Result GetEnv(const char* name, String& outValue)
+    Result GetEnv([[maybe_unused]] const char* name, [[maybe_unused]] String& outValue)
     {
         // TODO: Should we implement some kind of env storage?
-        HE_UNUSED(name, outValue);
         return Result::NotSupported;
     }
 
-    Result SetEnv(const char* name, const char* value)
+    Result SetEnv([[maybe_unused]] const char* name, [[maybe_unused]] const char* value)
     {
         // TODO: Should we implement some kind of env storage?
-        HE_UNUSED(name, value);
         return Result::NotSupported;
     }
 
@@ -34,7 +35,7 @@ namespace he
         return pid == GetCurrentProcessId();
     }
 
-    Result GetCurrentProcessFilename(String& out)
+    Result GetCurrentProcessFilename([[maybe_unused]] String& out)
     {
         // No such thing as process names in wasm.
         return Result::NotSupported;
@@ -43,7 +44,7 @@ namespace he
     [[noreturn]] void TerminateProcess()
     {
         // Cause an unconditional trap to terminate the process.
-        __asm__ volatile("unreachable");
+        HE_UNREACHABLE();
     }
 }
 

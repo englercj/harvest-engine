@@ -1,6 +1,10 @@
 // Copyright Chad Engler
 
+#include "he/core/assert.h"
+#include "he/core/cpu.h"
 #include "he/core/macros.h"
+#include "he/core/memory_ops.h"
+#include "he/core/types.h"
 
 #include <intrin.h>
 

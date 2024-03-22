@@ -87,8 +87,8 @@ export class Loader
 
         const module = await WebAssembly.instantiate(buffer, lib.imports);
 
-        lib.setExports(module.instance.exports);
-        lib.setModule(module.module);
+        lib.exports = module.instance.exports;
+        lib.module = module.module;
         return module.instance;
     }
 
@@ -96,7 +96,7 @@ export class Loader
     {
         const instance = await WebAssembly.instantiate(source, lib.imports);
 
-        lib.setExports(instance.exports);
+        lib.exports = instance.exports;
         return instance;
     }
 }

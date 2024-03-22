@@ -78,20 +78,17 @@ namespace he
         return status;
     }
 
-    void* DLOpen(const char* path)
+    void* DLOpen([[maybe_unused]] const char* path)
     {
-        HE_UNUSED(path);
         return nullptr;
     }
 
-    void DLClose(void* handle)
+    void DLClose([[maybe_unused]] void* handle)
     {
-        HE_UNUSED(handle);
     }
 
-    void* DLSymbol(void* handle, const char* symbol)
+    void* DLSymbol([[maybe_unused]] void* handle, [[maybe_unused]] const char* symbol)
     {
-        HE_UNUSED(handle, symbol);
         return nullptr;
     }
 }

@@ -210,9 +210,8 @@ namespace he::rhi::d3d12
         return m_device->MakeResult(hr);
     }
 
-    void CopyCmdListImpl::BeginGroup(const char* msg)
+    void CopyCmdListImpl::BeginGroup([[maybe_unused]] const char* msg)
     {
-        HE_UNUSED(msg);
     #if HE_RHI_ENABLE_PIX
         PIXBeginEvent(m_d3dCmdList, 1, msg);
     #endif
@@ -225,9 +224,8 @@ namespace he::rhi::d3d12
     #endif
     }
 
-    void CopyCmdListImpl::SetMarker(const char* msg)
+    void CopyCmdListImpl::SetMarker([[maybe_unused]] const char* msg)
     {
-        HE_UNUSED(msg);
     #if HE_RHI_ENABLE_PIX
         PIXSetMarker(m_d3dCmdList, 1, msg);
     #endif
@@ -306,9 +304,8 @@ namespace he::rhi::d3d12
         return m_device->MakeResult(hr);
     }
 
-    void ComputeCmdListImpl::BeginGroup(const char* msg)
+    void ComputeCmdListImpl::BeginGroup([[maybe_unused]] const char* msg)
     {
-        HE_UNUSED(msg);
     #if HE_RHI_ENABLE_PIX
         PIXBeginEvent(m_d3dCmdList, 1, msg);
     #endif
@@ -321,9 +318,8 @@ namespace he::rhi::d3d12
     #endif
     }
 
-    void ComputeCmdListImpl::SetMarker(const char* msg)
+    void ComputeCmdListImpl::SetMarker([[maybe_unused]] const char* msg)
     {
-        HE_UNUSED(msg);
     #if HE_RHI_ENABLE_PIX
         PIXSetMarker(m_d3dCmdList, 1, msg);
     #endif
@@ -490,9 +486,8 @@ namespace he::rhi::d3d12
         return m_device->MakeResult(hr);
     }
 
-    void RenderCmdListImpl::BeginGroup(const char* msg)
+    void RenderCmdListImpl::BeginGroup([[maybe_unused]] const char* msg)
     {
-        HE_UNUSED(msg);
     #if HE_RHI_ENABLE_PIX
         PIXBeginEvent(m_d3dCmdList, 1, msg);
     #endif
@@ -505,9 +500,8 @@ namespace he::rhi::d3d12
     #endif
     }
 
-    void RenderCmdListImpl::SetMarker(const char* msg)
+    void RenderCmdListImpl::SetMarker([[maybe_unused]] const char* msg)
     {
-        HE_UNUSED(msg);
     #if HE_RHI_ENABLE_PIX
         PIXSetMarker(m_d3dCmdList, 1, msg);
     #endif

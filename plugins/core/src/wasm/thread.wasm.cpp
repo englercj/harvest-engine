@@ -55,8 +55,10 @@ namespace he
         s_localThreadState = &s_mainThreadState;
     }
 
-    void _TerminateMainThread()
+    void _TerminateMainThread(int rc)
     {
+        heWASM_SetExitCode(rc);
+
         s_threadStatesMutex.Acquire();
         s_threadStates.Remove(&s_mainThreadState);
         s_threadStatesMutex.Release();

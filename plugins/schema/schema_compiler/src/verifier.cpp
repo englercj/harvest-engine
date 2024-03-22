@@ -141,9 +141,8 @@ namespace he::schema
                 if (!HasFlag(node.id, TypeIdFlag))
                 {
                     TypeId id = 0;
-                    const bool idResult = GetSecureRandomBytes(reinterpret_cast<uint8_t*>(&id), sizeof(id));
+                    [[maybe_unused]] const bool idResult = GetSecureRandomBytes(reinterpret_cast<uint8_t*>(&id), sizeof(id));
                     HE_ASSERT(idResult);
-                    HE_UNUSED(idResult);
 
                     id |= TypeIdFlag;
 

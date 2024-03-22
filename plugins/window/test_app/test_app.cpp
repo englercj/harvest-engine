@@ -130,8 +130,7 @@ namespace he
             }
             case window::EventKind::ViewDndStart:
             {
-                const auto& evt = static_cast<const window::ViewDndStartEvent&>(ev);
-                HE_UNUSED(evt);
+                [[maybe_unused]] const auto& evt = static_cast<const window::ViewDndStartEvent&>(ev);
                 break;
             }
             case window::EventKind::ViewDndMove:
@@ -148,14 +147,12 @@ namespace he
             }
             case window::EventKind::ViewDndEnd:
             {
-                const auto& evt = static_cast<const window::ViewDndEndEvent&>(ev);
-                HE_UNUSED(evt);
+                [[maybe_unused]] const auto& evt = static_cast<const window::ViewDndEndEvent&>(ev);
                 break;
             }
             case window::EventKind::Initialized:
             {
-                const auto& evt = static_cast<const window::InitializedEvent&>(ev);
-                HE_UNUSED(evt);
+                [[maybe_unused]] const auto& evt = static_cast<const window::InitializedEvent&>(ev);
 
                 window::ViewDesc desc;
                 desc.title = "HE Window Test App";
@@ -166,26 +163,22 @@ namespace he
             }
             case window::EventKind::Terminating:
             {
-                const auto& evt = static_cast<const window::TerminatingEvent&>(ev);
-                HE_UNUSED(evt);
+                [[maybe_unused]] const auto& evt = static_cast<const window::TerminatingEvent&>(ev);
                 break;
             }
             case window::EventKind::Suspending:
             {
-                const auto& evt = static_cast<const window::SuspendingEvent&>(ev);
-                HE_UNUSED(evt);
+                [[maybe_unused]] const auto& evt = static_cast<const window::SuspendingEvent&>(ev);
                 break;
             }
             case window::EventKind::Resuming:
             {
-                const auto& evt = static_cast<const window::ResumingEvent&>(ev);
-                HE_UNUSED(evt);
+                [[maybe_unused]] const auto& evt = static_cast<const window::ResumingEvent&>(ev);
                 break;
             }
             case window::EventKind::DisplayChanged:
             {
-                const auto& evt = static_cast<const window::DisplayChangedEvent&>(ev);
-                HE_UNUSED(evt);
+                [[maybe_unused]] const auto& evt = static_cast<const window::DisplayChangedEvent&>(ev);
                 break;
             }
         }

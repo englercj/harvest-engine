@@ -272,7 +272,7 @@ namespace he
 #else
         = false;
 
-    /// \ignore
+    /// \internal
     template <typename T>
     inline constexpr bool IsSame<T, T> = true;
 #endif
@@ -401,7 +401,7 @@ namespace he
     template <typename T>
     inline constexpr bool IsConst = false;
 
-    /// \ignore
+    /// \internal
     template <typename T>
     inline constexpr bool IsConst<const T> = true;
 
@@ -411,7 +411,7 @@ namespace he
     template <typename T>
     inline constexpr bool IsVolatile = false;
 
-    /// \ignore
+    /// \internal
     template <typename T>
     inline constexpr bool IsVolatile<volatile T> = true;
 
@@ -506,11 +506,11 @@ namespace he
     template <typename T>
     inline constexpr uint32_t Rank = 0; // determine number of dimensions of array _Ty
 
-    /// \ignore
+    /// \internal
     template <typename T, uint32_t N>
     inline constexpr uint32_t Rank<T[N]> = Rank<T> + 1;
 
-    /// \ignore
+    /// \internal
     template <typename T>
     inline constexpr uint32_t Rank<T[]> = Rank<T> + 1;
 
@@ -524,15 +524,15 @@ namespace he
     template <typename T, uint32_t Dim = 0>
     inline constexpr uint32_t Extent = 0;
 
-    /// \ignore
+    /// \internal
     template <typename T, uint32_t N>
     inline constexpr uint32_t Extent<T[N], 0> = N;
 
-    /// \ignore
+    /// \internal
     template <typename T, uint32_t Dim, uint32_t N>
     inline constexpr uint32_t Extent<T[N], Dim> = Extent<T, Dim - 1>;
 
-    /// \ignore
+    /// \internal
     template <typename T, uint32_t Dim>
     inline constexpr uint32_t Extent<T[], Dim> = Extent<T, Dim - 1>;
 

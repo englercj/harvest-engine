@@ -57,8 +57,7 @@ namespace he
     void RWLock::ReleaseRead()
     {
         int32_t* rwlock = reinterpret_cast<int32_t*>(m_opaque);
-        const int32_t value = __atomic_fetch_sub(rwlock, 1, __ATOMIC_RELEASE);
-        HE_UNUSED(value);
+        [[maybe_unused]] const int32_t value = __atomic_fetch_sub(rwlock, 1, __ATOMIC_RELEASE);
         HE_ASSERT(value >= 0, HE_MSG("RWLock::ReleaseRead() called on a lock that has a write lock held"));
 
         // Notify only a single agent. Readers won't be waiting on this release, and only one

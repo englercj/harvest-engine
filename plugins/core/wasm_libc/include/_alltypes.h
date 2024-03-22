@@ -2,12 +2,11 @@
 
 #pragma once
 
+#include "_common.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#define _Addr __PTRDIFF_TYPE__
-#define _Int64 __INT64_TYPE__
 
 typedef signed char     int8_t;
 typedef short           int16_t;
@@ -34,8 +33,8 @@ typedef _Int64 off_t;
 typedef __WCHAR_TYPE__ wchar_t;
 #endif
 
-#undef _Addr
-#undef _Int64
+typedef struct _IO_FILE FILE;
+typedef struct _locale_struct* locale_t;
 
 #ifdef __cplusplus
 }

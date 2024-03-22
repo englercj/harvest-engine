@@ -58,8 +58,11 @@ filter { "system:wasm" }
     architecture("wasm32")
     toolset("wasmcc")
 
-filter { "system:wasm", "kind:StaticLib or SharedLib" }
-    targetextension ".bc"
+filter { "system:wasm", "kind:StaticLib" }
+    targetextension ".a"
+
+filter { "system:wasm", "kind:SharedLib" }
+    targetextension ".so.a"
 
 filter { "system:wasm", "kind:ConsoleApp or WindowedApp" }
     targetextension ".wasm"
@@ -77,6 +80,7 @@ filter {}
 -- This is mostly just clang using wasm-ld for linking and a few extra wasm flags
 --
 
+local gcc = premake.tools.gcc
 local clang = premake.tools.clang
 local wasmcc = {}
 
@@ -84,8 +88,8 @@ wasmcc.getrunpathdirs = clang.getrunpathdirs
 
 wasmcc.shared = table.merge(clang.shared, {
     architecture = {
-        wasm32 = "-target wasm32 -D__WASM32__",
-        wasm64 = "-target wasm64 -D__WASM64__",
+        wasm32 = "-target wasm32 -D__WASM32__ -D__WASM__",
+        wasm64 = "-target wasm64 -D__WASM64__ -D__WASM__",
     },
     wasmfeatures = {
         RelaxedSIMD = "-mrelaxed-simd",
@@ -109,7 +113,17 @@ wasmcc.shared = table.merge(clang.shared, {
 wasmcc.cflags = table.merge(clang.cflags, {
 })
 
+wasmcc.cppflags = table.merge(gcc.cppflags, { -- clang has no 'cppflags' object
+})
+
 wasmcc.cxxflags = table.merge(clang.cxxflags, {
+})
+
+wasmcc.ldflags = table.merge(clang.ldflags, {
+    architecture = {
+        wasm32 = "-target wasm32",
+        wasm64 = "-target wasm64",
+    },
 })
 
 wasmcc.tools = {
@@ -128,7 +142,7 @@ function wasmcc.getcflags(cfg)
 end
 
 function wasmcc.getcppflags(cfg)
-    local flags = clang.getcppflags(cfg)
+    local flags = config.mapFlags(cfg, wasmcc.cppflags)
     return flags
 end
 
@@ -152,7 +166,6 @@ end
 
 function wasmcc.getdefines(defines)
     local flags = clang.getdefines(defines)
-    table.insert(flags, "-D__WASM__")
     return flags
 end
 
@@ -177,8 +190,7 @@ function wasmcc.getsharedlibarg(cfg)
 end
 
 function wasmcc.getldflags(cfg)
-    local flags = clang.getldflags(cfg)
-    table.insert(flags, "-fuse-ld=wasm-ld")
+    local flags = config.mapFlags(cfg, wasmcc.ldflags)
     return flags
 end
 

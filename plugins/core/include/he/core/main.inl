@@ -17,13 +17,13 @@ int __stdcall wWinMain(struct HINSTANCE__*, struct HINSTANCE__*, wchar_t*, int) 
 
 #elif defined(HE_PLATFORM_API_WASM)
 
-namespace he { void _InitializeMainThread(); void _TerminateMainThread(); }
+namespace he { void _InitializeMainThread(); void _TerminateMainThread(int); }
 
 HE_EXPORT int main(int argc, char* argv[])
 {
     he::_InitializeMainThread();
     const int rc = he::AppMain(argc, argv);
-    he::_TerminateMainThread();
+    he::_TerminateMainThread(rc);
     return rc;
 }
 

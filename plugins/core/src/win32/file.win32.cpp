@@ -98,21 +98,17 @@ namespace he
         return *this;
     }
 
-    Result File::Open(const char* path, FileOpenMode mode, FileOpenFlag flags)
+    Result File::Open(const char* path, FileAccessMode access, FileCreateMode create, FileOpenFlag flags)
     {
         if (!HE_VERIFY(m_fd == Win32InvalidFd))
             return Result::InvalidParameter;
 
-        HANDLE handle = Win32FileOpen(path, mode, flags, 0);
+        HANDLE handle = Win32FileOpen(path, access, create, flags, 0);
 
         if (handle == INVALID_HANDLE_VALUE)
             return Result::FromLastError();
 
-        if (mode == FileOpenMode::WriteAppend || mode == FileOpenMode::ReadWriteAppend)
-            ::SetFilePointer(handle, 0, nullptr, FILE_END);
-
         m_fd = reinterpret_cast<intptr_t>(handle);
-
         return Result::Success;
     }
 

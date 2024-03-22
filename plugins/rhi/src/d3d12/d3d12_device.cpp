@@ -478,9 +478,8 @@ namespace he::rhi::d3d12
             if (buffer->heapType == HeapType::Upload)
             {
                 D3D12_RANGE d3dReadRange{};
-                HRESULT hr = buffer->d3dResource->Map(0, &d3dReadRange, &buffer->cpuAddress);
+                [[maybe_unused]] const HRESULT hr = buffer->d3dResource->Map(0, &d3dReadRange, &buffer->cpuAddress);
                 HE_ASSERT(SUCCEEDED(hr));
-                HE_UNUSED(hr);
             }
             // A non-upload buffer with a size > 0 means we do have a read hint.
             else if (size > 0)
@@ -488,16 +487,14 @@ namespace he::rhi::d3d12
                 D3D12_RANGE d3dReadRange{};
                 d3dReadRange.Begin = offset;
                 d3dReadRange.End = offset + size;
-                HRESULT hr = buffer->d3dResource->Map(0, &d3dReadRange, &buffer->cpuAddress);
+                [[maybe_unused]] const HRESULT hr = buffer->d3dResource->Map(0, &d3dReadRange, &buffer->cpuAddress);
                 HE_ASSERT(SUCCEEDED(hr));
-                HE_UNUSED(hr);
             }
             // Passing a nullptr read range means we plan to read the entire buffer.
             else
             {
-                HRESULT hr = buffer->d3dResource->Map(0, nullptr, &buffer->cpuAddress);
+                [[maybe_unused]] const HRESULT hr = buffer->d3dResource->Map(0, nullptr, &buffer->cpuAddress);
                 HE_ASSERT(SUCCEEDED(hr));
-                HE_UNUSED(hr);
             }
         }
 
@@ -753,9 +750,8 @@ namespace he::rhi::d3d12
         SetDescriptorTableViews<SamplerImpl>(table, rangeIndex, descIndex, count, samplers);
     }
 
-    Result DeviceImpl::CreateCpuFence(const CpuFenceDesc& desc, CpuFence*& out)
+    Result DeviceImpl::CreateCpuFence([[maybe_unused]] const CpuFenceDesc& desc, CpuFence*& out)
     {
-        HE_UNUSED(desc);
         out = nullptr;
 
         CpuFenceImpl* fence = m_instance->m_allocator.New<CpuFenceImpl>();
@@ -790,9 +786,8 @@ namespace he::rhi::d3d12
         m_instance->m_allocator.Delete(fence);
     }
 
-    Result DeviceImpl::CreateGpuFence(const GpuFenceDesc& desc, GpuFence*& out)
+    Result DeviceImpl::CreateGpuFence([[maybe_unused]] const GpuFenceDesc& desc, GpuFence*& out)
     {
-        HE_UNUSED(desc);
         out = nullptr;
 
         ID3D12Fence* d3dFence = nullptr;

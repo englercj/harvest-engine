@@ -21,17 +21,17 @@
 #endif
 
 #if HE_CPU_X86
-    extern "C" unsigned int _lzcnt_u32(unsigned int);
+    extern "C" unsigned int __lzcnt(unsigned int);
     extern "C" unsigned int _tzcnt_u32(unsigned int);
     extern "C" unsigned int __popcnt(unsigned int);
-    #pragma intrinsic(_lzcnt_u32, _tzcnt_u32, __popcnt)
+    #pragma intrinsic(__lzcnt, _tzcnt_u32, __popcnt)
 #endif
 
 #if HE_CPU_X86_64
-    extern "C" unsigned __int64 _lzcnt_u64(unsigned __int64);
+    extern "C" unsigned __int64 __lzcnt64(unsigned __int64);
     extern "C" unsigned __int64 _tzcnt_u64(unsigned __int64);
     extern "C" unsigned __int64 __popcnt64(unsigned __int64);
-    #pragma intrinsic(_lzcnt_u64, _tzcnt_u64, __popcnt64)
+    #pragma intrinsic(__lzcnt64, _tzcnt_u64, __popcnt64)
 #endif
 
 #if HE_CPU_ARM
@@ -48,7 +48,7 @@ namespace he
 {
 #if HE_COMPILER_MSVC
     // --------------------------------------------------------------------------------------------
-    HE_FORCE_INLINE uint32_t _Clz32Bsr(uint32_t x)
+    HE_FORCE_INLINE uint32_t _Clz32_Bsr(uint32_t x)
     {
         unsigned long r = 0;
         if (!_BitScanReverse(&r, x))
@@ -56,7 +56,7 @@ namespace he
         return static_cast<uint32_t>(31 - r);
     }
 
-    HE_FORCE_INLINE uint32_t _Clz64Bsr(uint64_t x)
+    HE_FORCE_INLINE uint32_t _Clz64_Bsr(uint64_t x)
     {
         unsigned long r = 0;
     #if HE_CPU_64_BIT
@@ -74,7 +74,7 @@ namespace he
         return static_cast<uint32_t>(63 - r);
     }
 
-    HE_FORCE_INLINE uint32_t _Crz32Bsf(uint32_t x)
+    HE_FORCE_INLINE uint32_t _Crz32_Bsf(uint32_t x)
     {
         unsigned long r = 0;
         if (!_BitScanForward(&r, x))
@@ -82,7 +82,7 @@ namespace he
         return static_cast<uint32_t>(r);
     }
 
-    HE_FORCE_INLINE uint32_t _Crz64Bsf(uint64_t x)
+    HE_FORCE_INLINE uint32_t _Crz64_Bsf(uint64_t x)
     {
         unsigned long r = 0;
     #if HE_CPU_64_BIT
@@ -105,25 +105,35 @@ namespace he
 
 #if HE_CPU_X86
     // --------------------------------------------------------------------------------------------
-    HE_FORCE_INLINE uint32_t _Clz64Lzcnt(uint64_t x)
+    HE_FORCE_INLINE uint32_t _Clz32_Lzcnt(uint64_t x)
+    {
+        return static_cast<uint32_t>(__lzcnt(x));
+    }
+
+    HE_FORCE_INLINE uint32_t _Clz64_Lzcnt(uint64_t x)
     {
     #if HE_CPU_X86_64
         return static_cast<uint32_t>(__lzcnt64(x));
     #else
         const uint32_t high = static_cast<uint32_t>(x >> 32);
         const uint32_t low = static_cast<uint32_t>(x);
-        return high == 0 ? (32 + _lzcnt_u32(low)) : _lzcnt_u32(high);
+        return high == 0 ? (32 + _Clz32_Lzcnt(low)) : _Clz32_Lzcnt(high);
     #endif
     }
 
-    HE_FORCE_INLINE uint32_t _Crz64Tzcnt(uint64_t x)
+    HE_FORCE_INLINE uint32_t _Crz32_Tzcnt(uint64_t x)
+    {
+        return static_cast<uint32_t>(_tzcnt_u32(x));
+    }
+
+    HE_FORCE_INLINE uint32_t _Crz64_Tzcnt(uint64_t x)
     {
     #if HE_CPU_X86_64
         return static_cast<uint32_t>(_tzcnt_u64(x));
     #else
         const uint32_t high = static_cast<uint32_t>(x >> 32);
         const uint32_t low = static_cast<uint32_t>(x);
-        return low == 0 ? (32 + _tzcnt_u32(high)) : _tzcnt_u32(low);
+        return low == 0 ? (32 + _Crz32_Tzcnt(high)) : _Crz32_Tzcnt(low);
     #endif
     }
 #endif
@@ -190,45 +200,6 @@ namespace he
     #endif
     }
 #endif
-
-#endif
-
-    // --------------------------------------------------------------------------------------------
-#if defined(HE_PLATFORM_API_WASM)
-    inline int32_t MemCmp(const void* a, const void* b, size_t len)
-    {
-        const uint8_t* a8 = static_cast<const uint8_t*>(a);
-        const uint8_t* b8 = static_cast<const uint8_t*>(b);
-
-        while (len)
-        {
-            if (*a8 != *b8)
-                return *a8 - *b8;
-
-            ++a8;
-            ++b8;
-            --len;
-        }
-
-        return 0;
-    }
-
-    inline const void* MemChr(const void* mem, int ch, size_t len)
-    {
-        const uint8_t* mem8 = static_cast<const uint8_t*>(mem);
-        ch = static_cast<uint8_t>(ch);
-
-        while (len)
-        {
-            if (*mem8 == ch)
-                return mem8;
-
-            ++mem8;
-            --len;
-        }
-
-        return nullptr;
-    }
 #endif
 
     // --------------------------------------------------------------------------------------------
@@ -238,17 +209,17 @@ namespace he
         return static_cast<uint32_t>(__builtin_clz(x));
     #elif HE_COMPILER_MSVC
         #if HE_CPU_X86 && HE_SIMD_AVX2
-            return _lzcnt_u32(x);
+            return _Clz32_Lzcnt(x);
         #elif HE_CPU_X86
             const CpuInfo& info = GetCpuInfo();
             if (info.x86.avx2)
-                return _lzcnt_u32(x);
+                return _Clz32_Lzcnt(x);
             else
-                return _Clz32Bsr(x);
+                return _Clz32_Bsr(x);
         #elif HE_CPU_ARM
             return _CountLeadingZeros(x);
         #else
-            return _Clz32Bsr(x);
+            return _Clz32_Bsr(x);
         #endif
     #else
         #error "No clz32 implementation"
@@ -261,17 +232,17 @@ namespace he
         return static_cast<uint32_t>(__builtin_clzll(x));
     #elif HE_COMPILER_MSVC
         #if HE_CPU_X86 && HE_SIMD_AVX2
-            return _Clz64Lzcnt(x);
+            return _Clz64_Lzcnt(x);
         #elif HE_CPU_X86
             const CpuInfo& info = GetCpuInfo();
             if (info.x86.avx2)
-                return _Clz64Lzcnt(x);
+                return _Clz64_Lzcnt(x);
             else
-                return _Clz64Bsr(x);
+                return _Clz64_Bsr(x);
         #elif HE_CPU_ARM
             return _CountLeadingZeros64(x);
         #else
-            return _Clz64Bsr(x);
+            return _Clz64_Bsr(x);
         #endif
     #else
         #error "No clz64 implementation"
@@ -285,17 +256,17 @@ namespace he
         return static_cast<uint32_t>(__builtin_ctz(x));
     #elif HE_COMPILER_MSVC
         #if HE_CPU_X86 && HE_SIMD_AVX2
-            return _tzcnt_u32(x);
+            return _Crz32_Tzcnt(x);
         #elif HE_CPU_X86
             const CpuInfo& info = GetCpuInfo();
             if (info.x86.avx2)
-                return _tzcnt_u32(x);
+                return _Crz32_Tzcnt(x);
             else
-                return _Crz32Bsf(x);
+                return _Crz32_Bsf(x);
         #elif HE_CPU_ARM
             return _CountTrailingZeroes(x);
         #else
-            return _Crz32Bsf(x);
+            return _Crz32_Bsf(x);
         #endif
     #else
         #error "No ctz32 implementation"
@@ -308,17 +279,17 @@ namespace he
         return static_cast<uint32_t>(__builtin_ctzll(x));
     #elif HE_COMPILER_MSVC
         #if HE_CPU_X86 && HE_SIMD_AVX2
-            return _Crz64Tzcnt(x);
+            return _Crz64_Tzcnt(x);
         #elif HE_CPU_X86
             const CpuInfo& info = GetCpuInfo();
             if (info.x86.avx2)
-                return _Crz64Tzcnt(x);
+                return _Crz64_Tzcnt(x);
             else
-                return _Crz64Bsf(x);
+                return _Crz64_Bsf(x);
         #elif HE_CPU_ARM
             return _CountTrailingZeroes64(x);
         #else
-            return _Crz64Bsf(x);
+            return _Crz64_Bsf(x);
         #endif
     #else
         #error "No ctz64 implementation"

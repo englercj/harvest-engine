@@ -147,6 +147,24 @@ HE_TEST(core, memory_ops, MemLess)
 }
 
 // ------------------------------------------------------------------------------------------------
+HE_TEST(core, memory_ops, CountLeadingZeros)
+{
+    // TODO: CountLeadingZeros(uint32_t), CountLeadingZeros(uint64_t)
+}
+
+// ------------------------------------------------------------------------------------------------
+HE_TEST(core, memory_ops, CountTrailingZeros)
+{
+    // TODO: CountTrailingZeros(uint32_t), CountTrailingZeros(uint64_t)
+}
+
+// ------------------------------------------------------------------------------------------------
+HE_TEST(core, memory_ops, PopCount)
+{
+    // TODO: PopCount(uint32_t), PopCount(uint64_t)
+}
+
+// ------------------------------------------------------------------------------------------------
 HE_TEST(core, memory_ops, ByteSwap)
 {
     HE_EXPECT_EQ(ByteSwap(uint16_t(0x0102)), uint16_t(0x0201));

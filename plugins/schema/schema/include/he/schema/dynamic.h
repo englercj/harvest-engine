@@ -687,7 +687,7 @@ namespace he::schema
             VisitStruct(st);
         }
 
-        virtual void VisitValue(const Access<DynamicValue>& value) { HE_UNUSED(value); }
+        virtual void VisitValue([[maybe_unused]] const Access<DynamicValue>& value) {}
 
     protected:
         // This section has functions that child classes are less likely to override.

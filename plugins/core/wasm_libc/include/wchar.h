@@ -2,7 +2,7 @@
 
 #pragma once
 
-#include "alltypes.h"
+#include "_alltypes.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -11,10 +11,9 @@ extern "C" {
 #undef WEOF
 #define WEOF 0xffffffffU
 
-typedef struct __mbstate_t { unsigned __opaque1, __opaque2; } mbstate_t;
-#define __DEFINED_mbstate_t
-
 struct tm;
+
+typedef struct __mbstate_t { unsigned __opaque1, __opaque2; } mbstate_t;
 
 wchar_t* wcschr(const wchar_t*, wchar_t);
 wchar_t* wcsrchr(const wchar_t*, wchar_t);

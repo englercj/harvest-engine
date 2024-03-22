@@ -219,7 +219,7 @@ namespace he
     template <uint32_t N>
     uint32_t StrCatN(char (&dst)[N], const char* src, uint32_t srcLen);
 
-    /// Searches the null terminated string for a character. Behavior is undefined if `str`
+    /// Searches a null terminated string for a character. Behavior is undefined if `str`
     /// is nullptr.
     ///
     /// \param[in] str The string to search within.
@@ -227,16 +227,16 @@ namespace he
     /// \return A pointer to the found character in `str`, or nullptr if not found.
     [[nodiscard]] const char* StrFind(const char* str, char search);
 
-    /// Searches the null terminated string for a substring. Behavior is undefined if `str`
-    /// or `search` are nullptr.
+    /// Searches a null terminated string for a substring. The null terminators are not compared.
+    /// Behavior is undefined if `str` or `search` are nullptr.
     ///
     /// \param[in] str The string to search within.
     /// \param[in] search The string to search for.
     /// \return A pointer to the start of the found substring in `str`, or nullptr if
-    /// not found. If `str` is empty, then `search` is returned.
+    /// not found. If `search` is empty, then `str` is returned.
     [[nodiscard]] const char* StrFind(const char* str, const char* search);
 
-    /// Searches up to `len` characters from the string for a character. It is assumed that
+    /// Searches up to `len` characters of a string for a character. It is assumed that
     /// `str` is at least `len` characters long. That is, null characters are not treated
     /// as the end of the string. Behavior is undefined if `str` is nullptr.
     ///
@@ -246,7 +246,7 @@ namespace he
     /// \return A pointer to the found character in `str`, or nullptr if not found.
     [[nodiscard]] const char* StrFindN(const char* str, uint32_t len, char search);
 
-    /// Searches up to `len` characters from the string for a substring. It is assumed that
+    /// Searches up to `len` characters of a string for a substring. It is assumed that
     /// `str` is at least `len` characters long. That is, null characters are not treated
     /// as the end of the string. Behavior is undefined if `str` or `search` are nullptr.
     ///
@@ -254,8 +254,51 @@ namespace he
     /// \param[in] len The maximum number of characters to check in `str`
     /// \param[in] search The string to search for.
     /// \return A pointer to the start of the found substring in `str`, or nullptr if
-    /// not found. If `str` is empty, then `search` is returned.
+    /// not found. If `search` is empty, then `str` is returned.
     [[nodiscard]] const char* StrFindN(const char* str, uint32_t len, const char* search);
+
+    /// Searches a null terminated string for the last occurrence of a character. The null
+    /// terminator is not considered part of the string and is not compared.
+    /// Behavior is undefined if `str` is nullptr.
+    ///
+    /// \param[in] str The string to search within.
+    /// \param[in] search The character to search for.
+    /// \return A pointer to the found character in `str`, or nullptr if not found.
+    [[nodiscard]] const char* StrFindLast(const char* str, char search);
+
+    // TODO: implement
+    /// Searches a null terminated string for the last occurrence of a substring. The null
+    /// terminators are not compared. Behavior is undefined if `str` or `search` are nullptr.
+    /// \internal
+    ///
+    /// \param[in] str The string to search within.
+    /// \param[in] search The string to search for.
+    /// \return A pointer to the start of the found substring in `str`, or nullptr if
+    /// not found. If `search` is empty, then `str` is returned.
+    // [[nodiscard]] const char* StrFindLast(const char* str, const char* search);
+
+    /// Searches a string of length `len` characters for the last occurrence of a character. The
+    /// character at `str[len]` is not considered part of the string and is not compared.
+    /// Behavior is undefined if `str` is nullptr.
+    ///
+    /// \param[in] str The string to search within.
+    /// \param[in] len The number of characters in `str` to search.
+    /// \param[in] search The character to search for.
+    /// \return A pointer to the found character in `str`, or nullptr if not found.
+    [[nodiscard]] const char* StrFindLastN(const char* str, uint32_t len, char search);
+
+    // TODO: implement
+    /// Searches a string of length `len` characters for the last occurrence of a substring. The
+    /// null terminator of `search` is not used in the comparison.
+    /// Behavior is undefined if `str` or `search` are nullptr.
+    /// \internal
+    ///
+    /// \param[in] str The string to search within.
+    /// \param[in] len The number of characters in `str` to search.
+    /// \param[in] search The string to search for.
+    /// \return A pointer to the start of the found substring in `str`, or nullptr if
+    /// not found. If `search` is empty, then `str` is returned.
+    // [[nodiscard]] const char* StrFindLastN(const char* str, uint32_t len, const char* search);
 
     /// Parses the string into a integral value and sets the pointer pointed to by `end` to point
     /// to the character past the last character interpreted. If `end` is a null pointer, it is

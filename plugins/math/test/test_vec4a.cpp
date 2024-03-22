@@ -5,12 +5,15 @@
 #include "he/math/vec4a.h"
 
 #include "he/core/test.h"
+#include "he/core/utils.h"
 #include "he/math/types_fmt.h"
 
 using namespace he;
 
 #define HE_EXPECT_EQ3(a, b) HE_EXPECT(All3(Eq((a), (b))), a, b)
 #define HE_EXPECT_EQ_INT(a, b) HE_EXPECT(All(EqInt((a), (b))), a, b)
+
+static constexpr float Float_AllBits = BitCast<float>(0xffffffff);
 
 // ------------------------------------------------------------------------------------------------
 HE_TEST(math, vec4a, MakeVec4a)

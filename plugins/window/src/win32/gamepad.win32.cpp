@@ -5,9 +5,9 @@
 #include "device.win32.h"
 
 #include "he/core/log.h"
+#include "he/core/math.h"
 #include "he/core/result.h"
 #include "he/core/result_fmt.h"
-#include "he/math/float.h"
 
 #if defined(HE_PLATFORM_API_WIN32)
 

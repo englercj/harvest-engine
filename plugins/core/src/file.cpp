@@ -9,7 +9,7 @@ namespace he
     Result File::WriteAll(const void* src, uint32_t size, const char* path, uint32_t* bytesWritten)
     {
         File f;
-        Result r = f.Open(path, FileOpenMode::WriteTruncate);
+        const Result r = f.Open(path, FileAccessMode::Write, FileCreateMode::CreateAlways);
         if (!r)
             return r;
 

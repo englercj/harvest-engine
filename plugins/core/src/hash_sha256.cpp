@@ -511,9 +511,8 @@ namespace he
         }
     }
 
-    void Hash<SHA256>::Process_SSE41(const uint8_t* data, uint32_t len)
+    void Hash<SHA256>::Process_SSE41([[maybe_unused]] const uint8_t* data, [[maybe_unused]] uint32_t len)
     {
-        HE_UNUSED(data, len);
     #if HE_ENABLE_HARDWARE_SHA256 && HE_CPU_X86
         __m128i STATE0 = _mm_loadu_si128(reinterpret_cast<const __m128i*>(m_state));
         __m128i STATE1 = _mm_loadu_si128(reinterpret_cast<const __m128i*>(m_state + 4));
@@ -560,9 +559,8 @@ namespace he
     #endif
     }
 
-    void Hash<SHA256>::Process_NEON(const uint8_t* data, uint32_t len)
+    void Hash<SHA256>::Process_NEON([[maybe_unused]] const uint8_t* data, [[maybe_unused]] uint32_t len)
     {
-        HE_UNUSED(data, len);
     #if HE_ENABLE_HARDWARE_SHA256 && HE_CPU_ARM_64
         uint32x4_t STATE0 = vld1q_u32(m_state);
         uint32x4_t STATE1 = vld1q_u32(m_state + 4);

@@ -6,9 +6,9 @@
 #include "fonts/NotoSans-Regular.ttf.h"
 #include "fonts/NotoMono-Regular.ttf.h"
 
+#include "he/core/math.h"
 #include "he/core/string_ops.h"
 #include "he/editor/icons/icons_material_design.h"
-#include "he/math/float.h"
 
 #define IMGUI_DEFINE_MATH_OPERATORS
 #include "imgui.h"

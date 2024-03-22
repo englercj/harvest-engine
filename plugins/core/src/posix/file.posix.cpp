@@ -136,20 +136,13 @@ namespace he
         return *this;
     }
 
-    Result File::Open(const char* path, FileOpenMode mode, FileOpenFlag openFlags)
+    Result File::Open(const char* path, FileAccessMode access, FileCreateMode create, FileOpenFlag openFlags)
     {
         if (!HE_VERIFY(m_fd == -1))
             return Result::InvalidParameter;
 
-        m_fd = PosixFileOpen(path, mode, openFlags, 0);
-
-        if (m_fd == -1)
-            return Result::FromLastError();
-
-        if (mode == FileOpenMode::WriteAppend || mode == FileOpenMode::ReadWriteAppend)
-            lseek(m_fd, 0, SEEK_END);
-
-        return Result::Success;
+        m_fd = PosixFileOpen(path, access, create, openFlags, 0);
+        return m_fd == -1 ? Result::FromLastError() : Result::Success;
     }
 
     void File::Close()

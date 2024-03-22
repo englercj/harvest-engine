@@ -1,5 +1,11 @@
 // Copyright Chad Engler
 
+#include "he/core/assert.h"
+#include "he/core/limits.h"
+#include "he/core/math.h"
+#include "he/core/types.h"
+#include "he/math/vec3.h"
+
 namespace he
 {
     // --------------------------------------------------------------------------------------------
@@ -118,14 +124,14 @@ namespace he
 
         if (test > threshold)
         {
-            const float pitch = Float_PiHalf;
+            const float pitch = MathConstants<float>::PiHalf;
             const float yaw = 2 * Atan2(q.x, q.w);
             return { 0.0f, pitch, yaw };
         }
 
         if (test < -threshold)
         {
-            const float pitch = -Float_PiHalf;
+            const float pitch = -MathConstants<float>::PiHalf;
             const float yaw = -2 * Atan2(q.x, q.w);
             return { 0.0f, pitch, yaw };
         }
@@ -262,7 +268,7 @@ namespace he
 
     inline bool IsNormalized(const Quat& q)
     {
-        return Abs(Len(q) - 1) < 40.0f * Float_Epsilon;
+        return Abs(Len(q) - 1) < 40.0f * Limits<float>::Epsilon;
     }
 
     // --------------------------------------------------------------------------------------------

@@ -163,12 +163,12 @@ namespace he
 
     inline bool IsInfinite(const Vec4a& v)
     {
-        return IsInfinite(v.x) && IsInfinite(v.y) && IsInfinite(v.z) && IsInfinite(v.w);
+        return IsInfinite(v.v.x) && IsInfinite(v.v.y) && IsInfinite(v.v.z) && IsInfinite(v.v.w);
     }
 
     inline bool IsInfinite3(const Vec4a& v)
     {
-        return IsInfinite(v.x) && IsInfinite(v.y) && IsInfinite(v.z);
+        return IsInfinite(v.v.x) && IsInfinite(v.v.y) && IsInfinite(v.v.z);
     }
 
     // --------------------------------------------------------------------------------------------
@@ -239,10 +239,10 @@ namespace he
     {
         return
         { {
-            SmoothStep(a.x, b.x, t.v.x),
-            SmoothStep(a.y, b.y, t.v.y),
-            SmoothStep(a.z, b.z, t.v.z),
-            SmoothStep(a.w, b.w, t.v.w),
+            SmoothStep(a.v.x, b.v.x, t.v.x),
+            SmoothStep(a.v.y, b.v.y, t.v.y),
+            SmoothStep(a.v.z, b.v.z, t.v.z),
+            SmoothStep(a.v.w, b.v.w, t.v.w),
         } };
     }
 
@@ -353,16 +353,20 @@ namespace he
     // --------------------------------------------------------------------------------------------
     // Comparison
 
-    inline float BoolToFloat(bool b) { return b ? Float_AllBits : 0.0f; }
+    inline float BoolToFloat(bool b)
+    {
+        constexpr float AllBits = BitCast<float>(0xffffffff);
+        return b ? AllBits : 0.0f;
+    }
 
     inline Vec4a Lt(const Vec4a& a, const Vec4a& b)
     {
         return
         {
-            BoolToFloat(a.x < b.x),
-            BoolToFloat(a.y < b.y),
-            BoolToFloat(a.z < b.z),
-            BoolToFloat(a.w < b.w),
+            BoolToFloat(a.v.x < b.v.x),
+            BoolToFloat(a.v.y < b.v.y),
+            BoolToFloat(a.v.z < b.v.z),
+            BoolToFloat(a.v.w < b.v.w),
         };
     }
 
@@ -370,10 +374,10 @@ namespace he
     {
         return
         {
-            BoolToFloat(a.x <= b.x),
-            BoolToFloat(a.y <= b.y),
-            BoolToFloat(a.z <= b.z),
-            BoolToFloat(a.w <= b.w),
+            BoolToFloat(a.v.x <= b.v.x),
+            BoolToFloat(a.v.y <= b.v.y),
+            BoolToFloat(a.v.z <= b.v.z),
+            BoolToFloat(a.v.w <= b.v.w),
         };
     }
 
@@ -381,10 +385,10 @@ namespace he
     {
         return
         {
-            BoolToFloat(a.x > b.x),
-            BoolToFloat(a.y > b.y),
-            BoolToFloat(a.z > b.z),
-            BoolToFloat(a.w > b.w),
+            BoolToFloat(a.v.x > b.v.x),
+            BoolToFloat(a.v.y > b.v.y),
+            BoolToFloat(a.v.z > b.v.z),
+            BoolToFloat(a.v.w > b.v.w),
         };
     }
 
@@ -392,10 +396,10 @@ namespace he
     {
         return
         {
-            BoolToFloat(a.x >= b.x),
-            BoolToFloat(a.y >= b.y),
-            BoolToFloat(a.z >= b.z),
-            BoolToFloat(a.w >= b.w),
+            BoolToFloat(a.v.x >= b.v.x),
+            BoolToFloat(a.v.y >= b.v.y),
+            BoolToFloat(a.v.z >= b.v.z),
+            BoolToFloat(a.v.w >= b.v.w),
         };
     }
 
@@ -403,10 +407,10 @@ namespace he
     {
         return
         {
-            BoolToFloat(a.x == b.x),
-            BoolToFloat(a.y == b.y),
-            BoolToFloat(a.z == b.z),
-            BoolToFloat(a.w == b.w),
+            BoolToFloat(a.v.x == b.v.x),
+            BoolToFloat(a.v.y == b.v.y),
+            BoolToFloat(a.v.z == b.v.z),
+            BoolToFloat(a.v.w == b.v.w),
         };
     }
 
@@ -414,10 +418,10 @@ namespace he
     {
         return
         {
-            BoolToFloat(a.x != b.x),
-            BoolToFloat(a.y != b.y),
-            BoolToFloat(a.z != b.z),
-            BoolToFloat(a.w != b.w),
+            BoolToFloat(a.v.x != b.v.x),
+            BoolToFloat(a.v.y != b.v.y),
+            BoolToFloat(a.v.z != b.v.z),
+            BoolToFloat(a.v.w != b.v.w),
         };
     }
 
@@ -425,30 +429,30 @@ namespace he
     {
         return
         {
-            BoolToFloat(BitCast<uint32_t>(a.x) == BitCast<uint32_t>(b.x)),
-            BoolToFloat(BitCast<uint32_t>(a.y) == BitCast<uint32_t>(b.y)),
-            BoolToFloat(BitCast<uint32_t>(a.z) == BitCast<uint32_t>(b.z)),
-            BoolToFloat(BitCast<uint32_t>(a.w) == BitCast<uint32_t>(b.w)),
+            BoolToFloat(BitCast<uint32_t>(a.v.x) == BitCast<uint32_t>(b.v.x)),
+            BoolToFloat(BitCast<uint32_t>(a.v.y) == BitCast<uint32_t>(b.v.y)),
+            BoolToFloat(BitCast<uint32_t>(a.v.z) == BitCast<uint32_t>(b.v.z)),
+            BoolToFloat(BitCast<uint32_t>(a.v.w) == BitCast<uint32_t>(b.v.w)),
         };
     }
 
     inline bool Any(const Vec4a& cmp)
     {
-        return (BitCast<uint32_t>(cmp.x) | BitCast<uint32_t>(cmp.y) | BitCast<uint32_t>(cmp.z) | BitCast<uint32_t>(cmp.w)) != 0;
+        return (BitCast<uint32_t>(cmp.v.x) | BitCast<uint32_t>(cmp.v.y) | BitCast<uint32_t>(cmp.v.z) | BitCast<uint32_t>(cmp.v.w)) != 0;
     }
 
     inline bool Any3(const Vec4a& cmp)
     {
-        return (BitCast<uint32_t>(cmp.x) | BitCast<uint32_t>(cmp.y) | BitCast<uint32_t>(cmp.z)) != 0;
+        return (BitCast<uint32_t>(cmp.v.x) | BitCast<uint32_t>(cmp.v.y) | BitCast<uint32_t>(cmp.v.z)) != 0;
     }
 
     inline bool All(const Vec4a& cmp)
     {
-        return BitCast<uint32_t>(cmp.x) && BitCast<uint32_t>(cmp.y) && BitCast<uint32_t>(cmp.z) && BitCast<uint32_t>(cmp.w);
+        return BitCast<uint32_t>(cmp.v.x) && BitCast<uint32_t>(cmp.v.y) && BitCast<uint32_t>(cmp.v.z) && BitCast<uint32_t>(cmp.v.w);
     }
 
     inline bool All3(const Vec4a& cmp)
     {
-        return BitCast<uint32_t>(cmp.x) && BitCast<uint32_t>(cmp.y) && BitCast<uint32_t>(cmp.z);
+        return BitCast<uint32_t>(cmp.v.x) && BitCast<uint32_t>(cmp.v.y) && BitCast<uint32_t>(cmp.v.z);
     }
 }

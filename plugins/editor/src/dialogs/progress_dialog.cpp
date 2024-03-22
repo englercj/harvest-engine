@@ -2,6 +2,7 @@
 
 #include "he/editor/dialogs/progress_dialog.h"
 
+#include "he/core/limits.h"
 #include "he/editor/widgets/buttons.h"
 #include "he/editor/widgets/progress.h"
 #include "he/math/constants.h"
@@ -33,7 +34,7 @@ namespace he::editor
     {
         ReadLockGuard lock(m_rwLock);
 
-        const float value = m_value == Float_Infinity ? -1.0f : ((m_value - m_min) / (m_max - m_min));
+        const float value = m_value == Limits<float>::Infinity ? -1.0f : ((m_value - m_min) / (m_max - m_min));
 
         ImGui::TextUnformatted(m_message.Data());
         ImGui::ProgressBar(value);

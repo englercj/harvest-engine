@@ -174,9 +174,8 @@ namespace he::schema
             return index;
         }
 
-        bool TryExpandData(uint32_t size, uint32_t offset, uint32_t newSize, uint32_t newAlign) override
+        bool TryExpandData(uint32_t size, uint32_t offset, [[maybe_unused]] uint32_t newSize, uint32_t newAlign) override
         {
-            HE_UNUSED(newAlign);
             return m_gaps.TryExpandGap(size, offset, newSize);
         }
 
@@ -248,9 +247,8 @@ namespace he::schema
                 PlaceTag();
         }
 
-        bool TryExpandData(uint32_t size, uint32_t offset, uint32_t newSize, uint32_t newAlign) override
+        bool TryExpandData([[maybe_unused]] uint32_t size, [[maybe_unused]] uint32_t offset, [[maybe_unused]] uint32_t newSize, [[maybe_unused]] uint32_t newAlign) override
         {
-            HE_UNUSED(size, offset, newSize, newAlign);
             return false;
         }
 
@@ -637,9 +635,8 @@ namespace he::schema
             {
                 const uint16_t ordinal = field.GetMeta().GetNormal().GetOrdinal();
                 const uint32_t index = m_members.Size() - 1;
-                auto res = m_fields.emplace(ordinal, index);
+                [[maybe_unused]] auto res = m_fields.emplace(ordinal, index);
                 HE_ASSERT(res.second);
-                HE_UNUSED(res);
             }
             else if (field.GetMeta().IsGroup())
             {
@@ -694,9 +691,8 @@ namespace he::schema
             if (field.GetMeta().IsNormal())
             {
                 const uint16_t ordinal = field.GetMeta().GetNormal().GetOrdinal();
-                auto res = m_fields.emplace(ordinal, index);
+                [[maybe_unused]] auto res = m_fields.emplace(ordinal, index);
                 HE_ASSERT(res.second);
-                HE_UNUSED(res);
             }
             else if (field.GetMeta().IsGroup())
             {

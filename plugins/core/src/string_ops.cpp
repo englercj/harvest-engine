@@ -2,58 +2,208 @@
 
 #include "he/core/string_ops.h"
 
+#include "he/core/ascii.h"
 #include "he/core/compiler.h"
 #include "he/core/concepts.h"
 #include "he/core/limits.h"
 #include "he/core/memory_ops.h"
 #include "he/core/type_traits.h"
+#include "he/core/utils.h"
 
 HE_PUSH_WARNINGS();
 HE_DISABLE_MSVC_WARNING(4702); // unreachable code
 #include "fast_float/fast_float.h"
 HE_POP_WARNINGS();
 
-#include <stdlib.h>
-#include <string.h>
+#if HE_HAS_LIBC
+    #include <stdlib.h>
+    #include <string.h>
+#endif
 
 namespace he
 {
     int32_t StrComp(const char* a, const char* b)
     {
+    #if HE_HAS_LIBC
         return strcmp(a, b);
+    #else
+        while (*a == *b && *a)
+        {
+            ++a;
+            ++b;
+        }
+        return static_cast<int32_t>(*a) - static_cast<int32_t>(*b);
+    #endif
     }
 
     int32_t StrCompN(const char* a, const char* b, uint32_t len)
     {
+    #if HE_HAS_LIBC
         return strncmp(a, b, len);
+    #else
+        if (len-- == 0)
+            return 0;
+
+        while (*a && *b && len && *a == *b)
+        {
+            ++a;
+            ++b;
+            --len;
+        }
+
+        return static_cast<int32_t>(*a) - static_cast<int32_t>(*b);
+    #endif
     }
 
     int32_t StrCompI(const char* a, const char* b)
     {
+    #if HE_HAS_LIBC
     #if HE_COMPILER_MSVC
         return _stricmp(a, b);
     #else
         return __builtin_strcasecmp(a, b);
     #endif
+    #else
+        while (*a && *b && (*a == *b || ToLower(*a) == ToLower(*b)))
+        {
+            ++a;
+            ++b;
+        }
+        return static_cast<int32_t>(ToLower(*a)) - static_cast<int32_t>(ToLower(*b));
+    #endif
     }
 
     int32_t StrCompNI(const char* a, const char* b, uint32_t len)
     {
+    #if HE_HAS_LIBC
     #if HE_COMPILER_MSVC
         return _strnicmp(a, b, len);
     #else
         return __builtin_strncasecmp(a, b, len);
     #endif
+    #else
+        if (len-- == 0)
+            return 0;
+
+        while (*a && *b && len && (*a == *b || ToLower(*a) == ToLower(*b)))
+        {
+            ++a;
+            ++b;
+            --len;
+        }
+        return static_cast<int32_t>(ToLower(*a)) - static_cast<int32_t>(ToLower(*b));
+    #endif
     }
 
     const char* StrFind(const char* str, char search)
     {
+    #if HE_HAS_LIBC
         return strchr(str, search);
+    #else
+        if (search == 0)
+            return str + StrLen(str);
+
+        constexpr size_t Alignment = sizeof(size_t);
+        while (!IsAligned(str, Alignment))
+        {
+            if (*str == 0 || *str == search)
+                return str;
+
+            ++str;
+        }
+
+        constexpr size_t Ones = static_cast<size_t>(-1) / 0xff;
+        constexpr size_t Highs = Ones * ((0xff / 2) + 1);
+
+        #define HE_STRFIND_HAS_ZERO(x) (((x) - Ones) & (~(x) & Highs))
+
+        const size_t* HE_MAY_ALIAS w = reinterpret_cast<const size_t* HE_MAY_ALIAS>(str);
+        const size_t k = Ones * static_cast<unsigned char>(search);
+        while (!HE_STRFIND_HAS_ZERO(*w) && !HE_STRFIND_HAS_ZERO(*w ^ k))
+        {
+            ++w;
+        }
+        str = reinterpret_cast<const char*>(w);
+
+        #undef HE_MEMCHR_HAS_ZERO
+
+        while (*str && *str != search)
+        {
+            ++str;
+        }
+
+        return *str == search ? str : 0;
+    #endif
     }
 
     const char* StrFind(const char* str, const char* search)
     {
+    #if HE_HAS_LIBC
         return strstr(str, search);
+    #else
+        if (!*search)
+            return str;
+
+        str = StrFind(str, *search);
+        if (!str || !search[1])
+            return str;
+
+        if (!str[1])
+            return nullptr;
+
+        if (!search[2])
+        {
+            const uint16_t search16 = (search[0] << 8) | search[1];
+            uint16_t str16 = (str[0] << 8) | str[1];
+            ++str;
+            while (*str && str16 != search16)
+            {
+                str16 = (str16 << 8) | *++str;
+            }
+            return *str ? str - 1 : nullptr;
+        }
+
+        if (!str[2])
+            return nullptr;
+
+        if (!search[3])
+        {
+            const uint32_t search24 = (static_cast<uint32_t>(search[0]) << 24) | (static_cast<uint32_t>(search[1]) << 16) | (static_cast<uint32_t>(search[2]) << 8);
+            uint32_t str24 = (static_cast<uint32_t>(str[0]) << 24) | (static_cast<uint32_t>(str[1]) << 16) | (static_cast<uint32_t>(str[2]) << 8);
+            str += 2;
+            while (*str && str24 != search24)
+            {
+                str24 = (str24|*++str) << 8;
+            }
+            return *str ? str - 2 : 0;
+        }
+
+        if (!str[3])
+            return nullptr;
+
+        if (!search[4])
+        {
+            const uint32_t search32 = (static_cast<uint32_t>(search[0]) << 24) | (static_cast<uint32_t>(search[1]) << 16) | (static_cast<uint32_t>(search[2]) << 8) | static_cast<uint32_t>(search[3]);
+            uint32_t str32 = (static_cast<uint32_t>(str[0]) << 24) | (static_cast<uint32_t>(str[1]) << 16) | (static_cast<uint32_t>(str[2]) << 8) | static_cast<uint32_t>(str[3]);
+            str += 3;
+            while (*str && str32 != search32)
+            {
+                str32 = (str32 << 8) | *++str;
+            }
+            return *str ? str - 2 : 0;
+        }
+
+        // TODO: optimize this
+        do
+        {
+            if (StrEqual(str, search))
+                return str;
+
+            str = StrFind(++str, *search);
+        } while (str);
+
+        return nullptr;
+    #endif
     }
 
     const char* StrFindN(const char* str, uint32_t len, char search)
@@ -74,6 +224,32 @@ namespace he
         }
         return nullptr;
     }
+
+    const char* StrFindLast(const char* str, char search)
+    {
+        return StrFindLastN(str, StrLen(str), search);
+    }
+
+    // const char* StrFindLast(const char* str, const char* search)
+    // {
+    //     return StrFindLastN(str, StrLen(str), search);
+    // }
+
+    const char* StrFindLastN(const char* str, uint32_t len, char search)
+    {
+        while (len--)
+        {
+            if (str[len] == search)
+                return str + len;
+        }
+
+        return nullptr;
+    }
+
+    // const char* StrFindLastN(const char* str, uint32_t len, const char* search)
+    // {
+    //     // TODO: implement
+    // }
 
     template <typename T>
     HE_FORCE_INLINE T StrToIntImpl(const char* str, const char** end, int32_t base)

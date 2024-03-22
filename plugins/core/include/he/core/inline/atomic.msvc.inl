@@ -186,7 +186,7 @@ namespace he
     template <typename T>
     inline T Atomic<T>::Exchange(T desired, [[maybe_unused]] MemoryOrder order) noexcept
     {
-        HE_UNUSED(order); // MSVC is always SeqCst
+        // MSVC is always SeqCst
         _heAtomicType<T> result{ _heAtomicVal(desired) };
         HE_INTERLOCK_CHOOSE(result, order, _InterlockedExchange, _heAtomicAddr(m_value), _heAtomicVal(desired));
         return reinterpret_cast<T&>(result);

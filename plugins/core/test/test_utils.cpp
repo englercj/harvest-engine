@@ -234,8 +234,7 @@ HE_TEST(core, utils, BitCast)
 // ------------------------------------------------------------------------------------------------
 HE_TEST(core, utils, Forward)
 {
-    int x;
-    HE_UNUSED(x);
+    [[maybe_unused]] int x;
 
     static_assert(IsSame<decltype(Forward<int>(x)), int&&>);
     static_assert(IsSame<decltype(Forward<const int&>(x)), const int&>);
@@ -247,8 +246,7 @@ HE_TEST(core, utils, Forward)
 HE_TEST(core, utils, Move)
 {
     int x;
-    int& rx(x);
-    HE_UNUSED(rx);
+    [[maybe_unused]] int& rx(x);
 
     static_assert(IsSame<decltype(Move(x)), int&&>);
     static_assert(IsSame<decltype(Move(rx)), int&&>);

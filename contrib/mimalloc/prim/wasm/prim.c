@@ -74,7 +74,7 @@ static void* mi_prim_mem_grow(size_t size, size_t try_alignment)
             void* current = mi_memory_grow(0);  // get current size
             if (current != NULL)
             {
-                void* aligned_current = mi_align_up_ptr(current, try_alignment);  // and align from there to minimize wasted space
+                void* aligned_current = (void*)_mi_align_up((uintptr_t)current, try_alignment);  // and align from there to minimize wasted space
                 alloc_size = _mi_align_up(((uint8_t*)aligned_current - (uint8_t*)current) + size, _mi_os_page_size());
                 base = mi_memory_grow(alloc_size);
             }
@@ -85,7 +85,7 @@ static void* mi_prim_mem_grow(size_t size, size_t try_alignment)
 
         if (base != NULL)
         {
-            p = mi_align_up_ptr(base, try_alignment);
+            p = (void*)_mi_align_up((uintptr_t)base, try_alignment);
             if ((uint8_t*)p + size > (uint8_t*)base + alloc_size)
             {
                 // another thread used wasm_memory_grow in-between and we do not have enough

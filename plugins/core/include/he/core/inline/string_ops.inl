@@ -14,7 +14,7 @@ namespace he
 
     constexpr uint32_t StrLen(const char* s)
     {
-    #if HE_COMPILER_MSVC
+    #if HE_COMPILER_MSVC || !HE_HAS_LIBC
         // As of C++17 MSVC also has `__builtin_strlen`, but it is not constexpr and in my tests
         // this loop performed the same in Release and much better in Debug. The opposite was
         // true for clang/gcc where `__builtin_strlen` was far faster than the loop in all cases.
@@ -82,6 +82,7 @@ namespace he
         if (dstLen == 0)
             return 0;
 
+        // subtract one for the space needed for the null terminator
         --dstLen;
 
         const uint32_t srcLen = StrLen(src);

@@ -22,6 +22,7 @@ extern "C"
     extern void HE_WASM_IMPORT_CORE(heWASM_ConsoleLog)(heWASM_ConsoleLogLevel level, const char* msg);
     extern void HE_WASM_IMPORT_CORE(heWASM_Debugger)();
     extern void HE_WASM_IMPORT_CORE(heWASM_Eval)(const char* code);
+    extern void HE_WASM_IMPORT_CORE(heWASM_SetExitCode)(int rc);
     extern uint32_t HE_WASM_IMPORT_CORE(heWASM_GetDateNow)();
     extern uint32_t HE_WASM_IMPORT_CORE(heWASM_GetDateTzOffset)();
     extern double HE_WASM_IMPORT_CORE(heWASM_GetPerformanceNow)();

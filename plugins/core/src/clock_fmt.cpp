@@ -655,8 +655,7 @@ namespace he
         {
         #if defined(HE_PLATFORM_API_WIN32) && defined(_UCRT)
         #if (!defined(WINAPI_FAMILY) || (WINAPI_FAMILY == WINAPI_FAMILY_DESKTOP_APP))
-            static bool s_init = []() -> bool { _tzset(); return true; }();
-            HE_UNUSED(s_init);
+            [[maybe_unused]] static bool s_init = []() -> bool { _tzset(); return true; }();
         #endif
             long offset = 0;
             _get_timezone(&offset);

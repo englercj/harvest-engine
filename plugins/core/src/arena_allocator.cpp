@@ -82,10 +82,8 @@ namespace he
         return p;
     }
 
-    void ArenaAllocator::Free(void* ptr) noexcept
+    void ArenaAllocator::Free([[maybe_unused]] void* ptr) noexcept
     {
-        HE_UNUSED(ptr);
-
     #if HE_HAS_ASAN
         const AllocHeader* header = GetHeader(ptr);
         HE_ASAN_POISON_MEMORY(ptr, header->size);

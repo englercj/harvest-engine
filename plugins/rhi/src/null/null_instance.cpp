@@ -34,9 +34,8 @@ namespace he::rhi::null
         return Api_Null;
     }
 
-    ApiResult InstanceImpl::GetApiResult(Result result) const
+    ApiResult InstanceImpl::GetApiResult([[maybe_unused]] Result result) const
     {
-        HE_UNUSED(result);
         return ApiResult::Success;
     }
 
@@ -46,44 +45,38 @@ namespace he::rhi::null
         adapters = &m_adapter;
     }
 
-    void InstanceImpl::GetDisplays(const Adapter& adapter, uint32_t& count, const Display*& displays)
+    void InstanceImpl::GetDisplays([[maybe_unused]] const Adapter& adapter, uint32_t& count, const Display*& displays)
     {
-        HE_UNUSED(adapter);
         count = 1;
         displays = &m_display;
     }
 
-    void InstanceImpl::GetDisplayModes(const Display& display, uint32_t& count, const DisplayMode*& modes)
+    void InstanceImpl::GetDisplayModes([[maybe_unused]] const Display& display, uint32_t& count, const DisplayMode*& modes)
     {
-        HE_UNUSED(display);
         count = 1;
         modes = &m_displayMode;
     }
 
-    const AdapterInfo& InstanceImpl::GetAdapterInfo(const Adapter& adapter)
+    const AdapterInfo& InstanceImpl::GetAdapterInfo([[maybe_unused]] const Adapter& adapter)
     {
-        HE_UNUSED(adapter);
         static AdapterInfo s_info{};
         return s_info;
     }
 
-    const DisplayInfo& InstanceImpl::GetDisplayInfo(const Display& display)
+    const DisplayInfo& InstanceImpl::GetDisplayInfo([[maybe_unused]] const Display& display)
     {
-        HE_UNUSED(display);
         static DisplayInfo s_info{ m_allocator };
         return s_info;
     }
 
-    const DisplayModeInfo& InstanceImpl::GetDisplayModeInfo(const DisplayMode& mode)
+    const DisplayModeInfo& InstanceImpl::GetDisplayModeInfo([[maybe_unused]] const DisplayMode& mode)
     {
-        HE_UNUSED(mode);
         static DisplayModeInfo s_info{};
         return s_info;
     }
 
-    Result InstanceImpl::CreateDevice(const DeviceDesc& desc, Device*& out)
+    Result InstanceImpl::CreateDevice([[maybe_unused]] const DeviceDesc& desc, Device*& out)
     {
-        HE_UNUSED(desc);
         out = m_allocator.New<DeviceImpl>(this);
         return Result::Success;
     }

@@ -232,40 +232,40 @@ namespace he
 
     public:
         void OnError(const char* msg) { m_ctx.OnError(msg); }
-        constexpr void OnText(const char* begin, const char* end) { HE_UNUSED(begin, end); }
-        constexpr void OnYear(_TimeSpecAlt alt) { HE_UNUSED(alt); }
-        constexpr void OnShortYear(_TimeSpecAlt alt) { HE_UNUSED(alt); }
+        constexpr void OnText([[maybe_unused]] const char* begin, [[maybe_unused]] const char* end) {}
+        constexpr void OnYear([[maybe_unused]] _TimeSpecAlt alt) {}
+        constexpr void OnShortYear([[maybe_unused]] _TimeSpecAlt alt) {}
         constexpr void OnOffsetYear() {}
-        constexpr void OnCentury(_TimeSpecAlt alt) { HE_UNUSED(alt); }
+        constexpr void OnCentury([[maybe_unused]] _TimeSpecAlt alt) {}
         constexpr void OnIsoWeekBasedYear() {}
         constexpr void OnIsoWeekBasedShortYear() {}
         constexpr void OnAbbrWeekday() {}
         constexpr void OnFullWeekday() {}
-        constexpr void OnDec0Weekday(_TimeSpecAlt alt) { HE_UNUSED(alt); }
-        constexpr void OnDec1Weekday(_TimeSpecAlt alt) { HE_UNUSED(alt); }
+        constexpr void OnDec0Weekday([[maybe_unused]] _TimeSpecAlt alt) {}
+        constexpr void OnDec1Weekday([[maybe_unused]] _TimeSpecAlt alt) {}
         constexpr void OnAbbrMonth() {}
         constexpr void OnFullMonth() {}
-        constexpr void OnDecMonth(_TimeSpecAlt alt) { HE_UNUSED(alt); }
-        constexpr void OnDec0WeekOfYear(_TimeSpecAlt alt) { HE_UNUSED(alt); }
-        constexpr void OnDec1WeekOfYear(_TimeSpecAlt alt) { HE_UNUSED(alt); }
-        constexpr void OnIsoWeekOfYear(_TimeSpecAlt alt) { HE_UNUSED(alt); }
+        constexpr void OnDecMonth([[maybe_unused]] _TimeSpecAlt alt) {}
+        constexpr void OnDec0WeekOfYear([[maybe_unused]] _TimeSpecAlt alt) {}
+        constexpr void OnDec1WeekOfYear([[maybe_unused]] _TimeSpecAlt alt) {}
+        constexpr void OnIsoWeekOfYear([[maybe_unused]] _TimeSpecAlt alt) {}
         constexpr void OnDayOfYear() {}
-        constexpr void OnDayOfMonth(_TimeSpecAlt alt) { HE_UNUSED(alt); }
-        constexpr void OnDayOfMonthSpace(_TimeSpecAlt alt) { HE_UNUSED(alt); }
-        constexpr void On24Hour(_TimeSpecAlt alt, _TimeSpecPadding pad) { HE_UNUSED(alt, pad); }
-        constexpr void On12Hour(_TimeSpecAlt alt, _TimeSpecPadding pad) { HE_UNUSED(alt, pad); }
-        constexpr void OnMinute(_TimeSpecAlt alt, _TimeSpecPadding pad) { HE_UNUSED(alt, pad); }
-        constexpr void OnSecond(_TimeSpecAlt alt, _TimeSpecPadding pad) { HE_UNUSED(alt, pad); }
-        constexpr void OnDatetime(_TimeSpecAlt alt) { HE_UNUSED(alt); }
-        constexpr void OnLocDate(_TimeSpecAlt alt) { HE_UNUSED(alt); }
-        constexpr void OnLocTime(_TimeSpecAlt alt) { HE_UNUSED(alt); }
+        constexpr void OnDayOfMonth([[maybe_unused]] _TimeSpecAlt alt) {}
+        constexpr void OnDayOfMonthSpace([[maybe_unused]] _TimeSpecAlt alt) {}
+        constexpr void On24Hour([[maybe_unused]] _TimeSpecAlt alt, [[maybe_unused]] _TimeSpecPadding pad) {}
+        constexpr void On12Hour([[maybe_unused]] _TimeSpecAlt alt, [[maybe_unused]] _TimeSpecPadding pad) {}
+        constexpr void OnMinute([[maybe_unused]] _TimeSpecAlt alt, [[maybe_unused]] _TimeSpecPadding pad) {}
+        constexpr void OnSecond([[maybe_unused]] _TimeSpecAlt alt, [[maybe_unused]] _TimeSpecPadding pad) {}
+        constexpr void OnDatetime([[maybe_unused]] _TimeSpecAlt alt) {}
+        constexpr void OnLocDate([[maybe_unused]] _TimeSpecAlt alt) {}
+        constexpr void OnLocTime([[maybe_unused]] _TimeSpecAlt alt) {}
         constexpr void OnUsDate() {}
         constexpr void OnIsoDate() {}
         constexpr void On12HourTime() {}
         constexpr void On24HourTime() {}
         constexpr void OnIsoTime() {}
         constexpr void OnAmPm() {}
-        constexpr void OnUtcOffset(_TimeSpecAlt alt) { HE_UNUSED(alt); }
+        constexpr void OnUtcOffset([[maybe_unused]] _TimeSpecAlt alt) {}
         constexpr void OnTzName() {}
 
     private:

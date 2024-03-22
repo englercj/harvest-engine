@@ -135,18 +135,16 @@ namespace he::schema
     }
 
     template <>
-    inline bool _ReadDataElement<bool>(const Word* data, uint32_t index, uint32_t step)
+    inline bool _ReadDataElement<bool>(const Word* data, uint32_t index, [[maybe_unused]] uint32_t step)
     {
-        HE_UNUSED(step);
         const uint8_t* bits = reinterpret_cast<const uint8_t*>(data) + (index / BitsPerByte);
         const uint32_t shift = index % BitsPerByte;
         return (*bits & (1 << shift)) != 0;
     }
 
     template <>
-    inline Void _ReadDataElement<Void>(const Word* data, uint32_t index, uint32_t step)
+    inline Void _ReadDataElement<Void>([[maybe_unused]] const Word* data, [[maybe_unused]] uint32_t index, [[maybe_unused]] uint32_t step)
     {
-        HE_UNUSED(data, index, step);
         return {};
     }
 
@@ -158,18 +156,16 @@ namespace he::schema
     }
 
     template <>
-    inline void _WriteDataElement<bool>(Word* data, uint32_t index, uint32_t step, bool value)
+    inline void _WriteDataElement<bool>(Word* data, uint32_t index, [[maybe_unused]] uint32_t step, bool value)
     {
-        HE_UNUSED(step);
         uint8_t* b = reinterpret_cast<uint8_t*>(data) + (index / BitsPerByte);
         const uint32_t shift = index % BitsPerByte;
         *b = (*b & ~(1 << shift)) | (static_cast<uint8_t>(value) << shift);
     }
 
     template <>
-    inline void _WriteDataElement<Void>(Word* data, uint32_t index, uint32_t step, Void value)
+    inline void _WriteDataElement<Void>([[maybe_unused]] Word* data, [[maybe_unused]] uint32_t index, [[maybe_unused]] uint32_t step, [[maybe_unused]] Void value)
     {
-        HE_UNUSED(data, index, step, value);
     }
 
     template <DataType T>
@@ -187,9 +183,8 @@ namespace he::schema
     }
 
     template <>
-    inline Void _ReadDataFieldUnsafe<Void>(const Word* data, uint32_t dataOffset)
+    inline Void _ReadDataFieldUnsafe<Void>([[maybe_unused]] const Word* data, uint32_t [[maybe_unused]] dataOffset)
     {
-        HE_UNUSED(data, dataOffset);
         return {};
     }
 
@@ -214,9 +209,8 @@ namespace he::schema
     }
 
     template <>
-    inline Void _ReadDataField<Void>(const Word* data, uint64_t dataFieldsWordSize, uint32_t dataOffset, Void defaultValue)
+    inline Void _ReadDataField<Void>([[maybe_unused]] const Word* data, [[maybe_unused]] uint64_t dataFieldsWordSize, [[maybe_unused]] uint32_t dataOffset, [[maybe_unused]] Void defaultValue)
     {
-        HE_UNUSED(data, dataFieldsWordSize, dataOffset, defaultValue);
         return {};
     }
 
@@ -235,9 +229,8 @@ namespace he::schema
     }
 
     template <>
-    inline void _WriteDataField<Void>(Word* data, uint32_t dataOffset, Void value)
+    inline void _WriteDataField<Void>([[maybe_unused]] Word* data, [[maybe_unused]] uint32_t dataOffset, [[maybe_unused]] Void value)
     {
-        HE_UNUSED(data, dataOffset, value);
     }
 
     class BitSpan
@@ -306,9 +299,8 @@ namespace he::schema
     }
 
     template <>
-    inline Void _ReadDataArrayField<Void>(Word* data, uint32_t dataWordSize, uint32_t dataOffset, uint16_t elementCount)
+    inline Void _ReadDataArrayField<Void>([[maybe_unused]] Word* data, [[maybe_unused]] uint32_t dataWordSize, [[maybe_unused]] uint32_t dataOffset, [[maybe_unused]] uint16_t elementCount)
     {
-        HE_UNUSED(data, dataWordSize, dataOffset, elementCount);
         return {};
     }
 

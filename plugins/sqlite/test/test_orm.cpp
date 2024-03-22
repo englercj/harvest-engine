@@ -738,8 +738,8 @@ HE_TEST(sqlite, orm, RawSqlQuery)
 // ------------------------------------------------------------------------------------------------
 HE_TEST(sqlite, orm, TableDefBase)
 {
-    TableDefBase m{ "test" };
-    HE_UNUSED(m);
+    [[maybe_unused]] TableDefBase m{ "test" };
+    m;
 }
 
 // ------------------------------------------------------------------------------------------------

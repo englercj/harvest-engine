@@ -158,9 +158,8 @@ namespace he::schema
 
     // ListBuilder setters and getters
     template <typename T>
-    static void SetDataValue(ListBuilder& builder, uint32_t index, uint32_t dataOffset, T value)
+    static void SetDataValue(ListBuilder& builder, uint32_t index, [[maybe_unused]] uint32_t dataOffset, T value)
     {
-        HE_UNUSED(dataOffset);
         builder.SetDataElement(index, value);
     }
 
@@ -1158,9 +1157,8 @@ namespace he::schema
         void VisitValue(double value, Type::Reader, const DeclInfo&) override { WriteFloatValue(value); }
         void VisitValue(Blob::Reader value, Type::Reader, const DeclInfo&) override { WriteBlobValue(value); }
 
-        void VisitValue(String::Reader value, Type::Reader type, const DeclInfo& scope) override
+        void VisitValue(String::Reader value, [[maybe_unused]] Type::Reader type, [[maybe_unused]] const DeclInfo& scope) override
         {
-            HE_UNUSED(type, scope);
             const bool useLiteral = HasAttribute<Toml::Literal>(m_currentField.GetAttributes());
             const TomlStringFormat format = useLiteral ? TomlStringFormat::Literal : TomlStringFormat::Basic;
             m_writer.String(value, format);
@@ -1283,9 +1281,8 @@ namespace he::schema
             }
         }
 
-        void VisitAnyPointer(PointerReader ptr, Type::Reader type, const DeclInfo& scope) override
+        void VisitAnyPointer([[maybe_unused]] PointerReader ptr, [[maybe_unused]] Type::Reader type, [[maybe_unused]] const DeclInfo& scope) override
         {
-            HE_UNUSED(ptr, type, scope);
             const Declaration::Reader decl = GetSchema(scope);
             HE_LOG_WARN(he_schema,
                 HE_MSG("Skipping AnyPointer field when serializing to TOML."),
@@ -1296,9 +1293,8 @@ namespace he::schema
                 HE_KV(key_stack, m_keyStack));
         }
 
-        void VisitAnyStruct(PointerReader ptr, Type::Reader type, const DeclInfo& scope) override
+        void VisitAnyStruct([[maybe_unused]] PointerReader ptr, [[maybe_unused]] Type::Reader type, [[maybe_unused]] const DeclInfo& scope) override
         {
-            HE_UNUSED(ptr, type, scope);
             const Declaration::Reader decl = GetSchema(scope);
             HE_LOG_WARN(he_schema,
                 HE_MSG("Skipping AnyStruct field when serializing to TOML."),
@@ -1309,9 +1305,8 @@ namespace he::schema
                 HE_KV(key_stack, m_keyStack));
         }
 
-        void VisitAnyList(PointerReader ptr, Type::Reader type, const DeclInfo& scope) override
+        void VisitAnyList([[maybe_unused]] PointerReader ptr, [[maybe_unused]] Type::Reader type, [[maybe_unused]] const DeclInfo& scope) override
         {
-            HE_UNUSED(ptr, type, scope);
             const Declaration::Reader decl = GetSchema(scope);
             HE_LOG_WARN(he_schema,
                 HE_MSG("Skipping AnyList field when serializing to TOML."),

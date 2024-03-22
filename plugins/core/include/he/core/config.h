@@ -55,3 +55,14 @@
 #if !defined(HE_ENABLE_DEFAULT_ALLOCATOR)
     #define HE_ENABLE_DEFAULT_ALLOCATOR     1
 #endif
+
+/// \def HE_HAS_LIBC
+/// When true libc is available for use. Some platforms do not have a libc implementation and
+/// require a custom implementation.
+#if !defined(HE_HAS_LIBC)
+    #if defined(HE_PLATFORM_API_WASM)
+        #define HE_HAS_LIBC             0
+    #else
+        #define HE_HAS_LIBC             1
+    #endif
+#endif

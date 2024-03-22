@@ -6,7 +6,6 @@
 #include "he/core/macros.h"
 #include "he/core/string.h"
 #include "he/editor/framework/imgui_theme.h"
-#include "he/math/float.h"
 #include "he/math/types_fmt.h"
 
 #include "imgui.h"
@@ -137,9 +136,8 @@ namespace he::editor
         }
     }
 
-    window::ViewDropEffect ImGuiService::GetDropEffect(window::View* view) const
+    window::ViewDropEffect ImGuiService::GetDropEffect([[maybe_unused]] window::View* view) const
     {
-        HE_UNUSED(view);
         const bool accept = ImGui::IsDragDropPayloadBeingAccepted();
         return accept ? window::ViewDropEffect::Copy : window::ViewDropEffect::Reject;
     }
@@ -149,8 +147,7 @@ namespace he::editor
         SetThemeFonts(atlas, dpiScale);
 
         // Inform the render service that there's a new font
-        const bool result = m_imguiRenderService.SetupFontAtlas(atlas);
+        [[maybe_unused]] const bool result = m_imguiRenderService.SetupFontAtlas(atlas);
         HE_ASSERT(result);
-        HE_UNUSED(result);
     }
 }

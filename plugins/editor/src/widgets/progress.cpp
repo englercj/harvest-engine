@@ -5,7 +5,7 @@
 #include "he/core/assert.h"
 #include "he/core/string_ops.h"
 #include "he/core/utils.h"
-#include "he/math/float.h"
+#include "he/core/math.h"
 
 #include "imgui.h"
 #include "imgui_internal.h"
@@ -73,14 +73,14 @@ namespace he::editor
 
         // Render
         constexpr uint32_t SegmentCount = 24;
-        constexpr uint32_t RotateCount = 5; // number of rotations before a repeat
-        constexpr uint32_t SkipCount = 3; // number of steps to skip each rotation
+        constexpr float RotateCount = 5.0f; // number of rotations before a repeat
+        constexpr float SkipCount = 3.0f; // number of steps to skip each rotation
         constexpr float Period = 5.0f; // number of seconds to complete a rotation
         constexpr float StartAngle = -IM_PI / 2.0f; // start at the top of the circle
 
-        constexpr float MinArc = (30.0f / 360.0f) * Float_Pi2;
-        constexpr float MaxArc = (270.0f / 360.0f) * Float_Pi2;
-        constexpr float StepOffset = SkipCount * Float_Pi2 / RotateCount;
+        constexpr float MinArc = (30.0f / 360.0f) * MathConstants<float>::Pi2;
+        constexpr float MaxArc = (270.0f / 360.0f) * MathConstants<float>::Pi2;
+        constexpr float StepOffset = SkipCount * MathConstants<float>::Pi2 / RotateCount;
 
         const ImVec2 center = ImVec2(pos.x + (size.x / 2.0f), pos.y + (size.y / 2.0f));
         const float t = Fmod(static_cast<float>(g.Time), Period) / Period;
@@ -89,7 +89,7 @@ namespace he::editor
         const float tail = SpinnerStrokeTween(RotateCount, 0.5f, 1.0f, t);
         const float step = Floor(Lerp(0.0f, RotateCount, t));
         const float rotation = SpinnerSawTooth(RotateCount, t);
-        const float rotationCompensation = Fmod((4.0f * IM_PI) - StepOffset - MaxArc, Float_Pi2);
+        const float rotationCompensation = Fmod((4.0f * IM_PI) - StepOffset - MaxArc, MathConstants<float>::Pi2);
 
         const float aMin = StartAngle + (tail * MaxArc) + (rotation * rotationCompensation) - (step * StepOffset);
         const float aMax = aMin + ((head - tail) * MaxArc) + MinArc;

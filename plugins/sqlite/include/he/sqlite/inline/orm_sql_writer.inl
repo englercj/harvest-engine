@@ -60,9 +60,8 @@ namespace he::sqlite
         using Type = OnConflictKind;
 
         template <typename Ctx>
-        void Write(StringBuilder& sql, const OnConflictKind& value, const Ctx& ctx) const
+        void Write(StringBuilder& sql, const OnConflictKind& value, [[maybe_unused]] const Ctx& ctx) const
         {
-            HE_UNUSED(ctx);
             switch (value)
             {
                 case OnConflictKind::None: break;
@@ -81,9 +80,8 @@ namespace he::sqlite
         using Type = OrderByKind;
 
         template <typename Ctx>
-        void Write(StringBuilder& sql, const OrderByKind& value, const Ctx& ctx) const
+        void Write(StringBuilder& sql, const OrderByKind& value, [[maybe_unused]] const Ctx& ctx) const
         {
-            HE_UNUSED(ctx);
             switch (value)
             {
                 case OrderByKind::None: break;
@@ -99,9 +97,8 @@ namespace he::sqlite
         using Type = OrderNullsByKind;
 
         template <typename Ctx>
-        void Write(StringBuilder& sql, const OrderNullsByKind& value, const Ctx& ctx) const
+        void Write(StringBuilder& sql, const OrderNullsByKind& value, [[maybe_unused]] const Ctx& ctx) const
         {
-            HE_UNUSED(ctx);
             switch (value)
             {
                 case OrderNullsByKind::None: break;
@@ -117,9 +114,8 @@ namespace he::sqlite
         using Type = FkActionKind;
 
         template <typename Ctx>
-        void Write(StringBuilder& sql, const FkActionKind& value, const Ctx& ctx) const
+        void Write(StringBuilder& sql, const FkActionKind& value, [[maybe_unused]] const Ctx& ctx) const
         {
-            HE_UNUSED(ctx);
             switch (value)
             {
                 case FkActionKind::None: break;
@@ -776,9 +772,8 @@ namespace he::sqlite
         using Type = InsertOrKind;
 
         template <typename Ctx>
-        void Write(StringBuilder& sql, const InsertOrKind& value, const Ctx& ctx) const
+        void Write(StringBuilder& sql, const InsertOrKind& value, [[maybe_unused]] const Ctx& ctx) const
         {
-            HE_UNUSED(ctx);
             switch (value)
             {
                 case InsertOrKind::None: break;
@@ -809,9 +804,8 @@ namespace he::sqlite
         using Type = InsertDefaultValuesExpr;
 
         template <typename Ctx>
-        void Write(StringBuilder& sql, const Type& value, const Ctx& ctx) const
+        void Write(StringBuilder& sql, [[maybe_unused]] const Type& value, [[maybe_unused]] const Ctx& ctx) const
         {
-            HE_UNUSED(value, ctx);
             sql.Write("DEFAULT VALUES");
         }
     };

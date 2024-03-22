@@ -63,10 +63,8 @@ namespace he
         m_threads.Clear();
     }
 
-    void ThreadPoolExecutor::Add(const char* name, TaskDelegate func)
+    void ThreadPoolExecutor::Add([[maybe_unused]] const char* name, TaskDelegate func)
     {
-        HE_UNUSED(name);
-
         if (!func)
             return;
 

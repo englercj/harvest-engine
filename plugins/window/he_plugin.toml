@@ -33,7 +33,7 @@ homepage = ""
         conditions = ["system:wasm", "files:test_app/wasm/webpack.config.js"]
         buildmessage = "Building webpack project..."
         buildcommands = [
-            "cd %{file.directory} && %{!he.get_npmjs_path()} install --quiet && cd %{file.directory} && %{!he.get_npmjs_path()} run build -- --env outPath=\"%{!cfg.linktarget.directory}\"",
+            "cd %{file.directory} && %{!he.get_npmjs_path()} install --quiet && %{!he.get_npmjs_path()} run build -- --env outPath=\"%{!cfg.linktarget.directory}\"",
         ]
         buildinputs = [
             "test_app/wasm/index.ts",

@@ -14,10 +14,8 @@ namespace he::assets
 {
     extern Module* g_assetEditorModule;
 
-    void AssetUuidFieldEditor(const void*, const schema::DynamicValue::Reader& value, editor::TypeEditUIService::Context& ctx)
+    void AssetUuidFieldEditor([[maybe_unused]] const void* userData, const schema::DynamicValue::Reader& value, [[maybe_unused]] editor::TypeEditUIService::Context& ctx)
     {
-        HE_UNUSED(ctx);
-
         const schema::Uuid::Reader uuid = value.As<schema::DynamicStruct>().As<schema::Uuid>();
         const AssetUuid assetUuid(uuid);
 
@@ -34,7 +32,7 @@ namespace he::assets
             ImGui::SetTooltip("This field is read-only.");
     }
 
-    void AssetDataFieldEditor(const void*, const schema::DynamicValue::Reader& value, editor::TypeEditUIService::Context& ctx)
+    void AssetDataFieldEditor([[maybe_unused]] const void* userData, const schema::DynamicValue::Reader& value, editor::TypeEditUIService::Context& ctx)
     {
         ModuleRegistry& registry = g_assetEditorModule->Registry();
         AssetTypeRegistry& types = registry.GetApi<AssetTypeRegistry>();

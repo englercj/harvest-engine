@@ -13,7 +13,7 @@ namespace he
 {
     constexpr intptr_t Win32InvalidFd = reinterpret_cast<intptr_t>(INVALID_HANDLE_VALUE);
 
-    HANDLE Win32FileOpen(const char* path, FileOpenMode mode, FileOpenFlag flags, DWORD extraFlags);
+    HANDLE Win32FileOpen(const char* path, FileAccessMode access, FileCreateMode create, FileOpenFlag flags, DWORD extraFlags);
 
     FileAttributeFlag Win32ParseFileAttributeFlags(DWORD dwFileAttributes);
     void Win32ParseFileAttributes(const WIN32_FILE_ATTRIBUTE_DATA& info, FileAttributes& outAttributes);

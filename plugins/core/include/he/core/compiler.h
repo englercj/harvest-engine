@@ -2,7 +2,10 @@
 
 #pragma once
 
-#include "he/core/macros.h"
+/// \internal
+#define HE_COMPILER_STRINGIFY__(x) #x
+/// \internal
+#define HE_COMPILER_STRINGIFY_(x) HE_COMPILER_STRINGIFY__(x)
 
 /// When the compiler is Clang this macro will hold the Clang version, otherwise is zero.
 #define HE_COMPILER_CLANG                   0
@@ -58,6 +61,7 @@
     #define HE_FORCE_INLINE                 __attribute__((always_inline)) inline
     #define HE_NO_INLINE                    __attribute__((noinline))
     #define HE_EXPORT                       __attribute__((visibility("default")))
+    #define HE_MAY_ALIAS                    __attribute__((may_alias))
     #define HE_LIKELY(x)                    static_cast<bool>(__builtin_expect(!!(x), 1))
     #define HE_UNLIKELY(x)                  static_cast<bool>(__builtin_expect(!!(x), 0))
     #define HE_UNREACHABLE()                __builtin_unreachable()
@@ -68,7 +72,7 @@
 
     #define HE_PUSH_WARNINGS()              _Pragma("clang diagnostic push")
     #define HE_POP_WARNINGS()               _Pragma("clang diagnostic pop")
-    #define HE_DISABLE_CLANG_WARNING(n)     _Pragma(HE_STRINGIFY(clang diagnostic ignored n))
+    #define HE_DISABLE_CLANG_WARNING(n)     _Pragma(HE_COMPILER_STRINGIFY_(clang diagnostic ignored n))
     #define HE_DISABLE_GCC_WARNING(n)
     #define HE_DISABLE_GCC_CLANG_WARNING(n) HE_DISABLE_CLANG_WARNING(n)
     #define HE_DISABLE_MSVC_WARNING(n)
@@ -87,6 +91,7 @@
     #define HE_FORCE_INLINE                 __attribute__((always_inline)) inline
     #define HE_NO_INLINE                    __attribute__((noinline))
     #define HE_EXPORT                       __attribute__((visibility("default")))
+    #define HE_MAY_ALIAS                    __attribute__((may_alias))
     #define HE_LIKELY(x)                    static_cast<bool>(__builtin_expect(!!(x), 1))
     #define HE_UNLIKELY(x)                  static_cast<bool>(__builtin_expect(!!(x), 0))
     #define HE_UNREACHABLE()                __builtin_unreachable()
@@ -98,7 +103,7 @@
     #define HE_PUSH_WARNINGS()              _Pragma("GCC diagnostic push")
     #define HE_POP_WARNINGS()               _Pragma("GCC diagnostic pop")
     #define HE_DISABLE_CLANG_WARNING(n)
-    #define HE_DISABLE_GCC_WARNING(n)       _Pragma(HE_STRINGIFY(GCC diagnostic ignored n))
+    #define HE_DISABLE_GCC_WARNING(n)       _Pragma(HE_COMPILER_STRINGIFY_(GCC diagnostic ignored n))
     #define HE_DISABLE_GCC_CLANG_WARNING(n) HE_DISABLE_GCC_WARNING(n)
     #define HE_DISABLE_MSVC_WARNING(n)
 
@@ -117,6 +122,7 @@
     #define HE_FORCE_INLINE                 __forceinline
     #define HE_NO_INLINE                    __declspec(noinline)
     #define HE_EXPORT                       __declspec(dllexport)
+    #define HE_MAY_ALIAS
     #define HE_LIKELY(x)                    (!!(x))
     #define HE_UNLIKELY(x)                  (!!(x))
     #define HE_UNREACHABLE()                __assume(0)

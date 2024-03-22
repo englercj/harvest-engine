@@ -160,18 +160,16 @@ namespace he
     {
         SRWLOCK* srw = reinterpret_cast<SRWLOCK*>(mutex.m_opaque);
         CONDITION_VARIABLE* cv = reinterpret_cast<CONDITION_VARIABLE*>(m_opaque);
-        const BOOL r = ::SleepConditionVariableSRW(cv, srw, INFINITE, 0);
+        [[maybe_unused]] const BOOL r = ::SleepConditionVariableSRW(cv, srw, INFINITE, 0);
         HE_ASSERT(r != 0, HE_KV(result, Result::FromLastError()));
-        HE_UNUSED(r);
     }
 
     void ConditionVariable::WaitMutex(RecursiveMutex& mutex)
     {
         CRITICAL_SECTION* cs = reinterpret_cast<CRITICAL_SECTION*>(mutex.m_opaque);
         CONDITION_VARIABLE* cv = reinterpret_cast<CONDITION_VARIABLE*>(m_opaque);
-        const BOOL r = ::SleepConditionVariableCS(cv, cs, INFINITE);
+        [[maybe_unused]] const BOOL r = ::SleepConditionVariableCS(cv, cs, INFINITE);
         HE_ASSERT(r != 0, HE_KV(result, Result::FromLastError()));
-        HE_UNUSED(r);
     }
 
     bool ConditionVariable::WaitMutex(Mutex& mutex, Duration timeout)
@@ -204,25 +202,22 @@ namespace he
     Semaphore::~Semaphore() noexcept
     {
         HANDLE& h = *reinterpret_cast<HANDLE*>(&m_opaque);
-        const BOOL r = ::CloseHandle(h);
+        [[maybe_unused]] const BOOL r = ::CloseHandle(h);
         HE_ASSERT(r != 0, HE_KV(result, Result::FromLastError()));
-        HE_UNUSED(r);
     }
 
     void Semaphore::Notify(uint32_t count)
     {
         HANDLE& h = *reinterpret_cast<HANDLE*>(&m_opaque);
-        const BOOL r = ::ReleaseSemaphore(h, static_cast<LONG>(count), nullptr);
+        [[maybe_unused]] const BOOL r = ::ReleaseSemaphore(h, static_cast<LONG>(count), nullptr);
         HE_ASSERT(r != 0, HE_KV(result, Result::FromLastError()));
-        HE_UNUSED(r);
     }
 
     void Semaphore::Wait()
     {
         HANDLE& h = *reinterpret_cast<HANDLE*>(&m_opaque);
-        const DWORD r = ::WaitForSingleObject(h, INFINITE);
+        [[maybe_unused]] const DWORD r = ::WaitForSingleObject(h, INFINITE);
         HE_ASSERT(r == WAIT_OBJECT_0, HE_KV(result, Result::FromLastError()));
-        HE_UNUSED(r);
     }
 
     bool Semaphore::Wait(Duration timeout)
@@ -247,33 +242,29 @@ namespace he
     SyncEvent::~SyncEvent() noexcept
     {
         HANDLE& h = *reinterpret_cast<HANDLE*>(&m_opaque);
-        const BOOL r = ::CloseHandle(h);
+        [[maybe_unused]] const BOOL r = ::CloseHandle(h);
         HE_ASSERT(r != 0, HE_KV(result, Result::FromLastError()));
-        HE_UNUSED(r);
     }
 
     void SyncEvent::Signal()
     {
         HANDLE& h = *reinterpret_cast<HANDLE*>(&m_opaque);
-        const BOOL r = ::SetEvent(h);
+        [[maybe_unused]] const BOOL r = ::SetEvent(h);
         HE_ASSERT(r != 0, HE_KV(result, Result::FromLastError()));
-        HE_UNUSED(r);
     }
 
     void SyncEvent::Reset()
     {
         HANDLE& h = *reinterpret_cast<HANDLE*>(&m_opaque);
-        const BOOL r = ::ResetEvent(h) != 0;
+        [[maybe_unused]] const BOOL r = ::ResetEvent(h) != 0;
         HE_ASSERT(r != 0, HE_KV(result, Result::FromLastError()));
-        HE_UNUSED(r);
     }
 
     void SyncEvent::Wait()
     {
         HANDLE& h = *reinterpret_cast<HANDLE*>(&m_opaque);
-        const DWORD r = ::WaitForSingleObject(h, INFINITE);
+        [[maybe_unused]] const DWORD r = ::WaitForSingleObject(h, INFINITE);
         HE_ASSERT(r == WAIT_OBJECT_0, HE_KV(result, Result::FromLastError()));
-        HE_UNUSED(r);
     }
 
     bool SyncEvent::Wait(Duration timeout)

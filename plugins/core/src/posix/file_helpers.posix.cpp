@@ -18,35 +18,27 @@
 
 namespace he
 {
-    int PosixFileOpen(const char* path, FileOpenMode mode, FileOpenFlag openFlags, int extraFlags)
+    int PosixFileOpen(const char* path, FileAccessMode access, FileCreateMode create, FileOpenFlag openFlags, int extraFlags)
     {
         int flags = extraFlags;
-        switch (mode)
+
+        switch (access)
         {
-            case FileOpenMode::Write:
-                flags = O_WRONLY | O_CREAT;
-                break;
-            case FileOpenMode::ReadWrite:
-                flags = O_RDWR | O_CREAT;
-                break;
-            case FileOpenMode::ReadExisting:
-                flags = O_RDONLY;
-                break;
-            case FileOpenMode::ReadWriteExisting:
-                flags = O_RDWR;
-                break;
-            case FileOpenMode::WriteTruncate:
-                flags = O_WRONLY | O_CREAT | O_TRUNC;
-                break;
-            case FileOpenMode::ReadWriteTruncate:
-                flags = O_RDWR | O_CREAT | O_TRUNC;
-                break;
-            case FileOpenMode::WriteAppend:
-                flags = O_WRONLY | O_APPEND | O_CREAT;
-                break;
-            case FileOpenMode::ReadWriteAppend:
-                flags = O_RDWR | O_APPEND | O_CREAT;
-                break;
+            case FileAccessMode::Read: flags |= O_RDONLY; break;
+            case FileAccessMode::Write: flags |= O_WRONLY; break;
+            case FileAccessMode::ReadWrite: flags |= O_RDWR; break;
+            default:
+                errno = EINVAL;
+                return -1;
+        }
+
+        switch (create)
+        {
+            case FileCreateMode::OpenExisting: break;
+            case FileCreateMode::OpenAlways: flags = O_CREAT; break;
+            case FileCreateMode::CreateNew: flags = O_CREAT | O_EXCL; break;
+            case FileCreateMode::CreateAlways: flags = O_CREAT | O_TRUNC; break;
+            case FileCreateMode::TruncateExisting: flags = O_TRUNC; break;
             default:
                 errno = EINVAL;
                 return -1;
@@ -54,12 +46,18 @@ namespace he
 
         flags |= O_CLOEXEC; // do not inherit descriptor for child process
 
+        if (HasFlags(openFlags, FileOpenFlag::Append))
+            flags |= O_APPEND;
+
         if (HasFlags(openFlags, FileOpenFlag::NoBuffering))
             flags |= O_DIRECT;
 
         int fd = open(path, flags, 0666);
         if (fd < 0)
             return fd;
+
+        if (HasFlags(openFlags, FileOpenFlag::Append))
+            lseek(fd, 0, SEEK_END);
 
         int advice = POSIX_FADV_NORMAL;
         if (HasFlags(openFlags, FileOpenFlag::RandomAccess))

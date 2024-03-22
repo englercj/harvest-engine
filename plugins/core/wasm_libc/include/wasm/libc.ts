@@ -1,6 +1,6 @@
 // Copyright Chad Engler
 
-import { char, i32, ptr, u32, f64 } from 'he/core/ctypes';
+import { char, i32, ptr, u32, f64, const_ptr } from 'he/core/ctypes';
 import { lib } from 'he/core/lib';
 import { Pointer } from 'he/core/pointer';
 
@@ -196,6 +196,7 @@ lib.addImports('libc', {
         const dst = (summerOffset !== winterOffset && date.getTimezoneOffset() === Math.min(winterOffset, summerOffset));
         value.tm_isdst = (dst ? 1 : 0) as i32;
     },
+
     heWASM_Acos: function (x: f64): f64 { return Math.acos(x) as f64; },
     heWASM_Asin: function (x: f64): f64 { return Math.asin(x) as f64; },
     heWASM_Atan: function (x: f64): f64 { return Math.atan(x) as f64; },
@@ -211,4 +212,18 @@ lib.addImports('libc', {
     heWASM_Round: function (x: f64): f64 { return Math.round(x) as f64; },
     heWASM_Sin: function (x: f64): f64 { return Math.sin(x) as f64; },
     heWASM_Tan: function (x: f64): f64 { return Math.tan(x) as f64; },
+
+    heWASM_StdIoWrite: function (fd: i32, src: const_ptr<char>, len: u32)
+    {
+        const str = Pointer.readString(src, len);
+        switch (fd)
+        {
+            case 1: // stdout
+                console.log(str);
+                break;
+            case 2: // stderr
+                console.error(str);
+                break;
+        }
+    },
 });

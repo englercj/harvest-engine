@@ -3,10 +3,9 @@
 #pragma once
 
 #include "he/core/compiler.h"
+#include "he/core/config.h"
 #include "he/core/cpu.h"
 #include "he/core/types.h"
-
-#include <bit>
 
 #if HE_COMPILER_MSVC
     extern "C"
@@ -34,11 +33,11 @@
 namespace he
 {
     // --------------------------------------------------------------------------------------------
-#if defined(HE_PLATFORM_API_WASM)
-    HE_FORCE_INLINE void* MemCopy(void* dst, const void* src, size_t len) { return __builtin_memcpy(dst, src, len); }
-    HE_FORCE_INLINE void* MemMove(void* dst, const void* src, size_t len) { return __builtin_memmove(dst, src, len); }
+#if !HE_HAS_LIBC
+    void* MemCopy(void* dst, const void* src, size_t len);
+    void* MemMove(void* dst, const void* src, size_t len);
     int32_t MemCmp(const void* a, const void* b, size_t len);
-    HE_FORCE_INLINE void* MemSet(void* mem, int ch, size_t len) { return __builtin_memset(mem, ch, len); }
+    void* MemSet(void* mem, int ch, size_t len);
     const void* MemChr(const void* mem, int ch, size_t len);
 #elif HE_COMPILER_MSVC
     HE_FORCE_INLINE void* MemCopy(void* dst, const void* src, size_t len) { return memcpy(dst, src, len); }

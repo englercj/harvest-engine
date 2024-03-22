@@ -2,11 +2,11 @@
 
 #pragma once
 
+#include "_alltypes.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#include "alltypes.h"
 
 typedef int8_t int_fast8_t;
 typedef int32_t int_fast16_t;

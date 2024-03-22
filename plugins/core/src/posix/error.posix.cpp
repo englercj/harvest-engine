@@ -7,9 +7,9 @@
 
 namespace he
 {
-    bool _PlatformErrorHandler(const ErrorSource& source, const KeyValue* kvs, uint32_t count)
+    bool _PlatformErrorHandler([[maybe_unused]] const ErrorSource& source, [[maybe_unused]] const KeyValue* kvs, [[maybe_unused]] uint32_t count)
     {
-        HE_UNUSED(source, kvs, count);
+        // TODO: print the error if possible
         return true;
     }
 }

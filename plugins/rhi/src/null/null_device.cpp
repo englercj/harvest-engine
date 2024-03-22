@@ -17,56 +17,47 @@ namespace he::rhi::null
         : m_instance(instance)
     {}
 
-    Result DeviceImpl::CreateBuffer(const BufferDesc& desc, Buffer*& out)
+    Result DeviceImpl::CreateBuffer([[maybe_unused]] const BufferDesc& desc, Buffer*& out)
     {
-        HE_UNUSED(desc);
         out = nullptr;
         return Result::Success;
     }
 
-    void DeviceImpl::DestroyBuffer(Buffer* buffer)
+    void DeviceImpl::DestroyBuffer([[maybe_unused]] Buffer* buffer)
     {
-        HE_UNUSED(buffer);
     }
 
-    Result DeviceImpl::CreateBufferView(const BufferViewDesc& desc, BufferView*& out)
+    Result DeviceImpl::CreateBufferView([[maybe_unused]] const BufferViewDesc& desc, BufferView*& out)
     {
-        HE_UNUSED(desc);
         out = nullptr;
         return Result::Success;
     }
 
-    void DeviceImpl::DestroyBufferView(BufferView* view)
+    void DeviceImpl::DestroyBufferView([[maybe_unused]] BufferView* view)
     {
-        HE_UNUSED(view);
     }
 
-    Result DeviceImpl::CreateRWBufferView(const BufferViewDesc& desc, RWBufferView*& out)
+    Result DeviceImpl::CreateRWBufferView([[maybe_unused]] const BufferViewDesc& desc, RWBufferView*& out)
     {
-        HE_UNUSED(desc);
         out = nullptr;
         return Result::Success;
     }
 
-    void DeviceImpl::DestroyRWBufferView(RWBufferView* view)
+    void DeviceImpl::DestroyRWBufferView([[maybe_unused]] RWBufferView* view)
     {
-        HE_UNUSED(view);
     }
 
-    void*DeviceImpl:: Map(Buffer* buffer, uint32_t offset, uint32_t size)
+    void*DeviceImpl:: Map([[maybe_unused]] Buffer* buffer, [[maybe_unused]] uint32_t offset, [[maybe_unused]] uint32_t size)
     {
-        HE_UNUSED(buffer, offset, size);
         return nullptr;
     }
 
-    void DeviceImpl::Unmap(Buffer* buffer)
+    void DeviceImpl::Unmap([[maybe_unused]] Buffer* buffer)
     {
-        HE_UNUSED(buffer);
     }
 
-    Result DeviceImpl::CreateCopyCmdList(const CmdListDesc& desc, CopyCmdList*& out)
+    Result DeviceImpl::CreateCopyCmdList([[maybe_unused]] const CmdListDesc& desc, CopyCmdList*& out)
     {
-        HE_UNUSED(desc);
         out = m_instance->GetAllocator().New<CopyCmdListImpl>();
         return Result::Success;
     }
@@ -76,9 +67,8 @@ namespace he::rhi::null
         m_instance->GetAllocator().Delete(cmdList);
     }
 
-    Result DeviceImpl::CreateComputeCmdList(const CmdListDesc& desc, ComputeCmdList*& out)
+    Result DeviceImpl::CreateComputeCmdList([[maybe_unused]] const CmdListDesc& desc, ComputeCmdList*& out)
     {
-        HE_UNUSED(desc);
         out = m_instance->GetAllocator().New<ComputeCmdListImpl>();
         return Result::Success;
     }
@@ -88,9 +78,8 @@ namespace he::rhi::null
         m_instance->GetAllocator().Delete(cmdList);
     }
 
-    Result DeviceImpl::CreateRenderCmdList(const CmdListDesc& desc, RenderCmdList*& out)
+    Result DeviceImpl::CreateRenderCmdList([[maybe_unused]] const CmdListDesc& desc, RenderCmdList*& out)
     {
-        HE_UNUSED(desc);
         out = m_instance->GetAllocator().New<RenderCmdListImpl>();
         return Result::Success;
     }
@@ -100,279 +89,232 @@ namespace he::rhi::null
         m_instance->GetAllocator().Delete(cmdList);
     }
 
-    Result DeviceImpl::CreateCmdAllocator(const CmdAllocatorDesc& desc, CmdAllocator*& out)
+    Result DeviceImpl::CreateCmdAllocator([[maybe_unused]] const CmdAllocatorDesc& desc, CmdAllocator*& out)
     {
-        HE_UNUSED(desc);
         out = nullptr;
         return Result::Success;
     }
 
-    void DeviceImpl::DestroyCmdAllocator(CmdAllocator* alloc)
+    void DeviceImpl::DestroyCmdAllocator([[maybe_unused]] CmdAllocator* alloc)
     {
-        HE_UNUSED(alloc);
     }
 
-    Result DeviceImpl::ResetCmdAllocator(CmdAllocator* alloc)
+    Result DeviceImpl::ResetCmdAllocator([[maybe_unused]] CmdAllocator* alloc)
     {
-        HE_UNUSED(alloc);
         return Result::Success;
     }
 
-    Result DeviceImpl::CreateDescriptorTable(const DescriptorTableDesc& desc, DescriptorTable*& out)
+    Result DeviceImpl::CreateDescriptorTable([[maybe_unused]] const DescriptorTableDesc& desc, DescriptorTable*& out)
     {
-        HE_UNUSED(desc);
         out = nullptr;
         return Result::Success;
     }
 
-    void DeviceImpl::DestroyDescriptorTable(DescriptorTable* table)
+    void DeviceImpl::DestroyDescriptorTable([[maybe_unused]] DescriptorTable* table)
     {
-        HE_UNUSED(table);
     }
 
-    void DeviceImpl::SetBufferViews(DescriptorTable* table, uint32_t rangeIndex, uint32_t descIndex, uint32_t count, const BufferView* const* views)
+    void DeviceImpl::SetBufferViews([[maybe_unused]] DescriptorTable* table, [[maybe_unused]] uint32_t rangeIndex, [[maybe_unused]] uint32_t descIndex, [[maybe_unused]] uint32_t count, [[maybe_unused]] const BufferView* const* views)
     {
-        HE_UNUSED(table, rangeIndex, descIndex, count, views);
     }
 
-    void DeviceImpl::SetTextureViews(DescriptorTable* table, uint32_t rangeIndex, uint32_t descIndex, uint32_t count, const TextureView* const* views)
+    void DeviceImpl::SetTextureViews([[maybe_unused]] DescriptorTable* table, [[maybe_unused]] uint32_t rangeIndex, [[maybe_unused]] uint32_t descIndex, [[maybe_unused]] uint32_t count, [[maybe_unused]] const TextureView* const* views)
     {
-        HE_UNUSED(table, rangeIndex, descIndex, count, views);
     }
 
-    void DeviceImpl::SetRWBufferViews(DescriptorTable* table, uint32_t rangeIndex, uint32_t descIndex, uint32_t count, const RWBufferView* const* views)
+    void DeviceImpl::SetRWBufferViews([[maybe_unused]] DescriptorTable* table, [[maybe_unused]] uint32_t rangeIndex, [[maybe_unused]] uint32_t descIndex, [[maybe_unused]] uint32_t count, [[maybe_unused]] const RWBufferView* const* views)
     {
-        HE_UNUSED(table, rangeIndex, descIndex, count, views);
     }
 
-    void DeviceImpl::SetRWTextureViews(DescriptorTable* table, uint32_t rangeIndex, uint32_t descIndex, uint32_t count, const RWTextureView* const* views)
+    void DeviceImpl::SetRWTextureViews([[maybe_unused]] DescriptorTable* table, [[maybe_unused]] uint32_t rangeIndex, [[maybe_unused]] uint32_t descIndex, [[maybe_unused]] uint32_t count, [[maybe_unused]] const RWTextureView* const* views)
     {
-        HE_UNUSED(table, rangeIndex, descIndex, count, views);
     }
 
-    void DeviceImpl::SetConstantBufferViews(DescriptorTable* table, uint32_t rangeIndex, uint32_t descIndex, uint32_t count, const ConstantBufferView* const* views)
+    void DeviceImpl::SetConstantBufferViews([[maybe_unused]] DescriptorTable* table, [[maybe_unused]] uint32_t rangeIndex, [[maybe_unused]] uint32_t descIndex, [[maybe_unused]] uint32_t count, [[maybe_unused]] const ConstantBufferView* const* views)
     {
-        HE_UNUSED(table, rangeIndex, descIndex, count, views);
     }
 
-    void DeviceImpl::SetSamplers(DescriptorTable* table, uint32_t rangeIndex, uint32_t descIndex, uint32_t count, const Sampler* const* samplers)
+    void DeviceImpl::SetSamplers([[maybe_unused]] DescriptorTable* table, [[maybe_unused]] uint32_t rangeIndex, [[maybe_unused]] uint32_t descIndex, [[maybe_unused]] uint32_t count, [[maybe_unused]] const Sampler* const* samplers)
     {
-        HE_UNUSED(table, rangeIndex, descIndex, count, samplers);
     }
 
-    Result DeviceImpl::CreateCpuFence(const CpuFenceDesc& desc, CpuFence*& out)
+    Result DeviceImpl::CreateCpuFence([[maybe_unused]] const CpuFenceDesc& desc, CpuFence*& out)
     {
-        HE_UNUSED(desc);
         out = nullptr;
         return Result::Success;
     }
 
-    void DeviceImpl::DestroyCpuFence(CpuFence* fence)
+    void DeviceImpl::DestroyCpuFence([[maybe_unused]] CpuFence* fence)
     {
-        HE_UNUSED(fence);
     }
 
-    Result DeviceImpl::CreateGpuFence(const GpuFenceDesc& desc, GpuFence*& out)
+    Result DeviceImpl::CreateGpuFence([[maybe_unused]] const GpuFenceDesc& desc, GpuFence*& out)
     {
-        HE_UNUSED(desc);
         out = nullptr;
         return Result::Success;
     }
 
-    void DeviceImpl::DestroyGpuFence(GpuFence* fence)
+    void DeviceImpl::DestroyGpuFence([[maybe_unused]] GpuFence* fence)
     {
-        HE_UNUSED(fence);
     }
 
-    bool DeviceImpl::WaitForFence(const CpuFence* fence, uint32_t timeoutMs)
+    bool DeviceImpl::WaitForFence([[maybe_unused]] const CpuFence* fence, [[maybe_unused]] uint32_t timeoutMs)
     {
-        HE_UNUSED(fence, timeoutMs);
         return true;
     }
 
-    bool DeviceImpl::IsFenceSignaled(const CpuFence* fence)
+    bool DeviceImpl::IsFenceSignaled([[maybe_unused]] const CpuFence* fence)
     {
-        HE_UNUSED(fence);
         return true;
     }
 
-    uint64_t DeviceImpl::GetFenceValue(const GpuFence* fence)
+    uint64_t DeviceImpl::GetFenceValue([[maybe_unused]] const GpuFence* fence)
     {
-        HE_UNUSED(fence);
         return 0;
     }
 
-    Result DeviceImpl::CreateComputePipeline(const ComputePipelineDesc& desc, ComputePipeline*& out)
+    Result DeviceImpl::CreateComputePipeline([[maybe_unused]] const ComputePipelineDesc& desc, ComputePipeline*& out)
     {
-        HE_UNUSED(desc);
         out = nullptr;
         return Result::Success;
     }
 
-    void DeviceImpl::DestroyComputePipeline(ComputePipeline* pipeline)
+    void DeviceImpl::DestroyComputePipeline([[maybe_unused]] ComputePipeline* pipeline)
     {
-        HE_UNUSED(pipeline);
     }
 
-    Result DeviceImpl::CreateRenderPipeline(const RenderPipelineDesc& desc, RenderPipeline*& out)
+    Result DeviceImpl::CreateRenderPipeline([[maybe_unused]] const RenderPipelineDesc& desc, RenderPipeline*& out)
     {
-        HE_UNUSED(desc);
         out = nullptr;
         return Result::Success;
     }
 
-    void DeviceImpl::DestroyRenderPipeline(RenderPipeline* pipeline)
+    void DeviceImpl::DestroyRenderPipeline([[maybe_unused]] RenderPipeline* pipeline)
     {
-        HE_UNUSED(pipeline);
     }
 
-    Result DeviceImpl::CreateRootSignature(const RootSignatureDesc& desc, RootSignature*& out)
+    Result DeviceImpl::CreateRootSignature([[maybe_unused]] const RootSignatureDesc& desc, RootSignature*& out)
     {
-        HE_UNUSED(desc);
         out = nullptr;
         return Result::Success;
     }
 
-    void DeviceImpl::DestroyRootSignature(RootSignature* signature)
+    void DeviceImpl::DestroyRootSignature([[maybe_unused]] RootSignature* signature)
     {
-        HE_UNUSED(signature);
     }
 
-    Result DeviceImpl::CreateSampler(const SamplerDesc& desc, Sampler*& out)
+    Result DeviceImpl::CreateSampler([[maybe_unused]] const SamplerDesc& desc, Sampler*& out)
     {
-        HE_UNUSED(desc);
         out = nullptr;
         return Result::Success;
     }
 
-    void DeviceImpl::DestroySampler(Sampler* sampler)
+    void DeviceImpl::DestroySampler([[maybe_unused]] Sampler* sampler)
     {
-        HE_UNUSED(sampler);
     }
 
-    Result DeviceImpl::CreateShader(const ShaderDesc& desc, Shader*& out)
+    Result DeviceImpl::CreateShader([[maybe_unused]] const ShaderDesc& desc, Shader*& out)
     {
-        HE_UNUSED(desc);
         out = nullptr;
         return Result::Success;
     }
 
-    void DeviceImpl::DestroyShader(Shader* shader)
+    void DeviceImpl::DestroyShader([[maybe_unused]] Shader* shader)
     {
-        HE_UNUSED(shader);
     }
 
-    Result DeviceImpl::CreateSwapChain(const SwapChainDesc& desc, SwapChain*& out)
+    Result DeviceImpl::CreateSwapChain([[maybe_unused]] const SwapChainDesc& desc, SwapChain*& out)
     {
-        HE_UNUSED(desc);
         out = nullptr;
         return Result::Success;
     }
 
-    void DeviceImpl::DestroySwapChain(SwapChain* swapChain)
+    void DeviceImpl::DestroySwapChain([[maybe_unused]] SwapChain* swapChain)
     {
-        HE_UNUSED(swapChain);
     }
 
-    Result DeviceImpl::UpdateSwapChain(SwapChain* swapChain, const SwapChainDesc& desc)
+    Result DeviceImpl::UpdateSwapChain([[maybe_unused]] SwapChain* swapChain, [[maybe_unused]] const SwapChainDesc& desc)
     {
-        HE_UNUSED(swapChain, desc);
         return Result::Success;
     }
 
-    PresentTarget DeviceImpl::AcquirePresentTarget(SwapChain* swapChain)
+    PresentTarget DeviceImpl::AcquirePresentTarget([[maybe_unused]] SwapChain* swapChain)
     {
-        HE_UNUSED(swapChain);
         return PresentTarget{};
     }
 
-    bool DeviceImpl::IsFullscreen(SwapChain* swapChain)
+    bool DeviceImpl::IsFullscreen([[maybe_unused]] SwapChain* swapChain)
     {
-        HE_UNUSED(swapChain);
         return false;
     }
 
-    Result DeviceImpl::SetFullscreen(SwapChain* swapChain, bool fullscreen)
+    Result DeviceImpl::SetFullscreen([[maybe_unused]] SwapChain* swapChain, [[maybe_unused]] bool fullscreen)
     {
-        HE_UNUSED(swapChain, fullscreen);
         return Result::Success;
     }
 
-    Result DeviceImpl::CreateTexture(const TextureDesc& desc, Texture*& out)
+    Result DeviceImpl::CreateTexture([[maybe_unused]] const TextureDesc& desc, Texture*& out)
     {
-        HE_UNUSED(desc);
         out = nullptr;
         return Result::Success;
     }
 
-    void DeviceImpl::DestroyTexture(Texture* texture)
+    void DeviceImpl::DestroyTexture([[maybe_unused]] Texture* texture)
     {
-        HE_UNUSED(texture);
     }
 
-    Result DeviceImpl::CreateTextureView(const TextureViewDesc& desc, TextureView*& out)
+    Result DeviceImpl::CreateTextureView([[maybe_unused]] const TextureViewDesc& desc, TextureView*& out)
     {
-        HE_UNUSED(desc);
         out = nullptr;
         return Result::Success;
     }
 
-    void DeviceImpl::DestroyTextureView(TextureView* view)
+    void DeviceImpl::DestroyTextureView([[maybe_unused]] TextureView* view)
     {
-        HE_UNUSED(view);
     }
 
-    Result DeviceImpl::CreateRWTextureView(const TextureViewDesc& desc, RWTextureView*& out)
+    Result DeviceImpl::CreateRWTextureView([[maybe_unused]] const TextureViewDesc& desc, RWTextureView*& out)
     {
-        HE_UNUSED(desc);
         out = nullptr;
         return Result::Success;
     }
 
-    void DeviceImpl::DestroyRWTextureView(RWTextureView* view)
+    void DeviceImpl::DestroyRWTextureView([[maybe_unused]] RWTextureView* view)
     {
-        HE_UNUSED(view);
     }
 
-    Result DeviceImpl::CreateRenderTargetView(const TextureViewDesc& desc, RenderTargetView*& out)
+    Result DeviceImpl::CreateRenderTargetView([[maybe_unused]] const TextureViewDesc& desc, RenderTargetView*& out)
     {
-        HE_UNUSED(desc);
         out = nullptr;
         return Result::Success;
     }
 
-    void DeviceImpl::DestroyRenderTargetView(RenderTargetView* view)
+    void DeviceImpl::DestroyRenderTargetView([[maybe_unused]] RenderTargetView* view)
     {
-        HE_UNUSED(view);
     }
 
-    Result DeviceImpl::CreateConstantBufferView(const ConstantBufferViewDesc& desc, ConstantBufferView*& out)
+    Result DeviceImpl::CreateConstantBufferView([[maybe_unused]] const ConstantBufferViewDesc& desc, ConstantBufferView*& out)
     {
-        HE_UNUSED(desc);
         out = nullptr;
         return Result::Success;
     }
 
-    void DeviceImpl::DestroyConstantBufferView(ConstantBufferView* view)
+    void DeviceImpl::DestroyConstantBufferView([[maybe_unused]] ConstantBufferView* view)
     {
-        HE_UNUSED(view);
     }
 
-    Result DeviceImpl::CreateVertexBufferFormat(const VertexBufferFormatDesc& desc, VertexBufferFormat*& out)
+    Result DeviceImpl::CreateVertexBufferFormat([[maybe_unused]] const VertexBufferFormatDesc& desc, VertexBufferFormat*& out)
     {
-        HE_UNUSED(desc);
         out = nullptr;
         return Result::Success;
     }
 
-    void DeviceImpl::DestroyVertexBufferFormat(VertexBufferFormat* vbf)
+    void DeviceImpl::DestroyVertexBufferFormat([[maybe_unused]] VertexBufferFormat* vbf)
     {
-        HE_UNUSED(vbf);
     }
 
-    Result DeviceImpl::GetSwapChainFormats(void* nvh, SwapChainFormat* formats, uint32_t& count)
+    Result DeviceImpl::GetSwapChainFormats([[maybe_unused]] void* nvh, SwapChainFormat* formats, uint32_t& count)
     {
-        HE_UNUSED(nvh);
         if (formats && count >= 1)
             formats[0] = { Format::RGBA8Unorm, ColorSpace::sRGB };
 

@@ -2,8 +2,6 @@
 
 #pragma once
 
-#include "he/core/compiler.h"
-
 /// Defined as one (1) when the target is any ARM platform, and zero (0) otherwise.
 #define HE_CPU_ARM                  0
 
@@ -99,7 +97,7 @@
 /// Causes a cpu with dynamic execution to pause the next instruction for an
 /// implementation-specific amount of time. This is useful in spin-wait loops.
 #if HE_CPU_ARM
-    #if HE_COMPILER_MSVC
+    #if defined(_MSC_VER)
         extern "C" void __yield(void);
         #pragma intrinsic(__yield)
         #define HE_CPU_SPIN_WAIT_PAUSE()    __yield()
@@ -109,7 +107,7 @@
 #elif HE_CPU_WASM
     #define HE_CPU_SPIN_WAIT_PAUSE()        _mm_pause()
 #elif HE_CPU_X86
-    #if HE_COMPILER_MSVC
+    #if defined(_MSC_VER)
         extern "C" void _mm_pause(void);
         #pragma intrinsic(_mm_pause)
         #define HE_CPU_SPIN_WAIT_PAUSE()    _mm_pause()

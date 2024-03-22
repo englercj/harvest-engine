@@ -186,23 +186,20 @@ namespace he::editor
             }
         }
 
-        bool ShouldVisitNormalField(const schema::DynamicStruct::Reader& data, schema::Field::Reader field) override
+        bool ShouldVisitNormalField([[maybe_unused]] const schema::DynamicStruct::Reader& data, schema::Field::Reader field) override
         {
-            HE_UNUSED(data);
             const bool hidden = schema::HasAttribute<editor::Display::Hidden>(field.GetAttributes());
             return !hidden;
         }
 
-        bool ShouldVisitGroupField(const schema::DynamicStruct::Reader& data, schema::Field::Reader field) override
+        bool ShouldVisitGroupField([[maybe_unused]] const schema::DynamicStruct::Reader& data, schema::Field::Reader field) override
         {
-            HE_UNUSED(data);
             const bool hidden = schema::HasAttribute<editor::Display::Hidden>(field.GetAttributes());
             return !hidden;
         }
 
-        bool ShouldVisitUnionField(const schema::DynamicStruct::Reader& data, schema::Field::Reader field) override
+        bool ShouldVisitUnionField([[maybe_unused]] const schema::DynamicStruct::Reader& data, schema::Field::Reader field) override
         {
-            HE_UNUSED(data);
             const bool hidden = schema::HasAttribute<editor::Display::Hidden>(field.GetAttributes());
             return !hidden;
         }
@@ -429,9 +426,8 @@ namespace he::editor
             return true;
         }
 
-        void ShowValueEditor(schema::Void value)
+        void ShowValueEditor([[maybe_unused]] schema::Void value)
         {
-            HE_UNUSED(value);
             ImGui::TextUnformatted("void");
         }
 
@@ -519,9 +515,8 @@ namespace he::editor
             }
         }
 
-        void ShowValueEditor(schema::Blob::Reader value)
+        void ShowValueEditor([[maybe_unused]] schema::Blob::Reader value)
         {
-            HE_UNUSED(value);
             ImGui::TextUnformatted("<binary data>");
         }
 
@@ -627,9 +622,8 @@ namespace he::editor
             ImGui::EndDisabled();
         }
 
-        void ShowValueEditor(schema::AnyPointer::Reader ptr)
+        void ShowValueEditor([[maybe_unused]] schema::AnyPointer::Reader ptr)
         {
-            HE_UNUSED(ptr);
             ImGui::TextUnformatted("<any pointer>");
         }
 

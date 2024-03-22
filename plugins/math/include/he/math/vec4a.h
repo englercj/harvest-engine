@@ -5,9 +5,9 @@
 #include "he/core/assert.h"
 #include "he/core/compiler.h"
 #include "he/core/cpu.h"
+#include "he/core/math.h"
 #include "he/core/utils.h"
 #include "he/math/constants.h"
-#include "he/math/float.h"
 #include "he/math/types.h"
 
 namespace he

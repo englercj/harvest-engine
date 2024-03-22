@@ -75,7 +75,7 @@ namespace he
         else
             FormatFileName<FmtLocalTime>(m_buf);
 
-        return m_file.Open(m_buf.Data(), FileOpenMode::WriteTruncate);
+        return m_file.Open(m_buf.Data(), FileAccessMode::Write, FileCreateMode::CreateAlways);
     }
 
     void FileSink::OnLogEntry(const LogSource& source, const KeyValue* kvs, uint32_t count)

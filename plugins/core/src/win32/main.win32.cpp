@@ -27,10 +27,8 @@ namespace he
 
             argv[i] = new char[len];
 
-            int copied = ::WideCharToMultiByte(CP_UTF8, 0, wargv[i], -1, argv[i], len, nullptr, nullptr);
-
+            [[maybe_unused]] int copied = ::WideCharToMultiByte(CP_UTF8, 0, wargv[i], -1, argv[i], len, nullptr, nullptr);
             HE_ASSERT(len == copied);
-            HE_UNUSED(copied);
         }
 
         argv[argc] = nullptr;

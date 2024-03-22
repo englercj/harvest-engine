@@ -69,9 +69,8 @@ namespace he::schema
         if (!At(Lexer::TokenType::Ordinal))
         {
             TypeId id = 0;
-            const bool idResult = GetSecureRandomBytes(reinterpret_cast<uint8_t*>(&id), sizeof(id));
+            [[maybe_unused]] const bool idResult = GetSecureRandomBytes(reinterpret_cast<uint8_t*>(&id), sizeof(id));
             HE_ASSERT(idResult);
-            HE_UNUSED(idResult);
 
             id |= TypeIdFlag;
             AddError("The first non-comment line of a schema file must be the file's unique ID. Add this line to the top of your file: @{:#018x};", id);

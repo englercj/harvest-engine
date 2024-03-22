@@ -482,9 +482,8 @@ namespace he
     }
 
     template <typename T> requires(IsSpecialization<Decay<T>, Tuple>)
-    constexpr uint32_t TupleSize(T&& tuple)
+    constexpr uint32_t TupleSize([[maybe_unused]] T&& tuple)
     {
-        HE_UNUSED(tuple);
         return Decay<T>::Size;
     }
 }

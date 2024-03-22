@@ -2,6 +2,8 @@
 
 #pragma once
 
+#include "_common.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -42,13 +44,13 @@ int __signbitf(float);
 int __signbit(double);
 int __signbitl(long double);
 
-__attribute__((always_inline)) inline unsigned __FLOAT_BITS(float __f)
+_Forceinline unsigned __FLOAT_BITS(float __f)
 {
     union { float __f; unsigned __i; } __u;
     __u.__f = __f;
     return __u.__i;
 }
-__attribute__((always_inline)) inline unsigned long long __DOUBLE_BITS(double __f)
+_Forceinline unsigned long long __DOUBLE_BITS(double __f)
 {
     union { double __f; unsigned long long __i; } __u;
     __u.__f = __f;

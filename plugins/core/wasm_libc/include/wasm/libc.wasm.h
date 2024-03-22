@@ -32,4 +32,6 @@ extern "C"
     extern double HE_WASM_IMPORT_LIBC(heWASM_Round)(double x);
     extern double HE_WASM_IMPORT_LIBC(heWASM_Sin)(double x);
     extern double HE_WASM_IMPORT_LIBC(heWASM_Tan)(double x);
+
+    extern void HE_WASM_IMPORT_LIBC(heWASM_StdIoWrite)(int fd, const char* src, uint32_t len);
 }

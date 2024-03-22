@@ -287,20 +287,20 @@ namespace he::schema
         virtual bool VisitDecl(Declaration::Reader decl, Declaration::Reader scope);
 
         virtual bool VisitFile(Declaration::Reader decl);
-        virtual bool VisitAttribute(Declaration::Reader decl, Declaration::Reader scope) { HE_UNUSED(decl, scope); return true; }
-        virtual bool VisitConstant(Declaration::Reader decl, Declaration::Reader scope) { HE_UNUSED(decl, scope); return true; }
+        virtual bool VisitAttribute([[maybe_unused]] Declaration::Reader decl, [[maybe_unused]] Declaration::Reader scope) { return true; }
+        virtual bool VisitConstant([[maybe_unused]] Declaration::Reader decl, [[maybe_unused]] Declaration::Reader scope) { return true; }
 
         virtual bool VisitEnum(Declaration::Reader decl, Declaration::Reader scope);
-        virtual bool VisitEnumerator(Enumerator::Reader enumerator, Declaration::Reader scope) { HE_UNUSED(enumerator, scope); return true; }
+        virtual bool VisitEnumerator([[maybe_unused]] Enumerator::Reader enumerator, [[maybe_unused]] Declaration::Reader scope) { return true; }
 
         virtual bool VisitInterface(Declaration::Reader decl, Declaration::Reader scope);
-        virtual bool VisitMethod(Method::Reader method, Declaration::Reader scope) { HE_UNUSED(method, scope); return true; }
+        virtual bool VisitMethod([[maybe_unused]] Method::Reader method, [[maybe_unused]] Declaration::Reader scope) { return true; }
 
         virtual bool VisitStruct(Declaration::Reader decl, Declaration::Reader scope);
         virtual bool VisitField(Field::Reader field, Declaration::Reader scope);
-        virtual bool VisitNormalField(Field::Reader field, Declaration::Reader scope) { HE_UNUSED(field, scope); return true; }
-        virtual bool VisitGroupField(Field::Reader field, Declaration::Reader scope) { HE_UNUSED(field, scope); return true; }
-        virtual bool VisitUnionField(Field::Reader field, Declaration::Reader scope) { HE_UNUSED(field, scope); return true; }
+        virtual bool VisitNormalField([[maybe_unused]] Field::Reader field, [[maybe_unused]] Declaration::Reader scope) { return true; }
+        virtual bool VisitGroupField([[maybe_unused]] Field::Reader field, [[maybe_unused]] Declaration::Reader scope) { return true; }
+        virtual bool VisitUnionField([[maybe_unused]] Field::Reader field, [[maybe_unused]] Declaration::Reader scope) { return true; }
 
     protected:
         Declaration::Reader m_schema;
@@ -323,24 +323,24 @@ namespace he::schema
         virtual void VisitGroupField(StructReader data, Field::Reader field, const DeclInfo& scope);
         virtual void VisitUnionField(StructReader data, Field::Reader field, const DeclInfo& scope);
 
-        virtual void VisitValue(bool value, Type::Reader type, const DeclInfo& scope) { HE_UNUSED(value, type, scope); }
-        virtual void VisitValue(int8_t value, Type::Reader type, const DeclInfo& scope) { HE_UNUSED(value, type, scope); }
-        virtual void VisitValue(int16_t value, Type::Reader type, const DeclInfo& scope) { HE_UNUSED(value, type, scope); }
-        virtual void VisitValue(int32_t value, Type::Reader type, const DeclInfo& scope) { HE_UNUSED(value, type, scope); }
-        virtual void VisitValue(int64_t value, Type::Reader type, const DeclInfo& scope) { HE_UNUSED(value, type, scope); }
-        virtual void VisitValue(uint8_t value, Type::Reader type, const DeclInfo& scope) { HE_UNUSED(value, type, scope); }
-        virtual void VisitValue(uint16_t value, Type::Reader type, const DeclInfo& scope) { HE_UNUSED(value, type, scope); }
-        virtual void VisitValue(uint32_t value, Type::Reader type, const DeclInfo& scope) { HE_UNUSED(value, type, scope); }
-        virtual void VisitValue(uint64_t value, Type::Reader type, const DeclInfo& scope) { HE_UNUSED(value, type, scope); }
-        virtual void VisitValue(float value, Type::Reader type, const DeclInfo& scope) { HE_UNUSED(value, type, scope); }
-        virtual void VisitValue(double value, Type::Reader type, const DeclInfo& scope) { HE_UNUSED(value, type, scope); }
-        virtual void VisitValue(Blob::Reader value, Type::Reader type, const DeclInfo& scope) { HE_UNUSED(value, type, scope); }
-        virtual void VisitValue(String::Reader value, Type::Reader type, const DeclInfo& scope) { HE_UNUSED(value, type, scope); }
-        virtual void VisitValue(EnumValueTag, uint16_t value, Type::Reader type, const DeclInfo& scope) { HE_UNUSED(value, type, scope); }
+        virtual void VisitValue([[maybe_unused]] bool value, [[maybe_unused]] Type::Reader type, [[maybe_unused]] const DeclInfo& scope) {}
+        virtual void VisitValue([[maybe_unused]] int8_t value, [[maybe_unused]] Type::Reader type, [[maybe_unused]] const DeclInfo& scope) {}
+        virtual void VisitValue([[maybe_unused]] int16_t value, [[maybe_unused]] Type::Reader type, [[maybe_unused]] const DeclInfo& scope) {}
+        virtual void VisitValue([[maybe_unused]] int32_t value, [[maybe_unused]] Type::Reader type, [[maybe_unused]] const DeclInfo& scope) {}
+        virtual void VisitValue([[maybe_unused]] int64_t value, [[maybe_unused]] Type::Reader type, [[maybe_unused]] const DeclInfo& scope) {}
+        virtual void VisitValue([[maybe_unused]] uint8_t value, [[maybe_unused]] Type::Reader type, [[maybe_unused]] const DeclInfo& scope) {}
+        virtual void VisitValue([[maybe_unused]] uint16_t value, [[maybe_unused]] Type::Reader type, [[maybe_unused]] const DeclInfo& scope) {}
+        virtual void VisitValue([[maybe_unused]] uint32_t value, [[maybe_unused]] Type::Reader type, [[maybe_unused]] const DeclInfo& scope) {}
+        virtual void VisitValue([[maybe_unused]] uint64_t value, [[maybe_unused]] Type::Reader type, [[maybe_unused]] const DeclInfo& scope) {}
+        virtual void VisitValue([[maybe_unused]] float value, [[maybe_unused]] Type::Reader type, [[maybe_unused]] const DeclInfo& scope) {}
+        virtual void VisitValue([[maybe_unused]] double value, [[maybe_unused]] Type::Reader type, [[maybe_unused]] const DeclInfo& scope) {}
+        virtual void VisitValue([[maybe_unused]] Blob::Reader value, [[maybe_unused]] Type::Reader type, [[maybe_unused]] const DeclInfo& scope) {}
+        virtual void VisitValue([[maybe_unused]] String::Reader value, [[maybe_unused]] Type::Reader type, [[maybe_unused]] const DeclInfo& scope) {}
+        virtual void VisitValue([[maybe_unused]] EnumValueTag tag, [[maybe_unused]] uint16_t value, [[maybe_unused]] Type::Reader type, [[maybe_unused]] const DeclInfo& scope) {}
 
-        virtual void VisitAnyPointer(PointerReader ptr, Type::Reader type, const DeclInfo& scope) { HE_UNUSED(ptr, type, scope); }
-        virtual void VisitAnyStruct(PointerReader ptr, Type::Reader type, const DeclInfo& scope) { HE_UNUSED(ptr, type, scope); }
-        virtual void VisitAnyList(PointerReader ptr, Type::Reader type, const DeclInfo& scope) { HE_UNUSED(ptr, type, scope); }
+        virtual void VisitAnyPointer([[maybe_unused]] PointerReader ptr, [[maybe_unused]] Type::Reader type, [[maybe_unused]] const DeclInfo& scope) {}
+        virtual void VisitAnyStruct([[maybe_unused]] PointerReader ptr, [[maybe_unused]] Type::Reader type, [[maybe_unused]] const DeclInfo& scope) {}
+        virtual void VisitAnyList([[maybe_unused]] PointerReader ptr, [[maybe_unused]] Type::Reader type, [[maybe_unused]] const DeclInfo& scope) {}
 
     protected:
         // This section has functions that child classes are less likely to override.

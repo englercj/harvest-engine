@@ -175,10 +175,8 @@ namespace he::schema
         return true;
     }
 
-    bool CodeGenEcho::VisitMethod(Method::Reader method, Declaration::Reader scope)
+    bool CodeGenEcho::VisitMethod(Method::Reader method, [[maybe_unused]] Declaration::Reader scope)
     {
-        HE_UNUSED(scope);
-
         m_writer.WriteIndent();
         m_writer.Write("{} @{} ", method.GetName().AsView(), method.GetOrdinal());
 
@@ -908,7 +906,7 @@ namespace he::schema
         return false;
     }
 
-    bool CodeGenEcho::IsUnionFieldSet(Field::Reader field, StructReader value)
+    bool CodeGenEcho::IsUnionFieldSet([[maybe_unused]] Field::Reader field, [[maybe_unused]] StructReader value)
     {
         // TODO: This doesn't actually work. We need to allocate a field index for the union tag to make this work.
         //const Field::Meta::Group::Reader group = field.GetMeta().GetGroup();
@@ -917,7 +915,6 @@ namespace he::schema
 
         //return value.HasDataField(structDecl.GetUnionTagOffset());
 
-        HE_UNUSED(field, value);
         return false;
     }
 

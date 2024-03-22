@@ -23,9 +23,8 @@ namespace he::sqlite
         , m_id()
     {
         uint8_t idBytes[8];
-        const bool idResult = GetSecureRandomBytes(idBytes);
+        [[maybe_unused]] const bool idResult = GetSecureRandomBytes(idBytes);
         HE_ASSERT(idResult);
-        HE_UNUSED(idResult);
 
         FormatTo(m_id, "{:02x}", FmtJoin(idBytes, ""));
         HE_ASSERT(m_id.Size() == 16);
@@ -79,12 +78,11 @@ namespace he::sqlite
     bool Transaction::Execute(const char* cmd)
     {
         constexpr uint32_t BufferLen = 32;
-        constexpr uint32_t QueryMaxLen = BufferLen - (16 + 1); // 16 for id bytes, +1 for the ' ' character
+        [[maybe_unused]] constexpr uint32_t QueryMaxLen = BufferLen - (16 + 1); // 16 for id bytes, +1 for the ' ' character
         HE_ASSERT(m_id.Size() == 16);
 
         const uint32_t len = StrLen(cmd);
         HE_ASSERT(len <= QueryMaxLen);
-        HE_UNUSED(QueryMaxLen);
 
         char query[BufferLen];
         MemCopy(query, cmd, len);

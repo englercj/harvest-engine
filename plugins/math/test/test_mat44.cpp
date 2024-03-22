@@ -4,6 +4,7 @@
 
 #include "he/math/mat44.h"
 
+#include "he/core/math.h"
 #include "he/core/test.h"
 #include "he/math/constants.h"
 #include "he/math/types_fmt.h"
@@ -84,7 +85,7 @@ HE_TEST(math, mat44, MakeRotateMat44)
         HE_EXPECT_EQ(actual, expect);
     }
 
-    float halfAngle = 0.5f * Float_Pi;
+    float halfAngle = 0.5f * MathConstants<float>::Pi;
     float s = sinf(halfAngle);
     float c = cosf(halfAngle);
 
@@ -228,7 +229,7 @@ HE_TEST(math, mat44, MakeTransformMat44)
         HE_EXPECT_EQ(actual, expect);
     }
 
-    float halfAngle = 0.5f * Float_Pi;
+    float halfAngle = 0.5f * MathConstants<float>::PiPi;
     float s = sinf(halfAngle);
     float c = cosf(halfAngle);
 
@@ -449,28 +450,28 @@ HE_TEST(math, mat44, PerspRH)
 HE_TEST(math, mat44, IRZPerspLH)
 {
     Vec4a n{ 0, 0, 1.0f, 0 };
-    Vec4a f{ 0, 0, Float_Max, 0 };
+    Vec4a f{ 0, 0, Limits<float>::Max, 0 };
 
     Mat44 m = IRZPerspLH(ToRadians(90.0f), 1.0f, 1.0f);
 
     Vec4a n1 = ProjectPoint(m, n);
     Vec4a f1 = ProjectPoint(m, f);
     HE_EXPECT_EQ_ULP(GetZ(n1), 1.0f, 1);
-    HE_EXPECT_LT(Abs(GetZ(f1)), Float_Min);
+    HE_EXPECT_LT(Abs(GetZ(f1)), Limits<float>::Min);
 }
 
 // ------------------------------------------------------------------------------------------------
 HE_TEST(math, mat44, IRZPerspRH)
 {
     Vec4a n{ 0, 0, 1.0f, 0 };
-    Vec4a f{ 0, 0, Float_Max, 0 };
+    Vec4a f{ 0, 0, Limits<float>::Max, 0 };
 
     Mat44 m = IRZPerspRH(ToRadians(90.0f), 1.0f, 1.0f);
 
     Vec4a n2 = ProjectPoint(m, Negate(n));
     Vec4a f2 = ProjectPoint(m, Negate(f));
     HE_EXPECT_EQ_ULP(GetZ(n2), 1.0f, 1);
-    HE_EXPECT_LT(Abs(GetZ(f2)), Float_Min);
+    HE_EXPECT_LT(Abs(GetZ(f2)), Limits<float>::Min);
 }
 
 // ------------------------------------------------------------------------------------------------

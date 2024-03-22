@@ -33,10 +33,9 @@ namespace he
             return true;
         }
 
-        bool Comment(StringView value) override
+        bool Comment([[maybe_unused]] StringView value) override
         {
             // Nothing to do here
-            HE_UNUSED(value);
             return true;
         }
 
@@ -145,9 +144,8 @@ namespace he
             return true;
         }
 
-        bool EndInlineTable(uint32_t length) override
+        bool EndInlineTable([[maybe_unused]] uint32_t length) override
         {
-            HE_UNUSED(length);
             m_value = m_valueStack.Back();
             m_valueStack.PopBack();
             return true;
@@ -165,9 +163,8 @@ namespace he
             return true;
         }
 
-        bool EndArray(uint32_t length) override
+        bool EndArray([[maybe_unused]] uint32_t length) override
         {
-            HE_UNUSED(length);
             m_value = m_valueStack.Back();
             m_valueStack.PopBack();
             return true;

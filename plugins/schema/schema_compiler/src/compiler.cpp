@@ -39,9 +39,8 @@ namespace he::schema
             {
                 // Shouldn't be possible to not find this because if the ID is set on typeData,
                 // then the verifier must have found a valid node.
-                const AstNode* structDeclNode = m_context->FindNodeById(typeData.GetStruct().GetId());
+                [[maybe_unused]] const AstNode* structDeclNode = m_context->FindNodeById(typeData.GetStruct().GetId());
                 HE_ASSERT(structDeclNode && structDeclNode->kind == AstNode::Kind::Struct);
-                HE_UNUSED(structDeclNode);
 
                 const Type::Data::Struct::Builder structType = typeData.GetStruct();
                 StructBuilder st = CreateStructValue(structType, *pending.ast, *pending.scope);

@@ -140,10 +140,9 @@ HE_TEST(core, fmt, FmtParseUint)
 
 // ------------------------------------------------------------------------------------------------
 template <typename T>
-constexpr bool FmtVisitString_ArgId_TextConst(StringView text, T& visitor, uint32_t expected)
+constexpr bool FmtVisitString_ArgId_TextConst([[maybe_unused]] StringView text, [[maybe_unused]] T& visitor, [[maybe_unused]] uint32_t expected)
 {
     // TODO
-    HE_UNUSED(text, visitor, expected);
     return true;
 }
 
@@ -154,10 +153,9 @@ HE_TEST(core, fmt, FmtVisitString_ArgId)
 
 // ------------------------------------------------------------------------------------------------
 template <typename T>
-constexpr bool FmtVisitString_Field_TestConst(StringView text, T& visitor, uint32_t expected)
+constexpr bool FmtVisitString_Field_TestConst([[maybe_unused]] StringView text, [[maybe_unused]] T& visitor, [[maybe_unused]] uint32_t expected)
 {
     // TODO
-    HE_UNUSED(text, visitor, expected);
     return true;
 }
 
@@ -168,10 +166,9 @@ HE_TEST(core, fmt, FmtVisitString_Field)
 
 // ------------------------------------------------------------------------------------------------
 template <typename T>
-constexpr bool FmtVisitString_Text_TestConst(StringView text, T& visitor, uint32_t expected)
+constexpr bool FmtVisitString_Text_TestConst([[maybe_unused]] StringView text, [[maybe_unused]] T& visitor, [[maybe_unused]] uint32_t expected)
 {
     // TODO
-    HE_UNUSED(text, visitor, expected);
     return true;
 }
 
@@ -182,10 +179,9 @@ HE_TEST(core, fmt, FmtVisitString_Text)
 
 // ------------------------------------------------------------------------------------------------
 template <typename T>
-constexpr bool FmtVisitString_Short_TestConst(StringView text, T& visitor, uint32_t expected)
+constexpr bool FmtVisitString_Short_TestConst([[maybe_unused]] StringView text, [[maybe_unused]] T& visitor, [[maybe_unused]] uint32_t expected)
 {
     // TODO
-    HE_UNUSED(text, visitor, expected);
     return true;
 }
 
@@ -196,10 +192,9 @@ HE_TEST(core, fmt, FmtVisitString_Short)
 
 // ------------------------------------------------------------------------------------------------
 template <typename T>
-constexpr bool FmtVisitString_Long_TestConst(StringView text, T& visitor, uint32_t expected)
+constexpr bool FmtVisitString_Long_TestConst([[maybe_unused]] StringView text, [[maybe_unused]] T& visitor, [[maybe_unused]] uint32_t expected)
 {
     // TODO
-    HE_UNUSED(text, visitor, expected);
     return true;
 }
 
@@ -210,10 +205,9 @@ HE_TEST(core, fmt, FmtVisitString_Long)
 
 // ------------------------------------------------------------------------------------------------
 template <typename T>
-constexpr bool FmtVisitString_TestConst(StringView text, T& visitor, uint32_t expected)
+constexpr bool FmtVisitString_TestConst([[maybe_unused]] StringView text, [[maybe_unused]] T& visitor, [[maybe_unused]] uint32_t expected)
 {
     // TODO
-    HE_UNUSED(text, visitor, expected);
     return true;
 }
 

@@ -16,6 +16,6 @@ HE_TEST(core, debugger, PrintToDebugger)
 // ------------------------------------------------------------------------------------------------
 HE_TEST(core, debugger, IsDebuggerAttached)
 {
-    const bool attached = IsDebuggerAttached();
-    HE_UNUSED(attached);
+    [[maybe_unused]] const bool attached = IsDebuggerAttached();
+    attached;
 }

@@ -52,10 +52,8 @@ namespace he::window::win32
         return count;
     }
 
-    HRESULT DropTarget::DragEnter(IDataObject* pDataObj, DWORD grfKeyState, POINTL pt, DWORD* pdwEffect)
+    HRESULT DropTarget::DragEnter([[maybe_unused]] IDataObject* pDataObj, [[maybe_unused]] DWORD grfKeyState, [[maybe_unused]] POINTL pt, DWORD* pdwEffect)
     {
-        HE_UNUSED(pDataObj, grfKeyState, pt);
-
         if (!pdwEffect)
             return E_INVALIDARG;
 
@@ -66,10 +64,8 @@ namespace he::window::win32
         return S_OK;
     }
 
-    HRESULT DropTarget::DragOver(DWORD grfKeyState, POINTL pt, DWORD* pdwEffect)
+    HRESULT DropTarget::DragOver([[maybe_unused]] DWORD grfKeyState, [[maybe_unused]] POINTL pt, DWORD* pdwEffect)
     {
-        HE_UNUSED(grfKeyState, pt);
-
         if (!pdwEffect)
             return E_INVALIDARG;
 
@@ -88,10 +84,8 @@ namespace he::window::win32
         return S_OK;
     }
 
-    HRESULT DropTarget::Drop(IDataObject* pDataObj, DWORD grfKeyState, POINTL pt, DWORD* pdwEffect)
+    HRESULT DropTarget::Drop(IDataObject* pDataObj, [[maybe_unused]] DWORD grfKeyState, [[maybe_unused]] POINTL pt, DWORD* pdwEffect)
     {
-        HE_UNUSED(grfKeyState, pt);
-
         if (!pdwEffect)
             return E_INVALIDARG;
 

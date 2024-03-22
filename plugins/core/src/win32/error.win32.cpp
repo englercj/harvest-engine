@@ -231,10 +231,8 @@ namespace he
         return L"Application Error";
     }
 
-    bool _PlatformErrorHandler(const ErrorSource& source, const KeyValue* kvs, uint32_t count)
+    bool _PlatformErrorHandler([[maybe_unused]] const ErrorSource& source, const KeyValue* kvs, uint32_t count)
     {
-        HE_UNUSED(source);
-
         const short margin = 5;
         const short btnWidth = 50;
         const short itemHeight = 14;

@@ -351,10 +351,9 @@ namespace he::window::linux
             1L);
     }
 
-    void ViewImpl::SetAcceptInput(bool value)
+    void ViewImpl::SetAcceptInput([[maybe_unused]] bool value)
     {
         // TODO
-        HE_UNUSED(value);
     }
 
     void ViewImpl::Focus()

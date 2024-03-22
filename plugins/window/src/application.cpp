@@ -17,9 +17,8 @@ namespace he::window
         return ViewHitArea::Normal;
     }
 
-    ViewDropEffect Application::OnDragging(View* view)
+    ViewDropEffect Application::OnDragging([[maybe_unused]] View* view)
     {
-        HE_UNUSED(view);
         return ViewDropEffect::Reject;
     }
 }

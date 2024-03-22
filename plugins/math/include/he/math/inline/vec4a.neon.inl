@@ -1,5 +1,7 @@
 // Copyright Chad Engler
 
+#include "he/core/math.h"
+
 namespace he
 {
     // --------------------------------------------------------------------------------------------
@@ -392,7 +394,7 @@ namespace he
     inline Vec4a RcpSafe(const Vec4a& v)
     {
         Vec4a rcp = Rcp(v);
-        uint32x4_t p = vcgtq_f32(vabsq_f32(v), vdupq_n_f32(Float_ZeroSafe));
+        uint32x4_t p = vcgtq_f32(vabsq_f32(v), vdupq_n_f32(Limits<float>::ZeroSafe));
         return vbslq_f32(vreinterpretq_u32_f32(p), rcp, Vec4a_Zero);
     }
 
@@ -640,6 +642,7 @@ namespace he
 
     inline bool All3(const Vec4a& cmp)
     {
-        return All(vsetq_lane_f32(Float_AllBits, cmp, 3));
+        constexpr float AllBits = BitCast<float>(0xffffffff);
+        return All(vsetq_lane_f32(AllBits, cmp, 3));
     }
 }

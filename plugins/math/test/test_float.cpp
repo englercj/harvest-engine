@@ -29,14 +29,14 @@ HE_TEST(math, float, IsNan)
     static_assert(!IsNan(Limits<float>::Epsilon));
     static_assert(IsNan(Limits<float>::NaN));
     static_assert(IsNan(Limits<float>::SignalingNaN));
-    static_assert(IsNan(Float_AllBits));
+    static_assert(IsNan(BitCast<float>(0xffffffff)));
 
     HE_EXPECT(!IsNan(Limits<float>::Min));
     HE_EXPECT(!IsNan(Limits<float>::Max));
     HE_EXPECT(!IsNan(Limits<float>::Epsilon));
     HE_EXPECT(IsNan(Limits<float>::NaN));
     HE_EXPECT(IsNan(Limits<float>::SignalingNaN));
-    HE_EXPECT(IsNan(Float_AllBits));
+    HE_EXPECT(IsNan(BitCast<float>(0xffffffff)));
 }
 
 // ------------------------------------------------------------------------------------------------

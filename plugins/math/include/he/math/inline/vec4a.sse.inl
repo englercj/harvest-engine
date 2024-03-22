@@ -1,5 +1,7 @@
 // Copyright Chad Engler
 
+#include "he/core/math.h"
+
 namespace he
 {
     // --------------------------------------------------------------------------------------------
@@ -14,7 +16,8 @@ namespace he
 
     inline Vec4a MakeVec4a(const Vec4a& x, const Vec4a& y, const Vec4a& z)
     {
-        constexpr Vec4a Vec4a_Select1110{ Float_AllBits, Float_AllBits, Float_AllBits, 0 };
+        constexpr float AllBits = BitCast<float>(0xffffffff);
+        constexpr Vec4a Vec4a_Select1110{ AllBits, AllBits, AllBits, 0 };
 
         __m128 a = _mm_unpacklo_ps(x, y);
         __m128 b = _mm_movelh_ps(a, z);
@@ -348,7 +351,7 @@ namespace he
     inline Vec4a RcpSafe(const Vec4a& v)
     {
         __m128 t = _mm_div_ps(_mm_set_ps1(1.0f), v);
-        __m128 p = _mm_cmpgt_ps(Abs(v), _mm_set_ps1(Float_ZeroSafe));
+        __m128 p = _mm_cmpgt_ps(Abs(v), _mm_set_ps1(Limits<float>::ZeroSafe));
 
     #if HE_SIMD_SSE4_1
         return _mm_blendv_ps(Vec4a_Zero, t, p);
@@ -451,7 +454,8 @@ namespace he
     #if HE_SIMD_SSE4_1
         return _mm_dp_ps(a, b, 0x7f);
     #elif HE_SIMD_SSE3
-        constexpr Vec4a Vec4a_Select1110{ Float_AllBits, Float_AllBits, Float_AllBits, 0 };
+        constexpr float AllBits = BitCast<float>(0xffffffff);
+        constexpr Vec4a Vec4a_Select1110{ AllBits, AllBits, AllBits, 0 };
 
         __m128 mul0 = _mm_mul_ps(a, b);
         __m128 xyz0 = _mm_and_ps(vTemp, Vec4a_Select1110);

@@ -66,7 +66,7 @@ namespace he::editor
         return changed;
     }
 
-    void Vec2fEditor(const void*, const schema::DynamicValue::Reader& value, TypeEditUIService::Context& ctx)
+    void Vec2fEditor([[maybe_unused]] const void* userData, const schema::DynamicValue::Reader& value, TypeEditUIService::Context& ctx)
     {
         const schema::Vec2f::Reader vec = value.As<schema::DynamicStruct>().As<schema::Vec2f>();
 
@@ -88,7 +88,7 @@ namespace he::editor
         }
     }
 
-    void Vec3fEditor(const void*, const schema::DynamicValue::Reader& value, TypeEditUIService::Context& ctx)
+    void Vec3fEditor([[maybe_unused]] const void* userData, const schema::DynamicValue::Reader& value, TypeEditUIService::Context& ctx)
     {
         const schema::Vec3f::Reader vec = value.As<schema::DynamicStruct>().As<schema::Vec3f>();
 
@@ -119,7 +119,7 @@ namespace he::editor
         }
     }
 
-    void Vec4fEditor(const void*, const schema::DynamicValue::Reader& value, TypeEditUIService::Context& ctx)
+    void Vec4fEditor([[maybe_unused]] const void* userData, const schema::DynamicValue::Reader& value, TypeEditUIService::Context& ctx)
     {
         const schema::Vec4f::Reader vec = value.As<schema::DynamicStruct>().As<schema::Vec4f>();
 
@@ -159,10 +159,8 @@ namespace he::editor
         }
     }
 
-    void UuidEditor(const void*, const schema::DynamicValue::Reader& value, TypeEditUIService::Context& ctx)
+    void UuidEditor([[maybe_unused]] const void* userData, const schema::DynamicValue::Reader& value, [[maybe_unused]] TypeEditUIService::Context& ctx)
     {
-        HE_UNUSED(ctx);
-
         const schema::Uuid::Reader uuid = value.As<schema::DynamicStruct>().As<schema::Uuid>();
         const uint8_t* b = uuid.GetValue().Data();
 

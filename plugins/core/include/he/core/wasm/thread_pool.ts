@@ -37,7 +37,7 @@ export class ThreadPool
 {
     private static _pool: Worker[] = [];
 
-    static workerUrl = new URL('index_worker.js', import.meta.url);
+    static workerUrl: URL | null = null;
 
     static getOrCreateWorker(): Worker
     {
@@ -63,6 +63,11 @@ export class ThreadPool
         if (!lib.module || !Heap.memory)
         {
             throw new Error('Module must be loaded before creating workers.');
+        }
+
+        if (!ThreadPool.workerUrl)
+        {
+            throw new Error('ThreadPool.workerUrl must be set before creating workers.');
         }
 
         const worker = new Worker(ThreadPool.workerUrl, { type: 'module' });

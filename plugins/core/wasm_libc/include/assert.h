@@ -2,6 +2,8 @@
 
 #pragma once
 
+#include "_common.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -15,7 +17,7 @@ extern "C" {
 #endif
 
 
-__attribute__((__noreturn__)) void __assert_fail(const char* expr, const char* file, int line, const char* func);
+_Noreturn void __assert_fail(const char* expr, const char* file, int line, const char* func);
 
 #ifdef __cplusplus
 }

@@ -9,8 +9,16 @@
 extern "C" {
 #endif
 
+#if defined(__BIG_ENDIAN__) || defined(__ARMEB__) || (defined(__BYTE_ORDER__) && __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__)
+    #define LDSHAPE_BIG_ENDIAN      1
+    #define LDSHAPE_LITTLE_ENDIAN   0
+#else
+    #define LDSHAPE_BIG_ENDIAN      0
+    #define LDSHAPE_LITTLE_ENDIAN   1
+#endif
+
 #if LDBL_MANT_DIG == 53 && LDBL_MAX_EXP == 1024
-#elif LDBL_MANT_DIG == 64 && LDBL_MAX_EXP == 16384 && __BYTE_ORDER == __LITTLE_ENDIAN
+#elif LDBL_MANT_DIG == 64 && LDBL_MAX_EXP == 16384 && LDSHAPE_LITTLE_ENDIAN
 union ldshape {
 	long double f;
 	struct {
@@ -18,7 +26,7 @@ union ldshape {
 		uint16_t se;
 	} i;
 };
-#elif LDBL_MANT_DIG == 64 && LDBL_MAX_EXP == 16384 && __BYTE_ORDER == __BIG_ENDIAN
+#elif LDBL_MANT_DIG == 64 && LDBL_MAX_EXP == 16384 && LDSHAPE_BIG_ENDIAN
 /* This is the m68k variant of 80-bit long double, and this definition only works
  * on archs where the alignment requirement of uint64_t is <= 4. */
 union ldshape {
@@ -29,7 +37,7 @@ union ldshape {
 		uint64_t m;
 	} i;
 };
-#elif LDBL_MANT_DIG == 113 && LDBL_MAX_EXP == 16384 && __BYTE_ORDER == __LITTLE_ENDIAN
+#elif LDBL_MANT_DIG == 113 && LDBL_MAX_EXP == 16384 && LDSHAPE_LITTLE_ENDIAN
 union ldshape {
 	long double f;
 	struct {
@@ -43,7 +51,7 @@ union ldshape {
 		uint64_t hi;
 	} i2;
 };
-#elif LDBL_MANT_DIG == 113 && LDBL_MAX_EXP == 16384 && __BYTE_ORDER == __BIG_ENDIAN
+#elif LDBL_MANT_DIG == 113 && LDBL_MAX_EXP == 16384 && LDSHAPE_BIG_ENDIAN
 union ldshape {
 	long double f;
 	struct {

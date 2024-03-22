@@ -6,10 +6,8 @@
 #include "he/window/device.h"
 
 #include "he/core/main.inl"
-int he::AppMain(int argc, char* argv[])
+int he::AppMain([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
 {
-    HE_UNUSED(argc, argv);
-
     AddLogSink(DebuggerSink);
 
     window::Device* device = window::Device::Create();

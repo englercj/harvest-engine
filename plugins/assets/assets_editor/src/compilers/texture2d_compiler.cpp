@@ -86,9 +86,8 @@ namespace he::assets
         return 128;
     }
 
-    bool Texture2DCompiler::Compile(const CompileContext& ctx, CompileResult& result)
+    bool Texture2DCompiler::Compile(const CompileContext& ctx, [[maybe_unused]] CompileResult& result)
     {
-        HE_UNUSED(result);
         constexpr ResourceId Texture2DKtx2Id{ Texture2D::Ktx2ResourceName };
         constexpr ResourceId Texture2DPixelsId{ Texture2D::PixelsResourceName };
 

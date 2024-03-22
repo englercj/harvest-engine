@@ -1,6 +1,6 @@
 // Copyright Chad Engler
 
-import { char, const_ptr, f64, ptr, u32, u8 } from './ctypes';
+import { char, const_ptr, f64, i32, ptr, u32, u8 } from './ctypes';
 import { Heap } from './heap';
 import { lib } from './lib';
 import { Pointer } from './pointer';
@@ -68,6 +68,11 @@ lib.addImports('core', {
     {
         const str = Pointer.readString(code, -1);
         eval(str);
+    },
+
+    heWASM_SetExitCode: function (rc: i32): void
+    {
+        lib.exitCode = rc;
     },
 
     heWASM_GetDateNow: function (): u32

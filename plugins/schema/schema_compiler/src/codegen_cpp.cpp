@@ -141,9 +141,8 @@ namespace he::schema
         }
     }
 
-    void CodeGenCpp::WriteAttributeDecl(Declaration::Reader decl, Declaration::Reader scope)
+    void CodeGenCpp::WriteAttributeDecl(Declaration::Reader decl, [[maybe_unused]] Declaration::Reader scope)
     {
-        HE_UNUSED(scope);
         HE_ASSERT(decl.GetData().IsAttribute());
         m_writer.WriteLine("struct {}", decl.GetName().AsView());
         m_writer.WriteLine("{");
@@ -194,16 +193,14 @@ namespace he::schema
         m_writer.Write(";\n");
     }
 
-    void CodeGenCpp::WriteEnumDecl(Declaration::Reader decl, Declaration::Reader scope)
+    void CodeGenCpp::WriteEnumDecl(Declaration::Reader decl, [[maybe_unused]] Declaration::Reader scope)
     {
-        HE_UNUSED(scope);
         HE_ASSERT(decl.GetData().IsEnum());
         m_writer.WriteLine("using {0} = ::he::schema::{0}_{1:016x};", decl.GetName().AsView(), decl.GetId());
     }
 
-    void CodeGenCpp::WriteInterfaceDecl(Declaration::Reader decl, Declaration::Reader scope)
+    void CodeGenCpp::WriteInterfaceDecl(Declaration::Reader decl, [[maybe_unused]] Declaration::Reader scope)
     {
-        HE_UNUSED(scope);
         HE_ASSERT(decl.GetData().IsInterface());
 
         m_writer.WriteLine("class {}", decl.GetName().AsView());
@@ -217,9 +214,8 @@ namespace he::schema
         m_writer.WriteLine("};");
     }
 
-    void CodeGenCpp::WriteStructDecl(Declaration::Reader decl, Declaration::Reader scope)
+    void CodeGenCpp::WriteStructDecl(Declaration::Reader decl, [[maybe_unused]] Declaration::Reader scope)
     {
-        HE_UNUSED(scope);
         HE_ASSERT(decl.GetData().IsStruct());
         Declaration::Data::Struct::Reader structDecl = decl.GetData().GetStruct();
 

@@ -22,10 +22,9 @@ namespace he::window::linux
         Close();
     }
 
-    Result GamepadImpl::SetVibration(float leftMotorSpeed, float rightMotorSpeed)
+    Result GamepadImpl::SetVibration([[maybe_unused]] float leftMotorSpeed, [[maybe_unused]] float rightMotorSpeed)
     {
         // TODO
-        HE_UNUSED(leftMotorSpeed, rightMotorSpeed);
         return Result::NotSupported;
     }
 

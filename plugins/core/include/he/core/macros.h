@@ -2,12 +2,6 @@
 
 #pragma once
 
-/// Ignores its arguments.
-///
-/// Useful to avoid a parameter unused error, yet keep the parameter name.
-#define HE_UNUSED(...) (false ? _heUnused(__VA_ARGS__) : void())
-template <typename...Ts> void _heUnused(Ts&&...) { }
-
 /// Returns the length of a fixed array.
 ///
 /// Results are garuanteed to be constexpr.

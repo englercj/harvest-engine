@@ -16,90 +16,74 @@ namespace he::rhi::null
     // --------------------------------------------------------------------------------------------
     // Copy Queue
 
-    void CopyCmdQueueImpl::Signal(CpuFence* fence)
+    void CopyCmdQueueImpl::Signal([[maybe_unused]] CpuFence* fence)
     {
-        HE_UNUSED(fence);
     }
 
-    void CopyCmdQueueImpl::Signal(GpuFence* fence, uint64_t value)
+    void CopyCmdQueueImpl::Signal([[maybe_unused]] GpuFence* fence, [[maybe_unused]] uint64_t value)
     {
-        HE_UNUSED(fence, value);
     }
 
-    void CopyCmdQueueImpl::Wait(GpuFence* fence, uint64_t value)
+    void CopyCmdQueueImpl::Wait([[maybe_unused]] GpuFence* fence, [[maybe_unused]] uint64_t value)
     {
-        HE_UNUSED(fence, value);
     }
 
     void CopyCmdQueueImpl::WaitForFlush()
     {
-
     }
 
-    void CopyCmdQueueImpl::Submit(CopyCmdList* cmdList)
+    void CopyCmdQueueImpl::Submit([[maybe_unused]] CopyCmdList* cmdList)
     {
-        HE_UNUSED(cmdList);
     }
 
     // --------------------------------------------------------------------------------------------
     // Compute Queue
 
-    void ComputeCmdQueueImpl::Signal(CpuFence* fence)
+    void ComputeCmdQueueImpl::Signal([[maybe_unused]] CpuFence* fence)
     {
-        HE_UNUSED(fence);
     }
 
-    void ComputeCmdQueueImpl::Signal(GpuFence* fence, uint64_t value)
+    void ComputeCmdQueueImpl::Signal([[maybe_unused]] GpuFence* fence, [[maybe_unused]] uint64_t value)
     {
-        HE_UNUSED(fence, value);
     }
 
-    void ComputeCmdQueueImpl::Wait(GpuFence* fence, uint64_t value)
+    void ComputeCmdQueueImpl::Wait([[maybe_unused]] GpuFence* fence, [[maybe_unused]] uint64_t value)
     {
-        HE_UNUSED(fence, value);
     }
 
     void ComputeCmdQueueImpl::WaitForFlush()
     {
-
     }
 
-    void ComputeCmdQueueImpl::Submit(ComputeCmdList* cmdList)
+    void ComputeCmdQueueImpl::Submit([[maybe_unused]] ComputeCmdList* cmdList)
     {
-        HE_UNUSED(cmdList);
     }
 
     // --------------------------------------------------------------------------------------------
     // Render Queue
 
-    void RenderCmdQueueImpl::Signal(CpuFence* fence)
+    void RenderCmdQueueImpl::Signal([[maybe_unused]] CpuFence* fence)
     {
-        HE_UNUSED(fence);
     }
 
-    void RenderCmdQueueImpl::Signal(GpuFence* fence, uint64_t value)
+    void RenderCmdQueueImpl::Signal([[maybe_unused]] GpuFence* fence, [[maybe_unused]] uint64_t value)
     {
-        HE_UNUSED(fence, value);
     }
 
-    void RenderCmdQueueImpl::Wait(GpuFence* fence, uint64_t value)
+    void RenderCmdQueueImpl::Wait([[maybe_unused]] GpuFence* fence, [[maybe_unused]] uint64_t value)
     {
-        HE_UNUSED(fence, value);
     }
 
     void RenderCmdQueueImpl::WaitForFlush()
     {
-
     }
 
-    void RenderCmdQueueImpl::Submit(RenderCmdList* cmdList)
+    void RenderCmdQueueImpl::Submit([[maybe_unused]] RenderCmdList* cmdList)
     {
-        HE_UNUSED(cmdList);
     }
 
-    Result RenderCmdQueueImpl::Present(SwapChain* swapChain)
+    Result RenderCmdQueueImpl::Present([[maybe_unused]] SwapChain* swapChain)
     {
-        HE_UNUSED(swapChain);
         return Result::Success;
     }
 }

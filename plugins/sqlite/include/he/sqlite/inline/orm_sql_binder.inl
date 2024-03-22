@@ -145,9 +145,8 @@ namespace he::sqlite
         using Type = IndexDef<Columns...>;
 
         template <typename Ctx>
-        bool Bind(Statement& stmt, const Type& value, Ctx& ctx) const
+        bool Bind([[maybe_unused]] Statement& stmt, [[maybe_unused]] const Type& value, [[maybe_unused]] Ctx& ctx) const
         {
-            HE_UNUSED(stmt, value, ctx);
             return true;
         }
     };
@@ -170,9 +169,8 @@ namespace he::sqlite
         using Type = ColumnRef<T, U>;
 
         template <typename Ctx>
-        bool Bind(Statement& stmt, const Type& value, Ctx& ctx) const
+        bool Bind([[maybe_unused]] Statement& stmt, [[maybe_unused]] const Type& value, [[maybe_unused]] Ctx& ctx) const
         {
-            HE_UNUSED(stmt, value, ctx);
             return true;
         }
     };
@@ -183,9 +181,8 @@ namespace he::sqlite
         using Type = ExcludedColumnRef<T, U>;
 
         template <typename Ctx>
-        bool Bind(Statement& stmt, const Type& value, Ctx& ctx) const
+        bool Bind([[maybe_unused]] Statement& stmt, [[maybe_unused]] const Type& value, [[maybe_unused]] Ctx& ctx) const
         {
-            HE_UNUSED(stmt, value, ctx);
             return true;
         }
     };
@@ -448,9 +445,8 @@ namespace he::sqlite
         using Type = InsertOrKind;
 
         template <typename Ctx>
-        bool Bind(Statement& stmt, const Type& value, Ctx& ctx) const
+        bool Bind([[maybe_unused]] Statement& stmt, [[maybe_unused]] const Type& value, [[maybe_unused]] Ctx& ctx) const
         {
-            HE_UNUSED(stmt, value, ctx);
             return true;
         }
     };
@@ -473,9 +469,8 @@ namespace he::sqlite
         using Type = InsertDefaultValuesExpr;
 
         template <typename Ctx>
-        bool Bind(Statement& stmt, const Type& value, Ctx& ctx) const
+        bool Bind([[maybe_unused]] Statement& stmt, [[maybe_unused]] const Type& value, [[maybe_unused]] Ctx& ctx) const
         {
-            HE_UNUSED(stmt, value, ctx);
             return true;
         }
     };
@@ -585,9 +580,8 @@ namespace he::sqlite
         using Type = RawSqlQuery;
 
         template <typename Ctx>
-        bool Bind(Statement& stmt, const Type& value, Ctx& ctx) const
+        bool Bind([[maybe_unused]] Statement& stmt, [[maybe_unused]] const Type& value, [[maybe_unused]] Ctx& ctx) const
         {
-            HE_UNUSED(stmt, value, ctx);
             return true;
         }
     };

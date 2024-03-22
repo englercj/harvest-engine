@@ -1,5 +1,8 @@
 // Copyright Chad Engler
 
+#include "he/core/limits.h"
+#include "he/core/types.h"
+
 namespace he
 {
     // --------------------------------------------------------------------------------------------
@@ -32,13 +35,13 @@ namespace he
     inline bool IsZeroSafe(const Vec4a& v)
     {
         const float d = Dot(v, v);
-        return d > Float_ZeroSafe;
+        return d > Limits<float>::ZeroSafe;
     }
 
     inline bool IsZeroSafe3(const Vec4a& v)
     {
         const float d = Dot3(v, v);
-        return d > Float_ZeroSafe;
+        return d > Limits<float>::ZeroSafe;
     }
 
     inline bool IsFinite(const Vec4a& v)
@@ -76,12 +79,12 @@ namespace he
 
     inline bool IsNormalized(const Vec4a& v)
     {
-        return Abs(Len(v) - 1) < 40.0f * Float_Epsilon;
+        return Abs(Len(v) - 1) < 40.0f * Limits<float>::Epsilon;
     }
 
     inline bool IsNormalized3(const Vec4a& v)
     {
-        return Abs(Len3(v) - 1) < 40.0f * Float_Epsilon;
+        return Abs(Len3(v) - 1) < 40.0f * Limits<float>::Epsilon;
     }
 
     // --------------------------------------------------------------------------------------------

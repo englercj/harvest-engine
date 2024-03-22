@@ -84,8 +84,7 @@ namespace he
             pageSize = static_cast<uint32_t>(sysconf(_SC_PAGE_SIZE));
 
             utsname data;
-            const int rc = uname(&data);
-            HE_UNUSED(rc);
+            [[maybe_unused]] const int rc = uname(&data);
             HE_ASSERT(rc == 0);
 
             platform = data.sysname;

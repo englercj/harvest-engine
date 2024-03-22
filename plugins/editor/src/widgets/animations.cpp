@@ -2,7 +2,7 @@
 
 #include "he/editor/widgets/animations.h"
 
-#include "he/math/float.h"
+#include "he/core/math.h"
 
 #include "imgui.h"
 

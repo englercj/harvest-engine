@@ -518,8 +518,7 @@ HE_TEST(core, rb_tree, RBTreeContainerBase_Get)
 
     HE_EXPECT_ASSERT({
         // this will assert because it does not exist
-        RBTestTraits::Node& node = tree.Get(1);
-        HE_UNUSED(node);
+        [[maybe_unused]] RBTestTraits::Node& node = tree.Get(1);
     });
 
     // this should not assert
@@ -774,8 +773,7 @@ HE_TEST(core, rb_tree, RBTreeMap_Get)
 
     HE_EXPECT_ASSERT({
         // this will assert because it does not exist
-        uint32_t& i = tree.Get(1);
-        HE_UNUSED(i);
+        [[maybe_unused]] uint32_t& i = tree.Get(1);
     });
 
     // this should not assert

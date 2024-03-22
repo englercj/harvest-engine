@@ -11,7 +11,7 @@ struct stat;
 
 namespace he
 {
-    int PosixFileOpen(const char* path, FileOpenMode mode, FileOpenFlag flags, int extraFlags);
+    int PosixFileOpen(const char* path, FileAccessMode access, FileCreateMode create, FileOpenFlag flags, int extraFlags);
 
     void PosixFileGatherAttributes(const stat& sb, const char* path, FileAttributes& attribs);
     Result PosixFileGetAttributes(int fd, FileAttributes& outAttributes);

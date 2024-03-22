@@ -19,24 +19,15 @@ extern "C"
     static int s_timezone = 0;
     static int s_daylight = 0;
 
-    static int _isLeapYear(int year)
-    {
-        if (year > (INT_MAX - 1900))
-            y -= 2000;
-
-        year += 1900;
-        return (year % 4) == 0 && ((year % 100) != 0 || (year % 400) == 0);
-    }
-
     void tzset(void)
     {
-        static Mutex s_lock;
+        static he::Mutex s_mutex;
         static bool s_initialized = false;
 
         if (s_initialized)
             return;
 
-        lock.Acquire();
+        he::LockGuard lock(s_mutex);
 
         if (!s_initialized)
         {
@@ -45,8 +36,6 @@ extern "C"
             tzname[1] = dstName;
             s_initialized = true;
         }
-
-        lock.Release();
     }
 
     time_t mktime(struct tm* t)

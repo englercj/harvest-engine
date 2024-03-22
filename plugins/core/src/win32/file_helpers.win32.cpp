@@ -22,51 +22,33 @@ namespace he
         return value.QuadPart;
     }
 
-    HANDLE Win32FileOpen(const char* path, FileOpenMode mode, FileOpenFlag flags, DWORD extraFlags)
+    HANDLE Win32FileOpen(const char* path, FileAccessMode access, FileCreateMode create, FileOpenFlag flags, DWORD extraFlags)
     {
         DWORD dwDesiredAccess = 0;
-        DWORD dwShareMode = FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE;
-        DWORD dwCreationDisposition = 0;
-
-        switch (mode)
+        switch (access)
         {
-            case FileOpenMode::Write:
-                dwDesiredAccess = GENERIC_WRITE;
-                dwCreationDisposition = OPEN_ALWAYS;
-                break;
-            case FileOpenMode::ReadWrite:
-                dwDesiredAccess = GENERIC_READ | GENERIC_WRITE;
-                dwCreationDisposition = OPEN_ALWAYS;
-                break;
-            case FileOpenMode::ReadExisting:
-                dwDesiredAccess = GENERIC_READ;
-                dwCreationDisposition = OPEN_EXISTING;
-                break;
-            case FileOpenMode::ReadWriteExisting:
-                dwDesiredAccess = GENERIC_READ | GENERIC_WRITE;
-                dwCreationDisposition = OPEN_EXISTING;
-                break;
-            case FileOpenMode::WriteTruncate:
-                dwDesiredAccess = GENERIC_WRITE;
-                dwCreationDisposition = CREATE_ALWAYS;
-                break;
-            case FileOpenMode::ReadWriteTruncate:
-                dwDesiredAccess = GENERIC_READ | GENERIC_WRITE;
-                dwCreationDisposition = CREATE_ALWAYS;
-                break;
-            case FileOpenMode::WriteAppend:
-                dwDesiredAccess = GENERIC_WRITE;
-                dwCreationDisposition = OPEN_ALWAYS;
-                break;
-            case FileOpenMode::ReadWriteAppend:
-                dwDesiredAccess = GENERIC_READ | GENERIC_WRITE;
-                dwCreationDisposition = OPEN_ALWAYS;
-                break;
+            case FileAccessMode::Read: dwDesiredAccess = GENERIC_READ; break;
+            case FileAccessMode::Write: dwDesiredAccess = GENERIC_WRITE; break;
+            case FileAccessMode::ReadWrite: dwDesiredAccess = GENERIC_READ | GENERIC_WRITE; break;
             default:
                 ::SetLastError(ERROR_INVALID_PARAMETER);
                 return INVALID_HANDLE_VALUE;
         }
 
+        DWORD dwCreationDisposition = 0;
+        switch (create)
+        {
+            case FileCreateMode::OpenExisting: dwCreationDisposition = OPEN_EXISTING; break;
+            case FileCreateMode::OpenAlways: dwCreationDisposition = OPEN_ALWAYS; break;
+            case FileCreateMode::CreateNew: dwCreationDisposition = CREATE_NEW; break;
+            case FileCreateMode::CreateAlways: dwCreationDisposition = CREATE_ALWAYS; break;
+            case FileCreateMode::TruncateExisting: dwCreationDisposition = TRUNCATE_EXISTING; break;
+            default:
+                ::SetLastError(ERROR_INVALID_PARAMETER);
+                return INVALID_HANDLE_VALUE;
+        }
+
+        DWORD dwShareMode = FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE;
         DWORD dwFlagsAndAttributes = FILE_ATTRIBUTE_NORMAL | extraFlags;
 
         if (HasFlags(flags, FileOpenFlag::NoBuffering))
@@ -77,7 +59,7 @@ namespace he
         else if (HasFlags(flags, FileOpenFlag::SequentialScan))
             dwFlagsAndAttributes |= FILE_FLAG_SEQUENTIAL_SCAN;
 
-        return ::CreateFileW(
+        HANDLE handle = ::CreateFileW(
             HE_TO_WCSTR(path),
             dwDesiredAccess,
             dwShareMode,
@@ -85,6 +67,16 @@ namespace he
             dwCreationDisposition,
             dwFlagsAndAttributes,
             nullptr);
+
+        if (handle == INVALID_HANDLE_VALUE)
+            return handle;
+
+        if (HasFlag(flags, FileOpenFlag::Append))
+        {
+            ::SetFilePointer(handle, 0, nullptr, FILE_END);
+        }
+
+        return handle;
     }
 
     FileAttributeFlag Win32ParseFileAttributeFlags(DWORD dwFileAttributes)

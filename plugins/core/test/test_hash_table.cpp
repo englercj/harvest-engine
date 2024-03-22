@@ -1011,8 +1011,7 @@ HE_TEST(core, hash_table, Get)
 
     HE_EXPECT_ASSERT({
         // this will assert because it does not exist
-        int& i = v.Get(1);
-        HE_UNUSED(i);
+        [[maybe_unused]] int& i = v.Get(1);
     });
 
     // this should not assert
@@ -1312,8 +1311,7 @@ HE_TEST(core, hash_table, HashMap_Get)
 
     HE_EXPECT_ASSERT({
         // this will assert because it does not exist
-        uint32_t& i = v.Get(1);
-        HE_UNUSED(i);
+        [[maybe_unused]] uint32_t& i = v.Get(1);
     });
 
     // this should not assert

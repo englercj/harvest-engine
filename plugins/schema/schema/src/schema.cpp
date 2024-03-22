@@ -69,9 +69,8 @@ namespace he::schema
         return true;
     }
 
-    bool SchemaVisitor::VisitEnum(Declaration::Reader decl, Declaration::Reader scope)
+    bool SchemaVisitor::VisitEnum(Declaration::Reader decl, [[maybe_unused]] Declaration::Reader scope)
     {
-        HE_UNUSED(scope);
         const Declaration::Data::Enum::Reader enumDecl = decl.GetData().GetEnum();
 
         for (const Enumerator::Reader enumerator : enumDecl.GetEnumerators())
@@ -83,9 +82,8 @@ namespace he::schema
         return true;
     }
 
-    bool SchemaVisitor::VisitInterface(Declaration::Reader decl, Declaration::Reader scope)
+    bool SchemaVisitor::VisitInterface(Declaration::Reader decl, [[maybe_unused]] Declaration::Reader scope)
     {
-        HE_UNUSED(scope);
         const Declaration::Data::Interface::Reader interfaceDecl = decl.GetData().GetInterface();
 
         for (const Declaration::Reader child : decl.GetChildren())
@@ -108,9 +106,8 @@ namespace he::schema
         return true;
     }
 
-    bool SchemaVisitor::VisitStruct(Declaration::Reader decl, Declaration::Reader scope)
+    bool SchemaVisitor::VisitStruct(Declaration::Reader decl, [[maybe_unused]] Declaration::Reader scope)
     {
-        HE_UNUSED(scope);
         const Declaration::Data::Struct::Reader structDecl = decl.GetData().GetStruct();
 
         for (Declaration::Reader child : decl.GetChildren())
@@ -254,10 +251,8 @@ namespace he::schema
         }
     }
 
-    bool StructVisitor::ShouldVisitNormalField(StructReader data, Field::Reader field, const DeclInfo& scope)
+    bool StructVisitor::ShouldVisitNormalField(StructReader data, Field::Reader field, [[maybe_unused]] const DeclInfo& scope)
     {
-        HE_UNUSED(scope);
-
         const Field::Meta::Normal::Reader norm = field.GetMeta().GetNormal();
         const Type::Reader fieldType = norm.GetType();
 
@@ -565,10 +560,8 @@ namespace he::schema
         return unionTag != 0;
     }
 
-    bool StructVisitor::IsNormalFieldSet(StructReader data, Field::Reader field, const DeclInfo& scope)
+    bool StructVisitor::IsNormalFieldSet(StructReader data, Field::Reader field, [[maybe_unused]] const DeclInfo& scope)
     {
-        HE_UNUSED(scope);
-
         const Field::Meta::Normal::Reader norm = field.GetMeta().GetNormal();
         const Type::Reader fieldType = norm.GetType();
         const Type::Data::Reader fieldTypeData = fieldType.GetData();
@@ -590,8 +583,7 @@ namespace he::schema
 
         const Field::Meta::Reader meta = field.GetMeta();
         const TypeId id = meta.IsGroup() ? meta.GetGroup().GetTypeId() : meta.GetUnion().GetTypeId();
-        const char* kindName = meta.IsGroup() ? "group" : "union";
-        HE_UNUSED(kindName);
+        [[maybe_unused]] const char* kindName = meta.IsGroup() ? "group" : "union";
 
         Declaration::Reader groupChild;
         for (const Declaration::Reader child : decl.GetChildren())

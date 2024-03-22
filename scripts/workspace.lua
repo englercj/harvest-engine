@@ -82,13 +82,21 @@ he.generate_workspace = function (options)
     filter { "toolset:wasmcc" }
         buildoptions {
             "-nostdlib",                -- Do not use the standard system startup files or libraries when linking.
+            "-nodefaultlibs",           -- Do not use the default C/++ standard libraries when linking.
         }
         linkoptions {
+            "-nostdlib",                -- Do not use the standard system startup files or libraries when linking.
+            "-nodefaultlibs",           -- Do not use the default C/++ standard libraries when linking.
             "-Wl,--export-dynamic",     -- Export any non-hidden symbols.
             "-Wl,--fatal-warnings",     -- Emit an error when any warning is encountered.
             "-Wl,--import-memory",      -- Import memory from the environment.
             "-Wl,--no-entry",           -- Don't search for the entry point symbol (by default _start).
             "-Wl,-export=main",         -- Export the main function so we can invoke it as the entry point.
+        }
+        externalincludedirs {
+            -- Libcxx headers must come before wasm_libc headers.
+            "%{he.get_plugin('llvm.libcxx')._install_dirs['*']}/include",
+            "%{he.get_module_file_dir('he_core_wasm_libc')}/wasm_libc/include",
         }
 
     -- Should really be using "language:c++" here instead of the file filter,

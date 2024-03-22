@@ -24,17 +24,22 @@ namespace he
         NoData,
     };
 
-    /// Possible modes a file can be opened in.
-    enum class FileOpenMode : uint8_t
+    /// Possible access modes a file can be opened with.
+    enum class FileAccessMode : uint8_t
     {
-        Write,
-        ReadWrite,
-        ReadExisting,
-        ReadWriteExisting,
-        WriteTruncate,
-        ReadWriteTruncate,
-        WriteAppend,
-        ReadWriteAppend
+        Read,       ///< Open a file with read-only access.
+        Write,      ///< Open a file with write-only access.
+        ReadWrite,  ///< Open a file with read and write access.
+    };
+
+    /// Possible creation modes a file can be opened with.
+    enum class FileCreateMode : uint8_t
+    {
+        OpenExisting,       ///< If a file already exists, it is opened. If it does not exist, the open fails.
+        OpenAlways,         ///< If a file already exists, it is opened. If it does not exist, it is created.
+        CreateNew,          ///< If a file already exists, the open fails. If it does not exist, it is created.
+        CreateAlways,       ///< If a file already exists, it is truncated to zero length. If it does not exist, it is created.
+        TruncateExisting,   ///< If a file already exists, it is truncated to zero length. If it does not exist, the open fails.
     };
 
     /// Flags for behavior of a file once opened.
@@ -42,6 +47,10 @@ namespace he
     {
         /// No special behavior.
         None            = 0,
+
+        /// The file is being opened for appending. The file pointer is set to the end of the file
+        /// at open time. This flag has no effect if the file is opened with `Read` access.
+        Append          = 1 << 0,
 
         /// The file is being opened with no system caching for data reads and writes. When this
         /// flag is set there are a number of restrictions that must be followed:
@@ -198,7 +207,7 @@ namespace he
         /// \param[in] mode The mode to open the file in.
         /// \param[in] flags The behavior flags for operations on this file.
         /// \return The result of the operation.
-        Result Open(const char* path, FileOpenMode mode, FileOpenFlag flags = FileOpenFlag::None);
+        Result Open(const char* path, FileAccessMode access, FileCreateMode create, FileOpenFlag flags = FileOpenFlag::None);
 
         /// Closes the file.
         void Close();
@@ -399,7 +408,7 @@ namespace he
         constexpr uint32_t ElementSize = sizeof(typename T::ElementType);
 
         File f;
-        Result r = f.Open(path, FileOpenMode::ReadExisting, FileOpenFlag::SequentialScan);
+        Result r = f.Open(path, FileAccessMode::Read, FileCreateMode::OpenExisting, FileOpenFlag::SequentialScan);
         if (!r)
             return r;
 

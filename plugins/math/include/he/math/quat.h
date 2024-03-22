@@ -2,12 +2,8 @@
 
 #pragma once
 
-#include "he/core/assert.h"
-#include "he/math/float.h"
 #include "he/math/types.h"
 #include "he/math/vec3.h"
-#include "he/math/vec4.h"
-#include "he/math/vec4a.h"
 
 namespace he
 {

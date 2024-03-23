@@ -1,0 +1,5 @@
+// Copyright Chad Engler
+
+#pragma once
+
+#define _LIBCPP_ASSERTION_HANDLER(message) ((void)message, __builtin_trap())

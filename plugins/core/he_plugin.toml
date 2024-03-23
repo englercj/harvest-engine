@@ -48,7 +48,7 @@ homepage = ""
 
     [[modules.variants]]
         conditions = ["system:wasm"]
-        public_dependson = ["he_core_wasm_libc"]
+        public_dependson = ["libcxx", "he_core_wasm_libc"]
         public_wasmfeatures = ["Atomics", "BulkMemory", "NontrappingFPToInt"]
         public_defines = [
             "HE_IMPL_PLATFORM_RWLOCK_SIZE=4",
@@ -84,15 +84,10 @@ homepage = ""
     [[modules.variants]]
         conditions = ["system:wasm"]
         files = ["wasm_libc/include/**", "wasm_libc/src/**"]
+        public_defines = ["HE_LIBCPP_ABI_NAMESPACE=__%{he.get_libcxx_abi_version()}"]
+        public_dependson = ["libcxx"]
         public_dependson_include = ["he_core"]
-        public_externalincludedirs = [
-            # Libcxx headers must come before wasm_libc headers.
-            "%{he.get_plugin('llvm.libcxx')._install_dirs['*']}/include",
-            "wasm_libc/include"
-        ]
-        public_defines = [
-            "HE_LIBCPP_ABI_NAMESPACE=__%{he.get_libcxx_abi_version()}",
-        ]
+        public_externalincludedirs = ["wasm_libc/include"]
         private_includedirs = ["wasm_libc/src"]
 
 # Tests for the core module.

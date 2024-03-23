@@ -19,7 +19,7 @@ int __stdcall wWinMain(struct HINSTANCE__*, struct HINSTANCE__*, wchar_t*, int) 
 
 namespace he { void _InitializeMainThread(); void _TerminateMainThread(int); }
 
-HE_EXPORT int main(int argc, char* argv[])
+extern "C" HE_EXPORT int main(int argc, char* argv[])
 {
     he::_InitializeMainThread();
     const int rc = he::AppMain(argc, argv);

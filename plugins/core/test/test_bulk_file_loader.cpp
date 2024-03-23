@@ -12,7 +12,7 @@ using namespace he;
 static void TouchTestFile(const char* path, const void* data = nullptr, uint32_t len = 0)
 {
     File f;
-    Result r = f.Open(path, FileOpenMode::WriteTruncate);
+    Result r = f.Open(path, FileAccessMode::Write, FileCreateMode::CreateAlways);
     HE_EXPECT(r, r);
 
     if (data && len > 0)

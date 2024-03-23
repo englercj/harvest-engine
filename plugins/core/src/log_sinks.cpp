@@ -131,9 +131,9 @@ namespace he
         heWASM_ConsoleLog(level, msg.Data());
     #else
         if (source.level >= LogLevel::Warn)
-            std::cerr << msg.Data() << std::endl;
+            std::cerr << msg.Data();
         else
-            std::cout << msg.Data() << std::endl;
+            std::cout << msg.Data();
     #endif
     }
 }

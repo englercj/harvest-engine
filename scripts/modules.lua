@@ -93,14 +93,8 @@ local function _system_tag_file_excludes()
             if not table.contains(seen, tag) then
                 table.insert(seen, tag)
 
-                local system_filter = "system:" .. tag
-                local files_filter = "files:**." .. tag .. ".*"
-
-                filter { files_filter }
+                filter { "system:not " .. tag, "files:**." .. tag .. ".*" }
                     flags { "ExcludeFromBuild" }
-
-                filter { system_filter, files_filter }
-                    removeflags { "ExcludeFromBuild" }
             end
         end
     end

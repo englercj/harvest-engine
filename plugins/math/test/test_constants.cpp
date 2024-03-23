@@ -3,6 +3,7 @@
 #include "vec_ulp_diff.h"
 
 #include "he/core/limits.h"
+#include "he/core/math.h"
 #include "he/math/constants.h"
 #include "he/math/mat44.h"
 #include "he/math/quata.h"
@@ -21,20 +22,15 @@ using namespace he;
 // ------------------------------------------------------------------------------------------------
 HE_TEST(math, constants, Float)
 {
-    HE_EXPECT_EQ(cosf(Float_Pi), -1.0f);
-    HE_EXPECT_EQ(acosf(-1.0f), Float_Pi);
+    HE_EXPECT_EQ(cosf(MathConstants<float>::Pi), -1.0f);
+    HE_EXPECT_EQ(acosf(-1.0f), MathConstants<float>::Pi);
 
-    HE_EXPECT_EQ(cosf(Float_Pi2), 1.0f);
-    HE_EXPECT_EQ(Float_Pi2, 2.0f * Float_Pi);
+    HE_EXPECT_EQ(cosf(MathConstants<float>::Pi2), 1.0f);
+    HE_EXPECT_EQ(MathConstants<float>::Pi2, 2.0f * MathConstants<float>::Pi);
 
-    HE_EXPECT_EQ(Float_PiHalf, Float_Pi / 2.0f);
-    HE_EXPECT_EQ(Float_PiQuarter, Float_Pi / 4.0f);
-    HE_EXPECT_EQ(Float_Sqrt2, sqrtf(2.0f));
-
-    HE_EXPECT_EQ(Float_Epsilon, FLT_EPSILON);
-    HE_EXPECT_EQ(Float_Min, FLT_MIN);
-    HE_EXPECT_EQ(Float_Max, FLT_MAX);
-    HE_EXPECT_EQ(Float_ZeroSafe, FLT_MIN * 1000.0f);
+    HE_EXPECT_EQ(MathConstants<float>::PiHalf, MathConstants<float>::Pi / 2.0f);
+    HE_EXPECT_EQ(MathConstants<float>::PiQuarter, MathConstants<float>::Pi / 4.0f);
+    HE_EXPECT_EQ(MathConstants<float>::Sqrt2, sqrtf(2.0f));
 }
 
 // ------------------------------------------------------------------------------------------------

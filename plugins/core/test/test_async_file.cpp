@@ -17,7 +17,7 @@ public:
     static void TouchTestFile(const char* path, const void* data = nullptr, uint32_t len = 0)
     {
         File f;
-        Result r = f.Open(path, FileOpenMode::WriteTruncate);
+        Result r = f.Open(path, FileAccessMode::Write, FileCreateMode::CreateAlways);
         HE_EXPECT(r, r);
 
         if (data && len > 0)
@@ -47,7 +47,7 @@ HE_TEST_F(core, async_file, Open_Close, AsyncFileFixture)
     constexpr const char TestPath[] = "0219db88-7616-48ed-b274-404cbeff336f";
 
     AsyncFile f;
-    Result r = f.Open(TestPath, FileOpenMode::WriteTruncate);
+    Result r = f.Open(TestPath, FileAccessMode::Write, FileCreateMode::CreateAlways);
     HE_EXPECT(r, r);
     HE_EXPECT(f.IsOpen());
 
@@ -63,7 +63,7 @@ HE_TEST_F(core, async_file, GetSize, AsyncFileFixture)
     constexpr const char TestPath[] = "b33d1c82-af5d-493d-876f-781d5d3ecadb";
 
     AsyncFile f;
-    Result r = f.Open(TestPath, FileOpenMode::WriteTruncate);
+    Result r = f.Open(TestPath, FileAccessMode::Write, FileCreateMode::CreateAlways);
     HE_EXPECT(r, r);
 
     uint64_t fsize = f.GetSize();
@@ -84,7 +84,7 @@ HE_TEST_F(core, async_file, Read_Write, AsyncFileFixture)
     constexpr const char TestPath[] = "777738a7-1db4-4644-a04f-2f2667843dd2";
 
     AsyncFile f;
-    Result openResult = f.Open(TestPath, FileOpenMode::ReadWriteTruncate);
+    Result openResult = f.Open(TestPath, FileAccessMode::ReadWrite, FileCreateMode::CreateAlways);
     HE_EXPECT(openResult, openResult);
 
     {
@@ -119,7 +119,7 @@ HE_TEST_F(core, async_file, GetAttributes, AsyncFileFixture)
     TouchTestFile(TestPath);
 
     AsyncFile f;
-    Result openResult = f.Open(TestPath, FileOpenMode::ReadWriteExisting);
+    Result openResult = f.Open(TestPath, FileAccessMode::ReadWrite, FileCreateMode::OpenExisting);
     HE_EXPECT(openResult, openResult);
 
     {
@@ -151,7 +151,7 @@ HE_TEST_F(core, async_file, GetPath, AsyncFileFixture)
     constexpr const char TestPath[] = "8c6a85bc-7b50-41b2-bf0f-8b5b8081d143";
 
     AsyncFile f;
-    Result r = f.Open(TestPath, FileOpenMode::WriteTruncate);
+    Result r = f.Open(TestPath, FileAccessMode::Write, FileCreateMode::CreateAlways);
     HE_EXPECT(r, r);
 
     String path;

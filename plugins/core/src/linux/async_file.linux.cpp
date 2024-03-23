@@ -251,7 +251,7 @@ namespace he
         return *this;
     }
 
-    Result AsyncFile::Open(const char* path, FileOpenMode mode, FileOpenFlag flags)
+    Result AsyncFile::Open(const char* path, FileAccessMode access, FileCreateMode create, FileOpenFlag flags)
     {
         if (!HE_VERIFY(m_fd == -1))
             return Result::InvalidParameter;
@@ -259,7 +259,7 @@ namespace he
         // When using io_uring the O_NONBLOCK flag actually tells io_uring to let the user choose
         // what to do in a blocking situation, rather than letting io_uring deal with it. However,
         // we want io_uring to deal with it so we don't pass this flag.
-        const int file = PosixFileOpen(path, mode, flags, 0);
+        const int file = PosixFileOpen(path, access, create, flags, 0);
         if (file == -1)
             return Result::FromLastError();
 

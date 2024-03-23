@@ -11,6 +11,7 @@ homepage = "https://github.com/llvm/llvm-project"
 [install]
     base_path = "libcxxabi-18.1.2.src"
     archive = "https://github.com/llvm/llvm-project/releases/download/llvmorg-18.1.2/libcxxabi-18.1.2.src.tar.xz"
+    valid_targets = ["wasm"]
 
 [[modules]]
     name = "libcxxabi"

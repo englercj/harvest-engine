@@ -203,12 +203,12 @@ namespace he
         return *this;
     }
 
-    Result AsyncFile::Open(const char* path, FileOpenMode mode, FileOpenFlag flags)
+    Result AsyncFile::Open(const char* path, FileAccessMode access, FileCreateMode create, FileOpenFlag flags)
     {
         if (!HE_VERIFY(m_fd == Win32InvalidFd))
             return Result::InvalidParameter;
 
-        HANDLE handle = Win32FileOpen(path, mode, flags, FILE_FLAG_OVERLAPPED);
+        HANDLE handle = Win32FileOpen(path, access, create, flags, FILE_FLAG_OVERLAPPED);
 
         if (handle == INVALID_HANDLE_VALUE)
             return Result::FromLastError();

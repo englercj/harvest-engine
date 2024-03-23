@@ -43,6 +43,8 @@ static void TestFloatingPointType()
     static_assert(Limits<T>::MinPos == std::numeric_limits<T>::min());
     static_assert(Limits<T>::Epsilon == std::numeric_limits<T>::epsilon());
     static_assert(Limits<T>::Infinity == std::numeric_limits<T>::infinity());
+    static_assert(Limits<T>::ZeroSafe == std::numeric_limits<T>::min() * T(1000.0));
+
     HE_EXPECT(std::isnan(Limits<T>::NaN));
     HE_EXPECT(std::isnan(Limits<T>::SignalingNaN));
 

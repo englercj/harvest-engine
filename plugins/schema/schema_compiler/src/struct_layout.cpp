@@ -174,7 +174,7 @@ namespace he::schema
             return index;
         }
 
-        bool TryExpandData(uint32_t size, uint32_t offset, [[maybe_unused]] uint32_t newSize, uint32_t newAlign) override
+        bool TryExpandData(uint32_t size, uint32_t offset, uint32_t newSize, [[maybe_unused]] uint32_t newAlign) override
         {
             return m_gaps.TryExpandGap(size, offset, newSize);
         }

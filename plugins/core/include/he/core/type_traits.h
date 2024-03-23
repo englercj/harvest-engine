@@ -664,6 +664,22 @@ namespace he
     using MakeUnsigned = _MakeUnsigned<sizeof(T)>::template Type<T>;
 #endif
 
+#if HE_HAS_BUILTIN(__make_signed)
+    template <typename T>
+    using MakeSigned = __make_signed(T);
+#else
+    /// \internal
+    template <size_t> struct _MakeSigned;
+    template <> struct _MakeSigned<1> { template <typename T> using Type = EnableIf<!IsSame<T, bool>, signed char>; };
+    template <> struct _MakeSigned<2> { template <typename T> using Type = short; };
+    template <> struct _MakeSigned<4> { template <typename T> using Type = Conditional<IsSame<T, long> || IsSame<T, unsigned long>, long, int>; };
+    template <> struct _MakeSigned<8> { template <typename T> using Type = Conditional<IsSame<T, long> || IsSame<T, unsigned long>, long, long long>; };
+    /// \endinternal
+
+    template <typename T>
+    using MakeSigned = _MakeSigned<sizeof(T)>::template Type<T>;
+#endif
+
     // --------------------------------------------------------------------------------------------
     // Supported operations
 

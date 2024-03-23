@@ -1121,7 +1121,7 @@ namespace he::schema
         const StringView code = m_writer.Str();
 
         File f;
-        if (!f.Open(filePath.Data(), FileOpenMode::WriteTruncate))
+        if (!f.Open(filePath.Data(), FileAccessMode::Write, FileCreateMode::CreateAlways))
             return false;
 
         if (!f.Write(code.Data(), code.Size()))

@@ -4,6 +4,7 @@
 
 #include "he/math/vec4.h"
 
+#include "he/core/limits.h"
 #include "he/core/test.h"
 #include "he/math/constants.h"
 #include "he/math/types_fmt.h"
@@ -71,32 +72,32 @@ HE_TEST(math, vec4, SetComponent)
 // ------------------------------------------------------------------------------------------------
 HE_TEST(math, vec4, IsNan)
 {
-    HE_EXPECT(IsNan(Vec4f{ Float_Nan, Float_Nan, Float_Nan, Float_Nan }));
-    HE_EXPECT(IsNan(Vec4f{ Float_Nan, Float_Nan, Float_Nan, 1 }));
-    HE_EXPECT(IsNan(Vec4f{ Float_Nan, Float_Nan, 1, Float_Nan }));
-    HE_EXPECT(IsNan(Vec4f{ Float_Nan, 1, Float_Nan, Float_Nan }));
-    HE_EXPECT(IsNan(Vec4f{ 1, Float_Nan, Float_Nan, Float_Nan }));
-    HE_EXPECT(IsNan(Vec4f{ Float_Nan, 1, 1, 1 }));
-    HE_EXPECT(IsNan(Vec4f{ 1, Float_Nan, 1, 1 }));
-    HE_EXPECT(IsNan(Vec4f{ 1, 1, Float_Nan, 1 }));
-    HE_EXPECT(IsNan(Vec4f{ 1, 1, 1, Float_Nan }));
-    HE_EXPECT(!IsNan(Vec4f{ Float_Infinity, Float_Infinity, Float_Infinity, Float_Infinity }));
+    HE_EXPECT(IsNan(Vec4f{ Limits<float>::NaN, Limits<float>::NaN, Limits<float>::NaN, Limits<float>::NaN }));
+    HE_EXPECT(IsNan(Vec4f{ Limits<float>::NaN, Limits<float>::NaN, Limits<float>::NaN, 1 }));
+    HE_EXPECT(IsNan(Vec4f{ Limits<float>::NaN, Limits<float>::NaN, 1, Limits<float>::NaN }));
+    HE_EXPECT(IsNan(Vec4f{ Limits<float>::NaN, 1, Limits<float>::NaN, Limits<float>::NaN }));
+    HE_EXPECT(IsNan(Vec4f{ 1, Limits<float>::NaN, Limits<float>::NaN, Limits<float>::NaN }));
+    HE_EXPECT(IsNan(Vec4f{ Limits<float>::NaN, 1, 1, 1 }));
+    HE_EXPECT(IsNan(Vec4f{ 1, Limits<float>::NaN, 1, 1 }));
+    HE_EXPECT(IsNan(Vec4f{ 1, 1, Limits<float>::NaN, 1 }));
+    HE_EXPECT(IsNan(Vec4f{ 1, 1, 1, Limits<float>::NaN }));
+    HE_EXPECT(!IsNan(Vec4f{ Limits<float>::Infinity, Limits<float>::Infinity, Limits<float>::Infinity, Limits<float>::Infinity }));
     HE_EXPECT(!IsNan(Vec4f{ 1, 2, 3, 4 }));
 }
 
 // ------------------------------------------------------------------------------------------------
 HE_TEST(math, vec4, IsInfinite)
 {
-    HE_EXPECT(IsInfinite(Vec4f{ Float_Infinity, Float_Infinity, Float_Infinity, Float_Infinity }));
-    HE_EXPECT(IsInfinite(Vec4f{ Float_Infinity, Float_Infinity, Float_Infinity, 1 }));
-    HE_EXPECT(IsInfinite(Vec4f{ Float_Infinity, Float_Infinity, 1, Float_Infinity }));
-    HE_EXPECT(IsInfinite(Vec4f{ Float_Infinity, 1, Float_Infinity, Float_Infinity }));
-    HE_EXPECT(IsInfinite(Vec4f{ 1, Float_Infinity, Float_Infinity, Float_Infinity }));
-    HE_EXPECT(IsInfinite(Vec4f{ Float_Infinity, 1, 1, 1 }));
-    HE_EXPECT(IsInfinite(Vec4f{ 1, Float_Infinity, 1, 1 }));
-    HE_EXPECT(IsInfinite(Vec4f{ 1, 1, Float_Infinity, 1 }));
-    HE_EXPECT(IsInfinite(Vec4f{ 1, 1, 1, Float_Infinity }));
-    HE_EXPECT(!IsInfinite(Vec4f{ Float_Nan, Float_Nan, Float_Nan, Float_Nan }));
+    HE_EXPECT(IsInfinite(Vec4f{ Limits<float>::Infinity, Limits<float>::Infinity, Limits<float>::Infinity, Limits<float>::Infinity }));
+    HE_EXPECT(IsInfinite(Vec4f{ Limits<float>::Infinity, Limits<float>::Infinity, Limits<float>::Infinity, 1 }));
+    HE_EXPECT(IsInfinite(Vec4f{ Limits<float>::Infinity, Limits<float>::Infinity, 1, Limits<float>::Infinity }));
+    HE_EXPECT(IsInfinite(Vec4f{ Limits<float>::Infinity, 1, Limits<float>::Infinity, Limits<float>::Infinity }));
+    HE_EXPECT(IsInfinite(Vec4f{ 1, Limits<float>::Infinity, Limits<float>::Infinity, Limits<float>::Infinity }));
+    HE_EXPECT(IsInfinite(Vec4f{ Limits<float>::Infinity, 1, 1, 1 }));
+    HE_EXPECT(IsInfinite(Vec4f{ 1, Limits<float>::Infinity, 1, 1 }));
+    HE_EXPECT(IsInfinite(Vec4f{ 1, 1, Limits<float>::Infinity, 1 }));
+    HE_EXPECT(IsInfinite(Vec4f{ 1, 1, 1, Limits<float>::Infinity }));
+    HE_EXPECT(!IsInfinite(Vec4f{ Limits<float>::NaN, Limits<float>::NaN, Limits<float>::NaN, Limits<float>::NaN }));
     HE_EXPECT(!IsInfinite(Vec4f{ 1, 2, 3, 4 }));
 }
 
@@ -104,10 +105,10 @@ HE_TEST(math, vec4, IsInfinite)
 HE_TEST(math, vec4, IsFinite)
 {
     HE_EXPECT(IsFinite(Vec4f{ 1, 2, 3, 4 }));
-    HE_EXPECT(!IsFinite(Vec4f{ Float_Infinity, 2, 3, 4 }));
-    HE_EXPECT(!IsFinite(Vec4f{ 1, Float_Infinity, 3, 4 }));
-    HE_EXPECT(!IsFinite(Vec4f{ 1, 2, Float_Infinity, 4 }));
-    HE_EXPECT(!IsFinite(Vec4f{ 1, 2, 3, Float_Infinity }));
+    HE_EXPECT(!IsFinite(Vec4f{ Limits<float>::Infinity, 2, 3, 4 }));
+    HE_EXPECT(!IsFinite(Vec4f{ 1, Limits<float>::Infinity, 3, 4 }));
+    HE_EXPECT(!IsFinite(Vec4f{ 1, 2, Limits<float>::Infinity, 4 }));
+    HE_EXPECT(!IsFinite(Vec4f{ 1, 2, 3, Limits<float>::Infinity }));
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -199,10 +200,10 @@ HE_TEST(math, vec4, Rcp)
 HE_TEST(math, vec4, RcpSafe)
 {
     HE_EXPECT_EQ_ULP(RcpSafe(Vec4f{ 1, 2, 4, 8 }), (Vec4f{ 1.0f, 0.5f, 0.25f, 0.125f }), 1);
-    HE_EXPECT_EQ_ULP(RcpSafe(Vec4f{ Float_Min, 2, 4, 8 }), (Vec4f{ 0.0f, 0.5f, 0.25f, 0.125f }), 1);
-    HE_EXPECT_EQ_ULP(RcpSafe(Vec4f{ 1, Float_Min, 4, 8 }), (Vec4f{ 1.0f, 0.0f, 0.25f, 0.125f }), 1);
-    HE_EXPECT_EQ_ULP(RcpSafe(Vec4f{ 1, 2, Float_Min, 8 }), (Vec4f{ 1.0f, 0.5f, 0.0f, 0.125f }), 1);
-    HE_EXPECT_EQ_ULP(RcpSafe(Vec4f{ 1, 2, 4, Float_Min }), (Vec4f{ 1.0f, 0.5f, 0.25f, 0.0f }), 1);
+    HE_EXPECT_EQ_ULP(RcpSafe(Vec4f{ Limits<float>::MinPos, 2, 4, 8 }), (Vec4f{ 0.0f, 0.5f, 0.25f, 0.125f }), 1);
+    HE_EXPECT_EQ_ULP(RcpSafe(Vec4f{ 1, Limits<float>::MinPos, 4, 8 }), (Vec4f{ 1.0f, 0.0f, 0.25f, 0.125f }), 1);
+    HE_EXPECT_EQ_ULP(RcpSafe(Vec4f{ 1, 2, Limits<float>::MinPos, 8 }), (Vec4f{ 1.0f, 0.5f, 0.0f, 0.125f }), 1);
+    HE_EXPECT_EQ_ULP(RcpSafe(Vec4f{ 1, 2, 4, Limits<float>::MinPos }), (Vec4f{ 1.0f, 0.5f, 0.25f, 0.0f }), 1);
 }
 
 // ------------------------------------------------------------------------------------------------

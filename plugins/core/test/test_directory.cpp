@@ -96,7 +96,7 @@ HE_TEST(core, directory, Exists)
     File::Remove(TestPath);
 
     File f;
-    HE_EXPECT(f.Open(TestPath, FileOpenMode::WriteTruncate));
+    HE_EXPECT(f.Open(TestPath, FileAccessMode::Write, FileCreateMode::CreateAlways));
     HE_EXPECT(!Directory::Exists(TestPath));
     f.Close();
     File::Remove(TestPath);

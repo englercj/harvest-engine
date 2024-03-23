@@ -38,6 +38,14 @@ he.add_module_key {
 }
 
 he.add_module_key {
+    key = "flags",
+    scope = "private",
+    type = "table",
+    desc = "an array of flags",
+    handler = function (ctx, values) flags(values) end,
+}
+
+he.add_module_key {
     key = "includedirs",
     scope = "include",
     type = "table",
@@ -251,6 +259,68 @@ local function _handle_dependson(ctx, values)
         end
 
         local mod = he.imported_modules[mod_name]
+        assert(mod ~= nil, "Module '" .. ctx.name .. "' has a link dependency on '" .. mod_name .. "', but no such module has been imported.")
+
+        if mod._plugin._install_valid == false then
+            verbosef("Module '%s' has a link dependency on '%s' but it was not installed, ignoring.", ctx.name, mod_name)
+            return
+        end
+
+        if ctx.type == "console_app" or ctx.type == "windowed_app" or ctx.type == "shared" then
+            if mod.type == "static" then
+                links { mod.name }
+            elseif mod.type ~= "header" then
+                dependson { mod.name }
+            end
+        end
+
+        if mod._requires_build_order_dependency == true then
+            dependson { mod.name }
+        end
+
+        for _, handler in ipairs(he.module_dependency_handlers) do
+            handler(ctx, mod)
+        end
+
+        for system, install_dir in pairs(mod._plugin._install_dirs) do
+            he.cwd_push(install_dir)
+            he.filter_push_combine { "system:" .. system }
+
+            for _, key in ipairs(he.module_dependency_link_keys) do
+                he.try_handle_module_key(ctx, key, mod[key])
+            end
+
+            if mod.variants ~= nil then
+                _handle_variants(ctx, mod.variants, he.module_dependency_link_keys)
+            end
+
+            he.filter_pop()
+            he.cwd_pop()
+        end
+    end
+end
+
+local function _handle_dependson(ctx, values)
+    for _, mod_name in ipairs(values) do
+        if string.startswith(mod_name, "sys:") then
+            if ctx.type == "console_app" or ctx.type == "windowed_app" or ctx.type == "shared" then
+                links { string.sub(mod_name, 5) }
+            end
+            return
+        end
+
+        if string.startswith(mod_name, "file:") then
+            if ctx.type == "console_app" or ctx.type == "windowed_app" or ctx.type == "shared" then
+                links { string.sub(mod_name, 6) }
+            end
+            return
+        end
+
+        if string.startswith(mod_name, "module:") then
+            mod_name = string.sub(mod_name, 8)
+        end
+
+        local mod = he.imported_modules[mod_name]
         assert(mod ~= nil, "Module '" .. ctx.name .. "' has a dependency on '" .. mod_name .. "', but no such module has been imported.")
 
         if mod._plugin._install_valid == false then
@@ -318,6 +388,14 @@ he.add_module_key {
     type = "table",
     desc = "an array of module names",
     handler = _handle_dependson_include,
+}
+
+he.add_module_key {
+    key = "dependson_link",
+    scope = "link",
+    type = "table",
+    desc = "an array of module names, system libraries ('sys:X'), or files ('file:X')",
+    handler = _handle_dependson_link,
 }
 
 he.add_module_key {

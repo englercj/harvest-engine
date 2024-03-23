@@ -134,7 +134,7 @@ namespace he
     constexpr bool IsPrint(char c) noexcept
     {
         const _AsciiCategory category = _AsciiCategoryLookup[static_cast<uint8_t>(c)];
-        return category != _AsciiCategory::None;
+        return c == ' ' || (category != _AsciiCategory::None && category != _AsciiCategory::Whitespace);
     }
 
     constexpr bool IsPrint(const char* str) noexcept

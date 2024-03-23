@@ -124,7 +124,7 @@ namespace he
         /// \param[in] mode The mode to open the file in.
         /// \param[in] flags The behavior flags for operations on this file.
         /// \return The result of the operation.
-        Result Open(const char* path, FileOpenMode mode, FileOpenFlag flags = FileOpenFlag::None);
+        Result Open(const char* path, FileAccessMode access, FileCreateMode create, FileOpenFlag flags = FileOpenFlag::None);
 
         /// Closes the file.
         void Close();

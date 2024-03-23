@@ -5,6 +5,7 @@
 #include "he/core/math.h"
 #include "he/core/types.h"
 #include "he/math/vec3.h"
+#include "he/math/vec4a.h"
 
 namespace he
 {

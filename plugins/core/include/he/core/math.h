@@ -2,14 +2,13 @@
 
 #pragma once
 
-#include "he/core/concepts.h"
 #include "he/core/limits.h"
 #include "he/core/types.h"
 
 namespace he
 {
     /// A collection of mathematical constants.
-    template <FloatingPoint T>
+    template <typename T>
     struct MathConstants
     {
         /// The value of e.
@@ -60,37 +59,73 @@ namespace he
     ///
     /// \param x The value to classify.
     /// \return The classification of `x`.
-    template <FloatingPoint T> constexpr FpClass Classify(T x) noexcept;
+    constexpr FpClass Classify(float x) noexcept;
+
+    /// \copydoc Classify(float)
+    constexpr FpClass Classify(double x) noexcept;
+
+    /// \copydoc Classify(float)
+    constexpr FpClass Classify(long double x) noexcept;
 
     /// Tests if the parameter is NaN.
     ///
     /// \param x The value to check.
     /// \return True if the value is NaN; false otherwise.
-    template <FloatingPoint T> constexpr bool IsNan(T x) noexcept;
+    constexpr bool IsNan(float x) noexcept;
+
+    /// \copydoc IsNan(float)
+    constexpr bool IsNan(double x) noexcept;
+
+    /// \copydoc IsNan(float)
+    constexpr bool IsNan(long double x) noexcept;
 
     /// Tests if the parameter is infinite and is not NaN.
     ///
     /// \param x The value to check.
     /// \return True if the value is infinite and not NaN; false otherwise.
-    template <FloatingPoint T> constexpr bool IsInfinite(T x) noexcept;
+    constexpr bool IsInfinite(float x) noexcept;
+
+    /// \copydoc IsInfinite(float)
+    constexpr bool IsInfinite(double x) noexcept;
+
+    /// \copydoc IsInfinite(float)
+    constexpr bool IsInfinite(long double x) noexcept;
 
     /// Tests if the parameter is not infinite and is not NaN.
     ///
     /// \param x The value to check.
     /// \return True if the value is not infinite and not NaN; false otherwise.
-    template <FloatingPoint T> constexpr bool IsFinite(T x) noexcept;
+    constexpr bool IsFinite(float x) noexcept;
+
+    /// \copydoc IsFinite(float)
+    constexpr bool IsFinite(double x) noexcept;
+
+    /// \copydoc IsFinite(float)
+    constexpr bool IsFinite(long double x) noexcept;
 
     /// Tests if the parameter is normal, i.e. not zero, subnormal, infinite, or NaN.
     ///
     /// \param x The value to check.
     /// \return True if the value is not zero, subnormal, infinite, or NaN; false otherwise.
-    template <FloatingPoint T> constexpr bool IsNormal(T x) noexcept;
+    constexpr bool IsNormal(float x) noexcept;
+
+    /// \copydoc IsNormal(float)
+    constexpr bool IsNormal(double x) noexcept;
+
+    /// \copydoc IsNormal(float)
+    constexpr bool IsNormal(long double x) noexcept;
 
     /// Tests if the parameter is a large enough value for reciprocal operations.
     ///
     /// \param x The value to check.
     /// \return True if the value is safe to use as a denominator.
-    template <FloatingPoint T> constexpr bool IsZeroSafe(T x) noexcept;
+    constexpr bool IsZeroSafe(float x) noexcept;
+
+    /// \copydoc IsZeroSafe(float)
+    constexpr bool IsZeroSafe(double x) noexcept;
+
+    /// \copydoc IsZeroSafe(float)
+    constexpr bool IsZeroSafe(long double x) noexcept;
 
     /// Tests if two floating-point values are nearly equal given some tolerance.
     ///
@@ -98,7 +133,13 @@ namespace he
     /// \param b The second floating point value to compare.
     /// \param tolerance The maximum difference between the values that is considered equal.
     /// \return True if the values are nearly equal; false otherwise.
-    template <FloatingPoint T> constexpr bool IsNearlyEqual(T a, T b, T tolerance = Limits<T>::Epsilon) noexcept;
+    constexpr bool IsNearlyEqual(float a, float b, float tolerance = Limits<float>::Epsilon) noexcept;
+
+    /// \copydoc IsNearlyEqual(float, float, float)
+    constexpr bool IsNearlyEqual(double a, double b, double tolerance = Limits<double>::Epsilon) noexcept;
+
+    /// \copydoc IsNearlyEqual(float, float, float)
+    constexpr bool IsNearlyEqual(long double a, long double b, long double tolerance = Limits<long double>::Epsilon) noexcept;
 
     /// Tests if two floating-point values are nearly equal given some ULP tolerance.
     ///
@@ -108,43 +149,85 @@ namespace he
     /// \param b The second floating point value to compare.
     /// \param maxUlpDiff The maximum tolerance for floating point ULP diff.
     /// \return True if the values are nearly equal; false otherwise.
-    template <FloatingPoint T> constexpr bool IsNearlyEqualULP(T a, T b, uint32_t maxUlpDiff) noexcept;
+    constexpr bool IsNearlyEqualULP(float a, float b, uint32_t maxUlpDiff) noexcept;
+
+    /// \copydoc IsNearlyEqualULP(float, float, uint32_t)
+    constexpr bool IsNearlyEqualULP(double a, double b, uint32_t maxUlpDiff) noexcept;
+
+    /// \copydoc IsNearlyEqualULP(float, float, uint32_t)
+    constexpr bool IsNearlyEqualULP(long double a, long double b, uint32_t maxUlpDiff) noexcept;
 
     /// Tests if the given floating point number is negative.
     ///
     /// \param x The value to check.
     /// \return True if the value is negative; false otherwise.
-    template <FloatingPoint T> constexpr bool HasSignBit(T x) noexcept;
+    constexpr bool HasSignBit(float x) noexcept;
+
+    /// \copydoc HasSignBit(float)
+    constexpr bool HasSignBit(double x) noexcept;
+
+    /// \copydoc HasSignBit(float)
+    constexpr bool HasSignBit(long double x) noexcept;
 
     /// Floors the parameter down to the previous integer value.
     ///
     /// \param x The value to floor.
     /// \return The closest integer that is less than or equal to the input value.
-    template <FloatingPoint T> constexpr T Floor(T x) noexcept;
+    constexpr float Floor(float x) noexcept;
+
+    /// \copydoc Floor(float)
+    constexpr double Floor(double x) noexcept;
+
+    /// \copydoc Floor(float)
+    constexpr long double Floor(long double x) noexcept;
 
     /// Ceilings the parameter up to the next integer value.
     ///
     /// \param x The value to ceiling.
     /// \return The closest integer that is greater than or equal to the input value.
-    template <FloatingPoint T> constexpr T Ceil(T x) noexcept;
+    constexpr float Ceil(float x) noexcept;
+
+    /// \copydoc Ceil(float)
+    constexpr double Ceil(double x) noexcept;
+
+    /// \copydoc Ceil(float)
+    constexpr long double Ceil(long double x) noexcept;
 
     /// Rounds the parameter to the closest integer value.
     ///
     /// \param x The value to round.
     /// \return The closest integer to the input value.
-    template <FloatingPoint T> constexpr T Round(T x) noexcept;
+    constexpr float Round(float x) noexcept;
+
+    /// \copydoc Round(float)
+    constexpr double Round(double x) noexcept;
+
+    /// \copydoc Round(float)
+    constexpr long double Round(long double x) noexcept;
 
     /// Converts the parameter to radians.
     ///
     /// \param deg The angle as degrees.
     /// \return The angle as radians.
-    template <FloatingPoint T> constexpr T ToRadians(T deg) noexcept;
+    constexpr float ToRadians(float deg) noexcept;
+
+    /// \copydoc ToRadians(float)
+    constexpr double ToRadians(double deg) noexcept;
+
+    /// \copydoc ToRadians(float)
+    constexpr long double ToRadians(long double deg) noexcept;
 
     /// Convert the parameter to degrees.
     ///
     /// \param rad The angle as radians.
     /// \return The angle as degrees.
-    template <FloatingPoint T> constexpr T ToDegrees(T rad) noexcept;
+    constexpr float ToDegrees(float rad) noexcept;
+
+    /// \copydoc ToDegrees(float)
+    constexpr double ToDegrees(double rad) noexcept;
+
+    /// \copydoc ToDegrees(float)
+    constexpr long double ToDegrees(long double rad) noexcept;
 
     /// Linearly interpolates from `a` to `b` by `t`, which is in the range [0,1].
     ///
@@ -152,7 +235,13 @@ namespace he
     /// \param b The ending value for the interpolation, i.e. the value when `t == 1`.
     /// \param t The "time step" for the interpolation. Expected to be in the range `[0, 1]`.
     /// \return The interpolated value.
-    template <FloatingPoint T> constexpr T Lerp(T a, T b, T t) noexcept;
+    constexpr float Lerp(float a, float b, float t) noexcept;
+
+    /// \copydoc Lerp(float, float, float)
+    constexpr double Lerp(double a, double b, double t) noexcept;
+
+    /// \copydoc Lerp(float, float, float)
+    constexpr long double Lerp(long double a, long double b, long double t) noexcept;
 
     /// Performs smooth Hermite interpolation between `0` and `1`
     ///
@@ -160,19 +249,37 @@ namespace he
     /// \param b The right edge of the curve, i.e. the value that returns `1` when `t >= b`.
     /// \param t The step along the curve to interpolate.
     /// \return The interpolated value.
-    template <FloatingPoint T> constexpr T SmoothStep(T a, T b, T t) noexcept;
+    constexpr float SmoothStep(float a, float b, float t) noexcept;
+
+    /// \copydoc SmoothStep(float, float, float)
+    constexpr double SmoothStep(double a, double b, double t) noexcept;
+
+    /// \copydoc SmoothStep(float, float, float)
+    constexpr long double SmoothStep(long double a, long double b, long double t) noexcept;
 
     /// Calculates the reciprocal of the parameter.
     ///
     /// \param x The value to
     /// \return The reciprocal of `x`.
-    template <FloatingPoint T> constexpr T Rcp(T x) noexcept;
+    constexpr float Rcp(float x) noexcept;
+
+    /// \copydoc Rcp(float)
+    constexpr double Rcp(double x) noexcept;
+
+    /// \copydoc Rcp(float)
+    constexpr long double Rcp(long double x) noexcept;
 
     /// Calculates the reciprocal of the parameter or `0` for very small values.
     ///
     /// \param x The value to
     /// \return The reciprocal of `x`.
-    template <FloatingPoint T> constexpr T RcpSafe(T x) noexcept;
+    constexpr float RcpSafe(float x) noexcept;
+
+    /// \copydoc RcpSafe(float)
+    constexpr double RcpSafe(double x) noexcept;
+
+    /// \copydoc RcpSafe(float)
+    constexpr long double RcpSafe(long double x) noexcept;
 
     /// Calculates the square root of the parameter.
     ///
@@ -253,6 +360,9 @@ namespace he
     /// \return The arc tangent of `y/x` in the range `[-pi, pi]`.
     float Atan2(float y, float x) noexcept;
 
+    /// \copydoc Atan2(float, float)
+    double Atan2(double y, double x) noexcept;
+
     /// Calculates the sine and cosine of the parameter, in radians.
     ///
     /// \param x The angle in radians.
@@ -260,11 +370,17 @@ namespace he
     /// \param[out] c The cosine of `x`.
     void SinCos(float x, float& s, float& c) noexcept;
 
+    /// \copydoc SinCos(float, float&, float&)
+    void SinCos(double x, double& s, double& c) noexcept;
+
     /// Calculates `e` (Euler's number) raised to the power of the parameter.
     ///
     /// \param x The exponent to raise `e` to.
     /// \return The base-e exponential of `x` (e^x)
     float Exp(float x) noexcept;
+
+    /// \copydoc Exp(float)
+    double Exp(double x) noexcept;
 
     /// Calculates the natural logarithm (base-e) of the parameter.
     ///
@@ -272,11 +388,17 @@ namespace he
     /// \return The natural (base-e) logarithm of `x`.
     float Ln(float x) noexcept;
 
+    /// \copydoc Ln(float)
+    double Ln(double x) noexcept;
+
     /// Calculates the base-2 logarithm of the parameter.
     ///
     /// \param x The value to calculate the logarithm of.
     /// \return The base-2 logarithm of `x`.
     float Lb(float x) noexcept;
+
+    /// \copydoc Lb(float)
+    double Lb(double x) noexcept;
 
     /// Calculates the base-`n` logarithm of the parameter.
     ///
@@ -285,6 +407,9 @@ namespace he
     /// \return The base-`n` logarithm of `x`.
     float LogN(float x, float n) noexcept;
 
+    /// \copydoc LogN(float, float)
+    double LogN(double x, double n) noexcept;
+
     /// Calculates the value of base raised to the power exponent.
     ///
     /// \param base The base value.
@@ -292,12 +417,18 @@ namespace he
     /// \return The `base` value raised to the power of `exp`.
     float Pow(float base, float exp) noexcept;
 
+    /// \copydoc Pow(float, float)
+    double Pow(double base, double exp) noexcept;
+
     /// Calculates the remainder of the division operation `x / y`.
     ///
     /// \param x The numerator.
     /// \param y The denominator.
     /// \return The remainder of the divison.
     float Fmod(float x, float y) noexcept;
+
+    /// \copydoc Fmod(float, float)
+    double Fmod(double x, double y) noexcept;
 }
 
 #include "he/core/inline/math.inl"

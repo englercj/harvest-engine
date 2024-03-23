@@ -1282,10 +1282,10 @@ HE_TEST_F(core, toml_reader, value_time, TomlReaderFixture)
     ValidateTime("07:32", FromPeriod<Hours>(7) + FromPeriod<Minutes>(32));
     ValidateTime("20:30:40", FromPeriod<Hours>(20) + FromPeriod<Minutes>(30) + FromPeriod<Seconds>(40));
 
-    Validate("key = 25:32:01", TomlReadError::InvalidDateTime);
     Validate("key = 20:67", TomlReadError::InvalidDateTime);
-    Validate("key = 20:30:200", TomlReadError::InvalidDateTime);
+    Validate("key = 25:32:01", TomlReadError::InvalidDateTime);
     Validate("key = 20:30:60.1", TomlReadError::InvalidDateTime);
+    Validate("key = 20:30:200", TomlReadError::InvalidToken);
     Validate("key = 20:30::1", TomlReadError::InvalidToken);
     Validate("key = 20:30:-10", TomlReadError::InvalidToken);
     Validate("key = -20:30:10", TomlReadError::InvalidToken);

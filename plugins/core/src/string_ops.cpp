@@ -12,6 +12,8 @@
 
 HE_PUSH_WARNINGS();
 HE_DISABLE_MSVC_WARNING(4702); // unreachable code
+#define FASTFLOAT_SKIP_WHITE_SPACE 1
+#define FASTFLOAT_ALLOWS_LEADING_PLUS 1
 #include "fast_float/fast_float.h"
 HE_POP_WARNINGS();
 
@@ -254,19 +256,130 @@ namespace he
     template <typename T>
     HE_FORCE_INLINE T StrToIntImpl(const char* str, const char** end, int32_t base)
     {
+        // A modified version of the `fast_float::from_chars` function.
+        // Adds support for base prefixes (0x, 0b, 0o) and negative signs on unsigned types.
+
+        const char* first = str;
         const char* strEnd = nullptr;
         if (end)
             strEnd = *end;
         else
             strEnd = str + StrLen(str);
 
-        T value = 0;
-        const fast_float::from_chars_result result = fast_float::from_chars(str, strEnd, value, base);
+        while (str < strEnd && IsWhitespace(*str))
+            ++str;
+
+        if (str == strEnd || base < 2 || base > 36)
+        {
+            if (end)
+                *end = str;
+            return 0;
+        }
+
+        const bool negative = *str == '-';
+        if (negative || *str == '+')
+            ++str;
+
+        const char* numStart = str;
+
+        while (str < strEnd && *str == '0')
+            ++str;
+
+        // Skip over supported prefixes for binary, octal, and hexadecimal bases.
+        switch (base)
+        {
+            case 2: // '0b'
+                if (str < strEnd && (*str == 'b' || *str == 'B'))
+                    ++str;
+
+                numStart = str;
+                break;
+            case 8: // '0o'
+                if (str < strEnd && (*str == 'o' || *str == 'O'))
+                    ++str;
+
+                numStart = str;
+                break;
+            case 16: // '0b'
+                if (str < strEnd && (*str == 'x' || *str == 'X'))
+                    ++str;
+
+                numStart = str;
+                break;
+        }
+
+        while (str < strEnd && *str == '0')
+            ++str;
+
+        const bool hasLeadingZeros = str > numStart;
+        const char* firstDigit = str;
+
+        uint64_t i = 0;
+        if (base == 10)
+        {
+            fast_float::loop_parse_if_eight_digits(str, strEnd, i);
+        }
+
+        while (str < strEnd)
+        {
+            uint8_t digit = fast_float::ch_to_digit(*str);
+            if (digit >= base)
+                break;
+            i = (static_cast<uint64_t>(base) * i) + digit;
+            ++str;
+        }
 
         if (end)
-            *end = result.ptr;
+            *end = str;
 
-        return value;
+        const size_t digitCount = str - firstDigit;
+        if (digitCount == 0)
+        {
+            if (hasLeadingZeros)
+                return 0;
+
+            // error: invalid input
+            if (end)
+                *end = first;
+            return 0;
+        }
+
+
+        const size_t maxDigits = fast_float::max_digits_u64(base);
+        if (digitCount > maxDigits)
+        {
+            // error: out of range
+            return negative ? Limits<T>::Min : Limits<T>::Max;
+        }
+
+        if (digitCount == maxDigits && i < fast_float::min_safe_u64(base))
+        {
+            // error: out of range
+            return negative ? Limits<T>::Min : Limits<T>::Max;
+        }
+
+        if (!IsSame<T, uint64_t>)
+        {
+            if (i > static_cast<uint64_t>(Limits<T>::Max) + static_cast<uint64_t>(negative))
+            {
+                // error: out of range
+                return negative ? Limits<T>::Min : Limits<T>::Max;
+            }
+        }
+
+        if (negative)
+        {
+            HE_PUSH_WARNINGS();
+            HE_DISABLE_MSVC_WARNING(4146); // unary minus operator applied to unsigned type, result still unsigned
+            // this weird workaround is required because:
+            // - converting unsigned to signed when its value is greater than signed max is UB pre-C++23.
+            // - reinterpret_casting (~i + 1) would work, but it is not constexpr
+            // this is always optimized into a neg instruction (note: T is an integer type)
+            return T(-Limits<T>::Max - T(i - static_cast<uint64_t>(Limits<T>::Max)));
+            HE_POP_WARNINGS();
+        }
+
+        return static_cast<T>(i);
     }
 
     template <> signed char StrToInt<signed char>(const char* str, const char** end, int32_t base) { return StrToIntImpl<signed char>(str, end, base); }

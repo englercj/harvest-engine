@@ -48,7 +48,7 @@ homepage = ""
 
     [[modules.variants]]
         conditions = ["system:wasm"]
-        public_dependson = ["libcxx", "he_core_wasm_libc"]
+        public_dependson = ["he_core_wasm_libc"]
         public_wasmfeatures = ["Atomics", "BulkMemory", "NontrappingFPToInt"]
         public_defines = [
             "HE_IMPL_PLATFORM_RWLOCK_SIZE=4",
@@ -80,15 +80,30 @@ homepage = ""
     name = "he_core_wasm_libc"
     type = "static"
     group = "engine/libs"
+    files = ["wasm_libc/include/**", "wasm_libc/src/**"]
+    public_dependson_include = ["he_core"] # include-only, he_core will link wasm_libc
+    private_includedirs = ["wasm_libc/src"]
 
     [[modules.variants]]
         conditions = ["system:wasm"]
-        files = ["wasm_libc/include/**", "wasm_libc/src/**"]
         public_defines = ["HE_LIBCPP_ABI_NAMESPACE=__%{he.get_libcxx_abi_version()}"]
-        public_dependson = ["libcxx"]
-        public_dependson_include = ["he_core"]
+        public_dependson = ["libcxxabi"]
+        public_dependson_link = ["libcxx"] # link-only, see include dirs below
+        public_externalincludedirs = [
+            # Libcxx headers must come before wasm_libc headers, so we list those explicitly.
+            # Going instead through the normal `dependson` flow would put wasm_libc headers first.
+            "%{he.get_module_file_dir('libcxx')}/include",
+            "%{he.get_module_install_dir('libcxx')}/include",
+            "wasm_libc/include",
+        ]
+
+    [[modules.variants]]
+        conditions = ["system:not wasm"]
         public_externalincludedirs = ["wasm_libc/include"]
-        private_includedirs = ["wasm_libc/src"]
+
+    [[modules.variants]]
+        conditions = ["system:not wasm", "files:wasm_libc/src/**"]
+        flags = ["ExcludeFromBuild"]
 
 # Tests for the core module.
 [[modules]]

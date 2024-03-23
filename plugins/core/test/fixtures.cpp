@@ -256,7 +256,7 @@ namespace he
     void TouchTestFile(const char* path, const void* data, uint32_t len)
     {
         File f;
-        Result r = f.Open(path, FileOpenMode::WriteTruncate);
+        Result r = f.Open(path, FileAccessMode::Write, FileCreateMode::CreateAlways);
         HE_EXPECT(r, r);
 
         if (data && len > 0)

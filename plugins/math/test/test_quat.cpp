@@ -15,14 +15,14 @@ using namespace he;
 HE_TEST(math, quat, MakeQuat)
 {
     // Axis-angle
-    Quat aa = MakeQuat(Vec3f_X, Float_PiHalf);
+    Quat aa = MakeQuat(Vec3f_X, MathConstants<float>::PiHalf);
     HE_EXPECT(IsNormalized(aa));
 
     Vec3f axis;
     float angle;
     ToAxisAngle(axis, angle, aa);
     HE_EXPECT_EQ_ULP(axis, Vec3f_X, 1);
-    HE_EXPECT_EQ(angle, Float_PiHalf);
+    HE_EXPECT_EQ(angle, MathConstants<float>::PiHalf);
 
     // Rotation matrix
     Mat44 m = MakeRotateMat44(aa);
@@ -43,7 +43,7 @@ HE_TEST(math, quat, MakeQuat)
 // ------------------------------------------------------------------------------------------------
 HE_TEST(math, quat, ToEuler)
 {
-    Vec3f angles{ Float_PiQuarter, Float_PiQuarter, Float_PiQuarter };
+    Vec3f angles{ MathConstants<float>::PiQuarter, MathConstants<float>::PiQuarter, MathConstants<float>::PiQuarter };
     Quat q = MakeQuat(angles);
 
     Vec3f angles2 = ToEuler(q);
@@ -55,45 +55,45 @@ HE_TEST(math, quat, ToEuler)
 HE_TEST(math, quat, ToAxisAngle)
 {
     Vec3f normAxis = Normalize(Vec3f_One);
-    Quat q = MakeQuat(normAxis, Float_PiHalf);
+    Quat q = MakeQuat(normAxis, MathConstants<float>::PiHalf);
 
     Vec3f axis;
     float angle;
     ToAxisAngle(axis, angle, q);
 
     HE_EXPECT_EQ_ULP(axis, normAxis, 1);
-    HE_EXPECT_EQ_ULP(angle, Float_PiHalf, 1);
+    HE_EXPECT_EQ_ULP(angle, MathConstants<float>::PiHalf, 1);
 }
 
 // ------------------------------------------------------------------------------------------------
 HE_TEST(math, quat, IsNan)
 {
-    HE_EXPECT(IsNan(Quat{ Float_Nan, Float_Nan, Float_Nan, Float_Nan }));
-    HE_EXPECT(IsNan(Quat{ Float_Nan, Float_Nan, Float_Nan, 1 }));
-    HE_EXPECT(IsNan(Quat{ Float_Nan, Float_Nan, 1, Float_Nan }));
-    HE_EXPECT(IsNan(Quat{ Float_Nan, 1, Float_Nan, Float_Nan }));
-    HE_EXPECT(IsNan(Quat{ 1, Float_Nan, Float_Nan, Float_Nan }));
-    HE_EXPECT(IsNan(Quat{ Float_Nan, 1, 1, 1 }));
-    HE_EXPECT(IsNan(Quat{ 1, Float_Nan, 1, 1 }));
-    HE_EXPECT(IsNan(Quat{ 1, 1, Float_Nan, 1 }));
-    HE_EXPECT(IsNan(Quat{ 1, 1, 1, Float_Nan }));
-    HE_EXPECT(!IsNan(Quat{ Float_Infinity, Float_Infinity, Float_Infinity, Float_Infinity }));
+    HE_EXPECT(IsNan(Quat{ Limits<float>::NaN, Limits<float>::NaN, Limits<float>::NaN, Limits<float>::NaN }));
+    HE_EXPECT(IsNan(Quat{ Limits<float>::NaN, Limits<float>::NaN, Limits<float>::NaN, 1 }));
+    HE_EXPECT(IsNan(Quat{ Limits<float>::NaN, Limits<float>::NaN, 1, Limits<float>::NaN }));
+    HE_EXPECT(IsNan(Quat{ Limits<float>::NaN, 1, Limits<float>::NaN, Limits<float>::NaN }));
+    HE_EXPECT(IsNan(Quat{ 1, Limits<float>::NaN, Limits<float>::NaN, Limits<float>::NaN }));
+    HE_EXPECT(IsNan(Quat{ Limits<float>::NaN, 1, 1, 1 }));
+    HE_EXPECT(IsNan(Quat{ 1, Limits<float>::NaN, 1, 1 }));
+    HE_EXPECT(IsNan(Quat{ 1, 1, Limits<float>::NaN, 1 }));
+    HE_EXPECT(IsNan(Quat{ 1, 1, 1, Limits<float>::NaN }));
+    HE_EXPECT(!IsNan(Quat{ Limits<float>::Infinity, Limits<float>::Infinity, Limits<float>::Infinity, Limits<float>::Infinity }));
     HE_EXPECT(!IsNan(Quat{ 1, 2, 3, 4 }));
 }
 
 // ------------------------------------------------------------------------------------------------
 HE_TEST(math, quat, IsInfinite)
 {
-    HE_EXPECT(IsInfinite(Quat{ Float_Infinity, Float_Infinity, Float_Infinity, Float_Infinity }));
-    HE_EXPECT(IsInfinite(Quat{ Float_Infinity, Float_Infinity, Float_Infinity, 1 }));
-    HE_EXPECT(IsInfinite(Quat{ Float_Infinity, Float_Infinity, 1, Float_Infinity }));
-    HE_EXPECT(IsInfinite(Quat{ Float_Infinity, 1, Float_Infinity, Float_Infinity }));
-    HE_EXPECT(IsInfinite(Quat{ 1, Float_Infinity, Float_Infinity, Float_Infinity }));
-    HE_EXPECT(IsInfinite(Quat{ Float_Infinity, 1, 1, 1 }));
-    HE_EXPECT(IsInfinite(Quat{ 1, Float_Infinity, 1, 1 }));
-    HE_EXPECT(IsInfinite(Quat{ 1, 1, Float_Infinity, 1 }));
-    HE_EXPECT(IsInfinite(Quat{ 1, 1, 1, Float_Infinity }));
-    HE_EXPECT(!IsInfinite(Quat{ Float_Nan, Float_Nan, Float_Nan, Float_Nan }));
+    HE_EXPECT(IsInfinite(Quat{ Limits<float>::Infinity, Limits<float>::Infinity, Limits<float>::Infinity, Limits<float>::Infinity }));
+    HE_EXPECT(IsInfinite(Quat{ Limits<float>::Infinity, Limits<float>::Infinity, Limits<float>::Infinity, 1 }));
+    HE_EXPECT(IsInfinite(Quat{ Limits<float>::Infinity, Limits<float>::Infinity, 1, Limits<float>::Infinity }));
+    HE_EXPECT(IsInfinite(Quat{ Limits<float>::Infinity, 1, Limits<float>::Infinity, Limits<float>::Infinity }));
+    HE_EXPECT(IsInfinite(Quat{ 1, Limits<float>::Infinity, Limits<float>::Infinity, Limits<float>::Infinity }));
+    HE_EXPECT(IsInfinite(Quat{ Limits<float>::Infinity, 1, 1, 1 }));
+    HE_EXPECT(IsInfinite(Quat{ 1, Limits<float>::Infinity, 1, 1 }));
+    HE_EXPECT(IsInfinite(Quat{ 1, 1, Limits<float>::Infinity, 1 }));
+    HE_EXPECT(IsInfinite(Quat{ 1, 1, 1, Limits<float>::Infinity }));
+    HE_EXPECT(!IsInfinite(Quat{ Limits<float>::NaN, Limits<float>::NaN, Limits<float>::NaN, Limits<float>::NaN }));
     HE_EXPECT(!IsInfinite(Quat{ 1, 2, 3, 4 }));
 }
 
@@ -101,10 +101,10 @@ HE_TEST(math, quat, IsInfinite)
 HE_TEST(math, quat, IsFinite)
 {
     HE_EXPECT(IsFinite(Quat{ 1, 2, 3, 4 }));
-    HE_EXPECT(!IsFinite(Quat{ Float_Infinity, 2, 3, 4 }));
-    HE_EXPECT(!IsFinite(Quat{ 1, Float_Infinity, 3, 4 }));
-    HE_EXPECT(!IsFinite(Quat{ 1, 2, Float_Infinity, 4 }));
-    HE_EXPECT(!IsFinite(Quat{ 1, 2, 3, Float_Infinity }));
+    HE_EXPECT(!IsFinite(Quat{ Limits<float>::Infinity, 2, 3, 4 }));
+    HE_EXPECT(!IsFinite(Quat{ 1, Limits<float>::Infinity, 3, 4 }));
+    HE_EXPECT(!IsFinite(Quat{ 1, 2, Limits<float>::Infinity, 4 }));
+    HE_EXPECT(!IsFinite(Quat{ 1, 2, 3, Limits<float>::Infinity }));
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -140,17 +140,17 @@ HE_TEST(math, quat, Mul)
 // ------------------------------------------------------------------------------------------------
 HE_TEST(math, quat, Rotate_InvRotate)
 {
-    Quat qx = MakeQuat(Vec3f_X, 0.5f * Float_Pi);
-    Quat qy = MakeQuat(Vec3f_Y, 0.5f * Float_Pi);
-    Quat qz = MakeQuat(Vec3f_Z, 0.5f * Float_Pi);
+    Quat qx = MakeQuat(Vec3f_X, 0.5f * MathConstants<float>::Pi);
+    Quat qy = MakeQuat(Vec3f_Y, 0.5f * MathConstants<float>::Pi);
+    Quat qz = MakeQuat(Vec3f_Z, 0.5f * MathConstants<float>::Pi);
 
     Vec3f v1 = Rotate(qz, Vec3f_X);
     Vec3f v2 = Rotate(qx, Vec3f_Y);
     Vec3f v3 = Rotate(qy, Vec3f_Z);
 
-    HE_EXPECT_EQ_ULP(Dot(v1, Vec3f_Y), 1, 1);
-    HE_EXPECT_EQ_ULP(Dot(v2, Vec3f_Z), 1, 1);
-    HE_EXPECT_EQ_ULP(Dot(v3, Vec3f_X), 1, 1);
+    HE_EXPECT_EQ_ULP(Dot(v1, Vec3f_Y), 1.0f, 1);
+    HE_EXPECT_EQ_ULP(Dot(v2, Vec3f_Z), 1.0f, 1);
+    HE_EXPECT_EQ_ULP(Dot(v3, Vec3f_X), 1.0f, 1);
 
     Vec3f v4 = InvRotate(qz, v1);
     Vec3f v5 = InvRotate(qx, v2);
@@ -214,15 +214,15 @@ HE_TEST(math, quat, Operators)
     HE_EXPECT_EQ(v, (Quat{ 2, 4, 6, 8 }));
     HE_EXPECT_EQ((Quat{ 1, 2, 3, 4 } * 2), (Quat{ 2, 4, 6, 8 }));
 
-    Quat q1 = MakeQuat(Vec3f_Z, 0.5f * Float_Pi);
-    HE_EXPECT_EQ_ULP(Dot(Rotate(q1, Vec3f{ 1, 0, 0 }), Vec3f{ 0, 1, 0 }), 1, 1);
-    Quat q2 = MakeQuat(Vec3f_Z, 0.5f * Float_Pi);
+    Quat q1 = MakeQuat(Vec3f_Z, 0.5f * MathConstants<float>::Pi);
+    HE_EXPECT_EQ_ULP(Dot(Rotate(q1, Vec3f{ 1, 0, 0 }), Vec3f{ 0, 1, 0 }), 1.0f, 1);
+    Quat q2 = MakeQuat(Vec3f_Z, 0.5f * MathConstants<float>::Pi);
     q1 *= q2;
-    HE_EXPECT_EQ_ULP(Dot(Rotate(q1, Vec3f{ 1, 0, 0 }), Vec3f{ -1, 0, 0 }), 1, 4);
+    HE_EXPECT_EQ_ULP(Dot(Rotate(q1, Vec3f{ 1, 0, 0 }), Vec3f{ -1, 0, 0 }), 1.0f, 4);
 
-    q1 = MakeQuat(Vec3f_Z, 0.5f * Float_Pi);
+    q1 = MakeQuat(Vec3f_Z, 0.5f * MathConstants<float>::Pi);
     Quat q3 = q1 * q2;
-    HE_EXPECT_EQ_ULP(Dot(Rotate(q3, Vec3f{ 1, 0, 0 }), Vec3f{ -1, 0, 0 }), 1, 4);
+    HE_EXPECT_EQ_ULP(Dot(Rotate(q3, Vec3f{ 1, 0, 0 }), Vec3f{ -1, 0, 0 }), 1.0f, 4);
 
     HE_EXPECT_LT((Quat{ 1, 1, 1, 1 }), (Quat{ 2, 0, 0, 0 }));
     HE_EXPECT_LT((Quat{ 1, 1, 1, 1 }), (Quat{ 1, 2, 0, 0 }));

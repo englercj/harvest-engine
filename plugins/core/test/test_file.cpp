@@ -46,7 +46,7 @@ HE_TEST(core, file, GetFileResult)
     File::Remove(TestPath);
 
     File f;
-    Result r = f.Open(TestPath, FileOpenMode::ReadExisting);
+    Result r = f.Open(TestPath, FileAccessMode::Read, FileCreateMode::OpenExisting);
     HE_EXPECT(!r);
     HE_EXPECT_EQ(GetFileResult(r), FileResult::NotFound);
 
@@ -213,7 +213,7 @@ HE_TEST(core, file, Move)
     constexpr const char TestPath[] = "ba50d6b9-46b4-4756-9a1e-f78a5e0cae2e";
 
     File f0;
-    Result r = f0.Open(TestPath, FileOpenMode::WriteTruncate);
+    Result r = f0.Open(TestPath, FileAccessMode::Write, FileCreateMode::CreateAlways);
     HE_EXPECT(r, r);
     HE_EXPECT(f0.IsOpen());
 
@@ -238,7 +238,7 @@ HE_TEST(core, file, Open_Close)
     constexpr const char TestPath[] = "a3ac923d-6eb3-497f-ad88-772e9b4b9bdb";
 
     File f;
-    Result r = f.Open(TestPath, FileOpenMode::WriteTruncate);
+    Result r = f.Open(TestPath, FileAccessMode::Write, FileCreateMode::CreateAlways);
     HE_EXPECT(r, r);
     HE_EXPECT(f.IsOpen());
 
@@ -254,7 +254,7 @@ HE_TEST(core, file, GetSize)
     constexpr const char TestPath[] = "126fff87-4211-4a2c-9237-3ad09d02b167";
 
     File f;
-    Result r = f.Open(TestPath, FileOpenMode::WriteTruncate);
+    Result r = f.Open(TestPath, FileAccessMode::Write, FileCreateMode::CreateAlways);
     HE_EXPECT(r, r);
 
     uint64_t fsize = f.GetSize();
@@ -274,7 +274,7 @@ HE_TEST(core, file, SetSize)
     constexpr const char TestPath[] = "a2741904-c0a5-4b88-a038-db63fc24ebab";
 
     File f;
-    Result r = f.Open(TestPath, FileOpenMode::ReadWriteTruncate);
+    Result r = f.Open(TestPath, FileAccessMode::ReadWrite, FileCreateMode::CreateAlways);
     HE_EXPECT(r, r);
 
     uint64_t fsize = f.GetSize();
@@ -301,7 +301,7 @@ HE_TEST(core, file, GetPos_SetPos)
     constexpr const char TestPath[] = "48159f47-7fd1-4f64-ba59-342f1f8a78f1";
 
     File f;
-    Result r = f.Open(TestPath, FileOpenMode::WriteTruncate);
+    Result r = f.Open(TestPath, FileAccessMode::Write, FileCreateMode::CreateAlways);
     HE_EXPECT(r, r);
 
     r = f.SetSize(100);
@@ -332,7 +332,7 @@ HE_TEST(core, file, Read_Write)
     constexpr const char TestPath[] = "73a94832-ef1a-4e58-8293-70eec2215d52";
 
     File f;
-    Result r = f.Open(TestPath, FileOpenMode::ReadWriteTruncate);
+    Result r = f.Open(TestPath, FileAccessMode::ReadWrite, FileCreateMode::CreateAlways);
     HE_EXPECT(r, r);
 
     r = f.SetSize(100);
@@ -367,7 +367,7 @@ HE_TEST(core, file, ReadAt_WriteAt)
     constexpr const char TestPath[] = "50f044c3-716e-4e0f-906b-b5eef0bb654f";
 
     File f;
-    Result r = f.Open(TestPath, FileOpenMode::ReadWriteTruncate);
+    Result r = f.Open(TestPath, FileAccessMode::ReadWrite, FileCreateMode::CreateAlways);
     HE_EXPECT(r, r);
 
     r = f.SetSize(100);
@@ -392,7 +392,7 @@ HE_TEST(core, file, Flush)
     constexpr const char TestPath[] = "2a3fe5ed-01e7-4467-9225-dbda8f9cc038";
 
     File f;
-    Result r = f.Open(TestPath, FileOpenMode::WriteTruncate);
+    Result r = f.Open(TestPath, FileAccessMode::Write, FileCreateMode::CreateAlways);
     HE_EXPECT(r, r);
 
     r = f.Flush();
@@ -415,7 +415,7 @@ HE_TEST(core, file, Lock_Unlock)
     constexpr const char TestPath[] = "56d64cc3-b70e-405a-b89a-c02b8715d9a6";
 
     File f;
-    Result r = f.Open(TestPath, FileOpenMode::WriteTruncate);
+    Result r = f.Open(TestPath, FileAccessMode::Write, FileCreateMode::CreateAlways);
     HE_EXPECT(r, r);
 
     r = f.SetSize(128);
@@ -443,7 +443,7 @@ HE_TEST(core, file, GetAttributes)
 
     FileAttributes attributes;
     File f;
-    Result r = f.Open(TestPath, FileOpenMode::ReadWriteExisting);
+    Result r = f.Open(TestPath, FileAccessMode::ReadWrite, FileCreateMode::OpenExisting);
     HE_EXPECT(r, r);
 
     r = f.Write(TestPath, HE_LENGTH_OF(TestPath));
@@ -466,7 +466,7 @@ HE_TEST(core, file, GetPath)
     constexpr const char TestPath[] = "c8862020-d165-4a80-b5eb-333131fd02f3";
 
     File f;
-    Result r = f.Open(TestPath, FileOpenMode::WriteTruncate);
+    Result r = f.Open(TestPath, FileAccessMode::Write, FileCreateMode::CreateAlways);
     HE_EXPECT(r, r);
 
     String path;
@@ -491,7 +491,7 @@ HE_TEST(core, file, SetTimes)
     constexpr const char TestPath[] = "a08d0e34-eff5-491d-8fa1-a71f760288de";
 
     File f;
-    Result r = f.Open(TestPath, FileOpenMode::WriteTruncate);
+    Result r = f.Open(TestPath, FileAccessMode::Write, FileCreateMode::CreateAlways);
     HE_EXPECT(r, r);
 
     SystemTime c{ 1234567890123400 };
@@ -517,7 +517,7 @@ HE_TEST(core, file, MemoryMap)
     TouchTestFile(TestPath, TestPath, HE_LENGTH_OF(TestPath));
 
     File f;
-    Result r = f.Open(TestPath, FileOpenMode::ReadWriteExisting);
+    Result r = f.Open(TestPath, FileAccessMode::ReadWrite, FileCreateMode::OpenExisting);
     HE_EXPECT(r, r);
     HE_EXPECT(f.IsOpen());
 

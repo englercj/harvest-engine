@@ -105,7 +105,7 @@ namespace he
 
 #if HE_CPU_X86
     // --------------------------------------------------------------------------------------------
-    HE_FORCE_INLINE uint32_t _Clz32_Lzcnt(uint64_t x)
+    HE_FORCE_INLINE uint32_t _Clz32_Lzcnt(uint32_t x)
     {
         return static_cast<uint32_t>(__lzcnt(x));
     }
@@ -121,7 +121,7 @@ namespace he
     #endif
     }
 
-    HE_FORCE_INLINE uint32_t _Crz32_Tzcnt(uint64_t x)
+    HE_FORCE_INLINE uint32_t _Crz32_Tzcnt(uint32_t x)
     {
         return static_cast<uint32_t>(_tzcnt_u32(x));
     }
@@ -153,7 +153,7 @@ namespace he
         return static_cast<uint32_t>(x >> (32 - 8));
     }
 
-    HE_FORCE_INLINE uint32_t _PopCnt64_Fallback(uint32_t x)
+    HE_FORCE_INLINE uint32_t _PopCnt64_Fallback(uint64_t x)
     {
         const uint32_t high = static_cast<uint32_t>(x >> 32);
         const uint32_t low = static_cast<uint32_t>(x);
@@ -161,7 +161,7 @@ namespace he
     }
 
 #if HE_CPU_X86
-    HE_FORCE_INLINE uint32_t _PopCnt32_x86(uint64_t x)
+    HE_FORCE_INLINE uint32_t _PopCnt32_x86(uint32_t x)
     {
         return __popcnt(x);
     }
@@ -169,7 +169,7 @@ namespace he
     HE_FORCE_INLINE uint32_t _PopCnt64_x86(uint64_t x)
     {
     #if HE_CPU_X86_64
-        return __popcnt64(x);
+        return static_cast<uint32_t>(__popcnt64(x));
     #else
         const uint32_t high = static_cast<uint32_t>(x >> 32);
         const uint32_t low = static_cast<uint32_t>(x);

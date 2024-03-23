@@ -183,7 +183,7 @@ namespace he::schema
     }
 
     template <>
-    inline Void _ReadDataFieldUnsafe<Void>([[maybe_unused]] const Word* data, uint32_t [[maybe_unused]] dataOffset)
+    inline Void _ReadDataFieldUnsafe<Void>([[maybe_unused]] const Word* data, [[maybe_unused]] uint32_t dataOffset)
     {
         return {};
     }

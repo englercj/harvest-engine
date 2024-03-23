@@ -86,8 +86,8 @@ HE_TEST(math, mat44, MakeRotateMat44)
     }
 
     float halfAngle = 0.5f * MathConstants<float>::Pi;
-    float s = sinf(halfAngle);
-    float c = cosf(halfAngle);
+    float s = Sin(halfAngle);
+    float c = Cos(halfAngle);
 
     {
         Mat44 expect
@@ -229,9 +229,9 @@ HE_TEST(math, mat44, MakeTransformMat44)
         HE_EXPECT_EQ(actual, expect);
     }
 
-    float halfAngle = 0.5f * MathConstants<float>::PiPi;
-    float s = sinf(halfAngle);
-    float c = cosf(halfAngle);
+    float halfAngle = 0.5f * MathConstants<float>::Pi;
+    float s = Sin(halfAngle);
+    float c = Cos(halfAngle);
 
     {
         Mat44 expect

@@ -187,6 +187,7 @@ return function (plugin)
 
     for _, platform in ipairs(platforms) do
         if table.contains(systems, platform.system) == false then
+            verbosef("Adding system '%s' to valid systems for plugin '%s'", platform.system, plugin.id)
             table.insert(systems, platform.system)
         end
     end

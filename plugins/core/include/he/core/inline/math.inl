@@ -1,10 +1,9 @@
 // Copyright Chad Engler
 
-#include "he/core/concepts.h"
+#include "he/core/compiler.h"
 #include "he/core/cpu.h"
 #include "he/core/limits.h"
 #include "he/core/simd.h"
-#include "he/core/type_traits.h"
 #include "he/core/types.h"
 #include "he/core/utils.h"
 
@@ -29,10 +28,10 @@ namespace he
 {
     // --------------------------------------------------------------------------------------------
 #if HE_HAS_INT128
-    template <FloatingPoint T>
+    template <typename T>
     using _CarrierUint = Conditional<sizeof(T) <= 4, uint32_t, Conditional<sizeof(T) <= 8, uint64_t, uint128_t>>;
 #else
-    template <FloatingPoint T>
+    template <typename T>
     using _CarrierUint = Conditional<sizeof(T) <= 4, uint32_t, uint64_t>;
 #endif
 
@@ -117,8 +116,8 @@ namespace he
 #endif
 
     // --------------------------------------------------------------------------------------------
-    template <FloatingPoint T>
-    constexpr FpClass Classify(T x) noexcept
+    template <typename T>
+    HE_FORCE_INLINE constexpr FpClass _ClassifyImpl(T x) noexcept
     {
         using Uint = _CarrierUint<T>;
 
@@ -136,7 +135,9 @@ namespace he
         return FpClass::Normal;
     }
 
-    template <>
+    constexpr FpClass Classify(float x) noexcept { return _ClassifyImpl<float>(x); }
+    constexpr FpClass Classify(double x) noexcept { return _ClassifyImpl<double>(x); }
+
     constexpr FpClass Classify(long double x) noexcept
     {
     #if HE_LDBL_MANT_DIG == HE_DBL_MANT_DIG && HE_LDBL_MAX_EXP == HE_DBL_MAX_EXP
@@ -171,42 +172,38 @@ namespace he
     }
 
     // --------------------------------------------------------------------------------------------
-    template <> constexpr bool IsNan(float x) noexcept { return (BitCast<uint32_t>(x) & 0x7fffffffu) > 0x7f800000u; }
-    template <> constexpr bool IsNan(double x) noexcept { return (BitCast<uint64_t>(x) & (-1ull >> 1)) > (0x7ffull << 52); }
-    template <> constexpr bool IsNan(long double x) noexcept { return Classify(x) == FpClass::Nan; }
+    constexpr bool IsNan(float x) noexcept { return (BitCast<uint32_t>(x) & 0x7fffffffu) > 0x7f800000u; }
+    constexpr bool IsNan(double x) noexcept { return (BitCast<uint64_t>(x) & (static_cast<uint64_t>(-1) >> 1)) > (0x7ffull << 52); }
+    constexpr bool IsNan(long double x) noexcept { return Classify(x) == FpClass::Nan; }
 
     // --------------------------------------------------------------------------------------------
-    template <> constexpr bool IsInfinite(float x) noexcept { return (BitCast<uint32_t>(x) & 0x7fffffffu) == 0x7f800000u; }
-    template <> constexpr bool IsInfinite(double x) noexcept { return (BitCast<uint64_t>(x) & (-1ull >> 1)) == (0x7ffull << 52); }
-    template <> constexpr bool IsInfinite(long double x) noexcept { return Classify(x) == FpClass::Infinite; }
+    constexpr bool IsInfinite(float x) noexcept { return (BitCast<uint32_t>(x) & 0x7fffffffu) == 0x7f800000u; }
+    constexpr bool IsInfinite(double x) noexcept { return (BitCast<uint64_t>(x) & (static_cast<uint64_t>(-1) >> 1)) == (0x7ffull << 52); }
+    constexpr bool IsInfinite(long double x) noexcept { return Classify(x) == FpClass::Infinite; }
 
     // --------------------------------------------------------------------------------------------
-    template <> constexpr bool IsFinite(float x) noexcept { return (BitCast<uint32_t>(x) & 0x7fffffffu) < 0x7f800000u; }
-    template <> constexpr bool IsFinite(double x) noexcept { return (BitCast<uint64_t>(x) & (-1ull >> 1)) < (0x7ffull << 52); }
-    template <> constexpr bool IsFinite(long double x) noexcept { const FpClass cls = Classify(x); return cls != FpClass::Infinite && cls != FpClass::Nan; }
+    constexpr bool IsFinite(float x) noexcept { return (BitCast<uint32_t>(x) & 0x7fffffffu) < 0x7f800000u; }
+    constexpr bool IsFinite(double x) noexcept { return (BitCast<uint64_t>(x) & (static_cast<uint64_t>(-1) >> 1)) < (0x7ffull << 52); }
+    constexpr bool IsFinite(long double x) noexcept { const FpClass cls = Classify(x); return cls != FpClass::Infinite && cls != FpClass::Nan; }
 
     // --------------------------------------------------------------------------------------------
-    template <> constexpr bool IsNormal(float x) noexcept { return ((BitCast<uint32_t>(x) + 0x00800000u) & 0x7fffffffu) >= 0x01000000u; }
-    template <> constexpr bool IsNormal(double x) noexcept { return ((BitCast<uint64_t>(x) + (1ull << 52)) & (-1ull >> 1)) >= (1ull << 53); }
-    template <> constexpr bool IsNormal(long double x) noexcept { return Classify(x)== FpClass::Normal; }
+    constexpr bool IsNormal(float x) noexcept { return ((BitCast<uint32_t>(x) + 0x00800000u) & 0x7fffffffu) >= 0x01000000u; }
+    constexpr bool IsNormal(double x) noexcept { return ((BitCast<uint64_t>(x) + (1ull << 52)) & (static_cast<uint64_t>(-1) >> 1)) >= (1ull << 53); }
+    constexpr bool IsNormal(long double x) noexcept { return Classify(x)== FpClass::Normal; }
 
     // --------------------------------------------------------------------------------------------
-    template <FloatingPoint T>
-    constexpr bool IsZeroSafe(T x) noexcept
-    {
-        return Abs(x) > Limits<T>::ZeroSafe;
-    }
+    constexpr bool IsZeroSafe(float x) noexcept { return Abs(x) > Limits<float>::ZeroSafe; }
+    constexpr bool IsZeroSafe(double x) noexcept { return Abs(x) > Limits<double>::ZeroSafe; }
+    constexpr bool IsZeroSafe(long double x) noexcept { return Abs(x) > Limits<long double>::ZeroSafe; }
 
     // --------------------------------------------------------------------------------------------
-    template <FloatingPoint T>
-    constexpr bool IsNearlyEqual(T a, T b, T tolerance) noexcept
-    {
-        return Abs(a - b) <= tolerance;
-    }
+    constexpr bool IsNearlyEqual(float a, float b, float tolerance) noexcept { return Abs(a - b) <= tolerance; }
+    constexpr bool IsNearlyEqual(double a, double b, double tolerance) noexcept { return Abs(a - b) <= tolerance; }
+    constexpr bool IsNearlyEqual(long double a, long double b, long double tolerance) noexcept { return Abs(a - b) <= tolerance; }
 
     // --------------------------------------------------------------------------------------------
-    template <FloatingPoint T>
-    constexpr bool IsNearlyEqualULP(T a, T b, uint32_t maxUlpDiff) noexcept
+    template <typename T>
+    HE_FORCE_INLINE constexpr bool _IsNearlyEqualULPImpl(T a, T b, uint32_t maxUlpDiff) noexcept
     {
         // Any comparison of NaN is always false.
         if (IsNan(a) || IsNan(b))
@@ -233,15 +230,14 @@ namespace he
         return ulpDiff <= static_cast<Uint>(maxUlpDiff);
     }
 
-    // --------------------------------------------------------------------------------------------
-    template <FloatingPoint T>
-    constexpr bool HasSignBit(T x) noexcept
-    {
-        using Uint = _CarrierUint<T>;
-        return BitCast<Uint>(x) >> (Limits<T>::Bits - 1);
-    }
+    constexpr bool IsNearlyEqualULP(float a, float b, uint32_t maxUlpDiff) noexcept { return _IsNearlyEqualULPImpl<float>(a, b, maxUlpDiff); }
+    constexpr bool IsNearlyEqualULP(double a, double b, uint32_t maxUlpDiff) noexcept { return _IsNearlyEqualULPImpl<double>(a, b, maxUlpDiff); }
+    constexpr bool IsNearlyEqualULP(long double a, long double b, uint32_t maxUlpDiff) noexcept { return _IsNearlyEqualULPImpl<long double>(a, b, maxUlpDiff); }
 
-    template <>
+    // --------------------------------------------------------------------------------------------
+    constexpr bool HasSignBit(float x) noexcept { return BitCast<uint32_t>(x) >> (Limits<float>::Bits - 1); }
+    constexpr bool HasSignBit(double x) noexcept { return BitCast<uint64_t>(x) >> (Limits<double>::Bits - 1); }
+
     constexpr bool HasSignBit(long double x) noexcept
     {
     #if HE_LDBL_MANT_DIG == HE_DBL_MANT_DIG && HE_LDBL_MAX_EXP == HE_DBL_MAX_EXP
@@ -255,7 +251,6 @@ namespace he
     }
 
     // --------------------------------------------------------------------------------------------
-    template <>
     constexpr float Floor(float x) noexcept
     {
         if (!IsConstantEvaluated())
@@ -269,7 +264,7 @@ namespace he
         }
 
         const uint32_t bits = BitCast<uint32_t>(x);
-        const uint32_t e = ((bits >> 23) & 0xff) - 0x7f;
+        const int32_t e = static_cast<int32_t>((bits >> 23) & 0xff) - 0x7f;
 
         if (e >= 23)
             return x;
@@ -299,7 +294,6 @@ namespace he
         return x;
     }
 
-    template <>
     constexpr double Floor(double x) noexcept
     {
         if (!IsConstantEvaluated())
@@ -313,7 +307,7 @@ namespace he
         }
 
         const uint64_t bits = BitCast<uint64_t>(x);
-        const uint64_t e = ((bits >> Limits<double>::SignificandBits) & 0x7ff);
+        const int64_t e = static_cast<int64_t>((bits >> Limits<double>::SignificandBits) & 0x7ff);
 
         if (e >= (0x3ff + 52) || x == 0)
             return x;
@@ -335,7 +329,6 @@ namespace he
         return (y > 0) ? (x + y - 1) : (x + y);
     }
 
-    template <>
     constexpr long double Floor(long double x) noexcept
     {
     #if HE_LDBL_MANT_DIG == HE_DBL_MANT_DIG && HE_LDBL_MAX_EXP == HE_DBL_MAX_EXP
@@ -366,7 +359,6 @@ namespace he
     }
 
     // --------------------------------------------------------------------------------------------
-    template <>
     constexpr float Ceil(float x) noexcept
     {
         if (!IsConstantEvaluated())
@@ -380,7 +372,7 @@ namespace he
         }
 
         const uint32_t bits = BitCast<uint32_t>(x);
-        const uint32_t e = ((bits >> 23) & 0xff) - 0x7f;
+        const int32_t e = static_cast<int32_t>((bits >> 23) & 0xff) - 0x7f;
 
         if (e >= 23)
             return x;
@@ -410,7 +402,6 @@ namespace he
         return x;
     }
 
-    template <>
     constexpr double Ceil(double x) noexcept
     {
         if (!IsConstantEvaluated())
@@ -424,7 +415,7 @@ namespace he
         }
 
         const uint64_t bits = BitCast<uint64_t>(x);
-        const uint64_t e = ((bits >> Limits<double>::SignificandBits) & 0x7ff);
+        const int64_t e = static_cast<int64_t>((bits >> Limits<double>::SignificandBits) & 0x7ff);
 
         if (e >= (0x3ff + 52) || x == 0)
             return x;
@@ -446,7 +437,6 @@ namespace he
         return (y < 0) ? (x + y + 1) : (x + y);
     }
 
-    template <>
     constexpr long double Ceil(long double x) noexcept
     {
     #if HE_LDBL_MANT_DIG == HE_DBL_MANT_DIG && HE_LDBL_MAX_EXP == HE_DBL_MAX_EXP
@@ -477,7 +467,6 @@ namespace he
     }
 
     // --------------------------------------------------------------------------------------------
-    template <>
     constexpr float Round(float x) noexcept
     {
         if (!IsConstantEvaluated())
@@ -490,6 +479,12 @@ namespace he
         #endif
         }
 
+    #if HE_FLOAT_EVAL_METHOD == -1
+        // Generally less accurate on some edge cases, but when the float evaluation mode is
+        // unknown we can't rely on rounding behavior. Indeed when using `/fp:Fast` on MSVC
+        // this gives us the correct answer more often.
+        return static_cast<float>(static_cast<int32_t>(x >= 0.0f ? (x + 0.5f) : (x - 0.5f)));
+    #else
         const uint32_t bits = BitCast<uint32_t>(x);
         const uint32_t e = (bits >> 23) & 0xff;
 
@@ -501,7 +496,7 @@ namespace he
         if (e < (0x7f - 1))
         {
             // FORCE_EVAL(abs + _FltToInt); // we don't care about float exceptions
-            return 0 * x;
+            return 0.0f * x;
         }
 
         float_t y = abs + _FltToInt - _FltToInt - abs;
@@ -516,9 +511,9 @@ namespace he
             y = -y;
 
         return y;
+    #endif
     }
 
-    template <>
     constexpr double Round(double x) noexcept
     {
         if (!IsConstantEvaluated())
@@ -531,6 +526,12 @@ namespace he
         #endif
         }
 
+    #if HE_FLOAT_EVAL_METHOD == -1
+        // Generally less accurate on some edge cases, but when the float evaluation mode is
+        // unknown we can't rely on rounding behavior. Indeed when using `/fp:Fast` on MSVC
+        // this gives us the correct answer more often.
+        return static_cast<double>(static_cast<int64_t>(x >= 0.0 ? (x + 0.5) : (x - 0.5)));
+    #else
         const uint64_t bits = BitCast<uint64_t>(x);
         const uint64_t e = (bits >> 52) & 0x7ff;
 
@@ -542,10 +543,10 @@ namespace he
         if (e < (0x3ff - 1))
         {
             // FORCE_EVAL(abs + _DblToInt); // we don't care about float exceptions
-            return 0 * x;
+            return 0.0 * x;
         }
 
-        float_t y = abs + _DblToInt - _DblToInt - abs;
+        double_t y = abs + _DblToInt - _DblToInt - abs;
         if (y > 0.5)
             y = y + abs - 1;
         else if (y <= -0.5)
@@ -557,9 +558,9 @@ namespace he
             y = -y;
 
         return y;
+    #endif
     }
 
-    template <>
     constexpr long double Round(long double x) noexcept
     {
     #if HE_LDBL_MANT_DIG == HE_DBL_MANT_DIG && HE_LDBL_MAX_EXP == HE_DBL_MAX_EXP
@@ -595,47 +596,41 @@ namespace he
     }
 
     // --------------------------------------------------------------------------------------------
-    template <FloatingPoint T>
-    constexpr T ToRadians(T deg) noexcept
-    {
-        return (deg * MathConstants<T>::Pi) / T(180);
-    }
+    constexpr float ToRadians(float deg) noexcept { return (deg * MathConstants<float>::Pi) / 180.0f; }
+    constexpr double ToRadians(double deg) noexcept { return (deg * MathConstants<double>::Pi) / 180.0; }
+    constexpr long double ToRadians(long double deg) noexcept { return (deg * MathConstants<long double>::Pi) / 180.0l; }
 
     // --------------------------------------------------------------------------------------------
-    template <FloatingPoint T>
-    constexpr T ToDegrees(T rad) noexcept
-    {
-        return (rad * T(180)) / MathConstants<T>::Pi;
-    }
+    constexpr float ToDegrees(float rad) noexcept { return (rad * 180.0f) / MathConstants<float>::Pi; }
+    constexpr double ToDegrees(double rad) noexcept { return (rad * 180.0) / MathConstants<double>::Pi; }
+    constexpr long double ToDegrees(long double rad) noexcept { return (rad * 180.0l) / MathConstants<long double>::Pi; }
 
     // --------------------------------------------------------------------------------------------
-    template <FloatingPoint T>
-    constexpr T Lerp(T a, T b, T t) noexcept
-    {
-        return a + ((b - a) * t);
-    }
+    constexpr float Lerp(float a, float b, float t) noexcept { return a + ((b - a) * t); }
+    constexpr double Lerp(double a, double b, double t) noexcept { return a + ((b - a) * t); }
+    constexpr long double Lerp(long double a, long double b, long double t) noexcept { return a + ((b - a) * t); }
 
     // --------------------------------------------------------------------------------------------
-    template <FloatingPoint T>
-    constexpr T SmoothStep(T a, T b, T t) noexcept
+    template <typename T>
+    HE_FORCE_INLINE constexpr T _SmoothStepImpl(T a, T b, T t) noexcept
     {
         const T c = Clamp<T>((t - a) / (b - a), T(0), T(1));
         return c * c * (T(3) - (T(2) * c));
     }
 
-    // --------------------------------------------------------------------------------------------
-    template <FloatingPoint T>
-    constexpr T Rcp(T x) noexcept
-    {
-        return T(1) / x;
-    }
+    constexpr float SmoothStep(float a, float b, float t) noexcept { return _SmoothStepImpl<float>(a, b, t); }
+    constexpr double SmoothStep(double a, double b, double t) noexcept { return _SmoothStepImpl<double>(a, b, t); }
+    constexpr long double SmoothStep(long double a, long double b, long double t) noexcept { return _SmoothStepImpl<long double>(a, b, t); }
 
     // --------------------------------------------------------------------------------------------
-    template <FloatingPoint T>
-    constexpr T RcpSafe(T x) noexcept
-    {
-        return IsZeroSafe(x) ? (T(1) / x) : T(0);
-    }
+    constexpr float Rcp(float x) noexcept { return 1.0f / x; }
+    constexpr double Rcp(double x) noexcept { return 1.0 / x; }
+    constexpr long double Rcp(long double x) noexcept { return 1.0l / x; }
+
+    // --------------------------------------------------------------------------------------------
+    constexpr float RcpSafe(float x) noexcept { return IsZeroSafe(x) ? (1.0f / x) : 0.0f; }
+    constexpr double RcpSafe(double x) noexcept { return IsZeroSafe(x) ? (1.0 / x) : 0.0; }
+    constexpr long double RcpSafe(long double x) noexcept { return IsZeroSafe(x) ? (1.0l / x) : 0.0l; }
 
     // --------------------------------------------------------------------------------------------
     HE_FORCE_INLINE float Sqrt(float x) noexcept

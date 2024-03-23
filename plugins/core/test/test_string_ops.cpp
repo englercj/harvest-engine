@@ -19,18 +19,11 @@ HE_TEST(core, string_ops, StrEmpty)
 }
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST(core, string_ops, StrLenConst)
-{
-    static_assert(StrLenConst("") == 0);
-    static_assert(StrLenConst("abc") == 3);
-
-    HE_EXPECT_EQ(StrLenConst(""), 0);
-    HE_EXPECT_EQ(StrLenConst("abc"), 3);
-}
-
-// ------------------------------------------------------------------------------------------------
 HE_TEST(core, string_ops, StrLen)
 {
+    static_assert(StrLen("") == 0);
+    static_assert(StrLen("abc") == 3);
+
     HE_EXPECT_EQ(StrLen(""), 0);
     HE_EXPECT_EQ(StrLen("abc"), 3);
 }

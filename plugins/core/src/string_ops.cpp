@@ -2,6 +2,7 @@
 
 #include "he/core/string_ops.h"
 
+#include "he/core/assert.h"
 #include "he/core/ascii.h"
 #include "he/core/compiler.h"
 #include "he/core/concepts.h"
@@ -10,10 +11,16 @@
 #include "he/core/type_traits.h"
 #include "he/core/utils.h"
 
-HE_PUSH_WARNINGS();
-HE_DISABLE_MSVC_WARNING(4702); // unreachable code
+#if HE_ENABLE_ASSERTIONS
+    #define FASTFLOAT_ASSERT(x) HE_ASSERT(x)
+    #define FASTFLOAT_DEBUG_ASSERT(x) HE_ASSERT(x)
+#endif
+
 #define FASTFLOAT_SKIP_WHITE_SPACE 1
 #define FASTFLOAT_ALLOWS_LEADING_PLUS 1
+
+HE_PUSH_WARNINGS();
+HE_DISABLE_MSVC_WARNING(4702); // unreachable code
 #include "fast_float/fast_float.h"
 HE_POP_WARNINGS();
 

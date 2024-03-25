@@ -115,6 +115,11 @@ he.generate_workspace = function (options)
         runtime "Debug"
         symbols "Full"
 
+    filter { "configurations:Debug", "toolset:clang" }
+        buildoptions {
+            "-Wthread-safety",          -- Enable thread safety analysis warnings.
+        }
+
     filter { "configurations:Development" }
         defines { "NDEBUG", "HE_CFG_DEVELOPMENT" }
         tags { "development", "internal" }

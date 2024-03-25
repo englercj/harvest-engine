@@ -10,6 +10,7 @@
 #include "he/core/atomic.h"
 #include "he/core/thread.h"
 #include "he/core/test.h"
+#include "he/core/tsa.h"
 
 using namespace he;
 
@@ -68,7 +69,7 @@ static void TestCV(bool useTimeout, uint32_t sleeperIndex)
 
     ConditionVariable cv;
     Mutex lock;
-    uint32_t counter = 0;
+    uint32_t counter HE_TSA_GUARDED_BY(locK) = 0;
 
     Thread t0 = Thread::Run([&]()
     {

@@ -8,6 +8,7 @@
 #include "he/core/compiler.h"
 #include "he/core/log.h"
 #include "he/core/sync.h"
+#include "he/core/tsa.h"
 #include "he/core/types.h"
 #include "he/core/utils.h"
 
@@ -23,8 +24,8 @@ namespace he
 {
     static Atomic<uint32_t> s_nextThreadId{ 1 };
     static _WasmThreadState s_mainThreadState{};
-    static IntrusiveList<_WasmThreadState, &_WasmThreadState::link> s_threadStates{};
     static Mutex s_threadStatesMutex{};
+    static IntrusiveList<_WasmThreadState, &_WasmThreadState::link> s_threadStates HE_TSA_GUARDED_BY(s_threadStatesMutex){};
 
     static thread_local _WasmThreadState* s_localThreadState = nullptr;
 

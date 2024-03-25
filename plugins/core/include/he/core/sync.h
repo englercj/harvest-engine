@@ -5,6 +5,7 @@
 #include "he/core/allocator.h"
 #include "he/core/clock.h"
 #include "he/core/compiler.h"
+#include "he/core/tsa.h"
 #include "he/core/types.h"
 #include "he/core/type_traits.h"
 #include "he/core/utils.h"
@@ -17,7 +18,7 @@ namespace he
     ///
     /// \note Lock ordering is not guaranteed, recursion is not supported, and multi-process
     /// locking is not supported.
-    class RWLock
+    class HE_TSA_CAPABILITY("rwlock") RWLock final
     {
     public:
         /// Construct a reader-writer lock.
@@ -36,23 +37,29 @@ namespace he
         /// Attempts to acquire the lock in shared read mode, and returns immediately.
         ///
         /// \return Returns true if the lock was acquired, or false if it wasn't.
+        HE_TSA_TRY_ACQUIRE_SHARED(true, *this)
         bool TryAcquireRead();
 
         /// Acquires the lock in shared read mode. Blocks until the lock can be acquired.
+        HE_TSA_ACQUIRE_SHARED(*this)
         void AcquireRead();
 
         /// Releases the lock that is held in read mode.
+        HE_TSA_RELEASE_SHARED(*this)
         void ReleaseRead();
 
         /// Attempts to acquire the lock in exclusive write mode, and returns immediately.
         ///
         /// \return Returns true if the lock was acquired, or false if it wasn't.
+        HE_TSA_TRY_ACQUIRE(true, *this)
         bool TryAcquireWrite();
 
         /// Acquires the lock in exclusive write mode. Blocks until the lock can be acquired.
+        HE_TSA_ACQUIRE(*this)
         void AcquireWrite();
 
         /// Releases the lock that is held in write mode.
+        HE_TSA_RELEASE(*this)
         void ReleaseWrite();
 
         /// \copydoc TryAcquireWrite
@@ -80,7 +87,7 @@ namespace he
     ///
     /// \note Lock ordering is not guaranteed, recursion is not supported, and multi-process
     /// locking is not supported.
-    class Mutex
+    class HE_TSA_CAPABILITY("mutex") Mutex final
     {
     public:
         /// Construct a mutually exclusive lock.
@@ -99,12 +106,15 @@ namespace he
         /// Attempts to acquire the lock, and returns immediately.
         ///
         /// \return Returns true if the lock was acquired, or false if it wasn't.
+        HE_TSA_TRY_ACQUIRE(true, *this)
         bool TryAcquire();
 
         /// Acquires the lock. Blocks until the lock can be acquired.
+        HE_TSA_ACQUIRE(*this)
         void Acquire();
 
         /// Releases the lock.
+        HE_TSA_RELEASE(*this)
         void Release();
 
     private:
@@ -116,7 +126,7 @@ namespace he
     /// A mutually exclusive lock that supports recursion and multi-process sharing.
     ///
     /// \note Lock ordering is not guaranteed, but recursion and multi-process locking is supported.
-    class RecursiveMutex
+    class HE_TSA_CAPABILITY("recursive_mutex") RecursiveMutex final
     {
     public:
         /// Construct a recursive, mutually exclusive, lock.
@@ -135,12 +145,15 @@ namespace he
         /// Attempts to acquire the lock, and returns immediately.
         ///
         /// \return Returns true if the lock was acquired, or false if it wasn't.
+        HE_TSA_TRY_ACQUIRE_RECURSIVE(true, *this)
         bool TryAcquire();
 
         /// Acquires the lock. Blocks until the lock can be acquired.
+        HE_TSA_ACQUIRE_RECURSIVE(*this)
         void Acquire();
 
         /// Releases the lock.
+        HE_TSA_RELEASE_RECURSIVE(*this)
         void Release();
 
     private:
@@ -151,15 +164,21 @@ namespace he
     // --------------------------------------------------------------------------------------------
     /// RAII wrapper for a lock that acquires it on construction and releases it upon destruction.
     template <typename T>
-    class LockGuard
+    class HE_TSA_SCOPED_CAPABILITY() LockGuard final
     {
     public:
         /// Construct a lock guard and acquire the lock.
         ///
         /// \param[in] lock The lock to acquire at construction.
-        explicit LockGuard(T& lock) noexcept : m_lock(lock) { m_lock.Acquire(); }
+        HE_TSA_SCOPED_CTOR_ACQUIRE(lock, m_lock)
+        explicit LockGuard(T& lock) noexcept
+            : m_lock(lock)
+        {
+            m_lock.Acquire();
+        }
 
         /// Destruct a lock guard and release the lock.
+        HE_TSA_SCOPED_DTOR_RELEASE(m_lock)
         ~LockGuard() noexcept { m_lock.Release(); }
 
     private:
@@ -169,15 +188,21 @@ namespace he
 
     // --------------------------------------------------------------------------------------------
     /// RAII wrapper for a RWLock that acquires a read lock on construction and releases it upon destruction.
-    class ReadLockGuard
+    class HE_TSA_SCOPED_CAPABILITY() ReadLockGuard final
     {
     public:
         /// Construct a lock guard and acquire the lock.
         ///
         /// \param[in] lock The lock to acquire at construction.
-        explicit ReadLockGuard(RWLock& lock) noexcept : m_lock(lock) { m_lock.AcquireRead(); }
+        HE_TSA_SCOPED_CTOR_ACQUIRE_SHARED(lock, m_lock)
+        explicit ReadLockGuard(RWLock& lock) noexcept
+            : m_lock(lock)
+        {
+            m_lock.AcquireRead();
+        }
 
         /// Destruct a lock guard and release the lock.
+        HE_TSA_SCOPED_DTOR_RELEASE_SHARED(m_lock)
         ~ReadLockGuard() noexcept { m_lock.ReleaseRead(); }
 
     private:
@@ -190,7 +215,7 @@ namespace he
     /// occurs.
     ///
     /// \note Condition variables cannot be shared across processes.
-    class ConditionVariable
+    class ConditionVariable final
     {
     private:
         /// Helper to grab the mutex in a lock guard generically. Used internally by Wait() so it
@@ -226,6 +251,7 @@ namespace he
         ///
         /// \param[in] mutex The mutex to unlock while waiting, and re-acquire after waking.
         template <typename T>
+        HE_TSA_REQUIRES(mutex)
         void Wait(T& mutex)
         {
             WaitMutex(MutexHelper<T>::Get(mutex));
@@ -245,6 +271,7 @@ namespace he
         /// \param[in] mutex The mutex to unlock while waiting, and re-acquire after waking.
         /// \param[in] predicate The predicate to check upon wake to know if waiting should continue.
         template <typename T, typename F>
+        HE_TSA_REQUIRES(mutex)
         void Wait(T& mutex, F&& predicate)
         {
             while (!predicate())
@@ -265,6 +292,7 @@ namespace he
         ///     the predicate.
         /// \return Returns true if the thread was signaled, or false if the wait times out.
         template <typename T>
+        HE_TSA_REQUIRES(mutex)
         bool Wait(T& mutex, Duration timeout)
         {
             return WaitMutex(MutexHelper<T>::Get(mutex), timeout);
@@ -287,6 +315,7 @@ namespace he
         ///     the predicate.
         /// \return Returns the last result of `predicate()`.
         template <typename T, typename F>
+        HE_TSA_REQUIRES(mutex)
         bool Wait(T& mutex, F&& predicate, Duration timeout)
         {
             while (!predicate())
@@ -298,11 +327,11 @@ namespace he
         }
 
     private:
-        void WaitMutex(Mutex& mutex);
-        void WaitMutex(RecursiveMutex& mutex);
+        HE_TSA_REQUIRES(mutex) void WaitMutex(Mutex& mutex);
+        HE_TSA_REQUIRES(mutex) void WaitMutex(RecursiveMutex& mutex);
 
-        bool WaitMutex(Mutex& mutex, Duration timeout);
-        bool WaitMutex(RecursiveMutex& mutex, Duration timeout);
+        HE_TSA_REQUIRES(mutex) bool WaitMutex(Mutex& mutex, Duration timeout);
+        HE_TSA_REQUIRES(mutex) bool WaitMutex(RecursiveMutex& mutex, Duration timeout);
 
     private:
         alignas(8) uint8_t m_opaque[HE_IMPL_PLATFORM_CONDITION_VARIABLE_SIZE];
@@ -312,7 +341,7 @@ namespace he
     /// A semaphore synchronization primitive.
     ///
     /// \note Semaphores cannot be shared across processes.
-    class Semaphore
+    class Semaphore final
     {
     public:
         /// Construct a semaphore.
@@ -348,7 +377,7 @@ namespace he
     /// A synchronization event that can be signaled and waited upon.
     ///
     /// \note SyncEvents cannot be shared across processes.
-    class SyncEvent
+    class SyncEvent final
     {
     public:
         /// Constructs a synchronization event.

@@ -6,6 +6,7 @@
 #include "he/core/result.h"
 #include "he/core/sync.h"
 #include "he/core/thread.h"
+#include "he/core/tsa.h"
 #include "he/core/types.h"
 #include "he/core/vector.h"
 
@@ -54,10 +55,10 @@ namespace he
         Vector<Thread> m_threads{};
         String m_threadName{};
 
-        bool m_running{ false };
-        std::deque<TaskDelegate> m_tasks{};
-
         Mutex m_mutex{};
         ConditionVariable m_cv{};
+
+        bool m_running HE_TSA_GUARDED_BY(m_mutex){ false };
+        std::deque<TaskDelegate> m_tasks HE_TSA_GUARDED_BY(m_mutex){};
     };
 }

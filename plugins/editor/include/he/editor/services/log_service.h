@@ -8,6 +8,7 @@
 #include "he/core/key_value.h"
 #include "he/core/log.h"
 #include "he/core/log_sinks.h"
+#include "he/core/tsa.h"
 #include "he/core/vector.h"
 #include "he/editor/services/directory_service.h"
 
@@ -67,7 +68,7 @@ namespace he::editor
         Atomic<uint32_t> m_entriesHash{};
 
         mutable Mutex m_mutex{};
-        std::deque<Entry> m_entries{};
-        CRC32C::ValueType m_entriesCrc{ CRC32C::DefaultSeed };
+        std::deque<Entry> m_entries HE_TSA_GUARDED_BY(m_mutex){};
+        CRC32C::ValueType m_entriesCrc HE_TSA_GUARDED_BY(m_mutex){ CRC32C::DefaultSeed };
     };
 }

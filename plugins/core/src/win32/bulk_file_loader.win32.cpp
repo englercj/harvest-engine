@@ -11,6 +11,7 @@
 #include "he/core/scope_guard.h"
 #include "he/core/sync.h"
 #include "he/core/thread.h"
+#include "he/core/tsa.h"
 #include "he/core/types.h"
 #include "he/core/utils.h"
 #include "he/core/wstr.h"
@@ -26,7 +27,7 @@
 namespace he
 {
     static Mutex s_initMutex{};
-    static uint32_t s_initCount{ 0 };
+    static uint32_t s_initCount HE_TSA_GUARDED_BY(s_initMutex){ 0 };
     static IDStorageFactory* s_factory{ nullptr };
 
     class RequestTracker
@@ -336,6 +337,7 @@ namespace he
             return Result::Success;
         }
 
+        HE_TSA_REQUIRES(s_initMutex)
         void UnlockedGlobalTerminate()
         {
             HE_ASSERT(s_initCount > 0);

@@ -88,7 +88,7 @@ namespace he::editor
     void TaskService::Add(UniquePtr<Task> task)
     {
         m_mutex.Acquire();
-        m_pendingTasks.push_back(Move(task));
+        m_pendingTasks.PushBack(task.Release());
         m_mutex.Release();
 
         m_cv.WakeOne();
@@ -106,16 +106,15 @@ namespace he::editor
 
             m_cv.Wait(lock, [this]()
             {
-                return !m_pendingTasks.empty() || !m_running;
+                return !m_pendingTasks.IsEmpty() || !m_running;
             });
 
-            if (m_pendingTasks.empty())
+            if (m_pendingTasks.IsEmpty())
                 return m_running;
 
-            m_runningTasks.push_back(Move(m_pendingTasks.front()));
-            m_pendingTasks.pop_front();
-
-            task = m_runningTasks.back().Get();
+            task = m_pendingTasks.Front();
+            m_pendingTasks.Remove(task);
+            m_runningTasks.PushBack(task);
         }
 
         task->m_taskIsRunning = true;
@@ -123,11 +122,8 @@ namespace he::editor
 
         {
             LockGuard lock(m_mutex);
-
-            m_runningTasks.erase(std::remove_if(m_runningTasks.begin(), m_runningTasks.end(), [&](const UniquePtr<Task>& x)
-            {
-                return task == x.Get();
-            }));
+            m_runningTasks.Remove(task);
+            Allocator::GetDefault().Delete(task);
         }
 
         return true;

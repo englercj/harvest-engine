@@ -12,6 +12,7 @@
 #include "he/core/sync.h"
 #include "he/core/scope_guard.h"
 #include "he/core/thread.h"
+#include "he/core/tsa.h"
 #include "he/core/utils.h"
 
 #if defined(HE_PLATFORM_LINUX)
@@ -29,7 +30,7 @@ namespace he
 {
     // --------------------------------------------------------------------------------------------
     static Mutex s_ioStartupMutex{};
-    static uint32_t s_ioStartupCount{ 0 };
+    static uint32_t s_ioStartupCount HE_TSA_GUARDED_BY(s_ioStartupMutex){ 0 };
     static io_uring s_ring{};
     static Thread s_cqThread{};
 
@@ -193,6 +194,7 @@ namespace he
         return Result::Success;
     }
 
+    HE_TSA_REQUIRES(s_ioStartupMutex)
     static void UnlockedShutdownAsyncFileIO()
     {
         HE_ASSERT(s_ioStartupCount > 0);

@@ -19,6 +19,7 @@
 #include "he/core/random.h"
 #include "he/core/string_ops.h"
 #include "he/core/sync.h"
+#include "he/core/tsa.h"
 #include "he/core/utils.h"
 #include "he/core/result.h"
 
@@ -68,8 +69,8 @@ extern "C"
     };
 
     static he::Atomic<uint32_t> s_nextFileId = 3;
-    static he::IntrusiveList<_IO_FILE, &_IO_FILE::link> s_files;
     static he::Mutex s_filesMutex;
+    static he::IntrusiveList<_IO_FILE, &_IO_FILE::link> s_files HE_TSA_GUARDED_BY(s_filesMutes);
 
     static constexpr int32_t FileId_Stdin = 0;
     static constexpr int32_t FileId_Stdout = 1;

@@ -51,7 +51,7 @@ function ydayFromDate(date: Date): number
 }
 
 lib.addImports('libc', {
-    heWASM_TzSet: function (tz: ptr<i32>, dst: ptr<i32>, stdName: ptr<char>, dstName: ptr<char>): void
+    heWASM_TzSet: function (tz: ptr<i32>, dst: ptr<i32>, stdName: ptr<char>, stdNameLen: u32, dstName: ptr<char>, dstNameLen: u32): void
     {
         const currentYear = new Date().getFullYear();
         const winter = new Date(currentYear, 0, 1);
@@ -85,13 +85,13 @@ lib.addImports('libc', {
         if (summerOffset < winterOffset)
         {
             // Northern hemisphere
-            Pointer.writeString(winterName, stdName, (TZNAME_MAX + 1) as u32);
-            Pointer.writeString(summerName, dstName, (TZNAME_MAX + 1) as u32);
+            Pointer.writeString(winterName, stdName, stdNameLen);
+            Pointer.writeString(summerName, dstName, dstNameLen);
         }
         else
         {
-            Pointer.writeString(winterName, dstName, (TZNAME_MAX + 1) as u32);
-            Pointer.writeString(summerName, stdName, (TZNAME_MAX + 1) as u32);
+            Pointer.writeString(winterName, dstName, dstNameLen);
+            Pointer.writeString(summerName, stdName, stdNameLen);
         }
     },
     heWASM_MkTime: function (t: ptr<tm>): i32

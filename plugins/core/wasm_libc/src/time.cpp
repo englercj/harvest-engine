@@ -8,32 +8,39 @@
 #include "wasm/libc.wasm.h"
 
 #include "he/core/sync.h"
+#include "he/core/tsa.h"
 
 extern "C"
 {
     char* tzname[2] = { 0, 0 };
 
-    static char stdName[TZNAME_MAX+1];
-    static char dstName[TZNAME_MAX+1];
-
-    static int s_timezone = 0;
-    static int s_daylight = 0;
+    static he::Mutex s_tzMutex;
+    static char s_stdName[TZNAME_MAX+1] HE_TSA_WRITE_GUARDED_BY(s_tzMutex){};
+    static char s_dstName[TZNAME_MAX+1] HE_TSA_WRITE_GUARDED_BY(s_tzMutex){};
+    static int s_timezone HE_TSA_WRITE_GUARDED_BY(s_tzMutex) = 0;
+    static int s_daylight HE_TSA_WRITE_GUARDED_BY(s_tzMutex) = 0;
 
     void tzset(void)
     {
-        static he::Mutex s_mutex;
         static bool s_initialized = false;
 
         if (s_initialized)
             return;
 
-        he::LockGuard lock(s_mutex);
+        he::LockGuard lock(s_tzMutex);
 
         if (!s_initialized)
         {
-            heWASM_TzSet(&s_timezone, &s_daylight, stdName, dstName);
-            tzname[0] = stdName;
-            tzname[1] = dstName;
+            heWASM_TzSet(
+                &s_timezone,
+                &s_daylight,
+                s_stdName,
+                static_cast<uint32_t>(sizeof(s_stdName)),
+                s_dstName,
+                static_cast<uint32_t>(sizeof(s_dstName)));
+
+            tzname[0] = s_stdName;
+            tzname[1] = s_dstName;
             s_initialized = true;
         }
     }

@@ -1,0 +1,20 @@
+# Copyright Chad Engler
+
+id = "simdutf.simdutf"
+name = "simdutf"
+description = "Unicode routines (UTF8, UTF16, UTF32) using vector extensions."
+version = "5.0.0"
+authors = ["Daniel Lemire <daniel@lemire.me>"]
+license = "MIT"
+homepage = "https://github.com/simdutf/simdutf"
+
+[install]
+    archive = "https://github.com/simdutf/simdutf/releases/download/v5.0.0/singleheader.zip"
+
+[[modules]]
+    name = "simdutf"
+    type = "static"
+    group = "engine/contrib"
+    warnings = "Off"
+    files = ["simdutf.h", "simdutf.cpp"]
+    public_includedirs = ["."]

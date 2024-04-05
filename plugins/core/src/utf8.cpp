@@ -2,15 +2,20 @@
 
 #include "he/core/utf8.h"
 
-#include "he/core/assert.h"
-#include "he/core/compiler.h"
+#include "he/core/string.h"
+#include "he/core/types.h"
+#include "he/core/utils.h"
+
+#include "simdutf.h"
 
 namespace he
 {
-    uint32_t ToUTF8(he::String& dst, uint32_t ucc)
+    inline bool IsUTF8Continuation(char ch) { return (static_cast<uint8_t>(ch) & 0xc0) == 0x80; }
+
+    uint32_t UTF8Encode(he::String& dst, uint32_t ucc)
     {
         // Top bit can't be set.
-        if (!HE_VERIFY((ucc & 0x80000000) == 0, HE_MSG("Invalid unicode code point")))
+        if ((ucc & 0x80000000) != 0)
             return 0;
 
         // 6 possible encodings: http://en.wikipedia.org/wiki/UTF-8
@@ -36,84 +41,77 @@ namespace he
             }
         }
 
-        HE_VERIFY(false, HE_MSG("Invalid unicode code point"));
         return 0;
     }
 
-    uint32_t FromUTF8(const char*& in)
+    uint32_t UTF8Decode(uint32_t& dst, const char* str, uint32_t len)
     {
-        constexpr uint32_t InvalidCodePoint = static_cast<uint32_t>(-1);
+        dst = InvalidCodePoint;
 
-        uint32_t len = 0;
+        const char* end = str + len;
 
-        // Count leading 1 bits.
-        for (uint32_t mask = 0x80; mask >= 0x04; mask >>= 1)
+        // Strings too small, simply parse zero bytes.
+        if (str >= end)
+            return 0;
+
+        const uint8_t ch = static_cast<uint8_t>(*str);
+
+        // ASCII code point
+        if ((ch & 0x80) == 0)
         {
-            if (*in & mask)
-                ++len;
-            else
-                break;
+            dst = ch;
+            return 1;
         }
 
-        // Bit after leading 1's must be 0.
-        if ((static_cast<uint8_t>(*in) << len) & 0x80)
-            return InvalidCodePoint;
-
-        if (!len)
-            return static_cast<uint32_t>(*in++);
-
-        // UTF-8 encoded values with a length are between 2 and 4 bytes.
-        if (len < 2 || len > 4)
-            return InvalidCodePoint;
-
-        // Grab initial bits of the code.
-        uint32_t ucc = *in++ & ((1 << (7 - len)) - 1);
-
-        for (uint32_t i = 0; i < len - 1; i++)
+        // 2-byte sequence
+        if ((ch & 0xe0) == 0xc0)
         {
-            // Upper bits must 1 0.
-            if ((*in & 0xC0) != 0x80)
+            if (str + 1 >= end)
+                return 0;
+
+            if (!IsUTF8Continuation(str[1]))
                 return InvalidCodePoint;
 
-            ucc <<= 6;
-            ucc |= *in++ & 0x3F; // Grab 6 more bits of the code.
+            dst = ((ch & 0x1f) << 6) | (str[1] & 0x3f);
+            return 2;
         }
 
-        // UTF-8 cannot encode values between 0xD800 and 0xDFFF (reserved for UTF-16 surrogate pairs).
-        if (ucc >= 0xD800 && ucc <= 0xDFFF)
-            return InvalidCodePoint;
-
-        // UTF-8 must represent code points in their shortest possible encoding.
-        switch (len)
+        // 3-byte sequence
+        if ((ch & 0xf0) == 0xe0)
         {
-            case 2:
-                // Two bytes of UTF-8 can represent code points from U+0080 to U+07FF.
-                if (ucc < 0x0080 || ucc > 0x07FF)
-                    return InvalidCodePoint;
-                break;
-            case 3:
-                // Three bytes of UTF-8 can represent code points from U+0800 to U+FFFF.
-                if (ucc < 0x0800 || ucc > 0xFFFF)
-                    return InvalidCodePoint;
-                break;
-            case 4:
-                // Four bytes of UTF-8 can represent code points from U+10000 to U+10FFFF.
-                if (ucc < 0x10000 || ucc > 0x10FFFF)
-                    return InvalidCodePoint;
-                break;
+            if (str + 2 >= end)
+                return 0;
+
+            if (!IsUTF8Continuation(str[1]) || !IsUTF8Continuation(str[2]))
+                return InvalidCodePoint;
+
+            dst = ((ch & 0x0f) << 12) | ((str[1] & 0x3f) << 6) | (str[2] & 0x3f);
+            return 3;
         }
 
-        return ucc;
+        // 4-byte sequence
+        if ((ch & 0xf8) == 0xf0)
+        {
+            if (str + 3 >= end)
+                return 0;
+
+            if (!IsUTF8Continuation(str[1]) || !IsUTF8Continuation(str[2]) || !IsUTF8Continuation(str[3]))
+                return InvalidCodePoint;
+
+            dst = ((ch & 0x07) << 18) | ((str[1] & 0x3f) << 12) | ((str[2] & 0x3f) << 6) | (str[3] & 0x3f);
+            return 4;
+        }
+
+        return InvalidCodePoint;
     }
 
-    bool ValidateUTF8(const char* str)
+    bool UTF8Validate(const char* str, uint32_t len)
     {
-        while (*str)
-        {
-            if (FromUTF8(str) == static_cast<uint32_t>(-1))
-                return false;
-        }
+        return simdutf::validate_utf8(str, len);
+    }
 
-        return true;
+    uint32_t UTF8Length(const char* str, uint32_t len)
+    {
+        return simdutf::count_utf8(str, len);
     }
 }

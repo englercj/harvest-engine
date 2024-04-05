@@ -40,6 +40,7 @@ namespace he
             m_end = src.End();
             m_lineStart = m_cursor;
             m_line = 1;
+            m_stringBuffer.Clear();
             m_pathBuffer.Clear();
 
             if (!SkipBOM())
@@ -354,7 +355,12 @@ namespace he
 
                     while (!AtEnd() && !IsWhitespace(*m_cursor) && !IsOneOf(*m_cursor, "].="))
                     {
-                        const uint32_t ucc = FromUTF8(m_cursor);
+                        uint32_t ucc = 0;
+                        const uint32_t len = UTF8Decode(ucc, m_cursor);
+                        if (len == InvalidCodePoint || len == 0)
+                            return SetError(TomlReadError::InvalidKey);
+
+                        m_cursor += len;
 
                         if (!IsValidTomlKeyCodePoint(ucc))
                             return SetError(TomlReadError::InvalidKey);
@@ -1240,7 +1246,10 @@ namespace he
                 if (exp && exp < dot)
                     return SetError(TomlReadError::InvalidNumber);
 
-                const double value = StrToFloat<double>(m_stringBuffer.Begin(), &end);
+                double value = 0.0;
+                if (!StrToFloat(value, m_stringBuffer.Begin(), &end))
+                    return SetError(TomlReadError::InvalidNumber);
+
                 m_handler->Float(value);
             }
             else
@@ -1255,13 +1264,17 @@ namespace he
                 if (isSigned)
                 {
                     const char* end = m_stringBuffer.End();
-                    const int64_t value = StrToInt<int64_t>(m_stringBuffer.Begin(), &end);
+                    int64_t value = 0;
+                    if (!StrToInt(value, m_stringBuffer.Begin(), &end))
+                        return SetError(TomlReadError::InvalidNumber);
                     m_handler->Int(value);
                 }
                 else
                 {
                     const char* end = m_stringBuffer.End();
-                    const uint64_t value = StrToInt<uint64_t>(m_stringBuffer.Begin(), &end);
+                    uint64_t value = 0;
+                    if (!StrToInt(value, m_stringBuffer.Begin(), &end))
+                        return SetError(TomlReadError::InvalidNumber);
                     m_handler->Uint(value);
                 }
             }

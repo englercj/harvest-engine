@@ -16,14 +16,14 @@ class TomlWriterFixture : public TestFixture
 public:
     void Validate(StringView expected)
     {
-        HE_EXPECT_EQ(output, expected);
+        HE_EXPECT_EQ(m_output, expected);
     }
 
     void ValidateKey(StringView input, StringView expected)
     {
-        writer.Clear();
-        writer.Key(input);
-        writer.Uint(123);
+        m_writer.Clear();
+        m_writer.Key(input);
+        m_writer.Uint(123);
 
         String doc = expected;
         doc += " = 123";
@@ -32,9 +32,9 @@ public:
 
     void ValidateKey(Span<StringView> inputs, StringView expected)
     {
-        writer.Clear();
-        writer.Key(inputs);
-        writer.Uint(123);
+        m_writer.Clear();
+        m_writer.Key(inputs);
+        m_writer.Uint(123);
 
         String doc = expected;
         doc += " = 123";
@@ -44,8 +44,8 @@ public:
     template <typename F>
     void ValidateValue(StringView expected, F&& func)
     {
-        writer.Clear();
-        writer.Key("key");
+        m_writer.Clear();
+        m_writer.Key("key");
         func();
 
         String doc = "key = ";
@@ -55,46 +55,46 @@ public:
 
     void ValidateBool(bool input, StringView expected)
     {
-        ValidateValue(expected, [&]() { writer.Bool(input); });
+        ValidateValue(expected, [&]() { m_writer.Bool(input); });
     }
 
     void ValidateInt(int64_t input, StringView expected)
     {
-        ValidateValue(expected, [&]() { writer.Int(input); });
+        ValidateValue(expected, [&]() { m_writer.Int(input); });
     }
 
     void ValidateUint(uint64_t input, TomlUintFormat format, StringView expected)
     {
-        ValidateValue(expected, [&]() { writer.Uint(input, format); });
+        ValidateValue(expected, [&]() { m_writer.Uint(input, format); });
     }
 
     void ValidateFloat(double input, TomlFloatFormat format, int32_t precision, StringView expected)
     {
-        ValidateValue(expected, [&]() { writer.Float(input, format, precision); });
+        ValidateValue(expected, [&]() { m_writer.Float(input, format, precision); });
     }
 
     void ValidateBasicString(StringView input, StringView expected)
     {
-        ValidateValue(expected, [&]() { writer.String(input, TomlStringFormat::Basic); });
+        ValidateValue(expected, [&]() { m_writer.String(input, TomlStringFormat::Basic); });
     }
 
     void ValidateLiteralString(StringView input, StringView expected)
     {
-        ValidateValue(expected, [&]() { writer.String(input, TomlStringFormat::Literal); });
+        ValidateValue(expected, [&]() { m_writer.String(input, TomlStringFormat::Literal); });
     }
 
     void ValidateDateTime(SystemTime input, TomlDateTimeFormat format, StringView expected)
     {
-        ValidateValue(expected, [&]() { writer.DateTime(input, format); });
+        ValidateValue(expected, [&]() { m_writer.DateTime(input, format); });
     }
 
     void ValidateTime(Duration input, StringView expected)
     {
-        ValidateValue(expected, [&]() { writer.Time(input); });
+        ValidateValue(expected, [&]() { m_writer.Time(input); });
     }
 
-    String output;
-    TomlWriter writer{ output };
+    String m_output;
+    TomlWriter m_writer{ m_output };
 };
 
 // ------------------------------------------------------------------------------------------------

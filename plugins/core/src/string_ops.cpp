@@ -261,7 +261,7 @@ namespace he
     // }
 
     template <typename T>
-    HE_FORCE_INLINE T StrToIntImpl(const char* str, const char** end, int32_t base)
+    HE_FORCE_INLINE bool StrToIntImpl(T& value, const char* str, const char** end, int32_t base)
     {
         // A modified version of the `fast_float::from_chars` function.
         // Adds support for base prefixes (0x, 0b, 0o) and negative signs on unsigned types.
@@ -280,7 +280,7 @@ namespace he
         {
             if (end)
                 *end = str;
-            return 0;
+            return false;
         }
 
         const bool negative = *str == '-';
@@ -343,34 +343,39 @@ namespace he
         if (digitCount == 0)
         {
             if (hasLeadingZeros)
-                return 0;
+            {
+                value = 0;
+                return true;
+            }
 
             // error: invalid input
             if (end)
                 *end = first;
-            return 0;
+            return false;
         }
-
 
         const size_t maxDigits = fast_float::max_digits_u64(base);
         if (digitCount > maxDigits)
         {
             // error: out of range
-            return negative ? Limits<T>::Min : Limits<T>::Max;
+            value = negative ? Limits<T>::Min : Limits<T>::Max;
+            return false;
         }
 
         if (digitCount == maxDigits && i < fast_float::min_safe_u64(base))
         {
             // error: out of range
-            return negative ? Limits<T>::Min : Limits<T>::Max;
+            value = negative ? Limits<T>::Min : Limits<T>::Max;
+            return false;
         }
 
-        if (!IsSame<T, uint64_t>)
+        if constexpr (!IsSame<T, uint64_t>)
         {
             if (i > static_cast<uint64_t>(Limits<T>::Max) + static_cast<uint64_t>(negative))
             {
                 // error: out of range
-                return negative ? Limits<T>::Min : Limits<T>::Max;
+                value = negative ? Limits<T>::Min : Limits<T>::Max;
+                return false;
             }
         }
 
@@ -382,29 +387,31 @@ namespace he
             // - converting unsigned to signed when its value is greater than signed max is UB pre-C++23.
             // - reinterpret_casting (~i + 1) would work, but it is not constexpr
             // this is always optimized into a neg instruction (note: T is an integer type)
-            return T(-Limits<T>::Max - T(i - static_cast<uint64_t>(Limits<T>::Max)));
+            value = T(-Limits<T>::Max - T(i - static_cast<uint64_t>(Limits<T>::Max)));
             HE_POP_WARNINGS();
         }
+        else
+        {
+            value = static_cast<T>(i);
+        }
 
-        return static_cast<T>(i);
+        return true;
     }
 
-    template <> signed char StrToInt<signed char>(const char* str, const char** end, int32_t base) { return StrToIntImpl<signed char>(str, end, base); }
-
-    template <> char StrToInt<char>(const char* str, const char** end, int32_t base) { return StrToIntImpl<char>(str, end, base); }
-    template <> short StrToInt<short>(const char* str, const char** end, int32_t base) { return StrToIntImpl<short>(str, end, base); }
-    template <> int StrToInt<int>(const char* str, const char** end, int32_t base) { return StrToIntImpl<int>(str, end, base); }
-    template <> long StrToInt<long>(const char* str, const char** end, int32_t base) { return StrToIntImpl<long>(str, end, base); }
-    template <> long long StrToInt<long long>(const char* str, const char** end, int32_t base) { return StrToIntImpl<long long>(str, end, base); }
-
-    template <> unsigned char StrToInt<unsigned char>(const char* str, const char** end, int32_t base) { return StrToIntImpl<unsigned char>(str, end, base); }
-    template <> unsigned short StrToInt<unsigned short>(const char* str, const char** end, int32_t base) { return StrToIntImpl<unsigned short>(str, end, base); }
-    template <> unsigned int StrToInt<unsigned int>(const char* str, const char** end, int32_t base) { return StrToIntImpl<unsigned int>(str, end, base); }
-    template <> unsigned long StrToInt<unsigned long>(const char* str, const char** end, int32_t base) { return StrToIntImpl<unsigned long>(str, end, base); }
-    template <> unsigned long long StrToInt<unsigned long long>(const char* str, const char** end, int32_t base) { return StrToIntImpl<unsigned long long>(str, end, base); }
+    template <> bool StrToInt(signed char& value, const char* str, const char** end, int32_t base) { return StrToIntImpl(value, str, end, base); }
+    template <> bool StrToInt(char& value, const char* str, const char** end, int32_t base) { return StrToIntImpl(value, str, end, base); }
+    template <> bool StrToInt(short& value, const char* str, const char** end, int32_t base) { return StrToIntImpl(value, str, end, base); }
+    template <> bool StrToInt(int& value, const char* str, const char** end, int32_t base) { return StrToIntImpl(value, str, end, base); }
+    template <> bool StrToInt(long& value, const char* str, const char** end, int32_t base) { return StrToIntImpl(value, str, end, base); }
+    template <> bool StrToInt(long long& value, const char* str, const char** end, int32_t base) { return StrToIntImpl(value, str, end, base); }
+    template <> bool StrToInt(unsigned char& value, const char* str, const char** end, int32_t base) { return StrToIntImpl(value, str, end, base); }
+    template <> bool StrToInt(unsigned short& value, const char* str, const char** end, int32_t base) { return StrToIntImpl(value, str, end, base); }
+    template <> bool StrToInt(unsigned int& value, const char* str, const char** end, int32_t base) { return StrToIntImpl(value, str, end, base); }
+    template <> bool StrToInt(unsigned long& value, const char* str, const char** end, int32_t base) { return StrToIntImpl(value, str, end, base); }
+    template <> bool StrToInt(unsigned long long& value, const char* str, const char** end, int32_t base) { return StrToIntImpl(value, str, end, base); }
 
     template <typename T>
-    HE_FORCE_INLINE T StrToFloatImpl(const char* str, const char** end)
+    HE_FORCE_INLINE bool StrToFloatImpl(T& value, const char* str, const char** end)
     {
         const char* strEnd = nullptr;
         if (end)
@@ -412,15 +419,14 @@ namespace he
         else
             strEnd = str + StrLen(str);
 
-        T value = 0;
         const fast_float::from_chars_result result = fast_float::from_chars(str, strEnd, value);
 
         if (end)
             *end = result.ptr;
 
-        return value;
+        return result.ec == std::errc();
     }
 
-    template <> float StrToFloat<float>(const char* str, const char** end) { return StrToFloatImpl<float>(str, end); }
-    template <> double StrToFloat<double>(const char* str, const char** end) { return StrToFloatImpl<double>(str, end); }
+    template <> bool StrToFloat(float& value, const char* str, const char** end) { return StrToFloatImpl(value, str, end); }
+    template <> bool StrToFloat(double& value, const char* str, const char** end) { return StrToFloatImpl(value, str, end); }
 }

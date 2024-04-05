@@ -11,6 +11,7 @@
 
 namespace he
 {
+    /// An error that can occur while reading a TOML document.
     enum class TomlReadError : uint8_t
     {
         None,                   ///< No error.
@@ -30,18 +31,31 @@ namespace he
 
     struct TomlReadResult
     {
+        /// The error that occurred while reading the document.
         TomlReadError error{ TomlReadError::None };
+
+        /// The line where the error occurred.
         uint32_t line{ 0 };
+
+        /// The column where the error occurred.
         uint32_t column{ 0 };
 
-        /// When error is InvalidToken, this was the character that was expected instead.
-        /// Otherwise this value is just '\0'.
+        /// When error is \ref TomlReadError::InvalidToken, this was the character that was
+        /// expected instead. Otherwise this value is just '\0'.
         char expected{ '\0' };
 
+        /// Checks if the read was successful.
+        ///
+        /// \return True if the read was successful, false otherwise.
         [[nodiscard]] bool IsValid() const { return error == TomlReadError::None; }
+
+        /// Checks if the read was successful.
+        ///
+        /// \return True if the read was successful, false otherwise.
         [[nodiscard]] explicit operator bool() const { return error == TomlReadError::None; }
     };
 
+    /// A reader for the TOML file format.
     class TomlReader
     {
     public:

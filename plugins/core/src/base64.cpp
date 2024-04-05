@@ -3,20 +3,20 @@
 #include "he/core/base64.h"
 
 #include "he/core/assert.h"
-#include "he/core/simd.h"
+#include "he/core/string.h"
 
-#include "libbase64.h"
+#include "simdutf.h"
 
 namespace he
 {
     uint32_t Base64Encode(char* dst, uint32_t dstLen, const void* src, uint32_t srcLen)
     {
-        HE_ASSERT(dstLen > Base64EncodedSize(srcLen));
+        if (!HE_VERIFY(dstLen > Base64EncodedSize(srcLen)))
+            return 0;
 
-        size_t outLen = dstLen;
-        base64_encode(static_cast<const char*>(src), srcLen, dst, &outLen, 0);
-        dst[outLen] = '\0';
-        return static_cast<uint32_t>(outLen);
+        const size_t len = simdutf::binary_to_base64(static_cast<const char*>(src), srcLen, dst);
+        dst[len] = '\0';
+        return static_cast<uint32_t>(len);
     }
 
     String Base64Encode(const void* src, uint32_t srcLen)
@@ -38,10 +38,13 @@ namespace he
 
     uint32_t Base64Decode(void* dst, uint32_t dstLen, const char* src, uint32_t srcLen)
     {
-        HE_ASSERT(dstLen >= Base64MaxDecodedSize(srcLen));
+        if (!HE_VERIFY(dstLen >= Base64MaxDecodedSize(srcLen)))
+            return 0;
 
-        size_t outLen = dstLen;
-        const int rc = base64_decode(src, srcLen, static_cast<char*>(dst), &outLen, 0);
-        return rc == 1 ? static_cast<uint32_t>(outLen) : 0;
+        const simdutf::result rc = simdutf::base64_to_binary(src, srcLen, static_cast<char*>(dst));
+        if (rc.error != simdutf::SUCCESS)
+            return 0;
+
+        return static_cast<uint32_t>(rc.count);
     }
 }

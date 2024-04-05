@@ -293,7 +293,7 @@ namespace he::schema
                                 }
 
                                 uint32_t ucc = 0x10000 + ((unicodeHighSurrogate & 0x03FF) << 10) + (value & 0x03FF);
-                                ToUTF8(out, ucc);
+                                UTF8Encode(out, ucc);
                                 unicodeHighSurrogate = -1;
                             }
                             else
@@ -304,7 +304,7 @@ namespace he::schema
                                     return false;
                                 }
 
-                                ToUTF8(out, value);
+                                UTF8Encode(out, value);
                             }
                             break;
                         }
@@ -333,7 +333,7 @@ namespace he::schema
             return false;
         }
 
-        if (!decodedIsTrivial && !ValidateUTF8(out.Data()))
+        if (!decodedIsTrivial && !UTF8Validate(out.Data()))
         {
             AddError(GetStrLoc(), "Illegal UTF-8 sequence");
             return false;

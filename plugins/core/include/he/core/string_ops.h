@@ -310,6 +310,7 @@ namespace he
     /// clamped to the limits. That is, `Limits<T>::Min` or `Limits<T>::Max` is returned.
     /// If no conversion can be performed, zero is returned.
     ///
+    /// \param[out] value The value that is parsed from the string.
     /// \param[in] str The string to parse.
     /// \param[in,out] end Optional. A pointer to a pointer to the end of the string. If nullptr
     ///     (default) then string is parsed until a null terminator is reached. If not nullptr,
@@ -319,9 +320,9 @@ namespace he
     ///     values for base is `{0,2,3,...,36}`. If base is zero, the base is determined by the
     ///     format in the sequence: a leading `0x` or `0X` means base 16, a leading `0` means base
     ///     8, and anything else means base 10. The default value is base 10.
-    /// \return The parsed number.
+    /// \return True if the parse was successful, false otherwise.
     template <typename T>
-    [[nodiscard]] T StrToInt(const char* str, const char** end = nullptr, int32_t base = 10);
+    [[nodiscard]] bool StrToInt(T& value, const char* str, const char** end = nullptr, int32_t base = 10);
 
     /// Parses the string into a floating point value and sets the pointer pointed to by `end` to
     /// point to the character past the last character interpreted. If `end` is a null pointer, it
@@ -333,14 +334,15 @@ namespace he
     /// clamped to the limits. That is, `Limits<T>::Min` or `Limits<T>::Max` is returned.
     /// If no conversion can be performed, zero is returned.
     ///
+    /// \param[out] value The value that is parsed from the string.
     /// \param[in] str The string to parse.
     /// \param[in,out] end Optional. A pointer to a pointer to the end of the string. If nullptr
     ///     (default) then string is parsed until a null terminator is reached. If not nullptr,
     ///     then the string will not be parsed beyond `*end` and `*end` is set to point to one
     ///     character past the last character interpreted in `str`.
-    /// \return The parsed number.
+    /// \return True if the parse was successful, false otherwise.
     template <typename T = float>
-    [[nodiscard]] T StrToFloat(const char* str, const char** end = nullptr);
+    [[nodiscard]] bool StrToFloat(T& value, const char* str, const char** end = nullptr);
 }
 
 #include "he/core/inline/string_ops.inl"

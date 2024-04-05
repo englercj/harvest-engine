@@ -401,7 +401,15 @@ namespace he
         const char* end = name.End();
         while (begin < end)
         {
-            const uint32_t ucc = FromUTF8(begin);
+            uint32_t ucc = 0;
+            const uint32_t len = UTF8Decode(ucc, begin);
+            if (len == InvalidCodePoint || len == 0)
+            {
+                needsQuotes = true;
+                break;
+            }
+
+            begin += len;
 
             if (!IsValidTomlKeyCodePoint(ucc))
             {

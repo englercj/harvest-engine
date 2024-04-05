@@ -31,7 +31,8 @@ namespace he
     /// \param[in] dstLen The length of the destination buffer.
     /// \param[in] src The source data to encode.
     /// \param[in] srcLen The length of the source data.
-    /// \return The number of bytes written to the destination buffer, zero if there was an error.
+    /// \return The number of bytes written to the destination buffer not including the null
+    ///     terminating byte, zero if there was an error.
     uint32_t Base64Encode(char* dst, uint32_t dstLen, const void* src, uint32_t srcLen);
 
     /// Encodes the source data into a base64 string.

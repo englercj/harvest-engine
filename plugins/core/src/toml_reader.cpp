@@ -356,7 +356,7 @@ namespace he
                     while (!AtEnd() && !IsWhitespace(*m_cursor) && !IsOneOf(*m_cursor, "].="))
                     {
                         uint32_t ucc = 0;
-                        const uint32_t len = UTF8Decode(ucc, m_cursor);
+                        const uint32_t len = UTF8Decode(ucc, m_cursor, Len(m_cursor, m_end));
                         if (len == InvalidCodePoint || len == 0)
                             return SetError(TomlReadError::InvalidKey);
 
@@ -845,7 +845,8 @@ namespace he
             if (!ConsumeOneOf(Nums) || !ConsumeOneOf(Nums))
                  return false;
 
-            hours = StrToInt<uint32_t>(begin, &m_cursor);
+            if (!StrToInt(hours, begin, &m_cursor))
+                return SetError(TomlReadError::InvalidDateTime);
 
             if (!Consume(':'))
                  return false;
@@ -855,7 +856,8 @@ namespace he
             if (!ConsumeOneOf(Nums) || !ConsumeOneOf(Nums))
                  return false;
 
-            minutes = StrToInt<uint32_t>(begin, &m_cursor);
+            if (!StrToInt(minutes, begin, &m_cursor))
+                return SetError(TomlReadError::InvalidDateTime);
 
             // 2 digit seconds are optional
             if (!AtEnd() && *m_cursor == ':')
@@ -879,7 +881,8 @@ namespace he
                         ++m_cursor;
                 }
 
-                seconds = StrToFloat<double>(begin, &m_cursor);
+                if (!StrToFloat(seconds, begin, &m_cursor))
+                    return SetError(TomlReadError::InvalidDateTime);
             }
 
             if (hours >= 23 || minutes >= 60 || seconds >= 60.0)
@@ -908,7 +911,8 @@ namespace he
             if (!ConsumeOneOf(Nums) || !ConsumeOneOf(Nums) || !ConsumeOneOf(Nums) || !ConsumeOneOf(Nums))
                 return false;
 
-            year = StrToInt<uint32_t>(begin, &m_cursor);
+            if (!StrToInt(year, begin, &m_cursor))
+                return SetError(TomlReadError::InvalidDateTime);
 
             if (!Consume('-'))
                 return false;
@@ -918,7 +922,8 @@ namespace he
             if (!ConsumeOneOf(Nums) || !ConsumeOneOf(Nums))
                  return false;
 
-            month = StrToInt<uint32_t>(begin, &m_cursor);
+            if (!StrToInt(month, begin, &m_cursor))
+                return SetError(TomlReadError::InvalidDateTime);
 
             if (!Consume('-'))
                  return false;
@@ -928,7 +933,8 @@ namespace he
             if (!ConsumeOneOf(Nums) || !ConsumeOneOf(Nums))
                  return false;
 
-            day = StrToInt<uint32_t>(begin, &m_cursor);
+            if (!StrToInt(day, begin, &m_cursor))
+                return SetError(TomlReadError::InvalidDateTime);
 
             // Check if this include time information
             if (!AtEnd() && (*m_cursor == 'T' || *m_cursor == 't' || *m_cursor == ' '))
@@ -941,7 +947,8 @@ namespace he
                 if (!ConsumeOneOf(Nums) || !ConsumeOneOf(Nums))
                     return false;
 
-                hours = StrToInt<uint32_t>(begin, &m_cursor);
+                if (!StrToInt(hours, begin, &m_cursor))
+                    return SetError(TomlReadError::InvalidDateTime);
 
                 if (!Consume(':'))
                     return false;
@@ -951,7 +958,8 @@ namespace he
                 if (!ConsumeOneOf(Nums) || !ConsumeOneOf(Nums))
                     return false;
 
-                minutes = StrToInt<uint32_t>(begin, &m_cursor);
+                if (!StrToInt(minutes, begin, &m_cursor))
+                    return SetError(TomlReadError::InvalidDateTime);
 
                 // 2 digit seconds are optional in TOML
                 if (!AtEnd() && *m_cursor == ':')
@@ -975,7 +983,8 @@ namespace he
                             ++m_cursor;
                     }
 
-                    seconds = StrToFloat<double>(begin, &m_cursor);
+                    if (!StrToFloat(seconds, begin, &m_cursor))
+                        return SetError(TomlReadError::InvalidDateTime);
                 }
 
                 // Optional timezone
@@ -994,7 +1003,9 @@ namespace he
                     if (!ConsumeOneOf(Nums) || !ConsumeOneOf(Nums))
                         return false;
 
-                    const uint32_t tzOffsetHours = StrToInt<uint32_t>(begin, &m_cursor);
+                    uint32_t tzOffsetHours = 0;
+                    if (!StrToInt(tzOffsetHours, begin, &m_cursor))
+                        return SetError(TomlReadError::InvalidDateTime);
 
                     if (!Consume(':'))
                         return false;
@@ -1004,7 +1015,9 @@ namespace he
                     if (!ConsumeOneOf(Nums) || !ConsumeOneOf(Nums))
                         return false;
 
-                    const uint32_t tzOffsetMinutes = StrToInt<uint32_t>(begin, &m_cursor);
+                    uint32_t tzOffsetMinutes = 0;
+                    if (!StrToInt(tzOffsetMinutes, begin, &m_cursor))
+                        return SetError(TomlReadError::InvalidDateTime);
 
                     if (tzOffsetHours > 23 || tzOffsetMinutes > 59)
                         return SetError(TomlReadError::InvalidDateTime);
@@ -1299,7 +1312,9 @@ namespace he
             }
 
             const char* end = m_stringBuffer.End();
-            const uint64_t value = StrToInt<uint64_t>(m_stringBuffer.Begin(), &end, 16);
+            uint64_t value = 0;
+            if (!StrToInt(value, m_stringBuffer.Begin(), &end, 16))
+                return SetError(TomlReadError::InvalidNumber);
             m_handler->Uint(value);
             return true;
         }
@@ -1321,7 +1336,9 @@ namespace he
             }
 
             const char* end = m_stringBuffer.End();
-            const uint64_t value = StrToInt<uint64_t>(m_stringBuffer.Begin(), &end, 8);
+            uint64_t value = 0;
+            if (!StrToInt(value, m_stringBuffer.Begin(), &end, 8))
+                return SetError(TomlReadError::InvalidNumber);
             m_handler->Uint(value);
             return true;
         }
@@ -1343,7 +1360,9 @@ namespace he
             }
 
             const char* end = m_stringBuffer.End();
-            const uint64_t value = StrToInt<uint64_t>(m_stringBuffer.Begin(), &end, 2);
+            uint64_t value = 0;
+            if (!StrToInt(value, m_stringBuffer.Begin(), &end, 2))
+                return SetError(TomlReadError::InvalidNumber);
             m_handler->Uint(value);
             return true;
         }

@@ -41,7 +41,7 @@ namespace he
 
     inline bool IsKdlEqualsSign(uint32_t ucc)
     {
-        return ucc == '='
+        return ucc == 0x003d    // equals sign (=)
             || ucc == 0xfe66    // small equals sign (﹦)
             || ucc == 0xff1d    // fullwidth equals sign (＝)
             || ucc == 0x1f7f0;  // heavy equals sign (🟰)

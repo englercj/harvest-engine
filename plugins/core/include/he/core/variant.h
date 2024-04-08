@@ -154,22 +154,44 @@ namespace he
         }
 
         template <typename V>
+        constexpr decltype(auto) Visit(V&& visitor) const
+        {
+            //HE_ASSERT(IsValid());
+            return VisitInternal(visitor, MakeIndexSequence<Size>{});
+        }
+
+        template <typename V>
         constexpr decltype(auto) Visit(V&& visitor)
         {
             //HE_ASSERT(IsValid());
             return VisitInternal(visitor, MakeIndexSequence<Size>{});
         }
 
-        [[nodiscard]] constexpr bool operator==(const Variant& x) const { return m_index == x.m_index && Visit(_CompareVisitor<EqualTo<Variant>>{ x }); }
-        [[nodiscard]] constexpr bool operator!=(const Variant& x) const { return m_index != x.m_index || Visit(_CompareVisitor<NotEqualTo<Variant>>{ x }); }
-        [[nodiscard]] constexpr bool operator<(const Variant& x) const { return m_index < x.m_index || (m_index == x.m_index && Visit(_CompareVisitor<LessThan<Variant>>{ x })); }
-        [[nodiscard]] constexpr bool operator<=(const Variant& x) const { return m_index < x.m_index || (m_index == x.m_index && Visit(_CompareVisitor<LessThanOrEqual<Variant>>{ x })); }
-        [[nodiscard]] constexpr bool operator>(const Variant& x) const { return m_index > x.m_index || (m_index == x.m_index && Visit(_CompareVisitor<GreaterThan<Variant>>{ x })); }
-        [[nodiscard]] constexpr bool operator>=(const Variant& x) const { return m_index > x.m_index || (m_index == x.m_index && Visit(_CompareVisitor<GreaterThanOrEqual<Variant>>{ x })); }
+        [[nodiscard]] constexpr bool operator==(const Variant& x) const { return m_index == x.m_index && Visit(_CompareVisitor<EqualTo>{ x }); }
+        [[nodiscard]] constexpr bool operator!=(const Variant& x) const { return m_index != x.m_index || Visit(_CompareVisitor<NotEqualTo>{ x }); }
+        [[nodiscard]] constexpr bool operator<(const Variant& x) const { return m_index < x.m_index || (m_index == x.m_index && Visit(_CompareVisitor<LessThan>{ x })); }
+        [[nodiscard]] constexpr bool operator<=(const Variant& x) const { return m_index < x.m_index || (m_index == x.m_index && Visit(_CompareVisitor<LessThanOrEqual>{ x })); }
+        [[nodiscard]] constexpr bool operator>(const Variant& x) const { return m_index > x.m_index || (m_index == x.m_index && Visit(_CompareVisitor<GreaterThan>{ x })); }
+        [[nodiscard]] constexpr bool operator>=(const Variant& x) const { return m_index > x.m_index || (m_index == x.m_index && Visit(_CompareVisitor<GreaterThanOrEqual>{ x })); }
 
         [[nodiscard]] constexpr uint64_t HashCode() const { return IsValid() ? Visit(_HashVisitor{}) : 0; }
 
     private:
+        template <typename V, uint32_t Index>
+        constexpr decltype(auto) VisitInternal(V&& visitor, IndexSequence<Index>) const
+        {
+            //HE_ASSERT(m_index == Index);
+            return visitor(Get<Index>(), IndexConstant<Index>{});
+        }
+
+        template <typename V, uint32_t Index, uint32_t... I>
+        constexpr decltype(auto) VisitInternal(V&& visitor, IndexSequence<Index, I...>) const
+        {
+            if (m_index == Index)
+                return visitor(Get<Index>(), IndexConstant<Index>{});
+            return VisitInternal<V, I...>(visitor, IndexSequence<I...>{});
+        }
+
         template <typename V, uint32_t Index>
         constexpr decltype(auto) VisitInternal(V&& visitor, IndexSequence<Index>)
         {
@@ -186,22 +208,22 @@ namespace he
         }
 
     private:
-        template <typename Op>
+        template <template <typename...> typename Op>
         struct _CompareVisitor
         {
             const Variant& other;
 
             template <typename U, uint32_t Index>
-            [[nodiscard]] constexpr bool operator()(const U& value, IndexConstant<Index>)
+            [[nodiscard]] constexpr bool operator()(const U& value, IndexConstant<Index>) const
             {
-                return Op{}(value, other.template Get<Index>());
+                return Op<U>{}(value, other.template Get<Index>());
             }
         };
 
         struct _HashVisitor
         {
             template <typename U, uint32_t Index>
-            [[nodiscard]] constexpr uint64_t operator()(const U& value, IndexConstant<Index>)
+            [[nodiscard]] constexpr uint64_t operator()(const U& value, IndexConstant<Index>) const
             {
                 return Hasher<U>{}(value);
             }
@@ -210,7 +232,7 @@ namespace he
         struct _DestructVisitor
         {
             template <typename U, uint32_t Index>
-            constexpr void operator()(U& value, IndexConstant<Index>)
+            constexpr void operator()(U& value, IndexConstant<Index>) const
             {
                 if constexpr (!IsTriviallyDestructible<U>)
                 {
@@ -224,7 +246,7 @@ namespace he
             const Variant& other;
 
             template <typename U, uint32_t Index>
-            constexpr void operator()(U& value, IndexConstant<Index>)
+            constexpr void operator()(U& value, IndexConstant<Index>) const
             {
                 new (&value) ElementType<Index>(other.template Get<Index>());
             }
@@ -235,7 +257,7 @@ namespace he
             Variant& other;
 
             template <typename U, uint32_t Index>
-            constexpr void operator()(U& value, IndexConstant<Index>)
+            constexpr void operator()(U& value, IndexConstant<Index>) const
             {
                 new (&value) ElementType<Index>(Move(other).template Get<Index>());
             }

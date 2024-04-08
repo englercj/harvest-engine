@@ -1065,7 +1065,12 @@ namespace he::schema
         }
 
         using LargestType = Conditional<IsSigned<T>, int64_t, uint64_t>;
-        LargestType value = StrToInt<LargestType>(begin, &end, base);
+        LargestType value = 0;
+        if (!StrToInt(value, begin, &end, base))
+        {
+            AddError("Failed to parse integer string");
+            return false;
+        }
 
         if (isSigned)
         {

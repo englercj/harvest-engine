@@ -221,32 +221,38 @@ namespace he
         // Converters
 
         /// Parses the string into a integral value.
-        /// If successful, an integer value corresponding to the contents of str is returned.
-        /// If the converted value falls out of range of corresponding return type, a range error
-        /// occurs (setting errno to ERANGE) and LONG_MAX, LONG_MIN, LLONG_MAX or LLONG_MIN is
-        /// returned. If no conversion can be performed, zero is returned.
+        ///
+        /// If successful, an integer value corresponding to the contents of `str` is returned.
+        /// If the converted value falls out of range of corresponding return type, the value is
+        /// clamped to the limits. That is, `Limits<T>::Min` or `Limits<T>::Max` is returned.
+        /// If no conversion can be performed, zero is returned.
         ///
         /// \param[in] base Optional. The numerical base of the value being parsed.
         /// \return The parsed number.
         template <typename T>
         [[nodiscard]] T ToInteger(int32_t base = 10) const
         {
+            T value = T(0);
             const char* end = End();
-            return StrToInt<T>(Begin(), &end, base);
+            StrToInt(value, Begin(), &end, base);
+            return value;
         }
 
         /// Parses the string into a floating point value.
+        ///
         /// If successful, a floating point value corresponding to the contents of str is returned.
-        /// If the converted value falls out of range of corresponding return type, a range error
-        /// occurs (setting errno to ERANGE) and LONG_MAX, LONG_MIN, LLONG_MAX or LLONG_MIN is
-        /// returned. If no conversion can be performed, zero is returned.
+        /// If the converted value falls out of range of corresponding return type, the value is
+        /// clamped to the limits. That is, `Limits<T>::Min` or `Limits<T>::Max` is returned.
+        /// If no conversion can be performed, zero is returned.
         ///
         /// \return The parsed number.
         template <typename T = float>
         [[nodiscard]] T ToFloat() const
         {
+            T value = T(0);
             const char* end = End();
-            return StrToFloat<T>(Begin(), &end);
+            StrToFloat(value, Begin(), &end);
+            return value;
         }
 
         // ----------------------------------------------------------------------------------------

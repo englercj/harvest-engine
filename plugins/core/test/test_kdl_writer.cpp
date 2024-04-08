@@ -74,12 +74,12 @@ HE_TEST_F(core, kdl_writer, node_args, KdlWriterFixture)
 {
     m_writer.Node("node");
     m_writer.Argument(true);
-    m_writer.Argument(-123);
-    m_writer.Argument(123u);
+    m_writer.Argument(-123, "i32");
+    m_writer.Argument(123u, "u32");
     m_writer.Argument(5.0);
     m_writer.Argument("arg");
     m_writer.Argument(nullptr);
-    Validate("node #true -123 123 5.0 arg #null");
+    Validate("node #true (i32)-123 (u32)123 5.0 arg #null");
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -87,12 +87,12 @@ HE_TEST_F(core, kdl_writer, node_props, KdlWriterFixture)
 {
     m_writer.Node("node");
     m_writer.Property("bool", true);
-    m_writer.Property("int", -123);
-    m_writer.Property("uint", 123u);
+    m_writer.Property("int", -123, "i32");
+    m_writer.Property("uint", 123u, "u32");
     m_writer.Property("float", 5.0);
     m_writer.Property("str", "arg");
     m_writer.Property("nullptr", nullptr);
-    Validate("node bool=#true int=-123 uint=123 float=5.0 str=arg nullptr=#null");
+    Validate("node bool=#true int=(i32)-123 uint=(u32)123 float=5.0 str=arg nullptr=#null");
 }
 
 // ------------------------------------------------------------------------------------------------

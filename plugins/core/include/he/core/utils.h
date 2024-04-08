@@ -95,6 +95,21 @@ namespace he
         return value > 0 && (value & (value - 1)) == 0;
     }
 
+    /// Returns the length of a range of pointers. This is an easy way to convert from begin/end
+    /// pointers into a ptr/size pair.
+    ///
+    /// This helper exists primarily because Harvest uses `uint32_t` for sizes, but pointer
+    /// subtraction results in a `size_t`.
+    ///
+    /// \param begin The start of the range.
+    /// \param end The exclusive end of the range.
+    /// \return The number of elements in the range.
+    template <typename T>
+    [[nodiscard]] inline uint32_t Len(const T* begin, const T* end) noexcept
+    {
+        return static_cast<uint32_t>(end - begin);
+    }
+
     /// Returns the smaller value between `a` and `b`.
     ///
     /// \param a The first value to compare.

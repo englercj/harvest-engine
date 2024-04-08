@@ -10,6 +10,7 @@
 #include "he/core/fmt.h"
 #include "he/core/string_fmt.h"
 #include "he/core/utf8.h"
+#include "he/core/utils.h"
 #include "he/core/vector.h"
 
 #include <cmath>
@@ -402,7 +403,7 @@ namespace he
         while (begin < end)
         {
             uint32_t ucc = 0;
-            const uint32_t len = UTF8Decode(ucc, begin);
+            const uint32_t len = UTF8Decode(ucc, begin, Len(begin, end));
             if (len == InvalidCodePoint || len == 0)
             {
                 needsQuotes = true;

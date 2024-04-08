@@ -172,5 +172,5 @@ namespace he
 
     private:
         const StringView m_str;
-    }
+    };
 }

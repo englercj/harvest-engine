@@ -14,7 +14,7 @@ namespace he
 
         constexpr const char* Parse(const FmtParseCtx& ctx) { return ctx.Begin(); }
 
-        void Format(String& out, const Vector<T>& value) const
+        void Format(String& out, const Type& value) const
         {
             FormatTo(out, "({})", FmtJoin(value, ", "));
         }

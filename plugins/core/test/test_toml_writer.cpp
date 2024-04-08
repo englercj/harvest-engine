@@ -100,53 +100,53 @@ public:
 // ------------------------------------------------------------------------------------------------
 HE_TEST_F(core, toml_writer, array_empty, TomlWriterFixture)
 {
-    writer.Key("key");
-    writer.StartArray();
-    writer.EndArray();
+    m_writer.Key("key");
+    m_writer.StartArray();
+    m_writer.EndArray();
     Validate("key = []");
 }
 
 // ------------------------------------------------------------------------------------------------
 HE_TEST_F(core, toml_writer, array_items, TomlWriterFixture)
 {
-    writer.Key("key");
-    writer.StartArray();
-    writer.Uint(1);
-    writer.Uint(0x9ffffffe, TomlUintFormat::Hex);
-    writer.Comment(" this is a comment");
-    writer.String("literal", TomlStringFormat::Literal);
-    writer.String("basic", TomlStringFormat::Basic);
-    writer.Float(1.5);
-    writer.Bool(true);
-    writer.String("multiline\n\r\n\nliteral", TomlStringFormat::Literal);
-    writer.String("multiline\n\r\n\nbasic", TomlStringFormat::Basic);
-    writer.EndArray();
+    m_writer.Key("key");
+    m_writer.StartArray();
+    m_writer.Uint(1);
+    m_writer.Uint(0x9ffffffe, TomlUintFormat::Hex);
+    m_writer.Comment(" this is a comment");
+    m_writer.String("literal", TomlStringFormat::Literal);
+    m_writer.String("basic", TomlStringFormat::Basic);
+    m_writer.Float(1.5);
+    m_writer.Bool(true);
+    m_writer.String("multiline\n\r\n\nliteral", TomlStringFormat::Literal);
+    m_writer.String("multiline\n\r\n\nbasic", TomlStringFormat::Basic);
+    m_writer.EndArray();
     Validate("key = [1, 0x9ffffffe# this is a comment, 'literal', \"basic\", 1.5, true, '''\nmultiline\n\r\n\nliteral''', \"\"\"\nmultiline\n\r\n\nbasic\"\"\"]");
 }
 
 // ------------------------------------------------------------------------------------------------
 HE_TEST_F(core, toml_writer, array_nested, TomlWriterFixture)
 {
-    writer.Key("key");
-    writer.StartArray();
-    writer.Uint(1);
-    writer.StartArray();
-    writer.Uint(2);
-    writer.Uint(3);
-    writer.EndArray();
-    writer.String("4", TomlStringFormat::Literal);
-    writer.StartArray();
-    writer.String("5");
-    writer.String("6");
-    writer.EndArray();
-    writer.EndArray();
+    m_writer.Key("key");
+    m_writer.StartArray();
+    m_writer.Uint(1);
+    m_writer.StartArray();
+    m_writer.Uint(2);
+    m_writer.Uint(3);
+    m_writer.EndArray();
+    m_writer.String("4", TomlStringFormat::Literal);
+    m_writer.StartArray();
+    m_writer.String("5");
+    m_writer.String("6");
+    m_writer.EndArray();
+    m_writer.EndArray();
     Validate("key = [1, [2, 3], '4', [\"5\", \"6\"]]");
 }
 
 // ------------------------------------------------------------------------------------------------
 HE_TEST_F(core, toml_writer, table, TomlWriterFixture)
 {
-    writer.Table("key");
+    m_writer.Table("key");
     Validate("[key]");
 }
 
@@ -154,14 +154,14 @@ HE_TEST_F(core, toml_writer, table, TomlWriterFixture)
 HE_TEST_F(core, toml_writer, table_quoted, TomlWriterFixture)
 {
     StringView keys[] = { "test", "123", "name with spaces" };
-    writer.Table(keys);
+    m_writer.Table(keys);
     Validate("[test.123.\"name with spaces\"]");
 }
 
 // ------------------------------------------------------------------------------------------------
 HE_TEST_F(core, toml_writer, table_array, TomlWriterFixture)
 {
-    writer.Table("key", true);
+    m_writer.Table("key", true);
     Validate("[[key]]");
 }
 
@@ -169,46 +169,46 @@ HE_TEST_F(core, toml_writer, table_array, TomlWriterFixture)
 HE_TEST_F(core, toml_writer, table_array_quoted, TomlWriterFixture)
 {
     StringView keys[] = { "test", "123", "name with spaces" };
-    writer.Table(keys, true);
+    m_writer.Table(keys, true);
     Validate("[[test.123.\"name with spaces\"]]");
 }
 
 // ------------------------------------------------------------------------------------------------
 HE_TEST_F(core, toml_writer, inline_table_empty, TomlWriterFixture)
 {
-    writer.Key("key");
-    writer.StartInlineTable();
-    writer.EndInlineTable();
+    m_writer.Key("key");
+    m_writer.StartInlineTable();
+    m_writer.EndInlineTable();
     Validate("key = {}");
 }
 
 // ------------------------------------------------------------------------------------------------
 HE_TEST_F(core, toml_writer, inline_table, TomlWriterFixture)
 {
-    writer.Key("key");
-    writer.StartInlineTable();
-    writer.Key("value");
-    writer.Uint(123);
-    writer.Key("key\tkey");
-    writer.Uint(456);
-    writer.EndInlineTable();
+    m_writer.Key("key");
+    m_writer.StartInlineTable();
+    m_writer.Key("value");
+    m_writer.Uint(123);
+    m_writer.Key("key\tkey");
+    m_writer.Uint(456);
+    m_writer.EndInlineTable();
     Validate("key = {value = 123, \"key\\tkey\" = 456}");
 }
 
 // ------------------------------------------------------------------------------------------------
 HE_TEST_F(core, toml_writer, inline_table_with_array, TomlWriterFixture)
 {
-    writer.Key("key");
-    writer.StartInlineTable();
-    writer.Key("value");
-    writer.Uint(123);
-    writer.Key("arr");
-    writer.StartArray();
-    writer.Uint(1);
-    writer.Uint(2);
-    writer.Uint(3);
-    writer.EndArray();
-    writer.EndInlineTable();
+    m_writer.Key("key");
+    m_writer.StartInlineTable();
+    m_writer.Key("value");
+    m_writer.Uint(123);
+    m_writer.Key("arr");
+    m_writer.StartArray();
+    m_writer.Uint(1);
+    m_writer.Uint(2);
+    m_writer.Uint(3);
+    m_writer.EndArray();
+    m_writer.EndInlineTable();
     Validate("key = {value = 123, arr = [1, 2, 3]}");
 }
 
@@ -417,163 +417,163 @@ HE_TEST_F(core, toml_writer, complex_document, TomlWriterFixture)
     // Sun, 27 May 1979 07:32:00 GMT
     constexpr SystemTime ExpectedDateTime{ 296638320000ull * Milliseconds::Ratio };
 
-    writer.Comment(" Copyright Chad Engler");
-    writer.Table("boolean");
-    writer.Key("bool1");
-    writer.Bool(true);
-    writer.Key("bool2");
-    writer.Bool(false);
-    writer.Table("integer");
-    writer.Key("int1");
-    writer.Uint(99);
-    writer.Key("int2");
-    writer.Int(-17);
-    writer.Key("int3");
-    writer.Uint(5349221);
-    writer.Key("hex");
-    writer.Uint(0xdeadbeef, TomlUintFormat::Hex);
-    writer.Key("oct");
-    writer.Uint(0755, TomlUintFormat::Octal);
-    writer.Key("bin");
-    writer.Uint(0b11010110, TomlUintFormat::Binary);
-    writer.Table("float");
-    writer.Key("flt1");
-    writer.Float(3.1415);
-    writer.Key("flt2");
-    writer.Float(-0.01);
-    writer.Key("flt3");
-    writer.Float(5e+22, TomlFloatFormat::Exponent);
-    writer.Key("flt4");
-    writer.Float(1e06, TomlFloatFormat::Exponent);
-    writer.Key("flt5");
-    writer.Float(-2E-2, TomlFloatFormat::Exponent);
-    writer.Key("sf1");
-    writer.Float(Limits<double>::Infinity);
-    writer.Key("sf2");
-    writer.Float(-Limits<double>::Infinity);
-    writer.Key("sf3");
-    writer.Float(Limits<double>::NaN);
-    writer.Key("sf4");
-    writer.Float(-Limits<double>::NaN);
-    writer.Table("string");
-    writer.Key("str");
-    writer.String("I'm a string. \"You can quote me\". Name\tJosé\nLocation\tSF.");
-    writer.Key("str1");
-    writer.String("Roses are red\nViolets are blue");
-    writer.Key("str2");
-    writer.String("Here are two quotation marks: \"\". Simple enough.");
-    writer.Key("str3");
-    writer.String("Here are three quotation marks: \"\"\".");
-    writer.Key("str4");
-    writer.String("Here are fifteen quotation marks: \"\"\"\"\"\"\"\"\"\"\"\"\"\"\".");
-    writer.Key("str5");
-    writer.String("C:\\Users\\nodejs\\templates", TomlStringFormat::Literal);
-    writer.Key("str6");
-    writer.String("\\\\ServerX\\admin$\\system32\\", TomlStringFormat::Literal);
-    writer.Key("str7");
-    writer.String("<\\i\\c*\\s*>", TomlStringFormat::Literal);
-    writer.Key("str8");
-    writer.String("The first newline is\ntrimmed in literal strings.\n   All other whitespace\n   is preserved.\n", TomlStringFormat::Literal);
-    writer.Table("datetime");
-    writer.Key("odt1");
-    writer.DateTime(ExpectedDateTime);
-    writer.Key("odt2");
-    writer.DateTime((ExpectedDateTime + FromPeriod<Microseconds>(999999)));
-    writer.Key("odt3");
-    writer.DateTime(ExpectedDateTime, TomlDateTimeFormat::OffsetLocal);
-    writer.Key("odt4");
-    writer.DateTime((ExpectedDateTime + FromPeriod<Microseconds>(999999)), TomlDateTimeFormat::OffsetLocal);
-    writer.Key("ldt1");
-    writer.DateTime(ExpectedDateTime, TomlDateTimeFormat::Local);
-    writer.Key("ldt2");
-    writer.DateTime((ExpectedDateTime + FromPeriod<Microseconds>(999999)), TomlDateTimeFormat::Local);
-    writer.Table("time");
-    writer.Key("lt1");
-    writer.Time((FromPeriod<Hours>(7) + FromPeriod<Minutes>(32)));
-    writer.Key("lt2");
-    writer.Time((FromPeriod<Minutes>(32) + FromPeriod<Microseconds>(999999)));
-    writer.Table("array");
-    writer.Key("integers");
-    writer.StartArray();
-    writer.Uint(1);
-    writer.Uint(2);
-    writer.Uint(3);
-    writer.EndArray();
-    writer.Key("colors");
-    writer.StartArray();
-    writer.String("red");
-    writer.String("yellow");
-    writer.String("green");
-    writer.EndArray();
-    writer.Key("nested_arrays_of_ints");
-    writer.StartArray();
-    writer.StartArray();
-    writer.Uint(1);
-    writer.Uint(2);
-    writer.EndArray();
-    writer.StartArray();
-    writer.Uint(3);
-    writer.Uint(4);
-    writer.Uint(5);
-    writer.EndArray();
-    writer.EndArray();
-    writer.Key("contributors");
-    writer.StartArray();
-    writer.String("Foo Bar <foo@example.com>");
-    writer.StartInlineTable();
-    writer.Key("name");
-    writer.String("Baz Qux");
-    writer.Key("email");
-    writer.String("bazqux@example.com");
-    writer.Key("url");
-    writer.String("https://example.com/bazqux");
-    writer.EndInlineTable();
-    writer.EndArray();
+    m_writer.Comment(" Copyright Chad Engler");
+    m_writer.Table("boolean");
+    m_writer.Key("bool1");
+    m_writer.Bool(true);
+    m_writer.Key("bool2");
+    m_writer.Bool(false);
+    m_writer.Table("integer");
+    m_writer.Key("int1");
+    m_writer.Uint(99);
+    m_writer.Key("int2");
+    m_writer.Int(-17);
+    m_writer.Key("int3");
+    m_writer.Uint(5349221);
+    m_writer.Key("hex");
+    m_writer.Uint(0xdeadbeef, TomlUintFormat::Hex);
+    m_writer.Key("oct");
+    m_writer.Uint(0755, TomlUintFormat::Octal);
+    m_writer.Key("bin");
+    m_writer.Uint(0b11010110, TomlUintFormat::Binary);
+    m_writer.Table("float");
+    m_writer.Key("flt1");
+    m_writer.Float(3.1415);
+    m_writer.Key("flt2");
+    m_writer.Float(-0.01);
+    m_writer.Key("flt3");
+    m_writer.Float(5e+22, TomlFloatFormat::Exponent);
+    m_writer.Key("flt4");
+    m_writer.Float(1e06, TomlFloatFormat::Exponent);
+    m_writer.Key("flt5");
+    m_writer.Float(-2E-2, TomlFloatFormat::Exponent);
+    m_writer.Key("sf1");
+    m_writer.Float(Limits<double>::Infinity);
+    m_writer.Key("sf2");
+    m_writer.Float(-Limits<double>::Infinity);
+    m_writer.Key("sf3");
+    m_writer.Float(Limits<double>::NaN);
+    m_writer.Key("sf4");
+    m_writer.Float(-Limits<double>::NaN);
+    m_writer.Table("string");
+    m_writer.Key("str");
+    m_writer.String("I'm a string. \"You can quote me\". Name\tJosé\nLocation\tSF.");
+    m_writer.Key("str1");
+    m_writer.String("Roses are red\nViolets are blue");
+    m_writer.Key("str2");
+    m_writer.String("Here are two quotation marks: \"\". Simple enough.");
+    m_writer.Key("str3");
+    m_writer.String("Here are three quotation marks: \"\"\".");
+    m_writer.Key("str4");
+    m_writer.String("Here are fifteen quotation marks: \"\"\"\"\"\"\"\"\"\"\"\"\"\"\".");
+    m_writer.Key("str5");
+    m_writer.String("C:\\Users\\nodejs\\templates", TomlStringFormat::Literal);
+    m_writer.Key("str6");
+    m_writer.String("\\\\ServerX\\admin$\\system32\\", TomlStringFormat::Literal);
+    m_writer.Key("str7");
+    m_writer.String("<\\i\\c*\\s*>", TomlStringFormat::Literal);
+    m_writer.Key("str8");
+    m_writer.String("The first newline is\ntrimmed in literal strings.\n   All other whitespace\n   is preserved.\n", TomlStringFormat::Literal);
+    m_writer.Table("datetime");
+    m_writer.Key("odt1");
+    m_writer.DateTime(ExpectedDateTime);
+    m_writer.Key("odt2");
+    m_writer.DateTime((ExpectedDateTime + FromPeriod<Microseconds>(999999)));
+    m_writer.Key("odt3");
+    m_writer.DateTime(ExpectedDateTime, TomlDateTimeFormat::OffsetLocal);
+    m_writer.Key("odt4");
+    m_writer.DateTime((ExpectedDateTime + FromPeriod<Microseconds>(999999)), TomlDateTimeFormat::OffsetLocal);
+    m_writer.Key("ldt1");
+    m_writer.DateTime(ExpectedDateTime, TomlDateTimeFormat::Local);
+    m_writer.Key("ldt2");
+    m_writer.DateTime((ExpectedDateTime + FromPeriod<Microseconds>(999999)), TomlDateTimeFormat::Local);
+    m_writer.Table("time");
+    m_writer.Key("lt1");
+    m_writer.Time((FromPeriod<Hours>(7) + FromPeriod<Minutes>(32)));
+    m_writer.Key("lt2");
+    m_writer.Time((FromPeriod<Minutes>(32) + FromPeriod<Microseconds>(999999)));
+    m_writer.Table("array");
+    m_writer.Key("integers");
+    m_writer.StartArray();
+    m_writer.Uint(1);
+    m_writer.Uint(2);
+    m_writer.Uint(3);
+    m_writer.EndArray();
+    m_writer.Key("colors");
+    m_writer.StartArray();
+    m_writer.String("red");
+    m_writer.String("yellow");
+    m_writer.String("green");
+    m_writer.EndArray();
+    m_writer.Key("nested_arrays_of_ints");
+    m_writer.StartArray();
+    m_writer.StartArray();
+    m_writer.Uint(1);
+    m_writer.Uint(2);
+    m_writer.EndArray();
+    m_writer.StartArray();
+    m_writer.Uint(3);
+    m_writer.Uint(4);
+    m_writer.Uint(5);
+    m_writer.EndArray();
+    m_writer.EndArray();
+    m_writer.Key("contributors");
+    m_writer.StartArray();
+    m_writer.String("Foo Bar <foo@example.com>");
+    m_writer.StartInlineTable();
+    m_writer.Key("name");
+    m_writer.String("Baz Qux");
+    m_writer.Key("email");
+    m_writer.String("bazqux@example.com");
+    m_writer.Key("url");
+    m_writer.String("https://example.com/bazqux");
+    m_writer.EndInlineTable();
+    m_writer.EndArray();
     StringView tableKeys[] = { "dog", "tater.man" };
-    writer.Table(tableKeys);
+    m_writer.Table(tableKeys);
     StringView valueKeys[] = { "type", "name" };
-    writer.Key(valueKeys);
-    writer.String("pug");
-    writer.Table("product", true);
-    writer.Key("name");
-    writer.String("Hammer");
-    writer.Key("sku");
-    writer.Uint(738594937);
-    writer.Table("product", true);
-    writer.Table("product", true);
-    writer.Key("name");
-    writer.String("Nail");
-    writer.Key("sku");
-    writer.Uint(284758393);
-    writer.Key("color");
-    writer.String("gray");
-    writer.Key("points");
-    writer.StartArray();
-    writer.StartInlineTable();
-    writer.Key("x");
-    writer.Int(1);
-    writer.Key("y");
-    writer.Int(2);
-    writer.Key("z");
-    writer.Int(3);
-    writer.EndInlineTable();
-    writer.StartInlineTable();
-    writer.Key("x");
-    writer.Int(7);
-    writer.Key("y");
-    writer.Int(8);
-    writer.Key("z");
-    writer.Int(9);
-    writer.EndInlineTable();
-    writer.StartInlineTable();
-    writer.Key("x");
-    writer.Int(2);
-    writer.Key("y");
-    writer.Int(4);
-    writer.Key("z");
-    writer.Int(8);
-    writer.EndInlineTable();
-    writer.EndArray();
+    m_writer.Key(valueKeys);
+    m_writer.String("pug");
+    m_writer.Table("product", true);
+    m_writer.Key("name");
+    m_writer.String("Hammer");
+    m_writer.Key("sku");
+    m_writer.Uint(738594937);
+    m_writer.Table("product", true);
+    m_writer.Table("product", true);
+    m_writer.Key("name");
+    m_writer.String("Nail");
+    m_writer.Key("sku");
+    m_writer.Uint(284758393);
+    m_writer.Key("color");
+    m_writer.String("gray");
+    m_writer.Key("points");
+    m_writer.StartArray();
+    m_writer.StartInlineTable();
+    m_writer.Key("x");
+    m_writer.Int(1);
+    m_writer.Key("y");
+    m_writer.Int(2);
+    m_writer.Key("z");
+    m_writer.Int(3);
+    m_writer.EndInlineTable();
+    m_writer.StartInlineTable();
+    m_writer.Key("x");
+    m_writer.Int(7);
+    m_writer.Key("y");
+    m_writer.Int(8);
+    m_writer.Key("z");
+    m_writer.Int(9);
+    m_writer.EndInlineTable();
+    m_writer.StartInlineTable();
+    m_writer.Key("x");
+    m_writer.Int(2);
+    m_writer.Key("y");
+    m_writer.Int(4);
+    m_writer.Key("z");
+    m_writer.Int(8);
+    m_writer.EndInlineTable();
+    m_writer.EndArray();
 
     Validate(R"(# Copyright Chad Engler
 [boolean]

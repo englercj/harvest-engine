@@ -321,52 +321,68 @@ HE_TEST(core, string_ops, StrFindLastN)
 }
 
 // ------------------------------------------------------------------------------------------------
+template <typename T>
+static void TestStrToInt(const char* str, T expected, uint32_t base = 10)
+{
+    T value = T(0);
+    HE_EXPECT(StrToInt<T>(value, str, nullptr, base));
+    HE_EXPECT_EQ(value, expected);
+}
+
 HE_TEST(core, string_ops, StrToInt)
 {
-    HE_EXPECT_EQ(StrToInt<char>(""), 0);
-    HE_EXPECT_EQ(StrToInt<short>(""), 0);
-    HE_EXPECT_EQ(StrToInt<int>(""), 0);
-    HE_EXPECT_EQ(StrToInt<long>(""), 0);
-    HE_EXPECT_EQ(StrToInt<long long>(""), 0);
+    TestStrToInt<char>("", 0);
+    TestStrToInt<short>("", 0);
+    TestStrToInt<int>("", 0);
+    TestStrToInt<long>("", 0);
+    TestStrToInt<long long>("", 0);
 
-    HE_EXPECT_EQ(StrToInt<unsigned char>(""), 0);
-    HE_EXPECT_EQ(StrToInt<unsigned short>(""), 0);
-    HE_EXPECT_EQ(StrToInt<unsigned int>(""), 0);
-    HE_EXPECT_EQ(StrToInt<unsigned long>(""), 0);
-    HE_EXPECT_EQ(StrToInt<unsigned long long>(""), 0);
+    TestStrToInt<unsigned char>("", 0);
+    TestStrToInt<unsigned short>("", 0);
+    TestStrToInt<unsigned int>("", 0);
+    TestStrToInt<unsigned long>("", 0);
+    TestStrToInt<unsigned long long>("", 0);
 
-    HE_EXPECT_EQ(StrToInt<char>("123"), 123);
-    HE_EXPECT_EQ(StrToInt<short>("-12345"), -12345);
-    HE_EXPECT_EQ(StrToInt<int>("12345678"), 12345678);
-    HE_EXPECT_EQ(StrToInt<long>("-12345678"), -12345678l);
-    HE_EXPECT_EQ(StrToInt<long long>("1234567890123456789"), 1234567890123456789ll);
+    TestStrToInt<char>("123", 123);
+    TestStrToInt<short>("-12345", -12345);
+    TestStrToInt<int>("12345678", 12345678);
+    TestStrToInt<long>("-12345678", -12345678l);
+    TestStrToInt<long long>("1234567890123456789", 1234567890123456789ll);
 
-    HE_EXPECT_EQ(StrToInt<unsigned char>("123"), 123);
-    HE_EXPECT_EQ(StrToInt<unsigned short>("12345"), 12345);
-    HE_EXPECT_EQ(StrToInt<unsigned int>("12345678"), 12345678);
-    HE_EXPECT_EQ(StrToInt<unsigned long>("1234567890"), 1234567890ul);
-    HE_EXPECT_EQ(StrToInt<unsigned long long>("12345678901234567890"), 12345678901234567890ull);
+    TestStrToInt<unsigned char>("123", 123);
+    TestStrToInt<unsigned short>("12345", 12345);
+    TestStrToInt<unsigned int>("12345678", 12345678);
+    TestStrToInt<unsigned long>("1234567890", 1234567890ul);
+    TestStrToInt<unsigned long long>("12345678901234567890", 12345678901234567890ull);
 
-    HE_EXPECT_EQ(StrToInt<char>("0x12", nullptr, 16), 0x12);
-    HE_EXPECT_EQ(StrToInt<short>("-0x1234", nullptr, 16), -0x1234);
-    HE_EXPECT_EQ(StrToInt<int>("12345678", nullptr, 16), 0x12345678);
-    HE_EXPECT_EQ(StrToInt<long>("-12345678", nullptr, 16), -0x12345678l);
-    HE_EXPECT_EQ(StrToInt<long long>("1234567890123456", nullptr, 16), 0x1234567890123456ll);
+    TestStrToInt<char>("0x12", 0x12, 16);
+    TestStrToInt<short>("-0x1234", -0x1234, 16);
+    TestStrToInt<int>("12345678", 0x12345678, 16);
+    TestStrToInt<long>("-12345678", -0x12345678l, 16);
+    TestStrToInt<long long>("1234567890123456", 0x1234567890123456ll, 16);
 
-    HE_EXPECT_EQ(StrToInt<unsigned char>("0x12", nullptr, 16), 0x12);
-    HE_EXPECT_EQ(StrToInt<unsigned short>("0x1234", nullptr, 16), 0x1234);
-    HE_EXPECT_EQ(StrToInt<unsigned int>("12345678", nullptr, 16), 0x12345678);
-    HE_EXPECT_EQ(StrToInt<unsigned long>("12345678", nullptr, 16), 0x12345678ul);
-    HE_EXPECT_EQ(StrToInt<unsigned long long>("1234567890123456", nullptr, 16), 0x1234567890123456ull);
+    TestStrToInt<unsigned char>("0x12", 0x12, 16);
+    TestStrToInt<unsigned short>("0x1234", 0x1234, 16);
+    TestStrToInt<unsigned int>("12345678", 0x12345678, 16);
+    TestStrToInt<unsigned long>("12345678", 0x12345678ul, 16);
+    TestStrToInt<unsigned long long>("1234567890123456", 0x1234567890123456ull, 16);
 
 }
 
 // ------------------------------------------------------------------------------------------------
+template <typename T>
+static void TestStrToFloat(const char* str, T expected)
+{
+    T value = T(0);
+    HE_EXPECT(StrToInt<T>(value, str));
+    HE_EXPECT_EQ(value, expected);
+}
+
 HE_TEST(core, string_ops, StrToFloat)
 {
-    HE_EXPECT_EQ(StrToFloat(""), 0.0f);
-    HE_EXPECT_EQ(StrToFloat<double>(""), 0.0);
+    TestStrToFloat<float>("", 0.0f);
+    TestStrToFloat<double>("", 0.0);
 
-    HE_EXPECT_EQ(StrToFloat("123.45"), 123.45f);
-    HE_EXPECT_EQ(StrToFloat<double>("12345.6789"), 12345.6789);
+    TestStrToFloat<float>("123.45", 123.45f);
+    TestStrToFloat<double>("12345.6789", 12345.6789);
 }

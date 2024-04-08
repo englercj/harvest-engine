@@ -479,4 +479,135 @@ points = [ { x = 1, y = 2, z = 3 },
 )";
         return s_document;
     }
+
+    StringView GetTestKdlDocument()
+    {
+        static const StringView s_document = R"(// Copyright Chad Engler
+
+boolean bool1=#true bool2=#false
+
+// Integers of various formats
+integers {
+    decimal int1=+99 int2=42 int3=0 int4=-17
+    decimal int5=1_000 int6=5_349_221 int7=53_49_221 int8=1_2_3_4_5
+    hexadecimal hex1=0xDEADBEEF hex2=0xdeadbeef hex3=0xdead_beef
+    octal oct1=0o01234567 oct2=0o755 // useful for Unix file permissions
+    binary bin1=0b11010110
+}
+
+// Floats of various formats
+floats {
+    decimal flt1=+1.0 flt2=3.1415 flt3=-0.01
+    exponent flt4=5e+22 flt5=1e06 flt6=-2E-2
+    both flt7=6.626e-34 flt8=224_617.445_991_228
+    special flt9=#inf flt10=#-inf flt11=#nan
+}
+
+// Strings of various formats
+strings {
+    escaped "I'm a string. \"You can quote me\". Name\tJos\xE9\nLocation\tSF."
+    multiline "
+Roses are red
+Violets are blue
+"
+    // the above multi-line string will be the same as:
+    multiline2 "Roses are red\nViolets are blue"
+
+    // The following strings are byte-for-byte equivalent:
+    fox "The quick brown fox jumps over the lazy dog."
+    fox2 "
+    The quick brown \
+
+
+    fox jumps over \
+        the lazy dog.
+    "
+
+    fox3 "
+        The quick brown \
+        fox jumps over \
+        the lazy dog.\
+        "
+
+    quote1 #"Here are two quotation marks: "". Simple enough."#
+    quote2 #"Here are three quotation marks: """."#
+    quote3 #"Here are fifteen quotation marks: """""""""""""""."#
+
+    winpath     #"C:\Users\nodejs\templates"#
+    winpath2    #"\\ServerX\admin$\system32\"#
+    quoted      #"Tom "Dubs" Preston-Werner"#
+    regex       #"<\i\c*\s*>"#
+    regex2      #"I [dw]on't need \d{2} apples"#
+    lines       #"
+    The first newline is
+    trimmed in multiline strings.
+    All other whitespace
+    is preserved.
+"#
+}
+
+// Nested nodes
+tables {
+    dotted.names.change.nothing {
+        contributors {
+            "Foo Bar" foo@example.com
+            "Baz Qux" email=bazqux@example.com url="https://example.com/bazqux"
+        }
+    }
+    points { point x=1 y=2 z=3; point x=7 y=8 z=9; point x=2 y=4 z=8; }
+    points { - 1 2 3; - 7 8 9; - 2 4 8; }
+}
+
+// Website
+!doctype html
+html lang=en {
+    head {
+        meta charset=utf-8
+        meta name=viewport content="width=device-width, initial-scale=1.0"
+        meta \
+            name=description \
+            content="kdl is a document language, mostly based on SDLang, with xml-like semantics that looks like you're invoking a bunch of CLI commands!"
+        title "kdl - The KDL Document Language"
+        link rel=stylesheet href="/styles/global.css"
+    }
+    body {
+        main {
+            header class="py-10 bg-gray-300" {
+                h1 class="text-4xl text-center" "kdl - The KDL Document Language"
+            }
+            section class=kdl-section id=description {
+                p {
+                    - "kdl is a document language, mostly based on "
+                    a href="https://sdlang.org" "SDLang"
+                    - " with xml-like semantics that looks like you're invoking a bunch of CLI commands"
+                }
+                p "It's meant to be used both as a serialization format and a configuration language, and is relatively light on syntax compared to XML."
+            }
+            section class=kdl-section id=design-and-discussion {
+                h2 "Design and Discussion"
+                p {
+                    - "kdl is still extremely new, and discussion about the format should happen over on the "
+                    a href="https://github.com/kdoclang/kdl/discussions" {
+                        - "discussions"
+                    }
+                    - " page in the Github repo. Feel free to jump in and give us your 2 cents!"
+                }
+            }
+            section class=kdl-section id=design-principles {
+                h2 "Design Principles"
+                ol {
+                    li Maintainability
+                    li Flexibility
+                    li "Cognitive simplicity and Learnability"
+                    li "Ease of de/serialization"
+                    li "Ease of implementation"
+                }
+            }
+        }
+    }
+}
+)";
+
+        return s_document;
+    }
 }

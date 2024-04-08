@@ -261,7 +261,7 @@ namespace he
     // }
 
     template <typename T>
-    HE_FORCE_INLINE bool StrToIntImpl(T& value, const char* str, const char** end, int32_t base)
+    HE_FORCE_INLINE bool StrToIntImpl(T& value, const char* str, const char** end, uint32_t base)
     {
         // A modified version of the `fast_float::from_chars` function.
         // Adds support for base prefixes (0x, 0b, 0o) and negative signs on unsigned types.
@@ -398,17 +398,17 @@ namespace he
         return true;
     }
 
-    template <> bool StrToInt(signed char& value, const char* str, const char** end, int32_t base) { return StrToIntImpl(value, str, end, base); }
-    template <> bool StrToInt(char& value, const char* str, const char** end, int32_t base) { return StrToIntImpl(value, str, end, base); }
-    template <> bool StrToInt(short& value, const char* str, const char** end, int32_t base) { return StrToIntImpl(value, str, end, base); }
-    template <> bool StrToInt(int& value, const char* str, const char** end, int32_t base) { return StrToIntImpl(value, str, end, base); }
-    template <> bool StrToInt(long& value, const char* str, const char** end, int32_t base) { return StrToIntImpl(value, str, end, base); }
-    template <> bool StrToInt(long long& value, const char* str, const char** end, int32_t base) { return StrToIntImpl(value, str, end, base); }
-    template <> bool StrToInt(unsigned char& value, const char* str, const char** end, int32_t base) { return StrToIntImpl(value, str, end, base); }
-    template <> bool StrToInt(unsigned short& value, const char* str, const char** end, int32_t base) { return StrToIntImpl(value, str, end, base); }
-    template <> bool StrToInt(unsigned int& value, const char* str, const char** end, int32_t base) { return StrToIntImpl(value, str, end, base); }
-    template <> bool StrToInt(unsigned long& value, const char* str, const char** end, int32_t base) { return StrToIntImpl(value, str, end, base); }
-    template <> bool StrToInt(unsigned long long& value, const char* str, const char** end, int32_t base) { return StrToIntImpl(value, str, end, base); }
+    template <> bool StrToInt(signed char& value, const char* str, const char** end, uint32_t base) { return StrToIntImpl(value, str, end, base); }
+    template <> bool StrToInt(char& value, const char* str, const char** end, uint32_t base) { return StrToIntImpl(value, str, end, base); }
+    template <> bool StrToInt(short& value, const char* str, const char** end, uint32_t base) { return StrToIntImpl(value, str, end, base); }
+    template <> bool StrToInt(int& value, const char* str, const char** end, uint32_t base) { return StrToIntImpl(value, str, end, base); }
+    template <> bool StrToInt(long& value, const char* str, const char** end, uint32_t base) { return StrToIntImpl(value, str, end, base); }
+    template <> bool StrToInt(long long& value, const char* str, const char** end, uint32_t base) { return StrToIntImpl(value, str, end, base); }
+    template <> bool StrToInt(unsigned char& value, const char* str, const char** end, uint32_t base) { return StrToIntImpl(value, str, end, base); }
+    template <> bool StrToInt(unsigned short& value, const char* str, const char** end, uint32_t base) { return StrToIntImpl(value, str, end, base); }
+    template <> bool StrToInt(unsigned int& value, const char* str, const char** end, uint32_t base) { return StrToIntImpl(value, str, end, base); }
+    template <> bool StrToInt(unsigned long& value, const char* str, const char** end, uint32_t base) { return StrToIntImpl(value, str, end, base); }
+    template <> bool StrToInt(unsigned long long& value, const char* str, const char** end, uint32_t base) { return StrToIntImpl(value, str, end, base); }
 
     template <typename T>
     HE_FORCE_INLINE bool StrToFloatImpl(T& value, const char* str, const char** end)

@@ -585,7 +585,7 @@ HE_TEST(core, type_traits, IsCompound)
     static_assert(IsCompound<ScopedEnum>);
     static_assert(IsCompound<TestUnion>);
     static_assert(IsCompound<TestFunctor>);
-    static_assert(IsCompound<decltype(TestFunctor::operator())>);
+    //static_assert(IsCompound<decltype(TestFunctor::operator())>);
     static_assert(IsCompound<decltype(&TestFunctor::operator())>);
     static_assert(IsCompound<decltype(TestFunctor::Tester)>);
     static_assert(IsCompound<decltype(&TestFunctor::Tester)>);

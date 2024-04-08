@@ -110,6 +110,12 @@ namespace he
         ArgResult ReadValue(const char* value);
 
         template <typename T>
+        bool ParseInt(const char* value, int32_t base);
+
+        template <typename T>
+        bool ParseFloat(const char* value);
+
+        template <typename T>
         void SetOrPushValue(const T& value);
 
     private:

@@ -47,25 +47,63 @@ namespace he
         /// Construct a null KDL value.
         KdlValue() noexcept : m_value(), m_type() {}
 
-        /// Construct a boolean KDL value.
+        /// Construct a KDL value.
+        ///
+        /// \param v The value to construct with.
+        /// \param t Optional. The type annotation of the value.
         KdlValue(bool v, StringView t = {}) noexcept : m_value(AsIndex<Kind::Bool>(), v), m_type(t) {}
 
-        /// Construct an integer KDL value.
-        KdlValue(int64_t v, StringView t = {}) noexcept : m_value(AsIndex<Kind::Int>(), v), m_type(t) {}
+        /// \copydoc KdlValue(bool,StringView)
+        KdlValue(signed char v, StringView t = {}) noexcept : m_value(AsIndex<Kind::Int>(), v), m_type(t) {}
 
-        /// Construct an unsigned integer KDL value.
-        KdlValue(uint64_t v, StringView t = {}) noexcept : m_value(AsIndex<Kind::Uint>(), v), m_type(t) {}
+        /// \copydoc KdlValue(bool,StringView)
+        KdlValue(short v, StringView t = {}) noexcept : m_value(AsIndex<Kind::Int>(), v), m_type(t) {}
 
-        /// Construct a floating point KDL value.
+        /// \copydoc KdlValue(bool,StringView)
+        KdlValue(int v, StringView t = {}) noexcept : m_value(AsIndex<Kind::Int>(), v), m_type(t) {}
+
+        /// \copydoc KdlValue(bool,StringView)
+        KdlValue(long v, StringView t = {}) noexcept : m_value(AsIndex<Kind::Int>(), v), m_type(t) {}
+
+        /// \copydoc KdlValue(bool,StringView)
+        KdlValue(long long v, StringView t = {}) noexcept : m_value(AsIndex<Kind::Int>(), v), m_type(t) {}
+
+        /// \copydoc KdlValue(bool,StringView)
+        KdlValue(unsigned char v, StringView t = {}) noexcept : m_value(AsIndex<Kind::Uint>(), v), m_type(t) {}
+
+        /// \copydoc KdlValue(bool,StringView)
+        KdlValue(unsigned short v, StringView t = {}) noexcept : m_value(AsIndex<Kind::Uint>(), v), m_type(t) {}
+
+        /// \copydoc KdlValue(bool,StringView)
+        KdlValue(unsigned int v, StringView t = {}) noexcept : m_value(AsIndex<Kind::Uint>(), v), m_type(t) {}
+
+        /// \copydoc KdlValue(bool,StringView)
+        KdlValue(unsigned long v, StringView t = {}) noexcept : m_value(AsIndex<Kind::Uint>(), v), m_type(t) {}
+
+        /// \copydoc KdlValue(bool,StringView)
+        KdlValue(unsigned long long v, StringView t = {}) noexcept : m_value(AsIndex<Kind::Uint>(), v), m_type(t) {}
+
+        /// \copydoc KdlValue(bool,StringView)
         KdlValue(double v, StringView t = {}) noexcept : m_value(AsIndex<Kind::Float>(), v), m_type(t) {}
 
-        /// Construct a string KDL value.
+        /// \copydoc KdlValue(bool,StringView)
         KdlValue(StringView v, StringView t = {}) noexcept : m_value(AsIndex<Kind::String>(), v), m_type(t) {}
+
+        /// \copydoc KdlValue(bool,StringView)
+        KdlValue(const char* v, StringView t = {}) noexcept : m_value(AsIndex<Kind::String>(), v), m_type(t) {}
+
+        /// \copydoc KdlValue(bool,StringView)
+        KdlValue(nullptr_t, StringView t = {}) noexcept : m_value(), m_type(t) {}
 
         /// Get the type annotation, if any, of the value.
         ///
         /// \return The type annotation of the value.
-        StringView Type() const { return m_type; }
+        const StringView& Type() const { return m_type; }
+
+        /// Get the underlying value variant.
+        ///
+        /// \return The underlying value variant.
+        const VariantType& Value() const { return m_value;}
 
         /// Set the type annotation of the value.
         ///
@@ -162,7 +200,7 @@ namespace he
         /// Use \ref IsBool to check the kind first.
         ///
         /// \return The boolean value.
-        bool GetBool() const { return Get<Kind::Bool>(); }
+        bool Bool() const { return Get<Kind::Bool>(); }
 
         /// Gets the value as an integer, if it is an integer.
         ///
@@ -170,7 +208,7 @@ namespace he
         /// Use \ref IsInt to check the kind first.
         ///
         /// \return The integer value.
-        int64_t GetInt() const { return Get<Kind::Int>(); }
+        int64_t Int() const { return Get<Kind::Int>(); }
 
         /// Gets the value as an unsigned integer, if it is an unsigned integer.
         ///
@@ -178,15 +216,16 @@ namespace he
         /// Use \ref IsUint to check the kind first.
         ///
         /// \return The unsigned integer value.
-        uint64_t GetUint() const { return Get<Kind::Uint>(); }
+        uint64_t Uint() const { return Get<Kind::Uint>(); }
 
-        /// Gets the value as a floating point number, if it is a floating point number.
+        /// Gets the value as a double-precision floating point number,
+        /// if it is a floating point number.
         ///
         /// \note This will assert if the value is not a floating point number.
         /// Use \ref IsFloat to check the kind first.
         ///
         /// \return The floating point number value.
-        double GetFloat() const { return Get<Kind::Float>(); }
+        double Float() const { return Get<Kind::Float>(); }
 
         /// Gets the value as a string, if it is a string.
         ///
@@ -194,7 +233,7 @@ namespace he
         /// Use \ref IsString to check the kind first.
         ///
         /// \return The string value.
-        StringView GetString() const { return Get<Kind::String>(); }
+        StringView String() const { return Get<Kind::String>(); }
 
         KdlValue& operator=(nullptr_t) { SetNull(); return *this; }
         KdlValue& operator=(bool v) { SetBool(v); return *this; }
@@ -211,6 +250,9 @@ namespace he
         KdlValue& operator=(double v) { SetFloat(v); return *this; }
         KdlValue& operator=(const char* v) { SetString(v); return *this; }
         KdlValue& operator=(StringView v) { SetString(v); return *this; }
+
+        [[nodiscard]] bool operator==(const KdlValue& x) const { return m_value == x.m_value && m_type == x.m_type; }
+        [[nodiscard]] bool operator!=(const KdlValue& x) const { return !(*this == x); }
 
     private:
         VariantType m_value;

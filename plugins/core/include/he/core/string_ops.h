@@ -322,7 +322,7 @@ namespace he
     ///     8, and anything else means base 10. The default value is base 10.
     /// \return True if the parse was successful, false otherwise.
     template <typename T>
-    [[nodiscard]] bool StrToInt(T& value, const char* str, const char** end = nullptr, int32_t base = 10);
+    bool StrToInt(T& value, const char* str, const char** end = nullptr, uint32_t base = 10);
 
     /// Parses the string into a floating point value and sets the pointer pointed to by `end` to
     /// point to the character past the last character interpreted. If `end` is a null pointer, it
@@ -342,7 +342,7 @@ namespace he
     ///     character past the last character interpreted in `str`.
     /// \return True if the parse was successful, false otherwise.
     template <typename T = float>
-    [[nodiscard]] bool StrToFloat(T& value, const char* str, const char** end = nullptr);
+    bool StrToFloat(T& value, const char* str, const char** end = nullptr);
 }
 
 #include "he/core/inline/string_ops.inl"

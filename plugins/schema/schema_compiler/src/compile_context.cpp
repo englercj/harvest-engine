@@ -333,7 +333,7 @@ namespace he::schema
             return false;
         }
 
-        if (!decodedIsTrivial && !UTF8Validate(out.Data()))
+        if (!decodedIsTrivial && !UTF8Validate(out.Data(), out.Size()))
         {
             AddError(GetStrLoc(), "Illegal UTF-8 sequence");
             return false;

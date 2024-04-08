@@ -17,4 +17,4 @@ homepage = "https://github.com/simdutf/simdutf"
     group = "engine/contrib"
     warnings = "Off"
     files = ["simdutf.h", "simdutf.cpp"]
-    public_includedirs = ["."]
+    public_externalincludedirs = ["."]

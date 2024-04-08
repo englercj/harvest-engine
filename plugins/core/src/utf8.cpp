@@ -2,6 +2,7 @@
 
 #include "he/core/utf8.h"
 
+#include "he/core/compiler.h"
 #include "he/core/string.h"
 #include "he/core/types.h"
 #include "he/core/utils.h"
@@ -112,6 +113,6 @@ namespace he
 
     uint32_t UTF8Length(const char* str, uint32_t len)
     {
-        return simdutf::count_utf8(str, len);
+        return static_cast<uint32_t>(simdutf::count_utf8(str, len));
     }
 }

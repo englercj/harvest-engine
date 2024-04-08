@@ -90,6 +90,8 @@ namespace he
         {
             writer.Write(str);
         }
+
+        return true;
     }
 
     static void WriteTypeAnnotation(StringWriter& writer, StringView type)
@@ -285,9 +287,9 @@ namespace he
     }
 
     template <typename T, typename... Args>
-    void WriteArg(StringWriter& writer, T value, StringView type, Args&&... args)
+    void WriteArg(StringWriter& writer, bool inNode, T value, StringView type, Args&&... args)
     {
-        if (!HE_VERIFY(m_inNode, HE_MSG("Cannot write argument outside of a node.")))
+        if (!HE_VERIFY(inNode, HE_MSG("Cannot write argument outside of a node.")))
             return;
 
         writer.Write(' ');
@@ -295,30 +297,30 @@ namespace he
         WriteValue(writer, value, Forward<Args>(args)...);
     }
 
-    void KdlWriter::Argument(bool value, StringView type) { WriteArg(m_writer, value, type); }
-    void KdlWriter::Argument(double value, StringView type, KdlFloatFormat format, int32_t precision) { WriteArg(m_writer, value, type, format, precision); }
-    void KdlWriter::Argument(StringView value, StringView type, KdlStringFormat format, uint32_t rawDelimiterCount) { WriteArg(m_writer, value, type, format, rawDelimiterCount); }
-    void KdlWriter::Argument(nullptr_t value, StringView type) { WriteArg(m_writer, value, type); }
+    void KdlWriter::Argument(bool value, StringView type) { WriteArg(m_writer, m_inNode, value, type); }
+    void KdlWriter::Argument(double value, StringView type, KdlFloatFormat format, int32_t precision) { WriteArg(m_writer, m_inNode, value, type, format, precision); }
+    void KdlWriter::Argument(StringView value, StringView type, KdlStringFormat format, uint32_t rawDelimiterCount) { WriteArg(m_writer, m_inNode, value, type, format, rawDelimiterCount); }
+    void KdlWriter::Argument(nullptr_t value, StringView type) { WriteArg(m_writer, m_inNode, value, type); }
 
-    void KdlWriter::IntArg(long long value, StringView type, KdlIntFormat format) { WriteArg(m_writer, value, type, format); }
-    void KdlWriter::UintArg(unsigned long long value, StringView type, KdlIntFormat format) { WriteArg(m_writer, value, type, format); }
+    void KdlWriter::IntArg(long long value, StringView type, KdlIntFormat format) { WriteArg(m_writer, m_inNode, value, type, format); }
+    void KdlWriter::UintArg(unsigned long long value, StringView type, KdlIntFormat format) { WriteArg(m_writer, m_inNode, value, type, format); }
 
     template <typename T, typename... Args>
-    void WriteProp(StringWriter& writer, StringView name, T value, StringView type, Args&&... args)
+    void WriteProp(StringWriter& writer, bool inNode, StringView name, T value, StringView type, Args&&... args)
     {
-        if (!HE_VERIFY(m_inNode, HE_MSG("Cannot write property outside of a node.")))
+        if (!HE_VERIFY(inNode, HE_MSG("Cannot write property outside of a node.")))
             return;
 
-        WritePropertyName(m_writer, name);
-        WriteTypeAnnotation(m_writer, type);
-        WriteValue(m_writer, value);
+        WritePropertyName(writer, name);
+        WriteTypeAnnotation(writer, type);
+        WriteValue(writer, value, Forward<Args>(args)...);
     }
 
-    void KdlWriter::Property(StringView name, bool value, StringView type) { WriteProp(m_writer, name, value, type); }
-    void KdlWriter::Property(StringView name, double value, StringView type, KdlFloatFormat format, int32_t precision) { WriteProp(m_writer, name, value, type, format, precision); }
-    void KdlWriter::Property(StringView name, StringView value, StringView type, KdlStringFormat format, uint32_t rawDelimiterCount) { WriteProp(m_writer, name, value, type, format, rawDelimiterCount); }
-    void KdlWriter::Property(StringView name, nullptr_t value, StringView type) { WriteProp(m_writer, name, value, type); }
+    void KdlWriter::Property(StringView name, bool value, StringView type) { WriteProp(m_writer, m_inNode, name, value, type); }
+    void KdlWriter::Property(StringView name, double value, StringView type, KdlFloatFormat format, int32_t precision) { WriteProp(m_writer, m_inNode, name, value, type, format, precision); }
+    void KdlWriter::Property(StringView name, StringView value, StringView type, KdlStringFormat format, uint32_t rawDelimiterCount) { WriteProp(m_writer, m_inNode, name, value, type, format, rawDelimiterCount); }
+    void KdlWriter::Property(StringView name, nullptr_t value, StringView type) { WriteProp(m_writer, m_inNode, name, value, type); }
 
-    void KdlWriter::IntProp(StringView name, long long value, StringView type, KdlIntFormat format) { WriteProp(m_writer, name, value, type, format); }
-    void KdlWriter::UintProp(StringView name, unsigned long long value, StringView type, KdlIntFormat format) { WriteProp(m_writer, name, value, type, format); }
+    void KdlWriter::IntProp(StringView name, long long value, StringView type, KdlIntFormat format) { WriteProp(m_writer, m_inNode, name, value, type, format); }
+    void KdlWriter::UintProp(StringView name, unsigned long long value, StringView type, KdlIntFormat format) { WriteProp(m_writer, m_inNode, name, value, type, format); }
 }

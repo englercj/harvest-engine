@@ -128,7 +128,7 @@ namespace he
             while (!AtEnd() && PeekCodePoint(ucc, len))
             {
                 // escaped newlines are considered normal spaces
-                if (ucc = '\\')
+                if (ucc == '\\')
                 {
                     m_cursor += len;
                     if (!ConsumeNewLine())
@@ -163,7 +163,7 @@ namespace he
             if (!PeekCodePoint(ucc, len))
                 return false;
 
-            if (ucc != ch)
+            if (ucc != static_cast<uint32_t>(ch))
                 return SetError(KdlReadError::InvalidToken, ch);
 
             m_cursor += len;
@@ -186,7 +186,7 @@ namespace he
         {
             while (*chars)
             {
-                if (ucc == *chars++)
+                if (ucc == static_cast<uint32_t>(*chars++))
                     return true;
             }
 
@@ -304,14 +304,14 @@ namespace he
 
         [[nodiscard]] bool ConsumeDedentPrefix(StringView dedentPrefix)
         {
-            for (const uint32_t expectedUcc : Utf8Splitter(dedentPrefix))
+            for (const char ch : dedentPrefix)
             {
-                uint32_t ucc = 0;
-                if (!ConsumeCodePoint(ucc))
-                    return false;
+                if (*m_cursor != ch)
+                {
+                    return SetError(KdlReadError::InvalidToken, ch);
+                }
 
-                if (ucc != expectedUcc)
-                    return SetError(KdlReadError::InvalidToken, expectedUcc);
+                ++m_cursor;
             }
 
             return true;
@@ -452,7 +452,7 @@ namespace he
                     else
                     {
                         // unescaped newlines are not allowed in single-line strings
-                        return SetError(KdlReadError::InvalidToken);
+                        return SetError(KdlReadError::InvalidControlChar);
                     }
                     continue;
                 }
@@ -697,8 +697,6 @@ namespace he
                     // Scan forward until we find a newline
                     while (!AtEnd())
                     {
-                        uint32_t ucc = 0;
-                        uint32_t len = 0;
                         if (!PeekCodePoint(ucc, len))
                             return false;
 
@@ -731,7 +729,6 @@ namespace he
                         if (AtEnd())
                             return SetError(KdlReadError::UnexpectedEof);
 
-                        uint32_t ucc = 0;
                         if (!ConsumeCodePoint(ucc))
                             return false;
 
@@ -798,7 +795,6 @@ namespace he
             }
 
             // Next must be: whitespace, newline, semicolon, single-line comment
-            uint32_t len = 0;
             if (!PeekCodePoint(ucc, len))
                 return false;
 
@@ -1283,8 +1279,7 @@ namespace he
                 case '7':
                 case '8':
                 case '9':
-                    ParseNum(type, propName);
-                    break;
+                    return ParseNum(type, propName);
                 // could be a number or the start of an identifier string
                 case '-':
                 case '+':
@@ -1339,7 +1334,7 @@ namespace he
     };
 
     // --------------------------------------------------------------------------------------------
-    KdlReader::KdlReader(Allocator& allocator = Allocator::GetDefault()) noexcept
+    KdlReader::KdlReader(Allocator& allocator) noexcept
         : m_allocator(allocator)
     {}
 
@@ -1358,7 +1353,9 @@ namespace he
             case KdlReadError::None: return "None";
             case KdlReadError::Cancelled: return "Cancelled";
             case KdlReadError::UnexpectedEof: return "UnexpectedEof";
+            case KdlReadError::DisallowedUtf8: return "DisallowedUtf8";
             case KdlReadError::InvalidBom: return "InvalidBom";
+            case KdlReadError::InvalidUtf8: return "InvalidUtf8";
             case KdlReadError::InvalidEscapeSequence: return "InvalidEscapeSequence";
             case KdlReadError::InvalidControlChar: return "InvalidControlChar";
             case KdlReadError::InvalidIdentifier: return "InvalidKey";
@@ -1366,5 +1363,7 @@ namespace he
             case KdlReadError::InvalidToken: return "InvalidToken";
             case KdlReadError::InvalidDocument: return "InvalidDocument";
         }
+
+        return "<unknown>";
     }
 }

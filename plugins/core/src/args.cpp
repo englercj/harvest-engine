@@ -253,6 +253,30 @@ namespace he
         return ArgResult(ArgResult::Success);
     }
 
+    template <typename T>
+    bool ArgDesc::ParseInt(const char* value, int32_t base)
+    {
+        T val = 0;
+        if (!StrToInt(val, value, nullptr, base))
+            return false;
+
+        SetOrPushValue(val);
+        m_hasValue = true;
+        return true;
+    }
+
+    template <typename T>
+    bool ArgDesc::ParseFloat(const char* value)
+    {
+        T val = 0;
+        if (!StrToFloat(val, value, nullptr))
+            return false;
+
+        SetOrPushValue(val);
+        m_hasValue = true;
+        return true;
+    }
+
     ArgResult ArgDesc::ReadIntValue(const char* value)
     {
         const uint32_t b = DetectBase(value);
@@ -266,12 +290,11 @@ namespace he
         if (b == 2 || b == 16)
             value++;
 
+        ArgResult invalidResult(ArgResult::InvalidValue, "Failed to parse value as integer: ");
+        invalidResult.msg += originalValue;
+
         if ((b == 16 && !IsHex(value)) || (b != 16 && !IsInteger(value)))
-        {
-            ArgResult result(ArgResult::InvalidValue, "Failed to parse value as integer: ");
-            result.msg += originalValue;
-            return result;
-        }
+            return invalidResult;
 
         switch (m_size)
         {
@@ -279,60 +302,56 @@ namespace he
             {
                 if (IsSignedValue())
                 {
-                    const int64_t val = StrToInt<int64_t>(value, nullptr, b);
-                    SetOrPushValue(val);
+                    if (!ParseInt<int64_t>(value, b))
+                        return invalidResult;
                 }
                 else
                 {
-                    const uint64_t val = StrToInt<uint64_t>(value, nullptr, b);
-                    SetOrPushValue(val);
+                    if (!ParseInt<uint64_t>(value, b))
+                        return invalidResult;
                 }
-                m_hasValue = true;
                 break;
             }
             case 4:
             {
                 if (IsSignedValue())
                 {
-                    const int32_t val = StrToInt<int32_t>(value, nullptr, b);
-                    SetOrPushValue(val);
+                    if (!ParseInt<int32_t>(value, b))
+                        return invalidResult;
                 }
                 else
                 {
-                    const uint32_t val = StrToInt<uint32_t>(value, nullptr, b);
-                    SetOrPushValue(val);
+                    if (!ParseInt<uint32_t>(value, b))
+                        return invalidResult;
                 }
-                m_hasValue = true;
                 break;
             }
             case 2:
             {
                 if (IsSignedValue())
                 {
-                    const int16_t val = StrToInt<int16_t>(value, nullptr, b);
-                    SetOrPushValue(val);
+                    if (!ParseInt<int16_t>(value, b))
+                        return invalidResult;
                 }
                 else
                 {
-                    const uint16_t val = StrToInt<uint16_t>(value, nullptr, b);
-                    SetOrPushValue(val);
+                    if (!ParseInt<uint16_t>(value, b))
+                        return invalidResult;
                 }
-                m_hasValue = true;
                 break;
             }
             case 1:
             {
                 if (IsSignedValue())
                 {
-                    const int8_t val = StrToInt<int8_t>(value, nullptr, b);
-                    SetOrPushValue(val);
+                    if (!ParseInt<int8_t>(value, b))
+                        return invalidResult;
                 }
                 else
                 {
-                    const uint8_t val = StrToInt<uint8_t>(value, nullptr, b);
-                    SetOrPushValue(val);
+                    if (!ParseInt<uint8_t>(value, b))
+                        return invalidResult;
                 }
-                m_hasValue = true;
                 break;
             }
             default:
@@ -354,27 +373,24 @@ namespace he
 
     ArgResult ArgDesc::ReadFloatValue(const char* value)
     {
+        ArgResult invalidResult(ArgResult::InvalidValue, "Failed to parse value as float: ");
+        invalidResult.msg += value;
+
         if (!IsFloat(value))
-        {
-            ArgResult result(ArgResult::InvalidValue, "Failed to parse value as float: ");
-            result.msg += value;
-            return result;
-        }
+            return invalidResult;
 
         switch (m_size)
         {
             case 8:
             {
-                const double val = StrToFloat<double>(value);
-                SetOrPushValue(val);
-                m_hasValue = true;
+                if (!ParseFloat<double>(value))
+                    return invalidResult;
                 break;
             }
             case 4:
             {
-                const float val = StrToFloat<float>(value);
-                SetOrPushValue(val);
-                m_hasValue = true;
+                if (!ParseFloat<float>(value))
+                    return invalidResult;
                 break;
             }
             default:

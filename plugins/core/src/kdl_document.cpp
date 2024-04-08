@@ -49,7 +49,7 @@ namespace he
                 return true;
 
             Vector<KdlNode>& children = m_nodeStack.IsEmpty() ? m_doc.Nodes() : m_nodeStack.Back()->Children();
-            KdlNode& node = children.EmplaceBack(m_doc.GetAllocator());
+            KdlNode& node = children.EmplaceBack(name, type, m_doc.GetAllocator());
             m_nodeStack.PushBack(&node);
             return true;
         }
@@ -119,11 +119,11 @@ namespace he
         {
             switch (value.GetKind())
             {
-                case KdlValue::Kind::Bool: writer.Argument(value.GetBool(), value.Type()); break;
-                case KdlValue::Kind::Int: writer.Argument(value.GetInt(), value.Type()); break;
-                case KdlValue::Kind::Uint: writer.Argument(value.GetUint(), value.Type()); break;
-                case KdlValue::Kind::Float: writer.Argument(value.GetFloat(), value.Type()); break;
-                case KdlValue::Kind::String: writer.Argument(value.GetString(), value.Type()); break;
+                case KdlValue::Kind::Bool: writer.Argument(value.Bool(), value.Type()); break;
+                case KdlValue::Kind::Int: writer.Argument(value.Int(), value.Type()); break;
+                case KdlValue::Kind::Uint: writer.Argument(value.Uint(), value.Type()); break;
+                case KdlValue::Kind::Float: writer.Argument(value.Float(), value.Type()); break;
+                case KdlValue::Kind::String: writer.Argument(value.String(), value.Type()); break;
                 case KdlValue::Kind::Null: writer.Argument(nullptr, value.Type()); break;
             }
         }
@@ -134,11 +134,11 @@ namespace he
             const KdlValue& value = entry.value;
             switch (value.GetKind())
             {
-                case KdlValue::Kind::Bool: writer.Property(name, value.GetBool(), value.Type()); break;
-                case KdlValue::Kind::Int: writer.Property(name, value.GetInt(), value.Type()); break;
-                case KdlValue::Kind::Uint: writer.Property(name, value.GetUint(), value.Type()); break;
-                case KdlValue::Kind::Float: writer.Property(name, value.GetFloat(), value.Type()); break;
-                case KdlValue::Kind::String: writer.Property(name, value.GetString(), value.Type()); break;
+                case KdlValue::Kind::Bool: writer.Property(name, value.Bool(), value.Type()); break;
+                case KdlValue::Kind::Int: writer.Property(name, value.Int(), value.Type()); break;
+                case KdlValue::Kind::Uint: writer.Property(name, value.Uint(), value.Type()); break;
+                case KdlValue::Kind::Float: writer.Property(name, value.Float(), value.Type()); break;
+                case KdlValue::Kind::String: writer.Property(name, value.String(), value.Type()); break;
                 case KdlValue::Kind::Null: writer.Property(name, nullptr, value.Type()); break;
             }
         }
@@ -176,6 +176,7 @@ namespace he
     String KdlDocument::ToString() const
     {
         String kdl;
+        kdl.Reserve(1024);
         Write(kdl);
         return kdl;
     }

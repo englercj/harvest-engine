@@ -29,7 +29,7 @@ namespace he
     struct KdlReadResult
     {
         /// The error that occurred while reading the document.
-        KdlReadError error = KdlReadError::None;
+        KdlReadError error{ KdlReadError::None };
 
         /// The line where the error occurred.
         uint32_t line{ 0 };
@@ -104,7 +104,7 @@ namespace he
             /// \param[in] name The name of the node.
             /// \param[in] type The type annotation, if any, on the node.
             /// \return True to continue reading, false to stop.
-            virtual bool StartNode(StringView name, StringView type) = 0;
+            virtual bool StartNode(StringView name, const StringView* type) = 0;
 
             /// Called when the end of a node is encountered.
             ///
@@ -116,44 +116,44 @@ namespace he
             /// \param[in] value The argument value.
             /// \param[in] type The type annotation, if any, on the argument value.
             /// \return True to continue reading, false to stop.
-            virtual bool Argument(bool value, StringView type) = 0;
+            virtual bool Argument(bool value, const StringView* type) = 0;
 
             /// \copydoc Argument(bool)
-            virtual bool Argument(int64_t value, StringView type) = 0;
+            virtual bool Argument(int64_t value, const StringView* type) = 0;
 
             /// \copydoc Argument(bool)
-            virtual bool Argument(uint64_t value, StringView type) = 0;
+            virtual bool Argument(uint64_t value, const StringView* type) = 0;
 
             /// \copydoc Argument(bool)
-            virtual bool Argument(double value, StringView type) = 0;
+            virtual bool Argument(double value, const StringView* type) = 0;
 
             /// \copydoc Argument(bool)
-            virtual bool Argument(StringView value, StringView type) = 0;
+            virtual bool Argument(StringView value, const StringView* type) = 0;
 
             /// \copydoc Argument(bool)
-            virtual bool Argument(nullptr_t, StringView type) = 0;
+            virtual bool Argument(nullptr_t, const StringView* type) = 0;
 
             /// Called when a property is encountered.
             ///
             /// \param[in] name The name of the property.
             /// \param[in] value The value of the property.
             /// \param[in] type The type annotation, if any, on the property value.
-            virtual bool Property(StringView name, bool value, StringView type) = 0;
+            virtual bool Property(StringView name, bool value, const StringView* type) = 0;
 
             /// \copydoc Property(StringView, bool)
-            virtual bool Property(StringView name, int64_t value, StringView type) = 0;
+            virtual bool Property(StringView name, int64_t value, const StringView* type) = 0;
 
             /// \copydoc Property(StringView, bool)
-            virtual bool Property(StringView name, uint64_t value, StringView type) = 0;
+            virtual bool Property(StringView name, uint64_t value, const StringView* type) = 0;
 
             /// \copydoc Property(StringView, bool)
-            virtual bool Property(StringView name, double value, StringView type) = 0;
+            virtual bool Property(StringView name, double value, const StringView* type) = 0;
 
             /// \copydoc Property(StringView, bool)
-            virtual bool Property(StringView name, StringView value, StringView type) = 0;
+            virtual bool Property(StringView name, StringView value, const StringView* type) = 0;
 
             /// \copydoc Property(StringView, bool)
-            virtual bool Property(StringView name, nullptr_t value, StringView type) = 0;
+            virtual bool Property(StringView name, nullptr_t value, const StringView* type) = 0;
         };
 
     public:

@@ -42,7 +42,7 @@ namespace he
         static constexpr T Sqrt2 = T(1.41421356237309504880);
 
         /// The reciprical of the square root of 2.
-        static constexpr T Sqrt2Rcp = T(0.707106781186547524401);
+        static constexpr T Sqrt2Rcp = T(0.70710678118654746);
     };
 
     /// The floating-point classification of a value.
@@ -168,6 +168,44 @@ namespace he
 
     /// \copydoc HasSignBit(float)
     constexpr bool HasSignBit(long double x) noexcept;
+
+    /// Returns the absolute value of the parameter.
+    ///
+    /// \param x The value to get the absolute value of.
+    /// \return The absolute value of `x`.
+    constexpr float Abs(float x) noexcept;
+
+    /// \copydoc Abs(float)
+    constexpr double Abs(double x) noexcept;
+
+    /// \copydoc Abs(float)
+    constexpr long double Abs(long double x) noexcept;
+
+    /// Returns the minimum of the two parameters.
+    ///
+    /// \param x The first value to compare.
+    /// \param y The second value to compare.
+    /// \return The minimum of `x` and `y`.
+    constexpr float Min(float x, float y) noexcept;
+
+    /// \copydoc Min(float, float)
+    constexpr double Min(double x, double y) noexcept;
+
+    /// \copydoc Min(float, float)
+    constexpr long double Min(long double x, long double y) noexcept;
+
+    /// Returns the maximum of the two parameters.
+    ///
+    /// \param x The first value to compare.
+    /// \param y The second value to compare.
+    /// \return The maximum of `x` and `y`.
+    constexpr float Max(float x, float y) noexcept;
+
+    /// \copydoc Max(float, float)
+    constexpr double Max(double x, double y) noexcept;
+
+    /// \copydoc Max(float, float)
+    constexpr long double Max(long double x, long double y) noexcept;
 
     /// Floors the parameter down to the previous integer value.
     ///
@@ -382,23 +420,42 @@ namespace he
     /// \copydoc Exp(float)
     double Exp(double x) noexcept;
 
-    /// Calculates the natural logarithm (base-e) of the parameter.
+    /// Calculates the natural (base-e) logarithm of the parameter.
     ///
     /// \param x The value to calculate the logarithm of.
     /// \return The natural (base-e) logarithm of `x`.
-    float Ln(float x) noexcept;
+    float Log(float x) noexcept;
 
-    /// \copydoc Ln(float)
-    double Ln(double x) noexcept;
+    /// \copydoc Log(float)
+    double Log(double x) noexcept;
 
-    /// Calculates the base-2 logarithm of the parameter.
+    /// Calculates the binary (base-2) logarithm of the parameter.
     ///
     /// \param x The value to calculate the logarithm of.
     /// \return The base-2 logarithm of `x`.
-    float Lb(float x) noexcept;
+    float Log2(float x) noexcept;
 
-    /// \copydoc Lb(float)
-    double Lb(double x) noexcept;
+    /// \copydoc Log2(float)
+    double Log2(double x) noexcept;
+
+    /// Calculates the common (base-10) logarithm of the parameter.
+    ///
+    /// \param x The value to calculate the logarithm of.
+    /// \return The base-10 logarithm of `x`.
+    float Log10(float x) noexcept;
+
+    /// \copydoc Log2(float)
+    double Log10(double x) noexcept;
+
+    /// Calculates the natural (base-e) logarithm of one plus the parameter.
+    /// This is more accurate than `Log(1 + x)` for small values of `x`.
+    ///
+    /// \param x The value to calculate the logarithm of.
+    /// \return The base-e logarithm of `1 + x`.
+    float Log1p(float x) noexcept;
+
+    /// \copydoc Log1p(float)
+    double Log1p(double x) noexcept;
 
     /// Calculates the base-`n` logarithm of the parameter.
     ///

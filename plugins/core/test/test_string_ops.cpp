@@ -269,21 +269,22 @@ HE_TEST(core, string_ops, StrCatN)
 HE_TEST(core, string_ops, StrFind)
 {
     constexpr char Haystack[] = "Hello, world!";
+    const char* result = nullptr;
 
-    const char* result = StrFind(Haystack, 'z');
-    HE_EXPECT(result == nullptr);
+    result = StrFind(Haystack, 'z');
+    HE_EXPECT_EQ_PTR(result, nullptr);
 
     result = StrFind(Haystack, 'o');
-    HE_EXPECT(result == (Haystack + 4));
+    HE_EXPECT_EQ_PTR(result, (Haystack + 4));
 
     result = StrFind(Haystack, '!');
-    HE_EXPECT(result == (Haystack + 12));
+    HE_EXPECT_EQ_PTR(result, (Haystack + 12));
 
     result = StrFind(Haystack, "Hello!");
-    HE_EXPECT(result == nullptr);
+    HE_EXPECT_EQ_PTR(result, nullptr);
 
     result = StrFind(Haystack, "world");
-    HE_EXPECT(result == (Haystack + 7));
+    HE_EXPECT_EQ_PTR(result, (Haystack + 7));
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -331,17 +332,17 @@ static void TestStrToInt(const char* str, T expected, uint32_t base = 10)
 
 HE_TEST(core, string_ops, StrToInt)
 {
-    TestStrToInt<char>("", 0);
-    TestStrToInt<short>("", 0);
-    TestStrToInt<int>("", 0);
-    TestStrToInt<long>("", 0);
-    TestStrToInt<long long>("", 0);
+    TestStrToInt<char>("0", 0);
+    TestStrToInt<short>("0", 0);
+    TestStrToInt<int>("0", 0);
+    TestStrToInt<long>("0", 0);
+    TestStrToInt<long long>("0", 0);
 
-    TestStrToInt<unsigned char>("", 0);
-    TestStrToInt<unsigned short>("", 0);
-    TestStrToInt<unsigned int>("", 0);
-    TestStrToInt<unsigned long>("", 0);
-    TestStrToInt<unsigned long long>("", 0);
+    TestStrToInt<unsigned char>("0", 0);
+    TestStrToInt<unsigned short>("0", 0);
+    TestStrToInt<unsigned int>("0", 0);
+    TestStrToInt<unsigned long>("0", 0);
+    TestStrToInt<unsigned long long>("0", 0);
 
     TestStrToInt<char>("123", 123);
     TestStrToInt<short>("-12345", -12345);
@@ -374,14 +375,14 @@ template <typename T>
 static void TestStrToFloat(const char* str, T expected)
 {
     T value = T(0);
-    HE_EXPECT(StrToInt<T>(value, str));
+    HE_EXPECT(StrToFloat<T>(value, str));
     HE_EXPECT_EQ(value, expected);
 }
 
 HE_TEST(core, string_ops, StrToFloat)
 {
-    TestStrToFloat<float>("", 0.0f);
-    TestStrToFloat<double>("", 0.0);
+    TestStrToFloat<float>("0", 0.0f);
+    TestStrToFloat<double>("0", 0.0);
 
     TestStrToFloat<float>("123.45", 123.45f);
     TestStrToFloat<double>("12345.6789", 12345.6789);

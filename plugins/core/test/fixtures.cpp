@@ -324,7 +324,7 @@ sf5 = +nan # same as `nan`
 sf6 = -nan # valid, actual encoding is implementation-specific
 
 [string]
-str = "I'm a string. \"You can quote me\". Name\tJos\xE9\nLocation\tSF."
+str = "I'm a string. \"You can quote me\". Name\tJos\xe9\nLocation\tSF."
 str1 = """
 Roses are red
 Violets are blue"""
@@ -505,7 +505,7 @@ floats {
 
 // Strings of various formats
 strings {
-    escaped "I'm a string. \"You can quote me\". Name\tJos\xE9\nLocation\tSF."
+    escaped "I'm a string. \"You can quote me\". Name\tJos\u{e9}\nLocation\tSF."
     multiline "
 Roses are red
 Violets are blue

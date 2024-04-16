@@ -8,6 +8,7 @@
 
 #include "he/core/test.h"
 #include "he/core/types.h"
+#include "he/core/optional_fmt.h"
 #include "he/core/variant_fmt.h"
 
 using namespace he;
@@ -30,7 +31,7 @@ struct KdlEvent
 
     Kind kind{ Kind::StartComment };
     String name{};
-    String type{};
+    Optional<String> type{};
     KdlValue value{};
 
     [[nodiscard]] bool operator==(const KdlEvent& x) const { return kind == x.kind && name == x.name && value == x.value; }
@@ -65,20 +66,22 @@ struct he::Formatter<KdlEvent>
 
     void Format(String& out, const KdlEvent& evt) const
     {
-        FormatTo(out, "{} ", evt.kind);
+        FormatTo(out, "{{ {}", evt.kind);
 
         switch (evt.kind)
         {
             case KdlEvent::Kind::StartDocument: break;
             case KdlEvent::Kind::EndDocument: break;
-            case KdlEvent::Kind::Comment: FormatTo(out, "({})", evt.name); break;
+            case KdlEvent::Kind::Comment: FormatTo(out, ", value = {}", evt.value); break;
             case KdlEvent::Kind::StartComment: break;
             case KdlEvent::Kind::EndComment: break;
-            case KdlEvent::Kind::StartNode: FormatTo(out, "({})", evt.name); break;
+            case KdlEvent::Kind::StartNode: FormatTo(out, ", name = {}, type = {}", evt.name, evt.type); break;
             case KdlEvent::Kind::EndNode: break;
-            case KdlEvent::Kind::Argument: FormatTo(out, "({})", evt.value); break;
-            case KdlEvent::Kind::Property: FormatTo(out, "({}={})", evt.name, evt.value); break;
+            case KdlEvent::Kind::Argument: FormatTo(out, ", value = {}, type = {}", evt.value, evt.type); break;
+            case KdlEvent::Kind::Property: FormatTo(out, ", name = {}, value = {}, type = {}", evt.name, evt.value, evt.type); break;
         }
+
+        out += " }";
     }
 };
 
@@ -86,13 +89,13 @@ struct he::Formatter<KdlEvent>
 class KdlReaderEventHandler : public KdlReader::Handler
 {
 public:
-    void Validate(Span<const KdlEvent> expected) const
+    void Validate(StringView input, Span<const KdlEvent> expected) const
     {
         HE_EXPECT_EQ(m_events.Size(), expected.Size());
 
         for (uint32_t i = 0; i < expected.Size(); ++i)
         {
-            HE_EXPECT_EQ(m_events[i], expected[i]);
+            HE_EXPECT_EQ(m_events[i], expected[i], input);
         }
     }
 
@@ -102,117 +105,156 @@ public:
     }
 
 private:
-    bool StartDocument()
+    bool StartDocument() override
     {
         m_events.PushBack({ .kind = KdlEvent::Kind::StartDocument });
         return true;
     }
 
-    bool EndDocument()
+    bool EndDocument() override
     {
         m_events.PushBack({ .kind = KdlEvent::Kind::EndDocument });
         return true;
     }
 
-    bool Comment(StringView value)
+    bool Comment(StringView value) override
     {
         m_events.PushBack({ .kind = KdlEvent::Kind::Comment, .value = value });
         return true;
     }
 
-    bool StartComment()
+    bool StartComment() override
     {
         m_events.PushBack({ .kind = KdlEvent::Kind::StartComment });
         return true;
     }
 
-    bool EndComment()
+    bool EndComment() override
     {
         m_events.PushBack({ .kind = KdlEvent::Kind::EndComment });
         return true;
     }
 
-    bool StartNode(StringView name, StringView type)
+    bool StartNode(StringView name, const StringView* type) override
     {
-        m_events.PushBack({ .kind = KdlEvent::Kind::StartNode, .name = name, .value = type });
+        if (type)
+            m_events.PushBack({ .kind = KdlEvent::Kind::StartNode, .name = name, .type = *type });
+        else
+            m_events.PushBack({ .kind = KdlEvent::Kind::StartNode, .name = name });
         return true;
     }
 
-    bool EndNode()
+    bool EndNode() override
     {
         m_events.PushBack({ .kind = KdlEvent::Kind::EndNode });
         return true;
     }
 
-    bool Argument(bool value, StringView type)
+    bool Argument(bool value, const StringView* type) override
     {
-        m_events.PushBack({ .kind = KdlEvent::Kind::Argument, .type = type, .value = value });
+        if (type)
+            m_events.PushBack({ .kind = KdlEvent::Kind::Argument, .type = *type, .value = value });
+        else
+            m_events.PushBack({ .kind = KdlEvent::Kind::Argument, .value = value });
         return true;
     }
 
-    bool Argument(int64_t value, StringView type)
+    bool Argument(int64_t value, const StringView* type) override
     {
-        m_events.PushBack({ .kind = KdlEvent::Kind::Argument, .type = type, .value = value });
+        if (type)
+            m_events.PushBack({ .kind = KdlEvent::Kind::Argument, .type = *type, .value = value });
+        else
+            m_events.PushBack({ .kind = KdlEvent::Kind::Argument, .value = value });
         return true;
     }
 
-    bool Argument(uint64_t value, StringView type)
+    bool Argument(uint64_t value, const StringView* type) override
     {
-        m_events.PushBack({ .kind = KdlEvent::Kind::Argument, .type = type, .value = value });
+        if (type)
+            m_events.PushBack({ .kind = KdlEvent::Kind::Argument, .type = *type, .value = value });
+        else
+            m_events.PushBack({ .kind = KdlEvent::Kind::Argument, .value = value });
         return true;
     }
 
-    bool Argument(double value, StringView type)
+    bool Argument(double value, const StringView* type) override
     {
-        m_events.PushBack({ .kind = KdlEvent::Kind::Argument, .type = type, .value = value });
+        if (type)
+            m_events.PushBack({ .kind = KdlEvent::Kind::Argument, .type = *type, .value = value });
+        else
+            m_events.PushBack({ .kind = KdlEvent::Kind::Argument, .value = value });
         return true;
     }
 
-    bool Argument(StringView value, StringView type)
+    bool Argument(StringView value, const StringView* type) override
     {
-        m_events.PushBack({ .kind = KdlEvent::Kind::Argument, .type = type, .value = value });
+        if (type)
+            m_events.PushBack({ .kind = KdlEvent::Kind::Argument, .type = *type, .value = value });
+        else
+            m_events.PushBack({ .kind = KdlEvent::Kind::Argument, .value = value });
         return true;
     }
 
-    bool Argument(nullptr_t, StringView type)
+    bool Argument(nullptr_t, const StringView* type) override
     {
-        m_events.PushBack({ .kind = KdlEvent::Kind::Argument, .type = type, .value = nullptr });
+        if (type)
+            m_events.PushBack({ .kind = KdlEvent::Kind::Argument, .type = *type, .value = nullptr });
+        else
+            m_events.PushBack({ .kind = KdlEvent::Kind::Argument, .value = nullptr });
         return true;
     }
 
-    bool Property(StringView name, bool value, StringView type)
+    bool Property(StringView name, bool value, const StringView* type) override
     {
-        m_events.PushBack({ .kind = KdlEvent::Kind::Property, .name = name, .type = type, .value = value });
+        if (type)
+            m_events.PushBack({ .kind = KdlEvent::Kind::Property, .name = name, .type = *type, .value = value });
+        else
+            m_events.PushBack({ .kind = KdlEvent::Kind::Property, .name = name, .value = value });
         return true;
     }
 
-    bool Property(StringView name, int64_t value, StringView type)
+    bool Property(StringView name, int64_t value, const StringView* type) override
     {
-        m_events.PushBack({ .kind = KdlEvent::Kind::Property, .name = name, .type = type, .value = value });
+        if (type)
+            m_events.PushBack({ .kind = KdlEvent::Kind::Property, .name = name, .type = *type, .value = value });
+        else
+            m_events.PushBack({ .kind = KdlEvent::Kind::Property, .name = name, .value = value });
         return true;
     }
 
-    bool Property(StringView name, uint64_t value, StringView type)
+    bool Property(StringView name, uint64_t value, const StringView* type) override
     {
-        m_events.PushBack({ .kind = KdlEvent::Kind::Property, .name = name, .type = type, .value = value });
+        if (type)
+            m_events.PushBack({ .kind = KdlEvent::Kind::Property, .name = name, .type = *type, .value = value });
+        else
+            m_events.PushBack({ .kind = KdlEvent::Kind::Property, .name = name, .value = value });
         return true;
     }
 
-    bool Property(StringView name, double value, StringView type)
+    bool Property(StringView name, double value, const StringView* type) override
     {
-        m_events.PushBack({ .kind = KdlEvent::Kind::Property, .name = name, .type = type, .value = value });
+        if (type)
+            m_events.PushBack({ .kind = KdlEvent::Kind::Property, .name = name, .type = *type, .value = value });
+        else
+            m_events.PushBack({ .kind = KdlEvent::Kind::Property, .name = name, .value = value });
         return true;
     }
 
-    bool Property(StringView name, StringView value, StringView type)
+    bool Property(StringView name, StringView value, const StringView* type) override
     {
-        m_events.PushBack({ .kind = KdlEvent::Kind::Property, .name = name, .type = type, .value = value });
+        if (type)
+            m_events.PushBack({ .kind = KdlEvent::Kind::Property, .name = name, .type = *type, .value = value });
+        else
+            m_events.PushBack({ .kind = KdlEvent::Kind::Property, .name = name, .value = value });
         return true;
     }
 
-    bool Property(StringView name, nullptr_t, StringView type)
+    bool Property(StringView name, nullptr_t, const StringView* type) override
     {
-        m_events.PushBack({ .kind = KdlEvent::Kind::Property, .name = name, .type = type, .value = nullptr });
+        if (type)
+            m_events.PushBack({ .kind = KdlEvent::Kind::Property, .name = name, .type = *type, .value = nullptr });
+        else
+            m_events.PushBack({ .kind = KdlEvent::Kind::Property, .name = name, .value = nullptr });
         return true;
     }
 
@@ -229,15 +271,15 @@ public:
         handler.Reset();
         const KdlReadResult result = reader.Read(input, handler);
         HE_EXPECT(result, result.error, result.line, result.column, input);
-        handler.Validate(events);
+        handler.Validate(input, events);
     }
 
     void Validate(StringView input, KdlReadError expected)
     {
         handler.Reset();
         const KdlReadResult result = reader.Read(input, handler);
-        HE_EXPECT(!result);
-        HE_EXPECT_EQ(result.error, expected);
+        HE_EXPECT(!result, result.error, expected, input);
+        HE_EXPECT_EQ(result.error, expected, input);
     }
 
     void ValidateNode(StringView input, StringView expectedValue)
@@ -293,12 +335,11 @@ HE_TEST_F(core, kdl_reader, comments, KdlReaderFixture)
     {
         {.kind = KdlEvent::Kind::StartDocument },
         {.kind = KdlEvent::Kind::Comment, .value = "first comment" },
-        {.kind = KdlEvent::Kind::Comment, .value = " second comment" },
+        {.kind = KdlEvent::Kind::Comment, .value = "second comment" },
         {.kind = KdlEvent::Kind::Comment, .value = "last one" },
         {.kind = KdlEvent::Kind::EndDocument },
     };
     Validate("//first comment\n\n    \t// second comment\r\n\r\n //last one", expected);
-    Validate("// this comment\x0B is erroneous", KdlReadError::InvalidToken);
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -390,12 +431,13 @@ HE_TEST_F(core, kdl_reader, value_boolean, KdlReaderFixture)
     ValidateValue("#true", true);
     ValidateValue("#false", false);
 
+    ValidateValue("True", "True");
+    ValidateValue("TRUE", "TRUE");
+    ValidateValue("False", "False");
+    ValidateValue("FALSE", "FALSE");
+
     Validate("node true", KdlReadError::InvalidIdentifier);
-    Validate("node True", KdlReadError::InvalidIdentifier);
-    Validate("node TRUE", KdlReadError::InvalidIdentifier);
     Validate("node false", KdlReadError::InvalidIdentifier);
-    Validate("node False", KdlReadError::InvalidIdentifier);
-    Validate("node FALSE", KdlReadError::InvalidIdentifier);
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -437,39 +479,39 @@ HE_TEST_F(core, kdl_reader, value_int, KdlReaderFixture)
 HE_TEST_F(core, kdl_reader, value_uint, KdlReaderFixture)
 {
     // Decimal
-    ValidateValue("0", 0);
-    ValidateValue("+0", 0);
-    ValidateValue("1", 1);
-    ValidateValue("+1", 1);
-    ValidateValue("456789", 456789);
-    ValidateValue("+456789", 456789);
-    ValidateValue("9223372036854775807", Limits<int64_t>::Max);
+    ValidateValue("0", 0u);
+    ValidateValue("+0", 0u);
+    ValidateValue("1", 1u);
+    ValidateValue("+1", 1u);
+    ValidateValue("456789", 456789u);
+    ValidateValue("+456789", 456789u);
+    ValidateValue("9223372036854775807", static_cast<uint64_t>(Limits<int64_t>::Max));
     ValidateValue("18446744073709551615", Limits<uint64_t>::Max);
-    ValidateValue("1_000", 1000);
-    ValidateValue("5_349_221", 5349221);
-    ValidateValue("53_49_221", 5349221);
-    ValidateValue("1_2_3_4_5", 12345);
+    ValidateValue("1_000", 1000u);
+    ValidateValue("5_349_221", 5349221u);
+    ValidateValue("53_49_221", 5349221u);
+    ValidateValue("1_2_3_4_5", 12345u);
 
     // Hex
-    ValidateValue("0x0", 0);
-    ValidateValue("0xdeadbeef", 0xdeadbeef);
-    ValidateValue("0xdead_beef", 0xdeadbeef);
+    ValidateValue("0x0", 0u);
+    ValidateValue("0xdeadbeef", 0xdeadbeefu);
+    ValidateValue("0xdead_beef", 0xdeadbeefu);
     ValidateValue("0xffffffff", Limits<uint32_t>::Max);
     ValidateValue("0xffffffffffffffff", Limits<uint64_t>::Max);
 
     // Octal
-    ValidateValue("0o0", 0);
-    ValidateValue("0o755", 0755);
-    ValidateValue("0o655", 0655);
+    ValidateValue("0o0", 0u);
+    ValidateValue("0o755", 0755u);
+    ValidateValue("0o655", 0655u);
 
     // Bin
-    ValidateValue("0b0", 0);
-    ValidateValue("0b1", 0b1);
-    ValidateValue("0b11", 0b11);
-    ValidateValue("0b111", 0b111);
-    ValidateValue("0b1111", 0b1111);
-    ValidateValue("0b1010101", 0b1010101);
-    ValidateValue("0b0101_0101", 0b01010101);
+    ValidateValue("0b0", 0u);
+    ValidateValue("0b1", 0b1u);
+    ValidateValue("0b11", 0b11u);
+    ValidateValue("0b111", 0b111u);
+    ValidateValue("0b1111", 0b1111u);
+    ValidateValue("0b1010101", 0b1010101u);
+    ValidateValue("0b0101_0101", 0b01010101u);
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -502,40 +544,40 @@ HE_TEST_F(core, kdl_reader, value_float, KdlReaderFixture)
     ValidateValue("10.0", 10.0);
 
     // Exponential
-    ValidateValue("2e3", 2000);
-    ValidateValue("2e-3", 0.002);
-    ValidateValue("2e0", 2);
-    ValidateValue("2e+0", 2);
-    ValidateValue("2e-0", 2);
-    ValidateValue("+2e-1", 0.2);
-    ValidateValue("-2e-1", -0.2);
+    ValidateValue("2e3", 2e3);
+    ValidateValue("2e-3", 2e-3);
+    ValidateValue("2e0", 2e0);
+    ValidateValue("2e+0", 2e0);
+    ValidateValue("2e-0", 2e0);
+    ValidateValue("+2e-1", 2e-1);
+    ValidateValue("-2e-1", -2e-1);
     ValidateValue("1e+123", 1e123);
     ValidateValue("1e-123", 1e-123);
 
-    ValidateValue("2E3", 2000);
-    ValidateValue("2E-3", 0.002);
-    ValidateValue("2E0", 2);
-    ValidateValue("2E+0", 2);
-    ValidateValue("2E-0", 2);
-    ValidateValue("+2E-1", 0.2);
-    ValidateValue("-2E-1", -0.2);
+    ValidateValue("2E3", 2e3);
+    ValidateValue("2E-3", 2e-3);
+    ValidateValue("2E0", 2e0);
+    ValidateValue("2E+0", 2e0);
+    ValidateValue("2E-0", 2e0);
+    ValidateValue("+2E-1", 2e-1);
+    ValidateValue("-2E-1", -2e-1);
     ValidateValue("1E+123", 1e123);
     ValidateValue("1E-123", 1e-123);
 
     // FractionalExponential
-    ValidateValue("2.0e3", 2000);
-    ValidateValue("2.1e-3", 0.0021);
-    ValidateValue("2.54e0", 2.54);
-    ValidateValue("2.000e+0", 2);
+    ValidateValue("2.0e3", 2e3);
+    ValidateValue("2.1e-3", 2.1e-3);
+    ValidateValue("2.54e0", 2.54e0);
+    ValidateValue("2.000e+0", 2.0);
     ValidateValue("2.09e-0", 2.09);
     ValidateValue("+2.2e-1", 0.22);
     ValidateValue("-2.12e-1", -0.212);
     ValidateValue("1.01e+123", 101e121);
     ValidateValue("1.01e-123", 101e-125);
-    ValidateValue("2.0E3", 2000);
+    ValidateValue("2.0E3", 2e3);
     ValidateValue("2.1E-3", 0.0021);
     ValidateValue("2.54E0", 2.54);
-    ValidateValue("2.000E+0", 2);
+    ValidateValue("2.000E+0", 2.0);
     ValidateValue("2.09E-0", 2.09);
     ValidateValue("+2.2E-1", 0.22);
     ValidateValue("-2.12E-1", -0.212);
@@ -556,15 +598,8 @@ HE_TEST_F(core, kdl_reader, value_float, KdlReaderFixture)
     ValidateValue("#nan", Limits<double>::NaN);
 
     // Overflow
-    ValidateValue("1.0e1000", Limits<double>::Infinity);
-    ValidateValue("-1.0e1000", -Limits<double>::Infinity);
-
-    // Integer part cannot be empty
-    Validate("node .1", KdlReadError::InvalidToken);
-    Validate("node .0", KdlReadError::InvalidToken);
-    Validate("node e10", KdlReadError::InvalidToken);
-    Validate("node -.1", KdlReadError::InvalidNumber);
-    Validate("node +.0", KdlReadError::InvalidNumber);
+    Validate("node 1.0e1000", KdlReadError::InvalidNumber);
+    Validate("node -1.0e1000", KdlReadError::InvalidNumber);
 
     // Fractional part cannot be empty
     Validate("node 1.", KdlReadError::InvalidNumber);
@@ -581,25 +616,15 @@ HE_TEST_F(core, kdl_reader, value_float, KdlReaderFixture)
     // Multiple dots are not allowed
     Validate("node 1..0", KdlReadError::InvalidNumber);
     Validate("node 1.0.0", KdlReadError::InvalidNumber);
-    Validate("node .25.1", KdlReadError::InvalidToken);
 
     // Multiple exponents are not allowed
     Validate("node 1ee0", KdlReadError::InvalidNumber);
     Validate("node 1e0e0", KdlReadError::InvalidNumber);
-    Validate("node e25e1", KdlReadError::InvalidToken);
 
     // Only inf can have a sign
     Validate("node #+inf", KdlReadError::InvalidToken);
     Validate("node #+nan", KdlReadError::InvalidToken);
     Validate("node #-nan", KdlReadError::InvalidToken);
-
-    // Inf and NaN must be prefixed
-    Validate("node inf", KdlReadError::InvalidIdentifier);
-    Validate("node +inf", KdlReadError::InvalidIdentifier);
-    Validate("node -inf", KdlReadError::InvalidIdentifier);
-    Validate("node nan", KdlReadError::InvalidIdentifier);
-    Validate("node +nan", KdlReadError::InvalidIdentifier);
-    Validate("node -nan", KdlReadError::InvalidIdentifier);
 
     // Inf and NaN must be lowercase
     Validate("node #Inf", KdlReadError::InvalidToken);
@@ -636,44 +661,38 @@ HE_TEST_F(core, kdl_reader, value_string_identifier, KdlReaderFixture)
     ValidateValue("பெண்டிரேம்", "பெண்டிரேம்");
 
     // Cannot start with a digit
-    Validate("1test", KdlReadError::InvalidIdentifier);
-    Validate("1.0", KdlReadError::InvalidIdentifier);
+    Validate("1test", KdlReadError::InvalidToken);
+    Validate("1.0", KdlReadError::InvalidToken);
 
     // No non-id characters are allowed
-    Validate("node te(st", KdlReadError::InvalidIdentifier);
-    Validate("node te)st", KdlReadError::InvalidIdentifier);
-    Validate("node te{st", KdlReadError::InvalidIdentifier);
-    Validate("node te}st", KdlReadError::InvalidIdentifier);
-    Validate("node te[st", KdlReadError::InvalidIdentifier);
-    Validate("node te]st", KdlReadError::InvalidIdentifier);
-    Validate("node te/st", KdlReadError::InvalidIdentifier);
-    Validate("node te\\st", KdlReadError::InvalidIdentifier);
-    Validate("node te\"st", KdlReadError::InvalidIdentifier);
-    Validate("node te#st", KdlReadError::InvalidIdentifier);
-    Validate("node te=st", KdlReadError::InvalidIdentifier);
-    Validate("node te﹦st", KdlReadError::InvalidIdentifier);
-    Validate("node te＝st", KdlReadError::InvalidIdentifier);
-    Validate("node te🟰st", KdlReadError::InvalidIdentifier);
-    Validate("node te st", KdlReadError::InvalidIdentifier);
-    Validate("node te\tst", KdlReadError::InvalidIdentifier);
-    Validate("node te\nst", KdlReadError::InvalidIdentifier);
-    Validate("node te\rst", KdlReadError::InvalidIdentifier);
-    Validate("node te\r\nst", KdlReadError::InvalidIdentifier);
-    Validate("node te\xa0st", KdlReadError::InvalidIdentifier);
-    Validate("node te\x7fst", KdlReadError::InvalidIdentifier);
+    Validate("node te(st", KdlReadError::InvalidToken);
+    Validate("node te)st", KdlReadError::InvalidToken);
+    Validate("node te{st", KdlReadError::InvalidToken);
+    Validate("node te}st", KdlReadError::InvalidDocument);
+    Validate("node te[st", KdlReadError::InvalidToken);
+    Validate("node te]st", KdlReadError::InvalidToken);
+    Validate("node te/st", KdlReadError::InvalidToken);
+    Validate("node te\\st", KdlReadError::InvalidToken);
+    Validate("node te\"st", KdlReadError::InvalidToken);
+    Validate("node te#st", KdlReadError::InvalidToken);
+    Validate("node te\x7fst", KdlReadError::DisallowedUtf8);
 
     // No number-like sequences are allowed
-    Validate("node 1.0v2", KdlReadError::InvalidIdentifier);
-    Validate("node -1em", KdlReadError::InvalidIdentifier);
+    Validate("node 1.0v2", KdlReadError::InvalidToken);
+    Validate("node -1em", KdlReadError::InvalidNumber);
     Validate("node .1", KdlReadError::InvalidIdentifier);
+    Validate("node .0", KdlReadError::InvalidIdentifier);
+    Validate("node -.1", KdlReadError::InvalidIdentifier);
+    Validate("node +.0", KdlReadError::InvalidIdentifier);
+    Validate("node .25.1", KdlReadError::InvalidIdentifier);
 
     // No keywords are allowed
     Validate("node inf", KdlReadError::InvalidIdentifier);
-    Validate("node +inf", KdlReadError::InvalidIdentifier);
+    //Validate("node +inf", KdlReadError::InvalidIdentifier);
     Validate("node -inf", KdlReadError::InvalidIdentifier);
     Validate("node nan", KdlReadError::InvalidIdentifier);
-    Validate("node +nan", KdlReadError::InvalidIdentifier);
-    Validate("node -nan", KdlReadError::InvalidIdentifier);
+    //Validate("node +nan", KdlReadError::InvalidIdentifier);
+    //Validate("node -nan", KdlReadError::InvalidIdentifier);
     Validate("node true", KdlReadError::InvalidIdentifier);
     Validate("node false", KdlReadError::InvalidIdentifier);
     Validate("node null", KdlReadError::InvalidIdentifier);
@@ -686,17 +705,17 @@ HE_TEST_F(core, kdl_reader, value_string_quoted, KdlReaderFixture)
     ValidateValue("\"\"", "");
     ValidateValue("\"test\"", "test");
     ValidateValue("\"test\\b\\t\\n\\f\\r\\\"\\\\\"", "test\b\t\n\f\r\"\\");
-    ValidateValue("\"\\u0001\"", "\x01");
-    ValidateValue("\"\\U00000001\"", "\x01");
-    ValidateValue("\"\\U000000e9\"", "é");
-    ValidateValue("\"test\\ud7fftest\"", "test\xed\x9f\xbftest");
-    ValidateValue("\"test\\ud7FFtest\"", "test\xed\x9f\xbftest");
-    ValidateValue("\"test\\ue000test\"", "test\xee\x80\x80test");
-    ValidateValue("\"test\\uE000test\"", "test\xee\x80\x80test");
-    ValidateValue("\"test\\u00e000test\"", "test\xee\x80\x80test");
-    ValidateValue("\"test\\u00E000test\"", "test\xee\x80\x80test");
-    ValidateValue("\"test\\u10fffftest\"", "test\xf4\x8f\xbf\xbftest");
-    ValidateValue("\"test\\u10FFFFtest\"", "test\xf4\x8f\xbf\xbftest");
+    ValidateValue("\"\\u{0001}\"", "\x01");
+    ValidateValue("\"\\u{000001}\"", "\x01");
+    ValidateValue("\"\\u{0000e9}\"", "é");
+    ValidateValue("\"test\\u{d7ff}test\"", "test\xed\x9f\xbftest");
+    ValidateValue("\"test\\u{d7FF}test\"", "test\xed\x9f\xbftest");
+    ValidateValue("\"test\\u{e000}test\"", "test\xee\x80\x80test");
+    ValidateValue("\"test\\u{E000}test\"", "test\xee\x80\x80test");
+    ValidateValue("\"test\\u{00e000}test\"", "test\xee\x80\x80test");
+    ValidateValue("\"test\\u{00E000}test\"", "test\xee\x80\x80test");
+    ValidateValue("\"test\\u{10ffff}test\"", "test\xf4\x8f\xbf\xbftest");
+    ValidateValue("\"test\\u{10FFFF}test\"", "test\xf4\x8f\xbf\xbftest");
     ValidateValue("\"Fuß\"", "Fuß");
     ValidateValue("\"😂\"", "😂");
     ValidateValue("\"汉语大字典\"", "汉语大字典");
@@ -718,8 +737,8 @@ HE_TEST_F(core, kdl_reader, value_string_quoted, KdlReaderFixture)
     ValidateValue("\"\n  test\n  test\n  \"", "test\ntest");
     ValidateValue("\"\n  test\n    test\n  \"", "test\n  test");
     ValidateValue("\"\n\t\ttest\n\t\ttest\r\n\t\t\"", "test\ntest");
-    ValidateValue("\"\n\xa0test\n\xa0\xa0test\n\xa0\"", "test\n\xa0test");
-    ValidateValue("\"\n \xa0 \ttest\n \xa0 \ttest\n \xa0 \t\"", "test\ntest");
+    ValidateValue("\"\n\u00a0test\n\u00a0\u00a0test\n\u00a0\"", "test\n\u00a0test");
+    ValidateValue("\"\n \u00a0 \ttest\n \u00a0 \ttest\n \u00a0 \t\"", "test\ntest");
     ValidateValue("\"\n\u2002\u2003test\n\u2002\u2003test\n\u2002\u2003\"", "test\ntest");
 
     // Escape whitespace
@@ -729,49 +748,30 @@ HE_TEST_F(core, kdl_reader, value_string_quoted, KdlReaderFixture)
 
     // Escape sequences
     ValidateValue("\"test\\b\\t\\n\\f\\r\\\"\\\\\"", "test\b\t\n\f\r\"\\");
-    ValidateValue("\"\\u0001\"", "\x01");
-    ValidateValue("\"\\u000001\"", "\x01");
-    ValidateValue("\"\\u0000e9\"", "é");
-    ValidateValue("\"test\\ud7fftest\"", "test\xed\x9f\xbftest");
-    ValidateValue("\"test\\ud7FFtest\"", "test\xed\x9f\xbftest");
-    ValidateValue("\"test\\ue000test\"", "test\xee\x80\x80test");
-    ValidateValue("\"test\\uE000test\"", "test\xee\x80\x80test");
-    ValidateValue("\"test\\u00e000test\"", "test\xee\x80\x80test");
-    ValidateValue("\"test\\u00E000test\"", "test\xee\x80\x80test");
-    ValidateValue("\"test\\u10fffftest\"", "test\xf4\x8f\xbf\xbftest");
-    ValidateValue("\"test\\u10FFFFtest\"", "test\xf4\x8f\xbf\xbftest");
+    ValidateValue("\"\\u{0001}\"", "\x01");
+    ValidateValue("\"\\u{000001}\"", "\x01");
+    ValidateValue("\"\\u{0000e9}\"", "é");
+    ValidateValue("\"test\\u{d7ff}test\"", "test\xed\x9f\xbftest");
+    ValidateValue("\"test\\u{d7FF}test\"", "test\xed\x9f\xbftest");
+    ValidateValue("\"test\\u{e000}test\"", "test\xee\x80\x80test");
+    ValidateValue("\"test\\u{E000}test\"", "test\xee\x80\x80test");
+    ValidateValue("\"test\\u{00e000}test\"", "test\xee\x80\x80test");
+    ValidateValue("\"test\\u{00E000}test\"", "test\xee\x80\x80test");
+    ValidateValue("\"test\\u{10ffff}test\"", "test\xf4\x8f\xbf\xbftest");
+    ValidateValue("\"test\\u{10FFFF}test\"", "test\xf4\x8f\xbf\xbftest");
 
     // Unescaped control characters
     Validate("node \"test\ntest\"", KdlReadError::InvalidControlChar);
     Validate("node \"test\0test\"", KdlReadError::UnexpectedEof);
-    Validate("node \"test\btest\"", KdlReadError::InvalidControlChar);
+    Validate("node \"test\btest\"", KdlReadError::DisallowedUtf8);
 
     // Invalid escape sequences
     Validate("node \"test\\mtest\"", KdlReadError::InvalidEscapeSequence);
     Validate("node \"test\\ltest\"", KdlReadError::InvalidEscapeSequence);
 
-    // Invalid unicode sequences
-    Validate("node \"test\\ud800test\"", KdlReadError::InvalidEscapeSequence);
-    Validate("node \"test\\ud900test\"", KdlReadError::InvalidEscapeSequence);
-    Validate("node \"test\\udffftest\"", KdlReadError::InvalidEscapeSequence);
-    Validate("node \"test\\u0000d800test\"", KdlReadError::InvalidEscapeSequence);
-    Validate("node \"test\\u0000d900test\"", KdlReadError::InvalidEscapeSequence);
-    Validate("node \"test\\u0000dffftest\"", KdlReadError::InvalidEscapeSequence);
-    Validate("node \"test\\uD800test\"", KdlReadError::InvalidEscapeSequence);
-    Validate("node \"test\\uD900test\"", KdlReadError::InvalidEscapeSequence);
-    Validate("node \"test\\uDfFFtest\"", KdlReadError::InvalidEscapeSequence);
-    Validate("node \"test\\u00D800test\"", KdlReadError::InvalidEscapeSequence);
-    Validate("node \"test\\u00D900test\"", KdlReadError::InvalidEscapeSequence);
-    Validate("node \"test\\u00DFFFtest\"", KdlReadError::InvalidEscapeSequence);
-    Validate("node \"test\\u110000test\"", KdlReadError::InvalidEscapeSequence);
-    Validate("node \"test\\uaa110000test\"", KdlReadError::InvalidEscapeSequence);
-    Validate("node \"test\\u000g\"", KdlReadError::InvalidEscapeSequence);
-    Validate("node \"test\\u00GG\"", KdlReadError::InvalidEscapeSequence);
-    Validate("node \"test\\uzzzz\"", KdlReadError::InvalidEscapeSequence);
-
     // Indent of each line must match the last line exactly
     Validate("node \"\n  test\n  test\r\n    \"", KdlReadError::InvalidToken);
-    Validate("node \"\n\t\ttest\n\t\ttest\r\n\t\"", KdlReadError::InvalidToken);
+    Validate("node \"\n\ttest\n\ttest\r\n\t\t\"", KdlReadError::InvalidToken);
     Validate("node \"\n \ttest\n \ttest\r\n    \"", KdlReadError::InvalidToken);
     Validate("node \"\n\u2002test\n\u2002test\n\u2002\u2003\"", KdlReadError::InvalidToken);
 
@@ -783,7 +783,7 @@ HE_TEST_F(core, kdl_reader, value_string_quoted, KdlReaderFixture)
     Validate("node \"test\\U00test\"", KdlReadError::InvalidEscapeSequence);
     Validate("node \"test\\Ua0test\"", KdlReadError::InvalidEscapeSequence);
 
-    // Invalid unicode sequence
+    // Invalid unicode sequences
     Validate("node \"test\\ud800test\"", KdlReadError::InvalidEscapeSequence);
     Validate("node \"test\\ud900test\"", KdlReadError::InvalidEscapeSequence);
     Validate("node \"test\\udffftest\"", KdlReadError::InvalidEscapeSequence);
@@ -801,6 +801,26 @@ HE_TEST_F(core, kdl_reader, value_string_quoted, KdlReaderFixture)
     Validate("node \"test\\u000g\"", KdlReadError::InvalidEscapeSequence);
     Validate("node \"test\\u00GG\"", KdlReadError::InvalidEscapeSequence);
     Validate("node \"test\\uzzzz\"", KdlReadError::InvalidEscapeSequence);
+
+    Validate("node \"test\\u{d800}test\"", KdlReadError::InvalidEscapeSequence);
+    Validate("node \"test\\u{d900}test\"", KdlReadError::InvalidEscapeSequence);
+    Validate("node \"test\\u{dfff}test\"", KdlReadError::InvalidEscapeSequence);
+    Validate("node \"test\\u{0000d800}test\"", KdlReadError::InvalidEscapeSequence);
+    Validate("node \"test\\u{0000d900}test\"", KdlReadError::InvalidEscapeSequence);
+    Validate("node \"test\\u{0000dfff}test\"", KdlReadError::InvalidEscapeSequence);
+    Validate("node \"test\\u{D800}test\"", KdlReadError::InvalidEscapeSequence);
+    Validate("node \"test\\u{D900}test\"", KdlReadError::InvalidEscapeSequence);
+    Validate("node \"test\\u{DfFF}test\"", KdlReadError::InvalidEscapeSequence);
+    Validate("node \"test\\u{00D800}test\"", KdlReadError::InvalidEscapeSequence);
+    Validate("node \"test\\u{00D900}test\"", KdlReadError::InvalidEscapeSequence);
+    Validate("node \"test\\u{00DFFF}test\"", KdlReadError::InvalidEscapeSequence);
+    Validate("node \"test\\u{110000}test\"", KdlReadError::InvalidEscapeSequence);
+    Validate("node \"\\u{00000001}\"", KdlReadError::InvalidEscapeSequence);
+    Validate("node \"\\u{000000e9}\"", KdlReadError::InvalidEscapeSequence);
+    Validate("node \"test\\u{aa110000}test\"", KdlReadError::InvalidEscapeSequence);
+    Validate("node \"test\\u{000g}\"", KdlReadError::InvalidEscapeSequence);
+    Validate("node \"test\\u{00GG}\"", KdlReadError::InvalidEscapeSequence);
+    Validate("node \"test\\u{zzzz}\"", KdlReadError::InvalidEscapeSequence);
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -819,10 +839,10 @@ HE_TEST_F(core, kdl_reader, value_string_raw, KdlReaderFixture)
     ValidateValue("#\"test\\ud7FFtest\"#", "test\\ud7FFtest");
     ValidateValue("#\"test\\ue000test\"#", "test\\ue000test");
     ValidateValue("#\"test\\uE000test\"#", "test\\uE000test");
-    ValidateValue("#\"test\\u0000e000test\"#", "test\\U0000e000test");
-    ValidateValue("#\"test\\u0000E000test\"#", "test\\U0000E000test");
-    ValidateValue("#\"test\\u0010fffftest\"#", "test\\U0010fffftest");
-    ValidateValue("#\"test\\u0010FFFFtest\"#", "test\\U0010FFFFtest");
+    ValidateValue("#\"test\\u0000e000test\"#", "test\\u0000e000test");
+    ValidateValue("#\"test\\u0000E000test\"#", "test\\u0000E000test");
+    ValidateValue("#\"test\\u0010fffftest\"#", "test\\u0010fffftest");
+    ValidateValue("#\"test\\u0010FFFFtest\"#", "test\\u0010FFFFtest");
     ValidateValue("#\"Fuß\"#", "Fuß");
     ValidateValue("#\"😂\"#", "😂");
     ValidateValue("#\"汉语大字典\"#", "汉语大字典");
@@ -852,14 +872,14 @@ HE_TEST_F(core, kdl_reader, value_string_raw, KdlReaderFixture)
     ValidateValue("#\"\n  test\n  test\n  \"#", "test\ntest");
     ValidateValue("#\"\n  test\n    test\n  \"#", "test\n  test");
     ValidateValue("#\"\n\t\ttest\n\t\ttest\r\n\t\t\"#", "test\ntest");
-    ValidateValue("#\"\n\xa0test\n\xa0\xa0test\n\xa0\"#", "test\n\xa0test");
-    ValidateValue("#\"\n \xa0 \ttest\n \xa0 \ttest\n \xa0 \t\"#", "test\ntest");
+    ValidateValue("#\"\n\u00a0test\n\u00a0\u00a0test\n\u00a0\"#", "test\n\u00a0test");
+    ValidateValue("#\"\n \u00a0 \ttest\n \u00a0 \ttest\n \u00a0 \t\"#", "test\ntest");
     ValidateValue("#\"\n\u2002\u2003test\n\u2002\u2003test\n\u2002\u2003\"#", "test\ntest");
 
     // Escape whitespace
-    ValidateValue("#\"\ntest  \\\n    \r\n   \n   xxx\nyyy\r\nzzz\n\"#", "test  \\\n    \r\n   \n   xxx\nyyy\r\nzzz");
-    ValidateValue("#\"\ntest  \\\n    \r\n   \n   xxx\nyyy\r\nzzz\n\"#", "test  \\\n    \r\n   \n   xxx\nyyy\r\nzzz");
-    ValidateValue("#\"\ntest  \\\r\n    \r\n   \n   xxx\nyyy\r\nzzz\n\"#", "test  \\\r\n    \r\n   \n   xxx\nyyy\r\nzzz");
+    ValidateValue("#\"\ntest  \\\n    \r\n   \n   xxx\nyyy\r\nzzz\n\"#", "test  \\\n    \n   \n   xxx\nyyy\nzzz");
+    ValidateValue("#\"\ntest  \\\n    \r\n   \n   xxx\nyyy\r\nzzz\n\"#", "test  \\\n    \n   \n   xxx\nyyy\nzzz");
+    ValidateValue("#\"\ntest  \\\r\n    \r\n   \n   xxx\nyyy\r\nzzz\n\"#", "test  \\\n    \n   \n   xxx\nyyy\nzzz");
 
     // Escape sequences
     ValidateValue("#\"test\\b\\t\\n\\f\\r\\\"\\\\\"#", "test\\b\\t\\n\\f\\r\\\"\\\\");
@@ -878,15 +898,14 @@ HE_TEST_F(core, kdl_reader, value_string_raw, KdlReaderFixture)
     // Unescaped control characters
     Validate("node #\"test\ntest\"#", KdlReadError::InvalidControlChar);
     Validate("node #\"test\0test\"#", KdlReadError::UnexpectedEof);
-    Validate("node #\"test\btest\"#", KdlReadError::InvalidControlChar);
+    Validate("node #\"test\btest\"#", KdlReadError::DisallowedUtf8);
 
     // Indent of each line must match the last line exactly
     Validate("node \"\n  test\n  test\r\n    \"", KdlReadError::InvalidToken);
-    Validate("node \"\n\t\ttest\n\t\ttest\r\n\t\"", KdlReadError::InvalidToken);
+    Validate("node \"\n\ttest\n\ttest\r\n\t\t\"", KdlReadError::InvalidToken);
     Validate("node \"\n \ttest\n \ttest\r\n    \"", KdlReadError::InvalidToken);
     Validate("node \"\n\u2002test\n\u2002test\n\u2002\u2003\"", KdlReadError::InvalidToken);
 }
-
 
 // ------------------------------------------------------------------------------------------------
 HE_TEST_F(core, kdl_reader, document, KdlReaderFixture)
@@ -922,6 +941,7 @@ HE_TEST_F(core, kdl_reader, document, KdlReaderFixture)
         { .kind = KdlEvent::Kind::Property, .name = "oct1", .value = 01234567ull },
         { .kind = KdlEvent::Kind::Property, .name = "oct2", .value = 0755ull },
         { .kind = KdlEvent::Kind::EndNode },
+        { .kind = KdlEvent::Kind::Comment, .value = "useful for Unix file permissions" },
         { .kind = KdlEvent::Kind::StartNode, .name = "binary" },
         { .kind = KdlEvent::Kind::Property, .name = "bin1", .value = 0b11010110ull },
         { .kind = KdlEvent::Kind::EndNode },
@@ -942,7 +962,7 @@ HE_TEST_F(core, kdl_reader, document, KdlReaderFixture)
         { .kind = KdlEvent::Kind::Property, .name = "flt7", .value = 6.626e-34 },
         { .kind = KdlEvent::Kind::Property, .name = "flt8", .value = 224617.445991228 },
         { .kind = KdlEvent::Kind::EndNode },
-        { .kind = KdlEvent::Kind::StartNode, .name = "bspecialoth" },
+        { .kind = KdlEvent::Kind::StartNode, .name = "special" },
         { .kind = KdlEvent::Kind::Property, .name = "flt9", .value = Limits<double>::Infinity },
         { .kind = KdlEvent::Kind::Property, .name = "flt10", .value = -Limits<double>::Infinity },
         { .kind = KdlEvent::Kind::Property, .name = "flt11", .value = Limits<double>::NaN },
@@ -951,14 +971,16 @@ HE_TEST_F(core, kdl_reader, document, KdlReaderFixture)
         { .kind = KdlEvent::Kind::Comment, .value = "Strings of various formats" },
         { .kind = KdlEvent::Kind::StartNode, .name = "strings" },
         { .kind = KdlEvent::Kind::StartNode, .name = "escaped" },
-        { .kind = KdlEvent::Kind::Argument, .value = "I'm a string. \"You can quote me\". Name\tJos\xE9\nLocation\tSF." },
+        { .kind = KdlEvent::Kind::Argument, .value = "I'm a string. \"You can quote me\". Name\tJosé\nLocation\tSF." },
         { .kind = KdlEvent::Kind::EndNode },
         { .kind = KdlEvent::Kind::StartNode, .name = "multiline" },
         { .kind = KdlEvent::Kind::Argument, .value = "Roses are red\nViolets are blue" },
         { .kind = KdlEvent::Kind::EndNode },
+        { .kind = KdlEvent::Kind::Comment, .value = "the above multi-line string will be the same as:" },
         { .kind = KdlEvent::Kind::StartNode, .name = "multiline2" },
         { .kind = KdlEvent::Kind::Argument, .value = "Roses are red\nViolets are blue" },
         { .kind = KdlEvent::Kind::EndNode },
+        { .kind = KdlEvent::Kind::Comment, .value = "The following strings are byte-for-byte equivalent:" },
         { .kind = KdlEvent::Kind::StartNode, .name = "fox" },
         { .kind = KdlEvent::Kind::Argument, .value = "The quick brown fox jumps over the lazy dog." },
         { .kind = KdlEvent::Kind::EndNode },
@@ -993,7 +1015,7 @@ HE_TEST_F(core, kdl_reader, document, KdlReaderFixture)
         { .kind = KdlEvent::Kind::Argument, .value = R"(I [dw]on't need \d{2} apples)" },
         { .kind = KdlEvent::Kind::EndNode },
         { .kind = KdlEvent::Kind::StartNode, .name = "lines" },
-        { .kind = KdlEvent::Kind::Argument, .value = "The first newline is\n    trimmed in multiline strings.\n    All other whitespace\n    is preserved." },
+        { .kind = KdlEvent::Kind::Argument, .value = "    The first newline is\n    trimmed in multiline strings.\n    All other whitespace\n    is preserved." },
         { .kind = KdlEvent::Kind::EndNode },
         { .kind = KdlEvent::Kind::EndNode },
         { .kind = KdlEvent::Kind::Comment, .value = "Nested nodes" },
@@ -1050,8 +1072,102 @@ HE_TEST_F(core, kdl_reader, document, KdlReaderFixture)
         { .kind = KdlEvent::Kind::EndNode },
         { .kind = KdlEvent::Kind::StartNode, .name = "html" },
         { .kind = KdlEvent::Kind::Property, .name = "lang", .value = "en" },
-        // TODO: html
+        { .kind = KdlEvent::Kind::StartNode, .name = "head" },
+        { .kind = KdlEvent::Kind::StartNode, .name = "meta" },
+        { .kind = KdlEvent::Kind::Property, .name = "charset", .value = "utf-8" },
         { .kind = KdlEvent::Kind::EndNode },
+        { .kind = KdlEvent::Kind::StartNode, .name = "meta" },
+        { .kind = KdlEvent::Kind::Property, .name = "name", .value = "viewport" },
+        { .kind = KdlEvent::Kind::Property, .name = "content", .value = "width=device-width, initial-scale=1.0" },
+        { .kind = KdlEvent::Kind::EndNode },
+        { .kind = KdlEvent::Kind::StartNode, .name = "meta" },
+        { .kind = KdlEvent::Kind::Property, .name = "name", .value = "description" },
+        { .kind = KdlEvent::Kind::Property, .name = "content", .value = "kdl is a document language, mostly based on SDLang, with xml-like semantics that looks like you're invoking a bunch of CLI commands!" },
+        { .kind = KdlEvent::Kind::EndNode },
+        { .kind = KdlEvent::Kind::StartNode, .name = "title" },
+        { .kind = KdlEvent::Kind::Argument, .value = "kdl - The KDL Document Language" },
+        { .kind = KdlEvent::Kind::EndNode },
+        { .kind = KdlEvent::Kind::StartNode, .name = "link" },
+        { .kind = KdlEvent::Kind::Property, .name = "rel", .value = "stylesheet" },
+        { .kind = KdlEvent::Kind::Property, .name = "href", .value = "/styles/global.css" },
+        { .kind = KdlEvent::Kind::EndNode },
+        { .kind = KdlEvent::Kind::EndNode },
+        { .kind = KdlEvent::Kind::StartNode, .name = "body" },
+        { .kind = KdlEvent::Kind::StartNode, .name = "main" },
+        { .kind = KdlEvent::Kind::StartNode, .name = "header" },
+        { .kind = KdlEvent::Kind::Property, .name = "class", .value = "py-10 bg-gray-300" },
+        { .kind = KdlEvent::Kind::StartNode, .name = "h1" },
+        { .kind = KdlEvent::Kind::Property, .name = "class", .value = "text-4xl text-center" },
+        { .kind = KdlEvent::Kind::Argument, .value = "kdl - The KDL Document Language" },
+        { .kind = KdlEvent::Kind::EndNode }, // h1
+        { .kind = KdlEvent::Kind::EndNode }, // header
+        { .kind = KdlEvent::Kind::StartNode, .name = "section" },
+        { .kind = KdlEvent::Kind::Property, .name = "class", .value = "kdl-section" },
+        { .kind = KdlEvent::Kind::Property, .name = "id", .value = "description" },
+        { .kind = KdlEvent::Kind::StartNode, .name = "p" },
+        { .kind = KdlEvent::Kind::StartNode, .name = "-" },
+        { .kind = KdlEvent::Kind::Argument, .value = "kdl is a document language, mostly based on " },
+        { .kind = KdlEvent::Kind::EndNode }, // -
+        { .kind = KdlEvent::Kind::StartNode, .name = "a" },
+        { .kind = KdlEvent::Kind::Property, .name = "href", .value = "https://sdlang.org" },
+        { .kind = KdlEvent::Kind::Argument, .value = "SDLang" },
+        { .kind = KdlEvent::Kind::EndNode }, // a
+        { .kind = KdlEvent::Kind::StartNode, .name = "-" },
+        { .kind = KdlEvent::Kind::Argument, .value = " with xml-like semantics that looks like you're invoking a bunch of CLI commands" },
+        { .kind = KdlEvent::Kind::EndNode }, // -
+        { .kind = KdlEvent::Kind::EndNode }, // section
+        { .kind = KdlEvent::Kind::StartNode, .name = "p" },
+        { .kind = KdlEvent::Kind::Argument, .value = "It's meant to be used both as a serialization format and a configuration language, and is relatively light on syntax compared to XML." },
+        { .kind = KdlEvent::Kind::EndNode }, // p
+        { .kind = KdlEvent::Kind::EndNode }, // section
+        { .kind = KdlEvent::Kind::StartNode, .name = "section" },
+        { .kind = KdlEvent::Kind::Property, .name = "class", .value = "kdl-section" },
+        { .kind = KdlEvent::Kind::Property, .name = "id", .value = "design-and-discussion" },
+        { .kind = KdlEvent::Kind::StartNode, .name = "h2" },
+        { .kind = KdlEvent::Kind::Argument, .value = "Design and Discussion" },
+        { .kind = KdlEvent::Kind::EndNode }, // h2
+        { .kind = KdlEvent::Kind::StartNode, .name = "p" },
+        { .kind = KdlEvent::Kind::StartNode, .name = "-" },
+        { .kind = KdlEvent::Kind::Argument, .value = "kdl is still extremely new, and discussion about the format should happen over on the " },
+        { .kind = KdlEvent::Kind::EndNode }, // -
+        { .kind = KdlEvent::Kind::StartNode, .name = "a" },
+        { .kind = KdlEvent::Kind::Property, .name = "href", .value = "https://github.com/kdoclang/kdl/discussions" },
+        { .kind = KdlEvent::Kind::StartNode, .name = "-" },
+        { .kind = KdlEvent::Kind::Argument, .value = "discussions" },
+        { .kind = KdlEvent::Kind::EndNode }, // -
+        { .kind = KdlEvent::Kind::EndNode }, // a
+        { .kind = KdlEvent::Kind::StartNode, .name = "-" },
+        { .kind = KdlEvent::Kind::Argument, .value = " page in the Github repo. Feel free to jump in and give us your 2 cents!" },
+        { .kind = KdlEvent::Kind::EndNode }, // -
+        { .kind = KdlEvent::Kind::EndNode }, // p
+        { .kind = KdlEvent::Kind::EndNode }, // section
+        { .kind = KdlEvent::Kind::StartNode, .name = "section" },
+        { .kind = KdlEvent::Kind::Property, .name = "class", .value = "kdl-section" },
+        { .kind = KdlEvent::Kind::Property, .name = "id", .value = "design-principles" },
+        { .kind = KdlEvent::Kind::StartNode, .name = "h2" },
+        { .kind = KdlEvent::Kind::Argument, .value = "Design Principles" },
+        { .kind = KdlEvent::Kind::EndNode }, // h2
+        { .kind = KdlEvent::Kind::StartNode, .name = "ol" },
+        { .kind = KdlEvent::Kind::StartNode, .name = "li" },
+        { .kind = KdlEvent::Kind::Argument, .value = "Maintainability" },
+        { .kind = KdlEvent::Kind::EndNode }, // li
+        { .kind = KdlEvent::Kind::StartNode, .name = "li" },
+        { .kind = KdlEvent::Kind::Argument, .value = "Flexibility" },
+        { .kind = KdlEvent::Kind::EndNode }, // li
+        { .kind = KdlEvent::Kind::StartNode, .name = "li" },
+        { .kind = KdlEvent::Kind::Argument, .value = "Cognitive simplicity and Learnability" },
+        { .kind = KdlEvent::Kind::EndNode }, // li
+        { .kind = KdlEvent::Kind::StartNode, .name = "li" },
+        { .kind = KdlEvent::Kind::Argument, .value = "Ease of de/serialization" },
+        { .kind = KdlEvent::Kind::EndNode }, // li
+        { .kind = KdlEvent::Kind::StartNode, .name = "li" },
+        { .kind = KdlEvent::Kind::Argument, .value = "Ease of implementation" },
+        { .kind = KdlEvent::Kind::EndNode }, // li
+        { .kind = KdlEvent::Kind::EndNode }, // ol
+        { .kind = KdlEvent::Kind::EndNode }, // section
+        { .kind = KdlEvent::Kind::EndNode }, // main
+        { .kind = KdlEvent::Kind::EndNode }, // body
+        { .kind = KdlEvent::Kind::EndNode }, // html
         { .kind = KdlEvent::Kind::EndDocument },
     };
 

@@ -291,6 +291,70 @@ HE_TEST(core, string_view, Back)
 }
 
 // ------------------------------------------------------------------------------------------------
+HE_TEST(core, string_view, HashCode)
+{
+    constexpr char TestString[] = "Hello, world!";
+
+    StringView s(TestString);
+    StringViewTestAttorney::Test(s, TestString, HE_LENGTH_OF(TestString) - 1);
+
+    HE_EXPECT_EQ(s.HashCode(), 0xf83c9721fa2a9cdc);
+}
+
+// ------------------------------------------------------------------------------------------------
+HE_TEST(core, string_view, Find)
+{
+    constexpr char TestString[] = "Hello, world!";
+
+    StringView s(TestString);
+    StringViewTestAttorney::Test(s, TestString, HE_LENGTH_OF(TestString) - 1);
+
+    HE_EXPECT_EQ_PTR(s.Find('H'), TestString + 0);
+    HE_EXPECT_EQ_PTR(s.Find('o'), TestString + 4);
+    HE_EXPECT_EQ_PTR(s.Find('!'), TestString + 12);
+    HE_EXPECT_EQ_PTR(s.Find('x'), nullptr);
+}
+
+// ------------------------------------------------------------------------------------------------
+HE_TEST(core, string_view, Substring)
+{
+    constexpr char TestString[] = "Hello, world!";
+
+    const StringView s(TestString);
+    StringViewTestAttorney::Test(s, TestString, HE_LENGTH_OF(TestString) - 1);
+
+    {
+        const StringView sub = s.Substring(0);
+        HE_EXPECT_EQ(sub.Size(), s.Size());
+        HE_EXPECT_EQ_PTR(sub.Data(), s.Data());
+    }
+
+    {
+        const StringView sub = s.Substring(2);
+        HE_EXPECT_EQ(sub.Size(), s.Size() - 2);
+        HE_EXPECT_EQ_PTR(sub.Data(), s.Data() + 2);
+    }
+
+    {
+        const StringView sub = s.Substring(0, 0);
+        HE_EXPECT_EQ(sub.Size(), 0);
+        HE_EXPECT_EQ_PTR(sub.Data(), s.Data());
+    }
+
+    {
+        const StringView sub = s.Substring(0, s.Size());
+        HE_EXPECT_EQ(sub.Size(), s.Size());
+        HE_EXPECT_EQ_PTR(sub.Data(), s.Data());
+    }
+
+    {
+        const StringView sub = s.Substring(2, 5);
+        HE_EXPECT_EQ(sub.Size(), 5);
+        HE_EXPECT_EQ_PTR(sub.Data(), s.Data() + 2);
+    }
+}
+
+// ------------------------------------------------------------------------------------------------
 HE_TEST(core, string_view, ToInteger)
 {
     // Decimal

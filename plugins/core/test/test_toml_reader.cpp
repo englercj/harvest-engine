@@ -1010,8 +1010,8 @@ HE_TEST_F(core, toml_reader, value_float, TomlReaderFixture)
     ValidateFloat("-nan", -Limits<double>::NaN);
 
     // Overflow
-    ValidateFloat("1.0e1000", Limits<double>::Infinity);
-    ValidateFloat("-1.0e1000", -Limits<double>::Infinity);
+    Validate("key = 1.0e1000", TomlReadError::InvalidNumber);
+    Validate("key = -1.0e1000", TomlReadError::InvalidNumber);
 
     // Leading zeros are not allowed
     Validate("key = 01.0", TomlReadError::InvalidNumber);

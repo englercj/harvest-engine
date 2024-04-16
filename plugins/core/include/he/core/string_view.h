@@ -29,7 +29,7 @@ namespace he
         /// \param str The string to refer to.
         constexpr StringView(const char* str) noexcept
             : m_data(str)
-            , m_size(StrLen(str))
+            , m_size(str ? StrLen(str) : 0)
         {}
 
         /// Construct a string view from the range `[begin, end)`.
@@ -216,6 +216,26 @@ namespace he
                 return static_cast<const char*>(MemChr(m_data, ch, m_size));
             }
         }
+
+        /// Create a new string view of this string view's characters. The range starts at
+        /// `offset` and continues to the end of the string view.
+        ///
+        /// \note Asserts if `offset` is greater than, or equal to, \ref Size().
+        ///
+        /// \param[in] offset The offset to start the new string view at.
+        /// \return The requested substring.
+        StringView Substring(uint32_t offset) const;
+
+        /// Create a new string view of this string view's characters. The range starts at
+        /// `offset` and includes `count` characters.
+        ///
+        /// \note Asserts if `offset` is greater than, or equal to, \ref Size() or if `count` is
+        /// greater than `Size() - offset`.
+        ///
+        /// \param[in] offset The offset to start the new string view at.
+        /// \param[in] count The number of characters to include in the new string view.
+        /// \return The requested substring.
+        StringView Substring(uint32_t offset, uint32_t count) const;
 
         // ----------------------------------------------------------------------------------------
         // Converters

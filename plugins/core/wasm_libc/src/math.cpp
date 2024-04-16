@@ -6,173 +6,47 @@
 #include "ldshape.h"
 #include "stdint.h"
 
-#include "wasm/libc.wasm.h"
+#include "he/core/math.h"
 
 extern "C"
 {
     // --------------------------------------------------------------------------------------------
-    int __fpclassify(double x)
+    static int _FpClassToInt(he::FpClass fpClass)
     {
-        union { double f; uint64_t i; } u = { x };
-        int e = (u.i >> 52) & 0x7ff;
-
-        if (!e)
-            return (u.i << 1) ? FP_SUBNORMAL : FP_ZERO;
-
-        if (e == 0x7ff)
-            return (u.i << 12) ? FP_NAN : FP_INFINITE;
-
-        return FP_NORMAL;
-    }
-
-    int __fpclassifyf(float x)
-    {
-        union { float f; uint32_t i; } u = { x };
-        int e = (u.i >> 23) & 0xff;
-
-        if (!e)
-            return (u.i << 1) ? FP_SUBNORMAL : FP_ZERO;
-
-        if (e == 0xff)
-            return (u.i << 9) ? FP_NAN : FP_INFINITE;
-
-        return FP_NORMAL;
-    }
-
-#if LDBL_MANT_DIG == 53 && LDBL_MAX_EXP == 1024
-    int __fpclassifyl(long double x)
-    {
-        return __fpclassify(x);
-    }
-#elif LDBL_MANT_DIG == 64 && LDBL_MAX_EXP == 16384
-    int __fpclassifyl(long double x)
-    {
-        union ldshape u = { x };
-        int e = u.i.se & 0x7fff;
-        int msb = u.i.m >> 63;
-
-        if (!e && !msb)
-            return u.i.m ? FP_SUBNORMAL : FP_ZERO;
-
-        if (e == 0x7fff)
+        switch (fpClass)
         {
-            /* The x86 variant of 80-bit extended precision only admits
-            * one representation of each infinity, with the mantissa msb
-            * necessarily set. The version with it clear is invalid/nan.
-            * The m68k variant, however, allows either, and tooling uses
-            * the version with it clear. */
-            if (__BYTE_ORDER == __LITTLE_ENDIAN && !msb)
-                return FP_NAN;
-
-            return u.i.m << 1 ? FP_NAN : FP_INFINITE;
+            case he::FpClass::Normal: return FP_NORMAL;
+            case he::FpClass::Subnormal: return FP_SUBNORMAL;
+            case he::FpClass::Zero: return FP_ZERO;
+            case he::FpClass::Infinite: return FP_INFINITE;
+            case he::FpClass::Nan: return FP_NAN;
         }
-
-        if (!msb)
-            return FP_NAN;
-
-        return FP_NORMAL;
     }
-#elif LDBL_MANT_DIG == 113 && LDBL_MAX_EXP == 16384
-    int __fpclassifyl(long double x)
-    {
-        union ldshape u = { x };
-        int e = u.i.se & 0x7fff;
-        u.i.se = 0;
 
-        if (!e)
-            return u.i2.lo | u.i2.hi ? FP_SUBNORMAL : FP_ZERO;
+    int __fpclassifyf(float x) { return _FpClassToInt(he::Classify(x)); }
+    int __fpclassify(double x) { return _FpClassToInt(he::Classify(x)); }
+    int __fpclassifyl(long double x) { return _FpClassToInt(he::Classify(x)); }
 
-        if (e == 0x7fff)
-            return u.i2.lo | u.i2.hi ? FP_NAN : FP_INFINITE;
-
-        return FP_NORMAL;
-    }
-#endif
+    int __signbitf(float x) { return static_cast<int>(he::HasSignBit(x)); }
+    int __signbit(double x) { return static_cast<int>(he::HasSignBit(x)); }
+    int __signbitl(long double x) { return static_cast<int>(he::HasSignBit(x)); }
 
     // --------------------------------------------------------------------------------------------
-    int __signbitf(float x)
-    {
-        union { float f; uint32_t i; } y = { x };
-        return y.i >> 31;
-    }
+    double acos(double x) { return he::Acos(x); }
+    float acosf(float x) { return he::Acos(x); }
 
-    int __signbit(double x)
-    {
-        union { double d; uint64_t i; } y = { x };
-        return y.i >> 63;
-    }
+    double asin(double x) { return he::Asin(x); }
+    float asinf(float x) { return he::Asin(x); }
 
-#if (LDBL_MANT_DIG == 64 || LDBL_MANT_DIG == 113) && LDBL_MAX_EXP == 16384
-    int __signbitl(long double x)
-    {
-        union ldshape u = { x };
-        return u.i.se >> 15;
-    }
-#elif LDBL_MANT_DIG == 53 && LDBL_MAX_EXP == 1024
-    int __signbitl(long double x)
-    {
-        return __signbit(x);
-    }
-#endif
+    double atan(double x) { return he::Atan(x); }
+    float atanf(float x) { return he::Atan(x); }
 
-    // --------------------------------------------------------------------------------------------
-    double acos(double x)
-    {
-        return heWASM_Acos(x);
-    }
+    double atan2(double y, double x) { return he::Atan2(y, x); }
+    float atan2f(float y, float x) { return he::Atan2(y, x); }
 
-    float acosf(float x)
-    {
-        return static_cast<float>(heWASM_Acos(x));
-    }
+    double ceil(double x) { return he::Ceil(x); }
+    float ceilf(float x) { return he::Ceil(x); }
 
-    // --------------------------------------------------------------------------------------------
-    double asin(double x)
-    {
-        return heWASM_Asin(x);
-    }
-
-    float asinf(float x)
-    {
-        return static_cast<float>(heWASM_Asin(x));
-    }
-
-    // --------------------------------------------------------------------------------------------
-    double atan(double x)
-    {
-        return heWASM_Atan(x);
-    }
-
-    float atanf(float x)
-    {
-        return static_cast<float>(heWASM_Atan(x));
-    }
-
-    // --------------------------------------------------------------------------------------------
-    double atan2(double y, double x)
-    {
-        return heWASM_Atan2(y, x);
-    }
-
-    float atan2f(float y, float x)
-    {
-        return static_cast<float>(heWASM_Atan2(y, x));
-    }
-
-    // --------------------------------------------------------------------------------------------
-    double ceil(double x)
-    {
-        // `f64.ceil` instruction on WASM.
-        return __builtin_ceil(x);
-    }
-
-    float ceilf(float x)
-    {
-        // `f32.ceil` instruction on WASM.
-        return __builtin_ceilf(x);
-    }
-
-    // --------------------------------------------------------------------------------------------
     double copysign(double x, double y)
     {
         // `f64.copysign` instruction on WASM.
@@ -185,177 +59,48 @@ extern "C"
         return __builtin_copysignf(x, y);
     }
 
-    // --------------------------------------------------------------------------------------------
-    double cos(double x)
-    {
-        return heWASM_Cos(x);
-    }
+    double cos(double x) { return he::Cos(x); }
+    float cosf(float x) { return he::Cos(x); }
 
-    float cosf(float x)
-    {
-        return static_cast<float>(heWASM_Cos(x));
-    }
+    double exp(double x) { return he::Exp(x); }
+    float expf(float x) { return he::Exp(x); }
 
-    // --------------------------------------------------------------------------------------------
-    double exp(double x)
-    {
-        return heWASM_Exp(x);
-    }
+    double fabs(double x) { return he::Abs(x); }
+    float fabsf(float x) { return he::Abs(x); }
 
-    float expf(float x)
-    {
-        return static_cast<float>(heWASM_Exp(x));
-    }
+    double floor(double x) { return he::Floor(x); }
+    float floorf(float x) { return he::Floor(x); }
 
-    // --------------------------------------------------------------------------------------------
-    double fabs(double x)
-    {
-        // `f64.abs` instruction on WASM.
-        return __builtin_fabs(x);
-    }
+    double fmax(double x, double y) { return he::Max(x, y); }
+    float fmaxf(float x, float y) { return he::Max(x, y); }
 
-    float fabsf(float x)
-    {
-        // `f32.abs` instruction on WASM.
-        return __builtin_fabsf(x);
-    }
+    double fmin(double x, double y) { return he::Min(x, y); }
+    float fminf(float x, float y) { return he::Min(x, y); }
 
-    // --------------------------------------------------------------------------------------------
-    double floor(double x)
-    {
-        // `f64.floor` instruction on WASM.
-        return __builtin_floor(x);
-    }
+    double fmod(double x, double y) { return he::Fmod(x, y); }
+    float fmodf(float x, float y) { return he::Fmod(x, y); }
 
-    float floorf(float x)
-    {
-        // `f32.floor` instruction on WASM.
-        return __builtin_floorf(x);
-    }
+    double log(double x) { return he::Log(x); }
+    float logf(float x) { return he::Log(x); }
 
-    // --------------------------------------------------------------------------------------------
-    double fmax(double x, double y)
-    {
-        // `f64.max` instruction on WASM.
-        return __builtin_wasm_max_f64(x, y);
-    }
+    double log10(double x) { return he::Log10(x); }
+    float log10f(float x) { return he::Log10(x); }
 
-    float fmaxf(float x, float y)
-    {
-        // `f32.max` instruction on WASM.
-        return __builtin_wasm_max_f32(x, y);
-    }
+    double log1p(double x) { return he::Log1p(x); }
+    float log1pf(float x) { return he::Log1p(x); }
 
-    // --------------------------------------------------------------------------------------------
-    double fmin(double x, double y)
-    {
-        // `f64.min` instruction on WASM.
-        return __builtin_wasm_min_f64(x, y);
-    }
+    double log2(double x) { return he::Log2(x); }
+    float log2f(float x) { return he::Log2(x); }
 
-    float fminf(float x, float y)
-    {
-        // `f32.min` instruction on WASM.
-        return __builtin_wasm_min_f32(x, y);
-    }
+    double pow(double x, double y) { return he::Pow(x, y); }
+    float powf(float x, float y) { return he::Pow(x, y); }
 
-    // --------------------------------------------------------------------------------------------
-    double fmod(double x, double y)
-    {
-        return heWASM_Mod(x, y);
-    }
+    double round(double x) { return he::Round(x); }
+    float roundf(float x) { return he::Round(x); }
 
-    float fmodf(float x, float y)
-    {
-        return static_cast<float>(heWASM_Mod(x, y));
-    }
+    double sin(double x) { return he::Sin(x); }
+    float sinf(float x) { return he::Sin(x); }
 
-    // --------------------------------------------------------------------------------------------
-    double log(double x)
-    {
-        return heWASM_Log(x);
-    }
-
-    float logf(float x)
-    {
-        return static_cast<float>(heWASM_Log(x));
-    }
-
-    // --------------------------------------------------------------------------------------------
-    double log10(double x)
-    {
-        return heWASM_Log10(x);
-    }
-
-    float log10f(float x)
-    {
-        return static_cast<float>(heWASM_Log10(x));
-    }
-
-    // --------------------------------------------------------------------------------------------
-    double log1p(double x)
-    {
-        return heWASM_Log1p(x);
-    }
-
-    float log1pf(float x)
-    {
-        return static_cast<float>(heWASM_Log1p(x));
-    }
-
-    // --------------------------------------------------------------------------------------------
-    double log2(double x)
-    {
-        return heWASM_Log2(x);
-    }
-
-    float log2f(float x)
-    {
-        return static_cast<float>(heWASM_Log2(x));
-    }
-
-    // --------------------------------------------------------------------------------------------
-    double pow(double x, double y)
-    {
-        return heWASM_Pow(x, y);
-    }
-
-    float powf(float x, float y)
-    {
-        return static_cast<float>(heWASM_Pow(x, y));
-    }
-
-    // --------------------------------------------------------------------------------------------
-    double round(double x)
-    {
-        // `f64.nearest` instruction on WASM.
-        // All WASM operations use round-to-nearest ties-to-even. This is different behavior than
-        // the C standard library, which uses round-to-nearest ties-away-from-zero.
-        // return __builtin_roundeven(x);
-        return heWASM_Round(x);
-    }
-
-    float roundf(float x)
-    {
-        // `f32.nearest` instruction on WASM.
-        // All WASM operations use round-to-nearest ties-to-even. This is different behavior than
-        // the C standard library, which uses round-to-nearest ties-away-from-zero.
-        // return __builtin_roundevenf(x);
-        return static_cast<float>(heWASM_Round(x));
-    }
-
-    // --------------------------------------------------------------------------------------------
-    double sin(double x)
-    {
-        return heWASM_Sin(x);
-    }
-
-    float sinf(float x)
-    {
-        return static_cast<float>(heWASM_Sin(x));
-    }
-
-    // --------------------------------------------------------------------------------------------
     void sincos(double x, double* s, double* c)
     {
         *s = sin(x);
@@ -368,31 +113,12 @@ extern "C"
         *c = cosf(x);
     }
 
-    // --------------------------------------------------------------------------------------------
-    double sqrt(double x)
-    {
-        // `f64.sqrt` instruction on WASM.
-        return __builtin_sqrt(x);
-    }
+    double sqrt(double x) { return he::Sqrt(x); }
+    float sqrtf(float x) { return he::Sqrt(x); }
 
-    float sqrtf(float x)
-    {
-        // `f32.sqrt` instruction on WASM.
-        return __builtin_sqrtf(x);
-    }
+    double tan(double x) { return he::Tan(x); }
+    float tanf(float x) { return he::Tan(x); }
 
-    // --------------------------------------------------------------------------------------------
-    double tan(double x)
-    {
-        return heWASM_Tan(x);
-    }
-
-    float tanf(float x)
-    {
-        return static_cast<float>(heWASM_Tan(x));
-    }
-
-    // --------------------------------------------------------------------------------------------
     double trunc(double x)
     {
         // `f64.trunc` instruction on WASM.

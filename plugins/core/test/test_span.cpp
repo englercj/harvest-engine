@@ -6,7 +6,10 @@
 
 #include "he/core/test.h"
 
+#include <span>
+
 using namespace he;
+
 
 // ------------------------------------------------------------------------------------------------
 HE_TEST(core, span, Construct)
@@ -193,6 +196,44 @@ HE_TEST(core, span, AsBytes)
 
     HE_EXPECT_EQ(s.Size() * sizeof(uint32_t), b.Size());
     HE_EXPECT_EQ_MEM(s.Data(), b.Data(), b.Size());
+}
+
+// ------------------------------------------------------------------------------------------------
+HE_TEST(core, span, Subspan)
+{
+    static uint32_t s_data[]{ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 };
+
+    Span<uint32_t> s(s_data);
+
+    {
+        Span<uint32_t> sub = s.Subspan(0);
+        HE_EXPECT_EQ(sub.Size(), s.Size());
+        HE_EXPECT_EQ_PTR(sub.Data(), s.Data());
+    }
+
+    {
+        Span<uint32_t> sub = s.Subspan(2);
+        HE_EXPECT_EQ(sub.Size(), s.Size() - 2);
+        HE_EXPECT_EQ_PTR(sub.Data(), s.Data() + 2);
+    }
+
+    {
+        Span<uint32_t> sub = s.Subspan(0, 0);
+        HE_EXPECT_EQ(sub.Size(), 0);
+        HE_EXPECT_EQ_PTR(sub.Data(), s.Data());
+    }
+
+    {
+        Span<uint32_t> sub = s.Subspan(0, s.Size());
+        HE_EXPECT_EQ(sub.Size(), s.Size());
+        HE_EXPECT_EQ_PTR(sub.Data(), s.Data());
+    }
+
+    {
+        Span<uint32_t> sub = s.Subspan(2, 5);
+        HE_EXPECT_EQ(sub.Size(), 5);
+        HE_EXPECT_EQ_PTR(sub.Data(), s.Data() + 2);
+    }
 }
 
 // ------------------------------------------------------------------------------------------------

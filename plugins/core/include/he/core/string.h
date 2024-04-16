@@ -328,6 +328,128 @@ namespace he
         /// \return The hash value.
         [[nodiscard]] uint64_t HashCode() const noexcept;
 
+        /// Create a new string with a copy of a character range from this string.
+        /// The range starts at `offset` and continues to the end of the string.
+        ///
+        /// \note Asserts if `offset` is greater than, or equal to, \ref Size().
+        ///
+        /// \param[in] offset The offset to start the new string at.
+        /// \param[in] allocator The allocator to use for the new string.
+        /// \return The requested substring.
+        [[nodiscard]] String Substring(uint32_t offset, Allocator& allocator) const;
+
+        /// Create a new string with a copy of a character range from this string.
+        /// The range starts at `offset` and continues to the end of the string. The newly
+        /// created string will use the same allocator as this string.
+        ///
+        /// \note Asserts if `offset` is greater than, or equal to, \ref Size().
+        ///
+        /// \param[in] offset The offset to start the new string at.
+        /// \return The requested substring.
+        [[nodiscard]] String Substring(uint32_t offset) const { return Substring(offset, m_allocator); }
+
+        /// Create a new string with a copy of a character range from this string.
+        /// The range starts at `offset` and continues to the end of the string.
+        ///
+        /// \note Asserts if `offset` is greater than, or equal to, \ref Size() or if `count` is
+        /// greater than `Size() - offset`.
+        ///
+        /// \param[in] offset The offset to start the new string at.
+        /// \param[in] count The number of characters to include in the new string.
+        /// \param[in] allocator The allocator to use for the new string.
+        /// \return The requested substring.
+        [[nodiscard]] String Substring(uint32_t offset, uint32_t count, Allocator& allocator) const;
+
+        /// Create a new string with a copy of a character range from this string.
+        /// The range starts at `offset` and continues to the end of the string. The newly
+        /// created string will use the same allocator as this string.
+        ///
+        /// \note Asserts if `offset` is greater than, or equal to, \ref Size() or if `count` is
+        /// greater than `Size() - offset`.
+        ///
+        /// \param[in] offset The offset to start the new string at.
+        /// \param[in] count The number of characters to include in the new string.
+        /// \return The requested substring.
+        [[nodiscard]] String Substring(uint32_t offset, uint32_t count) const { return Substring(offset, count, m_allocator); }
+
+        /// Searches this string for a character.
+        ///
+        /// \param[in] search The character to search for.
+        /// \return A pointer to the found character, or nullptr if not found.
+        [[nodiscard]] const char* Find(char search) const { return StrFindN(Data(), Size(), search); }
+
+        /// Searches this string for a null-terminated string.
+        ///
+        /// \param[in] search The null-terminated string to search for.
+        /// \return A pointer to the start of the found string, or nullptr if not found.
+        [[nodiscard]] const char* Find(const char* search) const { return StrFindN(Data(), Size(), search); }
+
+        /// Searches this string for a substring.
+        ///
+        /// \param[in] search The string to search for.
+        /// \param[in] len The number of characters in the `search` string.
+        /// \return A pointer to the start of the found string, or nullptr if not found.
+        [[nodiscard]] const char* Find(const char* search, uint32_t len) const { return StrFindN(Data(), Size(), search, len); }
+
+        /// Searches this string for a range of characters.
+        ///
+        /// \param[in] search The range of characters to search for.
+        /// \return A pointer to the start of the found string, or nullptr if not found.
+        template <ContiguousRangeOf<const char> R>
+        [[nodiscard]] const char* Find(const R& search) const { return StrFindN(Data(), Size(), search.Data(), search.Size()); }
+
+        /// Searches this string for a character.
+        ///
+        /// \param[in] search The character to search for.
+        /// \return The index of the found character, or `uint32_t(-1)` if not found.
+        [[nodiscard]] uint32_t FindIndex(char search) const { const char* p = Find(search); return p ? static_cast<uint32_t>(p - Data()) : static_cast<uint32_t>(-1); }
+
+        /// Searches this string for a null-terminated string.
+        ///
+        /// \param[in] search The null-terminated string to search for.
+        /// \return The index of the start of the found string, or `uint32_t(-1)` if not found.
+        [[nodiscard]] uint32_t FindIndex(const char* search) const { const char* p = Find(search); return p ? static_cast<uint32_t>(p - Data()) : static_cast<uint32_t>(-1); }
+
+        /// Searches this string for a substring.
+        ///
+        /// \param[in] search The string to search for.
+        /// \param[in] len The number of characters in the `search` string.
+        /// \return The index of the start of the found string, or `uint32_t(-1)` if not found.
+        [[nodiscard]] uint32_t FindIndex(const char* search, uint32_t len) const { const char* p = Find(search, len); return p ? static_cast<uint32_t>(p - Data()) : static_cast<uint32_t>(-1); }
+
+        /// Searches this string for a range of characters.
+        ///
+        /// \param[in] search The range of characters to search for.
+        /// \return The index of pointer to the start of the found string, or nullptr if not found.
+        template <ContiguousRangeOf<const char> R>
+        [[nodiscard]] uint32_t FindIndex(const R& search) const { const char* p = Find(search); return p ? static_cast<uint32_t>(p - Data()) : static_cast<uint32_t>(-1); }
+
+        /// Checks if this string contains a character.
+        ///
+        /// \param[in] search The character to search for.
+        /// \return True if the character is found, false otherwise.
+        [[nodiscard]] bool Contains(char search) const { return Find(search) != nullptr; }
+
+        /// Checks if this string contains a null-terminated string.
+        ///
+        /// \param[in] search The null-terminated string to search for.
+        /// \return True if the string is found, false otherwise.
+        [[nodiscard]] bool Contains(const char* search) const { return Find(search) != nullptr; }
+
+        /// Checks if this string contains a substring.
+        ///
+        /// \param[in] search The string to search for.
+        /// \param[in] len The number of characters in the `search` string.
+        /// \return True if the string is found, false otherwise.
+        [[nodiscard]] bool Contains(const char* search, uint32_t len) const { return Find(search, len) != nullptr; }
+
+        /// Checks if this string contains a range of characters.
+        ///
+        /// \param[in] search The range of characters to search for.
+        /// \return True if the string is found, false otherwise.
+        template <ContiguousRangeOf<const char> R>
+        [[nodiscard]] bool Contains(const R& search) const { return Find(search) != nullptr; }
+
         // ----------------------------------------------------------------------------------------
         // Converters
 
@@ -566,6 +688,50 @@ namespace he
         ///
         /// \param str The string source to copy from.
         void Assign(const String& str) { Clear(); Append(str); }
+
+        /// Replace all occurrences of the string `search` with the string `replacement`.
+        ///
+        /// \param search The string to search for.
+        /// \param searchLen The number of characters in the `search` string.
+        /// \param replacement The string to replace `search` with.
+        /// \param replacementLen The number of characters in the `replacement` string.
+        /// \return The number of replacements made.
+        uint32_t Replace(const char* search, uint32_t searchLen, const char* replacement, uint32_t replacementLen);
+
+        /// Replace all occurrences of the null-terminated string `search` with the
+        /// null-terminated string `replacement`.
+        ///
+        /// \param search The null-terminated string to search for.
+        /// \param replacement The null-terminated string to replace `search` with.
+        /// \return The number of replacements made.
+        uint32_t Replace(const char* search, const char* replacement) { return Replace(search, StrLen(search), replacement, StrLen(replacement)); }
+
+        /// Replace all occurrences of the range of characters `search` with the null-terminated
+        /// string `replacement`.
+        ///
+        /// \param search The range of characters to search for.
+        /// \param replacement The null-terminated string to replace `search` with.
+        /// \return The number of replacements made.
+        template <ContiguousRangeOf<const char> R>
+        uint32_t Replace(const R& search, const char* replacement) { return Replace(search.Data(), search.Size(), replacement, StrLen(replacement)); }
+
+        /// Replace all occurrences of the null-terminated string `search` with the range of
+        /// characters `replacement`.
+        ///
+        /// \param search The null-terminated string to search for.
+        /// \param replacement The range of characters to replace `search` with.
+        /// \return The number of replacements made.
+        template <ContiguousRangeOf<const char> R>
+        uint32_t Replace(const char* search, const R& replacement) { return Replace(search, StrLen(search), replacement.Data(), replacement.Size()); }
+
+        /// Replace all occurrences of the range of characters `search` with the range of
+        /// characters `replacement`.
+        ///
+        /// \param search The range of characters to search for.
+        /// \param replacement The range of characters to replace `search` with.
+        /// \return The number of replacements made.
+        template <ContiguousRangeOf<const char> R1, ContiguousRangeOf<const char> R2>
+        uint32_t Replace(const R1& search, const R2& replacement) { return Replace(search.Data(), search.Size(), replacement.Data(), replacement.Size()); }
 
     private:
         // Grows the internal capacity to make space for `len` elements.

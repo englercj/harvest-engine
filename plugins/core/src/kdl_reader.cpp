@@ -121,33 +121,52 @@ namespace he
             return true;
         }
 
-        [[nodiscard]] bool SkipSpaces()
+        [[nodiscard]] bool SkipSpaces(bool allowSlashdash = true)
         {
             uint32_t ucc = 0;
             uint32_t len = 0;
             while (!AtEnd() && PeekCodePoint(ucc, len))
             {
-                // escaped newlines are considered normal spaces
+                // catch escape sequences for escaped newlines
                 if (ucc == '\\')
                 {
+                    m_inWhitespaceEscape = true;
                     m_cursor += len;
-                    if (!ConsumeNewLine())
-                        return false;
                 }
                 // anywhere you can have whitespace, you can also have comments
                 else if (ucc == '/')
                 {
-                    // skip comments
+                    if (!PeekCodePoint(m_cursor + len, m_end, ucc, len))
+                        return false;
+
+                    // Single line comments and slashdash comments are terminators for nodes, they don't count just "spaces"
+                    if (ucc == '/')
+                        return true;
+
+                    // Some contexts don't allow slashdash comments
+                    if (!allowSlashdash && ucc == '-')
+                        return true;
+
                     if (!ParseComment())
                         return false;
                 }
-                // finally, if it isn't whitespace we're done here
-                else if (!IsKdlWhitespace(ucc))
+                // if it is whitespace consume it and continue
+                else if (IsKdlWhitespace(ucc))
                 {
+                    m_cursor += len;
+                }
+                // escaped newlines are considered normal spaces
+                else if (IsKdlNewline(ucc) && m_inWhitespaceEscape)
+                {
+                    if (!ConsumeNewLine())
+                        return false;
+                }
+                // finally, if it isn't whitespace or comment we're done here
+                else
+                {
+                    m_inWhitespaceEscape = false;
                     break;
                 }
-
-                m_cursor += len;
             }
 
             return true;
@@ -239,10 +258,11 @@ namespace he
 
             ++m_line;
             m_lineStart = m_cursor;
+            m_inWhitespaceEscape = false;
             return true;
         }
 
-        [[nodiscard]] bool IsEndOfRawString(const char* begin, const char* end, uint32_t rawDelimCount)
+        [[nodiscard]] bool IsEndOfString(const char* begin, const char* end, uint32_t rawDelimCount)
         {
             uint32_t count = 0;
             while (begin < end && *begin != '\0' && count < rawDelimCount)
@@ -280,30 +300,36 @@ namespace he
                 }
 
                 // For a raw string we also need to check the number of delimiters
-                if (!IsEndOfRawString(begin, m_end, rawDelimCount))
+                if (!IsEndOfString(begin, m_end, rawDelimCount))
                     continue;
 
                 // Store the dedent prefix
-                outDedentPrefix = { lineStart, begin };
-
-                // Validate that the final line of the string is only whitespace
-                while (lineStart < begin)
-                {
-                    if (!ConsumeCodePoint(lineStart, begin, ucc))
-                        return false;
-
-                    if (!IsKdlWhitespace(ucc))
-                        return SetError(KdlReadError::InvalidToken, ' ');
-                }
-
-                return true;
+                outDedentPrefix = { lineStart, begin - 1 }; // -1 for the quote
+                break;
             }
 
-            return SetError(KdlReadError::UnexpectedEof);
+            // Validate that the final line of the string is only whitespace
+            for (const uint32_t ucc : Utf8Splitter(outDedentPrefix))
+            {
+                if (!IsKdlWhitespace(ucc))
+                    return SetError(KdlReadError::InvalidToken, ' ');
+            }
+
+            return true;
         }
 
         [[nodiscard]] bool ConsumeDedentPrefix(StringView dedentPrefix)
         {
+            // Empty lines without a dedent prefix are allowed.
+            uint32_t ucc = 0;
+            uint32_t len = 0;
+            if (!PeekCodePoint(ucc, len))
+                return false;
+
+            if (IsKdlNewline(ucc))
+                return true;
+
+            // Iterating bytes because the depent prefix must be byte-wise identical to be valid.
             for (const char ch : dedentPrefix)
             {
                 if (*m_cursor != ch)
@@ -319,53 +345,45 @@ namespace he
 
         [[nodiscard]] bool ConsumeUnicodeEscapeSequence(String& dst)
         {
+            if (!Consume('u'))
+                return false;
+
+            if (!Consume('{'))
+                return SetError(KdlReadError::InvalidEscapeSequence);
+
             if (AtEnd())
                 return SetError(KdlReadError::UnexpectedEof);
 
             // Max of 6 hex characters
-            bool foundOne = false;
+            bool foundNum = false;
             uint32_t ucc = 0;
             for (uint32_t i = 0; i < 6; ++i)
             {
                 if (AtEnd())
                     break;
 
-                const char ch = *m_cursor++;
-
-                if (!IsHex(ch))
+                if (*m_cursor == '}')
                     break;
 
-                foundOne = true;
-                ucc = (ucc << 4) + HexToNibble(ch);
+                if (!IsHex(*m_cursor))
+                    return SetError(KdlReadError::InvalidEscapeSequence);
+
+                ucc = (ucc << 4) + HexToNibble(*m_cursor);
+                foundNum = true;
+                ++m_cursor;
             }
 
-            if (!foundOne)
+            if (!Consume('}'))
                 return SetError(KdlReadError::InvalidEscapeSequence);
 
-            if (ucc < 0x80)
-            {
-                dst.PushBack(static_cast<uint8_t>(ucc));
-            }
-            else if (ucc < 0x800)
-            {
-                dst.PushBack(static_cast<uint8_t>(0xc0 | (ucc >> 6)));
-                dst.PushBack(static_cast<uint8_t>(0x80 | (ucc & 0x3f)));
-            }
-            else if (ucc < 0x10000)
-            {
-                dst.PushBack(static_cast<uint8_t>(0xe0 | (ucc >> 12)));
-                dst.PushBack(static_cast<uint8_t>(0x80 | ((ucc >> 6) & 0x3f)));
-                dst.PushBack(static_cast<uint8_t>(0x80 | (ucc & 0x3f)));
-            }
-            else
-            {
-                dst.PushBack(static_cast<uint8_t>(0xf0 | (ucc >> 18)));
-                dst.PushBack(static_cast<uint8_t>(0x80 | ((ucc >> 12) & 0x3f)));
-                dst.PushBack(static_cast<uint8_t>(0x80 | ((ucc >> 6) & 0x3f)));
-                dst.PushBack(static_cast<uint8_t>(0x80 | (ucc & 0x3f)));
-            }
+            if (!foundNum)
+                return SetError(KdlReadError::InvalidEscapeSequence);
 
-            return true;
+            if (!IsKdlUnicodeScalarValue(ucc))
+                return SetError(KdlReadError::InvalidEscapeSequence);
+
+            const uint32_t len = UTF8Encode(dst, ucc);
+            return len ? true : SetError(KdlReadError::InvalidEscapeSequence);
         }
 
         [[nodiscard]] bool ConsumeQuotedString(String& dst, uint32_t rawDelimCount)
@@ -375,13 +393,13 @@ namespace he
             bool firstChar = true;
             bool isMultiline = false;
             bool inEscapeSeq = false;
+            bool inWhitespaceEscape = false;
             StringView dedentPrefix;
             while (!AtEnd())
             {
-                const char* begin = m_cursor;
-
                 uint32_t ucc = 0;
-                if (!ConsumeCodePoint(ucc))
+                uint32_t len = 0;
+                if (!PeekCodePoint(ucc, len))
                     return false;
 
                 // Multi-line string handling
@@ -392,13 +410,15 @@ namespace he
 
                     if (isMultiline)
                     {
+                        if (!ConsumeNewLine())
+                            return false;
+
                         // Multi-line strings dedent by the number of spaces on the last line
                         // of the string. This means we need to scan to the end of the string
                         // and store the whitespace prefix of the final line.
                         if (!GetDedentPrefix(dedentPrefix, rawDelimCount))
                             return false;
 
-                        // Consume the first prefix since we consumed the newline
                         if (!ConsumeDedentPrefix(dedentPrefix))
                             return false;
 
@@ -409,51 +429,79 @@ namespace he
                 // Escape sequence handling
                 if (inEscapeSeq)
                 {
-                    if (IsKdlWhitespace(ucc) || IsKdlNewline(ucc))
+                    // skip whitespace after escape sequence
+                    if (IsKdlWhitespace(ucc))
                     {
-                        // skip newlines and whitespace after escape sequence
+                        inWhitespaceEscape = true;
+                        m_cursor += len;
+                        continue;
+                    }
+
+                    // skip newlines after escape sequence
+                    if (IsKdlNewline(ucc))
+                    {
+                        inWhitespaceEscape = true;
+
+                        if (!ConsumeNewLine())
+                            return false;
+
+                        if (!ConsumeDedentPrefix(dedentPrefix))
+                            return false;
+
+                        continue;
+                    }
+
+                    if (inWhitespaceEscape)
+                    {
+                        inEscapeSeq = false;
+                        inWhitespaceEscape = false;
+                        continue;
+                    }
+
+                    if (ucc == 'u')
+                    {
+                        if (!ConsumeUnicodeEscapeSequence(dst))
+                            return false;
+
+                        inEscapeSeq = false;
                         continue;
                     }
 
                     switch (ucc)
                     {
-                        case 'r': dst.Append('\r'); break;
                         case 'n': dst.Append('\n'); break;
+                        case 'r': dst.Append('\r'); break;
                         case 't': dst.Append('\t'); break;
                         case '\\': dst.Append('\\'); break;
                         case '"': dst.Append('"'); break;
                         case 'b': dst.Append('\b'); break;
                         case 'f': dst.Append('\f'); break;
-                        case 'u':
-                            if (!ConsumeUnicodeEscapeSequence(dst))
-                                return false;
-                            break;
-                            break;
+                        case 's': dst.Append(' '); break;
                         default:
                             return SetError(KdlReadError::InvalidEscapeSequence);
                     }
 
                     inEscapeSeq = false;
+                    m_cursor += len;
                     continue;
                 }
 
                 // Newline handling is different for multi-line or single-line strings
                 if (IsKdlNewline(ucc))
                 {
-                    if (isMultiline)
-                    {
-                        // newlines are normalized to `\n`
-                        dst.PushBack('\n');
-
-                        // Consume the required dedent prefix since we consumed a newline
-                        if (!ConsumeDedentPrefix(dedentPrefix))
-                            return false;
-                    }
-                    else
-                    {
-                        // unescaped newlines are not allowed in single-line strings
+                    // unescaped newlines are not allowed in single-line strings
+                    if (!isMultiline)
                         return SetError(KdlReadError::InvalidControlChar);
-                    }
+
+                    if (!ConsumeNewLine())
+                        return false;
+
+                    // Consume the required dedent prefix since we consumed a newline
+                    if (!ConsumeDedentPrefix(dedentPrefix))
+                        return false;
+
+                    // newlines are normalized to `\n`
+                    dst.PushBack('\n');
                     continue;
                 }
 
@@ -464,21 +512,27 @@ namespace he
                         dst.PushBack('\\');
                     else
                         inEscapeSeq = true;
+
+                    m_cursor += len;
                     continue;
                 }
 
                 // End of string handling
                 if (ucc == '"')
                 {
-                    if (IsEndOfRawString(m_cursor, m_end, rawDelimCount))
+                    if (IsEndOfString(m_cursor + len, m_end, rawDelimCount))
                     {
+                        m_cursor += len;
                         m_cursor += rawDelimCount;
+                        if (!dst.IsEmpty() && dst.Back() == '\n')
+                            dst.PopBack();
                         return true;
                     }
                 }
 
                 // Append the character to the buffer
-                dst.Append(begin, m_cursor);
+                dst.Append(m_cursor, len);
+                m_cursor += len;
             }
 
             return SetError(KdlReadError::UnexpectedEof);
@@ -492,7 +546,8 @@ namespace he
             while (!AtEnd())
             {
                 uint32_t ucc = 0;
-                if (!ConsumeCodePoint(ucc))
+                uint32_t len = 0;
+                if (!PeekCodePoint(ucc, len))
                     return false;
 
                 if (first && !IsValidKdlIdentifierStartCodePoint(ucc))
@@ -500,11 +555,10 @@ namespace he
 
                 first = false;
 
-                if (IsKdlWhitespace(ucc) || IsKdlNewline(ucc))
+                if (!IsValidKdlIdentifierCodePoint(ucc))
                     break;
 
-                if (!IsValidKdlIdentifierCodePoint(ucc))
-                    return SetError(KdlReadError::InvalidIdentifier);
+                m_cursor += len;
             }
 
             value = { begin, m_cursor };
@@ -513,13 +567,13 @@ namespace he
             if (IsNumeric(value[0]))
                 return SetError(KdlReadError::InvalidIdentifier);
 
-            if (value[0] == '-')
+            if (value[0] == '-' || value[0] == '+')
             {
-                // Identifiers can start with "-." as long as the next char is not a number
+                // Identifiers can start with "-."/"+." as long as the next char is not a number
                 if (value.Size() > 2 && value[1] == '.' && IsNumeric(value[2]))
                     return SetError(KdlReadError::InvalidIdentifier);
 
-                // Identifiers can start with "-" as long as the next char is not a number
+                // Identifiers can start with "-"/"+" as long as the next char is not a number
                 if (value.Size() > 1 && IsNumeric(value[1]))
                     return SetError(KdlReadError::InvalidIdentifier);
             }
@@ -613,6 +667,10 @@ namespace he
 
             switch (ucc)
             {
+                case '/':
+                {
+                    return ParseComment();
+                }
                 case ';':
                 {
                     // empty nodes are allowed, just skip the semicolon
@@ -621,16 +679,7 @@ namespace he
                 }
                 case '}':
                 {
-                    // end of a node child block
-                    if (m_nodeDepth == 0)
-                        return SetError(KdlReadError::InvalidDocument);
-
-                    if (!m_handler->EndNode())
-                        return SetError(KdlReadError::Cancelled);
-
-                    --m_nodeDepth;
-
-                    if (!CheckSlashdashEnd())
+                    if (!EmitEndNode())
                         return false;
 
                     m_cursor += len;
@@ -638,6 +687,7 @@ namespace he
                 }
                 case '(':
                 case '"':
+                case '#':
                     // start of type annotation or string name of node
                     return ParseNode();
                 default:
@@ -650,9 +700,12 @@ namespace he
 
         [[nodiscard]] bool CheckSlashdashEnd()
         {
-            if (m_slashDashDepth > 0 && m_slashDashDepth == m_nodeDepth + 1)
+            if (m_slashDashDepthStack.IsEmpty())
+                return true;
+
+            if (m_slashDashDepthStack.Back() == m_nodeDepth + 1)
             {
-                m_slashDashDepth = 0;
+                m_slashDashDepthStack.PopBack();
                 if (!m_handler->EndComment())
                     return SetError(KdlReadError::Cancelled);
             }
@@ -679,7 +732,7 @@ namespace he
                 {
                     // slashdash
                     m_cursor += len;
-                    m_slashDashDepth = m_nodeDepth + 1;
+                    m_slashDashDepthStack.PushBack(m_nodeDepth + 1);
 
                     if (!m_handler->StartComment())
                         return SetError(KdlReadError::Cancelled);
@@ -709,8 +762,11 @@ namespace he
                     if (!m_handler->Comment({ begin, m_cursor }))
                         return SetError(KdlReadError::Cancelled);
 
-                    if (!ConsumeNewLine())
-                        return false;
+                    if (!AtEnd())
+                    {
+                        if (!ConsumeNewLine())
+                            return false;
+                    }
 
                     return true;
                 }
@@ -766,10 +822,10 @@ namespace he
             if (!PeekCodePoint(ucc, len))
                 return false;
 
-            StringView type;
+            bool hasType = false;
             if (ucc == '(')
             {
-                if (!ConsumeType(type))
+                if (!ConsumeType(hasType))
                     return false;
 
                 if (!SkipSpaces())
@@ -780,15 +836,12 @@ namespace he
             if (!ConsumeString(name))
                 return false;
 
-            if (!m_handler->StartNode(name, type))
-                return SetError(KdlReadError::Cancelled);
+            if (!EmitStartNode(name, hasType))
+                return false;
 
             if (AtEnd())
             {
-                if (!m_handler->EndNode())
-                    return SetError(KdlReadError::Cancelled);
-
-                if (!CheckSlashdashEnd())
+                if (!EmitEndNode())
                     return false;
 
                 return true;
@@ -798,7 +851,7 @@ namespace he
             if (!PeekCodePoint(ucc, len))
                 return false;
 
-            if (!IsKdlWhitespace(ucc) && !IsKdlNewline(ucc) && ucc != ';' && ucc != '/')
+            if (!IsKdlWhitespace(ucc) && !IsKdlNewline(ucc) && ucc != ';' && ucc != '/' && ucc != '}')
                 return SetError(KdlReadError::InvalidToken);
 
             bool hasWhitespace = false;
@@ -810,10 +863,7 @@ namespace he
                 // Newline is a node terminator, end the node and then consume it.
                 if (IsKdlNewline(ucc))
                 {
-                    if (!m_handler->EndNode())
-                        return SetError(KdlReadError::Cancelled);
-
-                    if (!CheckSlashdashEnd())
+                    if (!EmitEndNode())
                         return false;
 
                     return ConsumeNewLine();
@@ -823,7 +873,9 @@ namespace he
                 if (IsKdlWhitespace(ucc))
                 {
                     hasWhitespace = true;
-                    m_cursor += len;
+                    if (!SkipSpaces())
+                        return false;
+
                     continue;
                 }
 
@@ -834,12 +886,9 @@ namespace he
                     // multi-line and slashdash comments are allowed in the node
                     case '/':
                     {
-                        if (m_cursor + 1 < m_end && m_cursor[1] == '/')
+                        if (m_cursor + 1 < m_end && m_cursor[1] == '/' && !m_inWhitespaceEscape)
                         {
-                            if (!m_handler->EndNode())
-                                return SetError(KdlReadError::Cancelled);
-
-                            if (!CheckSlashdashEnd())
+                            if (!EmitEndNode())
                                 return false;
 
                             return ParseComment();
@@ -853,13 +902,19 @@ namespace he
                     // semicolon is a node terminator, end the node and then consume it.
                     case ';':
                     {
-                        if (!m_handler->EndNode())
-                            return SetError(KdlReadError::Cancelled);
-
-                        if (!CheckSlashdashEnd())
+                        if (!EmitEndNode())
                             return false;
 
                         m_cursor += len;
+                        return true;
+                    }
+                    // end brace is a node terminator, end the node but don't consume it.
+                    // Let ParseExpression consume it to end the parent node.
+                    case '}':
+                    {
+                         if (!EmitEndNode())
+                            return false;
+
                         return true;
                     }
                     // open brace indicates we're starting a child block
@@ -868,30 +923,22 @@ namespace he
                         if (!hasWhitespace)
                             return SetError(KdlReadError::InvalidToken, ' ');
 
-                        ++m_nodeDepth;
                         m_cursor += len;
 
-                        do
+                        const uint32_t depth = m_nodeDepth;
+                        while (m_nodeDepth >= depth)
                         {
+                            if (AtEnd())
+                                return SetError(KdlReadError::UnexpectedEof);
+
                             if (!PeekCodePoint(ucc, len))
                                 return false;
 
-                            if (ucc == '}')
-                            {
-                                m_cursor += len;
-                                break;
-                            }
-
                             if (!ParseExpression())
                                 return false;
-                        } while (!AtEnd());
+                        }
 
-                        if (!m_handler->EndNode())
-                            return SetError(KdlReadError::Cancelled);
-
-                        if (!CheckSlashdashEnd())
-                            return false;
-
+                        // Note: node end will be emitted by ParseExpression.
                         return true;
                     }
                     // either a keyword value, or start of a raw string
@@ -917,9 +964,6 @@ namespace he
                         if (!ParseArgumentOrProperty())
                             return false;
 
-                        if (!CheckSlashdashEnd())
-                            return false;
-
                         hasWhitespace = false;
                         break;
                     // anything else must be an identifier string
@@ -934,25 +978,19 @@ namespace he
                         if (!ParseArgumentOrProperty())
                             return false;
 
-                        if (!CheckSlashdashEnd())
-                            return false;
-
                         hasWhitespace = false;
                         break;
                 }
             }
 
             // End the node if we reach EOF
-            if (!m_handler->EndNode())
-                return SetError(KdlReadError::Cancelled);
-
-            if (!CheckSlashdashEnd())
+            if (!EmitEndNode())
                 return false;
 
             return true;
         }
 
-        [[nodiscard]] bool ConsumeType(StringView& type)
+        [[nodiscard]] bool ConsumeType(bool& hasType)
         {
             if (!Consume('('))
                 return false;
@@ -960,6 +998,7 @@ namespace he
             if (!SkipSpaces())
                 return false;
 
+            StringView type;
             if (!ConsumeString(type))
                 return false;
 
@@ -969,41 +1008,68 @@ namespace he
             if (!Consume(')'))
                 return false;
 
+            hasType = true;
+            m_typeBuffer = type;
             return true;
         }
 
+        [[nodiscard]] bool EmitStartNode(StringView name, bool hasType)
+        {
+            StringView typeViewStorage = hasType ? m_typeBuffer : "";
+            const StringView* typeView = hasType ? &typeViewStorage : nullptr;
+
+            if (!m_handler->StartNode(name, typeView))
+                return SetError(KdlReadError::Cancelled);
+
+            ++m_nodeDepth;
+            return true;
+        }
+
+        [[nodiscard]] bool EmitEndNode()
+        {
+            if (m_nodeDepth == 0)
+                return SetError(KdlReadError::InvalidDocument);
+
+            if (!m_handler->EndNode())
+                return SetError(KdlReadError::Cancelled);
+
+            --m_nodeDepth;
+            return CheckSlashdashEnd();
+        }
 
         template <typename T>
-        [[nodiscard]] bool EmitPropOrArg(T value, StringView type, const StringView* propName)
+        [[nodiscard]] bool EmitPropOrArg(T value, bool hasType, const StringView* propName)
         {
+            StringView typeViewStorage = hasType ? m_typeBuffer : "";
+            const StringView* typeView = hasType ? &typeViewStorage : nullptr;
+
             if (propName)
             {
-                if (!m_handler->Property(*propName, value, type))
+                if (!m_handler->Property(*propName, value, typeView))
                     return SetError(KdlReadError::Cancelled);
             }
             else
             {
-                if (!m_handler->Argument(value, type))
+                if (!m_handler->Argument(value, typeView))
                     return SetError(KdlReadError::Cancelled);
             }
 
-            return true;
+            return CheckSlashdashEnd();
         }
 
-        [[nodiscard]] bool ParseIntFromBuffer(bool isSigned, int32_t base, StringView type, const StringView* propName)
+        [[nodiscard]] bool ParseIntFromBuffer(uint32_t base, bool hasType, const StringView* propName)
         {
-            if (isSigned)
+            if (m_stringBuffer.IsEmpty())
+                return SetError(KdlReadError::InvalidNumber);
 
-            if (isSigned)
+            if (m_stringBuffer[0] == '-')
             {
-                m_stringBuffer.PushFront('-');
-
                 int64_t value = 0;
                 const char* end = m_stringBuffer.End();
                 if (!StrToInt(value, m_stringBuffer.Begin(), &end, base))
                     return SetError(KdlReadError::InvalidNumber);
 
-                return EmitPropOrArg(value, type, propName);
+                return EmitPropOrArg(value, hasType, propName);
             }
 
             uint64_t value = 0;
@@ -1011,15 +1077,17 @@ namespace he
             if (!StrToInt(value, m_stringBuffer.Begin(), &end, base))
                 return SetError(KdlReadError::InvalidNumber);
 
-            return EmitPropOrArg(value, type, propName);
+            return EmitPropOrArg(value, hasType, propName);
         }
 
-        [[nodiscard]] bool ParseHexNum(bool isSigned, StringView type, const StringView* propName)
+        [[nodiscard]] bool ParseHexNum(bool hasType, const StringView* propName)
         {
             if (AtEnd())
                 return SetError(KdlReadError::UnexpectedEof);
 
-            m_stringBuffer.Clear();
+            if (*m_cursor == '_')
+                return SetError(KdlReadError::InvalidNumber);
+
             while (!AtEnd() && (IsHex(*m_cursor) || *m_cursor == '_'))
             {
                 if (*m_cursor != '_')
@@ -1027,15 +1095,17 @@ namespace he
                 ++m_cursor;
             }
 
-            return ParseIntFromBuffer(isSigned, 16, type, propName);
+            return ParseIntFromBuffer(16, hasType, propName);
         }
 
-        [[nodiscard]] bool ParseOctNum(bool isSigned, StringView type, const StringView* propName)
+        [[nodiscard]] bool ParseOctNum(bool hasType, const StringView* propName)
         {
             if (AtEnd())
                 return SetError(KdlReadError::UnexpectedEof);
 
-            m_stringBuffer.Clear();
+            if (*m_cursor == '_')
+                return SetError(KdlReadError::InvalidNumber);
+
             while (!AtEnd() && ((*m_cursor >= '0' && *m_cursor <= '7') || *m_cursor == '_'))
             {
                 if (*m_cursor != '_')
@@ -1043,15 +1113,17 @@ namespace he
                 ++m_cursor;
             }
 
-            return ParseIntFromBuffer(isSigned, 8, type, propName);
+            return ParseIntFromBuffer(8, hasType, propName);
         }
 
-        [[nodiscard]] bool ParseBinNum(bool isSigned, StringView type, const StringView* propName)
+        [[nodiscard]] bool ParseBinNum(bool hasType, const StringView* propName)
         {
             if (AtEnd())
                 return SetError(KdlReadError::UnexpectedEof);
 
-            m_stringBuffer.Clear();
+            if (*m_cursor == '_')
+                return SetError(KdlReadError::InvalidNumber);
+
             while (!AtEnd() && (*m_cursor == '0' || *m_cursor == '1' || *m_cursor == '_'))
             {
                 if (*m_cursor != '_')
@@ -1059,10 +1131,10 @@ namespace he
                 ++m_cursor;
             }
 
-            return ParseIntFromBuffer(isSigned, 2, type, propName);
+            return ParseIntFromBuffer(2, hasType, propName);
         }
 
-        [[nodiscard]] bool ParseDecNum(bool isSigned, StringView type, const StringView* propName)
+        [[nodiscard]] bool ParseDecNum(bool hasType, const StringView* propName)
         {
             if (AtEnd())
                 return SetError(KdlReadError::UnexpectedEof);
@@ -1071,8 +1143,6 @@ namespace he
             const char* exp = nullptr;
             const char* expSign = nullptr;
             bool prevWasNumeric = false;
-
-            m_stringBuffer.Clear();
 
             while (!AtEnd())
             {
@@ -1118,6 +1188,13 @@ namespace he
                         expSign = m_cursor;
                         break;
                     }
+                    case '_':
+                    {
+                        if (dot == (m_cursor - len))
+                            return SetError(KdlReadError::InvalidNumber);
+
+                        break;
+                    }
                 }
 
                 if (ucc != '_')
@@ -1127,11 +1204,11 @@ namespace he
                 m_cursor += len;
             }
 
-            if (m_stringBuffer.IsEmpty() || (m_stringBuffer.Size() == 1 && m_stringBuffer[0] == '-'))
-                return SetError(KdlReadError::InvalidNumber);
-
             if (dot || exp)
             {
+                if (m_stringBuffer.IsEmpty())
+                    return SetError(KdlReadError::InvalidNumber);
+
                 const char* begin = m_stringBuffer.Begin();
                 if (*begin == '-')
                     ++begin;
@@ -1154,23 +1231,25 @@ namespace he
                 if (!StrToFloat(value, m_stringBuffer.Begin(), &end))
                     return SetError(KdlReadError::InvalidNumber);
 
-                return EmitPropOrArg(value, type, propName);
+                return EmitPropOrArg(value, hasType, propName);
             }
 
-            return ParseIntFromBuffer(isSigned, 10, type, propName);
+            return ParseIntFromBuffer(10, hasType, propName);
         }
 
-        [[nodiscard]] bool ParseNum(StringView type, const StringView* propName = nullptr)
+        [[nodiscard]] bool ParseNum(bool hasType, const StringView* propName = nullptr)
         {
             if (AtEnd())
                 return SetError(KdlReadError::UnexpectedEof);
 
-            bool isSigned = false;
+            m_stringBuffer.Clear();
+
             if (*m_cursor == '-')
             {
                 if (!Consume('-'))
                     return false;
-                isSigned = true;
+
+                m_stringBuffer.PushBack('-');
             }
             else if (*m_cursor == '+')
             {
@@ -1195,9 +1274,9 @@ namespace he
                 {
                     switch (*m_cursor)
                     {
-                        case 'x': return Consume('x') && ParseHexNum(isSigned, type, propName);
-                        case 'o': return Consume('o') && ParseOctNum(isSigned, type, propName);
-                        case 'b': return Consume('b') && ParseBinNum(isSigned, type, propName);
+                        case 'x': return Consume('x') && ParseHexNum(hasType, propName);
+                        case 'o': return Consume('o') && ParseOctNum(hasType, propName);
+                        case 'b': return Consume('b') && ParseBinNum(hasType, propName);
                     }
                 }
 
@@ -1206,7 +1285,7 @@ namespace he
                 m_cursor -= len;
             }
 
-            return ParseDecNum(isSigned, type, propName);
+            return ParseDecNum(hasType, propName);
         }
 
         [[nodiscard]] bool ParseArgumentOrProperty(const StringView* propName = nullptr)
@@ -1220,10 +1299,10 @@ namespace he
                 return false;
 
             // Consume the type annotation if present
-            StringView type;
+            bool hasType = false;
             if (ucc == '(')
             {
-                if (!ConsumeType(type))
+                if (!ConsumeType(hasType))
                     return false;
 
                 if (!SkipSpaces())
@@ -1246,23 +1325,23 @@ namespace he
                         if (!ConsumeString(value))
                             return false;
 
-                        return EmitPropOrArg(value, type, propName);
+                        return EmitPropOrArg(value, hasType, propName);
                     }
 
                     // otherwise, this is a keyword value
                     m_cursor += len;
                     switch (*m_cursor)
                     {
-                        case 't': return Consume("true") ? EmitPropOrArg(true, type, propName) : false;
-                        case 'f': return Consume("false") ? EmitPropOrArg(false, type, propName) : false;
-                        case 'i': return Consume("inf") ? EmitPropOrArg(Limits<double>::Infinity, type, propName) : false;
-                        case '-': return Consume("-inf") ? EmitPropOrArg(-Limits<double>::Infinity, type, propName) : false;
+                        case 't': return Consume("true") ? EmitPropOrArg(true, hasType, propName) : false;
+                        case 'f': return Consume("false") ? EmitPropOrArg(false, hasType, propName) : false;
+                        case 'i': return Consume("inf") ? EmitPropOrArg(Limits<double>::Infinity, hasType, propName) : false;
+                        case '-': return Consume("-inf") ? EmitPropOrArg(-Limits<double>::Infinity, hasType, propName) : false;
                         case 'n':
                         {
                             if (m_cursor + 1 < m_end && m_cursor[1] == 'a')
-                                return Consume("nan") ? EmitPropOrArg(Limits<double>::NaN, type, propName) : false;
+                                return Consume("nan") ? EmitPropOrArg(Limits<double>::NaN, hasType, propName) : false;
 
-                            return Consume("null") ? EmitPropOrArg(nullptr, type, propName) : false;
+                            return Consume("null") ? EmitPropOrArg(nullptr, hasType, propName) : false;
                         }
                     }
 
@@ -1279,14 +1358,14 @@ namespace he
                 case '7':
                 case '8':
                 case '9':
-                    return ParseNum(type, propName);
+                    return ParseNum(hasType, propName);
                 // could be a number or the start of an identifier string
                 case '-':
                 case '+':
                 {
                     if (m_cursor + len < m_end && m_cursor[len] != '\0' && IsNumeric(m_cursor[len]))
                     {
-                        return ParseNum(type, propName);
+                        return ParseNum(hasType, propName);
                     }
 
                     // fall through to string parsing
@@ -1299,8 +1378,15 @@ namespace he
                     if (!ConsumeString(value))
                         return false;
 
-                    if (!SkipSpaces())
+                    if (AtEnd())
+                        return EmitPropOrArg(value, hasType, propName);
+
+                    const char* beforeSpaces = m_cursor;
+                    if (!SkipSpaces(false))
                         return false;
+
+                    if (AtEnd())
+                        return EmitPropOrArg(value, hasType, propName);
 
                     if (!PeekCodePoint(ucc, len))
                         return false;
@@ -1310,11 +1396,18 @@ namespace he
                         if (propName)
                             return SetError(KdlReadError::InvalidToken);
 
+                        if (hasType)
+                            return SetError(KdlReadError::InvalidToken);
+
                         m_cursor += len;
                         return ParseArgumentOrProperty(&value);
                     }
 
-                    return EmitPropOrArg(value, type, propName);
+                    // If not an equal sign, then we need to back up to before we tried to
+                    // parse this as a property. Otherwise the required spaces between args
+                    // and props will get consumed here.
+                    m_cursor = beforeSpaces;
+                    return EmitPropOrArg(value, hasType, propName);
                 }
             }
         }
@@ -1327,10 +1420,12 @@ namespace he
         const char* m_end{ nullptr };
         const char* m_lineStart{ nullptr };
         uint32_t m_line{ 1 };
-        uint32_t m_nodeDepth{ 0 };
-        uint32_t m_slashDashDepth{ 0 };
+        uint16_t m_nodeDepth{ 0 };
+        bool m_inWhitespaceEscape{ false };
 
         String m_stringBuffer;
+        String m_typeBuffer;
+        Vector<uint16_t> m_slashDashDepthStack;
     };
 
     // --------------------------------------------------------------------------------------------
@@ -1358,7 +1453,7 @@ namespace he
             case KdlReadError::InvalidUtf8: return "InvalidUtf8";
             case KdlReadError::InvalidEscapeSequence: return "InvalidEscapeSequence";
             case KdlReadError::InvalidControlChar: return "InvalidControlChar";
-            case KdlReadError::InvalidIdentifier: return "InvalidKey";
+            case KdlReadError::InvalidIdentifier: return "InvalidIdentifier";
             case KdlReadError::InvalidNumber: return "InvalidNumber";
             case KdlReadError::InvalidToken: return "InvalidToken";
             case KdlReadError::InvalidDocument: return "InvalidDocument";

@@ -55,37 +55,37 @@
 ///
 /// Automatically passes `a` and `b` as context to be logged. Be careful, this macro may cause
 /// the expressions to be evaluated more than once.
-#define HE_EXPECT_EQ(a, b) HE_EXPECT((a) == (b), a, b)
+#define HE_EXPECT_EQ(a, b, ...) HE_EXPECT((a) == (b), a, b, __VA_ARGS__)
 
 /// Checks the expectation that `a` is not equal to `b`.
 ///
 /// Automatically passes `a` and `b` as context to be logged. Be careful, this macro may cause
 /// the expressions to be evaluated more than once.
-#define HE_EXPECT_NE(a, b) HE_EXPECT((a) != (b), a, b)
+#define HE_EXPECT_NE(a, b, ...) HE_EXPECT((a) != (b), a, b, __VA_ARGS__)
 
 /// Checks the expectation that `a` is less than `b`.
 ///
 /// Automatically passes `a` and `b` as context to be logged. Be careful, this macro may cause
 /// the expressions to be evaluated more than once.
-#define HE_EXPECT_LT(a, b) HE_EXPECT((a) < (b), a, b)
+#define HE_EXPECT_LT(a, b, ...) HE_EXPECT((a) < (b), a, b, __VA_ARGS__)
 
 /// Checks the expectation that `a` is less than or equal to `b`.
 ///
 /// Automatically passes `a` and `b` as context to be logged. Be careful, this macro may cause
 /// the expressions to be evaluated more than once.
-#define HE_EXPECT_LE(a, b) HE_EXPECT((a) <= (b), a, b)
+#define HE_EXPECT_LE(a, b, ...) HE_EXPECT((a) <= (b), a, b, __VA_ARGS__)
 
 /// Checks the expectation that `a` is greater than `b`.
 ///
 /// Automatically passes `a` and `b` as context to be logged. Be careful, this macro may cause
 /// the expressions to be evaluated more than once.
-#define HE_EXPECT_GT(a, b) HE_EXPECT((a) > (b), a, b)
+#define HE_EXPECT_GT(a, b, ...) HE_EXPECT((a) > (b), a, b, __VA_ARGS__)
 
 /// Checks the expectation that `a` is greater than or equal to `b`.
 ///
 /// Automatically passes `a` and `b` as context to be logged. Be careful, this macro may cause
 /// the expressions to be evaluated more than once.
-#define HE_EXPECT_GE(a, b) HE_EXPECT((a) >= (b), a, b)
+#define HE_EXPECT_GE(a, b, ...) HE_EXPECT((a) >= (b), a, b, __VA_ARGS__)
 
 /// Check the expectation that the null terminated string `a` is equal to the null terminated
 /// string `b`.
@@ -99,23 +99,23 @@
 ///
 /// Automatically passes `a` and `b` as context to be logged. Be careful, this macro may cause
 /// the expressions to be evaluated more than once.
-#define HE_EXPECT_NE_STR(a, b) HE_EXPECT(!::he::StrEqual((a), (b)), a, b)
+#define HE_EXPECT_NE_STR(a, b, ...) HE_EXPECT(!::he::StrEqual((a), (b)), a, b, __VA_ARGS__)
 
 /// Check the expectation that the memory `a` is equal to the memory `b`.
-#define HE_EXPECT_EQ_MEM(a, b, len) HE_EXPECT(::he::MemEqual((a), (b), len))
+#define HE_EXPECT_EQ_MEM(a, b, len, ...) HE_EXPECT(::he::MemEqual((a), (b), len), ::he::FmtPtr(a), ::he::FmtPtr(b), len, __VA_ARGS__)
 
 /// Check the expectation that the memory `a` is not equal to the memory `b`.
-#define HE_EXPECT_NE_MEM(a, b, len) HE_EXPECT(!::he::MemEqual((a), (b), len))
+#define HE_EXPECT_NE_MEM(a, b, len, ...) HE_EXPECT(!::he::MemEqual((a), (b), len), ::he::FmtPtr(a), ::he::FmtPtr(b), len, __VA_ARGS__)
 
 /// Check the expectation that the pointer `a` points to the same memory as `b`.
-#define HE_EXPECT_EQ_PTR(a, b) HE_EXPECT((a) == (b), ::he::FmtPtr(a), ::he::FmtPtr(b))
+#define HE_EXPECT_EQ_PTR(a, b, ...) HE_EXPECT((a) == (b), ::he::FmtPtr(a), ::he::FmtPtr(b), __VA_ARGS__)
 
 /// Check the expectation that the pointer `a` does not point to the same memory as `b`.
-#define HE_EXPECT_NE_PTR(a, b) HE_EXPECT((a) != (b), ::he::FmtPtr(a), ::he::FmtPtr(b))
+#define HE_EXPECT_NE_PTR(a, b, ...) HE_EXPECT((a) != (b), ::he::FmtPtr(a), ::he::FmtPtr(b), __VA_ARGS__)
 
 /// Check the expectation that the value `a` and the value `b` are within `diff`
 /// floating point value steps from each other.
-#define HE_EXPECT_EQ_ULP(a, b, diff) HE_EXPECT(::he::IsNearlyEqualULP(a, b, diff), a, b)
+#define HE_EXPECT_EQ_ULP(a, b, diff, ...) HE_EXPECT(::he::IsNearlyEqualULP(a, b, diff), a, b, diff, __VA_ARGS__)
 
 /// Defines a test case for `module` in `suite` called `name`.
 #define HE_TEST(module, suite, name) HE_TEST_(module, suite, name, ::he::TestFixture)

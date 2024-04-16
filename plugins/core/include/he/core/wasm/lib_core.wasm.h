@@ -34,4 +34,19 @@ extern "C"
     extern void HE_WASM_IMPORT_CORE(heWASM_GetUserAgent)(char* dst, uint32_t dstLen);
     extern bool HE_WASM_IMPORT_CORE(heWASM_GetBatteryStatus)(double* chargingTime, double* dischargingTime, double* level, bool* charging);
     extern bool HE_WASM_IMPORT_CORE(heWASM_CreateThread)(void* state, void(*proc)(void*), void* data);
+
+    extern double HE_WASM_IMPORT_CORE(heWASM_Sin)(double x);
+    extern double HE_WASM_IMPORT_CORE(heWASM_Asin)(double x);
+    extern double HE_WASM_IMPORT_CORE(heWASM_Cos)(double x);
+    extern double HE_WASM_IMPORT_CORE(heWASM_Acos)(double x);
+    extern double HE_WASM_IMPORT_CORE(heWASM_Tan)(double x);
+    extern double HE_WASM_IMPORT_CORE(heWASM_Atan)(double x);
+    extern double HE_WASM_IMPORT_CORE(heWASM_Atan2)(double y, double x);
+    extern double HE_WASM_IMPORT_CORE(heWASM_Exp)(double x);
+    extern double HE_WASM_IMPORT_CORE(heWASM_Mod)(double x, double y);
+    extern double HE_WASM_IMPORT_CORE(heWASM_Log)(double x);
+    extern double HE_WASM_IMPORT_CORE(heWASM_Log10)(double x);
+    extern double HE_WASM_IMPORT_CORE(heWASM_Log1p)(double x);
+    extern double HE_WASM_IMPORT_CORE(heWASM_Log2)(double x);
+    extern double HE_WASM_IMPORT_CORE(heWASM_Pow)(double x, double y);
 }

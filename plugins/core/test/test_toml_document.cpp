@@ -176,7 +176,7 @@ HE_TEST(core, toml_document, Read_Complex)
     HE_EXPECT(doc["string"].IsTable());
     HE_EXPECT(doc["string"].Contains("str"));
     HE_EXPECT(doc["string"]["str"].IsString());
-    HE_EXPECT_EQ(doc["string"]["str"].String(), "I'm a string. \"You can quote me\". Name\tJos\xE9\nLocation\tSF.");
+    HE_EXPECT_EQ(doc["string"]["str"].String(), "I'm a string. \"You can quote me\". Name\tJos\xe9\nLocation\tSF.");
     HE_EXPECT(doc["string"].Contains("str1"));
     HE_EXPECT(doc["string"]["str1"].IsString());
     HE_EXPECT_EQ(doc["string"]["str1"].String(), "Roses are red\nViolets are blue");

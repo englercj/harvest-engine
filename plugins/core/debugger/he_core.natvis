@@ -108,6 +108,15 @@
         </Expand>
     </Type>
 
+    <!-- optional.h -->
+    <Type Name="he::Optional&lt;*&gt;">
+        <DisplayString Condition="!m_hasValue">[empty]</DisplayString>
+        <DisplayString Condition="m_hasValue">{m_value}</DisplayString>
+        <Expand>
+            <Item Condition="m_hasValue" Name="value">m_value</Item>
+        </Expand>
+    </Type>
+
     <!-- rb_tree.h -->
     <Type Name="he::RBTree&lt;*&gt;">
         <DisplayString>{{ root={m_root} }}</DisplayString>

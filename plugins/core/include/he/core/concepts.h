@@ -67,17 +67,17 @@ namespace he
     template <typename T, typename U>
     concept EqualityComparableWith = requires(const RemoveReference<T>& t, const RemoveReference<U>& u)
     {
-        { t == u } -> SameAs<bool>;
-        { t != u } -> SameAs<bool>;
-        { u == t } -> SameAs<bool>;
-        { u != t } -> SameAs<bool>;
+        { t == u } -> ConvertibleTo<bool>;
+        { t != u } -> ConvertibleTo<bool>;
+        { u == t } -> ConvertibleTo<bool>;
+        { u != t } -> ConvertibleTo<bool>;
     };
 
     template <typename T>
     concept EqualityComparable = requires(const RemoveReference<T>& t)
     {
-        { t == t } -> SameAs<bool>;
-        { t != t } -> SameAs<bool>;
+        { t == t } -> ConvertibleTo<bool>;
+        { t != t } -> ConvertibleTo<bool>;
     };
 
     template <typename T>

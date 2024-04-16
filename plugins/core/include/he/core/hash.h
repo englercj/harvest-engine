@@ -435,7 +435,8 @@ namespace he
     template <Hashable T>
     constexpr HE_FORCE_INLINE uint64_t GetHashCode(const T& value) noexcept
     {
-        return Hasher<T>()(value);
+        Hasher<T> h;
+        return h(value);
     }
 }
 

@@ -945,6 +945,105 @@ HE_TEST(core, string, GetAllocator)
 }
 
 // ------------------------------------------------------------------------------------------------
+HE_TEST(core, string, HashCode)
+{
+    HE_EXPECT_EQ(String("foobar").HashCode(), 0x0b9d35b96e1f6fe2);
+    HE_EXPECT_EQ(String("Hello, world!").HashCode(), 0xf83c9721fa2a9cdc);
+}
+
+// ------------------------------------------------------------------------------------------------
+HE_TEST(core, string, Substring)
+{
+    const String s = "Hello, world!";
+
+    {
+        const String sub = s.Substring(0);
+        HE_EXPECT_EQ(sub.Size(), s.Size());
+        HE_EXPECT_EQ_STR(sub.Data(), s.Data());
+    }
+
+    {
+        const String sub = s.Substring(2);
+        HE_EXPECT_EQ(sub.Size(), s.Size() - 2);
+        HE_EXPECT_EQ_STR(sub.Data(), s.Data() + 2);
+    }
+
+    {
+        const String sub = s.Substring(0, 0);
+        HE_EXPECT_EQ(sub.Size(), 0);
+    }
+
+    {
+        const String sub = s.Substring(0, s.Size());
+        HE_EXPECT_EQ(sub.Size(), s.Size());
+        HE_EXPECT_EQ_STR(sub.Data(), s.Data());
+    }
+
+    {
+        const String sub = s.Substring(2, 5);
+        HE_EXPECT_EQ(sub.Size(), 5);
+        HE_EXPECT_EQ(sub, (StringView{ s.Data() + 2, 5 }));
+    }
+}
+
+// ------------------------------------------------------------------------------------------------
+HE_TEST(core, string, Find)
+{
+    const String haystack = "Hello, world!";
+
+    HE_EXPECT_EQ_PTR(haystack.Find('z'), nullptr);
+    HE_EXPECT_EQ_PTR(haystack.Find('o'), (haystack.Data() + 4));
+    HE_EXPECT_EQ_PTR(haystack.Find('!'), (haystack.Data() + 12));
+
+    HE_EXPECT_EQ_PTR(haystack.Find("Hello!"), nullptr);
+    HE_EXPECT_EQ_PTR(haystack.Find("world"), (haystack.Data() + 7));
+
+    HE_EXPECT_EQ_PTR(haystack.Find("Hello!", 5), haystack.Data());
+    HE_EXPECT_EQ_PTR(haystack.Find("wor12ld", 3), (haystack.Data() + 7));
+
+    HE_EXPECT_EQ_PTR(haystack.Find(StringView("Hello!")), nullptr);
+    HE_EXPECT_EQ_PTR(haystack.Find(StringView("world")), (haystack.Data() + 7));
+}
+
+// ------------------------------------------------------------------------------------------------
+HE_TEST(core, string, FindIndex)
+{
+    const String haystack = "Hello, world!";
+
+    HE_EXPECT_EQ(haystack.FindIndex('z'), static_cast<uint32_t>(-1));
+    HE_EXPECT_EQ(haystack.FindIndex('o'), 4);
+    HE_EXPECT_EQ(haystack.FindIndex('!'), 12);
+
+    HE_EXPECT_EQ(haystack.FindIndex("Hello!"), static_cast<uint32_t>(-1));
+    HE_EXPECT_EQ(haystack.FindIndex("world"), 7);
+
+    HE_EXPECT_EQ(haystack.FindIndex("Hello!", 5), 0);
+    HE_EXPECT_EQ(haystack.FindIndex("wor12ld", 3), 7);
+
+    HE_EXPECT_EQ(haystack.FindIndex(StringView("Hello!")), static_cast<uint32_t>(-1));
+    HE_EXPECT_EQ(haystack.FindIndex(StringView("world")), 7);
+}
+
+// ------------------------------------------------------------------------------------------------
+HE_TEST(core, string, Contains)
+{
+    const String haystack = "Hello, world!";
+
+    HE_EXPECT(!haystack.Contains('z'));
+    HE_EXPECT(haystack.Contains('o'));
+    HE_EXPECT(haystack.Contains('!'));
+
+    HE_EXPECT(!haystack.Contains("Hello!"));
+    HE_EXPECT(haystack.Contains("world"));
+
+    HE_EXPECT(haystack.Contains("Hello!", 5));
+    HE_EXPECT(haystack.Contains("wor12ld", 3));
+
+    HE_EXPECT(!haystack.Contains(StringView("Hello!")));
+    HE_EXPECT(haystack.Contains(StringView("world")));
+}
+
+// ------------------------------------------------------------------------------------------------
 HE_TEST(core, string, CompareTo)
 {
     const String a("Hello, world!");
@@ -1251,6 +1350,26 @@ HE_TEST(core, string, Assign)
     s.Assign(Test, Test + TestLen);
     HE_EXPECT_EQ(s.Size(), TestLen);
     HE_EXPECT_EQ_STR(s.Data(), Test);
+}
+
+// ------------------------------------------------------------------------------------------------
+HE_TEST(core, string, Replace)
+{
+    // TODO:
+    /*
+    uint32_t Replace(const char* search, uint32_t searchLen, const char* replacement, uint32_t replacementLen);
+
+    uint32_t Replace(const char* search, const char* replacement) { return Replace(search, StrLen(search), replacement, StrLen(replacement)); }
+
+    template <ContiguousRangeOf<const char> R>
+    uint32_t Replace(const R & search, const char* replacement) { return Replace(search.Data(), search.Size(), replacement, StrLen(replacement)); }
+
+    template <ContiguousRangeOf<const char> R>
+    uint32_t Replace(const char* search, const R & replacement) { return Replace(search, StrLen(search), replacement.Data(), replacement.Size()); }
+
+    template <ContiguousRangeOf<const char> R1, ContiguousRangeOf<const char> R2>
+    uint32_t Replace(const R1 & search, const R2 & replacement) { return Replace(search.Data(), search.Size(), replacement.Data(), replacement.Size()); }
+    */
 }
 
 // ------------------------------------------------------------------------------------------------

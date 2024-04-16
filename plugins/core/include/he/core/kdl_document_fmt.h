@@ -5,6 +5,7 @@
 #include "he/core/fmt.h"
 #include "he/core/kdl_document.h"
 #include "he/core/string.h"
+#include "he/core/string_fmt.h"
 #include "he/core/variant_fmt.h"
 
 namespace he
@@ -18,13 +19,13 @@ namespace he
 
         void Format(String& out, const Type& value) const
         {
-            if (value.Type().IsEmpty())
+            if (value.Type())
             {
-                FormatTo(out, "{}", value.Value());
+                FormatTo(out, "({}){}", *value.Type(), value.Value());
             }
             else
             {
-                FormatTo(out, "({}){}", value.Type(), value.Value());
+                FormatTo(out, "{}", value.Value());
             }
         }
     };

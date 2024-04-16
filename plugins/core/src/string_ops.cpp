@@ -222,9 +222,19 @@ namespace he
 
     const char* StrFindN(const char* str, uint32_t len, const char* search)
     {
-        const uint32_t searchLen = StrLenN(search, len);
+        const uint32_t searchLen = StrLen(search);
+        return StrFindN(str, len, search, searchLen);
+    }
 
-        for (uint32_t i = 0; i <= (len - searchLen); ++i)
+    const char* StrFindN(const char* str, uint32_t strLen, const char* search, uint32_t searchLen)
+    {
+        if (searchLen > strLen)
+            return nullptr;
+
+        if (searchLen == 0)
+            return str;
+
+        for (uint32_t i = 0; i <= (strLen - searchLen); ++i)
         {
             if (*str == *search && StrEqualN(str, search, searchLen))
                 return str;
@@ -289,29 +299,29 @@ namespace he
 
         const char* numStart = str;
 
-        while (str < strEnd && *str == '0')
-            ++str;
-
         // Skip over supported prefixes for binary, octal, and hexadecimal bases.
         switch (base)
         {
             case 2: // '0b'
-                if (str < strEnd && (*str == 'b' || *str == 'B'))
-                    ++str;
-
-                numStart = str;
+                if (str + 1 < strEnd && *str == '0' && (str[1] == 'b' || str[1] == 'B'))
+                {
+                    str += 2;
+                    numStart = str;
+                }
                 break;
             case 8: // '0o'
-                if (str < strEnd && (*str == 'o' || *str == 'O'))
-                    ++str;
-
-                numStart = str;
+                if (str + 1 < strEnd && *str == '0' && (str[1] == 'o' || str[1] == 'O'))
+                {
+                    str += 2;
+                    numStart = str;
+                }
                 break;
             case 16: // '0b'
-                if (str < strEnd && (*str == 'x' || *str == 'X'))
-                    ++str;
-
-                numStart = str;
+                if (str + 1 < strEnd && *str == '0' && (str[1] == 'x' || str[1] == 'X'))
+                {
+                    str += 2;
+                    numStart = str;
+                }
                 break;
         }
 

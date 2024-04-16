@@ -32,7 +32,7 @@ namespace he
 
                 // Store bytes
                 dst += static_cast<char>((0xFE << (max_bits - remain_bits)) | (ucc >> remain_bits));
-                for (uint32_t j = i - 1; j >= 0; --j)
+                for (uint32_t j = i - 1; j != static_cast<uint32_t>(-1); --j)
                 {
                     dst += static_cast<char>(((ucc >> (j * 6)) & 0x3F) | 0x80);
                 }

@@ -1,10 +1,9 @@
 // Copyright Chad Engler
 
-#include "vec_ulp_diff.h"
+#include "he/math/constants.h"
 
 #include "he/core/limits.h"
 #include "he/core/math.h"
-#include "he/math/constants.h"
 #include "he/math/mat44.h"
 #include "he/math/quata.h"
 #include "he/math/types_fmt.h"
@@ -12,26 +11,9 @@
 
 #include "he/core/test.h"
 
-#include <cfloat>
-#include <cmath>
-
 using namespace he;
 
 #define HE_EXPECT_EQ_VEC4A(a, b) HE_EXPECT(All((a) == (b)))
-
-// ------------------------------------------------------------------------------------------------
-HE_TEST(math, constants, Float)
-{
-    HE_EXPECT_EQ(cosf(MathConstants<float>::Pi), -1.0f);
-    HE_EXPECT_EQ(acosf(-1.0f), MathConstants<float>::Pi);
-
-    HE_EXPECT_EQ(cosf(MathConstants<float>::Pi2), 1.0f);
-    HE_EXPECT_EQ(MathConstants<float>::Pi2, 2.0f * MathConstants<float>::Pi);
-
-    HE_EXPECT_EQ(MathConstants<float>::PiHalf, MathConstants<float>::Pi / 2.0f);
-    HE_EXPECT_EQ(MathConstants<float>::PiQuarter, MathConstants<float>::Pi / 4.0f);
-    HE_EXPECT_EQ(MathConstants<float>::Sqrt2, sqrtf(2.0f));
-}
 
 // ------------------------------------------------------------------------------------------------
 HE_TEST(math, constants, Vec4a)

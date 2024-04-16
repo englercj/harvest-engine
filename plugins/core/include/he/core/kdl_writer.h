@@ -2,9 +2,11 @@
 
 #pragma once
 
+#include "he/core/concepts.h"
 #include "he/core/string.h"
 #include "he/core/string_view.h"
 #include "he/core/string_writer.h"
+#include "he/core/type_traits.h"
 #include "he/core/types.h"
 
 namespace he
@@ -23,16 +25,10 @@ namespace he
     /// Formats for writing floating-point numbers in KDL.
     enum class KdlFloatFormat : uint8_t
     {
+        Default,
         General,
         Fixed,
         Exponent,
-    };
-
-    /// Formats for writing strings in KDL.
-    enum class KdlStringFormat : uint8_t
-    {
-        Escaped,
-        Raw,
     };
 
     /// A writer for the KDL format.
@@ -62,11 +58,17 @@ namespace he
         /// Writes the end of a multi-line comment.
         void EndComment();
 
-        /// Writes a node tag, with an optional type.
+        /// Writes a node tag with an optional type annotation.
         ///
         /// \param[in] name The name of the node.
         /// \param[in] type Optional. The type annotation for the node.
-        void Node(StringView name, StringView type = {});
+        void Node(StringView name, const StringView* type = nullptr);
+
+        /// Writes a node tag with a type annotation.
+        ///
+        /// \param[in] name The name of the node.
+        /// \param[in] type The type annotation for the node.
+        void Node(StringView name, StringView type) { Node(name, &type); }
 
         /// Writes the start of a node block (`node {`).
         void StartNodeChildren();
@@ -74,150 +76,213 @@ namespace he
         /// Writes the end of a node block (`}`).
         void EndNodeChildren();
 
-        /// Writes an argument value to a node.
+        /// Writes an integral argument value with an optional type annotation.
         ///
         /// \param[in] value The argument value.
         /// \param[in] type Optional. The type annotation for the argument value.
-        void Argument(bool value, StringView type = {});
+        /// \param[in] format Optional. The integer format to use when writing the value.
+        template <Integral T> requires(!IsSame<T, bool>)
+        void Argument(T value, const StringView* type = nullptr, KdlIntFormat format = KdlIntFormat::Decimal);
 
-        /// Writes an argument value to a node.
+        /// Writes an integral argument value with a type annotation.
+        ///
+        /// \param[in] value The argument value.
+        /// \param[in] type The type annotation for the argument value.
+        /// \param[in] format Optional. The integer format to use when writing the value.
+        template <Integral T> requires(!IsSame<T, bool>)
+        void Argument(T value, StringView type, KdlIntFormat format = KdlIntFormat::Decimal) { Argument<T>(value, &type, format); }
+
+        /// Writes a boolean argument value with an optional type annotation.
         ///
         /// \param[in] value The argument value.
         /// \param[in] type Optional. The type annotation for the argument value.
-        void Argument(signed char value, StringView type = {}, KdlIntFormat format = KdlIntFormat::Decimal) { return IntArg(value, type, format); }
+        void Argument(bool value, const StringView* type = nullptr);
 
-        /// \copydoc Argument(signed char, StringView)
-        void Argument(short value, StringView type = {}, KdlIntFormat format = KdlIntFormat::Decimal) { return IntArg(value, type, format); }
-
-        /// \copydoc Argument(signed char, StringView)
-        void Argument(int value, StringView type = {}, KdlIntFormat format = KdlIntFormat::Decimal) { return IntArg(value, type, format); }
-
-        /// \copydoc Argument(signed char, StringView)
-        void Argument(long value, StringView type = {}, KdlIntFormat format = KdlIntFormat::Decimal) { return IntArg(value, type, format); }
-
-        /// \copydoc Argument(signed char, StringView)
-        void Argument(long long value, StringView type = {}, KdlIntFormat format = KdlIntFormat::Decimal) { return IntArg(value, type, format); }
-
-        /// Writes an argument value to a node.
+        /// Writes a boolean argument value with a type annotation.
         ///
         /// \param[in] value The argument value.
-        /// \param[in] type Optional. The type annotation for the argument value.
-        /// \param[in] format Optional. The format to use when writing the value.
-        void Argument(unsigned char value, StringView type = {}, KdlIntFormat format = KdlIntFormat::Decimal) { return UintArg(value, type, format); }
+        /// \param[in] type The type annotation for the argument value.
+        void Argument(bool value, StringView type) { Argument(value, &type); }
 
-        /// \copydoc Argument(unsigned char, StringView, KdlIntFormat)
-        void Argument(unsigned short value, StringView type = {}, KdlIntFormat format = KdlIntFormat::Decimal) { return UintArg(value, type, format); }
-
-        /// \copydoc Argument(unsigned char, StringView, KdlIntFormat)
-        void Argument(unsigned int value, StringView type = {}, KdlIntFormat format = KdlIntFormat::Decimal) { return UintArg(value, type, format); }
-
-        /// \copydoc Argument(unsigned char, StringView, KdlIntFormat)
-        void Argument(unsigned long value, StringView type = {}, KdlIntFormat format = KdlIntFormat::Decimal) { return UintArg(value, type, format); }
-
-        /// \copydoc Argument(unsigned char, StringView, KdlIntFormat)
-        void Argument(unsigned long long value, StringView type = {}, KdlIntFormat format = KdlIntFormat::Decimal) { return UintArg(value, type, format); }
-
-        /// Writes an argument value to a node.
+        /// Writes a floating-point argument value with an optional type annotation.
         ///
         /// \param[in] value The argument value.
         /// \param[in] type Optional. The type annotation for the argument value.
         /// \param[in] format Optional. The format to use when writing the value.
         /// \param[in] precision Optional. The number of decimal places to write.
-        void Argument(double value, StringView type = {}, KdlFloatFormat format = KdlFloatFormat::General, int32_t precision = -1);
+        void Argument(double value, const StringView* type = nullptr, KdlFloatFormat format = KdlFloatFormat::Default, int32_t precision = -1);
 
-        /// Writes an argument value to a node.
+        /// Writes a floating-point argument value with a type annotation.
         ///
         /// \param[in] value The argument value.
-        /// \param[in] type Optional. The type annotation for the argument value.
+        /// \param[in] type The type annotation for the argument value.
         /// \param[in] format Optional. The format to use when writing the value.
-        /// \param[in] rawDelimiterCount Optional. The number of '#' characters to use as
-        ///     delimiters when using the \ref KdlStringFormat::Raw format.
-        void Argument(StringView value, StringView type = {}, KdlStringFormat format = KdlStringFormat::Escaped, uint32_t rawDelimiterCount = 1);
+        /// \param[in] precision Optional. The number of decimal places to write.
+        void Argument(double value, StringView type, KdlFloatFormat format = KdlFloatFormat::Default, int32_t precision = -1) { Argument(value, &type, format, precision); }
 
-        /// Writes an argument value to a node.
+        /// Writes a string argument value with an optional type annotation.
         ///
         /// \param[in] value The argument value.
-        /// \param[in] type Optional. The type annotation for the argument value.
-        void Argument(nullptr_t, StringView type = {});
-
-        /// Writes a property name and value to a node.
-        ///
-        /// \param[in] name The name of the property.
-        /// \param[in] value The value of the property.
         /// \param[in] type Optional. The type annotation for the property value.
-        void Property(StringView name, bool value, StringView type = {});
+        /// \param[in] multiline Optional. True to write the value as a multi-line string.
+        /// \param[in] rawDelimiterCount Optional. When zero (default) the value is written as an
+        ///     escaped string. When greater than zero, the value is written as a raw string using
+        ///     this many '#' characters as delimiters.
+        void Argument(StringView value, const StringView* type = nullptr, bool multiline = false, uint32_t rawDelimiterCount = 0);
 
-        /// Writes a property name and value to a node.
+        /// Writes a string argument value with a type annotation.
         ///
-        /// \param[in] name The name of the property.
-        /// \param[in] value The value of the property.
+        /// \param[in] value The argument value.
+        /// \param[in] type The type annotation for the argument value.
+        /// \param[in] multiline Optional. True to write the value as a multi-line string.
+        /// \param[in] rawDelimiterCount Optional. When zero (default) the value is written as an
+        ///     escaped string. When greater than zero, the value is written as a raw string using
+        ///     this many '#' characters as delimiters.
+        void Argument(StringView value, StringView type, bool multiline = false, uint32_t rawDelimiterCount = 0) { Argument(value, &type, multiline, rawDelimiterCount); }
+
+        /// Writes a string argument value with an optional type annotation.
+        ///
+        /// \param[in] value The argument value.
         /// \param[in] type Optional. The type annotation for the property value.
-        void Property(StringView name, signed char value, StringView type = {}, KdlIntFormat format = KdlIntFormat::Decimal) { return IntProp(name, value, type, format); }
+        /// \param[in] multiline Optional. True to write the value as a multi-line string.
+        /// \param[in] rawDelimiterCount Optional. When zero (default) the value is written as an
+        ///     escaped string. When greater than zero, the value is written as a raw string using
+        ///     this many '#' characters as delimiters.
+        void Argument(const char* value, const StringView* type = nullptr, bool multiline = false, uint32_t rawDelimiterCount = 0);
 
-        /// \copydoc Property(StringView, signed char, StringView)
-        void Property(StringView name, short value, StringView type = {}, KdlIntFormat format = KdlIntFormat::Decimal) { return IntProp(name, value, type, format); }
+        /// Writes a string argument value with a type annotation.
+        ///
+        /// \param[in] value The argument value.
+        /// \param[in] type The type annotation for the argument value.
+        /// \param[in] multiline Optional. True to write the value as a multi-line string.
+        /// \param[in] rawDelimiterCount Optional. When zero (default) the value is written as an
+        ///     escaped string. When greater than zero, the value is written as a raw string using
+        ///     this many '#' characters as delimiters.
+        void Argument(const char* value, StringView type, bool multiline = false, uint32_t rawDelimiterCount = 0) { Argument(value, &type, multiline, rawDelimiterCount); }
 
-        /// \copydoc Property(StringView, signed char, StringView)
-        void Property(StringView name, int value, StringView type = {}, KdlIntFormat format = KdlIntFormat::Decimal) { return IntProp(name, value, type, format); }
+        /// Writes a null argument value with an optional type annotation.
+        ///
+        /// \param[in] value The argument value.
+        /// \param[in] type The type annotation for the argument value.
+        void Argument(nullptr_t value, const StringView* type = nullptr);
 
-        /// \copydoc Property(StringView, signed char, StringView)
-        void Property(StringView name, long value, StringView type = {}, KdlIntFormat format = KdlIntFormat::Decimal) { return IntProp(name, value, type, format); }
+        /// Writes a null argument value with a type annotation.
+        ///
+        /// \param[in] value The argument value.
+        /// \param[in] type The type annotation for the argument value.
+        void Argument(nullptr_t value, StringView type) { Argument(value, &type); }
 
-        /// \copydoc Property(StringView, signed char, StringView)
-        void Property(StringView name, long long value, StringView type = {}, KdlIntFormat format = KdlIntFormat::Decimal) { return IntProp(name, value, type, format); }
-
-        /// Writes a property name and value to a node.
+        /// Writes a property name and integral value with an optional type annotation.
         ///
         /// \param[in] name The name of the property.
         /// \param[in] value The value of the property.
         /// \param[in] type Optional. The type annotation for the property value.
         /// \param[in] format Optional. The format to use when writing the value.
-        void Property(StringView name, unsigned char value, StringView type = {}, KdlIntFormat format = KdlIntFormat::Decimal) { return UintProp(name, value, type, format); }
+        template <Integral T> requires(!IsSame<T, bool>)
+        void Property(StringView name, T value, const StringView* type = nullptr, KdlIntFormat format = KdlIntFormat::Decimal);
 
-        /// \copydoc Property(StringView, unsigned char, StringView, KdlIntFormat)
-        void Property(StringView name, unsigned short value, StringView type = {}, KdlIntFormat format = KdlIntFormat::Decimal) { return UintProp(name, value, type, format); }
+        /// Writes a property name and integral value with a type annotation.
+        ///
+        /// \param[in] name The name of the property.
+        /// \param[in] value The value of the property.
+        /// \param[in] type The type annotation for the property value.
+        /// \param[in] format Optional. The format to use when writing the value.
+        template <Integral T> requires(!IsSame<T, bool>)
+        void Property(StringView name, T value, StringView type, KdlIntFormat format = KdlIntFormat::Decimal) { Property<T>(name, value, &type, format); }
 
-        /// \copydoc Property(StringView, unsigned char, StringView, KdlIntFormat)
-        void Property(StringView name, unsigned int value, StringView type = {}, KdlIntFormat format = KdlIntFormat::Decimal) { return UintProp(name, value, type, format); }
+        /// Writes a property name and boolean value with an optional type annotation.
+        ///
+        /// \param[in] name The name of the property.
+        /// \param[in] value The value of the property.
+        /// \param[in] type Optional. The type annotation for the property value.
+        void Property(StringView name, bool value, const StringView* type = nullptr);
 
-        /// \copydoc Property(StringView, unsigned char, StringView, KdlIntFormat)
-        void Property(StringView name, unsigned long value, StringView type = {}, KdlIntFormat format = KdlIntFormat::Decimal) { return UintProp(name, value, type, format); }
+        /// Writes a property name and boolean value with a type annotation.
+        ///
+        /// \param[in] name The name of the property.
+        /// \param[in] value The value of the property.
+        /// \param[in] type The type annotation for the property value.
+        void Property(StringView name, bool value, StringView type) { Property(name, value, &type); }
 
-        /// \copydoc Property(StringView, unsigned char, StringView, KdlIntFormat)
-        void Property(StringView name, unsigned long long value, StringView type = {}, KdlIntFormat format = KdlIntFormat::Decimal) { return UintProp(name, value, type, format); }
-
-        /// Writes a property name and value to a node.
+        /// Writes a property name and floating-point value with an optional type annotation.
         ///
         /// \param[in] name The name of the property.
         /// \param[in] value The value of the property.
         /// \param[in] type Optional. The type annotation for the property value.
         /// \param[in] format Optional. The format to use when writing the value.
         /// \param[in] precision Optional. The number of decimal places to write.
-        void Property(StringView name, double value, StringView type = {}, KdlFloatFormat format = KdlFloatFormat::General, int32_t precision = -1);
+        void Property(StringView name, double value, const StringView* type = nullptr, KdlFloatFormat format = KdlFloatFormat::Default, int32_t precision = -1);
 
-        /// Writes a property name and value to a node.
+        /// Writes a property name and floating-point value with a type annotation.
         ///
         /// \param[in] name The name of the property.
         /// \param[in] value The value of the property.
-        /// \param[in] type Optional. The type annotation for the property value.
+        /// \param[in] type The type annotation for the property value.
         /// \param[in] format Optional. The format to use when writing the value.
-        /// \param[in] rawDelimiterCount Optional. The number of '#' characters to use as
-        ///     delimiters when using the \ref KdlStringFormat::Raw format.
-        void Property(StringView name, StringView value, StringView type = {}, KdlStringFormat format = KdlStringFormat::Escaped, uint32_t rawDelimiterCount = 1);
+        /// \param[in] precision Optional. The number of decimal places to write.
+        void Property(StringView name, double value, StringView type, KdlFloatFormat format = KdlFloatFormat::Default, int32_t precision = -1) { Property(name, value, &type, format, precision); }
 
-        /// Writes a property name and value to a node.
+        /// Writes a property name and string value with an optional type annotation.
         ///
         /// \param[in] name The name of the property.
         /// \param[in] value The value of the property.
         /// \param[in] type Optional. The type annotation for the property value.
-        void Property(StringView name, nullptr_t, StringView type = {});
+        /// \param[in] multiline Optional. True to write the value as a multi-line string.
+        /// \param[in] rawDelimiterCount Optional. When zero (default) the value is written as an
+        ///     escaped string. When greater than zero, the value is written as a raw string using
+        ///     this many '#' characters as delimiters.
+        void Property(StringView name, StringView value, const StringView* type = nullptr, bool multiline = false, uint32_t rawDelimiterCount = 0);
+
+        /// Writes a property name and string value with a type annotation.
+        ///
+        /// \param[in] name The name of the property.
+        /// \param[in] value The value of the property.
+        /// \param[in] type The type annotation for the property value.
+        /// \param[in] multiline Optional. True to write the value as a multi-line string.
+        /// \param[in] rawDelimiterCount Optional. When zero (default) the value is written as an
+        ///     escaped string. When greater than zero, the value is written as a raw string using
+        ///     this many '#' characters as delimiters.
+        void Property(StringView name, StringView value, StringView type, bool multiline = false, uint32_t rawDelimiterCount = 0) { Property(name, value, &type, multiline, rawDelimiterCount); }
+
+        /// Writes a property name and string value with an optional type annotation.
+        ///
+        /// \param[in] name The name of the property.
+        /// \param[in] value The value of the property.
+        /// \param[in] type Optional. The type annotation for the property value.
+        /// \param[in] multiline Optional. True to write the value as a multi-line string.
+        /// \param[in] rawDelimiterCount Optional. When zero (default) the value is written as an
+        ///     escaped string. When greater than zero, the value is written as a raw string using
+        ///     this many '#' characters as delimiters.
+        void Property(StringView name, const char* value, const StringView* type = nullptr, bool multiline = false, uint32_t rawDelimiterCount = 0);
+
+        /// Writes a property name and string value with a type annotation.
+        ///
+        /// \param[in] name The name of the property.
+        /// \param[in] value The value of the property.
+        /// \param[in] type The type annotation for the property value.
+        /// \param[in] multiline Optional. True to write the value as a multi-line string.
+        /// \param[in] rawDelimiterCount Optional. When zero (default) the value is written as an
+        ///     escaped string. When greater than zero, the value is written as a raw string using
+        ///     this many '#' characters as delimiters.
+        void Property(StringView name, const char* value, StringView type, bool multiline = false, uint32_t rawDelimiterCount = 0) { Property(name, value, &type, multiline, rawDelimiterCount); }
+
+        /// Writes a property name and null value with an optional type annotation.
+        ///
+        /// \param[in] name The name of the property.
+        /// \param[in] value The value of the property.
+        /// \param[in] type Optional. The type annotation for the property value.
+        void Property(StringView name, nullptr_t value, const StringView* type = nullptr);
+
+        /// Writes a property name and null value with a type annotation.
+        ///
+        /// \param[in] name The name of the property.
+        /// \param[in] value The value of the property.
+        /// \param[in] type The type annotation for the property value.
+        void Property(StringView name, nullptr_t value, StringView type) { Property(name, value, &type); }
 
     private:
-        void IntArg(long long value, StringView type, KdlIntFormat format);
-        void UintArg(unsigned long long value, StringView type, KdlIntFormat format);
-
-        void IntProp(StringView name, long long value, StringView type, KdlIntFormat format);
-        void UintProp(StringView name, unsigned long long value, StringView type, KdlIntFormat format);
+        template <typename T, typename... Args>
+        void WriteArgOrProp(const StringView* name, T value, const StringView* type, Args&&... args);
 
     private:
         StringWriter m_writer;

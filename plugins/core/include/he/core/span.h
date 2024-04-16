@@ -129,6 +129,35 @@ namespace he
             return Span<const uint8_t>(reinterpret_cast<const uint8_t*>(m_data), m_size * sizeof(T));
         }
 
+        /// Create a new span of this span's elements. The range starts at `offset` and will
+        /// continue to the end of the span.
+        ///
+        /// \note Asserts if `offset` is greater than, or equal to, \ref Size().
+        ///
+        /// \param[in] offset The offset to start the new span at.
+        /// \return The requested subspan.
+        Span<T> Subspan(uint32_t offset) const
+        {
+            HE_ASSERT(offset < m_size);
+            return Span<T>{ m_data + offset, m_size - offset };
+        }
+
+        /// Create a new span of this span's elements. The range starts at `offset` and includes
+        /// `count` elements.
+        ///
+        /// \note Asserts if `offset` is greater than, or equal to, \ref Size() or if `count` is
+        /// greater than `Size() - offset`.
+        ///
+        /// \param[in] offset The offset to start the new span at.
+        /// \param[in] count The number of elements to include in the new span.
+        /// \return The requested subspan.
+        Span<T> Subspan(uint32_t offset, uint32_t count) const
+        {
+            HE_ASSERT(offset < m_size);
+            HE_ASSERT(count <= (m_size - offset));
+            return Span<T>{ m_data + offset, count };
+        }
+
         // ----------------------------------------------------------------------------------------
         // Iterators
 

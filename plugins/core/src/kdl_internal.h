@@ -55,7 +55,13 @@ namespace he
             || (ucc >= 0xd800 && ucc <= 0xdfff)     // non unicode scalar values
             || (ucc >= 0x2066 && ucc <= 0x2069)     // directional isolate characters
             || (ucc >= 0x200e && ucc <= 0x200f)     // directional marks
-            || (ucc >= 0x202a && ucc <= 0x202e);    // directional control characters
+            || (ucc >= 0x202a && ucc <= 0x202e)     // directional control characters
+            || (ucc == 0xfeff);                     // zero width no-break space / Byte Order Mark
+    }
+
+    inline bool IsKdlUnicodeScalarValue(uint32_t ucc)
+    {
+        return (ucc >= 0x0000 && ucc <= 0xd7ff) || (ucc >= 0xe000 && ucc <= 0x10ffff);
     }
 
     inline bool IsValidKdlIdentifierCodePoint(uint32_t ucc)
@@ -65,6 +71,7 @@ namespace he
             && ucc != '{' && ucc != '}'
             && ucc != '[' && ucc != ']'
             && ucc != ';' && ucc != '"' && ucc != '#'
+            && IsKdlUnicodeScalarValue(ucc)
             && !IsDisallowedKdlCodePoint(ucc)
             && !IsKdlEqualsSign(ucc)
             && !IsKdlWhitespace(ucc)

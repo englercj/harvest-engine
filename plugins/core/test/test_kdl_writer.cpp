@@ -48,14 +48,14 @@ public:
         ValidateValue(expected, [&]() { m_writer.Argument(input, {}, format, precision); });
     }
 
-    void ValidateString(StringView input, StringView expected)
+    void ValidateString(StringView input, StringView expected, bool multiline = false)
     {
-        ValidateValue(expected, [&]() { m_writer.Argument(input, {}, KdlStringFormat::Escaped); });
+        ValidateValue(expected, [&]() { m_writer.Argument(input, {}, multiline, 0); });
     }
 
-    void ValidateRawString(StringView input, StringView expected)
+    void ValidateRawString(StringView input, StringView expected, bool multiline = false)
     {
-        ValidateValue(expected, [&]() { m_writer.Argument(input, {}, KdlStringFormat::Raw); });
+        ValidateValue(expected, [&]() { m_writer.Argument(input, {}, multiline, 1); });
     }
 
     String m_output;
@@ -129,13 +129,13 @@ HE_TEST_F(core, kdl_writer, value_int, KdlWriterFixture)
     ValidateInt(1, KdlIntFormat::Decimal, "1");
     ValidateInt(456789, KdlIntFormat::Decimal, "456789");
     ValidateInt(Limits<int64_t>::Max, KdlIntFormat::Decimal, "9223372036854775807");
-    ValidateInt(Limits<uint64_t>::Max, KdlIntFormat::Decimal, "18446744073709551615");
+    ValidateInt(Limits<uint64_t>::Max, KdlIntFormat::Decimal, "-1");
 
     // Hex
     ValidateInt(0x0, KdlIntFormat::Hex, "0x0");
     ValidateInt(0xdeadbeef, KdlIntFormat::Hex, "0xdeadbeef");
     ValidateInt(Limits<uint32_t>::Max, KdlIntFormat::Hex, "0xffffffff");
-    ValidateInt(Limits<uint64_t>::Max, KdlIntFormat::Hex, "0xffffffffffffffff");
+    ValidateInt(Limits<uint64_t>::Max, KdlIntFormat::Hex, "-0x1");
 
     // Octal
     ValidateInt(0, KdlIntFormat::Octal, "0o0");
@@ -187,9 +187,10 @@ HE_TEST_F(core, kdl_writer, value_uint, KdlWriterFixture)
 HE_TEST_F(core, kdl_writer, value_float, KdlWriterFixture)
 {
     // Zeroes
-    ValidateFloat(0.0, KdlFloatFormat::General, -1, "0");
+    ValidateFloat(0.0, KdlFloatFormat::Default, -1, "0.0");
+    ValidateFloat(0.0, KdlFloatFormat::General, -1, "0.00000");
     ValidateFloat(0.0, KdlFloatFormat::Fixed, -1, "0.000000");
-    ValidateFloat(0.0, KdlFloatFormat::Exponent, -1, "0.000000e+00");
+    ValidateFloat(0.0, KdlFloatFormat::Exponent, -1, "0.000000E+00");
 
     // Fixed
     ValidateFloat(14.1345, KdlFloatFormat::Fixed, 6, "14.134500");
@@ -198,14 +199,14 @@ HE_TEST_F(core, kdl_writer, value_float, KdlWriterFixture)
     ValidateFloat(10.0, KdlFloatFormat::Fixed, 3, "10.000");
 
     // Exponent
-    ValidateFloat(2000, KdlFloatFormat::Exponent, -1, "2.000000e+03");
-    ValidateFloat(0.002, KdlFloatFormat::Exponent, 1, "2.0e-03");
-    ValidateFloat(2, KdlFloatFormat::Exponent, 2, "2.00e+00");
-    ValidateFloat(2, KdlFloatFormat::Exponent, 4, "2.0000e+00");
-    ValidateFloat(0.2, KdlFloatFormat::Exponent, 1, "2.0e-01");
-    ValidateFloat(-0.2, KdlFloatFormat::Exponent, 1, "-2.0e-01");
-    ValidateFloat(1e123, KdlFloatFormat::Exponent, 1, "1.0e+123");
-    ValidateFloat(1e-123, KdlFloatFormat::Exponent, 1, "1.0e-123");
+    ValidateFloat(2000, KdlFloatFormat::Exponent, -1, "2.000000E+03");
+    ValidateFloat(0.002, KdlFloatFormat::Exponent, 1, "2.0E-03");
+    ValidateFloat(2, KdlFloatFormat::Exponent, 2, "2.00E+00");
+    ValidateFloat(2, KdlFloatFormat::Exponent, 4, "2.0000E+00");
+    ValidateFloat(0.2, KdlFloatFormat::Exponent, 1, "2.0E-01");
+    ValidateFloat(-0.2, KdlFloatFormat::Exponent, 1, "-2.0E-01");
+    ValidateFloat(1e123, KdlFloatFormat::Exponent, 1, "1.0E+123");
+    ValidateFloat(1e-123, KdlFloatFormat::Exponent, 1, "1.0E-123");
 
     // Special float values
     ValidateFloat(Limits<double>::Infinity, KdlFloatFormat::General, -1, "#inf");
@@ -239,32 +240,33 @@ HE_TEST_F(core, kdl_writer, value_string_escaped, KdlWriterFixture)
     // Quoted strings
     ValidateString("", "\"\"");
     ValidateString("1234", "\"1234\"");
-    ValidateString("\x01", "\"\\u0001\"");
-    ValidateString("test\xed\x9f\xbftest", "\"test\xed\x9f\xbftest\"");
-    ValidateString("test\xee\x80\x80test", "\"test\xee\x80\x80test\"");
-    ValidateString("test\xf4\x8f\xbf\xbftest", "\"test\xf4\x8f\xbf\xbftest\"");
+    ValidateString("\x01", "\"\\u{1}\"");
+    ValidateString("test/test", "\"test/test\"");
+    ValidateString("test\u00a0test", "\"test\u00a0test\"");
+    ValidateString("test＝test", "\"test＝test\"");
     ValidateString("127.0.0.1", "\"127.0.0.1\"");
     ValidateString("character encoding", "\"character encoding\"");
-    ValidateString("╠═╣", "\"╠═╣\"");
-    ValidateString("⋰∫∬∭⋱", "\"⋰∫∬∭⋱\"");
+    ValidateString("╠═╣", "╠═╣");
+    ValidateString("⋰∫∬∭⋱", "⋰∫∬∭⋱");
     ValidateString("C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe", "\"C:\\\\Program Files (x86)\\\\Microsoft\\\\Edge\\\\Application\\\\msedge.exe\"");
 
     // Multiline quoted strings
-    ValidateString("test\ntest", "\"\ntest\ntest\n\"");
-    ValidateString("test\b\t\n\f\r\n\"\\", "\"\ntest\\b\\t\n\\f\r\n\\\"\\\\\n\"");
-    ValidateString("test  \n   test \n   ", "\"\ntest  \n   test \n   \n\"");
-    ValidateString("test  xxx\nyyy\nzzz", "\"\ntest  xxx\nyyy\nzzz\n\"");
-    ValidateString("test\b\t\n\f\r\n\"\\", "\"\ntest\\b\\t\n\\f\r\n\\\"\\\\\n\"");
-    ValidateString("\x01\n", "\"\n\\u0001\n\n\"");
-    ValidateString("é\n", "\"\né\n\n\"");
-    ValidateString("test\xed\x9f\xbf\ntest", "\"\ntest\xed\x9f\xbf\ntest\n\"");
-    ValidateString("test\xee\x80\x80\ntest", "\"\ntest\xee\x80\x80\ntest\n\"");
-    ValidateString("test\xf4\x8f\xbf\xbf\ntest", "\"\ntest\xf4\x8f\xbf\xbf\ntest\n\"");
-    ValidateString("Fuß\n", "\"\nFuß\n\n\"");
-    ValidateString("😂\n", "\"\n😂\n\n\"");
-    ValidateString("汉语大字典\n", "\"\n汉语大字典\n\n\"");
-    ValidateString("辭源\n", "\"\n辭源\n\n\"");
-    ValidateString("பெண்டிரேம்\n", "\"\nபெண்டிரேம்\n\n\"");
+    ValidateString("test\ntest", "\"\ntest\ntest\n\"", true);
+    ValidateString("é\n", "\"\né\n\n\"", true);
+    ValidateString("test\xed\x9f\xbf\ntest", "\"\ntest\xed\x9f\xbf\ntest\n\"", true);
+    ValidateString("test\xee\x80\x80\ntest", "\"\ntest\xee\x80\x80\ntest\n\"", true);
+    ValidateString("test\xf4\x8f\xbf\xbf\ntest", "\"\ntest\xf4\x8f\xbf\xbf\ntest\n\"", true);
+    ValidateString("Fuß\n", "\"\nFuß\n\n\"", true);
+    ValidateString("😂\n", "\"\n😂\n\n\"", true);
+    ValidateString("汉语大字典\n", "\"\n汉语大字典\n\n\"", true);
+    ValidateString("辭源\n", "\"\n辭源\n\n\"", true);
+    ValidateString("பெண்டிரேம்\n", "\"\nபெண்டிரேம்\n\n\"", true);
+
+    ValidateString("test\b\t\n\f\r\n\"\\", "\"test\\b\\t\\n\\f\\r\\n\\\"\\\\\"");
+    ValidateString("test  \n   test \n   ", "\"test  \\n   test \\n   \"");
+    ValidateString("test  xxx\nyyy\nzzz", "\"test  xxx\\nyyy\\nzzz\"");
+    ValidateString("test\b\t\n\f\r\n\"\\", "\"test\\b\\t\\n\\f\\r\\n\\\"\\\\\"");
+    ValidateString("\x01\n", "\"\\u{1}\\n\"");
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -288,16 +290,16 @@ HE_TEST_F(core, kdl_writer, value_string_raw, KdlWriterFixture)
     ValidateRawString("\"\" ", "#\"\"\" \"#");
     ValidateRawString(" \"", "#\" \"\"#");
     ValidateRawString(" \"\"", "#\" \"\"\"#");
-    ValidateRawString("test\ntest", "#\"\ntest\ntest\n\"#");
-    ValidateRawString("Fuß\n", "#\"\nFuß\n\n\"#");
-    ValidateRawString("😂\n", "#\"\n😂\n\n\"#");
-    ValidateRawString("汉语大字典\n", "#\"\n汉语大字典\n\n\"#");
-    ValidateRawString("辭源\n", "#\"\n辭源\n\n\"#");
-    ValidateRawString("பெண்டிரேம்\n", "#\"\nபெண்டிரேம்\n\n\"#");
+    ValidateRawString("test\ntest", "#\"\ntest\ntest\n\"#", true);
+    ValidateRawString("Fuß\n", "#\"\nFuß\n\n\"#", true);
+    ValidateRawString("😂\n", "#\"\n😂\n\n\"#", true);
+    ValidateRawString("汉语大字典\n", "#\"\n汉语大字典\n\n\"#", true);
+    ValidateRawString("辭源\n", "#\"\n辭源\n\n\"#", true);
+    ValidateRawString("பெண்டிரேம்\n", "#\"\nபெண்டிரேம்\n\n\"#", true);
 
-    ValidateRawString("  test\ntest", "#\"\n  test\ntest\n\"#");
-    ValidateRawString("test\ntest", "#\"\ntest\ntest\n\"#");
-    ValidateRawString("  \t test \\test\"test\\\n  test\\\n  test", "#\"\n  \t test \\test\"test\\\n  test\\\n  test\n\"#");
+    ValidateRawString("  test\ntest", "#\"\n  test\ntest\n\"#", true);
+    ValidateRawString("test\ntest", "#\"\ntest\ntest\n\"#", true);
+    ValidateRawString("  \t test \\test\"test\\\n  test\\\n  test", "#\"\n  \t test \\test\"test\\\n  test\\\n  test\n\"#", true);
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -359,9 +361,9 @@ HE_TEST_F(core, kdl_writer, document, KdlWriterFixture)
     m_writer.Node("escaped");
     m_writer.StartNodeChildren();
     m_writer.Node("str1");
-    m_writer.Argument("I'm a string. \"You can quote me\".\nName\tJosé\nLocation\tSF.");
+    m_writer.Argument("I'm a string. \"You can quote me\".\nName\tJosé\nLocation\tSF.", nullptr, true);
     m_writer.Node("str2");
-    m_writer.Argument("Roses are red\nViolets are blue");
+    m_writer.Argument("Roses are red\nViolets are blue", nullptr, true);
     m_writer.Node("str3");
     m_writer.Argument("Here are two quotation marks: \"\". Simple enough.");
     m_writer.Node("str4");
@@ -374,17 +376,17 @@ HE_TEST_F(core, kdl_writer, document, KdlWriterFixture)
     m_writer.Node("raw");
     m_writer.StartNodeChildren();
     m_writer.Node("str1");
-    m_writer.Argument("I'm a string. \"You can quote me\". Name\tJosé\nLocation\tSF.", {}, KdlStringFormat::Raw);
+    m_writer.Argument("I'm a string. \"You can quote me\".\nName\tJosé\nLocation\tSF.", nullptr, true, 1);
     m_writer.Node("str2");
-    m_writer.Argument("Roses are red\nViolets are blue", {}, KdlStringFormat::Raw);
+    m_writer.Argument("Roses are red\nViolets are blue", nullptr, true, 1);
     m_writer.Node("str3");
-    m_writer.Argument("Here are two quotation marks: \"\". Simple enough.", {}, KdlStringFormat::Raw);
+    m_writer.Argument("Here are two quotation marks: \"\". Simple enough.", nullptr, false, 1);
     m_writer.Node("str4");
-    m_writer.Argument("Here are fifteen quotation marks: \"\"\"\"\"\"\"\"\"\"\"\"\"\"\".", {}, KdlStringFormat::Raw);
+    m_writer.Argument("Here are fifteen quotation marks: \"\"\"\"\"\"\"\"\"\"\"\"\"\"\".", nullptr, false, 1);
     m_writer.Node("str5");
-    m_writer.Argument("\\\\ServerX\\admin$\\system32\\", {}, KdlStringFormat::Raw);
+    m_writer.Argument("\\\\ServerX\\admin$\\system32\\", nullptr, false, 1);
     m_writer.Node("str6");
-    m_writer.Argument("<\\i\\c*\\s*>", {}, KdlStringFormat::Raw);
+    m_writer.Argument("<\\i\\c*\\s*>", nullptr, false, 1);
     m_writer.EndNodeChildren();
     m_writer.EndNodeChildren();
 
@@ -393,28 +395,29 @@ boolean #true #false
 "null" #null
 integers {
     decimal int_min=(i32)-2147483648 int_max=(i32)2147483647
-    hex uint_min=(u32)0x00000000 uint_max=(u32)0xffffffff
+    hex uint_min=(u32)0x0 uint_max=(u32)0xffffffff
     octal int_min=(i16)-0o100000 int_max=(i16)0o77777
-    binary uint_min=(u8)0b00000000 uint_max=(u8)0b11111111
+    binary uint_min=(u8)0b0 uint_max=(u8)0b11111111
 }
 floats {
-    general zero=0 positive=3.1415 negative=-0.01 large=5.0e+22 small=5.0e-22
-    fixed zero=0.000000 positive=3.1415 negative=-0.010000 large=50000000000000000000000.000000 small=0.000000
-    exponent zero=0.000000e+00 positive=3.1415 negative=-1.000000e-02 large=5.000000e+22 small=5.000000e-22
-    special inf=#inf ninf=#-inf nan=#nan snan=#nan
+    general zero=(f64)0.0 positive=(f64)3.1415 negative=(f64)-0.01 large=(f64)5.0E+22 small=(f64)5.0E-22
+    fixed zero=(f64)0.000000 positive=(f64)3.141500 negative=(f64)-0.010000 large=(f64)49999999999999995805696.000000 small=(f64)0.000000
+    exponent zero=(f64)0.000000E+00 positive=(f64)3.141500E+00 negative=(f64)-1.000000E-02 large=(f64)5.000000E+22 small=(f64)5.000000E-22
+    special "inf"=(f64)#inf ninf=(f64)#-inf "nan"=(f64)#nan snan=(f64)#nan
 }
 strings {
     escaped {
         str1 "
 I'm a string. \"You can quote me\".
-Name	José
-Location	SF.
+Name\tJosé
+Location\tSF.
 "
         str2 "
 Roses are red
-Violets are blue"
+Violets are blue
+"
         str3 "Here are two quotation marks: \"\". Simple enough."
-        str4 "Here are fifteen quotation marks: \"\"\"\"\"\"\"\"\"\"\"\"\"\"\""
+        str4 "Here are fifteen quotation marks: \"\"\"\"\"\"\"\"\"\"\"\"\"\"\"."
         str5 "\\\\ServerX\\admin$\\system32\\"
         str6 "<\\i\\c*\\s*>"
     }
@@ -429,7 +432,7 @@ Roses are red
 Violets are blue
 "#
         str3 #"Here are two quotation marks: "". Simple enough."#
-        str4 #"Here are fifteen quotation marks: """"""""""""""""#
+        str4 #"Here are fifteen quotation marks: """""""""""""""."#
         str5 #"\\ServerX\admin$\system32\"#
         str6 #"<\i\c*\s*>"#
     }

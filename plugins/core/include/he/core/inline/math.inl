@@ -251,6 +251,102 @@ namespace he
     }
 
     // --------------------------------------------------------------------------------------------
+    constexpr float Abs(float x) noexcept
+    {
+        if (!IsConstantEvaluated())
+        {
+        #if HE_HAS_BUILTIN(__builtin_fabsf)
+            // `f32.abs` instruction on WASM. Compiler impl or library call on other platforms.
+            return __builtin_fabsf(x);
+        #endif
+        }
+
+        return x < 0 ? -x : x;
+    }
+
+    constexpr double Abs(double x) noexcept
+    {
+        if (!IsConstantEvaluated())
+        {
+        #if HE_HAS_BUILTIN(__builtin_fabs)
+            // `f64.abs` instruction on WASM. Compiler impl or library call on other platforms.
+            return __builtin_fabs(x);
+        #endif
+        }
+
+        return x < 0 ? -x : x;
+    }
+
+    constexpr long double Abs(long double x) noexcept
+    {
+        return x < 0 ? -x : x;
+    }
+
+    // --------------------------------------------------------------------------------------------
+    constexpr float Min(float x, float y) noexcept
+    {
+    #if defined(HE_PLATFORM_API_WASM)
+        if (!IsConstantEvaluated())
+        {
+            // `f32.min` instruction on WASM.
+            return __builtin_wasm_min_f32(x, y);
+        }
+    #endif
+
+        return x < y ? x : y;
+    }
+
+    constexpr double Min(double x, double y) noexcept
+    {
+    #if defined(HE_PLATFORM_API_WASM)
+        if (!IsConstantEvaluated())
+        {
+            // `f64.min` instruction on WASM.
+            return __builtin_wasm_min_f64(x, y);
+        }
+    #endif
+
+        return x < y ? x : y;
+    }
+
+    constexpr long double Min(long double x, long double y) noexcept
+    {
+        return x < y ? x : y;
+    }
+
+    // --------------------------------------------------------------------------------------------
+    constexpr float Max(float x, float y) noexcept
+    {
+    #if defined(HE_PLATFORM_API_WASM)
+        if (!IsConstantEvaluated())
+        {
+            // `f32.max` instruction on WASM.
+            return __builtin_wasm_max_f32(x, y);
+        }
+    #endif
+
+        return x > y ? x : y;
+    }
+
+    constexpr double Max(double x, double y) noexcept
+    {
+    #if defined(HE_PLATFORM_API_WASM)
+        if (!IsConstantEvaluated())
+        {
+            // `f64.max` instruction on WASM.
+            return __builtin_wasm_max_f64(x, y);
+        }
+    #endif
+
+        return x > y ? x : y;
+    }
+
+    constexpr long double Max(long double x, long double y) noexcept
+    {
+        return x > y ? x : y;
+    }
+
+    // --------------------------------------------------------------------------------------------
     constexpr float Floor(float x) noexcept
     {
         if (!IsConstantEvaluated())
@@ -472,6 +568,11 @@ namespace he
         if (!IsConstantEvaluated())
         {
         #if !defined(HE_PLATFORM_API_WASM) && HE_HAS_BUILTIN(__builtin_roundf)
+            // All WASM operations use round-to-nearest ties-to-even. Most people expect
+            // round-to-nearest ties-away-from-zero for Round(), so we can't use the
+            // `f32.nearest` instruction here.
+            // return __builtin_roundevenf(x);
+
             // Compiler impl or library call, no WASM instruction here.
             return __builtin_roundf(x);
         #elif HE_COMPILER_MSVC
@@ -519,6 +620,11 @@ namespace he
         if (!IsConstantEvaluated())
         {
         #if !defined(HE_PLATFORM_API_WASM) && HE_HAS_BUILTIN(__builtin_round)
+            // All WASM operations use round-to-nearest ties-to-even. Most people expect
+            // round-to-nearest ties-away-from-zero for Round(), so we can't use the
+            // `f64.nearest` instruction here.
+            // return __builtin_roundeven(x);
+
             // Compiler impl or library call, no WASM instruction here.
             return __builtin_round(x);
         #elif HE_COMPILER_MSVC
@@ -715,6 +821,6 @@ namespace he
     }
 
     // --------------------------------------------------------------------------------------------
-    HE_FORCE_INLINE float LogN(float x, float n) noexcept { return Ln(x) / Ln(n); }
-    HE_FORCE_INLINE double LogN(double x, double n) noexcept { return Ln(x) / Ln(n); }
+    HE_FORCE_INLINE float LogN(float x, float n) noexcept { return Log(x) / Log(n); }
+    HE_FORCE_INLINE double LogN(double x, double n) noexcept { return Log(x) / Log(n); }
 }

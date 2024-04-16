@@ -59,17 +59,21 @@ namespace he
     /// \param[in] srcLen The length of the source data.
     void Base64Encode(String& dst, const void* src, uint32_t srcLen);
 
-    /// Encodes the source data into a base64 string. The encoded bytes are written to the end of
-    /// the string without changing the existing content.
+    /// \copybrief Base64Encode(String&, const void*, uint32_t)
     ///
     /// \param[in] dst The destination string to write the encoded data to.
     /// \param[in] src The source data to encode.
     inline void Base64Encode(String& dst, StringView src) { return Base64Encode(dst, src.Data(), src.Size()); }
 
-    /// \copydoc Base64Encode(String&, StringView)
+    /// \copybrief Base64Encode(String&, const void*, uint32_t)
+    ///
+    /// \param[in] dst The destination string to write the encoded data to.
+    /// \param[in] src The source data to encode.
     inline void Base64Encode(String& dst, Span<const uint8_t> src) { return Base64Encode(dst, src.Data(), src.Size()); }
 
-    /// Decodes the source base64 string into the destination buffer.
+    /// Decodes the source base64 string into the destination buffer. This function follows the WHATWG forgiving - base64 format, which means that it will
+    /// ignore any ASCII spaces in the input. You may provide a padded input (with one or two
+    /// equal signs at the end) or an unpadded input (without any equal signs at the end).
     ///
     /// \note The destination buffer must be at least `Base64MaxDecodedSize(srcLen)` bytes long.
     ///
@@ -80,14 +84,7 @@ namespace he
     /// \return The number of bytes written to the destination buffer, zero if there was an error.
     uint32_t Base64Decode(void* dst, uint32_t dstLen, const char* src, uint32_t srcLen);
 
-    /// Decodes the source base64 string into the destination buffer.
-    ///
-    /// \note The destination buffer must be at least `Base64MaxDecodedSize(srcLen)` bytes long.
-    ///
-    /// \param[in] dst The destination buffer to write the decoded data to.
-    /// \param[in] dstLen The length of the destination buffer.
-    /// \param[in] src The source base64 string to decode.
-    /// \return The number of bytes written to the destination buffer, zero if there was an error.
+    /// \copydoc Base64Decode(void*, uint32_t, const char*, uint32_t)
     inline uint32_t Base64Decode(void* dst, uint32_t dstLen, StringView src) { return Base64Decode(dst, dstLen, src.Data(), src.Size()); }
 
     /// Decodes the source base64 string into the destination container. The decoded bytes are

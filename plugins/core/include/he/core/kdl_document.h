@@ -7,6 +7,7 @@
 #include "he/core/hash_table.h"
 #include "he/core/kdl_reader.h"
 #include "he/core/kdl_writer.h"
+#include "he/core/optional.h"
 #include "he/core/span.h"
 #include "he/core/string.h"
 #include "he/core/string_view.h"
@@ -51,54 +52,54 @@ namespace he
         ///
         /// \param v The value to construct with.
         /// \param t Optional. The type annotation of the value.
-        KdlValue(bool v, StringView t = {}) noexcept : m_value(AsIndex<Kind::Bool>(), v), m_type(t) {}
+        KdlValue(bool v) noexcept : m_value(AsIndex<Kind::Bool>(), v) {}
 
-        /// \copydoc KdlValue(bool,StringView)
-        KdlValue(signed char v, StringView t = {}) noexcept : m_value(AsIndex<Kind::Int>(), v), m_type(t) {}
+        /// \copydoc KdlValue(bool)
+        KdlValue(signed char v) noexcept : m_value(AsIndex<Kind::Int>(), v) {}
 
-        /// \copydoc KdlValue(bool,StringView)
-        KdlValue(short v, StringView t = {}) noexcept : m_value(AsIndex<Kind::Int>(), v), m_type(t) {}
+        /// \copydoc KdlValue(bool)
+        KdlValue(short v) noexcept : m_value(AsIndex<Kind::Int>(), v) {}
 
-        /// \copydoc KdlValue(bool,StringView)
-        KdlValue(int v, StringView t = {}) noexcept : m_value(AsIndex<Kind::Int>(), v), m_type(t) {}
+        /// \copydoc KdlValue(bool)
+        KdlValue(int v) noexcept : m_value(AsIndex<Kind::Int>(), v) {}
 
-        /// \copydoc KdlValue(bool,StringView)
-        KdlValue(long v, StringView t = {}) noexcept : m_value(AsIndex<Kind::Int>(), v), m_type(t) {}
+        /// \copydoc KdlValue(bool)
+        KdlValue(long v) noexcept : m_value(AsIndex<Kind::Int>(), v) {}
 
-        /// \copydoc KdlValue(bool,StringView)
-        KdlValue(long long v, StringView t = {}) noexcept : m_value(AsIndex<Kind::Int>(), v), m_type(t) {}
+        /// \copydoc KdlValue(bool)
+        KdlValue(long long v) noexcept : m_value(AsIndex<Kind::Int>(), v) {}
 
-        /// \copydoc KdlValue(bool,StringView)
-        KdlValue(unsigned char v, StringView t = {}) noexcept : m_value(AsIndex<Kind::Uint>(), v), m_type(t) {}
+        /// \copydoc KdlValue(bool)
+        KdlValue(unsigned char v) noexcept : m_value(AsIndex<Kind::Uint>(), v) {}
 
-        /// \copydoc KdlValue(bool,StringView)
-        KdlValue(unsigned short v, StringView t = {}) noexcept : m_value(AsIndex<Kind::Uint>(), v), m_type(t) {}
+        /// \copydoc KdlValue(bool)
+        KdlValue(unsigned short v) noexcept : m_value(AsIndex<Kind::Uint>(), v) {}
 
-        /// \copydoc KdlValue(bool,StringView)
-        KdlValue(unsigned int v, StringView t = {}) noexcept : m_value(AsIndex<Kind::Uint>(), v), m_type(t) {}
+        /// \copydoc KdlValue(bool)
+        KdlValue(unsigned int v) noexcept : m_value(AsIndex<Kind::Uint>(), v) {}
 
-        /// \copydoc KdlValue(bool,StringView)
-        KdlValue(unsigned long v, StringView t = {}) noexcept : m_value(AsIndex<Kind::Uint>(), v), m_type(t) {}
+        /// \copydoc KdlValue(bool)
+        KdlValue(unsigned long v) noexcept : m_value(AsIndex<Kind::Uint>(), v) {}
 
-        /// \copydoc KdlValue(bool,StringView)
-        KdlValue(unsigned long long v, StringView t = {}) noexcept : m_value(AsIndex<Kind::Uint>(), v), m_type(t) {}
+        /// \copydoc KdlValue(bool)
+        KdlValue(unsigned long long v) noexcept : m_value(AsIndex<Kind::Uint>(), v) {}
 
-        /// \copydoc KdlValue(bool,StringView)
-        KdlValue(double v, StringView t = {}) noexcept : m_value(AsIndex<Kind::Float>(), v), m_type(t) {}
+        /// \copydoc KdlValue(bool)
+        KdlValue(double v) noexcept : m_value(AsIndex<Kind::Float>(), v) {}
 
-        /// \copydoc KdlValue(bool,StringView)
-        KdlValue(StringView v, StringView t = {}) noexcept : m_value(AsIndex<Kind::String>(), v), m_type(t) {}
+        /// \copydoc KdlValue(bool)
+        KdlValue(StringView v) noexcept : m_value(AsIndex<Kind::String>(), v) {}
 
-        /// \copydoc KdlValue(bool,StringView)
-        KdlValue(const char* v, StringView t = {}) noexcept : m_value(AsIndex<Kind::String>(), v), m_type(t) {}
+        /// \copydoc KdlValue(bool)
+        KdlValue(const char* v) noexcept : m_value(AsIndex<Kind::String>(), v) {}
 
-        /// \copydoc KdlValue(bool,StringView)
-        KdlValue(nullptr_t, StringView t = {}) noexcept : m_value(), m_type(t) {}
+        /// \copydoc KdlValue(bool)
+        KdlValue(nullptr_t) noexcept : m_value() {}
 
         /// Get the type annotation, if any, of the value.
         ///
         /// \return The type annotation of the value.
-        const StringView& Type() const { return m_type; }
+        const Optional<String>& Type() const { return m_type; }
 
         /// Get the underlying value variant.
         ///
@@ -111,7 +112,7 @@ namespace he
         void SetType(StringView type) { m_type = type; }
 
         /// Clear the type annotation of the value.
-        void ClearType() { m_type = {}; }
+        void ClearType() { m_type.Reset(); }
 
         /// Get the kind of the value.
         ///
@@ -256,7 +257,7 @@ namespace he
 
     private:
         VariantType m_value;
-        StringView m_type;
+        Optional<he::String> m_type;
     };
 
     // --------------------------------------------------------------------------------------------
@@ -265,31 +266,34 @@ namespace he
     public:
         explicit KdlNode(Allocator& allocator = Allocator::GetDefault()) noexcept
             : m_name(allocator)
-            , m_type(allocator)
+            , m_type()
             , m_children(allocator)
             , m_arguments(allocator)
             , m_properties(allocator)
         {}
 
         explicit KdlNode(StringView name, Allocator& allocator = Allocator::GetDefault()) noexcept
-            : KdlNode(allocator)
-        {
-            m_name = name;
-        }
+            : m_name(name, allocator)
+            , m_type()
+            , m_children(allocator)
+            , m_arguments(allocator)
+            , m_properties(allocator)
+        {}
 
         explicit KdlNode(StringView name, StringView type, Allocator& allocator = Allocator::GetDefault()) noexcept
-            : KdlNode(allocator)
-        {
-            m_name = name;
-            m_type = type;
-        }
+            : m_name(name, allocator)
+            , m_type(type)
+            , m_children(allocator)
+            , m_arguments(allocator)
+            , m_properties(allocator)
+        {}
 
         const String& Name() const { return m_name; }
         void SetName(StringView name) { m_name = name; }
 
-        const String& Type() const { return m_type; }
-        void SetType(StringView type) { m_type = type; }
-        void ClearType() { m_type.Clear(); }
+        const String* Type() const { return m_type ? &m_type.Value() : nullptr; }
+        void SetType(StringView type) { m_type.Emplace(type, m_name.GetAllocator()); }
+        void ClearType() { m_type.Reset(); }
 
         const Vector<KdlNode>& Children() const { return m_children; }
         Vector<KdlNode>& Children() { return m_children; }
@@ -302,7 +306,7 @@ namespace he
 
     private:
         String m_name;
-        String m_type;
+        Optional<String> m_type;
         Vector<KdlNode> m_children;
         Vector<KdlValue> m_arguments;
         HashMap<String, KdlValue> m_properties;

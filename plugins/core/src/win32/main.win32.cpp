@@ -16,6 +16,8 @@ namespace he
 
     int _Win32AppMain()
     {
+        ::SetConsoleOutputCP(CP_UTF8);
+
         int argc = __argc;
         wchar_t** wargv = __wargv;
 

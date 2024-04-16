@@ -109,81 +109,135 @@ HE_TEST(core, base64, Base64Encode_Container)
 }
 
 // ------------------------------------------------------------------------------------------------
+static void TestBase64Decode(StringView input, StringView expected)
+{
+    uint8_t bytes[64];
+
+    const uint32_t len = Base64Decode(bytes, sizeof(bytes), input);
+    HE_EXPECT_LE(len, Base64MaxDecodedSize(input.Size()));
+    HE_EXPECT_EQ(len, expected.Size());
+
+    if (len > 0)
+    {
+        HE_EXPECT_EQ_MEM(bytes, expected.Data(), len);
+    }
+}
+
 HE_TEST(core, base64, Base64Decode)
 {
-    // Validate the test vectors from RFC4648
-    const StringView inputStrings[] =
-    {
-        "",
-        "Zg==",
-        "Zm8=",
-        "Zm9v",
-        "Zm9vYg==",
-        "Zm9vYmE=",
-        "Zm9vYmFy",
-    };
-    const char expected[] = "foobar";
-    static_assert(HE_LENGTH_OF(expected) == HE_LENGTH_OF(inputStrings));
+    // Test vectors from RFC4648
+    TestBase64Decode("", "");
+    TestBase64Decode("Zg==", "f");
+    TestBase64Decode("Zm8=", "fo");
+    TestBase64Decode("Zm9v", "foo");
+    TestBase64Decode("Zm9vYg==", "foob");
+    TestBase64Decode("Zm9vYmE=", "fooba");
+    TestBase64Decode("Zm9vYmFy", "foobar");
 
-    uint8_t bytes[64];
-    for (uint32_t i = 0; i < HE_LENGTH_OF(expected); ++i)
-    {
-        const uint32_t len = Base64Decode(bytes, sizeof(bytes), inputStrings[i]);
-        HE_EXPECT_EQ(len, i);
-
-        if (len > 0)
-        {
-            HE_EXPECT_EQ_MEM(bytes, expected, len);
-        }
-    }
+    // Unpadded, short padded, and overpadded versions of test vectors still work
+    TestBase64Decode("Zg", "f");
+    TestBase64Decode("Zg=", "f");
+    TestBase64Decode("Zm8", "fo");
+    TestBase64Decode("Zm9v==", "foo");
+    TestBase64Decode("Zm9v=", "foo");
+    TestBase64Decode("Zm9vYg=", "foob");
+    TestBase64Decode("Zm9vYmE", "fooba");
+    TestBase64Decode("Zm9vYmFy==", "foobar");
 
     // Invalid decodes
-    uint32_t len = 0;
-    len = Base64Decode(bytes, sizeof(bytes), "Zm9vYg=");
-    HE_EXPECT_EQ(len, 0);
-    len = Base64Decode(bytes, sizeof(bytes), "Zm9vYg");
-    HE_EXPECT_EQ(len, 0);
-    len = Base64Decode(bytes, sizeof(bytes), "Zm9vY");
-    HE_EXPECT_EQ(len, 0);
-    len = Base64Decode(bytes, sizeof(bytes), "Zm9vYmF=Zm9v");
-    HE_EXPECT_EQ(len, 0);
+    {
+        uint8_t bytes[64];
+        const uint32_t len = Base64Decode(bytes, sizeof(bytes), "Zm9vY");
+        HE_EXPECT_EQ(len, 0);
+    }
+    {
+        uint8_t bytes[64];
+        const uint32_t len = Base64Decode(bytes, sizeof(bytes), "Zm9vYmF=Zm9v");
+        HE_EXPECT_EQ(len, 0);
+    }
 }
 
 // ------------------------------------------------------------------------------------------------
+template <typename T>
+static void TestBase64DecodeContainer(T& dst, StringView input, Span<const typename T::ElementType> expected)
+{
+    dst.Clear();
+
+    HE_EXPECT(Base64Decode(dst, input));
+    HE_EXPECT_LE(dst.Size(), Base64MaxDecodedSize(input.Size()));
+    HE_EXPECT_EQ(dst.Size(), expected.Size());
+
+    if (!dst.IsEmpty())
+    {
+        HE_EXPECT_EQ_MEM(dst.Data(), expected.Data(), dst.Size());
+    }
+}
+
 HE_TEST(core, base64, Base64Decode_Container)
 {
-    // Validate the test vectors from RFC4648
-    const StringView inputStrings[] =
     {
-        "",
-        "Zg==",
-        "Zm8=",
-        "Zm9v",
-        "Zm9vYg==",
-        "Zm9vYmE=",
-        "Zm9vYmFy",
-    };
-    const char expected[] = "foobar";
-    static_assert(HE_LENGTH_OF(expected) == HE_LENGTH_OF(inputStrings));
+        Span<const uint8_t> expected = MakeSpan("foobar").AsBytes();
+        Vector<uint8_t> dst;
 
-    Vector<uint8_t> bytes;
-    for (uint32_t i = 0; i < HE_LENGTH_OF(expected); ++i)
+        // Test vectors from RFC4648
+        TestBase64DecodeContainer(dst, "", {});
+        TestBase64DecodeContainer(dst, "Zg==", expected.Subspan(0, 1));
+        TestBase64DecodeContainer(dst, "Zm8=", expected.Subspan(0, 2));
+        TestBase64DecodeContainer(dst, "Zm9v", expected.Subspan(0, 3));
+        TestBase64DecodeContainer(dst, "Zm9vYg==", expected.Subspan(0, 4));
+        TestBase64DecodeContainer(dst, "Zm9vYmE=", expected.Subspan(0, 5));
+        TestBase64DecodeContainer(dst, "Zm9vYmFy", expected.Subspan(0, 6));
+
+        // Unpadded, short padded, and overpadded versions of test vectors still work
+        TestBase64DecodeContainer(dst, "Zg", expected.Subspan(0, 1));
+        TestBase64DecodeContainer(dst, "Zg=", expected.Subspan(0, 1));
+        TestBase64DecodeContainer(dst, "Zm8", expected.Subspan(0, 2));
+        TestBase64DecodeContainer(dst, "Zm9v==", expected.Subspan(0, 3));
+        TestBase64DecodeContainer(dst, "Zm9v=", expected.Subspan(0, 3));
+        TestBase64DecodeContainer(dst, "Zm9vYg=", expected.Subspan(0, 4));
+        TestBase64DecodeContainer(dst, "Zm9vYmE", expected.Subspan(0, 5));
+        TestBase64DecodeContainer(dst, "Zm9vYmFy==", expected.Subspan(0, 6));
+    }
+
     {
-        bytes.Clear();
-        HE_EXPECT(Base64Decode(bytes, inputStrings[i]));
-        HE_EXPECT_EQ(bytes.Size(), i);
+        uint32_t values[2]{};
+        MemCopy(values, "foobar", 6);
 
-        if (i > 0)
-        {
-            HE_EXPECT_EQ_MEM(bytes.Data(), expected, bytes.Size());
-        }
+        Span<const uint32_t> expected = MakeSpan(values);
+
+        Vector<uint32_t> dst;
+
+        // Test vectors from RFC4648
+        TestBase64DecodeContainer(dst, "", {});
+        TestBase64DecodeContainer(dst, "Zg==", expected.Subspan(0, 1));
+        TestBase64DecodeContainer(dst, "Zm8=", expected.Subspan(0, 1));
+        TestBase64DecodeContainer(dst, "Zm9v", expected.Subspan(0, 1));
+        TestBase64DecodeContainer(dst, "Zm9vYg==", expected.Subspan(0, 1));
+        TestBase64DecodeContainer(dst, "Zm9vYmE=", expected.Subspan(0, 2));
+        TestBase64DecodeContainer(dst, "Zm9vYmFy", expected.Subspan(0, 2));
+
+        // Unpadded, short padded, and overpadded versions of test vectors still work
+        TestBase64DecodeContainer(dst, "Zg", expected.Subspan(0, 1));
+        TestBase64DecodeContainer(dst, "Zg=", expected.Subspan(0, 1));
+        TestBase64DecodeContainer(dst, "Zm8", expected.Subspan(0, 1));
+        TestBase64DecodeContainer(dst, "Zm9v==", expected.Subspan(0, 1));
+        TestBase64DecodeContainer(dst, "Zm9v=", expected.Subspan(0, 1));
+        TestBase64DecodeContainer(dst, "Zm9vYg=", expected.Subspan(0, 1));
+        TestBase64DecodeContainer(dst, "Zm9vYmE", expected.Subspan(0, 2));
+        TestBase64DecodeContainer(dst, "Zm9vYmFy==", expected.Subspan(0, 2));
     }
 
     // Invalid decodes
-    HE_EXPECT(!Base64Decode(bytes, "Zm9vYg="));
-    HE_EXPECT(!Base64Decode(bytes, "Zm9vYg"));
-    HE_EXPECT(!Base64Decode(bytes, "Zm9vY"));
-    HE_EXPECT(!Base64Decode(bytes, "Zm9vYmF=Zm9v"));
+    {
+        Vector<uint8_t> bytes;
+        HE_EXPECT(!Base64Decode(bytes, "Zm9vY"));
+        HE_EXPECT(bytes.IsEmpty());
+    }
+    {
+        Vector<uint8_t> bytes;
+        HE_EXPECT(!Base64Decode(bytes, "Zm9vYmF=Zm9v"));
+        HE_EXPECT(bytes.IsEmpty());
+    }
 }
 
 // ------------------------------------------------------------------------------------------------

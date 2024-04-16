@@ -826,9 +826,9 @@ HE_TEST(core, fmt, floats)
     TestNanAndInf<double>();
     TestNanAndInf<long double>();
 
-    TestUnknownSpecTypes<float>(1.2f, "aAeEfFgG");
-    TestUnknownSpecTypes<double>(1.2, "aAeEfFgG");
-    TestUnknownSpecTypes<long double>(1.2, "aAeEfFgG");
+    TestUnknownSpecTypes<float>(1.2f, "dDaAeEfFgG");
+    TestUnknownSpecTypes<double>(1.2, "dDaAeEfFgG");
+    TestUnknownSpecTypes<long double>(1.2, "dDaAeEfFgG");
 }
 
 // ------------------------------------------------------------------------------------------------

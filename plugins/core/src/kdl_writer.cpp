@@ -12,52 +12,46 @@
 
 namespace he
 {
-    static void WriteCharacter(StringWriter& writer, const char ch)
+    static void WriteEscaped(StringWriter& writer, StringView str, bool multiline)
     {
-        const uint8_t ucc = static_cast<uint8_t>(ch);
-
-        if ((0x00 <= ucc && ucc <= 0x08) || (0x0a <= ucc && ucc <= 0x1f) || ucc == 0x7f)
+        for (const uint32_t ucc : Utf8Splitter(str))
         {
-            writer.Write("\\u00{}{}", ToHex(ucc >> 4), ToHex(ucc & 0xf));
-        }
-        else
-        {
-            writer.Write(ch);
-        }
-    }
-
-    static void WriteEscaped(StringWriter& writer, StringView str)
-    {
-        for (const char ch : str)
-        {
-            switch (ch)
+            switch (ucc)
             {
-                case '\b': writer.Write("\\b"); break;
+                case '\n': multiline ? writer.Write('\n') : writer.Write("\\n"); break;
+                case '\r': multiline ? writer.Write('\r') : writer.Write("\\r"); break;
                 case '\t': writer.Write("\\t"); break;
-                case '\f': writer.Write("\\f"); break;
-                case '\r': writer.Write("\\r"); break;
-                case '\n': writer.Write("\\n"); break;
-                case '"': writer.Write("\\\""); break;
                 case '\\': writer.Write("\\\\"); break;
-                case '\x1B': writer.Write("\\e"); break;
-                default: WriteCharacter(writer, ch); break;
+                case '"': writer.Write("\\\""); break;
+                case '\b': writer.Write("\\b"); break;
+                case '\f': writer.Write("\\f"); break;
+                default:
+                {
+                    if (ucc > 0x10ffff)
+                    {
+                        // TODO: What should we do here?
+                    }
+                    else if (IsDisallowedKdlCodePoint(ucc))
+                    {
+                        writer.Write("\\u{{{:x}}}", ucc);
+                    }
+                    else
+                    {
+                        UTF8Encode(writer.Str(), ucc);
+                    }
+                    break;
+                }
             }
         }
     }
 
-    static bool WriteString(StringWriter& writer, StringView str)
+    static bool WriteString(StringWriter& writer, StringView str, bool multiline)
     {
-        if (str.IsEmpty())
-        {
-            writer.Write("\"\"");
-            return true;
-        }
-
-        bool needsQuotes = false;
-        bool needsMultiline = false;
+        bool first = true;
+        bool needsQuotes = multiline || str.IsEmpty();
         const char* begin = str.Begin();
         const char* end = str.End();
-        while (begin < end)
+        while (!needsQuotes && begin < end)
         {
             uint32_t ucc = 0;
             const uint32_t len = UTF8Decode(ucc, begin, static_cast<uint32_t>(end - begin));
@@ -65,29 +59,46 @@ namespace he
             if (!HE_VERIFY(len > 0 && len != InvalidCodePoint, HE_MSG("Invalid UTF-8 code point.")))
                 return false;
 
-            needsQuotes |= !IsValidKdlIdentifierCodePoint(ucc);
-            needsMultiline |= IsKdlNewline(ucc);
+            if (first)
+            {
+                first = false;
+                needsQuotes = !IsValidKdlIdentifierStartCodePoint(ucc);
+            }
+            else
+            {
+                needsQuotes = !IsValidKdlIdentifierCodePoint(ucc);
+            }
 
-            if (needsMultiline)
+            if (needsQuotes)
+            {
                 break;
+            }
+
+            begin += len;
         }
 
-        needsQuotes |= str == "inf" || str == "-inf" || str == "nan" || str == "true" || str == "false" || str == "null";
-
-        if (needsMultiline)
+        if (!needsQuotes)
         {
-            writer.Write("\"\n");
-            WriteEscaped(writer, str);
-            writer.Write("\n\"");
+            needsQuotes |= str == "inf" || str == "-inf" || str == "nan" || str == "true" || str == "false" || str == "null";
         }
-        else if (needsQuotes)
+
+        if (needsQuotes)
         {
             writer.Write('\"');
-            WriteEscaped(writer, str);
+            if (multiline)
+            {
+                writer.Write('\n');
+            }
+            WriteEscaped(writer, str, multiline);
+            if (multiline)
+            {
+                writer.Write('\n');
+            }
             writer.Write('\"');
         }
         else
         {
+            HE_ASSERT(!multiline);
             writer.Write(str);
         }
 
@@ -96,19 +107,9 @@ namespace he
 
     static void WriteTypeAnnotation(StringWriter& writer, StringView type)
     {
-        if (type.IsEmpty())
-            return;
-
         writer.Write('(');
-        WriteString(writer, type);
-        writer.Write(") ");
-    }
-
-    static void WritePropertyName(StringWriter& writer, StringView name)
-    {
-        writer.Write(' ');
-        WriteString(writer, name);
-        writer.Write(" =");
+        WriteString(writer, type, false);
+        writer.Write(')');
     }
 
     static void WriteValue(StringWriter& writer, bool value)
@@ -125,13 +126,18 @@ namespace he
                 writer.Write("{}", value);
                 break;
             case KdlIntFormat::Hex:
-                writer.Write("0x{:x}", value);
+                writer.Write("{:#x}", value);
                 break;
             case KdlIntFormat::Octal:
-                writer.Write("0o{:o}", value);
+            {
+                // Fmt uses "0" as the prefix for octal when formatted with "#".
+                // Since we use "0o" as the prefix, we need to do it manually.
+                const bool isSigned = value < 0;
+                writer.Write("{}0o{:o}", isSigned ? "-" : "", isSigned ? -value : value);
                 break;
+            }
             case KdlIntFormat::Binary:
-                writer.Write("0b{:b}", value);
+                writer.Write("{:#b}", value);
                 break;
         }
     }
@@ -145,15 +151,25 @@ namespace he
                 writer.Write("{}", value);
                 break;
             case KdlIntFormat::Hex:
-                writer.Write("0x{:x}", value);
+                writer.Write("{:#x}", value);
                 break;
             case KdlIntFormat::Octal:
                 writer.Write("0o{:o}", value);
                 break;
             case KdlIntFormat::Binary:
-                writer.Write("0b{:b}", value);
+                writer.Write("{:#b}", value);
                 break;
         }
+    }
+
+    static String GetFloatFormatStr(char type, int32_t precision)
+    {
+        String fmt;
+        if (precision > 0)
+            FormatTo(fmt, "{{:#.{}{}}}", precision, type);
+        else
+            FormatTo(fmt, "{{:#{}}}", type);
+        return fmt;
     }
 
     static void WriteValue(StringWriter& writer, double value, KdlFloatFormat format, int32_t precision)
@@ -175,51 +191,75 @@ namespace he
             return;
         }
 
-        char type = 'g';
         switch (format)
         {
-            default:
-            case KdlFloatFormat::General: type = 'g'; break;
-            case KdlFloatFormat::Fixed: type = 'f'; break;
-            case KdlFloatFormat::Exponent: type = 'e'; break;
+            case KdlFloatFormat::Default:
+            {
+                writer.Write("{:#D}", value);
+                return;
+            }
+            case KdlFloatFormat::General:
+            {
+                const String fmt = GetFloatFormatStr('G', precision);
+                writer.Write(FmtRuntime(fmt), value);
+                return;
+            }
+            case KdlFloatFormat::Fixed:
+            {
+                const String fmt = GetFloatFormatStr('F', precision);
+                writer.Write(FmtRuntime(fmt), value);
+                return;
+            }
+            case KdlFloatFormat::Exponent:
+            {
+                const String fmt = GetFloatFormatStr('E', precision);
+                writer.Write(FmtRuntime(fmt), value);
+                return;
+            }
         }
 
-        String fmt;
-        if (precision > 0)
-            FormatTo(fmt, "{{:.{}{}}}", precision, type);
-        else
-            FormatTo(fmt, "{{:{}}}", type);
-
-        writer.Write(FmtRuntime(fmt), value);
-
-        // Ensure that floats like `1.` are written as `1.0`
-        if (writer.Str().Back() == '.')
-            writer.Write('0');
+        HE_VERIFY(false, HE_MSG("Invalid KdlFloatFormat."), HE_VAL(format), HE_VAL(precision), HE_VAL(value));
+        writer.Write("{:#}", value);
     }
 
-    static void WriteValue(StringWriter& writer, StringView value, KdlStringFormat format, uint32_t rawDelimiterCount)
+    static void WriteValue(StringWriter& writer, StringView value, bool multiline, uint32_t rawDelimiterCount)
     {
-        switch (format)
+        if (rawDelimiterCount == 0)
         {
-            default:
-            case KdlStringFormat::Escaped:
-                WriteString(writer, value);
-                break;
-            case KdlStringFormat::Raw:
-                if (!HE_VERIFY(rawDelimiterCount > 0, HE_MSG("Raw string delimiter count must be greater than zero.")))
-                {
-                    rawDelimiterCount = 1;
-                }
-
-                for (uint32_t i = 0; i < rawDelimiterCount; ++i)
-                    writer.Write('#');
-                writer.Write('\"');
-                writer.Write(value);
-                writer.Write('\"');
-                for (uint32_t i = 0; i < rawDelimiterCount; ++i)
-                    writer.Write('#');
-                break;
+            WriteString(writer, value, multiline);
+            return;
         }
+
+        for (uint32_t i = 0; i < rawDelimiterCount; ++i)
+        {
+            writer.Write('#');
+        }
+
+        writer.Write('\"');
+
+        if (multiline)
+        {
+            writer.Write('\n');
+        }
+
+        writer.Write(value);
+
+        if (multiline)
+        {
+            writer.Write('\n');
+        }
+
+        writer.Write('\"');
+
+        for (uint32_t i = 0; i < rawDelimiterCount; ++i)
+        {
+            writer.Write('#');
+        }
+    }
+
+    static void WriteValue(StringWriter& writer, const char* value, bool multiline, uint32_t rawDelimiterCount)
+    {
+        WriteValue(writer, StringView(value), multiline, rawDelimiterCount);
     }
 
     static void WriteValue(StringWriter& writer, nullptr_t)
@@ -230,32 +270,42 @@ namespace he
     void KdlWriter::Clear()
     {
         m_writer.Clear();
+        m_nodeDepth = 0;
+        m_startOfLine = true;
+        m_inNode = false;
     }
 
     void KdlWriter::Comment(StringView value)
     {
         m_writer.Write("// ");
         m_writer.Write(value);
+        m_startOfLine = false;
     }
 
     void KdlWriter::StartComment()
     {
         m_writer.Write("/* ");
+        m_startOfLine = false;
     }
 
     void KdlWriter::EndComment()
     {
         m_writer.Write("*/");
+        m_startOfLine = false;
     }
 
-    void KdlWriter::Node(StringView name, StringView type)
+    void KdlWriter::Node(StringView name, const StringView* type)
     {
         if (!m_startOfLine || m_inNode)
             m_writer.Write('\n');
 
-        WriteTypeAnnotation(m_writer, type);
-        WriteString(m_writer, name);
-        m_startOfLine = true;
+        m_writer.WriteIndent();
+        if (type)
+        {
+            WriteTypeAnnotation(m_writer, *type);
+        }
+        WriteString(m_writer, name, false);
+        m_startOfLine = false;
         m_inNode = true;
     }
 
@@ -280,6 +330,7 @@ namespace he
             m_writer.Write('\n');
 
         m_writer.DecreaseIndent();
+        m_writer.WriteIndent();
         m_writer.Write("}\n");
         m_startOfLine = true;
         m_inNode = false;
@@ -287,40 +338,102 @@ namespace he
     }
 
     template <typename T, typename... Args>
-    void WriteArg(StringWriter& writer, bool inNode, T value, StringView type, Args&&... args)
+    void KdlWriter::WriteArgOrProp(const StringView* name, T value, const StringView* type, Args&&... args)
     {
-        if (!HE_VERIFY(inNode, HE_MSG("Cannot write argument outside of a node.")))
+        if (!HE_VERIFY(m_inNode, HE_MSG("Cannot write argument or property outside of a node.")))
             return;
 
-        writer.Write(' ');
-        WriteTypeAnnotation(writer, type);
-        WriteValue(writer, value, Forward<Args>(args)...);
+        m_startOfLine = false;
+
+        m_writer.Write(' ');
+
+        if (name)
+        {
+            WriteString(m_writer, *name, false);
+            m_writer.Write('=');
+        }
+
+        if (type)
+        {
+            WriteTypeAnnotation(m_writer, *type);
+        }
+
+        if constexpr (IsIntegral<T> && IsSigned<T>)
+        {
+            WriteValue(m_writer, static_cast<int64_t>(value), Forward<Args>(args)...);
+        }
+        else if constexpr (IsIntegral<T> && IsUnsigned<T>)
+        {
+            WriteValue(m_writer, static_cast<uint64_t>(value), Forward<Args>(args)...);
+        }
+        else
+        {
+            WriteValue(m_writer, value, Forward<Args>(args)...);
+        }
     }
 
-    void KdlWriter::Argument(bool value, StringView type) { WriteArg(m_writer, m_inNode, value, type); }
-    void KdlWriter::Argument(double value, StringView type, KdlFloatFormat format, int32_t precision) { WriteArg(m_writer, m_inNode, value, type, format, precision); }
-    void KdlWriter::Argument(StringView value, StringView type, KdlStringFormat format, uint32_t rawDelimiterCount) { WriteArg(m_writer, m_inNode, value, type, format, rawDelimiterCount); }
-    void KdlWriter::Argument(nullptr_t value, StringView type) { WriteArg(m_writer, m_inNode, value, type); }
 
-    void KdlWriter::IntArg(long long value, StringView type, KdlIntFormat format) { WriteArg(m_writer, m_inNode, value, type, format); }
-    void KdlWriter::UintArg(unsigned long long value, StringView type, KdlIntFormat format) { WriteArg(m_writer, m_inNode, value, type, format); }
+    template <> void KdlWriter::Argument<signed char>(signed char value, const StringView* type, KdlIntFormat format) { return WriteArgOrProp(nullptr, value, type, format); }
+    template <> void KdlWriter::Argument<short>(short value, const StringView* type, KdlIntFormat format) { return WriteArgOrProp(nullptr, value, type, format); }
+    template <> void KdlWriter::Argument<int>(int value, const StringView* type, KdlIntFormat format) { return WriteArgOrProp(nullptr, value, type, format); }
+    template <> void KdlWriter::Argument<long>(long value, const StringView* type, KdlIntFormat format) { return WriteArgOrProp(nullptr, value, type, format); }
+    template <> void KdlWriter::Argument<long long>(long long value, const StringView* type, KdlIntFormat format) { return WriteArgOrProp(nullptr, value, type, format); }
 
-    template <typename T, typename... Args>
-    void WriteProp(StringWriter& writer, bool inNode, StringView name, T value, StringView type, Args&&... args)
+    template <> void KdlWriter::Argument<unsigned char>(unsigned char value, const StringView* type, KdlIntFormat format) { return WriteArgOrProp(nullptr, value, type, format); }
+    template <> void KdlWriter::Argument<unsigned short>(unsigned short value, const StringView* type, KdlIntFormat format) { return WriteArgOrProp(nullptr, value, type, format); }
+    template <> void KdlWriter::Argument<unsigned int>(unsigned int value, const StringView* type, KdlIntFormat format) { return WriteArgOrProp(nullptr, value, type, format); }
+    template <> void KdlWriter::Argument<unsigned long>(unsigned long value, const StringView* type, KdlIntFormat format) { return WriteArgOrProp(nullptr, value, type, format); }
+    template <> void KdlWriter::Argument<unsigned long long>(unsigned long long value, const StringView* type, KdlIntFormat format) { return WriteArgOrProp(nullptr, value, type, format); }
+
+    void KdlWriter::Argument(bool value, const StringView* type) { WriteArgOrProp(nullptr, value, type); }
+    void KdlWriter::Argument(double value, const StringView* type, KdlFloatFormat format, int32_t precision) { WriteArgOrProp(nullptr, value, type, format, precision); }
+    void KdlWriter::Argument(StringView value, const StringView* type, bool multiline, uint32_t rawDelimiterCount) { WriteArgOrProp(nullptr, value, type, multiline, rawDelimiterCount); }
+    void KdlWriter::Argument(const char* value, const StringView* type, bool multiline, uint32_t rawDelimiterCount) { WriteArgOrProp(nullptr, value, type, multiline, rawDelimiterCount); }
+    void KdlWriter::Argument(nullptr_t value, const StringView* type) { WriteArgOrProp(nullptr, value, type); }
+
+    template <> void KdlWriter::Property<signed char>(StringView name, signed char value, const StringView* type, KdlIntFormat format) { return WriteArgOrProp(&name, value, type, format); }
+    template <> void KdlWriter::Property<short>(StringView name, short value, const StringView* type, KdlIntFormat format) { return WriteArgOrProp(&name, value, type, format); }
+    template <> void KdlWriter::Property<int>(StringView name, int value, const StringView* type, KdlIntFormat format) { return WriteArgOrProp(&name, value, type, format); }
+    template <> void KdlWriter::Property<long>(StringView name, long value, const StringView* type, KdlIntFormat format) { return WriteArgOrProp(&name, value, type, format); }
+    template <> void KdlWriter::Property<long long>(StringView name, long long value, const StringView* type, KdlIntFormat format) { return WriteArgOrProp(&name, value, type, format); }
+
+    template <> void KdlWriter::Property<unsigned char>(StringView name, unsigned char value, const StringView* type, KdlIntFormat format) { return WriteArgOrProp(&name, value, type, format); }
+    template <> void KdlWriter::Property<unsigned short>(StringView name, unsigned short value, const StringView* type, KdlIntFormat format) { return WriteArgOrProp(&name, value, type, format); }
+    template <> void KdlWriter::Property<unsigned int>(StringView name, unsigned int value, const StringView* type, KdlIntFormat format) { return WriteArgOrProp(&name, value, type, format); }
+    template <> void KdlWriter::Property<unsigned long>(StringView name, unsigned long value, const StringView* type, KdlIntFormat format) { return WriteArgOrProp(&name, value, type, format); }
+    template <> void KdlWriter::Property<unsigned long long>(StringView name, unsigned long long value, const StringView* type, KdlIntFormat format) { return WriteArgOrProp(&name, value, type, format); }
+
+    void KdlWriter::Property(StringView name, bool value, const StringView* type) { WriteArgOrProp(&name, value, type); }
+    void KdlWriter::Property(StringView name, double value, const StringView* type, KdlFloatFormat format, int32_t precision) { WriteArgOrProp(&name, value, type, format, precision); }
+    void KdlWriter::Property(StringView name, StringView value, const StringView* type, bool multiline, uint32_t rawDelimiterCount) { WriteArgOrProp(&name, value, type, multiline, rawDelimiterCount); }
+    void KdlWriter::Property(StringView name, const char* value, const StringView* type, bool multiline, uint32_t rawDelimiterCount) { WriteArgOrProp(&name, value, type, multiline, rawDelimiterCount); }
+    void KdlWriter::Property(StringView name, nullptr_t value, const StringView* type) { WriteArgOrProp(&name, value, type); }
+
+    template <>
+    const char* EnumTraits<KdlIntFormat>::ToString(KdlIntFormat x) noexcept
     {
-        if (!HE_VERIFY(inNode, HE_MSG("Cannot write property outside of a node.")))
-            return;
+        switch (x)
+        {
+            case KdlIntFormat::Decimal: return "Decimal";
+            case KdlIntFormat::Hex: return "Hex";
+            case KdlIntFormat::Octal: return "Octal";
+            case KdlIntFormat::Binary: return "Binary";
+        }
 
-        WritePropertyName(writer, name);
-        WriteTypeAnnotation(writer, type);
-        WriteValue(writer, value, Forward<Args>(args)...);
+        return "<unknown>";
     }
 
-    void KdlWriter::Property(StringView name, bool value, StringView type) { WriteProp(m_writer, m_inNode, name, value, type); }
-    void KdlWriter::Property(StringView name, double value, StringView type, KdlFloatFormat format, int32_t precision) { WriteProp(m_writer, m_inNode, name, value, type, format, precision); }
-    void KdlWriter::Property(StringView name, StringView value, StringView type, KdlStringFormat format, uint32_t rawDelimiterCount) { WriteProp(m_writer, m_inNode, name, value, type, format, rawDelimiterCount); }
-    void KdlWriter::Property(StringView name, nullptr_t value, StringView type) { WriteProp(m_writer, m_inNode, name, value, type); }
+    template <>
+    const char* EnumTraits<KdlFloatFormat>::ToString(KdlFloatFormat x) noexcept
+    {
+        switch (x)
+        {
+            case KdlFloatFormat::Default: return "Default";
+            case KdlFloatFormat::General: return "General";
+            case KdlFloatFormat::Fixed: return "Fixed";
+            case KdlFloatFormat::Exponent: return "Exponent";
+        }
 
-    void KdlWriter::IntProp(StringView name, long long value, StringView type, KdlIntFormat format) { WriteProp(m_writer, m_inNode, name, value, type, format); }
-    void KdlWriter::UintProp(StringView name, unsigned long long value, StringView type, KdlIntFormat format) { WriteProp(m_writer, m_inNode, name, value, type, format); }
+        return "<unknown>";
+    }
 }

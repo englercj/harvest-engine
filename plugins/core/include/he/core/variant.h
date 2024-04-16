@@ -32,13 +32,13 @@ namespace he
         static constexpr IndexType InvalidIndex = Limits<IndexType>::Max;
 
     public:
-        constexpr Variant() noexcept : m_index(InvalidIndex) {}
+        constexpr Variant() = default;
 
         template <uint32_t Index, typename... Args>
         constexpr Variant(IndexConstant<Index>, Args&&... args) noexcept
             : m_index(Index)
         {
-            new (m_storage.data) ElementType<Index>(Forward<Args>(args)...);
+            ::new(m_storage.data) ElementType<Index>(Forward<Args>(args)...);
         }
 
         constexpr Variant(const Variant& x) noexcept
@@ -117,7 +117,7 @@ namespace he
         {
             Clear();
             m_index = Index;
-            return *(new (m_storage.data) ElementType<Index>(Forward<Args>(args)...));
+            return *(::new(m_storage.data) ElementType<Index>(Forward<Args>(args)...));
         }
 
         template <IndexType Index>
@@ -167,14 +167,70 @@ namespace he
             return VisitInternal(visitor, MakeIndexSequence<Size>{});
         }
 
-        [[nodiscard]] constexpr bool operator==(const Variant& x) const { return m_index == x.m_index && Visit(_CompareVisitor<EqualTo>{ x }); }
-        [[nodiscard]] constexpr bool operator!=(const Variant& x) const { return m_index != x.m_index || Visit(_CompareVisitor<NotEqualTo>{ x }); }
-        [[nodiscard]] constexpr bool operator<(const Variant& x) const { return m_index < x.m_index || (m_index == x.m_index && Visit(_CompareVisitor<LessThan>{ x })); }
-        [[nodiscard]] constexpr bool operator<=(const Variant& x) const { return m_index < x.m_index || (m_index == x.m_index && Visit(_CompareVisitor<LessThanOrEqual>{ x })); }
-        [[nodiscard]] constexpr bool operator>(const Variant& x) const { return m_index > x.m_index || (m_index == x.m_index && Visit(_CompareVisitor<GreaterThan>{ x })); }
-        [[nodiscard]] constexpr bool operator>=(const Variant& x) const { return m_index > x.m_index || (m_index == x.m_index && Visit(_CompareVisitor<GreaterThanOrEqual>{ x })); }
+        [[nodiscard]] constexpr bool operator==(const Variant& x) const
+        {
+            if (IsValid() && x.IsValid())
+                return m_index == x.m_index && Visit(_CompareVisitor<EqualTo>{ x });
 
-        [[nodiscard]] constexpr uint64_t HashCode() const { return IsValid() ? Visit(_HashVisitor{}) : 0; }
+            return IsValid() == x.IsValid();
+        }
+
+        [[nodiscard]] constexpr bool operator!=(const Variant& x) const
+        {
+            if (IsValid() && x.IsValid())
+                return m_index != x.m_index || Visit(_CompareVisitor<NotEqualTo>{ x });
+
+            return IsValid() != x.IsValid();
+        }
+
+        [[nodiscard]] constexpr bool operator<(const Variant& x) const
+        {
+            if (m_index < x.m_index)
+                return true;
+
+            if (IsValid() && x.IsValid())
+                return m_index == x.m_index && Visit(_CompareVisitor<LessThan>{ x });
+
+            return false;
+        }
+
+        [[nodiscard]] constexpr bool operator<=(const Variant& x) const
+        {
+            if (m_index <= x.m_index)
+                return true;
+
+            if (IsValid() && x.IsValid())
+                return m_index == x.m_index && Visit(_CompareVisitor<LessThanOrEqual>{ x });
+
+            return IsValid() == x.IsValid();
+        }
+
+        [[nodiscard]] constexpr bool operator>(const Variant& x) const
+        {
+            if (m_index > x.m_index)
+                return true;
+
+            if (IsValid() && x.IsValid())
+                return m_index == x.m_index && Visit(_CompareVisitor<GreaterThan>{ x });
+
+            return false;
+        }
+
+        [[nodiscard]] constexpr bool operator>=(const Variant& x) const
+        {
+            if (m_index >= x.m_index)
+                return true;
+
+            if (IsValid() && x.IsValid())
+                return m_index == x.m_index && Visit(_CompareVisitor<GreaterThanOrEqual>{ x });
+
+            return IsValid() == x.IsValid();
+        }
+
+        [[nodiscard]] constexpr uint64_t HashCode() const
+        {
+            return IsValid() ? Visit(_HashVisitor{}) : 0;
+        }
 
     private:
         template <typename V, uint32_t Index>
@@ -248,7 +304,7 @@ namespace he
             template <typename U, uint32_t Index>
             constexpr void operator()(U& value, IndexConstant<Index>) const
             {
-                new (&value) ElementType<Index>(other.template Get<Index>());
+                ::new(&value) ElementType<Index>(other.template Get<Index>());
             }
         };
 
@@ -259,7 +315,7 @@ namespace he
             template <typename U, uint32_t Index>
             constexpr void operator()(U& value, IndexConstant<Index>) const
             {
-                new (&value) ElementType<Index>(Move(other).template Get<Index>());
+                ::new(&value) ElementType<Index>(Move(other).template Get<Index>());
             }
         };
 
@@ -267,7 +323,7 @@ namespace he
         static constexpr uint32_t MaxSize = static_cast<uint32_t>(Max(sizeof(T)...));
         static constexpr uint32_t MaxAlign = static_cast<uint32_t>(Max(alignof(T)...));
 
-        IndexType m_index{ 0 };
+        IndexType m_index{ InvalidIndex };
         AlignedStorage<MaxSize, MaxAlign> m_storage; // intentionally uninitialized
     };
 }

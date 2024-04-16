@@ -23,9 +23,9 @@ namespace he
     {
     public:
         Name() = default;
-        Name(const char* str) : m_id(StringPool::GetDefault().Add(str)) {}
-        Name(StringView str) : m_id(StringPool::GetDefault().Add(str)) {}
-        Name(StringPoolId id) : m_id(id) {}
+        Name(const char* str) noexcept : m_id(StringPool::GetDefault().Add(str)) {}
+        Name(StringView str) noexcept : m_id(StringPool::GetDefault().Add(str)) {}
+        Name(StringPoolId id) noexcept : m_id(id) {}
 
         Name& operator=(const char* str) { m_id = StringPool::GetDefault().Add(str); return *this; }
         Name& operator=(StringView str) { m_id = StringPool::GetDefault().Add(str); return *this; }

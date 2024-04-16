@@ -70,7 +70,7 @@ namespace he
         /// \return The string being iterated over.
         const StringView& Str() const { return m_str; }
 
-        /// Peek at the next code point without advancing the iterator.
+        /// Returns the next code point without advancing the iterator.
         ///
         /// \return The next code point.
         uint32_t Peek() const { return PeekNext(); }
@@ -106,7 +106,7 @@ namespace he
         ///
         /// \param[in] x The iterator to compare against.
         /// \return True if the iterators are equal, false otherwise.
-        bool operator==(const UTF8Iterator& x) const { return m_ucc == m_ucc && m_str.Size() == x.m_str.Size() && m_str.Data() == x.m_str.Data(); }
+        bool operator==(const UTF8Iterator& x) const { return m_ucc == x.m_ucc && m_str.Size() == x.m_str.Size() && m_str.Data() == x.m_str.Data(); }
 
         /// Compares two iterators for inequality.
         ///

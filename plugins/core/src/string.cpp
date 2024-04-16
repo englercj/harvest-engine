@@ -187,6 +187,19 @@ namespace he
         return WyHash::Mem(Data(), Size());
     }
 
+    String String::Substring(uint32_t offset, Allocator& allocator) const
+    {
+        HE_ASSERT(offset < Size());
+        return String{ Data() + offset, Size() - offset, allocator };
+    }
+
+    String String::Substring(uint32_t offset, uint32_t count, Allocator& allocator) const
+    {
+        HE_ASSERT(offset < Size());
+        HE_ASSERT(count <= (Size() - offset));
+        return String{ Data() + offset, count, allocator };
+    }
+
     int32_t String::CompareTo(const char* str, uint32_t len) const
     {
         const uint32_t s0 = Size();
@@ -314,6 +327,65 @@ namespace he
         SetSize(size - 1);
 
         return front;
+    }
+
+    uint32_t String::Replace(const char* search, uint32_t searchLen, const char* replacement, uint32_t replacementLen)
+    {
+        if (IsEmpty() || search == nullptr || searchLen == 0 || replacement == nullptr)
+            return 0;
+
+        uint32_t replacementCount = 0;
+        if (searchLen == replacementLen)
+        {
+            if (MemEqual(search, replacement, searchLen))
+                return replacementCount;
+
+            uint32_t size = Size();
+            const char* pos = StrFindN(Data(), size, search, searchLen);
+            while (pos != nullptr)
+            {
+                ++replacementCount;
+
+                MemCopy(const_cast<char*>(pos), replacement, replacementLen);
+                pos += replacementLen;
+                size -= replacementLen;
+
+                // If not enough characters left to search for another occurrence then break
+                if (size < searchLen)
+                    break;
+
+                pos = StrFindN(pos, size, search, searchLen);
+            }
+        }
+        else if (Contains(search, searchLen))
+        {
+            String copy(Move(*this));
+            Clear();
+
+            const char* begin = copy.Begin();
+            const char* end = copy.End();
+            const char* pos = StrFindN(begin, static_cast<uint32_t>(end - begin), search, searchLen);
+            while (pos != nullptr)
+            {
+                ++replacementCount;
+
+                Append(begin, pos);
+                Append(replacement, replacementLen);
+
+                begin = pos + searchLen;
+
+                // If not enough characters left to search for another occurrence then break
+                if (begin + searchLen >= end)
+                    break;
+
+                pos = StrFindN(begin, static_cast<uint32_t>(end - begin), search, searchLen);
+            }
+
+            // Copy over any remaining characters
+            Append(begin, end);
+        }
+
+        return replacementCount;
     }
 
     void String::GrowBy(uint32_t len)

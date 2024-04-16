@@ -457,7 +457,7 @@ HE_TEST(math, mat44, IRZPerspLH)
     Vec4a n1 = ProjectPoint(m, n);
     Vec4a f1 = ProjectPoint(m, f);
     HE_EXPECT_EQ_ULP(GetZ(n1), 1.0f, 1);
-    HE_EXPECT_LT(Abs(GetZ(f1)), Limits<float>::Min);
+    HE_EXPECT_LT(Abs(GetZ(f1)), Limits<float>::MinPos);
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -471,7 +471,7 @@ HE_TEST(math, mat44, IRZPerspRH)
     Vec4a n2 = ProjectPoint(m, Negate(n));
     Vec4a f2 = ProjectPoint(m, Negate(f));
     HE_EXPECT_EQ_ULP(GetZ(n2), 1.0f, 1);
-    HE_EXPECT_LT(Abs(GetZ(f2)), Limits<float>::Min);
+    HE_EXPECT_LT(Abs(GetZ(f2)), Limits<float>::MinPos);
 }
 
 // ------------------------------------------------------------------------------------------------

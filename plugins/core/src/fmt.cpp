@@ -812,7 +812,7 @@ namespace he
 
         switch (spec.type)
         {
-            case FmtSpecIntType::None:
+            case FmtSpecIntType::Default:
             case FmtSpecIntType::Decimal:
             {
                 const uint32_t digitCount = CountDigits(absValue);
@@ -872,8 +872,14 @@ namespace he
         if (spec.type == FmtSpecFloatType::ExponentLower || spec.type == FmtSpecFloatType::ExponentUpper)
             return true;
 
-        if (spec.type != FmtSpecFloatType::None && spec.type != FmtSpecFloatType::GeneralLower && spec.type != FmtSpecFloatType::GeneralUpper)
+        if (spec.type != FmtSpecFloatType::Default
+            && spec.type != FmtSpecFloatType::DefaultLower
+            && spec.type != FmtSpecFloatType::DefaultUpper
+            && spec.type != FmtSpecFloatType::GeneralLower
+            && spec.type != FmtSpecFloatType::GeneralUpper)
+        {
             return false;
+        }
 
         constexpr int32_t ExpLowerBound = -4;
         constexpr int32_t ExpUpperBound = 16;
@@ -903,10 +909,25 @@ namespace he
     {
         switch (spec.type)
         {
+            case FmtSpecFloatType::DefaultUpper:
             case FmtSpecFloatType::FixedUpper:
             case FmtSpecFloatType::ExponentUpper:
             case FmtSpecFloatType::GeneralUpper:
             case FmtSpecFloatType::HexUpper:
+                return true;
+
+            default:
+                return false;
+        }
+    }
+
+    static bool IsDefault(const FmtSpecFloat& spec)
+    {
+        switch (spec.type)
+        {
+            case FmtSpecFloatType::Default:
+            case FmtSpecFloatType::DefaultLower:
+            case FmtSpecFloatType::DefaultUpper:
                 return true;
 
             default:
@@ -1153,8 +1174,14 @@ namespace he
             if (showPoint)
             {
                 zeroesCount = spec.precision - significandSize;
-                if (zeroesCount < 0)
-                    zeroesCount = 0;
+                if (zeroesCount <= 0)
+                {
+                    // prevent "1.e" when precision is default
+                    if (spec.precision < 0 && showPoint && significandSize == 1)
+                        zeroesCount = 1;
+                    else
+                        zeroesCount = 0;
+                }
                 size += zeroesCount;
             }
             else if (significandSize == 1)
@@ -1833,7 +1860,7 @@ namespace he
             return;
         }
 
-        int32_t precision = spec.precision >= 0 || spec.type == FmtSpecFloatType::None ? spec.precision : 6;
+        int32_t precision = spec.precision >= 0 || IsDefault(spec) ? spec.precision : 6;
 
         if (spec.type == FmtSpecFloatType::ExponentLower || spec.type == FmtSpecFloatType::ExponentUpper)
         {
@@ -1864,7 +1891,7 @@ namespace he
 
     void Formatter<bool>::Format(String& out, bool value) const
     {
-        if (spec.type != FmtSpecIntType::None)
+        if (spec.type != FmtSpecIntType::Default)
         {
             WriteInt(out, value ? 1 : 0, spec);
         }
@@ -1881,7 +1908,7 @@ namespace he
 
     void Formatter<char>::Format(String& out, char value) const
     {
-        if (spec.type == FmtSpecIntType::None || spec.type == FmtSpecIntType::Char)
+        if (spec.type == FmtSpecIntType::Default || spec.type == FmtSpecIntType::Char)
         {
             WriteChar(out, value, spec);
         }
@@ -1893,7 +1920,7 @@ namespace he
 
     void Formatter<wchar_t>::Format(String& out, wchar_t value) const
     {
-        if (spec.type == FmtSpecIntType::None || spec.type == FmtSpecIntType::Char)
+        if (spec.type == FmtSpecIntType::Default || spec.type == FmtSpecIntType::Char)
         {
             wchar_t wstr[]{ value, L'\0' };
             char str[4]{};

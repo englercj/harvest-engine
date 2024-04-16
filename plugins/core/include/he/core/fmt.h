@@ -293,7 +293,7 @@ namespace he
     // --------------------------------------------------------------------------------------------
     enum class FmtSpecAlign : uint8_t
     {
-        None,       ///< No special alignment.  Default.
+        Default,    ///< Default. Same as '>' for numbers and '<' for other objects.
         Left,       ///< '<' = Align output to the left.
         Right,      ///< '>' = Align output to the right.
         Center,     ///< '^' = Align output to the center.
@@ -302,7 +302,7 @@ namespace he
 
     enum class FmtSpecSign : uint8_t
     {
-        None,       ///< No special sign handling.
+        None,       ///< Default. Same as '-'.
         Minus,      ///< '-' = Print sign for negative numbers.
         Plus,       ///< '+' = Print sign for negative and non-negative numbers.
         Space,      ///< ' ' = Print sign for negative numbers, and a space for non-negative numbers.
@@ -310,7 +310,7 @@ namespace he
 
     enum class FmtSpecIntType : uint8_t
     {
-        None,       ///< No special formatting.
+        Default,    ///< Default. The same as 'd'.
         Decimal,    ///< 'd' = Print as base 10.
         Char,       ///< 'c' = Print as a character.
         Octal,      ///< 'o' = Print as base 8.
@@ -322,7 +322,9 @@ namespace he
 
     enum class FmtSpecFloatType : uint8_t
     {
-        None,           ///< No special formatting.
+        Default,        ///< Default. The same as 'd'.
+        DefaultLower,   ///< 'd' = Similar to 'g', except that the default precision is as high as needed to represent the particular value.
+        DefaultUpper,   ///< 'D' = Similar to 'G', except that the default precision is as high as needed to represent the particular value.
         HexLower,       ///< 'a' = Print as base 16, using lower-case letters. Uses 'p' to indicate the exponent.
         HexUpper,       ///< 'A' = Print as base 16, using upper-case letters. Uses 'p' to indicate the exponent.
         ExponentLower,  ///< 'e' = Print using scientific notation, using 'e' to indicate the exponent.
@@ -331,11 +333,12 @@ namespace he
         FixedUpper,     ///< 'F' = Print as a fixed point number. Uses `NAN` and `INF` for NaN and Infinity, respectively.
         GeneralLower,   ///< 'g' = For a given precision `p >= 1`, this rounds the number to `p` significant digits and then formats the result in either fixed-point format or in scientific notation, depending on its magnitude. A precision of `0` is treated as equivalent to a precision of `1`.
         GeneralUpper,   ///< 'G' = Same as `'g'` except switches to `'E'` if the number gets too large. The representations of infinity and NaN are uppercased, too.
+
     };
 
     enum class FmtSpecEnumType : uint8_t
     {
-        None,       ///< No special formatting.
+        Default,    ///< Default. Same as 's'.
         String,     ///< 's' = Print as string using \ref EnumToString
         Decimal,    ///< 'd' = Print as base 10.
         Char,       ///< 'c' = Print as a character.
@@ -381,7 +384,7 @@ namespace he
         uint32_t width{ 0 };
         int32_t precision{ -1 };
         FmtSpecFill fill{};
-        FmtSpecAlign align{ FmtSpecAlign::None };
+        FmtSpecAlign align{ FmtSpecAlign::Default };
         FmtSpecSign sign{ FmtSpecSign::None };
         bool alt{ false }; // alternate form ('#')
 
@@ -389,9 +392,9 @@ namespace he
         constexpr bool operator!=(const FmtSpec&) const = default;
     };
 
-    struct FmtSpecInt : FmtSpec { FmtSpecIntType type{ FmtSpecIntType::None }; };
-    struct FmtSpecFloat : FmtSpec { FmtSpecFloatType type{ FmtSpecFloatType::None }; };
-    struct FmtSpecEnum : FmtSpec { FmtSpecEnumType type{ FmtSpecEnumType::None }; };
+    struct FmtSpecInt : FmtSpec { FmtSpecIntType type{ FmtSpecIntType::Default }; };
+    struct FmtSpecFloat : FmtSpec { FmtSpecFloatType type{ FmtSpecFloatType::Default }; };
+    struct FmtSpecEnum : FmtSpec { FmtSpecEnumType type{ FmtSpecEnumType::Default }; };
 
     constexpr FmtSpecAlign FmtCharToAlign(char ch)
     {
@@ -400,7 +403,7 @@ namespace he
             case '<': return FmtSpecAlign::Left;
             case '>': return FmtSpecAlign::Right;
             case '^': return FmtSpecAlign::Center;
-            default: return FmtSpecAlign::None;
+            default: return FmtSpecAlign::Default;
         }
     }
 
@@ -426,7 +429,7 @@ namespace he
             case 'X': return FmtSpecIntType::HexUpper;
             case 'b': return FmtSpecIntType::BinLower;
             case 'B': return FmtSpecIntType::BinUpper;
-            default: return FmtSpecIntType::None;
+            default: return FmtSpecIntType::Default;
         }
     }
 
@@ -434,6 +437,8 @@ namespace he
     {
         switch (ch)
         {
+            case 'd': return FmtSpecFloatType::DefaultLower;
+            case 'D': return FmtSpecFloatType::DefaultUpper;
             case 'a': return FmtSpecFloatType::HexLower;
             case 'A': return FmtSpecFloatType::HexUpper;
             case 'e': return FmtSpecFloatType::ExponentLower;
@@ -442,7 +447,7 @@ namespace he
             case 'F': return FmtSpecFloatType::FixedUpper;
             case 'g': return FmtSpecFloatType::GeneralLower;
             case 'G': return FmtSpecFloatType::GeneralUpper;
-            default: return FmtSpecFloatType::None;
+            default: return FmtSpecFloatType::Default;
         }
     }
 
@@ -457,7 +462,7 @@ namespace he
             case 'X': return FmtSpecEnumType::HexUpper;
             case 'b': return FmtSpecEnumType::BinLower;
             case 'B': return FmtSpecEnumType::BinUpper;
-            default: return FmtSpecEnumType::None;
+            default: return FmtSpecEnumType::Default;
         }
     }
 
@@ -477,7 +482,7 @@ namespace he
         while (true)
         {
             const FmtSpecAlign align = FmtCharToAlign(*p);
-            if (align != FmtSpecAlign::None)
+            if (align != FmtSpecAlign::Default)
             {
                 if (p != begin)
                 {
@@ -573,7 +578,7 @@ namespace he
     constexpr const char* ParseFmtSpecType(const char* begin, const char*, const FmtParseCtx& ctx, T& out)
     {
         T type = FmtCharToType(*begin++, T{});
-        if (type == T::None)
+        if (type == T::Default)
             ctx.OnError("Invalid type specifier");
 
         out = type;
@@ -610,7 +615,7 @@ namespace he
         // Leading zeros
         if (*begin == '0')
         {
-            if (spec.align == FmtSpecAlign::None)
+            if (spec.align == FmtSpecAlign::Default)
                 spec.align = FmtSpecAlign::Numeric;
             spec.fill[0] = '0';
             if (++begin == end)
@@ -678,7 +683,7 @@ namespace he
             ctx.OnError("Precision not allowed for integral types");
         }
 
-        if (spec.type == FmtSpecIntType::None || spec.type == FmtSpecIntType::Char)
+        if (spec.type == FmtSpecIntType::Default || spec.type == FmtSpecIntType::Char)
         {
             if (spec.align == FmtSpecAlign::Numeric || spec.sign != FmtSpecSign::None || spec.alt)
                 ctx.OnError("Invalid format specifier for char");
@@ -955,7 +960,7 @@ namespace he
         constexpr const char* Parse(const FmtParseCtx& ctx) { return ParseFmtSpec(ctx, spec); }
         void Format(String& out, Type value) const
         {
-            if (spec.type == FmtSpecEnumType::None || spec.type == FmtSpecEnumType::String)
+            if (spec.type == FmtSpecEnumType::Default || spec.type == FmtSpecEnumType::String)
             {
                 Formatter<const char*> f;
                 static_cast<FmtSpec&>(f.spec) = static_cast<const FmtSpec&>(spec);
@@ -969,7 +974,7 @@ namespace he
 
                 switch (spec.type)
                 {
-                    case FmtSpecEnumType::None:
+                    case FmtSpecEnumType::Default:
                     case FmtSpecEnumType::String:
                         break;
                     case FmtSpecEnumType::Decimal: f.spec.type = FmtSpecIntType::Decimal; break;

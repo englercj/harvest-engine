@@ -197,7 +197,25 @@ HE_TEST(core, math, IsNearlyEqualULP)
 // ------------------------------------------------------------------------------------------------
 HE_TEST(core, math, HasSignBit)
 {
-    // TODO
+    // https://en.cppreference.com/w/cpp/numeric/math/signbit
+
+    static_assert(!HasSignBit(0.0f));
+    static_assert(!HasSignBit(1.0f));
+    static_assert(!HasSignBit(Limits<float>::NaN));
+    static_assert(!HasSignBit(Limits<float>::Infinity));
+    static_assert(HasSignBit(-0.0f));
+    static_assert(HasSignBit(-1.0f));
+    static_assert(HasSignBit(-Limits<float>::NaN));
+    static_assert(HasSignBit(-Limits<float>::Infinity));
+
+    HE_EXPECT(!HasSignBit(0.0f));
+    HE_EXPECT(!HasSignBit(1.0f));
+    HE_EXPECT(!HasSignBit(Limits<float>::NaN));
+    HE_EXPECT(!HasSignBit(Limits<float>::Infinity));
+    HE_EXPECT(HasSignBit(-0.0f));
+    HE_EXPECT(HasSignBit(-1.0f));
+    HE_EXPECT(HasSignBit(-Limits<float>::NaN));
+    HE_EXPECT(HasSignBit(-Limits<float>::Infinity));
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -621,13 +639,54 @@ HE_TEST(core, math, Log2)
 // ------------------------------------------------------------------------------------------------
 HE_TEST(core, math, Log10)
 {
-    // TODO
+    // https://en.cppreference.com/w/cpp/numeric/math/log10
+
+    // If the argument is +-0, -∞ is returned (and FE_DIVBYZERO is raised).
+    HE_EXPECT_EQ(Log10(0.0f), -Limits<float>::Infinity);
+
+    // If the argument is 1, +0 is returned
+    HE_EXPECT_EQ(Log10(1.0f), 0.0f);
+
+    // If the argument is negative, NaN is returned (and FE_INVALID is raised).
+    HE_EXPECT_EQ(Log10(-1.0f), Limits<float>::NaN);
+
+    // If the argument is +∞, +∞ is returned
+    HE_EXPECT_EQ(Log10(Limits<float>::Infinity), Limits<float>::Infinity);
+
+    // If the argument is NaN, NaN is returned
+    HE_EXPECT_EQ(Log10(Limits<float>::NaN), Limits<float>::NaN);
+
+    // sampling of some known test values
+    HE_EXPECT_EQ(Log10(1000.0f), 3.0f);
+    HE_EXPECT_EQ(Log10(0.001f), -3.0f);
 }
 
 // ------------------------------------------------------------------------------------------------
 HE_TEST(core, math, Log1p)
 {
-    // TODO
+    // https://en.cppreference.com/w/cpp/numeric/math/log1p
+
+    // If the argument is +-0, it is returned unmodified
+    HE_EXPECT_EQ(Log1p(0.0f), 0.0f);
+    HE_EXPECT_EQ(Log1p(-0.0f), -0.0f);
+
+    // If the argument is -1, -∞ is returned (and FE_DIVBYZERO is raised).
+    HE_EXPECT_EQ(Log1p(-1.0f), -Limits<float>::Infinity);
+
+    // If the argument is less than -1, NaN is returned (and FE_INVALID is raised).
+    HE_EXPECT_EQ(Log1p(-1.1f), Limits<float>::NaN);
+
+    // If the argument is +∞, +∞ is returned
+    HE_EXPECT_EQ(Log1p(Limits<float>::Infinity), Limits<float>::Infinity);
+
+    // If the argument is NaN, NaN is returned
+    HE_EXPECT_EQ(Log1p(Limits<float>::NaN), Limits<float>::NaN);
+
+    // sampling of some known test values
+    HE_EXPECT_EQ(Log1p(1.0f), 0.6931471805599453f);
+    HE_EXPECT_EQ(Log1p(0.0f), 0.0f);
+    HE_EXPECT_EQ(Log1p(0.5f), 0.4054651081081644f);
+    HE_EXPECT_EQ(Log1p(2.0f), 1.0986122886681098f);
 }
 
 // ------------------------------------------------------------------------------------------------

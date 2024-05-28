@@ -1,0 +1,15 @@
+// Copyright Chad Engler
+
+// Harvest Engine root import plugin
+// This plugin acts as an easy way to import the entire engine.
+
+plugin he.engine-root {
+    module he_engine_root type=header group="engine/libs" {
+        files {
+            ".editorconfig"
+        }
+    }
+}
+
+import "contrib/*"
+import "plugins/*"

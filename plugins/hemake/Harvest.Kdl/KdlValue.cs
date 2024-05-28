@@ -1,0 +1,97 @@
+// Copyright Chad Engler
+
+using Harvest.Kdl.Types;
+using System.Numerics;
+
+namespace Harvest.Kdl;
+
+public abstract class KdlValue : IKdlObject
+{
+    public static KdlValue From(object? o, string? type = null)
+    {
+        return o switch
+        {
+            null => new KdlNull(type),
+            bool v => new KdlBool(v, type),
+            sbyte v => new KdlNumber<sbyte>(v, radix: 10, type),
+            short v => new KdlNumber<short>(v, radix: 10, type),
+            int v => new KdlNumber<int>(v, radix: 10, type),
+            long v => new KdlNumber<long>(v, radix: 10, type),
+            byte v => new KdlNumber<byte>(v, radix: 10, type),
+            ushort v => new KdlNumber<ushort>(v, radix: 10, type),
+            uint v => new KdlNumber<uint>(v, radix: 10, type),
+            ulong v => new KdlNumber<ulong>(v, radix: 10, type),
+            float v => new KdlNumber<float>(v, radix: 10, type),
+            double v => new KdlNumber<double>(v, radix: 10, type),
+            decimal v => new KdlNumber<decimal>(v, radix: 10, type),
+            BigInteger v => new KdlNumber<BigInteger>(v, radix: 10, type: type),
+            string s => new KdlString(s, type),
+            _ => throw new ArgumentException($"No KdlValue for object {o}"),
+        };
+    }
+
+    public string? Type { get; }
+
+    protected KdlValue(string? type)
+    {
+        Type = type;
+    }
+
+    public void WriteKdl(TextWriter writer, KdlWriteOptions options)
+    {
+        if (Type != null)
+        {
+            writer.Write('(');
+            KdlUtils.WriteString(writer, Type, options);
+            writer.Write(')');
+        }
+        WriteKdlValue(writer, options);
+    }
+
+    protected abstract void WriteKdlValue(TextWriter writer, KdlWriteOptions options);
+
+    public abstract override bool Equals(object? obj);
+    public abstract override int GetHashCode();
+
+    public static bool operator==(KdlValue? a, KdlValue? b) => (a is null) ? b is null : a.Equals(b);
+    public static bool operator!=(KdlValue? a, KdlValue? b) => !(a == b);
+}
+
+public abstract class KdlValue<T> : KdlValue
+{
+    public T Value { get; }
+
+    protected KdlValue(T value, string? type) : base(type)
+    {
+        Value = value;
+    }
+
+    public override string ToString() => $"KdlValue{{ Value={Value}, Type={Type ?? "null"} }}";
+
+    public override bool Equals(object? obj)
+    {
+        if (Value is null || obj is null)
+            return false;
+
+        return obj is KdlValue<T> v && v.Value != null && Value.Equals(v.Value) && Type == v.Type;
+    }
+
+    public override int GetHashCode()
+    {
+        HashCode hash = new();
+
+        if (Value != null)
+        {
+            hash.Add(Value);
+        }
+
+        if (Type != null)
+        {
+            hash.Add(Type);
+        }
+
+        return hash.ToHashCode();
+    }
+
+    public static implicit operator T(KdlValue<T> v) => v.Value;
+}

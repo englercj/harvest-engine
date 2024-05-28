@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <BaseOutputPath>../../../build/hemake/bin</BaseOutputPath>
+    <IntermediateOutputPath>../../../build/hemake/obj</IntermediateOutputPath>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="DotMake.CommandLine" Version="1.8.7" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.0" />
+    <PackageReference Include="System.CommandLine" Version="2.0.0-beta4.22272.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Harvest.Kdl\Harvest.Kdl.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -318,6 +318,32 @@ namespace he
             return true;
         }
 
+        [[nodiscard]] bool ConsumeType(bool& hasType)
+        {
+            if (!Consume('('))
+                return false;
+
+            if (!SkipSpaces())
+                return false;
+
+            StringView type;
+            if (!ConsumeString(type))
+                return false;
+
+            if (!SkipSpaces())
+                return false;
+
+            if (!Consume(')'))
+                return false;
+
+            if (!SkipSpaces())
+                return false;
+
+            hasType = true;
+            m_typeBuffer = type;
+            return true;
+        }
+
         [[nodiscard]] bool ConsumeDedentPrefix(StringView dedentPrefix)
         {
             // Empty lines without a dedent prefix are allowed.
@@ -827,9 +853,6 @@ namespace he
             {
                 if (!ConsumeType(hasType))
                     return false;
-
-                if (!SkipSpaces())
-                    return false;
             }
 
             StringView name;
@@ -931,9 +954,6 @@ namespace he
                             if (AtEnd())
                                 return SetError(KdlReadError::UnexpectedEof);
 
-                            if (!PeekCodePoint(ucc, len))
-                                return false;
-
                             if (!ParseExpression())
                                 return false;
                         }
@@ -958,6 +978,7 @@ namespace he
                     case '9':
                     // start of a string could be an argument value or property name
                     case '"':
+                    {
                         if (!hasWhitespace)
                             return SetError(KdlReadError::InvalidToken, ' ');
 
@@ -966,9 +987,11 @@ namespace he
 
                         hasWhitespace = false;
                         break;
+                    }
                     // anything else must be an identifier string
                     // which could be an argument value or property name
                     default:
+                    {
                         if (!hasWhitespace)
                             return SetError(KdlReadError::InvalidToken, ' ');
 
@@ -980,6 +1003,7 @@ namespace he
 
                         hasWhitespace = false;
                         break;
+                    }
                 }
             }
 
@@ -987,29 +1011,6 @@ namespace he
             if (!EmitEndNode())
                 return false;
 
-            return true;
-        }
-
-        [[nodiscard]] bool ConsumeType(bool& hasType)
-        {
-            if (!Consume('('))
-                return false;
-
-            if (!SkipSpaces())
-                return false;
-
-            StringView type;
-            if (!ConsumeString(type))
-                return false;
-
-            if (!SkipSpaces())
-                return false;
-
-            if (!Consume(')'))
-                return false;
-
-            hasType = true;
-            m_typeBuffer = type;
             return true;
         }
 
@@ -1266,7 +1267,7 @@ namespace he
                 return false;
 
             // 0x, 0o, 0b, 0, 0.0
-            if (ucc ==  '0')
+            if (ucc == '0')
             {
                 m_cursor += len;
 
@@ -1281,7 +1282,7 @@ namespace he
                 }
 
                 // Back up the cursor so the leading zero is restored, and fall through to
-                // decimal number parsing in the `default` case.
+                // decimal number parsing.
                 m_cursor -= len;
             }
 
@@ -1303,9 +1304,6 @@ namespace he
             if (ucc == '(')
             {
                 if (!ConsumeType(hasType))
-                    return false;
-
-                if (!SkipSpaces())
                     return false;
 
                 if (!PeekCodePoint(ucc, len))

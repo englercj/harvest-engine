@@ -1,0 +1,9 @@
+// Copyright Chad Engler
+
+project "Harvest Engine" start=he_editor {
+    // Setup project defaults for a Harvest Engine project
+    import "./scripts2/project_defaults.kdl"
+
+    // Import the root Harvest Engine plugin
+    import "./he_plugin.kdl"
+}

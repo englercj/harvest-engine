@@ -3,13 +3,13 @@
 id = "microsoft.mimalloc"
 name = "mimalloc"
 description = "mimalloc is a compact general purpose allocator with excellent performance."
-version = "2.1.2"
+version = "2.1.4"
 authors = ["Microsoft"]
 license = "MIT"
 homepage = "https://github.com/microsoft/mimalloc"
 
 [install]
-    github = "microsoft/mimalloc#v2.1.2"
+    github = "microsoft/mimalloc#v2.1.4"
 
 [[modules]]
     name = "mimalloc"
@@ -26,6 +26,7 @@ homepage = "https://github.com/microsoft/mimalloc"
         "src/bitmap.c",
         "src/heap.c",
         "src/init.c",
+        "src/libc.c",
         "src/options.c",
         "src/os.c",
         "src/page.c",

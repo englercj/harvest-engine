@@ -1,0 +1,28 @@
+// Copyright Chad Engler
+
+// Zstandard - a fast compression algorithm, providing high compression ratios.
+// http://www.zstd.net/
+plugin facebook.zstd version="1.5.5" license="BSD-3-Clause" {
+    authors { "Facebook" }
+
+    install {
+        github user=facebook repo=zstd ref="v${plugin.version}"
+    }
+
+    module zstd kind=static group="engine/contrib" {
+        files {
+            "lib/common/**"
+            "lib/compress/**"
+            "lib/decompress/**"
+            "zdict.h"
+            "zstd.h"
+            "zstd_errors.h"
+        }
+        warnings off
+
+        public {
+            include_dirs external=#true { "lib" }
+            defines { "ZSTD_STATIC_LINKING_ONLY" }
+        }
+    }
+}

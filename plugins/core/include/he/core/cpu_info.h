@@ -112,19 +112,63 @@ namespace he
         /// Availability of various ARM instructions
         struct
         {
+            /// Advanced SIMD (NEON) instructions are available.
             bool neon : 1{ false };
+
+            /// AES instructions are available.
+            /// AESE, AESD, AESMC, AESIMC
             bool aes : 1{ false };
+
+            /// SHA1 instructions are available.
+            /// SHA1C, SHA1P, SHA1M, SHA1H, SHA1SU0, SHA1SU1.
             bool sha1 : 1{ false };
+
+            /// SHA2 (256) instructions are available.
+            /// SHA256H, SHA256H2, SHA256SU0, SHA256SU1.
             bool sha256 : 1{ false };
+
+            /// SHA2 (512) instructions are available.
+            /// SHA512H, SHA512H2, SHA512SU0, SHA512SU1
             bool sha512 : 1{ false };
+
+            /// SHA3 instructions are available.
+            /// EOR3, RAX1, XAR, BCAX
             bool sha3 : 1{ false };
+
+            /// CRC32 instructions are available.
+            /// CRC32B, CRC32H, CRC32W, CRC32X, CRC32CB, CRC32CH, CRC32CW, CRC32CX
             bool crc32 : 1{ false };
+
+            /// Atomic instructions are available.
+            /// LDADD, LDCLR, LDEOR, LDSET, LDSMAX, LDSMIN, LDUMAX, LDUMIN, CAS, CASP, SWP
             bool atomic : 1{ false };
-            bool rdm : 1{ false };
+
+            /// 128-bit atomic instructions are available.
+            /// LDCLRP, LDSETP, SWPP
+            bool atomic128 : 1{ false };
+
+            /// RDMA instructions are available.
+            /// SQRDMLAH, SQRDMLSH
+            bool rdma : 1{ false };
+
+            /// SM3 instructions are available.
+            /// SM3SS1, SM3TT1A, SM3TT1B, SM3TT2A, SM3TT2B, SM3PARTW1, SM3PARTW2
             bool sm3 : 1{ false };
+
+            /// SM4 instructions are available.
+            /// SM4E, SM4EKEY
             bool sm4 : 1{ false };
+
+            /// Dot Product instructions are available.
+            /// UDOT, SDOT
             bool dp : 1{ false };
+
+            /// FHM instructions are available.
+            /// FMLAL, FMLSL
             bool fhm : 1{ false };
+
+            /// Random Number registers are available.
+            /// RNDR, RNDRRS
             bool rndr : 1{ false };
         } arm;
     };

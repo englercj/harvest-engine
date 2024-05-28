@@ -1,6 +1,8 @@
 * text=auto eol=lf
 *.bat text eol=crlf
 
+*.sln text eol=crlf
+
 # Remove text attribute from input KDL files so git doesn't mess with line endings.
 # We intentionally have mixed and broken line endings in here for tests.
 plugins/core/test/kdl/test_cases/input/*.kdl -text

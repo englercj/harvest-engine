@@ -53,7 +53,7 @@ The recommended version is the version that is actively used for development and
 | ---------------- | ---------------------- | ------------- | ----- |
 | Windows          | :last_quarter_moon:    | 10.0.18362.0  | Win 10 1909+ or Win 11 required |
 | Linux            | :waning_crescent_moon: | kernel 5.18   | glibc 2.30+, liburing v2.2+ required |
-| WebAssembly      | :waning_crescent_moon: | LLVM 17       | WebGL2 and WASM Threads support required |
+| WebAssembly      | :waning_crescent_moon: | LLVM 17       | WebGPU and WASM Threads support required |
 | macOS            | :new_moon:             | ?             | |
 | Android          | :new_moon:             | ?             | |
 | iOS              | :new_moon:             | ?             | |

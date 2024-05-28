@@ -12,6 +12,7 @@
 #include "he/core/win32_min.h"
 
 #include <cstdlib>
+#include <fibersapi.h>
 #include <process.h>
 
 #undef Yield
@@ -117,6 +118,36 @@ namespace he
             return Result::FromLastError();
 
         return Result::Success;
+    }
+
+    uintptr_t TlsValue::InvalidId = FLS_OUT_OF_INDEXES;
+
+    Result TlsValue::Create(Pfn_TlsDestructor destroy) noexcept
+    {
+        m_id = ::FlsAlloc(destroy);
+        return m_id == InvalidId ? Result::FromLastError() : Result::Success;
+    }
+
+    void TlsValue::Destroy() noexcept
+    {
+        if (m_id != InvalidId)
+        {
+            ::FlsFree(m_id);
+            m_id = InvalidId;
+        }
+    }
+
+    void* TlsValue::Get() const noexcept
+    {
+        return m_id == InvalidId ? nullptr : ::FlsGetValue(m_id);
+    }
+
+    void TlsValue::Set(void* value) noexcept
+    {
+        if (m_id != InvalidId)
+        {
+            ::FlsSetValue(m_id, value);
+        }
     }
 }
 

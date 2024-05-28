@@ -1,0 +1,48 @@
+// Copyright Chad Engler
+
+// Dear ImGui - a bloat-free graphical user interface library for C++.
+// https://github.com/ocornut/imgui
+plugin ocornut.imgui version="1.89.6" license="MIT" {
+    authors { "Omar Cornut" email=contact@dearimgui.com }
+
+    install {
+        // latest docking branch (as of v1.89.6)
+        github user=ocornut repo=imgui ref=823a1385a269d923d35b82b2f470f3ae1fa8b5a3
+    }
+
+    module imgui kind=static group="engine/contrib" {
+        files {
+            "${module.path:dir}/imgui_user_config.h"
+            "imgui_draw.cpp"
+            "imgui_internal.h"
+            "imgui_tables.cpp"
+            "imgui_widgets.cpp"
+            "imgui.cpp"
+            "imgui.h"
+            "imstb_rectpack.h"
+            "imstb_textedit.h"
+            "misc/debuggers/imgui.natstepfilter"
+            "misc/debuggers/imgui.natvis"
+            "misc/freetype/imgui_freetype.cpp"
+            "misc/freetype/imgui_freetype.h"
+        }
+        public {
+            defines { "IMGUI_USER_CONFIG=\"imgui_user_config.h\"" }
+            dependencies {
+                "freetype"
+                "he_core"
+                "he_math" kind=include // Need the types for the ImVec2 class extras
+            }
+            includedirs {
+                ".",
+                "${module.path:dir}",
+            }
+        }
+
+        when tags=internal {
+            files {
+                "imgui_demo.cpp"
+            }
+        }
+    }
+}

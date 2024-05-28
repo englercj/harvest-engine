@@ -18,34 +18,33 @@ namespace he
     {
         CpuInfoImpl()
         {
-        #if HE_CPU_ARM_64 || defined(__ARM_NEON__) || defined(__ARM_NEON)
-            // AArch64 includes neon
-            arm.neon = true;
-        #endif
-
-            // https://developer.arm.com/documentation/ddi0595/2021-12/AArch64-Registers/ID-AA64ISAR0-EL1--AArch64-Instruction-Set-Attribute-Register-0
-            // https://developer.arm.com/documentation/ddi0595/2021-12/AArch64-Registers/MIDR-EL1--Main-ID-Register
+            https://developer.arm.com/documentation/ddi0601/2024-03/AArch64-Registers/ID-AA64PFR0-EL1--AArch64-Processor-Feature-Register-0
+            https://developer.arm.com/documentation/ddi0601/2024-03/AArch64-Registers/ID-AA64ISAR0-EL1--AArch64-Instruction-Set-Attribute-Register-0
+            https://developer.arm.com/documentation/ddi0601/2024-03/AArch64-Registers/MIDR-EL1--Main-ID-Register
+            uint64_t aa64pfr0;
             uint64_t aa64isar0;
             uint64_t midr;
         #if HE_COMPILER_MSVC
+            aa64pfr0 = static_cast<uint64_t>(_ReadStatusReg(ARM64_ID_AA64PFR0_EL1));
             aa64isar0 = static_cast<uint64_t>(_ReadStatusReg(ARM64_ID_AA64ISAR0_EL1));
             midr = static_cast<uint64_t>(_ReadStatusReg(ARM64_MIDR_EL1));
         #else
+            asm volatile("mrs %0, ID_AA64PFR0_EL1" : "=r"(aa64pfr0));
             asm volatile("mrs %0, ID_AA64ISAR0_EL1" : "=r"(aa64isar0));
             asm volatile("mrs %0, MIDR_EL1" : "=r"(midr));
         #endif
 
-            const uint64_t sha2 = ;
-            const uint64_t sha3 = ((aa64isar0 >> 32) & 0xf);
+            arm.neon = ((aa64pfr0 >> 20) & 0xf) != 0xf;
 
             arm.aes = ((aa64isar0 >> 4) & 0xf) != 0;
             arm.sha1 = ((aa64isar0 >> 8) & 0xf) != 0;
             arm.sha256 = arm.sha1 && ((aa64isar0 >> 12) & 0xf) != 0;
             arm.sha512 = arm.sha1 && ((aa64isar0 >> 12) & 0xf) > 1;
-            arm.sha3 = arm.sha1 && ((aa64isar0 >> 12) & 0xf) > 1 && ((aa64isar0 >> 32) & 0xf) != 0;
+            arm.sha3 = arm.sha1 && arm.sha512 && ((aa64isar0 >> 32) & 0xf) != 0;
             arm.crc32 = ((aa64isar0 >> 16) & 0xf) != 0;
             arm.atomic = ((aa64isar0 >> 20) & 0xf) > 1;
-            arm.rdm = ((aa64isar0 >> 28) & 0xf) != 0;
+            arm.atomic128 = ((aa64isar0 >> 20) & 0xf) > 2;
+            arm.rdma = ((aa64isar0 >> 28) & 0xf) != 0;
             arm.sm3 = ((aa64isar0 >> 36) & 0xf) != 0;
             arm.sm4 = ((aa64isar0 >> 40) & 0xf) != 0;
             arm.dp = ((aa64isar0 >> 44) & 0xf) != 0;

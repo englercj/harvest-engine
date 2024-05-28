@@ -1,0 +1,16 @@
+# Copyright Chad Engler
+
+// binaryen - Optimizer and compiler/toolchain library for WebAssembly
+// https://github.com/WebAssembly/binaryen
+plugin WebAssembly.binaryen version="116" license="Apache-2.0" {
+    authors { "See: AUTHORS" }
+
+    install {
+        when host=linux {
+            archive "https://github.com/WebAssembly/binaryen/releases/download/version_${plugin.version}/binaryen-version_${plugin.version}-x86_64-linux.tar.gz" base="binaryen-version_${plugin.version}"
+        }
+        when host=windows {
+            archive "https://github.com/WebAssembly/binaryen/releases/download/version_${plugin.version}/binaryen-version_${plugin.version}-x86_64-windows.tar.gz" base="binaryen-version_${plugin.version}"
+        }
+    }
+}

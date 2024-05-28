@@ -161,6 +161,49 @@ namespace he
         const int rc = pthread_setaffinity_np(th, sizeof(set), &set);
         return PosixResult(rc);
     }
+
+    uintptr_t TlsValue::InvalidId = static_cast<uintptr_t>(-1);
+
+    Result TlsValue::Create(Pfn_TlsDestructor destroy) noexcept
+    {
+        static_assert(sizeof(pthread_key_t) <= sizeof(m_id));
+
+        pthread_key_t key = InvalidTlsKey;
+        const int rc = pthread_key_create(&key, destroy);
+
+        if (rc == 0)
+        {
+            m_id = static_cast<uintptr_t>(key);
+            return Result::Success;
+        }
+
+        return PosixResult(rc);
+    }
+
+    void TlsValue::Destroy() noexcept
+    {
+        if (m_id != InvalidId)
+        {
+            const pthread_key_t key = static_cast<pthread_key_t>(m_id);
+            pthread_key_delete(key);
+            m_id = InvalidId;
+        }
+    }
+
+    void* TlsValue::Get() const noexcept
+    {
+        const pthread_key_t key = static_cast<pthread_key_t>(m_id);
+        return m_id == InvalidId ? nullptr : pthread_getspecific(key);
+    }
+
+    void TlsValue::Set(void* value) noexcept
+    {
+        if (m_id != InvalidId)
+        {
+            const pthread_key_t key = static_cast<pthread_key_t>(m_id);
+            pthread_setspecific(key, value);
+        }
+    }
 }
 
 #endif

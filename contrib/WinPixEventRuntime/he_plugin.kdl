@@ -1,0 +1,36 @@
+// Copyright Chad Engler
+
+// WinPixEventRuntime - allows applications to be instrumented with marker events, for use with Microsoft PIX.
+// https://devblogs.microsoft.com/pix/winpixeventruntime/
+plugin microsoft.WinPixEventRuntime version="1.0.230302001" license="SEE LICENSE IN license.txt" {
+    authors { "Microsoft" }
+
+    install {
+        when system=windows {
+            nuget WinPixEventRuntime version="${plugin.version}"
+        }
+    }
+
+    module WinPixEventRuntime kind=shared group="engine/contrib" {
+        public {
+            include_dirs { "Include/WinPixEventRuntime" }
+        }
+
+        when system=windows arch=x86_64 {
+            public {
+                dependencies { "bin/x64/WinPixEventRuntime.lib" kind=file }
+            }
+            files {
+                "bin/x64/WinPixEventRuntime.dll" action=copy
+            }
+        }
+
+        when system=windows arch=arm64 {
+            public {
+                dependencies { "bin/ARM64/WinPixEventRuntime.lib" kind=file }
+            }
+            files {
+                "bin/ARM64/WinPixEventRuntime.dll" action=copy
+            }
+        }
+}

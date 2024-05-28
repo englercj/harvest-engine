@@ -1,0 +1,20 @@
+// Copyright Chad Engler
+
+// simdutf - Unicode routines (UTF8, UTF16, UTF32) using vector extensions.
+// https://github.com/simdutf/simdutf
+plugin simdutf.simdutf version="5.0.0" license="MIT" {
+    authors { "Daniel Lemire" email=daniel@lemire.me }
+
+    install {
+        archive "https://github.com/simdutf/simdutf/releases/download/v${plugin.version}/singleheader.zip"
+    }
+
+    module simdutf kind=static group="engine/contrib" {
+        files { "simdutf.h", "simdutf.cpp" }
+        warnings = "Off"
+
+        public {
+            include_dirs external=#true { "." }
+        }
+    }
+}

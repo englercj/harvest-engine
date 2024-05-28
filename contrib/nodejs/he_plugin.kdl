@@ -1,0 +1,17 @@
+// Copyright Chad Engler
+
+// Node.js - an open-source, cross-platform JavaScript runtime environment.
+// https://nodejs.org/
+plugin nodejs.nodejs version="20.11.0" license="SEE LICENSE IN LICENSE" {
+    authors { "OpenJS Foundation" }
+
+    install {
+        when host=linux {
+            archive "https://nodejs.org/dist/v${plugin.version}/node-v${plugin.version}-linux-x64.tar.xz" base="node-v${plugin.version}-win-x64/node-v${plugin.version}-win-x64"
+        }
+
+        when host=windows {
+            archive "https://nodejs.org/dist/v${plugin.version}/node-v${plugin.version}-win-x64.zip" base="node-v${plugin.version}-win-x64/node-v${plugin.version}-win-x64"
+        }
+    }
+}

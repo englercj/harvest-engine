@@ -1,0 +1,19 @@
+// Copyright Chad Engler
+
+// Hugo - A Fast and Flexible Static Site Generator.
+// https://gohugo.io/
+plugin gohugoio.hugo version="0.104.2" license="Apache-2.0" {
+    authors {
+        "Bjørn Erik Pedersen" email=bjorn.erik.pedersen@gmail.com
+        "Steve Francia" email=steve.francia@gmail.com
+    }
+
+    install {
+        when host=linux {
+            archive "https://github.com/gohugoio/hugo/releases/download/v${plugin.version}/hugo_extended_${plugin.version}_linux-amd64.tar.gz"
+        }
+        when host=windows {
+            archive "https://github.com/gohugoio/hugo/releases/download/v${plugin.version}/hugo_extended_${plugin.version}_windows-amd64.zip"
+        }
+    }
+}

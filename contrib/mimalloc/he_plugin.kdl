@@ -1,0 +1,100 @@
+// Copyright Chad Engler
+
+// mimalloc - a compact general purpose allocator with excellent performance.
+// https://github.com/microsoft/mimalloc
+plugin microsoft.mimalloc version="2.1.4" license="MIT" {
+    authors { "Microsoft" }
+
+    install {
+        github user=microsoft repo=mimalloc ref="v${plugin.version}"
+    }
+
+    module mimalloc kind=static group="engine/contrib" {
+        warnings off
+        dialect c=c11
+
+        files {
+            "include/**.h"
+            "src/alloc.c"
+            "src/alloc-aligned.c"
+            "src/alloc-posix.c"
+            "src/arena.c"
+            "src/bitmap.c"
+            "src/heap.c"
+            "src/init.c"
+            "src/libc.c"
+            "src/options.c"
+            "src/os.c"
+            "src/page.c"
+            "src/random.c"
+            "src/segment.c"
+            "src/segment-map.c"
+            "src/stats.c"
+
+            // Override their prim.c with our own so we can detect WASM
+            // "src/prim/prim.c"
+            "${module.path:dir}/prim/prim.c"
+        }
+
+        public {
+            include_dirs { "include" }
+        }
+
+        private {
+            include_dirs {
+                "src"
+                "${module.path:dir}"
+            }
+            dependencies { he_core kind=include }
+        }
+
+        when tags=asan {
+            private {
+                defines { "MI_TRACK_ASAN=1" }
+            }
+        }
+
+        when tags=debug {
+            private {
+                defines { "MI_DEBUG=3" }
+            }
+        }
+
+        when tags=debug system=windows {
+            private {
+                defines { "MI_TRACK_ETW=1" }
+            }
+        }
+
+        when toolset="gcc || clang" {
+            private {
+                build_options { "-Wstrict-prototypes"; "-ftls-model=initial-exec" }
+            }
+        }
+
+        when toolset=clang {
+            private {
+                build_options { "-Wpedantic"; "-Wno-static-in-inline" }
+            }
+        }
+
+        when tags=win32 {
+            public {
+                dependencies { psapi kind=system; shell32 kind=system; user32 kind=system; advapi32 kind=system; bcrypt kind=system }
+            }
+        }
+
+        when system=linux {
+            public {
+                dependencies { pthreads kind=system; rt kind=system }
+            }
+        }
+
+        when system=wasm {
+            public {
+                // pretend to be wasi for mimalloc implementations
+                defines { "__wasi__" }
+            }
+        }
+    }
+}

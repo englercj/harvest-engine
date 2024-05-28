@@ -69,7 +69,7 @@ namespace he
 
     public:
         /// Construct a thread object. Does not create a new thread automatically like `std::thread`.
-        /// You must call `Start` to create and run a new thread.
+        /// You must call \ref Start to create and run a new thread.
         Thread() = default;
 
         /// Copy constructor is deleted.
@@ -133,6 +133,76 @@ namespace he
 
     private:
         void* m_handle{ nullptr };
+    };
+
+    /// A pointer to a function that is run to destroy thread local storage.
+    ///
+    /// \param[in] data The data stored in the thread local storage.
+    using Pfn_TlsDestructor = void(*)(void*);
+
+    /// A thread local storage value.
+    class TlsValue
+    {
+    public:
+        /// Constructs an empty thread local storage value. You must call \ref Create to allocate
+        // the thread local storage before calling \ref Get or \ref Set.
+        TlsValue() = default;
+
+        /// Copy constructor is deleted.
+        TlsValue(const TlsValue&) = delete;
+
+        /// Copy assignment operator is deleted.
+        TlsValue& operator=(const TlsValue&) = delete;
+
+        /// Move constructor.
+        TlsValue(TlsValue&& x) noexcept : m_id(Exchange(x.m_id, InvalidId)) {}
+
+        /// Move assignment operator.
+        TlsValue& operator=(TlsValue&& x) noexcept
+        {
+            Destroy();
+            m_id = Exchange(x.m_id, InvalidId);
+            return *this;
+        }
+
+        /// Destructs the thread local storage value.
+        ~TlsValue() noexcept { Destroy(); }
+
+        /// Create the thread local storage.
+        ///
+        /// \param[in] destroy Optional. A function called when the thread local storage is destroyed.
+        Result Create(Pfn_TlsDestructor destroy = nullptr) noexcept;
+
+        /// Destroy the thread local storage. The object is still valid after calling this
+        /// function, but you must call \ref Create again before calling \ref Get or \ref Set.
+        void Destroy() noexcept;
+
+        /// Checks if the thread local storage is valid.
+        ///
+        /// \return True if the thread local storage is valid, false otherwise.
+        [[nodiscard]] bool IsValid() const noexcept { return m_id != InvalidId; }
+
+        /// Gets the value stored in the thread local storage.
+        ///
+        /// \return The value stored in the thread local storage.
+        [[nodiscard]] void* Get() const noexcept;
+
+        /// Sets the value stored in the thread local storage.
+        ///
+        /// \param[in] value The value to store in the thread local storage.
+        /// \return The result of the operation.
+        void Set(void* value) noexcept;
+
+        /// Sets the value stored in the thread local storage.
+        ///
+        /// \param[in] value The value to store in the thread local storage.
+        /// \return Itself.
+        TlsValue& operator=(void* value) noexcept { Set(value); return *this; }
+
+    private:
+        static uintptr_t InvalidId;
+
+        uintptr_t m_id{ InvalidId };
     };
 
     /// \internal

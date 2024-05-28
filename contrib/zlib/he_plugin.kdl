@@ -1,0 +1,36 @@
+// Copyright Chad Engler
+
+// Zlib - a general purpose data compression library.
+// https://zlib.net/
+plugin madler.zlib version="1.2.13" license="Zlib" {
+    authors { "Mark Adler" email=madler@alumni.caltech.edu }
+
+    install {
+        github user=madler repo=zlib ref="v${plugin.version}"
+    }
+
+    module zlib kind=static group="engine/contrib" {
+        files { "*.h", "*.c" }
+        warnings off
+
+        public {
+            include_dirs { "." }
+        }
+
+        private {
+            defines { "N_FSEEKO" }
+        }
+
+        when tags=debug {
+            public {
+                defines { "ZLIB_DEBUG" }
+            }
+        }
+
+        when system=windows {
+            private {
+                defines { "_WINDOWS" }
+            }
+        }
+    }
+}

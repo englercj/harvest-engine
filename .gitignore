@@ -1,5 +1,12 @@
+# IDE artifacts
 .vs/
 .vscode/
+
+# Documentation generation artifacts
 .hugo_build.lock
+
+# Build output directory
 build/
+
+# Node.js artifacts
 node_modules/

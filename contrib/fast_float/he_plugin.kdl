@@ -1,0 +1,20 @@
+# Copyright Chad Engler
+
+// Fast Float - Fast and exact implementation of the C++ from_chars functions for number types.
+// https://github.com/fastfloat/fast_float
+plugin fastfloat.fast_float version="6.1.0" license="MIT" {
+    authors {
+        "Daniel Lemire" email=daniel@lemire.me
+        "João Paulo Magalhaes"
+    }
+
+    module fast_float kind=header group="engine/contrib" {
+        files { "${module.path:dir}/include/**.h" }
+        warnings off
+        public {
+            includedirs external=#true {
+                "${module.path:dir}/include"
+            }
+        }
+    }
+}

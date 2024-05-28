@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "Harvest.Make": {
+      "commandName": "Project",
+      "commandLineArgs": "--project C:\\Users\\engle\\source\\me\\harvest-engine\\he_project.toml projects vs2022"
+    }
+  }
+}

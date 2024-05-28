@@ -1,0 +1,56 @@
+// Copyright Chad Engler
+
+// An implementation of the C++ standard library, targeting C++11 and above.
+// https://github.com/llvm/llvm-project
+plugin llvm.libcxxabi version="18.1.2" license="Apache-2.0 WITH LLVM-exception" {
+    authors {}
+
+    install {
+        when system=wasm {
+            archive "https://github.com/llvm/llvm-project/releases/download/llvmorg-${plugin.version}/libcxxabi-${plugin.version}.src.tar.xz" base="libcxxabi-${plugin.version}.src"
+        }
+    }
+
+    module libcxxabi kind=static group="engine/contrib" {
+        files {
+            // Includes
+            "include/cxxabi.h"
+
+            // C++ABI files
+            "src/cxa_aux_runtime.cpp"
+            "src/cxa_default_handlers.cpp"
+            "src/cxa_demangle.cpp"
+            "src/cxa_exception_storage.cpp"
+            "src/cxa_guard.cpp"
+            "src/cxa_handlers.cpp"
+            "src/cxa_vector.cpp"
+            "src/cxa_virtual.cpp"
+
+            // C++ STL files
+            "src/stdlib_exception.cpp"
+            "src/stdlib_stdexcept.cpp"
+            "src/stdlib_typeinfo.cpp"
+
+            // Internal files
+            "src/abort_message.cpp"
+            "src/fallback_malloc.cpp"
+            "src/private_typeinfo.cpp"
+
+            // New/Delete definitions
+            "src/stdlib_new_delete.cpp"
+
+            // Exceptions / No exceptions
+            "src/cxa_noexception.cpp"
+            // "src/cxa_exception.cpp"
+            // "src/cxa_personality.cpp"
+
+            // Threads
+            "src/cxa_thread_atexit.cpp"
+        }
+        warnings off
+
+        public {
+            include_dirs external=#true { "include" }
+        }
+    }
+}

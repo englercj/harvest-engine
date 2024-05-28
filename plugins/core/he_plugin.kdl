@@ -1,0 +1,149 @@
+// Copyright Chad Engler
+
+// Provides core utilities and platform abstractions.
+plugin he.core version="0.1.0" license="UNLICENSED" {
+    authors { "Chad Engler" email=englercj@live.com }
+
+    // Base core module that provides commonly used utilities and platform abstractions.
+    module he_core kind=static group="engine/libs" {
+        files { "include/**"; "src/**"; "debugger/**" }
+
+        public {
+            dependencies { mimalloc; simdutf }
+            include_dirs { "include" }
+        }
+
+        private {
+            dependencies { fast_float }
+            include_dirs { "src" }
+        }
+
+        when system=linux {
+            public {
+                dependencies { dl kind=system; pthread kind=system; unwind kind=system; uring kind=system }
+                defines {
+                    "HE_IMPL_PLATFORM_RWLOCK_SIZE=56"
+                    "HE_IMPL_PLATFORM_MUTEX_SIZE=40"
+                    "HE_IMPL_PLATFORM_RECURSIVE_MUTEX_SIZE=40"
+                    "HE_IMPL_PLATFORM_CONDITION_VARIABLE_SIZE=48"
+                    "HE_IMPL_PLATFORM_SEMAPHORE_SIZE=32"
+                    "HE_IMPL_PLATFORM_SYNC_EVENT_SIZE=12"
+                }
+            }
+        }
+
+        when system="posix && !linux" {
+            public {
+                dependencies { dl kind=system; pthread kind=system }
+                defines {
+                    "HE_IMPL_PLATFORM_RWLOCK_SIZE=56"
+                    "HE_IMPL_PLATFORM_MUTEX_SIZE=40"
+                    "HE_IMPL_PLATFORM_RECURSIVE_MUTEX_SIZE=40"
+                    "HE_IMPL_PLATFORM_CONDITION_VARIABLE_SIZE=48"
+                    "HE_IMPL_PLATFORM_SEMAPHORE_SIZE=32"
+                    "HE_IMPL_PLATFORM_SYNC_EVENT_SIZE=92"
+                }
+            }
+        }
+
+        when system=wasm {
+            public {
+                dependencies { he_core_wasm_libc }
+                build_options {
+                    "-matomics"
+                    "-mbulk-memory"
+                    "-mnontrapping-fptoint"
+                }
+                defines {
+                    "HE_IMPL_PLATFORM_RWLOCK_SIZE=4"
+                    "HE_IMPL_PLATFORM_MUTEX_SIZE=4"
+                    "HE_IMPL_PLATFORM_RECURSIVE_MUTEX_SIZE=8"
+                    "HE_IMPL_PLATFORM_CONDITION_VARIABLE_SIZE=12"
+                    "HE_IMPL_PLATFORM_SEMAPHORE_SIZE=4"
+                    "HE_IMPL_PLATFORM_SYNC_EVENT_SIZE=32"
+                }
+            }
+        }
+
+        when system=win32 {
+            public {
+                dependencies { Shlwapi kind=system; User32 kind=system; Kernel32 kind=system }
+                defines {
+                    "HE_IMPL_PLATFORM_RWLOCK_SIZE=8"
+                    "HE_IMPL_PLATFORM_MUTEX_SIZE=8"
+                    "HE_IMPL_PLATFORM_RECURSIVE_MUTEX_SIZE=40"
+                    "HE_IMPL_PLATFORM_CONDITION_VARIABLE_SIZE=8"
+                    "HE_IMPL_PLATFORM_SEMAPHORE_SIZE=8"
+                    "HE_IMPL_PLATFORM_SYNC_EVENT_SIZE=8"
+                }
+            }
+        }
+
+        when system=windows {
+            public {
+                dependencies { DirectStorage }
+            }
+        }
+    }
+
+    // Minimal libc implementation for wasm.
+    module he_core_wasm_libc kind=static group="engine/libs" {
+        files { "wasm_libc/include/**"; "wasm_libc/src/**" }
+
+        public {
+            // include-only, he_core will express an include & link dependency on us so that any
+            // module depending on core will also pull this module.
+            dependencies { he_core kind=include }
+        }
+
+        private {
+            include_dirs { "wasm_libc/src" }
+        }
+
+        when system=wasm {
+            public {
+                defines { :plugin llvm.libcxx { "HE_LIBCPP_ABI_NAMESPACE=__${plugin.abi_version}" } }
+                dependencies { libcxxabi; libcxx kind=link }
+                include_dirs external=#true {
+                    // Libcxx headers must come before wasm_libc headers, so we list those explicitly.
+                    // Going instead through the normal `dependencies` flow would put wasm_libc headers first.
+                    :plugin llvm.libcxx { "${plugin.path:dirname}/include" }
+                    :plugin llvm.libcxx { "${plugin.install_dir}/include" }
+                    "wasm_libc/include"
+                }
+            }
+        }
+
+        when system=!wasm {
+            files { "wasm_libc/src/**" action=None }
+            public {
+                include_dirs external=#true { "wasm_libc/include" }
+            }
+        }
+    }
+
+    // Tests for the core module.
+    module he_core_tests kind=static group="engine/tests" {
+        files { "test/**" }
+
+        public {
+            dependencies { he_core }
+        }
+
+        private {
+            include_dirs { "src" }
+        }
+    }
+
+    // This is a console app that links all test projects and runs them.
+    module he_test_runner kind=console_app group="engine/tests" {
+        files { "test_runner/main.cpp" }
+
+        public {
+            dependencies {
+                he_core
+                :module group="engine/tests" kind=static { "${module.name}" whole_archive=#true }
+            }
+        }
+    }
+}

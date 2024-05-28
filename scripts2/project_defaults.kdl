@@ -1,0 +1,172 @@
+// Copyright Chad Engler
+
+// ------------------------------------------------------------------------------------------------
+// Options
+
+option asan help="Enable Address Sanitizer"
+
+when option=asan {
+    toolset msc incremental_link=#false
+    sanitize address=#true
+}
+
+// ------------------------------------------------------------------------------------------------
+// Configurations
+
+configuration Debug
+configuration Development
+configuration Release
+
+when configuration=Debug {
+    defines { _DEBUG; DEBUG; HE_CFG_DEBUG }
+    tags { debug; internal }
+
+    optimize off lto=off inlining=off
+    symbols on
+}
+
+when configuration=Development {
+    defines { NDEBUG; HE_CFG_DEVELOPMENT }
+    tags { internal }
+
+    optimize on lto=off inlining=explicit
+    symbols on
+}
+
+when configuration=Release {
+    defines { NDEBUG; HE_CFG_RELEASE }
+    tags { external }
+
+    optimize speed lto=on inlining=on
+    symbols on
+}
+
+// ------------------------------------------------------------------------------------------------
+// Platforms
+
+platform Linux64 arch=x86_64 system=linux toolset=gcc
+platform Wasm32 arch=wasm32 system=wasm toolset=clang
+platform Win64 arch=x86_64 system=windows toolset=msc
+platform WinArm64 arch=arm64 system=windows toolset=msc
+
+when host=linux { platform Linux64 default=#true }
+when host=windows { platform Win64 default=#true }
+
+when platform=Linux64 {
+    defines { HE_PLATFORM_LINUX64; HE_PLATFORM_LINUX; HE_PLATFORM_API_POSIX }
+    tags { posix }
+
+    codegen avx
+}
+
+when platform=Wasm32 {
+    defines { HE_PLATFORM_WASM32; HE_PLATFORM_WASM; HE_PLATFORM_API_WASM }
+
+    codegen simd128
+    // wasmoptpath(he.get_wasm_opt_path()) // TODO
+}
+
+when platform=Win64 {
+    defines { HE_PLATFORM_WIN64 }
+    tags { win32 }
+
+    codegen avx
+}
+
+when platform=WinArm64 {
+    defines { HE_PLATFORM_WINARM64 }
+    tags { win32 }
+
+    codegen armv8.0
+}
+
+when system="Win64 || WinArm64" {
+    defines {
+        HE_PLATFORM_WINDOWS
+        HE_PLATFORM_API_WIN32
+        "WINVER=0x0A00"             // require minimum of windows 10
+        "_WIN32_WINNT=0x0A00"       // require minimum of windows 10
+        "_ITERATOR_DEBUG_LEVEL=0"   // Improve debug performance by disabling iterator checks
+    }
+}
+
+// ------------------------------------------------------------------------------------------------
+// Toolsets
+
+toolset msc arch=x86_64 multiprocess=#true incremental_link=#true edit_and_continue=#true
+
+when or configuration=!Debug arch=!x86_64 option=asan {
+    toolset msc edit_and_continue=#false
+}
+
+when toolset="gcc || clang" {
+    build_options {
+        "-fPIC"                 // Generate position-independent code
+        "-fvisibility=hidden"   // Mark all symbols as hidden by default
+        "-Wundef"               // A symbol that was not defined was used with a preprocessor directive.
+        "-Wswitch"              // An enumerator has no associated case handler in a switch statement, and there's no default label that can catch it.
+    }
+}
+
+when toolset="gcc || clang" language=cpp {
+    build_options {
+        "-fvisibility-inlines-hidden" // Hide inlines from the symbol table
+    }
+}
+
+when toolset="gcc || clang" system=!wasm {
+    build_options {
+        "-mrdrnd"   // Enable RDRAND instruction
+        "-mcx16"    // Enable CMPXCHG16B for 16-byte aligned 128-bit objects
+        "-mxsave"   // Enable XSAVE/XRSTOR instructions
+    }
+}
+
+when toolset="gcc || clang" system=wasm {
+    build_options {
+        "-nostdlib"             // Do not use the standard system startup files or libraries when linking.
+        "-nodefaultlibs"        // Do not use the default C/++ standard libraries when linking.
+    }
+
+    link_options {
+        "-nostdlib"             // Do not use the standard system startup files or libraries when linking.
+        "-nodefaultlibs"        // Do not use the default C/++ standard libraries when linking.
+        "-Wl,--export-dynamic"  // Export any non-hidden symbols.
+        "-Wl,--fatal-warnings"  // Emit an error when any warning is encountered.
+        "-Wl,--import-memory"   // Import memory from the environment.
+        "-Wl,--no-entry"        // Don't search for the entry point symbol (by default _start).
+        "-Wl,-export=main"      // Export the main function so we can invoke it as the entry point.
+    }
+}
+
+when toolset=clang configuration=Debug {
+    build_options {
+        "-Wthread-safety" // Enable thread safety analysis warnings.
+    }
+}
+
+when toolset=msc {
+    build_options {
+        "/permissive-"  // Enable standards-conforming compiler behavior.
+        "/utf-8"        // Specifies both the source character set and the execution character set as UTF-8.
+        "/w44668"       // A symbol that was not defined was used with a preprocessor directive.
+        "/w44062"       // An enumerator has no associated case handler in a switch statement, and there's no default label that can catch it.
+        "/wd6255"       // _alloca indicates failure by raising a stack overflow exception. Consider using _malloca instead.
+    }
+}
+
+// ------------------------------------------------------------------------------------------------
+// Base Settings
+
+// Base settings used by all configurations and platforms
+dialect cpp=c++20 c=c11 csharp=c#12
+exceptions off
+external warnings=off angle_brackets=#true
+floating_point fast
+warnings extra fatal=#true
+
+when system=!linux { files match { "**.linux.*" action=none } }
+when system=!wasm { files match { "**.wasm.*" action=none } }
+when system=!windows { files match { "**.windows.*" action=none } }
+when tags=!posix { files match { "**.posix.*" action=none } }
+when tags=!win32 { files match { "**.win32.*" action=none } }

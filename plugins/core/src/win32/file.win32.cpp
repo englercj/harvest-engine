@@ -356,105 +356,310 @@ namespace he
         return Result::Success;
     }
 
-    MemoryMap::MemoryMap() noexcept
-        : m_data(nullptr)
-        , m_size(0)
-        , m_handle(nullptr)
-        , m_fileHandle(INVALID_HANDLE_VALUE)
+    MemoryMappedFile::MemoryMappedFile() noexcept
+        : m_fileHandle(Win32InvalidFd)
+        , m_mappingHandle(0)
     {}
 
-    MemoryMap::MemoryMap(MemoryMap&& x) noexcept
-        : m_data(Exchange(x.m_data, nullptr))
-        , m_size(Exchange(x.m_size, 0))
-        , m_handle(Exchange(x.m_handle, nullptr))
-        , m_fileHandle(Exchange(x.m_fileHandle, INVALID_HANDLE_VALUE))
+    MemoryMappedFile::MemoryMappedFile(MemoryMappedFile&& x) noexcept
+        : m_fileHandle(Exchange(x.m_fileHandle, Win32InvalidFd))
+        , m_mappingHandle(Exchange(x.m_mappingHandle, 0))
     {}
 
-    MemoryMap::~MemoryMap() noexcept
+    MemoryMappedFile::~MemoryMappedFile() noexcept
     {
-        Unmap();
+        Close();
     }
 
-    MemoryMap& MemoryMap::operator=(MemoryMap&& x) noexcept
+    MemoryMappedFile& MemoryMappedFile::operator=(MemoryMappedFile&& x) noexcept
     {
-        Unmap();
-        m_data = Exchange(x.m_data, nullptr);
-        m_size = Exchange(x.m_size, 0);
-        m_handle = Exchange(x.m_handle, nullptr);
-        m_fileHandle = Exchange(x.m_fileHandle, INVALID_HANDLE_VALUE);
+        m_fileHandle = Exchange(x.m_fileHandle, Win32InvalidFd);
+        m_mappingHandle = Exchange(x.m_mappingHandle, 0);
+
+        m_fileSize = Exchange(x.m_fileSize, 0);
+        m_accessMode = Exchange(x.m_accessMode, FileAccessMode::Read);
+
+    #if HE_ENABLE_ASSERTIONS
+        HE_VERIFY(m_openRegionsCount == 0, HE_MSG("MemoryMappedFile begin moved into with open regions. This is a leak."), HE_VAL(m_openRegionsCount));
+        m_openRegionsCount = Exchange(x.m_openRegionsCount, 0);
+    #endif
         return *this;
     }
 
-    Result MemoryMap::Map(const File& file, MemoryMapMode mode, uint64_t offset, uint32_t size)
+    Result MemoryMappedFile::Open(const char* path, FileAccessMode access, FileCreateMode create, FileOpenFlag flags)
     {
-    #if HE_ENABLE_ASSERTIONS
-        HE_ASSERT(m_handle == nullptr && m_fileHandle == INVALID_HANDLE_VALUE);
-        HE_ASSERT(IsAligned(offset, GetSystemInfo().allocationGranularity), HE_KV(offset, offset), HE_KV(allocation_granularity, GetSystemInfo().allocationGranularity));
-    #endif
+        File file;
+        Result rc = file.Open(path, access, create, flags);
+        if (rc != Result::Success)
+            return rc;
 
+        return Open(file, access);
+    }
+
+    Result MemoryMappedFile::Open(const File& file, FileAccessMode mode)
+    {
         if (!file.IsOpen())
             return Result::InvalidParameter;
 
-        const HANDLE fileHandle = reinterpret_cast<HANDLE>(file.m_fd);
-
-        DWORD prot = mode == MemoryMapMode::Read ? PAGE_READONLY : PAGE_READWRITE;
-
-        m_handle = ::CreateFileMappingW(fileHandle, nullptr, prot, 0, (DWORD)size, nullptr);
-
-        if (m_handle == nullptr)
-            return Result::FromLastError();
-
-        DWORD access = mode == MemoryMapMode::Read ? FILE_MAP_READ : FILE_MAP_WRITE;
-
-        m_data = ::MapViewOfFile(m_handle, access, (DWORD)(offset >> 32), (DWORD)offset, size);
-
-        if (m_data == nullptr)
+        if (!HE_VERIFY(!IsOpen(),
+            HE_MSG("MemoryMappedFile is already open, will close first")))
         {
-            Result r = Result::FromLastError();
-            Unmap();
-            return r;
+            Close();
         }
 
-        m_size = size;
+        if (!HE_VERIFY(mode != FileAccessMode::Write,
+            HE_MSG("Files can not be memory mapped for write-only access")))
+        {
+            return Result::InvalidParameter;
+        }
+
+        const HANDLE fileHandle = reinterpret_cast<HANDLE>(file.m_fd);
+
+        DWORD prot = 0;
+        switch (mode)
+        {
+            case FileAccessMode::Read:
+                prot = PAGE_READONLY;
+                break;
+            case FileAccessMode::Write:
+                break;
+            case FileAccessMode::ReadWrite:
+                prot = PAGE_READWRITE;
+                break;
+        }
+
+        if (!HE_VERIFY(prot != 0))
+        {
+            return Result::InvalidParameter;
+        }
+
+        HANDLE mappingHandle = ::CreateFileMappingW(fileHandle, nullptr, prot, 0, 0, nullptr);
+
+        if (mappingHandle == nullptr)
+            return Result::FromLastError();
 
         // Allows the memory map to keep the file 'open'
-        ::DuplicateHandle(::GetCurrentProcess(), fileHandle, ::GetCurrentProcess(), &m_fileHandle, 0, FALSE, DUPLICATE_SAME_ACCESS);
+        HANDLE fileHandleDup = nullptr;
+        ::DuplicateHandle(::GetCurrentProcess(), fileHandle, ::GetCurrentProcess(), &fileHandleDup, 0, FALSE, DUPLICATE_SAME_ACCESS);
+
+        m_fileHandle = reinterpret_cast<intptr_t>(fileHandleDup);
+        m_mappingHandle = reinterpret_cast<intptr_t>(mappingHandle);
+        m_fileSize = file.GetSize();
+        m_accessMode = mode;
 
         return Result::Success;
     }
 
-    bool MemoryMap::IsMapped() const
+    void MemoryMappedFile::Close()
     {
-        return m_data != nullptr;
+    #if HE_ENABLE_ASSERTIONS
+        HE_VERIFY(m_openRegionsCount == 0, HE_MSG("MemoryMappedFile closed with open regions. This is a leak."), HE_VAL(m_openRegionsCount));
+    #endif
+
+        const HANDLE mappingHandle = reinterpret_cast<HANDLE>(m_mappingHandle);
+        if (mappingHandle != nullptr)
+        {
+            ::CloseHandle(mappingHandle);
+        }
+
+        const HANDLE fileHandle = reinterpret_cast<HANDLE>(m_fileHandle);
+        if (fileHandle != INVALID_HANDLE_VALUE)
+        {
+            ::CloseHandle(fileHandle);
+        }
+
+        m_fileHandle = Win32InvalidFd;
+        m_mappingHandle = 0;
+        m_fileSize = 0;
+
+    #if HE_ENABLE_ASSERTIONS
+        m_openRegionsCount = 0;
+    #endif
     }
 
-    void MemoryMap::Unmap()
+    bool MemoryMappedFile::IsOpen() const
     {
-        if (m_data != nullptr)
-            ::UnmapViewOfFile(m_data);
-
-        if (m_handle != nullptr)
-            ::CloseHandle(m_handle);
-
-        if (m_fileHandle != INVALID_HANDLE_VALUE)
-            ::CloseHandle(m_fileHandle);
-
-        m_data = nullptr;
-        m_size = 0;
-        m_handle = nullptr;
-        m_fileHandle = INVALID_HANDLE_VALUE;
+        return m_mappingHandle != 0 && m_fileHandle != Win32InvalidFd;
     }
 
-    Result MemoryMap::Flush(uint64_t offset, uint32_t size, bool async)
+    Result MemoryMappedFile::MapRegion(MemoryMappedRegion& region, uint64_t offset, uint32_t size, bool preload)
     {
-        HE_ASSERT(m_handle != nullptr && m_fileHandle != INVALID_HANDLE_VALUE);
+        if (!HE_VERIFY(IsOpen(), HE_MSG("MemoryMappedFile is not open")))
+        {
+            return Result::InvalidParameter;
+        }
 
-        uint8_t* ptr = static_cast<uint8_t*>(m_data) + offset;
+        if (!HE_VERIFY(region.data == nullptr, HE_MSG("MemoryMappedRegion is already mapped")))
+        {
+            return Result::InvalidParameter;
+        }
 
-        if (::FlushViewOfFile(ptr, size) && (async || ::FlushFileBuffers(m_fileHandle)))
-            return Result::Success;
+        if (!HE_VERIFY(offset < m_fileSize, HE_MSG("Offset is beyond the end of the file")))
+        {
+            return Result::InvalidParameter;
+        }
 
-        return Result::FromLastError();
+        DWORD access = 0;
+        switch (m_accessMode)
+        {
+            case FileAccessMode::Read:
+                access = FILE_MAP_READ;
+                break;
+            case FileAccessMode::Write:
+                access = FILE_MAP_WRITE;
+                break;
+            case FileAccessMode::ReadWrite:
+                access = FILE_MAP_READ | FILE_MAP_WRITE;
+                break;
+        }
+
+        if (!HE_VERIFY(access != 0))
+        {
+            return Result::InvalidParameter;
+        }
+
+        const uint32_t allocationGranularity = GetSystemInfo().allocationGranularity;
+        const uint64_t alignedOffset = AlignDown(offset, allocationGranularity);
+        const uint64_t alignedSize = AlignUp(size + (offset - alignedOffset), allocationGranularity);
+
+        if (!HE_VERIFY(alignedSize <= Limits<uint32_t>::Max,
+            HE_MSG("Region size is too large for a 32-bit size value."),
+            HE_VAL(offset),
+            HE_VAL(size),
+            HE_KV(aligned_offset, alignedOffset),
+            HE_KV(aligned_size, alignedSize)))
+        {
+            return Result::InvalidParameter;
+        }
+
+        ULARGE_INTEGER uliOffset;
+        uliOffset.QuadPart = alignedOffset;
+
+        HANDLE mappingHandle = reinterpret_cast<HANDLE>(m_mappingHandle);
+        region.alignedData = ::MapViewOfFile(mappingHandle, access, uliOffset.HighPart, uliOffset.LowPart, alignedSize + alignedOffset > m_fileSize ? 0 : alignedSize);
+
+        if (region.alignedData == nullptr)
+            return Result::FromLastError();
+
+        region.alignedSize = static_cast<uint32_t>(alignedSize);
+        region.data = static_cast<uint8_t*>(region.alignedData) + (offset - alignedOffset);
+        region.size = size;
+
+    #if HE_ENABLE_ASSERTIONS
+        region.parentHandle = m_mappingHandle;
+        ++m_openRegionsCount;
+    #endif
+
+        if (preload)
+        {
+            WIN32_MEMORY_RANGE_ENTRY Range = { region.alignedData, region.alignedSize };
+            ::PrefetchVirtualMemory(GetCurrentProcess(), 1, &Range, 0);
+        }
+
+        return Result::Success;
+    }
+
+    Result MemoryMappedFile::UnmapRegion(MemoryMappedRegion& region)
+    {
+        if (!HE_VERIFY(IsOpen(), HE_MSG("MemoryMappedFile is not open")))
+        {
+            return Result::InvalidParameter;
+        }
+
+    #if HE_ENABLE_ASSERTIONS
+        if (!HE_VERIFY(region.parentHandle == m_mappingHandle, HE_MSG("MemoryMappedRegion is not from this MemoryMappedFile")))
+        {
+            return Result::InvalidParameter;
+        }
+    #endif
+
+        if (region.alignedData != nullptr)
+        {
+            if (!::UnmapViewOfFile(region.alignedData))
+                return Result::FromLastError();
+        }
+
+        region.data = nullptr;
+        region.size = 0;
+        region.alignedData = nullptr;
+        region.alignedSize = 0;
+
+    #if HE_ENABLE_ASSERTIONS
+        region.parentHandle = 0;
+
+        if (HE_VERIFY(m_openRegionsCount > 0, HE_MSG("MemoryMappedFile has no open regions to unmap.")))
+        {
+            --m_openRegionsCount;
+        }
+    #endif
+        return Result::Success;
+    }
+
+    Result MemoryMappedFile::FlushRegion(MemoryMappedRegion& region, uint64_t offset, uint32_t size, bool async)
+    {
+        if (!HE_VERIFY(IsOpen(), HE_MSG("MemoryMappedFile is not open")))
+        {
+            return Result::InvalidParameter;
+        }
+
+        if (!HE_VERIFY(m_accessMode != FileAccessMode::Read, HE_MSG("MemoryMappedFile is read-only and cannot be flushed")))
+        {
+            return Result::InvalidParameter;
+        }
+
+        if (!HE_VERIFY(region.data != nullptr, HE_MSG("MemoryMappedRegion is not mapped")))
+        {
+            return Result::InvalidParameter;
+        }
+
+        if (!HE_VERIFY(offset < region.size,
+            HE_MSG("Offset is beyond the end of the region"),
+            HE_VAL(offset),
+            HE_VAL(size),
+            HE_KV(region_size, region.size)))
+        {
+            return Result::InvalidParameter;
+        }
+
+    #if HE_ENABLE_ASSERTIONS
+        if (!HE_VERIFY(region.parentHandle == m_mappingHandle, HE_MSG("MemoryMappedRegion is not from this MemoryMappedFile")))
+        {
+            return Result::InvalidParameter;
+        }
+    #endif
+
+        uint8_t* ptr = static_cast<uint8_t*>(region.data) + offset;
+        HE_ASSERT(ptr >= static_cast<uint8_t*>(region.alignedData));
+
+        if (!HE_VERIFY(ptr < static_cast<uint8_t*>(region.alignedData) + region.alignedSize,
+            HE_MSG("Offset is beyond the end of the region"),
+            HE_VAL(offset),
+            HE_VAL(size),
+            HE_KV(region_size, region.size)))
+        {
+            return Result::InvalidParameter;
+        }
+
+        if (!HE_VERIFY(ptr + size <= static_cast<uint8_t*>(region.alignedData) + region.alignedSize,
+            HE_MSG("Offset + size is beyond the end of the region"),
+            HE_VAL(offset),
+            HE_VAL(size),
+            HE_KV(region_size, region.size)))
+        {
+            return Result::InvalidParameter;
+        }
+
+        if (!::FlushViewOfFile(ptr, size))
+            return Result::FromLastError();
+
+        if (!async)
+        {
+            HANDLE fileHandle = reinterpret_cast<HANDLE>(m_fileHandle);
+            if (!::FlushFileBuffers(fileHandle))
+                return Result::FromLastError();
+        }
+
+        return Result::Success;
     }
 }
 

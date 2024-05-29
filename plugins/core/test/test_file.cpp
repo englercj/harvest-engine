@@ -508,7 +508,7 @@ HE_TEST(core, file, SetTimes)
 }
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST(core, file, MemoryMap)
+HE_TEST(core, file, MemoryMappedFile)
 {
     constexpr const char TestPath[] = "a3ac923d-6eb3-497f-ad88-772e9b4b9bdb";
     File::Remove(TestPath);
@@ -522,18 +522,26 @@ HE_TEST(core, file, MemoryMap)
     HE_EXPECT(f.IsOpen());
 
     {
-        MemoryMap mm;
-        r = mm.Map(f, MemoryMapMode::ReadWrite);
+        MemoryMappedFile mm;
+        r = mm.Open(f, FileAccessMode::ReadWrite);
         HE_EXPECT(r, r);
-        HE_EXPECT(mm.IsMapped());
+        HE_EXPECT(mm.IsOpen());
 
-        MemSet(mm.m_data, 0x55, 4);
+        MemoryMappedRegion region;
+        r = mm.MapRegion(region, 0, 4);
+        HE_EXPECT(r, r);
+        HE_EXPECT_NE_PTR(region.data, nullptr);
 
-        r = mm.Flush();
+        MemSet(region.data, 0x55, 4);
+
+        r = mm.FlushRegion(region);
         HE_EXPECT(r, r);
 
-        mm.Unmap();
-        HE_EXPECT(!mm.IsMapped());
+        r = mm.UnmapRegion(region);
+        HE_EXPECT(r, r);
+
+        mm.Close();
+        HE_EXPECT(!mm.IsOpen());
     }
 
     uint32_t val = 0;
@@ -545,5 +553,4 @@ HE_TEST(core, file, MemoryMap)
     HE_EXPECT(!f.IsOpen());
 
     File::Remove(TestPath);
-
 }

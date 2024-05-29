@@ -314,94 +314,292 @@ namespace he
         return Result::Success;
     }
 
-    MemoryMap::MemoryMap() noexcept
-        : m_data(nullptr)
-        , m_size(0)
+    MemoryMappedFile::MemoryMappedFile() noexcept
+        : m_fileHandle(-1)
+        , m_mappingHandle(0)
     {}
 
-    MemoryMap::MemoryMap(MemoryMap&& x) noexcept
-        : m_data(Exchange(x.m_data, nullptr))
-        , m_size(Exchange(x.m_size, 0))
+    MemoryMappedFile::MemoryMappedFile(MemoryMappedFile&& x) noexcept
+        : m_fileHandle(Exchange(x.m_fileHandle, -1))
+        , m_mappingHandle(Exchange(x.m_handle, 0))
     {}
 
-    MemoryMap::~MemoryMap() noexcept
+    MemoryMappedFile::~MemoryMappedFile() noexcept
     {
-        Unmap();
+        Close();
     }
 
-    MemoryMap& MemoryMap::operator=(MemoryMap&& x) noexcept
+    MemoryMappedFile& MemoryMappedFile::operator=(MemoryMappedFile&& x) noexcept
     {
-        Unmap();
-        m_data = Exchange(x.m_data, nullptr);
-        m_size = Exchange(x.m_size, 0);
+        m_fileHandle = Exchange(x.m_fileHandle, -1);
+        m_mappingHandle = Exchange(x.m_mappingHandle, 0);
+
+        m_fileSize = Exchange(x.m_fileSize, 0);
+        m_accessMode = Exchange(x.m_accessMode, FileAccessMode::Read);
+
+    #if HE_ENABLE_ASSERTIONS
+        HE_VERIFY(m_openRegionsCount == 0, HE_MSG("MemoryMappedFile begin moved into with open regions. This is a leak."), HE_VAL(m_openRegionsCount));
+        m_openRegionsCount = Exchange(x.m_openRegionsCount, 0);
+    #endif
         return *this;
     }
 
-    Result MemoryMap::Map(const File& file, MemoryMapMode mode, uint64_t offset, uint32_t size)
+    Result MemoryMappedFile::Open(const char* path, FileAccessMode access, FileCreateMode create, FileOpenFlag flags)
     {
-        HE_ASSERT(m_data == nullptr);
-        HE_ASSERT(IsAligned(offset, GetSystemInfo().pageSize), HE_KV(offset, offset), HE_KV(page_size, GetSystemInfo().pageSize));
+        File file;
+        Result rc = file.Open(path, access, create, flags);
+        if (rc != Result::Success)
+            return rc;
 
+        return Open(file, access);
+    }
+
+    Result MemoryMappedFile::Open(const File& file, MemoryMapMode mode)
+    {
         if (!file.IsOpen())
             return Result::InvalidParameter;
 
-        if (size == 0)
+        if (!HE_VERIFY(!IsOpen(),
+            HE_MSG("MemoryMappedFile is already open, will close first")))
         {
-            const uint64_t fileSize = file.GetSize();
-            HE_ASSERT(fileSize <= Limits<uint32_t>::Max);
-            size = static_cast<uint32_t>(file.GetSize());
+            Close();
         }
 
-        int prot = PROT_READ;
-
-        if (mode == MemoryMapMode::ReadWrite)
-            prot |= PROT_WRITE;
-
-        int flags = MAP_SHARED | MAP_FILE;
-
-        m_data = mmap(nullptr, size, prot, flags, file.m_fd, offset);
-
-        if (m_data == MAP_FAILED)
+        if (!HE_VERIFY(mode != FileAccessMode::Write,
+            HE_MSG("Files can not be memory mapped for write-only access")))
         {
-            Result r = Result::FromLastError();
-            Unmap();
-            return r;
+            return Result::InvalidParameter;
         }
-        m_size = size;
 
-    #ifdef MADV_DONTFORK
-        if (madvise(m_data, m_size, MADV_DONTFORK) != 0)
-            return Result::FromLastError();
+        m_fileHandle = dup(static_cast<int>(file.m_fd));
+        m_fileSize = file.GetSize();
+        m_accessMode = mode;
+
+        return Result::Success;
+    }
+
+    void MemoryMappedFile::Close()
+    {
+    #if HE_ENABLE_ASSERTIONS
+        HE_VERIFY(m_openRegionsCount == 0, HE_MSG("MemoryMappedFile closed with open regions. This is a leak."), HE_VAL(m_openRegionsCount));
     #endif
 
-    #ifdef MADV_NOHUGEPAGE
-        madvise(m_data, m_size, MADV_NOHUGEPAGE);
+        if (m_fileHandle != -1)
+        {
+            close(static_cast<int>(m_fileHandle));
+        }
+
+        m_fileHandle = -1;
+        m_fileSize = 0;
+
+    #if HE_ENABLE_ASSERTIONS
+        m_openRegionsCount = 0;
+    #endif
+    }
+
+    bool MemoryMappedFile::IsOpen() const
+    {
+        return m_fileHandle != -1;
+    }
+
+    Result MemoryMappedFile::MapRegion(MemoryMappedRegion& region, uint64_t offset, uint32_t size, bool preload)
+    {
+        if (!HE_VERIFY(IsOpen(), HE_MSG("MemoryMappedFile is not open")))
+        {
+            return Result::InvalidParameter;
+        }
+
+        if (!HE_VERIFY(region.data == nullptr, HE_MSG("MemoryMappedRegion is already mapped")))
+        {
+            return Result::InvalidParameter;
+        }
+
+        if (!HE_VERIFY(offset < m_fileSize, HE_MSG("Offset is beyond the end of the file")))
+        {
+            return Result::InvalidParameter;
+        }
+
+        size = Min(size, static_cast<uint32_t>(m_fileSize - offset));
+        if (!HE_VERIFY(size > 0, HE_MSG("Cannot map zero bytes of a MemoryMappedFile")))
+        {
+            return Result::InvalidParameter;
+        }
+
+        int access = 0;
+        switch (m_accessMode)
+        {
+            case FileAccessMode::Read:
+                access = PROT_READ;
+                break;
+            case FileAccessMode::Write:
+                access = PROT_WRITE;
+                break;
+            case FileAccessMode::ReadWrite:
+                access = PROT_READ | PROT_WRITE;
+                break;
+        }
+
+        if (!HE_VERIFY(access != 0))
+        {
+            return Result::InvalidParameter;
+        }
+
+        int flags = MAP_FILE;
+
+        if (HasFlag(access, PROT_WRITE))
+        {
+            flags |= MAP_SHARED;
+        }
+        else
+        {
+            flags |= MAP_PRIVATE;
+        }
+
+        if (preload)
+        {
+            flags |= MAP_POPULATE;
+        }
+
+        const uint32_t pageSize = GetSystemInfo().pageSize;
+        const uint64_t alignedOffset = AlignDown(offset, pageSize);
+        const uint64_t alignedSize = AlignUp(size + (offset - alignedOffset), pageSize);
+
+        if (!HE_VERIFY(alignedSize <= Limits<uint32_t>::Max,
+            HE_MSG("Region size is too large for a 32-bit size value."),
+            HE_VAL(offset),
+            HE_VAL(size),
+            HE_VAL(alignedOffset),
+            HE_VAL(alignedSize)))
+        {
+            return Result::InvalidParameter;
+        }
+
+        region.alignedData = mmap(nullptr, static_cast<size_t>(alignedSize), access, flags, static_cast<int>(m_fileHandle), alignedOffset);
+
+        if (region.alignedData == MAP_FAILED || region.alignedData == nullptr)
+            return Result::FromLastError();
+
+        region.alignedSize = static_cast<uint32_t>(alignedSize);
+        region.data = static_cast<uint8_t*>(region.alignedData) + (offset - alignedOffset);
+        region.size = size;
+
+    #if HE_ENABLE_ASSERTIONS
+        region.parentHandle = m_fileHandle;
+        ++m_openRegionsCount;
+    #endif
+
+    #if defined(MADV_DONTFORK)
+        madvise(region.alignedData, region.alignedSize, MADV_DONTFORK);
+    #endif
+
+    // TODO: Need to test the effect of avoiding huge pages and see if that's something we want to do.
+    #if defined(MADV_NOHUGEPAGE) && 0
+        madvise(region.alignedData, region.alignedSize, MADV_NOHUGEPAGE);
     #endif
 
         return Result::Success;
     }
 
-    bool MemoryMap::IsMapped() const
+    Result MemoryMappedFile::UnmapRegion(MemoryMappedRegion& region)
     {
-        return m_data != nullptr && m_data != MAP_FAILED;
+        if (!HE_VERIFY(IsOpen(), HE_MSG("MemoryMappedFile is not open")))
+        {
+            return Result::InvalidParameter;
+        }
+
+    #if HE_ENABLE_ASSERTIONS
+        if (!HE_VERIFY(region.parentHandle == m_fileHandle, HE_MSG("MemoryMappedRegion is not from this MemoryMappedFile")))
+        {
+            return Result::InvalidParameter;
+        }
+    #endif
+
+        if (region.alignedData != nullptr)
+        {
+            const int rc = munmap(region.alignedData, region.alignedSize);
+            if (rc != 0)
+            {
+                return Result::FromLastError();
+            }
+        }
+
+        region.data = nullptr;
+        region.size = 0;
+        region.alignedData = nullptr;
+        region.alignedSize = 0;
+
+    #if HE_ENABLE_ASSERTIONS
+        region.parentHandle = nullptr;
+
+        if (HE_VERIFY(m_openRegionsCount > 0, HE_MSG("MemoryMappedFile has no open regions to unmap.")))
+        {
+            --m_openRegionsCount;
+        }
+    #endif
+        return Result::Success;
     }
 
-    void MemoryMap::Unmap()
+    Result MemoryMappedFile::FlushRegion(MemoryMappedRegion& region, uint64_t offset, uint32_t size, bool async)
     {
-        if (IsMapped())
-            munmap(m_data, m_size);
+        if (!HE_VERIFY(IsOpen(), HE_MSG("MemoryMappedFile is not open")))
+        {
+            return Result::InvalidParameter;
+        }
 
-        m_data = nullptr;
-        m_size = 0;
-    }
+        if (!HE_VERIFY(m_accessMode != FileAccessMode::Read, HE_MSG("MemoryMappedFile is read-only and cannot be flushed")))
+        {
+            return Result::InvalidParameter;
+        }
 
-    Result MemoryMap::Flush(uint64_t offset, uint32_t size, bool async)
-    {
-        HE_ASSERT(IsMapped());
+        if (!HE_VERIFY(region.data != nullptr, HE_MSG("MemoryMappedRegion is not mapped")))
+        {
+            return Result::InvalidParameter;
+        }
 
-        uint8_t* ptr = static_cast<uint8_t*>(m_data) + offset;
+        if (!HE_VERIFY(offset < region.size,
+            HE_MSG("Offset is beyond the end of the region"),
+            HE_VAL(offset),
+            HE_VAL(size),
+            HE_KV(region_size, region.size)))
+        {
+            return Result::InvalidParameter;
+        }
+
+    #if HE_ENABLE_ASSERTIONS
+        if (!HE_VERIFY(region.parentHandle == m_fileHandle, HE_MSG("MemoryMappedRegion is not from this MemoryMappedFile")))
+        {
+            return Result::InvalidParameter;
+        }
+    #endif
+
+        // The pointer for msync must be page aligned, so we need to fixup our pointer and sync
+        // size to accommodate.
+        const uint32_t pageSize = GetSystemInfo().pageSize;
+        uint8_t* ptr = static_cast<uint8_t*>(region.data) + offset;
+        uint8_t* alignedPtr = AlignDown(ptr, pageSize);
+        HE_ASSERT(alignedPtr >= static_cast<uint8_t*>(region.alignedData));
+
+        if (!HE_VERIFY(alignedPtr < static_cast<uint8_t*>(region.alignedData) + region.alignedSize,
+            HE_MSG("Offset is beyond the end of the region"),
+            HE_VAL(offset),
+            HE_VAL(size),
+            HE_KV(region_size, region.size)))
+        {
+            return Result::InvalidParameter;
+        }
+
+        const uint64_t alignedSize = size + (ptr - alignedPtr);
+        if (!HE_VERIFY(alignedPtr + alignedSize <= static_cast<uint8_t*>(region.alignedData) + region.alignedSize,
+            HE_MSG("Offset + size is beyond the end of the region"),
+            HE_VAL(offset),
+            HE_VAL(size),
+            HE_KV(region_size, region.size)))
+        {
+            return Result::InvalidParameter;
+        }
+
         const int flags = async ? MS_ASYNC : MS_SYNC;
-        const int rc = msync(ptr, size, flags);
+        const int rc = msync(alignedPtr, alignedSize, flags);
         return rc ? Result::FromLastError() : Result::Success;
     }
 }

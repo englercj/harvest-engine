@@ -88,13 +88,6 @@ namespace he
     };
     HE_ENUM_FLAGS(FileLockFlag);
 
-    /// Flags for behavior of a memory mapped file once opened.
-    enum class MemoryMapMode : uint8_t
-    {
-        Read,       ///< Map the file into read-only memory.
-        ReadWrite,  ///< Map the file into read-write memory.
-    };
-
     /// Structure that represents the attributes of a file.
     struct FileAttributes
     {
@@ -204,7 +197,8 @@ namespace he
         /// Opens the file at `path` in the given `mode` using behavior defined by `flags`.
         ///
         /// \param[in] path The filesystem path to open.
-        /// \param[in] mode The mode to open the file in.
+        /// \param[in] access The access to open the file with.
+        /// \param[in] create The creation behavior to apply when opening the file.
         /// \param[in] flags The behavior flags for operations on this file.
         /// \return The result of the operation.
         Result Open(const char* path, FileAccessMode access, FileCreateMode create, FileOpenFlag flags = FileOpenFlag::None);
@@ -335,67 +329,108 @@ namespace he
         intptr_t m_fd;
     };
 
+    /// A region of a file that has been memory-mapped.
+    struct MemoryMappedRegion
+    {
+        /// pointer to the data of the memory-mapped region.
+        void* data{ nullptr };
+
+        /// The size of the memory-mapped region in bytes.
+        uint32_t size{ 0 };
+
+    private:
+        friend class MemoryMappedFile;
+
+        // size is first to remove alignment padding
+        uint32_t alignedSize{ 0 };
+        void* alignedData{ nullptr };
+
+    #if HE_ENABLE_ASSERTIONS
+        intptr_t parentHandle{ 0 };
+    #endif
+    };
+
     /// Represents a memory-mapped file.
-    class MemoryMap
+    class MemoryMappedFile
     {
     public:
-        /// Constructs a memory map object.
-        MemoryMap() noexcept;
+        /// Constructs a memory-mapped file object.
+        MemoryMappedFile() noexcept;
 
-        /// Moves a memory map object.
-        MemoryMap(MemoryMap&& x) noexcept;
+        /// Moves a memory-mapped file object.
+        MemoryMappedFile(MemoryMappedFile&& x) noexcept;
 
-        /// Destructs a memory map object, and closes filesystem handles.
-        ~MemoryMap() noexcept;
+        /// Destructs a memory-mapped file object, and closes filesystem handles.
+        ~MemoryMappedFile() noexcept;
 
-        /// Moves a memory map object.
-        MemoryMap& operator=(MemoryMap&& x) noexcept;
+        /// Moves a memory-mapped file object.
+        MemoryMappedFile& operator=(MemoryMappedFile&& x) noexcept;
 
         // Copy operations are not allowed
-        MemoryMap(const MemoryMap&) = delete;
-        MemoryMap& operator=(const MemoryMap&) = delete;
+        MemoryMappedFile(const MemoryMappedFile&) = delete;
+        MemoryMappedFile& operator=(const MemoryMappedFile&) = delete;
 
-        /// Maps a file's content into a memory buffer.
+        /// Opens the memory-mapped file at `path` in the given `mode` using behavior defined by `flags`.
+        ///
+        /// \param[in] path The filesystem path to open.
+        /// \param[in] access The access to open the file with.
+        /// \param[in] create The creation behavior to apply when opening the file.
+        /// \param[in] flags The behavior flags for operations on this file.
+        /// \return The result of the operation.
+        Result Open(const char* path, FileAccessMode access, FileCreateMode create, FileOpenFlag flags = FileOpenFlag::None);
+
+        /// Opens the memory-mapped for an already open file object.
         ///
         /// \param[in] file The open file object to map into memory.
-        /// \param[in] mode The access mode for the memory map.
-        /// \param[in] offset Optional. Offset in bytes from the start of the file to begin the
-        ///     map section. This value must be aligned to the system allocation granularity.
-        /// \param[in] size Optional. Number of bytes to map. Zero will map the entire file.
-        /// \return The result of the mapping operation.
-        Result Map(const File& file, MemoryMapMode mode, uint64_t offset = 0, uint32_t size = 0);
+        /// \param[in] access The access mode for the memory map. This must match the access mode
+        ///     used to open the file.
+        /// \return The result of the operation.
+        Result Open(const File& file, FileAccessMode access);
 
-        /// Checks if a file is currently memory mapped.
+        /// Closes the memory-mapped file.
+        void Close();
+
+        /// Checks if the file is currently memory-mapped.
         ///
-        /// \return True if a file is memory mapped, false otherwise.
-        bool IsMapped() const;
+        /// \return True if the file is memory-mapped, false otherwise.
+        bool IsOpen() const;
+
+        /// Maps a file's content into this process's virtual memory space.
+        ///
+        /// \param[out] region The memory-mapped region to fill with the mapped file data.
+        /// \param[in] offset Optional. Offset in bytes from the start of the file to begin the
+        ///     mapped section.
+        /// \param[in] size Optional. Number of bytes to map. Zero will map the entire file.
+        /// \param[in] preload Optional. Set to true to pre-fault pages and load data into memory.
+        /// \return The result of the mapping operation.
+        Result MapRegion(MemoryMappedRegion& region, uint64_t offset = 0, uint32_t size = 0, bool preload = false);
 
         /// Unmaps the file from memory.
-        void Unmap();
-
-        /// Flushes a section of the memory mapped data to the underlying file.
         ///
-        /// \param[in] offset Number of bytes from the start of the mapped buffer to begin the flush.
-        /// \param[in] size Number of bytes to flush to the file.
+        /// \return The result of the unmap operation.
+        Result UnmapRegion(MemoryMappedRegion& region);
+
+        /// Flushes a section of the memory-mapped data to the underlying file storage on disk.
+        ///
+        /// \param[in] region The memory-mapped region to flush to disk.
+        /// \param[in] offset Optional. Number of bytes from the start of the mapped region to
+        ///     begin the flush. Default is zero.
+        /// \param[in] size Optional. Number of bytes to flush to the file, default is zero which
+        ///     means to flush from offset to the end of the region.
         /// \param[in] async Optional. Set to true to not block while the data is being flushed
         ///     to disk. The default value is false, which blocks until the data has been flushed.
         /// \return The result of the flush operation.
-        Result Flush(uint64_t offset, uint32_t size, bool async = false);
+        Result FlushRegion(MemoryMappedRegion& region, uint64_t offset = 0, uint32_t size = 0, bool async = false);
 
-        /// Flushes the entire memory mapped region of a file to the underlying file.
-        ///
-        /// \param[in] async Optional. Set to true to not block while the data is being flushed
-        ///     to disk. The default value is false, which blocks until the data has been flushed.
-        /// \return The result of the flush operation.
-        Result Flush(bool async = false) { return Flush(0, m_size, async); }
+    private:
+        intptr_t m_fileHandle;
+        intptr_t m_mappingHandle;
 
-    public:
-        void* m_data;
-        uint32_t m_size;
+        uint64_t m_fileSize{ 0 };
+        FileAccessMode m_accessMode{ FileAccessMode::Read };
 
-    #if defined(HE_PLATFORM_API_WIN32)
-        void* m_handle;
-        void* m_fileHandle;
+    #if HE_ENABLE_ASSERTIONS
+        uint32_t m_openRegionsCount{ 0 };
     #endif
     };
 

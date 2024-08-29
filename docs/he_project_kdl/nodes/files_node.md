@@ -26,9 +26,11 @@ The `action` property informs the build system how the files should be handled. 
 
 The valid action values are:
 
+- `appxmanifest` - Treat the file as an AppxManifest (UWP package manifest).
 - `build` - Compile and link as source code files. This is the default action.
 - `copy` - Copy the files to the target directory.
-- `include` - Treat as include files.
+- `framework` - Treat the file as an xcode framework.
+- `image` - Treat the file as an image.
 - `natvis` - Natvis files used for debugging visualizations.
 - `none` - Do nothing with the files.
 - `resource` - Copy or embed the files with project resources.
@@ -37,17 +39,22 @@ The valid action values are:
 
 The `rule` property is only relevant when the `action` property is set to `build`. It defines what build rule should be used for the files. By default a rule is chosen automatically based on file extension. Custom rules can be defined using the [`build_rule`](build_rule_node.md). The built-in rules are:
 
+- `default` - Select the best rule based on file extension. This is the default behavior.
+- `asm` - Compile and link as Assembly source code files.
 - `c` - Compile and link as C source code files.
 - `cpp` - Compile and link as C++ source code files.
 - `csharp` - Compile and link as C# source code files.
 - `fx` - Compile and link as HLSL source code files.
+- `include` - Treat as include files.
+- `objc` - Compile and link as Objective-C source code files.
+- `objcpp` - Compile and link as Objective-C++ source code files.
 - `midl` - Compile and link as MIDL source code files.
-- `masm` - Compile and link as MASM source code files.
+- `swift` - Compile and link as Swift source code files.
 
 ## Scopes
 
-- [`project`](project_node.md) - Only when using the `match` argument.
 - [`module`](module_node.md)
+- [`project`](project_node.md) - Only when using the `match` argument.
 
 ## Example
 

@@ -21,7 +21,7 @@ None.
 
 ### `kind` property
 
-The `kind` property informs the build system what kind of relationship this module has with the dependency.
+The `kind` property is a string value that informs the build system what kind of relationship this module has with the dependency.
 
 The valid kind values are:
 
@@ -32,10 +32,11 @@ The valid kind values are:
 - `file` - Create a link dependency on a library file. The path is relative to the install directory of the plugin.
 - `system` - Create a link dependency on a system library. The library must be available in the library search path.
     * HE Make will automatically apply proper naming conventions for the target `system`, so don't specify prefixes (such as `lib`) or suffixes (such as `.a`) to system library dependencies.
+    * For XCode frameworks, *do* include the `.framework` extension. For example, `CoreFoundation.framework`.
 
 ### `whole_archive` property
 
-The `whole_archive` property tells the compiler to include every object in an archive in the link. Normally the compiler will search archives to find only the object files necessary for linking.
+The `whole_archive` property is a boolean value that, when set to true, configures the compiler to include every object in an archive when linking. Normally the compiler will search archives to find only the object files necessary for linking.
 
 The valid values are:
 
@@ -45,6 +46,7 @@ The valid values are:
 ## Scopes
 
 - [`module`](module_node.md)
+- [`public`](public_node.md)
 
 ## Example
 

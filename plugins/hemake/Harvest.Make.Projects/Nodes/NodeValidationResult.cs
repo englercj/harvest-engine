@@ -13,6 +13,11 @@ public class NodeValidationResult(bool isValid, object? errorContent = null)
     private static readonly NodeValidationResult s_valid = new(true, null);
     public static NodeValidationResult Valid => s_valid;
 
+    public static NodeValidationResult Invalid(object? errorContent)
+    {
+        return new NodeValidationResult(false, errorContent);
+    }
+
     public static bool operator ==(NodeValidationResult left, NodeValidationResult right)
     {
         return Equals(left, right);

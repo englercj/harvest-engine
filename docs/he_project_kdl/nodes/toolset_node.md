@@ -7,9 +7,9 @@ Note that this node does not set which toolset is used for compilation. That is 
 ## Arguments
 
 1. (string) - Required. Which set of build tools is being configured. Valid values are:
-    * `msc` - Microsoft Visual C++ Compiler
-    * `gcc` - GNU Compiler Collection
     * `clang` - C language frontend for LLVM
+    * `gcc` - GNU Compiler Collection
+    * `msvc` - Microsoft Visual C++ Compiler
 
 ## Properties
 
@@ -35,5 +35,5 @@ None.
 ## Example
 
 ```kdl
-build_tools msvc arch=x86_64
+toolset msvc arch=x86_64
 ```

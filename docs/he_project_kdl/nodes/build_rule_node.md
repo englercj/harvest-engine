@@ -28,9 +28,9 @@ In the properties and children of the `build_rule` node an additional [Token Con
 
 ## Scopes
 
-- [`project`](project_node.md)
-- [`plugin`](plugin_node.md)
 - [`module`](module_node.md)
+- [`plugin`](plugin_node.md)
+- [`project`](project_node.md)
 
 ## Example
 

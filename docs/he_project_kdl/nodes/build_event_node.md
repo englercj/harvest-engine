@@ -6,8 +6,8 @@ Define a set of commands to run during a build lifecycle event.
 
 1. (string) - Required. The event to run the commands for. Valid values are:
     * `prebuild` - Run before starting build procedures.
-    * `prelink` - Run after source files have been compiled, but before they are linked.
     * `postbuild` - Run after the build has completed.
+    * `prelink` - Run after source files have been compiled, but before they are linked.
 
 ## Properties
 

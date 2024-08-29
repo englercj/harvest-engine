@@ -3,11 +3,13 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.9.34723.18
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Harvest.Make", "Harvest.Make\Harvest.Make.csproj", "{4C2AFA99-159A-4654-B283-D380D5AD74A8}"
-EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Harvest.Kdl", "Harvest.Kdl\Harvest.Kdl.csproj", "{C57A6929-568B-41A5-957B-6BECAA403504}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Harvest.Make.Projects", "Harvest.Make.Projects\Harvest.Make.Projects.csproj", "{B36E0CC1-F374-4615-BAC6-5075BA4693F7}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Harvest.Make.App", "Harvest.Make.App\Harvest.Make.App.csproj", "{4C2AFA99-159A-4654-B283-D380D5AD74A8}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Harvest.Make.Common", "Harvest.Make.Common\Harvest.Make.Common.csproj", "{B05E32F8-7BBF-4D26-9236-DD042C772B91}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Harvest.Make.Projects", "Harvest.Make.Projects\Harvest.Make.Projects.csproj", "{B36E0CC1-F374-4615-BAC6-5075BA4693F7}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -27,6 +29,10 @@ Global
 		{B36E0CC1-F374-4615-BAC6-5075BA4693F7}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{B36E0CC1-F374-4615-BAC6-5075BA4693F7}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{B36E0CC1-F374-4615-BAC6-5075BA4693F7}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B05E32F8-7BBF-4D26-9236-DD042C772B91}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B05E32F8-7BBF-4D26-9236-DD042C772B91}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B05E32F8-7BBF-4D26-9236-DD042C772B91}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B05E32F8-7BBF-4D26-9236-DD042C772B91}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

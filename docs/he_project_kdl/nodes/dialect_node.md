@@ -34,8 +34,8 @@ None.
 
 ## Scopes
 
-- [`project`](project_node.md)
 - [`module`](module_node.md)
+- [`project`](project_node.md)
 
 ## Example
 

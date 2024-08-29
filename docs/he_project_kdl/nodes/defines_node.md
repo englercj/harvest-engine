@@ -21,6 +21,7 @@ None.
 
 - [`module`](module_node.md)
 - [`project`](project_node.md)
+- [`public`](public_node.md)
 
 ## Example
 

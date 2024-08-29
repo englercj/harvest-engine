@@ -21,6 +21,7 @@ A set of directory paths to search for includes.
 ## Scopes
 
 - [`module`](module_node.md)
+- [`public`](public_node.md)
 
 ## Example
 

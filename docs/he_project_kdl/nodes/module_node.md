@@ -22,7 +22,7 @@ A definition of a module provided by a plugin.
     * `cpp` - C++
     * `csharp` - C#
 - `project` (string) - Optional. Path to a project file to use instead of generating one.
-- `hemake_ext` (boolean)- Optional. When `#true` HE Make will load this project as an extension.
+- `hemake_extension` (boolean)- Optional. When `#true` HE Make will load this project as an extension.
 
 ## Children
 
@@ -40,7 +40,6 @@ A definition of a module provided by a plugin.
 - [`import`](import_node.md)
 - [`link_options`](link_options_node.md)
 - [`optimize`](optimize_node.md)
-- [`private`](private_node.md)
 - [`public`](public_node.md)
 - [`runtime`](runtime_node.md)
 - [`sanitize`](sanitize_node.md)
@@ -59,13 +58,10 @@ A definition of a module provided by a plugin.
 ```kdl
 module he_core kind=static group="engine/libs" {
     files { "include/**"; "src/**"; "debugger/**" }
+    includedirs { "src" }
 
     public {
         includedirs { "include" }
-    }
-
-    private {
-        includedirs { "src" }
     }
 }
 ```

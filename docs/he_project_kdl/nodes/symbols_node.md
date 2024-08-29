@@ -1,11 +1,11 @@
 # `symbols` node
 
-Configure the compiler's symbol table generation behavior.
+Configure the toolset's symbol table generation behavior.
 
 ## Arguments
 
 1. (string) - Required. The type of symbol table, if any, to generate. Valid values are:
-    * `default` - Use the compiler's default behavior. This is the default value.
+    * `default` - Use the toolset's default behavior. This is the default value.
     * `on` - Enable symbol generation.
     * `off` - Use the Release runtime libraries.
 

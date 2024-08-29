@@ -1,12 +1,14 @@
 // Copyright Chad Engler
 
 using Harvest.Make.Attributes;
-using Harvest.Make.Services;
+using Harvest.Make.CliCommands;
+using Harvest.Make.Projects;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using System.Reflection;
+using System.CommandLine;
 
 namespace Harvest.Make;
 
@@ -33,14 +35,14 @@ class Program
         ProjectService projectService = new();
         if (projectPath is not null)
         {
-            await projectService.LoadProjectAsync(projectPath);
+            projectService.LoadProject(projectPath);
         }
 
         // Configure the services, including any services from plugins that provide extensions
         builder.Services.AllowResolvingKeyedServicesAsDictionary();
         builder.Services.AddHostedService<Application>();
         builder.Services.AddSingleton<IProjectService>(projectService);
-        RegisterServicesFromAssembly(builder.Services, Assembly.GetExecutingAssembly());
+        RegisterTypesFromAssembly(builder.Services, Assembly.GetExecutingAssembly());
 
         // TODO
         //foreach (IPlugin plugin in projectService.Plugins)
@@ -49,7 +51,7 @@ class Program
         //    {
         //        string extensionPath = Path.Combine(plugin.FilePath, extension);
         //        Assembly assembly = LoadAppExtension(extensionPath);
-        //        RegisterServicesFromAssembly(builder.Services, assembly);
+        //        RegisterTypesFromAssembly(builder.Services, assembly);
         //    }
         //}
 
@@ -65,7 +67,7 @@ class Program
         return loadContext.LoadFromAssemblyName(assemblyName);
     }
 
-    static void RegisterServicesFromAssembly(IServiceCollection services, Assembly assembly)
+    static void RegisterTypesFromAssembly(IServiceCollection services, Assembly assembly)
     {
         foreach (Type type in assembly.GetTypes())
         {
@@ -74,26 +76,48 @@ class Program
                 continue;
             }
 
-            ServiceAttribute? attribute = type.GetCustomAttribute<ServiceAttribute>();
-            if (attribute is null)
+            CliCommandAttribute? cliCommandAttribute = type.GetCustomAttribute<CliCommandAttribute>();
+            if (cliCommandAttribute is not null)
             {
+                RegisterCliCommand(services, type, cliCommandAttribute);
                 continue;
             }
 
-            if (attribute.Interfaces.Count == 0)
+            ServiceAttribute? attribute = type.GetCustomAttribute<ServiceAttribute>();
+            if (attribute is not null)
             {
-                RegisterService(services, type, type, attribute);
+                RegisterService(services, type, attribute);
+                continue;
             }
-            else
+        }
+    }
+
+    static void RegisterCliCommand(IServiceCollection services, Type type, CliCommandAttribute attribute)
+    {
+        if (!type.IsAssignableTo(typeof(ICliCommand)))
+        {
+            throw new InvalidOperationException($"Cannot register CliCommand {type}. It does not implement ICliCommand.");
+        }
+
+        ServiceDescriptor descriptor = new(typeof(ICliCommand), attribute.Name, type, ServiceLifetime.Singleton);
+        services.TryAddEnumerable(descriptor);
+    }
+
+    static void RegisterService(IServiceCollection services, Type type, ServiceAttribute attribute)
+    {
+        if (attribute.Interfaces.Count == 0)
+        {
+            RegisterService(services, type, type, attribute);
+        }
+        else
+        {
+            foreach (Type interfaceType in attribute.Interfaces)
             {
-                foreach (Type interfaceType in attribute.Interfaces)
+                if (!type.IsAssignableTo(interfaceType))
                 {
-                    if (!interfaceType.IsAssignableFrom(type))
-                    {
-                        throw new InvalidOperationException($"Cannot register Service {type}. It specifies interface {interfaceType} in the Service attribute, but does not implement it.");
-                    }
-                    RegisterService(services, interfaceType, type, attribute);
+                    throw new InvalidOperationException($"Cannot register Service {type}. It specifies interface {interfaceType} in the Service attribute, but does not implement it.");
                 }
+                RegisterService(services, interfaceType, type, attribute);
             }
         }
     }

@@ -5,7 +5,7 @@ Sets the level of warnings emitted by the toolset.
 ## Arguments
 
 1. (string) - Required. How warnings are considered. Valid values are:
-    * `default` - Use the toolset's default warning behavior. This is the behavior.
+    * `default` - Use the toolset's default behavior. This is the default value.
     * `all` - Enable all available warnings for the toolset.
     * `extra` - Enables extra warnings that are not typically enabled by the toolset.
     * `on` - Enables significant warnings from the toolset.

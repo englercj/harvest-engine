@@ -13,10 +13,8 @@ The root node of a Harvest Project structure.
 ## Children
 
 <!-- TODO:
-- hemake extensions
-- module extensions
-- lib_dirs (project/module)
-- wasm_opt_path(he.get_wasm_opt_path()) (project/module)
+- lib_dirs (project/module) - library search paths for `dependencies` node, needed?
+- wasm_opt_path(he.get_wasm_opt_path()) (project/module) - if wasm_opt is installed by hemake, how do we put it on the path? Does the wasm C# module do this setup for you? (Yes!)
 -->
 
 - [`build_options`](build_options_node.md)

@@ -9,24 +9,29 @@ public class PluginNode(KdlNode node) : NodeBase(node)
 {
     public const string NodeName = "plugin";
 
-    public static IReadOnlyList<string> NodeScopes =>
+    public static readonly IReadOnlyList<string> NodeScopes =
     [
         ProjectNode.NodeName,
     ];
 
-    public static IReadOnlyList<NodeArgument> NodeArguments =
+    public static readonly IReadOnlyList<NodeKdlValue> NodeArguments =
     [
-        NodeArgument<KdlString>.Required,
+        NodeKdlValue<KdlString>.Required,
     ];
 
-    public static IReadOnlyDictionary<string, NodeProperty> NodeProperties = new Dictionary<string, NodeProperty>()
+    public static readonly IReadOnlyDictionary<string, NodeKdlValue> NodeProperties = new Dictionary<string, NodeKdlValue>()
     {
-        { "version", NodeProperty<KdlString>.Required },
-        { "license", NodeProperty<KdlString>.Optional },
+        { "version", NodeKdlValue<KdlString>.Required },
+        { "license", NodeKdlValue<KdlString>.Optional },
     };
 
     public override string Name => NodeName;
     public override IReadOnlyList<string> Scopes => NodeScopes;
-    public override IReadOnlyList<NodeArgument> Arguments => NodeArguments;
-    public override IReadOnlyDictionary<string, NodeProperty> Properties => NodeProperties;
+    public override IReadOnlyList<NodeKdlValue> Arguments => NodeArguments;
+    public override IReadOnlyDictionary<string, NodeKdlValue> Properties => NodeProperties;
+
+    public string? PluginId => GetStringValue(0);
+
+    public string? Version => GetStringValue("version");
+    public string? License => GetStringValue("license");
 }

@@ -11,7 +11,7 @@ namespace Harvest.Kdl.Types;
 /// </summary>
 /// <typeparam name="T">The number type to wrap.</typeparam>
 [DebuggerDisplay("{Value}")]
-public class KdlNumber<T> : KdlValue<T>
+public class KdlNumber<T> : KdlValue<T> where T : struct, INumber<T>
 {
     public int Radix { get; } = 10;
 

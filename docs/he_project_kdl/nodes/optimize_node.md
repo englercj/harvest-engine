@@ -5,6 +5,7 @@ Set the optimization level and related compiler settings.
 ## Arguments
 
 1. (string) - Required. The optimization level to set. Valid values are:
+    * `default` - Use the toolset's default behavior. This is the default value.
     * `debug` - Disable all optimizations, but with debugger support passes.
     * `off` - Disable all optimization passes.
     * `balanced` - Enable balanced optimizations.
@@ -14,14 +15,14 @@ Set the optimization level and related compiler settings.
 ## Properties
 
 - `lto` (string) - Optional. Enable or disable link-time optimization. Valid values are:
-    * `default` - Use the compiler's default behavior. This is the default value.
+    * `default` - Use the toolset's default behavior. This is the default value.
     * `off` - Disable link-time optimization.
     * `on` - Enable link-time optimization.
-- `inlining` (string) - Optional. Modify the compiler's inlining behavior. Valid values are:
-    * `default` - Use the compiler's default behavior. This is the default value.
+- `inlining` (string) - Optional. Modify the toolset's inlining behavior. Valid values are:
+    * `default` - Use the toolset's default behavior. This is the default value.
     * `off` - Disable inlining.
     * `explicit` - Only inline functions explicitly specified as `inline`.
-    * `on` - Allow the compiler to inline any function it chooses.
+    * `on` - Allow the toolset to inline any function it chooses.
 
 ## Children
 

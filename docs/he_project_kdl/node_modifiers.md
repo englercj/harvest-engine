@@ -57,9 +57,7 @@ plugin mygame version="1.0.0" license="UNLICENSED" {
     // Extend the harvest editor's module definition to include a dependency
     // on mygame's editor module.
     +module he_editor {
-        private {
-            dependencies { mygame_editor }
-        }
+        dependencies { mygame_editor }
     }
 }
 ```

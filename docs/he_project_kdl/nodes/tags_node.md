@@ -4,18 +4,13 @@ A set of tags to activate in the scope. Tags don't modify any behavior by themse
 
 ## Arguments
 
-1. (string) - Optional. How to treat the set of items. Valid values are:
-    * `add` - Add the items to the set. This is the default behavior.
-    * `remove` - Remove the items from the set.
-    * `match` - Do not modify the set of items. Only update properties of matched items.
+1. (string) - Required. The list of tags to activate.
 
 ## Properties
 
 None.
 
 ## Children
-
-- `tag-name` - The name of a tag to make active.
 
 ## Scopes
 
@@ -27,7 +22,7 @@ None.
 ```kdl
 project "Harvest Engine" {
     when system=windows {
-        tags { win32 }
+        tags win32
     }
 
     when tags=win32 {}

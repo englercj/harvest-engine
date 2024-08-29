@@ -9,22 +9,26 @@ public class ProjectNode(KdlNode node) : NodeBase(node)
 {
     public const string NodeName = "project";
 
-    public IReadOnlyList<string> NodeScopes =>
+    public static readonly IReadOnlyList<string> NodeScopes =
     [
     ];
 
-    public IReadOnlyList<NodeArgument> NodeArguments =>
+    public static readonly IReadOnlyList<NodeKdlValue> NodeArguments =
     [
-        NodeArgument<KdlString>.Required,
+        NodeKdlValue<KdlString>.Required,
     ];
 
-    public IReadOnlyDictionary<string, NodeProperty> NodeProperties => new Dictionary<string, NodeProperty>()
+    public static readonly IReadOnlyDictionary<string, NodeKdlValue> NodeProperties = new Dictionary<string, NodeKdlValue>()
     {
-        { "start", NodeProperty<KdlString>.Optional },
+        { "start", NodeKdlValue<KdlString>.Optional },
     };
 
     public override string Name => NodeName;
     public override IReadOnlyList<string> Scopes => NodeScopes;
-    public override IReadOnlyList<NodeArgument> Arguments => NodeArguments;
-    public override IReadOnlyDictionary<string, NodeProperty> Properties => NodeProperties;
+    public override IReadOnlyList<NodeKdlValue> Arguments => NodeArguments;
+    public override IReadOnlyDictionary<string, NodeKdlValue> Properties => NodeProperties;
+
+    public string? ProjectName => GetStringValue(0);
+
+    public string? StartupModule => GetStringValue("start");
 }

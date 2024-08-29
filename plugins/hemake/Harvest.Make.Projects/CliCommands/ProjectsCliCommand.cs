@@ -3,43 +3,44 @@
 using DotMake.CommandLine;
 using Harvest.Make.CliCommands;
 using Harvest.Make.Projects.Generators;
-using Harvest.Make.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
-namespace Harvest.Make.Commands;
+namespace Harvest.Make.Projects.CliCommands;
 
-[CliCommand(
-    Description = "Generates IDE project files.",
-    Parent = typeof(RootCliCommand)
-)]
+[CliCommand(Description = "Generates IDE project files.")]
 public class ProjectsCliCommand
 {
-    public class BaseProjectGeneratorCliCommand : BaseProjectCliCommand
+    public abstract class BaseProjectGeneratorCliCommand(
+        ILogger logger,
+        IProjectGeneratorService generatorService,
+        IProjectService projectService) : ICliCommand
     {
-        protected readonly ILogger _logger;
-        protected readonly IProjectGeneratorService _generatorService;
+        protected readonly ILogger _logger = logger;
+        protected readonly IProjectService _projectService = projectService;
+        protected readonly IProjectGeneratorService _generatorService = generatorService;
 
-        public BaseProjectGeneratorCliCommand(
-            ILogger logger,
-            IProjectGeneratorService generatorService,
-            IProjectService projectService)
-            : base(projectService)
-        {
-            _logger = logger;
-            _generatorService = generatorService;
-        }
+        [CliOption(Name = "--project", Description = "The Harvest Engine project file for your project.", Required = true)]
+        public FileInfo? ProjectFile { get; set; }
 
-        public async Task<int> RunAsync()
+        public async Task<int> RunCommandAsync()
         {
-            if (ProjectService.ProjectPath is null)
+            GenerateProjectResult result = await _generatorService.GenerateProjectFilesAsync();
+            if (!result.Success)
             {
-                _logger.LogError("No project file specified.");
-                return 1;
+                _logger.LogError(result.ErrorMessage);
+                return -1;
             }
 
-            await _generatorService.GenerateProjectFilesAsync();
             return 0;
+        }
+
+        public void ValidateCommand()
+        {
+            if (ProjectFile is null)
+            {
+                throw new Exception("Project path not specified, or doesn't exist (--project)");
+            }
         }
     }
 

@@ -9,29 +9,27 @@ public class ImportNode(KdlNode node) : NodeBase(node)
 {
     public const string NodeName = "import";
 
-    public static IReadOnlyList<string> NodeScopes =>
+    public static readonly IReadOnlyList<string> NodeScopes =
     [
-        // TODO: install node
+        InstallNode.NodeName,
         ModuleNode.NodeName,
         PluginNode.NodeName,
         ProjectNode.NodeName,
     ];
 
-    public static IReadOnlyList<NodeArgument> NodeArguments =
+    public static readonly IReadOnlyList<NodeKdlValue> NodeArguments =
     [
-        NodeArgument<KdlString>.Required,
+        NodeKdlValue<KdlString>.Required,
     ];
 
-    public static IReadOnlyDictionary<string, NodeProperty> NodeProperties = new Dictionary<string, NodeProperty>()
+    public static readonly IReadOnlyDictionary<string, NodeKdlValue> NodeProperties = new Dictionary<string, NodeKdlValue>()
     {
-        { "version", NodeProperty<KdlString>.Required },
-        { "license", NodeProperty<KdlString>.Optional },
     };
 
     public override string Name => NodeName;
     public override IReadOnlyList<string> Scopes => NodeScopes;
-    public override IReadOnlyList<NodeArgument> Arguments => NodeArguments;
-    public override IReadOnlyDictionary<string, NodeProperty> Properties => NodeProperties;
+    public override IReadOnlyList<NodeKdlValue> Arguments => NodeArguments;
+    public override IReadOnlyDictionary<string, NodeKdlValue> Properties => NodeProperties;
 
-    public string? ImportPath => (Node.Arguments[0] as KdlString)?.Value;
+    public string? ImportPath => GetStringValue(0);
 }

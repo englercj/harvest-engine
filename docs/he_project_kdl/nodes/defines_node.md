@@ -7,7 +7,7 @@ A set of preprocessor symbols to be defined.
 1. (string) - Optional. How to treat the set of items. Valid values are:
     * `add` - Add the items to the set. This is the default behavior.
     * `remove` - Remove the items from the set.
-    * `match` - Do not modify the set of items. Only update properties of matched items.
+    * `modify` - Do not modify the set of items. Only update properties of matched items.
 
 ## Properties
 
@@ -20,6 +20,7 @@ None.
 ## Scopes
 
 - [`module`](module_node.md)
+- [`private`](private_node.md)
 - [`project`](project_node.md)
 - [`public`](public_node.md)
 

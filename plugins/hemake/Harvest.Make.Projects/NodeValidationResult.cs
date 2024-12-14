@@ -1,22 +1,14 @@
 // Copyright Chad Engler
 
-namespace Harvest.Make.Projects.Nodes;
+namespace Harvest.Make.Projects;
 
 public class NodeValidationResult(bool isValid, object? errorContent = null)
 {
-    private readonly bool _isValid = isValid;
-    public bool IsValid => _isValid;
+    public bool IsValid => isValid;
+    public object? ErrorContent => errorContent;
 
-    private readonly object? _errorContent = errorContent;
-    public object? ErrorContent => _errorContent;
-
-    private static readonly NodeValidationResult s_valid = new(true, null);
-    public static NodeValidationResult Valid => s_valid;
-
-    public static NodeValidationResult Invalid(object? errorContent)
-    {
-        return new NodeValidationResult(false, errorContent);
-    }
+    public static NodeValidationResult Valid { get; } = new(true, null);
+    public static NodeValidationResult Error(object? errorContent) => new NodeValidationResult(false, errorContent);
 
     public static bool operator ==(NodeValidationResult left, NodeValidationResult right)
     {
@@ -36,8 +28,7 @@ public class NodeValidationResult(bool isValid, object? errorContent = null)
             return true;
         }
 
-        NodeValidationResult? vr = obj as NodeValidationResult;
-        if (vr is not null)
+        if (obj is NodeValidationResult vr)
         {
             return IsValid == vr.IsValid && ErrorContent == vr.ErrorContent;
         }
@@ -47,6 +38,6 @@ public class NodeValidationResult(bool isValid, object? errorContent = null)
 
     public override int GetHashCode()
     {
-        return IsValid.GetHashCode() ^ (ErrorContent is null ? int.MinValue : ErrorContent).GetHashCode();
+        return IsValid.GetHashCode() ^ (ErrorContent is null ? int.MinValue : ErrorContent.GetHashCode());
     }
 }

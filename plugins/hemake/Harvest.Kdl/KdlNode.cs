@@ -6,28 +6,30 @@ namespace Harvest.Kdl;
 
 public class KdlNode : IKdlObject
 {
+    public KdlSourceInfo SourceInfo { get; set; } = new KdlSourceInfo();
+
     public string Name { get; }
     public string? Type { get; }
 
-    public IList<KdlNode> Children { get; }
-    public IList<KdlValue> Arguments { get; }
-    public IDictionary<string, KdlValue> Properties { get; }
+    public List<KdlNode> Children { get; }
+    public List<KdlValue> Arguments { get; }
+    public SortedDictionary<string, KdlValue> Properties { get; }
 
-    public KdlNode(string name, string? type)
+    public KdlNode(string name, string? type = null)
     {
         Name = name;
         Type = type;
-        Children = new List<KdlNode>();
-        Arguments = new List<KdlValue>();
-        Properties = new Dictionary<string, KdlValue>();
+        Children = [];
+        Arguments = [];
+        Properties = [];
     }
 
     public KdlNode(
         string name,
         string? type,
-        IList<KdlNode> children,
-        IList<KdlValue> arguments,
-        IDictionary<string, KdlValue> properties)
+        List<KdlNode> children,
+        List<KdlValue> arguments,
+        SortedDictionary<string, KdlValue> properties)
     {
         Name = name;
         Type = type;
@@ -99,9 +101,9 @@ public class KdlNode : IKdlObject
         }
     }
 
-    private void WriteIndent(TextWriter writer, KdlWriteOptions options, int level)
+    private static void WriteIndent(TextWriter writer, KdlWriteOptions options, int level)
     {
-        string indent = new string(options.IndentChar, options.IndentSize);
+        string indent = new(options.IndentChar, options.IndentSize);
 
         for (int i = 0; i < level; ++i)
         {
@@ -127,7 +129,7 @@ public class KdlNode : IKdlObject
 
     public override int GetHashCode()
     {
-        HashCode hash = new HashCode();
+        HashCode hash = new();
 
         hash.Add(Name);
 

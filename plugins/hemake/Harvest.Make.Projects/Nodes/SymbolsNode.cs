@@ -1,7 +1,6 @@
 // Copyright Chad Engler
 
 using Harvest.Kdl;
-using Harvest.Kdl.Types;
 using Harvest.Make.Projects.Attributes;
 
 namespace Harvest.Make.Projects.Nodes;
@@ -13,7 +12,7 @@ public enum ESymbolsMode
     [KdlName("off")] Off,
 }
 
-public class SymbolsNode(KdlNode node) : NodeBase(node)
+public class SymbolsNode(KdlNode node, INode? scope) : NodeBase(node, scope)
 {
     public const string NodeName = "symbols";
 
@@ -25,12 +24,12 @@ public class SymbolsNode(KdlNode node) : NodeBase(node)
 
     public static readonly IReadOnlyList<NodeKdlValue> NodeArguments =
     [
-        NodeKdlEnum<ESymbolsMode>.Required,
+        NodeKdlEnum<ESymbolsMode>.Required(ESymbolsMode.Default),
     ];
 
-    public static readonly IReadOnlyDictionary<string, NodeKdlValue> NodeProperties = new Dictionary<string, NodeKdlValue>()
+    public static readonly IReadOnlyDictionary<string, NodeKdlValue> NodeProperties = new SortedDictionary<string, NodeKdlValue>()
     {
-        { "embed", NodeKdlValue<KdlBool>.Optional },
+        { "embed", NodeKdlBool.Optional(false) },
     };
 
     public override string Name => NodeName;
@@ -38,6 +37,6 @@ public class SymbolsNode(KdlNode node) : NodeBase(node)
     public override IReadOnlyList<NodeKdlValue> Arguments => NodeArguments;
     public override IReadOnlyDictionary<string, NodeKdlValue> Properties => NodeProperties;
 
-    public ESymbolsMode SymbolsMode => GetEnumValue(0, ESymbolsMode.Default);
-    public bool IsEmbedd => GetBoolValue("embed") ?? false;
+    public ESymbolsMode SymbolsMode => GetEnumValue<ESymbolsMode>(0);
+    public bool IsEmbedd => GetBoolValue("embed");
 }

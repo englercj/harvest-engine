@@ -1,10 +1,9 @@
 // Copyright Chad Engler
 
-using DotMake.CommandLine;
+using System.CommandLine;
 
 namespace Harvest.Make.Commands;
 
-[CliCommand(Description = "Harvest Engine Make (hemake) - A build tool for Harvest Engine projects.")]
-public class RootCliCommand
+public class RootCliCommand : RootCommand
 {
 }

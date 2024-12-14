@@ -8,11 +8,9 @@ namespace Harvest.Kdl.Types;
 /// A <see cref="KdlValue"/> representing a null value.
 /// </summary>
 [DebuggerDisplay("null")]
-public class KdlNull : KdlValue
+public class KdlNull(string? type = null) : KdlValue(type)
 {
-    public static KdlNull Instance { get; } = new KdlNull(null);
-
-    public KdlNull(string? type = null) : base(type) { }
+    public static KdlNull Instance { get; } = new();
 
     protected override void WriteKdlValue(TextWriter writer, KdlWriteOptions options)
     {

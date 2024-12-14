@@ -1,43 +1,79 @@
 // Copyright Chad Engler
 
 using Harvest.Kdl;
-using Harvest.Kdl.Types;
+using Harvest.Make.Projects.Attributes;
 
 namespace Harvest.Make.Projects.Nodes;
 
 public enum ESetAction
 {
-    Add,
-    Remove,
-    Match,
+    [KdlName("add")] Add,
+    [KdlName("remove")] Remove,
+    [KdlName("modify")] Modify,
 }
 
-public class NodeKdlSetAction : NodeKdlValue<KdlString>
+public abstract class NodeSetBase<T>(KdlNode node, INode? scope) : NodeBase(node, scope) where T : INode
 {
-    private static List<object> s_validValues = ["add", "remove", "match"];
+    public static readonly IReadOnlyList<NodeKdlValue> NodeArguments =
+    [
+        NodeKdlEnum<ESetAction>.Optional(ESetAction.Add),
+    ];
 
-    public static new NodeKdlSetAction Required => new() { IsRequired = true, ValidValues = s_validValues };
-    public static new NodeKdlSetAction Optional => new() { IsRequired = false, ValidValues = s_validValues };
-}
-
-public abstract class NodeSetBase<T>(KdlNode node) : NodeBase(node) where T : INode
-{
+    public override IReadOnlyList<NodeKdlValue> Arguments => NodeArguments;
     public override Type? ChildNodeType => typeof(T);
 
-    public ESetAction SetAction => GetStringValue(0) switch
-    {
-        "remove" => ESetAction.Remove,
-        "match" => ESetAction.Match,
-        _ => ESetAction.Add,
-    };
+    public ESetAction SetAction => GetEnumValue<ESetAction>(0);
+    public IEnumerable<T> Entries => Children.Cast<T>();
 
-    public IEnumerable<T> Entries
+    protected readonly Dictionary<string, T> _resolvedEntries = [];
+
+    protected override void MergeAndResolveChildren(ProjectContext context, INode node)
     {
-        get
+        if (node is not NodeSetBase<T> set)
         {
-            foreach (INode child in Children)
+            throw new Exception($"Cannot merge and resolve children of different node types: {GetType().Name} and {node.GetType().Name}");
+        }
+
+        switch (set.SetAction)
+        {
+            case ESetAction.Add:
             {
-                yield return (T)child;
+                foreach (T entry in set.Entries)
+                {
+                    if (_resolvedEntries.TryGetValue(entry.Node.Name, out T? existing))
+                    {
+                        existing.MergeAndResolve(context, entry);
+                    }
+                    else
+                    {
+                        _resolvedEntries.Add(entry.Node.Name, entry);
+                        Children.Add(entry);
+                    }
+                }
+                break;
+            }
+            case ESetAction.Remove:
+            {
+                foreach (T entry in set.Entries)
+                {
+                    if (_resolvedEntries.TryGetValue(entry.Node.Name, out T? existing))
+                    {
+                        _resolvedEntries.Remove(entry.Node.Name);
+                        Children.Remove(existing);
+                    }
+                }
+                break;
+            }
+            case ESetAction.Modify:
+            {
+                foreach (T entry in set.Entries)
+                {
+                    if (_resolvedEntries.TryGetValue(entry.Node.Name, out T? existing))
+                    {
+                        existing.MergeAndResolve(context, entry);
+                    }
+                }
+                break;
             }
         }
     }

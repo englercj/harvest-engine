@@ -8,30 +8,55 @@ namespace Harvest.Kdl;
 public class KdlDocument : IKdlObject
 {
     /// <value>A list of all the <see cref="KdlNode">s found in the document.</value>
-    public IList<KdlNode> Nodes { get; }
+    public List<KdlNode> Nodes { get; }
 
-    public static KdlDocument From(Stream stream)
+    /// <summary>
+    /// Creates a new <see cref="KdlDocument"/> from a file.
+    /// </summary>
+    /// <param name="filePath">The path to the file to read into a document.</param>
+    /// <returns>The parsed document.</returns>
+    public static KdlDocument FromFile(string filePath)
     {
         KdlDocumentReadHandler handler = new();
         KdlReader reader = new();
-        reader.Read(stream, handler);
+        reader.ReadFile(filePath, handler);
         return handler.Document;
     }
 
-    public static KdlDocument From(string str)
+    /// <summary>
+    /// Creates a new <see cref="KdlDocument"/> from a stream of UTF8 bytes.
+    /// </summary>
+    /// <param name="filePath">The path name for this file. Only used for source info, the file is not touched and therefore doesn't need to exist on disk.</param>
+    /// <param name="stream">The UTF8 byte stream to read data from.</param>
+    /// <returns>The parsed document.</returns>
+    public static KdlDocument FromStream(string filePath, Stream stream)
     {
         KdlDocumentReadHandler handler = new();
         KdlReader reader = new();
-        reader.Read(str, handler);
+        reader.ReadStream(filePath, stream, handler);
+        return handler.Document;
+    }
+
+    /// <summary>
+    /// Creates a new <see cref="KdlDocument"/> from a string.
+    /// </summary>
+    /// <param name="filePath">The path name for this file. Only used for source info, the file is not touched and therefore doesn't need to exist on disk.</param>
+    /// <param name="str">The string to read data from.</param>
+    /// <returns>The parsed document.</returns>
+    public static KdlDocument FromString(string filePath, string str)
+    {
+        KdlDocumentReadHandler handler = new();
+        KdlReader reader = new();
+        reader.ReadString(filePath, str, handler);
         return handler.Document;
     }
 
     public KdlDocument()
     {
-        Nodes = new List<KdlNode>();
+        Nodes = [];
     }
 
-    public KdlDocument(IList<KdlNode> nodes)
+    public KdlDocument(List<KdlNode> nodes)
     {
         Nodes = nodes;
     }

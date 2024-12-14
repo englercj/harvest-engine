@@ -15,7 +15,7 @@ Define a set of commands to run during a build lifecycle event.
 
 ## Children
 
-- `build-command` - The command to run. There can be multiple commands during an event.
+- [`command`](command_node.md) - Multiple command nodes will be run in sequence.
 
 ## Scopes
 
@@ -25,6 +25,6 @@ Define a set of commands to run during a build lifecycle event.
 
 ```kdl
 build_event prebuild message="Copying dependencies..." {
-    "${cmd.copy_file} some_file some_target_dir"
+    command cmd.copy_file some_file some_target_dir
 }
 ```

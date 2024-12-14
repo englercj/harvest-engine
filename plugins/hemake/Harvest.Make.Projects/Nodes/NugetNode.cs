@@ -1,11 +1,10 @@
 // Copyright Chad Engler
 
 using Harvest.Kdl;
-using Harvest.Kdl.Types;
 
 namespace Harvest.Make.Projects.Nodes;
 
-public class NugetNode(KdlNode node) : NodeBase(node)
+public class NugetNode(KdlNode node, INode? scope) : NodeBase(node, scope)
 {
     public const string NodeName = "nuget";
 
@@ -16,12 +15,12 @@ public class NugetNode(KdlNode node) : NodeBase(node)
 
     public static readonly IReadOnlyList<NodeKdlValue> NodeArguments =
     [
-        NodeKdlValue<KdlString>.Required,
+        NodeKdlString.Required(),
     ];
 
-    public static readonly IReadOnlyDictionary<string, NodeKdlValue> NodeProperties = new Dictionary<string, NodeKdlValue>()
+    public static readonly IReadOnlyDictionary<string, NodeKdlValue> NodeProperties = new SortedDictionary<string, NodeKdlValue>()
     {
-        { "version", NodeKdlValue<KdlString>.Required },
+        { "version", NodeKdlString.Required() },
     };
 
     public override string Name => NodeName;
@@ -29,6 +28,6 @@ public class NugetNode(KdlNode node) : NodeBase(node)
     public override IReadOnlyList<NodeKdlValue> Arguments => NodeArguments;
     public override IReadOnlyDictionary<string, NodeKdlValue> Properties => NodeProperties;
 
-    public string? PackageName => GetStringValue(0);
-    public string? PackageVersion => GetStringValue("version");
+    public string PackageName => GetStringValue(0);
+    public string PackageVersion => GetStringValue("version");
 }

@@ -57,7 +57,7 @@ public class KdlNumber<T> : KdlValue<T> where T : struct, INumber<T>
             float v => Math.Truncate(v) != v ? v.ToString("G", CultureInfo.GetCultureInfo("en-US")) : v.ToString("0.0", CultureInfo.GetCultureInfo("en-US")),
             double v => Math.Truncate(v) != v ? v.ToString("G", CultureInfo.GetCultureInfo("en-US")) : v.ToString("0.0", CultureInfo.GetCultureInfo("en-US")),
             decimal v => Math.Truncate(v) != v ? v.ToString("G", CultureInfo.GetCultureInfo("en-US")) : v.ToString("0.0", CultureInfo.GetCultureInfo("en-US")),
-            BigInteger v => Convert.ToString(v) ?? string.Empty,
+            BigInteger v => Convert.ToString(v) ?? "",
             _ => throw new InvalidOperationException("Invalid number type.")
         };
 

@@ -2,7 +2,9 @@
 
 Defines a build configuration for a project.
 
-Configurations have arbitrary names and offer one axis of configuration for your project. The other axis is [`platform`](platform_node.md). If no configurations are specified in the project structure, then two default configurations are generated: `Debug` and `Release`. These will be configured to reasonable default settings to support debugging in `Debug` and a fast runtime in `Release`.
+Configurations have arbitrary names and offer one axis of configuration for your project. The other axis is [`platform`](platform_node.md). If no configurations are specified in the project structure, then two default configurations are generated: `Debug` and `Release`.
+
+By default a configuration named `Debug` will disable optimizations and a configuration named `Release` will enable optimizations. This can be easily overridden by specifying custom settings as shown in the example below.
 
 ## Arguments
 
@@ -24,10 +26,19 @@ None.
 
 ```kdl
 configuration Debug
+configuration Release
 
 when configuration=Debug {
-    defines { _DEBUG; DEBUG; HE_CFG_DEBUG }
+    defines { _DEBUG; DEBUG }
+    optimize off
     runtime debug
-    symbols full
+    symbols on
+}
+
+when configuration=Release {
+    defines { NDEBUG }
+    optimize speed
+    runtime release
+    symbols on
 }
 ```

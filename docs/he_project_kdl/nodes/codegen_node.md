@@ -5,7 +5,7 @@ Configures the code generation behavior for the compiler.
 ## Arguments
 
 1. (string) - Required. Which code generation mode to enable. Valid values are:
-    * `default` - Use the toolset's default behavior. This is the default value.
+    * `default` - Use the toolset's default behavior.
     * `avx` - Enable Intel Advanced Vector Extensions instructions.
     * `avx2` - Enable Intel Advanced Vector Extensions 2 instructions.
     * `avx512` - Enable Intel Advanced Vector Extensions 512 instructions.

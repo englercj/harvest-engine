@@ -9,13 +9,25 @@ A definition of a module provided by a plugin.
 ## Properties
 
 - `kind` (string) - Required. The kind of module to be defined. Valid values are:
-    * `app_console` - Code built as a console application.
-    * `app_windowed` - Code built as a windowed application.
+    * `app_console` - Code built as a console application (exe).
+    * `app_windowed` - Code built as a windowed application (exe).
     * `content` - Assets, configuration, and other content to be edited.
     * `custom` - Utility project which contains only custom build scripts.
     * `lib_header` - Header-only module that does not generate any symbols to be linked.
     * `lib_static` - Code built as a static library (lib/a).
     * `lib_shared` - Code built as a shared library (dll/so).
+- `clr` (string) - Optional. Enable or disable Visual Studio Common Language Runtime (CLR) compilation. Specifying `off` for a `csharp` project has no effect.
+    * `on` - Enable CLR support.
+    * `off` - Disable CLR support. This is the default behavior.
+    * `netcore` - Enable CLR support and output metadata for .NET Core.
+- `mfc` (string) - Optional. Enable of disable Microsoft Foundation Class (MFC) Library support.
+    * `off` - Disable MFC support. This is the default behavior.
+    * `static` - Enable static linking of MFC libraries.
+    * `dynamic` - Enable dynamic linking of MFC libraries.
+- `atl` (string) - Optional. Enable Active Template Library (ATL) support.
+    * `off` - Disable ATL support. This is the default behavior.
+    * `static` - Enable static linking of ATL libraries.
+    * `dynamic` - Enable dynamic linking of ATL libraries.
 - `group` (string) - Optional. Name of the group this module belongs to. This will be a virtual folder in the workspace tree, and can include folder separators (`/`).
 - `language` (string) - Optional. Language of the source to be compiled in the module project. Default is `cpp` if not specified. Valid values are:
     * `c` - C
@@ -45,7 +57,6 @@ A definition of a module provided by a plugin.
 - [`sanitize`](sanitize_node.md)
 - [`symbols`](symbols_node.md)
 - [`tags`](tags_node.md)
-- [`toolset`](toolset_node.md)
 - [`warnings`](warnings_node.md)
 - [`when`](when_node.md)
 

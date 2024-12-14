@@ -1,11 +1,10 @@
 // Copyright Chad Engler
 
 using Harvest.Kdl;
-using Harvest.Kdl.Types;
 
 namespace Harvest.Make.Projects.Nodes;
 
-public class AuthorsEntryNode(KdlNode node) : NodeBase(node)
+public class AuthorsEntryNode(KdlNode node, INode? scope) : NodeBase(node, scope)
 {
     public static readonly IReadOnlyList<string> NodeScopes =
     [
@@ -16,9 +15,9 @@ public class AuthorsEntryNode(KdlNode node) : NodeBase(node)
     [
     ];
 
-    public static readonly IReadOnlyDictionary<string, NodeKdlValue> NodeProperties = new Dictionary<string, NodeKdlValue>()
+    public static readonly IReadOnlyDictionary<string, NodeKdlValue> NodeProperties = new SortedDictionary<string, NodeKdlValue>()
     {
-        { "email", NodeKdlValue<KdlString>.Optional },
+        { "email", NodeKdlString.Optional() },
     };
 
     public override string Name => Node.Name;
@@ -27,6 +26,5 @@ public class AuthorsEntryNode(KdlNode node) : NodeBase(node)
     public override IReadOnlyDictionary<string, NodeKdlValue> Properties => NodeProperties;
 
     public string AuthorName => Node.Name;
-
-    public string? AuthorEmail => GetStringValue("email");
+    public string? AuthorEmail => TryGetStringValue("email");
 }

@@ -50,7 +50,7 @@ he.generate_workspace = function (options)
             "_WIN32_WINNT=0x0A00",      -- require minimum of windows 10
             "_ITERATOR_DEBUG_LEVEL=0",  -- Improve debug performance by disabling iterator checks
         }
-        systemversion(_OPTIONS.windows_systemversion)
+        systemversion(_OPTIONS.he_windows_systemversion)
 
     filter { "system:wasm" }
         wasmoptpath(he.get_wasm_opt_path())

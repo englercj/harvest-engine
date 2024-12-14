@@ -1,11 +1,10 @@
 // Copyright Chad Engler
 
 using Harvest.Kdl;
-using Harvest.Kdl.Types;
 
 namespace Harvest.Make.Projects.Nodes;
 
-public class ExternalNode(KdlNode node) : NodeBase(node)
+public class ExternalNode(KdlNode node, INode? scope) : NodeBase(node, scope)
 {
     public const string NodeName = "external";
 
@@ -18,11 +17,11 @@ public class ExternalNode(KdlNode node) : NodeBase(node)
     [
     ];
 
-    public static readonly IReadOnlyDictionary<string, NodeKdlValue> NodeProperties = new Dictionary<string, NodeKdlValue>()
+    public static readonly IReadOnlyDictionary<string, NodeKdlValue> NodeProperties = new SortedDictionary<string, NodeKdlValue>()
     {
-        { "warnings", NodeKdlEnum<EWarningsMode>.Optional },
-        { "fatal", NodeKdlValue<KdlBool>.Optional },
-        { "angle_brackets", NodeKdlValue<KdlBool>.Optional },
+        { "warnings", NodeKdlEnum<EWarningsMode>.Optional(EWarningsMode.Default) },
+        { "fatal", NodeKdlBool.Optional(false) },
+        { "angle_brackets", NodeKdlBool.Optional(false) },
     };
 
     public override string Name => NodeName;
@@ -30,8 +29,7 @@ public class ExternalNode(KdlNode node) : NodeBase(node)
     public override IReadOnlyList<NodeKdlValue> Arguments => NodeArguments;
     public override IReadOnlyDictionary<string, NodeKdlValue> Properties => NodeProperties;
 
-    public EWarningsMode WarningsMode => GetEnumValue("warnings", EWarningsMode.Default);
-
-    public bool Fatal => GetBoolValue("fatal") ?? false;
-    public bool AngleBrackets => GetBoolValue("angle_brackets") ?? false;
+    public EWarningsMode WarningsMode => GetEnumValue<EWarningsMode>("warnings");
+    public bool Fatal => GetBoolValue("fatal");
+    public bool AngleBrackets => GetBoolValue("angle_brackets");
 }

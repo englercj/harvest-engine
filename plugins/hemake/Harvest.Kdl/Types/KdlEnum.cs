@@ -8,12 +8,10 @@ namespace Harvest.Kdl.Types;
 /// A <see cref="KdlValue"/> wrapper around an enum.
 /// </summary>
 [DebuggerDisplay("{Value}")]
-public class KdlEnum : KdlValue<Enum>
+public class KdlEnum(Enum value, string? type = null) : KdlValue<Enum>(value, type)
 {
-    public KdlEnum(Enum value, string? type = null) : base(value, type) { }
-
     protected override void WriteKdlValue(TextWriter writer, KdlWriteOptions options)
     {
-        KdlUtils.WriteString(writer, Convert.ToString(Value) ?? string.Empty, options);
+        KdlUtils.WriteString(writer, Convert.ToString(Value) ?? "", options);
     }
 }

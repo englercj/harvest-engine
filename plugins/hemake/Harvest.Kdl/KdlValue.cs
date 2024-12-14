@@ -5,7 +5,7 @@ using System.Numerics;
 
 namespace Harvest.Kdl;
 
-public abstract class KdlValue : IKdlObject
+public abstract class KdlValue(string? type) : IKdlObject
 {
     public static KdlValue From(object? o, string? type = null)
     {
@@ -30,12 +30,7 @@ public abstract class KdlValue : IKdlObject
         };
     }
 
-    public string? Type { get; }
-
-    protected KdlValue(string? type)
-    {
-        Type = type;
-    }
+    public string? Type => type;
 
     public void WriteKdl(TextWriter writer, KdlWriteOptions options)
     {
@@ -57,14 +52,9 @@ public abstract class KdlValue : IKdlObject
     public static bool operator!=(KdlValue? a, KdlValue? b) => !(a == b);
 }
 
-public abstract class KdlValue<T> : KdlValue
+public abstract class KdlValue<T>(T value, string? type) : KdlValue(type)
 {
-    public T Value { get; }
-
-    protected KdlValue(T value, string? type) : base(type)
-    {
-        Value = value;
-    }
+    public T Value => value;
 
     public override string ToString() => $"KdlValue{{ Value={Value}, Type={Type ?? "null"} }}";
 
@@ -76,22 +66,7 @@ public abstract class KdlValue<T> : KdlValue
         return obj is KdlValue<T> v && v.Value != null && Value.Equals(v.Value) && Type == v.Type;
     }
 
-    public override int GetHashCode()
-    {
-        HashCode hash = new();
+    public override int GetHashCode() => HashCode.Combine(Value, Type);
 
-        if (Value != null)
-        {
-            hash.Add(Value);
-        }
-
-        if (Type != null)
-        {
-            hash.Add(Type);
-        }
-
-        return hash.ToHashCode();
-    }
-
-    public static implicit operator T(KdlValue<T> v) => v.Value;
+    public static implicit operator T(KdlValue<T> v) => v.TypedValue;
 }

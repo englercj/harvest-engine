@@ -12,7 +12,7 @@ public enum ERuntime
     [KdlName("release")] Release,
 }
 
-public class RuntimeNode(KdlNode node) : NodeBase(node)
+public class RuntimeNode(KdlNode node, INode? scope) : NodeBase(node, scope)
 {
     public const string NodeName = "runtime";
 
@@ -24,10 +24,10 @@ public class RuntimeNode(KdlNode node) : NodeBase(node)
 
     public static readonly IReadOnlyList<NodeKdlValue> NodeArguments =
     [
-        NodeKdlEnum<ERuntime>.Required,
+        NodeKdlEnum<ERuntime>.Required(ERuntime.Default),
     ];
 
-    public static readonly IReadOnlyDictionary<string, NodeKdlValue> NodeProperties = new Dictionary<string, NodeKdlValue>()
+    public static readonly IReadOnlyDictionary<string, NodeKdlValue> NodeProperties = new SortedDictionary<string, NodeKdlValue>()
     {
     };
 
@@ -36,5 +36,5 @@ public class RuntimeNode(KdlNode node) : NodeBase(node)
     public override IReadOnlyList<NodeKdlValue> Arguments => NodeArguments;
     public override IReadOnlyDictionary<string, NodeKdlValue> Properties => NodeProperties;
 
-    public ERuntime Runtime => GetEnumValue(0, ERuntime.Default);
+    public ERuntime Runtime => GetEnumValue<ERuntime>(0);
 }

@@ -1,68 +1,63 @@
 // Copyright Chad Engler
 
-using DotMake.CommandLine;
+using Harvest.Make.Attributes;
 using Harvest.Make.CliCommands;
 using Harvest.Make.Projects.Generators;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using System.CommandLine.Invocation;
 
 namespace Harvest.Make.Projects.CliCommands;
 
-[CliCommand(Description = "Generates IDE project files.")]
-public class ProjectsCliCommand
+public abstract class BaseProjectGeneratorCliCommand(
+    ILogger logger,
+    IProjectGeneratorService generatorService,
+    IProjectService projectService) : ICliCommand
 {
-    public abstract class BaseProjectGeneratorCliCommand(
-        ILogger logger,
-        IProjectGeneratorService generatorService,
-        IProjectService projectService) : ICliCommand
+    protected readonly ILogger _logger = logger;
+    protected readonly IProjectService _projectService = projectService;
+    protected readonly IProjectGeneratorService _generatorService = generatorService;
+
+    public abstract string Name { get; }
+    public abstract string Description { get; }
+
+    public Task<int> RunCommandAsync(InvocationContext context)
     {
-        protected readonly ILogger _logger = logger;
-        protected readonly IProjectService _projectService = projectService;
-        protected readonly IProjectGeneratorService _generatorService = generatorService;
-
-        [CliOption(Name = "--project", Description = "The Harvest Engine project file for your project.", Required = true)]
-        public FileInfo? ProjectFile { get; set; }
-
-        public async Task<int> RunCommandAsync()
+        GenerateProjectResult result = _generatorService.GenerateProjectFiles(context);
+        if (!result.Success)
         {
-            GenerateProjectResult result = await _generatorService.GenerateProjectFilesAsync();
-            if (!result.Success)
-            {
-                _logger.LogError(result.ErrorMessage);
-                return -1;
-            }
-
-            return 0;
+            _logger.LogError(result.ErrorMessage);
+            return Task.FromResult(-1);
         }
 
-        public void ValidateCommand()
-        {
-            if (ProjectFile is null)
-            {
-                throw new Exception("Project path not specified, or doesn't exist (--project)");
-            }
-        }
+        return Task.FromResult(0);
     }
+}
 
-    [CliCommand(Name = ProjectGeneratorNames.VS2022, Description = "Generate Visual Studio 2022 project files.")]
-    public class VS2022CliCommand : BaseProjectGeneratorCliCommand
-    {
-        public VS2022CliCommand(
-            ILogger<VS2022CliCommand> logger,
-            [FromKeyedServices(ProjectGeneratorNames.VS2022)] IProjectGeneratorService generatorService,
-            IProjectService projectService)
-            : base(logger, generatorService, projectService)
-        { }
-    }
+[Service<ICliCommand>(Enumerable = true)]
+public class VS2022CliCommand : BaseProjectGeneratorCliCommand
+{
+    public override string Name => ProjectGeneratorNames.VS2022;
+    public override string Description => "Generate Visual Studio 2022 project files.";
 
-    [CliCommand(Name = ProjectGeneratorNames.GNUMake, Description = "Generate GNU Make makefiles.")]
-    public class GNUMakeCliCommand : BaseProjectGeneratorCliCommand
-    {
-        public GNUMakeCliCommand(
-            ILogger<GNUMakeCliCommand> logger,
-            [FromKeyedServices(ProjectGeneratorNames.GNUMake)] IProjectGeneratorService generatorService,
-            IProjectService projectService)
-            : base(logger, generatorService, projectService)
-        { }
-    }
+    public VS2022CliCommand(
+        ILogger<VS2022CliCommand> logger,
+        [FromKeyedServices(ProjectGeneratorNames.VS2022)] IProjectGeneratorService generatorService,
+        IProjectService projectService)
+        : base(logger, generatorService, projectService)
+    { }
+}
+
+[Service<ICliCommand>(Enumerable = true)]
+public class GNUMakeCliCommand : BaseProjectGeneratorCliCommand
+{
+    public override string Name => ProjectGeneratorNames.GNUMake;
+    public override string Description => "Generate GNU Make makefiles.";
+
+    public GNUMakeCliCommand(
+        ILogger<GNUMakeCliCommand> logger,
+        [FromKeyedServices(ProjectGeneratorNames.GNUMake)] IProjectGeneratorService generatorService,
+        IProjectService projectService)
+        : base(logger, generatorService, projectService)
+    { }
 }

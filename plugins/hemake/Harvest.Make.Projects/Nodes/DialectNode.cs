@@ -33,7 +33,7 @@ public enum ECSharpDialect
     [KdlName("c#12")] CSharp12,
 }
 
-public class DialectNode(KdlNode node) : NodeBase(node)
+public class DialectNode(KdlNode node, INode? scope) : NodeBase(node, scope)
 {
     public const string NodeName = "dialect";
 
@@ -47,11 +47,11 @@ public class DialectNode(KdlNode node) : NodeBase(node)
     [
     ];
 
-    public static readonly IReadOnlyDictionary<string, NodeKdlValue> NodeProperties = new Dictionary<string, NodeKdlValue>()
+    public static readonly IReadOnlyDictionary<string, NodeKdlValue> NodeProperties = new SortedDictionary<string, NodeKdlValue>()
     {
-        { "c", NodeKdlEnum<ECDialect>.Optional },
-        { "cpp", NodeKdlEnum<ECppDialect>.Optional },
-        { "csharp", NodeKdlEnum<ECSharpDialect>.Optional },
+        { "c", NodeKdlEnum<ECDialect>.Optional(ECDialect.Default) },
+        { "cpp", NodeKdlEnum<ECppDialect>.Optional(ECppDialect.Default) },
+        { "csharp", NodeKdlEnum<ECSharpDialect>.Optional(ECSharpDialect.Default) },
     };
 
     public override string Name => NodeName;
@@ -59,7 +59,7 @@ public class DialectNode(KdlNode node) : NodeBase(node)
     public override IReadOnlyList<NodeKdlValue> Arguments => NodeArguments;
     public override IReadOnlyDictionary<string, NodeKdlValue> Properties => NodeProperties;
 
-    public ECDialect CDialect => GetEnumValue("c", ECDialect.Default);
-    public ECppDialect CppDialect => GetEnumValue("cpp", ECppDialect.Default);
-    public ECSharpDialect CSharpDialect => GetEnumValue("csharp", ECSharpDialect.Default);
+    public ECDialect CDialect => GetEnumValue<ECDialect>("c");
+    public ECppDialect CppDialect => GetEnumValue<ECppDialect>("cpp");
+    public ECSharpDialect CSharpDialect => GetEnumValue<ECSharpDialect>("csharp");
 }

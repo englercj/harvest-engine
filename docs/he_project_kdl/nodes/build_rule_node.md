@@ -14,7 +14,7 @@ For complex build rules that require parameters or custom logic use HE Make's C#
 
 ## Children
 
-- [`commands`](commands_node.md)
+- [`command`](command_node.md) - Multiple command nodes will be run in sequence.
 - [`inputs`](inputs_node.md)
 - [`outputs`](outputs_node.md)
 
@@ -37,10 +37,8 @@ In the properties and children of the `build_rule` node an additional [Token Con
 ```kdl
 build_rule my_schema_compile message="Custom compiling schema: ${file.path}" {
     // Run the schemac executable to compile the input file
-    commands {
-        :module he_schemac {
-            "${module.link_target} -t c++ -o ${file.gen_dir} ${file.path}"
-        }
+    :module he_schemac {
+        command "${module.link_target} -t c++ -o ${file.gen_dir} ${file.path}"
     }
 
     // Add the schemac executable as as input so if it changes, this rule gets run again.

@@ -1,23 +1,29 @@
 # `when` node
 
-Wraps one or more other nodes that are applied in the parent scope only if all the conditions are met.
+Wraps one or more other nodes that are applied in the parent scope only if the conditions are met.
 
 ## Arguments
 
 1. (string) - Optional. How multiple properties should be treated. Valid values are:
-    * `and` - All properties must be true. This is the default behavior.
-    * `or` - At least one property must be true.
-    * `xor` - Exactly one property must be true.
+    * `all` - All properties must be true. This is the default behavior.
+    * `any` - At least one property must be true.
+    * `one` - Exactly one property must be true.
 
 ## Properties
+
+Each property checks if the context matches the given value. The equality check can be negated by prefixing the value with `!`. For example, `arch=x86_64` checks that the architecture is `x86_64` and `arch=!x86_64` checks that the architecture is *not* `x86_64`.
+
+Values can also be logically combined with `||` (or), `&&` (and), or `^` (xor). Conditions are evaluated from left-to-right, and parenthesis may be used to to group conditions.
+
+The values you can specify as properties to be checked are:
 
 - `arch` (string) - Optional. Checks if the active platform's architecture matches.
 - `configuration` (string) - Optional. Checks if the active configuration name matches.
 - `host` (string) - Optional. Checks if the host operating system matches.
 - `language` (string) - Optional. Checks if the target compilation is for a particular language (`cpp`, `csharp`, etc).
 - `option` (string) - Optional. Checks if an option is active, or holds a specific value.
-    * For example, `when option=asan {}` checks if the `asan` option is set with any value.
-    * Another example, `when option="asan:test" {}` checks if the `asan` option is set to `test`.
+    * For example, `when option=a {}` checks if the `a` option is set with any value.
+    * Another example, `when option="a:test" {}` checks if the `a` option is set to `test`.
 - `platform` (string) - Optional. Checks if the active platform name matches.
 - `system` (string) - Optional. Checks if the active platform's system matches.
 - `tags` (string) - Optional. Checks if the active [`tags`](tags_node.md) include the specified one.
@@ -25,7 +31,7 @@ Wraps one or more other nodes that are applied in the parent scope only if all t
 
 ## Children
 
-- Any node that is valid in the parent scope, except for another `when` node.
+- Any node that is valid in the parent scope
 
 ## Scopes
 
@@ -37,7 +43,21 @@ Wraps one or more other nodes that are applied in the parent scope only if all t
 ## Example
 
 ```kdl
-when system=windows {
-    import "./windows_only/he_plugin.kdl"
-}
+// system is 'windows'
+when system=windows {}
+
+// system is NOT 'windows'
+when system=!windows {}
+
+// arch is 'x86' OR 'x86_64'
+when arch="x86 || x86_64" {}
+
+// option 'a' is specified with any value
+when option=a {}
+
+// option 'a' is specified with the value 'test'
+when option="a:test" {}
+
+// option 'a' is specified with the value 'test' OR option 'b' is specified with the value 'test'
+when option="a:test || b:test" {}
 ```

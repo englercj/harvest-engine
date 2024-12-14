@@ -18,7 +18,7 @@ class Program
     {
         // Create and configure the application host builder
         HostApplicationBuilder builder = Host.CreateApplicationBuilder();
-        builder.Environment.ApplicationName = "Harvest Make";
+        builder.Environment.ApplicationName = "Harvest Engine Make";
 #if DEBUG
         builder.Logging.AddDebug();
 #endif
@@ -76,13 +76,6 @@ class Program
                 continue;
             }
 
-            CliCommandAttribute? cliCommandAttribute = type.GetCustomAttribute<CliCommandAttribute>();
-            if (cliCommandAttribute is not null)
-            {
-                RegisterCliCommand(services, type, cliCommandAttribute);
-                continue;
-            }
-
             ServiceAttribute? attribute = type.GetCustomAttribute<ServiceAttribute>();
             if (attribute is not null)
             {
@@ -90,17 +83,6 @@ class Program
                 continue;
             }
         }
-    }
-
-    static void RegisterCliCommand(IServiceCollection services, Type type, CliCommandAttribute attribute)
-    {
-        if (!type.IsAssignableTo(typeof(ICliCommand)))
-        {
-            throw new InvalidOperationException($"Cannot register CliCommand {type}. It does not implement ICliCommand.");
-        }
-
-        ServiceDescriptor descriptor = new(typeof(ICliCommand), attribute.Name, type, ServiceLifetime.Singleton);
-        services.TryAddEnumerable(descriptor);
     }
 
     static void RegisterService(IServiceCollection services, Type type, ServiceAttribute attribute)

@@ -13,7 +13,9 @@ Defines a new command-line option that can be set to a value, and checked by
 - `help` (string) - Optional. The help text to display for this option on the command-line.
 - `type` (string) - Optional. The type of value the option can hold. Valid values are:
     * `bool` - The option is set or unset (`#true` or `#false`), and defaults to `#false`. This is the default type.
-    * `number` - The option holds a numeric value, and defaults to `0`.
+    * `int` - The option holds a 64-bit signed integral value, and defaults to `0`.
+    * `uint` - The option holds a 64-bit unsigned integral value, and defaults to `0`.
+    * `float` - The option holds a 64-bit floating point value, and defaults to `0.0`.
     * `string` - The option holds a string value, and defaults to `""`.
 
 ## Children

@@ -1,11 +1,10 @@
 // Copyright Chad Engler
 
 using Harvest.Kdl;
-using Harvest.Kdl.Types;
 
 namespace Harvest.Make.Projects.Nodes;
 
-public class BuildOptionsNode(KdlNode node) : NodeSetBase<BuildOptionsEntryNode>(node)
+public class BuildOptionsNode(KdlNode node, INode? scope) : NodeSetBase<BuildOptionsEntryNode>(node, scope)
 {
     public const string NodeName = "build_options";
 
@@ -15,18 +14,11 @@ public class BuildOptionsNode(KdlNode node) : NodeSetBase<BuildOptionsEntryNode>
         ProjectNode.NodeName,
     ];
 
-    public static readonly IReadOnlyList<NodeKdlValue> NodeArguments =
-    [
-        NodeKdlSetAction.Optional,
-    ];
-
-    public static readonly IReadOnlyDictionary<string, NodeKdlValue> NodeProperties = new Dictionary<string, NodeKdlValue>()
+    public static readonly IReadOnlyDictionary<string, NodeKdlValue> NodeProperties = new SortedDictionary<string, NodeKdlValue>()
     {
-        { "message", NodeKdlValue<KdlString>.Optional },
     };
 
     public override string Name => NodeName;
     public override IReadOnlyList<string> Scopes => NodeScopes;
-    public override IReadOnlyList<NodeKdlValue> Arguments => NodeArguments;
     public override IReadOnlyDictionary<string, NodeKdlValue> Properties => NodeProperties;
 }

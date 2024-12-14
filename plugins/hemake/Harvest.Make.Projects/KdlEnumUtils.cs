@@ -1,30 +1,16 @@
 // Copyright Chad Engler
 
-using Harvest.Kdl.Types;
 using Harvest.Make.Projects.Attributes;
-using Harvest.Make.Projects.Nodes;
+using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 
 namespace Harvest.Make.Projects;
 
-public class NodeKdlEnum<T> : NodeKdlValue<KdlString> where T : struct, Enum
-{
-    private static List<object> s_validValues = KdlEnumUtils.GetNames<T>().ToList<object>();
-
-    public static new NodeKdlEnum<T> Required => new() { IsRequired = true, ValidValues = s_validValues };
-    public static new NodeKdlEnum<T> Optional => new() { IsRequired = false, ValidValues = s_validValues };
-}
-
 public static class KdlEnumUtils
 {
-    public static T Parse<T>(string value) where T : struct, Enum
-    {
-        return KdlEnumInfo<T>.Values[value];
-    }
-
     public static T Parse<T>(string? value, T defaultValue) where T : struct, Enum
     {
-        if (value is not null && KdlEnumInfo<T>.Values.TryGetValue(value, out T result))
+        if (TryParse(value, out T result))
         {
             return result;
         }
@@ -32,14 +18,23 @@ public static class KdlEnumUtils
         return defaultValue;
     }
 
-    public static bool TryParse<T>(string value, out T result) where T : struct, Enum
+    public static bool TryParse<T>(string? value, [MaybeNullWhen(false)] out T result) where T : struct, Enum
     {
-        return KdlEnumInfo<T>.Values.TryGetValue(value, out result);
+        result = default;
+        return value is not null && KdlEnumInfo<T>.Values.TryGetValue(value, out result);
     }
 
-    public static string? GetName<T>(T value) where T : struct, Enum
+    public static string GetName<T>(T value) where T : struct, Enum
     {
-        return KdlEnumInfo<T>.Values.FirstOrDefault(x => x.Value.Equals(value)).Key;
+        foreach ((string name, T enumerator) in KdlEnumInfo<T>.Values)
+        {
+            if (enumerator.Equals(value))
+            {
+                return name;
+            }
+        }
+
+        return value.ToString();
     }
 
     public static IEnumerable<string> GetNames<T>() where T : struct, Enum
@@ -49,9 +44,9 @@ public static class KdlEnumUtils
 
     private static class KdlEnumInfo<T> where T : struct, Enum
     {
-        private static readonly Dictionary<string, T> s_values = [];
+        private static readonly SortedDictionary<string, T> s_values = [];
 
-        public static IReadOnlyDictionary<string, T> Values = s_values;
+        public static IReadOnlyDictionary<string, T> Values => s_values;
 
         static KdlEnumInfo()
         {
@@ -61,8 +56,9 @@ public static class KdlEnumUtils
             {
                 KdlNameAttribute? attr = field.GetCustomAttribute<KdlNameAttribute>(false);
                 string name = attr?.Name ?? field.Name;
+                T value = (T)field.GetValue(null)!;
 
-                s_values[name] = (T)field.GetValue(null)!;
+                s_values.Add(name, value);
             }
         }
     }

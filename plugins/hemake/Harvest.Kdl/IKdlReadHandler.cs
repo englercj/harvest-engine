@@ -5,7 +5,7 @@ namespace Harvest.Kdl;
 public interface IKdlReadHandler
 {
     /// Called at the start of reading the document.
-    void StartDocument();
+    void StartDocument(KdlSourceInfo source);
 
     /// Called at the end of reading the document.
     void EndDocument();
@@ -13,12 +13,12 @@ public interface IKdlReadHandler
     /// Called when a single-line (`//`) or multi-line (`/**/`) comment is encountered.
     ///
     /// \param[in] value The comment value.
-    void Comment(string value);
+    void Comment(string value, KdlSourceInfo source);
 
     /// Called when a slashdash comment starts. This may be followed by any number of
     /// calls to \ref StartNode, \ref EndNode, \ref Argument, or \ref Property which
     /// should all be treated as "commented out" until \ref EndComment is called.
-    void StartComment();
+    void StartComment(KdlSourceInfo source);
 
     /// Called when the components of a slashdash comment have been read.
     void EndComment();
@@ -28,7 +28,7 @@ public interface IKdlReadHandler
     ///
     /// \param[in] name The name of the node.
     /// \param[in] type The type annotation, if any, on the node.
-    void StartNode(string name, string? type);
+    void StartNode(string name, string? type, KdlSourceInfo source);
 
     /// Called when the end of a node is encountered.
     void EndNode();
@@ -36,11 +36,11 @@ public interface IKdlReadHandler
     /// Called when an argument to a node is encountered.
     ///
     /// \param[in] value The argument value.
-    void Argument(KdlValue value);
+    void Argument(KdlValue value, KdlSourceInfo source);
 
     /// Called when a property is encountered.
     ///
     /// \param[in] name The name of the property.
     /// \param[in] value The value of the property.
-    void Property(string name, KdlValue value);
+    void Property(string name, KdlValue value, KdlSourceInfo source);
 }

@@ -4,7 +4,7 @@ using Harvest.Kdl;
 
 namespace Harvest.Make.Projects.Nodes;
 
-public class DefinesEntryNode(KdlNode node) : NodeBase(node)
+public class DefinesEntryNode(KdlNode node, INode? scope) : NodeBase(node, scope)
 {
     public static readonly IReadOnlyList<string> NodeScopes =
     [
@@ -15,7 +15,7 @@ public class DefinesEntryNode(KdlNode node) : NodeBase(node)
     [
     ];
 
-    public static readonly IReadOnlyDictionary<string, NodeKdlValue> NodeProperties = new Dictionary<string, NodeKdlValue>()
+    public static readonly IReadOnlyDictionary<string, NodeKdlValue> NodeProperties = new SortedDictionary<string, NodeKdlValue>()
     {
     };
 
@@ -24,5 +24,5 @@ public class DefinesEntryNode(KdlNode node) : NodeBase(node)
     public override IReadOnlyList<NodeKdlValue> Arguments => NodeArguments;
     public override IReadOnlyDictionary<string, NodeKdlValue> Properties => NodeProperties;
 
-    public string? Define => Node.Name;
+    public string Define => Node.Name;
 }

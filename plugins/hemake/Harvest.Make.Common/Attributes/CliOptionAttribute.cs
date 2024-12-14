@@ -9,11 +9,9 @@ namespace Harvest.Make.Attributes;
 public class CliOptionAttribute([CallerMemberName] string? targetName = null) : Attribute
 {
     public string Name { get; set; } = targetName is not null ? targetName.ToKebabCase() : throw new ArgumentNullException(nameof(targetName));
-    public string ShortName { get; set; } = string.Empty;
-    public string Description { get; set; } = string.Empty;
+    public string Description { get; set; } = "";
     public string[] Aliases { get; set; } = [];
 
-    public bool Hidden { get; set; } = false;
-    public bool Required { get; set; } = false;
-    public string[] AllowedValues { get; set; } = [];
+    public bool IsHidden { get; set; } = false;
+    public bool IsRequired { get; set; } = false;
 }

@@ -7,9 +7,9 @@ using System.Text;
 
 namespace Harvest.Kdl;
 
-public class KdlReader
+public class KdlReader(KdlReadOptions? options = null) : object()
 {
-    private readonly KdlReadOptions _options;
+    private readonly KdlReadOptions _options = options ?? new KdlReadOptions();
 
     private KdlReadContext? _context;
     private IKdlReadHandler? _handler;
@@ -17,24 +17,34 @@ public class KdlReader
     private bool _inWhitespaceEscape = false;
     private int _nodeDepth = 0;
 
-    private List<int> _slashDashDepthStack = new();
+    private readonly List<int> _slashDashDepthStack = [];
 
-    public KdlReader(KdlReadOptions? options = null) : base()
+    public void ReadFile(string filePath, IKdlReadHandler handler)
     {
-        _options = options ?? new KdlReadOptions();
+        // FileStream uses a small buffer by default, so we increase it to 4k which should be
+        // large enough for most KDL files. The 4k sizing also happens to match the common OS
+        // page size, which might mean something; who knows.
+        FileStreamOptions options = new()
+        {
+            Mode = FileMode.Open,
+            Access = FileAccess.Read,
+            BufferSize = 4096,
+        };
+        using FileStream fileStream = new(filePath, options);
+        ReadStream(filePath, fileStream, handler);
     }
 
-    public void Read(Stream stream, IKdlReadHandler handler)
+    public void ReadStream(string filePath, Stream stream, IKdlReadHandler handler)
     {
         using StreamReader reader = new(stream, Encoding.UTF8);
-        Read(new KdlReadContext(reader), handler);
+        Read(new KdlReadContext(filePath, reader), handler);
     }
 
-    public void Read(string str, IKdlReadHandler handler)
+    public void ReadString(string filePath, string str, IKdlReadHandler handler)
     {
         using MemoryStream stream = new(Encoding.UTF8.GetBytes(str));
         using StreamReader reader = new(stream, Encoding.UTF8);
-        Read(new KdlReadContext(reader), handler);
+        Read(new KdlReadContext(filePath, reader), handler);
     }
 
     protected void Read(KdlReadContext context, IKdlReadHandler handler)
@@ -44,12 +54,21 @@ public class KdlReader
         _nodeDepth = 0;
         _inWhitespaceEscape = false;
 
+        _handler!.StartDocument(GetSourceInfo());
+
         SkipBOM();
 
         while (!AtEnd())
         {
             ParseExpression();
         }
+
+        _handler!.EndDocument();
+    }
+
+    protected KdlSourceInfo GetSourceInfo()
+    {
+        return new KdlSourceInfo(_context!.FilePath, _context!.Line, _context!.Column);
     }
 
     protected void ParseExpression()
@@ -115,6 +134,7 @@ public class KdlReader
     protected void ParseNode()
     {
         SkipSpaces();
+        KdlSourceInfo source = GetSourceInfo();
 
         int ucc = _context!.Peek();
 
@@ -126,7 +146,7 @@ public class KdlReader
 
         string name = ConsumeString();
 
-        EmitStartNode(name, type);
+        EmitStartNode(name, type, source);
 
         if (AtEnd())
         {
@@ -271,6 +291,7 @@ public class KdlReader
 
     protected void ParseComment()
     {
+        KdlSourceInfo source = GetSourceInfo();
         Consume('/');
         ThrowIfAtEnd();
 
@@ -283,7 +304,6 @@ public class KdlReader
             {
                 _context.Read();
                 _slashDashDepthStack.Add(_nodeDepth + 1);
-                _handler!.StartDocument();
                 return;
             }
             // single-line comment
@@ -301,7 +321,7 @@ public class KdlReader
                     str.Append((char)_context.Read());
                 }
 
-                _handler!.Comment(str.ToString());
+                _handler!.Comment(str.ToString(), source);
 
                 if (!AtEnd())
                 {
@@ -346,7 +366,7 @@ public class KdlReader
                     prevUcc = ucc;
                 }
 
-                _handler!.Comment(str.ToString());
+                _handler!.Comment(str.ToString(), source);
                 break;
             }
             default:
@@ -354,7 +374,7 @@ public class KdlReader
         }
     }
 
-    protected bool ParseNumWithType<T>(KdlNumber<T> num, int sign, string type, string? propName) where T : INumber<T>
+    protected bool ParseNumWithType<T>(KdlNumber<T> num, int sign, string type, string? propName, KdlSourceInfo source) where T : struct, INumber<T>
     {
         switch (type)
         {
@@ -372,27 +392,27 @@ public class KdlReader
 
         switch (type)
         {
-            case "u8": EmitPropOrArg(num.Value is byte ? num : new KdlNumber<byte>((byte)Convert.ChangeType(num.Value, typeof(byte)), num.Radix, num.Type), propName); return true;
-            case "u16": EmitPropOrArg(num.Value is ushort ? num : new KdlNumber<ushort>((ushort)Convert.ChangeType(num.Value, typeof(ushort)), num.Radix, num.Type), propName); return true;
-            case "u32": EmitPropOrArg(num.Value is uint ? num : new KdlNumber<uint>((uint)Convert.ChangeType(num.Value, typeof(uint)), num.Radix, num.Type), propName); return true;
-            case "u64": EmitPropOrArg(num.Value is ulong ? num : new KdlNumber<ulong>((ulong)Convert.ChangeType(num.Value, typeof(ulong)), num.Radix, num.Type), propName); return true;
-            case "i8": EmitPropOrArg(num.Value is sbyte ? num : new KdlNumber<sbyte>((sbyte)Convert.ChangeType(num.Value, typeof(sbyte)), num.Radix, num.Type), propName); return true;
-            case "i16": EmitPropOrArg(num.Value is short ? num : new KdlNumber<short>((short)Convert.ChangeType(num.Value, typeof(short)), num.Radix, num.Type), propName); return true;
-            case "i32": EmitPropOrArg(num.Value is int ? num : new KdlNumber<int>((int)Convert.ChangeType(num.Value, typeof(int)), num.Radix, num.Type), propName); return true;
-            case "i64": EmitPropOrArg(num.Value is long ? num : new KdlNumber<long>((long)Convert.ChangeType(num.Value, typeof(long)), num.Radix, num.Type), propName); return true;
-            case "isize": EmitPropOrArg(num.Value is nint ? num : new KdlNumber<nint>((nint)Convert.ChangeType(num.Value, typeof(nint)), num.Radix, num.Type), propName); return true;
-            case "usize": EmitPropOrArg(num.Value is nuint ? num : new KdlNumber<nuint>((nuint)Convert.ChangeType(num.Value, typeof(nuint)), num.Radix, num.Type), propName); return true;
-            case "f32": EmitPropOrArg(num.Value is float ? num : new KdlNumber<float>((float)Convert.ChangeType(num.Value, typeof(float)), num.Radix, num.Type), propName); return true;
-            case "f64": EmitPropOrArg(num.Value is double ? num : new KdlNumber<double>((double)Convert.ChangeType(num.Value, typeof(double)), num.Radix, num.Type), propName); return true;
-            case "decimal64": EmitPropOrArg(num.Value is double ? num : new KdlNumber<double>((double)Convert.ChangeType(num.Value, typeof(double)), num.Radix, num.Type), propName); return true;
-            case "decimal": EmitPropOrArg(num.Value is decimal ? num : new KdlNumber<decimal>((decimal)Convert.ChangeType(num.Value, typeof(decimal)), num.Radix, num.Type), propName); return true;
-            case "decimal128": EmitPropOrArg(num.Value is decimal ? num : new KdlNumber<decimal>((decimal)Convert.ChangeType(num.Value, typeof(decimal)), num.Radix, num.Type), propName); return true;
+            case "u8": EmitPropOrArg(num.Value is byte ? num : new KdlNumber<byte>((byte)Convert.ChangeType(num.Value, typeof(byte)), num.Radix, num.Type), propName, source); return true;
+            case "u16": EmitPropOrArg(num.Value is ushort ? num : new KdlNumber<ushort>((ushort)Convert.ChangeType(num.Value, typeof(ushort)), num.Radix, num.Type), propName, source); return true;
+            case "u32": EmitPropOrArg(num.Value is uint ? num : new KdlNumber<uint>((uint)Convert.ChangeType(num.Value, typeof(uint)), num.Radix, num.Type), propName, source); return true;
+            case "u64": EmitPropOrArg(num.Value is ulong ? num : new KdlNumber<ulong>((ulong)Convert.ChangeType(num.Value, typeof(ulong)), num.Radix, num.Type), propName, source); return true;
+            case "i8": EmitPropOrArg(num.Value is sbyte ? num : new KdlNumber<sbyte>((sbyte)Convert.ChangeType(num.Value, typeof(sbyte)), num.Radix, num.Type), propName, source); return true;
+            case "i16": EmitPropOrArg(num.Value is short ? num : new KdlNumber<short>((short)Convert.ChangeType(num.Value, typeof(short)), num.Radix, num.Type), propName, source); return true;
+            case "i32": EmitPropOrArg(num.Value is int ? num : new KdlNumber<int>((int)Convert.ChangeType(num.Value, typeof(int)), num.Radix, num.Type), propName, source); return true;
+            case "i64": EmitPropOrArg(num.Value is long ? num : new KdlNumber<long>((long)Convert.ChangeType(num.Value, typeof(long)), num.Radix, num.Type), propName, source); return true;
+            case "isize": EmitPropOrArg(num.Value is nint ? num : new KdlNumber<nint>((nint)Convert.ChangeType(num.Value, typeof(nint)), num.Radix, num.Type), propName, source); return true;
+            case "usize": EmitPropOrArg(num.Value is nuint ? num : new KdlNumber<nuint>((nuint)Convert.ChangeType(num.Value, typeof(nuint)), num.Radix, num.Type), propName, source); return true;
+            case "f32": EmitPropOrArg(num.Value is float ? num : new KdlNumber<float>((float)Convert.ChangeType(num.Value, typeof(float)), num.Radix, num.Type), propName, source); return true;
+            case "f64": EmitPropOrArg(num.Value is double ? num : new KdlNumber<double>((double)Convert.ChangeType(num.Value, typeof(double)), num.Radix, num.Type), propName, source); return true;
+            case "decimal64": EmitPropOrArg(num.Value is double ? num : new KdlNumber<double>((double)Convert.ChangeType(num.Value, typeof(double)), num.Radix, num.Type), propName, source); return true;
+            case "decimal": EmitPropOrArg(num.Value is decimal ? num : new KdlNumber<decimal>((decimal)Convert.ChangeType(num.Value, typeof(decimal)), num.Radix, num.Type), propName, source); return true;
+            case "decimal128": EmitPropOrArg(num.Value is decimal ? num : new KdlNumber<decimal>((decimal)Convert.ChangeType(num.Value, typeof(decimal)), num.Radix, num.Type), propName, source); return true;
         }
 
         return false;
     }
 
-    protected bool ParseNumWithType(StringBuilder builder, int radix, int sign, string type, string? propName)
+    protected bool ParseNumWithType(StringBuilder builder, int radix, int sign, string type, string? propName, KdlSourceInfo source)
     {
         switch (type)
         {
@@ -401,7 +421,7 @@ public class KdlReader
             case "u32":
             case "u64":
             case "usize":
-                if (sign != 1)
+                if (sign == -1)
                 {
                     throw new KdlException("Invalid number. Unsigned types cannot be negative.", _context);
                 }
@@ -410,22 +430,22 @@ public class KdlReader
 
         switch (type)
         {
-            case "u8": EmitPropOrArg(KdlUtils.ParseUInt8(builder.ToString(), radix, type), propName); return true;
-            case "u16": EmitPropOrArg(KdlUtils.ParseUInt16(builder.ToString(), radix, type), propName); return true;
-            case "u32": EmitPropOrArg(KdlUtils.ParseUInt32(builder.ToString(), radix, type), propName); return true;
-            case "u64": EmitPropOrArg(KdlUtils.ParseUInt64(builder.ToString(), radix, type), propName); return true;
-            case "i8": EmitPropOrArg(KdlUtils.ParseInt8(builder.ToString(), (sbyte)sign, radix, type), propName); return true;
-            case "i16": EmitPropOrArg(KdlUtils.ParseInt16(builder.ToString(), (short)sign, radix, type), propName); return true;
-            case "i32": EmitPropOrArg(KdlUtils.ParseInt32(builder.ToString(), sign, radix, type), propName); return true;
-            case "i64": EmitPropOrArg(KdlUtils.ParseInt64(builder.ToString(), sign, radix, type), propName); return true;
-            case "isize": EmitPropOrArg(KdlUtils.ParseIntPtr(builder.ToString(), sign, radix, type), propName); return true;
-            case "usize": EmitPropOrArg(KdlUtils.ParseUIntPtr(builder.ToString(), radix, type), propName); return true;
+            case "u8": EmitPropOrArg(KdlUtils.ParseUInt8(builder.ToString(), radix, type), propName, source); return true;
+            case "u16": EmitPropOrArg(KdlUtils.ParseUInt16(builder.ToString(), radix, type), propName, source); return true;
+            case "u32": EmitPropOrArg(KdlUtils.ParseUInt32(builder.ToString(), radix, type), propName, source); return true;
+            case "u64": EmitPropOrArg(KdlUtils.ParseUInt64(builder.ToString(), radix, type), propName, source); return true;
+            case "i8": EmitPropOrArg(KdlUtils.ParseInt8(builder.ToString(), (sbyte)sign, radix, type), propName, source); return true;
+            case "i16": EmitPropOrArg(KdlUtils.ParseInt16(builder.ToString(), (short)sign, radix, type), propName, source); return true;
+            case "i32": EmitPropOrArg(KdlUtils.ParseInt32(builder.ToString(), sign, radix, type), propName, source); return true;
+            case "i64": EmitPropOrArg(KdlUtils.ParseInt64(builder.ToString(), sign, radix, type), propName, source); return true;
+            case "isize": EmitPropOrArg(KdlUtils.ParseIntPtr(builder.ToString(), sign, radix, type), propName, source); return true;
+            case "usize": EmitPropOrArg(KdlUtils.ParseUIntPtr(builder.ToString(), radix, type), propName, source); return true;
             case "f32":
                 if (radix != 10)
                 {
                     throw new KdlException("Invalid number. Floats must be base 10.", _context);
                 }
-                EmitPropOrArg(KdlUtils.ParseFloat32(builder.ToString(), sign, type), propName);
+                EmitPropOrArg(KdlUtils.ParseFloat32(builder.ToString(), sign, type), propName, source);
                 return true;
             case "f64":
             case "decimal64":
@@ -433,7 +453,7 @@ public class KdlReader
                 {
                     throw new KdlException("Invalid number. Floats must be base 10.", _context);
                 }
-                EmitPropOrArg(KdlUtils.ParseFloat64(builder.ToString(), sign, type), propName);
+                EmitPropOrArg(KdlUtils.ParseFloat64(builder.ToString(), sign, type), propName, source);
                 return true;
             case "decimal":
             case "decimal128":
@@ -441,14 +461,14 @@ public class KdlReader
                 {
                     throw new KdlException("Invalid number. Decimals must be base 10.", _context);
                 }
-                EmitPropOrArg(KdlUtils.ParseDecimal(builder.ToString(), sign, type), propName);
+                EmitPropOrArg(KdlUtils.ParseDecimal(builder.ToString(), sign, type), propName, source);
                 return true;
         }
 
         return false;
     }
 
-    protected void ParseIntFromBuilder(StringBuilder builder, int radix, int sign, string? type, string? propName)
+    protected void ParseIntFromBuilder(StringBuilder builder, int radix, int sign, string? type, string? propName, KdlSourceInfo source)
     {
         if (builder.Length == 0)
         {
@@ -457,31 +477,31 @@ public class KdlReader
 
         if (type != null && _options.UseTypeAnnotations)
         {
-            if (ParseNumWithType(builder, radix, sign, type, propName))
+            if (ParseNumWithType(builder, radix, sign, type, propName, source))
                 return;
         }
 
         try
         {
             KdlNumber<int> value = KdlUtils.ParseInt32(builder.ToString(), sign, radix, type);
-            EmitPropOrArg(value, propName);
+            EmitPropOrArg(value, propName, source);
         }
         catch (OverflowException)
         {
             try
             {
                 KdlNumber<long> value = KdlUtils.ParseInt64(builder.ToString(), sign, radix, type);
-                EmitPropOrArg(value, propName);
+                EmitPropOrArg(value, propName, source);
             }
             catch (OverflowException)
             {
                 if (sign == -1)
                 {
-                    throw new KdlException("Invalid number. Huge negative numbers are not supported.", _context);
+                    throw new KdlException("Invalid number. Negative numbers must fit within a 64-bit signed integer.", _context);
                 }
 
                 KdlNumber<ulong> value = KdlUtils.ParseUInt64(builder.ToString(), radix, type);
-                EmitPropOrArg(value, propName);
+                EmitPropOrArg(value, propName, source);
             }
         }
     }
@@ -496,6 +516,7 @@ public class KdlReader
             throw new KdlException("Invalid number. Numbers may not start with an underscore.", _context);
         }
 
+        KdlSourceInfo source = GetSourceInfo();
         StringBuilder builder = new();
         while (!AtEnd() && (KdlUtils.IsHexadecimalDigit(ucc) || ucc == '_'))
         {
@@ -504,7 +525,7 @@ public class KdlReader
             _context.Read();
         }
 
-        ParseIntFromBuilder(builder, 16, sign, type, propName);
+        ParseIntFromBuilder(builder, 16, sign, type, propName, source);
     }
 
     protected void ParseOctNum(int sign, string? type, string? propName)
@@ -517,6 +538,7 @@ public class KdlReader
             throw new KdlException("Invalid number. Numbers may not start with an underscore.", _context);
         }
 
+        KdlSourceInfo source = GetSourceInfo();
         StringBuilder builder = new();
         while (!AtEnd() && (KdlUtils.IsOctalDigit(ucc) || ucc == '_'))
         {
@@ -525,7 +547,7 @@ public class KdlReader
             _context.Read();
         }
 
-        ParseIntFromBuilder(builder, 8, sign, type, propName);
+        ParseIntFromBuilder(builder, 8, sign, type, propName, source);
     }
 
     protected void ParseBinNum(int sign, string? type, string? propName)
@@ -538,6 +560,7 @@ public class KdlReader
             throw new KdlException("Invalid number. Numbers may not start with an underscore.", _context);
         }
 
+        KdlSourceInfo source = GetSourceInfo();
         StringBuilder builder = new();
         while (!AtEnd() && (KdlUtils.IsBinaryDigit(ucc) || ucc == '_'))
         {
@@ -546,7 +569,7 @@ public class KdlReader
             _context.Read();
         }
 
-        ParseIntFromBuilder(builder, 2, sign, type, propName);
+        ParseIntFromBuilder(builder, 2, sign, type, propName, source);
     }
 
     protected void ParseDecNum(int sign, string? type, string? propName)
@@ -558,6 +581,7 @@ public class KdlReader
         int expSign = 0;
         bool prevWasNumeric = false;
         StringBuilder builder = new();
+        KdlSourceInfo source = GetSourceInfo();
 
         while (!AtEnd())
         {
@@ -654,19 +678,30 @@ public class KdlReader
                 throw new KdlException("Invalid number. Exponent must come after the dot.", _context);
             }
 
-            KdlNumber<double> value = KdlUtils.ParseFloat64(builder.ToString(), sign, type);
-
-            if (type != null && _options.UseTypeAnnotations)
+            try
             {
-                if (ParseNumWithType(value, sign, type, propName))
-                    return;
+                KdlNumber<float> value = KdlUtils.ParseFloat32(builder.ToString(), sign, type);
+                if (type != null && _options.UseTypeAnnotations)
+                {
+                    if (ParseNumWithType(value, sign, type, propName, source))
+                        return;
+                }
+                EmitPropOrArg(value, propName, source);
             }
-
-            EmitPropOrArg(value, propName);
+            catch (OverflowException)
+            {
+                KdlNumber<double> value = KdlUtils.ParseFloat64(builder.ToString(), sign, type);
+                if (type != null && _options.UseTypeAnnotations)
+                {
+                    if (ParseNumWithType(value, sign, type, propName, source))
+                        return;
+                }
+                EmitPropOrArg(value, propName, source);
+            }
         }
         else
         {
-            ParseIntFromBuilder(builder, 10, sign, type, propName);
+            ParseIntFromBuilder(builder, 10, sign, type, propName, source);
         }
     }
 
@@ -734,6 +769,7 @@ public class KdlReader
             // #true, #false, #null, #nan, #inf, #-inf, #"rawstr"#
             case '#':
             {
+                KdlSourceInfo source = GetSourceInfo();
                 _context.Read();
                 ThrowIfAtEnd();
 
@@ -743,17 +779,17 @@ public class KdlReader
                 if (ucc == '"' || ucc == '#')
                 {
                     string value = ConsumeString();
-                    EmitPropOrArg(value, type, propName);
+                    EmitPropOrArg(value, type, propName, source);
                     return;
                 }
 
                 // otherwise, this is a keyword value
                 switch (ucc)
                 {
-                    case 't': Consume("true"); EmitPropOrArg(true, type, propName); return;
-                    case 'f': Consume("false"); EmitPropOrArg(false, type, propName); return;
-                    case 'i': Consume("inf"); EmitPropOrArg(double.PositiveInfinity, type, propName); return;
-                    case '-': Consume("-inf"); EmitPropOrArg(double.NegativeInfinity, type, propName); return;
+                    case 't': Consume("true"); EmitPropOrArg(true, type, propName, source); return;
+                    case 'f': Consume("false"); EmitPropOrArg(false, type, propName, source); return;
+                    case 'i': Consume("inf"); EmitPropOrArg(double.PositiveInfinity, type, propName, source); return;
+                    case '-': Consume("-inf"); EmitPropOrArg(double.NegativeInfinity, type, propName, source); return;
                     case 'n':
                     {
                         _context.Read();
@@ -765,12 +801,12 @@ public class KdlReader
                         if (ucc == 'a')
                         {
                             Consume("nan");
-                            EmitPropOrArg(double.NaN, type, propName);
+                            EmitPropOrArg(double.NaN, type, propName, source);
                         }
                         else
                         {
                             Consume("null");
-                            EmitPropOrArg(null, type, propName);
+                            EmitPropOrArg(null, type, propName, source);
                         }
                         return;
                     }
@@ -811,11 +847,12 @@ public class KdlReader
             // anything else must be a string
             default:
             {
+                KdlSourceInfo source = GetSourceInfo();
                 string value = ConsumeString();
 
                 if (AtEnd())
                 {
-                    EmitPropOrArg(value, type, propName);
+                    EmitPropOrArg(value, type, propName, source);
                     return;
                 }
 
@@ -823,7 +860,7 @@ public class KdlReader
 
                 if (AtEnd())
                 {
-                    EmitPropOrArg(value, type, propName);
+                    EmitPropOrArg(value, type, propName, source);
                     return;
                 }
 
@@ -850,7 +887,7 @@ public class KdlReader
                 // parse this as a property. Otherwise the required spaces between args
                 // and props will get consumed here.
                 _context.Unread(' ');
-                EmitPropOrArg(value, type, propName);
+                EmitPropOrArg(value, type, propName, source);
                 return;
             }
         }
@@ -934,9 +971,9 @@ public class KdlReader
         }
     }
 
-    protected void EmitStartNode(string name, string? type)
+    protected void EmitStartNode(string name, string? type, KdlSourceInfo source)
     {
-        _handler!.StartNode(name, type);
+        _handler!.StartNode(name, type, source);
         ++_nodeDepth;
     }
 
@@ -952,24 +989,24 @@ public class KdlReader
         CheckSlashdashEnd();
     }
 
-    protected void EmitPropOrArg(KdlValue kdlValue, string? name)
+    protected void EmitPropOrArg(KdlValue kdlValue, string? name, KdlSourceInfo source)
     {
         if (name != null)
         {
-            _handler!.Property(name, kdlValue);
+            _handler!.Property(name, kdlValue, source);
         }
         else
         {
-            _handler!.Argument(kdlValue);
+            _handler!.Argument(kdlValue, source);
         }
 
         CheckSlashdashEnd();
     }
 
-    protected void EmitPropOrArg(object? value, string? type, string? name)
+    protected void EmitPropOrArg(object? value, string? type, string? name, KdlSourceInfo source)
     {
         KdlValue kdlValue = KdlValue.From(value, type);
-        EmitPropOrArg(kdlValue, type, name);
+        EmitPropOrArg(kdlValue, name, source);
     }
 
     protected void Consume(char ch)
@@ -1227,7 +1264,7 @@ public class KdlReader
         }
 
         if (value.Length == 0)
-            return string.Empty;
+            return "";
 
         if (!isMultiline)
             return value.ToString();

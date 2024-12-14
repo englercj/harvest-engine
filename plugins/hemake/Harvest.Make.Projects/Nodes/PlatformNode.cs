@@ -1,13 +1,13 @@
 // Copyright Chad Engler
 
 using Harvest.Kdl;
-using Harvest.Kdl.Types;
 using Harvest.Make.Projects.Attributes;
 
 namespace Harvest.Make.Projects.Nodes;
 
 public enum EPlatformArch
 {
+    [KdlName("any")] Any,
     [KdlName("x86")] X86,
     [KdlName("x86_64")] X86_64,
     [KdlName("arm")] Arm,
@@ -16,12 +16,13 @@ public enum EPlatformArch
 
 public enum EPlatformSystem
 {
+    [KdlName("dotnet")] DotNet,
     [KdlName("linux")] Linux,
     [KdlName("wasm")] WASM,
     [KdlName("windows")] Windows,
 }
 
-public class PlatformNode(KdlNode node) : NodeBase(node)
+public class PlatformNode(KdlNode node, INode? scope) : NodeBase(node, scope)
 {
     public const string NodeName = "platform";
 
@@ -32,16 +33,15 @@ public class PlatformNode(KdlNode node) : NodeBase(node)
 
     public static readonly IReadOnlyList<NodeKdlValue> NodeArguments =
     [
-        NodeKdlValue<KdlString>.Required,
+        NodeKdlString.Required(),
     ];
 
-    public static readonly IReadOnlyDictionary<string, NodeKdlValue> NodeProperties = new Dictionary<string, NodeKdlValue>()
+    public static readonly IReadOnlyDictionary<string, NodeKdlValue> NodeProperties = new SortedDictionary<string, NodeKdlValue>()
     {
-        { "arch", NodeKdlEnum<EPlatformArch>.Required },
-        { "system", NodeKdlEnum<EPlatformSystem>.Required },
-        { "toolset", NodeKdlValue<KdlString>.Optional },
-        { "default", NodeKdlValue<KdlBool>.Optional },
-        { "version", NodeKdlValue<KdlString>.Optional }
+        { "arch", NodeKdlEnum<EPlatformArch>.Required(EPlatformArch.X86_64) },
+        { "system", NodeKdlEnum<EPlatformSystem>.Required(EPlatformSystem.Windows) },
+        { "toolset", NodeKdlEnum<EToolset>.Optional() },
+        { "default", NodeKdlBool.Optional(false) },
     };
 
     public override string Name => NodeName;
@@ -49,9 +49,42 @@ public class PlatformNode(KdlNode node) : NodeBase(node)
     public override IReadOnlyList<NodeKdlValue> Arguments => NodeArguments;
     public override IReadOnlyDictionary<string, NodeKdlValue> Properties => NodeProperties;
 
-    public EPlatformArch Arch => GetEnumValue("arch", EPlatformArch.X86_64);
-    public EPlatformSystem System => GetEnumValue("system", EPlatformSystem.Windows);
-    public string? Toolset => GetStringValue("toolset");
-    public bool IsDefault => GetBoolValue("default") ?? false;
-    public string? Version => GetStringValue("version");
+    public string PlatformName => GetStringValue(0);
+    public EPlatformArch Arch => GetEnumValue<EPlatformArch>("arch");
+    public EPlatformSystem System => GetEnumValue<EPlatformSystem>("system");
+    public EToolset Toolset => TryGetEnumValue<EToolset>("toolset") ?? GuessToolset();
+    public bool IsDefault => GetBoolValue("default");
+
+    private EToolset GuessToolset()
+    {
+        switch (System)
+        {
+            case EPlatformSystem.DotNet:
+                return EToolset.MSVC;
+            case EPlatformSystem.Linux:
+                return EToolset.GCC;
+            case EPlatformSystem.WASM:
+                return EToolset.Clang;
+            case EPlatformSystem.Windows:
+                return EToolset.MSVC;
+        }
+
+        throw new Exception($"Unknown platform system: {System}");
+    }
+
+    public override NodeValidationResult Validate(INode? scope)
+    {
+        NodeValidationResult vr = base.Validate(scope);
+        if (!vr.IsValid)
+        {
+            return vr;
+        }
+
+        if (Arch == EPlatformArch.Any && System != EPlatformSystem.DotNet)
+        {
+            return NodeValidationResult.Error("Platform arch cannot be 'any' unless system is also 'dotnet'");
+        }
+
+        return NodeValidationResult.Valid;
+    }
 }

@@ -1,7 +1,6 @@
 // Copyright Chad Engler
 
 using Harvest.Kdl;
-using Harvest.Kdl.Types;
 using Harvest.Make.Projects.Attributes;
 
 namespace Harvest.Make.Projects.Nodes;
@@ -13,7 +12,7 @@ public enum EBuildEvent
     [KdlName("prelink")] Prelink,
 }
 
-public class BuildEventNode(KdlNode node) : NodeBase(node)
+public class BuildEventNode(KdlNode node, INode? scope) : NodeBase(node, scope)
 {
     public const string NodeName = "build_event";
 
@@ -24,12 +23,12 @@ public class BuildEventNode(KdlNode node) : NodeBase(node)
 
     public static readonly IReadOnlyList<NodeKdlValue> NodeArguments =
     [
-        NodeKdlEnum<EBuildEvent>.Required,
+        NodeKdlEnum<EBuildEvent>.Required(EBuildEvent.Prebuild),
     ];
 
-    public static readonly IReadOnlyDictionary<string, NodeKdlValue> NodeProperties = new Dictionary<string, NodeKdlValue>()
+    public static readonly IReadOnlyDictionary<string, NodeKdlValue> NodeProperties = new SortedDictionary<string, NodeKdlValue>()
     {
-        { "message", NodeKdlValue<KdlString>.Optional },
+        { "message", NodeKdlString.Optional() },
     };
 
     public override string Name => NodeName;
@@ -38,18 +37,7 @@ public class BuildEventNode(KdlNode node) : NodeBase(node)
     public override IReadOnlyDictionary<string, NodeKdlValue> Properties => NodeProperties;
     public override Type? ChildNodeType => typeof(BuildEventEntryNode);
 
-    public EBuildEvent EventName => GetEnumValue(0, EBuildEvent.Prebuild);
-
-    public string? Message => GetStringValue("message");
-
-    public IEnumerable<BuildEventEntryNode> Entries
-    {
-        get
-        {
-            foreach (INode child in Children)
-            {
-                yield return (BuildEventEntryNode)child;
-            }
-        }
-    }
+    public EBuildEvent EventName => GetEnumValue<EBuildEvent>(0);
+    public string? Message => TryGetStringValue("message");
+    public IEnumerable<BuildEventEntryNode> Entries => Children.Cast<BuildEventEntryNode>();
 }

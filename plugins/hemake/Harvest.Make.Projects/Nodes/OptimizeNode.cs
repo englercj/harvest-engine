@@ -30,7 +30,7 @@ public enum EInliningLevel
     [KdlName("on")] On,
 }
 
-public class OptimizeNode(KdlNode node) : NodeBase(node)
+public class OptimizeNode(KdlNode node, INode? scope) : NodeBase(node, scope)
 {
     public const string NodeName = "optimize";
 
@@ -42,13 +42,13 @@ public class OptimizeNode(KdlNode node) : NodeBase(node)
 
     public static readonly IReadOnlyList<NodeKdlValue> NodeArguments =
     [
-        NodeKdlEnum<EOptimizationLevel>.Required,
+        NodeKdlEnum<EOptimizationLevel>.Required(EOptimizationLevel.Default),
     ];
 
-    public static readonly IReadOnlyDictionary<string, NodeKdlValue> NodeProperties = new Dictionary<string, NodeKdlValue>()
+    public static readonly IReadOnlyDictionary<string, NodeKdlValue> NodeProperties = new SortedDictionary<string, NodeKdlValue>()
     {
-        { "lto", NodeKdlEnum<ELinkTimeOptimizationLevel>.Required },
-        { "inlining", NodeKdlEnum<EInliningLevel>.Required },
+        { "lto", NodeKdlEnum<ELinkTimeOptimizationLevel>.Optional(ELinkTimeOptimizationLevel.Default) },
+        { "inlining", NodeKdlEnum<EInliningLevel>.Optional(EInliningLevel.Default) },
     };
 
     public override string Name => NodeName;
@@ -56,7 +56,7 @@ public class OptimizeNode(KdlNode node) : NodeBase(node)
     public override IReadOnlyList<NodeKdlValue> Arguments => NodeArguments;
     public override IReadOnlyDictionary<string, NodeKdlValue> Properties => NodeProperties;
 
-    public EOptimizationLevel OptimizationLevel => GetEnumValue(0, EOptimizationLevel.Default);
-    public ELinkTimeOptimizationLevel LinkTimeOptimizationLevel => GetEnumValue("lto", ELinkTimeOptimizationLevel.Default);
-    public EInliningLevel InliningLevel => GetEnumValue("inlining", EInliningLevel.Default);
+    public EOptimizationLevel OptimizationLevel => GetEnumValue<EOptimizationLevel>(0);
+    public ELinkTimeOptimizationLevel LinkTimeOptimizationLevel => GetEnumValue<ELinkTimeOptimizationLevel>("lto");
+    public EInliningLevel InliningLevel => GetEnumValue<EInliningLevel>("inlining");
 }

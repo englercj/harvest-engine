@@ -7,7 +7,7 @@ A set of file paths and how to treat them.
 1. (string) - Optional. How to treat the set of items. Valid values are:
     * `add` - Add the items to the set. This is the default behavior.
     * `remove` - Remove the items from the set.
-    * `match` - Do not modify the set of items. Only update properties of matched items.
+    * `modify` - Do not modify the set of items. Only update properties of matched items.
         - Can also be used in a [`project`](project_node.md) to specify default actions for files.
 
 ## Properties
@@ -16,16 +16,18 @@ None.
 
 ## Children
 
-- `file-glob` - A glob pattern for the files to include in the module. See [paths](../paths.md) for details.
+- `file-glob` - Required. A glob pattern for the files to include in the module. See [paths](../paths.md) for details.
     * File globs may specify an optional `action` property, detailed below.
     * Files with the `build` action can also specify an optional `rule` property, detailed below.
+    * Files with the `build` action can also specify an optional `clr` property, detailed below.
 
 ### `action` property
 
-The `action` property informs the build system how the files should be handled. When not specified a default action is chosen by HE Make based on the file's extension.
+The `action` property informs the build system how the files should be handled.
 
 The valid action values are:
 
+- `default` - Chose an action based on the file's extension. This is the default behavior.
 - `appxmanifest` - Treat the file as an AppxManifest (UWP package manifest).
 - `build` - Compile and link as source code files. This is the default action.
 - `copy` - Copy the files to the target directory.
@@ -54,7 +56,6 @@ The `rule` property is only relevant when the `action` property is set to `build
 ## Scopes
 
 - [`module`](module_node.md)
-- [`project`](project_node.md) - Only when using the `match` argument.
 
 ## Example
 
@@ -82,7 +83,7 @@ files remove {
 }
 
 // Change the properties of a file that was added in the block above.
-// Without the `match` argument we may inadvertently add files we don't want.
+// Without the `modify` argument we may inadvertently add files we don't want.
 files match {
     "**.pizza" action=none
 }

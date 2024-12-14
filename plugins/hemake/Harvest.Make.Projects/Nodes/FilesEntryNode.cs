@@ -1,13 +1,13 @@
 // Copyright Chad Engler
 
 using Harvest.Kdl;
-using Harvest.Kdl.Types;
 using Harvest.Make.Projects.Attributes;
 
 namespace Harvest.Make.Projects.Nodes;
 
 public enum EFileAction
 {
+    [KdlName("default")] Default,
     [KdlName("none")] None,
     [KdlName("appxmanifest")] AppxManifest,
     [KdlName("build")] Build,
@@ -21,6 +21,7 @@ public enum EFileAction
 
 public enum EFileRule
 {
+    [KdlName("default")] Default,
     [KdlName("asm")] Asm,
     [KdlName("c")] C,
     [KdlName("cpp")] Cpp,
@@ -51,9 +52,9 @@ internal class ExtensionInfo
     public EFileRule Rule { get; }
 }
 
-public class FilesEntryNode(KdlNode node) : NodeBase(node)
+public class FilesEntryNode(KdlNode node, INode? scope) : NodeBase(node, scope)
 {
-    private static readonly Dictionary<string, ExtensionInfo> FileExtensionInfos = new()
+    private static readonly Dictionary<string, ExtensionInfo> s_fileExtensionInfos = new()
     {
         { ".appxmanifest", new ExtensionInfo(EFileAction.AppxManifest) },
         { ".asm", new ExtensionInfo(EFileAction.Build, EFileRule.Asm) },
@@ -114,10 +115,10 @@ public class FilesEntryNode(KdlNode node) : NodeBase(node)
     [
     ];
 
-    public static readonly IReadOnlyDictionary<string, NodeKdlValue> NodeProperties = new Dictionary<string, NodeKdlValue>()
+    public static readonly IReadOnlyDictionary<string, NodeKdlValue> NodeProperties = new SortedDictionary<string, NodeKdlValue>()
     {
-        { "action", NodeKdlEnum<EFileAction>.Optional },
-        { "rule", NodeKdlValue<KdlString>.Optional },
+        { "action", NodeKdlEnum<EFileAction>.Optional(EFileAction.Default) },
+        { "rule", NodeKdlString.Optional("default") },
     };
 
     public override string Name => Node.Name;
@@ -125,15 +126,15 @@ public class FilesEntryNode(KdlNode node) : NodeBase(node)
     public override IReadOnlyList<NodeKdlValue> Arguments => NodeArguments;
     public override IReadOnlyDictionary<string, NodeKdlValue> Properties => NodeProperties;
 
-    public string? FileGlob => Node.Name;
+    public string FileGlob => Node.Name;
+    public IEnumerable<string> FilePaths => ExpandPath(FileGlob);
+    public EFileAction FileAction => GetEnumValue<EFileAction>("action");
+    public EFileRule FileRule => GetEnumValue<EFileRule>("rule");
+    public string RuleName => GetStringValue("rule");
 
-    public EFileAction? FileAction => GetEnumValue("action", GuessFileAction());
-    public EFileRule? FileRule => GetEnumValue("rule", GuessFileRule());
-    public string? RuleName => GetStringValue("rule");
-
-    private EFileAction GuessFileAction()
+    public static EFileAction GetDefaultFileAction(string path)
     {
-        if (FileExtensionInfos.TryGetValue(Path.GetExtension(Node.Name), out ExtensionInfo? info))
+        if (s_fileExtensionInfos.TryGetValue(Path.GetExtension(path), out ExtensionInfo? info))
         {
             return info.Action;
         }
@@ -141,13 +142,29 @@ public class FilesEntryNode(KdlNode node) : NodeBase(node)
         return EFileAction.None;
     }
 
-    private EFileRule GuessFileRule()
+    public static EFileRule GetDefaultFileRule(string path)
     {
-        if (FileExtensionInfos.TryGetValue(Path.GetExtension(Node.Name), out ExtensionInfo? info))
+        if (s_fileExtensionInfos.TryGetValue(Path.GetExtension(path), out ExtensionInfo? info))
         {
             return info.Rule;
         }
 
         return EFileRule.Custom;
+    }
+
+    public override NodeValidationResult Validate(INode? scope)
+    {
+        NodeValidationResult vr = base.Validate(scope);
+        if (!vr.IsValid)
+        {
+            return vr;
+        }
+
+        if (RuleName is not null && FileAction != EFileAction.Build)
+        {
+            return NodeValidationResult.Error("Rule can only be specified for files with action 'build'");
+        }
+
+        return NodeValidationResult.Valid;
     }
 }

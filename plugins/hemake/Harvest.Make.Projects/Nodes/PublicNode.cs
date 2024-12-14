@@ -4,7 +4,7 @@ using Harvest.Kdl;
 
 namespace Harvest.Make.Projects.Nodes;
 
-public class PublicNode(KdlNode node) : NodeBase(node)
+public class PublicNode(KdlNode node, INode? scope) : NodeBase(node, scope)
 {
     public const string NodeName = "public";
 
@@ -17,7 +17,7 @@ public class PublicNode(KdlNode node) : NodeBase(node)
     [
     ];
 
-    public static readonly IReadOnlyDictionary<string, NodeKdlValue> NodeProperties = new Dictionary<string, NodeKdlValue>()
+    public static readonly IReadOnlyDictionary<string, NodeKdlValue> NodeProperties = new SortedDictionary<string, NodeKdlValue>()
     {
     };
 

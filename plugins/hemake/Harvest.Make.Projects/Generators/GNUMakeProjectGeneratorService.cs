@@ -7,7 +7,7 @@ namespace Harvest.Make.Projects.Generators;
 [Service<IProjectGeneratorService>(Key = ProjectGeneratorNames.GNUMake)]
 public class GNUMakeProjectGeneratorService : IProjectGeneratorService
 {
-    public Task GenerateProjectFilesAsync(WorkspaceDescriptor descriptor)
+    public void GenerateProjectFiles()
     {
         throw new NotImplementedException();
     }

@@ -6,86 +6,83 @@ internal class KdlDocumentReadHandler : IKdlReadHandler
 {
     public KdlDocument Document = new();
 
-    private List<KdlNode> _nodeStack = new();
+    private List<KdlNode> _nodeStack = [];
     private uint _commentDepth = 0;
 
-    public bool StartDocument()
+    public void StartDocument(KdlSourceInfo source)
     {
         // Nothing to do here
-        return true;
     }
 
-    public bool EndDocument()
+    public void EndDocument()
     {
         // Nothing to do here
-        return true;
     }
 
-    public bool Comment(string value)
+    public void Comment(string value, KdlSourceInfo source)
     {
         // Nothing to do here
-        return true;
     }
 
-    public bool StartComment()
+    public void StartComment(KdlSourceInfo source)
     {
         ++_commentDepth;
-        return true;
     }
 
-    public bool EndComment()
+    public void EndComment()
     {
         --_commentDepth;
-        return true;
     }
 
-    public bool StartNode(string name, string? type)
+    public void StartNode(string name, string? type, KdlSourceInfo source)
     {
         if (_commentDepth > 0)
-            return true;
+            return;
 
-        IList<KdlNode> children = _nodeStack.Count == 0 ? Document.Nodes : _nodeStack[^1].Children;
-        KdlNode node = new(name, type);
+        List<KdlNode> children = _nodeStack.Count == 0 ? Document.Nodes : _nodeStack[^1].Children;
+        KdlNode node = new(name, type)
+        {
+            SourceInfo = source
+        };
         children.Add(node);
         _nodeStack.Add(node);
-        return true;
     }
 
-    public bool EndNode()
+    public void EndNode()
     {
         if (_commentDepth > 0)
-            return true;
+            return;
 
         if (_nodeStack.Count == 0)
-            return false;
+            return;
 
         _nodeStack.RemoveAt(_nodeStack.Count - 1);
-        return true;
+        return;
     }
 
-    public bool Argument(KdlValue value)
+    public void Argument(KdlValue value, KdlSourceInfo source)
     {
         if (_commentDepth > 0)
-            return true;
+            return;
 
         if (_nodeStack.Count == 0)
-            return false;
+            return;
 
         KdlNode node = _nodeStack[^1];
         node.Arguments.Add(value);
-        return true;
+        return;
     }
 
-    public bool Property(string name, KdlValue value)
+    public void Property(string name, KdlValue value, KdlSourceInfo source)
     {
         if (_commentDepth > 0)
-            return true;
+            return;
 
         if (_nodeStack.Count == 0)
-            return false;
+            return;
 
         KdlNode node = _nodeStack[^1];
         node.Properties[name] = value;
-        return true;
+        return;
     }
 }

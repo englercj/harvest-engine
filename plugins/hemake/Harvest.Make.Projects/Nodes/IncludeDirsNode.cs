@@ -1,11 +1,10 @@
 // Copyright Chad Engler
 
 using Harvest.Kdl;
-using Harvest.Kdl.Types;
 
 namespace Harvest.Make.Projects.Nodes;
 
-public class IncludeDirsNode(KdlNode node) : NodeSetBase<IncludeDirsEntryNode>(node)
+public class IncludeDirsNode(KdlNode node, INode? scope) : NodeSetBase<IncludeDirsEntryNode>(node, scope)
 {
     public const string NodeName = "include_dirs";
 
@@ -17,20 +16,14 @@ public class IncludeDirsNode(KdlNode node) : NodeSetBase<IncludeDirsEntryNode>(n
         PublicNode.NodeName,
     ];
 
-    public static readonly IReadOnlyList<NodeKdlValue> NodeArguments =
-    [
-        NodeKdlSetAction.Optional,
-    ];
-
-    public static readonly IReadOnlyDictionary<string, NodeKdlValue> NodeProperties = new Dictionary<string, NodeKdlValue>()
+    public static readonly IReadOnlyDictionary<string, NodeKdlValue> NodeProperties = new SortedDictionary<string, NodeKdlValue>()
     {
-        { "external", NodeKdlValue<KdlBool>.Optional },
+        { "external", NodeKdlBool.Optional(false) },
     };
 
     public override string Name => NodeName;
     public override IReadOnlyList<string> Scopes => NodeScopes;
-    public override IReadOnlyList<NodeKdlValue> Arguments => NodeArguments;
     public override IReadOnlyDictionary<string, NodeKdlValue> Properties => NodeProperties;
 
-    public bool IsExternal => GetBoolValue("external") ?? false;
+    public bool IsExternal => GetBoolValue("external");
 }

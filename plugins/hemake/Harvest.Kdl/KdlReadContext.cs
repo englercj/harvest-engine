@@ -5,26 +5,16 @@ using System.Text;
 
 namespace Harvest.Kdl;
 
-public class KdlReadContext
+public class KdlReadContext(string filePath, TextReader reader)
 {
-    public PushBackReader Reader { get; }
+    public string FilePath => filePath;
+    public PushBackReader Reader { get; } = new PushBackReader(reader, 2);
 
-    public uint Line { get; private set; }
-    public uint Column { get; private set; }
-    public ulong Offset { get; private set; }
+    public uint Line { get; private set; } = 1;
+    public uint Column { get; private set; } = 1;
+    public ulong Offset { get; private set; } = 0;
 
-    private char[] _char;
-
-    public KdlReadContext(TextReader reader)
-    {
-        Reader = new PushBackReader(reader, 2);
-
-        Line = 1;
-        Column = 1;
-        Offset = 0;
-
-        _char = new char[1];
-    }
+    private readonly char[] _char = new char[1];
 
     public int Read()
     {

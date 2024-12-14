@@ -20,21 +20,12 @@ project "Test" {
 
 Global contexts are contexts that exist outside the project structure. As such, they are always available for use in any scope.
 
-- `cmd` - Provides a way to insert common commands in a portable way. Valid properties are:
-    * `chdir` - Emits `chdir {arg}` on windows and `cd {arg}` elsewhere.
-    * `copy_file` - Emits `copy /B /Y {args}` on windows and `cp -f {args}` elsewhere.
-    * `copy_dir` - Emits `xcopy /Q /E /Y /I {args}` on windows and `cp -rf {args}` elsewhere.
-    * `del_file` - Emits `del {arg}` on windows and `rm -rf {arg}` elsewhere.
-    * `del_dir` - Emits `rmdir /S /Q {arg}` on windows and `rm -rf {arg}` elsewhere.
-    * `make_dir` - Emits `IF NOT EXIST {arg} (mkdir {arg})` on windows and `mkdir -p {arg}` elsewhere.
-    * `move` - Emits `move /Y {args}` on windows and `mv -f {args}` elsewhere.
-    * `touch` - Emits `type nul >> {arg} && copy /B {arg}+,, {arg}` on windows and `touch {arg}` elsewhere.
 - `configuration` - Provides access to properties of the currently active configuration. Valid properties are:
     * `name` - The name of the active configuration.
 - `platform` - Provides access to properties of the currently active platform. Valid properties are:
     * `name` - The name of the active platform.
     * `system` - The system for the active platform.
-    * `architecture` - The architecture for the active platform.
+    * `arch` - The architecture for the active platform.
 
 ## Computed Properties
 

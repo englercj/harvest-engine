@@ -2,6 +2,8 @@
 
 Defines the output directories used during build. This is usually specified in a [`project`](project_node.md) node, but can also be overridden within individual [`module`](module_node.md) nodes.
 
+If not specified the build output directory will be a directory named `build` in the directory where hemake is invoked.
+
 ## Arguments
 
 1. (string) - Required. The base directory for output files, relative to the project's file.

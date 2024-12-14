@@ -20,7 +20,7 @@ public enum EToolsetArch
     [KdlName("x86_64")] X86_64,
 }
 
-public class ToolsetNode(KdlNode node) : NodeBase(node)
+public class ToolsetNode(KdlNode node, INode? scope) : NodeBase(node, scope)
 {
     public const string NodeName = "toolset";
 
@@ -31,18 +31,19 @@ public class ToolsetNode(KdlNode node) : NodeBase(node)
 
     public static readonly IReadOnlyList<NodeKdlValue> NodeArguments =
     [
-        NodeKdlEnum<EToolset>.Required,
+        NodeKdlEnum<EToolset>.Required(EToolset.MSVC),
     ];
 
-    public static readonly IReadOnlyDictionary<string, NodeKdlValue> NodeProperties = new Dictionary<string, NodeKdlValue>()
+    public static readonly IReadOnlyDictionary<string, NodeKdlValue> NodeProperties = new SortedDictionary<string, NodeKdlValue>()
     {
-        { "arch", NodeKdlEnum<EToolsetArch>.Optional },
-        { "edit_and_continue", NodeKdlValue<KdlBool>.Optional },
-        { "incremental_link", NodeKdlValue<KdlBool>.Optional },
-        { "log", NodeKdlValue<KdlString>.Optional },
-        { "multiprocess", NodeKdlValue<KdlBool>.Optional },
-        { "path", NodeKdlValue<KdlString>.Optional },
-        { "version", NodeKdlValue<KdlString>.Optional },
+        { "arch", NodeKdlEnum<EToolsetArch>.Optional(EToolsetArch.Default) },
+        { "edit_and_continue", NodeKdlBool.Optional(false) },
+        { "fast_up_to_date_check", NodeKdlBool.Optional(true) },
+        { "incremental_link", NodeKdlBool.Optional(false) },
+        { "multiprocess", NodeKdlBool.Optional(false) },
+        { "log", NodeKdlString.Optional() },
+        { "path", NodeKdlPath.Optional() },
+        { "version", NodeKdlString.Optional() },
     };
 
     public override string Name => NodeName;
@@ -50,5 +51,13 @@ public class ToolsetNode(KdlNode node) : NodeBase(node)
     public override IReadOnlyList<NodeKdlValue> Arguments => NodeArguments;
     public override IReadOnlyDictionary<string, NodeKdlValue> Properties => NodeProperties;
 
-    public IEnumerable<string?> Tags => Node.Arguments.Select(a => (a as KdlString)?.Value);
+    public EToolset Toolset => GetEnumValue<EToolset>(0);
+    public EToolsetArch Arch => GetEnumValue<EToolsetArch>("arch");
+    public bool EditAndContinue => GetBoolValue("edit_and_continue");
+    public bool FastUpToDateCheck => GetBoolValue("fast_up_to_date_check");
+    public bool IncrementalLink => GetBoolValue("incremental_link");
+    public bool MultiProcess => GetBoolValue("multiprocess");
+    public string? Log => TryGetStringValue("log");
+    public string? Path => TryGetStringValue("path");
+    public string? Version => TryGetStringValue("version");
 }

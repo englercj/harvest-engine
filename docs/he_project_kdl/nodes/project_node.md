@@ -26,7 +26,6 @@ The root node of a Harvest Project structure.
 - [`dialect`](dialect_node.md)
 - [`exceptions`](exceptions_node.md)
 - [`external`](external_node.md)
-- [`files`](files_node.md) - Only when using the `match` argument.
 - [`floating_point`](floating_point_node.md)
 - [`import`](import_node.md)
 - [`link_options`](link_options_node.md)

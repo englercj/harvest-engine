@@ -15,7 +15,7 @@ public enum EWarningsMode
     [KdlName("off")] Off,
 }
 
-public class WarningsNode(KdlNode node) : NodeBase(node)
+public class WarningsNode(KdlNode node, INode? scope) : NodeBase(node, scope)
 {
     public const string NodeName = "warnings";
 
@@ -27,12 +27,12 @@ public class WarningsNode(KdlNode node) : NodeBase(node)
 
     public static readonly IReadOnlyList<NodeKdlValue> NodeArguments =
     [
-        NodeKdlEnum<EToolset>.Required,
+        NodeKdlEnum<EWarningsMode>.Required(EWarningsMode.Default),
     ];
 
-    public static readonly IReadOnlyDictionary<string, NodeKdlValue> NodeProperties = new Dictionary<string, NodeKdlValue>()
+    public static readonly IReadOnlyDictionary<string, NodeKdlValue> NodeProperties = new SortedDictionary<string, NodeKdlValue>()
     {
-        { "fatal", NodeKdlValue<KdlBool>.Optional },
+        { "fatal", NodeKdlBool.Optional(false) },
     };
 
     public override string Name => NodeName;
@@ -40,6 +40,6 @@ public class WarningsNode(KdlNode node) : NodeBase(node)
     public override IReadOnlyList<NodeKdlValue> Arguments => NodeArguments;
     public override IReadOnlyDictionary<string, NodeKdlValue> Properties => NodeProperties;
 
-    public EWarningsMode Mode => GetEnumValue(0, EWarningsMode.Default);
-    public bool AreWarningsFatal => GetBoolValue("fatal") ?? false;
+    public EWarningsMode Mode => GetEnumValue<EWarningsMode>(0);
+    public bool AreWarningsFatal => GetBoolValue("fatal");
 }

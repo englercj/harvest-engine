@@ -6,7 +6,7 @@
 option asan help="Enable Address Sanitizer"
 
 when option=asan {
-    toolset msc incremental_link=#false
+    toolset msvc incremental_link=#false
     sanitize address=#true
 }
 
@@ -22,6 +22,7 @@ when configuration=Debug {
     tags { debug; internal }
 
     optimize off lto=off inlining=off
+    runtime debug
     symbols on
 }
 
@@ -30,6 +31,7 @@ when configuration=Development {
     tags { internal }
 
     optimize on lto=off inlining=explicit
+    runtime release
     symbols on
 }
 
@@ -38,6 +40,7 @@ when configuration=Release {
     tags { external }
 
     optimize speed lto=on inlining=on
+    runtime release
     symbols on
 }
 
@@ -46,8 +49,8 @@ when configuration=Release {
 
 platform Linux64 arch=x86_64 system=linux toolset=gcc
 platform Wasm32 arch=wasm32 system=wasm toolset=clang
-platform Win64 arch=x86_64 system=windows toolset=msc
-platform WinArm64 arch=arm64 system=windows toolset=msc
+platform Win64 arch=x86_64 system=windows toolset=msvc
+platform WinArm64 arch=arm64 system=windows toolset=msvc
 
 when host=linux { platform Linux64 default=#true }
 when host=windows { platform Win64 default=#true }
@@ -93,10 +96,10 @@ when system="Win64 || WinArm64" {
 // ------------------------------------------------------------------------------------------------
 // Toolsets
 
-toolset msc arch=x86_64 multiprocess=#true incremental_link=#true edit_and_continue=#true
+toolset msvc arch=x86_64 multiprocess=#true incremental_link=#true edit_and_continue=#true
 
-when or configuration=!Debug arch=!x86_64 option=asan {
-    toolset msc edit_and_continue=#false
+when any configuration=!Debug arch=!x86_64 option=asan {
+    toolset msvc edit_and_continue=#false
 }
 
 when toolset="gcc || clang" {
@@ -145,7 +148,7 @@ when toolset=clang configuration=Debug {
     }
 }
 
-when toolset=msc {
+when toolset=msvc {
     build_options {
         "/permissive-"  // Enable standards-conforming compiler behavior.
         "/utf-8"        // Specifies both the source character set and the execution character set as UTF-8.

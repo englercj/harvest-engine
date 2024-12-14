@@ -1,11 +1,10 @@
 // Copyright Chad Engler
 
 using Harvest.Kdl;
-using Harvest.Kdl.Types;
 
 namespace Harvest.Make.Projects.Nodes;
 
-public class PluginNode(KdlNode node) : NodeBase(node)
+public class PluginNode(KdlNode node, INode? scope) : NodeBase(node, scope)
 {
     public const string NodeName = "plugin";
 
@@ -16,13 +15,13 @@ public class PluginNode(KdlNode node) : NodeBase(node)
 
     public static readonly IReadOnlyList<NodeKdlValue> NodeArguments =
     [
-        NodeKdlValue<KdlString>.Required,
+        NodeKdlString.Required(),
     ];
 
-    public static readonly IReadOnlyDictionary<string, NodeKdlValue> NodeProperties = new Dictionary<string, NodeKdlValue>()
+    public static readonly IReadOnlyDictionary<string, NodeKdlValue> NodeProperties = new SortedDictionary<string, NodeKdlValue>()
     {
-        { "version", NodeKdlValue<KdlString>.Required },
-        { "license", NodeKdlValue<KdlString>.Optional },
+        { "version", NodeKdlString.Required() },
+        { "license", NodeKdlString.Optional() },
     };
 
     public override string Name => NodeName;
@@ -30,8 +29,7 @@ public class PluginNode(KdlNode node) : NodeBase(node)
     public override IReadOnlyList<NodeKdlValue> Arguments => NodeArguments;
     public override IReadOnlyDictionary<string, NodeKdlValue> Properties => NodeProperties;
 
-    public string? PluginId => GetStringValue(0);
-
-    public string? Version => GetStringValue("version");
-    public string? License => GetStringValue("license");
+    public string PluginId => GetStringValue(0);
+    public string Version => GetStringValue("version");
+    public string? License => TryGetStringValue("license");
 }

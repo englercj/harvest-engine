@@ -1,7 +1,6 @@
 // Copyright Chad Engler
 
 using Harvest.Kdl;
-using Harvest.Kdl.Types;
 using Harvest.Make.Projects.Attributes;
 
 namespace Harvest.Make.Projects.Nodes;
@@ -14,7 +13,7 @@ public enum EExceptionsMode
     [KdlName("seh")] SEH,
 }
 
-public class ExceptionsNode(KdlNode node) : NodeBase(node)
+public class ExceptionsNode(KdlNode node, INode? scope) : NodeBase(node, scope)
 {
     public const string NodeName = "exceptions";
 
@@ -26,10 +25,10 @@ public class ExceptionsNode(KdlNode node) : NodeBase(node)
 
     public static readonly IReadOnlyList<NodeKdlValue> NodeArguments =
     [
-        NodeKdlEnum<EExceptionsMode>.Required,
+        NodeKdlEnum<EExceptionsMode>.Required(EExceptionsMode.Default),
     ];
 
-    public static readonly IReadOnlyDictionary<string, NodeKdlValue> NodeProperties = new Dictionary<string, NodeKdlValue>()
+    public static readonly IReadOnlyDictionary<string, NodeKdlValue> NodeProperties = new SortedDictionary<string, NodeKdlValue>()
     {
     };
 
@@ -38,5 +37,5 @@ public class ExceptionsNode(KdlNode node) : NodeBase(node)
     public override IReadOnlyList<NodeKdlValue> Arguments => NodeArguments;
     public override IReadOnlyDictionary<string, NodeKdlValue> Properties => NodeProperties;
 
-    public EExceptionsMode ExceptionsMode => GetEnumValue(0, EExceptionsMode.Default);
+    public EExceptionsMode ExceptionsMode => GetEnumValue<EExceptionsMode>(0);
 }

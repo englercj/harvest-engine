@@ -15,7 +15,7 @@ public enum EDependencyKind
     [KdlName("system")] System,
 }
 
-public class DependenciesEntryNode(KdlNode node, INode? scope) : NodeBase(node, scope)
+public class DependenciesEntryNode(KdlNode node, INode? scope) : NodeBase(node, scope), IEquatable<DependenciesEntryNode>
 {
     public static readonly IReadOnlyList<string> NodeScopes =
     [
@@ -40,4 +40,30 @@ public class DependenciesEntryNode(KdlNode node, INode? scope) : NodeBase(node, 
     public string DependencyName => Node.Name;
     public EDependencyKind Kind => GetEnumValue<EDependencyKind>("kind");
     public bool WholeArchive => GetBoolValue("whole_archive");
+
+    public override int GetHashCode() => HashCode.Combine(DependencyName, Kind, WholeArchive);
+
+    public override bool Equals(object? other) => Equals(other as DependenciesEntryNode);
+
+    public bool Equals(DependenciesEntryNode? other)
+    {
+        if (other is null)
+        {
+            return false;
+        }
+
+        if (ReferenceEquals(this, other))
+        {
+            return true;
+        }
+
+        if (GetType() != other.GetType())
+        {
+            return false;
+        }
+
+        return DependencyName == other.DependencyName
+            && Kind == other.Kind
+            && WholeArchive == other.WholeArchive;
+    }
 }

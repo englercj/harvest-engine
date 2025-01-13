@@ -39,7 +39,6 @@ public class ToolsetNode(KdlNode node, INode? scope) : NodeBase(node, scope)
         { "arch", NodeKdlEnum<EToolsetArch>.Optional(EToolsetArch.Default) },
         { "edit_and_continue", NodeKdlBool.Optional(false) },
         { "fast_up_to_date_check", NodeKdlBool.Optional(true) },
-        { "incremental_link", NodeKdlBool.Optional(false) },
         { "multiprocess", NodeKdlBool.Optional(false) },
         { "log", NodeKdlString.Optional() },
         { "path", NodeKdlPath.Optional() },
@@ -55,7 +54,6 @@ public class ToolsetNode(KdlNode node, INode? scope) : NodeBase(node, scope)
     public EToolsetArch Arch => GetEnumValue<EToolsetArch>("arch");
     public bool EditAndContinue => GetBoolValue("edit_and_continue");
     public bool FastUpToDateCheck => GetBoolValue("fast_up_to_date_check");
-    public bool IncrementalLink => GetBoolValue("incremental_link");
     public bool MultiProcess => GetBoolValue("multiprocess");
     public string? Log => TryGetStringValue("log");
     public string? Path => TryGetStringValue("path");

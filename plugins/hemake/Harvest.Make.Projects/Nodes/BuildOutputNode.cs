@@ -27,6 +27,11 @@ public class BuildOutputNode(KdlNode node, INode? scope) : NodeBase(node, scope)
         { "obj_dir", NodeKdlPath.Optional("${platform.name:lower}-${configuration.name:lower}/obj/${module.name}") },
         { "plugin_dir", NodeKdlPath.Optional("plugins") },
         { "project_dir", NodeKdlPath.Optional("projects") },
+        { "target_name", NodeKdlString.Optional() },
+        { "target_extension", NodeKdlString.Optional() },
+        { "make_import_lib", NodeKdlBool.Optional(true) },
+        { "make_exe_manifest", NodeKdlBool.Optional(true) },
+        { "make_map_file", NodeKdlBool.Optional(false) },
     };
 
     public override string Name => NodeName;
@@ -43,4 +48,9 @@ public class BuildOutputNode(KdlNode node, INode? scope) : NodeBase(node, scope)
     public string ObjDir => GetPathValue("obj_dir");
     public string PluginDir => GetPathValue("plugin_dir");
     public string ProjectDir => GetPathValue("project_dir");
+    public string? TargetName => TryGetStringValue("target_name");
+    public string? TargetExtension => TryGetStringValue("target_extension");
+    public bool MakeImportLib => GetBoolValue("make_import_lib");
+    public bool MakeExeManifest => GetBoolValue("make_exe_manifest");
+    public bool MakeMapFile => GetBoolValue("make_map_file");
 }

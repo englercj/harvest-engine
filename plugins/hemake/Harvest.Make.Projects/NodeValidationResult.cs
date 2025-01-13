@@ -10,34 +10,47 @@ public class NodeValidationResult(bool isValid, object? errorContent = null)
     public static NodeValidationResult Valid { get; } = new(true, null);
     public static NodeValidationResult Error(object? errorContent) => new NodeValidationResult(false, errorContent);
 
-    public static bool operator ==(NodeValidationResult left, NodeValidationResult right)
-    {
-        return Equals(left, right);
-    }
+    public override bool Equals(object? other) => Equals(other as NodeValidationResult);
 
-    public static bool operator !=(NodeValidationResult left, NodeValidationResult right)
+    public bool Equals(NodeValidationResult? other)
     {
-        return !Equals(left, right);
-    }
+        if (other is null)
+        {
+            return false;
+        }
 
-    public override bool Equals(object? obj)
-    {
-        // A cheaper alternative to Object.ReferenceEquals() is used here for better perf
-        if (obj == (object)this)
+        if (ReferenceEquals(this, other))
         {
             return true;
         }
 
-        if (obj is NodeValidationResult vr)
+        if (GetType() != other.GetType())
         {
-            return IsValid == vr.IsValid && ErrorContent == vr.ErrorContent;
+            return false;
         }
 
-        return false;
+        return IsValid == other.IsValid && ErrorContent == other.ErrorContent;
     }
 
     public override int GetHashCode()
     {
         return IsValid.GetHashCode() ^ (ErrorContent is null ? int.MinValue : ErrorContent.GetHashCode());
     }
+
+    public static bool operator ==(NodeValidationResult? lhs, NodeValidationResult? rhs)
+    {
+        if (lhs is null)
+        {
+            if (rhs is null)
+            {
+                return true;
+            }
+
+            return false;
+        }
+
+        return lhs.Equals(rhs);
+    }
+
+    public static bool operator !=(NodeValidationResult? lhs, NodeValidationResult? rhs) => !(lhs == rhs);
 }

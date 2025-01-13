@@ -13,6 +13,7 @@ public class NodeTraits<T> where T : class, INode
 
     public static bool IsExtensionNode => s_instance.IsExtensionNode;
     public static bool CanBeExtended => s_instance.CanBeExtended;
+    public static ENodeDependencyInheritance DependencyInheritance => s_instance.DependencyInheritance;
 
     public static IReadOnlyList<string> Scopes => s_instance.Scopes;
     public static IReadOnlyList<NodeKdlValue> Arguments => s_instance.Arguments;

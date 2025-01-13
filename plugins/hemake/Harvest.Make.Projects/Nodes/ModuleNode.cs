@@ -25,27 +25,6 @@ public enum EModuleLanguage
     [KdlName("fsharp")] FSharp,
 }
 
-public enum EModuleClrMode
-{
-    [KdlName("on")] On,
-    [KdlName("off")] Off,
-    [KdlName("netcore")] NetCore,
-}
-
-public enum EModuleMfcMode
-{
-    [KdlName("off")] Off,
-    [KdlName("static")] Static,
-    [KdlName("dynamic")] Dynamic,
-}
-
-public enum EModuleAtlMode
-{
-    [KdlName("off")] Off,
-    [KdlName("static")] Static,
-    [KdlName("dynamic")] Dynamic,
-}
-
 public class ModuleNode(KdlNode node, INode? scope) : NodeBase(node, scope)
 {
     public const string NodeName = "module";
@@ -63,12 +42,9 @@ public class ModuleNode(KdlNode node, INode? scope) : NodeBase(node, scope)
     public static readonly IReadOnlyDictionary<string, NodeKdlValue> NodeProperties = new SortedDictionary<string, NodeKdlValue>()
     {
         { "kind", NodeKdlEnum<EModuleKind>.Required(EModuleKind.Custom) },
-        { "clr", NodeKdlEnum<EModuleClrMode>.Optional(EModuleClrMode.Off) },
-        { "mfc", NodeKdlEnum<EModuleMfcMode>.Optional(EModuleMfcMode.Off) },
-        { "atl", NodeKdlEnum<EModuleAtlMode>.Optional(EModuleAtlMode.Off) },
         { "group", NodeKdlString.Optional() },
         { "language", NodeKdlEnum<EModuleLanguage>.Optional(EModuleLanguage.Cpp) },
-        { "project", NodeKdlString.Optional() },
+        { "project_file", NodeKdlString.Optional() },
         { "hemake_extension", NodeKdlBool.Optional(false) },
     };
 
@@ -80,11 +56,8 @@ public class ModuleNode(KdlNode node, INode? scope) : NodeBase(node, scope)
 
     public string ModuleName => GetStringValue(0);
     public EModuleKind Kind => GetEnumValue<EModuleKind>("kind");
-    public EModuleClrMode ClrMode => GetEnumValue<EModuleClrMode>("clr");
-    public EModuleMfcMode MfcMode => GetEnumValue<EModuleMfcMode>("mfc");
-    public EModuleAtlMode AtlMode => GetEnumValue<EModuleAtlMode>("atl");
     public string? Group => TryGetStringValue("group");
     public EModuleLanguage Language => GetEnumValue<EModuleLanguage>("language");
-    public string? Project => TryGetStringValue("project");
+    public string? ProjectFile => TryGetStringValue("project_file");
     public bool IsExtension => GetBoolValue("hemake_extension");
 }

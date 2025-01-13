@@ -8,8 +8,11 @@ namespace Harvest.Make.Projects.Nodes;
 public enum EBuildEvent
 {
     [KdlName("prebuild")] Prebuild,
-    [KdlName("postbuild")] Postbuild,
+    [KdlName("build")] Build,
     [KdlName("prelink")] Prelink,
+    [KdlName("link")] Link,
+    [KdlName("preclean")] PreClean,
+    [KdlName("clean")] Clean,
 }
 
 public class BuildEventNode(KdlNode node, INode? scope) : NodeBase(node, scope)

@@ -18,6 +18,7 @@ public abstract class NodeBase(KdlNode node, INode? scope) : INode
     public abstract IReadOnlyList<string> Scopes { get; }
     public abstract IReadOnlyList<NodeKdlValue> Arguments { get; }
     public abstract IReadOnlyDictionary<string, NodeKdlValue> Properties { get; }
+    public virtual ENodeDependencyInheritance DependencyInheritance => ENodeDependencyInheritance.None;
 
     public KdlNode Node => node;
     public INode? Scope => scope;
@@ -157,7 +158,7 @@ public abstract class NodeBase(KdlNode node, INode? scope) : INode
     public bool GetBoolValue(string key) => TryGetBoolValue(key) ?? throw new Exception($"No bool value specified for required property: {key}");
 
     public string? TryGetStringValue(string key) => TryGetClassValue<string>(key);
-    public string GetStringValue(string key) => TryGetStringValue(key) ?? throw new Exception($"No bool value specified for required property: {key}");
+    public string GetStringValue(string key) => TryGetStringValue(key) ?? throw new Exception($"No string value specified for required property: {key}");
 
     public T? TryGetNumberValue<T>(string key) where T : struct, INumber<T> => TryGetStructValue<T>(key);
     public T GetNumberValue<T>(string key) where T : struct, INumber<T> => TryGetNumberValue<T>(key) ?? throw new Exception($"No number value specified for required property: {key}");

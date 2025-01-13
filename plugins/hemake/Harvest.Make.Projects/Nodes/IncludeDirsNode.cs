@@ -12,7 +12,6 @@ public class IncludeDirsNode(KdlNode node, INode? scope) : NodeSetBase<IncludeDi
     [
         ModuleNode.NodeName,
         ProjectNode.NodeName,
-        PrivateNode.NodeName,
         PublicNode.NodeName,
     ];
 
@@ -24,6 +23,7 @@ public class IncludeDirsNode(KdlNode node, INode? scope) : NodeSetBase<IncludeDi
     public override string Name => NodeName;
     public override IReadOnlyList<string> Scopes => NodeScopes;
     public override IReadOnlyDictionary<string, NodeKdlValue> Properties => NodeProperties;
+    public override ENodeDependencyInheritance DependencyInheritance => ENodeDependencyInheritance.Include;
 
     public bool IsExternal => GetBoolValue("external");
 }

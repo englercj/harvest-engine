@@ -4,18 +4,18 @@ using Harvest.Kdl;
 
 namespace Harvest.Make.Projects.Nodes;
 
-public enum EIncludeDirIsExternal
+public enum ELibDirIsSystem
 {
     Inherit,
     True,
     False,
 }
 
-public class IncludeDirsEntryNode(KdlNode node, INode? scope) : NodeBase(node, scope)
+public class LibDirsEntryNode(KdlNode node, INode? scope) : NodeBase(node, scope)
 {
     public static readonly IReadOnlyList<string> NodeScopes =
     [
-        IncludeDirsNode.NodeName,
+        LibDirsNode.NodeName,
     ];
 
     public static readonly IReadOnlyList<NodeKdlValue> NodeArguments =
@@ -24,7 +24,7 @@ public class IncludeDirsEntryNode(KdlNode node, INode? scope) : NodeBase(node, s
 
     public static readonly IReadOnlyDictionary<string, NodeKdlValue> NodeProperties = new SortedDictionary<string, NodeKdlValue>()
     {
-        { "external", NodeKdlBool.Optional(false) },
+        { "system", NodeKdlBool.Optional(false) },
     };
 
     public override string Name => Node.Name;
@@ -34,16 +34,16 @@ public class IncludeDirsEntryNode(KdlNode node, INode? scope) : NodeBase(node, s
 
     public string Path => Node.Name;
 
-    public EIncludeDirIsExternal IsExternal
+    public ELibDirIsSystem IsSystem
     {
         get
         {
-            bool? isExternalProp = TryGetBoolValue("external");
-            if (isExternalProp is null)
+            bool? isSystemProp = TryGetBoolValue("System");
+            if (isSystemProp is null)
             {
-                return EIncludeDirIsExternal.Inherit;
+                return ELibDirIsSystem.Inherit;
             }
-            return isExternalProp.Value ? EIncludeDirIsExternal.True : EIncludeDirIsExternal.False;
+            return isSystemProp.Value ? ELibDirIsSystem.True : ELibDirIsSystem.False;
         }
     }
 }

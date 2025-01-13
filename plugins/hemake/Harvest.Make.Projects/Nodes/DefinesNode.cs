@@ -11,7 +11,6 @@ public class DefinesNode(KdlNode node, INode? scope) : NodeSetBase<DefinesEntryN
     public static readonly IReadOnlyList<string> NodeScopes =
     [
         ModuleNode.NodeName,
-        PrivateNode.NodeName,
         ProjectNode.NodeName,
         PublicNode.NodeName,
     ];
@@ -23,4 +22,5 @@ public class DefinesNode(KdlNode node, INode? scope) : NodeSetBase<DefinesEntryN
     public override string Name => NodeName;
     public override IReadOnlyList<string> Scopes => NodeScopes;
     public override IReadOnlyDictionary<string, NodeKdlValue> Properties => NodeProperties;
+    public override ENodeDependencyInheritance DependencyInheritance => ENodeDependencyInheritance.Include;
 }

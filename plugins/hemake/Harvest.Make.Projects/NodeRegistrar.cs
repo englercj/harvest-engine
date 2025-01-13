@@ -43,7 +43,6 @@ public class NodeRegistrar(IProjectService projectService) : IHostedService
         _projectService.RegisterNodeType<OutputsNode>();
         _projectService.RegisterNodeType<PlatformNode>();
         _projectService.RegisterNodeType<PluginNode>();
-        _projectService.RegisterNodeType<PrivateNode>();
         _projectService.RegisterNodeType<ProjectNode>();
         _projectService.RegisterNodeType<PublicNode>();
         _projectService.RegisterNodeType<RuntimeNode>();

@@ -25,10 +25,10 @@ The `kind` property is a string value that informs the build system what kind of
 
 The valid kind values are:
 
-- `default` - Create an include, link, and/or build order dependency on the module, depending on the `kind` of the module. This is the default behavior.
-- `link` - Create a link and build order dependency, do not make include directories available.
-- `order` - Create a build order dependency, do not make include directories available nor link the output.
-- `include` - Create an include dependency, do not change the build order nor link the output.
+- `default` - Create an include, link, and/or build order dependency on a module, depending on the `kind` of the module. This is the default behavior.
+- `link` - Create a link and build order dependency on a module, do not make include directories available.
+- `order` - Create a build order dependency on a module, do not make include directories available nor link the output.
+- `include` - Create an include dependency on a module, do not change the build order nor link the output.
 - `file` - Create a link dependency on a library file. The path is relative to the install directory of the plugin.
 - `system` - Create a link dependency on a system library. The library must be available in the library search path.
     * HE Make will automatically apply proper naming conventions for the target `system`, so don't specify prefixes (such as `lib`) or suffixes (such as `.a`) to system library dependencies.

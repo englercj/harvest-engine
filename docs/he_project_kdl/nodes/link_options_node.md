@@ -1,6 +1,6 @@
 # `link_options` node
 
-A set of options that are passed to the linker directly.
+A set of options that configure how a module is linked.
 
 ## Arguments
 
@@ -11,11 +11,11 @@ A set of options that are passed to the linker directly.
 
 ## Properties
 
-None.
+- `incremental` (boolean) - Optional. `#false` to disable incremental linking. Default: `#true`.
 
 ## Children
 
-- `option` - Required. The link option string to pass to the linker.
+- `option` - Optional. Linker option strings to pass directly to the linker.
 
 ## Scopes
 

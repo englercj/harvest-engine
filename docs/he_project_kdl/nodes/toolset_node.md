@@ -19,7 +19,6 @@ Note that this node does not set which toolset is used for compilation. That is 
     * `x86_64` - Use 64-bit x86 build tools.
 - `edit_and_continue` (boolean) Optional. `#true` to enable edit-and-continue. Default: `#false`.
 - `fast_up_to_date_check` (boolean) - Optional. `#true` to enable MSVC's fast up-to-date checking. Default: `#true`.
-- `incremental_link` (boolean) - Optional. `#true` to enable incremental linking. Default: `#false`.
 - `log` (string) - Optional. Output path for build logs.
 - `multiprocess` (boolean) - Optional. `#true` to enable multi-process compilation. Default: `#false`.
 - `path` (string) - Optional. Explicit path to the toolset to be used.

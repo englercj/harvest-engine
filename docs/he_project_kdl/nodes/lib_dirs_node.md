@@ -1,6 +1,6 @@
-# `include_dirs` node
+# `lib_dirs` node
 
-A set of directory paths to search for includes.
+A set of directory paths to search for libraries.
 
 ## Arguments
 
@@ -11,12 +11,12 @@ A set of directory paths to search for includes.
 
 ## Properties
 
-- `external` (boolean) - Optional. When set to `#true` the path is treated as "external". The behavior for external files is configured using the [`external`](external_node.md) node. The default is `#false`.
+- `system` (boolean) - Optional. When set to `#true` the path is used to search for system libraries. The default is `#false`.
 
 ## Children
 
 - `path` - Required. The [path](../paths.md) to a directory to add to the include path.
-    * Paths may also specify an `external` property to override the `include_dirs` node's `external` property.
+    * Paths may also specify an `system` property to override the `lib_dirs` node's `system` property.
 
 ## Scopes
 
@@ -27,5 +27,5 @@ A set of directory paths to search for includes.
 ## Example
 
 ```kdl
-include_dirs { "include" }
+lib_dirs { "lib" }
 ```

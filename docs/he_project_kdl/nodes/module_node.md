@@ -16,25 +16,13 @@ A definition of a module provided by a plugin.
     * `lib_header` - Header-only module that does not generate any symbols to be linked.
     * `lib_static` - Code built as a static library (lib/a).
     * `lib_shared` - Code built as a shared library (dll/so).
-- `clr` (string) - Optional. Enable or disable Visual Studio Common Language Runtime (CLR) compilation. Specifying `off` for a `csharp` project has no effect.
-    * `on` - Enable CLR support.
-    * `off` - Disable CLR support. This is the default behavior.
-    * `netcore` - Enable CLR support and output metadata for .NET Core.
-- `mfc` (string) - Optional. Enable of disable Microsoft Foundation Class (MFC) Library support.
-    * `off` - Disable MFC support. This is the default behavior.
-    * `static` - Enable static linking of MFC libraries.
-    * `dynamic` - Enable dynamic linking of MFC libraries.
-- `atl` (string) - Optional. Enable Active Template Library (ATL) support.
-    * `off` - Disable ATL support. This is the default behavior.
-    * `static` - Enable static linking of ATL libraries.
-    * `dynamic` - Enable dynamic linking of ATL libraries.
 - `group` (string) - Optional. Name of the group this module belongs to. This will be a virtual folder in the workspace tree, and can include folder separators (`/`).
 - `language` (string) - Optional. Language of the source to be compiled in the module project. Default is `cpp` if not specified. Valid values are:
     * `c` - C
     * `cpp` - C++
     * `csharp` - C#
-- `project` (string) - Optional. Path to a project file to use instead of generating one.
-- `hemake_extension` (boolean)- Optional. When `#true` HE Make will load this project as an extension.
+- `project_file` (string) - Optional. Path to a project file to use instead of generating one.
+- `hemake_extension` (boolean)- Optional. `#true` to tell HE Make to load this project as an extension. Default: `#false`
 
 ## Children
 

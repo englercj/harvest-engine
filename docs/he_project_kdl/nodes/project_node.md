@@ -28,6 +28,8 @@ The root node of a Harvest Project structure.
 - [`external`](external_node.md)
 - [`floating_point`](floating_point_node.md)
 - [`import`](import_node.md)
+- [`include_dirs`](include_dirs_node.md)
+- [`lib_dirs`](lib_dirs_node.md)
 - [`link_options`](link_options_node.md)
 - [`optimize`](optimize_node.md)
 - [`option`](option_node.md)

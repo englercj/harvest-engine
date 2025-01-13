@@ -24,6 +24,11 @@ All of these directory properties are relative to the base directory specified i
     * Default is: `plugins`.
 - `project_dir` (string) Optional. Destination for generated build system project files.
     * Default is: `projects`.
+- `target_name` (string) Optional. The name of the output target file. When not specified, the parent module's name is used.
+- `target_extension` (string) Optional. The extension to append to the target name. By default the extension used is defined by the toolset.
+- `make_import_lib` (boolean) - Optional. `#false` to prevent generation of an import library for Windows DLLs. Default: `#true`.
+- `make_exe_manifest` (boolean) - Optional. `#false` to prevent generation of a manifest for Windows executables and DLLs. Default: `#true`.
+- `make_map_file` (boolean) - Optional. `#true` to enable generation of a mapfile for Windows targets. Default: `#false`.
 
 ## Children
 

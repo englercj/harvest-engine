@@ -15,6 +15,7 @@ None.
 - [`defines`](defines_node.md)
 - [`dependencies`](dependencies_node.md)
 - [`include_dirs`](include_dirs_node.md)
+- [`lib_dirs`](lib_dirs_node.md)
 
 ## Scopes
 
@@ -24,7 +25,8 @@ None.
 
 ```kdl
 public {
-    dependson { mimalloc }
+    dependencies { mimalloc }
     include_dirs { "include" }
+    lib_dirs { "lib" }
 }
 ```

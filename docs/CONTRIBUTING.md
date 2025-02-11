@@ -318,9 +318,7 @@ TODO:
 ## Conditionals & Loops
 
 TODO:
-- Omit braces if the condition is simple, and the statement is simple
-    * Macros must always be within braces
-    * Comments count towards requiring braces
+- Conditions and loops should always have braces for their body
 - Add braces if there are `else` statements that follow
 - If any if in an if-else chain has braces, they all must have braces
 - Multiline conditionals should lead with the operator (i.e.: start with `&&` or `||`)
@@ -436,7 +434,7 @@ TODO:
     * Do not split params across multiple lines unless you split *all* params on multiple lines
     * Same for function calls, all on one line or all on separate lines
 - Omitting unused parameter names when their use is obvious (like a deleted copy ctor)
-    * Otherwise write the name and use `HE_UNUSED` to avoid warnings if needed
+    * Otherwise write the name and use `[[maybe_unused]]` to avoid warnings
 - Pure functions should be marked `[[nodiscard]]`
     * With no side effect, there is no reason to call a pure function and not use the return value
 

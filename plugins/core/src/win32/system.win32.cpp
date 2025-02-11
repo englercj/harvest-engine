@@ -35,7 +35,9 @@ namespace he
                 if (osvi.dwMinorVersion == 0)
                 {
                     if (osvi.dwBuildNumber < 22000)
+                    {
                         return "Windows 10";
+                    }
 
                     return "Windows 11";
                 }
@@ -66,13 +68,19 @@ namespace he
                 if (osvi.dwMinorVersion == 0)
                 {
                     if (osvi.dwBuildNumber <= 14393)
+                    {
                         return "Windows Server 2016";
+                    }
 
                     if (osvi.dwBuildNumber <= 17763)
+                    {
                         return "Windows Server 2019";
+                    }
 
                     if (osvi.dwBuildNumber <= 19042)
+                    {
                         return "Windows Server 20H2";
+                    }
 
                     return "Windows Server 2022";
                 }
@@ -132,7 +140,9 @@ namespace he
         DWORD nameBufLen = HE_LENGTH_OF(nameBuf);
 
         if (!::GetComputerNameW(nameBuf, &nameBufLen))
+        {
             return Result::FromLastError();
+        }
 
         WCToMBStr(outName, nameBuf);
         return Result::Success;
@@ -144,7 +154,9 @@ namespace he
         DWORD nameBufLen = HE_LENGTH_OF(nameBuf);
 
         if (!::GetUserNameW(nameBuf, &nameBufLen))
+        {
             return Result::FromLastError();
+        }
 
         WCToMBStr(outName, nameBuf);
         return Result::Success;
@@ -158,16 +170,24 @@ namespace he
         if (::GetSystemPowerStatus(&pwrStatus))
         {
             if (pwrStatus.ACLineStatus != AC_LINE_UNKNOWN)
-                status.onACPower.Set(pwrStatus.ACLineStatus == AC_LINE_ONLINE);
+            {
+                status.onACPower = pwrStatus.ACLineStatus == AC_LINE_ONLINE;
+            }
 
             if (pwrStatus.BatteryFlag != BATTERY_FLAG_UNKNOWN)
-                status.hasBattery.Set(pwrStatus.BatteryFlag != BATTERY_FLAG_NO_BATTERY);
+            {
+                status.hasBattery = pwrStatus.BatteryFlag != BATTERY_FLAG_NO_BATTERY;
+            }
 
             if (pwrStatus.BatteryLifePercent != BATTERY_FLAG_UNKNOWN)
-                status.batteryLife.Set(pwrStatus.BatteryLifePercent);
+            {
+                status.batteryLife = pwrStatus.BatteryLifePercent;
+            }
 
             if (pwrStatus.BatteryLifeTime != BATTERY_LIFE_UNKNOWN)
-                status.batteryLifeTime.Set(FromPeriod<Seconds>(pwrStatus.BatteryLifeTime));
+            {
+                status.batteryLifeTime = FromPeriod<Seconds>(pwrStatus.BatteryLifeTime);
+            }
         }
 
         return status;

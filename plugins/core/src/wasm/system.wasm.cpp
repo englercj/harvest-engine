@@ -65,14 +65,18 @@ namespace he
                 && dischargingTime == Limits<double>::Infinity
                 && level == 1.0;
 
-            status.onACPower.Set(charging);
-            status.hasBattery.Set(!hasNoBattery);
+            status.onACPower = charging;
+            status.hasBattery = !hasNoBattery;
 
             if (level >= 0.0 && level <= 1.0)
-                status.batteryLife.Set(static_cast<uint8_t>(level * 100.0));
+            {
+                status.batteryLife = static_cast<uint8_t>(level * 100.0);
+            }
 
             if (dischargingTime != Limits<double>::Infinity)
-                status.batteryLifeTime.Set(FromPeriod<Seconds>(dischargingTime));
+            {
+                status.batteryLifeTime = FromPeriod<Seconds>(dischargingTime);
+            }
         }
 
         return status;

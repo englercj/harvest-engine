@@ -63,14 +63,16 @@ namespace he
 
     static bool TestRdRand()
     {
-        size_t values[8]{};
+        size_t values[16]{};
 
         // Run the instruction a few times to trigger the built-in self-test. If the instruction
         // fails the test we consider it unsupported.
         for (size_t& v : values)
         {
             if (!_RdRand(v))
+            {
                 return false;
+            }
         }
 
         // Check if we actually are getting random-looking data. Some processors had bugs where
@@ -79,7 +81,9 @@ namespace he
         for (size_t& v : values)
         {
             if (v != values[0])
+            {
                 return true;
+            }
         }
 
         return false;
@@ -198,7 +202,9 @@ namespace he
                 x86.sha256 = x86.sha1;
 
                 if (!x86.avx)
+                {
                     x86.avx2 = false;
+                }
 
                 CpuIdEx(7, 1, eax, ebx, ecx, edx);
                 x86.sha512 = (eax & (1 << 0)) != 0;

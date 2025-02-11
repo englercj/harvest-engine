@@ -11,9 +11,8 @@ namespace he
     {
         Unknown,    ///< Unknown vendor ID
 
-        Intel,      ///< Intel Corporation
-
         // x86 chip vendors
+        Intel,      ///< Intel Corporation
         AMD,        ///< Advanced Micro Devices
         Cyrix,      ///< Cyrix Corporation
         VIA,        ///< VIA Technologies
@@ -87,25 +86,69 @@ namespace he
             /// Family ID of the CPU.
             uint16_t familyId{ 0 };
 
+            /// SSE instructions are available.
             bool sse : 1{ false };
+
+            /// SSE2 instructions are available.
             bool sse2 : 1{ false };
+
+            /// SSE3 instructions are available.
             bool sse3 : 1{ false };
+
+            /// Suplemental SSE3 instructions are available.
             bool ssse3 : 1{ false };
+
+            /// SSE4.1 instructions are available.
             bool sse41 : 1{ false };
+
+            /// SSE4.2 instructions are available.
             bool sse42 : 1{ false };
+
+            /// AVX instructions are available.
             bool avx : 1{ false };
+
+            /// AVX2 instructions are available.
             bool avx2 : 1{ false };
+
+            /// The POPCNT instruction is available.
             bool popcnt : 1{ false };
+
+            /// Fused multiply-add instructions are available.
             bool fma3 : 1{ false };
+
+            /// AES instructions are available.
+            /// AESENC, AESENCLAST, AESDEC, AESDECLAST, AESKEYGENASSIST, AESIMC
             bool aesni : 1{ false };
+
+            /// SHA1 instructions are available.
+            /// SHA1RNDS4, SHA1NEXTE, SHA1MSG1, SHA1MSG2
             bool sha1 : 1{ false };
+
+            /// SHA256 instructions are available.
+            /// SHA256RNDS2, SHA256MSG1, SHA256MSG2
             bool sha256 : 1{ false };
+
+            /// SHA512 instructions are available.
+            /// VSHA512RNDS2, VSHA512MSG1, VSHA512MSG2
             bool sha512 : 1{ false };
+
+            /// SM3 instructions are available.
             bool sm3 : 1{ false };
+
+            /// SM4 instructions are available.
             bool sm4 : 1{ false };
+
+            /// The RDRAND instruction is available.
             bool rdrand : 1{ false };
+
+            /// The XSAVE instruction is available, enabled by the OS.
             bool osxsave : 1{ false };
+
+            /// A hypervisor is present. False for physical CPUs.
             bool hypervisor : 1{ false };
+
+            /// TSC (Time Stamp Counter) rate is guaranteed to be invariant across all P-states,
+            /// C-states, and sop grant transitions.
             bool tscInvariant : 1{ false };
         } x86;
 

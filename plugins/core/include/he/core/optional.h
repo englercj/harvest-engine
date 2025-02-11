@@ -205,7 +205,6 @@ namespace he
     public:
         template <typename U> requires(
             !IsSame<RemoveCVRef<U>, Optional>
-            && !(IsScalar<T> && IsSame<T, Decay<U>>)
             && IsConstructible<T, U>
             && IsAssignable<T&, U>)
         constexpr Optional& operator=(U&& x) noexcept

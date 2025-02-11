@@ -163,11 +163,10 @@ namespace he
         /// Implement this function if you have clean up work to perform after the test case runs.
         virtual void After() {}
 
-    public:
         /// Runs the test case.
         ///
         /// This is used internally to run the test.
-        void Run() { TestBody(); }
+        virtual void Run() { TestBody(); }
 
         /// Returns the metadata about this test case.
         ///
@@ -255,7 +254,7 @@ namespace internal
         const ::he::TestInfo& GetTestInfo() const override { return TestInfo; } \
         void TestBody() override; \
     }; \
-    const ::he::TestInfo ClassName::TestInfo{ ModuleNameStr, SuiteNameStr, TestNameStr, __FILE__, __LINE__ }; \
+    const ::he::TestInfo ClassName::TestInfo{ ModuleNameStr, SuiteNameStr, TestNameStr, HE_FILE, HE_LINE }; \
     void ClassName::TestBody()
 
 /// Internal macro that generates the code for a test case.

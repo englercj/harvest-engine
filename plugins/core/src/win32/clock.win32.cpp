@@ -61,7 +61,9 @@ namespace he
         const DWORD rc = ::GetTimeZoneInformation(&tzInfo);
 
         if (rc == TIME_ZONE_ID_INVALID)
+        {
             return FromPeriod<Seconds>(0);
+        }
 
         const LONG bias = tzInfo.Bias + (rc == TIME_ZONE_ID_DAYLIGHT ? tzInfo.DaylightBias : tzInfo.StandardBias);
         return FromPeriod<Minutes>(-bias);

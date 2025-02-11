@@ -83,11 +83,11 @@ namespace he
 
     /// Number of cycles since the last CPU reset.
     ///
-    /// This clock is not guaranteed to be monotonic, though it is under certain circumstances.
+    /// This clock is not guaranteed to always be monotonic, though it is under certain circumstances.
     /// Values are pulled from RDTSC on x86 and CNTVCT on ARM. This means that any kind of
     /// interrupt (including scheduling preemption) can result in unexpected values.
     /// This clock is suitable for measuring very precise time intervals, such as performance
-    /// counters, with the caveats mentioned before.
+    /// counters, with the mentioned caveats.
     using CycleClock = Clock<struct CycleClockTag>;
 
     /// \copydoc CycleClock

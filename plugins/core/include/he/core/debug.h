@@ -22,8 +22,6 @@
 
 #if HE_INTERNAL_BUILD
     #undef HE_DEBUG_BREAK
-    #undef HE_FILE
-    #undef HE_LINE
 
     #if defined(__INTELLISENSE__)
         #define HE_DEBUG_BREAK() (false)
@@ -50,10 +48,12 @@
         #define HE_DEBUG_BREAK() (false)
     #endif
 
+    #undef HE_FILE
     #define HE_FILE __FILE__
 
     // When building with Edit-and-continue MSVC will treat __LINE__ as a variable name,
     // rather than a literal. This hack forces it to be an unsigned literal.
     // We also do this on other compilers so HE_LINE is always unsigned, no matter the compiler.
+    #undef HE_LINE
     #define HE_LINE HE_PP_JOIN(__LINE__, u)
 #endif

@@ -6,6 +6,7 @@
 #include "he/core/result.h"
 #include "he/core/string.h"
 #include "he/core/types.h"
+#include "he/core/optional.h"
 #include "he/core/utils.h"
 
 namespace he
@@ -40,33 +41,19 @@ namespace he
     /// \see GetPowerStatus
     struct PowerStatus
     {
-        /// Helper container for a PowerStatus value that tracks a value and if it is valid.
-        template <typename T>
-        struct Value
-        {
-            T value{};
-            bool valid{ false };
-
-            /// \internal
-            void Set(T value_) { value = value_; valid = true; }
-
-            /// \internal
-            void Clear() { valid = false; }
-        };
-
         /// When true the system is on AC power (not battery).
-        Value<bool> onACPower{};
+        Optional<bool> onACPower{};
 
         /// When true the system has a battery (though it may be on AC power).
-        Value<bool> hasBattery{};
+        Optional<bool> hasBattery{};
 
         /// Percent battery life remaining. Ranges of [0, 100].
         /// Invalid if there is no battery.
-        Value<uint8_t> batteryLife{};
+        Optional<uint8_t> batteryLife{};
 
         /// Duration of battery life remaining.
         /// Invalid if there is no battery, or on AC power.
-        Value<Duration> batteryLifeTime{};
+        Optional<Duration> batteryLifeTime{};
     };
 
     /// Gets basic information about the system.

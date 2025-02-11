@@ -25,11 +25,15 @@ namespace he
     {
         File file;
         if (!file.Open(path, FileOpenMode::ReadExisting))
+        {
             return 0;
+        }
 
         uint32_t bytesRead;
         if (!file.ReadAt(dst, 0, len, &bytesRead) || bytesRead == 0)
+        {
             return 0;
+        }
 
         return bytesRead;
     };
@@ -45,32 +49,40 @@ namespace he
     {
         const char* p = StrFind(key);
         if (!p)
+        {
             return;
+        }
 
         const char* dataEnd = data + dataLen;
         const char* valueStart = p + keyLen;
 
         if (*valueStart == '=')
+        {
             ++valueStart;
+        }
 
         if (valueStart >= dataEnd)
+        {
             return;
+        }
 
         const char* valueEnd = valueStart;
         while (valueEnd < dataEnd && *valueEnd != '\n')
+        {
             ++valueEnd;
+        }
 
         if constexpr (IsSame<T, bool>)
         {
-            value.Set(valueStart[0] != '0');
+            value = valueStart[0] != '0';
         }
         else if constexpr (IsIntegral<T>)
         {
-            value.Set(StrToInt<T>(valueStart, valueEnd));
+            value = StrToInt<T>(valueStart, valueEnd);
         }
         else if constexpr (IsFloatingPoint<T>)
         {
-            value.Set(StrToFloat<T>(valueStart, valueEnd));
+            value = StrToFloat<T>(valueStart, valueEnd);
         }
     }
 
@@ -112,7 +124,7 @@ namespace he
     {
         const uint32_t offset = out.Size();
         uint32_t size = String::MaxEmbedCharacters;
-        outName.Resize(offset + size, DefaultInit);
+        outName.Resize_DefaultInit(offset + size);
 
         do
         {
@@ -132,7 +144,7 @@ namespace he
             }
 
             size = Max(256u, size * 2);
-            outName.Resize(offset + size, DefaultInit);
+            outName.Resize_DefaultInit(offset + size);
         } while (true);
 
         return Result::Success;
@@ -143,7 +155,9 @@ namespace he
         const uid_t uid = getuid();
         const passwd* pwd = getpwuid(uid);
         if (pwd == nullptr)
+        {
             return errno == 0 ? PosixResult(ENOENT) : Result::FromLastError();
+        }
 
         outName = pwd->pw_name;
         return Result::Success;
@@ -181,16 +195,18 @@ namespace he
             PowerStatus::Value<double> powerNow;
             GetPowerSupplyValue(buf, batLen, PowerNowKey, powerNow);
 
-            if (energyNow.valid && powerNow.valid)
+            if (energyNow.HasValue() && powerNow.HasValue())
             {
-                status.batterLifeTime.Set(FromPeriod<Hours>(energyNow.value / powerNow.value));
+                status.batterLifeTime = FromPeriod<Hours>(energyNow.Value() / powerNow.Value());
             }
         }
 
         // If we're on AC power, but didn't find a battery file we can be confident that
         // a battery isn't present on the system.
-        if (status.onACPower.valid && status.onACPower.value && !status.hasBattery.valid)
-            status.hasBattery.Set(false);
+        if (status.onACPower.HasValue() && status.onACPower.Value() && !status.hasBattery.HasValue())
+        {
+            status.hasBattery = false;
+        }
 
         return status;
     }

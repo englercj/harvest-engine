@@ -55,7 +55,8 @@ HE_TEST(core, cpu_info, Report)
     std::cout << "        sha3: " << info.arm.sha3 << std::endl;
     std::cout << "        crc32: " << info.arm.crc32 << std::endl;
     std::cout << "        atomic: " << info.arm.atomic << std::endl;
-    std::cout << "        rdm: " << info.arm.rdm << std::endl;
+    std::cout << "        atomic: " << info.arm.atomic128 << std::endl;
+    std::cout << "        rdm: " << info.arm.rdma << std::endl;
     std::cout << "        sm3: " << info.arm.sm3 << std::endl;
     std::cout << "        sm4: " << info.arm.sm4 << std::endl;
     std::cout << "        dp: " << info.arm.dp << std::endl;

@@ -124,7 +124,7 @@ namespace he
 
     Result TlsValue::Create(Pfn_TlsDestructor destroy) noexcept
     {
-        m_id = ::FlsAlloc(destroy);
+        m_id = static_cast<uintptr_t>(::FlsAlloc(destroy));
         return m_id == InvalidId ? Result::FromLastError() : Result::Success;
     }
 
@@ -132,21 +132,21 @@ namespace he
     {
         if (m_id != InvalidId)
         {
-            ::FlsFree(m_id);
+            ::FlsFree(static_cast<DWORD>(m_id));
             m_id = InvalidId;
         }
     }
 
     void* TlsValue::Get() const noexcept
     {
-        return m_id == InvalidId ? nullptr : ::FlsGetValue(m_id);
+        return m_id == InvalidId ? nullptr : ::FlsGetValue(static_cast<DWORD>(m_id));
     }
 
     void TlsValue::Set(void* value) noexcept
     {
         if (m_id != InvalidId)
         {
-            ::FlsSetValue(m_id, value);
+            ::FlsSetValue(static_cast<DWORD>(m_id), value);
         }
     }
 }

@@ -3,7 +3,6 @@
 #pragma once
 
 #include "he/core/clock.h"
-#include "he/core/types.h"
 
 namespace he
 {

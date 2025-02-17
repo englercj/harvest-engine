@@ -3,14 +3,14 @@
 #pragma once
 
 #include "he/core/allocator.h"
-#include "he/core/compiler.h"
 #include "he/core/concepts.h"
 #include "he/core/string_ops.h"
-#include "he/core/types.h"
 #include "he/core/type_traits.h"
+#include "he/core/types.h"
 
 namespace he
 {
+    // Container for a sequence of characters.
     class String final
     {
     public:

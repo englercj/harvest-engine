@@ -6,6 +6,7 @@
 #include "he/core/memory_ops.h"
 #include "he/core/string_ops.h"
 #include "he/core/type_traits.h"
+#include "he/core/types.h"
 #include "he/core/utils.h"
 
 namespace he

@@ -66,9 +66,9 @@ HE_TEST(core, system, GetPowerStatus)
 {
     PowerStatus status = GetPowerStatus();
 
-    std::cout << "    onACPower = [" << (status.onACPower.valid ? "valid" : "invalid") << "] " << status.onACPower.value << std::endl;
-    std::cout << "    hasBattery = [" << (status.hasBattery.valid ? "valid" : "invalid") << "] " << status.hasBattery.value << std::endl;
-    std::cout << "    batteryLife = [" << (status.batteryLife.valid ? "valid" : "invalid") << "] " << static_cast<uint32_t>(status.batteryLife.value) << std::endl;
+    std::cout << "    onACPower = [" << (status.onACPower.HasValue() ? "valid" : "invalid") << "] " << status.onACPower.Value() << std::endl;
+    std::cout << "    hasBattery = [" << (status.hasBattery.HasValue() ? "valid" : "invalid") << "] " << status.hasBattery.Value() << std::endl;
+    std::cout << "    batteryLife = [" << (status.batteryLife.HasValue() ? "valid" : "invalid") << "] " << static_cast<uint32_t>(status.batteryLife.Value()) << std::endl;
 }
 
 // ------------------------------------------------------------------------------------------------

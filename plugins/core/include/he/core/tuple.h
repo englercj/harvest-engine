@@ -46,6 +46,39 @@ namespace he
     // --------------------------------------------------------------------------------------------
     // Internal implementation details
 
+#if HE_COMPILER_MSVC
+    template <class T, class U>
+    struct _ForwardAs { using Type = U&&; };
+
+    template <class T, class U>
+    struct _ForwardAs<T&, U> { using Type = U&; };
+
+    template <class T, class U>
+    struct _ForwardAs<T&&, U> { using Type = U&&; };
+
+    template <class T, class U>
+    struct _ForwardAs<T const&, U> { using Type = U const&; };
+
+    template <class T, class U>
+    struct _ForwardAs<T const&&, U> { using Type = U const&&; };
+
+    template <class T, class U>
+    using ForwardAs = typename _ForwardAs<T, U>::Type;
+
+    // Working around an MSVC bug where assignment silently does nothing when using IdentityType<> here.
+    // See: https://github.com/codeinred/tuplet/issues/29
+    // See: https://developercommunity.visualstudio.com/t/fold-expressions-unreliable-in-171-with-c20/1676476
+
+    #define HE_TUPLE_FWD_MEMBER(TupleType, BaseType, tuple, value) static_cast<ForwardAs<TupleType&&, BaseType>>(tuple).value
+    #define HE_TUPLE_GET_MEMBER(BaseType, tuple, value) tuple.IdentityType<BaseType>::value
+#elif HE_COMPILER_CLANG
+    #define HE_TUPLE_FWD_MEMBER(TupleType, BaseType, tuple, value) static_cast<TupleType&&>(tuple).IdentityType<BaseType>::value
+    #define HE_TUPLE_GET_MEMBER(BaseType, tuple, value) tuple.IdentityType<BaseType>::value
+#else
+    #define HE_TUPLE_FWD_MEMBER(TupleType, BaseType, tuple, value) static_cast<TupleType&&>(tuple).BaseType::value
+    #define HE_TUPLE_GET_MEMBER(BaseType, tuple, value) tuple.BaseType::value
+#endif
+
     /// \internal
     template <typename T, typename U>
     constexpr bool _TuplePartialCompare(const T& a, const U& b, bool& isLess)
@@ -67,10 +100,10 @@ namespace he
             return [&](auto&... v2) -> bool
             {
                 return ((v1 == v2) && ...);
-            }(t2.IdentityType<B2>::value...);
-        }(t1.IdentityType<B1>::value...);
+            }(HE_TUPLE_GET_MEMBER(B2, t2, value)...);
+        }(HE_TUPLE_GET_MEMBER(B1, t1, value)...);
     #else
-        return ((t1.IdentityType<B1>::value == t2.IdentityType<B2>::value) && ...);
+        return ((HE_TUPLE_GET_MEMBER(B1, t1, value) == HE_TUPLE_GET_MEMBER(B2, t2, value)) && ...);
     #endif
     }
 
@@ -84,10 +117,10 @@ namespace he
             return [&](auto&... v2) -> bool
             {
                 return (_TuplePartialCompare(v1, v2, isLess) && ...);
-            }(t2.IdentityType<B2>::value...);
-        }(t1.IdentityType<B1>::value...);
+            }(HE_TUPLE_GET_MEMBER(B2, t2, value)...);
+        }(HE_TUPLE_GET_MEMBER(B1, t1, value)...);
     #else
-        (_TuplePartialCompare(t1.IdentityType<B1>::value, t2.IdentityType<B2>::value, isLess) && ...);
+        (_TuplePartialCompare(HE_TUPLE_GET_MEMBER(B1, t1, value), HE_TUPLE_GET_MEMBER(B2, t2, value), isLess) && ...);
     #endif
         return isLess;
     }
@@ -102,10 +135,10 @@ namespace he
             return [&](auto&... v2) -> bool
             {
                 return (_TuplePartialCompare(v1, v2, isLess) && ...);
-            }(t2.IdentityType<B2>::value...);
-        }(t1.IdentityType<B1>::value...);
+            }(HE_TUPLE_GET_MEMBER(B2, t2, value)...);
+        }(HE_TUPLE_GET_MEMBER(B1, t1, value)...);
     #else
-        const bool isEqual = (_TuplePartialCompare(t1.IdentityType<B1>::value, t2.IdentityType<B2>::value, isLess) && ...);
+        const bool isEqual = (_TuplePartialCompare(HE_TUPLE_GET_MEMBER(B1, t1, value), HE_TUPLE_GET_MEMBER(B2, t2, value), isLess) && ...);
     #endif
         return isLess || isEqual;
     }
@@ -166,9 +199,9 @@ namespace he
         return [&](auto&&... v1) -> bool
         {
             return (bool(func(Forward<decltype(v1)>(v1))) || ...);
-        }(Forward<T>(tuple).IdentityType<B>::value...);
+        }(HE_TUPLE_FWD_MEMBER(T, B, tuple, value)...);
     #else
-        return (bool(func(Forward<T>(tuple).IdentityType<B>::value)) || ...);
+        return (bool(func(HE_TUPLE_FWD_MEMBER(T, B, tuple, value))) || ...);
     #endif
     }
 
@@ -179,16 +212,16 @@ namespace he
         return [&](auto&&... v1) -> bool
         {
             return (bool(func(Forward<decltype(v1)>(v1))) && ...);
-        }(Forward<T>(tuple).IdentityType<B>::value...);
+        }(HE_TUPLE_FWD_MEMBER(T, B, tuple, value)...);
     #else
-        return (bool(func(Forward<T>(tuple).IdentityType<B>::value)) && ...);
+        return (bool(func(HE_TUPLE_FWD_MEMBER(T, B, tuple, value))) && ...);
     #endif
     }
 
     template <typename T, typename F, typename... B>
     constexpr decltype(auto) _TupleApply(T&& tuple, F&& func, TypeList<B...>)
     {
-        return func(Forward<T>(tuple).IdentityType<B>::value...);
+        return func(HE_TUPLE_FWD_MEMBER(T, B, tuple, value)...);
     }
 
     template <typename T, typename F, typename... B>
@@ -198,9 +231,9 @@ namespace he
         [&](auto&&... v1)
         {
             (void(func(Forward<decltype(v1)>(v1))), ...);
-        }(Forward<T>(tuple).IdentityType<B>::value...);
+        }(HE_TUPLE_FWD_MEMBER(T, B, tuple, value)...);
     #else
-        (void(func(Forward<T>(tuple).IdentityType<B>::value)), ...);
+        (void(func(HE_TUPLE_FWD_MEMBER(T, B, tuple, value))), ...);
     #endif
     }
 
@@ -233,9 +266,9 @@ namespace he
 
     template <typename T, typename F, typename... B>
     constexpr auto _TupleMap(T&& tuple, F&& func, TypeList<B...>)
-        -> Tuple<decltype(func(Forward<T>(tuple).IdentityType<B>::value))...>
+        -> Tuple<decltype(func(HE_TUPLE_FWD_MEMBER(T, B, tuple, value)))...>
     {
-        return { func(Forward<T>(tuple).IdentityType<B>::value)... };
+        return { func(HE_TUPLE_FWD_MEMBER(T, B, tuple, value))... };
     }
     /// \endinternal
 
@@ -315,14 +348,7 @@ namespace he
         template <typename U, typename... B1, typename... B2>
         constexpr void AssignInternal(U&& u, TypeList<B1...>, TypeList<B2...>)
         {
-            // Working around an MSVC bug where assignment silently does nothing when using IdentityType<> here.
-            // See: https://github.com/codeinred/tuplet/issues/29
-            // See: https://developercommunity.visualstudio.com/t/fold-expressions-unreliable-in-171-with-c20/1676476
-        #if HE_COMPILER_MSVC
-            (void(B1::value = Forward<U>(u).B2::value), ...);
-        #else
-            (void(B1::value = Forward<U>(u).IdentityType<B2>::value), ...);
-        #endif
+            (void(B1::value = HE_TUPLE_FWD_MEMBER(U, B2, u, value)), ...);
         }
     };
 
@@ -439,7 +465,7 @@ namespace he
     template <typename T, typename... Outer, typename... Inner>
     constexpr Tuple<_Type<Inner>...> _TupleCat(T&& tuple, TypeList<Outer...>, TypeList<Inner...>)
     {
-        return { static_cast<_Type<Outer>&&>(tuple.IdentityType<Outer>::value).IdentityType<Inner>::value... };
+        return { HE_TUPLE_FWD_MEMBER(Outer, Inner, HE_TUPLE_GET_MEMBER(Outer, tuple, value), value)... };
     }
 
     template <typename... T> requires(IsSpecialization<Decay<T>, Tuple> && ...)
@@ -486,4 +512,7 @@ namespace he
     {
         return Decay<T>::Size;
     }
+
+    #undef HE_TUPLE_FWD_MEMBER
+    #undef HE_TUPLE_GET_MEMBER
 }

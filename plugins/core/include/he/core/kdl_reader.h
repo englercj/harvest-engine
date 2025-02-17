@@ -16,13 +16,14 @@ namespace he
         UnexpectedEof,          ///< The input ended unexpectedly.
         DisallowedUtf8,         ///< The utf-8 sequence is disallowed. For example, various control sequences.
         InvalidBom,             ///< The utf-8 Byte Order Mark (BOM) of the file is not valid.
+        InvalidVersion,         ///< The version string is invalid or not supported.
         InvalidUtf8,            ///< An invalid utf-8 sequence was encountered.
         InvalidEscapeSequence,  ///< An escape sequence (`\n`, `\t`, `\"`, etc) was invalid.
         InvalidControlChar,     ///< A control character was encountered somewhere it wasn't expected (like in a string).
         InvalidIdentifier,      ///< An identifier string contains invalid characters.
         InvalidNumber,          ///< Format of a number is invalid. For example, a negative hex number.
         InvalidToken,           ///< Encountered an unexpected token in the file.
-        InvalidDocument,        ///< The document is semantically invalid.
+        MaxDepthExceeded,       ///< The maximum depth of nodes was exceeded.
     };
 
     /// The result of reading a KDL document.
@@ -37,9 +38,9 @@ namespace he
         /// The column where the error occurred.
         uint32_t column{ 0 };
 
-        /// When error is \ref KdlReadError::InvalidToken, this was the character that was
-        /// expected instead. Otherwise this value is just '\0'.
-        char expected{ '\0' };
+        /// When error is \ref KdlReadError::InvalidToken, this was the character sequence that was
+        /// expected instead. Otherwise this value is just "".
+        char expected[8]{};
 
         /// Checks if the read was successful.
         ///
@@ -79,6 +80,12 @@ namespace he
             ///
             /// \return True to continue reading, false to stop.
             virtual bool EndDocument() = 0;
+
+            /// Called if a document version marker is specified.
+            ///
+            /// \param[in] value The version value.
+            /// \return True to continue reading, false to stop.
+            virtual bool Version(StringView value) = 0;
 
             /// Called when a single-line (`//`) or multi-line (`/**/`) comment is encountered.
             ///

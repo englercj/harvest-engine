@@ -13,6 +13,7 @@ namespace he
         switch (x)
         {
             case KeyValue::ValueKind::Bool: return "Bool";
+            case KeyValue::ValueKind::Char: return "Char";
             case KeyValue::ValueKind::Enum: return "Enum";
             case KeyValue::ValueKind::Int: return "Int";
             case KeyValue::ValueKind::Uint: return "Uint";

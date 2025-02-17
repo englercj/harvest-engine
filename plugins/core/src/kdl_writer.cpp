@@ -6,9 +6,12 @@
 
 #include "he/core/assert.h"
 #include "he/core/concepts.h"
+#include "he/core/enum_ops.h"
+#include "he/core/fmt.h"
 #include "he/core/math.h"
+#include "he/core/string.h"
+#include "he/core/type_traits.h"
 #include "he/core/utf8.h"
-#include "he/core/utils.h"
 
 namespace he
 {
@@ -27,9 +30,10 @@ namespace he
                 case '\f': writer.Write("\\f"); break;
                 default:
                 {
-                    if (ucc > 0x10ffff)
+                    if (ucc > 0x10ffff) [[unlikely]]
                     {
-                        // TODO: What should we do here?
+                        // TODO: This is not a valid codepoint. What should we do here?
+                        // Right now we just silently ignore it.
                     }
                     else if (IsDisallowedKdlCodePoint(ucc))
                     {
@@ -57,7 +61,9 @@ namespace he
             const uint32_t len = UTF8Decode(ucc, begin, static_cast<uint32_t>(end - begin));
 
             if (!HE_VERIFY(len > 0 && len != InvalidCodePoint, HE_MSG("Invalid UTF-8 code point.")))
+            {
                 return false;
+            }
 
             if (first)
             {
@@ -87,12 +93,12 @@ namespace he
             writer.Write('\"');
             if (multiline)
             {
-                writer.Write('\n');
+                writer.Write("\"\"\n");
             }
             WriteEscaped(writer, str, multiline);
             if (multiline)
             {
-                writer.Write('\n');
+                writer.Write("\n\"\"");
             }
             writer.Write('\"');
         }
@@ -166,9 +172,13 @@ namespace he
     {
         String fmt;
         if (precision > 0)
+        {
             FormatTo(fmt, "{{:#.{}{}}}", precision, type);
+        }
         else
+        {
             FormatTo(fmt, "{{:#{}}}", type);
+        }
         return fmt;
     }
 
@@ -185,9 +195,13 @@ namespace he
         if (IsInfinite(value))
         {
             if (HasSignBit(value))
+            {
                 writer.Write("#-inf");
+            }
             else
+            {
                 writer.Write("#inf");
+            }
             return;
         }
 
@@ -297,7 +311,9 @@ namespace he
     void KdlWriter::Node(StringView name, const StringView* type)
     {
         if (!m_startOfLine || m_inNode)
+        {
             m_writer.Write('\n');
+        }
 
         m_writer.WriteIndent();
         if (type)
@@ -327,7 +343,9 @@ namespace he
             return;
 
         if (m_inNode)
+        {
             m_writer.Write('\n');
+        }
 
         m_writer.DecreaseIndent();
         m_writer.WriteIndent();

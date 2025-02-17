@@ -63,11 +63,12 @@ namespace he
             const char* String() const { return toString(value); }
         };
 
-        using VariantType = Variant<bool, EnumStorage, int64_t, uint64_t, double, String>;
+        using VariantType = Variant<bool, char, EnumStorage, int64_t, uint64_t, double, String>;
 
         enum class ValueKind : VariantType::IndexType
         {
             Bool,
+            Char,
             Enum,
             Int,
             Uint,
@@ -82,7 +83,7 @@ namespace he
     public:
         KeyValue() noexcept : m_key(""), m_value() {}
         KeyValue(const char* k, bool v) noexcept : m_key(k), m_value(AsIndex<ValueKind::Bool>(), v) {}
-        KeyValue(const char* k, char v) noexcept : m_key(k), m_value(AsIndex<ValueKind::Int>(), v) {}
+        KeyValue(const char* k, char v) noexcept : m_key(k), m_value(AsIndex<ValueKind::Char>(), v) {}
         KeyValue(const char* k, signed char v) noexcept : m_key(k), m_value(AsIndex<ValueKind::Int>(), v) {}
         KeyValue(const char* k, short v) noexcept : m_key(k), m_value(AsIndex<ValueKind::Int>(), v) {}
         KeyValue(const char* k, int v) noexcept : m_key(k), m_value(AsIndex<ValueKind::Int>(), v) {}
@@ -166,6 +167,7 @@ namespace he
 
         template <ValueKind K> bool Is() const { return m_value.Index() == EnumToValue(K); }
         bool IsBool() const { return Is<ValueKind::Bool>(); }
+        bool IsChar() const { return Is<ValueKind::Char>(); }
         bool IsEnum() const { return Is<ValueKind::Enum>(); }
         bool IsInt() const { return Is<ValueKind::Int>(); }
         bool IsUint() const { return Is<ValueKind::Uint>(); }
@@ -174,6 +176,7 @@ namespace he
 
         template <ValueKind K> decltype(auto) Set() { return m_value.Emplace<EnumToValue(K)>(); }
         void SetBool(bool v) { Set<ValueKind::Bool>() = v; }
+        void SetChar(char v) { Set<ValueKind::Char>() = v; }
         void SetInt(int64_t v) { Set<ValueKind::Int>() = v; }
         void SetUint(uint64_t v) { Set<ValueKind::Uint>() = v; }
         void SetDouble(double v) { Set<ValueKind::Double>() = v; }
@@ -190,6 +193,7 @@ namespace he
         template <ValueKind K> decltype(auto) Get() { return m_value.Get<EnumToValue(K)>(); }
         template <ValueKind K> decltype(auto) Get() const { return m_value.Get<EnumToValue(K)>(); }
         bool Bool() const { return Get<ValueKind::Bool>(); }
+        char Char() const { return Get<ValueKind::Char>(); }
         const EnumStorage& Enum() const { return Get<ValueKind::Enum>(); }
         int64_t Int() const { return Get<ValueKind::Int>(); }
         uint64_t Uint() const { return Get<ValueKind::Uint>(); }

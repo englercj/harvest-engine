@@ -25,6 +25,12 @@ namespace he
             return true;
         }
 
+        bool Version([[maybe_unused]] StringView value) override
+        {
+            // Nothing to do here
+            return true;
+        }
+
         bool Comment([[maybe_unused]] StringView value) override
         {
             // Nothing to do here

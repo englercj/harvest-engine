@@ -251,16 +251,16 @@ HE_TEST_F(core, kdl_writer, value_string_escaped, KdlWriterFixture)
     ValidateString("C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe", "\"C:\\\\Program Files (x86)\\\\Microsoft\\\\Edge\\\\Application\\\\msedge.exe\"");
 
     // Multiline quoted strings
-    ValidateString("test\ntest", "\"\ntest\ntest\n\"", true);
-    ValidateString("é\n", "\"\né\n\n\"", true);
-    ValidateString("test\xed\x9f\xbf\ntest", "\"\ntest\xed\x9f\xbf\ntest\n\"", true);
-    ValidateString("test\xee\x80\x80\ntest", "\"\ntest\xee\x80\x80\ntest\n\"", true);
-    ValidateString("test\xf4\x8f\xbf\xbf\ntest", "\"\ntest\xf4\x8f\xbf\xbf\ntest\n\"", true);
-    ValidateString("Fuß\n", "\"\nFuß\n\n\"", true);
-    ValidateString("😂\n", "\"\n😂\n\n\"", true);
-    ValidateString("汉语大字典\n", "\"\n汉语大字典\n\n\"", true);
-    ValidateString("辭源\n", "\"\n辭源\n\n\"", true);
-    ValidateString("பெண்டிரேம்\n", "\"\nபெண்டிரேம்\n\n\"", true);
+    ValidateString("test\ntest", "\"\"\"\ntest\ntest\n\"\"\"", true);
+    ValidateString("é\n", "\"\"\"\né\n\n\"\"\"", true);
+    ValidateString("test\xed\x9f\xbf\ntest", "\"\"\"\ntest\xed\x9f\xbf\ntest\n\"\"\"", true);
+    ValidateString("test\xee\x80\x80\ntest", "\"\"\"\ntest\xee\x80\x80\ntest\n\"\"\"", true);
+    ValidateString("test\xf4\x8f\xbf\xbf\ntest", "\"\"\"\ntest\xf4\x8f\xbf\xbf\ntest\n\"\"\"", true);
+    ValidateString("Fuß\n", "\"\"\"\nFuß\n\n\"\"\"", true);
+    ValidateString("😂\n", "\"\"\"\n😂\n\n\"\"\"", true);
+    ValidateString("汉语大字典\n", "\"\"\"\n汉语大字典\n\n\"\"\"", true);
+    ValidateString("辭源\n", "\"\"\"\n辭源\n\n\"\"\"", true);
+    ValidateString("பெண்டிரேம்\n", "\"\"\"\nபெண்டிரேம்\n\n\"\"\"", true);
 
     ValidateString("test\b\t\n\f\r\n\"\\", "\"test\\b\\t\\n\\f\\r\\n\\\"\\\\\"");
     ValidateString("test  \n   test \n   ", "\"test  \\n   test \\n   \"");
@@ -407,15 +407,15 @@ floats {
 }
 strings {
     escaped {
-        str1 "
+        str1 """
 I'm a string. \"You can quote me\".
 Name\tJosé
 Location\tSF.
-"
-        str2 "
+"""
+        str2 """
 Roses are red
 Violets are blue
-"
+"""
         str3 "Here are two quotation marks: \"\". Simple enough."
         str4 "Here are fifteen quotation marks: \"\"\"\"\"\"\"\"\"\"\"\"\"\"\"."
         str5 "\\\\ServerX\\admin$\\system32\\"

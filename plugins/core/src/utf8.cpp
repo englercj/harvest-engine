@@ -15,6 +15,18 @@ namespace he
 
     uint32_t UTF8Encode(he::String& dst, uint32_t ucc)
     {
+        char buf[6];
+        const uint32_t len = UTF8Encode(buf, ucc);
+
+        if (len)
+        {
+            dst.Append(buf, len);
+        }
+        return len;
+    }
+
+    uint32_t UTF8Encode(char dst[6], uint32_t ucc)
+    {
         // Top bit can't be set.
         if ((ucc & 0x80000000) != 0)
             return 0;
@@ -31,13 +43,13 @@ namespace he
                 uint32_t remain_bits = i * 6;
 
                 // Store bytes
-                dst += static_cast<char>((0xFE << (max_bits - remain_bits)) | (ucc >> remain_bits));
+                *dst++ = static_cast<char>((0xFE << (max_bits - remain_bits)) | (ucc >> remain_bits));
                 for (uint32_t j = i - 1; j != static_cast<uint32_t>(-1); --j)
                 {
-                    dst += static_cast<char>(((ucc >> (j * 6)) & 0x3F) | 0x80);
+                    *dst++ = static_cast<char>(((ucc >> (j * 6)) & 0x3F) | 0x80);
                 }
 
-                // Return the number of bytes added.
+                // Return the number of bytes written.
                 return i + 1;
             }
         }
@@ -114,5 +126,40 @@ namespace he
     uint32_t UTF8Length(const char* str, uint32_t len)
     {
         return static_cast<uint32_t>(simdutf::count_utf8(str, len));
+    }
+
+    bool UTF8IsWhitespace(uint32_t ucc)
+    {
+        switch (ucc)
+        {
+            case 0x0009: // Character Tabulation
+            case 0x000a: // Line Feed
+            case 0x000b: // Line Tabulation
+            case 0x000c: // Form Feed
+            case 0x000d: // Carriage Return
+            case 0x0020: // Space
+            case 0x0085: // Next Line
+            case 0x00a0: // No-Break Space
+            case 0x1680: // Ogham Space Mark
+            case 0x2000: // En Quad
+            case 0x2001: // Em Quad
+            case 0x2002: // En Space
+            case 0x2003: // Em Space
+            case 0x2004: // Three-Per-Em Space
+            case 0x2005: // Four-Per-Em Space
+            case 0x2006: // Six-Per-Em Space
+            case 0x2007: // Figure Space
+            case 0x2008: // Punctuation Space
+            case 0x2009: // Thin Space
+            case 0x200a: // Hair Space
+            case 0x2028: // Line Separator
+            case 0x2029: // Paragraph Separator
+            case 0x202f: // Narrow No-Break Space
+            case 0x205f: // Medium Mathematical Space
+            case 0x3000: // Ideographic Space
+                return true;
+        }
+
+        return false;
     }
 }

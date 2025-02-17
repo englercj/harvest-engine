@@ -19,6 +19,7 @@ namespace he
     void TestAllocatorNoRealloc(Allocator& alloc);
     void TestAllocator(Allocator& alloc);
     void TouchTestFile(const char* path, const void* data = nullptr, uint32_t len = 0);
+    String ReadFixtureFile(const char* path);
     StringView GetTestTomlDocument();
     StringView GetTestKdlDocument();
 

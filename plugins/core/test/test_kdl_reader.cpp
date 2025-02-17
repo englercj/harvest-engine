@@ -20,6 +20,7 @@ struct KdlEvent
     {
         StartDocument,
         EndDocument,
+        Version,
         Comment,
         StartComment,
         EndComment,
@@ -45,6 +46,7 @@ const char* he::EnumTraits<KdlEvent::Kind>::ToString(KdlEvent::Kind x) noexcept
     {
         case KdlEvent::Kind::StartDocument: return "StartDocument";
         case KdlEvent::Kind::EndDocument: return "EndDocument";
+        case KdlEvent::Kind::Version: return "Version";
         case KdlEvent::Kind::Comment: return "Comment";
         case KdlEvent::Kind::StartComment: return "StartComment";
         case KdlEvent::Kind::EndComment: return "EndComment";
@@ -72,6 +74,7 @@ struct he::Formatter<KdlEvent>
         {
             case KdlEvent::Kind::StartDocument: break;
             case KdlEvent::Kind::EndDocument: break;
+            case KdlEvent::Kind::Version: FormatTo(out, ", value = {}", evt.value); break;
             case KdlEvent::Kind::Comment: FormatTo(out, ", value = {}", evt.value); break;
             case KdlEvent::Kind::StartComment: break;
             case KdlEvent::Kind::EndComment: break;
@@ -95,7 +98,7 @@ public:
 
         for (uint32_t i = 0; i < expected.Size(); ++i)
         {
-            HE_EXPECT_EQ(m_events[i], expected[i], input);
+            HE_EXPECT_EQ(m_events[i], expected[i], i, input);
         }
     }
 
@@ -114,6 +117,12 @@ private:
     bool EndDocument() override
     {
         m_events.PushBack({ .kind = KdlEvent::Kind::EndDocument });
+        return true;
+    }
+
+    bool Version(StringView value) override
+    {
+        m_events.PushBack({ .kind = KdlEvent::Kind::Version, .value = value });
         return true;
     }
 
@@ -270,7 +279,7 @@ public:
     {
         handler.Reset();
         const KdlReadResult result = reader.Read(input, handler);
-        HE_EXPECT(result, result.error, result.line, result.column, input);
+        HE_EXPECT(result, result.error, result.line, result.column, result.expected, input);
         handler.Validate(input, events);
     }
 
@@ -317,6 +326,26 @@ public:
 };
 
 // ------------------------------------------------------------------------------------------------
+HE_TEST_F(core, kdl_reader, version, KdlReaderFixture)
+{
+    const KdlEvent expected[] =
+    {
+        { .kind = KdlEvent::Kind::StartDocument },
+        { .kind = KdlEvent::Kind::Version, .value = "2" },
+        { .kind = KdlEvent::Kind::EndDocument },
+    };
+    Validate("/-kdl-version 2\n", expected);
+    Validate("/- kdl-version 2\n", expected);
+    Validate("/-          kdl-version            2\n", expected);
+
+    Validate("/- kdl-version 1", KdlReadError::InvalidVersion);
+    Validate("/- kdl-version 2", KdlReadError::UnexpectedEof);
+    Validate("/- kdl-version 21", KdlReadError::InvalidToken);
+    Validate("/- kdl-version 2s", KdlReadError::InvalidToken);
+    Validate("/- kdl-version 2!!!", KdlReadError::InvalidToken);
+}
+
+// ------------------------------------------------------------------------------------------------
 HE_TEST_F(core, kdl_reader, empty, KdlReaderFixture)
 {
     const KdlEvent expected[] =
@@ -329,17 +358,185 @@ HE_TEST_F(core, kdl_reader, empty, KdlReaderFixture)
 }
 
 // ------------------------------------------------------------------------------------------------
-HE_TEST_F(core, kdl_reader, comments, KdlReaderFixture)
+HE_TEST_F(core, kdl_reader, comments_single_line, KdlReaderFixture)
+{
+    {
+        const KdlEvent expected[] =
+        {
+            { .kind = KdlEvent::Kind::StartDocument },
+            { .kind = KdlEvent::Kind::Comment, .value = "first comment" },
+            { .kind = KdlEvent::Kind::Comment, .value = "second comment" },
+            { .kind = KdlEvent::Kind::Comment, .value = "last one" },
+            { .kind = KdlEvent::Kind::EndDocument },
+        };
+        Validate("//first comment\n\n    \t// second comment\r\n\r\n //last one", expected);
+    }
+    
+    {
+        const KdlEvent expected[] =
+        {
+            { .kind = KdlEvent::Kind::StartDocument },
+            { .kind = KdlEvent::Kind::StartNode, .name = "my-node" },
+            { .kind = KdlEvent::Kind::Argument, .value = 1u },
+            { .kind = KdlEvent::Kind::Argument, .value = 2u },
+            { .kind = KdlEvent::Kind::Comment, .value = "comments are ok after \\"},
+            { .kind = KdlEvent::Kind::Argument, .value = 3u },
+            { .kind = KdlEvent::Kind::Argument, .value = 4u },
+            { .kind = KdlEvent::Kind::EndNode },
+            { .kind = KdlEvent::Kind::Comment, .value = "This is the actual end of the Node."},
+            { .kind = KdlEvent::Kind::EndDocument },
+        };
+        Validate("my-node 1 2 \\  // comments are ok after \\\n        3 4    // This is the actual end of the Node.", expected);
+    }
+}
+
+// ------------------------------------------------------------------------------------------------
+HE_TEST_F(core, kdl_reader, comments_multi_line, KdlReaderFixture)
 {
     const KdlEvent expected[] =
     {
-        {.kind = KdlEvent::Kind::StartDocument },
-        {.kind = KdlEvent::Kind::Comment, .value = "first comment" },
-        {.kind = KdlEvent::Kind::Comment, .value = "second comment" },
-        {.kind = KdlEvent::Kind::Comment, .value = "last one" },
-        {.kind = KdlEvent::Kind::EndDocument },
+        { .kind = KdlEvent::Kind::StartDocument },
+        { .kind = KdlEvent::Kind::Comment, .value = "first comment\n" },
+        { .kind = KdlEvent::Kind::Comment, .value = "second comment\nhas multiple\n\nlines" },
+        { .kind = KdlEvent::Kind::EndDocument },
     };
-    Validate("//first comment\n\n    \t// second comment\r\n\r\n //last one", expected);
+    Validate("/*first comment\n*/\n    \t/*   second comment\r\nhas multiple\n\r\nlines*/", expected);
+}
+
+// ------------------------------------------------------------------------------------------------
+HE_TEST_F(core, kdl_reader, comments_slashdash, KdlReaderFixture)
+{
+    // Comment out an entire node
+    {
+        const KdlEvent expected[] =
+        {
+            { .kind = KdlEvent::Kind::StartDocument },
+            { .kind = KdlEvent::Kind::StartComment },
+            { .kind = KdlEvent::Kind::StartNode, .name = "node" },
+            { .kind = KdlEvent::Kind::EndNode },
+            { .kind = KdlEvent::Kind::EndComment },
+            { .kind = KdlEvent::Kind::EndDocument },
+        };
+        Validate("/- node", expected);
+    }
+
+    // Comment out an argument
+    {
+        const KdlEvent expected[] =
+        {
+            { .kind = KdlEvent::Kind::StartDocument },
+            { .kind = KdlEvent::Kind::StartNode, .name = "node" },
+            { .kind = KdlEvent::Kind::Argument, .value = true },
+            { .kind = KdlEvent::Kind::StartComment },
+            { .kind = KdlEvent::Kind::Argument, .value = "arg" },
+            { .kind = KdlEvent::Kind::EndComment },
+            { .kind = KdlEvent::Kind::Argument, .value = "last" },
+            { .kind = KdlEvent::Kind::EndNode },
+            { .kind = KdlEvent::Kind::EndDocument },
+        };
+        Validate("node #true /-arg last", expected);
+    }
+
+    // Comment out a property
+    {
+        const KdlEvent expected[] =
+        {
+            { .kind = KdlEvent::Kind::StartDocument },
+            { .kind = KdlEvent::Kind::StartNode, .name = "node" },
+            { .kind = KdlEvent::Kind::Property, .name = "prop1", .value = true },
+            { .kind = KdlEvent::Kind::StartComment },
+            { .kind = KdlEvent::Kind::Property, .name = "prop2", .value = "arg" },
+            { .kind = KdlEvent::Kind::EndComment },
+            { .kind = KdlEvent::Kind::Property, .name = "prop3", .value = "last" },
+            { .kind = KdlEvent::Kind::EndNode },
+            { .kind = KdlEvent::Kind::EndDocument },
+        };
+        Validate("node prop1=#true /-prop2=arg prop3=last", expected);
+    }
+
+    // Comment out a child block
+    {
+        const KdlEvent expected[] =
+        {
+            { .kind = KdlEvent::Kind::StartDocument },
+            { .kind = KdlEvent::Kind::StartNode, .name = "node" },
+            { .kind = KdlEvent::Kind::StartComment },
+            { .kind = KdlEvent::Kind::StartNode, .name = "child" },
+            { .kind = KdlEvent::Kind::StartNode, .name = "child2" },
+            { .kind = KdlEvent::Kind::EndNode },
+            { .kind = KdlEvent::Kind::EndNode },
+            { .kind = KdlEvent::Kind::StartNode, .name = "child3" },
+            { .kind = KdlEvent::Kind::EndNode },
+            { .kind = KdlEvent::Kind::EndComment },
+            { .kind = KdlEvent::Kind::EndNode },
+            { .kind = KdlEvent::Kind::EndDocument },
+        };
+        Validate("node /-{\n    child {\n        child2\n    }\n    child3\n}", expected);
+    }
+
+    // Nested slashdashes
+    {
+        const KdlEvent expected[] =
+        {
+            { .kind = KdlEvent::Kind::StartDocument },
+            { .kind = KdlEvent::Kind::StartNode, .name = "node" },
+            { .kind = KdlEvent::Kind::StartComment },
+            { .kind = KdlEvent::Kind::StartComment },
+            { .kind = KdlEvent::Kind::StartNode, .name = "child" },
+            { .kind = KdlEvent::Kind::StartNode, .name = "child2" },
+            { .kind = KdlEvent::Kind::EndNode },
+            { .kind = KdlEvent::Kind::EndNode },
+            { .kind = KdlEvent::Kind::EndComment },
+            { .kind = KdlEvent::Kind::StartNode, .name = "child3" },
+            { .kind = KdlEvent::Kind::EndNode },
+            { .kind = KdlEvent::Kind::EndComment },
+            { .kind = KdlEvent::Kind::EndNode },
+            { .kind = KdlEvent::Kind::EndDocument },
+        };
+        Validate("node /-{\n    /-child {\n        child2\n    }\n    child3\n}", expected);
+    }
+
+    // Nested slashdashes with newline and comment separators
+    {
+        const KdlEvent expected[] =
+        {
+            { .kind = KdlEvent::Kind::StartDocument },
+            { .kind = KdlEvent::Kind::StartNode, .name = "node" },
+            { .kind = KdlEvent::Kind::StartComment },
+            { .kind = KdlEvent::Kind::StartComment },
+            { .kind = KdlEvent::Kind::Comment, .value = "this child node is commented out" },
+            { .kind = KdlEvent::Kind::StartNode, .name = "child" },
+            { .kind = KdlEvent::Kind::StartComment },
+            { .kind = KdlEvent::Kind::Comment, .value = "this one too" },
+            { .kind = KdlEvent::Kind::StartNode, .name = "child2" },
+            { .kind = KdlEvent::Kind::EndNode },
+            { .kind = KdlEvent::Kind::EndComment },
+            { .kind = KdlEvent::Kind::EndNode },
+            { .kind = KdlEvent::Kind::EndComment },
+            { .kind = KdlEvent::Kind::StartNode, .name = "child3" },
+            { .kind = KdlEvent::Kind::EndNode },
+            { .kind = KdlEvent::Kind::EndComment },
+            { .kind = KdlEvent::Kind::EndNode },
+            { .kind = KdlEvent::Kind::EndDocument },
+        };
+        Validate("node /-\t \t{\n    /-\n\n//this child node is commented out  \r\nchild {\n        /- /* this one too */ child2\n    }\n    child3\n}", expected);
+    }
+
+    // A node with the kdl-version marker still works as a normal node
+    {
+        const KdlEvent expected[] =
+        {
+            { .kind = KdlEvent::Kind::StartDocument },
+            { .kind = KdlEvent::Kind::StartComment },
+            { .kind = KdlEvent::Kind::StartNode, .name = "kdl-version" },
+            { .kind = KdlEvent::Kind::EndNode },
+            { .kind = KdlEvent::Kind::EndComment },
+            { .kind = KdlEvent::Kind::EndDocument },
+        };
+        Validate("/-kdl-version", expected);
+        Validate("/- kdl-version", expected);
+        Validate("/-     kdl-version a1", KdlReadError::InvalidVersion);
+    }
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -355,6 +552,26 @@ HE_TEST_F(core, kdl_reader, node_empty, KdlReaderFixture)
     Validate("node", expected);
     Validate("\nnode\r\n", expected);
     Validate("node;", expected);
+}
+
+// ------------------------------------------------------------------------------------------------
+HE_TEST_F(core, kdl_reader, node_multiple, KdlReaderFixture)
+{
+    const KdlEvent expected[] =
+    {
+        {.kind = KdlEvent::Kind::StartDocument },
+        {.kind = KdlEvent::Kind::StartNode, .name = "node" },
+        {.kind = KdlEvent::Kind::EndNode },
+        {.kind = KdlEvent::Kind::StartNode, .name = "node" },
+        {.kind = KdlEvent::Kind::EndNode },
+        {.kind = KdlEvent::Kind::StartNode, .name = "node" },
+        {.kind = KdlEvent::Kind::EndNode },
+        {.kind = KdlEvent::Kind::EndDocument },
+    };
+    Validate("node\nnode\nnode", expected);
+    Validate("\nnode\r\nnode\r\nnode", expected);
+    Validate("node;node;node;", expected);
+    Validate("node;  node;;   node;;;;", expected);
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -668,7 +885,7 @@ HE_TEST_F(core, kdl_reader, value_string_identifier, KdlReaderFixture)
     Validate("node te(st", KdlReadError::InvalidToken);
     Validate("node te)st", KdlReadError::InvalidToken);
     Validate("node te{st", KdlReadError::InvalidToken);
-    Validate("node te}st", KdlReadError::InvalidDocument);
+    Validate("node te}st", KdlReadError::InvalidToken);
     Validate("node te[st", KdlReadError::InvalidToken);
     Validate("node te]st", KdlReadError::InvalidToken);
     Validate("node te/st", KdlReadError::InvalidToken);
@@ -726,25 +943,25 @@ HE_TEST_F(core, kdl_reader, value_string_quoted, KdlReaderFixture)
     ValidateValue("\"C:\\\\Program Files (x86)\\\\Microsoft\\\\Edge\\\\Application\\\\msedge.exe\"", "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe");
 
     // Multiline strings
-    ValidateValue("\"\n\"", "");
-    ValidateValue("\"\ntest\n\"", "test");
-    ValidateValue("\"\ntest\ntest\n\"", "test\ntest");
-    ValidateValue("\"\r\n   test\ntest\r\n\"", "   test\ntest");
-    ValidateValue("\"\n   test\r\ntest\n\"", "   test\ntest");
+    ValidateValue("\"\"\"\n\"\"\"", "");
+    ValidateValue("\"\"\"\ntest\n\"\"\"", "test");
+    ValidateValue("\"\"\"\ntest\ntest\n\"\"\"", "test\ntest");
+    ValidateValue("\"\"\"\r\n   test\ntest\r\n\"\"\"", "   test\ntest");
+    ValidateValue("\"\"\"\n   test\r\ntest\n\"\"\"", "   test\ntest");
 
     // Multiline strings with indentation
-    ValidateValue("\"\ntest\ntest\n\"", "test\ntest");
-    ValidateValue("\"\n  test\n  test\n  \"", "test\ntest");
-    ValidateValue("\"\n  test\n    test\n  \"", "test\n  test");
-    ValidateValue("\"\n\t\ttest\n\t\ttest\r\n\t\t\"", "test\ntest");
-    ValidateValue("\"\n\u00a0test\n\u00a0\u00a0test\n\u00a0\"", "test\n\u00a0test");
-    ValidateValue("\"\n \u00a0 \ttest\n \u00a0 \ttest\n \u00a0 \t\"", "test\ntest");
-    ValidateValue("\"\n\u2002\u2003test\n\u2002\u2003test\n\u2002\u2003\"", "test\ntest");
+    ValidateValue("\"\"\"\ntest\ntest\n\"\"\"", "test\ntest");
+    ValidateValue("\"\"\"\n  test\n  test\n  \"\"\"", "test\ntest");
+    ValidateValue("\"\"\"\n  test\n    test\n  \"\"\"", "test\n  test");
+    ValidateValue("\"\"\"\n\t\ttest\n\t\ttest\r\n\t\t\"\"\"", "test\ntest");
+    ValidateValue("\"\"\"\n\u00a0test\n\u00a0\u00a0test\n\u00a0\"\"\"", "test\n\u00a0test");
+    ValidateValue("\"\"\"\n \u00a0 \ttest\n \u00a0 \ttest\n \u00a0 \t\"\"\"", "test\ntest");
+    ValidateValue("\"\"\"\n\u2002\u2003test\n\u2002\u2003test\n\u2002\u2003\"\"\"", "test\ntest");
 
     // Escape whitespace
-    ValidateValue("\"\ntest  \\\n    \r\n   \n   xxx\nyyy\r\nzzz\n\"", "test  xxx\nyyy\nzzz");
-    ValidateValue("\"\ntest  \\\n    \r\n   \n   xxx\nyyy\r\nzzz\n\"", "test  xxx\nyyy\nzzz");
-    ValidateValue("\"\ntest  \\\r\n    \r\n   \n   xxx\nyyy\r\nzzz\n\"", "test  xxx\nyyy\nzzz");
+    ValidateValue("\"\"\"\ntest  \\\n    \r\n   \n   xxx\nyyy\r\nzzz\n\"\"\"", "test  xxx\nyyy\nzzz");
+    ValidateValue("\"\"\"\ntest  \\\n    \r\n   \n   xxx\nyyy\r\nzzz\n\"\"\"", "test  xxx\nyyy\nzzz");
+    ValidateValue("\"\"\"\ntest  \\\r\n    \r\n   \n   xxx\nyyy\r\nzzz\n\"\"\"", "test  xxx\nyyy\nzzz");
 
     // Escape sequences
     ValidateValue("\"test\\b\\t\\n\\f\\r\\\"\\\\\"", "test\b\t\n\f\r\"\\");
@@ -770,10 +987,10 @@ HE_TEST_F(core, kdl_reader, value_string_quoted, KdlReaderFixture)
     Validate("node \"test\\ltest\"", KdlReadError::InvalidEscapeSequence);
 
     // Indent of each line must match the last line exactly
-    Validate("node \"\n  test\n  test\r\n    \"", KdlReadError::InvalidToken);
-    Validate("node \"\n\ttest\n\ttest\r\n\t\t\"", KdlReadError::InvalidToken);
-    Validate("node \"\n \ttest\n \ttest\r\n    \"", KdlReadError::InvalidToken);
-    Validate("node \"\n\u2002test\n\u2002test\n\u2002\u2003\"", KdlReadError::InvalidToken);
+    Validate("node \"\"\"\n  test\n  test\r\n    \"\"\"", KdlReadError::InvalidToken);
+    Validate("node \"\"\"\n\ttest\n\ttest\r\n\t\t\"\"\"", KdlReadError::InvalidToken);
+    Validate("node \"\"\"\n \ttest\n \ttest\r\n    \"\"\"", KdlReadError::InvalidToken);
+    Validate("node \"\"\"\n\u2002test\n\u2002test\n\u2002\u2003\"\"\"", KdlReadError::InvalidToken);
 
     // Invalid escape sequence
     Validate("node \"test\\mtest\"", KdlReadError::InvalidEscapeSequence);
@@ -852,7 +1069,6 @@ HE_TEST_F(core, kdl_reader, value_string_raw, KdlReaderFixture)
     ValidateValue("#\"⋰∫∬∭⋱\"#", "⋰∫∬∭⋱");
     ValidateValue("#\"C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe\"#", "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe");
     ValidateValue("#\"\"That,\" she said, \"is still pointless.\"\"#", "\"That,\" she said, \"is still pointless.\"");
-    ValidateValue("#\"\"\"That,\" she said, \"is still pointless.\"\"\"#", "\"\"That,\" she said, \"is still pointless.\"\"");
 
     // Mixing quotes and raw delimiters
     ValidateValue("####\"\"####", "");
@@ -861,25 +1077,25 @@ HE_TEST_F(core, kdl_reader, value_string_raw, KdlReaderFixture)
     ValidateValue("##\"'\"#\"#\"#'\"##", "'\"#\"#\"#'");
 
     // Multiline strings
-    ValidateValue("#\"\n\"#", "");
-    ValidateValue("#\"\ntest\n\"#", "test");
-    ValidateValue("#\"\ntest\ntest\n\"#", "test\ntest");
-    ValidateValue("#\"\r\n   test\ntest\r\n\"#", "   test\ntest");
-    ValidateValue("#\"\n   test\r\ntest\n\"#", "   test\ntest");
+    ValidateValue("#\"\"\"\n\"\"\"#", "");
+    ValidateValue("#\"\"\"\ntest\n\"\"\"#", "test");
+    ValidateValue("#\"\"\"\ntest\ntest\n\"\"\"#", "test\ntest");
+    ValidateValue("#\"\"\"\r\n   test\ntest\r\n\"\"\"#", "   test\ntest");
+    ValidateValue("#\"\"\"\n   test\r\ntest\n\"\"\"#", "   test\ntest");
 
     // Multiline strings with indentation
-    ValidateValue("#\"\ntest\ntest\n\"#", "test\ntest");
-    ValidateValue("#\"\n  test\n  test\n  \"#", "test\ntest");
-    ValidateValue("#\"\n  test\n    test\n  \"#", "test\n  test");
-    ValidateValue("#\"\n\t\ttest\n\t\ttest\r\n\t\t\"#", "test\ntest");
-    ValidateValue("#\"\n\u00a0test\n\u00a0\u00a0test\n\u00a0\"#", "test\n\u00a0test");
-    ValidateValue("#\"\n \u00a0 \ttest\n \u00a0 \ttest\n \u00a0 \t\"#", "test\ntest");
-    ValidateValue("#\"\n\u2002\u2003test\n\u2002\u2003test\n\u2002\u2003\"#", "test\ntest");
+    ValidateValue("#\"\"\"\ntest\ntest\n\"\"\"#", "test\ntest");
+    ValidateValue("#\"\"\"\n  test\n  test\n  \"\"\"#", "test\ntest");
+    ValidateValue("#\"\"\"\n  test\n    test\n  \"\"\"#", "test\n  test");
+    ValidateValue("#\"\"\"\n\t\ttest\n\t\ttest\r\n\t\t\"\"\"#", "test\ntest");
+    ValidateValue("#\"\"\"\n\u00a0test\n\u00a0\u00a0test\n\u00a0\"\"\"#", "test\n\u00a0test");
+    ValidateValue("#\"\"\"\n \u00a0 \ttest\n \u00a0 \ttest\n \u00a0 \t\"\"\"#", "test\ntest");
+    ValidateValue("#\"\"\"\n\u2002\u2003test\n\u2002\u2003test\n\u2002\u2003\"\"\"#", "test\ntest");
 
     // Escape whitespace
-    ValidateValue("#\"\ntest  \\\n    \r\n   \n   xxx\nyyy\r\nzzz\n\"#", "test  \\\n    \n   \n   xxx\nyyy\nzzz");
-    ValidateValue("#\"\ntest  \\\n    \r\n   \n   xxx\nyyy\r\nzzz\n\"#", "test  \\\n    \n   \n   xxx\nyyy\nzzz");
-    ValidateValue("#\"\ntest  \\\r\n    \r\n   \n   xxx\nyyy\r\nzzz\n\"#", "test  \\\n    \n   \n   xxx\nyyy\nzzz");
+    ValidateValue("#\"\"\"\ntest  \\\n    \r\n   \n   xxx\nyyy\r\nzzz\n\"\"\"#", "test  \\\n    \n   \n   xxx\nyyy\nzzz");
+    ValidateValue("#\"\"\"\ntest  \\\n    \r\n   \n   xxx\nyyy\r\nzzz\n\"\"\"#", "test  \\\n    \n   \n   xxx\nyyy\nzzz");
+    ValidateValue("#\"\"\"\ntest  \\\r\n    \r\n   \n   xxx\nyyy\r\nzzz\n\"\"\"#", "test  \\\n    \n   \n   xxx\nyyy\nzzz");
 
     // Escape sequences
     ValidateValue("#\"test\\b\\t\\n\\f\\r\\\"\\\\\"#", "test\\b\\t\\n\\f\\r\\\"\\\\");
@@ -901,10 +1117,10 @@ HE_TEST_F(core, kdl_reader, value_string_raw, KdlReaderFixture)
     Validate("node #\"test\btest\"#", KdlReadError::DisallowedUtf8);
 
     // Indent of each line must match the last line exactly
-    Validate("node \"\n  test\n  test\r\n    \"", KdlReadError::InvalidToken);
-    Validate("node \"\n\ttest\n\ttest\r\n\t\t\"", KdlReadError::InvalidToken);
-    Validate("node \"\n \ttest\n \ttest\r\n    \"", KdlReadError::InvalidToken);
-    Validate("node \"\n\u2002test\n\u2002test\n\u2002\u2003\"", KdlReadError::InvalidToken);
+    Validate("node \"\"\"\n  test\n  test\r\n    \"\"\"", KdlReadError::InvalidToken);
+    Validate("node \"\"\"\n\ttest\n\ttest\r\n\t\t\"\"\"", KdlReadError::InvalidToken);
+    Validate("node \"\"\"\n \ttest\n \ttest\r\n    \"\"\"", KdlReadError::InvalidToken);
+    Validate("node \"\"\"\n\u2002test\n\u2002test\n\u2002\u2003\"\"\"", KdlReadError::InvalidToken);
 }
 
 // ------------------------------------------------------------------------------------------------

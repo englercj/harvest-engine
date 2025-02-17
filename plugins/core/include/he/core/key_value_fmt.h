@@ -19,6 +19,7 @@ namespace he
             switch (kv.Kind())
             {
                 case KeyValue::ValueKind::Bool: FormatTo(out, "{} = {}", kv.Key(), kv.Bool()); break;
+                case KeyValue::ValueKind::Char: FormatTo(out, "{} = '{}' ({:#x})", kv.Key(), kv.Char(), static_cast<uint32_t>(kv.Char())); break;
                 case KeyValue::ValueKind::Int: FormatTo(out, "{} = {}", kv.Key(), kv.Int()); break;
                 case KeyValue::ValueKind::Uint: FormatTo(out, "{} = {}", kv.Key(), kv.Uint()); break;
                 case KeyValue::ValueKind::Double: FormatTo(out, "{} = {}", kv.Key(), kv.Double()); break;

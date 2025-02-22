@@ -14,6 +14,7 @@ HE_END_NAMESPACE_STD
 
 namespace he
 {
+    // --------------------------------------------------------------------------------------------
     class String;
 
     /// An invalid unicode code point value used as a sentinel in various functions.
@@ -64,6 +65,7 @@ namespace he
     /// \return True if the code point is a whitespace character, false otherwise.
     bool UTF8IsWhitespace(uint32_t ucc);
 
+    // --------------------------------------------------------------------------------------------
     /// An iterator for traversing a UTF-8 encoded string.
     class UTF8Iterator
     {
@@ -169,6 +171,7 @@ namespace he
         uint32_t m_ucc{ InvalidCodePoint };
     };
 
+    // --------------------------------------------------------------------------------------------
     /// An iterator for traversing a UTF-8 encoded string.
     class UTF8ReverseIterator
     {
@@ -289,12 +292,13 @@ namespace he
         uint32_t m_ucc{ InvalidCodePoint };
     };
 
+    // --------------------------------------------------------------------------------------------
     /// Allows iteration of a string by UTF-8 code points.
-    class Utf8Splitter
+    class UTF8Splitter
     {
     public:
         /// Constructs a UTF-8 splitter from a string.
-        explicit Utf8Splitter(StringView str) : m_str(str) {}
+        explicit UTF8Splitter(StringView str) : m_str(str) {}
 
         /// Returns an iterator to the beginning of the string.
         ///
@@ -310,12 +314,13 @@ namespace he
         const StringView m_str;
     };
 
+    // --------------------------------------------------------------------------------------------
     /// Allows iteration of a string by UTF-8 code points, in reverse.
-    class Utf8ReverseSplitter
+    class UTF8ReverseSplitter
     {
     public:
         /// Constructs a UTF-8 reverse splitter from a string.
-        explicit Utf8ReverseSplitter(StringView str) : m_str(str) {}
+        explicit UTF8ReverseSplitter(StringView str) : m_str(str) {}
 
         /// Returns a reverse iterator to the end of the string.
         ///
@@ -331,6 +336,7 @@ namespace he
         const StringView m_str;
     };
 
+    // --------------------------------------------------------------------------------------------
     /// Trims the whitespace from the start of a UTF-8 encoded string.
     ///
     /// \tparam F The function type to use to determine if a code point is whitespace.
@@ -341,7 +347,7 @@ namespace he
     inline StringView UTF8TrimStart(StringView str)
     {
         uint32_t whitespaceCount = 0;
-        for (const uint32_t ucc : Utf8Splitter(str))
+        for (const uint32_t ucc : UTF8Splitter(str))
         {
             if (!IsWhitespace(ucc))
             {
@@ -363,7 +369,7 @@ namespace he
     inline StringView UTF8TrimEnd(StringView str)
     {
         uint32_t whitespaceCount = 0;
-        for (const uint32_t ucc : Utf8ReverseSplitter(str))
+        for (const uint32_t ucc : UTF8ReverseSplitter(str))
         {
             if (!IsWhitespace(ucc))
             {

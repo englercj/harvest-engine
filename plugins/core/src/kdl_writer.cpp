@@ -17,7 +17,7 @@ namespace he
 {
     static void WriteEscaped(StringWriter& writer, StringView str, bool multiline)
     {
-        for (const uint32_t ucc : Utf8Splitter(str))
+        for (const uint32_t ucc : UTF8Splitter(str))
         {
             switch (ucc)
             {

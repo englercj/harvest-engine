@@ -34,7 +34,11 @@ namespace he
             m_end = src.End();
             m_lineStart = m_cursor;
             m_line = 1;
+            m_nodeDepth = 0;
+            m_inWhitespaceEscape = false;
             m_stringBuffer.Clear();
+            m_typeBuffer.Clear();
+            m_slashDashDepthStack.Clear();
 
             if (!ConsumeBOM())
             {
@@ -365,29 +369,6 @@ namespace he
             return false;
         }
 
-        [[nodiscard]] bool ConsumeOneOf(const char* chars)
-        {
-            if (AtEnd()) [[unlikely]]
-            {
-                return SetError(KdlReadError::UnexpectedEof);
-            }
-
-            uint32_t ucc = 0;
-            uint32_t len = 0;
-            if (!PeekCodePoint(ucc, len))
-            {
-                return false;
-            }
-
-            if (IsOneOf(ucc, chars)) [[likely]]
-            {
-                m_cursor += len;
-                return true;
-            }
-
-            return SetError(KdlReadError::InvalidToken);
-        }
-
         [[nodiscard]] bool ConsumeNewline()
         {
             if (AtEnd()) [[unlikely]]
@@ -477,12 +458,7 @@ namespace he
 
         [[nodiscard]] bool PopOpenSlashdash()
         {
-            if (m_slashDashDepthStack.IsEmpty())
-            {
-                return true;
-            }
-
-            if (m_slashDashDepthStack.Back() == m_nodeDepth)
+            if (!m_slashDashDepthStack.IsEmpty() && m_slashDashDepthStack.Back() == m_nodeDepth)
             {
                 m_slashDashDepthStack.PopBack();
 
@@ -554,7 +530,7 @@ namespace he
             }
 
             // Validate that the final line of the string is only whitespace, or escaped whitespace
-            for (const uint32_t ucc : Utf8Splitter(outDedentPrefix))
+            for (const uint32_t ucc : UTF8Splitter(outDedentPrefix))
             {
                 if (!inEscapeSequence && ucc == '\\')
                 {
@@ -575,23 +551,35 @@ namespace he
         [[nodiscard]] bool ConsumeType(bool& hasType)
         {
             if (!Consume('('))
+            {
                 return false;
+            }
 
             if (!SkipSpaces(false))
+            {
                 return false;
+            }
 
             StringView type;
             if (!ConsumeString(type))
+            {
                 return false;
+            }
 
             if (!SkipSpaces(false))
+            {
                 return false;
+            }
 
             if (!Consume(')'))
+            {
                 return false;
+            }
 
             if (!SkipSpaces(false))
+            {
                 return false;
+            }
 
             hasType = true;
             m_typeBuffer = type;
@@ -609,7 +597,7 @@ namespace he
             if (IsKdlNewline(ucc))
                 return true;
 
-            for (const uint32_t prefixUcc : Utf8Splitter(dedentPrefix))
+            for (const uint32_t prefixUcc : UTF8Splitter(dedentPrefix))
             {
                 // We know at this point that the dedent prefix is only whitespace characters.
                 // So we can assume if we see an backslash, it's a whitespace escape sequence
@@ -747,6 +735,8 @@ namespace he
                             return false;
                         }
 
+                        // TODO: Only consume the dedent prefix if the line has non-whitespace characters
+                        // See: https://github.com/kdl-org/kdl/issues/503
                         if (!ConsumeDedentPrefix(dedentPrefix))
                         {
                             return false;
@@ -1110,10 +1100,14 @@ namespace he
                     while (!AtEnd())
                     {
                         if (!PeekCodePoint(ucc, len))
+                        {
                             return false;
+                        }
 
                         if (IsKdlNewline(ucc))
+                        {
                             break;
+                        }
 
                         m_cursor += len;
                     }
@@ -1147,7 +1141,7 @@ namespace he
 
                     uint32_t prevUcc = 0;
                     uint32_t depth = 1;
-                    do
+                    while (depth > 0)
                     {
                         if (AtEnd()) [[unlikely]]
                         {
@@ -1187,7 +1181,7 @@ namespace he
                         }
 
                         prevUcc = ucc;
-                    } while (depth > 0);
+                    }
 
                     // remove the trailing "*/"
                     if (m_stringBuffer.Size() > 2)
@@ -1299,11 +1293,11 @@ namespace he
                     continue;
                 }
 
-                // consume an argument, property, or start of children
+                // consume an argument, property, or children
                 switch (ucc)
                 {
-                    // single-line comment is a node terminator, end the node and then consume it.
-                    // multi-line and slashdash comments are allowed in the node
+                    // Single-line comment is a node terminator, end the node and then consume it.
+                    // Multi-line and slashdash comments are allowed in the node
                     case '/':
                     {
                         if (!IsSlashdashOpen() && m_cursor + 1 < m_end && m_cursor[1] == '/' && !m_inWhitespaceEscape)
@@ -1323,7 +1317,7 @@ namespace he
 
                         break;
                     }
-                    // semicolon is a node terminator, end the node and then consume it.
+                    // Semicolon is a node terminator, end the node and then consume it.
                     case ';':
                     {
                         if (!EmitEndNode())
@@ -1334,8 +1328,8 @@ namespace he
                         m_cursor += len;
                         return true;
                     }
-                    // end brace is a node terminator, end the node but don't consume it.
-                    // Let ParseExpression consume it to end the parent node.
+                    // End brace is a node terminator, end the node but don't consume it.
+                    // Let ParseNodeChildBlock consume it when handling the child block.
                     case '}':
                     {
                         if (m_nodeDepth == 0) [[unlikely]]
@@ -1350,7 +1344,7 @@ namespace he
 
                         return true;
                     }
-                    // open brace indicates we're starting a child block
+                    // Open brace indicates we're starting a child block.
                     case '{':
                     {
                         if (hasAnyPropOrArg && !hasWhitespace) [[unlikely]]

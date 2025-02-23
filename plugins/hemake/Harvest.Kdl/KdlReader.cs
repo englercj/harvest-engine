@@ -3,88 +3,774 @@
 using Harvest.Kdl.Exceptions;
 using Harvest.Kdl.Types;
 using System.Numerics;
+using System.Runtime.InteropServices;
 using System.Text;
 
 namespace Harvest.Kdl;
 
-public class KdlReader(KdlReadOptions? options = null) : object()
+public class KdlReader(string filePath, byte[] data, IKdlReadHandler handler, KdlReadOptions? options) : object()
 {
+    private const int InvalidCodePoint = -1;
+    private const int MaxNodeDepth = 8192;
+
+    private readonly string _filePath = filePath;
+    private readonly byte[] _bytes = data;
     private readonly KdlReadOptions _options = options ?? new KdlReadOptions();
+    private readonly IKdlReadHandler _handler = handler;
 
-    private KdlReadContext? _context;
-    private IKdlReadHandler? _handler;
+    private int _line = 1;
+    private int _offset = 0;
+    private int _lineStartOffset = 0;
 
+    private bool _hasPendingType = false;
     private bool _inWhitespaceEscape = false;
     private int _nodeDepth = 0;
 
+    private readonly List<byte> _stringBuffer = new(256);
     private readonly List<int> _slashDashDepthStack = [];
 
-    public void ReadFile(string filePath, IKdlReadHandler handler)
+    public static void ReadFile(string filePath, IKdlReadHandler handler, KdlReadOptions? options = null)
     {
-        // FileStream uses a small buffer by default, so we increase it to 4k which should be
-        // large enough for most KDL files. The 4k sizing also happens to match the common OS
-        // page size, which might mean something; who knows.
-        FileStreamOptions options = new()
-        {
-            Mode = FileMode.Open,
-            Access = FileAccess.Read,
-            BufferSize = 4096,
-        };
-        using FileStream fileStream = new(filePath, options);
-        ReadStream(filePath, fileStream, handler);
+        byte[] data = File.ReadAllBytes(filePath);
+        KdlReader kdlReader = new(filePath, data, handler, options);
+        kdlReader.Parse();
     }
 
-    public void ReadStream(string filePath, Stream stream, IKdlReadHandler handler)
+    public static void ReadString(string filePath, string str, IKdlReadHandler handler, KdlReadOptions? options = null)
     {
-        using StreamReader reader = new(stream, Encoding.UTF8);
-        Read(new KdlReadContext(filePath, reader), handler);
+        byte[] data = Encoding.UTF8.GetBytes(str);
+        KdlReader kdlReader = new(filePath, data, handler, options);
+        kdlReader.Parse();
     }
 
-    public void ReadString(string filePath, string str, IKdlReadHandler handler)
+    protected void Parse()
     {
-        using MemoryStream stream = new(Encoding.UTF8.GetBytes(str));
-        using StreamReader reader = new(stream, Encoding.UTF8);
-        Read(new KdlReadContext(filePath, reader), handler);
-    }
+        ConsumeBOM();
 
-    protected void Read(KdlReadContext context, IKdlReadHandler handler)
-    {
-        _context = context;
-        _handler = handler;
-        _nodeDepth = 0;
-        _inWhitespaceEscape = false;
+        _handler.StartDocument(GetSourceInfo());
 
-        _handler!.StartDocument(GetSourceInfo());
-
-        SkipBOM();
+        ConsumeVersion();
 
         while (!AtEnd())
         {
             ParseExpression();
         }
 
-        _handler!.EndDocument();
+        ThrowIf(IsAnySlashdashOpen(), "Invalid token. Trailing slashdash at the end of the document.");
+
+        _handler.EndDocument();
+    }
+
+    protected void ThrowIf(bool condition, string message)
+    {
+        if (condition)
+        {
+            throw new KdlException(message, GetSourceInfo());
+        }
+    }
+
+    protected void ThrowIfAtEnd()
+    {
+        ThrowIf(AtEnd(), "Unexpected end of file.");
+    }
+
+    protected string GetBufferedString()
+    {
+        return Encoding.UTF8.GetString(CollectionsMarshal.AsSpan(_stringBuffer));
     }
 
     protected KdlSourceInfo GetSourceInfo()
     {
-        return new KdlSourceInfo(_context!.FilePath, _context!.Line, _context!.Column);
+        int column = Encoding.UTF8.GetCharCount(_bytes.AsSpan(_lineStartOffset, _offset - _lineStartOffset)) + 1;
+        return new KdlSourceInfo(_filePath, _line, column);
+    }
+
+    protected int PeekCodePoint(byte[] bytes, int offset, out int len)
+    {
+        ThrowIf(offset >= bytes.Length, "Unexpected end of file.");
+
+        len = UTF8Decode(out int ucc, bytes, offset);
+
+        ThrowIf(len == 0, "Unexpected end of file.");
+        ThrowIf(len == InvalidCodePoint, "Invalid UTF-8 sequence.");
+        ThrowIf(KdlUtils.IsDisallowed(ucc), "Disallowed character found.");
+
+        return ucc;
+    }
+
+    protected int PeekCodePoint(out int len)
+    {
+        return PeekCodePoint(_bytes, _offset, out len);
+    }
+
+    protected int ConsumeCodePoint(byte[] bytes, ref int offset)
+    {
+        int ucc = PeekCodePoint(bytes, offset, out int len);
+
+        offset += len;
+        return ucc;
+    }
+
+    protected int ConsumeCodePoint()
+    {
+        return ConsumeCodePoint(_bytes, ref _offset);
+    }
+
+    protected bool AtEnd()
+    {
+        return _offset >= _bytes.Length;
+    }
+
+    protected void SkipSpaces(bool allowSlashdash = true)
+    {
+        while (!AtEnd())
+        {
+            int ucc = PeekCodePoint(out int len);
+
+            // catch escape sequences for escaped newlines
+            if (ucc == '\\')
+            {
+                _inWhitespaceEscape = true;
+                _offset += len;
+            }
+            // anywhere you can have whitespace, you can also have comments
+            else if (ucc == '/')
+            {
+                ucc = PeekCodePoint(_bytes, _offset + len, out _);
+
+                // Single line comments and slashdash comments are terminators for nodes, they don't count just "spaces"
+                if (ucc == '/')
+                {
+                    return;
+                }
+
+                // Some contexts don't allow slashdash comments
+                if (!allowSlashdash && ucc == '-')
+                {
+                    return;
+                }
+
+                ParseComment();
+            }
+            // if it is whitespace consume it and continue
+            else if (KdlUtils.IsWhitespace(ucc))
+            {
+                _offset += len;
+            }
+            // escaped newlines are considered normal spaces
+            else if (KdlUtils.IsNewline(ucc) && _inWhitespaceEscape)
+            {
+                ConsumeNewLine();
+            }
+            // finally, if it isn't whitespace or comment we're done here
+            else
+            {
+                _inWhitespaceEscape = false;
+                break;
+            }
+        }
+    }
+
+    protected void ConsumeBOM()
+    {
+        if (_offset < _bytes.Length && _bytes[_offset] != 0xef)
+        {
+            return;
+        }
+
+        ++_offset;
+        ThrowIf(_offset >= _bytes.Length || _bytes[_offset] != 0xbb, "Invalid BOM");
+
+        ++_offset;
+        ThrowIf(_offset >= _bytes.Length || _bytes[_offset] != 0xbf, "Invalid BOM");
+
+        ++_offset;
+    }
+
+    protected void ConsumeVersion()
+    {
+        int begin = _offset;
+
+        if (begin >= _bytes.Length || _bytes[begin] != '/'
+            || begin + 1 >= _bytes.Length || _bytes[begin + 1] != '-')
+        {
+            // Not a slashdash, so not a version marker
+            return;
+        }
+
+        begin += 2;
+
+        // Skip past any unicode spaces before the marker
+        while (begin < _bytes.Length)
+        {
+            int ucc = PeekCodePoint(_bytes, begin, out int len);
+
+            if (!KdlUtils.IsWhitespace(ucc))
+            {
+                break;
+            }
+
+            begin += len;
+        }
+
+        byte[] versionMarker = Encoding.UTF8.GetBytes("kdl-version");
+        if (begin + versionMarker.Length < _bytes.Length
+            && _bytes.AsSpan(begin, versionMarker.Length).SequenceEqual(versionMarker))
+        {
+            begin += versionMarker.Length;
+        }
+        else
+        {
+            // This is a slashdash comment, not a version marker
+            return;
+        }
+
+        // Skip past any unicode spaces after the marker, there must be at least one
+        bool hasWhitespace = false;
+        while (begin < _bytes.Length)
+        {
+            int ucc = PeekCodePoint(_bytes, begin, out int len);
+
+            if (!KdlUtils.IsWhitespace(ucc))
+            {
+                break;
+            }
+
+            hasWhitespace = true;
+            begin += len;
+        }
+
+        // This is a slashdash comment, not a version marker
+        if (!hasWhitespace || begin >= _bytes.Length)
+        {
+            return;
+        }
+
+        // Only version 2 is supported
+        ThrowIf(_bytes[begin] != '2', "Invalid Version. Only KDL v2 is supported.");
+
+        string version = char.ToString((char)_bytes[begin]);
+        ++begin;
+
+        ThrowIf(begin >= _bytes.Length, "Unexpected end of file.");
+
+        while (begin < _bytes.Length)
+        {
+            int ucc = PeekCodePoint(_bytes, begin, out int len);
+
+            if (KdlUtils.IsWhitespace(ucc))
+            {
+                begin += len;
+                continue;
+            }
+
+            if (KdlUtils.IsNewline(ucc))
+            {
+                begin += len;
+                break;
+            }
+
+            throw new KdlException("Invalid token. Expected newline after version marker.", GetSourceInfo());
+        }
+
+        _offset = begin;
+        _handler.Version(version, GetSourceInfo());
+    }
+
+    protected void Consume(char ch)
+    {
+        ThrowIfAtEnd();
+
+        int ucc = PeekCodePoint(out int len);
+
+        ThrowIf(ucc != ch, $"Invalid token. Expected '{ch}' but found '{char.ConvertFromUtf32(ucc)}'.");
+
+        _offset += len;
+    }
+
+    protected void Consume(string str)
+    {
+        foreach (char ch in str)
+        {
+            Consume(ch);
+        }
+    }
+
+    protected void ConsumeNewLine()
+    {
+        ThrowIfAtEnd();
+
+        int ucc = PeekCodePoint(out int len);
+
+        ThrowIf(!KdlUtils.IsNewline(ucc), $"Invalid token. Expected newline but found '{char.ConvertFromUtf32(ucc)}'.");
+
+        _offset += len;
+
+        if (ucc == '\r' && !AtEnd())
+        {
+            ucc = PeekCodePoint(out len);
+
+            if (ucc == '\n')
+            {
+                _offset += len;
+            }
+        }
+
+        ++_line;
+        _lineStartOffset = _offset;
+        _inWhitespaceEscape = false;
+    }
+
+    protected bool IsEndOfString(int begin, int rawDelimCount)
+    {
+        int count = 0;
+        while (begin < _bytes.Length && _bytes[begin] != '\0' && count < rawDelimCount)
+        {
+            int ucc = ConsumeCodePoint(_bytes, ref begin);
+
+            if (ucc != '#')
+            {
+                break;
+            }
+
+            ++count;
+        }
+
+        return count == rawDelimCount;
+    }
+
+    protected bool IsAnySlashdashOpen()
+    {
+        return _slashDashDepthStack.Count != 0;
+    }
+
+    protected bool IsSlashdashOpen()
+    {
+        return _slashDashDepthStack.Count != 0 && _slashDashDepthStack[^1] == _nodeDepth;
+    }
+
+    protected void PushOpenSlashdash()
+    {
+        // Slashdash after a type is not allowed
+        ThrowIf(_hasPendingType, "Invalid Token. Slashdash is not allowed after a type.");
+
+        _slashDashDepthStack.Add(_nodeDepth);
+        _handler.StartComment(GetSourceInfo());
+    }
+
+    protected void PopOpenSlashdash()
+    {
+        if (_slashDashDepthStack.Count > 0 && _slashDashDepthStack[^1] == _nodeDepth)
+        {
+            _slashDashDepthStack.RemoveAt(_slashDashDepthStack.Count - 1);
+            _handler.EndComment();
+        }
+    }
+
+    protected byte[] GetDedentPrefix(int rawDelimCount)
+    {
+        byte[] dedentPrefix = [];
+
+        int begin = _offset;
+        int lineStart = begin;
+        bool inEscapeSequence = false;
+        while (begin < _bytes.Length && _bytes[begin] != '\0')
+        {
+            int ucc = ConsumeCodePoint(_bytes, ref begin);
+
+            // Hitting any non-whitespace character while in an escape sequence will end it.
+            // We're not parsing escape sequences, just searching for the end of the string.
+            // The only reason we check for escaped whitespace is to ensure that `lineStart`
+            // only changes when hitting an unescaped newline.
+            if (inEscapeSequence)
+            {
+                if (!KdlUtils.IsWhitespace(ucc) && !KdlUtils.IsNewline(ucc))
+                {
+                    inEscapeSequence = false;
+                }
+            }
+            // If we're not in an escape sequence and we hit a backslash,
+            // this is the start of a new escape sequence.
+            else if (ucc == '\\')
+            {
+                inEscapeSequence = true;
+            }
+
+            // Check for send of string and store the dedent prefix
+            if (!inEscapeSequence)
+            {
+                if (ucc == '"'
+                    && begin + 0 < _bytes.Length && _bytes[begin + 0] == '"'
+                    && begin + 1 < _bytes.Length && _bytes[begin + 1] == '"')
+                {
+                    if (IsEndOfString(begin + 2, rawDelimCount))
+                    {
+                        // -1 for the consumed quote
+                        dedentPrefix = _bytes.AsSpan(lineStart, begin - lineStart - 1).ToArray();
+                        break;
+                    }
+                }
+
+                if (KdlUtils.IsNewline(ucc))
+                {
+                    lineStart = begin;
+                }
+            }
+        }
+
+        // This shouldn't happen, but if it does, it's an error.
+        ThrowIf(inEscapeSequence, "Invalid escape sequence.");
+
+        // Validate that the final line of the string is only whitespace, or escaped whitespace
+        int dedentOffset = 0;
+        while (dedentOffset < dedentPrefix.Length)
+        {
+            int ucc = ConsumeCodePoint(dedentPrefix, ref dedentOffset);
+
+            if (!inEscapeSequence && ucc == '\\')
+            {
+                inEscapeSequence = true;
+                continue;
+            }
+
+            bool allowed = KdlUtils.IsWhitespace(ucc) || (inEscapeSequence && KdlUtils.IsNewline(ucc));
+            ThrowIf(!allowed, "Invalid Token. Expected whitespace character.");
+        }
+
+        return dedentPrefix;
+    }
+
+    protected void ConsumeDedentPrefix(byte[] dedentPrefix)
+    {
+        // Empty lines without a dedent prefix are allowed.
+        int ucc = PeekCodePoint(out int len);
+
+        if (KdlUtils.IsNewline(ucc))
+        {
+            return;
+        }
+
+        int dedentOffset = 0;
+        while (dedentOffset < dedentPrefix.Length)
+        {
+            int prefixUcc = ConsumeCodePoint(dedentPrefix, ref dedentOffset);
+
+            // We know at this point that the dedent prefix is only whitespace characters.
+            // So we can assume if we see an backslash, it's a whitespace escape sequence
+            // and we can skip the rest of the prefix.
+            if (prefixUcc == '\\')
+            {
+                break;
+            }
+
+            ThrowIf(ucc != prefixUcc, "Invalid Token. Unmatched prefix in multiline string.");
+
+            _offset += len;
+            ucc = PeekCodePoint(out len);
+        }
+    }
+
+    protected string ConsumeType()
+    {
+        Consume('(');
+        SkipSpaces();
+        string type = ConsumeString();
+        SkipSpaces();
+        Consume(')');
+        SkipSpaces();
+
+        _hasPendingType = true;
+        return type;
+    }
+
+    protected int ConsumeUnicodeEscapeSequence()
+    {
+        Consume('u');
+        Consume('{');
+        ThrowIfAtEnd();
+
+        // Max of 6 hex characters
+        bool foundNum = false;
+        int ucc = 0;
+        for (int i = 0; i < 6; ++i)
+        {
+            ThrowIfAtEnd();
+
+            byte ch = _bytes[_offset];
+            if (ch == '}')
+            {
+                break;
+            }
+
+            ThrowIf(!KdlUtils.IsHexadecimalDigit(ch), $"Invalid token. Expected hex digit but found '{(char)ch}'.");
+
+            ucc = (ucc << 4) + KdlUtils.HexToNibble((char)ch);
+            foundNum = true;
+            ++_offset;
+        }
+
+        Consume('}');
+
+        ThrowIf(!foundNum, "Invalid unicode escape sequence. No hex digits found in braces.");
+        ThrowIf(!KdlUtils.IsUnicodeScalarValue(ucc), "Invalid unicode escape sequence. Value is not a valid unicode scalar value.");
+
+        return ucc;
+    }
+
+    protected string ConsumeQuotedString(int rawDelimCount)
+    {
+        _stringBuffer.Clear();
+
+        bool firstChar = true;
+        bool isMultiline = false;
+        bool inEscapeSeq = false;
+        byte[] dedentPrefix = [];
+        while (!AtEnd())
+        {
+            int ucc = PeekCodePoint(out int len);
+
+            // Multi-line string handling
+            if (firstChar)
+            {
+                firstChar = false;
+
+                if (ucc == '"')
+                {
+                    if (_offset + 1 < _bytes.Length && _bytes[_offset + 1] == '"')
+                    {
+                        isMultiline = true;
+                    }
+                }
+
+                if (isMultiline)
+                {
+                    _offset += 2;
+
+                    ConsumeNewLine();
+
+                    // Multi-line strings dedent by the number of spaces on the last line
+                    // of the string. This means we need to scan to the end of the string
+                    // and store the whitespace prefix of the final line.
+                    dedentPrefix = GetDedentPrefix(rawDelimCount);
+
+                    // TODO: Only consume the dedent prefix if the line has non-whitespace characters
+                    // See: https://github.com/kdl-org/kdl/issues/503
+                    ConsumeDedentPrefix(dedentPrefix);
+
+                    continue;
+                }
+            }
+
+            // Escape sequence handling
+            if (inEscapeSeq)
+            {
+                if (KdlUtils.IsWhitespace(ucc) || KdlUtils.IsNewline(ucc))
+                {
+                    do
+                    {
+                        _offset += len;
+                        ucc = PeekCodePoint(out len);
+                    } while (KdlUtils.IsWhitespace(ucc) || KdlUtils.IsNewline(ucc));
+
+                    inEscapeSeq = false;
+                    continue;
+                }
+
+                if (ucc == 'u')
+                {
+                    UTF8Encode(_stringBuffer, ConsumeUnicodeEscapeSequence());
+                    inEscapeSeq = false;
+                    continue;
+                }
+
+                switch (ucc)
+                {
+                    case 'n': _stringBuffer.Add((byte)'\n'); break;
+                    case 'r': _stringBuffer.Add((byte)'\r'); break;
+                    case 't': _stringBuffer.Add((byte)'\t'); break;
+                    case '\\': _stringBuffer.Add((byte)'\\'); break;
+                    case '"': _stringBuffer.Add((byte)'"'); break;
+                    case 'b': _stringBuffer.Add((byte)'\b'); break;
+                    case 'f': _stringBuffer.Add((byte)'\f'); break;
+                    case 's': _stringBuffer.Add((byte)' '); break;
+                    default:
+                        throw new KdlException($"Invalid escape sequence '\\{char.ConvertFromUtf32(ucc)}'.", GetSourceInfo());
+                }
+
+                inEscapeSeq = false;
+                _offset += len;
+                continue;
+            }
+
+            // Newline handling is different for multi-line or single-line strings
+            if (KdlUtils.IsNewline(ucc))
+            {
+                ThrowIf(!isMultiline, "Invalid Token. Unescaped newlines not allowed in single-line strings.");
+
+                ConsumeNewLine();
+
+                // Consume the required dedent prefix since we consumed a newline
+                ConsumeDedentPrefix(dedentPrefix);
+
+                // newlines are normalized to `\n`
+                _stringBuffer.Add((byte)'\n');
+                continue;
+            }
+
+            // New escape sequence start handling
+            if (ucc == '\\')
+            {
+                if (rawDelimCount > 0)
+                {
+                    _stringBuffer.Add((byte)'\\');
+                }
+                else
+                {
+                    inEscapeSeq = true;
+                }
+
+                _offset += len;
+                continue;
+            }
+
+            // End of string handling
+            if (ucc == '"')
+            {
+                bool isMultilineEnd = isMultiline
+                    && _offset + 1 < _bytes.Length && _bytes[_offset + 1] == '"'
+                    && _offset + 2 < _bytes.Length && _bytes[_offset + 2] == '"';
+
+                if (!isMultiline || isMultilineEnd)
+                {
+                    int multilineOffset = isMultilineEnd ? 2 : 0;
+                    int strEnd = _offset + len + multilineOffset;
+                    if (IsEndOfString(strEnd, rawDelimCount))
+                    {
+                        _offset = strEnd;
+                        _offset += rawDelimCount;
+                        if (_stringBuffer.Count != 0 && isMultiline && _stringBuffer[^1] == (byte)'\n')
+                        {
+                            _stringBuffer.RemoveAt(_stringBuffer.Count - 1);
+                        }
+                        return GetBufferedString();
+                    }
+                }
+            }
+
+            // Append the character to the buffer
+            UTF8Encode(_stringBuffer, ucc);
+            _offset += len;
+        }
+
+        throw new KdlException("Unexpected end of file.", GetSourceInfo());
+    }
+
+    protected string ConsumeIdentifierString()
+    {
+        int begin = _offset;
+
+        bool first = true;
+        while (!AtEnd())
+        {
+            int ucc = PeekCodePoint(out int len);
+
+            ThrowIf(first && !KdlUtils.IsValidInitialIdentifierCharacter(ucc),
+                $"Invalid token. Expected initial identifier character but found '{char.ConvertFromUtf32(ucc)}'.");
+
+            first = false;
+
+            if (!KdlUtils.IsValidIdentifierCharacter(ucc))
+            {
+                break;
+            }
+
+            _offset += len;
+        }
+
+        ReadOnlySpan<byte> value = _bytes.AsSpan(begin, _offset - begin);
+
+        // No identifier string can start with a number
+        ThrowIf(KdlUtils.IsDecimalDigit(value[0]), "Invalid identifier. Identifier strings cannot start with a number.");
+
+        if (value[0] == '-' || value[0] == '+')
+        {
+            // Identifiers can start with "-."/"+." as long as the next char is not a number
+            ThrowIf(value.Length > 2 && value[1] == '.' && KdlUtils.IsDecimalDigit(value[2]),
+                "Invalid identifier. Identifier strings cannot start with a dash ('-') or plus ('+'), followed by a dot ('.') and a number.");
+
+            // Identifiers can start with "-"/"+" as long as the next char is not a number
+            ThrowIf(value.Length > 1 && KdlUtils.IsDecimalDigit(value[1]),
+                "Invalid identifier. Identifier strings cannot start with a dash ('-') or plus ('+'), followed by a number.");
+        }
+
+        if (value[0] == '.')
+        {
+            // Identifiers can start with "." as long as the next char is not a number
+            ThrowIf(value.Length > 1 && KdlUtils.IsDecimalDigit(value[1]),
+                "Invalid identifier. Identifier strings cannot start with a dot ('.'), followed by a number.");
+        }
+
+        string str = Encoding.UTF8.GetString(value);
+
+        // Identifiers can't be any of the language keywords without their leading '#'
+        ThrowIf(str == "inf" || str == "-inf" || str == "nan" || str == "true" || str == "false" || str == "null",
+            "Invalid identifier. Identifier strings cannot be a language keyword.");
+
+        return str;
+    }
+
+    protected string ConsumeString()
+    {
+        ThrowIfAtEnd();
+
+        int ucc = PeekCodePoint(out int len);
+
+        if (ucc == '"')
+        {
+            _offset += len;
+            return ConsumeQuotedString(0);
+        }
+
+        if (ucc == '#')
+        {
+            _offset += len;
+            int rawDelimCount = 1;
+            while (!AtEnd())
+            {
+                ucc = ConsumeCodePoint();
+
+                if (ucc == '#')
+                {
+                    ++rawDelimCount;
+                    continue;
+                }
+
+                if (ucc == '"')
+                {
+                    return ConsumeQuotedString(rawDelimCount);
+                }
+            }
+
+            ThrowIfAtEnd();
+        }
+
+        return ConsumeIdentifierString();
     }
 
     protected void ParseExpression()
     {
         SkipSpaces();
 
-        if (_nodeDepth > 0)
+        if (AtEnd())
         {
-            ThrowIfAtEnd();
-        }
-        else if (AtEnd())
-        {
+            if (_nodeDepth > 0)
+            {
+                ThrowIfAtEnd();
+            }
             return;
         }
 
-        int ucc = _context!.Peek();
+        int ucc = PeekCodePoint(out int len);
 
         if (KdlUtils.IsNewline(ucc))
         {
@@ -94,40 +780,146 @@ public class KdlReader(KdlReadOptions? options = null) : object()
 
         switch (ucc)
         {
-            // start of a comment
             case '/':
+            {
                 ParseComment();
                 break;
-
-            // empty node terminated by semicolon
+            }
             case ';':
-                _context.Read();
+            {
+                // empty node terminated by semicolon
+                _offset += len;
                 break;
-
-            // end of a node
-            case '}':
-                EmitEndNode();
-                _context.Read();
-                break;
-
-            // start of type annotation or string name of node
+            }
             case '(':
             case '"':
             case '#':
+            {
+                // start of type annotation or string name of node
                 ParseNode();
                 break;
-
-            // start of an identifier string name of node
+            }
             default:
+            {
                 if (KdlUtils.IsValidInitialIdentifierCharacter(ucc))
                 {
                     ParseNode();
                 }
                 else
                 {
-                    throw new KdlException($"Invalid token. Expected node start but found '{(char)ucc}'.", _context);
+                    throw new KdlException($"Invalid token. Expected node start but found '{char.ConvertFromUtf32(ucc)}'.", GetSourceInfo());
                 }
                 break;
+            }
+        }
+    }
+
+    protected void ParseComment()
+    {
+        KdlSourceInfo source = GetSourceInfo();
+        Consume('/');
+        ThrowIfAtEnd();
+
+        int ucc = PeekCodePoint(out int len);
+
+        switch (ucc)
+        {
+            case '-':
+            {
+                // slashdash
+                _offset += len;
+                PushOpenSlashdash();
+                return;
+            }
+            case '/':
+            {
+                // single-line comment
+                _offset += len;
+                SkipSpaces();
+
+                int begin = _offset;
+
+                // Scan forward until we find a newline
+                while (!AtEnd())
+                {
+                    ucc = PeekCodePoint(out len);
+
+                    if (KdlUtils.IsNewline(ucc))
+                    {
+                        break;
+                    }
+
+                    _offset += len;
+                }
+
+                ReadOnlySpan<byte> value = _bytes.AsSpan(begin, _offset - begin);
+                string comment = Encoding.UTF8.GetString(value);
+                _handler.Comment(comment.Trim(), source);
+
+                if (!AtEnd())
+                {
+                    ConsumeNewLine();
+                }
+                break;
+            }
+            case '*':
+            {
+                // multi-line comment
+                _offset += len;
+                SkipSpaces();
+
+                _stringBuffer.Clear();
+
+                int prevUcc = 0;
+                int depth = 1;
+                while (depth > 0)
+                {
+                    ThrowIfAtEnd();
+
+                    ucc = PeekCodePoint(out len);
+
+                    if (ucc == '*' && prevUcc == '/')
+                    {
+                        ++depth;
+                        ucc = 0; // reset so "/*/" isn't self-closing
+                    }
+                    else if (ucc == '/' && prevUcc == '*')
+                    {
+                        --depth;
+                        ucc = 0; // reset so "*/*" isn't self-opening
+                    }
+
+                    if (KdlUtils.IsNewline(ucc))
+                    {
+                        ConsumeNewLine();
+
+                        // newlines are normalized to '\n'
+                        _stringBuffer.Add((byte)'\n');
+                    }
+                    else
+                    {
+                        UTF8Encode(_stringBuffer, ucc);
+                        _offset += len;
+                    }
+
+                    prevUcc = ucc;
+                }
+
+                // remove the trailing "*/"
+                if (_stringBuffer.Count > 2)
+                {
+                    _stringBuffer.RemoveAt(_stringBuffer.Count - 1);
+                    _stringBuffer.RemoveAt(_stringBuffer.Count - 1);
+                }
+
+                string comment = GetBufferedString();
+                _handler.Comment(comment.Trim(), source);
+                break;
+            }
+            default:
+            {
+                throw new KdlException($"Invalid token. Expected '-', '/', or '*' but found '{char.ConvertFromUtf32(ucc)}'.", GetSourceInfo());
+            }
         }
     }
 
@@ -136,7 +928,7 @@ public class KdlReader(KdlReadOptions? options = null) : object()
         SkipSpaces();
         KdlSourceInfo source = GetSourceInfo();
 
-        int ucc = _context!.Peek();
+        int ucc = PeekCodePoint(out _);
 
         string? type = null;
         if (ucc == '(')
@@ -154,24 +946,31 @@ public class KdlReader(KdlReadOptions? options = null) : object()
             return;
         }
 
-        ucc = _context.Peek();
+        ucc = PeekCodePoint(out _);
 
-        if (!KdlUtils.IsWhitespace(ucc) && !KdlUtils.IsNewline(ucc) && ucc != ';' && ucc != '/' && ucc != '}')
-        {
-            throw new KdlException($"Invalid token. Expected whitespace, newline, semicolon, comment, or end of node but found '{(char)ucc}'.", _context);
-        }
+        ThrowIf(!KdlUtils.IsWhitespace(ucc) && !KdlUtils.IsNewline(ucc) && ucc != ';' && ucc != '/' && ucc != '{' && ucc != '}',
+            $"Invalid token. Expected whitespace, newline, semicolon, comment, or end of node but found '{char.ConvertFromUtf32(ucc)}'.");
 
         bool hasWhitespace = false;
+        bool hasAnyPropOrArg = false;
+        bool hasAnyChildBlock = false;
+        bool hasActiveChildBlock = false;
         while (!AtEnd())
         {
-            ucc = _context.Peek();
+            ucc = PeekCodePoint(out int len);
 
-            // Newline is a node terminator, end the node and then consume it.
+            // Newline is a node terminator if no slashdash is active.
             if (KdlUtils.IsNewline(ucc))
             {
-                EmitEndNode();
                 ConsumeNewLine();
-                return;
+
+                if (!IsSlashdashOpen())
+                {
+                    EmitEndNode();
+                    return;
+                }
+
+                continue;
             }
 
             // Whitespace is required between the node name and the first argument or property
@@ -182,60 +981,57 @@ public class KdlReader(KdlReadOptions? options = null) : object()
                 continue;
             }
 
-            // consume an argument, property, or start of children
+            // consume an argument, property, or children
             switch (ucc)
             {
-                // single-line comment is a node terminator, end the node and then consume it.
-                // multi-line and slashdash comments are allowed in the node
+                // Single-line comment is a node terminator, end the node and then consume it.
+                // Multi-line and slashdash comments are allowed in the node
                 case '/':
                 {
-                    _context.Read();
-                    ThrowIfAtEnd();
-
-                    if (_context.Peek() == '/' && !_inWhitespaceEscape)
+                    if (!IsSlashdashOpen() && _offset + 1 < _bytes.Length && _bytes[_offset + 1] == '/' && !_inWhitespaceEscape)
                     {
                         EmitEndNode();
                         ParseComment();
                         return;
                     }
 
-                    _context.Unread('/');
                     ParseComment();
                     break;
                 }
-                // semicolon is a node terminator, end the node and then consume it.
+                // Semicolon is a node terminator, end the node and then consume it.
                 case ';':
                 {
                     EmitEndNode();
-                    _context.Read();
+                    _offset += len;
                     return;
                 }
-                // end brace is a node terminator, end the node but don't consume it.
-                // Let ParseExpression consume it to end the parent node.
+                // End brace is a node terminator, end the node but don't consume it.
+                // Let ParseNodeChildBlock consume it when handling the child block.
                 case '}':
                 {
+                    ThrowIf(_nodeDepth == 0, "Invalid Token. Encountered an unmatched end brace.");
                     EmitEndNode();
                     return;
                 }
-                // open brace indicates we're starting a child block
+                // Open brace indicates we're starting a child block.
                 case '{':
                 {
-                    if (!hasWhitespace)
+                    ThrowIf(hasAnyPropOrArg && !hasWhitespace, "Invalid token. Expected whitespace before child block.");
+
+                    if (hasActiveChildBlock)
                     {
-                        throw new KdlException("Invalid token. Expected whitespace before child block.", _context);
+                        ThrowIf(!IsSlashdashOpen(), "Invalid token. Nodes cannot have two child blocks.");
+                    }
+                    else
+                    {
+                        hasActiveChildBlock = !IsSlashdashOpen();
                     }
 
-                    _context.Read();
+                    hasAnyChildBlock = true;
+                    _offset += len;
 
-                    int depth = _nodeDepth;
-                    while (_nodeDepth >= depth)
-                    {
-                        ThrowIfAtEnd();
-                        ParseExpression();
-                    }
-
-                    // Note: node end will be emitted by ParseExpression.
-                    return;
+                    ParseNodeChildBlock();
+                    break;
                 }
                 // either a keyword value, or start of a raw string
                 case '#':
@@ -255,10 +1051,8 @@ public class KdlReader(KdlReadOptions? options = null) : object()
                 // start of a string could be an argument value or property name
                 case '"':
                 {
-                    if (!hasWhitespace)
-                    {
-                        throw new KdlException("Invalid token. Expected whitespace before a property or argument.", _context);
-                    }
+                    ThrowIf(!IsSlashdashOpen() && !hasWhitespace, "Invalid token. Expected whitespace before a property or argument.");
+                    ThrowIf(hasAnyChildBlock, "Invalid token. Arguments and properties must come before child blocks.");
 
                     ParseArgumentOrProperty();
                     hasWhitespace = false;
@@ -268,17 +1062,12 @@ public class KdlReader(KdlReadOptions? options = null) : object()
                 // which could be an argument value or property name
                 default:
                 {
-                    if (!hasWhitespace)
-                    {
-                        throw new KdlException("Invalid token. Expected whitespace before a property or argument.", _context);
-                    }
-
-                    if (!KdlUtils.IsValidInitialIdentifierCharacter(ucc))
-                    {
-                        throw new KdlException("Invalid token. Expected an initial identifier character.", _context);
-                    }
+                    ThrowIf(!IsSlashdashOpen() && !hasWhitespace, "Invalid token. Expected whitespace before a property or argument.");
+                    ThrowIf(!KdlUtils.IsValidInitialIdentifierCharacter(ucc), "Invalid token. Expected an initial identifier character.");
+                    ThrowIf(hasAnyChildBlock, "Invalid token. Arguments and properties must come before child blocks.");
 
                     ParseArgumentOrProperty();
+                    hasAnyPropOrArg = true;
                     hasWhitespace = false;
                     break;
                 }
@@ -289,89 +1078,79 @@ public class KdlReader(KdlReadOptions? options = null) : object()
         EmitEndNode();
     }
 
-    protected void ParseComment()
+    void ParseNodeChildBlock()
     {
-        KdlSourceInfo source = GetSourceInfo();
-        Consume('/');
-        ThrowIfAtEnd();
+        // Extra depth for child blocks ensures that we don't confuse a slashdash
+        // on a child node with the slashdash on the child node block.
+        // This will be decremented when the child block ends.
+        ++_nodeDepth;
 
-        int ucc = _context!.Peek();
-
-        switch (ucc)
+        int depth = _nodeDepth;
+        while (_nodeDepth >= depth)
         {
-            // slashdash
-            case '-':
+            SkipSpaces();
+            ThrowIfAtEnd();
+
+            int ucc = PeekCodePoint(out int len);
+
+            // End the child block
+            if (ucc == '}')
             {
-                _context.Read();
-                _slashDashDepthStack.Add(_nodeDepth + 1);
-                return;
-            }
-            // single-line comment
-            case '/':
-            {
-                _context.Read();
-                SkipSpaces();
-
-                StringBuilder str = new(64);
-                while (!AtEnd())
-                {
-                    if (KdlUtils.IsNewline(_context.Peek()))
-                        break;
-
-                    str.Append((char)_context.Read());
-                }
-
-                _handler!.Comment(str.ToString(), source);
-
-                if (!AtEnd())
-                {
-                    ConsumeNewLine();
-                }
+                _offset += len;
                 break;
             }
-            // multi-line comment
-            case '*':
-            {
-                _context.Read();
-                SkipSpaces();
 
-                int prevUcc = 0;
-                int depth = 1;
-                StringBuilder str = new(128);
-                while (depth > 0)
-                {
-                    ThrowIfAtEnd();
-
-                    ucc = _context.Read();
-                    if (ucc == '*' && prevUcc == '/')
-                    {
-                        ++depth;
-                        str.Append((char)ucc);
-                        ucc = 0; // reset so "/*/" isn't self-closing
-                    }
-                    else if (ucc == '/' && prevUcc == '*')
-                    {
-                        --depth;
-                        if (depth > 0)
-                        {
-                            str.Append((char)ucc);
-                        }
-                        ucc = 0; // reset so "*/*" isn't self-opening
-                    }
-                    else
-                    {
-                        str.Append((char)ucc);
-                    }
-
-                    prevUcc = ucc;
-                }
-
-                _handler!.Comment(str.ToString(), source);
-                break;
-            }
-            default:
-                throw new KdlException($"Invalid token. Expected '-', '/', or '*' but found '{(char)ucc}'.", _context);
+            ParseExpression();
         }
+
+        ThrowIf(_nodeDepth == 0, "Invalid Token. Unexpected end of parent node.");
+        ThrowIf(IsSlashdashOpen(), "Invalid Token. Trailing slashdash at the end of child block.");
+
+        // End the child block's extra depth
+        --_nodeDepth;
+
+        // Complete any slashdash for the child block
+        PopOpenSlashdash();
+    }
+
+    protected void EmitStartNode(string name, string? type, KdlSourceInfo source)
+    {
+        _handler.StartNode(name, type, source);
+        ++_nodeDepth;
+
+        ThrowIf(_nodeDepth > MaxNodeDepth, "Max Node Depth Exceeded.");
+        _hasPendingType = false;
+    }
+
+    protected void EmitEndNode()
+    {
+        ThrowIf(_nodeDepth == 0, "Invalid Token. Unexpected end of node.");
+        ThrowIf(IsSlashdashOpen(), "Invalid Token. Trailing slashdash at the end of node.");
+
+        _handler.EndNode();
+        --_nodeDepth;
+        PopOpenSlashdash();
+    }
+
+    protected void EmitPropOrArg(KdlValue kdlValue, string? name, KdlSourceInfo source)
+    {
+        if (name != null)
+        {
+            _handler.Property(name, kdlValue, source);
+        }
+        else
+        {
+            _handler.Argument(kdlValue, source);
+        }
+
+        PopOpenSlashdash();
+        _hasPendingType = false;
+    }
+
+    protected void EmitPropOrArg(object? value, string? type, string? name, KdlSourceInfo source)
+    {
+        KdlValue kdlValue = KdlValue.From(value, type);
+        EmitPropOrArg(kdlValue, name, source);
     }
 
     protected bool ParseNumWithType<T>(KdlNumber<T> num, int sign, string type, string? propName, KdlSourceInfo source) where T : struct, INumber<T>
@@ -383,10 +1162,7 @@ public class KdlReader(KdlReadOptions? options = null) : object()
             case "u32":
             case "u64":
             case "usize":
-                if (sign != 1)
-                {
-                    throw new KdlException("Invalid number. Unsigned types cannot be negative.", _context);
-                }
+                ThrowIf(sign != 1, "Invalid number. Unsigned types cannot be negative.");
                 break;
         }
 
@@ -412,7 +1188,7 @@ public class KdlReader(KdlReadOptions? options = null) : object()
         return false;
     }
 
-    protected bool ParseNumWithType(StringBuilder builder, int radix, int sign, string type, string? propName, KdlSourceInfo source)
+    protected bool ParseNumWithType(int radix, int sign, string type, string? propName, KdlSourceInfo source)
     {
         switch (type)
         {
@@ -421,86 +1197,71 @@ public class KdlReader(KdlReadOptions? options = null) : object()
             case "u32":
             case "u64":
             case "usize":
-                if (sign == -1)
-                {
-                    throw new KdlException("Invalid number. Unsigned types cannot be negative.", _context);
-                }
+                ThrowIf(sign == -1, "Invalid number. Unsigned types cannot be negative.");
                 break;
         }
 
         switch (type)
         {
-            case "u8": EmitPropOrArg(KdlUtils.ParseUInt8(builder.ToString(), radix, type), propName, source); return true;
-            case "u16": EmitPropOrArg(KdlUtils.ParseUInt16(builder.ToString(), radix, type), propName, source); return true;
-            case "u32": EmitPropOrArg(KdlUtils.ParseUInt32(builder.ToString(), radix, type), propName, source); return true;
-            case "u64": EmitPropOrArg(KdlUtils.ParseUInt64(builder.ToString(), radix, type), propName, source); return true;
-            case "i8": EmitPropOrArg(KdlUtils.ParseInt8(builder.ToString(), (sbyte)sign, radix, type), propName, source); return true;
-            case "i16": EmitPropOrArg(KdlUtils.ParseInt16(builder.ToString(), (short)sign, radix, type), propName, source); return true;
-            case "i32": EmitPropOrArg(KdlUtils.ParseInt32(builder.ToString(), sign, radix, type), propName, source); return true;
-            case "i64": EmitPropOrArg(KdlUtils.ParseInt64(builder.ToString(), sign, radix, type), propName, source); return true;
-            case "isize": EmitPropOrArg(KdlUtils.ParseIntPtr(builder.ToString(), sign, radix, type), propName, source); return true;
-            case "usize": EmitPropOrArg(KdlUtils.ParseUIntPtr(builder.ToString(), radix, type), propName, source); return true;
+            case "u8": EmitPropOrArg(KdlUtils.ParseUInt8(GetBufferedString(), radix, type), propName, source); return true;
+            case "u16": EmitPropOrArg(KdlUtils.ParseUInt16(GetBufferedString(), radix, type), propName, source); return true;
+            case "u32": EmitPropOrArg(KdlUtils.ParseUInt32(GetBufferedString(), radix, type), propName, source); return true;
+            case "u64": EmitPropOrArg(KdlUtils.ParseUInt64(GetBufferedString(), radix, type), propName, source); return true;
+            case "i8": EmitPropOrArg(KdlUtils.ParseInt8(GetBufferedString(), (sbyte)sign, radix, type), propName, source); return true;
+            case "i16": EmitPropOrArg(KdlUtils.ParseInt16(GetBufferedString(), (short)sign, radix, type), propName, source); return true;
+            case "i32": EmitPropOrArg(KdlUtils.ParseInt32(GetBufferedString(), sign, radix, type), propName, source); return true;
+            case "i64": EmitPropOrArg(KdlUtils.ParseInt64(GetBufferedString(), sign, radix, type), propName, source); return true;
+            case "isize": EmitPropOrArg(KdlUtils.ParseIntPtr(GetBufferedString(), sign, radix, type), propName, source); return true;
+            case "usize": EmitPropOrArg(KdlUtils.ParseUIntPtr(GetBufferedString(), radix, type), propName, source); return true;
             case "f32":
-                if (radix != 10)
-                {
-                    throw new KdlException("Invalid number. Floats must be base 10.", _context);
-                }
-                EmitPropOrArg(KdlUtils.ParseFloat32(builder.ToString(), sign, type), propName, source);
+                ThrowIf(radix != 10, "Invalid number. Floats must be base 10.");
+                EmitPropOrArg(KdlUtils.ParseFloat32(GetBufferedString(), sign, type), propName, source);
                 return true;
             case "f64":
             case "decimal64":
-                if (radix != 10)
-                {
-                    throw new KdlException("Invalid number. Floats must be base 10.", _context);
-                }
-                EmitPropOrArg(KdlUtils.ParseFloat64(builder.ToString(), sign, type), propName, source);
+                ThrowIf(radix != 10, "Invalid number. Floats must be base 10.");
+                EmitPropOrArg(KdlUtils.ParseFloat64(GetBufferedString(), sign, type), propName, source);
                 return true;
             case "decimal":
             case "decimal128":
-                if (radix != 10)
-                {
-                    throw new KdlException("Invalid number. Decimals must be base 10.", _context);
-                }
-                EmitPropOrArg(KdlUtils.ParseDecimal(builder.ToString(), sign, type), propName, source);
+                ThrowIf(radix != 10, "Invalid number. Decimals must be base 10.");
+                EmitPropOrArg(KdlUtils.ParseDecimal(GetBufferedString(), sign, type), propName, source);
                 return true;
         }
 
         return false;
     }
 
-    protected void ParseIntFromBuilder(StringBuilder builder, int radix, int sign, string? type, string? propName, KdlSourceInfo source)
+    protected void ParseIntFromBuffer(int radix, int sign, string? type, string? propName, KdlSourceInfo source)
     {
-        if (builder.Length == 0)
-        {
-            throw new KdlException("Invalid number. Number must have at least one digit.", _context);
-        }
+        ThrowIf(_stringBuffer.Count == 0, "Invalid number. Number must have at least one digit.");
 
         if (type != null && _options.UseTypeAnnotations)
         {
-            if (ParseNumWithType(builder, radix, sign, type, propName, source))
+            if (ParseNumWithType(radix, sign, type, propName, source))
                 return;
         }
 
         try
         {
-            KdlNumber<int> value = KdlUtils.ParseInt32(builder.ToString(), sign, radix, type);
+            KdlNumber<int> value = KdlUtils.ParseInt32(GetBufferedString(), sign, radix, type);
             EmitPropOrArg(value, propName, source);
         }
         catch (OverflowException)
         {
             try
             {
-                KdlNumber<long> value = KdlUtils.ParseInt64(builder.ToString(), sign, radix, type);
+                KdlNumber<long> value = KdlUtils.ParseInt64(GetBufferedString(), sign, radix, type);
                 EmitPropOrArg(value, propName, source);
             }
             catch (OverflowException)
             {
                 if (sign == -1)
                 {
-                    throw new KdlException("Invalid number. Negative numbers must fit within a 64-bit signed integer.", _context);
+                    throw new KdlException("Invalid number. Negative numbers must fit within a 64-bit signed integer.", GetSourceInfo());
                 }
 
-                KdlNumber<ulong> value = KdlUtils.ParseUInt64(builder.ToString(), radix, type);
+                KdlNumber<ulong> value = KdlUtils.ParseUInt64(GetBufferedString(), radix, type);
                 EmitPropOrArg(value, propName, source);
             }
         }
@@ -510,66 +1271,63 @@ public class KdlReader(KdlReadOptions? options = null) : object()
     {
         ThrowIfAtEnd();
 
-        int ucc = _context!.Peek();
-        if (ucc == '_')
-        {
-            throw new KdlException("Invalid number. Numbers may not start with an underscore.", _context);
-        }
+        byte ch = _bytes[_offset];
+        ThrowIf(ch == '_', "Invalid number. Numbers may not start with an underscore.");
 
         KdlSourceInfo source = GetSourceInfo();
-        StringBuilder builder = new();
-        while (!AtEnd() && (KdlUtils.IsHexadecimalDigit(ucc) || ucc == '_'))
+        while (!AtEnd() && (KdlUtils.IsHexadecimalDigit(ch) || ch == '_'))
         {
-            if (ucc != '_')
-                builder.Append((char)ucc);
-            _context.Read();
+            if (ch != '_')
+            {
+                _stringBuffer.Add(ch);
+            }
+            ++_offset;
+            ch = _bytes[_offset];
         }
 
-        ParseIntFromBuilder(builder, 16, sign, type, propName, source);
+        ParseIntFromBuffer(16, sign, type, propName, source);
     }
 
     protected void ParseOctNum(int sign, string? type, string? propName)
     {
         ThrowIfAtEnd();
 
-        int ucc = _context!.Peek();
-        if (ucc == '_')
-        {
-            throw new KdlException("Invalid number. Numbers may not start with an underscore.", _context);
-        }
+        byte ch = _bytes[_offset];
+        ThrowIf(ch == '_', "Invalid number. Numbers may not start with an underscore.");
 
         KdlSourceInfo source = GetSourceInfo();
-        StringBuilder builder = new();
-        while (!AtEnd() && (KdlUtils.IsOctalDigit(ucc) || ucc == '_'))
+        while (!AtEnd() && (KdlUtils.IsOctalDigit(ch) || ch == '_'))
         {
-            if (ucc != '_')
-                builder.Append((char)ucc);
-            _context.Read();
+            if (ch != '_')
+            {
+                _stringBuffer.Add(ch);
+            }
+            ++_offset;
+            ch = _bytes[_offset];
         }
 
-        ParseIntFromBuilder(builder, 8, sign, type, propName, source);
+        ParseIntFromBuffer(8, sign, type, propName, source);
     }
 
     protected void ParseBinNum(int sign, string? type, string? propName)
     {
         ThrowIfAtEnd();
 
-        int ucc = _context!.Peek();
-        if (ucc == '_')
-        {
-            throw new KdlException("Invalid number. Numbers may not start with an underscore.", _context);
-        }
+        byte ch = _bytes[_offset];
+        ThrowIf(ch == '_', "Invalid number. Numbers may not start with an underscore.");
 
         KdlSourceInfo source = GetSourceInfo();
-        StringBuilder builder = new();
-        while (!AtEnd() && (KdlUtils.IsBinaryDigit(ucc) || ucc == '_'))
+        while (!AtEnd() && (KdlUtils.IsBinaryDigit(ch) || ch == '_'))
         {
-            if (ucc != '_')
-                builder.Append((char)ucc);
-            _context.Read();
+            if (ch != '_')
+            {
+                _stringBuffer.Add(ch);
+            }
+            ++_offset;
+            ch = _bytes[_offset];
         }
 
-        ParseIntFromBuilder(builder, 2, sign, type, propName, source);
+        ParseIntFromBuffer(2, sign, type, propName, source);
     }
 
     protected void ParseDecNum(int sign, string? type, string? propName)
@@ -580,138 +1338,111 @@ public class KdlReader(KdlReadOptions? options = null) : object()
         int exp = 0;
         int expSign = 0;
         bool prevWasNumeric = false;
-        StringBuilder builder = new();
         KdlSourceInfo source = GetSourceInfo();
 
         while (!AtEnd())
         {
-            int ucc = _context!.Peek();
+            int ucc = PeekCodePoint(out int len);
 
             if (!KdlUtils.IsFloatingDigit(ucc) && ucc != '_')
+            {
                 break;
+            }
 
             switch (ucc)
             {
                 case '.':
                 {
-                    if (!prevWasNumeric)
-                    {
-                        throw new KdlException("Invalid number. Numbers must have a digit before the dot.", _context);
-                    }
+                    ThrowIf(!prevWasNumeric, "Invalid number. Numbers must have a digit before the dot.");
+                    ThrowIf(dot != 0, "Invalid number. Numbers cannot have multiple dots.");
 
-                    if (dot != 0)
-                    {
-                        throw new KdlException("Invalid number. Numbers cannot have multiple dots.", _context);
-                    }
-
-                    dot = builder.Length;
+                    dot = _stringBuffer.Count;
                     break;
                 }
                 case 'e':
                 case 'E':
                 {
-                    if (!prevWasNumeric)
-                    {
-                        throw new KdlException("Invalid number. Numbers must have a digit before the exponent.", _context);
-                    }
+                    ThrowIf(!prevWasNumeric, "Invalid number. Numbers must have a digit before the exponent.");
+                    ThrowIf(exp != 0, "Invalid number. Numbers cannot have multiple exponents.");
 
-                    if (exp != 0)
-                    {
-                        throw new KdlException("Invalid number. Numbers cannot have multiple exponents.", _context);
-                    }
-
-                    exp = builder.Length;
+                    exp = _stringBuffer.Count;
                     break;
                 }
                 case '+':
                 case '-':
                 {
-                    if (exp == 0 || expSign != 0)
-                    {
-                        throw new KdlException("Invalid number. Numbers cannot have multiple signs.", _context);
-                    }
+                    ThrowIf(exp == 0 || expSign != 0, "Invalid number. Numbers cannot have multiple signs.");
 
-                    expSign = builder.Length;
+                    expSign = _stringBuffer.Count;
                     break;
                 }
                 case '_':
                 {
-                    if (builder.Length == 0 || dot == (builder.Length - 1))
-                    {
-                        throw new KdlException("Invalid number. Numbers may not start with an underscore.", _context);
-                    }
+                    ThrowIf(_stringBuffer.Count == 0 || dot == (_stringBuffer.Count - 1), "Invalid number. Numbers may not start with an underscore.");
                     break;
                 }
             }
 
             if (ucc != '_')
             {
-                builder.Append((char)ucc);
+                UTF8Encode(_stringBuffer, ucc);
             }
 
             prevWasNumeric = ucc >= '0' && ucc <= '9';
-            _context.Read();
+            _offset += len;
         }
 
         if (dot != 0 || exp != 0)
         {
-            if (builder.Length == 0)
-            {
-                throw new KdlException("Invalid number. Numbers must have at least one digit.", _context);
-            }
+            ThrowIf(_stringBuffer.Count == 0, "Invalid number. Numbers must have at least one digit.");
 
-            // Cannot start with a dot or exponent
-            if (builder[0] == '.' || builder[0] == 'e' || builder[0] == 'E')
-            {
-                throw new KdlException("Invalid number. Numbers may not start with a dot or exponent.", _context);
-            }
+            ThrowIf(_stringBuffer[0] == '.' || _stringBuffer[0] == 'e' || _stringBuffer[0] == 'E',
+                "Invalid number. Numbers may not start with a dot or exponent.");
 
-            // Cannot end with a dot, exponent, or sign
-            if (builder[^1] == '.' || builder[^1] == 'e' || builder[^1] == 'E' || builder[^1] == '-' || builder[^1] == '+')
-            {
-                throw new KdlException("Invalid number. Numbers may not end with a dot, exponent, or sign.", _context);
-            }
+            ThrowIf(_stringBuffer[^1] == '.' || _stringBuffer[^1] == 'e' || _stringBuffer[^1] == 'E' || _stringBuffer[^1] == '-' || _stringBuffer[^1] == '+',
+                "Invalid number. Numbers may not end with a dot, exponent, or sign.");
 
-            // exponent cannot be before the dot
-            if (exp != 0 && exp < dot)
-            {
-                throw new KdlException("Invalid number. Exponent must come after the dot.", _context);
-            }
+            ThrowIf(exp != 0 && exp < dot, "Invalid number. Exponent must come after the dot.");
 
             try
             {
-                KdlNumber<float> value = KdlUtils.ParseFloat32(builder.ToString(), sign, type);
+                KdlNumber<float> value = KdlUtils.ParseFloat32(GetBufferedString(), sign, type);
                 if (type != null && _options.UseTypeAnnotations)
                 {
                     if (ParseNumWithType(value, sign, type, propName, source))
+                    {
                         return;
+                    }
                 }
                 EmitPropOrArg(value, propName, source);
+                return;
             }
             catch (OverflowException)
             {
-                KdlNumber<double> value = KdlUtils.ParseFloat64(builder.ToString(), sign, type);
+                KdlNumber<double> value = KdlUtils.ParseFloat64(GetBufferedString(), sign, type);
                 if (type != null && _options.UseTypeAnnotations)
                 {
                     if (ParseNumWithType(value, sign, type, propName, source))
+                    {
                         return;
+                    }
                 }
                 EmitPropOrArg(value, propName, source);
+                return;
             }
         }
-        else
-        {
-            ParseIntFromBuilder(builder, 10, sign, type, propName, source);
-        }
-    }
 
+        ParseIntFromBuffer(10, sign, type, propName, source);
+    }
 
     protected void ParseNum(string? type, string? propName)
     {
         ThrowIfAtEnd();
 
+        _stringBuffer.Clear();
+
         int sign = 1;
-        int ucc = _context!.Peek();
+        int ucc = PeekCodePoint(out _);
 
         if (ucc == '-')
         {
@@ -725,26 +1456,26 @@ public class KdlReader(KdlReadOptions? options = null) : object()
 
         ThrowIfAtEnd();
 
-        ucc = _context.Peek();
+        ucc = PeekCodePoint(out int len);
 
         // 0x, 0o, 0b, 0, 0.0
         if (ucc == '0')
         {
-            Consume('0');
+            _offset += len;
 
             if (!AtEnd())
             {
-                switch (_context.Peek())
+                switch (_bytes[_offset])
                 {
-                    case 'x': Consume('x'); ParseHexNum(sign, type, propName); return;
-                    case 'o': Consume('o'); ParseOctNum(sign, type, propName); return;
-                    case 'b': Consume('b'); ParseBinNum(sign, type, propName); return;
+                    case (byte)'x': Consume('x'); ParseHexNum(sign, type, propName); return;
+                    case (byte)'o': Consume('o'); ParseOctNum(sign, type, propName); return;
+                    case (byte)'b': Consume('b'); ParseBinNum(sign, type, propName); return;
                 }
             }
 
             // Back up the cursor so the leading zero is restored, and fall through to
             // decimal number parsing.
-            _context.Unread('0');
+            _offset -= len;
         }
 
         ParseDecNum(sign, type, propName);
@@ -754,13 +1485,14 @@ public class KdlReader(KdlReadOptions? options = null) : object()
     {
         SkipSpaces();
 
-        int ucc = _context!.Peek();
+        int ucc = PeekCodePoint(out int len);
 
         // Consume the type annotation if present
         string? type = null;
         if (ucc == '(')
         {
             type = ConsumeType();
+            ucc = PeekCodePoint(out len);
         }
 
         switch (ucc)
@@ -770,13 +1502,9 @@ public class KdlReader(KdlReadOptions? options = null) : object()
             case '#':
             {
                 KdlSourceInfo source = GetSourceInfo();
-                _context.Read();
-                ThrowIfAtEnd();
-
-                ucc = _context.Peek();
 
                 // If the next character is a quote, or another hash, then this is a raw string
-                if (ucc == '"' || ucc == '#')
+                if (_offset + 1 < _bytes.Length && (_bytes[_offset + 1] == '"' || _bytes[_offset + 1] == '#'))
                 {
                     string value = ConsumeString();
                     EmitPropOrArg(value, type, propName, source);
@@ -784,35 +1512,29 @@ public class KdlReader(KdlReadOptions? options = null) : object()
                 }
 
                 // otherwise, this is a keyword value
-                switch (ucc)
+                _offset += len;
+                switch (_bytes[_offset])
                 {
-                    case 't': Consume("true"); EmitPropOrArg(true, type, propName, source); return;
-                    case 'f': Consume("false"); EmitPropOrArg(false, type, propName, source); return;
-                    case 'i': Consume("inf"); EmitPropOrArg(double.PositiveInfinity, type, propName, source); return;
-                    case '-': Consume("-inf"); EmitPropOrArg(double.NegativeInfinity, type, propName, source); return;
-                    case 'n':
+                    case (byte)'t': Consume("true"); EmitPropOrArg(true, type, propName, source); return;
+                    case (byte)'f': Consume("false"); EmitPropOrArg(false, type, propName, source); return;
+                    case (byte)'i': Consume("inf"); EmitPropOrArg(double.PositiveInfinity, type, propName, source); return;
+                    case (byte)'-': Consume("-inf"); EmitPropOrArg(double.NegativeInfinity, type, propName, source); return;
+                    case (byte)'n':
                     {
-                        _context.Read();
-                        ThrowIfAtEnd();
-
-                        ucc = _context.Peek();
-                        _context.Unread('n');
-
-                        if (ucc == 'a')
+                        if (_offset + 1 < _bytes.Length && _bytes[_offset + 1] == 'a')
                         {
                             Consume("nan");
                             EmitPropOrArg(double.NaN, type, propName, source);
+                            return;
                         }
-                        else
-                        {
-                            Consume("null");
-                            EmitPropOrArg(null, type, propName, source);
-                        }
+
+                        Consume("null");
+                        EmitPropOrArg(null, type, propName, source);
                         return;
                     }
                 }
 
-                throw new KdlException($"Invalid token. Expected 'true', 'false', 'inf', '-inf', 'nan', or 'null' but found '{(char)ucc}'.", _context);
+                throw new KdlException($"Invalid token. Expected 'true', 'false', 'inf', '-inf', 'nan', or 'null' but found '{char.ConvertFromUtf32(ucc)}'.", GetSourceInfo());
             }
             // any digit means this is a number
             case '0':
@@ -825,23 +1547,21 @@ public class KdlReader(KdlReadOptions? options = null) : object()
             case '7':
             case '8':
             case '9':
+            {
                 ParseNum(type, propName);
                 return;
+            }
             // could be a number or the start of an identifier string
             case '-':
             case '+':
             {
-                int sign = ucc;
-                _context.Read();
-                if (!AtEnd() && KdlUtils.IsDecimalDigit(_context.Peek()))
+                if (_offset + len < _bytes.Length && _bytes[_offset + len] != '\0' && KdlUtils.IsDecimalDigit(_bytes[_offset + len]))
                 {
-                    _context.Unread(sign);
                     ParseNum(type, propName);
                     return;
                 }
 
                 // fall through to string parsing
-                _context.Unread(sign);
                 goto default;
             }
             // anything else must be a string
@@ -856,6 +1576,7 @@ public class KdlReader(KdlReadOptions? options = null) : object()
                     return;
                 }
 
+                int beforeSpaces = _offset;
                 SkipSpaces(false);
 
                 if (AtEnd())
@@ -864,21 +1585,14 @@ public class KdlReader(KdlReadOptions? options = null) : object()
                     return;
                 }
 
-                ucc = _context.Peek();
+                ucc = PeekCodePoint(out len);
 
                 if (KdlUtils.IsEqualsSign(ucc))
                 {
-                    if (propName != null)
-                    {
-                        throw new KdlException("Invalid token. Multiple equals signs in property expression.", _context);
-                    }
+                    ThrowIf(propName != null, "Invalid token. Multiple equals signs in property expression.");
+                    ThrowIf(type != null, "Invalid token. Type annotations are not allowed on property names.");
 
-                    if (type != null)
-                    {
-                        throw new KdlException("Invalid token. Type annotations are not allowed on property names.", _context);
-                    }
-
-                    _context.Read();
+                    _offset += len;
                     ParseArgumentOrProperty(value);
                     return;
                 }
@@ -886,525 +1600,128 @@ public class KdlReader(KdlReadOptions? options = null) : object()
                 // If not an equal sign, then we need to back up to before we tried to
                 // parse this as a property. Otherwise the required spaces between args
                 // and props will get consumed here.
-                _context.Unread(' ');
+                _offset = beforeSpaces;
                 EmitPropOrArg(value, type, propName, source);
                 return;
             }
         }
     }
 
-    protected bool AtEnd()
+    private static bool IsUTF8Continuation(byte ucc)
     {
-        return _context!.Peek() == KdlUtils.EOF;
+        return (ucc & 0xC0) == 0x80;
     }
 
-    protected void ThrowIfAtEnd()
+    private static int UTF8Encode(List<byte> bytes, int ucc)
     {
-        if (AtEnd())
-        {
-            throw new KdlException("Unexpected end of file.", _context);
-        }
-    }
+        // Top bit can't be set.
+        if ((ucc & 0x80000000) != 0)
+            return 0;
 
-    protected void SkipBOM()
-    {
-        if (_context!.Peek() == KdlUtils.BOM)
-        {
-            _context!.Read();
-        }
-    }
-
-    protected void SkipSpaces(bool allowSlashdash = true)
-    {
-        while (!AtEnd())
-        {
-            int ucc = _context!.Peek();
-
-            // catch escape sequences for escaped newlines
-            if (ucc == '\\')
-            {
-                _inWhitespaceEscape = true;
-                _context.Read();
-            }
-            // anywhere you can have whitespace, you can also have comments
-            else if (ucc == '/')
-            {
-                ucc = _context.Peek();
-
-                // Single line comments and slashdash comments are terminators for nodes, they don't count just "spaces"
-                if (ucc == '/')
-                    return;
-
-                // Some contexts don't allow slashdash comments
-                if (!allowSlashdash && ucc == '-')
-                    return;
-
-                ParseComment();
-            }
-            // if it is whitespace consume it and continue
-            else if (KdlUtils.IsWhitespace(ucc))
-            {
-                _context.Read();
-            }
-            // escaped newlines are considered normal spaces
-            else if (KdlUtils.IsNewline(ucc) && _inWhitespaceEscape)
-            {
-                ConsumeNewLine();
-            }
-            // finally, if it isn't whitespace or comment we're done here
-            else
-            {
-                _inWhitespaceEscape = false;
-                break;
-            }
-
-            _context.Read();
-        }
-    }
-
-    protected void CheckSlashdashEnd()
-    {
-        if (_slashDashDepthStack.Count > 0 && _slashDashDepthStack[^1] == _nodeDepth + 1)
-        {
-            _slashDashDepthStack.RemoveAt(_slashDashDepthStack.Count - 1);
-            _handler!.EndComment();
-        }
-    }
-
-    protected void EmitStartNode(string name, string? type, KdlSourceInfo source)
-    {
-        _handler!.StartNode(name, type, source);
-        ++_nodeDepth;
-    }
-
-    protected void EmitEndNode()
-    {
-        if (_nodeDepth == 0)
-        {
-            throw new KdlException("Invalid document. Unexpected end of node.", _context);
-        }
-
-        _handler!.EndNode();
-        --_nodeDepth;
-        CheckSlashdashEnd();
-    }
-
-    protected void EmitPropOrArg(KdlValue kdlValue, string? name, KdlSourceInfo source)
-    {
-        if (name != null)
-        {
-            _handler!.Property(name, kdlValue, source);
-        }
-        else
-        {
-            _handler!.Argument(kdlValue, source);
-        }
-
-        CheckSlashdashEnd();
-    }
-
-    protected void EmitPropOrArg(object? value, string? type, string? name, KdlSourceInfo source)
-    {
-        KdlValue kdlValue = KdlValue.From(value, type);
-        EmitPropOrArg(kdlValue, name, source);
-    }
-
-    protected void Consume(char ch)
-    {
-        ThrowIfAtEnd();
-
-        int ucc = _context!.Peek();
-
-        if (ucc != ch)
-        {
-            throw new KdlException($"Invalid token. Expected '{ch}' but found '{(char)ucc}'.", _context);
-        }
-
-        _context.Read();
-    }
-
-    protected void Consume(string str)
-    {
-        foreach (char ch in str)
-        {
-            Consume(ch);
-        }
-    }
-
-    protected void ConsumeNewLine()
-    {
-        ThrowIfAtEnd();
-
-        int ucc = _context!.Peek();
-
-        if (!KdlUtils.IsNewline(ucc))
-        {
-            throw new KdlException($"Invalid token. Expected newline but found '{(char)ucc}'.", _context);
-        }
-
-        _context.Read();
-    }
-
-    protected string ConsumeType()
-    {
-        Consume('(');
-        SkipSpaces();
-        string type = ConsumeString();
-        SkipSpaces();
-        Consume(')');
-        SkipSpaces();
-
-        return type;
-    }
-
-    protected string ConsumeUnicodeEscapeSequence()
-    {
-        Consume('u');
-        Consume('{');
-        ThrowIfAtEnd();
-
-        // Max of 6 hex characters
-        bool foundNum = false;
-        int ucc = 0;
+        // 6 possible encodings: http://en.wikipedia.org/wiki/UTF-8
         for (int i = 0; i < 6; ++i)
         {
-            if (AtEnd())
-                break;
+            // Max bits this encoding can represent.
+            int maxBits = 6 + (i * 5) + (i == 0 ? 1 : 0);
 
-            int ch = _context!.Peek();
-
-            if (ch == '}')
-                break;
-
-            if (!KdlUtils.IsHexadecimalDigit(ch))
+            if (ucc < (1u << maxBits))
             {
-                throw new KdlException($"Invalid token. Expected hex digit but found '{(char)ch}'.", _context);
+                // Remaining bits not encoded in the first byte, store 6 bits each
+                int remainingBits = i * 6;
+
+                // Store bytes
+                bytes.Add((byte)((0xFE << (maxBits - remainingBits)) | (ucc >> remainingBits)));
+                for (int j = i - 1; j != -1; --j)
+                {
+                    bytes.Add((byte)(((ucc >> (j * 6)) & 0x3F) | 0x80));
+                }
+
+                // Return the number of bytes written.
+                return i + 1;
             }
-
-            ucc = (ucc << 4) + KdlUtils.HexToNibble((char)ch);
-            foundNum = true;
-            _context.Read();
         }
 
-        Consume('}');
-
-        if (!foundNum)
-        {
-            throw new KdlException("Invalid unicode escape sequence. No hex digits found in braces.", _context);
-        }
-
-        if (!KdlUtils.IsUnicodeScalarValue(ucc))
-        {
-            throw new KdlException("Invalid unicode escape sequence. Value is not a valid unicode scalar value.", _context);
-        }
-
-        return char.ConvertFromUtf32(ucc);
+        return 0;
     }
 
-    protected string ConsumeQuotedString(int rawDelimCount)
+    /// <summary>
+    /// Converts the a valid UTF-8 bytes sequence into a unicode code point.
+    /// </summary>
+    /// <param name="dst">The destination code point to write to. Set to \ref InvalidCodePoint
+    ///     if the sequence is invalid or incomplete.</param>
+    /// <param name="str">The UTF-8 byte sequence to parse.</param>
+    /// <returns>Returns the number of bytes parsed, if the sequence was valid. Zero (`0`) is
+    ///     returned if more bytes are required, but the sequence is otherwise valid.
+    ///     \ref InvalidCodePoint is returned if the sequence is invalid.</returns>
+    private static int UTF8Decode(out int dst, byte[] bytes, int offset)
     {
-        bool firstChar = true;
-        bool isMultiline = false;
-        bool inEscapeSeq = false;
-        bool inWhitespaceEscape = false;
-        bool isTerminated = false;
-        StringBuilder value = new(64);
-        while (!AtEnd())
+        dst = InvalidCodePoint;
+
+        if (offset >= bytes.Length)
         {
-            int ucc = _context!.Peek();
-
-            // Multi-line string handling
-            if (firstChar)
-            {
-                isMultiline = KdlUtils.IsNewline(ucc);
-                firstChar = false;
-
-                if (isMultiline)
-                {
-                    ConsumeNewLine();
-                    continue;
-                }
-            }
-
-            // Escape sequence handling
-            if (inEscapeSeq)
-            {
-                // skip whitespace after escape sequence
-                if (KdlUtils.IsWhitespace(ucc))
-                {
-                    inWhitespaceEscape = true;
-                    _context.Read();
-                    continue;
-                }
-
-                // skip newlines after escape sequence
-                if (KdlUtils.IsNewline(ucc))
-                {
-                    inWhitespaceEscape = true;
-                    ConsumeNewLine();
-                    //ConsumeDedentPrefix(dedentPrefix);
-                    continue;
-                }
-
-                if (inWhitespaceEscape)
-                {
-                    inEscapeSeq = false;
-                    inWhitespaceEscape = false;
-                    continue;
-                }
-
-                if (ucc == 'u')
-                {
-                    value.Append(ConsumeUnicodeEscapeSequence());
-                    inEscapeSeq = false;
-                    continue;
-                }
-
-                switch (ucc)
-                {
-                    case 'n': value.Append('\n'); break;
-                    case 'r': value.Append('\r'); break;
-                    case 't': value.Append('\t'); break;
-                    case '\\': value.Append('\\'); break;
-                    case '"': value.Append('"'); break;
-                    case 'b': value.Append('\b'); break;
-                    case 'f': value.Append('\f'); break;
-                    case 's': value.Append(' '); break;
-                    default:
-                        throw new KdlException($"Invalid escape sequence '\\{(char)ucc}'.", _context);
-                }
-
-                inEscapeSeq = false;
-                _context.Read();
-                continue;
-            }
-
-            // Newline handling is different for multi-line or single-line strings
-            if (KdlUtils.IsNewline(ucc))
-            {
-                // unescaped newlines are not allowed in single-line strings
-                if (!isMultiline)
-                {
-                    throw new KdlException("Invalid token. Unescaped newlines not allowed in single-line strings.", _context);
-                }
-
-                ConsumeNewLine();
-
-                // Consume the required dedent prefix since we consumed a newline
-                //ConsumeDedentPrefix(dedentPrefix);
-
-                // newlines are normalized to `\n`
-                value.Append('\n');
-                continue;
-            }
-
-            // New escape sequence start handling
-            if (ucc == '\\')
-            {
-                if (rawDelimCount > 0)
-                    value.Append('\\');
-                else
-                    inEscapeSeq = true;
-
-                _context.Read();
-                continue;
-            }
-
-            // End of string handling
-            if (ucc == '"')
-            {
-                if (rawDelimCount > 0)
-                {
-                    int count = 0;
-                    while (count < rawDelimCount && !AtEnd())
-                    {
-                        ucc = _context.Peek();
-
-                        if (ucc == '#')
-                        {
-                            _context.Read();
-                            ++count;
-                        }
-                        else
-                        {
-                            value.Append('"');
-                            value.Append('#', count);
-                            break;
-                        }
-                    }
-
-                    if (count == rawDelimCount)
-                    {
-                        if (_context.Peek() == '#')
-                        {
-                            throw new KdlException("Invalid token. Expected end of raw string but found another delimiter.", _context);
-                        }
-
-                        isTerminated = true;
-                        break;
-                    }
-                }
-                else
-                {
-                    _context.Read();
-                    isTerminated = true;
-                    break;
-                }
-            }
-            else
-            {
-                // Append the character to the buffer
-                value.Append((char)_context.Read());
-            }
+            return 0;
         }
 
-        if (!isTerminated)
+        byte ch = bytes[offset];
+
+        // ASCII code point
+        if ((ch & 0x80) == 0)
         {
-            throw new KdlException("Unexpected end of file. String was not properly terminated.", _context);
+            dst = ch;
+            return 1;
         }
 
-        if (value.Length == 0)
-            return "";
-
-        if (!isMultiline)
-            return value.ToString();
-
-        // Calculate the indent prefix used on the last line of the string
-        int indentPrefixStart = value.Length - 1;
-        while (indentPrefixStart >= 0 && KdlUtils.IsWhitespace(value[indentPrefixStart]))
+        // 2-byte sequence
+        if ((ch & 0xe0) == 0xc0)
         {
-            --indentPrefixStart;
-        }
-
-        if (indentPrefixStart < 0)
-            return value.ToString();
-
-        // Create a new value with the indent prefix removed
-        StringBuilder newValue = new(value.Length);
-        int indentIndex = 0;
-        int indentLength = value.Length - indentPrefixStart;
-        for (int i = 0; i < value.Length; ++i)
-        {
-            if (indentIndex < indentLength)
+            if (offset + 1 >= bytes.Length)
             {
-                if (value[i] != value[indentPrefixStart + indentIndex])
-                {
-                    throw new KdlException("Invalid token. Each line of a multi-line string must have an identical indent.", _context);
-                }
-
-                ++indentIndex;
-                continue;
+                return 0;
             }
 
-            if (KdlUtils.IsNewline(value[i]))
+            if (!IsUTF8Continuation(bytes[offset + 1]))
             {
-                indentIndex = 0;
+                return InvalidCodePoint;
             }
 
-            newValue.Append(value[i]);
+            dst = ((ch & 0x1f) << 6) | (bytes[offset + 1] & 0x3f);
+            return 2;
         }
 
-        return newValue.ToString();
-    }
-
-    protected string ConsumeIdentifierString()
-    {
-        StringBuilder value = new(32);
-
-        bool first = true;
-        while (!AtEnd())
+        // 3-byte sequence
+        if ((ch & 0xf0) == 0xe0)
         {
-            int ucc = _context!.Peek();
-
-            if (first && !KdlUtils.IsValidInitialIdentifierCharacter(ucc))
+            if (offset + 2 >= bytes.Length)
             {
-                throw new KdlException($"Invalid token. Expected initial identifier character but found '{(char)ucc}'.", _context);
+                return 0;
             }
 
-            first = false;
-
-            if (!KdlUtils.IsValidIdentifierCharacter(ucc))
-                break;
-
-            value.Append((char)_context.Read());
-        }
-
-        // No identifier string can start with a number
-        if (KdlUtils.IsDecimalDigit(value[0]))
-        {
-            throw new KdlException("Invalid identifier. Identifier strings cannot start with a number.", _context);
-        }
-
-        if (value[0] == '-' || value[0] == '+')
-        {
-            // Identifiers can start with "-."/"+." as long as the next char is not a number
-            if (value.Length > 2 && value[1] == '.' && KdlUtils.IsDecimalDigit(value[2]))
+            if (!IsUTF8Continuation(bytes[offset + 1]) || !IsUTF8Continuation(bytes[offset + 2]))
             {
-                throw new KdlException("Invalid identifier. Identifier strings cannot start with a dash ('-') or plus ('+'), followed by a dot ('.') and a number.", _context);
+                return InvalidCodePoint;
             }
 
-            // Identifiers can start with "-"/"+" as long as the next char is not a number
-            if (value.Length > 1 && KdlUtils.IsDecimalDigit(value[1]))
+            dst = ((ch & 0x0f) << 12) | ((bytes[offset + 1] & 0x3f) << 6) | (bytes[offset + 2] & 0x3f);
+            return 3;
+        }
+
+        // 4-byte sequence
+        if ((ch & 0xf8) == 0xf0)
+        {
+            if (offset + 3 >= bytes.Length)
             {
-                throw new KdlException("Invalid identifier. Identifier strings cannot start with a dash ('-') or plus ('+'), followed by a number.", _context);
-            }
-        }
-
-        if (value[0] == '.')
-        {
-            // Identifiers can start with "." as long as the next char is not a number
-            if (value.Length > 1 && KdlUtils.IsDecimalDigit(value[1]))
-            {
-                throw new KdlException("Invalid identifier. Identifier strings cannot start with a dot ('.'), followed by a number.", _context);
-            }
-        }
-
-        string str = value.ToString();
-
-        // Identifiers can't be any of the language keywords without their leading '#'
-        if (str == "inf" || str == "-inf" || str == "nan" || str == "true" || str == "false" || str == "null")
-        {
-            throw new KdlException("Invalid identifier. Identifier strings cannot be a language keyword.", _context);
-        }
-
-        return str;
-    }
-
-    protected string ConsumeString()
-    {
-        ThrowIfAtEnd();
-
-        int ucc = _context!.Peek();
-
-        if (ucc == '"')
-        {
-            _context.Read();
-            return ConsumeQuotedString(0);
-        }
-
-        if (ucc == '#')
-        {
-            _context.Read();
-            int rawDelimCount = 1;
-            while (!AtEnd())
-            {
-                ucc = _context.Read();
-
-                if (ucc == '#')
-                {
-                    ++rawDelimCount;
-                    continue;
-                }
-
-                if (ucc == '"')
-                {
-                    return ConsumeQuotedString(rawDelimCount);
-                }
+                return 0;
             }
 
-            ThrowIfAtEnd();
+            if (!IsUTF8Continuation(bytes[offset + 1]) || !IsUTF8Continuation(bytes[offset + 2]) || !IsUTF8Continuation(bytes[offset + 3]))
+            {
+                return InvalidCodePoint;
+            }
+
+            dst = ((ch & 0x07) << 18) | ((bytes[offset + 1] & 0x3f) << 12) | ((bytes[offset + 2] & 0x3f) << 6) | (bytes[offset + 3] & 0x3f);
+            return 4;
         }
 
-        return ConsumeIdentifierString();
+        return InvalidCodePoint;
     }
 }

@@ -19,6 +19,11 @@ internal class KdlDocumentReadHandler : IKdlReadHandler
         // Nothing to do here
     }
 
+    public void Version(string value, KdlSourceInfo source)
+    {
+        // Nothing to do here
+    }
+
     public void Comment(string value, KdlSourceInfo source)
     {
         // Nothing to do here

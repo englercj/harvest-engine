@@ -68,5 +68,5 @@ public abstract class KdlValue<T>(T value, string? type) : KdlValue(type)
 
     public override int GetHashCode() => HashCode.Combine(Value, Type);
 
-    public static implicit operator T(KdlValue<T> v) => v.TypedValue;
+    public static implicit operator T(KdlValue<T> v) => v.Value;
 }

@@ -28,18 +28,6 @@ namespace he
 
         KdlReadResult Parse(StringView src, KdlReader::Handler& handler)
         {
-            m_result = {};
-            m_handler = &handler;
-            m_cursor = src.Begin();
-            m_end = src.End();
-            m_lineStart = m_cursor;
-            m_line = 1;
-            m_nodeDepth = 0;
-            m_inWhitespaceEscape = false;
-            m_stringBuffer.Clear();
-            m_typeBuffer.Clear();
-            m_slashDashDepthStack.Clear();
-
             if (!ConsumeBOM())
             {
                 return m_result;
@@ -121,6 +109,11 @@ namespace he
             return true;
         }
 
+        [[nodiscard]] bool PeekCodePoint(uint32_t& ucc, uint32_t& len)
+        {
+            return PeekCodePoint(m_cursor, m_end, ucc, len);
+        }
+
         [[nodiscard]] bool ConsumeCodePoint(const char*& begin, const char* end, uint32_t& ucc)
         {
             uint32_t len = 0;
@@ -133,17 +126,15 @@ namespace he
             return true;
         }
 
-        [[nodiscard]] bool PeekCodePoint(uint32_t& ucc, uint32_t& len)
-        {
-            return PeekCodePoint(m_cursor, m_end, ucc, len);
-        }
-
         [[nodiscard]] bool ConsumeCodePoint(uint32_t& ucc)
         {
             return ConsumeCodePoint(m_cursor, m_end, ucc);
         }
 
-        [[nodiscard]] bool AtEnd() const { return m_cursor >= m_end || *m_cursor == '\0'; }
+        [[nodiscard]] bool AtEnd() const
+        {
+            return m_cursor >= m_end || *m_cursor == '\0';
+        }
 
         [[nodiscard]] bool SkipSpaces(bool allowSlashdash = true)
         {
@@ -208,19 +199,19 @@ namespace he
 
         [[nodiscard]] bool ConsumeBOM()
         {
-            if (static_cast<uint8_t>(*m_cursor) != 0xef)
+            if (m_cursor < m_end && static_cast<uint8_t>(*m_cursor) != 0xef)
             {
                 return true;
             }
 
             ++m_cursor;
-            if (static_cast<uint8_t>(*m_cursor) != 0xbb) [[unlikely]]
+            if (m_cursor >= m_end || static_cast<uint8_t>(*m_cursor) != 0xbb) [[unlikely]]
             {
                 return SetError(KdlReadError::InvalidBom);
             }
 
             ++m_cursor;
-            if (static_cast<uint8_t>(*m_cursor) != 0xbf) [[unlikely]]
+            if (m_cursor >= m_end || static_cast<uint8_t>(*m_cursor) != 0xbf) [[unlikely]]
             {
                 return SetError(KdlReadError::InvalidBom);
             }
@@ -233,8 +224,8 @@ namespace he
         {
             const char* begin = m_cursor;
 
-            if (begin >= m_end || m_cursor[0] != '/'
-                || begin + 1 >= m_end || m_cursor[1] != '-')
+            if (begin >= m_end || begin[0] != '/'
+                || begin + 1 >= m_end || begin[1] != '-')
             {
                 // Not a slashdash, so not a version marker
                 return true;
@@ -417,10 +408,14 @@ namespace he
             {
                 uint32_t ucc = 0;
                 if (!ConsumeCodePoint(begin, end, ucc))
+                {
                     return false;
+                }
 
                 if (ucc != '#')
+                {
                     break;
+                }
 
                 ++count;
             }
@@ -548,6 +543,47 @@ namespace he
             return true;
         }
 
+        [[nodiscard]] bool ConsumeDedentPrefix(StringView dedentPrefix)
+        {
+            // Empty lines without a dedent prefix are allowed.
+            uint32_t ucc = 0;
+            uint32_t len = 0;
+            if (!PeekCodePoint(ucc, len))
+            {
+                return false;
+            }
+
+            if (IsKdlNewline(ucc))
+            {
+                return true;
+            }
+
+            for (const uint32_t prefixUcc : UTF8Splitter(dedentPrefix))
+            {
+                // We know at this point that the dedent prefix is only whitespace characters.
+                // So we can assume if we see an backslash, it's a whitespace escape sequence
+                // and we can skip the rest of the prefix.
+                if (prefixUcc == '\\')
+                {
+                    break;
+                }
+
+                if (ucc != prefixUcc) [[unlikely]]
+                {
+                    return SetError(KdlReadError::InvalidToken, prefixUcc);
+                }
+
+                m_cursor += len;
+
+                if (!PeekCodePoint(ucc, len))
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
         [[nodiscard]] bool ConsumeType(bool& hasType)
         {
             if (!Consume('('))
@@ -583,41 +619,6 @@ namespace he
 
             hasType = true;
             m_typeBuffer = type;
-            return true;
-        }
-
-        [[nodiscard]] bool ConsumeDedentPrefix(StringView dedentPrefix)
-        {
-            // Empty lines without a dedent prefix are allowed.
-            uint32_t ucc = 0;
-            uint32_t len = 0;
-            if (!PeekCodePoint(ucc, len))
-                return false;
-
-            if (IsKdlNewline(ucc))
-                return true;
-
-            for (const uint32_t prefixUcc : UTF8Splitter(dedentPrefix))
-            {
-                // We know at this point that the dedent prefix is only whitespace characters.
-                // So we can assume if we see an backslash, it's a whitespace escape sequence
-                // and we can skip the rest of the prefix.
-                if (prefixUcc == '\\')
-                {
-                    break;
-                }
-
-                if (ucc != prefixUcc) [[unlikely]]
-                {
-                    return SetError(KdlReadError::InvalidToken, prefixUcc);
-                }
-
-                m_cursor += len;
-
-                if (!PeekCodePoint(ucc, len))
-                    return false;
-            }
-
             return true;
         }
 

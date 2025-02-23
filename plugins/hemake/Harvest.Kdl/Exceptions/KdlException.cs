@@ -4,21 +4,21 @@ namespace Harvest.Kdl.Exceptions;
 
 public class KdlException : Exception
 {
-    private static string AppendContext(string message, KdlReadContext? context)
+    private static string AppendContext(string message, KdlSourceInfo? source)
     {
-        if (context != null)
+        if (source != null)
         {
-            message += $"\nAt line {context.Line}, in position {context.Column}.";
+            message += $"\nAt line {source.Line}, in position {source.Column}.";
         }
 
         return message;
     }
 
-    public KdlException(string message, KdlReadContext? context)
-        : base(AppendContext(message, context))
+    public KdlException(string message, KdlSourceInfo? source)
+        : base(AppendContext(message, source))
     { }
 
-    public KdlException(string message, Exception innerException, KdlReadContext? context)
-        : base(AppendContext(message, context), innerException)
+    public KdlException(string message, Exception innerException, KdlSourceInfo? source)
+        : base(AppendContext(message, source), innerException)
     { }
 }

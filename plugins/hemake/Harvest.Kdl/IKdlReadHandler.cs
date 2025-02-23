@@ -10,6 +10,11 @@ public interface IKdlReadHandler
     /// Called at the end of reading the document.
     void EndDocument();
 
+    /// Called if a document version marker is specified.
+    ///
+    /// \param[in] value The version value.
+    void Version(string value, KdlSourceInfo source);
+
     /// Called when a single-line (`//`) or multi-line (`/**/`) comment is encountered.
     ///
     /// \param[in] value The comment value.

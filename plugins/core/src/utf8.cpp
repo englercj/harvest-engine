@@ -35,15 +35,15 @@ namespace he
         for (uint32_t i = 0; i < 6; ++i)
         {
             // Max bits this encoding can represent.
-            uint32_t max_bits = 6 + (i * 5) + static_cast<uint32_t>(!i);
+            uint32_t maxBits = 6 + (i * 5) + static_cast<uint32_t>(!i);
 
-            if (ucc < (1u << max_bits))
+            if (ucc < (1u << maxBits))
             {
                 // Remaining bits not encoded in the first byte, store 6 bits each
-                uint32_t remain_bits = i * 6;
+                uint32_t remainingBits = i * 6;
 
                 // Store bytes
-                *dst++ = static_cast<char>((0xFE << (max_bits - remain_bits)) | (ucc >> remain_bits));
+                *dst++ = static_cast<char>((0xFE << (maxBits - remainingBits)) | (ucc >> remainingBits));
                 for (uint32_t j = i - 1; j != static_cast<uint32_t>(-1); --j)
                 {
                     *dst++ = static_cast<char>(((ucc >> (j * 6)) & 0x3F) | 0x80);

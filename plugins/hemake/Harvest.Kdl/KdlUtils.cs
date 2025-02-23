@@ -16,15 +16,12 @@ internal static class KdlUtils
 
     public static KdlValue ParseBool(string input, string? type)
     {
-        switch (input)
+        return input switch
         {
-            case "#true":
-                return new KdlBool(true, type);
-            case "#false":
-                return new KdlBool(false, type);
-            default:
-                throw new KdlException($"A boolean literal value must be `#true` or `#false`", null);
-        }
+            "#true" => new KdlBool(true, type),
+            "#false" => new KdlBool(false, type),
+            _ => throw new KdlException($"A boolean literal value must be `#true` or `#false`", null),
+        };
     }
 
     public static KdlNumber<float> ParseFloat32(string input, float sign, string? type)
@@ -196,6 +193,8 @@ internal static class KdlUtils
             case '"':
             case '#':
                 return false;
+            default:
+                break;
         }
 
         return IsUnicodeScalarValue(ucc)
@@ -221,7 +220,6 @@ internal static class KdlUtils
         switch (ucc)
         {
             case 0x0009: // Character Tabulation
-            case 0x000b: // Line Tabulation
             case 0x0020: // Space
             case 0x00a0: // No-Break Space
             case 0x1680: // Ogham Space Mark
@@ -255,6 +253,7 @@ internal static class KdlUtils
             case 0x000d: // Carriage Return
             case 0x000a: // Line Feed
             case 0x0085: // Next Line
+            case 0x000b: // Vertical tab
             case 0x000c: // Form Feed
             case 0x2028: // Line Separator
             case 0x2029: // Paragaph Separator

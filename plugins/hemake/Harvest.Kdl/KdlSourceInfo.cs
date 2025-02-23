@@ -4,11 +4,11 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace Harvest.Kdl;
 
-public class KdlSourceInfo(string fileName, uint line, uint column)
+public class KdlSourceInfo(string fileName, int line, int column)
 {
     public string FileName => fileName;
-    public uint Line => line;
-    public uint Column => column;
+    public int Line => line;
+    public int Column => column;
 
     public KdlSourceInfo() : this("", 0, 0) { }
 

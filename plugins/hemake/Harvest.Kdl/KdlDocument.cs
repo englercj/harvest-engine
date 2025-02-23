@@ -18,22 +18,7 @@ public class KdlDocument : IKdlObject
     public static KdlDocument FromFile(string filePath)
     {
         KdlDocumentReadHandler handler = new();
-        KdlReader reader = new();
-        reader.ReadFile(filePath, handler);
-        return handler.Document;
-    }
-
-    /// <summary>
-    /// Creates a new <see cref="KdlDocument"/> from a stream of UTF8 bytes.
-    /// </summary>
-    /// <param name="filePath">The path name for this file. Only used for source info, the file is not touched and therefore doesn't need to exist on disk.</param>
-    /// <param name="stream">The UTF8 byte stream to read data from.</param>
-    /// <returns>The parsed document.</returns>
-    public static KdlDocument FromStream(string filePath, Stream stream)
-    {
-        KdlDocumentReadHandler handler = new();
-        KdlReader reader = new();
-        reader.ReadStream(filePath, stream, handler);
+        KdlReader.ReadFile(filePath, handler);
         return handler.Document;
     }
 
@@ -46,8 +31,7 @@ public class KdlDocument : IKdlObject
     public static KdlDocument FromString(string filePath, string str)
     {
         KdlDocumentReadHandler handler = new();
-        KdlReader reader = new();
-        reader.ReadString(filePath, str, handler);
+        KdlReader.ReadString(filePath, str, handler);
         return handler.Document;
     }
 
@@ -90,7 +74,7 @@ public class KdlDocument : IKdlObject
 
     public override int GetHashCode()
     {
-        HashCode hash = new HashCode();
+        HashCode hash = new();
 
         foreach (KdlNode node in Nodes)
         {

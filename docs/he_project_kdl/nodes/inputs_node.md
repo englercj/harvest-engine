@@ -21,6 +21,7 @@ None.
 
 ## Scopes
 
+- [`build_event`](build_event_node.md)
 - [`build_rule`](build_rule_node.md)
 
 ## Example

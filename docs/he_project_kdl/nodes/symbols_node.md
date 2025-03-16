@@ -11,7 +11,7 @@ Configure the toolset's symbol table generation behavior.
 
 ## Properties
 
-- `embed` (boolean) - Optional. When true symbols are embedded into the executable. The default value is `#false`, which will write symbols to a separate file.
+- `embed` (boolean) - Optional. When `#true` symbols are embedded into the executable. Default: `#false`, which will write symbols to a separate file.
 
 ## Children
 

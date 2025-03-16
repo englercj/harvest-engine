@@ -17,9 +17,8 @@ None.
 ## Children
 
 - `file-glob` - Required. A glob pattern for the files to include in the module. See [paths](../paths.md) for details.
-    * File globs may specify an optional `action` property, detailed below.
-    * Files with the `build` action can also specify an optional `rule` property, detailed below.
-    * Files with the `build` action can also specify an optional `clr` property, detailed below.
+    * File globs may also specify a string property: `action`, which is detailed below.
+    * File globs may also specify a string property: `rule`, which is detailed below.
 
 ### `action` property
 

@@ -7,7 +7,8 @@ Specifies how the compiler treats floating-point expressions, optimizations, and
 1. (string) - Required. The mode for floating point expressions.
     * `default` - Use the toolset's default behavior. This is the default value.
     * `fast` - Allows the compiler to generate code that improves performance at the expense of accuracy.
-    * `strict` - Allows the compiler to generate code that improves accuracy at the expense of performance.
+    * `precise` - The compiler preserves the source expression ordering and rounding properties of floating-point code when it generates and optimizes object code for the target machine.
+    * `strict` - Similar to `precise` but the program may also safely access or modify the floating-point environment at runtime. This is generally more expensive than `precise`.
 
 ## Properties
 
@@ -25,5 +26,5 @@ None.
 ## Example
 
 ```kdl
-floating_point fast
+floating_point precise
 ```

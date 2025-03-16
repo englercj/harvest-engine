@@ -55,10 +55,14 @@ public static class VisualStudioUtils
         helper.ForEachConfig((ConfigurationNode configuration, PlatformNode platform) =>
         {
             if (!ValidSystems.Contains(platform.System))
+            {
                 return;
+            }
 
             if (!ArchNames.TryGetValue(platform.Arch, out string? archName))
+            {
                 return;
+            }
 
             action(configuration, platform, archName);
         });
@@ -73,94 +77,143 @@ public static class VisualStudioUtils
     {
         throw new NotImplementedException();
     }
-}
 
-public interface IFileBuildInfo
-{
-    public int Priority { get; }
-
-    public void EmitFiles(XmlWriter writer, List<string> paths);
-    public void EmitFilter(XmlWriter writer);
-    public void EmitExtensionProps(XmlWriter writer);
-    public void EmitExtensionTargets(XmlWriter writer);
-}
-
-public abstract class BaseFileBuildInfo : IFileBuildInfo
-{
-    public abstract int Priority { get; }
-
-    public abstract void EmitFiles(XmlWriter writer, List<string> paths);
-    public abstract void EmitFilter(XmlWriter writer);
-    public abstract void EmitExtensionProps(XmlWriter writer);
-    public abstract void EmitExtensionTargets(XmlWriter writer);
-
-    protected void EmitFilesInternal(
-        XmlWriter writer,
-        ProjectGeneratorHelper helper,
-        string tag,
-        List<string> paths,
-        Action<XmlWriter, string> fileAction,
-        Func<string, ConfigurationNode, PlatformNode, bool> checkFunc)
+    public static bool IsOptimizedBuild(OptimizeNode optimize)
     {
-        if (paths.Count == 0)
-            return;
+        return optimize.OptimizationLevel != EOptimizationLevel.Off && optimize.OptimizationLevel != EOptimizationLevel.Debug;
+    }
 
-        writer.WriteStartElement("ItemGroup");
+    public static bool IsDebugBuild(OptimizeNode optimize, SymbolsNode symbols)
+    {
+        return !IsOptimizedBuild(optimize)
+            && symbols.SymbolsMode != ESymbolsMode.On;
+    }
 
-        foreach (string path in paths)
+    public static bool CanLinkIncrememntal(ModuleNode module, LinkOptionsNode linkOptions, OptimizeNode optimize)
+    {
+        return module.Kind != EModuleKind.LibStatic
+            && linkOptions.IncrementalLink
+            && optimize.LinkTimeOptimizationLevel != ELinkTimeOptimizationLevel.On
+            && !IsOptimizedBuild(optimize);
+    }
+
+    public static string GetConfigName(ConfigurationNode configuration, PlatformNode platform)
+    {
+        return $"{configuration.ConfigName} {platform.PlatformName}";
+    }
+
+    public static string GetConfigName(ConfigurationNode configuration, PlatformNode platform, string archName)
+    {
+        string baseConfigName = GetConfigName(configuration, platform);
+        return $"{baseConfigName}|{archName}";
+    }
+
+    public static string GetConfigCondition(ConfigurationNode configuration, PlatformNode platform, string archName)
+    {
+        string configKeyName = GetConfigName(configuration, platform, archName);
+        return $"'$(Configuration)|$(Platform)'=='{configKeyName}'";
+    }
+
+    public static string GetWarningLevelString(EWarningsLevel level)
+    {
+        return level switch
         {
-            writer.WriteStartElement(tag);
-            writer.WriteAttributeString("Include", path); // TODO: need to use file's relative path to project & translate to use VS tokens
-
-            fileAction(path);
-            helper.ForEachConfig((ConfigurationNode config, PlatformNode platform) =>
-            {
-                if (checkFunc(path, config, platform))
-                {
-                    //writer.WriteStartElement("Configuration");
-                    //writer.WriteAttributeString("Include", $"{config.Name}|{platform.Name}");
-                    //writer.WriteEndElement();
-                }
-            });
-
-            writer.WriteEndElement();
-        }
-
-        writer.WriteEndElement();
+            EWarningsLevel.Default => "Level3",
+            EWarningsLevel.All => "EnableAllWarnings",
+            EWarningsLevel.Extra => "Level4",
+            EWarningsLevel.On => "Level3",
+            EWarningsLevel.Off => "TurnOffAllWarnings",
+            _ => throw new NotImplementedException($"Unsupported warning level: {level}")
+        };
     }
 }
 
-public class ClIncludeBuildInfo(ProjectGeneratorHelper helper) : BaseFileBuildInfo
-{
-    public override int Priority => 1;
+//public interface IFileBuildInfo
+//{
+//    public int Priority { get; }
 
-    private readonly ProjectGeneratorHelper _helper = helper;
+//    public void EmitFiles(XmlWriter writer, List<string> paths);
+//    public void EmitFilter(XmlWriter writer);
+//    public void EmitExtensionProps(XmlWriter writer);
+//    public void EmitExtensionTargets(XmlWriter writer);
+//}
 
-    public override void EmitFiles(XmlWriter writer, List<string> paths)
-    {
-        EmitFilesInternal(writer, _helper, "ClInclude", paths, EmitFileAction, (path, config, platform) => true);
-    }
+//public abstract class BaseFileBuildInfo : IFileBuildInfo
+//{
+//    public abstract int Priority { get; }
 
-    public override void EmitFilter(XmlWriter writer)
-    {
+//    public abstract void EmitFiles(XmlWriter writer, List<string> paths);
+//    public abstract void EmitFilter(XmlWriter writer);
+//    public abstract void EmitExtensionProps(XmlWriter writer);
+//    public abstract void EmitExtensionTargets(XmlWriter writer);
 
-    }
+//    protected void EmitFilesInternal(
+//        XmlWriter writer,
+//        ProjectGeneratorHelper helper,
+//        string tag,
+//        List<string> paths,
+//        Action<XmlWriter, string> fileAction,
+//        Func<string, ConfigurationNode, PlatformNode, bool> checkFunc)
+//    {
+//        if (paths.Count == 0)
+//            return;
 
-    public override void EmitExtensionProps(XmlWriter writer)
-    {
-    }
+//        writer.WriteStartElement("ItemGroup");
 
-    public override void EmitExtensionTargets(XmlWriter writer)
-    {
-    }
+//        foreach (string path in paths)
+//        {
+//            writer.WriteStartElement(tag);
+//            writer.WriteAttributeString("Include", path); // TODO: need to use file's relative path to project & translate to use VS tokens
 
-    private void EmitFileAction(XmlWriter writer, string path)
-    {
-        if (path.IsGenerated)
-        {
-            string path = path.translate(File.dependsOn.relpath);
-            writer.WriteElementString("AutoGen", "true");
-            writer.WriteElementString("DependentUpon", path);
-        }
-    }
-}
+//            fileAction(writer, path);
+//            helper.ForEachConfig((ConfigurationNode config, PlatformNode platform) =>
+//            {
+//                if (checkFunc(path, config, platform))
+//                {
+//                    //writer.WriteStartElement("Configuration");
+//                    //writer.WriteAttributeString("Include", $"{config.Name}|{platform.Name}");
+//                    //writer.WriteEndElement();
+//                }
+//            });
+
+//            writer.WriteEndElement();
+//        }
+
+//        writer.WriteEndElement();
+//    }
+//}
+
+//public class ClIncludeBuildInfo(ProjectGeneratorHelper helper) : BaseFileBuildInfo
+//{
+//    public override int Priority => 1;
+
+//    private readonly ProjectGeneratorHelper _helper = helper;
+
+//    public override void EmitFiles(XmlWriter writer, List<string> paths)
+//    {
+//        EmitFilesInternal(writer, _helper, "ClInclude", paths, EmitFileAction, (path, config, platform) => true);
+//    }
+
+//    public override void EmitFilter(XmlWriter writer)
+//    {
+
+//    }
+
+//    public override void EmitExtensionProps(XmlWriter writer)
+//    {
+//    }
+
+//    public override void EmitExtensionTargets(XmlWriter writer)
+//    {
+//    }
+
+//    private void EmitFileAction(XmlWriter writer, string path)
+//    {
+//        if (path.IsGenerated)
+//        {
+//            string path = path.translate(File.dependsOn.relpath);
+//            writer.WriteElementString("AutoGen", "true");
+//            writer.WriteElementString("DependentUpon", path);
+//        }
+//    }
+//}

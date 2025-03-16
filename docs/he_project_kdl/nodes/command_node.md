@@ -13,7 +13,7 @@ Represents a command to be run for a [`build_rule`](build_rule_node.md) or [`bui
     * `cmd.make_dir` - Emits `IF NOT EXIST {args} (mkdir {args})` on windows and `mkdir -p {args}` elsewhere.
     * `cmd.move` - Emits `move /Y {args}` on windows and `mv -f {args}` elsewhere.
     * `cmd.touch` - Emits `type nul >> {args} && copy /B {args}+,, {args}` on windows and `touch {args}` elsewhere.
-2. (string) - Optional. Additional arguments can be specified for the command, as many as are needed.
+2. (string) - Optional. Additional arguments for the command.
 
 ## Properties
 
@@ -25,12 +25,12 @@ None.
 
 ## Scopes
 
-- [`build_rule`](build_rule_node.md)
 - [`build_event`](build_event_node.md)
+- [`build_rule`](build_rule_node.md)
 
 ## Example
 
 ```kdl
-command echo ${file.path}
+command echo "the file: ${file.path}"
 command cmd.make_dir ${file.path}
 ```

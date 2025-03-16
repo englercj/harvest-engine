@@ -12,7 +12,7 @@ Set the type of runtime library to use.
 
 ## Properties
 
-None.
+- `static` (boolean) - Optional. `#true` to enable static linking of the runtime libraries. Default: `#false`, which will dynamically link runtime libraries.
 
 ## Children
 

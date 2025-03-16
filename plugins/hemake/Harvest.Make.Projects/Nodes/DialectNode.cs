@@ -8,29 +8,25 @@ namespace Harvest.Make.Projects.Nodes;
 public enum ECDialect
 {
     [KdlName("default")] Default,
-    [KdlName("c99")] C99,
     [KdlName("c11")] C11,
     [KdlName("c17")] C17,
+    [KdlName("c23")] C23,
 }
 
 public enum ECppDialect
 {
     [KdlName("default")] Default,
-    [KdlName("c++98")] Cpp98,
-    [KdlName("c++11")] Cpp11,
     [KdlName("c++14")] Cpp14,
     [KdlName("c++17")] Cpp17,
     [KdlName("c++20")] Cpp20,
+    [KdlName("c++23")] Cpp23,
 }
 
 public enum ECSharpDialect
 {
     [KdlName("default")] Default,
-    [KdlName("c#8")] CSharp8,
-    [KdlName("c#9")] CSharp9,
-    [KdlName("c#10")] CSharp10,
-    [KdlName("c#11")] CSharp11,
     [KdlName("c#12")] CSharp12,
+    [KdlName("c#13")] CSharp13,
 }
 
 public class DialectNode(KdlNode node, INode? scope) : NodeBase(node, scope)

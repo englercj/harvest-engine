@@ -17,6 +17,7 @@ None.
 
 - `module-or-library-name` - Required. The name of a module or system library to depend on.
     * Dependencies can optionally specify a `kind` property, detailed below.
+    * Dependencies can optionally specify an `external` property, detailed below.
     * Dependencies can optionally specify a `whole_archive` property, detailed below.
 
 ### `kind` property
@@ -33,6 +34,15 @@ The valid kind values are:
 - `system` - Create a link dependency on a system library. The library must be available in the library search path.
     * HE Make will automatically apply proper naming conventions for the target `system`, so don't specify prefixes (such as `lib`) or suffixes (such as `.a`) to system library dependencies.
     * For XCode frameworks, *do* include the `.framework` extension. For example, `CoreFoundation.framework`.
+
+### `external` property
+
+The `external` property is a boolean value that, when set to true, will treat inherited `include_dirs` nodes as `external=#true`. This is useful when including files from a module with different warning settings that your project.
+
+The valid values are:
+
+- `#false` - Let normal `include_dirs` nodes define if a path is external. This is the default behavior.
+- `#true` - Treat all `include_dirs` inherited through this dependency as external.
 
 ### `whole_archive` property
 

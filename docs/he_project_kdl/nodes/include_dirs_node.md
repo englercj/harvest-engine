@@ -15,8 +15,8 @@ A set of directory paths to search for includes.
 
 ## Children
 
-- `path` - Required. The [path](../paths.md) to a directory to add to the include path.
-    * Paths may also specify an `external` property to override the `include_dirs` node's `external` property.
+- `directory-path` - Required. The [path](../paths.md) to a directory to add to the include path.
+    * Directory paths may also specify a boolean property: `external`, which will override the `include_dirs` node's `external` property. The default is `#false`.
 
 ## Scopes
 

@@ -165,7 +165,7 @@ when toolset=msvc {
 dialect cpp=c++20 c=c11 csharp=c#12
 exceptions off
 external warnings=off angle_brackets=#true
-floating_point fast
+floating_point precise
 warnings extra fatal=#true
 
 when system=!linux { files match { "**.linux.*" action=none } }

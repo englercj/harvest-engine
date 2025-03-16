@@ -23,8 +23,14 @@ A set of options that configure how a module is built.
     * `off` - Disable ATL support. This is the default behavior.
     * `static` - Enable static linking of ATL libraries.
     * `dynamic` - Enable dynamic linking of ATL libraries.
+- `pch_include` (string) - Optional. The name of the precompiled header. This string is the name source files should use to include the header, not the path to file.
+- `pch_source` (string) - Optional. The path to a source file which triggers the compilation of the header.
+- `rtti` (boolean) - Optional. `#true` to enable runtime type information. Default: `#false`.
 - `run_code_analysis` (boolean) - Optional. `#true` to enable running code analysis during build for Visual Studio projects. Default: `#false`.
 - `run_clang_tidy` (boolean) - Optional. `#true` to enable running clang tidy code analysis during build for Visual Studio projects. Default: `#false`.
+- `omit_default_lib` (boolean) - Optional. `#true` to omit the default runtime library name from the generated `.obj` file. Default: `#false`.
+- `omit_frame_pointers` (boolean) - Optional. `#true` to suppress creation of frame pointers on the call stack. Default: `#false`.
+- `openmp` (boolean) - Optional. `#true` to enable OpenMP support. Default: `#false`.
 
 ## Children
 

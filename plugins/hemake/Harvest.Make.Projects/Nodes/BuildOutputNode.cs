@@ -38,7 +38,6 @@ public class BuildOutputNode(KdlNode node, INode? scope) : NodeBase(node, scope)
     public override IReadOnlyList<string> Scopes => NodeScopes;
     public override IReadOnlyList<NodeKdlValue> Arguments => NodeArguments;
     public override IReadOnlyDictionary<string, NodeKdlValue> Properties => NodeProperties;
-    public override Type? ChildNodeType => typeof(BuildOptionsEntryNode);
 
     public string BasePath => GetPathValue(0);
 

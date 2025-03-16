@@ -2,12 +2,19 @@
 
 using Harvest.Kdl;
 using Harvest.Make.Projects.Nodes;
+using static System.Formats.Asn1.AsnWriter;
 
 namespace Harvest.Make.Projects;
 
 public class NodeTraits<T> where T : class, INode
 {
     private static readonly T s_instance = (T)Activator.CreateInstance(typeof(T), new KdlNode(""), null)!;
+
+    public static T CreateInstance(INode? scope = null)
+    {
+        return Activator.CreateInstance(typeof(T), new KdlNode(Name), scope) as T
+            ?? throw new Exception($"Failed to allocate resolved node {Name}.");
+    }
 
     public static string Name => s_instance.Name;
 

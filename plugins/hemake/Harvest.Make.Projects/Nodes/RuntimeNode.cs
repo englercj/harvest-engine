@@ -29,6 +29,7 @@ public class RuntimeNode(KdlNode node, INode? scope) : NodeBase(node, scope)
 
     public static readonly IReadOnlyDictionary<string, NodeKdlValue> NodeProperties = new SortedDictionary<string, NodeKdlValue>()
     {
+        { "static", NodeKdlBool.Optional(false) },
     };
 
     public override string Name => NodeName;
@@ -37,4 +38,5 @@ public class RuntimeNode(KdlNode node, INode? scope) : NodeBase(node, scope)
     public override IReadOnlyDictionary<string, NodeKdlValue> Properties => NodeProperties;
 
     public ERuntime Runtime => GetEnumValue<ERuntime>(0);
+    public bool StaticLink => GetBoolValue("static");
 }

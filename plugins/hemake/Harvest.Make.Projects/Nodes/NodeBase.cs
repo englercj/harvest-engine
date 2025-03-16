@@ -370,10 +370,12 @@ public abstract class NodeBase(KdlNode node, INode? scope) : INode
 
     public void MergeAndResolve(ProjectContext context, INode node)
     {
-        if (!node.GetType().Equals(GetType()))
+        if (!node.GetType().Equals(GetType()) || Node.Name != node.Node.Name)
         {
             throw new Exception("Cannot merge nodes of different types.");
         }
+
+        Node.SourceInfo = node.Node.SourceInfo;
 
         MergeAndResolveProperties(context, node);
         MergeAndResolveArguments(context, node);
@@ -483,7 +485,7 @@ public abstract class NodeBase(KdlNode node, INode? scope) : INode
 
     protected string GetTokenValue(ProjectContext projectContext, string token, string contextName, string propertyName)
     {
-        if (contextName == "configuration")
+        if (contextName == ConfigurationNode.NodeName)
         {
             return propertyName switch
             {
@@ -492,7 +494,7 @@ public abstract class NodeBase(KdlNode node, INode? scope) : INode
             };
         }
 
-        if (contextName == "platform")
+        if (contextName == PlatformNode.NodeName)
         {
             return propertyName switch
             {
@@ -503,47 +505,99 @@ public abstract class NodeBase(KdlNode node, INode? scope) : INode
             };
         }
 
-        INode? nodeContext = FindScopeWithName(contextName);
-        if (nodeContext is not null)
+        if (FindScopeWithName(contextName) is not INode nodeContext)
         {
-            if (propertyName.StartsWith("_arg"))
-            {
-                if (!int.TryParse(propertyName[4..], out int argIndex))
-                {
-                    throw new Exception($"Invalid token '{token}'. Argument index must be an integer.");
-                }
+            throw new Exception($"Invalid token '{token}'. Unknown context: '{contextName}'.");
+        }
 
-                if (nodeContext.Node.Arguments[argIndex].ToString() is string argValue)
-                {
-                    return argValue;
-                }
+        if (propertyName.StartsWith("_arg"))
+        {
+            if (!int.TryParse(propertyName[4..], out int argIndex))
+            {
+                throw new Exception($"Invalid token '{token}'. Argument index must be an integer.");
             }
 
-            if (nodeContext.Node.Properties.TryGetValue(propertyName, out KdlValue? value))
+            if (nodeContext.Node.Arguments[argIndex].ToString() is string argValue)
             {
-                return value switch
-                {
-                    KdlBool v => v.Value ? "true" : "false",
-                    KdlNumber<byte> v => v.Value.ToString(),
-                    KdlNumber<ushort> v => v.Value.ToString(),
-                    KdlNumber<uint> v => v.Value.ToString(),
-                    KdlNumber<ulong> v => v.Value.ToString(),
-                    KdlNumber<sbyte> v => v.Value.ToString(),
-                    KdlNumber<short> v => v.Value.ToString(),
-                    KdlNumber<int> v => v.Value.ToString(),
-                    KdlNumber<long> v => v.Value.ToString(),
-                    KdlNumber<nint> v => v.Value.ToString(),
-                    KdlNumber<nuint> v => v.Value.ToString(),
-                    KdlNumber<float> v => v.Value.ToString(),
-                    KdlNumber<double> v => v.Value.ToString(),
-                    KdlNumber<decimal> v => v.Value.ToString(),
-                    KdlString v => v.Value,
-                    _ => throw new Exception($"Invalid token '{token}'. Unknown property '{propertyName}' on context '{contextName}'."),
-                };
+                return argValue;
+            }
+        }
+        else if (nodeContext is ProjectNode projectNode)
+        {
+            if (propertyName == "name")
+            {
+                return projectNode.ProjectName;
+            }
+            else if (propertyName == "path")
+            {
+                return projectContext.ProjectPath;
+            }
+        }
+        else if (nodeContext is PluginNode pluginNode)
+        {
+            if (propertyName == "name")
+            {
+                return pluginNode.PluginId;
+            }
+            else if (propertyName == "path")
+            {
+                return pluginNode.Node.SourceInfo.FileName;
+            }
+            else if (propertyName == "install_dir")
+            {
+                // TODO: read BuildOutputNode and return the correct path
+            }
+        }
+        else if (nodeContext is ModuleNode moduleNode)
+        {
+            if (propertyName == "name")
+            {
+                return moduleNode.ModuleName;
+            }
+            else if (propertyName == "path")
+            {
+                return moduleNode.Node.SourceInfo.FileName;
+            }
+            else if (propertyName == "build_target")
+            {
+                // TODO: read BuildOutputNode and return the correct path
+            }
+            else if (propertyName == "link_target")
+            {
+                // TODO: read BuildOutputNode and return the correct path
+            }
+            else if (propertyName == "gen_dir")
+            {
+                // TODO: read BuildOutputNode and return the correct path
             }
         }
 
-        throw new Exception($"Invalid token '{token}'. Unknown context: '{contextName}'.");
+        if (nodeContext.Node.Properties.TryGetValue(propertyName, out KdlValue? value))
+        {
+            return value switch
+            {
+                KdlBool v => v.Value ? "true" : "false",
+                KdlNumber<byte> v => v.Value.ToString(),
+                KdlNumber<ushort> v => v.Value.ToString(),
+                KdlNumber<uint> v => v.Value.ToString(),
+                KdlNumber<ulong> v => v.Value.ToString(),
+                KdlNumber<sbyte> v => v.Value.ToString(),
+                KdlNumber<short> v => v.Value.ToString(),
+                KdlNumber<int> v => v.Value.ToString(),
+                KdlNumber<long> v => v.Value.ToString(),
+                KdlNumber<nint> v => v.Value.ToString(),
+                KdlNumber<nuint> v => v.Value.ToString(),
+                KdlNumber<float> v => v.Value.ToString(),
+                KdlNumber<double> v => v.Value.ToString(),
+                KdlNumber<decimal> v => v.Value.ToString(),
+                KdlString v => v.Value,
+                _ => throw new Exception($"Invalid token '{token}'. Property '{propertyName}' has an unknown type on context '{contextName}'."),
+            };
+        }
+        else
+        {
+            throw new Exception($"Invalid token '{token}'. Unknown property '{propertyName}' on context '{contextName}'.");
+        }
     }
 
     protected INode? FindScopeWithName(string name)

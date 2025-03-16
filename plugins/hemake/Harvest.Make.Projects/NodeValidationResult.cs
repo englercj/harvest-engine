@@ -10,6 +10,8 @@ public class NodeValidationResult(bool isValid, object? errorContent = null)
     public static NodeValidationResult Valid { get; } = new(true, null);
     public static NodeValidationResult Error(object? errorContent) => new NodeValidationResult(false, errorContent);
 
+    public override int GetHashCode() => HashCode.Combine(IsValid, ErrorContent);
+
     public override bool Equals(object? other) => Equals(other as NodeValidationResult);
 
     public bool Equals(NodeValidationResult? other)
@@ -30,11 +32,6 @@ public class NodeValidationResult(bool isValid, object? errorContent = null)
         }
 
         return IsValid == other.IsValid && ErrorContent == other.ErrorContent;
-    }
-
-    public override int GetHashCode()
-    {
-        return IsValid.GetHashCode() ^ (ErrorContent is null ? int.MinValue : ErrorContent.GetHashCode());
     }
 
     public static bool operator ==(NodeValidationResult? lhs, NodeValidationResult? rhs)

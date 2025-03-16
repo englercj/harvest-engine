@@ -16,7 +16,8 @@ public class ModuleDependency(DependenciesEntryNode entry, ModuleNode? resolvedM
 {
     public string DependencyName => entry.DependencyName;
     public EDependencyKind Kind => entry.Kind;
-    public bool WholeArchive { get; set; } = entry.WholeArchive;
+    public bool IsExternal { get; set; } = entry.IsExternal;
+    public bool IsWholeArchive { get; set; } = entry.IsWholeArchive;
 
     public ModuleNode? Module => resolvedModule;
 }
@@ -37,7 +38,9 @@ public interface IProjectService
 
     public List<ModuleDependency> GetModuleDependencies(ProjectContext context, ModuleNode module, ENodeDependencyInheritance inheritance);
 
-    public IEnumerable<T> FindNodes<T>(ProjectContext context, INode? scope = null, bool searchDepdencies = true) where T : class, INode;
-    public T GetResolvedNode<T>(ProjectContext context, INode? scope = null) where T : class, INode;
-    public T GetResolvedNode<T>(ProjectContext context, INode? scope, Func<T, bool> filter) where T : class, INode;
+    public List<T> GetNodes<T>(ProjectContext context, INode? scope = null, bool searchDepdencies = true) where T : class, INode;
+    public List<T> GetNodes<T>(ProjectContext context, INode? scope, Func<T, bool> filter, bool searchDepdencies = true) where T : class, INode;
+
+    public T GetMergedNode<T>(ProjectContext context, INode? scope = null, bool searchDepdencies = true) where T : class, INode;
+    public T GetMergedNode<T>(ProjectContext context, INode? scope, Func<T, bool> filter, bool searchDepdencies = true) where T : class, INode;
 }

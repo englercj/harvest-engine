@@ -10,7 +10,7 @@ public enum EOptimizationLevel
     [KdlName("default")] Default,
     [KdlName("debug")] Debug,
     [KdlName("off")] Off,
-    [KdlName("balanced")] Balanced,
+    [KdlName("On")] On,
     [KdlName("size")] Size,
     [KdlName("speed")] Speed,
 }
@@ -49,6 +49,10 @@ public class OptimizeNode(KdlNode node, INode? scope) : NodeBase(node, scope)
     {
         { "lto", NodeKdlEnum<ELinkTimeOptimizationLevel>.Optional(ELinkTimeOptimizationLevel.Default) },
         { "inlining", NodeKdlEnum<EInliningLevel>.Optional(EInliningLevel.Default) },
+        { "function_level_linking", NodeKdlBool.Optional() },
+        { "string_pooling", NodeKdlBool.Optional() },
+        { "intrinsics", NodeKdlBool.Optional() },
+        { "just_my_code", NodeKdlBool.Optional(true) },
     };
 
     public override string Name => NodeName;
@@ -59,4 +63,8 @@ public class OptimizeNode(KdlNode node, INode? scope) : NodeBase(node, scope)
     public EOptimizationLevel OptimizationLevel => GetEnumValue<EOptimizationLevel>(0);
     public ELinkTimeOptimizationLevel LinkTimeOptimizationLevel => GetEnumValue<ELinkTimeOptimizationLevel>("lto");
     public EInliningLevel InliningLevel => GetEnumValue<EInliningLevel>("inlining");
+    public bool? FunctionLevelLinking => TryGetBoolValue("function_level_linking");
+    public bool? StringPooling => TryGetBoolValue("string_pooling");
+    public bool? Intrinsics => TryGetBoolValue("intrinsics");
+    public bool JustMyCode => GetBoolValue("just_my_code");
 }

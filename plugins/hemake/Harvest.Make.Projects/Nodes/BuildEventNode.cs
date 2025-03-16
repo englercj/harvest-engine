@@ -9,9 +9,9 @@ public enum EBuildEvent
 {
     [KdlName("prebuild")] Prebuild,
     [KdlName("build")] Build,
+    [KdlName("postbuild")] Postbuild,
     [KdlName("prelink")] Prelink,
-    [KdlName("link")] Link,
-    [KdlName("preclean")] PreClean,
+    [KdlName("postlink")] Postlink,
     [KdlName("clean")] Clean,
 }
 
@@ -38,9 +38,7 @@ public class BuildEventNode(KdlNode node, INode? scope) : NodeBase(node, scope)
     public override IReadOnlyList<string> Scopes => NodeScopes;
     public override IReadOnlyList<NodeKdlValue> Arguments => NodeArguments;
     public override IReadOnlyDictionary<string, NodeKdlValue> Properties => NodeProperties;
-    public override Type? ChildNodeType => typeof(BuildEventEntryNode);
 
     public EBuildEvent EventName => GetEnumValue<EBuildEvent>(0);
     public string? Message => TryGetStringValue("message");
-    public IEnumerable<BuildEventEntryNode> Entries => Children.Cast<BuildEventEntryNode>();
 }

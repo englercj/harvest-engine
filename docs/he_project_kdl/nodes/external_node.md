@@ -17,7 +17,7 @@ None.
     * `on` - Enables significant warnings from the toolset.
     * `off` - Disable all warnings from the toolset.
 - `fatal` (boolean) - Optional. Whether to treat warnings as errors.
-- `angle_brackets` (boolean) - Optional. When set to true all includes that use angle brackets (`<>`) are considered external. The default is `#false`.
+- `angle_brackets` (boolean) - Optional. When set to true all includes that use angle brackets (`<>`) are considered external. The default is `#true`.
 
 ## Children
 

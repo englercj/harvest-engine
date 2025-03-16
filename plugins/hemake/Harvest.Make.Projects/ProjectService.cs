@@ -47,7 +47,7 @@ public class ProjectService : IProjectService
 
         ProjectContext context = GetProjectContext();
         Options.Clear();
-        foreach (OptionNode optionNode in FindNodes<OptionNode>(context))
+        foreach (OptionNode optionNode in GetNodes<OptionNode>(context))
         {
             Options.Add(new ProjectOption(optionNode, optionNode.OptionType switch
             {
@@ -60,7 +60,7 @@ public class ProjectService : IProjectService
             }));
         }
 
-        IEnumerable<ModuleNode> modules = FindNodes<ModuleNode>(context);
+        IEnumerable<ModuleNode> modules = GetNodes<ModuleNode>(context);
         foreach (ModuleNode module in modules)
         {
             _modules.Add(module.ModuleName, module);
@@ -69,7 +69,15 @@ public class ProjectService : IProjectService
 
     public ProjectContext GetProjectContext(InvocationContext? invocationContext = null, ModuleNode? module = null, ConfigurationNode? configuration = null, PlatformNode? platform = null)
     {
-        ProjectContext context = new();
+        if (Project is null)
+        {
+            throw new Exception("Project not loaded.");
+        }
+
+        ProjectContext context = new()
+        {
+            ProjectPath = ProjectPath
+        };
 
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
         {
@@ -94,10 +102,10 @@ public class ProjectService : IProjectService
                     value = Environment.GetEnvironmentVariable(projectOption.Node.EnvVarName);
                 }
 
-                if (value is null)
-                    continue;
-
-                context.Options.Add(projectOption.Node.OptionName, value);
+                if (value is not null)
+                {
+                    context.Options.Add(projectOption.Node.OptionName, value);
+                }
             }
         }
 
@@ -129,7 +137,7 @@ public class ProjectService : IProjectService
         {
             tagsChanged = false;
 
-            TagsNode tagsNode = GetResolvedNode<TagsNode>(context, module);
+            TagsNode tagsNode = GetMergedNode<TagsNode>(context, module);
             foreach (TagsEntryNode entry in tagsNode.Entries)
             {
                 tagsChanged |= context.Tags.Add(entry.Tag);
@@ -223,7 +231,48 @@ public class ProjectService : IProjectService
         return result;
     }
 
-    public IEnumerable<T> FindNodes<T>(ProjectContext context, INode? scope = null, bool searchDepdencies = true) where T : class, INode
+    public List<T> GetNodes<T>(ProjectContext context, INode? scope = null, bool searchDepdencies = true) where T : class, INode
+    {
+        return GetNodes<T>(context, scope, (v) => true, searchDepdencies);
+    }
+
+    public List<T> GetNodes<T>(ProjectContext context, INode? scope, Func<T, bool> filter, bool searchDepdencies = true) where T : class, INode
+    {
+        List<T> resolvedNodes = [];
+
+        foreach (T node in EnumerateNodes(context, scope, filter, searchDepdencies).Reverse())
+        {
+            T resolved = NodeTraits<T>.CreateInstance(scope);
+            resolved.MergeAndResolve(context, node);
+            resolvedNodes.Add(resolved);
+        }
+
+        return resolvedNodes;
+    }
+
+    public T GetMergedNode<T>(ProjectContext context, INode? scope = null, bool searchDepdencies = true) where T : class, INode
+    {
+        return GetMergedNode<T>(context, scope, (v) => true, searchDepdencies);
+    }
+
+    public T GetMergedNode<T>(ProjectContext context, INode? scope, Func<T, bool> filter, bool searchDepdencies = true) where T : class, INode
+    {
+        T resolved = NodeTraits<T>.CreateInstance(scope);
+
+        foreach (T node in EnumerateNodes(context, scope, filter, searchDepdencies).Reverse())
+        {
+            resolved.MergeAndResolve(context, node);
+        }
+
+        return resolved;
+    }
+
+    private IEnumerable<T> EnumerateNodes<T>(ProjectContext context, INode? scope, bool searchDepdencies) where T : class, INode
+    {
+        return EnumerateNodes<T>(context, scope, (v) => true, searchDepdencies);
+    }
+
+    private IEnumerable<T> EnumerateNodes<T>(ProjectContext context, INode? scope, Func<T, bool> filter, bool searchDepdencies) where T : class, INode
     {
         scope ??= Project;
 
@@ -242,7 +291,7 @@ public class ProjectService : IProjectService
                 INode s = stack.Pop();
                 foreach (INode child in s.Children)
                 {
-                    if (child is T instance)
+                    if (child is T instance && filter(instance))
                     {
                         yield return instance;
                     }
@@ -276,7 +325,7 @@ public class ProjectService : IProjectService
             {
                 if (dep.Module is ModuleNode dependencyModule)
                 {
-                    foreach (T node in FindNodes<T>(context, dependencyModule))
+                    foreach (T node in EnumerateNodes(context, dependencyModule, filter, true))
                     {
                         if (IsWithinPublicNode(node))
                         {
@@ -286,30 +335,6 @@ public class ProjectService : IProjectService
                 }
             }
         }
-    }
-
-    public T GetResolvedNode<T>(ProjectContext context, INode? scope = null) where T : class, INode
-    {
-        return GetResolvedNode<T>(context, scope, (v) => true);
-    }
-
-    public T GetResolvedNode<T>(ProjectContext context, INode? scope, Func<T, bool> filter) where T : class, INode
-    {
-        bool isSet = ReflectionUtils.IsInstanceOfGenericType<T>(typeof(NodeSetBase<>));
-        string name = NodeTraits<T>.Name;
-        KdlNode result = new(name);
-
-        if (Activator.CreateInstance(typeof(T), result, scope) is not T resolved)
-        {
-            throw new Exception($"Failed to allocate resolved node {name}.");
-        }
-
-        foreach (T node in FindNodes<T>(context, scope).Reverse().Where(filter))
-        {
-            resolved.MergeAndResolve(context, node);
-        }
-
-        return resolved;
     }
 
     private KdlDocument LoadFile(string path)
@@ -438,10 +463,9 @@ public class ProjectService : IProjectService
         bool publicOnly)
     {
         List<ModuleNode> modulesToRecurse = [];
-        IEnumerable<DependenciesNode> dependenciesNodes = FindNodes<DependenciesNode>(context, module, false);
 
         // First add all our immediate dependencies to the list
-        foreach (DependenciesNode dependencies in dependenciesNodes)
+        foreach (DependenciesNode dependencies in EnumerateNodes<DependenciesNode>(context, module, false))
         {
             if (publicOnly && !IsWithinPublicNode(dependencies))
             {
@@ -452,7 +476,9 @@ public class ProjectService : IProjectService
             {
                 if (indexMap.TryGetValue(entry, out int index))
                 {
-                    result[index].WholeArchive |= entry.WholeArchive;
+                    ModuleDependency moduleDependency = result[index];
+                    moduleDependency.IsExternal |= entry.IsExternal;
+                    moduleDependency.IsWholeArchive |= entry.IsWholeArchive;
                 }
                 else
                 {

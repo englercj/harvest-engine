@@ -10,6 +10,7 @@ public class InputsNode(KdlNode node, INode? scope) : NodeSetBase<InputsEntryNod
 
     public static readonly IReadOnlyList<string> NodeScopes =
     [
+        BuildEventNode.NodeName,
         BuildRuleNode.NodeName,
     ];
 

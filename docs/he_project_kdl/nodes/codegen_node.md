@@ -17,6 +17,7 @@ Configures the code generation behavior for the compiler.
     * `sse4.2` - Enable SSE4.2 instructions.
     * `simd128` - Enable WASM SIMD 128 isntructions.
     * `armv8.n` - Set minimum CPU requirements to ARMv8.n-A, where `n` is in the range `[0, 8]`.
+    * `armv9.n` - Set minimum CPU requirements to ARMv9.n-A, where `n` is in the range `[0, 4]`.
 
 ## Properties
 

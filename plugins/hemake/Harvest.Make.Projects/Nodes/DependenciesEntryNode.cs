@@ -29,6 +29,7 @@ public class DependenciesEntryNode(KdlNode node, INode? scope) : NodeBase(node, 
     public static readonly IReadOnlyDictionary<string, NodeKdlValue> NodeProperties = new SortedDictionary<string, NodeKdlValue>()
     {
         { "kind", NodeKdlEnum<EDependencyKind>.Optional(EDependencyKind.Default) },
+        { "external", NodeKdlBool.Optional(false) },
         { "whole_archive", NodeKdlBool.Optional(false) },
     };
 
@@ -39,9 +40,10 @@ public class DependenciesEntryNode(KdlNode node, INode? scope) : NodeBase(node, 
 
     public string DependencyName => Node.Name;
     public EDependencyKind Kind => GetEnumValue<EDependencyKind>("kind");
-    public bool WholeArchive => GetBoolValue("whole_archive");
+    public bool IsExternal => GetBoolValue("external");
+    public bool IsWholeArchive => GetBoolValue("whole_archive");
 
-    public override int GetHashCode() => HashCode.Combine(DependencyName, Kind, WholeArchive);
+public override int GetHashCode() => HashCode.Combine(DependencyName, Kind, IsExternal, IsWholeArchive);
 
     public override bool Equals(object? other) => Equals(other as DependenciesEntryNode);
 

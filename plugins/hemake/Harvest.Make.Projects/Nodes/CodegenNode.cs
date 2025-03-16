@@ -27,6 +27,11 @@ public enum ECodegenMode
     [KdlName("armv8.6")] ARMv8_6,
     [KdlName("armv8.7")] ARMv8_7,
     [KdlName("armv8.8")] ARMv8_8,
+    [KdlName("armv9.0")] ARMv9_0,
+    [KdlName("armv9.1")] ARMv9_1,
+    [KdlName("armv9.2")] ARMv9_2,
+    [KdlName("armv9.3")] ARMv9_3,
+    [KdlName("armv9.4")] ARMv9_4,
 }
 
 public class CodegenNode(KdlNode node, INode? scope) : NodeBase(node, scope)

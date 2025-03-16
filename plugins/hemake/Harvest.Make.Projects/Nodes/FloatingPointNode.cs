@@ -9,6 +9,7 @@ public enum EFloatingPointMode
 {
     [KdlName("default")] Default,
     [KdlName("fast")] Fast,
+    [KdlName("precise")] Precise,
     [KdlName("strict")] Strict,
 }
 

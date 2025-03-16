@@ -1,12 +1,11 @@
 // Copyright Chad Engler
 
 using Harvest.Kdl;
-using Harvest.Kdl.Types;
 using Harvest.Make.Projects.Attributes;
 
 namespace Harvest.Make.Projects.Nodes;
 
-public enum EWarningsMode
+public enum EWarningsLevel
 {
     [KdlName("default")] Default,
     [KdlName("all")] All,
@@ -15,7 +14,7 @@ public enum EWarningsMode
     [KdlName("off")] Off,
 }
 
-public class WarningsNode(KdlNode node, INode? scope) : NodeBase(node, scope)
+public class WarningsNode(KdlNode node, INode? scope) : NodeSetBase<WarningsEntryNode>(node, scope)
 {
     public const string NodeName = "warnings";
 
@@ -25,13 +24,9 @@ public class WarningsNode(KdlNode node, INode? scope) : NodeBase(node, scope)
         ProjectNode.NodeName,
     ];
 
-    public static readonly IReadOnlyList<NodeKdlValue> NodeArguments =
-    [
-        NodeKdlEnum<EWarningsMode>.Required(EWarningsMode.Default),
-    ];
-
     public static readonly IReadOnlyDictionary<string, NodeKdlValue> NodeProperties = new SortedDictionary<string, NodeKdlValue>()
     {
+        { "level", NodeKdlEnum<EWarningsLevel>.Required(EWarningsLevel.Default) },
         { "fatal", NodeKdlBool.Optional(false) },
     };
 
@@ -40,6 +35,6 @@ public class WarningsNode(KdlNode node, INode? scope) : NodeBase(node, scope)
     public override IReadOnlyList<NodeKdlValue> Arguments => NodeArguments;
     public override IReadOnlyDictionary<string, NodeKdlValue> Properties => NodeProperties;
 
-    public EWarningsMode Mode => GetEnumValue<EWarningsMode>(0);
-    public bool AreWarningsFatal => GetBoolValue("fatal");
+    public EWarningsLevel WarningsLevel => GetEnumValue<EWarningsLevel>(0);
+    public bool AreAllWarningsFatal => GetBoolValue("fatal");
 }

@@ -38,5 +38,5 @@ public class SymbolsNode(KdlNode node, INode? scope) : NodeBase(node, scope)
     public override IReadOnlyDictionary<string, NodeKdlValue> Properties => NodeProperties;
 
     public ESymbolsMode SymbolsMode => GetEnumValue<ESymbolsMode>(0);
-    public bool IsEmbedd => GetBoolValue("embed");
+    public bool Embed => GetBoolValue("embed");
 }

@@ -17,6 +17,7 @@ public class CommandNode(KdlNode node, INode? scope) : NodeBase(node, scope)
     public static readonly IReadOnlyList<NodeKdlValue> NodeArguments =
     [
         NodeKdlString.Required(),
+        NodeKdlString.Optional(),
     ];
 
     public static readonly IReadOnlyDictionary<string, NodeKdlValue> NodeProperties = new SortedDictionary<string, NodeKdlValue>()
@@ -28,11 +29,12 @@ public class CommandNode(KdlNode node, INode? scope) : NodeBase(node, scope)
     public override IReadOnlyList<NodeKdlValue> Arguments => NodeArguments;
     public override IReadOnlyDictionary<string, NodeKdlValue> Properties => NodeProperties;
 
-    public string CommandName => GetStringValue(0);
+    public string? CommandName => TryGetStringValue(0);
+    public string? CommandArgs => TryGetStringValue(1);
 
-    public string GetCommandText()
+    public string? GetCommandString()
     {
-        string args = string.Join(' ', Node.Arguments[1..]);
+        string? args = CommandArgs;
 
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
         {
@@ -46,7 +48,7 @@ public class CommandNode(KdlNode node, INode? scope) : NodeBase(node, scope)
                 "cmd.make_dir" => $"IF NOT EXIST {args} (mkdir {args})",
                 "cmd.move" => $"move /Y {args}",
                 "cmd.touch" => $"type nul >> {args} && copy /B {args}+,, {args}",
-                _ => string.Join(' ', Node.Arguments),
+                _ => string.IsNullOrEmpty(args) ? CommandName : $"{CommandName} {args}",
             };
         }
         else
@@ -61,7 +63,7 @@ public class CommandNode(KdlNode node, INode? scope) : NodeBase(node, scope)
                 "cmd.make_dir" => $"mkdir -p {args}",
                 "cmd.move" => $"mv -f {args}",
                 "cmd.touch" => $"touch {args}",
-                _ => string.Join(' ', Node.Arguments),
+                _ => string.IsNullOrEmpty(args) ? CommandName : $"{CommandName} {args}",
             };
         }
     }

@@ -5,6 +5,164 @@
 namespace he.schema;
 
 // ------------------------------------------------------------------------------------------------
+// KDL Serialization Attributes
+
+struct KDL
+{
+    // A type of compression to be applied to Base64 fields.
+    enum Compression
+    {
+        // Applies no compression
+        None @0;
+
+        // Applies ZStandard compression
+        Zstd @1;
+    }
+
+    // Specifies a name that can be used as the node identifier for this field in KDL documents.
+    // This is useful to keep backwards compatibility with existing documents after a name change.
+    // When serializing to a KDL document the field's name is used as the node identifier.
+    // If you want to use a specific name while serializing to KDL use `$KDL.Name("")` instead.
+    //
+    // Example:
+    // ```hsc
+    // struct Author
+    // {
+    //     name: String;
+    //     email: String;
+    // }
+    // struct Plugin
+    // {
+    //     authors: Author[] $KDL.Alias("author");
+    // }
+    // ```
+    // A valid `Plugin` KDL document is:
+    // ```kdl
+    // author { name "Name Value 1"; email "Email Value 1"; }
+    // author { name "Name Value 2"; email "Email Value 2"; }
+    // authors { name "Name Value 3"; email "Email Value 3"; }
+    // authors { name "Name Value 4"; email "Email Value 4"; }
+    // ```
+    attribute Alias(field) :String;
+
+    // For fields, this specifies the name to use use as the node identifier in KDL documents.
+    // For enumerators, this specifies the string to use for that value in KDL documents.
+    //
+    // Example:
+    // ```hsc
+    // struct Module
+    // {
+    //     name: String $KDL.Name("n");
+    //     type: String $KDL.Name("t");
+    // }
+    // ```
+    // A valid `Module` KDL document is:
+    // ```kdl
+    // n "module1"
+    // t "type 1"
+    // ```
+    attribute Name(field, enumerator) :String;
+
+    // Specifies the name of a property whose value is used as the node identifier for this field,
+    // or the node identifier for elements of an array/list field, in KDL documents.
+    // Only considered for fields with a struct type, or an array/list field that has a struct
+    // element type.
+    //
+    // By default array/list fields with a struct element type will use "-" as the node identifier
+    // for all elements.
+    //
+    // Example:
+    // ```hsc
+    // struct Module
+    // {
+    //     name: String;
+    //     type: String;
+    // }
+    // struct Plugin
+    // {
+    //     unnamed: Module[];
+    //     named: Module[] $KDL.NameProperty("name");
+    // }
+    // ```
+    // A valid `Plugin` KDL document is:
+    // ```kdl
+    // unnamed {
+    //     - { name "module1"; type "type 1"; }
+    //     - { name "module2"; type "type 2"; }
+    // }
+    // named {
+    //     module1 { type "type 1"; }
+    //     module2 { type "type 2"; }
+    // }
+    // ```
+    attribute NameProperty(field) :String
+
+    // Formats the struct or field as an inline node in KDL documents. A property name may
+    // optionally be specified which will treat that property as the node's value.
+    // Only considered on structs, fields with a struct type, or array/list fields with a struct
+    // element type.
+    //
+    // Example:
+    // ```hsc
+    // struct Module
+    // {
+    //     name: String;
+    //     type: String;
+    // }
+    // struct Author $KDL.Inline("name")
+    // {
+    //     name: String;
+    //     email: String;
+    // }
+    // struct Plugin
+    // {
+    //     author: Author;
+    //     moduleInline: Module $KDL.Inline;
+    //     module: Module;
+    // }
+    // ```
+    // A valid `Plugin` KDL document is:
+    // ```kdl
+    // author "Author Name" email="Author Email"
+    // module_inline name="module_name" type="static"
+    // module {
+    //     name "module_name"
+    //     type "static"
+    // }
+    // ```
+    attribute Inline(struct, field) :String;
+
+    // Formats Blobs, Lists of uint8, and Arrays of uint8 as base64 strings. The compression
+    // method is applied to the data before being encoded into base64. Base64 encoding without
+    // any compression is the default behavior for Blobs, Lists of uint8, and Arrays of uint8.
+    attribute Base64(field) :Compression;
+
+    // Formats integral values using hex representation (`0xabcdef`)
+    // Also will format Blobs, Lists of uint8, and Arrays of uint8 as strings of hex characters.
+    // Base64 encoding without any compression is the default behavior for Blobs, Lists of uint8,
+    // and Arrays of uint8.
+    attribute Hex(field) :void;
+
+    // Formats integral values using octal representation (`0o755`).
+    attribute Octal(field) :void;
+
+    // Formats integral values using binary representation (`0b010101`)
+    attribute Binary(field) :void;
+
+    // Formats floating point values using general representation. This is the default behavior.
+    // The value is the precision to use when serializing, this is optional.
+    attribute General(field) :int32;
+
+    // Formats floating point values using fixed representation (`0.123`).
+    // The value is the precision to use when serializing, this is optional.
+    attribute Fixed(field) :int32;
+
+    // Formats floating point values using fixed representation (`123e-3`).
+    // The value is the precision to use when serializing, this is optional.
+    attribute Exponent(field) :int32;
+}
+
+// ------------------------------------------------------------------------------------------------
 // Toml Serialization Attributes
 
 struct Toml

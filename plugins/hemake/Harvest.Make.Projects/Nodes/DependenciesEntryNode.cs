@@ -38,12 +38,12 @@ public class DependenciesEntryNode(KdlNode node, INode? scope) : NodeBase(node, 
     public override IReadOnlyList<NodeKdlValue> Arguments => NodeArguments;
     public override IReadOnlyDictionary<string, NodeKdlValue> Properties => NodeProperties;
 
-    public string DependencyName => Node.Name;
+    public string DependencyName => Kind == EDependencyKind.File ? ResolvePath(Node.Name) : Node.Name;
     public EDependencyKind Kind => GetEnumValue<EDependencyKind>("kind");
     public bool IsExternal => GetBoolValue("external");
     public bool IsWholeArchive => GetBoolValue("whole_archive");
 
-public override int GetHashCode() => HashCode.Combine(DependencyName, Kind, IsExternal, IsWholeArchive);
+    public override int GetHashCode() => HashCode.Combine(DependencyName, Kind, IsExternal, IsWholeArchive);
 
     public override bool Equals(object? other) => Equals(other as DependenciesEntryNode);
 
@@ -66,6 +66,7 @@ public override int GetHashCode() => HashCode.Combine(DependencyName, Kind, IsEx
 
         return DependencyName == other.DependencyName
             && Kind == other.Kind
-            && WholeArchive == other.WholeArchive;
+            && IsExternal == other.IsExternal
+            && IsWholeArchive == other.IsWholeArchive;
     }
 }

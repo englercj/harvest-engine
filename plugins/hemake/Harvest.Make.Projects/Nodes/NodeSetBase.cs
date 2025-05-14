@@ -40,14 +40,15 @@ public abstract class NodeSetBase<T>(KdlNode node, INode? scope) : NodeBase(node
             {
                 foreach (T entry in set.Entries)
                 {
-                    if (_resolvedEntries.TryGetValue(entry.Node.Name, out T? existing))
+                    string key = GetSetEntryKey(context, entry);
+                    if (_resolvedEntries.TryGetValue(key, out T? existing))
                     {
-                        existing.MergeAndResolve(context, entry);
+                        OnModifyChild(context, entry, existing);
                     }
                     else
                     {
-                        _resolvedEntries.Add(entry.Node.Name, entry);
-                        Children.Add(entry);
+                        _resolvedEntries.Add(key, entry);
+                        OnAddChild(context, entry);
                     }
                 }
                 break;
@@ -56,10 +57,11 @@ public abstract class NodeSetBase<T>(KdlNode node, INode? scope) : NodeBase(node
             {
                 foreach (T entry in set.Entries)
                 {
-                    if (_resolvedEntries.TryGetValue(entry.Node.Name, out T? existing))
+                    string key = GetSetEntryKey(context, entry);
+                    if (_resolvedEntries.TryGetValue(key, out T? existing))
                     {
-                        _resolvedEntries.Remove(entry.Node.Name);
-                        Children.Remove(existing);
+                        _resolvedEntries.Remove(key);
+                        OnRemoveChild(context, existing);
                     }
                 }
                 break;
@@ -68,13 +70,34 @@ public abstract class NodeSetBase<T>(KdlNode node, INode? scope) : NodeBase(node
             {
                 foreach (T entry in set.Entries)
                 {
-                    if (_resolvedEntries.TryGetValue(entry.Node.Name, out T? existing))
+                    string key = GetSetEntryKey(context, entry);
+                    if (_resolvedEntries.TryGetValue(key, out T? existing))
                     {
-                        existing.MergeAndResolve(context, entry);
+                        OnModifyChild(context, entry, existing);
                     }
                 }
                 break;
             }
         }
+    }
+
+    protected virtual string GetSetEntryKey(ProjectContext context, T entry)
+    {
+        return entry.Node.Name;
+    }
+
+    protected virtual void OnAddChild(ProjectContext context, T entry)
+    {
+        Children.Add(entry);
+    }
+
+    protected virtual void OnRemoveChild(ProjectContext context, T entry)
+    {
+        Children.Remove(entry);
+    }
+
+    protected virtual void OnModifyChild(ProjectContext context, T entry, T existing)
+    {
+        existing.MergeAndResolve(context, entry);
     }
 }

@@ -24,7 +24,26 @@ Sets the level of warnings emitted by the toolset.
 ## Children
 
 - `warning-name` - Optional. The name of a specific warning to configure further.
-    * Warnings names may also specify a boolean property: `fatal`, which decides if this warning should be treated as an error. The default is `#false`.
+    * Warnings can optionally specify a single argument, detailed below.
+    * Warnings can optionally specify a `fatal` property, detailed below.
+
+### argument
+
+The argument that a warning may specify is whether or not for it to be enabled or disabled.
+
+The valid values are:
+
+- `enable` - The warning is enabled and will be emitted. This is the default behavior.
+- `disable` - The warning is disabled and will not be emitted. The `fatal` property is ignored when the warning is disabled.
+
+### `fatal` property
+
+The `fatal` property is a boolean value that, when set to true, configures the compiler to treat this warning as an error.
+
+The valid values are:
+
+- `#false` - The warning is not treated as an error. This is the default behavior.
+- `#true` - The warning is treated as an error.
 
 ## Scopes
 
@@ -38,8 +57,8 @@ warnings level=extra fatal=#true
 
 when toolset=msvc {
     warnings {
-        "44668" enable,             // A symbol that was not defined was used with a preprocessor directive.
-        "44062" enable,             // An enumerator has no associated case handler in a switch statement, and there's no default label that can catch it.
+        "44668" enable             // A symbol that was not defined was used with a preprocessor directive.
+        "44062" enable             // An enumerator has no associated case handler in a switch statement, and there's no default label that can catch it.
     }
 }
 when toolset="clang || gcc" {

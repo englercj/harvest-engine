@@ -26,4 +26,21 @@ public class IncludeDirsNode(KdlNode node, INode? scope) : NodeSetBase<IncludeDi
     public override ENodeDependencyInheritance DependencyInheritance => ENodeDependencyInheritance.Include;
 
     public bool IsExternal => GetBoolValue("external");
+
+    protected override string GetSetEntryKey(ProjectContext context, IncludeDirsEntryNode entry)
+    {
+        return $"{entry.Path}|{entry.IsExternal}";
+    }
+
+    protected override void OnAddChild(ProjectContext context, IncludeDirsEntryNode entry)
+    {
+        KdlNode newKdlNode = new(entry.Node.Name);
+        LibDirsEntryNode newEntryNode = new(newKdlNode, this);
+        newEntryNode.MergeAndResolve(context, entry);
+
+        // Store resolved value so it is properly inherited from its parent node.
+        newKdlNode.Properties["external"] = KdlValue.From(entry.IsExternal);
+
+        Children.Add(newEntryNode);
+    }
 }

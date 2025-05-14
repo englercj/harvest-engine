@@ -31,7 +31,7 @@ inputs {
     // Add the schemac executable as as input so if it changes, this rule gets run again.
     // "${file.path}" is always treated as an input, no need to specify it here
     :module he_schemac {
-        "${module.link_target}"
+        "${module.build_target}"
     }
 }
 ```

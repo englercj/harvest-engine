@@ -23,11 +23,11 @@ public class ProjectGeneratorHelper
         _projectService = projectService;
         CliContext = context;
 
-        BaseContext = _projectService.GetProjectContext(context);
-        Project = _projectService.GetResolvedNode<ProjectNode>(BaseContext);
-        BuildOutput = _projectService.GetResolvedNode<BuildOutputNode>(BaseContext);
-        Configurations = _projectService.FindNodes<ConfigurationNode>(BaseContext).ToList();
-        Platforms = _projectService.FindNodes<PlatformNode>(BaseContext).ToList();
+        BaseContext = _projectService.CreateProjectContext(context);
+        Project = _projectService.GetMergedNode<ProjectNode>(BaseContext);
+        BuildOutput = _projectService.GetMergedNode<BuildOutputNode>(BaseContext);
+        Configurations = _projectService.GetNodes<ConfigurationNode>(BaseContext);
+        Platforms = _projectService.GetNodes<PlatformNode>(BaseContext);
 
         if (Configurations.Count == 0)
         {

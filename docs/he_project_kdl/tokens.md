@@ -46,7 +46,7 @@ Below is a reference of the computed properties for each node. Note that not all
     * `name` - The name of the module, equivalent to `_arg0`.
     * `path` - The full path to the file where the module is defined.
     * `build_target` - The full path to the build output file.
-    * `link_target` - The full path to the linker output file.
+    * `link_target` - The full path to the linker output file (if any).
     * `gen_dir` - The full path to the directory where generated files should be placed.
 
 ## Transformers

@@ -15,7 +15,7 @@ namespace Harvest.Make.Projects;
 public class ProjectService : IProjectService
 {
     private readonly Dictionary<string, Type> _nodeTypes = [];
-    private readonly Dictionary<string, KdlDocument> _files = [];
+    private readonly Dictionary<string, KdlDocument> _kdlFiles = [];
     private readonly Dictionary<string, ModuleNode> _modules = [];
 
     public string ProjectPath { get; private set; } = "";
@@ -45,7 +45,7 @@ public class ProjectService : IProjectService
 
         Project = (ProjectNode)CreateAndValidateNode(projectPath, document.Nodes[0], null);
 
-        ProjectContext context = GetProjectContext();
+        ProjectContext context = CreateProjectContext();
         Options.Clear();
         foreach (OptionNode optionNode in GetNodes<OptionNode>(context))
         {
@@ -67,16 +67,18 @@ public class ProjectService : IProjectService
         }
     }
 
-    public ProjectContext GetProjectContext(InvocationContext? invocationContext = null, ModuleNode? module = null, ConfigurationNode? configuration = null, PlatformNode? platform = null)
+    public ProjectContext CreateProjectContext(InvocationContext? invocationContext = null, ModuleNode? module = null, ConfigurationNode? configuration = null, PlatformNode? platform = null)
     {
         if (Project is null)
         {
             throw new Exception("Project not loaded.");
         }
 
-        ProjectContext context = new()
+        ProjectContext context = new(this)
         {
-            ProjectPath = ProjectPath
+            Module = module,
+            Configuration = configuration,
+            Platform = platform,
         };
 
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
@@ -107,24 +109,6 @@ public class ProjectService : IProjectService
                     context.Options.Add(projectOption.Node.OptionName, value);
                 }
             }
-        }
-
-        if (module is not null)
-        {
-            context.Language = module.Language;
-        }
-
-        if (configuration is not null)
-        {
-            context.Configuration = configuration.ConfigName;
-        }
-
-        if (platform is not null)
-        {
-            context.Arch = platform.Arch;
-            context.Platform = platform.PlatformName;
-            context.System = platform.System;
-            context.Toolset = platform.Toolset;
         }
 
         // This is done in a loop because tags may be activated by other tags. That is, it is valid
@@ -344,12 +328,12 @@ public class ProjectService : IProjectService
             throw new ArgumentException($"Path must be absolute: {path}", nameof(path));
         }
 
-        if (_files.TryGetValue(path, out KdlDocument? document))
+        if (_kdlFiles.TryGetValue(path, out KdlDocument? document))
         {
             return document;
         }
 
-        return _files[path] = KdlDocument.FromFile(path);
+        return _kdlFiles[path] = KdlDocument.FromFile(path);
     }
 
     private INode CreateAndValidateNode(string filePath, KdlNode rawNode, INode? scope)
@@ -526,8 +510,8 @@ public class ProjectService : IProjectService
                             }
                             else
                             {
-                                // TODO: log error
                                 // TODO: check to ensure depdencies existing is checked during the validation phase
+                                throw new Exception($"Project invalid. Failed to resolve dependency '{entry.DependencyName}' for module '{module.ModuleName}'");
                             }
                             break;
                         }
@@ -566,8 +550,8 @@ public class ProjectService : IProjectService
                                 }
                                 else
                                 {
-                                    // TODO: log error
                                     // TODO: check to ensure depdencies existing is checked during the validation phase
+                                    throw new Exception($"Project invalid. Failed to resolve dependency '{entry.DependencyName}' for module '{module.ModuleName}'");
                                 }
                             }
 

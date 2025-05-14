@@ -238,7 +238,7 @@ local function _handle_dependson_include(ctx, values)
     end
 end
 
-local function _handle_dependson(ctx, values)
+local function _handle_dependson_link(ctx, values)
     for _, mod_name in ipairs(values) do
         if string.startswith(mod_name, "sys:") then
             if ctx.type == "console_app" or ctx.type == "windowed_app" or ctx.type == "shared" then

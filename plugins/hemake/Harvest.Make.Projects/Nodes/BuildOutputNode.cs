@@ -16,7 +16,7 @@ public class BuildOutputNode(KdlNode node, INode? scope) : NodeBase(node, scope)
 
     public static readonly IReadOnlyList<NodeKdlValue> NodeArguments =
     [
-        NodeKdlPath.Required("build"),
+        NodeKdlPath.Optional(".build"),
     ];
 
     public static readonly IReadOnlyDictionary<string, NodeKdlValue> NodeProperties = new SortedDictionary<string, NodeKdlValue>()
@@ -52,4 +52,34 @@ public class BuildOutputNode(KdlNode node, INode? scope) : NodeBase(node, scope)
     public bool MakeImportLib => GetBoolValue("make_import_lib");
     public bool MakeExeManifest => GetBoolValue("make_exe_manifest");
     public bool MakeMapFile => GetBoolValue("make_map_file");
+
+    public string GetTargetDir(EModuleKind moduleKind)
+    {
+        return moduleKind switch
+        {
+            EModuleKind.AppConsole => BinDir,
+            EModuleKind.AppWindowed => BinDir,
+            EModuleKind.Content => BinDir,
+            EModuleKind.Custom => BinDir,
+            EModuleKind.LibHeader => LibDir,
+            EModuleKind.LibStatic => LibDir,
+            EModuleKind.LibShared => BinDir,
+            _ => LibDir,
+        };
+    }
+
+    public string GetTargetExtension(EModuleKind moduleKind, bool isWindows)
+    {
+        return TargetExtension ?? moduleKind switch
+        {
+            EModuleKind.AppConsole => isWindows ? ".exe" : "",
+            EModuleKind.AppWindowed => isWindows ? ".exe" : "",
+            EModuleKind.Content => "",
+            EModuleKind.Custom => "",
+            EModuleKind.LibHeader => isWindows ? ".lib" : ".a",
+            EModuleKind.LibStatic => isWindows ? ".lib" : ".a",
+            EModuleKind.LibShared => isWindows ? ".dll" : ".so",
+            _ => throw new Exception($"Invalid module kind '{moduleKind}' for target name."),
+        };
+    }
 }

@@ -56,6 +56,6 @@ public class ToolsetNode(KdlNode node, INode? scope) : NodeBase(node, scope)
     public bool FastUpToDateCheck => GetBoolValue("fast_up_to_date_check");
     public bool MultiProcess => GetBoolValue("multiprocess");
     public string? Log => TryGetStringValue("log");
-    public string? Path => TryGetStringValue("path");
+    public string? Path => TryGetPathValue("path");
     public string? Version => TryGetStringValue("version");
 }

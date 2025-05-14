@@ -19,8 +19,8 @@ Define a set of commands to run during a build lifecycle event.
 ## Children
 
 - [`command`](command_n ode.md) - Multiple command nodes will be run in sequence.
-- [`inputs`](inputs_node.md)
-- [`outputs`](outputs_node.md)
+- [`inputs`](inputs_node.md) - Only considered for the `build` event.
+- [`outputs`](outputs_node.md) - Only considered for the `build` event.
 
 ## Scopes
 

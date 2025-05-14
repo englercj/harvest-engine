@@ -64,15 +64,15 @@ public class WhenNode(KdlNode node, INode? scope) : NodeBase(node, scope)
         List<bool> conditions = [];
         conditions.Capacity = 16;
 
-        CheckValueEquals(conditions, Arch, context.Arch);
-        CheckValueEquals(conditions, Configuration, context.Configuration);
+        CheckValueEquals(conditions, Arch, context.Platform?.Arch ?? EPlatformArch.X86_64);
+        CheckValueEquals(conditions, Configuration, context.Configuration?.ConfigName ?? "");
         CheckValueEquals(conditions, Host, context.Host);
-        CheckValueEquals(conditions, Language, context.Language);
+        CheckValueEquals(conditions, Language, context.Module?.Language ?? EModuleLanguage.Cpp);
         CheckValueActive(conditions, Option, context.Options);
-        CheckValueEquals(conditions, Platform, context.Platform);
-        CheckValueEquals(conditions, System, context.System);
+        CheckValueEquals(conditions, Platform, context.Platform?.PlatformName ?? "");
+        CheckValueEquals(conditions, System, context.Platform?.System ?? EPlatformSystem.Windows);
         CheckValueActive(conditions, Tags, context.Tags);
-        CheckValueEquals(conditions, Toolset, context.Toolset);
+        CheckValueEquals(conditions, Toolset, context.Platform?.Toolset ?? EToolset.MSVC);
 
         switch (Mode)
         {
@@ -108,14 +108,14 @@ public class WhenNode(KdlNode node, INode? scope) : NodeBase(node, scope)
         {
             if (KdlEnumUtils.TryParse(v, out T enumValue))
             {
-                return EqualityComparer<T>.Default.Equals(enumValue, value);
+                return Equals(enumValue, value);
             }
             return false;
         });
         conditions.Add(result);
     }
 
-    private static void CheckValueActive(List<bool> conditions, string? expr, SortedSet<string> active)
+    private static void CheckValueActive(List<bool> conditions, string? expr, HashSet<string> active)
     {
         if (string.IsNullOrEmpty(expr))
             return;

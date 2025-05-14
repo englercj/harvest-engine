@@ -15,22 +15,21 @@ public enum EFileAction
     [KdlName("framework")] Framework,
     [KdlName("image")] Image,
     [KdlName("include")] Include,
+    [KdlName("manifest")] Manifest,
     [KdlName("natvis")] Natvis,
     [KdlName("resource")] Resource,
 }
 
-public enum EFileRule
+public enum EFileBuildRule
 {
     [KdlName("default")] Default,
     [KdlName("asm")] Asm,
     [KdlName("c")] C,
     [KdlName("cpp")] Cpp,
     [KdlName("csharp")] CSharp,
-    [KdlName("fx")] Fx,
     [KdlName("objc")] ObjC,
     [KdlName("objcpp")] ObjCpp,
     [KdlName("midl")] Midl,
-    [KdlName("swift")] Swift,
     [KdlName("custom")] Custom,
 }
 
@@ -39,17 +38,17 @@ internal class ExtensionInfo
     public ExtensionInfo(EFileAction action)
     {
         Action = action;
-        Rule = EFileRule.Custom;
+        BuildRule = EFileBuildRule.Default;
     }
 
-    public ExtensionInfo(EFileAction action, EFileRule rule)
+    public ExtensionInfo(EFileBuildRule rule)
     {
-        Action = action;
-        Rule = rule;
+        Action = EFileAction.Build;
+        BuildRule = rule;
     }
 
     public EFileAction Action { get; }
-    public EFileRule Rule { get; }
+    public EFileBuildRule BuildRule { get; }
 }
 
 public class FilesEntryNode(KdlNode node, INode? scope) : NodeBase(node, scope)
@@ -57,22 +56,20 @@ public class FilesEntryNode(KdlNode node, INode? scope) : NodeBase(node, scope)
     private static readonly Dictionary<string, ExtensionInfo> s_fileExtensionInfos = new()
     {
         { ".appxmanifest", new ExtensionInfo(EFileAction.AppxManifest) },
-        { ".asm", new ExtensionInfo(EFileAction.Build, EFileRule.Asm) },
-        { ".s", new ExtensionInfo(EFileAction.Build, EFileRule.Asm) },
-        { ".S", new ExtensionInfo(EFileAction.Build, EFileRule.Asm) },
-        { ".c", new ExtensionInfo(EFileAction.Build, EFileRule.C) },
-        { ".cc", new ExtensionInfo(EFileAction.Build, EFileRule.Cpp) },
-        { ".cpp", new ExtensionInfo(EFileAction.Build, EFileRule.Cpp) },
-        { ".cppm", new ExtensionInfo(EFileAction.Build, EFileRule.Cpp) },
-        { ".cxx", new ExtensionInfo(EFileAction.Build, EFileRule.Cpp) },
-        { ".c++", new ExtensionInfo(EFileAction.Build, EFileRule.Cpp) },
-        { ".ixx", new ExtensionInfo(EFileAction.Build, EFileRule.Cpp) },
-        { ".cs", new ExtensionInfo(EFileAction.Build, EFileRule.CSharp) },
-        { ".hlsl", new ExtensionInfo(EFileAction.Build, EFileRule.Fx) },
-        { ".m", new ExtensionInfo(EFileAction.Build, EFileRule.ObjC) },
-        { ".mm", new ExtensionInfo(EFileAction.Build, EFileRule.ObjCpp) },
-        { ".idl", new ExtensionInfo(EFileAction.Build, EFileRule.Midl) },
-        { ".swift", new ExtensionInfo(EFileAction.Build, EFileRule.Swift) },
+        { ".asm", new ExtensionInfo(EFileBuildRule.Asm) },
+        { ".s", new ExtensionInfo(EFileBuildRule.Asm) },
+        { ".S", new ExtensionInfo(EFileBuildRule.Asm) },
+        { ".c", new ExtensionInfo(EFileBuildRule.C) },
+        { ".cc", new ExtensionInfo(EFileBuildRule.Cpp) },
+        { ".cpp", new ExtensionInfo(EFileBuildRule.Cpp) },
+        { ".cppm", new ExtensionInfo(EFileBuildRule.Cpp) },
+        { ".cxx", new ExtensionInfo(EFileBuildRule.Cpp) },
+        { ".c++", new ExtensionInfo(EFileBuildRule.Cpp) },
+        { ".ixx", new ExtensionInfo(EFileBuildRule.Cpp) },
+        { ".cs", new ExtensionInfo(EFileBuildRule.CSharp) },
+        { ".m", new ExtensionInfo(EFileBuildRule.ObjC) },
+        { ".mm", new ExtensionInfo(EFileBuildRule.ObjCpp) },
+        { ".idl", new ExtensionInfo(EFileBuildRule.Midl) },
         { ".a", new ExtensionInfo(EFileAction.Framework) },
         { ".dylib", new ExtensionInfo(EFileAction.Framework) },
         { ".framework", new ExtensionInfo(EFileAction.Framework) },
@@ -95,6 +92,7 @@ public class FilesEntryNode(KdlNode node, INode? scope) : NodeBase(node, scope)
         { ".hpp", new ExtensionInfo(EFileAction.Include) },
         { ".hxx", new ExtensionInfo(EFileAction.Include) },
         { ".inl", new ExtensionInfo(EFileAction.Include) },
+        { ".manifest", new ExtensionInfo(EFileAction.Manifest) },
         { ".natvis", new ExtensionInfo(EFileAction.Natvis) },
         { ".rc", new ExtensionInfo(EFileAction.Resource) },
         { ".metal", new ExtensionInfo(EFileAction.Resource) },
@@ -118,7 +116,8 @@ public class FilesEntryNode(KdlNode node, INode? scope) : NodeBase(node, scope)
     public static readonly IReadOnlyDictionary<string, NodeKdlValue> NodeProperties = new SortedDictionary<string, NodeKdlValue>()
     {
         { "action", NodeKdlEnum<EFileAction>.Optional(EFileAction.Default) },
-        { "rule", NodeKdlString.Optional("default") },
+        { "build_rule", NodeKdlString.Optional("default") }, // string to support custom build rule names
+        { "build_exclude", NodeKdlBool.Optional(false) },
     };
 
     public override string Name => Node.Name;
@@ -127,10 +126,26 @@ public class FilesEntryNode(KdlNode node, INode? scope) : NodeBase(node, scope)
     public override IReadOnlyDictionary<string, NodeKdlValue> Properties => NodeProperties;
 
     public string FileGlob => Node.Name;
-    public IEnumerable<string> FilePaths => ExpandPath(FileGlob);
+    public IEnumerable<string> FilePaths => ExpandPath(ResolvePath(FileGlob));
     public EFileAction FileAction => GetEnumValue<EFileAction>("action");
-    public EFileRule FileRule => GetEnumValue<EFileRule>("rule");
-    public string RuleName => GetStringValue("rule");
+    public EFileBuildRule FileBuildRule => TryGetEnumValue<EFileBuildRule>("build_rule") ?? EFileBuildRule.Custom;
+    public string BuildRuleName => GetStringValue("build_rule");
+    public bool IsExcludedFromBuild => GetBoolValue("build_exclude");
+
+    private string? _resolvedPath = null;
+    public string ResolvedFilePath => _resolvedPath ?? throw new Exception("File path has not been resolved yet.");
+
+    public EFileAction ResolvedFileAction => FileAction switch
+    {
+        EFileAction.Default => GetDefaultFileAction(ResolvedFilePath),
+        _ => FileAction,
+    };
+
+    public EFileBuildRule ResolvedFileBuildRule => FileBuildRule switch
+    {
+        EFileBuildRule.Default => GetDefaultFileBuildRule(ResolvedFilePath),
+        _ => FileBuildRule,
+    };
 
     public static EFileAction GetDefaultFileAction(string path)
     {
@@ -142,14 +157,14 @@ public class FilesEntryNode(KdlNode node, INode? scope) : NodeBase(node, scope)
         return EFileAction.None;
     }
 
-    public static EFileRule GetDefaultFileRule(string path)
+    public static EFileBuildRule GetDefaultFileBuildRule(string path)
     {
         if (s_fileExtensionInfos.TryGetValue(Path.GetExtension(path), out ExtensionInfo? info))
         {
-            return info.Rule;
+            return info.BuildRule;
         }
 
-        return EFileRule.Custom;
+        return EFileBuildRule.Custom;
     }
 
     public override NodeValidationResult Validate(INode? scope)
@@ -160,11 +175,34 @@ public class FilesEntryNode(KdlNode node, INode? scope) : NodeBase(node, scope)
             return vr;
         }
 
-        if (RuleName is not null && FileAction != EFileAction.Build)
+        if (BuildRuleName is not null && FileAction != EFileAction.Build)
         {
             return NodeValidationResult.Error("Rule can only be specified for files with action 'build'");
         }
 
         return NodeValidationResult.Valid;
+    }
+
+    public override void MergeAndResolve(ProjectContext context, INode node)
+    {
+        base.MergeAndResolve(context, node);
+
+        // After merging `FileGlob` should only be a single file path from the original
+        // expanded glob. We store it off so we know this is the final file path.
+        _resolvedPath = FileGlob;
+
+        if (FileAction == EFileAction.Default)
+        {
+            EFileAction fileAction = GetDefaultFileAction(_resolvedPath);
+            string fileActionName = KdlEnumUtils.GetName(fileAction);
+            Node.Properties["action"] = KdlValue.From(fileActionName);
+        }
+
+        if (FileBuildRule == EFileBuildRule.Default)
+        {
+            EFileBuildRule fileRule = GetDefaultFileBuildRule(_resolvedPath);
+            string fileRuleName = KdlEnumUtils.GetName(fileRule);
+            Node.Properties["build_rule"] = KdlValue.From(fileRuleName);
+        }
     }
 }

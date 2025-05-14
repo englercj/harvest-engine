@@ -16,17 +16,17 @@ public enum ECDialect
 public enum ECppDialect
 {
     [KdlName("default")] Default,
-    [KdlName("c++14")] Cpp14,
-    [KdlName("c++17")] Cpp17,
-    [KdlName("c++20")] Cpp20,
-    [KdlName("c++23")] Cpp23,
+    [KdlName("cpp14")] Cpp14,
+    [KdlName("cpp17")] Cpp17,
+    [KdlName("cpp20")] Cpp20,
+    [KdlName("cpp23")] Cpp23,
 }
 
 public enum ECSharpDialect
 {
     [KdlName("default")] Default,
-    [KdlName("c#12")] CSharp12,
-    [KdlName("c#13")] CSharp13,
+    [KdlName("cs12")] CSharp12,
+    [KdlName("cs13")] CSharp13,
 }
 
 public class DialectNode(KdlNode node, INode? scope) : NodeBase(node, scope)

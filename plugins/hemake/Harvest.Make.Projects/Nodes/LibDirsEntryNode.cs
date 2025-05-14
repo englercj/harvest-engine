@@ -4,13 +4,6 @@ using Harvest.Kdl;
 
 namespace Harvest.Make.Projects.Nodes;
 
-public enum ELibDirIsSystem
-{
-    Inherit,
-    True,
-    False,
-}
-
 public class LibDirsEntryNode(KdlNode node, INode? scope) : NodeBase(node, scope)
 {
     public static readonly IReadOnlyList<string> NodeScopes =
@@ -32,18 +25,24 @@ public class LibDirsEntryNode(KdlNode node, INode? scope) : NodeBase(node, scope
     public override IReadOnlyList<NodeKdlValue> Arguments => NodeArguments;
     public override IReadOnlyDictionary<string, NodeKdlValue> Properties => NodeProperties;
 
-    public string Path => Node.Name;
+    public string Path => ResolvePath(Node.Name);
 
-    public ELibDirIsSystem IsSystem
+    public bool IsSystem
     {
         get
         {
-            bool? isSystemProp = TryGetBoolValue("System");
-            if (isSystemProp is null)
+            bool? isSystemProp = TryGetBoolValue("system");
+            if (isSystemProp is not null)
             {
-                return ELibDirIsSystem.Inherit;
+                return isSystemProp.Value;
             }
-            return isSystemProp.Value ? ELibDirIsSystem.True : ELibDirIsSystem.False;
+
+            if (Scope is LibDirsNode libDirsNode)
+            {
+                return libDirsNode.IsSystem;
+            }
+
+            return false;
         }
     }
 }

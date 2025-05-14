@@ -24,5 +24,5 @@ public class OutputsEntryNode(KdlNode node, INode? scope) : NodeBase(node, scope
     public override IReadOnlyList<NodeKdlValue> Arguments => NodeArguments;
     public override IReadOnlyDictionary<string, NodeKdlValue> Properties => NodeProperties;
 
-    public string FilePath => Node.Name;
+    public string FilePath => ResolvePath(Node.Name);
 }

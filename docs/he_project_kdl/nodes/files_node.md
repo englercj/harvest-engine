@@ -18,7 +18,8 @@ None.
 
 - `file-glob` - Required. A glob pattern for the files to include in the module. See [paths](../paths.md) for details.
     * File globs may also specify a string property: `action`, which is detailed below.
-    * File globs may also specify a string property: `rule`, which is detailed below.
+    * File globs may also specify a string property: `build_rule`, which is detailed below.
+    * File globs may also specify a boolean property: `build_exclude`, which is detailed below.
 
 ### `action` property
 
@@ -32,25 +33,45 @@ The valid action values are:
 - `copy` - Copy the files to the target directory.
 - `framework` - Treat the file as an xcode framework.
 - `image` - Treat the file as an image.
+- `manifest` - Treat the file as a Windows application manifest.
 - `natvis` - Natvis files used for debugging visualizations.
 - `none` - Do nothing with the files.
 - `resource` - Copy or embed the files with project resources.
 
-### `rule` property
+### `build_rule` property
 
-The `rule` property is only relevant when the `action` property is set to `build`. It defines what build rule should be used for the files. By default a rule is chosen automatically based on file extension. Custom rules can be defined using the [`build_rule`](build_rule_node.md). The built-in rules are:
+The `build_rule` property is a string value that defines what build rule should be used for building the files. This property is only relevant when the `action` property is set to `build`.
+
+By default a rule is chosen automatically based on file extension. Custom rules can be defined using the [`build_rule`](build_rule_node.md). The built-in rules are:
 
 - `default` - Select the best rule based on file extension. This is the default behavior.
 - `asm` - Compile and link as Assembly source code files.
 - `c` - Compile and link as C source code files.
 - `cpp` - Compile and link as C++ source code files.
 - `csharp` - Compile and link as C# source code files.
-- `fx` - Compile and link as HLSL source code files.
 - `include` - Treat as include files.
 - `objc` - Compile and link as Objective-C source code files.
 - `objcpp` - Compile and link as Objective-C++ source code files.
 - `midl` - Compile and link as MIDL source code files.
-- `swift` - Compile and link as Swift source code files.
+
+### `build_exclude` property
+
+The `build_exclude` property is a boolean value that informs the build system that this file should be excluded from build operations. This property is only relevant when the `action` property is set to `build`.
+
+This is distinct from the `none` action in that the file is properly configured for building but is excluded for some reason. This is particularly useful if you have certain configurations where files should be excluded from the build, but otherwise should be built normally. An example of this is below.
+
+```kdl
+// This configuration will always have the files available, but exclude them from the build
+// when their proper platform isn't active.
+files {
+    "src/source.cpp",
+    "src/source.win32.cpp", // only for win32 targets
+    "src/source.linux.cpp", // only for linux targets
+}
+
+when system=!linux { files modify { "src/source.linux.cpp" build_exclude=#true } }
+when system=!windows { files modify { "src/source.win32.cpp" build_exclude=#true } }
+```
 
 ## Scopes
 

@@ -1,12 +1,17 @@
 // Copyright Chad Engler
 
 using Harvest.Make.Projects.Nodes;
+using Microsoft.Extensions.Configuration;
+using System.Text;
 using System.Xml;
 
 namespace Harvest.Make.Projects.Generators.vs2022;
 
 public static class VisualStudioUtils
 {
+    private static readonly List<Type> s_fileGroupTypes = [];
+    private static readonly ThreadLocal<StringBuilder> s_stringBuffers = new(() => new(1024));
+
     public static List<EPlatformSystem> ValidSystems { get; } =
     [
         EPlatformSystem.DotNet,
@@ -39,7 +44,6 @@ public static class VisualStudioUtils
         { EModuleLanguage.C, "8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942" },
         { EModuleLanguage.Cpp, "8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942" },
         { EModuleLanguage.CSharp, "FAE04EC0-301F-11D3-BF4B-00C04F79EFBC" },
-        { EModuleLanguage.FSharp, "F2A71F9B-5D33-465A-A702-920D77279786" },
     };
 
     public static Dictionary<EModuleLanguage, string> LanguageProjectExtensions { get; } = new()
@@ -47,7 +51,6 @@ public static class VisualStudioUtils
         { EModuleLanguage.C, ".vcxproj" },
         { EModuleLanguage.Cpp, ".vcxproj" },
         { EModuleLanguage.CSharp, ".csproj" },
-        { EModuleLanguage.FSharp, ".fsproj" },
     };
 
     public static void ForEachConfig(ProjectGeneratorHelper helper, Action<ConfigurationNode, PlatformNode, string> action)
@@ -68,14 +71,106 @@ public static class VisualStudioUtils
         });
     }
 
-    public static bool IsManaged(ModuleNode module)
+    // Returns the path relative to projectFilePath and replaces '/' with '\\'
+    public static string TranslatePath(string projectFilePath, string path)
     {
-        return module.Language == EModuleLanguage.CSharp || module.ClrMode != EModuleClrMode.Off;
+        return Path.GetRelativePath(projectFilePath, path).Replace('/', '\\');
     }
 
-    public static bool IsClrMixed(ModuleNode module)
+    public static void WriteElementString(XmlWriter writer, string elementName, string value, string condition)
     {
+        writer.WriteStartElement(elementName);
+        if (!string.IsNullOrEmpty(condition))
+        {
+            writer.WriteAttributeString("Condition", condition);
+        }
+        writer.WriteString(value);
+        writer.WriteEndElement();
+    }
+
+    public static void WriteElementBool(XmlWriter writer, string elementName, bool value, string condition)
+    {
+        writer.WriteStartElement(elementName);
+        if (!string.IsNullOrEmpty(condition))
+        {
+            writer.WriteAttributeString("Condition", condition);
+        }
+        writer.WriteString(value ? "true" : "false");
+        writer.WriteEndElement();
+    }
+
+    public static string GetArrayElementValue(IEnumerable<string> values, string? additionalName = null, string separator = ";")
+    {
+        if (s_stringBuffers.Value is not StringBuilder stringBuffer)
+        {
+            return string.Empty;
+        }
+
+        stringBuffer.Clear();
+        stringBuffer.AppendJoin(separator, values);
+
+        if (!string.IsNullOrEmpty(additionalName))
+        {
+            stringBuffer.Append($"{separator}{additionalName}");
+        }
+
+        return stringBuffer.ToString();
+    }
+
+    public static void WriteArrayElement(XmlWriter writer, IEnumerable<string> values, string elementName, string? additionalName = null, string separator = ";", string? condition = null)
+    {
+        string value = GetArrayElementValue(values, additionalName, separator);
+        if (!string.IsNullOrEmpty(value))
+        {
+            writer.WriteStartElement(elementName);
+            if (!string.IsNullOrEmpty(condition))
+            {
+                writer.WriteAttributeString("Condition", condition);
+            }
+            writer.WriteString(value);
+            writer.WriteEndElement();
+        }
+    }
+
+    public static void WritePreprocessorDefinitions(XmlWriter writer, IEnumerable<string> defines, bool escapeQuotes, string? condition = null)
+    {
+        IEnumerable<string> defineEntryStrings = defines.Select((entry) => escapeQuotes ? entry.Replace("\"", "\\\"") : entry);
+        string value = GetArrayElementValue(defineEntryStrings, "%(PreprocessorDefinitions)");
+        if (!string.IsNullOrEmpty(value))
+        {
+            writer.WriteStartElement("PreprocessorDefinitions");
+            if (!string.IsNullOrEmpty(condition))
+            {
+                writer.WriteAttributeString("Condition", condition);
+            }
+            writer.WriteString(value);
+            writer.WriteEndElement();
+        }
+    }
+
+    public static void WriteAdditionalIncludeDirs(XmlWriter writer, IEnumerable<string> includeDirs)
+    {
+        WriteArrayElement(writer, includeDirs, "AdditionalIncludeDirectories", "%(AdditionalIncludeDirectories)");
+    }
+
+    public static bool IsManaged(ModuleNode module, BuildOptionsNode buildOptions)
+    {
+        return module.Language == EModuleLanguage.CSharp || buildOptions.ClrMode != EBuildClrMode.Off;
+    }
+
+    public static bool IsClrMixed(ModuleNode module, BuildOptionsNode buildOptions)
+    {
+        bool isMixed = false;
+
+        if (buildOptions.ClrMode != EBuildClrMode.Off)
+        {
+            return isMixed;
+        }
+
+        // TODO: Foreach file in the module and if any file is managed then mixed = true.
         throw new NotImplementedException();
+
+        return isMixed;
     }
 
     public static bool IsOptimizedBuild(OptimizeNode optimize)
@@ -85,8 +180,8 @@ public static class VisualStudioUtils
 
     public static bool IsDebugBuild(OptimizeNode optimize, SymbolsNode symbols)
     {
-        return !IsOptimizedBuild(optimize)
-            && symbols.SymbolsMode != ESymbolsMode.On;
+        return symbols.SymbolsMode == ESymbolsMode.On
+            && !IsOptimizedBuild(optimize);
     }
 
     public static bool CanLinkIncrememntal(ModuleNode module, LinkOptionsNode linkOptions, OptimizeNode optimize)
@@ -126,94 +221,63 @@ public static class VisualStudioUtils
             _ => throw new NotImplementedException($"Unsupported warning level: {level}")
         };
     }
+
+    public static string EnsureLibraryExtension(string path)
+    {
+        string ext = Path.GetExtension(path);
+        if (ext == ".lib" || ext == ".obj")
+        {
+            return path;
+        }
+        return path + ".lib";
+    }
+
+    public static void RegisterFileGroupType<T>() where T : IVisualStudioFileGroup
+    {
+        if (s_fileGroupTypes.Contains(typeof(T)))
+        {
+            throw new InvalidOperationException($"File group type {typeof(T).Name} is already registered.");
+        }
+
+        s_fileGroupTypes.Add(typeof(T));
+    }
+
+    public static List<Type> GetFileGroupTypes()
+    {
+        return s_fileGroupTypes;
+    }
+
+    public static List<IVisualStudioFileGroup> CreateFileGroups(ProjectGeneratorHelper helper, string vsProjectPath)
+    {
+        List<IVisualStudioFileGroup> groups = [];
+
+        foreach (Type type in s_fileGroupTypes)
+        {
+            if (Activator.CreateInstance(type, helper, vsProjectPath) is IVisualStudioFileGroup group)
+            {
+                groups.Add(group);
+            }
+            else
+            {
+                throw new InvalidOperationException($"Failed to create instance of file group type {type.Name}.");
+            }
+        }
+
+        groups.Sort((a, b) =>
+        {
+            if (a.Priority < b.Priority)
+            {
+                return -1;
+            }
+
+            if (a.Priority > b.Priority)
+            {
+                return 1;
+            }
+
+            return 0;
+        });
+
+        return groups;
+    }
 }
-
-//public interface IFileBuildInfo
-//{
-//    public int Priority { get; }
-
-//    public void EmitFiles(XmlWriter writer, List<string> paths);
-//    public void EmitFilter(XmlWriter writer);
-//    public void EmitExtensionProps(XmlWriter writer);
-//    public void EmitExtensionTargets(XmlWriter writer);
-//}
-
-//public abstract class BaseFileBuildInfo : IFileBuildInfo
-//{
-//    public abstract int Priority { get; }
-
-//    public abstract void EmitFiles(XmlWriter writer, List<string> paths);
-//    public abstract void EmitFilter(XmlWriter writer);
-//    public abstract void EmitExtensionProps(XmlWriter writer);
-//    public abstract void EmitExtensionTargets(XmlWriter writer);
-
-//    protected void EmitFilesInternal(
-//        XmlWriter writer,
-//        ProjectGeneratorHelper helper,
-//        string tag,
-//        List<string> paths,
-//        Action<XmlWriter, string> fileAction,
-//        Func<string, ConfigurationNode, PlatformNode, bool> checkFunc)
-//    {
-//        if (paths.Count == 0)
-//            return;
-
-//        writer.WriteStartElement("ItemGroup");
-
-//        foreach (string path in paths)
-//        {
-//            writer.WriteStartElement(tag);
-//            writer.WriteAttributeString("Include", path); // TODO: need to use file's relative path to project & translate to use VS tokens
-
-//            fileAction(writer, path);
-//            helper.ForEachConfig((ConfigurationNode config, PlatformNode platform) =>
-//            {
-//                if (checkFunc(path, config, platform))
-//                {
-//                    //writer.WriteStartElement("Configuration");
-//                    //writer.WriteAttributeString("Include", $"{config.Name}|{platform.Name}");
-//                    //writer.WriteEndElement();
-//                }
-//            });
-
-//            writer.WriteEndElement();
-//        }
-
-//        writer.WriteEndElement();
-//    }
-//}
-
-//public class ClIncludeBuildInfo(ProjectGeneratorHelper helper) : BaseFileBuildInfo
-//{
-//    public override int Priority => 1;
-
-//    private readonly ProjectGeneratorHelper _helper = helper;
-
-//    public override void EmitFiles(XmlWriter writer, List<string> paths)
-//    {
-//        EmitFilesInternal(writer, _helper, "ClInclude", paths, EmitFileAction, (path, config, platform) => true);
-//    }
-
-//    public override void EmitFilter(XmlWriter writer)
-//    {
-
-//    }
-
-//    public override void EmitExtensionProps(XmlWriter writer)
-//    {
-//    }
-
-//    public override void EmitExtensionTargets(XmlWriter writer)
-//    {
-//    }
-
-//    private void EmitFileAction(XmlWriter writer, string path)
-//    {
-//        if (path.IsGenerated)
-//        {
-//            string path = path.translate(File.dependsOn.relpath);
-//            writer.WriteElementString("AutoGen", "true");
-//            writer.WriteElementString("DependentUpon", path);
-//        }
-//    }
-//}

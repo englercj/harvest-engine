@@ -7,7 +7,7 @@ Configure the toolset's symbol table generation behavior.
 1. (string) - Required. The type of symbol table, if any, to generate. Valid values are:
     * `default` - Use the toolset's default behavior. This is the default value.
     * `on` - Enable symbol generation.
-    * `off` - Use the Release runtime libraries.
+    * `off` - Disable symbol generation.
 
 ## Properties
 

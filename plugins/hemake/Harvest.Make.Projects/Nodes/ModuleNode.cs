@@ -1,7 +1,6 @@
 // Copyright Chad Engler
 
 using Harvest.Kdl;
-using Harvest.Kdl.Types;
 using Harvest.Make.Projects.Attributes;
 
 namespace Harvest.Make.Projects.Nodes;
@@ -22,7 +21,6 @@ public enum EModuleLanguage
     [KdlName("c")] C,
     [KdlName("cpp")] Cpp,
     [KdlName("csharp")] CSharp,
-    [KdlName("fsharp")] FSharp,
 }
 
 public class ModuleNode(KdlNode node, INode? scope) : NodeBase(node, scope)
@@ -45,6 +43,7 @@ public class ModuleNode(KdlNode node, INode? scope) : NodeBase(node, scope)
         { "group", NodeKdlString.Optional() },
         { "language", NodeKdlEnum<EModuleLanguage>.Optional(EModuleLanguage.Cpp) },
         { "project_file", NodeKdlString.Optional() },
+        { "entrypoint", NodeKdlString.Optional() },
         { "hemake_extension", NodeKdlBool.Optional(false) },
     };
 
@@ -59,5 +58,11 @@ public class ModuleNode(KdlNode node, INode? scope) : NodeBase(node, scope)
     public string? Group => TryGetStringValue("group");
     public EModuleLanguage Language => GetEnumValue<EModuleLanguage>("language");
     public string? ProjectFile => TryGetStringValue("project_file");
+    public string? EntryPoint => TryGetStringValue("entrypoint");
     public bool IsExtension => GetBoolValue("hemake_extension");
+
+    public bool IsApp => Kind == EModuleKind.AppConsole || Kind == EModuleKind.AppWindowed;
+    public bool IsBinary => IsApp || Kind == EModuleKind.LibShared;
+
+    // TODO: Validate that dependencies are actually reasonable. For example, linking an App doesn't make sense.
 }

@@ -11,6 +11,7 @@ For complex build rules that require parameters or custom logic use HE Make's C#
 ## Properties
 
 - `message` (string) - Optional. The message to display before running the custom build commands.
+- `link_output` (boolean) - Optional. `#false` to disable linking of `.obj` outputs. Default: `#true`.
 
 ## Children
 
@@ -38,14 +39,14 @@ In the properties and children of the `build_rule` node an additional [Token Con
 build_rule my_schema_compile message="Custom compiling schema: ${file.path}" {
     // Run the schemac executable to compile the input file
     :module he_schemac {
-        command "${module.link_target} -t c++ -o ${file.gen_dir} ${file.path}"
+        command "${module.build_target} -t c++ -o ${file.gen_dir} ${file.path}"
     }
 
     // Add the schemac executable as as input so if it changes, this rule gets run again.
     // "${file.path}" is always treated as an input, no need to specify it here
     inputs {
         :module he_schemac {
-            "${module.link_target}"
+            "${module.build_target}"
         }
     }
 

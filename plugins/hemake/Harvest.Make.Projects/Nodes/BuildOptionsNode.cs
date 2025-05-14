@@ -26,6 +26,13 @@ public enum EBuildAtlMode
     [KdlName("dynamic")] Dynamic,
 }
 
+public enum EDpiAwareMode
+{
+    [KdlName("none")] None,
+    [KdlName("high")] HighDpiAware,
+    [KdlName("high_permonitor")] PerMonitorHighDpiAware,
+}
+
 public class BuildOptionsNode(KdlNode node, INode? scope) : NodeSetBase<BuildOptionsEntryNode>(node, scope)
 {
     public const string NodeName = "build_options";
@@ -41,8 +48,9 @@ public class BuildOptionsNode(KdlNode node, INode? scope) : NodeSetBase<BuildOpt
         { "clr", NodeKdlEnum<EBuildClrMode>.Optional(EBuildClrMode.Off) },
         { "mfc", NodeKdlEnum<EBuildMfcMode>.Optional(EBuildMfcMode.Off) },
         { "atl", NodeKdlEnum<EBuildAtlMode>.Optional(EBuildAtlMode.Off) },
+        { "dpiawareness", NodeKdlEnum<EDpiAwareMode>.Optional(EDpiAwareMode.None) },
         { "pch_include", NodeKdlString.Optional() },
-        { "pch_source", NodeKdlString.Optional() },
+        { "pch_source", NodeKdlPath.Optional() },
         { "rtti", NodeKdlBool.Optional(false) },
         { "run_code_analysis", NodeKdlBool.Optional(false) },
         { "run_clang_tidy", NodeKdlBool.Optional(false) },
@@ -59,8 +67,9 @@ public class BuildOptionsNode(KdlNode node, INode? scope) : NodeSetBase<BuildOpt
     public EBuildClrMode ClrMode => GetEnumValue<EBuildClrMode>("clr");
     public EBuildMfcMode MfcMode => GetEnumValue<EBuildMfcMode>("mfc");
     public EBuildAtlMode AtlMode => GetEnumValue<EBuildAtlMode>("atl");
+    public EDpiAwareMode DpiAwarenessMode => GetEnumValue<EDpiAwareMode>("dpiawareness");
     public string? PchInclude => TryGetStringValue("pch_include");
-    public string? PchSource => TryGetStringValue("pch_source");
+    public string? PchSource => TryGetPathValue("pch_source");
     public bool RuntimeTypeInfo => GetBoolValue("rtti");
     public bool RunCodeAnalysis => GetBoolValue("run_code_analysis");
     public bool RunClangTidy => GetBoolValue("run_clang_tidy");

@@ -4,13 +4,6 @@ using Harvest.Kdl;
 
 namespace Harvest.Make.Projects.Nodes;
 
-public enum EIncludeDirIsExternal
-{
-    Inherit,
-    True,
-    False,
-}
-
 public class IncludeDirsEntryNode(KdlNode node, INode? scope) : NodeBase(node, scope)
 {
     public static readonly IReadOnlyList<string> NodeScopes =
@@ -32,18 +25,24 @@ public class IncludeDirsEntryNode(KdlNode node, INode? scope) : NodeBase(node, s
     public override IReadOnlyList<NodeKdlValue> Arguments => NodeArguments;
     public override IReadOnlyDictionary<string, NodeKdlValue> Properties => NodeProperties;
 
-    public string Path => Node.Name;
+    public string Path => ResolvePath(Node.Name);
 
-    public EIncludeDirIsExternal IsExternal
+    public bool IsExternal
     {
         get
         {
             bool? isExternalProp = TryGetBoolValue("external");
-            if (isExternalProp is null)
+            if (isExternalProp is not null)
             {
-                return EIncludeDirIsExternal.Inherit;
+                return isExternalProp.Value;
             }
-            return isExternalProp.Value ? EIncludeDirIsExternal.True : EIncludeDirIsExternal.False;
+
+            if (Scope is IncludeDirsNode includeDirsNode)
+            {
+                return includeDirsNode.IsExternal;
+            }
+
+            return false;
         }
     }
 }

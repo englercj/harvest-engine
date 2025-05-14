@@ -29,10 +29,10 @@ public class CommandNode(KdlNode node, INode? scope) : NodeBase(node, scope)
     public override IReadOnlyList<NodeKdlValue> Arguments => NodeArguments;
     public override IReadOnlyDictionary<string, NodeKdlValue> Properties => NodeProperties;
 
-    public string? CommandName => TryGetStringValue(0);
+    public string CommandName => GetStringValue(0);
     public string? CommandArgs => TryGetStringValue(1);
 
-    public string? GetCommandString()
+    public string GetCommandString()
     {
         string? args = CommandArgs;
 

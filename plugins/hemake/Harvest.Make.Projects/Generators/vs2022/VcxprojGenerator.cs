@@ -10,13 +10,17 @@ namespace Harvest.Make.Projects.Generators.vs2022;
 
 internal class VcxprojGenerator(IProjectService projectService, ProjectGeneratorHelper helper)
 {
+    public const string ProjectExtension = ".vcxproj";
+
     private readonly IProjectService _projectService = projectService;
     private readonly ProjectGeneratorHelper _helper = helper;
     private string _outputPath = "";
+    private List<IVisualStudioFileGroup> _fileGroups = [];
 
-    public void Generate(InvocationContext context, ModuleNode module, Guid id)
+    public void Generate(InvocationContext context, ModuleNode module)
     {
-        _outputPath = Path.Join(_helper.BuildOutput.ProjectDir, $"{module.ModuleName}.vcxproj");
+        _outputPath = Path.Join(_helper.BuildOutput.ProjectDir, $"{module.ModuleName}{ProjectExtension}");
+        CreateFileGroups(context, module);
 
         using FileStream stream = new(_outputPath, FileMode.Create, FileAccess.Write, FileShare.None);
         using XmlWriter writer = XmlWriter.Create(stream, new XmlWriterSettings { Encoding = Encoding.UTF8, Indent = true });
@@ -26,22 +30,28 @@ internal class VcxprojGenerator(IProjectService projectService, ProjectGenerator
         writer.WriteAttributeString("DefaultTargets", "Build");
 
         WriteConfigurations(writer);
-        WriteGlobals(writer, context, module, id);
+        WriteGlobals(writer, context, module);
         WriteImportDefaultProperties(writer);
         WriteConfigurationProperties(writer, context, module);
         WriteImportProperties(writer);
         WriteUserMacros(writer);
         WriteOutputProperties(writer, context, module);
         WriteItemDefinitionGroups(writer, context, module);
-        //m.assemblyReferences,
-        //m.files,
-        //m.projectReferences,
-        writer.WriteStartElement("Import");
-        writer.WriteAttributeString("Project", "$(VCTargetsPath)\\Microsoft.Cpp.targets");
-        //m.importExtensionTargets,
-        //m.ensureNuGetPackageBuildImports,
+        // TODO: managed assembly references (<ItemGroup><Reference Include="..." /></ItemGroup>)
+        WriteFiles(writer, context, module);
+        WriteProjectReferences(writer, context, module);
+        WriteLanguageTargetImports(writer);
+        WriteExtensionTargetImports(writer);
+        // TODO: nuget references for Visual Studio to restore, is this needed?
+        // Right now hemake downloads the nuget packages to .build/ & sets up refs.
 
-        writer.WriteEndElement(); // Project
+        writer.WriteEndElement();
+        writer.WriteEndDocument();
+    }
+
+    private string GetPath(string path)
+    {
+        return VisualStudioUtils.TranslatePath(_outputPath, path);
     }
 
     private void WriteConfigurations(XmlWriter writer)
@@ -61,26 +71,30 @@ internal class VcxprojGenerator(IProjectService projectService, ProjectGenerator
         writer.WriteEndElement();
     }
 
-    private void WriteGlobals(XmlWriter writer, InvocationContext invocationContext, ModuleNode module, Guid id)
+    private void WriteGlobals(XmlWriter writer, InvocationContext invocationContext, ModuleNode module)
     {
         bool isWindows = _helper.Platforms.Where((n) => n.System == EPlatformSystem.Windows).Any();
-        ProjectContext context = _projectService.GetProjectContext(invocationContext, module);
+        ProjectContext context = _projectService.CreateProjectContext(invocationContext, module);
 
-        SystemNode windowsSystemNode = _projectService.GetMergedNode<SystemNode>(context, module, (n) => n.System == EPlatformSystem.Windows);
+        BuildOptionsNode buildOptions = _projectService.GetMergedNode<BuildOptionsNode>(context, module);
         SystemNode dotnetSystemNode = _projectService.GetMergedNode<SystemNode>(context, module, (n) => n.System == EPlatformSystem.DotNet);
         ToolsetNode toolsetNode = _projectService.GetMergedNode<ToolsetNode>(context, module, (n) => n.Toolset == EToolset.MSVC);
+        SystemNode windowsSystemNode = _projectService.GetMergedNode<SystemNode>(context, module, (n) => n.System == EPlatformSystem.Windows);
 
         writer.WriteStartElement("PropertyGroup");
         writer.WriteAttributeString("Label", "Globals");
 
         // TODO: Is this needed?
+        // I think we'd need this if we let users specify an explicit virtual path for files because
+        // that might result in multiple files of the same name in the same virtual dir?
         //writer.WriteElementString("IgnoreWarnCompileDuplicatedFilename", "true");
 
         if (isWindows)
         {
-            bool isManaged = VisualStudioUtils.IsManaged(module);
+            bool isManaged = VisualStudioUtils.IsManaged(module, buildOptions);
+            bool isClrMixed = VisualStudioUtils.IsClrMixed(module, buildOptions);
 
-            if (isManaged || VisualStudioUtils.IsClrMixed(module))
+            if (isManaged || isClrMixed)
             {
                 writer.WriteElementString("TargetFramework", dotnetSystemNode.Version);
             }
@@ -96,7 +110,8 @@ internal class VcxprojGenerator(IProjectService projectService, ProjectGenerator
             writer.WriteElementString("RootNamespace", module.Name);
         }
 
-        writer.WriteElementString("ProjectGuid", $"{{{id}}}");
+
+        writer.WriteElementString("ProjectGuid", ModuleGroupTree.GetModuleGuid(module));
         writer.WriteElementString("ProjectName", module.Name);
 
         switch (toolsetNode.Arch)
@@ -114,10 +129,10 @@ internal class VcxprojGenerator(IProjectService projectService, ProjectGenerator
         writer.WriteElementString("WindowsTargetPlatformVersion", windowsSystemNode.Version);
         writer.WriteElementString("DisableFastUpToDateCheck", toolsetNode.FastUpToDateCheck.ToString());
 
-        writer.WriteEndElement(); // PropertyGroup
+        writer.WriteEndElement();
     }
 
-    private void WriteImportDefaultProperties(XmlWriter writer)
+    private static void WriteImportDefaultProperties(XmlWriter writer)
     {
         writer.WriteStartElement("Import");
         writer.WriteAttributeString("Project", "$(VCTargetsPath)\\Microsoft.Cpp.Default.props");
@@ -128,12 +143,13 @@ internal class VcxprojGenerator(IProjectService projectService, ProjectGenerator
     {
         VisualStudioUtils.ForEachConfig(_helper, (ConfigurationNode configuration, PlatformNode platform, string archName) =>
         {
-            ProjectContext context = _projectService.GetProjectContext(invocationContext, module, configuration, platform);
+            ProjectContext context = _projectService.CreateProjectContext(invocationContext, module, configuration, platform);
             BuildOptionsNode buildOptions = _projectService.GetMergedNode<BuildOptionsNode>(context, module);
             ToolsetNode toolsetNode = _projectService.GetMergedNode<ToolsetNode>(context, module, (n) => n.Toolset == platform.Toolset);
+            string configCondition = VisualStudioUtils.GetConfigCondition(configuration, platform, archName);
 
             writer.WriteStartElement("PropertyGroup");
-            writer.WriteAttributeString("Condition", VisualStudioUtils.GetConfigCondition(configuration, platform, archName));
+            writer.WriteAttributeString("Condition", configCondition);
             writer.WriteAttributeString("Label", "Configuration");
 
             writer.WriteElementString("ConfigurationType", VisualStudioUtils.ModuleKindNames[module.Kind]);
@@ -237,23 +253,11 @@ internal class VcxprojGenerator(IProjectService projectService, ProjectGenerator
             }
             else
             {
-                // TODO: Translate path to use VS tokens.
                 BuildOutputNode buildOutput = _projectService.GetMergedNode<BuildOutputNode>(context, module);
-                string outDir = Path.GetRelativePath(_outputPath, module.Kind switch
-                {
-                    EModuleKind.AppConsole => buildOutput.BinDir,
-                    EModuleKind.AppWindowed => buildOutput.BinDir,
-                    EModuleKind.Content => buildOutput.BinDir,
-                    EModuleKind.Custom => buildOutput.BinDir,
-                    EModuleKind.LibHeader => buildOutput.LibDir,
-                    EModuleKind.LibStatic => buildOutput.LibDir,
-                    EModuleKind.LibShared => buildOutput.LibDir,
-                    _ => buildOutput.LibDir,
-                });
+                string outDir = GetPath(buildOutput.GetTargetDir(module.Kind));
                 writer.WriteElementString("OutDir", $"{outDir}\\");
 
-                // TODO: Translate path to use VS tokens.
-                string objDir = Path.GetRelativePath(_outputPath, buildOutput.ObjDir);
+                string objDir = GetPath(buildOutput.ObjDir);
                 writer.WriteElementString("IntDir", $"{objDir}\\");
             }
 
@@ -267,15 +271,15 @@ internal class VcxprojGenerator(IProjectService projectService, ProjectGenerator
         writer.WriteAttributeString("Project", "$(VCTargetsPath)\\Microsoft.Cpp.props");
         writer.WriteEndElement();
 
-        writer.WriteStartElement("ImportGroup");
-        writer.WriteAttributeString("Label", "ExtensionSettings");
-        writer.WriteEndElement();
+        WriteExtensionSettings(writer);
 
         VisualStudioUtils.ForEachConfig(_helper, (ConfigurationNode configuration, PlatformNode platform, string archName) =>
         {
+            string configCondition = VisualStudioUtils.GetConfigCondition(configuration, platform, archName);
+
             writer.WriteStartElement("ImportGroup");
             writer.WriteAttributeString("Label", "PropertySheets");
-            writer.WriteAttributeString("Condition", VisualStudioUtils.GetConfigCondition(configuration, platform, archName));
+            writer.WriteAttributeString("Condition", configCondition);
 
             writer.WriteStartElement("Import");
             writer.WriteAttributeString("Project", "$(UserRootDir)\\Microsoft.Cpp.$(Platform).user.props");
@@ -287,7 +291,7 @@ internal class VcxprojGenerator(IProjectService projectService, ProjectGenerator
         });
     }
 
-    private void WriteUserMacros(XmlWriter writer)
+    private static void WriteUserMacros(XmlWriter writer)
     {
         writer.WriteStartElement("PropertyGroup");
         writer.WriteAttributeString("Label", "UserMacros");
@@ -298,31 +302,20 @@ internal class VcxprojGenerator(IProjectService projectService, ProjectGenerator
     {
         VisualStudioUtils.ForEachConfig(_helper, (ConfigurationNode configuration, PlatformNode platform, string archName) =>
         {
-            ProjectContext context = _projectService.GetProjectContext(invocationContext, module, configuration, platform);
+            ProjectContext context = _projectService.CreateProjectContext(invocationContext, module, configuration, platform);
             BuildOutputNode buildOutput = _projectService.GetMergedNode<BuildOutputNode>(context, module);
             BuildOptionsNode buildOptions = _projectService.GetMergedNode<BuildOptionsNode>(context, module);
             LinkOptionsNode linkOptions = _projectService.GetMergedNode<LinkOptionsNode>(context, module);
             OptimizeNode optimize = _projectService.GetMergedNode<OptimizeNode>(context, module);
+            string configCondition = VisualStudioUtils.GetConfigCondition(configuration, platform, archName);
 
             writer.WriteStartElement("PropertyGroup");
-            writer.WriteAttributeString("Condition", VisualStudioUtils.GetConfigCondition(configuration, platform, archName));
+            writer.WriteAttributeString("Condition", configCondition);
 
-            // TODO: Translate path to use VS tokens.
-            string outDir = Path.GetRelativePath(_outputPath, module.Kind switch
-            {
-                EModuleKind.AppConsole => buildOutput.BinDir,
-                EModuleKind.AppWindowed => buildOutput.BinDir,
-                EModuleKind.Content => buildOutput.BinDir,
-                EModuleKind.Custom => buildOutput.BinDir,
-                EModuleKind.LibHeader => buildOutput.LibDir,
-                EModuleKind.LibStatic => buildOutput.LibDir,
-                EModuleKind.LibShared => buildOutput.LibDir,
-                _ => buildOutput.LibDir,
-            });
+            string outDir = GetPath(buildOutput.GetTargetDir(module.Kind));
             writer.WriteElementString("OutDir", $"{outDir}\\");
 
-            // TODO: Translate path to use VS tokens.
-            string objDir = Path.GetRelativePath(_outputPath, buildOutput.ObjDir);
+            string objDir = GetPath(buildOutput.ObjDir);
             writer.WriteElementString("IntDir", $"{objDir}\\");
 
             if (module.Kind != EModuleKind.Custom)
@@ -350,23 +343,13 @@ internal class VcxprojGenerator(IProjectService projectService, ProjectGenerator
                     writer.WriteEndElement();
                 }
 
-                IncludeDirsNode externalIncludeDirs = _projectService.GetMergedNode<IncludeDirsNode>(context, module, (node) => node.IsExternal);
-                IEnumerable<IncludeDirsEntryNode> externalIncludeEntries = externalIncludeDirs.Entries.Where((entry) => entry.IsExternal != EIncludeDirIsExternal.False);
-                IEnumerable<string> externalIncludePaths = externalIncludeEntries.Select((entry) => entry.Path);
-                string externalIncludePathsString = string.Join(';', externalIncludePaths);
-                if (!string.IsNullOrEmpty(externalIncludePathsString))
-                {
-                    writer.WriteElementString("ExternalIncludePath", $"{externalIncludePathsString};$(ExternalIncludePath)");
-                }
+                IncludeDirsNode includeDirs = _projectService.GetMergedNode<IncludeDirsNode>(context, module);
+                IEnumerable<string> externalIncludePaths = includeDirs.Entries.Where((entry) => entry.IsExternal).Select((entry) => GetPath(entry.Path));
+                VisualStudioUtils.WriteArrayElement(writer, externalIncludePaths, "ExternalIncludePath", "%(ExternalIncludePath)");
 
-                LibDirsNode systemLibDirs = _projectService.GetMergedNode<LibDirsNode>(context, module, (node) => node.IsSystem);
-                IEnumerable<LibDirsEntryNode> systemLibEntries = systemLibDirs.Entries.Where((entry) => entry.IsSystem != ELibDirIsSystem.False);
-                IEnumerable<string> systemLibPaths = systemLibEntries.Select((entry) => entry.Path);
-                string systemLibPathsString = string.Join(';', systemLibPaths);
-                if (!string.IsNullOrEmpty(systemLibPathsString))
-                {
-                    writer.WriteElementString("LibraryPath", $"{systemLibPathsString};$(LibraryPath)");
-                }
+                LibDirsNode libDirs = _projectService.GetMergedNode<LibDirsNode>(context, module);
+                IEnumerable<string> systemLibPaths = libDirs.Entries.Where((entry) => entry.IsSystem).Select((entry) => GetPath(entry.Path));
+                VisualStudioUtils.WriteArrayElement(writer, systemLibPaths, "LibraryPath", "%(LibraryPath)");
 
                 if (!buildOutput.MakeExeManifest)
                 {
@@ -383,33 +366,39 @@ internal class VcxprojGenerator(IProjectService projectService, ProjectGenerator
 
     private void WriteItemDefinitionGroups(XmlWriter writer, InvocationContext invocationContext, ModuleNode module)
     {
-        StringBuilder stringBuilder = new();
-
         VisualStudioUtils.ForEachConfig(_helper, (ConfigurationNode configuration, PlatformNode platform, string archName) =>
         {
-            ProjectContext context = _projectService.GetProjectContext(invocationContext, module, configuration, platform);
+            ProjectContext context = _projectService.CreateProjectContext(invocationContext, module, configuration, platform);
+            ToolsetNode toolset = _projectService.GetMergedNode<ToolsetNode>(context, module, (n) => n.Toolset == platform.Toolset);
+            string configCondition = VisualStudioUtils.GetConfigCondition(configuration, platform, archName);
 
             writer.WriteStartElement("ItemDefinitionGroup");
-            writer.WriteAttributeString("Condition", VisualStudioUtils.GetConfigCondition(configuration, platform, archName));
+            writer.WriteAttributeString("Condition", configCondition);
 
             if (module.Kind != EModuleKind.Custom)
             {
                 BuildOptionsNode buildOptions = _projectService.GetMergedNode<BuildOptionsNode>(context, module);
+                BuildOutputNode buildOutput = _projectService.GetMergedNode<BuildOutputNode>(context, module);
                 CodegenNode codegen = _projectService.GetMergedNode<CodegenNode>(context, module);
                 DefinesNode defines = _projectService.GetMergedNode<DefinesNode>(context, module);
                 DialectNode dialect = _projectService.GetMergedNode<DialectNode>(context, module);
                 ExceptionsNode exceptions = _projectService.GetMergedNode<ExceptionsNode>(context, module);
                 ExternalNode external = _projectService.GetMergedNode<ExternalNode>(context, module);
+                FilesNode files = _projectService.GetMergedNode<FilesNode>(context, module);
                 FloatingPointNode floatingPoint = _projectService.GetMergedNode<FloatingPointNode>(context, module);
                 IncludeDirsNode includeDirs = _projectService.GetMergedNode<IncludeDirsNode>(context, module);
+                LinkOptionsNode linkOptions = _projectService.GetMergedNode<LinkOptionsNode>(context, module);
                 OptimizeNode optimize = _projectService.GetMergedNode<OptimizeNode>(context, module);
                 RuntimeNode runtime = _projectService.GetMergedNode<RuntimeNode>(context, module);
                 SymbolsNode symbols = _projectService.GetMergedNode<SymbolsNode>(context, module);
-                ToolsetNode toolset = _projectService.GetMergedNode<ToolsetNode>(context, module, (n) => n.Toolset == platform.Toolset);
                 WarningsNode warnings = _projectService.GetMergedNode<WarningsNode>(context, module);
+
+                List<DependenciesNode> dependencies = _projectService.GetNodes<DependenciesNode>(context, module);
+                LibDirsNode libDirs = _projectService.GetMergedNode<LibDirsNode>(context, module);
 
                 bool isOptimizedBuild = VisualStudioUtils.IsOptimizedBuild(optimize);
                 bool isDebugBuild = VisualStudioUtils.IsDebugBuild(optimize, symbols);
+                bool hasAnyResourceFiles = files.Entries.Any((FilesEntryNode entry) => entry.ResolvedFileAction == EFileAction.Resource);
 
                 writer.WriteStartElement("ClCompile");
 
@@ -421,109 +410,47 @@ internal class VcxprojGenerator(IProjectService projectService, ProjectGenerator
                 {
                     writer.WriteElementString("PrecompiledHeader", "Use");
                     writer.WriteElementString("PrecompiledHeaderFile", buildOptions.PchInclude);
-
-                    // TODO: When writing out the configuration for individual files, need to output this for the pchsource:
-                    //writer.WriteStartElement("PrecompiledHeader");
-                    //writer.WriteAttributeString("Condition", VisualStudioUtils.GetConfigCondition(configuration, platform, archName));
-                    //writer.WriteString("Create");
-                    //writer.WriteEndElement();
                 }
 
                 writer.WriteElementString("WarningLevel", VisualStudioUtils.GetWarningLevelString(warnings.WarningsLevel));
-                if (warnings.AreAllWarningsFatal)
-                {
-                    writer.WriteElementString("TreatWarningAsError", "true");
-                }
+                writer.WriteElementBoolIfTrue("TreatWarningAsError", warnings.AreAllWarningsFatal);
 
                 IEnumerable<string> disabledWarnings = warnings.Entries.Where((entry) => !entry.IsEnabled).Select((entry) => entry.WarningName);
-                stringBuilder.Clear();
-                stringBuilder.AppendJoin(';', disabledWarnings);
-                if (stringBuilder.Length != 0)
-                {
-                    writer.WriteElementString("DisableSpecificWarnings", $"{stringBuilder};%(DisableSpecificWarnings)");
-                }
+                VisualStudioUtils.WriteArrayElement(writer, disabledWarnings, "DisableSpecificWarnings", "%(DisableSpecificWarnings)");
 
                 IEnumerable<string> fatalWarnings = warnings.Entries.Where((entry) => entry.IsEnabled && entry.IsFatal).Select((entry) => entry.WarningName);
-                stringBuilder.Clear();
-                stringBuilder.AppendJoin(';', fatalWarnings);
-                if (stringBuilder.Length != 0)
-                {
-                    writer.WriteElementString("TreatSpecificWarningsAsErrors", $"{stringBuilder};%(TreatSpecificWarningsAsErrors)");
-                }
-
-                // TODO: When we get to additional compile options, we need to output this:
-                //IEnumerable<string> enabledWarnings = warnings.Entries.Where((entry) => !entry.IsEnabled).Select((entry) => $"/w{entry.WarningName}");
-                //stringBuilder.Clear();
-                //stringBuilder.AppendJoin(' ', enabledWarnings);
-                //if (stringBuilder.Length != 0)
-                //{
-                //    writer.WriteElementString("ExtraCompilerOptionsOrWhatever", stringBuilder.ToString());
-                //}
+                VisualStudioUtils.WriteArrayElement(writer, fatalWarnings, "TreatSpecificWarningsAsErrors", "%(TreatSpecificWarningsAsErrors)");
 
                 if (isOptimizedBuild && runtime.Runtime == ERuntime.Debug)
                 {
                     writer.WriteElementString("BasicRuntimeChecks", "Default");
                 }
 
-                IEnumerable<string> defineEntryStrings = defines.Entries.Select((entry) => entry.Define.Replace("\"", "\\\""));
-                stringBuilder.Clear();
-                stringBuilder.AppendJoin(';', defineEntryStrings);
+                IEnumerable<string> defineEntryStrings = defines.Entries.Select((entry) => entry.Define);
                 if (exceptions.ExceptionsMode == EExceptionsMode.Off)
                 {
-                    stringBuilder.Append(";_HAS_EXCEPTIONS=0");
+                    defineEntryStrings = defineEntryStrings.Concat(["_HAS_EXCEPTIONS=0"]);
                 }
-                if (stringBuilder.Length != 0)
-                {
-                    writer.WriteElementString("PreprocessorDefinitions", $"{stringBuilder};%(PreprocessorDefinitions)");
-                }
+                VisualStudioUtils.WritePreprocessorDefinitions(writer, defineEntryStrings, false, VisualStudioUtils.GetConfigCondition(configuration, platform, archName));
 
                 // TODO: Support for undefines?
                 //IEnumerable<string> undefineEntryStrings = undefines.Entries.Select((entry) => entry.Define.Replace("\"", "\\\""));
-                //stringBuilder.Clear();
-                //stringBuilder.AppendJoin(';', undefineEntryStrings);
-                //if (stringBuilder.Length != 0)
-                //{
-                //    writer.WriteElementString("UndefinePreprocessorDefinitions", $"{stringBuilder};%(UndefinePreprocessorDefinitions)");
-                //}
+                //WriteArrayElement(writer, undefineEntryStrings, "UndefinePreprocessorDefinitions", "%(UndefinePreprocessorDefinitions)");
 
-                // TODO: Translate paths to use VS tokens.
-                IEnumerable<string> includeDirsEntryStrings = includeDirs.Entries.Select((entry) => entry.Path);
-                stringBuilder.Clear();
-                stringBuilder.AppendJoin(';', includeDirsEntryStrings);
-                if (stringBuilder.Length != 0)
-                {
-                    writer.WriteElementString("AdditionalIncludeDirectories", $"{stringBuilder};%(AdditionalIncludeDirectories)");
-                }
+                IEnumerable<string> includeDirsEntryStrings = includeDirs.Entries.Select((entry) => GetPath(entry.Path));
+                VisualStudioUtils.WriteAdditionalIncludeDirs(writer, includeDirsEntryStrings);
 
                 // TODO: Support for forced includes?
-                // TODO: Translate paths to use VS tokens.
-                //IEnumerable<string> forceIncludesEntryStrings = includeDirs.Entries.Select((entry) => entry.Path);
-                //stringBuilder.Clear();
-                //stringBuilder.AppendJoin(';', forceIncludesEntryStrings);
-                //if (stringBuilder.Length != 0)
-                //{
-                //    writer.WriteElementString("ForcedIncludeFiles", stringBuilder.ToString());
-                //}
+                //IEnumerable<string> forceIncludesEntryStrings = includeDirs.Entries.Select((entry) => GetPath(entry.Path));
+                //WriteArrayElement(writer, forceIncludesEntryStrings, "ForcedIncludeFiles");
 
                 // TODO: Support for using directories (C++/CLI, #using "")?
-                // TODO: Translate paths to use VS tokens.
-                //IEnumerable<string> usingDirsEntryStrings = usingDirs.Entries.Select((entry) => entry.Path);
-                //stringBuilder.Clear();
-                //stringBuilder.AppendJoin(';', usingDirsEntryStrings);
-                //if (stringBuilder.Length != 0)
-                //{
-                //    writer.WriteElementString("AdditionalUsingDirectories", $"{stringBuilder};%(AdditionalUsingDirectories)");
-                //}
+                //IEnumerable<string> usingDirsEntryStrings = usingDirs.Entries.Select((entry) => GetPath(entry.Path));
+                //WriteArrayElement(writer, usingDirsEntryStrings, "AdditionalUsingDirectories", "%(AdditionalUsingDirectories)");
 
                 // TODO: Support for forced usings (C++/CLI, #using "")?
-                // TODO: Translate paths to use VS tokens.
-                //IEnumerable<string> forceUsingsEntryStrings = includeDirs.Entries.Select((entry) => entry.Path);
-                //stringBuilder.Clear();
-                //stringBuilder.AppendJoin(';', forceUsingsEntryStrings);
-                //if (stringBuilder.Length != 0)
-                //{
-                //    writer.WriteElementString("ForcedUsingFiles", stringBuilder.ToString());
-                //}
+                //IEnumerable<string> forceUsingsEntryStrings = includeDirs.Entries.Select((entry) => GetPath(entry.Path));
+                //WriteArrayElement(writer, forceUsingsEntryStrings, "ForcedUsingFiles");
 
                 if (symbols.SymbolsMode == ESymbolsMode.On)
                 {
@@ -620,7 +547,14 @@ internal class VcxprojGenerator(IProjectService projectService, ProjectGenerator
                     });
                 }
 
-                writer.WriteElementBool("RuntimeTypeInfo", buildOptions.RuntimeTypeInfo);
+                if (!buildOptions.RuntimeTypeInfo && buildOptions.ClrMode == EBuildClrMode.Off)
+                {
+                    writer.WriteElementString("RuntimeTypeInfo", "false");
+                }
+                else if (buildOptions.RuntimeTypeInfo)
+                {
+                    writer.WriteElementString("RuntimeTypeInfo", "true");
+                }
 
                 if (floatingPoint.Mode != EFloatingPointMode.Default)
                 {
@@ -698,18 +632,14 @@ internal class VcxprojGenerator(IProjectService projectService, ProjectGenerator
                 }
 
                 IEnumerable<string> buildOptionEntryStrings = buildOptions.Entries.Select((entry) => entry.Option);
-                stringBuilder.Clear();
-                stringBuilder.AppendJoin(' ', buildOptionEntryStrings);
                 if (platform.Toolset == EToolset.Clang)
                 {
-                    // <OpenMPSupport> is ignored when using the clang toolset
-                    stringBuilder.Append(" /openmp");
+                    // <OpenMPSupport> is ignored when using the clang toolset so we need to add it here
+                    buildOptionEntryStrings = buildOptionEntryStrings.Concat(["/openmp"]);
                 }
-
-                if (stringBuilder.Length > 0)
-                {
-                    writer.WriteElementString("AdditionalOptions", $"{stringBuilder} %(AdditionalOptions)");
-                }
+                IEnumerable<string> enabledWarnings = warnings.Entries.Where((entry) => entry.IsEnabled).Select((entry) => $"/w{entry.WarningName}");
+                buildOptionEntryStrings = buildOptionEntryStrings.Concat(enabledWarnings);
+                VisualStudioUtils.WriteArrayElement(writer, buildOptionEntryStrings, "AdditionalOptions", "%(AdditionalOptions)", " ");
 
                 writer.WriteElementString("CompileAs", module.Language switch
                 {
@@ -775,22 +705,13 @@ internal class VcxprojGenerator(IProjectService projectService, ProjectGenerator
                 //}
 
                 // TODO: Support for UseFullPaths?
-                //if (buildOptions.UseFullPaths is not null)
-                //{
-                //    writer.WriteElementBool("UseFullPaths", buildOptions.UseFullPaths.Value);
-                //}
+                //writer.TryWriteElementBool("UseFullPaths", buildOptions.UseFullPaths);
 
                 // TODO: Support for RemoveUnreferencedCodeData?
-                //if (buildOptions.RemoveUnreferencedCodeData is not null)
-                //{
-                //    writer.WriteElementBool("RemoveUnreferencedCodeData", buildOptions.RemoveUnreferencedCodeData.Value);
-                //}
+                //writer.TryWriteElementBool("RemoveUnreferencedCodeData", buildOptions.RemoveUnreferencedCodeData);
 
                 // TODO: Support for CompileAsWinRT?
-                //if (buildOptions.CompileAsWinRT is not null)
-                //{
-                //    writer.WriteElementBool("CompileAsWinRT", buildOptions.CompileAsWinRT.Value);
-                //}
+                //writer.TryWriteElementBool("CompileAsWinRT", buildOptions.CompileAsWinRT);
 
                 if (external.WarningsLevel != EWarningsLevel.Default)
                 {
@@ -826,45 +747,304 @@ internal class VcxprojGenerator(IProjectService projectService, ProjectGenerator
                         writer.WriteElementString("Message", buildEvent.Message);
                     }
 
-                    IEnumerable<string> buildCommandStrings = buildCommands.Select((entry) => entry.GetCommandString()).OfType<string>();
-                    stringBuilder.Clear();
-                    stringBuilder.AppendJoin("\r\n", buildCommandStrings);
-                    writer.WriteElementString("Command", stringBuilder.ToString());
+                    IEnumerable<string> buildCommandStrings = buildCommands.Select((entry) => entry.GetCommandString());
+                    VisualStudioUtils.WriteArrayElement(writer, buildCommandStrings, "Command", null, "\r\n");
 
                     OutputsNode buildEventOutputs = _projectService.GetMergedNode<OutputsNode>(context, buildEvent, false);
-                    IEnumerable<string> buildEventOutputsStrings = buildEventOutputs.Entries.Select((entry) => entry.FilePath);
-                    stringBuilder.Clear();
-                    stringBuilder.AppendJoin(';', buildEventOutputsStrings);
-                    if (stringBuilder.Length != 0)
-                    {
-                        writer.WriteElementString("Outputs", stringBuilder.ToString());
-                    }
+                    IEnumerable<string> buildEventOutputsStrings = buildEventOutputs.Entries.Select((entry) => GetPath(entry.FilePath));
+                    VisualStudioUtils.WriteArrayElement(writer, buildEventOutputsStrings, "Outputs");
 
-                    // TODO: Make paths relative to project file.
                     InputsNode buildEventInputs = _projectService.GetMergedNode<InputsNode>(context, buildEvent, false);
-                    IEnumerable<string> buildEventInputsStrings = buildEventInputs.Entries.Select((entry) => entry.FilePath);
-                    stringBuilder.Clear();
-                    stringBuilder.AppendJoin(';', buildEventInputsStrings);
-                    if (stringBuilder.Length != 0)
-                    {
-                        writer.WriteElementString("Inputs", stringBuilder.ToString());
-                    }
+                    IEnumerable<string> buildEventInputsStrings = buildEventInputs.Entries.Select((entry) => GetPath(entry.FilePath));
+                    VisualStudioUtils.WriteArrayElement(writer, buildEventInputsStrings, "Inputs");
 
                     writer.WriteEndElement();
                 }
 
-                //m.fxCompile,
-                //m.resourceCompile,
-                //m.linker,
-                //m.manifest,
+                // TODO: FX compiler support?
+
+                if (hasAnyResourceFiles)
+                {
+                    writer.WriteStartElement("ResourceCompile");
+                    VisualStudioUtils.WritePreprocessorDefinitions(writer, defineEntryStrings, true, VisualStudioUtils.GetConfigCondition(configuration, platform, archName));
+                    VisualStudioUtils.WriteAdditionalIncludeDirs(writer, includeDirsEntryStrings);
+                    // TODO: Culture support?
+                    writer.WriteEndElement();
+                }
+
+                writer.WriteElementString("SubSystem", module.Kind == EModuleKind.AppConsole ? "Console" : "Windows");
+                // TODO: Difficult to understand what this really controls...
+                //writer.WriteElementBoolIfTrue("FullProgramDatabaseFile", symbols.SymbolsMode == ESymbolsMode.On);
+                if (symbols.SymbolsMode != ESymbolsMode.Default)
+                {
+                    writer.WriteElementString("GenerateDebugInformation", symbols.SymbolsMode switch
+                    {
+                        ESymbolsMode.On => "DebugFull",
+                        ESymbolsMode.Off => "false",
+                        _ => throw new NotImplementedException($"Unsupported Symbol Mode: {symbols.SymbolsMode}"),
+                    });
+                }
+
+                writer.WriteElementBoolIfTrue("EnableCOMDATFolding", isOptimizedBuild);
+                writer.WriteElementBoolIfTrue("OptimizeReferences", isOptimizedBuild);
+
+                if (optimize.LinkTimeOptimizationLevel == ELinkTimeOptimizationLevel.On)
+                {
+                    writer.WriteElementString("LinkTimeCodeGeneration", "UseLinkTimeCodeGeneration");
+                }
+
+                if (module.Kind == EModuleKind.LibStatic)
+                {
+                    writer.WriteStartElement("Lib");
+                }
+
+                if (module.IsBinary)
+                {
+                    IEnumerable<string> linkDeps = dependencies
+                        .SelectMany((entry) => entry.Entries)
+                        .Where((entry) => entry.Kind == EDependencyKind.File || entry.Kind == EDependencyKind.System)
+                        .Select((entry) => VisualStudioUtils.EnsureLibraryExtension(entry.DependencyName));
+                    VisualStudioUtils.WriteArrayElement(writer, linkDeps, "AdditionalDependencies", "%(AdditionalDependencies)");
+                }
+
+                IEnumerable<string> libPaths = libDirs.Entries.Where((entry) => !entry.IsSystem).Select((entry) => GetPath(entry.Path));
+                VisualStudioUtils.WriteArrayElement(writer, libPaths, "AdditionalLibraryDirectories", "%(AdditionalLibraryDirectories)");
+
+                if (module.Kind == EModuleKind.LibStatic)
+                {
+                    writer.WriteElementBoolIfTrue("TreatLibWarningAsErrors", warnings.AreAllWarningsFatal);
+                }
+                else
+                {
+                    writer.WriteElementBoolIfTrue("TreatLinkerWarningAsErrors", warnings.AreAllWarningsFatal);
+                }
+
+                // If we have resource files we need to specify the TargetMachine explicitly.
+                // See: https://learn.microsoft.com/en-us/cpp/build/reference/machine-specify-target-platform?view=msvc-170
+                if (module.Kind == EModuleKind.LibStatic && hasAnyResourceFiles)
+                {
+                    writer.WriteElementString("TargetMachine", platform.Arch switch
+                    {
+                        EPlatformArch.X86 => "MachineX86",
+                        EPlatformArch.X86_64 => "MachineX64",
+                        EPlatformArch.Arm => "MachineARM",
+                        EPlatformArch.Arm64 => "MachineARM64",
+                        _ => throw new NotImplementedException($"Unsupported Target Machine: {platform.Arch}"),
+                    });
+                }
+
+                // TODO: support for individual fatal link errors by adding `/wx:a,b,c` automatically?
+                IEnumerable<string> linkerOptions = linkOptions.Entries.Select((entry) => entry.Option);
+                VisualStudioUtils.WriteArrayElement(writer, linkerOptions, "AdditionalOptions", "%(AdditionalOptions)", " ");
+
+                if (module.Kind == EModuleKind.LibStatic)
+                {
+                    writer.WriteEndElement();
+                }
+
+                if (module.Kind != EModuleKind.LibStatic)
+                {
+                    if (module.Kind == EModuleKind.LibShared)
+                    {
+                        string targetDir = GetPath(buildOutput.LibDir);
+                        string importLib = Path.Join(targetDir, module.Name + ".lib");
+                        writer.WriteElementString("ImportLibrary", importLib);
+                    }
+
+                    writer.TryWriteElementString("EntryPointSymbol", module.EntryPoint);
+                    writer.WriteElementBoolIfTrue("GenerateMapFile", buildOutput.MakeMapFile);
+
+                    // TODO: C++ module definition support (.def)?
+                    //writer.WriteElementString("ModuleDefinitionFile", ...);
+
+                    // TODO: Support for ignoring specific default libraries?
+                    //IEnumerable<string> ignoredDefaultLibs = linkOptions.IgnoredDefaultLibraries.Select((entry) => VisualStudioUtils.EnsureLibraryExtension(entry));
+                    //WriteArrayElement(writer, ignoredDefaultLibs, "IgnoreSpecificDefaultLibraries");
+
+                    // TODO: Support for large address aware?
+                    //writer.WriteElementBoolIfTrue("LargeAddressAware", buildOptions.LargeAddressAware);
+
+                    // TODO: Support for explicit PDB file path?
+                    //if (symbols.SymbolsMode != ESymbolsMode.Off && !symbols.Embed)
+                    //{
+                    //    writer.WriteElementString("ProgramDatabaseFile", GetPath(symbols.Path));
+                    //}
+
+                    writer.WriteStartElement("Manifest");
+                    writer.WriteElementString("EnableDpiAwareness", buildOptions.DpiAwarenessMode switch
+                    {
+                        EDpiAwareMode.None => "false",
+                        EDpiAwareMode.HighDpiAware => "true",
+                        EDpiAwareMode.PerMonitorHighDpiAware => "PerMonitorHighDPIAware",
+                        _ => throw new NotImplementedException($"Unsupported DPI Awareness Mode: {buildOptions.DpiAwarenessMode}"),
+                    });
+                    IEnumerable<string> extraManifestFiles = files.Entries.Where((entry) => entry.ResolvedFileAction == EFileAction.Manifest).Select((entry) => GetPath(entry.ResolvedFilePath));
+                    VisualStudioUtils.WriteArrayElement(writer, extraManifestFiles, "AdditionalManifestFiles", "%(AdditionalManifestFiles)");
+                    writer.WriteEndElement();
+                }
             }
 
-            //m.ruleVars,
-            //m.buildEvents,
-            //m.buildLog,
+            void writeBuildEvent(EBuildEvent evt)
+            {
+                BuildEventNode buildEvent = _projectService.GetMergedNode<BuildEventNode>(context, module, (n) => n.EventName == evt, false);
+                List<CommandNode> buildCommands = _projectService.GetNodes<CommandNode>(context, buildEvent, false);
+                if (buildCommands.Count != 0)
+                {
+                    writer.WriteStartElement(evt switch
+                    {
+                        EBuildEvent.Prebuild => "PreBuildEvent",
+                        //EBuildEvent.Build => "BuildEvent",
+                        EBuildEvent.Postbuild => "PostBuildEvent",
+                        EBuildEvent.Prelink => "PreLinkEvent",
+                        //EBuildEvent.Postlink => "PostLinkEvent",
+                        //EBuildEvent.Clean => "CleanEvent",
+                        _ => throw new NotImplementedException($"Unsupported build event: {evt}"),
+                    });
+
+                    if (!string.IsNullOrEmpty(buildEvent.Message))
+                    {
+                        writer.WriteElementString("Message", buildEvent.Message);
+                    }
+
+                    IEnumerable<string> buildCommandStrings = buildCommands.Select((entry) => entry.GetCommandString());
+                    VisualStudioUtils.WriteArrayElement(writer, buildCommandStrings, "Command", null, "\r\n");
+
+                    writer.WriteEndElement();
+                }
+            }
+            writeBuildEvent(EBuildEvent.Prebuild);
+            writeBuildEvent(EBuildEvent.Prelink);
+            writeBuildEvent(EBuildEvent.Postbuild);
+
+            if (toolset.Path is not null)
+            {
+                writer.WriteStartElement("BuildLog");
+                writer.WriteElementString("Path", toolset.Path);
+                writer.WriteEndElement();
+            }
 
             writer.WriteEndElement();
         });
     }
 
+    private void WriteFiles(XmlWriter writer, InvocationContext invocationContext, ModuleNode module)
+    {
+        foreach (IVisualStudioFileGroup fileGroup in _fileGroups)
+        {
+            fileGroup.WriteFiles(writer);
+        }
+    }
+
+    private void WriteLanguageTargetImports(XmlWriter writer)
+    {
+        writer.WriteStartElement("Import");
+        writer.WriteAttributeString("Project", "$(VCTargetsPath)\\Microsoft.Cpp.targets");
+        writer.WriteEndElement();
+    }
+
+    private void WriteExtensionSettings(XmlWriter writer)
+    {
+        writer.WriteStartElement("ImportGroup");
+        writer.WriteAttributeString("Label", "ExtensionSettings");
+
+        foreach (IVisualStudioFileGroup fileGroup in _fileGroups)
+        {
+            fileGroup.WriteExtensionSettings(writer);
+        }
+
+        writer.WriteEndElement();
+    }
+
+    private void WriteExtensionTargetImports(XmlWriter writer)
+    {
+        writer.WriteStartElement("ImportGroup");
+        writer.WriteAttributeString("Label", "ExtensionTargets");
+
+        foreach (IVisualStudioFileGroup fileGroup in _fileGroups)
+        {
+            fileGroup.WriteExtensionTargets(writer);
+        }
+
+        writer.WriteEndElement();
+    }
+
+    private void WriteProjectReferences(XmlWriter writer, InvocationContext invocationContext, ModuleNode module)
+    {
+        writer.WriteStartElement("ItemGroup");
+
+        VisualStudioUtils.ForEachConfig(_helper, (ConfigurationNode configuration, PlatformNode platform, string archName) =>
+        {
+            ProjectContext context = _projectService.CreateProjectContext(invocationContext, module, configuration, platform);
+            BuildOptionsNode buildOptions = _projectService.GetMergedNode<BuildOptionsNode>(context, module);
+
+            bool isManaged = VisualStudioUtils.IsManaged(module, buildOptions);
+            bool isClrMixed = VisualStudioUtils.IsClrMixed(module, buildOptions);
+            List<DependenciesNode> dependencies = _projectService.GetNodes<DependenciesNode>(context, module, module.IsBinary);
+
+            foreach (DependenciesEntryNode depEntry in dependencies.SelectMany((entry) => entry.Entries))
+            {
+                if (depEntry.Kind != EDependencyKind.Default && depEntry.Kind != EDependencyKind.Link)
+                {
+                    continue;
+                }
+
+                ModuleNode depModule = _projectService.TryGetModule(depEntry.DependencyName)
+                    ?? throw new InvalidOperationException($"No module found with name '{depEntry.DependencyName}', but module '{module.Name}' depends on it.");
+
+                writer.WriteStartElement("ProjectReference");
+                writer.WriteAttributeString("Include", $"{module.Name}{ProjectExtension}");
+
+                writer.WriteElementString("Project", ModuleGroupTree.GetModuleGuid(depModule));
+
+                if (isManaged || (isClrMixed && depModule.Kind != EModuleKind.LibStatic))
+                {
+                    writer.WriteElementString("Private", "true");
+                    writer.WriteElementString("ReferenceOutputAssembly", "true");
+                    writer.WriteElementString("CopyLocalSatelliteAssemblies", "false");
+                    writer.WriteElementString("LinkLibraryDependencies", "true");
+                    writer.WriteElementString("UseLibraryDependencyInputs", "false");
+                }
+
+                writer.WriteEndElement();
+            }
+        });
+
+        writer.WriteEndElement();
+    }
+
+    private void CreateFileGroups(InvocationContext invocationContext, ModuleNode module)
+    {
+        _fileGroups = VisualStudioUtils.CreateFileGroups(_helper, _outputPath);
+
+        VisualStudioUtils.ForEachConfig(_helper, (ConfigurationNode configuration, PlatformNode platform, string archName) =>
+        {
+            ProjectContext context = _projectService.CreateProjectContext(invocationContext, module, configuration, platform);
+            FilesNode files = _projectService.GetMergedNode<FilesNode>(context, module);
+
+            foreach (FilesEntryNode entry in files.Entries)
+            {
+                bool foundGroup = false;
+                foreach (IVisualStudioFileGroup fileGroup in _fileGroups)
+                {
+                    if (fileGroup.CanHandleFile(entry))
+                    {
+                        fileGroup.AddFile(context, entry);
+                        foundGroup = true;
+                        break;
+                    }
+                }
+
+                // This should never happen because the NoneFileGroup can handle any file
+                if (!foundGroup)
+                {
+                    throw new Exception("No file group found for file: " + entry.ResolvedFilePath);
+                }
+            }
+        });
+
+        foreach (IVisualStudioFileGroup fileGroup in _fileGroups)
+        {
+            fileGroup.SortFiles();
+        }
+    }
 }

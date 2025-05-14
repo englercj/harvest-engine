@@ -1,0 +1,501 @@
+// Copyright Chad Engler
+
+using Harvest.Make.Extensions;
+using Harvest.Make.Projects.Nodes;
+using System;
+using System.Xml;
+using static Harvest.Make.Projects.Generators.vs2022.IVisualStudioFileGroup;
+
+namespace Harvest.Make.Projects.Generators.vs2022;
+
+public class ClIncludeFileGroup(ProjectGeneratorHelper helper, string vsProjectPath) : VisualStudioFileGroupBase(helper, vsProjectPath)
+{
+    public override int Priority => 10;
+    public override string GroupTag => "ClInclude";
+
+    public override bool CanHandleFile(FilesEntryNode entry)
+    {
+        return entry.ResolvedFileAction == EFileAction.Include;
+    }
+
+    protected override void OnWriteFile(XmlWriter writer, FileEntry file)
+    {
+        HandleGeneratedFile(writer, file);
+    }
+}
+
+public class ClCompileFileGroup(ProjectGeneratorHelper helper, string vsProjectPath) : VisualStudioFileGroupBase(helper, vsProjectPath)
+{
+    public override int Priority => 20;
+    public override string GroupTag => "ClCompile";
+
+    private Dictionary<string, int> _objectFileNameSequence = [];
+
+    public override bool CanHandleFile(FilesEntryNode entry)
+    {
+        return entry.ResolvedFileAction == EFileAction.Build
+            && entry.ResolvedFileBuildRule switch
+            {
+                EFileBuildRule.C => true,
+                EFileBuildRule.Cpp => true,
+                EFileBuildRule.CSharp => true,
+                EFileBuildRule.ObjC => true,
+                EFileBuildRule.ObjCpp => true,
+                _ => false
+            };
+    }
+
+    protected override void OnWriteFile(XmlWriter writer, FileEntry file)
+    {
+        HandleGeneratedFile(writer, file);
+    }
+
+    protected override void OnWriteFileConfig(XmlWriter writer, FileEntry file, ConfigurationNode configuration, PlatformNode platform, string archName)
+    {
+        if (file.Entry.IsExcludedFromBuild)
+        {
+            HandleExcludedFile(writer, file, configuration, platform, archName);
+            return;
+        }
+
+        string condition = VisualStudioUtils.GetConfigCondition(configuration, platform, archName);
+        string fileBaseName = Path.GetFileNameWithoutExtension(file.Entry.ResolvedFilePath);
+
+        // Need to make the obj file name unique in the case of two files with the same base name.
+        // This is because a project with 'src/a.cpp' and 'test/a.cpp' will both output to 'a.obj'.
+        if (_objectFileNameSequence.TryGetValue(fileBaseName, out int sequence))
+        {
+            _objectFileNameSequence.Add(fileBaseName, sequence + 1);
+            VisualStudioUtils.WriteElementString(writer, "ObjectFileName", $"$(IntDir)\\{fileBaseName}{sequence}.obj", condition);
+        }
+        else
+        {
+            _objectFileNameSequence.Add(fileBaseName, 1);
+        }
+
+        BuildOptionsNode buildOptions = file.Context.ProjectService.GetMergedNode<BuildOptionsNode>(file.Context, file.Context.Module, false);
+        if (buildOptions.PchSource == file.Entry.ResolvedFilePath)
+        {
+            VisualStudioUtils.WriteElementString(writer, "PrecompiledHeader", "Create", condition);
+        }
+
+        if (buildOptions.ClrMode != EBuildClrMode.Off)
+        {
+            VisualStudioUtils.WriteElementString(writer, "CompileAsManaged", "true", condition);
+        }
+
+        // TODO: File-level configuration? How do I only search in the file context, and not the parent scope?
+        // Most of these duplicate code from VcxprojGenerator.cs, probably should make utilities in VisualStudioUtils.
+        // Also need to ensure that all the elements output here actually use the `condition`.
+
+        //CodegenNode codegen = file.Context.ProjectService.GetMergedNode<CodegenNode>(file.Context, file.Entry, false);
+        //DefinesNode defines = file.Context.ProjectService.GetMergedNode<DefinesNode>(file.Context, file.Entry, false);
+        //DialectNode dialect = file.Context.ProjectService.GetMergedNode<DialectNode>(file.Context, file.Entry, false);
+        //ExceptionsNode exceptions = file.Context.ProjectService.GetMergedNode<ExceptionsNode>(file.Context, file.Entry, false);
+        //OptimizeNode optimize = file.Context.ProjectService.GetMergedNode<OptimizeNode>(file.Context, file.Entry, false);
+        //RuntimeNode runtime = file.Context.ProjectService.GetMergedNode<RuntimeNode>(file.Context, file.Entry, false);
+        //WarningsNode warnings = file.Context.ProjectService.GetMergedNode<WarningsNode>(file.Context, file.Entry, false);
+
+        //IEnumerable<string> defineEntryStrings = defines.Entries.Select((entry) => entry.Define);
+        //if (exceptions.ExceptionsMode == EExceptionsMode.Off)
+        //{
+        //    defineEntryStrings = defineEntryStrings.Concat(["_HAS_EXCEPTIONS=0"]);
+        //}
+        //VisualStudioUtils.WritePreprocessorDefinitions(writer, defineEntryStrings, false, condition);
+
+        //IEnumerable<string> undefineEntryStrings = undefines.Entries.Select((entry) => entry.Define);
+        //WriteArrayElement(writer, undefineEntryStrings, "UndefinePreprocessorDefinitions", "%(UndefinePreprocessorDefinitions)");
+
+        //if (dialect.CDialect != ECDialect.Default)
+        //{
+        //    VisualStudioUtils.WriteArrayElement(writer, "LanguageStandard_C", dialect.CDialect switch
+        //    {
+        //        ECDialect.C11 => "stdc11",
+        //        ECDialect.C17 => "stdc17",
+        //        ECDialect.C23 => "stdclatest",
+        //        _ => throw new NotImplementedException($"Unsupported C Dialect: {dialect.CDialect}"),
+        //    }, condition);
+        //}
+
+        //if (dialect.CppDialect != ECppDialect.Default)
+        //{
+        //    VisualStudioUtils.WriteArrayElement(writer, "LanguageStandard", dialect.CppDialect switch
+        //    {
+        //        ECppDialect.Cpp14 => "stdcpp14",
+        //        ECppDialect.Cpp17 => "stdcpp17",
+        //        ECppDialect.Cpp20 => "stdcpp20",
+        //        ECppDialect.Cpp23 => "stdcpplatest",
+        //        _ => throw new NotImplementedException($"Unsupported C++ Dialect: {dialect.CppDialect}"),
+        //    }, condition);
+        //}
+
+        //VisualStudioUtils.WriteArrayElement(writer, "Optimization", optimize.OptimizationLevel switch
+        //{
+        //    EOptimizationLevel.Default => "Disabled",
+        //    EOptimizationLevel.Debug => "Disabled",
+        //    EOptimizationLevel.Off => "Disabled",
+        //    EOptimizationLevel.On => "Full",
+        //    EOptimizationLevel.Size => "MinSpace",
+        //    EOptimizationLevel.Speed => "MaxSpeed",
+        //    _ => throw new NotImplementedException($"Unsupported Optimization Level: {optimize.OptimizationLevel}"),
+        //}, condition);
+
+        // TODO: Support for forced includes?
+        //IEnumerable<string> forceIncludesEntryStrings = includeDirs.Entries.Select((entry) => GetPath(entry.Path));
+        //WriteArrayElement(writer, forceIncludesEntryStrings, "ForcedIncludeFiles");
+
+        // TODO: Support for using directories (C++/CLI, #using "")?
+        //IEnumerable<string> usingDirsEntryStrings = usingDirs.Entries.Select((entry) => GetPath(entry.Path));
+        //WriteArrayElement(writer, usingDirsEntryStrings, "AdditionalUsingDirectories", "%(AdditionalUsingDirectories)");
+
+        //if (platform.Arch == EPlatformArch.X86)
+        //{
+        //    VisualStudioUtils.WriteArrayElement(writer, "EnableEnhancedInstructionSet", codegen.CodegenMode switch
+        //    {
+        //        ECodegenMode.AVX => "AdvancedVectorExtensions",
+        //        ECodegenMode.AVX2 => "AdvancedVectorExtensions2",
+        //        ECodegenMode.AVX512 => "AdvancedVectorExtensions512",
+        //        ECodegenMode.SSE => "StreamingSIMDExtensions",
+        //        ECodegenMode.SSE2 => "StreamingSIMDExtensions2",
+        //        ECodegenMode.SSE3 => "StreamingSIMDExtensions2",
+        //        ECodegenMode.SSSE3 => "StreamingSIMDExtensions2",
+        //        ECodegenMode.SSE41 => "StreamingSIMDExtensions2",
+        //        ECodegenMode.SSE42 => "StreamingSIMDExtensions2",
+        //        _ => throw new NotImplementedException($"Unsupported instruction set for x86: {codegen.CodegenMode}"),
+        //    }, condition);
+        //}
+        //else if (platform.Arch == EPlatformArch.X86_64)
+        //{
+        //    VisualStudioUtils.WriteArrayElement(writer, "EnableEnhancedInstructionSet", codegen.CodegenMode switch
+        //    {
+        //        ECodegenMode.AVX => "AdvancedVectorExtensions",
+        //        ECodegenMode.AVX2 => "AdvancedVectorExtensions2",
+        //        ECodegenMode.AVX512 => "AdvancedVectorExtensions512",
+        //        _ => throw new NotImplementedException($"Unsupported instruction set for x86_64: {codegen.CodegenMode}"),
+        //    }, condition);
+        //}
+        //else if (platform.Arch == EPlatformArch.Arm64)
+        //{
+        //    VisualStudioUtils.WriteArrayElement(writer, "EnableEnhancedInstructionSet", codegen.CodegenMode switch
+        //    {
+        //        ECodegenMode.ARMv8_0 => "CPUExtensionRequirementsARMv80",
+        //        ECodegenMode.ARMv8_1 => "CPUExtensionRequirementsARMv81",
+        //        ECodegenMode.ARMv8_2 => "CPUExtensionRequirementsARMv82",
+        //        ECodegenMode.ARMv8_3 => "CPUExtensionRequirementsARMv83",
+        //        ECodegenMode.ARMv8_4 => "CPUExtensionRequirementsARMv84",
+        //        ECodegenMode.ARMv8_5 => "CPUExtensionRequirementsARMv85",
+        //        ECodegenMode.ARMv8_6 => "CPUExtensionRequirementsARMv86",
+        //        ECodegenMode.ARMv8_7 => "CPUExtensionRequirementsARMv87",
+        //        ECodegenMode.ARMv8_8 => "CPUExtensionRequirementsARMv88",
+        //        ECodegenMode.ARMv9_0 => "CPUExtensionRequirementsARMv90",
+        //        ECodegenMode.ARMv9_1 => "CPUExtensionRequirementsARMv90",
+        //        ECodegenMode.ARMv9_2 => "CPUExtensionRequirementsARMv90",
+        //        ECodegenMode.ARMv9_3 => "CPUExtensionRequirementsARMv90",
+        //        ECodegenMode.ARMv9_4 => "CPUExtensionRequirementsARMv90",
+        //        _ => throw new NotImplementedException($"Unsupported instruction set for ARM64: {codegen.CodegenMode}"),
+        //    }, condition);
+        //}
+
+        //IEnumerable<string> buildOptionEntryStrings = buildOptions.Entries.Select((entry) => entry.Option);
+        //if (platform.Toolset == EToolset.Clang)
+        //{
+        //    // <OpenMPSupport> is ignored when using the clang toolset so we need to add it here
+        //    buildOptionEntryStrings = buildOptionEntryStrings.Concat(["/openmp"]);
+        //}
+        //IEnumerable<string> enabledWarnings = warnings.Entries.Where((entry) => entry.IsEnabled).Select((entry) => $"/w{entry.WarningName}");
+        //buildOptionEntryStrings = buildOptionEntryStrings.Concat(enabledWarnings);
+        //VisualStudioUtils.WriteArrayElement(writer, buildOptionEntryStrings, "AdditionalOptions", "%(AdditionalOptions)", " ", condition);
+
+        //IEnumerable<string> disabledWarnings = warnings.Entries.Where((entry) => !entry.IsEnabled).Select((entry) => entry.WarningName);
+        //VisualStudioUtils.WriteArrayElement(writer, disabledWarnings, "DisableSpecificWarnings", "%(DisableSpecificWarnings)", ";", condition);
+
+        //IEnumerable<string> fatalWarnings = warnings.Entries.Where((entry) => entry.IsEnabled && entry.IsFatal).Select((entry) => entry.WarningName);
+        //VisualStudioUtils.WriteArrayElement(writer, fatalWarnings, "TreatSpecificWarningsAsErrors", "%(TreatSpecificWarningsAsErrors)", ";", condition);
+
+        //bool isOptimizedBuild = VisualStudioUtils.IsOptimizedBuild(optimize);
+        //if (isOptimizedBuild && runtime.Runtime == ERuntime.Debug)
+        //{
+        //    VisualStudioUtils.WriteElementString(writer, "BasicRuntimeChecks", "Default", condition);
+        //}
+
+        //if (exceptions.ExceptionsMode != EExceptionsMode.Default)
+        //{
+        //    VisualStudioUtils.WriteElementString(writer, "ExceptionHandling", exceptions.ExceptionsMode switch
+        //    {
+        //        EExceptionsMode.On => "Sync",
+        //        EExceptionsMode.Off => "false",
+        //        EExceptionsMode.SEH => "Async",
+        //        _ => throw new NotImplementedException($"Unsupported Exceptions Mode: {exceptions.ExceptionsMode}"),
+        //    }, condition);
+        //}
+
+        //VisualStudioUtils.WriteElementString(writer, "CompileAs", file.Context.Module?.Language switch
+        //{
+        //    EModuleLanguage.C => "CompileAsC",
+        //    EModuleLanguage.Cpp => "CompileAsCpp",
+        //    _ => throw new NotImplementedException($"Unsupported Language: {file.Context.Module?.Language}"),
+        //}, condition);
+
+        //if (!buildOptions.RuntimeTypeInfo && buildOptions.ClrMode == EBuildClrMode.Off)
+        //{
+        //    VisualStudioUtils.WriteElementString(writer, "RuntimeTypeInfo", "false", condition);
+        //}
+        //else if (buildOptions.RuntimeTypeInfo)
+        //{
+        //    VisualStudioUtils.WriteElementString(writer, "RuntimeTypeInfo", "true", condition);
+        //}
+
+        //if (warnings.WarningsLevel != EWarningsLevel.Default)
+        //{
+        //    string warnLevelString = VisualStudioUtils.GetWarningLevelString(warnings.WarningsLevel);
+        //    VisualStudioUtils.WriteElementString(writer, "WarningLevel", warnLevelString, condition);
+        //}
+
+        // TODO: Support for CompileAsWinRT?
+        //writer.TryWriteElementBool("CompileAsWinRT", buildOptions.CompileAsWinRT);
+
+        //if (external.WarningsLevel != EWarningsLevel.Default)
+        //{
+        //    VisualStudioUtils.WriteElementString(writer, "ExternalWarningLevel", external.WarningsLevel switch
+        //    {
+        //        EWarningsLevel.All => "Level4",
+        //        EWarningsLevel.Extra => "Level4",
+        //        EWarningsLevel.On => "Level3",
+        //        EWarningsLevel.Off => "TurnOffAllWarnings",
+        //        _ => throw new NotImplementedException($"Unsupported External Warning Level: {external.WarningsLevel}"),
+        //    }, condition);
+        //}
+
+        //VisualStudioUtils.WriteElementBool(writer, "TreatAngleIncludeAsExternal", external.AngleBrackets, condition);
+    }
+}
+
+public class ResourceFileGroup(ProjectGeneratorHelper helper, string vsProjectPath) : VisualStudioFileGroupBase(helper, vsProjectPath)
+{
+    public override int Priority => 30;
+    public override string GroupTag => "ResourceCompile";
+
+    public override bool CanHandleFile(FilesEntryNode entry)
+    {
+        return entry.ResolvedFileAction == EFileAction.Resource;
+    }
+
+    protected override void OnWriteFileConfig(XmlWriter writer, FileEntry file, ConfigurationNode configuration, PlatformNode platform, string archName)
+    {
+        HandleExcludedFile(writer, file, configuration, platform, archName);
+    }
+}
+
+public class CustomBuildFileGroup(ProjectGeneratorHelper helper, string vsProjectPath) : VisualStudioFileGroupBase(helper, vsProjectPath)
+{
+    public override int Priority => 40;
+    public override string GroupTag => "CustomBuild";
+
+    public override bool CanHandleFile(FilesEntryNode entry)
+    {
+        return entry.ResolvedFileAction == EFileAction.Build && entry.ResolvedFileBuildRule == EFileBuildRule.Custom;
+    }
+
+    protected override void OnWriteFile(XmlWriter writer, FileEntry file)
+    {
+        writer.WriteElementString("FileType", "Document");
+    }
+
+    protected override void OnWriteFileConfig(XmlWriter writer, FileEntry file, ConfigurationNode configuration, PlatformNode platform, string archName)
+    {
+        if (file.Entry.ResolvedFileBuildRule != EFileBuildRule.Custom)
+        {
+            return;
+        }
+
+        HandleExcludedFile(writer, file, configuration, platform, archName);
+
+        BuildRuleNode buildRule = file.Context.ProjectService.GetMergedNode<BuildRuleNode>(file.Context, file.Context.Module, (n) => n.RuleName == file.Entry.BuildRuleName, false);
+        if (buildRule.RuleName != file.Entry.BuildRuleName)
+        {
+            throw new Exception($"No build rule with the name '{file.Entry.BuildRuleName}' was found.");
+        }
+
+        string condition = VisualStudioUtils.GetConfigCondition(configuration, platform, archName);
+
+        List<CommandNode> buildCommands = file.Context.ProjectService.GetNodes<CommandNode>(file.Context, buildRule, false);
+        if (buildCommands.Count != 0)
+        {
+            if (!string.IsNullOrEmpty(buildRule.Message))
+            {
+                VisualStudioUtils.WriteElementString(writer, "Message", buildRule.Message, condition);
+            }
+
+            IEnumerable<string> buildCommandStrings = buildCommands.Select((entry) => entry.GetCommandString());
+            VisualStudioUtils.WriteArrayElement(writer, buildCommandStrings, "Command", null, "\r\n", condition);
+
+            OutputsNode buildRuleOutputs = file.Context.ProjectService.GetMergedNode<OutputsNode>(file.Context, buildRule, false);
+            IEnumerable<string> buildRuleOutputsStrings = buildRuleOutputs.Entries.Select((entry) => GetPath(entry.FilePath));
+            VisualStudioUtils.WriteArrayElement(writer, buildRuleOutputsStrings, "Outputs", null, ";", condition);
+
+            InputsNode buildRuleInputs = file.Context.ProjectService.GetMergedNode<InputsNode>(file.Context, buildRule, false);
+            IEnumerable<string> buildRuleInputsStrings = buildRuleInputs.Entries.Select((entry) => GetPath(entry.FilePath));
+            VisualStudioUtils.WriteArrayElement(writer, buildRuleInputsStrings, "AdditionalInputs", null, ";", condition);
+        }
+
+        if (buildRule.LinkOutput)
+        {
+            VisualStudioUtils.WriteElementString(writer, "LinkObjects", "true", condition);
+        }
+    }
+}
+
+public class MidlFileGroup(ProjectGeneratorHelper helper, string vsProjectPath) : VisualStudioFileGroupBase(helper, vsProjectPath)
+{
+    public override int Priority => 50;
+    public override string GroupTag => "Midl";
+
+    public override bool CanHandleFile(FilesEntryNode entry)
+    {
+        return entry.ResolvedFileAction == EFileAction.Build && entry.ResolvedFileBuildRule == EFileBuildRule.Midl;
+    }
+
+    protected override void OnWriteFileConfig(XmlWriter writer, FileEntry file, ConfigurationNode configuration, PlatformNode platform, string archName)
+    {
+        if (platform.System != EPlatformSystem.Windows)
+        {
+            return;
+        }
+
+        HandleExcludedFile(writer, file, configuration, platform, archName);
+    }
+}
+
+public class MasmFileGroup(ProjectGeneratorHelper helper, string vsProjectPath) : VisualStudioFileGroupBase(helper, vsProjectPath)
+{
+    public override int Priority => 60;
+    public override string GroupTag => "Masm";
+
+    public override bool CanHandleFile(FilesEntryNode entry)
+    {
+        return entry.ResolvedFileAction == EFileAction.Build && entry.ResolvedFileBuildRule == EFileBuildRule.Asm;
+    }
+
+    protected override void OnWriteExtensionSettings(XmlWriter writer)
+    {
+        writer.WriteStartElement("Import");
+        writer.WriteAttributeString("Project", "$(VCTargetsPath)\\BuildCustomizations\\masm.props");
+        writer.WriteEndElement();
+    }
+
+    protected override void OnWriteExtensionTargets(XmlWriter writer)
+    {
+        writer.WriteStartElement("Import");
+        writer.WriteAttributeString("Project", "$(VCTargetsPath)\\BuildCustomizations\\masm.targets");
+        writer.WriteEndElement();
+    }
+
+    protected override void OnWriteFileConfig(XmlWriter writer, FileEntry file, ConfigurationNode configuration, PlatformNode platform, string archName)
+    {
+        HandleExcludedFile(writer, file, configuration, platform, archName);
+
+        string condition = VisualStudioUtils.GetConfigCondition(configuration, platform, archName);
+
+        DefinesNode defines = file.Context.ProjectService.GetMergedNode<DefinesNode>(file.Context, file.Context.Module);
+        IEnumerable<string> defineEntryStrings = defines.Entries.Select((entry) => entry.Define);
+        VisualStudioUtils.WritePreprocessorDefinitions(writer, defineEntryStrings, false, condition);
+
+        ExceptionsNode exceptions = file.Context.ProjectService.GetMergedNode<ExceptionsNode>(file.Context, file.Context.Module);
+        if (exceptions.ExceptionsMode == EExceptionsMode.SEH)
+        {
+            VisualStudioUtils.WriteElementString(writer, "UseSafeExceptionHandlers", "true", condition);
+        }
+    }
+}
+
+public class ImageFileGroup(ProjectGeneratorHelper helper, string vsProjectPath) : VisualStudioFileGroupBase(helper, vsProjectPath)
+{
+    public override int Priority => 70;
+    public override string GroupTag => "Image";
+
+    public override bool CanHandleFile(FilesEntryNode entry)
+    {
+        return entry.ResolvedFileAction == EFileAction.Image;
+    }
+
+    protected override void OnWriteFileConfig(XmlWriter writer, FileEntry file, ConfigurationNode configuration, PlatformNode platform, string archName)
+    {
+        HandleExcludedFile(writer, file, configuration, platform, archName);
+    }
+}
+
+public class NatvisFileGroup(ProjectGeneratorHelper helper, string vsProjectPath) : VisualStudioFileGroupBase(helper, vsProjectPath)
+{
+    public override int Priority => 80;
+    public override string GroupTag => "Natvis";
+
+    public override bool CanHandleFile(FilesEntryNode entry)
+    {
+        return entry.ResolvedFileAction == EFileAction.Natvis;
+    }
+
+    protected override void OnWriteFile(XmlWriter writer, FileEntry file)
+    {
+        HandleGeneratedFile(writer, file);
+    }
+}
+
+public class AppxManifestFileGroup(ProjectGeneratorHelper helper, string vsProjectPath) : VisualStudioFileGroupBase(helper, vsProjectPath)
+{
+    public override int Priority => 90;
+    public override string GroupTag => "AppxManifest";
+
+    public override bool CanHandleFile(FilesEntryNode entry)
+    {
+        return entry.ResolvedFileAction == EFileAction.AppxManifest;
+    }
+
+    protected override void OnWriteFile(XmlWriter writer, FileEntry file)
+    {
+        writer.WriteElementString("FileType", "Document");
+        writer.WriteElementString("SubType", "Designer");
+    }
+
+    protected override void OnWriteFileConfig(XmlWriter writer, FileEntry file, ConfigurationNode configuration, PlatformNode platform, string archName)
+    {
+        HandleExcludedFile(writer, file, configuration, platform, archName);
+    }
+}
+
+public class CopyFileGroup(ProjectGeneratorHelper helper, string vsProjectPath) : VisualStudioFileGroupBase(helper, vsProjectPath)
+{
+    public override int Priority => 100;
+    public override string GroupTag => "CopyFileToFolders";
+
+    public override bool CanHandleFile(FilesEntryNode entry)
+    {
+        return entry.ResolvedFileAction == EFileAction.Copy;
+    }
+
+    protected override void OnWriteFileConfig(XmlWriter writer, FileEntry file, ConfigurationNode configuration, PlatformNode platform, string archName)
+    {
+        HandleExcludedFile(writer, file, configuration, platform, archName);
+
+        BuildOutputNode buildOutput = file.Context.ProjectService.GetMergedNode<BuildOutputNode>(file.Context, file.Context.Module, false);
+        string targetDir = buildOutput.GetTargetDir(file.Context.Module?.Kind ?? EModuleKind.Custom);
+        string condition = VisualStudioUtils.GetConfigCondition(configuration, platform, archName);
+
+        VisualStudioUtils.WriteElementString(writer, "DestinationFolders", GetPath(targetDir), condition);
+    }
+}
+
+public class NoneFileGroup(ProjectGeneratorHelper helper, string vsProjectPath) : VisualStudioFileGroupBase(helper, vsProjectPath)
+{
+    public override int Priority => 10000;
+    public override string GroupTag => "None";
+
+    public override bool CanHandleFile(FilesEntryNode entry)
+    {
+        return true;
+    }
+
+    protected override void OnWriteFile(XmlWriter writer, FileEntry file)
+    {
+        HandleGeneratedFile(writer, file);
+    }
+}

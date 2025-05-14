@@ -20,7 +20,7 @@ public class WarningsEntryNode(KdlNode node, INode? scope) : NodeBase(node, scop
 
     public static readonly IReadOnlyList<NodeKdlValue> NodeArguments =
     [
-        NodeKdlEnum<EWarningAction>.Required(EWarningAction.Enable),
+        NodeKdlEnum<EWarningAction>.Optional(EWarningAction.Enable),
     ];
 
     public static readonly IReadOnlyDictionary<string, NodeKdlValue> NodeProperties = new SortedDictionary<string, NodeKdlValue>()

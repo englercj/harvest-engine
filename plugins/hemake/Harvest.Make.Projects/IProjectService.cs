@@ -30,7 +30,7 @@ public interface IProjectService
     public void RegisterNodeType<T>() where T : class, INode;
     public void LoadProject(string projectPath);
 
-    public ProjectContext GetProjectContext(InvocationContext? invocationContext = null, ModuleNode? module = null, ConfigurationNode? configuration = null, PlatformNode? platform = null);
+    public ProjectContext CreateProjectContext(InvocationContext? invocationContext = null, ModuleNode? module = null, ConfigurationNode? configuration = null, PlatformNode? platform = null);
     public List<ConfigurationNode> GetDefaultConfigurations();
     public List<PlatformNode> GetDefaultPlatforms();
 

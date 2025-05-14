@@ -20,7 +20,6 @@ None.
 ## Scopes
 
 - [`module`](module_node.md)
-- [`private`](private_node.md)
 - [`project`](project_node.md)
 - [`public`](public_node.md)
 

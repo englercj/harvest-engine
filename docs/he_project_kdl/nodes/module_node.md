@@ -22,7 +22,8 @@ A definition of a module provided by a plugin.
     * `cpp` - C++
     * `csharp` - C#
 - `project_file` (string) - Optional. Path to a project file to use instead of generating one.
-- `hemake_extension` (boolean)- Optional. `#true` to tell HE Make to load this project as an extension. Default: `#false`
+- `entrypoint` (string) - Optional. Name of the application's entrypoint symbol.
+- `hemake_extension` (boolean) - Optional. `#true` to tell HE Make to load this project as an extension. Default: `#false`
 
 ## Children
 

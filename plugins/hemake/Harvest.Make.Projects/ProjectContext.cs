@@ -4,16 +4,21 @@ using Harvest.Make.Projects.Nodes;
 
 namespace Harvest.Make.Projects;
 
-public class ProjectContext
+public class ProjectContext(IProjectService projectService)
 {
-    public EPlatformArch Arch { get; set; } = EPlatformArch.X86_64;
-    public string Configuration { get; set; } = "";
+    public IProjectService ProjectService => projectService;
+    public ModuleNode? Module { get; set; } = null;
+    public ConfigurationNode? Configuration { get; set; } = null;
+    public PlatformNode? Platform { get; set; } = null;
+
     public EPlatformSystem Host { get; set; } = EPlatformSystem.Windows;
-    public EModuleLanguage Language { get; set; } = EModuleLanguage.Cpp;
     public SortedDictionary<string, object?> Options { get; set; } = [];
-    public string Platform { get; set; } = "";
-    public string ProjectPath { get; set; } = "";
-    public EPlatformSystem System { get; set; } = EPlatformSystem.Windows;
-    public SortedSet<string> Tags { get; set; } = [];
-    public EToolset Toolset { get; set; } = EToolset.MSVC;
+    public HashSet<string> Tags { get; set; } = [];
+
+    public bool IsWindows => (Platform?.System ?? EPlatformSystem.Windows) == EPlatformSystem.Windows;
+
+    public ProjectContext Clone()
+    {
+        return (ProjectContext)MemberwiseClone();
+    }
 }

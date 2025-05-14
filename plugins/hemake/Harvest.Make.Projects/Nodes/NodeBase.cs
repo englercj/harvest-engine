@@ -28,6 +28,8 @@ public abstract class NodeBase(KdlNode node, INode? scope) : INode
     public virtual bool CanHaveChildren => false;
     public virtual Type? ChildNodeType => null;
 
+    private static int s_tokenDepth = 0;
+
     protected T? TryGetClassValue<T>(int index) where T : class
     {
         if (index < Node.Arguments.Count)
@@ -368,7 +370,7 @@ public abstract class NodeBase(KdlNode node, INode? scope) : INode
         return NodeValidationResult.Valid;
     }
 
-    public void MergeAndResolve(ProjectContext context, INode node)
+    public virtual void MergeAndResolve(ProjectContext context, INode node)
     {
         if (!node.GetType().Equals(GetType()) || Node.Name != node.Node.Name)
         {
@@ -461,7 +463,10 @@ public abstract class NodeBase(KdlNode node, INode? scope) : INode
 
             string contextName = contextParts[0];
             string propertyName = transformerParts[0];
+
+            ++s_tokenDepth;
             string tokenValue = GetTokenValue(projectContext, token, contextName, propertyName);
+            --s_tokenDepth;
 
             foreach (string transformer in transformerParts[1..])
             {
@@ -485,11 +490,16 @@ public abstract class NodeBase(KdlNode node, INode? scope) : INode
 
     protected string GetTokenValue(ProjectContext projectContext, string token, string contextName, string propertyName)
     {
+        if (s_tokenDepth > 20)
+        {
+            throw new Exception($"Token depth exceeded maximum limit. Do you have a recursive token? token='{token}', contextName='{contextName}', propertyName='{propertyName}'");
+        }
+
         if (contextName == ConfigurationNode.NodeName)
         {
             return propertyName switch
             {
-                "name" => projectContext.Configuration,
+                "name" => projectContext.Configuration?.ConfigName ?? "",
                 _ => throw new Exception($"Invalid token '{token}'. Unknown property '{propertyName}' on context 'configuration'."),
             };
         }
@@ -498,9 +508,9 @@ public abstract class NodeBase(KdlNode node, INode? scope) : INode
         {
             return propertyName switch
             {
-                "name" => projectContext.Platform,
-                "system" => KdlEnumUtils.GetName(projectContext.System),
-                "arch" => KdlEnumUtils.GetName(projectContext.Arch),
+                "name" => projectContext.Platform?.PlatformName ?? "",
+                "system" => KdlEnumUtils.GetName(projectContext.Platform?.System ?? EPlatformSystem.Windows),
+                "arch" => KdlEnumUtils.GetName(projectContext.Platform?.Arch ?? EPlatformArch.X86_64),
                 _ => throw new Exception($"Invalid token '{token}'. Unknown property '{propertyName}' on context 'platform'."),
             };
         }
@@ -530,7 +540,7 @@ public abstract class NodeBase(KdlNode node, INode? scope) : INode
             }
             else if (propertyName == "path")
             {
-                return projectContext.ProjectPath;
+                return projectContext.ProjectService.ProjectPath;
             }
         }
         else if (nodeContext is PluginNode pluginNode)
@@ -545,7 +555,9 @@ public abstract class NodeBase(KdlNode node, INode? scope) : INode
             }
             else if (propertyName == "install_dir")
             {
-                // TODO: read BuildOutputNode and return the correct path
+                // TODO: handle install dir of a plugin being different from the KDL file.
+                // Return the directory of the KDL file where this node is defined.
+                return Path.GetDirectoryName(pluginNode.Node.SourceInfo.FileName) ?? string.Empty;
             }
         }
         else if (nodeContext is ModuleNode moduleNode)
@@ -560,15 +572,39 @@ public abstract class NodeBase(KdlNode node, INode? scope) : INode
             }
             else if (propertyName == "build_target")
             {
-                // TODO: read BuildOutputNode and return the correct path
+                ProjectContext childContext = projectContext.Clone();
+                childContext.Module = moduleNode;
+
+                BuildOutputNode buildOutput = childContext.ProjectService.GetMergedNode<BuildOutputNode>(childContext, moduleNode, false);
+
+                string targetDir = buildOutput.GetTargetDir(moduleNode.Kind);
+                string targetName = buildOutput.TargetName ?? moduleNode.ModuleName;
+                string targetExtension = buildOutput.GetTargetExtension(moduleNode.Kind, projectContext.IsWindows);
+                return Path.Join(targetDir, targetName + targetExtension);
             }
             else if (propertyName == "link_target")
             {
-                // TODO: read BuildOutputNode and return the correct path
+                ProjectContext childContext = projectContext.Clone();
+                childContext.Module = moduleNode;
+
+                BuildOutputNode buildOutput = childContext.ProjectService.GetMergedNode<BuildOutputNode>(childContext, moduleNode, false);
+
+                // Treat shared libraries as static libraries for the purpose of linking. This will let us target
+                // the import library (.lib) instead of the shared library (.dll).
+                EModuleKind moduleKind = projectContext.IsWindows && buildOutput.MakeImportLib && moduleNode.Kind == EModuleKind.LibShared ? EModuleKind.LibStatic : moduleNode.Kind;
+                string targetDir = buildOutput.GetTargetDir(moduleKind);
+                string targetName = buildOutput.TargetName ?? moduleNode.ModuleName;
+                string targetExtension = buildOutput.GetTargetExtension(moduleKind, projectContext.IsWindows);
+                return Path.Join(targetDir, targetName + targetExtension);
             }
             else if (propertyName == "gen_dir")
             {
-                // TODO: read BuildOutputNode and return the correct path
+                ProjectContext childContext = projectContext.Clone();
+                childContext.Module = moduleNode;
+
+                BuildOutputNode buildOutput = childContext.ProjectService.GetMergedNode<BuildOutputNode>(childContext, moduleNode, false);
+
+                return buildOutput.GenDir;
             }
         }
 
@@ -594,10 +630,8 @@ public abstract class NodeBase(KdlNode node, INode? scope) : INode
                 _ => throw new Exception($"Invalid token '{token}'. Property '{propertyName}' has an unknown type on context '{contextName}'."),
             };
         }
-        else
-        {
-            throw new Exception($"Invalid token '{token}'. Unknown property '{propertyName}' on context '{contextName}'.");
-        }
+
+        throw new Exception($"Invalid token '{token}'. Unknown property '{propertyName}' on context '{contextName}'.");
     }
 
     protected INode? FindScopeWithName(string name)

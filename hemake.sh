@@ -19,7 +19,7 @@ SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &> /dev/null && pwd)
 pushd "$SCRIPT_DIR" > /dev/null
 
 PROJECT_DIR=$(dirname $PROJECT_PATH)
-BUILD_DIR="$PROJECT_DIR/build"
+BUILD_DIR="$PROJECT_DIR/.build"
 
 HEMAKE_BUILD_CFG="Release"
 HEMAKE_BUILD_DIR="$BUILD_DIR/hemake"
@@ -46,7 +46,7 @@ if [[ ! -d "$DOTNET_DIR" ]]; then
         elif command -v "wget" &> /dev/null; then
             wget -O $file $url
         else
-            echo "Unable to download file because neither wget nor curl are available."
+            echo "Unable to download file because neither curl nor wget are available."
             popd >/dev/null
             exit 1
         fi

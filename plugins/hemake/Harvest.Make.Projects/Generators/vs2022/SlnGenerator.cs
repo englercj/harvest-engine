@@ -38,17 +38,15 @@ internal class SlnGenerator(IProjectService projectService, ProjectGeneratorHelp
         File.WriteAllText(slnPath, _writer.ToString());
     }
 
-    private IEnumerable<ModuleGroupTree.Entry> GetBuildDependencies(ProjectContext projectContext, ModuleNode module, ModuleGroupTree groupTree)
+    private IEnumerable<ModuleGroupTree.Entry> GetOrderDependencies(ProjectContext projectContext, ModuleNode module, ModuleGroupTree groupTree)
     {
-        // todo: do this ForEachConfig to catch all possible dependencies?
+        // TODO: do this ForEachConfig to catch all possible dependencies?
 
-        foreach (DependenciesNode dependency in _projectService.FindNodes<DependenciesNode>(projectContext, module))
+        foreach (DependenciesNode dependency in _projectService.GetNodes<DependenciesNode>(projectContext, module, false))
         {
             foreach (DependenciesEntryNode dependencyEntry in dependency.Entries)
             {
-                if (dependencyEntry.Kind != EDependencyKind.Link
-                    && dependencyEntry.Kind != EDependencyKind.Order
-                    && dependencyEntry.Kind != EDependencyKind.Default)
+                if (dependencyEntry.Kind != EDependencyKind.Default && dependencyEntry.Kind != EDependencyKind.Order)
                 {
                     continue;
                 }
@@ -60,12 +58,21 @@ internal class SlnGenerator(IProjectService projectService, ProjectGeneratorHelp
                         continue;
                     }
 
-                    if (dependencyEntry.Kind == EDependencyKind.Default && entry.Module.Kind == EModuleKind.LibHeader)
+                    // Order dependencies are always included
+                    if (dependencyEntry.Kind == EDependencyKind.Order)
                     {
-                        continue;
+                        yield return entry;
                     }
-
-                    yield return entry;
+                    // When we have a Default dependency we want to yield a build order dependency
+                    // if the module is a binary and it depends on a module we cannot link, but
+                    // needs to run first.
+                    else if (module.IsBinary
+                        && entry.Module.Kind != EModuleKind.LibStatic
+                        && entry.Module.Kind != EModuleKind.LibHeader
+                        && entry.Module.Kind != EModuleKind.Content)
+                    {
+                        yield return entry;
+                    }
                 }
             }
         }
@@ -79,18 +86,18 @@ internal class SlnGenerator(IProjectService projectService, ProjectGeneratorHelp
             {
                 // TODO: Translate path to use VS tokens.
                 string projFileExt = VisualStudioUtils.LanguageProjectExtensions[entry.Module.Language];
-                string projFileName = $"{entry.Module.ModuleName}.{projFileExt}";
+                string projFileName = $"{entry.Module.ModuleName}{projFileExt}";
                 string projPath = Path.Join(_helper.BuildOutput.ProjectDir, projFileName);
-                string relPath = Path.GetRelativePath(_helper.BuildOutput.BasePath, projPath).Replace('/', '\\');
+                string relPath = VisualStudioUtils.TranslatePath(_helper.BuildOutput.BasePath, projPath);
                 string toolId = VisualStudioUtils.LanguageToolIds[entry.Module.Language];
-                _writer.AppendLine($"Project(\"{{{toolId}}}\") = \"{entry.Name}\", \"{relPath}\", \"{{{entry.ID}}}\"");
+                _writer.AppendLine($"Project(\"{{{toolId}}}\") = \"{entry.Name}\", \"{relPath}\", \"{entry.ID}\"");
                 _writer.IncreaseIndent();
 
                 _writer.AppendLine("ProjectSection(ProjectDependencies) = postProject");
                 _writer.IncreaseIndent();
-                foreach (ModuleGroupTree.Entry dependency in GetBuildDependencies(_helper.BaseContext, entry.Module, groupTree))
+                foreach (ModuleGroupTree.Entry dep in GetOrderDependencies(_helper.BaseContext, entry.Module, groupTree))
                 {
-                    _writer.AppendLine($"{{{dependency.ID}}} = {{{dependency.ID}}}");
+                    _writer.AppendLine($"{dep.ID} = {dep.ID}");
                 }
                 _writer.DecreaseIndent();
                 _writer.AppendLine("EndProjectSection");
@@ -100,7 +107,7 @@ internal class SlnGenerator(IProjectService projectService, ProjectGeneratorHelp
             }
             else
             {
-                _writer.AppendLine($"Project(\"{{2150E333-8FDC-42A3-9474-1A3956D46DE8}}\") = \"{entry.Name}\", \"{entry.Name}\", \"{{{entry.ID}}}\"");
+                _writer.AppendLine($"Project(\"{{2150E333-8FDC-42A3-9474-1A3956D46DE8}}\") = \"{entry.Name}\", \"{entry.Name}\", \"{entry.ID}\"");
                 _writer.AppendLine("EndProject");
             }
         });

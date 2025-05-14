@@ -19,6 +19,7 @@ None.
     * Dependencies can optionally specify a `kind` property, detailed below.
     * Dependencies can optionally specify an `external` property, detailed below.
     * Dependencies can optionally specify a `whole_archive` property, detailed below.
+    * Dependencies can optionally specify a `system_link_type` property, detailed below.
 
 ### `kind` property
 
@@ -52,6 +53,15 @@ The valid values are:
 
 - `#false` - Link only object files that are used. This is the default behavior.
 - `#true` - Link all object files.
+
+### `system_link_type` property
+
+The `system_link_type` property string value that informs the build system how to link the dependency. This is only considered when the `kind` property is `system`, and the toolset is `gcc` or `clang`.
+
+The valid values are:
+
+- `static` - Statically link the dependency system library
+- `shared` - Dynamically link the dependency system library
 
 ## Scopes
 

@@ -18,7 +18,7 @@ public class ImportNode(KdlNode node, INode? scope) : NodeBase(node, scope)
 
     public static readonly IReadOnlyList<NodeKdlValue> NodeArguments =
     [
-        NodeKdlString.Required(),
+        NodeKdlPath.Required(""),
     ];
 
     public static readonly IReadOnlyDictionary<string, NodeKdlValue> NodeProperties = new SortedDictionary<string, NodeKdlValue>()
@@ -30,5 +30,5 @@ public class ImportNode(KdlNode node, INode? scope) : NodeBase(node, scope)
     public override IReadOnlyList<NodeKdlValue> Arguments => NodeArguments;
     public override IReadOnlyDictionary<string, NodeKdlValue> Properties => NodeProperties;
 
-    public string ImportPath => GetStringValue(0);
+    public string ImportPath => GetPathValue(0);
 }

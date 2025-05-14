@@ -9,11 +9,23 @@ public class ModuleGroupTree
 {
     private static readonly Guid _namespaceProjectId = new("77D82CDB-779C-4088-925A-D97DFC780CBB");
 
+    private static string GetModuleGuid(string path)
+    {
+        Guid value = GuidUtils.CreateV5(_namespaceProjectId, path);
+        return $"{{{value}}}";
+    }
+
+    public static string GetModuleGuid(ModuleNode module)
+    {
+        string path = $"{module.Group ?? ""}/{module.ModuleName}";
+        return GetModuleGuid(path);
+    }
+
     public class Entry(string path, ModuleNode? module)
     {
         public string FullPath => path;
         public string Name { get; } = Path.GetFileName(path);
-        public Guid ID { get; } = GuidUtils.CreateV5(_namespaceProjectId, path);
+        public string ID { get; } = GetModuleGuid(path);
         public ModuleNode? Module => module;
         public List<Entry> Children { get; } = [];
         public Entry? Parent { get; set; }
@@ -41,7 +53,7 @@ public class ModuleGroupTree
 
     public Entry Add(ModuleNode module)
     {
-        string path =$"{module.Group ?? ""}/{module.ModuleName}";
+        string path = $"{module.Group ?? ""}/{module.ModuleName}";
         Entry newEntry = new(path, module);
         Entry parent = FindOrCreateBranch(module.Group);
         Insert(newEntry, parent);

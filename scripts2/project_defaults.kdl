@@ -162,14 +162,14 @@ when toolset=msvc {
 // Base Settings
 
 // Base settings used by all configurations and platforms
-dialect cpp=c++20 c=c11 csharp=c#12
+dialect cpp=cpp20 c=c11 csharp=cs12
 exceptions off
 external warnings=off angle_brackets=#true
 floating_point precise
 warnings extra fatal=#true
 
-when system=!linux { files match { "**.linux.*" action=none } }
-when system=!wasm { files match { "**.wasm.*" action=none } }
-when system=!windows { files match { "**.windows.*" action=none } }
-when tags=!posix { files match { "**.posix.*" action=none } }
-when tags=!win32 { files match { "**.win32.*" action=none } }
+when system=!linux { files modify { "**.linux.*" build_exclude=#true } }
+when system=!wasm { files modify { "**.wasm.*" build_exclude=#true } }
+when system=!windows { files modify { "**.windows.*" build_exclude=#true } }
+when tags=!posix { files modify { "**.posix.*" build_exclude=#true } }
+when tags=!win32 { files modify { "**.win32.*" build_exclude=#true } }

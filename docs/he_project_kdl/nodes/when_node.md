@@ -13,7 +13,7 @@ Wraps one or more other nodes that are applied in the parent scope only if the c
 
 Each property checks if the context matches the given value. The equality check can be negated by prefixing the value with `!`. For example, `arch=x86_64` checks that the architecture is `x86_64` and `arch=!x86_64` checks that the architecture is *not* `x86_64`.
 
-Values can also be logically combined with `||` (or), `&&` (and), or `^` (xor). Conditions are evaluated from left-to-right, and parenthesis may be used to to group conditions.
+Values can also be logically combined with `||` (or), `&&` (and), or `^` (xor). Conditions are evaluated from left-to-right, and parenthesis (`()`) may be used to to group conditions.
 
 The values you can specify as properties to be checked are:
 

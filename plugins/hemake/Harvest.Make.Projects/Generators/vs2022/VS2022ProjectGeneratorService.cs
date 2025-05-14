@@ -21,6 +21,9 @@ public class VS2022ProjectGeneratorService(IProjectService projectService) : IPr
         SlnGenerator slnGenerator = new(_projectService, helper);
         slnGenerator.Generate(_groupTree, "12.00", "17");
 
+        // TODO: Can probably multi-thread the generation of the project files.
+        // Reads from project service should be thread-safe and I don't think the
+        // order we do this in matters.
         _groupTree.Traverse((entry) =>
         {
             if (entry.Module is null)
@@ -34,20 +37,15 @@ public class VS2022ProjectGeneratorService(IProjectService projectService) : IPr
                 case EModuleLanguage.Cpp:
                 {
                     VcxprojGenerator generator = new(_projectService, helper);
-                    generator.Generate(context, entry.Module, entry.ID);
+                    generator.Generate(context, entry.Module);
                     break;
                 }
                 case EModuleLanguage.CSharp:
                 {
-                    CsprojGenerator generator = new(_projectService, helper);
-                    generator.Generate(context, entry.Module, entry.ID);
-                    break;
-                }
-                case EModuleLanguage.FSharp:
-                {
-                    FsprojGenerator generator = new(_projectService, helper);
-                    generator.Generate(context, entry.Module, entry.ID);
-                    break;
+                    throw new NotImplementedException("C# project generation has not yet been implemented");
+                    //CsprojGenerator generator = new(_projectService, helper);
+                    //generator.Generate(context, entry.Module);
+                    //break;
                 }
                 default:
                 {
@@ -59,8 +57,8 @@ public class VS2022ProjectGeneratorService(IProjectService projectService) : IPr
 
     private void BuildModuleTree(ProjectContext projectContext)
     {
-        IEnumerable<ModuleNode> modules = _projectService.FindNodes<ModuleNode>(projectContext);
-        ProjectNode projectNode = _projectService.GetResolvedNode<ProjectNode>(projectContext);
+        ProjectNode projectNode = _projectService.GetMergedNode<ProjectNode>(projectContext);
+        List<ModuleNode> modules = _projectService.GetNodes<ModuleNode>(projectContext);
 
         // Create and sort the tree of modules.
         _groupTree.Clear();

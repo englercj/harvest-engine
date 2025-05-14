@@ -21,7 +21,7 @@ public class NodeRegistrar(IProjectService projectService) : IHostedService
         _projectService.RegisterNodeType<BuildOutputNode>();
         _projectService.RegisterNodeType<BuildRuleNode>();
         _projectService.RegisterNodeType<CodegenNode>();
-        _projectService.RegisterNodeType<CommandsNode>();
+        _projectService.RegisterNodeType<CommandNode>();
         _projectService.RegisterNodeType<ConfigurationNode>();
         _projectService.RegisterNodeType<DefinesNode>();
         _projectService.RegisterNodeType<DependenciesNode>();
@@ -35,6 +35,7 @@ public class NodeRegistrar(IProjectService projectService) : IHostedService
         _projectService.RegisterNodeType<IncludeDirsNode>();
         _projectService.RegisterNodeType<InputsNode>();
         _projectService.RegisterNodeType<InstallNode>();
+        _projectService.RegisterNodeType<LibDirsNode>();
         _projectService.RegisterNodeType<LinkOptionsNode>();
         _projectService.RegisterNodeType<ModuleNode>();
         _projectService.RegisterNodeType<NugetNode>();

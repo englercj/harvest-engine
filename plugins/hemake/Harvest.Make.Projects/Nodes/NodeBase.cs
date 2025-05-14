@@ -9,7 +9,7 @@ using System.Text.RegularExpressions;
 
 namespace Harvest.Make.Projects.Nodes;
 
-public abstract class NodeBase(KdlNode node, INode? scope) : INode
+public abstract partial class NodeBase(KdlNode node, INode? scope) : INode
 {
     public bool IsExtensionNode => Node.Name.StartsWith('+');
     public virtual bool CanBeExtended => false;
@@ -29,6 +29,11 @@ public abstract class NodeBase(KdlNode node, INode? scope) : INode
     public virtual Type? ChildNodeType => null;
 
     private static int s_tokenDepth = 0;
+
+    private const string TokenRegexPattern = @"\$\{[^\}]+\}";
+
+    [GeneratedRegex(TokenRegexPattern, RegexOptions.Singleline)]
+    private static partial Regex TokenRegex();
 
     protected T? TryGetClassValue<T>(int index) where T : class
     {
@@ -441,11 +446,6 @@ public abstract class NodeBase(KdlNode node, INode? scope) : INode
             throw new Exception($"Cannot add argument at index {index} to node '{Name}'. Invalid arguments array.");
         }
     }
-
-    private const string _tokenRegexPattern = @"\$\{[^\}]+\}";
-
-    [GeneratedRegex(_tokenRegexPattern, RegexOptions.Singleline)]
-    private static partial Regex TokenRegex();
 
     protected string ReplaceTokens(ProjectContext projectContext, string input)
     {

@@ -167,8 +167,8 @@ public static class VisualStudioUtils
             return isMixed;
         }
 
-        // TODO: Foreach file in the module and if any file is managed then mixed = true.
-        throw new NotImplementedException();
+        // TODO: If/when we add file-specific configuration, need to check each file in the module
+        // and if any file is managed then mixed = true.
 
         return isMixed;
     }

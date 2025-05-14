@@ -38,6 +38,6 @@ public interface INode
     public List<INode> Children { get; }
     public Type? ChildNodeType { get; }
 
-    public NodeValidationResult Validate(in INode? scope);
-    public void MergeAndResolve(ProjectContext context, in INode node);
+    public NodeValidationResult Validate(INode? scope);
+    public void MergeAndResolve(ProjectContext context, INode node);
 }

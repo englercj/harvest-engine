@@ -85,8 +85,11 @@ public class ClCompileFileGroup(ProjectGeneratorHelper helper, string vsProjectP
         }
 
         // TODO: File-level configuration? How do I only search in the file context, and not the parent scope?
-        // Most of these duplicate code from VcxprojGenerator.cs, probably should make utilities in VisualStudioUtils.
-        // Also need to ensure that all the elements output here actually use the `condition`.
+        // Maybe need a new project service function that doesn't search aprent scopes; just tries to find a node in
+        // the given scope and it if it fails returns null. That way I can tell if the file has a config or not.
+
+        // TODO: Most of these duplicate code from VcxprojGenerator.cs, probably should make utilities in VisualStudioUtils.
+        // TODO: Also need to ensure that all the elements output here actually use the `condition`.
 
         //CodegenNode codegen = file.Context.ProjectService.GetMergedNode<CodegenNode>(file.Context, file.Entry, false);
         //DefinesNode defines = file.Context.ProjectService.GetMergedNode<DefinesNode>(file.Context, file.Entry, false);

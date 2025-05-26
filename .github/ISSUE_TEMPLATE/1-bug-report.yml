@@ -1,0 +1,52 @@
+name: 🐞 Bug Report
+description: File a bug report.
+labels: ["triage-needed"]
+body:
+- type: checkboxes
+  attributes:
+    label: Is there an existing issue for this?
+    description: Please search to see if an issue already exists for the bug you encountered.
+    options:
+    - label: I have searched the existing issues
+      required: true
+- type: dropdown
+  attributes:
+    label: Engine Version
+    description: The version of Harvest Engine where this bug reproduces.
+    options: ["v0.1.x"]
+    multiple: false
+    default: 0
+  validations:
+    required: true
+- type: dropdown
+  attributes:
+    label: Affected Platforms
+    description: The platforms where this bug reproduces.
+    options: ["Windows", "Linux", "WebAssembly"]
+    multiple: true
+  validations:
+    required: true
+- type: input
+  attributes:
+    label: Minimal Example
+    description: Link to a repository with a minimal example project that reproduces the bug.
+    placeholder: https://github.com/example-user/example-bug-project
+  validations:
+    required: false
+- type: textarea
+  attributes:
+    label: Description of Issue
+    description: A concise description of what you're currently experiencing and what you expected to happen instead.
+  validations:
+    required: true
+- type: textarea
+  attributes:
+    label: Steps to Reproduce
+    description: Steps to reproduce the behavior.
+    placeholder: |
+      1. Clone the minimal example repo...
+      1. Configure..
+      1. Run '...'
+      1. See error...
+  validations:
+    required: false

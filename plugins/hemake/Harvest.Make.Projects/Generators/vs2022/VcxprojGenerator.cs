@@ -11,6 +11,8 @@ namespace Harvest.Make.Projects.Generators.vs2022;
 internal class VcxprojGenerator(IProjectService projectService, ProjectGeneratorHelper helper)
 {
     public const string ProjectExtension = ".vcxproj";
+    public const string FiltersExtension = ".vcxproj.filters";
+    public const string XmlNamespace = "http://schemas.microsoft.com/developer/msbuild/2003";
 
     private readonly IProjectService _projectService = projectService;
     private readonly ProjectGeneratorHelper _helper = helper;
@@ -19,14 +21,22 @@ internal class VcxprojGenerator(IProjectService projectService, ProjectGenerator
 
     public void Generate(InvocationContext context, ModuleNode module)
     {
-        _outputPath = Path.Join(_helper.BuildOutput.ProjectDir, $"{module.ModuleName}{ProjectExtension}");
         CreateFileGroups(context, module);
+
+        GenerateProjectFile(context, module);
+        GenerateFiltersFile(module);
+        GenerateUserFile(module);
+    }
+
+    private void GenerateProjectFile(InvocationContext context, ModuleNode module)
+    {
+        _outputPath = Path.Join(_helper.BuildOutput.ProjectDir, $"{module.ModuleName}{ProjectExtension}");
 
         using FileStream stream = new(_outputPath, FileMode.Create, FileAccess.Write, FileShare.None);
         using XmlWriter writer = XmlWriter.Create(stream, new XmlWriterSettings { Encoding = Encoding.UTF8, Indent = true });
 
         writer.WriteStartDocument();
-        writer.WriteStartElement("Project", "http://schemas.microsoft.com/developer/msbuild/2003");
+        writer.WriteStartElement("Project", XmlNamespace);
         writer.WriteAttributeString("DefaultTargets", "Build");
 
         WriteConfigurations(writer);
@@ -38,7 +48,7 @@ internal class VcxprojGenerator(IProjectService projectService, ProjectGenerator
         WriteOutputProperties(writer, context, module);
         WriteItemDefinitionGroups(writer, context, module);
         // TODO: managed assembly references (<ItemGroup><Reference Include="..." /></ItemGroup>)
-        WriteFiles(writer, context, module);
+        WriteFiles(writer);
         WriteProjectReferences(writer, context, module);
         WriteLanguageTargetImports(writer);
         WriteExtensionTargetImports(writer);
@@ -47,6 +57,69 @@ internal class VcxprojGenerator(IProjectService projectService, ProjectGenerator
 
         writer.WriteEndElement();
         writer.WriteEndDocument();
+    }
+
+    private void GenerateFiltersFile(ModuleNode module)
+    {
+        _outputPath = Path.Join(_helper.BuildOutput.ProjectDir, $"{module.ModuleName}{ProjectExtension}");
+
+        using FileStream stream = new(_outputPath, FileMode.Create, FileAccess.Write, FileShare.None);
+        using XmlWriter writer = XmlWriter.Create(stream, new XmlWriterSettings { Encoding = Encoding.UTF8, Indent = true });
+
+        HashSet<string> seenVirtualDirs = [];
+
+        writer.WriteStartDocument();
+        writer.WriteStartElement("Project", XmlNamespace);
+        writer.WriteAttributeString("ToolsVersion", "4.0"); // vs2022 filter version
+
+        writer.WriteStartElement("ItemGroup");
+
+        foreach (IVisualStudioFileGroup fileGroup in _fileGroups)
+        {
+            foreach (IVisualStudioFileGroup.FileEntry file in fileGroup.Files)
+            {
+                if (seenVirtualDirs.Add(file.VirtualPath))
+                {
+                    writer.WriteStartElement("Filter");
+                    writer.WriteAttributeString("Include", file.VirtualPath);
+
+                    Guid uniqueId = VisualStudioUtils.CreateGuidForFilter(file.VirtualPath);
+                    writer.WriteElementString("UniqueIdentifier", $"{{{uniqueId}}}");
+
+                    writer.WriteEndElement();
+                }
+            }
+        }
+
+        writer.WriteEndElement();
+
+        foreach (IVisualStudioFileGroup fileGroup in _fileGroups)
+        {
+            fileGroup.WriteFilters(writer);
+        }
+
+        writer.WriteEndElement();
+        writer.WriteEndDocument();
+    }
+
+    private void GenerateUserFile(ModuleNode module)
+    {
+        // TODO: debugger settings: command, args, flavor, type, working dir, environment variables, etc.
+
+        //_outputPath = Path.Join(_helper.BuildOutput.ProjectDir, $"{module.ModuleName}{ProjectExtension}");
+
+        //using FileStream stream = new(_outputPath, FileMode.Create, FileAccess.Write, FileShare.None);
+        //using XmlWriter writer = XmlWriter.Create(stream, new XmlWriterSettings { Encoding = Encoding.UTF8, Indent = true });
+
+        //writer.WriteStartDocument();
+        //writer.WriteStartElement("Project", XmlNamespace);
+        //writer.WriteAttributeString("ToolsVersion", "Current"); // vs2022 user version
+
+        //writer.WriteStartElement("PropertyGroup");
+        //writer.WriteEndElement();
+
+        //writer.WriteEndElement();
+        //writer.WriteEndDocument();
     }
 
     private string GetPath(string path)
@@ -59,7 +132,7 @@ internal class VcxprojGenerator(IProjectService projectService, ProjectGenerator
         writer.WriteStartElement("ItemGroup");
         writer.WriteAttributeString("Label", "ProjectConfigurations");
 
-        VisualStudioUtils.ForEachConfig(_helper, (ConfigurationNode configuration, PlatformNode platform, string archName) =>
+        VisualStudioUtils.ForEachConfig(_helper, (configuration, platform, archName) =>
         {
             writer.WriteStartElement("ProjectConfiguration");
             writer.WriteAttributeString("Include", VisualStudioUtils.GetConfigName(configuration, platform, archName));
@@ -141,7 +214,7 @@ internal class VcxprojGenerator(IProjectService projectService, ProjectGenerator
 
     private void WriteConfigurationProperties(XmlWriter writer, InvocationContext invocationContext, ModuleNode module)
     {
-        VisualStudioUtils.ForEachConfig(_helper, (ConfigurationNode configuration, PlatformNode platform, string archName) =>
+        VisualStudioUtils.ForEachConfig(_helper, (configuration, platform, archName) =>
         {
             ProjectContext context = _projectService.CreateProjectContext(invocationContext, module, configuration, platform);
             BuildOptionsNode buildOptions = _projectService.GetMergedNode<BuildOptionsNode>(context, module);
@@ -273,7 +346,7 @@ internal class VcxprojGenerator(IProjectService projectService, ProjectGenerator
 
         WriteExtensionSettings(writer);
 
-        VisualStudioUtils.ForEachConfig(_helper, (ConfigurationNode configuration, PlatformNode platform, string archName) =>
+        VisualStudioUtils.ForEachConfig(_helper, (configuration, platform, archName) =>
         {
             string configCondition = VisualStudioUtils.GetConfigCondition(configuration, platform, archName);
 
@@ -300,7 +373,7 @@ internal class VcxprojGenerator(IProjectService projectService, ProjectGenerator
 
     private void WriteOutputProperties(XmlWriter writer, InvocationContext invocationContext, ModuleNode module)
     {
-        VisualStudioUtils.ForEachConfig(_helper, (ConfigurationNode configuration, PlatformNode platform, string archName) =>
+        VisualStudioUtils.ForEachConfig(_helper, (configuration, platform, archName) =>
         {
             ProjectContext context = _projectService.CreateProjectContext(invocationContext, module, configuration, platform);
             BuildOutputNode buildOutput = _projectService.GetMergedNode<BuildOutputNode>(context, module);
@@ -366,7 +439,7 @@ internal class VcxprojGenerator(IProjectService projectService, ProjectGenerator
 
     private void WriteItemDefinitionGroups(XmlWriter writer, InvocationContext invocationContext, ModuleNode module)
     {
-        VisualStudioUtils.ForEachConfig(_helper, (ConfigurationNode configuration, PlatformNode platform, string archName) =>
+        VisualStudioUtils.ForEachConfig(_helper, (configuration, platform, archName) =>
         {
             ProjectContext context = _projectService.CreateProjectContext(invocationContext, module, configuration, platform);
             ToolsetNode toolset = _projectService.GetMergedNode<ToolsetNode>(context, module, (n) => n.Toolset == platform.Toolset);
@@ -398,7 +471,7 @@ internal class VcxprojGenerator(IProjectService projectService, ProjectGenerator
 
                 bool isOptimizedBuild = VisualStudioUtils.IsOptimizedBuild(optimize);
                 bool isDebugBuild = VisualStudioUtils.IsDebugBuild(optimize, symbols);
-                bool hasAnyResourceFiles = files.Entries.Any((FilesEntryNode entry) => entry.ResolvedFileAction == EFileAction.Resource);
+                bool hasAnyResourceFiles = files.Entries.Any(entry => entry.ResolvedFileAction == EFileAction.Resource);
 
                 writer.WriteStartElement("ClCompile");
 
@@ -927,7 +1000,7 @@ internal class VcxprojGenerator(IProjectService projectService, ProjectGenerator
         });
     }
 
-    private void WriteFiles(XmlWriter writer, InvocationContext invocationContext, ModuleNode module)
+    private void WriteFiles(XmlWriter writer)
     {
         foreach (IVisualStudioFileGroup fileGroup in _fileGroups)
         {
@@ -935,7 +1008,7 @@ internal class VcxprojGenerator(IProjectService projectService, ProjectGenerator
         }
     }
 
-    private void WriteLanguageTargetImports(XmlWriter writer)
+    private static void WriteLanguageTargetImports(XmlWriter writer)
     {
         writer.WriteStartElement("Import");
         writer.WriteAttributeString("Project", "$(VCTargetsPath)\\Microsoft.Cpp.targets");
@@ -972,7 +1045,7 @@ internal class VcxprojGenerator(IProjectService projectService, ProjectGenerator
     {
         writer.WriteStartElement("ItemGroup");
 
-        VisualStudioUtils.ForEachConfig(_helper, (ConfigurationNode configuration, PlatformNode platform, string archName) =>
+        VisualStudioUtils.ForEachConfig(_helper, (configuration, platform, archName) =>
         {
             ProjectContext context = _projectService.CreateProjectContext(invocationContext, module, configuration, platform);
             BuildOptionsNode buildOptions = _projectService.GetMergedNode<BuildOptionsNode>(context, module);
@@ -1012,17 +1085,45 @@ internal class VcxprojGenerator(IProjectService projectService, ProjectGenerator
         writer.WriteEndElement();
     }
 
+    private void AddGeneratedFilesForCustomBuildRule(ProjectContext context, BuildRuleNode buildRule)
+    {
+        List<CommandNode> commands = _projectService.GetNodes<CommandNode>(context, buildRule, false);
+        if (commands.Count == 0)
+        {
+            return;
+        }
+
+        OutputsNode outputs = _projectService.GetMergedNode<OutputsNode>(context, buildRule, false);
+        IEnumerable<string> outputFilePaths = outputs.Entries.Select((entry) => entry.FilePath);
+
+        foreach (string outputFilePath in outputFilePaths)
+        {
+            EFileAction fileAction = FilesEntryNode.GetDefaultFileAction(outputFilePath);
+            EFileBuildRule fileBuildRule = FilesEntryNode.GetDefaultFileBuildRule(outputFilePath);
+
+            foreach (IVisualStudioFileGroup fileGroup in _fileGroups)
+            {
+                if (fileGroup.CanHandleFile(outputFilePath, fileAction, fileBuildRule))
+                {
+                    fileGroup.AddGeneratedFile(context, outputFilePath, string.Empty, fileAction, fileBuildRule);
+                    break;
+                }
+            }
+        }
+    }
+
     private void CreateFileGroups(InvocationContext invocationContext, ModuleNode module)
     {
         _fileGroups = VisualStudioUtils.CreateFileGroups(_helper, _outputPath);
 
-        VisualStudioUtils.ForEachConfig(_helper, (ConfigurationNode configuration, PlatformNode platform, string archName) =>
+        VisualStudioUtils.ForEachConfig(_helper, (configuration, platform, archName) =>
         {
             ProjectContext context = _projectService.CreateProjectContext(invocationContext, module, configuration, platform);
             FilesNode files = _projectService.GetMergedNode<FilesNode>(context, module);
 
             foreach (FilesEntryNode entry in files.Entries)
             {
+                // Search for a file group that can handle this file entry
                 bool foundGroup = false;
                 foreach (IVisualStudioFileGroup fileGroup in _fileGroups)
                 {
@@ -1039,12 +1140,28 @@ internal class VcxprojGenerator(IProjectService projectService, ProjectGenerator
                 {
                     throw new Exception("No file group found for file: " + entry.ResolvedFilePath);
                 }
+
+                // Add each output file from custom build rules
+                if (!entry.IsExcludedFromBuild && entry.ResolvedFileBuildRule == EFileBuildRule.Custom)
+                {
+                    BuildRuleNode buildRule = _projectService.GetMergedNode<BuildRuleNode>(context, module, (n) => n.RuleName == entry.BuildRuleName, false);
+                    if (buildRule.RuleName != entry.BuildRuleName)
+                    {
+                        throw new Exception($"No build rule with the name '{entry.BuildRuleName}' was found.");
+                    }
+
+                    if (buildRule.LinkOutput)
+                    {
+                        AddGeneratedFilesForCustomBuildRule(context, buildRule);
+                    }
+                }
             }
         });
 
         foreach (IVisualStudioFileGroup fileGroup in _fileGroups)
         {
             fileGroup.SortFiles();
+            fileGroup.SetupVirtualPaths();
         }
     }
 }

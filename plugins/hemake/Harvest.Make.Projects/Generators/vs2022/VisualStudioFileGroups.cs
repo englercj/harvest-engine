@@ -13,14 +13,9 @@ public class ClIncludeFileGroup(ProjectGeneratorHelper helper, string vsProjectP
     public override int Priority => 10;
     public override string GroupTag => "ClInclude";
 
-    public override bool CanHandleFile(FilesEntryNode entry)
+    public override bool CanHandleFile(string fullPath, EFileAction action, EFileBuildRule buildRule)
     {
-        return entry.ResolvedFileAction == EFileAction.Include;
-    }
-
-    protected override void OnWriteFile(XmlWriter writer, FileEntry file)
-    {
-        HandleGeneratedFile(writer, file);
+        return action == EFileAction.Include;
     }
 }
 
@@ -31,10 +26,10 @@ public class ClCompileFileGroup(ProjectGeneratorHelper helper, string vsProjectP
 
     private Dictionary<string, int> _objectFileNameSequence = [];
 
-    public override bool CanHandleFile(FilesEntryNode entry)
+    public override bool CanHandleFile(string fullPath, EFileAction action, EFileBuildRule buildRule)
     {
-        return entry.ResolvedFileAction == EFileAction.Build
-            && entry.ResolvedFileBuildRule switch
+        return action == EFileAction.Build
+            && buildRule switch
             {
                 EFileBuildRule.C => true,
                 EFileBuildRule.Cpp => true,
@@ -45,21 +40,16 @@ public class ClCompileFileGroup(ProjectGeneratorHelper helper, string vsProjectP
             };
     }
 
-    protected override void OnWriteFile(XmlWriter writer, FileEntry file)
-    {
-        HandleGeneratedFile(writer, file);
-    }
-
     protected override void OnWriteFileConfig(XmlWriter writer, FileEntry file, ConfigurationNode configuration, PlatformNode platform, string archName)
     {
-        if (file.Entry.IsExcludedFromBuild)
+        if (file.IsExcludedFromBuild)
         {
             HandleExcludedFile(writer, file, configuration, platform, archName);
             return;
         }
 
         string condition = VisualStudioUtils.GetConfigCondition(configuration, platform, archName);
-        string fileBaseName = Path.GetFileNameWithoutExtension(file.Entry.ResolvedFilePath);
+        string fileBaseName = Path.GetFileNameWithoutExtension(file.FullPath);
 
         // Need to make the obj file name unique in the case of two files with the same base name.
         // This is because a project with 'src/a.cpp' and 'test/a.cpp' will both output to 'a.obj'.
@@ -74,7 +64,7 @@ public class ClCompileFileGroup(ProjectGeneratorHelper helper, string vsProjectP
         }
 
         BuildOptionsNode buildOptions = file.Context.ProjectService.GetMergedNode<BuildOptionsNode>(file.Context, file.Context.Module, false);
-        if (buildOptions.PchSource == file.Entry.ResolvedFilePath)
+        if (buildOptions.PchSource == file.FullPath)
         {
             VisualStudioUtils.WriteElementString(writer, "PrecompiledHeader", "Create", condition);
         }
@@ -278,9 +268,9 @@ public class ResourceFileGroup(ProjectGeneratorHelper helper, string vsProjectPa
     public override int Priority => 30;
     public override string GroupTag => "ResourceCompile";
 
-    public override bool CanHandleFile(FilesEntryNode entry)
+    public override bool CanHandleFile(string fullPath, EFileAction action, EFileBuildRule buildRule)
     {
-        return entry.ResolvedFileAction == EFileAction.Resource;
+        return action == EFileAction.Resource;
     }
 
     protected override void OnWriteFileConfig(XmlWriter writer, FileEntry file, ConfigurationNode configuration, PlatformNode platform, string archName)
@@ -294,9 +284,9 @@ public class CustomBuildFileGroup(ProjectGeneratorHelper helper, string vsProjec
     public override int Priority => 40;
     public override string GroupTag => "CustomBuild";
 
-    public override bool CanHandleFile(FilesEntryNode entry)
+    public override bool CanHandleFile(string fullPath, EFileAction action, EFileBuildRule buildRule)
     {
-        return entry.ResolvedFileAction == EFileAction.Build && entry.ResolvedFileBuildRule == EFileBuildRule.Custom;
+        return action == EFileAction.Build && buildRule == EFileBuildRule.Custom;
     }
 
     protected override void OnWriteFile(XmlWriter writer, FileEntry file)
@@ -306,17 +296,17 @@ public class CustomBuildFileGroup(ProjectGeneratorHelper helper, string vsProjec
 
     protected override void OnWriteFileConfig(XmlWriter writer, FileEntry file, ConfigurationNode configuration, PlatformNode platform, string archName)
     {
-        if (file.Entry.ResolvedFileBuildRule != EFileBuildRule.Custom)
+        if (file.BuildRule != EFileBuildRule.Custom)
         {
             return;
         }
 
         HandleExcludedFile(writer, file, configuration, platform, archName);
 
-        BuildRuleNode buildRule = file.Context.ProjectService.GetMergedNode<BuildRuleNode>(file.Context, file.Context.Module, (n) => n.RuleName == file.Entry.BuildRuleName, false);
-        if (buildRule.RuleName != file.Entry.BuildRuleName)
+        BuildRuleNode buildRule = file.Context.ProjectService.GetMergedNode<BuildRuleNode>(file.Context, file.Context.Module, (n) => n.RuleName == file.BuildRuleName, false);
+        if (buildRule.RuleName != file.BuildRuleName)
         {
-            throw new Exception($"No build rule with the name '{file.Entry.BuildRuleName}' was found.");
+            throw new Exception($"No build rule with the name '{file.BuildRuleName}' was found.");
         }
 
         string condition = VisualStudioUtils.GetConfigCondition(configuration, platform, archName);
@@ -353,9 +343,9 @@ public class MidlFileGroup(ProjectGeneratorHelper helper, string vsProjectPath) 
     public override int Priority => 50;
     public override string GroupTag => "Midl";
 
-    public override bool CanHandleFile(FilesEntryNode entry)
+    public override bool CanHandleFile(string fullPath, EFileAction action, EFileBuildRule buildRule)
     {
-        return entry.ResolvedFileAction == EFileAction.Build && entry.ResolvedFileBuildRule == EFileBuildRule.Midl;
+        return action == EFileAction.Build && buildRule == EFileBuildRule.Midl;
     }
 
     protected override void OnWriteFileConfig(XmlWriter writer, FileEntry file, ConfigurationNode configuration, PlatformNode platform, string archName)
@@ -374,9 +364,9 @@ public class MasmFileGroup(ProjectGeneratorHelper helper, string vsProjectPath) 
     public override int Priority => 60;
     public override string GroupTag => "Masm";
 
-    public override bool CanHandleFile(FilesEntryNode entry)
+    public override bool CanHandleFile(string fullPath, EFileAction action, EFileBuildRule buildRule)
     {
-        return entry.ResolvedFileAction == EFileAction.Build && entry.ResolvedFileBuildRule == EFileBuildRule.Asm;
+        return action == EFileAction.Build && buildRule == EFileBuildRule.Asm;
     }
 
     protected override void OnWriteExtensionSettings(XmlWriter writer)
@@ -416,9 +406,9 @@ public class ImageFileGroup(ProjectGeneratorHelper helper, string vsProjectPath)
     public override int Priority => 70;
     public override string GroupTag => "Image";
 
-    public override bool CanHandleFile(FilesEntryNode entry)
+    public override bool CanHandleFile(string fullPath, EFileAction action, EFileBuildRule buildRule)
     {
-        return entry.ResolvedFileAction == EFileAction.Image;
+        return action == EFileAction.Image;
     }
 
     protected override void OnWriteFileConfig(XmlWriter writer, FileEntry file, ConfigurationNode configuration, PlatformNode platform, string archName)
@@ -432,14 +422,9 @@ public class NatvisFileGroup(ProjectGeneratorHelper helper, string vsProjectPath
     public override int Priority => 80;
     public override string GroupTag => "Natvis";
 
-    public override bool CanHandleFile(FilesEntryNode entry)
+    public override bool CanHandleFile(string fullPath, EFileAction action, EFileBuildRule buildRule)
     {
-        return entry.ResolvedFileAction == EFileAction.Natvis;
-    }
-
-    protected override void OnWriteFile(XmlWriter writer, FileEntry file)
-    {
-        HandleGeneratedFile(writer, file);
+        return action == EFileAction.Natvis;
     }
 }
 
@@ -448,9 +433,9 @@ public class AppxManifestFileGroup(ProjectGeneratorHelper helper, string vsProje
     public override int Priority => 90;
     public override string GroupTag => "AppxManifest";
 
-    public override bool CanHandleFile(FilesEntryNode entry)
+    public override bool CanHandleFile(string fullPath, EFileAction action, EFileBuildRule buildRule)
     {
-        return entry.ResolvedFileAction == EFileAction.AppxManifest;
+        return action == EFileAction.AppxManifest;
     }
 
     protected override void OnWriteFile(XmlWriter writer, FileEntry file)
@@ -470,9 +455,9 @@ public class CopyFileGroup(ProjectGeneratorHelper helper, string vsProjectPath) 
     public override int Priority => 100;
     public override string GroupTag => "CopyFileToFolders";
 
-    public override bool CanHandleFile(FilesEntryNode entry)
+    public override bool CanHandleFile(string fullPath, EFileAction action, EFileBuildRule buildRule)
     {
-        return entry.ResolvedFileAction == EFileAction.Copy;
+        return action == EFileAction.Copy;
     }
 
     protected override void OnWriteFileConfig(XmlWriter writer, FileEntry file, ConfigurationNode configuration, PlatformNode platform, string archName)
@@ -492,13 +477,8 @@ public class NoneFileGroup(ProjectGeneratorHelper helper, string vsProjectPath) 
     public override int Priority => 10000;
     public override string GroupTag => "None";
 
-    public override bool CanHandleFile(FilesEntryNode entry)
+    public override bool CanHandleFile(string fullPath, EFileAction action, EFileBuildRule buildRule)
     {
         return true;
-    }
-
-    protected override void OnWriteFile(XmlWriter writer, FileEntry file)
-    {
-        HandleGeneratedFile(writer, file);
     }
 }

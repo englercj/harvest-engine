@@ -2,6 +2,8 @@
 
 using Harvest.Make.Projects.Nodes;
 using Microsoft.Extensions.Configuration;
+using System.Runtime.Intrinsics.Arm;
+using System.Security.Cryptography;
 using System.Text;
 using System.Xml;
 
@@ -279,5 +281,32 @@ public static class VisualStudioUtils
         });
 
         return groups;
+    }
+
+
+    public static Guid CreateGuidFromString(string name, Guid namespaceGuid)
+    {
+        using IncrementalHash hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA1);
+        hash.AppendData(namespaceGuid.ToByteArray());
+        hash.AppendData(Encoding.UTF8.GetBytes(name));
+
+        byte[] result = hash.GetHashAndReset();
+
+        //set high-nibble to 5 to indicate type 5
+        result[6] &= 0x0F;
+        result[6] |= 0x50;
+
+        //set upper two bits to "10"
+        result[8] &= 0x3F;
+        result[8] |= 0x80;
+
+        return new Guid(result);
+    }
+
+    private static readonly Guid s_filtersNamespaceGuid = new("CFCAC646-520C-4F5C-995E-BA007DEA1508");
+
+    public static Guid CreateGuidForFilter(string name)
+    {
+        return CreateGuidFromString(name, s_filtersNamespaceGuid);
     }
 }

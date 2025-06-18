@@ -49,17 +49,3 @@ public class VS2022CliCommand : BaseProjectGeneratorCliCommand
         : base(logger, generatorService, projectService)
     { }
 }
-
-[Service<ICliCommand>(Enumerable = true)]
-public class GNUMakeCliCommand : BaseProjectGeneratorCliCommand
-{
-    public override string Name => ProjectGeneratorNames.GNUMake;
-    public override string Description => "Generate GNU Make makefiles.";
-
-    public GNUMakeCliCommand(
-        ILogger<GNUMakeCliCommand> logger,
-        [FromKeyedServices(ProjectGeneratorNames.GNUMake)] IProjectGeneratorService generatorService,
-        IProjectService projectService)
-        : base(logger, generatorService, projectService)
-    { }
-}

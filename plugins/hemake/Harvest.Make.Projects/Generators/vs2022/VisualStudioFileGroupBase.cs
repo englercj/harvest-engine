@@ -17,26 +17,68 @@ public abstract class VisualStudioFileGroupBase(ProjectGeneratorHelper helper, s
     private readonly List<FileEntry> _files = [];
     public IReadOnlyList<FileEntry> Files => _files;
 
-    public abstract bool CanHandleFile(FilesEntryNode entry);
+    private readonly List<FileEntry> _generatedFiles = [];
+    public IReadOnlyList<FileEntry> GeneratedFiles => _files;
+
+    public abstract bool CanHandleFile(string fullPath, EFileAction action, EFileBuildRule buildRule);
+
+    public bool CanHandleFile(FilesEntryNode entry)
+    {
+        return CanHandleFile(entry.ResolvedFilePath, entry.ResolvedFileAction, entry.ResolvedFileBuildRule);
+    }
 
     public void AddFile(ProjectContext context, FilesEntryNode entry)
     {
-        _files.Add(new FileEntry(entry, context));
+        _files.Add(new FileEntry(context, entry.ResolvedFilePath)
+        {
+            Action = entry.ResolvedFileAction,
+            BuildRule = entry.ResolvedFileBuildRule,
+            BuildRuleName = entry.BuildRuleName,
+            IsExcludedFromBuild = entry.IsExcludedFromBuild,
+        });
+    }
+
+    public void AddGeneratedFile(ProjectContext context, string generatedFilePath, string sourceFilePath, EFileAction action, EFileBuildRule buildRule)
+    {
+        _generatedFiles.Add(new FileEntry(context, generatedFilePath)
+        {
+            Action = action,
+            BuildRule = buildRule,
+            BuildRuleName = string.Empty,
+            DependsOnPath = sourceFilePath,
+            IsExcludedFromBuild = false, // TODO: make this configurable?
+        });
     }
 
     public void SortFiles()
     {
         _files.Sort((a, b) =>
         {
-            string relPathA = GetPath(a.Entry.ResolvedFilePath);
-            string relPathB = GetPath(b.Entry.ResolvedFilePath);
+            string relPathA = GetPath(a.FullPath);
+            string relPathB = GetPath(b.FullPath);
             return string.Compare(relPathA, relPathB);
         });
     }
 
-    public void WriteFiles(XmlWriter writer)
+    public void SetupVirtualPaths()
     {
         if (Files.Count == 0)
+        {
+            return;
+        }
+
+        string commonDir = GetCommonParentDirectoryName();
+        int commonDirLength = commonDir.Length;
+
+        foreach (FileEntry file in _files)
+        {
+            file.VirtualPath = file.FullPath[commonDirLength..];
+        }
+    }
+
+    public void WriteFiles(XmlWriter writer)
+    {
+        if (Files.Count == 0 && GeneratedFiles.Count == 0)
         {
             return;
         }
@@ -45,11 +87,6 @@ public abstract class VisualStudioFileGroupBase(ProjectGeneratorHelper helper, s
 
         foreach (FileEntry file in Files)
         {
-            if (string.IsNullOrEmpty(file.Entry.ResolvedFilePath))
-            {
-                continue;
-            }
-
             writer.WriteStartElement(GroupTag);
             writer.WriteAttributeString("Include", GetPath(file));
 
@@ -62,12 +99,27 @@ public abstract class VisualStudioFileGroupBase(ProjectGeneratorHelper helper, s
             writer.WriteEndElement();
         }
 
+        foreach (FileEntry file in GeneratedFiles)
+        {
+            writer.WriteStartElement(GroupTag);
+            writer.WriteAttributeString("Include", GetPath(file));
+
+            writer.WriteElementString("AutoGen", "true");
+
+            if (!string.IsNullOrEmpty(file.DependsOnPath))
+            {
+                writer.WriteElementString("DependentUpon", GetPath(file.DependsOnPath));
+            }
+
+            writer.WriteEndElement();
+        }
+
         writer.WriteEndElement();
     }
 
-    public void WriteFilter(XmlWriter writer)
+    public void WriteFilters(XmlWriter writer)
     {
-        if (Files.Count == 0)
+        if (Files.Count == 0 && GeneratedFiles.Count == 0)
         {
             return;
         }
@@ -76,18 +128,23 @@ public abstract class VisualStudioFileGroupBase(ProjectGeneratorHelper helper, s
 
         foreach (FileEntry file in Files)
         {
-            if (string.IsNullOrEmpty(file.Entry.ResolvedFilePath))
-            {
-                continue;
-            }
+            string fullPath = file.FullPath;
+            string relPath = GetPath(fullPath);
 
             writer.WriteStartElement(GroupTag);
-            writer.WriteAttributeString("Include", GetPath(file));
-            // TODO: grouping of files based on their path relative to the install dir of a module
-            if (filePath.parent.path)
-            {
-                writer.WriteElementString("Filter", filePath.parent.path);
-            }
+            writer.WriteAttributeString("Include", relPath);
+            writer.WriteElementString("Filter", file.VirtualPath);
+            writer.WriteEndElement();
+        }
+
+        foreach (FileEntry file in GeneratedFiles)
+        {
+            string fullPath = file.FullPath;
+            string relPath = GetPath(fullPath);
+
+            writer.WriteStartElement(GroupTag);
+            writer.WriteAttributeString("Include", relPath);
+            writer.WriteElementString("Filter", file.VirtualPath);
             writer.WriteEndElement();
         }
 
@@ -96,7 +153,7 @@ public abstract class VisualStudioFileGroupBase(ProjectGeneratorHelper helper, s
 
     public void WriteExtensionSettings(XmlWriter writer)
     {
-        if (Files.Count == 0)
+        if (Files.Count == 0 && GeneratedFiles.Count == 0)
         {
             return;
         }
@@ -106,7 +163,7 @@ public abstract class VisualStudioFileGroupBase(ProjectGeneratorHelper helper, s
 
     public void WriteExtensionTargets(XmlWriter writer)
     {
-        if (Files.Count == 0)
+        if (Files.Count == 0 && GeneratedFiles.Count == 0)
         {
             return;
         }
@@ -141,25 +198,49 @@ public abstract class VisualStudioFileGroupBase(ProjectGeneratorHelper helper, s
 
     protected string GetPath(FileEntry file)
     {
-        return GetPath(file.Entry.ResolvedFilePath);
-    }
-
-    protected static void HandleGeneratedFile(XmlWriter writer, FileEntry file)
-    {
-        if (file.Entry.IsGenerated)
-        {
-            string path = path.translate(entry.dependsOn.relpath);
-            writer.WriteElementString("AutoGen", "true");
-            writer.WriteElementString("DependentUpon", path);
-        }
+        return GetPath(file.FullPath);
     }
 
     protected static void HandleExcludedFile(XmlWriter writer, FileEntry file, ConfigurationNode configuration, PlatformNode platform, string archName)
     {
-        if (file.Entry.IsExcludedFromBuild)
+        if (file.IsExcludedFromBuild)
         {
             string condition = VisualStudioUtils.GetConfigCondition(configuration, platform, archName);
             VisualStudioUtils.WriteElementString(writer, "ExcludedFromBuild", "true", condition);
         }
+    }
+
+    protected string GetCommonParentDirectoryName()
+    {
+        int commonStrLen = Files[0].FullPath.Length;
+
+        for (int i = 1; i < Files.Count; i++)
+        {
+            FileEntry file = Files[i];
+            string fullPath = file.FullPath;
+
+            commonStrLen = Math.Min(commonStrLen, fullPath.Length);
+
+            for (int j = 0; j < commonStrLen; j++)
+            {
+                if (Files[i].FullPath[j] != Files[0].FullPath[j])
+                {
+                    commonStrLen = j;
+                    break;
+                }
+            }
+        }
+
+        string commonStr = Files[0].FullPath[..commonStrLen];
+
+        // If it doesn't end with a path separator, then the last segment is a string prefix
+        // of a file or directory name. We remove it to get the common ancestor directory path.
+        if (!commonStr.EndsWith(Path.PathSeparator))
+        {
+            string? dirName = Path.GetDirectoryName(commonStr);
+            commonStr = string.IsNullOrEmpty(dirName) ? string.Empty : (dirName + Path.PathSeparator);
+        }
+
+        return commonStr;
     }
 }

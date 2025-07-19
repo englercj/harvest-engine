@@ -44,12 +44,20 @@ internal class KdlDocumentReadHandler : IKdlReadHandler
         if (_commentDepth > 0)
             return;
 
-        List<KdlNode> children = _nodeStack.Count == 0 ? Document.Nodes : _nodeStack[^1].Children;
         KdlNode node = new(name, type)
         {
             SourceInfo = source
         };
-        children.Add(node);
+
+        if (_nodeStack.Count == 0)
+        {
+            Document.Nodes.Add(node);
+        }
+        else
+        {
+            _nodeStack[^1].AddChild(node);
+        }
+
         _nodeStack.Add(node);
     }
 

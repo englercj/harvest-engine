@@ -2,7 +2,7 @@
 
 using System.CommandLine;
 
-namespace Harvest.Make.Commands;
+namespace Harvest.Make.App.CliCommands;
 
 public class RootCliCommand : RootCommand
 {

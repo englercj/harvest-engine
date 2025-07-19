@@ -13,7 +13,7 @@ using System.CommandLine.Parsing;
 using System.CommandLine.Invocation;
 using Harvest.Make.Projects;
 
-namespace Harvest.Make;
+namespace Harvest.Make.App;
 
 [Service<IHostedService>(Enumerable = true)]
 internal class Application : BackgroundService

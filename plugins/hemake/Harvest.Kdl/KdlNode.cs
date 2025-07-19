@@ -4,38 +4,78 @@ using Harvest.Kdl.Types;
 
 namespace Harvest.Kdl;
 
-public class KdlNode : IKdlObject
+public class KdlNode(string name, string? type = null) : IKdlObject
 {
+    private KdlNode? _parent = null;
+    private readonly List<KdlNode> _children = [];
+
+    public string Name => name;
+    public string? Type => type;
+
+    public KdlNode? Parent => _parent;
+    public IReadOnlyList<KdlNode> Children => _children;
+
+    public List<KdlValue> Arguments { get; } = [];
+    public SortedDictionary<string, KdlValue> Properties { get; } = [];
+
     public KdlSourceInfo SourceInfo { get; set; } = new KdlSourceInfo();
 
-    public string Name { get; }
-    public string? Type { get; }
-
-    public List<KdlNode> Children { get; }
-    public List<KdlValue> Arguments { get; }
-    public SortedDictionary<string, KdlValue> Properties { get; }
-
-    public KdlNode(string name, string? type = null)
+    public void AddChild(KdlNode child)
     {
-        Name = name;
-        Type = type;
-        Children = [];
-        Arguments = [];
-        Properties = [];
+        child.RemoveFromParent();
+        child._parent = this;
+        _children.Add(child);
     }
 
-    public KdlNode(
-        string name,
-        string? type,
-        List<KdlNode> children,
-        List<KdlValue> arguments,
-        SortedDictionary<string, KdlValue> properties)
+    public void RemoveChild(KdlNode child)
     {
-        Name = name;
-        Type = type;
-        Children = children;
-        Arguments = arguments;
-        Properties = properties;
+        if (child.Parent == this)
+        {
+            child._parent = null;
+            _children.Remove(child);
+        }
+    }
+
+    public void RemoveFromParent()
+    {
+        if (Parent is not null)
+        {
+            Parent.RemoveChild(this);
+        }
+    }
+
+    public void ReplaceInParent(KdlNode replacement)
+    {
+        if (Parent is null)
+        {
+            return;
+        }
+
+        replacement.RemoveFromParent();
+
+        int parentIndex = Parent._children.IndexOf(this);
+
+        Parent._children[parentIndex] = replacement;
+        replacement._parent = Parent;
+
+        _parent = null;
+    }
+
+    public void ReplaceInParent(IReadOnlyList<KdlNode> replacements)
+    {
+        if (Parent is null)
+        {
+            return;
+        }
+
+        int parentIndex = Parent._children.IndexOf(this);
+        Parent._children.RemoveAt(parentIndex);
+        Parent._children.InsertRange(parentIndex, replacements);
+        foreach (KdlNode replacement in replacements)
+        {
+            replacement._parent = Parent;
+        }
+        _parent = null;
     }
 
     public void WriteKdl(TextWriter writer, KdlWriteOptions options)

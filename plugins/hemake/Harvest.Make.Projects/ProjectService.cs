@@ -1,12 +1,14 @@
 // Copyright Chad Engler
 
 using Harvest.Kdl;
+using Harvest.Kdl.Exceptions;
 using Harvest.Kdl.Types;
 using Harvest.Make.Attributes;
 using Harvest.Make.Extensions;
 using Harvest.Make.Projects.Nodes;
 using System.CommandLine;
 using System.CommandLine.Invocation;
+using System.ComponentModel;
 using System.Runtime.InteropServices;
 
 namespace Harvest.Make.Projects;
@@ -17,10 +19,14 @@ public class ProjectService : IProjectService
     private readonly Dictionary<string, Type> _nodeTypes = [];
     private readonly Dictionary<string, KdlDocument> _kdlFiles = [];
     private readonly Dictionary<string, ModuleNode> _modules = [];
+    private readonly List<ProjectOption> _projectOptions = [];
+    private KdlDocument? _projectDocument;
+    private ProjectNode? _projectNode;
 
-    public string ProjectPath { get; private set; } = "";
-    public ProjectNode? Project { get; private set; }
-    public List<ProjectOption> Options { get; } = [];
+    public string ProjectPath { get; private set; } = string.Empty;
+    public KdlDocument ProjectDocument => _projectDocument ?? throw new Exception("Project not loaded. Call LoadProject() first.");
+    public ProjectNode ProjectNode => _projectNode ?? throw new Exception("Project not parsed. Call ParseProject() first.");
+    public IReadOnlyList<ProjectOption> ProjectOptions => _projectOptions;
 
     public void RegisterNodeType<T>() where T : class, INode
     {
@@ -36,20 +42,28 @@ public class ProjectService : IProjectService
 
         ProjectPath = projectPath;
 
-        KdlDocument document = LoadFile(projectPath);
+        _projectDocument = LoadFile(projectPath);
 
-        if (document.Nodes.Count != 1 || document.Nodes[0].Name != ProjectNode.NodeName)
+        if (_projectDocument.Nodes.Count != 1 || _projectDocument.Nodes[0].Name != ProjectNode.NodeName)
         {
             throw new Exception($"Project invalid. Expected a single root '{ProjectNode.NodeName}' node in file: {projectPath}");
         }
+    }
 
-        Project = (ProjectNode)CreateAndValidateNode(projectPath, document.Nodes[0], null);
+    public void ParseProject()
+    {
+        if (_projectDocument is null)
+        {
+            throw new Exception("Project not loaded. Call LoadProjectFiles() first.");
+        }
+
+        _projectNode = (ProjectNode)CreateAndValidateNode(ProjectPath, _projectDocument.Nodes[0], null);
 
         ProjectContext context = CreateProjectContext();
-        Options.Clear();
+        _projectOptions.Clear();
         foreach (OptionNode optionNode in GetNodes<OptionNode>(context))
         {
-            Options.Add(new ProjectOption(optionNode, optionNode.OptionType switch
+            _projectOptions.Add(new ProjectOption(optionNode, optionNode.OptionType switch
             {
                 EOptionType.Bool => new Option<bool?>("--" + optionNode.OptionName, () => optionNode.GetDefaultBool(), optionNode.HelpText),
                 EOptionType.Int => new Option<long?>("--" + optionNode.OptionName, () => optionNode.GetDefaultNumber<long>(), optionNode.HelpText),
@@ -67,13 +81,12 @@ public class ProjectService : IProjectService
         }
     }
 
-    public ProjectContext CreateProjectContext(InvocationContext? invocationContext = null, ModuleNode? module = null, ConfigurationNode? configuration = null, PlatformNode? platform = null)
+    public ProjectContext CreateProjectContext(
+        InvocationContext? invocationContext = null,
+        ModuleNode? module = null,
+        ConfigurationNode? configuration = null,
+        PlatformNode? platform = null)
     {
-        if (Project is null)
-        {
-            throw new Exception("Project not loaded.");
-        }
-
         ProjectContext context = new(this)
         {
             Module = module,
@@ -96,7 +109,7 @@ public class ProjectService : IProjectService
 
         if (invocationContext is not null)
         {
-            foreach (ProjectOption projectOption in Options)
+            foreach (ProjectOption projectOption in _projectOptions)
             {
                 object? value = invocationContext.ParseResult.GetValueForOption(projectOption.Option);
                 if (value is null && projectOption.Node.EnvVarName is not null)
@@ -141,8 +154,8 @@ public class ProjectService : IProjectService
 
         return
         [
-            new ConfigurationNode(debugNode, Project),
-            new ConfigurationNode(releaseNode, Project),
+            new ConfigurationNode(debugNode, ProjectNode),
+            new ConfigurationNode(releaseNode, ProjectNode),
         ];
     }
 
@@ -193,7 +206,7 @@ public class ProjectService : IProjectService
             throw new Exception("Unsupported host platform.");
         }
 
-        return [new PlatformNode(node, Project)];
+        return [new PlatformNode(node, ProjectNode)];
     }
 
     public ModuleNode? TryGetModule(string moduleName)
@@ -258,7 +271,7 @@ public class ProjectService : IProjectService
 
     private IEnumerable<T> EnumerateNodes<T>(ProjectContext context, INode? scope, Func<T, bool> filter, bool searchDepdencies) where T : class, INode
     {
-        scope ??= Project;
+        scope ??= ProjectNode;
 
         INode? originalScope = scope;
 
@@ -333,7 +346,13 @@ public class ProjectService : IProjectService
             return document;
         }
 
-        return _kdlFiles[path] = KdlDocument.FromFile(path);
+        KdlDocument doc = KdlDocument.FromFile(path);
+        _kdlFiles[path] = doc;
+
+        // Resolve to a list first because we'll modify the document as we iterate.
+        List<KdlNode> importNodes = doc.GetNodesByName("import").ToList();
+        ResolveImports(path, importNodes);
+        return doc;
     }
 
     private INode CreateAndValidateNode(string filePath, KdlNode rawNode, INode? scope)
@@ -374,15 +393,7 @@ public class ProjectService : IProjectService
             foreach (KdlNode rawChild in rawNode.Children)
             {
                 INode child = CreateAndValidateNode(filePath, rawChild, node);
-
-                if (child is ImportNode importNode)
-                {
-                    ResolveImport(filePath, importNode, node);
-                }
-                else
-                {
-                    node.Children.Add(child);
-                }
+                node.Children.Add(child);
             }
         }
 
@@ -395,29 +406,33 @@ public class ProjectService : IProjectService
         return node;
     }
 
-    private void ResolveImport(string filePath, ImportNode child, INode scope)
+    private void ResolveImports(string filePath, List<KdlNode> importNodes)
     {
-        string? importPath = child.ImportPath;
-        if (importPath is null)
+        foreach (KdlNode importNode in importNodes)
         {
-            return;
-        }
-
-        if (!Path.IsPathRooted(importPath))
-        {
-            string? directory = Path.GetDirectoryName(filePath);
-            if (directory is not null)
+            if (importNode.Parent is null || !ImportNode.NodeScopes.Contains(importNode.Parent.Name))
             {
-                importPath = Path.Combine(directory, importPath);
+                throw new KdlException($"Invalid project. An 'import' node cannot be used in this scope.", importNode.SourceInfo);
             }
-        }
 
-        KdlDocument document = LoadFile(importPath);
+            if (importNode.Arguments.Count != 1 || importNode.Arguments[0] is not KdlString kdlImportPath)
+            {
+                throw new KdlException($"Invalid project. An 'import' must have exactly one string argument.", importNode.SourceInfo);
+            }
 
-        foreach (KdlNode rawNode in document.Nodes)
-        {
-            INode importedNode = CreateAndValidateNode(importPath, rawNode, scope);
-            scope.Children.Add(importedNode);
+            string importPath = kdlImportPath.Value;
+
+            if (!Path.IsPathRooted(importPath))
+            {
+                string? directory = Path.GetDirectoryName(filePath);
+                if (directory is not null)
+                {
+                    importPath = Path.Combine(directory, importPath);
+                }
+            }
+
+            KdlDocument document = LoadFile(importPath);
+            importNode.ReplaceInParent(document.Nodes);
         }
     }
 

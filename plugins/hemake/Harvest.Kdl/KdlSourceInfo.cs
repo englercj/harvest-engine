@@ -4,9 +4,9 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace Harvest.Kdl;
 
-public class KdlSourceInfo(string fileName, int line, int column)
+public class KdlSourceInfo(string filePath, int line, int column)
 {
-    public string FileName => fileName;
+    public string FilePath => filePath;
     public int Line => line;
     public int Column => column;
 
@@ -18,7 +18,7 @@ public class KdlSourceInfo(string fileName, int line, int column)
     }
 
     public override int GetHashCode() => HashCode.Combine(Line, Column);
-    public override string ToString() => $"KdlSourceInfo{{ FileName={FileName}, Line={Line}, Column={Column} }}";
+    public override string ToString() => $"KdlSourceInfo{{ FileName={FilePath}, Line={Line}, Column={Column} }}";
 
     public static bool operator==(KdlSourceInfo? a, KdlSourceInfo? b) => a is null ? b is null : a.Equals(b);
     public static bool operator!=(KdlSourceInfo? a, KdlSourceInfo? b) => !(a == b);

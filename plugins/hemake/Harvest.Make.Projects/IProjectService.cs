@@ -1,5 +1,6 @@
 // Copyright Chad Engler
 
+using Harvest.Kdl;
 using Harvest.Make.Projects.Nodes;
 using System.CommandLine;
 using System.CommandLine.Invocation;
@@ -25,10 +26,13 @@ public class ModuleDependency(DependenciesEntryNode entry, ModuleNode? resolvedM
 public interface IProjectService
 {
     public string ProjectPath { get; }
-    public List<ProjectOption> Options { get; }
+    public KdlDocument ProjectDocument { get; }
+    public ProjectNode ProjectNode { get; }
+    public IReadOnlyList<ProjectOption> ProjectOptions { get; }
 
     public void RegisterNodeType<T>() where T : class, INode;
     public void LoadProject(string projectPath);
+    public void ParseProject();
 
     public ProjectContext CreateProjectContext(InvocationContext? invocationContext = null, ModuleNode? module = null, ConfigurationNode? configuration = null, PlatformNode? platform = null);
     public List<ConfigurationNode> GetDefaultConfigurations();

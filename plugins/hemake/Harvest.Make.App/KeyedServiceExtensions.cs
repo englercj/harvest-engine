@@ -3,7 +3,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using System.Collections.ObjectModel;
 
-namespace Harvest.Make;
+namespace Harvest.Make.App;
 
 // License: This code is published under the MIT license.
 // Source: https://stackoverflow.com/questions/77559201/

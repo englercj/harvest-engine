@@ -7,8 +7,10 @@ namespace Harvest.Kdl;
 /// </summary>
 public class KdlDocument : IKdlObject
 {
-    /// <value>A list of all the <see cref="KdlNode">s found in the document.</value>
-    public List<KdlNode> Nodes { get; }
+    private readonly KdlNode _root = new("<root>");
+
+    /// <value>A list of all the <see cref="KdlNode">s in the document.</value>
+    public IReadOnlyList<KdlNode> Nodes => _root.Children;
 
     /// <summary>
     /// Creates a new <see cref="KdlDocument"/> from a file.
@@ -35,14 +37,25 @@ public class KdlDocument : IKdlObject
         return handler.Document;
     }
 
-    public KdlDocument()
+    public IEnumerable<KdlNode> GetNodesByName(string name)
     {
-        Nodes = [];
+        return GetChildNodesByName(name, _root);
     }
 
-    public KdlDocument(List<KdlNode> nodes)
+    private static IEnumerable<KdlNode> GetChildNodesByName(string name, KdlNode scope)
     {
-        Nodes = nodes;
+        foreach (KdlNode child in scope.Children)
+        {
+            if (child.Name == name)
+            {
+                yield return child;
+            }
+
+            foreach (KdlNode found in GetChildNodesByName(name, child))
+            {
+                yield return found;
+            }
+        }
     }
 
     public void WriteKdl(TextWriter writer, KdlWriteOptions options)
@@ -53,9 +66,9 @@ public class KdlDocument : IKdlObject
             return;
         }
 
-        foreach (KdlNode node in Nodes)
+        foreach (KdlNode child in Nodes)
         {
-            node.WriteKdl(writer, options);
+            child.WriteKdl(writer, options);
             writer.Write(options.Newline);
         }
     }
@@ -74,13 +87,6 @@ public class KdlDocument : IKdlObject
 
     public override int GetHashCode()
     {
-        HashCode hash = new();
-
-        foreach (KdlNode node in Nodes)
-        {
-            hash.Add(node.GetHashCode());
-        }
-
-        return hash.ToHashCode();
+        return _root.GetHashCode();
     }
 }

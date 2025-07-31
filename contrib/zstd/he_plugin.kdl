@@ -9,7 +9,9 @@ plugin facebook.zstd version="1.5.5" license="BSD-3-Clause" {
         github user=facebook repo=zstd ref="v${plugin.version}"
     }
 
-    module zstd kind=static group="engine/contrib" {
+    module zstd kind=lib_static group="engine/contrib" {
+        warnings level=off
+
         files {
             "lib/common/**"
             "lib/compress/**"
@@ -18,7 +20,6 @@ plugin facebook.zstd version="1.5.5" license="BSD-3-Clause" {
             "zstd.h"
             "zstd_errors.h"
         }
-        warnings off
 
         public {
             include_dirs external=#true { "lib" }

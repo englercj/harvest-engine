@@ -19,4 +19,5 @@ public class KdlNull(string? type = null) : KdlValue(type)
 
     public override bool Equals(object? obj) => obj is KdlNull v && Type == v.Type;
     public override int GetHashCode() => Type is null ? 0 : Type.GetHashCode();
+    public override string GetValueString() => "#null";
 }

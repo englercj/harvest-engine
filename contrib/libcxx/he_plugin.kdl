@@ -7,12 +7,14 @@ plugin llvm.libcxx version="18.1.2" license="Apache-2.0 WITH LLVM-exception" abi
 
     install {
         when system=wasm {
-            exec = "libcxx.lua"
+            exec "libcxx.lua"
             archive "https://github.com/llvm/llvm-project/releases/download/llvmorg-${plugin.version}/libcxx-${plugin.version}.src.tar.xz" base="libcxx-${plugin.version}.src"
         }
     }
 
-    module libcxx kind=static group="engine/contrib" {
+    module libcxx kind=lib_static group="engine/contrib" {
+        warnings level=off
+
         files {
             // Includes
             "include/*"
@@ -99,11 +101,10 @@ plugin llvm.libcxx version="18.1.2" license="Apache-2.0 WITH LLVM-exception" abi
             // New/Delete Definitions
             // "src/new.cpp"
         }
-        warnings off
 
         public {
-            include_dirs external=#true { "include", "${module.path:dir}/include" }
-            dependencies { "libcxxabi" }
+            include_dirs external=#true { "include"; "${module.path:dir}/include" }
+            dependencies { libcxxabi }
         }
     }
 }

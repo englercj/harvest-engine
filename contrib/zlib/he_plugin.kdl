@@ -9,16 +9,15 @@ plugin madler.zlib version="1.2.13" license="Zlib" {
         github user=madler repo=zlib ref="v${plugin.version}"
     }
 
-    module zlib kind=static group="engine/contrib" {
-        files { "*.h", "*.c" }
-        warnings off
+    module zlib kind=lib_static group="engine/contrib" {
+        warnings level=off
+
+        files { "*.h"; "*.c" }
+
+        defines { "N_FSEEKO" }
 
         public {
             include_dirs { "." }
-        }
-
-        private {
-            defines { "N_FSEEKO" }
         }
 
         when tags=debug {
@@ -28,9 +27,7 @@ plugin madler.zlib version="1.2.13" license="Zlib" {
         }
 
         when system=windows {
-            private {
-                defines { "_WINDOWS" }
-            }
+            defines { "_WINDOWS" }
         }
     }
 }

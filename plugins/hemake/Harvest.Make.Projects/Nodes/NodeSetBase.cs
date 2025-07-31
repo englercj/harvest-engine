@@ -9,7 +9,7 @@ public enum ESetAction
 {
     [KdlName("add")] Add,
     [KdlName("remove")] Remove,
-    [KdlName("modify")] Modify,
+    [KdlName("update")] Update,
 }
 
 public abstract class NodeSetBase<T>(KdlNode node, INode? scope) : NodeBase(node, scope) where T : INode
@@ -66,7 +66,7 @@ public abstract class NodeSetBase<T>(KdlNode node, INode? scope) : NodeBase(node
                 }
                 break;
             }
-            case ESetAction.Modify:
+            case ESetAction.Update:
             {
                 foreach (T entry in set.Entries)
                 {

@@ -6,9 +6,10 @@ using Harvest.Kdl.Types;
 using Harvest.Make.Attributes;
 using Harvest.Make.Extensions;
 using Harvest.Make.Projects.Nodes;
+using Microsoft.Extensions.FileSystemGlobbing;
 using System.CommandLine;
 using System.CommandLine.Invocation;
-using System.ComponentModel;
+using System.IO;
 using System.Runtime.InteropServices;
 
 namespace Harvest.Make.Projects;
@@ -48,13 +49,15 @@ public class ProjectService : IProjectService
         {
             throw new Exception($"Project invalid. Expected a single root '{ProjectNode.NodeName}' node in file: {projectPath}");
         }
+
+        ResolveImports(_projectDocument);
     }
 
     public void ParseProject()
     {
         if (_projectDocument is null)
         {
-            throw new Exception("Project not loaded. Call LoadProjectFiles() first.");
+            throw new Exception("Project not loaded. Call LoadProject() first.");
         }
 
         _projectNode = (ProjectNode)CreateAndValidateNode(ProjectPath, _projectDocument.Nodes[0], null);
@@ -92,20 +95,8 @@ public class ProjectService : IProjectService
             Module = module,
             Configuration = configuration,
             Platform = platform,
+            Host = PlatformNode.GetHostPlatform(),
         };
-
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-        {
-            context.Host = EPlatformSystem.Windows;
-        }
-        else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
-        {
-            context.Host = EPlatformSystem.Linux;
-        }
-        else
-        {
-            throw new Exception("Unsupported host platform.");
-        }
 
         if (invocationContext is not null)
         {
@@ -315,6 +306,7 @@ public class ProjectService : IProjectService
         ENodeDependencyInheritance inheritance = NodeTraits<T>.DependencyInheritance;
         if (searchDepdencies
             && inheritance != ENodeDependencyInheritance.None
+            && NodeTraits<T>.Scopes.Contains(PublicNode.NodeName)
             && originalScope is ModuleNode module)
         {
             List<ModuleDependency> dependencies = GetModuleDependencies(context, module, inheritance);
@@ -349,9 +341,6 @@ public class ProjectService : IProjectService
         KdlDocument doc = KdlDocument.FromFile(path);
         _kdlFiles[path] = doc;
 
-        // Resolve to a list first because we'll modify the document as we iterate.
-        List<KdlNode> importNodes = doc.GetNodesByName("import").ToList();
-        ResolveImports(path, importNodes);
         return doc;
     }
 
@@ -400,10 +389,16 @@ public class ProjectService : IProjectService
         NodeValidationResult result = node.Validate(scope);
         if (!result.IsValid)
         {
-            throw new Exception($"Project invalid. Validation failed for '{node.Name}' node: {result.ErrorContent}\n    in file: {filePath}");
+            throw new Exception($"Project invalid. Validation failed for '{node.Name}' node.\n{node.Node.SourceInfo.ToErrorString()}: {result.ErrorContent}");
         }
 
         return node;
+    }
+
+    private void ResolveImports(KdlDocument document)
+    {
+        List<KdlNode> importNodes = [.. document.GetNodesByName("import")];
+        ResolveImports(document.SourceInfo.FilePath, importNodes);
     }
 
     private void ResolveImports(string filePath, List<KdlNode> importNodes)
@@ -422,17 +417,20 @@ public class ProjectService : IProjectService
 
             string importPath = kdlImportPath.Value;
 
-            if (!Path.IsPathRooted(importPath))
+            if (!Path.GetExtension(importPath).Equals(".kdl", StringComparison.OrdinalIgnoreCase))
             {
-                string? directory = Path.GetDirectoryName(filePath);
-                if (directory is not null)
-                {
-                    importPath = Path.Combine(directory, importPath);
-                }
+                importPath = Path.Combine(importPath, "he_plugin.kdl");
             }
 
-            KdlDocument document = LoadFile(importPath);
-            importNode.ReplaceInParent(document.Nodes);
+            string directory = Path.GetDirectoryName(filePath) ?? Directory.GetCurrentDirectory();
+            Matcher matcher = new();
+            matcher.AddInclude(importPath);
+            foreach (string importMatchedPath in matcher.GetResultsInFullPath(directory))
+            {
+                KdlDocument importedDoc = LoadFile(importMatchedPath);
+                importNode.ReplaceInParent(importedDoc.Nodes);
+                ResolveImports(importedDoc);
+            }
         }
     }
 

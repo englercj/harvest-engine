@@ -9,9 +9,10 @@ plugin simdutf.simdutf version="5.0.0" license="MIT" {
         archive "https://github.com/simdutf/simdutf/releases/download/v${plugin.version}/singleheader.zip"
     }
 
-    module simdutf kind=static group="engine/contrib" {
-        files { "simdutf.h", "simdutf.cpp" }
-        warnings = "Off"
+    module simdutf kind=lib_static group="engine/contrib" {
+        warnings level=off
+
+        files { "simdutf.h"; "simdutf.cpp" }
 
         public {
             include_dirs external=#true { "." }

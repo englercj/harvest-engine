@@ -4,7 +4,7 @@
 // in a modular and extensible fashion.
 // https://github.com/shader-slang/slang
 plugin nvidia.slang version="0.28.2" license="MIT" {
-    authors { "Carnegie Mellon University", "NVIDIA Corporation" }
+    authors { "Carnegie Mellon University"; "NVIDIA Corporation" }
 
     install {
         when system=linux {
@@ -21,15 +21,16 @@ plugin nvidia.slang version="0.28.2" license="MIT" {
         }
 
         when system=windows arch=x86_64 {
-            public {
-                dependencies { "bin/windows-x64/release/slang.lib" kind=file }
-            }
             files {
                 "bin/windows-x64/release/gfx.dll" action=copy
                 "bin/windows-x64/release/slang.dll" action=copy
                 "bin/windows-x64/release/slang-glslang.dll" action=copy
                 "$(WindowsSdkDir)Redist/D3D/x64/dxcompiler.dll" action=copy
                 "$(WindowsSdkDir)Redist/D3D/x64/dxil.dll" action=copy
+            }
+
+            public {
+                dependencies { "bin/windows-x64/release/slang.lib" kind=file }
             }
         }
 

@@ -1,4 +1,4 @@
-# Copyright Chad Engler
+// Copyright Chad Engler
 
 // Fast Float - Fast and exact implementation of the C++ from_chars functions for number types.
 // https://github.com/fastfloat/fast_float
@@ -9,10 +9,12 @@ plugin fastfloat.fast_float version="6.1.0" license="MIT" {
     }
 
     module fast_float kind=header group="engine/contrib" {
+        warnings level=off
+
         files { "${module.path:dir}/include/**.h" }
-        warnings off
+
         public {
-            includedirs external=#true {
+            include_dirs external=#true {
                 "${module.path:dir}/include"
             }
         }

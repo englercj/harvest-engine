@@ -78,7 +78,7 @@ public class FilesNode(KdlNode node, INode? scope) : NodeSetBase<FilesEntryNode>
                 }
                 break;
             }
-            case ESetAction.Modify:
+            case ESetAction.Update:
             {
                 foreach (FilesEntryNode entry in filesNode.Entries)
                 {

@@ -33,7 +33,7 @@ public class ModuleGroupTree
 
     private readonly Dictionary<string, Entry> _modulesByName = [];
 
-    public Entry Root { get; } = new("", null);
+    public Entry Root { get; } = new("<root>", null);
 
     public bool HasBranches
     {

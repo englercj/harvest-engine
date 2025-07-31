@@ -5,9 +5,9 @@ A set of directory paths to search for libraries.
 ## Arguments
 
 1. (string) - Optional. How to treat the set of items. Valid values are:
-    * `add` - Add the items to the set. This is the default behavior.
-    * `remove` - Remove the items from the set.
-    * `modify` - Do not modify the set of items. Only update properties of matched items.
+    * `add` - Add matched items to the set, or update it if it already exists. This is the default behavior.
+    * `remove` - Remove matched the items from the set.
+    * `update` - Update properties of matched items if they exist in the set.
 
 ## Properties
 

@@ -12,10 +12,11 @@ Platforms have arbitrary names and offer one axis of configuration for your proj
 
 - `arch` (string) - Required. The architecture to target. Valid values are:
     * `any` - Any CPU target. Only valid when `system` is `dotnet`.
-    * `x86` - 32-bit x86.
-    * `x86_64` - 64-bit x86.
     * `arm` - 32-bit ARM (aarch32).
     * `arm64` - 64-bit ARM (aarch64).
+    * `x86` - 32-bit x86.
+    * `x86_64` - 64-bit x86.
+    * `wasm32` - 32-bit Web Assembly. Only valid when `system` is `wasm`.
 - `system` (string) - Required. The system to target. Valid values are:
     * `dotnet`
     * `linux`

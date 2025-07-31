@@ -47,6 +47,7 @@ public abstract class KdlValue(string? type) : IKdlObject
 
     public abstract override bool Equals(object? obj);
     public abstract override int GetHashCode();
+    public abstract string GetValueString();
 
     public static bool operator==(KdlValue? a, KdlValue? b) => (a is null) ? b is null : a.Equals(b);
     public static bool operator!=(KdlValue? a, KdlValue? b) => !(a == b);
@@ -57,13 +58,26 @@ public abstract class KdlValue<T>(T value, string? type) : KdlValue(type)
     public T Value => value;
 
     public override string ToString() => $"KdlValue{{ Value={Value}, Type={Type ?? "null"} }}";
+    public override string GetValueString() => Value?.ToString() ?? "<null>";
 
     public override bool Equals(object? obj)
     {
-        if (Value is null || obj is null)
-            return false;
+        if (obj is KdlValue<T> v)
+        {
+            if (Type != v.Type)
+            {
+                return false;
+            }
 
-        return obj is KdlValue<T> v && v.Value != null && Value.Equals(v.Value) && Type == v.Type;
+            return Value?.Equals(v.Value) ?? v.Value is null;
+        }
+
+        if (obj is T t)
+        {
+            return Value?.Equals(t) ?? false;
+        }
+
+        return false;
     }
 
     public override int GetHashCode() => HashCode.Combine(Value, Type);

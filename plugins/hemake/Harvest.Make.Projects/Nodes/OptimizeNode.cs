@@ -10,7 +10,7 @@ public enum EOptimizationLevel
     [KdlName("default")] Default,
     [KdlName("debug")] Debug,
     [KdlName("off")] Off,
-    [KdlName("On")] On,
+    [KdlName("on")] On,
     [KdlName("size")] Size,
     [KdlName("speed")] Speed,
 }

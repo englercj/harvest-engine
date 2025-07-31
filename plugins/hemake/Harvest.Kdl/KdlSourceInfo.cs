@@ -19,6 +19,7 @@ public class KdlSourceInfo(string filePath, int line, int column)
 
     public override int GetHashCode() => HashCode.Combine(Line, Column);
     public override string ToString() => $"KdlSourceInfo{{ FileName={FilePath}, Line={Line}, Column={Column} }}";
+    public string ToErrorString() => $"{FilePath}({Line},{Column})";
 
     public static bool operator==(KdlSourceInfo? a, KdlSourceInfo? b) => a is null ? b is null : a.Equals(b);
     public static bool operator!=(KdlSourceInfo? a, KdlSourceInfo? b) => !(a == b);

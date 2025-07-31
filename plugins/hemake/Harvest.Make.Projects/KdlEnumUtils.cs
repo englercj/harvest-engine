@@ -54,11 +54,18 @@ public static class KdlEnumUtils
 
             foreach (FieldInfo field in fields)
             {
-                KdlNameAttribute? attr = field.GetCustomAttribute<KdlNameAttribute>(false);
-                string name = attr?.Name ?? field.Name;
-                T value = (T)field.GetValue(null)!;
+                if (!field.IsLiteral || field.IsSpecialName)
+                {
+                    continue;
+                }
 
-                s_values.Add(name, value);
+                if (field.GetValue(null) is T value)
+                {
+                    KdlNameAttribute? attr = field.GetCustomAttribute<KdlNameAttribute>(false);
+                    string name = attr?.Name ?? field.Name;
+
+                    s_values.Add(name, value);
+                }
             }
         }
     }

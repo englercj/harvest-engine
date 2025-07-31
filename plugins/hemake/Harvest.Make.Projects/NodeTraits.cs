@@ -8,7 +8,7 @@ namespace Harvest.Make.Projects;
 
 public class NodeTraits<T> where T : class, INode
 {
-    private static readonly T s_instance = (T)Activator.CreateInstance(typeof(T), new KdlNode(""), null)!;
+    private static readonly T s_instance = (T)Activator.CreateInstance(typeof(T), new KdlNode("<traits>"), null)!;
 
     public static T CreateInstance(INode? scope = null)
     {

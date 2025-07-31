@@ -7,10 +7,10 @@ plugin ocornut.imgui version="1.89.6" license="MIT" {
 
     install {
         // latest docking branch (as of v1.89.6)
-        github user=ocornut repo=imgui ref=823a1385a269d923d35b82b2f470f3ae1fa8b5a3
+        github user=ocornut repo=imgui ref="823a1385a269d923d35b82b2f470f3ae1fa8b5a3"
     }
 
-    module imgui kind=static group="engine/contrib" {
+    module imgui kind=lib_static group="engine/contrib" {
         files {
             "${module.path:dir}/imgui_user_config.h"
             "imgui_draw.cpp"
@@ -26,16 +26,17 @@ plugin ocornut.imgui version="1.89.6" license="MIT" {
             "misc/freetype/imgui_freetype.cpp"
             "misc/freetype/imgui_freetype.h"
         }
+
         public {
             defines { "IMGUI_USER_CONFIG=\"imgui_user_config.h\"" }
             dependencies {
-                "freetype"
-                "he_core"
-                "he_math" kind=include // Need the types for the ImVec2 class extras
+                freetype
+                he_core
+                he_math kind=include // Need the types for the ImVec2 class extras
             }
-            includedirs {
-                ".",
-                "${module.path:dir}",
+            include_dirs {
+                "."
+                "${module.path:dir}"
             }
         }
 

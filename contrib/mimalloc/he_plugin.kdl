@@ -9,9 +9,9 @@ plugin microsoft.mimalloc version="2.1.4" license="MIT" {
         github user=microsoft repo=mimalloc ref="v${plugin.version}"
     }
 
-    module mimalloc kind=static group="engine/contrib" {
-        warnings off
+    module mimalloc kind=lib_static group="engine/contrib" {
         dialect c=c11
+        warnings level=off
 
         files {
             "include/**.h"
@@ -36,51 +36,46 @@ plugin microsoft.mimalloc version="2.1.4" license="MIT" {
             "${module.path:dir}/prim/prim.c"
         }
 
+        include_dirs {
+            "src"
+            "${module.path:dir}"
+        }
+
+        dependencies { he_core kind=include }
+
         public {
             include_dirs { "include" }
         }
 
-        private {
-            include_dirs {
-                "src"
-                "${module.path:dir}"
-            }
-            dependencies { he_core kind=include }
-        }
-
         when tags=asan {
-            private {
-                defines { "MI_TRACK_ASAN=1" }
-            }
+            defines { "MI_TRACK_ASAN=1" }
         }
 
         when tags=debug {
-            private {
-                defines { "MI_DEBUG=3" }
-            }
+            defines { "MI_DEBUG=3" }
         }
 
         when tags=debug system=windows {
-            private {
-                defines { "MI_TRACK_ETW=1" }
-            }
+            defines { "MI_TRACK_ETW=1" }
         }
 
         when toolset="gcc || clang" {
-            private {
-                build_options { "-Wstrict-prototypes"; "-ftls-model=initial-exec" }
-            }
+            build_options { "-Wstrict-prototypes"; "-ftls-model=initial-exec" }
         }
 
         when toolset=clang {
-            private {
-                build_options { "-Wpedantic"; "-Wno-static-in-inline" }
-            }
+            build_options { "-Wpedantic"; "-Wno-static-in-inline" }
         }
 
         when tags=win32 {
             public {
-                dependencies { psapi kind=system; shell32 kind=system; user32 kind=system; advapi32 kind=system; bcrypt kind=system }
+                dependencies {
+                    psapi kind=system
+                    shell32 kind=system
+                    user32 kind=system
+                    advapi32 kind=system
+                    bcrypt kind=system
+                }
             }
         }
 

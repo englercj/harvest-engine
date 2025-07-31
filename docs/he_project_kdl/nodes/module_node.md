@@ -56,12 +56,12 @@ A definition of a module provided by a plugin.
 ## Example
 
 ```kdl
-module he_core kind=static group="engine/libs" {
+module he_core kind=lib_static group="engine/libs" {
     files { "include/**"; "src/**"; "debugger/**" }
-    includedirs { "src" }
+    include_dirs { "src" }
 
     public {
-        includedirs { "include" }
+        include_dirs { "include" }
     }
 }
 ```

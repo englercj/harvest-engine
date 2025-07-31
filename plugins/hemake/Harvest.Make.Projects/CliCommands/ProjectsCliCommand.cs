@@ -10,9 +10,10 @@ using System.CommandLine.Invocation;
 namespace Harvest.Make.Projects.CliCommands;
 
 public abstract class BaseProjectGeneratorCliCommand(
-    ILogger logger,
+    ILogger<BaseProjectGeneratorCliCommand> logger,
     IProjectGeneratorService generatorService,
-    IProjectService projectService) : ICliCommand
+    IProjectService projectService)
+    : ICliCommand
 {
     protected readonly ILogger _logger = logger;
     protected readonly IProjectService _projectService = projectService;
@@ -37,15 +38,12 @@ public abstract class BaseProjectGeneratorCliCommand(
 }
 
 [Service<ICliCommand>(Enumerable = true)]
-public class VS2022CliCommand : BaseProjectGeneratorCliCommand
+public class VS2022CliCommand(
+    ILogger<VS2022CliCommand> logger,
+    [FromKeyedServices(ProjectGeneratorNames.VS2022)] IProjectGeneratorService generatorService,
+    IProjectService projectService)
+    : BaseProjectGeneratorCliCommand(logger, generatorService, projectService)
 {
     public override string Name => ProjectGeneratorNames.VS2022;
     public override string Description => "Generate Visual Studio 2022 project files.";
-
-    public VS2022CliCommand(
-        ILogger<VS2022CliCommand> logger,
-        [FromKeyedServices(ProjectGeneratorNames.VS2022)] IProjectGeneratorService generatorService,
-        IProjectService projectService)
-        : base(logger, generatorService, projectService)
-    { }
 }

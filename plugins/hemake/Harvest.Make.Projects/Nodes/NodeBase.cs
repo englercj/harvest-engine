@@ -96,7 +96,21 @@ public abstract partial class NodeBase(KdlNode node, INode? scope) : INode
 
     public T? TryGetEnumValue<T>(int index) where T : struct, Enum
     {
-        return KdlEnumUtils.TryParse(GetStringValue(index), out T result) ? result : null;
+        if (TryGetStringValue(index) is string strValue)
+        {
+            return KdlEnumUtils.TryParse(strValue, out T result) ? result : null;
+        }
+
+        if (index < Arguments.Count)
+        {
+            NodeKdlValue argDef = Arguments[index];
+            if (argDef.DefaultValue is T result)
+            {
+                return result;
+            }
+        }
+
+        return null;
     }
     public T GetEnumValue<T>(int index) where T : struct, Enum => TryGetEnumValue<T>(index) ?? throw new Exception($"No enum value specified for required argument index: {index}");
 
@@ -172,7 +186,20 @@ public abstract partial class NodeBase(KdlNode node, INode? scope) : INode
 
     public T? TryGetEnumValue<T>(string key) where T : struct, Enum
     {
-        return KdlEnumUtils.TryParse(TryGetStringValue(key), out T result) ? result : null;
+        if (TryGetStringValue(key) is string strValue)
+        {
+            return KdlEnumUtils.TryParse(strValue, out T result) ? result : null;
+        }
+
+        if (Properties.TryGetValue(key, out NodeKdlValue? valueDef))
+        {
+            if (valueDef.DefaultValue is T result)
+            {
+                return result;
+            }
+        }
+
+        return null;
     }
     public T GetEnumValue<T>(string key) where T : struct, Enum => TryGetEnumValue<T>(key) ?? throw new Exception($"No enum value specified for required property: {key}");
 
@@ -194,10 +221,10 @@ public abstract partial class NodeBase(KdlNode node, INode? scope) : INode
     {
         if (path is not null && !Path.IsPathRooted(path))
         {
-            if (!string.IsNullOrEmpty(Node.SourceInfo.FileName))
+            if (!string.IsNullOrEmpty(Node.SourceInfo.FilePath))
             {
-                string fileDir = Path.GetDirectoryName(Node.SourceInfo.FileName)
-                    ?? throw new Exception($"Failed to resolve path '{path}' from node '{Name}' in file: {Node.SourceInfo.FileName}");
+                string fileDir = Path.GetDirectoryName(Node.SourceInfo.FilePath)
+                    ?? throw new Exception($"Failed to resolve path '{path}' from node '{Name}' in file: {Node.SourceInfo.FilePath}");
                 path = Path.GetFullPath(path, fileDir);
             }
             else
@@ -213,8 +240,8 @@ public abstract partial class NodeBase(KdlNode node, INode? scope) : INode
     {
         if (path is not null)
         {
-            string fileDir = Path.GetDirectoryName(Node.SourceInfo.FileName)
-                ?? throw new Exception($"Failed to expand path '{path}' from node '{Name}' in file: {Node.SourceInfo.FileName}");
+            string fileDir = Path.GetDirectoryName(Node.SourceInfo.FilePath)
+                ?? throw new Exception($"Failed to expand path '{path}' from node '{Name}' in file: {Node.SourceInfo.FilePath}");
 
             Matcher matcher = new();
             matcher.AddInclude(path);
@@ -308,9 +335,19 @@ public abstract partial class NodeBase(KdlNode node, INode? scope) : INode
         {
             if (i < Arguments.Count)
             {
-                if (!Node.Arguments[i].GetType().Equals(Arguments[i].ValueType))
+                KdlValue value = Node.Arguments[i];
+                if (!value.GetType().Equals(Arguments[i].ValueType))
                 {
-                    return NodeValidationResult.Error($"'{Name}' node has incorrect value type in argument (index: {i}). Expected {Arguments[i].ValueType.Name} but got {Node.Arguments[i].GetType().Name}.");
+                    return NodeValidationResult.Error($"'{Name}' node has incorrect value type in argument {i}: {value.GetType().Name}. Expected {Arguments[i].ValueType.Name}.");
+                }
+
+                if (Arguments[i].ValidValues.Count > 0)
+                {
+                    object? valid = Arguments[i].ValidValues.FirstOrDefault(value.Equals);
+                    if (valid is null)
+                    {
+                        return NodeValidationResult.Error($"'{Name}' node has an invalid value in argument {i}: {value.GetValueString()}. Expected one of: {string.Join(", ", Arguments[i].ValidValues)}.");
+                    }
                 }
             }
             else
@@ -336,9 +373,9 @@ public abstract partial class NodeBase(KdlNode node, INode? scope) : INode
         {
             if (Node.Properties.TryGetValue(pair.Key, out KdlValue? value))
             {
-                if (pair.Value.ValueType != value.GetType())
+                if (!value.GetType().Equals(pair.Value.ValueType))
                 {
-                    return NodeValidationResult.Error($"'{Name}' node has incorrect value type in property '{pair.Key}'. Expected {pair.Value.ValueType.Name} but got {value.GetType().Name}.");
+                    return NodeValidationResult.Error($"'{Name}' node has incorrect value type in property '{pair.Key}': {value.GetType().Name}. Expected {pair.Value.ValueType.Name}.");
                 }
 
                 if (pair.Value.ValidValues.Count > 0)
@@ -346,7 +383,7 @@ public abstract partial class NodeBase(KdlNode node, INode? scope) : INode
                     object? valid = pair.Value.ValidValues.FirstOrDefault(value.Equals);
                     if (valid is null)
                     {
-                        return NodeValidationResult.Error($"'{Name}' node has an invalid value in property '{pair.Key}'. Expected one of: {string.Join(", ", pair.Value.ValidValues)}.");
+                        return NodeValidationResult.Error($"'{Name}' node has an invalid value in property '{pair.Key}': {value.GetValueString()}. Expected one of: {string.Join(", ", pair.Value.ValidValues)}.");
                     }
                 }
             }
@@ -361,17 +398,6 @@ public abstract partial class NodeBase(KdlNode node, INode? scope) : INode
 
     protected virtual NodeValidationResult ValidateChildren()
     {
-        if (ChildNodeType is not null)
-        {
-            foreach (KdlNode rawChild in Node.Children)
-            {
-                if (!rawChild.GetType().Equals(ChildNodeType))
-                {
-                    return NodeValidationResult.Error($"Invalid child node type ('{rawChild.Name}') in '{Name}' node. Expected '{ChildNodeType.Name}'.");
-                }
-            }
-        }
-
         return NodeValidationResult.Valid;
     }
 
@@ -551,13 +577,13 @@ public abstract partial class NodeBase(KdlNode node, INode? scope) : INode
             }
             else if (propertyName == "path")
             {
-                return pluginNode.Node.SourceInfo.FileName;
+                return pluginNode.Node.SourceInfo.FilePath;
             }
             else if (propertyName == "install_dir")
             {
                 // TODO: handle install dir of a plugin being different from the KDL file.
                 // Return the directory of the KDL file where this node is defined.
-                return Path.GetDirectoryName(pluginNode.Node.SourceInfo.FileName) ?? string.Empty;
+                return Path.GetDirectoryName(pluginNode.Node.SourceInfo.FilePath) ?? string.Empty;
             }
         }
         else if (nodeContext is ModuleNode moduleNode)
@@ -568,7 +594,7 @@ public abstract partial class NodeBase(KdlNode node, INode? scope) : INode
             }
             else if (propertyName == "path")
             {
-                return moduleNode.Node.SourceInfo.FileName;
+                return moduleNode.Node.SourceInfo.FilePath;
             }
             else if (propertyName == "build_target")
             {

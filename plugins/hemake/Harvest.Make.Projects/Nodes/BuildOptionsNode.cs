@@ -41,6 +41,7 @@ public class BuildOptionsNode(KdlNode node, INode? scope) : NodeSetBase<BuildOpt
     [
         ModuleNode.NodeName,
         ProjectNode.NodeName,
+        PublicNode.NodeName,
     ];
 
     public static readonly IReadOnlyDictionary<string, NodeKdlValue> NodeProperties = new SortedDictionary<string, NodeKdlValue>()

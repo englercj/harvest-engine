@@ -10,29 +10,28 @@ plugin sqlite3.sqlite3 version="3.42.0" license="blessing" {
         archive "https://www.sqlite.org/2023/sqlite-amalgamation-3420000.zip" base="sqlite-amalgamation-3420000"
     }
 
-    module sqlite3 kind=static group="engine/contrib" {
-        files { "sqlite3.h", "sqlite3.c" }
-        warnings off
+    module sqlite3 kind=lib_static group="engine/contrib" {
+        warnings level=off
+
+        files { "sqlite3.h"; "sqlite3.c" }
+
+        defines {
+            "SQLITE_DQS=0"
+            "SQLITE_THREADSAFE=1"
+            "SQLITE_DEFAULT_MEMSTATUS=0"
+            "SQLITE_DEFAULT_WAL_SYNCHRONOUS=1"
+            "SQLITE_LIKE_DOESNT_MATCH_BLOBS=1"
+            "SQLITE_MAX_EXPR_DEPTH=0"
+            "SQLITE_OMIT_DECLTYPE=1"
+            "SQLITE_OMIT_PROGRESS_CALLBACK=1"
+            "SQLITE_OMIT_SHARED_CACHE=1"
+            "SQLITE_USE_ALLOCA=1"
+            "SQLITE_ENABLE_FTS5=1"
+        }
 
         public {
             include_dirs { "." }
             defines { "SQLITE_OMIT_DEPRECATED=1" }
-        }
-
-        private {
-            defines {
-                "SQLITE_DQS=0"
-                "SQLITE_THREADSAFE=1"
-                "SQLITE_DEFAULT_MEMSTATUS=0"
-                "SQLITE_DEFAULT_WAL_SYNCHRONOUS=1"
-                "SQLITE_LIKE_DOESNT_MATCH_BLOBS=1"
-                "SQLITE_MAX_EXPR_DEPTH=0"
-                "SQLITE_OMIT_DECLTYPE=1"
-                "SQLITE_OMIT_PROGRESS_CALLBACK=1"
-                "SQLITE_OMIT_SHARED_CACHE=1"
-                "SQLITE_USE_ALLOCA=1"
-                "SQLITE_ENABLE_FTS5=1"
-            }
         }
 
         when system=linux {
@@ -42,9 +41,7 @@ plugin sqlite3.sqlite3 version="3.42.0" license="blessing" {
         }
 
         when tags=debug {
-            private {
-                defines { "SQLITE_DEBUG=1" }
-            }
+            defines { "SQLITE_DEBUG=1" }
         }
     }
 }

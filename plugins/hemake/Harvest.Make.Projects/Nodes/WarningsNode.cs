@@ -26,7 +26,7 @@ public class WarningsNode(KdlNode node, INode? scope) : NodeSetBase<WarningsEntr
 
     public static readonly IReadOnlyDictionary<string, NodeKdlValue> NodeProperties = new SortedDictionary<string, NodeKdlValue>()
     {
-        { "level", NodeKdlEnum<EWarningsLevel>.Required(EWarningsLevel.Default) },
+        { "level", NodeKdlEnum<EWarningsLevel>.Optional(EWarningsLevel.Default) },
         { "fatal", NodeKdlBool.Optional(false) },
     };
 

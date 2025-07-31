@@ -167,22 +167,6 @@ public class FilesEntryNode(KdlNode node, INode? scope) : NodeBase(node, scope)
         return EFileBuildRule.Custom;
     }
 
-    public override NodeValidationResult Validate(INode? scope)
-    {
-        NodeValidationResult vr = base.Validate(scope);
-        if (!vr.IsValid)
-        {
-            return vr;
-        }
-
-        if (BuildRuleName is not null && FileAction != EFileAction.Build)
-        {
-            return NodeValidationResult.Error("Rule can only be specified for files with action 'build'");
-        }
-
-        return NodeValidationResult.Valid;
-    }
-
     public override void MergeAndResolve(ProjectContext context, INode node)
     {
         base.MergeAndResolve(context, node);

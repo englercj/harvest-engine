@@ -1,24 +1,27 @@
 // Copyright Chad Engler
 
+using Harvest.Make.App.CliCommands;
 using Harvest.Make.Attributes;
 using Harvest.Make.CliCommands;
-using Harvest.Make.Commands;
+using Harvest.Make.Projects;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using System.CommandLine;
-using System.Reflection;
 using System.Collections;
-using System.CommandLine.Parsing;
+using System.CommandLine;
 using System.CommandLine.Invocation;
-using Harvest.Make.Projects;
+using System.CommandLine.Parsing;
+using System.Reflection;
 
 namespace Harvest.Make.App;
 
 [Service<IHostedService>(Enumerable = true)]
-internal class Application : BackgroundService
+internal class Application : IHostedService
 {
     private readonly ILogger _logger;
+    private readonly IProjectService _projectService;
+    private readonly IEnumerable<IAppLifetimeService> _appLifetimeServices;
+    private readonly IEnumerable<ICliCommand> _commands;
     private readonly IHostApplicationLifetime _appLifetime;
     private readonly IServiceProvider _serviceProvider;
     private readonly RootCommand _rootCommand;
@@ -42,14 +45,18 @@ internal class Application : BackgroundService
     }
 
     public Application(
+        IEnumerable<IAppLifetimeService> appLifetimeServices,
         IEnumerable<ICliCommand> commands,
         IHostApplicationLifetime appLifetime,
         ILogger<Application> logger,
         IProjectService projectService,
         IServiceProvider serviceProvider)
     {
-        _logger = logger;
+        _appLifetimeServices = appLifetimeServices;
+        _commands = commands;
         _appLifetime = appLifetime;
+        _logger = logger;
+        _projectService = projectService;
         _serviceProvider = serviceProvider;
 
         _rootCommand = new RootCliCommand()
@@ -67,14 +74,63 @@ internal class Application : BackgroundService
         // Commands that need the project file path can use the IProjectService.
         _projectOption = new Option<FileInfo>("--project", "The Harvest Engine project file for your project.");
         _rootCommand.AddGlobalOption(_projectOption);
+    }
 
-        // Options specified in the project file are added as global options available to all commands.
-        foreach (ProjectOption projectOption in projectService.Options)
+    public async Task StartAsync(CancellationToken cancellationToken)
+    {
+        // Start up the application services
+        foreach (IAppLifetimeService appLifetimeService in _appLifetimeServices)
         {
-            _rootCommand.AddGlobalOption(projectOption.Option);
+            await appLifetimeService.StartAsync(cancellationToken);
+
+            if (cancellationToken.IsCancellationRequested)
+            {
+                Environment.ExitCode = -1;
+                _appLifetime.StopApplication();
+                return;
+            }
         }
 
-        SetupCommands(commands);
+        // Parse the project file into semantic nodes now that all extensions are loaded
+        try
+        {
+            _projectService.ParseProject();
+            SetupCommands();
+        }
+        catch (Exception ex)
+        {
+            Environment.ExitCode = -1;
+            _logger.LogError(ex, "An error occurred while parsing the project structure.");
+            _appLifetime.StopApplication();
+            return;
+        }
+
+        // Run the command
+        try
+        {
+            string[] args = Environment.GetCommandLineArgs();
+            Environment.ExitCode = await _rootCommand.InvokeAsync(args[1..]);
+        }
+        catch (Exception ex)
+        {
+            Environment.ExitCode = -1;
+            _logger.LogError(ex, "An error occurred while executing the command.");
+        }
+
+        _appLifetime.StopApplication();
+    }
+
+    public async Task StopAsync(CancellationToken cancellationToken)
+    {
+        foreach (IAppLifetimeService appLifetimeService in _appLifetimeServices)
+        {
+            await appLifetimeService.StopAsync(cancellationToken);
+
+            if (cancellationToken.IsCancellationRequested)
+            {
+                break;
+            }
+        }
     }
 
     private static ArgumentArity GetArityForProperty(PropertyInfo property)
@@ -92,9 +148,14 @@ internal class Application : BackgroundService
         return ArgumentArity.ExactlyOne;
     }
 
-    private void SetupCommands(IEnumerable<ICliCommand> commands)
+    private void SetupCommands()
     {
-        foreach (ICliCommand command in commands)
+        foreach (ProjectOption projectOption in _projectService.ProjectOptions)
+        {
+            _rootCommand.AddGlobalOption(projectOption.Option);
+        }
+
+        foreach (ICliCommand command in _commands)
         {
             Command cliCommand = new(command.Name, command.Description);
 
@@ -189,21 +250,5 @@ internal class Application : BackgroundService
         }
 
         return context.ExitCode;
-    }
-
-    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
-    {
-        try
-        {
-            string[] args = Environment.GetCommandLineArgs();
-            Environment.ExitCode = await _rootCommand.InvokeAsync(args);
-        }
-        catch (Exception ex)
-        {
-            Environment.ExitCode = -1;
-            _logger.LogError(ex, "An error occurred while executing the command.");
-        }
-
-        _appLifetime.StopApplication();
     }
 }

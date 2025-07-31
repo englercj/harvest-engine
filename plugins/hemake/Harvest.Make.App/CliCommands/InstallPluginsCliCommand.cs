@@ -10,7 +10,10 @@ using System.CommandLine.Invocation;
 namespace Harvest.Make.App.CliCommands;
 
 [Service<ICliCommand>(Enumerable = true)]
-internal class InstallPluginsCliCommand(ILogger logger, IProjectService projectService) : ICliCommand
+internal class InstallPluginsCliCommand(
+    ILogger<InstallPluginsCliCommand> logger,
+    IProjectService projectService)
+    : ICliCommand
 {
     protected readonly ILogger _logger = logger;
     protected readonly IProjectService _projectService = projectService;
@@ -65,10 +68,11 @@ internal class InstallPluginsCliCommand(ILogger logger, IProjectService projectS
 
     private async Task InstallPluginAsync(ProjectContext context, PluginNode plugin)
     {
-        string dirName = Path.GetDirectoryName(plugin.Node.SourceInfo.FileName) ?? string.Empty;
+        string dirName = Path.GetDirectoryName(plugin.Node.SourceInfo.FilePath) ?? string.Empty;
+        // TODO: Logic for installing the plugin
 
         // Simulate plugin installation logic
         await Task.Delay(1000); // Simulate some async work
-        _logger.LogInformation($"Plugin {plugin.Name} installed successfully.");
+        _logger.LogInformation("Plugin {PluginName} installed successfully.", plugin.Name);
     }
 }

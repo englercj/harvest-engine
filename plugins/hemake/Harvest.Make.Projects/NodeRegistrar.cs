@@ -6,8 +6,8 @@ using Microsoft.Extensions.Hosting;
 
 namespace Harvest.Make.Projects;
 
-[Service<IHostedService>(Enumerable = true)]
-public class NodeRegistrar(IProjectService projectService) : IHostedService
+[Service<IAppLifetimeService>(Enumerable = true)]
+public class NodeRegistrar(IProjectService projectService) : IAppLifetimeService
 {
     private readonly IProjectService _projectService = projectService;
 

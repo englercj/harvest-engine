@@ -8,7 +8,7 @@ namespace Harvest.Make.App;
 internal class AppExtensionContext(string path) : AssemblyLoadContext
 {
     private readonly AssemblyDependencyResolver _resolver = new(path);
-    private readonly AssemblyLoadContext _defaultLoadContext = AssemblyLoadContext.GetLoadContext(Assembly.GetExecutingAssembly()) ?? AssemblyLoadContext.Default
+    private readonly AssemblyLoadContext _defaultLoadContext = GetLoadContext(Assembly.GetExecutingAssembly()) ?? Default;
 
     protected override Assembly? Load(AssemblyName assemblyName)
     {

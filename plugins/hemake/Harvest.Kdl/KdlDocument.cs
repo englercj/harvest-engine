@@ -12,6 +12,9 @@ public class KdlDocument : IKdlObject
     /// <value>A list of all the <see cref="KdlNode">s in the document.</value>
     public IReadOnlyList<KdlNode> Nodes => _root.Children;
 
+    /// <value>The source info of the root of the document</value>
+    public KdlSourceInfo SourceInfo => _root.SourceInfo;
+
     /// <summary>
     /// Creates a new <see cref="KdlDocument"/> from a file.
     /// </summary>
@@ -21,6 +24,7 @@ public class KdlDocument : IKdlObject
     {
         KdlDocumentReadHandler handler = new();
         KdlReader.ReadFile(filePath, handler);
+        handler.Document._root.SourceInfo = new KdlSourceInfo(filePath, 1, 1);
         return handler.Document;
     }
 
@@ -34,12 +38,18 @@ public class KdlDocument : IKdlObject
     {
         KdlDocumentReadHandler handler = new();
         KdlReader.ReadString(filePath, str, handler);
+        handler.Document._root.SourceInfo = new KdlSourceInfo(filePath, 1, 1);
         return handler.Document;
     }
 
     public IEnumerable<KdlNode> GetNodesByName(string name)
     {
         return GetChildNodesByName(name, _root);
+    }
+
+    public void AddChild(KdlNode node)
+    {
+        _root.AddChild(node);
     }
 
     private static IEnumerable<KdlNode> GetChildNodesByName(string name, KdlNode scope)

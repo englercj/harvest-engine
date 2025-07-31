@@ -2,7 +2,7 @@
   "profiles": {
     "Harvest.Make": {
       "commandName": "Project",
-      "commandLineArgs": "--project C:\\Users\\engle\\source\\me\\harvest-engine\\he_project.kdl projects vs2022"
+      "commandLineArgs": "--project C:\\Users\\engle\\source\\repos\\harvest-engine\\he_project.kdl vs2022"
     }
   }
 }

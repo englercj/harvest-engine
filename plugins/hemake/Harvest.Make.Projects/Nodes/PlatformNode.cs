@@ -2,16 +2,18 @@
 
 using Harvest.Kdl;
 using Harvest.Make.Projects.Attributes;
+using System.Runtime.InteropServices;
 
 namespace Harvest.Make.Projects.Nodes;
 
 public enum EPlatformArch
 {
     [KdlName("any")] Any,
-    [KdlName("x86")] X86,
-    [KdlName("x86_64")] X86_64,
     [KdlName("arm")] Arm,
     [KdlName("arm64")] Arm64,
+    [KdlName("x86")] X86,
+    [KdlName("x86_64")] X86_64,
+    [KdlName("wasm32")] WASM32,
 }
 
 public enum EPlatformSystem
@@ -39,7 +41,7 @@ public class PlatformNode(KdlNode node, INode? scope) : NodeBase(node, scope)
     public static readonly IReadOnlyDictionary<string, NodeKdlValue> NodeProperties = new SortedDictionary<string, NodeKdlValue>()
     {
         { "arch", NodeKdlEnum<EPlatformArch>.Required(EPlatformArch.X86_64) },
-        { "system", NodeKdlEnum<EPlatformSystem>.Required(EPlatformSystem.Windows) },
+        { "system", NodeKdlEnum<EPlatformSystem>.Required(GetHostPlatform()) },
         { "toolset", NodeKdlEnum<EToolset>.Optional() },
         { "default", NodeKdlBool.Optional(false) },
     };
@@ -54,6 +56,21 @@ public class PlatformNode(KdlNode node, INode? scope) : NodeBase(node, scope)
     public EPlatformSystem System => GetEnumValue<EPlatformSystem>("system");
     public EToolset Toolset => TryGetEnumValue<EToolset>("toolset") ?? GuessToolset();
     public bool IsDefault => GetBoolValue("default");
+
+    public static EPlatformSystem GetHostPlatform()
+    {
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        {
+            return EPlatformSystem.Windows;
+        }
+
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+        {
+            return EPlatformSystem.Linux;
+        }
+
+        throw new Exception("Unsupported host platform.");
+    }
 
     private EToolset GuessToolset()
     {
@@ -83,6 +100,16 @@ public class PlatformNode(KdlNode node, INode? scope) : NodeBase(node, scope)
         if (Arch == EPlatformArch.Any && System != EPlatformSystem.DotNet)
         {
             return NodeValidationResult.Error("Platform arch cannot be 'any' unless system is also 'dotnet'");
+        }
+
+        if (Arch == EPlatformArch.WASM32 && System != EPlatformSystem.WASM)
+        {
+            return NodeValidationResult.Error("Platform arch cannot be 'wasm32' unless system is also 'wasm'");
+        }
+
+        if (System == EPlatformSystem.WASM && Arch != EPlatformArch.WASM32)
+        {
+            return NodeValidationResult.Error("Platform system cannot be 'wasm' unless arch is also 'wasm32'");
         }
 
         return NodeValidationResult.Valid;

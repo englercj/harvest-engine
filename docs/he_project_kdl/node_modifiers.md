@@ -19,8 +19,8 @@ module he_test_runner kind=console_app group="engine/tests" {
             he_core
 
             // Generate a dependency node for each module in the "engine/tests" group that
-            // has `kind=static`.
-            :module group="engine/tests" kind=static { "${module.name}" whole_archive=#true }
+            // has `kind=lib_static`.
+            :module group="engine/tests" kind=lib_static { "${module.name}" whole_archive=#true }
         }
     }
 }
@@ -50,7 +50,7 @@ For example, you may want to inject your own library into the Harvest Editor app
 ```kdl
 plugin mygame version="1.0.0" license="UNLICENSED" {
     // Define a module that has some cool editor functionality for mygame.
-    module mygame_editor kind=static group="mygame" {
+    module mygame_editor kind=lib_static group="mygame" {
         files { "cool_editor_stuff.cpp" }
     }
 
@@ -84,7 +84,7 @@ Plugin `A` defines module `m`:
 ```kdl
 // A/he_plugin.kdl
 plugin A version="1.0.0" license="MIT" {
-    module m kind=static {}
+    module m kind=lib_static {}
 }
 ```
 

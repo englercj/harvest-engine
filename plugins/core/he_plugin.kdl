@@ -5,17 +5,14 @@ plugin he.core version="0.1.0" license="UNLICENSED" {
     authors { "Chad Engler" email=englercj@live.com }
 
     // Base core module that provides commonly used utilities and platform abstractions.
-    module he_core kind=static group="engine/libs" {
+    module he_core kind=lib_static group="engine/libs" {
         files { "include/**"; "src/**"; "debugger/**" }
+        include_dirs { "src" }
+        dependencies { fast_float }
 
         public {
-            dependencies { mimalloc; simdutf }
             include_dirs { "include" }
-        }
-
-        private {
-            dependencies { fast_float }
-            include_dirs { "src" }
+            dependencies { mimalloc; simdutf }
         }
 
         when system=linux {
@@ -67,7 +64,11 @@ plugin he.core version="0.1.0" license="UNLICENSED" {
 
         when system=win32 {
             public {
-                dependencies { Shlwapi kind=system; User32 kind=system; Kernel32 kind=system }
+                dependencies {
+                    shlwapi kind=system
+                    user32 kind=system
+                    kernel32 kind=system
+                }
                 defines {
                     "HE_IMPL_PLATFORM_RWLOCK_SIZE=8"
                     "HE_IMPL_PLATFORM_MUTEX_SIZE=8"
@@ -87,35 +88,39 @@ plugin he.core version="0.1.0" license="UNLICENSED" {
     }
 
     // Minimal libc implementation for wasm.
-    module he_core_wasm_libc kind=static group="engine/libs" {
+    module he_core_wasm_libc kind=lib_static group="engine/libs" {
         files { "wasm_libc/include/**"; "wasm_libc/src/**" }
+        include_dirs { "wasm_libc/src" }
 
         public {
+            include_dirs { "wasm_libc/include" }
             // include-only, he_core will express an include & link dependency on us so that any
             // module depending on core will also pull this module.
             dependencies { he_core kind=include }
         }
 
-        private {
-            include_dirs { "wasm_libc/src" }
-        }
-
         when system=wasm {
             public {
-                defines { :plugin llvm.libcxx { "HE_LIBCPP_ABI_NAMESPACE=__${plugin.abi_version}" } }
+                defines {
+                    :plugin llvm.libcxx {
+                        "HE_LIBCPP_ABI_NAMESPACE=__${plugin.abi_version}"
+                    }
+                }
                 dependencies { libcxxabi; libcxx kind=link }
                 include_dirs external=#true {
                     // Libcxx headers must come before wasm_libc headers, so we list those explicitly.
                     // Going instead through the normal `dependencies` flow would put wasm_libc headers first.
-                    :plugin llvm.libcxx { "${plugin.path:dirname}/include" }
-                    :plugin llvm.libcxx { "${plugin.install_dir}/include" }
+                    :plugin llvm.libcxx {
+                        "${plugin.path:dirname}/include"
+                        "${plugin.install_dir}/include"
+                    }
                     "wasm_libc/include"
                 }
             }
         }
 
         when system=!wasm {
-            files { "wasm_libc/src/**" action=None }
+            files update { "wasm_libc/**" build_exclude=#true }
             public {
                 include_dirs external=#true { "wasm_libc/include" }
             }
@@ -123,15 +128,12 @@ plugin he.core version="0.1.0" license="UNLICENSED" {
     }
 
     // Tests for the core module.
-    module he_core_tests kind=static group="engine/tests" {
+    module he_core_tests kind=lib_static group="engine/tests" {
         files { "test/**" }
+        include_dirs { "src" }
 
         public {
             dependencies { he_core }
-        }
-
-        private {
-            include_dirs { "src" }
         }
     }
 
@@ -142,7 +144,7 @@ plugin he.core version="0.1.0" license="UNLICENSED" {
         public {
             dependencies {
                 he_core
-                :module group="engine/tests" kind=static { "${module.name}" whole_archive=#true }
+                :module group="engine/tests" kind=lib_static { "${module.name}" whole_archive=#true }
             }
         }
     }

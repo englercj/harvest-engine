@@ -6,7 +6,7 @@ internal class KdlDocumentReadHandler : IKdlReadHandler
 {
     public KdlDocument Document = new();
 
-    private List<KdlNode> _nodeStack = [];
+    private readonly List<KdlNode> _nodeStack = [];
     private uint _commentDepth = 0;
 
     public void StartDocument(KdlSourceInfo source)
@@ -51,7 +51,7 @@ internal class KdlDocumentReadHandler : IKdlReadHandler
 
         if (_nodeStack.Count == 0)
         {
-            Document.Nodes.Add(node);
+            Document.AddChild(node);
         }
         else
         {

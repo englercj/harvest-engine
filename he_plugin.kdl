@@ -3,8 +3,8 @@
 // Harvest Engine root import plugin
 // This plugin acts as an easy way to import the entire engine.
 
-plugin he.engine-root {
-    module he_engine_root type=header group="engine/libs" {
+plugin he.engine-root version="0.1.0" license="UNLICENSED" {
+    module he_engine_root kind=custom group="engine/libs" {
         files {
             ".editorconfig"
         }

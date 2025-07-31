@@ -24,13 +24,18 @@ class Program
         builder.Logging.AddDebug();
 #endif
 
-        ProjectService projectService = new();
-
-        // Configure the services
         builder.Services.AllowResolvingKeyedServicesAsDictionary();
-        builder.Services.AddHostedService<Application>();
+
+        // Register services from the loaded assemblies
+        Assembly[] loadedAssemblies = AppDomain.CurrentDomain.GetAssemblies();
+        foreach (Assembly assembly in loadedAssemblies)
+        {
+            RegisterServicesFromAssembly(builder.Services, assembly);
+        }
+
+        // Manually set the project service as a singleton
+        ProjectService projectService = new();
         builder.Services.AddSingleton<IProjectService>(projectService);
-        RegisterServicesFromAssembly(builder.Services, Assembly.GetExecutingAssembly());
 
         // Manually find the `--project` option value.
         string? projectPath = null;

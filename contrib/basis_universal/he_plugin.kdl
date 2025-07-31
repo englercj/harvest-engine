@@ -9,25 +9,24 @@ plugin binomial.basis_universal version="1.16.4" license="Apache-2.0" {
         github user=BinomialLLC repo=basis_universal ref="${plugin.version}"
     }
 
-    module basis_universal kind=static group="engine/contrib" {
+    module basis_universal kind=lib_static group="engine/contrib" {
+        warnings level=off
+
         files {
             "encoder/*.h"
             "encoder/*.cpp"
             "transcoder/*.h"
             "transcoder/*.cpp"
         }
-        warnings off
+
+        defines {
+            "BASISU_SUPPORT_SSE=1"
+            "BASISD_SUPPORT_KTX2=1"
+            "BASISD_SUPPORT_KTX2_ZSTD=1"
+        }
 
         public {
             include_dirs external=#true { "." }
-        }
-
-        private {
-            defines {
-                "BASISU_SUPPORT_SSE=1"
-                "BASISD_SUPPORT_KTX2=1"
-                "BASISD_SUPPORT_KTX2_ZSTD=1"
-            }
         }
 
         when system=posix {

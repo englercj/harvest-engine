@@ -52,8 +52,9 @@ platform Wasm32 arch=wasm32 system=wasm toolset=clang
 platform Win64 arch=x86_64 system=windows toolset=msvc
 platform WinArm64 arch=arm64 system=windows toolset=msvc
 
-when host=linux { platform Linux64 default=#true }
-when host=windows { platform Win64 default=#true }
+// TODO: I think I need a separate node to set the default platform based on host
+// when host=linux { platform Linux64 default=#true }
+// when host=windows { platform Win64 default=#true }
 
 when platform=Linux64 {
     defines { HE_PLATFORM_LINUX64; HE_PLATFORM_LINUX; HE_PLATFORM_API_POSIX }
@@ -166,10 +167,10 @@ dialect cpp=cpp20 c=c11 csharp=cs12
 exceptions off
 external warnings=off angle_brackets=#true
 floating_point precise
-warnings extra fatal=#true
+warnings level=extra fatal=#true
 
-when system=!linux { files modify { "**.linux.*" build_exclude=#true } }
-when system=!wasm { files modify { "**.wasm.*" build_exclude=#true } }
-when system=!windows { files modify { "**.windows.*" build_exclude=#true } }
-when tags=!posix { files modify { "**.posix.*" build_exclude=#true } }
-when tags=!win32 { files modify { "**.win32.*" build_exclude=#true } }
+when system=!linux { files update { "**.linux.*" build_exclude=#true } }
+when system=!wasm { files update { "**.wasm.*" build_exclude=#true } }
+when system=!windows { files update { "**.windows.*" build_exclude=#true } }
+when tags=!posix { files update { "**.posix.*" build_exclude=#true } }
+when tags=!win32 { files update { "**.win32.*" build_exclude=#true } }

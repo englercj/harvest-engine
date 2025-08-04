@@ -4,15 +4,22 @@ Tokens are a way to include dynamic values into strings throughout the HE Make P
 
 The syntax for inserting a token value is: `${context.property:transformer}`.
 
-- `context` is the name of any node that you are a child of, or the name of a Global Context as defined below.
+- `context` is the name of any node that you are a child of, a reference to a plugin by ID, a reference to a module by name, or the name of a Global Context as defined below.
 - `property` is the name of a property on that node, or a Computed Property as defined below.
 - `transformer` is optional and applies some transformation to the property value before emitting it.
 
 For example:
 
 ```kdl
-project "Test" {
-    "${project.name:lower}" // emits: "test"
+module other {}
+
+module example kind=header group="engine/contrib" {
+    public {
+        include_dirs external=#true {
+            "${module.path:dir}/include" // module refers to the `example` module
+            "${module[other].path:dir}/include" // module[other] refers to the `other` module
+        }
+    }
 }
 ```
 

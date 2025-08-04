@@ -30,8 +30,6 @@ None.
 inputs {
     // Add the schemac executable as as input so if it changes, this rule gets run again.
     // "${file.path}" is always treated as an input, no need to specify it here
-    :module he_schemac {
-        "${module.build_target}"
-    }
+    "${module[he_schemac].build_target}"
 }
 ```

@@ -2,7 +2,7 @@
 
 using System.CommandLine.Invocation;
 
-namespace Harvest.Make.Projects.Generators;
+namespace Harvest.Make.Projects.ProjectGenerators;
 
 public interface IProjectGeneratorService
 {

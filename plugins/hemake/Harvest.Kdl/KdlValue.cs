@@ -26,9 +26,11 @@ public abstract class KdlValue(string? type) : IKdlObject
             decimal v => new KdlNumber<decimal>(v, radix: 10, type),
             BigInteger v => new KdlNumber<BigInteger>(v, radix: 10, type: type),
             string s => new KdlString(s, type),
-            _ => throw new ArgumentException($"No KdlValue for object {o}"),
+            _ => throw new ArgumentException($"No KdlValue for object {o}", nameof(o)),
         };
     }
+
+    public KdlSourceInfo SourceInfo { get; set; } = new KdlSourceInfo();
 
     public string? Type => type;
 
@@ -45,6 +47,8 @@ public abstract class KdlValue(string? type) : IKdlObject
 
     protected abstract void WriteKdlValue(TextWriter writer, KdlWriteOptions options);
 
+    public abstract KdlValue Clone();
+
     public abstract override bool Equals(object? obj);
     public abstract override int GetHashCode();
     public abstract string GetValueString();
@@ -58,7 +62,7 @@ public abstract class KdlValue<T>(T value, string? type) : KdlValue(type)
     public T Value => value;
 
     public override string ToString() => $"KdlValue{{ Value={Value}, Type={Type ?? "null"} }}";
-    public override string GetValueString() => Value?.ToString() ?? "<null>";
+    public override string GetValueString() => Value?.ToString() ?? "null";
 
     public override bool Equals(object? obj)
     {

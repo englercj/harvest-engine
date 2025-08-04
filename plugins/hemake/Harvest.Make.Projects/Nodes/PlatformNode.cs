@@ -24,32 +24,27 @@ public enum EPlatformSystem
     [KdlName("windows")] Windows,
 }
 
-public class PlatformNode(KdlNode node, INode? scope) : NodeBase(node, scope)
+public class PlatformNode(KdlNode node, INode? scope) : NodeBase<PlatformNode>(node, scope)
 {
-    public const string NodeName = "platform";
+    public static string NodeName => "platform";
 
-    public static readonly IReadOnlyList<string> NodeScopes =
+    public static new IReadOnlyList<string> NodeValidScopes =>
     [
         ProjectNode.NodeName,
     ];
 
-    public static readonly IReadOnlyList<NodeKdlValue> NodeArguments =
+    public static new IReadOnlyList<NodeValueDef> NodeArgumentDefs =>
     [
-        NodeKdlString.Required(),
+        NodeValueDef_String.Required(),
     ];
 
-    public static readonly IReadOnlyDictionary<string, NodeKdlValue> NodeProperties = new SortedDictionary<string, NodeKdlValue>()
+    public static new IReadOnlyDictionary<string, NodeValueDef> NodePropertyDefs { get; } = new SortedDictionary<string, NodeValueDef>()
     {
-        { "arch", NodeKdlEnum<EPlatformArch>.Required(EPlatformArch.X86_64) },
-        { "system", NodeKdlEnum<EPlatformSystem>.Required(GetHostPlatform()) },
-        { "toolset", NodeKdlEnum<EToolset>.Optional() },
-        { "default", NodeKdlBool.Optional(false) },
+        { "arch", NodeValueDef_Enum<EPlatformArch>.Required(EPlatformArch.X86_64) },
+        { "system", NodeValueDef_Enum<EPlatformSystem>.Required(GetHostPlatform()) },
+        { "toolset", NodeValueDef_Enum<EToolset>.Optional() },
+        { "default", NodeValueDef_Bool.Optional(false) },
     };
-
-    public override string Name => NodeName;
-    public override IReadOnlyList<string> Scopes => NodeScopes;
-    public override IReadOnlyList<NodeKdlValue> Arguments => NodeArguments;
-    public override IReadOnlyDictionary<string, NodeKdlValue> Properties => NodeProperties;
 
     public string PlatformName => GetStringValue(0);
     public EPlatformArch Arch => GetEnumValue<EPlatformArch>("arch");
@@ -89,29 +84,23 @@ public class PlatformNode(KdlNode node, INode? scope) : NodeBase(node, scope)
         throw new Exception($"Unknown platform system: {System}");
     }
 
-    public override NodeValidationResult Validate(INode? scope)
+    public override void Validate(INode? scope)
     {
-        NodeValidationResult vr = base.Validate(scope);
-        if (!vr.IsValid)
-        {
-            return vr;
-        }
+        base.Validate(scope);
 
         if (Arch == EPlatformArch.Any && System != EPlatformSystem.DotNet)
         {
-            return NodeValidationResult.Error("Platform arch cannot be 'any' unless system is also 'dotnet'");
+            throw new NodeValidationException(this, "Platform arch cannot be 'any' unless system is also 'dotnet'");
         }
 
         if (Arch == EPlatformArch.WASM32 && System != EPlatformSystem.WASM)
         {
-            return NodeValidationResult.Error("Platform arch cannot be 'wasm32' unless system is also 'wasm'");
+            throw new NodeValidationException(this, "Platform arch cannot be 'wasm32' unless system is also 'wasm'");
         }
 
         if (System == EPlatformSystem.WASM && Arch != EPlatformArch.WASM32)
         {
-            return NodeValidationResult.Error("Platform system cannot be 'wasm' unless arch is also 'wasm32'");
+            throw new NodeValidationException(this, "Platform system cannot be 'wasm' unless arch is also 'wasm32'");
         }
-
-        return NodeValidationResult.Valid;
     }
 }

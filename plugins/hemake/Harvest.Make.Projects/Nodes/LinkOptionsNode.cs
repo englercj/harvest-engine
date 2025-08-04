@@ -4,24 +4,20 @@ using Harvest.Kdl;
 
 namespace Harvest.Make.Projects.Nodes;
 
-public class LinkOptionsNode(KdlNode node, INode? scope) : NodeSetBase<LinkOptionsEntryNode>(node, scope)
+public class LinkOptionsNode(KdlNode node, INode? scope) : NodeSetBase<LinkOptionsNode, LinkOptionsEntryNode>(node, scope)
 {
-    public const string NodeName = "link_options";
+    public static string NodeName => "link_options";
 
-    public static readonly IReadOnlyList<string> NodeScopes =
+    public static new IReadOnlyList<string> NodeValidScopes =>
     [
         ModuleNode.NodeName,
         ProjectNode.NodeName,
     ];
 
-    public static readonly IReadOnlyDictionary<string, NodeKdlValue> NodeProperties = new SortedDictionary<string, NodeKdlValue>()
+    public static new IReadOnlyDictionary<string, NodeValueDef> NodePropertyDefs { get; } = new SortedDictionary<string, NodeValueDef>()
     {
-        { "incremental_link", NodeKdlBool.Optional(true) },
+        { "incremental_link", NodeValueDef_Bool.Optional(true) },
     };
-
-    public override string Name => NodeName;
-    public override IReadOnlyList<string> Scopes => NodeScopes;
-    public override IReadOnlyDictionary<string, NodeKdlValue> Properties => NodeProperties;
 
     public bool IncrementalLink => GetBoolValue("incremental_link");
 }

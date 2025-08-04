@@ -4,7 +4,7 @@ using Harvest.Make.Attributes;
 using Harvest.Make.Projects.Nodes;
 using System.CommandLine.Invocation;
 
-namespace Harvest.Make.Projects.Generators.vs2022;
+namespace Harvest.Make.Projects.ProjectGenerators.vs2022;
 
 [Service<IProjectGeneratorService>(Key = ProjectGeneratorNames.VS2022)]
 public class VS2022ProjectGeneratorService(IProjectService projectService) : IProjectGeneratorService

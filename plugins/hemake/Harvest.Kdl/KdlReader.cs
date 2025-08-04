@@ -1150,6 +1150,7 @@ public class KdlReader(string filePath, byte[] data, IKdlReadHandler handler, Kd
     protected void EmitPropOrArg(object? value, string? type, string? name, KdlSourceInfo source)
     {
         KdlValue kdlValue = KdlValue.From(value, type);
+        kdlValue.SourceInfo = source;
         EmitPropOrArg(kdlValue, name, source);
     }
 

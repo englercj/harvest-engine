@@ -2,9 +2,9 @@
 
 using Harvest.Make.Projects.Nodes;
 using System.Xml;
-using static Harvest.Make.Projects.Generators.vs2022.IVisualStudioFileGroup;
+using static Harvest.Make.Projects.ProjectGenerators.vs2022.IVisualStudioFileGroup;
 
-namespace Harvest.Make.Projects.Generators.vs2022;
+namespace Harvest.Make.Projects.ProjectGenerators.vs2022;
 
 public abstract class VisualStudioFileGroupBase(ProjectGeneratorHelper helper, string vsProjectPath) : IVisualStudioFileGroup
 {
@@ -91,7 +91,7 @@ public abstract class VisualStudioFileGroupBase(ProjectGeneratorHelper helper, s
             writer.WriteAttributeString("Include", GetPath(file));
 
             OnWriteFile(writer, file);
-            VisualStudioUtils.ForEachConfig(_helper, (ConfigurationNode configuration, PlatformNode platform, string archName) =>
+            VisualStudioUtils.ForEachConfig(_helper, (configuration, platform, archName) =>
             {
                 OnWriteFileConfig(writer, file, configuration, platform, archName);
             });
@@ -238,7 +238,7 @@ public abstract class VisualStudioFileGroupBase(ProjectGeneratorHelper helper, s
         if (!commonStr.EndsWith(Path.PathSeparator))
         {
             string? dirName = Path.GetDirectoryName(commonStr);
-            commonStr = string.IsNullOrEmpty(dirName) ? string.Empty : (dirName + Path.PathSeparator);
+            commonStr = string.IsNullOrEmpty(dirName) ? string.Empty : dirName + Path.PathSeparator;
         }
 
         return commonStr;

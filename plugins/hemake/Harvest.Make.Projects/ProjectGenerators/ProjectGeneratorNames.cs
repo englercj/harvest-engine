@@ -1,6 +1,6 @@
 // Copyright Chad Engler
 
-namespace Harvest.Make.Projects.Generators;
+namespace Harvest.Make.Projects.ProjectGenerators;
 
 public static partial class ProjectGeneratorNames
 {

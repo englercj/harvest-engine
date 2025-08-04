@@ -1,6 +1,8 @@
 // Copyright Chad Engler
 
 using Harvest.Kdl;
+using System.Reflection;
+using System.Xml.Linq;
 
 namespace Harvest.Make.Projects.Nodes;
 
@@ -24,20 +26,27 @@ public enum ENodeDependencyInheritance
 
 public interface INode
 {
-    public KdlNode Node { get; }
-    public string Name { get; }
+    public static virtual string NodeName => throw new NotImplementedException();
+    public static virtual IReadOnlyList<string> NodeValidScopes => throw new NotImplementedException();
+    public static virtual IReadOnlyList<NodeValueDef> NodeArgumentDefs => throw new NotImplementedException();
+    public static virtual IReadOnlyDictionary<string, NodeValueDef> NodePropertyDefs => throw new NotImplementedException();
+    public static virtual ENodeDependencyInheritance NodeDependencyInheritance => throw new NotImplementedException();
+    public static virtual bool NodeCanBeExtended => throw new NotImplementedException();
 
-    public bool IsExtensionNode { get; }
-    public bool CanBeExtended { get; }
+    public IReadOnlyList<string> ValidScopes { get; }
+    public IReadOnlyList<NodeValueDef> ArgumentDefs { get; }
+    public IReadOnlyDictionary<string, NodeValueDef> PropertyDefs { get; }
     public ENodeDependencyInheritance DependencyInheritance { get; }
+    public bool CanBeExtended { get; }
 
-    public IReadOnlyList<string> Scopes { get; }
-    public IReadOnlyList<NodeKdlValue> Arguments { get; }
-    public IReadOnlyDictionary<string, NodeKdlValue> Properties { get; }
+    public KdlNode Node { get; }
     public INode? Scope { get; }
+
     public List<INode> Children { get; }
     public Type? ChildNodeType { get; }
 
-    public NodeValidationResult Validate(INode? scope);
+    public INode Clone();
+
+    public void Validate(INode? scope);
     public void MergeAndResolve(ProjectContext context, INode node);
 }

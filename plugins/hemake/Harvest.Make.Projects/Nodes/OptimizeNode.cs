@@ -30,35 +30,30 @@ public enum EInliningLevel
     [KdlName("on")] On,
 }
 
-public class OptimizeNode(KdlNode node, INode? scope) : NodeBase(node, scope)
+public class OptimizeNode(KdlNode node, INode? scope) : NodeBase<OptimizeNode>(node, scope)
 {
-    public const string NodeName = "optimize";
+    public static string NodeName => "optimize";
 
-    public static readonly IReadOnlyList<string> NodeScopes =
+    public static new IReadOnlyList<string> NodeValidScopes =>
     [
         ModuleNode.NodeName,
         ProjectNode.NodeName,
     ];
 
-    public static readonly IReadOnlyList<NodeKdlValue> NodeArguments =
+    public static new IReadOnlyList<NodeValueDef> NodeArgumentDefs =>
     [
-        NodeKdlEnum<EOptimizationLevel>.Required(EOptimizationLevel.Default),
+        NodeValueDef_Enum<EOptimizationLevel>.Required(EOptimizationLevel.Default),
     ];
 
-    public static readonly IReadOnlyDictionary<string, NodeKdlValue> NodeProperties = new SortedDictionary<string, NodeKdlValue>()
+    public static new IReadOnlyDictionary<string, NodeValueDef> NodePropertyDefs { get; } = new SortedDictionary<string, NodeValueDef>()
     {
-        { "lto", NodeKdlEnum<ELinkTimeOptimizationLevel>.Optional(ELinkTimeOptimizationLevel.Default) },
-        { "inlining", NodeKdlEnum<EInliningLevel>.Optional(EInliningLevel.Default) },
-        { "function_level_linking", NodeKdlBool.Optional() },
-        { "string_pooling", NodeKdlBool.Optional() },
-        { "intrinsics", NodeKdlBool.Optional() },
-        { "just_my_code", NodeKdlBool.Optional(true) },
+        { "lto", NodeValueDef_Enum<ELinkTimeOptimizationLevel>.Optional(ELinkTimeOptimizationLevel.Default) },
+        { "inlining", NodeValueDef_Enum<EInliningLevel>.Optional(EInliningLevel.Default) },
+        { "function_level_linking", NodeValueDef_Bool.Optional() },
+        { "string_pooling", NodeValueDef_Bool.Optional() },
+        { "intrinsics", NodeValueDef_Bool.Optional() },
+        { "just_my_code", NodeValueDef_Bool.Optional(true) },
     };
-
-    public override string Name => NodeName;
-    public override IReadOnlyList<string> Scopes => NodeScopes;
-    public override IReadOnlyList<NodeKdlValue> Arguments => NodeArguments;
-    public override IReadOnlyDictionary<string, NodeKdlValue> Properties => NodeProperties;
 
     public EOptimizationLevel OptimizationLevel => GetEnumValue<EOptimizationLevel>(0);
     public ELinkTimeOptimizationLevel LinkTimeOptimizationLevel => GetEnumValue<ELinkTimeOptimizationLevel>("lto");

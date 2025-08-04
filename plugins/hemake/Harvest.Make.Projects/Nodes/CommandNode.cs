@@ -6,28 +6,21 @@ using System.Runtime.InteropServices;
 
 namespace Harvest.Make.Projects.Nodes;
 
-public class CommandNode(KdlNode node, INode? scope) : NodeBase(node, scope)
+public class CommandNode(KdlNode node, INode? scope) : NodeBase<CommandNode>(node, scope)
 {
-    public static readonly IReadOnlyList<string> NodeScopes =
+    public static string NodeName => "command";
+
+    public static new IReadOnlyList<string> NodeValidScopes =>
     [
         BuildEventNode.NodeName,
         BuildRuleNode.NodeName,
     ];
 
-    public static readonly IReadOnlyList<NodeKdlValue> NodeArguments =
+    public static new IReadOnlyList<NodeValueDef> NodeArgumentDefs =>
     [
-        NodeKdlString.Required(),
-        NodeKdlString.Optional(),
+        NodeValueDef_String.Required(),
+        NodeValueDef_String.Optional(),
     ];
-
-    public static readonly IReadOnlyDictionary<string, NodeKdlValue> NodeProperties = new SortedDictionary<string, NodeKdlValue>()
-    {
-    };
-
-    public override string Name => Node.Name;
-    public override IReadOnlyList<string> Scopes => NodeScopes;
-    public override IReadOnlyList<NodeKdlValue> Arguments => NodeArguments;
-    public override IReadOnlyDictionary<string, NodeKdlValue> Properties => NodeProperties;
 
     public string CommandName => GetStringValue(0);
     public string? CommandArgs => TryGetStringValue(1);
@@ -68,21 +61,22 @@ public class CommandNode(KdlNode node, INode? scope) : NodeBase(node, scope)
         }
     }
 
-    protected override NodeValidationResult ValidateArguments()
+    protected override void ValidateArguments()
     {
+        // Intentionally not calling base.ValidateArguments() because we have custom validation.
+        //base.ValidateArguments();
+
         if (Node.Arguments.Count == 0)
         {
-            return NodeValidationResult.Error($"'{Name}' node must have at least one argument.");
+            throw new NodeValidationException(this, $"'{NodeName}' nodes must have at least one string argument.");
         }
 
         for (int i = 0; i < Node.Arguments.Count; ++i)
         {
             if (Node.Arguments[i] is not KdlString)
             {
-                return NodeValidationResult.Error($"Arguments of '{Name}' nodes must be strings.");
+                throw new NodeValidationException(this, $"Arguments of '{Name}' nodes must be strings.");
             }
         }
-
-        return NodeValidationResult.Valid;
     }
 }

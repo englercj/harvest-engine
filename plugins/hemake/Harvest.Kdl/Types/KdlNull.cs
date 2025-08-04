@@ -12,6 +12,11 @@ public class KdlNull(string? type = null) : KdlValue(type)
 {
     public static KdlNull Instance { get; } = new();
 
+    public override KdlValue Clone()
+    {
+        return new KdlNull(Type) { SourceInfo = SourceInfo };
+    }
+
     protected override void WriteKdlValue(TextWriter writer, KdlWriteOptions options)
     {
         writer.Write("#null");

@@ -88,13 +88,8 @@ files {
     // Add image files that get copied to the output directory.
     "images/**" action=copy
 
-    // Add schema files using the 'build' action and a custom rule 'he_schema_compile' that
-    // is defined in a C# extension and has custom configuration.
-    "schema/**.hsc" rule=he_schema_compile {
-        dependencies { "he_editor" }
-        include_dirs { "assets/include" }
-        targets { "c++" }
-    }
+    // Apply a custom build rule to .my files
+    "src/**.my" action=build build_rule=my_custom_build_rule
 }
 
 // Remove our pizza file that was added in the block above.

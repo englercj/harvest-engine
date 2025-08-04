@@ -3,7 +3,7 @@
 using Harvest.Make.Projects.Nodes;
 using System.Xml;
 
-namespace Harvest.Make.Projects.Generators.vs2022;
+namespace Harvest.Make.Projects.ProjectGenerators.vs2022;
 
 public interface IVisualStudioFileGroup
 {

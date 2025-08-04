@@ -166,53 +166,53 @@ internal class Application : IHostedService
                 if (property.GetCustomAttribute<CliOptionAttribute>() is CliOptionAttribute optionInfo)
                 {
                     Type optionType = s_genericOptionType.MakeGenericType(property.PropertyType);
-                    if (Activator.CreateInstance(optionType, optionInfo.Name, optionInfo.Description) is Option option)
+                    Option option = Activator.CreateInstance(optionType, optionInfo.Name, optionInfo.Description) as Option
+                        ?? throw new Exception($"Failed to create an instance of option type {optionType.FullName} for property {property.Name} on command {commandInfo.CommandType.FullName}");
+
+                    foreach (string alias in optionInfo.Aliases)
                     {
-                        foreach (string alias in optionInfo.Aliases)
-                        {
-                            option.AddAlias(alias);
-                        }
-
-                        option.IsHidden = optionInfo.IsHidden;
-                        option.IsRequired = optionInfo.IsRequired;
-                        option.Arity = GetArityForProperty(property);
-
-                        if (!optionInfo.IsRequired)
-                        {
-                            option.SetDefaultValue(property.GetValue(command));
-                        }
-
-                        commandInfo.Bindings.Add(new CommandBinding(option, property.SetValue));
-                        cliCommand.AddOption(option);
+                        option.AddAlias(alias);
                     }
+
+                    option.IsHidden = optionInfo.IsHidden;
+                    option.IsRequired = optionInfo.IsRequired;
+                    option.Arity = GetArityForProperty(property);
+
+                    if (!optionInfo.IsRequired)
+                    {
+                        option.SetDefaultValue(property.GetValue(command));
+                    }
+
+                    commandInfo.Bindings.Add(new CommandBinding(option, property.SetValue));
+                    cliCommand.AddOption(option);
                 }
 
                 if (property.GetCustomAttribute<CliArgumentAttribute>() is CliArgumentAttribute argumentInfo)
                 {
                     Type argumentType = s_genericArgumentType.MakeGenericType(property.PropertyType);
-                    if (Activator.CreateInstance(argumentType, argumentInfo.Name, argumentInfo.Description) is Argument argument)
+                    Argument argument = Activator.CreateInstance(argumentType, argumentInfo.Name, argumentInfo.Description) as Argument
+                        ?? throw new Exception($"Failed to create an instance of argument type {argumentType.FullName} for property {property.Name} on command {commandInfo.CommandType.FullName}");
+
+                    argument.IsHidden = argumentInfo.IsHidden;
+                    argument.Arity = GetArityForProperty(property);
+
+                    if (argumentInfo.IsRequired)
                     {
-                        argument.IsHidden = argumentInfo.IsHidden;
-                        argument.Arity = GetArityForProperty(property);
-
-                        if (argumentInfo.IsRequired)
+                        argument.AddValidator((result) =>
                         {
-                            argument.AddValidator((result) =>
+                            if (result.Tokens.Count == 0)
                             {
-                                if (result.Tokens.Count == 0)
-                                {
-                                    result.ErrorMessage = $"Missing required argument: {argumentInfo.Name}";
-                                }
-                            });
-                        }
-                        else
-                        {
-                            argument.SetDefaultValue(property.GetValue(command));
-                        }
-
-                        commandInfo.Bindings.Add(new CommandBinding(argument, property.SetValue));
-                        cliCommand.AddArgument(argument);
+                                result.ErrorMessage = $"Missing required argument: {argumentInfo.Name}";
+                            }
+                        });
                     }
+                    else
+                    {
+                        argument.SetDefaultValue(property.GetValue(command));
+                    }
+
+                    commandInfo.Bindings.Add(new CommandBinding(argument, property.SetValue));
+                    cliCommand.AddArgument(argument);
                 }
             }
 

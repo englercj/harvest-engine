@@ -15,28 +15,19 @@ public enum EDependencyKind
     [KdlName("system")] System,
 }
 
-public class DependenciesEntryNode(KdlNode node, INode? scope) : NodeBase(node, scope), IEquatable<DependenciesEntryNode>
+public class DependenciesEntryNode(KdlNode node, INode? scope) : NodeBase<DependenciesEntryNode>(node, scope), IEquatable<DependenciesEntryNode>
 {
-    public static readonly IReadOnlyList<string> NodeScopes =
+    public static new IReadOnlyList<string> NodeValidScopes =>
     [
         DependenciesNode.NodeName,
     ];
 
-    public static readonly IReadOnlyList<NodeKdlValue> NodeArguments =
-    [
-    ];
-
-    public static readonly IReadOnlyDictionary<string, NodeKdlValue> NodeProperties = new SortedDictionary<string, NodeKdlValue>()
+    public static new IReadOnlyDictionary<string, NodeValueDef> NodePropertyDefs { get; } = new SortedDictionary<string, NodeValueDef>()
     {
-        { "kind", NodeKdlEnum<EDependencyKind>.Optional(EDependencyKind.Default) },
-        { "external", NodeKdlBool.Optional(false) },
-        { "whole_archive", NodeKdlBool.Optional(false) },
+        { "kind", NodeValueDef_Enum<EDependencyKind>.Optional(EDependencyKind.Default) },
+        { "external", NodeValueDef_Bool.Optional(false) },
+        { "whole_archive", NodeValueDef_Bool.Optional(false) },
     };
-
-    public override string Name => Node.Name;
-    public override IReadOnlyList<string> Scopes => NodeScopes;
-    public override IReadOnlyList<NodeKdlValue> Arguments => NodeArguments;
-    public override IReadOnlyDictionary<string, NodeKdlValue> Properties => NodeProperties;
 
     public string DependencyName => Kind == EDependencyKind.File ? ResolvePath(Node.Name) : Node.Name;
     public EDependencyKind Kind => GetEnumValue<EDependencyKind>("kind");
@@ -45,9 +36,7 @@ public class DependenciesEntryNode(KdlNode node, INode? scope) : NodeBase(node, 
 
     public override int GetHashCode() => HashCode.Combine(DependencyName, Kind, IsExternal, IsWholeArchive);
 
-    public override bool Equals(object? other) => Equals(other as DependenciesEntryNode);
-
-    public bool Equals(DependenciesEntryNode? other)
+    public override bool Equals(object? other)
     {
         if (other is null)
         {
@@ -59,14 +48,14 @@ public class DependenciesEntryNode(KdlNode node, INode? scope) : NodeBase(node, 
             return true;
         }
 
-        if (GetType() != other.GetType())
+        if (other is DependenciesEntryNode entry)
         {
-            return false;
+            return DependencyName == entry.DependencyName
+                && Kind == entry.Kind
+                && IsExternal == entry.IsExternal
+                && IsWholeArchive == entry.IsWholeArchive;
         }
 
-        return DependencyName == other.DependencyName
-            && Kind == other.Kind
-            && IsExternal == other.IsExternal
-            && IsWholeArchive == other.IsWholeArchive;
+        return false;
     }
 }

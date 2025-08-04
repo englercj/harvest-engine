@@ -23,35 +23,31 @@ public enum EModuleLanguage
     [KdlName("csharp")] CSharp,
 }
 
-public class ModuleNode(KdlNode node, INode? scope) : NodeBase(node, scope)
+public class ModuleNode(KdlNode node, INode? scope) : NodeBase<ModuleNode>(node, scope)
 {
-    public const string NodeName = "module";
+    public static string NodeName => "module";
 
-    public static readonly IReadOnlyList<string> NodeScopes =
+    public static new IReadOnlyList<string> NodeValidScopes =>
     [
         PluginNode.NodeName,
     ];
 
-    public static readonly IReadOnlyList<NodeKdlValue> NodeArguments =
+    public static new IReadOnlyList<NodeValueDef> NodeArgumentDefs =>
     [
-        NodeKdlString.Required(),
+        NodeValueDef_String.Required(),
     ];
 
-    public static readonly IReadOnlyDictionary<string, NodeKdlValue> NodeProperties = new SortedDictionary<string, NodeKdlValue>()
+    public static new IReadOnlyDictionary<string, NodeValueDef> NodePropertyDefs { get; } = new SortedDictionary<string, NodeValueDef>()
     {
-        { "kind", NodeKdlEnum<EModuleKind>.Required(EModuleKind.Custom) },
-        { "group", NodeKdlString.Optional() },
-        { "language", NodeKdlEnum<EModuleLanguage>.Optional(EModuleLanguage.Cpp) },
-        { "project_file", NodeKdlString.Optional() },
-        { "entrypoint", NodeKdlString.Optional() },
-        { "hemake_extension", NodeKdlBool.Optional(false) },
+        { "kind", NodeValueDef_Enum<EModuleKind>.Required(EModuleKind.Custom) },
+        { "group", NodeValueDef_String.Optional() },
+        { "language", NodeValueDef_Enum<EModuleLanguage>.Optional(EModuleLanguage.Cpp) },
+        { "project_file", NodeValueDef_String.Optional() },
+        { "entrypoint", NodeValueDef_String.Optional() },
+        { "hemake_extension", NodeValueDef_Bool.Optional(false) },
     };
 
-    public override bool CanBeExtended => true;
-    public override string Name => NodeName;
-    public override IReadOnlyList<string> Scopes => NodeScopes;
-    public override IReadOnlyList<NodeKdlValue> Arguments => NodeArguments;
-    public override IReadOnlyDictionary<string, NodeKdlValue> Properties => NodeProperties;
+    public static new bool NodeCanBeExtended => true;
 
     public string ModuleName => GetStringValue(0);
     public EModuleKind Kind => GetEnumValue<EModuleKind>("kind");

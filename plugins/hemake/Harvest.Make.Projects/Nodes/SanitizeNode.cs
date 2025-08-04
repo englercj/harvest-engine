@@ -4,32 +4,23 @@ using Harvest.Kdl;
 
 namespace Harvest.Make.Projects.Nodes;
 
-public class SanitizeNode(KdlNode node, INode? scope) : NodeBase(node, scope)
+public class SanitizeNode(KdlNode node, INode? scope) : NodeBase<SanitizeNode>(node, scope)
 {
-    public const string NodeName = "sanitize";
+    public static string NodeName => "sanitize";
 
-    public static readonly IReadOnlyList<string> NodeScopes =
+    public static new IReadOnlyList<string> NodeValidScopes =>
     [
         ModuleNode.NodeName,
         ProjectNode.NodeName,
     ];
 
-    public static readonly IReadOnlyList<NodeKdlValue> NodeArguments =
-    [
-    ];
-
-    public static readonly IReadOnlyDictionary<string, NodeKdlValue> NodeProperties = new SortedDictionary<string, NodeKdlValue>()
+    public static new IReadOnlyDictionary<string, NodeValueDef> NodePropertyDefs { get; } = new SortedDictionary<string, NodeValueDef>()
     {
-        { "address", NodeKdlBool.Optional(false) },
-        { "fuzzer", NodeKdlBool.Optional(false) },
-        { "thread", NodeKdlBool.Optional(false) },
-        { "undefined", NodeKdlBool.Optional(false) },
+        { "address", NodeValueDef_Bool.Optional(false) },
+        { "fuzzer", NodeValueDef_Bool.Optional(false) },
+        { "thread", NodeValueDef_Bool.Optional(false) },
+        { "undefined", NodeValueDef_Bool.Optional(false) },
     };
-
-    public override string Name => NodeName;
-    public override IReadOnlyList<string> Scopes => NodeScopes;
-    public override IReadOnlyList<NodeKdlValue> Arguments => NodeArguments;
-    public override IReadOnlyDictionary<string, NodeKdlValue> Properties => NodeProperties;
 
     public bool EnableAddress => GetBoolValue("address");
     public bool EnableFuzzer => GetBoolValue("fuzzer");

@@ -9,31 +9,25 @@ using System.Text.RegularExpressions;
 
 namespace Harvest.Make.Projects.Nodes;
 
-public abstract partial class NodeBase(KdlNode node, INode? scope) : INode
+public abstract partial class NodeBase<TSelf>(KdlNode node, INode? scope) : INode where TSelf : INode
 {
-    public bool IsExtensionNode => Node.Name.StartsWith('+');
-    public virtual bool CanBeExtended => false;
+    public static IReadOnlyList<string> NodeValidScopes { get; } = [];
+    public static IReadOnlyList<NodeValueDef> NodeArgumentDefs { get; } = [];
+    public static IReadOnlyDictionary<string, NodeValueDef> NodePropertyDefs { get; } = new SortedDictionary<string, NodeValueDef>();
+    public static ENodeDependencyInheritance NodeDependencyInheritance => ENodeDependencyInheritance.None;
+    public static bool NodeCanBeExtended => false;
 
-    public abstract string Name { get; }
-    public abstract IReadOnlyList<string> Scopes { get; }
-    public abstract IReadOnlyList<NodeKdlValue> Arguments { get; }
-    public abstract IReadOnlyDictionary<string, NodeKdlValue> Properties { get; }
-    public virtual ENodeDependencyInheritance DependencyInheritance => ENodeDependencyInheritance.None;
+    public IReadOnlyList<string> ValidScopes => TSelf.NodeValidScopes;
+    public IReadOnlyList<NodeValueDef> ArgumentDefs => TSelf.NodeArgumentDefs;
+    public IReadOnlyDictionary<string, NodeValueDef> PropertyDefs => TSelf.NodePropertyDefs;
+    public ENodeDependencyInheritance DependencyInheritance => TSelf.NodeDependencyInheritance;
+    public bool CanBeExtended => TSelf.NodeCanBeExtended;
 
     public KdlNode Node => node;
     public INode? Scope => scope;
 
     public List<INode> Children { get; } = [];
-
-    public virtual bool CanHaveChildren => false;
     public virtual Type? ChildNodeType => null;
-
-    private static int s_tokenDepth = 0;
-
-    private const string TokenRegexPattern = @"\$\{[^\}]+\}";
-
-    [GeneratedRegex(TokenRegexPattern, RegexOptions.Singleline)]
-    private static partial Regex TokenRegex();
 
     protected T? TryGetClassValue<T>(int index) where T : class
     {
@@ -48,9 +42,9 @@ public abstract partial class NodeBase(KdlNode node, INode? scope) : INode
             }
         }
 
-        if (index < Arguments.Count)
+        if (index < ArgumentDefs.Count)
         {
-            NodeKdlValue argDef = Arguments[index];
+            NodeValueDef argDef = ArgumentDefs[index];
             if (argDef.DefaultValue is T result)
             {
                 return result;
@@ -73,9 +67,9 @@ public abstract partial class NodeBase(KdlNode node, INode? scope) : INode
             }
         }
 
-        if (index < Arguments.Count)
+        if (index < ArgumentDefs.Count)
         {
-            NodeKdlValue argDef = Arguments[index];
+            NodeValueDef argDef = ArgumentDefs[index];
             if (argDef.DefaultValue is T result)
             {
                 return result;
@@ -101,9 +95,9 @@ public abstract partial class NodeBase(KdlNode node, INode? scope) : INode
             return KdlEnumUtils.TryParse(strValue, out T result) ? result : null;
         }
 
-        if (index < Arguments.Count)
+        if (index < ArgumentDefs.Count)
         {
-            NodeKdlValue argDef = Arguments[index];
+            NodeValueDef argDef = ArgumentDefs[index];
             if (argDef.DefaultValue is T result)
             {
                 return result;
@@ -140,7 +134,7 @@ public abstract partial class NodeBase(KdlNode node, INode? scope) : INode
             }
         }
 
-        if (Properties.TryGetValue(key, out NodeKdlValue? valueDef))
+        if (PropertyDefs.TryGetValue(key, out NodeValueDef? valueDef))
         {
             if (valueDef.DefaultValue is T result)
             {
@@ -164,7 +158,7 @@ public abstract partial class NodeBase(KdlNode node, INode? scope) : INode
             }
         }
 
-        if (Properties.TryGetValue(key, out NodeKdlValue? valueDef))
+        if (PropertyDefs.TryGetValue(key, out NodeValueDef? valueDef))
         {
             if (valueDef.DefaultValue is T result)
             {
@@ -191,7 +185,7 @@ public abstract partial class NodeBase(KdlNode node, INode? scope) : INode
             return KdlEnumUtils.TryParse(strValue, out T result) ? result : null;
         }
 
-        if (Properties.TryGetValue(key, out NodeKdlValue? valueDef))
+        if (PropertyDefs.TryGetValue(key, out NodeValueDef? valueDef))
         {
             if (valueDef.DefaultValue is T result)
             {
@@ -224,7 +218,7 @@ public abstract partial class NodeBase(KdlNode node, INode? scope) : INode
             if (!string.IsNullOrEmpty(Node.SourceInfo.FilePath))
             {
                 string fileDir = Path.GetDirectoryName(Node.SourceInfo.FilePath)
-                    ?? throw new Exception($"Failed to resolve path '{path}' from node '{Name}' in file: {Node.SourceInfo.FilePath}");
+                    ?? throw new Exception($"Failed to resolve path '{path}' from node '{Node.Name}' in file: {Node.SourceInfo.FilePath}");
                 path = Path.GetFullPath(path, fileDir);
             }
             else
@@ -241,7 +235,7 @@ public abstract partial class NodeBase(KdlNode node, INode? scope) : INode
         if (path is not null)
         {
             string fileDir = Path.GetDirectoryName(Node.SourceInfo.FilePath)
-                ?? throw new Exception($"Failed to expand path '{path}' from node '{Name}' in file: {Node.SourceInfo.FilePath}");
+                ?? throw new Exception($"Failed to expand path '{path}' from node '{Node.Name}' in file: {Node.SourceInfo.FilePath}");
 
             Matcher matcher = new();
             matcher.AddInclude(path);
@@ -251,131 +245,107 @@ public abstract partial class NodeBase(KdlNode node, INode? scope) : INode
         return [];
     }
 
-    public virtual NodeValidationResult Validate(INode? scope)
+    public virtual INode Clone()
     {
-        if (!CanBeExtended && IsExtensionNode)
+        KdlNode rawNode = Node.Clone();
+
+        INode result = Activator.CreateInstance(GetType(), rawNode, Scope) as INode
+            ?? throw new Exception($"Failed to clone node of type '{GetType().Name}'");
+
+        foreach (INode child in Children)
         {
-            return NodeValidationResult.Error($"'{Name}' nodes cannot be extended.");
+            INode clonedChild = child.Clone();
+            result.Children.Add(clonedChild);
         }
 
-        string nodeName = Node.Name;
-        if (IsExtensionNode)
-        {
-            nodeName = nodeName[1..];
-        }
-
-        if (nodeName != Name)
-        {
-            throw new ArgumentException($"{GetType().Name} is meant for '{Name}' nodes, but got a '{nodeName}' node.");
-        }
-
-        NodeValidationResult vr = ValidateScope(scope);
-        if (!vr.IsValid)
-        {
-            return vr;
-        }
-
-        vr = ValidateArguments();
-        if (!vr.IsValid)
-        {
-            return vr;
-        }
-
-        vr = ValidateProperties();
-        if (!vr.IsValid)
-        {
-            return vr;
-        }
-
-        vr = ValidateChildren();
-        if (!vr.IsValid)
-        {
-            return vr;
-        }
-
-        return NodeValidationResult.Valid;
+        return result;
     }
 
-    protected virtual NodeValidationResult ValidateScope(INode? scope)
+    public virtual void Validate(INode? scope)
     {
-        if (Scopes.Count == 0)
+        ValidateScope(scope);
+        ValidateArguments();
+        ValidateProperties();
+        ValidateChildren();
+    }
+
+    protected virtual void ValidateScope(INode? scope)
+    {
+        if (ValidScopes.Count == 0)
         {
             if (scope is not null)
             {
-                return NodeValidationResult.Error($"'{Name}' nodes must be at the root.");
+                throw new NodeValidationException(this, $"'{Node.Name}' nodes must be used at the root.");
             }
         }
         else
         {
             if (scope is null)
             {
-                return NodeValidationResult.Error($"'{Name}' nodes cannot be at the root.");
+                throw new NodeValidationException(this, $"'{Node.Name}' nodes cannot be used at the root.");
             }
 
             // Special handling of `when` nodes. They have special child behavior.
-            if (scope.Name == WhenNode.NodeName)
+            // TODO: Move this into an override in WhenNode.
+            if (scope is WhenNode)
             {
-                if (Name == WhenNode.NodeName)
+                if (this is WhenNode)
                 {
-                    return NodeValidationResult.Error($"'{Name}' nodes cannot be children of '{WhenNode.NodeName}' nodes.");
+                    throw new NodeValidationException(this, $"'{Node.Name}' nodes cannot be a child of a '{WhenNode.NodeName}' node.");
                 }
             }
-            else if (!Scopes.Contains(scope.Name))
+            else if (!ValidScopes.Contains(scope.Node.Name))
             {
-                return NodeValidationResult.Error($"'{Name}' nodes cannot be children of '{scope.Name}' nodes.");
+                throw new NodeValidationException(this, $"'{Node.Name}' nodes cannot be a child of a '{scope.Node.Name}' node.");
             }
         }
-
-        return NodeValidationResult.Valid;
     }
 
-    protected virtual NodeValidationResult ValidateArguments()
+    protected virtual void ValidateArguments()
     {
         for (int i = 0; i < Node.Arguments.Count; ++i)
         {
-            if (i < Arguments.Count)
+            if (i < ArgumentDefs.Count)
             {
                 KdlValue value = Node.Arguments[i];
-                if (!value.GetType().Equals(Arguments[i].ValueType))
+                if (!value.GetType().Equals(ArgumentDefs[i].ValueType))
                 {
-                    return NodeValidationResult.Error($"'{Name}' node has incorrect value type in argument {i}: {value.GetType().Name}. Expected {Arguments[i].ValueType.Name}.");
+                    throw new NodeValidationException(this, $"'{Node.Name}' node has incorrect value type in argument {i}: {value.GetType().Name}. Expected {ArgumentDefs[i].ValueType.Name}.");
                 }
 
-                if (Arguments[i].ValidValues.Count > 0)
+                if (ArgumentDefs[i].ValidValues.Count > 0)
                 {
-                    object? valid = Arguments[i].ValidValues.FirstOrDefault(value.Equals);
+                    object? valid = ArgumentDefs[i].ValidValues.FirstOrDefault(value.Equals);
                     if (valid is null)
                     {
-                        return NodeValidationResult.Error($"'{Name}' node has an invalid value in argument {i}: {value.GetValueString()}. Expected one of: {string.Join(", ", Arguments[i].ValidValues)}.");
+                        throw new NodeValidationException(this, $"'{Node.Name}' node has an invalid value in argument {i}: {value.GetValueString()}. Expected one of: {string.Join(", ", ArgumentDefs[i].ValidValues)}.");
                     }
                 }
             }
             else
             {
-                return NodeValidationResult.Error($"'{Name}' nodes cannot contain more than {Arguments.Count} arguments.");
+                throw new NodeValidationException(this, $"'{Node.Name}' nodes cannot contain more than {ArgumentDefs.Count} arguments.");
             }
         }
 
-        for (int i = Node.Arguments.Count; i < Arguments.Count; ++i)
+        for (int i = Node.Arguments.Count; i < ArgumentDefs.Count; ++i)
         {
-            if (Arguments[i].IsRequired)
+            if (ArgumentDefs[i].IsRequired)
             {
-                return NodeValidationResult.Error($"'{Name}' node is missing required argument (index: {i}).");
+                throw new NodeValidationException(this, $"'{Node.Name}' node is missing required argument (index: {i}).");
             }
         }
-
-        return NodeValidationResult.Valid;
     }
 
-    protected virtual NodeValidationResult ValidateProperties()
+    protected virtual void ValidateProperties()
     {
-        foreach (KeyValuePair<string, NodeKdlValue> pair in Properties)
+        foreach (KeyValuePair<string, NodeValueDef> pair in PropertyDefs)
         {
             if (Node.Properties.TryGetValue(pair.Key, out KdlValue? value))
             {
                 if (!value.GetType().Equals(pair.Value.ValueType))
                 {
-                    return NodeValidationResult.Error($"'{Name}' node has incorrect value type in property '{pair.Key}': {value.GetType().Name}. Expected {pair.Value.ValueType.Name}.");
+                    throw new NodeValidationException(this, $"'{Node.Name}' node has incorrect value type in property '{pair.Key}': {value.GetType().Name}. Expected {pair.Value.ValueType.Name}.");
                 }
 
                 if (pair.Value.ValidValues.Count > 0)
@@ -383,52 +353,37 @@ public abstract partial class NodeBase(KdlNode node, INode? scope) : INode
                     object? valid = pair.Value.ValidValues.FirstOrDefault(value.Equals);
                     if (valid is null)
                     {
-                        return NodeValidationResult.Error($"'{Name}' node has an invalid value in property '{pair.Key}': {value.GetValueString()}. Expected one of: {string.Join(", ", pair.Value.ValidValues)}.");
+                        throw new NodeValidationException(this, $"'{Node.Name}' node has an invalid value in property '{pair.Key}': {value.GetValueString()}. Expected one of: {string.Join(", ", pair.Value.ValidValues)}.");
                     }
                 }
             }
             else if (pair.Value.IsRequired)
             {
-                return NodeValidationResult.Error($"'{Name}' nodes must specify a '{pair.Key}' property.");
+                throw new NodeValidationException(this, $"'{Node.Name}' nodes must specify a '{pair.Key}' property.");
             }
         }
-
-        return NodeValidationResult.Valid;
     }
 
-    protected virtual NodeValidationResult ValidateChildren()
+    protected virtual void ValidateChildren()
     {
-        return NodeValidationResult.Valid;
+        foreach (INode child in Children)
+        {
+            child.Validate(this);
+        }
     }
 
     public virtual void MergeAndResolve(ProjectContext context, INode node)
     {
         if (!node.GetType().Equals(GetType()) || Node.Name != node.Node.Name)
         {
-            throw new Exception("Cannot merge nodes of different types.");
+            throw new ArgumentException("Cannot merge nodes of different types.", nameof(node));
         }
 
         Node.SourceInfo = node.Node.SourceInfo;
 
-        MergeAndResolveProperties(context, node);
         MergeAndResolveArguments(context, node);
+        MergeAndResolveProperties(context, node);
         MergeAndResolveChildren(context, node);
-    }
-
-    protected virtual void MergeAndResolveProperties(ProjectContext context, INode node)
-    {
-        foreach ((string key, KdlValue value) in node.Node.Properties)
-        {
-            if (value is KdlString valueStr)
-            {
-                string resolvedValue = ReplaceTokens(context, valueStr.Value);
-                Node.Properties.Add(key, new KdlString(resolvedValue, valueStr.Type));
-            }
-            else
-            {
-                Node.Properties.Add(key, value);
-            }
-        }
     }
 
     protected virtual void MergeAndResolveArguments(ProjectContext context, INode node)
@@ -439,12 +394,28 @@ public abstract partial class NodeBase(KdlNode node, INode? scope) : INode
 
             if (value is KdlString valueStr)
             {
-                string resolvedValue = ReplaceTokens(context, valueStr.Value);
+                string resolvedValue = context.ProjectService.TokenReplacer.ReplaceTokens(context, node.Node, valueStr.Value);
                 AddOrSetArgument(i, new KdlString(resolvedValue, valueStr.Type));
             }
             else
             {
                 AddOrSetArgument(i, value);
+            }
+        }
+    }
+
+    protected virtual void MergeAndResolveProperties(ProjectContext context, INode node)
+    {
+        foreach ((string key, KdlValue value) in node.Node.Properties)
+        {
+            if (value is KdlString valueStr)
+            {
+                string resolvedValue = context.ProjectService.TokenReplacer.ReplaceTokens(context, node.Node, valueStr.Value);
+                Node.Properties[key] = new KdlString(resolvedValue, valueStr.Type);
+            }
+            else
+            {
+                Node.Properties[key] = value;
             }
         }
     }
@@ -469,210 +440,7 @@ public abstract partial class NodeBase(KdlNode node, INode? scope) : INode
         }
         else
         {
-            throw new Exception($"Cannot add argument at index {index} to node '{Name}'. Invalid arguments array.");
+            throw new Exception($"Cannot add argument at index {index} to node '{Node.Name}'. Invalid arguments array.");
         }
-    }
-
-    protected string ReplaceTokens(ProjectContext projectContext, string input)
-    {
-        return TokenRegex().Replace(input, (match) =>
-        {
-            string token = match.Value[2..^1]; // ${token} -> token
-            string[] contextParts = token.Split('.');
-
-            if (contextParts.Length != 2)
-            {
-                throw new Exception($"Invalid token '{token}'. Expected format: 'context.property'.");
-            }
-
-            string[] transformerParts = contextParts[1].Split(':');
-
-            string contextName = contextParts[0];
-            string propertyName = transformerParts[0];
-
-            ++s_tokenDepth;
-            string tokenValue = GetTokenValue(projectContext, token, contextName, propertyName);
-            --s_tokenDepth;
-
-            foreach (string transformer in transformerParts[1..])
-            {
-                tokenValue = transformer switch
-                {
-                    "lower" => tokenValue.ToLower(),
-                    "upper" => tokenValue.ToUpper(),
-                    "trim" => tokenValue.Trim(),
-                    "dirname" => Path.GetDirectoryName(tokenValue) ?? "",
-                    "basename" => Path.GetFileName(tokenValue) ?? "",
-                    "extname" => Path.GetExtension(tokenValue)?.TrimStart('.') ?? "",
-                    "extension" => Path.GetExtension(tokenValue) ?? "",
-                    "noextension" => Path.ChangeExtension(tokenValue, null) ?? "",
-                    _ => throw new Exception($"Invalid token '{token}'. Unknown transformer '{transformer}'."),
-                };
-            }
-
-            return tokenValue;
-        });
-    }
-
-    protected string GetTokenValue(ProjectContext projectContext, string token, string contextName, string propertyName)
-    {
-        if (s_tokenDepth > 20)
-        {
-            throw new Exception($"Token depth exceeded maximum limit. Do you have a recursive token? token='{token}', contextName='{contextName}', propertyName='{propertyName}'");
-        }
-
-        if (contextName == ConfigurationNode.NodeName)
-        {
-            return propertyName switch
-            {
-                "name" => projectContext.Configuration?.ConfigName ?? "",
-                _ => throw new Exception($"Invalid token '{token}'. Unknown property '{propertyName}' on context 'configuration'."),
-            };
-        }
-
-        if (contextName == PlatformNode.NodeName)
-        {
-            return propertyName switch
-            {
-                "name" => projectContext.Platform?.PlatformName ?? "",
-                "system" => KdlEnumUtils.GetName(projectContext.Platform?.System ?? EPlatformSystem.Windows),
-                "arch" => KdlEnumUtils.GetName(projectContext.Platform?.Arch ?? EPlatformArch.X86_64),
-                _ => throw new Exception($"Invalid token '{token}'. Unknown property '{propertyName}' on context 'platform'."),
-            };
-        }
-
-        if (FindScopeWithName(contextName) is not INode nodeContext)
-        {
-            throw new Exception($"Invalid token '{token}'. Unknown context: '{contextName}'.");
-        }
-
-        if (propertyName.StartsWith("_arg"))
-        {
-            if (!int.TryParse(propertyName[4..], out int argIndex))
-            {
-                throw new Exception($"Invalid token '{token}'. Argument index must be an integer.");
-            }
-
-            if (nodeContext.Node.Arguments[argIndex].ToString() is string argValue)
-            {
-                return argValue;
-            }
-        }
-        else if (nodeContext is ProjectNode projectNode)
-        {
-            if (propertyName == "name")
-            {
-                return projectNode.ProjectName;
-            }
-            else if (propertyName == "path")
-            {
-                return projectContext.ProjectService.ProjectPath;
-            }
-        }
-        else if (nodeContext is PluginNode pluginNode)
-        {
-            if (propertyName == "name")
-            {
-                return pluginNode.PluginId;
-            }
-            else if (propertyName == "path")
-            {
-                return pluginNode.Node.SourceInfo.FilePath;
-            }
-            else if (propertyName == "install_dir")
-            {
-                // TODO: handle install dir of a plugin being different from the KDL file.
-                // Return the directory of the KDL file where this node is defined.
-                return Path.GetDirectoryName(pluginNode.Node.SourceInfo.FilePath) ?? string.Empty;
-            }
-        }
-        else if (nodeContext is ModuleNode moduleNode)
-        {
-            if (propertyName == "name")
-            {
-                return moduleNode.ModuleName;
-            }
-            else if (propertyName == "path")
-            {
-                return moduleNode.Node.SourceInfo.FilePath;
-            }
-            else if (propertyName == "build_target")
-            {
-                ProjectContext childContext = projectContext.Clone();
-                childContext.Module = moduleNode;
-
-                BuildOutputNode buildOutput = childContext.ProjectService.GetMergedNode<BuildOutputNode>(childContext, moduleNode, false);
-
-                string targetDir = buildOutput.GetTargetDir(moduleNode.Kind);
-                string targetName = buildOutput.TargetName ?? moduleNode.ModuleName;
-                string targetExtension = buildOutput.GetTargetExtension(moduleNode.Kind, projectContext.IsWindows);
-                return Path.Join(targetDir, targetName + targetExtension);
-            }
-            else if (propertyName == "link_target")
-            {
-                ProjectContext childContext = projectContext.Clone();
-                childContext.Module = moduleNode;
-
-                BuildOutputNode buildOutput = childContext.ProjectService.GetMergedNode<BuildOutputNode>(childContext, moduleNode, false);
-
-                // Treat shared libraries as static libraries for the purpose of linking. This will let us target
-                // the import library (.lib) instead of the shared library (.dll).
-                EModuleKind moduleKind = projectContext.IsWindows && buildOutput.MakeImportLib && moduleNode.Kind == EModuleKind.LibShared ? EModuleKind.LibStatic : moduleNode.Kind;
-                string targetDir = buildOutput.GetTargetDir(moduleKind);
-                string targetName = buildOutput.TargetName ?? moduleNode.ModuleName;
-                string targetExtension = buildOutput.GetTargetExtension(moduleKind, projectContext.IsWindows);
-                return Path.Join(targetDir, targetName + targetExtension);
-            }
-            else if (propertyName == "gen_dir")
-            {
-                ProjectContext childContext = projectContext.Clone();
-                childContext.Module = moduleNode;
-
-                BuildOutputNode buildOutput = childContext.ProjectService.GetMergedNode<BuildOutputNode>(childContext, moduleNode, false);
-
-                return buildOutput.GenDir;
-            }
-        }
-
-        if (nodeContext.Node.Properties.TryGetValue(propertyName, out KdlValue? value))
-        {
-            return value switch
-            {
-                KdlBool v => v.Value ? "true" : "false",
-                KdlNumber<byte> v => v.Value.ToString(),
-                KdlNumber<ushort> v => v.Value.ToString(),
-                KdlNumber<uint> v => v.Value.ToString(),
-                KdlNumber<ulong> v => v.Value.ToString(),
-                KdlNumber<sbyte> v => v.Value.ToString(),
-                KdlNumber<short> v => v.Value.ToString(),
-                KdlNumber<int> v => v.Value.ToString(),
-                KdlNumber<long> v => v.Value.ToString(),
-                KdlNumber<nint> v => v.Value.ToString(),
-                KdlNumber<nuint> v => v.Value.ToString(),
-                KdlNumber<float> v => v.Value.ToString(),
-                KdlNumber<double> v => v.Value.ToString(),
-                KdlNumber<decimal> v => v.Value.ToString(),
-                KdlString v => v.Value,
-                _ => throw new Exception($"Invalid token '{token}'. Property '{propertyName}' has an unknown type on context '{contextName}'."),
-            };
-        }
-
-        throw new Exception($"Invalid token '{token}'. Unknown property '{propertyName}' on context '{contextName}'.");
-    }
-
-    protected INode? FindScopeWithName(string name)
-    {
-        INode? scope = this;
-        while (scope is not null)
-        {
-            if (scope.Name == name)
-            {
-                return scope;
-            }
-
-            scope = scope.Scope;
-        }
-
-        return null;
     }
 }

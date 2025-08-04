@@ -15,29 +15,24 @@ public enum EBuildEvent
     [KdlName("clean")] Clean,
 }
 
-public class BuildEventNode(KdlNode node, INode? scope) : NodeBase(node, scope)
+public class BuildEventNode(KdlNode node, INode? scope) : NodeBase<BuildEventNode>(node, scope)
 {
-    public const string NodeName = "build_event";
+    public static string NodeName => "build_event";
 
-    public static readonly IReadOnlyList<string> NodeScopes =
+    public static new IReadOnlyList<string> NodeValidScopes =>
     [
         ModuleNode.NodeName,
     ];
 
-    public static readonly IReadOnlyList<NodeKdlValue> NodeArguments =
+    public static new IReadOnlyList<NodeValueDef> NodeArgumentDefs =>
     [
-        NodeKdlEnum<EBuildEvent>.Required(EBuildEvent.Prebuild),
+        NodeValueDef_Enum<EBuildEvent>.Required(EBuildEvent.Prebuild),
     ];
 
-    public static readonly IReadOnlyDictionary<string, NodeKdlValue> NodeProperties = new SortedDictionary<string, NodeKdlValue>()
+    public static new IReadOnlyDictionary<string, NodeValueDef> NodePropertyDefs { get; } = new SortedDictionary<string, NodeValueDef>()
     {
-        { "message", NodeKdlString.Optional() },
+        { "message", NodeValueDef_String.Optional() },
     };
-
-    public override string Name => NodeName;
-    public override IReadOnlyList<string> Scopes => NodeScopes;
-    public override IReadOnlyList<NodeKdlValue> Arguments => NodeArguments;
-    public override IReadOnlyDictionary<string, NodeKdlValue> Properties => NodeProperties;
 
     public EBuildEvent EventName => GetEnumValue<EBuildEvent>(0);
     public string? Message => TryGetStringValue("message");

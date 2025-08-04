@@ -4,9 +4,37 @@ Node modifiers are a syntax to modify the behavior of a node.
 
 ## Generators
 
-Prefixing a node name with a colon (`:`) makes it a generator. Instead of the normal behavior for that node, a generator will instead perform a project-wide search for nodes of that type that meet the filter criteria specified as arguments and properties. The children of generators are nodes that will be parsed as if they were in the parent scope, once for each node matching the generators filter, using the context of the found node.
+Generates are nodes that are evaluated at parsing time to generate nodes in their place. Generator nodes are prefixed with a colon (`:`) to make it obvious they are not actually part of the project structure.
 
-For example, if you need to access the context of a particular module you can do this:
+The valid generators are:
+
+- [`:foreach`](#foreach-generator) - generates child nodes once for each matching node
+
+### Foreach Generator
+
+The `:foreach` generator finds nodes matching the given filter and generates nodes for each match using the child nodes as a template. Child nodes can use the special token context `_entry` to represent the matched entry of the current iteration. It will behave as if it was a token context of the type being searched for. For example, if searching for modules `_entry` will act like `module` token context. See [tokens](tokens.md) for more info.
+
+#### Arguments
+
+- (string) - Required. The node type to search for. Valid values are:
+    * `plugin` - Search for matching plugins.
+    * `module` - Search for matching modules.
+
+#### Properties
+
+Each property checks if the context matches the given value. The equality check can be negated by prefixing the value with `!`. For example, `arch=x86_64` checks that the architecture is `x86_64` and `arch=!x86_64` checks that the architecture is *not* `x86_64`.
+
+Values can also be logically combined with `||` (or), `&&` (and), or `^` (xor). Conditions are evaluated from left-to-right, and parenthesis (`()`) may be used to to group conditions.
+
+Any property of the target context can be checked. You can check arguments by using a special `_argN` property, where `N` is the index of the argument to check. For example `_arg0="foo"` will check that the first argument is equal to `"foo"`.
+
+#### Children
+
+Child nodes of the `:foreach` generator are treated as a template to generate nodes. Each child node is evaluated at parse time and generates a node in the project structure, for each matched item. Any node that is valid in the parent scope, is valid in the generator.
+
+Generators cannot currently be nested.
+
+#### Example
 
 ```kdl
 // This is a console app that links all test projects and runs them.
@@ -20,7 +48,9 @@ module he_test_runner kind=console_app group="engine/tests" {
 
             // Generate a dependency node for each module in the "engine/tests" group that
             // has `kind=lib_static`.
-            :module group="engine/tests" kind=lib_static { "${module.name}" whole_archive=#true }
+            :foreach module group="engine/tests" kind=lib_static {
+                "${_entry.name}" whole_archive=#true
+            }
         }
     }
 }
@@ -43,7 +73,7 @@ These are the nodes that can be used as generators:
 
 ## Extensions
 
-While most nodes can be specified multiple times and are additive, there are a few nodes that can only be specified once because they define a unique identifier. The extension syntax allows you to specify a unique node a second time elsewhere in the project structure, and combine the properties and children nodes with other definitions.
+Extensions allow you to modify the definitions of nodes defined elsewhere in the project. This can be useful when a module is defined by a plugin outside of your source control and you want to modify it's behavior. Properties and children of the extension node are merged into the existing definition. If no existing definition is found, the extension is silently ignored.
 
 For example, you may want to inject your own library into the Harvest Editor application. An easy way to do this is through extensions.
 
@@ -55,7 +85,7 @@ plugin mygame version="1.0.0" license="UNLICENSED" {
     }
 
     // Extend the harvest editor's module definition to include a dependency
-    // on mygame's editor module.
+    // on mygame's editor module so it is linked and loaded.
     +module he_editor {
         dependencies { mygame_editor }
     }
@@ -72,42 +102,9 @@ This extension is only applied if the `he_editor` module is defined elsewhere in
 
 This will emit an error if no `he_editor` module can be found to extend.
 
-
-### Why a special syntax?
-
-It may seem odd that a different syntax is used for plugin and module extension, when just making the nodes have additive behavior like other nodes would also solve the issue.
-
-This is true. However, doing so would mean that extensions would end up defining a new module if the original module definition doesn't exist. Consider an example.
-
-Plugin `A` defines module `m`:
-
-```kdl
-// A/he_plugin.kdl
-plugin A version="1.0.0" license="MIT" {
-    module m kind=lib_static {}
-}
-```
-
-And plugin `B` extends module `m` with an extra dependency:
-
-```kdl
-// B/he_plugin.kdl
-plugin B version="1.0.0" license="MIT" {
-    +module m {
-        public {
-            dependency { something }
-        }
-    }
-}
-```
-
-Now consider a project that includes plugin `B` but not plugin `A`. If there was no special syntax to tell HE Make that the module node in plugin `B` is an extension it would throw an error that `kind` is missing. Or if `kind` was specified, it would define a module `m`. Our desired behavior here is that the `+module m` definition in plugin `B` is inert unless plugin `A` is also included.
-
-Another common case is that `m`, as defined in plugin `A`, could be guarded by a `when` condition. Without a special syntax to know that plugin `B` is intending to extend the module, plugin `B` would end up defining the module in invalid configurations.
-
 ### Valid Nodes
 
-These are the nodes that can be extended:
+These are the nodes that can be used as generators:
 
 - [`module`](nodes/module_node.md)
 - [`plugin`](nodes/plugin_node.md)

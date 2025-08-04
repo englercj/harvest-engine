@@ -2,7 +2,7 @@
 
 using Harvest.Make.Attributes;
 using Harvest.Make.CliCommands;
-using Harvest.Make.Projects.Generators;
+using Harvest.Make.Projects.ProjectGenerators;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System.CommandLine.Invocation;

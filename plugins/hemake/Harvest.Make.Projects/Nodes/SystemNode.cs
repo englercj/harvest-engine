@@ -4,29 +4,24 @@ using Harvest.Kdl;
 
 namespace Harvest.Make.Projects.Nodes;
 
-public class SystemNode(KdlNode node, INode? scope) : NodeBase(node, scope)
+public class SystemNode(KdlNode node, INode? scope) : NodeBase<SystemNode>(node, scope)
 {
-    public const string NodeName = "system";
+    public static string NodeName => "system";
 
-    public static readonly IReadOnlyList<string> NodeScopes =
+    public static new IReadOnlyList<string> NodeValidScopes =>
     [
         ProjectNode.NodeName,
     ];
 
-    public static readonly IReadOnlyList<NodeKdlValue> NodeArguments =
+    public static new IReadOnlyList<NodeValueDef> NodeArgumentDefs =>
     [
-        NodeKdlEnum<EPlatformSystem>.Required(EPlatformSystem.Windows),
+        NodeValueDef_Enum<EPlatformSystem>.Required(EPlatformSystem.Windows),
     ];
 
-    public static readonly IReadOnlyDictionary<string, NodeKdlValue> NodeProperties = new SortedDictionary<string, NodeKdlValue>()
+    public static new IReadOnlyDictionary<string, NodeValueDef> NodePropertyDefs { get; } = new SortedDictionary<string, NodeValueDef>()
     {
-        { "version", NodeKdlString.Optional() }
+        { "version", NodeValueDef_String.Optional() }
     };
-
-    public override string Name => NodeName;
-    public override IReadOnlyList<string> Scopes => NodeScopes;
-    public override IReadOnlyList<NodeKdlValue> Arguments => NodeArguments;
-    public override IReadOnlyDictionary<string, NodeKdlValue> Properties => NodeProperties;
 
     public EPlatformSystem System => GetEnumValue<EPlatformSystem>(0);
     public string Version => GetResolvedVersion();

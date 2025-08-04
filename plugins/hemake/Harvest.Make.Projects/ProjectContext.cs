@@ -7,6 +7,7 @@ namespace Harvest.Make.Projects;
 public class ProjectContext(IProjectService projectService)
 {
     public IProjectService ProjectService => projectService;
+    public PluginNode? Plugin { get; set; } = null;
     public ModuleNode? Module { get; set; } = null;
     public ConfigurationNode? Configuration { get; set; } = null;
     public PlatformNode? Platform { get; set; } = null;

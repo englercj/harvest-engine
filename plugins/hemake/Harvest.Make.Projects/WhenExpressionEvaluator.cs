@@ -1,16 +1,18 @@
 // Copyright Chad Engler
 
+using Harvest.Kdl;
+using Harvest.Kdl.Types;
+using System.Numerics;
+
 namespace Harvest.Make.Projects;
 
 public class WhenExpressionEvaluator
 {
     static readonly HashSet<char> s_nonLiteralCharacters = ['!', '(', ')', '&', '|', '^'];
 
-    public delegate bool EvaluateValueDelegate(string value);
-
-    private class EvaluationContext(EvaluateValueDelegate evaluator)
+    private class EvaluationContext(Func<string, bool> evaluator)
     {
-        public EvaluateValueDelegate Evaluator => evaluator;
+        public Func<string, bool> Evaluator => evaluator;
     }
 
     private abstract class TreeNode
@@ -92,15 +94,62 @@ public class WhenExpressionEvaluator
         }
     }
 
-    public static bool Evaluate(string expression, EvaluateValueDelegate evaluator)
+    public static bool Evaluate(string expression, Func<string, bool> valueEvaluator)
     {
         TreeNode? root = ParseExpression(expression);
 
         if (root is null)
             return true;
 
-        EvaluationContext context = new(evaluator);
+        EvaluationContext context = new(valueEvaluator);
         return root.Evaluate(context);
+    }
+
+    public static bool Evaluate<T>(string expression, T value)
+    {
+        return value switch
+        {
+            bool b => Evaluate(expression, (v) => CheckEqualBool(v, b)),
+            null => Evaluate(expression, CheckEqualNull),
+            sbyte n => Evaluate(expression, (v) => CheckEqualNumber(v, n)),
+            short n => Evaluate(expression, (v) => CheckEqualNumber(v, n)),
+            int n => Evaluate(expression, (v) => CheckEqualNumber(v, n)),
+            long n => Evaluate(expression, (v) => CheckEqualNumber(v, n)),
+            byte n => Evaluate(expression, (v) => CheckEqualNumber(v, n)),
+            ushort n => Evaluate(expression, (v) => CheckEqualNumber(v, n)),
+            uint n => Evaluate(expression, (v) => CheckEqualNumber(v, n)),
+            ulong n => Evaluate(expression, (v) => CheckEqualNumber(v, n)),
+            float n => Evaluate(expression, (v) => CheckEqualNumber(v, n)),
+            double n => Evaluate(expression, (v) => CheckEqualNumber(v, n)),
+            decimal n => Evaluate(expression, (v) => CheckEqualNumber(v, n)),
+            string s => Evaluate(expression, (v) => CheckEqualString(v, s)),
+            Enum e => Evaluate(expression, (v) => CheckEqualString(v, KdlEnumUtils.GetName(e))),
+            HashSet<string> active => Evaluate(expression, active.Contains),
+            IDictionary<string, object?> options => Evaluate(expression, (v) => CheckDictionaryContains(v, options)),
+            _ => throw new ArgumentException($"Unsupported type '{value.GetType().Name}' for evaluation.", nameof(value)),
+        };
+    }
+
+    public static bool Evaluate(string expression, KdlValue value)
+    {
+        return value switch
+        {
+            KdlBool b => Evaluate(expression, b.Value),
+            KdlNull => Evaluate<object?>(expression, null),
+            KdlNumber<sbyte> n => Evaluate(expression, n.Value),
+            KdlNumber<short> n => Evaluate(expression, n.Value),
+            KdlNumber<int> n => Evaluate(expression, n.Value),
+            KdlNumber<long> n => Evaluate(expression, n.Value),
+            KdlNumber<byte> n => Evaluate(expression, n.Value),
+            KdlNumber<ushort> n => Evaluate(expression, n.Value),
+            KdlNumber<uint> n => Evaluate(expression, n.Value),
+            KdlNumber<ulong> n => Evaluate(expression, n.Value),
+            KdlNumber<float> n => Evaluate(expression, n.Value),
+            KdlNumber<double> n => Evaluate(expression, n.Value),
+            KdlNumber<decimal> n => Evaluate(expression, n.Value),
+            KdlString s => Evaluate(expression, s.Value),
+            _ => throw new ArgumentException($"Unsupported KdlValue type '{value.GetType().Name}' for evaluation.", nameof(value)),
+        };
     }
 
     // Parse the expression string into a tree of nodes. The expression can support grouping by parentheses.
@@ -288,5 +337,62 @@ public class WhenExpressionEvaluator
         {
             stack.Push(node);
         }
+    }
+
+    private static bool CheckEqualNull(string v)
+    {
+        return string.IsNullOrEmpty(v) || string.Equals(v, "null");
+    }
+
+    private static bool CheckEqualString(string v, string value)
+    {
+        return string.Equals(v, value);
+    }
+
+    private static bool CheckEqualBool(string v, bool value)
+    {
+        return string.Equals(v, value ? "true" : "false");
+    }
+
+    private static bool CheckEqualNumber<T>(string v, T value) where T : struct, INumber<T>
+    {
+        try
+        {
+            T parsed = T.Parse(v, System.Globalization.CultureInfo.InvariantCulture);
+            return parsed == value;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private static bool CheckDictionaryContains(string v, IDictionary<string, object?> options)
+    {
+        if (string.IsNullOrEmpty(v))
+            return false;
+
+        string[] parts = v.Split(':');
+        if (options.TryGetValue(parts[0], out object? optionValue))
+        {
+            if (parts.Length == 1)
+                return true;
+
+            return optionValue switch
+            {
+                bool optBool => CheckEqualBool(parts[1], optBool),
+                int optNum => CheckEqualNumber(parts[1], optNum),
+                uint optNum => CheckEqualNumber(parts[1], optNum),
+                long optNum => CheckEqualNumber(parts[1], optNum),
+                ulong optNum => CheckEqualNumber(parts[1], optNum),
+                float optNum => CheckEqualNumber(parts[1], optNum),
+                double optNum => CheckEqualNumber(parts[1], optNum),
+                decimal optNum => CheckEqualNumber(parts[1], optNum),
+                string optStr => optStr.Equals(parts[1]),
+                _ => false,
+            };
+        }
+
+        return false;
     }
 }

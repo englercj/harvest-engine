@@ -1,13 +1,11 @@
 // Copyright Chad Engler
 
 using Harvest.Make.Projects.Nodes;
-using Microsoft.Extensions.Configuration;
-using System.Runtime.Intrinsics.Arm;
 using System.Security.Cryptography;
 using System.Text;
 using System.Xml;
 
-namespace Harvest.Make.Projects.Generators.vs2022;
+namespace Harvest.Make.Projects.ProjectGenerators.vs2022;
 
 public static class VisualStudioUtils
 {
@@ -57,7 +55,7 @@ public static class VisualStudioUtils
 
     public static void ForEachConfig(ProjectGeneratorHelper helper, Action<ConfigurationNode, PlatformNode, string> action)
     {
-        helper.ForEachConfig((ConfigurationNode configuration, PlatformNode platform) =>
+        helper.ForEachConfig((configuration, platform) =>
         {
             if (!ValidSystems.Contains(platform.System))
             {

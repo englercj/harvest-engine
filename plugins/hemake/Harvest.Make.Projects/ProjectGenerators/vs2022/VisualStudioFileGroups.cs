@@ -1,12 +1,10 @@
 // Copyright Chad Engler
 
-using Harvest.Make.Extensions;
 using Harvest.Make.Projects.Nodes;
-using System;
 using System.Xml;
-using static Harvest.Make.Projects.Generators.vs2022.IVisualStudioFileGroup;
+using static Harvest.Make.Projects.ProjectGenerators.vs2022.IVisualStudioFileGroup;
 
-namespace Harvest.Make.Projects.Generators.vs2022;
+namespace Harvest.Make.Projects.ProjectGenerators.vs2022;
 
 public class ClIncludeFileGroup(ProjectGeneratorHelper helper, string vsProjectPath) : VisualStudioFileGroupBase(helper, vsProjectPath)
 {

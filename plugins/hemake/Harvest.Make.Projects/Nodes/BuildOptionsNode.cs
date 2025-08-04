@@ -33,37 +33,34 @@ public enum EDpiAwareMode
     [KdlName("high_permonitor")] PerMonitorHighDpiAware,
 }
 
-public class BuildOptionsNode(KdlNode node, INode? scope) : NodeSetBase<BuildOptionsEntryNode>(node, scope)
+public class BuildOptionsNode(KdlNode node, INode? scope) : NodeSetBase<BuildOptionsNode, BuildOptionsEntryNode>(node, scope)
 {
-    public const string NodeName = "build_options";
+    public static string NodeName => "build_options";
 
-    public static readonly IReadOnlyList<string> NodeScopes =
+    public static new IReadOnlyList<string> NodeValidScopes =>
     [
         ModuleNode.NodeName,
         ProjectNode.NodeName,
         PublicNode.NodeName,
     ];
 
-    public static readonly IReadOnlyDictionary<string, NodeKdlValue> NodeProperties = new SortedDictionary<string, NodeKdlValue>()
+    public static new IReadOnlyDictionary<string, NodeValueDef> NodePropertyDefs { get; } = new SortedDictionary<string, NodeValueDef>()
     {
-        { "clr", NodeKdlEnum<EBuildClrMode>.Optional(EBuildClrMode.Off) },
-        { "mfc", NodeKdlEnum<EBuildMfcMode>.Optional(EBuildMfcMode.Off) },
-        { "atl", NodeKdlEnum<EBuildAtlMode>.Optional(EBuildAtlMode.Off) },
-        { "dpiawareness", NodeKdlEnum<EDpiAwareMode>.Optional(EDpiAwareMode.None) },
-        { "pch_include", NodeKdlString.Optional() },
-        { "pch_source", NodeKdlPath.Optional() },
-        { "rtti", NodeKdlBool.Optional(false) },
-        { "run_code_analysis", NodeKdlBool.Optional(false) },
-        { "run_clang_tidy", NodeKdlBool.Optional(false) },
-        { "omit_default_lib", NodeKdlBool.Optional(false) },
-        { "omit_frame_pointers", NodeKdlBool.Optional(false) },
-        { "openmp", NodeKdlBool.Optional(false) },
+        { "clr", NodeValueDef_Enum<EBuildClrMode>.Optional(EBuildClrMode.Off) },
+        { "mfc", NodeValueDef_Enum<EBuildMfcMode>.Optional(EBuildMfcMode.Off) },
+        { "atl", NodeValueDef_Enum<EBuildAtlMode>.Optional(EBuildAtlMode.Off) },
+        { "dpiawareness", NodeValueDef_Enum<EDpiAwareMode>.Optional(EDpiAwareMode.None) },
+        { "pch_include", NodeValueDef_String.Optional() },
+        { "pch_source", NodeValueDef_Path.Optional() },
+        { "rtti", NodeValueDef_Bool.Optional(false) },
+        { "run_code_analysis", NodeValueDef_Bool.Optional(false) },
+        { "run_clang_tidy", NodeValueDef_Bool.Optional(false) },
+        { "omit_default_lib", NodeValueDef_Bool.Optional(false) },
+        { "omit_frame_pointers", NodeValueDef_Bool.Optional(false) },
+        { "openmp", NodeValueDef_Bool.Optional(false) },
     };
 
-    public override string Name => NodeName;
-    public override IReadOnlyList<string> Scopes => NodeScopes;
-    public override IReadOnlyDictionary<string, NodeKdlValue> Properties => NodeProperties;
-    public override ENodeDependencyInheritance DependencyInheritance => ENodeDependencyInheritance.Include;
+    public static new ENodeDependencyInheritance NodeDependencyInheritance => ENodeDependencyInheritance.Include;
 
     public EBuildClrMode ClrMode => GetEnumValue<EBuildClrMode>("clr");
     public EBuildMfcMode MfcMode => GetEnumValue<EBuildMfcMode>("mfc");
@@ -78,17 +75,14 @@ public class BuildOptionsNode(KdlNode node, INode? scope) : NodeSetBase<BuildOpt
     public bool OmitFramePointers => GetBoolValue("omit_frame_pointers");
     public bool OpenMP => GetBoolValue("openmp");
 
-    protected override NodeValidationResult ValidateProperties()
+    protected override void ValidateProperties()
     {
-        NodeValidationResult result = base.ValidateProperties();
-        if (result.IsValid)
+        base.ValidateProperties();
+
+        if ((PchInclude is not null && PchSource is null)
+            || (PchInclude is null && PchSource is not null))
         {
-            if (PchInclude is not null && PchSource is null
-                || PchInclude is null && PchSource is not null)
-            {
-                return NodeValidationResult.Error("If you specify 'pch_include' or 'pch_source', you must specify both.");
-            }
+            throw new NodeValidationException(this, "If you specify 'pch_include' or 'pch_source', you must specify both.");
         }
-        return result;
     }
 }

@@ -20,6 +20,47 @@ public class KdlNode(string name, string? type = null) : IKdlObject
 
     public KdlSourceInfo SourceInfo { get; set; } = new KdlSourceInfo();
 
+    public void CopyTo(KdlNode target)
+    {
+        for (int i = 0; i < Arguments.Count; ++i)
+        {
+            KdlValue value = Arguments[i];
+
+            if (i < target.Arguments.Count)
+            {
+                target.Arguments[i] = value.Clone();
+            }
+            else if (i == target.Arguments.Count)
+            {
+                target.Arguments.Add(value.Clone());
+            }
+            else
+            {
+                throw new Exception($"Cannot add argument at index {i} to node '{target.Name}'. Invalid arguments array.");
+            }
+        }
+
+        foreach ((string key, KdlValue value) in Properties)
+        {
+            target.Properties[key] = value.Clone();
+        }
+
+        foreach (KdlNode child in Children)
+        {
+            target.AddChild(child.Clone());
+        }
+    }
+
+    public KdlNode Clone()
+    {
+        KdlNode clone = new(Name, Type)
+        {
+            SourceInfo = SourceInfo,
+        };
+        CopyTo(clone);
+        return clone;
+    }
+
     public void AddChild(KdlNode child)
     {
         child.RemoveFromParent();

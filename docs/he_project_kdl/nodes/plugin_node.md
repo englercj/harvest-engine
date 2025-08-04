@@ -4,7 +4,7 @@ Defines a plugin that can be imported into a project.
 
 ## Arguments
 
-1. (string) - Required. A globally unique identifier for the plugin. This identifier should be unique not only within your project, but globally. To that end, it is recommended you agree on a unique string for your organization that can be prefixed to the id of all plugins you develop.
+1. (string) - Required. Name of the plugin. Convention is to use `lower_snake_case` with organizational namespaces separated by dots (`.`). Plugin names must globally unique, not only within your project. It is recommended you use a unique prefix for your organization in all plugins you develop.
 
 ## Properties
 

@@ -12,30 +12,25 @@ public enum ESymbolsMode
     [KdlName("off")] Off,
 }
 
-public class SymbolsNode(KdlNode node, INode? scope) : NodeBase(node, scope)
+public class SymbolsNode(KdlNode node, INode? scope) : NodeBase<SymbolsNode>(node, scope)
 {
-    public const string NodeName = "symbols";
+    public static string NodeName => "symbols";
 
-    public static readonly IReadOnlyList<string> NodeScopes =
+    public static new IReadOnlyList<string> NodeValidScopes =>
     [
         ModuleNode.NodeName,
         ProjectNode.NodeName,
     ];
 
-    public static readonly IReadOnlyList<NodeKdlValue> NodeArguments =
+    public static new IReadOnlyList<NodeValueDef> NodeArgumentDefs =>
     [
-        NodeKdlEnum<ESymbolsMode>.Required(ESymbolsMode.Default),
+        NodeValueDef_Enum<ESymbolsMode>.Required(ESymbolsMode.Default),
     ];
 
-    public static readonly IReadOnlyDictionary<string, NodeKdlValue> NodeProperties = new SortedDictionary<string, NodeKdlValue>()
+    public static new IReadOnlyDictionary<string, NodeValueDef> NodePropertyDefs { get; } = new SortedDictionary<string, NodeValueDef>()
     {
-        { "embed", NodeKdlBool.Optional(false) },
+        { "embed", NodeValueDef_Bool.Optional(false) },
     };
-
-    public override string Name => NodeName;
-    public override IReadOnlyList<string> Scopes => NodeScopes;
-    public override IReadOnlyList<NodeKdlValue> Arguments => NodeArguments;
-    public override IReadOnlyDictionary<string, NodeKdlValue> Properties => NodeProperties;
 
     public ESymbolsMode SymbolsMode => GetEnumValue<ESymbolsMode>(0);
     public bool Embed => GetBoolValue("embed");

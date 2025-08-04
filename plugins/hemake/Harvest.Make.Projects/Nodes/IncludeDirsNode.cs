@@ -4,26 +4,23 @@ using Harvest.Kdl;
 
 namespace Harvest.Make.Projects.Nodes;
 
-public class IncludeDirsNode(KdlNode node, INode? scope) : NodeSetBase<IncludeDirsEntryNode>(node, scope)
+public class IncludeDirsNode(KdlNode node, INode? scope) : NodeSetBase<IncludeDirsNode, IncludeDirsEntryNode>(node, scope)
 {
-    public const string NodeName = "include_dirs";
+    public static string NodeName => "include_dirs";
 
-    public static readonly IReadOnlyList<string> NodeScopes =
+    public static new IReadOnlyList<string> NodeValidScopes =>
     [
         ModuleNode.NodeName,
         ProjectNode.NodeName,
         PublicNode.NodeName,
     ];
 
-    public static readonly IReadOnlyDictionary<string, NodeKdlValue> NodeProperties = new SortedDictionary<string, NodeKdlValue>()
+    public static new IReadOnlyDictionary<string, NodeValueDef> NodePropertyDefs { get; } = new SortedDictionary<string, NodeValueDef>()
     {
-        { "external", NodeKdlBool.Optional(false) },
+        { "external", NodeValueDef_Bool.Optional(false) },
     };
 
-    public override string Name => NodeName;
-    public override IReadOnlyList<string> Scopes => NodeScopes;
-    public override IReadOnlyDictionary<string, NodeKdlValue> Properties => NodeProperties;
-    public override ENodeDependencyInheritance DependencyInheritance => ENodeDependencyInheritance.Include;
+    public static new ENodeDependencyInheritance DependencyInheritance => ENodeDependencyInheritance.Include;
 
     public bool IsExternal => GetBoolValue("external");
 
@@ -39,7 +36,9 @@ public class IncludeDirsNode(KdlNode node, INode? scope) : NodeSetBase<IncludeDi
         newEntryNode.MergeAndResolve(context, entry);
 
         // Store resolved value so it is properly inherited from its parent node.
-        newKdlNode.Properties["external"] = KdlValue.From(entry.IsExternal);
+        KdlValue externalValue = KdlValue.From(entry.IsExternal);
+        externalValue.SourceInfo = entry.Node.SourceInfo;
+        newKdlNode.Properties["external"] = externalValue;
 
         Children.Add(newEntryNode);
     }

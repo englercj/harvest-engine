@@ -4,7 +4,7 @@ A definition of a module provided by a plugin.
 
 ## Arguments
 
-1. (string) - Required. Name of the module. Used as the project name in generated build project files, so must be unique within a workspace.
+1. (string) - Required. Name of the module. Convention is to use `lower_snake_case`.
 
 ## Properties
 

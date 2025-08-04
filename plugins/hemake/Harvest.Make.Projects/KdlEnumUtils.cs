@@ -37,6 +37,28 @@ public static class KdlEnumUtils
         return value.ToString();
     }
 
+    public static string GetName(Enum value)
+    {
+        Type type = value.GetType();
+        FieldInfo[] fields = type.GetFields();
+
+        foreach (FieldInfo field in fields)
+        {
+            if (!field.IsLiteral || field.IsSpecialName)
+            {
+                continue;
+            }
+
+            if (value.Equals(field.GetValue(null)))
+            {
+                KdlNameAttribute? attr = field.GetCustomAttribute<KdlNameAttribute>(false);
+                return attr?.Name ?? field.Name;
+            }
+        }
+
+        return value.ToString();
+    }
+
     public static IEnumerable<string> GetNames<T>() where T : struct, Enum
     {
         return KdlEnumInfo<T>.Values.Keys;

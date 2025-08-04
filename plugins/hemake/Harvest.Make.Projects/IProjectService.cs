@@ -1,6 +1,7 @@
 // Copyright Chad Engler
 
 using Harvest.Kdl;
+using Harvest.Make.Projects.NodeGenerators;
 using Harvest.Make.Projects.Nodes;
 using System.CommandLine;
 using System.CommandLine.Invocation;
@@ -29,16 +30,31 @@ public interface IProjectService
     public KdlDocument ProjectDocument { get; }
     public ProjectNode ProjectNode { get; }
     public IReadOnlyList<ProjectOption> ProjectOptions { get; }
+    public NodeTokenReplacer TokenReplacer { get; }
 
-    public void RegisterNodeType<T>() where T : class, INode;
+    public void RegisterNode<T>(bool overwrite = false) where T : class, INode;
+    public void RegisterNodeGenerator<T>(bool overwrite = false) where T : class, INodeGenerator;
+    public void RegisterTokenResolver(string context, NodeTokenResolver resolver, bool overwrite = false);
+    public void RegisterTokenTransformer(string name, NodeTokenTransformer transformer, bool overwrite = false);
+
     public void LoadProject(string projectPath);
     public void ParseProject();
+    public INode? ParseNode(KdlNode rawNode, INode? scope);
 
-    public ProjectContext CreateProjectContext(InvocationContext? invocationContext = null, ModuleNode? module = null, ConfigurationNode? configuration = null, PlatformNode? platform = null);
+    public ProjectContext CreateProjectContext(
+        InvocationContext? invocationContext = null,
+        ModuleNode? module = null,
+        ConfigurationNode? configuration = null,
+        PlatformNode? platform = null);
+
     public List<ConfigurationNode> GetDefaultConfigurations();
     public List<PlatformNode> GetDefaultPlatforms();
 
-    public ModuleNode? TryGetModule(string moduleName);
+    public IEnumerable<ModuleNode> GetAllModules();
+    public ModuleNode? TryGetModuleByName(string moduleName);
+
+    public IEnumerable<PluginNode> GetAllPlugins();
+    public PluginNode? TryGetPluginById(string pluginId);
 
     public List<ModuleDependency> GetModuleDependencies(ProjectContext context, ModuleNode module, ENodeDependencyInheritance inheritance);
 

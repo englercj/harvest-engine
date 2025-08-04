@@ -51,7 +51,7 @@ internal class ExtensionInfo
     public EFileBuildRule BuildRule { get; }
 }
 
-public class FilesEntryNode(KdlNode node, INode? scope) : NodeBase(node, scope)
+public class FilesEntryNode(KdlNode node, INode? scope) : NodeBase<FilesEntryNode>(node, scope)
 {
     private static readonly Dictionary<string, ExtensionInfo> s_fileExtensionInfos = new()
     {
@@ -104,26 +104,17 @@ public class FilesEntryNode(KdlNode node, INode? scope) : NodeBase(node, scope)
         { ".xcprivacy", new ExtensionInfo(EFileAction.Resource) },
     };
 
-    public static readonly IReadOnlyList<string> NodeScopes =
+    public static new IReadOnlyList<string> NodeValidScopes =>
     [
         FilesNode.NodeName,
     ];
 
-    public static readonly IReadOnlyList<NodeKdlValue> NodeArguments =
-    [
-    ];
-
-    public static readonly IReadOnlyDictionary<string, NodeKdlValue> NodeProperties = new SortedDictionary<string, NodeKdlValue>()
+    public static new IReadOnlyDictionary<string, NodeValueDef> NodePropertyDefs { get; } = new SortedDictionary<string, NodeValueDef>()
     {
-        { "action", NodeKdlEnum<EFileAction>.Optional(EFileAction.Default) },
-        { "build_rule", NodeKdlString.Optional("default") }, // string to support custom build rule names
-        { "build_exclude", NodeKdlBool.Optional(false) },
+        { "action", NodeValueDef_Enum<EFileAction>.Optional(EFileAction.Default) },
+        { "build_rule", NodeValueDef_String.Optional("default") }, // string to support custom build rule names
+        { "build_exclude", NodeValueDef_Bool.Optional(false) },
     };
-
-    public override string Name => Node.Name;
-    public override IReadOnlyList<string> Scopes => NodeScopes;
-    public override IReadOnlyList<NodeKdlValue> Arguments => NodeArguments;
-    public override IReadOnlyDictionary<string, NodeKdlValue> Properties => NodeProperties;
 
     public string FileGlob => Node.Name;
     public IEnumerable<string> FilePaths => ExpandPath(ResolvePath(FileGlob));
@@ -179,14 +170,18 @@ public class FilesEntryNode(KdlNode node, INode? scope) : NodeBase(node, scope)
         {
             EFileAction fileAction = GetDefaultFileAction(_resolvedPath);
             string fileActionName = KdlEnumUtils.GetName(fileAction);
-            Node.Properties["action"] = KdlValue.From(fileActionName);
+            KdlValue fileActionValue = KdlValue.From(fileActionName);
+            fileActionValue.SourceInfo = Node.SourceInfo;
+            Node.Properties["action"] = fileActionValue;
         }
 
         if (FileBuildRule == EFileBuildRule.Default)
         {
             EFileBuildRule fileRule = GetDefaultFileBuildRule(_resolvedPath);
             string fileRuleName = KdlEnumUtils.GetName(fileRule);
-            Node.Properties["build_rule"] = KdlValue.From(fileRuleName);
+            KdlValue fileRuleValue = KdlValue.From(fileRuleName);
+            fileRuleValue.SourceInfo = Node.SourceInfo;
+            Node.Properties["build_rule"] = fileRuleValue;
         }
     }
 }

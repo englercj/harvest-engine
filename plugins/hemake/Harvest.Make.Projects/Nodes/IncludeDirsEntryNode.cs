@@ -4,26 +4,17 @@ using Harvest.Kdl;
 
 namespace Harvest.Make.Projects.Nodes;
 
-public class IncludeDirsEntryNode(KdlNode node, INode? scope) : NodeBase(node, scope)
+public class IncludeDirsEntryNode(KdlNode node, INode? scope) : NodeBase<IncludeDirsEntryNode>(node, scope)
 {
-    public static readonly IReadOnlyList<string> NodeScopes =
+    public static new IReadOnlyList<string> NodeValidScopes =>
     [
         IncludeDirsNode.NodeName,
     ];
 
-    public static readonly IReadOnlyList<NodeKdlValue> NodeArguments =
-    [
-    ];
-
-    public static readonly IReadOnlyDictionary<string, NodeKdlValue> NodeProperties = new SortedDictionary<string, NodeKdlValue>()
+    public static new IReadOnlyDictionary<string, NodeValueDef> NodePropertyDefs { get; } = new SortedDictionary<string, NodeValueDef>()
     {
-        { "external", NodeKdlBool.Optional(false) },
+        { "external", NodeValueDef_Bool.Optional(false) },
     };
-
-    public override string Name => Node.Name;
-    public override IReadOnlyList<string> Scopes => NodeScopes;
-    public override IReadOnlyList<NodeKdlValue> Arguments => NodeArguments;
-    public override IReadOnlyDictionary<string, NodeKdlValue> Properties => NodeProperties;
 
     public string Path => ResolvePath(Node.Name);
 

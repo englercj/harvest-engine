@@ -20,35 +20,30 @@ public enum EToolsetArch
     [KdlName("x86_64")] X86_64,
 }
 
-public class ToolsetNode(KdlNode node, INode? scope) : NodeBase(node, scope)
+public class ToolsetNode(KdlNode node, INode? scope) : NodeBase<ToolsetNode>(node, scope)
 {
-    public const string NodeName = "toolset";
+    public static string NodeName => "toolset";
 
-    public static readonly IReadOnlyList<string> NodeScopes =
+    public static new IReadOnlyList<string> NodeValidScopes =>
     [
         ProjectNode.NodeName,
     ];
 
-    public static readonly IReadOnlyList<NodeKdlValue> NodeArguments =
+    public static new IReadOnlyList<NodeValueDef> NodeArgumentDefs =>
     [
-        NodeKdlEnum<EToolset>.Required(EToolset.MSVC),
+        NodeValueDef_Enum<EToolset>.Required(EToolset.MSVC),
     ];
 
-    public static readonly IReadOnlyDictionary<string, NodeKdlValue> NodeProperties = new SortedDictionary<string, NodeKdlValue>()
+    public static new IReadOnlyDictionary<string, NodeValueDef> NodePropertyDefs { get; } = new SortedDictionary<string, NodeValueDef>()
     {
-        { "arch", NodeKdlEnum<EToolsetArch>.Optional(EToolsetArch.Default) },
-        { "edit_and_continue", NodeKdlBool.Optional(false) },
-        { "fast_up_to_date_check", NodeKdlBool.Optional(true) },
-        { "multiprocess", NodeKdlBool.Optional(false) },
-        { "log", NodeKdlString.Optional() },
-        { "path", NodeKdlPath.Optional() },
-        { "version", NodeKdlString.Optional() },
+        { "arch", NodeValueDef_Enum<EToolsetArch>.Optional(EToolsetArch.Default) },
+        { "edit_and_continue", NodeValueDef_Bool.Optional(false) },
+        { "fast_up_to_date_check", NodeValueDef_Bool.Optional(true) },
+        { "multiprocess", NodeValueDef_Bool.Optional(false) },
+        { "log", NodeValueDef_String.Optional() },
+        { "path", NodeValueDef_Path.Optional() },
+        { "version", NodeValueDef_String.Optional() },
     };
-
-    public override string Name => NodeName;
-    public override IReadOnlyList<string> Scopes => NodeScopes;
-    public override IReadOnlyList<NodeKdlValue> Arguments => NodeArguments;
-    public override IReadOnlyDictionary<string, NodeKdlValue> Properties => NodeProperties;
 
     public EToolset Toolset => GetEnumValue<EToolset>(0);
     public EToolsetArch Arch => GetEnumValue<EToolsetArch>("arch");

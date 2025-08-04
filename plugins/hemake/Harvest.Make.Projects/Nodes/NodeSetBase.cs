@@ -12,24 +12,26 @@ public enum ESetAction
     [KdlName("update")] Update,
 }
 
-public abstract class NodeSetBase<T>(KdlNode node, INode? scope) : NodeBase(node, scope) where T : INode
+public abstract class NodeSetBase<TSelf, TChild>(KdlNode node, INode? scope)
+    : NodeBase<TSelf>(node, scope)
+    where TSelf : NodeSetBase<TSelf,TChild>
+    where TChild : INode
 {
-    public static readonly IReadOnlyList<NodeKdlValue> NodeArguments =
+    public new static IReadOnlyList<NodeValueDef> NodeArgumentDefs =>
     [
-        NodeKdlEnum<ESetAction>.Optional(ESetAction.Add),
+        NodeValueDef_Enum<ESetAction>.Optional(ESetAction.Add),
     ];
 
-    public override IReadOnlyList<NodeKdlValue> Arguments => NodeArguments;
-    public override Type? ChildNodeType => typeof(T);
+    public override Type? ChildNodeType => typeof(TChild);
 
     public ESetAction SetAction => GetEnumValue<ESetAction>(0);
-    public IEnumerable<T> Entries => Children.Cast<T>();
+    public IEnumerable<TChild> Entries => Children.Cast<TChild>();
 
-    protected readonly Dictionary<string, T> _resolvedEntries = [];
+    protected readonly Dictionary<string, TChild> _resolvedEntries = [];
 
     protected override void MergeAndResolveChildren(ProjectContext context, INode node)
     {
-        if (node is not NodeSetBase<T> set)
+        if (node is not NodeSetBase<TSelf, TChild> set)
         {
             throw new Exception($"Cannot merge and resolve children of different node types: {GetType().Name} and {node.GetType().Name}");
         }
@@ -38,10 +40,10 @@ public abstract class NodeSetBase<T>(KdlNode node, INode? scope) : NodeBase(node
         {
             case ESetAction.Add:
             {
-                foreach (T entry in set.Entries)
+                foreach (TChild entry in set.Entries)
                 {
                     string key = GetSetEntryKey(context, entry);
-                    if (_resolvedEntries.TryGetValue(key, out T? existing))
+                    if (_resolvedEntries.TryGetValue(key, out TChild? existing))
                     {
                         OnModifyChild(context, entry, existing);
                     }
@@ -55,10 +57,10 @@ public abstract class NodeSetBase<T>(KdlNode node, INode? scope) : NodeBase(node
             }
             case ESetAction.Remove:
             {
-                foreach (T entry in set.Entries)
+                foreach (TChild entry in set.Entries)
                 {
                     string key = GetSetEntryKey(context, entry);
-                    if (_resolvedEntries.TryGetValue(key, out T? existing))
+                    if (_resolvedEntries.TryGetValue(key, out TChild? existing))
                     {
                         _resolvedEntries.Remove(key);
                         OnRemoveChild(context, existing);
@@ -68,10 +70,10 @@ public abstract class NodeSetBase<T>(KdlNode node, INode? scope) : NodeBase(node
             }
             case ESetAction.Update:
             {
-                foreach (T entry in set.Entries)
+                foreach (TChild entry in set.Entries)
                 {
                     string key = GetSetEntryKey(context, entry);
-                    if (_resolvedEntries.TryGetValue(key, out T? existing))
+                    if (_resolvedEntries.TryGetValue(key, out TChild? existing))
                     {
                         OnModifyChild(context, entry, existing);
                     }
@@ -81,22 +83,22 @@ public abstract class NodeSetBase<T>(KdlNode node, INode? scope) : NodeBase(node
         }
     }
 
-    protected virtual string GetSetEntryKey(ProjectContext context, T entry)
+    protected virtual string GetSetEntryKey(ProjectContext context, TChild entry)
     {
         return entry.Node.Name;
     }
 
-    protected virtual void OnAddChild(ProjectContext context, T entry)
+    protected virtual void OnAddChild(ProjectContext context, TChild entry)
     {
         Children.Add(entry);
     }
 
-    protected virtual void OnRemoveChild(ProjectContext context, T entry)
+    protected virtual void OnRemoveChild(ProjectContext context, TChild entry)
     {
         Children.Remove(entry);
     }
 
-    protected virtual void OnModifyChild(ProjectContext context, T entry, T existing)
+    protected virtual void OnModifyChild(ProjectContext context, TChild entry, TChild existing)
     {
         existing.MergeAndResolve(context, entry);
     }

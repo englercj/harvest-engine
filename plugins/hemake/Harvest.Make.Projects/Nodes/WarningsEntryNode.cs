@@ -11,27 +11,22 @@ public enum EWarningAction
     [KdlName("disable")] Disable,
 }
 
-public class WarningsEntryNode(KdlNode node, INode? scope) : NodeBase(node, scope)
+public class WarningsEntryNode(KdlNode node, INode? scope) : NodeBase<WarningsEntryNode>(node, scope)
 {
-    public static readonly IReadOnlyList<string> NodeScopes =
+    public static new IReadOnlyList<string> NodeValidScopes =>
     [
         WarningsNode.NodeName,
     ];
 
-    public static readonly IReadOnlyList<NodeKdlValue> NodeArguments =
+    public static new IReadOnlyList<NodeValueDef> NodeArgumentDefs =>
     [
-        NodeKdlEnum<EWarningAction>.Optional(EWarningAction.Enable),
+        NodeValueDef_Enum<EWarningAction>.Optional(EWarningAction.Enable),
     ];
 
-    public static readonly IReadOnlyDictionary<string, NodeKdlValue> NodeProperties = new SortedDictionary<string, NodeKdlValue>()
+    public static new IReadOnlyDictionary<string, NodeValueDef> NodePropertyDefs { get; } = new SortedDictionary<string, NodeValueDef>()
     {
-        { "fatal", NodeKdlBool.Optional(false) },
+        { "fatal", NodeValueDef_Bool.Optional(false) },
     };
-
-    public override string Name => Node.Name;
-    public override IReadOnlyList<string> Scopes => NodeScopes;
-    public override IReadOnlyList<NodeKdlValue> Arguments => NodeArguments;
-    public override IReadOnlyDictionary<string, NodeKdlValue> Properties => NodeProperties;
 
     public string WarningName => Node.Name;
     public bool IsEnabled => GetEnumValue<EWarningAction>(0) == EWarningAction.Enable;

@@ -38,16 +38,12 @@ In the properties and children of the `build_rule` node an additional [Token Con
 ```kdl
 build_rule my_schema_compile message="Custom compiling schema: ${file.path}" {
     // Run the schemac executable to compile the input file
-    :module he_schemac {
-        command "${module.build_target} -t c++ -o ${file.gen_dir} ${file.path}"
-    }
+    command "${module[he_schemac].build_target} -t c++ -o ${file.gen_dir} ${file.path}"
 
     // Add the schemac executable as as input so if it changes, this rule gets run again.
     // "${file.path}" is always treated as an input, no need to specify it here
     inputs {
-        :module he_schemac {
-            "${module.build_target}"
-        }
+        "${module[he_schemac].build_target}"
     }
 
     // Specify the output files for dependency tracking

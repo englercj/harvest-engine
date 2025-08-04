@@ -34,29 +34,20 @@ public enum ECodegenMode
     [KdlName("armv9.4")] ARMv9_4,
 }
 
-public class CodegenNode(KdlNode node, INode? scope) : NodeBase(node, scope)
+public class CodegenNode(KdlNode node, INode? scope) : NodeBase<CodegenNode>(node, scope)
 {
-    public const string NodeName = "codegen";
+    public static string NodeName => "codegen";
 
-    public static readonly IReadOnlyList<string> NodeScopes =
+    public static new IReadOnlyList<string> NodeValidScopes =>
     [
         ProjectNode.NodeName,
         ModuleNode.NodeName,
     ];
 
-    public static readonly IReadOnlyList<NodeKdlValue> NodeArguments =
+    public static new IReadOnlyList<NodeValueDef> NodeArgumentDefs =>
     [
-        NodeKdlEnum<ECodegenMode>.Required(ECodegenMode.Default),
+        NodeValueDef_Enum<ECodegenMode>.Required(ECodegenMode.Default),
     ];
-
-    public static readonly IReadOnlyDictionary<string, NodeKdlValue> NodeProperties = new SortedDictionary<string, NodeKdlValue>()
-    {
-    };
-
-    public override string Name => NodeName;
-    public override IReadOnlyList<string> Scopes => NodeScopes;
-    public override IReadOnlyList<NodeKdlValue> Arguments => NodeArguments;
-    public override IReadOnlyDictionary<string, NodeKdlValue> Properties => NodeProperties;
 
     public ECodegenMode CodegenMode => GetEnumValue<ECodegenMode>(0);
 }

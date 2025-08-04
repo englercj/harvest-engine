@@ -6,7 +6,7 @@ using System.CommandLine.Invocation;
 using System.Text;
 using System.Xml;
 
-namespace Harvest.Make.Projects.Generators.vs2022;
+namespace Harvest.Make.Projects.ProjectGenerators.vs2022;
 
 internal class VcxprojGenerator(IProjectService projectService, ProjectGeneratorHelper helper)
 {
@@ -252,7 +252,7 @@ internal class VcxprojGenerator(IProjectService projectService, ProjectGenerator
             if (module.Kind != EModuleKind.Custom && module.Kind != EModuleKind.Content)
             {
                 RuntimeNode runtimeNode = _projectService.GetMergedNode<RuntimeNode>(context, module);
-                if (runtimeNode.Runtime == ERuntime.Debug || (runtimeNode.Runtime == ERuntime.Default && configuration.ConfigName == "Debug"))
+                if (runtimeNode.Runtime == ERuntime.Debug || runtimeNode.Runtime == ERuntime.Default && configuration.ConfigName == "Debug")
                 {
                     writer.WriteElementString("UseDebugLibraries", "true");
                 }
@@ -582,7 +582,7 @@ internal class VcxprojGenerator(IProjectService projectService, ProjectGenerator
 
                 if (isOptimizedBuild
                     || toolset.MultiProcess
-                    || (symbols.SymbolsMode == ESymbolsMode.On && symbols.Embed))
+                    || symbols.SymbolsMode == ESymbolsMode.On && symbols.Embed)
                 {
                     writer.WriteElementString("MinimalRebuild", "false");
                 }
@@ -600,7 +600,7 @@ internal class VcxprojGenerator(IProjectService projectService, ProjectGenerator
                 {
                     ERuntime.Debug => runtime.StaticLink ? "MultiThreadedDebug" : "MultiThreadedDebugDLL",
                     ERuntime.Release => runtime.StaticLink ? "MultiThreaded" : "MultiThreadedDLL",
-                    ERuntime.Default => runtime.StaticLink ? (isDebugBuild ? "MultiThreadedDebug" : "MultiThreaded") : (isDebugBuild ? "MultiThreadedDebugDLL" : "MultiThreadedDLL"),
+                    ERuntime.Default => runtime.StaticLink ? isDebugBuild ? "MultiThreadedDebug" : "MultiThreaded" : isDebugBuild ? "MultiThreadedDebugDLL" : "MultiThreadedDLL",
                     _ => throw new NotImplementedException($"Unsupported Runtime: {runtime.Runtime}"),
                 });
 
@@ -1061,7 +1061,7 @@ internal class VcxprojGenerator(IProjectService projectService, ProjectGenerator
                     continue;
                 }
 
-                ModuleNode depModule = _projectService.TryGetModule(depEntry.DependencyName)
+                ModuleNode depModule = _projectService.TryGetModuleByName(depEntry.DependencyName)
                     ?? throw new InvalidOperationException($"No module found with name '{depEntry.DependencyName}', but module '{module.Name}' depends on it.");
 
                 writer.WriteStartElement("ProjectReference");
@@ -1069,7 +1069,7 @@ internal class VcxprojGenerator(IProjectService projectService, ProjectGenerator
 
                 writer.WriteElementString("Project", ModuleGroupTree.GetModuleGuid(depModule));
 
-                if (isManaged || (isClrMixed && depModule.Kind != EModuleKind.LibStatic))
+                if (isManaged || isClrMixed && depModule.Kind != EModuleKind.LibStatic)
                 {
                     writer.WriteElementString("Private", "true");
                     writer.WriteElementString("ReferenceOutputAssembly", "true");

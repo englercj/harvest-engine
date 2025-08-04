@@ -2,7 +2,7 @@
 
 using Harvest.Make.Projects.Nodes;
 
-namespace Harvest.Make.Projects.Generators.vs2022;
+namespace Harvest.Make.Projects.ProjectGenerators.vs2022;
 
 internal class SlnGenerator(IProjectService projectService, ProjectGeneratorHelper helper)
 {

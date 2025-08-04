@@ -4,40 +4,35 @@ using Harvest.Kdl;
 
 namespace Harvest.Make.Projects.Nodes;
 
-public class BuildOutputNode(KdlNode node, INode? scope) : NodeBase(node, scope)
+public class BuildOutputNode(KdlNode node, INode? scope) : NodeBase<BuildOutputNode>(node, scope)
 {
-    public const string NodeName = "build_output";
+    public static string NodeName => "build_output";
 
-    public static readonly IReadOnlyList<string> NodeScopes =
+    public static new IReadOnlyList<string> NodeValidScopes =>
     [
         ModuleNode.NodeName,
         ProjectNode.NodeName,
     ];
 
-    public static readonly IReadOnlyList<NodeKdlValue> NodeArguments =
+    public static new IReadOnlyList<NodeValueDef> NodeArgumentDefs =>
     [
-        NodeKdlPath.Optional(".build"),
+        NodeValueDef_Path.Optional(".build"),
     ];
 
-    public static readonly IReadOnlyDictionary<string, NodeKdlValue> NodeProperties = new SortedDictionary<string, NodeKdlValue>()
+    public static new IReadOnlyDictionary<string, NodeValueDef> NodePropertyDefs { get; } = new SortedDictionary<string, NodeValueDef>()
     {
-        { "bin_dir", NodeKdlPath.Optional("${platform.name:lower}-${configuration.name:lower}/bin") },
-        { "gen_dir", NodeKdlPath.Optional("${platform.name:lower}-${configuration.name:lower}/generated/${module.name}") },
-        { "lib_dir", NodeKdlPath.Optional("${platform.name:lower}-${configuration.name:lower}/lib/${module.name}") },
-        { "obj_dir", NodeKdlPath.Optional("${platform.name:lower}-${configuration.name:lower}/obj/${module.name}") },
-        { "plugin_dir", NodeKdlPath.Optional("plugins") },
-        { "project_dir", NodeKdlPath.Optional("projects") },
-        { "target_name", NodeKdlString.Optional() },
-        { "target_extension", NodeKdlString.Optional() },
-        { "make_import_lib", NodeKdlBool.Optional(true) },
-        { "make_exe_manifest", NodeKdlBool.Optional(true) },
-        { "make_map_file", NodeKdlBool.Optional(false) },
+        { "bin_dir", NodeValueDef_Path.Optional("${platform.name:lower}-${configuration.name:lower}/bin") },
+        { "gen_dir", NodeValueDef_Path.Optional("${platform.name:lower}-${configuration.name:lower}/generated/${module.name}") },
+        { "lib_dir", NodeValueDef_Path.Optional("${platform.name:lower}-${configuration.name:lower}/lib/${module.name}") },
+        { "obj_dir", NodeValueDef_Path.Optional("${platform.name:lower}-${configuration.name:lower}/obj/${module.name}") },
+        { "plugin_dir", NodeValueDef_Path.Optional("plugins") },
+        { "project_dir", NodeValueDef_Path.Optional("projects") },
+        { "target_name", NodeValueDef_String.Optional() },
+        { "target_extension", NodeValueDef_String.Optional() },
+        { "make_import_lib", NodeValueDef_Bool.Optional(true) },
+        { "make_exe_manifest", NodeValueDef_Bool.Optional(true) },
+        { "make_map_file", NodeValueDef_Bool.Optional(false) },
     };
-
-    public override string Name => NodeName;
-    public override IReadOnlyList<string> Scopes => NodeScopes;
-    public override IReadOnlyList<NodeKdlValue> Arguments => NodeArguments;
-    public override IReadOnlyDictionary<string, NodeKdlValue> Properties => NodeProperties;
 
     public string BasePath => GetPathValue(0);
 

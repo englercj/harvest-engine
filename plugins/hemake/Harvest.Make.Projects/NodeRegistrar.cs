@@ -1,8 +1,8 @@
 // Copyright Chad Engler
 
 using Harvest.Make.Attributes;
+using Harvest.Make.Projects.NodeGenerators;
 using Harvest.Make.Projects.Nodes;
-using Microsoft.Extensions.Hosting;
 
 namespace Harvest.Make.Projects;
 
@@ -13,47 +13,55 @@ public class NodeRegistrar(IProjectService projectService) : IAppLifetimeService
 
     public Task StartAsync(CancellationToken cancellationToken)
     {
-        _projectService.RegisterNodeType<ArchiveNode>();
-        _projectService.RegisterNodeType<AuthorsNode>();
-        _projectService.RegisterNodeType<BitBucketNode>();
-        _projectService.RegisterNodeType<BuildEventNode>();
-        _projectService.RegisterNodeType<BuildOptionsNode>();
-        _projectService.RegisterNodeType<BuildOutputNode>();
-        _projectService.RegisterNodeType<BuildRuleNode>();
-        _projectService.RegisterNodeType<CodegenNode>();
-        _projectService.RegisterNodeType<CommandNode>();
-        _projectService.RegisterNodeType<ConfigurationNode>();
-        _projectService.RegisterNodeType<DefinesNode>();
-        _projectService.RegisterNodeType<DependenciesNode>();
-        _projectService.RegisterNodeType<DialectNode>();
-        _projectService.RegisterNodeType<ExceptionsNode>();
-        _projectService.RegisterNodeType<ExternalNode>();
-        _projectService.RegisterNodeType<FilesNode>();
-        _projectService.RegisterNodeType<FloatingPointNode>();
-        _projectService.RegisterNodeType<GitHubNode>();
-        _projectService.RegisterNodeType<ImportNode>();
-        _projectService.RegisterNodeType<IncludeDirsNode>();
-        _projectService.RegisterNodeType<InputsNode>();
-        _projectService.RegisterNodeType<InstallNode>();
-        _projectService.RegisterNodeType<LibDirsNode>();
-        _projectService.RegisterNodeType<LinkOptionsNode>();
-        _projectService.RegisterNodeType<ModuleNode>();
-        _projectService.RegisterNodeType<NugetNode>();
-        _projectService.RegisterNodeType<OptimizeNode>();
-        _projectService.RegisterNodeType<OptionNode>();
-        _projectService.RegisterNodeType<OutputsNode>();
-        _projectService.RegisterNodeType<PlatformNode>();
-        _projectService.RegisterNodeType<PluginNode>();
-        _projectService.RegisterNodeType<ProjectNode>();
-        _projectService.RegisterNodeType<PublicNode>();
-        _projectService.RegisterNodeType<RuntimeNode>();
-        _projectService.RegisterNodeType<SanitizeNode>();
-        _projectService.RegisterNodeType<SymbolsNode>();
-        _projectService.RegisterNodeType<SystemNode>();
-        _projectService.RegisterNodeType<TagsNode>();
-        _projectService.RegisterNodeType<ToolsetNode>();
-        _projectService.RegisterNodeType<WarningsNode>();
-        _projectService.RegisterNodeType<WhenNode>();
+        _projectService.RegisterNode<ArchiveNode>();
+        _projectService.RegisterNode<AuthorsNode>();
+        _projectService.RegisterNode<BitBucketNode>();
+        _projectService.RegisterNode<BuildEventNode>();
+        _projectService.RegisterNode<BuildOptionsNode>();
+        _projectService.RegisterNode<BuildOutputNode>();
+        _projectService.RegisterNode<BuildRuleNode>();
+        _projectService.RegisterNode<CodegenNode>();
+        _projectService.RegisterNode<CommandNode>();
+        _projectService.RegisterNode<ConfigurationNode>();
+        _projectService.RegisterNode<DefinesNode>();
+        _projectService.RegisterNode<DependenciesNode>();
+        _projectService.RegisterNode<DialectNode>();
+        _projectService.RegisterNode<ExceptionsNode>();
+        _projectService.RegisterNode<ExternalNode>();
+        _projectService.RegisterNode<FilesNode>();
+        _projectService.RegisterNode<FloatingPointNode>();
+        _projectService.RegisterNode<GitHubNode>();
+        _projectService.RegisterNode<ImportNode>();
+        _projectService.RegisterNode<IncludeDirsNode>();
+        _projectService.RegisterNode<InputsNode>();
+        _projectService.RegisterNode<InstallNode>();
+        _projectService.RegisterNode<LibDirsNode>();
+        _projectService.RegisterNode<LinkOptionsNode>();
+        _projectService.RegisterNode<ModuleNode>();
+        _projectService.RegisterNode<NugetNode>();
+        _projectService.RegisterNode<OptimizeNode>();
+        _projectService.RegisterNode<OptionNode>();
+        _projectService.RegisterNode<OutputsNode>();
+        _projectService.RegisterNode<PlatformNode>();
+        _projectService.RegisterNode<PluginNode>();
+        _projectService.RegisterNode<ProjectNode>();
+        _projectService.RegisterNode<PublicNode>();
+        _projectService.RegisterNode<RuntimeNode>();
+        _projectService.RegisterNode<SanitizeNode>();
+        _projectService.RegisterNode<SymbolsNode>();
+        _projectService.RegisterNode<SystemNode>();
+        _projectService.RegisterNode<TagsNode>();
+        _projectService.RegisterNode<ToolsetNode>();
+        _projectService.RegisterNode<WarningsNode>();
+        _projectService.RegisterNode<WhenNode>();
+
+        _projectService.RegisterNodeGenerator<ForeachNodeGenerator>();
+
+        _projectService.RegisterTokenResolver(ConfigurationNode.NodeName, NodeTokenResolvers.ConfiurationTokenResolver);
+        _projectService.RegisterTokenResolver(PlatformNode.NodeName, NodeTokenResolvers.PlatformTokenResolver);
+        _projectService.RegisterTokenResolver(ProjectNode.NodeName, NodeTokenResolvers.ProjectTokenResolver);
+        _projectService.RegisterTokenResolver(PluginNode.NodeName, NodeTokenResolvers.PluginTokenResolver);
+        _projectService.RegisterTokenResolver(ModuleNode.NodeName, NodeTokenResolvers.ModuleTokenResolver);
 
         return Task.CompletedTask;
     }

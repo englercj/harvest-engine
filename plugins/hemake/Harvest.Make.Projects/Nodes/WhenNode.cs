@@ -13,11 +13,11 @@ public enum EWhenMode
     [KdlName("one")] Xor,
 }
 
-public class WhenNode(KdlNode node, INode? scope) : NodeBase(node, scope)
+public class WhenNode(KdlNode node, INode? scope) : NodeBase<WhenNode>(node, scope)
 {
-    public const string NodeName = "when";
+    public static string NodeName => "when";
 
-    public static readonly IReadOnlyList<string> NodeScopes =
+    public static new IReadOnlyList<string> NodeValidScopes =>
     [
         InstallNode.NodeName,
         ModuleNode.NodeName,
@@ -25,28 +25,23 @@ public class WhenNode(KdlNode node, INode? scope) : NodeBase(node, scope)
         ProjectNode.NodeName,
     ];
 
-    public static readonly IReadOnlyList<NodeKdlValue> NodeArguments =
+    public static new IReadOnlyList<NodeValueDef> NodeArgumentDefs =>
     [
-        NodeKdlEnum<EWhenMode>.Optional(EWhenMode.And),
+        NodeValueDef_Enum<EWhenMode>.Optional(EWhenMode.And),
     ];
 
-    public static readonly IReadOnlyDictionary<string, NodeKdlValue> NodeProperties = new SortedDictionary<string, NodeKdlValue>()
+    public static new IReadOnlyDictionary<string, NodeValueDef> NodePropertyDefs { get; } = new SortedDictionary<string, NodeValueDef>()
     {
-        { "arch", NodeKdlString.Optional() },
-        { "configuration", NodeKdlString.Optional() },
-        { "host", NodeKdlString.Optional() },
-        { "language", NodeKdlString.Optional() },
-        { "option", NodeKdlString.Optional() },
-        { "platform", NodeKdlString.Optional() },
-        { "system", NodeKdlString.Optional() },
-        { "tags", NodeKdlString.Optional() },
-        { "toolset", NodeKdlString.Optional() },
+        { "arch", NodeValueDef_String.Optional() },
+        { "configuration", NodeValueDef_String.Optional() },
+        { "host", NodeValueDef_String.Optional() },
+        { "language", NodeValueDef_String.Optional() },
+        { "option", NodeValueDef_String.Optional() },
+        { "platform", NodeValueDef_String.Optional() },
+        { "system", NodeValueDef_String.Optional() },
+        { "tags", NodeValueDef_String.Optional() },
+        { "toolset", NodeValueDef_String.Optional() },
     };
-
-    public override string Name => NodeName;
-    public override IReadOnlyList<string> Scopes => NodeScopes;
-    public override IReadOnlyList<NodeKdlValue> Arguments => NodeArguments;
-    public override IReadOnlyDictionary<string, NodeKdlValue> Properties => NodeProperties;
 
     public EWhenMode Mode => GetEnumValue<EWhenMode>(0);
     public string? Arch => TryGetStringValue("arch");
@@ -64,15 +59,15 @@ public class WhenNode(KdlNode node, INode? scope) : NodeBase(node, scope)
         List<bool> conditions = [];
         conditions.Capacity = 16;
 
-        CheckValueEquals(conditions, Arch, context.Platform?.Arch ?? EPlatformArch.X86_64);
-        CheckValueEquals(conditions, Configuration, context.Configuration?.ConfigName ?? "");
-        CheckValueEquals(conditions, Host, context.Host);
-        CheckValueEquals(conditions, Language, context.Module?.Language ?? EModuleLanguage.Cpp);
+        CheckValueActive(conditions, Arch, context.Platform?.Arch ?? EPlatformArch.X86_64);
+        CheckValueActive(conditions, Configuration, context.Configuration?.ConfigName ?? "");
+        CheckValueActive(conditions, Host, context.Host);
+        CheckValueActive(conditions, Language, context.Module?.Language ?? EModuleLanguage.Cpp);
         CheckValueActive(conditions, Option, context.Options);
-        CheckValueEquals(conditions, Platform, context.Platform?.PlatformName ?? "");
-        CheckValueEquals(conditions, System, context.Platform?.System ?? EPlatformSystem.Windows);
+        CheckValueActive(conditions, Platform, context.Platform?.PlatformName ?? "");
+        CheckValueActive(conditions, System, context.Platform?.System ?? EPlatformSystem.Windows);
         CheckValueActive(conditions, Tags, context.Tags);
-        CheckValueEquals(conditions, Toolset, context.Platform?.Toolset ?? EToolset.MSVC);
+        CheckValueActive(conditions, Toolset, context.Platform?.Toolset ?? EToolset.MSVC);
 
         switch (Mode)
         {
@@ -87,71 +82,11 @@ public class WhenNode(KdlNode node, INode? scope) : NodeBase(node, scope)
         return false;
     }
 
-    private static void CheckValueEquals(List<bool> conditions, string? expr, string value)
+    private static void CheckValueActive<T>(List<bool> conditions, string? expr, T value)
     {
         if (string.IsNullOrEmpty(expr))
             return;
 
-        bool result = WhenExpressionEvaluator.Evaluate(expr, (v) =>
-        {
-            return v == value;
-        });
-        conditions.Add(result);
-    }
-
-    private static void CheckValueEquals<T>(List<bool> conditions, string? expr, T value) where T : struct, Enum
-    {
-        if (string.IsNullOrEmpty(expr))
-            return;
-
-        bool result = WhenExpressionEvaluator.Evaluate(expr, (v) =>
-        {
-            if (KdlEnumUtils.TryParse(v, out T enumValue))
-            {
-                return Equals(enumValue, value);
-            }
-            return false;
-        });
-        conditions.Add(result);
-    }
-
-    private static void CheckValueActive(List<bool> conditions, string? expr, HashSet<string> active)
-    {
-        if (string.IsNullOrEmpty(expr))
-            return;
-
-        bool result = WhenExpressionEvaluator.Evaluate(expr, active.Contains);
-        conditions.Add(result);
-    }
-
-    private static void CheckValueActive(List<bool> conditions, string? expr, SortedDictionary<string, object?> active)
-    {
-        if (string.IsNullOrEmpty(expr))
-            return;
-
-        bool result = WhenExpressionEvaluator.Evaluate(expr, (v) =>
-        {
-            if (string.IsNullOrEmpty(v))
-                return false;
-
-            string[] parts = v.Split(':');
-            if (active.TryGetValue(parts[0], out object? optionValue))
-            {
-                if (parts.Length == 1)
-                    return true;
-
-                return optionValue switch
-                {
-                    string s => s == parts[1],
-                    int i => i == int.Parse(parts[1]),
-                    float f => f == float.Parse(parts[1]),
-                    bool b => b == bool.Parse(parts[1]),
-                    _ => false,
-                };
-            }
-
-            return false;
-        });
-        conditions.Add(result);
+        conditions.Add(WhenExpressionEvaluator.Evaluate(expr, value));
     }
 }

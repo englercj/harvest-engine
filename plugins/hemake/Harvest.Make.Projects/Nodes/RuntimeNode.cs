@@ -12,30 +12,25 @@ public enum ERuntime
     [KdlName("release")] Release,
 }
 
-public class RuntimeNode(KdlNode node, INode? scope) : NodeBase(node, scope)
+public class RuntimeNode(KdlNode node, INode? scope) : NodeBase<RuntimeNode>(node, scope)
 {
-    public const string NodeName = "runtime";
+    public static string NodeName => "runtime";
 
-    public static readonly IReadOnlyList<string> NodeScopes =
+    public static new IReadOnlyList<string> NodeValidScopes =>
     [
         ModuleNode.NodeName,
         ProjectNode.NodeName,
     ];
 
-    public static readonly IReadOnlyList<NodeKdlValue> NodeArguments =
+    public static new IReadOnlyList<NodeValueDef> NodeArgumentDefs =>
     [
-        NodeKdlEnum<ERuntime>.Required(ERuntime.Default),
+        NodeValueDef_Enum<ERuntime>.Required(ERuntime.Default),
     ];
 
-    public static readonly IReadOnlyDictionary<string, NodeKdlValue> NodeProperties = new SortedDictionary<string, NodeKdlValue>()
+    public static new IReadOnlyDictionary<string, NodeValueDef> NodePropertyDefs { get; } = new SortedDictionary<string, NodeValueDef>()
     {
-        { "static", NodeKdlBool.Optional(false) },
+        { "static", NodeValueDef_Bool.Optional(false) },
     };
-
-    public override string Name => NodeName;
-    public override IReadOnlyList<string> Scopes => NodeScopes;
-    public override IReadOnlyList<NodeKdlValue> Arguments => NodeArguments;
-    public override IReadOnlyDictionary<string, NodeKdlValue> Properties => NodeProperties;
 
     public ERuntime Runtime => GetEnumValue<ERuntime>(0);
     public bool StaticLink => GetBoolValue("static");

@@ -144,7 +144,9 @@ plugin he.core version="0.1.0" license="UNLICENSED" {
         public {
             dependencies {
                 he_core
-                :module group="engine/tests" kind=lib_static { "${module.name}" whole_archive=#true }
+                :foreach module group="engine/tests" kind=lib_static as mod {
+                    "${mod.name}" whole_archive=#true
+                }
             }
         }
     }

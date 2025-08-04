@@ -4,32 +4,27 @@ using Harvest.Kdl;
 
 namespace Harvest.Make.Projects.Nodes;
 
-public class PluginNode(KdlNode node, INode? scope) : NodeBase(node, scope)
+public class PluginNode(KdlNode node, INode? scope) : NodeBase<PluginNode>(node, scope)
 {
-    public const string NodeName = "plugin";
+    public static string NodeName => "plugin";
 
-    public static readonly IReadOnlyList<string> NodeScopes =
+    public static new IReadOnlyList<string> NodeValidScopes =>
     [
         ProjectNode.NodeName,
     ];
 
-    public static readonly IReadOnlyList<NodeKdlValue> NodeArguments =
+    public static new IReadOnlyList<NodeValueDef> NodeArgumentDefs =>
     [
-        NodeKdlString.Required(),
+        NodeValueDef_String.Required(),
     ];
 
-    public static readonly IReadOnlyDictionary<string, NodeKdlValue> NodeProperties = new SortedDictionary<string, NodeKdlValue>()
+    public static new IReadOnlyDictionary<string, NodeValueDef> NodePropertyDefs { get; } = new SortedDictionary<string, NodeValueDef>()
     {
-        { "version", NodeKdlString.Required() },
-        { "license", NodeKdlString.Optional() },
+        { "version", NodeValueDef_String.Required() },
+        { "license", NodeValueDef_String.Optional() },
     };
 
-    public override string Name => NodeName;
-    public override IReadOnlyList<string> Scopes => NodeScopes;
-    public override IReadOnlyList<NodeKdlValue> Arguments => NodeArguments;
-    public override IReadOnlyDictionary<string, NodeKdlValue> Properties => NodeProperties;
-
-    public string PluginId => GetStringValue(0);
+    public string PluginName => GetStringValue(0);
     public string Version => GetStringValue("version");
     public string? License => TryGetStringValue("license");
 }

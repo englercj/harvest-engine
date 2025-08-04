@@ -1,10 +1,9 @@
 // Copyright Chad Engler
 
 using Harvest.Make.Projects.Nodes;
-using Microsoft.Extensions.Configuration;
 using System.CommandLine.Invocation;
 
-namespace Harvest.Make.Projects.Generators;
+namespace Harvest.Make.Projects.ProjectGenerators;
 
 public class ProjectGeneratorHelper
 {

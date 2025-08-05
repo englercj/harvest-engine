@@ -52,8 +52,8 @@ public partial class NodeTokenReplacer(
     [GeneratedRegex(TokenNameIdRegexPattern, RegexOptions.Singleline)]
     private static partial Regex TokenNameIdRegex();
 
-    private readonly IReadOnlyDictionary<string, NodeTokenResolver> _resolvers = resolversByContextName;
-    private readonly IReadOnlyDictionary<string, NodeTokenTransformer> _transformers = transformersByName ?? DefaultTransformers;
+    public IReadOnlyDictionary<string, NodeTokenResolver> Resolvers => resolversByContextName;
+    public IReadOnlyDictionary<string, NodeTokenTransformer> Transformers => transformersByName ?? DefaultTransformers;
 
     public string ReplaceTokens(ProjectContext projectContext, KdlNode scope, string input)
     {
@@ -75,7 +75,7 @@ public partial class NodeTokenReplacer(
 
             foreach (string transformerName in transformerParts[1..])
             {
-                if (_transformers.TryGetValue(transformerName, out NodeTokenTransformer? transformer))
+                if (Transformers.TryGetValue(transformerName, out NodeTokenTransformer? transformer))
                 {
                     tokenValue = transformer(tokenValue);
                 }
@@ -92,7 +92,7 @@ public partial class NodeTokenReplacer(
     private string GetTokenValue(ProjectContext projectContext, KdlNode scope, string token, string contextName, string propertyName)
     {
         // If a resolver is registered for this context name, then try to use that directly.
-        if (_resolvers.TryGetValue(contextName, out NodeTokenResolver? resolver))
+        if (Resolvers.TryGetValue(contextName, out NodeTokenResolver? resolver))
         {
             if (resolver(projectContext, contextName, propertyName, out string? resolvedValue))
             {

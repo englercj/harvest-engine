@@ -285,16 +285,7 @@ public abstract partial class NodeBase<TSelf>(KdlNode node, INode? scope) : INod
                 throw new NodeValidationException(this, $"'{Node.Name}' nodes cannot be used at the root.");
             }
 
-            // Special handling of `when` nodes. They have special child behavior.
-            // TODO: Move this into an override in WhenNode.
-            if (scope is WhenNode)
-            {
-                if (this is WhenNode)
-                {
-                    throw new NodeValidationException(this, $"'{Node.Name}' nodes cannot be a child of a '{WhenNode.NodeName}' node.");
-                }
-            }
-            else if (!ValidScopes.Contains(scope.Node.Name))
+            if (!ValidScopes.Contains(scope.Node.Name))
             {
                 throw new NodeValidationException(this, $"'{Node.Name}' nodes cannot be a child of a '{scope.Node.Name}' node.");
             }

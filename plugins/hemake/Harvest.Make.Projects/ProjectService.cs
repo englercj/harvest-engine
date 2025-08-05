@@ -584,7 +584,7 @@ public class ProjectService : IProjectService
         INodeGenerator generator = Activator.CreateInstance(generatorType, context) as INodeGenerator
             ?? throw new NodeParseException(generatorNode, $"Activator.CreateInstance failed to allocate node generator instance for type '{generatorType}'.");
 
-        generator.Resolve(generatorNode, scope);
+        generator.GenerateNodes(generatorNode, scope);
     }
 
     private void CopyToNode(INode target, KdlNode source)
@@ -729,7 +729,6 @@ public class ProjectService : IProjectService
                             }
                             else
                             {
-                                // TODO: check to ensure depdencies existing is checked during the validation phase
                                 throw new NodeParseException(entry.Node, $"Failed to resolve dependency '{entry.DependencyName}' for module '{module.ModuleName}'.");
                             }
                             break;
@@ -769,7 +768,6 @@ public class ProjectService : IProjectService
                                 }
                                 else
                                 {
-                                    // TODO: check to ensure depdencies existing is checked during the validation phase
                                     throw new NodeParseException(entry.Node, $"Failed to resolve dependency '{entry.DependencyName}' for module '{module.ModuleName}'.");
                                 }
                             }

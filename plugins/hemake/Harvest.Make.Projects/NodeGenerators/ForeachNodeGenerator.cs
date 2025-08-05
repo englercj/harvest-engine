@@ -10,11 +10,16 @@ namespace Harvest.Make.Projects.NodeGenerators;
 
 public class ForeachNodeGenerator(ProjectContext context) : NodeGeneratorBase(context)
 {
-    private class EntryContext : ProjectContext
+    private class ForeachReplacerContext : ProjectContext
     {
-        public INode EntryNode { get; }
+        private readonly NodeTokenReplacer _replacer = new(new Dictionary<string, NodeTokenResolver>()
+        {
+            { "_entry", EntryTokenResolver },
+        });
 
-        public EntryContext(ProjectContext parentContext, INode entryNode)
+        public INode ContextNode { get; }
+
+        public ForeachReplacerContext(ProjectContext parentContext, INode contextNode)
             : base(parentContext.ProjectService)
         {
             Plugin = parentContext.Plugin;
@@ -25,13 +30,41 @@ public class ForeachNodeGenerator(ProjectContext context) : NodeGeneratorBase(co
             Options = parentContext.Options;
             Tags = parentContext.Tags;
 
-            EntryNode = entryNode;
+            ContextNode = contextNode;
+        }
+
+        public string ReplaceTokens(KdlNode source, string value)
+        {
+            // Use the replacer to resolve tokens in the value string
+            return _replacer.ReplaceTokens(this, source, value);
+        }
+
+        private static bool EntryTokenResolver(ProjectContext projectContext, string contextName, string propertyName, [MaybeNullWhen(false)] out string value)
+        {
+            Debug.Assert(contextName == "_entry");
+            Debug.Assert(projectContext is ForeachReplacerContext);
+
+            ForeachReplacerContext foreachContext = (ForeachReplacerContext)projectContext;
+            string targetContextName = foreachContext.ContextNode.Node.Name;
+
+            // If a resolver is registered for this context name, then try to use that directly.
+            if (projectContext.ProjectService.TokenReplacer.Resolvers.TryGetValue(targetContextName, out NodeTokenResolver? resolver))
+            {
+                if (resolver(projectContext, targetContextName, propertyName, out string? resolvedValue))
+                {
+                    value = resolvedValue;
+                    return true;
+                }
+            }
+
+            value = default;
+            return false;
         }
     }
 
     public static string GeneratorName => "foreach";
 
-    public override void Resolve(KdlNode generatorNode, INode scope)
+    public override void GenerateNodes(KdlNode generatorNode, INode scope)
     {
         if (generatorNode.Arguments.Count == 0 || generatorNode.Arguments[0] is not KdlString s || string.IsNullOrEmpty(s.Value))
         {
@@ -66,69 +99,65 @@ public class ForeachNodeGenerator(ProjectContext context) : NodeGeneratorBase(co
         }
     }
 
-    private void GenerateNodes(KdlNode generatorNode, INode scope, INode context)
+    private void GenerateNodes(KdlNode generatorNode, INode scope, INode contextNode)
     {
-        // TODO: Go through each child node of the generatorNode and clone it into the scope
-        // Make sure to replace any tokens using the `_entry` context in the child nodes to refer
-        // to the context node paramter. Other tokens should be left alone to be resolved later.
+        ForeachReplacerContext replacerContext = new(_context, contextNode);
 
-        NodeTokenReplacer replacer = new(new Dictionary<string, NodeTokenResolver>()
+        foreach (KdlNode sourceChild in generatorNode.Children)
         {
-            { "_entry", EntryTokenResolver },
-        });
+            KdlNode generatedChild = GenerateNode(replacerContext, sourceChild);
+            scope.Node.AddChild(generatedChild);
 
-        EntryContext replaceContext = new(_context, context);
-
-        foreach (KdlNode rawChild in generatorNode.Children)
-        {
-            KdlNode clonedRawChild = rawChild.Clone();
-            scope.Node.AddChild(clonedRawChild);
-
-            if (_context.ProjectService.ParseNode(clonedRawChild, scope) is INode child)
+            if (_context.ProjectService.ParseNode(generatedChild, scope) is INode child)
             {
-                string resolvedName = replacer.ReplaceTokens(replaceContext, child, child.Node.Name);
-                if (resolvedName != child.Node.Name)
-                {
-                    child.Node.SourceInfo = child.Node.SourceInfo with { Name = resolvedName };
-                    child.Node = new KdlNode(resolvedName, child.Node.Type)
-                    {
-                        SourceInfo = child.Node.SourceInfo,
-                    };
-                }
-
-                for (int i = 0; i < child.Node.Arguments.Count; ++i)
-                {
-                    KdlValue value = child.Node.Arguments[i];
-
-                    if (value is KdlString valueStr)
-                    {
-                        string resolvedValue = replacer.ReplaceTokens(_context, child, valueStr.Value);
-                        child.Node.Arguments[i] = new KdlString(resolvedValue, value.Type) { SourceInfo = value.SourceInfo };
-                    }
-                }
-
-                foreach ((string key, KdlValue value) in child.Node.Properties)
-                {
-                    if (value is KdlString valueStr)
-                    {
-                        string resolvedValue = replacer.ReplaceTokens(_context, child, valueStr.Value);
-                        Node.Properties[key] = new KdlString(resolvedValue, valueStr.Type);
-                    }
-                }
-
                 scope.Children.Add(child);
             }
         }
     }
 
-    private static bool EntryTokenResolver(ProjectContext projectContext, string contextName, string propertyName, [MaybeNullWhen(false)] out string value)
+    private static KdlNode GenerateNode(ForeachReplacerContext replacerContext, KdlNode source)
     {
-        Debug.Assert(contextName == "_entry");
-        Debug.Assert(projectContext is EntryContext);
+        string resolvedName = replacerContext.ReplaceTokens(source, source.Name);
+        KdlNode result = new(resolvedName, source.Type) { SourceInfo = source.SourceInfo };
 
-        EntryContext entryContext = (EntryContext)projectContext;
+        // Copy properties, resolving any string values using the replacer
+        for (int i = 0; i < source.Arguments.Count; ++i)
+        {
+            KdlValue value = source.Arguments[i];
 
-        // TODO: Treat _entry as if it was named `entryConext.EntryNode.Node.Name` and do the resolve on that.
+            if (value is KdlString valueStr)
+            {
+                string resolvedValue = replacerContext.ReplaceTokens(source, valueStr.Value);
+                result.Arguments.Add(new KdlString(resolvedValue, value.Type) { SourceInfo = value.SourceInfo });
+            }
+            else
+            {
+                // For non-string values, just clone them directly
+                result.Arguments.Add(value.Clone());
+            }
+        }
+
+        // Copy properties, resolving any string values using the replacer
+        foreach ((string key, KdlValue value) in source.Properties)
+        {
+            if (value is KdlString valueStr)
+            {
+                string resolvedValue = replacerContext.ReplaceTokens(source, valueStr.Value);
+                result.Properties[key] = new KdlString(resolvedValue, valueStr.Type);
+            }
+            else
+            {
+                result.Properties[key] = value.Clone();
+            }
+        }
+
+        // Recursively generate child nodes
+        foreach (KdlNode child in source.Children)
+        {
+            result.AddChild(GenerateNode(replacerContext, child));
+        }
+
+        return result;
     }
 
     private static bool DoesNodeMatch<T>(KdlNode generatorNode, T candidate) where T : INode

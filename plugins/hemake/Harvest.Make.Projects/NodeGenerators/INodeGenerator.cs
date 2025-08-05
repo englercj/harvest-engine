@@ -9,5 +9,10 @@ public interface INodeGenerator
 {
     public static virtual string GeneratorName => throw new NotImplementedException();
 
-    public void Resolve(KdlNode generatorNode, INode scope);
+    /// <summary>
+    /// Perform the node generation logic for this generator.
+    /// </summary>
+    /// <param name="generatorNode">The source KDL node for the generator.</param>
+    /// <param name="scope">The parsed parent node of the generator, where newly generated nodes should be inserted.</param>
+    public void GenerateNodes(KdlNode generatorNode, INode scope);
 }

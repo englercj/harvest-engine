@@ -9,5 +9,5 @@ public abstract class NodeGeneratorBase(ProjectContext context) : INodeGenerator
 {
     protected readonly ProjectContext _context = context;
 
-    public abstract void Resolve(KdlNode generatorNode, INode scope);
+    public abstract void GenerateNodes(KdlNode generatorNode, INode scope);
 }

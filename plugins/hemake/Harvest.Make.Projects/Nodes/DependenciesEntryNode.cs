@@ -36,26 +36,29 @@ public class DependenciesEntryNode(KdlNode node, INode? scope) : NodeBase<Depend
 
     public override int GetHashCode() => HashCode.Combine(DependencyName, Kind, IsExternal, IsWholeArchive);
 
-    public override bool Equals(object? other)
+    public override bool Equals(object? other) => Equals(other as DependenciesEntryNode);
+
+    public bool Equals(DependenciesEntryNode? entry)
     {
-        if (other is null)
+        if (entry is null)
         {
             return false;
         }
 
-        if (ReferenceEquals(this, other))
+        if (ReferenceEquals(this, entry))
         {
             return true;
         }
 
-        if (other is DependenciesEntryNode entry)
-        {
-            return DependencyName == entry.DependencyName
-                && Kind == entry.Kind
-                && IsExternal == entry.IsExternal
-                && IsWholeArchive == entry.IsWholeArchive;
-        }
+        return DependencyName == entry.DependencyName
+            && Kind == entry.Kind
+            && IsExternal == entry.IsExternal
+            && IsWholeArchive == entry.IsWholeArchive;
+    }
 
-        return false;
+    public override void Validate(INode? scope)
+    {
+        base.Validate(scope);
+        // TODO: Validate that the dependency exists in the project.
     }
 }

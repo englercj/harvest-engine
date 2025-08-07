@@ -27,4 +27,21 @@ public class PluginNode(KdlNode node, INode? scope) : NodeBase<PluginNode>(node,
     public string PluginName => GetStringValue(0);
     public string Version => GetStringValue("version");
     public string? License => TryGetStringValue("license");
+
+    private string? _installDir = null;
+    public string InstallDir
+    {
+        get
+        {
+            if (_installDir is null)
+            {
+                return Path.GetDirectoryName(Node.SourceInfo.FilePath) ?? string.Empty;
+            }
+            return _installDir;
+        }
+        set
+        {
+            _installDir = value;
+        }
+    }
 }

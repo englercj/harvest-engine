@@ -89,8 +89,7 @@ public static class NodeTokenResolvers
             }
             case "install_dir":
             {
-                // TODO: Support for plugins installed somewhere other than the he_plugin.kdl file?
-                value = Path.GetDirectoryName(projectContext.Plugin.Node.SourceInfo.FilePath) ?? string.Empty;
+                value = projectContext.Plugin.InstallDir;
                 return true;
             }
         }

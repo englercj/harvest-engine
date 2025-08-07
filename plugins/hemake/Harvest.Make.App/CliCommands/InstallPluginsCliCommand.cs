@@ -48,7 +48,7 @@ internal class InstallPluginsCliCommand(
         {
             foreach (PlatformNode platform in platforms)
             {
-                ProjectContext context = _projectService.CreateProjectContext(invocationContext);
+                ProjectContext context = _projectService.CreateProjectContext(invocationContext, null, configuration, platform);
 
                 // TODO: install node may have unscoped install logic, which means we'd duplicate
                 // the install logic for each configuration/platform combination.
@@ -70,6 +70,7 @@ internal class InstallPluginsCliCommand(
     {
         string dirName = Path.GetDirectoryName(plugin.Node.SourceInfo.FilePath) ?? string.Empty;
         // TODO: Logic for installing the plugin
+        // plugin.InstallDir = dirName;
 
         // Simulate plugin installation logic
         await Task.Delay(1000); // Simulate some async work

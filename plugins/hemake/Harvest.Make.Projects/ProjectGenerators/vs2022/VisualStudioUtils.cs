@@ -16,7 +16,7 @@ public static class VisualStudioUtils
     [
         EPlatformSystem.DotNet,
         EPlatformSystem.WASM,
-        EPlatformSystem.Windows
+        EPlatformSystem.Windows,
     ];
 
     public static Dictionary<EPlatformArch, string> ArchNames { get; } = new()
@@ -25,7 +25,7 @@ public static class VisualStudioUtils
         { EPlatformArch.X86, "x86" },
         { EPlatformArch.X86_64, "x64" },
         { EPlatformArch.Arm, "ARM" },
-        { EPlatformArch.Arm64, "ARM64" }
+        { EPlatformArch.Arm64, "ARM64" },
     };
 
     public static Dictionary<EModuleKind, string> ModuleKindNames { get; } = new()

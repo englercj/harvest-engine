@@ -28,13 +28,16 @@ HEMAKE_BUILD_ASSEMBLY="$HEMAKE_BUILD_DIR/bin/$HEMAKE_BUILD_CFG/net8.0/Harvest.Ma
 HEMAKE_SRC_DIR="$SCRIPT_DIR/plugins/hemake"
 HEMAKE_SRC_PROJ="$HEMAKE_SRC_DIR/Harvest.Make.App/Harvest.Make.App.csproj"
 
-DOTNET_CHANNEL="8.0"
+DOTNET_CHANNEL="9.0"
 DOTNET_DIR="$BUILD_DIR/dotnet"
 DOTNET_EXE="$DOTNET_DIR/dotnet"
 
+# Ensure the build directory exists
+mkdir -p "$BUILD_DIR"
+
 # Check for a local dotnet installation, and if there isn't one download it
 if [[ ! -d "$DOTNET_DIR" ]]; then
-    echo "Downloading .NET SDK..."
+    echo "Downloading .NET SDK $DOTNET_CHANNEL..."
 
     function download_file()
     {

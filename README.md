@@ -10,7 +10,7 @@ Then run `boostrap.sh` using Git Bash from within the cloned folder.
 
 #### WASM Targets
 
-For WASM support you'll also need to install [LLVM 17](https://github.com/llvm/llvm-project/releases/download/llvmorg-17.0.6/LLVM-17.0.6-win64.exe) and re-run `bootstrap.sh`.
+For WASM support you'll also need to install [LLVM 20](https://github.com/llvm/llvm-project/releases/download/llvmorg-20.1.8/LLVM-20.1.8-win64.exe) and re-run `bootstrap.sh`.
 
 ### Linux
 
@@ -22,12 +22,12 @@ Note: v2.2 of liburing is required
 
 #### WASM Targets
 
-For WASM support you'll also need to install LLVM 17:
+For WASM support you'll also need to install LLVM 20:
 
 ```sh
 wget https://apt.llvm.org/llvm.sh
 chmod +x llvm.sh
-sudo ./llvm.sh 17
+sudo ./llvm.sh 20
 ```
 
 ## Compiler Support
@@ -36,9 +36,9 @@ The recommended version is the version that is actively used for development and
 
 | Compiler |    Minimum Version    |  Recommended Version  |
 | -------- | --------------------- | --------------------- |
-| MSVC     | 14.29 (VS2019 v16.10) | 14.30 (VS2022 v17.0)  |
-| GCC      | 11.2.0                | 11.2.0                |
-| Clang    | 11.0.0                | 14.0.0                |
+| MSVC     | 14.29 (VS2019 v16.10) | 14.44 (VS2022 v17.14) |
+| GCC      | 12.4.0                | 14.3.0                |
+| Clang    | 14.0.0                | 18.0.0                |
 
 ## Platform Support
 

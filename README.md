@@ -4,9 +4,13 @@
 
 ### Windows
 
-Install Visual Studio 2022 and .
-
-Then run `boostrap.sh` using Git Bash from within the cloned folder.
+1. Install Visual Studio 2022.
+2. Open PowerShell as Administrator and run:
+```powershell
+Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned
+```
+3. Install Git Bash from [git-scm.com](https://git-scm.com/download/win)
+4. Run `hemake.sh` using Git Bash from within the cloned folder.
 
 #### WASM Targets
 
@@ -14,11 +18,11 @@ For WASM support you'll also need to install [LLVM 20](https://github.com/llvm/l
 
 ### Linux
 
-Install system dependencies: `apt install build-essential binutils-dev libdw-dev libx11-dev libxi-dev liburing-dev`
-
-Then run `bootstrap.sh` from within the cloned folder.
-
-Note: v2.2 of liburing is required
+1. Install system dependencies:
+```sh
+apt install build-essential binutils-dev libdw-dev libx11-dev libxi-dev liburing-dev
+```
+2. Run `hemake.sh` from within the cloned folder.
 
 #### WASM Targets
 

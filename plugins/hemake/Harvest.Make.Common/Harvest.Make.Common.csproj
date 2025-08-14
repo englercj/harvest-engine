@@ -5,8 +5,6 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <RootNamespace>Harvest.Make</RootNamespace>
-    <BaseOutputPath>../../../.build/hemake/bin</BaseOutputPath>
-    <IntermediateOutputPath>../../../.build/hemake/obj</IntermediateOutputPath>
   </PropertyGroup>
 
   <ItemGroup>

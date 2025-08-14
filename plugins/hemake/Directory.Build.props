@@ -1,0 +1,7 @@
+<Project>
+   <PropertyGroup>
+      <BaseOutputPath>../../../.build/hemake/bin/</BaseOutputPath>
+      <BaseIntermediateOutputPath>../../../.build/hemake/obj/</BaseIntermediateOutputPath>
+      <MSBuildProjectExtensionsPath>../../../.build/hemake/obj/$(MSBuildProjectName)/</MSBuildProjectExtensionsPath>
+   </PropertyGroup>
+</Project>

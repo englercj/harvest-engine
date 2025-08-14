@@ -17,6 +17,11 @@ file_header_template = Copyright Chad Engler
 end_of_line = crlf
 
 ###################################################################################################
+# Visual Studio Solution files
+[*.sln]
+end_of_line = crlf
+
+###################################################################################################
 # YAML files
 [*.{yml,yaml}]
 indent_style = space

@@ -4,8 +4,8 @@
     <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <BaseOutputPath>../../../build/hemake/bin</BaseOutputPath>
-    <IntermediateOutputPath>../../../build/hemake/obj</IntermediateOutputPath>
+    <BaseOutputPath>../../../.build/hemake/bin</BaseOutputPath>
+    <IntermediateOutputPath>../../../.build/hemake/obj</IntermediateOutputPath>
   </PropertyGroup>
 
 </Project>

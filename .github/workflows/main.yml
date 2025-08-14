@@ -28,7 +28,7 @@ jobs:
         CC: gcc-12
         CXX: g++-12
     - name: Test
-      run: ./build/bin/linux-${{ matrix.config }}_${{ matrix.arch }}/he_test_runner
+      run: ./.build/bin/linux-${{ matrix.config }}_${{ matrix.arch }}/he_test_runner
   windows:
     runs-on: windows-latest
     strategy:
@@ -44,7 +44,7 @@ jobs:
       run: ./bootstrap.sh
       shell: bash
     - name: Build
-      run: MSBuild.exe build/harvest-engine_windows.sln /m /p:Configuration="${{ matrix.config }}" /p:Platform="${{ matrix.arch }}" /nodeReuse:false
+      run: MSBuild.exe .build/harvest-engine_windows.sln /m /p:Configuration="${{ matrix.config }}" /p:Platform="${{ matrix.arch }}" /nodeReuse:false
     - name: Test
       if: ${{ matrix.arch == 'x64' }}
-      run: ./build/windows-x86_64-${{ matrix.config }}/bin/he_test_runner.exe
+      run: ./.build/windows-x86_64-${{ matrix.config }}/bin/he_test_runner.exe

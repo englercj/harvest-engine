@@ -10,8 +10,6 @@ using Microsoft.Extensions.FileSystemGlobbing;
 using System.CommandLine;
 using System.CommandLine.Invocation;
 using System.Runtime.InteropServices;
-using System.Xml.Linq;
-using static System.Formats.Asn1.AsnWriter;
 
 namespace Harvest.Make.Projects;
 

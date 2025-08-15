@@ -5,7 +5,6 @@ using Harvest.Kdl.Types;
 using Microsoft.Extensions.FileSystemGlobbing;
 using System.Diagnostics.CodeAnalysis;
 using System.Numerics;
-using System.Text.RegularExpressions;
 
 namespace Harvest.Make.Projects.Nodes;
 

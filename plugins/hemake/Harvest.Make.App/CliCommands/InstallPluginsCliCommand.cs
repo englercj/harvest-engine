@@ -6,10 +6,8 @@ using Harvest.Make.Projects;
 using Harvest.Make.Projects.Nodes;
 using Microsoft.Extensions.Logging;
 using System.CommandLine.Invocation;
-using System.IO.Compression;
-using System.Security.Cryptography;
-using System.Text;
 using System.Formats.Tar;
+using System.IO.Compression;
 
 namespace Harvest.Make.App.CliCommands;
 
@@ -46,110 +44,135 @@ internal class InstallPluginsCliCommand(
         List<ConfigurationNode> configurations = _projectService.GetNodes<ConfigurationNode>(baseContext);
         List<PlatformNode> platforms = _projectService.GetNodes<PlatformNode>(baseContext);
 
+        HashSet<string> installKeys = [];
         List<Task> installTasks = [];
 
+        // TODO: How do we filter this for the currently valid configurations/platforms?
+        // For example, on windows we don't want to try to install plugins for linux stuff.
+        // Need a way to check if a configuration/platform is valid in the current build environment.
+        // Another example: don't install dependencies for a console if the SDK for that console isn't installed.
         foreach (ConfigurationNode configuration in configurations)
         {
             foreach (PlatformNode platform in platforms)
             {
-                ProjectContext context = _projectService.CreateProjectContext(invocationContext, null, configuration, platform);
+                ProjectContext projectContext = _projectService.CreateProjectContext(invocationContext, null, configuration, platform);
 
-                // TODO: install node may have unscoped install logic, which means we'd duplicate
-                // the install logic for each configuration/platform combination.
-                // Maybe we should try to get an install from baseContext first, then store each
-                // install in a dictionary and only run the install once.
                 foreach (PluginNode plugin in plugins)
                 {
-                    installTasks.Add(InstallPluginAsync(context, plugin));
+                    projectContext.Plugin = plugin;
+
+                    BuildOutputNode buildOutput = projectContext.ProjectService.GetMergedNode<BuildOutputNode>(projectContext, projectContext.Plugin, false);
+                    string installDir = buildOutput.InstallDir;
+
+                    foreach (FetchNode fetchNode in _projectService.GetNodes<FetchNode>(projectContext, plugin, false))
+                    {
+                        if (installKeys.Add(fetchNode.ArchiveKey))
+                        {
+                            installTasks.Add(InstallArchiveAsync(fetchNode, installDir));
+                        }
+                    }
                 }
             }
         }
 
+        // TODO: Download progress reporting?
+
         await Task.WhenAll(installTasks);
+
+        // TODO: How do we clean up old/unneeded plugin installs?
+        // If you update a plugin on a branch, it can be pretty annoying to have it removed/added
+        // every time you switch branches. Maybe we need a separate "prune" command or something?
 
         _logger.LogInformation("All plugins installed successfully.");
     }
 
-    private async Task InstallPluginAsync(ProjectContext context, PluginNode plugin)
+    private async Task InstallArchiveAsync(FetchNode fetchNode, string installDir)
     {
-        string dirName = Path.GetDirectoryName(plugin.Node.SourceInfo.FilePath) ?? string.Empty;
-        plugin.InstallDir = dirName;
+        string extractDir = Path.Combine(installDir, fetchNode.ArchiveKey);
 
-        foreach (ArchiveNode archive in _projectService.GetNodes<ArchiveNode>(context, plugin, false))
+        if (Directory.Exists(extractDir))
         {
-
+            _logger.LogTrace("Archive is already installed: {ArchiveUrl}", fetchNode.ArchiveUrl);
+            return;
         }
-    }
 
-    private async Task<string> InstallFromArchive(string name, string url, string archiveName, string? extractDirName, string pluginsDir)
-    {
-        string digest = ComputeDigest(name + url);
-        string archiveDir = Path.Combine(pluginsDir, name);
+        string archiveTempPath = Path.GetTempFileName();
 
-        string digestFilePath = Path.Combine(archiveDir, ".he_plugin_digest");
-        string installedVersion = string.Empty;
+        await DownloadArchiveAsync(fetchNode.ArchiveUrl, archiveTempPath);
+
         try
         {
-            installedVersion = await File.ReadAllTextAsync(digestFilePath);
+            Directory.CreateDirectory(extractDir);
+
+            await ExtractArchiveAsync(fetchNode.ArchiveFormat, archiveTempPath, extractDir);
         }
-        catch { }
-
-        string extractDir = string.IsNullOrEmpty(extractDirName) ? archiveDir : Path.Combine(archiveDir, extractDirName);
-        extractDir = Uri.UnescapeDataString(extractDir);
-
-        if (installedVersion == digest && Directory.Exists(extractDir))
+        catch (Exception)
         {
-            _logger.LogTrace("Plugin {PluginName} is already installed and up to date.", name);
-            return extractDir;
-        }
-
-        _logger.LogTrace("Installing plugin {PluginName} from archive: {Url}", name, url);
-
-        string archivePath = Path.Combine(archiveDir, archiveName);
-        Directory.CreateDirectory(archiveDir);
-
-        using HttpClient httpClient = new();
-        using HttpResponseMessage response = await httpClient.GetAsync(url);
-        response.EnsureSuccessStatusCode();
-        using FileStream fs = new(archivePath, FileMode.Create, FileAccess.Write, FileShare.None);
-        await response.Content.CopyToAsync(fs);
-
-        Directory.CreateDirectory(extractDir);
-
-        if (archiveName.EndsWith(".zip", StringComparison.OrdinalIgnoreCase))
-        {
-            ZipFile.ExtractToDirectory(archivePath, extractDir, true);
-        }
-        else if (archiveName.EndsWith(".tar.gz", StringComparison.OrdinalIgnoreCase)
-            || archiveName.EndsWith(".tgz", StringComparison.OrdinalIgnoreCase))
-        {
-            await using FileStream tarStream = new(archivePath, new FileStreamOptions { Mode = FileMode.Open, Access = FileAccess.Read, Options = FileOptions.Asynchronous });
-            await using GZipStream gzipStream = new(tarStream, CompressionMode.Decompress, leaveOpen: true);
-            await using TarReader tarReader = new(gzipStream);
-            TarEntry? entry;
-            while ((entry = await tarReader.GetNextEntryAsync()) is not null)
+            // Remove the extract dir on failure to avoid leaving a partial install
+            try
             {
-                if (entry.EntryType is TarEntryType.RegularFile)
-                {
-                    string entryOutputPath = Path.Combine(extractDir, entry.Name);
-                    Directory.CreateDirectory(Path.GetDirectoryName(entryOutputPath)!);
-                    await entry.ExtractToFileAsync(entryOutputPath, overwrite: true);
-                }
+                Directory.Delete(extractDir, recursive: true);
             }
-        }
-        else
-        {
-            throw new NotSupportedException($"Unsupported archive format: {archiveName}");
-        }
+            catch (Exception delEx)
+            {
+                // Log but ignore errors during cleanup, they are secondary to the original error
+                _logger.LogError(delEx, "Failed to clean up extract directory after failed install: {ExtractDir}", extractDir);
+            }
 
-        File.WriteAllText(digestFilePath, digest);
-        return extractDir;
+            // Rethrow the original exception
+            throw;
+        }
     }
 
-    private static string ComputeDigest(string input)
+    private async Task DownloadArchiveAsync(string archiveUrl, string archivePath)
     {
-        byte[] inputBytes = Encoding.UTF8.GetBytes(input);
-        byte[] hashBytes = SHA256.HashData(inputBytes);
-        return Convert.ToHexString(hashBytes);
+        _logger.LogTrace("Downloading archive: {Url}", archiveUrl);
+
+        using HttpClient httpClient = new();
+        using HttpResponseMessage response = await httpClient.GetAsync(archiveUrl);
+        response.EnsureSuccessStatusCode();
+        await using FileStream fs = new(archivePath, FileMode.Create, FileAccess.Write, FileShare.None);
+        await response.Content.CopyToAsync(fs);
+    }
+
+    private static async Task ExtractArchiveAsync(EFetchArchiveFormat archiveFormat, string archivePath, string extractDir)
+    {
+        switch (archiveFormat)
+        {
+            case EFetchArchiveFormat.Zip:
+            {
+                await Task.Run(() => ZipFile.ExtractToDirectory(archivePath, extractDir, true));
+                break;
+            }
+            case EFetchArchiveFormat.Tar:
+            {
+                await using FileStream tarStream = new(archivePath, new FileStreamOptions { Mode = FileMode.Open, Access = FileAccess.Read, Options = FileOptions.Asynchronous });
+                await ExtractTarArchiveAsync(tarStream, extractDir);
+                break;
+            }
+            case EFetchArchiveFormat.TarGz:
+            {
+                await using FileStream tarStream = new(archivePath, new FileStreamOptions { Mode = FileMode.Open, Access = FileAccess.Read, Options = FileOptions.Asynchronous });
+                await using GZipStream gzipStream = new(tarStream, CompressionMode.Decompress, leaveOpen: true);
+                await ExtractTarArchiveAsync(gzipStream, extractDir);
+                break;
+            }
+        }
+    }
+
+    private static async Task ExtractTarArchiveAsync(Stream archiveStream, string extractDir)
+    {
+        await using TarReader tarReader = new(archiveStream);
+
+        TarEntry? entry;
+        while ((entry = await tarReader.GetNextEntryAsync()) is not null)
+        {
+            if (entry.EntryType is TarEntryType.RegularFile)
+            {
+                string entryOutputPath = Path.Combine(extractDir, entry.Name);
+                Directory.CreateDirectory(Path.GetDirectoryName(entryOutputPath)!);
+                await entry.ExtractToFileAsync(entryOutputPath, overwrite: true);
+            }
+        }
     }
 }

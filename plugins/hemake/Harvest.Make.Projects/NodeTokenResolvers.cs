@@ -89,7 +89,7 @@ public static class NodeTokenResolvers
             }
             case "install_dir":
             {
-                value = projectContext.Plugin.InstallDir;
+                value = projectContext.Plugin.GetInstallDir(projectContext);
                 return true;
             }
         }

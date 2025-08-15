@@ -1,6 +1,8 @@
 // Copyright Chad Engler
 
 using System.Globalization;
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.RegularExpressions;
 
 namespace Harvest.Make.Utils;
@@ -73,6 +75,13 @@ public static partial class StringExtensions
         string[] words = SplitWordsRegex().Split(value.Trim());
         IEnumerable<string> transformed = words.Select(word => CultureInfo.InvariantCulture.TextInfo.ToTitleCase(word.ToLowerInvariant()));
         return string.Concat(transformed);
+    }
+
+    public static string ToSHA256HexDigest(this string value)
+    {
+        byte[] valueBytes = Encoding.UTF8.GetBytes(value);
+        byte[] hashBytes = SHA256.HashData(valueBytes);
+        return Convert.ToHexString(hashBytes);
     }
 
     [GeneratedRegex("(?<=[a-z])(?=[A-Z])|(?<=[0-9])(?=[A-Za-z])|(?<=[A-Za-z])(?=[0-9])")]

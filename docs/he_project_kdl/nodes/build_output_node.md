@@ -20,8 +20,8 @@ All of these directory properties are relative to the base directory specified i
     * Default is: `${platform.name:lower}-${configuration.name:lower}/lib/${module.name}`.
 - `obj_dir` (string) Optional. Destination for object and intermediate files.
     * Default is: `${platform.name:lower}-${configuration.name:lower}/obj/${module.name}`.
-- `plugin_dir` (string) Optional. Destination for install plugins.
-    * Default is: `plugins`.
+- `install_dir` (string) Optional. Destination for installed plugins.
+    * Default is: `installs`.
 - `project_dir` (string) Optional. Destination for generated build system project files.
     * Default is: `projects`.
 - `target_name` (string) Optional. The name of the output target file. When not specified, the parent module's name is used.

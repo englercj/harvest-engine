@@ -25,7 +25,7 @@ public class BuildOutputNode(KdlNode node, INode? scope) : NodeBase<BuildOutputN
         { "gen_dir", NodeValueDef_Path.Optional("${platform.name:lower}-${configuration.name:lower}/generated/${module.name}") },
         { "lib_dir", NodeValueDef_Path.Optional("${platform.name:lower}-${configuration.name:lower}/lib/${module.name}") },
         { "obj_dir", NodeValueDef_Path.Optional("${platform.name:lower}-${configuration.name:lower}/obj/${module.name}") },
-        { "plugin_dir", NodeValueDef_Path.Optional("plugins") },
+        { "install_dir", NodeValueDef_Path.Optional("installs") },
         { "project_dir", NodeValueDef_Path.Optional("projects") },
         { "target_name", NodeValueDef_String.Optional() },
         { "target_extension", NodeValueDef_String.Optional() },
@@ -40,7 +40,7 @@ public class BuildOutputNode(KdlNode node, INode? scope) : NodeBase<BuildOutputN
     public string GenDir => GetPathValue("gen_dir");
     public string LibDir => GetPathValue("lib_dir");
     public string ObjDir => GetPathValue("obj_dir");
-    public string PluginDir => GetPathValue("plugin_dir");
+    public string InstallDir => GetPathValue("install_dir");
     public string ProjectDir => GetPathValue("project_dir");
     public string? TargetName => TryGetStringValue("target_name");
     public string? TargetExtension => TryGetStringValue("target_extension");

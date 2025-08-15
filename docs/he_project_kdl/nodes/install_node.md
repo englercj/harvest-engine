@@ -12,10 +12,7 @@ None.
 
 ## Children
 
-- [`archive`](archive_node.md)
-- [`bitbucket`](bitbucket_node.md)
-- [`github`](github_node.md)
-- [`nuget`](nuget_node.md)
+- [`fetch`](fetch_node.md)
 - [`when`](when_node.md)
 
 ## Scopes
@@ -27,40 +24,40 @@ None.
 ```kdl
 // install sqlite from archive URL
 install {
-    archive "https://www.sqlite.org/2023/sqlite-amalgamation-3420000.zip" base="sqlite-amalgamation-3420000"
+    fetch archive url="https://www.sqlite.org/2023/sqlite-amalgamation-3420000.zip" base_dir="sqlite-amalgamation-3420000"
 }
 
 // install imgui from github
 install {
-    github user=ocornut repo=imgui ref=823a1385a269d923d35b82b2f470f3ae1fa8b5a3
+    fetch github user=ocornut repo=imgui ref=823a1385a269d923d35b82b2f470f3ae1fa8b5a3
 }
 
 // install DirectStorage from nuget, only if there is a windows build target
 install {
     when system=windows {
-        nuget Microsoft.Direct3D.DirectStorage version="1.2.1"
+        fetch nuget Microsoft.Direct3D.DirectStorage version="1.2.1"
     }
 }
 
 // install Slang from archive URL, only if there is a windows or linux build target
 install {
     when system=windows {
-        archive "https://github.com/shader-slang/slang/releases/download/v0.28.2/slang-0.28.2-win64.zip"
+        fetch archive url="https://github.com/shader-slang/slang/releases/download/v0.28.2/slang-0.28.2-win64.zip"
     }
 
     when system=linux {
-        archive "https://github.com/shader-slang/slang/releases/download/v0.28.2/slang-0.28.2-linux-x86_64.zip"
+        fetch archive url="https://github.com/shader-slang/slang/releases/download/v0.28.2/slang-0.28.2-linux-x86_64.zip"
     }
 }
 
 // install node from archive URL, only when on a windows or linux host
 install {
     when host=windows {
-        archive "https://nodejs.org/dist/v20.11.0/node-v20.11.0-win-x64.zip" base="node-v20.11.0-win-x64/node-v20.11.0-win-x64"
+        fetch archive url="https://nodejs.org/dist/v20.11.0/node-v20.11.0-win-x64.zip" base_dir="node-v20.11.0-win-x64/node-v20.11.0-win-x64"
     }
 
     when host=linux {
-        archive "https://nodejs.org/dist/v20.11.0/node-v20.11.0-linux-x64.tar.xz" base="node-v20.11.0-linux-x64/node-v20.11.0-linux-x64"
+        fetch archive url="https://nodejs.org/dist/v20.11.0/node-v20.11.0-linux-x64.tar.xz" base_dir="node-v20.11.0-linux-x64/node-v20.11.0-linux-x64"
     }
 }
 ```

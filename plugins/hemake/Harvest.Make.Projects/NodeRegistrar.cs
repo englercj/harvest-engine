@@ -13,9 +13,7 @@ public class NodeRegistrar(IProjectService projectService) : IAppLifetimeService
 
     public Task StartAsync(CancellationToken cancellationToken)
     {
-        _projectService.RegisterNode<ArchiveNode>();
         _projectService.RegisterNode<AuthorsNode>();
-        _projectService.RegisterNode<BitBucketNode>();
         _projectService.RegisterNode<BuildEventNode>();
         _projectService.RegisterNode<BuildOptionsNode>();
         _projectService.RegisterNode<BuildOutputNode>();
@@ -28,9 +26,9 @@ public class NodeRegistrar(IProjectService projectService) : IAppLifetimeService
         _projectService.RegisterNode<DialectNode>();
         _projectService.RegisterNode<ExceptionsNode>();
         _projectService.RegisterNode<ExternalNode>();
+        _projectService.RegisterNode<FetchNode>();
         _projectService.RegisterNode<FilesNode>();
         _projectService.RegisterNode<FloatingPointNode>();
-        _projectService.RegisterNode<GitHubNode>();
         _projectService.RegisterNode<ImportNode>();
         _projectService.RegisterNode<IncludeDirsNode>();
         _projectService.RegisterNode<InputsNode>();
@@ -38,7 +36,6 @@ public class NodeRegistrar(IProjectService projectService) : IAppLifetimeService
         _projectService.RegisterNode<LibDirsNode>();
         _projectService.RegisterNode<LinkOptionsNode>();
         _projectService.RegisterNode<ModuleNode>();
-        _projectService.RegisterNode<NugetNode>();
         _projectService.RegisterNode<OptimizeNode>();
         _projectService.RegisterNode<OptionNode>();
         _projectService.RegisterNode<OutputsNode>();

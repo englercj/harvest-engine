@@ -28,20 +28,23 @@ public class PluginNode(KdlNode node, INode? scope) : NodeBase<PluginNode>(node,
     public string Version => GetStringValue("version");
     public string? License => TryGetStringValue("license");
 
-    private string? _installDir = null;
-    public string InstallDir
+    public string GetInstallDir(ProjectContext projectContext)
     {
-        get
+        List<FetchNode> fetchNodes = projectContext.ProjectService.GetNodes<FetchNode>(projectContext, this, false);
+        if (fetchNodes.MaxBy((n) => n.InstallDirPriority) is FetchNode primaryFetchNode)
         {
-            if (_installDir is null)
-            {
-                return Path.GetDirectoryName(Node.SourceInfo.FilePath) ?? string.Empty;
-            }
-            return _installDir;
+            string installBaseDir = GetInstallBaseDir(projectContext);
+            string baseDir = Path.Combine(installBaseDir, primaryFetchNode.ArchiveKey);
+            return Path.Combine(baseDir, primaryFetchNode.ArchiveBaseDir);
         }
-        set
-        {
-            _installDir = value;
-        }
+
+        // No fetch nodes, use the node's file directory as the install dir
+        return Path.GetDirectoryName(Node.SourceInfo.FilePath) ?? string.Empty;
+    }
+
+    private string GetInstallBaseDir(ProjectContext projectContext)
+    {
+        BuildOutputNode buildOutput = projectContext.ProjectService.GetMergedNode<BuildOutputNode>(projectContext, this, false);
+        return buildOutput.InstallDir;
     }
 }

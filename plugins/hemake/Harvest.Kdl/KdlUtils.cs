@@ -21,7 +21,7 @@ internal static class KdlUtils
         {
             "#true" => new KdlBool(true, type),
             "#false" => new KdlBool(false, type),
-            _ => throw new KdlException($"A boolean literal value must be `#true` or `#false`", null),
+            _ => throw new KdlParseException($"A boolean literal value must be `#true` or `#false`", null),
         };
     }
 

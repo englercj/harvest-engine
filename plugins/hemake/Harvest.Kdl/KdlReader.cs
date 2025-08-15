@@ -65,7 +65,7 @@ public class KdlReader(string filePath, byte[] data, IKdlReadHandler handler, Kd
     {
         if (condition)
         {
-            throw new KdlException(message, GetSourceInfo());
+            throw new KdlParseException(message, GetSourceInfo());
         }
     }
 
@@ -270,7 +270,7 @@ public class KdlReader(string filePath, byte[] data, IKdlReadHandler handler, Kd
                 break;
             }
 
-            throw new KdlException("Invalid token. Expected newline after version marker.", GetSourceInfo());
+            throw new KdlParseException("Invalid token. Expected newline after version marker.", GetSourceInfo());
         }
 
         _offset = begin;
@@ -594,7 +594,7 @@ public class KdlReader(string filePath, byte[] data, IKdlReadHandler handler, Kd
                     case 'f': _stringBuffer.Add((byte)'\f'); break;
                     case 's': _stringBuffer.Add((byte)' '); break;
                     default:
-                        throw new KdlException($"Invalid escape sequence '\\{char.ConvertFromUtf32(ucc)}'.", GetSourceInfo());
+                        throw new KdlParseException($"Invalid escape sequence '\\{char.ConvertFromUtf32(ucc)}'.", GetSourceInfo());
                 }
 
                 inEscapeSeq = false;
@@ -662,7 +662,7 @@ public class KdlReader(string filePath, byte[] data, IKdlReadHandler handler, Kd
             _offset += len;
         }
 
-        throw new KdlException("Unexpected end of file.", GetSourceInfo());
+        throw new KdlParseException("Unexpected end of file.", GetSourceInfo());
     }
 
     protected string ConsumeIdentifierString()
@@ -807,7 +807,7 @@ public class KdlReader(string filePath, byte[] data, IKdlReadHandler handler, Kd
                 }
                 else
                 {
-                    throw new KdlException($"Invalid token. Expected node start but found '{char.ConvertFromUtf32(ucc)}'.", GetSourceInfo());
+                    throw new KdlParseException($"Invalid token. Expected node start but found '{char.ConvertFromUtf32(ucc)}'.", GetSourceInfo());
                 }
                 break;
             }
@@ -918,7 +918,7 @@ public class KdlReader(string filePath, byte[] data, IKdlReadHandler handler, Kd
             }
             default:
             {
-                throw new KdlException($"Invalid token. Expected '-', '/', or '*' but found '{char.ConvertFromUtf32(ucc)}'.", GetSourceInfo());
+                throw new KdlParseException($"Invalid token. Expected '-', '/', or '*' but found '{char.ConvertFromUtf32(ucc)}'.", GetSourceInfo());
             }
         }
     }
@@ -1259,7 +1259,7 @@ public class KdlReader(string filePath, byte[] data, IKdlReadHandler handler, Kd
             {
                 if (sign == -1)
                 {
-                    throw new KdlException("Invalid number. Negative numbers must fit within a 64-bit signed integer.", GetSourceInfo());
+                    throw new KdlParseException("Invalid number. Negative numbers must fit within a 64-bit signed integer.", GetSourceInfo());
                 }
 
                 KdlNumber<ulong> value = KdlUtils.ParseUInt64(GetBufferedString(), radix, type);
@@ -1535,7 +1535,7 @@ public class KdlReader(string filePath, byte[] data, IKdlReadHandler handler, Kd
                     }
                 }
 
-                throw new KdlException($"Invalid token. Expected 'true', 'false', 'inf', '-inf', 'nan', or 'null' but found '{char.ConvertFromUtf32(ucc)}'.", GetSourceInfo());
+                throw new KdlParseException($"Invalid token. Expected 'true', 'false', 'inf', '-inf', 'nan', or 'null' but found '{char.ConvertFromUtf32(ucc)}'.", GetSourceInfo());
             }
             // any digit means this is a number
             case '0':

@@ -1,9 +1,12 @@
 #!/usr/bin/env bash
 # Copyright Chad Engler
 
+# Enable recursive globs, requires bash 4+
+shopt -s globstar
+
 # Resolve the project path
 if [[ $# -eq 0 ]]; then
-    PROJECT_PATH=$(realpath "he_project.toml")
+    PROJECT_PATH=$(realpath "he_project.kdl")
 else
     PROJECT_PATH=$(realpath $1)
     shift
@@ -21,16 +24,16 @@ pushd "$SCRIPT_DIR" > /dev/null
 PROJECT_DIR=$(dirname $PROJECT_PATH)
 BUILD_DIR="$PROJECT_DIR/.build"
 
-HEMAKE_BUILD_CFG="Release"
-HEMAKE_BUILD_DIR="$BUILD_DIR/hemake"
-HEMAKE_BUILD_ASSEMBLY="$HEMAKE_BUILD_DIR/bin/$HEMAKE_BUILD_CFG/net8.0/Harvest.Make.App.dll"
-
-HEMAKE_SRC_DIR="$SCRIPT_DIR/plugins/hemake"
-HEMAKE_SRC_PROJ="$HEMAKE_SRC_DIR/Harvest.Make.App/Harvest.Make.App.csproj"
-
 DOTNET_CHANNEL="9.0"
 DOTNET_DIR="$BUILD_DIR/dotnet"
 DOTNET_EXE="$DOTNET_DIR/dotnet"
+
+HEMAKE_BUILD_CFG="Release"
+HEMAKE_BUILD_DIR="$BUILD_DIR/hemake"
+HEMAKE_BUILD_ASSEMBLY="$HEMAKE_BUILD_DIR/bin/$HEMAKE_BUILD_CFG/net$DOTNET_CHANNEL/Harvest.Make.App.dll"
+
+HEMAKE_SRC_DIR="$SCRIPT_DIR/plugins/hemake"
+HEMAKE_SRC_PROJ="$HEMAKE_SRC_DIR/Harvest.Make.App/Harvest.Make.App.csproj"
 
 # Ensure the build directory exists
 mkdir -p "$BUILD_DIR"
@@ -88,7 +91,7 @@ elif [[ $HEMAKE_SRC_PROJ -nt $HEMAKE_BUILD_ASSEMBLY ]]; then
     NEEDS_REBUILD=1
     echo "Building hemake (project file updated)..."
 else
-    for f in "$HE_SRC_DIR/**.cs"; do
+    for f in $HEMAKE_SRC_DIR/**/*.cs; do
         if [[ $f -nt $HEMAKE_BUILD_ASSEMBLY ]]; then
             NEEDS_REBUILD=1
             echo "Building hemake (source files updated)..."

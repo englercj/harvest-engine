@@ -180,12 +180,12 @@ internal class VcxprojGenerator(IProjectService projectService, ProjectGenerator
             {
                 writer.WriteElementString("Keyword", "Win32Proj");
             }
-            writer.WriteElementString("RootNamespace", module.Name);
+            writer.WriteElementString("RootNamespace", module.ModuleName);
         }
 
 
         writer.WriteElementString("ProjectGuid", ModuleGroupTree.GetModuleGuid(module));
-        writer.WriteElementString("ProjectName", module.Name);
+        writer.WriteElementString("ProjectName", module.ModuleName);
 
         switch (toolsetNode.Arch)
         {
@@ -920,7 +920,7 @@ internal class VcxprojGenerator(IProjectService projectService, ProjectGenerator
                     if (module.Kind == EModuleKind.LibShared)
                     {
                         string targetDir = GetPath(buildOutput.LibDir);
-                        string importLib = Path.Join(targetDir, module.Name + ".lib");
+                        string importLib = Path.Join(targetDir, module.ModuleName + ".lib");
                         writer.WriteElementString("ImportLibrary", importLib);
                     }
 
@@ -1062,10 +1062,10 @@ internal class VcxprojGenerator(IProjectService projectService, ProjectGenerator
                 }
 
                 ModuleNode depModule = _projectService.TryGetModuleByName(depEntry.DependencyName)
-                    ?? throw new InvalidOperationException($"No module found with name '{depEntry.DependencyName}', but module '{module.Name}' depends on it.");
+                    ?? throw new InvalidOperationException($"No module found with name '{depEntry.DependencyName}', but module '{module.ModuleName}' depends on it.");
 
                 writer.WriteStartElement("ProjectReference");
-                writer.WriteAttributeString("Include", $"{module.Name}{ProjectExtension}");
+                writer.WriteAttributeString("Include", $"{module.ModuleName}{ProjectExtension}");
 
                 writer.WriteElementString("Project", ModuleGroupTree.GetModuleGuid(depModule));
 

@@ -68,14 +68,14 @@ public class CommandNode(KdlNode node, INode? scope) : NodeBase<CommandNode>(nod
 
         if (Node.Arguments.Count == 0)
         {
-            throw new NodeValidationException(this, $"'{NodeName}' nodes must have at least one string argument.");
+            throw new NodeValidationException(this, $"'{Node.Name}' nodes must have at least one string argument.");
         }
 
         for (int i = 0; i < Node.Arguments.Count; ++i)
         {
             if (Node.Arguments[i] is not KdlString)
             {
-                throw new NodeValidationException(this, $"Arguments of '{Name}' nodes must be strings.");
+                throw new NodeValidationException(this, $"Arguments of '{Node.Name}' nodes must be strings.");
             }
         }
     }

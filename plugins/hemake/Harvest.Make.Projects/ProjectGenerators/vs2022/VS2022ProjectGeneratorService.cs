@@ -81,7 +81,7 @@ public class VS2022ProjectGeneratorService(IProjectService projectService) : IPr
         ModuleGroupTree.Entry? startupEntry = null;
         _groupTree.Traverse((entry) =>
         {
-            if (entry.Module is not null && entry.Module.Name == projectNode.StartupModule)
+            if (entry.Module is not null && entry.Module.ModuleName == projectNode.StartupModule)
             {
                 startupEntry = entry;
             }

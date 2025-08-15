@@ -8,10 +8,10 @@ plugin nvidia.slang version="0.28.2" license="MIT" {
 
     install {
         when system=linux {
-            archive "https://github.com/shader-slang/slang/releases/download/v${plugin.version}/slang-${plugin.version}-linux-x86_64.zip"
+            fetch archive url="https://github.com/shader-slang/slang/releases/download/v${plugin.version}/slang-${plugin.version}-linux-x86_64.zip"
         }
         when system=windows {
-            archive "https://github.com/shader-slang/slang/releases/download/v${plugin.version}/slang-${plugin.version}-win64.zip"
+            fetch archive url="https://github.com/shader-slang/slang/releases/download/v${plugin.version}/slang-${plugin.version}-win64.zip"
         }
     }
 

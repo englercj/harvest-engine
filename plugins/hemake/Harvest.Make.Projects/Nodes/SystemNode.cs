@@ -4,25 +4,28 @@ using Harvest.Kdl;
 
 namespace Harvest.Make.Projects.Nodes;
 
-public class SystemNode(KdlNode node, INode? scope) : NodeBase<SystemNode>(node, scope)
+public class SystemNodeTraits : NodeBaseTraits
 {
-    public static string NodeName => "system";
+    public override string Name => "system";
 
-    public static new IReadOnlyList<string> NodeValidScopes =>
+    public override IReadOnlyList<string> ValidScopes =>
     [
-        ProjectNode.NodeName,
+        ProjectNode.NodeTraits.Name,
     ];
 
-    public static new IReadOnlyList<NodeValueDef> NodeArgumentDefs =>
+    public override IReadOnlyList<NodeValueDef> ArgumentDefs =>
     [
         NodeValueDef_Enum<EPlatformSystem>.Required(EPlatformSystem.Windows),
     ];
 
-    public static new IReadOnlyDictionary<string, NodeValueDef> NodePropertyDefs { get; } = new SortedDictionary<string, NodeValueDef>()
+    public override IReadOnlyDictionary<string, NodeValueDef> PropertyDefs { get; } = new SortedDictionary<string, NodeValueDef>()
     {
         { "version", NodeValueDef_String.Optional() }
     };
+}
 
+public class SystemNode(KdlNode node, INode? scope) : NodeBase<SystemNodeTraits>(node, scope)
+{
     public EPlatformSystem System => GetEnumValue<EPlatformSystem>(0);
     public string Version => GetResolvedVersion();
 
@@ -34,7 +37,7 @@ public class SystemNode(KdlNode node, INode? scope) : NodeBase<SystemNode>(node,
         switch (System)
         {
             case EPlatformSystem.DotNet:
-                return version == Latest ? "net8.0" : version;
+                return version == Latest ? "net9.0" : version;
             case EPlatformSystem.Linux:
                 return version == Latest ? "" : version;
             case EPlatformSystem.WASM:

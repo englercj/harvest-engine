@@ -1,9 +1,7 @@
 // Copyright Chad Engler
 
-using Harvest.Kdl.Exceptions;
 using Harvest.Kdl.Types;
 using System.Globalization;
-using static System.Formats.Asn1.AsnWriter;
 
 namespace Harvest.Kdl;
 
@@ -14,16 +12,6 @@ internal static class KdlUtils
     public static readonly int MinUnicode = 0x20;
     public static readonly int MaxUnicode = 0x10FFFF;
     public static readonly CultureInfo Culture = CultureInfo.GetCultureInfo("en-US");
-
-    public static KdlValue ParseBool(string input, string? type)
-    {
-        return input switch
-        {
-            "#true" => new KdlBool(true, type),
-            "#false" => new KdlBool(false, type),
-            _ => throw new KdlParseException($"A boolean literal value must be `#true` or `#false`", null),
-        };
-    }
 
     public static KdlNumber<float> ParseFloat32(string input, float sign, string? type)
     {

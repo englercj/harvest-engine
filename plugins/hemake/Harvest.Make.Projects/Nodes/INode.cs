@@ -1,8 +1,6 @@
 // Copyright Chad Engler
 
 using Harvest.Kdl;
-using System.Reflection;
-using System.Xml.Linq;
 
 namespace Harvest.Make.Projects.Nodes;
 
@@ -24,26 +22,27 @@ public enum ENodeDependencyInheritance
     All = Content | Include | Link | Order,
 }
 
-public interface INode
+public interface INodeTraits
 {
-    public static virtual string NodeName => throw new NotImplementedException();
-    public static virtual IReadOnlyList<string> NodeValidScopes => throw new NotImplementedException();
-    public static virtual IReadOnlyList<NodeValueDef> NodeArgumentDefs => throw new NotImplementedException();
-    public static virtual IReadOnlyDictionary<string, NodeValueDef> NodePropertyDefs => throw new NotImplementedException();
-    public static virtual ENodeDependencyInheritance NodeDependencyInheritance => throw new NotImplementedException();
-    public static virtual bool NodeCanBeExtended => throw new NotImplementedException();
-
+    public string Name { get; }
     public IReadOnlyList<string> ValidScopes { get; }
     public IReadOnlyList<NodeValueDef> ArgumentDefs { get; }
     public IReadOnlyDictionary<string, NodeValueDef> PropertyDefs { get; }
     public ENodeDependencyInheritance DependencyInheritance { get; }
     public bool CanBeExtended { get; }
+    public Type? ChildNodeType { get; }
+}
+
+public interface INode
+{
+    public static virtual INodeTraits NodeTraits => throw new NotImplementedException();
+
+    public INodeTraits Traits { get; }
 
     public KdlNode Node { get; }
     public INode? Scope { get; }
 
     public List<INode> Children { get; }
-    public Type? ChildNodeType { get; }
 
     public INode Clone();
 

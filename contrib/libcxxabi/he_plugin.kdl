@@ -7,7 +7,7 @@ plugin llvm.libcxxabi version="18.1.2" license="Apache-2.0 WITH LLVM-exception" 
 
     install {
         when system=wasm {
-            archive "https://github.com/llvm/llvm-project/releases/download/llvmorg-${plugin.version}/libcxxabi-${plugin.version}.src.tar.xz" base="libcxxabi-${plugin.version}.src"
+            fetch archive url="https://github.com/llvm/llvm-project/releases/download/llvmorg-${plugin.version}/libcxxabi-${plugin.version}.src.tar.xz" base_dir="libcxxabi-${plugin.version}.src"
         }
     }
 

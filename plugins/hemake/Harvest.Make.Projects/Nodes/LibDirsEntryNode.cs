@@ -4,18 +4,21 @@ using Harvest.Kdl;
 
 namespace Harvest.Make.Projects.Nodes;
 
-public class LibDirsEntryNode(KdlNode node, INode? scope) : NodeBase<LibDirsEntryNode>(node, scope)
+public class LibDirsEntryNodeTraits : NodeSetEntryBaseTraits<LibDirsNode>
 {
-    public static new IReadOnlyList<string> NodeValidScopes =>
+    public override IReadOnlyList<string> ValidScopes =>
     [
-        LibDirsNode.NodeName,
+        LibDirsNode.NodeTraits.Name,
     ];
 
-    public static new IReadOnlyDictionary<string, NodeValueDef> NodePropertyDefs { get; } = new SortedDictionary<string, NodeValueDef>()
+    public override IReadOnlyDictionary<string, NodeValueDef> PropertyDefs { get; } = new SortedDictionary<string, NodeValueDef>()
     {
         { "system", NodeValueDef_Bool.Optional(false) },
     };
+}
 
+public class LibDirsEntryNode(KdlNode node, INode? scope) : NodeSetEntryBase<LibDirsEntryNodeTraits, LibDirsNode>(node, scope)
+{
     public string Path => ResolvePath(Node.Name);
 
     public bool IsSystem

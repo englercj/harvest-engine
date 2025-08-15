@@ -4,24 +4,27 @@ using Harvest.Kdl;
 
 namespace Harvest.Make.Projects.Nodes;
 
-public class IncludeDirsNode(KdlNode node, INode? scope) : NodeSetBase<IncludeDirsNode, IncludeDirsEntryNode>(node, scope)
+public class IncludeDirsNodeTraits : NodeSetBaseTraits<IncludeDirsEntryNode>
 {
-    public static string NodeName => "include_dirs";
+    public override string Name => "include_dirs";
 
-    public static new IReadOnlyList<string> NodeValidScopes =>
+    public override IReadOnlyList<string> ValidScopes =>
     [
-        ModuleNode.NodeName,
-        ProjectNode.NodeName,
-        PublicNode.NodeName,
+        ModuleNode.NodeTraits.Name,
+        ProjectNode.NodeTraits.Name,
+        PublicNode.NodeTraits.Name,
     ];
 
-    public static new IReadOnlyDictionary<string, NodeValueDef> NodePropertyDefs { get; } = new SortedDictionary<string, NodeValueDef>()
+    public override IReadOnlyDictionary<string, NodeValueDef> PropertyDefs { get; } = new SortedDictionary<string, NodeValueDef>()
     {
         { "external", NodeValueDef_Bool.Optional(false) },
     };
 
-    public static new ENodeDependencyInheritance DependencyInheritance => ENodeDependencyInheritance.Include;
+    public override ENodeDependencyInheritance DependencyInheritance => ENodeDependencyInheritance.Include;
+}
 
+public class IncludeDirsNode(KdlNode node, INode? scope) : NodeSetBase<IncludeDirsNodeTraits, IncludeDirsEntryNode>(node, scope)
+{
     public bool IsExternal => GetBoolValue("external");
 
     protected override string GetSetEntryKey(ProjectContext context, IncludeDirsEntryNode entry)

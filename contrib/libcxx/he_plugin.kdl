@@ -7,8 +7,7 @@ plugin llvm.libcxx version="18.1.2" license="Apache-2.0 WITH LLVM-exception" abi
 
     install {
         when system=wasm {
-            exec "libcxx.lua"
-            archive "https://github.com/llvm/llvm-project/releases/download/llvmorg-${plugin.version}/libcxx-${plugin.version}.src.tar.xz" base="libcxx-${plugin.version}.src"
+            fetch archive url="https://github.com/llvm/llvm-project/releases/download/llvmorg-${plugin.version}/libcxx-${plugin.version}.src.tar.xz" base_dir="libcxx-${plugin.version}.src"
         }
     }
 

@@ -10,10 +10,10 @@ plugin gohugoio.hugo version="0.104.2" license="Apache-2.0" {
 
     install {
         when host=linux {
-            archive "https://github.com/gohugoio/hugo/releases/download/v${plugin.version}/hugo_extended_${plugin.version}_linux-amd64.tar.gz"
+            fetch archive url="https://github.com/gohugoio/hugo/releases/download/v${plugin.version}/hugo_extended_${plugin.version}_linux-amd64.tar.gz"
         }
         when host=windows {
-            archive "https://github.com/gohugoio/hugo/releases/download/v${plugin.version}/hugo_extended_${plugin.version}_windows-amd64.zip"
+            fetch archive url="https://github.com/gohugoio/hugo/releases/download/v${plugin.version}/hugo_extended_${plugin.version}_windows-amd64.zip"
         }
     }
 }

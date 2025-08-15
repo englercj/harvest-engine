@@ -7,7 +7,7 @@ plugin sqlite3.sqlite3 version="3.42.0" license="blessing" {
     authors { "Dwayne Hipp" }
 
     install {
-        archive "https://www.sqlite.org/2023/sqlite-amalgamation-3420000.zip" base="sqlite-amalgamation-3420000"
+        fetch archive url="https://www.sqlite.org/2023/sqlite-amalgamation-3420000.zip" base_dir="sqlite-amalgamation-3420000"
     }
 
     module sqlite3 kind=lib_static group="engine/contrib" {

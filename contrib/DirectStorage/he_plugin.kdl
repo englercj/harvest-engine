@@ -7,7 +7,7 @@ plugin microsoft.DirectStorage version="1.2.1" license="SEE LICENSE IN LICENSE.t
 
     install {
         when system=windows {
-            nuget Microsoft.Direct3D.DirectStorage version="${plugin.version}"
+            fetch nuget package=Microsoft.Direct3D.DirectStorage version="${plugin.version}"
         }
     }
 

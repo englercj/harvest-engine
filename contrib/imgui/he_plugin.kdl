@@ -7,7 +7,7 @@ plugin ocornut.imgui version="1.89.6" license="MIT" {
 
     install {
         // latest docking branch (as of v1.89.6)
-        github user=ocornut repo=imgui ref="823a1385a269d923d35b82b2f470f3ae1fa8b5a3"
+        fetch github user=ocornut repo=imgui ref="823a1385a269d923d35b82b2f470f3ae1fa8b5a3"
     }
 
     module imgui kind=lib_static group="engine/contrib" {

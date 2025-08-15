@@ -21,21 +21,21 @@ public enum EFetchArchiveFormat
     [KdlName("tar.gz")] TarGz,
 }
 
-public class FetchNode(KdlNode node, INode? scope) : NodeBase<FetchNode>(node, scope), INode
+public class FetchNodeTraits : NodeBaseTraits
 {
-    public static string NodeName => "fetch";
+    public override string Name => "fetch";
 
-    public static new IReadOnlyList<string> NodeValidScopes =>
+    public override IReadOnlyList<string> ValidScopes =>
     [
-        InstallNode.NodeName,
+        InstallNode.NodeTraits.Name,
     ];
 
-    public static new IReadOnlyList<NodeValueDef> NodeArgumentDefs =>
+    public override IReadOnlyList<NodeValueDef> ArgumentDefs =>
     [
         NodeValueDef_Enum<EFetchMethod>.Required(EFetchMethod.Archive),
     ];
 
-    public static new IReadOnlyDictionary<string, NodeValueDef> NodePropertyDefs { get; } = new SortedDictionary<string, NodeValueDef>()
+    public override IReadOnlyDictionary<string, NodeValueDef> PropertyDefs { get; } = new SortedDictionary<string, NodeValueDef>()
     {
         // shared by all methods
         { "base_dir", NodeValueDef_Path.Optional() },
@@ -54,7 +54,10 @@ public class FetchNode(KdlNode node, INode? scope) : NodeBase<FetchNode>(node, s
         { "package", NodeValueDef_String.Optional() },
         { "version", NodeValueDef_String.Optional() },
     };
+}
 
+public class FetchNode(KdlNode node, INode? scope) : NodeBase<FetchNodeTraits>(node, scope)
+{
     public EFetchMethod Method => GetEnumValue<EFetchMethod>(0);
 
     public int InstallDirPriority => GetNumberValue<int>("install_dir_priority");
@@ -163,7 +166,7 @@ public class FetchNode(KdlNode node, INode? scope) : NodeBase<FetchNode>(node, s
         return EFetchArchiveFormat.Zip;
     }
 
-    public string GetArchiveBaseDir()
+    private string GetArchiveBaseDir()
     {
         if (TryGetStringValue("base_dir") is string specifiedBaseDir)
         {

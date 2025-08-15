@@ -6,7 +6,7 @@ plugin microsoft.mimalloc version="2.1.4" license="MIT" {
     authors { "Microsoft" }
 
     install {
-        github user=microsoft repo=mimalloc ref="v${plugin.version}"
+        fetch github user=microsoft repo=mimalloc ref="v${plugin.version}"
     }
 
     module mimalloc kind=lib_static group="engine/contrib" {

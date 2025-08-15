@@ -4,26 +4,29 @@ using Harvest.Kdl;
 
 namespace Harvest.Make.Projects.Nodes;
 
-public class PluginNode(KdlNode node, INode? scope) : NodeBase<PluginNode>(node, scope)
+public class PluginNodeTraits : NodeBaseTraits
 {
-    public static string NodeName => "plugin";
+    public override string Name => "plugin";
 
-    public static new IReadOnlyList<string> NodeValidScopes =>
+    public override IReadOnlyList<string> ValidScopes =>
     [
-        ProjectNode.NodeName,
+        ProjectNode.NodeTraits.Name,
     ];
 
-    public static new IReadOnlyList<NodeValueDef> NodeArgumentDefs =>
+    public override IReadOnlyList<NodeValueDef> ArgumentDefs =>
     [
         NodeValueDef_String.Required(),
     ];
 
-    public static new IReadOnlyDictionary<string, NodeValueDef> NodePropertyDefs { get; } = new SortedDictionary<string, NodeValueDef>()
+    public override IReadOnlyDictionary<string, NodeValueDef> PropertyDefs { get; } = new SortedDictionary<string, NodeValueDef>()
     {
         { "version", NodeValueDef_String.Required() },
         { "license", NodeValueDef_String.Optional() },
     };
+}
 
+public class PluginNode(KdlNode node, INode? scope) : NodeBase<PluginNodeTraits>(node, scope)
+{
     public string PluginName => GetStringValue(0);
     public string Version => GetStringValue("version");
     public string? License => TryGetStringValue("license");

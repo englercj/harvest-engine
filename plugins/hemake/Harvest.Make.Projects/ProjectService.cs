@@ -37,25 +37,27 @@ public class ProjectService : IProjectService
 
     public void RegisterNode<T>(bool overwrite = false) where T : class, INode
     {
+        string name = T.NodeTraits.Name;
         if (overwrite)
         {
-            _nodeTypes[T.NodeName] = typeof(T);
+            _nodeTypes[name] = typeof(T);
         }
-        else if (!_nodeTypes.TryAdd(T.NodeName, typeof(T)))
+        else if (!_nodeTypes.TryAdd(name, typeof(T)))
         {
-            throw new Exception($"A node type for '{T.NodeName}' is already registered. Pass true for the '{nameof(overwrite)}' parameter if you meant to replace it.");
+            throw new Exception($"A node type for '{name}' is already registered. Pass true for the '{nameof(overwrite)}' parameter if you meant to replace it.");
         }
     }
 
     public void RegisterNodeGenerator<T>(bool overwrite = false) where T : class, INodeGenerator
     {
+        string name = T.GeneratorTraits.Name;
         if (overwrite)
         {
-            _nodeGenerators[T.GeneratorName] = typeof(T);
+            _nodeGenerators[name] = typeof(T);
         }
-        else if (!_nodeGenerators.TryAdd(T.GeneratorName, typeof(T)))
+        else if (!_nodeGenerators.TryAdd(name, typeof(T)))
         {
-            throw new Exception($"A node generator for '{T.GeneratorName}' is already registered. Pass true for the '{nameof(overwrite)}' parameter if you meant to replace it.");
+            throw new Exception($"A node generator for '{name}' is already registered. Pass true for the '{nameof(overwrite)}' parameter if you meant to replace it.");
         }
     }
 
@@ -94,9 +96,9 @@ public class ProjectService : IProjectService
 
         _projectDocument = LoadFile(projectPath);
 
-        if (_projectDocument.Nodes.Count != 1 || _projectDocument.Nodes[0].Name != ProjectNode.NodeName)
+        if (_projectDocument.Nodes.Count != 1 || _projectDocument.Nodes[0].Name != ProjectNode.NodeTraits.Name)
         {
-            throw new Exception($"Project invalid. Expected a single root '{ProjectNode.NodeName}' node in file: {projectPath}");
+            throw new Exception($"Project invalid. Expected a single root '{ProjectNode.NodeTraits.Name}' node in file: {projectPath}");
         }
 
         ResolveImports(_projectDocument);
@@ -112,7 +114,7 @@ public class ProjectService : IProjectService
         // Parse the KDL tree into project nodes
         if (ParseNode(_projectDocument.Nodes[0], null) is not ProjectNode projectNode)
         {
-            throw new Exception($"Project invalid. Expected a root '{ProjectNode.NodeName}' node in file: {ProjectPath}");
+            throw new Exception($"Project invalid. Expected a root '{ProjectNode.NodeTraits.Name}' node in file: {ProjectPath}");
         }
         _projectNode = projectNode;
 
@@ -155,10 +157,10 @@ public class ProjectService : IProjectService
     {
         INode? node = null;
 
-        if (scope is not null && scope.ChildNodeType is not null)
+        if (scope is not null && scope.Traits.ChildNodeType is not null)
         {
-            node = Activator.CreateInstance(scope.ChildNodeType, rawNode, scope) as INode
-                ?? throw new Exception($"Activator.CreateInstance failed to allocate node instance for type '{scope.ChildNodeType}'.");
+            node = Activator.CreateInstance(scope.Traits.ChildNodeType, rawNode, scope) as INode
+                ?? throw new Exception($"Activator.CreateInstance failed to allocate node instance for type '{scope.Traits.ChildNodeType}'.");
         }
         else if (rawNode.Name.StartsWith(':') || rawNode.Name.StartsWith('+'))
         {
@@ -202,7 +204,7 @@ public class ProjectService : IProjectService
             Module = module,
             Configuration = configuration,
             Platform = platform,
-            Host = PlatformNode.GetHostPlatform(),
+            Host = PlatformNodeTraits.GetHostPlatform(),
         };
 
         // Search for the plugin that owns the module, if one was specified.
@@ -249,7 +251,7 @@ public class ProjectService : IProjectService
             TagsNode tagsNode = GetMergedNode<TagsNode>(context, module);
             foreach (TagsEntryNode entry in tagsNode.Entries)
             {
-                tagsChanged |= context.Tags.Add(entry.Tag);
+                tagsChanged |= context.Tags.Add(entry.TagName);
             }
         }
 
@@ -370,7 +372,7 @@ public class ProjectService : IProjectService
 
         foreach (T node in EnumerateNodes(context, scope, filter, searchDependencies).Reverse())
         {
-            T resolved = Activator.CreateInstance(typeof(T), new KdlNode(T.NodeName), scope) as T
+            T resolved = Activator.CreateInstance(typeof(T), new KdlNode(T.NodeTraits.Name), scope) as T
                 ?? throw new Exception($"Activator.CreateInstance failed to allocate node instance for type '{typeof(T)}'.");
             resolved.MergeAndResolve(context, node);
             resolvedNodes.Add(resolved);
@@ -386,7 +388,7 @@ public class ProjectService : IProjectService
 
     public T GetMergedNode<T>(ProjectContext context, INode? scope, Func<T, bool> filter, bool searchDependencies = true) where T : class, INode
     {
-        T resolved = Activator.CreateInstance(typeof(T), new KdlNode(T.NodeName), scope) as T
+        T resolved = Activator.CreateInstance(typeof(T), new KdlNode(T.NodeTraits.Name), scope) as T
             ?? throw new Exception($"Activator.CreateInstance failed to allocate node instance for type '{typeof(T)}'.");
 
         foreach (T node in EnumerateNodes(context, scope, filter, searchDependencies).Reverse())
@@ -460,15 +462,15 @@ public class ProjectService : IProjectService
             do
             {
                 scope = scope.Scope;
-            } while (scope is not null && !T.NodeValidScopes.Contains(scope.Node.Name));
+            } while (scope is not null && !T.NodeTraits.ValidScopes.Contains(scope.Node.Name));
         }
 
         // Optionally search depdenencies for the requested nodes, but only if the node is
         // allowed to be inherited through dependencies.
-        ENodeDependencyInheritance inheritance = T.NodeDependencyInheritance;
+        ENodeDependencyInheritance inheritance = T.NodeTraits.DependencyInheritance;
         if (searchDependencies
             && inheritance != ENodeDependencyInheritance.None
-            && T.NodeValidScopes.Contains(PublicNode.NodeName)
+            && T.NodeTraits.ValidScopes.Contains(PublicNode.NodeTraits.Name)
             && originalScope is ModuleNode module)
         {
             List<ModuleDependency> dependencies = GetModuleDependencies(context, module, inheritance);
@@ -539,7 +541,7 @@ public class ProjectService : IProjectService
 
         string nodeId = s.Value;
         string nodeName = extensionNode.Name[1..];
-        if (nodeName == PluginNode.NodeName)
+        if (nodeName == PluginNode.NodeTraits.Name)
         {
             if (_plugins.TryGetValue(nodeId, out PluginNode? plugin))
             {
@@ -552,7 +554,7 @@ public class ProjectService : IProjectService
                 throw new NodeParseException(extensionNode, $"Failed to resolve required plugin '{nodeId}'.");
             }
         }
-        else if (nodeName == ModuleNode.NodeName)
+        else if (nodeName == ModuleNode.NodeTraits.Name)
         {
             if (_modules.TryGetValue(nodeId, out ModuleNode? module))
             {
@@ -567,7 +569,7 @@ public class ProjectService : IProjectService
         }
         else
         {
-            throw new NodeParseException(extensionNode, $"Unknown extension node type '{nodeName}'. Expected '{PluginNode.NodeName}' or '{ModuleNode.NodeName}'.");
+            throw new NodeParseException(extensionNode, $"Unknown extension node type '{nodeName}'. Expected '{PluginNode.NodeTraits.Name}' or '{ModuleNode.NodeTraits.Name}'.");
         }
     }
 
@@ -609,9 +611,9 @@ public class ProjectService : IProjectService
     {
         foreach (KdlNode importNode in importNodes)
         {
-            if (importNode.Parent is null || !ImportNode.NodeValidScopes.Contains(importNode.Parent.Name))
+            if (importNode.Parent is null || !ImportNode.NodeTraits.ValidScopes.Contains(importNode.Parent.Name))
             {
-                throw new NodeParseException(importNode, $"Invalid parent scope. Expected one of: {string.Join(", ", ImportNode.NodeValidScopes)}.");
+                throw new NodeParseException(importNode, $"Invalid parent scope. Expected one of: {string.Join(", ", ImportNode.NodeTraits.ValidScopes)}.");
             }
 
             if (importNode.Arguments.Count != 1 || importNode.Arguments[0] is not KdlString kdlImportPath)

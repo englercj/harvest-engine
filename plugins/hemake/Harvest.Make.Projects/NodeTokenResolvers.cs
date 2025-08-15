@@ -10,7 +10,7 @@ public static class NodeTokenResolvers
 {
     public static bool ConfiurationTokenResolver(ProjectContext projectContext, string contextName, string propertyName, [MaybeNullWhen(false)] out string value)
     {
-        Debug.Assert(contextName == ConfigurationNode.NodeName);
+        Debug.Assert(contextName == ConfigurationNode.NodeTraits.Name);
 
         switch (propertyName)
         {
@@ -27,7 +27,7 @@ public static class NodeTokenResolvers
 
     public static bool PlatformTokenResolver(ProjectContext projectContext, string contextName, string propertyName, [MaybeNullWhen(false)] out string value)
     {
-        Debug.Assert(contextName == PlatformNode.NodeName);
+        Debug.Assert(contextName == PlatformNode.NodeTraits.Name);
 
         switch (propertyName)
         {
@@ -44,7 +44,7 @@ public static class NodeTokenResolvers
 
     public static bool ProjectTokenResolver(ProjectContext projectContext, string contextName, string propertyName, [MaybeNullWhen(false)] out string value)
     {
-        Debug.Assert(contextName == ProjectNode.NodeName);
+        Debug.Assert(contextName == ProjectNode.NodeTraits.Name);
 
         switch (propertyName)
         {
@@ -67,7 +67,7 @@ public static class NodeTokenResolvers
 
     public static bool PluginTokenResolver(ProjectContext projectContext, string contextName, string propertyName, [MaybeNullWhen(false)] out string value)
     {
-        Debug.Assert(contextName == PluginNode.NodeName);
+        Debug.Assert(contextName == PluginNode.NodeTraits.Name);
 
         if (projectContext.Plugin is null)
         {
@@ -100,7 +100,7 @@ public static class NodeTokenResolvers
 
     public static bool ModuleTokenResolver(ProjectContext projectContext, string contextName, string propertyName, [MaybeNullWhen(false)] out string value)
     {
-        Debug.Assert(contextName == ModuleNode.NodeName);
+        Debug.Assert(contextName == ModuleNode.NodeTraits.Name);
 
         if (projectContext.Module is null)
         {

@@ -23,21 +23,21 @@ public enum EModuleLanguage
     [KdlName("csharp")] CSharp,
 }
 
-public class ModuleNode(KdlNode node, INode? scope) : NodeBase<ModuleNode>(node, scope)
+public class ModuleNodeTraits : NodeBaseTraits
 {
-    public static string NodeName => "module";
+    public override string Name => "module";
 
-    public static new IReadOnlyList<string> NodeValidScopes =>
+    public override IReadOnlyList<string> ValidScopes =>
     [
-        PluginNode.NodeName,
+        PluginNode.NodeTraits.Name,
     ];
 
-    public static new IReadOnlyList<NodeValueDef> NodeArgumentDefs =>
+    public override IReadOnlyList<NodeValueDef> ArgumentDefs =>
     [
         NodeValueDef_String.Required(),
     ];
 
-    public static new IReadOnlyDictionary<string, NodeValueDef> NodePropertyDefs { get; } = new SortedDictionary<string, NodeValueDef>()
+    public override IReadOnlyDictionary<string, NodeValueDef> PropertyDefs { get; } = new SortedDictionary<string, NodeValueDef>()
     {
         { "kind", NodeValueDef_Enum<EModuleKind>.Required(EModuleKind.Custom) },
         { "group", NodeValueDef_String.Optional() },
@@ -47,8 +47,11 @@ public class ModuleNode(KdlNode node, INode? scope) : NodeBase<ModuleNode>(node,
         { "hemake_extension", NodeValueDef_Bool.Optional(false) },
     };
 
-    public static new bool NodeCanBeExtended => true;
+    public override bool CanBeExtended => true;
+}
 
+public class ModuleNode(KdlNode node, INode? scope) : NodeBase<ModuleNodeTraits>(node, scope)
+{
     public string ModuleName => GetStringValue(0);
     public EModuleKind Kind => GetEnumValue<EModuleKind>("kind");
     public string? Group => TryGetStringValue("group");
@@ -60,5 +63,9 @@ public class ModuleNode(KdlNode node, INode? scope) : NodeBase<ModuleNode>(node,
     public bool IsApp => Kind == EModuleKind.AppConsole || Kind == EModuleKind.AppWindowed;
     public bool IsBinary => IsApp || Kind == EModuleKind.LibShared;
 
-    // TODO: Validate that dependencies are actually reasonable. For example, linking an App doesn't make sense.
+    public override void Validate(INode? scope)
+    {
+        base.Validate(scope);
+        // TODO: Validate that dependencies are actually reasonable. For example, linking an App doesn't make sense.
+    }
 }

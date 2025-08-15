@@ -4,22 +4,22 @@ using Harvest.Kdl;
 
 namespace Harvest.Make.Projects.Nodes;
 
-public class BuildOutputNode(KdlNode node, INode? scope) : NodeBase<BuildOutputNode>(node, scope)
+public class BuildOutputNodeTraits : NodeBaseTraits
 {
-    public static string NodeName => "build_output";
+    public override string Name => "build_output";
 
-    public static new IReadOnlyList<string> NodeValidScopes =>
+    public override IReadOnlyList<string> ValidScopes =>
     [
-        ModuleNode.NodeName,
-        ProjectNode.NodeName,
+        ModuleNode.NodeTraits.Name,
+        ProjectNode.NodeTraits.Name,
     ];
 
-    public static new IReadOnlyList<NodeValueDef> NodeArgumentDefs =>
+    public override IReadOnlyList<NodeValueDef> ArgumentDefs =>
     [
         NodeValueDef_Path.Optional(".build"),
     ];
 
-    public static new IReadOnlyDictionary<string, NodeValueDef> NodePropertyDefs { get; } = new SortedDictionary<string, NodeValueDef>()
+    public override IReadOnlyDictionary<string, NodeValueDef> PropertyDefs { get; } = new SortedDictionary<string, NodeValueDef>()
     {
         { "bin_dir", NodeValueDef_Path.Optional("${platform.name:lower}-${configuration.name:lower}/bin") },
         { "gen_dir", NodeValueDef_Path.Optional("${platform.name:lower}-${configuration.name:lower}/generated/${module.name}") },
@@ -33,7 +33,10 @@ public class BuildOutputNode(KdlNode node, INode? scope) : NodeBase<BuildOutputN
         { "make_exe_manifest", NodeValueDef_Bool.Optional(true) },
         { "make_map_file", NodeValueDef_Bool.Optional(false) },
     };
+}
 
+public class BuildOutputNode(KdlNode node, INode? scope) : NodeBase<BuildOutputNodeTraits>(node, scope)
+{
     public string BasePath => GetPathValue(0);
 
     public string BinDir => GetPathValue("bin_dir");

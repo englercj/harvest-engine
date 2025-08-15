@@ -33,15 +33,15 @@ public enum EFileBuildRule
     [KdlName("custom")] Custom,
 }
 
-internal class ExtensionInfo
+public class FileEntryExtensionInfo
 {
-    public ExtensionInfo(EFileAction action)
+    public FileEntryExtensionInfo(EFileAction action)
     {
         Action = action;
         BuildRule = EFileBuildRule.Default;
     }
 
-    public ExtensionInfo(EFileBuildRule rule)
+    public FileEntryExtensionInfo(EFileBuildRule rule)
     {
         Action = EFileAction.Build;
         BuildRule = rule;
@@ -51,70 +51,73 @@ internal class ExtensionInfo
     public EFileBuildRule BuildRule { get; }
 }
 
-public class FilesEntryNode(KdlNode node, INode? scope) : NodeBase<FilesEntryNode>(node, scope)
+public class FileEntryNodeTraits : NodeSetEntryBaseTraits<FilesNode>
 {
-    private static readonly Dictionary<string, ExtensionInfo> s_fileExtensionInfos = new()
-    {
-        { ".appxmanifest", new ExtensionInfo(EFileAction.AppxManifest) },
-        { ".asm", new ExtensionInfo(EFileBuildRule.Asm) },
-        { ".s", new ExtensionInfo(EFileBuildRule.Asm) },
-        { ".S", new ExtensionInfo(EFileBuildRule.Asm) },
-        { ".c", new ExtensionInfo(EFileBuildRule.C) },
-        { ".cc", new ExtensionInfo(EFileBuildRule.Cpp) },
-        { ".cpp", new ExtensionInfo(EFileBuildRule.Cpp) },
-        { ".cppm", new ExtensionInfo(EFileBuildRule.Cpp) },
-        { ".cxx", new ExtensionInfo(EFileBuildRule.Cpp) },
-        { ".c++", new ExtensionInfo(EFileBuildRule.Cpp) },
-        { ".ixx", new ExtensionInfo(EFileBuildRule.Cpp) },
-        { ".cs", new ExtensionInfo(EFileBuildRule.CSharp) },
-        { ".m", new ExtensionInfo(EFileBuildRule.ObjC) },
-        { ".mm", new ExtensionInfo(EFileBuildRule.ObjCpp) },
-        { ".idl", new ExtensionInfo(EFileBuildRule.Midl) },
-        { ".a", new ExtensionInfo(EFileAction.Framework) },
-        { ".dylib", new ExtensionInfo(EFileAction.Framework) },
-        { ".framework", new ExtensionInfo(EFileAction.Framework) },
-        { ".gif", new ExtensionInfo(EFileAction.Image) },
-        { ".jpg", new ExtensionInfo(EFileAction.Image) },
-        { ".jpeg", new ExtensionInfo(EFileAction.Image) },
-        { ".png", new ExtensionInfo(EFileAction.Image) },
-        { ".bmp", new ExtensionInfo(EFileAction.Image) },
-        { ".dib", new ExtensionInfo(EFileAction.Image) },
-        { ".tif", new ExtensionInfo(EFileAction.Image) },
-        { ".wmf", new ExtensionInfo(EFileAction.Image) },
-        { ".ras", new ExtensionInfo(EFileAction.Image) },
-        { ".eps", new ExtensionInfo(EFileAction.Image) },
-        { ".pcx", new ExtensionInfo(EFileAction.Image) },
-        { ".pcd", new ExtensionInfo(EFileAction.Image) },
-        { ".tga", new ExtensionInfo(EFileAction.Image) },
-        { ".dds", new ExtensionInfo(EFileAction.Image) },
-        { ".h", new ExtensionInfo(EFileAction.Include) },
-        { ".hh", new ExtensionInfo(EFileAction.Include) },
-        { ".hpp", new ExtensionInfo(EFileAction.Include) },
-        { ".hxx", new ExtensionInfo(EFileAction.Include) },
-        { ".inl", new ExtensionInfo(EFileAction.Include) },
-        { ".manifest", new ExtensionInfo(EFileAction.Manifest) },
-        { ".natvis", new ExtensionInfo(EFileAction.Natvis) },
-        { ".rc", new ExtensionInfo(EFileAction.Resource) },
-        { ".metal", new ExtensionInfo(EFileAction.Resource) },
-        { ".strings", new ExtensionInfo(EFileAction.Resource) },
-        { ".nib", new ExtensionInfo(EFileAction.Resource) },
-        { ".xib", new ExtensionInfo(EFileAction.Resource) },
-        { ".storyboard", new ExtensionInfo(EFileAction.Resource) },
-        { ".icns", new ExtensionInfo(EFileAction.Resource) },
-        { ".xcprivacy", new ExtensionInfo(EFileAction.Resource) },
-    };
-
-    public static new IReadOnlyList<string> NodeValidScopes =>
-    [
-        FilesNode.NodeName,
-    ];
-
-    public static new IReadOnlyDictionary<string, NodeValueDef> NodePropertyDefs { get; } = new SortedDictionary<string, NodeValueDef>()
+    public override IReadOnlyDictionary<string, NodeValueDef> PropertyDefs { get; } = new SortedDictionary<string, NodeValueDef>()
     {
         { "action", NodeValueDef_Enum<EFileAction>.Optional(EFileAction.Default) },
         { "build_rule", NodeValueDef_String.Optional("default") }, // string to support custom build rule names
         { "build_exclude", NodeValueDef_Bool.Optional(false) },
     };
+}
+
+public class FilesEntryNode(KdlNode node, INode? scope) : NodeSetEntryBase<FileEntryNodeTraits, FilesNode>(node, scope)
+{
+    private static readonly Dictionary<string, FileEntryExtensionInfo> s_fileExtensionInfos = new()
+    {
+        { ".appxmanifest", new FileEntryExtensionInfo(EFileAction.AppxManifest) },
+        { ".asm", new FileEntryExtensionInfo(EFileBuildRule.Asm) },
+        { ".s", new FileEntryExtensionInfo(EFileBuildRule.Asm) },
+        { ".S", new FileEntryExtensionInfo(EFileBuildRule.Asm) },
+        { ".c", new FileEntryExtensionInfo(EFileBuildRule.C) },
+        { ".cc", new FileEntryExtensionInfo(EFileBuildRule.Cpp) },
+        { ".cpp", new FileEntryExtensionInfo(EFileBuildRule.Cpp) },
+        { ".cppm", new FileEntryExtensionInfo(EFileBuildRule.Cpp) },
+        { ".cxx", new FileEntryExtensionInfo(EFileBuildRule.Cpp) },
+        { ".c++", new FileEntryExtensionInfo(EFileBuildRule.Cpp) },
+        { ".ixx", new FileEntryExtensionInfo(EFileBuildRule.Cpp) },
+        { ".cs", new FileEntryExtensionInfo(EFileBuildRule.CSharp) },
+        { ".m", new FileEntryExtensionInfo(EFileBuildRule.ObjC) },
+        { ".mm", new FileEntryExtensionInfo(EFileBuildRule.ObjCpp) },
+        { ".idl", new FileEntryExtensionInfo(EFileBuildRule.Midl) },
+        { ".a", new FileEntryExtensionInfo(EFileAction.Framework) },
+        { ".dylib", new FileEntryExtensionInfo(EFileAction.Framework) },
+        { ".framework", new FileEntryExtensionInfo(EFileAction.Framework) },
+        { ".gif", new FileEntryExtensionInfo(EFileAction.Image) },
+        { ".jpg", new FileEntryExtensionInfo(EFileAction.Image) },
+        { ".jpeg", new FileEntryExtensionInfo(EFileAction.Image) },
+        { ".png", new FileEntryExtensionInfo(EFileAction.Image) },
+        { ".bmp", new FileEntryExtensionInfo(EFileAction.Image) },
+        { ".dib", new FileEntryExtensionInfo(EFileAction.Image) },
+        { ".tif", new FileEntryExtensionInfo(EFileAction.Image) },
+        { ".wmf", new FileEntryExtensionInfo(EFileAction.Image) },
+        { ".ras", new FileEntryExtensionInfo(EFileAction.Image) },
+        { ".eps", new FileEntryExtensionInfo(EFileAction.Image) },
+        { ".pcx", new FileEntryExtensionInfo(EFileAction.Image) },
+        { ".pcd", new FileEntryExtensionInfo(EFileAction.Image) },
+        { ".tga", new FileEntryExtensionInfo(EFileAction.Image) },
+        { ".dds", new FileEntryExtensionInfo(EFileAction.Image) },
+        { ".h", new FileEntryExtensionInfo(EFileAction.Include) },
+        { ".hh", new FileEntryExtensionInfo(EFileAction.Include) },
+        { ".hpp", new FileEntryExtensionInfo(EFileAction.Include) },
+        { ".hxx", new FileEntryExtensionInfo(EFileAction.Include) },
+        { ".inl", new FileEntryExtensionInfo(EFileAction.Include) },
+        { ".manifest", new FileEntryExtensionInfo(EFileAction.Manifest) },
+        { ".natvis", new FileEntryExtensionInfo(EFileAction.Natvis) },
+        { ".rc", new FileEntryExtensionInfo(EFileAction.Resource) },
+        { ".metal", new FileEntryExtensionInfo(EFileAction.Resource) },
+        { ".strings", new FileEntryExtensionInfo(EFileAction.Resource) },
+        { ".nib", new FileEntryExtensionInfo(EFileAction.Resource) },
+        { ".xib", new FileEntryExtensionInfo(EFileAction.Resource) },
+        { ".storyboard", new FileEntryExtensionInfo(EFileAction.Resource) },
+        { ".icns", new FileEntryExtensionInfo(EFileAction.Resource) },
+        { ".xcprivacy", new FileEntryExtensionInfo(EFileAction.Resource) },
+    };
+
+    public static void RegisterFileExtension(string extension, FileEntryExtensionInfo info)
+    {
+        s_fileExtensionInfos[extension] = info;
+    }
 
     public string FileGlob => Node.Name;
     public IEnumerable<string> FilePaths => ExpandPath(ResolvePath(FileGlob));
@@ -140,7 +143,7 @@ public class FilesEntryNode(KdlNode node, INode? scope) : NodeBase<FilesEntryNod
 
     public static EFileAction GetDefaultFileAction(string path)
     {
-        if (s_fileExtensionInfos.TryGetValue(Path.GetExtension(path), out ExtensionInfo? info))
+        if (s_fileExtensionInfos.TryGetValue(Path.GetExtension(path), out FileEntryExtensionInfo? info))
         {
             return info.Action;
         }
@@ -150,7 +153,7 @@ public class FilesEntryNode(KdlNode node, INode? scope) : NodeBase<FilesEntryNod
 
     public static EFileBuildRule GetDefaultFileBuildRule(string path)
     {
-        if (s_fileExtensionInfos.TryGetValue(Path.GetExtension(path), out ExtensionInfo? info))
+        if (s_fileExtensionInfos.TryGetValue(Path.GetExtension(path), out FileEntryExtensionInfo? info))
         {
             return info.BuildRule;
         }

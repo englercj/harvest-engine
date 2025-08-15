@@ -13,26 +13,30 @@ public enum EFloatingPointMode
     [KdlName("strict")] Strict,
 }
 
-public class FloatingPointNode(KdlNode node, INode? scope) : NodeBase<FloatingPointNode>(node, scope)
+public class FloatingPointNodeTraits : NodeBaseTraits
 {
-    public static string NodeName => "floating_point";
+    public override string Name => "floating_point";
 
-    public static new IReadOnlyList<string> NodeValidScopes =>
+    public override IReadOnlyList<string> ValidScopes =>
     [
-        ModuleNode.NodeName,
-        ProjectNode.NodeName,
+        ModuleNode.NodeTraits.Name,
+        ProjectNode.NodeTraits.Name,
     ];
 
-    public static new IReadOnlyList<NodeValueDef> NodeArgumentDefs =>
+    public override IReadOnlyList<NodeValueDef> ArgumentDefs =>
     [
         NodeValueDef_Enum<EFloatingPointMode>.Required(EFloatingPointMode.Default),
     ];
 
-    public static new IReadOnlyDictionary<string, NodeValueDef> NodePropertyDefs { get; } = new SortedDictionary<string, NodeValueDef>()
+    public override IReadOnlyDictionary<string, NodeValueDef> PropertyDefs { get; } = new SortedDictionary<string, NodeValueDef>()
     {
         { "exceptions", NodeValueDef_Bool.Optional(false) },
     };
 
+}
+
+public class FloatingPointNode(KdlNode node, INode? scope) : NodeBase<FloatingPointNodeTraits>(node, scope)
+{
     public EFloatingPointMode Mode => GetEnumValue<EFloatingPointMode>(0);
     public bool AllowExceptions => GetBoolValue("exceptions");
 }

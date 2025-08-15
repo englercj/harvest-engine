@@ -30,22 +30,22 @@ public enum EInliningLevel
     [KdlName("on")] On,
 }
 
-public class OptimizeNode(KdlNode node, INode? scope) : NodeBase<OptimizeNode>(node, scope)
+public class OptimizeNodeTraits : NodeBaseTraits
 {
-    public static string NodeName => "optimize";
+    public override string Name => "optimize";
 
-    public static new IReadOnlyList<string> NodeValidScopes =>
+    public override IReadOnlyList<string> ValidScopes =>
     [
-        ModuleNode.NodeName,
-        ProjectNode.NodeName,
+        ModuleNode.NodeTraits.Name,
+        ProjectNode.NodeTraits.Name,
     ];
 
-    public static new IReadOnlyList<NodeValueDef> NodeArgumentDefs =>
+    public override IReadOnlyList<NodeValueDef> ArgumentDefs =>
     [
         NodeValueDef_Enum<EOptimizationLevel>.Required(EOptimizationLevel.Default),
     ];
 
-    public static new IReadOnlyDictionary<string, NodeValueDef> NodePropertyDefs { get; } = new SortedDictionary<string, NodeValueDef>()
+    public override IReadOnlyDictionary<string, NodeValueDef> PropertyDefs { get; } = new SortedDictionary<string, NodeValueDef>()
     {
         { "lto", NodeValueDef_Enum<ELinkTimeOptimizationLevel>.Optional(ELinkTimeOptimizationLevel.Default) },
         { "inlining", NodeValueDef_Enum<EInliningLevel>.Optional(EInliningLevel.Default) },
@@ -54,7 +54,10 @@ public class OptimizeNode(KdlNode node, INode? scope) : NodeBase<OptimizeNode>(n
         { "intrinsics", NodeValueDef_Bool.Optional() },
         { "just_my_code", NodeValueDef_Bool.Optional(true) },
     };
+}
 
+public class OptimizeNode(KdlNode node, INode? scope) : NodeBase<OptimizeNodeTraits>(node, scope)
+{
     public EOptimizationLevel OptimizationLevel => GetEnumValue<EOptimizationLevel>(0);
     public ELinkTimeOptimizationLevel LinkTimeOptimizationLevel => GetEnumValue<ELinkTimeOptimizationLevel>("lto");
     public EInliningLevel InliningLevel => GetEnumValue<EInliningLevel>("inlining");

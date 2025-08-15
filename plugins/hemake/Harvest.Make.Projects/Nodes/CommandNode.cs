@@ -6,22 +6,25 @@ using System.Runtime.InteropServices;
 
 namespace Harvest.Make.Projects.Nodes;
 
-public class CommandNode(KdlNode node, INode? scope) : NodeBase<CommandNode>(node, scope)
+public class CommandNodeTraits : NodeBaseTraits
 {
-    public static string NodeName => "command";
+    public override string Name => "command";
 
-    public static new IReadOnlyList<string> NodeValidScopes =>
+    public override IReadOnlyList<string> ValidScopes =>
     [
-        BuildEventNode.NodeName,
-        BuildRuleNode.NodeName,
+        BuildEventNode.NodeTraits.Name,
+        BuildRuleNode.NodeTraits.Name,
     ];
 
-    public static new IReadOnlyList<NodeValueDef> NodeArgumentDefs =>
+    public override IReadOnlyList<NodeValueDef> ArgumentDefs =>
     [
         NodeValueDef_String.Required(),
         NodeValueDef_String.Optional(),
     ];
+}
 
+public class CommandNode(KdlNode node, INode? scope) : NodeBase<CommandNodeTraits>(node, scope)
+{
     public string CommandName => GetStringValue(0);
     public string? CommandArgs => TryGetStringValue(1);
 

@@ -499,7 +499,7 @@ internal class VcxprojGenerator(IProjectService projectService, ProjectGenerator
                     writer.WriteElementString("BasicRuntimeChecks", "Default");
                 }
 
-                IEnumerable<string> defineEntryStrings = defines.Entries.Select((entry) => entry.Define);
+                IEnumerable<string> defineEntryStrings = defines.Entries.Select((entry) => entry.DefineName);
                 if (exceptions.ExceptionsMode == EExceptionsMode.Off)
                 {
                     defineEntryStrings = defineEntryStrings.Concat(["_HAS_EXCEPTIONS=0"]);
@@ -704,7 +704,7 @@ internal class VcxprojGenerator(IProjectService projectService, ProjectGenerator
                     writer.WriteElementString("MultiProcessorCompilation", "true");
                 }
 
-                IEnumerable<string> buildOptionEntryStrings = buildOptions.Entries.Select((entry) => entry.Option);
+                IEnumerable<string> buildOptionEntryStrings = buildOptions.Entries.Select((entry) => entry.OptionName);
                 if (platform.Toolset == EToolset.Clang)
                 {
                     // <OpenMPSupport> is ignored when using the clang toolset so we need to add it here
@@ -907,7 +907,7 @@ internal class VcxprojGenerator(IProjectService projectService, ProjectGenerator
                 }
 
                 // TODO: support for individual fatal link errors by adding `/wx:a,b,c` automatically?
-                IEnumerable<string> linkerOptions = linkOptions.Entries.Select((entry) => entry.Option);
+                IEnumerable<string> linkerOptions = linkOptions.Entries.Select((entry) => entry.OptionName);
                 VisualStudioUtils.WriteArrayElement(writer, linkerOptions, "AdditionalOptions", "%(AdditionalOptions)", " ");
 
                 if (module.Kind == EModuleKind.LibStatic)

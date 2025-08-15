@@ -24,33 +24,27 @@ public enum EPlatformSystem
     [KdlName("windows")] Windows,
 }
 
-public class PlatformNode(KdlNode node, INode? scope) : NodeBase<PlatformNode>(node, scope)
+public class PlatformNodeTraits : NodeBaseTraits
 {
-    public static string NodeName => "platform";
+    public override string Name => "platform";
 
-    public static new IReadOnlyList<string> NodeValidScopes =>
+    public override IReadOnlyList<string> ValidScopes =>
     [
-        ProjectNode.NodeName,
+        ProjectNode.NodeTraits.Name,
     ];
 
-    public static new IReadOnlyList<NodeValueDef> NodeArgumentDefs =>
+    public override IReadOnlyList<NodeValueDef> ArgumentDefs =>
     [
         NodeValueDef_String.Required(),
     ];
 
-    public static new IReadOnlyDictionary<string, NodeValueDef> NodePropertyDefs { get; } = new SortedDictionary<string, NodeValueDef>()
+    public override IReadOnlyDictionary<string, NodeValueDef> PropertyDefs { get; } = new SortedDictionary<string, NodeValueDef>()
     {
         { "arch", NodeValueDef_Enum<EPlatformArch>.Required(EPlatformArch.X86_64) },
         { "system", NodeValueDef_Enum<EPlatformSystem>.Required(GetHostPlatform()) },
         { "toolset", NodeValueDef_Enum<EToolset>.Optional() },
         { "default", NodeValueDef_Bool.Optional(false) },
     };
-
-    public string PlatformName => GetStringValue(0);
-    public EPlatformArch Arch => GetEnumValue<EPlatformArch>("arch");
-    public EPlatformSystem System => GetEnumValue<EPlatformSystem>("system");
-    public EToolset Toolset => TryGetEnumValue<EToolset>("toolset") ?? GuessToolset();
-    public bool IsDefault => GetBoolValue("default");
 
     public static EPlatformSystem GetHostPlatform()
     {
@@ -66,6 +60,15 @@ public class PlatformNode(KdlNode node, INode? scope) : NodeBase<PlatformNode>(n
 
         throw new Exception("Unsupported host platform.");
     }
+}
+
+public class PlatformNode(KdlNode node, INode? scope) : NodeBase<PlatformNodeTraits>(node, scope)
+{
+    public string PlatformName => GetStringValue(0);
+    public EPlatformArch Arch => GetEnumValue<EPlatformArch>("arch");
+    public EPlatformSystem System => GetEnumValue<EPlatformSystem>("system");
+    public EToolset Toolset => TryGetEnumValue<EToolset>("toolset") ?? GuessToolset();
+    public bool IsDefault => GetBoolValue("default");
 
     private EToolset GuessToolset()
     {

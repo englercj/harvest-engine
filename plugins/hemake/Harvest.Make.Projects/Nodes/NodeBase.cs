@@ -8,25 +8,30 @@ using System.Numerics;
 
 namespace Harvest.Make.Projects.Nodes;
 
-public abstract partial class NodeBase<TSelf>(KdlNode node, INode? scope) : INode where TSelf : INode
+public abstract class NodeBaseTraits : INodeTraits
 {
-    public static IReadOnlyList<string> NodeValidScopes { get; } = [];
-    public static IReadOnlyList<NodeValueDef> NodeArgumentDefs { get; } = [];
-    public static IReadOnlyDictionary<string, NodeValueDef> NodePropertyDefs { get; } = new SortedDictionary<string, NodeValueDef>();
-    public static ENodeDependencyInheritance NodeDependencyInheritance => ENodeDependencyInheritance.None;
-    public static bool NodeCanBeExtended => false;
+    public virtual string Name => string.Empty;
+    public virtual IReadOnlyList<string> ValidScopes => [];
+    public virtual IReadOnlyList<NodeValueDef> ArgumentDefs => [];
+    public virtual IReadOnlyDictionary<string, NodeValueDef> PropertyDefs => new SortedDictionary<string, NodeValueDef>();
+    public virtual ENodeDependencyInheritance DependencyInheritance => ENodeDependencyInheritance.None;
+    public virtual bool CanBeExtended => false;
+    public virtual Type? ChildNodeType => null;
+}
 
-    public IReadOnlyList<string> ValidScopes => TSelf.NodeValidScopes;
-    public IReadOnlyList<NodeValueDef> ArgumentDefs => TSelf.NodeArgumentDefs;
-    public IReadOnlyDictionary<string, NodeValueDef> PropertyDefs => TSelf.NodePropertyDefs;
-    public ENodeDependencyInheritance DependencyInheritance => TSelf.NodeDependencyInheritance;
-    public bool CanBeExtended => TSelf.NodeCanBeExtended;
+public abstract class NodeBase<TTraits>(KdlNode node, INode? scope) : INode
+    where TTraits : NodeBaseTraits, new()
+{
+    private static readonly TTraits _nodeTraits = new();
+
+    public static INodeTraits NodeTraits => _nodeTraits;
+
+    public INodeTraits Traits => _nodeTraits;
 
     public KdlNode Node => node;
     public INode? Scope => scope;
 
     public List<INode> Children { get; } = [];
-    public virtual Type? ChildNodeType => null;
 
     protected T? TryGetClassValue<T>(int index) where T : class
     {
@@ -41,9 +46,9 @@ public abstract partial class NodeBase<TSelf>(KdlNode node, INode? scope) : INod
             }
         }
 
-        if (index < ArgumentDefs.Count)
+        if (index < Traits.ArgumentDefs.Count)
         {
-            NodeValueDef argDef = ArgumentDefs[index];
+            NodeValueDef argDef = Traits.ArgumentDefs[index];
             if (argDef.DefaultValue is T result)
             {
                 return result;
@@ -66,9 +71,9 @@ public abstract partial class NodeBase<TSelf>(KdlNode node, INode? scope) : INod
             }
         }
 
-        if (index < ArgumentDefs.Count)
+        if (index < Traits.ArgumentDefs.Count)
         {
-            NodeValueDef argDef = ArgumentDefs[index];
+            NodeValueDef argDef = Traits.ArgumentDefs[index];
             if (argDef.DefaultValue is T result)
             {
                 return result;
@@ -94,9 +99,9 @@ public abstract partial class NodeBase<TSelf>(KdlNode node, INode? scope) : INod
             return KdlEnumUtils.TryParse(strValue, out T result) ? result : null;
         }
 
-        if (index < ArgumentDefs.Count)
+        if (index < Traits.ArgumentDefs.Count)
         {
-            NodeValueDef argDef = ArgumentDefs[index];
+            NodeValueDef argDef = Traits.ArgumentDefs[index];
             if (argDef.DefaultValue is T result)
             {
                 return result;
@@ -133,7 +138,7 @@ public abstract partial class NodeBase<TSelf>(KdlNode node, INode? scope) : INod
             }
         }
 
-        if (PropertyDefs.TryGetValue(key, out NodeValueDef? valueDef))
+        if (Traits.PropertyDefs.TryGetValue(key, out NodeValueDef? valueDef))
         {
             if (valueDef.DefaultValue is T result)
             {
@@ -157,7 +162,7 @@ public abstract partial class NodeBase<TSelf>(KdlNode node, INode? scope) : INod
             }
         }
 
-        if (PropertyDefs.TryGetValue(key, out NodeValueDef? valueDef))
+        if (Traits.PropertyDefs.TryGetValue(key, out NodeValueDef? valueDef))
         {
             if (valueDef.DefaultValue is T result)
             {
@@ -184,7 +189,7 @@ public abstract partial class NodeBase<TSelf>(KdlNode node, INode? scope) : INod
             return KdlEnumUtils.TryParse(strValue, out T result) ? result : null;
         }
 
-        if (PropertyDefs.TryGetValue(key, out NodeValueDef? valueDef))
+        if (Traits.PropertyDefs.TryGetValue(key, out NodeValueDef? valueDef))
         {
             if (valueDef.DefaultValue is T result)
             {
@@ -270,7 +275,7 @@ public abstract partial class NodeBase<TSelf>(KdlNode node, INode? scope) : INod
 
     protected virtual void ValidateScope(INode? scope)
     {
-        if (ValidScopes.Count == 0)
+        if (Traits.ValidScopes.Count == 0)
         {
             if (scope is not null)
             {
@@ -284,7 +289,7 @@ public abstract partial class NodeBase<TSelf>(KdlNode node, INode? scope) : INod
                 throw new NodeValidationException(this, $"'{Node.Name}' nodes cannot be used at the root.");
             }
 
-            if (!ValidScopes.Contains(scope.Node.Name))
+            if (!Traits.ValidScopes.Contains(scope.Node.Name))
             {
                 throw new NodeValidationException(this, $"'{Node.Name}' nodes cannot be a child of a '{scope.Node.Name}' node.");
             }
@@ -295,32 +300,32 @@ public abstract partial class NodeBase<TSelf>(KdlNode node, INode? scope) : INod
     {
         for (int i = 0; i < Node.Arguments.Count; ++i)
         {
-            if (i < ArgumentDefs.Count)
+            if (i < Traits.ArgumentDefs.Count)
             {
                 KdlValue value = Node.Arguments[i];
-                if (!value.GetType().Equals(ArgumentDefs[i].ValueType))
+                if (!value.GetType().Equals(Traits.ArgumentDefs[i].ValueType))
                 {
-                    throw new NodeValidationException(this, $"'{Node.Name}' node has incorrect value type in argument {i}: {value.GetType().Name}. Expected {ArgumentDefs[i].ValueType.Name}.");
+                    throw new NodeValidationException(this, $"'{Node.Name}' node has incorrect value type in argument {i}: {value.GetType().Name}. Expected {Traits.ArgumentDefs[i].ValueType.Name}.");
                 }
 
-                if (ArgumentDefs[i].ValidValues.Count > 0)
+                if (Traits.ArgumentDefs[i].ValidValues.Count > 0)
                 {
-                    object? valid = ArgumentDefs[i].ValidValues.FirstOrDefault(value.Equals);
+                    object? valid = Traits.ArgumentDefs[i].ValidValues.FirstOrDefault(value.Equals);
                     if (valid is null)
                     {
-                        throw new NodeValidationException(this, $"'{Node.Name}' node has an invalid value in argument {i}: {value.GetValueString()}. Expected one of: {string.Join(", ", ArgumentDefs[i].ValidValues)}.");
+                        throw new NodeValidationException(this, $"'{Node.Name}' node has an invalid value in argument {i}: {value.GetValueString()}. Expected one of: {string.Join(", ", Traits.ArgumentDefs[i].ValidValues)}.");
                     }
                 }
             }
             else
             {
-                throw new NodeValidationException(this, $"'{Node.Name}' nodes cannot contain more than {ArgumentDefs.Count} arguments.");
+                throw new NodeValidationException(this, $"'{Node.Name}' nodes cannot contain more than {Traits.ArgumentDefs.Count} arguments.");
             }
         }
 
-        for (int i = Node.Arguments.Count; i < ArgumentDefs.Count; ++i)
+        for (int i = Node.Arguments.Count; i < Traits.ArgumentDefs.Count; ++i)
         {
-            if (ArgumentDefs[i].IsRequired)
+            if (Traits.ArgumentDefs[i].IsRequired)
             {
                 throw new NodeValidationException(this, $"'{Node.Name}' node is missing required argument (index: {i}).");
             }
@@ -329,7 +334,7 @@ public abstract partial class NodeBase<TSelf>(KdlNode node, INode? scope) : INod
 
     protected virtual void ValidateProperties()
     {
-        foreach (KeyValuePair<string, NodeValueDef> pair in PropertyDefs)
+        foreach (KeyValuePair<string, NodeValueDef> pair in Traits.PropertyDefs)
         {
             if (Node.Properties.TryGetValue(pair.Key, out KdlValue? value))
             {

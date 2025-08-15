@@ -14,22 +14,25 @@ public enum EWarningsLevel
     [KdlName("off")] Off,
 }
 
-public class WarningsNode(KdlNode node, INode? scope) : NodeSetBase<WarningsNode, WarningsEntryNode>(node, scope)
+public class WarningsNodeTraits : NodeSetBaseTraits<WarningsEntryNode>
 {
-    public static string NodeName => "warnings";
+    public override string Name => "warnings";
 
-    public static new IReadOnlyList<string> NodeValidScopes =>
+    public override IReadOnlyList<string> ValidScopes =>
     [
-        ModuleNode.NodeName,
-        ProjectNode.NodeName,
+        ModuleNode.NodeTraits.Name,
+        ProjectNode.NodeTraits.Name,
     ];
 
-    public static new IReadOnlyDictionary<string, NodeValueDef> NodePropertyDefs { get; } = new SortedDictionary<string, NodeValueDef>()
+    public override IReadOnlyDictionary<string, NodeValueDef> PropertyDefs { get; } = new SortedDictionary<string, NodeValueDef>()
     {
         { "level", NodeValueDef_Enum<EWarningsLevel>.Optional(EWarningsLevel.Default) },
         { "fatal", NodeValueDef_Bool.Optional(false) },
     };
+}
 
+public class WarningsNode(KdlNode node, INode? scope) : NodeSetBase<WarningsNodeTraits, WarningsEntryNode>(node, scope)
+{
     public EWarningsLevel WarningsLevel => GetEnumValue<EWarningsLevel>(0);
     public bool AreAllWarningsFatal => GetBoolValue("fatal");
 }

@@ -33,18 +33,18 @@ public enum EDpiAwareMode
     [KdlName("high_permonitor")] PerMonitorHighDpiAware,
 }
 
-public class BuildOptionsNode(KdlNode node, INode? scope) : NodeSetBase<BuildOptionsNode, BuildOptionsEntryNode>(node, scope)
+public class BuildOptionsNodeTraits : NodeSetBaseTraits<BuildOptionsEntryNode>
 {
-    public static string NodeName => "build_options";
+    public override string Name => "build_options";
 
-    public static new IReadOnlyList<string> NodeValidScopes =>
+    public override IReadOnlyList<string> ValidScopes =>
     [
-        ModuleNode.NodeName,
-        ProjectNode.NodeName,
-        PublicNode.NodeName,
+        ModuleNode.NodeTraits.Name,
+        ProjectNode.NodeTraits.Name,
+        PublicNode.NodeTraits.Name,
     ];
 
-    public static new IReadOnlyDictionary<string, NodeValueDef> NodePropertyDefs { get; } = new SortedDictionary<string, NodeValueDef>()
+    public override IReadOnlyDictionary<string, NodeValueDef> PropertyDefs { get; } = new SortedDictionary<string, NodeValueDef>()
     {
         { "clr", NodeValueDef_Enum<EBuildClrMode>.Optional(EBuildClrMode.Off) },
         { "mfc", NodeValueDef_Enum<EBuildMfcMode>.Optional(EBuildMfcMode.Off) },
@@ -60,8 +60,11 @@ public class BuildOptionsNode(KdlNode node, INode? scope) : NodeSetBase<BuildOpt
         { "openmp", NodeValueDef_Bool.Optional(false) },
     };
 
-    public static new ENodeDependencyInheritance NodeDependencyInheritance => ENodeDependencyInheritance.Include;
+    public override ENodeDependencyInheritance DependencyInheritance => ENodeDependencyInheritance.Include;
+}
 
+public class BuildOptionsNode(KdlNode node, INode? scope) : NodeSetBase<BuildOptionsNodeTraits, BuildOptionsEntryNode>(node, scope)
+{
     public EBuildClrMode ClrMode => GetEnumValue<EBuildClrMode>("clr");
     public EBuildMfcMode MfcMode => GetEnumValue<EBuildMfcMode>("mfc");
     public EBuildAtlMode AtlMode => GetEnumValue<EBuildAtlMode>("atl");

@@ -20,21 +20,21 @@ public enum EToolsetArch
     [KdlName("x86_64")] X86_64,
 }
 
-public class ToolsetNode(KdlNode node, INode? scope) : NodeBase<ToolsetNode>(node, scope)
+public class ToolsetNodeTraits : NodeBaseTraits
 {
-    public static string NodeName => "toolset";
+    public override string Name => "toolset";
 
-    public static new IReadOnlyList<string> NodeValidScopes =>
+    public override IReadOnlyList<string> ValidScopes =>
     [
-        ProjectNode.NodeName,
+        ProjectNode.NodeTraits.Name,
     ];
 
-    public static new IReadOnlyList<NodeValueDef> NodeArgumentDefs =>
+    public override IReadOnlyList<NodeValueDef> ArgumentDefs =>
     [
         NodeValueDef_Enum<EToolset>.Required(EToolset.MSVC),
     ];
 
-    public static new IReadOnlyDictionary<string, NodeValueDef> NodePropertyDefs { get; } = new SortedDictionary<string, NodeValueDef>()
+    public override IReadOnlyDictionary<string, NodeValueDef> PropertyDefs { get; } = new SortedDictionary<string, NodeValueDef>()
     {
         { "arch", NodeValueDef_Enum<EToolsetArch>.Optional(EToolsetArch.Default) },
         { "edit_and_continue", NodeValueDef_Bool.Optional(false) },
@@ -44,7 +44,10 @@ public class ToolsetNode(KdlNode node, INode? scope) : NodeBase<ToolsetNode>(nod
         { "path", NodeValueDef_Path.Optional() },
         { "version", NodeValueDef_String.Optional() },
     };
+}
 
+public class ToolsetNode(KdlNode node, INode? scope) : NodeBase<ToolsetNodeTraits>(node, scope)
+{
     public EToolset Toolset => GetEnumValue<EToolset>(0);
     public EToolsetArch Arch => GetEnumValue<EToolsetArch>("arch");
     public bool EditAndContinue => GetBoolValue("edit_and_continue");

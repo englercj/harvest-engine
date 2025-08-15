@@ -6,7 +6,7 @@ plugin madler.zlib version="1.2.13" license="Zlib" {
     authors { "Mark Adler" email=madler@alumni.caltech.edu }
 
     install {
-        github user=madler repo=zlib ref="v${plugin.version}"
+        fetch github user=madler repo=zlib ref="v${plugin.version}"
     }
 
     module zlib kind=lib_static group="engine/contrib" {

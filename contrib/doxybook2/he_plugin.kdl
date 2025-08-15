@@ -7,10 +7,10 @@ plugin matusnovak.doxybook2 version="1.4.0" license="MIT" {
 
     install {
         when host=linux {
-            archive "https://github.com/matusnovak/doxybook2/releases/download/v${plugin.version}/doxybook2-linux-amd64-v${plugin.version}.zip"
+            fetch archive url="https://github.com/matusnovak/doxybook2/releases/download/v${plugin.version}/doxybook2-linux-amd64-v${plugin.version}.zip"
         }
         when host=windows {
-            archive "https://github.com/matusnovak/doxybook2/releases/download/v${plugin.version}/doxybook2-windows-win64-v${plugin.version}.zip"
+            fetch archive url="https://github.com/matusnovak/doxybook2/releases/download/v${plugin.version}/doxybook2-windows-win64-v${plugin.version}.zip"
         }
     }
 }

@@ -4,12 +4,16 @@ using Harvest.Kdl;
 
 namespace Harvest.Make.Projects.Nodes;
 
-public class InstallNode(KdlNode node, INode? scope) : NodeBase<InstallNode>(node, scope)
+public class InstallNodeTraits : NodeBaseTraits
 {
-    public static string NodeName => "install";
+    public override string Name => "install";
 
-    public static new IReadOnlyList<string> NodeValidScopes =>
+    public override IReadOnlyList<string> ValidScopes =>
     [
-        PluginNode.NodeName,
+        PluginNode.NodeTraits.Name,
     ];
+}
+
+public class InstallNode(KdlNode node, INode? scope) : NodeBase<InstallNodeTraits>(node, scope)
+{
 }

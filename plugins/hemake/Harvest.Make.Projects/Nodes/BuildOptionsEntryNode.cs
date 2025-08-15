@@ -4,12 +4,11 @@ using Harvest.Kdl;
 
 namespace Harvest.Make.Projects.Nodes;
 
-public class BuildOptionsEntryNode(KdlNode node, INode? scope) : NodeBase<BuildOptionsEntryNode>(node, scope)
+public class BuildOptionsEntryNodeTraits : NodeSetEntryBaseTraits<BuildOptionsNode>
 {
-    public static new IReadOnlyList<string> NodeValidScopes =>
-    [
-        BuildOptionsNode.NodeName,
-    ];
+}
 
-    public string Option => Node.Name;
+public class BuildOptionsEntryNode(KdlNode node, INode? scope) : NodeSetEntryBase<BuildOptionsEntryNodeTraits, BuildOptionsNode>(node, scope)
+{
+    public string OptionName => Node.Name;
 }

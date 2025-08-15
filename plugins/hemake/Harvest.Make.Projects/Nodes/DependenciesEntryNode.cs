@@ -15,20 +15,18 @@ public enum EDependencyKind
     [KdlName("system")] System,
 }
 
-public class DependenciesEntryNode(KdlNode node, INode? scope) : NodeBase<DependenciesEntryNode>(node, scope), IEquatable<DependenciesEntryNode>
+public class DependenciesEntryNodeTraits : NodeSetEntryBaseTraits<DependenciesNode>
 {
-    public static new IReadOnlyList<string> NodeValidScopes =>
-    [
-        DependenciesNode.NodeName,
-    ];
-
-    public static new IReadOnlyDictionary<string, NodeValueDef> NodePropertyDefs { get; } = new SortedDictionary<string, NodeValueDef>()
+    public override IReadOnlyDictionary<string, NodeValueDef> PropertyDefs { get; } = new SortedDictionary<string, NodeValueDef>()
     {
         { "kind", NodeValueDef_Enum<EDependencyKind>.Optional(EDependencyKind.Default) },
         { "external", NodeValueDef_Bool.Optional(false) },
         { "whole_archive", NodeValueDef_Bool.Optional(false) },
     };
+}
 
+public class DependenciesEntryNode(KdlNode node, INode? scope) : NodeSetEntryBase<DependenciesEntryNodeTraits, DependenciesNode>(node, scope), IEquatable<DependenciesEntryNode>
+{
     public string DependencyName => Kind == EDependencyKind.File ? ResolvePath(Node.Name) : Node.Name;
     public EDependencyKind Kind => GetEnumValue<EDependencyKind>("kind");
     public bool IsExternal => GetBoolValue("external");

@@ -7,10 +7,10 @@ plugin doxygen.doxygen version="1.9.5" license="GPL-2.0" {
 
     install {
         when host=linux {
-            archive "https://www.doxygen.nl/files/doxygen-${plugin.version}.linux.bin.tar.gz"
+            fetch archive url="https://www.doxygen.nl/files/doxygen-${plugin.version}.linux.bin.tar.gz"
         }
         when host=windows {
-            archive "https://www.doxygen.nl/files/doxygen-${plugin.version}.windows.x64.bin.zip"
+            fetch archive url="https://www.doxygen.nl/files/doxygen-${plugin.version}.windows.x64.bin.zip"
         }
     }
 }

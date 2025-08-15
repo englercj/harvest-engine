@@ -4,28 +4,31 @@ using Harvest.Kdl;
 
 namespace Harvest.Make.Projects.Nodes;
 
-public class BuildRuleNode(KdlNode node, INode? scope) : NodeBase<BuildRuleNode>(node, scope)
+public class BuildRuleNodeTraits : NodeBaseTraits
 {
-    public static string NodeName => "build_rule";
+    public override string Name => "build_rule";
 
-    public static new IReadOnlyList<string> NodeValidScopes =>
+    public override IReadOnlyList<string> ValidScopes =>
     [
-        ModuleNode.NodeName,
-        PluginNode.NodeName,
-        ProjectNode.NodeName,
+        ModuleNode.NodeTraits.Name,
+        PluginNode.NodeTraits.Name,
+        ProjectNode.NodeTraits.Name,
     ];
 
-    public static new IReadOnlyList<NodeValueDef> NodeArgumentDefs =>
+    public override IReadOnlyList<NodeValueDef> ArgumentDefs =>
     [
         NodeValueDef_String.Required(),
     ];
 
-    public static new IReadOnlyDictionary<string, NodeValueDef> NodePropertyDefs { get; } = new SortedDictionary<string, NodeValueDef>()
+    public override IReadOnlyDictionary<string, NodeValueDef> PropertyDefs { get; } = new SortedDictionary<string, NodeValueDef>()
     {
         { "message", NodeValueDef_String.Optional() },
         { "link_output", NodeValueDef_Bool.Optional(true) },
     };
+}
 
+public class BuildRuleNode(KdlNode node, INode? scope) : NodeBase<BuildRuleNodeTraits>(node, scope)
+{
     public string RuleName => GetStringValue(0);
     public string? Message => TryGetStringValue("message");
     public bool LinkOutput => GetBoolValue("link_output");

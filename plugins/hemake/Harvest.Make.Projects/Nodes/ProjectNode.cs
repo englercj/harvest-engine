@@ -4,20 +4,23 @@ using Harvest.Kdl;
 
 namespace Harvest.Make.Projects.Nodes;
 
-public class ProjectNode(KdlNode node, INode? scope) : NodeBase<ProjectNode>(node, scope)
+public class ProjectNodeTraits : NodeBaseTraits
 {
-    public static string NodeName => "project";
+    public override string Name => "project";
 
-    public static new IReadOnlyList<NodeValueDef> NodeArgumentDefs =>
+    public override IReadOnlyList<NodeValueDef> ArgumentDefs =>
     [
         NodeValueDef_String.Required(),
     ];
 
-    public static new IReadOnlyDictionary<string, NodeValueDef> NodePropertyDefs { get; } = new SortedDictionary<string, NodeValueDef>()
+    public override IReadOnlyDictionary<string, NodeValueDef> PropertyDefs { get; } = new SortedDictionary<string, NodeValueDef>()
     {
         { "start", NodeValueDef_String.Optional() },
     };
+}
 
+public class ProjectNode(KdlNode node, INode? scope) : NodeBase<ProjectNodeTraits>(node, scope)
+{
     public string ProjectName => GetStringValue(0);
     public string? StartupModule => TryGetStringValue("start");
 }

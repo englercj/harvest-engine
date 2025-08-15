@@ -388,7 +388,7 @@ public class MasmFileGroup(ProjectGeneratorHelper helper, string vsProjectPath) 
         string condition = VisualStudioUtils.GetConfigCondition(configuration, platform, archName);
 
         DefinesNode defines = file.Context.ProjectService.GetMergedNode<DefinesNode>(file.Context, file.Context.Module);
-        IEnumerable<string> defineEntryStrings = defines.Entries.Select((entry) => entry.Define);
+        IEnumerable<string> defineEntryStrings = defines.Entries.Select((entry) => entry.DefineName);
         VisualStudioUtils.WritePreprocessorDefinitions(writer, defineEntryStrings, false, condition);
 
         ExceptionsNode exceptions = file.Context.ProjectService.GetMergedNode<ExceptionsNode>(file.Context, file.Context.Module);

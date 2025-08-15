@@ -12,18 +12,21 @@ public enum ESetAction
     [KdlName("update")] Update,
 }
 
-public abstract class NodeSetBase<TSelf, TChild>(KdlNode node, INode? scope)
-    : NodeBase<TSelf>(node, scope)
-    where TSelf : NodeSetBase<TSelf,TChild>
+public abstract class NodeSetBaseTraits<TChild> : NodeBaseTraits
     where TChild : INode
 {
-    public new static IReadOnlyList<NodeValueDef> NodeArgumentDefs =>
+    public override IReadOnlyList<NodeValueDef> ArgumentDefs =>
     [
         NodeValueDef_Enum<ESetAction>.Optional(ESetAction.Add),
     ];
 
     public override Type? ChildNodeType => typeof(TChild);
+}
 
+public abstract class NodeSetBase<TTraits, TChild>(KdlNode node, INode? scope) : NodeBase<TTraits>(node, scope)
+    where TTraits : NodeSetBaseTraits<TChild>, new()
+    where TChild : INode
+{
     public ESetAction SetAction => GetEnumValue<ESetAction>(0);
     public IEnumerable<TChild> Entries => Children.Cast<TChild>();
 
@@ -31,7 +34,7 @@ public abstract class NodeSetBase<TSelf, TChild>(KdlNode node, INode? scope)
 
     protected override void MergeAndResolveChildren(ProjectContext context, INode node)
     {
-        if (node is not NodeSetBase<TSelf, TChild> set)
+        if (node is not NodeSetBase<TTraits, TChild> set)
         {
             throw new Exception($"Cannot merge and resolve children of different node types: {GetType().Name} and {node.GetType().Name}");
         }

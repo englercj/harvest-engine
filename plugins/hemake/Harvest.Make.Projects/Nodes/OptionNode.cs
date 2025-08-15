@@ -16,28 +16,31 @@ public enum EOptionType
     [KdlName("string")] String,
 }
 
-public class OptionNode(KdlNode node, INode? scope) : NodeBase<OptionNode>(node, scope)
+public class OptionNodeTraits : NodeBaseTraits
 {
-    public static string NodeName => "option";
+    public override string Name => "option";
 
-    public static new IReadOnlyList<string> NodeValidScopes =>
+    public override IReadOnlyList<string> ValidScopes =>
     [
-        ProjectNode.NodeName,
+        ProjectNode.NodeTraits.Name,
     ];
 
-    public static new IReadOnlyList<NodeValueDef> NodeArgumentDefs =>
+    public override IReadOnlyList<NodeValueDef> ArgumentDefs =>
     [
         NodeValueDef_String.Required(),
     ];
 
-    public static new IReadOnlyDictionary<string, NodeValueDef> NodePropertyDefs { get; } = new SortedDictionary<string, NodeValueDef>()
+    public override IReadOnlyDictionary<string, NodeValueDef> PropertyDefs { get; } = new SortedDictionary<string, NodeValueDef>()
     {
         { "default", NodeValueDef_String.Optional() },
         { "env", NodeValueDef_String.Optional() },
         { "help", NodeValueDef_String.Optional() },
         { "type", NodeValueDef_Enum<EOptionType>.Optional(EOptionType.String) },
     };
+}
 
+public class OptionNode(KdlNode node, INode? scope) : NodeBase<OptionNodeTraits>(node, scope)
+{
     public string OptionName => GetStringValue(0);
     public EOptionType OptionType => GetEnumValue<EOptionType>("type");
     public string? HelpText => TryGetStringValue("help");
@@ -75,7 +78,7 @@ public class OptionNode(KdlNode node, INode? scope) : NodeBase<OptionNode>(node,
             };
         }
 
-        if (PropertyDefs.TryGetValue(key, out NodeValueDef? valueDef))
+        if (Traits.PropertyDefs.TryGetValue(key, out NodeValueDef? valueDef))
         {
             if (valueDef.DefaultValue is string str)
             {

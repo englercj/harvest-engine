@@ -6,7 +6,7 @@ plugin binomial.basis_universal version="1.16.4" license="Apache-2.0" {
     authors { "Binomial LLC" }
 
     install {
-        github user=BinomialLLC repo=basis_universal ref="${plugin.version}"
+        fetch github user=BinomialLLC repo=basis_universal ref="${plugin.version}"
     }
 
     module basis_universal kind=lib_static group="engine/contrib" {

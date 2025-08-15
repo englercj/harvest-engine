@@ -4,22 +4,25 @@ using Harvest.Kdl;
 
 namespace Harvest.Make.Projects.Nodes;
 
-public class ExternalNode(KdlNode node, INode? scope) : NodeBase<ExternalNode>(node, scope)
+public class ExternalNodeTraits : NodeBaseTraits
 {
-    public static string NodeName => "external";
+    public override string Name => "external";
 
-    public static new IReadOnlyList<string> NodeValidScopes =>
+    public override IReadOnlyList<string> ValidScopes =>
     [
-        ProjectNode.NodeName,
+        ProjectNode.NodeTraits.Name,
     ];
 
-    public static new IReadOnlyDictionary<string, NodeValueDef> NodePropertyDefs { get; } = new SortedDictionary<string, NodeValueDef>()
+    public override IReadOnlyDictionary<string, NodeValueDef> PropertyDefs { get; } = new SortedDictionary<string, NodeValueDef>()
     {
         { "warnings", NodeValueDef_Enum<EWarningsLevel>.Optional(EWarningsLevel.Default) },
         { "fatal", NodeValueDef_Bool.Optional(false) },
         { "angle_brackets", NodeValueDef_Bool.Optional(true) },
     };
+}
 
+public class ExternalNode(KdlNode node, INode? scope) : NodeBase<ExternalNodeTraits>(node, scope)
+{
     public EWarningsLevel WarningsLevel => GetEnumValue<EWarningsLevel>("warnings");
     public bool Fatal => GetBoolValue("fatal");
     public bool AngleBrackets => GetBoolValue("angle_brackets");

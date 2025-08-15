@@ -8,29 +8,29 @@ namespace Harvest.Make.Projects.Nodes;
 
 public enum EWhenMode
 {
-    [KdlName("all")] And,
-    [KdlName("any")] Or,
-    [KdlName("one")] Xor,
+    [KdlName("all")] All,
+    [KdlName("any")] Any,
+    [KdlName("one")] One,
 }
 
-public class WhenNode(KdlNode node, INode? scope) : NodeBase<WhenNode>(node, scope)
+public class WhenNodeTraits : NodeBaseTraits
 {
-    public static string NodeName => "when";
+    public override string Name => "when";
 
-    public static new IReadOnlyList<string> NodeValidScopes =>
+    public override IReadOnlyList<string> ValidScopes =>
     [
-        InstallNode.NodeName,
-        ModuleNode.NodeName,
-        PluginNode.NodeName,
-        ProjectNode.NodeName,
+        InstallNode.NodeTraits.Name,
+        ModuleNode.NodeTraits.Name,
+        PluginNode.NodeTraits.Name,
+        ProjectNode.NodeTraits.Name,
     ];
 
-    public static new IReadOnlyList<NodeValueDef> NodeArgumentDefs =>
+    public override IReadOnlyList<NodeValueDef> ArgumentDefs =>
     [
-        NodeValueDef_Enum<EWhenMode>.Optional(EWhenMode.And),
+        NodeValueDef_Enum<EWhenMode>.Optional(EWhenMode.All),
     ];
 
-    public static new IReadOnlyDictionary<string, NodeValueDef> NodePropertyDefs { get; } = new SortedDictionary<string, NodeValueDef>()
+    public override IReadOnlyDictionary<string, NodeValueDef> PropertyDefs { get; } = new SortedDictionary<string, NodeValueDef>()
     {
         { "arch", NodeValueDef_String.Optional() },
         { "configuration", NodeValueDef_String.Optional() },
@@ -42,7 +42,10 @@ public class WhenNode(KdlNode node, INode? scope) : NodeBase<WhenNode>(node, sco
         { "tags", NodeValueDef_String.Optional() },
         { "toolset", NodeValueDef_String.Optional() },
     };
+}
 
+public class WhenNode(KdlNode node, INode? scope) : NodeBase<WhenNodeTraits>(node, scope)
+{
     public EWhenMode Mode => GetEnumValue<EWhenMode>(0);
     public string? Arch => TryGetStringValue("arch");
     public string? Configuration => TryGetStringValue("configuration");
@@ -69,17 +72,13 @@ public class WhenNode(KdlNode node, INode? scope) : NodeBase<WhenNode>(node, sco
         CheckValueActive(conditions, Tags, context.Tags);
         CheckValueActive(conditions, Toolset, context.Platform?.Toolset ?? EToolset.MSVC);
 
-        switch (Mode)
+        return Mode switch
         {
-            case EWhenMode.And:
-                return conditions.All(x => x);
-            case EWhenMode.Or:
-                return conditions.Any(x => x);
-            case EWhenMode.Xor:
-                return conditions.Count(x => x) == 1;
-        }
-
-        return false;
+            EWhenMode.All => conditions.All(x => x),
+            EWhenMode.Any => conditions.Any(x => x),
+            EWhenMode.One => conditions.Count(x => x) == 1,
+            _ => false,
+        };
     }
 
     private static void CheckValueActive<T>(List<bool> conditions, string? expr, T value)

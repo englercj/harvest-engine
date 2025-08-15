@@ -13,20 +13,23 @@ public enum EExceptionsMode
     [KdlName("seh")] SEH,
 }
 
-public class ExceptionsNode(KdlNode node, INode? scope) : NodeBase<ExceptionsNode>(node, scope)
+public class ExceptionsNodeTraits : NodeBaseTraits
 {
-    public static string NodeName => "exceptions";
+    public override string Name => "exceptions";
 
-    public static new IReadOnlyList<string> NodeValidScopes =>
+    public override IReadOnlyList<string> ValidScopes =>
     [
-        ProjectNode.NodeName,
-        ModuleNode.NodeName,
+        ProjectNode.NodeTraits.Name,
+        ModuleNode.NodeTraits.Name,
     ];
 
-    public static new IReadOnlyList<NodeValueDef> NodeArgumentDefs =>
+    public override IReadOnlyList<NodeValueDef> ArgumentDefs =>
     [
         NodeValueDef_Enum<EExceptionsMode>.Required(EExceptionsMode.Default),
     ];
+}
 
+public class ExceptionsNode(KdlNode node, INode? scope) : NodeBase<ExceptionsNodeTraits>(node, scope)
+{
     public EExceptionsMode ExceptionsMode => GetEnumValue<EExceptionsMode>(0);
 }

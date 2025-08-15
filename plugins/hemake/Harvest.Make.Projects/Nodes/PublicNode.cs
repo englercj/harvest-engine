@@ -4,12 +4,16 @@ using Harvest.Kdl;
 
 namespace Harvest.Make.Projects.Nodes;
 
-public class PublicNode(KdlNode node, INode? scope) : NodeBase<PublicNode>(node, scope)
+public class PublicNodeTraits : NodeBaseTraits
 {
-    public static string NodeName => "public";
+    public override string Name => "public";
 
-    public static new IReadOnlyList<string> NodeValidScopes =>
+    public override IReadOnlyList<string> ValidScopes =>
     [
-        ModuleNode.NodeName,
+        ModuleNode.NodeTraits.Name,
     ];
+}
+
+public class PublicNode(KdlNode node, INode? scope) : NodeBase<PublicNodeTraits>(node, scope)
+{
 }

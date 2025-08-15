@@ -4,15 +4,18 @@ using Harvest.Kdl;
 
 namespace Harvest.Make.Projects.Nodes;
 
-public class FilesNode(KdlNode node, INode? scope) : NodeSetBase<FilesNode, FilesEntryNode>(node, scope)
+public class FilesNodeTraits : NodeSetBaseTraits<FilesEntryNode>
 {
-    public static string NodeName => "files";
+    public override string Name => "files";
 
-    public static new IReadOnlyList<string> NodeValidScopes =>
+    public override IReadOnlyList<string> ValidScopes =>
     [
-        ModuleNode.NodeName,
+        ModuleNode.NodeTraits.Name,
     ];
+}
 
+public class FilesNode(KdlNode node, INode? scope) : NodeSetBase<FilesNodeTraits, FilesEntryNode>(node, scope)
+{
     // Override the merge and resolve logic for children to create a single entry node per
     // expanded file path. This is necessary to support the case where a glob is added, then
     // a more specific glob is removed. The more specific glob may have matched files that

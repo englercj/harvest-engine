@@ -6,7 +6,7 @@ plugin facebook.zstd version="1.5.5" license="BSD-3-Clause" {
     authors { "Facebook" }
 
     install {
-        github user=facebook repo=zstd ref="v${plugin.version}"
+        fetch github user=facebook repo=zstd ref="v${plugin.version}"
     }
 
     module zstd kind=lib_static group="engine/contrib" {

@@ -4,19 +4,22 @@ using Harvest.Kdl;
 
 namespace Harvest.Make.Projects.Nodes;
 
-public class ConfigurationNode(KdlNode node, INode? scope) : NodeBase<ConfigurationNode>(node, scope)
+public class ConfigurationNodeTraits : NodeBaseTraits
 {
-    public static string NodeName => "configuration";
+    public override string Name => "configuration";
 
-    public static new IReadOnlyList<string> NodeValidScopes =>
+    public override IReadOnlyList<string> ValidScopes =>
     [
-        ProjectNode.NodeName,
+        ProjectNode.NodeTraits.Name,
     ];
 
-    public static new IReadOnlyList<NodeValueDef> NodeArgumentDefs =>
+    public override IReadOnlyList<NodeValueDef> ArgumentDefs =>
     [
         NodeValueDef_String.Required(),
     ];
+}
 
+public class ConfigurationNode(KdlNode node, INode? scope) : NodeBase<ConfigurationNodeTraits>(node, scope)
+{
     public string ConfigName => GetStringValue(0);
 }

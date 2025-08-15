@@ -4,16 +4,20 @@ using Harvest.Kdl;
 
 namespace Harvest.Make.Projects.Nodes;
 
-public class DefinesNode(KdlNode node, INode? scope) : NodeSetBase<DefinesNode, DefinesEntryNode>(node, scope)
+public class DefinesNodeTraits : NodeSetBaseTraits<DefinesEntryNode>
 {
-    public static string NodeName => "defines";
+    public override string Name => "defines";
 
-    public static new IReadOnlyList<string> NodeValidScopes =>
+    public override IReadOnlyList<string> ValidScopes =>
     [
-        ModuleNode.NodeName,
-        ProjectNode.NodeName,
-        PublicNode.NodeName,
+        ModuleNode.NodeTraits.Name,
+        ProjectNode.NodeTraits.Name,
+        PublicNode.NodeTraits.Name,
     ];
 
-    public static new ENodeDependencyInheritance NodeDependencyInheritance => ENodeDependencyInheritance.Include;
+    public override ENodeDependencyInheritance DependencyInheritance => ENodeDependencyInheritance.Include;
+}
+
+public class DefinesNode(KdlNode node, INode? scope) : NodeSetBase<DefinesNodeTraits, DefinesEntryNode>(node, scope)
+{
 }

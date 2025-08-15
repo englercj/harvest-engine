@@ -153,12 +153,12 @@ public partial class NodeTokenReplacer(
             string contextType = match.Groups[1].Value;
             string contextId = match.Groups[2].Value;
 
-            if (contextType == PluginNode.NodeName)
+            if (contextType == PluginNode.NodeTraits.Name)
             {
                 return projectContext.ProjectService.TryGetPluginById(contextId)?.Node
                     ?? throw new NodeParseException(scope, $"Invalid token '{token}'. No plugin found with name '{contextId}'.");
             }
-            else if (contextType == ModuleNode.NodeName)
+            else if (contextType == ModuleNode.NodeTraits.Name)
             {
                 return projectContext.ProjectService.TryGetModuleByName(contextId)?.Node
                     ?? throw new NodeParseException(scope, $"Invalid token '{token}'. No module found with name '{contextId}'.");

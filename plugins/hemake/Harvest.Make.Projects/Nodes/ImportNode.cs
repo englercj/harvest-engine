@@ -4,22 +4,25 @@ using Harvest.Kdl;
 
 namespace Harvest.Make.Projects.Nodes;
 
-public class ImportNode(KdlNode node, INode? scope) : NodeBase<ImportNode>(node, scope)
+public class ImportNodeTraits : NodeBaseTraits
 {
-    public static string NodeName => "import";
+    public override string Name => "import";
 
-    public static new IReadOnlyList<string> NodeValidScopes =>
+    public override IReadOnlyList<string> ValidScopes =>
     [
-        InstallNode.NodeName,
-        ModuleNode.NodeName,
-        PluginNode.NodeName,
-        ProjectNode.NodeName,
+        InstallNode.NodeTraits.Name,
+        ModuleNode.NodeTraits.Name,
+        PluginNode.NodeTraits.Name,
+        ProjectNode.NodeTraits.Name,
     ];
 
-    public static new IReadOnlyList<NodeValueDef> NodeArgumentDefs =>
+    public override IReadOnlyList<NodeValueDef> ArgumentDefs =>
     [
         NodeValueDef_Path.Required(""),
     ];
+}
 
+public class ImportNode(KdlNode node, INode? scope) : NodeBase<ImportNodeTraits>(node, scope)
+{
     public string ImportPath => GetPathValue(0);
 }

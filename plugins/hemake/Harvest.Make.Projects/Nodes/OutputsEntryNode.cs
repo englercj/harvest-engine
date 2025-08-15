@@ -4,12 +4,11 @@ using Harvest.Kdl;
 
 namespace Harvest.Make.Projects.Nodes;
 
-public class OutputsEntryNode(KdlNode node, INode? scope) : NodeBase<OutputsEntryNode>(node, scope)
+public class OutputsEntryNodeTraits : NodeSetEntryBaseTraits<OutputsNode>
 {
-    public static new IReadOnlyList<string> NodeValidScopes =>
-    [
-        OutputsNode.NodeName,
-    ];
+}
 
+public class OutputsEntryNode(KdlNode node, INode? scope) : NodeSetEntryBase<OutputsEntryNodeTraits, OutputsNode>(node, scope)
+{
     public string FilePath => ResolvePath(Node.Name);
 }

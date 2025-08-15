@@ -4,24 +4,27 @@ using Harvest.Kdl;
 
 namespace Harvest.Make.Projects.Nodes;
 
-public class LibDirsNode(KdlNode node, INode? scope) : NodeSetBase<LibDirsNode, LibDirsEntryNode>(node, scope)
+public class LibDirsNodeTraits : NodeSetBaseTraits<LibDirsEntryNode>
 {
-    public static string NodeName => "lib_dirs";
+    public override string Name => "lib_dirs";
 
-    public static new IReadOnlyList<string> NodeValidScopes =>
+    public override IReadOnlyList<string> ValidScopes =>
     [
-        ModuleNode.NodeName,
-        ProjectNode.NodeName,
-        PublicNode.NodeName,
+        ModuleNode.NodeTraits.Name,
+        ProjectNode.NodeTraits.Name,
+        PublicNode.NodeTraits.Name,
     ];
 
-    public static new IReadOnlyDictionary<string, NodeValueDef> NodePropertyDefs { get; } = new SortedDictionary<string, NodeValueDef>()
+    public override IReadOnlyDictionary<string, NodeValueDef> PropertyDefs { get; } = new SortedDictionary<string, NodeValueDef>()
     {
         { "system", NodeValueDef_Bool.Optional(false) },
     };
 
-    public static new ENodeDependencyInheritance NodeDependencyInheritance => ENodeDependencyInheritance.Link;
+    public override ENodeDependencyInheritance DependencyInheritance => ENodeDependencyInheritance.Link;
+}
 
+public class LibDirsNode(KdlNode node, INode? scope) : NodeSetBase<LibDirsNodeTraits, LibDirsEntryNode>(node, scope)
+{
     public bool IsSystem => GetBoolValue("system");
 
     protected override string GetSetEntryKey(ProjectContext context, LibDirsEntryNode entry)

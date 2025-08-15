@@ -4,13 +4,17 @@ using Harvest.Kdl;
 
 namespace Harvest.Make.Projects.Nodes;
 
-public class InputsNode(KdlNode node, INode? scope) : NodeSetBase<InputsNode, InputsEntryNode>(node, scope)
+public class  InputsNodeTraits : NodeSetBaseTraits<InputsEntryNode>
 {
-    public static string NodeName => "inputs";
+    public override string Name => "inputs";
 
-    public static new IReadOnlyList<string> NodeValidScopes =>
+    public override IReadOnlyList<string> ValidScopes =>
     [
-        BuildEventNode.NodeName,
-        BuildRuleNode.NodeName,
+        BuildEventNode.NodeTraits.Name,
+        BuildRuleNode.NodeTraits.Name,
     ];
+}
+
+public class InputsNode(KdlNode node, INode? scope) : NodeSetBase<InputsNodeTraits, InputsEntryNode>(node, scope)
+{
 }

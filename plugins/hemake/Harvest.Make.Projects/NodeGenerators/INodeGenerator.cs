@@ -5,9 +5,16 @@ using Harvest.Make.Projects.Nodes;
 
 namespace Harvest.Make.Projects.NodeGenerators;
 
+public interface INodeGeneratorTraits
+{
+    public string Name { get; }
+}
+
 public interface INodeGenerator
 {
-    public static virtual string GeneratorName => throw new NotImplementedException();
+    public static virtual INodeGeneratorTraits GeneratorTraits => throw new NotImplementedException();
+
+    public INodeGeneratorTraits Traits { get; }
 
     /// <summary>
     /// Perform the node generation logic for this generator.

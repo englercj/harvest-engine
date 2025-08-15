@@ -8,7 +8,12 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace Harvest.Make.Projects.NodeGenerators;
 
-public class ForeachNodeGenerator(ProjectContext context) : NodeGeneratorBase(context)
+public class ForeachNodeGeneratorTraits : NodeGeneratorBaseTraits
+{
+    public override string Name => "foreach";
+}
+
+public class ForeachNodeGenerator(ProjectContext context) : NodeGeneratorBase<ForeachNodeGeneratorTraits>(context)
 {
     private class ForeachReplacerContext : ProjectContext
     {
@@ -62,8 +67,6 @@ public class ForeachNodeGenerator(ProjectContext context) : NodeGeneratorBase(co
         }
     }
 
-    public static string GeneratorName => "foreach";
-
     public override void GenerateNodes(KdlNode generatorNode, INode scope)
     {
         if (generatorNode.Arguments.Count == 0 || generatorNode.Arguments[0] is not KdlString s || string.IsNullOrEmpty(s.Value))
@@ -73,7 +76,7 @@ public class ForeachNodeGenerator(ProjectContext context) : NodeGeneratorBase(co
 
         string nodeType = s.Value;
 
-        if (nodeType == PluginNode.NodeName)
+        if (nodeType == PluginNode.NodeTraits.Name)
         {
             foreach (PluginNode plugin in _context.ProjectService.GetAllPlugins())
             {
@@ -83,7 +86,7 @@ public class ForeachNodeGenerator(ProjectContext context) : NodeGeneratorBase(co
                 }
             }
         }
-        else if (nodeType == ModuleNode.NodeName)
+        else if (nodeType == ModuleNode.NodeTraits.Name)
         {
             foreach (ModuleNode plugin in _context.ProjectService.GetAllModules())
             {
@@ -95,7 +98,7 @@ public class ForeachNodeGenerator(ProjectContext context) : NodeGeneratorBase(co
         }
         else
         {
-            throw new NodeParseException(generatorNode, $"Unknown foreach generator node type '{nodeType}'. Expected '{PluginNode.NodeName}' or '{ModuleNode.NodeName}'.");
+            throw new NodeParseException(generatorNode, $"Unknown foreach generator node type '{nodeType}'. Expected '{PluginNode.NodeTraits.Name}' or '{ModuleNode.NodeTraits.Name}'.");
         }
     }
 

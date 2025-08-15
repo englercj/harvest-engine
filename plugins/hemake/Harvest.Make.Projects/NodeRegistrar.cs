@@ -54,11 +54,11 @@ public class NodeRegistrar(IProjectService projectService) : IAppLifetimeService
 
         _projectService.RegisterNodeGenerator<ForeachNodeGenerator>();
 
-        _projectService.RegisterTokenResolver(ConfigurationNode.NodeName, NodeTokenResolvers.ConfiurationTokenResolver);
-        _projectService.RegisterTokenResolver(PlatformNode.NodeName, NodeTokenResolvers.PlatformTokenResolver);
-        _projectService.RegisterTokenResolver(ProjectNode.NodeName, NodeTokenResolvers.ProjectTokenResolver);
-        _projectService.RegisterTokenResolver(PluginNode.NodeName, NodeTokenResolvers.PluginTokenResolver);
-        _projectService.RegisterTokenResolver(ModuleNode.NodeName, NodeTokenResolvers.ModuleTokenResolver);
+        _projectService.RegisterTokenResolver(ConfigurationNode.NodeTraits.Name, NodeTokenResolvers.ConfiurationTokenResolver);
+        _projectService.RegisterTokenResolver(PlatformNode.NodeTraits.Name, NodeTokenResolvers.PlatformTokenResolver);
+        _projectService.RegisterTokenResolver(ProjectNode.NodeTraits.Name, NodeTokenResolvers.ProjectTokenResolver);
+        _projectService.RegisterTokenResolver(PluginNode.NodeTraits.Name, NodeTokenResolvers.PluginTokenResolver);
+        _projectService.RegisterTokenResolver(ModuleNode.NodeTraits.Name, NodeTokenResolvers.ModuleTokenResolver);
 
         return Task.CompletedTask;
     }

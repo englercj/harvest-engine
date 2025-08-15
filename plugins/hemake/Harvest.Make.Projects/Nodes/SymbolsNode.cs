@@ -12,26 +12,29 @@ public enum ESymbolsMode
     [KdlName("off")] Off,
 }
 
-public class SymbolsNode(KdlNode node, INode? scope) : NodeBase<SymbolsNode>(node, scope)
+public class SymbolsNodeTraits : NodeBaseTraits
 {
-    public static string NodeName => "symbols";
+    public override string Name => "symbols";
 
-    public static new IReadOnlyList<string> NodeValidScopes =>
+    public override IReadOnlyList<string> ValidScopes =>
     [
-        ModuleNode.NodeName,
-        ProjectNode.NodeName,
+        ModuleNode.NodeTraits.Name,
+        ProjectNode.NodeTraits.Name,
     ];
 
-    public static new IReadOnlyList<NodeValueDef> NodeArgumentDefs =>
+    public override IReadOnlyList<NodeValueDef> ArgumentDefs =>
     [
         NodeValueDef_Enum<ESymbolsMode>.Required(ESymbolsMode.Default),
     ];
 
-    public static new IReadOnlyDictionary<string, NodeValueDef> NodePropertyDefs { get; } = new SortedDictionary<string, NodeValueDef>()
+    public override IReadOnlyDictionary<string, NodeValueDef> PropertyDefs { get; } = new SortedDictionary<string, NodeValueDef>()
     {
         { "embed", NodeValueDef_Bool.Optional(false) },
     };
+}
 
+public class SymbolsNode(KdlNode node, INode? scope) : NodeBase<SymbolsNodeTraits>(node, scope)
+{
     public ESymbolsMode SymbolsMode => GetEnumValue<ESymbolsMode>(0);
     public bool Embed => GetBoolValue("embed");
 }

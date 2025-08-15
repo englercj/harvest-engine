@@ -12,26 +12,29 @@ public enum ERuntime
     [KdlName("release")] Release,
 }
 
-public class RuntimeNode(KdlNode node, INode? scope) : NodeBase<RuntimeNode>(node, scope)
+public class RuntimeNodeTraits : NodeBaseTraits
 {
-    public static string NodeName => "runtime";
+    public override string Name => "runtime";
 
-    public static new IReadOnlyList<string> NodeValidScopes =>
+    public override IReadOnlyList<string> ValidScopes =>
     [
-        ModuleNode.NodeName,
-        ProjectNode.NodeName,
+        ModuleNode.NodeTraits.Name,
+        ProjectNode.NodeTraits.Name,
     ];
 
-    public static new IReadOnlyList<NodeValueDef> NodeArgumentDefs =>
+    public override IReadOnlyList<NodeValueDef> ArgumentDefs =>
     [
         NodeValueDef_Enum<ERuntime>.Required(ERuntime.Default),
     ];
 
-    public static new IReadOnlyDictionary<string, NodeValueDef> NodePropertyDefs { get; } = new SortedDictionary<string, NodeValueDef>()
+    public override IReadOnlyDictionary<string, NodeValueDef> PropertyDefs { get; } = new SortedDictionary<string, NodeValueDef>()
     {
         { "static", NodeValueDef_Bool.Optional(false) },
     };
+}
 
+public class RuntimeNode(KdlNode node, INode? scope) : NodeBase<RuntimeNodeTraits>(node, scope)
+{
     public ERuntime Runtime => GetEnumValue<ERuntime>(0);
     public bool StaticLink => GetBoolValue("static");
 }

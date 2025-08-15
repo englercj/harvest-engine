@@ -4,13 +4,17 @@ using Harvest.Kdl;
 
 namespace Harvest.Make.Projects.Nodes;
 
-public class TagsNode(KdlNode node, INode? scope) : NodeSetBase<TagsNode, TagsEntryNode>(node, scope)
+public class TagsNodeTraits : NodeSetBaseTraits<TagsEntryNode>
 {
-    public static string NodeName => "tags";
+    public override string Name => "tags";
 
-    public static new IReadOnlyList<string> NodeValidScopes =>
+    public override IReadOnlyList<string> ValidScopes =>
     [
-        ModuleNode.NodeName,
-        ProjectNode.NodeName,
+        ModuleNode.NodeTraits.Name,
+        ProjectNode.NodeTraits.Name,
     ];
+}
+
+public class TagsNode(KdlNode node, INode? scope) : NodeSetBase<TagsNodeTraits, TagsEntryNode>(node, scope)
+{
 }

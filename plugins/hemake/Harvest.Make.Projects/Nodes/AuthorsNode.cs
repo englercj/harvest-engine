@@ -4,16 +4,16 @@ using Harvest.Kdl;
 
 namespace Harvest.Make.Projects.Nodes;
 
-public class AuthorsNode(KdlNode node, INode? scope) : NodeSetBase<AuthorsNode, AuthorsEntryNode>(node, scope)
+public class AuthorsNodeTraits : NodeSetBaseTraits<AuthorsEntryNode>
 {
-    public static string NodeName => "authors";
+    public override string Name => "authors";
 
-    public static new IReadOnlyList<string> NodeValidScopes =>
+    public override IReadOnlyList<string> ValidScopes =>
     [
-        PluginNode.NodeName,
+        PluginNode.NodeTraits.Name,
     ];
+}
 
-    public static new IReadOnlyDictionary<string, NodeValueDef> NodePropertyDefs { get; } = new SortedDictionary<string, NodeValueDef>()
-    {
-    };
+public class AuthorsNode(KdlNode node, INode? scope) : NodeSetBase<AuthorsNodeTraits, AuthorsEntryNode>(node, scope)
+{
 }

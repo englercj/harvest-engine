@@ -12,23 +12,25 @@ public class VS2022ProjectGeneratorService(IProjectService projectService) : IPr
     private readonly IProjectService _projectService = projectService;
     private readonly ModuleGroupTree _groupTree = new();
 
-    public void GenerateProjectFiles(InvocationContext context)
+    public async Task GenerateProjectFilesAsync(InvocationContext context)
     {
         ProjectGeneratorHelper helper = new(_projectService, context);
 
         BuildModuleTree(helper.BaseContext);
 
         SlnGenerator slnGenerator = new(_projectService, helper);
-        slnGenerator.Generate(_groupTree, "12.00", "17");
+        await slnGenerator.GenerateAsync(_groupTree, "12.00", "17");
+
+        List<Task> projectGenerationTasks = [];
 
         // TODO: Can probably multi-thread the generation of the project files.
         // Reads from project service should be thread-safe and I don't think the
         // order we do this in matters.
-        _groupTree.Traverse((entry) =>
+        foreach (ModuleGroupTree.Entry entry in _groupTree.Entries)
         {
             if (entry.Module is null)
             {
-                return;
+                continue;
             }
 
             switch (entry.Module.Language)
@@ -37,14 +39,16 @@ public class VS2022ProjectGeneratorService(IProjectService projectService) : IPr
                 case EModuleLanguage.Cpp:
                 {
                     VcxprojGenerator generator = new(_projectService, helper);
-                    generator.Generate(context, entry.Module);
+                    Task task = generator.GenerateAsync(context, entry.Module);
+                    projectGenerationTasks.Add(task);
                     break;
                 }
                 case EModuleLanguage.CSharp:
                 {
                     throw new NotImplementedException("C# project generation has not yet been implemented");
                     //CsprojGenerator generator = new(_projectService, helper);
-                    //generator.Generate(context, entry.Module);
+                    //Task task = generator.GenerateAsync(context, entry.Module);
+                    //projectGenerationTasks.Add(task);
                     //break;
                 }
                 default:
@@ -52,7 +56,9 @@ public class VS2022ProjectGeneratorService(IProjectService projectService) : IPr
                     throw new NotImplementedException($"Unsupported language: {entry.Module.Language}");
                 }
             }
-        });
+        }
+
+        await Task.WhenAll(projectGenerationTasks);
     }
 
     private void BuildModuleTree(ProjectContext projectContext)
@@ -79,13 +85,14 @@ public class VS2022ProjectGeneratorService(IProjectService projectService) : IPr
 
         // Find the entry that is marked as the startup module.
         ModuleGroupTree.Entry? startupEntry = null;
-        _groupTree.Traverse((entry) =>
+        foreach (ModuleGroupTree.Entry entry in _groupTree.Entries)
         {
             if (entry.Module is not null && entry.Module.ModuleName == projectNode.StartupModule)
             {
                 startupEntry = entry;
+                break;
             }
-        });
+        }
 
         // Move the startup module to the front of the list. This will make VS treat it like a
         // startup project. We do this for each group in the tree, so that the startup module

@@ -4,7 +4,7 @@ Paths in HE Make are separated by a forward slash (`/`), regardless of the platf
 
 ## Relative paths
 
-Paths in a plugin or module scope are specified relative to the plugin's install location. For plugins with an `install {}` block, the install location is the extracted files location in the `build/` directory. For plugins without an `install {}` block, this is the same directory where the `he_plugin.kdl` file is located.
+Paths in a plugin with an `install {}` block are relative to the location where the installed files are extracted. In all other cases paths are relative to the `*.kdl` file they were written in.
 
 ## Glob Patterns
 

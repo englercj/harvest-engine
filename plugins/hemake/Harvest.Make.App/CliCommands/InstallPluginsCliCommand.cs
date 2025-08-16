@@ -25,16 +25,8 @@ internal class InstallPluginsCliCommand(
 
     public async Task<int> RunCommandAsync(InvocationContext context)
     {
-        try
-        {
-            await InstallPluginsAsync(context);
-            return 0;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "An error occurred while installing plugins.");
-            return -1;
-        }
+        await InstallPluginsAsync(context);
+        return 0;
     }
 
     private async Task InstallPluginsAsync(InvocationContext invocationContext)
@@ -141,7 +133,7 @@ internal class InstallPluginsCliCommand(
         {
             case EFetchArchiveFormat.Zip:
             {
-                await Task.Run(() => ZipFile.ExtractToDirectory(archivePath, extractDir, true));
+                ZipFile.ExtractToDirectory(archivePath, extractDir, true);
                 break;
             }
             case EFetchArchiveFormat.Tar:

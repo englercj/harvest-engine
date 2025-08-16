@@ -157,12 +157,7 @@ public class ProjectService : IProjectService
     {
         INode? node = null;
 
-        if (scope is not null && scope.Traits.ChildNodeType is not null)
-        {
-            node = Activator.CreateInstance(scope.Traits.ChildNodeType, rawNode, scope) as INode
-                ?? throw new Exception($"Activator.CreateInstance failed to allocate node instance for type '{scope.Traits.ChildNodeType}'.");
-        }
-        else if (rawNode.Name.StartsWith(':') || rawNode.Name.StartsWith('+'))
+        if (rawNode.Name.StartsWith(':') || rawNode.Name.StartsWith('+'))
         {
             if (scope is null)
             {
@@ -170,6 +165,11 @@ public class ProjectService : IProjectService
             }
 
             _deferredNodes.Add((rawNode, scope));
+        }
+        else if (scope is not null && scope.Traits.ChildNodeType is not null)
+        {
+            node = Activator.CreateInstance(scope.Traits.ChildNodeType, rawNode, scope) as INode
+                ?? throw new Exception($"Activator.CreateInstance failed to allocate node instance for type '{scope.Traits.ChildNodeType}'.");
         }
         else
         {
@@ -368,11 +368,13 @@ public class ProjectService : IProjectService
 
     public List<T> GetNodes<T>(ProjectContext context, INode? scope, Func<T, bool> filter, bool searchDependencies = true) where T : class, INode
     {
+        scope ??= ProjectNode;
+
         List<T> resolvedNodes = [];
 
         foreach (T node in EnumerateNodes(context, scope, filter, searchDependencies).Reverse())
         {
-            T resolved = Activator.CreateInstance(typeof(T), new KdlNode(T.NodeTraits.Name), scope) as T
+            T resolved = Activator.CreateInstance(typeof(T), new KdlNode(T.NodeTraits.Name), node.Scope) as T
                 ?? throw new Exception($"Activator.CreateInstance failed to allocate node instance for type '{typeof(T)}'.");
             resolved.MergeAndResolve(context, node);
             resolvedNodes.Add(resolved);
@@ -391,9 +393,18 @@ public class ProjectService : IProjectService
         T resolved = Activator.CreateInstance(typeof(T), new KdlNode(T.NodeTraits.Name), scope) as T
             ?? throw new Exception($"Activator.CreateInstance failed to allocate node instance for type '{typeof(T)}'.");
 
-        foreach (T node in EnumerateNodes(context, scope, filter, searchDependencies).Reverse())
+        IEnumerable<T> nodesToMerge = EnumerateNodes(context, scope, filter, searchDependencies).Reverse();
+
+        if (nodesToMerge.Any())
         {
-            resolved.MergeAndResolve(context, node);
+            foreach (T node in nodesToMerge)
+            {
+                resolved.MergeAndResolve(context, node);
+            }
+        }
+        else
+        {
+            resolved.ResolveDefaults(context);
         }
 
         return resolved;
@@ -402,7 +413,7 @@ public class ProjectService : IProjectService
     private void UpdatePluginAndModuleCaches(ProjectContext context)
     {
         _plugins.Clear();
-        foreach (PluginNode plugin in EnumerateNodes<PluginNode>(context, null, false))
+        foreach (PluginNode plugin in EnumerateNodes<PluginNode>(context, ProjectNode, false))
         {
             if (!_plugins.TryAdd(plugin.PluginName, plugin))
             {
@@ -411,7 +422,7 @@ public class ProjectService : IProjectService
         }
 
         _modules.Clear();
-        foreach (ModuleNode module in EnumerateNodes<ModuleNode>(context, null, false))
+        foreach (ModuleNode module in EnumerateNodes<ModuleNode>(context, ProjectNode, false))
         {
             if (!_modules.TryAdd(module.ModuleName, module))
             {
@@ -420,7 +431,7 @@ public class ProjectService : IProjectService
         }
     }
 
-    private IEnumerable<T> EnumerateNodes<T>(ProjectContext context, INode? scope, bool searchDependencies) where T : class, INode
+    private IEnumerable<T> EnumerateNodes<T>(ProjectContext context, INode scope, bool searchDependencies) where T : class, INode
     {
         return EnumerateNodes<T>(context, scope, (v) => true, searchDependencies);
     }
@@ -429,7 +440,7 @@ public class ProjectService : IProjectService
     {
         scope ??= ProjectNode;
 
-        INode? originalScope = scope;
+        INode originalScope = scope;
 
         // Search the scope chain for the requested nodes, both downward and upward.
         Stack<INode> stack = new();
@@ -441,8 +452,8 @@ public class ProjectService : IProjectService
             // Search the scope children, descending into any when nodes we encounter
             while (stack.Count > 0)
             {
-                INode s = stack.Pop();
-                foreach (INode child in s.Children)
+                INode scopeToCheck = stack.Pop();
+                foreach (INode child in scopeToCheck.Children)
                 {
                     if (child is T instance && filter(instance))
                     {
@@ -455,7 +466,17 @@ public class ProjectService : IProjectService
                             stack.Push(whenNode);
                         }
                     }
+                    else
+                    {
+                        stack.Push(child);
+                    }
                 }
+            }
+
+            // Check if the scope itself matches
+            if (scope is T scopeInstance && filter(scopeInstance))
+            {
+                yield return scopeInstance;
             }
 
             // Walk up the scope chain, but only check scopes where the node is allowed
@@ -515,7 +536,7 @@ public class ProjectService : IProjectService
             // Extension node
             if (rawNode.Name.StartsWith('+'))
             {
-                ResolveExtensionNode(context, rawNode);
+                ResolveExtensionNode(rawNode);
                 rawNode.RemoveFromParent();
             }
             // Generator node
@@ -532,7 +553,7 @@ public class ProjectService : IProjectService
         }
     }
 
-    private void ResolveExtensionNode(ProjectContext context, KdlNode extensionNode)
+    private void ResolveExtensionNode(KdlNode extensionNode)
     {
         if (extensionNode.Arguments.Count == 0 || extensionNode.Arguments[0] is not KdlString s || string.IsNullOrEmpty(s.Value))
         {

@@ -76,6 +76,7 @@ when system=!windows { files modify { "src/source.win32.cpp" build_exclude=#true
 ## Scopes
 
 - [`module`](module_node.md)
+- [`project`](project_node.md)
 
 ## Example
 

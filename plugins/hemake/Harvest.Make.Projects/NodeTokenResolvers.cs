@@ -122,31 +122,26 @@ public static class NodeTokenResolvers
             }
             case "build_target":
             {
-                BuildOutputNode buildOutput = projectContext.ProjectService.GetMergedNode<BuildOutputNode>(projectContext, projectContext.Module, false);
-
-                string targetDir = buildOutput.GetTargetDir(projectContext.Module.Kind);
-                string targetName = buildOutput.TargetName ?? projectContext.Module.ModuleName;
-                string targetExtension = buildOutput.GetTargetExtension(projectContext.Module.Kind, projectContext.IsWindows);
+                string targetDir = projectContext.Module.GetTargetDir(projectContext);
+                string targetName = projectContext.Module.TargetName;
+                string targetExtension = projectContext.Module.GetTargetExtension(projectContext);
                 value = Path.Join(targetDir, targetName + targetExtension);
                 return true;
             }
             case "link_target":
             {
-                BuildOutputNode buildOutput = projectContext.ProjectService.GetMergedNode<BuildOutputNode>(projectContext, projectContext.Module, false);
-
                 // Treat shared libraries as static libraries for the purpose of linking. This will let us target
                 // the import library (.lib) instead of the shared library (.dll).
-                EModuleKind moduleKind = projectContext.IsWindows && buildOutput.MakeImportLib && projectContext.Module.Kind == EModuleKind.LibShared ? EModuleKind.LibStatic : projectContext.Module.Kind;
-                string targetDir = buildOutput.GetTargetDir(moduleKind);
-                string targetName = buildOutput.TargetName ?? projectContext.Module.ModuleName;
-                string targetExtension = buildOutput.GetTargetExtension(moduleKind, projectContext.IsWindows);
+                EModuleKind moduleKind = projectContext.IsWindows && projectContext.Module.MakeImportLib && projectContext.Module.Kind == EModuleKind.LibShared ? EModuleKind.LibStatic : projectContext.Module.Kind;
+                string targetDir = projectContext.Module.GetTargetDir(projectContext, moduleKind);
+                string targetName = projectContext.Module.TargetName;
+                string targetExtension = projectContext.Module.GetTargetExtension(projectContext);
                 value = Path.Join(targetDir, targetName + targetExtension);
                 return true;
             }
             case "gen_dir":
             {
-                BuildOutputNode buildOutput = projectContext.ProjectService.GetMergedNode<BuildOutputNode>(projectContext, projectContext.Module, false);
-                value = buildOutput.GenDir;
+                value = projectContext.Module.GetGenDir(projectContext);
                 return true;
             }
         }

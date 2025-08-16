@@ -102,18 +102,14 @@ plugin he.core version="0.1.0" license="UNLICENSED" {
         when system=wasm {
             public {
                 defines {
-                    :plugin llvm.libcxx {
-                        "HE_LIBCPP_ABI_NAMESPACE=__${plugin.abi_version}"
-                    }
+                    "HE_LIBCPP_ABI_NAMESPACE=__${plugin[llvm.libcxx].abi_version}"
                 }
                 dependencies { libcxxabi; libcxx kind=link }
                 include_dirs external=#true {
                     // Libcxx headers must come before wasm_libc headers, so we list those explicitly.
                     // Going instead through the normal `dependencies` flow would put wasm_libc headers first.
-                    :plugin llvm.libcxx {
-                        "${plugin.path:dirname}/include"
-                        "${plugin.install_dir}/include"
-                    }
+                    "${plugin[llvm.libcxx].path:dirname}/include"
+                    "${plugin[llvm.libcxx].install_dir}/include"
                     "wasm_libc/include"
                 }
             }
@@ -138,14 +134,14 @@ plugin he.core version="0.1.0" license="UNLICENSED" {
     }
 
     // This is a console app that links all test projects and runs them.
-    module he_test_runner kind=console_app group="engine/tests" {
+    module he_test_runner kind=app_console group="engine/tests" {
         files { "test_runner/main.cpp" }
 
         public {
             dependencies {
                 he_core
-                :foreach module group="engine/tests" kind=lib_static as mod {
-                    "${mod.name}" whole_archive=#true
+                :foreach module group="engine/tests" kind=lib_static {
+                    "${_entry.name}" whole_archive=#true
                 }
             }
         }

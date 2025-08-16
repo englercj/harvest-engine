@@ -47,5 +47,6 @@ public interface INode
     public INode Clone();
 
     public void Validate(INode? scope);
-    public void MergeAndResolve(ProjectContext context, INode node);
+    public void MergeAndResolve(ProjectContext projectContext, INode node);
+    public void ResolveDefaults(ProjectContext projectContext);
 }

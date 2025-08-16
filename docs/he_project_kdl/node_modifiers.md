@@ -56,21 +56,6 @@ module he_test_runner kind=console_app group="engine/tests" {
 }
 ```
 
-### Filters
-
-Generators can filter against any argument or property value. Globs are allowed for partial matching in argument values and property values.
-
-For arguments, specify the filter in the same argument index as the node you're searching. For example, module names are specified as the first argument so filtering based on name looks like: `:module he_core`.
-
-For properties, specify the filter using the same property name as the node you're searching. For example, modules specify a `kind` property so filtering based on `kind` looks like: `:module kind=*_app`.
-
-### Valid Nodes
-
-These are the nodes that can be used as generators:
-
-- [`module`](nodes/module_node.md)
-- [`plugin`](nodes/plugin_node.md)
-
 ## Extensions
 
 Extensions allow you to modify the definitions of nodes defined elsewhere in the project. This can be useful when a module is defined by a plugin outside of your source control and you want to modify it's behavior. Properties and children of the extension node are merged into the existing definition. If no existing definition is found, the extension is silently ignored.

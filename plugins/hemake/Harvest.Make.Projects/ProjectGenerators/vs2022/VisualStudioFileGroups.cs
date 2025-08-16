@@ -462,8 +462,12 @@ public class CopyFileGroup(ProjectGeneratorHelper helper, string vsProjectPath) 
     {
         HandleExcludedFile(writer, file, configuration, platform, archName);
 
-        BuildOutputNode buildOutput = file.Context.ProjectService.GetMergedNode<BuildOutputNode>(file.Context, file.Context.Module, false);
-        string targetDir = buildOutput.GetTargetDir(file.Context.Module?.Kind ?? EModuleKind.Custom);
+        if (file.Context.Module is null)
+        {
+            throw new Exception("File context module is null when writing CopyFileToFolders settings. This is a bug.");
+        }
+
+        string targetDir = file.Context.Module.GetTargetDir(file.Context);
         string condition = VisualStudioUtils.GetConfigCondition(configuration, platform, archName);
 
         VisualStudioUtils.WriteElementString(writer, "DestinationFolders", GetPath(targetDir), condition);

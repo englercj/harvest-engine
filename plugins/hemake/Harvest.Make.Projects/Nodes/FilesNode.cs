@@ -11,6 +11,7 @@ public class FilesNodeTraits : NodeSetBaseTraits<FilesEntryNode>
     public override IReadOnlyList<string> ValidScopes =>
     [
         ModuleNode.NodeTraits.Name,
+        ProjectNode.NodeTraits.Name,
     ];
 }
 

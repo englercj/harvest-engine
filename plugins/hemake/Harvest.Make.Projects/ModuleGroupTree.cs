@@ -12,7 +12,8 @@ public class ModuleGroupTree
     private static string GetModuleGuid(string path)
     {
         Guid value = GuidUtils.CreateV5(_namespaceProjectId, path);
-        return $"{{{value}}}";
+        string valueStr = value.ToString().ToUpperInvariant();
+        return $"{{{valueStr}}}";
     }
 
     public static string GetModuleGuid(ModuleNode module)
@@ -51,6 +52,8 @@ public class ModuleGroupTree
         }
     }
 
+    public IEnumerable<Entry> Entries => EnumerateChildrenRecursive(Root);
+
     public Entry Add(ModuleNode module)
     {
         string path = $"{module.Group ?? ""}/{module.ModuleName}";
@@ -73,17 +76,15 @@ public class ModuleGroupTree
 
     public void Sort(Comparison<Entry> compare)
     {
-        Traverse((entry) => entry.Children.Sort(compare));
+        foreach (Entry child in Entries)
+        {
+            child.Children.Sort(compare);
+        }
     }
 
     public bool TryGetEntry(string name, [MaybeNullWhen(false)] out Entry entry)
     {
         return _modulesByName.TryGetValue(name, out entry);
-    }
-
-    public void Traverse(Action<Entry> action)
-    {
-        TraverseChildren(Root, action);
     }
 
     private Entry FindOrCreateBranch(string? path)
@@ -108,22 +109,22 @@ public class ModuleGroupTree
         return branch;
     }
 
-    private static void TraverseChildren(Entry parent, Action<Entry> action)
-    {
-        foreach (Entry child in parent.Children)
-        {
-            action(child);
-
-            if (child.Children.Count > 0)
-            {
-                TraverseChildren(child, action);
-            }
-        }
-    }
-
     private static void Insert(Entry entry, Entry parent)
     {
         entry.Parent = parent;
         parent.Children.Add(entry);
+    }
+
+    private static IEnumerable<Entry> EnumerateChildrenRecursive(Entry entry)
+    {
+        foreach (Entry child in entry.Children)
+        {
+            yield return child;
+
+            foreach (Entry grandChild in EnumerateChildrenRecursive(child))
+            {
+                yield return grandChild;
+            }
+        }
     }
 }

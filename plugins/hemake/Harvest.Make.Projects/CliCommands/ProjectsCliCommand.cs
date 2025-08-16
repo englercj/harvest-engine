@@ -22,18 +22,10 @@ public abstract class BaseProjectGeneratorCliCommand(
     public abstract string Name { get; }
     public abstract string Description { get; }
 
-    public Task<int> RunCommandAsync(InvocationContext context)
+    public async Task<int> RunCommandAsync(InvocationContext context)
     {
-        try
-        {
-            _generatorService.GenerateProjectFiles(context);
-            return Task.FromResult(0);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "An error occurred while generating project files.");
-            return Task.FromResult(-1);
-        }
+        await _generatorService.GenerateProjectFilesAsync(context);
+        return 0;
     }
 }
 

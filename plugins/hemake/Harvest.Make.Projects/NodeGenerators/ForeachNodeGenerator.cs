@@ -88,11 +88,11 @@ public class ForeachNodeGenerator(ProjectContext context) : NodeGeneratorBase<Fo
         }
         else if (nodeType == ModuleNode.NodeTraits.Name)
         {
-            foreach (ModuleNode plugin in _context.ProjectService.GetAllModules())
+            foreach (ModuleNode module in _context.ProjectService.GetAllModules())
             {
-                if (DoesNodeMatch(generatorNode, plugin))
+                if (DoesNodeMatch(generatorNode, module))
                 {
-                    GenerateNodes(generatorNode, scope, plugin);
+                    GenerateNodes(generatorNode, scope, module);
                 }
             }
         }
@@ -104,7 +104,11 @@ public class ForeachNodeGenerator(ProjectContext context) : NodeGeneratorBase<Fo
 
     private void GenerateNodes(KdlNode generatorNode, INode scope, INode contextNode)
     {
-        ForeachReplacerContext replacerContext = new(_context, contextNode);
+        ForeachReplacerContext replacerContext = new(_context, contextNode)
+        {
+            Plugin = contextNode as PluginNode,
+            Module = contextNode as ModuleNode
+        };
 
         foreach (KdlNode sourceChild in generatorNode.Children)
         {

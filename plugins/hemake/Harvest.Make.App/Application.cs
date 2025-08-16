@@ -78,50 +78,41 @@ internal class Application : IHostedService
 
     public async Task StartAsync(CancellationToken cancellationToken)
     {
+        string[] args = Environment.GetCommandLineArgs();
+        _logger.LogInformation("Command-line: {args}", string.Join(' ', args));
+
+        // Default to an error exit code unless we complete successfully
+        Environment.ExitCode = -1;
+
         // Start up the application services
+        _logger.LogTrace("Starting application lifetime services...");
         foreach (IAppLifetimeService appLifetimeService in _appLifetimeServices)
         {
             await appLifetimeService.StartAsync(cancellationToken);
 
             if (cancellationToken.IsCancellationRequested)
             {
-                Environment.ExitCode = -1;
                 _appLifetime.StopApplication();
                 return;
             }
         }
 
         // Parse the project file into semantic nodes now that all extensions are loaded
-        try
-        {
-            _projectService.ParseProject();
-            SetupCommands();
-        }
-        catch (Exception ex)
-        {
-            Environment.ExitCode = -1;
-            _logger.LogError(ex, "An error occurred while parsing the project structure.");
-            _appLifetime.StopApplication();
-            return;
-        }
+        _logger.LogTrace("Parsing project...");
+        _projectService.ParseProject();
+        SetupCommands();
 
         // Run the command
-        try
-        {
-            string[] args = Environment.GetCommandLineArgs();
-            Environment.ExitCode = await _rootCommand.InvokeAsync(args[1..]);
-        }
-        catch (Exception ex)
-        {
-            Environment.ExitCode = -1;
-            _logger.LogError(ex, "An error occurred while executing the command.");
-        }
+        _logger.LogTrace("Invoking root command...");
+        Environment.ExitCode = await _rootCommand.InvokeAsync(args[1..]);
 
+        // Application is done
         _appLifetime.StopApplication();
     }
 
     public async Task StopAsync(CancellationToken cancellationToken)
     {
+        _logger.LogTrace("Stopping application lifetime services...");
         foreach (IAppLifetimeService appLifetimeService in _appLifetimeServices)
         {
             await appLifetimeService.StopAsync(cancellationToken);

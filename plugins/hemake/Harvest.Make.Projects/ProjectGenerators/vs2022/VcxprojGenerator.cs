@@ -19,21 +19,28 @@ internal class VcxprojGenerator(IProjectService projectService, ProjectGenerator
     private string _outputPath = "";
     private List<IVisualStudioFileGroup> _fileGroups = [];
 
-    public void Generate(InvocationContext context, ModuleNode module)
+    public async Task GenerateAsync(InvocationContext context, ModuleNode module)
     {
         CreateFileGroups(context, module);
 
-        GenerateProjectFile(context, module);
-        GenerateFiltersFile(module);
-        GenerateUserFile(module);
+        if (!string.IsNullOrEmpty(_helper.BuildOutput.ProjectDir))
+        {
+            Directory.CreateDirectory(_helper.BuildOutput.ProjectDir);
+        }
+
+        // TODO: Generate to a string and check if the content has changed before writing, so visual studio doesn't reload unnecessarily.
+
+        await GenerateProjectFileAsync(context, module);
+        await GenerateFiltersFileAsync(module);
+        await GenerateUserFileAsync(module);
     }
 
-    private void GenerateProjectFile(InvocationContext context, ModuleNode module)
+    private async Task GenerateProjectFileAsync(InvocationContext context, ModuleNode module)
     {
         _outputPath = Path.Join(_helper.BuildOutput.ProjectDir, $"{module.ModuleName}{ProjectExtension}");
 
-        using FileStream stream = new(_outputPath, FileMode.Create, FileAccess.Write, FileShare.None);
-        using XmlWriter writer = XmlWriter.Create(stream, new XmlWriterSettings { Encoding = Encoding.UTF8, Indent = true });
+        await using FileStream stream = new(_outputPath, FileMode.Create, FileAccess.Write, FileShare.None);
+        await using XmlWriter writer = XmlWriter.Create(stream, new XmlWriterSettings { Encoding = Encoding.UTF8, Indent = true, Async = true });
 
         writer.WriteStartDocument();
         writer.WriteStartElement("Project", XmlNamespace);
@@ -59,12 +66,12 @@ internal class VcxprojGenerator(IProjectService projectService, ProjectGenerator
         writer.WriteEndDocument();
     }
 
-    private void GenerateFiltersFile(ModuleNode module)
+    private async Task GenerateFiltersFileAsync(ModuleNode module)
     {
         _outputPath = Path.Join(_helper.BuildOutput.ProjectDir, $"{module.ModuleName}{ProjectExtension}");
 
-        using FileStream stream = new(_outputPath, FileMode.Create, FileAccess.Write, FileShare.None);
-        using XmlWriter writer = XmlWriter.Create(stream, new XmlWriterSettings { Encoding = Encoding.UTF8, Indent = true });
+        await using FileStream stream = new(_outputPath, FileMode.Create, FileAccess.Write, FileShare.None);
+        await using XmlWriter writer = XmlWriter.Create(stream, new XmlWriterSettings { Encoding = Encoding.UTF8, Indent = true });
 
         HashSet<string> seenVirtualDirs = [];
 
@@ -102,14 +109,14 @@ internal class VcxprojGenerator(IProjectService projectService, ProjectGenerator
         writer.WriteEndDocument();
     }
 
-    private void GenerateUserFile(ModuleNode module)
+    private Task GenerateUserFileAsync(ModuleNode module)
     {
         // TODO: debugger settings: command, args, flavor, type, working dir, environment variables, etc.
 
         //_outputPath = Path.Join(_helper.BuildOutput.ProjectDir, $"{module.ModuleName}{ProjectExtension}");
 
-        //using FileStream stream = new(_outputPath, FileMode.Create, FileAccess.Write, FileShare.None);
-        //using XmlWriter writer = XmlWriter.Create(stream, new XmlWriterSettings { Encoding = Encoding.UTF8, Indent = true });
+        //await using FileStream stream = new(_outputPath, FileMode.Create, FileAccess.Write, FileShare.None);
+        //await using XmlWriter writer = XmlWriter.Create(stream, new XmlWriterSettings { Encoding = Encoding.UTF8, Indent = true });
 
         //writer.WriteStartDocument();
         //writer.WriteStartElement("Project", XmlNamespace);
@@ -120,6 +127,8 @@ internal class VcxprojGenerator(IProjectService projectService, ProjectGenerator
 
         //writer.WriteEndElement();
         //writer.WriteEndDocument();
+
+        return Task.CompletedTask;
     }
 
     private string GetPath(string path)
@@ -157,6 +166,9 @@ internal class VcxprojGenerator(IProjectService projectService, ProjectGenerator
         writer.WriteStartElement("PropertyGroup");
         writer.WriteAttributeString("Label", "Globals");
 
+        writer.WriteElementString("ProjectGuid", ModuleGroupTree.GetModuleGuid(module));
+        writer.WriteElementString("ProjectName", module.ModuleName);
+
         // TODO: Is this needed?
         // I think we'd need this if we let users specify an explicit virtual path for files because
         // that might result in multiple files of the same name in the same virtual dir?
@@ -182,10 +194,6 @@ internal class VcxprojGenerator(IProjectService projectService, ProjectGenerator
             }
             writer.WriteElementString("RootNamespace", module.ModuleName);
         }
-
-
-        writer.WriteElementString("ProjectGuid", ModuleGroupTree.GetModuleGuid(module));
-        writer.WriteElementString("ProjectName", module.ModuleName);
 
         switch (toolsetNode.Arch)
         {
@@ -327,10 +335,10 @@ internal class VcxprojGenerator(IProjectService projectService, ProjectGenerator
             else
             {
                 BuildOutputNode buildOutput = _projectService.GetMergedNode<BuildOutputNode>(context, module);
-                string outDir = GetPath(buildOutput.GetTargetDir(module.Kind));
+                string outDir = GetPath(module.GetTargetDir(buildOutput));
                 writer.WriteElementString("OutDir", $"{outDir}\\");
 
-                string objDir = GetPath(buildOutput.ObjDir);
+                string objDir = GetPath(module.GetObjDir(buildOutput));
                 writer.WriteElementString("IntDir", $"{objDir}\\");
             }
 
@@ -385,10 +393,10 @@ internal class VcxprojGenerator(IProjectService projectService, ProjectGenerator
             writer.WriteStartElement("PropertyGroup");
             writer.WriteAttributeString("Condition", configCondition);
 
-            string outDir = GetPath(buildOutput.GetTargetDir(module.Kind));
+            string outDir = GetPath(module.GetTargetDir(buildOutput));
             writer.WriteElementString("OutDir", $"{outDir}\\");
 
-            string objDir = GetPath(buildOutput.ObjDir);
+            string objDir = GetPath(module.GetObjDir(buildOutput));
             writer.WriteElementString("IntDir", $"{objDir}\\");
 
             if (module.Kind != EModuleKind.Custom)
@@ -401,14 +409,15 @@ internal class VcxprojGenerator(IProjectService projectService, ProjectGenerator
 
                 if (module.Kind == EModuleKind.LibShared)
                 {
-                    writer.WriteElementBool("IgnoreImportLibrary", buildOutput.MakeImportLib);
+                    writer.WriteElementBool("IgnoreImportLibrary", module.MakeImportLib);
                 }
 
-                writer.WriteElementString("TargetName", buildOutput.TargetName ?? module.ModuleName);
+                writer.WriteElementString("TargetName", module.TargetName);
 
-                if (buildOutput.TargetExtension is not null)
+                string targetExt = module.GetTargetExtension(context);
+                if (!string.IsNullOrEmpty(targetExt))
                 {
-                    writer.WriteElementString("TargetExt", buildOutput.TargetExtension);
+                    writer.WriteElementString("TargetExt", targetExt);
                 }
                 else
                 {
@@ -424,7 +433,7 @@ internal class VcxprojGenerator(IProjectService projectService, ProjectGenerator
                 IEnumerable<string> systemLibPaths = libDirs.Entries.Where((entry) => entry.IsSystem).Select((entry) => GetPath(entry.Path));
                 VisualStudioUtils.WriteArrayElement(writer, systemLibPaths, "LibraryPath", "%(LibraryPath)");
 
-                if (!buildOutput.MakeExeManifest)
+                if (!module.MakeExeManifest)
                 {
                     writer.WriteElementString("GenerateManifest", "false");
                 }
@@ -919,13 +928,13 @@ internal class VcxprojGenerator(IProjectService projectService, ProjectGenerator
                 {
                     if (module.Kind == EModuleKind.LibShared)
                     {
-                        string targetDir = GetPath(buildOutput.LibDir);
-                        string importLib = Path.Join(targetDir, module.ModuleName + ".lib");
+                        string libDir = module.GetLibDir(buildOutput);
+                        string importLib = Path.Join(libDir, module.TargetName + ".lib");
                         writer.WriteElementString("ImportLibrary", importLib);
                     }
 
                     writer.TryWriteElementString("EntryPointSymbol", module.EntryPoint);
-                    writer.WriteElementBoolIfTrue("GenerateMapFile", buildOutput.MakeMapFile);
+                    writer.WriteElementBoolIfTrue("GenerateMapFile", module.MakeMapFile);
 
                     // TODO: C++ module definition support (.def)?
                     //writer.WriteElementString("ModuleDefinitionFile", ...);

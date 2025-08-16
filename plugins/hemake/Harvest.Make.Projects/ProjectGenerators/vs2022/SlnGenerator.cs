@@ -18,7 +18,7 @@ internal class SlnGenerator(IProjectService projectService, ProjectGeneratorHelp
     private readonly ProjectGeneratorHelper _helper = helper;
     private readonly IndentedStringBuilder _writer = new();
 
-    public void Generate(ModuleGroupTree groupTree, string formatVersion, string vsVersion)
+    public Task GenerateAsync(ModuleGroupTree groupTree, string formatVersion, string vsVersion)
     {
         _writer.Clear();
         _writer.AppendLine($"Microsoft Visual Studio Solution File, Format Version {formatVersion}");
@@ -35,7 +35,9 @@ internal class SlnGenerator(IProjectService projectService, ProjectGeneratorHelp
         _writer.AppendLine("EndGlobal");
 
         string slnPath = Path.Join(_helper.BuildOutput.BasePath, $"{_helper.Project.ProjectName}.sln");
-        File.WriteAllText(slnPath, _writer.ToString());
+
+        // TODO: Check if the content has changed before writing, so visual studio doesn't reload unnecessarily.
+        return File.WriteAllTextAsync(slnPath, _writer.ToString());
     }
 
     private IEnumerable<ModuleGroupTree.Entry> GetOrderDependencies(ProjectContext projectContext, ModuleNode module, ModuleGroupTree groupTree)
@@ -80,7 +82,7 @@ internal class SlnGenerator(IProjectService projectService, ProjectGeneratorHelp
 
     private void WriteProjects(ModuleGroupTree groupTree)
     {
-        groupTree.Traverse((entry) =>
+        foreach (ModuleGroupTree.Entry entry in groupTree.Entries)
         {
             if (entry.Module is not null)
             {
@@ -110,7 +112,7 @@ internal class SlnGenerator(IProjectService projectService, ProjectGeneratorHelp
                 _writer.AppendLine($"Project(\"{{2150E333-8FDC-42A3-9474-1A3956D46DE8}}\") = \"{entry.Name}\", \"{entry.Name}\", \"{entry.ID}\"");
                 _writer.AppendLine("EndProject");
             }
-        });
+        }
     }
 
     private void WriteConfigurationPlatforms(ModuleGroupTree groupTree)
@@ -161,11 +163,11 @@ internal class SlnGenerator(IProjectService projectService, ProjectGeneratorHelp
         // Finally, write mappings of project configurations to solution configurations
         _writer.AppendLine("GlobalSection(ProjectConfigurationPlatforms) = postSolution");
         _writer.IncreaseIndent();
-        groupTree.Traverse((entry) =>
+        foreach (ModuleGroupTree.Entry entry in groupTree.Entries)
         {
             if (entry.Module is null)
             {
-                return;
+                continue;
             }
 
             foreach (DescriptorEntry desc in descriptors)
@@ -178,7 +180,7 @@ internal class SlnGenerator(IProjectService projectService, ProjectGeneratorHelp
                     _writer.AppendLine($"{{{entry.ID}}}.{desc.Name}.Build.0 = {configName}|{desc.ArchName}");
                 }
             }
-        });
+        }
         _writer.DecreaseIndent();
         _writer.AppendLine("EndGlobalSection");
     }
@@ -192,13 +194,13 @@ internal class SlnGenerator(IProjectService projectService, ProjectGeneratorHelp
 
         _writer.AppendLine("GlobalSection(NestedProjects) = preSolution");
         _writer.IncreaseIndent();
-        groupTree.Traverse((entry) =>
+        foreach (ModuleGroupTree.Entry entry in groupTree.Entries)
         {
             if (entry.Parent is not null)
             {
                 _writer.AppendLine($"{{{entry.ID}}} = {{{entry.Parent.ID}}}");
             }
-        });
+        }
         _writer.DecreaseIndent();
         _writer.AppendLine("EndGlobalSection");
     }

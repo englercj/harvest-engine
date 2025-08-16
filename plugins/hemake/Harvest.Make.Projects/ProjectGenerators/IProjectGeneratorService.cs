@@ -6,5 +6,5 @@ namespace Harvest.Make.Projects.ProjectGenerators;
 
 public interface IProjectGeneratorService
 {
-    public void GenerateProjectFiles(InvocationContext context);
+    public Task GenerateProjectFilesAsync(InvocationContext context);
 }

@@ -29,7 +29,9 @@ public abstract class NodeBase<TTraits>(KdlNode node, INode? scope) : INode
     public INodeTraits Traits => _nodeTraits;
 
     public KdlNode Node => node;
-    public INode? Scope => scope;
+
+    private INode? _scope = scope;
+    public INode? Scope => _scope;
 
     public List<INode> Children { get; } = [];
 
@@ -284,6 +286,13 @@ public abstract class NodeBase<TTraits>(KdlNode node, INode? scope) : INode
         }
         else
         {
+            // When we're in a WhenNode, validate against the parent scope instead since WhenNodes
+            // are allowed to contain any node that is valid in their parent scope.
+            while (scope is WhenNode)
+            {
+                scope = scope.Scope;
+            }
+
             if (scope is null)
             {
                 throw new NodeValidationException(this, $"'{Node.Name}' nodes cannot be used at the root.");
@@ -367,21 +376,29 @@ public abstract class NodeBase<TTraits>(KdlNode node, INode? scope) : INode
         }
     }
 
-    public virtual void MergeAndResolve(ProjectContext context, INode node)
+    public virtual void MergeAndResolve(ProjectContext projectContext, INode node)
     {
         if (!node.GetType().Equals(GetType()) || Node.Name != node.Node.Name)
         {
             throw new ArgumentException("Cannot merge nodes of different types.", nameof(node));
         }
 
+        _scope = node.Scope;
+
         Node.SourceInfo = node.Node.SourceInfo;
 
-        MergeAndResolveArguments(context, node);
-        MergeAndResolveProperties(context, node);
-        MergeAndResolveChildren(context, node);
+        MergeAndResolveArguments(projectContext, node);
+        MergeAndResolveProperties(projectContext, node);
+        MergeAndResolveChildren(projectContext, node);
     }
 
-    protected virtual void MergeAndResolveArguments(ProjectContext context, INode node)
+    public virtual void ResolveDefaults(ProjectContext projectContext)
+    {
+        // default the source info to the project file
+        Node.SourceInfo = new KdlSourceInfo(projectContext.ProjectService.ProjectPath, 0, 0);
+    }
+
+    protected virtual void MergeAndResolveArguments(ProjectContext projectContext, INode node)
     {
         for (int i = 0; i < node.Node.Arguments.Count; ++i)
         {
@@ -389,7 +406,7 @@ public abstract class NodeBase<TTraits>(KdlNode node, INode? scope) : INode
 
             if (value is KdlString valueStr)
             {
-                string resolvedValue = context.ProjectService.TokenReplacer.ReplaceTokens(context, node.Node, valueStr.Value);
+                string resolvedValue = projectContext.ProjectService.TokenReplacer.ReplaceTokens(projectContext, node.Node, valueStr.Value);
                 AddOrSetArgument(i, new KdlString(resolvedValue, valueStr.Type));
             }
             else
@@ -399,13 +416,13 @@ public abstract class NodeBase<TTraits>(KdlNode node, INode? scope) : INode
         }
     }
 
-    protected virtual void MergeAndResolveProperties(ProjectContext context, INode node)
+    protected virtual void MergeAndResolveProperties(ProjectContext projectContext, INode node)
     {
         foreach ((string key, KdlValue value) in node.Node.Properties)
         {
             if (value is KdlString valueStr)
             {
-                string resolvedValue = context.ProjectService.TokenReplacer.ReplaceTokens(context, node.Node, valueStr.Value);
+                string resolvedValue = projectContext.ProjectService.TokenReplacer.ReplaceTokens(projectContext, node.Node, valueStr.Value);
                 Node.Properties[key] = new KdlString(resolvedValue, valueStr.Type);
             }
             else
@@ -415,7 +432,7 @@ public abstract class NodeBase<TTraits>(KdlNode node, INode? scope) : INode
         }
     }
 
-    protected virtual void MergeAndResolveChildren(ProjectContext context, INode node)
+    protected virtual void MergeAndResolveChildren(ProjectContext projectContext, INode node)
     {
         foreach (INode child in node.Children)
         {

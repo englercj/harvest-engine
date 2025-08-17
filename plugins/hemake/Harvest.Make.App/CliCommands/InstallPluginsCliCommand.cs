@@ -39,6 +39,8 @@ internal class InstallPluginsCliCommand(
         HashSet<string> installKeys = [];
         List<Task> installTasks = [];
 
+        using HttpClient httpClient = new();
+
         // TODO: How do we filter this for the currently valid configurations/platforms?
         // For example, on windows we don't want to try to install plugins for linux stuff.
         // Need a way to check if a configuration/platform is valid in the current build environment.
@@ -60,7 +62,7 @@ internal class InstallPluginsCliCommand(
                     {
                         if (installKeys.Add(fetchNode.ArchiveKey))
                         {
-                            installTasks.Add(InstallArchiveAsync(fetchNode, installDir));
+                            installTasks.Add(InstallArchiveAsync(httpClient, fetchNode, installDir));
                         }
                     }
                 }
@@ -78,7 +80,7 @@ internal class InstallPluginsCliCommand(
         _logger.LogInformation("All plugins installed successfully.");
     }
 
-    private async Task InstallArchiveAsync(FetchNode fetchNode, string installDir)
+    private async Task InstallArchiveAsync(HttpClient httpClient, FetchNode fetchNode, string installDir)
     {
         string extractDir = Path.Combine(installDir, fetchNode.ArchiveKey);
 
@@ -90,7 +92,7 @@ internal class InstallPluginsCliCommand(
 
         string archiveTempPath = Path.GetTempFileName();
 
-        await DownloadArchiveAsync(fetchNode.ArchiveUrl, archiveTempPath);
+        await DownloadArchiveAsync(httpClient, fetchNode.ArchiveUrl, archiveTempPath);
 
         try
         {
@@ -116,11 +118,10 @@ internal class InstallPluginsCliCommand(
         }
     }
 
-    private async Task DownloadArchiveAsync(string archiveUrl, string archivePath)
+    private async Task DownloadArchiveAsync(HttpClient httpClient, string archiveUrl, string archivePath)
     {
         _logger.LogTrace("Downloading archive: {Url}", archiveUrl);
 
-        using HttpClient httpClient = new();
         using HttpResponseMessage response = await httpClient.GetAsync(archiveUrl);
         response.EnsureSuccessStatusCode();
         await using FileStream fs = new(archivePath, FileMode.Create, FileAccess.Write, FileShare.None);

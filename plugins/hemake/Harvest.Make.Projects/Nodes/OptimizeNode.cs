@@ -56,7 +56,7 @@ public class OptimizeNodeTraits : NodeBaseTraits
     };
 }
 
-public class OptimizeNode(KdlNode node, INode? scope) : NodeBase<OptimizeNodeTraits>(node, scope)
+public class OptimizeNode(KdlNode node) : NodeBase<OptimizeNodeTraits>(node)
 {
     public EOptimizationLevel OptimizationLevel => GetEnumValue<EOptimizationLevel>(0);
     public ELinkTimeOptimizationLevel LinkTimeOptimizationLevel => GetEnumValue<ELinkTimeOptimizationLevel>("lto");

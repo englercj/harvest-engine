@@ -39,7 +39,7 @@ public class OptionNodeTraits : NodeBaseTraits
     };
 }
 
-public class OptionNode(KdlNode node, INode? scope) : NodeBase<OptionNodeTraits>(node, scope)
+public class OptionNode(KdlNode node) : NodeBase<OptionNodeTraits>(node)
 {
     public string OptionName => GetStringValue(0);
     public EOptionType OptionType => GetEnumValue<EOptionType>("type");

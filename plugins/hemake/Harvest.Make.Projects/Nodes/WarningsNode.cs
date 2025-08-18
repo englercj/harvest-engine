@@ -31,7 +31,7 @@ public class WarningsNodeTraits : NodeSetBaseTraits<WarningsEntryNode>
     };
 }
 
-public class WarningsNode(KdlNode node, INode? scope) : NodeSetBase<WarningsNodeTraits, WarningsEntryNode>(node, scope)
+public class WarningsNode(KdlNode node) : NodeSetBase<WarningsNodeTraits, WarningsEntryNode>(node)
 {
     public EWarningsLevel WarningsLevel => GetEnumValue<EWarningsLevel>(0);
     public bool AreAllWarningsFatal => GetBoolValue("fatal");

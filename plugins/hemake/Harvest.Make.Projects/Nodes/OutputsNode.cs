@@ -15,6 +15,6 @@ public class OutputsNodeTraits : NodeSetBaseTraits<OutputsEntryNode>
     ];
 }
 
-public class OutputsNode(KdlNode node, INode? scope) : NodeSetBase<OutputsNodeTraits, OutputsEntryNode>(node, scope)
+public class OutputsNode(KdlNode node) : NodeSetBase<OutputsNodeTraits, OutputsEntryNode>(node)
 {
 }

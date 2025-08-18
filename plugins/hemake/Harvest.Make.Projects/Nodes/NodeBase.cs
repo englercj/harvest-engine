@@ -3,6 +3,7 @@
 using Harvest.Kdl;
 using Harvest.Kdl.Types;
 using Microsoft.Extensions.FileSystemGlobbing;
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Numerics;
 
@@ -17,9 +18,19 @@ public abstract class NodeBaseTraits : INodeTraits
     public virtual ENodeDependencyInheritance DependencyInheritance => ENodeDependencyInheritance.None;
     public virtual bool CanBeExtended => false;
     public virtual Type? ChildNodeType => null;
+
+    public virtual string? TryResolveToken(ProjectContext projectContext, KdlNode contextNode, string propertyName)
+    {
+        if (propertyName == "path")
+        {
+            return contextNode.SourceInfo.FilePath;
+        }
+
+        return null;
+    }
 }
 
-public abstract class NodeBase<TTraits>(KdlNode node, INode? scope) : INode
+public abstract class NodeBase<TTraits> : INode
     where TTraits : NodeBaseTraits, new()
 {
     private static readonly TTraits _nodeTraits = new();
@@ -28,24 +39,24 @@ public abstract class NodeBase<TTraits>(KdlNode node, INode? scope) : INode
 
     public INodeTraits Traits => _nodeTraits;
 
-    public KdlNode Node => node;
+    private readonly KdlNode _node;
+    public KdlNode Node => _node;
 
-    private INode? _scope = scope;
-    public INode? Scope => _scope;
+    public NodeBase(KdlNode node)
+    {
+        Debug.Assert(string.IsNullOrEmpty(Traits.Name) || node.Name == Traits.Name,
+            $"NodeBase<{typeof(TTraits).Name}> instantiated with incorrect KdlNode: {node.Name}. Expected: {Traits.Name}.");
 
-    public List<INode> Children { get; } = [];
+        _node = node;
+    }
+
+    #region Arguments and Properties
 
     protected T? TryGetClassValue<T>(int index) where T : class
     {
-        if (index < Node.Arguments.Count)
+        if (Node.TryGetArgumentValue(index, out T? value))
         {
-            if (Node.Arguments[index] is KdlValue<T> typedValue)
-            {
-                if (typedValue.Value is T result)
-                {
-                    return result;
-                }
-            }
+            return value;
         }
 
         if (index < Traits.ArgumentDefs.Count)
@@ -62,15 +73,9 @@ public abstract class NodeBase<TTraits>(KdlNode node, INode? scope) : INode
 
     protected T? TryGetStructValue<T>(int index) where T : struct
     {
-        if (index < Node.Arguments.Count)
+        if (Node.TryGetArgumentValue(index, out T? value))
         {
-            if (Node.Arguments[index] is KdlValue<T> typedValue)
-            {
-                if (typedValue.Value is T result)
-                {
-                    return result;
-                }
-            }
+            return value;
         }
 
         if (index < Traits.ArgumentDefs.Count)
@@ -129,15 +134,9 @@ public abstract class NodeBase<TTraits>(KdlNode node, INode? scope) : INode
 
     protected T? TryGetClassValue<T>(string key) where T : class
     {
-        if (Node.Properties.TryGetValue(key, out KdlValue? value))
+        if (Node.TryGetPropertyValue(key, out T? value))
         {
-            if (value is KdlValue<T> typedValue)
-            {
-                if (typedValue.Value is T result)
-                {
-                    return result;
-                }
-            }
+            return value;
         }
 
         if (Traits.PropertyDefs.TryGetValue(key, out NodeValueDef? valueDef))
@@ -153,15 +152,9 @@ public abstract class NodeBase<TTraits>(KdlNode node, INode? scope) : INode
 
     protected T? TryGetStructValue<T>(string key) where T : struct
     {
-        if (Node.Properties.TryGetValue(key, out KdlValue? value))
+        if (Node.TryGetPropertyValue(key, out T? value))
         {
-            if (value is KdlValue<T> typedValue)
-            {
-                if (typedValue.Value is T result)
-                {
-                    return result;
-                }
-            }
+            return value;
         }
 
         if (Traits.PropertyDefs.TryGetValue(key, out NodeValueDef? valueDef))
@@ -251,21 +244,9 @@ public abstract class NodeBase<TTraits>(KdlNode node, INode? scope) : INode
         return [];
     }
 
-    public virtual INode Clone()
-    {
-        KdlNode rawNode = Node.Clone();
+    #endregion
 
-        INode result = Activator.CreateInstance(GetType(), rawNode, Scope) as INode
-            ?? throw new Exception($"Failed to clone node of type '{GetType().Name}'");
-
-        foreach (INode child in Children)
-        {
-            INode clonedChild = child.Clone();
-            result.Children.Add(clonedChild);
-        }
-
-        return result;
-    }
+    #region Validation
 
     public virtual void Validate(INode? scope)
     {
@@ -376,14 +357,15 @@ public abstract class NodeBase<TTraits>(KdlNode node, INode? scope) : INode
         }
     }
 
+    #endregion
+
+    // TODO: Only FilesNode & NodeSetBase override this, can I do it via traits instead?
     public virtual void MergeAndResolve(ProjectContext projectContext, INode node)
     {
         if (!node.GetType().Equals(GetType()) || Node.Name != node.Node.Name)
         {
             throw new ArgumentException("Cannot merge nodes of different types.", nameof(node));
         }
-
-        _scope = node.Scope;
 
         Node.SourceInfo = node.Node.SourceInfo;
 
@@ -392,12 +374,14 @@ public abstract class NodeBase<TTraits>(KdlNode node, INode? scope) : INode
         MergeAndResolveChildren(projectContext, node);
     }
 
+    // TODO: Only overridden by the BuildOutputs node currently
     public virtual void ResolveDefaults(ProjectContext projectContext)
     {
         // default the source info to the project file
         Node.SourceInfo = new KdlSourceInfo(projectContext.ProjectService.ProjectPath, 0, 0);
     }
 
+    // TODO: No one overrides this currently
     protected virtual void MergeAndResolveArguments(ProjectContext projectContext, INode node)
     {
         for (int i = 0; i < node.Node.Arguments.Count; ++i)
@@ -416,6 +400,7 @@ public abstract class NodeBase<TTraits>(KdlNode node, INode? scope) : INode
         }
     }
 
+    // TODO: No one overrides this currently
     protected virtual void MergeAndResolveProperties(ProjectContext projectContext, INode node)
     {
         foreach ((string key, KdlValue value) in node.Node.Properties)
@@ -432,6 +417,7 @@ public abstract class NodeBase<TTraits>(KdlNode node, INode? scope) : INode
         }
     }
 
+    // TODO: Only FilesNode & NodeSetBase override this, can I do it via traits instead?
     protected virtual void MergeAndResolveChildren(ProjectContext projectContext, INode node)
     {
         foreach (INode child in node.Children)

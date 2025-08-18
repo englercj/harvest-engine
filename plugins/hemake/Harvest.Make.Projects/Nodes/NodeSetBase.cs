@@ -13,7 +13,7 @@ public enum ESetAction
 }
 
 public abstract class NodeSetBaseTraits<TChild> : NodeBaseTraits
-    where TChild : INode
+    where TChild : class, INode
 {
     public override IReadOnlyList<NodeValueDef> ArgumentDefs =>
     [
@@ -23,12 +23,15 @@ public abstract class NodeSetBaseTraits<TChild> : NodeBaseTraits
     public override Type? ChildNodeType => typeof(TChild);
 }
 
-public abstract class NodeSetBase<TTraits, TChild>(KdlNode node, INode? scope) : NodeBase<TTraits>(node, scope)
+public abstract class NodeSetBase<TTraits, TChild>(KdlNode node) : NodeBase<TTraits>(node)
     where TTraits : NodeSetBaseTraits<TChild>, new()
-    where TChild : INode
+    where TChild : class, INode
 {
     public ESetAction SetAction => GetEnumValue<ESetAction>(0);
-    public IEnumerable<TChild> Entries => Children.Cast<TChild>();
+
+    public IEnumerable<TChild> Entries =>
+        Node.Children.Select(child => Activator.CreateInstance(typeof(TChild), child) as TChild
+            ?? throw new NodeParseException(child, $"Activator.CreateInstance failed to allocate node instance for type '{typeof(TChild)}'."));
 
     protected readonly Dictionary<string, TChild> _resolvedEntries = [];
 
@@ -89,16 +92,6 @@ public abstract class NodeSetBase<TTraits, TChild>(KdlNode node, INode? scope) :
     protected virtual string GetSetEntryKey(ProjectContext context, TChild entry)
     {
         return entry.Node.Name;
-    }
-
-    protected virtual void OnAddChild(ProjectContext context, TChild entry)
-    {
-        Children.Add(entry);
-    }
-
-    protected virtual void OnRemoveChild(ProjectContext context, TChild entry)
-    {
-        Children.Remove(entry);
     }
 
     protected virtual void OnModifyChild(ProjectContext context, TChild entry, TChild existing)

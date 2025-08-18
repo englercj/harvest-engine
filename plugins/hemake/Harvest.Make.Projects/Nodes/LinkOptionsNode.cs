@@ -20,7 +20,7 @@ public class LinkOptionsNodeTraits : NodeSetBaseTraits<LinkOptionsEntryNode>
     };
 }
 
-public class LinkOptionsNode(KdlNode node, INode? scope) : NodeSetBase<LinkOptionsNodeTraits, LinkOptionsEntryNode>(node, scope)
+public class LinkOptionsNode(KdlNode node) : NodeSetBase<LinkOptionsNodeTraits, LinkOptionsEntryNode>(node)
 {
     public bool IncrementalLink => GetBoolValue("incremental_link");
 }

@@ -24,7 +24,7 @@ public class SystemNodeTraits : NodeBaseTraits
     };
 }
 
-public class SystemNode(KdlNode node, INode? scope) : NodeBase<SystemNodeTraits>(node, scope)
+public class SystemNode(KdlNode node) : NodeBase<SystemNodeTraits>(node)
 {
     public EPlatformSystem System => GetEnumValue<EPlatformSystem>(0);
     public string Version => GetResolvedVersion();

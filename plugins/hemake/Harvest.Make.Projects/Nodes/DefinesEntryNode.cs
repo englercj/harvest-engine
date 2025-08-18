@@ -8,7 +8,7 @@ public class DefinesEntryNodeTraits : NodeSetEntryBaseTraits<DefinesNode>
 {
 }
 
-public class DefinesEntryNode(KdlNode node, INode? scope) : NodeSetEntryBase<DefinesEntryNodeTraits, DefinesNode>(node, scope)
+public class DefinesEntryNode(KdlNode node) : NodeSetEntryBase<DefinesEntryNodeTraits, DefinesNode>(node)
 {
     public string DefineName => Node.Name;
 }

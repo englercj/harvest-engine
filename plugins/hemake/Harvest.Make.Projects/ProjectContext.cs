@@ -4,22 +4,15 @@ using Harvest.Make.Projects.Nodes;
 
 namespace Harvest.Make.Projects;
 
-public class ProjectContext(IProjectService projectService)
+public class ProjectContext
 {
-    public IProjectService ProjectService => projectService;
-    public PluginNode? Plugin { get; set; } = null;
-    public ModuleNode? Module { get; set; } = null;
-    public ConfigurationNode? Configuration { get; set; } = null;
-    public PlatformNode? Platform { get; set; } = null;
+    public required IProjectService ProjectService { get; init; }
+    //public PluginNode? Plugin { get; init; } = null;
+    //public ModuleNode? Module { get; init; } = null;
+    public required ConfigurationNode Configuration { get; init; }
+    public required PlatformNode Platform { get; init; }
 
-    public EPlatformSystem Host { get; set; } = EPlatformSystem.Windows;
-    public SortedDictionary<string, object?> Options { get; set; } = [];
-    public HashSet<string> Tags { get; set; } = [];
-
-    public bool IsWindows => (Platform?.System ?? EPlatformSystem.Windows) == EPlatformSystem.Windows;
-
-    public ProjectContext Clone()
-    {
-        return (ProjectContext)MemberwiseClone();
-    }
+    public EPlatformSystem Host { get; init; } = EPlatformSystem.Windows;
+    public IReadOnlyDictionary<string, object?> Options { get; init; } = new SortedDictionary<string, object?>();
+    public IReadOnlySet<string> Tags { get; init; } = new HashSet<string>();
 }

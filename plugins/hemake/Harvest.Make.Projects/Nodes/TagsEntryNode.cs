@@ -8,7 +8,7 @@ public class TagsEntryNodeTraits : NodeSetEntryBaseTraits<TagsNode>
 {
 }
 
-public class TagsEntryNode(KdlNode node, INode? scope) : NodeSetEntryBase<TagsEntryNodeTraits, TagsNode>(node, scope)
+public class TagsEntryNode(KdlNode node) : NodeSetEntryBase<TagsEntryNodeTraits, TagsNode>(node)
 {
     public string TagName => Node.Name;
 }

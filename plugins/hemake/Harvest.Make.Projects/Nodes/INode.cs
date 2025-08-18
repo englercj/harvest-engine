@@ -1,6 +1,7 @@
 // Copyright Chad Engler
 
 using Harvest.Kdl;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Harvest.Make.Projects.Nodes;
 
@@ -31,6 +32,8 @@ public interface INodeTraits
     public ENodeDependencyInheritance DependencyInheritance { get; }
     public bool CanBeExtended { get; }
     public Type? ChildNodeType { get; }
+
+    public string? TryResolveToken(ProjectContext projectContext, KdlNode contextNode, string propertyName);
 }
 
 public interface INode
@@ -40,11 +43,6 @@ public interface INode
     public INodeTraits Traits { get; }
 
     public KdlNode Node { get; }
-    public INode? Scope { get; }
-
-    public List<INode> Children { get; }
-
-    public INode Clone();
 
     public void Validate(INode? scope);
     public void MergeAndResolve(ProjectContext projectContext, INode node);

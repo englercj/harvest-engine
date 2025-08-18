@@ -56,7 +56,7 @@ public class FetchNodeTraits : NodeBaseTraits
     };
 }
 
-public class FetchNode(KdlNode node, INode? scope) : NodeBase<FetchNodeTraits>(node, scope)
+public class FetchNode(KdlNode node) : NodeBase<FetchNodeTraits>(node)
 {
     public EFetchMethod Method => GetEnumValue<EFetchMethod>(0);
 

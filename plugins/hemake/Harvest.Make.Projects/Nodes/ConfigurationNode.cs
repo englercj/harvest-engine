@@ -19,7 +19,7 @@ public class ConfigurationNodeTraits : NodeBaseTraits
     ];
 }
 
-public class ConfigurationNode(KdlNode node, INode? scope) : NodeBase<ConfigurationNodeTraits>(node, scope)
+public class ConfigurationNode(KdlNode node) : NodeBase<ConfigurationNodeTraits>(node)
 {
     public string ConfigName => GetStringValue(0);
 }

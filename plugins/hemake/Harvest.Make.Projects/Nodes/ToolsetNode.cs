@@ -46,7 +46,7 @@ public class ToolsetNodeTraits : NodeBaseTraits
     };
 }
 
-public class ToolsetNode(KdlNode node, INode? scope) : NodeBase<ToolsetNodeTraits>(node, scope)
+public class ToolsetNode(KdlNode node) : NodeBase<ToolsetNodeTraits>(node)
 {
     public EToolset Toolset => GetEnumValue<EToolset>(0);
     public EToolsetArch Arch => GetEnumValue<EToolsetArch>("arch");

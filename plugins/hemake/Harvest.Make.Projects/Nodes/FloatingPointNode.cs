@@ -35,7 +35,7 @@ public class FloatingPointNodeTraits : NodeBaseTraits
 
 }
 
-public class FloatingPointNode(KdlNode node, INode? scope) : NodeBase<FloatingPointNodeTraits>(node, scope)
+public class FloatingPointNode(KdlNode node) : NodeBase<FloatingPointNodeTraits>(node)
 {
     public EFloatingPointMode Mode => GetEnumValue<EFloatingPointMode>(0);
     public bool AllowExceptions => GetBoolValue("exceptions");

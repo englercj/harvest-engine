@@ -12,7 +12,7 @@ public class AuthorsEntryNodeTraits : NodeSetEntryBaseTraits<AuthorsNode>
     };
 }
 
-public class AuthorsEntryNode(KdlNode node, INode? scope) : NodeSetEntryBase<AuthorsEntryNodeTraits, AuthorsNode>(node, scope)
+public class AuthorsEntryNode(KdlNode node) : NodeSetEntryBase<AuthorsEntryNodeTraits, AuthorsNode>(node)
 {
     public string AuthorName => Node.Name;
     public string? AuthorEmail => TryGetStringValue("email");

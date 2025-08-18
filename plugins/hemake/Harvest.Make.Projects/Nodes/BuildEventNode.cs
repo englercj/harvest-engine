@@ -35,7 +35,7 @@ public class BuildEventNodeTraits : NodeBaseTraits
     };
 }
 
-public class BuildEventNode(KdlNode node, INode? scope) : NodeBase<BuildEventNodeTraits>(node, scope)
+public class BuildEventNode(KdlNode node) : NodeBase<BuildEventNodeTraits>(node)
 {
     public EBuildEvent EventName => GetEnumValue<EBuildEvent>(0);
     public string? Message => TryGetStringValue("message");

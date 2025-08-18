@@ -23,7 +23,7 @@ public class IncludeDirsNodeTraits : NodeSetBaseTraits<IncludeDirsEntryNode>
     public override ENodeDependencyInheritance DependencyInheritance => ENodeDependencyInheritance.Include;
 }
 
-public class IncludeDirsNode(KdlNode node, INode? scope) : NodeSetBase<IncludeDirsNodeTraits, IncludeDirsEntryNode>(node, scope)
+public class IncludeDirsNode(KdlNode node) : NodeSetBase<IncludeDirsNodeTraits, IncludeDirsEntryNode>(node)
 {
     public bool IsExternal => GetBoolValue("external");
 

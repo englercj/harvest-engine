@@ -42,30 +42,19 @@ public class KdlDocument : IKdlObject
         return handler.Document;
     }
 
+    public IEnumerable<KdlNode> GetAllNodes()
+    {
+        return _root.GetAllDescendants();
+    }
+
     public IEnumerable<KdlNode> GetNodesByName(string name)
     {
-        return GetChildNodesByName(name, _root);
+        return _root.GetDescendantsByName(name);
     }
 
     public void AddChild(KdlNode node)
     {
         _root.AddChild(node);
-    }
-
-    private static IEnumerable<KdlNode> GetChildNodesByName(string name, KdlNode scope)
-    {
-        foreach (KdlNode child in scope.Children)
-        {
-            if (child.Name == name)
-            {
-                yield return child;
-            }
-
-            foreach (KdlNode found in GetChildNodesByName(name, child))
-            {
-                yield return found;
-            }
-        }
     }
 
     public void WriteKdl(TextWriter writer, KdlWriteOptions options)

@@ -1,6 +1,7 @@
 // Copyright Chad Engler
 
 using Harvest.Kdl;
+using System.Diagnostics;
 
 namespace Harvest.Make.Projects.Nodes;
 
@@ -23,9 +24,24 @@ public class PluginNodeTraits : NodeBaseTraits
         { "version", NodeValueDef_String.Required() },
         { "license", NodeValueDef_String.Optional() },
     };
+
+    public override string? TryResolveToken(ProjectContext projectContext, KdlNode contextNode, string propertyName)
+    {
+        Debug.Assert(contextNode.Name == Name);
+
+        PluginNode plugin = new(contextNode);
+
+        switch (propertyName)
+        {
+            case "name": return plugin.PluginName;
+            case "install_dir": return plugin.GetInstallDir(projectContext);
+        }
+
+        return base.TryResolveToken(projectContext, contextNode, propertyName);
+    }
 }
 
-public class PluginNode(KdlNode node, INode? scope) : NodeBase<PluginNodeTraits>(node, scope)
+public class PluginNode(KdlNode node) : NodeBase<PluginNodeTraits>(node)
 {
     public string PluginName => GetStringValue(0);
     public string Version => GetStringValue("version");

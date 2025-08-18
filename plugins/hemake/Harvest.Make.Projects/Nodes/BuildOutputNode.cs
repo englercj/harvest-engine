@@ -30,7 +30,7 @@ public class BuildOutputNodeTraits : NodeBaseTraits
     };
 }
 
-public class BuildOutputNode(KdlNode node, INode? scope) : NodeBase<BuildOutputNodeTraits>(node, scope)
+public class BuildOutputNode(KdlNode node) : NodeBase<BuildOutputNodeTraits>(node)
 {
     public string BasePath => GetPathValue(0);
 

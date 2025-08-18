@@ -14,6 +14,6 @@ public class InstallNodeTraits : NodeBaseTraits
     ];
 }
 
-public class InstallNode(KdlNode node, INode? scope) : NodeBase<InstallNodeTraits>(node, scope)
+public class InstallNode(KdlNode node) : NodeBase<InstallNodeTraits>(node)
 {
 }

@@ -8,7 +8,7 @@ public class BuildOptionsEntryNodeTraits : NodeSetEntryBaseTraits<BuildOptionsNo
 {
 }
 
-public class BuildOptionsEntryNode(KdlNode node, INode? scope) : NodeSetEntryBase<BuildOptionsEntryNodeTraits, BuildOptionsNode>(node, scope)
+public class BuildOptionsEntryNode(KdlNode node) : NodeSetEntryBase<BuildOptionsEntryNodeTraits, BuildOptionsNode>(node)
 {
     public string OptionName => Node.Name;
 }

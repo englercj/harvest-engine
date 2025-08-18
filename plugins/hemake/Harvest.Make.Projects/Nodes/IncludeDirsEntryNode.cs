@@ -12,7 +12,7 @@ public class IncludeDirsEntryNodeTraits : NodeSetEntryBaseTraits<IncludeDirsNode
     };
 }
 
-public class IncludeDirsEntryNode(KdlNode node, INode? scope) : NodeSetEntryBase<IncludeDirsEntryNodeTraits, IncludeDirsNode>(node, scope)
+public class IncludeDirsEntryNode(KdlNode node) : NodeSetEntryBase<IncludeDirsEntryNodeTraits, IncludeDirsNode>(node)
 {
     public string Path => ResolvePath(Node.Name);
 

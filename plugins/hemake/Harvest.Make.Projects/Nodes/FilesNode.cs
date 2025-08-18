@@ -15,7 +15,7 @@ public class FilesNodeTraits : NodeSetBaseTraits<FilesEntryNode>
     ];
 }
 
-public class FilesNode(KdlNode node, INode? scope) : NodeSetBase<FilesNodeTraits, FilesEntryNode>(node, scope)
+public class FilesNode(KdlNode node) : NodeSetBase<FilesNodeTraits, FilesEntryNode>(node)
 {
     // Override the merge and resolve logic for children to create a single entry node per
     // expanded file path. This is necessary to support the case where a glob is added, then

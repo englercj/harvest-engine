@@ -33,7 +33,7 @@ public class SymbolsNodeTraits : NodeBaseTraits
     };
 }
 
-public class SymbolsNode(KdlNode node, INode? scope) : NodeBase<SymbolsNodeTraits>(node, scope)
+public class SymbolsNode(KdlNode node) : NodeBase<SymbolsNodeTraits>(node)
 {
     public ESymbolsMode SymbolsMode => GetEnumValue<ESymbolsMode>(0);
     public bool Embed => GetBoolValue("embed");

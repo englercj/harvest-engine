@@ -22,7 +22,7 @@ public class ImportNodeTraits : NodeBaseTraits
     ];
 }
 
-public class ImportNode(KdlNode node, INode? scope) : NodeBase<ImportNodeTraits>(node, scope)
+public class ImportNode(KdlNode node) : NodeBase<ImportNodeTraits>(node)
 {
     public string ImportPath => GetPathValue(0);
 }

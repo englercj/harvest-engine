@@ -14,6 +14,6 @@ public class PublicNodeTraits : NodeBaseTraits
     ];
 }
 
-public class PublicNode(KdlNode node, INode? scope) : NodeBase<PublicNodeTraits>(node, scope)
+public class PublicNode(KdlNode node) : NodeBase<PublicNodeTraits>(node)
 {
 }

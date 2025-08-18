@@ -13,7 +13,7 @@ public abstract class NodeSetEntryBaseTraits<TParent> : NodeBaseTraits
     ];
 }
 
-public class NodeSetEntryBase<TTraits, TParent>(KdlNode node, INode? scope) : NodeBase<TTraits>(node, scope)
+public class NodeSetEntryBase<TTraits, TParent>(KdlNode node) : NodeBase<TTraits>(node)
     where TTraits : NodeSetEntryBaseTraits<TParent>, new()
     where TParent : INode
 {

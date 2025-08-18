@@ -24,7 +24,7 @@ public class WarningsEntryNodeTraits : NodeSetEntryBaseTraits<WarningsNode>
     };
 }
 
-public class WarningsEntryNode(KdlNode node, INode? scope) : NodeSetEntryBase<WarningsEntryNodeTraits, WarningsNode>(node, scope)
+public class WarningsEntryNode(KdlNode node) : NodeSetEntryBase<WarningsEntryNodeTraits, WarningsNode>(node)
 {
     public string WarningName => Node.Name;
     public bool IsEnabled => GetEnumValue<EWarningAction>(0) == EWarningAction.Enable;

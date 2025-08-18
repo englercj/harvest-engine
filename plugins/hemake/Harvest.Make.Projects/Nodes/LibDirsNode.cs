@@ -23,7 +23,7 @@ public class LibDirsNodeTraits : NodeSetBaseTraits<LibDirsEntryNode>
     public override ENodeDependencyInheritance DependencyInheritance => ENodeDependencyInheritance.Link;
 }
 
-public class LibDirsNode(KdlNode node, INode? scope) : NodeSetBase<LibDirsNodeTraits, LibDirsEntryNode>(node, scope)
+public class LibDirsNode(KdlNode node) : NodeSetBase<LibDirsNodeTraits, LibDirsEntryNode>(node)
 {
     public bool IsSystem => GetBoolValue("system");
 

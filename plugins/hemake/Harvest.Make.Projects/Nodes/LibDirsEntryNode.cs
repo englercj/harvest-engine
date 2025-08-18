@@ -17,7 +17,7 @@ public class LibDirsEntryNodeTraits : NodeSetEntryBaseTraits<LibDirsNode>
     };
 }
 
-public class LibDirsEntryNode(KdlNode node, INode? scope) : NodeSetEntryBase<LibDirsEntryNodeTraits, LibDirsNode>(node, scope)
+public class LibDirsEntryNode(KdlNode node) : NodeSetEntryBase<LibDirsEntryNodeTraits, LibDirsNode>(node)
 {
     public string Path => ResolvePath(Node.Name);
 

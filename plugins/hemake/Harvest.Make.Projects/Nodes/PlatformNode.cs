@@ -62,7 +62,7 @@ public class PlatformNodeTraits : NodeBaseTraits
     }
 }
 
-public class PlatformNode(KdlNode node, INode? scope) : NodeBase<PlatformNodeTraits>(node, scope)
+public class PlatformNode(KdlNode node) : NodeBase<PlatformNodeTraits>(node)
 {
     public string PlatformName => GetStringValue(0);
     public EPlatformArch Arch => GetEnumValue<EPlatformArch>("arch");

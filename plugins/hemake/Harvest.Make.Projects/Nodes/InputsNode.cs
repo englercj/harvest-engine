@@ -15,6 +15,6 @@ public class  InputsNodeTraits : NodeSetBaseTraits<InputsEntryNode>
     ];
 }
 
-public class InputsNode(KdlNode node, INode? scope) : NodeSetBase<InputsNodeTraits, InputsEntryNode>(node, scope)
+public class InputsNode(KdlNode node) : NodeSetBase<InputsNodeTraits, InputsEntryNode>(node)
 {
 }

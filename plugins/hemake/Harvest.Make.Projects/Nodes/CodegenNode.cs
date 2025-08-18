@@ -50,7 +50,7 @@ public class CodegenNodeTraits : NodeBaseTraits
     ];
 }
 
-public class CodegenNode(KdlNode node, INode? scope) : NodeBase<CodegenNodeTraits>(node, scope)
+public class CodegenNode(KdlNode node) : NodeBase<CodegenNodeTraits>(node)
 {
     public ECodegenMode CodegenMode => GetEnumValue<ECodegenMode>(0);
 }

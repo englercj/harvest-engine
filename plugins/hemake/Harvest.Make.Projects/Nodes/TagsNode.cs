@@ -15,6 +15,6 @@ public class TagsNodeTraits : NodeSetBaseTraits<TagsEntryNode>
     ];
 }
 
-public class TagsNode(KdlNode node, INode? scope) : NodeSetBase<TagsNodeTraits, TagsEntryNode>(node, scope)
+public class TagsNode(KdlNode node) : NodeSetBase<TagsNodeTraits, TagsEntryNode>(node)
 {
 }

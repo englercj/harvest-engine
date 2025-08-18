@@ -2,7 +2,7 @@
 
 using Harvest.Kdl;
 using Harvest.Make.Projects.Attributes;
-using System.Reflection;
+using System.Diagnostics;
 
 namespace Harvest.Make.Projects.Nodes;
 
@@ -54,9 +54,47 @@ public class ModuleNodeTraits : NodeBaseTraits
     };
 
     public override bool CanBeExtended => true;
+
+    public override string? TryResolveToken(ProjectContext projectContext, KdlNode contextNode, string propertyName)
+    {
+        Debug.Assert(contextNode.Name == Name);
+
+        ModuleNode module = new(contextNode);
+
+        switch (propertyName)
+        {
+            case "name":
+            {
+                return module.ModuleName;
+            }
+            case "build_target":
+            {
+                string targetDir = module.GetTargetDir(projectContext);
+                string targetName = module.TargetName;
+                string targetExtension = module.GetTargetExtension(projectContext);
+                return Path.Join(targetDir, targetName + targetExtension);
+            }
+            case "link_target":
+            {
+                // Treat shared libraries as static libraries for the purpose of linking. This will let us target
+                // the import library (.lib) instead of the shared library (.dll).
+                EModuleKind moduleKind = projectContext.IsWindows && module.MakeImportLib && module.Kind == EModuleKind.LibShared ? EModuleKind.LibStatic : module.Kind;
+                string targetDir = module.GetTargetDir(projectContext, moduleKind);
+                string targetName = module.TargetName;
+                string targetExtension = module.GetTargetExtension(projectContext);
+                return Path.Join(targetDir, targetName + targetExtension);
+            }
+            case "gen_dir":
+            {
+                return module.GetGenDir(projectContext);
+            }
+        }
+
+        return base.TryResolveToken(projectContext, contextNode, propertyName);
+    }
 }
 
-public class ModuleNode(KdlNode node, INode? scope) : NodeBase<ModuleNodeTraits>(node, scope)
+public class ModuleNode(KdlNode node) : NodeBase<ModuleNodeTraits>(node)
 {
     public string ModuleName => GetStringValue(0);
     public EModuleKind Kind => GetEnumValue<EModuleKind>("kind");

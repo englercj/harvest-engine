@@ -10,6 +10,9 @@ The valid generators are:
 
 - [`:foreach`](#foreach-generator) - generates child nodes once for each matching node
 
+> [!NOTE]
+> Nested generators, or extensions nested within a generator, are not currently supported.
+
 ### Foreach Generator
 
 The `:foreach` generator finds nodes matching the given filter and generates nodes for each match using the child nodes as a template. Child nodes can use the special token context `_entry` to represent the matched entry of the current iteration. It will behave as if it was a token context of the type being searched for. For example, if searching for modules `_entry` will act like `module` token context. See [tokens](tokens.md) for more info.

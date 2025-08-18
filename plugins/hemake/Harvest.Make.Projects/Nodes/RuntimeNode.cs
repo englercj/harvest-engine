@@ -33,7 +33,7 @@ public class RuntimeNodeTraits : NodeBaseTraits
     };
 }
 
-public class RuntimeNode(KdlNode node, INode? scope) : NodeBase<RuntimeNodeTraits>(node, scope)
+public class RuntimeNode(KdlNode node) : NodeBase<RuntimeNodeTraits>(node)
 {
     public ERuntime Runtime => GetEnumValue<ERuntime>(0);
     public bool StaticLink => GetBoolValue("static");

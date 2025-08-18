@@ -21,7 +21,7 @@ public class ExternalNodeTraits : NodeBaseTraits
     };
 }
 
-public class ExternalNode(KdlNode node, INode? scope) : NodeBase<ExternalNodeTraits>(node, scope)
+public class ExternalNode(KdlNode node) : NodeBase<ExternalNodeTraits>(node)
 {
     public EWarningsLevel WarningsLevel => GetEnumValue<EWarningsLevel>("warnings");
     public bool Fatal => GetBoolValue("fatal");

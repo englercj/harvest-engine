@@ -29,7 +29,7 @@ public class ExceptionsNodeTraits : NodeBaseTraits
     ];
 }
 
-public class ExceptionsNode(KdlNode node, INode? scope) : NodeBase<ExceptionsNodeTraits>(node, scope)
+public class ExceptionsNode(KdlNode node) : NodeBase<ExceptionsNodeTraits>(node)
 {
     public EExceptionsMode ExceptionsMode => GetEnumValue<EExceptionsMode>(0);
 }

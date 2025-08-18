@@ -23,7 +23,7 @@ public class CommandNodeTraits : NodeBaseTraits
     ];
 }
 
-public class CommandNode(KdlNode node, INode? scope) : NodeBase<CommandNodeTraits>(node, scope)
+public class CommandNode(KdlNode node) : NodeBase<CommandNodeTraits>(node)
 {
     public string CommandName => GetStringValue(0);
     public string? CommandArgs => TryGetStringValue(1);

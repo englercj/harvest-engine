@@ -1,6 +1,7 @@
 // Copyright Chad Engler
 
 using Harvest.Kdl.Types;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Harvest.Kdl;
 
@@ -20,7 +21,43 @@ public class KdlNode(string name, string? type = null) : IKdlObject
 
     public KdlSourceInfo SourceInfo { get; set; } = new KdlSourceInfo();
 
-    public void CopyTo(KdlNode target)
+    public bool TryGetArgumentValue<T>(int index, [MaybeNullWhen(false)] out T? value)
+    {
+        if (index < 0 || index >= Arguments.Count)
+        {
+            value = default;
+            return false;
+        }
+
+        if (Arguments[index] is not KdlValue<T> typedValue)
+        {
+            value = default;
+            return false;
+        }
+
+        value = typedValue.Value;
+        return true;
+    }
+
+    public bool TryGetPropertyValue<T>(string key, [MaybeNullWhen(false)] out T? value)
+    {
+        if (!Properties.TryGetValue(key, out KdlValue? kdlValue))
+        {
+            value = default;
+            return false;
+        }
+
+        if (kdlValue is not KdlValue<T> typedValue)
+        {
+            value = default;
+            return false;
+        }
+
+        value = typedValue.Value;
+        return true;
+    }
+
+    public void CopyTo(KdlNode target, bool includeChildren)
     {
         for (int i = 0; i < Arguments.Count; ++i)
         {
@@ -45,20 +82,47 @@ public class KdlNode(string name, string? type = null) : IKdlObject
             target.Properties[key] = value.Clone();
         }
 
-        foreach (KdlNode child in Children)
+        if (includeChildren)
         {
-            target.AddChild(child.Clone());
+            foreach (KdlNode child in Children)
+            {
+                target.AddChild(child.Clone(includeChildren));
+            }
         }
     }
 
-    public KdlNode Clone()
+    public KdlNode Clone(bool includeChildren)
     {
         KdlNode clone = new(Name, Type)
         {
             SourceInfo = SourceInfo,
         };
-        CopyTo(clone);
+        CopyTo(clone, includeChildren);
         return clone;
+    }
+
+    public IEnumerable<KdlNode> GetAllDescendants()
+    {
+        foreach (KdlNode child in Children)
+        {
+            yield return child;
+
+            foreach (KdlNode descendant in child.GetAllDescendants())
+            {
+                yield return descendant;
+            }
+        }
+    }
+
+    public IEnumerable<KdlNode> GetDescendantsByName(string name)
+    {
+        foreach (KdlNode child in GetAllDescendants())
+        {
+            if (child.Name == name)
+            {
+                yield return child;
+            }
+        }
     }
 
     public void AddChild(KdlNode child)

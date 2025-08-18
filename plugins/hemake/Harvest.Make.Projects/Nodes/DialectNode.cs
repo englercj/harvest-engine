@@ -48,7 +48,7 @@ public class DialectNodeTraits : NodeBaseTraits
 
 }
 
-public class DialectNode(KdlNode node, INode? scope) : NodeBase<DialectNodeTraits>(node, scope)
+public class DialectNode(KdlNode node) : NodeBase<DialectNodeTraits>(node)
 {
     public ECDialect CDialect => GetEnumValue<ECDialect>("c");
     public ECppDialect CppDialect => GetEnumValue<ECppDialect>("cpp");

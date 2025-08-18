@@ -8,7 +8,7 @@ public class InputsEntryNodeTraits : NodeSetEntryBaseTraits<InputsNode>
 {
 }
 
-public class InputsEntryNode(KdlNode node, INode? scope) : NodeSetEntryBase<InputsEntryNodeTraits, InputsNode>(node, scope)
+public class InputsEntryNode(KdlNode node) : NodeSetEntryBase<InputsEntryNodeTraits, InputsNode>(node)
 {
     public string FilePath => ResolvePath(Node.Name);
 }

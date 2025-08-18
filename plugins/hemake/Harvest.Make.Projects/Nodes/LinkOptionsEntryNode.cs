@@ -8,7 +8,7 @@ public class LinkOptionsEntryNodeTraits : NodeSetEntryBaseTraits<LinkOptionsNode
 {
 }
 
-public class LinkOptionsEntryNode(KdlNode node, INode? scope) : NodeSetEntryBase<LinkOptionsEntryNodeTraits, LinkOptionsNode>(node, scope)
+public class LinkOptionsEntryNode(KdlNode node) : NodeSetEntryBase<LinkOptionsEntryNodeTraits, LinkOptionsNode>(node)
 {
     public string OptionName => Node.Name;
 }

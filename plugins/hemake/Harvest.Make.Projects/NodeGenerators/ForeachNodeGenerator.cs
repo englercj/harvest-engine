@@ -3,8 +3,7 @@
 using Harvest.Kdl;
 using Harvest.Kdl.Types;
 using Harvest.Make.Projects.Nodes;
-using System.Diagnostics;
-using System.Diagnostics.CodeAnalysis;
+using System.Text;
 
 namespace Harvest.Make.Projects.NodeGenerators;
 
@@ -13,86 +12,32 @@ public class ForeachNodeGeneratorTraits : NodeGeneratorBaseTraits
     public override string Name => "foreach";
 }
 
-public class ForeachNodeGenerator(ProjectContext context) : NodeGeneratorBase<ForeachNodeGeneratorTraits>(context)
+public class ForeachNodeGenerator(IProjectService projectService) : NodeGeneratorBase<ForeachNodeGeneratorTraits>(projectService)
 {
-    private class ForeachReplacerContext : ProjectContext
+    public override void GenerateNodes(KdlNode generatorNode, KdlNode scope)
     {
-        private readonly NodeTokenReplacer _replacer = new(new Dictionary<string, NodeTokenResolver>()
-        {
-            { "_entry", EntryTokenResolver },
-        });
-
-        public INode ContextNode { get; }
-
-        public ForeachReplacerContext(ProjectContext parentContext, INode contextNode)
-            : base(parentContext.ProjectService)
-        {
-            Plugin = parentContext.Plugin;
-            Module = parentContext.Module;
-            Configuration = parentContext.Configuration;
-            Platform = parentContext.Platform;
-            Host = parentContext.Host;
-            Options = parentContext.Options;
-            Tags = parentContext.Tags;
-
-            ContextNode = contextNode;
-        }
-
-        public string ReplaceTokens(KdlNode source, string value)
-        {
-            // Use the replacer to resolve tokens in the value string
-            return _replacer.ReplaceTokens(this, source, value);
-        }
-
-        private static bool EntryTokenResolver(ProjectContext projectContext, string contextName, string propertyName, [MaybeNullWhen(false)] out string value)
-        {
-            Debug.Assert(contextName == "_entry");
-            Debug.Assert(projectContext is ForeachReplacerContext);
-
-            ForeachReplacerContext foreachContext = (ForeachReplacerContext)projectContext;
-            string targetContextName = foreachContext.ContextNode.Node.Name;
-
-            // If a resolver is registered for this context name, then try to use that directly.
-            if (projectContext.ProjectService.TokenReplacer.Resolvers.TryGetValue(targetContextName, out NodeTokenResolver? resolver))
-            {
-                if (resolver(projectContext, targetContextName, propertyName, out string? resolvedValue))
-                {
-                    value = resolvedValue;
-                    return true;
-                }
-            }
-
-            value = default;
-            return false;
-        }
-    }
-
-    public override void GenerateNodes(KdlNode generatorNode, INode scope)
-    {
-        if (generatorNode.Arguments.Count == 0 || generatorNode.Arguments[0] is not KdlString s || string.IsNullOrEmpty(s.Value))
+        if (!generatorNode.TryGetArgumentValue(0, out string? nodeType) || string.IsNullOrEmpty(nodeType))
         {
             throw new NodeParseException(generatorNode, "Expected string argument in foreach generator node for the module name or plugin ID.");
         }
 
-        string nodeType = s.Value;
-
         if (nodeType == PluginNode.NodeTraits.Name)
         {
-            foreach (PluginNode plugin in _context.ProjectService.GetAllPlugins())
+            foreach (PluginNode plugin in _projectService.GetAllPlugins())
             {
                 if (DoesNodeMatch(generatorNode, plugin))
                 {
-                    GenerateNodes(generatorNode, scope, plugin);
+                    GenerateNodes(generatorNode, scope, $"plugin[{plugin.PluginName}]");
                 }
             }
         }
         else if (nodeType == ModuleNode.NodeTraits.Name)
         {
-            foreach (ModuleNode module in _context.ProjectService.GetAllModules())
+            foreach (ModuleNode module in _projectService.GetAllModules())
             {
                 if (DoesNodeMatch(generatorNode, module))
                 {
-                    GenerateNodes(generatorNode, scope, module);
+                    GenerateNodes(generatorNode, scope, $"module[{module.ModuleName}]");
                 }
             }
         }
@@ -102,40 +47,30 @@ public class ForeachNodeGenerator(ProjectContext context) : NodeGeneratorBase<Fo
         }
     }
 
-    private void GenerateNodes(KdlNode generatorNode, INode scope, INode contextNode)
+    private static void GenerateNodes(KdlNode generatorNode, KdlNode scope, string contextName)
     {
-        ForeachReplacerContext replacerContext = new(_context, contextNode)
-        {
-            Plugin = contextNode as PluginNode,
-            Module = contextNode as ModuleNode
-        };
+        TokenHandler handler = new(contextName);
+        StringTokenReplacer replacer = new(handler);
 
-        foreach (KdlNode sourceChild in generatorNode.Children)
+        foreach (KdlNode source in generatorNode.Children)
         {
-            KdlNode generatedChild = GenerateNode(replacerContext, sourceChild);
-            scope.Node.AddChild(generatedChild);
-
-            if (_context.ProjectService.ParseNode(generatedChild, scope) is INode child)
-            {
-                scope.Children.Add(child);
-            }
+            KdlNode generated = GenerateNode(replacer, source);
+            scope.AddChild(generated);
         }
     }
 
-    private static KdlNode GenerateNode(ForeachReplacerContext replacerContext, KdlNode source)
+    private static KdlNode GenerateNode(StringTokenReplacer replacer, KdlNode source)
     {
-        string resolvedName = replacerContext.ReplaceTokens(source, source.Name);
+        string resolvedName = replacer.ReplaceTokens(source.Name);
         KdlNode result = new(resolvedName, source.Type) { SourceInfo = source.SourceInfo };
 
         // Copy properties, resolving any string values using the replacer
-        for (int i = 0; i < source.Arguments.Count; ++i)
+        foreach (KdlValue value in source.Arguments)
         {
-            KdlValue value = source.Arguments[i];
-
             if (value is KdlString valueStr)
             {
-                string resolvedValue = replacerContext.ReplaceTokens(source, valueStr.Value);
-                result.Arguments.Add(new KdlString(resolvedValue, value.Type) { SourceInfo = value.SourceInfo });
+                string resolvedValue = replacer.ReplaceTokens(valueStr.Value);
+                result.Arguments.Add(new KdlString(resolvedValue, valueStr.Type) { SourceInfo = value.SourceInfo });
             }
             else
             {
@@ -149,8 +84,8 @@ public class ForeachNodeGenerator(ProjectContext context) : NodeGeneratorBase<Fo
         {
             if (value is KdlString valueStr)
             {
-                string resolvedValue = replacerContext.ReplaceTokens(source, valueStr.Value);
-                result.Properties[key] = new KdlString(resolvedValue, valueStr.Type);
+                string resolvedValue = replacer.ReplaceTokens(valueStr.Value);
+                result.Properties[key] = new KdlString(resolvedValue, valueStr.Type) { SourceInfo = value.SourceInfo };
             }
             else
             {
@@ -161,7 +96,7 @@ public class ForeachNodeGenerator(ProjectContext context) : NodeGeneratorBase<Fo
         // Recursively generate child nodes
         foreach (KdlNode child in source.Children)
         {
-            result.AddChild(GenerateNode(replacerContext, child));
+            result.AddChild(GenerateNode(replacer, child));
         }
 
         return result;
@@ -208,5 +143,28 @@ public class ForeachNodeGenerator(ProjectContext context) : NodeGeneratorBase<Fo
         }
 
         return filterValue.Equals(candidateValue);
+    }
+
+    private class TokenHandler(string resolvedContextName) : IStringTokenHandler
+    {
+        public string GetTokenValue(StringTokenContext tokenContext)
+        {
+            if (tokenContext.ContextName == "_entry")
+            {
+                if (!string.IsNullOrEmpty(tokenContext.ContextId))
+                {
+                    throw new Exception($"Invalid token '{tokenContext.Token}'. The '_entry' context cannot be indexed.");
+                }
+
+                StringBuilder sb = new();
+                sb.Append(tokenContext.Token[..tokenContext.ContextNameCapture.Index]);
+                sb.Append(resolvedContextName);
+                sb.Append(tokenContext.Token[(tokenContext.ContextNameCapture.Index + tokenContext.ContextNameCapture.Length)..]);
+
+                return sb.ToString();
+            }
+
+            return tokenContext.Token;
+        }
     }
 }

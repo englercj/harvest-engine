@@ -14,6 +14,6 @@ public class AuthorsNodeTraits : NodeSetBaseTraits<AuthorsEntryNode>
     ];
 }
 
-public class AuthorsNode(KdlNode node, INode? scope) : NodeSetBase<AuthorsNodeTraits, AuthorsEntryNode>(node, scope)
+public class AuthorsNode(KdlNode node) : NodeSetBase<AuthorsNodeTraits, AuthorsEntryNode>(node)
 {
 }

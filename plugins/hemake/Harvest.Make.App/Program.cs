@@ -4,6 +4,7 @@ using Harvest.Kdl;
 using Harvest.Kdl.Types;
 using Harvest.Make.Attributes;
 using Harvest.Make.Projects;
+using Harvest.Make.Projects.Nodes;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
@@ -53,23 +54,18 @@ class Program
         }
 
         // Iterate the module nodes and load any hemake extensions
-        IEnumerable<KdlNode> moduleNodes = projectService.ProjectDocument.GetNodesByName("module");
-        foreach (KdlNode node in moduleNodes)
+        foreach (KdlNode node in projectService.ProjectDocument.GetNodesByName(ModuleNode.NodeTraits.Name))
         {
-            if (!node.Properties.TryGetValue("hemake_extension", out KdlValue? hemakeExtensionValue)
-                || hemakeExtensionValue is not KdlBool hemakeExtensionBool
-                || !hemakeExtensionBool.Value)
+            if (!node.TryGetPropertyValue("hemake_extension", out bool isExt) || !isExt)
             {
                 continue;
             }
 
-            if (!node.Properties.TryGetValue("project_file", out KdlValue? projectFileValue)
-                || projectFileValue is not KdlString projectFileString)
+            if (!node.TryGetPropertyValue("project_file", out string? extensionPath) || string.IsNullOrEmpty(extensionPath))
             {
                 throw new InvalidOperationException($"Module '{node.Name}' is marked as a hemake extension but does not specify a 'project_file' property.");
             }
 
-            string extensionPath = projectFileString.Value;
             if (!Path.IsPathRooted(extensionPath))
             {
                 string extensionDir = Path.GetDirectoryName(node.SourceInfo.FilePath) ?? string.Empty;

@@ -44,7 +44,7 @@ public class WhenNodeTraits : NodeBaseTraits
     };
 }
 
-public class WhenNode(KdlNode node, INode? scope) : NodeBase<WhenNodeTraits>(node, scope)
+public class WhenNode(KdlNode node) : NodeBase<WhenNodeTraits>(node)
 {
     public EWhenMode Mode => GetEnumValue<EWhenMode>(0);
     public string? Arch => TryGetStringValue("arch");

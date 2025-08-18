@@ -14,6 +14,30 @@ public class ProjectOption(OptionNode node, Option option)
     public Option Option => option;
 }
 
+public class ProjectBuildId(string configurationName, string platformName) : IEquatable<ProjectBuildId>
+{
+    public string ConfigurationName => configurationName;
+    public string PlatformName => platformName;
+
+    public override int GetHashCode() => HashCode.Combine(ConfigurationName, PlatformName);
+    public override bool Equals(object? obj) => Equals(obj as ProjectBuildId);
+
+    public bool Equals(ProjectBuildId? other)
+    {
+        if (other is null)
+        {
+            return false;
+        }
+
+        if (ReferenceEquals(this, other))
+        {
+            return true;
+        }
+
+        return ConfigurationName == other.ConfigurationName && PlatformName == other.PlatformName;
+    }
+}
+
 public class ModuleDependency(DependenciesEntryNode entry, ModuleNode? resolvedModule)
 {
     public string DependencyName => entry.DependencyName;
@@ -24,43 +48,31 @@ public class ModuleDependency(DependenciesEntryNode entry, ModuleNode? resolvedM
     public ModuleNode? Module => resolvedModule;
 }
 
+public delegate string? CustomStringTokenResolver(ProjectContext projectContext);
+public delegate string? CustomStringTokenTransformer(string input);
+
 public interface IProjectService
 {
     public string ProjectPath { get; }
     public KdlDocument ProjectDocument { get; }
-    public ProjectNode ProjectNode { get; }
     public IReadOnlyList<ProjectOption> ProjectOptions { get; }
-    public NodeTokenReplacer TokenReplacer { get; }
+    public IReadOnlyDictionary<string, object?> ProjectOptionValues { get; }
+
+    public IReadOnlyDictionary<(string, string), CustomStringTokenResolver> TokenResolvers { get; }
+    public IReadOnlyDictionary<string, CustomStringTokenTransformer> TokenTransformers { get; }
 
     public void RegisterNode<T>(bool overwrite = false) where T : class, INode;
     public void RegisterNodeGenerator<T>(bool overwrite = false) where T : class, INodeGenerator;
-    public void RegisterTokenResolver(string context, NodeTokenResolver resolver, bool overwrite = false);
-    public void RegisterTokenTransformer(string name, NodeTokenTransformer transformer, bool overwrite = false);
+    public void RegisterTokenResolver(string contextName, string propertyName, CustomStringTokenResolver resolver, bool overwrite = false);
+    public void RegisterTokenTransformer(string name, CustomStringTokenTransformer transformer, bool overwrite = false);
 
     public void LoadProject(string projectPath);
-    public void ParseProject();
-    public INode? ParseNode(KdlNode rawNode, INode? scope);
+    public void ParseProject(InvocationContext invocationContext);
 
-    public ProjectContext CreateProjectContext(
-        InvocationContext? invocationContext = null,
-        ModuleNode? module = null,
-        ConfigurationNode? configuration = null,
-        PlatformNode? platform = null);
+    public INodeTraits GetNodeTraits(KdlNode node);
 
-    public List<ConfigurationNode> GetDefaultConfigurations();
-    public List<PlatformNode> GetDefaultPlatforms();
+    public T CreateSemanticNode<T>(KdlNode node) where T : class, INode;
+    public INode CreateSemanticNode(KdlNode node);
 
-    public IEnumerable<ModuleNode> GetAllModules();
-    public ModuleNode? TryGetModuleByName(string moduleName);
-
-    public IEnumerable<PluginNode> GetAllPlugins();
-    public PluginNode? TryGetPluginById(string pluginId);
-
-    public List<ModuleDependency> GetModuleDependencies(ProjectContext context, ModuleNode module, ENodeDependencyInheritance inheritance);
-
-    public List<T> GetNodes<T>(ProjectContext context, INode? scope = null, bool searchDepdencies = true) where T : class, INode;
-    public List<T> GetNodes<T>(ProjectContext context, INode? scope, Func<T, bool> filter, bool searchDepdencies = true) where T : class, INode;
-
-    public T GetMergedNode<T>(ProjectContext context, INode? scope = null, bool searchDepdencies = true) where T : class, INode;
-    public T GetMergedNode<T>(ProjectContext context, INode? scope, Func<T, bool> filter, bool searchDepdencies = true) where T : class, INode;
+    public INodeGenerator CreateGeneratorForNode(KdlNode node);
 }

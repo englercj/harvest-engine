@@ -63,7 +63,7 @@ public class BuildOptionsNodeTraits : NodeSetBaseTraits<BuildOptionsEntryNode>
     public override ENodeDependencyInheritance DependencyInheritance => ENodeDependencyInheritance.Include;
 }
 
-public class BuildOptionsNode(KdlNode node, INode? scope) : NodeSetBase<BuildOptionsNodeTraits, BuildOptionsEntryNode>(node, scope)
+public class BuildOptionsNode(KdlNode node) : NodeSetBase<BuildOptionsNodeTraits, BuildOptionsEntryNode>(node)
 {
     public EBuildClrMode ClrMode => GetEnumValue<EBuildClrMode>("clr");
     public EBuildMfcMode MfcMode => GetEnumValue<EBuildMfcMode>("mfc");

@@ -61,7 +61,7 @@ public class FileEntryNodeTraits : NodeSetEntryBaseTraits<FilesNode>
     };
 }
 
-public class FilesEntryNode(KdlNode node, INode? scope) : NodeSetEntryBase<FileEntryNodeTraits, FilesNode>(node, scope)
+public class FilesEntryNode(KdlNode node) : NodeSetEntryBase<FileEntryNodeTraits, FilesNode>(node)
 {
     private static readonly Dictionary<string, FileEntryExtensionInfo> s_fileExtensionInfos = new()
     {

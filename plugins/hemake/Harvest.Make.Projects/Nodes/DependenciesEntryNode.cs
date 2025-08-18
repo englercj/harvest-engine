@@ -25,7 +25,7 @@ public class DependenciesEntryNodeTraits : NodeSetEntryBaseTraits<DependenciesNo
     };
 }
 
-public class DependenciesEntryNode(KdlNode node, INode? scope) : NodeSetEntryBase<DependenciesEntryNodeTraits, DependenciesNode>(node, scope), IEquatable<DependenciesEntryNode>
+public class DependenciesEntryNode(KdlNode node) : NodeSetEntryBase<DependenciesEntryNodeTraits, DependenciesNode>(node), IEquatable<DependenciesEntryNode>
 {
     public string DependencyName => Kind == EDependencyKind.File ? ResolvePath(Node.Name) : Node.Name;
     public EDependencyKind Kind => GetEnumValue<EDependencyKind>("kind");

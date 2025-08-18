@@ -4,9 +4,9 @@ Tokens are a way to include dynamic values into strings throughout the HE Make P
 
 The syntax for inserting a token value is: `${context.property:transformer}`.
 
-- `context` is the name of any node that you are a child of, a reference to a plugin by ID, a reference to a module by name, or the name of a Global Context as defined below.
-- `property` is the name of a property on that node, or a Computed Property as defined below.
-- `transformer` is optional and applies some transformation to the property value before emitting it.
+- `context` is the name of any node that you are a child of, a reference to a plugin by ID, a reference to a module by name, or the name of a [Global Context](#global-contexts) as defined below.
+- `property` is the name of a property on that node, or a [Computed Property](#computed-properties).
+- `transformer` is optional and applies some transformation to the property value before emitting it. See [Transformers](#transformers) for details.
 
 For example:
 
@@ -25,11 +25,11 @@ module example kind=header group="engine/contrib" {
 
 ## Global Contexts
 
-Global contexts are contexts that exist outside the project structure. As such, they are always available for use in any scope.
+Global contexts are contexts that are available in all tokens and don't necessarily map to a specific node in the project structure.
 
-- `configuration` - Provides access to properties of the currently active configuration. Valid properties are:
+- `configuration` - The currently active configuration. Valid properties are:
     * `name` - The name of the active configuration.
-- `platform` - Provides access to properties of the currently active platform. Valid properties are:
+- `platform` - The currently active platform. Valid properties are:
     * `name` - The name of the active platform.
     * `system` - The system for the active platform.
     * `arch` - The architecture for the active platform.
@@ -38,20 +38,20 @@ Global contexts are contexts that exist outside the project structure. As such, 
 
 A computed property is one that wasn't explicitly written into the KDL file, but was computed by HE Make and made available to tokens.
 
-Below is a reference of the computed properties for each node. Note that not all nodes provide computed properties.
+All nodes support the following computed properties:
 
-- `*`
-    * `_argN` - A special computed property available to all nodes that provides access to that node's arguments, where `N` is the argument index. For example, `_arg0` is the first argument, `_arg1` is the second argument, etc.
+- `_argN` - A special computed property available to all nodes that provides access to that node's arguments, where `N` is the argument index (`_arg0` is the first argument, `_arg1` is the second argument, etc).
+- `path` - The full path to the file where the node is defined.
+
+Some nodes also have special computed properties:
+
 - `project`
     * `name` - The name of the project, equivalent to `_arg0`.
-    * `path` - The full path to the file where the project is defined.
 - `plugin`
     * `name` - The name of the plugin, equivalent to `_arg0`.
-    * `path` - The full path to the file where the plugin is defined.
     * `install_dir` - The directory where the plugin was installed.
 - `module`
     * `name` - The name of the module, equivalent to `_arg0`.
-    * `path` - The full path to the file where the module is defined.
     * `build_target` - The full path to the build output file.
     * `link_target` - The full path to the linker output file (if any).
     * `gen_dir` - The full path to the directory where generated files should be placed.

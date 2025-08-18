@@ -23,7 +23,7 @@ public class SanitizeNodeTraits : NodeBaseTraits
     };
 }
 
-public class SanitizeNode(KdlNode node, INode? scope) : NodeBase<SanitizeNodeTraits>(node, scope)
+public class SanitizeNode(KdlNode node) : NodeBase<SanitizeNodeTraits>(node)
 {
     public bool EnableAddress => GetBoolValue("address");
     public bool EnableFuzzer => GetBoolValue("fuzzer");

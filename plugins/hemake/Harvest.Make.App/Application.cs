@@ -97,9 +97,7 @@ internal class Application : IHostedService
             }
         }
 
-        // Parse the project file into semantic nodes now that all extensions are loaded
-        _logger.LogTrace("Parsing project...");
-        _projectService.ParseProject();
+        // Setup the commands
         SetupCommands();
 
         // Run the command
@@ -215,6 +213,9 @@ internal class Application : IHostedService
 
     private async Task<int> HandleCommandAsync(InvocationContext context, CommandInfo commandInfo)
     {
+        _logger.LogTrace("Parsing project...");
+        _projectService.ParseProject(context);
+
         if (ActivatorUtilities.CreateInstance(_serviceProvider, commandInfo.CommandType) is ICliCommand command)
         {
             foreach (CommandBinding binding in commandInfo.Bindings)

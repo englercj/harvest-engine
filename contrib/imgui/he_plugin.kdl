@@ -12,7 +12,7 @@ plugin ocornut.imgui version="1.89.6" license="MIT" {
 
     module imgui kind=lib_static group="engine/contrib" {
         files {
-            "${module.path:dir}/imgui_user_config.h"
+            "${module.file_path:dir}/imgui_user_config.h"
             "imgui_draw.cpp"
             "imgui_internal.h"
             "imgui_tables.cpp"
@@ -36,7 +36,7 @@ plugin ocornut.imgui version="1.89.6" license="MIT" {
             }
             include_dirs {
                 "."
-                "${module.path:dir}"
+                "${module.file_path:dir}"
             }
         }
 

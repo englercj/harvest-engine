@@ -21,12 +21,33 @@ public class CommandNodeTraits : NodeBaseTraits
         NodeValueDef_String.Required(),
         NodeValueDef_String.Optional(),
     ];
+
+    protected override void ValidateArguments(KdlNode node)
+    {
+        // Intentionally not calling base.ValidateArguments() because we have custom validation.
+        //base.ValidateArguments();
+
+        if (node.Arguments.Count == 0)
+        {
+            throw new NodeParseException(node, $"'{node.Name}' nodes must have at least one string argument.");
+        }
+
+        for (int i = 0; i < node.Arguments.Count; ++i)
+        {
+            if (node.Arguments[i] is not KdlString)
+            {
+                throw new NodeParseException(node, $"Arguments of '{node.Name}' nodes must be strings.");
+            }
+        }
+    }
+
+    public override INode CreateNode(KdlNode node) => new CommandNode(node);
 }
 
 public class CommandNode(KdlNode node) : NodeBase<CommandNodeTraits>(node)
 {
-    public string CommandName => GetStringValue(0);
-    public string? CommandArgs => TryGetStringValue(1);
+    public string CommandName => GetValue<string>(0);
+    public string? CommandArgs => TryGetValue(1, out string? value) ? value : null;
 
     public string GetCommandString()
     {
@@ -61,25 +82,6 @@ public class CommandNode(KdlNode node) : NodeBase<CommandNodeTraits>(node)
                 "cmd.touch" => $"touch {args}",
                 _ => string.IsNullOrEmpty(args) ? CommandName : $"{CommandName} {args}",
             };
-        }
-    }
-
-    protected override void ValidateArguments()
-    {
-        // Intentionally not calling base.ValidateArguments() because we have custom validation.
-        //base.ValidateArguments();
-
-        if (Node.Arguments.Count == 0)
-        {
-            throw new NodeValidationException(this, $"'{Node.Name}' nodes must have at least one string argument.");
-        }
-
-        for (int i = 0; i < Node.Arguments.Count; ++i)
-        {
-            if (Node.Arguments[i] is not KdlString)
-            {
-                throw new NodeValidationException(this, $"Arguments of '{Node.Name}' nodes must be strings.");
-            }
         }
     }
 }

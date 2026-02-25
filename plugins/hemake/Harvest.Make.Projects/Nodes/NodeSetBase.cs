@@ -2,6 +2,7 @@
 
 using Harvest.Kdl;
 using Harvest.Make.Projects.Attributes;
+using System.Xml.Linq;
 
 namespace Harvest.Make.Projects.Nodes;
 
@@ -20,7 +21,7 @@ public abstract class NodeSetBaseTraits<TChild> : NodeBaseTraits
         NodeValueDef_Enum<ESetAction>.Optional(ESetAction.Add),
     ];
 
-    public override Type? ChildNodeType => typeof(TChild);
+    public override INodeTraits? ChildNodeTraits => TChild.NodeTraits;
 }
 
 public abstract class NodeSetBase<TTraits, TChild>(KdlNode node) : NodeBase<TTraits>(node)
@@ -29,59 +30,62 @@ public abstract class NodeSetBase<TTraits, TChild>(KdlNode node) : NodeBase<TTra
 {
     public ESetAction SetAction => GetEnumValue<ESetAction>(0);
 
-    public IEnumerable<TChild> Entries =>
-        Node.Children.Select(child => Activator.CreateInstance(typeof(TChild), child) as TChild
-            ?? throw new NodeParseException(child, $"Activator.CreateInstance failed to allocate node instance for type '{typeof(TChild)}'."));
+    public IEnumerable<TChild> Entries => Node.Children.Select(INodeTraits.CreateNode<TChild>);
 
-    protected readonly Dictionary<string, TChild> _resolvedEntries = [];
+    protected readonly Dictionary<string, KdlNode> _resolvedEntries = [];
+    protected virtual bool CloneSetEntryChildrenWhenMerging => false;
 
-    protected override void MergeAndResolveChildren(ProjectContext context, INode node)
+    public override void MergeNode(ProjectContext projectContext, KdlNode node)
     {
-        if (node is not NodeSetBase<TTraits, TChild> set)
+        if (Node.Name != node.Name)
         {
-            throw new Exception($"Cannot merge and resolve children of different node types: {GetType().Name} and {node.GetType().Name}");
+            throw new ArgumentException("Cannot merge nodes of different types.", nameof(node));
         }
 
-        switch (set.SetAction)
+        node.CopyTo(Node, includeChildren: false);
+
+        ESetAction setAction = Traits.GetEnumValue<ESetAction>(node, 0);
+        switch (setAction)
         {
             case ESetAction.Add:
             {
-                foreach (TChild entry in set.Entries)
+                foreach (KdlNode entry in node.Children)
                 {
-                    string key = GetSetEntryKey(context, entry);
-                    if (_resolvedEntries.TryGetValue(key, out TChild? existing))
+                    string key = GetSetEntryKey(projectContext, entry);
+                    if (_resolvedEntries.TryGetValue(key, out KdlNode? existing))
                     {
-                        OnModifyChild(context, entry, existing);
+                        entry.CopyTo(existing, CloneSetEntryChildrenWhenMerging);
                     }
                     else
                     {
-                        _resolvedEntries.Add(key, entry);
-                        OnAddChild(context, entry);
+                        KdlNode clone = entry.Clone(CloneSetEntryChildrenWhenMerging);
+                        _resolvedEntries.Add(key, clone);
+                        Node.AddChild(clone);
                     }
                 }
                 break;
             }
             case ESetAction.Remove:
             {
-                foreach (TChild entry in set.Entries)
+                foreach (KdlNode entry in node.Children)
                 {
-                    string key = GetSetEntryKey(context, entry);
-                    if (_resolvedEntries.TryGetValue(key, out TChild? existing))
+                    string key = GetSetEntryKey(projectContext, entry);
+                    if (_resolvedEntries.TryGetValue(key, out KdlNode? existing))
                     {
                         _resolvedEntries.Remove(key);
-                        OnRemoveChild(context, existing);
+                        existing.RemoveFromParent();
                     }
                 }
                 break;
             }
             case ESetAction.Update:
             {
-                foreach (TChild entry in set.Entries)
+                foreach (KdlNode entry in node.Children)
                 {
-                    string key = GetSetEntryKey(context, entry);
-                    if (_resolvedEntries.TryGetValue(key, out TChild? existing))
+                    string key = GetSetEntryKey(projectContext, entry);
+                    if (_resolvedEntries.TryGetValue(key, out KdlNode? existing))
                     {
-                        OnModifyChild(context, entry, existing);
+                        entry.CopyTo(existing, CloneSetEntryChildrenWhenMerging);
                     }
                 }
                 break;
@@ -89,13 +93,8 @@ public abstract class NodeSetBase<TTraits, TChild>(KdlNode node) : NodeBase<TTra
         }
     }
 
-    protected virtual string GetSetEntryKey(ProjectContext context, TChild entry)
+    protected virtual string GetSetEntryKey(ProjectContext context, KdlNode entry)
     {
-        return entry.Node.Name;
-    }
-
-    protected virtual void OnModifyChild(ProjectContext context, TChild entry, TChild existing)
-    {
-        existing.MergeAndResolve(context, entry);
+        return entry.Name;
     }
 }

@@ -12,6 +12,8 @@ public class AuthorsNodeTraits : NodeSetBaseTraits<AuthorsEntryNode>
     [
         PluginNode.NodeTraits.Name,
     ];
+
+    public override INode CreateNode(KdlNode node) => new AuthorsNode(node);
 }
 
 public class AuthorsNode(KdlNode node) : NodeSetBase<AuthorsNodeTraits, AuthorsEntryNode>(node)

@@ -3,6 +3,7 @@
 using Harvest.Kdl;
 using Harvest.Make.Projects.Attributes;
 using System.Diagnostics;
+using System.Xml.Linq;
 
 namespace Harvest.Make.Projects.Nodes;
 
@@ -48,12 +49,15 @@ public class ModuleNodeTraits : NodeBaseTraits
         { "hemake_extension", NodeValueDef_Bool.Optional(false) },
         { "target_name", NodeValueDef_String.Optional() },
         { "target_extension", NodeValueDef_String.Optional() },
+        { "target_dir", NodeValueDef_Path.Optional() },
         { "make_import_lib", NodeValueDef_Bool.Optional(true) },
         { "make_exe_manifest", NodeValueDef_Bool.Optional(true) },
         { "make_map_file", NodeValueDef_Bool.Optional(false) },
     };
 
     public override bool CanBeExtended => true;
+
+    public override INode CreateNode(KdlNode node) => new ModuleNode(node);
 
     public override string? TryResolveToken(ProjectContext projectContext, KdlNode contextNode, string propertyName)
     {
@@ -69,7 +73,7 @@ public class ModuleNodeTraits : NodeBaseTraits
             }
             case "build_target":
             {
-                string targetDir = module.GetTargetDir(projectContext);
+                string targetDir = module.GetTargetDir(projectContext.BuildOutput);
                 string targetName = module.TargetName;
                 string targetExtension = module.GetTargetExtension(projectContext);
                 return Path.Join(targetDir, targetName + targetExtension);
@@ -78,7 +82,8 @@ public class ModuleNodeTraits : NodeBaseTraits
             {
                 // Treat shared libraries as static libraries for the purpose of linking. This will let us target
                 // the import library (.lib) instead of the shared library (.dll).
-                EModuleKind moduleKind = projectContext.IsWindows && module.MakeImportLib && module.Kind == EModuleKind.LibShared ? EModuleKind.LibStatic : module.Kind;
+                bool isWindows = projectContext.Platform.System == EPlatformSystem.Windows;
+                EModuleKind moduleKind = isWindows && module.MakeImportLib && module.Kind == EModuleKind.LibShared ? EModuleKind.LibStatic : module.Kind;
                 string targetDir = module.GetTargetDir(projectContext, moduleKind);
                 string targetName = module.TargetName;
                 string targetExtension = module.GetTargetExtension(projectContext);
@@ -92,107 +97,72 @@ public class ModuleNodeTraits : NodeBaseTraits
 
         return base.TryResolveToken(projectContext, contextNode, propertyName);
     }
+
+    public override void Validate(KdlNode node)
+    {
+        base.Validate(node);
+        // TODO: Validate that dependencies are actually reasonable. For example, linking an App doesn't make sense.
+    }
 }
 
 public class ModuleNode(KdlNode node) : NodeBase<ModuleNodeTraits>(node)
 {
-    public string ModuleName => GetStringValue(0);
+    public string ModuleName => GetValue<string>(0);
     public EModuleKind Kind => GetEnumValue<EModuleKind>("kind");
-    public string? Group => TryGetStringValue("group");
+    public string? Group => TryGetValue("group", out string? value) ? value : null;
     public EModuleLanguage Language => GetEnumValue<EModuleLanguage>("language");
-    public string? ProjectFile => TryGetStringValue("project_file");
-    public string? EntryPoint => TryGetStringValue("entrypoint");
-    public bool IsExtension => GetBoolValue("hemake_extension");
-    public string TargetName => TryGetStringValue("target_name") ?? ModuleName;
-    public string? TargetExtension => TryGetStringValue("target_extension");
-    public bool MakeImportLib => GetBoolValue("make_import_lib");
-    public bool MakeExeManifest => GetBoolValue("make_exe_manifest");
-    public bool MakeMapFile => GetBoolValue("make_map_file");
+    public string? ProjectFile => TryGetValue("project_file", out string? value) ? value : null;
+    public string? EntryPoint => TryGetValue("entrypoint", out string? value) ? value : null;
+    public bool IsExtension => GetValue<bool>("hemake_extension");
+    public string TargetName => (TryGetValue("target_name", out string? value) ? value : null) ?? ModuleName;
+    public string? TargetExtension => TryGetValue("target_extension", out string? value) ? value : null;
+    public string? TargetDir => TryGetValue("target_dir", out string? value) ? value : null;
+    public bool MakeImportLib => GetValue<bool>("make_import_lib");
+    public bool MakeExeManifest => GetValue<bool>("make_exe_manifest");
+    public bool MakeMapFile => GetValue<bool>("make_map_file");
 
     public bool IsApp => Kind == EModuleKind.AppConsole || Kind == EModuleKind.AppWindowed;
     public bool IsBinary => IsApp || Kind == EModuleKind.LibShared;
 
     public string GetTargetExtension(ProjectContext projectContext)
     {
-        return TryGetStringValue("target_extension") ?? Kind switch
+        bool isWindows = projectContext.Platform.System == EPlatformSystem.Windows;
+
+        if (TargetExtension is string extName)
         {
-            EModuleKind.AppConsole => projectContext.IsWindows ? ".exe" : "",
-            EModuleKind.AppWindowed => projectContext.IsWindows ? ".exe" : "",
+            return extName;
+        }
+
+        return Kind switch
+        {
+            EModuleKind.AppConsole => isWindows ? ".exe" : "",
+            EModuleKind.AppWindowed => isWindows ? ".exe" : "",
             EModuleKind.Content => "",
             EModuleKind.Custom => "",
-            EModuleKind.LibHeader => projectContext.IsWindows ? ".lib" : ".a",
-            EModuleKind.LibStatic => projectContext.IsWindows ? ".lib" : ".a",
-            EModuleKind.LibShared => projectContext.IsWindows ? ".dll" : ".so",
+            EModuleKind.LibHeader => isWindows ? ".lib" : ".a",
+            EModuleKind.LibStatic => isWindows ? ".lib" : ".a",
+            EModuleKind.LibShared => isWindows ? ".dll" : ".so",
             _ => throw new Exception($"Invalid module kind '{Kind}' for target name."),
         };
     }
 
-    public string GetTargetDir(ProjectContext projectContext, EModuleKind? kindOverride = null)
-    {
-        return GetSpecialDir(projectContext, GetSpecialDirForKind(kindOverride ?? Kind));
-    }
-
     public string GetTargetDir(BuildOutputNode buildOutput, EModuleKind? kindOverride = null)
     {
-        return GetSpecialDir(buildOutput, GetSpecialDirForKind(kindOverride ?? Kind));
-    }
-
-    public string GetBinDir(ProjectContext projectContext) => GetSpecialDir(projectContext, EModuleSpecialDir.BinDir);
-    public string GetBinDir(BuildOutputNode buildOutput) => GetSpecialDir(buildOutput, EModuleSpecialDir.BinDir);
-
-    public string GetGenDir(ProjectContext projectContext) => GetSpecialDir(projectContext, EModuleSpecialDir.GenDir);
-    public string GetGenDir(BuildOutputNode buildOutput) => GetSpecialDir(buildOutput, EModuleSpecialDir.GenDir);
-
-    public string GetLibDir(ProjectContext projectContext) => GetSpecialDir(projectContext, EModuleSpecialDir.LibDir);
-    public string GetLibDir(BuildOutputNode buildOutput) => GetSpecialDir(buildOutput, EModuleSpecialDir.LibDir);
-
-    public string GetObjDir(ProjectContext projectContext) => GetSpecialDir(projectContext, EModuleSpecialDir.ObjDir);
-    public string GetObjDir(BuildOutputNode buildOutput) => GetSpecialDir(buildOutput, EModuleSpecialDir.ObjDir);
-
-    public override void Validate(INode? scope)
-    {
-        base.Validate(scope);
-        // TODO: Validate that dependencies are actually reasonable. For example, linking an App doesn't make sense.
-    }
-
-    private enum EModuleSpecialDir
-    {
-        BinDir,
-        GenDir,
-        LibDir,
-        ObjDir,
-    }
-
-    private string GetSpecialDir(ProjectContext projectContext, EModuleSpecialDir dir)
-    {
-        BuildOutputNode buildOutput = projectContext.ProjectService.GetMergedNode<BuildOutputNode>(projectContext, this, false);
-        return GetSpecialDir(buildOutput, dir);
-    }
-
-    private string GetSpecialDir(BuildOutputNode buildOutput, EModuleSpecialDir dir)
-    {
-        return dir switch
+        return (kindOverride ?? Kind) switch
         {
-            EModuleSpecialDir.BinDir => buildOutput.BinDir,
-            EModuleSpecialDir.GenDir => Path.Combine(buildOutput.GenDir, TargetName),
-            EModuleSpecialDir.LibDir => Path.Combine(buildOutput.LibDir, TargetName),
-            EModuleSpecialDir.ObjDir => Path.Combine(buildOutput.ObjDir, TargetName),
-            _ => throw new Exception($"Invalid special dir '{dir}'."),
+            EModuleKind.AppConsole => GetBinDir(buildOutput),
+            EModuleKind.AppWindowed => GetBinDir(buildOutput),
+            EModuleKind.Content => GetBinDir(buildOutput),
+            EModuleKind.Custom => GetBinDir(buildOutput),
+            EModuleKind.LibHeader => GetLibDir(buildOutput),
+            EModuleKind.LibStatic => GetLibDir(buildOutput),
+            EModuleKind.LibShared => GetBinDir(buildOutput),
+            _ => GetLibDir(buildOutput),
         };
     }
 
-    private static EModuleSpecialDir GetSpecialDirForKind(EModuleKind moduleKind)
-    {
-        return moduleKind switch
-        {
-            EModuleKind.AppConsole => EModuleSpecialDir.BinDir,
-            EModuleKind.AppWindowed => EModuleSpecialDir.BinDir,
-            EModuleKind.Content => EModuleSpecialDir.BinDir,
-            EModuleKind.Custom => EModuleSpecialDir.BinDir,
-            EModuleKind.LibHeader => EModuleSpecialDir.LibDir,
-            EModuleKind.LibStatic => EModuleSpecialDir.LibDir,
-            EModuleKind.LibShared => EModuleSpecialDir.BinDir,
-            _ => EModuleSpecialDir.LibDir,
-        };
-    }
+    public string GetBinDir(BuildOutputNode buildOutput) => buildOutput.BinDir;
+    public string GetGenDir(BuildOutputNode buildOutput) => Path.Combine(buildOutput.GenDir, TargetName);
+    public string GetLibDir(BuildOutputNode buildOutput) => Path.Combine(buildOutput.LibDir, TargetName);
+    public string GetObjDir(BuildOutputNode buildOutput) => Path.Combine(buildOutput.ObjDir, TargetName);
 }

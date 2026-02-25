@@ -4,9 +4,9 @@ Node modifiers are a syntax to modify the behavior of a node.
 
 ## Generators
 
-Generates are nodes that are evaluated at parsing time to generate nodes in their place. Generator nodes are prefixed with a colon (`:`) to make it obvious they are not actually part of the project structure.
+Generates are nodes that are evaluated at parsing time to generate nodes in their place. Generator nodes are prefixed with a colon (`:`). Generator nodes are replaced with the nodes they generate in the parsed project structure.
 
-The valid generators are:
+The built-in generators are:
 
 - [`:foreach`](#foreach-generator) - generates child nodes once for each matching node
 
@@ -15,7 +15,7 @@ The valid generators are:
 
 ### Foreach Generator
 
-The `:foreach` generator finds nodes matching the given filter and generates nodes for each match using the child nodes as a template. Child nodes can use the special token context `_entry` to represent the matched entry of the current iteration. It will behave as if it was a token context of the type being searched for. For example, if searching for modules `_entry` will act like `module` token context. See [tokens](tokens.md) for more info.
+The `:foreach` generator finds nodes matching the given filter and generates nodes for each match using the child nodes as a template. Child nodes can use the special token context `_entry` to represent the matched entry of the current iteration. It will behave as if it was a token context of the type being searched for. For example, when searching for modules the `_entry` context will act like the `module` token context. See [tokens](tokens.md) for more info.
 
 #### Arguments
 
@@ -25,11 +25,10 @@ The `:foreach` generator finds nodes matching the given filter and generates nod
 
 #### Properties
 
-Each property checks if the context matches the given value. The equality check can be negated by prefixing the value with `!`. For example, `arch=x86_64` checks that the architecture is `x86_64` and `arch=!x86_64` checks that the architecture is *not* `x86_64`.
+Each property checks if a property of the same name on the context matches the value. For example, `arch=x86_64` checks that the `arch` property of the context is equal to `x86_64`. You can check arguments by using a special `_argN` property, where `N` is the index of the argument to check. For example, `_arg0="foo"` will check that the first argument is equal to `"foo"`.
 
-Values can also be logically combined with `||` (or), `&&` (and), or `^` (xor). Conditions are evaluated from left-to-right, and parenthesis (`()`) may be used to to group conditions.
+Values can be logically combined with `||` (or), `&&` (and), or `^` (xor). Conditions are evaluated from left-to-right, and parenthesis (`()`) may be used to group conditions. The equality check can be negated by prefixing the value with `!`.
 
-Any property of the target context can be checked. You can check arguments by using a special `_argN` property, where `N` is the index of the argument to check. For example `_arg0="foo"` will check that the first argument is equal to `"foo"`.
 
 #### Children
 

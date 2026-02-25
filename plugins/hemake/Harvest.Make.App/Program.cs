@@ -56,12 +56,12 @@ class Program
         // Iterate the module nodes and load any hemake extensions
         foreach (KdlNode node in projectService.ProjectDocument.GetNodesByName(ModuleNode.NodeTraits.Name))
         {
-            if (!node.TryGetPropertyValue("hemake_extension", out bool isExt) || !isExt)
+            if (!node.TryGetValue("hemake_extension", out bool isExt) || !isExt)
             {
                 continue;
             }
 
-            if (!node.TryGetPropertyValue("project_file", out string? extensionPath) || string.IsNullOrEmpty(extensionPath))
+            if (!node.TryGetValue("project_file", out string? extensionPath) || string.IsNullOrEmpty(extensionPath))
             {
                 throw new InvalidOperationException($"Module '{node.Name}' is marked as a hemake extension but does not specify a 'project_file' property.");
             }

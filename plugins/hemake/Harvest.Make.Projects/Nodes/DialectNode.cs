@@ -46,6 +46,7 @@ public class DialectNodeTraits : NodeBaseTraits
         { "csharp", NodeValueDef_Enum<ECSharpDialect>.Optional(ECSharpDialect.Default) },
     };
 
+    public override INode CreateNode(KdlNode node) => new DialectNode(node);
 }
 
 public class DialectNode(KdlNode node) : NodeBase<DialectNodeTraits>(node)

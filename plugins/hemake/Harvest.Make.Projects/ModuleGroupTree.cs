@@ -2,6 +2,7 @@
 
 using Harvest.Make.Projects.Nodes;
 using System.Diagnostics.CodeAnalysis;
+using static Harvest.Make.Projects.ModuleGroupTree;
 
 namespace Harvest.Make.Projects;
 
@@ -18,23 +19,49 @@ public class ModuleGroupTree
 
     public static string GetModuleGuid(ModuleNode module)
     {
-        string path = $"{module.Group ?? ""}/{module.ModuleName}";
+        string path = GetModulePath(module);
         return GetModuleGuid(path);
     }
 
-    public class Entry(string path, ModuleNode? module)
+    public static string GetModulePath(ModuleNode module)
+    {
+        return $"{module.Group ?? ""}/{module.ModuleName}";
+    }
+
+    public class Entry(string path)
     {
         public string FullPath => path;
         public string Name { get; } = Path.GetFileName(path);
         public string ID { get; } = GetModuleGuid(path);
-        public ModuleNode? Module => module;
         public List<Entry> Children { get; } = [];
-        public Entry? Parent { get; set; }
+        public Entry? Parent { get; set; } = null;
+        public bool HasModuleChildren { get; private set; } = false;
+
+        public bool TryAddChild(Entry child)
+        {
+            if (Children.Find(e => e.Name == child.Name) is null)
+            {
+                Children.Add(child);
+                child.Parent = this;
+
+                HasModuleChildren |= child is ModuleEntry;
+
+                return true;
+            }
+
+            return false;
+        }
     }
 
-    private readonly Dictionary<string, Entry> _modulesByName = [];
+    public class ModuleEntry(ModuleNode module) : Entry(GetModulePath(module))
+    {
+        public EModuleLanguage Language => module.Language;
+    }
 
-    public Entry Root { get; } = new("<root>", null);
+    public Entry Root { get; } = new("<root>");
+
+    private readonly Dictionary<string, ModuleEntry> _moduleEntriesByName = [];
+    public IReadOnlyDictionary<string, ModuleEntry> ModuleEntriesByName => _moduleEntriesByName;
 
     public bool HasBranches
     {
@@ -52,16 +79,19 @@ public class ModuleGroupTree
         }
     }
 
-    public IEnumerable<Entry> Entries => EnumerateChildrenRecursive(Root);
+    public IEnumerable<Entry> Entries => EnumerateEntriesRecusive(Root);
 
-    public Entry Add(ModuleNode module)
+    public bool TryAdd(ModuleNode module)
     {
-        string path = $"{module.Group ?? ""}/{module.ModuleName}";
-        Entry newEntry = new(path, module);
+        ModuleEntry child = new(module);
         Entry parent = FindOrCreateBranch(module.Group);
-        Insert(newEntry, parent);
-        _modulesByName.Add(module.ModuleName, newEntry);
-        return newEntry;
+        if (parent.TryAddChild(child))
+        {
+            _moduleEntriesByName.Add(module.ModuleName, child);
+            return true;
+        }
+
+        return false;
     }
 
     public void Clear()
@@ -82,11 +112,6 @@ public class ModuleGroupTree
         }
     }
 
-    public bool TryGetEntry(string name, [MaybeNullWhen(false)] out Entry entry)
-    {
-        return _modulesByName.TryGetValue(name, out entry);
-    }
-
     private Entry FindOrCreateBranch(string? path)
     {
         if (string.IsNullOrEmpty(path) || path == "." || path == "/")
@@ -104,24 +129,17 @@ public class ModuleGroupTree
             }
         }
 
-        Entry branch = new(path, null);
-        Insert(branch, parent);
+        Entry branch = new(path);
+        parent.TryAddChild(branch);
         return branch;
     }
 
-    private static void Insert(Entry entry, Entry parent)
-    {
-        entry.Parent = parent;
-        parent.Children.Add(entry);
-    }
-
-    private static IEnumerable<Entry> EnumerateChildrenRecursive(Entry entry)
+    private static IEnumerable<Entry> EnumerateEntriesRecusive(Entry entry)
     {
         foreach (Entry child in entry.Children)
         {
             yield return child;
-
-            foreach (Entry grandChild in EnumerateChildrenRecursive(child))
+            foreach (Entry grandChild in EnumerateEntriesRecusive(child))
             {
                 yield return grandChild;
             }

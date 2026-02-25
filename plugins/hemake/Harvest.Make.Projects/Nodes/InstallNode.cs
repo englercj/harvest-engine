@@ -12,6 +12,8 @@ public class InstallNodeTraits : NodeBaseTraits
     [
         PluginNode.NodeTraits.Name,
     ];
+
+    public override INode CreateNode(KdlNode node) => new InstallNode(node);
 }
 
 public class InstallNode(KdlNode node) : NodeBase<InstallNodeTraits>(node)

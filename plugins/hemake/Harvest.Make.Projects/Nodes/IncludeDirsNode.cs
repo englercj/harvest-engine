@@ -21,28 +21,17 @@ public class IncludeDirsNodeTraits : NodeSetBaseTraits<IncludeDirsEntryNode>
     };
 
     public override ENodeDependencyInheritance DependencyInheritance => ENodeDependencyInheritance.Include;
+
+    public override INode CreateNode(KdlNode node) => new IncludeDirsNode(node);
 }
 
 public class IncludeDirsNode(KdlNode node) : NodeSetBase<IncludeDirsNodeTraits, IncludeDirsEntryNode>(node)
 {
-    public bool IsExternal => GetBoolValue("external");
+    public bool IsExternal => GetValue<bool>("external");
 
-    protected override string GetSetEntryKey(ProjectContext context, IncludeDirsEntryNode entry)
+    protected override string GetSetEntryKey(ProjectContext context, KdlNode entry)
     {
-        return $"{entry.Path}|{entry.IsExternal}";
-    }
-
-    protected override void OnAddChild(ProjectContext context, IncludeDirsEntryNode entry)
-    {
-        KdlNode newKdlNode = new(entry.Node.Name);
-        LibDirsEntryNode newEntryNode = new(newKdlNode, this);
-        newEntryNode.MergeAndResolve(context, entry);
-
-        // Store resolved value so it is properly inherited from its parent node.
-        KdlValue externalValue = KdlValue.From(entry.IsExternal);
-        externalValue.SourceInfo = entry.Node.SourceInfo;
-        newKdlNode.Properties["external"] = externalValue;
-
-        Children.Add(newEntryNode);
+        IncludeDirsEntryNode includeDirsEntry = new(entry);
+        return $"{includeDirsEntry.Path}|{includeDirsEntry.IsExternal}";
     }
 }

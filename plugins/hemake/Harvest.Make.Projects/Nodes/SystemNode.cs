@@ -22,6 +22,8 @@ public class SystemNodeTraits : NodeBaseTraits
     {
         { "version", NodeValueDef_String.Optional() }
     };
+
+    public override INode CreateNode(KdlNode node) => new SystemNode(node);
 }
 
 public class SystemNode(KdlNode node) : NodeBase<SystemNodeTraits>(node)
@@ -32,7 +34,7 @@ public class SystemNode(KdlNode node) : NodeBase<SystemNodeTraits>(node)
     private string GetResolvedVersion()
     {
         const string Latest = "latest";
-        string version = GetStringValue("version")?.ToLowerInvariant() ?? Latest;
+        string version = GetValue<string>("version")?.ToLowerInvariant() ?? Latest;
 
         switch (System)
         {

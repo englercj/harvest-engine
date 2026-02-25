@@ -10,10 +10,12 @@ public class AuthorsEntryNodeTraits : NodeSetEntryBaseTraits<AuthorsNode>
     {
         { "email", NodeValueDef_String.Optional() },
     };
+
+    public override INode CreateNode(KdlNode node) => new AuthorsEntryNode(node);
 }
 
 public class AuthorsEntryNode(KdlNode node) : NodeSetEntryBase<AuthorsEntryNodeTraits, AuthorsNode>(node)
 {
     public string AuthorName => Node.Name;
-    public string? AuthorEmail => TryGetStringValue("email");
+    public string? AuthorEmail => TryGetValue("email", out string? value) ? value : null;
 }

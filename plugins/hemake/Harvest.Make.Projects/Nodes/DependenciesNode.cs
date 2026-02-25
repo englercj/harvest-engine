@@ -15,6 +15,8 @@ public class DependenciesNodeTraits : NodeSetBaseTraits<DependenciesEntryNode>
     ];
 
     public override ENodeDependencyInheritance DependencyInheritance => ENodeDependencyInheritance.All;
+
+    public override INode CreateNode(KdlNode node) => new DependenciesNode(node);
 }
 
 public class DependenciesNode(KdlNode node) : NodeSetBase<DependenciesNodeTraits, DependenciesEntryNode>(node)

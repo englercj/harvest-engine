@@ -9,13 +9,11 @@ The root node of a Harvest Project structure.
 ## Properties
 
 - `start` (string) - Optional. The name of which module to set as the default startup module.
+- `build_dir` (string) Optional. The base directory for all build files. Default value: `.build`
+- `installs_dir` (string) Optional. Directory for installed plugins. Default is: `${project.build_dir}/installs`.
+- `projects_dir` (string) Optional. Destination for build system project files. Default is: `${project.build_dir}/projects`.
 
 ## Children
-
-<!-- TODO:
-- lib_dirs (project/module) - library search paths for `dependencies` node, needed?
-- wasm_opt_path(he.get_wasm_opt_path()) (project/module) - if wasm_opt is installed by hemake, how do we put it on the path? Does the wasm C# module do this setup for you? (Yes!)
--->
 
 - [`build_options`](build_options_node.md)
 - [`build_output`](build_output_node.md)
@@ -50,8 +48,7 @@ None.
 ## Example
 
 ```kdl
-project "Harvest Engine" {
+project "Harvest Engine" start="he_editor" {
     import "./he_plugin.kdl"
-    startproject "he_editor"
 }
 ```

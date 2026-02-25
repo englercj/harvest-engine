@@ -33,10 +33,11 @@ public class FloatingPointNodeTraits : NodeBaseTraits
         { "exceptions", NodeValueDef_Bool.Optional(false) },
     };
 
+    public override INode CreateNode(KdlNode node) => new FloatingPointNode(node);
 }
 
 public class FloatingPointNode(KdlNode node) : NodeBase<FloatingPointNodeTraits>(node)
 {
     public EFloatingPointMode Mode => GetEnumValue<EFloatingPointMode>(0);
-    public bool AllowExceptions => GetBoolValue("exceptions");
+    public bool AllowExceptions => GetValue<bool>("exceptions");
 }

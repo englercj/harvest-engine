@@ -59,6 +59,8 @@ public class FileEntryNodeTraits : NodeSetEntryBaseTraits<FilesNode>
         { "build_rule", NodeValueDef_String.Optional("default") }, // string to support custom build rule names
         { "build_exclude", NodeValueDef_Bool.Optional(false) },
     };
+
+    public override INode CreateNode(KdlNode node) => new FilesEntryNode(node);
 }
 
 public class FilesEntryNode(KdlNode node) : NodeSetEntryBase<FileEntryNodeTraits, FilesNode>(node)
@@ -119,27 +121,11 @@ public class FilesEntryNode(KdlNode node) : NodeSetEntryBase<FileEntryNodeTraits
         s_fileExtensionInfos[extension] = info;
     }
 
-    public string FileGlob => Node.Name;
-    public IEnumerable<string> FilePaths => ExpandPath(ResolvePath(FileGlob));
-    public EFileAction FileAction => GetEnumValue<EFileAction>("action");
-    public EFileBuildRule FileBuildRule => TryGetEnumValue<EFileBuildRule>("build_rule") ?? EFileBuildRule.Custom;
-    public string BuildRuleName => GetStringValue("build_rule");
-    public bool IsExcludedFromBuild => GetBoolValue("build_exclude");
-
-    private string? _resolvedPath = null;
-    public string ResolvedFilePath => _resolvedPath ?? throw new Exception("File path has not been resolved yet.");
-
-    public EFileAction ResolvedFileAction => FileAction switch
-    {
-        EFileAction.Default => GetDefaultFileAction(ResolvedFilePath),
-        _ => FileAction,
-    };
-
-    public EFileBuildRule ResolvedFileBuildRule => FileBuildRule switch
-    {
-        EFileBuildRule.Default => GetDefaultFileBuildRule(ResolvedFilePath),
-        _ => FileBuildRule,
-    };
+    public string FilePath => Node.Name;
+    public EFileAction FileAction => GetFileAction();
+    public EFileBuildRule FileBuildRule => GetFileBuildRule();
+    public string BuildRuleName => GetValue<string>("build_rule");
+    public bool IsExcludedFromBuild => GetValue<bool>("build_exclude");
 
     public static EFileAction GetDefaultFileAction(string path)
     {
@@ -161,30 +147,21 @@ public class FilesEntryNode(KdlNode node) : NodeSetEntryBase<FileEntryNodeTraits
         return EFileBuildRule.Custom;
     }
 
-    public override void MergeAndResolve(ProjectContext context, INode node)
+    private EFileAction GetFileAction()
     {
-        base.MergeAndResolve(context, node);
+        EFileAction action = GetEnumValue<EFileAction>("action");
+        return action == EFileAction.Default ? GetDefaultFileAction(FilePath) : action;
+    }
 
-        // After merging `FileGlob` should only be a single file path from the original
-        // expanded glob. We store it off so we know this is the final file path.
-        _resolvedPath = FileGlob;
+    private EFileBuildRule GetFileBuildRule()
+    {
+        string buildRuleName = GetValue<string>("build_rule");
 
-        if (FileAction == EFileAction.Default)
+        if (!KdlEnumUtils.TryParse(buildRuleName, out EFileBuildRule rule))
         {
-            EFileAction fileAction = GetDefaultFileAction(_resolvedPath);
-            string fileActionName = KdlEnumUtils.GetName(fileAction);
-            KdlValue fileActionValue = KdlValue.From(fileActionName);
-            fileActionValue.SourceInfo = Node.SourceInfo;
-            Node.Properties["action"] = fileActionValue;
+            return EFileBuildRule.Custom;
         }
 
-        if (FileBuildRule == EFileBuildRule.Default)
-        {
-            EFileBuildRule fileRule = GetDefaultFileBuildRule(_resolvedPath);
-            string fileRuleName = KdlEnumUtils.GetName(fileRule);
-            KdlValue fileRuleValue = KdlValue.From(fileRuleName);
-            fileRuleValue.SourceInfo = Node.SourceInfo;
-            Node.Properties["build_rule"] = fileRuleValue;
-        }
+        return rule == EFileBuildRule.Default ? GetDefaultFileBuildRule(FilePath) : rule;
     }
 }

@@ -19,11 +19,13 @@ public class ExternalNodeTraits : NodeBaseTraits
         { "fatal", NodeValueDef_Bool.Optional(false) },
         { "angle_brackets", NodeValueDef_Bool.Optional(true) },
     };
+
+    public override INode CreateNode(KdlNode node) => new ExternalNode(node);
 }
 
 public class ExternalNode(KdlNode node) : NodeBase<ExternalNodeTraits>(node)
 {
     public EWarningsLevel WarningsLevel => GetEnumValue<EWarningsLevel>("warnings");
-    public bool Fatal => GetBoolValue("fatal");
-    public bool AngleBrackets => GetBoolValue("angle_brackets");
+    public bool Fatal => GetValue<bool>("fatal");
+    public bool AngleBrackets => GetValue<bool>("angle_brackets");
 }

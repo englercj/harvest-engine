@@ -39,13 +39,15 @@ public class PluginNodeTraits : NodeBaseTraits
 
         return base.TryResolveToken(projectContext, contextNode, propertyName);
     }
+
+    public override INode CreateNode(KdlNode node) => new PluginNode(node);
 }
 
 public class PluginNode(KdlNode node) : NodeBase<PluginNodeTraits>(node)
 {
-    public string PluginName => GetStringValue(0);
-    public string Version => GetStringValue("version");
-    public string? License => TryGetStringValue("license");
+    public string PluginName => GetValue<string>(0);
+    public string Version => GetValue<string>("version");
+    public string? License => TryGetValue("license", out string? value) ? value : null;
 
     public string GetInstallDir(ProjectContext projectContext)
     {

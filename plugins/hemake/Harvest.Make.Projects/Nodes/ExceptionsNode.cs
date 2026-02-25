@@ -27,6 +27,8 @@ public class ExceptionsNodeTraits : NodeBaseTraits
     [
         NodeValueDef_Enum<EExceptionsMode>.Required(EExceptionsMode.Default),
     ];
+
+    public override INode CreateNode(KdlNode node) => new ExceptionsNode(node);
 }
 
 public class ExceptionsNode(KdlNode node) : NodeBase<ExceptionsNodeTraits>(node)

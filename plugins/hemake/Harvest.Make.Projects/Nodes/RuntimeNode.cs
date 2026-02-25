@@ -31,10 +31,12 @@ public class RuntimeNodeTraits : NodeBaseTraits
     {
         { "static", NodeValueDef_Bool.Optional(false) },
     };
+
+    public override INode CreateNode(KdlNode node) => new RuntimeNode(node);
 }
 
 public class RuntimeNode(KdlNode node) : NodeBase<RuntimeNodeTraits>(node)
 {
     public ERuntime Runtime => GetEnumValue<ERuntime>(0);
-    public bool StaticLink => GetBoolValue("static");
+    public bool StaticLink => GetValue<bool>("static");
 }

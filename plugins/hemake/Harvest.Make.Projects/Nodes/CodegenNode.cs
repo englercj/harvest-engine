@@ -48,6 +48,8 @@ public class CodegenNodeTraits : NodeBaseTraits
     [
         NodeValueDef_Enum<ECodegenMode>.Required(ECodegenMode.Default),
     ];
+
+    public override INode CreateNode(KdlNode node) => new CodegenNode(node);
 }
 
 public class CodegenNode(KdlNode node) : NodeBase<CodegenNodeTraits>(node)

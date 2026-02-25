@@ -40,20 +40,22 @@ public class ToolsetNodeTraits : NodeBaseTraits
         { "edit_and_continue", NodeValueDef_Bool.Optional(false) },
         { "fast_up_to_date_check", NodeValueDef_Bool.Optional(true) },
         { "multiprocess", NodeValueDef_Bool.Optional(false) },
-        { "log", NodeValueDef_String.Optional() },
+        { "log", NodeValueDef_Path.Optional() },
         { "path", NodeValueDef_Path.Optional() },
         { "version", NodeValueDef_String.Optional() },
     };
+
+    public override INode CreateNode(KdlNode node) => new ToolsetNode(node);
 }
 
 public class ToolsetNode(KdlNode node) : NodeBase<ToolsetNodeTraits>(node)
 {
     public EToolset Toolset => GetEnumValue<EToolset>(0);
     public EToolsetArch Arch => GetEnumValue<EToolsetArch>("arch");
-    public bool EditAndContinue => GetBoolValue("edit_and_continue");
-    public bool FastUpToDateCheck => GetBoolValue("fast_up_to_date_check");
-    public bool MultiProcess => GetBoolValue("multiprocess");
-    public string? Log => TryGetStringValue("log");
-    public string? Path => TryGetPathValue("path");
-    public string? Version => TryGetStringValue("version");
+    public bool EditAndContinue => GetValue<bool>("edit_and_continue");
+    public bool FastUpToDateCheck => GetValue<bool>("fast_up_to_date_check");
+    public bool MultiProcess => GetValue<bool>("multiprocess");
+    public string? LogPath => TryGetValue("log", out string? value) ? value : null;
+    public string? Path => TryGetValue("path", out string? value) ? value : null;
+    public string? Version => TryGetValue("version", out string? value) ? value : null;
 }

@@ -37,17 +37,93 @@ public class OptionNodeTraits : NodeBaseTraits
         { "help", NodeValueDef_String.Optional() },
         { "type", NodeValueDef_Enum<EOptionType>.Optional(EOptionType.String) },
     };
+
+    public override INode CreateNode(KdlNode node) => new OptionNode(node);
+
+    protected override void ValidateProperties(KdlNode node)
+    {
+        base.ValidateProperties(node);
+
+        if (!node.Properties.TryGetValue("default", out KdlValue? value))
+        {
+            return; // No default value to validate.
+        }
+
+        OptionNode option = new(node);
+
+        switch (option.OptionType)
+        {
+            case EOptionType.Bool:
+            {
+                if (value is not KdlBool)
+                {
+                    throw new NodeParseException(node, $"Default value for option {option.OptionName} must be a boolean.");
+                }
+                return;
+            }
+            case EOptionType.Int:
+            {
+                if (!ReflectionUtils.IsInstanceOfGenericType(value.GetType(), typeof(KdlNumber<>)) || !ReflectionUtils.IsTypeIntegral(value.GetType().GetGenericArguments()[0]))
+                {
+                    throw new NodeParseException(node, $"Default value for option {option.OptionName} must be a integer.");
+                }
+                return;
+            }
+            case EOptionType.UInt:
+            {
+                if (!ReflectionUtils.IsInstanceOfGenericType(value.GetType(), typeof(KdlNumber<>)) || !ReflectionUtils.IsTypeIntegral(value.GetType().GetGenericArguments()[0]))
+                {
+                    throw new NodeParseException(node, $"Default value for option {option.OptionName} must be an unsigned integer.");
+                }
+                if (value is KdlNumber<sbyte> b && b.Value < 0)
+                {
+                    throw new NodeParseException(node, $"Default value for option {option.OptionName} must be an unsigned integer.");
+                }
+                if (value is KdlNumber<int> i && i.Value < 0)
+                {
+                    throw new NodeParseException(node, $"Default value for option {option.OptionName} must be an unsigned integer.");
+                }
+                if (value is KdlNumber<long> l && l.Value < 0)
+                {
+                    throw new NodeParseException(node, $"Default value for option {option.OptionName} must be an unsigned integer.");
+                }
+                if (value is KdlNumber<ulong> u && u.Value < 0)
+                {
+                    throw new NodeParseException(node, $"Default value for option {option.OptionName} must be an unsigned integer.");
+                }
+                return;
+            }
+            case EOptionType.Float:
+            {
+                if (!ReflectionUtils.IsInstanceOfGenericType(value.GetType(), typeof(KdlNumber<>)) || !ReflectionUtils.IsTypeFloatingPoint(value.GetType().GetGenericArguments()[0]))
+                {
+                    throw new NodeParseException(node, $"Default value for option {option.OptionName} must be a floating-point number.");
+                }
+                return;
+            }
+            case EOptionType.String:
+            {
+                if (value is not KdlString)
+                {
+                    throw new NodeParseException(node, $"Default value for option {option.OptionName} must be a string.");
+                }
+                return;
+            }
+        }
+
+        throw new NodeParseException(node, "Unknown option type");
+    }
 }
 
 public class OptionNode(KdlNode node) : NodeBase<OptionNodeTraits>(node)
 {
-    public string OptionName => GetStringValue(0);
+    public string OptionName => GetValue<string>(0);
     public EOptionType OptionType => GetEnumValue<EOptionType>("type");
-    public string? HelpText => TryGetStringValue("help");
-    public string? EnvVarName => TryGetStringValue("env");
+    public string? HelpText => TryGetValue("help", out string? value) ? value : null;
+    public string? EnvVarName => TryGetValue("env", out string? value) ? value : null;
 
-    public bool? GetDefaultBool() => OptionType == EOptionType.Bool ? TryGetBoolValue("default") : null;
-    public string? GetDefaultString() => OptionType == EOptionType.String ? TryGetStringValue("default") : null;
+    public bool? GetDefaultBool() => OptionType == EOptionType.Bool ? (TryGetValue("default", out bool value) ? value : null) : null;
+    public string? GetDefaultString() => OptionType == EOptionType.String ? (TryGetValue("default", out string? value) ? value : null) : null;
     public T? GetDefaultNumber<T>() where T : struct, INumber<T>
     {
         string key = "default";
@@ -80,89 +156,17 @@ public class OptionNode(KdlNode node) : NodeBase<OptionNodeTraits>(node)
 
         if (Traits.PropertyDefs.TryGetValue(key, out NodeValueDef? valueDef))
         {
-            if (valueDef.DefaultValue is string str)
+            if (valueDef.DefaultValue is KdlString str && str.Value is not null)
             {
                 switch (OptionType)
                 {
-                    case EOptionType.Int: return (T)Convert.ChangeType(Convert.ToInt64(str), typeof(T));
-                    case EOptionType.UInt: return (T)Convert.ChangeType(Convert.ToUInt64(str), typeof(T));
-                    case EOptionType.Float: return (T)Convert.ChangeType(Convert.ToDouble(str), typeof(T));
+                    case EOptionType.Int: return (T)Convert.ChangeType(Convert.ToInt64(str.Value), typeof(T));
+                    case EOptionType.UInt: return (T)Convert.ChangeType(Convert.ToUInt64(str.Value), typeof(T));
+                    case EOptionType.Float: return (T)Convert.ChangeType(Convert.ToDouble(str.Value), typeof(T));
                 }
             }
         }
 
         return null;
-    }
-
-    protected override void ValidateProperties()
-    {
-        base.ValidateProperties();
-
-        if (!Node.Properties.TryGetValue("default", out KdlValue? value))
-        {
-            return; // No default value to validate.
-        }
-
-        switch (OptionType)
-        {
-            case EOptionType.Bool:
-            {
-                if (value is not KdlBool)
-                {
-                    throw new NodeValidationException(this, $"Default value for option {OptionName} must be a boolean.");
-                }
-                return;
-            }
-            case EOptionType.Int:
-            {
-                if (!ReflectionUtils.IsInstanceOfGenericType(value.GetType(), typeof(KdlNumber<>)) || !ReflectionUtils.IsTypeIntegral(value.GetType().GetGenericArguments()[0]))
-                {
-                    throw new NodeValidationException(this, $"Default value for option {OptionName} must be a integer.");
-                }
-                return;
-            }
-            case EOptionType.UInt:
-            {
-                if (!ReflectionUtils.IsInstanceOfGenericType(value.GetType(), typeof(KdlNumber<>)) || !ReflectionUtils.IsTypeIntegral(value.GetType().GetGenericArguments()[0]))
-                {
-                    throw new NodeValidationException(this, $"Default value for option {OptionName} must be an unsigned integer.");
-                }
-                if (value is KdlNumber<sbyte> b && b.Value < 0)
-                {
-                    throw new NodeValidationException(this, $"Default value for option {OptionName} must be an unsigned integer.");
-                }
-                if (value is KdlNumber<int> i && i.Value < 0)
-                {
-                    throw new NodeValidationException(this, $"Default value for option {OptionName} must be an unsigned integer.");
-                }
-                if (value is KdlNumber<long> l && l.Value < 0)
-                {
-                    throw new NodeValidationException(this, $"Default value for option {OptionName} must be an unsigned integer.");
-                }
-                if (value is KdlNumber<ulong> u && u.Value < 0)
-                {
-                    throw new NodeValidationException(this, $"Default value for option {OptionName} must be an unsigned integer.");
-                }
-                return;
-            }
-            case EOptionType.Float:
-            {
-                if (!ReflectionUtils.IsInstanceOfGenericType(value.GetType(), typeof(KdlNumber<>)) || !ReflectionUtils.IsTypeFloatingPoint(value.GetType().GetGenericArguments()[0]))
-                {
-                    throw new NodeValidationException(this, $"Default value for option {OptionName} must be a floating-point number.");
-                }
-                return;
-            }
-            case EOptionType.String:
-            {
-                if (value is not KdlString)
-                {
-                    throw new NodeValidationException(this, $"Default value for option {OptionName} must be a string.");
-                }
-                return;
-            }
-        }
-
-        throw new NodeValidationException(this, "Unknown option type");
     }
 }

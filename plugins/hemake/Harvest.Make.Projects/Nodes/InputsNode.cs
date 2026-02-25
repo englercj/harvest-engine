@@ -13,6 +13,8 @@ public class  InputsNodeTraits : NodeSetBaseTraits<InputsEntryNode>
         BuildEventNode.NodeTraits.Name,
         BuildRuleNode.NodeTraits.Name,
     ];
+
+    public override INode CreateNode(KdlNode node) => new InputsNode(node);
 }
 
 public class InputsNode(KdlNode node) : NodeSetBase<InputsNodeTraits, InputsEntryNode>(node)

@@ -10,24 +10,29 @@ public class IncludeDirsEntryNodeTraits : NodeSetEntryBaseTraits<IncludeDirsNode
     {
         { "external", NodeValueDef_Bool.Optional(false) },
     };
+
+    public override INode CreateNode(KdlNode node) => new IncludeDirsEntryNode(node);
 }
 
 public class IncludeDirsEntryNode(KdlNode node) : NodeSetEntryBase<IncludeDirsEntryNodeTraits, IncludeDirsNode>(node)
 {
-    public string Path => ResolvePath(Node.Name);
+    public string Path => Node.Name;
 
     public bool IsExternal
     {
         get
         {
-            if (TryGetBoolValue("external") is bool isExternalProp)
+            if (TryGetValue("external", out bool isExternal))
             {
-                return isExternalProp;
+                return isExternal;
             }
 
-            if (Scope is IncludeDirsNode includeDirsNode)
+            if (Node.Parent is not null && Node.Parent.Name == IncludeDirsNode.NodeTraits.Name)
             {
-                return includeDirsNode.IsExternal;
+                if (Node.Parent.TryGetValue("external", out bool isParentExternal))
+                {
+                    return isParentExternal;
+                }
             }
 
             return false;

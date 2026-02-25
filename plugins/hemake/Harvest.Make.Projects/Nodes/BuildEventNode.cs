@@ -33,10 +33,12 @@ public class BuildEventNodeTraits : NodeBaseTraits
     {
         { "message", NodeValueDef_String.Optional() },
     };
+
+    public override INode CreateNode(KdlNode node) => new BuildEventNode(node);
 }
 
 public class BuildEventNode(KdlNode node) : NodeBase<BuildEventNodeTraits>(node)
 {
     public EBuildEvent EventName => GetEnumValue<EBuildEvent>(0);
-    public string? Message => TryGetStringValue("message");
+    public string? EventMessage => TryGetValue("message", out string? value) ? value : null;
 }

@@ -5,10 +5,11 @@ using Harvest.Make.Projects.Nodes;
 
 namespace Harvest.Make.Projects;
 
-public class NodeTokenHandler(ProjectContext projectContext, KdlNode scope) : IStringTokenHandler
+public class NodeTokenHandler(ProjectContext projectContext, IndexedNodeCollection indexedNodes, KdlNode scope) : IStringTokenHandler
 {
     // TODO: Remove project context when we're operating on fully resolved nodes only
     private readonly ProjectContext _projectContext = projectContext;
+    private readonly IndexedNodeCollection _indexedNodes = indexedNodes;
     private readonly KdlNode _scope = scope;
 
     public string GetTokenValue(StringTokenContext tokenContext)
@@ -87,20 +88,12 @@ public class NodeTokenHandler(ProjectContext projectContext, KdlNode scope) : IS
 
     private KdlNode GetTokenContextById(KdlNode scope, string token, string contextName, string contextId)
     {
-        if (contextName == PluginNode.NodeTraits.Name)
+        if (_indexedNodes.TryGetNode(contextName, contextId, out KdlNode? contextNode))
         {
-            return _projectContext.ProjectService.TryGetPluginByName(contextId)?.Node
-                ?? throw new NodeParseException(scope, $"Invalid token '{token}'. No plugin found with name '{contextId}'.");
+            return contextNode;
         }
-        else if (contextName == ModuleNode.NodeTraits.Name)
-        {
-            return _projectContext.ProjectService.TryGetModuleByName(contextId)?.Node
-                ?? throw new NodeParseException(scope, $"Invalid token '{token}'. No module found with name '{contextId}'.");
-        }
-        else
-        {
-            throw new NodeParseException(scope, $"Invalid token '{token}'. Context '{contextName}' cannot be indexed.");
-        }
+
+        throw new NodeParseException(scope, $"Invalid token '{token}'. No {contextName} node found with name '{contextId}'.");
     }
 
     private static KdlNode GetTokenContextByName(KdlNode scope, string token, string name)

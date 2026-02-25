@@ -21,12 +21,14 @@ public class SanitizeNodeTraits : NodeBaseTraits
         { "thread", NodeValueDef_Bool.Optional(false) },
         { "undefined", NodeValueDef_Bool.Optional(false) },
     };
+
+    public override INode CreateNode(KdlNode node) => new SanitizeNode(node);
 }
 
 public class SanitizeNode(KdlNode node) : NodeBase<SanitizeNodeTraits>(node)
 {
-    public bool EnableAddress => GetBoolValue("address");
-    public bool EnableFuzzer => GetBoolValue("fuzzer");
-    public bool EnableThread => GetBoolValue("thread");
-    public bool EnableUndefined => GetBoolValue("undefined");
+    public bool EnableAddress => GetValue<bool>("address");
+    public bool EnableFuzzer => GetValue<bool>("fuzzer");
+    public bool EnableThread => GetValue<bool>("thread");
+    public bool EnableUndefined => GetValue<bool>("undefined");
 }

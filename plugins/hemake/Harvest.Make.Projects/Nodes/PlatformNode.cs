@@ -60,15 +60,41 @@ public class PlatformNodeTraits : NodeBaseTraits
 
         throw new Exception("Unsupported host platform.");
     }
+
+    public override INode CreateNode(KdlNode node) => new PlatformNode(node);
+
+    protected override void ValidateProperties(KdlNode node)
+    {
+        base.ValidateProperties(node);
+
+        PlatformNode platform = new(node);
+        EPlatformArch Arch = platform.Arch;
+        EPlatformSystem System = platform.System;
+
+        if (Arch == EPlatformArch.Any && System != EPlatformSystem.DotNet)
+        {
+            throw new NodeParseException(node, "Platform arch cannot be 'any' unless system is also 'dotnet'");
+        }
+
+        if (Arch == EPlatformArch.WASM32 && System != EPlatformSystem.WASM)
+        {
+            throw new NodeParseException(node, "Platform arch cannot be 'wasm32' unless system is also 'wasm'");
+        }
+
+        if (System == EPlatformSystem.WASM && Arch != EPlatformArch.WASM32)
+        {
+            throw new NodeParseException(node, "Platform system cannot be 'wasm' unless arch is also 'wasm32'");
+        }
+    }
 }
 
 public class PlatformNode(KdlNode node) : NodeBase<PlatformNodeTraits>(node)
 {
-    public string PlatformName => GetStringValue(0);
+    public string PlatformName => GetValue<string>(0);
     public EPlatformArch Arch => GetEnumValue<EPlatformArch>("arch");
     public EPlatformSystem System => GetEnumValue<EPlatformSystem>("system");
     public EToolset Toolset => TryGetEnumValue<EToolset>("toolset") ?? GuessToolset();
-    public bool IsDefault => GetBoolValue("default");
+    public bool IsDefault => GetValue<bool>("default");
 
     private EToolset GuessToolset()
     {
@@ -85,25 +111,5 @@ public class PlatformNode(KdlNode node) : NodeBase<PlatformNodeTraits>(node)
         }
 
         throw new Exception($"Unknown platform system: {System}");
-    }
-
-    public override void Validate(INode? scope)
-    {
-        base.Validate(scope);
-
-        if (Arch == EPlatformArch.Any && System != EPlatformSystem.DotNet)
-        {
-            throw new NodeValidationException(this, "Platform arch cannot be 'any' unless system is also 'dotnet'");
-        }
-
-        if (Arch == EPlatformArch.WASM32 && System != EPlatformSystem.WASM)
-        {
-            throw new NodeValidationException(this, "Platform arch cannot be 'wasm32' unless system is also 'wasm'");
-        }
-
-        if (System == EPlatformSystem.WASM && Arch != EPlatformArch.WASM32)
-        {
-            throw new NodeValidationException(this, "Platform system cannot be 'wasm' unless arch is also 'wasm32'");
-        }
     }
 }

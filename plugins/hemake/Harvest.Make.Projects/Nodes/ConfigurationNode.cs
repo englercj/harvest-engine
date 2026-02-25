@@ -17,9 +17,11 @@ public class ConfigurationNodeTraits : NodeBaseTraits
     [
         NodeValueDef_String.Required(),
     ];
+
+    public override INode CreateNode(KdlNode node) => new ConfigurationNode(node);
 }
 
 public class ConfigurationNode(KdlNode node) : NodeBase<ConfigurationNodeTraits>(node)
 {
-    public string ConfigName => GetStringValue(0);
+    public string ConfigName => GetValue<string>(0);
 }

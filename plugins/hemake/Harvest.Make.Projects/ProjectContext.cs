@@ -7,12 +7,14 @@ namespace Harvest.Make.Projects;
 public class ProjectContext
 {
     public required IProjectService ProjectService { get; init; }
-    //public PluginNode? Plugin { get; init; } = null;
-    //public ModuleNode? Module { get; init; } = null;
     public required ConfigurationNode Configuration { get; init; }
     public required PlatformNode Platform { get; init; }
+    public required BuildOutputNode BuildOutput { get; set; }
+
+    public PluginNode? Plugin { get; set; } = null;
+    public ModuleNode? Module { get; set; } = null;
 
     public EPlatformSystem Host { get; init; } = EPlatformSystem.Windows;
     public IReadOnlyDictionary<string, object?> Options { get; init; } = new SortedDictionary<string, object?>();
-    public IReadOnlySet<string> Tags { get; init; } = new HashSet<string>();
+    public HashSet<string> Tags { get; init; } = [];
 }

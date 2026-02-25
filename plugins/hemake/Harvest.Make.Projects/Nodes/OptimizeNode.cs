@@ -54,6 +54,8 @@ public class OptimizeNodeTraits : NodeBaseTraits
         { "intrinsics", NodeValueDef_Bool.Optional() },
         { "just_my_code", NodeValueDef_Bool.Optional(true) },
     };
+
+    public override INode CreateNode(KdlNode node) => new OptimizeNode(node);
 }
 
 public class OptimizeNode(KdlNode node) : NodeBase<OptimizeNodeTraits>(node)
@@ -61,8 +63,8 @@ public class OptimizeNode(KdlNode node) : NodeBase<OptimizeNodeTraits>(node)
     public EOptimizationLevel OptimizationLevel => GetEnumValue<EOptimizationLevel>(0);
     public ELinkTimeOptimizationLevel LinkTimeOptimizationLevel => GetEnumValue<ELinkTimeOptimizationLevel>("lto");
     public EInliningLevel InliningLevel => GetEnumValue<EInliningLevel>("inlining");
-    public bool? FunctionLevelLinking => TryGetBoolValue("function_level_linking");
-    public bool? StringPooling => TryGetBoolValue("string_pooling");
-    public bool? Intrinsics => TryGetBoolValue("intrinsics");
-    public bool JustMyCode => GetBoolValue("just_my_code");
+    public bool? FunctionLevelLinking => TryGetValue("function_level_linking", out bool value) ? value : null;
+    public bool? StringPooling => TryGetValue("string_pooling", out bool value) ? value : null;
+    public bool? Intrinsics => TryGetValue("intrinsics", out bool value) ? value : null;
+    public bool JustMyCode => GetValue<bool>("just_my_code");
 }

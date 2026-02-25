@@ -20,9 +20,11 @@ public class ImportNodeTraits : NodeBaseTraits
     [
         NodeValueDef_Path.Required(""),
     ];
+
+    public override INode CreateNode(KdlNode node) => new ImportNode(node);
 }
 
 public class ImportNode(KdlNode node) : NodeBase<ImportNodeTraits>(node)
 {
-    public string ImportPath => GetPathValue(0);
+    public string ImportPath => GetValue<string>(0);
 }

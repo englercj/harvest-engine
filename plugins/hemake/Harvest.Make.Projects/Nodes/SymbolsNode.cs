@@ -31,10 +31,12 @@ public class SymbolsNodeTraits : NodeBaseTraits
     {
         { "embed", NodeValueDef_Bool.Optional(false) },
     };
+
+    public override INode CreateNode(KdlNode node) => new SymbolsNode(node);
 }
 
 public class SymbolsNode(KdlNode node) : NodeBase<SymbolsNodeTraits>(node)
 {
     public ESymbolsMode SymbolsMode => GetEnumValue<ESymbolsMode>(0);
-    public bool Embed => GetBoolValue("embed");
+    public bool Embed => GetValue<bool>("embed");
 }

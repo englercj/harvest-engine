@@ -2,45 +2,53 @@
 
 using Harvest.Make.Extensions;
 using Harvest.Make.Projects.Nodes;
+using Microsoft.Extensions.Logging;
 using System.CommandLine.Invocation;
 using System.Text;
 using System.Xml;
 
-namespace Harvest.Make.Projects.ProjectGenerators.vs2022;
+namespace Harvest.Make.Projects.ProjectGenerators.vs2026;
 
-internal class VcxprojGenerator(IProjectService projectService, ProjectGeneratorHelper helper)
+internal class VcxprojGenerator(IProjectService projectService, ILogger<VcxprojGenerator> logger)
 {
     public const string ProjectExtension = ".vcxproj";
     public const string FiltersExtension = ".vcxproj.filters";
     public const string XmlNamespace = "http://schemas.microsoft.com/developer/msbuild/2003";
 
     private readonly IProjectService _projectService = projectService;
-    private readonly ProjectGeneratorHelper _helper = helper;
+    private readonly ILogger _logger = logger;
+    private string _moduleName = "";
     private string _outputPath = "";
     private List<IVisualStudioFileGroup> _fileGroups = [];
 
-    public async Task GenerateAsync(InvocationContext context, ModuleNode module)
+    public async Task GenerateAsync(string moduleName)
     {
-        CreateFileGroups(context, module);
+        _moduleName = moduleName;
 
-        if (!string.IsNullOrEmpty(_helper.BuildOutput.ProjectDir))
-        {
-            Directory.CreateDirectory(_helper.BuildOutput.ProjectDir);
-        }
+        CreateFileGroups();
 
-        // TODO: Generate to a string and check if the content has changed before writing, so visual studio doesn't reload unnecessarily.
+        ProjectNode project = _projectService.GetGlobalNode<ProjectNode>();
+        Directory.CreateDirectory(project.ProjectsDir);
 
-        await GenerateProjectFileAsync(context, module);
+        await GenerateProjectFileAsync(project.ProjectsDir, moduleName);
         await GenerateFiltersFileAsync(module);
         await GenerateUserFileAsync(module);
     }
 
-    private async Task GenerateProjectFileAsync(InvocationContext context, ModuleNode module)
+    private async Task GenerateProjectFileAsync(string projectsDir, string moduleName)
     {
-        _outputPath = Path.Join(_helper.BuildOutput.ProjectDir, $"{module.ModuleName}{ProjectExtension}");
+        _outputPath = Path.Join(projectsDir, $"{moduleName}{ProjectExtension}");
 
         await using FileStream stream = new(_outputPath, FileMode.Create, FileAccess.Write, FileShare.None);
-        await using XmlWriter writer = XmlWriter.Create(stream, new XmlWriterSettings { Encoding = Encoding.UTF8, Indent = true, Async = true });
+        await using XmlWriter writer = XmlWriter.Create(stream, new XmlWriterSettings
+        {
+            Encoding = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false),
+            Async = true,
+            Indent = true,
+            IndentChars = "  ",
+            NewLineChars = Environment.NewLine,
+            OmitXmlDeclaration = false,
+        });
 
         writer.WriteStartDocument();
         writer.WriteStartElement("Project", XmlNamespace);
@@ -141,19 +149,19 @@ internal class VcxprojGenerator(IProjectService projectService, ProjectGenerator
         writer.WriteStartElement("ItemGroup");
         writer.WriteAttributeString("Label", "ProjectConfigurations");
 
-        VisualStudioUtils.ForEachConfig(_helper, (configuration, platform, archName) =>
+        foreach ((ResolvedProjectTree project, string archName) in VisualStudioUtils.EnumerateConfigs(_projectService))
         {
             writer.WriteStartElement("ProjectConfiguration");
-            writer.WriteAttributeString("Include", VisualStudioUtils.GetConfigName(configuration, platform, archName));
-            writer.WriteElementString("Configuration", VisualStudioUtils.GetConfigName(configuration, platform));
+            writer.WriteAttributeString("Include", VisualStudioUtils.GetConfigName(project, archName));
+            writer.WriteElementString("Configuration", VisualStudioUtils.GetConfigName(project));
             writer.WriteElementString("Platform", archName);
             writer.WriteEndElement();
-        });
+        }
 
         writer.WriteEndElement();
     }
 
-    private void WriteGlobals(XmlWriter writer, InvocationContext invocationContext, ModuleNode module)
+    private void WriteGlobals(XmlWriter writer, ModuleNode module)
     {
         bool isWindows = _helper.Platforms.Where((n) => n.System == EPlatformSystem.Windows).Any();
         ProjectContext context = _projectService.CreateProjectContext(invocationContext, module);
@@ -1121,14 +1129,14 @@ internal class VcxprojGenerator(IProjectService projectService, ProjectGenerator
         }
     }
 
-    private void CreateFileGroups(InvocationContext invocationContext, ModuleNode module)
+    private void CreateFileGroups()
     {
-        _fileGroups = VisualStudioUtils.CreateFileGroups(_helper, _outputPath);
+        _fileGroups = VisualStudioUtils.CreateFileGroups(_outputPath);
 
-        VisualStudioUtils.ForEachConfig(_helper, (configuration, platform, archName) =>
+        foreach ((ResolvedProjectTree projectTree, string archName) in VisualStudioUtils.EnumerateConfigs(_projectService))
         {
-            ProjectContext context = _projectService.CreateProjectContext(invocationContext, module, configuration, platform);
-            FilesNode files = _projectService.GetMergedNode<FilesNode>(context, module);
+            ModuleNode module = projectTree.IndexedNodes.GetNode<ModuleNode>(_moduleName);
+            FilesNode files = projectTree.GetMergedNode<FilesNode>(module.Node);
 
             foreach (FilesEntryNode entry in files.Entries)
             {
@@ -1138,7 +1146,7 @@ internal class VcxprojGenerator(IProjectService projectService, ProjectGenerator
                 {
                     if (fileGroup.CanHandleFile(entry))
                     {
-                        fileGroup.AddFile(context, entry);
+                        fileGroup.AddFile(projectTree, module, entry);
                         foundGroup = true;
                         break;
                     }
@@ -1165,7 +1173,7 @@ internal class VcxprojGenerator(IProjectService projectService, ProjectGenerator
                     }
                 }
             }
-        });
+        }
 
         foreach (IVisualStudioFileGroup fileGroup in _fileGroups)
         {

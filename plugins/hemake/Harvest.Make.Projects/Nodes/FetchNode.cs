@@ -54,92 +54,91 @@ public class FetchNodeTraits : NodeBaseTraits
         { "package", NodeValueDef_String.Optional() },
         { "version", NodeValueDef_String.Optional() },
     };
+
+    protected override void ValidateProperties(KdlNode node)
+    {
+        // Manually validate required properties based on the fetch method. We need to do this in a
+        // method override because there isn't currently a way to express conditionally required
+        // properties in the NodePropertyDefs list.
+
+        // Note: Argument validation is handled by the base NodeBase class and should have already
+        // occurred before this method is called, so we can safely query the method.
+        EFetchMethod method = GetEnumValue<EFetchMethod>(node, 0);
+        switch (method)
+        {
+            case EFetchMethod.Archive:
+            {
+                RequireProperty(node, "url");
+                break;
+            }
+            case EFetchMethod.BitBucket:
+            case EFetchMethod.GitHub:
+            {
+                RequireProperty(node, "user");
+                RequireProperty(node, "repo");
+                RequireProperty(node, "ref");
+                break;
+            }
+            case EFetchMethod.Nuget:
+            {
+                RequireProperty(node, "package");
+                RequireProperty(node, "version");
+                break;
+            }
+        }
+
+        // Validate the value types of specified properties
+        base.ValidateProperties(node);
+    }
+
+    private static void RequireProperty(KdlNode node, string propName)
+    {
+        if (!node.HasValue(propName))
+        {
+            throw new NodeParseException(node, $"'{node.Name}' nodes with method '{node.Arguments[0].GetValueString()}' must specify a '{propName}' property.");
+        }
+    }
+
+    public override INode CreateNode(KdlNode node) => new FetchNode(node);
 }
 
 public class FetchNode(KdlNode node) : NodeBase<FetchNodeTraits>(node)
 {
     public EFetchMethod Method => GetEnumValue<EFetchMethod>(0);
 
-    public int InstallDirPriority => GetNumberValue<int>("install_dir_priority");
+    public int InstallDirPriority => GetValue<int>("install_dir_priority");
 
-    public string BitBucketUser => Method == EFetchMethod.BitBucket ? GetStringValue("user") : string.Empty;
-    public string BitBucketRepo => Method == EFetchMethod.BitBucket ? GetStringValue("repo") : string.Empty;
-    public string BitBucketRef => Method == EFetchMethod.BitBucket ? GetStringValue("ref") : string.Empty;
+    public string BitBucketUser => Method == EFetchMethod.BitBucket ? GetValue<string>("user") : string.Empty;
+    public string BitBucketRepo => Method == EFetchMethod.BitBucket ? GetValue<string>("repo") : string.Empty;
+    public string BitBucketRef => Method == EFetchMethod.BitBucket ? GetValue<string>("ref") : string.Empty;
 
-    public string GitHubUser => Method == EFetchMethod.GitHub ? GetStringValue("user") : string.Empty;
-    public string GitHubRepo => Method == EFetchMethod.GitHub ? GetStringValue("repo") : string.Empty;
-    public string GitHubRef => Method == EFetchMethod.GitHub ? GetStringValue("ref") : string.Empty;
+    public string GitHubUser => Method == EFetchMethod.GitHub ? GetValue<string>("user") : string.Empty;
+    public string GitHubRepo => Method == EFetchMethod.GitHub ? GetValue<string>("repo") : string.Empty;
+    public string GitHubRef => Method == EFetchMethod.GitHub ? GetValue<string>("ref") : string.Empty;
 
-    public string NugetPackage => Method == EFetchMethod.Nuget ? GetStringValue("package") : string.Empty;
-    public string NugetVersion => Method == EFetchMethod.Nuget ? GetStringValue("version") : string.Empty;
+    public string NugetPackage => Method == EFetchMethod.Nuget ? GetValue<string>("package") : string.Empty;
+    public string NugetVersion => Method == EFetchMethod.Nuget ? GetValue<string>("version") : string.Empty;
 
-    private string? _archiveUrl = null;
-    public string ArchiveUrl => _archiveUrl ??= Method switch
+    public string ArchiveUrl => Method switch
     {
-        EFetchMethod.Archive => GetStringValue("url"),
+        EFetchMethod.Archive => GetValue<string>("url"),
         EFetchMethod.BitBucket => $"https://bitbucket.org/{BitBucketUser}/{BitBucketRepo}/get/{BitBucketRef}.zip",
         EFetchMethod.GitHub => $"https://github.com/{GitHubUser}/{GitHubRepo}/archive/{GitHubRef}.zip",
         EFetchMethod.Nuget => $"https://www.nuget.org/api/v2/package/{NugetPackage}/{NugetVersion}",
         _ => string.Empty,
     };
 
-    private string? _archiveKey = null;
-    public string ArchiveKey => _archiveKey ??= ArchiveUrl.ToSHA256HexDigest();
+    public string ArchiveKey => ArchiveUrl.ToSHA256HexDigest();
 
-    private EFetchArchiveFormat? _archiveFormat = null;
-    public EFetchArchiveFormat ArchiveFormat => _archiveFormat ??= GetArchiveFormat();
+    public EFetchArchiveFormat ArchiveFormat => GetArchiveFormat();
 
-    private string? _archiveBaseDir = null;
-    public string ArchiveBaseDir => _archiveBaseDir ??= GetArchiveBaseDir();
-
-    // Manually validate required properties based on the fetch method. We need to do this in a
-    // method override because there isn't currently a way to express conditionally required
-    // properties in the NodePropertyDefs list.
-    protected override void ValidateProperties()
-    {
-        // Note: Argument validation is handled by the base NodeBase class and should have already
-        // occurred before this method is called, so we can safely rely on the Method property.
-
-        switch (Method)
-        {
-            case EFetchMethod.Archive:
-            {
-                RequireProperty("url");
-                break;
-            }
-            case EFetchMethod.BitBucket:
-            case EFetchMethod.GitHub:
-            {
-                RequireProperty("user");
-                RequireProperty("repo");
-                RequireProperty("ref");
-                break;
-            }
-            case EFetchMethod.Nuget:
-            {
-                RequireProperty("package");
-                RequireProperty("version");
-                break;
-            }
-        }
-
-        // Validate the value types of specified properties
-        base.ValidateProperties();
-    }
-
-    private void RequireProperty(string propName)
-    {
-        if (!Node.Properties.ContainsKey(propName))
-        {
-            throw new NodeValidationException(this, $"'{Node.Name}' nodes with method '{KdlEnumUtils.GetName(Method)}' must specify a '{propName}' property.");
-        }
-    }
+    public string ArchiveBaseDir => GetArchiveBaseDir();
 
     private EFetchArchiveFormat GetArchiveFormat()
     {
         if (Method == EFetchMethod.Archive)
         {
-            if (TryGetEnumValue<EFetchArchiveFormat>("archive_format") is EFetchArchiveFormat specifiedType)
+            if (TryGetEnumValue("archive_format", out EFetchArchiveFormat specifiedType))
             {
                 return specifiedType;
             }
@@ -168,7 +167,7 @@ public class FetchNode(KdlNode node) : NodeBase<FetchNodeTraits>(node)
 
     private string GetArchiveBaseDir()
     {
-        if (TryGetStringValue("base_dir") is string specifiedBaseDir)
+        if (TryGetValue<string>("base_dir", out string? specifiedBaseDir))
         {
             return specifiedBaseDir;
         }
@@ -179,7 +178,7 @@ public class FetchNode(KdlNode node) : NodeBase<FetchNodeTraits>(node)
             case EFetchMethod.Archive:
             case EFetchMethod.Nuget:
             {
-                return string.Empty;
+                return "";
             }
             case EFetchMethod.BitBucket:
             {

@@ -12,6 +12,8 @@ public class PublicNodeTraits : NodeBaseTraits
     [
         ModuleNode.NodeTraits.Name,
     ];
+
+    public override INode CreateNode(KdlNode node) => new PublicNode(node);
 }
 
 public class PublicNode(KdlNode node) : NodeBase<PublicNodeTraits>(node)

@@ -17,7 +17,12 @@ public class ProjectNodeTraits : NodeBaseTraits
     public override IReadOnlyDictionary<string, NodeValueDef> PropertyDefs { get; } = new SortedDictionary<string, NodeValueDef>()
     {
         { "start", NodeValueDef_String.Optional() },
+        { "build_dir", NodeValueDef_String.Optional(".build") },
+        { "installs_dir", NodeValueDef_String.Optional("${project.build_dir}/installs") },
+        { "projects_dir", NodeValueDef_String.Optional("${project.build_dir}/projects") },
     };
+
+    public override INode CreateNode(KdlNode node) => new ProjectNode(node);
 
     public override string? TryResolveToken(ProjectContext projectContext, KdlNode contextNode, string propertyName)
     {
@@ -36,6 +41,9 @@ public class ProjectNodeTraits : NodeBaseTraits
 
 public class ProjectNode(KdlNode node) : NodeBase<ProjectNodeTraits>(node)
 {
-    public string ProjectName => GetStringValue(0);
-    public string? StartupModule => TryGetStringValue("start");
+    public string ProjectName => GetValue<string>(0);
+    public string? StartupModule => TryGetValue("start", out string? value) ? value : null;
+    public string BuildDir => GetValue<string>("build_dir");
+    public string InstallsDir => GetValue<string>("installs_dir");
+    public string ProjectsDir => GetValue<string>("projects_dir");
 }

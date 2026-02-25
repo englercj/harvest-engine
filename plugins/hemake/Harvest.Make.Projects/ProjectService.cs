@@ -16,10 +16,26 @@ namespace Harvest.Make.Projects;
 [Service<IProjectService>]
 public class ProjectService : IProjectService
 {
-    private readonly Dictionary<string, Type> _nodeTypes = [];
     private readonly Dictionary<string, INodeTraits> _nodeTraits = [];
+    private readonly Dictionary<string, INodeGeneratorTraits> _nodeGeneratorTraits = [];
 
-    private readonly Dictionary<string, Type> _nodeGenerators = [];
+    private readonly Dictionary<string, KdlDocument> _kdlFiles = [];
+
+    private readonly SortedDictionary<string, ConfigurationNode> _configurations = [];
+    private readonly SortedDictionary<string, PlatformNode> _platforms = [];
+
+    public string ProjectPath { get; private set; } = string.Empty;
+
+    private KdlDocument? _projectDocument;
+    public KdlDocument ProjectDocument => _projectDocument ?? throw new Exception("Project not loaded. Call LoadProject() first.");
+
+    private readonly List<ProjectOption> _projectOptions = [];
+    public IReadOnlyList<ProjectOption> ProjectOptions => _projectOptions;
+
+    private readonly SortedDictionary<string, object?> _optionValues = [];
+    public IReadOnlyDictionary<string, object?> ProjectOptionValues => _optionValues;
+
+    public PathGlobCache PathGlobs { get; } = new();
 
     private readonly Dictionary<(string, string), CustomStringTokenResolver> _tokenResolvers = new()
     {
@@ -29,6 +45,7 @@ public class ProjectService : IProjectService
         { ("platform", "arch"), (c) => c.Platform is not null ? KdlEnumUtils.GetName(c.Platform.Arch) : null },
         { ("host", "name"), (c) => KdlEnumUtils.GetName(c.Host) },
     };
+    public IReadOnlyDictionary<(string, string), CustomStringTokenResolver> TokenResolvers => _tokenResolvers;
 
     private readonly Dictionary<string, CustomStringTokenTransformer> _tokenTransformers = new()
     {
@@ -41,40 +58,19 @@ public class ProjectService : IProjectService
         { "extension", (v) => Path.GetExtension(v) },
         { "noextension", (v) => Path.ChangeExtension(v, null) },
     };
-
-    private readonly Dictionary<string, KdlDocument> _kdlFiles = [];
-
-    private readonly SortedDictionary<string, ConfigurationNode> _configurations = [];
-    private readonly SortedDictionary<string, PlatformNode> _platforms = [];
-    private readonly SortedDictionary<string, object?> _optionValues = [];
-    private readonly SortedDictionary<ProjectBuildId, ResolvedProjectTree> _resolvedTrees = [];
-
-    private readonly List<ProjectOption> _projectOptions = [];
-    private readonly List<(KdlNode RawNode, INode Scope)> _deferredNodes = [];
-
-    private KdlDocument? _projectDocument;
-
-    public string ProjectPath { get; private set; } = string.Empty;
-    public KdlDocument ProjectDocument => _projectDocument ?? throw new Exception("Project not loaded. Call LoadProject() first.");
-    public IReadOnlyList<ProjectOption> ProjectOptions => _projectOptions;
-    public IReadOnlyDictionary<string, object?> ProjectOptionValues => _optionValues;
-
-    public IReadOnlyDictionary<(string, string), CustomStringTokenResolver> TokenResolvers => _tokenResolvers;
     public IReadOnlyDictionary<string, CustomStringTokenTransformer> TokenTransformers => _tokenTransformers;
+
+    private readonly SortedDictionary<ProjectBuildId, ResolvedProjectTree> _resolvedTrees = [];
+    public IReadOnlyDictionary<ProjectBuildId, ResolvedProjectTree> ResolvedProjectTrees => _resolvedTrees;
 
     public void RegisterNode<T>(bool overwrite = false) where T : class, INode
     {
         string name = T.NodeTraits.Name;
         if (overwrite)
         {
-            _nodeTypes[name] = typeof(T);
             _nodeTraits[name] = T.NodeTraits;
         }
-        else if (_nodeTypes.TryAdd(name, typeof(T)))
-        {
-            _nodeTraits[name] = T.NodeTraits;
-        }
-        else
+        else if (!_nodeTraits.TryAdd(name, T.NodeTraits))
         {
             throw new Exception($"A node type for '{name}' is already registered. Pass true for the '{nameof(overwrite)}' parameter if you meant to replace it.");
         }
@@ -85,9 +81,9 @@ public class ProjectService : IProjectService
         string name = T.GeneratorTraits.Name;
         if (overwrite)
         {
-            _nodeGenerators[name] = typeof(T);
+            _nodeGeneratorTraits[name] = T.GeneratorTraits;
         }
-        else if (!_nodeGenerators.TryAdd(name, typeof(T)))
+        else if (!_nodeGeneratorTraits.TryAdd(name, T.GeneratorTraits))
         {
             throw new Exception($"A node generator for '{name}' is already registered. Pass true for the '{nameof(overwrite)}' parameter if you meant to replace it.");
         }
@@ -170,18 +166,29 @@ public class ProjectService : IProjectService
                 }
             }
         }
+
+        if (_configurations.Count == 0)
+        {
+            foreach (ConfigurationNode defaultConfig in GetDefaultConfigurations())
+            {
+                _configurations.Add(defaultConfig.ConfigName, defaultConfig);
+            }
+        }
+
+        if (_platforms.Count == 0)
+        {
+            foreach (PlatformNode defaultPlatform in GetDefaultPlatforms())
+            {
+                _platforms.Add(defaultPlatform.PlatformName, defaultPlatform);
+            }
+        }
     }
 
     public void ParseProject(InvocationContext invocationContext)
     {
-        // TODO: For parse project:
-        // 1. Setup project options
-        // 2. Collect the build matrix (configurations x platforms)
-        // 3. Create a ResolvedProjectTree for each configuration/platform combo
-        // 4. Validate the project tree
-
         // TODO: Should I add a mechanism for disallowing certain node types from being in a WhenNode?
         // For example, when { module {} } doesn't make sense.
+        // Some things that shouldn't be in when nodes: project, module, plugin, configuration, platform.
 
         if (_projectDocument is null)
         {
@@ -213,10 +220,29 @@ public class ProjectService : IProjectService
                 _resolvedTrees.Add(buildId, resolvedTree);
             }
         }
+
+        // Should not be possible to get here without at least one configuration/platform combo.
+        Debug.Assert(_resolvedTrees.Count > 0);
+    }
+
+    public T GetGlobalNode<T>() where T : class, INode
+    {
+        return _resolvedTrees.Values.First().GetMergedNode<T>(null, false);
     }
 
     public INodeTraits GetNodeTraits(KdlNode node)
     {
+        if (node.Parent is KdlNode scope)
+        {
+            if (_nodeTraits.TryGetValue(scope.Name, out INodeTraits? scopeTraits))
+            {
+                if (scopeTraits.ChildNodeTraits is not null)
+                {
+                    return scopeTraits.ChildNodeTraits;
+                }
+            }
+        }
+
         if (_nodeTraits.TryGetValue(node.Name, out INodeTraits? traits))
         {
             return traits;
@@ -225,45 +251,17 @@ public class ProjectService : IProjectService
         throw new NodeParseException(node, $"'{node.Name}' is not a recognized node type. Was it registered?");
     }
 
-    public T CreateSemanticNode<T>(KdlNode node) where T : class, INode
-    {
-        return CreateSemanticNode(node) as T
-            ?? throw new NodeParseException(node, $"Failed to create semantic node of type '{typeof(T)}' for KDL node '{node.Name}'.");
-    }
-
-    public INode CreateSemanticNode(KdlNode node)
-    {
-        if (node.Parent is KdlNode scope)
-        {
-            INodeTraits scopeTraits = GetNodeTraits(scope);
-            if (scopeTraits.ChildNodeType is not null)
-            {
-                return Activator.CreateInstance(scopeTraits.ChildNodeType, node) as INode
-                    ?? throw new NodeParseException(node, $"Activator.CreateInstance failed to allocate node instance for type '{scopeTraits.ChildNodeType}'.");
-            }
-        }
-
-        if (_nodeTypes.TryGetValue(node.Name, out Type? nodeType))
-        {
-            return Activator.CreateInstance(nodeType, node) as INode
-                ?? throw new NodeParseException(node, $"Activator.CreateInstance failed to allocate node instance for type '{nodeType}'.");
-        }
-
-        throw new NodeParseException(node, $"'{node.Name}' is not a recognized node type. Was it registered?");
-    }
-
-    public INodeGenerator CreateGeneratorForNode(KdlNode generatorNode)
+    public INodeGenerator CreateGeneratorForNode(KdlNode generatorNode, NodeResolver resolver)
     {
         Debug.Assert(generatorNode.Name.StartsWith(':'));
 
         string generatorName = generatorNode.Name[1..];
-        if (!_nodeGenerators.TryGetValue(generatorName, out Type? generatorType))
+        if (_nodeGeneratorTraits.TryGetValue(generatorName, out INodeGeneratorTraits? generatorTraits))
         {
-            throw new NodeParseException(generatorNode, $"Unknown generator type '{generatorName}'.");
+            return generatorTraits.CreateGenerator(this, resolver);
         }
 
-        return Activator.CreateInstance(generatorType, this) as INodeGenerator
-            ?? throw new NodeParseException(generatorNode, $"Activator.CreateInstance failed to allocate node generator instance for type '{generatorType}'.");
+        throw new NodeParseException(generatorNode, $"'{generatorName}' is not a recognized node generator type. Was it registered?");
     }
 
     public List<ConfigurationNode> GetDefaultConfigurations()
@@ -359,20 +357,19 @@ public class ProjectService : IProjectService
                 throw new NodeParseException(importNode, $"Invalid parent scope. Expected one of: {string.Join(", ", ImportNode.NodeTraits.ValidScopes)}.");
             }
 
-            if (!importNode.TryGetArgumentValue(0, out string? importPath) || string.IsNullOrEmpty(importPath))
+            if (!importNode.TryGetValue(0, out string? importPath) || string.IsNullOrEmpty(importPath))
             {
                 throw new NodeParseException(importNode, "Expected exactly one string argument for the import path.");
             }
 
-            if (!Path.GetExtension(importPath).Equals(".kdl", StringComparison.OrdinalIgnoreCase))
+            if (Path.GetExtension(importPath) != ".kdl")
             {
                 importPath = Path.Combine(importPath, "he_plugin.kdl");
             }
 
             string directory = Path.GetDirectoryName(importNode.SourceInfo.FilePath) ?? Directory.GetCurrentDirectory();
-            Matcher matcher = new();
-            matcher.AddInclude(importPath);
-            foreach (string importMatchedPath in matcher.GetResultsInFullPath(directory))
+            IReadOnlyList<string> expandedPaths = PathGlobs.ExpandPath(importPath, directory);
+            foreach (string importMatchedPath in expandedPaths)
             {
                 KdlDocument importedDoc = LoadFile(importMatchedPath);
                 importNode.ReplaceInParent(importedDoc.Nodes);

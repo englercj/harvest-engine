@@ -30,12 +30,12 @@ public abstract class BaseProjectGeneratorCliCommand(
 }
 
 [Service<ICliCommand>(Enumerable = true)]
-public class VS2022CliCommand(
-    ILogger<VS2022CliCommand> logger,
-    [FromKeyedServices(ProjectGeneratorNames.VS2022)] IProjectGeneratorService generatorService,
+public class VS2026CliCommand(
+    ILogger<VS2026CliCommand> logger,
+    [FromKeyedServices(ProjectGeneratorNames.VS2026)] IProjectGeneratorService generatorService,
     IProjectService projectService)
     : BaseProjectGeneratorCliCommand(logger, generatorService, projectService)
 {
-    public override string Name => ProjectGeneratorNames.VS2022;
+    public override string Name => ProjectGeneratorNames.VS2026;
     public override string Description => "Generate Visual Studio 2022 project files.";
 }

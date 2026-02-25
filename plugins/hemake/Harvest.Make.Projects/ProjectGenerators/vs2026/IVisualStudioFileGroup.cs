@@ -3,13 +3,14 @@
 using Harvest.Make.Projects.Nodes;
 using System.Xml;
 
-namespace Harvest.Make.Projects.ProjectGenerators.vs2022;
+namespace Harvest.Make.Projects.ProjectGenerators.vs2026;
 
 public interface IVisualStudioFileGroup
 {
-    public class FileEntry(ProjectContext context, string filePath)
+    public class FileEntry(ResolvedProjectTree projectTree, ModuleNode module, string filePath)
     {
-        public ProjectContext Context => context;
+        public ResolvedProjectTree ProjectTree => projectTree;
+        public ModuleNode Module => module;
         public string FullPath => filePath;
 
         public EFileAction Action { get; set; } = EFileAction.Default;
@@ -28,8 +29,8 @@ public interface IVisualStudioFileGroup
     public bool CanHandleFile(string fullPath, EFileAction action, EFileBuildRule buildRule);
     public bool CanHandleFile(FilesEntryNode entry);
 
-    public void AddFile(ProjectContext context, FilesEntryNode entry);
-    public void AddGeneratedFile(ProjectContext context, string generatedFilePath, string sourceFilePath, EFileAction action, EFileBuildRule buildRule);
+    public void AddFile(ResolvedProjectTree projectTree, FilesEntryNode entry);
+    public void AddGeneratedFile(ResolvedProjectTree projectTree, string generatedFilePath, string sourceFilePath, EFileAction action, EFileBuildRule buildRule);
 
     public void SortFiles();
     public void SetupVirtualPaths();

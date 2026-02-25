@@ -5,7 +5,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Xml;
 
-namespace Harvest.Make.Projects.ProjectGenerators.vs2022;
+namespace Harvest.Make.Projects.ProjectGenerators.vs2026;
 
 public static class VisualStudioUtils
 {
@@ -15,7 +15,7 @@ public static class VisualStudioUtils
     public static List<EPlatformSystem> ValidSystems { get; } =
     [
         EPlatformSystem.DotNet,
-        EPlatformSystem.WASM,
+        //EPlatformSystem.WASM, // TODO: Add support for WebAssembly built from VS
         EPlatformSystem.Windows,
     ];
 
@@ -53,22 +53,29 @@ public static class VisualStudioUtils
         { EModuleLanguage.CSharp, ".csproj" },
     };
 
-    public static void ForEachConfig(ProjectGeneratorHelper helper, Action<ConfigurationNode, PlatformNode, string> action)
+    public static bool IsSupportedPlatform(PlatformNode platform)
     {
-        helper.ForEachConfig((configuration, platform) =>
+        return ValidSystems.Contains(platform.System) && ArchNames.ContainsKey(platform.Arch);
+    }
+
+    public static IEnumerable<(ResolvedProjectTree, string)> EnumerateConfigs(IProjectService projectService)
+    {
+        foreach ((_, ResolvedProjectTree project) in projectService.ResolvedProjectTrees)
         {
+            PlatformNode platform = project.ProjectContext.Platform;
+
             if (!ValidSystems.Contains(platform.System))
             {
-                return;
+                continue;
             }
 
             if (!ArchNames.TryGetValue(platform.Arch, out string? archName))
             {
-                return;
+                continue;
             }
 
-            action(configuration, platform, archName);
-        });
+            yield return (project, archName);
+        }
     }
 
     // Returns the path relative to projectFilePath and replaces '/' with '\\'
@@ -192,6 +199,16 @@ public static class VisualStudioUtils
             && !IsOptimizedBuild(optimize);
     }
 
+    public static string GetConfigName(ResolvedProjectTree project)
+    {
+        return GetConfigName(project.ProjectContext.Configuration, project.ProjectContext.Platform);
+    }
+
+    public static string GetConfigName(ResolvedProjectTree project, string archName)
+    {
+        return GetConfigName(project.ProjectContext.Configuration, project.ProjectContext.Platform, archName);
+    }
+
     public static string GetConfigName(ConfigurationNode configuration, PlatformNode platform)
     {
         return $"{configuration.ConfigName} {platform.PlatformName}";
@@ -207,6 +224,11 @@ public static class VisualStudioUtils
     {
         string configKeyName = GetConfigName(configuration, platform, archName);
         return $"'$(Configuration)|$(Platform)'=='{configKeyName}'";
+    }
+
+    public static string GetConfigCondition(ResolvedProjectTree project, string archName)
+    {
+        return GetConfigCondition(project.ProjectContext.Configuration, project.ProjectContext.Platform, archName);
     }
 
     public static string GetWarningLevelString(EWarningsLevel level)
@@ -247,13 +269,13 @@ public static class VisualStudioUtils
         return s_fileGroupTypes;
     }
 
-    public static List<IVisualStudioFileGroup> CreateFileGroups(ProjectGeneratorHelper helper, string vsProjectPath)
+    public static List<IVisualStudioFileGroup> CreateFileGroups(string vsProjectPath)
     {
         List<IVisualStudioFileGroup> groups = [];
 
         foreach (Type type in s_fileGroupTypes)
         {
-            if (Activator.CreateInstance(type, helper, vsProjectPath) is IVisualStudioFileGroup group)
+            if (Activator.CreateInstance(type, vsProjectPath) is IVisualStudioFileGroup group)
             {
                 groups.Add(group);
             }

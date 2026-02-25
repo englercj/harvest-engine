@@ -3,6 +3,7 @@
 using Harvest.Kdl;
 using Harvest.Kdl.Types;
 using Harvest.Make.Projects.Attributes;
+using System.Diagnostics;
 
 namespace Harvest.Make.Projects.Nodes;
 
@@ -42,20 +43,41 @@ public class WhenNodeTraits : NodeBaseTraits
         { "tags", NodeValueDef_String.Optional() },
         { "toolset", NodeValueDef_String.Optional() },
     };
+
+    public override INode CreateNode(KdlNode node) => new WhenNode(node);
+
+    public override bool TryResolveChild(KdlNode target, KdlNode source, StringTokenReplacer replacer, NodeResolver resolver, out KdlNode? resolvedNode)
+    {
+        Debug.Assert(source.Name == Name);
+
+        KdlNode resolvedWhenNode = resolver.CreateResolvedNode(source, includeChildren: false);
+        WhenNode when = new(resolvedWhenNode);
+        if (when.IsActive(resolver.ProjectContext))
+        {
+            resolver.ResolveNodeChildren(target, when.Node, WhenNode.NodeTraits, replacer);
+        }
+
+        // We return true to indicate that we handled the resolution of this node. However, we do not
+        // emit a resolved node here because the when node itself is not in the resolved tree.
+        // Instead, we will emit the children of the when node if they are active by recursing into
+        // the resolver.ResolveNodeChildren call above.
+        resolvedNode = null;
+        return true;
+    }
 }
 
 public class WhenNode(KdlNode node) : NodeBase<WhenNodeTraits>(node)
 {
     public EWhenMode Mode => GetEnumValue<EWhenMode>(0);
-    public string? Arch => TryGetStringValue("arch");
-    public string? Configuration => TryGetStringValue("configuration");
-    public string? Host => TryGetStringValue("host");
-    public string? Language => TryGetStringValue("language");
-    public string? Option => TryGetStringValue("option");
-    public string? Platform => TryGetStringValue("platform");
-    public string? System => TryGetStringValue("system");
-    public string? Tags => TryGetStringValue("tags");
-    public string? Toolset => TryGetStringValue("toolset");
+    public string? Arch => TryGetValue("arch", out string? value) ? value : null;
+    public string? Configuration => TryGetValue("configuration", out string? value) ? value : null;
+    public string? Host => TryGetValue("host", out string? value) ? value : null;
+    public string? Language => TryGetValue("language", out string? value) ? value : null;
+    public string? Option => TryGetValue("option", out string? value) ? value : null;
+    public string? Platform => TryGetValue("platform", out string? value) ? value : null;
+    public string? System => TryGetValue("system", out string? value) ? value : null;
+    public string? Tags => TryGetValue("tags", out string? value) ? value : null;
+    public string? Toolset  => TryGetValue("toolset", out string? value) ? value : null;
 
     public bool IsActive(ProjectContext context)
     {

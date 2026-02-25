@@ -58,8 +58,10 @@ public interface IProjectService
     public IReadOnlyList<ProjectOption> ProjectOptions { get; }
     public IReadOnlyDictionary<string, object?> ProjectOptionValues { get; }
 
+    public PathGlobCache PathGlobs { get; }
     public IReadOnlyDictionary<(string, string), CustomStringTokenResolver> TokenResolvers { get; }
     public IReadOnlyDictionary<string, CustomStringTokenTransformer> TokenTransformers { get; }
+    public IReadOnlyDictionary<ProjectBuildId, ResolvedProjectTree> ResolvedProjectTrees { get; }
 
     public void RegisterNode<T>(bool overwrite = false) where T : class, INode;
     public void RegisterNodeGenerator<T>(bool overwrite = false) where T : class, INodeGenerator;
@@ -69,10 +71,7 @@ public interface IProjectService
     public void LoadProject(string projectPath);
     public void ParseProject(InvocationContext invocationContext);
 
+    public T GetGlobalNode<T>() where T : class, INode;
     public INodeTraits GetNodeTraits(KdlNode node);
-
-    public T CreateSemanticNode<T>(KdlNode node) where T : class, INode;
-    public INode CreateSemanticNode(KdlNode node);
-
-    public INodeGenerator CreateGeneratorForNode(KdlNode node);
+    public INodeGenerator CreateGeneratorForNode(KdlNode node, NodeResolver resolver);
 }

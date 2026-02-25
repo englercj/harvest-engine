@@ -1,6 +1,7 @@
 // Copyright Chad Engler
 
 using Harvest.Kdl;
+using System.Diagnostics;
 
 namespace Harvest.Make.Projects.Nodes;
 
@@ -13,6 +14,23 @@ public class TagsNodeTraits : NodeSetBaseTraits<TagsEntryNode>
         ModuleNode.NodeTraits.Name,
         ProjectNode.NodeTraits.Name,
     ];
+
+    public override INode CreateNode(KdlNode node) => new TagsNode(node);
+
+    public override bool TryResolveChild(KdlNode target, KdlNode source, StringTokenReplacer replacer, NodeResolver resolver, out KdlNode? resolvedNode)
+    {
+        Debug.Assert(source.Name == Name);
+
+        resolvedNode = resolver.CreateResolvedNode(source);
+
+        TagsNode tags = new(resolvedNode);
+        foreach (TagsEntryNode entry in tags.Entries)
+        {
+            resolver.AddActiveTagForScope(target, entry.TagName);
+        }
+
+        return true;
+    }
 }
 
 public class TagsNode(KdlNode node) : NodeSetBase<TagsNodeTraits, TagsEntryNode>(node)

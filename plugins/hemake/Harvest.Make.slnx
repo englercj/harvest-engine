@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="Harvest.Kdl/Harvest.Kdl.csproj" />
+  <Project Path="Harvest.Make.App/Harvest.Make.App.csproj" />
+  <Project Path="Harvest.Make.Common/Harvest.Make.Common.csproj" />
+  <Project Path="Harvest.Make.Projects/Harvest.Make.Projects.csproj" />
+</Solution>

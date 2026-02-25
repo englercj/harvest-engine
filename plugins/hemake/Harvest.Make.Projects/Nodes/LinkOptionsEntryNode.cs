@@ -6,6 +6,7 @@ namespace Harvest.Make.Projects.Nodes;
 
 public class LinkOptionsEntryNodeTraits : NodeSetEntryBaseTraits<LinkOptionsNode>
 {
+    public override INode CreateNode(KdlNode node) => new LinkOptionsEntryNode(node);
 }
 
 public class LinkOptionsEntryNode(KdlNode node) : NodeSetEntryBase<LinkOptionsEntryNodeTraits, LinkOptionsNode>(node)

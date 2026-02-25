@@ -18,9 +18,11 @@ public class LinkOptionsNodeTraits : NodeSetBaseTraits<LinkOptionsEntryNode>
     {
         { "incremental_link", NodeValueDef_Bool.Optional(true) },
     };
+
+    public override INode CreateNode(KdlNode node) => new LinkOptionsNode(node);
 }
 
 public class LinkOptionsNode(KdlNode node) : NodeSetBase<LinkOptionsNodeTraits, LinkOptionsEntryNode>(node)
 {
-    public bool IncrementalLink => GetBoolValue("incremental_link");
+    public bool IncrementalLink => GetValue<bool>("incremental_link");
 }

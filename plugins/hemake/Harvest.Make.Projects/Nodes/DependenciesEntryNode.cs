@@ -23,14 +23,22 @@ public class DependenciesEntryNodeTraits : NodeSetEntryBaseTraits<DependenciesNo
         { "external", NodeValueDef_Bool.Optional(false) },
         { "whole_archive", NodeValueDef_Bool.Optional(false) },
     };
+
+    public override void Validate(KdlNode node)
+    {
+        base.Validate(node);
+        // TODO: Validate that the dependency exists in the project.
+    }
+
+    public override INode CreateNode(KdlNode node) => new DependenciesEntryNode(node);
 }
 
 public class DependenciesEntryNode(KdlNode node) : NodeSetEntryBase<DependenciesEntryNodeTraits, DependenciesNode>(node), IEquatable<DependenciesEntryNode>
 {
     public string DependencyName => Kind == EDependencyKind.File ? ResolvePath(Node.Name) : Node.Name;
     public EDependencyKind Kind => GetEnumValue<EDependencyKind>("kind");
-    public bool IsExternal => GetBoolValue("external");
-    public bool IsWholeArchive => GetBoolValue("whole_archive");
+    public bool IsExternal => GetValue<bool>("external");
+    public bool IsWholeArchive => GetValue<bool>("whole_archive");
 
     public override int GetHashCode() => HashCode.Combine(DependencyName, Kind, IsExternal, IsWholeArchive);
 
@@ -52,11 +60,5 @@ public class DependenciesEntryNode(KdlNode node) : NodeSetEntryBase<Dependencies
             && Kind == entry.Kind
             && IsExternal == entry.IsExternal
             && IsWholeArchive == entry.IsWholeArchive;
-    }
-
-    public override void Validate(INode? scope)
-    {
-        base.Validate(scope);
-        // TODO: Validate that the dependency exists in the project.
     }
 }

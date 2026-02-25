@@ -15,25 +15,29 @@ public class LibDirsEntryNodeTraits : NodeSetEntryBaseTraits<LibDirsNode>
     {
         { "system", NodeValueDef_Bool.Optional(false) },
     };
+
+    public override INode CreateNode(KdlNode node) => new LibDirsEntryNode(node);
 }
 
 public class LibDirsEntryNode(KdlNode node) : NodeSetEntryBase<LibDirsEntryNodeTraits, LibDirsNode>(node)
 {
-    public string Path => ResolvePath(Node.Name);
+    public string Path => Node.Name;
 
     public bool IsSystem
     {
         get
         {
-            bool? isSystemProp = TryGetBoolValue("system");
-            if (isSystemProp is not null)
+            if (TryGetValue("system", out bool isSystem))
             {
-                return isSystemProp.Value;
+                return isSystem;
             }
 
-            if (Scope is LibDirsNode libDirsNode)
+            if (Node.Parent is not null && Node.Parent.Name == LibDirsNode.NodeTraits.Name)
             {
-                return libDirsNode.IsSystem;
+                if (Node.Parent.TryGetValue("system", out bool isParentSystem))
+                {
+                    return isParentSystem;
+                }
             }
 
             return false;

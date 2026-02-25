@@ -2,17 +2,17 @@
 
 using Harvest.Make.Projects.Nodes;
 using System.Xml;
-using static Harvest.Make.Projects.ProjectGenerators.vs2022.IVisualStudioFileGroup;
+using static Harvest.Make.Projects.ProjectGenerators.vs2026.IVisualStudioFileGroup;
 
-namespace Harvest.Make.Projects.ProjectGenerators.vs2022;
+namespace Harvest.Make.Projects.ProjectGenerators.vs2026;
 
-public abstract class VisualStudioFileGroupBase(ProjectGeneratorHelper helper, string vsProjectPath) : IVisualStudioFileGroup
+public abstract class VisualStudioFileGroupBase(IProjectService projectService, string vsProjectPath) : IVisualStudioFileGroup
 {
-    protected readonly ProjectGeneratorHelper _helper = helper;
-
     public abstract int Priority { get; }
     public abstract string GroupTag { get; }
     public string VSProjectPath => vsProjectPath;
+
+    public IProjectService ProjectService => projectService;
 
     private readonly List<FileEntry> _files = [];
     public IReadOnlyList<FileEntry> Files => _files;
@@ -24,23 +24,23 @@ public abstract class VisualStudioFileGroupBase(ProjectGeneratorHelper helper, s
 
     public bool CanHandleFile(FilesEntryNode entry)
     {
-        return CanHandleFile(entry.ResolvedFilePath, entry.ResolvedFileAction, entry.ResolvedFileBuildRule);
+        return CanHandleFile(entry.FilePath, entry.FileAction, entry.FileBuildRule);
     }
 
-    public void AddFile(ProjectContext context, FilesEntryNode entry)
+    public void AddFile(ResolvedProjectTree projectTree, FilesEntryNode entry)
     {
-        _files.Add(new FileEntry(context, entry.ResolvedFilePath)
+        _files.Add(new FileEntry(projectTree, entry.FilePath)
         {
-            Action = entry.ResolvedFileAction,
-            BuildRule = entry.ResolvedFileBuildRule,
+            Action = entry.FileAction,
+            BuildRule = entry.FileBuildRule,
             BuildRuleName = entry.BuildRuleName,
             IsExcludedFromBuild = entry.IsExcludedFromBuild,
         });
     }
 
-    public void AddGeneratedFile(ProjectContext context, string generatedFilePath, string sourceFilePath, EFileAction action, EFileBuildRule buildRule)
+    public void AddGeneratedFile(ResolvedProjectTree projectTree, string generatedFilePath, string sourceFilePath, EFileAction action, EFileBuildRule buildRule)
     {
-        _generatedFiles.Add(new FileEntry(context, generatedFilePath)
+        _generatedFiles.Add(new FileEntry(projectTree, generatedFilePath)
         {
             Action = action,
             BuildRule = buildRule,
@@ -91,10 +91,10 @@ public abstract class VisualStudioFileGroupBase(ProjectGeneratorHelper helper, s
             writer.WriteAttributeString("Include", GetPath(file));
 
             OnWriteFile(writer, file);
-            VisualStudioUtils.ForEachConfig(_helper, (configuration, platform, archName) =>
+            foreach ((ResolvedProjectTree projectTree, string archName) in VisualStudioUtils.EnumerateConfigs(ProjectService))
             {
-                OnWriteFileConfig(writer, file, configuration, platform, archName);
-            });
+                OnWriteFileConfig(writer, file, projectTree, archName);
+            }
 
             writer.WriteEndElement();
         }
@@ -176,7 +176,7 @@ public abstract class VisualStudioFileGroupBase(ProjectGeneratorHelper helper, s
         // Nothing by default
     }
 
-    protected virtual void OnWriteFileConfig(XmlWriter writer, FileEntry file, ConfigurationNode configuration, PlatformNode platform, string archName)
+    protected virtual void OnWriteFileConfig(XmlWriter writer, FileEntry file, ResolvedProjectTree projectTree, string archName)
     {
         // Nothing by default
     }
@@ -201,11 +201,11 @@ public abstract class VisualStudioFileGroupBase(ProjectGeneratorHelper helper, s
         return GetPath(file.FullPath);
     }
 
-    protected static void HandleExcludedFile(XmlWriter writer, FileEntry file, ConfigurationNode configuration, PlatformNode platform, string archName)
+    protected static void HandleExcludedFile(XmlWriter writer, FileEntry file, ResolvedProjectTree projectTree, string archName)
     {
         if (file.IsExcludedFromBuild)
         {
-            string condition = VisualStudioUtils.GetConfigCondition(configuration, platform, archName);
+            string condition = VisualStudioUtils.GetConfigCondition(projectTree, archName);
             VisualStudioUtils.WriteElementString(writer, "ExcludedFromBuild", "true", condition);
         }
     }

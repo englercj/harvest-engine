@@ -22,11 +22,13 @@ public class WarningsEntryNodeTraits : NodeSetEntryBaseTraits<WarningsNode>
     {
         { "fatal", NodeValueDef_Bool.Optional(false) },
     };
+
+    public override INode CreateNode(KdlNode node) => new WarningsEntryNode(node);
 }
 
 public class WarningsEntryNode(KdlNode node) : NodeSetEntryBase<WarningsEntryNodeTraits, WarningsNode>(node)
 {
     public string WarningName => Node.Name;
     public bool IsEnabled => GetEnumValue<EWarningAction>(0) == EWarningAction.Enable;
-    public bool IsFatal => GetBoolValue("fatal");
+    public bool IsFatal => GetValue<bool>("fatal");
 }

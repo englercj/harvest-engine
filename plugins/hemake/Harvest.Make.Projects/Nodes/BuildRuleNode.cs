@@ -25,11 +25,13 @@ public class BuildRuleNodeTraits : NodeBaseTraits
         { "message", NodeValueDef_String.Optional() },
         { "link_output", NodeValueDef_Bool.Optional(true) },
     };
+
+    public override INode CreateNode(KdlNode node) => new BuildRuleNode(node);
 }
 
 public class BuildRuleNode(KdlNode node) : NodeBase<BuildRuleNodeTraits>(node)
 {
-    public string RuleName => GetStringValue(0);
-    public string? Message => TryGetStringValue("message");
-    public bool LinkOutput => GetBoolValue("link_output");
+    public string RuleName => GetValue<string>(0);
+    public string? Message => TryGetValue("message", out string? value) ? value : null;
+    public bool LinkOutput => GetValue<bool>("link_output");
 }

@@ -53,6 +53,11 @@ platform Win64 arch=x86_64 system=windows toolset=msvc
 platform WinArm64 arch=arm64 system=windows toolset=msvc
 
 // TODO: I think I need a separate node to set the default platform based on host
+// Maybe I can make a new kind of "indexed" node where the first arg is the key. That would let
+// me do different merge & query behavior for indexed nodes and be able to merge this stuff.
+// Similar pattern to NodeSetBase?
+// Might also make it easier to cache and lookup nodes by key.
+//
 // when host=linux { platform Linux64 default=#true }
 // when host=windows { platform Win64 default=#true }
 

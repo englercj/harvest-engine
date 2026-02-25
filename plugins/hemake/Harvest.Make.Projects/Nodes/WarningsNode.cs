@@ -29,10 +29,12 @@ public class WarningsNodeTraits : NodeSetBaseTraits<WarningsEntryNode>
         { "level", NodeValueDef_Enum<EWarningsLevel>.Optional(EWarningsLevel.Default) },
         { "fatal", NodeValueDef_Bool.Optional(false) },
     };
+
+    public override INode CreateNode(KdlNode node) => new WarningsNode(node);
 }
 
 public class WarningsNode(KdlNode node) : NodeSetBase<WarningsNodeTraits, WarningsEntryNode>(node)
 {
     public EWarningsLevel WarningsLevel => GetEnumValue<EWarningsLevel>(0);
-    public bool AreAllWarningsFatal => GetBoolValue("fatal");
+    public bool AreAllWarningsFatal => GetValue<bool>("fatal");
 }

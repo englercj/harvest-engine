@@ -21,40 +21,39 @@ public class KdlNode(string name, string? type = null) : IKdlObject
 
     public KdlSourceInfo SourceInfo { get; set; } = new KdlSourceInfo();
 
-    public bool TryGetArgumentValue<T>(int index, [MaybeNullWhen(false)] out T? value)
+    public bool HasValue(int index) => index >= 0 && index < Arguments.Count;
+
+    public bool TryGetValue<T>(int index, [MaybeNullWhen(false)] out T value)
     {
-        if (index < 0 || index >= Arguments.Count)
+        if (index >= 0 && index < Arguments.Count)
         {
-            value = default;
-            return false;
+            KdlValue kdlValue = Arguments[index];
+            if (kdlValue is KdlValue<T> typedValue)
+            {
+                value = typedValue.Value;
+                return true;
+            }
         }
 
-        if (Arguments[index] is not KdlValue<T> typedValue)
-        {
-            value = default;
-            return false;
-        }
-
-        value = typedValue.Value;
-        return true;
+        value = default;
+        return false;
     }
 
-    public bool TryGetPropertyValue<T>(string key, [MaybeNullWhen(false)] out T? value)
+    public bool HasValue(string key) => Properties.ContainsKey(key);
+
+    public bool TryGetValue<T>(string key, [MaybeNullWhen(false)] out T value)
     {
-        if (!Properties.TryGetValue(key, out KdlValue? kdlValue))
+        if (Properties.TryGetValue(key, out KdlValue? kdlValue))
         {
-            value = default;
-            return false;
+            if (kdlValue is KdlValue<T> typedValue)
+            {
+                value = typedValue.Value;
+                return true;
+            }
         }
 
-        if (kdlValue is not KdlValue<T> typedValue)
-        {
-            value = default;
-            return false;
-        }
-
-        value = typedValue.Value;
-        return true;
+        value = default;
+        return false;
     }
 
     public void CopyTo(KdlNode target, bool includeChildren)

@@ -10,34 +10,37 @@ namespace Harvest.Make.Projects.NodeGenerators;
 public class ForeachNodeGeneratorTraits : NodeGeneratorBaseTraits
 {
     public override string Name => "foreach";
+
+    public override INodeGenerator CreateGenerator(IProjectService projectService, NodeResolver resolver) =>
+        new ForeachNodeGenerator(projectService, resolver);
 }
 
-public class ForeachNodeGenerator(IProjectService projectService) : NodeGeneratorBase<ForeachNodeGeneratorTraits>(projectService)
+public class ForeachNodeGenerator(IProjectService projectService, NodeResolver resolver) : NodeGeneratorBase<ForeachNodeGeneratorTraits>(projectService, resolver)
 {
-    public override void GenerateNodes(KdlNode generatorNode, KdlNode scope)
+    public override void GenerateNodes(KdlNode target, KdlNode generatorNode)
     {
-        if (!generatorNode.TryGetArgumentValue(0, out string? nodeType) || string.IsNullOrEmpty(nodeType))
+        if (!generatorNode.TryGetValue(0, out string? nodeType) || string.IsNullOrEmpty(nodeType))
         {
             throw new NodeParseException(generatorNode, "Expected string argument in foreach generator node for the module name or plugin ID.");
         }
 
         if (nodeType == PluginNode.NodeTraits.Name)
         {
-            foreach (PluginNode plugin in _projectService.GetAllPlugins())
+            foreach (PluginNode plugin in _resolver.IndexedNodes.GetAllNodes<PluginNode>())
             {
                 if (DoesNodeMatch(generatorNode, plugin))
                 {
-                    GenerateNodes(generatorNode, scope, $"plugin[{plugin.PluginName}]");
+                    GenerateNodes(target, generatorNode, $"plugin[{plugin.PluginName}]");
                 }
             }
         }
         else if (nodeType == ModuleNode.NodeTraits.Name)
         {
-            foreach (ModuleNode module in _projectService.GetAllModules())
+            foreach (ModuleNode module in _resolver.IndexedNodes.GetAllNodes<ModuleNode>())
             {
                 if (DoesNodeMatch(generatorNode, module))
                 {
-                    GenerateNodes(generatorNode, scope, $"module[{module.ModuleName}]");
+                    GenerateNodes(target, generatorNode, $"module[{module.ModuleName}]");
                 }
             }
         }
@@ -47,19 +50,20 @@ public class ForeachNodeGenerator(IProjectService projectService) : NodeGenerato
         }
     }
 
-    private static void GenerateNodes(KdlNode generatorNode, KdlNode scope, string contextName)
+    private void GenerateNodes(KdlNode target, KdlNode generatorNode, string contextName)
     {
         TokenHandler handler = new(contextName);
         StringTokenReplacer replacer = new(handler);
 
         foreach (KdlNode source in generatorNode.Children)
         {
-            KdlNode generated = GenerateNode(replacer, source);
-            scope.AddChild(generated);
+            KdlNode generated = GenerateNode(source, replacer);
+            KdlNode resolved = _resolver.CreateResolvedNode(generated, includeChildren: true);
+            target.AddChild(resolved);
         }
     }
 
-    private static KdlNode GenerateNode(StringTokenReplacer replacer, KdlNode source)
+    private static KdlNode GenerateNode(KdlNode source, StringTokenReplacer replacer)
     {
         string resolvedName = replacer.ReplaceTokens(source.Name);
         KdlNode result = new(resolvedName, source.Type) { SourceInfo = source.SourceInfo };
@@ -96,13 +100,13 @@ public class ForeachNodeGenerator(IProjectService projectService) : NodeGenerato
         // Recursively generate child nodes
         foreach (KdlNode child in source.Children)
         {
-            result.AddChild(GenerateNode(replacer, child));
+            result.AddChild(GenerateNode(child, replacer));
         }
 
         return result;
     }
 
-    private static bool DoesNodeMatch<T>(KdlNode generatorNode, T candidate) where T : INode
+    private static bool DoesNodeMatch<T>(KdlNode generatorNode, T candidate) where T : class, INode
     {
         foreach ((string key, KdlValue value) in generatorNode.Properties)
         {

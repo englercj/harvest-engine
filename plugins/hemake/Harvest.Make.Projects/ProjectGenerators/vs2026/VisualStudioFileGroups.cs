@@ -2,11 +2,11 @@
 
 using Harvest.Make.Projects.Nodes;
 using System.Xml;
-using static Harvest.Make.Projects.ProjectGenerators.vs2022.IVisualStudioFileGroup;
+using static Harvest.Make.Projects.ProjectGenerators.vs2026.IVisualStudioFileGroup;
 
-namespace Harvest.Make.Projects.ProjectGenerators.vs2022;
+namespace Harvest.Make.Projects.ProjectGenerators.vs2026;
 
-public class ClIncludeFileGroup(ProjectGeneratorHelper helper, string vsProjectPath) : VisualStudioFileGroupBase(helper, vsProjectPath)
+public class ClIncludeFileGroup(IProjectService projectService, string vsProjectPath) : VisualStudioFileGroupBase(projectService, vsProjectPath)
 {
     public override int Priority => 10;
     public override string GroupTag => "ClInclude";
@@ -17,7 +17,7 @@ public class ClIncludeFileGroup(ProjectGeneratorHelper helper, string vsProjectP
     }
 }
 
-public class ClCompileFileGroup(ProjectGeneratorHelper helper, string vsProjectPath) : VisualStudioFileGroupBase(helper, vsProjectPath)
+public class ClCompileFileGroup(IProjectService projectService, string vsProjectPath) : VisualStudioFileGroupBase(projectService, vsProjectPath)
 {
     public override int Priority => 20;
     public override string GroupTag => "ClCompile";
@@ -38,15 +38,15 @@ public class ClCompileFileGroup(ProjectGeneratorHelper helper, string vsProjectP
             };
     }
 
-    protected override void OnWriteFileConfig(XmlWriter writer, FileEntry file, ConfigurationNode configuration, PlatformNode platform, string archName)
+    protected override void OnWriteFileConfig(XmlWriter writer, FileEntry file, ResolvedProjectTree projectTree, string archName)
     {
         if (file.IsExcludedFromBuild)
         {
-            HandleExcludedFile(writer, file, configuration, platform, archName);
+            HandleExcludedFile(writer, file, projectTree, archName);
             return;
         }
 
-        string condition = VisualStudioUtils.GetConfigCondition(configuration, platform, archName);
+        string condition = VisualStudioUtils.GetConfigCondition(projectTree, archName);
         string fileBaseName = Path.GetFileNameWithoutExtension(file.FullPath);
 
         // Need to make the obj file name unique in the case of two files with the same base name.
@@ -61,7 +61,7 @@ public class ClCompileFileGroup(ProjectGeneratorHelper helper, string vsProjectP
             _objectFileNameSequence.Add(fileBaseName, 1);
         }
 
-        BuildOptionsNode buildOptions = file.Context.ProjectService.GetMergedNode<BuildOptionsNode>(file.Context, file.Context.Module, false);
+        BuildOptionsNode buildOptions = file.ProjectTree.GetMergedNode<BuildOptionsNode>(file.Module.Node);
         if (buildOptions.PchSource == file.FullPath)
         {
             VisualStudioUtils.WriteElementString(writer, "PrecompiledHeader", "Create", condition);
@@ -79,13 +79,13 @@ public class ClCompileFileGroup(ProjectGeneratorHelper helper, string vsProjectP
         // TODO: Most of these duplicate code from VcxprojGenerator.cs, probably should make utilities in VisualStudioUtils.
         // TODO: Also need to ensure that all the elements output here actually use the `condition`.
 
-        //CodegenNode codegen = file.Context.ProjectService.GetMergedNode<CodegenNode>(file.Context, file.Entry, false);
-        //DefinesNode defines = file.Context.ProjectService.GetMergedNode<DefinesNode>(file.Context, file.Entry, false);
-        //DialectNode dialect = file.Context.ProjectService.GetMergedNode<DialectNode>(file.Context, file.Entry, false);
-        //ExceptionsNode exceptions = file.Context.ProjectService.GetMergedNode<ExceptionsNode>(file.Context, file.Entry, false);
-        //OptimizeNode optimize = file.Context.ProjectService.GetMergedNode<OptimizeNode>(file.Context, file.Entry, false);
-        //RuntimeNode runtime = file.Context.ProjectService.GetMergedNode<RuntimeNode>(file.Context, file.Entry, false);
-        //WarningsNode warnings = file.Context.ProjectService.GetMergedNode<WarningsNode>(file.Context, file.Entry, false);
+        //CodegenNode codegen = file.ProjectTree.GetMergedNode<CodegenNode>(file.Module.Node);
+        //DefinesNode defines = file.ProjectTree.GetMergedNode<DefinesNode>(file.Module.Node);
+        //DialectNode dialect = file.ProjectTree.GetMergedNode<DialectNode>(file.Module.Node);
+        //ExceptionsNode exceptions = file.ProjectTree.GetMergedNode<ExceptionsNode>(file.Module.Node);
+        //OptimizeNode optimize = file.ProjectTree.GetMergedNode<OptimizeNode>(file.Module.Node);
+        //RuntimeNode runtime = file.ProjectTree.GetMergedNode<RuntimeNode>(file.Module.Node);
+        //WarningsNode warnings = file.ProjectTree.GetMergedNode<WarningsNode>(file.Module.Node);
 
         //IEnumerable<string> defineEntryStrings = defines.Entries.Select((entry) => entry.Define);
         //if (exceptions.ExceptionsMode == EExceptionsMode.Off)
@@ -220,11 +220,11 @@ public class ClCompileFileGroup(ProjectGeneratorHelper helper, string vsProjectP
         //    }, condition);
         //}
 
-        //VisualStudioUtils.WriteElementString(writer, "CompileAs", file.Context.Module?.Language switch
+        //VisualStudioUtils.WriteElementString(writer, "CompileAs", file.Module?.Language switch
         //{
         //    EModuleLanguage.C => "CompileAsC",
         //    EModuleLanguage.Cpp => "CompileAsCpp",
-        //    _ => throw new NotImplementedException($"Unsupported Language: {file.Context.Module?.Language}"),
+        //    _ => throw new NotImplementedException($"Unsupported Language: {file.Module?.Language}"),
         //}, condition);
 
         //if (!buildOptions.RuntimeTypeInfo && buildOptions.ClrMode == EBuildClrMode.Off)
@@ -261,7 +261,7 @@ public class ClCompileFileGroup(ProjectGeneratorHelper helper, string vsProjectP
     }
 }
 
-public class ResourceFileGroup(ProjectGeneratorHelper helper, string vsProjectPath) : VisualStudioFileGroupBase(helper, vsProjectPath)
+public class ResourceFileGroup(IProjectService projectService, string vsProjectPath) : VisualStudioFileGroupBase(projectService, vsProjectPath)
 {
     public override int Priority => 30;
     public override string GroupTag => "ResourceCompile";
@@ -271,13 +271,13 @@ public class ResourceFileGroup(ProjectGeneratorHelper helper, string vsProjectPa
         return action == EFileAction.Resource;
     }
 
-    protected override void OnWriteFileConfig(XmlWriter writer, FileEntry file, ConfigurationNode configuration, PlatformNode platform, string archName)
+    protected override void OnWriteFileConfig(XmlWriter writer, FileEntry file, ResolvedProjectTree projectTree, string archName)
     {
-        HandleExcludedFile(writer, file, configuration, platform, archName);
+        HandleExcludedFile(writer, file, projectTree, archName);
     }
 }
 
-public class CustomBuildFileGroup(ProjectGeneratorHelper helper, string vsProjectPath) : VisualStudioFileGroupBase(helper, vsProjectPath)
+public class CustomBuildFileGroup(IProjectService projectService, string vsProjectPath) : VisualStudioFileGroupBase(projectService, vsProjectPath)
 {
     public override int Priority => 40;
     public override string GroupTag => "CustomBuild";
@@ -292,25 +292,25 @@ public class CustomBuildFileGroup(ProjectGeneratorHelper helper, string vsProjec
         writer.WriteElementString("FileType", "Document");
     }
 
-    protected override void OnWriteFileConfig(XmlWriter writer, FileEntry file, ConfigurationNode configuration, PlatformNode platform, string archName)
+    protected override void OnWriteFileConfig(XmlWriter writer, FileEntry file, ResolvedProjectTree projectTree, string archName)
     {
         if (file.BuildRule != EFileBuildRule.Custom)
         {
             return;
         }
 
-        HandleExcludedFile(writer, file, configuration, platform, archName);
+        HandleExcludedFile(writer, file, projectTree, archName);
 
-        BuildRuleNode buildRule = file.Context.ProjectService.GetMergedNode<BuildRuleNode>(file.Context, file.Context.Module, (n) => n.RuleName == file.BuildRuleName, false);
+        BuildRuleNode buildRule = file.ProjectTree.GetMergedNode<BuildRuleNode>(file.Module.Node, (n) => n.RuleName == file.BuildRuleName, false);
         if (buildRule.RuleName != file.BuildRuleName)
         {
             throw new Exception($"No build rule with the name '{file.BuildRuleName}' was found.");
         }
 
-        string condition = VisualStudioUtils.GetConfigCondition(configuration, platform, archName);
+        string condition = VisualStudioUtils.GetConfigCondition(projectTree, archName);
 
-        List<CommandNode> buildCommands = file.Context.ProjectService.GetNodes<CommandNode>(file.Context, buildRule, false);
-        if (buildCommands.Count != 0)
+        IEnumerable<CommandNode> buildCommands = file.ProjectTree.GetNodes<CommandNode>(buildRule.Node);
+        if (buildCommands.Any())
         {
             if (!string.IsNullOrEmpty(buildRule.Message))
             {
@@ -320,11 +320,11 @@ public class CustomBuildFileGroup(ProjectGeneratorHelper helper, string vsProjec
             IEnumerable<string> buildCommandStrings = buildCommands.Select((entry) => entry.GetCommandString());
             VisualStudioUtils.WriteArrayElement(writer, buildCommandStrings, "Command", null, "\r\n", condition);
 
-            OutputsNode buildRuleOutputs = file.Context.ProjectService.GetMergedNode<OutputsNode>(file.Context, buildRule, false);
+            OutputsNode buildRuleOutputs = file.ProjectTree.GetMergedNode<OutputsNode>(buildRule.Node);
             IEnumerable<string> buildRuleOutputsStrings = buildRuleOutputs.Entries.Select((entry) => GetPath(entry.FilePath));
             VisualStudioUtils.WriteArrayElement(writer, buildRuleOutputsStrings, "Outputs", null, ";", condition);
 
-            InputsNode buildRuleInputs = file.Context.ProjectService.GetMergedNode<InputsNode>(file.Context, buildRule, false);
+            InputsNode buildRuleInputs = file.ProjectTree.GetMergedNode<InputsNode>(buildRule.Node);
             IEnumerable<string> buildRuleInputsStrings = buildRuleInputs.Entries.Select((entry) => GetPath(entry.FilePath));
             VisualStudioUtils.WriteArrayElement(writer, buildRuleInputsStrings, "AdditionalInputs", null, ";", condition);
         }
@@ -336,7 +336,7 @@ public class CustomBuildFileGroup(ProjectGeneratorHelper helper, string vsProjec
     }
 }
 
-public class MidlFileGroup(ProjectGeneratorHelper helper, string vsProjectPath) : VisualStudioFileGroupBase(helper, vsProjectPath)
+public class MidlFileGroup(IProjectService projectService, string vsProjectPath) : VisualStudioFileGroupBase(projectService, vsProjectPath)
 {
     public override int Priority => 50;
     public override string GroupTag => "Midl";
@@ -346,18 +346,18 @@ public class MidlFileGroup(ProjectGeneratorHelper helper, string vsProjectPath) 
         return action == EFileAction.Build && buildRule == EFileBuildRule.Midl;
     }
 
-    protected override void OnWriteFileConfig(XmlWriter writer, FileEntry file, ConfigurationNode configuration, PlatformNode platform, string archName)
+    protected override void OnWriteFileConfig(XmlWriter writer, FileEntry file, ResolvedProjectTree projectTree, string archName)
     {
-        if (platform.System != EPlatformSystem.Windows)
+        if (projectTree.ProjectContext.Platform.System != EPlatformSystem.Windows)
         {
             return;
         }
 
-        HandleExcludedFile(writer, file, configuration, platform, archName);
+        HandleExcludedFile(writer, file, projectTree, archName);
     }
 }
 
-public class MasmFileGroup(ProjectGeneratorHelper helper, string vsProjectPath) : VisualStudioFileGroupBase(helper, vsProjectPath)
+public class MasmFileGroup(IProjectService projectService, string vsProjectPath) : VisualStudioFileGroupBase(projectService, vsProjectPath)
 {
     public override int Priority => 60;
     public override string GroupTag => "Masm";
@@ -381,17 +381,17 @@ public class MasmFileGroup(ProjectGeneratorHelper helper, string vsProjectPath) 
         writer.WriteEndElement();
     }
 
-    protected override void OnWriteFileConfig(XmlWriter writer, FileEntry file, ConfigurationNode configuration, PlatformNode platform, string archName)
+    protected override void OnWriteFileConfig(XmlWriter writer, FileEntry file, ResolvedProjectTree projectTree, string archName)
     {
-        HandleExcludedFile(writer, file, configuration, platform, archName);
+        HandleExcludedFile(writer, file, projectTree, archName);
 
-        string condition = VisualStudioUtils.GetConfigCondition(configuration, platform, archName);
+        string condition = VisualStudioUtils.GetConfigCondition(projectTree, archName);
 
-        DefinesNode defines = file.Context.ProjectService.GetMergedNode<DefinesNode>(file.Context, file.Context.Module);
+        DefinesNode defines = file.ProjectTree.GetMergedNode<DefinesNode>(file.Module.Node);
         IEnumerable<string> defineEntryStrings = defines.Entries.Select((entry) => entry.DefineName);
         VisualStudioUtils.WritePreprocessorDefinitions(writer, defineEntryStrings, false, condition);
 
-        ExceptionsNode exceptions = file.Context.ProjectService.GetMergedNode<ExceptionsNode>(file.Context, file.Context.Module);
+        ExceptionsNode exceptions = file.ProjectTree.GetMergedNode<ExceptionsNode>(file.Module.Node);
         if (exceptions.ExceptionsMode == EExceptionsMode.SEH)
         {
             VisualStudioUtils.WriteElementString(writer, "UseSafeExceptionHandlers", "true", condition);
@@ -399,7 +399,7 @@ public class MasmFileGroup(ProjectGeneratorHelper helper, string vsProjectPath) 
     }
 }
 
-public class ImageFileGroup(ProjectGeneratorHelper helper, string vsProjectPath) : VisualStudioFileGroupBase(helper, vsProjectPath)
+public class ImageFileGroup(IProjectService projectService, string vsProjectPath) : VisualStudioFileGroupBase(projectService, vsProjectPath)
 {
     public override int Priority => 70;
     public override string GroupTag => "Image";
@@ -409,13 +409,13 @@ public class ImageFileGroup(ProjectGeneratorHelper helper, string vsProjectPath)
         return action == EFileAction.Image;
     }
 
-    protected override void OnWriteFileConfig(XmlWriter writer, FileEntry file, ConfigurationNode configuration, PlatformNode platform, string archName)
+    protected override void OnWriteFileConfig(XmlWriter writer, FileEntry file, ResolvedProjectTree projectTree, string archName)
     {
-        HandleExcludedFile(writer, file, configuration, platform, archName);
+        HandleExcludedFile(writer, file, projectTree, archName);
     }
 }
 
-public class NatvisFileGroup(ProjectGeneratorHelper helper, string vsProjectPath) : VisualStudioFileGroupBase(helper, vsProjectPath)
+public class NatvisFileGroup(IProjectService projectService, string vsProjectPath) : VisualStudioFileGroupBase(projectService, vsProjectPath)
 {
     public override int Priority => 80;
     public override string GroupTag => "Natvis";
@@ -426,7 +426,7 @@ public class NatvisFileGroup(ProjectGeneratorHelper helper, string vsProjectPath
     }
 }
 
-public class AppxManifestFileGroup(ProjectGeneratorHelper helper, string vsProjectPath) : VisualStudioFileGroupBase(helper, vsProjectPath)
+public class AppxManifestFileGroup(IProjectService projectService, string vsProjectPath) : VisualStudioFileGroupBase(projectService, vsProjectPath)
 {
     public override int Priority => 90;
     public override string GroupTag => "AppxManifest";
@@ -442,13 +442,13 @@ public class AppxManifestFileGroup(ProjectGeneratorHelper helper, string vsProje
         writer.WriteElementString("SubType", "Designer");
     }
 
-    protected override void OnWriteFileConfig(XmlWriter writer, FileEntry file, ConfigurationNode configuration, PlatformNode platform, string archName)
+    protected override void OnWriteFileConfig(XmlWriter writer, FileEntry file, ResolvedProjectTree projectTree, string archName)
     {
-        HandleExcludedFile(writer, file, configuration, platform, archName);
+        HandleExcludedFile(writer, file, projectTree, archName);
     }
 }
 
-public class CopyFileGroup(ProjectGeneratorHelper helper, string vsProjectPath) : VisualStudioFileGroupBase(helper, vsProjectPath)
+public class CopyFileGroup(IProjectService projectService, string vsProjectPath) : VisualStudioFileGroupBase(projectService, vsProjectPath)
 {
     public override int Priority => 100;
     public override string GroupTag => "CopyFileToFolders";
@@ -458,23 +458,23 @@ public class CopyFileGroup(ProjectGeneratorHelper helper, string vsProjectPath) 
         return action == EFileAction.Copy;
     }
 
-    protected override void OnWriteFileConfig(XmlWriter writer, FileEntry file, ConfigurationNode configuration, PlatformNode platform, string archName)
+    protected override void OnWriteFileConfig(XmlWriter writer, FileEntry file, ResolvedProjectTree projectTree, string archName)
     {
-        HandleExcludedFile(writer, file, configuration, platform, archName);
+        HandleExcludedFile(writer, file, projectTree, archName);
 
-        if (file.Context.Module is null)
+        if (file.Module is null)
         {
             throw new Exception("File context module is null when writing CopyFileToFolders settings. This is a bug.");
         }
 
-        string targetDir = file.Context.Module.GetTargetDir(file.Context);
-        string condition = VisualStudioUtils.GetConfigCondition(configuration, platform, archName);
+        string targetDir = file.Module.GetTargetDir(file.Context);
+        string condition = VisualStudioUtils.GetConfigCondition(projectTree, archName);
 
         VisualStudioUtils.WriteElementString(writer, "DestinationFolders", GetPath(targetDir), condition);
     }
 }
 
-public class NoneFileGroup(ProjectGeneratorHelper helper, string vsProjectPath) : VisualStudioFileGroupBase(helper, vsProjectPath)
+public class NoneFileGroup(IProjectService projectService, string vsProjectPath) : VisualStudioFileGroupBase(projectService, vsProjectPath)
 {
     public override int Priority => 10000;
     public override string GroupTag => "None";

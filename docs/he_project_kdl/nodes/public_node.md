@@ -12,6 +12,7 @@ None.
 
 ## Children
 
+- [`build_options`](build_options_node.md)
 - [`defines`](defines_node.md)
 - [`dependencies`](dependencies_node.md)
 - [`include_dirs`](include_dirs_node.md)

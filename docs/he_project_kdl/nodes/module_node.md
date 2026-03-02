@@ -26,7 +26,7 @@ A definition of a module provided by a plugin.
 - `hemake_extension` (boolean) - Optional. `#true` to tell HE Make to load this project as an extension. Default: `#false`
 - `target_name` (string) Optional. The name of the output target file. When not specified, the module's name is used.
 - `target_extension` (string) Optional. The extension of the output target file. By default the extension used is defined by the toolset.
-- `target_dir` (string) Optional. The directory for the output target file. When not specified, the module's `target_name` is used.
+- `target_dir` (string) Optional. The directory for the output target file. When not specified, the default output directory is derived from [`build_output`](build_output_node.md) and the module kind.
 - `make_import_lib` (boolean) - Optional. `#false` to prevent generation of an import library for Windows DLLs. Default: `#true`.
 - `make_exe_manifest` (boolean) - Optional. `#false` to prevent generation of a manifest for Windows executables and DLLs. Default: `#true`.
 - `make_map_file` (boolean) - Optional. `#true` to enable generation of a mapfile for Windows targets. Default: `#false`.
@@ -38,12 +38,13 @@ A definition of a module provided by a plugin.
 - [`build_rule`](build_rule_node.md)
 - [`codegen`](codegen_node.md)
 - [`defines`](defines_node.md)
+- [`dependencies`](dependencies_node.md)
 - [`dialect`](dialect_node.md)
 - [`exceptions`](exceptions_node.md)
-- [`external`](external_node.md)
 - [`files`](files_node.md)
 - [`floating_point`](floating_point_node.md)
 - [`import`](import_node.md)
+- [`include_dirs`](include_dirs_node.md)
 - [`lib_dirs`](lib_dirs_node.md)
 - [`link_options`](link_options_node.md)
 - [`optimize`](optimize_node.md)

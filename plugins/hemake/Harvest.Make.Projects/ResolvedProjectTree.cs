@@ -6,7 +6,17 @@ using Harvest.Make.Projects.Nodes;
 
 namespace Harvest.Make.Projects;
 
-public class ResolvedProjectTree
+internal class ModuleDependency(DependenciesEntryNode entry, ModuleNode? resolvedModule)
+{
+    public string DependencyName => entry.DependencyName;
+    public EDependencyKind Kind => entry.Kind;
+    public bool IsExternal { get; set; } = entry.IsExternal;
+    public bool IsWholeArchive { get; set; } = entry.IsWholeArchive;
+
+    public ModuleNode? Module => resolvedModule;
+}
+
+internal class ResolvedProjectTree
 {
     private readonly HashSet<string> _activeTags = [];
 
@@ -20,15 +30,14 @@ public class ResolvedProjectTree
         PlatformNode platform,
         KdlNode sourceProjectNode)
     {
-        KdlNode defaultBuildOptionsNode = new(BuildOutputNode.NodeTraits.Name) { SourceInfo = sourceProjectNode.SourceInfo };
-        ResolveDefaultNode<BuildOutputNode>(defaultBuildOptionsNode);
+        IndexedNodes = new IndexedNodeCollection();
 
         ProjectContext = new ProjectContext()
         {
             ProjectService = projectService,
             Configuration = configuration,
             Platform = platform,
-            BuildOutput = new BuildOutputNode(defaultBuildOptionsNode),
+            BuildOutput = new BuildOutputNode(new KdlNode(BuildOutputNode.NodeTraits.Name) { SourceInfo = sourceProjectNode.SourceInfo }),
             Host = PlatformNodeTraits.GetHostPlatform(),
             Options = projectService.ProjectOptionValues,
             Tags = _activeTags,
@@ -41,6 +50,7 @@ public class ResolvedProjectTree
         resolver.ResolveDeferredNodes();
 
         IndexedNodes = resolver.IndexedNodes;
+        ProjectContext.BuildOutput = GetMergedNode<BuildOutputNode>(ProjectNode.Node);
 
         ValidateNodeRecursive(ProjectNode.Node);
     }
@@ -84,10 +94,7 @@ public class ResolvedProjectTree
         }
         else
         {
-            // If any tokens need to examine the scope of the merged node they will throw.
-            // This effectively means that node def default values cannot use tokens that
-            // reference the scope of the node, which is a limitation of the current implementation.
-            ResolveDefaultNode<T>(mergedNode);
+            ResolveDefaultNode<T>(mergedNode, scope);
         }
 
         return merged;
@@ -136,9 +143,10 @@ public class ResolvedProjectTree
         KdlNode? searchScope = scope;
         do
         {
-            if (traits.ValidScopes.Contains(searchScope.Name))
+            bool isRootNodeScope = traits.ValidScopes.Count == 0 && searchScope.Parent is null;
+            if (isRootNodeScope || traits.ValidScopes.Contains(searchScope.Name))
             {
-                stack.Push(scope);
+                stack.Push(searchScope);
             }
 
             searchScope = searchScope.Parent;
@@ -173,10 +181,10 @@ public class ResolvedProjectTree
         return result;
     }
 
-    private void ResolveDefaultNode<T>(KdlNode target)
+    private void ResolveDefaultNode<T>(KdlNode target, KdlNode scope)
         where T : class, INode
     {
-        NodeTokenHandler handler = new(ProjectContext, IndexedNodes, target);
+        NodeTokenHandler handler = new(ProjectContext, IndexedNodes, scope);
         StringTokenReplacer replacer = new(handler);
 
         NodeResolver.ResolveDefaultNodeArguments(target, T.NodeTraits, replacer);

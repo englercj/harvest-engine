@@ -4,7 +4,7 @@ using Harvest.Kdl;
 
 namespace Harvest.Make.Projects.Nodes;
 
-public class SanitizeNodeTraits : NodeBaseTraits
+internal class SanitizeNodeTraits : NodeBaseTraits
 {
     public override string Name => "sanitize";
 
@@ -25,7 +25,7 @@ public class SanitizeNodeTraits : NodeBaseTraits
     public override INode CreateNode(KdlNode node) => new SanitizeNode(node);
 }
 
-public class SanitizeNode(KdlNode node) : NodeBase<SanitizeNodeTraits>(node)
+internal class SanitizeNode(KdlNode node) : NodeBase<SanitizeNodeTraits>(node)
 {
     public bool EnableAddress => GetValue<bool>("address");
     public bool EnableFuzzer => GetValue<bool>("fuzzer");

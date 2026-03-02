@@ -5,7 +5,7 @@ using System.Diagnostics;
 
 namespace Harvest.Make.Projects.Nodes;
 
-public class ProjectNodeTraits : NodeBaseTraits
+internal class ProjectNodeTraits : NodeBaseTraits
 {
     public override string Name => "project";
 
@@ -39,7 +39,7 @@ public class ProjectNodeTraits : NodeBaseTraits
     }
 }
 
-public class ProjectNode(KdlNode node) : NodeBase<ProjectNodeTraits>(node)
+internal class ProjectNode(KdlNode node) : NodeBase<ProjectNodeTraits>(node)
 {
     public string ProjectName => GetValue<string>(0);
     public string? StartupModule => TryGetValue("start", out string? value) ? value : null;

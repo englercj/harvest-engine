@@ -7,10 +7,25 @@ using System.Xml;
 
 namespace Harvest.Make.Projects.ProjectGenerators.vs2026;
 
-public static class VisualStudioUtils
+internal static class VisualStudioUtils
 {
     private static readonly List<Type> s_fileGroupTypes = [];
     private static readonly ThreadLocal<StringBuilder> s_stringBuffers = new(() => new(1024));
+
+    static VisualStudioUtils()
+    {
+        RegisterFileGroupType<ClIncludeFileGroup>();
+        RegisterFileGroupType<ClCompileFileGroup>();
+        RegisterFileGroupType<ResourceFileGroup>();
+        RegisterFileGroupType<CustomBuildFileGroup>();
+        RegisterFileGroupType<MidlFileGroup>();
+        RegisterFileGroupType<MasmFileGroup>();
+        RegisterFileGroupType<ImageFileGroup>();
+        RegisterFileGroupType<NatvisFileGroup>();
+        RegisterFileGroupType<AppxManifestFileGroup>();
+        RegisterFileGroupType<CopyFileGroup>();
+        RegisterFileGroupType<NoneFileGroup>();
+    }
 
     public static List<EPlatformSystem> ValidSystems { get; } =
     [
@@ -110,7 +125,7 @@ public static class VisualStudioUtils
     {
         if (s_stringBuffers.Value is not StringBuilder stringBuffer)
         {
-            return string.Empty;
+            return "";
         }
 
         stringBuffer.Clear();
@@ -269,13 +284,13 @@ public static class VisualStudioUtils
         return s_fileGroupTypes;
     }
 
-    public static List<IVisualStudioFileGroup> CreateFileGroups(string vsProjectPath)
+    public static List<IVisualStudioFileGroup> CreateFileGroups(IProjectService projectService, string vsProjectPath)
     {
         List<IVisualStudioFileGroup> groups = [];
 
         foreach (Type type in s_fileGroupTypes)
         {
-            if (Activator.CreateInstance(type, vsProjectPath) is IVisualStudioFileGroup group)
+            if (Activator.CreateInstance(type, projectService, vsProjectPath) is IVisualStudioFileGroup group)
             {
                 groups.Add(group);
             }
@@ -320,7 +335,7 @@ public static class VisualStudioUtils
         result[8] &= 0x3F;
         result[8] |= 0x80;
 
-        return new Guid(result);
+        return new Guid(result.AsSpan(0, 16));
     }
 
     private static readonly Guid s_filtersNamespaceGuid = new("CFCAC646-520C-4F5C-995E-BA007DEA1508");

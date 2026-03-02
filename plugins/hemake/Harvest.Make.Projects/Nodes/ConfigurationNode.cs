@@ -4,7 +4,7 @@ using Harvest.Kdl;
 
 namespace Harvest.Make.Projects.Nodes;
 
-public class ConfigurationNodeTraits : NodeBaseTraits
+internal class ConfigurationNodeTraits : NodeBaseTraits
 {
     public override string Name => "configuration";
 
@@ -21,7 +21,7 @@ public class ConfigurationNodeTraits : NodeBaseTraits
     public override INode CreateNode(KdlNode node) => new ConfigurationNode(node);
 }
 
-public class ConfigurationNode(KdlNode node) : NodeBase<ConfigurationNodeTraits>(node)
+internal class ConfigurationNode(KdlNode node) : NodeBase<ConfigurationNodeTraits>(node)
 {
     public string ConfigName => GetValue<string>(0);
 }

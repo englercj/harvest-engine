@@ -6,7 +6,7 @@ using static Harvest.Make.Projects.ProjectGenerators.vs2026.IVisualStudioFileGro
 
 namespace Harvest.Make.Projects.ProjectGenerators.vs2026;
 
-public class ClIncludeFileGroup(IProjectService projectService, string vsProjectPath) : VisualStudioFileGroupBase(projectService, vsProjectPath)
+internal class ClIncludeFileGroup(IProjectService projectService, string vsProjectPath) : VisualStudioFileGroupBase(projectService, vsProjectPath)
 {
     public override int Priority => 10;
     public override string GroupTag => "ClInclude";
@@ -17,7 +17,7 @@ public class ClIncludeFileGroup(IProjectService projectService, string vsProject
     }
 }
 
-public class ClCompileFileGroup(IProjectService projectService, string vsProjectPath) : VisualStudioFileGroupBase(projectService, vsProjectPath)
+internal class ClCompileFileGroup(IProjectService projectService, string vsProjectPath) : VisualStudioFileGroupBase(projectService, vsProjectPath)
 {
     public override int Priority => 20;
     public override string GroupTag => "ClCompile";
@@ -53,7 +53,7 @@ public class ClCompileFileGroup(IProjectService projectService, string vsProject
         // This is because a project with 'src/a.cpp' and 'test/a.cpp' will both output to 'a.obj'.
         if (_objectFileNameSequence.TryGetValue(fileBaseName, out int sequence))
         {
-            _objectFileNameSequence.Add(fileBaseName, sequence + 1);
+            _objectFileNameSequence[fileBaseName] = sequence + 1;
             VisualStudioUtils.WriteElementString(writer, "ObjectFileName", $"$(IntDir)\\{fileBaseName}{sequence}.obj", condition);
         }
         else
@@ -261,7 +261,7 @@ public class ClCompileFileGroup(IProjectService projectService, string vsProject
     }
 }
 
-public class ResourceFileGroup(IProjectService projectService, string vsProjectPath) : VisualStudioFileGroupBase(projectService, vsProjectPath)
+internal class ResourceFileGroup(IProjectService projectService, string vsProjectPath) : VisualStudioFileGroupBase(projectService, vsProjectPath)
 {
     public override int Priority => 30;
     public override string GroupTag => "ResourceCompile";
@@ -277,7 +277,7 @@ public class ResourceFileGroup(IProjectService projectService, string vsProjectP
     }
 }
 
-public class CustomBuildFileGroup(IProjectService projectService, string vsProjectPath) : VisualStudioFileGroupBase(projectService, vsProjectPath)
+internal class CustomBuildFileGroup(IProjectService projectService, string vsProjectPath) : VisualStudioFileGroupBase(projectService, vsProjectPath)
 {
     public override int Priority => 40;
     public override string GroupTag => "CustomBuild";
@@ -336,7 +336,7 @@ public class CustomBuildFileGroup(IProjectService projectService, string vsProje
     }
 }
 
-public class MidlFileGroup(IProjectService projectService, string vsProjectPath) : VisualStudioFileGroupBase(projectService, vsProjectPath)
+internal class MidlFileGroup(IProjectService projectService, string vsProjectPath) : VisualStudioFileGroupBase(projectService, vsProjectPath)
 {
     public override int Priority => 50;
     public override string GroupTag => "Midl";
@@ -357,7 +357,7 @@ public class MidlFileGroup(IProjectService projectService, string vsProjectPath)
     }
 }
 
-public class MasmFileGroup(IProjectService projectService, string vsProjectPath) : VisualStudioFileGroupBase(projectService, vsProjectPath)
+internal class MasmFileGroup(IProjectService projectService, string vsProjectPath) : VisualStudioFileGroupBase(projectService, vsProjectPath)
 {
     public override int Priority => 60;
     public override string GroupTag => "Masm";
@@ -399,7 +399,7 @@ public class MasmFileGroup(IProjectService projectService, string vsProjectPath)
     }
 }
 
-public class ImageFileGroup(IProjectService projectService, string vsProjectPath) : VisualStudioFileGroupBase(projectService, vsProjectPath)
+internal class ImageFileGroup(IProjectService projectService, string vsProjectPath) : VisualStudioFileGroupBase(projectService, vsProjectPath)
 {
     public override int Priority => 70;
     public override string GroupTag => "Image";
@@ -415,7 +415,7 @@ public class ImageFileGroup(IProjectService projectService, string vsProjectPath
     }
 }
 
-public class NatvisFileGroup(IProjectService projectService, string vsProjectPath) : VisualStudioFileGroupBase(projectService, vsProjectPath)
+internal class NatvisFileGroup(IProjectService projectService, string vsProjectPath) : VisualStudioFileGroupBase(projectService, vsProjectPath)
 {
     public override int Priority => 80;
     public override string GroupTag => "Natvis";
@@ -426,7 +426,7 @@ public class NatvisFileGroup(IProjectService projectService, string vsProjectPat
     }
 }
 
-public class AppxManifestFileGroup(IProjectService projectService, string vsProjectPath) : VisualStudioFileGroupBase(projectService, vsProjectPath)
+internal class AppxManifestFileGroup(IProjectService projectService, string vsProjectPath) : VisualStudioFileGroupBase(projectService, vsProjectPath)
 {
     public override int Priority => 90;
     public override string GroupTag => "AppxManifest";
@@ -448,7 +448,7 @@ public class AppxManifestFileGroup(IProjectService projectService, string vsProj
     }
 }
 
-public class CopyFileGroup(IProjectService projectService, string vsProjectPath) : VisualStudioFileGroupBase(projectService, vsProjectPath)
+internal class CopyFileGroup(IProjectService projectService, string vsProjectPath) : VisualStudioFileGroupBase(projectService, vsProjectPath)
 {
     public override int Priority => 100;
     public override string GroupTag => "CopyFileToFolders";
@@ -461,20 +461,15 @@ public class CopyFileGroup(IProjectService projectService, string vsProjectPath)
     protected override void OnWriteFileConfig(XmlWriter writer, FileEntry file, ResolvedProjectTree projectTree, string archName)
     {
         HandleExcludedFile(writer, file, projectTree, archName);
-
-        if (file.Module is null)
-        {
-            throw new Exception("File context module is null when writing CopyFileToFolders settings. This is a bug.");
-        }
-
-        string targetDir = file.Module.GetTargetDir(file.Context);
+        BuildOutputNode buildOutput = file.ProjectTree.GetMergedNode<BuildOutputNode>(file.Module.Node);
+        string targetDir = file.Module.GetTargetDir(buildOutput);
         string condition = VisualStudioUtils.GetConfigCondition(projectTree, archName);
 
         VisualStudioUtils.WriteElementString(writer, "DestinationFolders", GetPath(targetDir), condition);
     }
 }
 
-public class NoneFileGroup(IProjectService projectService, string vsProjectPath) : VisualStudioFileGroupBase(projectService, vsProjectPath)
+internal class NoneFileGroup(IProjectService projectService, string vsProjectPath) : VisualStudioFileGroupBase(projectService, vsProjectPath)
 {
     public override int Priority => 10000;
     public override string GroupTag => "None";

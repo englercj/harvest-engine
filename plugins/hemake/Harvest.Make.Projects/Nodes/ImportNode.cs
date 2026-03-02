@@ -4,7 +4,7 @@ using Harvest.Kdl;
 
 namespace Harvest.Make.Projects.Nodes;
 
-public class ImportNodeTraits : NodeBaseTraits
+internal class ImportNodeTraits : NodeBaseTraits
 {
     public override string Name => "import";
 
@@ -24,7 +24,7 @@ public class ImportNodeTraits : NodeBaseTraits
     public override INode CreateNode(KdlNode node) => new ImportNode(node);
 }
 
-public class ImportNode(KdlNode node) : NodeBase<ImportNodeTraits>(node)
+internal class ImportNode(KdlNode node) : NodeBase<ImportNodeTraits>(node)
 {
     public string ImportPath => GetValue<string>(0);
 }

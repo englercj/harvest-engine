@@ -18,11 +18,18 @@ internal class SlnxGenerator(IProjectService projectService, ILogger<SlnxGenerat
     private readonly HashSet<string> _configNames = [];
     private readonly HashSet<string> _platformNames = [];
     private readonly Dictionary<string, string> _platformArchs = [];
+    private string _solutionDir = "";
 
     public async Task GenerateAsync(ModuleGroupTree groupTree)
     {
         ProjectNode project = _projectService.GetGlobalNode<ProjectNode>();
         string outputPath = Path.Join(project.BuildDir, $"{project.ProjectName}{SolutionExtension}");
+        _solutionDir = project.BuildDir;
+        string projectsDirRelative = Path.GetRelativePath(project.BuildDir, project.ProjectsDir);
+        if (projectsDirRelative == ".")
+        {
+            projectsDirRelative = "";
+        }
 
         _logger.LogDebug("Generating solution file: {SolutionPath}", outputPath);
 
@@ -46,7 +53,7 @@ internal class SlnxGenerator(IProjectService projectService, ILogger<SlnxGenerat
 
         writer.WriteStartElement("Solution");
         WriteConfigurations(writer);
-        WriteProjects(writer, groupTree, project.ProjectsDir);
+        WriteProjects(writer, groupTree, projectsDirRelative);
         writer.WriteEndElement();
 
         await writer.FlushAsync();
@@ -96,12 +103,12 @@ internal class SlnxGenerator(IProjectService projectService, ILogger<SlnxGenerat
 
     private void WriteProjectEntry(XmlWriter writer, ModuleEntry entry, string projectsDir)
     {
-        string projectPath = $"{projectsDir}/${entry.Name}{VcxprojGenerator.ProjectExtension}".Replace('\\', '/');
+        string projectPath = GetModuleProjectPath(entry.Name, projectsDir);
 
         writer.WriteStartElement("Project");
         writer.WriteAttributeString("Path", projectPath);
 
-        foreach ((ResolvedProjectTree project, string archName) in VisualStudioUtils.EnumerateConfigs(_projectService))
+        foreach ((ResolvedProjectTree project, _) in VisualStudioUtils.EnumerateConfigs(_projectService))
         {
             if (project.IndexedNodes.TryGetNode(entry.Name, out ModuleNode? module))
             {
@@ -135,7 +142,7 @@ internal class SlnxGenerator(IProjectService projectService, ILogger<SlnxGenerat
                     }
 
                     writer.WriteStartElement("BuildDependency");
-                    writer.WriteAttributeString("Project", $"{projectsDir}/${dependencyModule.ModuleName}{VcxprojGenerator.ProjectExtension}");
+                    writer.WriteAttributeString("Project", GetModuleProjectPath(dependencyModule.ModuleName, projectsDir));
                     writer.WriteEndElement();
                 }
             }
@@ -161,6 +168,36 @@ internal class SlnxGenerator(IProjectService projectService, ILogger<SlnxGenerat
         }
 
         writer.WriteEndElement();
+    }
+
+    private string GetModuleProjectPath(string moduleName, string projectsDir)
+    {
+        foreach ((ResolvedProjectTree projectTree, _) in VisualStudioUtils.EnumerateConfigs(_projectService))
+        {
+            if (!projectTree.IndexedNodes.TryGetNode(moduleName, out ModuleNode? module))
+            {
+                continue;
+            }
+
+            if (!string.IsNullOrEmpty(module.ProjectFile))
+            {
+                string projectFile = module.ProjectFile;
+                if (!Path.IsPathRooted(projectFile))
+                {
+                    string moduleDir = Path.GetDirectoryName(module.Node.SourceInfo.FilePath) ?? Directory.GetCurrentDirectory();
+                    projectFile = Path.GetFullPath(projectFile, moduleDir);
+                }
+
+                return Path.GetRelativePath(_solutionDir, projectFile).Replace('\\', '/');
+            }
+
+            break;
+        }
+
+        string generatedPath = string.IsNullOrEmpty(projectsDir)
+            ? $"{moduleName}{VcxprojGenerator.ProjectExtension}"
+            : $"{projectsDir}/{moduleName}{VcxprojGenerator.ProjectExtension}";
+        return generatedPath.Replace('\\', '/');
     }
 
     private void WriteFolderEntry(XmlWriter writer, Entry entry, string projectsDir)

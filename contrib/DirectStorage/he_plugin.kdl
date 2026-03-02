@@ -11,7 +11,7 @@ plugin microsoft.DirectStorage version="1.2.1" license="SEE LICENSE IN LICENSE.t
         }
     }
 
-    module DirectStorage kind=shared group="engine/contrib" {
+    module DirectStorage kind=lib_shared group="engine/contrib" {
         public {
             include_dirs { "native/include" }
         }

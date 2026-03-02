@@ -4,7 +4,7 @@ using Harvest.Kdl;
 
 namespace Harvest.Make.Projects.Nodes;
 
-public class IncludeDirsNodeTraits : NodeSetBaseTraits<IncludeDirsEntryNode>
+internal class IncludeDirsNodeTraits : NodeSetBaseTraits<IncludeDirsEntryNode>
 {
     public override string Name => "include_dirs";
 
@@ -25,7 +25,7 @@ public class IncludeDirsNodeTraits : NodeSetBaseTraits<IncludeDirsEntryNode>
     public override INode CreateNode(KdlNode node) => new IncludeDirsNode(node);
 }
 
-public class IncludeDirsNode(KdlNode node) : NodeSetBase<IncludeDirsNodeTraits, IncludeDirsEntryNode>(node)
+internal class IncludeDirsNode(KdlNode node) : NodeSetBase<IncludeDirsNodeTraits, IncludeDirsEntryNode>(node)
 {
     public bool IsExternal => GetValue<bool>("external");
 

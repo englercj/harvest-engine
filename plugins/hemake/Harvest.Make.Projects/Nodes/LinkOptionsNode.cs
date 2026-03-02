@@ -4,7 +4,7 @@ using Harvest.Kdl;
 
 namespace Harvest.Make.Projects.Nodes;
 
-public class LinkOptionsNodeTraits : NodeSetBaseTraits<LinkOptionsEntryNode>
+internal class LinkOptionsNodeTraits : NodeSetBaseTraits<LinkOptionsEntryNode>
 {
     public override string Name => "link_options";
 
@@ -16,13 +16,13 @@ public class LinkOptionsNodeTraits : NodeSetBaseTraits<LinkOptionsEntryNode>
 
     public override IReadOnlyDictionary<string, NodeValueDef> PropertyDefs { get; } = new SortedDictionary<string, NodeValueDef>()
     {
-        { "incremental_link", NodeValueDef_Bool.Optional(true) },
+        { "incremental", NodeValueDef_Bool.Optional(true) },
     };
 
     public override INode CreateNode(KdlNode node) => new LinkOptionsNode(node);
 }
 
-public class LinkOptionsNode(KdlNode node) : NodeSetBase<LinkOptionsNodeTraits, LinkOptionsEntryNode>(node)
+internal class LinkOptionsNode(KdlNode node) : NodeSetBase<LinkOptionsNodeTraits, LinkOptionsEntryNode>(node)
 {
-    public bool IncrementalLink => GetValue<bool>("incremental_link");
+    public bool IncrementalLink => GetValue<bool>("incremental");
 }

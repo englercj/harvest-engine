@@ -5,7 +5,7 @@ using Harvest.Make.Projects.Nodes;
 
 namespace Harvest.Make.Projects;
 
-public class NodeTokenHandler(ProjectContext projectContext, IndexedNodeCollection indexedNodes, KdlNode scope) : IStringTokenHandler
+internal class NodeTokenHandler(ProjectContext projectContext, IndexedNodeCollection indexedNodes, KdlNode scope) : IStringTokenHandler
 {
     // TODO: Remove project context when we're operating on fully resolved nodes only
     private readonly ProjectContext _projectContext = projectContext;
@@ -70,7 +70,7 @@ public class NodeTokenHandler(ProjectContext projectContext, IndexedNodeCollecti
                 throw new NodeParseException(_scope, $"Invalid token '{tokenContext.Token}'. Argument index in '{tokenContext.PropertyName}' must be an integer.");
             }
 
-            if (argIndex < 0 && argIndex >= contextNode.Arguments.Count)
+            if (argIndex < 0 || argIndex >= contextNode.Arguments.Count)
             {
                 throw new NodeParseException(_scope, $"Invalid token '{tokenContext.Token}'. Argument index {argIndex} is out of range for context '{tokenContext.ContextName}'.");
             }
@@ -83,12 +83,23 @@ public class NodeTokenHandler(ProjectContext projectContext, IndexedNodeCollecti
             return value.GetValueString();
         }
 
+        if (contextNodeTraits.PropertyDefs.TryGetValue(tokenContext.PropertyName, out NodeValueDef? valueDef)
+            && valueDef.DefaultValue is not Harvest.Kdl.Types.KdlNull)
+        {
+            return valueDef.DefaultValue.GetValueString();
+        }
+
         throw new NodeParseException(_scope, $"Invalid token '{tokenContext.Token}'. Unknown property '{tokenContext.PropertyName}' on context '{tokenContext.ContextName}'.");
     }
 
     private KdlNode GetTokenContextById(KdlNode scope, string token, string contextName, string contextId)
     {
         if (_indexedNodes.TryGetNode(contextName, contextId, out KdlNode? contextNode))
+        {
+            return contextNode;
+        }
+
+        if (TryFindUnresolvedContextNode(contextName, contextId, out contextNode))
         {
             return contextNode;
         }
@@ -110,5 +121,26 @@ public class NodeTokenHandler(ProjectContext projectContext, IndexedNodeCollecti
         }
 
         throw new NodeParseException(scope, $"Invalid token '{token}'. Failed to find a '{name}' node in the parent heirarchy.");
+    }
+
+    private bool TryFindUnresolvedContextNode(string contextName, string contextId, out KdlNode contextNode)
+    {
+        contextNode = null!;
+
+        if (contextName != PluginNode.NodeTraits.Name && contextName != ModuleNode.NodeTraits.Name)
+        {
+            return false;
+        }
+
+        foreach (KdlNode node in _projectContext.ProjectService.ProjectDocument.GetNodesByName(contextName))
+        {
+            if (node.TryGetValue(0, out string? nodeId) && nodeId == contextId)
+            {
+                contextNode = node;
+                return true;
+            }
+        }
+
+        return false;
     }
 }

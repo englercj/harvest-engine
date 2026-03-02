@@ -14,7 +14,7 @@ public enum EWhenMode
     [KdlName("one")] One,
 }
 
-public class WhenNodeTraits : NodeBaseTraits
+internal class WhenNodeTraits : NodeBaseTraits
 {
     public override string Name => "when";
 
@@ -54,7 +54,8 @@ public class WhenNodeTraits : NodeBaseTraits
         WhenNode when = new(resolvedWhenNode);
         if (when.IsActive(resolver.ProjectContext))
         {
-            resolver.ResolveNodeChildren(target, when.Node, WhenNode.NodeTraits, replacer);
+            // Resolve children from the original source when-node so active blocks emit content.
+            resolver.ResolveNodeChildren(target, source, WhenNode.NodeTraits, replacer);
         }
 
         // We return true to indicate that we handled the resolution of this node. However, we do not
@@ -66,7 +67,7 @@ public class WhenNodeTraits : NodeBaseTraits
     }
 }
 
-public class WhenNode(KdlNode node) : NodeBase<WhenNodeTraits>(node)
+internal class WhenNode(KdlNode node) : NodeBase<WhenNodeTraits>(node)
 {
     public EWhenMode Mode => GetEnumValue<EWhenMode>(0);
     public string? Arch => TryGetValue("arch", out string? value) ? value : null;

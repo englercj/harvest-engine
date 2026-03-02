@@ -12,7 +12,7 @@ public enum ESymbolsMode
     [KdlName("off")] Off,
 }
 
-public class SymbolsNodeTraits : NodeBaseTraits
+internal class SymbolsNodeTraits : NodeBaseTraits
 {
     public override string Name => "symbols";
 
@@ -35,7 +35,7 @@ public class SymbolsNodeTraits : NodeBaseTraits
     public override INode CreateNode(KdlNode node) => new SymbolsNode(node);
 }
 
-public class SymbolsNode(KdlNode node) : NodeBase<SymbolsNodeTraits>(node)
+internal class SymbolsNode(KdlNode node) : NodeBase<SymbolsNodeTraits>(node)
 {
     public ESymbolsMode SymbolsMode => GetEnumValue<ESymbolsMode>(0);
     public bool Embed => GetValue<bool>("embed");

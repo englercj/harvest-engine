@@ -4,12 +4,12 @@ using Harvest.Kdl;
 
 namespace Harvest.Make.Projects.Nodes;
 
-public class OutputsEntryNodeTraits : NodeSetEntryBaseTraits<OutputsNode>
+internal class OutputsEntryNodeTraits : NodeSetEntryBaseTraits<OutputsNode>
 {
     public override INode CreateNode(KdlNode node) => new OutputsEntryNode(node);
 }
 
-public class OutputsEntryNode(KdlNode node) : NodeSetEntryBase<OutputsEntryNodeTraits, OutputsNode>(node)
+internal class OutputsEntryNode(KdlNode node) : NodeSetEntryBase<OutputsEntryNodeTraits, OutputsNode>(node)
 {
     public string FilePath => Node.Name;
 }

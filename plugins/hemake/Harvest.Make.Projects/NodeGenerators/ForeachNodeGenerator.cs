@@ -7,7 +7,7 @@ using System.Text;
 
 namespace Harvest.Make.Projects.NodeGenerators;
 
-public class ForeachNodeGeneratorTraits : NodeGeneratorBaseTraits
+internal class ForeachNodeGeneratorTraits : NodeGeneratorBaseTraits
 {
     public override string Name => "foreach";
 
@@ -15,7 +15,7 @@ public class ForeachNodeGeneratorTraits : NodeGeneratorBaseTraits
         new ForeachNodeGenerator(projectService, resolver);
 }
 
-public class ForeachNodeGenerator(IProjectService projectService, NodeResolver resolver) : NodeGeneratorBase<ForeachNodeGeneratorTraits>(projectService, resolver)
+internal class ForeachNodeGenerator(IProjectService projectService, NodeResolver resolver) : NodeGeneratorBase<ForeachNodeGeneratorTraits>(projectService, resolver)
 {
     public override void GenerateNodes(KdlNode target, KdlNode generatorNode)
     {
@@ -58,7 +58,21 @@ public class ForeachNodeGenerator(IProjectService projectService, NodeResolver r
         foreach (KdlNode source in generatorNode.Children)
         {
             KdlNode generated = GenerateNode(source, replacer);
-            KdlNode resolved = _resolver.CreateResolvedNode(generated, includeChildren: true);
+
+            // Generated nodes need to inherit the scope where the foreach appears so trait
+            // resolution can infer set-entry node types from their parent scope.
+            target.AddChild(generated);
+
+            KdlNode resolved;
+            try
+            {
+                resolved = _resolver.CreateResolvedNode(generated, includeChildren: true);
+            }
+            finally
+            {
+                target.RemoveChild(generated);
+            }
+
             target.AddChild(resolved);
         }
     }

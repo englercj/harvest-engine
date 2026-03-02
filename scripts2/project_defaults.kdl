@@ -6,7 +6,7 @@
 option asan help="Enable Address Sanitizer"
 
 when option=asan {
-    toolset msvc incremental_link=#false
+    link_options incremental=#false
     sanitize address=#true
 }
 
@@ -102,7 +102,7 @@ when system="Win64 || WinArm64" {
 // ------------------------------------------------------------------------------------------------
 // Toolsets
 
-toolset msvc arch=x86_64 multiprocess=#true incremental_link=#true edit_and_continue=#true
+toolset msvc arch=x86_64 multiprocess=#true edit_and_continue=#true
 
 when any configuration=!Debug arch=!x86_64 option=asan {
     toolset msvc edit_and_continue=#false

@@ -24,7 +24,7 @@ public enum EPlatformSystem
     [KdlName("windows")] Windows,
 }
 
-public class PlatformNodeTraits : NodeBaseTraits
+internal class PlatformNodeTraits : NodeBaseTraits
 {
     public override string Name => "platform";
 
@@ -88,12 +88,12 @@ public class PlatformNodeTraits : NodeBaseTraits
     }
 }
 
-public class PlatformNode(KdlNode node) : NodeBase<PlatformNodeTraits>(node)
+internal class PlatformNode(KdlNode node) : NodeBase<PlatformNodeTraits>(node)
 {
     public string PlatformName => GetValue<string>(0);
     public EPlatformArch Arch => GetEnumValue<EPlatformArch>("arch");
     public EPlatformSystem System => GetEnumValue<EPlatformSystem>("system");
-    public EToolset Toolset => TryGetEnumValue<EToolset>("toolset") ?? GuessToolset();
+    public EToolset Toolset => TryGetEnumValue("toolset", out EToolset toolset) ? toolset : GuessToolset();
     public bool IsDefault => GetValue<bool>("default");
 
     private EToolset GuessToolset()

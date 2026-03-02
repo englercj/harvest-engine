@@ -12,7 +12,7 @@ public enum ERuntime
     [KdlName("release")] Release,
 }
 
-public class RuntimeNodeTraits : NodeBaseTraits
+internal class RuntimeNodeTraits : NodeBaseTraits
 {
     public override string Name => "runtime";
 
@@ -35,7 +35,7 @@ public class RuntimeNodeTraits : NodeBaseTraits
     public override INode CreateNode(KdlNode node) => new RuntimeNode(node);
 }
 
-public class RuntimeNode(KdlNode node) : NodeBase<RuntimeNodeTraits>(node)
+internal class RuntimeNode(KdlNode node) : NodeBase<RuntimeNodeTraits>(node)
 {
     public ERuntime Runtime => GetEnumValue<ERuntime>(0);
     public bool StaticLink => GetValue<bool>("static");

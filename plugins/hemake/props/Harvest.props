@@ -1,0 +1,19 @@
+<Project>
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <Prefer32Bit>false</Prefer32Bit>
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+
+    <!--
+        MVVM toolkit needs preview for partial property source generation.
+        Once there is a stable release that works we can switch to that.
+    -->
+    <LangVersion>preview</LangVersion>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- Enable nullability support in JSON serialization by default -->
+    <RuntimeHostConfigurationOption Include="System.Text.Json.Serialization.RespectNullableAnnotationsDefault" Value="true" />
+  </ItemGroup>
+</Project>

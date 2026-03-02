@@ -15,8 +15,10 @@ Defines a plugin that can be imported into a project.
 
 - [`authors`](authors_node.md)
 - [`build_rule`](build_rule_node.md)
+- [`import`](import_node.md)
 - [`module`](module_node.md)
 - [`install`](install_node.md)
+- [`when`](when_node.md)
 
 ## Scopes
 

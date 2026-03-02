@@ -24,6 +24,7 @@ The root node of a Harvest Project structure.
 - [`dialect`](dialect_node.md)
 - [`exceptions`](exceptions_node.md)
 - [`external`](external_node.md)
+- [`files`](files_node.md)
 - [`floating_point`](floating_point_node.md)
 - [`import`](import_node.md)
 - [`include_dirs`](include_dirs_node.md)
@@ -36,10 +37,11 @@ The root node of a Harvest Project structure.
 - [`runtime`](runtime_node.md)
 - [`sanitize`](sanitize_node.md)
 - [`symbols`](symbols_node.md)
+- [`system`](system_node.md)
 - [`tags`](tags_node.md)
 - [`toolset`](toolset_node.md)
 - [`warnings`](warnings_node.md)
-- [`when`](when-node.md)
+- [`when`](when_node.md)
 
 ## Scopes
 

@@ -15,7 +15,7 @@ public enum EDependencyKind
     [KdlName("system")] System,
 }
 
-public class DependenciesEntryNodeTraits : NodeSetEntryBaseTraits<DependenciesNode>
+internal class DependenciesEntryNodeTraits : NodeSetEntryBaseTraits<DependenciesNode>
 {
     public override IReadOnlyDictionary<string, NodeValueDef> PropertyDefs { get; } = new SortedDictionary<string, NodeValueDef>()
     {
@@ -33,12 +33,23 @@ public class DependenciesEntryNodeTraits : NodeSetEntryBaseTraits<DependenciesNo
     public override INode CreateNode(KdlNode node) => new DependenciesEntryNode(node);
 }
 
-public class DependenciesEntryNode(KdlNode node) : NodeSetEntryBase<DependenciesEntryNodeTraits, DependenciesNode>(node), IEquatable<DependenciesEntryNode>
+internal class DependenciesEntryNode(KdlNode node) : NodeSetEntryBase<DependenciesEntryNodeTraits, DependenciesNode>(node), IEquatable<DependenciesEntryNode>
 {
     public string DependencyName => Kind == EDependencyKind.File ? ResolvePath(Node.Name) : Node.Name;
     public EDependencyKind Kind => GetEnumValue<EDependencyKind>("kind");
     public bool IsExternal => GetValue<bool>("external");
     public bool IsWholeArchive => GetValue<bool>("whole_archive");
+
+    private string ResolvePath(string path)
+    {
+        if (Path.IsPathRooted(path))
+        {
+            return path;
+        }
+
+        string baseDir = Path.GetDirectoryName(Node.SourceInfo.FilePath) ?? Directory.GetCurrentDirectory();
+        return Path.GetFullPath(path, baseDir);
+    }
 
     public override int GetHashCode() => HashCode.Combine(DependencyName, Kind, IsExternal, IsWholeArchive);
 

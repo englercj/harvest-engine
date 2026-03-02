@@ -34,7 +34,7 @@ public enum ECodegenMode
     [KdlName("armv9.4")] ARMv9_4,
 }
 
-public class CodegenNodeTraits : NodeBaseTraits
+internal class CodegenNodeTraits : NodeBaseTraits
 {
     public override string Name => "codegen";
 
@@ -52,7 +52,7 @@ public class CodegenNodeTraits : NodeBaseTraits
     public override INode CreateNode(KdlNode node) => new CodegenNode(node);
 }
 
-public class CodegenNode(KdlNode node) : NodeBase<CodegenNodeTraits>(node)
+internal class CodegenNode(KdlNode node) : NodeBase<CodegenNodeTraits>(node)
 {
     public ECodegenMode CodegenMode => GetEnumValue<ECodegenMode>(0);
 }

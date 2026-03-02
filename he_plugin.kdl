@@ -10,6 +10,3 @@ plugin he.engine-root version="0.1.0" license="UNLICENSED" {
         }
     }
 }
-
-import "contrib/*"
-import "plugins/*"

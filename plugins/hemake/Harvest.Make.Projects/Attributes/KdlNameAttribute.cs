@@ -3,7 +3,7 @@
 namespace Harvest.Make.Projects.Attributes;
 
 [AttributeUsage(AttributeTargets.Field)]
-public class KdlNameAttribute(string name) : Attribute
+internal class KdlNameAttribute(string name) : Attribute
 {
     public readonly string Name = name;
 }

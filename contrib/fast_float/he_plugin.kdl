@@ -8,7 +8,7 @@ plugin fastfloat.fast_float version="6.1.0" license="MIT" {
         "João Paulo Magalhaes"
     }
 
-    module fast_float kind=header group="engine/contrib" {
+    module fast_float kind=lib_header group="engine/contrib" {
         warnings level=off
 
         files { "${module.path:dir}/include/**.h" }

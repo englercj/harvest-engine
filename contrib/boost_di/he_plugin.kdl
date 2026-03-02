@@ -9,7 +9,7 @@ plugin boost-ext.di version="1.3.0" license="BSL-1.0" {
         fetch github user=boost-ext repo=di ref="v${plugin.version}"
     }
 
-    module boost_di kind=header group="engine/contrib" {
+    module boost_di kind=lib_header group="engine/contrib" {
         files { "include/**" }
 
         public {

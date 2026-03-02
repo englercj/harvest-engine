@@ -6,7 +6,7 @@ using System.Numerics;
 
 namespace Harvest.Make.Projects;
 
-public class WhenExpressionEvaluator
+internal class WhenExpressionEvaluator
 {
     static readonly HashSet<char> s_nonLiteralCharacters = ['!', '(', ')', '&', '|', '^'];
 

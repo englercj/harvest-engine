@@ -13,7 +13,7 @@ public enum EFloatingPointMode
     [KdlName("strict")] Strict,
 }
 
-public class FloatingPointNodeTraits : NodeBaseTraits
+internal class FloatingPointNodeTraits : NodeBaseTraits
 {
     public override string Name => "floating_point";
 
@@ -36,7 +36,7 @@ public class FloatingPointNodeTraits : NodeBaseTraits
     public override INode CreateNode(KdlNode node) => new FloatingPointNode(node);
 }
 
-public class FloatingPointNode(KdlNode node) : NodeBase<FloatingPointNodeTraits>(node)
+internal class FloatingPointNode(KdlNode node) : NodeBase<FloatingPointNodeTraits>(node)
 {
     public EFloatingPointMode Mode => GetEnumValue<EFloatingPointMode>(0);
     public bool AllowExceptions => GetValue<bool>("exceptions");

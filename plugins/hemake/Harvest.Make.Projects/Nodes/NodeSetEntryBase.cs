@@ -4,7 +4,7 @@ using Harvest.Kdl;
 
 namespace Harvest.Make.Projects.Nodes;
 
-public abstract class NodeSetEntryBaseTraits<TParent> : NodeBaseTraits
+internal abstract class NodeSetEntryBaseTraits<TParent> : NodeBaseTraits
     where TParent : class, INode
 {
     public override IReadOnlyList<string> ValidScopes =>
@@ -13,7 +13,7 @@ public abstract class NodeSetEntryBaseTraits<TParent> : NodeBaseTraits
     ];
 }
 
-public class NodeSetEntryBase<TTraits, TParent>(KdlNode node) : NodeBase<TTraits>(node)
+internal class NodeSetEntryBase<TTraits, TParent>(KdlNode node) : NodeBase<TTraits>(node)
     where TTraits : NodeSetEntryBaseTraits<TParent>, new()
     where TParent : class, INode
 {

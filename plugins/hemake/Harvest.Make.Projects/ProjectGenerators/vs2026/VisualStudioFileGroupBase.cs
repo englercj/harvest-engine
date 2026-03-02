@@ -6,7 +6,7 @@ using static Harvest.Make.Projects.ProjectGenerators.vs2026.IVisualStudioFileGro
 
 namespace Harvest.Make.Projects.ProjectGenerators.vs2026;
 
-public abstract class VisualStudioFileGroupBase(IProjectService projectService, string vsProjectPath) : IVisualStudioFileGroup
+internal abstract class VisualStudioFileGroupBase(IProjectService projectService, string vsProjectPath) : IVisualStudioFileGroup
 {
     public abstract int Priority { get; }
     public abstract string GroupTag { get; }
@@ -18,7 +18,7 @@ public abstract class VisualStudioFileGroupBase(IProjectService projectService, 
     public IReadOnlyList<FileEntry> Files => _files;
 
     private readonly List<FileEntry> _generatedFiles = [];
-    public IReadOnlyList<FileEntry> GeneratedFiles => _files;
+    public IReadOnlyList<FileEntry> GeneratedFiles => _generatedFiles;
 
     public abstract bool CanHandleFile(string fullPath, EFileAction action, EFileBuildRule buildRule);
 
@@ -27,9 +27,9 @@ public abstract class VisualStudioFileGroupBase(IProjectService projectService, 
         return CanHandleFile(entry.FilePath, entry.FileAction, entry.FileBuildRule);
     }
 
-    public void AddFile(ResolvedProjectTree projectTree, FilesEntryNode entry)
+    public void AddFile(ResolvedProjectTree projectTree, ModuleNode module, FilesEntryNode entry)
     {
-        _files.Add(new FileEntry(projectTree, entry.FilePath)
+        _files.Add(new FileEntry(projectTree, module, entry.FilePath)
         {
             Action = entry.FileAction,
             BuildRule = entry.FileBuildRule,
@@ -38,13 +38,13 @@ public abstract class VisualStudioFileGroupBase(IProjectService projectService, 
         });
     }
 
-    public void AddGeneratedFile(ResolvedProjectTree projectTree, string generatedFilePath, string sourceFilePath, EFileAction action, EFileBuildRule buildRule)
+    public void AddGeneratedFile(ResolvedProjectTree projectTree, ModuleNode module, string generatedFilePath, string sourceFilePath, EFileAction action, EFileBuildRule buildRule)
     {
-        _generatedFiles.Add(new FileEntry(projectTree, generatedFilePath)
+        _generatedFiles.Add(new FileEntry(projectTree, module, generatedFilePath)
         {
             Action = action,
             BuildRule = buildRule,
-            BuildRuleName = string.Empty,
+            BuildRuleName = "",
             DependsOnPath = sourceFilePath,
             IsExcludedFromBuild = false, // TODO: make this configurable?
         });
@@ -62,15 +62,16 @@ public abstract class VisualStudioFileGroupBase(IProjectService projectService, 
 
     public void SetupVirtualPaths()
     {
-        if (Files.Count == 0)
+        List<FileEntry> allFiles = [.. _files, .. _generatedFiles];
+        if (allFiles.Count == 0)
         {
             return;
         }
 
-        string commonDir = GetCommonParentDirectoryName();
+        string commonDir = GetCommonParentDirectoryName(allFiles);
         int commonDirLength = commonDir.Length;
 
-        foreach (FileEntry file in _files)
+        foreach (FileEntry file in allFiles)
         {
             file.VirtualPath = file.FullPath[commonDirLength..];
         }
@@ -210,20 +211,20 @@ public abstract class VisualStudioFileGroupBase(IProjectService projectService, 
         }
     }
 
-    protected string GetCommonParentDirectoryName()
+    protected static string GetCommonParentDirectoryName(IReadOnlyList<FileEntry> files)
     {
-        int commonStrLen = Files[0].FullPath.Length;
+        int commonStrLen = files[0].FullPath.Length;
 
-        for (int i = 1; i < Files.Count; i++)
+        for (int i = 1; i < files.Count; i++)
         {
-            FileEntry file = Files[i];
+            FileEntry file = files[i];
             string fullPath = file.FullPath;
 
             commonStrLen = Math.Min(commonStrLen, fullPath.Length);
 
             for (int j = 0; j < commonStrLen; j++)
             {
-                if (Files[i].FullPath[j] != Files[0].FullPath[j])
+                if (files[i].FullPath[j] != files[0].FullPath[j])
                 {
                     commonStrLen = j;
                     break;
@@ -231,14 +232,14 @@ public abstract class VisualStudioFileGroupBase(IProjectService projectService, 
             }
         }
 
-        string commonStr = Files[0].FullPath[..commonStrLen];
+        string commonStr = files[0].FullPath[..commonStrLen];
 
         // If it doesn't end with a path separator, then the last segment is a string prefix
         // of a file or directory name. We remove it to get the common ancestor directory path.
-        if (!commonStr.EndsWith(Path.PathSeparator))
+        if (!commonStr.EndsWith(Path.DirectorySeparatorChar))
         {
             string? dirName = Path.GetDirectoryName(commonStr);
-            commonStr = string.IsNullOrEmpty(dirName) ? string.Empty : dirName + Path.PathSeparator;
+            commonStr = string.IsNullOrEmpty(dirName) ? "" : dirName + Path.DirectorySeparatorChar;
         }
 
         return commonStr;

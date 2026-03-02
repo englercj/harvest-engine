@@ -25,7 +25,7 @@ public enum EModuleLanguage
     [KdlName("csharp")] CSharp,
 }
 
-public class ModuleNodeTraits : NodeBaseTraits
+internal class ModuleNodeTraits : NodeBaseTraits
 {
     public override string Name => "module";
 
@@ -44,7 +44,7 @@ public class ModuleNodeTraits : NodeBaseTraits
         { "kind", NodeValueDef_Enum<EModuleKind>.Required(EModuleKind.Custom) },
         { "group", NodeValueDef_String.Optional() },
         { "language", NodeValueDef_Enum<EModuleLanguage>.Optional(EModuleLanguage.Cpp) },
-        { "project_file", NodeValueDef_String.Optional() },
+        { "project_file", NodeValueDef_Path.Optional() },
         { "entrypoint", NodeValueDef_String.Optional() },
         { "hemake_extension", NodeValueDef_Bool.Optional(false) },
         { "target_name", NodeValueDef_String.Optional() },
@@ -84,14 +84,14 @@ public class ModuleNodeTraits : NodeBaseTraits
                 // the import library (.lib) instead of the shared library (.dll).
                 bool isWindows = projectContext.Platform.System == EPlatformSystem.Windows;
                 EModuleKind moduleKind = isWindows && module.MakeImportLib && module.Kind == EModuleKind.LibShared ? EModuleKind.LibStatic : module.Kind;
-                string targetDir = module.GetTargetDir(projectContext, moduleKind);
+                string targetDir = module.GetTargetDir(projectContext.BuildOutput, moduleKind);
                 string targetName = module.TargetName;
                 string targetExtension = module.GetTargetExtension(projectContext);
                 return Path.Join(targetDir, targetName + targetExtension);
             }
             case "gen_dir":
             {
-                return module.GetGenDir(projectContext);
+                return module.GetGenDir(projectContext.BuildOutput);
             }
         }
 
@@ -105,7 +105,7 @@ public class ModuleNodeTraits : NodeBaseTraits
     }
 }
 
-public class ModuleNode(KdlNode node) : NodeBase<ModuleNodeTraits>(node)
+internal class ModuleNode(KdlNode node) : NodeBase<ModuleNodeTraits>(node)
 {
     public string ModuleName => GetValue<string>(0);
     public EModuleKind Kind => GetEnumValue<EModuleKind>("kind");
@@ -148,6 +148,11 @@ public class ModuleNode(KdlNode node) : NodeBase<ModuleNodeTraits>(node)
 
     public string GetTargetDir(BuildOutputNode buildOutput, EModuleKind? kindOverride = null)
     {
+        if (TargetDir is string targetDir)
+        {
+            return targetDir;
+        }
+
         return (kindOverride ?? Kind) switch
         {
             EModuleKind.AppConsole => GetBinDir(buildOutput),

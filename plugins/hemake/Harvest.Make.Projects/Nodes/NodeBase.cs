@@ -7,9 +7,9 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace Harvest.Make.Projects.Nodes;
 
-public abstract class NodeBaseTraits : INodeTraits
+internal abstract class NodeBaseTraits : INodeTraits
 {
-    public virtual string Name => string.Empty;
+    public virtual string Name => "";
     public virtual IReadOnlyList<string> ValidScopes => [];
     public virtual IReadOnlyList<NodeValueDef> ArgumentDefs => [];
     public virtual IReadOnlyDictionary<string, NodeValueDef> PropertyDefs => new SortedDictionary<string, NodeValueDef>();
@@ -21,7 +21,7 @@ public abstract class NodeBaseTraits : INodeTraits
 
     public virtual string? TryResolveToken(ProjectContext projectContext, KdlNode contextNode, string propertyName)
     {
-        if (propertyName == "file_path")
+        if (propertyName == "file_path" || propertyName == "path")
         {
             return contextNode.SourceInfo.FilePath;
         }
@@ -32,14 +32,14 @@ public abstract class NodeBaseTraits : INodeTraits
     public virtual bool TryResolveChild(KdlNode target, KdlNode source, StringTokenReplacer replacer, NodeResolver resolver, out KdlNode? resolvedNode)
     {
         resolvedNode = null;
-        return true;
+        return false;
     }
 
     #region Validation
 
     public virtual void Validate(KdlNode node)
     {
-        Debug.Assert(node.Name == Name);
+        Debug.Assert(string.IsNullOrEmpty(Name) || node.Name == Name);
 
         ValidateScope(node);
         ValidateArguments(node);
@@ -147,7 +147,7 @@ public abstract class NodeBaseTraits : INodeTraits
 
     public bool TryGetValue<T>(KdlNode node, int index, [MaybeNullWhen(false)] out T value)
     {
-        Debug.Assert(node.Name == Name);
+        Debug.Assert(string.IsNullOrEmpty(Name) || node.Name == Name);
 
         if (node.TryGetValue(index, out value) && value is not null)
         {
@@ -169,7 +169,7 @@ public abstract class NodeBaseTraits : INodeTraits
 
     public bool TryGetEnumValue<T>(KdlNode node, int index, [MaybeNullWhen(false)] out T value) where T : struct, Enum
     {
-        Debug.Assert(node.Name == Name);
+        Debug.Assert(string.IsNullOrEmpty(Name) || node.Name == Name);
 
         if (node.TryGetValue(index, out string? valueString) && valueString is not null)
         {
@@ -214,7 +214,7 @@ public abstract class NodeBaseTraits : INodeTraits
 
     public bool TryGetValue<T>(KdlNode node, string key, [MaybeNullWhen(false)] out T value)
     {
-        Debug.Assert(node.Name == Name);
+        Debug.Assert(string.IsNullOrEmpty(Name) || node.Name == Name);
 
         if (node.TryGetValue(key, out value))
         {
@@ -235,7 +235,7 @@ public abstract class NodeBaseTraits : INodeTraits
 
     public bool TryGetEnumValue<T>(KdlNode node, string key, [MaybeNullWhen(false)] out T value) where T : struct, Enum
     {
-        Debug.Assert(node.Name == Name);
+        Debug.Assert(string.IsNullOrEmpty(Name) || node.Name == Name);
 
         if (node.TryGetValue(key, out string? valueString) && valueString is not null)
         {
@@ -275,7 +275,7 @@ public abstract class NodeBaseTraits : INodeTraits
     #endregion
 }
 
-public abstract class NodeBase<TTraits> : INode
+internal abstract class NodeBase<TTraits> : INode
     where TTraits : NodeBaseTraits, new()
 {
     private static readonly TTraits _nodeTraits = new();

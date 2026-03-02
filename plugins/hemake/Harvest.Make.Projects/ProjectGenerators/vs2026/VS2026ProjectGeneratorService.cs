@@ -7,26 +7,26 @@ using static Harvest.Make.Projects.ModuleGroupTree;
 
 namespace Harvest.Make.Projects.ProjectGenerators.vs2026;
 
-[Service<IProjectGeneratorService>(Key = ProjectGeneratorNames.VS2026)]
-public class VS2026ProjectGeneratorService(
+[TransientService<IProjectGeneratorService>]
+internal class VS2026ProjectGeneratorService(
     IProjectService projectService,
     ILogger<VS2026ProjectGeneratorService> logger,
     ILoggerFactory loggerFactory)
     : IProjectGeneratorService
 {
-    private readonly IProjectService _projectService = projectService;
-    private readonly ILogger _logger = logger;
-    private readonly ILoggerFactory _loggerFactory = loggerFactory;
+    public const string GeneratorName = "vs2026";
+    public string Name => GeneratorName;
+
     private readonly ModuleGroupTree _groupTree = new();
 
     public async Task GenerateProjectFilesAsync()
     {
         BuildModuleTree();
 
-        ProjectNode project = _projectService.GetGlobalNode<ProjectNode>();
+        ProjectNode project = projectService.GetGlobalNode<ProjectNode>();
         Directory.CreateDirectory(project.BuildDir);
 
-        SlnxGenerator slnGenerator = new(_projectService, _loggerFactory.CreateLogger<SlnxGenerator>());
+        SlnxGenerator slnGenerator = new(projectService, loggerFactory.CreateLogger<SlnxGenerator>());
         await slnGenerator.GenerateAsync(_groupTree);
 
         List<Task> projectGenerationTasks = [];
@@ -41,12 +41,21 @@ public class VS2026ProjectGeneratorService(
                 continue;
             }
 
+            if (TryGetModule(entry.Name, out ModuleNode? module)
+                && module is not null
+                && !string.IsNullOrEmpty(module.ProjectFile))
+            {
+                // A custom project file was specified, so we reference that file in the solution
+                // and skip generated project output for this module.
+                continue;
+            }
+
             switch (moduleEntry.Language)
             {
                 case EModuleLanguage.C:
                 case EModuleLanguage.Cpp:
                 {
-                    VcxprojGenerator generator = new(_projectService, _loggerFactory.CreateLogger<VcxprojGenerator>());
+                    VcxprojGenerator generator = new(projectService, loggerFactory.CreateLogger<VcxprojGenerator>());
                     Task task = generator.GenerateAsync(entry.Name);
                     projectGenerationTasks.Add(task);
                     break;
@@ -54,7 +63,7 @@ public class VS2026ProjectGeneratorService(
                 case EModuleLanguage.CSharp:
                 {
                     throw new NotImplementedException("C# project generation has not yet been implemented");
-                    //CsprojGenerator generator = new(_projectService,);
+                    //CsprojGenerator generator = new(projectService,);
                     //Task task = generator.GenerateAsync(entry.Module);
                     //projectGenerationTasks.Add(task);
                     //break;
@@ -71,11 +80,11 @@ public class VS2026ProjectGeneratorService(
 
     private void BuildModuleTree()
     {
-        ProjectNode project = _projectService.GetGlobalNode<ProjectNode>();
+        ProjectNode project = projectService.GetGlobalNode<ProjectNode>();
         Entry? startupEntry = null;
 
         _groupTree.Clear();
-        foreach ((_, ResolvedProjectTree projectTree) in _projectService.ResolvedProjectTrees)
+        foreach ((_, ResolvedProjectTree projectTree) in projectService.ResolvedProjectTrees)
         {
             if (!VisualStudioUtils.IsSupportedPlatform(projectTree.ProjectContext.Platform))
             {
@@ -108,5 +117,19 @@ public class VS2026ProjectGeneratorService(
             parent.Children.Insert(0, startupEntry);
             startupEntry = parent;
         }
+    }
+
+    private bool TryGetModule(string moduleName, out ModuleNode? module)
+    {
+        foreach ((ResolvedProjectTree projectTree, _) in VisualStudioUtils.EnumerateConfigs(projectService))
+        {
+            if (projectTree.IndexedNodes.TryGetNode(moduleName, out module))
+            {
+                return true;
+            }
+        }
+
+        module = null;
+        return false;
     }
 }

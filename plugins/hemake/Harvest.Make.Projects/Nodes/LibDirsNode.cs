@@ -4,7 +4,7 @@ using Harvest.Kdl;
 
 namespace Harvest.Make.Projects.Nodes;
 
-public class LibDirsNodeTraits : NodeSetBaseTraits<LibDirsEntryNode>
+internal class LibDirsNodeTraits : NodeSetBaseTraits<LibDirsEntryNode>
 {
     public override string Name => "lib_dirs";
 
@@ -25,7 +25,7 @@ public class LibDirsNodeTraits : NodeSetBaseTraits<LibDirsEntryNode>
     public override INode CreateNode(KdlNode node) => new LibDirsNode(node);
 }
 
-public class LibDirsNode(KdlNode node) : NodeSetBase<LibDirsNodeTraits, LibDirsEntryNode>(node)
+internal class LibDirsNode(KdlNode node) : NodeSetBase<LibDirsNodeTraits, LibDirsEntryNode>(node)
 {
     public bool IsSystem => GetValue<bool>("system");
 

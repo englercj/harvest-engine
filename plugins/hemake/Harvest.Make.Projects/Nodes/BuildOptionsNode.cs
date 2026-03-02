@@ -33,7 +33,7 @@ public enum EDpiAwareMode
     [KdlName("high_permonitor")] PerMonitorHighDpiAware,
 }
 
-public class BuildOptionsNodeTraits : NodeSetBaseTraits<BuildOptionsEntryNode>
+internal class BuildOptionsNodeTraits : NodeSetBaseTraits<BuildOptionsEntryNode>
 {
     public override string Name => "build_options";
 
@@ -77,7 +77,7 @@ public class BuildOptionsNodeTraits : NodeSetBaseTraits<BuildOptionsEntryNode>
     public override INode CreateNode(KdlNode node) => new BuildOptionsNode(node);
 }
 
-public class BuildOptionsNode(KdlNode node) : NodeSetBase<BuildOptionsNodeTraits, BuildOptionsEntryNode>(node)
+internal class BuildOptionsNode(KdlNode node) : NodeSetBase<BuildOptionsNodeTraits, BuildOptionsEntryNode>(node)
 {
     public EBuildClrMode ClrMode => GetEnumValue<EBuildClrMode>("clr");
     public EBuildMfcMode MfcMode => GetEnumValue<EBuildMfcMode>("mfc");

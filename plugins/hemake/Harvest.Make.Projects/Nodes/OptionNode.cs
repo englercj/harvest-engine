@@ -16,7 +16,7 @@ public enum EOptionType
     [KdlName("string")] String,
 }
 
-public class OptionNodeTraits : NodeBaseTraits
+internal class OptionNodeTraits : NodeBaseTraits
 {
     public override string Name => "option";
 
@@ -63,7 +63,7 @@ public class OptionNodeTraits : NodeBaseTraits
             }
             case EOptionType.Int:
             {
-                if (!ReflectionUtils.IsInstanceOfGenericType(value.GetType(), typeof(KdlNumber<>)) || !ReflectionUtils.IsTypeIntegral(value.GetType().GetGenericArguments()[0]))
+                if (!value.GetType().IsInstanceOfGenericType<KdlNumber<>>() || !ReflectionUtils.IsTypeIntegral(value.GetType().GetGenericArguments()[0]))
                 {
                     throw new NodeParseException(node, $"Default value for option {option.OptionName} must be a integer.");
                 }
@@ -71,7 +71,7 @@ public class OptionNodeTraits : NodeBaseTraits
             }
             case EOptionType.UInt:
             {
-                if (!ReflectionUtils.IsInstanceOfGenericType(value.GetType(), typeof(KdlNumber<>)) || !ReflectionUtils.IsTypeIntegral(value.GetType().GetGenericArguments()[0]))
+                if (!value.GetType().IsInstanceOfGenericType<KdlNumber<>>() || !ReflectionUtils.IsTypeUnsignedIntegral(value.GetType().GetGenericArguments()[0]))
                 {
                     throw new NodeParseException(node, $"Default value for option {option.OptionName} must be an unsigned integer.");
                 }
@@ -115,7 +115,7 @@ public class OptionNodeTraits : NodeBaseTraits
     }
 }
 
-public class OptionNode(KdlNode node) : NodeBase<OptionNodeTraits>(node)
+internal class OptionNode(KdlNode node) : NodeBase<OptionNodeTraits>(node)
 {
     public string OptionName => GetValue<string>(0);
     public EOptionType OptionType => GetEnumValue<EOptionType>("type");

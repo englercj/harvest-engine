@@ -6,7 +6,7 @@ using static Harvest.Make.Projects.ModuleGroupTree;
 
 namespace Harvest.Make.Projects;
 
-public class ModuleGroupTree
+internal class ModuleGroupTree
 {
     private static readonly Guid _namespaceProjectId = new("77D82CDB-779C-4088-925A-D97DFC780CBB");
 
@@ -28,7 +28,7 @@ public class ModuleGroupTree
         return $"{module.Group ?? ""}/{module.ModuleName}";
     }
 
-    public class Entry(string path)
+    internal class Entry(string path)
     {
         public string FullPath => path;
         public string Name { get; } = Path.GetFileName(path);
@@ -53,7 +53,7 @@ public class ModuleGroupTree
         }
     }
 
-    public class ModuleEntry(ModuleNode module) : Entry(GetModulePath(module))
+    internal class ModuleEntry(ModuleNode module) : Entry(GetModulePath(module))
     {
         public EModuleLanguage Language => module.Language;
     }

@@ -6,7 +6,7 @@ using System.Numerics;
 
 namespace Harvest.Make.Projects;
 
-public abstract class NodeValueDef(Type valueType)
+internal abstract class NodeValueDef(Type valueType)
 {
     public Type ValueType { get; set; } = valueType;
     public bool IsRequired { get; set; } = false;
@@ -14,7 +14,7 @@ public abstract class NodeValueDef(Type valueType)
     public List<object> ValidValues { get; set; } = [];
 }
 
-public abstract class NodeValueDef<T> : NodeValueDef where T : KdlValue
+internal abstract class NodeValueDef<T> : NodeValueDef where T : KdlValue
 {
     public NodeValueDef() : base(typeof(T)) { }
 
@@ -25,7 +25,7 @@ public abstract class NodeValueDef<T> : NodeValueDef where T : KdlValue
     }
 }
 
-public class NodeValueDef_Bool : NodeValueDef<KdlBool>
+internal class NodeValueDef_Bool : NodeValueDef<KdlBool>
 {
     public static NodeValueDef_Bool Required(bool defaultValue = false) => new()
     {
@@ -39,7 +39,7 @@ public class NodeValueDef_Bool : NodeValueDef<KdlBool>
     };
 }
 
-public class NodeValueDef_Enum<T> : NodeValueDef<KdlString> where T : struct, Enum
+internal class NodeValueDef_Enum<T> : NodeValueDef<KdlString> where T : struct, Enum
 {
     protected static readonly List<object> s_validValues = [.. KdlEnumUtils.GetNames<T>()];
 
@@ -55,7 +55,7 @@ public class NodeValueDef_Enum<T> : NodeValueDef<KdlString> where T : struct, En
     };
 }
 
-public class NodeValueDef_Number<T> : NodeValueDef<KdlNumber<T>> where T : struct, INumber<T>
+internal class NodeValueDef_Number<T> : NodeValueDef<KdlNumber<T>> where T : struct, INumber<T>
 {
     public static NodeValueDef_Number<T> Required(T defaultValue = default) => new()
     {
@@ -69,7 +69,7 @@ public class NodeValueDef_Number<T> : NodeValueDef<KdlNumber<T>> where T : struc
     };
 }
 
-public class NodeValueDef_String : NodeValueDef<KdlString>
+internal class NodeValueDef_String : NodeValueDef<KdlString>
 {
     public static NodeValueDef_String Required(string defaultValue = "") => new ()
     {
@@ -83,7 +83,7 @@ public class NodeValueDef_String : NodeValueDef<KdlString>
     };
 }
 
-public class NodeValueDef_Path : NodeValueDef<KdlString>
+internal class NodeValueDef_Path : NodeValueDef<KdlString>
 {
     public static NodeValueDef_String Required(string defaultValue = "") => new()
     {

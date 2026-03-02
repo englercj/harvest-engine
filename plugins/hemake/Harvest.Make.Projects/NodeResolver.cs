@@ -7,7 +7,7 @@ using Harvest.Make.Projects.Nodes;
 
 namespace Harvest.Make.Projects;
 
-public class NodeResolver(ProjectContext projectContext)
+internal class NodeResolver(ProjectContext projectContext)
 {
     public ProjectContext ProjectContext => projectContext;
 
@@ -65,6 +65,11 @@ public class NodeResolver(ProjectContext projectContext)
         for (int i = 0; i < traits.ArgumentDefs.Count; ++i)
         {
             NodeValueDef def = traits.ArgumentDefs[i];
+            if (def.DefaultValue is KdlNull)
+            {
+                continue;
+            }
+
             target.Arguments.Add(CreateResolvedNodeValue(def.DefaultValue, def, replacer));
         }
     }
@@ -91,7 +96,23 @@ public class NodeResolver(ProjectContext projectContext)
     {
         foreach ((string key, KdlValue value) in source.Properties)
         {
-            NodeValueDef def = traits.PropertyDefs[key];
+            if (!traits.PropertyDefs.TryGetValue(key, out NodeValueDef? def))
+            {
+                // Allow passthrough properties for node-specific metadata (for example plugin metadata keys).
+                // Resolve tokens for string values, but skip path normalization without an explicit value def.
+                if (value is KdlString valueString)
+                {
+                    string resolvedValue = replacer.ReplaceTokens(valueString.Value);
+                    target.Properties[key] = new KdlString(resolvedValue, value.Type) { SourceInfo = value.SourceInfo };
+                }
+                else
+                {
+                    target.Properties[key] = value.Clone();
+                }
+
+                continue;
+            }
+
             target.Properties[key] = CreateResolvedNodeValue(value, def, replacer);
         }
     }
@@ -100,6 +121,11 @@ public class NodeResolver(ProjectContext projectContext)
     {
         foreach ((string key, NodeValueDef def) in traits.PropertyDefs)
         {
+            if (def.DefaultValue is KdlNull)
+            {
+                continue;
+            }
+
             target.Properties[key] = CreateResolvedNodeValue(def.DefaultValue, def, replacer);
         }
     }
@@ -131,6 +157,16 @@ public class NodeResolver(ProjectContext projectContext)
         string resolvedName = replacer.ReplaceTokens(source.Name);
         KdlNode result = new(resolvedName, source.Type) { SourceInfo = source.SourceInfo };
 
+        INodeTraits traits = ProjectContext.ProjectService.GetNodeTraits(source);
+
+        // First resolve defaults from the node traits
+        ResolveDefaultNodeArguments(result, traits, replacer);
+        ResolveDefaultNodeProperties(result, traits, replacer);
+
+        // Then resolve any arguments/properties from the source node, which will override defaults
+        ResolveNodeArguments(result, source, traits, replacer);
+        ResolveNodeProperties(result, source, traits, replacer);
+
         if (resolvedName == PluginNode.NodeTraits.Name)
         {
             PluginNode plugin = new(result);
@@ -153,19 +189,8 @@ public class NodeResolver(ProjectContext projectContext)
         }
         else if (resolvedName == BuildOutputNode.NodeTraits.Name)
         {
-            BuildOutputNode buildOutput = new(result);
-            ProjectContext.BuildOutput = buildOutput;
+            ProjectContext.BuildOutput = new BuildOutputNode(result);
         }
-
-        INodeTraits traits = ProjectContext.ProjectService.GetNodeTraits(result);
-
-        // First resolve defaults from the node traits
-        ResolveDefaultNodeArguments(result, traits, replacer);
-        ResolveDefaultNodeProperties(result, traits, replacer);
-
-        // Then resolve any arguments/properties from the source node, which will override defaults
-        ResolveNodeArguments(result, source, traits, replacer);
-        ResolveNodeProperties(result, source, traits, replacer);
 
         if (includeChildren)
         {
@@ -197,13 +222,14 @@ public class NodeResolver(ProjectContext projectContext)
         foreach (KdlNode child in source.Children)
         {
             // Generators and extensions are deferred until after the initial tree is built
-            if (source.Name.StartsWith(':') || source.Name.StartsWith('+'))
+            if (child.Name.StartsWith(':') || child.Name.StartsWith('+'))
             {
-                _deferredNodes.Add(new DeferredNode(target, source));
+                _deferredNodes.Add(new DeferredNode(target, child));
                 continue;
             }
 
-            if (!traits.TryResolveChild(target, child, replacer, this, out KdlNode? resolvedChild))
+            INodeTraits childTraits = ProjectContext.ProjectService.GetNodeTraits(child);
+            if (!childTraits.TryResolveChild(target, child, replacer, this, out KdlNode? resolvedChild))
             {
                 resolvedChild = CreateResolvedNode(child);
             }

@@ -4,7 +4,7 @@ using Harvest.Kdl;
 
 namespace Harvest.Make.Projects;
 
-public class NodeParseException : Exception
+internal class NodeParseException : Exception
 {
     public KdlNode Node { get; }
 

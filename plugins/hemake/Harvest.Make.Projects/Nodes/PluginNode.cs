@@ -5,7 +5,7 @@ using System.Diagnostics;
 
 namespace Harvest.Make.Projects.Nodes;
 
-public class PluginNodeTraits : NodeBaseTraits
+internal class PluginNodeTraits : NodeBaseTraits
 {
     public override string Name => "plugin";
 
@@ -22,7 +22,7 @@ public class PluginNodeTraits : NodeBaseTraits
     public override IReadOnlyDictionary<string, NodeValueDef> PropertyDefs { get; } = new SortedDictionary<string, NodeValueDef>()
     {
         { "version", NodeValueDef_String.Required() },
-        { "license", NodeValueDef_String.Optional() },
+        { "license", NodeValueDef_String.Optional("UNLICENSED") },
     };
 
     public override string? TryResolveToken(ProjectContext projectContext, KdlNode contextNode, string propertyName)
@@ -43,15 +43,21 @@ public class PluginNodeTraits : NodeBaseTraits
     public override INode CreateNode(KdlNode node) => new PluginNode(node);
 }
 
-public class PluginNode(KdlNode node) : NodeBase<PluginNodeTraits>(node)
+internal class PluginNode(KdlNode node) : NodeBase<PluginNodeTraits>(node)
 {
     public string PluginName => GetValue<string>(0);
     public string Version => GetValue<string>("version");
-    public string? License => TryGetValue("license", out string? value) ? value : null;
+    public string License => GetValue<string>("license");
 
     public string GetInstallDir(ProjectContext projectContext)
     {
-        List<FetchNode> fetchNodes = projectContext.ProjectService.GetNodes<FetchNode>(projectContext, this, false);
+        List<FetchNode> fetchNodes =
+        [
+            .. Node
+                .GetDescendantsByName(FetchNode.NodeTraits.Name)
+                .Select((fetchNode) => new FetchNode(fetchNode))
+        ];
+
         if (fetchNodes.MaxBy((n) => n.InstallDirPriority) is FetchNode primaryFetchNode)
         {
             string installBaseDir = GetInstallBaseDir(projectContext);
@@ -60,12 +66,23 @@ public class PluginNode(KdlNode node) : NodeBase<PluginNodeTraits>(node)
         }
 
         // No fetch nodes, use the node's file directory as the install dir
-        return Path.GetDirectoryName(Node.SourceInfo.FilePath) ?? string.Empty;
+        return Path.GetDirectoryName(Node.SourceInfo.FilePath) ?? "";
     }
 
     private string GetInstallBaseDir(ProjectContext projectContext)
     {
-        BuildOutputNode buildOutput = projectContext.ProjectService.GetMergedNode<BuildOutputNode>(projectContext, this, false);
-        return buildOutput.InstallDir;
+        KdlNode? scope = Node;
+        while (scope is not null && scope.Name != ProjectNode.NodeTraits.Name)
+        {
+            scope = scope.Parent;
+        }
+
+        if (scope is null)
+        {
+            throw new InvalidOperationException("Plugin node is not within a project scope.");
+        }
+
+        ProjectNode project = new(scope);
+        return project.InstallsDir;
     }
 }

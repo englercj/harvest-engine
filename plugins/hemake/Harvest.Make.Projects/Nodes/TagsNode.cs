@@ -5,7 +5,7 @@ using System.Diagnostics;
 
 namespace Harvest.Make.Projects.Nodes;
 
-public class TagsNodeTraits : NodeSetBaseTraits<TagsEntryNode>
+internal class TagsNodeTraits : NodeSetBaseTraits<TagsEntryNode>
 {
     public override string Name => "tags";
 
@@ -33,6 +33,6 @@ public class TagsNodeTraits : NodeSetBaseTraits<TagsEntryNode>
     }
 }
 
-public class TagsNode(KdlNode node) : NodeSetBase<TagsNodeTraits, TagsEntryNode>(node)
+internal class TagsNode(KdlNode node) : NodeSetBase<TagsNodeTraits, TagsEntryNode>(node)
 {
 }

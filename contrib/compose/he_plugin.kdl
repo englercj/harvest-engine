@@ -6,6 +6,6 @@ plugin onweru.compose version="823b5de743db69a764f2d7be33d940f0d674fead" license
     authors { "Weru" email=fromweru@gmail.com }
 
     install {
-        fetch github user=onweru repo=compose version="${plugin.version}"
+        fetch github user=onweru repo=compose ref="${plugin.version}"
     }
 }

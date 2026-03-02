@@ -6,4 +6,8 @@ project "Harvest Engine" start=he_editor {
 
     // Import the root Harvest Engine plugin
     import "./he_plugin.kdl"
+
+    // Import all first-party and contrib plugins
+    import "contrib/*"
+    import "plugins/*"
 }

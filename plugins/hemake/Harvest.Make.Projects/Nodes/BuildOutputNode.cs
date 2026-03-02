@@ -4,7 +4,7 @@ using Harvest.Kdl;
 
 namespace Harvest.Make.Projects.Nodes;
 
-public class BuildOutputNodeTraits : NodeBaseTraits
+internal class BuildOutputNodeTraits : NodeBaseTraits
 {
     public override string Name => "build_output";
 
@@ -28,10 +28,12 @@ public class BuildOutputNodeTraits : NodeBaseTraits
     public override INode CreateNode(KdlNode node) => new BuildOutputNode(node);
 }
 
-public class BuildOutputNode(KdlNode node) : NodeBase<BuildOutputNodeTraits>(node)
+internal class BuildOutputNode(KdlNode node) : NodeBase<BuildOutputNodeTraits>(node)
 {
-    public string BinDir => Path.Combine(BasePath, GetValue<string>("bin_dir"));
-    public string GenDir => Path.Combine(BasePath, GetValue<string>("gen_dir"));
-    public string LibDir => Path.Combine(BasePath, GetValue<string>("lib_dir"));
-    public string ObjDir => Path.Combine(BasePath, GetValue<string>("obj_dir"));
+    private string BasePath => Path.GetDirectoryName(Node.SourceInfo.FilePath) ?? Directory.GetCurrentDirectory();
+
+    public string BinDir => Path.GetFullPath(Path.Combine(BasePath, GetValue<string>("bin_dir")));
+    public string GenDir => Path.GetFullPath(Path.Combine(BasePath, GetValue<string>("gen_dir")));
+    public string LibDir => Path.GetFullPath(Path.Combine(BasePath, GetValue<string>("lib_dir")));
+    public string ObjDir => Path.GetFullPath(Path.Combine(BasePath, GetValue<string>("obj_dir")));
 }

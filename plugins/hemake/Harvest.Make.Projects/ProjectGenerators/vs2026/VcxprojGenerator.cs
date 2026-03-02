@@ -3,7 +3,6 @@
 using Harvest.Make.Extensions;
 using Harvest.Make.Projects.Nodes;
 using Microsoft.Extensions.Logging;
-using System.CommandLine.Invocation;
 using System.Text;
 using System.Xml;
 
@@ -25,20 +24,21 @@ internal class VcxprojGenerator(IProjectService projectService, ILogger<VcxprojG
     {
         _moduleName = moduleName;
 
-        CreateFileGroups();
-
         ProjectNode project = _projectService.GetGlobalNode<ProjectNode>();
         Directory.CreateDirectory(project.ProjectsDir);
 
-        await GenerateProjectFileAsync(project.ProjectsDir, moduleName);
-        await GenerateFiltersFileAsync(module);
-        await GenerateUserFileAsync(module);
+        _outputPath = Path.Join(project.ProjectsDir, $"{moduleName}{ProjectExtension}");
+        _logger.LogDebug("Generating project file: {ProjectPath}", _outputPath);
+
+        CreateFileGroups();
+
+        await GenerateProjectFileAsync();
+        await GenerateFiltersFileAsync(project.ProjectsDir, moduleName);
+        await GenerateUserFileAsync(project.ProjectsDir, moduleName);
     }
 
-    private async Task GenerateProjectFileAsync(string projectsDir, string moduleName)
+    private async Task GenerateProjectFileAsync()
     {
-        _outputPath = Path.Join(projectsDir, $"{moduleName}{ProjectExtension}");
-
         await using FileStream stream = new(_outputPath, FileMode.Create, FileAccess.Write, FileShare.None);
         await using XmlWriter writer = XmlWriter.Create(stream, new XmlWriterSettings
         {
@@ -55,16 +55,16 @@ internal class VcxprojGenerator(IProjectService projectService, ILogger<VcxprojG
         writer.WriteAttributeString("DefaultTargets", "Build");
 
         WriteConfigurations(writer);
-        WriteGlobals(writer, context, module);
+        WriteGlobals(writer);
         WriteImportDefaultProperties(writer);
-        WriteConfigurationProperties(writer, context, module);
+        WriteConfigurationProperties(writer);
         WriteImportProperties(writer);
         WriteUserMacros(writer);
-        WriteOutputProperties(writer, context, module);
-        WriteItemDefinitionGroups(writer, context, module);
+        WriteOutputProperties(writer);
+        WriteItemDefinitionGroups(writer);
         // TODO: managed assembly references (<ItemGroup><Reference Include="..." /></ItemGroup>)
         WriteFiles(writer);
-        WriteProjectReferences(writer, context, module);
+        WriteProjectReferences(writer);
         WriteLanguageTargetImports(writer);
         WriteExtensionTargetImports(writer);
         // TODO: nuget references for Visual Studio to restore, is this needed?
@@ -74,12 +74,20 @@ internal class VcxprojGenerator(IProjectService projectService, ILogger<VcxprojG
         writer.WriteEndDocument();
     }
 
-    private async Task GenerateFiltersFileAsync(ModuleNode module)
+    private async Task GenerateFiltersFileAsync(string projectsDir, string moduleName)
     {
-        _outputPath = Path.Join(_helper.BuildOutput.ProjectDir, $"{module.ModuleName}{ProjectExtension}");
+        string outputPath = Path.Join(projectsDir, $"{moduleName}{FiltersExtension}");
 
-        await using FileStream stream = new(_outputPath, FileMode.Create, FileAccess.Write, FileShare.None);
-        await using XmlWriter writer = XmlWriter.Create(stream, new XmlWriterSettings { Encoding = Encoding.UTF8, Indent = true });
+        await using FileStream stream = new(outputPath, FileMode.Create, FileAccess.Write, FileShare.None);
+        await using XmlWriter writer = XmlWriter.Create(stream, new XmlWriterSettings
+        {
+            Encoding = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false),
+            Async = true,
+            Indent = true,
+            IndentChars = "  ",
+            NewLineChars = Environment.NewLine,
+            OmitXmlDeclaration = false,
+        });
 
         HashSet<string> seenVirtualDirs = [];
 
@@ -117,11 +125,11 @@ internal class VcxprojGenerator(IProjectService projectService, ILogger<VcxprojG
         writer.WriteEndDocument();
     }
 
-    private Task GenerateUserFileAsync(ModuleNode module)
+    private Task GenerateUserFileAsync(string projectsDir, string moduleName)
     {
         // TODO: debugger settings: command, args, flavor, type, working dir, environment variables, etc.
 
-        //_outputPath = Path.Join(_helper.BuildOutput.ProjectDir, $"{module.ModuleName}{ProjectExtension}");
+        //_outputPath = Path.Join(projectsDir, $"{moduleName}{ProjectExtension}.user");
 
         //await using FileStream stream = new(_outputPath, FileMode.Create, FileAccess.Write, FileShare.None);
         //await using XmlWriter writer = XmlWriter.Create(stream, new XmlWriterSettings { Encoding = Encoding.UTF8, Indent = true });
@@ -144,12 +152,39 @@ internal class VcxprojGenerator(IProjectService projectService, ILogger<VcxprojG
         return VisualStudioUtils.TranslatePath(_outputPath, path);
     }
 
+    private IEnumerable<(ResolvedProjectTree ProjectTree, ModuleNode Module, string ArchName)> EnumerateModuleConfigs()
+    {
+        foreach ((ResolvedProjectTree projectTree, string archName) in VisualStudioUtils.EnumerateConfigs(_projectService))
+        {
+            if (projectTree.IndexedNodes.TryGetNode(_moduleName, out ModuleNode? module))
+            {
+                yield return (projectTree, module, archName);
+            }
+        }
+    }
+
+    private bool TryGetFirstModuleConfig(out ResolvedProjectTree? projectTree, out ModuleNode? module, out string archName)
+    {
+        foreach ((ResolvedProjectTree tree, ModuleNode treeModule, string treeArchName) in EnumerateModuleConfigs())
+        {
+            projectTree = tree;
+            module = treeModule;
+            archName = treeArchName;
+            return true;
+        }
+
+        projectTree = null;
+        module = null;
+        archName = "";
+        return false;
+    }
+
     private void WriteConfigurations(XmlWriter writer)
     {
         writer.WriteStartElement("ItemGroup");
         writer.WriteAttributeString("Label", "ProjectConfigurations");
 
-        foreach ((ResolvedProjectTree project, string archName) in VisualStudioUtils.EnumerateConfigs(_projectService))
+        foreach ((ResolvedProjectTree project, _, string archName) in EnumerateModuleConfigs())
         {
             writer.WriteStartElement("ProjectConfiguration");
             writer.WriteAttributeString("Include", VisualStudioUtils.GetConfigName(project, archName));
@@ -161,21 +196,27 @@ internal class VcxprojGenerator(IProjectService projectService, ILogger<VcxprojG
         writer.WriteEndElement();
     }
 
-    private void WriteGlobals(XmlWriter writer, ModuleNode module)
+    private void WriteGlobals(XmlWriter writer)
     {
-        bool isWindows = _helper.Platforms.Where((n) => n.System == EPlatformSystem.Windows).Any();
-        ProjectContext context = _projectService.CreateProjectContext(invocationContext, module);
+        if (!TryGetFirstModuleConfig(out ResolvedProjectTree? firstProjectTree, out ModuleNode? module, out _))
+        {
+            throw new InvalidOperationException($"No module named '{_moduleName}' was found in resolved project trees.");
+        }
 
-        BuildOptionsNode buildOptions = _projectService.GetMergedNode<BuildOptionsNode>(context, module);
-        SystemNode dotnetSystemNode = _projectService.GetMergedNode<SystemNode>(context, module, (n) => n.System == EPlatformSystem.DotNet);
-        ToolsetNode toolsetNode = _projectService.GetMergedNode<ToolsetNode>(context, module, (n) => n.Toolset == EToolset.MSVC);
-        SystemNode windowsSystemNode = _projectService.GetMergedNode<SystemNode>(context, module, (n) => n.System == EPlatformSystem.Windows);
+        ResolvedProjectTree resolvedProjectTree = firstProjectTree!;
+        ModuleNode resolvedModule = module!;
+
+        bool isWindows = EnumerateModuleConfigs().Any((entry) => entry.ProjectTree.ProjectContext.Platform.System == EPlatformSystem.Windows);
+        BuildOptionsNode buildOptions = resolvedProjectTree.GetMergedNode<BuildOptionsNode>(resolvedModule.Node);
+        SystemNode dotnetSystemNode = resolvedProjectTree.GetMergedNode<SystemNode>(resolvedModule.Node, (n) => n.System == EPlatformSystem.DotNet);
+        ToolsetNode toolsetNode = resolvedProjectTree.GetMergedNode<ToolsetNode>(resolvedModule.Node, (n) => n.Toolset == EToolset.MSVC);
+        SystemNode windowsSystemNode = resolvedProjectTree.GetMergedNode<SystemNode>(resolvedModule.Node, (n) => n.System == EPlatformSystem.Windows);
 
         writer.WriteStartElement("PropertyGroup");
         writer.WriteAttributeString("Label", "Globals");
 
-        writer.WriteElementString("ProjectGuid", ModuleGroupTree.GetModuleGuid(module));
-        writer.WriteElementString("ProjectName", module.ModuleName);
+        writer.WriteElementString("ProjectGuid", ModuleGroupTree.GetModuleGuid(resolvedModule));
+        writer.WriteElementString("ProjectName", resolvedModule.ModuleName);
 
         // TODO: Is this needed?
         // I think we'd need this if we let users specify an explicit virtual path for files because
@@ -184,23 +225,16 @@ internal class VcxprojGenerator(IProjectService projectService, ILogger<VcxprojG
 
         if (isWindows)
         {
-            bool isManaged = VisualStudioUtils.IsManaged(module, buildOptions);
-            bool isClrMixed = VisualStudioUtils.IsClrMixed(module, buildOptions);
+            bool isManaged = VisualStudioUtils.IsManaged(resolvedModule, buildOptions);
+            bool isClrMixed = VisualStudioUtils.IsClrMixed(resolvedModule, buildOptions);
 
-            if (isManaged || isClrMixed)
+            if ((isManaged || isClrMixed) && !string.IsNullOrWhiteSpace(dotnetSystemNode.Version))
             {
                 writer.WriteElementString("TargetFramework", dotnetSystemNode.Version);
             }
 
-            if (isManaged)
-            {
-                writer.WriteElementString("Keyword", "ManagedCProj");
-            }
-            else
-            {
-                writer.WriteElementString("Keyword", "Win32Proj");
-            }
-            writer.WriteElementString("RootNamespace", module.ModuleName);
+            writer.WriteElementString("Keyword", isManaged ? "ManagedCProj" : "Win32Proj");
+            writer.WriteElementString("RootNamespace", resolvedModule.ModuleName);
         }
 
         switch (toolsetNode.Arch)
@@ -215,8 +249,12 @@ internal class VcxprojGenerator(IProjectService projectService, ILogger<VcxprojG
                 break;
         }
 
-        writer.WriteElementString("WindowsTargetPlatformVersion", windowsSystemNode.Version);
-        writer.WriteElementString("DisableFastUpToDateCheck", toolsetNode.FastUpToDateCheck.ToString());
+        if (!string.IsNullOrWhiteSpace(windowsSystemNode.Version))
+        {
+            writer.WriteElementString("WindowsTargetPlatformVersion", windowsSystemNode.Version);
+        }
+
+        writer.WriteElementBool("DisableFastUpToDateCheck", toolsetNode.FastUpToDateCheck);
 
         writer.WriteEndElement();
     }
@@ -228,14 +266,17 @@ internal class VcxprojGenerator(IProjectService projectService, ILogger<VcxprojG
         writer.WriteEndElement();
     }
 
-    private void WriteConfigurationProperties(XmlWriter writer, InvocationContext invocationContext, ModuleNode module)
+    private void WriteConfigurationProperties(XmlWriter writer)
     {
-        VisualStudioUtils.ForEachConfig(_helper, (configuration, platform, archName) =>
+        foreach ((ResolvedProjectTree projectTree, ModuleNode module, string archName) in EnumerateModuleConfigs())
         {
-            ProjectContext context = _projectService.CreateProjectContext(invocationContext, module, configuration, platform);
-            BuildOptionsNode buildOptions = _projectService.GetMergedNode<BuildOptionsNode>(context, module);
-            ToolsetNode toolsetNode = _projectService.GetMergedNode<ToolsetNode>(context, module, (n) => n.Toolset == platform.Toolset);
-            string configCondition = VisualStudioUtils.GetConfigCondition(configuration, platform, archName);
+            ProjectContext context = projectTree.ProjectContext;
+            ConfigurationNode configuration = context.Configuration;
+            PlatformNode platform = context.Platform;
+
+            BuildOptionsNode buildOptions = projectTree.GetMergedNode<BuildOptionsNode>(module.Node);
+            ToolsetNode toolsetNode = projectTree.GetMergedNode<ToolsetNode>(module.Node, (n) => n.Toolset == platform.Toolset);
+            string configCondition = VisualStudioUtils.GetConfigCondition(projectTree, archName);
 
             writer.WriteStartElement("PropertyGroup");
             writer.WriteAttributeString("Condition", configCondition);
@@ -260,14 +301,14 @@ internal class VcxprojGenerator(IProjectService projectService, ILogger<VcxprojG
             {
                 if (toolsetNode.Version is string toolsetVersion)
                 {
-                    writer.WriteElementString("VCToolsVersion", toolsetNode.Version);
+                    writer.WriteElementString("VCToolsVersion", toolsetVersion);
                 }
                 writer.WriteElementString("PlatformToolset", "v143"); // VS 2022
             }
 
             if (module.Kind != EModuleKind.Custom && module.Kind != EModuleKind.Content)
             {
-                RuntimeNode runtimeNode = _projectService.GetMergedNode<RuntimeNode>(context, module);
+                RuntimeNode runtimeNode = projectTree.GetMergedNode<RuntimeNode>(module.Node);
                 if (runtimeNode.Runtime == ERuntime.Debug || runtimeNode.Runtime == ERuntime.Default && configuration.ConfigName == "Debug")
                 {
                     writer.WriteElementString("UseDebugLibraries", "true");
@@ -281,7 +322,7 @@ internal class VcxprojGenerator(IProjectService projectService, ILogger<VcxprojG
                 {
                     writer.WriteElementString("UseOfMfc", "Static");
                 }
-                else if (buildOptions.MfcMode == EBuildMfcMode.Static)
+                else if (buildOptions.MfcMode == EBuildMfcMode.Dynamic)
                 {
                     writer.WriteElementString("UseOfMfc", "Dynamic");
                 }
@@ -301,7 +342,7 @@ internal class VcxprojGenerator(IProjectService projectService, ILogger<VcxprojG
                         writer.WriteElementString("CLRSupport", "true");
                         break;
                     case EBuildClrMode.Off:
-                        // Always enabled for csharp code
+                        // Always enabled for C# code.
                         if (module.Language == EModuleLanguage.CSharp)
                         {
                             writer.WriteElementString("CLRSupport", "true");
@@ -312,7 +353,7 @@ internal class VcxprojGenerator(IProjectService projectService, ILogger<VcxprojG
                         break;
                 }
 
-                SanitizeNode sanitize = _projectService.GetMergedNode<SanitizeNode>(context, module);
+                SanitizeNode sanitize = projectTree.GetMergedNode<SanitizeNode>(module.Node);
                 if (sanitize.EnableAddress)
                 {
                     writer.WriteElementString("EnableASAN", "true");
@@ -322,7 +363,7 @@ internal class VcxprojGenerator(IProjectService projectService, ILogger<VcxprojG
                     writer.WriteElementString("EnableFuzzer", "true");
                 }
 
-                OptimizeNode optimize = _projectService.GetMergedNode<OptimizeNode>(context, module);
+                OptimizeNode optimize = projectTree.GetMergedNode<OptimizeNode>(module.Node);
                 if (optimize.LinkTimeOptimizationLevel == ELinkTimeOptimizationLevel.On)
                 {
                     writer.WriteElementString("WholeProgramOptimization", "true");
@@ -342,7 +383,7 @@ internal class VcxprojGenerator(IProjectService projectService, ILogger<VcxprojG
             }
             else
             {
-                BuildOutputNode buildOutput = _projectService.GetMergedNode<BuildOutputNode>(context, module);
+                BuildOutputNode buildOutput = projectTree.GetMergedNode<BuildOutputNode>(module.Node);
                 string outDir = GetPath(module.GetTargetDir(buildOutput));
                 writer.WriteElementString("OutDir", $"{outDir}\\");
 
@@ -351,7 +392,7 @@ internal class VcxprojGenerator(IProjectService projectService, ILogger<VcxprojG
             }
 
             writer.WriteEndElement();
-        });
+        }
     }
 
     private void WriteImportProperties(XmlWriter writer)
@@ -362,9 +403,9 @@ internal class VcxprojGenerator(IProjectService projectService, ILogger<VcxprojG
 
         WriteExtensionSettings(writer);
 
-        VisualStudioUtils.ForEachConfig(_helper, (configuration, platform, archName) =>
+        foreach ((ResolvedProjectTree projectTree, _, string archName) in EnumerateModuleConfigs())
         {
-            string configCondition = VisualStudioUtils.GetConfigCondition(configuration, platform, archName);
+            string configCondition = VisualStudioUtils.GetConfigCondition(projectTree, archName);
 
             writer.WriteStartElement("ImportGroup");
             writer.WriteAttributeString("Label", "PropertySheets");
@@ -377,7 +418,7 @@ internal class VcxprojGenerator(IProjectService projectService, ILogger<VcxprojG
             writer.WriteEndElement();
 
             writer.WriteEndElement();
-        });
+        }
     }
 
     private static void WriteUserMacros(XmlWriter writer)
@@ -387,16 +428,17 @@ internal class VcxprojGenerator(IProjectService projectService, ILogger<VcxprojG
         writer.WriteEndElement();
     }
 
-    private void WriteOutputProperties(XmlWriter writer, InvocationContext invocationContext, ModuleNode module)
+    private void WriteOutputProperties(XmlWriter writer)
     {
-        VisualStudioUtils.ForEachConfig(_helper, (configuration, platform, archName) =>
+        foreach ((ResolvedProjectTree projectTree, ModuleNode module, string archName) in EnumerateModuleConfigs())
         {
-            ProjectContext context = _projectService.CreateProjectContext(invocationContext, module, configuration, platform);
-            BuildOutputNode buildOutput = _projectService.GetMergedNode<BuildOutputNode>(context, module);
-            BuildOptionsNode buildOptions = _projectService.GetMergedNode<BuildOptionsNode>(context, module);
-            LinkOptionsNode linkOptions = _projectService.GetMergedNode<LinkOptionsNode>(context, module);
-            OptimizeNode optimize = _projectService.GetMergedNode<OptimizeNode>(context, module);
-            string configCondition = VisualStudioUtils.GetConfigCondition(configuration, platform, archName);
+            ProjectContext context = projectTree.ProjectContext;
+            BuildOutputNode buildOutput = projectTree.GetMergedNode<BuildOutputNode>(module.Node);
+            BuildOptionsNode buildOptions = projectTree.GetMergedNode<BuildOptionsNode>(module.Node);
+            LinkOptionsNode linkOptions = projectTree.GetMergedNode<LinkOptionsNode>(module.Node);
+            OptimizeNode optimize = projectTree.GetMergedNode<OptimizeNode>(module.Node);
+            ToolsetNode toolset = projectTree.GetMergedNode<ToolsetNode>(module.Node, (n) => n.Toolset == context.Platform.Toolset);
+            string configCondition = VisualStudioUtils.GetConfigCondition(projectTree, archName);
 
             writer.WriteStartElement("PropertyGroup");
             writer.WriteAttributeString("Condition", configCondition);
@@ -433,11 +475,11 @@ internal class VcxprojGenerator(IProjectService projectService, ILogger<VcxprojG
                     writer.WriteEndElement();
                 }
 
-                IncludeDirsNode includeDirs = _projectService.GetMergedNode<IncludeDirsNode>(context, module);
+                IncludeDirsNode includeDirs = projectTree.GetMergedNode<IncludeDirsNode>(module.Node);
                 IEnumerable<string> externalIncludePaths = includeDirs.Entries.Where((entry) => entry.IsExternal).Select((entry) => GetPath(entry.Path));
                 VisualStudioUtils.WriteArrayElement(writer, externalIncludePaths, "ExternalIncludePath", "%(ExternalIncludePath)");
 
-                LibDirsNode libDirs = _projectService.GetMergedNode<LibDirsNode>(context, module);
+                LibDirsNode libDirs = projectTree.GetMergedNode<LibDirsNode>(module.Node);
                 IEnumerable<string> systemLibPaths = libDirs.Entries.Where((entry) => entry.IsSystem).Select((entry) => GetPath(entry.Path));
                 VisualStudioUtils.WriteArrayElement(writer, systemLibPaths, "LibraryPath", "%(LibraryPath)");
 
@@ -451,44 +493,46 @@ internal class VcxprojGenerator(IProjectService projectService, ILogger<VcxprojG
             }
 
             writer.WriteEndElement();
-        });
+        }
     }
 
-    private void WriteItemDefinitionGroups(XmlWriter writer, InvocationContext invocationContext, ModuleNode module)
+    private void WriteItemDefinitionGroups(XmlWriter writer)
     {
-        VisualStudioUtils.ForEachConfig(_helper, (configuration, platform, archName) =>
+        foreach ((ResolvedProjectTree projectTree, ModuleNode module, string archName) in EnumerateModuleConfigs())
         {
-            ProjectContext context = _projectService.CreateProjectContext(invocationContext, module, configuration, platform);
-            ToolsetNode toolset = _projectService.GetMergedNode<ToolsetNode>(context, module, (n) => n.Toolset == platform.Toolset);
-            string configCondition = VisualStudioUtils.GetConfigCondition(configuration, platform, archName);
+            ProjectContext context = projectTree.ProjectContext;
+            PlatformNode platform = context.Platform;
+
+            ToolsetNode toolset = projectTree.GetMergedNode<ToolsetNode>(module.Node, (n) => n.Toolset == platform.Toolset);
+            string configCondition = VisualStudioUtils.GetConfigCondition(projectTree, archName);
 
             writer.WriteStartElement("ItemDefinitionGroup");
             writer.WriteAttributeString("Condition", configCondition);
 
             if (module.Kind != EModuleKind.Custom)
             {
-                BuildOptionsNode buildOptions = _projectService.GetMergedNode<BuildOptionsNode>(context, module);
-                BuildOutputNode buildOutput = _projectService.GetMergedNode<BuildOutputNode>(context, module);
-                CodegenNode codegen = _projectService.GetMergedNode<CodegenNode>(context, module);
-                DefinesNode defines = _projectService.GetMergedNode<DefinesNode>(context, module);
-                DialectNode dialect = _projectService.GetMergedNode<DialectNode>(context, module);
-                ExceptionsNode exceptions = _projectService.GetMergedNode<ExceptionsNode>(context, module);
-                ExternalNode external = _projectService.GetMergedNode<ExternalNode>(context, module);
-                FilesNode files = _projectService.GetMergedNode<FilesNode>(context, module);
-                FloatingPointNode floatingPoint = _projectService.GetMergedNode<FloatingPointNode>(context, module);
-                IncludeDirsNode includeDirs = _projectService.GetMergedNode<IncludeDirsNode>(context, module);
-                LinkOptionsNode linkOptions = _projectService.GetMergedNode<LinkOptionsNode>(context, module);
-                OptimizeNode optimize = _projectService.GetMergedNode<OptimizeNode>(context, module);
-                RuntimeNode runtime = _projectService.GetMergedNode<RuntimeNode>(context, module);
-                SymbolsNode symbols = _projectService.GetMergedNode<SymbolsNode>(context, module);
-                WarningsNode warnings = _projectService.GetMergedNode<WarningsNode>(context, module);
+                BuildOptionsNode buildOptions = projectTree.GetMergedNode<BuildOptionsNode>(module.Node);
+                BuildOutputNode buildOutput = projectTree.GetMergedNode<BuildOutputNode>(module.Node);
+                CodegenNode codegen = projectTree.GetMergedNode<CodegenNode>(module.Node);
+                DefinesNode defines = projectTree.GetMergedNode<DefinesNode>(module.Node);
+                DialectNode dialect = projectTree.GetMergedNode<DialectNode>(module.Node);
+                ExceptionsNode exceptions = projectTree.GetMergedNode<ExceptionsNode>(module.Node);
+                ExternalNode external = projectTree.GetMergedNode<ExternalNode>(module.Node);
+                FilesNode files = projectTree.GetMergedNode<FilesNode>(module.Node);
+                FloatingPointNode floatingPoint = projectTree.GetMergedNode<FloatingPointNode>(module.Node);
+                IncludeDirsNode includeDirs = projectTree.GetMergedNode<IncludeDirsNode>(module.Node);
+                LinkOptionsNode linkOptions = projectTree.GetMergedNode<LinkOptionsNode>(module.Node);
+                OptimizeNode optimize = projectTree.GetMergedNode<OptimizeNode>(module.Node);
+                RuntimeNode runtime = projectTree.GetMergedNode<RuntimeNode>(module.Node);
+                SymbolsNode symbols = projectTree.GetMergedNode<SymbolsNode>(module.Node);
+                WarningsNode warnings = projectTree.GetMergedNode<WarningsNode>(module.Node);
 
-                List<DependenciesNode> dependencies = _projectService.GetNodes<DependenciesNode>(context, module);
-                LibDirsNode libDirs = _projectService.GetMergedNode<LibDirsNode>(context, module);
+                List<DependenciesNode> dependencies = [.. projectTree.GetNodes<DependenciesNode>(module.Node)];
+                LibDirsNode libDirs = projectTree.GetMergedNode<LibDirsNode>(module.Node);
 
                 bool isOptimizedBuild = VisualStudioUtils.IsOptimizedBuild(optimize);
                 bool isDebugBuild = VisualStudioUtils.IsDebugBuild(optimize, symbols);
-                bool hasAnyResourceFiles = files.Entries.Any(entry => entry.ResolvedFileAction == EFileAction.Resource);
+                bool hasAnyResourceFiles = files.Entries.Any(entry => entry.FileAction == EFileAction.Resource);
 
                 writer.WriteStartElement("ClCompile");
 
@@ -521,7 +565,7 @@ internal class VcxprojGenerator(IProjectService projectService, ILogger<VcxprojG
                 {
                     defineEntryStrings = defineEntryStrings.Concat(["_HAS_EXCEPTIONS=0"]);
                 }
-                VisualStudioUtils.WritePreprocessorDefinitions(writer, defineEntryStrings, false, VisualStudioUtils.GetConfigCondition(configuration, platform, archName));
+                VisualStudioUtils.WritePreprocessorDefinitions(writer, defineEntryStrings, false, configCondition);
 
                 // TODO: Support for undefines?
                 //IEnumerable<string> undefineEntryStrings = undefines.Entries.Select((entry) => entry.Define.Replace("\"", "\\\""));
@@ -826,25 +870,25 @@ internal class VcxprojGenerator(IProjectService projectService, ILogger<VcxprojG
 
                 writer.WriteEndElement();
 
-                BuildEventNode buildEvent = _projectService.GetMergedNode<BuildEventNode>(context, module, (n) => n.EventName == EBuildEvent.Build, false);
-                List<CommandNode> buildCommands = _projectService.GetNodes<CommandNode>(context, buildEvent, false);
+                BuildEventNode buildEvent = projectTree.GetMergedNode<BuildEventNode>(module.Node, (n) => n.EventName == EBuildEvent.Build, false);
+                List<CommandNode> buildCommands = [.. projectTree.GetNodes<CommandNode>(buildEvent.Node)];
                 if (buildCommands.Count != 0)
                 {
                     writer.WriteStartElement("CustomBuildStep");
 
-                    if (!string.IsNullOrEmpty(buildEvent.Message))
+                    if (!string.IsNullOrEmpty(buildEvent.EventMessage))
                     {
-                        writer.WriteElementString("Message", buildEvent.Message);
+                        writer.WriteElementString("Message", buildEvent.EventMessage);
                     }
 
                     IEnumerable<string> buildCommandStrings = buildCommands.Select((entry) => entry.GetCommandString());
                     VisualStudioUtils.WriteArrayElement(writer, buildCommandStrings, "Command", null, "\r\n");
 
-                    OutputsNode buildEventOutputs = _projectService.GetMergedNode<OutputsNode>(context, buildEvent, false);
+                    OutputsNode buildEventOutputs = projectTree.GetMergedNode<OutputsNode>(buildEvent.Node, false);
                     IEnumerable<string> buildEventOutputsStrings = buildEventOutputs.Entries.Select((entry) => GetPath(entry.FilePath));
                     VisualStudioUtils.WriteArrayElement(writer, buildEventOutputsStrings, "Outputs");
 
-                    InputsNode buildEventInputs = _projectService.GetMergedNode<InputsNode>(context, buildEvent, false);
+                    InputsNode buildEventInputs = projectTree.GetMergedNode<InputsNode>(buildEvent.Node, false);
                     IEnumerable<string> buildEventInputsStrings = buildEventInputs.Entries.Select((entry) => GetPath(entry.FilePath));
                     VisualStudioUtils.WriteArrayElement(writer, buildEventInputsStrings, "Inputs");
 
@@ -856,7 +900,7 @@ internal class VcxprojGenerator(IProjectService projectService, ILogger<VcxprojG
                 if (hasAnyResourceFiles)
                 {
                     writer.WriteStartElement("ResourceCompile");
-                    VisualStudioUtils.WritePreprocessorDefinitions(writer, defineEntryStrings, true, VisualStudioUtils.GetConfigCondition(configuration, platform, archName));
+                    VisualStudioUtils.WritePreprocessorDefinitions(writer, defineEntryStrings, true, configCondition);
                     VisualStudioUtils.WriteAdditionalIncludeDirs(writer, includeDirsEntryStrings);
                     // TODO: Culture support?
                     writer.WriteEndElement();
@@ -968,7 +1012,7 @@ internal class VcxprojGenerator(IProjectService projectService, ILogger<VcxprojG
                         EDpiAwareMode.PerMonitorHighDpiAware => "PerMonitorHighDPIAware",
                         _ => throw new NotImplementedException($"Unsupported DPI Awareness Mode: {buildOptions.DpiAwarenessMode}"),
                     });
-                    IEnumerable<string> extraManifestFiles = files.Entries.Where((entry) => entry.ResolvedFileAction == EFileAction.Manifest).Select((entry) => GetPath(entry.ResolvedFilePath));
+                    IEnumerable<string> extraManifestFiles = files.Entries.Where((entry) => entry.FileAction == EFileAction.Manifest).Select((entry) => GetPath(entry.FilePath));
                     VisualStudioUtils.WriteArrayElement(writer, extraManifestFiles, "AdditionalManifestFiles", "%(AdditionalManifestFiles)");
                     writer.WriteEndElement();
                 }
@@ -976,8 +1020,8 @@ internal class VcxprojGenerator(IProjectService projectService, ILogger<VcxprojG
 
             void writeBuildEvent(EBuildEvent evt)
             {
-                BuildEventNode buildEvent = _projectService.GetMergedNode<BuildEventNode>(context, module, (n) => n.EventName == evt, false);
-                List<CommandNode> buildCommands = _projectService.GetNodes<CommandNode>(context, buildEvent, false);
+                BuildEventNode buildEvent = projectTree.GetMergedNode<BuildEventNode>(module.Node, (n) => n.EventName == evt, false);
+                List<CommandNode> buildCommands = [.. projectTree.GetNodes<CommandNode>(buildEvent.Node)];
                 if (buildCommands.Count != 0)
                 {
                     writer.WriteStartElement(evt switch
@@ -991,9 +1035,9 @@ internal class VcxprojGenerator(IProjectService projectService, ILogger<VcxprojG
                         _ => throw new NotImplementedException($"Unsupported build event: {evt}"),
                     });
 
-                    if (!string.IsNullOrEmpty(buildEvent.Message))
+                    if (!string.IsNullOrEmpty(buildEvent.EventMessage))
                     {
-                        writer.WriteElementString("Message", buildEvent.Message);
+                        writer.WriteElementString("Message", buildEvent.EventMessage);
                     }
 
                     IEnumerable<string> buildCommandStrings = buildCommands.Select((entry) => entry.GetCommandString());
@@ -1014,7 +1058,7 @@ internal class VcxprojGenerator(IProjectService projectService, ILogger<VcxprojG
             }
 
             writer.WriteEndElement();
-        });
+        }
     }
 
     private void WriteFiles(XmlWriter writer)
@@ -1058,18 +1102,19 @@ internal class VcxprojGenerator(IProjectService projectService, ILogger<VcxprojG
         writer.WriteEndElement();
     }
 
-    private void WriteProjectReferences(XmlWriter writer, InvocationContext invocationContext, ModuleNode module)
+    private void WriteProjectReferences(XmlWriter writer)
     {
         writer.WriteStartElement("ItemGroup");
 
-        VisualStudioUtils.ForEachConfig(_helper, (configuration, platform, archName) =>
+        Dictionary<string, (ModuleNode Module, bool UseManagedMetadata)> references = [];
+
+        foreach ((ResolvedProjectTree projectTree, ModuleNode module, _) in EnumerateModuleConfigs())
         {
-            ProjectContext context = _projectService.CreateProjectContext(invocationContext, module, configuration, platform);
-            BuildOptionsNode buildOptions = _projectService.GetMergedNode<BuildOptionsNode>(context, module);
+            BuildOptionsNode buildOptions = projectTree.GetMergedNode<BuildOptionsNode>(module.Node);
 
             bool isManaged = VisualStudioUtils.IsManaged(module, buildOptions);
             bool isClrMixed = VisualStudioUtils.IsClrMixed(module, buildOptions);
-            List<DependenciesNode> dependencies = _projectService.GetNodes<DependenciesNode>(context, module, module.IsBinary);
+            List<DependenciesNode> dependencies = [.. projectTree.GetNodes<DependenciesNode>(module.Node, module.IsBinary)];
 
             foreach (DependenciesEntryNode depEntry in dependencies.SelectMany((entry) => entry.Entries))
             {
@@ -1078,39 +1123,54 @@ internal class VcxprojGenerator(IProjectService projectService, ILogger<VcxprojG
                     continue;
                 }
 
-                ModuleNode depModule = _projectService.TryGetModuleByName(depEntry.DependencyName)
-                    ?? throw new InvalidOperationException($"No module found with name '{depEntry.DependencyName}', but module '{module.ModuleName}' depends on it.");
-
-                writer.WriteStartElement("ProjectReference");
-                writer.WriteAttributeString("Include", $"{module.ModuleName}{ProjectExtension}");
-
-                writer.WriteElementString("Project", ModuleGroupTree.GetModuleGuid(depModule));
-
-                if (isManaged || isClrMixed && depModule.Kind != EModuleKind.LibStatic)
+                if (!projectTree.IndexedNodes.TryGetNode(depEntry.DependencyName, out ModuleNode? depModule))
                 {
-                    writer.WriteElementString("Private", "true");
-                    writer.WriteElementString("ReferenceOutputAssembly", "true");
-                    writer.WriteElementString("CopyLocalSatelliteAssemblies", "false");
-                    writer.WriteElementString("LinkLibraryDependencies", "true");
-                    writer.WriteElementString("UseLibraryDependencyInputs", "false");
+                    throw new InvalidOperationException($"No module found with name '{depEntry.DependencyName}', but module '{module.ModuleName}' depends on it.");
                 }
 
-                writer.WriteEndElement();
+                bool useManagedMetadata = (isManaged || isClrMixed) && depModule.Kind != EModuleKind.LibStatic;
+                if (references.TryGetValue(depModule.ModuleName, out (ModuleNode Module, bool UseManagedMetadata) existingRef))
+                {
+                    references[depModule.ModuleName] = (existingRef.Module, existingRef.UseManagedMetadata || useManagedMetadata);
+                }
+                else
+                {
+                    references[depModule.ModuleName] = (depModule, useManagedMetadata);
+                }
             }
-        });
+        }
+
+        foreach ((ModuleNode depModule, bool useManagedMetadata) in references.Values)
+        {
+            writer.WriteStartElement("ProjectReference");
+            writer.WriteAttributeString("Include", $"{depModule.ModuleName}{ProjectExtension}");
+
+            writer.WriteElementString("Project", ModuleGroupTree.GetModuleGuid(depModule));
+
+            if (useManagedMetadata)
+            {
+                writer.WriteElementString("Private", "true");
+                writer.WriteElementString("ReferenceOutputAssembly", "true");
+                writer.WriteElementString("CopyLocalSatelliteAssemblies", "false");
+                writer.WriteElementString("LinkLibraryDependencies", "true");
+                writer.WriteElementString("UseLibraryDependencyInputs", "false");
+            }
+
+            writer.WriteEndElement();
+        }
 
         writer.WriteEndElement();
     }
 
-    private void AddGeneratedFilesForCustomBuildRule(ProjectContext context, BuildRuleNode buildRule)
+    private void AddGeneratedFilesForCustomBuildRule(ResolvedProjectTree projectTree, ModuleNode module, BuildRuleNode buildRule, string sourceFilePath)
     {
-        List<CommandNode> commands = _projectService.GetNodes<CommandNode>(context, buildRule, false);
+        List<CommandNode> commands = [.. projectTree.GetNodes<CommandNode>(buildRule.Node)];
         if (commands.Count == 0)
         {
             return;
         }
 
-        OutputsNode outputs = _projectService.GetMergedNode<OutputsNode>(context, buildRule, false);
+        OutputsNode outputs = projectTree.GetMergedNode<OutputsNode>(buildRule.Node, false);
         IEnumerable<string> outputFilePaths = outputs.Entries.Select((entry) => entry.FilePath);
 
         foreach (string outputFilePath in outputFilePaths)
@@ -1122,7 +1182,7 @@ internal class VcxprojGenerator(IProjectService projectService, ILogger<VcxprojG
             {
                 if (fileGroup.CanHandleFile(outputFilePath, fileAction, fileBuildRule))
                 {
-                    fileGroup.AddGeneratedFile(context, outputFilePath, string.Empty, fileAction, fileBuildRule);
+                    fileGroup.AddGeneratedFile(projectTree, module, outputFilePath, sourceFilePath, fileAction, fileBuildRule);
                     break;
                 }
             }
@@ -1131,11 +1191,15 @@ internal class VcxprojGenerator(IProjectService projectService, ILogger<VcxprojG
 
     private void CreateFileGroups()
     {
-        _fileGroups = VisualStudioUtils.CreateFileGroups(_outputPath);
+        _fileGroups = VisualStudioUtils.CreateFileGroups(_projectService, _outputPath);
 
-        foreach ((ResolvedProjectTree projectTree, string archName) in VisualStudioUtils.EnumerateConfigs(_projectService))
+        foreach ((ResolvedProjectTree projectTree, string _) in VisualStudioUtils.EnumerateConfigs(_projectService))
         {
-            ModuleNode module = projectTree.IndexedNodes.GetNode<ModuleNode>(_moduleName);
+            if (!projectTree.IndexedNodes.TryGetNode(_moduleName, out ModuleNode? module))
+            {
+                continue;
+            }
+
             FilesNode files = projectTree.GetMergedNode<FilesNode>(module.Node);
 
             foreach (FilesEntryNode entry in files.Entries)
@@ -1155,21 +1219,23 @@ internal class VcxprojGenerator(IProjectService projectService, ILogger<VcxprojG
                 // This should never happen because the NoneFileGroup can handle any file
                 if (!foundGroup)
                 {
-                    throw new Exception("No file group found for file: " + entry.ResolvedFilePath);
+                    throw new Exception("No file group found for file: " + entry.FilePath);
                 }
 
                 // Add each output file from custom build rules
-                if (!entry.IsExcludedFromBuild && entry.ResolvedFileBuildRule == EFileBuildRule.Custom)
+                if (!entry.IsExcludedFromBuild
+                    && entry.FileAction == EFileAction.Build
+                    && entry.FileBuildRule == EFileBuildRule.Custom)
                 {
-                    BuildRuleNode buildRule = _projectService.GetMergedNode<BuildRuleNode>(context, module, (n) => n.RuleName == entry.BuildRuleName, false);
-                    if (buildRule.RuleName != entry.BuildRuleName)
+                    BuildRuleNode buildRule = projectTree.GetMergedNode<BuildRuleNode>(module.Node, (n) => n.RuleName == entry.BuildRuleName, false);
+                    if (!buildRule.HasValue(0) || buildRule.RuleName != entry.BuildRuleName)
                     {
                         throw new Exception($"No build rule with the name '{entry.BuildRuleName}' was found.");
                     }
 
                     if (buildRule.LinkOutput)
                     {
-                        AddGeneratedFilesForCustomBuildRule(context, buildRule);
+                        AddGeneratedFilesForCustomBuildRule(projectTree, module, buildRule, entry.FilePath);
                     }
                 }
             }

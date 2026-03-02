@@ -11,7 +11,7 @@ plugin microsoft.WinPixEventRuntime version="1.0.230302001" license="SEE LICENSE
         }
     }
 
-    module WinPixEventRuntime kind=shared group="engine/contrib" {
+    module WinPixEventRuntime kind=lib_shared group="engine/contrib" {
         public {
             include_dirs { "Include/WinPixEventRuntime" }
         }

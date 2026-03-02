@@ -30,7 +30,7 @@ public enum EInliningLevel
     [KdlName("on")] On,
 }
 
-public class OptimizeNodeTraits : NodeBaseTraits
+internal class OptimizeNodeTraits : NodeBaseTraits
 {
     public override string Name => "optimize";
 
@@ -58,7 +58,7 @@ public class OptimizeNodeTraits : NodeBaseTraits
     public override INode CreateNode(KdlNode node) => new OptimizeNode(node);
 }
 
-public class OptimizeNode(KdlNode node) : NodeBase<OptimizeNodeTraits>(node)
+internal class OptimizeNode(KdlNode node) : NodeBase<OptimizeNodeTraits>(node)
 {
     public EOptimizationLevel OptimizationLevel => GetEnumValue<EOptimizationLevel>(0);
     public ELinkTimeOptimizationLevel LinkTimeOptimizationLevel => GetEnumValue<ELinkTimeOptimizationLevel>("lto");

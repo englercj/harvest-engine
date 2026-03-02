@@ -4,7 +4,7 @@ using Harvest.Make.Projects.Nodes;
 
 namespace Harvest.Make.Projects;
 
-public class ProjectContext
+internal class ProjectContext
 {
     public required IProjectService ProjectService { get; init; }
     public required ConfigurationNode Configuration { get; init; }

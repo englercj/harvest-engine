@@ -4,23 +4,23 @@
     "net10.0": {
       "Microsoft.Extensions.DependencyInjection.Abstractions": {
         "type": "Direct",
-        "requested": "[10.0.2, )",
-        "resolved": "10.0.2",
-        "contentHash": "zOIurr59+kUf9vNcsUkCvKWZv+fPosUZXURZesYkJCvl0EzTc9F7maAO4Cd2WEV7ZJJ0AZrFQvuH6Npph9wdBw=="
+        "requested": "[10.0.3, )",
+        "resolved": "10.0.3",
+        "contentHash": "bwGMrRcAMWx2s/RDgja97p27rxSz2pEQW0+rX5cWAUWVETVJ/eyxGfjAl8vuG5a+lckWmPIE+vcuaZNVB5YDdw=="
       },
       "Microsoft.Extensions.FileSystemGlobbing": {
         "type": "Direct",
-        "requested": "[10.0.2, )",
-        "resolved": "10.0.2",
-        "contentHash": "XozoMaWcFIv1tv0LDF+YMeZYjiNiNIewpNdZ3TEoVGf8ROrp0hVoEdUyUBsI8oYGM5U3Z5hiNEv0j2Z5COnMgg=="
+        "requested": "[10.0.3, )",
+        "resolved": "10.0.3",
+        "contentHash": "oM7pl8uJz8WRPRlh4AGQS61aeV9GOfTu89yqTiRSYyyMuCNVkbNra9zEk7ApyJ/sZrUpbjOZCRHuitCEsTWghg=="
       },
       "Microsoft.Extensions.Logging.Abstractions": {
         "type": "Direct",
-        "requested": "[10.0.2, )",
-        "resolved": "10.0.2",
-        "contentHash": "RZkez/JjpnO+MZ6efKkSynN6ZztLpw3WbxNzjLCPBd97wWj1S9ZYPWi0nmT4kWBRa6atHsdM1ydGkUr8GudyDQ==",
+        "requested": "[10.0.3, )",
+        "resolved": "10.0.3",
+        "contentHash": "lxl0WLk7ROgBFAsjcOYjQ8/DVK+VMszxGBzUhgtQmAsTNldLL5pk9NG/cWTsXHq0lUhUEAtZkEE7jOGOA8bGKQ==",
         "dependencies": {
-          "Microsoft.Extensions.DependencyInjection.Abstractions": "10.0.2"
+          "Microsoft.Extensions.DependencyInjection.Abstractions": "10.0.3"
         }
       },
       "CommunityToolkit.HighPerformance": {
@@ -30,17 +30,16 @@
       },
       "System.CommandLine": {
         "type": "Transitive",
-        "resolved": "2.0.2",
-        "contentHash": "zqn6I1IULEJaLEFKejeSFlZrf8HzIUU4qEjuYtEVRx5AsxKMLqLP+t0dQ4fk51A5CzT9Uv8wBLdMHSIYIrCKBw=="
+        "resolved": "2.0.3",
+        "contentHash": "5nY9hlrGGFEmyecNUux58sohD2Q16U6jlFBYwH57b2IVUs+u7LfMFaHwOtw2tuIi8CUl6jKXw5s4FuIt9aLtug=="
       },
       "harvest.common": {
         "type": "Project",
         "dependencies": {
           "CommunityToolkit.HighPerformance": "[8.4.0, )",
-          "Harvest.Kdl": "[1.0.0, )",
-          "Microsoft.Extensions.DependencyInjection.Abstractions": "[10.0.2, )",
-          "Microsoft.Extensions.Logging.Abstractions": "[10.0.2, )",
-          "System.CommandLine": "[2.0.2, )"
+          "Microsoft.Extensions.DependencyInjection.Abstractions": "[10.0.3, )",
+          "Microsoft.Extensions.Logging.Abstractions": "[10.0.3, )",
+          "System.CommandLine": "[2.0.3, )"
         }
       },
       "harvest.kdl": {

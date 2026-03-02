@@ -19,7 +19,7 @@ public static class StreamExtensions
         try
         {
             await using FileStream existingFile = new(filePath, FileMode.Open, FileAccess.ReadWrite, FileShare.None);
-            fileHasChanged = !stream.Equals(existingFile);
+            fileHasChanged = !stream.EqualsStream(existingFile);
 
             if (fileHasChanged)
             {
@@ -35,7 +35,7 @@ public static class StreamExtensions
         return fileHasChanged;
     }
 
-    public static bool Equals(this Stream stream, ReadOnlySpan<byte> bytes)
+    public static bool EqualsBytes(this Stream stream, ReadOnlySpan<byte> bytes)
     {
         // Fast path for memory streams that can expose their buffer directly.
         if (stream is MemoryStream mem && mem.TryGetBuffer(out ArraySegment<byte> bufferSegment))
@@ -70,7 +70,7 @@ public static class StreamExtensions
         }
     }
 
-    public static bool Equals(this Stream stream, Stream other)
+    public static bool EqualsStream(this Stream stream, Stream other)
     {
         if (ReferenceEquals(stream, other))
         {
@@ -132,7 +132,14 @@ public static class StreamExtensions
             source.Position = 0;
         }
 
+        if (fileStream.CanSeek)
+        {
+            fileStream.Position = 0;
+            fileStream.SetLength(0);
+        }
+
         await source.CopyToAsync(fileStream);
+        await fileStream.FlushAsync();
 
         if (source.CanSeek)
         {

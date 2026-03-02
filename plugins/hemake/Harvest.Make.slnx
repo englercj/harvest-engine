@@ -1,11 +1,18 @@
 <Solution>
-  <Project Path="Common/Harvest.Common/Harvest.Common.csproj" />
-  <Project Path="Common/Harvest.Kdl/Harvest.Kdl.csproj" />
-  <Project Path="Common/Harvest.SourceGenerators/Harvest.SourceGenerators.csproj" />
-
   <Project Path="Harvest.Make.CLI/Harvest.Make.CLI.csproj" />
   <Project Path="Harvest.Make.Projects/Harvest.Make.Projects.csproj" />
 
-  <Project Path="Tests/Harvest.Make.Projects.Tests/Harvest.Make.Projects.Tests.csproj" />
-  <Project Path="Tests/Common/Harvest.Kdl.Tests/Harvest.Kdl.Tests.csproj" />
+  <Folder Name="/Common/">
+    <Project Path="Common/Harvest.Common/Harvest.Common.csproj" />
+    <Project Path="Common/Harvest.Kdl/Harvest.Kdl.csproj" />
+    <Project Path="Common/Harvest.SourceGenerators/Harvest.SourceGenerators.csproj" />
+  </Folder>
+
+  <Folder Name="/Tests/">
+    <Project Path="Tests/Harvest.Make.Projects.Tests/Harvest.Make.Projects.Tests.csproj" />
+  </Folder>
+
+  <Folder Name="/Tests/Common/">
+    <Project Path="Tests/Common/Harvest.Kdl.Tests/Harvest.Kdl.Tests.csproj" />
+  </Folder>
 </Solution>

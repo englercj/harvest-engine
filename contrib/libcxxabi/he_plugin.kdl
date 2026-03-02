@@ -11,12 +11,13 @@ plugin llvm.libcxxabi version="18.1.2" license="Apache-2.0 WITH LLVM-exception" 
         }
     }
 
-    module libcxxabi kind=lib_static group="engine/contrib" {
-        warnings level=off
+    when system=wasm {
+        module libcxxabi kind=lib_static group="engine/contrib" {
+            warnings level=off
 
-        files {
-            // Includes
-            "include/cxxabi.h"
+            files {
+                // Includes
+                "include/cxxabi.h"
 
             // C++ABI files
             "src/cxa_aux_runtime.cpp"
@@ -48,10 +49,11 @@ plugin llvm.libcxxabi version="18.1.2" license="Apache-2.0 WITH LLVM-exception" 
 
             // Threads
             "src/cxa_thread_atexit.cpp"
-        }
+            }
 
-        public {
-            include_dirs external=#true { "include" }
+            public {
+                include_dirs external=#true { "include" }
+            }
         }
     }
 }

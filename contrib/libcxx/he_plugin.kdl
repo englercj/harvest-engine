@@ -11,12 +11,13 @@ plugin llvm.libcxx version="18.1.2" license="Apache-2.0 WITH LLVM-exception" abi
         }
     }
 
-    module libcxx kind=lib_static group="engine/contrib" {
-        warnings level=off
+    when system=wasm {
+        module libcxx kind=lib_static group="engine/contrib" {
+            warnings level=off
 
-        files {
-            // Includes
-            "include/*"
+            files {
+                // Includes
+                "include/*"
 
             // Base sources
             "src/algorithm.cpp"
@@ -99,11 +100,12 @@ plugin llvm.libcxx version="18.1.2" license="Apache-2.0 WITH LLVM-exception" abi
 
             // New/Delete Definitions
             // "src/new.cpp"
-        }
+            }
 
-        public {
-            include_dirs external=#true { "include"; "${module.path:dir}/include" }
-            dependencies { libcxxabi }
+            public {
+                include_dirs external=#true { "include"; "${module.path:dir}/include" }
+                dependencies { libcxxabi }
+            }
         }
     }
 }

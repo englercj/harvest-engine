@@ -17,28 +17,28 @@ plugin nvidia.slang version="0.28.2" license="MIT" {
 
     module slang kind=lib_shared group="engine/contrib" {
         public {
-            include_dirs { "." }
+            include_dirs { "${plugin.install_dir}" }
         }
 
         when system=windows arch=x86_64 {
             files {
-                "bin/windows-x64/release/gfx.dll" action=copy
-                "bin/windows-x64/release/slang.dll" action=copy
-                "bin/windows-x64/release/slang-glslang.dll" action=copy
+                "${plugin.install_dir}/bin/windows-x64/release/gfx.dll" action=copy
+                "${plugin.install_dir}/bin/windows-x64/release/slang.dll" action=copy
+                "${plugin.install_dir}/bin/windows-x64/release/slang-glslang.dll" action=copy
                 "$(WindowsSdkDir)Redist/D3D/x64/dxcompiler.dll" action=copy
                 "$(WindowsSdkDir)Redist/D3D/x64/dxil.dll" action=copy
             }
 
             public {
-                dependencies { "bin/windows-x64/release/slang.lib" kind=file }
+                dependencies { "${plugin.install_dir}/bin/windows-x64/release/slang.lib" kind=file }
             }
         }
 
         when system=linux arch=x86_64 {
             files {
-                "bin/linux-x64/release/libgfx.so" action=copy
-                "bin/linux-x64/release/libslang.so" action=copy
-                "bin/linux-x64/release/libslang-glslang.so" action=copy
+                "${plugin.install_dir}/bin/linux-x64/release/libgfx.so" action=copy
+                "${plugin.install_dir}/bin/linux-x64/release/libslang.so" action=copy
+                "${plugin.install_dir}/bin/linux-x64/release/libslang-glslang.so" action=copy
             }
         }
     }

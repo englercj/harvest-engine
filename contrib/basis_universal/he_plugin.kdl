@@ -13,10 +13,10 @@ plugin binomial.basis_universal version="1.16.4" license="Apache-2.0" {
         warnings level=off
 
         files {
-            "encoder/*.h"
-            "encoder/*.cpp"
-            "transcoder/*.h"
-            "transcoder/*.cpp"
+            "${plugin.install_dir}/encoder/*.h"
+            "${plugin.install_dir}/encoder/*.cpp"
+            "${plugin.install_dir}/transcoder/*.h"
+            "${plugin.install_dir}/transcoder/*.cpp"
         }
 
         defines {
@@ -26,10 +26,10 @@ plugin binomial.basis_universal version="1.16.4" license="Apache-2.0" {
         }
 
         public {
-            include_dirs external=#true { "." }
+            include_dirs external=#true { "${plugin.install_dir}" }
         }
 
-        when system=posix {
+        when tags=posix {
             public {
                 dependencies { m kind=system; pthread kind=system }
             }

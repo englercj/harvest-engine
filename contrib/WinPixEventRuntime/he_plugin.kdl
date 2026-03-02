@@ -13,24 +13,24 @@ plugin microsoft.WinPixEventRuntime version="1.0.230302001" license="SEE LICENSE
 
     module WinPixEventRuntime kind=lib_shared group="engine/contrib" {
         public {
-            include_dirs { "Include/WinPixEventRuntime" }
+            include_dirs { "${plugin.install_dir}/Include/WinPixEventRuntime" }
         }
 
         when system=windows arch=x86_64 {
             files {
-                "bin/x64/WinPixEventRuntime.dll" action=copy
+                "${plugin.install_dir}/bin/x64/WinPixEventRuntime.dll" action=copy
             }
             public {
-                dependencies { "bin/x64/WinPixEventRuntime.lib" kind=file }
+                dependencies { "${plugin.install_dir}/bin/x64/WinPixEventRuntime.lib" kind=file }
             }
         }
 
         when system=windows arch=arm64 {
             files {
-                "bin/ARM64/WinPixEventRuntime.dll" action=copy
+                "${plugin.install_dir}/bin/ARM64/WinPixEventRuntime.dll" action=copy
             }
             public {
-                dependencies { "bin/ARM64/WinPixEventRuntime.lib" kind=file }
+                dependencies { "${plugin.install_dir}/bin/ARM64/WinPixEventRuntime.lib" kind=file }
             }
         }
     }

@@ -1,0 +1,28 @@
+// Copyright Chad Engler
+
+plugin he.window version="0.1.0" license="UNLICENSED" {
+    authors { "Chad Engler" email=englercj@live.com }
+
+    module he_window kind=lib_static group="engine/libs" {
+        files { "include/**"; "src/**"; "wasm/**" }
+        include_dirs { "src" }
+
+        public {
+            dependencies { he_core; he_math }
+            include_dirs { "include" }
+        }
+
+        when system=linux {
+            public {
+                dependencies { dl kind=system }
+            }
+        }
+    }
+
+    module he_window_test_app kind=app_windowed group="engine/tests" {
+        files { "test_app/**" }
+        files remove { "test_app/wasm/node_modules/**" }
+
+        dependencies { he_core; he_window }
+    }
+}

@@ -12,12 +12,12 @@ plugin madler.zlib version="1.2.13" license="Zlib" {
     module zlib kind=lib_static group="engine/contrib" {
         warnings level=off
 
-        files { "*.h"; "*.c" }
+        files { "${plugin.install_dir}/*.h"; "${plugin.install_dir}/*.c" }
 
         defines { "N_FSEEKO" }
 
         public {
-            include_dirs { "." }
+            include_dirs { "${plugin.install_dir}" }
         }
 
         when tags=debug {

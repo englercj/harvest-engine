@@ -1,0 +1,49 @@
+// Copyright Chad Engler
+
+plugin he.schema version="0.1.0" license="UNLICENSED" {
+    authors { "Chad Engler" email=englercj@live.com }
+
+    module he_schema kind=lib_static group="engine/libs" {
+        files { "schema/include/**"; "schema/src/**" }
+        include_dirs { "schema/src" }
+
+        public {
+            dependencies { he_core; zstd }
+            include_dirs { "schema/include" }
+        }
+    }
+
+    module he_schema_compiler kind=lib_static group="engine/libs" {
+        files { "schema_compiler/include/**"; "schema_compiler/src/**" }
+        include_dirs { "schema_compiler/src" }
+
+        public {
+            dependencies { he_core; he_schema }
+            include_dirs { "schema_compiler/include" }
+        }
+    }
+
+    module he_schemac kind=app_console group="engine/tools" {
+        files { "schemac/**" }
+
+        dependencies { he_core; he_schema; he_schema_compiler }
+    }
+
+    module he_schema_tests kind=lib_static group="engine/tests" {
+        files { "schema/test/**" }
+        include_dirs { "schema/src" }
+
+        public {
+            dependencies { he_schema }
+        }
+    }
+
+    module he_schema_compiler_tests kind=lib_static group="engine/tests" {
+        files { "schema_compiler/test/**" }
+        include_dirs { "schema_compiler/src" }
+
+        public {
+            dependencies { he_schema_compiler }
+        }
+    }
+}

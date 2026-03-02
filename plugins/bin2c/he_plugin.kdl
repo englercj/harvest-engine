@@ -1,0 +1,11 @@
+// Copyright Chad Engler
+
+plugin he.bin2c version="0.1.0" license="UNLICENSED" {
+    authors { "Chad Engler" email=englercj@live.com }
+
+    module he_bin2c kind=app_console group="engine/tools" {
+        files { "src/**" }
+
+        dependencies { he_core }
+    }
+}

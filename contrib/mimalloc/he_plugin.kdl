@@ -14,37 +14,37 @@ plugin microsoft.mimalloc version="2.1.4" license="MIT" {
         warnings level=off
 
         files {
-            "include/**.h"
-            "src/alloc.c"
-            "src/alloc-aligned.c"
-            "src/alloc-posix.c"
-            "src/arena.c"
-            "src/bitmap.c"
-            "src/heap.c"
-            "src/init.c"
-            "src/libc.c"
-            "src/options.c"
-            "src/os.c"
-            "src/page.c"
-            "src/random.c"
-            "src/segment.c"
-            "src/segment-map.c"
-            "src/stats.c"
+            "${plugin.install_dir}/include/**.h"
+            "${plugin.install_dir}/src/alloc.c"
+            "${plugin.install_dir}/src/alloc-aligned.c"
+            "${plugin.install_dir}/src/alloc-posix.c"
+            "${plugin.install_dir}/src/arena.c"
+            "${plugin.install_dir}/src/bitmap.c"
+            "${plugin.install_dir}/src/heap.c"
+            "${plugin.install_dir}/src/init.c"
+            "${plugin.install_dir}/src/libc.c"
+            "${plugin.install_dir}/src/options.c"
+            "${plugin.install_dir}/src/os.c"
+            "${plugin.install_dir}/src/page.c"
+            "${plugin.install_dir}/src/random.c"
+            "${plugin.install_dir}/src/segment.c"
+            "${plugin.install_dir}/src/segment-map.c"
+            "${plugin.install_dir}/src/stats.c"
 
             // Override their prim.c with our own so we can detect WASM
             // "src/prim/prim.c"
-            "${module.file_path:dir}/prim/prim.c"
+            "prim/prim.c"
         }
 
         include_dirs {
-            "src"
-            "${module.file_path:dir}"
+            "${plugin.install_dir}/src"
+            "."
         }
 
         dependencies { he_core kind=include }
 
         public {
-            include_dirs { "include" }
+            include_dirs { "${plugin.install_dir}/include" }
         }
 
         when tags=asan {

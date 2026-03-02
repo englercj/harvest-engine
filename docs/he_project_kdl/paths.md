@@ -4,7 +4,7 @@ Paths in HE Make are separated by a forward slash (`/`), regardless of the platf
 
 ## Relative paths
 
-Paths in a plugin with an `install {}` block are relative to the location where the installed files are extracted. In all other cases paths are relative to the `*.kdl` file they were written in.
+All relative paths are assumed to be relative to the `*.kdl` file they are written in. You can use [tokens](tokens.md) to build complex paths if needed.
 
 ## Glob Patterns
 
@@ -16,11 +16,11 @@ All keys that accept paths to files can contain globs patterns. An asterisk (`*`
 module my_module type=static group="engine/libs" {
     files {
         // Path to a file that lives next to the 'he_plugin.kdl' file.
-        "${plugin.path:dirname}/user_config.h"
+        "user_config.h"
 
         // Path to the 'library.cpp' file, relative to the plugin's install
         // directory within the build directory.
-        "library.cpp"
+        "${plugin.install_dir}/library.cpp"
 
         // Matches all files that end with `.cpp` in the `src` directory
         "src/*.cpp"

@@ -1,0 +1,22 @@
+// Copyright Chad Engler
+
+plugin he.math version="0.1.0" license="UNLICENSED" {
+    authors { "Chad Engler" email=englercj@live.com }
+
+    module he_math kind=lib_header group="engine/libs" {
+        files { "include/**"; "src/**" }
+
+        public {
+            dependencies { he_core }
+            include_dirs { "include" }
+        }
+    }
+
+    module he_math_tests kind=lib_static group="engine/tests" {
+        files { "test/**" }
+
+        public {
+            dependencies { he_math }
+        }
+    }
+}

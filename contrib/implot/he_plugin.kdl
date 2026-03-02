@@ -12,20 +12,20 @@ plugin epezent.implot version="0.14" license="MIT" {
 
     module implot kind=lib_static group="engine/contrib" {
         files {
-            "implot.cpp"
-            "implot.h"
-            "implot_internal.h"
-            "implot_items.cpp"
+            "${plugin.install_dir}/implot.cpp"
+            "${plugin.install_dir}/implot.h"
+            "${plugin.install_dir}/implot_internal.h"
+            "${plugin.install_dir}/implot_items.cpp"
         }
 
         public {
             dependencies { imgui }
-            include_dirs { "." }
+            include_dirs { "${plugin.install_dir}" }
         }
 
         when tags=internal {
             files {
-                "implot_demo.cpp"
+                "${plugin.install_dir}/implot_demo.cpp"
             }
         }
     }

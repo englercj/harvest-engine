@@ -1,0 +1,24 @@
+// Copyright Chad Engler
+
+plugin he.sqlite version="0.1.0" license="UNLICENSED" {
+    authors { "Chad Engler" email=englercj@live.com }
+
+    module he_sqlite kind=lib_static group="engine/libs" {
+        files { "include/**"; "src/**" }
+        include_dirs { "src" }
+
+        public {
+            dependencies { he_core; sqlite3 }
+            include_dirs { "include" }
+        }
+    }
+
+    module he_sqlite_tests kind=lib_static group="engine/tests" {
+        files { "test/**" }
+        include_dirs { "src" }
+
+        public {
+            dependencies { he_sqlite }
+        }
+    }
+}

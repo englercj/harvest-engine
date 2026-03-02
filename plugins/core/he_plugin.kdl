@@ -29,7 +29,7 @@ plugin he.core version="0.1.0" license="UNLICENSED" {
             }
         }
 
-        when system="posix && !linux" {
+        when tags=posix system=!linux {
             public {
                 dependencies { dl kind=system; pthread kind=system }
                 defines {
@@ -62,7 +62,7 @@ plugin he.core version="0.1.0" license="UNLICENSED" {
             }
         }
 
-        when system=win32 {
+        when system=windows {
             public {
                 dependencies {
                     shlwapi kind=system

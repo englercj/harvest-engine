@@ -1,0 +1,31 @@
+// Copyright Chad Engler
+
+plugin he.rhi version="0.1.0" license="UNLICENSED" {
+    authors { "Chad Engler" email=englercj@live.com }
+
+    module he_rhi kind=lib_static group="engine/libs" {
+        files { "include/**"; "src/**" }
+        include_dirs { "src" }
+
+        public {
+            dependencies { he_core; he_math }
+            include_dirs { "include" }
+        }
+
+        when system=windows {
+            public {
+                dependencies { WinPixEventRuntime }
+            }
+        }
+    }
+
+    module he_shaderc kind=app_console group="engine/tools" {
+        files { "compiler/**" }
+
+        dependencies {
+            he_core
+            slang
+            he_rhi kind=include
+        }
+    }
+}

@@ -13,7 +13,7 @@ plugin sqlite3.sqlite3 version="3.42.0" license="blessing" {
     module sqlite3 kind=lib_static group="engine/contrib" {
         warnings level=off
 
-        files { "sqlite3.h"; "sqlite3.c" }
+        files { "${plugin.install_dir}/sqlite3.h"; "${plugin.install_dir}/sqlite3.c" }
 
         defines {
             "SQLITE_DQS=0"
@@ -30,7 +30,7 @@ plugin sqlite3.sqlite3 version="3.42.0" license="blessing" {
         }
 
         public {
-            include_dirs { "." }
+            include_dirs { "${plugin.install_dir}" }
             defines { "SQLITE_OMIT_DEPRECATED=1" }
         }
 

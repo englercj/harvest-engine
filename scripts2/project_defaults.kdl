@@ -89,7 +89,7 @@ when platform=WinArm64 {
     codegen armv8.0
 }
 
-when system="Win64 || WinArm64" {
+when platform="Win64 || WinArm64" {
     defines {
         HE_PLATFORM_WINDOWS
         HE_PLATFORM_API_WIN32

@@ -13,30 +13,30 @@ plugin microsoft.DirectStorage version="1.2.1" license="SEE LICENSE IN LICENSE.t
 
     module DirectStorage kind=lib_shared group="engine/contrib" {
         public {
-            include_dirs { "native/include" }
+            include_dirs { "${plugin.install_dir}/native/include" }
         }
 
         when system=windows arch=x86_64 {
             public {
                 dependencies {
-                    "native/lib/x64/dstorage.lib" kind=file
+                    "${plugin.install_dir}/native/lib/x64/dstorage.lib" kind=file
                 }
             }
             files {
-                "native/bin/x64/dstorage.dll" action=copy
-                "native/bin/x64/dstoragecore.dll" action=copy
+                "${plugin.install_dir}/native/bin/x64/dstorage.dll" action=copy
+                "${plugin.install_dir}/native/bin/x64/dstoragecore.dll" action=copy
             }
         }
 
         when system=windows arch=arm64 {
             public {
                 dependencies {
-                    "native/lib/ARM64/dstorage.lib" kind=file
+                    "${plugin.install_dir}/native/lib/ARM64/dstorage.lib" kind=file
                 }
             }
             files {
-                "native/bin/ARM64/dstorage.dll" action=copy
-                "native/bin/ARM64/dstoragecore.dll" action=copy
+                "${plugin.install_dir}/native/bin/ARM64/dstorage.dll" action=copy
+                "${plugin.install_dir}/native/bin/ARM64/dstoragecore.dll" action=copy
             }
         }
     }

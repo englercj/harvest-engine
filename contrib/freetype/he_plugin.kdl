@@ -13,46 +13,46 @@ plugin freetype.freetype version="2.12.1" license="FTL" {
         warnings level=off
 
         files {
-            "src/autofit/autofit.c"
-            "src/base/ftbase.c"
-            "src/base/ftbbox.c"
-            "src/base/ftbdf.c"
-            "src/base/ftbitmap.c"
-            "src/base/ftcid.c"
-            "src/base/ftfstype.c"
-            "src/base/ftgasp.c"
-            "src/base/ftglyph.c"
-            "src/base/ftgxval.c"
-            "src/base/ftinit.c"
-            "src/base/ftmm.c"
-            "src/base/ftotval.c"
-            "src/base/ftpatent.c"
-            "src/base/ftpfr.c"
-            "src/base/ftstroke.c"
-            "src/base/ftsynth.c"
-            "src/base/fttype1.c"
-            "src/base/ftwinfnt.c"
-            "src/bdf/bdf.c"
-            "src/bzip2/ftbzip2.c"
-            "src/cache/ftcache.c"
-            "src/cff/cff.c"
-            "src/cid/type1cid.c"
-            "src/gzip/ftgzip.c"
-            "src/lzw/ftlzw.c"
-            "src/pcf/pcf.c"
-            "src/pfr/pfr.c"
-            "src/psaux/psaux.c"
-            "src/pshinter/pshinter.c"
-            "src/psnames/psnames.c"
-            "src/raster/raster.c"
-            "src/sdf/sdf.c"
-            "src/sfnt/sfnt.c"
-            "src/smooth/smooth.c"
-            "src/svg/svg.c"
-            "src/truetype/truetype.c"
-            "src/type1/type1.c"
-            "src/type42/type42.c"
-            "src/winfonts/winfnt.c"
+            "${plugin.install_dir}/src/autofit/autofit.c"
+            "${plugin.install_dir}/src/base/ftbase.c"
+            "${plugin.install_dir}/src/base/ftbbox.c"
+            "${plugin.install_dir}/src/base/ftbdf.c"
+            "${plugin.install_dir}/src/base/ftbitmap.c"
+            "${plugin.install_dir}/src/base/ftcid.c"
+            "${plugin.install_dir}/src/base/ftfstype.c"
+            "${plugin.install_dir}/src/base/ftgasp.c"
+            "${plugin.install_dir}/src/base/ftglyph.c"
+            "${plugin.install_dir}/src/base/ftgxval.c"
+            "${plugin.install_dir}/src/base/ftinit.c"
+            "${plugin.install_dir}/src/base/ftmm.c"
+            "${plugin.install_dir}/src/base/ftotval.c"
+            "${plugin.install_dir}/src/base/ftpatent.c"
+            "${plugin.install_dir}/src/base/ftpfr.c"
+            "${plugin.install_dir}/src/base/ftstroke.c"
+            "${plugin.install_dir}/src/base/ftsynth.c"
+            "${plugin.install_dir}/src/base/fttype1.c"
+            "${plugin.install_dir}/src/base/ftwinfnt.c"
+            "${plugin.install_dir}/src/bdf/bdf.c"
+            "${plugin.install_dir}/src/bzip2/ftbzip2.c"
+            "${plugin.install_dir}/src/cache/ftcache.c"
+            "${plugin.install_dir}/src/cff/cff.c"
+            "${plugin.install_dir}/src/cid/type1cid.c"
+            "${plugin.install_dir}/src/gzip/ftgzip.c"
+            "${plugin.install_dir}/src/lzw/ftlzw.c"
+            "${plugin.install_dir}/src/pcf/pcf.c"
+            "${plugin.install_dir}/src/pfr/pfr.c"
+            "${plugin.install_dir}/src/psaux/psaux.c"
+            "${plugin.install_dir}/src/pshinter/pshinter.c"
+            "${plugin.install_dir}/src/psnames/psnames.c"
+            "${plugin.install_dir}/src/raster/raster.c"
+            "${plugin.install_dir}/src/sdf/sdf.c"
+            "${plugin.install_dir}/src/sfnt/sfnt.c"
+            "${plugin.install_dir}/src/smooth/smooth.c"
+            "${plugin.install_dir}/src/svg/svg.c"
+            "${plugin.install_dir}/src/truetype/truetype.c"
+            "${plugin.install_dir}/src/type1/type1.c"
+            "${plugin.install_dir}/src/type42/type42.c"
+            "${plugin.install_dir}/src/winfonts/winfnt.c"
         }
 
         defines {
@@ -63,22 +63,22 @@ plugin freetype.freetype version="2.12.1" license="FTL" {
 
         public {
             dependencies { zlib }
-            include_dirs { "include" }
+            include_dirs { "${plugin.install_dir}/include" }
         }
 
         when system="linux || macosx" {
             defines { "HAVE_UNISTD_H=1"; "HAVE_FCNTL_H=1" }
             files {
-                "builds/unix/ftsystem.c"
-                "src/base/ftdebug.c"
+                "${plugin.install_dir}/builds/unix/ftsystem.c"
+                "${plugin.install_dir}/src/base/ftdebug.c"
             }
         }
 
         when system=windows {
             files {
-                "builds/windows/ftsystem.c"
-                "builds/windows/ftdebug.c"
-                "src/base/ftver.rc"
+                "${plugin.install_dir}/builds/windows/ftsystem.c"
+                "${plugin.install_dir}/builds/windows/ftdebug.c"
+                "${plugin.install_dir}/src/base/ftver.rc"
             }
         }
     }

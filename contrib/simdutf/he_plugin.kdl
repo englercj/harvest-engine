@@ -12,10 +12,10 @@ plugin simdutf.simdutf version="5.0.0" license="MIT" {
     module simdutf kind=lib_static group="engine/contrib" {
         warnings level=off
 
-        files { "simdutf.h"; "simdutf.cpp" }
+        files { "${plugin.install_dir}/simdutf.h"; "${plugin.install_dir}/simdutf.cpp" }
 
         public {
-            include_dirs external=#true { "." }
+            include_dirs external=#true { "${plugin.install_dir}" }
         }
     }
 }

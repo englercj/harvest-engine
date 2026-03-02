@@ -13,16 +13,16 @@ plugin facebook.zstd version="1.5.5" license="BSD-3-Clause" {
         warnings level=off
 
         files {
-            "lib/common/**"
-            "lib/compress/**"
-            "lib/decompress/**"
-            "zdict.h"
-            "zstd.h"
-            "zstd_errors.h"
+            "${plugin.install_dir}/lib/common/**"
+            "${plugin.install_dir}/lib/compress/**"
+            "${plugin.install_dir}/lib/decompress/**"
+            "${plugin.install_dir}/zdict.h"
+            "${plugin.install_dir}/zstd.h"
+            "${plugin.install_dir}/zstd_errors.h"
         }
 
         public {
-            include_dirs external=#true { "lib" }
+            include_dirs external=#true { "${plugin.install_dir}/lib" }
             defines { "ZSTD_STATIC_LINKING_ONLY" }
         }
     }

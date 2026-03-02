@@ -23,7 +23,7 @@ A definition of a module provided by a plugin.
     * `csharp` - C#
 - `project_file` (string) - Optional. Path to a project file to use instead of generating one.
 - `entrypoint` (string) - Optional. Name of the application's entrypoint symbol.
-- `hemake_extension` (boolean) - Optional. `#true` to tell HE Make to load this project as an extension. Default: `#false`
+- `hemake_load` (boolean) - Optional. `#true` to tell HE Make to load this project as a plugin. Requires `project_file` to be set. Default: `#false`
 - `target_name` (string) Optional. The name of the output target file. When not specified, the module's name is used.
 - `target_extension` (string) Optional. The extension of the output target file. By default the extension used is defined by the toolset.
 - `target_dir` (string) Optional. The directory for the output target file. When not specified, the default output directory is derived from [`build_output`](build_output_node.md) and the module kind.

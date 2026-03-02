@@ -12,19 +12,19 @@ plugin ocornut.imgui version="1.89.6" license="MIT" {
 
     module imgui kind=lib_static group="engine/contrib" {
         files {
-            "${module.file_path:dir}/imgui_user_config.h"
-            "imgui_draw.cpp"
-            "imgui_internal.h"
-            "imgui_tables.cpp"
-            "imgui_widgets.cpp"
-            "imgui.cpp"
-            "imgui.h"
-            "imstb_rectpack.h"
-            "imstb_textedit.h"
-            "misc/debuggers/imgui.natstepfilter"
-            "misc/debuggers/imgui.natvis"
-            "misc/freetype/imgui_freetype.cpp"
-            "misc/freetype/imgui_freetype.h"
+            "imgui_user_config.h"
+            "${plugin.install_dir}/imgui_draw.cpp"
+            "${plugin.install_dir}/imgui_internal.h"
+            "${plugin.install_dir}/imgui_tables.cpp"
+            "${plugin.install_dir}/imgui_widgets.cpp"
+            "${plugin.install_dir}/imgui.cpp"
+            "${plugin.install_dir}/imgui.h"
+            "${plugin.install_dir}/imstb_rectpack.h"
+            "${plugin.install_dir}/imstb_textedit.h"
+            "${plugin.install_dir}/misc/debuggers/imgui.natstepfilter"
+            "${plugin.install_dir}/misc/debuggers/imgui.natvis"
+            "${plugin.install_dir}/misc/freetype/imgui_freetype.cpp"
+            "${plugin.install_dir}/misc/freetype/imgui_freetype.h"
         }
 
         public {
@@ -35,14 +35,14 @@ plugin ocornut.imgui version="1.89.6" license="MIT" {
                 he_math kind=include // Need the types for the ImVec2 class extras
             }
             include_dirs {
+                "${plugin.install_dir}"
                 "."
-                "${module.file_path:dir}"
             }
         }
 
         when tags=internal {
             files {
-                "imgui_demo.cpp"
+                "${plugin.install_dir}/imgui_demo.cpp"
             }
         }
     }

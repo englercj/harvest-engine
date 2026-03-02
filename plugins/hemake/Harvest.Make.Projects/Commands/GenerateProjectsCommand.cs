@@ -13,7 +13,7 @@ internal partial class GenerateProjectsCommand(
     IEnumerable<IProjectGeneratorService> projectGeneratorServices)
     : ICommandExecutor
 {
-    [Argument("The source directory to upload.", Arity = ArgArity.ExactlyOne)]
+    [Argument("The name of the project generator to use.", Arity = ArgArity.ExactlyOne)]
     public string Name { get; set; } = "";
 
     public async Task<int> ExecuteAsync(CancellationToken ct)

@@ -18,7 +18,7 @@ public static class StreamExtensions
         bool fileHasChanged;
         try
         {
-            await using FileStream existingFile = new(filePath, FileMode.Open, FileAccess.Read, FileShare.Read);
+            await using FileStream existingFile = new(filePath, FileMode.Open, FileAccess.ReadWrite, FileShare.None);
             fileHasChanged = !stream.Equals(existingFile);
 
             if (fileHasChanged)

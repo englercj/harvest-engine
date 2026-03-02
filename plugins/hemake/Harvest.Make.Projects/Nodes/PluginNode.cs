@@ -5,7 +5,7 @@ using System.Diagnostics;
 
 namespace Harvest.Make.Projects.Nodes;
 
-internal class PluginNodeTraits : NodeBaseTraits
+public class PluginNodeTraits : NodeBaseTraits
 {
     public override string Name => "plugin";
 
@@ -43,7 +43,7 @@ internal class PluginNodeTraits : NodeBaseTraits
     public override INode CreateNode(KdlNode node) => new PluginNode(node);
 }
 
-internal class PluginNode(KdlNode node) : NodeBase<PluginNodeTraits>(node)
+public class PluginNode(KdlNode node) : NodeBase<PluginNodeTraits>(node)
 {
     public string PluginName => GetValue<string>(0);
     public string Version => GetValue<string>("version");

@@ -15,7 +15,7 @@ public enum EDependencyKind
     [KdlName("system")] System,
 }
 
-internal class DependenciesEntryNodeTraits : NodeSetEntryBaseTraits<DependenciesNode>
+public class DependenciesEntryNodeTraits : NodeSetEntryBaseTraits<DependenciesNode>
 {
     public override IReadOnlyDictionary<string, NodeValueDef> PropertyDefs { get; } = new SortedDictionary<string, NodeValueDef>()
     {
@@ -33,7 +33,7 @@ internal class DependenciesEntryNodeTraits : NodeSetEntryBaseTraits<Dependencies
     public override INode CreateNode(KdlNode node) => new DependenciesEntryNode(node);
 }
 
-internal class DependenciesEntryNode(KdlNode node) : NodeSetEntryBase<DependenciesEntryNodeTraits, DependenciesNode>(node), IEquatable<DependenciesEntryNode>
+public class DependenciesEntryNode(KdlNode node) : NodeSetEntryBase<DependenciesEntryNodeTraits, DependenciesNode>(node), IEquatable<DependenciesEntryNode>
 {
     public string DependencyName => Kind == EDependencyKind.File ? ResolvePath(Node.Name) : Node.Name;
     public EDependencyKind Kind => GetEnumValue<EDependencyKind>("kind");

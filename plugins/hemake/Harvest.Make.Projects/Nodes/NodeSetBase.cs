@@ -13,7 +13,7 @@ public enum ESetAction
     [KdlName("update")] Update,
 }
 
-internal abstract class NodeSetBaseTraits<TChild> : NodeBaseTraits
+public abstract class NodeSetBaseTraits<TChild> : NodeBaseTraits
     where TChild : class, INode
 {
     public override IReadOnlyList<NodeValueDef> ArgumentDefs =>
@@ -24,7 +24,7 @@ internal abstract class NodeSetBaseTraits<TChild> : NodeBaseTraits
     public override INodeTraits? ChildNodeTraits => TChild.NodeTraits;
 }
 
-internal abstract class NodeSetBase<TTraits, TChild>(KdlNode node) : NodeBase<TTraits>(node)
+public abstract class NodeSetBase<TTraits, TChild>(KdlNode node) : NodeBase<TTraits>(node)
     where TTraits : NodeSetBaseTraits<TChild>, new()
     where TChild : class, INode
 {

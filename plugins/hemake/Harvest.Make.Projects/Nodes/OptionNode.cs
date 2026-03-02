@@ -1,9 +1,11 @@
 // Copyright Chad Engler
 
+using Harvest.Common.Extensions;
 using Harvest.Kdl;
 using Harvest.Kdl.Types;
 using Harvest.Make.Projects.Attributes;
 using System.Numerics;
+using System.Security.Cryptography;
 
 namespace Harvest.Make.Projects.Nodes;
 
@@ -16,7 +18,7 @@ public enum EOptionType
     [KdlName("string")] String,
 }
 
-internal class OptionNodeTraits : NodeBaseTraits
+public class OptionNodeTraits : NodeBaseTraits
 {
     public override string Name => "option";
 
@@ -63,7 +65,7 @@ internal class OptionNodeTraits : NodeBaseTraits
             }
             case EOptionType.Int:
             {
-                if (!value.GetType().IsInstanceOfGenericType<KdlNumber<>>() || !ReflectionUtils.IsTypeIntegral(value.GetType().GetGenericArguments()[0]))
+                if (!value.GetType().IsInstanceOfGenericType(typeof(KdlNumber<>)) || !value.GetType().GetGenericArguments()[0].IsTypeIntegral())
                 {
                     throw new NodeParseException(node, $"Default value for option {option.OptionName} must be a integer.");
                 }
@@ -71,7 +73,7 @@ internal class OptionNodeTraits : NodeBaseTraits
             }
             case EOptionType.UInt:
             {
-                if (!value.GetType().IsInstanceOfGenericType<KdlNumber<>>() || !ReflectionUtils.IsTypeUnsignedIntegral(value.GetType().GetGenericArguments()[0]))
+                if (!value.GetType().IsInstanceOfGenericType(typeof(KdlNumber<>)) || !value.GetType().GetGenericArguments()[0].IsTypeUnsignedIntegral())
                 {
                     throw new NodeParseException(node, $"Default value for option {option.OptionName} must be an unsigned integer.");
                 }
@@ -95,7 +97,7 @@ internal class OptionNodeTraits : NodeBaseTraits
             }
             case EOptionType.Float:
             {
-                if (!ReflectionUtils.IsInstanceOfGenericType(value.GetType(), typeof(KdlNumber<>)) || !ReflectionUtils.IsTypeFloatingPoint(value.GetType().GetGenericArguments()[0]))
+                if (!value.GetType().IsInstanceOfGenericType(typeof(KdlNumber<>)) || !value.GetType().GetGenericArguments()[0].IsTypeFloatingPoint())
                 {
                     throw new NodeParseException(node, $"Default value for option {option.OptionName} must be a floating-point number.");
                 }
@@ -115,7 +117,7 @@ internal class OptionNodeTraits : NodeBaseTraits
     }
 }
 
-internal class OptionNode(KdlNode node) : NodeBase<OptionNodeTraits>(node)
+public class OptionNode(KdlNode node) : NodeBase<OptionNodeTraits>(node)
 {
     public string OptionName => GetValue<string>(0);
     public EOptionType OptionType => GetEnumValue<EOptionType>("type");

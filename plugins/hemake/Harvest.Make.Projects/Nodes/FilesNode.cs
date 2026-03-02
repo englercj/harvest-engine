@@ -5,7 +5,7 @@ using System.Diagnostics;
 
 namespace Harvest.Make.Projects.Nodes;
 
-internal class FilesNodeTraits : NodeSetBaseTraits<FilesEntryNode>
+public class FilesNodeTraits : NodeSetBaseTraits<FilesEntryNode>
 {
     public override string Name => "files";
 
@@ -49,6 +49,6 @@ internal class FilesNodeTraits : NodeSetBaseTraits<FilesEntryNode>
     public override INode CreateNode(KdlNode node) => new FilesNode(node);
 }
 
-internal class FilesNode(KdlNode node) : NodeSetBase<FilesNodeTraits, FilesEntryNode>(node)
+public class FilesNode(KdlNode node) : NodeSetBase<FilesNodeTraits, FilesEntryNode>(node)
 {
 }

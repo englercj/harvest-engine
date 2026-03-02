@@ -1,5 +1,7 @@
 // Copyright Chad Engler
 
+using Harvest.Common;
+using System.Runtime.CompilerServices;
 using System.Text;
 
 namespace Harvest.Make;
@@ -42,15 +44,13 @@ public static class GuidExtensions
         return new Guid(guidBytes);
     }
 
-    [AggressiveInlining]
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static void SwapBytes(Span<byte> bytes, int left, int right)
     {
-        byte temp = bytes[left];
-        bytes[left] = bytes[right];
-        bytes[right] = temp;
+        (bytes[right], bytes[left]) = (bytes[left], bytes[right]);
     }
 
-    [AggressiveInlining]
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static void SwapEndianness(Span<byte> bytes)
     {
         SwapBytes(bytes, 0, 3);

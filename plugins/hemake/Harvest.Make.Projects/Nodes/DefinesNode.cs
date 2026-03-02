@@ -4,7 +4,7 @@ using Harvest.Kdl;
 
 namespace Harvest.Make.Projects.Nodes;
 
-internal class DefinesNodeTraits : NodeSetBaseTraits<DefinesEntryNode>
+public class DefinesNodeTraits : NodeSetBaseTraits<DefinesEntryNode>
 {
     public override string Name => "defines";
 
@@ -20,6 +20,6 @@ internal class DefinesNodeTraits : NodeSetBaseTraits<DefinesEntryNode>
     public override INode CreateNode(KdlNode node) => new DefinesNode(node);
 }
 
-internal class DefinesNode(KdlNode node) : NodeSetBase<DefinesNodeTraits, DefinesEntryNode>(node)
+public class DefinesNode(KdlNode node) : NodeSetBase<DefinesNodeTraits, DefinesEntryNode>(node)
 {
 }

@@ -1,6 +1,6 @@
 using System.Buffers;
 
-namespace Luna.Common.Extensions;
+namespace Harvest.Common.Extensions;
 
 public static class ArrayPoolExtensions
 {

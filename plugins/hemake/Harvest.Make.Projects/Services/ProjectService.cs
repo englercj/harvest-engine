@@ -1,20 +1,19 @@
 // Copyright Chad Engler
 
+using Harvest.Common.Attributes;
 using Harvest.Kdl;
 using Harvest.Kdl.Types;
-using Harvest.Make.Attributes;
 using Harvest.Make.Projects.NodeGenerators;
 using Harvest.Make.Projects.Nodes;
-using Microsoft.Extensions.FileSystemGlobbing;
+using Harvest.Make.Projects.Services;
 using System.CommandLine;
-using System.CommandLine.Invocation;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 
 namespace Harvest.Make.Projects;
 
 [SingletonService<IProjectService>]
-internal class ProjectService : IProjectService
+public class ProjectService : IProjectService
 {
     private readonly Dictionary<string, INodeTraits> _nodeTraits = [];
     private readonly Dictionary<string, INodeGeneratorTraits> _nodeGeneratorTraits = [];
@@ -142,11 +141,11 @@ internal class ProjectService : IProjectService
                 OptionNode option = new(node);
                 _projectOptions.Add(new ProjectOption(option, option.OptionType switch
                 {
-                    EOptionType.Bool => new Option<bool?>("--" + option.OptionName, () => option.GetDefaultBool(), option.HelpText),
-                    EOptionType.Int => new Option<long?>("--" + option.OptionName, () => option.GetDefaultNumber<long>(), option.HelpText),
-                    EOptionType.UInt => new Option<ulong?>("--" + option.OptionName, () => option.GetDefaultNumber<ulong>(), option.HelpText),
-                    EOptionType.Float => new Option<double?>("--" + option.OptionName, () => option.GetDefaultNumber<double>(), option.HelpText),
-                    EOptionType.String => new Option<string?>("--" + option.OptionName, () => option.GetDefaultString(), option.HelpText),
+                    EOptionType.Bool => new Option<bool?>("--" + option.OptionName) { DefaultValueFactory = _ => option.GetDefaultBool(), Description = option.HelpText },
+                    EOptionType.Int => new Option<long?>("--" + option.OptionName) { DefaultValueFactory = _ => option.GetDefaultNumber<long>(), Description = option.HelpText },
+                    EOptionType.UInt => new Option<ulong?>("--" + option.OptionName) { DefaultValueFactory = _ => option.GetDefaultNumber<ulong>(), Description = option.HelpText },
+                    EOptionType.Float => new Option<double?>("--" + option.OptionName) { DefaultValueFactory = _ => option.GetDefaultNumber<double>(), Description = option.HelpText },
+                    EOptionType.String => new Option<string?>("--" + option.OptionName) { DefaultValueFactory = _ => option.GetDefaultString(), Description = option.HelpText },
                     _ => throw new Exception($"Unknown option type: {option.OptionType}")
                 }));
             }
@@ -199,7 +198,24 @@ internal class ProjectService : IProjectService
         // Collect the values for the project options
         foreach (ProjectOption projectOption in _projectOptions)
         {
-            object? value = parseResult.GetValue(projectOption.Option);
+            object? value = projectOption.Option switch
+            {
+                Option<bool> optBool => parseResult.GetValue(optBool),
+                Option<sbyte> optNum => parseResult.GetValue(optNum),
+                Option<short> optNum => parseResult.GetValue(optNum),
+                Option<int> optNum => parseResult.GetValue(optNum),
+                Option<long> optNum => parseResult.GetValue(optNum),
+                Option<byte> optNum => parseResult.GetValue(optNum),
+                Option<ushort> optNum => parseResult.GetValue(optNum),
+                Option<uint> optNum => parseResult.GetValue(optNum),
+                Option<ulong> optNum => parseResult.GetValue(optNum),
+                Option<float> optNum => parseResult.GetValue(optNum),
+                Option<double> optNum => parseResult.GetValue(optNum),
+                Option<decimal> optNum => parseResult.GetValue(optNum),
+                Option<string> optStr => parseResult.GetValue(optStr),
+                _ => null,
+            };
+
             if (value is null && projectOption.Node.EnvVarName is not null)
             {
                 value = Environment.GetEnvironmentVariable(projectOption.Node.EnvVarName);

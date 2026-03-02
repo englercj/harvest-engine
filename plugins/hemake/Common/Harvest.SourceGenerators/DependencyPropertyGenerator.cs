@@ -11,7 +11,7 @@ namespace Harvest.SourceGenerators;
 [Generator]
 public class DependencyPropertyGenerator : IIncrementalGenerator
 {
-    private const string DependencyPropertyAttributeName = "Luna.Common.Attributes.DependencyPropertyAttribute";
+    private const string DependencyPropertyAttributeName = "Harvest.Common.Attributes.DependencyPropertyAttribute";
 
     private static readonly DiagnosticDescriptor InvalidReferencePropertyError = new(
         id: "HE0001",
@@ -23,14 +23,14 @@ public class DependencyPropertyGenerator : IIncrementalGenerator
 
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
-        IncrementalValuesProvider<PropertyModel> propertyDeclarations = context.SyntaxProvider
+        IncrementalValuesProvider<IPropertySymbol> propertyDeclarations = context.SyntaxProvider
         .CreateSyntaxProvider(
             predicate: static (s, _) => IsSyntaxTarget(s),
             transform: static (ctx, _) => GetSemanticTarget(ctx))
         .Where(static m => m is not null)!;
 
         var groupedProperties = propertyDeclarations.Collect().SelectMany((properties, _) =>
-            properties.AsEnumerable().GroupBy(f => f.Symbol.ContainingType, SymbolEqualityComparer.Default));
+            properties.AsEnumerable().GroupBy(s => s.ContainingType, SymbolEqualityComparer.Default));
 
         context.RegisterSourceOutput(groupedProperties, static (spc, group) =>
             GenerateSource(spc, group.Key as INamedTypeSymbol, group));
@@ -111,13 +111,24 @@ public class DependencyPropertyGenerator : IIncrementalGenerator
                 continue;
             }
 
+            if (property.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax() is not PropertyDeclarationSyntax propertyDecl)
+            {
+                continue;
+            }
+
+            AttributeData? dpAttr = property.GetAttributes().FirstOrDefault(ad => ad.AttributeClass?.ToDisplayString() == DependencyPropertyAttributeName);
+            if (dpAttr is null)
+            {
+                continue;
+            }
+
             string propName = NormalizePropertyName(property.Name);
             string dpName = $"{propName}Property";
 
             string defaultValue = propertyDecl.Initializer?.Value.ToString()
-                ?? (propertySymbol.Type.IsReferenceType ? "null" : $"default({propertySymbol.Type.ToDisplayString()})");
+                ?? (property.Type.IsReferenceType ? "null" : $"default({property.Type.ToDisplayString()})");
 
-            string? changeCallback = dpAttr.ConstructorArguments.FirstOrDefault()?.Value?.ToString();
+            string? changeCallback = dpAttr.ConstructorArguments.FirstOrDefault().Value?.ToString();
 
             string propType = property.Type.ToDisplayString();
 

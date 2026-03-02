@@ -1,10 +1,9 @@
 // Copyright Chad Engler
 
+using Harvest.Common;
 using Harvest.Common.Attributes;
 using Harvest.Make.Projects.ProjectGenerators;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using System.CommandLine.Invocation;
 
 namespace Harvest.Make.Projects.Commands;
 
@@ -12,10 +11,10 @@ namespace Harvest.Make.Projects.Commands;
 internal partial class GenerateProjectsCommand(
     ILogger<GenerateProjectsCommand> logger,
     IEnumerable<IProjectGeneratorService> projectGeneratorServices)
-    : ICliCommand
+    : ICommandExecutor
 {
     [Argument("The source directory to upload.", Arity = ArgArity.ExactlyOne)]
-    public string Name { get; init; } = "";
+    public string Name { get; set; } = "";
 
     public async Task<int> ExecuteAsync(CancellationToken ct)
     {

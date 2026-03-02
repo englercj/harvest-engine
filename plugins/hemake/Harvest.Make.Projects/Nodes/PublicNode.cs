@@ -4,7 +4,7 @@ using Harvest.Kdl;
 
 namespace Harvest.Make.Projects.Nodes;
 
-internal class PublicNodeTraits : NodeBaseTraits
+public class PublicNodeTraits : NodeBaseTraits
 {
     public override string Name => "public";
 
@@ -16,6 +16,6 @@ internal class PublicNodeTraits : NodeBaseTraits
     public override INode CreateNode(KdlNode node) => new PublicNode(node);
 }
 
-internal class PublicNode(KdlNode node) : NodeBase<PublicNodeTraits>(node)
+public class PublicNode(KdlNode node) : NodeBase<PublicNodeTraits>(node)
 {
 }

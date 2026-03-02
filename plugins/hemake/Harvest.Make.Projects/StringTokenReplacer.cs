@@ -4,7 +4,7 @@ using System.Text.RegularExpressions;
 
 namespace Harvest.Make.Projects;
 
-internal class StringTokenContext(Match match)
+public class StringTokenContext(Match match)
 {
     public Match TokenMatch => match;
     public string Token => TokenMatch.Value;

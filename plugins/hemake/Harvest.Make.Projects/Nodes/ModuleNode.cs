@@ -25,7 +25,7 @@ public enum EModuleLanguage
     [KdlName("csharp")] CSharp,
 }
 
-internal class ModuleNodeTraits : NodeBaseTraits
+public class ModuleNodeTraits : NodeBaseTraits
 {
     public override string Name => "module";
 
@@ -105,7 +105,7 @@ internal class ModuleNodeTraits : NodeBaseTraits
     }
 }
 
-internal class ModuleNode(KdlNode node) : NodeBase<ModuleNodeTraits>(node)
+public class ModuleNode(KdlNode node) : NodeBase<ModuleNodeTraits>(node)
 {
     public string ModuleName => GetValue<string>(0);
     public EModuleKind Kind => GetEnumValue<EModuleKind>("kind");

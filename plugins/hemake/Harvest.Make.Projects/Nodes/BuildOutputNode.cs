@@ -4,7 +4,7 @@ using Harvest.Kdl;
 
 namespace Harvest.Make.Projects.Nodes;
 
-internal class BuildOutputNodeTraits : NodeBaseTraits
+public class BuildOutputNodeTraits : NodeBaseTraits
 {
     public override string Name => "build_output";
 
@@ -28,7 +28,7 @@ internal class BuildOutputNodeTraits : NodeBaseTraits
     public override INode CreateNode(KdlNode node) => new BuildOutputNode(node);
 }
 
-internal class BuildOutputNode(KdlNode node) : NodeBase<BuildOutputNodeTraits>(node)
+public class BuildOutputNode(KdlNode node) : NodeBase<BuildOutputNodeTraits>(node)
 {
     private string BasePath => Path.GetDirectoryName(Node.SourceInfo.FilePath) ?? Directory.GetCurrentDirectory();
 

@@ -20,11 +20,6 @@ public static class ReflectionExtensions
         return false;
     }
 
-    public static bool IsInstanceOfGenericType<TGeneric>(this Type concreteType)
-    {
-        return concreteType.IsInstanceOfGenericType(typeof(TGeneric));
-    }
-
     public static bool IsTypeSignedIntegral(this Type type)
     {
         switch (Type.GetTypeCode(type))

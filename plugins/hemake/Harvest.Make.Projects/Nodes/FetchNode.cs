@@ -21,7 +21,7 @@ public enum EFetchArchiveFormat
     [KdlName("tar.gz")] TarGz,
 }
 
-internal class FetchNodeTraits : NodeBaseTraits
+public class FetchNodeTraits : NodeBaseTraits
 {
     public override string Name => "fetch";
 
@@ -102,7 +102,7 @@ internal class FetchNodeTraits : NodeBaseTraits
     public override INode CreateNode(KdlNode node) => new FetchNode(node);
 }
 
-internal class FetchNode(KdlNode node) : NodeBase<FetchNodeTraits>(node)
+public class FetchNode(KdlNode node) : NodeBase<FetchNodeTraits>(node)
 {
     public EFetchMethod Method => GetEnumValue<EFetchMethod>(0);
 

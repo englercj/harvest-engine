@@ -1,19 +1,22 @@
 // Copyright Chad Engler
 
-using Harvest.Make.Attributes;
+using Harvest.Common;
 using Harvest.Make.Projects.NodeGenerators;
 using Harvest.Make.Projects.Nodes;
+using Harvest.Make.Projects.Services;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace Harvest.Make.Projects;
 
 internal class ProjectsPlugin : IAppPlugin
 {
-    void ConfigureServices(IServiceCollection services, ILogger logger)
+    public void ConfigureServices(IServiceCollection services, ILogger logger)
     {
-        // Nothing to do here
+        services.AddAutoDiscoveredServices();
     }
 
-    void Startup(IServiceProvider services)
+    public void Startup(IServiceProvider services)
     {
         IProjectService projectService = services.GetRequiredService<IProjectService>();
 
@@ -59,7 +62,7 @@ internal class ProjectsPlugin : IAppPlugin
         projectService.RegisterNodeGenerator<ForeachNodeGenerator>();
     }
 
-    void Shutdown()
+    public void Shutdown()
     {
         // TODO: Unregister nodes and generators?
     }

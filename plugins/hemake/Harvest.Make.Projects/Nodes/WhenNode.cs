@@ -14,7 +14,7 @@ public enum EWhenMode
     [KdlName("one")] One,
 }
 
-internal class WhenNodeTraits : NodeBaseTraits
+public class WhenNodeTraits : NodeBaseTraits
 {
     public override string Name => "when";
 
@@ -67,7 +67,7 @@ internal class WhenNodeTraits : NodeBaseTraits
     }
 }
 
-internal class WhenNode(KdlNode node) : NodeBase<WhenNodeTraits>(node)
+public class WhenNode(KdlNode node) : NodeBase<WhenNodeTraits>(node)
 {
     public EWhenMode Mode => GetEnumValue<EWhenMode>(0);
     public string? Arch => TryGetValue("arch", out string? value) ? value : null;

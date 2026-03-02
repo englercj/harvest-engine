@@ -1,11 +1,11 @@
 // Copyright Chad Engler
 
-using Harvest.Make.Attributes;
-using Harvest.Make.CliCommands;
+using Harvest.Common;
+using Harvest.Common.Attributes;
 using Harvest.Make.Projects;
 using Harvest.Make.Projects.Nodes;
+using Harvest.Make.Projects.Services;
 using Microsoft.Extensions.Logging;
-using System.CommandLine.Invocation;
 using System.Formats.Tar;
 using System.IO.Compression;
 
@@ -24,7 +24,7 @@ internal partial class InstallPluginsCliCommand(
 
         using HttpClient httpClient = new();
 
-        foreach ((_, ResolvedProjectTree projectTree) in _projectService.ResolvedProjectTrees)
+        foreach ((_, ResolvedProjectTree projectTree) in projectService.ResolvedProjectTrees)
         {
             foreach (PluginNode plugin in projectTree.GetNodes<PluginNode>(projectTree.ProjectNode.Node))
             {
@@ -48,7 +48,7 @@ internal partial class InstallPluginsCliCommand(
         // If you update a plugin on a branch, it can be pretty annoying to have it removed/added
         // every time you switch branches. Maybe we need a separate "prune" command or something?
 
-        _logger.LogInformation("All plugins installed successfully.");
+        logger.LogInformation("All plugins installed successfully.");
         return 0;
     }
 
@@ -58,7 +58,7 @@ internal partial class InstallPluginsCliCommand(
 
         if (Directory.Exists(extractDir))
         {
-            _logger.LogTrace("Archive is already installed: {ArchiveUrl}", fetchNode.ArchiveUrl);
+            logger.LogTrace("Archive is already installed: {ArchiveUrl}", fetchNode.ArchiveUrl);
             return;
         }
 
@@ -82,7 +82,7 @@ internal partial class InstallPluginsCliCommand(
             catch (Exception delEx)
             {
                 // Log but ignore errors during cleanup, they are secondary to the original error
-                _logger.LogError(delEx, "Failed to clean up extract directory after failed install: {ExtractDir}", extractDir);
+                logger.LogError(delEx, "Failed to clean up extract directory after failed install: {ExtractDir}", extractDir);
             }
 
             // Rethrow the original exception
@@ -92,7 +92,7 @@ internal partial class InstallPluginsCliCommand(
 
     private async Task DownloadArchiveAsync(HttpClient httpClient, string archiveUrl, string archivePath)
     {
-        _logger.LogTrace("Downloading archive: {Url}", archiveUrl);
+        logger.LogTrace("Downloading archive: {Url}", archiveUrl);
 
         using HttpResponseMessage response = await httpClient.GetAsync(archiveUrl);
         response.EnsureSuccessStatusCode();

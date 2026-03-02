@@ -2,6 +2,7 @@
 
 using Harvest.Kdl;
 using Harvest.Make.Projects.Nodes;
+using Harvest.Make.Projects.Services;
 
 namespace Harvest.Make.Projects;
 

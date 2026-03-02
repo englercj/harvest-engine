@@ -1,7 +1,8 @@
 // Copyright Chad Engler
 
-using Harvest.Make.Extensions;
+using Harvest.Common.Extensions;
 using Harvest.Make.Projects.Nodes;
+using Harvest.Make.Projects.Services;
 using Microsoft.Extensions.Logging;
 using System.Text;
 using System.Xml;

@@ -7,7 +7,7 @@ using Harvest.Make.Projects.Nodes;
 
 namespace Harvest.Make.Projects;
 
-internal class NodeResolver(ProjectContext projectContext)
+public class NodeResolver(ProjectContext projectContext)
 {
     public ProjectContext ProjectContext => projectContext;
 

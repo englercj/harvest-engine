@@ -4,7 +4,7 @@ using Harvest.Kdl;
 
 namespace Harvest.Make.Projects.Nodes;
 
-internal class LibDirsEntryNodeTraits : NodeSetEntryBaseTraits<LibDirsNode>
+public class LibDirsEntryNodeTraits : NodeSetEntryBaseTraits<LibDirsNode>
 {
     public override IReadOnlyList<string> ValidScopes =>
     [
@@ -19,7 +19,7 @@ internal class LibDirsEntryNodeTraits : NodeSetEntryBaseTraits<LibDirsNode>
     public override INode CreateNode(KdlNode node) => new LibDirsEntryNode(node);
 }
 
-internal class LibDirsEntryNode(KdlNode node) : NodeSetEntryBase<LibDirsEntryNodeTraits, LibDirsNode>(node)
+public class LibDirsEntryNode(KdlNode node) : NodeSetEntryBase<LibDirsEntryNodeTraits, LibDirsNode>(node)
 {
     public string Path => Node.Name;
 

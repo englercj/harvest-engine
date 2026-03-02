@@ -4,7 +4,7 @@ using Harvest.Kdl;
 
 namespace Harvest.Make.Projects.Nodes;
 
-internal class InstallNodeTraits : NodeBaseTraits
+public class InstallNodeTraits : NodeBaseTraits
 {
     public override string Name => "install";
 
@@ -16,6 +16,6 @@ internal class InstallNodeTraits : NodeBaseTraits
     public override INode CreateNode(KdlNode node) => new InstallNode(node);
 }
 
-internal class InstallNode(KdlNode node) : NodeBase<InstallNodeTraits>(node)
+public class InstallNode(KdlNode node) : NodeBase<InstallNodeTraits>(node)
 {
 }

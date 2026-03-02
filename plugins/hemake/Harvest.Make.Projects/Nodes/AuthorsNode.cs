@@ -4,7 +4,7 @@ using Harvest.Kdl;
 
 namespace Harvest.Make.Projects.Nodes;
 
-internal class AuthorsNodeTraits : NodeSetBaseTraits<AuthorsEntryNode>
+public class AuthorsNodeTraits : NodeSetBaseTraits<AuthorsEntryNode>
 {
     public override string Name => "authors";
 
@@ -16,6 +16,6 @@ internal class AuthorsNodeTraits : NodeSetBaseTraits<AuthorsEntryNode>
     public override INode CreateNode(KdlNode node) => new AuthorsNode(node);
 }
 
-internal class AuthorsNode(KdlNode node) : NodeSetBase<AuthorsNodeTraits, AuthorsEntryNode>(node)
+public class AuthorsNode(KdlNode node) : NodeSetBase<AuthorsNodeTraits, AuthorsEntryNode>(node)
 {
 }

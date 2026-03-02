@@ -29,7 +29,7 @@ public enum ECSharpDialect
     [KdlName("cs13")] CSharp13,
 }
 
-internal class DialectNodeTraits : NodeBaseTraits
+public class DialectNodeTraits : NodeBaseTraits
 {
     public override string Name => "dialect";
 
@@ -49,7 +49,7 @@ internal class DialectNodeTraits : NodeBaseTraits
     public override INode CreateNode(KdlNode node) => new DialectNode(node);
 }
 
-internal class DialectNode(KdlNode node) : NodeBase<DialectNodeTraits>(node)
+public class DialectNode(KdlNode node) : NodeBase<DialectNodeTraits>(node)
 {
     public ECDialect CDialect => GetEnumValue<ECDialect>("c");
     public ECppDialect CppDialect => GetEnumValue<ECppDialect>("cpp");

@@ -1,6 +1,8 @@
 // Copyright Chad Engler
 
+using Harvest.Common.Extensions;
 using Harvest.Make.Projects.Nodes;
+using Harvest.Make.Projects.Services;
 using Microsoft.Extensions.Logging;
 using System.Text;
 using System.Xml;
@@ -58,7 +60,7 @@ internal class SlnxGenerator(IProjectService projectService, ILogger<SlnxGenerat
 
         await writer.FlushAsync();
 
-        bool fileChanged = await StreamUtils.CopyStreamToFileIfChangedAsync(newSlnxStream, outputPath);
+        bool fileChanged = await newSlnxStream.CopyToFileIfChangedAsync(outputPath);
         if (!fileChanged)
         {
             _logger.LogDebug("Solution file is already up to date, skipping write.");

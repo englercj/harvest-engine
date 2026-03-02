@@ -4,7 +4,7 @@ using Harvest.Kdl;
 
 namespace Harvest.Make.Projects.Nodes;
 
-internal class BuildRuleNodeTraits : NodeBaseTraits
+public class BuildRuleNodeTraits : NodeBaseTraits
 {
     public override string Name => "build_rule";
 
@@ -29,7 +29,7 @@ internal class BuildRuleNodeTraits : NodeBaseTraits
     public override INode CreateNode(KdlNode node) => new BuildRuleNode(node);
 }
 
-internal class BuildRuleNode(KdlNode node) : NodeBase<BuildRuleNodeTraits>(node)
+public class BuildRuleNode(KdlNode node) : NodeBase<BuildRuleNodeTraits>(node)
 {
     public string RuleName => GetValue<string>(0);
     public string? Message => TryGetValue("message", out string? value) ? value : null;

@@ -4,7 +4,7 @@ using Harvest.Kdl;
 
 namespace Harvest.Make.Projects.Nodes;
 
-internal class ExternalNodeTraits : NodeBaseTraits
+public class ExternalNodeTraits : NodeBaseTraits
 {
     public override string Name => "external";
 
@@ -23,7 +23,7 @@ internal class ExternalNodeTraits : NodeBaseTraits
     public override INode CreateNode(KdlNode node) => new ExternalNode(node);
 }
 
-internal class ExternalNode(KdlNode node) : NodeBase<ExternalNodeTraits>(node)
+public class ExternalNode(KdlNode node) : NodeBase<ExternalNodeTraits>(node)
 {
     public EWarningsLevel WarningsLevel => GetEnumValue<EWarningsLevel>("warnings");
     public bool Fatal => GetValue<bool>("fatal");

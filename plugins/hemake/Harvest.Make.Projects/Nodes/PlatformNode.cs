@@ -24,7 +24,7 @@ public enum EPlatformSystem
     [KdlName("windows")] Windows,
 }
 
-internal class PlatformNodeTraits : NodeBaseTraits
+public class PlatformNodeTraits : NodeBaseTraits
 {
     public override string Name => "platform";
 
@@ -88,7 +88,7 @@ internal class PlatformNodeTraits : NodeBaseTraits
     }
 }
 
-internal class PlatformNode(KdlNode node) : NodeBase<PlatformNodeTraits>(node)
+public class PlatformNode(KdlNode node) : NodeBase<PlatformNodeTraits>(node)
 {
     public string PlatformName => GetValue<string>(0);
     public EPlatformArch Arch => GetEnumValue<EPlatformArch>("arch");

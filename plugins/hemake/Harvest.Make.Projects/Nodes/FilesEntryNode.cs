@@ -33,7 +33,7 @@ public enum EFileBuildRule
     [KdlName("custom")] Custom,
 }
 
-internal class FileEntryExtensionInfo
+public class FileEntryExtensionInfo
 {
     public FileEntryExtensionInfo(EFileAction action)
     {
@@ -51,7 +51,7 @@ internal class FileEntryExtensionInfo
     public EFileBuildRule BuildRule { get; }
 }
 
-internal class FileEntryNodeTraits : NodeSetEntryBaseTraits<FilesNode>
+public class FileEntryNodeTraits : NodeSetEntryBaseTraits<FilesNode>
 {
     public override IReadOnlyDictionary<string, NodeValueDef> PropertyDefs { get; } = new SortedDictionary<string, NodeValueDef>()
     {
@@ -63,7 +63,7 @@ internal class FileEntryNodeTraits : NodeSetEntryBaseTraits<FilesNode>
     public override INode CreateNode(KdlNode node) => new FilesEntryNode(node);
 }
 
-internal class FilesEntryNode(KdlNode node) : NodeSetEntryBase<FileEntryNodeTraits, FilesNode>(node)
+public class FilesEntryNode(KdlNode node) : NodeSetEntryBase<FileEntryNodeTraits, FilesNode>(node)
 {
     private static readonly Dictionary<string, FileEntryExtensionInfo> s_fileExtensionInfos = new()
     {

@@ -4,7 +4,7 @@ using Microsoft.Extensions.FileSystemGlobbing;
 
 namespace Harvest.Make.Projects;
 
-internal class PathGlobCache
+public class PathGlobCache
 {
     private readonly Dictionary<string, List<string>> _cache = new();
 

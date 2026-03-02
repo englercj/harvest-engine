@@ -1,7 +1,8 @@
 // Copyright Chad Engler
 
-using Harvest.Make.Attributes;
+using Harvest.Common.Attributes;
 using Harvest.Make.Projects.Nodes;
+using Harvest.Make.Projects.Services;
 using Microsoft.Extensions.Logging;
 using static Harvest.Make.Projects.ModuleGroupTree;
 
@@ -10,7 +11,6 @@ namespace Harvest.Make.Projects.ProjectGenerators.vs2026;
 [TransientService<IProjectGeneratorService>]
 internal class VS2026ProjectGeneratorService(
     IProjectService projectService,
-    ILogger<VS2026ProjectGeneratorService> logger,
     ILoggerFactory loggerFactory)
     : IProjectGeneratorService
 {

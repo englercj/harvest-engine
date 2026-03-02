@@ -1,12 +1,13 @@
 // Copyright Chad Engler
 
+using Harvest.Common.Extensions;
 using Harvest.Kdl;
-using Harvest.Make.Extensions;
 using Harvest.Make.Projects.Nodes;
+using Harvest.Make.Projects.Services;
 
 namespace Harvest.Make.Projects;
 
-internal class ModuleDependency(DependenciesEntryNode entry, ModuleNode? resolvedModule)
+public class ModuleDependency(DependenciesEntryNode entry, ModuleNode? resolvedModule)
 {
     public string DependencyName => entry.DependencyName;
     public EDependencyKind Kind => entry.Kind;
@@ -16,7 +17,7 @@ internal class ModuleDependency(DependenciesEntryNode entry, ModuleNode? resolve
     public ModuleNode? Module => resolvedModule;
 }
 
-internal class ResolvedProjectTree
+public class ResolvedProjectTree
 {
     private readonly HashSet<string> _activeTags = [];
 

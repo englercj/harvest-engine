@@ -4,7 +4,7 @@ using Harvest.Kdl;
 
 namespace Harvest.Make.Projects.Nodes;
 
-internal class SystemNodeTraits : NodeBaseTraits
+public class SystemNodeTraits : NodeBaseTraits
 {
     public override string Name => "system";
 
@@ -26,7 +26,7 @@ internal class SystemNodeTraits : NodeBaseTraits
     public override INode CreateNode(KdlNode node) => new SystemNode(node);
 }
 
-internal class SystemNode(KdlNode node) : NodeBase<SystemNodeTraits>(node)
+public class SystemNode(KdlNode node) : NodeBase<SystemNodeTraits>(node)
 {
     public EPlatformSystem System => GetEnumValue<EPlatformSystem>(0);
     public string Version => GetResolvedVersion();

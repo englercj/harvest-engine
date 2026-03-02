@@ -1,21 +1,20 @@
-using Harvest.Kdl;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System.Reflection;
 
 namespace Harvest.Common.Services;
 
-public class AppPluginService(ILogger<AppPluginService> logger, IProjectService projectService) : IAppPluginService
+public class AppPluginService(ILogger<AppPluginService> logger) : IAppPluginService
 {
     private IServiceProvider? _services;
 
     protected readonly List<IAppPlugin> _plugins = [];
     public IReadOnlyList<IAppPlugin> Plugins => _plugins.AsReadOnly();
 
-    public void LoadPlugins()
+    public void LoadPluginsFromAppDomain(AppDomain appDomain)
     {
-        // Iterate all assemblies in the current AppDomain and register any types that implement IAppPlugin.
-        foreach (Assembly assembly in AppDomain.CurrentDomain.GetAssemblies())
+        // Iterate all assemblies in the AppDomain and register any types that implement IAppPlugin.
+        foreach (Assembly assembly in appDomain.GetAssemblies())
         {
             // Filter out large assemblies that are unlikely to contain plugins to speed up the process.
             if (assembly.GetName().Name is string assemblyName)
@@ -31,31 +30,42 @@ public class AppPluginService(ILogger<AppPluginService> logger, IProjectService 
                 }
             }
 
-            CreatePluginsFromAssembly(assembly);
+            LoadPluginsFromAssembly(assembly);
         }
+    }
 
-        // Iterate the module nodes and load any hemake extensions
-        foreach (KdlNode node in projectService.ProjectDocument.GetNodesByName(ModuleNode.NodeTraits.Name))
+    public void LoadPluginsFromAssemblyFile(string filePath)
+    {
+        AppPluginLoadContext loadContext = new(filePath);
+        Assembly assembly = loadContext.LoadFromAssemblyPath(filePath);
+        LoadPluginsFromAssembly(assembly);
+    }
+
+    public void LoadPluginsFromAssembly(Assembly assembly)
+    {
+        foreach (Type type in assembly.GetTypes())
         {
-            if (!node.TryGetValue("hemake_load", out bool isExt) || !isExt)
+            if (!type.IsClass || type.IsAbstract || !type.IsAssignableTo(typeof(IAppPlugin)))
             {
                 continue;
             }
 
-            if (!node.TryGetValue("project_file", out string? extensionPath) || string.IsNullOrEmpty(extensionPath))
+            try
             {
-                logger.LogError("Module '{ModuleName}' is marked as a hemake plugin but does not specify a 'project_file' property. This plugin cannot be loaded.", node.Name);
-                continue;
-            }
+                object? instance = Activator.CreateInstance(type);
+                if (instance is not IAppPlugin plugin)
+                {
+                    logger.LogError("Failed to create plugin of type '{PluginType}' from assembly '{AssemblyName}'. Activator.CreateInstance returned null.", type.FullName, assembly.FullName);
+                    continue;
+                }
 
-            if (!Path.IsPathRooted(extensionPath))
+                _plugins.Add(plugin);
+                logger.LogInformation("Loaded plugin '{PluginType}' from assembly '{AssemblyName}'.", type.FullName, assembly.FullName);
+            }
+            catch (Exception ex)
             {
-                string extensionDir = Path.GetDirectoryName(node.SourceInfo.FilePath) ?? "";
-                extensionPath = Path.Join(extensionDir, extensionPath);
+                logger.LogError(ex, "Failed to create plugin of type '{PluginType}' from assembly '{AssemblyName}'.", type.FullName, assembly.FullName);
             }
-
-            Assembly assembly = LoadPluginAssembly(extensionPath);
-            CreatePluginsFromAssembly(assembly);
         }
     }
 
@@ -85,39 +95,5 @@ public class AppPluginService(ILogger<AppPluginService> logger, IProjectService 
         }
 
         _services = null;
-    }
-
-    private static Assembly LoadPluginAssembly(string extensionFullPath)
-    {
-        AppPluginLoadContext loadContext = new(extensionFullPath);
-        return loadContext.LoadFromAssemblyPath(extensionFullPath);
-    }
-
-    private void CreatePluginsFromAssembly(Assembly assembly)
-    {
-        foreach (Type type in assembly.GetTypes())
-        {
-            if (!type.IsClass || type.IsAbstract || !type.IsAssignableTo<IAppPlugin>())
-            {
-                continue;
-            }
-
-            try
-            {
-                object? instance = Activator.CreateInstance(type);
-                if (instance is not IAppPlugin plugin)
-                {
-                    logger.LogError("Failed to create plugin of type '{PluginType}' from assembly '{AssemblyName}'. Activator.CreateInstance returned null.", type.FullName, assembly.FullName);
-                    continue;
-                }
-
-                _plugins.Add(plugin);
-                logger.LogInformation("Loaded plugin '{PluginType}' from assembly '{AssemblyName}'.", type.FullName, assembly.FullName);
-            }
-            catch (Exception ex)
-            {
-                logger.LogError(ex, "Failed to create plugin of type '{PluginType}' from assembly '{AssemblyName}'.", type.FullName, assembly.FullName);
-            }
-        }
     }
 }

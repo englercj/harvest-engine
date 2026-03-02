@@ -11,7 +11,7 @@ public enum EWarningAction
     [KdlName("disable")] Disable,
 }
 
-internal class WarningsEntryNodeTraits : NodeSetEntryBaseTraits<WarningsNode>
+public class WarningsEntryNodeTraits : NodeSetEntryBaseTraits<WarningsNode>
 {
     public override IReadOnlyList<NodeValueDef> ArgumentDefs =>
     [
@@ -26,7 +26,7 @@ internal class WarningsEntryNodeTraits : NodeSetEntryBaseTraits<WarningsNode>
     public override INode CreateNode(KdlNode node) => new WarningsEntryNode(node);
 }
 
-internal class WarningsEntryNode(KdlNode node) : NodeSetEntryBase<WarningsEntryNodeTraits, WarningsNode>(node)
+public class WarningsEntryNode(KdlNode node) : NodeSetEntryBase<WarningsEntryNodeTraits, WarningsNode>(node)
 {
     public string WarningName => Node.Name;
     public bool IsEnabled => GetEnumValue<EWarningAction>(0) == EWarningAction.Enable;

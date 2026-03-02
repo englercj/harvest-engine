@@ -1,4 +1,4 @@
-namespace Luna.Common.Attributes;
+namespace Harvest.Common.Attributes;
 
 /// <summary>
 /// An Attribute that indicates that a given partial property should be implemented by the source generator.

@@ -12,7 +12,7 @@ internal class ModuleGroupTree
 
     private static string GetModuleGuid(string path)
     {
-        Guid value = GuidUtils.CreateV5(_namespaceProjectId, path);
+        Guid value = GuidExtensions.CreateV5(_namespaceProjectId, path);
         string valueStr = value.ToString().ToUpperInvariant();
         return $"{{{valueStr}}}";
     }

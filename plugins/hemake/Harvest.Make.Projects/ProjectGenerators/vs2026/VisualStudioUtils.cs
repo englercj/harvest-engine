@@ -1,6 +1,7 @@
 // Copyright Chad Engler
 
 using Harvest.Make.Projects.Nodes;
+using Harvest.Make.Projects.Services;
 using System.Security.Cryptography;
 using System.Text;
 using System.Xml;

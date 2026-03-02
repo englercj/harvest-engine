@@ -1,6 +1,6 @@
 using System.CommandLine;
 
-namespace Harvest.Common.CLI.Attributes;
+namespace Harvest.Common.Attributes;
 
 // Attributes in this file are used to mark services and view models for
 // the source generator to generate command provider code.

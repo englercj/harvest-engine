@@ -20,7 +20,7 @@ public enum EToolsetArch
     [KdlName("x86_64")] X86_64,
 }
 
-internal class ToolsetNodeTraits : NodeBaseTraits
+public class ToolsetNodeTraits : NodeBaseTraits
 {
     public override string Name => "toolset";
 
@@ -48,7 +48,7 @@ internal class ToolsetNodeTraits : NodeBaseTraits
     public override INode CreateNode(KdlNode node) => new ToolsetNode(node);
 }
 
-internal class ToolsetNode(KdlNode node) : NodeBase<ToolsetNodeTraits>(node)
+public class ToolsetNode(KdlNode node) : NodeBase<ToolsetNodeTraits>(node)
 {
     public EToolset Toolset => GetEnumValue<EToolset>(0);
     public EToolsetArch Arch => GetEnumValue<EToolsetArch>("arch");

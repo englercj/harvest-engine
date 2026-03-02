@@ -4,7 +4,6 @@ using Harvest.Kdl;
 using Harvest.Make.Projects.NodeGenerators;
 using Harvest.Make.Projects.Nodes;
 using System.CommandLine;
-using System.CommandLine.Invocation;
 
 namespace Harvest.Make.Projects.Services;
 
@@ -75,7 +74,7 @@ public interface IProjectService
     public void RegisterTokenTransformer(string name, CustomStringTokenTransformer transformer, bool overwrite = false);
 
     public void LoadProject(string projectPath);
-    public void ParseProject(InvocationContext invocationContext);
+    public void ParseProject(ParseResult parseResult);
 
     public T GetGlobalNode<T>() where T : class, INode;
     public INodeTraits GetNodeTraits(KdlNode node);

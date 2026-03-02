@@ -1,6 +1,7 @@
 // Copyright Chad Engler
 
 using Harvest.Make.Projects.Nodes;
+using Harvest.Make.Projects.Services;
 using System.Xml;
 using static Harvest.Make.Projects.ProjectGenerators.vs2026.IVisualStudioFileGroup;
 

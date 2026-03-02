@@ -3,6 +3,7 @@
 using Harvest.Kdl;
 using Harvest.Kdl.Types;
 using Harvest.Make.Projects.Nodes;
+using Harvest.Make.Projects.Services;
 using System.Text;
 
 namespace Harvest.Make.Projects.NodeGenerators;

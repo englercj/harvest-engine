@@ -14,7 +14,7 @@ public enum EWarningsLevel
     [KdlName("off")] Off,
 }
 
-internal class WarningsNodeTraits : NodeSetBaseTraits<WarningsEntryNode>
+public class WarningsNodeTraits : NodeSetBaseTraits<WarningsEntryNode>
 {
     public override string Name => "warnings";
 
@@ -33,7 +33,7 @@ internal class WarningsNodeTraits : NodeSetBaseTraits<WarningsEntryNode>
     public override INode CreateNode(KdlNode node) => new WarningsNode(node);
 }
 
-internal class WarningsNode(KdlNode node) : NodeSetBase<WarningsNodeTraits, WarningsEntryNode>(node)
+public class WarningsNode(KdlNode node) : NodeSetBase<WarningsNodeTraits, WarningsEntryNode>(node)
 {
     public EWarningsLevel WarningsLevel => GetEnumValue<EWarningsLevel>("level");
     public bool AreAllWarningsFatal => GetValue<bool>("fatal");

@@ -7,7 +7,7 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace Harvest.Make.Projects.Nodes;
 
-internal abstract class NodeBaseTraits : INodeTraits
+public abstract class NodeBaseTraits : INodeTraits
 {
     public virtual string Name => "";
     public virtual IReadOnlyList<string> ValidScopes => [];
@@ -275,7 +275,7 @@ internal abstract class NodeBaseTraits : INodeTraits
     #endregion
 }
 
-internal abstract class NodeBase<TTraits> : INode
+public abstract class NodeBase<TTraits> : INode
     where TTraits : NodeBaseTraits, new()
 {
     private static readonly TTraits _nodeTraits = new();

@@ -13,7 +13,7 @@ public enum EExceptionsMode
     [KdlName("seh")] SEH,
 }
 
-internal class ExceptionsNodeTraits : NodeBaseTraits
+public class ExceptionsNodeTraits : NodeBaseTraits
 {
     public override string Name => "exceptions";
 
@@ -31,7 +31,7 @@ internal class ExceptionsNodeTraits : NodeBaseTraits
     public override INode CreateNode(KdlNode node) => new ExceptionsNode(node);
 }
 
-internal class ExceptionsNode(KdlNode node) : NodeBase<ExceptionsNodeTraits>(node)
+public class ExceptionsNode(KdlNode node) : NodeBase<ExceptionsNodeTraits>(node)
 {
     public EExceptionsMode ExceptionsMode => GetEnumValue<EExceptionsMode>(0);
 }

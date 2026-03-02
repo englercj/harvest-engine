@@ -124,8 +124,8 @@ internal class WhenExpressionEvaluator
             decimal n => Evaluate(expression, (v) => CheckEqualNumber(v, n)),
             string s => Evaluate(expression, (v) => CheckEqualString(v, s)),
             Enum e => Evaluate(expression, (v) => CheckEqualString(v, KdlEnumUtils.GetName(e))),
-            HashSet<string> active => Evaluate(expression, active.Contains),
-            IDictionary<string, object?> options => Evaluate(expression, (v) => CheckDictionaryContains(v, options)),
+            IReadOnlySet<string> active => Evaluate(expression, active.Contains),
+            IReadOnlyDictionary<string, object?> options => Evaluate(expression, (v) => CheckDictionaryContains(v, options)),
             _ => throw new ArgumentException($"Unsupported type '{value.GetType().Name}' for evaluation.", nameof(value)),
         };
     }
@@ -367,23 +367,31 @@ internal class WhenExpressionEvaluator
         }
     }
 
-    private static bool CheckDictionaryContains(string v, IDictionary<string, object?> options)
+    private static bool CheckDictionaryContains(string v, IReadOnlyDictionary<string, object?> options)
     {
         if (string.IsNullOrEmpty(v))
+        {
             return false;
+        }
 
         string[] parts = v.Split(':');
         if (options.TryGetValue(parts[0], out object? optionValue))
         {
             if (parts.Length == 1)
+            {
                 return true;
+            }
 
             return optionValue switch
             {
                 bool optBool => CheckEqualBool(parts[1], optBool),
+                sbyte optNum => CheckEqualNumber(parts[1], optNum),
+                short optNum => CheckEqualNumber(parts[1], optNum),
                 int optNum => CheckEqualNumber(parts[1], optNum),
-                uint optNum => CheckEqualNumber(parts[1], optNum),
                 long optNum => CheckEqualNumber(parts[1], optNum),
+                byte optNum => CheckEqualNumber(parts[1], optNum),
+                ushort optNum => CheckEqualNumber(parts[1], optNum),
+                uint optNum => CheckEqualNumber(parts[1], optNum),
                 ulong optNum => CheckEqualNumber(parts[1], optNum),
                 float optNum => CheckEqualNumber(parts[1], optNum),
                 double optNum => CheckEqualNumber(parts[1], optNum),

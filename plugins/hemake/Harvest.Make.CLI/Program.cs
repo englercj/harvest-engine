@@ -1,27 +1,27 @@
 // Copyright Chad Engler
 
+using Harvest.Common;
+using Harvest.Common.Services;
 using Harvest.Kdl;
-using Harvest.Kdl.Types;
-using Harvest.Make.Attributes;
 using Harvest.Make.Projects;
 using Harvest.Make.Projects.Nodes;
+using Harvest.Make.Projects.Services;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.DependencyInjection.Extensions;
-using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Serilog;
+using Serilog.Events;
 using System.CommandLine;
-using System.Reflection;
 
 namespace Harvest.Make.CLI;
 
 class Program
 {
-    static async Task Main(string[] args)
+    static async Task<int> Main(string[] args)
     {
         // Initialize logging
         Log.Logger = new LoggerConfiguration()
             .WriteTo.Console(
-                restrictedToMinimumLevel: GetLogLevel(appArgs),
+                restrictedToMinimumLevel: GetLogLevel(),
                 standardErrorFromLevel: LogEventLevel.Warning)
 #if DEBUG
             .WriteTo.Debug(
@@ -36,7 +36,7 @@ class Program
 
         // Load the project early so we can use the configuration for initialization
         ILoggerFactory loggerFactory = new LoggerFactory().AddSerilog(Log.Logger);
-        ProjectService projectService = new(appStorage, loggerFactory.CreateLogger<ProjectService>());
+        ProjectService projectService = new();
 
         // Manually find the `--project` option value.
         string? projectPath = null;
@@ -52,7 +52,7 @@ class Program
         {
             projectService.LoadProject(projectPath);
 
-            string projectName = projectService.ProjectDocument.Nodes.FirstOrDefault()?.Arguments.FirstOrDefault()?.Value.GetValueString() ?? "<unknown>";
+            string projectName = projectService.ProjectDocument.Nodes.FirstOrDefault()?.Arguments.FirstOrDefault()?.GetValueString() ?? "<unknown>";
             Log.Information("Loaded project: {ProjectName}", projectName);
         }
         else
@@ -61,12 +61,35 @@ class Program
         }
 
         // Load plugins
-        PluginService pluginService = new(loggerFactory.CreateLogger<PluginService>(), projectService);
-        pluginService.LoadPlugins();
+        AppPluginService pluginService = new(loggerFactory.CreateLogger<AppPluginService>());
+        pluginService.LoadPluginsFromAppDomain(AppDomain.CurrentDomain);
+
+        // Iterate the module nodes and load any hemake extensions
+        foreach (KdlNode node in projectService.ProjectDocument.GetNodesByName(ModuleNode.NodeTraits.Name))
+        {
+            if (!node.TryGetValue("hemake_load", out bool isExt) || !isExt)
+            {
+                continue;
+            }
+
+            if (!node.TryGetValue("project_file", out string? extensionPath) || string.IsNullOrEmpty(extensionPath))
+            {
+                Log.Error("Module '{ModuleName}' is marked as a hemake plugin but does not specify a 'project_file' property. This plugin cannot be loaded.", node.Name);
+                continue;
+            }
+
+            if (!Path.IsPathRooted(extensionPath))
+            {
+                string extensionDir = Path.GetDirectoryName(node.SourceInfo.FilePath) ?? "";
+                extensionPath = Path.Join(extensionDir, extensionPath);
+            }
+
+            pluginService.LoadPluginsFromAssemblyFile(extensionPath);
+        }
 
         // Register services we created in Main
+        services.AddSingleton<IAppPluginService>(_ => pluginService);
         services.AddSingleton<IProjectService>(_ => projectService);
-        services.AddSingleton<IPluginService>(_ => pluginService);
 
         // Register services from our assembly that are auto-discovered based on attributes
         services.AddAutoDiscoveredServices();
@@ -124,5 +147,14 @@ class Program
                 Log.Fatal(ex, "An unhandled exception occurred while shutting down plugins.");
             }
         }
+    }
+
+    private static LogEventLevel GetLogLevel()
+    {
+#if DEBUG
+        return LogEventLevel.Debug;
+#else
+        return LogEventLevel.Information;
+#endif
     }
 }

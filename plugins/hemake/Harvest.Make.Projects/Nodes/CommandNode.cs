@@ -6,7 +6,7 @@ using System.Runtime.InteropServices;
 
 namespace Harvest.Make.Projects.Nodes;
 
-internal class CommandNodeTraits : NodeBaseTraits
+public class CommandNodeTraits : NodeBaseTraits
 {
     public override string Name => "command";
 
@@ -44,7 +44,7 @@ internal class CommandNodeTraits : NodeBaseTraits
     public override INode CreateNode(KdlNode node) => new CommandNode(node);
 }
 
-internal class CommandNode(KdlNode node) : NodeBase<CommandNodeTraits>(node)
+public class CommandNode(KdlNode node) : NodeBase<CommandNodeTraits>(node)
 {
     public string CommandName => GetValue<string>(0);
     public string? CommandArgs => TryGetValue(1, out string? value) ? value : null;

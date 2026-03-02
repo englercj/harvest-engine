@@ -7,7 +7,7 @@ namespace Harvest.Make.Projects.ProjectGenerators.vs2026;
 
 public interface IVisualStudioFileGroup
 {
-    internal class FileEntry(ResolvedProjectTree projectTree, ModuleNode module, string filePath)
+    public class FileEntry(ResolvedProjectTree projectTree, ModuleNode module, string filePath)
     {
         public ResolvedProjectTree ProjectTree => projectTree;
         public ModuleNode Module => module;

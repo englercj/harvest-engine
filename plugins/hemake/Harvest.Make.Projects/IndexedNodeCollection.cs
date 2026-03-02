@@ -6,7 +6,7 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace Harvest.Make.Projects;
 
-internal class IndexedNodeCollection
+public class IndexedNodeCollection
 {
     private readonly Dictionary<string, SortedDictionary<string, KdlNode>> _indexedNodesByType = [];
 

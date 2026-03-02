@@ -4,7 +4,7 @@
   <Import Project="..\..\props\Harvest.Tests.props" />
 
   <ItemGroup>
-    <ProjectReference Include="..\Harvest.Kdl\Harvest.Kdl.csproj" />
+    <ProjectReference Include="..\..\..\Common\Harvest.Kdl\Harvest.Kdl.csproj" />
   </ItemGroup>
 
 </Project>

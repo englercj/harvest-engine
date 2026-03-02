@@ -376,7 +376,7 @@ public class CommandProviderGenerator : IIncrementalGenerator
         ReadOnlySpan<char> end = span.Slice(span.Length - value.Length, value.Length);
         if (end.SequenceEqual(value))
         {
-            return span[..^value.Length];
+            return span.Slice(0, span.Length - value.Length);
         }
         return span;
     }

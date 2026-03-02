@@ -15,7 +15,7 @@ public enum EBuildEvent
     [KdlName("clean")] Clean,
 }
 
-internal class BuildEventNodeTraits : NodeBaseTraits
+public class BuildEventNodeTraits : NodeBaseTraits
 {
     public override string Name => "build_event";
 
@@ -37,7 +37,7 @@ internal class BuildEventNodeTraits : NodeBaseTraits
     public override INode CreateNode(KdlNode node) => new BuildEventNode(node);
 }
 
-internal class BuildEventNode(KdlNode node) : NodeBase<BuildEventNodeTraits>(node)
+public class BuildEventNode(KdlNode node) : NodeBase<BuildEventNodeTraits>(node)
 {
     public EBuildEvent EventName => GetEnumValue<EBuildEvent>(0);
     public string? EventMessage => TryGetValue("message", out string? value) ? value : null;

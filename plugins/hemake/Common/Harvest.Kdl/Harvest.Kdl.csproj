@@ -2,4 +2,10 @@
 
   <Import Project="..\..\props\Harvest.props" />
 
+  <ItemGroup>
+    <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleTo">
+      <_Parameter1>Harvest.Kdl.Tests</_Parameter1>
+    </AssemblyAttribute>
+  </ItemGroup>
+
 </Project>

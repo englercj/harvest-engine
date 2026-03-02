@@ -1,10 +1,11 @@
 // Copyright Chad Engler
 
 using Harvest.Make.Projects.Nodes;
+using Harvest.Make.Projects.Services;
 
 namespace Harvest.Make.Projects;
 
-internal class ProjectContext
+public class ProjectContext
 {
     public required IProjectService ProjectService { get; init; }
     public required ConfigurationNode Configuration { get; init; }

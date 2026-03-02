@@ -19,7 +19,9 @@
   <ItemGroup>
     <ProjectReference Include="..\Common\Harvest.Common\Harvest.Common.csproj" />
     <ProjectReference Include="..\Common\Harvest.Kdl\Harvest.Kdl.csproj" />
+    <ProjectReference Include="..\Common\Harvest.SourceGenerators\Harvest.SourceGenerators.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
     <ProjectReference Include="..\Harvest.Make.Projects\Harvest.Make.Projects.csproj" />
   </ItemGroup>
+
 
 </Project>

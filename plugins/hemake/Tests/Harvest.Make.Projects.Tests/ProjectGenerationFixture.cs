@@ -1,11 +1,10 @@
 // Copyright Chad Engler
 
-using Harvest.Make.Projects;
 using Harvest.Make.Projects.Nodes;
 using Harvest.Make.Projects.ProjectGenerators.vs2026;
+using Harvest.Make.Projects.Services;
 using Microsoft.Extensions.Logging;
 using System.CommandLine;
-using System.CommandLine.Invocation;
 
 namespace Harvest.Make.Projects.Tests;
 

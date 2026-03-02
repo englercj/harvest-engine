@@ -4,7 +4,7 @@ using Harvest.Kdl;
 
 namespace Harvest.Make.Projects.Nodes;
 
-internal class IncludeDirsEntryNodeTraits : NodeSetEntryBaseTraits<IncludeDirsNode>
+public class IncludeDirsEntryNodeTraits : NodeSetEntryBaseTraits<IncludeDirsNode>
 {
     public override IReadOnlyDictionary<string, NodeValueDef> PropertyDefs { get; } = new SortedDictionary<string, NodeValueDef>()
     {
@@ -14,7 +14,7 @@ internal class IncludeDirsEntryNodeTraits : NodeSetEntryBaseTraits<IncludeDirsNo
     public override INode CreateNode(KdlNode node) => new IncludeDirsEntryNode(node);
 }
 
-internal class IncludeDirsEntryNode(KdlNode node) : NodeSetEntryBase<IncludeDirsEntryNodeTraits, IncludeDirsNode>(node)
+public class IncludeDirsEntryNode(KdlNode node) : NodeSetEntryBase<IncludeDirsEntryNodeTraits, IncludeDirsNode>(node)
 {
     public string Path => Node.Name;
 

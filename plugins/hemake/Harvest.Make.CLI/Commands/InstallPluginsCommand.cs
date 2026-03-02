@@ -2,6 +2,7 @@
 
 using Harvest.Common;
 using Harvest.Common.Attributes;
+using Harvest.Kdl;
 using Harvest.Make.Projects;
 using Harvest.Make.Projects.Nodes;
 using Harvest.Make.Projects.Services;
@@ -30,8 +31,9 @@ internal partial class InstallPluginsCliCommand(
             {
                 string installDir = projectTree.ProjectNode.InstallsDir;
 
-                foreach (FetchNode fetchNode in projectTree.GetNodes<FetchNode>(plugin.Node))
+                foreach (KdlNode fetchNodeKdl in plugin.Node.GetDescendantsByName(FetchNode.NodeTraits.Name))
                 {
+                    FetchNode fetchNode = new(fetchNodeKdl);
                     if (installKeys.Add(fetchNode.ArchiveKey))
                     {
                         installTasks.Add(InstallArchiveAsync(httpClient, fetchNode, installDir));

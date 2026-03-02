@@ -1,5 +1,3 @@
-using System.CommandLine;
-
 namespace Harvest.Common.Attributes;
 
 // Attributes in this file are used to mark services and view models for

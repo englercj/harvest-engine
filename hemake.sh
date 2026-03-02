@@ -24,16 +24,16 @@ pushd "$SCRIPT_DIR" > /dev/null
 PROJECT_DIR=$(dirname $PROJECT_PATH)
 BUILD_DIR="$PROJECT_DIR/.build"
 
-DOTNET_CHANNEL="9.0"
+DOTNET_CHANNEL="10.0"
 DOTNET_DIR="$BUILD_DIR/dotnet"
 DOTNET_EXE="$DOTNET_DIR/dotnet"
 
 HEMAKE_BUILD_CFG="Release"
 HEMAKE_BUILD_DIR="$BUILD_DIR/hemake"
-HEMAKE_BUILD_ASSEMBLY="$HEMAKE_BUILD_DIR/bin/$HEMAKE_BUILD_CFG/net$DOTNET_CHANNEL/Harvest.Make.App.dll"
+HEMAKE_BUILD_ASSEMBLY="$HEMAKE_BUILD_DIR/bin/$HEMAKE_BUILD_CFG/net$DOTNET_CHANNEL/Harvest.Make.CLI.dll"
 
 HEMAKE_SRC_DIR="$SCRIPT_DIR/plugins/hemake"
-HEMAKE_SRC_PROJ="$HEMAKE_SRC_DIR/Harvest.Make.App/Harvest.Make.App.csproj"
+HEMAKE_SRC_PROJ="$HEMAKE_SRC_DIR/Harvest.Make.CLI/Harvest.Make.CLI.csproj"
 
 # Ensure the build directory exists
 mkdir -p "$BUILD_DIR"

@@ -1,8 +1,6 @@
 // Copyright Chad Engler
 
 using Harvest.Make.Projects.Nodes;
-using System.Diagnostics.CodeAnalysis;
-using static Harvest.Make.Projects.ModuleGroupTree;
 
 namespace Harvest.Make.Projects;
 

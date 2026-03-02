@@ -1,18 +1,15 @@
 // Copyright Chad Engler
 
-using Harvest.Common.Attributes;
 using Harvest.Kdl;
 using Harvest.Kdl.Types;
 using Harvest.Make.Projects.NodeGenerators;
 using Harvest.Make.Projects.Nodes;
-using Harvest.Make.Projects.Services;
 using System.CommandLine;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 
-namespace Harvest.Make.Projects;
+namespace Harvest.Make.Projects.Services;
 
-[SingletonService<IProjectService>]
 public class ProjectService : IProjectService
 {
     private readonly Dictionary<string, INodeTraits> _nodeTraits = [];

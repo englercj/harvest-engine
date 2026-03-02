@@ -3,7 +3,6 @@
 using Harvest.Common;
 using Harvest.Common.Services;
 using Harvest.Kdl;
-using Harvest.Make.Projects;
 using Harvest.Make.Projects.Nodes;
 using Harvest.Make.Projects.Services;
 using Microsoft.Extensions.DependencyInjection;
@@ -28,6 +27,8 @@ class Program
                 restrictedToMinimumLevel: LogEventLevel.Debug)
 #endif
             .CreateLogger();
+
+        Log.Information("Running with: {Args}", string.Join(' ', args));
 
         // Configure services
         ServiceCollection services = new();

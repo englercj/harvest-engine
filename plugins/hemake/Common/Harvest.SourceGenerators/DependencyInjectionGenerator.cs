@@ -49,7 +49,7 @@ public class DependencyInjectionGenerator : IIncrementalGenerator
 
         foreach (AttributeData attribute in namedTypeSymbol.GetAttributes())
         {
-            string namespaceName = attribute.AttributeClass?.ContainingNamespace.ToDisplayString();
+            string? namespaceName = attribute.AttributeClass?.ContainingNamespace.ToDisplayString();
             if (namespaceName != CommonAttributesNamespace)
             {
                 continue;

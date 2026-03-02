@@ -305,7 +305,7 @@ public class CommandProviderGenerator : IIncrementalGenerator
             return "";
         }
 
-        ReadOnlySpan<char> name = TrimEnd(propName, "Option");
+        ReadOnlySpan<char> name = TrimEnd(propName.AsSpan(), "Option".AsSpan());
 
         StringBuilder sb = new();
         sb.Append("--");
@@ -321,8 +321,8 @@ public class CommandProviderGenerator : IIncrementalGenerator
             return "";
         }
 
-        ReadOnlySpan<char> name = TrimEnd(propName, "Argument");
-        name = TrimEnd(name, "Arg");
+        ReadOnlySpan<char> name = TrimEnd(propName.AsSpan(), "Argument".AsSpan());
+        name = TrimEnd(name, "Arg".AsSpan());
 
         StringBuilder sb = new();
         AppendAsKebabCase(sb, name);
@@ -337,7 +337,7 @@ public class CommandProviderGenerator : IIncrementalGenerator
             return "";
         }
 
-        ReadOnlySpan<char> name = TrimEnd(className, "Command");
+        ReadOnlySpan<char> name = TrimEnd(className.AsSpan(), "Command".AsSpan());
 
         StringBuilder sb = new();
         AppendAsKebabCase(sb, name);

@@ -4,6 +4,7 @@ using Harvest.Make.Projects.Nodes;
 using Harvest.Make.Projects.ProjectGenerators.vs2026;
 using Harvest.Make.Projects.Services;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using System.CommandLine;
 
 namespace Harvest.Make.Projects.Tests;
@@ -46,22 +47,21 @@ public sealed class ProjectGenerationFixture : IDisposable
 
         WriteSourceFiles();
 
-        _loggerFactory = LoggerFactory.Create((builder) => { });
+        _loggerFactory = NullLoggerFactory.Instance;
 
         ProjectService = new ProjectService();
-        NodeRegistrar registrar = new(ProjectService);
-        registrar.StartAsync(CancellationToken.None).GetAwaiter().GetResult();
+        new ProjectsPlugin().Startup(new ProjectServiceProvider(ProjectService));
 
         ProjectService.LoadProject(ProjectFilePath);
 
         RootCommand command = new();
         foreach (ProjectOption option in ProjectService.ProjectOptions)
         {
-            command.AddOption(option.Option);
+            command.Options.Add(option.Option);
         }
 
-        InvocationContext invocation = new(command.Parse(["--feature", "on"]));
-        ProjectService.ParseProject(invocation);
+        ParseResult parseResult = command.Parse(["--feature", "on"]);
+        ProjectService.ParseProject(parseResult);
 
         if (!ProjectService.ResolvedProjectTrees.TryGetValue(new ProjectBuildId("Debug", "Win64"), out ResolvedProjectTree? debugTree))
         {
@@ -78,7 +78,6 @@ public sealed class ProjectGenerationFixture : IDisposable
 
         VS2026ProjectGeneratorService generator = new(
             ProjectService,
-            _loggerFactory.CreateLogger<VS2026ProjectGeneratorService>(),
             _loggerFactory);
         generator.GenerateProjectFilesAsync().GetAwaiter().GetResult();
 
@@ -326,5 +325,13 @@ public sealed class ProjectGenerationFixture : IDisposable
                 }
             }
             """;
+    }
+
+    private sealed class ProjectServiceProvider(IProjectService projectService) : IServiceProvider
+    {
+        public object? GetService(Type serviceType)
+        {
+            return serviceType == typeof(IProjectService) ? projectService : null;
+        }
     }
 }

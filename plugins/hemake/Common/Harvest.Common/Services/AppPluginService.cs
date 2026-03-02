@@ -60,7 +60,7 @@ public class AppPluginService(ILogger<AppPluginService> logger) : IAppPluginServ
                 }
 
                 _plugins.Add(plugin);
-                logger.LogInformation("Loaded plugin '{PluginType}' from assembly '{AssemblyName}'.", type.FullName, assembly.FullName);
+                logger.LogInformation("Loaded plugin '{PluginType}' from assembly '{AssemblyName}'.", type.Name, assembly.GetName().Name);
             }
             catch (Exception ex)
             {

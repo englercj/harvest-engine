@@ -1,7 +1,8 @@
 <Project>
    <PropertyGroup>
-      <BaseOutputPath>../../../.build/hemake/bin/</BaseOutputPath>
-      <BaseIntermediateOutputPath>../../../.build/hemake/obj/</BaseIntermediateOutputPath>
-      <MSBuildProjectExtensionsPath>../../../.build/hemake/obj/$(MSBuildProjectName)/</MSBuildProjectExtensionsPath>
+      <HEMakeArtifactsDir>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\..\.build\hemake\'))</HEMakeArtifactsDir>
+      <BaseOutputPath>$(HEMakeArtifactsDir)bin\</BaseOutputPath>
+      <BaseIntermediateOutputPath>$(HEMakeArtifactsDir)obj\</BaseIntermediateOutputPath>
+      <MSBuildProjectExtensionsPath>$(BaseIntermediateOutputPath)$(MSBuildProjectName)\</MSBuildProjectExtensionsPath>
    </PropertyGroup>
 </Project>

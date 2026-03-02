@@ -1,7 +1,7 @@
 // Copyright Chad Engler
 
-using Harvest.Kdl.Types;
 using Harvest.Kdl.Exceptions;
+using Harvest.Kdl.Types;
 using System.Numerics;
 
 namespace Harvest.Kdl.Tests;

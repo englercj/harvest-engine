@@ -5,11 +5,33 @@
 shopt -s globstar
 
 # Resolve the project path
-if [[ $# -eq 0 ]]; then
+PROJECT_PATH=""
+HAS_PROJECT_ARG=0
+
+for (( i=1; i<=$#; ++i )); do
+    arg="${!i}"
+
+    if [[ "$arg" == "--project" ]]; then
+        next_index=$((i + 1))
+        if [[ $next_index -gt $# ]]; then
+            echo "Missing value for --project"
+            exit 1
+        fi
+
+        PROJECT_PATH=$(realpath "${!next_index}")
+        HAS_PROJECT_ARG=1
+        break
+    fi
+
+    if [[ "$arg" == --project=* ]]; then
+        PROJECT_PATH=$(realpath "${arg#--project=}")
+        HAS_PROJECT_ARG=1
+        break
+    fi
+done
+
+if [[ $HAS_PROJECT_ARG -eq 0 ]]; then
     PROJECT_PATH=$(realpath "he_project.kdl")
-else
-    PROJECT_PATH=$(realpath $1)
-    shift
 fi
 
 if [[ ! -f "$PROJECT_PATH" ]]; then
@@ -116,7 +138,11 @@ if [[ $NEEDS_REBUILD -eq 1 ]]; then
 fi
 
 # Run the hemake assembly
-$DOTNET_EXE "$HEMAKE_BUILD_ASSEMBLY" --project "$PROJECT_PATH" "$@"
+if [[ $HAS_PROJECT_ARG -eq 1 ]]; then
+    $DOTNET_EXE "$HEMAKE_BUILD_ASSEMBLY" "$@"
+else
+    $DOTNET_EXE "$HEMAKE_BUILD_ASSEMBLY" --project "$PROJECT_PATH" "$@"
+fi
 HEMAKE_EXIT_CODE=$?
 
 popd >/dev/null

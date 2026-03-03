@@ -25,6 +25,7 @@ internal class VS2026ProjectGeneratorService(
 
         ProjectNode project = projectService.GetGlobalNode<ProjectNode>();
         Directory.CreateDirectory(project.BuildDir);
+        Directory.CreateDirectory(project.ProjectsDir);
 
         SlnxGenerator slnGenerator = new(projectService, loggerFactory.CreateLogger<SlnxGenerator>());
         await slnGenerator.GenerateAsync(_groupTree);

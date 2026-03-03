@@ -45,7 +45,7 @@ public class ModuleNodeTraits : NodeBaseTraits
         { "language", NodeValueDef_Enum<EModuleLanguage>.Optional(EModuleLanguage.Cpp) },
         { "project_file", NodeValueDef_Path.Optional() },
         { "entrypoint", NodeValueDef_String.Optional() },
-        { "hemake_extension", NodeValueDef_Bool.Optional(false) },
+        { "hemake_load", NodeValueDef_Bool.Optional(false) },
         { "target_name", NodeValueDef_String.Optional() },
         { "target_extension", NodeValueDef_String.Optional() },
         { "target_dir", NodeValueDef_Path.Optional() },
@@ -112,7 +112,6 @@ public class ModuleNode(KdlNode node) : NodeBase<ModuleNodeTraits>(node)
     public EModuleLanguage Language => GetEnumValue<EModuleLanguage>("language");
     public string? ProjectFile => TryGetValue("project_file", out string? value) ? value : null;
     public string? EntryPoint => TryGetValue("entrypoint", out string? value) ? value : null;
-    public bool IsExtension => GetValue<bool>("hemake_extension");
     public string TargetName => (TryGetValue("target_name", out string? value) ? value : null) ?? ModuleName;
     public string? TargetExtension => TryGetValue("target_extension", out string? value) ? value : null;
     public string? TargetDir => TryGetValue("target_dir", out string? value) ? value : null;

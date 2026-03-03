@@ -108,13 +108,21 @@ internal class NodeTokenHandler(ProjectContext projectContext, IndexedNodeCollec
         throw new NodeParseException(scope, $"Invalid token '{token}'. No {contextName} node found with name '{contextId}'.");
     }
 
-    private static KdlNode GetTokenContextByName(KdlNode scope, string token, string name)
+    private KdlNode GetTokenContextByName(KdlNode scope, string token, string name)
     {
         KdlNode? search = scope;
         while (search is not null)
         {
             if (search.Name == name)
             {
+                if ((name == PluginNode.NodeTraits.Name || name == ModuleNode.NodeTraits.Name)
+                    && search.TryGetValue(0, out string? nodeId)
+                    && !string.IsNullOrEmpty(nodeId)
+                    && _indexedNodes.TryGetNode(name, nodeId, out KdlNode? indexedNode))
+                {
+                    return indexedNode;
+                }
+
                 return search;
             }
 

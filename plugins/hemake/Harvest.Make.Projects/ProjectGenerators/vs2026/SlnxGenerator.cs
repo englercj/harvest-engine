@@ -106,6 +106,7 @@ internal class SlnxGenerator(IProjectService projectService, ILogger<SlnxGenerat
     private void WriteProjectEntry(XmlWriter writer, ModuleEntry entry, string projectsDir)
     {
         string projectPath = GetModuleProjectPath(entry.Name, projectsDir);
+        HashSet<string> buildDependencyPaths = [];
 
         writer.WriteStartElement("Project");
         writer.WriteAttributeString("Path", projectPath);
@@ -114,7 +115,7 @@ internal class SlnxGenerator(IProjectService projectService, ILogger<SlnxGenerat
         {
             if (project.IndexedNodes.TryGetNode(entry.Name, out ModuleNode? module))
             {
-                List<ModuleDependency> dependencies = project.GetModuleDependencies(module, ENodeDependencyInheritance.None);
+                List<ModuleDependency> dependencies = project.GetModuleDependencies(module, ENodeDependencyInheritance.All);
                 foreach (ModuleDependency dependency in dependencies)
                 {
                     if (dependency.Kind != EDependencyKind.Default
@@ -143,8 +144,14 @@ internal class SlnxGenerator(IProjectService projectService, ILogger<SlnxGenerat
                         }
                     }
 
+                    string dependencyProjectPath = GetModuleProjectPath(dependencyModule.ModuleName, projectsDir);
+                    if (dependencyProjectPath == projectPath || !buildDependencyPaths.Add(dependencyProjectPath))
+                    {
+                        continue;
+                    }
+
                     writer.WriteStartElement("BuildDependency");
-                    writer.WriteAttributeString("Project", GetModuleProjectPath(dependencyModule.ModuleName, projectsDir));
+                    writer.WriteAttributeString("Project", dependencyProjectPath);
                     writer.WriteEndElement();
                 }
             }

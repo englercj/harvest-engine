@@ -8,7 +8,7 @@ All relative paths are assumed to be relative to the `*.kdl` file they are writt
 
 ## Glob Patterns
 
-All keys that accept paths to files can contain globs patterns. An asterisk (`*`) character represents a wildcard that matches against files in the current directory. A double asterisk (`**`) represents a wildcard that matches recursively through directories.
+All keys that accept multiple paths to files can contain globs patterns. An asterisk (`*`) character represents a wildcard that matches against files in the current directory. A double asterisk (`**`) represents a wildcard that matches recursively through directories.
 
 ## Example
 

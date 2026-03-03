@@ -16,7 +16,7 @@ public class IncludeDirsEntryNodeTraits : NodeSetEntryBaseTraits<IncludeDirsNode
 
 public class IncludeDirsEntryNode(KdlNode node) : NodeSetEntryBase<IncludeDirsEntryNodeTraits, IncludeDirsNode>(node)
 {
-    public string Path => Node.Name;
+    public string Path => ResolveSinglePath(Node.Name);
 
     public bool IsExternal
     {

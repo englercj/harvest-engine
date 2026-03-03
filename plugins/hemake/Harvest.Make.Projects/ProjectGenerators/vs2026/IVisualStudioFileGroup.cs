@@ -1,24 +1,45 @@
 // Copyright Chad Engler
 
 using Harvest.Make.Projects.Nodes;
+using Harvest.Make.Projects.Services;
 using System.Xml;
 
 namespace Harvest.Make.Projects.ProjectGenerators.vs2026;
 
 public interface IVisualStudioFileGroup
 {
-    public class FileEntry(ResolvedProjectTree projectTree, ModuleNode module, string filePath)
+    public class FileConfigEntry(ResolvedProjectTree projectTree, ModuleNode module)
     {
         public ResolvedProjectTree ProjectTree => projectTree;
         public ModuleNode Module => module;
-        public string FullPath => filePath;
 
         public EFileAction Action { get; set; } = EFileAction.Default;
         public EFileBuildRule BuildRule { get; set; } = EFileBuildRule.Default;
         public string BuildRuleName { get; set; } = "";
-        public string VirtualPath { get; set; } = "";
         public string DependsOnPath { get; set; } = "";
         public bool IsExcludedFromBuild { get; set; } = false;
+    }
+
+    public class FileEntry(string filePath)
+    {
+        private readonly Dictionary<ProjectBuildId, FileConfigEntry> _configs = [];
+
+        public string FullPath => filePath;
+        public string VirtualPath { get; set; } = "";
+
+        public IEnumerable<FileConfigEntry> Configs => _configs.Values;
+
+        public void AddConfig(FileConfigEntry config)
+        {
+            ProjectBuildId buildId = new(config.ProjectTree.ProjectContext.Configuration.ConfigName, config.ProjectTree.ProjectContext.Platform.PlatformName);
+            _configs[buildId] = config;
+        }
+
+        public bool TryGetConfig(ResolvedProjectTree projectTree, out FileConfigEntry? config)
+        {
+            ProjectBuildId buildId = new(projectTree.ProjectContext.Configuration.ConfigName, projectTree.ProjectContext.Platform.PlatformName);
+            return _configs.TryGetValue(buildId, out config);
+        }
     }
 
     public int Priority { get; }

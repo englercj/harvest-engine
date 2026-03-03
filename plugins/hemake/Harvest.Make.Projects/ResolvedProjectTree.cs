@@ -126,7 +126,7 @@ public class ResolvedProjectTree
             {
                 if (dep.Module is ModuleNode dependencyModule)
                 {
-                    foreach (KdlNode node in GetNodes(dependencyModule.Node, ModuleNode.NodeTraits, searchDependencies))
+                    foreach (KdlNode node in GetNodes(dependencyModule.Node, traits, false))
                     {
                         if (IsWithinPublicNode(node))
                         {
@@ -163,6 +163,16 @@ public class ResolvedProjectTree
                 {
                     yield return child;
                 }
+                else if (child.Name == PublicNode.NodeTraits.Name && traits.ValidScopes.Contains(PublicNode.NodeTraits.Name))
+                {
+                    foreach (KdlNode publicChild in child.Children)
+                    {
+                        if (publicChild.Name == traits.Name)
+                        {
+                            yield return publicChild;
+                        }
+                    }
+                }
             }
 
             if (scopeToCheck.Name == traits.Name)
@@ -176,8 +186,9 @@ public class ResolvedProjectTree
     {
         List<ModuleDependency> result = [];
         Dictionary<DependenciesEntryNode, int> indexMap = [];
+        HashSet<(string ModuleName, bool PublicOnly)> visitedModules = [];
 
-        GetModuleDependenciesInternal(module, result, indexMap, inheritance, false);
+        GetModuleDependenciesInternal(module, result, indexMap, visitedModules, inheritance, false);
 
         return result;
     }
@@ -196,9 +207,15 @@ public class ResolvedProjectTree
         ModuleNode module,
         List<ModuleDependency> result,
         Dictionary<DependenciesEntryNode, int> indexMap,
+        HashSet<(string ModuleName, bool PublicOnly)> visitedModules,
         ENodeDependencyInheritance inheritance,
         bool publicOnly)
     {
+        if (!visitedModules.Add((module.ModuleName, publicOnly)))
+        {
+            return;
+        }
+
         List<ModuleNode> modulesToRecurse = [];
 
         // First add all our immediate dependencies to the list
@@ -323,7 +340,7 @@ public class ResolvedProjectTree
         // Then add all the public dependencies of our dependencies
         foreach (ModuleNode dependencyModule in modulesToRecurse)
         {
-            GetModuleDependenciesInternal(dependencyModule, result, indexMap, inheritance, true);
+            GetModuleDependenciesInternal(dependencyModule, result, indexMap, visitedModules, inheritance, true);
         }
     }
 

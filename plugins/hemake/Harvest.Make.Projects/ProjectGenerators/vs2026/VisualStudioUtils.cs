@@ -50,7 +50,7 @@ internal static class VisualStudioUtils
         { EModuleKind.AppWindowed, "Application" },
         { EModuleKind.Content, "Utility" },
         { EModuleKind.Custom, "Utility" },
-        { EModuleKind.LibHeader, "DynamicLibrary" },
+        { EModuleKind.LibHeader, "StaticLibrary" },
         { EModuleKind.LibStatic, "StaticLibrary" },
         { EModuleKind.LibShared, "DynamicLibrary" },
     };
@@ -97,7 +97,13 @@ internal static class VisualStudioUtils
     // Returns the path relative to projectFilePath and replaces '/' with '\\'
     public static string TranslatePath(string projectFilePath, string path)
     {
-        return Path.GetRelativePath(projectFilePath, path).Replace('/', '\\');
+        if (path.Contains("$(") || path.Contains("%("))
+        {
+            return path.Replace('/', '\\');
+        }
+
+        string projectDir = Path.GetDirectoryName(projectFilePath) ?? Directory.GetCurrentDirectory();
+        return Path.GetRelativePath(projectDir, path).Replace('/', '\\');
     }
 
     public static void WriteElementString(XmlWriter writer, string elementName, string value, string condition)

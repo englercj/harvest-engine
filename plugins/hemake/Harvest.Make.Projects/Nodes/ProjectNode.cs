@@ -17,9 +17,9 @@ public class ProjectNodeTraits : NodeBaseTraits
     public override IReadOnlyDictionary<string, NodeValueDef> PropertyDefs { get; } = new SortedDictionary<string, NodeValueDef>()
     {
         { "start", NodeValueDef_String.Optional() },
-        { "build_dir", NodeValueDef_String.Optional(".build") },
-        { "installs_dir", NodeValueDef_String.Optional("${project.build_dir}/installs") },
-        { "projects_dir", NodeValueDef_String.Optional("${project.build_dir}/projects") },
+        { "build_dir", NodeValueDef_Path.Optional(".build") },
+        { "installs_dir", NodeValueDef_Path.Optional("${project.build_dir}/installs") },
+        { "projects_dir", NodeValueDef_Path.Optional("${project.build_dir}/projects") },
     };
 
     public override INode CreateNode(KdlNode node) => new ProjectNode(node);

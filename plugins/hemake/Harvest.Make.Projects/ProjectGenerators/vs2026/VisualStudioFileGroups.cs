@@ -41,9 +41,15 @@ internal class ClCompileFileGroup(IProjectService projectService, string vsProje
 
     protected override void OnWriteFileConfig(XmlWriter writer, FileEntry file, ResolvedProjectTree projectTree, string archName)
     {
-        if (file.IsExcludedFromBuild)
+        if (!TryGetFileConfig(file, projectTree, out FileConfigEntry? fileConfig) || fileConfig is null)
         {
-            HandleExcludedFile(writer, file, projectTree, archName);
+            HandleExcludedFile(writer, true, projectTree, archName);
+            return;
+        }
+
+        HandleExcludedFile(writer, fileConfig.IsExcludedFromBuild, projectTree, archName);
+        if (fileConfig.IsExcludedFromBuild)
+        {
             return;
         }
 
@@ -62,7 +68,8 @@ internal class ClCompileFileGroup(IProjectService projectService, string vsProje
             _objectFileNameSequence.Add(fileBaseName, 1);
         }
 
-        BuildOptionsNode buildOptions = file.ProjectTree.GetMergedNode<BuildOptionsNode>(file.Module.Node);
+        ModuleNode module = GetConfigModule(fileConfig, projectTree);
+        BuildOptionsNode buildOptions = projectTree.GetMergedNode<BuildOptionsNode>(module.Node);
         if (buildOptions.PchSource == file.FullPath)
         {
             VisualStudioUtils.WriteElementString(writer, "PrecompiledHeader", "Create", condition);
@@ -274,7 +281,8 @@ internal class ResourceFileGroup(IProjectService projectService, string vsProjec
 
     protected override void OnWriteFileConfig(XmlWriter writer, FileEntry file, ResolvedProjectTree projectTree, string archName)
     {
-        HandleExcludedFile(writer, file, projectTree, archName);
+        bool isExcluded = !TryGetFileConfig(file, projectTree, out FileConfigEntry? fileConfig) || fileConfig is null || fileConfig.IsExcludedFromBuild;
+        HandleExcludedFile(writer, isExcluded, projectTree, archName);
     }
 }
 
@@ -295,22 +303,33 @@ internal class CustomBuildFileGroup(IProjectService projectService, string vsPro
 
     protected override void OnWriteFileConfig(XmlWriter writer, FileEntry file, ResolvedProjectTree projectTree, string archName)
     {
-        if (file.BuildRule != EFileBuildRule.Custom)
+        if (!TryGetFileConfig(file, projectTree, out FileConfigEntry? fileConfig) || fileConfig is null)
+        {
+            HandleExcludedFile(writer, true, projectTree, archName);
+            return;
+        }
+
+        if (fileConfig.BuildRule != EFileBuildRule.Custom)
         {
             return;
         }
 
-        HandleExcludedFile(writer, file, projectTree, archName);
-
-        BuildRuleNode buildRule = file.ProjectTree.GetMergedNode<BuildRuleNode>(file.Module.Node, (n) => n.RuleName == file.BuildRuleName, false);
-        if (buildRule.RuleName != file.BuildRuleName)
+        HandleExcludedFile(writer, fileConfig.IsExcludedFromBuild, projectTree, archName);
+        if (fileConfig.IsExcludedFromBuild)
         {
-            throw new Exception($"No build rule with the name '{file.BuildRuleName}' was found.");
+            return;
+        }
+
+        ModuleNode module = GetConfigModule(fileConfig, projectTree);
+        BuildRuleNode buildRule = projectTree.GetMergedNode<BuildRuleNode>(module.Node, (n) => n.RuleName == fileConfig.BuildRuleName, false);
+        if (buildRule.RuleName != fileConfig.BuildRuleName)
+        {
+            throw new Exception($"No build rule with the name '{fileConfig.BuildRuleName}' was found.");
         }
 
         string condition = VisualStudioUtils.GetConfigCondition(projectTree, archName);
 
-        IEnumerable<CommandNode> buildCommands = file.ProjectTree.GetNodes<CommandNode>(buildRule.Node);
+        IEnumerable<CommandNode> buildCommands = projectTree.GetNodes<CommandNode>(buildRule.Node);
         if (buildCommands.Any())
         {
             if (!string.IsNullOrEmpty(buildRule.Message))
@@ -321,11 +340,11 @@ internal class CustomBuildFileGroup(IProjectService projectService, string vsPro
             IEnumerable<string> buildCommandStrings = buildCommands.Select((entry) => entry.GetCommandString());
             VisualStudioUtils.WriteArrayElement(writer, buildCommandStrings, "Command", null, "\r\n", condition);
 
-            OutputsNode buildRuleOutputs = file.ProjectTree.GetMergedNode<OutputsNode>(buildRule.Node);
+            OutputsNode buildRuleOutputs = projectTree.GetMergedNode<OutputsNode>(buildRule.Node);
             IEnumerable<string> buildRuleOutputsStrings = buildRuleOutputs.Entries.Select((entry) => GetPath(entry.FilePath));
             VisualStudioUtils.WriteArrayElement(writer, buildRuleOutputsStrings, "Outputs", null, ";", condition);
 
-            InputsNode buildRuleInputs = file.ProjectTree.GetMergedNode<InputsNode>(buildRule.Node);
+            InputsNode buildRuleInputs = projectTree.GetMergedNode<InputsNode>(buildRule.Node);
             IEnumerable<string> buildRuleInputsStrings = buildRuleInputs.Entries.Select((entry) => GetPath(entry.FilePath));
             VisualStudioUtils.WriteArrayElement(writer, buildRuleInputsStrings, "AdditionalInputs", null, ";", condition);
         }
@@ -354,7 +373,8 @@ internal class MidlFileGroup(IProjectService projectService, string vsProjectPat
             return;
         }
 
-        HandleExcludedFile(writer, file, projectTree, archName);
+        bool isExcluded = !TryGetFileConfig(file, projectTree, out FileConfigEntry? fileConfig) || fileConfig is null || fileConfig.IsExcludedFromBuild;
+        HandleExcludedFile(writer, isExcluded, projectTree, archName);
     }
 }
 
@@ -384,15 +404,26 @@ internal class MasmFileGroup(IProjectService projectService, string vsProjectPat
 
     protected override void OnWriteFileConfig(XmlWriter writer, FileEntry file, ResolvedProjectTree projectTree, string archName)
     {
-        HandleExcludedFile(writer, file, projectTree, archName);
+        if (!TryGetFileConfig(file, projectTree, out FileConfigEntry? fileConfig) || fileConfig is null)
+        {
+            HandleExcludedFile(writer, true, projectTree, archName);
+            return;
+        }
+
+        HandleExcludedFile(writer, fileConfig.IsExcludedFromBuild, projectTree, archName);
+        if (fileConfig.IsExcludedFromBuild)
+        {
+            return;
+        }
 
         string condition = VisualStudioUtils.GetConfigCondition(projectTree, archName);
 
-        DefinesNode defines = file.ProjectTree.GetMergedNode<DefinesNode>(file.Module.Node);
+        ModuleNode module = GetConfigModule(fileConfig, projectTree);
+        DefinesNode defines = projectTree.GetMergedNode<DefinesNode>(module.Node);
         IEnumerable<string> defineEntryStrings = defines.Entries.Select((entry) => entry.DefineName);
         VisualStudioUtils.WritePreprocessorDefinitions(writer, defineEntryStrings, false, condition);
 
-        ExceptionsNode exceptions = file.ProjectTree.GetMergedNode<ExceptionsNode>(file.Module.Node);
+        ExceptionsNode exceptions = projectTree.GetMergedNode<ExceptionsNode>(module.Node);
         if (exceptions.ExceptionsMode == EExceptionsMode.SEH)
         {
             VisualStudioUtils.WriteElementString(writer, "UseSafeExceptionHandlers", "true", condition);
@@ -412,7 +443,8 @@ internal class ImageFileGroup(IProjectService projectService, string vsProjectPa
 
     protected override void OnWriteFileConfig(XmlWriter writer, FileEntry file, ResolvedProjectTree projectTree, string archName)
     {
-        HandleExcludedFile(writer, file, projectTree, archName);
+        bool isExcluded = !TryGetFileConfig(file, projectTree, out FileConfigEntry? fileConfig) || fileConfig is null || fileConfig.IsExcludedFromBuild;
+        HandleExcludedFile(writer, isExcluded, projectTree, archName);
     }
 }
 
@@ -445,28 +477,49 @@ internal class AppxManifestFileGroup(IProjectService projectService, string vsPr
 
     protected override void OnWriteFileConfig(XmlWriter writer, FileEntry file, ResolvedProjectTree projectTree, string archName)
     {
-        HandleExcludedFile(writer, file, projectTree, archName);
+        bool isExcluded = !TryGetFileConfig(file, projectTree, out FileConfigEntry? fileConfig) || fileConfig is null || fileConfig.IsExcludedFromBuild;
+        HandleExcludedFile(writer, isExcluded, projectTree, archName);
     }
 }
 
 internal class CopyFileGroup(IProjectService projectService, string vsProjectPath) : VisualStudioFileGroupBase(projectService, vsProjectPath)
 {
     public override int Priority => 100;
-    public override string GroupTag => "CopyFileToFolders";
+    public override string GroupTag => "CustomBuild";
 
     public override bool CanHandleFile(string fullPath, EFileAction action, EFileBuildRule buildRule)
     {
         return action == EFileAction.Copy;
     }
 
+    protected override void OnWriteFile(XmlWriter writer, FileEntry file)
+    {
+        writer.WriteElementString("FileType", "Document");
+    }
+
     protected override void OnWriteFileConfig(XmlWriter writer, FileEntry file, ResolvedProjectTree projectTree, string archName)
     {
-        HandleExcludedFile(writer, file, projectTree, archName);
-        BuildOutputNode buildOutput = file.ProjectTree.GetMergedNode<BuildOutputNode>(file.Module.Node);
-        string targetDir = file.Module.GetTargetDir(buildOutput);
-        string condition = VisualStudioUtils.GetConfigCondition(projectTree, archName);
+        if (!TryGetFileConfig(file, projectTree, out FileConfigEntry? fileConfig) || fileConfig is null)
+        {
+            HandleExcludedFile(writer, true, projectTree, archName);
+            return;
+        }
 
-        VisualStudioUtils.WriteElementString(writer, "DestinationFolders", GetPath(targetDir), condition);
+        HandleExcludedFile(writer, fileConfig.IsExcludedFromBuild, projectTree, archName);
+        if (fileConfig.IsExcludedFromBuild)
+        {
+            return;
+        }
+
+        ModuleNode module = GetConfigModule(fileConfig, projectTree);
+        BuildOutputNode buildOutput = projectTree.GetMergedNode<BuildOutputNode>(module.Node);
+        string targetDir = module.GetTargetDir(buildOutput);
+        string condition = VisualStudioUtils.GetConfigCondition(projectTree, archName);
+        string outputPath = Path.Join(targetDir, Path.GetFileName(file.FullPath));
+
+        VisualStudioUtils.WriteElementString(writer, "Command", $"copy /B /Y \"%(FullPath)\" {GetPath(targetDir)}", condition);
+        VisualStudioUtils.WriteElementString(writer, "Outputs", GetPath(outputPath).Replace('\\', '/'), condition);
+        VisualStudioUtils.WriteElementString(writer, "Message", "Copying file(s) %(FullPath)", condition);
     }
 }
 

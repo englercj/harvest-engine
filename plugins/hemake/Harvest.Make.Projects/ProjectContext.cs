@@ -12,6 +12,7 @@ public class ProjectContext
     public required PlatformNode Platform { get; init; }
     public required BuildOutputNode BuildOutput { get; set; }
 
+    public ProjectNode? Project { get; set; } = null;
     public PluginNode? Plugin { get; set; } = null;
     public ModuleNode? Module { get; set; } = null;
 

@@ -3,8 +3,10 @@
 plugin he.make version="0.1.0" license="UNLICENSED" {
     authors { "Chad Engler" email=englercj@live.com }
 
-    module Harvest.Kdl kind=lib_shared group="engine/hemake" project_file="${module.name}/${module.name}.csproj"
+    module Harvest.Common kind=lib_shared group="engine/hemake" project_file="Common/${module.name}/${module.name}.csproj"
+    module Harvest.Kdl kind=lib_shared group="engine/hemake" project_file="Common/${module.name}/${module.name}.csproj"
+    module Harvest.SourceGenerators kind=lib_shared group="engine/hemake" project_file="Common/${module.name}/${module.name}.csproj"
+
     module Harvest.Make.CLI kind=app_console group="engine/hemake" project_file="${module.name}/${module.name}.csproj"
-    module Harvest.Make.Common kind=lib_shared group="engine/hemake" project_file="${module.name}/${module.name}.csproj"
     module Harvest.Make.Projects kind=lib_shared group="engine/hemake" project_file="${module.name}/${module.name}.csproj"
 }

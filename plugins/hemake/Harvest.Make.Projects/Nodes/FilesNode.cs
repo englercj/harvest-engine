@@ -29,6 +29,19 @@ public class FilesNodeTraits : NodeSetBaseTraits<FilesEntryNode>
             string directory = Path.GetDirectoryName(resolvedEntry.SourceInfo.FilePath) ?? Directory.GetCurrentDirectory();
             IReadOnlyList<string> filePaths = resolver.ProjectContext.ProjectService.PathGlobs.ExpandPath(resolvedEntry.Name, directory);
 
+            // Glob expansion will only return "real" file paths that it can find on disk. If the
+            // user-specified path doesn't contain any glob patterns, or if it contains tokens that
+            // can't be resolved to real paths during generation, we should treat the original path
+            // as a literal path to include, even if it doesn't exist on disk. This allows for more
+            // flexible scenarios where generated projects might reference files that only exist in
+            // the context of the generated project. For example, this allows the user to do
+            // reference files like "$(WindowsSdkDir)Redist/D3D/x64/dxcompiler.dll".
+            bool hasGlobPattern = resolvedEntry.Name.IndexOfAny(['*', '?']) >= 0;
+            if (filePaths.Count == 0 && (resolvedEntry.Name.Contains("$(") || !hasGlobPattern))
+            {
+                filePaths = [resolvedEntry.Name];
+            }
+
             foreach (string filePath in filePaths)
             {
                 if (resolvedPaths.TryGetValue(filePath, out KdlNode? existing))
@@ -37,8 +50,14 @@ public class FilesNodeTraits : NodeSetBaseTraits<FilesEntryNode>
                 }
                 else
                 {
-                    resolvedPaths.Add(filePath, resolvedEntry);
-                    resolvedNode.AddChild(resolvedEntry);
+                    KdlNode expandedEntry = new(filePath, resolvedEntry.Type)
+                    {
+                        SourceInfo = resolvedEntry.SourceInfo,
+                    };
+                    resolvedEntry.CopyTo(expandedEntry, includeChildren: false);
+
+                    resolvedPaths.Add(filePath, expandedEntry);
+                    resolvedNode.AddChild(expandedEntry);
                 }
             }
         }

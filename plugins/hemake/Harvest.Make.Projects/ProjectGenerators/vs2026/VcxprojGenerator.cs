@@ -476,11 +476,11 @@ internal class VcxprojGenerator(IProjectService projectService, ILogger<VcxprojG
                     writer.WriteEndElement();
                 }
 
-                IncludeDirsNode includeDirs = projectTree.GetMergedNode<IncludeDirsNode>(module.Node);
+                IncludeDirsNode includeDirs = projectTree.GetMergedNode<IncludeDirsNode>(module.Node, true);
                 IEnumerable<string> externalIncludePaths = includeDirs.Entries.Where((entry) => entry.IsExternal).Select((entry) => GetPath(entry.Path));
                 VisualStudioUtils.WriteArrayElement(writer, externalIncludePaths, "ExternalIncludePath", "%(ExternalIncludePath)");
 
-                LibDirsNode libDirs = projectTree.GetMergedNode<LibDirsNode>(module.Node);
+                LibDirsNode libDirs = projectTree.GetMergedNode<LibDirsNode>(module.Node, true);
                 IEnumerable<string> systemLibPaths = libDirs.Entries.Where((entry) => entry.IsSystem).Select((entry) => GetPath(entry.Path));
                 VisualStudioUtils.WriteArrayElement(writer, systemLibPaths, "LibraryPath", "%(LibraryPath)");
 
@@ -512,16 +512,16 @@ internal class VcxprojGenerator(IProjectService projectService, ILogger<VcxprojG
 
             if (module.Kind != EModuleKind.Custom)
             {
-                BuildOptionsNode buildOptions = projectTree.GetMergedNode<BuildOptionsNode>(module.Node);
+                BuildOptionsNode buildOptions = projectTree.GetMergedNode<BuildOptionsNode>(module.Node, true);
                 BuildOutputNode buildOutput = projectTree.GetMergedNode<BuildOutputNode>(module.Node);
                 CodegenNode codegen = projectTree.GetMergedNode<CodegenNode>(module.Node);
-                DefinesNode defines = projectTree.GetMergedNode<DefinesNode>(module.Node);
+                DefinesNode defines = projectTree.GetMergedNode<DefinesNode>(module.Node, true);
                 DialectNode dialect = projectTree.GetMergedNode<DialectNode>(module.Node);
                 ExceptionsNode exceptions = projectTree.GetMergedNode<ExceptionsNode>(module.Node);
                 ExternalNode external = projectTree.GetMergedNode<ExternalNode>(module.Node);
                 FilesNode files = projectTree.GetMergedNode<FilesNode>(module.Node);
                 FloatingPointNode floatingPoint = projectTree.GetMergedNode<FloatingPointNode>(module.Node);
-                IncludeDirsNode includeDirs = projectTree.GetMergedNode<IncludeDirsNode>(module.Node);
+                IncludeDirsNode includeDirs = projectTree.GetMergedNode<IncludeDirsNode>(module.Node, true);
                 LinkOptionsNode linkOptions = projectTree.GetMergedNode<LinkOptionsNode>(module.Node);
                 OptimizeNode optimize = projectTree.GetMergedNode<OptimizeNode>(module.Node);
                 RuntimeNode runtime = projectTree.GetMergedNode<RuntimeNode>(module.Node);
@@ -529,7 +529,7 @@ internal class VcxprojGenerator(IProjectService projectService, ILogger<VcxprojG
                 WarningsNode warnings = projectTree.GetMergedNode<WarningsNode>(module.Node);
 
                 List<DependenciesNode> dependencies = [.. projectTree.GetNodes<DependenciesNode>(module.Node)];
-                LibDirsNode libDirs = projectTree.GetMergedNode<LibDirsNode>(module.Node);
+                LibDirsNode libDirs = projectTree.GetMergedNode<LibDirsNode>(module.Node, true);
 
                 bool isOptimizedBuild = VisualStudioUtils.IsOptimizedBuild(optimize);
                 bool isDebugBuild = VisualStudioUtils.IsDebugBuild(optimize, symbols);
@@ -639,7 +639,10 @@ internal class VcxprojGenerator(IProjectService projectService, ILogger<VcxprojG
                 }
 
                 writer.WriteElementBool("SupportJustMyCode", optimize.JustMyCode);
-                writer.WriteElementBool("IntrinsicFunctions", buildOptions.OpenMP);
+                if (buildOptions.OpenMP)
+                {
+                    writer.WriteElementString("OpenMPSupport", "true");
+                }
                 writer.WriteElementBool("OmitFramePointers", buildOptions.OmitFramePointers);
 
                 if (isOptimizedBuild

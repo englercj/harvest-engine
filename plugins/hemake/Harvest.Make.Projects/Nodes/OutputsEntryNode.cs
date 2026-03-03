@@ -11,5 +11,5 @@ public class OutputsEntryNodeTraits : NodeSetEntryBaseTraits<OutputsNode>
 
 public class OutputsEntryNode(KdlNode node) : NodeSetEntryBase<OutputsEntryNodeTraits, OutputsNode>(node)
 {
-    public string FilePath => Node.Name;
+    public string FilePath => ResolveSinglePath(Node.Name);
 }

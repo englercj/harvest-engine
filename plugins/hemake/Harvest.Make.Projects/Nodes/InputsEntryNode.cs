@@ -11,5 +11,5 @@ public class InputsEntryNodeTraits : NodeSetEntryBaseTraits<InputsNode>
 
 public class InputsEntryNode(KdlNode node) : NodeSetEntryBase<InputsEntryNodeTraits, InputsNode>(node)
 {
-    public string FilePath => Node.Name;
+    public string FilePath => ResolveSinglePath(Node.Name);
 }

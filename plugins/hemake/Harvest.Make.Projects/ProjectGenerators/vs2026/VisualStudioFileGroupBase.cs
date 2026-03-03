@@ -30,7 +30,8 @@ internal abstract class VisualStudioFileGroupBase(IProjectService projectService
 
     public void AddFile(ResolvedProjectTree projectTree, ModuleNode module, FilesEntryNode entry)
     {
-        _files.Add(new FileEntry(projectTree, module, entry.FilePath)
+        FileEntry file = GetOrAddFile(_files, entry.FilePath);
+        file.AddConfig(new FileConfigEntry(projectTree, module)
         {
             Action = entry.FileAction,
             BuildRule = entry.FileBuildRule,
@@ -41,7 +42,8 @@ internal abstract class VisualStudioFileGroupBase(IProjectService projectService
 
     public void AddGeneratedFile(ResolvedProjectTree projectTree, ModuleNode module, string generatedFilePath, string sourceFilePath, EFileAction action, EFileBuildRule buildRule)
     {
-        _generatedFiles.Add(new FileEntry(projectTree, module, generatedFilePath)
+        FileEntry file = GetOrAddFile(_generatedFiles, generatedFilePath);
+        file.AddConfig(new FileConfigEntry(projectTree, module)
         {
             Action = action,
             BuildRule = buildRule,
@@ -54,6 +56,12 @@ internal abstract class VisualStudioFileGroupBase(IProjectService projectService
     public void SortFiles()
     {
         _files.Sort((a, b) =>
+        {
+            string relPathA = GetPath(a.FullPath);
+            string relPathB = GetPath(b.FullPath);
+            return string.Compare(relPathA, relPathB);
+        });
+        _generatedFiles.Sort((a, b) =>
         {
             string relPathA = GetPath(a.FullPath);
             string relPathB = GetPath(b.FullPath);
@@ -108,9 +116,10 @@ internal abstract class VisualStudioFileGroupBase(IProjectService projectService
 
             writer.WriteElementString("AutoGen", "true");
 
-            if (!string.IsNullOrEmpty(file.DependsOnPath))
+            FileConfigEntry? firstConfig = file.Configs.FirstOrDefault();
+            if (firstConfig is not null && !string.IsNullOrEmpty(firstConfig.DependsOnPath))
             {
-                writer.WriteElementString("DependentUpon", GetPath(file.DependsOnPath));
+                writer.WriteElementString("DependentUpon", GetPath(firstConfig.DependsOnPath));
             }
 
             writer.WriteEndElement();
@@ -203,13 +212,41 @@ internal abstract class VisualStudioFileGroupBase(IProjectService projectService
         return GetPath(file.FullPath);
     }
 
-    protected static void HandleExcludedFile(XmlWriter writer, FileEntry file, ResolvedProjectTree projectTree, string archName)
+    protected static void HandleExcludedFile(XmlWriter writer, bool isExcludedFromBuild, ResolvedProjectTree projectTree, string archName)
     {
-        if (file.IsExcludedFromBuild)
+        if (isExcludedFromBuild)
         {
             string condition = VisualStudioUtils.GetConfigCondition(projectTree, archName);
             VisualStudioUtils.WriteElementString(writer, "ExcludedFromBuild", "true", condition);
         }
+    }
+
+    protected static bool TryGetFileConfig(FileEntry file, ResolvedProjectTree projectTree, out FileConfigEntry? config)
+    {
+        return file.TryGetConfig(projectTree, out config);
+    }
+
+    protected static ModuleNode GetConfigModule(FileConfigEntry config, ResolvedProjectTree projectTree)
+    {
+        if (projectTree.IndexedNodes.TryGetNode(config.Module.ModuleName, out ModuleNode? module))
+        {
+            return module;
+        }
+
+        throw new InvalidOperationException($"No module named '{config.Module.ModuleName}' was found in the resolved project tree for '{projectTree.ProjectContext.Platform.PlatformName}'.");
+    }
+
+    private static FileEntry GetOrAddFile(List<FileEntry> files, string filePath)
+    {
+        FileEntry? existing = files.FirstOrDefault((entry) => StringComparer.Ordinal.Equals(entry.FullPath, filePath));
+        if (existing is not null)
+        {
+            return existing;
+        }
+
+        FileEntry added = new(filePath);
+        files.Add(added);
+        return added;
     }
 
     protected static string GetCommonParentDirectoryName(IReadOnlyList<FileEntry> files)

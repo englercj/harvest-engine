@@ -307,6 +307,17 @@ public abstract class NodeBase<TTraits> : INode
     public T GetValue<T>(string key) => _nodeTraits.GetValue<T>(_node, key);
     public T GetEnumValue<T>(string key) where T : struct, Enum => _nodeTraits.GetEnumValue<T>(_node, key);
 
+    protected string ResolveSinglePath(string path)
+    {
+        if (Path.IsPathRooted(path))
+        {
+            return path;
+        }
+
+        string baseDir = Path.GetDirectoryName(Node.SourceInfo.FilePath) ?? Directory.GetCurrentDirectory();
+        return Path.GetFullPath(path, baseDir);
+    }
+
     public virtual void MergeNode(ProjectContext projectContext, KdlNode node)
     {
         if (Node.Name != node.Name)

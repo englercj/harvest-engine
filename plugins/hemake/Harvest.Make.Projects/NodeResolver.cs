@@ -167,7 +167,11 @@ public class NodeResolver(ProjectContext projectContext)
         ResolveNodeArguments(result, source, traits, replacer);
         ResolveNodeProperties(result, source, traits, replacer);
 
-        if (resolvedName == PluginNode.NodeTraits.Name)
+        if (resolvedName == ProjectNode.NodeTraits.Name)
+        {
+            ProjectContext.Project = new ProjectNode(result);
+        }
+        else if (resolvedName == PluginNode.NodeTraits.Name)
         {
             PluginNode plugin = new(result);
             ProjectContext.Plugin = plugin;

@@ -77,12 +77,16 @@ public class PluginNode(KdlNode node) : NodeBase<PluginNodeTraits>(node)
             scope = scope.Parent;
         }
 
-        if (scope is null)
+        if (scope is not null)
         {
-            throw new InvalidOperationException("Plugin node is not within a project scope.");
+            return new ProjectNode(scope).InstallsDir;
         }
 
-        ProjectNode project = new(scope);
-        return project.InstallsDir;
+        if (projectContext.Project is not null)
+        {
+            return projectContext.Project.InstallsDir;
+        }
+
+        throw new InvalidOperationException("Plugin node is not within a resolved project scope.");
     }
 }

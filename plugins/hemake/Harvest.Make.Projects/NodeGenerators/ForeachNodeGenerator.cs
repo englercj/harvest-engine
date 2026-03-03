@@ -133,9 +133,14 @@ internal class ForeachNodeGenerator(IProjectService projectService, NodeResolver
                     throw new Exception($"Invalid foreach filter '{key}'. Argument index must be an integer.");
                 }
 
-                if (argIndex > 0 && argIndex < candidate.Node.Arguments.Count)
+                if (argIndex >= 0 && argIndex < candidate.Node.Arguments.Count)
                 {
-                    return DoesValueMatch(value, candidate.Node.Arguments[argIndex]);
+                    if (!DoesValueMatch(value, candidate.Node.Arguments[argIndex]))
+                    {
+                        return false;
+                    }
+
+                    continue;
                 }
 
                 // If there is no argument at that index, it doesn't match
@@ -147,7 +152,10 @@ internal class ForeachNodeGenerator(IProjectService projectService, NodeResolver
                 return false;
             }
 
-            return DoesValueMatch(value, candidateValue);
+            if (!DoesValueMatch(value, candidateValue))
+            {
+                return false;
+            }
 
         }
         return true;

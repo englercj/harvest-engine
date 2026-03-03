@@ -21,7 +21,7 @@ public class LibDirsEntryNodeTraits : NodeSetEntryBaseTraits<LibDirsNode>
 
 public class LibDirsEntryNode(KdlNode node) : NodeSetEntryBase<LibDirsEntryNodeTraits, LibDirsNode>(node)
 {
-    public string Path => Node.Name;
+    public string Path => ResolveSinglePath(Node.Name);
 
     public bool IsSystem
     {

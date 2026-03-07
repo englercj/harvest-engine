@@ -129,7 +129,8 @@ public sealed class NodeCoverageTests(ProjectGenerationFixture fixture)
         InstallNode install = fixture.DebugTree.GetNodes<InstallNode>(fixture.PluginNode.Node).Single();
         FetchNode fetch = fixture.DebugTree.GetNodes<FetchNode>(install.Node).Single();
         Assert.Equal(EFetchArchiveFormat.Zip, fetch.ArchiveFormat);
-        Assert.Equal("dep-root", fetch.ArchiveBaseDir);
+        Assert.True(Path.IsPathRooted(fetch.ArchiveBaseDir));
+        Assert.EndsWith("dep-root", fetch.ArchiveBaseDir, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
@@ -167,7 +168,7 @@ public sealed class NodeCoverageTests(ProjectGenerationFixture fixture)
     {
         BuildRuleNode rule = fixture.DebugTree.GetMergedNode<BuildRuleNode>(fixture.AppModule.Node, (n) => n.RuleName == "gen_step", false);
         InputsNode inputs = fixture.DebugTree.GetMergedNode<InputsNode>(rule.Node, false);
-        Assert.Contains(inputs.Entries, (entry) => entry.FilePath.EndsWith("schema/input.idl", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains(inputs.Entries, (entry) => entry.FilePath.Replace('\\', '/').EndsWith("schema/input.idl", StringComparison.OrdinalIgnoreCase));
         Assert.Contains("AdditionalInputs", fixture.AppVcxprojText);
     }
 
@@ -222,7 +223,7 @@ public sealed class NodeCoverageTests(ProjectGenerationFixture fixture)
     {
         BuildRuleNode rule = fixture.DebugTree.GetMergedNode<BuildRuleNode>(fixture.AppModule.Node, (n) => n.RuleName == "gen_step", false);
         OutputsNode outputs = fixture.DebugTree.GetMergedNode<OutputsNode>(rule.Node, false);
-        Assert.Contains(outputs.Entries, (entry) => entry.FilePath.EndsWith("generated/generated.cpp", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains(outputs.Entries, (entry) => entry.FilePath.Replace('\\', '/').EndsWith("generated/generated.cpp", StringComparison.OrdinalIgnoreCase));
         Assert.Contains("Outputs", fixture.AppVcxprojText);
     }
 

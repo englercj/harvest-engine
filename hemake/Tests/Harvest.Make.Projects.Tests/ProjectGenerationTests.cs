@@ -46,7 +46,8 @@ public sealed class ProjectGenerationTests(ProjectGenerationFixture fixture) : I
         Assert.Contains("PreBuildEvent", fixture.AppVcxprojText);
         Assert.Contains("CustomBuild", fixture.AppVcxprojText);
         Assert.Contains("Natvis", fixture.AppVcxprojText);
-        Assert.Contains("CopyFileToFolders", fixture.AppVcxprojText);
+        Assert.Contains("copy /B /Y", fixture.AppVcxprojText);
+        Assert.Contains("Copying file(s)", fixture.AppVcxprojText);
     }
 
     [Fact]

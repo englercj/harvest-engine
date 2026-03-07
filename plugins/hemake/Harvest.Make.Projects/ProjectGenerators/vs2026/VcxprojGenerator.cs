@@ -640,12 +640,9 @@ internal class VcxprojGenerator(IProjectService projectService, ILogger<VcxprojG
                     writer.WriteElementString("IntrinsicFunctions", "true");
                 }
 
-                writer.WriteElementBool("SupportJustMyCode", optimize.JustMyCode);
-                if (buildOptions.OpenMP)
-                {
-                    writer.WriteElementString("OpenMPSupport", "true");
-                }
-                writer.WriteElementBool("OmitFramePointers", buildOptions.OmitFramePointers);
+                writer.WriteElementBoolIfFalse("SupportJustMyCode", optimize.JustMyCode);
+                writer.WriteElementBoolIfTrue("OpenMPSupport", buildOptions.OpenMP);
+                writer.WriteElementBoolIfTrue("OmitFramePointers", buildOptions.OmitFramePointers);
 
                 if (isOptimizedBuild
                     || toolset.MultiProcess
@@ -935,11 +932,6 @@ internal class VcxprojGenerator(IProjectService projectService, ILogger<VcxprojG
                     writer.WriteElementString("LinkTimeCodeGeneration", "UseLinkTimeCodeGeneration");
                 }
 
-                if (module.Kind == EModuleKind.LibStatic)
-                {
-                    writer.WriteStartElement("Lib");
-                }
-
                 if (module.IsBinary)
                 {
                     IEnumerable<string> linkDeps = dependencies
@@ -952,37 +944,11 @@ internal class VcxprojGenerator(IProjectService projectService, ILogger<VcxprojG
                 IEnumerable<string> libPaths = libDirs.Entries.Where((entry) => !entry.IsSystem).Select((entry) => GetPath(entry.Path));
                 VisualStudioUtils.WriteArrayElement(writer, libPaths, "AdditionalLibraryDirectories", "%(AdditionalLibraryDirectories)");
 
-                if (module.Kind == EModuleKind.LibStatic)
-                {
-                    writer.WriteElementBoolIfTrue("TreatLibWarningAsErrors", warnings.AreAllWarningsFatal);
-                }
-                else
-                {
-                    writer.WriteElementBoolIfTrue("TreatLinkerWarningAsErrors", warnings.AreAllWarningsFatal);
-                }
-
-                // If we have resource files we need to specify the TargetMachine explicitly.
-                // See: https://learn.microsoft.com/en-us/cpp/build/reference/machine-specify-target-platform?view=msvc-170
-                if (module.Kind == EModuleKind.LibStatic && hasAnyResourceFiles)
-                {
-                    writer.WriteElementString("TargetMachine", platform.Arch switch
-                    {
-                        EPlatformArch.X86 => "MachineX86",
-                        EPlatformArch.X86_64 => "MachineX64",
-                        EPlatformArch.Arm => "MachineARM",
-                        EPlatformArch.Arm64 => "MachineARM64",
-                        _ => throw new NotImplementedException($"Unsupported Target Machine: {platform.Arch}"),
-                    });
-                }
+                writer.WriteElementBoolIfTrue("TreatLinkerWarningAsErrors", warnings.AreAllWarningsFatal);
 
                 // TODO: support for individual fatal link errors by adding `/wx:a,b,c` automatically?
                 IEnumerable<string> linkerOptions = linkOptions.Entries.Select((entry) => entry.OptionName);
                 VisualStudioUtils.WriteArrayElement(writer, linkerOptions, "AdditionalOptions", "%(AdditionalOptions)", " ");
-
-                if (module.Kind == EModuleKind.LibStatic)
-                {
-                    writer.WriteEndElement();
-                }
 
                 if (module.Kind != EModuleKind.LibStatic)
                 {
@@ -1011,8 +977,35 @@ internal class VcxprojGenerator(IProjectService projectService, ILogger<VcxprojG
                     //{
                     //    writer.WriteElementString("ProgramDatabaseFile", GetPath(symbols.Path));
                     //}
+                }
 
+                writer.WriteEndElement();
+
+                if (module.Kind == EModuleKind.LibStatic)
+                {
+                    writer.WriteStartElement("Lib");
+                    writer.WriteElementBoolIfTrue("TreatLibWarningAsErrors", warnings.AreAllWarningsFatal);
+
+                    // If we have resource files we need to specify the TargetMachine explicitly.
+                    // See: https://learn.microsoft.com/en-us/cpp/build/reference/machine-specify-target-platform?view=msvc-170
+                    if (module.Kind == EModuleKind.LibStatic && hasAnyResourceFiles)
+                    {
+                        writer.WriteElementString("TargetMachine", platform.Arch switch
+                        {
+                            EPlatformArch.X86 => "MachineX86",
+                            EPlatformArch.X86_64 => "MachineX64",
+                            EPlatformArch.Arm => "MachineARM",
+                            EPlatformArch.Arm64 => "MachineARM64",
+                            _ => throw new NotImplementedException($"Unsupported Target Machine: {platform.Arch}"),
+                        });
+                    }
+
+                    writer.WriteEndElement();
+                }
+                else
+                {
                     writer.WriteStartElement("Manifest");
+
                     writer.WriteElementString("EnableDpiAwareness", buildOptions.DpiAwarenessMode switch
                     {
                         EDpiAwareMode.None => "false",
@@ -1020,12 +1013,12 @@ internal class VcxprojGenerator(IProjectService projectService, ILogger<VcxprojG
                         EDpiAwareMode.PerMonitorHighDpiAware => "PerMonitorHighDPIAware",
                         _ => throw new NotImplementedException($"Unsupported DPI Awareness Mode: {buildOptions.DpiAwarenessMode}"),
                     });
+
                     IEnumerable<string> extraManifestFiles = files.Entries.Where((entry) => entry.FileAction == EFileAction.Manifest).Select((entry) => GetPath(entry.FilePath));
                     VisualStudioUtils.WriteArrayElement(writer, extraManifestFiles, "AdditionalManifestFiles", "%(AdditionalManifestFiles)");
+
                     writer.WriteEndElement();
                 }
-
-                writer.WriteEndElement();
             }
 
             void writeBuildEvent(EBuildEvent evt)

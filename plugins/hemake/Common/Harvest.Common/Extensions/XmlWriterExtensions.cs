@@ -34,4 +34,12 @@ public static partial class XmlWriterExtensions
             writer.WriteElementString(localName, "true");
         }
     }
+
+    public static void WriteElementBoolIfFalse(this XmlWriter writer, string localName, bool value)
+    {
+        if (!value)
+        {
+            writer.WriteElementString(localName, "false");
+        }
+    }
 }

@@ -140,7 +140,8 @@ internal static class VisualStudioUtils
 
         if (stringBuffer.Length > 0 && !string.IsNullOrEmpty(additionalName))
         {
-            stringBuffer.Append($"{separator}{additionalName}");
+            stringBuffer.Append(separator);
+            stringBuffer.Append(additionalName);
         }
 
         return stringBuffer.ToString();

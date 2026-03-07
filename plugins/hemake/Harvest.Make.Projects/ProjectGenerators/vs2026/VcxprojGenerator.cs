@@ -185,13 +185,26 @@ internal class VcxprojGenerator(IProjectService projectService, ILogger<VcxprojG
         writer.WriteStartElement("ItemGroup");
         writer.WriteAttributeString("Label", "ProjectConfigurations");
 
+        HashSet<string> configNames = [];
+        HashSet<string> platformNames = [];
+
         foreach ((ResolvedProjectTree project, _, string archName) in EnumerateModuleConfigs())
         {
-            writer.WriteStartElement("ProjectConfiguration");
-            writer.WriteAttributeString("Include", VisualStudioUtils.GetConfigName(project, archName));
-            writer.WriteElementString("Configuration", VisualStudioUtils.GetConfigName(project));
-            writer.WriteElementString("Platform", archName);
-            writer.WriteEndElement();
+            string configName = VisualStudioUtils.GetConfigName(project);
+            configNames.Add(configName);
+            platformNames.Add(archName);
+        }
+
+        foreach (string configName in configNames)
+        {
+            foreach (string platformName in platformNames)
+            {
+                writer.WriteStartElement("ProjectConfiguration");
+                writer.WriteAttributeString("Include", $"{configName}|{platformName}");
+                writer.WriteElementString("Configuration", configName);
+                writer.WriteElementString("Platform", platformName);
+                writer.WriteEndElement();
+            }
         }
 
         writer.WriteEndElement();

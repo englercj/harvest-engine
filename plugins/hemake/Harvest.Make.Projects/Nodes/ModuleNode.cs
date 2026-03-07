@@ -104,9 +104,9 @@ public class ModuleNodeTraits : NodeBaseTraits
 
         if (node.TryGetValue("project_file", out string? projectFile)
             && !string.IsNullOrEmpty(projectFile)
-            && !ModuleNode.TryGetProjectFileLanguage(projectFile, out _))
+            && !TryGetProjectFileLanguage(projectFile, out _))
         {
-            throw new NodeParseException(node, $"Unsupported project_file '{projectFile}'. Only .csproj files are supported.");
+            throw new NodeParseException(node, $"Unsupported project_file '{projectFile}'.");
         }
     }
 
@@ -115,6 +115,20 @@ public class ModuleNodeTraits : NodeBaseTraits
         base.Validate(node);
         // TODO: Validate that dependencies are actually reasonable. For example, linking an App doesn't make sense.
     }
+
+    public static bool TryGetProjectFileLanguage(string? projectFilePath, out EModuleLanguage language)
+    {
+        string? extension = Path.GetExtension(projectFilePath)?.ToLowerInvariant();
+        switch (extension)
+        {
+            case ".csproj":
+                language = EModuleLanguage.CSharp;
+                return true;
+            default:
+                language = default;
+                return false;
+        }
+    }
 }
 
 public class ModuleNode(KdlNode node) : NodeBase<ModuleNodeTraits>(node)
@@ -122,7 +136,7 @@ public class ModuleNode(KdlNode node) : NodeBase<ModuleNodeTraits>(node)
     public string ModuleName => GetValue<string>(0);
     public EModuleKind Kind => GetEnumValue<EModuleKind>("kind");
     public string? Group => TryGetValue("group", out string? value) ? value : null;
-    public EModuleLanguage Language => TryGetEnumValue("language", out EModuleLanguage language) ? language : (HasExplicitCSProj ? EModuleLanguage.CSharp : EModuleLanguage.Cpp);
+    public EModuleLanguage Language => GetResolvedLanguage();
     public string? ProjectFile => TryGetValue("project_file", out string? value) ? value : null;
     public string? EntryPoint => TryGetValue("entrypoint", out string? value) ? value : null;
     public string TargetName => (TryGetValue("target_name", out string? value) ? value : null) ?? ModuleName;
@@ -133,8 +147,6 @@ public class ModuleNode(KdlNode node) : NodeBase<ModuleNodeTraits>(node)
     public bool MakeMapFile => GetValue<bool>("make_map_file");
     public bool IsApp => Kind == EModuleKind.AppConsole || Kind == EModuleKind.AppWindowed;
     public bool IsBinary => IsApp || Kind == EModuleKind.LibShared;
-
-    public bool HasExplicitCSProj => string.Equals(Path.GetExtension(ProjectFile), ".csproj", StringComparison.OrdinalIgnoreCase);
 
     public string GetTargetExtension(ProjectContext projectContext)
     {
@@ -182,4 +194,19 @@ public class ModuleNode(KdlNode node) : NodeBase<ModuleNodeTraits>(node)
     public string GetGenDir(BuildOutputNode buildOutput) => Path.Combine(buildOutput.GenDir, TargetName);
     public string GetLibDir(BuildOutputNode buildOutput) => Path.Combine(buildOutput.LibDir, TargetName);
     public string GetObjDir(BuildOutputNode buildOutput) => Path.Combine(buildOutput.ObjDir, TargetName);
+
+    private EModuleLanguage GetResolvedLanguage()
+    {
+        if (TryGetEnumValue("language", out EModuleLanguage language))
+        {
+            return language;
+        }
+
+        if (ModuleNodeTraits.TryGetProjectFileLanguage(ProjectFile, out EModuleLanguage projectLanguage))
+        {
+            return projectLanguage;
+        }
+
+        return EModuleLanguage.Cpp;
+    }
 }

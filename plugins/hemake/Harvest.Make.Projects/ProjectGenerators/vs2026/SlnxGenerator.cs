@@ -111,11 +111,13 @@ internal class SlnxGenerator(IProjectService projectService, ILogger<SlnxGenerat
         string projectPath = GetModuleProjectPath(entry.Name, projectsDir);
         HashSet<string> buildDependencyPaths = [];
 
+        string? externalProjectFilePath = null;
         ExternalProjectConfig? externalProjectConfig = null;
         if (TryGetModuleProjectFilePath(entry.Name, out string? entryProjectFilePath)
             && string.Equals(Path.GetExtension(entryProjectFilePath), ".csproj", StringComparison.OrdinalIgnoreCase))
         {
-            externalProjectConfig = GetExternalProjectConfig(entryProjectFilePath!);
+            externalProjectFilePath = entryProjectFilePath;
+            externalProjectConfig = GetExternalProjectConfig(entryProjectFilePath);
         }
 
         writer.WriteStartElement("Project");
@@ -173,7 +175,7 @@ internal class SlnxGenerator(IProjectService projectService, ILogger<SlnxGenerat
             writer.WriteAttributeString("Solution", $"{config.ConfigName}|{platform.PlatformName}");
             writer.WriteAttributeString("Project", externalProjectConfig is null
                 ? $"{config.ConfigName} {platform.PlatformName}"
-                : MapExternalProjectBuildType(config.ConfigName, externalProjectConfig));
+                : MapExternalProjectBuildType(externalProjectFilePath!, config.ConfigName, externalProjectConfig));
             writer.WriteEndElement();
         }
 
@@ -183,7 +185,7 @@ internal class SlnxGenerator(IProjectService projectService, ILogger<SlnxGenerat
             writer.WriteAttributeString("Solution", $"*|{platformName}");
             writer.WriteAttributeString("Project", externalProjectConfig is null
                 ? archName
-                : MapExternalProjectPlatform(platformName, externalProjectConfig));
+                : MapExternalProjectPlatform(externalProjectFilePath!, platformName, externalProjectConfig));
             writer.WriteEndElement();
         }
 
@@ -306,7 +308,17 @@ internal class SlnxGenerator(IProjectService projectService, ILogger<SlnxGenerat
         return result;
     }
 
-    private static string MapExternalProjectBuildType(string solutionBuildType, ExternalProjectConfig config)
+    private void LogProjectMappingWarning(string projectFilePath, string mappingType, string sourceValue, string fallbackValue)
+    {
+        _logger.LogWarning(
+            "Project file '{ProjectFilePath}' does not define {MappingType} '{SourceValue}'. Falling back to '{FallbackValue}'.",
+            projectFilePath,
+            mappingType,
+            sourceValue,
+            fallbackValue);
+    }
+
+    private string MapExternalProjectBuildType(string projectFilePath, string solutionBuildType, ExternalProjectConfig config)
     {
         if (TryGetMatchingValue(config.BuildTypes, solutionBuildType, out string? exactMatch))
         {
@@ -315,35 +327,38 @@ internal class SlnxGenerator(IProjectService projectService, ILogger<SlnxGenerat
 
         if (string.Equals(solutionBuildType, "Development", StringComparison.OrdinalIgnoreCase))
         {
-            if (TryGetMatchingValue(config.BuildTypes, "Release", out string? releaseMatch))
+            if (TryGetSimilarValue(config.BuildTypes, "Release", out string? releaseMatch))
             {
                 return releaseMatch;
             }
 
-            if (TryGetMatchingValue(config.BuildTypes, "Debug", out string? debugMatch))
+            if (TryGetSimilarValue(config.BuildTypes, "Debug", out string? debugMatch))
             {
                 return debugMatch;
             }
         }
         else
         {
-            if (TryGetMatchingValue(config.BuildTypes, "Debug", out string? debugMatch))
+            if (TryGetSimilarValue(config.BuildTypes, "Debug", out string? debugMatch))
             {
                 return debugMatch;
             }
 
-            if (TryGetMatchingValue(config.BuildTypes, "Release", out string? releaseMatch))
+            if (TryGetSimilarValue(config.BuildTypes, "Release", out string? releaseMatch))
             {
                 return releaseMatch;
             }
         }
 
-        return config.BuildTypes.Count != 0 ? config.BuildTypes[0] : "Debug";
+        string fallbackBuildType = config.BuildTypes.Count != 0 ? config.BuildTypes[0] : "Debug";
+        LogProjectMappingWarning(projectFilePath, "build type", solutionBuildType, fallbackBuildType);
+        return fallbackBuildType;
     }
 
-    private static string MapExternalProjectPlatform(string solutionPlatform, ExternalProjectConfig config)
+    private string MapExternalProjectPlatform(string projectFilePath, string solutionPlatform, ExternalProjectConfig config)
     {
-        if (TryGetMatchingValue(config.Platforms, NormalizePlatformName(solutionPlatform), out string? exactMatch))
+        string normalizedPlatform = NormalizePlatformName(solutionPlatform);
+        if (TryGetMatchingValue(config.Platforms, normalizedPlatform, out string? exactMatch))
         {
             return exactMatch;
         }
@@ -353,10 +368,27 @@ internal class SlnxGenerator(IProjectService projectService, ILogger<SlnxGenerat
             return anyCpuMatch;
         }
 
-        return config.Platforms.Count != 0 ? config.Platforms[0] : "Any CPU";
+        string fallbackPlatform = config.Platforms.Count != 0 ? config.Platforms[0] : "Any CPU";
+        LogProjectMappingWarning(projectFilePath, "platform", solutionPlatform, fallbackPlatform);
+        return fallbackPlatform;
     }
 
     private static bool TryGetMatchingValue(IReadOnlyList<string> values, string expectedValue, [NotNullWhen(true)] out string? match)
+    {
+        foreach (string value in values)
+        {
+            if (string.Equals(value, expectedValue, StringComparison.OrdinalIgnoreCase))
+            {
+                match = value;
+                return true;
+            }
+        }
+
+        match = null;
+        return false;
+    }
+
+    private static bool TryGetSimilarValue(IReadOnlyList<string> values, string expectedValue, [NotNullWhen(true)] out string? match)
     {
         foreach (string value in values)
         {

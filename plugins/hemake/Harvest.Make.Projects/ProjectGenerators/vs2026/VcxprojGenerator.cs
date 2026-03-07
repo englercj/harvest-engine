@@ -478,7 +478,7 @@ internal class VcxprojGenerator(IProjectService projectService, ILogger<VcxprojG
 
                 IncludeDirsNode includeDirs = projectTree.GetMergedNode<IncludeDirsNode>(module.Node, true);
                 IEnumerable<string> externalIncludePaths = includeDirs.Entries.Where((entry) => entry.IsExternal).Select((entry) => GetPath(entry.Path));
-                VisualStudioUtils.WriteArrayElement(writer, externalIncludePaths, "ExternalIncludePath", "%(ExternalIncludePath)");
+                VisualStudioUtils.WriteArrayElement(writer, externalIncludePaths, "ExternalIncludePath", "$(ExternalIncludePath)");
 
                 LibDirsNode libDirs = projectTree.GetMergedNode<LibDirsNode>(module.Node, true);
                 IEnumerable<string> systemLibPaths = libDirs.Entries.Where((entry) => entry.IsSystem).Select((entry) => GetPath(entry.Path));

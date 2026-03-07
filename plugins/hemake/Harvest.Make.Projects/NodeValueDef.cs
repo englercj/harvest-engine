@@ -85,13 +85,13 @@ public class NodeValueDef_String : NodeValueDef<KdlString>
 
 public class NodeValueDef_Path : NodeValueDef<KdlString>
 {
-    public static NodeValueDef_String Required(string defaultValue = "") => new()
+    public static NodeValueDef_Path Required(string defaultValue = "") => new()
     {
         TypedDefaultValue = new KdlString(defaultValue),
         IsRequired = true,
     };
 
-    public static NodeValueDef_String Optional(string? defaultValue = null) => new()
+    public static NodeValueDef_Path Optional(string? defaultValue = null) => new()
     {
         TypedDefaultValue = defaultValue is not null ? new KdlString(defaultValue) : null,
     };

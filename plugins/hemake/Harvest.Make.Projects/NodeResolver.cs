@@ -170,6 +170,7 @@ public class NodeResolver(ProjectContext projectContext)
         if (resolvedName == ProjectNode.NodeTraits.Name)
         {
             ProjectContext.Project = new ProjectNode(result);
+            ProjectContext.BuildOutput = CreateDefaultBuildOutputNode(result);
         }
         else if (resolvedName == PluginNode.NodeTraits.Name)
         {
@@ -211,6 +212,22 @@ public class NodeResolver(ProjectContext projectContext)
         }
 
         return result;
+    }
+
+    private BuildOutputNode CreateDefaultBuildOutputNode(KdlNode projectNode)
+    {
+        KdlNode buildOutputNode = new(BuildOutputNode.NodeTraits.Name)
+        {
+            SourceInfo = projectNode.SourceInfo,
+        };
+
+        NodeTokenHandler handler = new(ProjectContext, _indexedNodes, projectNode);
+        StringTokenReplacer replacer = new(handler);
+
+        ResolveDefaultNodeArguments(buildOutputNode, BuildOutputNode.NodeTraits, replacer);
+        ResolveDefaultNodeProperties(buildOutputNode, BuildOutputNode.NodeTraits, replacer);
+
+        return new BuildOutputNode(buildOutputNode);
     }
 
     public void ResolveNodeChildren(KdlNode target, KdlNode source, INodeTraits traits, StringTokenReplacer replacer)

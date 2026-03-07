@@ -250,12 +250,12 @@ internal class VcxprojGenerator(IProjectService projectService, ILogger<VcxprojG
                 break;
         }
 
-        if (!string.IsNullOrWhiteSpace(windowsSystemNode.Version))
+        if (!string.IsNullOrWhiteSpace(windowsSystemNode.Version) && !windowsSystemNode.IsLatestVersion)
         {
             writer.WriteElementString("WindowsTargetPlatformVersion", windowsSystemNode.Version);
         }
 
-        writer.WriteElementBool("DisableFastUpToDateCheck", toolsetNode.FastUpToDateCheck);
+        writer.WriteElementBoolIfTrue("DisableFastUpToDateCheck", !toolsetNode.FastUpToDateCheck);
 
         writer.WriteEndElement();
     }
@@ -489,8 +489,8 @@ internal class VcxprojGenerator(IProjectService projectService, ILogger<VcxprojG
                     writer.WriteElementString("GenerateManifest", "false");
                 }
 
-                writer.WriteElementBool("EnableClangTidyCodeAnalysis", buildOptions.RunClangTidy);
-                writer.WriteElementBool("RunCodeAnalysis", buildOptions.RunCodeAnalysis);
+                writer.WriteElementBoolIfTrue("EnableClangTidyCodeAnalysis", buildOptions.RunClangTidy);
+                writer.WriteElementBoolIfTrue("RunCodeAnalysis", buildOptions.RunCodeAnalysis);
             }
 
             writer.WriteEndElement();
@@ -572,7 +572,9 @@ internal class VcxprojGenerator(IProjectService projectService, ILogger<VcxprojG
                 //IEnumerable<string> undefineEntryStrings = undefines.Entries.Select((entry) => entry.Define.Replace("\"", "\\\""));
                 //WriteArrayElement(writer, undefineEntryStrings, "UndefinePreprocessorDefinitions", "%(UndefinePreprocessorDefinitions)");
 
-                IEnumerable<string> includeDirsEntryStrings = includeDirs.Entries.Select((entry) => GetPath(entry.Path));
+                IEnumerable<string> includeDirsEntryStrings = includeDirs.Entries
+                    .Where((entry) => !entry.IsExternal)
+                    .Select((entry) => GetPath(entry.Path));
                 VisualStudioUtils.WriteAdditionalIncludeDirs(writer, includeDirsEntryStrings);
 
                 // TODO: Support for forced includes?
@@ -864,7 +866,7 @@ internal class VcxprojGenerator(IProjectService projectService, ILogger<VcxprojG
                 }
 
                 writer.WriteElementBool("TreatAngleIncludeAsExternal", external.AngleBrackets);
-                writer.WriteElementBool("UseStandardPreprocessor", true);
+                //writer.WriteElementBool("UseStandardPreprocessor", true);
 
                 if (module.Kind == EModuleKind.LibStatic)
                 {
@@ -1114,6 +1116,11 @@ internal class VcxprojGenerator(IProjectService projectService, ILogger<VcxprojG
 
         foreach ((ResolvedProjectTree projectTree, ModuleNode module, _) in EnumerateModuleConfigs())
         {
+            if (!module.IsApp)
+            {
+                continue;
+            }
+
             BuildOptionsNode buildOptions = projectTree.GetMergedNode<BuildOptionsNode>(module.Node);
 
             bool isManaged = VisualStudioUtils.IsManaged(module, buildOptions);
@@ -1130,6 +1137,11 @@ internal class VcxprojGenerator(IProjectService projectService, ILogger<VcxprojG
                 if (!projectTree.IndexedNodes.TryGetNode(depEntry.DependencyName, out ModuleNode? depModule))
                 {
                     throw new InvalidOperationException($"No module found with name '{depEntry.DependencyName}', but module '{module.ModuleName}' depends on it.");
+                }
+
+                if (!ShouldWriteProjectReference(projectTree, depModule))
+                {
+                    continue;
                 }
 
                 bool useManagedMetadata = (isManaged || isClrMixed) && depModule.Kind != EModuleKind.LibStatic;
@@ -1164,6 +1176,22 @@ internal class VcxprojGenerator(IProjectService projectService, ILogger<VcxprojG
         }
 
         writer.WriteEndElement();
+    }
+
+    private static bool ShouldWriteProjectReference(ResolvedProjectTree projectTree, ModuleNode module)
+    {
+        if (module.Kind != EModuleKind.LibStatic && module.Kind != EModuleKind.LibShared)
+        {
+            return false;
+        }
+
+        if (!string.IsNullOrEmpty(module.ProjectFile))
+        {
+            return true;
+        }
+
+        FilesNode files = projectTree.GetMergedNode<FilesNode>(module.Node);
+        return files.Entries.Any((entry) => !entry.IsExcludedFromBuild && entry.FileAction == EFileAction.Build);
     }
 
     private void AddGeneratedFilesForCustomBuildRule(ResolvedProjectTree projectTree, ModuleNode module, BuildRuleNode buildRule, string sourceFilePath)

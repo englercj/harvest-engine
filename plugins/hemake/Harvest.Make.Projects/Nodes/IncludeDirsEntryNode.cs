@@ -1,6 +1,7 @@
 // Copyright Chad Engler
 
 using Harvest.Kdl;
+using Harvest.Kdl.Types;
 
 namespace Harvest.Make.Projects.Nodes;
 
@@ -10,6 +11,19 @@ public class IncludeDirsEntryNodeTraits : NodeSetEntryBaseTraits<IncludeDirsNode
     {
         { "external", NodeValueDef_Bool.Optional(false) },
     };
+
+    public override bool TryResolveChild(KdlNode target, KdlNode source, StringTokenReplacer replacer, NodeResolver resolver, out KdlNode? resolvedNode)
+    {
+        resolvedNode = resolver.CreateResolvedNode(source, includeChildren: false);
+
+        if (!source.HasValue("external")
+            && target.TryGetValue("external", out bool isExternal))
+        {
+            resolvedNode.Properties["external"] = new KdlBool(isExternal) { SourceInfo = source.SourceInfo };
+        }
+
+        return true;
+    }
 
     public override INode CreateNode(KdlNode node) => new IncludeDirsEntryNode(node);
 }

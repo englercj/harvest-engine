@@ -28,26 +28,28 @@ public class SystemNodeTraits : NodeBaseTraits
 
 public class SystemNode(KdlNode node) : NodeBase<SystemNodeTraits>(node)
 {
+    public const string LatestVersion = "latest";
+
     public EPlatformSystem System => GetEnumValue<EPlatformSystem>(0);
     public string Version => GetResolvedVersion();
+    public bool IsLatestVersion => string.Equals(Version, LatestVersion, StringComparison.OrdinalIgnoreCase);
 
     private string GetResolvedVersion()
     {
-        const string Latest = "latest";
         string version = TryGetValue<string>("version", out string? value) && !string.IsNullOrWhiteSpace(value)
             ? value.ToLowerInvariant()
-            : Latest;
+            : LatestVersion;
 
         switch (System)
         {
             case EPlatformSystem.DotNet:
-                return version == Latest ? "net9.0" : version;
+                return version == LatestVersion ? "net9.0" : version;
             case EPlatformSystem.Linux:
-                return version == Latest ? "" : version;
+                return version == LatestVersion ? "" : version;
             case EPlatformSystem.WASM:
-                return version == Latest ? "" : version;
+                return version == LatestVersion ? "" : version;
             case EPlatformSystem.Windows:
-                return version == Latest ? "10.0" : version;
+                return version == LatestVersion ? "10.0" : version;
         }
 
         throw new Exception($"Unknown platform system: {System}");

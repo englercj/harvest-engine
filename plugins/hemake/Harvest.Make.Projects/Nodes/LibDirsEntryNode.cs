@@ -1,6 +1,7 @@
 // Copyright Chad Engler
 
 using Harvest.Kdl;
+using Harvest.Kdl.Types;
 
 namespace Harvest.Make.Projects.Nodes;
 
@@ -15,6 +16,19 @@ public class LibDirsEntryNodeTraits : NodeSetEntryBaseTraits<LibDirsNode>
     {
         { "system", NodeValueDef_Bool.Optional(false) },
     };
+
+    public override bool TryResolveChild(KdlNode target, KdlNode source, StringTokenReplacer replacer, NodeResolver resolver, out KdlNode? resolvedNode)
+    {
+        resolvedNode = resolver.CreateResolvedNode(source, includeChildren: false);
+
+        if (!source.HasValue("system")
+            && target.TryGetValue("system", out bool isSystem))
+        {
+            resolvedNode.Properties["system"] = new KdlBool(isSystem) { SourceInfo = source.SourceInfo };
+        }
+
+        return true;
+    }
 
     public override INode CreateNode(KdlNode node) => new LibDirsEntryNode(node);
 }

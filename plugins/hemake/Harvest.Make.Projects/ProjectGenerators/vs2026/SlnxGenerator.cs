@@ -1,11 +1,11 @@
-// Copyright Chad Engler
-
 using Harvest.Common.Extensions;
 using Harvest.Make.Projects.Nodes;
 using Harvest.Make.Projects.Services;
 using Microsoft.Extensions.Logging;
+using System.Diagnostics.CodeAnalysis;
 using System.Text;
 using System.Xml;
+using System.Xml.Linq;
 using static Harvest.Make.Projects.ModuleGroupTree;
 
 namespace Harvest.Make.Projects.ProjectGenerators.vs2026;
@@ -20,7 +20,10 @@ internal class SlnxGenerator(IProjectService projectService, ILogger<SlnxGenerat
     private readonly HashSet<string> _configNames = [];
     private readonly HashSet<string> _platformNames = [];
     private readonly Dictionary<string, string> _platformArchs = [];
+    private readonly Dictionary<string, ExternalProjectConfig> _externalProjectConfigs = [];
     private string _solutionDir = "";
+
+    private sealed record ExternalProjectConfig(IReadOnlyList<string> BuildTypes, IReadOnlyList<string> Platforms);
 
     public async Task GenerateAsync(ModuleGroupTree groupTree)
     {
@@ -108,6 +111,13 @@ internal class SlnxGenerator(IProjectService projectService, ILogger<SlnxGenerat
         string projectPath = GetModuleProjectPath(entry.Name, projectsDir);
         HashSet<string> buildDependencyPaths = [];
 
+        ExternalProjectConfig? externalProjectConfig = null;
+        if (TryGetModuleProjectFilePath(entry.Name, out string? entryProjectFilePath)
+            && string.Equals(Path.GetExtension(entryProjectFilePath), ".csproj", StringComparison.OrdinalIgnoreCase))
+        {
+            externalProjectConfig = GetExternalProjectConfig(entryProjectFilePath!);
+        }
+
         writer.WriteStartElement("Project");
         writer.WriteAttributeString("Path", projectPath);
 
@@ -130,9 +140,6 @@ internal class SlnxGenerator(IProjectService projectService, ILogger<SlnxGenerat
                         continue;
                     }
 
-                    // When we have a Default dependency we want to yield a build order dependency
-                    // if the module is a binary and it depends on a module we cannot link, but
-                    // needs to run first.
                     if (dependency.Kind == EDependencyKind.Default)
                     {
                         if (!module.IsBinary
@@ -164,7 +171,9 @@ internal class SlnxGenerator(IProjectService projectService, ILogger<SlnxGenerat
 
             writer.WriteStartElement("BuildType");
             writer.WriteAttributeString("Solution", $"{config.ConfigName}|{platform.PlatformName}");
-            writer.WriteAttributeString("Project", $"{config.ConfigName} {platform.PlatformName}");
+            writer.WriteAttributeString("Project", externalProjectConfig is null
+                ? $"{config.ConfigName} {platform.PlatformName}"
+                : MapExternalProjectBuildType(config.ConfigName, externalProjectConfig));
             writer.WriteEndElement();
         }
 
@@ -172,14 +181,16 @@ internal class SlnxGenerator(IProjectService projectService, ILogger<SlnxGenerat
         {
             writer.WriteStartElement("Platform");
             writer.WriteAttributeString("Solution", $"*|{platformName}");
-            writer.WriteAttributeString("Project", archName);
+            writer.WriteAttributeString("Project", externalProjectConfig is null
+                ? archName
+                : MapExternalProjectPlatform(platformName, externalProjectConfig));
             writer.WriteEndElement();
         }
 
         writer.WriteEndElement();
     }
 
-    private string GetModuleProjectPath(string moduleName, string projectsDir)
+    private bool TryGetModuleProjectFilePath(string moduleName, [NotNullWhen(true)] out string? projectFilePath)
     {
         foreach ((ResolvedProjectTree projectTree, _) in VisualStudioUtils.EnumerateConfigs(_projectService))
         {
@@ -190,23 +201,179 @@ internal class SlnxGenerator(IProjectService projectService, ILogger<SlnxGenerat
 
             if (!string.IsNullOrEmpty(module.ProjectFile))
             {
-                string projectFile = module.ProjectFile;
-                if (!Path.IsPathRooted(projectFile))
-                {
-                    string moduleDir = Path.GetDirectoryName(module.Node.SourceInfo.FilePath) ?? Directory.GetCurrentDirectory();
-                    projectFile = Path.GetFullPath(projectFile, moduleDir);
-                }
-
-                return Path.GetRelativePath(_solutionDir, projectFile).Replace('\\', '/');
+                projectFilePath = GetResolvedProjectFilePath(module);
+                return true;
             }
 
             break;
+        }
+
+        projectFilePath = null;
+        return false;
+    }
+
+    private string GetModuleProjectPath(string moduleName, string projectsDir)
+    {
+        if (TryGetModuleProjectFilePath(moduleName, out string? projectFilePath))
+        {
+            return Path.GetRelativePath(_solutionDir, projectFilePath!).Replace('\\', '/');
         }
 
         string generatedPath = string.IsNullOrEmpty(projectsDir)
             ? $"{moduleName}{VcxprojGenerator.ProjectExtension}"
             : $"{projectsDir}/{moduleName}{VcxprojGenerator.ProjectExtension}";
         return generatedPath.Replace('\\', '/');
+    }
+
+    private static string GetResolvedProjectFilePath(ModuleNode module)
+    {
+        string? projectFile = module.ProjectFile;
+
+        if (string.IsNullOrEmpty(projectFile))
+        {
+            throw new InvalidOperationException($"Module '{module.ModuleName}' does not define a project_file.");
+        }
+
+        if (!Path.IsPathRooted(projectFile))
+        {
+            string moduleDir = Path.GetDirectoryName(module.Node.SourceInfo.FilePath) ?? Directory.GetCurrentDirectory();
+            projectFile = Path.GetFullPath(projectFile, moduleDir);
+        }
+
+        return projectFile;
+    }
+
+    private ExternalProjectConfig GetExternalProjectConfig(string projectFilePath)
+    {
+        if (_externalProjectConfigs.TryGetValue(projectFilePath, out ExternalProjectConfig? config))
+        {
+            return config;
+        }
+
+        config = LoadExternalProjectConfig(projectFilePath);
+        _externalProjectConfigs.Add(projectFilePath, config);
+        return config;
+    }
+
+    private static ExternalProjectConfig LoadExternalProjectConfig(string projectFilePath)
+    {
+        List<string> buildTypes = ["Debug", "Release"];
+        List<string> platforms = ["Any CPU"];
+
+        if (!File.Exists(projectFilePath))
+        {
+            return new ExternalProjectConfig(buildTypes, platforms);
+        }
+
+        XDocument document = XDocument.Load(projectFilePath, LoadOptions.PreserveWhitespace);
+
+        foreach (XElement element in document.Descendants())
+        {
+            if (string.Equals(element.Name.LocalName, "Configurations", StringComparison.Ordinal))
+            {
+                buildTypes = SplitProjectValues(element.Value, ["Debug", "Release"], normalizePlatforms: false);
+            }
+            else if (string.Equals(element.Name.LocalName, "Platforms", StringComparison.Ordinal))
+            {
+                platforms = SplitProjectValues(element.Value, ["Any CPU"], normalizePlatforms: true);
+            }
+        }
+
+        return new ExternalProjectConfig(buildTypes, platforms);
+    }
+
+    private static List<string> SplitProjectValues(string? values, IReadOnlyList<string> fallbackValues, bool normalizePlatforms)
+    {
+        List<string> result = [];
+
+        if (!string.IsNullOrWhiteSpace(values))
+        {
+            foreach (string rawValue in values.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+            {
+                string value = normalizePlatforms ? NormalizePlatformName(rawValue) : rawValue;
+                if (!result.Contains(value))
+                {
+                    result.Add(value);
+                }
+            }
+        }
+
+        if (result.Count == 0)
+        {
+            result.AddRange(fallbackValues);
+        }
+
+        return result;
+    }
+
+    private static string MapExternalProjectBuildType(string solutionBuildType, ExternalProjectConfig config)
+    {
+        if (TryGetMatchingValue(config.BuildTypes, solutionBuildType, out string? exactMatch))
+        {
+            return exactMatch;
+        }
+
+        if (string.Equals(solutionBuildType, "Development", StringComparison.OrdinalIgnoreCase))
+        {
+            if (TryGetMatchingValue(config.BuildTypes, "Release", out string? releaseMatch))
+            {
+                return releaseMatch;
+            }
+
+            if (TryGetMatchingValue(config.BuildTypes, "Debug", out string? debugMatch))
+            {
+                return debugMatch;
+            }
+        }
+        else
+        {
+            if (TryGetMatchingValue(config.BuildTypes, "Debug", out string? debugMatch))
+            {
+                return debugMatch;
+            }
+
+            if (TryGetMatchingValue(config.BuildTypes, "Release", out string? releaseMatch))
+            {
+                return releaseMatch;
+            }
+        }
+
+        return config.BuildTypes.Count != 0 ? config.BuildTypes[0] : "Debug";
+    }
+
+    private static string MapExternalProjectPlatform(string solutionPlatform, ExternalProjectConfig config)
+    {
+        if (TryGetMatchingValue(config.Platforms, NormalizePlatformName(solutionPlatform), out string? exactMatch))
+        {
+            return exactMatch;
+        }
+
+        if (TryGetMatchingValue(config.Platforms, "Any CPU", out string? anyCpuMatch))
+        {
+            return anyCpuMatch;
+        }
+
+        return config.Platforms.Count != 0 ? config.Platforms[0] : "Any CPU";
+    }
+
+    private static bool TryGetMatchingValue(IReadOnlyList<string> values, string expectedValue, [NotNullWhen(true)] out string? match)
+    {
+        foreach (string value in values)
+        {
+            if (value.Contains(expectedValue, StringComparison.OrdinalIgnoreCase))
+            {
+                match = value;
+                return true;
+            }
+        }
+
+        match = null;
+        return false;
+    }
+
+    private static string NormalizePlatformName(string platformName)
+    {
+        return string.Equals(platformName, "AnyCPU", StringComparison.OrdinalIgnoreCase) ? "Any CPU" : platformName;
     }
 
     private void WriteFolderEntry(XmlWriter writer, Entry entry, string projectsDir)

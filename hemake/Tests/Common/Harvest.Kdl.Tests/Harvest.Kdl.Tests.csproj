@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <Import Project="..\..\..\props\Harvest.props" />
-  <Import Project="..\..\props\Harvest.Tests.props" />
+  <Import Project="..\..\..\props\Harvest.Tests.props" />
 
   <ItemGroup>
     <ProjectReference Include="..\..\..\Common\Harvest.Kdl\Harvest.Kdl.csproj" />

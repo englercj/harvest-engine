@@ -16,9 +16,6 @@
     <Project Path="Tests/Common/Harvest.Kdl.Tests/Harvest.Kdl.Tests.csproj" />
   </Folder>
 
-  <Folder Name="/Tests/props/">
-  </Folder>
-
   <Folder Name="/props/">
     <File Path="props/Harvest.props" />
     <File Path="props/Harvest.Tests.props" />

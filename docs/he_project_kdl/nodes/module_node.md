@@ -17,11 +17,11 @@ A definition of a module provided by a plugin.
     * `lib_static` - Code built as a static library (lib/a).
     * `lib_shared` - Code built as a shared library (dll/so).
 - `group` (string) - Optional. Name of the group this module belongs to. This will be a virtual folder in the workspace tree, and can include folder separators (`/`).
-- `language` (string) - Optional. Language of the source to be compiled in the module project. Default is `cpp` if not specified. Valid values are:
+- `language` (string) - Optional. Language of the source to be compiled in the module project. If omitted, HE Make first tries to infer the language from `project_file`; otherwise it defaults to `cpp`. Valid values are:
     * `c` - C
     * `cpp` - C++
     * `csharp` - C#
-- `project_file` (string) - Optional. Path to a project file to use instead of generating one.
+- `project_file` (string) - Optional. Path to a `.csproj` file to use instead of generating a project file. Other project file types are not supported. When `language` is omitted, `.csproj` implies `csharp`.
 - `entrypoint` (string) - Optional. Name of the application's entrypoint symbol.
 - `hemake_load` (boolean) - Optional. `#true` to tell HE Make to load this project as a plugin. Requires `project_file` to be set. Default: `#false`
 - `target_name` (string) Optional. The name of the output target file. When not specified, the module's name is used.

@@ -54,7 +54,7 @@ HEMAKE_BUILD_CFG="Release"
 HEMAKE_BUILD_DIR="$BUILD_DIR/hemake"
 HEMAKE_BUILD_ASSEMBLY="$HEMAKE_BUILD_DIR/bin/$HEMAKE_BUILD_CFG/net$DOTNET_CHANNEL/Harvest.Make.CLI.dll"
 
-HEMAKE_SRC_DIR="$SCRIPT_DIR/plugins/hemake"
+HEMAKE_SRC_DIR="$SCRIPT_DIR/hemake"
 HEMAKE_SRC_PROJ="$HEMAKE_SRC_DIR/Harvest.Make.CLI/Harvest.Make.CLI.csproj"
 
 # Ensure the build directory exists

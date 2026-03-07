@@ -912,6 +912,8 @@ internal class VcxprojGenerator(IProjectService projectService, ILogger<VcxprojG
                     writer.WriteEndElement();
                 }
 
+                writer.WriteStartElement("Link");
+
                 writer.WriteElementString("SubSystem", module.Kind == EModuleKind.AppConsole ? "Console" : "Windows");
                 // TODO: Difficult to understand what this really controls...
                 //writer.WriteElementBoolIfTrue("FullProgramDatabaseFile", symbols.SymbolsMode == ESymbolsMode.On);
@@ -932,6 +934,8 @@ internal class VcxprojGenerator(IProjectService projectService, ILogger<VcxprojG
                 {
                     writer.WriteElementString("LinkTimeCodeGeneration", "UseLinkTimeCodeGeneration");
                 }
+
+                writer.WriteEndElement();
 
                 if (module.Kind == EModuleKind.LibStatic)
                 {

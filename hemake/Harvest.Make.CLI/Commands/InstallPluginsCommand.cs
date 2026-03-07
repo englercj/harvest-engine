@@ -13,8 +13,8 @@ using System.IO.Compression;
 namespace Harvest.Make.CLI.CliCommands;
 
 [Command("Install plugins needed for the project.")]
-internal partial class InstallPluginsCliCommand(
-    ILogger<InstallPluginsCliCommand> logger,
+internal partial class InstallPluginsCommand(
+    ILogger<InstallPluginsCommand> logger,
     IProjectService projectService)
     : ICommandExecutor
 {

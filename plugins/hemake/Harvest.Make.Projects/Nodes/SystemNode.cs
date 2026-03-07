@@ -32,26 +32,35 @@ public class SystemNode(KdlNode node) : NodeBase<SystemNodeTraits>(node)
 
     public EPlatformSystem System => GetEnumValue<EPlatformSystem>(0);
     public string Version => GetResolvedVersion();
-    public bool IsLatestVersion => string.Equals(Version, LatestVersion, StringComparison.OrdinalIgnoreCase);
+    public bool IsLatestVersion => IsVersionLatest(GetRawVersion());
 
     private string GetResolvedVersion()
     {
-        string version = TryGetValue<string>("version", out string? value) && !string.IsNullOrWhiteSpace(value)
-            ? value.ToLowerInvariant()
-            : LatestVersion;
+        string version = GetRawVersion();
+        bool isLatest = IsVersionLatest(version);
 
         switch (System)
         {
             case EPlatformSystem.DotNet:
-                return version == LatestVersion ? "net9.0" : version;
+                return isLatest ? "net10.0" : version;
             case EPlatformSystem.Linux:
-                return version == LatestVersion ? "" : version;
+                return isLatest ? "" : version;
             case EPlatformSystem.WASM:
-                return version == LatestVersion ? "" : version;
+                return isLatest ? "" : version;
             case EPlatformSystem.Windows:
-                return version == LatestVersion ? "10.0" : version;
+                return isLatest ? "10.0" : version;
         }
 
         throw new Exception($"Unknown platform system: {System}");
+    }
+
+    private string GetRawVersion()
+    {
+        return TryGetValue<string>("version", out string? value) ? value : LatestVersion;
+    }
+
+    private static bool IsVersionLatest(string version)
+    {
+        return string.Equals(version, LatestVersion, StringComparison.OrdinalIgnoreCase);
     }
 }

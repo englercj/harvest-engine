@@ -128,7 +128,8 @@ public class FetchNode(KdlNode node) : NodeBase<FetchNodeTraits>(node)
         _ => "",
     };
 
-    public string ArchiveKey => ArchiveUrl.ToSHA256HexDigest();
+    private string? _archiveKey = null;
+    public string ArchiveKey => _archiveKey ??= ArchiveUrl.GetSHA256Hash().ToString();
 
     public EFetchArchiveFormat ArchiveFormat => GetArchiveFormat();
 

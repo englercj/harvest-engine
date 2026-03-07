@@ -1,5 +1,6 @@
 // Copyright Chad Engler
 
+using Harvest.Common;
 using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
@@ -77,11 +78,10 @@ public static partial class StringExtensions
         return string.Concat(transformed);
     }
 
-    public static string ToSHA256HexDigest(this string value)
+    public static SHA256Hash GetSHA256Hash(this string value)
     {
         byte[] valueBytes = Encoding.UTF8.GetBytes(value);
-        byte[] hashBytes = SHA256.HashData(valueBytes);
-        return Convert.ToHexString(hashBytes);
+        return SHA256Hash.HashData(valueBytes);
     }
 
     // The pattern handles:

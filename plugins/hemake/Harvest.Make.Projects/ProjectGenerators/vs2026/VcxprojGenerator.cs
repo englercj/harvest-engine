@@ -935,8 +935,6 @@ internal class VcxprojGenerator(IProjectService projectService, ILogger<VcxprojG
                     writer.WriteElementString("LinkTimeCodeGeneration", "UseLinkTimeCodeGeneration");
                 }
 
-                writer.WriteEndElement();
-
                 if (module.Kind == EModuleKind.LibStatic)
                 {
                     writer.WriteStartElement("Lib");
@@ -1026,6 +1024,8 @@ internal class VcxprojGenerator(IProjectService projectService, ILogger<VcxprojG
                     VisualStudioUtils.WriteArrayElement(writer, extraManifestFiles, "AdditionalManifestFiles", "%(AdditionalManifestFiles)");
                     writer.WriteEndElement();
                 }
+
+                writer.WriteEndElement();
             }
 
             void writeBuildEvent(EBuildEvent evt)

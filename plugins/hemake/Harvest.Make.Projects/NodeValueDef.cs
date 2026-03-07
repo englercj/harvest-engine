@@ -45,13 +45,15 @@ public class NodeValueDef_Enum<T> : NodeValueDef<KdlString> where T : struct, En
 
     public static NodeValueDef_Enum<T> Required(T defaultValue) => new()
     {
-        TypedDefaultValue = new KdlString(KdlEnumUtils.GetName(defaultValue)), ValidValues = s_validValues,
+        TypedDefaultValue = new KdlString(KdlEnumUtils.GetName(defaultValue)),
+        ValidValues = s_validValues,
         IsRequired = true,
     };
 
     public static NodeValueDef_Enum<T> Optional(T? defaultValue = null) => new()
     {
-        TypedDefaultValue = defaultValue.HasValue ? new KdlString(KdlEnumUtils.GetName(defaultValue)) : null, ValidValues = s_validValues,
+        TypedDefaultValue = defaultValue.HasValue ? new KdlString(KdlEnumUtils.GetName(defaultValue)) : null,
+        ValidValues = s_validValues,
     };
 }
 

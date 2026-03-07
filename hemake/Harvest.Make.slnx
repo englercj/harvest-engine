@@ -17,11 +17,11 @@
   </Folder>
 
   <Folder Name="/Tests/props/">
-    <File Path="Tests/props/Harvest.Kdl.Tests.props" />
   </Folder>
 
   <Folder Name="/props/">
     <File Path="props/Harvest.props" />
+    <File Path="props/Harvest.Tests.props" />
     <File Path="props/Harvest.Windows.props" />
     <File Path="props/Harvest.Windows.WinUI.props" />
   </Folder>

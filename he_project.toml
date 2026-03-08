@@ -1,4 +1,0 @@
-# Copyright Chad Engler
-
-name = "Harvest Engine"
-plugins = ["."]

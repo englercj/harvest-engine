@@ -1,6 +1,6 @@
 # `fetch` node
 
-Defines how to fetch install data for a plugin, and what the base directory for those installed files are.
+Defines how to fetch install data for a plugin, and what the base directory for those installed files are. Each fetch is extracted under `${project.installs_dir}` into a folder named `<prefix>-<sha256>`, where the prefix is derived from the archive source (for example a repo or package name).
 
 ## Arguments
 

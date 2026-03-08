@@ -78,6 +78,12 @@ public static partial class StringExtensions
         return string.Concat(transformed);
     }
 
+    public static SHA1Hash GetSHA1Hash(this string value)
+    {
+        byte[] valueBytes = Encoding.UTF8.GetBytes(value);
+        return SHA1Hash.HashData(valueBytes);
+    }
+
     public static SHA256Hash GetSHA256Hash(this string value)
     {
         byte[] valueBytes = Encoding.UTF8.GetBytes(value);

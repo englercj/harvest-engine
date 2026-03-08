@@ -143,9 +143,9 @@ public static class ExtensionNodeUtils
         return false;
     }
 
-    public static void AddOwnerDependency(KdlNode ownerTarget, KdlSourceInfo sourceInfo, string dependencyName, bool isPublic, NodeResolver resolver)
+    public static void AddOwnerDependency(KdlNode ownerTarget, KdlSourceInfo sourceInfo, string dependencyName, bool isPublic, NodeResolver resolver, string? kind = null)
     {
-        KdlNode dependencyNode = CreateDependenciesNode(sourceInfo, [CreateDependencyEntry(dependencyName, sourceInfo)]);
+        KdlNode dependencyNode = CreateDependenciesNode(sourceInfo, [CreateDependencyEntry(dependencyName, sourceInfo, kind)]);
         if (isPublic)
         {
             KdlNode publicNode = CreateNode(PublicNode.NodeTraits.Name, sourceInfo);

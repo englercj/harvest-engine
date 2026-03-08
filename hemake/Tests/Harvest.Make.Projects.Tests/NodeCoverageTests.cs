@@ -129,8 +129,7 @@ public sealed class NodeCoverageTests(ProjectGenerationFixture fixture)
         InstallNode install = fixture.DebugTree.GetNodes<InstallNode>(fixture.PluginNode.Node).Single();
         FetchNode fetch = fixture.DebugTree.GetNodes<FetchNode>(install.Node).Single();
         Assert.Equal(EFetchArchiveFormat.Zip, fetch.ArchiveFormat);
-        Assert.True(Path.IsPathRooted(fetch.ArchiveBaseDir));
-        Assert.EndsWith("dep-root", fetch.ArchiveBaseDir, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal("dep-root", fetch.ArchiveBaseDir);
     }
 
     [Fact]

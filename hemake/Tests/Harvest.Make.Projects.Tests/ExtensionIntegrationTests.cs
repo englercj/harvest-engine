@@ -61,6 +61,20 @@ public sealed class ExtensionIntegrationTests(ExtensionIntegrationFixture fixtur
         Assert.Contains(outputs.Entries, (entry) => entry.FilePath.EndsWith("effect.shaders.h", StringComparison.Ordinal));
     }
 
+
+    [Fact]
+    public void SolutionGenerationAddsBuildDependenciesForGeneratedModules()
+    {
+        Assert.Contains("""<Project Path="projects/schema_owner.vcxproj">""", fixture.SlnxText);
+        Assert.Contains("""<BuildDependency Project="projects/schema_owner__schemac_1.vcxproj" />""", fixture.SlnxText);
+        Assert.Contains("""<Project Path="projects/bin_owner.vcxproj">""", fixture.SlnxText);
+        Assert.Contains("""<BuildDependency Project="projects/bin_owner__bin2c_1.vcxproj" />""", fixture.SlnxText);
+        Assert.Contains("""<Project Path="projects/shader_owner.vcxproj">""", fixture.SlnxText);
+        Assert.Contains("""<BuildDependency Project="projects/shader_owner__shaderc_1.vcxproj" />""", fixture.SlnxText);
+        Assert.Contains("""<Project Path="projects/schema_owner__schemac_1.vcxproj">""", fixture.SlnxText);
+        Assert.Contains("""<BuildDependency Project="projects/schema_dep__schemac_1.vcxproj" />""", fixture.SlnxText);
+    }
+
     [Fact]
     public void ProjectGenerationIncludesGeneratedModules()
     {

@@ -142,15 +142,9 @@ internal class SlnxGenerator(IProjectService projectService, ILogger<SlnxGenerat
                         continue;
                     }
 
-                    if (dependency.Kind == EDependencyKind.Default)
+                    if (!ShouldWriteBuildDependency(module, dependencyModule, dependency.Kind))
                     {
-                        if (!module.IsBinary
-                            || dependencyModule.Kind == EModuleKind.LibStatic
-                            || dependencyModule.Kind == EModuleKind.LibHeader
-                            || dependencyModule.Kind == EModuleKind.Content)
-                        {
-                            continue;
-                        }
+                        continue;
                     }
 
                     string dependencyProjectPath = GetModuleProjectPath(dependencyModule.ModuleName, projectsDir);
@@ -212,6 +206,27 @@ internal class SlnxGenerator(IProjectService projectService, ILogger<SlnxGenerat
 
         projectFilePath = null;
         return false;
+    }
+
+    private static bool ShouldWriteBuildDependency(ModuleNode module, ModuleNode dependencyModule, EDependencyKind dependencyKind)
+    {
+        if (dependencyKind == EDependencyKind.Order)
+        {
+            return dependencyModule.Kind != EModuleKind.LibHeader
+                && dependencyModule.Kind != EModuleKind.Content;
+        }
+
+        if (dependencyKind != EDependencyKind.Default && dependencyKind != EDependencyKind.Link)
+        {
+            return false;
+        }
+
+        if (dependencyModule.Kind == EModuleKind.LibHeader || dependencyModule.Kind == EModuleKind.Content)
+        {
+            return false;
+        }
+
+        return module.IsApp && dependencyModule.Kind == EModuleKind.LibShared;
     }
 
     private string GetModuleProjectPath(string moduleName, string projectsDir)

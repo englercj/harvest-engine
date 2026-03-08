@@ -541,7 +541,7 @@ internal class VcxprojGenerator(IProjectService projectService, ILogger<VcxprojG
                 SymbolsNode symbols = projectTree.GetMergedNode<SymbolsNode>(module.Node);
                 WarningsNode warnings = projectTree.GetMergedNode<WarningsNode>(module.Node);
 
-                List<DependenciesNode> dependencies = [.. projectTree.GetNodes<DependenciesNode>(module.Node)];
+                List<DependenciesNode> dependencies = [.. projectTree.GetNodes<DependenciesNode>(module.Node, module.IsBinary)];
                 LibDirsNode libDirs = projectTree.GetMergedNode<LibDirsNode>(module.Node, true);
 
                 bool isOptimizedBuild = VisualStudioUtils.IsOptimizedBuild(optimize);
@@ -791,12 +791,15 @@ internal class VcxprojGenerator(IProjectService projectService, ILogger<VcxprojG
                 buildOptionEntryStrings = buildOptionEntryStrings.Concat(enabledWarnings);
                 VisualStudioUtils.WriteArrayElement(writer, buildOptionEntryStrings, "AdditionalOptions", "%(AdditionalOptions)", " ");
 
-                writer.WriteElementString("CompileAs", module.Language switch
+                if (module.Node.HasValue("language"))
                 {
-                    EModuleLanguage.C => "CompileAsC",
-                    EModuleLanguage.Cpp => "CompileAsCpp",
-                    _ => throw new NotImplementedException($"Unsupported Language: {module.Language}"),
-                });
+                    writer.WriteElementString("CompileAs", module.Language switch
+                    {
+                        EModuleLanguage.C => "CompileAsC",
+                        EModuleLanguage.Cpp => "CompileAsCpp",
+                        _ => throw new NotImplementedException($"Unsupported Language: {module.Language}"),
+                    });
+                }
 
                 // TODO: Support for calling convention?
                 //if (buildOptions.CallingConvention is not null)

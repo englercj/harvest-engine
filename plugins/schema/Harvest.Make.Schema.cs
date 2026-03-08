@@ -166,6 +166,7 @@ public sealed class SchemaCompileNodeTraits : NodeBaseTraits
 
         pluginTarget.AddChild(resolver.CreateResolvedNode(generatedModule, includeChildren: true));
         ExtensionNodeUtils.AddOwnerDependency(target, source.SourceInfo, generatedModuleName, schemaCompile.IsPublicScope, resolver);
+        ExtensionNodeUtils.AddOwnerDependency(target, source.SourceInfo, generatedModuleName, schemaCompile.IsPublicScope, resolver, kind: "order");
 
         resolvedNode = null;
         return true;

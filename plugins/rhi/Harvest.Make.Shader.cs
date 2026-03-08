@@ -155,6 +155,7 @@ public sealed class ShaderCompileNodeTraits : NodeBaseTraits
 
         pluginTarget.AddChild(resolver.CreateResolvedNode(generatedModule, includeChildren: true));
         ExtensionNodeUtils.AddOwnerDependency(target, source.SourceInfo, generatedModuleName, shaderCompile.IsPublicScope, resolver);
+        ExtensionNodeUtils.AddOwnerDependency(target, source.SourceInfo, generatedModuleName, shaderCompile.IsPublicScope, resolver, kind: "order");
 
         resolvedNode = null;
         return true;

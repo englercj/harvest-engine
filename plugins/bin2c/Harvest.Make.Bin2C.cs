@@ -140,6 +140,7 @@ public sealed class Bin2CCompileNodeTraits : NodeBaseTraits
 
         pluginTarget.AddChild(resolver.CreateResolvedNode(generatedModule, includeChildren: true));
         ExtensionNodeUtils.AddOwnerDependency(target, source.SourceInfo, generatedModuleName, bin2cCompile.IsPublicScope, resolver);
+        ExtensionNodeUtils.AddOwnerDependency(target, source.SourceInfo, generatedModuleName, bin2cCompile.IsPublicScope, resolver, kind: "order");
 
         resolvedNode = null;
         return true;

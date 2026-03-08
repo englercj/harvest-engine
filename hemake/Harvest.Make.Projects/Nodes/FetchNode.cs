@@ -38,7 +38,7 @@ public class FetchNodeTraits : NodeBaseTraits
     public override IReadOnlyDictionary<string, NodeValueDef> PropertyDefs { get; } = new SortedDictionary<string, NodeValueDef>()
     {
         // shared by all methods
-        { "base_dir", NodeValueDef_Path.Optional() },
+        { "base_dir", NodeValueDef_String.Optional() },
         { "install_dir_priority", NodeValueDef_Number<int>.Optional(0) },
 
         // Archive

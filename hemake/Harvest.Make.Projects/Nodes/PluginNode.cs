@@ -61,7 +61,7 @@ public class PluginNode(KdlNode node) : NodeBase<PluginNodeTraits>(node)
         if (fetchNodes.MaxBy((n) => n.InstallDirPriority) is FetchNode primaryFetchNode)
         {
             string installBaseDir = GetInstallBaseDir(projectContext);
-            string baseDir = Path.Combine(installBaseDir, primaryFetchNode.ArchiveKey);
+            string baseDir = Path.Combine(installBaseDir, primaryFetchNode.ArchiveDirName);
             return Path.Combine(baseDir, primaryFetchNode.ArchiveBaseDir);
         }
 

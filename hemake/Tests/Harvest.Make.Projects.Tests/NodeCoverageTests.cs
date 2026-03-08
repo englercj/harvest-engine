@@ -129,6 +129,7 @@ public sealed class NodeCoverageTests(ProjectGenerationFixture fixture)
         InstallNode install = fixture.DebugTree.GetNodes<InstallNode>(fixture.PluginNode.Node).Single();
         FetchNode fetch = fixture.DebugTree.GetNodes<FetchNode>(install.Node).Single();
         Assert.Equal(EFetchArchiveFormat.Zip, fetch.ArchiveFormat);
+        Assert.StartsWith("unit_dep-", fetch.ArchiveDirName, StringComparison.OrdinalIgnoreCase);
         Assert.Equal("dep-root", fetch.ArchiveBaseDir);
     }
 
@@ -238,8 +239,10 @@ public sealed class NodeCoverageTests(ProjectGenerationFixture fixture)
     {
         Assert.Equal("unit.plugin", fixture.PluginNode.PluginName);
         Assert.Equal("1.0.0", fixture.PluginNode.Version);
+        string installDir = fixture.PluginNode.GetInstallDir(fixture.DebugTree.ProjectContext);
+        Assert.Contains("unit_dep-", installDir, StringComparison.OrdinalIgnoreCase);
+        Assert.EndsWith(Path.Combine("dep-root"), installDir, StringComparison.OrdinalIgnoreCase);
     }
-
     [Fact]
     public void CoversProjectNode()
     {

@@ -34,7 +34,7 @@ internal partial class InstallPluginsCommand(
                 foreach (KdlNode fetchNodeKdl in plugin.Node.GetDescendantsByName(FetchNode.NodeTraits.Name))
                 {
                     FetchNode fetchNode = new(fetchNodeKdl);
-                    if (installKeys.Add(fetchNode.ArchiveKey))
+                    if (installKeys.Add(fetchNode.ArchiveDirName))
                     {
                         installTasks.Add(InstallArchiveAsync(httpClient, fetchNode, installDir));
                     }
@@ -56,17 +56,17 @@ internal partial class InstallPluginsCommand(
 
     private async Task InstallArchiveAsync(HttpClient httpClient, FetchNode fetchNode, string installDir)
     {
-        string extractDir = Path.Combine(installDir, fetchNode.ArchiveKey);
+        string extractDir = Path.Combine(installDir, fetchNode.ArchiveDirName);
 
         if (Directory.Exists(extractDir))
         {
-            logger.LogTrace("Archive is already installed: {ArchiveUrl}", fetchNode.ArchiveUrl);
+            logger.LogTrace("Archive is already installed: {ArchiveUrl}", fetchNode.ArchiveUri);
             return;
         }
 
         string archiveTempPath = Path.GetTempFileName();
 
-        await DownloadArchiveAsync(httpClient, fetchNode.ArchiveUrl, archiveTempPath);
+        await DownloadArchiveAsync(httpClient, fetchNode.ArchiveUri, archiveTempPath);
 
         try
         {
@@ -92,11 +92,11 @@ internal partial class InstallPluginsCommand(
         }
     }
 
-    private async Task DownloadArchiveAsync(HttpClient httpClient, string archiveUrl, string archivePath)
+    private async Task DownloadArchiveAsync(HttpClient httpClient, Uri archiveUri, string archivePath)
     {
-        logger.LogTrace("Downloading archive: {Url}", archiveUrl);
+        logger.LogTrace("Downloading archive: {Uri}", archiveUri);
 
-        using HttpResponseMessage response = await httpClient.GetAsync(archiveUrl);
+        using HttpResponseMessage response = await httpClient.GetAsync(archiveUri);
         response.EnsureSuccessStatusCode();
         await using FileStream fs = new(archivePath, FileMode.Create, FileAccess.Write, FileShare.None);
         await response.Content.CopyToAsync(fs);

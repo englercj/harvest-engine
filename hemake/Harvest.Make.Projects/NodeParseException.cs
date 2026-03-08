@@ -14,7 +14,7 @@ public class NodeParseException : Exception
         Node = node;
     }
 
-    public NodeParseException(KdlNode node, string message, Exception? innerException)
+    public NodeParseException(Exception? innerException, KdlNode node, string message)
         : base(BuildMessage(node, message), innerException)
     {
         Node = node;

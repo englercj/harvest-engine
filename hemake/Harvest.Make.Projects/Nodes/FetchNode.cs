@@ -3,6 +3,7 @@
 using Harvest.Kdl;
 using Harvest.Make.Projects.Attributes;
 using Harvest.Make.Utils;
+using System.Text;
 
 namespace Harvest.Make.Projects.Nodes;
 
@@ -69,6 +70,22 @@ public class FetchNodeTraits : NodeBaseTraits
             case EFetchMethod.Archive:
             {
                 RequireProperty(node, "url");
+
+                string urlValue = GetValue<string>(node, "url");
+                Uri uri;
+                try
+                {
+                    uri = new(urlValue);
+                }
+                catch (Exception ex)
+                {
+                    throw new NodeParseException(ex, node, $"Invalid 'url' property value '{urlValue}'. Must be a valid URI.");
+                }
+
+                if (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps)
+                {
+                    throw new NodeParseException(node, $"Invalid 'url' property value '{urlValue}'. Must be a valid HTTP or HTTPS URL.");
+                }
                 break;
             }
             case EFetchMethod.BitBucket:
@@ -119,22 +136,44 @@ public class FetchNode(KdlNode node) : NodeBase<FetchNodeTraits>(node)
     public string NugetPackage => Method == EFetchMethod.Nuget ? GetValue<string>("package") : "";
     public string NugetVersion => Method == EFetchMethod.Nuget ? GetValue<string>("version") : "";
 
-    public string ArchiveUrl => Method switch
-    {
-        EFetchMethod.Archive => GetValue<string>("url"),
-        EFetchMethod.BitBucket => $"https://bitbucket.org/{BitBucketUser}/{BitBucketRepo}/get/{BitBucketRef}.zip",
-        EFetchMethod.GitHub => $"https://github.com/{GitHubUser}/{GitHubRepo}/archive/{GitHubRef}.zip",
-        EFetchMethod.Nuget => $"https://www.nuget.org/api/v2/package/{NugetPackage}/{NugetVersion}",
-        _ => "",
-    };
+    private Uri? _archiveUri = null;
+    public Uri ArchiveUri => _archiveUri ??= new Uri(GetArchiveUrl());
 
     private string? _archiveKey = null;
-    public string ArchiveKey => _archiveKey ??= ArchiveUrl.GetSHA256Hash().ToString();
+    public string ArchiveKey => _archiveKey ??= GetArchiveUrl().GetSHA256Hash().ToString();
+
+    private string? _archiveDirName = null;
+    public string ArchiveDirName => _archiveDirName ??= $"{GetArchivePrefix()}-{ArchiveKey}";
 
     public EFetchArchiveFormat ArchiveFormat => GetArchiveFormat();
 
     public string ArchiveBaseDir => GetArchiveBaseDir();
 
+    private string GetArchivePrefix()
+    {
+        string? prefix = Method switch
+        {
+            EFetchMethod.Archive => Path.GetFileNameWithoutExtension(Path.GetFileNameWithoutExtension(ArchiveUri.LocalPath)),
+            EFetchMethod.BitBucket => BitBucketRepo,
+            EFetchMethod.GitHub => GitHubRepo,
+            EFetchMethod.Nuget => NugetPackage,
+            _ => null,
+        };
+
+        if (string.IsNullOrWhiteSpace(prefix))
+        {
+            prefix = "archive";
+        }
+
+        StringBuilder builder = new(prefix.Length);
+        foreach (char ch in prefix)
+        {
+            builder.Append(char.IsLetterOrDigit(ch) || ch is '-' or '_' or '.' ? ch : '_');
+        }
+
+        string sanitized = builder.ToString().Trim('_', '-', '.');
+        return string.IsNullOrWhiteSpace(sanitized) ? "archive" : sanitized;
+    }
     private EFetchArchiveFormat GetArchiveFormat()
     {
         if (Method == EFetchMethod.Archive)
@@ -145,7 +184,7 @@ public class FetchNode(KdlNode node) : NodeBase<FetchNodeTraits>(node)
             }
 
             // Try to infer from the URL file extension
-            string urlPath = new Uri(ArchiveUrl).LocalPath.ToLowerInvariant();
+            string urlPath = ArchiveUri.LocalPath.ToLowerInvariant();
             if (urlPath.EndsWith(".zip"))
             {
                 return EFetchArchiveFormat.Zip;
@@ -200,5 +239,17 @@ public class FetchNode(KdlNode node) : NodeBase<FetchNodeTraits>(node)
         };
 
         return "";
+    }
+
+    private string GetArchiveUrl()
+    {
+        return Method switch
+        {
+            EFetchMethod.Archive => GetValue<string>("url"),
+            EFetchMethod.BitBucket => $"https://bitbucket.org/{BitBucketUser}/{BitBucketRepo}/get/{BitBucketRef}.zip",
+            EFetchMethod.GitHub => $"https://github.com/{GitHubUser}/{GitHubRepo}/archive/{GitHubRef}.zip",
+            EFetchMethod.Nuget => $"https://www.nuget.org/api/v2/package/{NugetPackage}/{NugetVersion}",
+            _ => "",
+        };
     }
 }

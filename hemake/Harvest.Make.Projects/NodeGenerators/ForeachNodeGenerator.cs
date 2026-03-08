@@ -60,6 +60,18 @@ internal class ForeachNodeGenerator(IProjectService projectService, NodeResolver
         {
             KdlNode generated = GenerateNode(source, replacer);
 
+            if (generated.Name.StartsWith('+'))
+            {
+                _resolver.ResolveExtensionNode(generated);
+                continue;
+            }
+
+            if (generated.Name.StartsWith(':'))
+            {
+                _resolver.ResolveGeneratorNode(target, generated);
+                continue;
+            }
+
             // Generated nodes need to inherit the scope where the foreach appears so trait
             // resolution can infer set-entry node types from their parent scope.
             target.AddChild(generated);
@@ -183,10 +195,12 @@ internal class ForeachNodeGenerator(IProjectService projectService, NodeResolver
                     throw new Exception($"Invalid token '{tokenContext.Token}'. The '_entry' context cannot be indexed.");
                 }
 
+                int relativeIndex = tokenContext.ContextNameCapture.Index - tokenContext.TokenMatch.Index;
+
                 StringBuilder sb = new();
-                sb.Append(tokenContext.Token[..tokenContext.ContextNameCapture.Index]);
+                sb.Append(tokenContext.Token[..relativeIndex]);
                 sb.Append(resolvedContextName);
-                sb.Append(tokenContext.Token[(tokenContext.ContextNameCapture.Index + tokenContext.ContextNameCapture.Length)..]);
+                sb.Append(tokenContext.Token[(relativeIndex + tokenContext.ContextNameCapture.Length)..]);
 
                 return sb.ToString();
             }

@@ -71,8 +71,6 @@ public class FilesEntryNode(KdlNode node) : NodeSetEntryBase<FileEntryNodeTraits
         { ".asm", new FileEntryExtensionInfo(EFileBuildRule.Asm) },
         { ".c", new FileEntryExtensionInfo(EFileBuildRule.C) },
         { ".s", new FileEntryExtensionInfo(EFileBuildRule.C) },
-        { ".m", new FileEntryExtensionInfo(EFileBuildRule.C) },
-        { ".mm", new FileEntryExtensionInfo(EFileBuildRule.Cpp) },
         { ".cc", new FileEntryExtensionInfo(EFileBuildRule.Cpp) },
         { ".cpp", new FileEntryExtensionInfo(EFileBuildRule.Cpp) },
         { ".cppm", new FileEntryExtensionInfo(EFileBuildRule.Cpp) },

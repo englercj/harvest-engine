@@ -65,13 +65,14 @@ public class FileEntryNodeTraits : NodeSetEntryBaseTraits<FilesNode>
 
 public class FilesEntryNode(KdlNode node) : NodeSetEntryBase<FileEntryNodeTraits, FilesNode>(node)
 {
-    private static readonly Dictionary<string, FileEntryExtensionInfo> s_fileExtensionInfos = new()
+    private static readonly Dictionary<string, FileEntryExtensionInfo> s_fileExtensionInfos = new(StringComparer.OrdinalIgnoreCase)
     {
         { ".appxmanifest", new FileEntryExtensionInfo(EFileAction.AppxManifest) },
         { ".asm", new FileEntryExtensionInfo(EFileBuildRule.Asm) },
-        { ".s", new FileEntryExtensionInfo(EFileBuildRule.Asm) },
-        { ".S", new FileEntryExtensionInfo(EFileBuildRule.Asm) },
         { ".c", new FileEntryExtensionInfo(EFileBuildRule.C) },
+        { ".s", new FileEntryExtensionInfo(EFileBuildRule.C) },
+        { ".m", new FileEntryExtensionInfo(EFileBuildRule.C) },
+        { ".mm", new FileEntryExtensionInfo(EFileBuildRule.Cpp) },
         { ".cc", new FileEntryExtensionInfo(EFileBuildRule.Cpp) },
         { ".cpp", new FileEntryExtensionInfo(EFileBuildRule.Cpp) },
         { ".cppm", new FileEntryExtensionInfo(EFileBuildRule.Cpp) },

@@ -21,7 +21,7 @@ public sealed class KdlSpecConformanceTests
             string expectedPath = Path.Combine(expectedDir, fileName);
             bool hasExpected = File.Exists(expectedPath);
 
-            string input = ReadTextNormalized(inputPath);
+            string input = File.ReadAllText(inputPath);
 
             KdlDocument? document = null;
             Exception? parseException = null;
@@ -51,18 +51,18 @@ public sealed class KdlSpecConformanceTests
                 continue;
             }
 
-            string expected = ReadTextNormalized(expectedPath);
-            string actual = ToKdlString(document!, GetSpecWriteOptions()).Replace("\r\n", "\n", StringComparison.Ordinal);
+            string expected = File.ReadAllText(expectedPath);
+            string actual = ToKdlString(document!, GetSpecWriteOptions());
 
             if (!string.Equals(actual, expected, StringComparison.Ordinal))
             {
-                failures.Add($"{fileName}: round-trip mismatch.{Environment.NewLine}expected: {ToSingleLine(expected)}{Environment.NewLine}actual:   {ToSingleLine(actual)}");
+                failures.Add($"{fileName}: round-trip mismatch.\nexpected: {ToSingleLine(expected)}\nactual:   {ToSingleLine(actual)}");
             }
         }
 
         Assert.True(
             failures.Count == 0,
-            string.Join(Environment.NewLine + Environment.NewLine, failures));
+            string.Join("\n\n", failures));
     }
 
     [Fact]
@@ -91,11 +91,6 @@ public sealed class KdlSpecConformanceTests
         {
             PrintEmptyChildren = false,
         };
-    }
-
-    private static string ReadTextNormalized(string filePath)
-    {
-        return File.ReadAllText(filePath).Replace("\r\n", "\n", StringComparison.Ordinal);
     }
 
     private static string ToKdlString(IKdlObject obj, KdlWriteOptions options)

@@ -28,6 +28,12 @@ namespace he
 
         KdlReadResult Parse(StringView src, KdlReader::Handler& handler)
         {
+            m_handler = &handler;
+            m_cursor = src.Begin();
+            m_end = src.End();
+            m_lineStart = m_cursor;
+            m_line = 1;
+
             if (!ConsumeBOM())
             {
                 return m_result;

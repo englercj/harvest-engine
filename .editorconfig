@@ -349,3 +349,9 @@ dotnet_naming_style.begins_with_i.required_prefix = I
 dotnet_naming_style.begins_with_i.required_suffix =
 dotnet_naming_style.begins_with_i.word_separator =
 dotnet_naming_style.begins_with_i.capitalization = pascal_case
+
+#### Diagnostic severity preferences ####
+
+# CA1873: Avoid potentially expensive logging
+# https://learn.microsoft.com/en-us/dotnet/fundamentals/code-analysis/quality-rules/ca1873
+dotnet_diagnostic.CA1873.severity = none

@@ -59,6 +59,15 @@
           "Serilog": "4.2.0"
         }
       },
+      "SharpCompress": {
+        "type": "Direct",
+        "requested": "[0.39.0, )",
+        "resolved": "0.39.0",
+        "contentHash": "0esqIUDlg68Z7+Weuge4QzEvNtawUO4obTJFL7xuf4DBHMxVRr+wbNgiX9arMrj3kGXQSvLe0zbZG3oxpkwJOA==",
+        "dependencies": {
+          "ZstdSharp.Port": "0.8.4"
+        }
+      },
       "System.CommandLine": {
         "type": "Direct",
         "requested": "[2.0.3, )",
@@ -106,6 +115,11 @@
         "type": "Transitive",
         "resolved": "4.2.0",
         "contentHash": "gmoWVOvKgbME8TYR+gwMf7osROiWAURterc6Rt2dQyX7wtjZYpqFiA/pY6ztjGQKKV62GGCyOcmtP1UKMHgSmA=="
+      },
+      "ZstdSharp.Port": {
+        "type": "Transitive",
+        "resolved": "0.8.4",
+        "contentHash": "eieSXq3kakCUXbgdxkKaRqWS6hF0KBJcqok9LlDCs60GOyrynLvPOcQ0pRw7shdPF7lh/VepJ9cP9n9HHc759g=="
       },
       "harvest.common": {
         "type": "Project",

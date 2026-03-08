@@ -20,6 +20,7 @@ public enum EFetchArchiveFormat
     [KdlName("zip")] Zip,
     [KdlName("tar")] Tar,
     [KdlName("tar.gz")] TarGz,
+    [KdlName("tar.xz")] TarXz,
 }
 
 public class FetchNodeTraits : NodeBaseTraits
@@ -142,12 +143,27 @@ public class FetchNode(KdlNode node) : NodeBase<FetchNodeTraits>(node)
     private string? _archiveKey = null;
     public string ArchiveKey => _archiveKey ??= GetArchiveUrl().GetSHA256Hash().ToString();
 
+    private string? _archivePrefix = null;
+    public string ArchivePrefix => _archivePrefix ??= GetArchivePrefix();
+
     private string? _archiveDirName = null;
-    public string ArchiveDirName => _archiveDirName ??= $"{GetArchivePrefix()}-{ArchiveKey}";
+    public string ArchiveDirName => _archiveDirName ??= $"{ArchivePrefix}-{ArchiveKey}";
 
     public EFetchArchiveFormat ArchiveFormat => GetArchiveFormat();
 
     public string ArchiveBaseDir => GetArchiveBaseDir();
+
+    private string GetArchiveUrl()
+    {
+        return Method switch
+        {
+            EFetchMethod.Archive => GetValue<string>("url"),
+            EFetchMethod.BitBucket => $"https://bitbucket.org/{BitBucketUser}/{BitBucketRepo}/get/{BitBucketRef}.zip",
+            EFetchMethod.GitHub => $"https://github.com/{GitHubUser}/{GitHubRepo}/archive/{GitHubRef}.zip",
+            EFetchMethod.Nuget => $"https://www.nuget.org/api/v2/package/{NugetPackage}/{NugetVersion}",
+            _ => "",
+        };
+    }
 
     private string GetArchivePrefix()
     {
@@ -174,6 +190,7 @@ public class FetchNode(KdlNode node) : NodeBase<FetchNodeTraits>(node)
         string sanitized = builder.ToString().Trim('_', '-', '.');
         return string.IsNullOrWhiteSpace(sanitized) ? "archive" : sanitized;
     }
+
     private EFetchArchiveFormat GetArchiveFormat()
     {
         if (Method == EFetchMethod.Archive)
@@ -196,6 +213,10 @@ public class FetchNode(KdlNode node) : NodeBase<FetchNodeTraits>(node)
             else if (urlPath.EndsWith(".tar.gz") || urlPath.EndsWith(".tgz"))
             {
                 return EFetchArchiveFormat.TarGz;
+            }
+            else if (urlPath.EndsWith(".tar.xz") || urlPath.EndsWith(".txz"))
+            {
+                return EFetchArchiveFormat.TarXz;
             }
 
             // Fall through to a default of zip if we can't determine the type
@@ -239,17 +260,5 @@ public class FetchNode(KdlNode node) : NodeBase<FetchNodeTraits>(node)
         };
 
         return "";
-    }
-
-    private string GetArchiveUrl()
-    {
-        return Method switch
-        {
-            EFetchMethod.Archive => GetValue<string>("url"),
-            EFetchMethod.BitBucket => $"https://bitbucket.org/{BitBucketUser}/{BitBucketRepo}/get/{BitBucketRef}.zip",
-            EFetchMethod.GitHub => $"https://github.com/{GitHubUser}/{GitHubRepo}/archive/{GitHubRef}.zip",
-            EFetchMethod.Nuget => $"https://www.nuget.org/api/v2/package/{NugetPackage}/{NugetVersion}",
-            _ => "",
-        };
     }
 }

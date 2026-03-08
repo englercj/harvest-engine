@@ -28,6 +28,7 @@ The `archive` method supports the following properties:
     * `zip` - A ZIP archive file.
     * `tar` - An uncompressed tarball file.
     * `tar.gz` - A GZIP compressed tarball file.
+    * `tar.xz` - An XZ compressed tarball file.
 
 ### `bitbucket` method
 

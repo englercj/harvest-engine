@@ -1,5 +1,7 @@
 // Copyright Chad Engler
 
+using Harvest.Kdl;
+using Harvest.Kdl.Types;
 using Harvest.Make.Projects.Nodes;
 using Harvest.Make.Projects.Services;
 
@@ -131,6 +133,17 @@ public sealed class NodeCoverageTests(ProjectGenerationFixture fixture)
         Assert.Equal(EFetchArchiveFormat.Zip, fetch.ArchiveFormat);
         Assert.StartsWith("unit_dep-", fetch.ArchiveDirName, StringComparison.OrdinalIgnoreCase);
         Assert.Equal("dep-root", fetch.ArchiveBaseDir);
+    }
+
+    [Fact]
+    public void CoversFetchNodeTarXzInference()
+    {
+        KdlNode node = new("fetch");
+        node.Arguments.Add(KdlValue.From("archive"));
+        node.Properties["url"] = KdlValue.From("https://example.com/archive.tar.xz");
+
+        FetchNode fetch = new(node);
+        Assert.Equal(EFetchArchiveFormat.TarXz, fetch.ArchiveFormat);
     }
 
     [Fact]

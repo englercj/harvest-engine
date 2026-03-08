@@ -2,11 +2,14 @@
 
 using Harvest.Common;
 using Harvest.Common.Attributes;
+using Harvest.Common.Extensions;
 using Harvest.Kdl;
 using Harvest.Make.Projects;
 using Harvest.Make.Projects.Nodes;
 using Harvest.Make.Projects.Services;
 using Microsoft.Extensions.Logging;
+using SharpCompress.Compressors.Xz;
+using System.Buffers;
 using System.Formats.Tar;
 using System.IO.Compression;
 
@@ -18,12 +21,36 @@ internal partial class InstallPluginsCommand(
     IProjectService projectService)
     : ICommandExecutor
 {
+    private const int DownloadProgressChunkBytes = 8 * 1024 * 1024;
+    private const int DownloadProgressPercentStep = 10;
+
     public async Task<int> ExecuteAsync(CancellationToken ct)
     {
-        HashSet<string> installKeys = [];
-        List<Task> installTasks = [];
+        List<InstallWorkItem> installItems = CollectInstallItems();
+        if (installItems.Count == 0)
+        {
+            logger.LogInformation("No plugin archives need to be installed.");
+            return 0;
+        }
+
+        logger.LogInformation("Installing {Count} plugin archives...", installItems.Count);
 
         using HttpClient httpClient = new();
+
+        await Task.WhenAll(installItems.Select((item, index) =>
+        {
+            string progressPrefix = $"[{index + 1}/{installItems.Count}] {item.FetchNode.ArchivePrefix}";
+            return InstallArchiveAsync(httpClient, item, progressPrefix, ct);
+        }));
+
+        logger.LogInformation("All plugins installed successfully.");
+        return 0;
+    }
+
+    private List<InstallWorkItem> CollectInstallItems()
+    {
+        HashSet<string> installKeys = [];
+        List<InstallWorkItem> installItems = [];
 
         foreach ((_, ResolvedProjectTree projectTree) in projectService.ResolvedProjectTrees)
         {
@@ -34,112 +61,202 @@ internal partial class InstallPluginsCommand(
                 foreach (KdlNode fetchNodeKdl in plugin.Node.GetDescendantsByName(FetchNode.NodeTraits.Name))
                 {
                     FetchNode fetchNode = new(fetchNodeKdl);
-                    if (installKeys.Add(fetchNode.ArchiveDirName))
+                    if (!installKeys.Add(fetchNode.ArchiveDirName))
                     {
-                        installTasks.Add(InstallArchiveAsync(httpClient, fetchNode, installDir));
+                        continue;
                     }
+
+                    installItems.Add(new(plugin.PluginName, fetchNode, installDir));
                 }
             }
         }
 
-        // TODO: Download progress reporting?
-
-        await Task.WhenAll(installTasks);
-
-        // TODO: How do we clean up old/unneeded plugin installs?
-        // If you update a plugin on a branch, it can be pretty annoying to have it removed/added
-        // every time you switch branches. Maybe we need a separate "prune" command or something?
-
-        logger.LogInformation("All plugins installed successfully.");
-        return 0;
+        return installItems;
     }
 
-    private async Task InstallArchiveAsync(HttpClient httpClient, FetchNode fetchNode, string installDir)
+    private async Task InstallArchiveAsync(HttpClient httpClient, InstallWorkItem item, string progressPrefix, CancellationToken ct)
     {
-        string extractDir = Path.Combine(installDir, fetchNode.ArchiveDirName);
+        string extractDir = Path.Combine(item.InstallDir, item.FetchNode.ArchiveDirName);
 
         if (Directory.Exists(extractDir))
         {
-            logger.LogTrace("Archive is already installed: {ArchiveUrl}", fetchNode.ArchiveUri);
+            logger.LogInformation("{ProgressPrefix} already installed.", progressPrefix);
             return;
         }
 
-        string archiveTempPath = Path.GetTempFileName();
+        string archiveTempPath = Path.Combine(Path.GetTempPath(), $"hemake-{Guid.NewGuid():N}.tmp");
 
-        await DownloadArchiveAsync(httpClient, fetchNode.ArchiveUri, archiveTempPath);
+        logger.LogInformation("{ProgressPrefix} installing for plugin '{PluginName}' from {ArchiveUri}", progressPrefix, item.PluginName, item.FetchNode.ArchiveUri);
 
         try
         {
-            Directory.CreateDirectory(extractDir);
+            await DownloadArchiveAsync(httpClient, item.FetchNode, archiveTempPath, progressPrefix, ct);
 
-            await ExtractArchiveAsync(fetchNode.ArchiveFormat, archiveTempPath, extractDir);
+            Directory.CreateDirectory(extractDir);
+            await ExtractArchiveAsync(item.FetchNode, archiveTempPath, extractDir, progressPrefix, ct);
+
+            logger.LogInformation("{ProgressPrefix} installed successfully.", progressPrefix);
         }
-        catch (Exception)
+        catch (Exception ex)
         {
-            // Remove the extract dir on failure to avoid leaving a partial install
             try
             {
                 Directory.Delete(extractDir, recursive: true);
             }
+            catch (DirectoryNotFoundException)
+            {
+                // Ignore - we were trying to clean up from a failed install, so the directory may not exist
+            }
             catch (Exception delEx)
             {
-                // Log but ignore errors during cleanup, they are secondary to the original error
                 logger.LogError(delEx, "Failed to clean up extract directory after failed install: {ExtractDir}", extractDir);
             }
 
-            // Rethrow the original exception
-            throw;
+            throw new InvalidOperationException($"Failed to install '{item.FetchNode.ArchiveDirName}' from '{item.FetchNode.ArchiveUri}'.", ex);
         }
-    }
-
-    private async Task DownloadArchiveAsync(HttpClient httpClient, Uri archiveUri, string archivePath)
-    {
-        logger.LogTrace("Downloading archive: {Uri}", archiveUri);
-
-        using HttpResponseMessage response = await httpClient.GetAsync(archiveUri);
-        response.EnsureSuccessStatusCode();
-        await using FileStream fs = new(archivePath, FileMode.Create, FileAccess.Write, FileShare.None);
-        await response.Content.CopyToAsync(fs);
-    }
-
-    private static async Task ExtractArchiveAsync(EFetchArchiveFormat archiveFormat, string archivePath, string extractDir)
-    {
-        switch (archiveFormat)
+        finally
         {
-            case EFetchArchiveFormat.Zip:
+            try
             {
-                ZipFile.ExtractToDirectory(archivePath, extractDir, true);
-                break;
+                File.Delete(archiveTempPath);
             }
-            case EFetchArchiveFormat.Tar:
+            catch (FileNotFoundException)
             {
-                await using FileStream tarStream = new(archivePath, new FileStreamOptions { Mode = FileMode.Open, Access = FileAccess.Read, Options = FileOptions.Asynchronous });
-                await ExtractTarArchiveAsync(tarStream, extractDir);
-                break;
+                // Ignore - the file may not have been created if the download failed early
             }
-            case EFetchArchiveFormat.TarGz:
+            catch (Exception ex)
             {
-                await using FileStream tarStream = new(archivePath, new FileStreamOptions { Mode = FileMode.Open, Access = FileAccess.Read, Options = FileOptions.Asynchronous });
-                await using GZipStream gzipStream = new(tarStream, CompressionMode.Decompress, leaveOpen: true);
-                await ExtractTarArchiveAsync(gzipStream, extractDir);
-                break;
+                logger.LogDebug(ex, "Failed to remove temp archive: {ArchiveTempPath}", archiveTempPath);
             }
         }
     }
 
-    private static async Task ExtractTarArchiveAsync(Stream archiveStream, string extractDir)
+    private async Task DownloadArchiveAsync(HttpClient httpClient, FetchNode fetchNode, string archivePath, string progressPrefix, CancellationToken ct)
+    {
+        using HttpResponseMessage response = await httpClient.GetAsync(fetchNode.ArchiveUri, HttpCompletionOption.ResponseHeadersRead, ct);
+        response.EnsureSuccessStatusCode();
+
+        long? totalBytes = response.Content.Headers.ContentLength;
+        if (totalBytes.HasValue)
+        {
+            logger.LogInformation("{ProgressPrefix} downloading {SizeMiB:F1} KiB...", progressPrefix, totalBytes.Value / 1024.0);
+        }
+        else
+        {
+            logger.LogInformation("{ProgressPrefix} downloading...", progressPrefix);
+        }
+
+        await using Stream responseStream = await response.Content.ReadAsStreamAsync(ct);
+        await using FileStream fileStream = new(archivePath, new FileStreamOptions()
+        {
+            Mode = FileMode.Create,
+            Access = FileAccess.Write,
+            Share = FileShare.None,
+            Options = FileOptions.Asynchronous,
+        });
+
+        await CopyToAsyncWithProgress(responseStream, fileStream, totalBytes, progressPrefix, ct);
+    }
+
+    private async Task CopyToAsyncWithProgress(Stream source, Stream destination, long? totalBytes, string progressPrefix, CancellationToken ct)
+    {
+        using PooledBuffer<byte> buffer = ArrayPool<byte>.Shared.RentBuffer(81920);
+        long totalRead = 0;
+        int nextPercentToLog = DownloadProgressPercentStep;
+        long nextBytesToLog = DownloadProgressChunkBytes;
+
+        while (true)
+        {
+            int bytesRead = await source.ReadAsync(buffer, ct);
+            if (bytesRead == 0)
+            {
+                break;
+            }
+
+            await destination.WriteAsync(buffer.AsMemory(..bytesRead), ct);
+            totalRead += bytesRead;
+
+            if (totalBytes is long expectedBytes && expectedBytes > 0)
+            {
+                int currentPercent = (int)((totalRead * 100) / expectedBytes);
+                while (currentPercent >= nextPercentToLog && nextPercentToLog < 100)
+                {
+                    logger.LogInformation("{ProgressPrefix} download {Percent}% ({ReadMiB:F1} KiB)", progressPrefix, nextPercentToLog, totalRead / 1024.0);
+                    nextPercentToLog += DownloadProgressPercentStep;
+                }
+            }
+            else if (totalRead >= nextBytesToLog)
+            {
+                logger.LogInformation("{ProgressPrefix} downloaded {ReadMiB:F1} KiB", progressPrefix, totalRead / 1024.0);
+                nextBytesToLog += DownloadProgressChunkBytes;
+            }
+        }
+
+        await destination.FlushAsync(ct);
+        logger.LogInformation("{ProgressPrefix} download complete ({ReadMiB:F1} KiB)", progressPrefix, totalRead / 1024.0);
+    }
+
+    private async Task ExtractArchiveAsync(FetchNode fetchNode, string archivePath, string extractDir, string progressPrefix, CancellationToken ct)
+    {
+        logger.LogInformation("{ProgressPrefix} extracting {ArchiveFormat} archive for {ArchiveDirName}...", progressPrefix, fetchNode.ArchiveFormat, fetchNode.ArchiveDirName);
+
+        try
+        {
+            switch (fetchNode.ArchiveFormat)
+            {
+                case EFetchArchiveFormat.Zip:
+                {
+                    ZipFile.ExtractToDirectory(archivePath, extractDir, true);
+                    break;
+                }
+                case EFetchArchiveFormat.Tar:
+                {
+                    await using FileStream tarStream = new(archivePath, new FileStreamOptions { Mode = FileMode.Open, Access = FileAccess.Read, Options = FileOptions.Asynchronous });
+                    await ExtractTarArchiveAsync(tarStream, extractDir, progressPrefix, ct);
+                    break;
+                }
+                case EFetchArchiveFormat.TarGz:
+                {
+                    await using FileStream tarStream = new(archivePath, new FileStreamOptions { Mode = FileMode.Open, Access = FileAccess.Read, Options = FileOptions.Asynchronous });
+                    await using GZipStream gzipStream = new(tarStream, CompressionMode.Decompress, leaveOpen: true);
+                    await ExtractTarArchiveAsync(gzipStream, extractDir, progressPrefix, ct);
+                    break;
+                }
+                case EFetchArchiveFormat.TarXz:
+                {
+                    await using FileStream tarStream = new(archivePath, new FileStreamOptions { Mode = FileMode.Open, Access = FileAccess.Read, Options = FileOptions.Asynchronous });
+                    await using XZStream xzStream = new(tarStream);
+                    await ExtractTarArchiveAsync(xzStream, extractDir, progressPrefix, ct);
+                    break;
+                }
+                default:
+                {
+                    throw new InvalidDataException($"Unsupported archive format '{fetchNode.ArchiveFormat}'.");
+                }
+            }
+        }
+        catch (Exception ex) when (ex is InvalidDataException or IOException)
+        {
+            long archiveSize = File.Exists(archivePath) ? new FileInfo(archivePath).Length : 0;
+            throw new InvalidDataException($"Failed to extract '{fetchNode.ArchiveUri}' as '{fetchNode.ArchiveFormat}'. Downloaded file size: {archiveSize} bytes.", ex);
+        }
+    }
+
+    private static async Task ExtractTarArchiveAsync(Stream archiveStream, string extractDir, string progressPrefix, CancellationToken ct)
     {
         await using TarReader tarReader = new(archiveStream);
 
         TarEntry? entry;
-        while ((entry = await tarReader.GetNextEntryAsync()) is not null)
+        while ((entry = await tarReader.GetNextEntryAsync(cancellationToken: ct)) is not null)
         {
             if (entry.EntryType is TarEntryType.RegularFile)
             {
                 string entryOutputPath = Path.Combine(extractDir, entry.Name);
                 Directory.CreateDirectory(Path.GetDirectoryName(entryOutputPath)!);
-                await entry.ExtractToFileAsync(entryOutputPath, overwrite: true);
+                await entry.ExtractToFileAsync(entryOutputPath, overwrite: true, ct);
             }
         }
     }
+
+    private sealed record InstallWorkItem(string PluginName, FetchNode FetchNode, string InstallDir);
 }

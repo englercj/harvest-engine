@@ -94,7 +94,7 @@ internal class VS2026ProjectGeneratorService(
 
             foreach (ModuleNode module in projectTree.IndexedNodes.GetAllNodes<ModuleNode>())
             {
-                if (module.Kind != EModuleKind.Content)
+                if (module.Kind != EModuleKind.Content && module.Kind != EModuleKind.HarvestMakeExtension)
                 {
                     if (_groupTree.TryAdd(module))
                     {

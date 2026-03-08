@@ -5,8 +5,8 @@ using System.Runtime.Loader;
 
 namespace Harvest.Common;
 
-internal sealed class AppPluginLoadContext(string path)
-    : AssemblyLoadContext(name: "Harvest App Plugin Load Context", isCollectible: false)
+internal sealed class ExtensionLoadContext(string path)
+    : AssemblyLoadContext(name: "Harvest HE Make Extension Load Context", isCollectible: false)
 {
     private readonly AssemblyDependencyResolver _resolver = new(path);
     private readonly AssemblyLoadContext _defaultLoadContext = GetLoadContext(Assembly.GetExecutingAssembly()) ?? Default;

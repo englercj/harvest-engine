@@ -7,8 +7,14 @@ plugin he.assets version="0.1.0" license="UNLICENSED" {
         files { "assets/include/**"; "assets/src/**" }
         include_dirs { "assets/src" }
 
+        schema_compile "c++" scope=public {
+            files { "assets/include/he/assets/asset_types.hsc" }
+            include_dirs { "assets/include" }
+            dependencies { he_editor }
+        }
+
         public {
-            dependencies { he_assets__schemac_1; he_core; he_schema }
+            dependencies { he_core; he_schema }
             include_dirs { "assets/include"; "${module.gen_dir}/include" }
         }
     }
@@ -28,35 +34,6 @@ plugin he.assets version="0.1.0" license="UNLICENSED" {
             public {
                 dependencies { "Shlwapi" kind=system }
             }
-        }
-    }
-
-    build_rule he_assets_asset_types_schemac message="Compiling schema file %(FullPath)" {
-        command "echo ${module[he_schemac].build_target} -t c++ -I \"${module[he_assets].path:dir}/assets/include\" -I \"${module[he_editor].path:dir}/include\" -I \"${module[he_schema].path:dir}/schema/include\" -o \"${module[he_assets].gen_dir}/include/he/assets\" \"%(FullPath)\""
-        command "${module[he_schemac].build_target} -t c++ -I \"${module[he_assets].path:dir}/assets/include\" -I \"${module[he_editor].path:dir}/include\" -I \"${module[he_schema].path:dir}/schema/include\" -o \"${module[he_assets].gen_dir}/include/he/assets\" \"%(FullPath)\""
-        inputs {
-            "${module[he_schemac].build_target}"
-        }
-        outputs {
-            "${module[he_assets].gen_dir}/include/he/assets/asset_types.hsc.h"
-            "${module[he_assets].gen_dir}/include/he/assets/asset_types.hsc.cpp"
-        }
-    }
-
-    module he_assets__schemac_1 kind=lib_static group="_generated/schema" {
-        files {
-            "assets/include/he/assets/asset_types.hsc" action=build build_rule=he_assets_asset_types_schemac
-        }
-
-        dependencies {
-            he_core
-            he_editor__schemac_1
-            he_schema
-            he_schemac kind=order
-        }
-
-        public {
-            include_dirs { "${module[he_assets].gen_dir}/include" }
         }
     }
 }

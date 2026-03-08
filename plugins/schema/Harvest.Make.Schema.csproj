@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <Import Project="..\..\hemake\props\Harvest.props" />
+  <Import Project="..\..\hemake\props\Harvest.Extension.props" />
+
+  <ItemGroup>
+    <Reference Include="Harvest.Common">
+      <HintPath>$(HEMakeCoreBinDir)Harvest.Common.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Harvest.Kdl">
+      <HintPath>$(HEMakeCoreBinDir)Harvest.Kdl.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Harvest.Make.Projects">
+      <HintPath>$(HEMakeCoreBinDir)Harvest.Make.Projects.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.3" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.3" />
+  </ItemGroup>
+</Project>

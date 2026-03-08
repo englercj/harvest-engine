@@ -13,6 +13,7 @@ A definition of a module provided by a plugin.
     * `app_windowed` - Code built as a windowed application (exe).
     * `content` - Assets, configuration, and other content to be edited.
     * `custom` - Utility project which contains only custom build scripts.
+    * `hemake_extension` - HE Make extension module used to build and load a `.csproj` into the HE Make CLI at runtime.
     * `lib_header` - Header-only module that does not generate any symbols to be linked.
     * `lib_static` - Code built as a static library (lib/a).
     * `lib_shared` - Code built as a shared library (dll/so).
@@ -21,9 +22,8 @@ A definition of a module provided by a plugin.
     * `c` - C
     * `cpp` - C++
     * `csharp` - C#
-- `project_file` (string) - Optional. Path to a `.csproj` file to use instead of generating a project file. Other project file types are not supported. When `language` is omitted, `.csproj` implies `csharp`.
+- `project_file` (string) - Optional. Path to an external project file to use instead of generating a project file. `.csproj` is supported for normal external C# projects and for `hemake_extension` modules. When `language` is omitted, `.csproj` implies `csharp`.
 - `entrypoint` (string) - Optional. Name of the application's entrypoint symbol.
-- `hemake_load` (boolean) - Optional. `#true` to tell HE Make to load this project as a plugin. Requires `project_file` to be set. Default: `#false`
 - `target_name` (string) Optional. The name of the output target file. When not specified, the module's name is used.
 - `target_extension` (string) Optional. The extension of the output target file. By default the extension used is defined by the toolset.
 - `target_dir` (string) Optional. The directory for the output target file. When not specified, the default output directory is derived from [`build_output`](build_output_node.md) and the module kind.
@@ -53,6 +53,9 @@ A definition of a module provided by a plugin.
 - [`sanitize`](sanitize_node.md)
 - [`symbols`](symbols_node.md)
 - [`tags`](tags_node.md)
+- [`bin2c_compile`](bin2c_compile_node.md) - Available when the HE Make bin2c extension is loaded.
+- [`schema_compile`](schema_compile_node.md) - Available when the HE Make schema extension is loaded.
+- [`shader_compile`](shader_compile_node.md) - Available when the HE Make shader extension is loaded.
 - [`warnings`](warnings_node.md)
 - [`when`](when_node.md)
 

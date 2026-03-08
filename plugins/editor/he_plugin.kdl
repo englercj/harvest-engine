@@ -7,13 +7,27 @@ plugin he.editor version="0.1.0" license="UNLICENSED" {
         files { "include/**"; "src/**" }
         include_dirs { "src"; "${module.gen_dir}/src"; "${module.gen_dir}/src/shaders" }
 
-        dependencies {
-            he_editor__bin2c_1
+        bin2c_compile scope=private compress=#true {
+            files {
+                "src/fonts/NotoMono-Regular.ttf"
+                "src/fonts/NotoSans-Regular.ttf"
+                "src/fonts/materialdesignicons.ttf"
+            }
+            include_dirs { "src" }
+        }
+
+        schema_compile "c++" scope=public {
+            files {
+                "include/he/editor/schema/display_attributes.hsc"
+                "include/he/editor/schema/plugin.hsc"
+                "include/he/editor/schema/project.hsc"
+                "include/he/editor/schema/settings.hsc"
+            }
+            include_dirs { "include" }
         }
 
         public {
             dependencies {
-                he_editor__schemac_1
                 boost_di
                 he_assets
                 he_assets_editor
@@ -34,176 +48,20 @@ plugin he.editor version="0.1.0" license="UNLICENSED" {
                 "5054" enabled=#false
             }
 
+            shader_compile "sm_6_0" scope=private {
+                files { "src/shaders/imgui.slang" }
+                include_dirs { "src/shaders" }
+            }
+
             public {
                 dependencies { "Shlwapi" kind=system }
             }
         }
 
-        when system=windows {
-            dependencies { he_editor__shaderc_1 }
-        }
-
         when system=linux {
-            dependencies { he_editor__shaderc_2 }
-        }
-    }
-
-    build_rule he_editor_display_attributes_schemac message="Compiling schema file %(FullPath)" {
-        command "echo ${module[he_schemac].build_target} -t c++ -I \"${module[he_editor].path:dir}/include\" -I \"${module[he_schema].path:dir}/schema/include\" -o \"${module[he_editor].gen_dir}/include/he/editor/schema\" \"%(FullPath)\""
-        command "${module[he_schemac].build_target} -t c++ -I \"${module[he_editor].path:dir}/include\" -I \"${module[he_schema].path:dir}/schema/include\" -o \"${module[he_editor].gen_dir}/include/he/editor/schema\" \"%(FullPath)\""
-        inputs {
-            "${module[he_schemac].build_target}"
-        }
-        outputs {
-            "${module[he_editor].gen_dir}/include/he/editor/schema/display_attributes.hsc.h"
-            "${module[he_editor].gen_dir}/include/he/editor/schema/display_attributes.hsc.cpp"
-        }
-    }
-
-    build_rule he_editor_plugin_schemac message="Compiling schema file %(FullPath)" {
-        command "echo ${module[he_schemac].build_target} -t c++ -I \"${module[he_editor].path:dir}/include\" -I \"${module[he_schema].path:dir}/schema/include\" -o \"${module[he_editor].gen_dir}/include/he/editor/schema\" \"%(FullPath)\""
-        command "${module[he_schemac].build_target} -t c++ -I \"${module[he_editor].path:dir}/include\" -I \"${module[he_schema].path:dir}/schema/include\" -o \"${module[he_editor].gen_dir}/include/he/editor/schema\" \"%(FullPath)\""
-        inputs {
-            "${module[he_schemac].build_target}"
-        }
-        outputs {
-            "${module[he_editor].gen_dir}/include/he/editor/schema/plugin.hsc.h"
-            "${module[he_editor].gen_dir}/include/he/editor/schema/plugin.hsc.cpp"
-        }
-    }
-
-    build_rule he_editor_project_schemac message="Compiling schema file %(FullPath)" {
-        command "echo ${module[he_schemac].build_target} -t c++ -I \"${module[he_editor].path:dir}/include\" -I \"${module[he_schema].path:dir}/schema/include\" -o \"${module[he_editor].gen_dir}/include/he/editor/schema\" \"%(FullPath)\""
-        command "${module[he_schemac].build_target} -t c++ -I \"${module[he_editor].path:dir}/include\" -I \"${module[he_schema].path:dir}/schema/include\" -o \"${module[he_editor].gen_dir}/include/he/editor/schema\" \"%(FullPath)\""
-        inputs {
-            "${module[he_schemac].build_target}"
-        }
-        outputs {
-            "${module[he_editor].gen_dir}/include/he/editor/schema/project.hsc.h"
-            "${module[he_editor].gen_dir}/include/he/editor/schema/project.hsc.cpp"
-        }
-    }
-
-    build_rule he_editor_settings_schemac message="Compiling schema file %(FullPath)" {
-        command "echo ${module[he_schemac].build_target} -t c++ -I \"${module[he_editor].path:dir}/include\" -I \"${module[he_schema].path:dir}/schema/include\" -o \"${module[he_editor].gen_dir}/include/he/editor/schema\" \"%(FullPath)\""
-        command "${module[he_schemac].build_target} -t c++ -I \"${module[he_editor].path:dir}/include\" -I \"${module[he_schema].path:dir}/schema/include\" -o \"${module[he_editor].gen_dir}/include/he/editor/schema\" \"%(FullPath)\""
-        inputs {
-            "${module[he_schemac].build_target}"
-        }
-        outputs {
-            "${module[he_editor].gen_dir}/include/he/editor/schema/settings.hsc.h"
-            "${module[he_editor].gen_dir}/include/he/editor/schema/settings.hsc.cpp"
-        }
-    }
-
-    build_rule he_editor_noto_mono_bin2c message="Creating C header for file %(FullPath)" link_output=#false {
-        command "echo ${module[he_bin2c].build_target} -c -n c_NotoMono_Regular_ttf -f \"%(FullPath)\" -o \"${module[he_editor].gen_dir}/src/fonts/NotoMono-Regular.ttf.h\""
-        command "${module[he_bin2c].build_target} -c -n c_NotoMono_Regular_ttf -f \"%(FullPath)\" -o \"${module[he_editor].gen_dir}/src/fonts/NotoMono-Regular.ttf.h\""
-        inputs {
-            "${module[he_bin2c].build_target}"
-        }
-        outputs {
-            "${module[he_editor].gen_dir}/src/fonts/NotoMono-Regular.ttf.h"
-        }
-    }
-
-    build_rule he_editor_noto_sans_bin2c message="Creating C header for file %(FullPath)" link_output=#false {
-        command "echo ${module[he_bin2c].build_target} -c -n c_NotoSans_Regular_ttf -f \"%(FullPath)\" -o \"${module[he_editor].gen_dir}/src/fonts/NotoSans-Regular.ttf.h\""
-        command "${module[he_bin2c].build_target} -c -n c_NotoSans_Regular_ttf -f \"%(FullPath)\" -o \"${module[he_editor].gen_dir}/src/fonts/NotoSans-Regular.ttf.h\""
-        inputs {
-            "${module[he_bin2c].build_target}"
-        }
-        outputs {
-            "${module[he_editor].gen_dir}/src/fonts/NotoSans-Regular.ttf.h"
-        }
-    }
-
-    build_rule he_editor_mdi_bin2c message="Creating C header for file %(FullPath)" link_output=#false {
-        command "echo ${module[he_bin2c].build_target} -c -n c_materialdesignicons_ttf -f \"%(FullPath)\" -o \"${module[he_editor].gen_dir}/src/fonts/materialdesignicons.ttf.h\""
-        command "${module[he_bin2c].build_target} -c -n c_materialdesignicons_ttf -f \"%(FullPath)\" -o \"${module[he_editor].gen_dir}/src/fonts/materialdesignicons.ttf.h\""
-        inputs {
-            "${module[he_bin2c].build_target}"
-        }
-        outputs {
-            "${module[he_editor].gen_dir}/src/fonts/materialdesignicons.ttf.h"
-        }
-    }
-
-    build_rule he_editor_imgui_shader_sm60 message="Compiling shader file %(FullPath)" link_output=#false {
-        command "echo ${module[he_shaderc].build_target} -t sm_6_0 -I \"${module[he_editor].path:dir}/src/shaders\" -o \"${module[he_editor].gen_dir}/src/shaders\" \"%(FullPath)\""
-        command "${module[he_shaderc].build_target} -t sm_6_0 -I \"${module[he_editor].path:dir}/src/shaders\" -o \"${module[he_editor].gen_dir}/src/shaders\" \"%(FullPath)\""
-        inputs {
-            "${module[he_shaderc].build_target}"
-        }
-        outputs {
-            "${module[he_editor].gen_dir}/src/shaders/imgui.shaders.h"
-        }
-    }
-
-    build_rule he_editor_imgui_shader_glsl450 message="Compiling shader file %(FullPath)" link_output=#false {
-        command "echo ${module[he_shaderc].build_target} -t glsl_450 -I \"${module[he_editor].path:dir}/src/shaders\" -o \"${module[he_editor].gen_dir}/src/shaders\" \"%(FullPath)\""
-        command "${module[he_shaderc].build_target} -t glsl_450 -I \"${module[he_editor].path:dir}/src/shaders\" -o \"${module[he_editor].gen_dir}/src/shaders\" \"%(FullPath)\""
-        inputs {
-            "${module[he_shaderc].build_target}"
-        }
-        outputs {
-            "${module[he_editor].gen_dir}/src/shaders/imgui.shaders.h"
-        }
-    }
-
-    module he_editor__schemac_1 kind=lib_static group="_generated/schema" {
-        files {
-            "include/he/editor/schema/display_attributes.hsc" action=build build_rule=he_editor_display_attributes_schemac
-            "include/he/editor/schema/plugin.hsc" action=build build_rule=he_editor_plugin_schemac
-            "include/he/editor/schema/project.hsc" action=build build_rule=he_editor_project_schemac
-            "include/he/editor/schema/settings.hsc" action=build build_rule=he_editor_settings_schemac
-        }
-
-        dependencies {
-            he_core
-            he_schema
-            he_schemac kind=order
-        }
-
-        public {
-            include_dirs { "${module[he_editor].gen_dir}/include" }
-        }
-    }
-
-    module he_editor__bin2c_1 kind=custom group="_generated/bin2c" {
-        files {
-            "src/fonts/NotoMono-Regular.ttf" action=build build_rule=he_editor_noto_mono_bin2c
-            "src/fonts/NotoSans-Regular.ttf" action=build build_rule=he_editor_noto_sans_bin2c
-            "src/fonts/materialdesignicons.ttf" action=build build_rule=he_editor_mdi_bin2c
-        }
-
-        dependencies { he_bin2c kind=order }
-
-        public {
-            include_dirs { "${module[he_editor].gen_dir}/src" }
-        }
-    }
-
-    module he_editor__shaderc_1 kind=custom group="_generated/shader" {
-        when system=windows {
-            files {
-                "src/shaders/imgui.slang" action=build build_rule=he_editor_imgui_shader_sm60
-            }
-            dependencies { he_shaderc kind=order }
-            public {
-                include_dirs { "${module[he_editor].gen_dir}/src/shaders" }
-            }
-        }
-    }
-
-    module he_editor__shaderc_2 kind=custom group="_generated/shader" {
-        when system=linux {
-            files {
-                "src/shaders/imgui.slang" action=build build_rule=he_editor_imgui_shader_glsl450
-            }
-            dependencies { he_shaderc kind=order }
-            public {
-                include_dirs { "${module[he_editor].gen_dir}/src/shaders" }
+            shader_compile "glsl_450" scope=private {
+                files { "src/shaders/imgui.slang" }
+                include_dirs { "src/shaders" }
             }
         }
     }

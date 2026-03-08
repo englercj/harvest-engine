@@ -50,7 +50,7 @@ public sealed class ProjectGenerationFixture : IDisposable
         _loggerFactory = NullLoggerFactory.Instance;
 
         ProjectService = new ProjectService();
-        new ProjectsPlugin().Startup(new ProjectServiceProvider(ProjectService));
+        new ProjectsExtension().Startup(new ProjectServiceProvider(ProjectService));
 
         ProjectService.LoadProject(ProjectFilePath);
 

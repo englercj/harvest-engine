@@ -3,6 +3,8 @@
 plugin he.bin2c version="0.1.0" license="UNLICENSED" {
     authors { "Chad Engler" email=englercj@live.com }
 
+    module he_bin2c_hemake kind=hemake_extension group="_internal/hemake" project_file="./Harvest.Make.Bin2C.csproj" {}
+
     module he_bin2c kind=app_console group="engine/tools" {
         files { "src/**" }
 

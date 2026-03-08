@@ -3,7 +3,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Harvest.Common;
 
-public interface IAppPlugin
+public interface IHarvestMakeExtension
 {
     void ConfigureServices(IServiceCollection services, ILogger logger);
     void Startup(IServiceProvider services);

@@ -263,6 +263,7 @@ public class ResolvedProjectTree
                                         break;
                                     }
                                     case EModuleKind.Custom:
+                                    case EModuleKind.HarvestMakeExtension:
                                     {
                                         shouldInclude = inheritance.HasFlag(ENodeDependencyInheritance.Order);
                                         break;

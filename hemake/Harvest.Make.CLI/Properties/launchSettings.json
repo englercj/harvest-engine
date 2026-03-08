@@ -2,7 +2,7 @@
   "profiles": {
     "Harvest.Make": {
       "commandName": "Project",
-      "commandLineArgs": "--project C:/Users/engle/source/repos/harvest-engine/he_project.kdl vs2026"
+      "commandLineArgs": "--project C:/Users/engle/source/repos/harvest-engine/he_project.kdl generate-projects vs2026"
     }
   }
 }

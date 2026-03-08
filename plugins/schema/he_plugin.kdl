@@ -3,6 +3,8 @@
 plugin he.schema version="0.1.0" license="UNLICENSED" {
     authors { "Chad Engler" email=englercj@live.com }
 
+    module he_schema_hemake kind=hemake_extension group="_internal/hemake" project_file="./Harvest.Make.Schema.csproj" {}
+
     module he_schema kind=lib_static group="engine/libs" {
         files { "schema/include/**"; "schema/src/**" }
         include_dirs { "schema/src" }

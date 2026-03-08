@@ -2,7 +2,7 @@
 
 Define a custom build rule that can be used for files that use the `build` action in a [`files`](files_node.md) node.
 
-For complex build rules that require parameters or custom logic use HE Make's C# extension capabilities instead.
+For complex tool integrations that need parameters, companion modules, dependency injection, or other graph mutations, use HE Make's C# extension capabilities instead. `build_rule` is the low-level primitive for custom commands only.
 
 ## Arguments
 

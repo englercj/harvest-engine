@@ -11,7 +11,7 @@ using System.Runtime.InteropServices;
 namespace Harvest.Make.Projects.Services;
 
 // Intentionally not using the attribute because most programs want to create the project service early to
-// load the project file, and that can cause issues if the plugins that register nodes aren't loaded yet.
+// load the project file, and that can cause issues if the HE Make extensions that register nodes aren't loaded yet.
 //[SingletonService<IProjectService>]
 
 public class ProjectService : IProjectService

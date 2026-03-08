@@ -8,6 +8,7 @@ using Harvest.Make.Projects.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Serilog;
+using Serilog.Core;
 using Serilog.Events;
 using System.CommandLine;
 
@@ -61,48 +62,79 @@ class Program
             Log.Warning("No project loaded. Some commands may fail.");
         }
 
-        // Load plugins
-        AppPluginService pluginService = new(loggerFactory.CreateLogger<AppPluginService>());
-        pluginService.LoadPluginsFromAppDomain(AppDomain.CurrentDomain);
+        // Load HE Make extensions from the current AppDomain
+        ExtensionService extensionService = new(loggerFactory.CreateLogger<ExtensionService>());
+        extensionService.LoadExtensionsFromAppDomain(AppDomain.CurrentDomain);
 
-        // Iterate the module nodes and load any hemake extensions
+        // Discover HE Make extension projects from the project file and build them.
+        // We have to do this before parsing the project because the extensions may define custom
+        // nodes that are used in the project structure.
+        DotnetBuildService dotnetBuildService = new(loggerFactory.CreateLogger<DotnetBuildService>());
+        HashSet<string> seenProjectFiles = [];
+        List<(string, Task<DotnetBuildResult>)> pendingProjectBuilds = [];
+
         foreach (KdlNode node in projectService.ProjectDocument.GetNodesByName(ModuleNode.NodeTraits.Name))
         {
-            if (!node.TryGetValue("hemake_load", out bool isExt) || !isExt)
+            ModuleNode module = new(node);
+            if (module.Kind != EModuleKind.HarvestMakeExtension)
             {
                 continue;
             }
 
-            if (!node.TryGetValue("project_file", out string? extensionPath) || string.IsNullOrEmpty(extensionPath))
+            string moduleName = node.TryGetValue(0, out string? explicitModuleName) && !string.IsNullOrEmpty(explicitModuleName)
+                ? explicitModuleName
+                : node.Name;
+
+            if (!node.TryGetValue("project_file", out string? projectFilePath) || string.IsNullOrWhiteSpace(projectFilePath))
             {
-                Log.Error("Module '{ModuleName}' is marked as a hemake plugin but does not specify a 'project_file' property. This plugin cannot be loaded.", node.Name);
+                Log.Error("Module '{ModuleName}' is an HE Make extension but does not specify a 'project_file' property. This extension cannot be loaded.", moduleName);
                 continue;
             }
 
-            if (!Path.IsPathRooted(extensionPath))
+            projectFilePath = Path.IsPathRooted(projectFilePath)
+                ? Path.GetFullPath(projectFilePath)
+                : Path.GetFullPath(projectFilePath, Path.GetDirectoryName(node.SourceInfo.FilePath) ?? Directory.GetCurrentDirectory());
+
+            if (!seenProjectFiles.Add(projectFilePath))
             {
-                string extensionDir = Path.GetDirectoryName(node.SourceInfo.FilePath) ?? "";
-                extensionPath = Path.Join(extensionDir, extensionPath);
+                continue;
             }
 
-            pluginService.LoadPluginsFromAssemblyFile(extensionPath);
+            pendingProjectBuilds.Add((moduleName, dotnetBuildService.BuildProjectAsync(projectFilePath)));
+        }
+
+        if (pendingProjectBuilds.Count > 0)
+        {
+            foreach ((string moduleName, Task<DotnetBuildResult> buildTask) in pendingProjectBuilds)
+            {
+                try
+                {
+                    DotnetBuildResult result = await buildTask;
+                    extensionService.LoadExtensionsFromAssemblyFile(result.AssemblyPath);
+                }
+                catch (Exception ex)
+                {
+                    Log.Error(ex, "Module '{ModuleName}' failed to load HE Make extension.", moduleName);
+                }
+            }
         }
 
         // Register services we created in Main
-        services.AddSingleton<IAppPluginService>(_ => pluginService);
+        services.AddSingleton<IExtensionService>(_ => extensionService);
+        services.AddSingleton<IDotnetBuildService>(_ => dotnetBuildService);
         services.AddSingleton<IProjectService>(_ => projectService);
 
         // Register services from our assembly that are auto-discovered based on attributes
         services.AddAutoDiscoveredServices();
 
-        // Allow loaded plugins to configure additional services
-        pluginService.ConfigureServices(services);
+        // Allow loaded HE Make extensions to configure additional services
+        extensionService.ConfigureServices(services);
 
         // Build the service provider
         ServiceProvider serviceProvider = services.BuildServiceProvider();
 
-        // Startup plugins now that the service provider has been built
-        pluginService.Startup(serviceProvider);
+        // Startup HE Make extensions now that the service provider has been built
+        extensionService.Startup(serviceProvider);
 
         // Build the CLI command structure
         RootCommand rootCommand = new("HEMake CLI");
@@ -141,11 +173,11 @@ class Program
         {
             try
             {
-                pluginService.Shutdown();
+                extensionService.Shutdown();
             }
             catch (Exception ex)
             {
-                Log.Fatal(ex, "An unhandled exception occurred while shutting down plugins.");
+                Log.Fatal(ex, "An unhandled exception occurred while shutting down HE Make extensions.");
             }
         }
     }

@@ -9,7 +9,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Harvest.Make.Projects;
 
-internal class ProjectsPlugin : IAppPlugin
+internal class ProjectsExtension : IHarvestMakeExtension
 {
     public void ConfigureServices(IServiceCollection services, ILogger logger)
     {

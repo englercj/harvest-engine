@@ -13,6 +13,7 @@ public enum EModuleKind
     [KdlName("app_windowed")] AppWindowed,
     [KdlName("content")] Content,
     [KdlName("custom")] Custom,
+    [KdlName("hemake_extension")] HarvestMakeExtension,
     [KdlName("lib_header")] LibHeader,
     [KdlName("lib_static")] LibStatic,
     [KdlName("lib_shared")] LibShared,
@@ -46,7 +47,6 @@ public class ModuleNodeTraits : NodeBaseTraits
         { "language", NodeValueDef_Enum<EModuleLanguage>.Optional() },
         { "project_file", NodeValueDef_Path.Optional() },
         { "entrypoint", NodeValueDef_String.Optional() },
-        { "hemake_load", NodeValueDef_Bool.Optional(false) },
         { "target_name", NodeValueDef_String.Optional() },
         { "target_extension", NodeValueDef_String.Optional() },
         { "target_dir", NodeValueDef_Path.Optional() },
@@ -102,17 +102,32 @@ public class ModuleNodeTraits : NodeBaseTraits
     {
         base.ValidateProperties(node);
 
-        if (node.TryGetValue("project_file", out string? projectFile)
-            && !string.IsNullOrEmpty(projectFile)
-            && !TryGetProjectFileLanguage(projectFile, out _))
+        if (!node.TryGetValue("project_file", out string? projectFile) || string.IsNullOrEmpty(projectFile))
+        {
+            return;
+        }
+
+        if (!TryGetProjectFileLanguage(projectFile, out _))
         {
             throw new NodeParseException(node, $"Unsupported project_file '{projectFile}'.");
+        }
+
+        if (node.TryGetValue("kind", out EModuleKind kind) && kind == EModuleKind.HarvestMakeExtension)
+        {
+            return;
         }
     }
 
     public override void Validate(KdlNode node)
     {
         base.Validate(node);
+
+        ModuleNode module = new(node);
+        if (module.Kind == EModuleKind.HarvestMakeExtension && string.IsNullOrWhiteSpace(module.ProjectFile))
+        {
+            throw new NodeParseException(node, "HE Make extension modules must specify 'project_file'.");
+        }
+
         // TODO: Validate that dependencies are actually reasonable. For example, linking an App doesn't make sense.
     }
 
@@ -142,6 +157,7 @@ public class ModuleNode(KdlNode node) : NodeBase<ModuleNodeTraits>(node)
     public string TargetName => (TryGetValue("target_name", out string? value) ? value : null) ?? ModuleName;
     public string? TargetExtension => TryGetValue("target_extension", out string? value) ? value : null;
     public string? TargetDir => TryGetValue("target_dir", out string? value) ? value : null;
+    public bool IsHarvestMakeExtension => Kind == EModuleKind.HarvestMakeExtension;
     public bool MakeImportLib => GetValue<bool>("make_import_lib");
     public bool MakeExeManifest => GetValue<bool>("make_exe_manifest");
     public bool MakeMapFile => GetValue<bool>("make_map_file");
@@ -163,6 +179,7 @@ public class ModuleNode(KdlNode node) : NodeBase<ModuleNodeTraits>(node)
             EModuleKind.AppWindowed => isWindows ? ".exe" : "",
             EModuleKind.Content => "",
             EModuleKind.Custom => "",
+            EModuleKind.HarvestMakeExtension => "",
             EModuleKind.LibHeader => isWindows ? ".lib" : ".a",
             EModuleKind.LibStatic => isWindows ? ".lib" : ".a",
             EModuleKind.LibShared => isWindows ? ".dll" : ".so",
@@ -183,6 +200,7 @@ public class ModuleNode(KdlNode node) : NodeBase<ModuleNodeTraits>(node)
             EModuleKind.AppWindowed => GetBinDir(buildOutput),
             EModuleKind.Content => GetBinDir(buildOutput),
             EModuleKind.Custom => GetBinDir(buildOutput),
+            EModuleKind.HarvestMakeExtension => GetBinDir(buildOutput),
             EModuleKind.LibHeader => GetLibDir(buildOutput),
             EModuleKind.LibStatic => GetLibDir(buildOutput),
             EModuleKind.LibShared => GetBinDir(buildOutput),

@@ -3,6 +3,8 @@
 plugin he.rhi version="0.1.0" license="UNLICENSED" {
     authors { "Chad Engler" email=englercj@live.com }
 
+    module he_shaderc_hemake kind=hemake_extension group="_internal/hemake" project_file="./Harvest.Make.Shader.csproj" {}
+
     module he_rhi kind=lib_static group="engine/libs" {
         files { "include/**"; "src/**" }
         include_dirs { "src" }

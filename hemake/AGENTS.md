@@ -19,9 +19,17 @@ Run from the repo root unless noted otherwise.
 ## Node And KDL Rules
 - `project_file` is for existing `.csproj` files only. Any other project type should be rejected.
 - `module.language` resolves as: explicit `language`, else infer from `.csproj`, else `cpp`.
-- Valid module kinds are `app_console`, `app_windowed`, `content`, `custom`, `lib_header`, `lib_static`, and `lib_shared`.
+- Valid module kinds are `app_console`, `app_windowed`, `content`, `custom`, `hemake_extension`, `lib_header`, `lib_static`, and `lib_shared`.
 - GitHub and Bitbucket `fetch` nodes require `ref`.
 - Incremental linking is controlled by `link_options incremental=...`, not `toolset`.
+
+
+## Extensions
+- HE Make is expected to run from source. `hemake.sh` builds the core CLI first, then the CLI builds any `hemake_extension` modules it discovers at runtime.
+- `hemake_extension` modules should use `project_file` with a `.csproj`. The CLI builds the target and loads the exact assembly path reported by the build output instead of assuming a fixed `.build` layout.
+- HE Make extension `.csproj` files should keep direct assembly references to HE Make runtime assemblies (`Harvest.Common`, `Harvest.Kdl`, `Harvest.Make.Projects`) and use normal `PackageReference` items for NuGet dependencies.
+- The current high-level graph-mutating extension nodes are `schema_compile`, `bin2c_compile`, and `shader_compile`. Their C# extension projects live next to the owning engine plugins in `plugins/schema/`, `plugins/bin2c/`, and `plugins/rhi/`.
+- Keep `hemake_extension` modules hidden from generated engine solutions. They exist only so the CLI can discover and load the extension assembly.
 
 ## VS2026 Generation Notes
 - `.slnx` is generated at `.build/Harvest Engine.slnx`; C++ projects go to `.build/projects/`.

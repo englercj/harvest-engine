@@ -50,6 +50,7 @@ internal static class VisualStudioUtils
         { EModuleKind.AppWindowed, "Application" },
         { EModuleKind.Content, "Utility" },
         { EModuleKind.Custom, "Utility" },
+        { EModuleKind.HarvestMakeExtension, "Utility" },
         { EModuleKind.LibHeader, "StaticLibrary" },
         { EModuleKind.LibStatic, "StaticLibrary" },
         { EModuleKind.LibShared, "DynamicLibrary" },

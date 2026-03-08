@@ -8,6 +8,12 @@
     <Project Path="Common/Harvest.SourceGenerators/Harvest.SourceGenerators.csproj" />
   </Folder>
 
+  <Folder Name="/Extensions/">
+    <Project Path="../plugins/bin2c/Harvest.Make.Bin2C.csproj" />
+    <Project Path="../plugins/rhi/Harvest.Make.Shader.csproj" />
+    <Project Path="../plugins/schema/Harvest.Make.Schema.csproj" />
+  </Folder>
+
   <Folder Name="/Tests/">
     <Project Path="Tests/Harvest.Make.Projects.Tests/Harvest.Make.Projects.Tests.csproj" />
   </Folder>

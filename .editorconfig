@@ -17,6 +17,11 @@ file_header_template = Copyright Chad Engler
 end_of_line = crlf
 
 ###################################################################################################
+# Powershell files
+[*.ps1]
+end_of_line = crlf
+
+###################################################################################################
 # Visual Studio Solution files
 [*.sln]
 end_of_line = crlf
@@ -111,6 +116,12 @@ cpp_includes_use_forward_slash = false
 
 ###################################################################################################
 # C# files
+[*.{cs,csproj,lock.json}]
+end_of_line = crlf
+
+[launchSettings.json]
+end_of_line = crlf
+
 [*.cs]
 
 #### Core EditorConfig Options ####

@@ -17,7 +17,7 @@ configuration Debug
 configuration Development
 configuration Release
 
-when configuration=Debug {
+when configuration.name=Debug {
     defines { _DEBUG; DEBUG; HE_CFG_DEBUG }
     tags { debug; internal }
 
@@ -26,7 +26,7 @@ when configuration=Debug {
     symbols on
 }
 
-when configuration=Development {
+when configuration.name=Development {
     defines { NDEBUG; HE_CFG_DEVELOPMENT }
     tags { internal }
 
@@ -35,7 +35,7 @@ when configuration=Development {
     symbols on
 }
 
-when configuration=Release {
+when configuration.name=Release {
     defines { NDEBUG; HE_CFG_RELEASE }
     tags { external }
 
@@ -58,38 +58,38 @@ platform WinArm64 arch=arm64 system=windows toolset=msvc
 // Similar pattern to NodeSetBase?
 // Might also make it easier to cache and lookup nodes by key.
 //
-// when host=linux { platform Linux64 default=#true }
-// when host=windows { platform Win64 default=#true }
+// when host.name=linux { platform Linux64 default=#true }
+// when host.name=windows { platform Win64 default=#true }
 
-when platform=Linux64 {
+when platform.name=Linux64 {
     defines { HE_PLATFORM_LINUX64; HE_PLATFORM_LINUX; HE_PLATFORM_API_POSIX }
     tags { posix }
 
     codegen avx
 }
 
-when platform=Wasm32 {
+when platform.name=Wasm32 {
     defines { HE_PLATFORM_WASM32; HE_PLATFORM_WASM; HE_PLATFORM_API_WASM }
 
     codegen simd128
     // wasmoptpath(he.get_wasm_opt_path()) // TODO
 }
 
-when platform=Win64 {
+when platform.name=Win64 {
     defines { HE_PLATFORM_WIN64 }
     tags { win32 }
 
     codegen avx
 }
 
-when platform=WinArm64 {
+when platform.name=WinArm64 {
     defines { HE_PLATFORM_WINARM64 }
     tags { win32 }
 
     codegen armv8.0
 }
 
-when platform="Win64 || WinArm64" {
+when platform.name="Win64 || WinArm64" {
     defines {
         HE_PLATFORM_WINDOWS
         HE_PLATFORM_API_WIN32
@@ -104,11 +104,11 @@ when platform="Win64 || WinArm64" {
 
 toolset msvc arch=x86_64 multiprocess=#true edit_and_continue=#true
 
-when any configuration=!Debug arch=!x86_64 option=asan {
+when any configuration.name=!Debug platform.arch=!x86_64 option=asan {
     toolset msvc edit_and_continue=#false
 }
 
-when toolset="gcc || clang" {
+when platform.toolset="gcc || clang" {
     build_options {
         "-fPIC"                 // Generate position-independent code
         "-fvisibility=hidden"   // Mark all symbols as hidden by default
@@ -117,13 +117,17 @@ when toolset="gcc || clang" {
     }
 }
 
-when toolset="gcc || clang" language=cpp {
-    build_options {
-        "-fvisibility-inlines-hidden" // Hide inlines from the symbol table
+:foreach module {
+    +module "${_entry.name}" {
+        when platform.toolset="gcc || clang" module.language=cpp {
+            build_options {
+                "-fvisibility-inlines-hidden" // Hide inlines from the symbol table
+            }
+        }
     }
 }
 
-when toolset="gcc || clang" system=!wasm {
+when platform.toolset="gcc || clang" platform.system=!wasm {
     build_options {
         "-mrdrnd"   // Enable RDRAND instruction
         "-mcx16"    // Enable CMPXCHG16B for 16-byte aligned 128-bit objects
@@ -131,7 +135,7 @@ when toolset="gcc || clang" system=!wasm {
     }
 }
 
-when toolset="gcc || clang" system=wasm {
+when platform.toolset="gcc || clang" platform.system=wasm {
     build_options {
         "-nostdlib"             // Do not use the standard system startup files or libraries when linking.
         "-nodefaultlibs"        // Do not use the default C/++ standard libraries when linking.
@@ -148,13 +152,13 @@ when toolset="gcc || clang" system=wasm {
     }
 }
 
-when toolset=clang configuration=Debug {
+when platform.toolset=clang configuration.name=Debug {
     build_options {
         "-Wthread-safety" // Enable thread safety analysis warnings.
     }
 }
 
-when toolset=msvc {
+when platform.toolset=msvc {
     build_options {
         "/permissive-"  // Enable standards-conforming compiler behavior.
         "/utf-8"        // Specifies both the source character set and the execution character set as UTF-8.
@@ -174,8 +178,26 @@ external warnings=off angle_brackets=#true
 floating_point precise
 warnings level=extra fatal=#true
 
-when system=!linux { files update { "**.linux.*" build_exclude=#true } }
-when system=!wasm { files update { "**.wasm.*" build_exclude=#true } }
-when system=!windows { files update { "**.windows.*" build_exclude=#true } }
+when platform.system=!linux { files update { "**.linux.*" build_exclude=#true } }
+when platform.system=!wasm { files update { "**.wasm.*" build_exclude=#true } }
+when platform.system=!windows { files update { "**.windows.*" build_exclude=#true } }
 when tags=!posix { files update { "**.posix.*" build_exclude=#true } }
 when tags=!win32 { files update { "**.win32.*" build_exclude=#true } }
+
+// Make module name and kind available as preprocessor definitions
+// These are used by the Harvest module registration system and the numbers for each kind are
+// defined in module_registry.h and must be kept in sync with the values here.
+:foreach module {
+    +module "${_entry.name}" {
+        defines { "HE_CFG_MODULE_NAME=\"${_entry.name}\"" }
+
+        when module.kind=app_console { defines { "HE_CFG_MODULE_KIND=1" } }
+        when module.kind=app_windowed { defines { "HE_CFG_MODULE_KIND=2" } }
+        when module.kind=lib_header { defines { "HE_CFG_MODULE_KIND=3" } }
+        when module.kind=lib_static { defines { "HE_CFG_MODULE_KIND=4" } }
+        when module.kind=lib_shared { defines { "HE_CFG_MODULE_KIND=5" } }
+        when module.kind=content { defines { "HE_CFG_MODULE_KIND=6" } }
+        when module.kind=custom { defines { "HE_CFG_MODULE_KIND=7" } }
+        when module.kind=hemake_extension { defines { "HE_CFG_MODULE_KIND=8" } }
+    }
+}

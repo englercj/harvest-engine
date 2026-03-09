@@ -55,15 +55,15 @@ plugin microsoft.mimalloc version="2.1.4" license="MIT" {
             defines { "MI_DEBUG=3" }
         }
 
-        when tags=debug system=windows {
+        when tags=debug platform.system=windows {
             defines { "MI_TRACK_ETW=1" }
         }
 
-        when toolset="gcc || clang" {
+        when platform.toolset="gcc || clang" {
             build_options { "-Wstrict-prototypes"; "-ftls-model=initial-exec" }
         }
 
-        when toolset=clang {
+        when platform.toolset=clang {
             build_options { "-Wpedantic"; "-Wno-static-in-inline" }
         }
 
@@ -79,13 +79,13 @@ plugin microsoft.mimalloc version="2.1.4" license="MIT" {
             }
         }
 
-        when system=linux {
+        when platform.system=linux {
             public {
                 dependencies { pthreads kind=system; rt kind=system }
             }
         }
 
-        when system=wasm {
+        when platform.system=wasm {
             public {
                 // pretend to be wasi for mimalloc implementations
                 defines { "__wasi__" }

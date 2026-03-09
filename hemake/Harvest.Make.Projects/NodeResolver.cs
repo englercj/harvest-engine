@@ -313,9 +313,18 @@ public class NodeResolver(ProjectContext projectContext)
         {
             if (_indexedNodes.TryGetNode(nodeId, out PluginNode? plugin))
             {
-                ResolveNodeArguments(plugin.Node, extensionNode, PluginNode.NodeTraits, replacer);
-                ResolveNodeProperties(plugin.Node, extensionNode, PluginNode.NodeTraits, replacer);
-                ResolveNodeChildren(plugin.Node, extensionNode, PluginNode.NodeTraits, replacer);
+                PluginNode? previousPlugin = ProjectContext.Plugin;
+                ProjectContext.Plugin = plugin;
+                try
+                {
+                    ResolveNodeArguments(plugin.Node, extensionNode, PluginNode.NodeTraits, replacer);
+                    ResolveNodeProperties(plugin.Node, extensionNode, PluginNode.NodeTraits, replacer);
+                    ResolveNodeChildren(plugin.Node, extensionNode, PluginNode.NodeTraits, replacer);
+                }
+                finally
+                {
+                    ProjectContext.Plugin = previousPlugin;
+                }
             }
             else if (extensionNode.TryGetValue("required", out bool isRequired) && isRequired)
             {
@@ -326,9 +335,18 @@ public class NodeResolver(ProjectContext projectContext)
         {
             if (_indexedNodes.TryGetNode(nodeId, out ModuleNode? module))
             {
-                ResolveNodeArguments(module.Node, extensionNode, ModuleNode.NodeTraits, replacer);
-                ResolveNodeProperties(module.Node, extensionNode, ModuleNode.NodeTraits, replacer);
-                ResolveNodeChildren(module.Node, extensionNode, ModuleNode.NodeTraits, replacer);
+                ModuleNode? previousModule = ProjectContext.Module;
+                ProjectContext.Module = module;
+                try
+                {
+                    ResolveNodeArguments(module.Node, extensionNode, ModuleNode.NodeTraits, replacer);
+                    ResolveNodeProperties(module.Node, extensionNode, ModuleNode.NodeTraits, replacer);
+                    ResolveNodeChildren(module.Node, extensionNode, ModuleNode.NodeTraits, replacer);
+                }
+                finally
+                {
+                    ProjectContext.Module = previousModule;
+                }
             }
             else if (extensionNode.TryGetValue("required", out bool isRequired) && isRequired)
             {

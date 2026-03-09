@@ -69,8 +69,8 @@ files {
     "src/source.linux.cpp", // only for linux targets
 }
 
-when system=!linux { files modify { "src/source.linux.cpp" build_exclude=#true } }
-when system=!windows { files modify { "src/source.win32.cpp" build_exclude=#true } }
+when platform.system=!linux { files modify { "src/source.linux.cpp" build_exclude=#true } }
+when platform.system=!windows { files modify { "src/source.win32.cpp" build_exclude=#true } }
 ```
 
 ## Scopes

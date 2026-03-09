@@ -11,12 +11,12 @@ A definition of a module provided by a plugin.
 - `kind` (string) - Required. The kind of module to be defined. Valid values are:
     * `app_console` - Code built as a console application (exe).
     * `app_windowed` - Code built as a windowed application (exe).
-    * `content` - Assets, configuration, and other content to be edited.
-    * `custom` - Utility project which contains only custom build scripts.
-    * `hemake_extension` - HE Make extension module used to build and load a `.csproj` into the HE Make CLI at runtime.
     * `lib_header` - Header-only module that does not generate any symbols to be linked.
     * `lib_static` - Code built as a static library (lib/a).
     * `lib_shared` - Code built as a shared library (dll/so).
+    * `content` - Assets, configuration, and other content to be edited.
+    * `custom` - Utility project which contains only custom build scripts.
+    * `hemake_extension` - HE Make extension module used to build and load a `.csproj` into the HE Make CLI at runtime.
 - `group` (string) - Optional. Name of the group this module belongs to. This will be a virtual folder in the workspace tree, and can include folder separators (`/`).
 - `language` (string) - Optional. Language of the source to be compiled in the module project. If omitted, HE Make first tries to infer the language from `project_file`; otherwise it defaults to `cpp`. Valid values are:
     * `c` - C

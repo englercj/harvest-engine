@@ -35,29 +35,29 @@ install {
 
 // install DirectStorage from nuget, only if there is a windows build target
 install {
-    when system=windows {
+    when platform.system=windows {
         fetch nuget Microsoft.Direct3D.DirectStorage version="1.2.1"
     }
 }
 
 // install Slang from archive URL, only if there is a windows or linux build target
 install {
-    when system=windows {
+    when platform.system=windows {
         fetch archive url="https://github.com/shader-slang/slang/releases/download/v0.28.2/slang-0.28.2-win64.zip"
     }
 
-    when system=linux {
+    when platform.system=linux {
         fetch archive url="https://github.com/shader-slang/slang/releases/download/v0.28.2/slang-0.28.2-linux-x86_64.zip"
     }
 }
 
 // install node from archive URL, only when on a windows or linux host
 install {
-    when host=windows {
+    when host.name=windows {
         fetch archive url="https://nodejs.org/dist/v20.11.0/node-v20.11.0-win-x64.zip" base_dir="node-v20.11.0-win-x64/node-v20.11.0-win-x64"
     }
 
-    when host=linux {
+    when host.name=linux {
         fetch archive url="https://nodejs.org/dist/v20.11.0/node-v20.11.0-linux-x64.tar.xz" base_dir="node-v20.11.0-linux-x64/node-v20.11.0-linux-x64"
     }
 }

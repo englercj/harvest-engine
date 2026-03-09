@@ -15,7 +15,7 @@ plugin he.core version="0.1.0" license="UNLICENSED" {
             dependencies { mimalloc; simdutf }
         }
 
-        when system=linux {
+        when platform.system=linux {
             public {
                 dependencies { dl kind=system; pthread kind=system; unwind kind=system; uring kind=system }
                 defines {
@@ -29,7 +29,7 @@ plugin he.core version="0.1.0" license="UNLICENSED" {
             }
         }
 
-        when tags=posix system=!linux {
+        when tags=posix platform.system=!linux {
             public {
                 dependencies { dl kind=system; pthread kind=system }
                 defines {
@@ -43,7 +43,7 @@ plugin he.core version="0.1.0" license="UNLICENSED" {
             }
         }
 
-        when system=wasm {
+        when platform.system=wasm {
             public {
                 dependencies { he_core_wasm_libc }
                 build_options {
@@ -62,7 +62,7 @@ plugin he.core version="0.1.0" license="UNLICENSED" {
             }
         }
 
-        when system=windows {
+        when platform.system=windows {
             public {
                 dependencies {
                     shlwapi kind=system
@@ -80,7 +80,7 @@ plugin he.core version="0.1.0" license="UNLICENSED" {
             }
         }
 
-        when system=windows {
+        when platform.system=windows {
             public {
                 dependencies { DirectStorage }
             }
@@ -99,7 +99,7 @@ plugin he.core version="0.1.0" license="UNLICENSED" {
             dependencies { he_core kind=include }
         }
 
-        when system=wasm {
+        when platform.system=wasm {
             public {
                 defines {
                     "HE_LIBCPP_ABI_NAMESPACE=__${plugin[llvm.libcxx].abi_version}"
@@ -115,7 +115,7 @@ plugin he.core version="0.1.0" license="UNLICENSED" {
             }
         }
 
-        when system=!wasm {
+        when platform.system=!wasm {
             files update { "wasm_libc/**" build_exclude=#true }
             public {
                 include_dirs external=#true { "wasm_libc/include" }

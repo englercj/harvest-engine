@@ -14,7 +14,7 @@ plugin he.rhi version="0.1.0" license="UNLICENSED" {
             include_dirs { "include" }
         }
 
-        when system=windows {
+        when platform.system=windows {
             public {
                 dependencies { WinPixEventRuntime }
             }

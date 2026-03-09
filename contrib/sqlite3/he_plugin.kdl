@@ -34,7 +34,7 @@ plugin sqlite3.sqlite3 version="3.42.0" license="blessing" {
             defines { "SQLITE_OMIT_DEPRECATED=1" }
         }
 
-        when system=linux {
+        when platform.system=linux {
             public {
                 dependencies { pthread kind=system; dl kind=system }
             }

@@ -30,7 +30,7 @@ plugin he.assets version="0.1.0" license="UNLICENSED" {
             include_dirs { "assets_editor/include"; "${module.gen_dir}/include" }
         }
 
-        when system=windows {
+        when platform.system=windows {
             public {
                 dependencies { "Shlwapi" kind=system }
             }

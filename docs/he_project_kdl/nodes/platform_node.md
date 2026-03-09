@@ -38,7 +38,7 @@ None.
 ```kdl
 platform Win64 system=windows arch=x86_64
 
-when platform=Win64 {
+when platform.name=Win64 {
     defines { HE_PLATFORM_WIN64 }
     tags { windows, win32 }
 }

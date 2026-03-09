@@ -3,6 +3,7 @@
 using Harvest.Kdl;
 using Harvest.Make.Projects.Nodes;
 using Harvest.Make.Projects.Services;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Harvest.Make.Projects;
 
@@ -113,7 +114,10 @@ internal class NodeTokenHandler(ProjectContext projectContext, IndexedNodeCollec
         KdlNode? search = scope;
         while (search is not null)
         {
-            if (search.Name == name)
+            ReadOnlySpan<char> candidate = search.Name.AsSpan();
+
+            if (candidate.SequenceEqual(name)
+                || (candidate[0] == '+' && candidate[1..].SequenceEqual(name)))
             {
                 if ((name == PluginNode.NodeTraits.Name || name == ModuleNode.NodeTraits.Name)
                     && search.TryGetValue(0, out string? nodeId)
@@ -129,7 +133,40 @@ internal class NodeTokenHandler(ProjectContext projectContext, IndexedNodeCollec
             search = search.Parent;
         }
 
+        if (TryGetCurrentContextNode(name, out KdlNode? contextNode))
+        {
+            return contextNode;
+        }
+
         throw new NodeParseException(scope, $"Invalid token '{token}'. Failed to find a '{name}' node in the parent heirarchy.");
+    }
+
+    private bool TryGetCurrentContextNode(string name, [NotNullWhen(true)] out KdlNode? contextNode)
+    {
+        switch (name)
+        {
+            case "build_output":
+                contextNode = _projectContext.BuildOutput.Node;
+                return true;
+            case "configuration":
+                contextNode = _projectContext.Configuration.Node;
+                return true;
+            case "module" when _projectContext.Module is not null:
+                contextNode = _projectContext.Module.Node;
+                return true;
+            case "platform":
+                contextNode = _projectContext.Platform.Node;
+                return true;
+            case "plugin" when _projectContext.Plugin is not null:
+                contextNode = _projectContext.Plugin.Node;
+                return true;
+            case "project" when _projectContext.Project is not null:
+                contextNode = _projectContext.Project.Node;
+                return true;
+            default:
+                contextNode = null;
+                return false;
+        }
     }
 
     private bool TryFindUnresolvedContextNode(string contextName, string contextId, out KdlNode contextNode)

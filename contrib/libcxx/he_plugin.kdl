@@ -6,12 +6,12 @@ plugin llvm.libcxx version="18.1.2" license="Apache-2.0 WITH LLVM-exception" abi
     authors {}
 
     install {
-        when system=wasm {
+        when platform.system=wasm {
             fetch archive url="https://github.com/llvm/llvm-project/releases/download/llvmorg-${plugin.version}/libcxx-${plugin.version}.src.tar.xz" base_dir="libcxx-${plugin.version}.src"
         }
     }
 
-    when system=wasm {
+    when platform.system=wasm {
         module libcxx kind=lib_static group="engine/contrib" {
             warnings level=off
 

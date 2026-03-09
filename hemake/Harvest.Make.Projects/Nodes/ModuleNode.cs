@@ -11,12 +11,12 @@ public enum EModuleKind
 {
     [KdlName("app_console")] AppConsole,
     [KdlName("app_windowed")] AppWindowed,
-    [KdlName("content")] Content,
-    [KdlName("custom")] Custom,
-    [KdlName("hemake_extension")] HarvestMakeExtension,
     [KdlName("lib_header")] LibHeader,
     [KdlName("lib_static")] LibStatic,
     [KdlName("lib_shared")] LibShared,
+    [KdlName("content")] Content,
+    [KdlName("custom")] Custom,
+    [KdlName("hemake_extension")] HarvestMakeExtension,
 }
 
 public enum EModuleLanguage
@@ -70,6 +70,10 @@ public class ModuleNodeTraits : NodeBaseTraits
             case "name":
             {
                 return module.ModuleName;
+            }
+            case "language":
+            {
+                return KdlEnumUtils.GetName(module.Language);
             }
             case "build_target":
             {

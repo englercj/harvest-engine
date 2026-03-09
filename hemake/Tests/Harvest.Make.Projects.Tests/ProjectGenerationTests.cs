@@ -38,6 +38,8 @@ public sealed class ProjectGenerationTests(ProjectGenerationFixture fixture) : I
         Assert.Contains("PrecompiledHeaderFile", fixture.AppVcxprojText);
         Assert.Contains("FEATURE_ENABLED", fixture.AppVcxprojText);
         Assert.Contains("FROM_WHEN_DEBUG", fixture.AppVcxprojText);
+        Assert.Contains("HE_CFG_MODULE_NAME=\"test_app\"", fixture.AppVcxprojText);
+        Assert.Contains("HE_CFG_MODULE_KIND=1", fixture.AppVcxprojText);
         Assert.Contains("AdditionalIncludeDirectories", fixture.AppVcxprojText);
         Assert.Contains("AdditionalLibraryDirectories", fixture.AppVcxprojText);
         Assert.Contains("LanguageStandard", fixture.AppVcxprojText);

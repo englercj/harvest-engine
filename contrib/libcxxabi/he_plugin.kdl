@@ -6,12 +6,12 @@ plugin llvm.libcxxabi version="18.1.2" license="Apache-2.0 WITH LLVM-exception" 
     authors {}
 
     install {
-        when system=wasm {
+        when platform.system=wasm {
             fetch archive url="https://github.com/llvm/llvm-project/releases/download/llvmorg-${plugin.version}/libcxxabi-${plugin.version}.src.tar.xz" base_dir="libcxxabi-${plugin.version}.src"
         }
     }
 
-    when system=wasm {
+    when platform.system=wasm {
         module libcxxabi kind=lib_static group="engine/contrib" {
             warnings level=off
 

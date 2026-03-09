@@ -11,10 +11,15 @@
 #include "he/core/utils.h"
 #include "he/core/vector.h"
 
-#define HE_MODULE_TYPE_CONSOLE_APP      1
-#define HE_MODULE_TYPE_WINDOWED_APP     2
-#define HE_MODULE_TYPE_SHARED_LIB       3
-#define HE_MODULE_TYPE_STATIC_LIB       4
+// Note: If you change any of these values you must also update project_defaults.kdl
+#define HE_MODULE_KIND_APP_CONSOLE          1
+#define HE_MODULE_KIND_APP_WINDOWED         2
+#define HE_MODULE_KIND_LIB_HEADER           3
+#define HE_MODULE_KIND_LIB_STATIC           4
+#define HE_MODULE_KIND_LIB_SHARED           5
+#define HE_MODULE_KIND_CONTENT              6
+#define HE_MODULE_KIND_CUSTOM               7
+#define HE_MODULE_KIND_HEMAKE_EXTENSION     8
 
 /// \def HE_DECL_MODULE
 /// Declares the necessary functions for a class to register with the module registry.
@@ -31,7 +36,7 @@
         static ::he::Module* CreateModule() { return ::he::Allocator::GetDefault().New<Impl>(); } \
         static void DestroyModule(::he::Module* m) { ::he::Allocator::GetDefault().Delete(m); }
 
-#if HE_CFG_MODULE_TYPE == HE_MODULE_TYPE_SHARED_LIB
+#if HE_CFG_MODULE_KIND == HE_MODULE_KIND_LIB_SHARED
     #error "Shared modules are not yet functional"
 
     #define HE_DECL_MODULE(Impl) \
@@ -240,7 +245,7 @@ namespace he
     }
 }
 
-#if HE_CFG_MODULE_TYPE == HE_MODULE_TYPE_SHARED_LIB
+#if HE_CFG_MODULE_KIND == HE_MODULE_KIND_LIB_SHARED
 
 extern "C"
 {

@@ -53,7 +53,8 @@ internal class ForeachNodeGenerator(IProjectService projectService, NodeResolver
 
     private void GenerateNodes(KdlNode target, KdlNode generatorNode, string contextName)
     {
-        TokenHandler handler = new(contextName);
+        NodeTokenHandler baseHandler = new(_resolver.ProjectContext, _resolver.IndexedNodes, generatorNode);
+        TokenHandler handler = new(contextName, baseHandler);
         StringTokenReplacer replacer = new(handler);
 
         foreach (KdlNode source in generatorNode.Children)
@@ -184,8 +185,10 @@ internal class ForeachNodeGenerator(IProjectService projectService, NodeResolver
         return filterValue.Equals(candidateValue);
     }
 
-    private class TokenHandler(string resolvedContextName) : IStringTokenHandler
+    private class TokenHandler(string resolvedContextName, IStringTokenHandler fallbackHandler) : IStringTokenHandler
     {
+        private readonly StringTokenReplacer _fallbackReplacer = new(fallbackHandler);
+
         public string GetTokenValue(StringTokenContext tokenContext)
         {
             if (tokenContext.ContextName == "_entry")
@@ -202,7 +205,7 @@ internal class ForeachNodeGenerator(IProjectService projectService, NodeResolver
                 sb.Append(resolvedContextName);
                 sb.Append(tokenContext.Token[(relativeIndex + tokenContext.ContextNameCapture.Length)..]);
 
-                return sb.ToString();
+                return _fallbackReplacer.ReplaceTokens(sb.ToString());
             }
 
             return tokenContext.Token;

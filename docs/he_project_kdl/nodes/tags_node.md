@@ -26,7 +26,7 @@ None.
 
 ```kdl
 project "Harvest Engine" {
-    when system=windows arch=x86 {
+    when platform.system=windows platform.arch=x86 {
         tags { win32 }
     }
 

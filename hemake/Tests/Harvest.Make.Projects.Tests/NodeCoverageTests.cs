@@ -217,6 +217,23 @@ public sealed class NodeCoverageTests(ProjectGenerationFixture fixture)
     }
 
     [Fact]
+    public void CoversForeachModuleExtensionDefines()
+    {
+        DefinesNode appDefines = fixture.DebugTree.GetMergedNode<DefinesNode>(fixture.AppModule.Node);
+        Assert.Contains(appDefines.Entries, (entry) => entry.DefineName == "HE_CFG_MODULE_NAME=\"test_app\"");
+        Assert.Single(appDefines.Entries, (entry) => entry.DefineName.StartsWith("HE_CFG_MODULE_KIND=", StringComparison.Ordinal));
+        Assert.Contains(appDefines.Entries, (entry) => entry.DefineName == "HE_CFG_MODULE_KIND=1");
+
+        DefinesNode libDefines = fixture.DebugTree.GetMergedNode<DefinesNode>(fixture.LibModule.Node);
+        Assert.Contains(libDefines.Entries, (entry) => entry.DefineName == "HE_CFG_MODULE_NAME=\"test_lib\"");
+        Assert.Contains(libDefines.Entries, (entry) => entry.DefineName == "HE_CFG_MODULE_KIND=4");
+
+        DefinesNode toolDefines = fixture.DebugTree.GetMergedNode<DefinesNode>(fixture.ToolModule.Node);
+        Assert.Contains(toolDefines.Entries, (entry) => entry.DefineName == "HE_CFG_MODULE_NAME=\"test_tool\"");
+        Assert.Contains(toolDefines.Entries, (entry) => entry.DefineName == "HE_CFG_MODULE_KIND=7");
+    }
+
+    [Fact]
     public void CoversOptimizeNode()
     {
         OptimizeNode optimize = fixture.DebugTree.GetMergedNode<OptimizeNode>(fixture.AppModule.Node);

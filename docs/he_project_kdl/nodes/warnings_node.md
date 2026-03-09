@@ -55,13 +55,13 @@ The valid values are:
 ```kdl
 warnings level=extra fatal=#true
 
-when toolset=msvc {
+when platform.toolset=msvc {
     warnings {
         "44668" enable             // A symbol that was not defined was used with a preprocessor directive.
         "44062" enable             // An enumerator has no associated case handler in a switch statement, and there's no default label that can catch it.
     }
 }
-when toolset="clang || gcc" {
+when platform.toolset="clang || gcc" {
     warnings {
         "undef" enable              // A symbol that was not defined was used with a preprocessor directive.
         "switch" enable             // An enumerator has no associated case handler in a switch statement, and there's no default label that can catch it.

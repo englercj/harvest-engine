@@ -1,6 +1,7 @@
 // Copyright Chad Engler
 
 using Harvest.Kdl;
+using Harvest.Kdl.Types;
 using Harvest.Make.Projects.Attributes;
 using System.Diagnostics;
 
@@ -32,18 +33,29 @@ public class WhenNodeTraits : NodeBaseTraits
 
     public override IReadOnlyDictionary<string, NodeValueDef> PropertyDefs { get; } = new SortedDictionary<string, NodeValueDef>()
     {
-        { "arch", NodeValueDef_String.Optional() },
-        { "configuration", NodeValueDef_String.Optional() },
-        { "host", NodeValueDef_String.Optional() },
-        { "language", NodeValueDef_String.Optional() },
         { "option", NodeValueDef_String.Optional() },
-        { "platform", NodeValueDef_String.Optional() },
-        { "system", NodeValueDef_String.Optional() },
         { "tags", NodeValueDef_String.Optional() },
-        { "toolset", NodeValueDef_String.Optional() },
     };
 
     public override INode CreateNode(KdlNode node) => new WhenNode(node);
+
+    protected override void ValidateProperties(KdlNode node)
+    {
+        base.ValidateProperties(node);
+
+        foreach ((string key, KdlValue value) in node.Properties)
+        {
+            if (value is not KdlString)
+            {
+                throw new NodeParseException(node, $"'{node.Name}' node has incorrect value type in property '{key}': {value.GetType().Name}. Expected KdlString.");
+            }
+
+            if (!PropertyDefs.ContainsKey(key) && !key.Contains('.'))
+            {
+                throw new NodeParseException(node, $"Invalid when property '{key}'. Unknown built-in condition key; use a token-style key like 'module.kind'.");
+            }
+        }
+    }
 
     public override bool TryResolveChild(KdlNode target, KdlNode source, StringTokenReplacer replacer, NodeResolver resolver, out KdlNode? resolvedNode)
     {
@@ -51,7 +63,7 @@ public class WhenNodeTraits : NodeBaseTraits
 
         KdlNode resolvedWhenNode = resolver.CreateResolvedNode(source, includeChildren: false);
         WhenNode when = new(resolvedWhenNode);
-        if (when.IsActive(resolver.ProjectContext))
+        if (when.IsActive(resolver.ProjectContext, resolver.IndexedNodes))
         {
             // Resolve children from the original source when-node so active blocks emit content.
             resolver.ResolveNodeChildren(target, source, WhenNode.NodeTraits, replacer);
@@ -69,30 +81,29 @@ public class WhenNodeTraits : NodeBaseTraits
 public class WhenNode(KdlNode node) : NodeBase<WhenNodeTraits>(node)
 {
     public EWhenMode Mode => GetEnumValue<EWhenMode>(0);
-    public string? Arch => TryGetValue("arch", out string? value) ? value : null;
-    public string? Configuration => TryGetValue("configuration", out string? value) ? value : null;
-    public string? Host => TryGetValue("host", out string? value) ? value : null;
-    public string? Language => TryGetValue("language", out string? value) ? value : null;
-    public string? Option => TryGetValue("option", out string? value) ? value : null;
-    public string? Platform => TryGetValue("platform", out string? value) ? value : null;
-    public string? System => TryGetValue("system", out string? value) ? value : null;
-    public string? Tags => TryGetValue("tags", out string? value) ? value : null;
-    public string? Toolset  => TryGetValue("toolset", out string? value) ? value : null;
 
-    public bool IsActive(ProjectContext context)
+    public bool IsActive(ProjectContext context, IndexedNodeCollection indexedNodes)
     {
         List<bool> conditions = [];
         conditions.Capacity = 16;
 
-        CheckValueActive(conditions, Arch, context.Platform?.Arch ?? EPlatformArch.X86_64);
-        CheckValueActive(conditions, Configuration, context.Configuration?.ConfigName ?? "");
-        CheckValueActive(conditions, Host, context.Host);
-        CheckValueActive(conditions, Language, context.Module?.Language ?? EModuleLanguage.Cpp);
-        CheckValueActive(conditions, Option, context.Options);
-        CheckValueActive(conditions, Platform, context.Platform?.PlatformName ?? "");
-        CheckValueActive(conditions, System, context.Platform?.System ?? EPlatformSystem.Windows);
-        CheckValueActive(conditions, Tags, context.Tags);
-        CheckValueActive(conditions, Toolset, context.Platform?.Toolset ?? EToolset.MSVC);
+        foreach ((string key, KdlValue value) in Node.Properties)
+        {
+            string expression = ((KdlString)value).Value;
+
+            switch (key)
+            {
+                case "option":
+                    conditions.Add(WhenExpressionEvaluator.Evaluate(expression, context.Options));
+                    break;
+                case "tags":
+                    conditions.Add(WhenExpressionEvaluator.Evaluate(expression, context.Tags));
+                    break;
+                default:
+                    conditions.Add(EvaluateTokenCondition(context, indexedNodes, key, expression));
+                    break;
+            }
+        }
 
         return Mode switch
         {
@@ -103,11 +114,11 @@ public class WhenNode(KdlNode node) : NodeBase<WhenNodeTraits>(node)
         };
     }
 
-    private static void CheckValueActive<T>(List<bool> conditions, string? expr, T value)
+    private bool EvaluateTokenCondition(ProjectContext context, IndexedNodeCollection indexedNodes, string key, string expression)
     {
-        if (string.IsNullOrEmpty(expr))
-            return;
-
-        conditions.Add(WhenExpressionEvaluator.Evaluate(expr, value));
+        NodeTokenHandler handler = new(context, indexedNodes, Node);
+        StringTokenReplacer replacer = new(handler);
+        string tokenValue = replacer.ReplaceTokens($"${{{key}}}");
+        return WhenExpressionEvaluator.Evaluate(expression, tokenValue);
     }
 }

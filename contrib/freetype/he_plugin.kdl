@@ -66,7 +66,7 @@ plugin freetype.freetype version="2.12.1" license="FTL" {
             include_dirs { "${plugin.install_dir}/include" }
         }
 
-        when system="linux || macosx" {
+        when platform.system="linux || macosx" {
             defines { "HAVE_UNISTD_H=1"; "HAVE_FCNTL_H=1" }
             files {
                 "${plugin.install_dir}/builds/unix/ftsystem.c"
@@ -74,7 +74,7 @@ plugin freetype.freetype version="2.12.1" license="FTL" {
             }
         }
 
-        when system=windows {
+        when platform.system=windows {
             files {
                 "${plugin.install_dir}/builds/windows/ftsystem.c"
                 "${plugin.install_dir}/builds/windows/ftdebug.c"

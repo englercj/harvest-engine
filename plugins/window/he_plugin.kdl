@@ -12,7 +12,7 @@ plugin he.window version="0.1.0" license="UNLICENSED" {
             include_dirs { "include" }
         }
 
-        when system=linux {
+        when platform.system=linux {
             public {
                 dependencies { dl kind=system }
             }

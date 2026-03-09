@@ -28,14 +28,14 @@ None.
 configuration Debug
 configuration Release
 
-when configuration=Debug {
+when configuration.name=Debug {
     defines { _DEBUG; DEBUG }
     optimize off
     runtime debug
     symbols on
 }
 
-when configuration=Release {
+when configuration.name=Release {
     defines { NDEBUG }
     optimize speed
     runtime release

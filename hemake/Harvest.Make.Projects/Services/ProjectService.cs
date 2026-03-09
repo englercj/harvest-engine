@@ -43,6 +43,7 @@ public class ProjectService : IProjectService
         { ("platform", "name"), (c) => c.Platform?.PlatformName },
         { ("platform", "system"), (c) => c.Platform is not null ? KdlEnumUtils.GetName(c.Platform.System) : null },
         { ("platform", "arch"), (c) => c.Platform is not null ? KdlEnumUtils.GetName(c.Platform.Arch) : null },
+        { ("platform", "toolset"), (c) => c.Platform is not null ? KdlEnumUtils.GetName(c.Platform.Toolset) : null },
         { ("host", "name"), (c) => KdlEnumUtils.GetName(c.Host) },
     };
     public IReadOnlyDictionary<(string, string), CustomStringTokenResolver> TokenResolvers => _tokenResolvers;

@@ -6,7 +6,7 @@ plugin microsoft.DirectStorage version="1.2.1" license="SEE LICENSE IN LICENSE.t
     authors { "Microsoft" }
 
     install {
-        when system=windows {
+        when platform.system=windows {
             fetch nuget package=Microsoft.Direct3D.DirectStorage version="${plugin.version}"
         }
     }
@@ -16,7 +16,7 @@ plugin microsoft.DirectStorage version="1.2.1" license="SEE LICENSE IN LICENSE.t
             include_dirs { "${plugin.install_dir}/native/include" }
         }
 
-        when system=windows arch=x86_64 {
+        when platform.system=windows platform.arch=x86_64 {
             public {
                 dependencies {
                     "${plugin.install_dir}/native/lib/x64/dstorage.lib" kind=file
@@ -28,7 +28,7 @@ plugin microsoft.DirectStorage version="1.2.1" license="SEE LICENSE IN LICENSE.t
             }
         }
 
-        when system=windows arch=arm64 {
+        when platform.system=windows platform.arch=arm64 {
             public {
                 dependencies {
                     "${plugin.install_dir}/native/lib/ARM64/dstorage.lib" kind=file

@@ -190,18 +190,36 @@ public sealed class ProjectGenerationFixture : IDisposable
                     "4700"
                 }
 
-                when configuration=Debug {
+                when configuration.name=Debug {
                     defines {
                         FROM_WHEN_DEBUG
                     }
                 }
-                when configuration=Release {
+                when configuration.name=Release {
                     defines {
                         FROM_WHEN_RELEASE
                     }
                 }
 
                 import "./unit_plugin.kdl"
+
+                :foreach module {
+                    +module "${_entry.name}" {
+                        defines {
+                            "HE_CFG_MODULE_NAME=\"${_entry.name}\""
+                        }
+
+                        when module.kind=app_console {
+                            defines { "HE_CFG_MODULE_KIND=1" }
+                        }
+                        when module.kind=lib_static {
+                            defines { "HE_CFG_MODULE_KIND=4" }
+                        }
+                        when module.kind=custom {
+                            defines { "HE_CFG_MODULE_KIND=7" }
+                        }
+                    }
+                }
             }
             """;
     }

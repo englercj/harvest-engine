@@ -11,23 +11,34 @@ Wraps one or more other nodes that are applied in the parent scope only if the c
 
 ## Properties
 
-Each property checks if the context matches the value. For example, `arch=x86_64` checks that active platform's architecture is equal to `x86_64`.
-
 Values can be logically combined with `||` (or), `&&` (and), or `^` (xor). Conditions are evaluated from left-to-right, and parenthesis (`()`) may be used to group conditions. The equality check can be negated by prefixing the value with `!`.
 
-The values you can specify as properties to be checked are:
+There are two kinds of `when` condition keys:
 
-- `arch` (string) - Optional. Checks if the active platform's architecture matches.
-- `configuration` (string) - Optional. Checks if the active configuration name matches.
-- `host` (string) - Optional. Checks if the host operating system matches.
-- `language` (string) - Optional. Checks if the target compilation is for a particular language (`cpp`, `csharp`, etc).
-- `option` (string) - Optional. Checks if an option is active, or holds a specific value.
-    * For example, `when option=a {}` checks if the `a` option is set with any value.
-    * Another example, `when option="a:test" {}` checks if the `a` option is set to `test`.
-- `platform` (string) - Optional. Checks if the active platform name matches.
-- `system` (string) - Optional. Checks if the active platform's system matches.
-- `tags` (string) - Optional. Checks if the active [`tags`](tags_node.md) include the specified one.
-- `toolset` (string) - Optional. Checks if the toolset being used matches.
+- Special keys:
+  - `option` (string) - Checks if an option is active, or holds a specific value.
+    * `when option=a {}` checks if the `a` option is set with any value.
+    * `when option="a:test" {}` checks if the `a` option is set to `test`.
+  - `tags` (string) - Checks if the active [`tags`](tags_node.md) include the specified one.
+- Token-style keys:
+  - Any other key must be a token path and is resolved the same way as a `${...}` token before the expression is evaluated.
+  - Common examples are `configuration.name`, `platform.name`, `platform.arch`, `platform.system`, `platform.toolset`, `module.kind`, `module.language`, `plugin.version`, and `host.name`.
+  - Unknown bare keys such as `when system=windows {}` are invalid. Use the equivalent token-style key instead, for example `when platform.system=windows {}`.
+
+## Common Replacements
+
+Use these token-style keys instead of the old scalar shorthand forms:
+
+| Old form | New form |
+| --- | --- |
+| `when configuration=Debug {}` | `when configuration.name=Debug {}` |
+| `when platform=Win64 {}` | `when platform.name=Win64 {}` |
+| `when system=windows {}` | `when platform.system=windows {}` |
+| `when arch=x86_64 {}` | `when platform.arch=x86_64 {}` |
+| `when toolset=msvc {}` | `when platform.toolset=msvc {}` |
+| `when host=windows {}` | `when host.name=windows {}` |
+| `when language=cpp {}` | `when module.language=cpp {}` |
+| `when kind=lib_static {}` | `when module.kind=lib_static {}` |
 
 ## Children
 
@@ -44,20 +55,23 @@ The values you can specify as properties to be checked are:
 
 ```kdl
 // system is 'windows'
-when system=windows {}
+when platform.system=windows {}
 
 // system is NOT 'windows'
-when system=!windows {}
+when platform.system=!windows {}
 
 // arch is 'x86' OR 'x86_64'
-when arch="x86 || x86_64" {}
+when platform.arch="x86 || x86_64" {}
+
+// configuration is 'Debug'
+when configuration.name=Debug {}
+
+// active module kind is lib_static
+when module.kind=lib_static {}
 
 // option 'a' is specified with any value
 when option=a {}
 
 // option 'a' is specified with the value 'test'
 when option="a:test" {}
-
-// option 'a' is specified with the value 'test' OR option 'b' is specified with the value 'test'
-when option="a:test || b:test" {}
 ```

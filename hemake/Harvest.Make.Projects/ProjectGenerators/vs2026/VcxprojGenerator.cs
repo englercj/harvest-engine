@@ -9,7 +9,7 @@ using System.Xml;
 
 namespace Harvest.Make.Projects.ProjectGenerators.vs2026;
 
-internal class VcxprojGenerator(IProjectService projectService, ILogger<VcxprojGenerator> logger)
+internal class VcxprojGenerator(string platformToolset, IProjectService projectService, ILogger<VcxprojGenerator> logger)
 {
     public const string ProjectExtension = ".vcxproj";
     public const string FiltersExtension = ".vcxproj.filters";
@@ -317,7 +317,7 @@ internal class VcxprojGenerator(IProjectService projectService, ILogger<VcxprojG
                 {
                     writer.WriteElementString("VCToolsVersion", toolsetVersion);
                 }
-                writer.WriteElementString("PlatformToolset", "v143"); // VS 2022
+                writer.WriteElementString("PlatformToolset", platformToolset);
             }
 
             if (module.Kind != EModuleKind.Custom && module.Kind != EModuleKind.Content)

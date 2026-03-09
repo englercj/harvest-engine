@@ -56,7 +56,7 @@ internal class VS2026ProjectGeneratorService(
                 case EModuleLanguage.C:
                 case EModuleLanguage.Cpp:
                 {
-                    VcxprojGenerator generator = new(projectService, loggerFactory.CreateLogger<VcxprojGenerator>());
+                    VcxprojGenerator generator = new("v145", projectService, loggerFactory.CreateLogger<VcxprojGenerator>());
                     Task task = generator.GenerateAsync(entry.Name);
                     projectGenerationTasks.Add(task);
                     break;

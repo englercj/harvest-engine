@@ -13,6 +13,7 @@ internal class VcxprojGenerator(string platformToolset, IProjectService projectS
 {
     public const string ProjectExtension = ".vcxproj";
     public const string FiltersExtension = ".vcxproj.filters";
+    public const string UserExtension = ".vcxproj.user";
     public const string XmlNamespace = "http://schemas.microsoft.com/developer/msbuild/2003";
 
     private readonly IProjectService _projectService = projectService;
@@ -40,7 +41,7 @@ internal class VcxprojGenerator(string platformToolset, IProjectService projectS
 
     private async Task GenerateProjectFileAsync()
     {
-        await using FileStream stream = new(_outputPath, FileMode.Create, FileAccess.Write, FileShare.None);
+        await using MemoryStream stream = new(64 * 1024);
         await using XmlWriter writer = XmlWriter.Create(stream, new XmlWriterSettings
         {
             Encoding = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false),
@@ -73,13 +74,23 @@ internal class VcxprojGenerator(string platformToolset, IProjectService projectS
 
         writer.WriteEndElement();
         writer.WriteEndDocument();
+
+        await writer.FlushAsync();
+
+        bool fileChanged = await stream.CopyToFileIfChangedAsync(_outputPath);
+        if (fileChanged)
+        {
+            _logger.LogInformation("Updated project file: {OutputPath}", _outputPath);
+        }
+        else
+        {
+            _logger.LogDebug("Project file is up to date: {OutputPath}", _outputPath);
+        }
     }
 
     private async Task GenerateFiltersFileAsync(string projectsDir, string moduleName)
     {
-        string outputPath = Path.Join(projectsDir, $"{moduleName}{FiltersExtension}");
-
-        await using FileStream stream = new(outputPath, FileMode.Create, FileAccess.Write, FileShare.None);
+        await using MemoryStream stream = new(32 * 1024);
         await using XmlWriter writer = XmlWriter.Create(stream, new XmlWriterSettings
         {
             Encoding = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false),
@@ -124,15 +135,26 @@ internal class VcxprojGenerator(string platformToolset, IProjectService projectS
 
         writer.WriteEndElement();
         writer.WriteEndDocument();
+
+        await writer.FlushAsync();
+
+        string outputPath = Path.Join(projectsDir, $"{moduleName}{FiltersExtension}");
+        bool fileChanged = await stream.CopyToFileIfChangedAsync(outputPath);
+        if (fileChanged)
+        {
+            _logger.LogDebug("Updated project filters file: {OutputPath}", outputPath);
+        }
+        else
+        {
+            _logger.LogDebug("Project filters file is up to date: {OutputPath}", outputPath);
+        }
     }
 
-    private Task GenerateUserFileAsync(string projectsDir, string moduleName)
+    private async Task GenerateUserFileAsync(string projectsDir, string moduleName)
     {
         // TODO: debugger settings: command, args, flavor, type, working dir, environment variables, etc.
 
-        //_outputPath = Path.Join(projectsDir, $"{moduleName}{ProjectExtension}.user");
-
-        //await using FileStream stream = new(_outputPath, FileMode.Create, FileAccess.Write, FileShare.None);
+        //await using MemoryStream stream = new(16 * 1024);
         //await using XmlWriter writer = XmlWriter.Create(stream, new XmlWriterSettings { Encoding = Encoding.UTF8, Indent = true });
 
         //writer.WriteStartDocument();
@@ -145,7 +167,18 @@ internal class VcxprojGenerator(string platformToolset, IProjectService projectS
         //writer.WriteEndElement();
         //writer.WriteEndDocument();
 
-        return Task.CompletedTask;
+        //await writer.FlushAsync();
+
+        //string outputPath = Path.Join(projectsDir, $"{moduleName}{UserExtension}");
+        //bool fileChanged = await stream.CopyToFileIfChangedAsync(outputPath);
+        //if (fileChanged)
+        //{
+        //    _logger.LogDebug("Updated project user file: {OutputPath}", outputPath);
+        //}
+        //else
+        //{
+        //    _logger.LogDebug("Project user file is up to date: {OutputPath}", outputPath);
+        //}
     }
 
     private string GetPath(string path)

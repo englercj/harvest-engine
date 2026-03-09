@@ -45,8 +45,8 @@ internal class SlnxGenerator(IProjectService projectService, ILogger<SlnxGenerat
             _platformArchs[projectTree.ProjectContext.Platform.PlatformName] = archName;
         }
 
-        await using MemoryStream newSlnxStream = new(4096);
-        await using XmlWriter writer = XmlWriter.Create(newSlnxStream, new XmlWriterSettings
+        await using MemoryStream stream = new(32 * 1024);
+        await using XmlWriter writer = XmlWriter.Create(stream, new XmlWriterSettings
         {
             Encoding = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false),
             Async = true,
@@ -63,10 +63,10 @@ internal class SlnxGenerator(IProjectService projectService, ILogger<SlnxGenerat
 
         await writer.FlushAsync();
 
-        bool fileChanged = await newSlnxStream.CopyToFileIfChangedAsync(outputPath);
-        if (!fileChanged)
+        bool fileChanged = await stream.CopyToFileIfChangedAsync(outputPath);
+        if (fileChanged)
         {
-            _logger.LogDebug("Solution file is already up to date, skipping write.");
+            _logger.LogInformation("Updated solution file: {OutputPath}", outputPath);
         }
     }
 

@@ -14,6 +14,8 @@ internal class VS2026ProjectGeneratorService(
     ILoggerFactory loggerFactory)
     : IProjectGeneratorService
 {
+    private const string PlatformToolset = "v145"; // VS 2026
+
     public const string GeneratorName = "vs2026";
     public string Name => GeneratorName;
 
@@ -56,7 +58,7 @@ internal class VS2026ProjectGeneratorService(
                 case EModuleLanguage.C:
                 case EModuleLanguage.Cpp:
                 {
-                    VcxprojGenerator generator = new("v145", projectService, loggerFactory.CreateLogger<VcxprojGenerator>());
+                    VcxprojGenerator generator = new(PlatformToolset, projectService, loggerFactory.CreateLogger<VcxprojGenerator>());
                     Task task = generator.GenerateAsync(entry.Name);
                     projectGenerationTasks.Add(task);
                     break;

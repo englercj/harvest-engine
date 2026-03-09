@@ -16,17 +16,27 @@ namespace Harvest.Make.CLI;
 
 class Program
 {
+#if DEBUG
+    private const LogEventLevel DefaultLogLevel = LogEventLevel.Debug;
+#else
+    private const LogEventLevel DefaultLogLevel = LogEventLevel.Information;
+#endif
+
     static async Task<int> Main(string[] args)
     {
         // Initialize logging
+        LogEventLevel consoleLogLevel = GetLogLevel(args);
         Log.Logger = new LoggerConfiguration()
-            .WriteTo.Console(
-                restrictedToMinimumLevel: GetLogLevel(),
-                standardErrorFromLevel: LogEventLevel.Warning)
 #if DEBUG
+            .MinimumLevel.Is(consoleLogLevel < LogEventLevel.Debug ? consoleLogLevel : LogEventLevel.Debug)
             .WriteTo.Debug(
                 restrictedToMinimumLevel: LogEventLevel.Debug)
+#else
+            .MinimumLevel.Is(consoleLogLevel)
 #endif
+            .WriteTo.Console(
+                restrictedToMinimumLevel: consoleLogLevel,
+                standardErrorFromLevel: LogEventLevel.Warning)
             .CreateLogger();
 
         Log.Information("Running with: {Args}", string.Join(' ', args));
@@ -37,19 +47,12 @@ class Program
         services.AddLogging(builder => builder.AddSerilog(dispose: true));
 
         // Load the project early so we can use the configuration for initialization
-        ILoggerFactory loggerFactory = new LoggerFactory().AddSerilog(Log.Logger);
+        ILoggerFactory loggerFactory = LoggerFactory.Create(builder => builder.AddSerilog());
         ProjectService projectService = new();
-
-        // Manually find the `--project` option value.
-        string? projectPath = null;
-        int projectOptionIndex = Array.FindIndex(args, arg => arg == "--project");
-        if (projectOptionIndex > -1 && projectOptionIndex < (args.Length - 1))
-        {
-            projectPath = args[projectOptionIndex + 1];
-        }
 
         // Load up the project files. This will load the KDL project structure but not
         // parse it into semantic nodes yet. We need to load any hemake extensions first.
+        string? projectPath = GetProjectPath(args);
         if (projectPath is not null)
         {
             projectService.LoadProject(projectPath);
@@ -141,6 +144,7 @@ class Program
 
         // Add global options (so they appear in help)
         rootCommand.Options.Add(new Option<string>("--project") { Description = "Path to the project file (*.he_project)." });
+        rootCommand.Options.Add(new Option<string>("--log") { Description = "Set the logging level." });
 
         // Discover commands
         IEnumerable<ICommandProvider> commandProviders = serviceProvider.GetServices<ICommandProvider>();
@@ -182,12 +186,37 @@ class Program
         }
     }
 
-    private static LogEventLevel GetLogLevel()
+    private static string? GetProjectPath(string[] args)
     {
-#if DEBUG
-        return LogEventLevel.Debug;
-#else
-        return LogEventLevel.Information;
-#endif
+        string? projectPath = null;
+        int projectOptionIndex = Array.FindIndex(args, arg => arg == "--project");
+        if (projectOptionIndex > -1 && projectOptionIndex < (args.Length - 1))
+        {
+            projectPath = args[projectOptionIndex + 1];
+        }
+        return projectPath;
+    }
+
+    private static LogEventLevel GetLogLevel(string[] args)
+    {
+        string? logLevel = null;
+        int projectOptionIndex = Array.FindIndex(args, arg => arg == "--log");
+        if (projectOptionIndex > -1 && projectOptionIndex < (args.Length - 1))
+        {
+            logLevel = args[projectOptionIndex + 1];
+        }
+
+        return logLevel?.ToLowerInvariant() switch
+        {
+            "verbose" => LogEventLevel.Verbose,
+            "debug" => LogEventLevel.Debug,
+            "info" => LogEventLevel.Information,
+            "information" => LogEventLevel.Information,
+            "warn" => LogEventLevel.Warning,
+            "warning" => LogEventLevel.Warning,
+            "error" => LogEventLevel.Error,
+            "fatal" => LogEventLevel.Fatal,
+            _ => DefaultLogLevel,
+        };
     }
 }

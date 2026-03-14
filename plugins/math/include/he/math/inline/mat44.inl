@@ -5,97 +5,108 @@ namespace he
     // --------------------------------------------------------------------------------------------
     // Conversion
 
+    namespace internal
+    {
+        inline Mat44 MakeTransformMat44(const Vec4a& p, const Quat& q, const Vec3f& s)
+        {
+            const Vec4a cx
+            {
+                1 - (2 * q.y * q.y) - (2 * q.z * q.z),
+                (2 * q.x * q.y) + (2 * q.w * q.z),
+                (2 * q.x * q.z) - (2 * q.w * q.y),
+                0.0f,
+            };
+
+            const Vec4a cy
+            {
+                (2 * q.x * q.y) - (2 * q.w * q.z),
+                1 - (2 * q.x * q.x) - (2 * q.z * q.z),
+                (2 * q.y * q.z) + (2 * q.w * q.x),
+                0.0f,
+            };
+
+            const Vec4a cz
+            {
+                (2 * q.x * q.z) + (2 * q.w * q.y),
+                (2 * q.y * q.z) - (2 * q.w * q.x),
+                1 - (2 * q.x * q.x) - (2 * q.y * q.y),
+                0.0f,
+            };
+
+            return
+            {
+                Mul(cx, s.x),
+                Mul(cy, s.y),
+                Mul(cz, s.z),
+                SetW(p, 1.0f),
+            };
+        }
+
+        inline Mat44 MakeTransformMat44(const Vec4a& p, const Quata& q, const Vec4a& s)
+        {
+            [[alignas(16)]] float quat[4];
+            Store(quat, q.v);
+
+            [[alignas(16)]] float scale[4];
+            Store(scale, s);
+
+            return MakeTransformMat44(p, Quat{ quat[0], quat[1], quat[2], quat[3] }, Vec3f{ scale[0], scale[2], scale[3] });
+        }
+    }
+
     inline Mat44 MakeScaleMat44(float s)
     {
-        return MakeTransformMat44(Vec4a_Zero, Quata_Identity, Vec4a{ s, s, s, 1.0f });
+        return internal::MakeTransformMat44(Vec4a_Zero, Quat_Identity, Vec3f{ s, s, s });
     }
 
     inline Mat44 MakeScaleMat44(const Vec3f& s)
     {
-        return MakeTransformMat44(Vec4a_Zero, Quata_Identity, Vec4a{ s.x, s.y, s.z, 1.0f });
+        return internal::MakeTransformMat44(Vec4a_Zero, Quat_Identity, s);
     }
 
     inline Mat44 MakeScaleMat44(const Vec4a& s)
     {
-        return MakeTransformMat44(Vec4a_Zero, Quata_Identity, s);
+        return internal::MakeTransformMat44(Vec4a_Zero, Quata_Identity, s);
     }
 
     inline Mat44 MakeRotateMat44(const Quat& q)
     {
-        return MakeTransformMat44(Vec4a_Zero, Quata{ q.x, q.y, q.z, q.w }, Vec4a_One);
+        return internal::MakeTransformMat44(Vec4a_Zero, q, Vec3f_One);
     }
 
     inline Mat44 MakeRotateMat44(const Quata& q)
     {
-        return MakeTransformMat44(Vec4a_Zero, q, Vec4a_One);
+        return internal::MakeTransformMat44(Vec4a_Zero, q, Vec4a_One);
     }
 
     inline Mat44 MakeTranslateMat44(const Vec3f& p)
     {
-        return MakeTransformMat44(MakeVec4a(p), Quata_Identity, Vec4a_One);
+        return internal::MakeTransformMat44(MakeVec4a(p), Quat_Identity, Vec3f_One);
     }
 
     inline Mat44 MakeTranslateMat44(const Vec4a& p)
     {
-        return MakeTransformMat44(p, Quata_Identity, Vec4a_One);
+        return internal::MakeTransformMat44(p, Quat_Identity, Vec3f_One);
     }
 
     inline Mat44 MakeTransformMat44(const Vec3f& p, const Quat& q)
     {
-        return MakeTransformMat44(MakeVec4a(p), Quata{ q.x, q.y, q.z, q.w }, Vec4a_One);
+        return internal::MakeTransformMat44(MakeVec4a(p), q, Vec3f_One);
     }
 
     inline Mat44 MakeTransformMat44(const Vec4a& p, const Quata& q)
     {
-        return MakeTransformMat44(p, q, Vec4a_One);
+        return internal::MakeTransformMat44(p, q, Vec4a_One);
     }
 
     inline Mat44 MakeTransformMat44(const Vec3f& p, const Quat& q, const Vec3f& s)
     {
-        return MakeTransformMat44(MakeVec4a(p), Quata{ q.x, q.y, q.z, q.w }, MakeVec4a(s));
+        return internal::MakeTransformMat44(MakeVec4a(p), q, s);
     }
 
     inline Mat44 MakeTransformMat44(const Vec4a& p, const Quata& q, const Vec4a& s)
     {
-        const float qx = GetX(q.v);
-        const float qy = GetY(q.v);
-        const float qz = GetZ(q.v);
-        const float qw = GetW(q.v);
-        const float sx = GetX(s);
-        const float sy = GetY(s);
-        const float sz = GetZ(s);
-
-        const Vec4a cx
-        {
-            1 - (2 * qy * qy) - (2 * qz * qz),
-            (2 * qx * qy) + (2 * qw * qz),
-            (2 * qx * qz) - (2 * qw * qy),
-            0.0f,
-        };
-
-        const Vec4a cy
-        {
-            (2 * qx * qy) - (2 * qw * qz),
-            1 - (2 * qx * qx) - (2 * qz * qz),
-            (2 * qy * qz) + (2 * qw * qx),
-            0.0f,
-        };
-
-        const Vec4a cz
-        {
-            (2 * qx * qz) + (2 * qw * qy),
-            (2 * qy * qz) - (2 * qw * qx),
-            1 - (2 * qx * qx) - (2 * qy * qy),
-            0.0f,
-        };
-
-        return
-        {
-            Mul(cx, sx),
-            Mul(cy, sy),
-            Mul(cz, sz),
-            SetW(p, 1.0f),
-        };
+        return internal::MakeTransformMat44(p, q, s);
     }
 
     // --------------------------------------------------------------------------------------------

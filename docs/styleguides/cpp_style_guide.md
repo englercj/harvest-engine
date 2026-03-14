@@ -356,10 +356,8 @@ Example:
 Includes should be grouped by where they are coming from. Within each group they should be ordered alphabetically. The definition, and order, of the groups is:
 
 1. Header for this implementation (if .cpp)
-2. Local includes in your module implementation (src/)
-3. Module includes, including the public includes of your own module (include/)
-4. Contrib includes
-5. System includes
+2. Module includes (using quotes)
+3. System includes (using angle brackets)
 
 Example `allocator.cpp` file:
 
@@ -369,12 +367,10 @@ Example `allocator.cpp` file:
 #include "he/core/allocator.h"
 
 #include "allocator_helpers.h"
-
 #include "he/core/assert.h"
 #include "he/core/compiler.h"
 #include "he/core/config.h"
 #include "he/core/utils.h"
-
 #include "zlib.h"
 
 #include <new>

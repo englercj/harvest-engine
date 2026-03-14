@@ -95,7 +95,7 @@ struct KDL
     //     module2 { type "type 2"; }
     // }
     // ```
-    attribute NameProperty(field) :String
+    attribute NameProperty(field) :String;
 
     // Formats the struct or field as an inline node in KDL documents. A property name may
     // optionally be specified which will treat that property as the node's value.

@@ -1,12 +1,13 @@
-// Copyright Chad Engler
+﻿// Copyright Chad Engler
 
 #pragma once
 
+#include "he/assets/asset_importer.h"
 #include "he/core/atomic.h"
+#include "he/core/signal.h"
 #include "he/core/string.h"
-#include "he/core/sync.h"
+#include "he/core/string_view.h"
 #include "he/core/types.h"
-#include "he/core/unique_ptr.h"
 #include "he/editor/dialogs/dialog.h"
 #include "he/editor/framework/schema_edit.h"
 #include "he/editor/services/asset_service.h"
@@ -55,8 +56,7 @@ namespace he::editor
             Done,
         };
 
-        template <Enum T>
-        friend class he::EnumTraits<T>;
+        friend struct he::EnumTraits<State>;
 
     private:
         AssetService& m_assetService;

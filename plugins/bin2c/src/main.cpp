@@ -92,7 +92,7 @@ int he::AppMain(int argc, char* argv[])
     }
 
     he::File outFile;
-    r = outFile.Open(args.output, he::FileOpenMode::WriteTruncate);
+    r = outFile.Open(args.output, he::FileAccessMode::Write, he::FileCreateMode::CreateAlways);
     if (!r)
     {
         HE_LOG_ERROR(he_bin2c, HE_MSG("Failed to open output file for writing."), HE_KV(path, args.output), HE_KV(result, r));

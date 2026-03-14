@@ -42,7 +42,6 @@ namespace he::assets
         }
 
         constexpr bool operator==(const _UuidWrapper& x) const { return val == x.val; }
-        constexpr bool operator!=(const _UuidWrapper& x) const { return val != x.val; }
         constexpr bool operator<(const _UuidWrapper& x) const { return val < x.val; }
 
         inline bool operator==(const schema::Uuid::Reader& x) const
@@ -51,13 +50,6 @@ namespace he::assets
             return value.Size() == sizeof(Uuid::m_bytes) && MemEqual(val.m_bytes, value.Data(), sizeof(Uuid::m_bytes));
         }
         inline bool operator==(const schema::Uuid::Builder& x) const { return *this == x.AsReader(); }
-
-        inline bool operator!=(const schema::Uuid::Reader& x) const
-        {
-            Span<const uint8_t> value = x.GetValue();
-            return value.Size() != sizeof(Uuid::m_bytes) || !MemEqual(val.m_bytes, value.Data(), sizeof(Uuid::m_bytes));
-        }
-        inline bool operator!=(const schema::Uuid::Builder& x) const { return *this != x.AsReader(); }
 
         inline bool operator<(const schema::Uuid::Reader& x) const
         {

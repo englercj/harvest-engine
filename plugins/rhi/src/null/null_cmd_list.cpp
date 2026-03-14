@@ -143,7 +143,7 @@ namespace he::rhi::null
     {
     }
 
-    void ComputeCmdListImpl::TransitionBarrier([[maybe_unused]] const Buffer* buffer, BufferState oldState, BufferState newState)
+    void ComputeCmdListImpl::TransitionBarrier([[maybe_unused]] const Buffer* buffer, [[maybe_unused]] BufferState oldState, [[maybe_unused]] BufferState newState)
     {
     }
 

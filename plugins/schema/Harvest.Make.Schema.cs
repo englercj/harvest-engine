@@ -161,7 +161,9 @@ public sealed class SchemaCompileNodeTraits : NodeBaseTraits
         generatedModule.AddChild(ExtensionNodeUtils.CreateDependenciesNode(source.SourceInfo, dependencyEntries));
 
         KdlNode publicNode = ExtensionNodeUtils.CreateNode(PublicNode.NodeTraits.Name, source.SourceInfo);
-        publicNode.AddChild(ExtensionNodeUtils.CreateStringEntriesNode(IncludeDirsNode.NodeTraits.Name, source.SourceInfo, [$"${{module[{ownerModule.ModuleName}].gen_dir}}/include"]));
+        List<string> publicIncludeDirs = [$"${{module[{ownerModule.ModuleName}].gen_dir}}/include"];
+        publicIncludeDirs.AddRange(dependencyModuleNames.Select((dependencyModuleName) => $"${{module[{dependencyModuleName}].gen_dir}}/include"));
+        publicNode.AddChild(ExtensionNodeUtils.CreateStringEntriesNode(IncludeDirsNode.NodeTraits.Name, source.SourceInfo, publicIncludeDirs.Distinct(StringComparer.Ordinal).ToArray()));
         generatedModule.AddChild(publicNode);
 
         pluginTarget.AddChild(resolver.CreateResolvedNode(generatedModule, includeChildren: true));

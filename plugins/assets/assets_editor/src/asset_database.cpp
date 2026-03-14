@@ -221,7 +221,7 @@ namespace he::assets
         }
 
         AsyncFile file;
-        const Result r = file.Open(path, FileOpenMode::ReadExisting, FileOpenFlag::SequentialScan);
+        const Result r = file.Open(path, FileAccessMode::Read, FileCreateMode::OpenExisting, FileOpenFlag::SequentialScan);
         if (!r)
         {
             HE_LOG_ERROR(he_assets,

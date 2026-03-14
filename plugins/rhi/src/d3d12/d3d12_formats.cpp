@@ -626,6 +626,7 @@ namespace he
             case DXGI_FORMAT_IA44: return "DXGI_FORMAT_IA44";
             case DXGI_FORMAT_P8: return "DXGI_FORMAT_P8";
             case DXGI_FORMAT_A8P8: return "DXGI_FORMAT_A8P8";
+            case DXGI_FORMAT_A4B4G4R4_UNORM: return "DXGI_FORMAT_A4B4G4R4_UNORM";
             case DXGI_FORMAT_B4G4R4A4_UNORM: return "DXGI_FORMAT_B4G4R4A4_UNORM";
             case DXGI_FORMAT_P208: return "DXGI_FORMAT_P208";
             case DXGI_FORMAT_V208: return "DXGI_FORMAT_V208";

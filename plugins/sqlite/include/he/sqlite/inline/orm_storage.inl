@@ -424,7 +424,7 @@ namespace he::sqlite
             if (i++ > 0)
                 sql.Write(", ");
 
-            using Traits = SqlDataTypeTraits<Decay<decltype(col)>::ValueType>;
+            using Traits = SqlDataTypeTraits<typename Decay<decltype(col)>::ValueType>;
             if (columnInfo->type == Traits::SqlType)
                 sql.Write(col.name);
             else

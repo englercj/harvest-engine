@@ -133,8 +133,8 @@ namespace he
 
     constexpr bool IsPrint(char c) noexcept
     {
-        const _AsciiCategory category = _AsciiCategoryLookup[static_cast<uint8_t>(c)];
-        return c == ' ' || (category != _AsciiCategory::None && category != _AsciiCategory::Whitespace);
+        const uint8_t value = static_cast<uint8_t>(c);
+        return value >= static_cast<uint8_t>(' ') && value <= static_cast<uint8_t>('~');
     }
 
     constexpr bool IsPrint(const char* str) noexcept

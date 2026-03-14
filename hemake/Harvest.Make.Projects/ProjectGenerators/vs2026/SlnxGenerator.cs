@@ -93,7 +93,7 @@ internal class SlnxGenerator(IProjectService projectService, ILogger<SlnxGenerat
 
     private void WriteProjects(XmlWriter writer, ModuleGroupTree groupTree, string projectsDir)
     {
-        foreach (Entry entry in groupTree.Root.Children)
+        foreach (Entry entry in groupTree.Root.Children.OrderBy(static entry => entry is ModuleEntry ? 0 : 1).ThenBy(GetEntrySortKey(projectsDir), StringComparer.OrdinalIgnoreCase))
         {
             if (entry is ModuleEntry moduleEntry)
             {
@@ -109,7 +109,7 @@ internal class SlnxGenerator(IProjectService projectService, ILogger<SlnxGenerat
     private void WriteProjectEntry(XmlWriter writer, ModuleEntry entry, string projectsDir)
     {
         string projectPath = GetModuleProjectPath(entry.Name, projectsDir);
-        HashSet<string> buildDependencyPaths = [];
+        SortedSet<string> buildDependencyPaths = new(StringComparer.OrdinalIgnoreCase);
 
         string? externalProjectFilePath = null;
         ExternalProjectConfig? externalProjectConfig = null;
@@ -122,6 +122,7 @@ internal class SlnxGenerator(IProjectService projectService, ILogger<SlnxGenerat
 
         writer.WriteStartElement("Project");
         writer.WriteAttributeString("Path", projectPath);
+        writer.WriteAttributeString("Id", entry.ID.Trim('{', '}').ToLowerInvariant());
 
         foreach ((ResolvedProjectTree project, _) in VisualStudioUtils.EnumerateConfigs(_projectService))
         {
@@ -148,16 +149,21 @@ internal class SlnxGenerator(IProjectService projectService, ILogger<SlnxGenerat
                     }
 
                     string dependencyProjectPath = GetModuleProjectPath(dependencyModule.ModuleName, projectsDir);
-                    if (dependencyProjectPath == projectPath || !buildDependencyPaths.Add(dependencyProjectPath))
+                    if (dependencyProjectPath == projectPath)
                     {
                         continue;
                     }
 
-                    writer.WriteStartElement("BuildDependency");
-                    writer.WriteAttributeString("Project", dependencyProjectPath);
-                    writer.WriteEndElement();
+                    buildDependencyPaths.Add(dependencyProjectPath);
                 }
             }
+        }
+
+        foreach (string dependencyProjectPath in buildDependencyPaths)
+        {
+            writer.WriteStartElement("BuildDependency");
+            writer.WriteAttributeString("Project", dependencyProjectPath);
+            writer.WriteEndElement();
         }
 
         foreach ((ResolvedProjectTree project, _) in VisualStudioUtils.EnumerateConfigs(_projectService))
@@ -428,22 +434,23 @@ internal class SlnxGenerator(IProjectService projectService, ILogger<SlnxGenerat
         writer.WriteStartElement("Folder");
         writer.WriteAttributeString("Name", $"/{entry.FullPath}/");
 
-        foreach (Entry child in entry.Children)
+        foreach (ModuleEntry childModule in entry.Children.OfType<ModuleEntry>().OrderBy(GetEntrySortKey(projectsDir), StringComparer.OrdinalIgnoreCase))
         {
-            if (child is ModuleEntry childModule)
-            {
-                WriteProjectEntry(writer, childModule, projectsDir);
-            }
+            WriteProjectEntry(writer, childModule, projectsDir);
         }
 
         writer.WriteEndElement();
 
-        foreach (Entry child in entry.Children)
+        foreach (Entry child in entry.Children.Where(static child => child is not ModuleEntry).OrderBy(GetEntrySortKey(projectsDir), StringComparer.OrdinalIgnoreCase))
         {
-            if (child is not ModuleEntry)
-            {
-                WriteFolderEntry(writer, child, projectsDir);
-            }
+            WriteFolderEntry(writer, child, projectsDir);
         }
+    }
+
+    private Func<Entry, string> GetEntrySortKey(string projectsDir)
+    {
+        return (entry) => entry is ModuleEntry moduleEntry
+            ? GetModuleProjectPath(moduleEntry.Name, projectsDir)
+            : entry.FullPath;
     }
 }

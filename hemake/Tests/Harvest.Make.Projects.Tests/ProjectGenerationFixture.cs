@@ -31,11 +31,13 @@ public sealed class ProjectGenerationFixture : IDisposable
 
     public string SlnxPath { get; }
     public string AppVcxprojPath { get; }
+    public string AppFiltersPath { get; }
     public string LibVcxprojPath { get; }
     public string ToolVcxprojPath { get; }
 
     public string SlnxText { get; }
     public string AppVcxprojText { get; }
+    public string AppFiltersText { get; }
     public string LibVcxprojText { get; }
     public string ToolVcxprojText { get; }
 
@@ -83,11 +85,13 @@ public sealed class ProjectGenerationFixture : IDisposable
 
         SlnxPath = Path.Join(ProjectNode.BuildDir, $"{ProjectNode.ProjectName}{SlnxExtension}");
         AppVcxprojPath = Path.Join(ProjectNode.ProjectsDir, $"test_app{VcxprojExtension}");
+        AppFiltersPath = Path.Join(ProjectNode.ProjectsDir, $"test_app{VcxprojExtension}.filters");
         LibVcxprojPath = Path.Join(ProjectNode.ProjectsDir, $"test_lib{VcxprojExtension}");
         ToolVcxprojPath = Path.Join(ProjectNode.ProjectsDir, $"test_tool{VcxprojExtension}");
 
         SlnxText = File.ReadAllText(SlnxPath);
         AppVcxprojText = File.ReadAllText(AppVcxprojPath);
+        AppFiltersText = File.ReadAllText(AppFiltersPath);
         LibVcxprojText = File.ReadAllText(LibVcxprojPath);
         ToolVcxprojText = File.ReadAllText(ToolVcxprojPath);
     }
@@ -131,6 +135,7 @@ public sealed class ProjectGenerationFixture : IDisposable
         WriteFile("src/main.cpp", "int main() { return 0; }");
         WriteFile("src/lib.cpp", "int lib() { return 1; }");
         WriteFile("src/pch.cpp", "#include \"pch.h\"");
+        WriteFile("src/win32/platform.cpp", "int platform() { return 2; }");
         WriteFile("include/lib.h", "#pragma once");
         WriteFile("include/project/pch.h", "#pragma once");
         WriteFile("include/app/pch.h", "#pragma once");
@@ -293,6 +298,7 @@ public sealed class ProjectGenerationFixture : IDisposable
                     files {
                         "./src/main.cpp"
                         "./src/pch.cpp" action=build build_rule=cpp
+                        "./src/win32/platform.cpp"
                         "./res/app.rc" action=resource
                         "./schema/input.idl" action=build build_rule="gen_step"
                         "./natvis/debug.natvis" action=natvis

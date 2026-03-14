@@ -1,6 +1,7 @@
 // Copyright Chad Engler
 
 using Harvest.Make.Projects.Nodes;
+using System.Xml.Linq;
 
 namespace Harvest.Make.Projects.Tests;
 
@@ -65,14 +66,20 @@ public sealed class ExtensionIntegrationTests(ExtensionIntegrationFixture fixtur
     [Fact]
     public void SolutionGenerationAddsBuildDependenciesForGeneratedModules()
     {
-        Assert.Contains("""<Project Path="projects/schema_owner.vcxproj">""", fixture.SlnxText);
-        Assert.Contains("""<BuildDependency Project="projects/schema_owner__schemac_1.vcxproj" />""", fixture.SlnxText);
-        Assert.Contains("""<Project Path="projects/bin_owner.vcxproj">""", fixture.SlnxText);
-        Assert.Contains("""<BuildDependency Project="projects/bin_owner__bin2c_1.vcxproj" />""", fixture.SlnxText);
-        Assert.Contains("""<Project Path="projects/shader_owner.vcxproj">""", fixture.SlnxText);
-        Assert.Contains("""<BuildDependency Project="projects/shader_owner__shaderc_1.vcxproj" />""", fixture.SlnxText);
-        Assert.Contains("""<Project Path="projects/schema_owner__schemac_1.vcxproj">""", fixture.SlnxText);
-        Assert.Contains("""<BuildDependency Project="projects/schema_dep__schemac_1.vcxproj" />""", fixture.SlnxText);
+        XDocument slnx = XDocument.Parse(fixture.SlnxText);
+        List<XElement> projects = slnx.Descendants().Where((n) => n.Name.LocalName == "Project").ToList();
+
+        XElement schemaOwner = Assert.Single(projects, (p) => p.Attribute("Path")?.Value == "projects/schema_owner.vcxproj");
+        Assert.Contains(schemaOwner.Elements().Where((n) => n.Name.LocalName == "BuildDependency"), (n) => n.Attribute("Project")?.Value == "projects/schema_owner__schemac_1.vcxproj");
+
+        XElement binOwner = Assert.Single(projects, (p) => p.Attribute("Path")?.Value == "projects/bin_owner.vcxproj");
+        Assert.Contains(binOwner.Elements().Where((n) => n.Name.LocalName == "BuildDependency"), (n) => n.Attribute("Project")?.Value == "projects/bin_owner__bin2c_1.vcxproj");
+
+        XElement shaderOwner = Assert.Single(projects, (p) => p.Attribute("Path")?.Value == "projects/shader_owner.vcxproj");
+        Assert.Contains(shaderOwner.Elements().Where((n) => n.Name.LocalName == "BuildDependency"), (n) => n.Attribute("Project")?.Value == "projects/shader_owner__shaderc_1.vcxproj");
+
+        XElement schemaGenerated = Assert.Single(projects, (p) => p.Attribute("Path")?.Value == "projects/schema_owner__schemac_1.vcxproj");
+        Assert.Contains(schemaGenerated.Elements().Where((n) => n.Name.LocalName == "BuildDependency"), (n) => n.Attribute("Project")?.Value == "projects/he_schemac.vcxproj");
     }
 
     [Fact]

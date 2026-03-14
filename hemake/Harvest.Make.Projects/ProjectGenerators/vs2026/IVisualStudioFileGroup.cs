@@ -46,6 +46,7 @@ public interface IVisualStudioFileGroup
     public string GroupTag { get; }
     public string VSProjectPath { get; }
     public IReadOnlyList<FileEntry> Files { get; }
+    public IReadOnlyList<FileEntry> GeneratedFiles { get; }
 
     public bool CanHandleFile(string fullPath, EFileAction action, EFileBuildRule buildRule);
     public bool CanHandleFile(FilesEntryNode entry);
@@ -55,6 +56,7 @@ public interface IVisualStudioFileGroup
 
     public void SortFiles();
     public void SetupVirtualPaths();
+    public void SetupVirtualPaths(string commonDir);
 
     public void WriteFiles(XmlWriter writer);
     public void WriteFilters(XmlWriter writer);

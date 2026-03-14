@@ -19,6 +19,7 @@ public sealed class ProjectGenerationTests(ProjectGenerationFixture fixture) : I
         Assert.Contains(projects, (p) => p.Attribute("Path")?.Value.Contains("test_app.vcxproj", StringComparison.OrdinalIgnoreCase) == true);
         Assert.Contains(projects, (p) => p.Attribute("Path")?.Value.Contains("test_lib.vcxproj", StringComparison.OrdinalIgnoreCase) == true);
         Assert.Contains(projects, (p) => p.Attribute("Path")?.Value.Contains("test_tool.vcxproj", StringComparison.OrdinalIgnoreCase) == true);
+        Assert.All(projects, (project) => Assert.False(string.IsNullOrWhiteSpace(project.Attribute("Id")?.Value)));
 
         XElement appProject = projects.Single((p) => p.Attribute("Path")?.Value.Contains("test_app.vcxproj", StringComparison.OrdinalIgnoreCase) == true);
         IEnumerable<XElement> appBuildTypes = appProject.Elements().Where((n) => n.Name.LocalName == "BuildType");
@@ -60,5 +61,30 @@ public sealed class ProjectGenerationTests(ProjectGenerationFixture fixture) : I
 
         Assert.Contains("StaticLibrary", fixture.LibVcxprojText);
         Assert.Contains("Utility", fixture.ToolVcxprojText);
+    }
+
+    [Fact]
+    public void GeneratesFiltersUsingDirectoryStructure()
+    {
+        Assert.True(File.Exists(fixture.AppFiltersPath));
+
+        XDocument filters = XDocument.Parse(fixture.AppFiltersText);
+        XElement root = Assert.IsType<XElement>(filters.Root);
+        Assert.Equal("Project", root.Name.LocalName);
+
+        List<XElement> filterNodes = root.Descendants().Where((n) => n.Name.LocalName == "Filter" && n.Attribute("Include") is not null).ToList();
+        Assert.Contains(filterNodes, (n) => n.Attribute("Include")?.Value == "src");
+        Assert.Contains(filterNodes, (n) => n.Attribute("Include")?.Value == "src\\win32");
+        Assert.DoesNotContain(filterNodes, (n) => n.Attribute("Include")?.Value == "src\\main.cpp");
+        Assert.DoesNotContain(filterNodes, (n) => n.Attribute("Include")?.Value == "src\\pch.cpp");
+        Assert.DoesNotContain(filterNodes, (n) => n.Attribute("Include")?.Value == "win32");
+
+        List<XElement> files = root.Descendants().Where((n) => n.Name.LocalName is "ClCompile" or "ResourceCompile" or "None").ToList();
+        Assert.Contains(files, (n) => n.Attribute("Include")?.Value.EndsWith("src\\main.cpp", StringComparison.OrdinalIgnoreCase) == true
+            && n.Elements().Any((e) => e.Name.LocalName == "Filter" && e.Value == "src"));
+        Assert.Contains(files, (n) => n.Attribute("Include")?.Value.EndsWith("src\\pch.cpp", StringComparison.OrdinalIgnoreCase) == true
+            && n.Elements().Any((e) => e.Name.LocalName == "Filter" && e.Value == "src"));
+        Assert.Contains(files, (n) => n.Attribute("Include")?.Value.EndsWith("src\\win32\\platform.cpp", StringComparison.OrdinalIgnoreCase) == true
+            && n.Elements().Any((e) => e.Name.LocalName == "Filter" && e.Value == "src\\win32"));
     }
 }

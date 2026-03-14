@@ -113,15 +113,21 @@ internal class VcxprojGenerator(string platformToolset, IProjectService projectS
         {
             foreach (IVisualStudioFileGroup.FileEntry file in fileGroup.Files)
             {
-                if (seenVirtualDirs.Add(file.VirtualPath))
+                string filterPath = VisualStudioFileGroupBase.GetFilterPath(file.VirtualPath);
+                while (!string.IsNullOrEmpty(filterPath))
                 {
-                    writer.WriteStartElement("Filter");
-                    writer.WriteAttributeString("Include", file.VirtualPath);
+                    if (seenVirtualDirs.Add(filterPath))
+                    {
+                        writer.WriteStartElement("Filter");
+                        writer.WriteAttributeString("Include", filterPath);
 
-                    Guid uniqueId = VisualStudioUtils.CreateGuidForFilter(file.VirtualPath);
-                    writer.WriteElementString("UniqueIdentifier", $"{{{uniqueId}}}");
+                        Guid uniqueId = VisualStudioUtils.CreateGuidForFilter(filterPath);
+                        writer.WriteElementString("UniqueIdentifier", $"{{{uniqueId}}}");
 
-                    writer.WriteEndElement();
+                        writer.WriteEndElement();
+                    }
+
+                    filterPath = VisualStudioFileGroupBase.GetFilterPath(filterPath);
                 }
             }
         }
@@ -1322,7 +1328,21 @@ internal class VcxprojGenerator(string platformToolset, IProjectService projectS
         foreach (IVisualStudioFileGroup fileGroup in _fileGroups)
         {
             fileGroup.SortFiles();
-            fileGroup.SetupVirtualPaths();
+        }
+
+        List<IVisualStudioFileGroup.FileEntry> allFiles = _fileGroups
+            .SelectMany((fileGroup) => fileGroup.Files.Concat(fileGroup.GeneratedFiles))
+            .ToList();
+
+        if (allFiles.Count == 0)
+        {
+            return;
+        }
+
+        string commonDir = VisualStudioFileGroupBase.GetCommonParentDirectoryName(allFiles);
+        foreach (IVisualStudioFileGroup fileGroup in _fileGroups)
+        {
+            fileGroup.SetupVirtualPaths(commonDir);
         }
     }
 }

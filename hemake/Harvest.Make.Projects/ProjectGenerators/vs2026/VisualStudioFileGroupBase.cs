@@ -78,12 +78,29 @@ internal abstract class VisualStudioFileGroupBase(IProjectService projectService
         }
 
         string commonDir = GetCommonParentDirectoryName(allFiles);
+        SetupVirtualPaths(commonDir);
+    }
+
+    public void SetupVirtualPaths(string commonDir)
+    {
+        List<FileEntry> allFiles = [.. _files, .. _generatedFiles];
+        if (allFiles.Count == 0)
+        {
+            return;
+        }
+
         int commonDirLength = commonDir.Length;
 
         foreach (FileEntry file in allFiles)
         {
             file.VirtualPath = file.FullPath[commonDirLength..];
         }
+    }
+
+    internal static string GetFilterPath(string virtualPath)
+    {
+        int slashIndex = Math.Max(virtualPath.LastIndexOf('/'), virtualPath.LastIndexOf('\\'));
+        return slashIndex >= 0 ? virtualPath[..slashIndex] : string.Empty;
     }
 
     public void WriteFiles(XmlWriter writer)
@@ -122,6 +139,12 @@ internal abstract class VisualStudioFileGroupBase(IProjectService projectService
                 writer.WriteElementString("DependentUpon", GetPath(firstConfig.DependsOnPath));
             }
 
+            OnWriteFile(writer, file);
+            foreach ((ResolvedProjectTree projectTree, string archName) in VisualStudioUtils.EnumerateConfigs(ProjectService))
+            {
+                OnWriteFileConfig(writer, file, projectTree, archName);
+            }
+
             writer.WriteEndElement();
         }
 
@@ -144,7 +167,11 @@ internal abstract class VisualStudioFileGroupBase(IProjectService projectService
 
             writer.WriteStartElement(GroupTag);
             writer.WriteAttributeString("Include", relPath);
-            writer.WriteElementString("Filter", file.VirtualPath);
+            string filterPath = GetFilterPath(file.VirtualPath);
+            if (!string.IsNullOrEmpty(filterPath))
+            {
+                writer.WriteElementString("Filter", filterPath);
+            }
             writer.WriteEndElement();
         }
 
@@ -155,7 +182,11 @@ internal abstract class VisualStudioFileGroupBase(IProjectService projectService
 
             writer.WriteStartElement(GroupTag);
             writer.WriteAttributeString("Include", relPath);
-            writer.WriteElementString("Filter", file.VirtualPath);
+            string filterPath = GetFilterPath(file.VirtualPath);
+            if (!string.IsNullOrEmpty(filterPath))
+            {
+                writer.WriteElementString("Filter", filterPath);
+            }
             writer.WriteEndElement();
         }
 
@@ -249,7 +280,7 @@ internal abstract class VisualStudioFileGroupBase(IProjectService projectService
         return added;
     }
 
-    protected static string GetCommonParentDirectoryName(IReadOnlyList<FileEntry> files)
+    internal static string GetCommonParentDirectoryName(IReadOnlyList<FileEntry> files)
     {
         int commonStrLen = files[0].FullPath.Length;
 

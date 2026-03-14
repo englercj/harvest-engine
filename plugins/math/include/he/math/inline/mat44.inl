@@ -12,8 +12,8 @@ namespace he
             const Vec4a cx
             {
                 1 - (2 * q.y * q.y) - (2 * q.z * q.z),
-                (2 * q.x * q.y) + (2 * q.w * q.z),
-                (2 * q.x * q.z) - (2 * q.w * q.y),
+                (2 * q.x * q.y) + (2 * q.z * q.w),
+                (2 * q.x * q.z) - (2 * q.y * q.w),
                 0.0f,
             };
 

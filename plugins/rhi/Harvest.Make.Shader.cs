@@ -213,6 +213,10 @@ public sealed class ShaderCompileNodeTraits : NodeBaseTraits
             args.Add(target);
         }
 
+        // Add standard module include directory
+        args.Add("-I");
+        args.Add("\"${plugin[nvidia.slang].install_dir}/bin/slang-standard-module-${plugin[nvidia.slang].version}\"");
+
         foreach (string includeDir in includeRoots)
         {
             args.Add("-I");

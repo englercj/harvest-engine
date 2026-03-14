@@ -3,7 +3,7 @@
 // Slang - a shading language that makes it easier to build and maintain large shader codebases
 // in a modular and extensible fashion.
 // https://github.com/shader-slang/slang
-plugin nvidia.slang version="0.28.2" license="MIT" {
+plugin nvidia.slang version="2026.4.2" license="MIT" {
     authors { "Carnegie Mellon University"; "NVIDIA Corporation" }
 
     install {
@@ -11,26 +11,30 @@ plugin nvidia.slang version="0.28.2" license="MIT" {
             fetch archive url="https://github.com/shader-slang/slang/releases/download/v${plugin.version}/slang-${plugin.version}-linux-x86_64.zip"
         }
         when platform.system=windows {
-            fetch archive url="https://github.com/shader-slang/slang/releases/download/v${plugin.version}/slang-${plugin.version}-win64.zip"
+            fetch archive url="https://github.com/shader-slang/slang/releases/download/v${plugin.version}/slang-${plugin.version}-windows-x86_64.zip"
         }
     }
 
     module slang kind=lib_shared group="engine/contrib" {
         public {
-            include_dirs { "${plugin.install_dir}" }
+            include_dirs { "${plugin.install_dir}/include" }
         }
 
         when platform.system=windows platform.arch=x86_64 {
             files {
-                "${plugin.install_dir}/bin/windows-x64/release/gfx.dll" action=copy
-                "${plugin.install_dir}/bin/windows-x64/release/slang.dll" action=copy
-                "${plugin.install_dir}/bin/windows-x64/release/slang-glslang.dll" action=copy
-                "$(WindowsSdkDir)Redist/D3D/x64/dxcompiler.dll" action=copy
-                "$(WindowsSdkDir)Redist/D3D/x64/dxil.dll" action=copy
+                "${plugin.install_dir}/bin/gfx.dll" action=copy
+                "${plugin.install_dir}/bin/slang.dll" action=copy
+                "${plugin.install_dir}/bin/slang-compiler.dll" action=copy
+                "${plugin.install_dir}/bin/slang-glslang.dll" action=copy
+                "${plugin.install_dir}/bin/slang-glsl-module.dll" action=copy
+                "${plugin.install_dir}/bin/slang-llvm.dll" action=copy
+                "${plugin.install_dir}/bin/slang-rt.dll" action=copy
+                "$(WindowsSdkDir)/bin/$(TargetPlatformVersion)/x64/dxcompiler.dll" action=copy
+                "$(WindowsSdkDir)/bin/$(TargetPlatformVersion)/x64/dxil.dll" action=copy
             }
 
             public {
-                dependencies { "${plugin.install_dir}/bin/windows-x64/release/slang.lib" kind=file }
+                dependencies { "${plugin.install_dir}/lib/slang.lib" kind=file }
             }
         }
 

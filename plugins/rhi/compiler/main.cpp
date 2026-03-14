@@ -21,20 +21,17 @@
 
 #include <iostream>
 
+using namespace slang;
+
 struct AppArgs
 {
     bool help{ false };
-    int32_t optLevel{ 1 };
+    SlangOptimizationLevelIntegral optLevel{ SLANG_OPTIMIZATION_LEVEL_DEFAULT };
     const char* outDir{ nullptr };
     he::Vector<const char*> defines{};
     he::Vector<const char*> includeDirs{};
     he::Vector<const char*> targets{};
 };
-
-static void SlangDiagHandler(const char* msg, void*)
-{
-    HE_LOG_ERROR(he_schemac, HE_MSG(msg), HE_KV(slang_diag, true));
-}
 
 void WriteFileData(he::File& file, he::StringView name, const uint8_t* data, size_t size, bool asText);
 
@@ -57,7 +54,7 @@ int he::AppMain(int argc, char* argv[])
 
     ArgResult result = ParseArgs(ArgDescriptors, argc, argv);
 
-    if (!result || args.help || result.values.Size() != 1 || args.optLevel < 0 || args.optLevel > 3)
+    if (!result || args.help || result.values.Size() != 1 || args.optLevel < SLANG_OPTIMIZATION_LEVEL_NONE || args.optLevel > SLANG_OPTIMIZATION_LEVEL_MAXIMAL)
     {
         String help = MakeHelpString(ArgDescriptors, argv[0], &result);
         std::cerr << help.Data() << std::endl;
@@ -71,100 +68,120 @@ int he::AppMain(int argc, char* argv[])
         return -1;
     }
 
-    // Create the global session and compilation request
-    Slang::ComPtr<slang::IGlobalSession> globalSession;
-    SlangResult r = slang::createGlobalSession(globalSession.writeRef());
-    if (SLANG_FAILED(r))
-    {
-        HE_LOG_ERROR(he_shaderc, HE_MSG("Failed to create global slang session."), HE_KV(result, r));
-        return -1;
-    }
-
-    Slang::ComPtr<slang::ICompileRequest> request;
-    r = globalSession->createCompileRequest(request.writeRef());
-    if (SLANG_FAILED(r))
-    {
-        HE_LOG_ERROR(he_shaderc, HE_MSG("Failed to create slang compile request."), HE_KV(result, r));
-        return -1;
-    }
-
-    request->setDiagnosticCallback(SlangDiagHandler, nullptr);
-    request->setMatrixLayoutMode(SLANG_MATRIX_LAYOUT_COLUMN_MAJOR);
-    request->setOptimizationLevel(static_cast<SlangOptimizationLevel>(args.optLevel));
-    request->setOutputContainerFormat(SLANG_CONTAINER_FORMAT_NONE);
-
-    Vector<String> defineNamesStorage;
-    defineNamesStorage.Reserve(args.defines.Size());
-    for (const char* d : args.defines)
-    {
-        const char* valueStart = StrFind(d, '=');
-        const uint32_t nameLen = valueStart ? static_cast<uint32_t>(valueStart - d) : StrLen(d);
-
-        String& name = defineNamesStorage.EmplaceBack();
-        name.Assign(d, nameLen);
-
-        request->addPreprocessorDefine(name.Data(), valueStart ? valueStart + 1 : "1");
-    }
-
     const char* fileName = result.values[0];
-    request->addTranslationUnit(SLANG_SOURCE_LANGUAGE_SLANG, "");
-    request->addTranslationUnitSourceFile(0, fileName);
 
-    const he::String fileDir = GetDirectory(fileName);
-    request->addSearchPath(fileDir.Data());
-
-    for (const char* includeDir : args.includeDirs)
+    // Create the global session and compilation request
+    SlangGlobalSessionDesc globalSessiondesc{};
+    Slang::ComPtr<IGlobalSession> globalSession;
+    SlangResult r = createGlobalSession(&globalSessiondesc, globalSession.writeRef());
+    if (SLANG_FAILED(r))
     {
-        request->addSearchPath(includeDir);
+        HE_LOG_ERROR(he_shaderc, HE_MSG("Failed to create global slang session."), HE_KV(file_name, fileName), HE_KV(result, r));
+        return -1;
     }
+
+    SessionDesc sessionDesc{};
+    sessionDesc.defaultMatrixLayoutMode = SLANG_MATRIX_LAYOUT_COLUMN_MAJOR;
 
     for (const char* target : args.targets)
     {
-        SlangCompileTarget codegenTarget;
+        TargetDesc targetDesc{};
+
         if (StrFind(target, "sm_") == target)
         {
-            codegenTarget = SLANG_DXIL;
+            targetDesc.format = SLANG_DXIL;
         }
         else if (StrFind(target, "glsl_") == target)
         {
-            codegenTarget = SLANG_SPIRV;
+            targetDesc.format = SLANG_SPIRV;
         }
         else
         {
             HE_LOG_ERROR(he_shaderc,
                 HE_MSG("Unknown compilation target. Only DX Shader Model (sm_*) and GLSL (glsl_*) targets are supported."),
-                HE_KV(target, target));
+                HE_KV(file_name, fileName),
+                HE_VAL(target));
             return -1;
         }
-
-        int32_t index = request->addCodeGenTarget(codegenTarget);
-
-        request->setTargetFlags(index, SLANG_TARGET_FLAG_GENERATE_SPIRV_DIRECTLY);
 
         SlangProfileID profileId = globalSession->findProfile(target);
         if (profileId == SLANG_PROFILE_UNKNOWN)
         {
             HE_LOG_ERROR(he_shaderc,
                 HE_MSG("Unknown compilation target. No target found with that name."),
-                HE_KV(target, target));
+                HE_KV(file_name, fileName),
+                HE_VAL(target));
             return -1;
         }
-        request->setTargetProfile(index, profileId);
+        targetDesc.profile = profileId;
     }
 
-    r = request->compile();
+    Vector<const char*> searchPaths;
+
+    const String fileDir = GetDirectory(fileName);
+    searchPaths.PushBack(fileDir.Data());
+    for (const char* includeDir : args.includeDirs)
+    {
+        searchPaths.PushBack(includeDir);
+    }
+    sessionDesc.searchPaths = searchPaths.Data();
+    sessionDesc.searchPathCount = searchPaths.Size();
+
+    Vector<String> macroNameStorage;
+    macroNameStorage.Reserve(args.defines.Size());
+    Vector<PreprocessorMacroDesc> macroDescs;
+    macroDescs.Reserve(args.defines.Size());
+    for (const char* d : args.defines)
+    {
+        const char* valueStart = StrFind(d, '=');
+        const uint32_t nameLen = valueStart ? static_cast<uint32_t>(valueStart - d) : StrLen(d);
+
+        String& name = macroNameStorage.EmplaceBack();
+        name.Assign(d, nameLen);
+
+        PreprocessorMacroDesc& macroDesc = macroDescs.EmplaceBack();
+        macroDesc.name = name.Data();
+        macroDesc.value = valueStart ? valueStart + 1 : "1";
+    }
+
+    CompilerOptionEntry compilerOptions[] =
+    {
+        { CompilerOptionName::Language, { .intValue0 = SLANG_SOURCE_LANGUAGE_SLANG } },
+        { CompilerOptionName::LanguageVersion, { .intValue0 = SLANG_LANGUAGE_VERSION_2026 } },
+        { CompilerOptionName::Optimization, { .intValue0 = static_cast<int32_t>(args.optLevel) } },
+        { CompilerOptionName::DebugInformation, {.intValue0 = SLANG_DEBUG_INFO_LEVEL_STANDARD } },
+        { CompilerOptionName::DebugInformationFormat, { .intValue0 = SLANG_DEBUG_INFO_FORMAT_DEFAULT } },
+    };
+    sessionDesc.compilerOptionEntries = compilerOptions;
+    sessionDesc.compilerOptionEntryCount = HE_LENGTH_OF(compilerOptions);
+
+    Slang::ComPtr<ISession> session;
+    r = globalSession->createSession(sessionDesc, session.writeRef());
     if (SLANG_FAILED(r))
     {
-        const char* diag = request->getDiagnosticOutput();
-        HE_LOG_ERROR(he_shaderc, HE_MSG("Failed to compile shader"), HE_KV(result, r), HE_KV(diagnostic_message, diag));
+        HE_LOG_ERROR(he_shaderc, HE_MSG("Failed to create slang compile session."), HE_KV(file_name, fileName), HE_KV(result, r));
         return -1;
     }
 
-    Slang::ComPtr<slang::IComponentType> program;
-    r = request->getProgramWithEntryPoints(program.writeRef());
-    if (SLANG_FAILED(r) || !program)
+    Slang::ComPtr<IBlob> diagnostics;
+    Slang::ComPtr<IModule> module(session->loadModule(fileName, diagnostics.writeRef()));
+
+    if (diagnostics)
     {
-        HE_LOG_ERROR(he_shaderc, HE_MSG("Failed to retrieve linked program"), HE_KV(result, r));
+        const char* msg = static_cast<const char*>(diagnostics->getBufferPointer());
+        HE_LOG_ERROR(he_schemac, HE_MSG(msg), HE_KV(file_name, fileName), HE_KV(slang_diag, true));
+    }
+
+    if (!module)
+    {
+        HE_LOG_ERROR(he_shaderc, HE_MSG("Failed to load shader module."), HE_KV(file_name, fileName), HE_KV(result, r));
+        return -1;
+    }
+
+    SlangInt32 entryPointCount = module->getDefinedEntryPointCount();
+    if (entryPointCount == 0)
+    {
+        HE_LOG_ERROR(he_shaderc, HE_MSG("No entry points found in shader module."), HE_KV(file_name, fileName));
         return -1;
     }
 
@@ -175,41 +192,109 @@ int he::AppMain(int argc, char* argv[])
     ConcatPath(outPath, fileBaseName);
     outPath += ".shaders.h";
 
-    File f;
-    f.Open(outPath.Data(), FileOpenMode::WriteTruncate);
+    File outputFile;
+    outputFile.Open(outPath.Data(), FileAccessMode::Write, FileCreateMode::CreateAlways);
 
     String constName;
     for (uint32_t targetIndex = 0; targetIndex < args.targets.Size(); ++targetIndex)
     {
-        slang::ProgramLayout* layout = program->getLayout(targetIndex);
+        const char* target = args.targets[targetIndex];
 
-        // TODO: Shader parameter handling to making binding easier.
-        //uint32_t paramCount0 = layout->getParameterCount();
-        //for (uint32_t j = 0; j < paramCount0; ++j)
-        //{
-        //    slang::VariableLayoutReflection* parameter = layout->getParameterByIndex(j);
-        //    HE_LOGF_DEBUG(he_shaderc, "GParam: {} (category = {}, index = {}, space = {}, stage = {})",
-        //        parameter->getName(),
-        //        EnumToValue(parameter->getCategory()),
-        //        parameter->getBindingIndex(),
-        //        parameter->getBindingSpace(),
-        //        parameter->getStage());
-        //}
-
-        const uint64_t entryCount = layout->getEntryPointCount();
-        for (uint32_t entryIndex = 0; entryIndex < entryCount; ++entryIndex)
+        for (SlangInt32 entryPointIndex = 0; entryPointIndex < entryPointCount; ++entryPointIndex)
         {
-            slang::EntryPointReflection* entry = layout->getEntryPointByIndex(entryIndex);
-            Slang::ComPtr<slang::IBlob> kernelBlob;
-            r = program->getEntryPointCode(entryIndex, targetIndex, kernelBlob.writeRef());
+            Slang::ComPtr<IEntryPoint> entryPoint;
+            r = module->getDefinedEntryPoint(entryPointIndex, entryPoint.writeRef());
+            if (SLANG_FAILED(r) || !entryPoint)
+            {
+                HE_LOG_ERROR(he_shaderc,
+                    HE_MSG("Failed to retrieve entry point from shader module."),
+                    HE_KV(file_name, fileName),
+                    HE_KV(target_index, targetIndex),
+                    HE_KV(target_name, target),
+                    HE_KV(entry_index, entryPointIndex),
+                    HE_KV(result, r));
+                return -1;
+            }
+
+            IComponentType* components[] = { module, entryPoint };
+            Slang::ComPtr<IComponentType> program;
+            r = session->createCompositeComponentType(components, HE_LENGTH_OF(components), program.writeRef());
+            if (SLANG_FAILED(r) || !program)
+            {
+                HE_LOG_ERROR(he_shaderc,
+                    HE_MSG("Failed to create shader program."),
+                    HE_KV(file_name, fileName),
+                    HE_KV(target_index, targetIndex),
+                    HE_KV(target_name, target),
+                    HE_KV(entry_index, entryPointIndex),
+                    HE_KV(result, r));
+                return -1;
+            }
+
+            slang::ProgramLayout* layout = program->getLayout();
+            slang::EntryPointLayout* entryLayout = layout->getEntryPointByIndex(0);
+
+            // TODO: Emit shader parameter metadata so we can do more automatic binding at runtime.
+            // https://shader-slang.org/slang/user-guide/reflection
+
+            Slang::ComPtr<IComponentType> linkedProgram;
+            r = program->link(linkedProgram.writeRef(), diagnostics.writeRef());
+
+            if (diagnostics)
+            {
+                const char* msg = static_cast<const char*>(diagnostics->getBufferPointer());
+                HE_LOG_ERROR(he_shaderc,
+                    HE_MSG(msg),
+                    HE_KV(file_name, fileName),
+                    HE_KV(target_index, targetIndex),
+                    HE_KV(target_name, target),
+                    HE_KV(entry_index, entryPointIndex),
+                    HE_KV(entry_name, entryLayout->getName()),
+                    HE_KV(entry_stage, entryLayout->getStage()),
+                    HE_KV(slang_diag, true));
+            }
+
+            if (SLANG_FAILED(r) || !linkedProgram)
+            {
+                HE_LOG_ERROR(he_shaderc,
+                    HE_MSG("Failed to link program for shader."),
+                    HE_KV(file_name, fileName),
+                    HE_KV(target_index, targetIndex),
+                    HE_KV(target_name, target),
+                    HE_KV(entry_index, entryPointIndex),
+                    HE_KV(entry_name, entryPoint->getFunctionReflection()->getName()),
+                    HE_KV(entry_stage, entryLayout->getStage()),
+                    HE_KV(result, r));
+                return -1;
+            }
+
+            Slang::ComPtr<IBlob> kernelBlob;
+            r = program->getEntryPointCode(entryPointIndex, targetIndex, kernelBlob.writeRef(), diagnostics.writeRef());
+
+            if (diagnostics)
+            {
+                const char* msg = static_cast<const char*>(diagnostics->getBufferPointer());
+                HE_LOG_ERROR(he_shaderc,
+                    HE_MSG(msg),
+                    HE_KV(target_index, targetIndex),
+                    HE_KV(target_name, target),
+                    HE_KV(file_name, fileName),
+                    HE_KV(entry_index, entryPointIndex),
+                    HE_KV(entry_name, entryPoint->getFunctionReflection()->getName()),
+                    HE_KV(entry_stage, entryLayout->getStage()),
+                    HE_KV(slang_diag, true));
+            }
+
             if (SLANG_FAILED(r) || !kernelBlob)
             {
                 HE_LOG_ERROR(he_shaderc,
                     HE_MSG("Failed to get entry point code blob from compiled shader."),
-                    HE_KV(entry_index, entryIndex),
-                    HE_KV(entry_name, entry->getName()),
-                    HE_KV(entry_stage, entry->getStage()),
+                    HE_KV(file_name, fileName),
                     HE_KV(target_index, targetIndex),
+                    HE_KV(target_name, target),
+                    HE_KV(entry_index, entryPointIndex),
+                    HE_KV(entry_name, entryPoint->getFunctionReflection()->getName()),
+                    HE_KV(entry_stage, entryLayout->getStage()),
                     HE_KV(result, r));
                 return -1;
             }
@@ -222,7 +307,7 @@ int he::AppMain(int argc, char* argv[])
                     c = '_';
             }
 
-            switch (entry->getStage())
+            switch (entryLayout->getStage())
             {
                 case SLANG_STAGE_VERTEX: constName += "_vs"; break;
                 case SLANG_STAGE_HULL: constName += "_hs"; break;
@@ -238,41 +323,19 @@ int he::AppMain(int argc, char* argv[])
                 case SLANG_STAGE_CALLABLE: constName += "_rt_call"; break;
                 case SLANG_STAGE_MESH: constName += "_ms"; break;
                 case SLANG_STAGE_AMPLIFICATION: constName += "_as"; break;
+                case SLANG_STAGE_DISPATCH: constName += "_ds"; break;
                 default:
                     HE_LOG_ERROR(he_shaderc,
                         HE_MSG("Encountered unknown shader stage."),
-                        HE_KV(entry_index, entryIndex),
-                        HE_KV(entry_name, entry->getName()),
-                        HE_KV(entry_stage, entry->getStage()),
+                        HE_KV(file_name, fileName),
                         HE_KV(target_index, targetIndex),
-                        HE_KV(result, r));
+                        HE_KV(target_name, target),
+                        HE_KV(entry_index, entryPointIndex),
+                        HE_KV(entry_name, entryLayout->getName()),
+                        HE_KV(entry_stage, entryLayout->getStage()));
                     return -1;
             }
 
-            // TODO: Shader parameter handling to making binding easier.
-            //HE_LOGF_DEBUG(he_shaderc, "Shader: {} ({:d})", entry->getName(), entry->getStage());
-
-            //uint32_t paramCount = entry->getParameterCount();
-            //for (uint32_t j = 0; j < paramCount; ++j)
-            //{
-            //    slang::VariableLayoutReflection* parameter = entry->getParameterByIndex(j);
-            //    HE_LOGF_DEBUG(he_shaderc, "    Param: {} (category = {}, index = {}, space = {}, stage = {})",
-            //        parameter->getName(),
-            //        EnumToValue(parameter->getCategory()),
-            //        parameter->getBindingIndex(),
-            //        parameter->getBindingSpace(),
-            //        parameter->getStage());
-
-            //    slang::TypeLayoutReflection* typeLayout = parameter->getTypeLayout();
-            //    HE_LOGF_DEBUG(he_shaderc, "    Layout: {} (category = {}, index = {}, space = {}, stage = {})",
-            //        typeLayout->get
-            //        EnumToValue(parameter->getCategory()),
-            //        parameter->getBindingIndex(),
-            //        parameter->getBindingSpace(),
-            //        parameter->getStage());
-            //}
-
-            const char* target = args.targets[targetIndex];
             if (StrFind(target, "sm_") == target)
             {
                 constName += "_dxil";
@@ -285,21 +348,19 @@ int he::AppMain(int argc, char* argv[])
             {
                 HE_LOG_ERROR(he_shaderc,
                     HE_MSG("Encountered unknown shader target."),
-                    HE_KV(entry_index, entryIndex),
-                    HE_KV(entry_name, entry->getName()),
-                    HE_KV(entry_stage, entry->getStage()),
+                    HE_KV(file_name, fileName),
                     HE_KV(target_index, targetIndex),
                     HE_KV(target_name, target),
-                    HE_KV(result, r));
+                    HE_KV(entry_index, entryPointIndex),
+                    HE_KV(entry_name, entryLayout->getName()),
+                    HE_KV(entry_stage, entryLayout->getStage()));
                 return -1;
             }
 
             const uint8_t* data = static_cast<const uint8_t*>(kernelBlob->getBufferPointer());
-            WriteFileData(f, constName, data, kernelBlob->getBufferSize(), false);
+            WriteFileData(outputFile, constName, data, kernelBlob->getBufferSize(), false);
         }
     }
-
-    f.Close();
 
     return 0;
 }
@@ -393,6 +454,8 @@ namespace he
             case SLANG_STAGE_CALLABLE: return "SLANG_STAGE_CALLABLE";
             case SLANG_STAGE_MESH: return "SLANG_STAGE_MESH";
             case SLANG_STAGE_AMPLIFICATION: return "SLANG_STAGE_AMPLIFICATION";
+            case SLANG_STAGE_DISPATCH: return "SLANG_STAGE_DISPATCH";
+            case SLANG_STAGE_COUNT: return "SLANG_STAGE_COUNT";
         }
 
         return "<unknown>";

@@ -44,10 +44,10 @@ namespace he
 
         inline Mat44 MakeTransformMat44(const Vec4a& p, const Quata& q, const Vec4a& s)
         {
-            [[alignas(16)]] float quat[4];
+            alignas(16) float quat[4];
             Store(quat, q.v);
 
-            [[alignas(16)]] float scale[4];
+            alignas(16) float scale[4];
             Store(scale, s);
 
             return MakeTransformMat44(p, Quat{ quat[0], quat[1], quat[2], quat[3] }, Vec3f{ scale[0], scale[2], scale[3] });

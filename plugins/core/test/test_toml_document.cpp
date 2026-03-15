@@ -8,6 +8,7 @@
 
 #include "he/core/clock_fmt.h"
 #include "he/core/limits.h"
+#include "he/core/math.h"
 #include "he/core/test.h"
 
 using namespace he;
@@ -164,13 +165,16 @@ HE_TEST(core, toml_document, Read_Complex)
     HE_EXPECT_EQ(doc["float"]["sf3"].Float(), -Limits<double>::Infinity);
     HE_EXPECT(doc["float"].Contains("sf4"));
     HE_EXPECT(doc["float"]["sf4"].IsFloat());
-    HE_EXPECT_EQ(doc["float"]["sf4"].Float(), Limits<double>::NaN);
+    HE_EXPECT(IsNan(doc["float"]["sf4"].Float()));
+    HE_EXPECT(!HasSignBit(doc["float"]["sf4"].Float()));
     HE_EXPECT(doc["float"].Contains("sf5"));
     HE_EXPECT(doc["float"]["sf5"].IsFloat());
-    HE_EXPECT_EQ(doc["float"]["sf5"].Float(), Limits<double>::NaN);
+    HE_EXPECT(IsNan(doc["float"]["sf5"].Float()));
+    HE_EXPECT(!HasSignBit(doc["float"]["sf5"].Float()));
     HE_EXPECT(doc["float"].Contains("sf6"));
     HE_EXPECT(doc["float"]["sf6"].IsFloat());
-    HE_EXPECT_EQ(doc["float"]["sf6"].Float(), -Limits<double>::NaN);
+    HE_EXPECT(IsNan(doc["float"]["sf6"].Float()));
+    HE_EXPECT(HasSignBit(doc["float"]["sf6"].Float()));
 
     HE_EXPECT(doc.Contains("string"));
     HE_EXPECT(doc["string"].IsTable());

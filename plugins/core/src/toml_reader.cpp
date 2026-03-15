@@ -80,7 +80,7 @@ namespace he
 
         [[nodiscard]] bool SkipBOM()
         {
-            if (static_cast<uint8_t>(*m_cursor) != 0xef)
+            if (AtEnd() || static_cast<uint8_t>(*m_cursor) != 0xef)
                 return true;
 
             ++m_cursor;

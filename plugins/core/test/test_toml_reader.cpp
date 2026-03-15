@@ -9,6 +9,7 @@
 #include "he/core/enum_ops.h"
 #include "he/core/file.h"
 #include "he/core/limits.h"
+#include "he/core/math.h"
 #include "he/core/path.h"
 #include "he/core/string.h"
 #include "he/core/string_fmt.h"
@@ -67,7 +68,7 @@ struct TomlEvent
             case Kind::Bool: return b == x.b;
             case Kind::Int: return i == x.i;
             case Kind::Uint: return u == x.u;
-            case Kind::Float: return f == x.f;
+            case Kind::Float: return (IsNan(f) && IsNan(x.f)) || f == x.f;
             case Kind::String: return s == x.s;
             case Kind::DateTime: return d == x.d;
             case Kind::Time: return t == x.t;

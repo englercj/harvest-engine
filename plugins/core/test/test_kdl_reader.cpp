@@ -6,6 +6,7 @@
 #include "he/core/kdl_document.h"
 #include "he/core/kdl_document_fmt.h"
 
+#include "he/core/math.h"
 #include "he/core/test.h"
 #include "he/core/types.h"
 #include "he/core/optional_fmt.h"
@@ -35,7 +36,20 @@ struct KdlEvent
     Optional<String> type{};
     KdlValue value{};
 
-    [[nodiscard]] bool operator==(const KdlEvent& x) const { return kind == x.kind && name == x.name && value == x.value; }
+    [[nodiscard]] bool operator==(const KdlEvent& x) const
+    {
+        if (kind != x.kind || name != x.name || type != x.type)
+            return false;
+
+        if (value.IsFloat() && x.value.IsFloat())
+        {
+            const double a = value.Float();
+            const double b = x.value.Float();
+            return (IsNan(a) && IsNan(b)) || a == b;
+        }
+
+        return value == x.value;
+    }
     [[nodiscard]] bool operator!=(const KdlEvent& x) const { return !(*this == x); }
 };
 

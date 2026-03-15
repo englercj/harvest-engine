@@ -205,7 +205,7 @@ namespace he
 
         [[nodiscard]] bool ConsumeBOM()
         {
-            if (m_cursor < m_end && static_cast<uint8_t>(*m_cursor) != 0xef)
+            if (m_cursor >= m_end || static_cast<uint8_t>(*m_cursor) != 0xef)
             {
                 return true;
             }

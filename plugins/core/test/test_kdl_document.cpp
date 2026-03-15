@@ -8,6 +8,7 @@
 #include "he/core/file.h"
 #include "he/core/hash_table.h"
 #include "he/core/log.h"
+#include "he/core/math.h"
 #include "he/core/path.h"
 #include "he/core/result.h"
 #include "he/core/result_fmt.h"
@@ -131,7 +132,7 @@ HE_TEST(core, kdl_document, Read)
             HE_EXPECT_EQ(child.Properties().Size(), 3);
             HE_EXPECT_EQ(child.Properties().Get("flt9").Float(), Limits<double>::Infinity);
             HE_EXPECT_EQ(child.Properties().Get("flt10").Float(), -Limits<double>::Infinity);
-            HE_EXPECT_EQ(child.Properties().Get("flt11").Float(), Limits<double>::NaN);
+            HE_EXPECT(IsNan(child.Properties().Get("flt11").Float()));
         }
     }
     // Strings of various formats

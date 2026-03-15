@@ -133,8 +133,8 @@ int he::AppMain(int argc, char* argv[])
     static ArgDesc argDescriptors[] =
     {
         { s_args.help,        'h', "help",        "Output this help text." },
-        { s_args.timings,     't', "times"        "Output timings for test runs in milliseconds." },
-        { s_args.filter,      'f', "filter"       "Search string to filter the tests that are run." },
+        { s_args.timings,     't', "times",       "Output timings for test runs in milliseconds." },
+        { s_args.filter,      'f', "filter",      "Search string to filter the tests that are run." },
         //{ s_args.junitOutFile,     "junit",       "File to output junit formatted results to." },
         //{ s_args.markdownOutFile,  "markdown",    "File to output github-flavored markdown formatted results to." },
     };

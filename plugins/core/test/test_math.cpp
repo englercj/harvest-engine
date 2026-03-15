@@ -648,13 +648,13 @@ HE_TEST(core, math, Log10)
     HE_EXPECT_EQ(Log10(1.0f), 0.0f);
 
     // If the argument is negative, NaN is returned (and FE_INVALID is raised).
-    HE_EXPECT_EQ(Log10(-1.0f), Limits<float>::NaN);
+    HE_EXPECT(IsNan(Log10(-1.0f)));
 
     // If the argument is +∞, +∞ is returned
     HE_EXPECT_EQ(Log10(Limits<float>::Infinity), Limits<float>::Infinity);
 
     // If the argument is NaN, NaN is returned
-    HE_EXPECT_EQ(Log10(Limits<float>::NaN), Limits<float>::NaN);
+    HE_EXPECT(IsNan(Log10(Limits<float>::NaN)));
 
     // sampling of some known test values
     HE_EXPECT_EQ(Log10(1000.0f), 3.0f);
@@ -674,13 +674,13 @@ HE_TEST(core, math, Log1p)
     HE_EXPECT_EQ(Log1p(-1.0f), -Limits<float>::Infinity);
 
     // If the argument is less than -1, NaN is returned (and FE_INVALID is raised).
-    HE_EXPECT_EQ(Log1p(-1.1f), Limits<float>::NaN);
+    HE_EXPECT(IsNan(Log1p(-1.1f)));
 
     // If the argument is +∞, +∞ is returned
     HE_EXPECT_EQ(Log1p(Limits<float>::Infinity), Limits<float>::Infinity);
 
     // If the argument is NaN, NaN is returned
-    HE_EXPECT_EQ(Log1p(Limits<float>::NaN), Limits<float>::NaN);
+    HE_EXPECT(IsNan(Log1p(Limits<float>::NaN)));
 
     // sampling of some known test values
     HE_EXPECT_EQ(Log1p(1.0f), 0.6931471805599453f);

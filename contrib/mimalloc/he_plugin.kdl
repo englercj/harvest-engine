@@ -19,6 +19,7 @@ plugin microsoft.mimalloc version="3.2.8" license="MIT" {
             "${plugin.install_dir}/src/alloc-aligned.c"
             "${plugin.install_dir}/src/alloc-posix.c"
             "${plugin.install_dir}/src/arena.c"
+            "${plugin.install_dir}/src/arena-meta.c"
             "${plugin.install_dir}/src/bitmap.c"
             "${plugin.install_dir}/src/heap.c"
             "${plugin.install_dir}/src/init.c"
@@ -26,10 +27,11 @@ plugin microsoft.mimalloc version="3.2.8" license="MIT" {
             "${plugin.install_dir}/src/options.c"
             "${plugin.install_dir}/src/os.c"
             "${plugin.install_dir}/src/page.c"
+            "${plugin.install_dir}/src/page-map.c"
             "${plugin.install_dir}/src/random.c"
-            "${plugin.install_dir}/src/segment.c"
-            "${plugin.install_dir}/src/segment-map.c"
             "${plugin.install_dir}/src/stats.c"
+            "${plugin.install_dir}/src/theap.c"
+            "${plugin.install_dir}/src/threadlocal.c"
 
             // Override their prim.c with our own so we can detect WASM
             // "src/prim/prim.c"

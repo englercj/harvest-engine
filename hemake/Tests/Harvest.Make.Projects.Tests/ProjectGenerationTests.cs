@@ -36,6 +36,8 @@ public sealed class ProjectGenerationTests(ProjectGenerationFixture fixture) : I
 
         Assert.Contains("ProjectGuid", fixture.AppVcxprojText);
         Assert.Contains("ProjectReference Include=\"test_lib.vcxproj\"", fixture.AppVcxprojText);
+        Assert.Contains("/WHOLEARCHIVE:", fixture.AppVcxprojText);
+        Assert.Contains("test_lib_target.lib", fixture.AppVcxprojText);
         Assert.Contains("PrecompiledHeaderFile", fixture.AppVcxprojText);
         Assert.Contains("FEATURE_ENABLED", fixture.AppVcxprojText);
         Assert.Contains("FROM_WHEN_DEBUG", fixture.AppVcxprojText);

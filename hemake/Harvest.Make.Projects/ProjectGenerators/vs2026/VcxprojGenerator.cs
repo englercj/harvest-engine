@@ -1002,7 +1002,8 @@ internal class VcxprojGenerator(string platformToolset, IProjectService projectS
                 writer.WriteElementBoolIfTrue("TreatLinkerWarningAsErrors", warnings.AreAllWarningsFatal);
 
                 // TODO: support for individual fatal link errors by adding `/wx:a,b,c` automatically?
-                IEnumerable<string> linkerOptions = linkOptions.Entries.Select((entry) => entry.OptionName);
+                IEnumerable<string> wholeArchiveOptions = GetWholeArchiveOptions(projectTree, buildOutput, dependencies);
+                IEnumerable<string> linkerOptions = wholeArchiveOptions.Concat(linkOptions.Entries.Select((entry) => entry.OptionName));
                 VisualStudioUtils.WriteArrayElement(writer, linkerOptions, "AdditionalOptions", "%(AdditionalOptions)", " ");
 
                 if (module.Kind != EModuleKind.LibStatic)
@@ -1158,6 +1159,46 @@ internal class VcxprojGenerator(string platformToolset, IProjectService projectS
         }
 
         writer.WriteEndElement();
+    }
+
+    private IEnumerable<string> GetWholeArchiveOptions(
+        ResolvedProjectTree projectTree,
+        BuildOutputNode buildOutput,
+        IEnumerable<DependenciesNode> dependencies)
+    {
+        foreach (DependenciesEntryNode dependency in dependencies.SelectMany((entry) => entry.Entries))
+        {
+            if (!dependency.IsWholeArchive)
+            {
+                continue;
+            }
+
+            switch (dependency.Kind)
+            {
+                case EDependencyKind.Default:
+                case EDependencyKind.Link:
+                {
+                    if (!projectTree.IndexedNodes.TryGetNode(dependency.DependencyName, out ModuleNode? depModule))
+                    {
+                        throw new InvalidOperationException($"No module found with name '{dependency.DependencyName}', but it was marked whole_archive.");
+                    }
+
+                    if (depModule.Kind != EModuleKind.LibStatic)
+                    {
+                        continue;
+                    }
+
+                    string libPath = Path.Join(depModule.GetLibDir(buildOutput), depModule.TargetName + ".lib");
+                    yield return $"/WHOLEARCHIVE:{GetPath(libPath)}";
+                    break;
+                }
+                case EDependencyKind.File:
+                {
+                    yield return $"/WHOLEARCHIVE:{VisualStudioUtils.EnsureLibraryExtension(dependency.DependencyName)}";
+                    break;
+                }
+            }
+        }
     }
 
     private void WriteProjectReferences(XmlWriter writer)

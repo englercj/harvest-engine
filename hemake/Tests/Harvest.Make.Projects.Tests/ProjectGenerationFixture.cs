@@ -314,7 +314,7 @@ public sealed class ProjectGenerationFixture : IDisposable
                         APP_DEF
                     }
                     dependencies {
-                        test_lib
+                        test_lib whole_archive=#true
                         test_tool kind=order
                         "user32" kind=system
                     }

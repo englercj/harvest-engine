@@ -2,11 +2,11 @@
 
 // FreeType - A freely available software library to render fonts.
 // https://freetype.org/
-plugin freetype.freetype version="2.12.1" license="FTL" {
+plugin freetype.freetype version="2.14.2" license="FTL" {
     authors { "Werner Lemberg" email=wl@gnu.org }
 
     install {
-        fetch github user=freetype repo=freetype ref=VER-2-12-1
+        fetch github user=freetype repo=freetype ref=VER-2-14-2
     }
 
     module freetype kind=lib_static group="engine/contrib" {

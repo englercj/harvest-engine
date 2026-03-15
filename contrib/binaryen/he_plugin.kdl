@@ -2,7 +2,7 @@
 
 // binaryen - Optimizer and compiler/toolchain library for WebAssembly
 // https://github.com/WebAssembly/binaryen
-plugin WebAssembly.binaryen version="116" license="Apache-2.0" {
+plugin WebAssembly.binaryen version="128" license="Apache-2.0" {
     authors { "See: AUTHORS" }
 
     install {

@@ -2,7 +2,7 @@
 
 // mimalloc - a compact general purpose allocator with excellent performance.
 // https://github.com/microsoft/mimalloc
-plugin microsoft.mimalloc version="2.1.4" license="MIT" {
+plugin microsoft.mimalloc version="3.2.8" license="MIT" {
     authors { "Microsoft" }
 
     install {

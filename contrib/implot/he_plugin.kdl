@@ -2,12 +2,12 @@
 
 // ImPlot - an immediate mode, GPU accelerated plotting library for Dear ImGui.
 // https://github.com/epezent/implot
-plugin epezent.implot version="0.14" license="MIT" {
+plugin epezent.implot version="0.17" license="MIT" {
     authors { "Evan Pezent" email=epezent16@gmail.com }
 
     install {
         // latest master (post v0.14)
-        fetch github user=epezent repo=implot ref="33c5a965f55f80057f197257d1d1cdb06523e963"
+        fetch github user=epezent repo=implot ref="v${plugin.version}"
     }
 
     module implot kind=lib_static group="engine/contrib" {

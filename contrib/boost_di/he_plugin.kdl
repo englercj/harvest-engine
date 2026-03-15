@@ -2,7 +2,7 @@
 
 // [Boost::ext].DI - Header only Dependency Injection library with no dependencies.
 // https://github.com/boost-ext/di
-plugin boost-ext.di version="1.3.0" license="BSL-1.0" {
+plugin boost-ext.di version="1.3.2" license="BSL-1.0" {
     authors { "Kris Jusiak" email=krzysztof@jusiak.net }
 
     install {

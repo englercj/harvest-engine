@@ -2,7 +2,7 @@
 
 // Fast Float - Fast and exact implementation of the C++ from_chars functions for number types.
 // https://github.com/fastfloat/fast_float
-plugin fastfloat.fast_float version="6.1.0" license="MIT" {
+plugin fastfloat.fast_float version="8.2.4" license="MIT" {
     authors {
         "Daniel Lemire" email=daniel@lemire.me
         "João Paulo Magalhaes"

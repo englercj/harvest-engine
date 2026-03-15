@@ -2,11 +2,11 @@
 
 // Basis Universal - Supercompressed GPU Texture Codec
 // http://www.binomial.info/
-plugin binomial.basis_universal version="1.16.4" license="Apache-2.0" {
+plugin binomial.basis_universal version="2_1_0" license="Apache-2.0" {
     authors { "Binomial LLC" }
 
     install {
-        fetch github user=BinomialLLC repo=basis_universal ref="${plugin.version}"
+        fetch github user=BinomialLLC repo=basis_universal ref="v${plugin.version}"
     }
 
     module basis_universal kind=lib_static group="engine/contrib" {

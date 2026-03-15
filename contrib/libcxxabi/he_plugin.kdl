@@ -2,7 +2,7 @@
 
 // An implementation of the C++ standard library, targeting C++11 and above.
 // https://github.com/llvm/llvm-project
-plugin llvm.libcxxabi version="18.1.2" license="Apache-2.0 WITH LLVM-exception" {
+plugin llvm.libcxxabi version="21.1.8" license="Apache-2.0 WITH LLVM-exception" {
     authors {}
 
     install {

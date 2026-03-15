@@ -2,7 +2,7 @@
 
 // Zstandard - a fast compression algorithm, providing high compression ratios.
 // http://www.zstd.net/
-plugin facebook.zstd version="1.5.5" license="BSD-3-Clause" {
+plugin facebook.zstd version="1.5.7" license="BSD-3-Clause" {
     authors { "Facebook" }
 
     install {
@@ -16,9 +16,10 @@ plugin facebook.zstd version="1.5.5" license="BSD-3-Clause" {
             "${plugin.install_dir}/lib/common/**"
             "${plugin.install_dir}/lib/compress/**"
             "${plugin.install_dir}/lib/decompress/**"
-            "${plugin.install_dir}/zdict.h"
-            "${plugin.install_dir}/zstd.h"
-            "${plugin.install_dir}/zstd_errors.h"
+            "${plugin.install_dir}/lib/dictBuilder/**"
+            "${plugin.install_dir}/lib/zdict.h"
+            "${plugin.install_dir}/lib/zstd.h"
+            "${plugin.install_dir}/lib/zstd_errors.h"
         }
 
         public {

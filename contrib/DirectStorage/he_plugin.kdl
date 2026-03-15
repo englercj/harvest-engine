@@ -2,7 +2,7 @@
 
 // DirectStorage - DirectStorage APIs for Windows.
 // https://www.nuget.org/packages/Microsoft.Direct3D.DirectStorage
-plugin microsoft.DirectStorage version="1.2.1" license="SEE LICENSE IN LICENSE.txt" {
+plugin microsoft.DirectStorage version="1.4.0-preview1-2603.504" license="SEE LICENSE IN LICENSE.txt" {
     authors { "Microsoft" }
 
     install {

@@ -2,12 +2,11 @@
 
 // Dear ImGui - a bloat-free graphical user interface library for C++.
 // https://github.com/ocornut/imgui
-plugin ocornut.imgui version="1.89.6" license="MIT" {
+plugin ocornut.imgui version="1.92.6" license="MIT" {
     authors { "Omar Cornut" email=contact@dearimgui.com }
 
     install {
-        // latest docking branch (as of v1.89.6)
-        fetch github user=ocornut repo=imgui ref="823a1385a269d923d35b82b2f470f3ae1fa8b5a3"
+        fetch github user=ocornut repo=imgui ref="v${plugin.version}-docking"
     }
 
     module imgui kind=lib_static group="engine/contrib" {

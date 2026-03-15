@@ -83,9 +83,11 @@ int he::AppMain(int argc, char* argv[])
     SessionDesc sessionDesc{};
     sessionDesc.defaultMatrixLayoutMode = SLANG_MATRIX_LAYOUT_COLUMN_MAJOR;
 
+    Vector<TargetDesc> targetDescs;
+    targetDescs.Reserve(args.targets.Size());
     for (const char* target : args.targets)
     {
-        TargetDesc targetDesc{};
+        TargetDesc& targetDesc = targetDescs.EmplaceBack();
 
         if (StrFind(target, "sm_") == target)
         {
@@ -115,6 +117,8 @@ int he::AppMain(int argc, char* argv[])
         }
         targetDesc.profile = profileId;
     }
+    sessionDesc.targets = targetDescs.Data();
+    sessionDesc.targetCount = targetDescs.Size();
 
     Vector<const char*> searchPaths;
 
@@ -231,14 +235,16 @@ int he::AppMain(int argc, char* argv[])
                 return -1;
             }
 
-            slang::ProgramLayout* layout = program->getLayout();
-            slang::EntryPointLayout* entryLayout = layout->getEntryPointByIndex(0);
-
             // TODO: Emit shader parameter metadata so we can do more automatic binding at runtime.
             // https://shader-slang.org/slang/user-guide/reflection
 
+            diagnostics = nullptr;
             Slang::ComPtr<IComponentType> linkedProgram;
             r = program->link(linkedProgram.writeRef(), diagnostics.writeRef());
+            slang::ProgramLayout* linkedLayout = linkedProgram ? linkedProgram->getLayout() : nullptr;
+            slang::EntryPointLayout* entryLayout = linkedLayout ? linkedLayout->getEntryPointByIndex(0) : nullptr;
+            const char* entryName = entryPoint->getFunctionReflection()->getName();
+            const SlangStage entryStage = entryLayout ? entryLayout->getStage() : SLANG_STAGE_NONE;
 
             if (diagnostics)
             {
@@ -249,8 +255,8 @@ int he::AppMain(int argc, char* argv[])
                     HE_KV(target_index, targetIndex),
                     HE_KV(target_name, target),
                     HE_KV(entry_index, entryPointIndex),
-                    HE_KV(entry_name, entryLayout->getName()),
-                    HE_KV(entry_stage, entryLayout->getStage()),
+                    HE_KV(entry_name, entryName),
+                    HE_KV(entry_stage, entryStage),
                     HE_KV(slang_diag, true));
             }
 
@@ -262,14 +268,28 @@ int he::AppMain(int argc, char* argv[])
                     HE_KV(target_index, targetIndex),
                     HE_KV(target_name, target),
                     HE_KV(entry_index, entryPointIndex),
-                    HE_KV(entry_name, entryPoint->getFunctionReflection()->getName()),
-                    HE_KV(entry_stage, entryLayout->getStage()),
+                    HE_KV(entry_name, entryName),
+                    HE_KV(entry_stage, entryStage),
                     HE_KV(result, r));
                 return -1;
             }
 
+            if (entryStage == SLANG_STAGE_NONE)
+            {
+                HE_LOG_ERROR(he_shaderc,
+                    HE_MSG("Entry point has unknown shader stage."),
+                    HE_KV(file_name, fileName),
+                    HE_KV(target_index, targetIndex),
+                    HE_KV(target_name, target),
+                    HE_KV(entry_index, entryPointIndex),
+                    HE_KV(entry_name, entryName),
+                    HE_KV(entry_stage, entryStage));
+                return -1;
+            }
+
+            diagnostics = nullptr;
             Slang::ComPtr<IBlob> kernelBlob;
-            r = program->getEntryPointCode(entryPointIndex, targetIndex, kernelBlob.writeRef(), diagnostics.writeRef());
+            r = linkedProgram->getEntryPointCode(entryPointIndex, targetIndex, kernelBlob.writeRef(), diagnostics.writeRef());
 
             if (diagnostics)
             {
@@ -280,8 +300,8 @@ int he::AppMain(int argc, char* argv[])
                     HE_KV(target_name, target),
                     HE_KV(file_name, fileName),
                     HE_KV(entry_index, entryPointIndex),
-                    HE_KV(entry_name, entryPoint->getFunctionReflection()->getName()),
-                    HE_KV(entry_stage, entryLayout->getStage()),
+                    HE_KV(entry_name, entryName),
+                    HE_KV(entry_stage, entryStage),
                     HE_KV(slang_diag, true));
             }
 
@@ -293,8 +313,8 @@ int he::AppMain(int argc, char* argv[])
                     HE_KV(target_index, targetIndex),
                     HE_KV(target_name, target),
                     HE_KV(entry_index, entryPointIndex),
-                    HE_KV(entry_name, entryPoint->getFunctionReflection()->getName()),
-                    HE_KV(entry_stage, entryLayout->getStage()),
+                    HE_KV(entry_name, entryName),
+                    HE_KV(entry_stage, entryStage),
                     HE_KV(result, r));
                 return -1;
             }
@@ -307,7 +327,7 @@ int he::AppMain(int argc, char* argv[])
                     c = '_';
             }
 
-            switch (entryLayout->getStage())
+            switch (entryStage)
             {
                 case SLANG_STAGE_VERTEX: constName += "_vs"; break;
                 case SLANG_STAGE_HULL: constName += "_hs"; break;
@@ -331,8 +351,8 @@ int he::AppMain(int argc, char* argv[])
                         HE_KV(target_index, targetIndex),
                         HE_KV(target_name, target),
                         HE_KV(entry_index, entryPointIndex),
-                        HE_KV(entry_name, entryLayout->getName()),
-                        HE_KV(entry_stage, entryLayout->getStage()));
+                        HE_KV(entry_name, entryName),
+                        HE_KV(entry_stage, entryStage));
                     return -1;
             }
 
@@ -352,8 +372,8 @@ int he::AppMain(int argc, char* argv[])
                     HE_KV(target_index, targetIndex),
                     HE_KV(target_name, target),
                     HE_KV(entry_index, entryPointIndex),
-                    HE_KV(entry_name, entryLayout->getName()),
-                    HE_KV(entry_stage, entryLayout->getStage()));
+                    HE_KV(entry_name, entryName),
+                    HE_KV(entry_stage, entryStage));
                 return -1;
             }
 

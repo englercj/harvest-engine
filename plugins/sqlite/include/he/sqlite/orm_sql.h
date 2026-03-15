@@ -237,19 +237,19 @@ namespace he::sqlite
         template <typename T>
         constexpr decltype(auto) GetTable() const
         {
-            return schema.TableFor<T>();
+            return schema.template TableFor<T>();
         }
 
         template <typename T>
         constexpr StringView GetTableName() const
         {
-            return schema.TableFor<T>().Name();
+            return schema.template TableFor<T>().Name();
         }
 
         template <typename T> requires(IsMemberObjectPointer<T>)
         constexpr StringView GetColumnName(T column) const
         {
-            return schema.TableFor<MemberPointerObjectType<T>>().GetColumnName(column);
+            return schema.template TableFor<MemberPointerObjectType<T>>().GetColumnName(column);
         }
 
         const SchemaType& schema;
@@ -278,7 +278,7 @@ namespace he::sqlite
         template <typename T>
         constexpr decltype(auto) GetTable() const
         {
-            return schema.TableFor<T>();
+            return schema.template TableFor<T>();
         }
 
         const SchemaType& schema;

@@ -46,7 +46,6 @@ namespace he
     // --------------------------------------------------------------------------------------------
     // Internal implementation details
 
-#if HE_COMPILER_MSVC
     template <class T, class U>
     struct _ForwardAs { using Type = U&&; };
 
@@ -65,19 +64,14 @@ namespace he
     template <class T, class U>
     using ForwardAs = typename _ForwardAs<T, U>::Type;
 
-    // Working around an MSVC bug where assignment silently does nothing when using IdentityType<> here.
-    // See: https://github.com/codeinred/tuplet/issues/29
-    // See: https://developercommunity.visualstudio.com/t/fold-expressions-unreliable-in-171-with-c20/1676476
+    template <typename BaseType, typename TupleType>
+    constexpr decltype(auto) _TupleMember(TupleType&& tuple)
+    {
+        return (static_cast<ForwardAs<TupleType&&, BaseType>>(tuple).value);
+    }
 
-    #define HE_TUPLE_FWD_MEMBER(TupleType, BaseType, tuple, value) static_cast<ForwardAs<TupleType&&, BaseType>>(tuple).value
-    #define HE_TUPLE_GET_MEMBER(BaseType, tuple, value) tuple.IdentityType<BaseType>::value
-#elif HE_COMPILER_CLANG
-    #define HE_TUPLE_FWD_MEMBER(TupleType, BaseType, tuple, value) static_cast<TupleType&&>(tuple).IdentityType<BaseType>::value
-    #define HE_TUPLE_GET_MEMBER(BaseType, tuple, value) tuple.IdentityType<BaseType>::value
-#else
-    #define HE_TUPLE_FWD_MEMBER(TupleType, BaseType, tuple, value) static_cast<TupleType&&>(tuple).BaseType::value
-    #define HE_TUPLE_GET_MEMBER(BaseType, tuple, value) tuple.BaseType::value
-#endif
+    #define HE_TUPLE_FWD_MEMBER(TupleType, BaseType, tuple) _TupleMember<BaseType>(static_cast<TupleType&&>(tuple))
+    #define HE_TUPLE_GET_MEMBER(BaseType, tuple) _TupleMember<BaseType>(tuple)
 
     /// \internal
     template <typename T, typename U>
@@ -94,34 +88,14 @@ namespace he
     template <typename T1, typename T2, typename... B1, typename... B2>
     constexpr bool _TupleEqual(const T1& t1, const T2& t2, TypeList<B1...>, TypeList<B2...>)
     {
-    #if HE_COMPILER_MSVC
-        return [&](auto&... v1) -> bool
-        {
-            return [&](auto&... v2) -> bool
-            {
-                return ((v1 == v2) && ...);
-            }(HE_TUPLE_GET_MEMBER(B2, t2, value)...);
-        }(HE_TUPLE_GET_MEMBER(B1, t1, value)...);
-    #else
-        return ((HE_TUPLE_GET_MEMBER(B1, t1, value) == HE_TUPLE_GET_MEMBER(B2, t2, value)) && ...);
-    #endif
+        return ((HE_TUPLE_GET_MEMBER(B1, t1) == HE_TUPLE_GET_MEMBER(B2, t2)) && ...);
     }
 
     template <typename T1, typename T2, typename... B1, typename... B2>
     constexpr bool _TupleLess(const T1& t1, const T2& t2, TypeList<B1...>, TypeList<B2...>)
     {
         bool isLess = false;
-    #if HE_COMPILER_MSVC
-        [&](auto&... v1) -> bool
-        {
-            return [&](auto&... v2) -> bool
-            {
-                return (_TuplePartialCompare(v1, v2, isLess) && ...);
-            }(HE_TUPLE_GET_MEMBER(B2, t2, value)...);
-        }(HE_TUPLE_GET_MEMBER(B1, t1, value)...);
-    #else
-        (_TuplePartialCompare(HE_TUPLE_GET_MEMBER(B1, t1, value), HE_TUPLE_GET_MEMBER(B2, t2, value), isLess) && ...);
-    #endif
+        (_TuplePartialCompare(HE_TUPLE_GET_MEMBER(B1, t1), HE_TUPLE_GET_MEMBER(B2, t2), isLess) && ...);
         return isLess;
     }
 
@@ -129,17 +103,7 @@ namespace he
     constexpr bool _TupleLessEqual(const T1& t1, const T2& t2, TypeList<B1...>, TypeList<B2...>)
     {
         bool isLess = false;
-    #if HE_COMPILER_MSVC
-        const bool isEqual = [&](auto&... v1) -> bool
-        {
-            return [&](auto&... v2) -> bool
-            {
-                return (_TuplePartialCompare(v1, v2, isLess) && ...);
-            }(HE_TUPLE_GET_MEMBER(B2, t2, value)...);
-        }(HE_TUPLE_GET_MEMBER(B1, t1, value)...);
-    #else
-        const bool isEqual = (_TuplePartialCompare(HE_TUPLE_GET_MEMBER(B1, t1, value), HE_TUPLE_GET_MEMBER(B2, t2, value), isLess) && ...);
-    #endif
+        const bool isEqual = (_TuplePartialCompare(HE_TUPLE_GET_MEMBER(B1, t1), HE_TUPLE_GET_MEMBER(B2, t2), isLess) && ...);
         return isLess || isEqual;
     }
 
@@ -195,46 +159,25 @@ namespace he
     template <typename T, typename F, typename... B>
     constexpr bool _TupleAny(T&& tuple, F&& func, TypeList<B...>)
     {
-    #if HE_COMPILER_MSVC
-        return [&](auto&&... v1) -> bool
-        {
-            return (bool(func(Forward<decltype(v1)>(v1))) || ...);
-        }(HE_TUPLE_FWD_MEMBER(T, B, tuple, value)...);
-    #else
-        return (bool(func(HE_TUPLE_FWD_MEMBER(T, B, tuple, value))) || ...);
-    #endif
+        return (bool(func(HE_TUPLE_FWD_MEMBER(T, B, tuple))) || ...);
     }
 
     template <typename T, typename F, typename... B>
     constexpr bool _TupleAll(T&& tuple, F&& func, TypeList<B...>)
     {
-    #if HE_COMPILER_MSVC
-        return [&](auto&&... v1) -> bool
-        {
-            return (bool(func(Forward<decltype(v1)>(v1))) && ...);
-        }(HE_TUPLE_FWD_MEMBER(T, B, tuple, value)...);
-    #else
-        return (bool(func(HE_TUPLE_FWD_MEMBER(T, B, tuple, value))) && ...);
-    #endif
+        return (bool(func(HE_TUPLE_FWD_MEMBER(T, B, tuple))) && ...);
     }
 
     template <typename T, typename F, typename... B>
     constexpr decltype(auto) _TupleApply(T&& tuple, F&& func, TypeList<B...>)
     {
-        return func(HE_TUPLE_FWD_MEMBER(T, B, tuple, value)...);
+        return func(HE_TUPLE_FWD_MEMBER(T, B, tuple)...);
     }
 
     template <typename T, typename F, typename... B>
     constexpr void _TupleForEach(T&& tuple, F&& func, TypeList<B...>)
     {
-    #if HE_COMPILER_MSVC
-        [&](auto&&... v1)
-        {
-            (void(func(Forward<decltype(v1)>(v1))), ...);
-        }(HE_TUPLE_FWD_MEMBER(T, B, tuple, value)...);
-    #else
-        (void(func(HE_TUPLE_FWD_MEMBER(T, B, tuple, value))), ...);
-    #endif
+        (void(func(HE_TUPLE_FWD_MEMBER(T, B, tuple))), ...);
     }
 
     template <typename T, typename...>
@@ -266,9 +209,9 @@ namespace he
 
     template <typename T, typename F, typename... B>
     constexpr auto _TupleMap(T&& tuple, F&& func, TypeList<B...>)
-        -> Tuple<decltype(func(HE_TUPLE_FWD_MEMBER(T, B, tuple, value)))...>
+        -> Tuple<decltype(func(HE_TUPLE_FWD_MEMBER(T, B, tuple)))...>
     {
-        return { func(HE_TUPLE_FWD_MEMBER(T, B, tuple, value))... };
+        return { func(HE_TUPLE_FWD_MEMBER(T, B, tuple))... };
     }
     /// \endinternal
 
@@ -348,7 +291,7 @@ namespace he
         template <typename U, typename... B1, typename... B2>
         constexpr void AssignInternal(U&& u, TypeList<B1...>, TypeList<B2...>)
         {
-            (void(B1::value = HE_TUPLE_FWD_MEMBER(U, B2, u, value)), ...);
+            (void(B1::value = HE_TUPLE_FWD_MEMBER(U, B2, u)), ...);
         }
     };
 
@@ -465,7 +408,7 @@ namespace he
     template <typename T, typename... Outer, typename... Inner>
     constexpr Tuple<_Type<Inner>...> _TupleCat(T&& tuple, TypeList<Outer...>, TypeList<Inner...>)
     {
-        return { HE_TUPLE_FWD_MEMBER(Outer, Inner, HE_TUPLE_GET_MEMBER(Outer, tuple, value), value)... };
+        return { HE_TUPLE_FWD_MEMBER(_Type<Outer>, Inner, HE_TUPLE_GET_MEMBER(Outer, tuple))... };
     }
 
     template <typename... T> requires(IsSpecialization<Decay<T>, Tuple> && ...)

@@ -140,7 +140,7 @@ namespace he::sqlite
 
             if constexpr (Type::ColumnsType::Size > 0)
             {
-                const StringView tableName = ctx.GetTableName<typename Type::ObjectType>();
+                const StringView tableName = ctx.template GetTableName<typename Type::ObjectType>();
                 sql.Write(" (");
                 WriteColumnNames(sql, tableName, value.columns, ctx);
                 sql.Write(')');
@@ -185,7 +185,7 @@ namespace he::sqlite
 
             if constexpr (Type::ColumnsType::Size > 0)
             {
-                const StringView tableName = ctx.GetTableName<typename Type::ObjectType>();
+                const StringView tableName = ctx.template GetTableName<typename Type::ObjectType>();
                 sql.Write(" (");
                 WriteColumnNames(sql, tableName, value.columns, ctx);
                 sql.Write(')');
@@ -207,8 +207,8 @@ namespace he::sqlite
         template <typename Ctx>
         void Write(StringBuilder& sql, const Type& value, const Ctx& ctx) const
         {
-            const StringView tableName = ctx.GetTableName<typename Type::ObjectType>();
-            const StringView refTableName = ctx.GetTableName<typename Type::ReferencedObjectType>();
+            const StringView tableName = ctx.template GetTableName<typename Type::ObjectType>();
+            const StringView refTableName = ctx.template GetTableName<typename Type::ReferencedObjectType>();
 
             sql.Write("FOREIGN KEY (");
             WriteColumnNames(sql, tableName, value.columns, ctx);
@@ -287,7 +287,7 @@ namespace he::sqlite
         template <typename Ctx>
         void Write(StringBuilder& sql, const Type& value, const Ctx& ctx) const
         {
-            const StringView tableName = ctx.GetTableName<typename Type::ObjectType>();
+            const StringView tableName = ctx.template GetTableName<typename Type::ObjectType>();
             const StringView uniqueStr = value.unique ? "UNIQUE " : "";
 
             sql.Write("CREATE {}INDEX IF NOT EXISTS {} ON {} (", uniqueStr, value.name, tableName);
@@ -317,7 +317,7 @@ namespace he::sqlite
         template <typename Ctx>
         void Write(StringBuilder& sql, const Type& value, const Ctx& ctx) const
         {
-            const StringView tableName = ctx.GetTableName<typename Type::ObjectType>();
+            const StringView tableName = ctx.template GetTableName<typename Type::ObjectType>();
             WriteColumnName(sql, tableName, value.member, ctx);
         }
     };
@@ -332,7 +332,7 @@ namespace he::sqlite
         {
             sql.Write("excluded.");
 
-            const StringView tableName = ctx.GetTableName<typename Type::ObjectType>();
+            const StringView tableName = ctx.template GetTableName<typename Type::ObjectType>();
             WriteColumnName(sql, tableName, value.member, ctx);
         }
     };
@@ -345,7 +345,7 @@ namespace he::sqlite
         template <typename Ctx>
         void Write(StringBuilder& sql, const Type& value, const Ctx& ctx) const
         {
-            const StringView tableName = ctx.GetTableName<typename Type::ObjectType>();
+            const StringView tableName = ctx.template GetTableName<typename Type::ObjectType>();
             WriteColumnName(sql, tableName, value.member, ctx);
 
             sql.Write(" = ");
@@ -562,7 +562,7 @@ namespace he::sqlite
         template <typename Ctx>
         void Write(StringBuilder& sql, const Type& value, const Ctx& ctx) const
         {
-            const auto& table = ctx.GetTable<typename Type::ObjectType>();
+            const auto& table = ctx.template GetTable<typename Type::ObjectType>();
             const StringView tableName = table.Name();
             sql.Write("SELECT * FROM {}", tableName);
             TupleForEach(value.args, [&](const auto& arg)
@@ -581,7 +581,7 @@ namespace he::sqlite
         template <typename Ctx>
         void Write(StringBuilder& sql, const Type& value, const Ctx& ctx) const
         {
-            const auto& table = ctx.GetTable<typename Type::ObjectType>();
+            const auto& table = ctx.template GetTable<typename Type::ObjectType>();
             const StringView tableName = table.Name();
             sql.Write("SELECT ");
             uint32_t index = 0;
@@ -616,7 +616,7 @@ namespace he::sqlite
         template <typename Ctx>
         void Write(StringBuilder& sql, const Type& value, const Ctx& ctx) const
         {
-            const auto& table = ctx.GetTable<typename Type::ObjectType>();
+            const auto& table = ctx.template GetTable<typename Type::ObjectType>();
             const StringView tableName = table.Name();
             sql.Write("DELETE FROM {} ", tableName);
             ToSql(sql, value.where, ctx);
@@ -631,7 +631,7 @@ namespace he::sqlite
         template <typename Ctx>
         void Write(StringBuilder& sql, const Type& value, const Ctx& ctx) const
         {
-            const auto& table = ctx.GetTable<typename Type::ObjectType>();
+            const auto& table = ctx.template GetTable<typename Type::ObjectType>();
             const StringView tableName = table.Name();
             sql.Write("INSERT INTO {} ", tableName);
 
@@ -689,7 +689,7 @@ namespace he::sqlite
         template <typename Ctx>
         void Write(StringBuilder& sql, const Type& value, const Ctx& ctx) const
         {
-            const auto& table = ctx.GetTable<typename Type::ObjectType>();
+            const auto& table = ctx.template GetTable<typename Type::ObjectType>();
             const StringView tableName = table.Name();
             sql.Write("INSERT INTO {} ", tableName);
 
@@ -839,7 +839,7 @@ namespace he::sqlite
         void Write(StringBuilder& sql, const Type& value, const Ctx& ctx) const
         {
             sql.Write("ON CONFLICT (");
-            const StringView tableName = ctx.GetTableName<typename Type::ObjectType>();
+            const StringView tableName = ctx.template GetTableName<typename Type::ObjectType>();
             WriteColumnNames(sql, tableName, value.targetArgs, ctx);
             sql.Write(") DO ");
 
@@ -869,7 +869,7 @@ namespace he::sqlite
         template <typename Ctx>
         void Write(StringBuilder& sql, const Type& value, const Ctx& ctx) const
         {
-            const StringView tableName = ctx.GetTableName<typename Type::ObjectType>();
+            const StringView tableName = ctx.template GetTableName<typename Type::ObjectType>();
             sql.Write("INSERT INTO {} (", tableName);
             WriteColumnNames(sql, tableName, value.columns, ctx);
             sql.Write(")");
@@ -901,7 +901,7 @@ namespace he::sqlite
         template <typename Ctx>
         void Write(StringBuilder& sql, const Type& value, const Ctx& ctx) const
         {
-            const auto& table = ctx.GetTable<typename Type::ObjectType>();
+            const auto& table = ctx.template GetTable<typename Type::ObjectType>();
             const StringView tableName = table.Name();
             sql.Write("UPDATE {} SET ", tableName);
 
@@ -944,7 +944,7 @@ namespace he::sqlite
         template <typename Ctx>
         void Write(StringBuilder& sql, const Type& value, const Ctx& ctx) const
         {
-            const StringView tableName = ctx.GetTableName<typename Type::ObjectType>();
+            const StringView tableName = ctx.template GetTableName<typename Type::ObjectType>();
             sql.Write("UPDATE {} SET ", tableName);
 
             uint32_t index = 0;

@@ -43,11 +43,6 @@ plugin he.editor version="0.1.0" license="UNLICENSED" {
         }
 
         when platform.system=windows {
-            warnings {
-                "4127" enabled=#false
-                "5054" enabled=#false
-            }
-
             shader_compile "sm_6_0" scope=private {
                 files { "src/shaders/imgui.slang" }
                 include_dirs { "src/shaders" }

@@ -10,6 +10,7 @@
 #include "he/core/log.h"
 #include "he/core/path.h"
 #include "he/core/result.h"
+#include "he/core/result_fmt.h"
 #include "he/core/span.h"
 #include "he/core/string.h"
 #include "he/core/string_view.h"

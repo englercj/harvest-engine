@@ -401,7 +401,7 @@ namespace he::sqlite
         template <typename Ctx>
         bool Bind(Statement& stmt, const Type& value, Ctx& ctx) const
         {
-            const auto& table = ctx.GetTable<typename Type::ObjectType>();
+            const auto& table = ctx.template GetTable<typename Type::ObjectType>();
 
             bool result = true;
             table.ForEachColumn([&](const auto& column)
@@ -424,7 +424,7 @@ namespace he::sqlite
         template <typename Ctx>
         bool Bind(Statement& stmt, const Type& value, Ctx& ctx) const
         {
-            const auto& table = ctx.GetTable<typename Type::ObjectType>();
+            const auto& table = ctx.template GetTable<typename Type::ObjectType>();
 
             bool result = true;
             table.ForEachColumn([&](const auto& column)
@@ -534,7 +534,7 @@ namespace he::sqlite
         template <typename Ctx>
         bool Bind(Statement& stmt, const Type& value, Ctx& ctx) const
         {
-            const auto& table = ctx.GetTable<typename Type::ObjectType>();
+            const auto& table = ctx.template GetTable<typename Type::ObjectType>();
 
             bool result = true;
             table.ForEachColumn([&](const auto& column)

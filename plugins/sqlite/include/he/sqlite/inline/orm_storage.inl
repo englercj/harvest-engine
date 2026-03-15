@@ -155,7 +155,7 @@ namespace he::sqlite
     template <typename T>
     bool Storage<S>::CreateTable()
     {
-        const auto& table = m_schema.TableFor<T>();
+        const auto& table = m_schema.template TableFor<T>();
         SqlWriterContext ctx(m_schema);
         StringBuilder sql;
         ToSql(sql, table, ctx);
@@ -166,7 +166,7 @@ namespace he::sqlite
     template <typename T>
     bool Storage<S>::DropTable()
     {
-        const auto& table = m_schema.TableFor<T>();
+        const auto& table = m_schema.template TableFor<T>();
         String sql = "DROP TABLE IF EXISTS ";
         sql += table.Name();
         return m_db.Execute(sql.Data());
@@ -234,7 +234,7 @@ namespace he::sqlite
     template <typename T, SelectQueryArg... U>
     bool Storage<S>::FindAll(Vector<T>& out, U&&... conditions)
     {
-        const auto& table = m_schema.TableFor<T>();
+        const auto& table = m_schema.template TableFor<T>();
         const auto query = SelectObj<T>(Forward<U>(conditions)...);
         return Execute(query, [&](const Statement& stmt)
         {
@@ -252,7 +252,7 @@ namespace he::sqlite
     template <typename T, SelectQueryArg... U>
     bool Storage<S>::FindOne(T& out, U&&... conditions)
     {
-        const auto& table = m_schema.TableFor<T>();
+        const auto& table = m_schema.template TableFor<T>();
         const auto query = SelectObj<T>(Forward<U>(conditions)..., Limit(1));
         return Execute(query, [&](const Statement& stmt)
         {

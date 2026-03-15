@@ -1,0 +1,4 @@
+interface:
+  display_name: "Harvest Unit Tests"
+  short_description: "Author, build, and run Harvest unit tests."
+  default_prompt: "Use $harvest-unit-tests to add or update tests with Harvest's custom test framework."

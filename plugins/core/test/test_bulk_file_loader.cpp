@@ -1,5 +1,7 @@
 // Copyright Chad Engler
 
+#include "fixtures.h"
+
 #include "he/core/bulk_file_loader.h"
 
 #include "he/core/file.h"
@@ -7,22 +9,6 @@
 #include "he/core/test.h"
 
 using namespace he;
-
-// ------------------------------------------------------------------------------------------------
-static void TouchTestFile(const char* path, const void* data = nullptr, uint32_t len = 0)
-{
-    File f;
-    Result r = f.Open(path, FileAccessMode::Write, FileCreateMode::CreateAlways);
-    HE_EXPECT(r, r);
-
-    if (data && len > 0)
-    {
-        r = f.Write(data, len);
-        HE_EXPECT(r, r);
-    }
-
-    f.Close();
-}
 
 static BulkFileLoader* CreateLoader()
 {
@@ -46,18 +32,20 @@ HE_TEST(core, bulk_file_loader, Static_Create_Destroy)
 HE_TEST(core, bulk_file_loader, OpenFile_CloseFile)
 {
     constexpr const char TestPath[] = "4bac7653-900f-4d4c-a4cf-695231fb1906";
-    TouchTestFile(TestPath, TestPath, HE_LENGTH_OF(TestPath));
+    const String testPath = GetTempTestPath(TestPath);
+    TouchTestFile(testPath.Data(), TestPath, HE_LENGTH_OF(TestPath));
 
     BulkFileLoader* loader = CreateLoader();
 
     BulkFileId fd;
-    Result r = loader->OpenFile(TestPath, fd);
+    Result r = loader->OpenFile(testPath.Data(), fd);
     HE_EXPECT(r, r);
     HE_EXPECT_NE(fd.val, -1);
 
     loader->CloseFile(fd);
 
     BulkFileLoader::Destroy(loader);
+    File::Remove(testPath.Data());
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -66,10 +54,11 @@ HE_TEST(core, bulk_file_loader, GetAttributes)
     BulkFileLoader* loader = CreateLoader();
 
     constexpr const char TestPath[] = "c8c37a8b-d037-495d-bf78-e4ca7b388710";
-    TouchTestFile(TestPath, TestPath, HE_LENGTH_OF(TestPath));
+    const String testPath = GetTempTestPath(TestPath);
+    TouchTestFile(testPath.Data(), TestPath, HE_LENGTH_OF(TestPath));
 
     BulkFileId fd;
-    Result r = loader->OpenFile(TestPath, fd);
+    Result r = loader->OpenFile(testPath.Data(), fd);
     HE_EXPECT(r, r);
     HE_EXPECT_NE(fd.val, -1);
 
@@ -87,7 +76,7 @@ HE_TEST(core, bulk_file_loader, GetAttributes)
     loader->CloseFile(fd);
     BulkFileLoader::Destroy(loader);
 
-    File::Remove(TestPath);
+    File::Remove(testPath.Data());
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -110,10 +99,11 @@ HE_TEST(core, bulk_file_loader, Read)
     BulkFileLoader* loader = CreateLoader();
 
     constexpr const char TestPath[] = "912f0d29-db0c-4c05-bc1b-f8162b20f4e1";
-    TouchTestFile(TestPath, TestPath, HE_LENGTH_OF(TestPath));
+    const String testPath = GetTempTestPath(TestPath);
+    TouchTestFile(testPath.Data(), TestPath, HE_LENGTH_OF(TestPath));
 
     BulkFileId fd;
-    Result r = loader->OpenFile(TestPath, fd);
+    Result r = loader->OpenFile(testPath.Data(), fd);
     HE_EXPECT(r, r);
     HE_EXPECT_NE(fd.val, -1);
 
@@ -142,4 +132,5 @@ HE_TEST(core, bulk_file_loader, Read)
     loader->DestroyQueue(queue);
     loader->CloseFile(fd);
     BulkFileLoader::Destroy(loader);
+    File::Remove(testPath.Data());
 }

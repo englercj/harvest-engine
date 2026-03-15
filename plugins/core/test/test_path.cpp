@@ -5,6 +5,8 @@
 // License: https://github.com/microsoft/STL/blob/9947dd9d6d2506029ed4486bb7596bda7d70f99d/LICENSE.txt
 // Source: https://github.com/microsoft/STL/blob/9947dd9d6d2506029ed4486bb7596bda7d70f99d/tests/std/tests/P0218R1_filesystem/test.cpp
 
+#include "fixtures.h"
+
 #include "he/core/path.h"
 
 #include "he/core/directory.h"
@@ -517,24 +519,22 @@ HE_TEST(core, path, MakeRelative)
 HE_TEST(core, path, MakeAbsolute)
 {
     constexpr char TestPath[] = "347ef2ad-3afe-4e11-ae99-a8ab43ce50fb";
+    const String testPath = GetTempTestPath(TestPath);
 
-    String expectedPath;
-    Result r = Directory::GetCurrent(expectedPath);
-    HE_EXPECT(r, r);
-    ConcatPath(expectedPath, TestPath);
+    String expectedPath = testPath;
     NormalizePath(expectedPath);
 
-    r = File::WriteAll(TestPath, HE_LENGTH_OF(TestPath), TestPath);
+    Result r = File::WriteAll(testPath.Data(), HE_LENGTH_OF(TestPath), TestPath);
     HE_EXPECT(r, r);
 
-    String path = TestPath;
+    String path = testPath;
     r = MakeAbsolute(path);
     HE_EXPECT(r, r);
     NormalizePath(path);
 
     HE_EXPECT_EQ(path, expectedPath);
 
-    File::Remove(TestPath);
+    File::Remove(testPath.Data());
 }
 
 static void TestSplitPath(const char* path, Span<const char* const> expected)

@@ -3,6 +3,7 @@
 #include "fixtures.h"
 
 #include "he/core/assert.h"
+#include "he/core/directory.h"
 #include "he/core/file.h"
 #include "he/core/path.h"
 #include "he/core/random.h"
@@ -11,6 +12,24 @@
 
 namespace he
 {
+    String GetTempTestPath(const char* relativePath)
+    {
+        String path;
+        Result r = Directory::GetSpecial(path, SpecialDirectory::Temp);
+        HE_ASSERT(r, HE_VAL(r));
+
+        ConcatPath(path, "harvest-engine-tests");
+        r = Directory::Create(path.Data(), true);
+        HE_ASSERT(r, HE_VAL(r), HE_VAL(path));
+
+        if (!StrEmpty(relativePath))
+        {
+            ConcatPath(path, relativePath);
+        }
+
+        return path;
+    }
+
     void TestAllocatorNoRealloc(Allocator& alloc)
     {
         // Malloc

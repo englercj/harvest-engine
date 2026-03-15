@@ -43,14 +43,15 @@ HE_TEST(core, file, GetFileResult)
 #endif
 
     constexpr const char TestPath[] = "a0688026-be17-4a99-b4a3-651307bba9ec";
-    File::Remove(TestPath);
+    const String testPath = GetTempTestPath(TestPath);
+    File::Remove(testPath.Data());
 
     File f;
-    Result r = f.Open(TestPath, FileAccessMode::Read, FileCreateMode::OpenExisting);
+    Result r = f.Open(testPath.Data(), FileAccessMode::Read, FileCreateMode::OpenExisting);
     HE_EXPECT(!r);
     HE_EXPECT_EQ(GetFileResult(r), FileResult::NotFound);
 
-    r = File::Remove(TestPath);
+    r = File::Remove(testPath.Data());
     HE_EXPECT(!r);
     HE_EXPECT_EQ(GetFileResult(r), FileResult::NotFound);
 }
@@ -59,25 +60,27 @@ HE_TEST(core, file, GetFileResult)
 HE_TEST(core, file, Static_Exists)
 {
     constexpr const char TestPath[] = "b36cad87-1e72-4dbc-942c-d85aa54774b6";
-    File::Remove(TestPath);
+    const String testPath = GetTempTestPath(TestPath);
+    File::Remove(testPath.Data());
 
-    HE_EXPECT(!File::Exists(TestPath));
-    TouchTestFile(TestPath);
+    HE_EXPECT(!File::Exists(testPath.Data()));
+    TouchTestFile(testPath.Data());
 
-    HE_EXPECT(File::Exists(TestPath));
-    File::Remove(TestPath);
+    HE_EXPECT(File::Exists(testPath.Data()));
+    File::Remove(testPath.Data());
 }
 
 // ------------------------------------------------------------------------------------------------
 HE_TEST(core, file, Static_Remove)
 {
     constexpr const char TestPath[] = "b04a864e-1008-4c4d-8f4e-22df1fb148d6";
+    const String testPath = GetTempTestPath(TestPath);
 
-    TouchTestFile(TestPath);
-    HE_EXPECT(File::Exists(TestPath));
+    TouchTestFile(testPath.Data());
+    HE_EXPECT(File::Exists(testPath.Data()));
 
-    HE_EXPECT(File::Remove(TestPath));
-    HE_EXPECT(!File::Exists(TestPath));
+    HE_EXPECT(File::Remove(testPath.Data()));
+    HE_EXPECT(!File::Exists(testPath.Data()));
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -85,17 +88,19 @@ HE_TEST(core, file, Static_Rename)
 {
     constexpr const char TestPath[] = "b9f8eefe-d292-4b0a-a494-8f9863c7d4a8";
     constexpr const char TestPath2[] = "1179e46e-526b-493d-a373-041bf340e0a3";
-    File::Remove(TestPath2);
+    const String testPath = GetTempTestPath(TestPath);
+    const String testPath2 = GetTempTestPath(TestPath2);
+    File::Remove(testPath2.Data());
 
-    TouchTestFile(TestPath);
-    HE_EXPECT(File::Exists(TestPath));
-    HE_EXPECT(!File::Exists(TestPath2));
+    TouchTestFile(testPath.Data());
+    HE_EXPECT(File::Exists(testPath.Data()));
+    HE_EXPECT(!File::Exists(testPath2.Data()));
 
-    HE_EXPECT(File::Rename(TestPath, TestPath2));
-    HE_EXPECT(!File::Exists(TestPath));
-    HE_EXPECT(File::Exists(TestPath2));
+    HE_EXPECT(File::Rename(testPath.Data(), testPath2.Data()));
+    HE_EXPECT(!File::Exists(testPath.Data()));
+    HE_EXPECT(File::Exists(testPath2.Data()));
 
-    File::Remove(TestPath2);
+    File::Remove(testPath2.Data());
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -103,33 +108,36 @@ HE_TEST(core, file, Static_Copy)
 {
     constexpr const char TestPath[] = "138ba0d8-7172-4b28-b12d-5a1cd1519796";
     constexpr const char TestPath2[] = "61965c6d-d19f-4bdd-9ec6-4e8f8cfd4baf";
-    File::Remove(TestPath);
-    File::Remove(TestPath2);
+    const String testPath = GetTempTestPath(TestPath);
+    const String testPath2 = GetTempTestPath(TestPath2);
+    File::Remove(testPath.Data());
+    File::Remove(testPath2.Data());
 
-    TouchTestFile(TestPath, TestPath, HE_LENGTH_OF(TestPath));
-    HE_EXPECT(File::Exists(TestPath));
-    HE_EXPECT(!File::Exists(TestPath2));
+    TouchTestFile(testPath.Data(), TestPath, HE_LENGTH_OF(TestPath));
+    HE_EXPECT(File::Exists(testPath.Data()));
+    HE_EXPECT(!File::Exists(testPath2.Data()));
 
-    HE_EXPECT(File::Rename(TestPath, TestPath2));
-    HE_EXPECT(!File::Exists(TestPath));
-    HE_EXPECT(File::Exists(TestPath2));
+    HE_EXPECT(File::Rename(testPath.Data(), testPath2.Data()));
+    HE_EXPECT(!File::Exists(testPath.Data()));
+    HE_EXPECT(File::Exists(testPath2.Data()));
 
-    File::Remove(TestPath2);
+    File::Remove(testPath2.Data());
 }
 
 // ------------------------------------------------------------------------------------------------
 HE_TEST(core, file, Static_GetAttributes)
 {
     constexpr const char TestPath[] = "632648bf-6426-4e97-97d0-68a919f1b12d";
-    File::Remove(TestPath);
+    const String testPath = GetTempTestPath(TestPath);
+    File::Remove(testPath.Data());
 
     FileAttributes attributes;
-    Result r = File::GetAttributes(TestPath, attributes);
+    Result r = File::GetAttributes(testPath.Data(), attributes);
     HE_EXPECT(!r);
     HE_EXPECT_EQ(GetFileResult(r), FileResult::NotFound);
 
-    TouchTestFile(TestPath, TestPath, HE_LENGTH_OF(TestPath));
-    r = File::GetAttributes(TestPath, attributes);
+    TouchTestFile(testPath.Data(), TestPath, HE_LENGTH_OF(TestPath));
+    r = File::GetAttributes(testPath.Data(), attributes);
     HE_EXPECT(r, r);
     HE_EXPECT(attributes.flags == FileAttributeFlag::None);
     HE_EXPECT_EQ(attributes.size, HE_LENGTH_OF(TestPath));
@@ -137,7 +145,7 @@ HE_TEST(core, file, Static_GetAttributes)
     HE_EXPECT_LE(attributes.accessTime.val, SystemClock::Now().val);
     HE_EXPECT_LE(attributes.writeTime.val, SystemClock::Now().val);
 
-    File::Remove(TestPath);
+    File::Remove(testPath.Data());
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -145,13 +153,14 @@ HE_TEST(core, file, Static_ReadAll)
 {
     constexpr const char TestPath[] = "ff4dcc9d-cc22-4853-be2c-a7733026bf07";
     constexpr uint32_t TestPathLen = HE_LENGTH_OF(TestPath) - 1;
-    TouchTestFile(TestPath, TestPath, TestPathLen);
+    const String testPath = GetTempTestPath(TestPath);
+    TouchTestFile(testPath.Data(), TestPath, TestPathLen);
 
 
-    // single-byte-sized buffer type
+        // single-byte-sized buffer type
     {
         Vector<char> value;
-        Result r = File::ReadAll(value, TestPath);
+        Result r = File::ReadAll(value, testPath.Data());
         HE_EXPECT(r, r);
         HE_EXPECT_EQ(value.Size(), TestPathLen);
         HE_EXPECT_EQ_MEM(value.Data(), TestPath, TestPathLen);
@@ -162,7 +171,7 @@ HE_TEST(core, file, Static_ReadAll)
         static_assert((TestPathLen % sizeof(int32_t)) == 0);
 
         Vector<int32_t> value;
-        Result r = File::ReadAll(value, TestPath);
+        Result r = File::ReadAll(value, testPath.Data());
         HE_EXPECT(r, r);
         HE_EXPECT_EQ(value.Size(), TestPathLen / sizeof(int32_t));
         HE_EXPECT_EQ_MEM(value.Data(), TestPath, TestPathLen);
@@ -174,13 +183,13 @@ HE_TEST(core, file, Static_ReadAll)
         constexpr uint32_t ExpectedVectorLen = (TestPathLen / sizeof(int64_t)) + 1;
 
         Vector<int64_t> value;
-        Result r = File::ReadAll(value, TestPath);
+        Result r = File::ReadAll(value, testPath.Data());
         HE_EXPECT(r, r);
         HE_EXPECT_EQ(value.Size(), ExpectedVectorLen);
         HE_EXPECT_EQ_MEM(value.Data(), TestPath, TestPathLen);
     }
 
-    File::Remove(TestPath);
+    File::Remove(testPath.Data());
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -188,32 +197,34 @@ HE_TEST(core, file, Static_WriteAll)
 {
     constexpr const char TestPath[] = "c7e1e5f1-6813-4037-b688-cd4edc94e0ab";
     constexpr uint32_t TestPathLen = HE_LENGTH_OF(TestPath) - 1;
-    TouchTestFile(TestPath, TestPath, TestPathLen);
+    const String testPath = GetTempTestPath(TestPath);
+    TouchTestFile(testPath.Data(), TestPath, TestPathLen);
 
     uint32_t bytesWritten = 0;
-    Result r = File::WriteAll(TestPath, TestPathLen, TestPath, &bytesWritten);
+    Result r = File::WriteAll(testPath.Data(), TestPathLen, TestPath, &bytesWritten);
     HE_EXPECT(r, r);
     HE_EXPECT_EQ(bytesWritten, TestPathLen);
 
     uint32_t bytesRead = 0;
     Vector<char> value;
-    r = File::ReadAll(value, TestPath, &bytesRead);
+    r = File::ReadAll(value, testPath.Data(), &bytesRead);
     HE_EXPECT(r, r);
     HE_EXPECT_EQ(bytesRead, bytesWritten);
     HE_EXPECT_EQ(bytesRead, TestPathLen);
     HE_EXPECT_EQ(value.Size(), bytesRead);
     HE_EXPECT_EQ_MEM(value.Data(), TestPath, TestPathLen);
 
-    File::Remove(TestPath);
+    File::Remove(testPath.Data());
 }
 
 // ------------------------------------------------------------------------------------------------
 HE_TEST(core, file, Move)
 {
     constexpr const char TestPath[] = "ba50d6b9-46b4-4756-9a1e-f78a5e0cae2e";
+    const String testPath = GetTempTestPath(TestPath);
 
     File f0;
-    Result r = f0.Open(TestPath, FileAccessMode::Write, FileCreateMode::CreateAlways);
+    Result r = f0.Open(testPath.Data(), FileAccessMode::Write, FileCreateMode::CreateAlways);
     HE_EXPECT(r, r);
     HE_EXPECT(f0.IsOpen());
 
@@ -229,32 +240,34 @@ HE_TEST(core, file, Move)
 
     f2.Close();
 
-    File::Remove(TestPath);
+    File::Remove(testPath.Data());
 }
 
 // ------------------------------------------------------------------------------------------------
 HE_TEST(core, file, Open_Close)
 {
     constexpr const char TestPath[] = "a3ac923d-6eb3-497f-ad88-772e9b4b9bdb";
+    const String testPath = GetTempTestPath(TestPath);
 
     File f;
-    Result r = f.Open(TestPath, FileAccessMode::Write, FileCreateMode::CreateAlways);
+    Result r = f.Open(testPath.Data(), FileAccessMode::Write, FileCreateMode::CreateAlways);
     HE_EXPECT(r, r);
     HE_EXPECT(f.IsOpen());
 
     f.Close();
     HE_EXPECT(!f.IsOpen());
 
-    File::Remove(TestPath);
+    File::Remove(testPath.Data());
 }
 
 // ------------------------------------------------------------------------------------------------
 HE_TEST(core, file, GetSize)
 {
     constexpr const char TestPath[] = "126fff87-4211-4a2c-9237-3ad09d02b167";
+    const String testPath = GetTempTestPath(TestPath);
 
     File f;
-    Result r = f.Open(TestPath, FileAccessMode::Write, FileCreateMode::CreateAlways);
+    Result r = f.Open(testPath.Data(), FileAccessMode::Write, FileCreateMode::CreateAlways);
     HE_EXPECT(r, r);
 
     uint64_t fsize = f.GetSize();
@@ -265,16 +278,17 @@ HE_TEST(core, file, GetSize)
     HE_EXPECT_EQ(fsize, HE_LENGTH_OF(TestPath));
 
     f.Close();
-    File::Remove(TestPath);
+    File::Remove(testPath.Data());
 }
 
 // ------------------------------------------------------------------------------------------------
 HE_TEST(core, file, SetSize)
 {
     constexpr const char TestPath[] = "a2741904-c0a5-4b88-a038-db63fc24ebab";
+    const String testPath = GetTempTestPath(TestPath);
 
     File f;
-    Result r = f.Open(TestPath, FileAccessMode::ReadWrite, FileCreateMode::CreateAlways);
+    Result r = f.Open(testPath.Data(), FileAccessMode::ReadWrite, FileCreateMode::CreateAlways);
     HE_EXPECT(r, r);
 
     uint64_t fsize = f.GetSize();
@@ -292,16 +306,17 @@ HE_TEST(core, file, SetSize)
     HE_EXPECT_EQ(buf, 0);
 
     f.Close();
-    File::Remove(TestPath);
+    File::Remove(testPath.Data());
 }
 
 // ------------------------------------------------------------------------------------------------
 HE_TEST(core, file, GetPos_SetPos)
 {
     constexpr const char TestPath[] = "48159f47-7fd1-4f64-ba59-342f1f8a78f1";
+    const String testPath = GetTempTestPath(TestPath);
 
     File f;
-    Result r = f.Open(TestPath, FileAccessMode::Write, FileCreateMode::CreateAlways);
+    Result r = f.Open(testPath.Data(), FileAccessMode::Write, FileCreateMode::CreateAlways);
     HE_EXPECT(r, r);
 
     r = f.SetSize(100);
@@ -323,16 +338,17 @@ HE_TEST(core, file, GetPos_SetPos)
     HE_EXPECT_EQ(pos, 200);
 
     f.Close();
-    File::Remove(TestPath);
+    File::Remove(testPath.Data());
 }
 
 // ------------------------------------------------------------------------------------------------
 HE_TEST(core, file, Read_Write)
 {
     constexpr const char TestPath[] = "73a94832-ef1a-4e58-8293-70eec2215d52";
+    const String testPath = GetTempTestPath(TestPath);
 
     File f;
-    Result r = f.Open(TestPath, FileAccessMode::ReadWrite, FileCreateMode::CreateAlways);
+    Result r = f.Open(testPath.Data(), FileAccessMode::ReadWrite, FileCreateMode::CreateAlways);
     HE_EXPECT(r, r);
 
     r = f.SetSize(100);
@@ -358,16 +374,17 @@ HE_TEST(core, file, Read_Write)
     HE_EXPECT_EQ(pos, 4);
 
     f.Close();
-    File::Remove(TestPath);
+    File::Remove(testPath.Data());
 }
 
 // ------------------------------------------------------------------------------------------------
 HE_TEST(core, file, ReadAt_WriteAt)
 {
     constexpr const char TestPath[] = "50f044c3-716e-4e0f-906b-b5eef0bb654f";
+    const String testPath = GetTempTestPath(TestPath);
 
     File f;
-    Result r = f.Open(TestPath, FileAccessMode::ReadWrite, FileCreateMode::CreateAlways);
+    Result r = f.Open(testPath.Data(), FileAccessMode::ReadWrite, FileCreateMode::CreateAlways);
     HE_EXPECT(r, r);
 
     r = f.SetSize(100);
@@ -383,16 +400,17 @@ HE_TEST(core, file, ReadAt_WriteAt)
     HE_EXPECT_EQ(value1, value0);
 
     f.Close();
-    File::Remove(TestPath);
+    File::Remove(testPath.Data());
 }
 
 // ------------------------------------------------------------------------------------------------
 HE_TEST(core, file, Flush)
 {
     constexpr const char TestPath[] = "2a3fe5ed-01e7-4467-9225-dbda8f9cc038";
+    const String testPath = GetTempTestPath(TestPath);
 
     File f;
-    Result r = f.Open(TestPath, FileAccessMode::Write, FileCreateMode::CreateAlways);
+    Result r = f.Open(testPath.Data(), FileAccessMode::Write, FileCreateMode::CreateAlways);
     HE_EXPECT(r, r);
 
     r = f.Flush();
@@ -406,16 +424,17 @@ HE_TEST(core, file, Flush)
     HE_EXPECT(r, r);
 
     f.Close();
-    File::Remove(TestPath);
+    File::Remove(testPath.Data());
 }
 
 // ------------------------------------------------------------------------------------------------
 HE_TEST(core, file, Lock_Unlock)
 {
     constexpr const char TestPath[] = "56d64cc3-b70e-405a-b89a-c02b8715d9a6";
+    const String testPath = GetTempTestPath(TestPath);
 
     File f;
-    Result r = f.Open(TestPath, FileAccessMode::Write, FileCreateMode::CreateAlways);
+    Result r = f.Open(testPath.Data(), FileAccessMode::Write, FileCreateMode::CreateAlways);
     HE_EXPECT(r, r);
 
     r = f.SetSize(128);
@@ -432,18 +451,19 @@ HE_TEST(core, file, Lock_Unlock)
     HE_EXPECT(r, r);
 
     f.Close();
-    File::Remove(TestPath);
+    File::Remove(testPath.Data());
 }
 
 // ------------------------------------------------------------------------------------------------
 HE_TEST(core, file, GetAttributes)
 {
     constexpr const char TestPath[] = "75530d88-2a9d-4f8c-893b-68ed5a6ff16d";
-    TouchTestFile(TestPath);
+    const String testPath = GetTempTestPath(TestPath);
+    TouchTestFile(testPath.Data());
 
     FileAttributes attributes;
     File f;
-    Result r = f.Open(TestPath, FileAccessMode::ReadWrite, FileCreateMode::OpenExisting);
+    Result r = f.Open(testPath.Data(), FileAccessMode::ReadWrite, FileCreateMode::OpenExisting);
     HE_EXPECT(r, r);
 
     r = f.Write(TestPath, HE_LENGTH_OF(TestPath));
@@ -457,16 +477,17 @@ HE_TEST(core, file, GetAttributes)
     HE_EXPECT_LE(attributes.accessTime.val, SystemClock::Now().val);
     HE_EXPECT_LE(attributes.writeTime.val, SystemClock::Now().val);
 
-    File::Remove(TestPath);
+    File::Remove(testPath.Data());
 }
 
 // ------------------------------------------------------------------------------------------------
 HE_TEST(core, file, GetPath)
 {
     constexpr const char TestPath[] = "c8862020-d165-4a80-b5eb-333131fd02f3";
+    const String testPath = GetTempTestPath(TestPath);
 
     File f;
-    Result r = f.Open(TestPath, FileAccessMode::Write, FileCreateMode::CreateAlways);
+    Result r = f.Open(testPath.Data(), FileAccessMode::Write, FileCreateMode::CreateAlways);
     HE_EXPECT(r, r);
 
     String path;
@@ -475,23 +496,23 @@ HE_TEST(core, file, GetPath)
     HE_EXPECT(IsAbsolutePath(path));
     NormalizePath(path);
 
-    String expectedPath;
-    r = Directory::GetCurrent(expectedPath);
-    HE_EXPECT(r, r);
-    HE_EXPECT(IsAbsolutePath(expectedPath));
-    ConcatPath(expectedPath, TestPath);
+    String expectedPath = testPath;
     NormalizePath(expectedPath);
 
     HE_EXPECT_EQ(path, expectedPath);
+
+    f.Close();
+    File::Remove(testPath.Data());
 }
 
 // ------------------------------------------------------------------------------------------------
 HE_TEST(core, file, SetTimes)
 {
     constexpr const char TestPath[] = "a08d0e34-eff5-491d-8fa1-a71f760288de";
+    const String testPath = GetTempTestPath(TestPath);
 
     File f;
-    Result r = f.Open(TestPath, FileAccessMode::Write, FileCreateMode::CreateAlways);
+    Result r = f.Open(testPath.Data(), FileAccessMode::Write, FileCreateMode::CreateAlways);
     HE_EXPECT(r, r);
 
     SystemTime c{ 1234567890123400 };
@@ -505,19 +526,23 @@ HE_TEST(core, file, SetTimes)
 
     HE_EXPECT_EQ(attributes.accessTime.val, c.val);
     HE_EXPECT_EQ(attributes.writeTime.val, c.val);
+
+    f.Close();
+    File::Remove(testPath.Data());
 }
 
 // ------------------------------------------------------------------------------------------------
 HE_TEST(core, file, MemoryMappedFile)
 {
     constexpr const char TestPath[] = "a3ac923d-6eb3-497f-ad88-772e9b4b9bdb";
-    File::Remove(TestPath);
+    const String testPath = GetTempTestPath(TestPath);
+    File::Remove(testPath.Data());
 
-    HE_EXPECT(!File::Exists(TestPath));
-    TouchTestFile(TestPath, TestPath, HE_LENGTH_OF(TestPath));
+    HE_EXPECT(!File::Exists(testPath.Data()));
+    TouchTestFile(testPath.Data(), TestPath, HE_LENGTH_OF(TestPath));
 
     File f;
-    Result r = f.Open(TestPath, FileAccessMode::ReadWrite, FileCreateMode::OpenExisting);
+    Result r = f.Open(testPath.Data(), FileAccessMode::ReadWrite, FileCreateMode::OpenExisting);
     HE_EXPECT(r, r);
     HE_EXPECT(f.IsOpen());
 
@@ -552,5 +577,5 @@ HE_TEST(core, file, MemoryMappedFile)
     f.Close();
     HE_EXPECT(!f.IsOpen());
 
-    File::Remove(TestPath);
+    File::Remove(testPath.Data());
 }

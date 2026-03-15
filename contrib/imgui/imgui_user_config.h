@@ -28,10 +28,15 @@
 #define IM_ASSERT(_EXPR)                        HE_ASSERT(_EXPR)
 
 #if HE_INTERNAL_BUILD
-    #define IM_ASSERT_USER_ERROR(_EXP,_MSG)     HE_VERIFY(_EXP, HE_MSG(_MSG))
+    #define IM_ASSERT_USER_ERROR(_EXPR,_MSG)            HE_VERIFY(_EXPR, HE_MSG(_MSG))
+    #define IM_ASSERT_USER_ERROR_RET(_EXPR,_MSG)        do { if (!HE_VERIFY(_EXPR, HE_MSG(_MSG))) { return; } } while (0)
+    #define IM_ASSERT_USER_ERROR_RETV(_EXPR,_RETV,_MSG) do { if (!HE_VERIFY(_EXPR, HE_MSG(_MSG))) { return _RETV; } } while (0)
 #else
-    #define IM_ASSERT_USER_ERROR(_EXP,_MSG)     ((void)(_EXPR))
+    #define IM_ASSERT_USER_ERROR(_EXPR,_MSG)            do { ((void)(_EXPR)) } while (0)
+    #define IM_ASSERT_USER_ERROR_RET(_EXPR,_MSG)        do { if (!(_EXPR)) { return; } } while (0)
+    #define IM_ASSERT_USER_ERROR_RETV(_EXPR,_RETV,_MSG) do { if (!(_EXPR)) { return _RETV; } } while (0)
 #endif
+
 
 //---- Define attributes of all API symbols declarations, e.g. for DLL under Windows
 // Using Dear ImGui via a shared library is not recommended, because of function call overhead and because we don't guarantee backward nor forward ABI compatibility.

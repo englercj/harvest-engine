@@ -35,7 +35,7 @@ namespace he::editor
         const float dpiScale = ImGui::GetWindowDpiScale();
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(48.0f * dpiScale, 64.0f * dpiScale));
 
-        if (ImGui::BeginChild("welcome_padding", ImVec2(0, 0), false, ImGuiWindowFlags_AlwaysUseWindowPadding))
+        if (ImGui::BeginChild("welcome_padding", ImVec2(0, 0), ImGuiChildFlags_AlwaysUseWindowPadding, ImGuiWindowFlags_None))
         {
             PushFont(Font::RegularTitle);
             ImGui::TextUnformatted("Harvest Editor");

@@ -25,7 +25,7 @@ namespace he::editor
         ImGui::PopStyleColor();
 
         ImGui::SetCursorPos(pos);
-        ImGui::SetItemAllowOverlap();
+        ImGui::SetNextItemAllowOverlap();
         const bool pressed = ImGui::InvisibleButton("##link_behavior", ImGui::GetItemRectSize());
 
         if (ImGui::IsItemHovered())

@@ -104,21 +104,21 @@ namespace he::editor
         bool pressed;
 
         // We use ImGuiSelectableFlags_NoSetKeyOwner to allow down on one menu item, move, up on another.
-        const ImGuiSelectableFlags selectable_flags = ImGuiSelectableFlags_NoHoldingActiveID | ImGuiSelectableFlags_NoSetKeyOwner | ImGuiSelectableFlags_SelectOnClick | ImGuiSelectableFlags_DontClosePopups;
+        const ImGuiSelectableFlags selectable_flags = ImGuiSelectableFlags_NoHoldingActiveID | ImGuiSelectableFlags_NoSetKeyOwner | ImGuiSelectableFlags_SelectOnClick | ImGuiSelectableFlags_NoAutoClosePopups;
         if (window->DC.LayoutType == ImGuiLayoutType_Horizontal)
         {
             // Menu inside an horizontal menu bar
             // Selectable extend their highlight by half ItemSpacing in each direction.
             // For ChildMenu, the popup position will be overwritten by the call to FindBestWindowPosForPopup() in Begin()
-            popup_pos = ImVec2(pos.x - 1.0f - IM_FLOOR(style.ItemSpacing.x * 0.5f), pos.y - style.FramePadding.y + window->MenuBarHeight());
-            window->DC.CursorPos.x += IM_FLOOR(style.ItemSpacing.x * 0.5f);
+            popup_pos = ImVec2(pos.x - 1.0f - IM_TRUNC(style.ItemSpacing.x * 0.5f), pos.y - style.FramePadding.y + window->MenuBarHeight);
+            window->DC.CursorPos.x += IM_TRUNC(style.ItemSpacing.x * 0.5f);
             PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(style.ItemSpacing.x * 2.0f, style.ItemSpacing.y));
             float w = label_size.x;
             ImVec2 text_pos(window->DC.CursorPos.x + offsets->OffsetLabel, window->DC.CursorPos.y + window->DC.CurrLineTextBaseOffset);
             pressed = Selectable("", menu_is_open, selectable_flags, ImVec2(w, label_size.y));
             RenderText(text_pos, label);
             PopStyleVar();
-            window->DC.CursorPos.x += IM_FLOOR(style.ItemSpacing.x * (-1.0f + 0.5f)); // -1 spacing to compensate the spacing added when Selectable() did a SameLine(). It would also work to call SameLine() ourselves after the PopStyleVar().
+            window->DC.CursorPos.x += IM_TRUNC(style.ItemSpacing.x * (-1.0f + 0.5f)); // -1 spacing to compensate the spacing added when Selectable() did a SameLine(). It would also work to call SameLine() ourselves after the PopStyleVar().
         }
         else
         {
@@ -157,7 +157,7 @@ namespace he::editor
         if (!enabled)
             EndDisabled();
 
-        const bool hovered = (g.HoveredId == id) && enabled && !g.NavDisableMouseHover;
+        const bool hovered = (g.HoveredId == id) && enabled && !g.NavHighlightItemUnderNav;
         if (menuset_is_open)
             PopItemFlag();
 
@@ -191,7 +191,7 @@ namespace he::editor
             // The 'HovereWindow == window' check creates an inconsistency (e.g. moving away from menu slowly tends to hit same window, whereas moving away fast does not)
             // But we also need to not close the top-menu menu when moving over void. Perhaps we should extend the triangle check to a larger polygon.
             // (Remember to test this on BeginPopup("A")->BeginMenu("B") sequence which behaves slightly differently as B isn't a Child of A and hovering isn't shared.)
-            if (menu_is_open && !hovered && g.HoveredWindow == window && !moving_toward_child_menu && !g.NavDisableMouseHover)
+            if (menu_is_open && !hovered && g.HoveredWindow == window && !moving_toward_child_menu && !g.NavHighlightItemUnderNav)
                 want_close = true;
 
             // Open
@@ -310,14 +310,14 @@ namespace he::editor
             // Mimic the exact layout spacing of BeginMenu() to allow MenuItem() inside a menu bar, which is a little misleading but may be useful
             // Note that in this situation: we don't render the shortcut, we render a highlight instead of the selected tick mark.
             float w = label_size.x;
-            window->DC.CursorPos.x += IM_FLOOR(style.ItemSpacing.x * 0.5f);
+            window->DC.CursorPos.x += IM_TRUNC(style.ItemSpacing.x * 0.5f);
             ImVec2 text_pos(window->DC.CursorPos.x + offsets->OffsetLabel, window->DC.CursorPos.y + window->DC.CurrLineTextBaseOffset);
             PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(style.ItemSpacing.x * 2.0f, style.ItemSpacing.y));
             pressed = Selectable("", selected, selectable_flags, ImVec2(w, 0.0f));
             PopStyleVar();
             if (g.LastItemData.StatusFlags & ImGuiItemStatusFlags_Visible)
                 RenderText(text_pos, label);
-            window->DC.CursorPos.x += IM_FLOOR(style.ItemSpacing.x * (-1.0f + 0.5f)); // -1 spacing to compensate the spacing added when Selectable() did a SameLine(). It would also work to call SameLine() ourselves after the PopStyleVar().
+            window->DC.CursorPos.x += IM_TRUNC(style.ItemSpacing.x * (-1.0f + 0.5f)); // -1 spacing to compensate the spacing added when Selectable() did a SameLine(). It would also work to call SameLine() ourselves after the PopStyleVar().
         }
         else
         {
@@ -606,14 +606,14 @@ namespace he::editor
         if (labelSize.x > 0 || labelSize.y > 0)
         {
             ImGui::RenderText(pos, label);
-            pos.x += IM_FLOOR(style.ItemSpacing.x * 0.5f) + labelSize.x;
+            pos.x += IM_TRUNC(style.ItemSpacing.x * 0.5f) + labelSize.x;
         }
         pos.y += halfSpacingY;
 
         const float labelSizeX = pos.x - cursorStartX;
         const float lineSizeX = window->Size.x - labelSizeX - style.ItemSpacing.x - style.WindowPadding.x;
         const float thickness = 1.0f;
-        const float halfThickness = IM_FLOOR(thickness * 0.5f);
+        const float halfThickness = IM_TRUNC(thickness * 0.5f);
 
         // Horizontal Separator
         float x1 = pos.x;
@@ -692,7 +692,7 @@ namespace he::editor
     {
         ImGuiWindow* window = ImGui::GetCurrentWindow();
 
-        if ((window->DockTabItemStatusFlags & ImGuiItemStatusFlags_HoveredRect) && ImGui::IsMouseReleased(ImGuiMouseButton_Right))
+        if ((window->DC.DockTabItemStatusFlags & ImGuiItemStatusFlags_HoveredRect) && ImGui::IsMouseReleased(ImGuiMouseButton_Right))
         {
             ImGui::OpenPopup(id);
         }

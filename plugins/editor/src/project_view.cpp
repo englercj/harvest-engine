@@ -127,7 +127,7 @@ namespace he::editor
             ImGui::TableSetupColumn("Path");
             ImGui::TableHeadersRow();
 
-            const ImGuiSelectableFlags selectFlags = ImGuiSelectableFlags_SpanAllColumns | ImGuiSelectableFlags_AllowItemOverlap | ImGuiSelectableFlags_AllowDoubleClick;
+            const ImGuiSelectableFlags selectFlags = ImGuiSelectableFlags_SpanAllColumns | ImGuiSelectableFlags_AllowOverlap | ImGuiSelectableFlags_AllowDoubleClick;
 
             const schema::List<RecentProject>::Reader recentProjects = m_settingsService.GetSettings().GetRecentProjects();
             for (const RecentProject::Reader project : recentProjects)

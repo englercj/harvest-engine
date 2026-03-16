@@ -225,7 +225,7 @@ namespace he::editor
             ImGui::TableSetupColumn("State");
             ImGui::TableHeadersRow();
 
-            const ImGuiSelectableFlags selectFlags = ImGuiSelectableFlags_SpanAllColumns | ImGuiSelectableFlags_AllowItemOverlap | ImGuiSelectableFlags_AllowDoubleClick;
+            const ImGuiSelectableFlags selectFlags = ImGuiSelectableFlags_SpanAllColumns | ImGuiSelectableFlags_AllowOverlap | ImGuiSelectableFlags_AllowDoubleClick;
 
             for (const TreeNode& child : node.children)
             {

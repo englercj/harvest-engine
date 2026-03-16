@@ -23,6 +23,8 @@ namespace he::editor
         window::PointerCursor::ResizeTopRight,    // ImGuiMouseCursor_ResizeNESW
         window::PointerCursor::ResizeTopLeft,     // ImGuiMouseCursor_ResizeNWSE
         window::PointerCursor::Hand,              // ImGuiMouseCursor_Hand
+        window::PointerCursor::Wait,              // ImGuiMouseCursor_Wait
+        window::PointerCursor::Wait,              // ImGuiMouseCursor_Progress
         window::PointerCursor::NotAllowed,        // ImGuiMouseCursor_NotAllowed
     };
     static_assert(HE_LENGTH_OF(ImGuiMouseCursorMap) == static_cast<uint32_t>(ImGuiMouseCursor_COUNT));
@@ -209,7 +211,7 @@ namespace he::editor
     void ImGuiPlatformService::NewFrame()
     {
         ImGuiIO& io = ImGui::GetIO();
-        IM_ASSERT(io.Fonts->IsBuilt() && "Font atlas not built! It is generally built by the renderer backend. Missing call to renderer _NewFrame() function? e.g. ImGui_ImplOpenGL3_NewFrame().");
+        IM_ASSERT(io.Fonts != nullptr && io.Fonts->Fonts.Size > 0 && "Font atlas not initialized!");
 
         Vec2i viewSize = m_view->GetSize();
         io.DisplaySize.x = static_cast<float>(viewSize.x);
@@ -525,7 +527,7 @@ namespace he::editor
         // Set the current font information based on our found indices
         if (currentFontIndex != -1)
         {
-            ImGui::SetCurrentFont(g.IO.Fonts->Fonts[currentFontIndex]);
+            ImGui::SetCurrentFont(g.IO.Fonts->Fonts[currentFontIndex], g.FontSizeBase, g.FontSize);
         }
 
         if (defaultFontIndex != -1)

@@ -11,21 +11,21 @@ terms of the MIT license. A copy of the license can be found in the file
 #if defined(__WASM__)
 #include "prim/wasm/prim.c"      // memory-grow (Wasm)
 
-#if defined(_WIN32)
-#include "windows/prim.c"  // VirtualAlloc (Windows)
+#elif defined(_WIN32)
+#include "prim/windows/prim.c"  // VirtualAlloc (Windows)
 
 #elif defined(__APPLE__)
-#include "osx/prim.c"      // macOSX (actually defers to mmap in unix/prim.c)
+#include "prim/osx/prim.c"      // macOSX (actually defers to mmap in unix/prim.c)
 
 #elif defined(__wasi__)
 #define MI_USE_SBRK
-#include "wasi/prim.c"     // memory-grow or sbrk (Wasm)
+#include "prim/wasi/prim.c"     // memory-grow or sbrk (Wasm)
 
 #elif defined(__EMSCRIPTEN__)
-#include "emscripten/prim.c" // emmalloc_*, + pthread support
+#include "prim/emscripten/prim.c" // emmalloc_*, + pthread support
 
 #else
-#include "unix/prim.c"     // mmap() (Linux, macOSX, BSD, Illumnos, Haiku, DragonFly, etc.)
+#include "prim/unix/prim.c"     // mmap() (Linux, macOSX, BSD, Illumnos, Haiku, DragonFly, etc.)
 
 #endif
 

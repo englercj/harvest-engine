@@ -18,10 +18,21 @@
 
 #include "imgui.h"
 
+#include <cstddef>
 #include <cmath>
 
 namespace he::editor
 {
+    static ImTextureID ToImTextureId(const rhi::DescriptorTable* table)
+    {
+        return const_cast<rhi::DescriptorTable*>(table);
+    }
+
+    static const rhi::DescriptorTable* ToDescriptorTable(ImTextureID textureId)
+    {
+        return textureId;
+    }
+
     ImGuiRenderService::ImGuiRenderService(RenderService& renderService) noexcept
         : m_renderService(renderService)
     {}
@@ -37,6 +48,7 @@ namespace he::editor
         io.BackendRendererName = "imgui_impl_harvest";
         io.BackendRendererUserData = this;
         io.BackendFlags |= ImGuiBackendFlags_RendererHasVtxOffset; // We can honor the ImDrawCmd::VtxOffset field, allowing for large meshes.
+        io.BackendFlags |= ImGuiBackendFlags_RendererHasTextures;  // We upload font textures from ImGui texture requests.
         io.BackendFlags |= ImGuiBackendFlags_RendererHasViewports; // We can create multi-viewports on the Renderer side (optional)
 
         // Create a dummy entry for the main window. The render service manages the main window's
@@ -73,6 +85,11 @@ namespace he::editor
         ImGui::DestroyPlatformWindows();
         DestroyAllFontResources();
         DestroyDeviceResources();
+
+        ImGuiIO& io = ImGui::GetIO();
+        io.BackendFlags &= ~(ImGuiBackendFlags_RendererHasVtxOffset | ImGuiBackendFlags_RendererHasTextures | ImGuiBackendFlags_RendererHasViewports);
+        io.BackendRendererUserData = nullptr;
+        io.BackendRendererName = nullptr;
     }
 
     void ImGuiRenderService::NewFrame()
@@ -83,12 +100,12 @@ namespace he::editor
                 DestroyDeviceResources();
         }
 
-        // Font must've already been created
-        HE_ASSERT(ImGui::GetIO().Fonts->TexID);
     }
 
     void ImGuiRenderService::Render()
     {
+        UpdateTextureRequests(&ImGui::GetPlatformIO().Textures);
+
         m_frameIndex = (m_frameIndex + 1) % HE_LENGTH_OF(m_frameBuffers);
         FrameBuffers& buffers = m_frameBuffers[m_frameIndex];
 
@@ -115,13 +132,7 @@ namespace he::editor
 
     bool ImGuiRenderService::SetupFontAtlas(ImFontAtlas& atlas)
     {
-        if (!CreateFontResources(atlas))
-        {
-            DestroyFontResources(m_fontResources.Back());
-            m_fontResources.PopBack();
-            return false;
-        }
-
+        [[maybe_unused]] ImFontAtlas& unusedAtlas = atlas;
         return true;
     }
 
@@ -236,6 +247,7 @@ namespace he::editor
         ImGuiRenderService* service = static_cast<ImGuiRenderService*>(ImGui::GetIO().BackendRendererUserData);
         rhi::Device* device = service->m_renderService.GetDevice();
         ViewportData* data = static_cast<ViewportData*>(viewport->RendererUserData);
+        service->UpdateTextureRequests(&ImGui::GetPlatformIO().Textures);
 
         rhi::PresentTarget presentTarget = device->AcquirePresentTarget(data->swapChain);
 
@@ -377,7 +389,7 @@ namespace he::editor
                     const float bottom = drawCmd->ClipRect.w - clipOffset.y;
                     if (right > left && bottom > top)
                     {
-                        const rhi::DescriptorTable* table = drawCmd->GetTexID();
+                        const rhi::DescriptorTable* table = ToDescriptorTable(drawCmd->GetTexID());
                         cmdList->SetRenderDescriptorTable(1, table);
 
                         Vec2u scissorPos
@@ -508,9 +520,9 @@ namespace he::editor
         {
             rhi::VertexAttributeDesc attributes[]
             {
-                { "POSITION", 0, rhi::Format::RG32Float, IM_OFFSETOF(ImDrawVert, pos) },
-                { "TEXCOORD", 0, rhi::Format::RG32Float, IM_OFFSETOF(ImDrawVert, uv) },
-                { "COLOR", 0, rhi::Format::RGBA8Unorm, IM_OFFSETOF(ImDrawVert, col) },
+                { "POSITION", 0, rhi::Format::RG32Float, offsetof(ImDrawVert, pos) },
+                { "TEXCOORD", 0, rhi::Format::RG32Float, offsetof(ImDrawVert, uv) },
+                { "COLOR", 0, rhi::Format::RGBA8Unorm, offsetof(ImDrawVert, col) },
             };
 
             rhi::VertexBufferFormatDesc desc{};
@@ -622,27 +634,65 @@ namespace he::editor
         device->SafeDestroy(m_rootSignature);
     }
 
-    bool ImGuiRenderService::CreateFontResources(ImFontAtlas& atlas)
+    void ImGuiRenderService::UpdateTextureRequests(ImVector<ImTextureData*>* textures)
     {
-        // Build texture atlas of font
-        HE_ASSERT(atlas.TexID == nullptr);
+        if (!textures)
+            return;
 
-        uint8_t* fontPixels;
-        int fontPixelsWidth = 0;
-        int fontPixelsHeight = 0;
-        atlas.GetTexDataAsRGBA32(&fontPixels, &fontPixelsWidth, &fontPixelsHeight);
+        for (ImTextureData* textureData : *textures)
+        {
+            if (textureData && textureData->Status != ImTextureStatus_OK)
+                UpdateTexture(*textureData);
+        }
+    }
 
-        const Vec3u fontTextureSize{ static_cast<uint32_t>(fontPixelsWidth), static_cast<uint32_t>(fontPixelsHeight), 1 };
+    void ImGuiRenderService::UpdateTexture(ImTextureData& textureData)
+    {
+        for (uint32_t i = 0; i < m_fontResources.Size(); ++i)
+        {
+            FontResources& resources = m_fontResources[i];
+            if (resources.textureData != &textureData)
+                continue;
 
+            if (textureData.Status == ImTextureStatus_WantDestroy)
+            {
+                DestroyFontResources(resources);
+                m_fontResources.Erase(i, 1);
+            }
+            else
+            {
+                if (UploadFontTexture(resources, textureData, false))
+                    textureData.SetStatus(ImTextureStatus_OK);
+            }
+            return;
+        }
+
+        if (textureData.Status == ImTextureStatus_WantCreate)
+        {
+            if (CreateFontResources(textureData))
+                textureData.SetStatus(ImTextureStatus_OK);
+            return;
+        }
+
+        if (textureData.Status == ImTextureStatus_WantDestroy)
+            textureData.SetStatus(ImTextureStatus_Destroyed);
+    }
+
+    bool ImGuiRenderService::CreateFontResources(ImTextureData& textureData)
+    {
         rhi::Device* device = m_renderService.GetDevice();
         FontResources& resources = m_fontResources.EmplaceBack();
+        resources.textureData = &textureData;
+
+        const rhi::Format format = textureData.Format == ImTextureFormat_Alpha8 ? rhi::Format::A8Unorm : rhi::Format::RGBA8Unorm;
+        const Vec3u textureSize{ static_cast<uint32_t>(textureData.Width), static_cast<uint32_t>(textureData.Height), 1 };
 
         // Create font texture
         {
             rhi::TextureDesc desc{};
             desc.type = rhi::TextureType::_2D;
-            desc.format = rhi::Format::RGBA8Unorm;
-            desc.size = fontTextureSize;
+            desc.format = format;
+            desc.size = textureSize;
             desc.initialState = rhi::TextureState::CopyDst;
             HE_RHI_SET_NAME(desc, "ImGui Font Texture");
 
@@ -650,78 +700,16 @@ namespace he::editor
             if (!r)
             {
                 HE_LOGF_ERROR(imgui_render, "Failed to create ImGui font texture. Error: {}", r);
+                m_fontResources.PopBack();
                 return false;
             }
         }
 
-        // Upload pixels to the texture
+        if (!UploadFontTexture(resources, textureData, true))
         {
-            uint32_t alignment = device->GetDeviceInfo().uploadDataPitchAlignment;
-            uint32_t uploadPitch = AlignUp<uint32_t>(fontPixelsWidth * 4, alignment);
-            uint32_t uploadSize = fontPixelsHeight * uploadPitch;
-
-            // Create the upload buffer
-            rhi::BufferDesc desc{};
-            desc.heapType = rhi::HeapType::Upload;
-            desc.size = uploadSize;
-            HE_RHI_SET_NAME(desc, "ImGui Font Upload Buffer");
-
-            rhi::Buffer* uploadBuffer = nullptr;
-            HE_AT_SCOPE_EXIT([&]() { device->SafeDestroy(uploadBuffer); });
-            Result r = device->CreateBuffer(desc, uploadBuffer);
-            if (!r)
-            {
-                HE_LOGF_ERROR(imgui_render, "Failed to create ImGui font upload buffer. Error: {}", r);
-                return false;
-            }
-
-            // Copy pixels into the upload buffer
-            uint8_t* uploadMem = static_cast<uint8_t*>(device->Map(uploadBuffer));
-            for (int32_t i = 0; i < fontPixelsHeight; ++i)
-            {
-                MemCopy(uploadMem + (i * uploadPitch), fontPixels + (i * fontPixelsWidth * 4), fontPixelsWidth * 4);
-            }
-            device->Unmap(uploadBuffer);
-
-            // Create resources to perform a copy from the upload buffer to the texture
-            rhi::CmdAllocatorDesc copyCmdAllocatorDesc{};
-            copyCmdAllocatorDesc.type = rhi::CmdListType::Render;
-            HE_RHI_SET_NAME(copyCmdAllocatorDesc, "ImGui Font Upload Cmd Pool");
-
-            rhi::CmdAllocator* copyCmdAllocator = nullptr;
-            HE_AT_SCOPE_EXIT([&]() { device->SafeDestroy(copyCmdAllocator); });
-            r = device->CreateCmdAllocator(copyCmdAllocatorDesc, copyCmdAllocator);
-            if (!r)
-            {
-                HE_LOGF_ERROR(imgui_render, "Failed to create ImGui font upload cmd pool. Error: {}", r);
-                return false;
-            }
-
-            rhi::CmdListDesc copyCmdListDesc{};
-            copyCmdListDesc.alloc = copyCmdAllocator;
-            HE_RHI_SET_NAME(copyCmdListDesc, "ImGui Font Upload Cmd List");
-
-            rhi::RenderCmdList* copyCmdList = nullptr;
-            HE_AT_SCOPE_EXIT([&]() { device->SafeDestroy(copyCmdList); });
-            r = device->CreateRenderCmdList(copyCmdListDesc, copyCmdList);
-            if (!r)
-            {
-                HE_LOGF_ERROR(imgui_render, "Failed to create ImGui font upload cmd list. Error: {}", r);
-                return false;
-            }
-
-            // Copy the upload buffer to the texture
-            rhi::BufferTextureCopy copyRegion{};
-            copyRegion.bufferRowPitch = uploadPitch;
-            copyRegion.textureSize = fontTextureSize;
-
-            copyCmdList->Begin(copyCmdAllocator);
-            copyCmdList->Copy(uploadBuffer, resources.texture, copyRegion);
-            copyCmdList->TransitionBarrier(resources.texture, rhi::TextureState::CopyDst, rhi::TextureState::PixelShaderRead);
-            copyCmdList->End();
-
-            device->GetRenderCmdQueue().Submit(copyCmdList);
-            device->GetRenderCmdQueue().WaitForFlush();
+            DestroyFontResources(resources);
+            m_fontResources.PopBack();
+            return false;
         }
 
         // Create font texture view
@@ -733,6 +721,8 @@ namespace he::editor
             if (!r)
             {
                 HE_LOGF_ERROR(imgui_render, "Failed to create ImGui font texture view. Error: {}", r);
+                DestroyFontResources(resources);
+                m_fontResources.PopBack();
                 return false;
             }
         }
@@ -753,6 +743,8 @@ namespace he::editor
             if (!r)
             {
                 HE_LOGF_ERROR(imgui_render, "Failed to create ImGui font texture view. Error: {}", r);
+                DestroyFontResources(resources);
+                m_fontResources.PopBack();
                 return false;
             }
         }
@@ -760,18 +752,95 @@ namespace he::editor
         // Set the view into the descriptor table
         device->SetTextureViews(resources.table, 0, 0, 1, &resources.view);
 
-        // Store the font texture view
-        atlas.SetTexID(resources.table);
+        textureData.SetTexID(ToImTextureId(resources.table));
 
+        return true;
+    }
+
+    bool ImGuiRenderService::UploadFontTexture(FontResources& resources, ImTextureData& textureData, bool creatingTexture)
+    {
+        rhi::Device* device = m_renderService.GetDevice();
+
+        const uint32_t bytesPerPixel = static_cast<uint32_t>(textureData.BytesPerPixel);
+        const uint32_t width = static_cast<uint32_t>(textureData.Width);
+        const uint32_t height = static_cast<uint32_t>(textureData.Height);
+        const Vec3u textureSize{ width, height, 1 };
+
+        uint32_t alignment = device->GetDeviceInfo().uploadDataPitchAlignment;
+        uint32_t uploadPitch = AlignUp<uint32_t>(width * bytesPerPixel, alignment);
+        uint32_t uploadSize = height * uploadPitch;
+
+        rhi::BufferDesc desc{};
+        desc.heapType = rhi::HeapType::Upload;
+        desc.size = uploadSize;
+        HE_RHI_SET_NAME(desc, "ImGui Font Upload Buffer");
+
+        rhi::Buffer* uploadBuffer = nullptr;
+        HE_AT_SCOPE_EXIT([&]() { device->SafeDestroy(uploadBuffer); });
+        Result r = device->CreateBuffer(desc, uploadBuffer);
+        if (!r)
+        {
+            HE_LOGF_ERROR(imgui_render, "Failed to create ImGui font upload buffer. Error: {}", r);
+            return false;
+        }
+
+        uint8_t* uploadMem = static_cast<uint8_t*>(device->Map(uploadBuffer));
+        const uint8_t* pixels = static_cast<const uint8_t*>(textureData.GetPixels());
+        const uint32_t srcPitch = width * bytesPerPixel;
+        for (uint32_t i = 0; i < height; ++i)
+        {
+            MemCopy(uploadMem + (i * uploadPitch), pixels + (i * srcPitch), srcPitch);
+        }
+        device->Unmap(uploadBuffer);
+
+        rhi::CmdAllocatorDesc copyCmdAllocatorDesc{};
+        copyCmdAllocatorDesc.type = rhi::CmdListType::Render;
+        HE_RHI_SET_NAME(copyCmdAllocatorDesc, "ImGui Font Upload Cmd Pool");
+
+        rhi::CmdAllocator* copyCmdAllocator = nullptr;
+        HE_AT_SCOPE_EXIT([&]() { device->SafeDestroy(copyCmdAllocator); });
+        r = device->CreateCmdAllocator(copyCmdAllocatorDesc, copyCmdAllocator);
+        if (!r)
+        {
+            HE_LOGF_ERROR(imgui_render, "Failed to create ImGui font upload cmd pool. Error: {}", r);
+            return false;
+        }
+
+        rhi::CmdListDesc copyCmdListDesc{};
+        copyCmdListDesc.alloc = copyCmdAllocator;
+        HE_RHI_SET_NAME(copyCmdListDesc, "ImGui Font Upload Cmd List");
+
+        rhi::RenderCmdList* copyCmdList = nullptr;
+        HE_AT_SCOPE_EXIT([&]() { device->SafeDestroy(copyCmdList); });
+        r = device->CreateRenderCmdList(copyCmdListDesc, copyCmdList);
+        if (!r)
+        {
+            HE_LOGF_ERROR(imgui_render, "Failed to create ImGui font upload cmd list. Error: {}", r);
+            return false;
+        }
+
+        rhi::BufferTextureCopy copyRegion{};
+        copyRegion.bufferRowPitch = uploadPitch;
+        copyRegion.textureSize = textureSize;
+
+        copyCmdList->Begin(copyCmdAllocator);
+        if (!creatingTexture)
+            copyCmdList->TransitionBarrier(resources.texture, rhi::TextureState::PixelShaderRead, rhi::TextureState::CopyDst);
+        copyCmdList->Copy(uploadBuffer, resources.texture, copyRegion);
+        copyCmdList->TransitionBarrier(resources.texture, rhi::TextureState::CopyDst, rhi::TextureState::PixelShaderRead);
+        copyCmdList->End();
+
+        device->GetRenderCmdQueue().Submit(copyCmdList);
+        device->GetRenderCmdQueue().WaitForFlush();
         return true;
     }
 
     void ImGuiRenderService::DestroyFontResources(FontResources& resources)
     {
-        ImGuiIO& io = ImGui::GetIO();
-        if (io.Fonts->TexID == resources.table)
+        if (resources.textureData)
         {
-            io.Fonts->SetTexID(nullptr);
+            resources.textureData->SetTexID(ImTextureID_Invalid);
+            resources.textureData->SetStatus(ImTextureStatus_Destroyed);
         }
 
         rhi::Device* device = m_renderService.GetDevice();

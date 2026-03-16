@@ -58,14 +58,14 @@ int he::AppMain(int argc, char* argv[])
     {
         String help = MakeHelpString(ArgDescriptors, argv[0], &result);
         std::cerr << help.Data() << std::endl;
-        return -1;
+        return 1;
     }
 
     Result res = Directory::Create(args.outDir, true);
     if (!res)
     {
         HE_LOG_ERROR(he_schemac, HE_MSG("Failed to create output directory."), HE_KV(path, args.outDir), HE_KV(result, res));
-        return -1;
+        return 1;
     }
 
     const char* fileName = result.values[0];
@@ -77,8 +77,20 @@ int he::AppMain(int argc, char* argv[])
     if (SLANG_FAILED(r))
     {
         HE_LOG_ERROR(he_shaderc, HE_MSG("Failed to create global slang session."), HE_KV(file_name, fileName), HE_KV(result, r));
-        return -1;
+        return 1;
     }
+
+    Slang::ComPtr<ISession> session;
+    Slang::ComPtr<IBlob> diagnostics;
+    Slang::ComPtr<IModule> module;
+    auto slangShutdownGuard = MakeScopeGuard([&]()
+    {
+        module = nullptr;
+        diagnostics = nullptr;
+        session = nullptr;
+        globalSession = nullptr;
+        slang::shutdown();
+    });
 
     SessionDesc sessionDesc{};
     sessionDesc.defaultMatrixLayoutMode = SLANG_MATRIX_LAYOUT_COLUMN_MAJOR;
@@ -103,7 +115,7 @@ int he::AppMain(int argc, char* argv[])
                 HE_MSG("Unknown compilation target. Only DX Shader Model (sm_*) and GLSL (glsl_*) targets are supported."),
                 HE_KV(file_name, fileName),
                 HE_VAL(target));
-            return -1;
+            return 1;
         }
 
         SlangProfileID profileId = globalSession->findProfile(target);
@@ -113,7 +125,7 @@ int he::AppMain(int argc, char* argv[])
                 HE_MSG("Unknown compilation target. No target found with that name."),
                 HE_KV(file_name, fileName),
                 HE_VAL(target));
-            return -1;
+            return 1;
         }
         targetDesc.profile = profileId;
     }
@@ -159,34 +171,32 @@ int he::AppMain(int argc, char* argv[])
     sessionDesc.compilerOptionEntries = compilerOptions;
     sessionDesc.compilerOptionEntryCount = HE_LENGTH_OF(compilerOptions);
 
-    Slang::ComPtr<ISession> session;
     r = globalSession->createSession(sessionDesc, session.writeRef());
     if (SLANG_FAILED(r))
     {
         HE_LOG_ERROR(he_shaderc, HE_MSG("Failed to create slang compile session."), HE_KV(file_name, fileName), HE_KV(result, r));
-        return -1;
+        return 1;
     }
 
-    Slang::ComPtr<IBlob> diagnostics;
-    Slang::ComPtr<IModule> module(session->loadModule(fileName, diagnostics.writeRef()));
+    module = session->loadModule(fileName, diagnostics.writeRef());
 
     if (diagnostics)
     {
         const char* msg = static_cast<const char*>(diagnostics->getBufferPointer());
-        HE_LOG_ERROR(he_schemac, HE_MSG(msg), HE_KV(file_name, fileName), HE_KV(slang_diag, true));
+        HE_LOG_ERROR(he_shaderc, HE_MSG(msg), HE_KV(file_name, fileName), HE_KV(slang_diag, true));
     }
 
     if (!module)
     {
         HE_LOG_ERROR(he_shaderc, HE_MSG("Failed to load shader module."), HE_KV(file_name, fileName), HE_KV(result, r));
-        return -1;
+        return 1;
     }
 
     SlangInt32 entryPointCount = module->getDefinedEntryPointCount();
     if (entryPointCount == 0)
     {
         HE_LOG_ERROR(he_shaderc, HE_MSG("No entry points found in shader module."), HE_KV(file_name, fileName));
-        return -1;
+        return 1;
     }
 
     String fileBaseName = GetBaseName(fileName);
@@ -217,7 +227,7 @@ int he::AppMain(int argc, char* argv[])
                     HE_KV(target_name, target),
                     HE_KV(entry_index, entryPointIndex),
                     HE_KV(result, r));
-                return -1;
+                return 1;
             }
 
             IComponentType* components[] = { module, entryPoint };
@@ -232,7 +242,7 @@ int he::AppMain(int argc, char* argv[])
                     HE_KV(target_name, target),
                     HE_KV(entry_index, entryPointIndex),
                     HE_KV(result, r));
-                return -1;
+                return 1;
             }
 
             // TODO: Emit shader parameter metadata so we can do more automatic binding at runtime.
@@ -271,7 +281,7 @@ int he::AppMain(int argc, char* argv[])
                     HE_KV(entry_name, entryName),
                     HE_KV(entry_stage, entryStage),
                     HE_KV(result, r));
-                return -1;
+                return 1;
             }
 
             if (entryStage == SLANG_STAGE_NONE)
@@ -284,12 +294,12 @@ int he::AppMain(int argc, char* argv[])
                     HE_KV(entry_index, entryPointIndex),
                     HE_KV(entry_name, entryName),
                     HE_KV(entry_stage, entryStage));
-                return -1;
+                return 1;
             }
 
             diagnostics = nullptr;
             Slang::ComPtr<IBlob> kernelBlob;
-            r = linkedProgram->getEntryPointCode(entryPointIndex, targetIndex, kernelBlob.writeRef(), diagnostics.writeRef());
+            r = linkedProgram->getEntryPointCode(0, targetIndex, kernelBlob.writeRef(), diagnostics.writeRef());
 
             if (diagnostics)
             {
@@ -316,7 +326,7 @@ int he::AppMain(int argc, char* argv[])
                     HE_KV(entry_name, entryName),
                     HE_KV(entry_stage, entryStage),
                     HE_KV(result, r));
-                return -1;
+                return 1;
             }
 
             constName = "c_";
@@ -353,7 +363,7 @@ int he::AppMain(int argc, char* argv[])
                         HE_KV(entry_index, entryPointIndex),
                         HE_KV(entry_name, entryName),
                         HE_KV(entry_stage, entryStage));
-                    return -1;
+                    return 1;
             }
 
             if (StrFind(target, "sm_") == target)
@@ -374,7 +384,7 @@ int he::AppMain(int argc, char* argv[])
                     HE_KV(entry_index, entryPointIndex),
                     HE_KV(entry_name, entryName),
                     HE_KV(entry_stage, entryStage));
-                return -1;
+                return 1;
             }
 
             const uint8_t* data = static_cast<const uint8_t*>(kernelBlob->getBufferPointer());

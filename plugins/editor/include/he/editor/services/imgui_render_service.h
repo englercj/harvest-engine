@@ -27,6 +27,7 @@ namespace he::editor
     private:
         struct FontResources
         {
+            ImTextureData* textureData{ nullptr };
             rhi::Texture* texture{ nullptr };
             rhi::TextureView* view{ nullptr };
             rhi::DescriptorTable* table{ nullptr };
@@ -65,11 +66,14 @@ namespace he::editor
 
         void RenderDrawData(ImDrawData* drawData, rhi::RenderCmdList* cmdList, FrameBuffers& buffers);
         void SetupRenderState(ImDrawData* drawData, rhi::RenderCmdList* cmdList, FrameBuffers& buffers);
+        void UpdateTextureRequests(ImVector<ImTextureData*>* textures);
+        void UpdateTexture(ImTextureData& textureData);
 
         bool CreateDeviceResources();
         void DestroyDeviceResources();
 
-        bool CreateFontResources(ImFontAtlas& atlas);
+        bool CreateFontResources(ImTextureData& textureData);
+        bool UploadFontTexture(FontResources& resources, ImTextureData& textureData, bool creatingTexture);
         void DestroyFontResources(FontResources& resources);
         void DestroyAllFontResources();
 

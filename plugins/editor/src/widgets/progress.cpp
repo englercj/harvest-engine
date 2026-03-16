@@ -12,6 +12,18 @@
 
 namespace he::editor
 {
+    static void RenderRectFilledRangeH(ImDrawList* drawList, const ImRect& bb, ImU32 color, float t0, float t1, float rounding)
+    {
+        const float clampedMin = ImClamp(t0, 0.0f, 1.0f);
+        const float clampedMax = ImClamp(t1, 0.0f, 1.0f);
+        if (clampedMin >= clampedMax)
+            return;
+
+        const ImVec2 fillMin{ ImLerp(bb.Min.x, bb.Max.x, clampedMin), bb.Min.y };
+        const ImVec2 fillMax{ ImLerp(bb.Min.x, bb.Max.x, clampedMax), bb.Max.y };
+        drawList->AddRectFilled(fillMin, fillMax, color, rounding);
+    }
+
     static float SpinnerSawTooth(float count, float t)
     {
         return Fmod(count * t, 1.0f);
@@ -140,13 +152,13 @@ namespace he::editor
             const float t0 = (phase * (1.0f + widthNorm)) - widthNorm;
             const float t1 = t0 + widthNorm;
 
-            ImGui::RenderRectFilledRangeH(window->DrawList, bb, ImGui::GetColorU32(ImGuiCol_PlotHistogram), t0, t1, style.FrameRounding);
+            RenderRectFilledRangeH(window->DrawList, bb, ImGui::GetColorU32(ImGuiCol_PlotHistogram), t0, t1, style.FrameRounding);
         }
         // normal % value bar
         else
         {
             value = ImSaturate(value);
-            ImGui::RenderRectFilledRangeH(window->DrawList, bb, ImGui::GetColorU32(ImGuiCol_PlotHistogram), 0.0f, value, style.FrameRounding);
+            RenderRectFilledRangeH(window->DrawList, bb, ImGui::GetColorU32(ImGuiCol_PlotHistogram), 0.0f, value, style.FrameRounding);
         }
 
         // Default displaying the fraction as percentage string for normal value bars

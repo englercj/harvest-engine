@@ -27,7 +27,8 @@ namespace he::editor
 
     void PushFont(Font f)
     {
-        ImGui::PushFont(GetFont(f));
+        ImFont* font = GetFont(f);
+        ImGui::PushFont(font, font->LegacySize);
     }
 
     void PopFont()
@@ -138,9 +139,9 @@ namespace he::editor
         colors[ImGuiCol_ResizeGripActive]       = ImVec4(0.26f, 0.59f, 0.98f, 0.95f);
         colors[ImGuiCol_Tab]                    = ImVec4(0.25f, 0.25f, 0.25f, 1.00f);
         colors[ImGuiCol_TabHovered]             = ImVec4(0.31f, 0.55f, 0.78f, 0.77f);
-        colors[ImGuiCol_TabActive]              = ImVec4(0.20f, 0.43f, 0.67f, 1.00f);
-        colors[ImGuiCol_TabUnfocused]           = ImVec4(0.25f, 0.25f, 0.25f, 1.00f);
-        colors[ImGuiCol_TabUnfocusedActive]     = ImVec4(0.33f, 0.33f, 0.33f, 1.00f);
+        colors[ImGuiCol_TabSelected]            = ImVec4(0.20f, 0.43f, 0.67f, 1.00f);
+        colors[ImGuiCol_TabDimmed]              = ImVec4(0.25f, 0.25f, 0.25f, 1.00f);
+        colors[ImGuiCol_TabDimmedSelected]      = ImVec4(0.33f, 0.33f, 0.33f, 1.00f);
         colors[ImGuiCol_DockingPreview]         = ImVec4(0.85f, 0.85f, 0.85f, 0.28f);
         colors[ImGuiCol_DockingEmptyBg]         = ImVec4(0.38f, 0.38f, 0.38f, 1.00f);
         colors[ImGuiCol_PlotLines]              = ImVec4(0.61f, 0.61f, 0.61f, 1.00f);
@@ -154,7 +155,7 @@ namespace he::editor
         colors[ImGuiCol_TableRowBgAlt]          = ImVec4(1.00f, 1.00f, 1.00f, 0.07f);
         colors[ImGuiCol_TextSelectedBg]         = ImVec4(0.73f, 0.73f, 0.73f, 0.35f);
         colors[ImGuiCol_DragDropTarget]         = ImVec4(1.00f, 1.00f, 0.00f, 0.90f);
-        colors[ImGuiCol_NavHighlight]           = ImVec4(0.26f, 0.59f, 0.98f, 1.00f);
+        colors[ImGuiCol_NavCursor]              = ImVec4(0.26f, 0.59f, 0.98f, 1.00f);
         colors[ImGuiCol_NavWindowingHighlight]  = ImVec4(1.00f, 1.00f, 1.00f, 0.70f);
         colors[ImGuiCol_NavWindowingDimBg]      = ImVec4(0.80f, 0.80f, 0.80f, 0.20f);
         colors[ImGuiCol_ModalWindowDimBg]       = ImVec4(0.13f, 0.13f, 0.13f, 0.78f);
@@ -216,7 +217,7 @@ namespace he::editor
         style.LogSliderDeadzone                 = HE_DPI(4.0f);             // The size in pixels of the dead-zone around zero on logarithmic sliders that cross zero.
         style.TabRounding                       = HE_DPI(0.0f);             // Radius of upper corners of a tab. Set to 0.0f to have rectangular tabs.
         style.TabBorderSize                     = 0.0f;                     // Thickness of border around tabs.
-        style.TabMinWidthForCloseButton         = HE_DPI(0.0f);             // Minimum width for close button to appears on an unselected tab when hovered. Set to 0.0f to always show when hovering, set to FLT_MAX to never show close button unless selected.
+        style.TabCloseButtonMinWidthUnselected  = HE_DPI(0.0f);             // Minimum width for close button to appears on an unselected tab when hovered. Set to 0.0f to always show when hovering, set to FLT_MAX to never show close button unless selected.
         style.ColorButtonPosition               = ImGuiDir_Right;           // Side of the color button in the ColorEdit4 widget (left/right). Defaults to ImGuiDir_Right.
         style.ButtonTextAlign                   = ImVec2(0.5f, 0.5f);       // Alignment of button text when button is larger than text.
         style.SelectableTextAlign               = ImVec2(0.0f, 0.0f);       // Alignment of selectable text. Defaults to (0.0f, 0.0f) (top-left aligned). It's generally important to keep this left-aligned if you want to lay multiple items on a same line.

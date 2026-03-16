@@ -15,6 +15,8 @@ plugin binomial.basis_universal version="2_1_0" license="Apache-2.0" {
         files {
             "${plugin.install_dir}/encoder/*.h"
             "${plugin.install_dir}/encoder/*.cpp"
+            "${plugin.install_dir}/encoder/3rdparty/android_astc_decomp.cpp"
+            "${plugin.install_dir}/encoder/3rdparty/tinyexr.cpp"
             "${plugin.install_dir}/transcoder/*.h"
             "${plugin.install_dir}/transcoder/*.cpp"
         }

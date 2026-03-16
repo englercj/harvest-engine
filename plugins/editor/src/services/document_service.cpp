@@ -38,7 +38,7 @@ namespace he::editor
     {
         ImGuiViewport* viewport = ImGui::GetMainViewport();
         ImGuiDockNodeFlags dockFlags = ImGuiDockNodeFlags_NoWindowMenuButton | ImGuiDockNodeFlags_NoCloseButton | ImGuiDockNodeFlags_PassthruCentralNode;
-        ImGuiID dockId = ImGui::DockSpaceOverViewport(viewport, dockFlags);
+        ImGuiID dockId = ImGui::DockSpaceOverViewport(0, viewport, dockFlags);
 
         for (UniquePtr<Document>& doc : m_documents)
         {

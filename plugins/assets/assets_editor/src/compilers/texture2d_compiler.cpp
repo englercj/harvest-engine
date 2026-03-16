@@ -194,9 +194,9 @@ namespace he::assets
         params.m_uastc = comp.GetFormat() == Texture2D::CompressionFormat::UASTC;
         if (params.m_uastc)
         {
-            params.m_rdo_uastc = true;
-            params.m_pack_uastc_flags = GetBasisUastcFlags(quality);
-            params.m_rdo_uastc_quality_scalar = GetBasisUastcRdoQuality(quality);
+            params.m_rdo_uastc_ldr_4x4 = true;
+            params.m_pack_uastc_ldr_4x4_flags = GetBasisUastcFlags(quality);
+            params.m_rdo_uastc_ldr_4x4_quality_scalar = GetBasisUastcRdoQuality(quality);
         }
         else
         {
@@ -207,7 +207,7 @@ namespace he::assets
         params.m_create_ktx2_file = true;
         params.m_ktx2_uastc_supercompression = basist::KTX2_SS_ZSTANDARD;
         params.m_ktx2_zstd_supercompression_level = comp.GetLevel();
-        params.m_ktx2_srgb_transfer_func = params.m_perceptual;
+        params.m_ktx2_and_basis_srgb_transfer_function = params.m_perceptual;
 
         // Configure multithreading
         params.m_multithreading = false;
@@ -250,12 +250,13 @@ namespace he
             case basisu::basis_compressor::error_code::cECFailedValidating: return "FailedValidating";
             case basisu::basis_compressor::error_code::cECFailedEncodeUASTC: return "FailedEncodeUASTC";
             case basisu::basis_compressor::error_code::cECFailedFrontEnd: return "FailedFrontEnd";
-            case basisu::basis_compressor::error_code::cECFailedFontendExtract: return "FailedFontendExtract";
+            case basisu::basis_compressor::error_code::cECFailedFrontendExtract: return "FailedFrontendExtract";
             case basisu::basis_compressor::error_code::cECFailedBackend: return "FailedBackend";
             case basisu::basis_compressor::error_code::cECFailedCreateBasisFile: return "FailedCreateBasisFile";
             case basisu::basis_compressor::error_code::cECFailedWritingOutput: return "FailedWritingOutput";
             case basisu::basis_compressor::error_code::cECFailedUASTCRDOPostProcess: return "FailedUASTCRDOPostProcess";
             case basisu::basis_compressor::error_code::cECFailedCreateKTX2File: return "FailedCreateKTX2File";
+            case basisu::basis_compressor::error_code::cECFailedInvalidParameters: return "FailedInvalidParameters";
         }
 
         return "<unknown>";

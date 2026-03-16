@@ -10,7 +10,7 @@ description: Author, update, explain, build, and run Harvest Engine unit tests t
 Regenerate generated projects first if `.build/projects/he_test_runner.vcxproj` is missing or stale:
 
 ```powershell
-./hemake.sh generate-projects vs2026
+./hemake.ps1 generate-projects vs2026
 ```
 
 Build the runner with Visual Studio MSBuild, not `dotnet msbuild`. The generated C++ project imports Visual Studio C++ targets.
@@ -187,7 +187,7 @@ When adding a new plugin test library:
 
 1. Add the `*_tests` module to that plugin's `he_plugin.kdl`.
 2. Keep it in `group="engine/tests"`.
-3. Regenerate projects with `./hemake.sh generate-projects vs2026`.
+3. Regenerate projects with `./hemake.ps1 generate-projects vs2026`.
 4. Rebuild `he_test_runner`.
 
 If the group and kind match, the runner picks the test library up automatically. You do not need to hand-edit the runner project.

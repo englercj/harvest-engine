@@ -12,8 +12,8 @@
 ## Build, Test, and Development Commands
 Run from repo root unless the path says otherwise.
 
-- `./hemake.sh generate-projects vs2026`: generate `.build/Harvest Engine.slnx` and `.build/projects/*.vcxproj`.
-- `./hemake.sh install-plugins`: download/install plugin archives declared by `fetch` nodes.
+- `./hemake.ps1 generate-projects vs2026`: generate `.build/Harvest Engine.slnx` and `.build/projects/*.vcxproj`.
+- `./hemake.ps1 install-plugins`: download/install plugin archives declared by `fetch` nodes.
 - `dotnet msbuild hemake/Harvest.Make.slnx /p:Configuration=Debug /p:Restore=false /m:1`: build HE Make.
 - `dotnet test hemake/Tests/Harvest.Make.Projects.Tests/Harvest.Make.Projects.Tests.csproj -c Debug --no-build`: run HE Make project-generation tests.
 - `.build/<platform-config>/bin/he_test_runner.exe`: run engine tests after building the generated projects. Use this to verify new tests and catch regressions in engine modules.

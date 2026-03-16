@@ -9,8 +9,14 @@
 ```powershell
 Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned
 ```
-3. Install Git Bash from [git-scm.com](https://git-scm.com/download/win)
-4. Run `hemake.sh` using Git Bash from within the cloned folder.
+3. Open a non-elevated prompt and run:
+```powershell
+.\hemake.ps1 install-plugins
+```
+4. When that completes run:
+```powershell
+.\hemake.ps1 generate-projects vs2026
+```
 
 #### WASM Targets
 

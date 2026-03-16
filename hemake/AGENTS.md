@@ -4,15 +4,15 @@
 HE Make lives entirely under `hemake/`.
 
 - `Common/Harvest.Common`, `Common/Harvest.Kdl`, `Common/Harvest.SourceGenerators`: shared libraries and generators.
-- `Harvest.Make.CLI`: command-line entrypoint used by `hemake.sh`.
+- `Harvest.Make.CLI`: command-line entrypoint used by `hemake.ps1`.
 - `Harvest.Make.Projects`: KDL node model, resolution pipeline, and VS2026 project generation.
 - `Tests/`: HE Make unit tests, especially `Harvest.Make.Projects.Tests`.
 
 ## Build And Test
 Run from the repo root unless noted otherwise.
 
-- `./hemake.sh generate-projects vs2026`: generate `.build/Harvest Engine.slnx` and `.build/projects/*.vcxproj`.
-- `./hemake.sh install-plugins`: install archives declared by `fetch` nodes.
+- `./hemake.ps1 generate-projects vs2026`: generate `.build/Harvest Engine.slnx` and `.build/projects/*.vcxproj`.
+- `./hemake.ps1 install-plugins`: install archives declared by `fetch` nodes.
 - `dotnet msbuild hemake/Harvest.Make.slnx /p:Configuration=Debug /p:Restore=false /m:1`: build all HE Make projects.
 - `dotnet test hemake/Tests/Harvest.Make.Projects.Tests/Harvest.Make.Projects.Tests.csproj -c Debug --no-build`: run project-generation tests.
 
@@ -25,7 +25,7 @@ Run from the repo root unless noted otherwise.
 
 
 ## Extensions
-- HE Make is expected to run from source. `hemake.sh` builds the core CLI first, then the CLI builds any `hemake_extension` modules it discovers at runtime.
+- HE Make is expected to run from source. `hemake.ps1` builds the core CLI first, then the CLI builds any `hemake_extension` modules it discovers at runtime.
 - `hemake_extension` modules should use `project_file` with a `.csproj`. The CLI builds the target and loads the exact assembly path reported by the build output instead of assuming a fixed `.build` layout.
 - HE Make extension `.csproj` files should keep direct assembly references to HE Make runtime assemblies (`Harvest.Common`, `Harvest.Kdl`, `Harvest.Make.Projects`) and use normal `PackageReference` items for NuGet dependencies.
 - The current high-level graph-mutating extension nodes are `schema_compile`, `bin2c_compile`, and `shader_compile`. Their C# extension projects live next to the owning engine plugins in `plugins/schema/`, `plugins/bin2c/`, and `plugins/rhi/`.

@@ -118,3 +118,16 @@ HE_TEST(core, type_info, Name_Hash)
         HE_EXPECT_EQ(Info.Hash(), 0xc818af81);
     }
 }
+
+// ------------------------------------------------------------------------------------------------
+HE_TEST(core, type_info, Formatter)
+{
+    const TypeInfo info = TypeInfo::Get<TestFixture>();
+
+    const String defaultFormatted = Format("{}", info);
+    HE_EXPECT(defaultFormatted.Contains(info.Name()));
+    HE_EXPECT(defaultFormatted.Contains(Format("{}", info.Hash())));
+
+    HE_EXPECT_EQ(Format("{:s}", info), String(info.Name()));
+    HE_EXPECT_EQ(Format("{:d}", info), Format("{}", info.Hash()));
+}

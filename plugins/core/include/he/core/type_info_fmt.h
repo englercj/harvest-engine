@@ -16,6 +16,8 @@ namespace he
 
         constexpr const char* Parse(const FmtParseCtx& ctx)
         {
+            spec = 0;
+
             const char* it = ctx.Begin();
             if (it != ctx.End() && *it == ':')
                 ++it;
@@ -27,7 +29,7 @@ namespace he
             if (it < end)
                 spec = *it;
 
-            if (spec != 's' && spec != 'd')
+            if (spec != 0 && spec != 's' && spec != 'd')
                 ctx.OnError("Unknown type specifier");
 
             return end;

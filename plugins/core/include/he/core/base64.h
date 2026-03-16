@@ -71,9 +71,11 @@ namespace he
     /// \param[in] src The source data to encode.
     inline void Base64Encode(String& dst, Span<const uint8_t> src) { return Base64Encode(dst, src.Data(), src.Size()); }
 
-    /// Decodes the source base64 string into the destination buffer. This function follows the WHATWG forgiving - base64 format, which means that it will
-    /// ignore any ASCII spaces in the input. You may provide a padded input (with one or two
-    /// equal signs at the end) or an unpadded input (without any equal signs at the end).
+    /// Decodes the source base64 string into the destination buffer.
+    ///
+    /// This decoder ignores ASCII whitespace in the input. It accepts correctly padded input
+    /// (with one or two trailing `=` characters when required) and unpadded input. Inputs with
+    /// malformed padding, such as short-padded or overpadded strings, are rejected.
     ///
     /// \note The destination buffer must be at least `Base64MaxDecodedSize(srcLen)` bytes long.
     ///

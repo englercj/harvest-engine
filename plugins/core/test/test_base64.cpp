@@ -134,17 +134,37 @@ HE_TEST(core, base64, Base64Decode)
     TestBase64Decode("Zm9vYmE=", "fooba");
     TestBase64Decode("Zm9vYmFy", "foobar");
 
-    // Unpadded, short padded, and overpadded versions of test vectors still work
+    // Unpadded versions of test vectors still work
     TestBase64Decode("Zg", "f");
-    TestBase64Decode("Zg=", "f");
     TestBase64Decode("Zm8", "fo");
-    TestBase64Decode("Zm9v==", "foo");
-    TestBase64Decode("Zm9v=", "foo");
-    TestBase64Decode("Zm9vYg=", "foob");
     TestBase64Decode("Zm9vYmE", "fooba");
-    TestBase64Decode("Zm9vYmFy==", "foobar");
 
     // Invalid decodes
+    {
+        uint8_t bytes[64];
+        const uint32_t len = Base64Decode(bytes, sizeof(bytes), "Zg=");
+        HE_EXPECT_EQ(len, 0);
+    }
+    {
+        uint8_t bytes[64];
+        const uint32_t len = Base64Decode(bytes, sizeof(bytes), "Zm9v==");
+        HE_EXPECT_EQ(len, 0);
+    }
+    {
+        uint8_t bytes[64];
+        const uint32_t len = Base64Decode(bytes, sizeof(bytes), "Zm9v=");
+        HE_EXPECT_EQ(len, 0);
+    }
+    {
+        uint8_t bytes[64];
+        const uint32_t len = Base64Decode(bytes, sizeof(bytes), "Zm9vYg=");
+        HE_EXPECT_EQ(len, 0);
+    }
+    {
+        uint8_t bytes[64];
+        const uint32_t len = Base64Decode(bytes, sizeof(bytes), "Zm9vYmFy==");
+        HE_EXPECT_EQ(len, 0);
+    }
     {
         uint8_t bytes[64];
         const uint32_t len = Base64Decode(bytes, sizeof(bytes), "Zm9vY");
@@ -188,15 +208,10 @@ HE_TEST(core, base64, Base64Decode_Container)
         TestBase64DecodeContainer(dst, "Zm9vYmE=", expected.Subspan(0, 5));
         TestBase64DecodeContainer(dst, "Zm9vYmFy", expected.Subspan(0, 6));
 
-        // Unpadded, short padded, and overpadded versions of test vectors still work
+        // Unpadded versions of test vectors still work
         TestBase64DecodeContainer(dst, "Zg", expected.Subspan(0, 1));
-        TestBase64DecodeContainer(dst, "Zg=", expected.Subspan(0, 1));
         TestBase64DecodeContainer(dst, "Zm8", expected.Subspan(0, 2));
-        TestBase64DecodeContainer(dst, "Zm9v==", expected.Subspan(0, 3));
-        TestBase64DecodeContainer(dst, "Zm9v=", expected.Subspan(0, 3));
-        TestBase64DecodeContainer(dst, "Zm9vYg=", expected.Subspan(0, 4));
         TestBase64DecodeContainer(dst, "Zm9vYmE", expected.Subspan(0, 5));
-        TestBase64DecodeContainer(dst, "Zm9vYmFy==", expected.Subspan(0, 6));
     }
 
     {
@@ -216,18 +231,38 @@ HE_TEST(core, base64, Base64Decode_Container)
         TestBase64DecodeContainer(dst, "Zm9vYmE=", expected.Subspan(0, 2));
         TestBase64DecodeContainer(dst, "Zm9vYmFy", expected.Subspan(0, 2));
 
-        // Unpadded, short padded, and overpadded versions of test vectors still work
+        // Unpadded versions of test vectors still work
         TestBase64DecodeContainer(dst, "Zg", expected.Subspan(0, 1));
-        TestBase64DecodeContainer(dst, "Zg=", expected.Subspan(0, 1));
         TestBase64DecodeContainer(dst, "Zm8", expected.Subspan(0, 1));
-        TestBase64DecodeContainer(dst, "Zm9v==", expected.Subspan(0, 1));
-        TestBase64DecodeContainer(dst, "Zm9v=", expected.Subspan(0, 1));
-        TestBase64DecodeContainer(dst, "Zm9vYg=", expected.Subspan(0, 1));
         TestBase64DecodeContainer(dst, "Zm9vYmE", expected.Subspan(0, 2));
-        TestBase64DecodeContainer(dst, "Zm9vYmFy==", expected.Subspan(0, 2));
     }
 
     // Invalid decodes
+    {
+        Vector<uint8_t> bytes;
+        HE_EXPECT(!Base64Decode(bytes, "Zg="));
+        HE_EXPECT(bytes.IsEmpty());
+    }
+    {
+        Vector<uint8_t> bytes;
+        HE_EXPECT(!Base64Decode(bytes, "Zm9v=="));
+        HE_EXPECT(bytes.IsEmpty());
+    }
+    {
+        Vector<uint8_t> bytes;
+        HE_EXPECT(!Base64Decode(bytes, "Zm9v="));
+        HE_EXPECT(bytes.IsEmpty());
+    }
+    {
+        Vector<uint8_t> bytes;
+        HE_EXPECT(!Base64Decode(bytes, "Zm9vYg="));
+        HE_EXPECT(bytes.IsEmpty());
+    }
+    {
+        Vector<uint8_t> bytes;
+        HE_EXPECT(!Base64Decode(bytes, "Zm9vYmFy=="));
+        HE_EXPECT(bytes.IsEmpty());
+    }
     {
         Vector<uint8_t> bytes;
         HE_EXPECT(!Base64Decode(bytes, "Zm9vY"));

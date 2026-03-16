@@ -50,7 +50,7 @@ namespace he
             alignas(16) float scale[4];
             Store(scale, s);
 
-            return MakeTransformMat44(p, Quat{ quat[0], quat[1], quat[2], quat[3] }, Vec3f{ scale[0], scale[2], scale[3] });
+            return MakeTransformMat44(p, Quat{ quat[0], quat[1], quat[2], quat[3] }, Vec3f{ scale[0], scale[1], scale[2] });
         }
     }
 

@@ -220,12 +220,21 @@ namespace internal
     };
 
     template <typename T>
-    static bool RegisterTest()
+    static void RegisterTest()
     {
         static T s_instance{};
         GetAllTests().PushBack(&s_instance);
-        return true;
     }
+
+    template <typename T>
+    class TestRegistrar
+    {
+    public:
+        TestRegistrar()
+        {
+            RegisterTest<T>();
+        }
+    };
 }
 }
 
@@ -233,8 +242,19 @@ namespace internal
 /// \internal
 #define HE_TEST_CLASS_NAME_(module, suite, name) _heTestClass_ ## module ## _ ## suite ## _ ## name
 
-/// Internal macro that generates the body of the test case class. Since the name is reused
-/// so often, this makes it a bit more convenient.
+/// \def HE_TEST_REGISTER_IMPL_
+/// Internal macro that generates the registration mechanism for a test case.
+/// \internal
+#if HE_COMPILER_MSVC
+    #pragma section(".CRT$XCU", read)
+    #define HE_TEST_REGISTER_IMPL_(ClassName) \
+        __declspec(allocate(".CRT$XCU")) void (*HE_PP_JOIN(ClassName, _register_init))() = &::he::internal::RegisterTest<ClassName>
+#else
+    #define HE_TEST_REGISTER_IMPL_(ClassName) \
+        [[maybe_unused]] static ::he::internal::TestRegistrar<ClassName> HE_PP_JOIN(ClassName, _register_init){}
+#endif
+
+/// Internal macro that generates the body of the test case class.
 /// \internal
 #define HE_TEST_DECL_(ClassName, ModuleNameStr, SuiteNameStr, TestNameStr, FixtureClassName) \
     static_assert(sizeof(ModuleNameStr) > 1, "Test module name must not be empty"); \
@@ -249,11 +269,11 @@ namespace internal
         ClassName(ClassName&&) = delete; \
         ClassName& operator=(const ClassName&) = delete; \
         ClassName& operator=(ClassName&&) = delete; \
-        static inline bool s_registered = ::he::internal::RegisterTest<ClassName>(); \
         static const ::he::TestInfo TestInfo; \
         const ::he::TestInfo& GetTestInfo() const override { return TestInfo; } \
         void TestBody() override; \
     }; \
+    HE_TEST_REGISTER_IMPL_(ClassName); \
     const ::he::TestInfo ClassName::TestInfo{ ModuleNameStr, SuiteNameStr, TestNameStr, HE_FILE, HE_LINE }; \
     void ClassName::TestBody()
 

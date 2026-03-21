@@ -1,0 +1,18 @@
+# Copyright Chad Engler
+
+name = "Slug reference shaders"
+upstream_repo = "https://github.com/EricLengyel/Slug"
+upstream_readme = "https://github.com/EricLengyel/Slug/blob/main/README.md"
+reference_paper = "https://jcgt.org/published/0006/02/02/paper.pdf"
+reference_blog = "https://terathon.com/blog/decade-slug.html"
+reference_dynamic_dilation = "https://terathon.com/blog/glyph-dilation.html"
+intake_date = "2026-03-21"
+status = "shader_files_imported"
+imported_files = [
+  "SlugVertexShader.hlsl",
+  "SlugPixelShader.hlsl",
+  "LICENSE-MIT",
+  "NOTICE",
+  "README.upstream.md",
+]
+notes = "M0 imported the upstream reference HLSL and notice/license bundle without local edits. Harvest-specific Slang wrappers should live outside this directory."

@@ -1,0 +1,35 @@
+// Copyright Chad Engler
+
+// HarfBuzz - OpenType text shaping engine.
+// https://github.com/harfbuzz/harfbuzz
+plugin harfbuzz.harfbuzz version="12.2.0" license="MIT" {
+    authors { "Behdad Esfahbod" }
+
+    install {
+        fetch archive url="https://github.com/harfbuzz/harfbuzz/releases/download/${plugin.version}/harfbuzz-${plugin.version}.tar.xz" base_dir="harfbuzz-${plugin.version}"
+    }
+
+    module harfbuzz kind=lib_static group="engine/contrib" {
+        warnings level=off
+
+        files {
+            "${plugin.install_dir}/src/harfbuzz.cc"
+            "${plugin.install_dir}/src/**.h"
+            "${plugin.install_dir}/src/**.hh"
+        }
+
+        when platform.toolset=msvc {
+            build_options { "/bigobj" }
+        }
+
+        public {
+            include_dirs external=#true { "${plugin.install_dir}/src" }
+        }
+
+        when platform.system=linux {
+            public {
+                dependencies { m kind=system }
+            }
+        }
+    }
+}

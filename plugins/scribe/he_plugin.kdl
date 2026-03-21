@@ -30,11 +30,25 @@ plugin he.scribe version="0.1.0" license="UNLICENSED" {
 
     module he_scribe kind=lib_static group="engine/libs" {
         files { "runtime/include/**"; "runtime/src/**" }
-        include_dirs { "runtime/src" }
+        include_dirs { "runtime/src"; "${module.gen_dir}/runtime/src"; "${module.gen_dir}/runtime/src/shaders" }
 
         public {
             dependencies { he_core; he_math; he_rhi; he_scribe_layout; he_scribe_assets }
             include_dirs { "runtime/include" }
+        }
+
+        when platform.system=windows {
+            shader_compile "sm_6_0" scope=private {
+                files { "runtime/src/shaders/scribe.slang" }
+                include_dirs { "runtime/src/shaders" }
+            }
+        }
+
+        when platform.system=linux {
+            shader_compile "glsl_450" scope=private {
+                files { "runtime/src/shaders/scribe.slang" }
+                include_dirs { "runtime/src/shaders" }
+            }
         }
     }
 

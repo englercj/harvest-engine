@@ -60,8 +60,8 @@ The implementation should not silently rewrite the algorithm while porting it. U
 
 1. Check in upstream reference files in a clearly labeled third-party intake area.
 2. Preserve upstream notices and source URLs.
-3. Port to Slang in thin wrapper files that keep algorithmic structure as close as practical to
-   upstream.
+3. Port to first-party Slang source files that keep algorithmic structure as close as practical
+   to upstream.
 4. Record the upstream commit or snapshot date used for intake.
 5. Add local comments only where Harvest-specific bindings differ from upstream.
 
@@ -71,9 +71,9 @@ When implementation starts, add something close to:
 
 - `plugins/scribe/third_party/slug_reference/SlugVertexShader.hlsl`
 - `plugins/scribe/third_party/slug_reference/SlugPixelShader.hlsl`
-- `plugins/scribe/src/shaders/slug_common.slang`
-- `plugins/scribe/src/shaders/slug_vertex.slang`
-- `plugins/scribe/src/shaders/slug_pixel.slang`
+- `plugins/scribe/runtime/src/shaders/slug_reference.slang`
+- `plugins/scribe/runtime/src/shaders/slug.slang`
+- `plugins/scribe/runtime/src/shaders/scribe.slang`
 - `plugins/scribe/NOTICE`
 
 ## Binding Strategy
@@ -81,8 +81,8 @@ When implementation starts, add something close to:
 Because Harvest already uses Slang through `shader_compile`, the plan should be:
 
 - keep upstream HLSL as the provenance artifact,
-- adapt entry points and bindings into Slang,
-- isolate Harvest-specific resource layout in wrapper code,
+- adapt the shader logic into first-party Slang files in `runtime/src/shaders`,
+- isolate Harvest-specific resource bindings in the entry-point file,
 - avoid changing the winding, coverage, and dilation math unless a correctness issue is proven.
 
 ## Runtime Data Ownership

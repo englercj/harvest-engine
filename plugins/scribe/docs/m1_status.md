@@ -57,6 +57,6 @@ M1 intentionally does not yet include:
 - layout/shaping integration,
 - color-font layers,
 - generic batching,
-- importer/editor preview wiring.
+- visual test app wiring.
 
 Those remain in later milestones.

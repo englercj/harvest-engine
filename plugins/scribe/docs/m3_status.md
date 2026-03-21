@@ -64,4 +64,4 @@ M3 is complete for the first runtime text layout slice, but this is not the fina
   family-policy object,
 - cluster hit testing is suitable for basic caret placement, but not yet full grapheme- and
   word-navigation behavior,
-- editor preview and `plugins/ui` integration remain later milestones.
+- a dedicated visual test app remains the next major visual-validation milestone.

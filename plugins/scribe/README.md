@@ -7,7 +7,7 @@ whose primary technical reference point is the Slug algorithm and its public ref
 shaders.
 
 The proposed working plugin name is `he.scribe`, implemented in `plugins/scribe`,
-with `plugins/ui` consuming it later instead of owning text and vector rendering directly.
+with downstream engine systems consuming it later when they are ready.
 
 ## Goals
 
@@ -46,8 +46,8 @@ with `plugins/ui` consuming it later instead of owning text and vector rendering
 - `he_rhi` remains generic and does not become Slug-specific.
 - `he_assets` and `he_assets_editor` stay the orchestration layer for source import and
   compile.
-- `plugins/ui` is treated as a downstream consumer because it is effectively a placeholder
-  in this checkout.
+- downstream consumers such as future UI work are intentionally out of scope for the current
+  roadmap because those layers are not ready integration targets in this checkout.
 - The reference shaders are adapted with minimal algorithmic drift and wrapped in Harvest-
   specific bindings, build rules, and resource loading.
 - FreeType is acceptable in importer/compiler code, but not in the runtime text or vector

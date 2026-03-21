@@ -83,7 +83,7 @@ into later milestones:
 
 - color glyph layers and paint data are still placeholder paths,
 - SVG compilation is still placeholder-only,
-- text shaping/layout through HarfBuzz is still an M5 concern,
-- editor preview and on-screen UI consumption remain later milestones,
+- text shaping/layout through HarfBuzz was still future work at the M2 checkpoint,
+- visual test app coverage remains a later milestone,
 - curve and band payloads are now structurally correct, but later milestones can still add
   band dedup/subset reuse and richer color/vector data packing.

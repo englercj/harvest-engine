@@ -68,7 +68,21 @@ Success signal:
 
 - mixed-script text and combining-mark cases shape and lay out correctly.
 
-## Milestone M4: Color Fonts
+## Milestone M4: Visual Testbed
+
+Scope:
+
+- a dedicated test app that opens a window and renders text through `he_scribe`,
+- representative demo scenes for shaping, fallback, wrapping, and glyph rendering,
+- a standing rule that new user-visible `scribe` features add or update a demo case in the
+  testbed alongside unit coverage.
+
+Success signal:
+
+- a developer can launch a `scribe` test window and visually inspect real text rendering
+  behavior without relying on editor or UI integration.
+
+## Milestone M5: Color Fonts
 
 Scope:
 
@@ -81,7 +95,7 @@ Success signal:
 
 - COLR/CPAL test cases render correctly and can be shaped through the normal text stack.
 
-## Milestone M5: SVG Asset Path
+## Milestone M6: SVG Asset Path
 
 Scope:
 
@@ -94,18 +108,6 @@ Success signal:
 
 - representative icons and illustrations render through the same coverage pipeline as text.
 - even-odd and nonzero SVG fill cases survive the same compiled/runtime path cleanly.
-
-## Milestone M6: Editor And UI Adoption
-
-Scope:
-
-- asset preview document,
-- runtime API cleanup,
-- `plugins/ui` proof-of-concept integration.
-
-Success signal:
-
-- UI text and icons render through `he_scribe` instead of ad hoc font-atlas plumbing.
 
 ## Milestone M7: Production Hardening
 
@@ -129,7 +131,7 @@ The real critical path is:
 2. shader intake and renderer skeleton,
 3. font asset pipeline,
 4. shaping/layout,
-5. UI adoption.
+5. visual testbed.
 
 SVG and advanced color support can progress beside shaping once the canonical runtime format is
 stable.
@@ -141,6 +143,6 @@ The first end-to-end slice should be intentionally narrow:
 - import one monochrome TTF,
 - compile one face to Slug resources,
 - shape a short UTF-8 string with HarfBuzz,
-- draw it through `he_scribe` in an editor test view.
+- draw it through `he_scribe` in the dedicated `scribe` test app.
 
 Do not start with SVG or full emoji support. That would expand the failure surface too early.

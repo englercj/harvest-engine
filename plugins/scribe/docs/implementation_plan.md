@@ -141,25 +141,7 @@ Exit criteria:
 - Compiler output matches the documented curve and band packing contract, including sort order
   and overlap policy.
 
-## Phase 4: SVG Importer And Compiler
-
-Work:
-
-- Parse SVG documents into an internal scene graph.
-- Convert supported shapes and paths into the same canonical quadratic representation used by
-  fonts.
-- Preserve fill rules, transforms, solid colors, gradients, opacity, and stroke information.
-- Reuse the same curve/band/payload packing path as fonts where practical.
-- Keep coverage generation and paint evaluation separable so SVG paints do not fork the core
-  coverage implementation.
-
-Exit criteria:
-
-- Importing a representative SVG sample set produces assets and runtime resources.
-- Compiled SVG resources render through the same `he_scribe` renderer API.
-- SVG even-odd and nonzero fill cases survive compile and render correctly.
-
-## Phase 5: Text Shaping And Layout
+## Phase 4: Text Shaping And Layout
 
 Work:
 
@@ -177,6 +159,30 @@ Exit criteria:
 - Kerning, ligatures, combining marks, and composed sequences survive round-trip tests.
 - Emoji ZWJ sequences are preserved in cluster mapping even if rendering support is partial.
 
+## Phase 5: Visual Test App
+
+Work:
+
+- Add a dedicated `scribe` test app that opens a real window and renders text through
+  `he_scribe`.
+- Seed it with representative demo cases for:
+  - basic monochrome text,
+  - fallback,
+  - wrapping,
+  - mixed-script shaping,
+  - hit-test/caret visualization where useful.
+- Treat the app as a standing visual testbed, not one-off scaffolding.
+- Require later user-visible `scribe` features to add or update a demo case in the test app
+  alongside unit tests.
+
+Exit criteria:
+
+- Developers can launch the test app locally and inspect real `scribe` output in a window.
+- The app exercises the runtime text stack directly rather than going through editor or UI
+  integration layers.
+- The app is useful enough to serve as the default visual validation target for later
+  renderer, layout, color-font, and SVG work.
+
 ## Phase 6: Color And Advanced Font Features
 
 Work:
@@ -192,20 +198,23 @@ Exit criteria:
 - Variation fonts can be imported and shaped with axis overrides.
 - Color glyph rendering uses layered submissions rather than a per-pixel layer loop.
 
-## Phase 7: Editor Preview And UI Consumption
+## Phase 7: SVG Importer And Compiler
 
 Work:
 
-- Add an editor preview path for font and vector assets.
-- Expose a stable API for the new `plugins/ui` runtime.
-- Build a small UI-side proof of concept using:
-  - layout from `he_scribe_layout`,
-  - rendering from `he_scribe`.
+- Parse SVG documents into an internal scene graph.
+- Convert supported shapes and paths into the same canonical quadratic representation used by
+  fonts.
+- Preserve fill rules, transforms, solid colors, gradients, opacity, and stroke information.
+- Reuse the same curve/band/payload packing path as fonts where practical.
+- Keep coverage generation and paint evaluation separable so SVG paints do not fork the core
+  coverage implementation.
 
 Exit criteria:
 
-- The editor can preview compiled text/vector assets.
-- The UI library can render a basic styled text block and SVG icon set through `he_scribe`.
+- Importing a representative SVG sample set produces assets and runtime resources.
+- Compiled SVG resources render through the same `he_scribe` renderer API.
+- SVG even-odd and nonzero fill cases survive compile and render correctly.
 
 ## Phase 8: Hardening
 
@@ -230,8 +239,8 @@ Validate in this order:
 1. synthetic single-glyph renderer test,
 2. monochrome Latin font asset path,
 3. mixed-script shaping and fallback,
-4. layered color glyphs,
-5. SVG vector scene rendering,
-6. UI integration.
+4. dedicated visual test app,
+5. layered color glyphs,
+6. SVG vector scene rendering.
 
 That keeps the critical path narrow and avoids debugging all systems at once.

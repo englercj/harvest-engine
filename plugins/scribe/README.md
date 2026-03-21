@@ -38,6 +38,8 @@ with `plugins/ui` consuming it later instead of owning text and vector rendering
   - Concrete milestone M0 decisions, dependency choices, and scaffold status.
 - `docs/m2_status.md`
   - Current milestone M2 implementation status, what is complete, and what is intentionally deferred to later milestones.
+- `docs/m3_status.md`
+  - Current milestone M3 implementation status for shaping, fallback, wrapping, cluster mapping, and hit testing basics.
 
 ## Working Assumptions
 

@@ -53,6 +53,19 @@ Observed notes from the published repo:
 - the pixel shader file header says the code is available under the MIT License,
 - the README states the repository contains reference shader implementations and asks for credit
   when distributed.
+- the README `Tips and Tricks` section documents concrete packing and authoring guidance that
+  should be treated as implementation input, not incidental commentary.
+
+README `Tips and Tricks` details to preserve:
+
+- curve textures use four 16-bit floating-point channels with connected quadratic curves
+  sharing endpoint texels,
+- band textures use two 16-bit unsigned integer channels,
+- band assignment should use a small overlap epsilon such as `1/1024` em,
+- curves must be sorted per band in descending max-axis order,
+- identical adjacent bands or contiguous subsets of larger bands can be deduplicated,
+- UI-facing sizing may want cap-height-aware snapping based on `OS/2.sCapHeight` plus DPI
+  because the algorithm does not use hinting.
 
 ## Intake Policy
 

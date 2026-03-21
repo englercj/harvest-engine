@@ -44,13 +44,16 @@ Scope:
 - font importer,
 - font compiler,
 - runtime loader,
-- explicit fill-rule and band-packing metadata.
+- explicit fill-rule and band-packing metadata,
+- documented curve/band texture formats, overlap epsilon, and sort-order rules.
 
 Success signal:
 
 - a font source imports, compiles, and renders from compiled resources with no direct source
   file dependency or FreeType dependency at runtime.
 - compiled output preserves the ordering and flag assumptions expected by the shader path.
+- compiled output preserves the reference packing contract closely enough for the shader path
+  and captures metrics needed for later cap-height-aware UI sizing.
 
 ## Milestone M3: Text Layout
 
@@ -111,7 +114,8 @@ Scope:
 - tests,
 - perf work,
 - memory/caching work,
-- documentation and migration notes.
+- documentation and migration notes,
+- regression coverage for packing, band reuse, and sizing rules.
 
 Success signal:
 

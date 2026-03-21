@@ -17,6 +17,13 @@ not optional polish:
   serve monochrome text, color glyphs, and SVG fills.
 - Preserve the curve and band packing invariants required by the reference shader math.
   Compiler work must document and test sort order, offsets, band ranges, and flag packing.
+- Preserve the reference texture storage expectations: curve data packed as RGBA16F control
+  point texels and band data packed as two-channel 16-bit unsigned integer texels unless a
+  later measured reason justifies a different GPU format with equivalent semantics.
+- Use a small overlap epsilon during band assignment, target band counts that reduce the worst
+  band occupancy, and preserve descending max-axis sort order inside each band.
+- Keep band thickness uniform within a glyph and retain support for deduplicated adjacent
+  bands or contiguous-subset reuse when the compiler can prove it is valid.
 - Keep core winding, coverage, and dilation math structurally close to the upstream
   reference unless a correctness issue is demonstrated and regression-tested.
 - Keep shader resource bindings isolated to the entrypoint shader module so helper modules
@@ -25,6 +32,9 @@ not optional polish:
   unless profiling or correctness data justifies it.
 - Compile all data the runtime needs into Harvest-owned blobs. Runtime text and vector code
   must not reopen source font or SVG files to recover omitted metadata.
+- Treat cap-height-aware pixel-grid sizing as a planned UI/layout integration detail. The
+  renderer does not use hinting, so later API work should preserve room for `OS/2.sCapHeight`
+  plus DPI-aware font-size snapping where that improves UI crispness.
 
 ## Phase 0: Scaffold And Decide Hard Dependencies
 
@@ -88,6 +98,8 @@ Work:
   blob.
 - Define explicit fields for fill rules, band packing metadata, curve ordering assumptions,
   and layer/paint indirection so the runtime does not infer them from source assets.
+- Define explicit fields for curve texture layout, band texture layout, band overlap epsilon,
+  and any deduplicated-band indirection used by compiled resources.
 
 Exit criteria:
 
@@ -113,6 +125,11 @@ Work:
   - shaping data needed by the runtime layout engine.
 - Validate the generated band and curve ordering against the assumptions encoded in the
   reference shader comments.
+- Implement band assignment with a documented epsilon policy and retain optional adjacent-band
+  deduplication and contiguous-subset reuse optimizations when they reduce size without
+  changing semantics.
+- Preserve `OS/2.sCapHeight` or equivalent imported metrics needed for later UI font-size
+  snapping guidance.
 
 Exit criteria:
 
@@ -121,6 +138,8 @@ Exit criteria:
 - A debug preview can draw a set of known glyphs from compiled output with no FreeType usage
   in the runtime path.
 - Known nonzero and even-odd test shapes render with the expected fill rule.
+- Compiler output matches the documented curve and band packing contract, including sort order
+  and overlap policy.
 
 ## Phase 4: SVG Importer And Compiler
 
@@ -201,6 +220,8 @@ Exit criteria:
 
 - Core tests cover importer, compiler, layout, and render correctness.
 - Known representative fonts and SVG assets are stable across rebuilds.
+- Regression coverage includes band dedup/subset cases and any cap-height-aware sizing rules
+  exposed to UI consumers.
 
 ## Suggested Validation Ladder
 

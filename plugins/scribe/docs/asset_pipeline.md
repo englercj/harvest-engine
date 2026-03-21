@@ -84,8 +84,14 @@ Suggested payload groups:
 
 - `he.scribe.curves`
   - curve texture bytes and packing metadata.
+  - default target layout should match the reference expectation: four 16-bit floating-point
+    channels per texel storing `(x1, y1, x2, y2)`, with connected quadratics sharing the
+    endpoint carried in the next texel.
 - `he.scribe.bands`
   - band texture bytes and packing metadata.
+  - default target layout should match the reference expectation: two 16-bit unsigned integer
+    channels per texel plus metadata describing band counts, maxima, overlap epsilon, and any
+    indirection used for deduplicated or subset bands.
 - `he.scribe.shapes`
   - glyph/shape bounds, offsets, winding flags, and layer references.
 - `he.scribe.paints`
@@ -103,7 +109,21 @@ Suggested payload groups:
 - quadratic TrueType outlines pass through mostly unchanged,
 - cubic outlines are approximated into quadratic segments during compile,
 - color glyph layers are preserved as layered shape draws,
-- shaping tables are preserved in data forms needed by `he_scribe_layout`.
+- shaping tables are preserved in data forms needed by `he_scribe_layout`,
+- import preserves metrics such as `OS/2.sCapHeight` that may be used later for pixel-grid
+  sizing guidance in UI code.
+
+### Band Generation Rules
+
+- Each glyph can choose its own horizontal and vertical band counts.
+- Band counts should be selected to reduce the maximum curve count in any one band.
+- Curve-to-band assignment should use a small overlap epsilon, with `1/1024` em as the
+  baseline reference value unless testing shows Harvest needs a different default.
+- Curves inside horizontal bands must be sorted in descending maximum `x`.
+- Curves inside vertical bands must be sorted in descending maximum `y`.
+- All bands for one glyph should have the same thickness.
+- The compiler should support reusing identical adjacent-band data and contiguous subsets of
+  larger-band data when that reduces size and preserves traversal semantics.
 
 ### SVG
 

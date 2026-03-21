@@ -9,7 +9,7 @@ plugin he.scribe version="0.1.0" license="UNLICENSED" {
 
         schema_compile "c++" scope=public {
             files { "assets/include/he/scribe/schema/runtime_blob.hsc" }
-            include_dirs { "assets/include" }
+            include_dirs { "assets/include"; "../assets/assets/include"; "../editor/include" }
         }
 
         public {
@@ -64,5 +64,13 @@ plugin he.scribe version="0.1.0" license="UNLICENSED" {
 
     module he_scribe_docs kind=custom group="_internal/docs" {
         files { "README.md"; "docs/**"; "third_party/**" }
+    }
+
+    module he_scribe_tests kind=lib_static group="engine/tests" {
+        files { "test/**" }
+
+        public {
+            dependencies { he_scribe }
+        }
     }
 }

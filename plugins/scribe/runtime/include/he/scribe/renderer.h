@@ -2,6 +2,8 @@
 
 #pragma once
 
+#include "he/scribe/runtime_blob.h"
+
 #include "he/core/types.h"
 #include "he/core/vector.h"
 #include "he/math/types.h"
@@ -78,6 +80,11 @@ namespace he::scribe
         bool IsInitialized() const { return m_device != nullptr; }
 
         bool CreateGlyphResource(GlyphResource& out, const GlyphResourceCreateInfo& desc);
+        bool CreateCompiledGlyphResource(
+            GlyphResource& out,
+            const LoadedFontFaceBlob& fontFace,
+            uint32_t glyphIndex,
+            const Vec4f& color = { 1.0f, 1.0f, 1.0f, 1.0f });
         bool CreateDebugGlyphResource(GlyphResource& out);
         void DestroyGlyphResource(GlyphResource& resource);
 

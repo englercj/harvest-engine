@@ -6,12 +6,27 @@ import "he/schema/schema.hsc";
 
 namespace he.scribe;
 
+enum FontSourceFormat
+{
+    Unknown @0;
+    TrueType @1;
+    OpenTypeCff @2;
+    TrueTypeCollection @3;
+    OpenTypeCollection @4;
+}
+
 enum RuntimeBlobKind
 {
     Unknown @0;
     FontFace @1;
     FontFamily @2;
     VectorImage @3;
+}
+
+enum FillRule
+{
+    NonZero @0;
+    EvenOdd @1;
 }
 
 struct RuntimeBlobHeader
@@ -21,9 +36,81 @@ struct RuntimeBlobHeader
     flags @2 :uint32;
 }
 
-// M0 deliberately keeps the payload model simple: a Harvest-owned schema wrapper around the
-// major runtime payload groups. Later milestones can replace individual Blob fields with more
-// explicit structures without changing the high-level runtime contract.
+struct FontFaceMetrics
+{
+    unitsPerEm @0 :uint32;
+    ascender @1 :int32;
+    descender @2 :int32;
+    lineHeight @3 :int32;
+    maxAdvanceWidth @4 :uint32;
+    maxAdvanceHeight @5 :uint32;
+    capHeight @6 :int32;
+}
+
+struct FontFaceImportMetadata
+{
+    faceIndex @0 :uint32;
+    sourceFormat @1 :FontSourceFormat;
+    familyName @2 :String;
+    styleName @3 :String;
+    postscriptName @4 :String;
+    glyphCount @5 :uint32;
+    metrics @6 :FontFaceMetrics;
+    isScalable @7 :bool;
+    hasColorGlyphs @8 :bool;
+    hasKerning @9 :bool;
+    hasHorizontalLayout @10 :bool;
+    hasVerticalLayout @11 :bool;
+}
+
+struct FontFaceShapingData
+{
+    faceIndex @0 :uint32;
+    sourceFormat @1 :FontSourceFormat;
+    sourceBytes @2 :Blob;
+}
+
+struct FontFaceGlyphRenderData
+{
+    advanceX @0 :int32;
+    advanceY @1 :int32;
+    boundsMinX @2 :float32;
+    boundsMinY @3 :float32;
+    boundsMaxX @4 :float32;
+    boundsMaxY @5 :float32;
+    bandScaleX @6 :float32;
+    bandScaleY @7 :float32;
+    bandOffsetX @8 :float32;
+    bandOffsetY @9 :float32;
+    glyphBandLocX @10 :uint32;
+    glyphBandLocY @11 :uint32;
+    bandMaxX @12 :uint32;
+    bandMaxY @13 :uint32;
+    fillRule @14 :FillRule;
+    flags @15 :uint32;
+}
+
+struct FontFaceRenderData
+{
+    curveTextureWidth @0 :uint32;
+    curveTextureHeight @1 :uint32;
+    bandTextureWidth @2 :uint32;
+    bandTextureHeight @3 :uint32;
+    bandOverlapEpsilon @4 :float32;
+    glyphs @5 :FontFaceGlyphRenderData[];
+}
+
+struct FontFamilyRuntimeData
+{
+    faceAssets @0 :he.schema.Uuid[];
+}
+
+struct VectorImageRuntimeMetadata
+{
+    sourceViewBoxWidth @0 :float32;
+    sourceViewBoxHeight @1 :float32;
+}
+
 struct CompiledFontFaceBlob
 {
     const ResourceName :String = "he.scribe.font_face.runtime_blob";
@@ -34,6 +121,7 @@ struct CompiledFontFaceBlob
     bandData @3 :Blob;
     paintData @4 :Blob;
     metadataData @5 :Blob;
+    renderData @6 :Blob;
 }
 
 struct CompiledFontFamilyBlob
@@ -53,4 +141,56 @@ struct CompiledVectorImageBlob
     bandData @2 :Blob;
     paintData @3 :Blob;
     metadataData @4 :Blob;
+}
+
+struct ScribeFontFace
+{
+    const AssetTypeName :String = "he.scribe.font_face";
+    const ImportSourceResourceName :String = "he.scribe.font_face.import_source";
+    const ImportMetadataResourceName :String = "he.scribe.font_face.import_metadata";
+    const RuntimeBlobResourceName :String = "he.scribe.font_face.runtime_blob";
+
+    struct ImportSourceResource
+    {
+        sourceFormat @0 :FontSourceFormat;
+        sourceBytes @1 :Blob;
+        sourceFileName @2 :String;
+        faceCount @3 :uint32;
+    }
+
+    struct ImportMetadataResource
+    {
+        metadata @0 :FontFaceImportMetadata;
+    }
+
+    faceIndex @0 :uint32 = 0;
+    preserveSourceBytesForShaping @1 :bool = true;
+    familyName @2 :String;
+    styleName @3 :String;
+    postscriptName @4 :String;
+    sourceFormat @5 :FontSourceFormat = FontSourceFormat.Unknown;
+    glyphCount @6 :uint32 = 0;
+    metrics @7 :FontFaceMetrics;
+    isScalable @8 :bool = true;
+    hasColorGlyphs @9 :bool = false;
+    hasKerning @10 :bool = false;
+    hasHorizontalLayout @11 :bool = true;
+    hasVerticalLayout @12 :bool = false;
+}
+
+struct ScribeFontFamily
+{
+    const AssetTypeName :String = "he.scribe.font_family";
+    const RuntimeBlobResourceName :String = "he.scribe.font_family.runtime_blob";
+
+    faces @0 :he.schema.Uuid[];
+}
+
+struct ScribeImage
+{
+    const AssetTypeName :String = "he.scribe.image";
+    const RuntimeBlobResourceName :String = "he.scribe.vector_image.runtime_blob";
+
+    flatteningTolerance @0 :float32 = 0.25;
+    preserveStrokes @1 :bool = true;
 }

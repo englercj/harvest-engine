@@ -66,7 +66,7 @@ cbuffer ParamStruct : register(b0)
 };
 
 Texture2D curveTexture : register(t0);
-Texture2D<uint4> bandTexture : register(t1);
+Texture2D<uint2> bandTexture : register(t1);
 
 [shader("vertex")]
 VertexOutput vs_main(VertexInput input, uint vid : SV_VertexID)

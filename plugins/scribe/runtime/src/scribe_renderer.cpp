@@ -2,6 +2,8 @@
 
 #include "he/scribe/renderer.h"
 
+#include "he/scribe/compiled_font.h"
+
 #include "shaders/scribe.shaders.h"
 
 #include "he/core/assert.h"
@@ -21,7 +23,6 @@ namespace he::scribe
     namespace
     {
         constexpr uint32_t VertexShaderConstantCount = 20;
-        constexpr uint32_t SlugBandTextureWidth = 4096;
 
         bool CreateUploadVertexBuffer(
             rhi::Device& device,
@@ -283,7 +284,7 @@ namespace he::scribe
             resource.curveTexture,
             resource.curveView,
             desc.curveTexture,
-            rhi::Format::RGBA32Float,
+            rhi::Format::RGBA16Float,
             "Scribe Curve Texture",
             "Scribe Curve Upload Buffer"))
         {
@@ -296,7 +297,7 @@ namespace he::scribe
             resource.bandTexture,
             resource.bandView,
             desc.bandTexture,
-            rhi::Format::RGBA32Uint,
+            rhi::Format::RG16Uint,
             "Scribe Band Texture",
             "Scribe Band Upload Buffer"))
         {
@@ -330,6 +331,21 @@ namespace he::scribe
         return true;
     }
 
+    bool Renderer::CreateCompiledGlyphResource(
+        GlyphResource& out,
+        const LoadedFontFaceBlob& fontFace,
+        uint32_t glyphIndex,
+        const Vec4f& color)
+    {
+        CompiledGlyphResourceData glyphData{};
+        if (!BuildCompiledGlyphResourceData(glyphData, fontFace, glyphIndex, color))
+        {
+            return false;
+        }
+
+        return CreateGlyphResource(out, glyphData.createInfo);
+    }
+
     bool Renderer::CreateDebugGlyphResource(GlyphResource& out)
     {
         Vector<PackedGlyphVertex> vertices{};
@@ -361,30 +377,30 @@ namespace he::scribe
         vertices[4] = makeVertex(1.0f, 1.0f, 1.0f, 1.0f);
         vertices[5] = makeVertex(0.0f, 1.0f, -1.0f, 1.0f);
 
-        const Vec4f curveTexels[] =
+        const PackedCurveTexel curveTexels[] =
         {
-            { 1.0f, 1.0f, 1.0f, 0.5f },
-            { 1.0f, 0.0f, 0.0f, 0.0f },
-            { 0.0f, 1.0f, 0.5f, 1.0f },
-            { 1.0f, 1.0f, 0.0f, 0.0f },
-            { 1.0f, 0.0f, 0.5f, 0.0f },
-            { 0.0f, 0.0f, 0.0f, 0.0f },
-            { 0.0f, 0.0f, 0.0f, 0.5f },
-            { 0.0f, 1.0f, 0.0f, 0.0f },
+            PackCurveTexel(1.0f, 1.0f, 1.0f, 0.5f),
+            PackCurveTexel(1.0f, 0.0f, 0.0f, 0.0f),
+            PackCurveTexel(0.0f, 1.0f, 0.5f, 1.0f),
+            PackCurveTexel(1.0f, 1.0f, 0.0f, 0.0f),
+            PackCurveTexel(1.0f, 0.0f, 0.5f, 0.0f),
+            PackCurveTexel(0.0f, 0.0f, 0.0f, 0.0f),
+            PackCurveTexel(0.0f, 0.0f, 0.0f, 0.5f),
+            PackCurveTexel(0.0f, 1.0f, 0.0f, 0.0f),
         };
 
-        Vector<Vec4u> bandTexels{};
-        bandTexels.Resize(SlugBandTextureWidth);
-        bandTexels[0] = { 4, 2, 0, 0 };
-        bandTexels[1] = { 4, 6, 0, 0 };
-        bandTexels[2] = { 0, 0, 0, 0 };
-        bandTexels[3] = { 2, 0, 0, 0 };
-        bandTexels[4] = { 4, 0, 0, 0 };
-        bandTexels[5] = { 6, 0, 0, 0 };
-        bandTexels[6] = { 2, 0, 0, 0 };
-        bandTexels[7] = { 0, 0, 0, 0 };
-        bandTexels[8] = { 6, 0, 0, 0 };
-        bandTexels[9] = { 4, 0, 0, 0 };
+        Vector<PackedBandTexel> bandTexels{};
+        bandTexels.Resize(ScribeBandTextureWidth);
+        bandTexels[0] = { 4, 2 };
+        bandTexels[1] = { 4, 6 };
+        bandTexels[2] = { 0, 0 };
+        bandTexels[3] = { 2, 0 };
+        bandTexels[4] = { 4, 0 };
+        bandTexels[5] = { 6, 0 };
+        bandTexels[6] = { 2, 0 };
+        bandTexels[7] = { 0, 0 };
+        bandTexels[8] = { 6, 0 };
+        bandTexels[9] = { 4, 0 };
 
         GlyphResourceCreateInfo createInfo{};
         createInfo.vertices = vertices.Data();
@@ -393,8 +409,8 @@ namespace he::scribe
         createInfo.curveTexture.size = { 8, 1 };
         createInfo.curveTexture.rowPitch = sizeof(curveTexels);
         createInfo.bandTexture.data = bandTexels.Data();
-        createInfo.bandTexture.size = { SlugBandTextureWidth, 1 };
-        createInfo.bandTexture.rowPitch = SlugBandTextureWidth * sizeof(Vec4u);
+        createInfo.bandTexture.size = { ScribeBandTextureWidth, 1 };
+        createInfo.bandTexture.rowPitch = ScribeBandTextureWidth * sizeof(PackedBandTexel);
 
         return CreateGlyphResource(out, createInfo);
     }

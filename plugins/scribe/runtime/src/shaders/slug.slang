@@ -155,7 +155,7 @@ float CalcCoverage(float xcov, float ycov, float xwgt, float ywgt, int flags)
     return (coverage);
 }
 
-public float SlugRender(Texture2D curveData, Texture2D<uint4> bandData, float2 renderCoord, float4 bandTransform, int4 glyphData)
+public float SlugRender(Texture2D curveData, Texture2D<uint2> bandData, float2 renderCoord, float4 bandTransform, int4 glyphData)
 {
     int curveIndex;
 
@@ -182,7 +182,7 @@ public float SlugRender(Texture2D curveData, Texture2D<uint4> bandData, float2 r
     // of curves intersecting the band is in the x component, and the offset
     // to the list of locations for those curves is in the y component.
 
-    uint2 hbandData = bandData.Load(int3(glyphLoc.x + bandIndex.y, glyphLoc.y, 0)).xy;
+    uint2 hbandData = bandData.Load(int3(glyphLoc.x + bandIndex.y, glyphLoc.y, 0));//.xy;
     int2 hbandLoc = CalcBandLoc(glyphLoc, hbandData.y);
 
     // Loop over all curves in the horizontal band.

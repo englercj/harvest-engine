@@ -36,6 +36,8 @@ with `plugins/ui` consuming it later instead of owning text and vector rendering
   - Cross-cutting Slug-derived implementation reminders and gotchas to preserve across later milestones.
 - `docs/m0_status.md`
   - Concrete milestone M0 decisions, dependency choices, and scaffold status.
+- `docs/m2_status.md`
+  - Current milestone M2 implementation status, what is complete, and what is intentionally deferred to later milestones.
 
 ## Working Assumptions
 

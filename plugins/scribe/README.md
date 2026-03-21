@@ -32,6 +32,8 @@ with `plugins/ui` consuming it later instead of owning text and vector rendering
   - Planned feature coverage for font formats, emoji, SVG features, and text layout.
 - `docs/references_and_intake.md`
   - Source references, shader intake policy, and legal/source-tracking notes.
+- `docs/slug_constraints.md`
+  - Cross-cutting Slug-derived implementation reminders and gotchas to preserve across later milestones.
 - `docs/m0_status.md`
   - Concrete milestone M0 decisions, dependency choices, and scaffold status.
 

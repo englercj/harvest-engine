@@ -28,7 +28,9 @@ Scope:
 
 - Slang shader build,
 - curve/band resource binding,
-- one debug draw path in `he_scribe`.
+- one debug draw path in `he_scribe`,
+- dynamic dilation in the vertex path,
+- entrypoint-only resource bindings with helper logic kept separate.
 
 Success signal:
 
@@ -41,12 +43,14 @@ Scope:
 - `ScribeFontFace` schema,
 - font importer,
 - font compiler,
-- runtime loader.
+- runtime loader,
+- explicit fill-rule and band-packing metadata.
 
 Success signal:
 
 - a font source imports, compiles, and renders from compiled resources with no direct source
   file dependency or FreeType dependency at runtime.
+- compiled output preserves the ordering and flag assumptions expected by the shader path.
 
 ## Milestone M3: Text Layout
 
@@ -67,7 +71,8 @@ Scope:
 
 - layered color glyph rendering,
 - palette management,
-- variation-axis support.
+- variation-axis support,
+- no pixel-shader loop over color layers.
 
 Success signal:
 
@@ -79,11 +84,13 @@ Scope:
 
 - `ScribeImage` schema,
 - SVG importer/compiler,
-- shared renderer path for vector scenes.
+- shared renderer path for vector scenes,
+- paint evaluation kept separable from coverage evaluation.
 
 Success signal:
 
 - representative icons and illustrations render through the same coverage pipeline as text.
+- even-odd and nonzero SVG fill cases survive the same compiled/runtime path cleanly.
 
 ## Milestone M6: Editor And UI Adoption
 

@@ -85,6 +85,19 @@ Because Harvest already uses Slang through `shader_compile`, the plan should be:
 - isolate Harvest-specific resource bindings in the entry-point file,
 - avoid changing the winding, coverage, and dilation math unless a correctness issue is proven.
 
+## Slug-Derived Implementation Reminders
+
+Treat these as standing constraints when later milestones touch compiler or renderer code:
+
+- dynamic dilation remains the preferred path,
+- older supersampling and band-split variants are not the default modern direction,
+- multicolor emoji and similar color glyphs should render as layered draws,
+- fill rules must remain explicit shape data and survive compile/runtime round trips,
+- the compiler must preserve the packing and ordering assumptions expected by shader band and
+  curve traversal,
+- paint evaluation should stay decoupled from geometry coverage so text and SVG can share the
+  same core coverage path.
+
 ## Runtime Data Ownership
 
 The runtime should consume compiled Harvest-owned data, not raw font files and not FreeType

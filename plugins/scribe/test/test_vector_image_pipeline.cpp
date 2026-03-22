@@ -124,6 +124,47 @@ HE_TEST(scribe, vector_image_pipeline, compiles_svg_source_to_payloads)
     HE_EXPECT_LT(glyphBandStart + headerCount, imageData.bandTexels.Size());
     HE_EXPECT_EQ(imageData.bandTexels[glyphBandStart].y, headerCount);
     HE_EXPECT_GE(imageData.bandTexels[glyphBandStart + horizontalBandCount].y, headerCount);
+    HE_EXPECT_GT(imageData.bandHeaderCount, 0u);
+    HE_EXPECT_GE(imageData.bandTexels.Size(), imageData.bandHeaderCount + imageData.emittedBandPayloadTexelCount);
+    HE_EXPECT_EQ(imageData.bandTexels.Size(), imageData.bandTextureWidth * imageData.bandTextureHeight);
+    HE_EXPECT_GT(imageData.reusedBandCount, 0u);
+    HE_EXPECT_GT(imageData.reusedBandPayloadTexelCount, 0u);
+}
+
+HE_TEST(scribe, vector_image_pipeline, compiles_repeatable_svg_payloads)
+{
+    CompiledVectorImageData first{};
+    CompiledVectorImageData second{};
+    const Span<const uint8_t> source(reinterpret_cast<const uint8_t*>(kSvgSource), StrLen(kSvgSource));
+
+    HE_ASSERT(BuildCompiledVectorImageData(first, source, 0.25f));
+    HE_ASSERT(BuildCompiledVectorImageData(second, source, 0.25f));
+
+    HE_EXPECT_EQ(first.curveTexels.Size(), second.curveTexels.Size());
+    HE_EXPECT_EQ(first.bandTexels.Size(), second.bandTexels.Size());
+    HE_EXPECT_EQ(first.shapes.Size(), second.shapes.Size());
+    HE_EXPECT_EQ(first.layers.Size(), second.layers.Size());
+    HE_EXPECT_EQ(first.bandHeaderCount, second.bandHeaderCount);
+    HE_EXPECT_EQ(first.emittedBandPayloadTexelCount, second.emittedBandPayloadTexelCount);
+    HE_EXPECT_EQ(first.reusedBandCount, second.reusedBandCount);
+    HE_EXPECT_EQ(first.reusedBandPayloadTexelCount, second.reusedBandPayloadTexelCount);
+
+    HE_EXPECT_EQ_MEM(
+        first.curveTexels.Data(),
+        second.curveTexels.Data(),
+        first.curveTexels.Size() * sizeof(PackedCurveTexel));
+    HE_EXPECT_EQ_MEM(
+        first.bandTexels.Data(),
+        second.bandTexels.Data(),
+        first.bandTexels.Size() * sizeof(PackedBandTexel));
+    HE_EXPECT_EQ_MEM(
+        first.shapes.Data(),
+        second.shapes.Data(),
+        first.shapes.Size() * sizeof(CompiledVectorShapeRenderEntry));
+    HE_EXPECT_EQ_MEM(
+        first.layers.Data(),
+        second.layers.Data(),
+        first.layers.Size() * sizeof(CompiledVectorImageLayerEntry));
 }
 
 HE_TEST(scribe, vector_image_pipeline, loads_compiled_vector_blob)

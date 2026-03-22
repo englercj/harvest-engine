@@ -212,6 +212,41 @@ HE_TEST(scribe, color_font_pipeline, compiles_layered_color_glyphs)
     }
 }
 
+HE_TEST(scribe, color_font_pipeline, compiles_repeatable_repo_font_payloads)
+{
+    String repoFontPath;
+    HE_ASSERT(ResolveRepoFontPath(repoFontPath, "NotoSans-Regular.ttf"));
+
+    Vector<uint8_t> fontBytes;
+    HE_ASSERT(ReadFontFile(fontBytes, repoFontPath.Data()));
+
+    CompiledFontRenderData first{};
+    CompiledFontRenderData second{};
+    HE_ASSERT(BuildCompiledFontRenderData(first, fontBytes, 0));
+    HE_ASSERT(BuildCompiledFontRenderData(second, fontBytes, 0));
+
+    HE_EXPECT_EQ(first.curveTexels.Size(), second.curveTexels.Size());
+    HE_EXPECT_EQ(first.bandTexels.Size(), second.bandTexels.Size());
+    HE_EXPECT_EQ(first.glyphs.Size(), second.glyphs.Size());
+    HE_EXPECT_EQ(first.bandHeaderCount, second.bandHeaderCount);
+    HE_EXPECT_EQ(first.emittedBandPayloadTexelCount, second.emittedBandPayloadTexelCount);
+    HE_EXPECT_EQ(first.reusedBandCount, second.reusedBandCount);
+    HE_EXPECT_EQ(first.reusedBandPayloadTexelCount, second.reusedBandPayloadTexelCount);
+
+    HE_EXPECT_EQ_MEM(
+        first.curveTexels.Data(),
+        second.curveTexels.Data(),
+        first.curveTexels.Size() * sizeof(PackedCurveTexel));
+    HE_EXPECT_EQ_MEM(
+        first.bandTexels.Data(),
+        second.bandTexels.Data(),
+        first.bandTexels.Size() * sizeof(PackedBandTexel));
+    HE_EXPECT_EQ_MEM(
+        first.glyphs.Data(),
+        second.glyphs.Data(),
+        first.glyphs.Size() * sizeof(CompiledGlyphRenderEntry));
+}
+
 HE_TEST(scribe, color_font_pipeline, resolves_compiled_layers_from_runtime_blob)
 {
     static constexpr const char* ColorFontPath = "C:/Windows/Fonts/seguiemj.ttf";

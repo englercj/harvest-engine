@@ -8,8 +8,10 @@
 
 #include "he/assets/types.h"
 #include "he/assets/types_fmt.h"
+#include "he/core/clock_fmt.h"
 #include "he/core/log.h"
 #include "he/core/result_fmt.h"
+#include "he/core/stopwatch.h"
 
 namespace he::scribe::editor
 {
@@ -52,6 +54,7 @@ namespace he::scribe::editor
         }
 
         CompiledVectorImageData imageData{};
+        Stopwatch timer;
         {
             const auto sourceBlob = importSource.GetSourceBytes();
             if (!BuildCompiledVectorImageData(imageData, { sourceBlob.Data(), sourceBlob.Size() }, asset.GetFlatteningTolerance()))
@@ -63,6 +66,17 @@ namespace he::scribe::editor
                 return false;
             }
         }
+
+        HE_LOG_INFO(he_scribe,
+            HE_MSG("Compiled scribe vector image data."),
+            HE_KV(asset_uuid, assets::AssetUuid(ctx.asset.GetUuid())),
+            HE_KV(asset_name, ctx.asset.GetName()),
+            HE_KV(time, timer.Elapsed()),
+            HE_KV(curve_texels, imageData.curveTexels.Size()),
+            HE_KV(band_headers, imageData.bandHeaderCount),
+            HE_KV(emitted_band_payload_texels, imageData.emittedBandPayloadTexelCount),
+            HE_KV(reused_bands, imageData.reusedBandCount),
+            HE_KV(reused_band_payload_texels, imageData.reusedBandPayloadTexelCount));
 
         schema::Builder metadataBuilder;
         VectorImageRuntimeMetadata::Builder metadata = metadataBuilder.AddStruct<VectorImageRuntimeMetadata>();

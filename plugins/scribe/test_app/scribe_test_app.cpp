@@ -844,7 +844,7 @@ namespace he
 
         scribe::LayoutOptions titleOptions{};
         titleOptions.fontSize = titleFontSize;
-        titleOptions.wrap = false;
+        titleOptions.wrap = true;
         titleOptions.maxWidth = bodyWidth;
         titleOptions.direction = scribe::TextDirection::LeftToRight;
 

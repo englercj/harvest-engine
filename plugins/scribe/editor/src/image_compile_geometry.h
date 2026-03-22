@@ -57,6 +57,10 @@ namespace he::scribe::editor
         float boundsMinY{ 0.0f };
         float boundsMaxX{ 0.0f };
         float boundsMaxY{ 0.0f };
+        uint32_t bandHeaderCount{ 0 };
+        uint32_t emittedBandPayloadTexelCount{ 0 };
+        uint32_t reusedBandCount{ 0 };
+        uint32_t reusedBandPayloadTexelCount{ 0 };
     };
 
     bool BuildCompiledVectorImageData(

@@ -9,8 +9,10 @@
 
 #include "he/assets/types.h"
 #include "he/assets/types_fmt.h"
+#include "he/core/clock_fmt.h"
 #include "he/core/log.h"
 #include "he/core/result_fmt.h"
+#include "he/core/stopwatch.h"
 
 namespace he::scribe::editor
 {
@@ -110,6 +112,7 @@ namespace he::scribe::editor
         metadataBuilder.SetRoot(metadata);
 
         CompiledFontRenderData renderData{};
+        Stopwatch timer;
         {
             const auto sourceBlob = importSource.GetSourceBytes();
             if (!BuildCompiledFontRenderData(renderData, { sourceBlob.Data(), sourceBlob.Size() }, asset.GetFaceIndex()))
@@ -122,6 +125,17 @@ namespace he::scribe::editor
                 return false;
             }
         }
+
+        HE_LOG_INFO(he_scribe,
+            HE_MSG("Compiled scribe font render data."),
+            HE_KV(asset_uuid, assets::AssetUuid(ctx.asset.GetUuid())),
+            HE_KV(asset_name, ctx.asset.GetName()),
+            HE_KV(time, timer.Elapsed()),
+            HE_KV(curve_texels, renderData.curveTexels.Size()),
+            HE_KV(band_headers, renderData.bandHeaderCount),
+            HE_KV(emitted_band_payload_texels, renderData.emittedBandPayloadTexelCount),
+            HE_KV(reused_bands, renderData.reusedBandCount),
+            HE_KV(reused_band_payload_texels, renderData.reusedBandPayloadTexelCount));
 
         schema::Builder renderBuilder;
         FontFaceRenderData::Builder render = renderBuilder.AddStruct<FontFaceRenderData>();

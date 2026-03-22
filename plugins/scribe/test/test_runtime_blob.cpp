@@ -234,6 +234,7 @@ HE_TEST(scribe, runtime_blob, load_compiled_font_face_success)
     HE_EXPECT(loaded.root.IsValid());
     HE_EXPECT_EQ(loaded.metadata.GetGlyphCount(), 42u);
     HE_EXPECT_EQ(loaded.metadata.GetMetrics().GetUnitsPerEm(), 1000u);
+    HE_EXPECT_EQ(loaded.metadata.GetMetrics().GetCapHeight(), 700);
     HE_EXPECT_EQ_STR(loaded.metadata.GetFamilyName().Data(), "Unit Test Family");
     HE_EXPECT_EQ(loaded.shaping.GetFaceIndex(), 2u);
     HE_EXPECT_EQ(loaded.shaping.GetSourceBytes().Size(), 3u);

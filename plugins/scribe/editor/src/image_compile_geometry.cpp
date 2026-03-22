@@ -2,6 +2,8 @@
 
 #include "image_compile_geometry.h"
 
+#include "band_pack_utils.h"
+
 #include "he/core/log.h"
 #include "he/core/math.h"
 #include "he/core/string.h"
@@ -1436,10 +1438,12 @@ namespace he::scribe::editor
             CompiledVectorShapeRenderEntry& outShape,
             Vector<PackedCurveTexel>& outCurveTexels,
             Vector<PackedBandTexel>& outBandTexels,
+            PackedBandStats& outBandStats,
             const ParsedShape& shape,
             float epsilon)
         {
             outShape = {};
+            outBandStats = {};
             if (shape.curves.IsEmpty())
             {
                 return false;
@@ -1477,43 +1481,12 @@ namespace he::scribe::editor
             outShape.bandMaxY = bandCountY > 0 ? bandCountY - 1 : 0;
 
             const uint32_t glyphBandStart = outBandTexels.Size();
-            const uint32_t headerCount = bandCountY + bandCountX;
-            outBandTexels.Resize(glyphBandStart + headerCount);
-
-            uint32_t currentOffset = headerCount;
-            for (uint32_t bandIndex = 0; bandIndex < yBands.Size(); ++bandIndex)
-            {
-                PackedBandTexel header{};
-                header.x = static_cast<uint16_t>(yBands[bandIndex].Size());
-                header.y = static_cast<uint16_t>(currentOffset);
-                outBandTexels[glyphBandStart + bandIndex] = header;
-
-                for (uint32_t curveIndex = 0; curveIndex < yBands[bandIndex].Size(); ++curveIndex)
-                {
-                    PackedBandTexel texel{};
-                    texel.x = yBands[bandIndex][curveIndex].x;
-                    texel.y = yBands[bandIndex][curveIndex].y;
-                    outBandTexels.PushBack(texel);
-                    currentOffset += 1;
-                }
-            }
-
-            for (uint32_t bandIndex = 0; bandIndex < xBands.Size(); ++bandIndex)
-            {
-                PackedBandTexel header{};
-                header.x = static_cast<uint16_t>(xBands[bandIndex].Size());
-                header.y = static_cast<uint16_t>(currentOffset);
-                outBandTexels[glyphBandStart + bandCountY + bandIndex] = header;
-
-                for (uint32_t curveIndex = 0; curveIndex < xBands[bandIndex].Size(); ++curveIndex)
-                {
-                    PackedBandTexel texel{};
-                    texel.x = xBands[bandIndex][curveIndex].x;
-                    texel.y = xBands[bandIndex][curveIndex].y;
-                    outBandTexels.PushBack(texel);
-                    currentOffset += 1;
-                }
-            }
+            const PackedBandStats bandStats = AppendPackedBands(
+                outBandTexels,
+                glyphBandStart,
+                yBands,
+                xBands);
+            outBandStats = bandStats;
 
             return true;
         }
@@ -1556,10 +1529,21 @@ namespace he::scribe::editor
         {
             const ParsedShape& shape = parsed.shapes[shapeIndex];
             CompiledVectorShapeRenderEntry& compiledShape = out.shapes.EmplaceBack();
-            if (!BuildCompiledShape(compiledShape, out.curveTexels, out.bandTexels, shape, out.bandOverlapEpsilon))
+            PackedBandStats bandStats{};
+            if (!BuildCompiledShape(
+                compiledShape,
+                out.curveTexels,
+                out.bandTexels,
+                bandStats,
+                shape,
+                out.bandOverlapEpsilon))
             {
                 return false;
             }
+            out.bandHeaderCount += bandStats.headerCount;
+            out.emittedBandPayloadTexelCount += bandStats.emittedPayloadTexelCount;
+            out.reusedBandCount += bandStats.reusedBandCount;
+            out.reusedBandPayloadTexelCount += bandStats.reusedPayloadTexelCount;
 
             CompiledVectorImageLayerEntry& layer = out.layers.EmplaceBack();
             layer.shapeIndex = shapeIndex;

@@ -83,6 +83,10 @@ namespace he::scribe::editor
         uint32_t bandTextureWidth{ ScribeBandTextureWidth };
         uint32_t bandTextureHeight{ 0 };
         float bandOverlapEpsilon{ 0.0f };
+        uint32_t bandHeaderCount{ 0 };
+        uint32_t emittedBandPayloadTexelCount{ 0 };
+        uint32_t reusedBandCount{ 0 };
+        uint32_t reusedBandPayloadTexelCount{ 0 };
     };
 
     bool BuildCompiledFontRenderData(CompiledFontRenderData& out, Span<const uint8_t> sourceBytes, uint32_t faceIndex);

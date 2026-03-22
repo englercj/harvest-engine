@@ -2,6 +2,8 @@
 
 #include "font_compile_geometry.h"
 
+#include "band_pack_utils.h"
+
 #include "he/core/log.h"
 #include "he/core/math.h"
 #include "he/core/result_fmt.h"
@@ -1060,43 +1062,15 @@ namespace he::scribe::editor
             glyphEntry.glyphBandLocX = glyphBandStart & (ScribeBandTextureWidth - 1);
             glyphEntry.glyphBandLocY = glyphBandStart / ScribeBandTextureWidth;
 
-            const uint32_t headerCount = horizontalBandCount + verticalBandCount;
-            out.bandTexels.Resize(glyphBandStart + headerCount);
-
-            uint32_t currentOffset = headerCount;
-            for (uint32_t bandIndex = 0; bandIndex < horizontalBands.Size(); ++bandIndex)
-            {
-                PackedBandTexel header{};
-                header.x = static_cast<uint16_t>(horizontalBands[bandIndex].Size());
-                header.y = static_cast<uint16_t>(currentOffset);
-                out.bandTexels[glyphBandStart + bandIndex] = header;
-
-                for (uint32_t curveIndex = 0; curveIndex < horizontalBands[bandIndex].Size(); ++curveIndex)
-                {
-                    PackedBandTexel texel{};
-                    texel.x = horizontalBands[bandIndex][curveIndex].x;
-                    texel.y = horizontalBands[bandIndex][curveIndex].y;
-                    out.bandTexels.PushBack(texel);
-                    currentOffset += 1;
-                }
-            }
-
-            for (uint32_t bandIndex = 0; bandIndex < verticalBands.Size(); ++bandIndex)
-            {
-                PackedBandTexel header{};
-                header.x = static_cast<uint16_t>(verticalBands[bandIndex].Size());
-                header.y = static_cast<uint16_t>(currentOffset);
-                out.bandTexels[glyphBandStart + horizontalBandCount + bandIndex] = header;
-
-                for (uint32_t curveIndex = 0; curveIndex < verticalBands[bandIndex].Size(); ++curveIndex)
-                {
-                    PackedBandTexel texel{};
-                    texel.x = verticalBands[bandIndex][curveIndex].x;
-                    texel.y = verticalBands[bandIndex][curveIndex].y;
-                    out.bandTexels.PushBack(texel);
-                    currentOffset += 1;
-                }
-            }
+            const PackedBandStats bandStats = AppendPackedBands(
+                out.bandTexels,
+                glyphBandStart,
+                horizontalBands,
+                verticalBands);
+            out.bandHeaderCount += bandStats.headerCount;
+            out.emittedBandPayloadTexelCount += bandStats.emittedPayloadTexelCount;
+            out.reusedBandCount += bandStats.reusedBandCount;
+            out.reusedBandPayloadTexelCount += bandStats.reusedPayloadTexelCount;
         }
 
         out.curveTextureWidth = CurveTextureWidth;

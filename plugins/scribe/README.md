@@ -34,6 +34,10 @@ with downstream engine systems consuming it later when they are ready.
   - Source references, shader intake policy, and legal/source-tracking notes.
 - `docs/slug_constraints.md`
   - Cross-cutting Slug-derived implementation reminders and gotchas to preserve across later milestones.
+- `docs/authoring_and_runtime_usage.md`
+  - Source-asset expectations, runtime usage boundaries, and the standing visual-validation rule.
+- `docs/runtime_blob_migration.md`
+  - Runtime blob versioning policy and the expected migration path for incompatible changes.
 - `docs/m0_status.md`
   - Concrete milestone M0 decisions, dependency choices, and scaffold status.
 - `docs/m2_status.md`
@@ -44,6 +48,8 @@ with downstream engine systems consuming it later when they are ready.
   - Current milestone M4 implementation status for the dedicated visual testbed app.
 - `docs/m6_status.md`
   - Current milestone M6 implementation status for the SVG importer/compiler/runtime path and its visual testbed coverage.
+- `docs/m7_status.md`
+  - Current milestone M7 hardening status, validation, and migration/documentation outcomes.
 
 ## Working Assumptions
 

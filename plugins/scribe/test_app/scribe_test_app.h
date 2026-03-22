@@ -5,6 +5,7 @@
 #include "he/scribe/layout_engine.h"
 #include "he/scribe/renderer.h"
 
+#include "he/core/clock.h"
 #include "he/core/string.h"
 #include "he/core/vector.h"
 #include "he/rhi/types.h"
@@ -75,6 +76,7 @@ namespace he
             LatinWrap,
             CombiningAndFallback,
             RightToLeft,
+            AnimatedZoom,
 
             _Count,
         };
@@ -93,7 +95,7 @@ namespace he
         bool PrimeLayoutGlyphs(const scribe::LayoutResult& layout);
         bool PrimeGlyphCache();
         bool EnsureGlyphResource(uint32_t fontFaceIndex, uint32_t glyphIndex, const scribe::GlyphResource*& out);
-        void QueueLayout(const scribe::LayoutResult& layout, const Vec2f& origin, float fontSize);
+        void QueueLayout(const scribe::LayoutResult& layout, const Vec2f& origin, float fontSize, float layoutScale = 1.0f);
         void QueueCaret();
         void UpdateSceneTitle();
         void AdvanceScene(int32_t delta);
@@ -102,6 +104,7 @@ namespace he
         bool BeginFrame();
         void EndFrame();
         bool HasRtlDemoFallbackFont() const;
+        float GetAnimatedZoomScale() const;
 
     private:
         window::Device* m_windowDevice{ nullptr };
@@ -123,6 +126,7 @@ namespace he
         Vec2f m_footerOrigin{ 0.0f, 0.0f };
         scribe::HitTestResult m_caretHit{};
         Vec2f m_lastPointerPos{ 0.0f, 0.0f };
+        MonotonicTime m_sceneStartTime{};
         DemoScene m_scene{ DemoScene::LatinWrap };
         bool m_initialized{ false };
         bool m_layoutDirty{ true };

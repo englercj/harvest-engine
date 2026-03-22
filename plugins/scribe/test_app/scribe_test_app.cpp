@@ -8,9 +8,11 @@
 #include "he/scribe/schema/runtime_blob.hsc.h"
 
 #include "he/core/assert.h"
+#include "he/core/clock.h"
 #include "he/core/file.h"
 #include "he/core/log.h"
 #include "he/core/macros.h"
+#include "he/core/math.h"
 #include "he/core/result_fmt.h"
 #include "he/core/string_fmt.h"
 #include "he/core/utils.h"
@@ -293,6 +295,7 @@ namespace he
         const float titleFontSize = 34.0f * dpiScale;
         const float bodyFontSize = 24.0f * dpiScale;
         const float footerFontSize = 16.0f * dpiScale;
+        const bool animatedZoomScene = m_scene == DemoScene::AnimatedZoom;
 
         scribe::FrameDesc frameDesc{};
         frameDesc.cmdList = m_render.cmdList;
@@ -312,7 +315,23 @@ namespace he
         }
 
         QueueLayout(m_titleLayout, m_titleOrigin, titleFontSize);
-        QueueLayout(m_bodyLayout, m_bodyOrigin, bodyFontSize);
+        if (animatedZoomScene)
+        {
+            const float zoomScale = GetAnimatedZoomScale();
+            const Vec2f viewSize{
+                static_cast<float>(m_view->GetSize().x),
+                static_cast<float>(m_view->GetSize().y)
+            };
+            const Vec2f animatedOrigin{
+                (viewSize.x - (m_bodyLayout.width * zoomScale)) * 0.5f,
+                (viewSize.y - (m_bodyLayout.height * zoomScale)) * 0.5f
+            };
+            QueueLayout(m_bodyLayout, animatedOrigin, bodyFontSize, zoomScale);
+        }
+        else
+        {
+            QueueLayout(m_bodyLayout, m_bodyOrigin, bodyFontSize);
+        }
         QueueLayout(m_footerLayout, m_footerOrigin, footerFontSize);
         QueueCaret();
 
@@ -332,6 +351,7 @@ namespace he
         }
 
         UpdateSceneTitle();
+        m_sceneStartTime = MonotonicClock::Now();
         m_layoutDirty = true;
         return true;
     }
@@ -611,7 +631,7 @@ namespace he
 
         scribe::LayoutOptions bodyOptions{};
         bodyOptions.fontSize = bodyFontSize;
-        bodyOptions.wrap = true;
+        bodyOptions.wrap = m_scene != DemoScene::AnimatedZoom;
         bodyOptions.maxWidth = bodyWidth;
         bodyOptions.direction = m_scene == DemoScene::RightToLeft
             ? scribe::TextDirection::RightToLeft
@@ -644,6 +664,10 @@ namespace he
 
         m_titleOrigin = { margin, margin };
         m_bodyOrigin = { margin, margin + m_titleLayout.height + (22.0f * dpiScale) };
+        if (m_scene == DemoScene::AnimatedZoom)
+        {
+            m_bodyOrigin = { margin, margin + m_titleLayout.height + (40.0f * dpiScale) };
+        }
 
         float footerY = static_cast<float>(viewSize.y) - margin - m_footerLayout.height;
         footerY = Max(footerY, m_bodyOrigin.y + m_bodyLayout.height + (24.0f * dpiScale));
@@ -720,7 +744,7 @@ namespace he
         return true;
     }
 
-    void ScribeTestApp::QueueLayout(const scribe::LayoutResult& layout, const Vec2f& origin, float fontSize)
+    void ScribeTestApp::QueueLayout(const scribe::LayoutResult& layout, const Vec2f& origin, float fontSize, float layoutScale)
     {
         for (const scribe::ShapedGlyph& glyph : layout.glyphs)
         {
@@ -736,13 +760,13 @@ namespace he
             }
 
             const uint32_t unitsPerEm = Max(m_fonts[glyph.fontFaceIndex].blob.metadata.GetMetrics().GetUnitsPerEm(), 1u);
-            const float scale = fontSize / static_cast<float>(unitsPerEm);
+            const float scale = (fontSize / static_cast<float>(unitsPerEm)) * layoutScale;
 
             scribe::DrawGlyphDesc desc{};
             desc.glyph = glyphResource;
             desc.position = {
-                origin.x + glyph.position.x,
-                origin.y + glyph.position.y
+                origin.x + (glyph.position.x * layoutScale),
+                origin.y + (glyph.position.y * layoutScale)
             };
             desc.size = { scale, scale };
             m_renderer.QueueDraw(desc);
@@ -751,6 +775,11 @@ namespace he
 
     void ScribeTestApp::QueueCaret()
     {
+        if (m_scene == DemoScene::AnimatedZoom)
+        {
+            return;
+        }
+
         if (!m_hasCaret || !m_caretGlyph.vertexBuffer || (m_caretHit.lineIndex >= m_bodyLayout.lines.Size()))
         {
             return;
@@ -811,6 +840,11 @@ namespace he
                 }
                 break;
 
+            case DemoScene::AnimatedZoom:
+                m_titleText = "Scribe Testbed: animated zoom artifact stress";
+                m_bodyText = "W Y / WY/WY ///";
+                break;
+
             case DemoScene::_Count:
                 break;
         }
@@ -834,6 +868,7 @@ namespace he
         }
 
         m_scene = static_cast<DemoScene>(index);
+        m_sceneStartTime = MonotonicClock::Now();
         m_layoutDirty = true;
     }
 
@@ -965,5 +1000,15 @@ namespace he
     bool ScribeTestApp::HasRtlDemoFallbackFont() const
     {
         return (m_fonts.Size() > 2) && m_fonts[2].blob.root.IsValid();
+    }
+
+    float ScribeTestApp::GetAnimatedZoomScale() const
+    {
+        const float elapsedSeconds = ToPeriod<Seconds, float>(MonotonicClock::Now() - m_sceneStartTime);
+
+        const float amplitude = 50.0f;
+        const float frequency = 1.4f; // radians per second
+        const float wave = 0.5f + 0.5f * Sin(elapsedSeconds * frequency);
+        return amplitude * wave;
     }
 }

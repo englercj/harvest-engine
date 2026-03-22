@@ -43,6 +43,9 @@ namespace he
         {
             rhi::CmdAllocator* cmdAlloc{ nullptr };
             rhi::CpuFence* fence{ nullptr };
+            MonotonicTime submitTime{};
+            float lastGpuMs{ 0.0f };
+            bool hasSubmittedWork{ false };
         };
 
         struct RenderState
@@ -90,7 +93,6 @@ namespace he
             LatinWrap,
             CombiningAndFallback,
             RightToLeft,
-            AnimatedZoom,
             ColorGlyphLayers,
             SvgVectorImages,
 
@@ -110,6 +112,7 @@ namespace he
         bool LoadOptionalDemoFont(LoadedDemoFont& out, Span<const char*> fileNames);
         bool LoadDemoImage(LoadedDemoImage& out, const char* fileName);
         bool RebuildLayouts();
+        bool UpdateOverlayLayout();
         bool PrimeLayoutGlyphs(const scribe::LayoutResult& layout);
         bool PrimeGlyphCache();
         bool EnsureGlyphResource(uint32_t fontFaceIndex, uint32_t glyphIndex, const scribe::GlyphResource*& out);
@@ -119,14 +122,13 @@ namespace he
         void QueueImage(const LoadedDemoImage& image, uint32_t imageIndex, const Vec2f& position, float scale);
         void QueueCaret();
         void UpdateSceneTitle();
+        void ResetSceneView();
         void AdvanceScene(int32_t delta);
-        void UpdateCaretFromPointer();
         rhi::SwapChainFormat FindPreferredSwapChainFormat() const;
         bool BeginFrame();
         void EndFrame();
         bool HasRtlDemoFallbackFont() const;
         bool HasColorDemoFont() const;
-        float GetAnimatedZoomScale() const;
 
     private:
         window::Device* m_windowDevice{ nullptr };
@@ -141,17 +143,29 @@ namespace he
         Vector<CachedImageShape> m_cachedImageShapes{};
         String m_titleText{};
         String m_bodyText{};
-        String m_footerText{};
+        String m_sceneStatsText{};
+        String m_renderStatsText{};
+        String m_inputHintsText{};
         scribe::LayoutResult m_titleLayout{};
         scribe::LayoutResult m_bodyLayout{};
-        scribe::LayoutResult m_footerLayout{};
+        scribe::LayoutResult m_sceneStatsLayout{};
+        scribe::LayoutResult m_renderStatsLayout{};
+        scribe::LayoutResult m_inputHintsLayout{};
         Vec2f m_titleOrigin{ 0.0f, 0.0f };
         Vec2f m_bodyOrigin{ 0.0f, 0.0f };
-        Vec2f m_footerOrigin{ 0.0f, 0.0f };
+        Vec2f m_sceneStatsOrigin{ 0.0f, 0.0f };
+        Vec2f m_renderStatsOrigin{ 0.0f, 0.0f };
+        Vec2f m_inputHintsOrigin{ 0.0f, 0.0f };
         scribe::HitTestResult m_caretHit{};
         Vec2f m_lastPointerPos{ 0.0f, 0.0f };
-        MonotonicTime m_sceneStartTime{};
+        MonotonicTime m_lastFrameTime{};
         DemoScene m_scene{ DemoScene::LatinWrap };
+        Vec2f m_scenePan{ 0.0f, 0.0f };
+        float m_sceneZoom{ 1.0f };
+        float m_smoothedFrameMs{ 0.0f };
+        float m_lastGpuFrameMs{ 0.0f };
+        bool m_isPanning{ false };
+        bool m_hasFrameTime{ false };
         bool m_initialized{ false };
         bool m_layoutDirty{ true };
         bool m_hasPointerPos{ false };

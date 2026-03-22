@@ -409,9 +409,28 @@ namespace he
             case window::EventKind::PointerMove:
             {
                 const auto& evt = static_cast<const window::PointerMoveEvent&>(ev);
+                if (m_isPanning)
+                {
+                    if (evt.absolute)
+                    {
+                        m_scenePan.x += evt.pos.x - m_lastPointerPos.x;
+                        m_scenePan.y += evt.pos.y - m_lastPointerPos.y;
+                    }
+                    else
+                    {
+                        m_scenePan.x += evt.pos.x;
+                        m_scenePan.y += evt.pos.y;
+                    }
+                }
+
                 if (evt.absolute)
                 {
                     m_lastPointerPos = evt.pos;
+                    m_hasPointerPos = true;
+                }
+                else if (m_windowDevice && m_view)
+                {
+                    m_lastPointerPos = m_windowDevice->GetCursorPos(m_view);
                     m_hasPointerPos = true;
                 }
                 break;
@@ -419,12 +438,55 @@ namespace he
 
             case window::EventKind::PointerDown:
             {
-                if (m_windowDevice && m_view)
+                const auto& evt = static_cast<const window::PointerDownEvent&>(ev);
+                if ((evt.button == window::PointerButton::Primary) && m_windowDevice && m_view)
                 {
                     m_lastPointerPos = m_windowDevice->GetCursorPos(m_view);
                     m_hasPointerPos = true;
+                    m_isPanning = true;
                 }
-                UpdateCaretFromPointer();
+                m_hasCaret = false;
+                break;
+            }
+
+            case window::EventKind::PointerUp:
+            {
+                const auto& evt = static_cast<const window::PointerUpEvent&>(ev);
+                if (evt.button == window::PointerButton::Primary)
+                {
+                    m_isPanning = false;
+                }
+                break;
+            }
+
+            case window::EventKind::PointerWheel:
+            {
+                const auto& evt = static_cast<const window::PointerWheelEvent&>(ev);
+                const float wheelDelta = evt.delta.y;
+                if (Abs(wheelDelta) > 0.0f)
+                {
+                    const float zoomFactor = Pow(1.1f, wheelDelta);
+                    const float oldZoom = m_sceneZoom;
+                    const float newZoom = Clamp(oldZoom * zoomFactor, 0.25f, 12.0f);
+                    if (Abs(newZoom - oldZoom) > 0.0001f)
+                    {
+                        Vec2f pivot = m_hasPointerPos
+                            ? m_lastPointerPos
+                            : Vec2f{
+                                static_cast<float>(m_view ? m_view->GetSize().x : 0) * 0.5f,
+                                static_cast<float>(m_view ? m_view->GetSize().y : 0) * 0.5f
+                            };
+                        const Vec2f scenePoint{
+                            (pivot.x - m_scenePan.x) / oldZoom,
+                            (pivot.y - m_scenePan.y) / oldZoom
+                        };
+                        m_sceneZoom = newZoom;
+                        m_scenePan = {
+                            pivot.x - (scenePoint.x * newZoom),
+                            pivot.y - (scenePoint.y * newZoom)
+                        };
+                    }
+                }
                 break;
             }
 
@@ -443,6 +505,10 @@ namespace he
 
                     case window::Key::Right:
                         AdvanceScene(1);
+                        break;
+
+                    case window::Key::R:
+                        ResetSceneView();
                         break;
 
                     default:
@@ -468,6 +534,27 @@ namespace he
             return;
         }
 
+        const MonotonicTime frameNow = MonotonicClock::Now();
+        if (m_hasFrameTime)
+        {
+            const float frameMs = ToPeriod<Seconds, float>(frameNow - m_lastFrameTime) * 1000.0f;
+            if (m_smoothedFrameMs <= 0.0f)
+            {
+                m_smoothedFrameMs = frameMs;
+            }
+            else
+            {
+                m_smoothedFrameMs = Lerp(m_smoothedFrameMs, frameMs, 0.12f);
+            }
+        }
+        m_lastFrameTime = frameNow;
+        m_hasFrameTime = true;
+
+        if (!UpdateOverlayLayout())
+        {
+            return;
+        }
+
         if (!BeginFrame())
         {
             return;
@@ -477,7 +564,15 @@ namespace he
         const float titleFontSize = 34.0f * dpiScale;
         const float bodyFontSize = 24.0f * dpiScale;
         const float footerFontSize = 16.0f * dpiScale;
-        const bool animatedZoomScene = m_scene == DemoScene::AnimatedZoom;
+        const auto ApplySceneTransform = [this](const Vec2f& point) -> Vec2f
+        {
+            return {
+                (point.x * m_sceneZoom) + m_scenePan.x,
+                (point.y * m_sceneZoom) + m_scenePan.y
+            };
+        };
+        const Vec2f transformedTitleOrigin = ApplySceneTransform(m_titleOrigin);
+        const Vec2f transformedBodyOrigin = ApplySceneTransform(m_bodyOrigin);
 
         scribe::FrameDesc frameDesc{};
         frameDesc.cmdList = m_render.cmdList;
@@ -488,7 +583,7 @@ namespace he
             static_cast<uint32_t>(Max(m_view->GetSize().y, 0))
         };
         frameDesc.clearTarget = true;
-        frameDesc.clearColor = { 0.055f, 0.066f, 0.082f, 1.0f };
+        frameDesc.clearColor = { 1.0f, 1.0f, 1.0f, 1.0f };
 
         if (!m_renderer.BeginFrame(frameDesc))
         {
@@ -496,31 +591,25 @@ namespace he
             return;
         }
 
-        QueueLayout(m_titleLayout, m_titleOrigin, titleFontSize);
-        if (animatedZoomScene)
-        {
-            const float zoomScale = GetAnimatedZoomScale();
-            const Vec2f viewSize{
-                static_cast<float>(m_view->GetSize().x),
-                static_cast<float>(m_view->GetSize().y)
-            };
-            const Vec2f animatedOrigin{
-                (viewSize.x - (m_bodyLayout.width * zoomScale)) * 0.5f,
-                (viewSize.y - (m_bodyLayout.height * zoomScale)) * 0.5f
-            };
-            QueueLayout(m_bodyLayout, animatedOrigin, bodyFontSize, zoomScale);
-        }
-        else
-        {
-            QueueLayout(m_bodyLayout, m_bodyOrigin, bodyFontSize);
-        }
+        QueueLayout(m_titleLayout, transformedTitleOrigin, titleFontSize, m_sceneZoom);
+        QueueLayout(m_bodyLayout, transformedBodyOrigin, bodyFontSize, m_sceneZoom);
         if ((m_scene == DemoScene::SvgVectorImages) && (m_images.Size() >= 2))
         {
-            const float imageScale = 2.4f * dpiScale;
-            QueueImage(m_images[0], 0, { m_bodyOrigin.x, m_bodyOrigin.y + 150.0f * dpiScale }, imageScale);
-            QueueImage(m_images[1], 1, { m_bodyOrigin.x + 620.0f * dpiScale, m_bodyOrigin.y + 150.0f * dpiScale }, imageScale * 0.85f);
+            const float imageScale = 2.4f * dpiScale * m_sceneZoom;
+            QueueImage(
+                m_images[0],
+                0,
+                ApplySceneTransform({ m_bodyOrigin.x, m_bodyOrigin.y + (150.0f * dpiScale) }),
+                imageScale);
+            QueueImage(
+                m_images[1],
+                1,
+                ApplySceneTransform({ m_bodyOrigin.x + (620.0f * dpiScale), m_bodyOrigin.y + (150.0f * dpiScale) }),
+                imageScale * 0.85f);
         }
-        QueueLayout(m_footerLayout, m_footerOrigin, footerFontSize);
+        QueueLayout(m_sceneStatsLayout, m_sceneStatsOrigin, footerFontSize);
+        QueueLayout(m_renderStatsLayout, m_renderStatsOrigin, footerFontSize);
+        QueueLayout(m_inputHintsLayout, m_inputHintsOrigin, footerFontSize);
         QueueCaret();
 
         m_renderer.EndFrame();
@@ -540,7 +629,8 @@ namespace he
         }
 
         UpdateSceneTitle();
-        m_sceneStartTime = MonotonicClock::Now();
+        m_lastFrameTime = MonotonicClock::Now();
+        m_hasFrameTime = false;
         m_layoutDirty = true;
         return true;
     }
@@ -580,7 +670,9 @@ namespace he
         m_images.Clear();
         m_titleLayout.Clear();
         m_bodyLayout.Clear();
-        m_footerLayout.Clear();
+        m_sceneStatsLayout.Clear();
+        m_renderStatsLayout.Clear();
+        m_inputHintsLayout.Clear();
         m_initialized = false;
     }
 
@@ -588,7 +680,7 @@ namespace he
     {
         window::ViewDesc desc{};
         desc.title = "Harvest Scribe Testbed";
-        desc.size = { 1440, 960 };
+        desc.size = { 1800, 1200 };
 
         m_view = m_windowDevice->CreateView(desc);
         if (!m_view)
@@ -839,7 +931,6 @@ namespace he
         const float margin = 40.0f * dpiScale;
         const float titleFontSize = 34.0f * dpiScale;
         const float bodyFontSize = 24.0f * dpiScale;
-        const float footerFontSize = 16.0f * dpiScale;
         const float bodyWidth = Max(static_cast<float>(viewSize.x) - (margin * 2.0f), 128.0f);
 
         scribe::LayoutOptions titleOptions{};
@@ -855,7 +946,7 @@ namespace he
 
         scribe::LayoutOptions bodyOptions{};
         bodyOptions.fontSize = bodyFontSize;
-        bodyOptions.wrap = (m_scene != DemoScene::AnimatedZoom);
+        bodyOptions.wrap = true;
         bodyOptions.maxWidth = bodyWidth;
         bodyOptions.direction = m_scene == DemoScene::RightToLeft
             ? scribe::TextDirection::RightToLeft
@@ -866,45 +957,21 @@ namespace he
             return false;
         }
 
-        m_footerText.Clear();
-        FormatTo(
-            m_footerText,
-            "Scene {}/{}  Left/Right: switch demos  Click: caret hit test  Esc: quit  Missing={}  Fallback={}",
-            static_cast<uint32_t>(m_scene) + 1,
-            static_cast<uint32_t>(DemoScene::_Count),
-            m_bodyLayout.missingGlyphCount,
-            m_bodyLayout.fallbackGlyphCount);
-
-        scribe::LayoutOptions footerOptions{};
-        footerOptions.fontSize = footerFontSize;
-        footerOptions.wrap = true;
-        footerOptions.maxWidth = bodyWidth;
-        footerOptions.direction = scribe::TextDirection::LeftToRight;
-
-        if (!m_layoutEngine.LayoutText(m_footerLayout, primaryFace, m_footerText, footerOptions))
+        if (!UpdateOverlayLayout())
         {
             return false;
         }
 
-        m_titleOrigin = { margin, margin };
-        m_bodyOrigin = { margin, margin + m_titleLayout.height + (22.0f * dpiScale) };
-        if (m_scene == DemoScene::AnimatedZoom)
+        const float overlayHeight = Max(m_sceneStatsLayout.height, Max(m_renderStatsLayout.height, m_inputHintsLayout.height));
+        const float sceneTop = margin + overlayHeight + (20.0f * dpiScale);
+        m_titleOrigin = { margin, sceneTop };
+        m_bodyOrigin = { margin, sceneTop + m_titleLayout.height + (22.0f * dpiScale) };
+        if (m_scene == DemoScene::SvgVectorImages)
         {
-            m_bodyOrigin = { margin, margin + m_titleLayout.height + (40.0f * dpiScale) };
-        }
-        else if (m_scene == DemoScene::SvgVectorImages)
-        {
-            m_bodyOrigin = { margin, margin + m_titleLayout.height + (18.0f * dpiScale) };
+            m_bodyOrigin = { margin, sceneTop + m_titleLayout.height + (18.0f * dpiScale) };
         }
 
-        float footerY = static_cast<float>(viewSize.y) - margin - m_footerLayout.height;
-        footerY = Max(footerY, m_bodyOrigin.y + m_bodyLayout.height + (24.0f * dpiScale));
-        m_footerOrigin = { margin, footerY };
-
-        if (m_hasPointerPos)
-        {
-            UpdateCaretFromPointer();
-        }
+        m_hasCaret = false;
 
         if (!PrimeGlyphCache())
         {
@@ -918,6 +985,87 @@ namespace he
 
         m_layoutDirty = false;
         return true;
+    }
+
+    bool ScribeTestApp::UpdateOverlayLayout()
+    {
+        if (m_fonts.IsEmpty() || !m_fonts[0].blob.root.IsValid())
+        {
+            return false;
+        }
+
+        const Vec2i viewSize = m_view->GetSize();
+        const float dpiScale = Max(m_view->GetDpiScale(), 1.0f);
+        const float margin = 40.0f * dpiScale;
+        const float overlayFontSize = 16.0f * dpiScale;
+        const float overlayWidth = Max(static_cast<float>(viewSize.x) - (margin * 2.0f), 128.0f);
+        const float columnGap = 48.0f * dpiScale;
+        const float columnWidth = Max((overlayWidth - (columnGap * 2.0f)) / 3.0f, 128.0f);
+        const float fps = m_smoothedFrameMs > 0.0f ? (1000.0f / m_smoothedFrameMs) : 0.0f;
+
+        m_sceneStatsText.Clear();
+        FormatTo(
+            m_sceneStatsText,
+            "Scene: {}/{}\n"
+            "Missing: {}\n"
+            "Fallback: {}",
+            static_cast<uint32_t>(m_scene) + 1,
+            static_cast<uint32_t>(DemoScene::_Count),
+            m_bodyLayout.missingGlyphCount,
+            m_bodyLayout.fallbackGlyphCount);
+
+        m_renderStatsText.Clear();
+        FormatTo(
+            m_renderStatsText,
+            "FPS: {:.1f}\n"
+            "GPU: {:.2f} ms\n"
+            "Resolution: {} x {}",
+            fps,
+            m_lastGpuFrameMs,
+            viewSize.x,
+            viewSize.y);
+
+        m_inputHintsText =
+            "Left drag: pan\n"
+            "Mouse wheel: zoom\n"
+            "R: reset view\n"
+            "Left/Right: switch demos\n"
+            "Esc: quit";
+
+        scribe::LayoutOptions overlayOptions{};
+        overlayOptions.fontSize = overlayFontSize;
+        overlayOptions.wrap = true;
+        overlayOptions.maxWidth = columnWidth;
+        overlayOptions.direction = scribe::TextDirection::LeftToRight;
+
+        const scribe::LoadedFontFaceBlob primaryFace[] = { m_fonts[0].blob };
+        const Span<const scribe::LoadedFontFaceBlob> faceSpan(primaryFace, 1);
+        if (!m_layoutEngine.LayoutText(m_sceneStatsLayout, faceSpan, m_sceneStatsText, overlayOptions)
+            || !m_layoutEngine.LayoutText(m_renderStatsLayout, faceSpan, m_renderStatsText, overlayOptions)
+            || !m_layoutEngine.LayoutText(m_inputHintsLayout, faceSpan, m_inputHintsText, overlayOptions))
+        {
+            return false;
+        }
+
+        m_sceneStatsOrigin = { margin, margin };
+        const float inputX = Max(static_cast<float>(viewSize.x) - margin - m_inputHintsLayout.width, margin);
+        const float minRenderX = m_sceneStatsOrigin.x + m_sceneStatsLayout.width + columnGap;
+        const float maxRenderX = inputX - columnGap - m_renderStatsLayout.width;
+        float renderX = (static_cast<float>(viewSize.x) - m_renderStatsLayout.width) * 0.5f;
+        if (maxRenderX < minRenderX)
+        {
+            renderX = minRenderX;
+        }
+        else
+        {
+            renderX = Clamp(renderX, minRenderX, maxRenderX);
+        }
+
+        m_renderStatsOrigin = { renderX, margin };
+        m_inputHintsOrigin = { inputX, margin };
+        return PrimeLayoutGlyphs(m_sceneStatsLayout)
+            && PrimeLayoutGlyphs(m_renderStatsLayout)
+            && PrimeLayoutGlyphs(m_inputHintsLayout);
     }
 
     bool ScribeTestApp::PrimeLayoutGlyphs(const scribe::LayoutResult& layout)
@@ -943,7 +1091,9 @@ namespace he
     {
         return PrimeLayoutGlyphs(m_titleLayout)
             && PrimeLayoutGlyphs(m_bodyLayout)
-            && PrimeLayoutGlyphs(m_footerLayout);
+            && PrimeLayoutGlyphs(m_sceneStatsLayout)
+            && PrimeLayoutGlyphs(m_renderStatsLayout)
+            && PrimeLayoutGlyphs(m_inputHintsLayout);
     }
 
     bool ScribeTestApp::PrimeImageCache()
@@ -1035,7 +1185,7 @@ namespace he
     void ScribeTestApp::QueueLayout(const scribe::LayoutResult& layout, const Vec2f& origin, float fontSize, float layoutScale)
     {
         Vector<scribe::CompiledColorGlyphLayer> colorLayers{};
-        const Vec4f foregroundColor{ 1.0f, 1.0f, 1.0f, 1.0f };
+        const Vec4f foregroundColor{ 0.0f, 0.0f, 0.0f, 1.0f };
 
         for (const scribe::ShapedGlyph& glyph : layout.glyphs)
         {
@@ -1129,7 +1279,7 @@ namespace he
 
     void ScribeTestApp::QueueCaret()
     {
-        if ((m_scene == DemoScene::AnimatedZoom) || (m_scene == DemoScene::SvgVectorImages))
+        if (m_scene == DemoScene::SvgVectorImages)
         {
             return;
         }
@@ -1148,6 +1298,7 @@ namespace he
             m_bodyOrigin.y + line.baselineY - line.ascent
         };
         desc.size = { 2.0f, Max(line.height, 1.0f) };
+        desc.color = { 0.0f, 0.0f, 0.0f, 1.0f };
         m_renderer.QueueDraw(desc);
     }
 
@@ -1194,11 +1345,6 @@ namespace he
                 }
                 break;
 
-            case DemoScene::AnimatedZoom:
-                m_titleText = "Scribe Testbed: animated zoom artifact stress";
-                m_bodyText = "W Y / WY/WY ///";
-                break;
-
             case DemoScene::ColorGlyphLayers:
                 if (HasColorDemoFont())
                 {
@@ -1236,6 +1382,14 @@ namespace he
         }
     }
 
+    void ScribeTestApp::ResetSceneView()
+    {
+        m_scenePan = { 0.0f, 0.0f };
+        m_sceneZoom = 1.0f;
+        m_isPanning = false;
+        m_hasCaret = false;
+    }
+
     void ScribeTestApp::AdvanceScene(int32_t delta)
     {
         const int32_t count = static_cast<int32_t>(DemoScene::_Count);
@@ -1247,23 +1401,8 @@ namespace he
         }
 
         m_scene = static_cast<DemoScene>(index);
-        m_sceneStartTime = MonotonicClock::Now();
+        ResetSceneView();
         m_layoutDirty = true;
-    }
-
-    void ScribeTestApp::UpdateCaretFromPointer()
-    {
-        if (!m_hasPointerPos)
-        {
-            return;
-        }
-
-        const Vec2f localPoint{
-            m_lastPointerPos.x - m_bodyOrigin.x,
-            m_lastPointerPos.y - m_bodyOrigin.y
-        };
-
-        m_hasCaret = m_layoutEngine.HitTest(m_bodyLayout, localPoint, m_caretHit);
     }
 
     rhi::SwapChainFormat ScribeTestApp::FindPreferredSwapChainFormat() const
@@ -1327,6 +1466,13 @@ namespace he
             return false;
         }
 
+        if (frame.hasSubmittedWork)
+        {
+            frame.lastGpuMs = ToPeriod<Seconds, float>(MonotonicClock::Now() - frame.submitTime) * 1000.0f;
+            m_lastGpuFrameMs = frame.lastGpuMs;
+            frame.hasSubmittedWork = false;
+        }
+
         Result r = m_render.device->ResetCmdAllocator(frame.cmdAlloc);
         if (!r)
         {
@@ -1367,6 +1513,8 @@ namespace he
         rhi::RenderCmdQueue& cmdQueue = m_render.device->GetRenderCmdQueue();
         cmdQueue.Submit(m_render.cmdList);
         cmdQueue.Signal(m_render.frames[m_render.frameIndex].fence);
+        m_render.frames[m_render.frameIndex].submitTime = MonotonicClock::Now();
+        m_render.frames[m_render.frameIndex].hasSubmittedWork = true;
         r = cmdQueue.Present(m_render.swapChain);
         if (!r)
         {
@@ -1395,12 +1543,5 @@ namespace he
         }
 
         return false;
-    }
-
-    float ScribeTestApp::GetAnimatedZoomScale() const
-    {
-        const float elapsedSeconds = ToPeriod<Seconds, float>(MonotonicClock::Now() - m_sceneStartTime);
-        const float wave = 0.5f + 0.5f * Sin(elapsedSeconds * 1.4f);
-        return 0.4f + (wave * 5.6f);
     }
 }

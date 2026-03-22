@@ -73,4 +73,19 @@ plugin he.scribe version="0.1.0" license="UNLICENSED" {
             dependencies { he_scribe }
         }
     }
+
+    module he_scribe_test_app kind=app_windowed group="engine/tests" {
+        files {
+            "test_app/**"
+            "editor/src/font_compile_geometry.cpp"
+            "editor/src/font_compile_geometry.h"
+            "editor/src/font_import_utils.cpp"
+            "editor/src/font_import_utils.h"
+        }
+        include_dirs { "test_app"; "editor/src" }
+
+        public {
+            dependencies { freetype; he_core; he_math; he_rhi; he_scribe; he_window }
+        }
+    }
 }

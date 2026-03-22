@@ -40,6 +40,8 @@ with downstream engine systems consuming it later when they are ready.
   - Current milestone M2 implementation status, what is complete, and what is intentionally deferred to later milestones.
 - `docs/m3_status.md`
   - Current milestone M3 implementation status for shaping, fallback, wrapping, cluster mapping, and hit testing basics.
+- `docs/m4_status.md`
+  - Current milestone M4 implementation status for the dedicated visual testbed app.
 
 ## Working Assumptions
 

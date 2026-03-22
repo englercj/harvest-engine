@@ -305,15 +305,20 @@ namespace he::scribe
             return false;
         }
 
-        rhi::DescriptorRange range{};
-        range.type = rhi::DescriptorRangeType::Texture;
-        range.baseRegister = 0;
-        range.registerSpace = 0;
-        range.count = 2;
+        rhi::DescriptorRange ranges[2]{};
+        ranges[0].type = rhi::DescriptorRangeType::Texture;
+        ranges[0].baseRegister = 0;
+        ranges[0].registerSpace = 0;
+        ranges[0].count = 1;
+
+        ranges[1].type = rhi::DescriptorRangeType::Texture;
+        ranges[1].baseRegister = 1;
+        ranges[1].registerSpace = 0;
+        ranges[1].count = 1;
 
         rhi::DescriptorTableDesc tableDesc{};
-        tableDesc.rangeCount = 1;
-        tableDesc.ranges = &range;
+        tableDesc.rangeCount = HE_LENGTH_OF(ranges);
+        tableDesc.ranges = ranges;
 
         Result r = m_device->CreateDescriptorTable(tableDesc, resource.descriptorTable);
         if (!r)
@@ -323,8 +328,10 @@ namespace he::scribe
             return false;
         }
 
-        const rhi::TextureView* views[2]{ resource.curveView, resource.bandView };
-        m_device->SetTextureViews(resource.descriptorTable, 0, 0, 2, views);
+        const rhi::TextureView* curveView = resource.curveView;
+        const rhi::TextureView* bandView = resource.bandView;
+        m_device->SetTextureViews(resource.descriptorTable, 0, 0, 1, &curveView);
+        m_device->SetTextureViews(resource.descriptorTable, 1, 0, 1, &bandView);
 
         resource.vertexCount = desc.vertexCount;
         out = resource;
@@ -515,11 +522,16 @@ namespace he::scribe
         HE_ASSERT(m_device);
 
         {
-            rhi::DescriptorRange range{};
-            range.type = rhi::DescriptorRangeType::Texture;
-            range.baseRegister = 0;
-            range.registerSpace = 0;
-            range.count = 2;
+            rhi::DescriptorRange ranges[2]{};
+            ranges[0].type = rhi::DescriptorRangeType::Texture;
+            ranges[0].baseRegister = 0;
+            ranges[0].registerSpace = 0;
+            ranges[0].count = 1;
+
+            ranges[1].type = rhi::DescriptorRangeType::Texture;
+            ranges[1].baseRegister = 1;
+            ranges[1].registerSpace = 0;
+            ranges[1].count = 1;
 
             rhi::SlotDesc slots[2]{};
 
@@ -531,8 +543,8 @@ namespace he::scribe
 
             slots[1].type = rhi::SlotType::DescriptorTable;
             slots[1].stage = rhi::ShaderStage::Pixel;
-            slots[1].descriptorTable.rangeCount = 1;
-            slots[1].descriptorTable.ranges = &range;
+            slots[1].descriptorTable.rangeCount = HE_LENGTH_OF(ranges);
+            slots[1].descriptorTable.ranges = ranges;
 
             rhi::RootSignatureDesc desc{};
             desc.slotCount = HE_LENGTH_OF(slots);

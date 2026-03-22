@@ -11,6 +11,9 @@ namespace he::scribe
 
     inline constexpr uint32_t CompiledFontGlyphFlagHasGeometry = 1u << 0;
     inline constexpr uint32_t CompiledFontGlyphFlagEvenOdd = 1u << 1;
+    inline constexpr uint32_t CompiledFontGlyphFlagHasColorLayers = 1u << 2;
+
+    inline constexpr uint32_t CompiledFontColorLayerFlagUseForeground = 1u << 0;
 
     struct PackedCurveTexel
     {

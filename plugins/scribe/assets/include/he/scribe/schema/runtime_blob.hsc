@@ -90,6 +90,40 @@ struct FontFaceGlyphRenderData
     flags @15 :uint32;
 }
 
+struct FontFacePaletteColor
+{
+    red @0 :float32;
+    green @1 :float32;
+    blue @2 :float32;
+    alpha @3 :float32;
+}
+
+struct FontFacePalette
+{
+    flags @0 :uint32;
+    colors @1 :FontFacePaletteColor[];
+}
+
+struct FontFaceColorGlyphLayer
+{
+    glyphIndex @0 :uint32;
+    paletteEntryIndex @1 :uint32;
+    flags @2 :uint32;
+    alphaScale @3 :float32;
+    transform00 @4 :float32;
+    transform01 @5 :float32;
+    transform10 @6 :float32;
+    transform11 @7 :float32;
+    transformTx @8 :float32;
+    transformTy @9 :float32;
+}
+
+struct FontFaceColorGlyph
+{
+    firstLayer @0 :uint32;
+    layerCount @1 :uint32;
+}
+
 struct FontFaceRenderData
 {
     curveTextureWidth @0 :uint32;
@@ -98,6 +132,14 @@ struct FontFaceRenderData
     bandTextureHeight @3 :uint32;
     bandOverlapEpsilon @4 :float32;
     glyphs @5 :FontFaceGlyphRenderData[];
+}
+
+struct FontFacePaintData
+{
+    defaultPaletteIndex @0 :uint32;
+    palettes @1 :FontFacePalette[];
+    colorGlyphs @2 :FontFaceColorGlyph[];
+    layers @3 :FontFaceColorGlyphLayer[];
 }
 
 struct FontFamilyRuntimeData

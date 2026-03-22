@@ -5,6 +5,7 @@
 #include "font_compile_geometry.h"
 #include "font_import_utils.h"
 
+#include "he/scribe/compiled_font.h"
 #include "he/scribe/schema/runtime_blob.hsc.h"
 
 #include "he/core/assert.h"
@@ -142,6 +143,56 @@ namespace he
             }
             renderBuilder.SetRoot(render);
 
+            schema::Builder paintBuilder;
+            scribe::FontFacePaintData::Builder paint = paintBuilder.AddStruct<scribe::FontFacePaintData>();
+            paint.SetDefaultPaletteIndex(renderData.paint.defaultPaletteIndex);
+
+            auto palettes = paint.InitPalettes(renderData.paint.palettes.Size());
+            for (uint32_t paletteIndex = 0; paletteIndex < renderData.paint.palettes.Size(); ++paletteIndex)
+            {
+                const scribe::editor::CompiledFontPalette& srcPalette = renderData.paint.palettes[paletteIndex];
+                scribe::FontFacePalette::Builder dstPalette = palettes[paletteIndex];
+                dstPalette.SetFlags(srcPalette.flags);
+
+                auto colors = dstPalette.InitColors(srcPalette.colors.Size());
+                for (uint32_t colorIndex = 0; colorIndex < srcPalette.colors.Size(); ++colorIndex)
+                {
+                    const scribe::editor::CompiledFontPaletteColor& srcColor = srcPalette.colors[colorIndex];
+                    scribe::FontFacePaletteColor::Builder dstColor = colors[colorIndex];
+                    dstColor.SetRed(srcColor.red);
+                    dstColor.SetGreen(srcColor.green);
+                    dstColor.SetBlue(srcColor.blue);
+                    dstColor.SetAlpha(srcColor.alpha);
+                }
+            }
+
+            auto colorGlyphs = paint.InitColorGlyphs(renderData.paint.colorGlyphs.Size());
+            for (uint32_t glyphIndex = 0; glyphIndex < renderData.paint.colorGlyphs.Size(); ++glyphIndex)
+            {
+                const scribe::editor::CompiledColorGlyphEntry& srcColorGlyph = renderData.paint.colorGlyphs[glyphIndex];
+                scribe::FontFaceColorGlyph::Builder dstColorGlyph = colorGlyphs[glyphIndex];
+                dstColorGlyph.SetFirstLayer(srcColorGlyph.firstLayer);
+                dstColorGlyph.SetLayerCount(srcColorGlyph.layerCount);
+            }
+
+            auto layers = paint.InitLayers(renderData.paint.layers.Size());
+            for (uint32_t layerIndex = 0; layerIndex < renderData.paint.layers.Size(); ++layerIndex)
+            {
+                const scribe::editor::CompiledColorGlyphLayerEntry& srcLayer = renderData.paint.layers[layerIndex];
+                scribe::FontFaceColorGlyphLayer::Builder dstLayer = layers[layerIndex];
+                dstLayer.SetGlyphIndex(srcLayer.glyphIndex);
+                dstLayer.SetPaletteEntryIndex(srcLayer.paletteEntryIndex);
+                dstLayer.SetFlags(srcLayer.flags);
+                dstLayer.SetAlphaScale(srcLayer.alphaScale);
+                dstLayer.SetTransform00(srcLayer.transform00);
+                dstLayer.SetTransform01(srcLayer.transform01);
+                dstLayer.SetTransform10(srcLayer.transform10);
+                dstLayer.SetTransform11(srcLayer.transform11);
+                dstLayer.SetTransformTx(srcLayer.transformTx);
+                dstLayer.SetTransformTy(srcLayer.transformTy);
+            }
+            paintBuilder.SetRoot(paint);
+
             schema::Builder rootBuilder;
             scribe::CompiledFontFaceBlob::Builder root = rootBuilder.AddStruct<scribe::CompiledFontFaceBlob>();
             scribe::RuntimeBlobHeader::Builder header = root.InitHeader();
@@ -151,7 +202,7 @@ namespace he
             root.SetShapingData(rootBuilder.AddBlob(Span<const schema::Word>(shapingBuilder).AsBytes()));
             root.SetCurveData(rootBuilder.AddBlob(Span<const scribe::PackedCurveTexel>(renderData.curveTexels.Data(), renderData.curveTexels.Size()).AsBytes()));
             root.SetBandData(rootBuilder.AddBlob(Span<const scribe::PackedBandTexel>(renderData.bandTexels.Data(), renderData.bandTexels.Size()).AsBytes()));
-            root.SetPaintData(rootBuilder.AddBlob({}));
+            root.SetPaintData(rootBuilder.AddBlob(Span<const schema::Word>(paintBuilder).AsBytes()));
             root.SetMetadataData(rootBuilder.AddBlob(Span<const schema::Word>(metadataBuilder).AsBytes()));
             root.SetRenderData(rootBuilder.AddBlob(Span<const schema::Word>(renderBuilder).AsBytes()));
             rootBuilder.SetRoot(root);
@@ -539,7 +590,7 @@ namespace he
     bool ScribeTestApp::LoadDemoFonts()
     {
         m_fonts.Clear();
-        m_fonts.Resize(3);
+        m_fonts.Resize(2);
 
         if (!LoadDemoFont(m_fonts[0], "NotoSans-Regular.ttf")
             || !LoadDemoFont(m_fonts[1], "materialdesignicons.ttf"))
@@ -554,9 +605,22 @@ namespace he
             "C:/Windows/Fonts/tahoma.ttf",
         };
 
+        m_fonts.Resize(3);
         if (!LoadOptionalDemoFont(m_fonts[2], RtlFontCandidates))
         {
             m_fonts.Resize(2);
+        }
+
+        static const char* ColorFontCandidates[] =
+        {
+            "C:/Windows/Fonts/seguiemj.ttf",
+        };
+
+        const uint32_t colorFontIndex = m_fonts.Size();
+        m_fonts.Resize(colorFontIndex + 1);
+        if (!LoadOptionalDemoFont(m_fonts[colorFontIndex], ColorFontCandidates))
+        {
+            m_fonts.Resize(colorFontIndex);
         }
 
         return true;
@@ -746,29 +810,65 @@ namespace he
 
     void ScribeTestApp::QueueLayout(const scribe::LayoutResult& layout, const Vec2f& origin, float fontSize, float layoutScale)
     {
+        Vector<scribe::CompiledColorGlyphLayer> colorLayers{};
+        const Vec4f foregroundColor{ 1.0f, 1.0f, 1.0f, 1.0f };
+
         for (const scribe::ShapedGlyph& glyph : layout.glyphs)
         {
+            if (glyph.fontFaceIndex >= m_fonts.Size())
+            {
+                continue;
+            }
+
+            const LoadedDemoFont& font = m_fonts[glyph.fontFaceIndex];
+            const uint32_t unitsPerEm = Max(font.blob.metadata.GetMetrics().GetUnitsPerEm(), 1u);
+            const float scale = (fontSize / static_cast<float>(unitsPerEm)) * layoutScale;
+            const Vec2f position{
+                origin.x + (glyph.position.x * layoutScale),
+                origin.y + (glyph.position.y * layoutScale)
+            };
+            const uint32_t paletteIndex = scribe::SelectCompiledFontPalette(font.blob, true);
+            const bool hasResolvedLayers = scribe::GetCompiledColorGlyphLayers(
+                colorLayers,
+                font.blob,
+                glyph.glyphIndex,
+                paletteIndex,
+                foregroundColor);
+
+            if (hasResolvedLayers && !colorLayers.IsEmpty())
+            {
+                for (const scribe::CompiledColorGlyphLayer& layer : colorLayers)
+                {
+                    const scribe::GlyphResource* glyphResource = nullptr;
+                    if (!EnsureGlyphResource(glyph.fontFaceIndex, layer.glyphIndex, glyphResource))
+                    {
+                        continue;
+                    }
+
+                    scribe::DrawGlyphDesc desc{};
+                    desc.glyph = glyphResource;
+                    desc.position = position;
+                    desc.size = { scale, scale };
+                    desc.color = layer.color;
+                    desc.basisX = layer.basisX;
+                    desc.basisY = layer.basisY;
+                    desc.offset = layer.offset;
+                    m_renderer.QueueDraw(desc);
+                }
+                continue;
+            }
+
             const scribe::GlyphResource* glyphResource = nullptr;
             if (!EnsureGlyphResource(glyph.fontFaceIndex, glyph.glyphIndex, glyphResource))
             {
                 continue;
             }
 
-            if (glyph.fontFaceIndex >= m_fonts.Size())
-            {
-                continue;
-            }
-
-            const uint32_t unitsPerEm = Max(m_fonts[glyph.fontFaceIndex].blob.metadata.GetMetrics().GetUnitsPerEm(), 1u);
-            const float scale = (fontSize / static_cast<float>(unitsPerEm)) * layoutScale;
-
             scribe::DrawGlyphDesc desc{};
             desc.glyph = glyphResource;
-            desc.position = {
-                origin.x + (glyph.position.x * layoutScale),
-                origin.y + (glyph.position.y * layoutScale)
-            };
+            desc.position = position;
             desc.size = { scale, scale };
+            desc.color = foregroundColor;
             m_renderer.QueueDraw(desc);
         }
     }
@@ -843,6 +943,23 @@ namespace he
             case DemoScene::AnimatedZoom:
                 m_titleText = "Scribe Testbed: animated zoom artifact stress";
                 m_bodyText = "W Y / WY/WY ///";
+                break;
+
+            case DemoScene::ColorGlyphLayers:
+                if (HasColorDemoFont())
+                {
+                    m_titleText = "Scribe Testbed: COLR/CPAL layered color glyphs";
+                    m_bodyText =
+                        "Color font fallback should route these glyphs through explicit palette layers:\n\n"
+                        "\xF0\x9F\x99\x82 \xF0\x9F\x98\x80 \xF0\x9F\x8E\xA8 \xF0\x9F\x8C\x88 \xE2\x9C\xA8";
+                }
+                else
+                {
+                    m_titleText = "Scribe Testbed: color glyph fallback unavailable";
+                    m_bodyText =
+                        "This machine does not have the optional Segoe UI Emoji font available at the "
+                        "expected system path, so the COLR/CPAL demo scene cannot be exercised here.";
+                }
                 break;
 
             case DemoScene::_Count:
@@ -1002,13 +1119,26 @@ namespace he
         return (m_fonts.Size() > 2) && m_fonts[2].blob.root.IsValid();
     }
 
+    bool ScribeTestApp::HasColorDemoFont() const
+    {
+        for (const LoadedDemoFont& font : m_fonts)
+        {
+            if (font.blob.metadata.IsValid()
+                && font.blob.metadata.GetHasColorGlyphs()
+                && font.blob.paint.IsValid()
+                && !font.blob.paint.GetPalettes().IsEmpty())
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     float ScribeTestApp::GetAnimatedZoomScale() const
     {
         const float elapsedSeconds = ToPeriod<Seconds, float>(MonotonicClock::Now() - m_sceneStartTime);
-
-        const float amplitude = 50.0f;
-        const float frequency = 1.4f; // radians per second
-        const float wave = 0.5f + 0.5f * Sin(elapsedSeconds * frequency);
-        return amplitude * wave;
+        const float wave = 0.5f + 0.5f * Sin(elapsedSeconds * 1.4f);
+        return 0.4f + (wave * 5.6f);
     }
 }

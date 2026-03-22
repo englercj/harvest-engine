@@ -10,6 +10,48 @@
 
 namespace he::scribe::editor
 {
+    struct CompiledFontPaletteColor
+    {
+        float red{ 0.0f };
+        float green{ 0.0f };
+        float blue{ 0.0f };
+        float alpha{ 1.0f };
+    };
+
+    struct CompiledFontPalette
+    {
+        uint32_t flags{ 0 };
+        Vector<CompiledFontPaletteColor> colors{};
+    };
+
+    struct CompiledColorGlyphLayerEntry
+    {
+        uint32_t glyphIndex{ 0 };
+        uint32_t paletteEntryIndex{ 0 };
+        uint32_t flags{ 0 };
+        float alphaScale{ 1.0f };
+        float transform00{ 1.0f };
+        float transform01{ 0.0f };
+        float transform10{ 0.0f };
+        float transform11{ 1.0f };
+        float transformTx{ 0.0f };
+        float transformTy{ 0.0f };
+    };
+
+    struct CompiledColorGlyphEntry
+    {
+        uint32_t firstLayer{ 0 };
+        uint32_t layerCount{ 0 };
+    };
+
+    struct CompiledFontPaintData
+    {
+        uint32_t defaultPaletteIndex{ 0 };
+        Vector<CompiledFontPalette> palettes{};
+        Vector<CompiledColorGlyphEntry> colorGlyphs{};
+        Vector<CompiledColorGlyphLayerEntry> layers{};
+    };
+
     struct CompiledGlyphRenderEntry
     {
         int32_t advanceX{ 0 };
@@ -35,6 +77,7 @@ namespace he::scribe::editor
         Vector<PackedCurveTexel> curveTexels{};
         Vector<PackedBandTexel> bandTexels{};
         Vector<CompiledGlyphRenderEntry> glyphs{};
+        CompiledFontPaintData paint{};
         uint32_t curveTextureWidth{ 0 };
         uint32_t curveTextureHeight{ 0 };
         uint32_t bandTextureWidth{ ScribeBandTextureWidth };

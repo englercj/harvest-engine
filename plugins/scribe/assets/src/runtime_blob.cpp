@@ -107,6 +107,70 @@ namespace he::scribe
 
             return true;
         }
+
+        bool ValidateFontFacePaintData(const LoadedFontFaceBlob& blob)
+        {
+            if (!blob.paint.IsValid())
+            {
+                return false;
+            }
+
+            const auto colorGlyphs = blob.paint.GetColorGlyphs();
+            const auto layers = blob.paint.GetLayers();
+            const auto palettes = blob.paint.GetPalettes();
+            const auto renderGlyphs = blob.render.GetGlyphs();
+
+            if ((colorGlyphs.Size() != 0) && (colorGlyphs.Size() != renderGlyphs.Size()))
+            {
+                HE_LOG_ERROR(he_scribe,
+                    HE_MSG("Scribe font color glyph table size does not match render glyph table."),
+                    HE_KV(color_glyph_count, colorGlyphs.Size()),
+                    HE_KV(render_glyph_count, renderGlyphs.Size()));
+                return false;
+            }
+
+            if (blob.paint.GetDefaultPaletteIndex() >= palettes.Size() && !palettes.IsEmpty())
+            {
+                HE_LOG_ERROR(he_scribe,
+                    HE_MSG("Scribe font default palette index is out of range."),
+                    HE_KV(default_palette_index, blob.paint.GetDefaultPaletteIndex()),
+                    HE_KV(palette_count, palettes.Size()));
+                return false;
+            }
+
+            for (uint32_t glyphIndex = 0; glyphIndex < colorGlyphs.Size(); ++glyphIndex)
+            {
+                const FontFaceColorGlyph::Reader colorGlyph = colorGlyphs[glyphIndex];
+                const uint32_t firstLayer = colorGlyph.GetFirstLayer();
+                const uint32_t layerCount = colorGlyph.GetLayerCount();
+                if ((firstLayer + layerCount) > layers.Size())
+                {
+                    HE_LOG_ERROR(he_scribe,
+                        HE_MSG("Scribe font color glyph layer span is out of range."),
+                        HE_KV(glyph_index, glyphIndex),
+                        HE_KV(first_layer, firstLayer),
+                        HE_KV(layer_count, layerCount),
+                        HE_KV(total_layers, layers.Size()));
+                    return false;
+                }
+
+                for (uint32_t layerIndex = 0; layerIndex < layerCount; ++layerIndex)
+                {
+                    const FontFaceColorGlyphLayer::Reader layer = layers[firstLayer + layerIndex];
+                    if (layer.GetAlphaScale() < 0.0f)
+                    {
+                        HE_LOG_ERROR(he_scribe,
+                            HE_MSG("Scribe font color glyph layer has a negative alpha scale."),
+                            HE_KV(glyph_index, glyphIndex),
+                            HE_KV(layer_index, firstLayer + layerIndex),
+                            HE_KV(alpha_scale, layer.GetAlphaScale()));
+                        return false;
+                    }
+                }
+            }
+
+            return true;
+        }
     }
 
     bool LoadCompiledFontFaceBlob(LoadedFontFaceBlob& out, Span<const schema::Word> data)
@@ -132,13 +196,15 @@ namespace he::scribe
 
         if (!ReadNestedSchema(out.shaping, out.root.GetShapingData())
             || !ReadNestedSchema(out.metadata, out.root.GetMetadataData())
-            || !ReadNestedSchema(out.render, out.root.GetRenderData()))
+            || !ReadNestedSchema(out.render, out.root.GetRenderData())
+            || !ReadNestedSchema(out.paint, out.root.GetPaintData()))
         {
             out = {};
             return false;
         }
 
-        if (!ValidateFontFaceRenderData(out))
+        if (!ValidateFontFaceRenderData(out)
+            || !ValidateFontFacePaintData(out))
         {
             out = {};
             return false;

@@ -36,7 +36,11 @@ namespace
         return false;
     }
 
-    bool BuildLoadedFontFaceFromFile(const char* fileName, Vector<schema::Word>& storage, LoadedFontFaceBlob& out)
+    bool BuildLoadedFontFaceFromFile(
+        const char* fileName,
+        Vector<schema::Word>& storage,
+        LoadedFontFaceBlob& out,
+        bool hasColorGlyphs = false)
     {
         String path;
         if (!ResolveFontPath(path, fileName))
@@ -66,7 +70,7 @@ namespace
         metadata.InitPostscriptName(fileName);
         metadata.SetGlyphCount(0);
         metadata.SetIsScalable(true);
-        metadata.SetHasColorGlyphs(false);
+        metadata.SetHasColorGlyphs(hasColorGlyphs);
         metadata.SetHasKerning(true);
         metadata.SetHasHorizontalLayout(true);
         metadata.SetHasVerticalLayout(false);
@@ -94,6 +98,14 @@ namespace
         static const PackedCurveTexel CurveTexel = PackCurveTexel(0.0f, 0.0f, 0.0f, 0.0f);
         static PackedBandTexel BandTexels[ScribeBandTextureWidth]{};
 
+        schema::Builder paintBuilder;
+        FontFacePaintData::Builder paint = paintBuilder.AddStruct<FontFacePaintData>();
+        paint.SetDefaultPaletteIndex(0);
+        paint.InitPalettes(0);
+        paint.InitColorGlyphs(0);
+        paint.InitLayers(0);
+        paintBuilder.SetRoot(paint);
+
         schema::Builder rootBuilder;
         CompiledFontFaceBlob::Builder root = rootBuilder.AddStruct<CompiledFontFaceBlob>();
         RuntimeBlobHeader::Builder header = root.InitHeader();
@@ -103,7 +115,7 @@ namespace
         root.SetShapingData(rootBuilder.AddBlob(Span<const schema::Word>(shapingBuilder).AsBytes()));
         root.SetCurveData(rootBuilder.AddBlob(Span<const PackedCurveTexel>(&CurveTexel, 1).AsBytes()));
         root.SetBandData(rootBuilder.AddBlob(Span<const PackedBandTexel>(BandTexels).AsBytes()));
-        root.SetPaintData(rootBuilder.AddBlob({}));
+        root.SetPaintData(rootBuilder.AddBlob(Span<const schema::Word>(paintBuilder).AsBytes()));
         root.SetMetadataData(rootBuilder.AddBlob(Span<const schema::Word>(metadataBuilder).AsBytes()));
         root.SetRenderData(rootBuilder.AddBlob(Span<const schema::Word>(renderBuilder).AsBytes()));
         rootBuilder.SetRoot(root);
@@ -162,6 +174,27 @@ HE_TEST(scribe, layout_engine, uses_fallback_face)
     }
 
     HE_EXPECT(sawFallbackCluster);
+}
+
+HE_TEST(scribe, layout_engine, prefers_color_face_for_emoji_clusters)
+{
+    Vector<schema::Word> primaryStorage;
+    Vector<schema::Word> colorStorage;
+    LoadedFontFaceBlob primary{};
+    LoadedFontFaceBlob colorFace{};
+    HE_ASSERT(BuildLoadedFontFaceFromFile("NotoSans-Regular.ttf", primaryStorage, primary, false));
+    HE_ASSERT(BuildLoadedFontFaceFromFile("NotoSans-Regular.ttf", colorStorage, colorFace, true));
+
+    const LoadedFontFaceBlob faces[] = { primary, colorFace };
+
+    LayoutEngine engine;
+    LayoutResult layout;
+    const String text = "A\xEF\xB8\x8F";
+
+    HE_EXPECT(engine.LayoutText(layout, faces, text));
+    HE_EXPECT_EQ(layout.clusters.Size(), 1u);
+    HE_EXPECT_EQ(layout.clusters[0].fontFaceIndex, 1u);
+    HE_EXPECT_GT(layout.fallbackGlyphCount, 0u);
 }
 
 HE_TEST(scribe, layout_engine, wraps_and_hit_tests)

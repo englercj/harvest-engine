@@ -9,9 +9,27 @@ namespace he::scribe
 {
     namespace
     {
+        constexpr uint32_t PaletteFlagForLightBackground = 0x01u;
+        constexpr uint32_t PaletteFlagForDarkBackground = 0x02u;
+
         float PackBits(uint32_t value)
         {
             return BitCast<float>(value);
+        }
+
+        Vec4f GetVertexColor()
+        {
+            return { 1.0f, 1.0f, 1.0f, 1.0f };
+        }
+
+        Vec4f ToVec4f(FontFacePaletteColor::Reader color)
+        {
+            return {
+                color.GetRed(),
+                color.GetGreen(),
+                color.GetBlue(),
+                color.GetAlpha()
+            };
         }
 
         PackedGlyphVertex MakeVertex(
@@ -24,15 +42,14 @@ namespace he::scribe
             float glyphLocBits,
             float bandInfoBits,
             const Vec4f& jac,
-            const Vec4f& banding,
-            const Vec4f& color)
+            const Vec4f& banding)
         {
             PackedGlyphVertex vertex{};
             vertex.pos = { x, y, nx, ny };
             vertex.tex = { u, v, glyphLocBits, bandInfoBits };
             vertex.jac = jac;
             vertex.bnd = banding;
-            vertex.col = color;
+            vertex.col = GetVertexColor();
             return vertex;
         }
     }
@@ -40,8 +57,7 @@ namespace he::scribe
     bool BuildCompiledGlyphResourceData(
         CompiledGlyphResourceData& out,
         const LoadedFontFaceBlob& fontFace,
-        uint32_t glyphIndex,
-        const Vec4f& color)
+        uint32_t glyphIndex)
     {
         out = {};
 
@@ -101,12 +117,12 @@ namespace he::scribe
         const float objectMinY = -maxY;
         const float objectMaxY = -minY;
 
-        out.vertices[0] = MakeVertex(minX, objectMinY, -1.0f, -1.0f, minX, maxY, glyphLocBits, bandInfoBits, jacobian, banding, color);
-        out.vertices[1] = MakeVertex(maxX, objectMinY, 1.0f, -1.0f, maxX, maxY, glyphLocBits, bandInfoBits, jacobian, banding, color);
-        out.vertices[2] = MakeVertex(maxX, objectMaxY, 1.0f, 1.0f, maxX, minY, glyphLocBits, bandInfoBits, jacobian, banding, color);
-        out.vertices[3] = MakeVertex(minX, objectMinY, -1.0f, -1.0f, minX, maxY, glyphLocBits, bandInfoBits, jacobian, banding, color);
-        out.vertices[4] = MakeVertex(maxX, objectMaxY, 1.0f, 1.0f, maxX, minY, glyphLocBits, bandInfoBits, jacobian, banding, color);
-        out.vertices[5] = MakeVertex(minX, objectMaxY, -1.0f, 1.0f, minX, minY, glyphLocBits, bandInfoBits, jacobian, banding, color);
+        out.vertices[0] = MakeVertex(minX, objectMinY, -1.0f, -1.0f, minX, maxY, glyphLocBits, bandInfoBits, jacobian, banding);
+        out.vertices[1] = MakeVertex(maxX, objectMinY, 1.0f, -1.0f, maxX, maxY, glyphLocBits, bandInfoBits, jacobian, banding);
+        out.vertices[2] = MakeVertex(maxX, objectMaxY, 1.0f, 1.0f, maxX, minY, glyphLocBits, bandInfoBits, jacobian, banding);
+        out.vertices[3] = MakeVertex(minX, objectMinY, -1.0f, -1.0f, minX, maxY, glyphLocBits, bandInfoBits, jacobian, banding);
+        out.vertices[4] = MakeVertex(maxX, objectMaxY, 1.0f, 1.0f, maxX, minY, glyphLocBits, bandInfoBits, jacobian, banding);
+        out.vertices[5] = MakeVertex(minX, objectMaxY, -1.0f, 1.0f, minX, minY, glyphLocBits, bandInfoBits, jacobian, banding);
 
         const auto curveBytes = fontFace.root.GetCurveData();
         const auto bandBytes = fontFace.root.GetBandData();
@@ -126,6 +142,102 @@ namespace he::scribe
         };
         out.createInfo.bandTexture.rowPitch = fontFace.render.GetBandTextureWidth() * sizeof(PackedBandTexel);
         out.glyph = glyph;
+        return true;
+    }
+
+    uint32_t SelectCompiledFontPalette(const LoadedFontFaceBlob& fontFace, bool darkBackgroundPreferred)
+    {
+        if (!fontFace.paint.IsValid())
+        {
+            return 0;
+        }
+
+        const auto palettes = fontFace.paint.GetPalettes();
+        if (palettes.IsEmpty())
+        {
+            return 0;
+        }
+
+        const uint32_t desiredFlag = darkBackgroundPreferred ? PaletteFlagForDarkBackground : PaletteFlagForLightBackground;
+        for (uint32_t paletteIndex = 0; paletteIndex < palettes.Size(); ++paletteIndex)
+        {
+            if ((palettes[paletteIndex].GetFlags() & desiredFlag) != 0)
+            {
+                return paletteIndex;
+            }
+        }
+
+        const uint32_t defaultPaletteIndex = fontFace.paint.GetDefaultPaletteIndex();
+        return defaultPaletteIndex < palettes.Size() ? defaultPaletteIndex : 0;
+    }
+
+    bool GetCompiledColorGlyphLayers(
+        Vector<CompiledColorGlyphLayer>& out,
+        const LoadedFontFaceBlob& fontFace,
+        uint32_t glyphIndex,
+        uint32_t paletteIndex,
+        const Vec4f& foregroundColor)
+    {
+        out.Clear();
+
+        if (!fontFace.paint.IsValid())
+        {
+            return false;
+        }
+
+        const auto colorGlyphs = fontFace.paint.GetColorGlyphs();
+        if (glyphIndex >= colorGlyphs.Size())
+        {
+            return true;
+        }
+
+        const FontFaceColorGlyph::Reader colorGlyph = colorGlyphs[glyphIndex];
+        const uint32_t layerCount = colorGlyph.GetLayerCount();
+        if (layerCount == 0)
+        {
+            return true;
+        }
+
+        const auto palettes = fontFace.paint.GetPalettes();
+        const auto layers = fontFace.paint.GetLayers();
+        if (palettes.IsEmpty())
+        {
+            return false;
+        }
+
+        if (paletteIndex >= palettes.Size())
+        {
+            paletteIndex = SelectCompiledFontPalette(fontFace, false);
+        }
+
+        const FontFacePalette::Reader palette = palettes[paletteIndex];
+        const auto colors = palette.GetColors();
+        const uint32_t firstLayer = colorGlyph.GetFirstLayer();
+
+        out.Reserve(layerCount);
+        for (uint32_t layerIndex = 0; layerIndex < layerCount; ++layerIndex)
+        {
+            const FontFaceColorGlyphLayer::Reader layer = layers[firstLayer + layerIndex];
+
+            CompiledColorGlyphLayer& resolvedLayer = out.EmplaceBack();
+            resolvedLayer.glyphIndex = layer.GetGlyphIndex();
+            resolvedLayer.color = foregroundColor;
+            resolvedLayer.basisX = { layer.GetTransform00(), layer.GetTransform10() };
+            resolvedLayer.basisY = { layer.GetTransform01(), layer.GetTransform11() };
+            resolvedLayer.offset = { layer.GetTransformTx(), layer.GetTransformTy() };
+
+            if ((layer.GetFlags() & CompiledFontColorLayerFlagUseForeground) == 0)
+            {
+                const uint32_t paletteEntryIndex = layer.GetPaletteEntryIndex();
+                if (paletteEntryIndex < colors.Size())
+                {
+                    resolvedLayer.color = ToVec4f(colors[paletteEntryIndex]);
+                }
+            }
+
+            resolvedLayer.color.w *= Max(layer.GetAlphaScale(), 0.0f);
+        }
+
         return true;
     }
 }

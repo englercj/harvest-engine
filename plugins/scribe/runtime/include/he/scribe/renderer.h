@@ -61,6 +61,10 @@ namespace he::scribe
         const GlyphResource* glyph{ nullptr };
         Vec2f position{ 0, 0 };
         Vec2f size{ 1, 1 };
+        Vec4f color{ 1, 1, 1, 1 };
+        Vec2f basisX{ 1, 0 };
+        Vec2f basisY{ 0, 1 };
+        Vec2f offset{ 0, 0 };
     };
 
     class Renderer
@@ -83,8 +87,7 @@ namespace he::scribe
         bool CreateCompiledGlyphResource(
             GlyphResource& out,
             const LoadedFontFaceBlob& fontFace,
-            uint32_t glyphIndex,
-            const Vec4f& color = { 1.0f, 1.0f, 1.0f, 1.0f });
+            uint32_t glyphIndex);
         bool CreateDebugGlyphResource(GlyphResource& out);
         void DestroyGlyphResource(GlyphResource& resource);
 
@@ -98,6 +101,10 @@ namespace he::scribe
             const GlyphResource* glyph{ nullptr };
             Vec2f position{ 0, 0 };
             Vec2f size{ 1, 1 };
+            Vec4f color{ 1, 1, 1, 1 };
+            Vec2f basisX{ 1, 0 };
+            Vec2f basisY{ 0, 1 };
+            Vec2f offset{ 0, 0 };
         };
 
         bool CreateDeviceResources();

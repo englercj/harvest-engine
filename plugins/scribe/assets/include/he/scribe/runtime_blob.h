@@ -10,8 +10,8 @@
 
 namespace he::scribe
 {
-    // M2 format marker for the first Harvest-owned compiled font/vector blob schema.
-    inline constexpr uint32_t RuntimeBlobFormatVersion = 2;
+    // M5 format marker adding per-layer affine transforms for COLR v1 paint lowering.
+    inline constexpr uint32_t RuntimeBlobFormatVersion = 5;
 
     struct LoadedFontFaceBlob
     {
@@ -19,6 +19,7 @@ namespace he::scribe
         FontFaceShapingData::Reader shaping{};
         FontFaceImportMetadata::Reader metadata{};
         FontFaceRenderData::Reader render{};
+        FontFacePaintData::Reader paint{};
     };
 
     struct LoadedFontFamilyBlob

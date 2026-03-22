@@ -77,6 +77,7 @@ namespace he
             CombiningAndFallback,
             RightToLeft,
             AnimatedZoom,
+            ColorGlyphLayers,
 
             _Count,
         };
@@ -104,6 +105,7 @@ namespace he
         bool BeginFrame();
         void EndFrame();
         bool HasRtlDemoFallbackFont() const;
+        bool HasColorDemoFont() const;
         float GetAnimatedZoomScale() const;
 
     private:

@@ -63,6 +63,9 @@ cbuffer ParamStruct : register(b0)
 
     // The viewport dimensions, in pixels.
     float4 viewport;
+
+    // Per-draw color multiplier.
+    float4 drawColor;
 };
 
 Texture2D curveTexture : register(t0);
@@ -85,7 +88,7 @@ VertexOutput vs_main(VertexInput input, uint vid : SV_VertexID)
 
     // Unpack or pass through remaining vertex data.
     SlugUnpack(input.tex, input.bnd, vresult.banding, vresult.glyph);
-    vresult.color = input.col;
+    vresult.color = input.col * drawColor;
     return vresult;
 }
 

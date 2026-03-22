@@ -68,9 +68,10 @@ plugin he.scribe version="0.1.0" license="UNLICENSED" {
 
     module he_scribe_tests kind=lib_static group="engine/tests" {
         files { "test/**" }
+        include_dirs { "editor/src" }
 
         public {
-            dependencies { he_scribe }
+            dependencies { freetype; he_scribe; he_scribe_editor }
         }
     }
 

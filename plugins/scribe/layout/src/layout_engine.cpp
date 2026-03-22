@@ -29,6 +29,7 @@ namespace he::scribe
             float ascent{ 0.0f };
             float descent{ 0.0f };
             float lineHeight{ 0.0f };
+            bool hasColorGlyphs{ false };
             bool hasSourceBytes{ false };
         };
 
@@ -118,6 +119,12 @@ namespace he::scribe
             return (codePoint >= 0x1F3FBu) && (codePoint <= 0x1F3FFu);
         }
 
+        bool IsLikelyEmojiCodePoint(uint32_t codePoint)
+        {
+            return ((codePoint >= 0x2600u) && (codePoint <= 0x27BFu))
+                || ((codePoint >= 0x1F000u) && (codePoint <= 0x1FAFFu));
+        }
+
         bool IsJoinControl(uint32_t codePoint)
         {
             return (codePoint == 0x200Cu) || (codePoint == 0x200Du);
@@ -142,6 +149,32 @@ namespace he::scribe
             return IsVariationSelector(codePoint)
                 || IsJoinControl(codePoint)
                 || (codePoint == 0x00ADu);
+        }
+
+        bool ClusterPrefersColorGlyphs(StringView text)
+        {
+            bool sawEmojiCodePoint = false;
+
+            for (UTF8Iterator it(text);; ++it)
+            {
+                const uint32_t codePoint = *it;
+                if (codePoint == InvalidCodePoint)
+                {
+                    break;
+                }
+
+                if ((codePoint == 0xFE0Fu) || IsEmojiModifier(codePoint) || IsJoinControl(codePoint))
+                {
+                    return true;
+                }
+
+                if (IsLikelyEmojiCodePoint(codePoint))
+                {
+                    sawEmojiCodePoint = true;
+                }
+            }
+
+            return sawEmojiCodePoint;
         }
 
         ClusterDirection ToClusterDirection(hb_script_t script)
@@ -204,6 +237,7 @@ namespace he::scribe
                 ctx.ascent = static_cast<float>(faces[i].metadata.GetMetrics().GetAscender()) * ctx.unitScale;
                 ctx.descent = static_cast<float>(Abs(faces[i].metadata.GetMetrics().GetDescender())) * ctx.unitScale;
                 ctx.lineHeight = static_cast<float>(faces[i].metadata.GetMetrics().GetLineHeight()) * ctx.unitScale;
+                ctx.hasColorGlyphs = faces[i].metadata.IsValid() && faces[i].metadata.GetHasColorGlyphs();
                 if (ctx.lineHeight <= 0.0f)
                 {
                     ctx.lineHeight = ctx.ascent + ctx.descent;
@@ -316,6 +350,17 @@ namespace he::scribe
                 }
 
                 return defaultFaceIndex;
+            }
+
+            if (ClusterPrefersColorGlyphs(text))
+            {
+                for (uint32_t i = 0; i < faces.Size(); ++i)
+                {
+                    if (faces[i].hasColorGlyphs && FaceHasClusterCoverage(faces[i], text))
+                    {
+                        return i;
+                    }
+                }
             }
 
             for (uint32_t i = 0; i < faces.Size(); ++i)

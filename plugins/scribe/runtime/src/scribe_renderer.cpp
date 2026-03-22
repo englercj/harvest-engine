@@ -22,7 +22,7 @@ namespace he::scribe
 {
     namespace
     {
-        constexpr uint32_t VertexShaderConstantCount = 20;
+        constexpr uint32_t VertexShaderConstantCount = 24;
 
         bool CreateUploadVertexBuffer(
             rhi::Device& device,
@@ -188,22 +188,32 @@ namespace he::scribe
             return BitCast<float>(value);
         }
 
-        void BuildDrawConstants(float* outConstants, const Vec2u& targetSize, const Vec2f& position, const Vec2f& size)
+        void BuildDrawConstants(
+            float* outConstants,
+            const Vec2u& targetSize,
+            const Vec2f& position,
+            const Vec2f& size,
+            const Vec2f& basisX,
+            const Vec2f& basisY,
+            const Vec2f& offset,
+            const Vec4f& color)
         {
             HE_ASSERT(outConstants);
 
             const float width = static_cast<float>(targetSize.x);
             const float height = static_cast<float>(targetSize.y);
+            const float offsetX = position.x + (size.x * offset.x);
+            const float offsetY = position.y + (size.y * offset.y);
 
-            outConstants[0] = (2.0f * size.x) / width;
-            outConstants[1] = 0.0f;
+            outConstants[0] = (2.0f * size.x * basisX.x) / width;
+            outConstants[1] = (2.0f * size.x * basisY.x) / width;
             outConstants[2] = 0.0f;
-            outConstants[3] = (2.0f * position.x) / width - 1.0f;
+            outConstants[3] = (2.0f * offsetX) / width - 1.0f;
 
-            outConstants[4] = 0.0f;
-            outConstants[5] = (-2.0f * size.y) / height;
+            outConstants[4] = (-2.0f * size.y * basisX.y) / height;
+            outConstants[5] = (-2.0f * size.y * basisY.y) / height;
             outConstants[6] = 0.0f;
-            outConstants[7] = 1.0f - (2.0f * position.y) / height;
+            outConstants[7] = 1.0f - (2.0f * offsetY) / height;
 
             outConstants[8] = 0.0f;
             outConstants[9] = 0.0f;
@@ -219,6 +229,10 @@ namespace he::scribe
             outConstants[17] = height;
             outConstants[18] = 0.0f;
             outConstants[19] = 0.0f;
+            outConstants[20] = color.x;
+            outConstants[21] = color.y;
+            outConstants[22] = color.z;
+            outConstants[23] = color.w;
         }
     }
 
@@ -352,11 +366,10 @@ namespace he::scribe
     bool Renderer::CreateCompiledGlyphResource(
         GlyphResource& out,
         const LoadedFontFaceBlob& fontFace,
-        uint32_t glyphIndex,
-        const Vec4f& color)
+        uint32_t glyphIndex)
     {
         CompiledGlyphResourceData glyphData{};
-        if (!BuildCompiledGlyphResourceData(glyphData, fontFace, glyphIndex, color))
+        if (!BuildCompiledGlyphResourceData(glyphData, fontFace, glyphIndex))
         {
             return false;
         }
@@ -479,6 +492,10 @@ namespace he::scribe
         draw.glyph = desc.glyph;
         draw.position = desc.position;
         draw.size = desc.size;
+        draw.color = desc.color;
+        draw.basisX = desc.basisX;
+        draw.basisY = desc.basisY;
+        draw.offset = desc.offset;
     }
 
     void Renderer::EndFrame()
@@ -547,7 +564,7 @@ namespace he::scribe
             rhi::SlotDesc slots[2]{};
 
             slots[0].type = rhi::SlotType::ConstantValues;
-            slots[0].stage = rhi::ShaderStage::Vertex;
+            slots[0].stage = rhi::ShaderStage::All;
             slots[0].constantValues.baseRegister = 0;
             slots[0].constantValues.registerSpace = 0;
             slots[0].constantValues.num32BitValues = VertexShaderConstantCount;
@@ -694,7 +711,15 @@ namespace he::scribe
         HE_ASSERT(draw.glyph);
 
         float constants[VertexShaderConstantCount]{};
-        BuildDrawConstants(constants, m_frame.targetSize, draw.position, draw.size);
+        BuildDrawConstants(
+            constants,
+            m_frame.targetSize,
+            draw.position,
+            draw.size,
+            draw.basisX,
+            draw.basisY,
+            draw.offset,
+            draw.color);
 
         m_frame.cmdList->SetVertexBuffer(
             0,

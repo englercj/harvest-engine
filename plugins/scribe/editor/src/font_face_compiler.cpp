@@ -155,6 +155,56 @@ namespace he::scribe::editor
         }
         renderBuilder.SetRoot(render);
 
+        schema::Builder paintBuilder;
+        FontFacePaintData::Builder paint = paintBuilder.AddStruct<FontFacePaintData>();
+        paint.SetDefaultPaletteIndex(renderData.paint.defaultPaletteIndex);
+
+        auto palettes = paint.InitPalettes(renderData.paint.palettes.Size());
+        for (uint32_t paletteIndex = 0; paletteIndex < renderData.paint.palettes.Size(); ++paletteIndex)
+        {
+            const CompiledFontPalette& srcPalette = renderData.paint.palettes[paletteIndex];
+            FontFacePalette::Builder dstPalette = palettes[paletteIndex];
+            dstPalette.SetFlags(srcPalette.flags);
+
+            auto colors = dstPalette.InitColors(srcPalette.colors.Size());
+            for (uint32_t colorIndex = 0; colorIndex < srcPalette.colors.Size(); ++colorIndex)
+            {
+                const CompiledFontPaletteColor& srcColor = srcPalette.colors[colorIndex];
+                FontFacePaletteColor::Builder dstColor = colors[colorIndex];
+                dstColor.SetRed(srcColor.red);
+                dstColor.SetGreen(srcColor.green);
+                dstColor.SetBlue(srcColor.blue);
+                dstColor.SetAlpha(srcColor.alpha);
+            }
+        }
+
+        auto colorGlyphs = paint.InitColorGlyphs(renderData.paint.colorGlyphs.Size());
+        for (uint32_t glyphIndex = 0; glyphIndex < renderData.paint.colorGlyphs.Size(); ++glyphIndex)
+        {
+            const CompiledColorGlyphEntry& srcColorGlyph = renderData.paint.colorGlyphs[glyphIndex];
+            FontFaceColorGlyph::Builder dstColorGlyph = colorGlyphs[glyphIndex];
+            dstColorGlyph.SetFirstLayer(srcColorGlyph.firstLayer);
+            dstColorGlyph.SetLayerCount(srcColorGlyph.layerCount);
+        }
+
+        auto layers = paint.InitLayers(renderData.paint.layers.Size());
+        for (uint32_t layerIndex = 0; layerIndex < renderData.paint.layers.Size(); ++layerIndex)
+        {
+            const CompiledColorGlyphLayerEntry& srcLayer = renderData.paint.layers[layerIndex];
+            FontFaceColorGlyphLayer::Builder dstLayer = layers[layerIndex];
+            dstLayer.SetGlyphIndex(srcLayer.glyphIndex);
+            dstLayer.SetPaletteEntryIndex(srcLayer.paletteEntryIndex);
+            dstLayer.SetFlags(srcLayer.flags);
+            dstLayer.SetAlphaScale(srcLayer.alphaScale);
+            dstLayer.SetTransform00(srcLayer.transform00);
+            dstLayer.SetTransform01(srcLayer.transform01);
+            dstLayer.SetTransform10(srcLayer.transform10);
+            dstLayer.SetTransform11(srcLayer.transform11);
+            dstLayer.SetTransformTx(srcLayer.transformTx);
+            dstLayer.SetTransformTy(srcLayer.transformTy);
+        }
+        paintBuilder.SetRoot(paint);
+
         schema::Builder blobBuilder;
         CompiledFontFaceBlob::Builder blob = blobBuilder.AddStruct<CompiledFontFaceBlob>();
         RuntimeBlobHeader::Builder header = blob.InitHeader();
@@ -164,7 +214,7 @@ namespace he::scribe::editor
         blob.SetShapingData(blobBuilder.AddBlob(Span<const schema::Word>(shapingBuilder).AsBytes()));
         blob.SetCurveData(blobBuilder.AddBlob(Span<const PackedCurveTexel>(renderData.curveTexels.Data(), renderData.curveTexels.Size()).AsBytes()));
         blob.SetBandData(blobBuilder.AddBlob(Span<const PackedBandTexel>(renderData.bandTexels.Data(), renderData.bandTexels.Size()).AsBytes()));
-        blob.SetPaintData(blobBuilder.AddBlob({}));
+        blob.SetPaintData(blobBuilder.AddBlob(Span<const schema::Word>(paintBuilder).AsBytes()));
         blob.SetMetadataData(blobBuilder.AddBlob(Span<const schema::Word>(metadataBuilder).AsBytes()));
         blob.SetRenderData(blobBuilder.AddBlob(Span<const schema::Word>(renderBuilder).AsBytes()));
         blobBuilder.SetRoot(blob);

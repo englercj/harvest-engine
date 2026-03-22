@@ -104,6 +104,60 @@ namespace
         return Span<const schema::Word>(builder).AsBytes();
     }
 
+    Span<const uint8_t> BuildFontFacePaintBytes(schema::Builder& builder)
+    {
+        FontFacePaintData::Builder paint = builder.AddStruct<FontFacePaintData>();
+        paint.SetDefaultPaletteIndex(0);
+
+        auto palettes = paint.InitPalettes(1);
+        {
+            FontFacePalette::Builder palette = palettes[0];
+            palette.SetFlags(0x02u);
+
+            auto colors = palette.InitColors(2);
+            colors[0].SetRed(1.0f);
+            colors[0].SetGreen(0.0f);
+            colors[0].SetBlue(0.0f);
+            colors[0].SetAlpha(1.0f);
+
+            colors[1].SetRed(0.0f);
+            colors[1].SetGreen(0.6f);
+            colors[1].SetBlue(1.0f);
+            colors[1].SetAlpha(1.0f);
+        }
+
+        auto colorGlyphs = paint.InitColorGlyphs(2);
+        colorGlyphs[0].SetFirstLayer(0);
+        colorGlyphs[0].SetLayerCount(2);
+        colorGlyphs[1].SetFirstLayer(2);
+        colorGlyphs[1].SetLayerCount(0);
+
+        auto layers = paint.InitLayers(2);
+        layers[0].SetGlyphIndex(0);
+        layers[0].SetPaletteEntryIndex(0);
+        layers[0].SetFlags(0);
+        layers[0].SetAlphaScale(0.75f);
+        layers[0].SetTransform00(1.0f);
+        layers[0].SetTransform01(0.0f);
+        layers[0].SetTransform10(0.0f);
+        layers[0].SetTransform11(1.0f);
+        layers[0].SetTransformTx(12.0f);
+        layers[0].SetTransformTy(-6.0f);
+        layers[1].SetGlyphIndex(0);
+        layers[1].SetPaletteEntryIndex(0);
+        layers[1].SetFlags(CompiledFontColorLayerFlagUseForeground);
+        layers[1].SetAlphaScale(0.5f);
+        layers[1].SetTransform00(0.5f);
+        layers[1].SetTransform01(0.25f);
+        layers[1].SetTransform10(-0.75f);
+        layers[1].SetTransform11(1.5f);
+        layers[1].SetTransformTx(3.0f);
+        layers[1].SetTransformTy(9.0f);
+
+        builder.SetRoot(paint);
+        return Span<const schema::Word>(builder).AsBytes();
+    }
+
     Span<const uint8_t> BuildCurveBytes()
     {
         static const PackedCurveTexel CurveTexels[] =
@@ -154,6 +208,9 @@ HE_TEST(scribe, runtime_blob, load_compiled_font_face_success)
     schema::Builder renderBuilder;
     const Span<const uint8_t> renderBytes = BuildFontFaceRenderBytes(renderBuilder);
 
+    schema::Builder paintBuilder;
+    const Span<const uint8_t> paintBytes = BuildFontFacePaintBytes(paintBuilder);
+
     schema::Builder rootBuilder;
     CompiledFontFaceBlob::Builder root = rootBuilder.AddStruct<CompiledFontFaceBlob>();
 
@@ -165,7 +222,7 @@ HE_TEST(scribe, runtime_blob, load_compiled_font_face_success)
     root.SetShapingData(rootBuilder.AddBlob(shapingBytes));
     root.SetCurveData(rootBuilder.AddBlob(BuildCurveBytes()));
     root.SetBandData(rootBuilder.AddBlob(BuildBandBytes()));
-    root.SetPaintData(rootBuilder.AddBlob({}));
+    root.SetPaintData(rootBuilder.AddBlob(paintBytes));
     root.SetMetadataData(rootBuilder.AddBlob(metadataBytes));
     root.SetRenderData(rootBuilder.AddBlob(renderBytes));
     rootBuilder.SetRoot(root);
@@ -183,6 +240,9 @@ HE_TEST(scribe, runtime_blob, load_compiled_font_face_success)
     HE_EXPECT_EQ(loaded.render.GetGlyphs().Size(), 2u);
     HE_EXPECT_EQ(loaded.render.GetCurveTextureWidth(), 8u);
     HE_EXPECT_EQ(loaded.render.GetBandTextureWidth(), ScribeBandTextureWidth);
+    HE_EXPECT(loaded.paint.IsValid());
+    HE_EXPECT_EQ(loaded.paint.GetPalettes().Size(), 1u);
+    HE_EXPECT_EQ(loaded.paint.GetColorGlyphs().Size(), 2u);
 }
 
 HE_TEST(scribe, runtime_blob, reject_wrong_font_face_version)
@@ -196,6 +256,9 @@ HE_TEST(scribe, runtime_blob, reject_wrong_font_face_version)
     schema::Builder renderBuilder;
     const Span<const uint8_t> renderBytes = BuildFontFaceRenderBytes(renderBuilder);
 
+    schema::Builder paintBuilder;
+    const Span<const uint8_t> paintBytes = BuildFontFacePaintBytes(paintBuilder);
+
     schema::Builder rootBuilder;
     CompiledFontFaceBlob::Builder root = rootBuilder.AddStruct<CompiledFontFaceBlob>();
 
@@ -207,7 +270,7 @@ HE_TEST(scribe, runtime_blob, reject_wrong_font_face_version)
     root.SetShapingData(rootBuilder.AddBlob(shapingBytes));
     root.SetCurveData(rootBuilder.AddBlob(BuildCurveBytes()));
     root.SetBandData(rootBuilder.AddBlob(BuildBandBytes()));
-    root.SetPaintData(rootBuilder.AddBlob({}));
+    root.SetPaintData(rootBuilder.AddBlob(paintBytes));
     root.SetMetadataData(rootBuilder.AddBlob(metadataBytes));
     root.SetRenderData(rootBuilder.AddBlob(renderBytes));
     rootBuilder.SetRoot(root);
@@ -227,6 +290,9 @@ HE_TEST(scribe, runtime_blob, build_compiled_glyph_resource_data)
     schema::Builder renderBuilder;
     const Span<const uint8_t> renderBytes = BuildFontFaceRenderBytes(renderBuilder);
 
+    schema::Builder paintBuilder;
+    const Span<const uint8_t> paintBytes = BuildFontFacePaintBytes(paintBuilder);
+
     schema::Builder rootBuilder;
     CompiledFontFaceBlob::Builder root = rootBuilder.AddStruct<CompiledFontFaceBlob>();
 
@@ -238,7 +304,7 @@ HE_TEST(scribe, runtime_blob, build_compiled_glyph_resource_data)
     root.SetShapingData(rootBuilder.AddBlob(shapingBytes));
     root.SetCurveData(rootBuilder.AddBlob(BuildCurveBytes()));
     root.SetBandData(rootBuilder.AddBlob(BuildBandBytes()));
-    root.SetPaintData(rootBuilder.AddBlob({}));
+    root.SetPaintData(rootBuilder.AddBlob(paintBytes));
     root.SetMetadataData(rootBuilder.AddBlob(metadataBytes));
     root.SetRenderData(rootBuilder.AddBlob(renderBytes));
     rootBuilder.SetRoot(root);
@@ -254,6 +320,63 @@ HE_TEST(scribe, runtime_blob, build_compiled_glyph_resource_data)
     HE_EXPECT_EQ(glyph.createInfo.bandTexture.size.x, ScribeBandTextureWidth);
     HE_EXPECT_EQ(glyph.createInfo.bandTexture.size.y, 1u);
     HE_EXPECT_EQ(glyph.vertices[0].pos.x, 0.0f);
-    HE_EXPECT_EQ(glyph.vertices[2].pos.y, 1.0f);
+    HE_EXPECT_EQ(glyph.vertices[2].pos.y, 0.0f);
     HE_EXPECT(!BuildCompiledGlyphResourceData(glyph, loaded, 1));
+}
+
+HE_TEST(scribe, runtime_blob, resolve_compiled_color_glyph_layers)
+{
+    schema::Builder shapingBuilder;
+    const Span<const uint8_t> shapingBytes = BuildFontFaceShapingBytes(shapingBuilder);
+
+    schema::Builder metadataBuilder;
+    const Span<const uint8_t> metadataBytes = BuildFontFaceMetadataBytes(metadataBuilder);
+
+    schema::Builder renderBuilder;
+    const Span<const uint8_t> renderBytes = BuildFontFaceRenderBytes(renderBuilder);
+
+    schema::Builder paintBuilder;
+    const Span<const uint8_t> paintBytes = BuildFontFacePaintBytes(paintBuilder);
+
+    schema::Builder rootBuilder;
+    CompiledFontFaceBlob::Builder root = rootBuilder.AddStruct<CompiledFontFaceBlob>();
+
+    RuntimeBlobHeader::Builder header = root.InitHeader();
+    header.SetFormatVersion(RuntimeBlobFormatVersion);
+    header.SetKind(RuntimeBlobKind::FontFace);
+    header.SetFlags(0);
+
+    root.SetShapingData(rootBuilder.AddBlob(shapingBytes));
+    root.SetCurveData(rootBuilder.AddBlob(BuildCurveBytes()));
+    root.SetBandData(rootBuilder.AddBlob(BuildBandBytes()));
+    root.SetPaintData(rootBuilder.AddBlob(paintBytes));
+    root.SetMetadataData(rootBuilder.AddBlob(metadataBytes));
+    root.SetRenderData(rootBuilder.AddBlob(renderBytes));
+    rootBuilder.SetRoot(root);
+
+    LoadedFontFaceBlob loaded{};
+    HE_ASSERT(LoadCompiledFontFaceBlob(loaded, Span<const schema::Word>(rootBuilder)));
+
+    Vector<CompiledColorGlyphLayer> layers{};
+    HE_EXPECT(GetCompiledColorGlyphLayers(layers, loaded, 0, 0, { 0.5f, 0.25f, 0.75f, 1.0f }));
+    HE_EXPECT_EQ(layers.Size(), 2u);
+    HE_EXPECT_EQ(layers[0].glyphIndex, 0u);
+    HE_EXPECT_EQ(layers[0].color.x, 1.0f);
+    HE_EXPECT_EQ(layers[0].color.y, 0.0f);
+    HE_EXPECT_EQ(layers[0].color.w, 0.75f);
+    HE_EXPECT_EQ(layers[0].basisX.x, 1.0f);
+    HE_EXPECT_EQ(layers[0].basisX.y, 0.0f);
+    HE_EXPECT_EQ(layers[0].basisY.x, 0.0f);
+    HE_EXPECT_EQ(layers[0].basisY.y, 1.0f);
+    HE_EXPECT_EQ(layers[0].offset.x, 12.0f);
+    HE_EXPECT_EQ(layers[0].offset.y, -6.0f);
+    HE_EXPECT_EQ(layers[1].color.x, 0.5f);
+    HE_EXPECT_EQ(layers[1].color.y, 0.25f);
+    HE_EXPECT_EQ(layers[1].color.w, 0.5f);
+    HE_EXPECT_EQ(layers[1].basisX.x, 0.5f);
+    HE_EXPECT_EQ(layers[1].basisX.y, -0.75f);
+    HE_EXPECT_EQ(layers[1].basisY.x, 0.25f);
+    HE_EXPECT_EQ(layers[1].basisY.y, 1.5f);
+    HE_EXPECT_EQ(layers[1].offset.x, 3.0f);
+    HE_EXPECT_EQ(layers[1].offset.y, 9.0f);
 }

@@ -149,8 +149,56 @@ struct FontFamilyRuntimeData
 
 struct VectorImageRuntimeMetadata
 {
-    sourceViewBoxWidth @0 :float32;
-    sourceViewBoxHeight @1 :float32;
+    sourceViewBoxMinX @0 :float32;
+    sourceViewBoxMinY @1 :float32;
+    sourceViewBoxWidth @2 :float32;
+    sourceViewBoxHeight @3 :float32;
+    sourceBoundsMinX @4 :float32;
+    sourceBoundsMinY @5 :float32;
+    sourceBoundsMaxX @6 :float32;
+    sourceBoundsMaxY @7 :float32;
+}
+
+struct VectorImageShapeRenderData
+{
+    boundsMinX @0 :float32;
+    boundsMinY @1 :float32;
+    boundsMaxX @2 :float32;
+    boundsMaxY @3 :float32;
+    bandScaleX @4 :float32;
+    bandScaleY @5 :float32;
+    bandOffsetX @6 :float32;
+    bandOffsetY @7 :float32;
+    glyphBandLocX @8 :uint32;
+    glyphBandLocY @9 :uint32;
+    bandMaxX @10 :uint32;
+    bandMaxY @11 :uint32;
+    fillRule @12 :FillRule;
+    flags @13 :uint32;
+}
+
+struct VectorImageRenderData
+{
+    curveTextureWidth @0 :uint32;
+    curveTextureHeight @1 :uint32;
+    bandTextureWidth @2 :uint32;
+    bandTextureHeight @3 :uint32;
+    bandOverlapEpsilon @4 :float32;
+    shapes @5 :VectorImageShapeRenderData[];
+}
+
+struct VectorImageLayer
+{
+    shapeIndex @0 :uint32;
+    red @1 :float32;
+    green @2 :float32;
+    blue @3 :float32;
+    alpha @4 :float32;
+}
+
+struct VectorImagePaintData
+{
+    layers @0 :VectorImageLayer[];
 }
 
 struct CompiledFontFaceBlob
@@ -183,6 +231,7 @@ struct CompiledVectorImageBlob
     bandData @2 :Blob;
     paintData @3 :Blob;
     metadataData @4 :Blob;
+    renderData @5 :Blob;
 }
 
 struct ScribeFontFace
@@ -231,7 +280,23 @@ struct ScribeFontFamily
 struct ScribeImage
 {
     const AssetTypeName :String = "he.scribe.image";
+    const ImportSourceResourceName :String = "he.scribe.image.import_source";
+    const ImportMetadataResourceName :String = "he.scribe.image.import_metadata";
     const RuntimeBlobResourceName :String = "he.scribe.vector_image.runtime_blob";
+
+    struct ImportSourceResource
+    {
+        sourceBytes @0 :Blob;
+        sourceFileName @1 :String;
+    }
+
+    struct ImportMetadataResource
+    {
+        sourceViewBoxMinX @0 :float32;
+        sourceViewBoxMinY @1 :float32;
+        sourceViewBoxWidth @2 :float32;
+        sourceViewBoxHeight @3 :float32;
+    }
 
     flatteningTolerance @0 :float32 = 0.25;
     preserveStrokes @1 :bool = true;

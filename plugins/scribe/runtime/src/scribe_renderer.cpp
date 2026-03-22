@@ -3,6 +3,7 @@
 #include "he/scribe/renderer.h"
 
 #include "he/scribe/compiled_font.h"
+#include "he/scribe/compiled_vector_image.h"
 
 #include "shaders/scribe.shaders.h"
 
@@ -375,6 +376,20 @@ namespace he::scribe
         }
 
         return CreateGlyphResource(out, glyphData.createInfo);
+    }
+
+    bool Renderer::CreateCompiledVectorShapeResource(
+        GlyphResource& out,
+        const LoadedVectorImageBlob& image,
+        uint32_t shapeIndex)
+    {
+        CompiledVectorShapeResourceData shapeData{};
+        if (!BuildCompiledVectorShapeResourceData(shapeData, image, shapeIndex))
+        {
+            return false;
+        }
+
+        return CreateGlyphResource(out, shapeData.createInfo);
     }
 
     bool Renderer::CreateDebugGlyphResource(GlyphResource& out)

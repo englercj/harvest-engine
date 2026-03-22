@@ -42,6 +42,8 @@ with downstream engine systems consuming it later when they are ready.
   - Current milestone M3 implementation status for shaping, fallback, wrapping, cluster mapping, and hit testing basics.
 - `docs/m4_status.md`
   - Current milestone M4 implementation status for the dedicated visual testbed app.
+- `docs/m6_status.md`
+  - Current milestone M6 implementation status for the SVG importer/compiler/runtime path and its visual testbed coverage.
 
 ## Working Assumptions
 

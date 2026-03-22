@@ -171,6 +171,76 @@ namespace he::scribe
 
             return true;
         }
+
+        bool ValidateVectorImageRenderData(const LoadedVectorImageBlob& blob)
+        {
+            if (!blob.render.IsValid())
+            {
+                return false;
+            }
+
+            const uint32_t curveWidth = blob.render.GetCurveTextureWidth();
+            const uint32_t curveHeight = blob.render.GetCurveTextureHeight();
+            const uint32_t bandWidth = blob.render.GetBandTextureWidth();
+            const uint32_t bandHeight = blob.render.GetBandTextureHeight();
+            if ((curveWidth == 0) || (curveHeight == 0) || (bandWidth == 0) || (bandHeight == 0))
+            {
+                HE_LOG_ERROR(he_scribe, HE_MSG("Scribe vector image render data has an invalid texture extent."));
+                return false;
+            }
+
+            if (bandWidth != ScribeBandTextureWidth)
+            {
+                HE_LOG_ERROR(he_scribe,
+                    HE_MSG("Scribe vector image band texture width does not match shader assumptions."),
+                    HE_KV(expected, ScribeBandTextureWidth),
+                    HE_KV(actual, bandWidth));
+                return false;
+            }
+
+            const auto curveBytes = blob.root.GetCurveData();
+            const auto bandBytes = blob.root.GetBandData();
+            const size_t expectedCurveBytes = static_cast<size_t>(curveWidth) * curveHeight * sizeof(PackedCurveTexel);
+            const size_t expectedBandBytes = static_cast<size_t>(bandWidth) * bandHeight * sizeof(PackedBandTexel);
+            if ((curveBytes.Size() != expectedCurveBytes) || (bandBytes.Size() != expectedBandBytes))
+            {
+                HE_LOG_ERROR(he_scribe,
+                    HE_MSG("Scribe vector image payload size does not match metadata."),
+                    HE_KV(expected_curve_bytes, expectedCurveBytes),
+                    HE_KV(actual_curve_bytes, curveBytes.Size()),
+                    HE_KV(expected_band_bytes, expectedBandBytes),
+                    HE_KV(actual_band_bytes, bandBytes.Size()));
+                return false;
+            }
+
+            return true;
+        }
+
+        bool ValidateVectorImagePaintData(const LoadedVectorImageBlob& blob)
+        {
+            if (!blob.paint.IsValid())
+            {
+                return false;
+            }
+
+            const auto layers = blob.paint.GetLayers();
+            const auto shapes = blob.render.GetShapes();
+            for (uint32_t layerIndex = 0; layerIndex < layers.Size(); ++layerIndex)
+            {
+                const VectorImageLayer::Reader layer = layers[layerIndex];
+                if (layer.GetShapeIndex() >= shapes.Size())
+                {
+                    HE_LOG_ERROR(he_scribe,
+                        HE_MSG("Scribe vector image layer references an out-of-range shape."),
+                        HE_KV(layer_index, layerIndex),
+                        HE_KV(shape_index, layer.GetShapeIndex()),
+                        HE_KV(shape_count, shapes.Size()));
+                    return false;
+                }
+            }
+
+            return true;
+        }
     }
 
     bool LoadCompiledFontFaceBlob(LoadedFontFaceBlob& out, Span<const schema::Word> data)
@@ -264,7 +334,16 @@ namespace he::scribe
             return false;
         }
 
-        if (!ReadNestedSchema(out.metadata, out.root.GetMetadataData()))
+        if (!ReadNestedSchema(out.metadata, out.root.GetMetadataData())
+            || !ReadNestedSchema(out.render, out.root.GetRenderData())
+            || !ReadNestedSchema(out.paint, out.root.GetPaintData()))
+        {
+            out = {};
+            return false;
+        }
+
+        if (!ValidateVectorImageRenderData(out)
+            || !ValidateVectorImagePaintData(out))
         {
             out = {};
             return false;

@@ -5,6 +5,7 @@
 #include "he/scribe/editor/font_family_compiler.h"
 #include "he/scribe/editor/font_importer.h"
 #include "he/scribe/editor/image_compiler.h"
+#include "he/scribe/editor/svg_importer.h"
 #include "he/scribe/runtime_blob.h"
 
 #include "he/assets/asset_type_registry.h"
@@ -24,12 +25,14 @@ namespace he::scribe
             types.RegisterAssetType<ScribeFontFamily, editor::FontFamilyCompiler>();
             types.RegisterAssetType<ScribeImage, editor::ImageCompiler>();
             types.RegisterImporter<editor::FontImporter>();
+            types.RegisterImporter<editor::SvgImporter>();
             return true;
         }
 
         void Shutdown() override
         {
             assets::AssetTypeRegistry& types = Registry().GetApi<assets::AssetTypeRegistry>();
+            types.UnregisterImporter<editor::SvgImporter>();
             types.UnregisterImporter<editor::FontImporter>();
             types.UnregisterAssetType<ScribeImage>();
             types.UnregisterAssetType<ScribeFontFamily>();

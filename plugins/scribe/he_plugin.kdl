@@ -82,6 +82,8 @@ plugin he.scribe version="0.1.0" license="UNLICENSED" {
             "editor/src/font_compile_geometry.h"
             "editor/src/font_import_utils.cpp"
             "editor/src/font_import_utils.h"
+            "editor/src/image_compile_geometry.cpp"
+            "editor/src/image_compile_geometry.h"
         }
         include_dirs { "test_app"; "editor/src" }
 

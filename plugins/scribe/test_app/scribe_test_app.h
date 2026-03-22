@@ -64,10 +64,24 @@ namespace he
             scribe::LoadedFontFaceBlob blob{};
         };
 
+        struct LoadedDemoImage
+        {
+            String name{};
+            Vector<schema::Word> blobWords{};
+            scribe::LoadedVectorImageBlob blob{};
+        };
+
         struct CachedGlyph
         {
             uint32_t fontFaceIndex{ 0 };
             uint32_t glyphIndex{ 0 };
+            scribe::GlyphResource resource{};
+        };
+
+        struct CachedImageShape
+        {
+            uint32_t imageIndex{ 0 };
+            uint32_t shapeIndex{ 0 };
             scribe::GlyphResource resource{};
         };
 
@@ -78,6 +92,7 @@ namespace he
             RightToLeft,
             AnimatedZoom,
             ColorGlyphLayers,
+            SvgVectorImages,
 
             _Count,
         };
@@ -90,13 +105,18 @@ namespace he
         bool InitializeRenderState();
         void TerminateRenderState();
         bool LoadDemoFonts();
+        bool LoadDemoImages();
         bool LoadDemoFont(LoadedDemoFont& out, const char* fileName);
         bool LoadOptionalDemoFont(LoadedDemoFont& out, Span<const char*> fileNames);
+        bool LoadDemoImage(LoadedDemoImage& out, const char* fileName);
         bool RebuildLayouts();
         bool PrimeLayoutGlyphs(const scribe::LayoutResult& layout);
         bool PrimeGlyphCache();
         bool EnsureGlyphResource(uint32_t fontFaceIndex, uint32_t glyphIndex, const scribe::GlyphResource*& out);
+        bool PrimeImageCache();
+        bool EnsureImageShapeResource(uint32_t imageIndex, uint32_t shapeIndex, const scribe::GlyphResource*& out);
         void QueueLayout(const scribe::LayoutResult& layout, const Vec2f& origin, float fontSize, float layoutScale = 1.0f);
+        void QueueImage(const LoadedDemoImage& image, uint32_t imageIndex, const Vec2f& position, float scale);
         void QueueCaret();
         void UpdateSceneTitle();
         void AdvanceScene(int32_t delta);
@@ -116,7 +136,9 @@ namespace he
         scribe::LayoutEngine m_layoutEngine{};
         scribe::GlyphResource m_caretGlyph{};
         Vector<LoadedDemoFont> m_fonts{};
+        Vector<LoadedDemoImage> m_images{};
         Vector<CachedGlyph> m_cachedGlyphs{};
+        Vector<CachedImageShape> m_cachedImageShapes{};
         String m_titleText{};
         String m_bodyText{};
         String m_footerText{};

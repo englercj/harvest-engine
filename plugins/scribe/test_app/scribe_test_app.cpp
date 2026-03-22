@@ -4,8 +4,10 @@
 
 #include "font_compile_geometry.h"
 #include "font_import_utils.h"
+#include "image_compile_geometry.h"
 
 #include "he/scribe/compiled_font.h"
+#include "he/scribe/compiled_vector_image.h"
 #include "he/scribe/schema/runtime_blob.hsc.h"
 
 #include "he/core/assert.h"
@@ -45,6 +47,34 @@ namespace he
             {
                 "plugins/editor/src/fonts/",
                 "../../../plugins/editor/src/fonts/",
+            };
+
+            for (const char* base : Candidates)
+            {
+                out = base;
+                out += fileName;
+                if (File::Exists(out.Data()))
+                {
+                    return true;
+                }
+            }
+
+            out.Clear();
+            return false;
+        }
+
+        bool ResolveImagePath(String& out, const char* fileName)
+        {
+            if (File::Exists(fileName))
+            {
+                out = fileName;
+                return true;
+            }
+
+            static const char* Candidates[] =
+            {
+                "plugins/scribe/test_app/assets/",
+                "../../../plugins/scribe/test_app/assets/",
             };
 
             for (const char* base : Candidates)
@@ -209,6 +239,107 @@ namespace he
 
             storage = Span<const schema::Word>(rootBuilder);
             return scribe::LoadCompiledFontFaceBlob(out, storage);
+        }
+
+        bool BuildLoadedVectorImageFromFile(const char* fileName, Vector<schema::Word>& storage, scribe::LoadedVectorImageBlob& out)
+        {
+            String path;
+            if (!ResolveImagePath(path, fileName))
+            {
+                HE_LOG_ERROR(he_scribe,
+                    HE_MSG("Failed to resolve demo SVG path."),
+                    HE_KV(file_name, fileName));
+                return false;
+            }
+
+            Vector<uint8_t> imageBytes;
+            Result readResult = File::ReadAll(imageBytes, path.Data());
+            if (!readResult)
+            {
+                HE_LOG_ERROR(he_scribe,
+                    HE_MSG("Failed to read demo SVG source."),
+                    HE_KV(path, path),
+                    HE_KV(result, readResult));
+                return false;
+            }
+
+            scribe::editor::CompiledVectorImageData imageData{};
+            if (!scribe::editor::BuildCompiledVectorImageData(imageData, imageBytes, 0.25f))
+            {
+                return false;
+            }
+
+            schema::Builder metadataBuilder;
+            scribe::VectorImageRuntimeMetadata::Builder metadata = metadataBuilder.AddStruct<scribe::VectorImageRuntimeMetadata>();
+            metadata.SetSourceViewBoxMinX(imageData.viewBoxMinX);
+            metadata.SetSourceViewBoxMinY(imageData.viewBoxMinY);
+            metadata.SetSourceViewBoxWidth(imageData.viewBoxWidth);
+            metadata.SetSourceViewBoxHeight(imageData.viewBoxHeight);
+            metadata.SetSourceBoundsMinX(imageData.boundsMinX);
+            metadata.SetSourceBoundsMinY(imageData.boundsMinY);
+            metadata.SetSourceBoundsMaxX(imageData.boundsMaxX);
+            metadata.SetSourceBoundsMaxY(imageData.boundsMaxY);
+            metadataBuilder.SetRoot(metadata);
+
+            schema::Builder renderBuilder;
+            scribe::VectorImageRenderData::Builder render = renderBuilder.AddStruct<scribe::VectorImageRenderData>();
+            render.SetCurveTextureWidth(imageData.curveTextureWidth);
+            render.SetCurveTextureHeight(imageData.curveTextureHeight);
+            render.SetBandTextureWidth(imageData.bandTextureWidth);
+            render.SetBandTextureHeight(imageData.bandTextureHeight);
+            render.SetBandOverlapEpsilon(imageData.bandOverlapEpsilon);
+            auto shapes = render.InitShapes(imageData.shapes.Size());
+            for (uint32_t shapeIndex = 0; shapeIndex < imageData.shapes.Size(); ++shapeIndex)
+            {
+                const scribe::editor::CompiledVectorShapeRenderEntry& srcShape = imageData.shapes[shapeIndex];
+                scribe::VectorImageShapeRenderData::Builder dstShape = shapes[shapeIndex];
+                dstShape.SetBoundsMinX(srcShape.boundsMinX);
+                dstShape.SetBoundsMinY(srcShape.boundsMinY);
+                dstShape.SetBoundsMaxX(srcShape.boundsMaxX);
+                dstShape.SetBoundsMaxY(srcShape.boundsMaxY);
+                dstShape.SetBandScaleX(srcShape.bandScaleX);
+                dstShape.SetBandScaleY(srcShape.bandScaleY);
+                dstShape.SetBandOffsetX(srcShape.bandOffsetX);
+                dstShape.SetBandOffsetY(srcShape.bandOffsetY);
+                dstShape.SetGlyphBandLocX(srcShape.glyphBandLocX);
+                dstShape.SetGlyphBandLocY(srcShape.glyphBandLocY);
+                dstShape.SetBandMaxX(srcShape.bandMaxX);
+                dstShape.SetBandMaxY(srcShape.bandMaxY);
+                dstShape.SetFillRule(srcShape.fillRule);
+                dstShape.SetFlags(srcShape.flags);
+            }
+            renderBuilder.SetRoot(render);
+
+            schema::Builder paintBuilder;
+            scribe::VectorImagePaintData::Builder paint = paintBuilder.AddStruct<scribe::VectorImagePaintData>();
+            auto layers = paint.InitLayers(imageData.layers.Size());
+            for (uint32_t layerIndex = 0; layerIndex < imageData.layers.Size(); ++layerIndex)
+            {
+                const scribe::editor::CompiledVectorImageLayerEntry& srcLayer = imageData.layers[layerIndex];
+                scribe::VectorImageLayer::Builder dstLayer = layers[layerIndex];
+                dstLayer.SetShapeIndex(srcLayer.shapeIndex);
+                dstLayer.SetRed(srcLayer.red);
+                dstLayer.SetGreen(srcLayer.green);
+                dstLayer.SetBlue(srcLayer.blue);
+                dstLayer.SetAlpha(srcLayer.alpha);
+            }
+            paintBuilder.SetRoot(paint);
+
+            schema::Builder rootBuilder;
+            scribe::CompiledVectorImageBlob::Builder root = rootBuilder.AddStruct<scribe::CompiledVectorImageBlob>();
+            scribe::RuntimeBlobHeader::Builder header = root.InitHeader();
+            header.SetFormatVersion(scribe::RuntimeBlobFormatVersion);
+            header.SetKind(scribe::RuntimeBlobKind::VectorImage);
+            header.SetFlags(0);
+            root.SetCurveData(rootBuilder.AddBlob(Span<const scribe::PackedCurveTexel>(imageData.curveTexels.Data(), imageData.curveTexels.Size()).AsBytes()));
+            root.SetBandData(rootBuilder.AddBlob(Span<const scribe::PackedBandTexel>(imageData.bandTexels.Data(), imageData.bandTexels.Size()).AsBytes()));
+            root.SetPaintData(rootBuilder.AddBlob(Span<const schema::Word>(paintBuilder).AsBytes()));
+            root.SetMetadataData(rootBuilder.AddBlob(Span<const schema::Word>(metadataBuilder).AsBytes()));
+            root.SetRenderData(rootBuilder.AddBlob(Span<const schema::Word>(renderBuilder).AsBytes()));
+            rootBuilder.SetRoot(root);
+
+            storage = Span<const schema::Word>(rootBuilder);
+            return scribe::LoadCompiledVectorImageBlob(out, storage);
         }
     }
 
@@ -383,6 +514,12 @@ namespace he
         {
             QueueLayout(m_bodyLayout, m_bodyOrigin, bodyFontSize);
         }
+        if ((m_scene == DemoScene::SvgVectorImages) && (m_images.Size() >= 2))
+        {
+            const float imageScale = 2.4f * dpiScale;
+            QueueImage(m_images[0], 0, { m_bodyOrigin.x, m_bodyOrigin.y + 150.0f * dpiScale }, imageScale);
+            QueueImage(m_images[1], 1, { m_bodyOrigin.x + 620.0f * dpiScale, m_bodyOrigin.y + 150.0f * dpiScale }, imageScale * 0.85f);
+        }
         QueueLayout(m_footerLayout, m_footerOrigin, footerFontSize);
         QueueCaret();
 
@@ -396,7 +533,8 @@ namespace he
             || !InitializeRenderState()
             || !m_renderer.Initialize(*m_render.device, m_render.preferredSwapChainFormat.format)
             || !m_renderer.CreateDebugGlyphResource(m_caretGlyph)
-            || !LoadDemoFonts())
+            || !LoadDemoFonts()
+            || !LoadDemoImages())
         {
             return false;
         }
@@ -422,6 +560,12 @@ namespace he
             }
             m_cachedGlyphs.Clear();
 
+            for (CachedImageShape& shape : m_cachedImageShapes)
+            {
+                m_renderer.DestroyGlyphResource(shape.resource);
+            }
+            m_cachedImageShapes.Clear();
+
             m_renderer.DestroyGlyphResource(m_caretGlyph);
         }
 
@@ -433,6 +577,7 @@ namespace he
         }
         m_view = nullptr;
         m_fonts.Clear();
+        m_images.Clear();
         m_titleLayout.Clear();
         m_bodyLayout.Clear();
         m_footerLayout.Clear();
@@ -626,6 +771,14 @@ namespace he
         return true;
     }
 
+    bool ScribeTestApp::LoadDemoImages()
+    {
+        m_images.Clear();
+        m_images.Resize(2);
+        return LoadDemoImage(m_images[0], "vector_layers.svg")
+            && LoadDemoImage(m_images[1], "vector_evenodd.svg");
+    }
+
     bool ScribeTestApp::LoadDemoFont(LoadedDemoFont& out, const char* fileName)
     {
         out = {};
@@ -646,6 +799,13 @@ namespace he
         }
 
         return false;
+    }
+
+    bool ScribeTestApp::LoadDemoImage(LoadedDemoImage& out, const char* fileName)
+    {
+        out = {};
+        out.name = fileName;
+        return BuildLoadedVectorImageFromFile(fileName, out.blobWords, out.blob);
     }
 
     bool ScribeTestApp::RebuildLayouts()
@@ -695,7 +855,7 @@ namespace he
 
         scribe::LayoutOptions bodyOptions{};
         bodyOptions.fontSize = bodyFontSize;
-        bodyOptions.wrap = m_scene != DemoScene::AnimatedZoom;
+        bodyOptions.wrap = (m_scene != DemoScene::AnimatedZoom);
         bodyOptions.maxWidth = bodyWidth;
         bodyOptions.direction = m_scene == DemoScene::RightToLeft
             ? scribe::TextDirection::RightToLeft
@@ -732,6 +892,10 @@ namespace he
         {
             m_bodyOrigin = { margin, margin + m_titleLayout.height + (40.0f * dpiScale) };
         }
+        else if (m_scene == DemoScene::SvgVectorImages)
+        {
+            m_bodyOrigin = { margin, margin + m_titleLayout.height + (18.0f * dpiScale) };
+        }
 
         float footerY = static_cast<float>(viewSize.y) - margin - m_footerLayout.height;
         footerY = Max(footerY, m_bodyOrigin.y + m_bodyLayout.height + (24.0f * dpiScale));
@@ -743,6 +907,11 @@ namespace he
         }
 
         if (!PrimeGlyphCache())
+        {
+            return false;
+        }
+
+        if ((m_scene == DemoScene::SvgVectorImages) && !PrimeImageCache())
         {
             return false;
         }
@@ -777,6 +946,30 @@ namespace he
             && PrimeLayoutGlyphs(m_footerLayout);
     }
 
+    bool ScribeTestApp::PrimeImageCache()
+    {
+        for (uint32_t imageIndex = 0; imageIndex < m_images.Size(); ++imageIndex)
+        {
+            const LoadedDemoImage& image = m_images[imageIndex];
+            if (!image.blob.render.IsValid() || !image.blob.paint.IsValid())
+            {
+                continue;
+            }
+
+            const auto layers = image.blob.paint.GetLayers();
+            for (uint32_t layerIndex = 0; layerIndex < layers.Size(); ++layerIndex)
+            {
+                const scribe::GlyphResource* shapeResource = nullptr;
+                if (!EnsureImageShapeResource(imageIndex, layers[layerIndex].GetShapeIndex(), shapeResource))
+                {
+                    return false;
+                }
+            }
+        }
+
+        return true;
+    }
+
     bool ScribeTestApp::EnsureGlyphResource(uint32_t fontFaceIndex, uint32_t glyphIndex, const scribe::GlyphResource*& out)
     {
         out = nullptr;
@@ -801,6 +994,37 @@ namespace he
         if (!m_renderer.CreateCompiledGlyphResource(cached.resource, m_fonts[fontFaceIndex].blob, glyphIndex))
         {
             m_cachedGlyphs.PopBack();
+            return false;
+        }
+
+        out = &cached.resource;
+        return true;
+    }
+
+    bool ScribeTestApp::EnsureImageShapeResource(uint32_t imageIndex, uint32_t shapeIndex, const scribe::GlyphResource*& out)
+    {
+        out = nullptr;
+
+        for (CachedImageShape& cached : m_cachedImageShapes)
+        {
+            if ((cached.imageIndex == imageIndex) && (cached.shapeIndex == shapeIndex))
+            {
+                out = &cached.resource;
+                return true;
+            }
+        }
+
+        if (imageIndex >= m_images.Size())
+        {
+            return false;
+        }
+
+        CachedImageShape& cached = m_cachedImageShapes.EmplaceBack();
+        cached.imageIndex = imageIndex;
+        cached.shapeIndex = shapeIndex;
+        if (!m_renderer.CreateCompiledVectorShapeResource(cached.resource, m_images[imageIndex].blob, shapeIndex))
+        {
+            m_cachedImageShapes.PopBack();
             return false;
         }
 
@@ -873,9 +1097,39 @@ namespace he
         }
     }
 
+    void ScribeTestApp::QueueImage(const LoadedDemoImage& image, uint32_t imageIndex, const Vec2f& position, float scale)
+    {
+        Vector<scribe::CompiledVectorImageLayer> layers{};
+        if (!scribe::GetCompiledVectorImageLayers(layers, image.blob))
+        {
+            return;
+        }
+
+        const float minX = image.blob.metadata.GetSourceViewBoxMinX();
+        const float minY = image.blob.metadata.GetSourceViewBoxMinY();
+        const Vec2f drawOffset{ -minX, minY };
+
+        for (const scribe::CompiledVectorImageLayer& layer : layers)
+        {
+            const scribe::GlyphResource* shapeResource = nullptr;
+            if (!EnsureImageShapeResource(imageIndex, layer.shapeIndex, shapeResource))
+            {
+                continue;
+            }
+
+            scribe::DrawGlyphDesc desc{};
+            desc.glyph = shapeResource;
+            desc.position = position;
+            desc.size = { scale, scale };
+            desc.offset = drawOffset;
+            desc.color = layer.color;
+            m_renderer.QueueDraw(desc);
+        }
+    }
+
     void ScribeTestApp::QueueCaret()
     {
-        if (m_scene == DemoScene::AnimatedZoom)
+        if ((m_scene == DemoScene::AnimatedZoom) || (m_scene == DemoScene::SvgVectorImages))
         {
             return;
         }
@@ -960,6 +1214,14 @@ namespace he
                         "This machine does not have the optional Segoe UI Emoji font available at the "
                         "expected system path, so the COLR/CPAL demo scene cannot be exercised here.";
                 }
+                break;
+
+            case DemoScene::SvgVectorImages:
+                m_titleText = "Scribe Testbed: compiled SVG vector scenes";
+                m_bodyText =
+                    "These SVG files are loaded from source, compiled in memory into Scribe curve and band "
+                    "payloads, and rendered through the same coverage path as text. Left image stresses layered "
+                    "fills and transforms. Right image stresses even-odd filling.";
                 break;
 
             case DemoScene::_Count:

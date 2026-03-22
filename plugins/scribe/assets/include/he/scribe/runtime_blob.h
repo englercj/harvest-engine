@@ -10,8 +10,8 @@
 
 namespace he::scribe
 {
-    // M5 format marker adding per-layer affine transforms for COLR v1 paint lowering.
-    inline constexpr uint32_t RuntimeBlobFormatVersion = 5;
+    // M6 format marker adding compiled vector image render and paint payloads.
+    inline constexpr uint32_t RuntimeBlobFormatVersion = 6;
 
     struct LoadedFontFaceBlob
     {
@@ -32,6 +32,8 @@ namespace he::scribe
     {
         CompiledVectorImageBlob::Reader root{};
         VectorImageRuntimeMetadata::Reader metadata{};
+        VectorImageRenderData::Reader render{};
+        VectorImagePaintData::Reader paint{};
     };
 
     bool LoadCompiledFontFaceBlob(LoadedFontFaceBlob& out, Span<const schema::Word> data);

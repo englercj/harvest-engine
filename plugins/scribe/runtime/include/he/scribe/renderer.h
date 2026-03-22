@@ -88,6 +88,10 @@ namespace he::scribe
             GlyphResource& out,
             const LoadedFontFaceBlob& fontFace,
             uint32_t glyphIndex);
+        bool CreateCompiledVectorShapeResource(
+            GlyphResource& out,
+            const LoadedVectorImageBlob& image,
+            uint32_t shapeIndex);
         bool CreateDebugGlyphResource(GlyphResource& out);
         void DestroyGlyphResource(GlyphResource& resource);
 

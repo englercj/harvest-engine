@@ -215,7 +215,7 @@ namespace he::scribe::editor
         public:
             explicit CurveBuilder(float flatteningTolerance)
                 : m_cubicToleranceSq(flatteningTolerance * flatteningTolerance)
-                , m_lineControlOffset(Max(flatteningTolerance * 0.01f, 1.0f / 1024.0f))
+                , m_lineControlBias(1.0f / 16.0f)
             {
             }
 
@@ -226,20 +226,13 @@ namespace he::scribe::editor
 
             void AddLine(const Point2& from, const Point2& to)
             {
-                Point2 control = MidPoint(from, to);
-
-                // Keep straight segments mathematically close to the authored path while
-                // still avoiding an exact midpoint control point, which produces a fully
-                // degenerate quadratic in the coverage shader path.
-                const float dx = to.x - from.x;
-                const float dy = to.y - from.y;
-                const float lenSq = (dx * dx) + (dy * dy);
-                if (lenSq > 1.0e-8f)
-                {
-                    const float invLen = 1.0f / Sqrt(lenSq);
-                    control.x += -dy * invLen * m_lineControlOffset;
-                    control.y += dx * invLen * m_lineControlOffset;
-                }
+                // Preserve the exact authored line while avoiding the exact-midpoint
+                // control point that degenerates the quadratic coverage polynomial.
+                constexpr float MidpointT = 0.5f;
+                const float controlT = MidpointT + m_lineControlBias;
+                Point2 control{};
+                control.x = Lerp(from.x, to.x, controlT);
+                control.y = Lerp(from.y, to.y, controlT);
 
                 AddQuadratic(from, control, to);
             }
@@ -289,7 +282,7 @@ namespace he::scribe::editor
             Vector<CurveData> m_curves{};
             Affine2D m_transform{};
             float m_cubicToleranceSq{ 0.0f };
-            float m_lineControlOffset{ 0.0f };
+            float m_lineControlBias{ 0.0f };
         };
 
         void ZeroCounts(Vector<uint32_t>& counts)

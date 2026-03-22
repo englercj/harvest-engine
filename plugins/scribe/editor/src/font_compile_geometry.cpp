@@ -261,7 +261,7 @@ namespace he::scribe::editor
         public:
             explicit GlyphOutlineBuilder(float cubicTolerance)
                 : m_cubicToleranceSq(cubicTolerance * cubicTolerance)
-                , m_lineControlOffset(Max(cubicTolerance * 0.5f, 0.5f))
+                , m_lineControlBias(1.0f / 16.0f)
             {
             }
 
@@ -326,21 +326,16 @@ namespace he::scribe::editor
 
             void AddLine(const Point2& from, const Point2& to)
             {
-                Point2 control = MidPoint(from, to);
-
-                // Exact midpoint control points make the quadratic perfectly linear.
-                // That matches the segment mathematically, but it also produces a
-                // degenerate polynomial in the Slug coverage path that shows up as
-                // visible cracks on diagonal-heavy glyphs like W, Y, and slash.
-                const float dx = to.x - from.x;
-                const float dy = to.y - from.y;
-                const float lenSq = (dx * dx) + (dy * dy);
-                if (lenSq > 1.0e-8f)
-                {
-                    const float invLen = 1.0f / Sqrt(lenSq);
-                    control.x += -dy * invLen * m_lineControlOffset;
-                    control.y += dx * invLen * m_lineControlOffset;
-                }
+                // Exact midpoint control points make the quadratic perfectly linear,
+                // which collapses the polynomial used by the Slug coverage path. Keep
+                // the control point collinear so the authored geometry stays exactly
+                // on the same line segment, but bias it away from the midpoint so the
+                // quadratic remains numerically well-formed.
+                constexpr float MidpointT = 0.5f;
+                const float controlT = MidpointT + m_lineControlBias;
+                Point2 control{};
+                control.x = Lerp(from.x, to.x, controlT);
+                control.y = Lerp(from.y, to.y, controlT);
 
                 AddQuadratic(from, control, to);
             }
@@ -382,7 +377,7 @@ namespace he::scribe::editor
             Vector<CurveData>* m_curves{ nullptr };
             Point2 m_current{};
             float m_cubicToleranceSq{ 0.0f };
-            float m_lineControlOffset{ 0.0f };
+            float m_lineControlBias{ 0.0f };
             bool m_hasCurrent{ false };
         };
 

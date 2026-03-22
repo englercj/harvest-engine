@@ -21,6 +21,8 @@ namespace he::scribe::editor
         constexpr uint32_t MaxBandCount = 8;
         constexpr uint32_t MaxCubicSubdivisionDepth = 8;
         constexpr float DefaultBandOverlapEpsilon = 1.0f / 1024.0f;
+        constexpr float DegenerateLineLengthSq = 1.0e-6f;
+        constexpr float DegenerateCurveExtent = 1.0e-4f;
 
         struct Point2
         {
@@ -215,7 +217,7 @@ namespace he::scribe::editor
         public:
             explicit CurveBuilder(float flatteningTolerance)
                 : m_cubicToleranceSq(flatteningTolerance * flatteningTolerance)
-                , m_lineControlBias(1.0f / 16.0f)
+                , m_lineControlTangentOffset(0.5f)
             {
             }
 
@@ -226,27 +228,51 @@ namespace he::scribe::editor
 
             void AddLine(const Point2& from, const Point2& to)
             {
-                // Preserve the exact authored line while avoiding the exact-midpoint
-                // control point that degenerates the quadratic coverage polynomial.
-                constexpr float MidpointT = 0.5f;
-                const float controlT = MidpointT + m_lineControlBias;
+                const float dx = to.x - from.x;
+                const float dy = to.y - from.y;
+                const float lenSq = (dx * dx) + (dy * dy);
+                if (lenSq <= DegenerateLineLengthSq)
+                {
+                    return;
+                }
+
+                // Keep the control point on the segment so the curve remains an exact
+                // line, but move it slightly away from the midpoint so the quadratic
+                // coefficients do not collapse to the midpoint-degenerate case.
+                const float invLen = 1.0f / Sqrt(lenSq);
+                const float len = lenSq * invLen;
+                const float tangentOffset = Min(m_lineControlTangentOffset, len * 0.25f);
+                const float tx = dx * invLen;
+                const float ty = dy * invLen;
                 Point2 control{};
-                control.x = Lerp(from.x, to.x, controlT);
-                control.y = Lerp(from.y, to.y, controlT);
+                control.x = Lerp(from.x, to.x, 0.5f) + (tx * tangentOffset);
+                control.y = Lerp(from.y, to.y, 0.5f) + (ty * tangentOffset);
 
                 AddQuadratic(from, control, to);
             }
 
             void AddQuadratic(const Point2& p1, const Point2& p2, const Point2& p3)
             {
+                const Point2 tp1 = TransformPoint(m_transform, p1);
+                const Point2 tp2 = TransformPoint(m_transform, p2);
+                const Point2 tp3 = TransformPoint(m_transform, p3);
+                const float minX = Min(tp1.x, tp2.x, tp3.x);
+                const float minY = Min(tp1.y, tp2.y, tp3.y);
+                const float maxX = Max(tp1.x, tp2.x, tp3.x);
+                const float maxY = Max(tp1.y, tp2.y, tp3.y);
+                if (((maxX - minX) <= DegenerateCurveExtent) && ((maxY - minY) <= DegenerateCurveExtent))
+                {
+                    return;
+                }
+
                 CurveData& curve = m_curves.EmplaceBack();
-                curve.p1 = TransformPoint(m_transform, p1);
-                curve.p2 = TransformPoint(m_transform, p2);
-                curve.p3 = TransformPoint(m_transform, p3);
-                curve.minX = Min(curve.p1.x, curve.p2.x, curve.p3.x);
-                curve.minY = Min(curve.p1.y, curve.p2.y, curve.p3.y);
-                curve.maxX = Max(curve.p1.x, curve.p2.x, curve.p3.x);
-                curve.maxY = Max(curve.p1.y, curve.p2.y, curve.p3.y);
+                curve.p1 = tp1;
+                curve.p2 = tp2;
+                curve.p3 = tp3;
+                curve.minX = minX;
+                curve.minY = minY;
+                curve.maxX = maxX;
+                curve.maxY = maxY;
             }
 
             void AddCubic(const Point2& p0, const Point2& p1, const Point2& p2, const Point2& p3)
@@ -282,7 +308,7 @@ namespace he::scribe::editor
             Vector<CurveData> m_curves{};
             Affine2D m_transform{};
             float m_cubicToleranceSq{ 0.0f };
-            float m_lineControlBias{ 0.0f };
+            float m_lineControlTangentOffset{ 0.0f };
         };
 
         void ZeroCounts(Vector<uint32_t>& counts)

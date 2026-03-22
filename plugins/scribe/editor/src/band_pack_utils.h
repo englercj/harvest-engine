@@ -17,41 +17,6 @@ namespace he::scribe::editor
         uint32_t reusedPayloadTexelCount{ 0 };
     };
 
-    namespace detail
-    {
-        template <typename TBandRef>
-        uint32_t FindReusableBandPayloadOffset(Span<const PackedBandTexel> existingPayload, const Vector<TBandRef>& band)
-        {
-            constexpr uint32_t InvalidOffset = 0xFFFFFFFFu;
-            if (band.IsEmpty() || (existingPayload.Size() < band.Size()))
-            {
-                return InvalidOffset;
-            }
-
-            const uint32_t maxStart = existingPayload.Size() - band.Size();
-            for (uint32_t start = 0; start <= maxStart; ++start)
-            {
-                bool matches = true;
-                for (uint32_t index = 0; index < band.Size(); ++index)
-                {
-                    if ((existingPayload[start + index].x != band[index].x)
-                        || (existingPayload[start + index].y != band[index].y))
-                    {
-                        matches = false;
-                        break;
-                    }
-                }
-
-                if (matches)
-                {
-                    return start;
-                }
-            }
-
-            return InvalidOffset;
-        }
-    }
-
     template <typename TBandRef>
     PackedBandStats AppendPackedBands(
         Vector<PackedBandTexel>& outBandTexels,
@@ -59,6 +24,12 @@ namespace he::scribe::editor
         const Vector<Vector<TBandRef>>& horizontalBands,
         const Vector<Vector<TBandRef>>& verticalBands)
     {
+        struct ExistingBandPayload
+        {
+            uint32_t offset{ 0 };
+            uint32_t size{ 0 };
+        };
+
         PackedBandStats stats{};
         stats.headerCount = horizontalBands.Size() + verticalBands.Size();
 
@@ -66,6 +37,7 @@ namespace he::scribe::editor
         outBandTexels.Resize(payloadStart);
 
         uint32_t currentOffset = stats.headerCount;
+        Vector<ExistingBandPayload> existingBands{};
         auto appendBand = [&](uint32_t headerIndex, const Vector<TBandRef>& band)
         {
             PackedBandTexel header{};
@@ -73,13 +45,35 @@ namespace he::scribe::editor
 
             if (!band.IsEmpty())
             {
-                const Span<const PackedBandTexel> existingPayload{
-                    outBandTexels.Data() + payloadStart,
-                    outBandTexels.Size() - payloadStart
-                };
+                constexpr uint32_t InvalidOffset = 0xFFFFFFFFu;
+                uint32_t reuseOffset = InvalidOffset;
+                for (uint32_t existingIndex = 0; existingIndex < existingBands.Size(); ++existingIndex)
+                {
+                    const ExistingBandPayload& existing = existingBands[existingIndex];
+                    if (existing.size != band.Size())
+                    {
+                        continue;
+                    }
 
-                const uint32_t reuseOffset = detail::FindReusableBandPayloadOffset(existingPayload, band);
-                if (reuseOffset != 0xFFFFFFFFu)
+                    bool matches = true;
+                    for (uint32_t curveIndex = 0; curveIndex < band.Size(); ++curveIndex)
+                    {
+                        const PackedBandTexel& existingTexel = outBandTexels[payloadStart + existing.offset + curveIndex];
+                        if ((existingTexel.x != band[curveIndex].x) || (existingTexel.y != band[curveIndex].y))
+                        {
+                            matches = false;
+                            break;
+                        }
+                    }
+
+                    if (matches)
+                    {
+                        reuseOffset = existing.offset;
+                        break;
+                    }
+                }
+
+                if (reuseOffset != InvalidOffset)
                 {
                     header.y = static_cast<uint16_t>(stats.headerCount + reuseOffset);
                     stats.reusedBandCount += 1;
@@ -88,6 +82,10 @@ namespace he::scribe::editor
                 else
                 {
                     header.y = static_cast<uint16_t>(currentOffset);
+                    ExistingBandPayload& existing = existingBands.EmplaceBack();
+                    existing.offset = currentOffset - stats.headerCount;
+                    existing.size = band.Size();
+
                     for (uint32_t curveIndex = 0; curveIndex < band.Size(); ++curveIndex)
                     {
                         PackedBandTexel texel{};

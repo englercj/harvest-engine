@@ -23,6 +23,8 @@ namespace he::scribe::editor
         constexpr uint32_t CurveTextureWidth = 4096;
         constexpr uint32_t MaxBandCount = 8;
         constexpr uint32_t MaxCubicSubdivisionDepth = 8;
+        constexpr float DegenerateLineLengthSq = 1.0e-6f;
+        constexpr float DegenerateCurveExtent = 1.0e-4f;
 
         struct Point2
         {
@@ -261,7 +263,7 @@ namespace he::scribe::editor
         public:
             explicit GlyphOutlineBuilder(float cubicTolerance)
                 : m_cubicToleranceSq(cubicTolerance * cubicTolerance)
-                , m_lineControlBias(1.0f / 16.0f)
+                , m_lineControlTangentOffset(0.5f)
             {
             }
 
@@ -326,30 +328,48 @@ namespace he::scribe::editor
 
             void AddLine(const Point2& from, const Point2& to)
             {
-                // Exact midpoint control points make the quadratic perfectly linear,
-                // which collapses the polynomial used by the Slug coverage path. Keep
-                // the control point collinear so the authored geometry stays exactly
-                // on the same line segment, but bias it away from the midpoint so the
-                // quadratic remains numerically well-formed.
-                constexpr float MidpointT = 0.5f;
-                const float controlT = MidpointT + m_lineControlBias;
+                const float dx = to.x - from.x;
+                const float dy = to.y - from.y;
+                const float lenSq = (dx * dx) + (dy * dy);
+                if (lenSq <= DegenerateLineLengthSq)
+                {
+                    return;
+                }
+
+                // Keep the control point on the segment so the curve remains an exact
+                // line, but move it slightly away from the midpoint so the quadratic
+                // coefficients do not collapse to the midpoint-degenerate case.
+                const float invLen = 1.0f / Sqrt(lenSq);
+                const float len = lenSq * invLen;
+                const float tangentOffset = Min(m_lineControlTangentOffset, len * 0.25f);
+                const float tx = dx * invLen;
+                const float ty = dy * invLen;
                 Point2 control{};
-                control.x = Lerp(from.x, to.x, controlT);
-                control.y = Lerp(from.y, to.y, controlT);
+                control.x = Lerp(from.x, to.x, 0.5f) + (tx * tangentOffset);
+                control.y = Lerp(from.y, to.y, 0.5f) + (ty * tangentOffset);
 
                 AddQuadratic(from, control, to);
             }
 
             void AddQuadratic(const Point2& p1, const Point2& p2, const Point2& p3)
             {
+                const float minX = Min(p1.x, p2.x, p3.x);
+                const float minY = Min(p1.y, p2.y, p3.y);
+                const float maxX = Max(p1.x, p2.x, p3.x);
+                const float maxY = Max(p1.y, p2.y, p3.y);
+                if (((maxX - minX) <= DegenerateCurveExtent) && ((maxY - minY) <= DegenerateCurveExtent))
+                {
+                    return;
+                }
+
                 CurveData& curve = m_curves->EmplaceBack();
                 curve.p1 = p1;
                 curve.p2 = p2;
                 curve.p3 = p3;
-                curve.minX = Min(p1.x, p2.x, p3.x);
-                curve.minY = Min(p1.y, p2.y, p3.y);
-                curve.maxX = Max(p1.x, p2.x, p3.x);
-                curve.maxY = Max(p1.y, p2.y, p3.y);
+                curve.minX = minX;
+                curve.minY = minY;
+                curve.maxX = maxX;
+                curve.maxY = maxY;
             }
 
             void FlattenCubic(const Point2& p0, const Point2& p1, const Point2& p2, const Point2& p3, uint32_t depth)
@@ -377,7 +397,7 @@ namespace he::scribe::editor
             Vector<CurveData>* m_curves{ nullptr };
             Point2 m_current{};
             float m_cubicToleranceSq{ 0.0f };
-            float m_lineControlBias{ 0.0f };
+            float m_lineControlTangentOffset{ 0.0f };
             bool m_hasCurrent{ false };
         };
 

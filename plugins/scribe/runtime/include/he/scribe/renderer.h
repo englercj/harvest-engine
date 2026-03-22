@@ -48,12 +48,22 @@ namespace he::scribe
 
     struct FrameDesc
     {
+        struct GpuTimerDesc
+        {
+            rhi::TimestampQuerySet* querySet{ nullptr };
+            rhi::Buffer* resolveBuffer{ nullptr };
+            uint32_t startQueryIndex{ 0 };
+            uint32_t endQueryIndex{ 1 };
+            uint32_t resolveBufferOffset{ 0 };
+        };
+
         rhi::RenderCmdList* cmdList{ nullptr };
         const rhi::RenderTargetView* targetView{ nullptr };
         rhi::TextureState targetState{ rhi::TextureState::Common };
         Vec2u targetSize{ 0, 0 };
         bool clearTarget{ false };
         Vec4f clearColor{ 0, 0, 0, 0 };
+        GpuTimerDesc gpuTimer{};
     };
 
     struct DrawGlyphDesc

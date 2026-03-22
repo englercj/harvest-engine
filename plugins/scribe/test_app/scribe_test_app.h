@@ -43,8 +43,8 @@ namespace he
         {
             rhi::CmdAllocator* cmdAlloc{ nullptr };
             rhi::CpuFence* fence{ nullptr };
-            MonotonicTime submitTime{};
-            float lastGpuMs{ 0.0f };
+            rhi::TimestampQuerySet* gpuTimerQueries{ nullptr };
+            rhi::Buffer* gpuTimerReadback{ nullptr };
             bool hasSubmittedWork{ false };
         };
 
@@ -56,6 +56,7 @@ namespace he
             rhi::RenderCmdList* cmdList{ nullptr };
             rhi::SwapChainFormat preferredSwapChainFormat{};
             rhi::PresentTarget presentTarget{};
+            uint64_t renderQueueTimestampFrequency{ 0 };
             uint32_t frameIndex{ 0 };
             RenderFrameData frames[rhi::MaxFrameCount]{};
         };
@@ -118,6 +119,7 @@ namespace he
         bool EnsureGlyphResource(uint32_t fontFaceIndex, uint32_t glyphIndex, const scribe::GlyphResource*& out);
         bool PrimeImageCache();
         bool EnsureImageShapeResource(uint32_t imageIndex, uint32_t shapeIndex, const scribe::GlyphResource*& out);
+        void QueueDraw(const scribe::DrawGlyphDesc& desc);
         void QueueLayout(const scribe::LayoutResult& layout, const Vec2f& origin, float fontSize, float layoutScale = 1.0f);
         void QueueImage(const LoadedDemoImage& image, uint32_t imageIndex, const Vec2f& position, float scale);
         void QueueCaret();
@@ -164,6 +166,8 @@ namespace he
         float m_sceneZoom{ 1.0f };
         float m_smoothedFrameMs{ 0.0f };
         float m_lastGpuFrameMs{ 0.0f };
+        uint32_t m_lastDrawCount{ 0 };
+        uint32_t m_pendingDrawCount{ 0 };
         bool m_isPanning{ false };
         bool m_hasFrameTime{ false };
         bool m_initialized{ false };

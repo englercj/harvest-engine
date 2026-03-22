@@ -44,6 +44,8 @@ namespace he::rhi::d3d12
 
         // Event handle for sleeping the CPU when waiting for the GPU
         HANDLE m_fenceEvent{ nullptr };
+
+        uint64_t m_timestampFrequency{ 0 };
     };
 
     class CopyCmdQueueImpl final : public CopyCmdQueue, public BaseCmdQueueImpl
@@ -56,6 +58,7 @@ namespace he::rhi::d3d12
         void Wait(GpuFence* fence, uint64_t value) override;
 
         void WaitForFlush() override;
+        uint64_t GetTimestampFrequency() const override { return m_timestampFrequency; }
 
         void Submit(CopyCmdList* cmdList) override;
     };
@@ -70,6 +73,7 @@ namespace he::rhi::d3d12
         void Wait(GpuFence* fence, uint64_t value) override;
 
         void WaitForFlush() override;
+        uint64_t GetTimestampFrequency() const override { return m_timestampFrequency; }
 
         void Submit(ComputeCmdList* cmdList) override;
     };
@@ -84,6 +88,7 @@ namespace he::rhi::d3d12
         void Wait(GpuFence* fence, uint64_t value) override;
 
         void WaitForFlush() override;
+        uint64_t GetTimestampFrequency() const override { return m_timestampFrequency; }
 
         void Submit(RenderCmdList* cmdList) override;
         Result Present(SwapChain* swapChain) override;

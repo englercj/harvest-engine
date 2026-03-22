@@ -40,6 +40,21 @@ namespace he::rhi
         ///
         /// \return The result of the operation.
         virtual void SetMarker(const char* msg) = 0;
+
+        /// Writes a GPU timestamp into the query set at the specified index.
+        ///
+        /// \param[in] querySet The query set to write into.
+        /// \param[in] index The index in the query set to write.
+        virtual void WriteTimestamp(const TimestampQuerySet* querySet, uint32_t index) = 0;
+
+        /// Resolves a range of timestamp queries into a buffer.
+        ///
+        /// \param[in] querySet The query set to resolve.
+        /// \param[in] firstIndex The first query index to resolve.
+        /// \param[in] count The number of query indices to resolve.
+        /// \param[in] dst The destination buffer to write the timestamps into.
+        /// \param[in] dstOffset The destination byte offset in the buffer.
+        virtual void ResolveTimestamps(const TimestampQuerySet* querySet, uint32_t firstIndex, uint32_t count, const Buffer* dst, uint32_t dstOffset = 0) = 0;
     };
 
     /// Command list that can perform copy operations.

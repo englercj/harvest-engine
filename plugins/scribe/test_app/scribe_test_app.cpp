@@ -584,12 +584,16 @@ namespace he
         };
         frameDesc.clearTarget = true;
         frameDesc.clearColor = { 1.0f, 1.0f, 1.0f, 1.0f };
+        frameDesc.gpuTimer.querySet = m_render.frames[m_render.frameIndex].gpuTimerQueries;
+        frameDesc.gpuTimer.resolveBuffer = m_render.frames[m_render.frameIndex].gpuTimerReadback;
 
         if (!m_renderer.BeginFrame(frameDesc))
         {
             EndFrame();
             return;
         }
+
+        m_pendingDrawCount = 0;
 
         QueueLayout(m_titleLayout, transformedTitleOrigin, titleFontSize, m_sceneZoom);
         QueueLayout(m_bodyLayout, transformedBodyOrigin, bodyFontSize, m_sceneZoom);
@@ -699,10 +703,10 @@ namespace he
 
         {
             rhi::InstanceDesc desc{};
-            desc.enableDebugCpu = true;
-            desc.enableDebugGpu = true;
-            desc.enableDebugBreakOnError = true;
-            desc.enableDebugBreakOnWarning = true;
+            desc.enableDebugCpu = false;
+            desc.enableDebugGpu = false;
+            desc.enableDebugBreakOnError = false;
+            desc.enableDebugBreakOnWarning = false;
 
             Result r = rhi::Instance::Create(desc, m_render.instance);
             if (!r)
@@ -729,6 +733,7 @@ namespace he
         }
 
         rhi::RenderCmdQueue& cmdQueue = m_render.device->GetRenderCmdQueue();
+        m_render.renderQueueTimestampFrequency = cmdQueue.GetTimestampFrequency();
         for (uint32_t i = 0; i < HE_LENGTH_OF(m_render.frames); ++i)
         {
             RenderFrameData& frame = m_render.frames[i];
@@ -752,6 +757,36 @@ namespace he
             {
                 HE_LOG_ERROR(he_scribe,
                     HE_MSG("Failed to create scribe testbed frame fence."),
+                    HE_KV(result, r));
+                return false;
+            }
+
+            rhi::TimestampQuerySetDesc queryDesc{};
+            queryDesc.type = rhi::CmdListType::Render;
+            queryDesc.count = 2;
+            HE_RHI_SET_NAME(queryDesc, "Scribe Testbed GPU Timer Queries");
+
+            r = m_render.device->CreateTimestampQuerySet(queryDesc, frame.gpuTimerQueries);
+            if (!r)
+            {
+                HE_LOG_ERROR(he_scribe,
+                    HE_MSG("Failed to create scribe testbed GPU timer queries."),
+                    HE_KV(result, r));
+                return false;
+            }
+
+            rhi::BufferDesc readbackDesc{};
+            readbackDesc.heapType = rhi::HeapType::Readback;
+            readbackDesc.usage = rhi::BufferUsage::CopyDst;
+            readbackDesc.size = sizeof(uint64_t) * 2;
+            readbackDesc.stride = sizeof(uint64_t);
+            HE_RHI_SET_NAME(readbackDesc, "Scribe Testbed GPU Timer Readback");
+
+            r = m_render.device->CreateBuffer(readbackDesc, frame.gpuTimerReadback);
+            if (!r)
+            {
+                HE_LOG_ERROR(he_scribe,
+                    HE_MSG("Failed to create scribe testbed GPU timer readback buffer."),
                     HE_KV(result, r));
                 return false;
             }
@@ -815,6 +850,8 @@ namespace he
 
         for (RenderFrameData& frame : m_render.frames)
         {
+            m_render.device->SafeDestroy(frame.gpuTimerReadback);
+            m_render.device->SafeDestroy(frame.gpuTimerQueries);
             m_render.device->SafeDestroy(frame.fence);
             m_render.device->SafeDestroy(frame.cmdAlloc);
         }
@@ -1018,10 +1055,12 @@ namespace he
         FormatTo(
             m_renderStatsText,
             "FPS: {:.1f}\n"
-            "GPU: {:.2f} ms\n"
+            "GPU text: {:.2f} ms\n"
+            "Draws: {}\n"
             "Resolution: {} x {}",
             fps,
             m_lastGpuFrameMs,
+            m_lastDrawCount,
             viewSize.x,
             viewSize.y);
 
@@ -1182,6 +1221,12 @@ namespace he
         return true;
     }
 
+    void ScribeTestApp::QueueDraw(const scribe::DrawGlyphDesc& desc)
+    {
+        m_renderer.QueueDraw(desc);
+        ++m_pendingDrawCount;
+    }
+
     void ScribeTestApp::QueueLayout(const scribe::LayoutResult& layout, const Vec2f& origin, float fontSize, float layoutScale)
     {
         Vector<scribe::CompiledColorGlyphLayer> colorLayers{};
@@ -1227,7 +1272,7 @@ namespace he
                     desc.basisX = layer.basisX;
                     desc.basisY = layer.basisY;
                     desc.offset = layer.offset;
-                    m_renderer.QueueDraw(desc);
+                    QueueDraw(desc);
                 }
                 continue;
             }
@@ -1243,7 +1288,7 @@ namespace he
             desc.position = position;
             desc.size = { scale, scale };
             desc.color = foregroundColor;
-            m_renderer.QueueDraw(desc);
+            QueueDraw(desc);
         }
     }
 
@@ -1273,7 +1318,7 @@ namespace he
             desc.size = { scale, scale };
             desc.offset = drawOffset;
             desc.color = layer.color;
-            m_renderer.QueueDraw(desc);
+            QueueDraw(desc);
         }
     }
 
@@ -1299,7 +1344,7 @@ namespace he
         };
         desc.size = { 2.0f, Max(line.height, 1.0f) };
         desc.color = { 0.0f, 0.0f, 0.0f, 1.0f };
-        m_renderer.QueueDraw(desc);
+        QueueDraw(desc);
     }
 
     void ScribeTestApp::UpdateSceneTitle()
@@ -1468,8 +1513,31 @@ namespace he
 
         if (frame.hasSubmittedWork)
         {
-            frame.lastGpuMs = ToPeriod<Seconds, float>(MonotonicClock::Now() - frame.submitTime) * 1000.0f;
-            m_lastGpuFrameMs = frame.lastGpuMs;
+            if (frame.gpuTimerReadback && (m_render.renderQueueTimestampFrequency > 0))
+            {
+                const uint64_t* timestamps = static_cast<const uint64_t*>(
+                    m_render.device->Map(frame.gpuTimerReadback, 0, sizeof(uint64_t) * 2));
+
+                if (timestamps)
+                {
+                    const uint64_t beginTicks = timestamps[0];
+                    const uint64_t endTicks = timestamps[1];
+                    const uint64_t elapsedTicks = (endTicks >= beginTicks) ? (endTicks - beginTicks) : 0;
+                    m_lastGpuFrameMs = static_cast<float>(
+                        (static_cast<double>(elapsedTicks) * 1000.0)
+                        / static_cast<double>(m_render.renderQueueTimestampFrequency));
+                    m_render.device->Unmap(frame.gpuTimerReadback);
+                }
+                else
+                {
+                    m_lastGpuFrameMs = 0.0f;
+                }
+            }
+            else
+            {
+                m_lastGpuFrameMs = 0.0f;
+            }
+
             frame.hasSubmittedWork = false;
         }
 
@@ -1513,8 +1581,8 @@ namespace he
         rhi::RenderCmdQueue& cmdQueue = m_render.device->GetRenderCmdQueue();
         cmdQueue.Submit(m_render.cmdList);
         cmdQueue.Signal(m_render.frames[m_render.frameIndex].fence);
-        m_render.frames[m_render.frameIndex].submitTime = MonotonicClock::Now();
         m_render.frames[m_render.frameIndex].hasSubmittedWork = true;
+        m_lastDrawCount = m_pendingDrawCount;
         r = cmdQueue.Present(m_render.swapChain);
         if (!r)
         {

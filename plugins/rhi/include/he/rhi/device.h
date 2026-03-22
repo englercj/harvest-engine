@@ -294,6 +294,18 @@ namespace he::rhi
         /// \return The current value of the fence, or UINT64_MAX if the device has been removed.
         virtual uint64_t GetFenceValue(const GpuFence* fence) = 0;
 
+        /// Creates a timestamp query set.
+        ///
+        /// \param[in] desc The descriptor for how to create the query set.
+        /// \param[out] out A pointer to the newly created query set.
+        /// \return The result of the operation.
+        virtual Result CreateTimestampQuerySet(const TimestampQuerySetDesc& desc, TimestampQuerySet*& out) = 0;
+
+        /// Destroys a timestamp query set created with \ref CreateTimestampQuerySet.
+        ///
+        /// \param[in] querySet The query set to destroy.
+        virtual void DestroyTimestampQuerySet(TimestampQuerySet* querySet) = 0;
+
         /// Creates a compute pipeline.
         ///
         /// \param[in] desc The descriptor for how to create the pipeline.
@@ -539,6 +551,7 @@ namespace he::rhi
     template <> inline void Device::SafeDestroy(DescriptorTable*& x) { if (x) { DestroyDescriptorTable(x); } x = nullptr; }
     template <> inline void Device::SafeDestroy(CpuFence*& x) { if (x) { DestroyCpuFence(x); } x = nullptr; }
     template <> inline void Device::SafeDestroy(GpuFence*& x) { if (x) { DestroyGpuFence(x); } x = nullptr; }
+    template <> inline void Device::SafeDestroy(TimestampQuerySet*& x) { if (x) { DestroyTimestampQuerySet(x); } x = nullptr; }
     template <> inline void Device::SafeDestroy(ComputePipeline*& x) { if (x) { DestroyComputePipeline(x); } x = nullptr; }
     template <> inline void Device::SafeDestroy(RenderPipeline*& x) { if (x) { DestroyRenderPipeline(x); } x = nullptr; }
     template <> inline void Device::SafeDestroy(RootSignature*& x) { if (x) { DestroyRootSignature(x); } x = nullptr; }

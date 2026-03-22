@@ -18,6 +18,7 @@ namespace he::rhi::null
         void Wait(GpuFence* fence, uint64_t value) override;
 
         void WaitForFlush() override;
+        uint64_t GetTimestampFrequency() const override { return 1000000; }
 
         void Submit(CopyCmdList* cmdList) override;
     };
@@ -30,6 +31,7 @@ namespace he::rhi::null
         void Wait(GpuFence* fence, uint64_t value) override;
 
         void WaitForFlush() override;
+        uint64_t GetTimestampFrequency() const override { return 1000000; }
 
         void Submit(ComputeCmdList* cmdList) override;
     };
@@ -42,6 +44,7 @@ namespace he::rhi::null
         void Wait(GpuFence* fence, uint64_t value) override;
 
         void WaitForFlush() override;
+        uint64_t GetTimestampFrequency() const override { return 1000000; }
 
         void Submit(RenderCmdList* cmdList) override;
         Result Present(SwapChain* swapChain) override;

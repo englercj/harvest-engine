@@ -68,6 +68,9 @@ namespace he::rhi::null
         bool IsFenceSignaled(const CpuFence* fence) override;
         uint64_t GetFenceValue(const GpuFence* fence) override;
 
+        Result CreateTimestampQuerySet(const TimestampQuerySetDesc& desc, TimestampQuerySet*& out) override;
+        void DestroyTimestampQuerySet(TimestampQuerySet* querySet) override;
+
         Result CreateComputePipeline(const ComputePipelineDesc& desc, ComputePipeline*& out) override;
         void DestroyComputePipeline(ComputePipeline* pipeline) override;
 

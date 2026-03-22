@@ -167,6 +167,26 @@ namespace he::rhi::d3d12
         d3dCmdList->ResourceBarrier(1, &barrier);
     }
 
+    static void WriteTimestamp(ID3D12GraphicsCommandList* d3dCmdList, const TimestampQuerySet* querySet_, uint32_t index)
+    {
+        const TimestampQuerySetImpl* querySet = static_cast<const TimestampQuerySetImpl*>(querySet_);
+        HE_ASSERT(querySet);
+        HE_ASSERT(index < querySet->count);
+        d3dCmdList->EndQuery(querySet->d3dQueryHeap, D3D12_QUERY_TYPE_TIMESTAMP, index);
+    }
+
+    static void ResolveTimestamps(ID3D12GraphicsCommandList* d3dCmdList, const TimestampQuerySet* querySet_, uint32_t firstIndex, uint32_t count, const Buffer* dst_, uint32_t dstOffset)
+    {
+        const TimestampQuerySetImpl* querySet = static_cast<const TimestampQuerySetImpl*>(querySet_);
+        const BufferImpl* dst = static_cast<const BufferImpl*>(dst_);
+        HE_ASSERT(querySet);
+        HE_ASSERT(dst);
+        HE_ASSERT((firstIndex + count) <= querySet->count);
+        HE_ASSERT((dstOffset + (count * sizeof(uint64_t))) <= dst->size);
+        HE_ASSERT(IsAligned(dstOffset, sizeof(uint64_t)));
+        d3dCmdList->ResolveQueryData(querySet->d3dQueryHeap, D3D12_QUERY_TYPE_TIMESTAMP, firstIndex, count, dst->d3dResource, dstOffset);
+    }
+
     // --------------------------------------------------------------------------------------------
     // Copy Command List
 
@@ -229,6 +249,16 @@ namespace he::rhi::d3d12
     #if HE_RHI_ENABLE_PIX
         PIXSetMarker(m_d3dCmdList, 1, msg);
     #endif
+    }
+
+    void CopyCmdListImpl::WriteTimestamp(const TimestampQuerySet* querySet, uint32_t index)
+    {
+        ::he::rhi::d3d12::WriteTimestamp(m_d3dCmdList, querySet, index);
+    }
+
+    void CopyCmdListImpl::ResolveTimestamps(const TimestampQuerySet* querySet, uint32_t firstIndex, uint32_t count, const Buffer* dst, uint32_t dstOffset)
+    {
+        ::he::rhi::d3d12::ResolveTimestamps(m_d3dCmdList, querySet, firstIndex, count, dst, dstOffset);
     }
 
     void CopyCmdListImpl::Copy(const Buffer* src, const Buffer* dst, const BufferCopy* region)
@@ -323,6 +353,16 @@ namespace he::rhi::d3d12
     #if HE_RHI_ENABLE_PIX
         PIXSetMarker(m_d3dCmdList, 1, msg);
     #endif
+    }
+
+    void ComputeCmdListImpl::WriteTimestamp(const TimestampQuerySet* querySet, uint32_t index)
+    {
+        ::he::rhi::d3d12::WriteTimestamp(m_d3dCmdList, querySet, index);
+    }
+
+    void ComputeCmdListImpl::ResolveTimestamps(const TimestampQuerySet* querySet, uint32_t firstIndex, uint32_t count, const Buffer* dst, uint32_t dstOffset)
+    {
+        ::he::rhi::d3d12::ResolveTimestamps(m_d3dCmdList, querySet, firstIndex, count, dst, dstOffset);
     }
 
     void ComputeCmdListImpl::Copy(const Buffer* src, const Buffer* dst, const BufferCopy* region)
@@ -505,6 +545,16 @@ namespace he::rhi::d3d12
     #if HE_RHI_ENABLE_PIX
         PIXSetMarker(m_d3dCmdList, 1, msg);
     #endif
+    }
+
+    void RenderCmdListImpl::WriteTimestamp(const TimestampQuerySet* querySet, uint32_t index)
+    {
+        ::he::rhi::d3d12::WriteTimestamp(m_d3dCmdList, querySet, index);
+    }
+
+    void RenderCmdListImpl::ResolveTimestamps(const TimestampQuerySet* querySet, uint32_t firstIndex, uint32_t count, const Buffer* dst, uint32_t dstOffset)
+    {
+        ::he::rhi::d3d12::ResolveTimestamps(m_d3dCmdList, querySet, firstIndex, count, dst, dstOffset);
     }
 
     void RenderCmdListImpl::Copy(const Buffer* src, const Buffer* dst, const BufferCopy* region)

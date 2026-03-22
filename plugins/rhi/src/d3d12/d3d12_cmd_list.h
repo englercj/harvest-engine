@@ -30,6 +30,8 @@ namespace he::rhi::d3d12
         void BeginGroup(const char* msg) override;
         void EndGroup() override;
         void SetMarker(const char* msg) override;
+        void WriteTimestamp(const TimestampQuerySet* querySet, uint32_t index) override;
+        void ResolveTimestamps(const TimestampQuerySet* querySet, uint32_t firstIndex, uint32_t count, const Buffer* dst, uint32_t dstOffset = 0) override;
 
         void Copy(const Buffer* src, const Buffer* dst, const BufferCopy* region = nullptr) override;
         void Copy(const Texture* src, const Texture* dst, const TextureCopy* region = nullptr) override;
@@ -55,6 +57,8 @@ namespace he::rhi::d3d12
         void BeginGroup(const char* msg) override;
         void EndGroup() override;
         void SetMarker(const char* msg) override;
+        void WriteTimestamp(const TimestampQuerySet* querySet, uint32_t index) override;
+        void ResolveTimestamps(const TimestampQuerySet* querySet, uint32_t firstIndex, uint32_t count, const Buffer* dst, uint32_t dstOffset = 0) override;
 
         void Copy(const Buffer* src, const Buffer* dst, const BufferCopy* region = nullptr) override;
         void Copy(const Texture* src, const Texture* dst, const TextureCopy* region = nullptr) override;
@@ -101,6 +105,8 @@ namespace he::rhi::d3d12
         void BeginGroup(const char* msg) override;
         void EndGroup() override;
         void SetMarker(const char* msg) override;
+        void WriteTimestamp(const TimestampQuerySet* querySet, uint32_t index) override;
+        void ResolveTimestamps(const TimestampQuerySet* querySet, uint32_t firstIndex, uint32_t count, const Buffer* dst, uint32_t dstOffset = 0) override;
 
         void Copy(const Buffer* src, const Buffer* dst, const BufferCopy* region = nullptr) override;
         void Copy(const Texture* src, const Texture* dst, const TextureCopy* region = nullptr) override;

@@ -533,6 +533,11 @@ namespace he::scribe
 
         m_frame.cmdList->BeginRenderPass(passDesc);
 
+        if (m_frame.gpuTimer.querySet && m_frame.gpuTimer.resolveBuffer)
+        {
+            m_frame.cmdList->WriteTimestamp(m_frame.gpuTimer.querySet, m_frame.gpuTimer.startQueryIndex);
+        }
+
         if (!m_draws.IsEmpty())
         {
             rhi::Viewport viewport{};
@@ -555,7 +560,25 @@ namespace he::scribe
             }
         }
 
+        if (m_frame.gpuTimer.querySet && m_frame.gpuTimer.resolveBuffer)
+        {
+            m_frame.cmdList->WriteTimestamp(m_frame.gpuTimer.querySet, m_frame.gpuTimer.endQueryIndex);
+        }
+
         m_frame.cmdList->EndRenderPass();
+
+        if (m_frame.gpuTimer.querySet && m_frame.gpuTimer.resolveBuffer)
+        {
+            const uint32_t firstQueryIndex = Min(m_frame.gpuTimer.startQueryIndex, m_frame.gpuTimer.endQueryIndex);
+            const uint32_t lastQueryIndex = Max(m_frame.gpuTimer.startQueryIndex, m_frame.gpuTimer.endQueryIndex);
+            m_frame.cmdList->ResolveTimestamps(
+                m_frame.gpuTimer.querySet,
+                firstQueryIndex,
+                (lastQueryIndex - firstQueryIndex) + 1,
+                m_frame.gpuTimer.resolveBuffer,
+                m_frame.gpuTimer.resolveBufferOffset);
+        }
+
         m_frame = {};
         m_draws.Clear();
     }

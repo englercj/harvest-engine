@@ -5,7 +5,10 @@
 #include "null_device.h"
 #include "null_cmd_list.h"
 #include "null_instance.h"
+#include "null_resources.h"
 
+#include "he/core/assert.h"
+#include "he/core/memory_ops.h"
 #include "he/rhi/config.h"
 #include "he/rhi/types.h"
 
@@ -13,6 +16,29 @@
 
 namespace he::rhi::null
 {
+    namespace
+    {
+        void WriteTimestampInternal(uint64_t& nextTimestamp, const TimestampQuerySet* querySet_, uint32_t index)
+        {
+            TimestampQuerySetImpl* querySet = static_cast<TimestampQuerySetImpl*>(const_cast<TimestampQuerySet*>(querySet_));
+            HE_ASSERT(querySet);
+            HE_ASSERT(index < querySet->timestamps.Size());
+            nextTimestamp += 1000;
+            querySet->timestamps[index] = nextTimestamp;
+        }
+
+        void ResolveTimestampsInternal(const TimestampQuerySet* querySet_, uint32_t firstIndex, uint32_t count, const Buffer* dst_, uint32_t dstOffset)
+        {
+            const TimestampQuerySetImpl* querySet = static_cast<const TimestampQuerySetImpl*>(querySet_);
+            BufferImpl* dst = static_cast<BufferImpl*>(const_cast<Buffer*>(dst_));
+            HE_ASSERT(querySet);
+            HE_ASSERT(dst);
+            HE_ASSERT((firstIndex + count) <= querySet->timestamps.Size());
+            HE_ASSERT((dstOffset + (count * sizeof(uint64_t))) <= dst->size);
+            MemCopy(dst->data.Data() + dstOffset, querySet->timestamps.Data() + firstIndex, count * sizeof(uint64_t));
+        }
+    }
+
     // --------------------------------------------------------------------------------------------
     // Copy Command List
 
@@ -36,6 +62,16 @@ namespace he::rhi::null
 
     void CopyCmdListImpl::SetMarker([[maybe_unused]] const char* msg)
     {
+    }
+
+    void CopyCmdListImpl::WriteTimestamp(const TimestampQuerySet* querySet, uint32_t index)
+    {
+        WriteTimestampInternal(m_nextTimestamp, querySet, index);
+    }
+
+    void CopyCmdListImpl::ResolveTimestamps(const TimestampQuerySet* querySet, uint32_t firstIndex, uint32_t count, const Buffer* dst, uint32_t dstOffset)
+    {
+        ResolveTimestampsInternal(querySet, firstIndex, count, dst, dstOffset);
     }
 
     void CopyCmdListImpl::Copy([[maybe_unused]] const Buffer* src, [[maybe_unused]] const Buffer* dst, [[maybe_unused]] const BufferCopy* region)
@@ -77,6 +113,16 @@ namespace he::rhi::null
 
     void ComputeCmdListImpl::SetMarker([[maybe_unused]] const char* msg)
     {
+    }
+
+    void ComputeCmdListImpl::WriteTimestamp(const TimestampQuerySet* querySet, uint32_t index)
+    {
+        WriteTimestampInternal(m_nextTimestamp, querySet, index);
+    }
+
+    void ComputeCmdListImpl::ResolveTimestamps(const TimestampQuerySet* querySet, uint32_t firstIndex, uint32_t count, const Buffer* dst, uint32_t dstOffset)
+    {
+        ResolveTimestampsInternal(querySet, firstIndex, count, dst, dstOffset);
     }
 
     void ComputeCmdListImpl::Copy([[maybe_unused]] const Buffer* src, [[maybe_unused]] const Buffer* dst, [[maybe_unused]] const BufferCopy* region)
@@ -178,6 +224,16 @@ namespace he::rhi::null
 
     void RenderCmdListImpl::SetMarker([[maybe_unused]] const char* msg)
     {
+    }
+
+    void RenderCmdListImpl::WriteTimestamp(const TimestampQuerySet* querySet, uint32_t index)
+    {
+        WriteTimestampInternal(m_nextTimestamp, querySet, index);
+    }
+
+    void RenderCmdListImpl::ResolveTimestamps(const TimestampQuerySet* querySet, uint32_t firstIndex, uint32_t count, const Buffer* dst, uint32_t dstOffset)
+    {
+        ResolveTimestampsInternal(querySet, firstIndex, count, dst, dstOffset);
     }
 
     void RenderCmdListImpl::Copy([[maybe_unused]] const Buffer* src, [[maybe_unused]] const Buffer* dst, [[maybe_unused]] const BufferCopy* region)

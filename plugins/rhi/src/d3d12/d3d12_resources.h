@@ -119,6 +119,13 @@ namespace he::rhi::d3d12
         ID3D12Fence* d3dFence{ nullptr };
     };
 
+    struct TimestampQuerySetImpl final : TimestampQuerySet
+    {
+        CmdListType type{ CmdListType::Render };
+        uint32_t count{ 0 };
+        ID3D12QueryHeap* d3dQueryHeap{ nullptr };
+    };
+
     struct RenderPipelineImpl final : RenderPipeline
     {
         ID3D12PipelineState* d3dPipeline{ nullptr };

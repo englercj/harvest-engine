@@ -32,6 +32,12 @@ namespace he
 
         bool ResolveFontPath(String& out, const char* fileName)
         {
+            if (File::Exists(fileName))
+            {
+                out = fileName;
+                return true;
+            }
+
             static const char* Candidates[] =
             {
                 "plugins/editor/src/fonts/",
@@ -229,6 +235,11 @@ namespace he
 
             case window::EventKind::PointerDown:
             {
+                if (m_windowDevice && m_view)
+                {
+                    m_lastPointerPos = m_windowDevice->GetCursorPos(m_view);
+                    m_hasPointerPos = true;
+                }
                 UpdateCaretFromPointer();
                 break;
             }
@@ -345,6 +356,10 @@ namespace he
 
         m_renderer.Terminate();
         TerminateRenderState();
+        if (m_view)
+        {
+            m_windowDevice->DestroyView(m_view);
+        }
         m_view = nullptr;
         m_fonts.Clear();
         m_titleLayout.Clear();
@@ -504,10 +519,27 @@ namespace he
     bool ScribeTestApp::LoadDemoFonts()
     {
         m_fonts.Clear();
-        m_fonts.Resize(2);
+        m_fonts.Resize(3);
 
-        return LoadDemoFont(m_fonts[0], "NotoSans-Regular.ttf")
-            && LoadDemoFont(m_fonts[1], "materialdesignicons.ttf");
+        if (!LoadDemoFont(m_fonts[0], "NotoSans-Regular.ttf")
+            || !LoadDemoFont(m_fonts[1], "materialdesignicons.ttf"))
+        {
+            return false;
+        }
+
+        static const char* RtlFontCandidates[] =
+        {
+            "C:/Windows/Fonts/segoeui.ttf",
+            "C:/Windows/Fonts/arial.ttf",
+            "C:/Windows/Fonts/tahoma.ttf",
+        };
+
+        if (!LoadOptionalDemoFont(m_fonts[2], RtlFontCandidates))
+        {
+            m_fonts.Resize(2);
+        }
+
+        return true;
     }
 
     bool ScribeTestApp::LoadDemoFont(LoadedDemoFont& out, const char* fileName)
@@ -515,6 +547,21 @@ namespace he
         out = {};
         out.name = fileName;
         return BuildLoadedFontFaceFromFile(fileName, out.blobWords, out.blob);
+    }
+
+    bool ScribeTestApp::LoadOptionalDemoFont(LoadedDemoFont& out, Span<const char*> fileNames)
+    {
+        out = {};
+
+        for (const char* fileName : fileNames)
+        {
+            if (LoadDemoFont(out, fileName))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     bool ScribeTestApp::RebuildLayouts()
@@ -575,6 +622,7 @@ namespace he
             return false;
         }
 
+        m_footerText.Clear();
         FormatTo(
             m_footerText,
             "Scene {}/{}  Left/Right: switch demos  Click: caret hit test  Esc: quit  Missing={}  Fallback={}",
@@ -606,8 +654,39 @@ namespace he
             UpdateCaretFromPointer();
         }
 
+        if (!PrimeGlyphCache())
+        {
+            return false;
+        }
+
         m_layoutDirty = false;
         return true;
+    }
+
+    bool ScribeTestApp::PrimeLayoutGlyphs(const scribe::LayoutResult& layout)
+    {
+        for (const scribe::ShapedGlyph& glyph : layout.glyphs)
+        {
+            if (glyph.fontFaceIndex >= m_fonts.Size())
+            {
+                continue;
+            }
+
+            const scribe::GlyphResource* glyphResource = nullptr;
+            if (!EnsureGlyphResource(glyph.fontFaceIndex, glyph.glyphIndex, glyphResource))
+            {
+                continue;
+            }
+        }
+
+        return true;
+    }
+
+    bool ScribeTestApp::PrimeGlyphCache()
+    {
+        return PrimeLayoutGlyphs(m_titleLayout)
+            && PrimeLayoutGlyphs(m_bodyLayout)
+            && PrimeLayoutGlyphs(m_footerLayout);
     }
 
     bool ScribeTestApp::EnsureGlyphResource(uint32_t fontFaceIndex, uint32_t glyphIndex, const scribe::GlyphResource*& out)
@@ -713,11 +792,22 @@ namespace he
                 break;
 
             case DemoScene::RightToLeft:
-                m_titleText = "Scribe Testbed: right-to-left paragraph flow";
-                m_bodyText = RtlSample;
-                m_bodyText +=
-                    "  Scribe is currently using its first-pass bidi path, but this still gives us a "
-                    "visual test case for RTL line direction, cluster ordering, and caret hit testing.";
+                if (HasRtlDemoFallbackFont())
+                {
+                    m_titleText = "Scribe Testbed: right-to-left paragraph flow";
+                    m_bodyText = RtlSample;
+                    m_bodyText += " ";
+                    m_bodyText += RtlSample;
+                    m_bodyText += " 12345";
+                }
+                else
+                {
+                    m_titleText = "Scribe Testbed: forced RTL layout stress case";
+                    m_bodyText =
+                        "This machine does not have the optional RTL fallback font that the testbed uses "
+                        "for Arabic coverage, so this scene stays on repository fonts and exercises the "
+                        "first-pass right-to-left layout path with the currently available glyph set.";
+                }
                 break;
 
             case DemoScene::_Count:
@@ -813,7 +903,15 @@ namespace he
         m_render.frameIndex = (m_render.frameIndex + 1) % HE_LENGTH_OF(m_render.frames);
         RenderFrameData& frame = m_render.frames[m_render.frameIndex];
 
-        m_render.device->WaitForFence(frame.fence);
+        const bool waitResult = m_render.device->WaitForFence(frame.fence);
+        if (!waitResult)
+        {
+            HE_LOG_ERROR(he_scribe,
+                HE_MSG("Failed to wait for the scribe testbed frame fence."),
+                HE_KV(result, Result::FromLastError()));
+            return false;
+        }
+
         Result r = m_render.device->ResetCmdAllocator(frame.cmdAlloc);
         if (!r)
         {
@@ -823,7 +921,15 @@ namespace he
             return false;
         }
 
-        m_render.cmdList->Begin(frame.cmdAlloc);
+        r = m_render.cmdList->Begin(frame.cmdAlloc);
+        if (!r)
+        {
+            HE_LOG_ERROR(he_scribe,
+                HE_MSG("Failed to begin the scribe testbed command list."),
+                HE_KV(result, r));
+            return false;
+        }
+
         return true;
     }
 
@@ -834,11 +940,29 @@ namespace he
             return;
         }
 
-        m_render.cmdList->End();
+        Result r = m_render.cmdList->End();
+        if (!r)
+        {
+            HE_LOG_ERROR(he_scribe,
+                HE_MSG("Failed to end the scribe testbed command list."),
+                HE_KV(result, r));
+            return;
+        }
 
         rhi::RenderCmdQueue& cmdQueue = m_render.device->GetRenderCmdQueue();
         cmdQueue.Submit(m_render.cmdList);
         cmdQueue.Signal(m_render.frames[m_render.frameIndex].fence);
-        cmdQueue.Present(m_render.swapChain);
+        r = cmdQueue.Present(m_render.swapChain);
+        if (!r)
+        {
+            HE_LOG_ERROR(he_scribe,
+                HE_MSG("Failed to present the scribe testbed swap chain."),
+                HE_KV(result, r));
+        }
+    }
+
+    bool ScribeTestApp::HasRtlDemoFallbackFont() const
+    {
+        return (m_fonts.Size() > 2) && m_fonts[2].blob.root.IsValid();
     }
 }

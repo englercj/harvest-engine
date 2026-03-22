@@ -148,10 +148,21 @@ namespace he::scribe
             copyRegion.bufferRowPitch = uploadPitch;
             copyRegion.textureSize = textureSize;
 
-            cmdList->Begin(cmdAllocator);
+            Result r = cmdList->Begin(cmdAllocator);
+            if (!r)
+            {
+                HE_LOGF_ERROR(scribe_render, "Failed to begin upload cmd list. Error: {}", r);
+                return false;
+            }
+
             cmdList->Copy(uploadBuffer, outTexture, copyRegion);
             cmdList->TransitionBarrier(outTexture, rhi::TextureState::CopyDst, rhi::TextureState::PixelShaderRead);
-            cmdList->End();
+            r = cmdList->End();
+            if (!r)
+            {
+                HE_LOGF_ERROR(scribe_render, "Failed to end upload cmd list. Error: {}", r);
+                return false;
+            }
 
             rhi::RenderCmdQueue& cmdQueue = device.GetRenderCmdQueue();
             cmdQueue.Submit(cmdList);
@@ -161,10 +172,10 @@ namespace he::scribe
                 rhi::TextureViewDesc desc{};
                 desc.texture = outTexture;
 
-                Result r = device.CreateTextureView(desc, outView);
-                if (!r)
+                Result viewResult = device.CreateTextureView(desc, outView);
+                if (!viewResult)
                 {
-                    HE_LOGF_ERROR(scribe_render, "Failed to create texture view '{}'. Error: {}", textureName, r);
+                    HE_LOGF_ERROR(scribe_render, "Failed to create texture view '{}'. Error: {}", textureName, viewResult);
                     return false;
                 }
             }

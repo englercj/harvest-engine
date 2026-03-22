@@ -599,7 +599,7 @@ namespace he::scribe
                 glyph.textByteEnd = FindClusterTextEnd(runSourceClusters, info.cluster, run.textByteEnd);
                 glyph.offset = {
                     position.x_offset * face.unitScale,
-                    position.y_offset * face.unitScale
+                    -position.y_offset * face.unitScale
                 };
                 glyph.advance = {
                     position.x_advance * face.unitScale,

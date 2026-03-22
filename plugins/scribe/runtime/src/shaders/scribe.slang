@@ -75,18 +75,15 @@ VertexOutput vs_main(VertexInput input, uint vid : SV_VertexID)
     VertexOutput vresult;
 
     // Apply dynamic dilation to vertex position. Returns new em-space sample position.
-
     vresult.texcoord = SlugDilate(input.pos, input.tex, input.jac, mvp[0], mvp[1], mvp[3], viewport.xy, p);
 
     // Apply MVP matrix to dilated vertex position.
-
     vresult.position.x = p.x * mvp[0].x + p.y * mvp[0].y + mvp[0].w;
     vresult.position.y = p.x * mvp[1].x + p.y * mvp[1].y + mvp[1].w;
     vresult.position.z = p.x * mvp[2].x + p.y * mvp[2].y + mvp[2].w;
     vresult.position.w = p.x * mvp[3].x + p.y * mvp[3].y + mvp[3].w;
 
     // Unpack or pass through remaining vertex data.
-
     SlugUnpack(input.tex, input.bnd, vresult.banding, vresult.glyph);
     vresult.color = input.col;
     return vresult;

@@ -23,13 +23,14 @@ namespace he::scribe
             float v,
             float glyphLocBits,
             float bandInfoBits,
+            const Vec4f& jac,
             const Vec4f& banding,
             const Vec4f& color)
         {
             PackedGlyphVertex vertex{};
             vertex.pos = { x, y, nx, ny };
             vertex.tex = { u, v, glyphLocBits, bandInfoBits };
-            vertex.jac = { 1.0f, 0.0f, 0.0f, 1.0f };
+            vertex.jac = jac;
             vertex.bnd = banding;
             vertex.col = color;
             return vertex;
@@ -84,6 +85,12 @@ namespace he::scribe
         const uint32_t glyphLoc = glyph.GetGlyphBandLocX() | (glyph.GetGlyphBandLocY() << 16);
         const float glyphLocBits = PackBits(glyphLoc);
         const float bandInfoBits = PackBits(bandInfo);
+        const Vec4f jacobian{
+            1.0f,
+            0.0f,
+            0.0f,
+            -1.0f
+        };
         const Vec4f banding{
             glyph.GetBandScaleX(),
             glyph.GetBandScaleY(),
@@ -91,12 +98,15 @@ namespace he::scribe
             glyph.GetBandOffsetY()
         };
 
-        out.vertices[0] = MakeVertex(minX, minY, -1.0f, -1.0f, minX, minY, glyphLocBits, bandInfoBits, banding, color);
-        out.vertices[1] = MakeVertex(maxX, minY, 1.0f, -1.0f, maxX, minY, glyphLocBits, bandInfoBits, banding, color);
-        out.vertices[2] = MakeVertex(maxX, maxY, 1.0f, 1.0f, maxX, maxY, glyphLocBits, bandInfoBits, banding, color);
-        out.vertices[3] = MakeVertex(minX, minY, -1.0f, -1.0f, minX, minY, glyphLocBits, bandInfoBits, banding, color);
-        out.vertices[4] = MakeVertex(maxX, maxY, 1.0f, 1.0f, maxX, maxY, glyphLocBits, bandInfoBits, banding, color);
-        out.vertices[5] = MakeVertex(minX, maxY, -1.0f, 1.0f, minX, maxY, glyphLocBits, bandInfoBits, banding, color);
+        const float objectMinY = -maxY;
+        const float objectMaxY = -minY;
+
+        out.vertices[0] = MakeVertex(minX, objectMinY, -1.0f, -1.0f, minX, maxY, glyphLocBits, bandInfoBits, jacobian, banding, color);
+        out.vertices[1] = MakeVertex(maxX, objectMinY, 1.0f, -1.0f, maxX, maxY, glyphLocBits, bandInfoBits, jacobian, banding, color);
+        out.vertices[2] = MakeVertex(maxX, objectMaxY, 1.0f, 1.0f, maxX, minY, glyphLocBits, bandInfoBits, jacobian, banding, color);
+        out.vertices[3] = MakeVertex(minX, objectMinY, -1.0f, -1.0f, minX, maxY, glyphLocBits, bandInfoBits, jacobian, banding, color);
+        out.vertices[4] = MakeVertex(maxX, objectMaxY, 1.0f, 1.0f, maxX, minY, glyphLocBits, bandInfoBits, jacobian, banding, color);
+        out.vertices[5] = MakeVertex(minX, objectMaxY, -1.0f, 1.0f, minX, minY, glyphLocBits, bandInfoBits, jacobian, banding, color);
 
         const auto curveBytes = fontFace.root.GetCurveData();
         const auto bandBytes = fontFace.root.GetBandData();

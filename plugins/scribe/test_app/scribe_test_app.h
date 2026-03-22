@@ -88,7 +88,10 @@ namespace he
         void TerminateRenderState();
         bool LoadDemoFonts();
         bool LoadDemoFont(LoadedDemoFont& out, const char* fileName);
+        bool LoadOptionalDemoFont(LoadedDemoFont& out, Span<const char*> fileNames);
         bool RebuildLayouts();
+        bool PrimeLayoutGlyphs(const scribe::LayoutResult& layout);
+        bool PrimeGlyphCache();
         bool EnsureGlyphResource(uint32_t fontFaceIndex, uint32_t glyphIndex, const scribe::GlyphResource*& out);
         void QueueLayout(const scribe::LayoutResult& layout, const Vec2f& origin, float fontSize);
         void QueueCaret();
@@ -98,6 +101,7 @@ namespace he
         rhi::SwapChainFormat FindPreferredSwapChainFormat() const;
         bool BeginFrame();
         void EndFrame();
+        bool HasRtlDemoFallbackFont() const;
 
     private:
         window::Device* m_windowDevice{ nullptr };
